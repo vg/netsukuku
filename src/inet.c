@@ -281,7 +281,7 @@ int set_bindtodevice_sk(int socket, char *dev)
 {
 	struct ifreq ifr;
 	int ret;
-
+	
 	memset(&ifr, 0, sizeof(ifr));
 	strncpy(ifr.ifr_name, dev, IFNAMSIZ-1);
 	

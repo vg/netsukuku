@@ -28,7 +28,7 @@
 
 int route_add(inet_prefix to, struct nexthop *nhops, char *dev, u_char table)
 {
-	return route_exec(RTM_NEWROUTE, NLM_F_REQUEST | NLM_F_EXCL, to, nhops, dev, table);
+	return route_exec(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, to, nhops, dev, table);
 }
 
 int route_del(inet_prefix to, struct nexthop *nhops, char *dev, u_char table)
@@ -58,41 +58,37 @@ int add_nexthops(struct nlmsghdr *n, struct rtmsg *r, struct nexthop *nhop)
 	rta->rta_len = RTA_LENGTH(0);
 	rtnh = RTA_DATA(rta);
 
+	if(!nhop[i+1].dev && !i) {
+		/* Just one gateway */
+		r->rtm_family = nhop[i].gw.family;
+		addattr_l(n, sizeof(struct rt_request), RTA_GATEWAY, &nhop[i].gw.data, nhop[i].gw.len);
+		return 0;
+	}
+	
 	while (nhop[i].dev!=0) {
+		memset(rtnh, 0, sizeof(*rtnh));
 		rtnh->rtnh_len = sizeof(*rtnh);
-		rtnh->rtnh_ifindex = 0;
 		rta->rta_len += rtnh->rtnh_len;
+
 		if (nhop[i].gw.len) {
-			if(nhop[i].gw.family==AF_INET) {
+			if(nhop[i].gw.family==AF_INET)
 				rta_addattr32(rta, 4096, RTA_GATEWAY, nhop[i].gw.data[0]);
-				rtnh->rtnh_len += sizeof(struct rtattr) + nhop[i].gw.len;
-			}
-			else if(nhop[i].gw.family==AF_INET6) {
+			else if(nhop[i].gw.family==AF_INET6)
 				rta_addattr_l(rta, 4096, RTA_GATEWAY, nhop[i].gw.data, nhop[i].gw.len);
-				rtnh->rtnh_len += sizeof(struct rtattr) + nhop[i].gw.len;
-				
-				/*Bleh
-				r->rtm_family = nhop[0].gw.family;
-				addattr_l(n, sizeof(struct nlmsghdr)+sizeof(struct rtmsg)+1024, 
-						RTA_GATEWAY, nhop[0].gw.data, nhop[0].gw.len);
-				break;
-				*/
-			}
+			rtnh->rtnh_len += sizeof(struct rtattr) + nhop[i].gw.len;
 		}
+
 		if (nhop[i].dev) 
-			if ((rtnh->rtnh_ifindex = ll_name_to_index(nhop[i].dev)) == 0) {
-				error("Cannot find device \"%s\"\n", nhop[i].dev);
-				goto cont;
-			}
+			if ((rtnh->rtnh_ifindex = ll_name_to_index(nhop[i].dev)) == 0)
+				fatal("%s:%d, Cannot find device \"%s\"\n", ERROR_POS, nhop[i].dev);
 
 		if (nhop[i].hops == 0) {
-			error("hops=%d is invalid. Using hops=255\n", nhop[i].hops);
+			debug(DBG_NORMAL, "hops=%d is invalid. Using hops=255\n", nhop[i].hops);
 			rtnh->rtnh_hops=255;
 		} else
 			rtnh->rtnh_hops = nhop[i].hops - 1;
 
 		rtnh = RTNH_NEXT(rtnh);
-cont:
 		i++;
 	}
 
@@ -103,24 +99,16 @@ cont:
 
 int route_exec(int route_cmd, unsigned flags, inet_prefix to, struct nexthop *nhops, char *dev, u_char table)
 {
-	struct {
-		struct nlmsghdr 	nh;
-		struct rtmsg 		rt;
-		char   			buf[1024];
-	} req;
+	struct rt_request req;
 	struct rtnl_handle rth;
-	int rt_type;
 
 	memset(&req, 0, sizeof(req));
-
-	if (rtnl_open(&rth, 0) < 0)
-		return -1;
 
 	if(!table)
 		table=RT_TABLE_MAIN;
 
 	req.nh.nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg));
-	req.nh.nlmsg_flags = flags;
+	req.nh.nlmsg_flags = NLM_F_REQUEST|flags;
 	req.nh.nlmsg_type = route_cmd;
 	req.rt.rtm_family = AF_UNSPEC;
 	req.rt.rtm_table = table;
@@ -131,12 +119,10 @@ int route_exec(int route_cmd, unsigned flags, inet_prefix to, struct nexthop *nh
 		req.rt.rtm_scope = RT_SCOPE_UNIVERSE;
 		req.rt.rtm_type = RTN_UNICAST;
 	}
-/* Nexthop owns gw (^_-)
-	if (gw) {
-		req.rt.rtm_family = to.family;
-		addattr_l(&req.nh, sizeof(req), RTA_GATEWAY, &gw.data, gw.len);
-	}
-*/
+	
+	if (rtnl_open(&rth, 0) < 0)
+		return -1;
+
 	if (dev || nhops) 
 		ll_init_map(&rth);
 
@@ -144,7 +130,7 @@ int route_exec(int route_cmd, unsigned flags, inet_prefix to, struct nexthop *nh
 		int idx;
 
 		if ((idx = ll_name_to_index(dev)) == 0)
-			fatal("Error in %s:%d, Device \"%s\" doesn't really exist\n", ERROR_POS, dev);
+			fatal("%s:%d, Device \"%s\" doesn't really exist\n", ERROR_POS, dev);
 		addattr32(&req.nh, sizeof(req), RTA_OIF, idx);
 	}
 
@@ -153,25 +139,21 @@ int route_exec(int route_cmd, unsigned flags, inet_prefix to, struct nexthop *nh
 		req.rt.rtm_family  = to.family;
 		if(!to.data[0] && !to.data[1] && !to.data[2] && !to.data[3]) {
 			/*Add the default gw*/
-			req.rt.rtm_scope=RT_SCOPE_LINK;
 			req.rt.rtm_protocol=RTPROT_KERNEL;
-			rt_type=RTA_GATEWAY;
-			nhops=0;
-		} else
-			rt_type=RTA_DST;
-		
-		addattr_l(&req.nh, sizeof(req), rt_type, &to.data, to.len);
+		}
+		/*
+		 * else
+		 * req.rt.rtm_scope=RT_SCOPE_LINK;
+		*/
+		addattr_l(&req.nh, sizeof(req), RTA_DST, &to.data, to.len);
 	} 
-	
+
 	if(nhops) 
 		add_nexthops(&req.nh, &req.rt, nhops);
-
+	
 	/*Finaly stage: <<Hey krnl, r u there?>>*/
-	if (req.rt.rtm_family == AF_UNSPEC)
-		req.rt.rtm_family = AF_INET;
-
 	if (rtnl_talk(&rth, &req.nh, 0, 0, NULL, NULL, NULL) < 0)
-		return -2;
+		return -1;
 
 	return 0;
 }

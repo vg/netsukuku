@@ -111,7 +111,8 @@ const char *if_init(char *dev, int *dev_idx)
 			return NULL;
 		}
 	} else 
-		dev=(char *)get_dev(dev_idx);
+		if(!(dev=(char *)get_dev(dev_idx)))
+				return NULL;
 	
 	if(set_dev_up(dev))
 		return NULL;	

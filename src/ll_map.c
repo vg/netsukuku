@@ -128,7 +128,7 @@ unsigned ll_index_to_flags(int idx)
 	return 0;
 }
 
-int ll_name_to_index(char *name)
+int ll_name_to_index(const char *name)
 {
 	static char ncache[16];
 	static int icache;
@@ -168,7 +168,6 @@ int ll_init_map(struct rtnl_handle *rth)
 {
 	if (rtnl_wilddump_request(rth, AF_UNSPEC, RTM_GETLINK) < 0) 
 		fatal("%s:%d: Cannot send dump request", ERROR_POS);
-
 
 	if (rtnl_dump_filter(rth, ll_remember_index, &idxmap, NULL, NULL) < 0) 
 		fatal("%s:%d: Dump terminated",ERROR_POS);

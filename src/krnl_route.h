@@ -25,6 +25,11 @@ struct nexthop
 	u_char hops;
 };
 
+struct rt_request {
+	struct nlmsghdr 	nh;
+	struct rtmsg 		rt;
+	char   			buf[1024];
+};
 
 int route_add(inet_prefix to, struct nexthop *nhops, char *dev, u_char table);
 int route_del(inet_prefix to, struct nexthop *nhops, char *dev, u_char table);

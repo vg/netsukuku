@@ -134,16 +134,30 @@ void rt_update(void)
 	route_flush_cache(my_family);
 }
 
-int rt_add_def_gw(char *dev) 
+int rt_add_gw(char *dev, inet_prefix to, inet_prefix gw)
 {
+	struct nexthop nh[2];
+	
+	inet_htonl(&to);
+
+	memset(nh, '\0', sizeof(struct nexthop)*2);	
+	memcpy(&nh[0].gw, &gw, sizeof(inet_prefix));
+	inet_htonl(&nh[0].gw);
+	nh[0].dev=dev;
+	nh[1].dev=0;
+
+	return route_add(to, nh, dev, 0);
+}
+
+int rt_add_def_gw(char *dev, inet_prefix gw)
+{
+	struct nexthop nh[2];
 	inet_prefix to;
 	
 	if(inet_setip_anyaddr(&to, my_family)) {
 		error("rt_add_def_gw(): Cannot use INADRR_ANY for the %d family\n", to.family);
 		return -1;
 	}
-	inet_htonl(&to);
 
-/*	route_del(to, 0, dev, 0);	*/
-	return route_add(to, 0, dev, 0);
+	return rt_add_gw(dev, to, gw);
 }

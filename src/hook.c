@@ -511,19 +511,14 @@ int netsukuku_hook(char *dev)
 	else
 		idata[0]=HOOKING_IP6;
 	idata[0]=htonl(idata[0]);
+	
 	me.cur_ip.family=my_family;
 	inet_setip(&me.cur_ip, idata, my_family);
-
 	ntop=inet_to_str(me.cur_ip);
 	debug(DBG_NORMAL, "Setting the %s ip to %s interface", ntop, dev);
 	xfree(ntop);
 	if(set_dev_ip(me.cur_ip, dev))
 		fatal("%s:%d: Cannot set the HOOKING_IP in %s", ERROR_POS, dev);
-	
-	if(rt_add_def_gw(dev))
-		debug(DBG_NORMAL, "%s:%d: Couldn't set the default gw for %s", 
-				ERROR_POS, dev);
-
 
 	/* 	
 	  	* * 		The beginning          * *	  	
@@ -550,10 +545,12 @@ int netsukuku_hook(char *dev)
 		create_gnodes(0, GET_LEVELS(my_family));
 		ntop=inet_to_str(me.cur_ip);
 		debug(DBG_NORMAL, "Setting the %s ip to %s interface", ntop, dev);
+
 		if(set_dev_ip(me.cur_ip, dev))
 			fatal("%s:%d: Cannot set the new ip in %s", ERROR_POS, dev);
 		loginfo("Now we are in a brand new gnode. The ip of %s is set "
 				"to %s", dev, ntop);
+
 		xfree(ntop);
 		new_gnode=1;
 		goto finish;

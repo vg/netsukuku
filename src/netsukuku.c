@@ -288,7 +288,7 @@ int main(int argc, char **argv)
 	/* We use this self process for the radar_daemon. */
 	debug(DBG_SOFT,   "Evocating radar daemon.");
 	radar_daemon(NULL);
-	
+
 	loginfo("Cya m8");
 	pthread_attr_destroy(&t_attr);
 	destroy_netsukuku();
