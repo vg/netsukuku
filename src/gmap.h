@@ -119,7 +119,7 @@ typedef struct {
  * Maxgroupnode_levels is initialized at the start, so the work is done only once*/
 mpz_t maxgroupnode_levels[MAX_LEVELS+1];
 
-/***This block is used to send the ext_map*/
+/* This block is used to send the ext_map */
 struct ext_map_hdr
 {
 	quadro_group quadg;
@@ -128,14 +128,17 @@ struct ext_map_hdr
 	size_t total_rblock_sz;		/*The sum of all rblock_sz*/
 	size_t rblock_sz[MAX_LEVELS];	/*The size of the rblock of each gmap*/
 };
-/*The ext_map_block is:
+/* The ext_map_block is:
  * 	struct ext_map_hdr hdr;
  * 	char ext_map[ext_map_sz];
- * 	char rnode_blocks[total_rblock_sz];*/
+ * 	char rnode_blocks[total_rblock_sz];
+ */
 #define EXT_MAP_BLOCK_SZ(ext_map_sz, rblock_sz) (sizeof(struct ext_map_hdr)+(ext_map_sz)+(rblock_sz))
 
-/* The root_node at level 0 who has a rnode, who isn't of the same level, uses this external_rnode_struct
- * to refer to that particular rnode.*/
+/* 
+ * The root_node at level 0 who has a rnode, who isn't of the same gnode, uses 
+ * this external_rnode_struct to refer to that particular rnode.
+ */
 typedef struct {
 	map_node	node;
 	inet_prefix	ip;
@@ -173,6 +176,11 @@ void random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 void gnodetoip(map_gnode **ext_map, quadro_group *quadg, map_gnode *gnode, u_char level, 
 		inet_prefix *ip);
 int quadg_diff_gids(quadro_group qg_a, quadro_group qg_b);
+ext_rnode_cache *erc_find(ext_rnode_cache *erc, ext_rnode *e_rnode);
+void e_rnode_del(ext_rnode_cache *erc, int *counter);
+void e_rnode_add(ext_rnode_cache *erc, ext_rnode *e_rnode, int rnode_pos, int *counter);
+ext_rnode_cache *e_rnode_init(int *counter);
+void e_rnode_free(ext_rnode_cache *erc, int *counter);
 int e_rnode_find(ext_rnode_cache *erc, quadro_group *qg);
 
 map_gnode *init_gmap(int groups);

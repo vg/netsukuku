@@ -191,13 +191,14 @@ void parse_options(int argc, char **argv)
 void init_netsukuku(char **argv)
 {
 	char *dev;
-	memset(&me, 0, sizeof(struct current));
-	
+
 	xsrand();
 	log_init(argv[0], server_opt.dbg_lvl, 1);
 
         if (geteuid())
 		fatal("Need root privileges");
+	
+	memset(&me, 0, sizeof(struct current));
 	
 	maxgroupnode_level_init();
 
@@ -210,6 +211,8 @@ void init_netsukuku(char **argv)
 
 	qspn_init(GET_LEVELS(my_family));
 
+	me.cur_erc=e_rnode_init(&me.cur_erc_counter);
+	
 	init_radar();
 
 	init_load_maps();
@@ -233,6 +236,7 @@ void destroy_netsukuku(void)
 	free_maps();
 	maxgroupnode_level_free();
 	close_radar();
+	e_rnode_free(me.cur_erc, &me.cur_erc_counter);
 	destroy_accept_tbl();
 }
 

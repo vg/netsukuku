@@ -311,9 +311,95 @@ void gnodetoip(map_gnode **ext_map, quadro_group *quadg, map_gnode *gnode,
 	ip->bits-=(level*9);
 }
 
-/* e_rnode_find: It searches in the `erc' list a quadro_group struct equal to `qg'.
+/* 
+ * quadg_diff_gids: It returns 0 if `qg_a' has all the gids equal to
+ * the `qg_b''s ones
+ */
+int quadg_diff_gids(quadro_group qg_a, quadro_group qg_b)
+{
+	int i;
+	if(qg_a.levels != qg_b.levels)
+		return 1;
+	
+	for(i=1; i<qg_a.levels; i++)
+		if(qg_b.gid[i] != qg_b.gid[i])
+			return 1;
+	return 0;
+}
+
+/* * * External rnodes functions * * */
+
+/* e_rnode_init: Initialize an ext_rnode_cache list and zeros the `counter' */
+ext_rnode_cache *e_rnode_init(int *counter)
+{
+	ext_rnode_cache *erc;
+
+	list_init(erc);
+	memset(erc, 0, sizeof(ext_rnode_cache));
+
+	if(counter)
+		*counter=0;
+
+	return erc;
+}
+
+/* e_rnode_free: destroy an ext_rnode_cache list */
+void e_rnode_free(ext_rnode_cache *erc, int *counter)
+{
+	list_destroy(erc);
+	if(counter)
+		counter=0;
+}
+
+/* 
+ * erc_find: Searches in the `erc' ext_rnode_cache list a struct which has the
+ * erc->e == e_rnode and returns it
+ */
+ext_rnode_cache *erc_find(ext_rnode_cache *erc, ext_rnode *e_rnode)
+{
+	ext_rnode_cache *p=erc;
+	list_for(p) {
+		if(!p->e)
+			continue;
+		if(p->e == e_rnode)
+			return p;
+	}
+	return 0;
+}
+
+void e_rnode_del(ext_rnode_cache *erc, int *counter)
+{
+	if(*counter)
+		return;
+	if(erc->e)
+		xfree(erc->e);
+	
+	list_del(erc);
+	(*counter)--;
+}
+
+void e_rnode_add(ext_rnode_cache *erc, ext_rnode *e_rnode, int rnode_pos, int *counter)
+{
+	ext_rnode_cache *p;
+
+	p=xmalloc(sizeof(ext_rnode_cache));
+	memset(p, 0, sizeof(ext_rnode_cache));
+	
+	p->e=e_rnode;
+	p->rnode_pos=rnode_pos;
+	
+	if(!(*counter) || !erc)
+		list_init(erc);
+	
+	list_add(erc, p);
+	(*counter)++;
+}
+
+/* 
+ * e_rnode_find: It searches in the `erc' list a quadro_group struct equal to `qg'.
  * If an ext_rnode which has such struct is found it returns its rnode_pos.
- * If nothing is found -1 is returned.*/
+ * If nothing is found -1 is returned.
+ */
 int e_rnode_find(ext_rnode_cache *erc, quadro_group *qg)
 {
 	ext_rnode_cache *p=erc;
@@ -330,19 +416,6 @@ int e_rnode_find(ext_rnode_cache *erc, quadro_group *qg)
 	return -1;
 }
 
-/* quadg_diff_gids: It returns 0 if `qg_a' has all the gids equal to
- * the `qg_b''s ones*/
-int quadg_diff_gids(quadro_group qg_a, quadro_group qg_b)
-{
-	int i;
-	if(qg_a.levels != qg_b.levels)
-		return 1;
-	
-	for(i=1; i<qg_a.levels; i++)
-		if(qg_b.gid[i] != qg_b.gid[i])
-			return 1;
-	return 0;
-}
 
 map_gnode *init_gmap(int groups)
 {

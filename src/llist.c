@@ -18,9 +18,10 @@
  * llist.c: Various functions to handle linked lists
  */
 
-/*This struct is used as a header to handle all the linked list struct.
+/*
+ * This struct is used as a header to handle all the linked list struct.
  * The only limitation is to put _EXACTLY_ struct bla_bla *next;
- * struct bla_bla *prev; at the beginning
+ * struct bla_bla *prev; at the beginning.
  */
 struct linked_list
 {
