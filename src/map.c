@@ -339,6 +339,11 @@ int store_rnode_block(map_node *map, map_rnode *rblock, int count)
 	int i, e=0;
 
 	for(i=0; i<MAXGROUPNODE; i++) {
+		if(map[i].r_node)
+			xfree(map[i].r_node);
+		else
+			map[i].r_node=xmalloc(sizeof(map_rnode));
+
 		memcpy(map[i].r_node, rblock+e, sizeof(map_rnode)*map[i].links);
 		mod_rnode_addr(map[i], 0, map);
 		e+=sizeof(map_rnode)*map[i].links;

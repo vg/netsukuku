@@ -28,6 +28,7 @@ struct free_ips
 	u_short		ips;
 	inet_prefix 	ipstart;
 }
+
 int get_free_ips(inet_prefix to, struct free_ips *fi_hdr, int *ips):
 int put_free_ips(PACKET rq_pkt);
 int netsukuku_hook(char *dev);

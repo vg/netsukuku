@@ -110,6 +110,10 @@ struct int_map_hdr
 	size_t int_map_sz;
 	size_t rblock_sz;
 };
+/*The int_map_block is:
+ * 	char map_node[int_map_sz];
+ * 	char map_rnode[rblock_sz];
+ */
 typedef char * int_map_block;
 #define INT_MAP_BLOCK_SZ(int_map_sz, rblock_sz) (sizeof(struct int_map_hdr)+(int_map_sz)+(rblock_sz))
 

@@ -20,7 +20,8 @@
 #include "inet.h"
 #include "ipv6-gmp.c"
 
-#define MAXGROUPNODE  0x281
+#define MAXGROUPNODE		0x281
+#define MAX_RNODE_LINKS 	20
 
 /*****The real map stuff*****/
 /***flags**/

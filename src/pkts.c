@@ -378,10 +378,11 @@ int pkt_exec(PACKET pkt)
 		case ECHO_REPLY:
 			err=radar_recv_reply(pkt);
 			break;
-		/*TODO*/
 		case GET_FREE_IPS:
 			err=put_free_ips(pkt);
 			break;
+		case GET_INT_MAP:
+			err=put_int_map(pkt);
 		default:
 			/*never reached*/
 			break;
