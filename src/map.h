@@ -36,6 +36,7 @@
 #define MAP_RNODE	(1<<6)		/*If a node has this set, it is one of the rnodes*/
 #define MAP_UPDATE	(1<<7)		/*If it is set, the corresponding route in the krnl will be updated*/
 #define MAP_VOID	(1<<8)		/*It indicates a non existent node*/
+#define QSPN_CLOSED	(1<<9)		/*This flag is set only to the rnodes, it puts a link in a QSPN_CLOSED state*/
 
 /*map_rnode is what map_node.r_node points to*/
 typedef struct
