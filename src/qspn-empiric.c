@@ -317,7 +317,7 @@ void *send_qspn_open(void *argv)
 	pkt=store_tracer_pkt(qopt);	
 
 	if(to == sub_id) {
-		fprintf(stderr, "%u: qspn_pkt: We received a qspn_open, but we are the OPENER!!\n", pthread_self());
+		fprintf(stderr, "%u: qspn_open: We received a qspn_open, but we are the OPENER!!\n", pthread_self());
 		return;
 	}
 
@@ -330,7 +330,7 @@ void *send_qspn_open(void *argv)
 		if(!(qspn_q[to][x].flags[sub_id] & QSPN_OPENED))
 			i++;
 	}
-	/*Shall we send a QSPN_OPEN?*/
+	/*Shall we stop our insane run?*/
 	if(!i) {
 		/*Yai! We've finished the reopening of heaven*/
 		fprintf(stderr, "%u: Yai! We've finished the reopening of heaven\n", pthread_self());

@@ -483,13 +483,16 @@ map_node *load_map(char *file)
 	}
 
 	fread(&imap_hdr, sizeof(struct int_map_hdr), 1, fd);
-#ifndef QSPN_EMPIRIC
+
+#ifndef QSPN_EMPIRIC /*The qspn_empiric generates random map whick have nodes with map_node.links > MAXGROUPNODE;*/
+
 	if(imap_hdr.rblock_sz > MAXRNODEBLOCK || imap_hdr.int_map_sz > MAXGROUPNODE*sizeof(map_node) 
 			|| imap_hdr.root_node > MAXGROUPNODE) {
 		error("Malformed map file. Aborting load_map().");
 		return 0;
 	}
-#endif
+	
+#endif /*QSPN_EMPIRIC*/
 		
 	/*Extracting the map...*/
 	map=init_map(0);

@@ -27,7 +27,7 @@
 extern int my_family;
 extern struct current me;
 
-void clean_qspn_b(void)
+void qspn_b_clean(void)
 {
 	int i;
 	for(i=0; i<me.cur_node->links; i++) {
@@ -37,6 +37,26 @@ void clean_qspn_b(void)
 		}
 		memset(&qspn_b[i], 0, sizeof(struct qspn_buffer));
 	}
+}
+
+void qspn_b_add(u_short rnode, u_short replier, u_short flags)
+{
+	qspn_b[rnode].replies++;
+	qspn_b[rnode].replier=xrealloc(qspn_b[rnode].replier, sizeof(u_short)*qspn_b[rnode].replies);
+	qspn_b[rnode].flags=xrealloc(qspn_b[rnode].flags, sizeof(u_short)*qspn_b[rnode].replies);
+	
+	qspn_b[rnode].replier[qspn_b[rnode].replies-1]=replier;
+	qspn_b[rnode].flags[qspn_b[rnode].replies-1]=flags;
+}
+
+int qspn_b_find_reply(u_short rnode, int sub_id)
+{
+	int i;
+
+	for(i=0; i<qspn_b[rnode].replies; i++)
+		if(qspn_b[rnode].replies[i]==sub_id)
+			return i;
+	return -1;
 }
 
 /* qspn_round_left: It returns the seconds left before the QSPN_WAIT_ROUND expires.
@@ -93,7 +113,9 @@ int qspn_send(u_char op, u_char bcast_type, u_char reply, int q_id, int q_sub_id
 	else
 		qspn_send_mutex=1;
 
-	
+	me.cur_node->flags|=QSPN_STARTER;
+	/*TODO:******************* CONTINUE HERE* *********************+++++
+	 * radar.c has to update the qspn_b!!*/
 	qspn_send_mutex=0;
 }
 
@@ -118,7 +140,7 @@ int qspn_close(PACKET rpkt)
 			(sizeof(struct tracer_hdr)+(tracer_hdr.hops*sizeof(struct tracer_node)) \
 			 + sizeof(struct brdcast_hdr)) ) {
 		ntop=inet_to_str(&rpkt->from);
-		debug(DBG_NOISE, "The %s sent an invalid qspn_close pkt here.", ntop);
+		debug(DBG_NOISE, "qspn_close(): The %s node sent an invalid qspn_close pkt here.", ntop);
 		xfree(ntop);
 		return -1;
 	}
@@ -129,37 +151,40 @@ int qspn_close(PACKET rpkt)
 	if(rpkt.hdr.id != me.cur_qspn_id) {
 		if(qspn_round_left() > 0 || rpkt.hdr.id != me.cur_qspn_id+1) {
 			ntop=inet_to_str(&rpkt->from);
-			debug(DBG_NOISE, "The %s sent a qspn_close with a wrong qspn_id");
+			debug(DBG_NOISE, "qspn_close(): The %s sent a qspn_close with a wrong qspn_id");
 			xfree(ntop);
 		} else { /*New round activated. Destroy the old one. beep.*/
 			me.cur_qspn_id++;
 			update_qspn_time();
-			clean_qspn_b();
+			qspn_b_clean();
+			me.cur_node->flags&=~QSPN_STARTER;
+			for(i=0; i<me.cur_node->links; i++)
+				me.cur_node->r_node[i].r_node.flags&=~QSPN_CLOSED & ~QSPN_REPLIED;
 		}
 	}
 
-	/*Let's our entry in the tracer*/
+	/*Let's add our entry in the tracer*/
 	hops=tracer_hdr.hops;
 	from=node_from_pos(tracer[hops-1].node);
 	new_tracer=qspn_inc_tracer(me.cur_node, tracer, &hops);
 
 	for(i=0; i<me.cur_node->links; i++) {
 		if(me.cur_node->r_node[i].r_node == from)
-			qspn_b[i].flags|=QSPN_CLOSED;
+			me.cur_node->r_node[i].r_node.flags|=QSPN_CLOSED;
 
 		if(!(me.cur_node->r_node[i].r_node & QSPN_CLOSED))
 			not_closed++;
 	}
 	/*We have all the links closed, time to diffuse a new qspn_open*/
-	if(!not_closed && !(qspn_b[i].flags & QSPN_REPLIED)) {
-		qspn_b[i].flags|=QSPN_REPLIED;
+	if(!not_closed && !(me.cur_node->r_node[i].r_node.flags & QSPN_REPLIED)) {
+		me.cur_node->r_node[i].r_node.flags|=QSPN_REPLIED;
 
 		/*We build d4 p4ck37... */
 		memset(&pkt, '\0', sizeof(PACKET));
 		bcast_hdr->sz=TRACERPKT_SZ(hops);
 		pkt.hdr.sz=BRDCAST_SZ(bcast_hdr->sz);
 		tracer_hdr->hops=hops;
-		pkt.msg=pack_tracer_pkt(bcast_hdr, tracer_hdr, tracer);
+		pkt.msg=pack_tracer_pkt(bcast_hdr, tracer_hdr, new_tracer);
 
 		/*... to send it to all*/
 		for(i=0; i<me.cur_node->links; i++) {
@@ -205,7 +230,7 @@ int qspn_close(PACKET rpkt)
 		err=send_rq(&pkt, 0, QSPN_CLOSE, rpkt.hdr.id, 0, 0, 0);
 		if(err==-1) {
 			ntop=inet_to_str(&pkt->to);
-			error("radard(): Cannot send the QSPN_CLOSE[id: %d] to %s.", qspn_id, ntop);
+			error("qspn_close(): Cannot send the QSPN_CLOSE[id: %d] to %s.", qspn_id, ntop);
 			xfree(ntop);
 		}
 	}
@@ -219,6 +244,101 @@ finish:
 
 int qspn_open(PACKET rpkt)
 {
+	PACKET pkt;
+	struct brdcast_hdr *bcast_hdr=rpkt.msg;
+	struct tracer_hdr  *tracer_hdr=rpkt.msg+sizeof(struct brdcast_hdr);
+	struct tracer_node *tracer=rpkt.msg+sizeof(struct brdcast_hdr)+sizeof(struct tracer_hdr);
+	struct tracer_node *new_tracer=0;
+	inet_prefix to;
+	map_node *from;
+	ssize_t err;
+	int i, not_opened=0, hops, ret=0, reply, sub_id;
+	char *ntop;
+
+	if(bcast_hdr.sub_id == pos_from_node(me.cur_node)) {
+		ntop=inet_to_str(&rpkt->from);
+		debug(DBG_NOISE, "qspn_open(): We received a qspn_open from %s, but we are the opener.", ntop);
+		xfree(ntop);
+		return 0;
+	}
+
+	if(bcast_hdr->g_node != me.cur_gid || rpkt.hdr.sz != \
+			(sizeof(struct tracer_hdr)+(tracer_hdr.hops*sizeof(struct tracer_node)) \
+			 + sizeof(struct brdcast_hdr)) ) {
+		ntop=inet_to_str(&rpkt->from);
+		debug(DBG_NOISE, "qspn_open(): The %s sent an invalid qspn_open pkt here.", ntop);
+		xfree(ntop);
+		return -1;
+	}
+	
+	if(qspn_verify_tracer(tracer, tracer_hdr->hops))
+		return -1;
+
+	if(rpkt.hdr.id != me.cur_qspn_id) {
+		ntop=inet_to_str(&rpkt->from);
+		debug(DBG_NOISE, "qspn_open(): The %s sent a qspn_open with a wrong qspn_id");
+		xfree(ntop);
+	}
+
+	/*Various  abbreviations*/
+	sub_id=buffer_hdr.sub_id;
+	hops=tracer_hdr.hops;
+	from=node_from_pos(tracer[hops-1].node);
+
+	/*Let's add our entry in the tracer*/
+	new_tracer=qspn_inc_tracer(me.cur_node, tracer, &hops);
+
+	/* We search in the qspn_buffer the reply which has current sub_id. 
+	 * If we don't find it, we add it*/
+	if((reply=qspn_b_find_reply(0, sub_id))==-1)
+		for(i=0; i<me.cur_node->links; i++)
+			qspn_b_add(pos_from_node(me.cur_node->r_node[i].r_node), sub_id, 0);
+
+	/*Time to open the links*/
+	for(i=0; i<me.cur_node->links; i++) {
+		if(me.cur_node->r_node[i].r_node == from)
+			qspn_b[i].flags[reply]|=QSPN_OPENED;
+
+		if(!(me.cur_node->r_node[i].r_node[reply] & QSPN_OPENED))
+			not_opened++;
+	}
+	/*Fokke, we've all the links opened. let's take a rest.*/
+	if(!not_opened && !(qspn_b[i].flags & QSPN_REPLIED)) {
+		debug(DBG_NOISE, "qspn_open(): We've finished the qspn_open (sub_id: %d) phase", sub_id);
+		return 0;
+	}
+
+	/*Here we are building the pkt to... */
+	memset(&pkt, '\0', sizeof(PACKET));
+	bcast_hdr->sz=TRACERPKT_SZ(hops);
+	pkt.hdr.sz=BRDCAST_SZ(bcast_hdr->sz);
+	tracer_hdr->hops=hops;
+	pkt.msg=pack_tracer_pkt(bcast_hdr, tracer_hdr, new_tracer);
+	/*... forward the qspn_opened to our r_nodes*/
+	for(i=0; i<me.cur_node->links; i++) {
+		if(qspn_q[i].flags & QSPN_OPENED || me.cur_node->r_node[i].r_node == from || \
+				(me.cur_node->r_node[i].r_node & MAP_GNODE))
+			continue;
+		
+		memset(&to, 0, sizeof(inet_prefix));
+		maptoip(*me.int_map, *me.cur_node->r_node[i].r_node, me.ipstart, &to);
+		pkt_addto(&pkt, &to);
+		pkt.sk_type=SKT_UDP;
+
+		/*Let's send the pkt*/
+		err=send_rq(&pkt, 0, QSPN_OPEN, rpkt.hdr.id, 0, 0, 0);
+		if(err==-1) {
+			ntop=inet_to_str(&pkt->to);
+			error("qspn_open(): Cannot send the QSPN_OPEN[id: %d] to %s.", qspn_id, ntop);
+			xfree(ntop);
+		}
+	}
+		
+finish:
+	pkt_free(&pkt, 1);
+	if(new_tracer)
+		xfree(new_tracer);	
+	return ret;
 }
 
 int qspn_verify_tracer(struct tracer_node *tracer, int hops)
