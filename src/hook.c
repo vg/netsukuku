@@ -558,7 +558,6 @@ int hook_init(void)
 	idata[0]+=rand_range(0, MAXGROUPNODE);
 	idata[0]=htonl(idata[0]);
 
-	me.cur_ip.family=my_family;
 	inet_setip(&me.cur_ip, idata, my_family);
 	
 	set_ip_and_def_gw(me.cur_dev, me.cur_ip);

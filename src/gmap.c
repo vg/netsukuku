@@ -215,9 +215,26 @@ void random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 	u_short gid[total_levels];
 	quadro_group qg;
 
+	memset(new_ip, 0, sizeof(inet_prefix));
+	
 	if(!ipstart || final_level==total_levels) {
-		/* Let's choose a completely random ip*/
+		u_int idata[4]={0,0,0,0}, b;
+		
+		/* 
+		 * Let's choose a completely random ip. We must ensure that it
+		 * is completely unique, because if two gnode are created with
+		 * the same ip it's a mess. To solve this problem we use the
+		 * hash_time function.
+		 */
 		levels=total_levels;
+		b = my_family == AF_INET ? 1 : 4;
+
+		for(i=0; i < b; i++)
+			idata[i]=hash_time();
+		
+		inet_setip(new_ip, idata, my_family);
+		
+		return;
 	} else {
 		/*
 		 * We can choose only a random ip which is inside the final_gid.

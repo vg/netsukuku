@@ -20,5 +20,7 @@
 
 #define MILLISEC(x)	(((x).tv_sec*1000)+((x).tv_usec/1000))
 
+unsigned int inthash(unsigned int key);
+static inline unsigned int dl_elf_hash (const unsigned char *name);
 int rand_range(int, int);
 void xsrand(void);
