@@ -26,9 +26,13 @@
 #include "xmalloc.h"
 #include "log.h"
 
+int route_exec(int route_cmd, int route_type, unsigned flags, inet_prefix to, 
+		struct nexthop *nhops, char *dev, u_char table);
+
 int route_add(int type, inet_prefix to, struct nexthop *nhops, char *dev, u_char table)
 {
-	return route_exec(RTM_NEWROUTE, type, NLM_F_CREATE | NLM_F_EXCL, to, nhops, dev, table);
+	return route_exec(RTM_NEWROUTE, type, NLM_F_CREATE | NLM_F_EXCL, to, 
+			nhops, dev, table);
 }
 
 int route_del(int type, inet_prefix to, struct nexthop *nhops, char *dev, u_char table)
@@ -39,12 +43,14 @@ int route_del(int type, inet_prefix to, struct nexthop *nhops, char *dev, u_char
 /*If it doesn't exist, CREATE IT! de ih oh oh*/
 int route_replace(int type, inet_prefix to, struct nexthop *nhops, char *dev, u_char table)
 {
-	return route_exec(RTM_NEWROUTE, type, NLM_F_REPLACE | NLM_F_CREATE, to, nhops, dev, table);
+	return route_exec(RTM_NEWROUTE, type, NLM_F_REPLACE | NLM_F_CREATE, to,
+			nhops, dev, table);
 }
 
 int route_change(int type, inet_prefix to, struct nexthop *nhops, char *dev, u_char table)
 {
-	return route_exec(RTM_NEWROUTE, type, NLM_F_REPLACE, to, nhops, dev, table);
+	return route_exec(RTM_NEWROUTE, type, NLM_F_REPLACE, to, nhops, dev, 
+			table);
 }
 
 int add_nexthops(struct nlmsghdr *n, struct rtmsg *r, struct nexthop *nhop)

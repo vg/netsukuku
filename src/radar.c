@@ -280,8 +280,13 @@ void radar_update_map(void)
 	list_for(rq) {
 	           if(rq->node == RADQ_VOID_RNODE)
 			   continue;
+		   if(!(me.cur_node->flags & MAP_HNODE) && (rq->flags & MAP_HNODE))
+			   continue;
 		 
-		   /* We need to know if it is a node which is not in the gnode where we are.*/
+		   /* 
+		    * We need to know if it is a node which is not in the gnode
+		    * where we are.
+		    */
 		   if((int)rq->node == RADQ_EXT_RNODE) {
 			   external_node=1;
 			   total_levels=rq->quadg.levels;
@@ -438,40 +443,22 @@ void radar_update_map(void)
 }
 
 /* 
- * add_radar_q: It reads the received ECHO_REPLY pkt and updates the radar
- * queue, storing the calculated rtt and the other infos relative to the sender
- * node.
+ * add_radar_q: It returns the radar_q struct which handles the pkt.from node.
+ * If the node is not present in the radar_q, it is added, and the
+ * relative struct will be returned.
  */
-int add_radar_q(PACKET pkt)
+struct radar_queue *
+add_radar_q(PACKET pkt)
 {
 	map_node *rnode;
 	quadro_group quadg;
-	struct timeval t;
 	struct radar_queue *rq;
-	u_int idx, ret=0, rtt_ms=0;
-	
-	gettimeofday(&t, 0);
+	u_int ret=0;
 	
 	if(me.cur_node->flags & MAP_HNODE) {
-		if(pkt.hdr.flags & HOOK_PKT) {
-			/* 
-			 * please read the comment in radard() to know WTF is
-			 * this scanning flag
-			 */
-			u_char scanning;
-			memcpy(&scanning, pkt.msg, sizeof(u_char));
-			
-			if(!scanning && radar_scan_mutex) {
-				hook_retry=1;
-				debug(DBG_NOISE, "Hooking node ECHO_REPLY caught. s: %d,"
-						" sca: %d, hook_retry: %d", radar_scans, 
-						scanning, hook_retry);
-			}
-		}
-
 		/* 
 		 * We are hooking, we haven't yet an int_map, an ext_map,
-		 * a stable ip so we create fake nodes that will delete after
+		 * a stable ip so we create fake nodes that will be delete after
 		 * the hook.
 		 */
 		if(!(rnode=find_nnode_radar_q(&pkt.from))) {
@@ -493,24 +480,69 @@ int add_radar_q(PACKET pkt)
 	if(!(rq=find_ip_radar_q(rnode))) {
 		rq=xmalloc(sizeof(struct radar_queue));
 		memset(rq, 0, sizeof(struct radar_queue));
+		
 		list_add(radar_q, rq);
-	}
 
-	if(ret)
-		rq->node=(map_node *)RADQ_EXT_RNODE;
-	else {
-		rq->node=rnode;
-		/* 
-		 * This pkt has been sent from another hooking
-		 * node, let's remember this.
-		 */
+		if(ret)
+			rq->node=(map_node *)RADQ_EXT_RNODE;
+		else {
+			rq->node=rnode;
+			/* 
+			 * This pkt has been sent from another hooking
+			 * node, let's remember this.
+			 */
+			if(pkt.hdr.flags & HOOK_PKT)
+				rq->node->flags|=MAP_HNODE;
+
+		}
+
 		if(pkt.hdr.flags & HOOK_PKT)
-			rq->node->flags|=MAP_HNODE;
+			rq->flags|=MAP_HNODE;
 
+		memcpy(&rq->ip, &pkt.from, sizeof(inet_prefix));
+		memcpy(&rq->quadg, &quadg, sizeof(quadro_group));
 	}
 
-	memcpy(&rq->ip, &pkt.from, sizeof(inet_prefix));
-	memcpy(&rq->quadg, &quadg, sizeof(quadro_group));
+	return rq;
+}
+
+/* 
+ * radar_exec_reply: It reads the received ECHO_REPLY pkt and updates the radar
+ * queue, storing the calculated rtt and the other infos relative to the sender
+ * node.
+ */
+int radar_exec_reply(PACKET pkt)
+{
+	map_node *rnode;
+	quadro_group quadg;
+	struct timeval t;
+	struct radar_queue *rq;
+	u_int ret=0, rtt_ms=0;
+	
+	gettimeofday(&t, 0);
+	
+	rq=add_radar_q(pkt);
+
+	if(me.cur_node->flags & MAP_HNODE) {
+		if(pkt.hdr.flags & HOOK_PKT) {
+			u_char scanning;
+			memcpy(&scanning, pkt.msg, sizeof(u_char));
+
+			/* 
+			 * If the pkt.from node has finished his scan, and we
+			 * never received one of its ECHO_ME pkts, and we are
+			 * still scanning, set the hook_retry.
+			 */
+			if(!scanning && !rq->pings && 
+					(radar_scan_mutex ||
+					 radar_scans<=MAX_RADAR_SCANS)) {
+				hook_retry=1;
+				debug(DBG_NOISE, "Hooking node ECHO_REPLY caught. s: %d,"
+						" sca: %d, hook_retry: %d", radar_scans, 
+						scanning, hook_retry);
+			}
+		}
+	}
 
 	if(rq->pongs < radar_scans) {
 		timersub(&t, &scan_start, &rq->rtt[rq->pongs]);
@@ -522,9 +554,6 @@ int add_radar_q(PACKET pkt)
 		rq->rtt[rq->pongs].tv_sec=rtt_ms/1000;
 		rq->rtt[rq->pongs].tv_usec=(rtt_ms - (rtt_ms/1000)*1000)*1000;
 
-		/* rq->rtt[rq->pongs].tv_sec/=2;
-		 * rq->rtt[rq->pongs].tv_usec/=2;
-		 */
 		rq->pongs++;
 	}
 
@@ -550,7 +579,7 @@ int radar_recv_reply(PACKET pkt)
 		return -1;
 	}
 
-	return add_radar_q(pkt);
+	return radar_exec_reply(pkt);
 }
 
 /* 
@@ -660,6 +689,7 @@ int radar_scan(void)
 int radard(PACKET rpkt)
 {
 	PACKET pkt;
+	struct radar_queue *rq;
 	ssize_t err;
 	char *ntop; 
 	u_char echo_scans_count;
@@ -691,7 +721,7 @@ int radard(PACKET rpkt)
 			return 0;
 		}
 
-	/* We create the PACKET */
+	/* We create the ECHO_REPLY pkt */
 	memset(&pkt, '\0', sizeof(PACKET));
 	pkt_addto(&pkt, &rpkt.from);
 	pkt_addsk(&pkt, rpkt.from.family, rpkt.sk, SKT_UDP);
@@ -703,12 +733,12 @@ int radard(PACKET rpkt)
 		 * waiting the MAX_RADAR_WAIT another node start the hooking:
 		 * with this flag it can know if we came before him.
 		 */
-		u_char scanning=0;
+		u_char scanning=1;
 		
 		pkt.hdr.sz=sizeof(u_char);
 		pkt.msg=xmalloc(pkt.hdr.sz);
-		if(radar_scan_mutex && radar_scan==MAX_RADAR_SCANS)
-			scanning=1;
+		if(radar_scans==MAX_RADAR_SCANS)
+			scanning=0;
 		memcpy(pkt.msg, &scanning, sizeof(u_char));
 
 		/* 
@@ -726,6 +756,14 @@ int radard(PACKET rpkt)
 		xfree(ntop);
 		return -1;
 	}
+
+	/* 
+	 * Ok, we have sent the reply, now we can update the radar_queue with
+	 * calm.
+	 */
+	rq=add_radar_q(rpkt);
+	rq->pings++;
+	
 	return 0;
 }
 

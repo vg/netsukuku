@@ -22,5 +22,6 @@
 
 unsigned int inthash(unsigned int key);
 static inline unsigned int dl_elf_hash (const unsigned char *name);
+int hash_time(int *h_sec, int *h_usec);
 int rand_range(int, int);
 void xsrand(void);

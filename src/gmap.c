@@ -227,10 +227,12 @@ void random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 		 * hash_time function.
 		 */
 		levels=total_levels;
-		b = my_family == AF_INET ? 1 : 4;
-
-		for(i=0; i < b; i++)
-			idata[i]=hash_time();
+		if(my_family == AF_INET)
+			idata[0]=hash_time(0,0);
+		else {
+			hash_time(&idata[0], &idata[1]);
+			hash_time(&idata[2], &idata[3]);
+		}
 		
 		inet_setip(new_ip, idata, my_family);
 		

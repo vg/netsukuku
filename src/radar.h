@@ -43,10 +43,12 @@ struct radar_queue
 	inet_prefix	ip;			/*Node's ip*/
 	map_node       *node;			/*The node we are pinging*/
 	quadro_group	quadg;			/*Node's data for the ext_map*/
-						   
-	char pongs;				/*The total pongs received*/
-	struct timeval rtt[MAX_RADAR_SCANS];	/*The round rtt of each pong*/
-	struct timeval final_rtt;		/*When all the rtt is filled, or when MAX_RADAR_WAIT is expired,
+	u_short		flags;
+				
+	char 		pings;			/*The total ECHO_ME pkts received from this node*/
+	char 		pongs;			/*The total pongs (ECHO_REPLY) received from this node*/
+	struct timeval 	rtt[MAX_RADAR_SCANS];	/*The round rtt of each pong*/
+	struct timeval 	final_rtt;		/*When all the rtt is filled, or when MAX_RADAR_WAIT is expired,
 						  final_rtt will keep the average of all the rtts */
 };
 struct radar_queue *radar_q;	/*the start of the linked list of radar_queue*/
@@ -70,7 +72,8 @@ int count_hooking_nodes(void);
 void final_radar_queue(void);
 void radar_update_map(void);
 
-int add_radar_q(PACKET pkt);
+struct radar_queue *add_radar_q(PACKET pkt);
+int radar_exec_reply(PACKET pkt);
 int radar_scan(void);
 int radar_recv_reply(PACKET pkt);
 void *radar_daemon(void *null);

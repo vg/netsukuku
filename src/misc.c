@@ -85,8 +85,10 @@ static inline unsigned int dl_elf_hash (const unsigned char *name)
  * to the current time. 
  * The returned integer is a unique number, this function will never return the 
  * same number.
+ * If h_sec or h_usec are not null, it stores in them respectively the hash of
+ * the second and the microsecond.
  */
-int hash_time(void)
+int hash_time(int *h_sec, int *h_usec)
 {
 	struct timeval t;
 	char str[sizeof(struct timeval)+1];
@@ -98,6 +100,11 @@ int hash_time(void)
 
 	elf_hash=dl_elf_hash(str);
 	
+	if(h_sec)
+		*h_sec=inthash(t.tv_sec);
+	if(h_usec)
+		*h_usec=inthash(t.tv_usec);
+
 	return inthash(elf_hash);
 }
 
