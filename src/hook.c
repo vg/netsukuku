@@ -85,7 +85,7 @@ int get_free_nodes(inet_prefix to, struct free_nodes_hdr *fn_hdr, int *nodes, st
 			fn_hdr->level == 1 ? "nodes" : "gnodes");
 finish:
 	pkt_free(&pkt, 0);
-	pkt_free(&rpkt, 1);
+	pkt_free(&rpkt,1);
         xfree(ntop);
 	return ret;
 }
@@ -533,15 +533,10 @@ int netsukuku_hook(char *dev)
 	/* 
 	 * We do our first scan to know what we've around us. The rnodes are kept in
 	 * me.cur_node->r_nodes. The fastest one is in me.cur_node->r_nodes[0]
-	 *
-	 * TODO: XXX: DEBUG:
-	 * I don't want to wait 10 seconds to test the other things, so it's
-	 * better to avoid the radar_scan for now, cause it seems to work.
-	 *
+	 */
 	if(radar_scan())
 		fatal("%s:%d: Scan of the area failed. Cannot continue.", 
 				ERROR_POS);
-	 */
 
 	if(!me.cur_node->links) {
 		loginfo("No nodes found! This is a black zone. "
@@ -557,6 +552,8 @@ int netsukuku_hook(char *dev)
 		new_gnode=1;
 		goto finish;
 	}
+
+	loginfo("We have %d nodes around us", me.cur_node->links);
 
 	/* 
 	 * Now we choose the nearest rnode we found and we send it the 

@@ -96,7 +96,7 @@ void *udp_daemon(void *null)
 	if(sk == -1)
 		return NULL;
 
-	set_broadcast_sk(sk, my_family, me.cur_dev_idx);
+	/* set_broadcast_sk(sk, my_family, me.cur_dev_idx); */
 
 	debug(DBG_NORMAL, "Udp daemon up & running");
 	for(;;) {

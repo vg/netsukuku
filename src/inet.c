@@ -349,8 +349,8 @@ int new_tcp_conn(inet_prefix *host, short port)
 		goto finish;
 	}
 
-	if (connect(sk, &sa, sa_len) == -1) {
-		error("Cannot connect to %s: %s", ntop, strerror(errno));
+	if (connect(sk, &sa, sizeof(sa)) == -1) {
+		error("Cannot tcp_connect() to %s: %s", ntop, strerror(errno));
 		sk=-1;
 		goto finish;
 	}
@@ -377,7 +377,7 @@ int new_udp_conn(inet_prefix *host, short port)
 		goto finish;
 	}
 
-	if (connect(sk, &sa, sa_len) == -1) {
+	if (connect(sk, &sa, sizeof(sa)) == -1) {
 		error("Cannot connect to %s: %s", ntop, strerror(errno));
 		sk=-1;
 		goto finish;

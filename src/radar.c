@@ -110,12 +110,12 @@ void final_radar_queue(void)
 		for(e=0; e<rq->pongs; e++) {
 			timeradd(&rq->rtt[e], &sum, &sum);
 		}
-		
+
 		f_rtt=MILLISEC(sum)/radar_scans;
 		rq->final_rtt.tv_sec=f_rtt/1000;
 		rq->final_rtt.tv_usec=(f_rtt - (f_rtt/1000)*1000)*1000;
 	}
-	
+
 	my_echo_id=0;
 }
 
@@ -300,10 +300,29 @@ void radar_update_map(void)
 					    */
 					   rnode_destroy(node);
 
-					   node->flags|=MAP_BNODE | MAP_GNODE | MAP_RNODE;
-					   root_node->flags|=MAP_BNODE;
-					   rnode=&node->r_node[0];
+					   /* 
+					    * This node has only one rnodes, 
+					    * and that is the root_node.
+					    */
+					   memset(&rnn, '\0', sizeof(map_rnode));
+					   rnn.r_node=(u_int *)me.cur_node;
+					   rnode_add(node, &rnn);
+
+					   node->flags|=MAP_RNODE;
+					   if(level) {
+						   node->flags|=MAP_BNODE | MAP_GNODE;
+						   root_node->flags|=MAP_BNODE;
+					   }
+
+					   memset(&rnn, '\0', sizeof(map_rnode));
+					   rnn.r_node=(u_int *)node;					   
+					   rnode=&rnn;
 				   }
+
+				   /* 
+				    * The new node is added in the root_node's
+				    * rnodes.
+				    */
 				   rnode_add(root_node, rnode);
 
    				   /* ...and finally we update the qspn_buffer */
@@ -335,14 +354,14 @@ void radar_update_map(void)
 						   (void *)root_node, level);
 				   if(bm==-1)
 					   bm=map_add_bnode(&me.bnode_map[level], &me.bmap_nodes[level], 
-							   (u_int)root_node, 1);
+							   (u_int)root_node, 0);
 				   rnode_pos=rnode_find(&me.bnode_map[level][bm], 
 						   (map_node *)rq->quadg.gnode[_EL(level+1)]);
 				   if(rnode_pos == -1) {
 					   memset(&rn, 0, sizeof(map_rnode));
 					   rn.r_node=(u_int *)rq->quadg.gnode[_EL(level+1)];
 					   rnode_add(&me.bnode_map[level][bm], &rn);
-					   rnode_pos=me.bnode_map[level][bm].links-1;
+					   rnode_pos=0;
 				   }
 				   rnode=&me.bnode_map[level][bm].r_node[rnode_pos];
 				   memcpy(&rnode->rtt, &rq->final_rtt, sizeof(struct timeval));
@@ -366,7 +385,7 @@ int add_radar_q(PACKET pkt)
 	quadro_group quadg;
 	struct timeval t;
 	struct radar_queue *rq;
-	u_int idx, ret;
+	u_int idx, ret=0, rtt_ms=0;
 	
 	gettimeofday(&t, 0);
 	
@@ -405,14 +424,19 @@ int add_radar_q(PACKET pkt)
 	memcpy(&rq->ip, &pkt.from, sizeof(inet_prefix));
 	memcpy(&rq->quadg, &quadg, sizeof(quadro_group));
 
-	if(rq->pongs <= radar_scans) {
+	if(rq->pongs < radar_scans) {
 		timersub(&t, &scan_start, &rq->rtt[rq->pongs]);
 		/* 
 		 * Now we divide the rtt, because (t - scan_start) is the time
 		 * the pkt used to reach B from A and to return to A from B
 		 */
-		rq->rtt[rq->pongs].tv_sec/=2;
-		rq->rtt[rq->pongs].tv_usec/=2;
+		rtt_ms=MILLISEC(rq->rtt[rq->pongs])/2;
+		rq->rtt[rq->pongs].tv_sec=rtt_ms/1000;
+		rq->rtt[rq->pongs].tv_usec=(rtt_ms - (rtt_ms/1000)*1000)*1000;
+
+		/* rq->rtt[rq->pongs].tv_sec/=2;
+		 * rq->rtt[rq->pongs].tv_usec/=2;
+		 */
 		rq->pongs++;
 	}
 
@@ -465,6 +489,9 @@ int radar_scan(void)
 	inet_setip_bcast(&pkt.to, my_family);
 	pkt.sk_type=SKT_BCAST;
 	my_echo_id=random();
+
+	gettimeofday(&scan_start, 0);
+
 	for(i=0; i<MAX_RADAR_SCANS; i++) {
 		err=send_rq(&pkt, 0, ECHO_ME, my_echo_id, 0, 0, 0);
 		if(err==-1) {
@@ -481,11 +508,9 @@ int radar_scan(void)
 	}
 	pkt_free(&pkt, 1);
 	
-	gettimeofday(&scan_start, 0);
 	sleep(max_radar_wait);
 
 	final_radar_queue();
-	debug(DBG_NOISE, "radar_scan: radar_update_map();");
 	radar_update_map();
 	debug(DBG_NORMAL, "Radar_scan %d finished", my_echo_id);
 	if(!(me.cur_node->flags & MAP_HNODE)) {

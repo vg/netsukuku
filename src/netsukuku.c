@@ -265,7 +265,7 @@ int main(int argc, char **argv)
 
 	debug(DBG_SOFT,   "Evocating udp daemon.");
 	pthread_create(&daemon_udp_thread,   &t_attr, udp_daemon,  NULL);
-
+sleep(2);
 	debug(DBG_SOFT,   "Evocating tcp daemon.");
 	pthread_create(&daemon_tcp_thread, &t_attr, tcp_daemon, NULL);
 
@@ -274,7 +274,8 @@ int main(int argc, char **argv)
 
 	/* We use this self process for the radar_daemon. */
 	debug(DBG_SOFT,   "Evocating radar daemon.");
-	radar_daemon(NULL);
+	sleep(999999999);
+/*	radar_daemon(NULL);	*/
 	
 	loginfo("Cya m8");
 	pthread_attr_destroy(&t_attr);

@@ -249,6 +249,8 @@ int pkt_tcp_connect(inet_prefix *host, short port)
 	int sk;
 	PACKET pkt;
 	char *ntop;
+	ssize_t err;
+
 	ntop=inet_to_str(*host);
 	
 	if((sk=new_tcp_conn(host, port))==-1)
@@ -261,9 +263,15 @@ int pkt_tcp_connect(inet_prefix *host, short port)
 	memset(&pkt, '\0', sizeof(PACKET));
 	pkt_addsk(&pkt, sk, SKT_TCP);
 	pkt_addflags(&pkt, MSG_WAITALL);
-	pkt_recv(&pkt);
 
-	/* Last famous words */
+	if((err=pkt_recv(&pkt)) < 0) {
+		error("Connection to %s failed: it wasn't possible to receive "
+				"the ACK", ntop);
+		sk=-1;
+		goto finish;
+	}
+	
+	/* ...Last famous words */
 	if(pkt.hdr.op==ACK_NEGATIVE) {
 		int err;
 		
@@ -324,7 +332,7 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 	}
 
 	if(rpkt)
-		memset(&rpkt, '\0', sizeof(PACKET));
+		memset(rpkt, '\0', sizeof(PACKET));
 
 	ntop=inet_to_str(pkt->to);
 	debug(DBG_INSANE, "Sending the %s op to %s", rq_str, ntop);
@@ -336,10 +344,10 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 	
 	if(pkt->sk_type==SKT_TCP) {
 		pkt_addport(pkt, ntk_tcp_port);
-		if(rpkt)
-			pkt_addport(rpkt, ntk_tcp_port);
 	} else if(pkt->sk_type==SKT_UDP || pkt->sk_type==SKT_BCAST)
 		pkt_addport(pkt, ntk_udp_port);
+	if(rpkt)
+		pkt_addport(rpkt, pkt->port);
 
 	pkt_addflags(pkt, flags);
 
