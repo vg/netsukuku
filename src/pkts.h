@@ -108,5 +108,5 @@ ssize_t pkt_recv(PACKET *pkt);
 int pkt_tcp_connect(inet_prefix *host, short port);
 void pkt_fill_hdr(pkt_hdr *hdr, int id, u_char op, size_t sz);
 int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_ack, PACKET *rpkt);
-int pkt_err(PACKET pkt, int err);
+int pkt_err(PACKET pkt, u_char err);
 int pkt_exec(PACKET pkt, int acpt_idx);

@@ -23,9 +23,9 @@
 /* 
  * The free_nodes pkt is used to send the list of all the free/not used
  * nodes/gnodes present at level fn_hdr.level. 
- * If level is == 1 then the pkt contains the list of free nodes of the fn_hdr.gid
+ * If level is == 0 then the pkt contains the list of free nodes of the fn_hdr.gid
  * gnode. 
- * If level is > 1 then it contains the list of free gnodes which are inside
+ * If level is > 0 then it contains the list of free gnodes which are inside
  * the gnode with `fn_hdr.gid' gid of the `fn_hdr.level'th level. So the free gnodes
  * are part of the (fn_hdr.level - 1)th level.
  * 

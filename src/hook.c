@@ -60,8 +60,6 @@ int get_free_nodes(inet_prefix to, struct free_nodes_hdr *fn_hdr, int *nodes, st
 	pkt.sk_type=SKT_TCP;
 	err=send_rq(&pkt, 0, GET_FREE_NODES, 0, PUT_FREE_NODES, 1, &rpkt);
 	if(err==-1) {
-		error("get_free_nodes(): Failed to send the GET_FREE_NODES request to %s. "
-				"Skipping...", ntop);
 		ret=-1;
 		goto finish;
 	}
@@ -125,14 +123,14 @@ int put_free_nodes(PACKET rq_pkt)
 	pkt_addflags(&pkt, 0);
 	pkt_addsk(&pkt, rq_pkt.sk, rq_pkt.sk_type);
 
-
 	/* We search in each level an our gnode which is not full. */
 	e=0;
-	for(level=1; level < me.cur_quadg.levels; level++)
-		if(!(me.cur_quadg.gnode[_EL(level)]->g.flags & GMAP_FULL)) {
+	for(level=1; level < me.cur_quadg.levels; level++) {
+		if(!(me.cur_quadg.gnode[_EL(level)]->flags & GMAP_FULL)) {
 			e=1;
 			break;
 		}
+	}
 	if(!e) {
 		/* <<My quadro_group is completely full, sry>> */
 		pkt_fill_hdr(&pkt.hdr, rq_pkt.hdr.id, PUT_FREE_NODES, 0);
@@ -153,26 +151,28 @@ int put_free_nodes(PACKET rq_pkt)
 	 */
 	e=0;
 	if(level == 1) {
+		debug(DBG_INSANE, "We have free nodes in the level 1");
 		map=me.int_map;
 		for(i=0; i<MAXGROUPNODE; i++)
-		if(map[i].flags & MAP_VOID) {
-			fn_pkt.free_nodes[e]=i;
-			e++;
-		}
-
+			if(map[i].flags & MAP_VOID) {
+				fn_pkt.free_nodes[e]=i;
+				e++;
+			}
 	} else {
+		debug(DBG_INSANE, "We have free nodes in the level %d", level);
 		for(i=0; i<MAXGROUPNODE; i++)
-		if(me.ext_map[_EL(level-1)][i].flags & GMAP_VOID ||
-				me.ext_map[_EL(level-1)][i].g.flags & MAP_VOID) {
-			fn_pkt.free_nodes[e]=i;
-			e++;
-		}
+			if(me.ext_map[_EL(level-1)][i].flags & GMAP_VOID ||
+					me.ext_map[_EL(level-1)][i].g.flags & MAP_VOID) {
+				fn_pkt.free_nodes[e]=i;
+				e++;
+			}
 	}
 	fn_pkt.fn_hdr.nodes=e;
+	debug(DBG_INSANE, "Total free nodes %d", fn_pkt.fn_hdr.nodes);
 	
 	/* We fill the qspn round time */
 	gettimeofday(&cur_t, 0);
-	for(level=1; level < me.cur_quadg.levels; level++)
+	for(level=0; level < me.cur_quadg.levels; level++)
 		timersub(&cur_t, &me.cur_qspn_time[level], &fn_pkt.qtime[level]);
 
 	/* Go pkt, go! Follow your instinct */
@@ -180,6 +180,7 @@ int put_free_nodes(PACKET rq_pkt)
 	pkt_fill_hdr(&pkt.hdr, rq_pkt.hdr.id, PUT_FREE_NODES, pkt_sz); 
 	pkt.msg=xmalloc(pkt_sz);
 	memcpy(pkt.msg, &fn_pkt, pkt_sz);
+	debug(DBG_NOISE, "emcpy(pkt.msg, &fn_pkt, pkt_sz)");
 	err=pkt_send(&pkt);
 	
 finish:	
@@ -187,7 +188,7 @@ finish:
 		error("put_free_nodes(): Cannot send the PUT_FREE_NODES reply to %s.", ntop);
 		ret=-1;
 	}
-	pkt_free(&pkt, 1);
+	pkt_free(&pkt, 0);
 	xfree(ntop);
 	return ret;
 }

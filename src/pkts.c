@@ -273,7 +273,7 @@ int pkt_tcp_connect(inet_prefix *host, short port)
 	
 	/* ...Last famous words */
 	if(pkt.hdr.op==ACK_NEGATIVE) {
-		int err;
+		u_char err;
 		
 		memcpy(&err, pkt.msg, pkt.hdr.sz);
 		error("Cannot connect to %s: %s", ntop, rq_strerror(err));
@@ -283,7 +283,7 @@ int pkt_tcp_connect(inet_prefix *host, short port)
 	
 finish:
 	xfree(ntop);
-	pkt_free(&pkt, 1);
+	pkt_free(&pkt, 0);
 	return sk;
 }
 
@@ -381,7 +381,7 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 	/*Let's send the request*/
 	err=pkt_send(pkt);
 	if(err==-1) {
-		error("Cannot send the %s request to %s. Skipping...", rq_str, ntop);
+		error("Cannot send the %s request to %s.", rq_str, ntop);
 		ret=-1; 
 		goto finish;
 	}
@@ -398,13 +398,13 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 			goto finish;
 		}
 
-		if(rpkt->hdr.op==ACK_NEGATIVE && check_ack) {
-			int err_ack;
-			memcpy(&err_ack, rpkt->msg, sizeof(int));
+		if(rpkt->hdr.op == ACK_NEGATIVE && check_ack) {
+			u_char err_ack;
+			memcpy(&err_ack, rpkt->msg, sizeof(u_char));
 			error("%s failed. The node %s replied: %s", rq_str, ntop, rq_strerror(err_ack));
 			ret=-1; 
 			goto finish;
-		} else if(re && rpkt->hdr.op!=re && check_ack) {
+		} else if(re && rpkt->hdr.op != re && check_ack) {
 			error("The node %s replied %s but we asked %s!", ntop, re_to_str(rpkt->hdr.op), re_str);
 			ret=-1;
 			goto finish;
@@ -428,15 +428,15 @@ finish:
  * pkt_err: Sends back to "pkt.from" an error pkt, with ACK_NEGATIVE, 
  * containing the "err" code.
  */
-int pkt_err(PACKET pkt, int err)
+int pkt_err(PACKET pkt, u_char err)
 {
 	char *msg;
 	
 	memcpy(&pkt.to, &pkt.from, sizeof(inet_prefix));
 	pkt_fill_hdr(&pkt.hdr, pkt.hdr.id, ACK_NEGATIVE, sizeof(int));
 	
-	pkt.msg=msg=xmalloc(sizeof(int));
-	memcpy(msg, &err, sizeof(int));
+	pkt.msg=msg=xmalloc(sizeof(u_char));
+	memcpy(msg, &err, sizeof(u_char));
 		
 	err=pkt_send(&pkt);
 	pkt_free(&pkt, 0);
@@ -480,18 +480,24 @@ int pkt_exec(PACKET pkt, int acpt_idx)
 			break;
 		case GET_INT_MAP:
 			err=put_int_map(pkt);
+			break;
 		case GET_BNODE_MAP:
 			err=put_bnode_map(pkt);
+			break;
 		case GET_EXT_MAP:
 			err=put_ext_map(pkt);
+			break;
 
 		case TRACER_PKT:
 		case TRACER_PKT_CONNECT:
 			tracer_pkt_recv(pkt);
+			break;
 		case QSPN_CLOSE:
 			err=qspn_close(pkt);
+			break;
 		case QSPN_OPEN:
 			err=qspn_open(pkt);
+			break;
 
 		default:
 			/* never reached */

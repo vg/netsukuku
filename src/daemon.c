@@ -121,6 +121,11 @@ void *udp_daemon(void *null)
 			continue;
 		}
 		
+		if(!memcmp(&rpkt.from, &me.cur_ip, sizeof(inet_prefix))) {
+			pkt_free(&rpkt, 0);
+			continue;
+		}
+
 		if(add_accept(rpkt.from, 1)) {
 			ntop=inet_to_str(rpkt.from);
 			debug(DBG_NORMAL, "ACPT: dropped UDP pkt from %s: Accept table full.", ntop);
@@ -219,6 +224,12 @@ void *tcp_daemon(void *null)
 		if(server_opt.dbg_lvl)
 			ntop=inet_to_str(ip);
 
+		if(!memcmp(&ip, &me.cur_ip, sizeof(inet_prefix))) {
+			close(fd);
+			continue;
+		}
+
+		pkt_addfrom(&rpkt, &ip);
 		if((ret=add_accept(ip, 0))) {
 			debug(DBG_NORMAL, "ACPT: drop connection with %s: "
 					"Accept table full.", ntop);

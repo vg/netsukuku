@@ -337,12 +337,15 @@ map_gnode *init_gmap(u_short groups)
 {
 	map_gnode *gmap;
 	size_t len;
+	int i;
 	
 	if(!groups)
 		groups=MAXGROUPNODE;
 	len=sizeof(map_gnode)*groups;
 	gmap=(map_gnode *)xmalloc(len);
 	memset(gmap, '\0', len);
+	for(i=0; i < groups; i++)
+		gmap_node_del(&gmap[i]);
 	
 	return gmap;
 }
