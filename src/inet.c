@@ -474,7 +474,7 @@ ssize_t inet_recvfrom(int s, void *buf, size_t len, int flags, struct sockaddr *
 	fd_set fdset;
 	int ret;
 
-	if((err=recvfrom(s, buf, len, flags, from, fromlen))==-1) {
+	if((err=recvfrom(s, buf, len, flags, from, fromlen)) < 0) {
 		switch(errno) 
 		{
 			case EAGAIN:
@@ -508,7 +508,7 @@ ssize_t inet_send(int s, const void *msg, size_t len, int flags)
 	fd_set fdset;
 	int ret;
 
-	if((err=send(s, msg, len, flags))==-1) {
+	if((err=send(s, msg, len, flags)) < 0) {
 		switch(errno) 
 		{
 			case EMSGSIZE:

@@ -40,8 +40,9 @@ void pkt_addto(PACKET *pkt, inet_prefix *to)
 	memcpy(&pkt->to, to, sizeof(inet_prefix));
 }
 
-void pkt_addsk(PACKET *pkt, int sk, int sk_type)
+void pkt_addsk(PACKET *pkt, int family, int sk, int sk_type)
 {
+	pkt->family=family;
 	pkt->sk=sk;
 	pkt->sk_type=sk_type;
 }
@@ -158,24 +159,35 @@ ssize_t pkt_recv(PACKET *pkt)
 {
 	ssize_t err=-1;
 	char *buf;
+	struct sockaddr from;
+	socklen_t fromlen;
 
-	if(pkt->sk_type==SKT_UDP || pkt->sk_type==SKT_BCAST) {
-		struct sockaddr from;
-		socklen_t fromlen;
-		
-		/*we get the hdr...*/
+	if(pkt->sk_type==SKT_UDP || pkt->sk_type==SKT_BCAST) {	
+		memset(&from, 0, sizeof(struct sockaddr));
+		if(pkt->family == AF_INET)
+			fromlen=sizeof(struct sockaddr_in);
+		else if(pkt->family == AF_INET6)
+			fromlen=sizeof(struct sockaddr_in6);
+		else {
+			error("pkt_recv udp: family not set");
+			return -1;
+		}
+
+
+		/* we get the hdr... */
 		err=inet_recvfrom(pkt->sk, &pkt->hdr, sizeof(pkt_hdr), pkt->flags, &from, &fromlen);
 		if(err != sizeof(pkt_hdr)) {
 			debug(DBG_NOISE, "inet_recvfrom() of the hdr aborted!");
 			return -1;
 		}
-		/*...and verify it*/
+		
+		/* ...and verify it */
 		if(pkt_verify_hdr(*pkt)) {
 			debug(DBG_NOISE, "Error while unpacking the PACKET. Malformed header");
 			return -1;
 		}
 
-		if(sockaddr_to_inet(&from, &pkt->from, &pkt->port)) {
+		if(sockaddr_to_inet(&from, &pkt->from, &pkt->port) < 0) {
 			debug(DBG_NOISE, "Cannot pkt_recv(): %d Family not supported", from.sa_family);
 			return -1;
 		}
@@ -184,7 +196,7 @@ ssize_t pkt_recv(PACKET *pkt)
 		 * We use connect() to associate the socket to `from', in this 
 		 * way we are sure that the next pkt is sent by `from'.
 		 */
-		if(connect(pkt->sk, &from, fromlen) == -1) {
+		if(connect(pkt->sk, &from, fromlen) < 0) {
 			error("udp connect(): %s", strerror(errno));
 			return -1;
 		}
@@ -260,7 +272,7 @@ int pkt_tcp_connect(inet_prefix *host, short port)
 	 * Let's hope it isn't NEGATIVE (-_+)
 	 */
 	memset(&pkt, '\0', sizeof(PACKET));
-	pkt_addsk(&pkt, sk, SKT_TCP);
+	pkt_addsk(&pkt, host->family, sk, SKT_TCP);
 	pkt_addflags(&pkt, MSG_WAITALL);
 
 	if((err=pkt_recv(&pkt)) < 0) {
@@ -373,7 +385,7 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 		}
 	}
 	if(rpkt) {
-		pkt_addsk(rpkt, pkt->sk, pkt->sk_type);
+		pkt_addsk(rpkt, pkt->to.family, pkt->sk, pkt->sk_type);
 		pkt_addflags(rpkt, MSG_WAITALL);
 	}
 	

@@ -53,6 +53,7 @@ typedef struct
 {
 	inet_prefix 	from;		
 	inet_prefix 	to;
+	int		family;
 	int 		sk;
 	char 		sk_type;
 	u_short 	port;
@@ -94,7 +95,7 @@ struct rnode_chunk
 /*Functions' declarations*/
 void pkt_addfrom(PACKET *pkt, inet_prefix *from);
 void pkt_addto(PACKET *pkt, inet_prefix *to);
-void pkt_addsk(PACKET *pkt, int sk, int sk_type);
+void pkt_addsk(PACKET *pkt, int family, int sk, int sk_type);
 void pkt_addport(PACKET *pkt, u_short port);
 void pkt_addflags(PACKET *pkt, int flags);
 void pkt_addhdr(PACKET *pkt, pkt_hdr *hdr);

@@ -539,7 +539,7 @@ int radard(PACKET rpkt)
 	/* We create the PACKET */
 	memset(&pkt, '\0', sizeof(PACKET));
 	pkt_addto(&pkt, &rpkt.from);
-	pkt_addsk(&pkt, rpkt.sk, SKT_UDP);
+	pkt_addsk(&pkt, rpkt.from.family, rpkt.sk, SKT_UDP);
 	
 	/* We send it */
 	err=send_rq(&pkt, 0, ECHO_REPLY, rpkt.hdr.id, 0, 0, 0);

@@ -141,10 +141,9 @@ int route_exec(int route_cmd, unsigned flags, inet_prefix to, struct nexthop *nh
 			/*Add the default gw*/
 			req.rt.rtm_protocol=RTPROT_KERNEL;
 		}
-		/*
-		 * else
-		 * req.rt.rtm_scope=RT_SCOPE_LINK;
-		*/
+		else
+			req.rt.rtm_scope=RT_SCOPE_LINK;
+
 		addattr_l(&req.nh, sizeof(req), RTA_DST, &to.data, to.len);
 	} 
 

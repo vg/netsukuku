@@ -121,7 +121,7 @@ int put_free_nodes(PACKET rq_pkt)
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addport(&pkt, ntk_tcp_port);
 	pkt_addflags(&pkt, 0);
-	pkt_addsk(&pkt, rq_pkt.sk, rq_pkt.sk_type);
+	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
 
 	/* We search in each level a gnode which is not full. */
 	for(level=1, e=0; level < me.cur_quadg.levels; level++) {
@@ -204,7 +204,7 @@ int put_ext_map(PACKET rq_pkt)
 	
 	memset(&pkt, '\0', sizeof(PACKET));
 	pkt_addto(&pkt, &rq_pkt.from);
-	pkt_addsk(&pkt, rq_pkt.sk, rq_pkt.sk_type);
+	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
 
 	pkt.msg=pack_extmap(me.ext_map, MAXGROUPNODE, &me.cur_quadg, &pkt_sz);
 	pkt.hdr.sz=pkt_sz;
@@ -285,7 +285,7 @@ int put_int_map(PACKET rq_pkt)
 	memset(&pkt, '\0', sizeof(PACKET));
 	pkt.sk_type=SKT_TCP;
 	pkt_addto(&pkt, &rq_pkt.from);
-	pkt_addsk(&pkt, rq_pkt.sk, rq_pkt.sk_type);
+	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
 
 	pkt.msg=pack_map(map, 0, MAXGROUPNODE, me.cur_node, &pkt_sz);
 	pkt.hdr.sz=pkt_sz;
@@ -367,7 +367,7 @@ int put_bnode_map(PACKET rq_pkt)
 	memset(&pkt, '\0', sizeof(PACKET));
 	pkt.sk_type=SKT_TCP;
 	pkt_addto(&pkt, &rq_pkt.from);
-	pkt_addsk(&pkt, rq_pkt.sk, rq_pkt.sk_type);
+	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
 
 	pkt.msg=pack_all_bmaps(bmaps, me.bmap_nodes, me.ext_map, me.cur_quadg, &pack_sz);
 	pkt.hdr.sz=pack_sz;

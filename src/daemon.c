@@ -105,17 +105,16 @@ void *udp_daemon(void *null)
 		FD_ZERO(&fdset);
 		FD_SET(sk, &fdset);
 
-/*		ret = select(sk+1, &fdset, NULL, NULL, NULL);
+		ret = select(sk+1, &fdset, NULL, NULL, NULL);
 		if (ret < 0) {
 			error("daemon_tcp: select error: %s", strerror(errno));
 			continue;
 		}
 		if(!FD_ISSET(sk, &fdset))
 			continue;
-
-*/
+			
 		memset(&rpkt, 0, sizeof(PACKET));
-		pkt_addsk(&rpkt, sk, SKT_UDP);
+		pkt_addsk(&rpkt, my_family, sk, SKT_UDP);
 		pkt_addflags(&rpkt, MSG_WAITALL);
 
 		if(pkt_recv(&rpkt) < 0) {
@@ -218,7 +217,7 @@ void *tcp_daemon(void *null)
 		}
 		
 		memset(&rpkt, 0, sizeof(PACKET));
-		pkt_addsk(&rpkt, fd, SKT_TCP);
+		pkt_addsk(&rpkt, my_family, fd, SKT_TCP);
 		pkt_addflags(&rpkt, MSG_WAITALL);
 		
 		ntop=0;
