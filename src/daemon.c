@@ -95,6 +95,7 @@ void *udp_exec_pkt(void *recv_pkt)
 	acpt_idx=accept_idx;
 	acpt_sidx=accept_sidx;
 	memcpy(&rpkt, recv_pkt, sizeof(PACKET));
+	xfree(recv_pkt);
 
 	/* Drop any packet we sent */
 	if(!memcmp(&rpkt.from, &me.cur_ip, sizeof(inet_prefix))) {
@@ -104,7 +105,8 @@ void *udp_exec_pkt(void *recv_pkt)
 
 	if(add_accept(rpkt.from, 1)) {
 		ntop=inet_to_str(rpkt.from);
-		debug(DBG_NORMAL, "ACPT: dropped UDP pkt from %s: Accept table full.", ntop);
+		debug(DBG_NORMAL, "ACPT: dropped UDP pkt from %s: "
+				"Accept table full.", ntop);
 		xfree(ntop);
 		return NULL;
 	} 
@@ -118,17 +120,23 @@ void *udp_exec_pkt(void *recv_pkt)
 void *udp_daemon(void *null)
 {
 	pthread_t thread;
+	pthread_attr_t t_attr;
 	PACKET rpkt;
 	fd_set fdset;
-	int sk, ret;
+	int ret, sk;
+	char *rpkt_cp;
+
+	pthread_attr_init(&t_attr);
+	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
 
 	debug(DBG_SOFT, "Preparing the udp listening socket");
 	sk=prepare_listen_socket(my_family, SOCK_DGRAM, ntk_udp_port);
 	if(sk == -1)
 		return NULL;
 
+	
 	/* set_broadcast_sk(sk, my_family, me.cur_dev_idx); */
-
+	
 	debug(DBG_NORMAL, "Udp daemon up & running");
 	for(;;) {
 		FD_ZERO(&fdset);
@@ -141,7 +149,7 @@ void *udp_daemon(void *null)
 		}
 		if(!FD_ISSET(sk, &fdset))
 			continue;
-			
+
 		memset(&rpkt, 0, sizeof(PACKET));
 		pkt_addsk(&rpkt, my_family, sk, SKT_UDP);
 		pkt_addflags(&rpkt, MSG_WAITALL);
@@ -151,10 +159,15 @@ void *udp_daemon(void *null)
 			continue;
 		}
 	
-		udp_exec_pkt((void *)&rpkt);
-		/*
-		pthread_create(&thread, 0, udp_exec_pkt, (void *)&rpkt);
-		pthread_detach(thread);
+		rpkt_cp=xmalloc(sizeof(PACKET));
+		memcpy(rpkt_cp, &rpkt, sizeof(PACKET));
+		udp_exec_pkt(rpkt_cp);
+
+		/* XXX: TODO :XXX
+		 * Damn! Why if I use the threads the process get killed at
+		 * pkt_free ???
+		pthread_mutex_lock(&mtx_udp_pkt);
+		pthread_create(&thread, &t_attr, udp_exec_pkt, rpkt_cp);
 		*/
 	}
 
@@ -170,6 +183,7 @@ void *tcp_recv_loop(void *recv_pkt)
 	acpt_idx=accept_idx;
 	acpt_sidx=accept_sidx;
 	memcpy(&rpkt, recv_pkt, sizeof(PACKET));
+	xfree(recv_pkt);
 
 	add_accept_pid(getpid(), acpt_idx, acpt_sidx);
 
@@ -191,15 +205,18 @@ close:
 void *tcp_daemon(void *null)
 {
 	pthread_t thread;
+	pthread_attr_t t_attr;
 	PACKET rpkt;
 	struct sockaddr_storage addr;
 	socklen_t addrlen = sizeof addr;
 	inet_prefix ip;
 	fd_set fdset;
 	int sk, fd, ret, err;
-	char *ntop;
+	char *ntop, *rpkt_cp;
 
-
+	pthread_attr_init(&t_attr);
+	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
+	
 	debug(DBG_SOFT, "Preparing the tcp listening socket");
 	sk=prepare_listen_socket(my_family, SOCK_STREAM, ntk_tcp_port);
 	if(sk == -1)
@@ -217,7 +234,7 @@ void *tcp_daemon(void *null)
 		close(sk);
 		return NULL;
 	}
-
+	
 	debug(DBG_NORMAL, "Tcp daemon up & running");
 	for(;;) {
 		FD_ZERO(&fdset);
@@ -228,7 +245,7 @@ void *tcp_daemon(void *null)
 			error("daemon_tcp: select error: %s", strerror(errno));
 		if(ret < 0)
 			continue;
-		
+
 		if(!FD_ISSET(sk, &fdset))
 			continue;
 
@@ -238,11 +255,11 @@ void *tcp_daemon(void *null)
 				error("daemon_tcp: accept(): %s", strerror(errno));
 			continue;
 		}
-		
+
 		memset(&rpkt, 0, sizeof(PACKET));
 		pkt_addsk(&rpkt, my_family, fd, SKT_TCP);
 		pkt_addflags(&rpkt, MSG_WAITALL);
-		
+
 		ntop=0;
 		sockaddr_to_inet((struct sockaddr *)&addr, &ip, 0);
 		if(server_opt.dbg_lvl)
@@ -276,12 +293,11 @@ void *tcp_daemon(void *null)
 		if(unset_nonblock_sk(fd))
 			continue;
 	
-		err=pthread_create(&thread, 0, tcp_recv_loop, (void *)&rpkt);
-		if(err)
-			error("Cannot fork the tcp_recv_loop: %s", strerror(errno));
-		else
-			pthread_detach(thread);
-			
+
+		rpkt_cp=xmalloc(sizeof(PACKET));
+		memcpy(rpkt_cp, &rpkt, sizeof(PACKET));
+		err=pthread_create(&thread, &t_attr, tcp_recv_loop, (void *)rpkt_cp);
+		
 		if(ntop)
 			xfree(ntop);
 	}

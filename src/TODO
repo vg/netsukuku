@@ -4,7 +4,8 @@ testare: 80%, hook.c in progress
 - [MEDIUM PRIORITY] -
 broadcast: Tenere in considerazione il gttl
 Ottimizzare la validita' di ip in random_ip()
- 
+Portare per *BSD: bisogna usare rt_ioctl.c ed rt_socket.c di quagga
+( ../othersrc/quagga-*/zebra/ )
 
 - [LOW PRIORITY] -
 tracer.c: store_trcaer_pkt_connect

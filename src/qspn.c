@@ -225,13 +225,14 @@ int exclude_from_and_opened_and_glevel(TRACER_PKT_EXCLUDE_VARS)
 int qspn_send(u_char level)
 {
 	PACKET pkt;
-	map_node *from=me.cur_node;
+	map_node *from;
 	int round_ms, ret, upper_gid, root_node_pos;
 	map_node *map, *root_node;
 	map_gnode *gmap;
 	u_char upper_level;
-	
+
 	qspn_set_map_vars(level, &map, &root_node, &root_node_pos, &gmap);
+	from=me.cur_node;
 	upper_level=level+1;
 
 	/* 
@@ -347,7 +348,7 @@ int qspn_close(PACKET rpkt)
 			qspn_new_round(level);
 	}
 
-	/*Time to update our map*/
+	/* Time to update our maps */
 	hops=tracer_hdr->hops;
 	tracer_store_pkt(void_map, level, tracer_hdr, tracer, (void *)bhdr, bblock_sz,
 			&old_bchunks, &old_bblock, &old_bblock_sz);
@@ -381,8 +382,8 @@ int qspn_close(PACKET rpkt)
 			 &pkt);					  /*Where the pkt is built*/
 	xfree(old_bblock);
 
-	/*We have all the links closed, time to diffuse a new qspn_open*/
 	if(!not_closed && !(node->flags & QSPN_REPLIED)) {
+		/*We have all the links closed, time to diffuse a new qspn_open*/
 		pkt.hdr.op=QSPN_OPEN;
 		tracer_pkt_send(exclude_from_and_glevel_and_setreplied, gid, 
 				upper_level, -1, from, pkt);

@@ -195,6 +195,10 @@ void init_netsukuku(char **argv)
 	
 	xsrand();
 	log_init(argv[0], server_opt.dbg_lvl, 1);
+
+        if (geteuid())
+		fatal("Need root privileges");
+	
 	maxgroupnode_level_init();
 
 	my_family=server_opt.family;
@@ -262,9 +266,9 @@ int main(int argc, char **argv)
 	
 	if(server_opt.daemon) {
 		log_init(argv[0], server_opt.dbg_lvl, 0);
-		if(daemon(0, 0) == -1) {
+		if(daemon(0, 0) == -1)
 			error("Impossible to daemonize: %s.", strerror(errno));
-		}
+		
 		loginfo("Daemonizing: forking in the background");
 	}
 

@@ -31,9 +31,9 @@ typedef struct linked_list l_list;
 
 #define list_init(list)							\
 do {									\
-	list=(typeof (list))xmalloc(sizeof(typeof(*(list)))); 		\
-	list->prev=0; 							\
-	list->next=0;							\
+	(list)=(typeof (list))xmalloc(sizeof(typeof(*(list)))); 	\
+	(list)->prev=0; 						\
+	(list)->next=0;							\
 } while (0)
 				     
 #define list_last(list)							\

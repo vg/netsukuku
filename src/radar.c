@@ -32,6 +32,8 @@
 #include "log.h"
 #include "misc.h"
 
+pthread_attr_t radar_qspn_send_t_attr;
+
 void init_radar(void)
 {
 	hook_retry=0;
@@ -41,11 +43,13 @@ void init_radar(void)
 	me.cur_erc_counter=0;
 	max_radar_wait=MAX_RADAR_WAIT;	
 	
+	pthread_attr_init(&radar_qspn_send_t_attr);
+	
 	list_init(radar_q);
 	list_init(me.cur_erc);
 	
 	memset(radar_q, 0, sizeof(struct radar_queue));
-	memset(send_qspn_now, 0, sizeof(int)*MAX_LEVELS);
+	memset(send_qspn_now, 0, sizeof(u_char)*MAX_LEVELS);
 }
 
 
@@ -60,11 +64,13 @@ void close_radar(void)
 	radar_q=0;
 	me.cur_erc=0;
 	me.cur_erc_counter=0;	
+
+	pthread_attr_destroy(&radar_qspn_send_t_attr);
 }
 
 void reset_radar(void)
 {
-	if(we_are_hooking)
+	if(me.cur_node->flags & MAP_HNODE)
 		free_new_node();
 	
 	close_radar();
@@ -77,7 +83,7 @@ void free_new_node(void)
 
 	rq=radar_q;
 	list_for(rq)
-		if(rq->node)
+		if(rq->node && ((int)rq->node != RADQ_EXT_RNODE))
 			xfree(rq->node);
 }
 
@@ -98,10 +104,10 @@ map_node *find_nnode_radar_q(inet_prefix *node)
 	struct radar_queue *rq;
 
 	rq=radar_q;
-	list_for(rq) {
+	list_for(rq)
 		if(!memcmp(&rq->ip, node, sizeof(inet_prefix)))
 			return rq->node;
-	}
+		
 	return 0;
 }
 
@@ -446,7 +452,23 @@ int add_radar_q(PACKET pkt)
 	
 	gettimeofday(&t, 0);
 	
-	if(we_are_hooking) {
+	if(me.cur_node->flags & MAP_HNODE) {
+		if(pkt.hdr.flags & HOOK_PKT) {
+			/* 
+			 * please read the comment in radard() to know WTF is
+			 * this scanning flag
+			 */
+			u_char scanning;
+			memcpy(&scanning, pkt.msg, sizeof(u_char));
+			
+			if(!scanning && radar_scan_mutex) {
+				hook_retry=1;
+				debug(DBG_NOISE, "Hooking node ECHO_REPLY caught. s: %d,"
+						" sca: %d, hook_retry: %d", radar_scans, 
+						scanning, hook_retry);
+			}
+		}
+
 		/* 
 		 * We are hooking, we haven't yet an int_map, an ext_map,
 		 * a stable ip so we create fake nodes that will delete after
@@ -514,15 +536,17 @@ int add_radar_q(PACKET pkt)
  */
 int radar_recv_reply(PACKET pkt)
 {
-	if(!my_echo_id) {
-		loginfo("I received an ECHO_REPLY with id: 0x%x, but I've never "
-				"sent any ECHO_ME requests..", pkt.hdr.id);
+	if(!my_echo_id || !radar_scan_mutex || !radar_scans) {
+		debug(DBG_NORMAL, "I received an ECHO_REPLY with id: 0x%x, but "
+				"I've never sent any ECHO_ME requests..", 
+				pkt.hdr.id);
 		return -1;
 	}
 	
 	if(pkt.hdr.id != my_echo_id) {
-		loginfo("I received an ECHO_REPLY with id: 0x%x, but I've never "
-				"sent an ECHO_ME with that id!", pkt.hdr.id);
+		debug(DBG_NORMAL,"I received an ECHO_REPLY with id: 0x%x, but "
+				"I've never sent an ECHO_ME with that id!",
+				pkt.hdr.id);
 		return -1;
 	}
 
@@ -537,9 +561,13 @@ int radar_recv_reply(PACKET pkt)
  */
 void *radar_qspn_send_t(void *level)
 {
+	int *p;
 	u_char i;
+
+	p=(int *)level;
+	i=(u_char)*p;
+	xfree(p);
 	
-	i=*((u_char *)level);
 	qspn_send(i);
 
 	return NULL;
@@ -560,7 +588,7 @@ int radar_scan(void)
 	pthread_t thread;
 	PACKET pkt;
 	inet_prefix broadcast;
-	int i, e=0;
+	int i, e=0, *p;
 	ssize_t err;
 	u_char echo_scan;
 
@@ -578,11 +606,14 @@ int radar_scan(void)
 	gettimeofday(&scan_start, 0);
 
 	/* Send a bouquet of ECHO_ME pkts */
-	pkt.hdr.sz=sizeof(u_char);
-	pkt.msg=xmalloc(pkt.hdr.sz);
+	if(me.cur_node->flags & MAP_HNODE) {
+		pkt.hdr.sz=sizeof(u_char);
+		pkt.msg=xmalloc(pkt.hdr.sz);
+	}
 	for(i=0, echo_scan=0; i<MAX_RADAR_SCANS; i++, echo_scan++) {
-		memcpy(pkt.msg, &echo_scan, sizeof(u_char));
-		
+		if(me.cur_node->flags & MAP_HNODE)
+			memcpy(pkt.msg, &echo_scan, sizeof(u_char));
+
 		err=send_rq(&pkt, 0, ECHO_ME, my_echo_id, 0, 0, 0);
 		if(err==-1) {
 			error("radar_scan(): Error while sending the scan 0x%x"
@@ -605,12 +636,14 @@ int radar_scan(void)
 	final_radar_queue();
 	radar_update_map();
 
-	if(!we_are_hooking) {
+	if(!(me.cur_node->flags & MAP_HNODE)) {
 		for(i=0; i<me.cur_quadg.levels; i++)
 			if(send_qspn_now[i]) {
+				p=xmalloc(sizeof(int));
+				*p=i;
 				/* We start a new qspn_round in the level `i' */
-				pthread_create(&thread, 0, radar_qspn_send_t, (void *)&i);
-				pthread_detach(thread);
+				pthread_create(&thread, &radar_qspn_send_t_attr, 
+						radar_qspn_send_t, (void *)p);
 			}
 		reset_radar();
 	}
@@ -632,7 +665,7 @@ int radard(PACKET rpkt)
 	u_char echo_scans_count;
 
 	/* If we are hooking we reply only to others hooking nodes */
-	if(we_are_hooking)
+	if(me.cur_node->flags & MAP_HNODE)
 		if(rpkt.hdr.flags & HOOK_PKT) {
 			memcpy(&echo_scans_count, rpkt.msg, sizeof(u_char));
 
@@ -647,11 +680,12 @@ int radard(PACKET rpkt)
 			 * the other hooking node will create the gnode, then we
 			 * restart the hook. Clear?
 			 */
-			if(!radar_scan_mutex || echo_scans_count > radar_scans)
+			if(!radar_scan_mutex || echo_scans_count > radar_scans) {
 				hook_retry=1;
-			debug(DBG_NOISE, "Hooking node caught. s: %d, esc: %d," 
-					"hook_retry: %d", radar_scans, 
-					echo_scans_count, hook_retry);
+				debug(DBG_NOISE, "Hooking node caught. s: %d, esc: %d," 
+						"hook_retry: %d", radar_scans, 
+						echo_scans_count, hook_retry);
+			}
 		} else {
 			debug(DBG_NOISE, "ECHO_ME pkt dropped: We are hooking");	
 			return 0;
@@ -661,7 +695,28 @@ int radard(PACKET rpkt)
 	memset(&pkt, '\0', sizeof(PACKET));
 	pkt_addto(&pkt, &rpkt.from);
 	pkt_addsk(&pkt, rpkt.from.family, rpkt.sk, SKT_UDP);
-	
+	if(me.cur_node->flags & MAP_HNODE) {
+		/* 
+		 * We attach in the ECHO_REPLY a flag that indicates if we have
+		 * finished our radar_scan or not. This is usefull if we already
+		 * sent all the ECHO_ME pkts of our radar scan and while we are
+		 * waiting the MAX_RADAR_WAIT another node start the hooking:
+		 * with this flag it can know if we came before him.
+		 */
+		u_char scanning=0;
+		
+		pkt.hdr.sz=sizeof(u_char);
+		pkt.msg=xmalloc(pkt.hdr.sz);
+		if(radar_scan_mutex && radar_scan==MAX_RADAR_SCANS)
+			scanning=1;
+		memcpy(pkt.msg, &scanning, sizeof(u_char));
+
+		/* 
+		 * W Poetry Palazzolo, the enlightening holy garden.
+		 * Sat Mar 12 20:41:36 CET 2005 
+		 */
+	}
+
 	/* We send it */
 	err=send_rq(&pkt, 0, ECHO_REPLY, rpkt.hdr.id, 0, 0, 0);
 	pkt_free(&pkt, 0);
@@ -678,6 +733,7 @@ int radard(PACKET rpkt)
 void *radar_daemon(void *null)
 {
 	debug(DBG_NORMAL, "Radar daemon up & running");
+
 	for(;;)
 		radar_scan();
 }

@@ -501,7 +501,7 @@ retry_rnd_ip:
 	 * We remove all the traces of the old gnodes in the ext_map to add the
 	 * new ones.
 	 */
-	if(!we_are_hooking)
+	if(!(me.cur_node->flags & MAP_HNODE))
 		for(i=1; i<final_level; i++) {
 			me.cur_quadg.gnode[_EL(i)]->flags &= ~GMAP_ME;
 			me.cur_quadg.gnode[_EL(i)]->g.flags &= ~MAP_ME & ~MAP_GNODE;
@@ -537,8 +537,6 @@ int hook_init(void)
 {
 	u_int idata[4];
 
-	we_are_hooking=1;
-	
 	/* We use a fake root_node for a while */
 	free_the_tmp_cur_node=1;
 	me.cur_node=xmalloc(sizeof(map_node));
@@ -774,15 +772,14 @@ retry_rnd_ip:
 	refresh_hook_root_node(); 
 	
 finish:
-	we_are_hooking=0;
-	me.cur_node->flags&=~MAP_HNODE;
-
 	/* 
 	 * We must reset the radar_queue because the first radar_scan, used while hooking,
 	 * has to keep the list of the rnodes' "inet_prefix ip". In this way we know
 	 * the rnodes' ips even if we haven't an int_map yet.
 	 */
 	reset_radar();
+
+	me.cur_node->flags&=~MAP_HNODE;
 
 	/* 
 	 * <<Hey there, I'm here, alive>>. We send our firt tracer_pkt, we

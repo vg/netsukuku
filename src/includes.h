@@ -34,25 +34,22 @@
 #include <netinet/ip.h>
 #include <linux/in_route.h>
 
+#include <net/if.h>
+
 #include <time.h>
 #include <asm/types.h>
 #include <sys/types.h>
 
-#include <gmp.h>
-
 #include <netdb.h>
 #include <unistd.h>
+#include <getopt.h>
 
-#include <net/if.h>
 #include <sys/ioctl.h>
-
-#include <pthread.h>
-
 #include <fcntl.h>
 
+#include <gmp.h>
+#include <pthread.h>
 
-#include <getopt.h>
 #include <linux/limits.h>
-
 #include <signal.h>
 #include <linux/byteorder/little_endian.h>

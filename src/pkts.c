@@ -71,7 +71,7 @@ void pkt_addmsg(PACKET *pkt, char *msg)
 
 void pkt_free(PACKET *pkt, int close_socket)
 {
-	if(pkt->sk && close_socket) {
+	if(close_socket && pkt->sk) {
 		close(pkt->sk);
 		pkt->sk=0;
 	}
@@ -163,7 +163,6 @@ ssize_t pkt_recv(PACKET *pkt)
 	char buf[MAXMSGSZ];
 
 	if(pkt->sk_type==SKT_UDP || pkt->sk_type==SKT_BCAST) {	
-		
 		memset(buf, 0, MAXMSGSZ);
 		memset(&from, 0, sizeof(struct sockaddr));
 		
@@ -183,8 +182,8 @@ ssize_t pkt_recv(PACKET *pkt)
 			debug(DBG_NOISE, "inet_recvfrom() of the hdr aborted!");
 			return -1;
 		}
-		
-		/* then we extract... and verify it */
+	
+		/* then we extract the hdr... and verify it */
 		memcpy(&pkt->hdr, buf, sizeof(pkt_hdr));
 		if(pkt_verify_hdr(*pkt) || pkt->hdr.sz+sizeof(pkt_hdr) > err) {
 			debug(DBG_NOISE, "Error while unpacking the PACKET."
@@ -333,7 +332,7 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 	/* * * the request building process * * */
 	if(check_ack)
 		hdr_flags|=SEND_ACK;
-	if(we_are_hooking)
+	if(me.cur_node->flags & MAP_HNODE)
 		hdr_flags|=HOOK_PKT;
 	
 	pkt_fill_hdr(&pkt->hdr, hdr_flags, rq_id, rq, pkt->hdr.sz);

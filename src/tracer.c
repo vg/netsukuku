@@ -67,7 +67,8 @@ int tracer_verify_pkt(tracer_chunk *tracer, u_int hops, map_node *real_from, u_c
  * On errors it returns NULL.
  */
 tracer_chunk *
-tracer_add_entry(void *void_map, void *void_node, tracer_chunk *tracer, u_int *hops, u_char level)
+tracer_add_entry(void *void_map, void *void_node, tracer_chunk *tracer, 
+		u_int *hops, u_char level)
 {
 	tracer_chunk *t;
 	map_node *from;
@@ -198,11 +199,18 @@ char *tracer_pack_pkt(brdcast_hdr *bcast_hdr, tracer_hdr *tracer_hdr, tracer_chu
 	buf=msg=xmalloc(pkt_sz);
 	memset(msg, 0, pkt_sz);
 
+	/* add broadcast header */
 	memcpy(buf, bcast_hdr, sizeof(brdcast_hdr));
 	buf+=sizeof(brdcast_hdr);
+	
+	/* add tracer header */
 	memcpy(buf, tracer_hdr, sizeof(tracer_hdr));
 	buf+=sizeof(tracer_hdr);
+	
+	/* add the tracer chunks */
 	memcpy(buf, tracer, sizeof(tracer_chunk)*tracer_hdr->hops);
+
+	/* add the bnode chunks */
 	if(bhdr && bchunk) {
 		buf+=sizeof(tracer_chunk)*tracer_hdr->hops;
 		memcpy(buf, bhdr, sizeof(bnode_hdr));
@@ -216,8 +224,10 @@ char *tracer_pack_pkt(brdcast_hdr *bcast_hdr, tracer_hdr *tracer_hdr, tracer_chu
 /* tracer_unpack_pkt: Given a packet `rpkt' it scomposes the rpkt.msg in 
  * `new_bcast_hdr', `new_tracer_hdr', `new_tracer', 'new_bhdr', and 
  * `new_block_sz'.
- * It returns 0 if the packet is valid, otherwise -1 is returned.*/
-int tracer_unpack_pkt(PACKET rpkt, brdcast_hdr **new_bcast_hdr, tracer_hdr **new_tracer_hdr, tracer_chunk **new_tracer, 
+ * It returns 0 if the packet is valid, otherwise -1 is returned.
+ */
+int tracer_unpack_pkt(PACKET rpkt, brdcast_hdr **new_bcast_hdr, 
+		tracer_hdr **new_tracer_hdr, tracer_chunk **new_tracer, 
 		      bnode_hdr **new_bhdr, size_t *new_bblock_sz)
 {
 	brdcast_hdr *bcast_hdr;
@@ -539,10 +549,10 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 		bcast_hdr=xmalloc(sizeof(brdcast_hdr));
 		memset(bcast_hdr, 0, sizeof(brdcast_hdr));
 		
-		bcast_hdr->g_node=gnode_id; 
-		bcast_hdr->level=gnode_level+1;
-		memcpy(&bcast_hdr->g_ipstart, &me.cur_ip, sizeof(inet_prefix));
 		bcast_hdr->gttl=1;
+		bcast_hdr->level=gnode_level+1;
+		bcast_hdr->g_node=gnode_id; 
+		memcpy(&bcast_hdr->g_ipstart, &me.cur_ip, sizeof(inet_prefix));
 		
 		tracer_hdr=xmalloc(sizeof(tracer_hdr));
 		memset(tracer_hdr, 0, sizeof(tracer_hdr));
@@ -552,8 +562,8 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 	}
 
 	memset(pkt, 0, sizeof(PACKET));
-	pkt->hdr.id=rq_id;
 	pkt->hdr.op=rq;
+	pkt->hdr.id=rq_id;
 	pkt->hdr.flags|=BCAST_PKT;
 	bcast_hdr->flags|=BCAST_TRACER_PKT;
 	
@@ -568,6 +578,9 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 	/* Time to append our entry in the tracer_pkt */
 	new_tracer=tracer_add_entry(void_map, void_node, tracer, &hops, 
 			gnode_level); 
+
+	if(!hops)
+		fatal("hops 0 in tracer_pkt_build! WTF!?!?!?");
 
 	/* If we are a bnode we have to append the bnode_block too. */
 	if(me.cur_node->flags & MAP_BNODE)
@@ -595,8 +608,6 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 	 * Here we are really building the pkt packig all the stuff into a
 	 * single bullet.
 	 */
-	memset(pkt, '\0', sizeof(PACKET));
-	
 	bcast_hdr->sz=TRACERPKT_SZ(hops)+new_bblock_sz;
 	bcast_hdr->sub_id=bcast_sub_id;
 	pkt->hdr.sz=BRDCAST_SZ(bcast_hdr->sz);
@@ -618,20 +629,6 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 	}
 	return 0;
 }
-/* is_node_excluded: is the `node' included in the `excluded_nodes' list?
-int is_node_excluded(map_node *node, map_node **excluded_nodes, int exclusions)
-{
-	int i;
-	
-	if(exclusions <= 0)
-		return 0;
-	for(i=0; i<exclusions; i++) {
-		if(node==excluded_nodes[i])
-			return 1;
-	}
-	return 0;
-}
-*/
 
 /* 
  * tracer_pkt_send: It sends only a normal tracer_pkt which is packed in `pkt'. 

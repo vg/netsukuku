@@ -27,7 +27,7 @@ int max_radar_wait;
 int radar_scans;			/*How many ECHO_ME pkts we sent*/
 int radar_scan_mutex;			/*A flag to see if we are already doing a scan*/
 int my_echo_id;			
-int send_qspn_now[MAX_LEVELS];		/*Shall we send the qspn in level? If yes 
+u_char send_qspn_now[MAX_LEVELS];		/*Shall we send the qspn in level? If yes 
 					  send_qspn_now[level] is != 0*/
 int hook_retry;				/*If we've seen, while hooking, a node who was trying 
 					  to hook before us, `hook_retry' is set to 1.*/

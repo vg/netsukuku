@@ -28,14 +28,17 @@
 
 extern int errno;
 
-/* get_dev: It returs the first dev it finds up and sets `*dev_ids' to the
- * device's index. On error NULL is returned.*/
+/* 
+ * get_dev: It returs the first dev it finds up and sets `*dev_ids' to the
+ * device's index. On error NULL is returned.
+ */
 const char *get_dev(int *dev_idx) 
 {
 	int idx;
 
 	if((idx=ll_first_up_if()) == -1) {
-		error("Couldn't find \"up\" devices. Set one dev \"up\", or specify the device name in the options.");
+		error("Couldn't find \"up\" devices. Set one dev \"up\", or "
+				"specify the device name in the options.");
 		return 0;
 	}
 	if(dev_idx)

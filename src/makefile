@@ -10,13 +10,14 @@ OBJ = accept.o llist.o log.o map.o misc.o request.o xmalloc.o bmap.o daemon.o \
 LIBS = -lgmp -lpthread
 
 CFLAGS = -ggdb
+
+
 #-Wall
 
 $(BIN): $(OBJ)
 	$(CC) $^ -o $(BIN)
 	
 netsukuku:  $(OBJ)
-#	$(LD) -o $@ $(OBJ) $(LIBS)
 	$(CC)  $(CFLAGS) $^ -o netsukuku_d -lgmp -lpthread	
 	
 
@@ -28,3 +29,14 @@ clean:
 
 clean-qspn: xmalloc.o qspn-empiric.o map.o ipv6-gmp.o log.o xmalloc.o qspn-empiric
 	$(RM) $^
+
+config-os:
+	host_os=`uname -s`; \
+	echo "Compiling on $${host_os} " ; \
+	if [ `echo $${host_os} | grep -i BSD` ]; then \
+		if [ ! -f .os_configured ]; then \
+			cp includes.h .includes.h-old; \
+			echo "#define BSD" >> includes.h; \
+			touch .os_configured; \
+		fi \
+	fi
