@@ -159,7 +159,7 @@ map_rnode *map_get_rblock(map_node *map, int maxgroupnode, int *count);
 int store_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart);
 int map_store_rblock(map_node *map, int maxgroupnode, map_rnode *rblock, int count);
 int save_map(map_node *map, map_node *root_node, char *file);
-map_node *load_map(char *file);
+map_node *load_map(char *file, map_node **new_root);
 
 int save_bmap(map_bnode *bmap, u_int bmap_nodes, char *file);
 map_bnode *load_bmap(char *file, u_int *bmap_nodes);

@@ -20,7 +20,7 @@
 #include <sys/types.h>
 
 /*WARNING* Keep it up to date!! *WARNING*/
-#define TOTAL_REQUESTS          25
+#define TOTAL_REQUESTS          26
 #define TOTAL_REPLIES		7
 #define TOTAL_ERRORS		6
 
@@ -50,6 +50,8 @@ enum pkt_op
 	QSPN_RFR,			/*RequestForRoute: This is used to get additional routes*/
 	GET_DNODEBLOCK ,
 	GET_DNODEIP,
+	TRACER_PKT,			/*A tracer pkt. This pkt is used mainly to send only a tracer pkt.
+					  Normally a bcast pkt is marked with the BCAST_TRACER_PKT flag.*/
 	TRACER_PKT_CONNECT,		/*This is the tracer_pkt used to connect to the dst_node.
 					  In the first entry of the tcr_pkt there's the src node, in the
 					  second the dst_node, the remaining are as usual*/
@@ -154,11 +156,13 @@ static u_char error_str[][20]=
 #define SPLIT_ROUTE_WAIT		20
 #define SET_NO_IDENTITY_WAIT		20
 
+
 #define QSPN_CLOSE_WAIT			0
 #define QSPN_OPEN_WAIT			0
 #define QSPN_RFR_WAIT			5
 #define GET_DNODEBLOCK_WAIT		20
 #define GET_DNODEIP_WAIT	     	5
+#define TRACER_PKT_WAIT			10
 #define TRACER_PKT_CONNECT_WAIT		10
 
 #define DEL_SNODE_WAIT			10
@@ -192,6 +196,7 @@ static u_char error_str[][20]=
 #define QSPN_RFR_MAXRQ			10
 #define GET_DNODEBLOCK_MAXRQ		1
 #define GET_DNODEIP_MAXRQ		10
+#define TRACER_PKT_MAXRQ		20
 #define TRACER_PKT_CONNECT_MAXRQ	10
 
 #define DEL_SNODE_MAXRQ			20
@@ -225,6 +230,7 @@ static u_char request_array[][2]=
 	{ QSPN_RFR_WAIT,	  QSPN_RFR_MAXRQ	  },
 	{ GET_DNODEBLOCK_WAIT,    GET_DNODEBLOCK_MAXRQ    },
 	{ GET_DNODEIP_WAIT,       GET_DNODEIP_MAXRQ       },
+	{ TRACER_PKT_WAIT,	  TRACER_PKT_MAXRQ},
 	{ TRACER_PKT_CONNECT_WAIT,TRACER_PKT_CONNECT_MAXRQ},
 	{ DEL_SNODE_WAIT,         DEL_SNODE_MAXRQ         },
 	{ DEL_GNODE_WAIT,         DEL_GNODE_MAXRQ         },
@@ -255,6 +261,7 @@ static u_char request_str[][20]=
 	{ "QSPN_RFR"},
 	{ "GET_DNODE_BLOCK" },
 	{ "GET_DNODE_IP"},
+	{ "TRACER_PKT" },
 	{ "TRACER_PKT_CONNECT" },
 	{ "DEL_SNODE" },
 	{ "DEL_GNODE" },

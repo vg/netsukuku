@@ -31,6 +31,10 @@
 /*Converts a Groupnode Id to an address of a struct in the map*/
 #define GI2GMAP(mapstart, gi)		(((gi)*sizeof(map_gnode))+(mapstart))
 
+#define LAST_IPV4_GNODE 0x663D80				/*(2^32-1)/MAXGROUPNODE*/
+#define LAST_IPV6_GNODE 0x663D80FF99C27F00663D80FF99C27F	/*(2^128-1)/MAXGROUPNODE*/
+#define LAST_GNODE(family)	({ (family)==AF_INET ? LAST_IPV4_GNODE : LAST_IPV6_GNODE; })
+
 typedef struct
 {
         /*The groupnode will cover the range from me.ipstart to me.ipstart+MAXGROUPNODE*/

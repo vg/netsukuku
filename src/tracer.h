@@ -19,17 +19,20 @@
 #include "map.h"
 
 /***Tracer packet. It is encapsulated in a broadcast pkt*/
-struct tracer_hdr
+typedef struct
 {
 	u_int hops;
 	u_int bblocks;		/*How many bnode blocks are incapsulated in the pkt (if any)*/
-};
-struct tracer_chunk
+}tracer_hdr;
+
+typedef struct
 {
 	__u16 node;
 	struct timeval *rtt;
-};
-#define TRACERPKT_SZ(hop) (sizeof(struct tracer_hdr)+sizeof((struct tracer_chunk)*(hop)))
+}tracer_chunk;
+#define TRACERPKT_SZ(hop) (sizeof(tracer_hdr)+sizeof((tracer_chunk)*(hop)))
+
+
 /* boarder node block: this is the block which keeps the gnodes linked to the `bnode' boarder_node. 
  * When a bnode has to add his entry in the tracer_pkt it encapsulates the bnode_block at the end
  * of the packet, in this way it is possible to know all the gnodes linked to the bnode's gnode.
@@ -38,16 +41,16 @@ struct tracer_chunk
  * |pkt_hdr|brdcast_hdr|tracer_hdr|tracer_chunks|bnode_hdr|bnode_chunks|bnode_hdr|bnode_chunks|...
  * and so on.
  */
-struct bnode_hdr
+typedef struct
 {
 	__u16 bnode;		/*The bnode this bnode_block belongs to*/
 	__u16 links;		/*The number of linked gnode*/
-};
-struct bnode_chunk
+}bnode_hdr;
+typedef struct
 {
 	__u16 gnode;
 	struct timeval *rtt;
-};
+}bnode_chunk;
 #define BNODEBLOCK_SZ(links) (sizeof(bnode_hdr)+sizeof(bnode_chunk)*(links))
 
 /*These defines make the life easier, son instead of writing int_map_hdr I write bnode_map_hdr.
@@ -56,11 +59,19 @@ struct bnode_chunk
 #define bnode_map_sz   		int_map_sz
 #define BNODE_MAP_BLOCK_SZ 	INT_MAP_BLOCK_SZ
 
-int tracer_verify_pkt(struct tracer_chunk *tracer, int hops);
-char *tracer_pack_pkt(struct bcast_hdr *bcast_hdr, struct tracer_hdr *tracer_hdr, struct tracer_chunk *tracer, 
-		      struct bnode_hdr *bhdr, struct bnode_chunk *bchunk);
-int tracer_split_bblock(void *bnode_block_start, size_t bblock_sz, struct bnode_hdr *bbl_hdr, struct bnode_chunk *bbl);
-int tracer_store_pkt(map_node *map, struct tracer_hdr *tracer_hdr, struct tracer_chunk *tracer, 
-		     u_short hops, void *bnode_block_start, size_t bblock_sz);
-struct tracer_chunk *tracer_add_entry(map_node *map, map_node *node, struct tracer_chunk *tracer, int *hops);
-struct bnode_hdr *tracer_build_bentry(map_node *map, map_node *node, struct bnode_chunk *bnode_chunk); 
+int tracer_pkt_start_mutex=0;
+
+/*Functions definition. Damn I hate to use function with a lot of args. It isn't elegant*/
+int tracer_verify_pkt(tracer_chunk *, int);
+char *tracer_pack_pkt(brdcast_hdr *, tracer_hdr *, tracer_chunk *, bnode_hdr *, bnode_chunk *);
+int tracer_split_bblock(void *, size_t, bnode_hdr *, bnode_chunk *, size_t *);
+int tracer_store_pkt(map_node *, tracer_hdr *, tracer_chunk *, void *, size_t, int *, char *, size_t *);
+int tracer_unpack_pkt(PACKET, brdcast_hdr *, tracer_hdr *, tracer_chunk *, bnode_hdr *, size_t *);
+tracer_chunk *tracer_add_entry(map_node *, map_node *, tracer_chunk *, int *);
+bnode_hdr *tracer_build_bentry(map_node *, map_node *, bnode_chunk *); 
+
+int tracer_pkt_build(u_char, int, int, brdcast_hdr *, tracer_hdr *, tracer_chunk *, u_short, char *, size_t, PACKET *);
+int tracer_pkt_send(int(*is_node_excluded)(map_node *, int), PACKET);
+int exclude_from_and_gnode_and_setreplied(map_node *node, map_node *from, int pos);
+int exclude_from_and_gnode_and_closed(map_node *node, map_node *from, int pos);
+int exclude_from_and_gnode(map_node *node, map_node *from, int pos);

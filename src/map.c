@@ -524,13 +524,17 @@ int save_map(map_node *map, map_node *root_node, char *file)
 	return 0;
 }
 
-map_node *load_map(char *file)
+/* load_map: It loads the internal_map from `file'.
+ * It returns the start of the map and if `new_root' is not NULL, it
+ * puts in `*new_root' the pointer to the root_node in the loaded map.
+ * On error it returns NULL.
+ */
+map_node *load_map(char *file, map_node **new_root)
 {
 	map_node *map;
 	FILE *fd;
 	struct int_map_hdr imap_hdr;
 	map_rnode *rblock;
-	map_node *new_root;
 	int count, err;
 	
 	if((fd=fopen(file, "r"))==NULL) {
@@ -564,10 +568,12 @@ map_node *load_map(char *file)
 		xfree(rblock);
 		return 0;
 	}
-	
-	new_root=&map[imap_hdr.root_node];
-	new_root->flags|=MAP_ME;
-	
+
+	if(new_root) {
+		*new_root=&map[imap_hdr.root_node];
+		*new_root->flags|=MAP_ME;
+	}
+
 	fclose(fd);
 	xfree(rblock);
 	

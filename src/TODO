@@ -1,5 +1,12 @@
-gnode support  60%
+- [HIGH PRIORITY] -
+gnode support  10%: creazione di un nuovo gnode, qspn di gnode, fusione di gnode uguali...
+gmap.c: load_gmap, save_gmap;
+
+- [MEDIUM PRIORITY] -
 netsukuku.c (Parte minimale)
 come fare per aggiungere un route rule per specificare un'intero range nel campo from?
 Decidere l'order del ntohl_128. ip.data[0] o ip.data[3]?
+
+- [LOW PRIORITY] -
+tracer.c: store_trcaer_pkt_connect
 connect-wrapper.c: ld.so.preload!

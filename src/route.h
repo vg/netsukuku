@@ -19,6 +19,8 @@
 #include <sys/types.h>
 #include <asm/types.h>
 
+#define MAX_ROUTE_TABLES	253
+
 struct ctable_route
 {
 	struct ctable_route	*next;

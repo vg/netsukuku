@@ -446,6 +446,25 @@ finish:
 	return ret;
 }
 
+int create_gnode(void)
+{
+	int i;
+	
+	/* - scans the old ext_map;
+	 * - Choose a random gnode excluding the one already used in the old map.
+	 * - sit down and rest
+	 */
+	
+	if(!me.ext_map) {
+		/*We haven't an ext_map so let's cast the dice*/
+		me.cur_gid=rand_range(0, LAST_GNODE(my_family));
+	} else {
+		for(i=0; i<MAXGROUPNODE; i++) {
+			/*TODO: gmap support: CONTINUE here*/
+		}
+	}
+	return 0;
+}
 
 int netsukuku_hook(char *dev)
 	
@@ -488,14 +507,8 @@ int netsukuku_hook(char *dev)
 		fatal("%s:%d: Scan of the area failed. Cannot continue.", ERROR_POS);
 	
 	if(!me.cur_node->links) {
-		/*TODO:
-		 * create_new_gnode() {
-		 * 	1) scans the old ext_map;
-		 * 	2) Choose a random gnode excluding the one already used in the old map.
-		 * 	3) sit down and rest
-		 * }
-		 */
-		loginfo("No nodes founded! This is a black zone. Creating a new_gnode. W00t we're the first node");
+		loginfo("No nodes found! This is a black zone. Creating a new_gnode. W00t we're the first node");
+		create_gnode();
 		goto finish;
 	}
 	
@@ -535,6 +548,7 @@ int netsukuku_hook(char *dev)
 	new_groot->g.flags&=~GMAP_ME;
 	set_cur_gnode(fi_hdr.gid);
 	memcpy(&me.cur_qspn_time, &fi.qtime, sizeof(struct timeval));
+	memcpy(&me.ipstart, &fi_hdr.ipstart, sizeof(inet_prefix));
 	
 	/*Fetch the int_map from each rnode*/
 	imaps=0;
@@ -587,6 +601,9 @@ finish:
 	/*TODO: for now the gnodes aren't supported
 	 * djkstra(ext_map);
 	 */
+
+	tracer_pkt_start();	/*<<Ehi there, I'm here, alive.>>. This is out firt tracer_pkt, we must
+				  give to the other nodes the basic routes to reach us.*/
 	
 	/* I think I will abort the use of dnode, cuz the qspn rox enough
 	 * dnode_set_ip(rnd(info.free_ips);

@@ -29,8 +29,8 @@ int ntk_tcp_port;
 
 struct current
 {
-	map_node  	*int_map;
-	map_gnode 	*ext_map;
+	map_node  	*int_map;	/*Internal Map*/
+	map_gnode 	*ext_map;	/*External Map*/
 	
 	int 		 cur_gid;	/*G_node id*/
 	map_gnode 	*cur_gnode;
@@ -60,8 +60,10 @@ typedef struct
 {
 	char *dev;
 	char *int_map_file;
+	char *bnode_map_file;
 	char *ext_map_file;
 }NtkOpt;
+NtkOpt server_opt;
 
 extern char *__argv0;
 extern int dbg_lvl;

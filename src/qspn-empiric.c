@@ -696,7 +696,7 @@ int main(int argc, char **argv)
 		pthread_mutex_init(&mutex[i], NULL);
 
 	if(argc>1) {
-		if(!(int_map=load_map(argv[1]))) {
+		if(!(int_map=load_map(argv[1], 0))) {
 			printf("Error! Cannot load the map\n");
 			exit(1);
 		}

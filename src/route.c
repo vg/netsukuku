@@ -36,9 +36,10 @@ void ctr_add(ct_entry *ct, ct_route *ctr)
 u_char rt_find_table(ct_route *ctr, u32 dst, u32 gw)
 {
 	ct_route *i;
-	u_char tables[253];
+	u_char tables[MAX_ROUTE_TABLES];
+	int l;
 	
-	memset(tables, '\0', 253);
+	memset(tables, '\0', MAX_ROUTE_TABLES);
 	
 	for(i=ctr; i; i=i->next) {
 		if(i->dst==dst) {
@@ -49,10 +50,9 @@ u_char rt_find_table(ct_route *ctr, u32 dst, u32 gw)
 		}
 	}
 
-	int l;
-	for(l=1; l<253; l++)
+	for(l=1; l<MAX_ROUTE_TABLES; l++)
 		if(!tables[l])
-			return tables[l];
+			return l;
 
 	return 0xff; /*This shouldn't happen!*/
 }

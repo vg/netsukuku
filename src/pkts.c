@@ -48,9 +48,9 @@ void pkt_addflags(PACKET *pkt, int flags)
 	pkt->flags=flags;
 }
 
-void pkt_addhdr(PACKET *pkt, struct pkt_hdr *hdr)
+void pkt_addhdr(PACKET *pkt, pkt_hdr *hdr)
 {
-	memcpy(pkt->hdr, hdr, sizeof(struct pkt_hdr));
+	memcpy(pkt->hdr, hdr, sizeof(pkt_hdr));
 }
 
 void pkt_addmsg(PACKET *pkt, char *msg)
@@ -78,11 +78,11 @@ char *pkt_pack(PACKET *pkt)
 	char *buf;
 	
 	buf=(char *)xmalloc(PACKET_SZ(pkt->hdr.sz));
-	memcpy(buf, &pkt->hdr, sizeof(struct pkt_hdr));
+	memcpy(buf, &pkt->hdr, sizeof(pkt_hdr));
 	if(!pkt->hdr.sz)
 		return buf;
 	
-	memcpy(buf+sizeof(struct pkt_hdr), &pkt->msg, pkt->hdr.sz);
+	memcpy(buf+sizeof(pkt_hdr), &pkt->msg, pkt->hdr.sz);
 	return buf;
 }
 
@@ -93,14 +93,14 @@ PACKET *pkt_unpack(char *pkt)
 	pk=(PAKET *)xmalloc(sizeof(PACKET));
 	
 	/*Now, we extract the pkt_hdr...*/
-	memcpy(pk->hdr, pkt, sizeof(struct pkt_hdr));
+	memcpy(pk->hdr, pkt, sizeof(pkt_hdr));
 	/*and verify it...*/
 	if(pkt_verify_hdr(*pk)) {
 		error("Error while unpacking the PACKET. Malformed header");
 		return 0;
 	}
 	
-	pk->msg=pkt+sizeof(struct pkt_hdr);
+	pk->msg=pkt+sizeof(pkt_hdr);
 	return pk;
 }
 	
@@ -148,8 +148,8 @@ ssize_t pkt_recv(PACKET *pkt)
 		socklen_t fromlen;
 		
 		/*we get the hdr...*/
-		err=inet_recvfrom(pkt->sk, pkt->hdr, sizeof(struct pkt_hdr), pkt->flags, &from, &fromlen);
-		if(err != sizeof(struct pkt_hdr)) {
+		err=inet_recvfrom(pkt->sk, pkt->hdr, sizeof(pkt_hdr), pkt->flags, &from, &fromlen);
+		if(err != sizeof(pkt_hdr)) {
 			error("inet_recvfrom() of the hdr aborted!");
 			return -1;
 		}
@@ -175,8 +175,8 @@ ssize_t pkt_recv(PACKET *pkt)
 		}
 	} else if(pkt->sk_type==SKT_TCP) {
 		/*we get the hdr...*/
-		err=inet_recv(pkt->sk, pkt->hdr, sizeof(struct pkt_hdr), pkt->flags);
-		if(err != sizeof(struct pkt_hdr)) {
+		err=inet_recv(pkt->sk, pkt->hdr, sizeof(pkt_hdr), pkt->flags);
+		if(err != sizeof(pkt_hdr)) {
 			error("inet_recv() of the hdr aborted!");
 			return -1;
 		}
@@ -240,7 +240,7 @@ finish:
 	return sk;
 }
 
-void pkt_fill_hdr(struct pkt_hdr *hdr, int id, u_char op, size_t sz)
+void pkt_fill_hdr(pkt_hdr *hdr, int id, u_char op, size_t sz)
 {
 	hdr->ntk_id[0]='n';
 	hdr->ntk_id[1]='t';
@@ -263,7 +263,7 @@ void pkt_fill_hdr(struct pkt_hdr *hdr, int id, u_char op, size_t sz)
  * with `re'; if the test fails it gives an appropriate error message.
  * If an error occurr send_rq returns -1 otherwise it returns 0.
  */
-int send_rq(PACKET *pkt, int flags, u_char rq, u_int rq_id, u_char re, int check_ack, PACKET *rpkt)
+int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_ack, PACKET *rpkt)
 {
 	PACKET pkt;
 	u_short port;
@@ -397,7 +397,7 @@ int pkt_exec(PACKET pkt)
 
 	if((err=add_rq(pkt.hdr.type, &accept_tbl[accept_idx].rq_tbl))) {
 		ntop=inet_to_str(&pkt.from);
-		error("From %s: Cannot process the %s request: %s", ntop, rq_to_str(pkt.hdr.type), rq_strerror(err));
+		error("From %s: Cannot process the %s request: %s", ntop, rq_to_str(pkt.hdr.op), rq_strerror(err));
 		xfree(ntop);
 		pkt_err(pkt, err);
 		return -1;
@@ -421,11 +421,15 @@ int pkt_exec(PACKET pkt)
 			err=put_bnode_map(pkt);
 		case GET_EXT_MAP:
 			err=put_ext_map(pkt);
+		case QSPN_CLOSE:
+			err=qspn_close(pkt);
+		case QSPN_OPEN:
+			err=qspn_open(pkt);
 
 		default:
 			/*never reached... (some months later)... Why the hell did I write this? hahaha*/
 			break;
 	}
 	
-	return 0;
+	return err;
 }

@@ -67,3 +67,16 @@ struct qspn_buffer
 struct qspn_buffer *qspn_b;
 
 int qspn_send_mutex=0;
+
+
+void qspn_b_clean(void);
+void qspn_b_add(struct qspn_buffer *qb, u_short replier, u_short flags);
+int qspn_b_find_reply(struct qspn_buffer *qb, int sub_id);
+int qspn_round_left(void);
+void update_qspn_time(void);
+void qspn_new_round(void);
+
+int exclude_from_and_gnode_and_opened(map_node *node, map_node *from, int pos);
+int qspn_send();
+int qspn_close(PACKET rpkt);
+int qspn_open(PACKET rpkt);

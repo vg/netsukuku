@@ -179,7 +179,7 @@ int add_radar_q(PACKET pkt)
 	struct radar_queue *rq=radar_q;
 	
 	gettimeofday(&t, 0);
-	if(iptomap(me.int_map, pkt.from, me.cur_gnode->ipstart, rnode)) 
+	if(iptomap(me.int_map, pkt.from, me.ipstart, &rnode)) 
 		if(!(me.cur_node->flags & MAP_HNODE)) {
 			u_int *gmap;
 			/*The pkt.ip isn't part of our gnode, thus we are a bnode.
@@ -294,7 +294,7 @@ int radar_scan(void)
 	radar_update_map();
 	if(!(me.cur_node->flags & MAP_HNODE)) {
 		if(send_qspn_now)
-	/*TODO*/	qspn_send(QSPN_CLOSE, NORMAL_BCAST);
+			qspn_send();	/*We start a new qspn_round*/
 		reset_radar(me.cur_node->links);
 	}
 	else

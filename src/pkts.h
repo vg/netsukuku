@@ -36,15 +36,20 @@
 #define SKT_BCAST	3
 
 /*Pkt's flags*/
-#define SEND_ACK	1
+#define SEND_ACK		1
+#define BCAST_PKT		(1<<1)	/*In this pkt there is encapsulated a broadcast pkt. Woa*/
 
-struct pkt_hdr
+/*Broacast ptk's flags*/
+#define BCAST_TRACER_PKT	1	/*When a bcast is marked with this, it acts as a tracer_pkt ;)*/
+#define QSPN_NO_OPEN		(1<<1)	/*The qspn_close pkts with this flag set will not propagate the qspn_open*/
+
+typedef struct
 {
 	char ntk_id[3];
 	int id;
 	u_char op;
 	size_t sz;
-};
+}pkt_hdr;
 #define PACKET_SZ(sz) (sizeof(pkt_hdr)+(sz))		
 
 typedef struct
@@ -55,20 +60,20 @@ typedef struct
 	int sk_type;
 	u_short port;
 	int flags;
-	struct pkt_hdr hdr;
+	pkt_hdr hdr;
 	char *msg;
 }PACKET;
 	
 /*Broadcast packet*/
-struct brdcast_hdr
+typedef struct
 {
-	int sub_id;		/*The sub_id used by the qspn_open*/
+	int sub_id;		/*The sub_id is the node who sent the pkt, but is only used by the qspn_open*/
 	int g_node;		/*The g_node the brdcast_pkt is restricted to*/
 	u_short gttl;		/*Gnode ttl: How many gnodes the packet can traverse*/
 	size_t sz;		/*Sizeof(the pkt)*/
 	char flags;		/*Various flags*/
-};
-#define BRDCAST_SZ(pkt_sz) (sizeof(struct brdcast_hdr)+(pkt_sz))
+}brdcast_hdr;
+#define BRDCAST_SZ(pkt_sz) (sizeof(brdcast_hdr)+(pkt_sz))
 
 /***The nodeblock of the node*/
 struct node_hdr
@@ -124,7 +129,7 @@ void pkt_addto(PACKET *pkt, inet_prefix *to);
 void pkt_addsk(PACKET *pkt, int sk, int sk_type);
 void pkt_addport(PACKET *pkt, u_short port);
 void pkt_addflags(PACKET *pkt, int flags);
-void pkt_addhdr(PACKET *pkt, struct pkt_hdr *hdr);
+void pkt_addhdr(PACKET *pkt, pkt_hdr *hdr);
 void pkt_addmsg(PACKET *pkt, char *msg);
 void pkt_free(PACKET *pkt, int close_socket);
 char *pkt_pack(PACKET *pkt);
@@ -133,7 +138,7 @@ int pkt_verify_hdr(PACKET pkt);
 ssize_t pkt_send(PACKET *pkt);
 ssize_t pkt_recv(PACKET *pkt);
 int pkt_tcp_connect(inet_prefix *host, short port);
-void pkt_fill_hdr(struct pkt_hdr *hdr, int id, u_char op, size_t sz);
+void pkt_fill_hdr(pkt_hdr *hdr, int id, u_char op, size_t sz);
 int send_rq(PACKET *pkt, int flags, u_char rq, u_int rq_id, u_char re, int check_ack, PACKET *rpkt);
 int pkt_err(PACKET pkt, int err);
 int pkt_exec(PACKET pkt);

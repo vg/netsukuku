@@ -22,9 +22,8 @@
 
 #define MAX_CONNECTIONS		40
 
-#define MAX_ACCEPTS		5
+#define MAX_ACCEPTS		10
 #define FREE_ACCEPT_TIME	5		/*in seconds*/
-/*TODO: Tunare al meglio i valori*/
 
 /*This struct keep tracks of single connection to the server.
  * The thread_daemon who handle the connection knows the connection
