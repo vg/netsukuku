@@ -20,11 +20,11 @@
 #include <sys/types.h>
 
 /*WARNING* Keep it up to date!! *WARNING*/
-#define TOTAL_REQUESTS          24
-#define TOTAL_REPLIES		6
+#define TOTAL_REQUESTS          25
+#define TOTAL_REPLIES		7
 #define TOTAL_ERRORS		6
 
-/*Requests*/
+/*In this enum there are all the requests/replies op used by netsukuku in the pkts*/
 enum pkt_op
 {
 	ECHO_ME,			/*The node requests to be echoed by the dst_node*/
@@ -57,16 +57,18 @@ enum pkt_op
 	DEL_SNODE,
 	DEL_GNODE,
 
-	GET_INTMAP,
-	GET_EXTMAP,
+	GET_INT_MAP,
+	GET_EXT_MAP,
+	GET_BNODE_MAP,
 
 	/*  *  *  Replies  *  *  */
 	QSPN_RFR_REPLY,
 	PUT_FREE_IPS,			/*it means: <<Here it is the list of free ips in your gnode, cya>>*/
 	PUT_DNODEBLOCK,
 	PUT_DNODEIP,
-	PUT_INTMAP,
-	PUT_EXTMAP,
+	PUT_INT_MAP,
+	PUT_EXT_MAP,
+	PUT_BNODE_MAP,
 
 	/*Acks*/
 	ACK_AFFERMATIVE,		/*Ack affermative. Everything is fine.*/
@@ -80,8 +82,9 @@ static u_char reply_array[]=
 	PUT_FREE_IPS,
 	PUT_DNODEBLOCK,
 	PUT_DNODEIP, 	  
-	PUT_INTMAP, 	
-	PUT_EXTMAP,	 
+	PUT_INT_MAP, 	
+	PUT_EXT_MAP,	 
+	PUT_BNODE_MAP,
 
 	ACK_AFFERMATIVE,
 	ACK_NEGATIVE
@@ -94,8 +97,9 @@ static u_char reply_str[][20]=
 	{ "PUT_FREE_IPS" },
 	{ "PUT_DNODEBLOCK" },
 	{ "PUT_DNODEIP"	   },
-	{ "PUT_INTMAP"	   },
-	{ "PUT_EXTMAP"     },
+	{ "PUT_INT_MAP"	   },
+	{ "PUT_EXT_MAP"     },
+	{ "PUT_BNODE_MAP" },
 
 	{ "ACK_AFFERMATIVE"},
 	{ "ACK_NEGATIVE"   }
@@ -160,8 +164,9 @@ static u_char error_str[][20]=
 #define DEL_SNODE_WAIT			10
 #define DEL_GNODE_WAIT			10
 
-#define GET_INTMAP_WAIT			10
-#define GET_EXTMAP_WAIT			10
+#define GET_INT_MAP_WAIT			10
+#define GET_EXT_MAP_WAIT			10
+#define GET_BNODE_MAP_WAIT		10
 
 /*Max simultaneous requests*/ 
 #define ECHO_ME_MAXRQ			20
@@ -192,8 +197,9 @@ static u_char error_str[][20]=
 #define DEL_SNODE_MAXRQ			20
 #define DEL_GNODE_MAXRQ			5
 
-#define GET_INTMAP_MAXRQ		2
-#define GET_EXTMAP_MAXRQ		2
+#define GET_INT_MAP_MAXRQ		2
+#define GET_EXT_MAP_MAXRQ		2
+#define GET_BNODE_MAP_MAXRQ		2
 
 static char unknown_request[]="Unknow request";
 static u_char request_array[][2]=
@@ -220,10 +226,11 @@ static u_char request_array[][2]=
 	{ GET_DNODEBLOCK_WAIT,    GET_DNODEBLOCK_MAXRQ    },
 	{ GET_DNODEIP_WAIT,       GET_DNODEIP_MAXRQ       },
 	{ TRACER_PKT_CONNECT_WAIT,TRACER_PKT_CONNECT_MAXRQ},
-	{ DEL_SNODE_WAIT,         DEL_SNODE_MAXRQ        },
+	{ DEL_SNODE_WAIT,         DEL_SNODE_MAXRQ         },
 	{ DEL_GNODE_WAIT,         DEL_GNODE_MAXRQ         },
-	{ GET_INTMAP_WAIT,        GET_INTMAP_MAXRQ        },
-	{ GET_EXTMAP_WAIT,        GET_EXTMAP_MAXRQ        }
+	{ GET_INT_MAP_WAIT,        GET_INT_MAP_MAXRQ        },
+	{ GET_EXT_MAP_WAIT,        GET_EXT_MAP_MAXRQ        }
+	{ GET_BNODE_MAP_WAIT,      GET_BNODE_MAP_MAXRQ      }
 };
 static u_char request_str[][20]=
 { 
@@ -251,8 +258,9 @@ static u_char request_str[][20]=
 	{ "TRACER_PKT_CONNECT" },
 	{ "DEL_SNODE" },
 	{ "DEL_GNODE" },
-	{ "GET_INTMAP" },
-	{ "GET_EXTMAP" }
+	{ "GET_INT_MAP" },
+	{ "GET_EXT_MAP" }
+	{ "GET_BNODE_MAP" }
 };
 /*Request_array indexes defines:
  * ex: request_array[SET_FOREIGN_ROUTE][RQ_WAIT]

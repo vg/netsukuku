@@ -344,6 +344,109 @@ finish:
 	return ret;
 }
 
+
+/*  *  *  put/get bnode_map  *  *  */
+
+int put_bnode_map(PACKET rq_pkt)
+{
+	PACKET pkt;
+	map_bnode *bmap=me.bnode_map;
+	map_rnode *rblock=0;
+	struct bnode_map_hdr imap_hdr;
+	char *ntop; 
+	int count, ret;
+	ssize_t err, pkt_sz=0;
+	
+	ntop=inet_to_str(&rq_pkt.from);
+	debug(DBG_NORMAL, "Sending the PUT_BNODE_MAP reply to %s", ntop);
+	
+	memset(&pkt, '\0', sizeof(PACKET));
+	pkt.sk_type=SKT_TCP;
+	pkt_addto(&pkt, &rq_pkt.from);
+	pkt_addsk(&pkt, rq_pkt.sk, rq_pkt.sk_type);
+
+	rblock=map_get_rblock(bmap, me.bmap_nodes, &count);
+	imap_hdr.root_node=0;
+	imap_hdr.rblock_sz=count*sizeof(map_rnode);
+	imap_hdr.bnode_map_sz=me.bmap_nodes*sizeof(map_bnode);
+	pkt.hdr.sz=BNODE_MAP_BLOCK_SZ(imap_hdr.bnode_map_sz, imap_hdr.rblock_sz):
+
+	pkt.msg=xmalloc(pkt.hdr.sz);
+	memcpy(pkt.msg, &imap_hdr, sizeof(struct bnode_map_hdr));
+	memcpy(pkt.msg+sizeof(struct bnode_map_hdr), bmap, imap_hdr.bnode_map_sz);
+	memcpy(pkt.msg+sizeof(struct bnode_map_hdr)+imap_hdr.bnode_map_sz, rblock, imap_hdr.rblock_sz);
+
+	err=send_rq(&pkt, 0, PUT_BNODE_MAP, rq_pkt.hdr.id, 0, 0, 0);
+	if(err==-1) {
+		error("put_bnode_maps(): Cannot send the PUT_BNODE_MAP reply to %s.", ntop);
+		ret=-1;
+		goto finish;
+	}
+
+finish:
+	if(rblock)
+		xfree(rblock);
+	pkt_free(&pkt, 1);
+	xfree(ntop);
+	return ret;
+}
+
+/* get_bnode_map: It sends the GET_BNODE_MAP request to retrieve the 
+ * dst_node's bnode_map.
+ */
+map_bnode *get_bnode_map(inet_prefix to, u_int *bmap_nodes)
+{
+	PACKET pkt, rpkt;
+	char *ntop;
+	int err;
+	struct bnode_map_hdr imap_hdr;
+	map_rnode *rblock=0;
+	map_bnode *bnode_map, *ret=0;
+	
+	memset(&pkt, '\0', sizeof(PACKET));
+	memset(&rpkt, '\0', sizeof(PACKET));
+	
+	ntop=inet_to_str(&to);
+	
+	pkt_addto(&pkt, &to);
+	pkt.sk_type=SKT_TCP;
+	err=send_rq(&pkt, 0, GET_BNODE_MAP, 0, PUT_BNODE_MAP, 1, &rpkt);
+	if(err==-1) {
+		ret=0;
+		goto finish;
+	}
+	
+	memcpy(&imap_hdr, rpkt.msg, sizeof(struct bnode_map_hdr));
+	if(imap_hdr.rblock_sz > MAXBNODE_RNODEBLOCK || imap_hdr.bnode_map_sz > MAXGROUPBNODE*sizeof(map_bnode)) {
+		error("Malformed PUT_BNODE_MAP request hdr.");
+		ret=0;
+		goto finish;
+	}
+		
+	/*Extracting the map...*/
+	*bmap_nodes=imap_hdr.bnode_map_sz/sizeof(map_bnode);
+	ret=bnode_map=xmalloc(imap_hdr.bnode_map_sz);
+	memcpy(bnode_map, rpkt.msg+sizeof(struct bnode_map_hdr), imap_hdr.bnode_map_sz);
+	
+	/*Extracting the rnodes block and merging it to the map*/
+	rblock=rpkt.msg+sizeof(struct bnode_map_hdr)+imap_hdr.bnode_map_sz;
+	err=map_store_rblock(bnode_map, *bmap_nodes, rblock, imap_hdr.rblock_sz/sizeof(map_rnode));
+	if(err!=imap_hdr.rblock_sz/sizeof(map_rnode)) {
+		error("An error occurred while storing the rnodes block in the bnode_map");
+		free_map(bnode_map, *bmap_nodes);
+		ret=0;
+		goto finish;
+	}
+	
+	/*Finished, yeah*/
+finish:
+	pkt_free(&pkt, 0);
+	pkt_free(&rpkt, 1);
+        xfree(ntop);
+	return ret;
+}
+
+
 int netsukuku_hook(char *dev)
 	
 	int i, e=0, idx, imaps=0, ret=0;
@@ -356,6 +459,7 @@ int netsukuku_hook(char *dev)
 
 	srand(time(0));	
 	debug(DBG_NOISE, "Starting the hooking");
+
 	if(my_family==AF_INET)
 		idata[0]=HOOKING_IP;
 	else
@@ -371,7 +475,9 @@ int netsukuku_hook(char *dev)
 	if(route_add_df_gw(dev))
 		fatal("%s:%d: Couldn't set the default gw for %s", ERROR_POS, dev);
 
+
 		/* * * 		The beginning          * * */
+
 	debug(DBG_NORMAL, "The hook begins. Starting to scan the area");
 	me.cur_node->flags|=MAP_HNODE;
 	
@@ -417,10 +523,8 @@ int netsukuku_hook(char *dev)
 	e=0;
 	rq=radar_q;
 	for(i=0; i<me.cur_node->links; i++) {
-		if(!(rq=find_ip_radar_q(me.cur_node->r_node[i].r_node))) 
-			fatal("%s:%d: This ultra fatal error goes against the laws of the universe. It's not possible!! Pray");
-		
-		if(!get_ext_map(rq->ip, &me.ext_mapm, &new_groot)) {
+		rq=find_ip_radar_q(me.cur_node->r_node[i].r_node);
+		if(!get_ext_map(rq->ip, &me.ext_map, &new_groot)) {
 			e=1;
 			break;
 		}
@@ -438,9 +542,7 @@ int netsukuku_hook(char *dev)
 	merg_map=xmalloc(me.cur_node->links*sizeof(map_node *));
 	memset(merg_map, 0, me.cur_node->links*sizeof(map_node *));
 	for(i=0; i<me.cur_node->links; i++) {
-		if(!(rq=find_ip_radar_q(me.cur_node->r_node[i].r_node))) 
-			fatal("%s:%d: This ultra fatal error goes against the laws of the universe. It's not possible!! Pray");
-		
+		rq=find_ip_radar_q(me.cur_node->r_node[i].r_node);
 		if(iptogid(rq->ip) != me.cur_gid)
 			/*This node isn't part of our gnode, let's skip it*/
 			continue; 
@@ -456,6 +558,23 @@ int netsukuku_hook(char *dev)
 	for(i=0, i<imaps; i++)
 		free_map(merg_map[i], 0);
 	xfree(merg_map);
+
+	/*Wow, the last step! Let's get the bnode map. Fast, fast, quick quick!*/
+	e=0;
+	for(i=0; i<me.cur_node->links; i++) {
+		rq=find_ip_radar_q(me.cur_node->r_node[i].r_node);
+		if(iptogid(rq->ip) != me.cur_gid)
+			/*This node isn't part of our gnode, let's skip it*/
+			continue; 
+			
+		if(!me.bnode_map=get_bnode_map(rq->ip, &me.cur_bnode)) {
+			e=1;
+			break;
+		}
+	}
+	if(!e)
+		fatal("None of the rnodes in this area gave me the bnode map. (Bastards!)");
+
 
 finish:
 	/* We must reset the radar_queue because the first radar_scan used while hooking

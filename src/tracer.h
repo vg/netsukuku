@@ -50,6 +50,11 @@ struct bnode_chunk
 };
 #define BNODEBLOCK_SZ(links) (sizeof(bnode_hdr)+sizeof(bnode_chunk)*(links))
 
+/*These defines make the life easier, son instead of writing int_map_hdr I write bnode_map_hdr.
+ * Cool eh? ^_^. int_map_hdr is in pkts.h*/
+#define bnode_map_hdr 		int_map_hdr
+#define bnode_map_sz   		int_map_sz
+#define BNODE_MAP_BLOCK_SZ 	INT_MAP_BLOCK_SZ
 
 int tracer_verify_pkt(struct tracer_chunk *tracer, int hops);
 char *tracer_pack_pkt(struct bcast_hdr *bcast_hdr, struct tracer_hdr *tracer_hdr, struct tracer_chunk *tracer, 

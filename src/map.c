@@ -495,6 +495,7 @@ int map_store_rblock(map_node *map, int maxgroupnode, map_rnode *rblock, int cou
 	return c; /*If it's all ok "c" has to be == sizeof(rblock)*count*/
 }
 
+/** save/load int_map **/
 int save_map(map_node *map, map_node *root_node, char *file)
 {
 	FILE *fd;
@@ -573,10 +574,11 @@ map_node *load_map(char *file)
 	return map;
 }
 
+/**  save/load bnode_map **/
 int save_bmap(map_bnode *bmap, u_int bmap_nodes, char *file)
 {
 	FILE *fd;
-	struct int_map_hdr imap_hdr;
+	struct bnode_map_hdr imap_hdr;
 	map_rnode *rblock;
 	int count;
 	
@@ -591,11 +593,11 @@ int save_bmap(map_bnode *bmap, u_int bmap_nodes, char *file)
 	rblock=map_get_rblock(bmap, bmap_nodes, &count);
 	imap_hdr.root_node=0;
 	imap_hdr.rblock_sz=count*sizeof(map_rnode);
-	imap_hdr.int_map_sz=bmap_nodes*sizeof(map_node);
+	imap_hdr.bnode_map_sz=bmap_nodes*sizeof(map_bnode);
 	
 	/*Write!*/
-	fwrite(&imap_hdr, sizeof(struct int_map_hdr), 1, fd);
-	fwrite(bmap, imap_hdr.int_map_sz, 1, fd);
+	fwrite(&imap_hdr, sizeof(struct bnode_map_hdr), 1, fd);
+	fwrite(bmap, imap_hdr.bnode_map_sz, 1, fd);
 	fwrite(rblock, imap_hdr.rblock_sz, 1, fd);
 
 	fclose(fd);
@@ -606,7 +608,7 @@ map_bnode *load_bmap(char *file, u_int *bmap_nodes)
 {
 	map_bnode *bmap;
 	FILE *fd;
-	struct int_map_hdr imap_hdr;
+	struct bnode_map_hdr imap_hdr;
 	map_rnode *rblock;
 	int count, err;
 	
@@ -615,17 +617,17 @@ map_bnode *load_bmap(char *file, u_int *bmap_nodes)
 		return 0;
 	}
 
-	fread(&imap_hdr, sizeof(struct int_map_hdr), 1, fd);
+	fread(&imap_hdr, sizeof(struct bnode_map_hdr), 1, fd);
 
-	if(imap_hdr.rblock_sz > MAXBNODE_RNODEBLOCK || imap_hdr.int_map_sz > MAXGROUPBNODE*sizeof(map_bnode)) {
+	if(imap_hdr.rblock_sz > MAXBNODE_RNODEBLOCK || imap_hdr.bnode_map_sz > MAXGROUPBNODE*sizeof(map_bnode)) {
 		error("Malformed bmap file: %s. Aborting load_bmap().", file);
 		return 0;
 	}
 
 	/*Extracting the map...*/
-	*bmap_nodes=imap_hdr.int_map_sz/sizeof(map_bnode);
-	bmap=xmalloc(imap_hdr.int_map_sz);
-	fread(bmap, imap_hdr.int_map_sz, 1, fd);
+	*bmap_nodes=imap_hdr.bnode_map_sz/sizeof(map_bnode);
+	bmap=xmalloc(imap_hdr.bnode_map_sz);
+	fread(bmap, imap_hdr.bnode_map_sz, 1, fd);
 	
 	/*Extracting the rnodes block and merging it to the map*/
 	rblock=xmalloc(imap_hdr.rblock_sz);

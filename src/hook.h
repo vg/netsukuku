@@ -33,6 +33,16 @@ struct free_ips
 
 int get_free_ips(inet_prefix to, struct free_ips *fi_hdr, int *ips):
 int put_free_ips(PACKET rq_pkt);
+
+int put_ext_map(PACKET rq_pkt);
+map_gnode *get_ext_map(inet_prefix to, map_gnode *new_root);
+
+int put_int_map(PACKET rq_pkt);
 map_node *get_int_map(inet_prefix to, map_node *new_root);
+
+int put_bnode_map(PACKET rq_pkt);
+map_bnode *get_bnode_map(inet_prefix to, u_int *bmap_nodes);
+
 int netsukuku_hook(char *dev);
-int snode_transfrom();
+
+/*int snode_transfrom();*/

@@ -1,5 +1,3 @@
-qspn.c	       88%: usare MAX_LINKS quando viene aggiunta una rotta, qspn_send
-hook.c: send_map_bnode, get_map_bnode.
 gnode support  60%
 netsukuku.c (Parte minimale)
 come fare per aggiungere un route rule per specificare un'intero range nel campo from?

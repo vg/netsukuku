@@ -30,17 +30,21 @@ int tracer_verify_pkt(struct tracer_chunk *tracer, int hops)
 	return 0;
 }
 
-/* tracer_add_entry: Add our entry ("node") to the tracer pkt `tracer' wich has `hops'.
- * It returns the modified tracer pkt in a newly mallocated struct and it increments the `*hops' */
+/* tracer_add_entry: Add our entry `node' to the tracer pkt `tracer' wich has `hops'.
+ * It returns the modified tracer pkt in a newly mallocated struct and it increments the `*hops'.
+ * If `tracer' is null it will return the new tracer_pkt.
+ * On errors it returns NULL.*/
 struct tracer_chunk *tracer_add_entry(map_node *map, map_node *node, struct tracer_chunk *tracer, int *hops)
 {
 	struct tracer_chunk *t;
 
-	if(tracer_verify_pkt(tracer, *hops))
-		return 0;
+	if(tracer || *hops)
+		if(*hops < 0 || tracer_verify_pkt(tracer, *hops))
+			return 0;
 	*hops++;
 	t=xmalloc(sizeof(struct tracer_chunk)*hops);
-	memcpy(t, tracer, sizeof(struct tracer_chunk) * (*hops-1));
+	if(tracer || *hops)
+		memcpy(t, tracer, sizeof(struct tracer_chunk) * (*hops-1));
 	t[hops-1].node=pos_from_node(node, map);
 	memcpy(&t[hops-1].rtt, &me.cur_node->r_node[e].rtt, sizeof(struct timeval));
 
@@ -174,7 +178,7 @@ int tracer_store_pkt(map_node *map, struct tracer_hdr *tracer_hdr, struct tracer
 	struct timeval trtt;
 	map_node *from, *node;
 	map_rnode rn;
-	int i, e, diff, bb, bm;
+	int i, e, diff, bb, bm, x;
 
 	if(tracer_verify_pkt(tracer, *hops))
 		return 0;
@@ -263,6 +267,11 @@ int tracer_store_pkt(map_node *map, struct tracer_hdr *tracer_hdr, struct tracer
 		/*ok, now the kernel needs a refresh*/
 		if(node->flags & MAP_UPDATE) {
 			rnode_trtt_order(node);
+			if(node->links > MAXROUTES) { /*If we have too many routes we purge the worst ones*/
+				diff=node->links - MAXROUTES;
+				for(x=MAXROUTES; x < node->links; x++)
+					rnode_del(node, x);
+			}
 			krnl_update_node(node);
 		}
 	}

@@ -411,13 +411,19 @@ int pkt_exec(PACKET pkt)
 		case ECHO_REPLY:
 			err=radar_recv_reply(pkt);
 			break;
+			
 		case GET_FREE_IPS:
 			err=put_free_ips(pkt);
 			break;
 		case GET_INT_MAP:
 			err=put_int_map(pkt);
+		case GET_BNODE_MAP:
+			err=put_bnode_map(pkt);
+		case GET_EXT_MAP:
+			err=put_ext_map(pkt);
+
 		default:
-			/*never reached*/
+			/*never reached... (some months later)... Why the hell did I write this? hahaha*/
 			break;
 	}
 	
