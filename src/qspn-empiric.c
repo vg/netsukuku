@@ -93,10 +93,10 @@ random_node:
 		rnode_add(&int_map[i], &rtmp);
 
 		/*Does exist the node "rnode_rnd" added as rnode?*/
-		if(int_map[rnode_rnd].flags & MAP_VOID)	
+		if(int_map[rnode_rnd].flags & MAP_VOID)	{
 			/*No, let's create it*/
 			gen_rnd_map(rnode_rnd, i, rtmp.rtt.tv_usec);
-		else {
+		} else {
 			/*It does, let's check if it has a link to me*/
 			int c=0;
 			for(b=0; b<int_map[rnode_rnd].links; b++)
@@ -203,15 +203,15 @@ void *send_qspn_reply(void *argv)
 	usleep(qopt->sleep);
 	fprintf(stderr, "%u: qspn_reply from %d to %d\n", pthread_self(), qopt->q.from, to);
 
+	/*Let's store the tracer_pkt first*/
+	pkt=store_tracer_pkt(qopt);	
+
 	/*Bad old broadcast pkt*/
 	if(qopt->q.broadcast <= int_map[to].broadcast[qopt->q.from]) {
 		fprintf(stderr, "%u: DROPPED old brdcast: q.broadcast: %d, qopt->q.from broadcast: %d\n", pthread_self(), qopt->q.broadcast, int_map[to].broadcast[qopt->q.from]);
 		return;
 	} else
 		int_map[to].broadcast[qopt->q.from]=qopt->q.broadcast;
-
-	/*Now we store the received pkt in our pkt_db*/
-	pkt=store_tracer_pkt(qopt);	
 
 	/*Let's keep broadcasting*/
 	for(x=0; x<int_map[to].links; x++) {	
@@ -244,6 +244,67 @@ void *send_qspn_reply(void *argv)
 	total_threads--;
 }
 
+/*Holy Disagio, I wrote this piece of code without seeing actually it, I don't
+ * know what it will generate... where am I?
+ */
+void *send_qspn_open(void *argv)
+{
+	struct q_opt *qopt=(struct q_opt *)argv, *nopt;
+	int x, i=0, dst, pkt, to=qopt->q.to;
+
+	usleep(qopt->sleep);
+	fprintf(stderr, "%u: qspn_open from %d to %d\n", pthread_self(), qopt->q.from, to);
+	
+	pkt=store_tracer_pkt(qopt);	
+	
+	for(x=0; x<int_map[to].links; x++) {
+		if((map_node *)int_map[to].r_node[x].r_node == &int_map[qopt->q.from]) {
+			int_map[to].r_node[x].flags|=QSPN_OPENED;
+			/*fprintf(stderr, "%u: node:%d->rnode %d closed\n", pthread_self(), to, x);*/
+		}
+		if(!(int_map[to].r_node[x].flags & QSPN_OPENED))
+			i++;
+	}
+	/*Shall we send a QSPN_REPLY?*/
+	if(!i) {
+		/*Yai! We've finished the reopening of heaven*/
+		fprintf(stderr, "%u: Yai! We've finished the reopening of heaven\n", pthread_self());
+		return;
+	}
+
+	for(x=0; x<int_map[to].links; x++) {	
+		if((map_node *)int_map[to].r_node[x].r_node == &int_map[qopt->q.from]) 
+			continue;
+
+		if(int_map[to].r_node[x].flags & QSPN_OPENED)
+			continue;
+
+		dst=((void *)int_map[to].r_node[x].r_node - (void *)int_map)/sizeof(map_node);
+		gbl_stat.total_pkts++;
+		node_stat[to].total_pkts++;
+
+		nopt=xmalloc(sizeof(struct q_opt));
+		memset(nopt, 0, sizeof(struct q_opt));
+		nopt->q.from=to;
+		nopt->q.to=dst;
+		nopt->q.routes=pkt_db[to][pkt]->routes;
+		nopt->q.tracer=pkt_db[to][pkt]->tracer;
+		nopt->sleep=int_map[to].r_node[x].rtt.tv_usec;
+		nopt->q.broadcast=pkt_db[to][pkt]->broadcast;
+		nopt->join=qopt->join;
+
+		if(!(int_map[to].r_node[x].flags & QSPN_OPENED)) {
+			gbl_stat.qspn_requests++;
+			node_stat[to].qspn_requests++;
+			nopt->q.op=OP_OPEN;
+			thread_joint(qopt->join, send_qspn_open, (void *)nopt);
+		}
+	}
+	xfree(qopt);
+	total_threads--;
+}
+
+
 void *send_qspn_pkt(void *argv)
 {
 	struct q_opt *qopt=(struct q_opt *)argv, *nopt;
@@ -267,6 +328,41 @@ void *send_qspn_pkt(void *argv)
 		if(!(int_map[to].r_node[x].flags & QSPN_CLOSED))
 			i++;
 	}
+
+#ifdef Q_OPEN
+	if(!i && !(int_map[to].flags & QSPN_REPLIED) && !(int_map[to].flags & QSPN_STARTER)) {
+		/*W00t I'm an extreme node!*/
+		fprintf(stderr, "%u: W00t I'm an extreme node!\n", pthread_self());
+		
+		int_map[to].flags|=QSPN_REPLIED;
+		for(x=0; x<int_map[to].links; x++) {	
+			if((map_node *)int_map[to].r_node[x].r_node == &int_map[qopt->q.from]) 
+				continue;
+		
+			dst=((void *)int_map[to].r_node[x].r_node - (void *)int_map)/sizeof(map_node);
+			gbl_stat.total_pkts++;
+			node_stat[to].total_pkts++;
+
+			nopt=xmalloc(sizeof(struct q_opt));
+			memset(nopt, 0, sizeof(struct q_opt));
+			nopt->sleep=int_map[to].r_node[x].rtt.tv_usec;
+			nopt->q.to=dst;
+			nopt->q.from=to;
+			nopt->q.routes=pkt_db[to][pkt]->routes;
+			nopt->q.tracer=pkt_db[to][pkt]->tracer;
+			nopt->q.op=OP_OPEN;
+			nopt->q.broadcast=pkt_db[to][pkt]->broadcast;
+			nopt->join=qopt->join;
+
+			gbl_stat.qspn_replies++;
+			node_stat[to].qspn_replies++;
+			fprintf(stderr, "%u: Sending a qspn_open to %d\n", pthread_self(), dst);
+			thread_joint(qopt->join, send_qspn_open, (void *)nopt);
+			xfree(qopt);
+			return;
+		}
+	}
+#else	/*Q_OPEN*/
 	/*Shall we send a QSPN_REPLY?*/
 	if(!i && !(int_map[to].flags & QSPN_REPLIED) && !(int_map[to].flags & QSPN_STARTER)) {
 		/*W00t I'm an extreme node!*/
@@ -304,11 +400,12 @@ void *send_qspn_pkt(void *argv)
 			return;
 		}
 	}
+#endif /*Q_OPEN*/
 
 	for(x=0; x<int_map[to].links; x++) {	
 		if((map_node *)int_map[to].r_node[x].r_node == &int_map[qopt->q.from]) 
 			continue;
-#ifndef BACKPRO
+#ifndef Q_BACKPRO
 		if(int_map[to].r_node[x].flags & QSPN_CLOSED)
 			continue;
 #endif
@@ -328,7 +425,7 @@ void *send_qspn_pkt(void *argv)
 		nopt->join=qopt->join;
 
 		if(int_map[to].r_node[x].flags & QSPN_CLOSED && !(int_map[to].r_node[x].flags & QSPN_BACKPRO)) {
-#ifdef BACKPRO
+#ifdef Q_BACKPRO
 			gbl_stat.qspn_backpro++;
 			node_stat[to].qspn_backpro++;
 			nopt->q.op=OP_BACKPRO;
@@ -336,7 +433,7 @@ void *send_qspn_pkt(void *argv)
 			thread_joint(qopt->join, send_qspn_backpro, (void *)nopt);
 #else
 			0;
-#endif
+#endif	/*Q_BACKPRO*/
 		} else {
 			gbl_stat.qspn_requests++;
 			node_stat[to].qspn_requests++;
@@ -426,7 +523,7 @@ int lgl_print_map(map_node *map, char *lgl_mapfile)
 
 void print_data(char *file)
 {
-	int i, x, e;
+	int i, x, e, null, maxgroupnode;
 	FILE *fd;
 
 	fprintf(stderr, "Saving the d4ta\n");
@@ -434,9 +531,13 @@ void print_data(char *file)
 
 	fprintf(fd, "---- Test dump n. 6 ----\n");
 
+	for(i=0, null=0; i<MAXGROUPNODE; i++)
+		if(!int_map[i].links)
+			null++;
+	maxgroupnode=MAXGROUPNODE-null;
 	for(i=0; i<MAXGROUPNODE; i++)
-		if(rt_total[i]<MAXGROUPNODE && int_map[i].links) 
-			fprintf(fd,"*WARNING* The node %d has only %d/%d routes *WARNING*\n", i, rt_total[i], MAXGROUPNODE);
+		if(rt_total[i]<maxgroupnode && int_map[i].links) 
+			fprintf(fd,"*WARNING* The node %d has only %d/%d routes *WARNING*\n", i, rt_total[i], maxgroupnode);
 
 	fprintf(fd, "- Gbl_stat{\n\ttotal_pkts: %d\n\tqspn_requests: %d"
 			"\n\tqspn_replies: %d\n\tqspn_backpro: %d }, QSPN finished in :%d seconds\n",
@@ -565,6 +666,7 @@ int main(int argc, char **argv)
 		thread_joint(nopt->join, send_qspn_pkt, (void *)nopt);
 	}
 	end=time(0);
+	time_stat=end-start;
 	int_map[r].flags&=~QSPN_STARTER;
 		
 	printf("Saving the data to QSPN1...\n");

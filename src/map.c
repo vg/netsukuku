@@ -469,14 +469,13 @@ map_node *load_map(char *file)
 	}
 
 	fread(&imap_hdr, sizeof(struct int_map_hdr), 1, fd);
+#ifndef QSPN_EMPIRIC
 	if(imap_hdr.rblock_sz > MAXRNODEBLOCK || imap_hdr.int_map_sz > MAXGROUPNODE*sizeof(map_node) 
 			|| imap_hdr.root_node > MAXGROUPNODE) {
-		/*TODO WARNING WARNING XXX DOME: this checks is always true!*/
-		printf("Malformed map file: root_node: %hu/%u, rblock_sz: %u, int_map_sz: %u. Aborting load_map().", 
-				imap_hdr.root_node, MAXRNODEBLOCK, imap_hdr.rblock_sz, imap_hdr.int_map_sz);
 		error("Malformed map file. Aborting load_map().");
-	//	return 0;
+		return 0;
 	}
+#endif
 		
 	/*Extracting the map...*/
 	map=init_map(0);

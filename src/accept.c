@@ -94,11 +94,11 @@ void update_accept_tbl(void)
 				if(!accept_tbl[i].acp_t[e])
 					break;
 				k=kill(accept_tbl[i].pid[e], 0);
-				debug("ACPT: Updating tbl: cur_t: %d, accept_tbl[%d].acp_t[%d]:%d+%d, accept_tbl[i].pid[e]: %d, kill=%d (ESRCH=%d)",
+				debug(DBG_SOFT, "ACPT: Updating tbl: cur_t: %d, accept_tbl[%d].acp_t[%d]:%d+%d, accept_tbl[i].pid[e]: %d, kill=%d (ESRCH=%d)",
 						cur_t, i,e, accept_tbl[i].acp_t[e], free_accept_time, accept_tbl[i].pid[e], k, ESRCH);
 				if((accept_tbl[i].closed[e] || (k==-1 && errno==ESRCH)) && 
 						accept_tbl[i].acp_t[e]+free_accept_time <= cur_t) {
-					debug("ACPT: removing from tbl");
+					debug(DBG_SOFT,"ACPT: removing from tbl");
 					accept_tbl[i].accepts--;
 					accept_tbl[i].acp_t[e]=0;
 					accept_tbl[i].closed[e]=0;
@@ -146,7 +146,7 @@ int is_ip_acpt_free(inet_prefix ip, int *index)
 	if((idx=find_ip_acpt(ip))==-1)
 		if((idx=find_first_free())==-1)
 			return E_TOO_MANY_CONN;
-	debug("ACPT: accept_tbl[idx].accepts: %d, max_acp: %d", accept_tbl[idx].accepts, max_accepts_per_host);
+	debug(DBG_SOFT, "ACPT: accept_tbl[idx].accepts: %d, max_acp: %d", accept_tbl[idx].accepts, max_accepts_per_host);
 	if(accept_tbl[idx].accepts > max_accepts_per_host)
 		return E_ACCEPT_TBL_FULL;
 

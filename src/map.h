@@ -44,9 +44,10 @@
 #define MAP_UPDATE	(1<<7)		/*If it is set, the corresponding route in the krnl will be updated*/
 #define MAP_VOID	(1<<8)		/*It indicates a non existent node*/
 #define QSPN_CLOSED	(1<<9)		/*This flag is set only to the rnodes, it puts a link in a QSPN_CLOSED state*/
-#define QSPN_STARTER	(1<<10)		/*Used only by qspn-empiric.c*/
-#define QSPN_REPLIED	(1<<11)		/*When the node send the qspn_reply it will never reply again to the same qspn*/
-#define QSPN_BACKPRO	(1<<12)		/*This marks the r_node where the QSPN_BACKPRO has been sent*/
+#define QSPN_OPENED	(1<<10)		/*It puts a link in a QSPN_OPEN state*/
+#define QSPN_STARTER	(1<<11)		/*Used only by qspn-empiric.c*/
+#define QSPN_REPLIED	(1<<12)		/*When the node send the qspn_reply it will never reply again to the same qspn*/
+#define QSPN_BACKPRO	(1<<13)		/*This marks the r_node where the QSPN_BACKPRO has been sent*/
 
 
 /*map_rnode is what map_node.r_node points to*/

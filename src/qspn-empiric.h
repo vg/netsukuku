@@ -20,8 +20,10 @@
 #include <pthread.h>
 #include "map.h"
 
-#undef BACKPRO
-#define BACKPRO
+#define Q_BACKPRO
+#undef Q_BACKPRO
+#define Q_OPEN
+#undef Q_OPEN
 
 pthread_mutex_t mutex[MAXGROUPNODE];
 int total_threads=0;
@@ -44,6 +46,8 @@ short rt_total[MAXGROUPNODE];
 
 
 #define OP_REQUEST 	82
+#define OP_CLOSE 	OP_REQUEST
+#define OP_OPEN 	28
 #define OP_REPLY	69
 #define OP_BACKPRO	66
 
