@@ -21,8 +21,50 @@
 #include <sys/time.h>
 
 #include "map.h"
+#include "gmap.h"
 #include "xmalloc.h"
 #include "log.h"
+
+/*Converts an address of a struct in the map to an ip*/
+void maptoip(u_int mapstart, u_int mapoff, inet_prefix ipstart, inet_prefix *ret)
+{
+	if(ipstart.family==AF_INET) {
+		ret->data[0]=((mapoff-mapstart)/sizeof(map_node))+ipstart.data[0];
+		ret->family=AF_INET;
+		ret->len=4;
+	} else {
+		ret->family=AF_INET6;
+		ret->len=16;
+		memcpy(ret->data, ipstart.data, sizeof(inet_prefix));
+		sum_int(((mapoff-mapstart)/sizeof(map_node)), ret->data);
+	}
+}
+
+/*Converts an ip to an address of a struct in the map*/
+int iptomap(u_int mapstart, inet_prefix ip, inet_prefix ipstart, u_int *ret)
+{
+	if(ip.family==AF_INET)
+		*ret=((ip.data[0]-ipstart.data[0])*sizeof(map_node))+mapstart;
+	else {
+		__u32 h_ip[4], h_ipstart[4];
+
+		memcpy(h_ip, ip.data, 4);
+		memcpy(h_ipstart, ipstart.data, 4);
+
+		sub_128(h_ip, h_ipstart);
+		/*The result is always < MAXGROUPNODE, so we can take for grant that
+		 * we have only one u_int
+		 */
+		ret=h_ipstart[0]*sizeof(map_node)+mapstart;
+		/*TODO: bisogna usare h_ipstart[0] o h_ipstart[3]?? Spero che sia 0 perche' e' in ntohl*/
+	}
+	if(*ret > INTMAP_END(mapstart)) {
+		/*Ok, this is an extern ip to our gnode. We return the gnode_id of this ip*/
+		ret=IP2GNODE(*ret);
+		return 1;
+	}
+	return 0;
+}
 
 map_node *init_map(size_t len)
 {
@@ -298,7 +340,7 @@ int merge_maps(map_node *base, map_node *new, map_node *base_root, map_node *new
 }
 
 /*mod_rnode_addr: Modify_rnode_address*/
-int mod_rnode_addr(map_node *node, map_node *map_start, map_node *new_start)
+int mod_rnode_addr(map_node *node, int *map_start, int *new_start)
 {
 	int e;
 	for(e=0; e<node->links; e++)
@@ -306,48 +348,71 @@ int mod_rnode_addr(map_node *node, map_node *map_start, map_node *new_start)
 	return 0;
 }
 
-/*get_rnode_block: It packs all the rnode structs of a map. The "r_node" pointer
+/* get_rnode_block: It packs all the rnode structs of a node. The "r_node" pointer
  * of the map_rnode struct is changed to point to the position of the node in the map,
- * instead of the address. get_rnode_block returns a pointer to the start of the structs
- * and stores in "count" the number of total structs written.
+ * instead of the address. get_rnode_block returns the number of rnode structs packed
  */
-map_rnode *get_rnode_block(map_node *map, int *count)
+int get_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart)
 {
-	int i, e=0, tot=0;
+	int e;
+
+	mod_rnode_addr(node, map, 0);
+	for(e=0; e<node->.links; e++)
+		memcpy(rblock[e+rstart], node->r_node[e], sizeof(map_rnode));
+
+	return e;
+}
+
+/* map_get_rblock: It uses get_rnode_block to pack all the int_map's rnode.
+ * It returns a pointer to the start of the rnode block and stores in "count" 
+ * the number of rnode structs packed*/
+map_rnode *map_get_rblock(map_node *map, int *count)
+{
+	int i, c=0;
  	map_rnode *rblock;
 	
 	for(i=0; i<MAXGROUPNODE; i++)
 		tot+=map[i].links;
 	rblock=(map_rnode *)xmalloc(sizeof(map_rnode)*tot);
-	
+
 	for(i=0; i<MAXGROUPNODE; i++) {
-		mod_rnode_addr(map[i], map, 0);
-		memcpy(rblock+e, map[i].r_node, sizeof(map_rnode)*map[i].links);
-		e+=sizeof(map_rnode)*map[i].links;
+		c+=get_rnode_block((int *)map, map[i], rblock, c);
 	}
 	
-	*count=tot;
 	return rblock;
 }
 
-/*store_rnode_block: Given a correct map it restores all the r_node structs in the
- * map from the rnode_block. "count" is the number of rnode struct present in the 
- * "rblock".
+
+/* store_rnode_block: Given a correct node it restores in it all the r_node structs
+ * contained in in the rnode_block. It returns the number of rnode structs restored.
  */
-int store_rnode_block(map_node *map, map_rnode *rblock, int count) 
+int store_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart) 
 {
-	int i, e=0;
+	int i;
 
-	for(i=0; i<MAXGROUPNODE; i++) {
-		if(map[i].r_node)
-			xfree(map[i].r_node);
-		else
-			map[i].r_node=xmalloc(sizeof(map_rnode));
+	if(node->r_node)
+		xfree(node->r_node);
+	else
+		node->r_node=xmalloc(sizeof(map_rnode));
 
-		memcpy(map[i].r_node, rblock+e, sizeof(map_rnode)*map[i].links);
-		mod_rnode_addr(map[i], 0, map);
-		e+=sizeof(map_rnode)*map[i].links;
-	}
+	for(i=0; i<node->links, i++)
+		memcpy(node->r_node[i], rblock[i+rstart], sizeof(map_rnode));
+	mod_rnode_addr(node, 0, map);
 
-	return e; /*If it's all ok e has to be == sizeof(rblock)*count*/
+	return i;
 }
+
+/* map_store_rblock: Given a correct int_map it restores all the r_node structs in the
+ * map from the rnode_block using store_rnode_block. "count" is the number of rnode structs
+ * present in the "rblock".
+ */
+int map_store_rblock(map_node *map, map_rnode *rblock, int count)
+{
+	int i, c=0;
+
+	for(i=0; i<count; i++)
+		c+=store_rnode_block((int *)map, map[i], rblock, c);
+
+	return c; /*If it's all ok "c" has to be == sizeof(rblock)*count*/
+}
+

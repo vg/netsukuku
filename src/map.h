@@ -77,92 +77,16 @@ typedef map_node * int_map;
  *   The only execption is the root_node itself. The root_node's map_node.r_node keeps
  *   all its rnodes as a normal (non qspn) map would.
  */
-typedef map_node qmap_node;
-typedef qmap_node *qint_map;
-
-
-/***Groupnode stuff***/
-#define GMAP_ME		1
-#define GMAP_VOID	(1<<1)
-#define GMAP_BNODE	(1<<2)
-#define GMAP_FULL	(1<<3)		/*The gnode is full!! aaahh, run away!*/
-
-/*Given an ip number it returns the corresponding groupnode id*/
-#define IP2GNODE(ip) ((ip)/MAXGROUPNODE) /*TODO:
-					   USARE le ipv6-gmp per dividere!*/
-
-/*Converts an address of a struct in the map to a Group_node Id*/
-#define GMAP2GI(mapstart, mapoff)	((((mapoff)-(mapstart))/sizeof(map_gnode)))
-/*Converts a Groupnode Id to an address of a struct in the map*/
-#define GI2GMAP(mapstart, gi)		(((gi)*sizeof(map_gnode))+(mapstart))
-
-typedef struct
-{
-        /*The groupnode will cover the range from me.ipstart to me.ipstart+MAXGROUPNODE*/
-
-	__u16 		gid;		/*Gnode Id*/
-	__u16		layer;
-	__u16 		seeds;		/*The number of active static nodes connected to this gnode*/
-
-	/*Th4 g_m4p starts here. Note that it is a normal map: each node-struct has the pointer
-	 * to the nodes connected to it*/
-	u_short 	flags;
-	__u16		links;		 /*Number of gnode connected to this gnode*/
-	map_rnode	*r_node;	 /*This structs will be kept in ascending order considering their rnode_t.rtt*/
-
-	/*In the own g_node entry there are also the boarder_nodes in g_node.r_node*/
-}map_gnode;
-
-typedef map_gnode * ext_map;
+typedef qmap_node *int_map;
 
 #define INTMAP_END(mapstart)	((sizeof(map_node)*MAXGROUPNODE)+(mapstart))
-/*Converts an address of a struct in the map to an ip*/
-void maptoip(u_int mapstart, u_int mapoff, inet_prefix ipstart, inet_prefix *ret)
-{
-	if(ipstart.family==AF_INET) {
-		ret->data[0]=((mapoff-mapstart)/sizeof(map_node))+ipstart.data[0];
-		ret->family=AF_INET;
-		ret->len=4;
-	} else {
-		ret->family=AF_INET6;
-		ret->len=16;
-		memcpy(ret->data, ipstart.data, sizeof(inet_prefix));
-		sum_int(((mapoff-mapstart)/sizeof(map_node)), ret->data);
-	}
-}
-
-/*Converts an ip to an address of a struct in the map*/
-int iptomap(u_int mapstart, inet_prefix ip, inet_prefix ipstart, u_int *ret)
-{
-	if(ip.family==AF_INET)
-		*ret=((ip.data[0]-ipstart.data[0])*sizeof(map_node))+mapstart;
-	else {
-		__u32 h_ip[4], h_ipstart[4];
-
-		memcpy(h_ip, ip.data, 4);
-		memcpy(h_ipstart, ipstart.data, 4);
-
-		sub_128(h_ip, h_ipstart);
-		/*The result is always < MAXGROUPNODE, so we can take for grant that
-		 * we have only one u_int
-		 */
-		ret=h_ipstart[0]*sizeof(map_node)+mapstart;
-		/*TODO: bisogna usare h_ipstart[0] o h_ipstart[3]?? Spero che sia 0 perche' e' in ntohl*/
-	}
-	if(*ret > INTMAP_END(mapstart)) {
-		/*Ok, this is an extern ip to our gnode. We return the gnode_id of this ip*/
-		ret=IP2GNODE(*ret);
-		return 1;
-	}
-	return 0;
-}
 	
 /*TODO: spostare da un'altra parte!*/
 #define MILLISEC(x)	(((x).tv_sec*1000)+((x).tv_usec/1000))
 
-
 /* * * Functions' declaration * * */
-
+void maptoip(u_int mapstart, u_int mapoff, inet_prefix ipstart, inet_prefix *ret);
+int iptomap(u_int mapstart, inet_prefix ip, inet_prefix ipstart, u_int *ret);
 map_node *init_map(size_t len);
 void free_map(map_node *map, size_t count);
 map_rnode *rnode_insert(map_rnode *buf, size_t pos, map_rnode *new);
@@ -182,6 +106,8 @@ void node_recurse_trtt(map_node *node);
 void map_set_trtt(map_node *map);
 map_node *get_gw_node(map_node *node, u_short route);
 int merge_maps(map_node *base, map_node *new, map_node *base_root, map_node *new_root);
-int mod_rnode_addr(map_node *node, map_node *map_start, map_node *new_start);
-map_rnode *get_rnode_block(map_node *map, int *count);
-int store_rnode_block(map_node *map, map_rnode *rblock, int count);
+int mod_rnode_addr(map_node *node, int *map_start, int *new_start);
+int get_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart);
+map_rnode *map_get_rblock(map_node *map, int *count);
+int store_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart);
+int map_store_rblock(map_node *map, map_rnode *rblock, int count);

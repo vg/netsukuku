@@ -19,6 +19,7 @@
 #include <string.h>
 #include "libnetlink.h"
 #include "map.h"
+#include "gmap.h"
 #include "route.h"
 #include "netsukuku.h"
 #include "xmalloc.h"

@@ -25,6 +25,7 @@
 
 #include "ll_map.c"
 #include "map.h"
+#include "gmap.h"
 #include "inet.h"
 #include "netsukuku.h"
 #include "xmalloc.h"
@@ -98,7 +99,7 @@ int put_free_ips(PACKET rq_pkt)
 	pkt_addflags(&pkt, NULL);
 	pkt_addsk(&pkt, rq_pkt.sk, rq_pkt.sk_type);
 
-	if(me.cur_gnode.flags & GMAP_FULL) {
+	if(me.cur_gnode.g.flags & GMAP_FULL) {
 		/*<<My gnode is full, sry>>*/
 		pkt_fill_hdr(&pkt.hdr, rq_pkt.hdr.id, PUT_FREE_IPS, 0);
 		err=pkt_err(pkt, E_GNODE_FULL);
@@ -154,7 +155,7 @@ int put_ext_map(PACKET rq_pkt)
 	pkt_addflags(&pkt, NULL);
 	pkt_addsk(&pkt, rq_pkt.sk, rq_pkt.sk_type);
 
-	/*TODO: rblock=get_gnode_rblock(map, &count);*/
+	rblock=gmap_get_rblock(map, &count);
 	emap_hdr.root_node=(me.cur_gnode-me.ext_map)/sizeof(map_gnode);
 	emap_hdr.rblock_sz=count*sizeof(map_rnode);
 	emap_hdr.ext_map_sz=MAXGROUPNODE*sizeof(map_gnode);
@@ -218,7 +219,7 @@ int get_ext_map(inet_prefix to, map_gnode *ext_map, map_gnode *new_root)
 	
 	/*Extracting the rnodes block and merging it to the map*/
 	rblock=rpkt.msg+sizeof(struct ext_map_hdr)+emap_hdr.ext_map_sz;
-	/*TODO: err=store_rnode_block(ext_map, rblock, emap_hdr.rblock_sz/sizeof(map_rnode));*/
+	err=gmap_store_rblock(ext_map, rblock, emap_hdr.rblock_sz/sizeof(map_rnode));
 	if(err!=emap_hdr.rblock_sz) {
 		error("An error occurred while storing the rnodes block in the ext_map");
 		ret=-1;
@@ -256,7 +257,7 @@ int put_int_map(PACKET rq_pkt)
 	pkt_addflags(&pkt, NULL);
 	pkt_addsk(&pkt, rq_pkt.sk, rq_pkt.sk_type);
 
-	rblock=get_rnode_block(map, &count);
+	rblock=map_get_rblock(map, &count);
 	imap_hdr.root_node=(me.cur_node-me.int_map)/sizeof(map_node);
 	imap_hdr.rblock_sz=count*sizeof(map_rnode);
 	imap_hdr.int_map_sz=MAXGROUPNODE*sizeof(map_node);
@@ -320,7 +321,7 @@ int get_int_map(inet_prefix to, map_node *int_map, map_node *new_root)
 	
 	/*Extracting the rnodes block and merging it to the map*/
 	rblock=rpkt.msg+sizeof(struct int_map_hdr)+imap_hdr.int_map_sz;
-	err=store_rnode_block(int_map, rblock, imap_hdr.rblock_sz/sizeof(map_rnode));
+	err=map_store_rblock(int_map, rblock, imap_hdr.rblock_sz/sizeof(map_rnode));
 	if(err!=imap_hdr.rblock_sz) {
 		error("An error occurred while storing the rnodes block in the int_map");
 		ret=-1;
@@ -370,9 +371,12 @@ int netsukuku_hook(char *dev)
 	if(radar_scan())
 		fatal("%s:%d: Scan of the area failed. Cannot continue.", ERROR_POS);
 	
-	if(!me.cur_node->links)
-		fatal("%s:%d: No nodes founded! This is a black zone. Go somewhere else", ERROR_POS);
-
+	if(!me.cur_node->links) {
+		/*TODO:
+		 * create_new_gnode();
+		 */
+		loginfo("No nodes founded! This is a black zone. Creating a new_gnode. W00t we're the first node");
+	}
 	
 	/*Now we choose the nearest rnode we found and we send it the GET_FREE_IPS request*/
 	for(i=0; i<me.cur_node->links; i++) {
@@ -387,13 +391,12 @@ int netsukuku_hook(char *dev)
 	if(!e)
 		fatal("None of the nodes in this area gave me the free_ips info");
 
-	
 	/*Now we choose a random ip from the free ips we received*/
 	e=(rand()%(fi_hdr.ips-0+1))+0;		/*rnd_range algo: (rand()%(max-min+1))+min*/
 	maptoip(0, fips[e], fi_hdr.ipstart, &me.cur_ip);
 	if(set_dev_ip(me.cur_ip, dev))
 		fatal("%s:%d: Cannot set the tmp_ip in %s", ERROR_POS, dev);
-
+		
 	/*Fetch the ext_map from the nearest rnode*/
 	e=0;
 	for(i=0; i<me.cur_node->links; i++) {
@@ -407,6 +410,9 @@ int netsukuku_hook(char *dev)
 	}
 	if(!e)
 		fatal("None of the rnodes in this area gave me the extern map");
+	
+	/*Now we are ufficially in the fi_hdr.gid gnode*/
+	set_cur_gnode(fi_hdr.gid);
 	
 	/*Fetch the int_map from each rnode*/
 	e=0;
