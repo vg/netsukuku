@@ -19,6 +19,7 @@
 #include "log.h"
 #include <stdio.h>
 #include <syslog.h>
+#include <stdarg.h>
 
 extern char *__argv0;
 extern int dbg_lvl;
@@ -73,8 +74,10 @@ void debug(int lvl, const char *fmt,...)
 	}
 }
 
-void print_log(int level, const char *fmt, va_list args)
+void print_log(int level, const char *fmt,...)
 {
+	va_list args;
+	
 	if(log_to_stderr) 
 		vfprintf(stderr, fmt, args);
 	else {

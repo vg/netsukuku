@@ -18,7 +18,6 @@
 
 #include <sys/time.h>
 #include <sys/types.h>
-#include "inet.h"
 #include "map.h"
 
 /***Groupnode stuff***/

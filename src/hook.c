@@ -225,8 +225,8 @@ int get_ext_map(inet_prefix to, map_gnode *ext_map, map_gnode *new_root)
 		ret=-1;
 		goto finish;
 	}
-	*new_root=(map_node *)(ext_map+(emap_hdr.root_node*sizeof(map_gnode)));
-	(map_node *)(*new_root)->g.flags|=GMAP_ME;
+	new_root=(map_node *)(ext_map+(emap_hdr.root_node*sizeof(map_gnode)));
+	new_root->g.flags|=GMAP_ME;
 	
 finish:
 	pkt_free(&pkt, 0);
@@ -327,8 +327,8 @@ int get_int_map(inet_prefix to, map_node *int_map, map_node *new_root)
 		ret=-1;
 		goto finish;
 	}
-	*new_root=(map_node *)(int_map+(imap_hdr.root_node*sizeof(map_node)));
-	(map_node *)(*new_root)->flags|=MAP_ME;
+	new_root=(map_node *)(int_map+(imap_hdr.root_node*sizeof(map_node)));
+	new_root->flags|=MAP_ME;
 	
 	/*Finished, yeah*/
 finish:

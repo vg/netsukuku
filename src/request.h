@@ -114,7 +114,7 @@ enum errors
 
 static u_char error_array[]=
 {	
-	 NULL ,
+	 0 ,
 	 E_INVALID_REQUEST ,
 	 E_ACCEPT_TBL_FULL ,
 	 E_REQUEST_TBL_FULL,

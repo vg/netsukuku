@@ -20,7 +20,6 @@
 #include <string.h>
 #include <sys/time.h>
 
-#include "inet.h"
 #include "map.h"
 #include "gmap.h"
 #include "xmalloc.h"
@@ -362,7 +361,7 @@ int get_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart)
 	int e;
 
 	mod_rnode_addr(node, map, 0);
-	for(e=0; e<node->.links; e++)
+	for(e=0; e<node->links; e++)
 		memcpy(rblock[e+rstart], node->r_node[e], sizeof(map_rnode));
 
 	return e;
@@ -489,8 +488,8 @@ map_node *load_map(char *file)
 		return 0;
 	}
 	
-	*new_root=(map_node *)(map+(imap_hdr.root_node*sizeof(map_node)));
-	(map_node *)(*new_root)->flags|=MAP_ME;
+	new_root=(map_node *)(map+(imap_hdr.root_node*sizeof(map_node)));
+	new_root->flags|=MAP_ME;
 	
 	fclose(fd);
 	xfree(rblock);

@@ -17,15 +17,18 @@
  */
 
 #include <stdlib.h>
-#include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <sys/sendfile.h>
-#include "inet.h"
+#include <errno.h>
+       
+#include "pkts.h"
+#include "request.h"
 #include "log.h"
 #include "xmalloc.h"
 
+extern int errno;
 
 int inet_setip(inet_prefix *ip, u_int *data, u_char family)
 {
@@ -68,10 +71,10 @@ int inet_setip_anyaddr(inet_prefix *ip)
 {
 	if(ip->family==AF_INET) {
 		u_int data=INADDR_ANY;
-		inet_setip(ip, &data, ip->family);
+		inet_setip(ip, (u_int *)(&data), ip->family);
 	} else if(ip->family==AF_INET6) {
-		struct in6_addr ip6=IN6ADDR_ANY_INIT;
-		inet_setip(ip, &ipv6, ip->family);
+		struct in6_addr ipv6=IN6ADDR_ANY_INIT;
+		inet_setip(ip, (u_int *)(&ipv6), ip->family);
 	}
 	else 
 		return -1;
@@ -138,9 +141,9 @@ int sockaddr_to_inet(struct sockaddr *ip, inet_prefix *dst, u_short *port)
 		*port=ntohs(po);
 	
 	if(ip->sa_family==AF_INET) 
-		inet_setip(dst, &ip->sa_data+sizeof(u_short), ip->sa_family);
+		inet_setip(dst, (u_int *)(&ip->sa_data+sizeof(u_short)), ip->sa_family);
 	else if(ip->sa_family==AF_INET6)
-		inet_setip(dst, &ip->sa_data+sizeof(u_short)+sizeof(int), ip->sa_family);
+		inet_setip(dst, (u_int *)(&ip->sa_data+sizeof(u_short)+sizeof(int)), ip->sa_family);
 	else
 		return -1;
 
@@ -205,7 +208,7 @@ int new_tcp_conn(inet_prefix *host, short port)
 	char *ntop;
 	ntop=inet_to_str(host);
 	
-	if(inet_to_sockaddr(host, port, &sa, &sk_len)) {
+	if(inet_to_sockaddr(host, port, &sa, &sa_len)) {
 		error("Cannot new_tcp_connect(): %d Family not supported", host->family);
 		sk=-1;
 		goto finish;
@@ -227,14 +230,14 @@ int new_tcp_conn(inet_prefix *host, short port)
 	 */
 	memset(&pkt, '\0', sizeof(PACKET));
 	pkt_addsk(&pkt, sk, SKT_TCP);
-	pkt_addflags(&pkt, NULL);
+	pkt_addflags(&pkt, 0);
 	pkt_recv(&pkt);
 
 	/*Last famous words*/
 	if(pkt.hdr.op==ACK_NEGATIVE) {
 		int err;
 
-		memcpy(&err, pkt.buf, pkt.hdr.sz);
+		memcpy(&err, pkt.msg, pkt.hdr.sz);
 		error("Cannot connect to %s: %s", ntop, rq_strerror(err));
 
 		sk=-1;
@@ -255,7 +258,7 @@ int new_udp_conn(inet_prefix *host, short port)
 	char *ntop;
 	ntop=inet_to_str(host);
 
-	if(inet_to_sockaddr(host, port, &sa, &sk_len)) {
+	if(inet_to_sockaddr(host, port, &sa, &sa_len)) {
 		error("Cannot new_udp_connect(): %d Family not supported", host->family);
 		sk=-1;
 		goto finish;
@@ -283,7 +286,7 @@ int new_bcast_conn(inet_prefix *host, short port)
 	struct sockaddr	sa;
 	PACKET pkt;
 
-	if(inet_to_sockaddr(host, port, &sa, &sk_len)) {
+	if(inet_to_sockaddr(host, port, &sa, &sa_len)) {
 		error("Cannot new_bcast_connect(): %d Family not supported", host->family);
 		return -1;
 	}
@@ -305,22 +308,21 @@ ssize_t inet_recv(int s, void *buf, size_t len, int flags)
 	fd_set fdset;
 	int ret;
 
-	if((err=recv(s. buf, len, flags))==-1) {
+	if((err=recv(s, buf, len, flags))==-1) {
 		switch(errno) 
 		{
 			case EAGAIN:
 				FD_ZERO(&fdset);
 				FD_SET(s, &fdset);
 
-				ret = select(1, &fdset, NULL, NULL, NULL);
-
-				if (retval == -1) {
+				ret = select(s+1, &fdset, NULL, NULL, NULL);
+				if (ret == -1) {
 					error("inet_recv: select error: %s", strerror(errno));
 					return err;
 				}
 
 				if(FD_ISSET(s, &fdset))
-					inet_send(s, msg, len, flags);
+					inet_recv(s, buf, len, flags);
 				break;
 
 			default:
@@ -338,22 +340,22 @@ ssize_t inet_recvfrom(int s, void *buf, size_t len, int flags, struct sockaddr *
 	fd_set fdset;
 	int ret;
 
-	if((err=recv(s. buf, len, flags, from, fromlen))==-1) {
+	if((err=recvfrom(s, buf, len, flags, from, fromlen))==-1) {
 		switch(errno) 
 		{
 			case EAGAIN:
 				FD_ZERO(&fdset);
 				FD_SET(s, &fdset);
 
-				ret = select(1, &fdset, NULL, NULL, NULL);
+				ret = select(s+1, &fdset, NULL, NULL, NULL);
 
-				if (retval == -1) {
+				if (ret == -1) {
 					error("inet_recv: select error: %s", strerror(errno));
 					return err;
 				}
 
 				if(FD_ISSET(s, &fdset))
-					inet_send(s, msg, len, flags);
+					inet_recv(s, buf, len, flags);
 				break;
 
 			default:
@@ -384,9 +386,9 @@ ssize_t inet_send(int s, const void *msg, size_t len, int flags)
 				FD_ZERO(&fdset);
 				FD_SET(s, &fdset);
 
-				ret = select(1, NULL, &fdset, NULL, NULL);
+				ret = select(s+1, NULL, &fdset, NULL, NULL);
 
-				if (retval == -1) {
+				if (ret == -1) {
 					error("inet_send: select error: %s", strerror(errno));
 					return err;
 				}
@@ -404,7 +406,7 @@ ssize_t inet_send(int s, const void *msg, size_t len, int flags)
 	return err;
 }
 
-ssize_t inet_sendto(int s, const void *msg, size_t len, int flags, const struct sockaddr *to, socklen_t tolen);
+ssize_t inet_sendto(int s, const void *msg, size_t len, int flags, const struct sockaddr *to, socklen_t tolen)
 {
 	ssize_t err;
 	fd_set fdset;
@@ -415,16 +417,15 @@ ssize_t inet_sendto(int s, const void *msg, size_t len, int flags, const struct 
 		{
 			case EMSGSIZE:
 				inet_sendto(s, msg, len/2, flags, to, tolen);
-				inet_sendto(s, msg+(len/2), len-(len/2), flags, to, tolen);
+				inet_sendto(s, (const void *)(msg+(len/2)), len-(len/2), flags, to, tolen);
 				break;
 
 			case EAGAIN:
 				FD_ZERO(&fdset);
 				FD_SET(s, &fdset);
 
-				ret = select(1, NULL, &fdset, NULL, NULL);
-
-				if (retval == -1) {
+				ret = select(s+1, NULL, &fdset, NULL, NULL);
+				if (ret == -1) {
 					error("inet_sendto: select error: %s", strerror(errno));
 					return err;
 				}
@@ -452,17 +453,17 @@ ssize_t inet_sendfile(int out_fd, int in_fd, off_t *offset, size_t count)
 	if((err=sendfile(out_fd, in_fd, offset, count))==-1) {
 		if(errno==EAGAIN) {
 			FD_ZERO(&fdset);
-			FD_SET(s, &fdset);
+			FD_SET(out_fd, &fdset);
 
-			ret = select(1, NULL, &fdset, NULL, NULL);
+			ret = select(out_fd+1, NULL, &fdset, NULL, NULL);
 
-			if (retval == -1) {
+			if (ret == -1) {
 				error("inet_sendfile: select error: %s", strerror(errno));
 				return err;
 			}
 
-			if(FD_ISSET(s, &fdset))
-				inet_sendfile(s, msg, len, flags, to, tolen);
+			if(FD_ISSET(out_fd, &fdset))
+				inet_sendfile(out_fd, in_fd, offset, count);
 		}
 		else {
 			error("inet_sendfile: Cannot sendfile(): %s", strerror(errno));

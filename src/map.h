@@ -64,7 +64,7 @@ typedef struct
 	u_short 	flags;
 
 #ifdef QSPN_EMPIRIC
-	u_int		brdcast[MAXGROUPNODE];
+	u_int		braoadcast[MAXGROUPNODE];
 #elif
 	u_int		brdcast;	 /*Pkt_id of the last brdcast_pkt sent by this node*/
 #endif /*QSPN_EMPIRIC*/
@@ -78,9 +78,9 @@ typedef struct
  * example, if the map goes from 192.128.1.0 to 192.128.3.0, the map will have 512
  * structs, the first one will correspond to 192.168.1.0, the 50th to 192.168.1.50 and
  * so on.
+ *
+ * typedef map_node * int_map;    				      
  */
-typedef map_node * int_map;    				      
-
 
 /*****QSPN int_map (It's identical to the normal int_map)****
  * Anyway there are a few differences in the qmap:
@@ -88,8 +88,9 @@ typedef map_node * int_map;
  * - map_node.r_node points to its r_node that is part of the route to the root_node.
  *   The only execption is the root_node itself. The root_node's map_node.r_node keeps
  *   all its rnodes as a normal (non qspn) map would.
+ *
+ * typedef qmap_node *int_map;
  */
-typedef qmap_node *int_map;
 
 #define INTMAP_END(mapstart)	((sizeof(map_node)*MAXGROUPNODE)+(mapstart))
 	

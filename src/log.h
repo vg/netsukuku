@@ -16,16 +16,13 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <syslog.h>
-#include <stdarg.h>
-
 /*`format (ARCHETYPE, STRING-INDEX, FIRST-TO-CHECK)'*/
 void fatal(const char *, ...) __attribute__((format(printf, 1, 2)));
 void error(const char *, ...) __attribute__((format(printf, 1, 2)));
 void loginfo(const char *, ...) __attribute__((format(printf, 1, 2)));
 void debug(int lvl, const char *, ...) __attribute__((format(printf, 2, 3)));
 
-void print_log(int , const char *, va_list);
+void print_log(int , const char *, ...);
 /*void safe_exit(int); TODO: DO ME*/
 
 #define ERROR_POS  __FILE__, __LINE__

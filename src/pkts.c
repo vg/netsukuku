@@ -206,7 +206,7 @@ ssize_t pkt_recv(PACKET *pkt)
 	return err;
 }
 
-pkt_fill_hdr(struct pkt_hdr *hdr, int id, u_char op, size_t sz)
+void pkt_fill_hdr(struct pkt_hdr *hdr, int id, u_char op, size_t sz)
 {
 	hdr->ntk_id[0]='n';
 	hdr->ntk_id[1]='t';
