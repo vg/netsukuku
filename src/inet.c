@@ -269,12 +269,27 @@ int set_reuseaddr_sk(int socket)
 	int reuseaddr=1, ret;
 	/*
 	 * SO_REUSEADDR: <<Go ahead and reuse that port even if it is in
-	 * TIME_WAIT state.
+	 * TIME_WAIT state.>>
 	 */
 	ret=setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(int));
 	if(ret < 0)
 		error("setsockopt SO_REUSEADDR: %s", strerror(errno));
 	return ret;
+}
+
+int set_bindtodevice_sk(int socket, char *dev)
+{
+	struct ifreq ifr;
+	int ret;
+
+	memset(&ifr, 0, sizeof(ifr));
+	strncpy(ifr.ifr_name, dev, IFNAMSIZ-1);
+	
+	ret=setsockopt(socket, SOL_SOCKET, SO_BINDTODEVICE, dev, strlen(dev)+1);
+	if(ret < 0)
+		error("setsockopt SO_BINDTODEVICE: %s", strerror(errno));
+
+        return ret;
 }
 
 int set_multicast_loop_sk(int family, int socket)
@@ -295,6 +310,8 @@ int set_multicast_loop_sk(int family, int socket)
 int set_broadcast_sk(int socket, int family, int dev_idx)
 {
 	int broadcast=1;
+	char *device;
+
 	if(family == AF_INET) {
 		if (setsockopt(socket, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast)) < 0) {
 			error("Cannot set broadcasting: %s", strerror(errno));
@@ -308,6 +325,9 @@ int set_broadcast_sk(int socket, int family, int dev_idx)
 	}
 	
 	set_multicast_loop_sk(family, socket);
+
+	device=(char *)ll_index_to_name(dev_idx);
+	set_bindtodevice_sk(socket, device);
 
 	return socket;
 }

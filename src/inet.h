@@ -49,6 +49,7 @@ int join_ipv6_multicast(int socket, int idx);
 int set_nonblock_sk(int fd);
 int unset_nonblock_sk(int fd);
 int set_reuseaddr_sk(int socket);
+int set_bindtodevice_sk(int socket, char *dev);
 int set_multicast_loop_sk(int family, int socket);
 int set_broadcast_sk(int socket, int family, int dev_idx);
 int unset_broadcast_sk(int socket, int family);
