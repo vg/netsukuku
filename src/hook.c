@@ -465,6 +465,8 @@ void set_ip_and_def_gw(char *dev, inet_prefix ip)
 	ntop=inet_to_str(ip);
 	
 	debug(DBG_NORMAL, "Setting the %s ip to %s interface", ntop, dev);
+	set_dev_down(dev);
+	set_dev_up(dev);
 	if(set_dev_ip(ip, dev))
 		fatal("Cannot set the %s  ip to %s", ntop, dev);
 	
@@ -552,7 +554,8 @@ int hook_init(void)
 	memset(me.cur_node, 0, sizeof(map_node));
 	me.cur_node->flags|=MAP_HNODE;
 	
-	debug(DBG_NORMAL, "Deleting the loopback network (leaving only 127.0.0.1)");
+	debug(DBG_NORMAL, "Deleting the loopback network (leaving only"
+			" 127.0.0.1)");
 	rt_del_loopback_net();
 
 	/*
@@ -568,7 +571,7 @@ int hook_init(void)
 	idata[0]=htonl(idata[0]);
 
 	inet_setip(&me.cur_ip, idata, my_family);
-
+	
 	set_ip_and_def_gw(me.cur_dev, me.cur_ip);
 
 	return 0;

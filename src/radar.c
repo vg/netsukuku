@@ -765,7 +765,8 @@ int radard(PACKET rpkt)
 	
 	if(server_opt.dbg_lvl && rq->pings==1) {
 		ntop=inet_to_str(pkt.to);
-		debug(DBG_INSANE, "%s(0x%x) to %s", rpkt.hdr.id, rq_to_str(ECHO_REPLY), ntop);
+		debug(DBG_INSANE, "%s(0x%x) to %s", rq_to_str(ECHO_REPLY), 
+				rpkt.hdr.id, ntop);
 	}
 
 	return 0;
