@@ -16,10 +16,15 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <stdlib.h>
+#include "includes.h"
 #include "misc.h"
 
 inline int rand_range(int _min, int _max)
 {
 	return (rand()%(_max - _min + 1)) + _min;
+}
+
+int xsrand(void)
+{
+	srand(getpid() ^ time(0) ^ clock());
 }

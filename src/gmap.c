@@ -28,6 +28,21 @@
 #include "xmalloc.h"
 #include "log.h"
 
+
+/* 
+ * get_groups: It returns how many groups there are in the given level.
+ * Note that `lvl' must be passed using the _EL format.
+ */
+inline int get_groups(int family, int lvl)
+{ 				
+	if( lvl == _EL(GET_LEVELS(family)) )
+		return 1;
+	else if( lvl == _EL(GET_LEVELS(family)) - 1 )
+		return LAST_GROUPS(family);
+	else
+		return MAXGROUPNODE;
+}
+
 /*pos_from_gnode: Position from gnode: It returns the position of the `gnode' in the `map'.*/
 int pos_from_gnode(map_gnode *gnode, map_gnode *map)
 {
@@ -106,8 +121,12 @@ u_short iptogid(inet_prefix ip, u_char level)
  * `levels' is the number of array elements considered, gidtoipstart() will use
  * only the elements going from gid[total_levels] to gid[total_levels-levels].
  * `family' is used to fill the inet_prefix of ipstart.
+ * At the end of the conversion if `sgid' is < MAXGROUPNODE and > 0 it will be 
+ * added to the ip. In this case the gidtoipstart() function acts as a
+ * gid to ip converter.
  */
-void gidtoipstart(u_short *gid, u_char total_levels, u_char levels, int family, inet_prefix *ip)
+void gidtoipstart(u_short *gid, u_char total_levels, u_char levels, u_short sgid,
+		int family, inet_prefix *ip)
 {
 	mpz_t xx, yy;
 	int count, i;
@@ -117,13 +136,17 @@ void gidtoipstart(u_short *gid, u_char total_levels, u_char levels, int family, 
 	mpz_init(xx);
 	mpz_init(yy);
 	mpz_set_ui(yy, 0);
-	for(i=total_levels-1; i!=total_levels-levels; i--) {
-		if(!gid[i])
-			break;
-		/* ipstart += MAXGROUPNODE^(i+1)*gid[i]; */
+	mpz_set_ui(xx, 0);
+
+	for(i=total_levels-EXTRA_LEVELS; i>=total_levels-levels; i--) {
+		/* ipstart += MAXGROUPNODE^(i+1) * gid[i]; */
 		mpz_mul_ui(xx, maxgroupnode_levels[i+1], gid[i]);
 		mpz_add(yy, yy, xx);
 	}
+	if(sgid > 0 && sgid < MAXGROUPNODE)
+		/* ipstart += MAXGROUPNODE^0 * sgid; */
+		mpz_add_ui(yy, yy, sgid);
+	
 	mpz_export(h_ip, &count, ORDER, sizeof(h_ip[0]), NATIVE_ENDIAN, 0, yy);
 	mpz_clear(xx);
 	mpz_clear(yy);
@@ -157,7 +180,8 @@ void iptoquadg(inet_prefix ip, map_gnode **ext_map, quadro_group *qg, char flags
 		
 		if(flags & QUADG_IPSTART)
 			for(i=0; i<levels; i++)
-				gidtoipstart(gid, levels, levels-i+1, ip.family, &qg->ipstart[i]);
+				gidtoipstart(gid, levels, levels-i+1, 0, 
+						ip.family, &qg->ipstart[i]);
 	}
 	if(flags & QUADG_GNODE) {
 		for(i=0; i<levels-EXTRA_LEVELS; i++)
@@ -195,7 +219,7 @@ void random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 		inet_prefix *new_ip, int my_family)
 {
 	int i, level, levels;
-	u_short gid[total_levels];
+	u_short gid[total_levels], sgid;
 	quadro_group qg;
 
 	if(!ipstart || final_level==total_levels) {
@@ -227,8 +251,9 @@ void random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 	 * Now we choose random gids for each level so we'll have a random ip
 	 * with gidtoipstart();
 	 */
+	sgid=rand_range(0, get_groups(my_family, 0)-1);
 	for(level=0; level < levels; level++) {
-		gid[level]=rand_range(0, MAXGROUPNODE-1);
+		gid[level]=rand_range(0, get_groups(my_family, level)-1);
 		if(level && only_free_gnode) {
 			/* 
 			 * We have to be sure that we're not picking a gnode 
@@ -238,7 +263,7 @@ void random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 			 * brand new and not already used gnode.
 			 */
 			while(!(ext_map[_EL(level)][gid[level]].flags & MAP_VOID))
-				gid[level]=rand_range(0, MAXGROUPNODE-1);
+				gid[level]=rand_range(0, get_groups(my_family, level)-1);
 		}
 	}
 
@@ -246,7 +271,7 @@ void random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 	 * Ok, we've set the gids of each level so we recompose them in the
 	 * new_ip.
 	 */
-	gidtoipstart(gid, levels, levels, my_family, new_ip);
+	gidtoipstart(gid, total_levels, total_levels, sgid, my_family, new_ip);
 }
 
 /*
@@ -272,7 +297,8 @@ void gnodetoip(map_gnode **ext_map, quadro_group *quadg, map_gnode *gnode, u_cha
 	for(i=level+1; i<ext_levels; i++) 
 		gid[i]=quadg->gid[i];
 	
-	gidtoipstart(gid, ext_levels, ext_levels-level, quadg->ipstart[0].family, ip);
+	gidtoipstart(gid, ext_levels, ext_levels-level, 0,
+			quadg->ipstart[0].family, ip);
 	ip->bits-=(level*9);
 	xfree(gid);
 }

@@ -17,6 +17,6 @@
  */
 
 int prepare_listen_socket(int family, int socktype, u_short port);
-void *recv_loop(void *recv_pkt);
+void *tcp_recv_loop(void *recv_pkt);
 void *tcp_daemon(void *null);
 void *udp_daemon(void *null);

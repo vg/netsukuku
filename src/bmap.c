@@ -139,7 +139,7 @@ void *get_gw_gnode(map_node *int_map, map_gnode **ext_map, map_bnode **bnode_map
 
 	gnode=find_gnode;
 	node=&gnode->g;
-	for(i=level; i!=gw_level; i--) {
+	for(i=level; i>=gw_level; i--) {
 		if(!node->links)
 			return 0;
 

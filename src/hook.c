@@ -21,6 +21,8 @@
 #include "libnetlink.h"
 #include "ll_map.h"
 #include "inet.h"
+#include "if.h"
+#include "route.h"
 #include "map.h"
 #include "gmap.h"
 #include "bmap.h"
@@ -197,7 +199,6 @@ finish:
 int put_ext_map(PACKET rq_pkt)
 {
 	PACKET pkt;
-	struct ext_map_hdr emap_hdr;
 	char *ntop; 
 	int ret=0;
 	ssize_t err;
@@ -235,7 +236,6 @@ map_gnode **get_ext_map(inet_prefix to, quadro_group *new_quadg)
 	char *ntop, *pack;
 	int err;
 	struct ext_map_hdr emap_hdr;
-	map_rnode *rblock=0;
 	map_gnode **ext_map=0, **ret=0;
 	size_t pack_sz;
 
@@ -280,7 +280,7 @@ int put_int_map(PACKET rq_pkt)
 	PACKET pkt;
 	map_node *map=me.int_map;
 	char *ntop; 
-	int count, ret;
+	int ret;
 	ssize_t err;
 	size_t pkt_sz=0;
 	
@@ -492,10 +492,9 @@ int netsukuku_hook(char *dev)
 	struct radar_queue *rq=radar_q;
 	struct free_nodes_hdr fn_hdr;
 	map_node **merg_map, *new_root;
-	map_gnode *new_groot, **old_ext_map;
+	map_gnode **old_ext_map;
 	map_bnode **old_bnode_map;	
-	inet_prefix new_ip;
-	int i, e=0, idx, imaps=0, ret=0, new_gnode=0, tracer_levels=0;
+	int i, e=0, imaps=0, ret=0, new_gnode=0, tracer_levels=0;
 	int fnodes[MAXGROUPNODE], *old_bnodes;
 	u_int idata[4];
 	char *ntop;
@@ -534,16 +533,22 @@ int netsukuku_hook(char *dev)
 	/* 
 	 * We do our first scan to know what we've around us. The rnodes are kept in
 	 * me.cur_node->r_nodes. The fastest one is in me.cur_node->r_nodes[0]
-	 */
+	 *
+	 * TODO: XXX: DEBUG:
+	 * I don't want to wait 10 seconds to test the other things, so it's
+	 * better to avoid the radar_scan for now, cause it seems to work.
+	 *
 	if(radar_scan())
 		fatal("%s:%d: Scan of the area failed. Cannot continue.", 
 				ERROR_POS);
+	 */
 
 	if(!me.cur_node->links) {
 		loginfo("No nodes found! This is a black zone. "
 				"Creating a new_gnode. W00t we're the first node");
 		create_gnodes(0, GET_LEVELS(my_family));
 		ntop=inet_to_str(&me.cur_ip);
+		debug(DBG_NORMAL, "Setting the %s ip to %s interface", ntop, dev);
 		if(set_dev_ip(me.cur_ip, dev))
 			fatal("%s:%d: Cannot set the new ip in %s", ERROR_POS, dev);
 		loginfo("Now we are in a brand new gnode. The ip of %s is set "
@@ -593,7 +598,7 @@ int netsukuku_hook(char *dev)
 	 * Fetch the ext_map from the rnode who gave us the free nodes list. 
 	 */
 	old_ext_map=me.ext_map;
-	if(me.ext_map=get_ext_map(rq->ip, &me.cur_quadg)) 
+	if((me.ext_map=get_ext_map(rq->ip, &me.cur_quadg))) 
 		fatal("None of the rnodes in this area gave me the extern map");
 	else {
 		free_extmap(old_ext_map, GET_LEVELS(my_family), 0);

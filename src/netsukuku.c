@@ -59,6 +59,7 @@ int save_maps(void)
 	save_map(me.int_map, me.cur_node, server_opt.int_map_file);
 	save_bmap(me.bnode_map, me.bmap_nodes, me.ext_map, me.cur_quadg, server_opt.bnode_map_file);
 	save_extmap(me.ext_map, MAXGROUPNODE, &me.cur_quadg, server_opt.ext_map_file);
+	return 0;
 }
 
 int free_maps(void)
@@ -66,6 +67,8 @@ int free_maps(void)
 	bmap_level_free(me.bnode_map, me.bmap_nodes);
 	free_extmap(me.ext_map, GET_LEVELS(my_family), 0);
 	free_map(me.int_map, 0);
+
+	return 0;
 }
 
 int fill_default_options(void)
@@ -84,6 +87,8 @@ int fill_default_options(void)
 	server_opt.max_accepts_per_host_time=FREE_ACCEPT_TIME;
 
 	ll_map_initialized=0;
+
+	return 0;
 }
 
 void usage(void)
@@ -178,8 +183,8 @@ void init_netsukuku(char **argv)
 {
 	char *dev;
 	memset(&me, 0, sizeof(struct current));
-	srand(time(0));	
-
+	
+	xsrand();
 	log_init(argv[0], server_opt.dbg_lvl, 1);
 	/*TODO:
 	signal();
@@ -260,6 +265,8 @@ int main(int argc, char **argv)
 	 * up & running. 
 	 */
 	debug(DBG_NORMAL, "Activating all daemons");
+	
+	tcp_daemon(NULL);
 	
 	debug(DBG_SOFT,   "Evocating radar daemon.");
 	pthread_create(&daemon_radar_thread, &t_attr, radar_daemon, NULL);

@@ -131,7 +131,7 @@ void *udp_daemon(void *null)
 	}
 }
 
-void *recv_loop(void *recv_pkt)
+void *tcp_recv_loop(void *recv_pkt)
 {
 	PACKET rpkt;
 	ssize_t ret;
@@ -157,14 +157,13 @@ void *recv_loop(void *recv_pkt)
 void *tcp_daemon(void *null)
 {
 	pthread_t thread;
-	pthread_attr_t t_attr;
 	
 	PACKET rpkt;
 	inet_prefix ip;
 	struct sockaddr_storage addr;
 	socklen_t addrlen = sizeof addr;
 	fd_set fdset;
-	int sk, fd, ret;
+	int sk, fd, ret, err;
 	char *ntop;
 
 
@@ -185,9 +184,6 @@ void *tcp_daemon(void *null)
 		close(sk);
 		return;
 	}
-
-	pthread_attr_init(&t_attr);
-	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
 
 	debug(DBG_NORMAL, "Tcp daemon up & running");
 	for(;;) {
@@ -240,8 +236,12 @@ void *tcp_daemon(void *null)
 		if(unset_nonblock_sk(fd))
 			continue;
 	
-		/*pthread_create(&thread, &t_attr, recv_loop, &rpkt);*/
-		recv_loop(&rpkt);
+		err=pthread_create(&thread, 0, tcp_recv_loop, (void *)&rpkt);
+		if(err)
+			error("Cannot fork the tcp_recv_loop: %s", strerror(errno));
+		else
+			pthread_detach(thread);
+		/* tcp_recv_loop(&rpkt); */
 	}
 	
 	destroy_accept_tbl();

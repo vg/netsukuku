@@ -422,8 +422,6 @@ int add_radar_q(PACKET pkt)
 
 int radar_recv_reply(PACKET pkt)
 {
-	int i, e=0;
-
 	if(!my_echo_id) {
 		loginfo("I received an ECHO_REPLY with id: %d, but I've never "
 				"sent any ECHO_ME requests..", pkt.hdr.id);

@@ -48,19 +48,41 @@ typedef struct
  *
  * All the structs/arrays related to the external map, and the ext_map itself, don't
  * use the EXTRA_LEVELS, thus, they lack of the zero level. To retrieve the position 
- * in the array from the level the _EL macro must be used. 
- * These arrays/structs are: quadg.gnode, rblock, ext_map.*/
+ * in the array from the level the _EL macro must be used. In other words: 
+ * because the arrays goes from 0 to n-1 we refer to the levels as the arrays,
+ * so the level 1 is the level 0, the level 2 is the level 1, and so on.
+ * These arrays/structs are: quadg.gnode, rblock, ext_map.
+ */
 #define ZERO_LEVEL	1
-#define EXTRA_LEVELS	2		/*One is the Zero Level, and the other one is the Final Level*/
-#define IPV4_LEVELS	(3+EXTRA_LEVELS)
-#define IPV6_LEVELS	(14+EXTRA_LEVELS)
-#define MAX_LEVELS	IPV6_LEVELS
-#define GET_LEVELS(family)	({ (family) == AF_INET ? IPV4_LEVELS : IPV6_LEVELS; })
-
-/* To use the right level. (Ext_mapLevel)*/
+#define UNITY_LEVEL	1
+#define EXTRA_LEVELS	(ZERO_LEVEL + UNITY_LEVEL)
+/* To use the right level. */
 #define _EL(level)    ((level)-1)
-/* And to restore it. (NormalLevel)*/
+/* And to restore it. */
 #define _NL(level)    ((level)+1)
+
+/* 
+ * Using MAXGROUPNODE = 512; IPV4_LEVELS = 3; ips = (2^32-1);
+ * 	ips/(MAXGROUPNODE^IPV4_LEVELS) == 31.999999992;
+ * If we use IPV4_LEVELS = 3, we almost cover all the ips, but the division gives
+ * 32. So there are only 32 groups in the last level (3), in fact:
+ * ips/(32 * (MAXGROUPNODE^3)) == 0.99999999
+ * And to include them we use the unity level, thus IPV4_LEVELS is equal to 3+1.
+ * For the IPV6_LEVELS ips = 2^128-1; so:
+ * ips/(4 * MAXGROUPNODE^14) == 0.999999999999999
+ */
+#define IPV4_LEVELS		(2+EXTRA_LEVELS)
+#define IPV4_LAST_GROUPS	32		/* The  groups of the level 3 */
+
+#define IPV6_LEVELS		(13+EXTRA_LEVELS)
+#define IPV6_LAST_GROUPS	4
+
+#define MAX_LEVELS		IPV6_LEVELS
+#define GET_LEVELS(family)	({ (family) == AF_INET ? 		        \
+				   IPV4_LEVELS : IPV6_LEVELS; })
+
+#define LAST_GROUPS(family)	({ (family) == AF_INET ? 		        \
+				   IPV4_LAST_GROUPS : IPV6_LAST_GROUPS; })
 
 /* Struct used to keep all the quadro_group ids of a node. (The node is part of this
  * quadro groups)*/
@@ -120,6 +142,7 @@ struct ext_rnode_cache {
 typedef struct ext_rnode_cache ext_rnode_cache;
 
 /* * * Functions' declaration * * */
+inline int get_groups(int family, int lvl);
 int pos_from_gnode(map_gnode *gnode, map_gnode *map);
 map_gnode *gnode_from_pos(int pos, map_gnode *map);
 
@@ -127,8 +150,8 @@ void maxgroupnode_level_init(void);
 void maxgroupnode_level_free(void);
 
 u_short iptogid(inet_prefix ip, u_char level);
-void gidtoipstart(u_short *gid, u_char total_levels, u_char levels, int family,
-		  inet_prefix *ip);
+void gidtoipstart(u_short *gid, u_char total_levels, u_char levels, u_short sgid,
+		int family, inet_prefix *ip);
 void iptoquadg(inet_prefix ip, map_gnode **ext_map, quadro_group *qg, char flags);
 void quadg_free(quadro_group *qg);
 void quadg_destroy(quadro_group *qg);

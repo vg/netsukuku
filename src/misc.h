@@ -21,3 +21,4 @@
 #define MILLISEC(x)	(((x).tv_sec*1000)+((x).tv_usec/1000))
 
 int rand_range(int, int);
+int xsrand(void);

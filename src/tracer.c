@@ -207,7 +207,8 @@ int tracer_unpack_pkt(PACKET rpkt, brdcast_hdr **new_bcast_hdr, tracer_hdr **new
 	bnode_hdr    *bhdr=0;
 	map_node *real_from;
 	size_t bblock_sz=0, tracer_sz=0;
-	u_char level, i, gid;
+	int i;
+	u_char level, gid;
 
 	bcast_hdr=(brdcast_hdr *)rpkt.msg;
 	trcr_hdr=(tracer_hdr *)(rpkt.msg+sizeof(brdcast_hdr));
@@ -243,7 +244,7 @@ int tracer_unpack_pkt(PACKET rpkt, brdcast_hdr **new_bcast_hdr, tracer_hdr **new
 	 * bcast_hdr->level. If not let's  drop it! Why the hell this pkt is 
 	 * here?
 	 */
-	for(i=me.cur_quadg.levels-1; i!=0; i++) {
+	for(i=me.cur_quadg.levels-1; i>=0; i++) {
 		gid=iptogid(bcast_hdr->g_ipstart, i);
 		if(gid != me.cur_quadg.gid[i] && !(i < level))
 			return -1;
@@ -437,7 +438,7 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *tracer_hdr, trace
 		skip_rfrom=1;
 	else
 		skip_rfrom=0;
-	for(i=(hops-skip_rfrom)-1; i != 0; i--) {
+	for(i=(hops-skip_rfrom)-1; i >= 0; i--) {
 		timeradd(&tracer[i].rtt, &trtt, &trtt);
 
 		if(!level)
