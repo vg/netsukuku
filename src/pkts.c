@@ -173,7 +173,7 @@ ssize_t pkt_recv(PACKET *pkt)
 			return -1;
 		}
 
-
+		pkt->msg=0;
 		/* we get the hdr... */
 		err=inet_recvfrom(pkt->sk, &pkt->hdr, sizeof(pkt_hdr), pkt->flags, &from, &fromlen);
 		if(err != sizeof(pkt_hdr)) {
@@ -293,7 +293,8 @@ int pkt_tcp_connect(inet_prefix *host, short port)
 	}
 	
 finish:
-	xfree(ntop);
+	if(ntop)
+		xfree(ntop);
 	pkt_free(&pkt, 0);
 	return sk;
 }

@@ -103,6 +103,7 @@ void update_accept_tbl(void)
 				} else
 					pid_exists=0;
 
+				/*
 				debug(DBG_NOISE, "ACPT: Updating tbl: cur_t: %d, "
 						"accept_tbl[%d].acp_t[%d]:%d+%d, "
 						"accept_tbl[i].pid[e]: %d, "
@@ -110,6 +111,7 @@ void update_accept_tbl(void)
 						cur_t, i,e, accept_tbl[i].acp_t[e], 
 						free_accept_time, accept_tbl[i].pid[e], 
 						k, ESRCH);
+				*/
 
 				passed_time=accept_tbl[i].acp_t[e]+free_accept_time;
 				if((accept_tbl[i].closed[e] || !pid_exists) && 
@@ -154,8 +156,8 @@ int is_ip_acpt_free(inet_prefix ip, int *index)
 	if((idx=find_ip_acpt(ip))==-1)
 		if((idx=find_first_free())==-1)
 			return E_TOO_MANY_CONN;
-	debug(DBG_NOISE, "ACPT: accept_tbl[%d].accepts: %d, max_acp: %d", idx,
-			accept_tbl[idx].accepts, max_accepts_per_host);
+	/*debug(DBG_NOISE, "ACPT: accept_tbl[%d].accepts: %d, max_acp: %d", idx,
+			accept_tbl[idx].accepts, max_accepts_per_host); */
 	if(accept_tbl[idx].accepts > max_accepts_per_host)
 		return E_ACCEPT_TBL_FULL;
 
@@ -250,6 +252,7 @@ int close_accept(int idx, int sidx)
 void add_accept_pid(pid_t pid, int idx, int sidx)
 {
 	accept_tbl[idx].pid[sidx]=pid;
-	debug(DBG_NOISE, "ACPT: Added pig %d in accept_tbl[%d].pid[%d]", 
+/*	debug(DBG_NOISE, "ACPT: Added pig %d in accept_tbl[%d].pid[%d]", 
 			accept_tbl[idx].pid[sidx], idx, sidx);
+*/
 }
