@@ -124,21 +124,82 @@ void gidtoipstart(u_short *gid, u_char levels, int family, inet_prefix *ip)
 	return ip;
 }
 
-/* iptoquadg: Using the given `ip' it fills the `qg' quadro_group struct.*/
-void iptoquadg(inet_prefix ip, map_gnode *ext_map, quadro_group *qg)
+/* iptoquadg: Using the given `ip' it fills the `qg' quadro_group struct. The `flags'
+ * given specify what element fill in the struct (the flags are in gmap.h).*/
+void iptoquadg(inet_prefix ip, map_gnode **ext_map, quadro_group *qg, char flags)
 {
 	int i;
 	u_char levels;
+
+	memset(qg, 0, sizeof(quadro_group));
 	
 	levels=GET_LEVELS(ip.family);
 	qg->levels=levels;
+
+	if(flags & QUADG_GID)
+		qg->gid=xmalloc(sizeof(int)*levels);
+	if(flags & QUADG_GNODE)
+		qg->gnode=xmalloc(sizeof(map_gnode *) * (levels-EXTRA_LEVELS));
+	if(flags & QUADG_IPSTART)
+		qg->ipstart=xmalloc(sizeof(inet_prefix)*levels);
+
 	for(i=0; i<levels; i++) {
-		qg->gid[i]=iptogid(ip, i);
-		gidtoipstart(qg->gid, i+1, ip.family, &gq->ipstart[i]);
+		if(flags & QUADG_GID)
+			qg->gid[i]=iptogid(ip, i);
+		if(flags & QUADG_IPSTART)
+			gidtoipstart(qg->gid, i+1, ip.family, &gq->ipstart[i]);
 	}
-	for(i=0; i<levels-EXTRA_LEVELS; i++) {
-		gq->gnode[i]=gnode_from_pos(qg->gid[i+1], ext_map[i]);
+	if(flags & QUADG_GNODE)
+		for(i=0; i<levels-EXTRA_LEVELS; i++) {
+			gq->gnode[i]=gnode_from_pos(qg->gid[i+1], ext_map[i]);
+		}
+}
+
+void quadg_free(quadro_group *qg)
+{
+	if(qg->gid)
+		xfree(qg->gid);
+	if(qg->gnode)
+		xfree(qg->gnode);
+	if(qg->ipstart)
+		xfree(qg->ipstart);
+	memset(qg, 0, sizeof(quadro_group));
+}
+
+void quadg_destroy(quadro_group *qg)
+{
+	quadg_free(qg);
+	xfree(qg);
+}
+
+/* e_rnode_find: It searches in the `erc' list a quadro_group struct equal to `qg'.
+ * If an ext_rnode which has such struct is found it returns its rnode_pos.
+ * If nothing is found -1 is returned.*/
+int e_rnode_find(ext_rnode_cache *erc, quadro_group *qg)
+{
+	ext_rnode_cache *p=erc;
+	list_for(p) {
+		if(p->e->quadg.levels == qg->levels && 
+				!memcmp(p->e->quadg.ipstart, qg->ipstart, sizeof(inet_prefix)) &&
+				!memcmp(p->e->quadg.gid, qg->gid, sizeof(int)*qg->levels))
+			return p->rnode_pos;
 	}
+	
+	return -1;
+}
+
+/* quadg_diff_gids: It returns 0 if `qg_a' has all the gids equal to
+ * the `qg_b''s ones*/
+int quadg_diff_gids(quadro_group *qg_a, quadro_group *qg_b)
+{
+	int i;
+	if(qg_a->levels != qg_b->levels)
+		return 1;
+	
+	for(i=1; i<qg_a->levels; i++)
+		if(qg_b->gid[i] != qg_b->gid[i])
+			return 1;
+	return 0;
 }
 
 map_gnode *init_gmap(u_short groups)

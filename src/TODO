@@ -1,13 +1,10 @@
 - [HIGH PRIORITY] -
-
 gnode support  40%: creazione di un nuovo gnode, qspn di gnode, fusione di gnode uguali...
-bmap.c: pack delle bmap_level, sendare le multiple bmap
-il qspn che supporta i livelli.
-qspn.c: am_i_a_quadg_qspn_starter()?
-qspn.c: i nodi normali devono solo forwardare e storarsi il pkt. I bnode aprono e chiudono.
+bmap.c:  pack delle bmap_level, sendare le multiple bmap
 radar.c: il qspn_send(LEVEL) il LEVEL dipende da chi abbiamo come node confinante.
          ci deve essere un qspn_send per ogni livello coinvolto.
-route.c:  void krnl_update_node(map_node *node, /*TODO: XXX u_char level*/)
+route.c: void krnl_update_node(map_node *node, /*TODO: XXX u_char level*/)
+hook.c:  il qspn_time_start deve fungere anche per gli altri livelli
 
 - [MEDIUM PRIORITY] -
 broadcast: Tenere in considerazione il gttl

@@ -55,8 +55,8 @@ typedef struct
  * in the array from the level the _EL macro must be used. 
  * These arrays/structs are: quadg.gnode, rblock, ext_map.*/
 #define EXTRA_LEVELS	2		/*One is the Zero Level, and the other one is the Final Level*/
-#define IPV4_LEVELS	3+EXTRA_LEVELS	
-#define IPV6_LEVELS	13+EXTRA_LEVELS
+#define IPV4_LEVELS	(3+EXTRA_LEVELS)
+#define IPV6_LEVELS	(13+EXTRA_LEVELS)
 #define MAX_LEVELS	IPV6_LEVELS
 #define GET_LEVELS(family)	({ (family) == AF_INET ? IPV4_LEVELS : IPV6_LEVELS; })
 
@@ -69,13 +69,18 @@ typedef struct
  * quadro groups)*/
 typedef struct {
 	u_char      levels;		 /*How many levels we have*/
-	int         gid[MAX_LEVELS];	 /*Group ids. Each element is the gid of the quadrogroup in the 
+	int         *gid;	 /*Group ids. Each element is the gid of the quadrogroup in the 
 					   relative level. (ex: gid[n] is the gid of the quadropgroup a 
 					   the n level)*/
-	map_gnode  *gnode[MAX_LEVELS-EXTRA_LEVELS]; /*Each element is a pointer to the relative gnode in the 
-						      ext_map*/
-	inet_prefix ipstart[MAX_LEVELS]; /*The ipstart of each quadg.gid in their respective levels*/
+	map_gnode  **gnode; /*Each element is a pointer to the relative gnode in the 
+						      ext_map. It has levels-EXTRA_LEVELS elements.*/
+	inet_prefix *ipstart; /*The ipstart of each quadg.gid in their respective levels*/
 }quadro_group;
+
+/*These are the flags passed to iptoquadg()*/
+#define QUADG_IPSTART 1
+#define QUADG_GID     (1<<1)
+#define QUADG_GNODE   (1<<2)
 
 /* Each array element of maxgroupnode_levels is:
  * maxgroupnode_levels[x]=MAXGROUPNODE^x;
@@ -99,6 +104,23 @@ struct ext_map_hdr
  * 	char rnode_blocks[total_rblock_sz];*/
 #define EXT_MAP_BLOCK_SZ(ext_map_sz, rblock_sz) (sizeof(struct ext_map_hdr)+(ext_map_sz)+(rblock_sz))
 
+/* The root_node at level 0 who has a rnode, who isn't of the same level, uses this external_rnode_struct
+ * to refer to that particular rnode.*/
+typedef struct {
+	map_node	node;
+	inet_prefix	ip;
+	quadro_group 	quadg;
+}ext_rnode;
+
+/*This cache keeps the list of all the ext_rnode used.*/
+struct ext_rnode_cache {
+	struct ext_rnode_cache *next;
+	struct ext_rnode_cache *prev;
+
+	ext_rnode	*e;		/*The pointer to the ext_rnode struct*/
+	int		rnode_pos;	/*The ext_rnode position in the root_node's rnodes*/
+};
+typedef struct ext_rnode_cache ext_rnode_cache;
 
 /* * * Functions' declaration * * */
 int pos_from_gnode(map_gnode *gnode, map_gnode *map);
@@ -109,7 +131,11 @@ void maxgroupnode_level_free(void);
 
 u_short iptogid(inet_prefix ip, u_char level);
 void gidtoipstart(u_short *gid, u_char levels, int family, inet_prefix *ip);
-void iptoquadg(inet_prefix ip, map_gnode *mapstart, quadro_group *qg);
+void iptoquadg(inet_prefix ip, map_gnode **ext_map, quadro_group *qg, char flags)
+void quadg_free(quadro_group *qg);
+void quadg_destroy(quadro_group *qg);
+int quadg_diff_gids(quadro_group *qg_a, quadro_group *qg_b);
+int e_rnode_find(ext_rnode_cache *erc, quadro_group *qg);
 
 map_gnode *init_gmap(u_short groups);
 void free_gmap(map_gnode *gmap, u_short groups);

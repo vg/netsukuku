@@ -54,4 +54,5 @@ typedef struct linked_list l_list;
 				   
 #define list_pos(list,pos)	({int _i=0; l_list *_x=(list); list_for(_x){ if(_i==(pos))break; else _i++; } _x;})
 
-#define list_destroy(list)	do{ l_list *_x=(list); list_for(_x) { list_del(_x); } }
+#define list_destroy(list)	do{ l_list *_x=(list), *_i, *_next; _i=_x; \
+				   for(; _i; _i=next) { next=_x->next; list_del(_x); } }

@@ -75,11 +75,10 @@ int iptomap(u_int mapstart, inet_prefix ip, inet_prefix ipstart, u_int *ret)
 		*ret=h_ipstart[0]*sizeof(map_node)+mapstart;
 	}
 
-	if(*ret > INTMAP_END(mapstart)) {
-		/*Ok, this is an extern ip to our gnode. 
-		 * ret=iptogid(ip);*/
+	if(*ret > INTMAP_END(mapstart) || *ret < mapstart)
+		/*Ok, this is an extern ip to our gnode.*/
 		return 1;
-	}
+
 	return 0;
 }
 

@@ -35,7 +35,6 @@ struct current
 					  entire ext_map for that level*/
 	quadro_group     cur_quadg;
 	
-	/*TODO: Aggiornare i src per bnode_map e bmap_nodes*/
 	map_bnode      **bnode_map;	/*Current boarder nodes map, read bmap.h*/
 	u_int 		*bmap_nodes;	/*How many bnodes there are in map_bnode*/
 	
@@ -43,6 +42,8 @@ struct current
 	map_node 	*cur_node;	/*Me in the map*/
 	map_rnode	*cur_rnode;	/*At the hooking time we haven't rnodes, so this will point a stub rnode struct
 					  present at cur_node->r_node*/
+	ext_rnode_cache *cur_erc;      /*This is the current external rnode cache list (see gmap.h)*/
+	u_int		cur_erc_counter;
 
 	int 		*cur_qspn_id;	/*The current qspn_id we are processing. It is cur_qspn_id[levels] big*/
 	struct timeval	*cur_qspn_time; /*When the last qspn round was sent. It is cur_qspn_time[levels] big*/
@@ -68,3 +69,6 @@ NtkOpt server_opt;
 extern char *__argv0;
 extern int dbg_lvl;
 extern int log_to_stderr;
+
+
+void set_common_map_vars(u_char level, map_node *map, map_node *root_node, int *root_node_pos, map_gnode *gmap);

@@ -20,8 +20,10 @@
 #include "map.h"
 
 /* map_bnode is the struct used to create the "map boarder node". 
- * This map keeps for each boarder node of the int_map the gnodes which they are linked to.
- * As always there are some little differences from the map_node:
+ * This map keeps all the boarder node of the map, making it easy to retrieve
+ * the gnode they are linked to.
+ * It is indentical to the map_node but, as always there are some little 
+ * differences:
  *
  *	__u16 		links;		is the number of gnodes the bnode is linked to.
  *	map_rnode	*r_node;	r_node[x].r_node, in this case, points to the position of the bnode's gnode in 

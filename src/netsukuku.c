@@ -19,6 +19,27 @@ int save_maps(void)
 	save_extmap(me.ext_map, MAXGROUPNODE, me.cur_quadg, server_opt.ext_map_file);
 }
 
+void set_common_map_vars(u_char level, map_node *map, map_node *root_node, int *root_node_pos, map_gnode *gmap)
+{
+	if(!level) {
+		if(map)
+			*map=me.int_map;
+		if(root_node)
+			*root_node=me.cur_node;
+		if(root_node_pos)
+			*root_node_pos=pos_from_node(me.cur_node, me.int_map);
+	} else {
+		if(map)
+			*map=me.ext_map[_EL(level)];
+		if(gmap)
+			*gmap=*map;
+		if(root_node)
+			*root_node=&me.cur_quadg.gnode[_EL(level)].g;
+		if(root_node_pos)
+			*root_node_pos=pos_from_gnode(me.cur_quadg.gnode[_EL(level)], me.ext_map[_EL(level)]);
+	}
+}
+
 int main(int argc, char **argv)
 {
 	/*This shall be the main flow:*/
@@ -32,6 +53,8 @@ int main(int argc, char **argv)
 	char *if_init(char *dev, &me.cur_dev_idx)
 	join_ipv6_multicast();
 	map_init();
+	ext_maop_init();
+	init_quadg();
 	qspn_init(u_char levels);
 	bmap_level_init(levels, &me.bnode_map, &me.bmap_nodes);
 	*/

@@ -36,10 +36,10 @@
 #define MAP_ME		1		/*The root_node, in other words, me ;)*/
 #define MAP_VOID	(1<<1)		/*It indicates a non existent node*/
 #define MAP_HNODE	(1<<2)		/*Hooking node. One node is hooking when it is connecting to netsukuku*/
-#define MAP_SNODE	(1<<3)
-#define MAP_DNODE	(1<<4)
-#define MAP_BNODE	(1<<5)		/*The node is a border_node*/
-#define MAP_GNODE	(1<<6)
+#define MAP_SNODE	(1<<3)		/*Static Node*/
+#define MAP_BNODE	(1<<4)		/*The node is a border_node*/
+#define MAP_ERNODE	(1<<5)		/*It is an External Rnode*/
+#define MAP_GNODE	(1<<6)		/*It is a gnode*/
 #define MAP_RNODE	(1<<7)		/*If a node has this set, it is one of the rnodes*/
 #define MAP_UPDATE	(1<<8)		/*If it is set, the corresponding route in the krnl will be updated*/
 #define QSPN_CLOSED	(1<<9)		/*This flag is set only to the rnodes, it puts a link in a QSPN_CLOSED state*/

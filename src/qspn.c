@@ -110,28 +110,15 @@ void update_qspn_time(u_char level)
 	}
 }
 
-void set_common_map_vars(u_char level, map_node *map, map_node *root_node, map_gnode *gmap)
-{
-	if(!level) {
-		*map=me.int_map;
-		*root_node=me.cur_node;
-	} else {
-		*map=me.ext_map[_EL(level)];
-		*gmap=*map;
-		*root_node=&me.cur_quadg.gnode[_EL(level)].g;
-	}
-}
-				
 /* qspn_new_round: It prepares all the buffers for the new qspn_round and removes
  * the QSPN_OLD nodes from the map.*/
 void qspn_new_round(u_char level)
 {
 	int bm;
-	map_node *map;
-	map_node *root_node;
+	map_node *map, *root_node;
 	map_gnode *gmap;
 	
-	set_common_map_vars(level, &map, &root_node, &gmap):
+	set_common_map_vars(level, &map, &root_node, 0, &gmap):
 
 	/*New round activated. Destroy the old one. beep.*/
 	me.cur_qspn_id[level]++;
@@ -180,17 +167,19 @@ int qspn_send(u_char level)
 {
 	PACKET pkt;
 	map_node *from=me.cur_node;
-	int round_ms, ret, gid;
-	map_node *map;
-	map_node *root_node;
+	int round_ms, ret, upper_gid, root_node_pos;
+	map_node *map, *root_node;
 	map_gnode *gmap;
+	u_char upper_level;
 	
-	set_common_map_vars(level, &map, &root_node, &gmap):
-	gid=me.cur_quadg.gid[level];
+	set_common_map_vars(level, &map, &root_node, &root_node_pos, &gmap):
+	upper_level=level+1;
 
-	/* If we want to send to restrict the qspn to our gnode let's use the level 0*/
-	if(level==1)
-		level=0;
+	/* Now I explain how does work the level stuff in the qspn. For example, if we want to
+	 * propagate the qspn in the level 2, we store in qspn.level the upper level (3), and 
+	 * the gid of the upper_level which containts the entire level 2. Simple no?
+	 */
+
 	
 	/*If we aren't a bnode it's useless to send qspn in higher levels*/
 	if(level && !(root_node->flags & MAP_BNODE))
@@ -208,17 +197,18 @@ int qspn_send(u_char level)
 	}
 	
 	qspn_new_round(level);
-	me.cur_node->flags|=QSPN_STARTER;
+	root_node->flags|=QSPN_STARTER;
 
 	/*The forge of the packet. "One pkt to rule them all". Dum dum*/
-	tracer_pkt_build(QSPN_CLOSE, me.cur_qspn_id[level], pos_from_node(root_node, map),  /*IDs*/
-			 gid,	     level,
-			 0,          0,         	    0, 				    /*Received tracer_pkt*/
-			 0,          0,              	    0, 			  	    /*bnode_block*/
-			 &pkt);								    /*Where the pkt is built*/
+	upper_gid=me.cur_quadg.gid[upper_level];
+	tracer_pkt_build(QSPN_CLOSE, me.cur_qspn_id[level], root_node_pos, /*IDs*/
+			 upper_gid,  level,
+			 0,          0,         	    0, 		   /*Received tracer_pkt*/
+			 0,          0,              	    0, 		   /*bnode_block*/
+			 &pkt);						   /*Where the pkt is built*/
 	xfree(old_bblock);
 	/*... forward the qspn_opened to our r_nodes*/
-	tracer_pkt_send(exclude_from_and_glevel_and_closed, gid, level+1, from, pkt);
+	tracer_pkt_send(exclude_from_and_glevel_and_closed, upper_gid, upper_level, from, pkt);
 
 	qspn_send_mutex[level]=0;
 	return ret;
@@ -231,21 +221,19 @@ int qspn_close(PACKET rpkt)
 	tracer_hdr  *tracer_hdr;
 	tracer_chunk *tracer;
 	bnode_hdr    *bhdr=0;
-	map_node *from;
 	ssize_t err;
 	size_t bblock_sz=0, old_bblock_sz;
-	int i, not_closed=0, ret=0,new_qspn_close=0, ret_err, gid;
+	int i, not_closed=0, ret=0, new_qspn_close=0, ret_err;
 	u_int hops;
 	u_short old_bchunks=0;
 	char *ntop, *old_bblock;
-	u_char level;
 
-	if(me.cur_node->flags & QSPN_STARTER) {
-		ntop=inet_to_str(&rpkt->from);
-		debug(DBG_NOISE, "qspn_close(): We received a qspn_close from %s, but we are the QSPN_STARTER.", ntop);
-		xfree(ntop);
-		return 0;
-	}
+	map_node *from, *root_node, *tracer_starter;
+	map_gnode *gfrom;
+	void *void_map;
+	int gid, root_node_pos;
+	u_char level, upper_level;
+
 
 	ret_err=tracer_unpack_pkt(rpkt, &bcast_hdr, &tracer_hdr, &tracer, &bhdr, &bblock_sz);
 	if(ret_err) {
@@ -254,50 +242,74 @@ int qspn_close(PACKET rpkt)
 		xfree(ntop);
 		return -1;
 	}
-	/*TODO CONTINUE HRERE*/
 	gid=bcast_hdr->g_node;
-	level=bcast_hdr->level;
-		
-	if(rpkt.hdr.id != me.cur_qspn_id[level]) { /*XXX*/
-		if(qspn_round_left(level) > 0 || rpkt.hdr.id != me.cur_qspn_id[level]+1) { /*XXX*/
+	upper_level=level=bcast_hdr->level;
+
+	if(!level || level==1) {
+		level=0;
+		set_common_map_vars(level, 0, &root_node, &root_node_pos, 0):
+		from=node_from_pos(tracer[hops-1].node, me.int_map);
+		tracer_starter=node_from_pos(tracer[0].node, me.int_map);
+                void_map=me.int_map;
+	} else {
+		level--;
+		set_common_map_vars(level, 0, &root_node, &root_node_pos, 0):
+		from=gfrom=gnode_from_pos(tracer[hops-1].node, me.ext_map[_EL(level)]);
+		tracer_starter=gnode_from_pos(tracer[0].node, ext_map[_EL(level)]);
+                void_map=me.ext_map;
+	}
+	
+	if(root_node->flags & QSPN_STARTER || tracer_starter == root_node) {
+		ntop=inet_to_str(&rpkt->from);
+		debug(DBG_NOISE, "qspn_close(): We received a qspn_close from %s, but we are the QSPN_STARTER.", ntop);
+		xfree(ntop);
+		return 0;
+	}
+	
+	if(rpkt.hdr.id != me.cur_qspn_id[level]) {
+		if(qspn_round_left(level) > 0 || rpkt.hdr.id != me.cur_qspn_id[level]+1) {
 			ntop=inet_to_str(&rpkt->from);
 			debug(DBG_NOISE, "qspn_close(): The %s sent a qspn_close with a wrong qspn_id", ntop);
 			xfree(ntop);
 			return -1;
 		} else
-			qspn_new_round(level); /*XXX*/
+			qspn_new_round(level);
 	}
 
 	/*Time to update our map*/
 	hops=tracer_hdr->hops;
-	from=node_from_pos(tracer[hops-1].node, me.int_map);
-	tracer_store_pkt(me.int_map, /*XXX: level--*/, tracer_hdr, tracer, (void *)bhdr, bblock_sz,
+	tracer_store_pkt(void_map, level, tracer_hdr, tracer, (void *)bhdr, bblock_sz,
 			&old_bchunks, &old_bblock, &old_bblock_sz);
 
-	/*We close the from node and we see there are any links still `not_closed'*/
-	for(i=0; i<me.cur_node->links; i++) {
-		if(me.cur_node->r_node[i].r_node == from)
-			me.cur_node->r_node[i].r_node->flags|=QSPN_CLOSED;
+	/*Only if we are in the level 0, or if we are a bnode, we can do the real 
+	 * qspn actions, otherwise we simply forward the pkt*/
+	not_closed=0;
+	if(!level || (root_node->flags & MAP_BNODE)) {
+		/*We close the from node and we see there are any links still `not_closed'*/
+		for(i=0; i<root_node->links; i++) {
+			if(root_node->r_node[i].r_node == from)
+				root_node->r_node[i].r_node->flags|=QSPN_CLOSED;
 
-		if(!(me.cur_node->r_node[i].r_node & QSPN_CLOSED))
-			not_closed++;
+			if(!(root_node->r_node[i].r_node & QSPN_CLOSED))
+				not_closed++;
+		}
 	}
 
 	/*We build d4 p4ck37...*/
-	tracer_pkt_build(QSPN_CLOSE, rpkt.hdr.id, pos_from_node(me.cur_node, me.int_map),  /*IDs*/
-			 gid,	     level,	/*XXX*/
-			 bcast_hdr, tracer_hdr, tracer, 				   /*Received tracer_pkt*/
-			 old_bchunks, old_bblock, old_bblock_sz, 			   /*bnode_block*/
-			 &pkt);								   /*Where the pkt is built*/
+	tracer_pkt_build(QSPN_CLOSE, rpkt.hdr.id, root_node_pos,  /*IDs*/
+			 gid,	     level,
+			 bcast_hdr, tracer_hdr, tracer, 	  /*Received tracer_pkt*/
+			 old_bchunks, old_bblock, old_bblock_sz,  /*bnode_block*/
+			 &pkt);					  /*Where the pkt is built*/
 	xfree(old_bblock);
 
 	/*We have all the links closed, time to diffuse a new qspn_open*/
-	if(!not_closed && !(me.cur_node->r_node[i].r_node->flags & QSPN_REPLIED)) {
+	if(!not_closed && !(root_node->r_node[i].r_node->flags & QSPN_REPLIED)) {
 		pkt.hdr.op=QSPN_OPEN;
-		tracer_pkt_send(exclude_from_and_gnode_and_setreplied, /*XXX: gid*/, /*XXX: level+1*/, from, pkt);
+		tracer_pkt_send(exclude_from_and_glevel_and_setreplied, gid, upper_level, from, pkt);
 	} else {
 		/*Forward the qspn_close to all our r_nodes!*/
-		tracer_pkt_send(exclude_from_and_gnode_and_closed, /*XXX: gid*/, /*XXX: level+1*/, from, pkt);
+		tracer_pkt_send(exclude_from_and_glevel_and_closed, gid, upper_level, from, pkt);
 	}
 finish:
 	if(new_qspn_close) {
@@ -314,14 +326,19 @@ int qspn_open(PACKET rpkt)
 	tracer_hdr   *tracer_hdr;
 	tracer_chunk *tracer;
 	bnode_hdr    *bhdr=0;
-	map_node *from;
-	struct qspn_buffer *qb=qspn_b;
+	struct qspn_buffer *qb=0;
 	ssize_t err;
 	int i, not_opened=0, ret=0, reply, sub_id, ret_err;
 	u_int hops;
 	size_t bblock_sz=0, old_bblock_sz;
 	u_short old_bchunks=0;
 	char *ntop, *old_bblock;
+
+	map_node *from, *root_node;
+	map_gnode *gfrom;
+	void *void_map;
+	int gid, root_node_pos;
+	u_char level, upper_level;
 
 	ret_err=tracer_unpack_pkt(rpkt, &bcast_hdr, &tracer_hdr, &tracer, &bhdr, &bblock_sz);
 	if(ret_err) {
@@ -330,60 +347,77 @@ int qspn_open(PACKET rpkt)
 		xfree(ntop);
 		return -1;
 	}
+	
+	hops=tracer_hdr.hops;
+	gid=bcast_hdr->g_node;
+	upper_level=level=bcast_hdr->level;
+	if(!level || level==1) {
+		level=0;
+		set_common_map_vars(level, 0, &root_node, &root_node_pos, 0):
+		from=node_from_pos(tracer[hops-1].node, me.int_map);
+                void_map=me.int_map;
+	} else {
+		level--;
+		set_common_map_vars(level, 0, &root_node, &root_node_pos, 0):
+		from=gfrom=gnode_from_pos(tracer[hops-1].node, me.ext_map[_EL(level)]);
+                void_map=me.ext_map;
+	}
 
-	if(bcast_hdr.sub_id == pos_from_node(me.cur_node, me.int_map)) {
+	sub_id=buffer_hdr.sub_id;
+	if(sub_id == root_node_pos) {
 		ntop=inet_to_str(&rpkt->from);
 		debug(DBG_NOISE, "qspn_open(): We received a qspn_open from %s, but we are the opener.", ntop);
 		xfree(ntop);
 		return 0;
 	}
 
-	if(rpkt.hdr.id != me.cur_qspn_id[level]) { /*XXX*/
+	if(rpkt.hdr.id != me.cur_qspn_id[level]) {
 		ntop=inet_to_str(&rpkt->from);
 		debug(DBG_NOISE, "qspn_open(): The %s sent a qspn_open with a wrong qspn_id", ntop);
 		xfree(ntop);
 		return -1;
 	}
 
-	/*Various  abbreviations*/
-	sub_id=buffer_hdr.sub_id;
-	hops=tracer_hdr.hops;
-	from=node_from_pos(tracer[hops-1].node, me.int_map);
-	
 	/*Time to update our map*/
-	tracer_store_pkt(me.int_map, /*XXX: level--*/, tracer_hdr, tracer, (void *)bhdr, bblock_sz,
+	tracer_store_pkt(void_map, level, tracer_hdr, tracer, (void *)bhdr, bblock_sz,
 			&old_bchunks, &old_bblock, &old_bblock_sz);
 	
 	/* We search in the qspn_buffer the reply which has current sub_id. 
 	 * If we don't find it, we add it*/
-	if((reply=qspn_b_find_reply(qspn_b, sub_id))==-1) {
-		qb=qspn_b;
+	if((reply=qspn_b_find_reply(qspn_b[level], sub_id))==-1) {
+		qb=qspn_b[level];
 		list_for(qb)
 			if(qb->rnode == from)
 				qspn_b_add(qb, sub_id, 0);
 	}
-	/*Time to open the links*/
-	qb=qspn_b;
-	list_for(qb) {
-		if(qb->rnode == from)
-			qb->flags[reply]|=QSPN_OPENED;
-		if(!(qb->flags[reply] & QSPN_OPENED))
-			not_opened++;
-	}
-	/*Fokke, we've all the links opened. let's take a rest.*/
-	if(!not_opened) {
-		debug(DBG_NOISE, "qspn_open(): We've finished the qspn_open (sub_id: %d) phase", sub_id);
-		return 0;
+
+	/*Only if we are in the level 0, or if we are a bnode, we can do the real 
+	 * qspn actions, otherwise we simply forward the pkt*/
+	not_closed=0;
+	if(!level || (root_node->flags & MAP_BNODE)) {
+		/*Time to open the links*/
+		qb=qspn_b[level];
+		list_for(qb) {
+			if(qb->rnode == from)
+				qb->flags[reply]|=QSPN_OPENED;
+			if(!(qb->flags[reply] & QSPN_OPENED))
+				not_opened++;
+		}
+		/*Fokke, we've all the links opened. let's take a rest.*/
+		if(!not_opened) {
+			debug(DBG_NOISE, "qspn_open(): We've finished the qspn_open (sub_id: %d) phase", sub_id);
+			return 0;
+		}
 	}
 
 	/*The forge of the packet. "One pkt to rule them all". Dum dum*/
 	tracer_pkt_build(QSPN_OPEN, rpkt.hdr.id, bcast_hdr->sub_id,  			   /*IDs*/
-			 gid, 	    level /*XXX*/
+			 gid, 	    level,
 			 bcast_hdr, tracer_hdr, tracer, 				   /*Received tracer_pkt*/
 			 old_bchunks, old_bblock, old_bblock_sz, 			   /*bnode_block*/
 			 &pkt);								   /*Where the pkt is built*/
 	xfree(old_bblock);
 	/*... forward the qspn_opened to our r_nodes*/
-	tracer_pkt_send(exclude_from_and_opened_and_glevel, /*XXX: gid*/, /*XXX: level+1*/, from, pkt);
+	tracer_pkt_send(exclude_from_and_opened_and_glevel, gid, upper_level, from, pkt);
 	return ret;
 }

@@ -32,14 +32,20 @@ int max_radar_wait=MAX_RADAR_WAIT;	/*How much we wait to store the received ECHO
 int radar_scans=0;			/*How many ECHO_ME pkts we sent*/
 int radar_scan_mutex;			/*A flag to see if we are already doing a scan*/
 int my_echo_id=0;			
-int send_qspn_now=0;			/*Shall we send the qspn?*/
+int send_qspn_now[MAX_LEVELS];		/*Shall we send the qspn in level? If yes send_qspn_now[level] is != 0*/
+
+#define RADQ_VOID_RNODE		0
+#define RADQ_EXT_RNODE		1
 
 struct radar_queue
 {
 	struct radar_queue *next;
 	struct radar_queue *prev;
-	map_node       *node;			/*The node we are pinging*/
+
 	inet_prefix	ip;			/*Node's ip*/
+	map_node       *node;			/*The node we are pinging*/
+	quadro_group	quadg;			/*Node's data for the ext_map*/
+						   
 	char pongs;				/*The total pongs received*/
 	struct timeval rtt[MAX_RADAR_SCANS];	/*The round rtt of each pong*/
 	struct timeval final_rtt;		/*When all the rtt is filled, or when MAX_RADAR_WAIT is passed, final_rtt

@@ -27,7 +27,7 @@ struct free_ips
 	u_short  	gid;
 	u_short		ips;
 	inet_prefix 	ipstart;
-	struct timeval  qtime;	/*qspn round time: how many seconds passed away
+	struct timeval  qtime;		/*qspn round time: how many seconds passed away
 					  since the previous qspn round*/
 };
 

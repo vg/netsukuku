@@ -52,15 +52,21 @@
  * - map_node.r_node.rtt isn't used.
  *
  * The only exception is the root_node. Its rnodes have a different meaning: they are
- * its effective rnodes, so each map_node.r_node points to the node in the which is the
+ * its effective rnodes, so each map_node.r_node points to the node which is the
  * real rnode of the root_node.
+ * The root_node at level 0 may have also rnode of a different gnode (it is a boarder node).
+ * To store these external rnodes in root_node.r_node[x], the root_node.r_node[x].r_node 
+ * will point to the relative ext_rnode struct (see gmap.h) and the MAP_GNODE flags will be
+ * set in root_node.r_node[x].flags. 
+ * The rnodes of the root_node of 0 level are update by the radar(), instead the root_nodes
+ * of greater levels are updated by the qspn.
  *
  * Currently the qspn_map styleII is used.
  * typedef qmap_node *int_map;
  */
 
 
-/* This struct keeps tracks of the qspn_pkts sent or
+/* This list keeps tracks of the qspn_pkts sent or
  * received by our rnodes*/
 struct qspn_buffer
 {	
@@ -81,6 +87,7 @@ void qspn_b_add(struct qspn_buffer *qb, u_short replier, u_short flags);
 int qspn_b_find_reply(struct qspn_buffer *qb, int sub_id);
 int qspn_round_left(void);
 void update_qspn_time(void);
+
 void qspn_new_round(void);
 
 int exclude_from_and_gnode_and_opened(map_node *node, map_node *from, int pos);
