@@ -215,6 +215,17 @@ void map_node_del(map_node *node)
 	node->flags|=MAP_VOID;
 }
 
+void reset_int_map(map_node *map, int maxgroupnode)
+{
+	int i;
+	
+	if(!maxgroupnode)
+		maxgroupnode=MAXGROUPNODE;
+	
+	for(i=0; i<maxgroupnode; i++)
+		map_node_del(&map[i]);
+}
+
 /*rnode_rtt_compar: It's used by rnode_rtt_order*/
 int rnode_rtt_compar(const void *a, const void *b) 
 {

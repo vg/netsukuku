@@ -116,6 +116,7 @@ int iptomap(u_int mapstart, inet_prefix ip, inet_prefix ipstart, u_int *ret);
 map_node *init_map(size_t len);
 void free_map(map_node *map, size_t count);
 void map_node_del(map_node *node);
+void reset_int_map(map_node *map, int maxgroupnode);
 
 map_rnode *rnode_insert(map_rnode *buf, size_t pos, map_rnode *new);
 map_rnode *map_rnode_insert(map_node *node, size_t pos, map_rnode *new);

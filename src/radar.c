@@ -512,7 +512,7 @@ int radar_scan(void)
 
 	final_radar_queue();
 	radar_update_map();
-	debug(DBG_NORMAL, "Radar_scan %d finished", my_echo_id);
+
 	if(!(me.cur_node->flags & MAP_HNODE)) {
 		for(i=0; i<me.cur_quadg.levels; i++)
 			if(send_qspn_now[i])

@@ -57,7 +57,7 @@ struct free_nodes_hdr
  *	fn_block;
  */
 
-int get_free_nodes(inet_prefix to, struct free_nodes_hdr *fn_hdr, int *nodes, struct timeval *qtime);
+int get_free_nodes(inet_prefix to, struct free_nodes_hdr *fn_hdr, u_short *nodes, struct timeval *qtime);
 int put_free_nodes(PACKET rq_pkt);
 
 int put_ext_map(PACKET rq_pkt);
