@@ -65,6 +65,9 @@ struct q_opt
 
 void thread_joint(int joint, void * (*start_routine)(void *), void *nopt);
 void gen_rnd_map(int start_node, int back_link, int back_link_rtt);
+int print_map(map_node *map, char *map_file);
+void *show_temp_stat(void *);
+void print_data(char *file);
 int store_tracer_pkt(struct q_opt *qopt);
 void *send_qspn_backpro(void *argv);
 void *send_qspn_reply(void *argv);

@@ -22,9 +22,11 @@
 #include "qspn-empiric.h"
 #include "xmalloc.h"
 
+int total_threads=0;
 void thread_joint(int joint, void * (*start_routine)(void *), void *nopt)
 {	
 	pthread_t thread;
+	total_threads++;
 	if(joint) {
 		fprintf(stderr, "%u: Joining the thread...", pthread_self());
 		pthread_create(&thread, NULL, start_routine, (void *)nopt);
@@ -39,43 +41,68 @@ void thread_joint(int joint, void * (*start_routine)(void *), void *nopt)
 /* gen_rnd_map: Generate Random Map*/
 void gen_rnd_map(int start_node, int back_link, int back_link_rtt) 
 {
-	int x, i=start_node, r=0, e, b=0, rnode_rnd, ms_rnd;
+	int i=start_node, r=0, e, b=0, rnode_rnd, ms_rnd;
 	map_rnode rtmp;
 
 	if(i > MAXGROUPNODE)
 		i=(random()%(MAXGROUPNODE-0))+0;
 
-	if(back_link>0 && back_link<MAXGROUPNODE)
+	if(back_link>=0 && back_link<MAXGROUPNODE)
 		b=1;
-
-	for(x=0; x<MAXGROUPNODE; x++) {
-		if(int_map[i].flags & MAP_SNODE)
-			continue;
-
-		r=(random()%(MAXLINKS-0+1))+0;	/*rnd_range algo: (rand()%(max-min+1))+min*/
-		int_map[i].flags|=MAP_SNODE;
-		if(b) {
-			r++;
-			memset(&rtmp, '\0', sizeof(map_rnode));
-			rtmp.r_node=(u_int *)&int_map[back_link];
-			rtmp.rtt.tv_usec=back_link_rtt;
-			rnode_add(&int_map[i], &rtmp);
-		}
-		/*printf("Creating %d links for the node %d\n",  r, i);*/
-		for(e=0; e<r; e++) { /*It's e<r and not e<=r because we've already added the back_link rnode at r position*/
-			memset(&rtmp, '\0', sizeof(map_rnode));
+	
+	if(int_map[i].flags & MAP_SNODE)
+		return;
+	
+	r=(random()%(MAXLINKS-0+1))+0;	/*rnd_range algo: (rand()%(max-min+1))+min*/
+	int_map[i].flags|=MAP_SNODE;
+	int_map[i].flags&=~MAP_VOID;
+	if(b) {
+		r++;
+		memset(&rtmp, '\0', sizeof(map_rnode));
+		rtmp.r_node=(u_int *)&int_map[back_link];
+		rtmp.rtt.tv_usec=back_link_rtt;
+		printf("Node %d -> Adding rnode %d (back link)\n", i, back_link);
+		rnode_add(&int_map[i], &rtmp);
+		b=0;
+	}
+	/*printf("Creating %d links for the node %d\n",  r, i);*/
+	for(e=0; e<r; e++) { /*It's e<r and not e<=r because we've already added the back_link rnode at r position*/
+		memset(&rtmp, '\0', sizeof(map_rnode));
 random_node:
-			while((rnode_rnd=(random()%(MAXGROUPNODE-0))+0) == i);
-			for(b=0; b<e; b++)
-				if(&int_map[rnode_rnd] == (map_node *)int_map[i].r_node[b].r_node)
-					goto random_node;
-			rtmp.r_node=(u_int *)&int_map[rnode_rnd];
-			ms_rnd=(random()%((MAXRTT*1000)-0))+0;
-			rtmp.rtt.tv_usec=ms_rnd*1000;
-			rnode_add(&int_map[i], &rtmp);
+		printf("rn\n");
+		while((rnode_rnd=(random()%(MAXGROUPNODE-0))+0) == i);
+		for(b=0; b<int_map[i].links; b++)
+			if((map_node *)&int_map[rnode_rnd] == (map_node *)int_map[i].r_node[b].r_node) {
+				printf("goto random_node;\n");
+				goto random_node;
+			}
 
-			if(!(int_map[rnode_rnd].flags & MAP_SNODE))
-				gen_rnd_map(rnode_rnd, i, rtmp.rtt.tv_usec);
+		rtmp.r_node=(u_int *)&int_map[rnode_rnd];
+		ms_rnd=(random()%((MAXRTT*1000)-0))+0;
+		rtmp.rtt.tv_usec=ms_rnd*1000;
+		printf("Node %d -> Adding rnode %d\n", i, rnode_rnd);
+		rnode_add(&int_map[i], &rtmp);
+
+		/*Does exist the node "rnode_rnd" added as rnode?*/
+		if(int_map[rnode_rnd].flags & MAP_VOID)	
+			/*No, let's create it*/
+			gen_rnd_map(rnode_rnd, i, rtmp.rtt.tv_usec);
+		else {
+			/*It does, let's check if it has a link to me*/
+			int c=0;
+			for(b=0; b<int_map[rnode_rnd].links; b++)
+				if((map_node *)int_map[rnode_rnd].r_node[b].r_node == &int_map[i]) {
+					c=1;
+					break;
+				}
+			if(!c) {
+				/*We create the back link from rnode_rnd to me (i)*/
+				memset(&rtmp, '\0', sizeof(map_rnode));
+				rtmp.r_node=(u_int *)&int_map[i];
+				rtmp.rtt.tv_usec=ms_rnd*1000;
+				printf("Node %d -> Adding rnode %d (front link)\n", rnode_rnd,i);
+				rnode_add(&int_map[rnode_rnd], &rtmp);
+			}
 		}
 	}
 }
@@ -157,6 +184,7 @@ void *send_qspn_backpro(void *argv)
 	if(qopt->q.routes)
 		xfree(qopt->q.tracer);
 	xfree(qopt);
+	total_threads--;
 }
 
 void *send_qspn_reply(void *argv)
@@ -203,6 +231,7 @@ void *send_qspn_reply(void *argv)
 	if(qopt->q.routes)
 		xfree(qopt->q.tracer);
 	xfree(qopt);
+	total_threads--;
 }
 
 void *send_qspn_pkt(void *argv)
@@ -225,12 +254,17 @@ void *send_qspn_pkt(void *argv)
 		if(!(int_map[to].r_node[x].flags & QSPN_CLOSED))
 			i++;
 	}
-	if(!i) {
+	if(!i && !(int_map[to].flags & QSPN_REPLIED) && !(int_map[to].flags & QSPN_STARTER)) {
 		/*W00t I'm an extreme node!*/
-		fprintf(stderr, "%u: W00t I'm an extreme node!\n", pthread_self(), qopt->q.from, to);
+		fprintf(stderr, "%u: W00t I'm an extreme node!\n", pthread_self());
+		
+		int_map[to].flags|=QSPN_REPLIED;
 		for(x=0; x<int_map[to].links; x++) {	
 			if((map_node *)int_map[to].r_node[x].r_node == &int_map[qopt->q.from]) 
 				continue;
+
+			/*We've to clear the closed link*/
+			int_map[to].r_node[x].flags&=~QSPN_CLOSED;
 
 			dst=((void *)int_map[to].r_node[x].r_node - (void *)int_map)/sizeof(map_node);
 			gbl_stat.total_pkts++;
@@ -250,6 +284,7 @@ void *send_qspn_pkt(void *argv)
 
 			gbl_stat.qspn_replies++;
 			node_stat[to].qspn_replies++;
+			fprintf(stderr, "%u: Sending a qspn_reply to %d\n", pthread_self(), dst);
 			thread_joint(qopt->join, send_qspn_reply, (void *)nopt);
 			if(qopt->q.routes)
 				xfree(qopt->q.tracer);
@@ -292,19 +327,51 @@ void *send_qspn_pkt(void *argv)
 	if(qopt->q.routes)
 		xfree(qopt->q.tracer);
 	xfree(qopt);
+	total_threads--;
 }
 
 void collect_data(void)
 {
 	int i, x, e;
 
+	fprintf(stderr, "Collecting the data!\n");
 	for(i=0; i<MAXGROUPNODE; i++)
-		for(e=0; pkt_db[i][e]->routes; e++)
+		for(e=0; e<pkt_dbc[i]; e++)
 			for(x=0; x<pkt_db[i][e]->routes; x++)
 				if((rt_stat[i][pkt_db[i][e]->tracer[x]]++)==1)
 					rt_total[i]++;
 }
 
+void *show_temp_stat(void *null)
+{
+	FILE *fd=stdout;
+	while(1) {
+		sleep(5);
+		fprintf(fd, "Total_threads: %d\n", total_threads);		
+		fprintf(fd, "Gbl_stat{\n\ttotal_pkts: %d\n\tqspn_requests: %d"
+				"\n\tqspn_replies: %d\n\tqspn_backpro: %d }\n\n",
+				gbl_stat.total_pkts, gbl_stat.qspn_requests,
+				gbl_stat.qspn_replies, gbl_stat.qspn_backpro);
+	}
+}
+
+int print_map(map_node *map, char *map_file)
+{
+	int x,e;
+	FILE *fd;
+
+	fd=fopen(map_file, "w");
+	fprintf(fd,"--- map ---\n");
+	for(x=0; x<MAXGROUPNODE; x++) {
+		fprintf(fd, "Node %d\n",x);
+		for(e=0; e<map[x].links; e++)
+			fprintf(fd, "        -> %d\n",((void *)int_map[x].r_node[e].r_node - (void *)int_map)/sizeof(map_node));
+			
+		fprintf(fd, "--\n");
+	}
+	fclose(fd);
+}
+		
 void print_data(char *file)
 {
 	int i, x, e;
@@ -316,10 +383,10 @@ void print_data(char *file)
 
 	for(i=0; i<MAXGROUPNODE; i++)
 		if(rt_total[i]<MAXGROUPNODE)
-			fprintf(fd,"*WARNING* The node %d has only %d/%d routes\n *WARNING*\n", i, rt_total[i], MAXGROUPNODE);
+			fprintf(fd,"*WARNING* The node %d has only %d/%d routes *WARNING*\n", i, rt_total[i], MAXGROUPNODE);
 
-	fprintf(fd, "Gbl_stat{\n\ttotal_pkts: %d\n\tqspn_requests: %d\n\t",
-			"qspn_replies: %d\n\tqspn_backpro: %d }, QSPN finished in :%d seconds\n",
+	fprintf(fd, "Gbl_stat{\n\ttotal_pkts: %d\n\tqspn_requests: %d"
+			"\n\tqspn_replies: %d\n\tqspn_backpro: %d }, QSPN finished in :%d seconds\n",
 			gbl_stat.total_pkts, gbl_stat.qspn_requests,
 			gbl_stat.qspn_replies, gbl_stat.qspn_backpro, time_stat);
 
@@ -333,7 +400,7 @@ void print_data(char *file)
 	fprintf(fd, "Node single stats\n");
 
 	for(i=0; i<MAXGROUPNODE; i++)
-		fprintf(fd, "%d_stat{\n\ttotal_pkts: %d\n\tqspn_requests: %d\n\t",
+		fprintf(fd, "%d_stat{\n\ttotal_pkts: %d\n\tqspn_requests: %d\n\t"
 				"qspn_replies: %d\n\tqspn_backpro: %d }\n", i,
 				node_stat[i].total_pkts, node_stat[i].qspn_requests,
 				node_stat[i].qspn_replies, node_stat[i].qspn_backpro);
@@ -380,9 +447,11 @@ int main(int argc, char **argv)
 	srandom(time(0));
 	i=(random()%(MAXGROUPNODE-0))+0;
 	gen_rnd_map(i, -1, 0);
+	print_map(int_map, "QSPN-test-1.map");
 	int_map[i].flags|=MAP_ME;
 
 	printf("Running the first test...\n");
+	thread_joint(0, show_temp_stat, NULL);
 	r=(random()%(MAXGROUPNODE-0))+0;
 	printf("Starting the QSPN spreading from node %d\n", r);
 	int_map[r].flags|=QSPN_STARTER;
@@ -406,8 +475,12 @@ int main(int argc, char **argv)
 		nopt->q.op=OP_REQUEST;
 		if(x == int_map[r].links-1)
 			nopt->join=1;
+		
 		thread_joint(nopt->join, send_qspn_pkt, (void *)nopt);
 	}
+/*	while(total_threads)
+		sleep(1);
+		*/
 	int_map[r].flags&=~QSPN_STARTER;
 
 	printf("Saving the data to QSPN-test-1 and clearing");
