@@ -37,12 +37,15 @@
 #define MAP_UPDATE	(1<<7)		/*If it is set, the corresponding route in the krnl will be updated*/
 #define MAP_VOID	(1<<8)		/*It indicates a non existent node*/
 #define QSPN_CLOSED	(1<<9)		/*This flag is set only to the rnodes, it puts a link in a QSPN_CLOSED state*/
+#define QSPN_STARTER	(1<<10)		/*Used only by qspn-empiric.c*/
 
 /*map_rnode is what map_node.r_node points to*/
 typedef struct
 {
-/*Questa flag non serve perche' c'e' gia' quella in r_node->flags	
- * u_char 		flags; */
+#ifdef QSPN_EMPIRIC
+	u_char 		flags;
+#endif
+
 	u_int	 	*r_node;		 /*It's the pointer to the struct of the r_node in the map*/
 	struct timeval  rtt;	 		 /*node <-> r_node round trip time*/
 	
@@ -59,7 +62,13 @@ typedef struct
 typedef struct
 {
 	u_short 	flags;
+
+#ifdef QSPN_EMPIRIC
+	u_int		brdcast[MAXGROUPNODE];
+#elif
 	u_int		brdcast;	 /*Pkt_id of the last brdcast_pkt sent by this node*/
+#endif /*QSPN_EMPIRIC*/
+
 	__u16		links;		 /*Number of r_nodes*/
 	map_rnode	*r_node;	 /*This structs will be kept in ascending order considering their rnode_t.rtt*/
 }map_node;
@@ -114,3 +123,5 @@ int get_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart);
 map_rnode *map_get_rblock(map_node *map, int *count);
 int store_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart);
 int map_store_rblock(map_node *map, map_rnode *rblock, int count);
+int save_map(map_node *map, map_node *root_node, char *file);
+map_node *load_map(char *file);

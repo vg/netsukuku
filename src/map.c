@@ -421,3 +421,79 @@ int map_store_rblock(map_node *map, map_rnode *rblock, int count)
 	return c; /*If it's all ok "c" has to be == sizeof(rblock)*count*/
 }
 
+int save_map(map_node *map, map_node *root_node, char *file)
+{
+	FILE *fd;
+	struct int_map_hdr imap_hdr;
+	map_rnode *rblock;
+	int count;
+	
+	if((fd=fopen(file, "w"))==NULL) {
+		error("Cannot save the map in %s: %s", file, strerror(errno));
+		return -1;
+	}
+	
+	rblock=map_get_rblock(map, &count);
+	imap_hdr.root_node=(root_node-map)/sizeof(map_node);
+	imap_hdr.rblock_sz=count*sizeof(map_rnode);
+	imap_hdr.int_map_sz=MAXGROUPNODE*sizeof(map_node);
+	pkt_sz=INT_MAP_BLOCK_SZ(imap_hdr.int_map_sz, imap_hdr.rblock_sz):
+	
+	/*Write!*/
+	fwrite(&imap_hdr, sizeof(struct int_map_hdr), 1, fd);
+	fwrite(map, imap_hdr.int_map_sz, 1, fd);
+	fwrite(rblock, imap_hdr.rblock_sz, 1, fd);
+
+	fclose(fd);
+	xfree(rblock);
+	
+	return 0;
+}
+
+map_node *load_map(char *file)
+{
+	map_node *map;
+	FILE *fd;
+	struct int_map_hdr imap_hdr;
+	map_rnode *rblock;
+	map_node *new_root;
+	int count, err;
+	
+	if((fd=fopen(file, "r"))==NULL) {
+		error("Cannot save the map in %s: %s", file, strerror(errno));
+		return -1;
+	}
+
+	map=(map_node *)xmalloc(sizeof(map_node)*MAXGROUPNODE);
+	
+	
+	fread(&imap_hdr, sizeof(struct int_map_hdr), 1, fd);
+	if(imap_hdr.rblock_sz > MAXROUTES*sizeof(map_rnode) ||
+			imap_hdr.int_map_sz > MAXGROUPNODE*sizeof(map_node)) {
+		error("Malformed map file. Aborting load_map()");
+		map=0;
+		return 0;
+	}
+		
+	/*Extracting the map...*/
+	fread(map, imap_hdr.int_map_sz, 1, fd);
+	
+	/*Extracting the rnodes block and merging it to the map*/
+	rblock=xmalloc(imap_hdr.rblock_sz);
+	fread(rblock, imap_hdr.rblock_sz, 1, fd);
+	err=map_store_rblock(map, rblock, imap_hdr.rblock_sz/sizeof(map_rnode));
+	if(err!=imap_hdr.rblock_sz) {
+		error("An error occurred while storing the rnodes block in the int_map");
+		xfree(map);
+		xfree(rblock);
+		return 0;
+	}
+	
+	*new_root=(map_node *)(map+(imap_hdr.root_node*sizeof(map_node)));
+	(map_node *)(*new_root)->flags|=MAP_ME;
+	
+	fclose(fd);
+	xfree(rblock);
+	
+	return map;
+}
