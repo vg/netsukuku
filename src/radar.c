@@ -54,8 +54,8 @@ void init_radar(void)
 	pthread_attr_init(&radar_qspn_send_t_attr);
 	
 	list_init(radar_q);
-	
 	memset(radar_q, 0, sizeof(struct radar_queue));
+	
 	memset(send_qspn_now, 0, sizeof(u_char)*MAX_LEVELS);
 }
 
@@ -293,7 +293,7 @@ void radar_update_map(void)
 		 
 		   /* 
 		    * We need to know if it is a node which is not in the gnode
-		    * where we are.
+		    * where we are (external_rnode).
 		    */
 		   if((int)rq->node == RADQ_EXT_RNODE) {
 			   external_node=1;
@@ -346,7 +346,7 @@ void radar_update_map(void)
 					   new_root_rnode=&rnn;
 					  
 					   /* Update the external_rnode_cache list */
-					   e_rnode_add(me.cur_erc, e_rnode, rnode_pos, &me.cur_erc_counter);
+					   e_rnode_add(me.cur_erc, e_rnode, rnode_pos-1, &me.cur_erc_counter);
 				   } else {
 					   /* 
 					    * We purge all the node's rnodes. 
@@ -389,8 +389,11 @@ void radar_update_map(void)
 				   qb=xmalloc(sizeof(struct qspn_buffer));
 				   memset(qb, 0, sizeof(struct qspn_buffer));
 				   qb->rnode=node;
-				   if(root_node->links == 1 || !qspn_b[level])
+				   if(root_node->links == 1 || !qspn_b[level]){
+					   /* Initialize the qspn_buffer */
 					   list_init(qspn_b[level]);
+					   memset(qspn_b[level],0,sizeof(struct qspn_buffer));
+				   }
 				   list_add(qspn_b[level], qb);
 
 				   rnode_added[level]++;
@@ -404,8 +407,10 @@ void radar_update_map(void)
 				   if(!send_qspn_now[level] && node->links) {
 					   diff=abs(MILLISEC(root_node->r_node[rnode_pos].rtt) -
 							   MILLISEC(rq->final_rtt));
-					   if(diff >= RTT_DELTA)
+					   if(diff >= RTT_DELTA) {
 						   send_qspn_now[level]=1;
+						   debug(DBG_INSANE, "rnode %d rtt changed, diff: %d", pos_from_node(node, me.int_map));
+					   }
 				   }
 			   }
 			   node->flags&=~MAP_VOID & ~MAP_UPDATE;
@@ -600,8 +605,8 @@ void *radar_qspn_send_t(void *level)
 
 	p=(int *)level;
 	i=(u_char)*p;
+
 	xfree(p);
-	
 	qspn_send(i);
 
 	return NULL;
@@ -613,11 +618,12 @@ void *radar_qspn_send_t(void *level)
  * and in the while the echo replies are gathered. After MAX_RADAR_WAIT it 
  * stops to receive echo replies and it does a statistical analysis of the 
  * gathered echo replies, it updates the r_nodes in the map and sends a qspn 
- * round if something is changed in the map.
+ * round if something is changed in the map and if the `activate_qspn' argument
+ * is non zero.
  * It returns 1 if another radar_scan is in progress, -1 if something went
  * wrong, 0 on success.
  */
-int radar_scan(void) 
+int radar_scan(int activate_qspn) 
 {
 	pthread_t thread;
 	PACKET pkt;
@@ -670,7 +676,7 @@ int radar_scan(void)
 	final_radar_queue();
 	radar_update_map();
 
-	if(!(me.cur_node->flags & MAP_HNODE)) {
+	if(activate_qspn)
 		for(i=0; i<me.cur_quadg.levels; i++)
 			if(send_qspn_now[i]) {
 				p=xmalloc(sizeof(int));
@@ -679,8 +685,9 @@ int radar_scan(void)
 				pthread_create(&thread, &radar_qspn_send_t_attr, 
 						radar_qspn_send_t, (void *)p);
 			}
-		reset_radar();
-	}
+
+	if(!(me.cur_node->flags & MAP_HNODE))
+			reset_radar();
 
 	radar_scan_mutex=0;	
 	return 0;
@@ -777,7 +784,7 @@ int radard(PACKET rpkt)
 void *radar_daemon(void *null)
 {
 	debug(DBG_NORMAL, "Radar daemon up & running");
-	for(;;radar_scan());
+	for(;;radar_scan(1));
 }
 
 /* 

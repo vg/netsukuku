@@ -1,4 +1,6 @@
 - [HIGH PRIORITY] -
+*******QSPN IS DISABLED, TESTING THE START_TRACER_PKT ONLY *********
+
 testare: 93%, hook.c in progress
 testare: 30%, tracer.c in progress
 

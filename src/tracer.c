@@ -44,9 +44,10 @@ int tracer_verify_pkt(tracer_chunk *tracer, u_int hops, map_node *real_from, u_c
 	/*
 	 * `from' has to be absolutely one of our rnodes
 	 */
+
 	if(!level) {
 		from=node_from_pos(tracer[hops-1].node, me.int_map);
-		if(from && from != real_from)
+		if(from && ( from != real_from ))
 			return -1;
 	
 		/* Is `from' in our rnodes? */
@@ -95,30 +96,36 @@ tracer_add_entry(void *void_map, void *void_node, tracer_chunk *tracer,
 	
 	if(tracer || nhops > 1) {
 		/* 
-		 * If in the tracer_pkt there are already some chunks we copy 
+		 * In the tracer_pkt there are already some chunks, we copy 
 		 * them in the new pkt.
 		 */
 		memcpy(t, tracer, sizeof(tracer_chunk) * (nhops-1));
+
 
 		/* 
 		 * We add, in the new entry, the rtt there is from me to the 
 		 * node of the the last entry of the old tracer pkt.
 		 */
+
 		last_entry_node=tracer[nhops-2].node;
 		if(!level) {
 			from=node_from_pos(last_entry_node, map);
+			
+			/* check if `from' is in our rnodes */
 			if((pos=rnode_find(me.cur_node, from)) == -1)
 				return 0;
-			else
-				rfrom=&me.cur_node->r_node[pos];
+			
+			rfrom=&me.cur_node->r_node[pos];
 		} else {
 			from=(map_node*)gnode_from_pos(last_entry_node, 
 					ext_map[_EL(level)]);
+			
+			/* check if `from' is in our rnodes */
 			if((pos=g_rnode_find(me.cur_quadg.gnode[_EL(level)], 
 							(map_gnode *)from) == -1))
 				return 0;
-			else
-				rfrom=&me.cur_quadg.gnode[_EL(level)]->g.r_node[pos];
+
+			rfrom=&me.cur_quadg.gnode[_EL(level)]->g.r_node[pos];
 		}
 		memcpy(&t[new_entry_pos].rtt, &rfrom->rtt, sizeof(struct timeval));
 	}
@@ -257,21 +264,27 @@ int tracer_unpack_pkt(PACKET rpkt, brdcast_hdr **new_bcast_hdr,
 
 	tracer_sz=BRDCAST_SZ(TRACERPKT_SZ(trcr_hdr->hops));
 	if(tracer_sz > rpkt.hdr.sz || !trcr_hdr->hops || 
-			trcr_hdr->hops > MAXGROUPNODE)
+			trcr_hdr->hops > MAXGROUPNODE) {
+		debug(DBG_INSANE, "%s:%d", ERROR_POS);
 		return -1;
+	}
 
 	if(rpkt.hdr.sz > tracer_sz) {
 		bblock_sz=rpkt.hdr.sz-tracer_sz;
 		bhdr=(bnode_hdr *)rpkt.msg+tracer_sz;
-		if(!bhdr->links)
+		if(!bhdr->links){
+		debug(DBG_INSANE, "%s:%d", ERROR_POS);
 			return -1;
+		}
 	}
 
 	if((level=bcast_hdr->level) > 0)
 		level--;
 	if(!(rpkt.hdr.flags & BCAST_PKT) || !(bcast_hdr->flags & BCAST_TRACER_PKT) || 
-			level > GET_LEVELS(rpkt.from.family))
+			level > GET_LEVELS(rpkt.from.family)) {
+		debug(DBG_INSANE, "%s:%d", ERROR_POS);
 			return -1;
+	}
 
 	/* 
 	 * Now, let's check if we are part of the bcast_hdr->g_node of 
@@ -285,8 +298,10 @@ int tracer_unpack_pkt(PACKET rpkt, brdcast_hdr **new_bcast_hdr,
 	iptogid(rpkt.from, me.cur_quadg.levels);
 	for(i=me.cur_quadg.levels-1; i>=0; i--) {
 		gid=iptogid(rpkt.from, i);
-		if(gid != me.cur_quadg.gid[i] && i > level)
+		if(gid != me.cur_quadg.gid[i] && i > level) {
+		debug(DBG_INSANE, "%s:%d", ERROR_POS);
 			return -1;
+		}
 	}
 
 	if(!level)
@@ -296,8 +311,10 @@ int tracer_unpack_pkt(PACKET rpkt, brdcast_hdr **new_bcast_hdr,
 		real_from=&me.ext_map[_EL(level)][gid].g;
 	}
 
-	if(tracer_verify_pkt(tracer, trcr_hdr->hops, real_from, level))
+	if(tracer_verify_pkt(tracer, trcr_hdr->hops, real_from, level)) {
+		debug(DBG_INSANE, "%s:%d", ERROR_POS);
 		return -1;
+	}
 	
 	*new_bcast_hdr=bcast_hdr;
 	*new_tracer_hdr=trcr_hdr;
@@ -378,31 +395,41 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 	bnode_hdr 	**bblist_hdr=0;
 	bnode_chunk 	***bblist=0;
 	struct timeval trtt;
-	map_node  *int_map=(map_node *)void_map, *from, *node, *root_node;
+	map_node  *int_map, *from, *node, *root_node;
 	void *void_node;
-	map_gnode **ext_map=(map_gnode **)void_map, *gfrom, *gnode;
+	map_gnode **ext_map, *gfrom, *gnode;
 	map_rnode rn;
-	int i, e, diff, bm, x, f, rnode_pos, skip_rfrom;
-	u_int hops=trcr_hdr->hops;
+	int i, e, diff, bm, x, f, from_rnode_pos, skip_rfrom;
+	u_int hops;
 	u_short bb;
 	size_t found_block_sz;
 	char *found_block;
 
+	int_map = (map_node *)void_map;
+	ext_map = (map_gnode **)void_map;
+	hops = trcr_hdr->hops;
+
+	/* Nothing to store */
+	if(hops <= 1)
+		return 0;
+	
 	if(!level) {
-		ext_map=me.ext_map;
-	 	from=node_from_pos(tracer[hops-1].node, int_map);
-		root_node=me.cur_node;
-		rnode_pos=rnode_find(root_node, from);
+		ext_map        = me.ext_map;
+	 	from   	       = node_from_pos(tracer[hops-1].node, int_map);
+		root_node      = me.cur_node;
+		from_rnode_pos = rnode_find(root_node, from);
 	} else {
-		gfrom=gnode_from_pos(tracer[hops-1].node, ext_map[_EL(level)]);
-		from=&gfrom->g;
-		root_node=&me.cur_quadg.gnode[_EL(level)]->g;
-		rnode_pos=rnode_find(root_node, from);
+		gfrom	       = gnode_from_pos(tracer[hops-1].node, ext_map[_EL(level)]);
+		from	       = &gfrom->g;
+		root_node      = &me.cur_quadg.gnode[_EL(level)]->g;
+		from_rnode_pos = rnode_find(root_node, from);
 	}
 	
 	if(!(from->flags & MAP_RNODE)) { 
-		/* The `from' node isn't in our r_nodes, this means that it's a
-		 * crap tracer pkt.*/
+		/* 
+		 * The `from' node isn't in our r_nodes, this means that it's a
+		 * crap tracer pkt.
+		 */
 		return -1;
 	}
 
@@ -470,7 +497,7 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 	
 	/* We add in the total rtt the first rtt which is me -> from */
 	memset(&trtt, 0, sizeof(struct timeval));	
-	timeradd(&root_node->r_node[rnode_pos].trtt, &trtt, &trtt);
+	timeradd(&root_node->r_node[from_rnode_pos].trtt, &trtt, &trtt);
 	
 	/* We skip the node at hops-1 which it is the `from' node. The radar() 
 	 * takes care of him. */
@@ -478,15 +505,21 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 	for(i=(hops-skip_rfrom)-1; i >= 0; i--) {
 		timeradd(&tracer[i].rtt, &trtt, &trtt);
 
-		if(!level)
+		if(!level) {
 			node=node_from_pos(tracer[i].node, int_map);
-		else {
+			if(node == me.cur_node) {
+				debug(DBG_INSANE, "Ehi! This is insane, there's "
+						"a hop in the tracer pkt which "
+						"points to me");
+				continue;
+			}
+		} else {
 			gnode=gnode_from_pos(tracer[i].node, ext_map[_EL(level)]);
 			node=&gnode->g;
 		}
 			
-		if(!(node->flags & MAP_VOID)) { 
-			/*Ehi, we hadn't this node in the map. Add it.*/
+		if(node->flags & MAP_VOID) { 
+			/* Ehi, we hadn't this node in the map. Add it. */
 			node->flags&=~MAP_VOID;
 			node->flags|=MAP_UPDATE;
 			
@@ -495,16 +528,19 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 				if( me.cur_quadg.gnode[_EL(level+1)]->seeds == MAXGROUPNODE )
 					me.cur_quadg.gnode[_EL(level+1)]->flags|=GMAP_FULL;
 			}
+			debug(DBG_INSANE, "TRCR_STORE: node %d added", tracer[i].node);
 		}
 		
 		for(e=0; e < node->links; e++) {
 			if(node->r_node[e].r_node == (u_int *)from) {
+				/* update the rtt of the node */
 				diff=abs(MILLISEC(node->r_node[e].trtt) - MILLISEC(trtt));
 				if(diff >= RTT_DELTA) {
 					memcpy(&node->r_node[e].trtt, &trtt, sizeof(struct timeval));
 					node->flags|=MAP_UPDATE;
 				}
 				f=1;
+				break;
 			}
 		}
 		if(!f) { 
@@ -517,6 +553,9 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 			
 			rnode_add(node, &rnn);
 			node->flags|=MAP_UPDATE;
+
+			debug(DBG_INSANE, "TRCR_STORE: rnode %d added to %d", from_rnode_pos,
+					tracer[i].node);
 		}
 
 		/* ok, now the kernel needs a refresh in the route table */
@@ -533,6 +572,7 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 					rnode_del(node, x);
 			}
 			
+			debug(DBG_INSANE, "TRCR_STORE: krnp_update node %d", tracer[i].node);
 			krnl_update_node(node, level);
 		}
 	}
@@ -763,8 +803,10 @@ int exclude_from_and_glevel_and_closed(TRACER_PKT_EXCLUDE_VARS)
 	return 0;
 }
 
-/* tracer_pkt_recv: It receive a TRACER_PKT or a TRACER_PKT_CONNECT, analyzes the received pkt,
- * adds the new entry in it and forward the pkt to all the r_nodes.
+/* 
+ * tracer_pkt_recv: It receive a TRACER_PKT or a TRACER_PKT_CONNECT, analyzes 
+ * the received pkt, adds the new entry in it and forward the pkt to all 
+ * the r_nodes.
  */
 int tracer_pkt_recv(PACKET rpkt)
 {
@@ -785,6 +827,7 @@ int tracer_pkt_recv(PACKET rpkt)
 	char *old_bblock;
 	void *void_map;
 
+	debug(DBG_INSANE, "Tracer_pkt(0x%x) received.", rpkt.hdr.id);
 	ret_err=tracer_unpack_pkt(rpkt, &bcast_hdr, &trcr_hdr, &tracer, &bhdr, &bblock_sz);
 	if(ret_err) {
 		ntop=inet_to_str(rpkt.from);
@@ -822,11 +865,21 @@ int tracer_pkt_recv(PACKET rpkt)
 		tracer_starter->brdcast=rpkt.hdr.id;
 
 
-	/*Time to update our map*/
-	if(rpkt.hdr.op == TRACER_PKT) /*This check is made because tracer_pkt_recv 
-					handles also TRACER_PKT_CONNECT pkts*/
-		tracer_store_pkt(void_map, level, trcr_hdr, tracer, (void *)bhdr, bblock_sz,
-				&old_bchunks, &old_bblock, &old_bblock_sz);
+	/* 
+	 * Time to update our map
+	 */
+	if(rpkt.hdr.op == TRACER_PKT) { /*This check is made because tracer_pkt_recv 
+					 handles also TRACER_PKT_CONNECT pkts*/
+		
+		ret_err=tracer_store_pkt(void_map, level, trcr_hdr, tracer, 
+				(void *)bhdr, bblock_sz, &old_bchunks, 
+				&old_bblock, &old_bblock_sz);
+		if(ret_err) {
+			ntop=inet_to_str(rpkt.from);
+			debug(DBG_NORMAL, "tracer_pkt_recv(): Cannot store the"
+					" tracer_pkt received from %s", ntop);
+		}
+	}
 
 	/*The forge of the packet.*/
 	tracer_pkt_build(rpkt.hdr.op, rpkt.hdr.id, bcast_hdr->sub_id, /*IDs*/
@@ -870,6 +923,7 @@ int tracer_pkt_start(u_char level)
 			 0,          0,                    0, 		 /*bnode_block*/
 			 &pkt);						 /*Where the pkt is built*/
 	/*Diffuse the packet in all the universe!*/
+	debug(DBG_INSANE, "Tracer_pkt(0x%x) starting.", pkt.hdr.id);
 	tracer_pkt_send(exclude_from_and_glevel, me.cur_quadg.gid[level], 
 			level+1, -1, from, pkt);
 	tracer_pkt_start_mutex=0;

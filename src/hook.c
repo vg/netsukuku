@@ -35,6 +35,7 @@
 #include "pkts.h"
 #include "tracer.h"
 #include "hook.h"
+#include "qspn.h"
 #include "radar.h"
 #include "netsukuku.h"
 #include "request.h"
@@ -52,11 +53,13 @@ int free_the_tmp_cur_node;
  * get_free_nodes: It send the GET_FREE_NODES request, used to retrieve the free_nodes
  * pkt (see hook.h).
  */
-int get_free_nodes(inet_prefix to, struct free_nodes_hdr *fn_hdr, u_short *nodes, struct timeval *qtime)
+int get_free_nodes(inet_prefix to, struct timeval to_rtt, struct free_nodes_hdr *fn_hdr, 
+		u_short *nodes, struct timeval *qtime)
 {
 	PACKET pkt, rpkt;
+	struct timeval cur_t;
 	ssize_t err;
-	int ret=0;
+	int ret=0, level;
 	const char *ntop;
 	char *buf=0;
 	
@@ -67,6 +70,7 @@ int get_free_nodes(inet_prefix to, struct free_nodes_hdr *fn_hdr, u_short *nodes
 	
 	pkt_addto(&pkt, &to);
 	pkt.sk_type=SKT_TCP;
+	
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_FREE_NODES), ntop);
 	err=send_rq(&pkt, 0, GET_FREE_NODES, 0, PUT_FREE_NODES, 1, &rpkt);
 	if(err==-1) {
@@ -83,8 +87,18 @@ int get_free_nodes(inet_prefix to, struct free_nodes_hdr *fn_hdr, u_short *nodes
 		goto finish;
 	}
 	
+	/* Restoring the qspn_round time */
 	buf=rpkt.msg+sizeof(struct free_nodes_hdr);
 	memcpy(qtime, buf, fn_hdr->max_levels * sizeof(struct timeval));
+	gettimeofday(&cur_t, 0);
+	for(level=0; level < fn_hdr->max_levels; level++) {
+		timeradd(&to_rtt, &qtime[level], &qtime[level]);
+		debug(DBG_INSANE, "qtime[%d] set to %d, to_rtt: %d", level, 
+				MILLISEC(qtime[level]), MILLISEC(to_rtt));
+		timersub(&cur_t, &qtime[level], &qtime[level]);
+		debug(DBG_INSANE, "qtime left: %d", qspn_round_left(level));
+	}
+
 	
 	buf+=fn_hdr->max_levels * sizeof(struct timeval);
 	memcpy(nodes, buf, fn_hdr->nodes * sizeof(u_short));
@@ -148,7 +162,8 @@ int put_free_nodes(PACKET rq_pkt)
 	/* Ok, we've found one, so let's roll the pkt */
 	memset(&fn_pkt, 0, sizeof(fn_pkt));
 	fn_pkt.fn_hdr.max_levels=me.cur_quadg.levels;
-	memcpy(&fn_pkt.fn_hdr.ipstart, &me.cur_quadg.ipstart[level], sizeof(inet_prefix));
+	memcpy(&fn_pkt.fn_hdr.ipstart, &me.cur_quadg.ipstart[level], 
+			sizeof(inet_prefix));
 	fn_pkt.fn_hdr.level=level;
 	fn_pkt.fn_hdr.gid=me.cur_quadg.gid[level];
 	
@@ -176,8 +191,11 @@ int put_free_nodes(PACKET rq_pkt)
 	
 	/* We fill the qspn round time */
 	gettimeofday(&cur_t, 0);
-	for(level=0; level < fn_pkt.fn_hdr.max_levels; level++)
-		timersub(&cur_t, &me.cur_qspn_time[level], &fn_pkt.qtime[level]);
+	for(level=0; level < fn_pkt.fn_hdr.max_levels; level++) {
+		update_qspn_time(level);
+		timersub(&cur_t, &me.cur_qspn_time[level],&fn_pkt.qtime[level]);
+		debug(DBG_INSANE, "fn_pkt,qtime[%d]: %d, left: %d", level, MILLISEC(fn_pkt.qtime[level]), qspn_round_left(level));
+	}
 
 	/* Go pkt, go! Follow your instinct */
 	pkt_sz=FREE_NODES_SZ(fn_pkt.fn_hdr.max_levels, fn_pkt.fn_hdr.nodes);
@@ -601,7 +619,7 @@ hook_restart_and_retry:
 	 * We do our first scan to know what we've around us. The rnodes are kept in
 	 * me.cur_node->r_nodes. The fastest one is in me.cur_node->r_nodes[0]
 	 */
-	if(radar_scan())
+	if(radar_scan(0))
 		fatal("%s:%d: Scan of the area failed. Cannot continue.", 
 				ERROR_POS);
 	total_hooking_nodes=count_hooking_nodes();
@@ -671,7 +689,8 @@ hook_restart_and_retry:
 		if(rq->node->flags & MAP_HNODE)
 			continue;
 
-		if(!get_free_nodes(rq->ip, &fn_hdr, fnodes, me.cur_qspn_time)) {
+		if( !get_free_nodes(rq->ip, rq->final_rtt, &fn_hdr, fnodes, 
+					me.cur_qspn_time) ) {
 			e=1;
 			break;
 		}
@@ -815,7 +834,7 @@ finish:
 
 	loginfo("Starting the second radar scan before sending our"
 			" first tracer_pkt");
-	if(radar_scan())
+	if(radar_scan(0))
 		fatal("%s:%d: Scan of the area failed. Cannot continue.", 
 				ERROR_POS);
 	

@@ -378,6 +378,9 @@ void e_rnode_del(ext_rnode_cache *erc, int *counter)
 	(*counter)--;
 }
 
+/* 
+ * e_rnode_add: adds an external node in the ext_rnode_cache list.
+ */
 void e_rnode_add(ext_rnode_cache *erc, ext_rnode *e_rnode, int rnode_pos, int *counter)
 {
 	ext_rnode_cache *p;
@@ -388,8 +391,10 @@ void e_rnode_add(ext_rnode_cache *erc, ext_rnode *e_rnode, int rnode_pos, int *c
 	p->e=e_rnode;
 	p->rnode_pos=rnode_pos;
 	
-	if(!(*counter) || !erc)
+	if(!(*counter) || !erc) {
 		list_init(erc);
+		memset(erc, 0, sizeof(ext_rnode_cache));
+	}
 	
 	list_add(erc, p);
 	(*counter)++;
@@ -406,13 +411,9 @@ int e_rnode_find(ext_rnode_cache *erc, quadro_group *qg)
 	list_for(p) {
 		if(!p->e)
 			continue;
-
-		if(p->e->quadg.levels == qg->levels && 
-				!memcmp(p->e->quadg.ipstart, qg->ipstart, sizeof(inet_prefix)) &&
-				!memcmp(p->e->quadg.gid, qg->gid, sizeof(int)*qg->levels))
+		if(!memcmp(&p->e->quadg, qg, sizeof(quadro_group)))
 			return p->rnode_pos;
 	}
-	
 	return -1;
 }
 
@@ -666,7 +667,6 @@ char *pack_extmap(map_gnode **ext_map, int maxgroupnode, quadro_group *quadg, si
 	for(i=0; i<levels; i++) {
 		emap_hdr.rblock_sz[i]=count[i]*sizeof(map_rnode);
 		emap_hdr.total_rblock_sz+=emap_hdr.rblock_sz[i];
-		emap_hdr.gmap_sz[i]=maxgroupnode*sizeof(map_gnode);
 	}
 	memcpy(&emap_hdr.quadg, quadg, sizeof(quadro_group));
 	/* emap_hdr.gnode loses its meaning */
@@ -707,7 +707,8 @@ map_gnode **unpack_extmap(char *package, size_t pack_sz, quadro_group *quadg)
 	struct ext_map_hdr *emap_hdr=(struct ext_map_hdr *)package;
 	map_rnode **rblock;
 	u_char levels;
-	int err, i, maxgroupnode, p=0;
+	int err, i, maxgroupnode;
+	char *p;
 
 	levels=emap_hdr->quadg.levels-EXTRA_LEVELS;
 	maxgroupnode=emap_hdr->ext_map_sz/(sizeof(map_gnode)*levels);
@@ -719,10 +720,10 @@ map_gnode **unpack_extmap(char *package, size_t pack_sz, quadro_group *quadg)
 	}
 	
 	/*Unpacking the ext_map*/
-	p=sizeof(struct ext_map_hdr);
+	p=package+sizeof(struct ext_map_hdr);
 	ext_map=init_extmap(levels+EXTRA_LEVELS, maxgroupnode);
 	for(i=0; i<levels; i++) {
-		memcpy(ext_map[i], package+p, sizeof(map_gnode)*maxgroupnode);
+		memcpy(ext_map[i], p, sizeof(map_gnode)*maxgroupnode);
 		p+=maxgroupnode*sizeof(map_gnode);
 	}
 
@@ -734,7 +735,9 @@ map_gnode **unpack_extmap(char *package, size_t pack_sz, quadro_group *quadg)
 	/*Let's store in it the lost rnodes.*/
 	p+=emap_hdr->ext_map_sz;
 	if(emap_hdr->total_rblock_sz) {
-		rblock=(map_rnode **)package+p;
+		rblock=(map_rnode **)p;
+		/* XXX TODO DEBUG: it blocks in extmap_store_rblock, cause rblock is
+		 * not valid;( */
 		err=extmap_store_rblock(ext_map, levels, maxgroupnode, rblock);
 		if(err!=levels) {
 			error("unpack_extmap(): It was not possible to restore all the rnodes in the ext_map");

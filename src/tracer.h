@@ -34,11 +34,13 @@ typedef struct
 
 int tracer_pkt_start_mutex;
 
-/*Functions definition. Damn I hate to use function with a lot of args. It isn't elegant*/
+/*Functions definition. Damn I hate to use functions with a lot of args. It isn't elegant*/
 int tracer_verify_pkt(tracer_chunk *tracer, u_int hops, map_node *real_from, u_char level);
-char *tracer_pack_pkt(brdcast_hdr *, tracer_hdr *, tracer_chunk *, bnode_hdr *, bnode_chunk *);
+char *tracer_pack_pkt(brdcast_hdr *, tracer_hdr *, tracer_chunk *, bnode_hdr *,
+		bnode_chunk *);
 u_short tracer_split_bblock(void *, size_t, bnode_hdr ***, bnode_chunk ****, size_t *);
-int tracer_store_pkt(void *, u_char, tracer_hdr *, tracer_chunk *, void *, size_t, u_short *,  char **, size_t *);
+int tracer_store_pkt(void *, u_char, tracer_hdr *, tracer_chunk *, void *, 
+		size_t, u_short *,  char **, size_t *);
 int tracer_unpack_pkt(PACKET, brdcast_hdr **, tracer_hdr **, tracer_chunk **, bnode_hdr **, size_t *);
 tracer_chunk *tracer_add_entry(void *, void *, tracer_chunk *, u_int *, u_char);
 bnode_hdr *tracer_build_bentry(void *, void *, bnode_chunk **, u_char);

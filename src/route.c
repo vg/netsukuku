@@ -139,7 +139,7 @@ void rt_full_update(int check_update_flag)
 	u_short i, l;
 
 	/* Update int_map */
-	for(i=0; i<MAXGROUPNODE; i++) {
+	for(i=0, l=0; i<MAXGROUPNODE; i++) {
 		if(me.int_map[i].flags & MAP_VOID || me.int_map[i].flags & MAP_ME)
 			continue;
 

@@ -123,10 +123,13 @@ mpz_t maxgroupnode_levels[MAX_LEVELS+1];
 struct ext_map_hdr
 {
 	quadro_group quadg;
-	size_t ext_map_sz; 		/*It's the sum of all the gmaps_sz*/
-	size_t gmap_sz[MAX_LEVELS];	/*The size of each gmap*/
-	size_t total_rblock_sz;		/*The sum of all rblock_sz*/
+	size_t ext_map_sz; 		/*It's the sum of all the gmaps_sz.
+					  The size of a single map is:
+					  ext_map_sz/(sizeof(map_gnode)*
+					  (quadg.levels-EXTRA_LEVELS);
+					 */
 	size_t rblock_sz[MAX_LEVELS];	/*The size of the rblock of each gmap*/
+	size_t total_rblock_sz;		/*The sum of all rblock_sz*/
 };
 /* The ext_map_block is:
  * 	struct ext_map_hdr hdr;

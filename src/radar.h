@@ -20,8 +20,8 @@
 #define MAX_RADAR_SCANS		10
 #define MAX_RADAR_WAIT		5	/*How much we wait to store the received ECHO_REPLY pkts
 					  and then to close the current radar session*/
-#define RTT_DELTA		1	/*If the change delta of the new rtt is >= RTT_DELTA, 
-					  the qspn_q.send_qspn will be set*/
+#define RTT_DELTA		1000	/*If the change delta of the new rtt is >= RTT_DELTA, 
+					  the qspn_q.send_qspn will be set. (It's in millisec)*/
 
 int max_radar_wait;
 int radar_scans;			/*How many ECHO_ME pkts we sent*/
@@ -74,7 +74,7 @@ void radar_update_map(void);
 
 struct radar_queue *add_radar_q(PACKET pkt);
 int radar_exec_reply(PACKET pkt);
-int radar_scan(void);
+int radar_scan(int activate_qspn);
 int radard(PACKET rpkt);
 int radar_recv_reply(PACKET pkt);
 void *radar_daemon(void *null);

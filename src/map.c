@@ -237,11 +237,16 @@ int rnode_rtt_compar(const void *a, const void *b)
 {
 	map_rnode *rnode_a=(map_rnode *)a, *rnode_b=(map_rnode *)b;
 	
-	if (MILLISEC(rnode_a->rtt) > MILLISEC(rnode_b->rtt))
+	if (rnode_a->rtt.tv_sec == rnode_b->rtt.tv_sec) {
+		if(rnode_a->rtt.tv_usec > rnode_b->rtt.tv_usec)
+			return 1;
+		else if(rnode_a->rtt.tv_usec == rnode_b->rtt.tv_usec)
+			return 0;
+		else
+			return -1;
+	} else if(rnode_a->rtt.tv_sec > rnode_b->rtt.tv_sec)
 		return 1;
-	else if(MILLISEC(rnode_a->rtt) == MILLISEC(rnode_b->rtt))
-		return 0;
-	else 
+	else
 		return -1;
 }
 
