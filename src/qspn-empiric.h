@@ -21,6 +21,7 @@
 #include "map.h"
 
 pthread_mutex_t mutex[MAXGROUPNODE];
+int total_threads=0;
 
 map_node *int_map;
 
