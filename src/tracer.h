@@ -23,14 +23,14 @@ typedef struct
 	u_int 	hops;
 	u_short bblocks;	/*How many bnode blocks are incapsulated in 
 				  the pkt (if any)*/
-}tracer_hdr;
+}_PACKED_ tracer_hdr;
 
 typedef struct
 {
 	__u16 node;
 	struct timeval rtt;
-}tracer_chunk;
-#define TRACERPKT_SZ(hops) ( sizeof(tracer_hdr) + ( sizeof( tracer_chunk) * (hops) ))
+}_PACKED_ tracer_chunk;
+#define TRACERPKT_SZ(hops) (sizeof(tracer_hdr) + (sizeof( tracer_chunk) * (hops)))
 
 int tracer_pkt_start_mutex;
 
@@ -64,3 +64,6 @@ int tracer_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), int gid,
 int exclude_from_and_glevel_and_setreplied(TRACER_PKT_EXCLUDE_VARS);
 int exclude_from_and_glevel_and_closed(TRACER_PKT_EXCLUDE_VARS);
 int exclude_from_and_glevel(TRACER_PKT_EXCLUDE_VARS);
+
+int tracer_pkt_recv(PACKET rpkt);
+int tracer_pkt_start(u_char level);

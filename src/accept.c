@@ -235,7 +235,7 @@ void del_accept(int idx, int *sidx)
 		accept_tbl[idx].closed[*sidx]=0;
 		if(!accept_tbl[idx].accepts)
 			memset(&accept_tbl[idx].ip, '\0', sizeof(inet_prefix));
-		*sidx--;
+		(*sidx)--;
 	}
 }
 

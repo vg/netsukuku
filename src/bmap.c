@@ -53,7 +53,7 @@ int map_add_bnode(map_bnode **bmap, u_int *bmap_nodes, u_int bnode, u_int links)
 	u_int bm;
 	
 	bm=*bmap_nodes; 
-	*bmap_nodes++;
+	(*bmap_nodes)++;
 	if(!bm)
 		*bmap=xmalloc(sizeof(map_bnode));
 	else
@@ -76,7 +76,7 @@ map_bnode *map_bnode_del(map_bnode *bmap, u_int *bmap_nodes,  map_bnode *bnode)
 	if( ((void *)bnode-(void *)bmap)/sizeof(map_bnode) != (*bmap_nodes)-1 )
 		memcpy(bnode, &bmap[*bmap_nodes-1], sizeof(map_bnode));
 
-	*bmap_nodes--;
+	(*bmap_nodes)--;
 	if(*bmap_nodes)
 		return xrealloc(bmap, (*bmap_nodes) * sizeof(map_bnode));
 	else {
@@ -201,13 +201,13 @@ pack_all_bmaps(map_bnode **bmaps,  u_int *bmap_nodes, map_gnode **ext_map,
 		pack[level]=pack_map(bmaps[level], (int *)ext_map[_EL(level)], bmap_nodes[level],
 				0, &sz);
 		tmp_sz[level]=sz;
-		*pack_sz+=sz;
+		(*pack_sz)+=sz;
 	}
 
 	bmap_hdr.levels=quadg.levels;
 	bmap_hdr.bmaps_block_sz=*pack_sz;
 	
-	final_pack=xmalloc(*pack_sz + sizeof(struct bmaps_hdr));
+	final_pack=xmalloc((*pack_sz) + sizeof(struct bmaps_hdr));
 	memcpy(final_pack, &bmap_hdr, sizeof(struct bmaps_hdr));
 	
 	buf=sizeof(struct bmaps_hdr);

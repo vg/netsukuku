@@ -692,8 +692,6 @@ map_node *load_map(char *file, map_node **new_root)
 	map_node *map;
 	FILE *fd;
 	struct int_map_hdr imap_hdr;
-	map_rnode *rblock;
-	int count, err;
 	char *pack;
 	size_t pack_sz;
 	

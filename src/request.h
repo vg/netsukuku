@@ -77,7 +77,7 @@ enum pkt_op
 #define TOTAL_REQUESTS          (GET_BNODE_MAP+1)
 #define TOTAL_REPLIES		(TOTAL_OPS-TOTAL_REQUESTS)
 
-static u_char reply_array[]=
+const static u_char reply_array[]=
 {
 	QSPN_RFR_REPLY,
 	PUT_FREE_NODES,
@@ -91,8 +91,9 @@ static u_char reply_array[]=
 	ACK_NEGATIVE
 };
 
-static char unknown_reply[]="Unknow reply";
-static u_char reply_str[][20]=
+const static char 	unknown_reply[]="Unknow reply";
+const static u_char	
+reply_str[][20]=
 {
 	{ "QSPN_RFR_REPLY"   },
 	{ "PUT_FREE_NODES" },
@@ -118,7 +119,7 @@ enum errors
 };
 #define TOTAL_ERRORS		(E_TOO_MANY_CONN+1)
 
-static u_char error_array[]=
+const static u_char error_array[]=
 {	
 	 E_INVALID_REQUEST ,
 	 E_ACCEPT_TBL_FULL ,
@@ -127,8 +128,8 @@ static u_char error_array[]=
 	 E_TOO_MANY_CONN   ,
 };
 
-static char unknown_error[]="Unknow error";
-static u_char error_str[][20]=
+const static char unknown_error[]="Unknow error";
+const static u_char error_str[][20]=
 {	
 	{ "Invalid request" },
 	{ "Accept table full" },
@@ -206,8 +207,8 @@ static u_char error_str[][20]=
 #define GET_EXT_MAP_MAXRQ		2
 #define GET_BNODE_MAP_MAXRQ		2
 
-static char unknown_request[]="Unknow request";
-static u_char request_array[][2]=
+const static char unknown_request[]="Unknow request";
+const static u_char request_array[][2]=
 { 
 	{ ECHO_ME_WAIT,        ECHO_ME_MAXRQ},
 	{ ECHO_REPLY_WAIT,     ECHO_REPLY_MAXRQ},
@@ -238,7 +239,8 @@ static u_char request_array[][2]=
 	{ GET_EXT_MAP_WAIT,        GET_EXT_MAP_MAXRQ        },
 	{ GET_BNODE_MAP_WAIT,      GET_BNODE_MAP_MAXRQ      }
 };
-static u_char request_str[][20]=
+
+const static u_char request_str[][20]=
 { 
 	{ "ECHO_ME" },
 	{ "ECHO_REPLY" },
@@ -298,10 +300,10 @@ typedef struct request_tbl rq_tbl;
 int update_rq_tbl_mutex;
 
 /*Functions declaration starts here*/
-char *rq_strerror(int err);
+const char *rq_strerror(int err);
 #define re_strerror(err) (rq_strerror((err)))
-char *rq_to_str(u_char );
-char *re_to_str(u_char );
+const char *rq_to_str(u_char );
+const char *re_to_str(u_char );
 int op_verify(u_char );
 int rq_verify(u_char );
 int re_verify(u_char );

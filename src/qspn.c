@@ -80,7 +80,6 @@ void qspn_free(void)
 
 void qspn_b_clean(u_char level)
 {
-	int i;
 	struct qspn_buffer *qb=qspn_b[level];
 	list_for(qb) {
 		if(qb->replies) {
@@ -286,7 +285,6 @@ int qspn_close(PACKET rpkt)
 	tracer_hdr  *tracer_hdr;
 	tracer_chunk *tracer;
 	bnode_hdr    *bhdr=0;
-	ssize_t err;
 	size_t bblock_sz=0, old_bblock_sz;
 	int i, not_closed=0, ret=0, new_qspn_close=0, ret_err;
 	u_int hops;
@@ -392,7 +390,7 @@ int qspn_close(PACKET rpkt)
 		tracer_pkt_send(exclude_from_and_glevel_and_closed, gid, 
 				upper_level, -1, from, pkt);
 	}
-finish:
+
 	if(new_qspn_close) {
 		xfree(bcast_hdr);
 		xfree(tracer_hdr);
@@ -408,8 +406,7 @@ int qspn_open(PACKET rpkt)
 	tracer_chunk *tracer;
 	bnode_hdr    *bhdr=0;
 	struct qspn_buffer *qb=0;
-	ssize_t err;
-	int i, not_opened=0, ret=0, reply, sub_id, ret_err;
+	int not_opened=0, ret=0, reply, sub_id, ret_err;
 	u_int hops;
 	size_t bblock_sz=0, old_bblock_sz;
 	u_short old_bchunks=0;

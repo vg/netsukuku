@@ -75,6 +75,7 @@ void radar_update_map(void);
 struct radar_queue *add_radar_q(PACKET pkt);
 int radar_exec_reply(PACKET pkt);
 int radar_scan(void);
+int radard(PACKET rpkt);
 int radar_recv_reply(PACKET pkt);
 void *radar_daemon(void *null);
 

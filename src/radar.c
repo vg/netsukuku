@@ -114,7 +114,7 @@ map_node *find_nnode_radar_q(inet_prefix *node)
 int count_hooking_nodes(void) 
 {
 	struct radar_queue *rq;
-	int total_hooking_nodes=0, i=0;
+	int total_hooking_nodes=0;
 
 	rq=radar_q;
 	list_for(rq) {
@@ -252,7 +252,7 @@ void radar_update_map(void)
 	ext_rnode *e_rnode;
 	ext_rnode_cache *erc;
 	int i, e, diff, bm;
-	int rnode_added[MAX_LEVELS], rnode_deleted[MAX_LEVELS], rnode_rtt, rnode_pos, node_pos;
+	int rnode_added[MAX_LEVELS], rnode_deleted[MAX_LEVELS], rnode_pos;
 	u_char level, external_node, total_levels;
 	void *void_map;
 
@@ -513,11 +513,9 @@ add_radar_q(PACKET pkt)
  */
 int radar_exec_reply(PACKET pkt)
 {
-	map_node *rnode;
-	quadro_group quadg;
 	struct timeval t;
 	struct radar_queue *rq;
-	u_int ret=0, rtt_ms=0;
+	u_int rtt_ms=0;
 	
 	gettimeofday(&t, 0);
 	
@@ -545,14 +543,14 @@ int radar_exec_reply(PACKET pkt)
 	}
 
 	if(rq->pongs < radar_scans) {
-		timersub(&t, &scan_start, &rq->rtt[rq->pongs]);
+		timersub(&t, &scan_start, &rq->rtt[(int)rq->pongs]);
 		/* 
 		 * Now we divide the rtt, because (t - scan_start) is the time
 		 * the pkt used to reach B from A and to return to A from B
 		 */
-		rtt_ms=MILLISEC(rq->rtt[rq->pongs])/2;
-		rq->rtt[rq->pongs].tv_sec=rtt_ms/1000;
-		rq->rtt[rq->pongs].tv_usec=(rtt_ms - (rtt_ms/1000)*1000)*1000;
+		rtt_ms=MILLISEC(rq->rtt[(int)rq->pongs])/2;
+		rq->rtt[(int)rq->pongs].tv_sec=rtt_ms/1000;
+		rq->rtt[(int)rq->pongs].tv_usec=(rtt_ms - (rtt_ms/1000)*1000)*1000;
 
 		rq->pongs++;
 	}
@@ -616,8 +614,7 @@ int radar_scan(void)
 {
 	pthread_t thread;
 	PACKET pkt;
-	inet_prefix broadcast;
-	int i, e=0, *p;
+	int i, *p;
 	ssize_t err;
 	u_char echo_scan;
 
@@ -695,7 +692,7 @@ int radard(PACKET rpkt)
 	u_char echo_scans_count;
 
 	/* If we are hooking we reply only to others hooking nodes */
-	if(me.cur_node->flags & MAP_HNODE)
+	if(me.cur_node->flags & MAP_HNODE) {
 		if(rpkt.hdr.flags & HOOK_PKT) {
 			memcpy(&echo_scans_count, rpkt.msg, sizeof(u_char));
 
@@ -720,6 +717,7 @@ int radard(PACKET rpkt)
 			debug(DBG_NOISE, "ECHO_ME pkt dropped: We are hooking");	
 			return 0;
 		}
+	}
 
 	/* We create the ECHO_REPLY pkt */
 	memset(&pkt, '\0', sizeof(PACKET));
@@ -802,6 +800,8 @@ int refresh_hook_root_node(void)
 	}
 
 	radar_update_map();
+
+	return 0;
 }
 
 /*EoW*/

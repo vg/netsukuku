@@ -81,6 +81,7 @@ struct qspn_buffer **qspn_b; /*It is sizeof(struct qspn_buffer *)*levels big*/
 int *qspn_send_mutex;	     /*It is sizeof(int)*levels big.*/
 
 
+void qspn_init(u_char levels);
 void qspn_set_map_vars(u_char level, map_node **map, map_node **root_node, 
 		int *root_node_pos, map_gnode **gmap);
 void qspn_b_clean(u_char level);

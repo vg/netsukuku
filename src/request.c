@@ -41,21 +41,21 @@ int err_verify(u_char err)
 	return err >= TOTAL_ERRORS ? 1 : 0;
 }
 
-char *rq_strerror(int err)
+const char *rq_strerror(int err)
 {
 	if(err_verify(err))
 		return unknown_error;
 	return error_str[err];
 }
 
-char *rq_to_str(u_char rq)
+const char *rq_to_str(u_char rq)
 {
 	if(rq_verify(rq))
 		return unknown_request;
 	return request_str[rq];
 }
 
-char *re_to_str(u_char re)
+const char *re_to_str(u_char re)
 {
 	if(re_verify(re))
 		return unknown_reply;

@@ -515,7 +515,7 @@ retry_rnd_ip:
 	for(i=1; i<final_level; i++) {
 		me.cur_quadg.gnode[_EL(i)]->flags &= ~GMAP_VOID;
 		me.cur_quadg.gnode[_EL(i)]->flags |=  GMAP_ME;
-		me.cur_quadg.gnode[_EL(i)]->g.flags &~ MAP_VOID;
+		me.cur_quadg.gnode[_EL(i)]->g.flags&=~ MAP_VOID;
 		me.cur_quadg.gnode[_EL(i)]->g.flags |= MAP_ME | MAP_GNODE;
 	}
 	

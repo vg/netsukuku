@@ -96,7 +96,7 @@ struct int_map_hdr
 	u_short root_node;
 	size_t int_map_sz;
 	size_t rblock_sz;
-};
+}_PACKED_;
 
 /*The int_map_block is:
  * 	struct int_map_hdr hdr;

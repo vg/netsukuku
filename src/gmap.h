@@ -160,8 +160,8 @@ map_gnode *gnode_from_pos(int pos, map_gnode *map);
 void maxgroupnode_level_init(void);
 void maxgroupnode_level_free(void);
 
-u_short iptogid(inet_prefix ip, u_char level);
-void gidtoipstart(u_short *gid, u_char total_levels, u_char levels, int family, 
+int iptogid(inet_prefix ip, int level);
+void gidtoipstart(int *gid, u_char total_levels, u_char levels, int family, 
 		inet_prefix *ip);
 void iptoquadg(inet_prefix ip, map_gnode **ext_map, quadro_group *qg, char flags);
 void quadg_free(quadro_group *qg);
@@ -175,11 +175,11 @@ void gnodetoip(map_gnode **ext_map, quadro_group *quadg, map_gnode *gnode, u_cha
 int quadg_diff_gids(quadro_group qg_a, quadro_group qg_b);
 int e_rnode_find(ext_rnode_cache *erc, quadro_group *qg);
 
-map_gnode *init_gmap(u_short groups);
-void reset_gmap(map_gnode *gmap, u_short groups);
-map_gnode **init_extmap(u_char levels, u_short groups);
-void free_extmap(map_gnode **ext_map, u_char levels, u_short groups);
-void reset_extmap(map_gnode **ext_map, u_char levels, u_short groups);
+map_gnode *init_gmap(int groups);
+void reset_gmap(map_gnode *gmap, int groups);
+map_gnode **init_extmap(u_char levels, int groups);
+void free_extmap(map_gnode **ext_map, u_char levels, int groups);
+void reset_extmap(map_gnode **ext_map, u_char levels, int groups);
 
 int  g_rnode_find(map_gnode *gnode, map_gnode *n);
 int  extmap_find_level(map_gnode **ext_map, map_gnode *gnode, u_char max_level);

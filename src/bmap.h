@@ -68,14 +68,14 @@ typedef struct
 {
 	u_short bnode;		/*The bnode this bnode_block belongs to*/
 	u_short links;		/*The number of linked gnode*/
-}bnode_hdr;
+}_PACKED_ bnode_hdr;
 
 typedef struct
 {
 	u_short gnode;
 	u_char level;
 	struct timeval rtt;
-}bnode_chunk;
+}_PACKED_ bnode_chunk;
 #define BNODEBLOCK_SZ(links) (sizeof(bnode_hdr)+sizeof(bnode_chunk)*(links))
 
 
@@ -96,7 +96,7 @@ struct bmaps_hdr
 {
 	u_char levels;
 	size_t bmaps_block_sz;
-};
+}_PACKED_;
 
 /* * * Functions' declaration * * */
 void bmap_level_init(u_char levels, map_bnode ***bmap, u_int **bmap_nodes);

@@ -17,6 +17,8 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <syslog.h>
 #include <stdarg.h>
 
@@ -25,7 +27,7 @@
 char *__argv0;
 int dbg_lvl;
 int log_to_stderr;
-static log_facility=LOG_DAEMON;
+static int log_facility=LOG_DAEMON;
 
 void log_init(char *prog, int dbg, int log_stderr)
 {

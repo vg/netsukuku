@@ -53,3 +53,6 @@
 #include <linux/limits.h>
 #include <signal.h>
 #include <linux/byteorder/little_endian.h>
+
+
+#define _PACKED_ __attribute__ ((__packed__))

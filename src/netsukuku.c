@@ -292,10 +292,9 @@ int main(int argc, char **argv)
 	 * two daemons.
 	 */
 	usleep(300000); 
-
 	/* Now we hook in the Netsukuku network */
 	netsukuku_hook();
-	
+
 	/* We use this self process for the radar_daemon. */
 	debug(DBG_SOFT,   "Evocating radar daemon.");
 	radar_daemon(NULL);

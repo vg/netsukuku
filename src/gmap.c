@@ -79,37 +79,36 @@ void maxgroupnode_level_free(void)
  * iptogid: ip to gnode id, of the specified `level', conversion function.
  * Note: this function cannot fail! So be sure to pass a valid `level'.
  */
-u_short iptogid(inet_prefix ip, u_char level)
+int iptogid(inet_prefix ip, int level)
 {
-	u_char upper_level=0;
-	__u32 h_ip[4];
+	mpz_t xx, yy, zz;
+	int upper_level, count, h_ip[4];
 
 	memcpy(h_ip, ip.data, 4);
-
-	mpz_t xx, yy, zz;
-	int count;
 	upper_level=level+1;
 
-	/* gid=(ip/MAXGROUPNODE^level) - (ip/MAXGROUPNODE^(level+1) * MAXGROUPNODE); */
 	mpz_init(xx);
 	mpz_init(yy);
 	mpz_init(zz);
 
-	mpz_import(yy, 4, HOST_ORDER, sizeof(h_ip[0]), NATIVE_ENDIAN, 0, h_ip);
+	mpz_import(yy, 4, HOST_ORDER, sizeof(int), NATIVE_ENDIAN, 0, h_ip);
 
+	/* 
+	 * gid=(ip/MAXGROUPNODE^level) - (ip/MAXGROUPNODE^(level+1) * MAXGROUPNODE);
+	 */
 	mpz_tdiv_q(xx, yy, maxgroupnode_levels[level]);
 	mpz_tdiv_q(zz, yy, maxgroupnode_levels[upper_level]);
 	mpz_mul_ui(zz, zz, MAXGROUPNODE);
 	mpz_sub(yy, xx, zz);
 
-	memset(h_ip, '\0', sizeof(h_ip[0])*4);
-	mpz_export(h_ip, &count, HOST_ORDER, sizeof(h_ip[0]), NATIVE_ENDIAN, 0, yy);
-
+	memset(h_ip, '\0', sizeof(int)*4);
+	mpz_export(h_ip, &count, HOST_ORDER, sizeof(int), NATIVE_ENDIAN, 0, yy);
+	
 	mpz_clear(xx);
 	mpz_clear(yy);
 	mpz_clear(zz);
-
-	return  (u_short) h_ip[0];
+	
+	return h_ip[0];
 }
 
 /* 
@@ -121,12 +120,11 @@ u_short iptogid(inet_prefix ip, u_char level)
  * only the elements going from gid[total_levels] to gid[total_levels-levels].
  * `family' is used to fill the inet_prefix of ipstart.
  */
-void gidtoipstart(u_short *gid, u_char total_levels, u_char levels, int family, 
+void gidtoipstart(int *gid, u_char total_levels, u_char levels, int family, 
 		inet_prefix *ip)
 {
 	mpz_t xx, yy;
-	int count, i;
-	__u32 h_ip[4];
+	int count, i, h_ip[4];
 
 	memset(h_ip, '\0', sizeof(h_ip[0])*4);
 	mpz_init(xx);
@@ -158,7 +156,7 @@ void iptoquadg(inet_prefix ip, map_gnode **ext_map, quadro_group *qg, char flags
 {
 	int i;
 	u_char levels;
-	u_short gid[MAX_LEVELS];
+	int gid[MAX_LEVELS];
 
 	memset(qg, 0, sizeof(quadro_group));
 	
@@ -212,13 +210,13 @@ void random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 		inet_prefix *new_ip, int my_family)
 {
 	int i, level, levels;
-	u_short gid[total_levels];
+	int gid[total_levels];
 	quadro_group qg;
 
 	memset(new_ip, 0, sizeof(inet_prefix));
 	
 	if(!ipstart || final_level==total_levels) {
-		u_int idata[4]={0,0,0,0}, b;
+		u_int idata[4]={0,0,0,0};
 		
 		/* 
 		 * Let's choose a completely random ip. We must ensure that it
@@ -296,13 +294,13 @@ void gnodetoip(map_gnode **ext_map, quadro_group *quadg, map_gnode *gnode,
 		u_char level, inet_prefix *ip)
 {
 	int i, ext_levels;
-	u_short gid[quadg->levels];
+	int gid[quadg->levels];
 	
 	ext_levels=quadg->levels;	
 	if(level > ext_levels)
 		return;
 	
-	memset(gid, 0, sizeof(u_short)*ext_levels);
+	memset(gid, 0, sizeof(int)*ext_levels);
 	
 	gid[level]=pos_from_gnode(gnode, ext_map[_EL(level)]);
 	for(i=level+1; i<ext_levels; i++) 
@@ -346,7 +344,7 @@ int quadg_diff_gids(quadro_group qg_a, quadro_group qg_b)
 	return 0;
 }
 
-map_gnode *init_gmap(u_short groups)
+map_gnode *init_gmap(int groups)
 {
 	map_gnode *gmap;
 	size_t len;
@@ -363,7 +361,7 @@ map_gnode *init_gmap(u_short groups)
 	return gmap;
 }
 
-void reset_gmap(map_gnode *gmap, u_short groups)
+void reset_gmap(map_gnode *gmap, int groups)
 {
 	int i;
 	size_t len;
@@ -378,7 +376,7 @@ void reset_gmap(map_gnode *gmap, u_short groups)
 
 /* init_gmap: Initialize an ext_map with `levels' gmap. Each gmap
  * has `groups' elements*/
-map_gnode **init_extmap(u_char levels, u_short groups)
+map_gnode **init_extmap(u_char levels, int groups)
 {
 	map_gnode **ext_map;
 	int i;
@@ -399,7 +397,7 @@ map_gnode **init_extmap(u_char levels, u_short groups)
 }
 
 /* free_extmap: Destroy the ext_map*/
-void free_extmap(map_gnode **ext_map, u_char levels, u_short groups)
+void free_extmap(map_gnode **ext_map, u_char levels, int groups)
 {
 	int e;
 
@@ -420,7 +418,7 @@ void free_extmap(map_gnode **ext_map, u_char levels, u_short groups)
 	xfree(ext_map);
 }
 
-void reset_extmap(map_gnode **ext_map, u_char levels, u_short groups)
+void reset_extmap(map_gnode **ext_map, u_char levels, int groups)
 {
 	int i;
 	
@@ -710,7 +708,6 @@ map_gnode **load_extmap(char *file, quadro_group *quadg)
 	FILE *fd;
 	struct ext_map_hdr emap_hdr;
 	size_t pack_sz;
-	int err;
 	char *pack;
 	
 	if((fd=fopen(file, "r"))==NULL) {

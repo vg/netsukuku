@@ -39,7 +39,7 @@ unsigned int inthash(unsigned int key)
  * first five operations no overflow is possible so we optimized it a
  * bit.  
  */
-static inline unsigned int dl_elf_hash (const unsigned char *name)
+inline unsigned int dl_elf_hash (const unsigned char *name)
 {
   unsigned long int hash = 0;
   if (*name != '\0') {

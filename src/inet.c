@@ -18,6 +18,9 @@
 
 #include "includes.h"
 
+#include "ipv6-gmp.h"
+#include "libnetlink.h"
+#include "ll_map.h"
 #include "inet.h"
 #include "pkts.h"
 #include "request.h"
@@ -206,7 +209,7 @@ char *inet_to_str(inet_prefix ip)
 		dst=xmalloc(INET_ADDRSTRLEN);
 		inet_ntop(ip.family, &src, dst, INET_ADDRSTRLEN);
 	} else if(ip.family==AF_INET6) {
-		htonl_128(ip.data, &src6);
+		htonl_128(ip.data, (int *)&src6);
 		dst=xmalloc(INET6_ADDRSTRLEN);
 		inet_ntop(ip.family, &src6, dst, INET6_ADDRSTRLEN);
 	}
@@ -234,7 +237,7 @@ int inet_to_sockaddr(inet_prefix *ip, u_short port, struct sockaddr *dst, sockle
 		memcpy(p, data, sizeof(int)*4);
 	} else if(ip->family==AF_INET6) {
 		p=(char *)dst->sa_data+sizeof(u_short)+sizeof(u_int);
-		htonl_128(ip->data, p);
+		htonl_128(ip->data, (int *)p);
 	} else
 		return -1;
 
@@ -430,6 +433,7 @@ int unset_broadcast_sk(int socket, int family)
 			return -1;
 		}
 	}
+	return 0;
 }
 
 int new_broadcast_sk(int family, int dev_idx)
@@ -501,7 +505,6 @@ int new_bcast_conn(inet_prefix *host, short port, int dev_idx)
 {	
 	int sk, sa_len;
 	struct sockaddr	sa;
-	PACKET pkt;
 	char *ntop;
 
 	if(inet_to_sockaddr(host, port, &sa, &sa_len)) {

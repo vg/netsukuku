@@ -25,10 +25,10 @@
 #define DBG_INSANE 	4
 
 void log_init(char *, int, int );
-/*`format (ARCHETYPE, STRING-INDEX, FIRST-TO-CHECK)'*/
-void fatal(const char *, ...) __attribute__((format(printf, 1, 2)));
-void error(const char *, ...) __attribute__((format(printf, 1, 2)));
-void loginfo(const char *, ...) __attribute__((format(printf, 1, 2)));
-void debug(int lvl, const char *, ...) __attribute__((format(printf, 2, 3)));
+
+void fatal(const char *, ...);
+void error(const char *, ...);
+void loginfo(const char *, ...);
+void debug(int lvl, const char *, ...);
 
 void print_log(int level, const char *fmt, va_list args);

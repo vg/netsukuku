@@ -51,7 +51,7 @@ typedef struct
 	u_char		flags; 
 	u_char 		op;
 	size_t 		sz;
-}pkt_hdr;
+}_PACKED_  pkt_hdr;
 #define PACKET_SZ(sz) (sizeof(pkt_hdr)+(sz))		
 
 typedef struct
@@ -73,14 +73,13 @@ typedef struct
 {
 	u_short		g_node;		/*The gnode the brdcast_pkt is restricted to*/
 	u_char 		level;		/*The level of the gnode*/
-	inet_prefix 	g_ipstart;	/*The ipstart of the g_node in level*/
 	u_short 	gttl;		/*Gnode ttl: How many gnodes the packet
 					  can traverse*/
 	u_short 	sub_id;		/*The sub_id is the node who sent the pkt,
 					  but is only used by the qspn_open*/
 	size_t 		sz;		/*Sizeof(the pkt)*/
 	char 		flags;		/*Various flags*/
-}brdcast_hdr;
+}_PACKED_ brdcast_hdr;
 #define BRDCAST_SZ(pkt_sz) (sizeof(brdcast_hdr)+(pkt_sz))
 
 /***The nodeblock of the node*/
@@ -88,12 +87,12 @@ struct node_hdr
 {
 	struct sockaddr ip;		/*Ip of the node*/
 	__u16 links;			/*Number of r_nodes*/
-};
+}_PACKED_;
 struct rnode_chunk
 {	
 	struct sockaddr r_node;         /*Ip of the r_node*/
 	struct timeval  rnode_t;	/*node <-> r_node time*/	
-};
+}_PACKED_;
 #define NODEBLOCK_SZ(links) (sizeof(struct node_hdr)+sizeof((struct r_node)*(links)))
 
 

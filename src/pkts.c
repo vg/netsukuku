@@ -24,8 +24,12 @@
 #include "gmap.h"
 #include "bmap.h"
 #include "netsukuku.h"
+#include "qspn.h"
+#include "tracer.h"
 #include "request.h"
 #include "accept.h"
+#include "radar.h"
+#include "hook.h"
 #include "xmalloc.h"
 #include "log.h"
 
@@ -302,10 +306,10 @@ void pkt_fill_hdr(pkt_hdr *hdr, u_char flags, int id, u_char op, size_t sz)
  */
 int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_ack, PACKET *rpkt)
 {
-	u_short port;
 	ssize_t err;
 	int ret=0;
-	char *ntop=0, *rq_str, *re_str;
+	char *ntop=0;
+	const char *rq_str, *re_str;
 	u_char hdr_flags=0;
 	
 
@@ -448,7 +452,8 @@ int pkt_err(PACKET pkt, u_char err)
 	
 int pkt_exec(PACKET pkt, int acpt_idx)
 {
-	char *ntop, *op_str;
+	char *ntop;
+	const char *op_str;
 	int err=0;
 
 	if(!re_verify(pkt.hdr.op))

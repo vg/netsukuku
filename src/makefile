@@ -9,10 +9,7 @@ OBJ = accept.o llist.o log.o map.o misc.o request.o xmalloc.o bmap.o daemon.o \
 
 LIBS = -lgmp -lpthread
 
-CFLAGS = -ggdb
-
-
-#-Wall
+CFLAGS = -ggdb -Wall
 
 $(BIN): $(OBJ)
 	$(CC) $^ -o $(BIN)

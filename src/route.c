@@ -59,7 +59,6 @@ void krnl_update_node(void *void_node, u_char level)
 {
 	map_node *node, *gw_node;
 	map_gnode *gnode;
-	map_gnode *gto;	/*Great Teacher Onizuka*/
 	struct nexthop *nh;
 	inet_prefix to;
 	int i, node_pos;
