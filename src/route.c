@@ -176,7 +176,7 @@ int rt_replace_def_gw(char *dev, inet_prefix gw)
 	inet_prefix to;
 	
 	if(inet_setip_anyaddr(&to, my_family)) {
-		error("rt_add_def_gw(): Cannot use INADRR_ANY for the %d family\n", to.family);
+		error("rt_add_def_gw(): Cannot use INADRR_ANY for the %d family", to.family);
 		return -1;
 	}
 	to.len=0;
@@ -186,8 +186,8 @@ int rt_replace_def_gw(char *dev, inet_prefix gw)
 }
 
 /* 
- * rt_del_loopback_net: We remove the loopback net, leaving only the 127.0.0.1
- * ip for loopback.
+ * rt_del_loopback_net:
+ * We remove the loopback net, leaving only the 127.0.0.1 ip for loopback.
  *  ip route del local 127.0.0.0/8  proto kernel  scope host src 127.0.0.1
  *  ip route del broadcast 127.255.255.255  proto kernel scope link  src 127.0.0.1
  *  ip route del broadcast 127.0.0.0  proto kernel  scope link src 127.0.0.1

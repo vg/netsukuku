@@ -86,12 +86,41 @@ int prepare_listen_socket(int family, int socktype, u_short port)
 	return -1;
 }
 
+void *udp_exec_pkt(void *recv_pkt)
+{
+	PACKET rpkt;
+	int acpt_idx, acpt_sidx;
+	char *ntop;
+
+	acpt_idx=accept_idx;
+	acpt_sidx=accept_sidx;
+	memcpy(&rpkt, recv_pkt, sizeof(PACKET));
+
+	/* Drop any packet we sent */
+	if(!memcmp(&rpkt.from, &me.cur_ip, sizeof(inet_prefix))) {
+		pkt_free(&rpkt, 0);
+		return NULL;
+	}
+
+	if(add_accept(rpkt.from, 1)) {
+		ntop=inet_to_str(rpkt.from);
+		debug(DBG_NORMAL, "ACPT: dropped UDP pkt from %s: Accept table full.", ntop);
+		xfree(ntop);
+		return NULL;
+	} 
+
+	pkt_exec(rpkt, accept_idx);
+	pkt_free(&rpkt, 0);
+	
+	return NULL;
+}
+
 void *udp_daemon(void *null)
 {
+	pthread_t thread;
 	PACKET rpkt;
 	fd_set fdset;
 	int sk, ret;
-	char *ntop;
 
 	debug(DBG_SOFT, "Preparing the udp listening socket");
 	sk=prepare_listen_socket(my_family, SOCK_DGRAM, ntk_udp_port);
@@ -121,22 +150,16 @@ void *udp_daemon(void *null)
 			pkt_free(&rpkt, 0);
 			continue;
 		}
-		
-		if(!memcmp(&rpkt.from, &me.cur_ip, sizeof(inet_prefix))) {
-			pkt_free(&rpkt, 0);
-			continue;
-		}
-
-		if(add_accept(rpkt.from, 1)) {
-			ntop=inet_to_str(rpkt.from);
-			debug(DBG_NORMAL, "ACPT: dropped UDP pkt from %s: Accept table full.", ntop);
-			xfree(ntop);
-			continue;
-		} 
-		
-		pkt_exec(rpkt, accept_idx);
-		pkt_free(&rpkt, 0);
+	
+		udp_exec_pkt((void *)&rpkt);
+		/*
+		pthread_create(&thread, 0, udp_exec_pkt, (void *)&rpkt);
+		pthread_detach(thread);
+		*/
 	}
+
+	destroy_accept_tbl();
+	return NULL;
 }
 
 void *tcp_recv_loop(void *recv_pkt)
@@ -264,4 +287,5 @@ void *tcp_daemon(void *null)
 	}
 	
 	destroy_accept_tbl();
+	return NULL;
 }

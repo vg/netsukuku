@@ -105,14 +105,19 @@ void pkt_addport(PACKET *pkt, u_short port);
 void pkt_addflags(PACKET *pkt, int flags);
 void pkt_addhdr(PACKET *pkt, pkt_hdr *hdr);
 void pkt_addmsg(PACKET *pkt, char *msg);
+
 void pkt_free(PACKET *pkt, int close_socket);
 char *pkt_pack(PACKET *pkt);
 PACKET *pkt_unpack(char *pkt);
+
 int pkt_verify_hdr(PACKET pkt);
 ssize_t pkt_send(PACKET *pkt);
 ssize_t pkt_recv(PACKET *pkt);
 int pkt_tcp_connect(inet_prefix *host, short port);
+
 void pkt_fill_hdr(pkt_hdr *hdr, u_char flags, int id, u_char op, size_t sz);
+
 int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_ack, PACKET *rpkt);
 int pkt_err(PACKET pkt, u_char err);
+
 int pkt_exec(PACKET pkt, int acpt_idx);

@@ -241,6 +241,7 @@ int pkt_tcp_connect(inet_prefix *host, short port)
 	ssize_t err;
 
 	ntop=inet_to_str(*host);
+	memset(&pkt, '\0', sizeof(PACKET));
 	
 	if((sk=new_tcp_conn(host, port))==-1)
 		goto finish;
@@ -249,7 +250,6 @@ int pkt_tcp_connect(inet_prefix *host, short port)
 	 * Now we receive the first pkt from the srv. It is an ack. 
 	 * Let's hope it isn't NEGATIVE (-_+)
 	 */
-	memset(&pkt, '\0', sizeof(PACKET));
 	pkt_addsk(&pkt, host->family, sk, SKT_TCP);
 	pkt_addflags(&pkt, MSG_WAITALL);
 
@@ -328,13 +328,14 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 		memset(rpkt, '\0', sizeof(PACKET));
 
 	ntop=inet_to_str(pkt->to);
-	debug(DBG_INSANE, "Sending the %s op to %s", rq_str, ntop);
+	debug(DBG_INSANE, "Send_rq %s to %s", rq_str, ntop);
 
 	/* * * the request building process * * */
 	if(check_ack)
 		hdr_flags|=SEND_ACK;
-	if(me.cur_node->flags & MAP_HNODE)
+	if(we_are_hooking)
 		hdr_flags|=HOOK_PKT;
+	
 	pkt_fill_hdr(&pkt->hdr, hdr_flags, rq_id, rq, pkt->hdr.sz);
 	if(!pkt->hdr.sz)
 		pkt->msg=0;
@@ -385,12 +386,14 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 
 	/* * * the reply * * */
 	if(rpkt) {
-		debug(DBG_NOISE, "Trying to receive the reply for the %s request with %d id", rq_str, pkt->hdr.id);
+		debug(DBG_NOISE, "Receiving reply for the %s request"
+				" (id 0x%x)", rq_str, pkt->hdr.id);
 		if(pkt->sk_type==SKT_UDP)
 			memcpy(&rpkt->from, &pkt->to, sizeof(inet_prefix));
 
 		if((err=pkt_recv(rpkt))==-1) {
-			error("Error while receving the reply for the %s request from %s.", rq_str, ntop);
+			error("Error while receving the reply for the %s request"
+					" from %s.", rq_str, ntop);
 			ret=-1; 
 			goto finish;
 		}
@@ -398,17 +401,20 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 		if(rpkt->hdr.op == ACK_NEGATIVE && check_ack) {
 			u_char err_ack;
 			memcpy(&err_ack, rpkt->msg, sizeof(u_char));
-			error("%s failed. The node %s replied: %s", rq_str, ntop, rq_strerror(err_ack));
+			error("%s failed. The node %s replied: %s", rq_str, ntop, 
+					rq_strerror(err_ack));
 			ret=-1; 
 			goto finish;
 		} else if(re && rpkt->hdr.op != re && check_ack) {
-			error("The node %s replied %s but we asked %s!", ntop, re_to_str(rpkt->hdr.op), re_str);
+			error("The node %s replied %s but we asked %s!", ntop, 
+					re_to_str(rpkt->hdr.op), re_str);
 			ret=-1;
 			goto finish;
 		}
 
 		if(check_ack && rpkt->hdr.id != pkt->hdr.id) {
-			error("The id (%d) of the reply (%s) doesn't match the id of our request (%d)", rpkt->hdr.id, 
+			error("The id (0x%x) of the reply (%s) doesn't match the"
+					" id of our request (0x%x)", rpkt->hdr.id,
 					re_str, pkt->hdr.id);
 			ret=-1;
 			goto finish;
@@ -451,8 +457,9 @@ int pkt_exec(PACKET pkt, int acpt_idx)
 	else
 		op_str=rq_to_str(pkt.hdr.op);
 
-	debug(DBG_INSANE, "pkt_exec(): id: %d, op: %s, acpt_idx: %d", pkt.hdr.id,
-			op_str, acpt_idx);
+	debug(DBG_INSANE, "pkt_exec: op: %s, id: 0x%x, acpt_idx: %d", op_str,
+			pkt.hdr.id, acpt_idx);
+
 	if((err=add_rq(pkt.hdr.op, &accept_tbl[acpt_idx].rqtbl))) {
 		ntop=inet_to_str(pkt.from);
 		error("From %s: Cannot process the %s request: %s", ntop, 
@@ -465,6 +472,7 @@ int pkt_exec(PACKET pkt, int acpt_idx)
 
 	switch(pkt.hdr.op) 
 	{
+		/* Radar */
 		case ECHO_ME:
 			err=radard(pkt);
 			break;
@@ -472,6 +480,7 @@ int pkt_exec(PACKET pkt, int acpt_idx)
 			err=radar_recv_reply(pkt);
 			break;
 			
+		/* Hook */
 		case GET_FREE_NODES:
 			err=put_free_nodes(pkt);
 			break;
@@ -485,6 +494,7 @@ int pkt_exec(PACKET pkt, int acpt_idx)
 			err=put_ext_map(pkt);
 			break;
 
+		/* Qspn */
 		case TRACER_PKT:
 		case TRACER_PKT_CONNECT:
 			tracer_pkt_recv(pkt);

@@ -64,6 +64,9 @@ void close_radar(void)
 
 void reset_radar(void)
 {
+	if(we_are_hooking)
+		free_new_node();
+	
 	close_radar();
 	init_radar();
 }
@@ -105,7 +108,7 @@ map_node *find_nnode_radar_q(inet_prefix *node)
 int count_hooking_nodes(void) 
 {
 	struct radar_queue *rq;
-	int total_hooking_nodes=0;
+	int total_hooking_nodes=0, i=0;
 
 	rq=radar_q;
 	list_for(rq) {
@@ -115,6 +118,7 @@ int count_hooking_nodes(void)
 		if(rq->node->flags & MAP_HNODE)
 			total_hooking_nodes++;
 	}
+	
 	return total_hooking_nodes;
 }
 
@@ -132,9 +136,9 @@ void final_radar_queue(void)
 	list_for(rq) {
 		if(!rq->node)
 			continue;
-		for(e=0; e<rq->pongs; e++) {
+
+		for(e=0; e<rq->pongs; e++)
 			timeradd(&rq->rtt[e], &sum, &sum);
-		}
 
 		f_rtt=MILLISEC(sum)/radar_scans;
 		rq->final_rtt.tv_sec=f_rtt/1000;
@@ -179,37 +183,43 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 			qb=qspn_b[level];
 
 			if(!level && external_node) {
-				debug(DBG_NORMAL,"The external node of gid %d is dead\n", e_rnode->quadg.gid[1]);
+				debug(DBG_NORMAL, "The external node of gid %d is"
+						" dead", e_rnode->quadg.gid[1]);
 			} else if(!level) {
 				void_map=me.int_map;
 				node_pos=pos_from_node(node, me.int_map);
-				debug(DBG_NORMAL,"The node %d is dead\n", node_pos, me.int_map);
+				debug(DBG_NORMAL, "The node %d is dead", 
+						node_pos, me.int_map);
 			} else
 				void_map=me.ext_map;
 
-			/* 
+			/*
+			 * Just delete it from all the maps.
 			 * We don't care to send the qspn to inform the other nodes of this death. 
 			 * They will wait till the next qspn round to know it.
 			 * send_qspn_now[level]=1;
 			 */
-			rnode_del(root_node, i);
+			
 			if(!external_node)
 				map_node_del((map_node *)me.cur_node->r_node[i].r_node);
 			else {
 				gmap_node_del(e_rnode->quadg.gnode[_EL(level)]);
 
 				/* bnode_map update */
-				bm=map_find_bnode(me.bnode_map[level], me.bmap_nodes[level], void_map, 
-						(void *)root_node, level);
-				if(bm!=-1) {
+				bm=map_find_bnode(me.bnode_map[level], me.bmap_nodes[level], 
+						void_map, (void *)root_node, level);
+				if(bm != -1) {
 					rnode_pos=rnode_find(&me.bnode_map[level][bm], 
 							(map_node *) e_rnode->quadg.gnode[_EL(level+1)]);
-					if(rnode_pos!=-1)
+					if(rnode_pos != -1)
 						rnode_del(&me.bnode_map[level][bm], rnode_pos);
 				}
 
 				list_del(e_rnode);
 			}
+			
+			rnode_del(root_node, i);
+			
 			/* Now we delete it from the qspn_buffer */
 			list_for(qb)
 				if(qb->rnode == node)
@@ -436,7 +446,7 @@ int add_radar_q(PACKET pkt)
 	
 	gettimeofday(&t, 0);
 	
-	if(me.cur_node->flags & MAP_HNODE) {
+	if(we_are_hooking) {
 		/* 
 		 * We are hooking, we haven't yet an int_map, an ext_map,
 		 * a stable ip so we create fake nodes that will delete after
@@ -499,17 +509,19 @@ int add_radar_q(PACKET pkt)
 	return 0;
 }
 	
-
+/* 
+ * radar_recv_reply: It handles the ECHO_REPLY pkts 
+ */
 int radar_recv_reply(PACKET pkt)
 {
 	if(!my_echo_id) {
-		loginfo("I received an ECHO_REPLY with id: %d, but I've never "
+		loginfo("I received an ECHO_REPLY with id: 0x%x, but I've never "
 				"sent any ECHO_ME requests..", pkt.hdr.id);
 		return -1;
 	}
 	
 	if(pkt.hdr.id != my_echo_id) {
-		loginfo("I received an ECHO_REPLY with id: %d, but I've never "
+		loginfo("I received an ECHO_REPLY with id: 0x%x, but I've never "
 				"sent an ECHO_ME with that id!", pkt.hdr.id);
 		return -1;
 	}
@@ -517,6 +529,21 @@ int radar_recv_reply(PACKET pkt)
 	return add_radar_q(pkt);
 }
 
+/* 
+ * radar_qspn_send_t: This function is used only by radar_scan().
+ * It just call the qspn_send() function. We use a thread
+ * because the qspn_send() may sleep, and we don't want to halt the
+ * radar_scan().
+ */
+void *radar_qspn_send_t(void *level)
+{
+	u_char i;
+	
+	i=*((u_char *)level);
+	qspn_send(i);
+
+	return NULL;
+}
 		            
 /* 
  * radar_scan: It starts the scan of the local area.
@@ -530,6 +557,7 @@ int radar_recv_reply(PACKET pkt)
  */
 int radar_scan(void) 
 {
+	pthread_t thread;
 	PACKET pkt;
 	inet_prefix broadcast;
 	int i, e=0;
@@ -549,6 +577,7 @@ int radar_scan(void)
 
 	gettimeofday(&scan_start, 0);
 
+	/* Send a bouquet of ECHO_ME pkts */
 	pkt.hdr.sz=sizeof(u_char);
 	pkt.msg=xmalloc(pkt.hdr.sz);
 	for(i=0, echo_scan=0; i<MAX_RADAR_SCANS; i++, echo_scan++) {
@@ -562,11 +591,13 @@ int radar_scan(void)
 		}
 		radar_scans++;
 	}
+	
 	if(!radar_scans) {
 		error("radar_scan(): The scan 0x%x failed. It wasn't possible" 
 				"to send a single scan", my_echo_id);
 		return -1;
 	}
+
 	pkt_free(&pkt, 1);
 	
 	sleep(max_radar_wait);
@@ -574,18 +605,20 @@ int radar_scan(void)
 	final_radar_queue();
 	radar_update_map();
 
-	if(!(me.cur_node->flags & MAP_HNODE)) {
+	if(!we_are_hooking) {
 		for(i=0; i<me.cur_quadg.levels; i++)
-			if(send_qspn_now[i])
+			if(send_qspn_now[i]) {
 				/* We start a new qspn_round in the level `i' */
-				qspn_send(i);
+				pthread_create(&thread, 0, radar_qspn_send_t, (void *)&i);
+				pthread_detach(thread);
+			}
 		reset_radar();
-	} else
-		free_new_node();
+	}
 
 	radar_scan_mutex=0;	
 	return 0;
 }
+
 
 /* 
  * radard: It sends back to rpkt.from the ECHO_REPLY pkt in reply to the ECHO_ME
@@ -599,7 +632,7 @@ int radard(PACKET rpkt)
 	u_char echo_scans_count;
 
 	/* If we are hooking we reply only to others hooking nodes */
-	if(me.cur_node->flags & MAP_HNODE)
+	if(we_are_hooking)
 		if(rpkt.hdr.flags & HOOK_PKT) {
 			memcpy(&echo_scans_count, rpkt.msg, sizeof(u_char));
 

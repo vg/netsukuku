@@ -501,7 +501,7 @@ retry_rnd_ip:
 	 * We remove all the traces of the old gnodes in the ext_map to add the
 	 * new ones.
 	 */
-	if(!(me.cur_node->flags & MAP_HNODE))
+	if(!we_are_hooking)
 		for(i=1; i<final_level; i++) {
 			me.cur_quadg.gnode[_EL(i)]->flags &= ~GMAP_ME;
 			me.cur_quadg.gnode[_EL(i)]->g.flags &= ~MAP_ME & ~MAP_GNODE;
@@ -535,32 +535,23 @@ retry_rnd_ip:
 
 int hook_init(void)
 {
+	u_int idata[4];
+
+	we_are_hooking=1;
+	
 	/* We use a fake root_node for a while */
 	free_the_tmp_cur_node=1;
 	me.cur_node=xmalloc(sizeof(map_node));
 	memset(me.cur_node, 0, sizeof(map_node));
 	me.cur_node->flags|=MAP_HNODE;
-
+	
 	debug(DBG_NORMAL, "Deleting the loopback network (leaving only 127.0.0.1)");
 	rt_del_loopback_net();
 
-	return 0;
-}
-
-int netsukuku_hook(char *dev)
-{	
-	struct radar_queue *rq=radar_q;
-	struct free_nodes_hdr fn_hdr;
-	map_node **merg_map, *new_root;
-	map_gnode **old_ext_map;
-	map_bnode **old_bnode_map;	
-	int i, e=0, imaps=0, ret=0, new_gnode=0, tracer_levels=0, *old_bnodes;
-	int total_hooking_nodes=0;
-	u_int idata[4];
-	u_short fnodes[MAXGROUPNODE];
-	char *ntop;
-
-	/* We set the dev ip to HOOKING_IP+random_number to begin our transaction. */
+	/*
+	 * We set the dev ip to HOOKING_IP+random_number to begin our 
+	 * transaction. 
+	 */
 	memset(idata, 0, sizeof(int)*4);
 	if(my_family==AF_INET) 
 		idata[0]=HOOKING_IP;
@@ -572,7 +563,22 @@ int netsukuku_hook(char *dev)
 	me.cur_ip.family=my_family;
 	inet_setip(&me.cur_ip, idata, my_family);
 	
-	set_ip_and_def_gw(dev, me.cur_ip);
+	set_ip_and_def_gw(me.cur_dev, me.cur_ip);
+
+	return 0;
+}
+
+int netsukuku_hook(void)
+{	
+	struct radar_queue *rq=radar_q;
+	struct free_nodes_hdr fn_hdr;
+	map_node **merg_map, *new_root;
+	map_gnode **old_ext_map;
+	map_bnode **old_bnode_map;	
+	int i, e=0, imaps=0, ret=0, new_gnode=0, tracer_levels=0, *old_bnodes;
+	int total_hooking_nodes=0;
+	u_short fnodes[MAXGROUPNODE];
+	char *ntop;
 
 	/* 	
 	  	* * 		The beginning          * *	  	
@@ -606,28 +612,31 @@ hook_restart_and_retry:
 		else
 			loginfo("There are %d nodes around, but they are hooking"
 					" like us, but we came first so we have "
-					"to create the new gnode");
+					"to create the new gnode", 
+					total_hooking_nodes);
 		create_gnodes(0, GET_LEVELS(my_family));
 		ntop=inet_to_str(me.cur_ip);
 
-		set_ip_and_def_gw(dev, me.cur_ip);
+		set_ip_and_def_gw(me.cur_dev, me.cur_ip);
 
 		loginfo("Now we are in a brand new gnode. The ip of %s is set "
-				"to %s", dev, ntop);
+				"to %s", me.cur_dev, ntop);
 
 		xfree(ntop);
 		new_gnode=1;
+		
 		goto finish;
-
 	} else if(hook_retry) {
 		/* 
 		 * There are only hooking nodes, but we started the hooking
 		 * after them, so we wait that some of them create the new
 		 * gnode.
 		 */
-		loginfo("I've seen %s nodes around us, but one of them is becoming"
-				" a new gnode.\n"
-				"We wait and then we'll restart the hook");
+		loginfo("I've seen %d hooking nodes around us, and one of them "
+				"is becoming a new gnode.\n"
+				"  We wait, then we'll restart the hook", 
+				total_hooking_nodes);
+		
 		reset_radar();
 		rnode_destroy(me.cur_node);
 		memset(me.cur_node, 0, sizeof(map_node));
@@ -679,7 +688,7 @@ retry_rnd_ip:
 			goto retry_rnd_ip;
 	}
 
-	set_ip_and_def_gw(dev, me.cur_ip);
+	set_ip_and_def_gw(me.cur_dev, me.cur_ip);
 
 	/* 
 	 * Fetch the ext_map from the rnode who gave us the free nodes list. 
@@ -765,6 +774,7 @@ retry_rnd_ip:
 	refresh_hook_root_node(); 
 	
 finish:
+	we_are_hooking=0;
 	me.cur_node->flags&=~MAP_HNODE;
 
 	/* 

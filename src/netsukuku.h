@@ -45,10 +45,12 @@ struct current
 
 #define DEFAULT_NTK_UDP_PORT    269
 #define DEFAULT_NTK_TCP_PORT    269
+
 int my_family;
 u_short ntk_udp_port, ntk_tcp_port;
-int ll_map_initialized;
 
+int ll_map_initialized;
+int we_are_hooking;
 
 #define INT_MAP_FILE	"ntk_internal_map"
 #define EXT_MAP_FILE	"ntk_external_map"
