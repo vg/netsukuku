@@ -20,3 +20,6 @@ qspn: xmalloc.o qspn-empiric.o map.o ipv6-gmp.o log.o xmalloc.o
 clean: $(OBJ) $(ECT) $(BIN)
 	$(RM) $^ 
 	$(RM) $(LOG)
+
+clean-qspn: xmalloc.o qspn-empiric.o map.o ipv6-gmp.o log.o xmalloc.o qspn-empiric
+	$(RM) $^

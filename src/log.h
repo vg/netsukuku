@@ -24,10 +24,7 @@
 #define DBG_NOISE 	2
 #define DBG_INSANE 	3
 
-char *__argv0;
-int dbg_lvl;
-int log_to_stderr;
-
+void log_init(char *, int, int );
 /*`format (ARCHETYPE, STRING-INDEX, FIRST-TO-CHECK)'*/
 void fatal(const char *, ...) __attribute__((format(printf, 1, 2)));
 void error(const char *, ...) __attribute__((format(printf, 1, 2)));

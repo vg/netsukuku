@@ -101,6 +101,7 @@ typedef struct
  * typedef qmap_node *int_map;
  */
 
+#define MAXRNODEBLOCK		MAXLINKS*MAXGROUPNODE*sizeof(map_rnode)
 #define INTMAP_END(mapstart)	((sizeof(map_node)*MAXGROUPNODE)+(mapstart))
 	
 /*TODO: spostare da un'altra parte!*/
@@ -128,7 +129,7 @@ void node_recurse_trtt(map_node *node);
 void map_set_trtt(map_node *map);
 map_node *get_gw_node(map_node *node, u_short route);
 int merge_maps(map_node *base, map_node *new, map_node *base_root, map_node *new_root);
-int mod_rnode_addr(map_node *node, int *map_start, int *new_start);
+int mod_rnode_addr(map_rnode *node, int *map_start, int *new_start);
 int get_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart);
 map_rnode *map_get_rblock(map_node *map, int *count);
 int store_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart);

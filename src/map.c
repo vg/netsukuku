@@ -350,11 +350,9 @@ int merge_maps(map_node *base, map_node *new, map_node *base_root, map_node *new
 }
 
 /*mod_rnode_addr: Modify_rnode_address*/
-int mod_rnode_addr(map_node *node, int *map_start, int *new_start)
+int mod_rnode_addr(map_rnode *rnode, int *map_start, int *new_start)
 {
-	int e;
-	for(e=0; e<node->links; e++)
-		node->r_node[e].r_node = ((int *)node->r_node[e].r_node - map_start) + new_start;
+	rnode->r_node = ((int *)rnode->r_node - map_start) + new_start;
 	return 0;
 }
 
@@ -366,9 +364,10 @@ int get_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart)
 {
 	int e;
 
-	mod_rnode_addr(node, map, 0);
-	for(e=0; e<node->links; e++)
+	for(e=0; e<node->links; e++) {
 		memcpy(&rblock[e+rstart], &node->r_node[e], sizeof(map_rnode));
+		mod_rnode_addr(&rblock[e+rstart], map, 0);
+	}
 
 	return e;
 }
@@ -385,10 +384,10 @@ map_rnode *map_get_rblock(map_node *map, int *count)
 		tot+=map[i].links;
 	rblock=(map_rnode *)xmalloc(sizeof(map_rnode)*tot);
 
-	for(i=0; i<MAXGROUPNODE; i++) {
+	for(i=0; i<MAXGROUPNODE; i++)
 		c+=get_rnode_block((int *)map, &map[i], rblock, c);
-	}
-	
+
+	*count=c;	
 	return rblock;
 }
 
@@ -400,15 +399,12 @@ int store_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart)
 {
 	int i;
 
-	if(node->r_node)
-		xfree(node->r_node);
-	else
-		node->r_node=xmalloc(sizeof(map_rnode));
-
-	for(i=0; i<node->links; i++)
+	node->r_node=xmalloc(sizeof(map_rnode)*node->links);
+	for(i=0; i<node->links; i++) {
 		memcpy(&node->r_node[i], &rblock[i+rstart], sizeof(map_rnode));
+		mod_rnode_addr(&node->r_node[i], 0, map);
+	}
 
-	mod_rnode_addr(node, 0, map);
 
 	return i;
 }
@@ -421,7 +417,7 @@ int map_store_rblock(map_node *map, map_rnode *rblock, int count)
 {
 	int i, c=0;
 
-	for(i=0; i<count; i++)
+	for(i=0; i<MAXGROUPNODE; i++)
 		c+=store_rnode_block((int *)map, &map[i], rblock, c);
 
 	return c; /*If it's all ok "c" has to be == sizeof(rblock)*count*/
@@ -465,31 +461,30 @@ map_node *load_map(char *file)
 	int count, err;
 	
 	if((fd=fopen(file, "r"))==NULL) {
-		error("Cannot save the map in %s: %s", file, strerror(errno));
+		error("Cannot load the map in %s: %s", file, strerror(errno));
 		return 0;
 	}
 
-	map=(map_node *)xmalloc(sizeof(map_node)*MAXGROUPNODE);
-	
-	
 	fread(&imap_hdr, sizeof(struct int_map_hdr), 1, fd);
-	if(imap_hdr.rblock_sz > MAXROUTES*sizeof(map_rnode) ||
-			imap_hdr.int_map_sz > MAXGROUPNODE*sizeof(map_node)) {
-		error("Malformed map file. Aborting load_map()");
-		map=0;
-		return 0;
+	if(imap_hdr.rblock_sz > MAXRNODEBLOCK || imap_hdr.int_map_sz > MAXGROUPNODE*sizeof(map_node) 
+			|| imap_hdr.root_node > MAXGROUPNODE) {
+		printf("Malformed map file: root_node: %hu/%u, rblock_sz: %u, int_map_sz: %u. Aborting load_map().", 
+				imap_hdr.root_node, MAXRNODEBLOCK, imap_hdr.rblock_sz, imap_hdr.int_map_sz);
+		error("Malformed map file. Aborting load_map().");
+	//	return 0;
 	}
 		
 	/*Extracting the map...*/
+	map=init_map(0);
 	fread(map, imap_hdr.int_map_sz, 1, fd);
 	
 	/*Extracting the rnodes block and merging it to the map*/
 	rblock=xmalloc(imap_hdr.rblock_sz);
 	fread(rblock, imap_hdr.rblock_sz, 1, fd);
 	err=map_store_rblock(map, rblock, imap_hdr.rblock_sz/sizeof(map_rnode));
-	if(err!=imap_hdr.rblock_sz) {
+	if(err!=imap_hdr.rblock_sz/sizeof(map_rnode)) {
 		error("An error occurred while storing the rnodes block in the int_map");
-		xfree(map);
+		free_map(map, 0);
 		xfree(rblock);
 		return 0;
 	}

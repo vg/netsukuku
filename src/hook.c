@@ -185,13 +185,14 @@ finish:
 /* get_ext_map: It sends the GET_EXT_MAP request to retrieve the 
  * dst_node's ext_map.
  */
-int get_ext_map(inet_prefix to, map_gnode *ext_map, map_gnode *new_root)
+map_gnode *get_ext_map(inet_prefix to, map_gnode *new_root)
 {
 	PACKET pkt, rpkt;
 	char *ntop;
-	int ret=0, err;
+	int err;
 	struct ext_map_hdr emap_hdr;
 	map_rnode *rblock=0;
+	map_gnode *ext_map=0, ret=0;
 	
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
@@ -202,27 +203,29 @@ int get_ext_map(inet_prefix to, map_gnode *ext_map, map_gnode *new_root)
 	pkt.sk_type=SKT_TCP;
 	err=send_rq(&pkt, 0, GET_EXT_MAP, 0, PUT_EXT_MAP, 1, &rpkt);
 	if(err==-1) {
-		ret=-1;
+		ret=0;
 		goto finish;
 	}
 	
 	memcpy(&emap_hdr, rpkt.msg, sizeof(struct ext_map_hdr));
-	if(emap_hdr.rblock_sz > MAXROUTES*sizeof(map_rnode) ||
-			emap_hdr.ext_map_sz > MAXGROUPNODE*sizeof(map_gnode)) {
+	if(emap_hdr.rblock_sz > MAXRNODEBLOCK || emap_hdr.ext_map_sz > MAXGROUPNODE*sizeof(map_gnode)
+			|| emap_hdr.root_node > MAXGROUPNODE) {
 		error("Malformed PUT_EXT_MAP request hdr.");
-		ret=-1;
+		ret=0;
 		goto finish;
 	}
 		
 	/*Extracting the map...*/
+	ext_map=init_gmap(0);
 	memcpy(ext_map, rpkt.msg+sizeof(struct ext_map_hdr), emap_hdr.ext_map_sz);
 	
 	/*Extracting the rnodes block and merging it to the map*/
 	rblock=rpkt.msg+sizeof(struct ext_map_hdr)+emap_hdr.ext_map_sz;
 	err=gmap_store_rblock(ext_map, rblock, emap_hdr.rblock_sz/sizeof(map_rnode));
-	if(err!=emap_hdr.rblock_sz) {
+	if(err!=emap_hdr.rblock_sz/sizeof(map_rnode)) {
 		error("An error occurred while storing the rnodes block in the ext_map");
-		ret=-1;
+		ret=0;
+		free_gmap(ext_map, 0);
 		goto finish;
 	}
 	new_root=(map_node *)(ext_map+(emap_hdr.root_node*sizeof(map_gnode)));
@@ -287,13 +290,14 @@ finish:
 /* get_int_map: It sends the GET_INT_MAP request to retrieve the 
  * dst_node's int_map.
  */
-int get_int_map(inet_prefix to, map_node *int_map, map_node *new_root)
+map_node *get_int_map(inet_prefix to, map_node *new_root)
 {
 	PACKET pkt, rpkt;
 	char *ntop;
-	int ret=0, err;
+	int err;
 	struct int_map_hdr imap_hdr;
 	map_rnode *rblock=0;
+	map_node *int_map, *ret=0;
 	
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
@@ -304,27 +308,29 @@ int get_int_map(inet_prefix to, map_node *int_map, map_node *new_root)
 	pkt.sk_type=SKT_TCP;
 	err=send_rq(&pkt, 0, GET_INT_MAP, 0, PUT_INT_MAP, 1, &rpkt);
 	if(err==-1) {
-		ret=-1;
+		ret=0;
 		goto finish;
 	}
 	
 	memcpy(&imap_hdr, rpkt.msg, sizeof(struct int_map_hdr));
-	if(imap_hdr.rblock_sz > MAXROUTES*sizeof(map_rnode) ||
-			imap_hdr.int_map_sz > MAXGROUPNODE*sizeof(map_node)) {
+	if(imap_hdr.rblock_sz > MAXRNODEBLOCK || imap_hdr.int_map_sz > MAXGROUPNODE*sizeof(map_node)
+			|| imap_hdr.root_node > MAXGROUPNODE) {
 		error("Malformed PUT_INT_MAP request hdr.");
-		ret=-1;
+		ret=0;
 		goto finish;
 	}
 		
 	/*Extracting the map...*/
+	ret=int_map=init_map(0);
 	memcpy(int_map, rpkt.msg+sizeof(struct int_map_hdr), imap_hdr.int_map_sz);
 	
 	/*Extracting the rnodes block and merging it to the map*/
 	rblock=rpkt.msg+sizeof(struct int_map_hdr)+imap_hdr.int_map_sz;
 	err=map_store_rblock(int_map, rblock, imap_hdr.rblock_sz/sizeof(map_rnode));
-	if(err!=imap_hdr.rblock_sz) {
+	if(err!=imap_hdr.rblock_sz/sizeof(map_rnode)) {
 		error("An error occurred while storing the rnodes block in the int_map");
-		ret=-1;
+		free_map(int_map, 0);
+		ret=0;
 		goto finish;
 	}
 	new_root=int_map[imap_hdr.root_node];
@@ -433,9 +439,8 @@ int netsukuku_hook(char *dev)
 			/*This node isn't part of our gnode, let's skip it*/
 			continue; 
 			
-		if(!get_int_map(radar_q[idx].ip, merg_map[imaps], &new_root)) {
-			*(merg_map+i)=xmalloc(sizeof(map_node)*MAXGROUPNODE);
-			merge_maps(me.int_map, merg_map[i], me.cur_node, new_root);
+		if((merg_map[imaps]=get_int_map(radar_q[idx].ip, &new_root))) {
+			merge_maps(me.int_map, merg_map[imaps], me.cur_node, new_root);
 			imaps++;
 		}
 	}
@@ -443,7 +448,7 @@ int netsukuku_hook(char *dev)
 		fatal("None of the rnodes in this area gave me the intern map");
 
 	for(i=0, i<imaps; i++)
-		xfree(merg_map[i]);
+		free_map(merg_map[i], 0);
 	xfree(merg_map);
 
 finish:

@@ -21,10 +21,17 @@
 #include <syslog.h>
 #include <stdarg.h>
 
-extern char *__argv0;
-extern int dbg_lvl;
-extern int log_to_stderr;
+char *__argv0;
+int dbg_lvl;
+int log_to_stderr;
 static log_facility=LOG_DAEMON;
+
+void log_init(char *prog, int dbg, int log_stderr)
+{
+	__argv0=prog;
+	dbg_lvl=dbg;
+	log_to_stderr=log_stderr;
+}
 
 /* Life is fatal! */
 void fatal(const char *fmt,...)
@@ -78,11 +85,14 @@ void print_log(int level, const char *fmt,...)
 {
 	va_list args;
 	
-	if(log_to_stderr) 
+	va_start(args, fmt);
+	if(log_to_stderr) {
 		vfprintf(stderr, fmt, args);
-	else {
+		fprintf(stderr, "\r\n");
+	} else {
 		openlog(__argv0, LOG_PID, log_facility);
 		vsyslog(level | log_facility, fmt, args);
 		closelog();
 	}
+	va_end(args);
 }
