@@ -98,6 +98,11 @@ const char *if_init(char *dev, int *dev_idx)
 	struct rtnl_handle rth;
 	int idx;
 
+	if (rtnl_open(&rth, 0) < 0) {
+		error("Cannot open the rtnetlink socket to talk to the kernel's "
+				"soul");
+		return NULL;
+	}
 	ll_init_map(&rth);
 
 	if(dev[0] != 0) {
