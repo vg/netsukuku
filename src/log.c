@@ -37,9 +37,16 @@ void log_init(char *prog, int dbg, int log_stderr)
 /* Life is fatal! */
 void fatal(const char *fmt,...)
 {
+	char str[strlen(fmt)+3];
 	va_list args;
+
+	str[0]='!';
+	str[1]=' ';
+	strncpy(str+2, fmt, strlen(fmt));
+	str[strlen(fmt)+2]=0;
+
 	va_start(args, fmt);
-	print_log(LOG_CRIT, fmt, args);
+	print_log(LOG_CRIT, str, args);
 	va_end(args);
 	exit(1);
 	/*TODO: safe_exit(255); We must save the maps before exit*/
@@ -48,20 +55,32 @@ void fatal(const char *fmt,...)
 /* Misc errors */
 void error(const char *fmt,...)
 {
+	char str[strlen(fmt)+3];
 	va_list args;
+
+	str[0]='*';
+	str[1]=' ';
+	strncpy(str+2, fmt, strlen(fmt));
+	str[strlen(fmt)+2]=0;
 	
 	va_start(args, fmt);
-	print_log(LOG_ERR, fmt, args);
+	print_log(LOG_ERR, str, args);
 	va_end(args);
 }
 
 /* Let's give some news */
 void loginfo(const char *fmt,...)
 {
+	char str[strlen(fmt)+3];
 	va_list args;
+
+	str[0]='+';
+	str[1]=' ';
+	strncpy(str+2, fmt, strlen(fmt));
+	str[strlen(fmt)+2]=0;
 	
 	va_start(args, fmt);
-	print_log(LOG_INFO, fmt, args);
+	print_log(LOG_INFO, str, args);
 	va_end(args);
 }
 
@@ -73,11 +92,17 @@ void loginfo(const char *fmt,...)
 
 void debug(int lvl, const char *fmt,...)
 {
+	char str[strlen(fmt)+3];
 	va_list args;
 
 	if(lvl <= dbg_lvl) {
+		str[0]='#';
+		str[1]=' ';
+		strncpy(str+2, fmt, strlen(fmt));
+		str[strlen(fmt)+2]=0;
+
 		va_start(args, fmt);
-		print_log(LOG_DEBUG, fmt, args);
+		print_log(LOG_DEBUG, str, args);
 		va_end(args);
 	}
 }

@@ -76,6 +76,7 @@ int init_load_maps(void);
 int save_maps(void);
 int free_maps(void);
 int fill_default_options(void);
+void usage(void);
 void parse_options(int argc, char **argv);
 void init_netsukuku(char **argv);
 void destroy_netsukuku(void);

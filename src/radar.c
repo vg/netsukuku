@@ -472,14 +472,14 @@ int radar_scan(void)
 	for(i=0; i<MAX_RADAR_SCANS; i++) {
 		err=send_rq(&pkt, 0, ECHO_ME, my_echo_id, 0, 0, 0);
 		if(err==-1) {
-			error("radar_scan(): Error while sending the scan %d"
+			error("radar_scan(): Error while sending the scan 0x%x"
 					"... skipping", my_echo_id);
 			continue;
 		}
 		radar_scans++;
 	}
 	if(!radar_scans) {
-		error("radar_scan(): The scan (%d) faild. It wasn't possible " 
+		error("radar_scan(): The scan 0x%x failed. It wasn't possible" 
 				"to send a single scan", my_echo_id);
 		return -1;
 	}

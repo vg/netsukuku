@@ -85,6 +85,7 @@ int fill_default_options(void)
 
 	ll_map_initialized=0;
 }
+
 void usage(void)
 {
 	printf("%s\n", VERSION);
@@ -97,10 +98,8 @@ void usage(void)
 	printf(" -E	ext_map\n");
 	printf(" -B	bnode_map\n");
 	printf(" -D	no daemon mode\n");
-	printf(" -dddd  debug (more d, more info\n");
+	printf(" -d     debug (more d, more info\n");
 	printf(" -v	version\n");
-	/* printf(" -h	help\n");
-	printf(" -h	help\n"); */
 }
 
 void parse_options(int argc, char **argv)
@@ -125,7 +124,7 @@ void parse_options(int argc, char **argv)
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long (argc, argv,"i:d:I:E:B:hvd64D", long_options, &option_index);
+		c = getopt_long (argc, argv,"i:I:E:B:hvd64Dd", long_options, &option_index);
 		if (c == -1)
 			break;
 
@@ -191,7 +190,7 @@ void init_netsukuku(char **argv)
 	my_family=server_opt.family;
 	ntk_udp_port=DEFAULT_NTK_UDP_PORT;
 	ntk_tcp_port=DEFAULT_NTK_TCP_PORT;
-	if(!(dev=if_init(server_opt.dev, &me.cur_dev_idx)))
+	if(!(dev=(char *)if_init(server_opt.dev, &me.cur_dev_idx)))
 		fatal("Cannot initialize the %s device", server_opt.dev);
 	strncpy(me.cur_dev, dev, IFNAMSIZ);
 
