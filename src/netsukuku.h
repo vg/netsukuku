@@ -17,9 +17,8 @@
  */
 
 #include <sys/types.h>
-#include <asm/types.h>
-#include "map.h"
-#include "inet.h"
+#include "gmap.h"
+#include "route.h"
 
 #define DEFAULT_NTK_UDP_PORT    269
 #define DEFAULT_NTK_TCP_PORT    269
@@ -32,7 +31,7 @@ struct current
 	map_node  	*int_map;
 	map_gnode 	*ext_map;
 	
-	u32 		 cur_gid;	/*G_node id*/
+	int 		 cur_gid;	/*G_node id*/
 	map_gnode 	*cur_gnode;
 	inet_prefix	 ipstart;	/*The first ip of our gnode (cur_gnode)*/
 	
@@ -56,3 +55,8 @@ typedef struct
 	char *int_map_file;
 	char *ext_map_file;
 }NtkOpt;
+
+extern char *__argv0;
+extern int dbg_lvl;
+extern int log_to_stderr;
+

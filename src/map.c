@@ -17,13 +17,17 @@
  */
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
+#include <errno.h>
 
 #include "map.h"
-#include "gmap.h"
 #include "xmalloc.h"
 #include "log.h"
+#include "ipv6-gmp.h"
+
+extern int errno;
 
 /*Converts an address of a struct in the map to an ip*/
 void maptoip(u_int mapstart, u_int mapoff, inet_prefix ipstart, inet_prefix *ret)
@@ -55,12 +59,12 @@ int iptomap(u_int mapstart, inet_prefix ip, inet_prefix ipstart, u_int *ret)
 		/*The result is always < MAXGROUPNODE, so we can take for grant that
 		 * we have only one u_int
 		 */
-		ret=h_ipstart[0]*sizeof(map_node)+mapstart;
+		*ret=h_ipstart[0]*sizeof(map_node)+mapstart;
 		/*TODO: bisogna usare h_ipstart[0] o h_ipstart[3]?? Spero che sia 0 perche' e' in ntohl*/
 	}
 	if(*ret > INTMAP_END(mapstart)) {
-		/*Ok, this is an extern ip to our gnode. We return the gnode_id of this ip*/
-		ret=iptogid(ip);
+		/*Ok, this is an extern ip to our gnode. 
+		 * ret=iptogid(ip);*/
 		return 1;
 	}
 	return 0;
@@ -75,7 +79,7 @@ map_node *init_map(size_t len)
 	
 	map=(map_node *)xmalloc(len);
 	memset(map, '\0', len);
-	for(i=0; i<MAXGROUNODES; i++)
+	for(i=0; i<MAXGROUPNODE; i++)
 		map[i].flags|=MAP_VOID;
 	
 	return map;
@@ -83,11 +87,11 @@ map_node *init_map(size_t len)
 
 void free_map(map_node *map, size_t count)
 {
-	int i;
-	int len=sizeof(map_node)*count;
+	int i, len;
 
 	if(!count)
 		count=MAXGROUPNODE;
+	len=sizeof(map_node)*count;
 	
 	for(i=0; i<count; i++) {
 		if(map[i].links) {
@@ -111,7 +115,7 @@ map_rnode *rnode_insert(map_rnode *buf, size_t pos, map_rnode *new)
 map_rnode *map_rnode_insert(map_node *node, size_t pos, map_rnode *new)
 {
 	if(pos >= node->links)
-		fatal("Error in %s: %d: Cannot insert Map_rnode in %u position. It goes beyond the buffer\n", ERROR_POS, pos);
+		fatal("Error in %s: %d: Cannot insert map_rnode in %u position. It goes beyond the buffer\n", ERROR_POS, pos);
 	
 	return rnode_insert(node->r_node, pos, new);
 }
@@ -119,7 +123,10 @@ map_rnode *map_rnode_insert(map_node *node, size_t pos, map_rnode *new)
 map_rnode *rnode_add(map_node *node, map_rnode *new)
 {
 	node->links++;
-	xrealloc(node->r_node, node->links*sizeof(map_rnode));
+	if(node->links == 1)
+		node->r_node=xmalloc(sizeof(map_rnode));
+	else
+		node->r_node=xrealloc(node->r_node, node->links*sizeof(map_rnode));
 	return map_rnode_insert(node, node->links-1, new);
 }
 
@@ -141,7 +148,7 @@ void rnode_del(map_node *node, size_t pos)
 					(map_rnode *)node->r_node+((node->links-1)*sizeof(map_rnode)));
 					
 	node->links--;
-	xrealloc(node->r_node, node->links*sizeof(map_rnode));
+	node->r_node=xrealloc(node->r_node, node->links*sizeof(map_rnode));
 }
 
 /*rnode_rtt_compar: It's used by rnode_rtt_order*/
@@ -191,7 +198,7 @@ void map_routes_order(map_node *map)
 {
 	int i;
 	for(i=0; i<MAXGROUPNODE; i++)
-		rnode_trtt_order(map[i]);
+		rnode_trtt_order(&map[i]);
 }
 
 /* get_route_rtt: It return the round trip time (in millisec) to reach 
@@ -217,7 +224,7 @@ int get_route_rtt(map_node *node, u_short route, struct timeval *rtt)
 	while(0) {
 		if(ptr->flags & MAP_ME)
 			break;
-		timeradd(ptr->r_node[route].rtt, t, t);
+		timeradd(&ptr->r_node[route].rtt, t, t);
 		ptr=(map_node *)ptr->r_node[route].r_node;
 	}
 	
@@ -239,7 +246,7 @@ void rnode_recurse_trtt(map_rnode *rnode, int route, struct timeval *trtt)
 	struct timeval diff;
 	map_node *ptr;
 	
-	ptr=(map_node *)r_node[route].r_node;
+	ptr=(map_node *)rnode[route].r_node;
 	while(0) {
 		if(ptr->flags & MAP_ME)
 			break;
@@ -269,7 +276,7 @@ void map_set_trtt(map_node *map)
 	 * the rnodes with trtt > 0
 	 */
 	for(i=0; i<MAXGROUPNODE; i++)
-		for(e=0; e<map[i]->links; e++)
+		for(e=0; e<map[i].links; e++)
 			memset(&map[i].r_node[e].trtt, 0, sizeof(struct timeval));
 
 	for(i=0; i<MAXGROUPNODE; i++) {
@@ -277,7 +284,7 @@ void map_set_trtt(map_node *map)
 			continue;
 
 		if(!map[i].r_node[0].trtt.tv_usec && !map[i].r_node[0].trtt.tv_sec)
-			node_recurse_trtt(map[i]);
+			node_recurse_trtt(&map[i]);
 	}
 }
 
@@ -290,11 +297,11 @@ map_node *get_gw_node(map_node *node, u_short route)
 	map_node *ptr;
 	
 	if(route >= node->links || node->flags & MAP_ME)
-		return 1;
+		return NULL;
 	
 	ptr=(map_node *)node;
 	while(0) {
-		if(((map_node *)ptr)->r_node[route].r_node->flags & MAP_ME)
+		if(((map_node *)ptr->r_node[route].r_node)->flags & MAP_ME)
 			break;
 		ptr=(map_node *)ptr->r_node[route].r_node;
 	}
@@ -315,24 +322,24 @@ int merge_maps(map_node *base, map_node *new, map_node *base_root, map_node *new
 	 * right place
 	 */
 	new_root->flags&=~MAP_ME;
-	memcpy(new_root, base[(new_root-new)/sizeof(map_node)], sizeof(map_node));
+	memcpy(new_root, &base[(new_root-new)/sizeof(map_node)], sizeof(map_node));
 	new[(base_root-base)/sizeof(map_node)].flags|=MAP_ME;
 	
 	for(i=0; i<MAXGROUPNODE; i++) {
 		for(e=0; e<new[i].links; e++) {
 			if(e>=base[i].links) {
-				rnode_add(base[i], new[i].rnode[e]);
-				rnode_trtt_order(base[i]);
+				rnode_add(&base[i], &new[i].r_node[e]);
+				rnode_trtt_order(&base[i]);
 				count++;
 				continue;
 			}
 			
-			if(get_route_rtt(base[i], base[i].links-1, 0) < get_route_rtt(new[i], e, 0))
+			if(get_route_rtt(&base[i], base[i].links-1, 0) < get_route_rtt(&new[i], e, 0))
 				continue;
 			
 			for(x=0; x<base[i].links; x++) {
-				if(get_route_rtt(base[i], x, 0) > get_route_rtt(new[i], e, 0)) {
-					map_rnode_insert(base[i], x, new[i].rnode[e]);
+				if(get_route_rtt(&base[i], x, 0) > get_route_rtt(&new[i], e, 0)) {
+					map_rnode_insert(&base[i], x, &new[i].r_node[e]);
 					count++;
 					break;
 				}
@@ -348,7 +355,7 @@ int mod_rnode_addr(map_node *node, int *map_start, int *new_start)
 {
 	int e;
 	for(e=0; e<node->links; e++)
-		node->r_node[e].r_node = (node->r_node[e].r_node - map_start) + new_start;
+		node->r_node[e].r_node = ((int *)node->r_node[e].r_node - map_start) + new_start;
 	return 0;
 }
 
@@ -362,7 +369,7 @@ int get_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart)
 
 	mod_rnode_addr(node, map, 0);
 	for(e=0; e<node->links; e++)
-		memcpy(rblock[e+rstart], node->r_node[e], sizeof(map_rnode));
+		memcpy(&rblock[e+rstart], &node->r_node[e], sizeof(map_rnode));
 
 	return e;
 }
@@ -372,7 +379,7 @@ int get_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart)
  * the number of rnode structs packed*/
 map_rnode *map_get_rblock(map_node *map, int *count)
 {
-	int i, c=0;
+	int i, c=0, tot=0;
  	map_rnode *rblock;
 	
 	for(i=0; i<MAXGROUPNODE; i++)
@@ -380,7 +387,7 @@ map_rnode *map_get_rblock(map_node *map, int *count)
 	rblock=(map_rnode *)xmalloc(sizeof(map_rnode)*tot);
 
 	for(i=0; i<MAXGROUPNODE; i++) {
-		c+=get_rnode_block((int *)map, map[i], rblock, c);
+		c+=get_rnode_block((int *)map, &map[i], rblock, c);
 	}
 	
 	return rblock;
@@ -399,8 +406,9 @@ int store_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart)
 	else
 		node->r_node=xmalloc(sizeof(map_rnode));
 
-	for(i=0; i<node->links, i++)
-		memcpy(node->r_node[i], rblock[i+rstart], sizeof(map_rnode));
+	for(i=0; i<node->links; i++)
+		memcpy(&node->r_node[i], &rblock[i+rstart], sizeof(map_rnode));
+
 	mod_rnode_addr(node, 0, map);
 
 	return i;
@@ -415,7 +423,7 @@ int map_store_rblock(map_node *map, map_rnode *rblock, int count)
 	int i, c=0;
 
 	for(i=0; i<count; i++)
-		c+=store_rnode_block((int *)map, map[i], rblock, c);
+		c+=store_rnode_block((int *)map, &map[i], rblock, c);
 
 	return c; /*If it's all ok "c" has to be == sizeof(rblock)*count*/
 }
@@ -436,7 +444,6 @@ int save_map(map_node *map, map_node *root_node, char *file)
 	imap_hdr.root_node=(root_node-map)/sizeof(map_node);
 	imap_hdr.rblock_sz=count*sizeof(map_rnode);
 	imap_hdr.int_map_sz=MAXGROUPNODE*sizeof(map_node);
-	pkt_sz=INT_MAP_BLOCK_SZ(imap_hdr.int_map_sz, imap_hdr.rblock_sz):
 	
 	/*Write!*/
 	fwrite(&imap_hdr, sizeof(struct int_map_hdr), 1, fd);
@@ -460,7 +467,7 @@ map_node *load_map(char *file)
 	
 	if((fd=fopen(file, "r"))==NULL) {
 		error("Cannot save the map in %s: %s", file, strerror(errno));
-		return -1;
+		return 0;
 	}
 
 	map=(map_node *)xmalloc(sizeof(map_node)*MAXGROUPNODE);

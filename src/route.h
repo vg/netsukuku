@@ -16,6 +16,9 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#include <sys/types.h>
+#include <asm/types.h>
+
 struct ctable_route
 {
 	struct ctable_route	*next;

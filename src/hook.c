@@ -347,6 +347,7 @@ int netsukuku_hook(char *dev)
 	map_node **merg_map, *new_root;
 	map_gnode *new_groot;
 
+	srand(time(0));	
 	debug(DBG_NOISE, "Starting the hooking");
 	if(my_family==AF_INET)
 		idata[0]=HOOKING_IP;
@@ -398,7 +399,7 @@ int netsukuku_hook(char *dev)
 		fatal("None of the nodes in this area gave me the free_ips info");
 
 	/*Now we choose a random ip from the free ips we received*/
-	e=(rand()%(fi_hdr.ips-0+1))+0;		/*rnd_range algo: (rand()%(max-min+1))+min*/
+	e=(rand()%(fi_hdr.ips-0))+0;		/*rnd_range algo: (rand()%(max-min+1))+min*/
 	maptoip(0, fips[e], fi_hdr.ipstart, &me.cur_ip);
 	if(set_dev_ip(me.cur_ip, dev))
 		fatal("%s:%d: Cannot set the tmp_ip in %s", ERROR_POS, dev);

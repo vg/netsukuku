@@ -46,7 +46,6 @@ typedef struct
 	/*In the own g_node entry there are also the boarder_nodes in g_node.r_node*/
 }map_gnode;
 
-typedef map_gnode * ext_map;
 
 
 /* * * Functions' declaration * * */

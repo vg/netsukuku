@@ -1,4 +1,4 @@
-/* This file is part of Netsukuku system
+/* This file is part of Netsukuku
  * (c) Copyright 2004 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
  *
  * This source code is free software; you can redistribute it and/or
@@ -14,25 +14,16 @@
  * You should have received a copy of the GNU Public License along with
  * this source code; if not, write to:
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ * --
+ * 128bit-gmp.c: I made this to handle the HUGE ipv6 numbers
  */
 
-#define ERROR_POS  __FILE__, __LINE__
+#define ZERO128		{0,0,0,0}
 
-/*Debug levels*/
-#define DBG_NORMAL	0
-#define DBG_SOFT	1
-#define DBG_NOISE 	2
-#define DBG_INSANE 	3
+int sum_int(unsigned int , unsigned int *);
+int sum_128(unsigned int *, unsigned int *);
+int sub_int(unsigned int *, unsigned int);
+int sub_128(unsigned int *, unsigned int *);
+int htonl_128(unsigned int *, unsigned int *, int );
+int ntohl_128(unsigned int *, unsigned int *, int );
 
-char *__argv0;
-int dbg_lvl;
-int log_to_stderr;
-
-/*`format (ARCHETYPE, STRING-INDEX, FIRST-TO-CHECK)'*/
-void fatal(const char *, ...) __attribute__((format(printf, 1, 2)));
-void error(const char *, ...) __attribute__((format(printf, 1, 2)));
-void loginfo(const char *, ...) __attribute__((format(printf, 1, 2)));
-void debug(int lvl, const char *, ...) __attribute__((format(printf, 2, 3)));
-
-void print_log(int , const char *, ...);
-/*void safe_exit(int); TODO: DO ME*/

@@ -17,8 +17,7 @@
  */
 #include <sys/time.h>
 #include <sys/types.h>
-#include "inet.h"
-#include "ipv6-gmp.c"
+#include "pkts.h"
 
 #define MAXGROUPNODE		0x281
 #define MAXROUTES	 	20
@@ -64,8 +63,8 @@ typedef struct
 	u_short 	flags;
 
 #ifdef QSPN_EMPIRIC
-	u_int		braoadcast[MAXGROUPNODE];
-#elif
+	u_int		broadcast[MAXGROUPNODE];
+#else
 	u_int		brdcast;	 /*Pkt_id of the last brdcast_pkt sent by this node*/
 #endif /*QSPN_EMPIRIC*/
 

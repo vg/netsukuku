@@ -170,7 +170,7 @@ int ll_first_up_if(void)
 	
 	for(i=0; i<16; i++) {
 		flags=ll_index_to_flags(i);
-		if((flags & IFF_UP) && (flags & ~IFF_LOOPBACK))
+		if((flags & IFF_UP) && !(flags & IFF_LOOPBACK))
 			return i;
 	}
 	return -1;

@@ -167,7 +167,7 @@ int add_radar_q(PACKET pkt)
 	
 	gettimeofday(&t, 0);
 	if(iptomap(cur.int_map, pkt.from, cur.gnode->ipstart, rnode)) 
-		if(me.cur_node->flags & ~MAP_HNODE) {
+		if(!(me.cur_node->flags & MAP_HNODE)) {
 			u_int *gmap;
 			/*The pkt.ip isn't part of our gnode, thus we are a bnode.
 			 * TODO: When the gnode support is complete: Here we have to add the 
@@ -263,7 +263,7 @@ int radar_scan(void)
 
 	final_radar_queue();
 	radar_update_map();
-	if(me.cur_node->flags & ~MAP_HNODE) {
+	if(!(me.cur_node->flags & MAP_HNODE)) {
 		/*TODO: send_qspn();*/
 		reset_radar(me.cur_node->links);
 	}

@@ -19,7 +19,6 @@
 #include <string.h>
 #include <sys/time.h>
 
-#include "map.h"
 #include "gmap.h"
 #include "netsukuku.h"
 #include "xmalloc.h"

@@ -16,7 +16,7 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#define QSPN_EMPIRIC 	1
+#define QSPN_EMPIRIC
 
 #include <pthread.h>
 #include "map.h"
@@ -51,16 +51,16 @@ struct q_pkt
 	char  op;
 	short *tracer;
 	short routes;
-}
+};
 
-struct q_pkt *pkt_db[MAXGROUPNODE];
+struct q_pkt **pkt_db[MAXGROUPNODE];
 int pkt_dbc[MAXGROUPNODE];
 
 struct q_opt
 {
 	struct q_pkt q;
 	int sleep;
-}
+};
 
 void gen_rnd_map(int start_node);
 void *send_qspn_backpro(void *argv);

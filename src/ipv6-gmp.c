@@ -24,15 +24,7 @@
 #include <gmp.h>
 #include <stdlib.h>
 
-#define MAX32		4294967295
-#define ZERO128		{0,0,0,0}
-
-int sum_int(unsigned int , unsigned int *);
-int sum_128(unsigned int *, unsigned int *);
-int sub_int(unsigned int *, unsigned int);
-int sub_128(unsigned int *, unsigned int *);
-int htonl_128(unsigned int *, unsigned int *, int );
-int ntohl_128(unsigned int *, unsigned int *, int );
+#include "ipv6-gmp.h"
 
 /*y=x+y*/
 int sum_128(unsigned int *x, unsigned int *y)
