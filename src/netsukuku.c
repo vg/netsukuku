@@ -47,13 +47,20 @@ int init_load_maps(void)
 {
 	if(!(me.int_map=load_map(server_opt.int_map_file, &me.cur_node)))
 		me.int_map=init_map(0);
+	else
+		debug(DBG_NORMAL, "Internal map loaded");
 		
 	if(!(me.ext_map=load_extmap(server_opt.ext_map_file, &me.cur_quadg)))
 		me.ext_map=init_extmap(GET_LEVELS(my_family), 0);
+	else
+		debug(DBG_NORMAL, "External map loaded");
 
 	if(!(me.bnode_map=load_bmap(server_opt.bnode_map_file, me.ext_map, 
 					GET_LEVELS(my_family), &me.bmap_nodes)))
 		bmap_level_init(GET_LEVELS(my_family), &me.bnode_map, &me.bmap_nodes);
+	else
+		debug(DBG_NORMAL, "Bnode map loaded");
+	
 	return 0;
 }
 
@@ -62,6 +69,7 @@ int save_maps(void)
 	save_map(me.int_map, me.cur_node, server_opt.int_map_file);
 	save_bmap(me.bnode_map, me.bmap_nodes, me.ext_map, me.cur_quadg, server_opt.bnode_map_file);
 	save_extmap(me.ext_map, MAXGROUPNODE, &me.cur_quadg, server_opt.ext_map_file);
+
 	return 0;
 }
 
@@ -187,11 +195,7 @@ void init_netsukuku(char **argv)
 	
 	xsrand();
 	log_init(argv[0], server_opt.dbg_lvl, 1);
-	/*TODO:
-	signal();
-	*/
 	maxgroupnode_level_init();
-	
 
 	my_family=server_opt.family;
 	ntk_udp_port=DEFAULT_NTK_UDP_PORT;
@@ -227,6 +231,12 @@ void destroy_netsukuku(void)
 	destroy_accept_tbl();
 }
 
+void sigterm_handler(int sig)
+{
+	loginfo("Termination signal caught. Dying, bye, bye");
+	destroy_netsukuku();
+}
+
 int main(int argc, char **argv)
 {
 	pthread_t daemon_tcp_thread, daemon_udp_thread;
@@ -245,6 +255,9 @@ int main(int argc, char **argv)
 	fill_default_options();
 	parse_options(argc, argv);
 	init_netsukuku(argv);
+
+	signal(SIGTERM, sigterm_handler);
+	signal(SIGQUIT, sigterm_handler);
 	
 	if(server_opt.daemon) {
 		log_init(argv[0], server_opt.dbg_lvl, 0);
@@ -268,14 +281,14 @@ int main(int argc, char **argv)
 
 	debug(DBG_SOFT,   "Evocating tcp daemon.");
 	pthread_create(&daemon_tcp_thread, &t_attr, tcp_daemon, NULL);
-
+	
 	/* Now we hook in the Netsukuku network */
 	netsukuku_hook(me.cur_dev);
-
+	
 	/* We use this self process for the radar_daemon. */
 	debug(DBG_SOFT,   "Evocating radar daemon.");
 	radar_daemon(NULL);
-
+	
 	loginfo("Cya m8");
 	pthread_attr_destroy(&t_attr);
 	destroy_netsukuku();

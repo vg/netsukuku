@@ -184,7 +184,7 @@ void rnode_del(map_node *node, size_t pos)
 		node->r_node=xrealloc(node->r_node, node->links*sizeof(map_rnode));
 }
 
-/* rnode_destroy: Wipe out all the rnodes YEAHAHA ^_-*/
+/* rnode_destroy: Wipe out all the rnodes YEAHAHA ^_- */
 void rnode_destroy(map_node *node)
 {
 	if(node->r_node && node->links)
@@ -469,7 +469,7 @@ int merge_maps(map_node *base, map_node *new, map_node *base_root, map_node *new
  */
 int mod_rnode_addr(map_rnode *rnode, int *map_start, int *new_start)
 {
-	rnode->r_node = ((int *)rnode->r_node - map_start) + new_start;
+	rnode->r_node = ((void *)rnode->r_node - (void *)map_start) + (void *)new_start;
 	return 0;
 }
 

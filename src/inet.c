@@ -294,7 +294,7 @@ int set_bindtodevice_sk(int socket, char *dev)
 
 int set_multicast_loop_sk(int family, int socket)
 {
-	int ret;
+	int ret=0;
 	u_char loop=0;    /* 0 = disable, 1 = enable (default) */
 	/*
 	 * <<The IPV6_MULTICAST_LOOP option gives the sender explicit control

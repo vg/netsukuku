@@ -143,5 +143,7 @@ int rt_add_def_gw(char *dev)
 		return -1;
 	}
 	inet_htonl(&to);
+
+/*	route_del(to, 0, dev, 0);	*/
 	return route_add(to, 0, dev, 0);
 }

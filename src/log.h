@@ -32,4 +32,3 @@ void loginfo(const char *, ...) __attribute__((format(printf, 1, 2)));
 void debug(int lvl, const char *, ...) __attribute__((format(printf, 2, 3)));
 
 void print_log(int level, const char *fmt, va_list args);
-/*void safe_exit(int); TODO: DO ME*/

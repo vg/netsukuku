@@ -190,16 +190,15 @@ pack_all_bmaps(map_bnode **bmaps,  u_int *bmap_nodes, map_gnode **ext_map,
 		quadro_group quadg, size_t *pack_sz)
 {
 	struct bmaps_hdr bmap_hdr;
-	int i, buf;
+	int buf;
 	size_t sz, tmp_sz[quadg.levels];
-	char **pack, *final_pack;
+	char *pack[quadg.levels], *final_pack;
 	u_char level;
 
 	*pack_sz=0;
-	pack=xmalloc(sizeof(char *)*quadg.levels);
 	
 	for(level=0; level < quadg.levels; level++) {
-		pack[i]=pack_map(bmaps[level], (int *)ext_map[_EL(level)], bmap_nodes[level],
+		pack[level]=pack_map(bmaps[level], (int *)ext_map[_EL(level)], bmap_nodes[level],
 				0, &sz);
 		tmp_sz[level]=sz;
 		*pack_sz+=sz;
@@ -213,9 +212,9 @@ pack_all_bmaps(map_bnode **bmaps,  u_int *bmap_nodes, map_gnode **ext_map,
 	
 	buf=sizeof(struct bmaps_hdr);
 	for(level=0; level < quadg.levels; level++) {
-		memcpy(final_pack+buf, pack[i], tmp_sz[level]);
+		memcpy(final_pack+buf, pack[level], tmp_sz[level]);
 		buf+=tmp_sz[level];
-		xfree(pack[i]);
+		xfree(pack[level]);
 	}
 
 	return final_pack;

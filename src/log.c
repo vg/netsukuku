@@ -49,7 +49,6 @@ void fatal(const char *fmt,...)
 	print_log(LOG_CRIT, str, args);
 	va_end(args);
 	exit(1);
-	/*TODO: safe_exit(255); We must save the maps before exit*/
 }
 
 /* Misc errors */

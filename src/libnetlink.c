@@ -75,6 +75,7 @@ int rtnl_wilddump_request(struct rtnl_handle *rth, int family, int type)
 	} req;
 	struct sockaddr_nl nladdr;
 
+	memset(&req, 0, sizeof(req));
 	memset(&nladdr, 0, sizeof(nladdr));
 	nladdr.nl_family = AF_NETLINK;
 
