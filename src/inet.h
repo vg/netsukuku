@@ -25,7 +25,7 @@ typedef struct
 	__u8 family;
 	__u16 len;
 	__u32 data[4]; 	/*The address is kept in host long format*/
-} inet_prefix;
+}inet_prefix;
 
 int inet_setip(inet_prefix *ip, u_int *data, u_char family);
 int inet_setip_bcast(inet_prefix *ip);

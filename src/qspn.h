@@ -16,13 +16,18 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#define MAX_CONC_QSPN	5	/*MAX CONCURRENT QSPN*/
 
-/*This struct keeps tracks of the qspn_pkts sent or
+/* This struct keeps tracks of the qspn_pkts sent or
  * received by our rnodes*/
-struct qspn_queue
+struct qspn_buffer
 {
-	int 	q_id;		/*qspn_id*/
 	u_int	replies;	/*How many replies we forwarded*/
-	u_short *replier;	/*Who has sent these repliesi (qspn_sub_id)*/
+	u_short *replier;	/*Who has sent these replies (qspn_sub_id)*/
 	u_short	*flags;
 };
+struct qspn_queue *qspn_b;
+
+
+int 	q_id;		/*The qspn_id we are processing*/
+int	q_time;

@@ -1,5 +1,7 @@
-continuare in hook.c: dnode_set_ip
-D_node's gathering
+qspn.c
+gnode support
+aggiustare un po' tutto (hook.c, radar.c)
+netsukuku.c (Parte minimale)
 come fare per aggiungere un route rule per specificare un'intero range nel campo from?
 Decidere l'order del ntohl_128. ip.data[0] o ip.data[3]?
 connect-wrapper.c: ld.so.preload!

@@ -26,9 +26,13 @@
 
 #define RTT_DELTA		1	/*If the change delta of the new rtt is >= RTT_DELTA, 
 					  the qspn_q.send_qspn will be set*/
-int max_radar_wait=MAX_RADAR_WAIT;
-int radar_scan_mutex;
-int my_echo_id=0;
+
+int max_radar_wait=MAX_RADAR_WAIT;	/*How much we wait to store the received ECHO_REPLY pkts
+					  and then to close the current radar session*/
+int radar_scans=0;			/*How many ECHO_ME pkts we sent*/
+int radar_scan_mutex;			/*A flag to see if we are already doing a scan*/
+int my_echo_id=0;			
+int send_qspn_now=0;			/*Shall we send the qspn?*/
 
 struct radar_queue
 {
@@ -40,12 +44,10 @@ struct radar_queue
 						  will keep the average of all the rtts
 						 */
 };
-
-struct timeval scan_start;			/*the start of the scan*/
 struct radar_queue *radar_q;
+struct timeval scan_start;			/*the start of the scan*/
 /*How many radar_queue are allocated in radar_q?*/
 int radar_q_alloc;
-
 
 
 void init_radar(void);

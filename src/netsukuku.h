@@ -36,7 +36,7 @@ struct current
 	inet_prefix	 ipstart;	/*The first ip of our gnode (cur_gnode)*/
 	
 	inet_prefix	 cur_ip;
-	map_node 	*cur_node;
+	map_node 	*cur_node;	/*Me in the map*/
 	map_rnode	*cur_rnode;	/*At the hooking time we haven't rnodes, so this will point a stub rnode struct
 					  present at cur_node->r_node*/
 

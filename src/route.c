@@ -64,11 +64,11 @@ void krnl_update_node(map_node *node)
 	int i;
 	memset(nh, '\0', sizeof(nexthop), node.links+1);
 
-	maptoip(me.int_map, node, me.ipstart, &to);
+	maptoip(*me.int_map, *node, me.ipstart, &to);
 
 
 	for(i=0; i<node.links; i++) {
-		maptoip(me.int_map, get_gw_node(node, i), me.ipstart, &nh[i].gw);
+		maptoip(*me.int_map, *get_gw_node(node, i), me.ipstart, &nh[i].gw);
 		nh[i].dev=me.cur_dev;
 		nh[i].hops=255-i;
 	}

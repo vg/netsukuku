@@ -62,7 +62,7 @@ typedef struct
 /*Broadcast packet*/
 struct brdcast_hdr
 {
-	int id;
+	int sub_id;
 	u_int g_node;		/*The g_node the brdcast_pkt is restricted to*/
 	u_short gttl;		/*Gnode ttl: How many gnodes the packet can traverse*/
 	size_t sz;		/*Sizeof(the pkt)*/

@@ -102,9 +102,6 @@ typedef struct
  *
  * typedef qmap_node *int_map;
  */
-#ifndef QSPN_EMPIRIC
-struct qspn_queue *qspn_q;
-#endif
 
 #define MAXRNODEBLOCK		MAXLINKS*MAXGROUPNODE*sizeof(map_rnode)
 #define INTMAP_END(mapstart)	((sizeof(map_node)*MAXGROUPNODE)+(mapstart))

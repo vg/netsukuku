@@ -33,14 +33,14 @@ extern int errno;
 void maptoip(u_int mapstart, u_int mapoff, inet_prefix ipstart, inet_prefix *ret)
 {
 	if(ipstart.family==AF_INET) {
-		ret->data[0]=(((void *)mapoff-(void *)mapstart)/sizeof(map_node))+ipstart.data[0];
+		ret->data[0]=((mapoff-mapstart)/sizeof(map_node))+ipstart.data[0];
 		ret->family=AF_INET;
 		ret->len=4;
 	} else {
 		ret->family=AF_INET6;
 		ret->len=16;
 		memcpy(ret->data, ipstart.data, sizeof(inet_prefix));
-		sum_int((((void *)mapoff-(void *)mapstart)/sizeof(map_node)), ret->data);
+		sum_int(((mapoff-mapstart)/sizeof(map_node)), ret->data);
 	}
 }
 

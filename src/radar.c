@@ -26,6 +26,7 @@
 #include "log.h"
 
 extern struct current me;
+extern int my_family;
 
 void init_radar(void)
 {
@@ -105,7 +106,7 @@ void final_radar_queue(void)
 			timeradd(radar_q[i].rtt[e], &sum, &sum);
 		}
 		
-		f_rtt=MILLISEC(sum)/MAX_RADAR_SCANS;
+		f_rtt=MILLISEC(sum)/radar_scans;
 		radar_q[i].final_rtt.tv_sec=f_rtt/1000;
 		radar_q[i].final_rtt.tv_usec=(f_rtt - (f_rtt/1000)*1000)*1000;
 		
@@ -127,10 +128,10 @@ void radar_update_map(void)
 	           if(!radar_q[i].node)
 			   continue;
 		  
-		   if(!qspn_q.qspn_send && radar_q[i].node->links) {
+		   if(!send_qspn_now && radar_q[i].node->links) {
 			   diff=abs(MILLISEC(radar_q[i].node->r_node[0].rtt) - MILLISEC(radar_q[i].final_rtt));
 			   if(diff >= RTT_DELTA)
-				   qspn_q.qspn_send=1;
+				   send_qspn_now=1;
 		   }
 		   
 		   memcpy(&radar_q[i].node->r_node[0].rtt, &radar_q[i].final_rtt, sizeof(struct timeval));
@@ -148,8 +149,12 @@ void radar_update_map(void)
 	for(i=0; i<me.cur_node->links; i++) {
 		if(me.cur_node->r_node[i].r_node->flags & MAP_VOID) {
 			/*Doh, The rnode is dead!*/
-			debug(DBG_NORMAL,"The node %d is dead\n", ((void *)me.cur_node->r_node[i].r_node-(void *)me.int_map)/sizeof(map_node));
-			qspn_q.qspn_send=1;
+			debug(DBG_NORMAL,"The node %d is dead\n", 
+					((void *)me.cur_node->r_node[i].r_node-(void *)me.int_map)/sizeof(map_node));
+			/* We don't care to send the qspn to inform the other nodes. They will wait till the next QSPN 
+			 * to update their map.
+			 * send_qspn_now=1;
+			 */
 			rnode_del(me.cur_node, i);
 			rnode_deleted++;
 		}
@@ -166,7 +171,7 @@ int add_radar_q(PACKET pkt)
 	struct timeval t;
 	
 	gettimeofday(&t, 0);
-	if(iptomap(cur.int_map, pkt.from, cur.gnode->ipstart, rnode)) 
+	if(iptomap(me.int_map, pkt.from, me.cur_gnode->ipstart, rnode)) 
 		if(!(me.cur_node->flags & MAP_HNODE)) {
 			u_int *gmap;
 			/*The pkt.ip isn't part of our gnode, thus we are a bnode.
@@ -203,8 +208,13 @@ int add_radar_q(PACKET pkt)
 			memcpy(&radar_q[idx].ip, &pkt.from, sizeof(inet_prefix));
 	}
 
-	if(radar_q[idx].pongs<=MAX_RADAR_SCANS) {
+	if(radar_q[idx].pongs<=radar_scans) {
 		timersub(&t, &scan_start, &radar_q[idx].rtt[radar_q[idx].pongs]);
+		/* Now we divide the rtt, because (t - scan_start) is the time the pkt used to
+		 * reach B from A and to return to A from B
+		 */
+		radar_q[idx].rtt[radar_q[idx].pongs].tv_sec/=2;
+		radar_q[idx].rtt[radar_q[idx].pongs].tv_usec/=2;
 		radar_q[idx].pongs++;
 	}
 
@@ -250,12 +260,19 @@ int radar_scan(void)
 	inet_setip_bcast(&broadcast);
 	pkt_addto(&pkt, &broadcast);
 	pkt.sk_type=SKT_BCAST;
-	err=send_rq(&pkt, 0, ECHO_ME, 0, 0, 0, 0);
-	if(err==-1) {
-		error("radar_scan(): Error while sending the scan");
+	my_echo_id=random():
+	for(i=0; i<MAX_RADAR_SCANS; i++) {
+		err=send_rq(&pkt, 0, ECHO_ME, my_echo_id, 0, 0, 0);
+		if(err==-1) {
+			error("radar_scan(): Error while sending the scan %d... skipping", my_echo_id);
+			continue;
+		}
+		radar_scans++;
+	}
+	if(!radar_scans) {
+		error("radar_scan(): The scan (%d) faild. It wasn't possible to send a single scan", my_echo_id);
 		return -1;
 	}
-	my_echo_id=pkt.hdr.id:
 	pkt_free(&pkt, 1);
 	
 	gettimeofday(&scan_start, 0);
@@ -264,7 +281,8 @@ int radar_scan(void)
 	final_radar_queue();
 	radar_update_map();
 	if(!(me.cur_node->flags & MAP_HNODE)) {
-		/*TODO: send_qspn();*/
+		if(send_qspn_now)
+	/*TODO*/	qspn_send(QSPN_CLOSE, NORMAL_BCAST);
 		reset_radar(me.cur_node->links);
 	}
 	else
@@ -280,7 +298,6 @@ int radard(PACKET rpkt)
 	PACKET pkt;
 	inet_prefix broadcast;
 	ssize_t err;
-	char *ntop;
 
 	/*We create the PACKET*/
 	memset(&pkt, '\0', sizeof(PACKET));
@@ -294,6 +311,7 @@ int radard(PACKET rpkt)
 	err=send_rq(&pkt, 0, ECHO_REPLY, rpkt.hdr.id, 0, 0, 0);
 	pkt_free(&pkt, 1);
 	if(err==-1) {
+		char *ntop;
 		ntop=inet_to_str(&pkt->to);
 		error("radard(): Cannot send back the ECHO_REPLY to %s.", ntop);
 		xfree(ntop);

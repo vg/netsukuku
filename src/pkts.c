@@ -226,7 +226,7 @@ void pkt_fill_hdr(struct pkt_hdr *hdr, int id, u_char op, size_t sz)
  * If `rpkt' is not null it will receive and store the reply pkt in `rpkt'.
  * If `check_ack' is set send_rq, send_rq attempts to receive the reply pkt and it checks its
  * ACK and its id; if the test fails it gives an appropriate error message.
- * If `re'  is not null send_rq confronts the REPLY_ID of the received reply pkt 
+ * If `re'  is not null send_rq confronts the OP of the received reply pkt 
  * with `re'; if the test fails it gives an appropriate error message.
  * If an error occurr send_rq returns -1 otherwise it returns 0.
  */
