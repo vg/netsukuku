@@ -1,5 +1,5 @@
 - [HIGH PRIORITY] -
-testare: 90%, hook.c in progress
+testare: 93%, hook.c in progress
 testare: 30%, tracer.c in progress
 
 - [MEDIUM PRIORITY] -
@@ -12,3 +12,4 @@ Portare per *BSD: bisogna usare rt_ioctl.c ed rt_socket.c di quagga
 - [LOW PRIORITY] -
 tracer.c: store_trcaer_pkt_connect
 broadcast: Tenere in considerazione il gttl.
+hook.c: anti spoof hook

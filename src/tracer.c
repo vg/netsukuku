@@ -476,7 +476,7 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 	/* * Time to store the qspn routes to reach all the nodes of the tracer pkt * */
 	
 	/* We add in the total rtt the first rtt which is me -> from */
-	memst(&trtt, 0, sizeof(struct timeval));	
+	memset(&trtt, 0, sizeof(struct timeval));	
 	timeradd(&root_node->r_node[rnode_pos].trtt, &trtt, &trtt);
 	
 	/* We skip the node at hops-1 which it is the `from' node. The radar() 

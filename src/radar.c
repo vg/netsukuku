@@ -58,6 +58,7 @@ void init_radar(void)
 	list_init(me.cur_erc);
 	
 	memset(radar_q, 0, sizeof(struct radar_queue));
+	memset(me.cur_erc, 0, sizeof(ext_rnode_cache));
 	memset(send_qspn_now, 0, sizeof(u_char)*MAX_LEVELS);
 }
 

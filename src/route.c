@@ -59,6 +59,32 @@ u_char rt_find_table(ct_route *ctr, u_int dst, u_int gw)
 	return 0xff; /*This shouldn't happen!*/
 }
 
+	/* XXX DEBUG XXX */
+void route_test(void)
+{
+	int i,e;
+	int ms_rnd;
+	map_rnode rtmp;
+	i=rand_range(0, MAXGROUPNODE);
+retry:
+	e=rand_range(0, MAXGROUPNODE);
+	if(e==i)
+		goto retry;
+
+	memset(&rtmp, '\0', sizeof(map_rnode));
+	rtmp.r_node=(u_int *)&me.int_map[e];
+	ms_rnd=rand_range(0, (MAXRTT*1000));
+	rtmp.rtt.tv_usec=ms_rnd*1000;
+	rnode_add(&me.int_map[i], &rtmp);
+
+	me.int_map[e].flags|=MAP_RNODE;
+	me.int_map[e].flags&= ~MAP_VOID;
+	me.int_map[i].flags&= ~MAP_VOID;
+	
+	krnl_update_node(&me.int_map[i], 0);
+	
+}
+
 void krnl_update_node(void *void_node, u_char level)
 {
 	map_node *node, *gw_node;
@@ -76,6 +102,7 @@ void krnl_update_node(void *void_node, u_char level)
 		memset(nh, '\0', sizeof(struct nexthop)*(node->links+1));
 
 		maptoip((u_int)me.int_map, (u_int)node, me.cur_quadg.ipstart[1], &to);
+		inet_htonl(&to);
 
 		for(i=0; i<node->links; i++) {
 #ifdef QMAP_STYLE_I
@@ -85,7 +112,7 @@ void krnl_update_node(void *void_node, u_char level)
 			maptoip((u_int)me.int_map, (u_int)node->r_node[i].r_node,
 					me.cur_quadg.ipstart[1], &nh[i].gw);
 #endif
-		inet_htonl(&nh[i].gw);
+			inet_htonl(&nh[i].gw);
 			nh[i].dev=me.cur_dev;
 			nh[i].hops=255-i;
 		}
@@ -102,6 +129,9 @@ void krnl_update_node(void *void_node, u_char level)
 		
 		gw_node=get_gw_gnode(me.int_map, me.ext_map, me.bnode_map,
 				me.bmap_nodes, gnode, level, 0);
+		if(!gw_node)
+			goto finish;
+		
 		maptoip((u_int)me.int_map, (u_int)gw_node, 
 				me.cur_quadg.ipstart[1], &nh[0].gw);
 		inet_htonl(&nh[0].gw);
@@ -119,21 +149,50 @@ void krnl_update_node(void *void_node, u_char level)
 		if(route_replace(0, to, nh, me.cur_dev, 0))
 			error("WARNING: Cannot update the route entry for the "
 					"%d %cnode!", node_pos, !level ? ' ' : 'g');
+finish:
 	if(nh)
 		xfree(nh);
 }
 
-void rt_update(void)
+/* 
+ * rt_full_update: It updates _ALL_ the possible routes it can get from _ALL_
+ * the maps. If `check_update_flag' is not 0, it will update only the routes of
+ * the nodes with the MAP_UPDATE flag set. Note that the MAP_VOID nodes aren't
+ * considered.
+ */
+void rt_full_update(int check_update_flag)
 {
 	u_short i, l;
-	
-	for(l=0; l<me.cur_quadg.levels; l++)
+
+	/* Update int_map */
+	for(i=0; i<MAXGROUPNODE; i++) {
+		if(me.int_map[i].flags & MAP_VOID || me.int_map[i].flags & MAP_ME)
+			continue;
+
+		if(check_update_flag && 
+				!((me.int_map[i].flags & MAP_UPDATE) && 
+					!(me.int_map[i].flags & MAP_RNODE)))
+			continue;
+
+		krnl_update_node(&me.int_map[i], l);
+		me.int_map[i].flags&=~MAP_UPDATE;
+	}
+
+	/* Update ext_maps */
+	for(l=1; l<me.cur_quadg.levels; l++)
 		for(i=0; i<MAXGROUPNODE; i++) {
-			if(me.int_map[i].flags & MAP_UPDATE && !(me.int_map[i].flags & MAP_RNODE)) {
-				krnl_update_node(&me.int_map[i], l);
-				me.int_map[i].flags&=~MAP_UPDATE;
-			}
+			if(me.ext_map[_EL(l)][i].g.flags & MAP_VOID || 
+					me.ext_map[_EL(l)][i].flags & GMAP_VOID)
+				continue;
+
+			if(check_update_flag && 
+					!(me.ext_map[_EL(l)][i].g.flags & MAP_UPDATE))
+				continue;
+
+			krnl_update_node(&me.ext_map[_EL(l)][i].g, l);
+			me.ext_map[_EL(l)][i].g.flags&=~MAP_UPDATE;
 		}
+
 	route_flush_cache(my_family);
 }
 

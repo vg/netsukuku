@@ -148,7 +148,8 @@ map_rnode *rnode_insert(map_rnode *buf, size_t pos, map_rnode *new)
 map_rnode *map_rnode_insert(map_node *node, size_t pos, map_rnode *new)
 {
 	if(pos >= node->links)
-		fatal("Error in %s: %d: Cannot insert map_rnode in %u position. It goes beyond the buffer\n", ERROR_POS, pos);
+		fatal("Error in %s: %d: Cannot insert map_rnode in %u position."
+				" It goes beyond the buffer\n", ERROR_POS, pos);
 	
 	return rnode_insert(node->r_node, pos, new);
 }
@@ -175,9 +176,11 @@ void rnode_swap(map_rnode *one, map_rnode *two)
 void rnode_del(map_node *node, size_t pos)
 {
 	if(pos >= node->links || node->links <= 0)
-		fatal("Error in %s: %d: Cannot delete Map_rnode in %u position. It goes beyond the buffer\n",ERROR_POS, pos);
+		fatal("Error in %s: %d: Cannot delete Map_rnode in %u position."
+				" It goes beyond the buffer\n",ERROR_POS, pos);
 	if(pos!=node->links-1)
-		rnode_swap((map_rnode *)&node->r_node[pos], (map_rnode *)&node->r_node[(node->links-1)]);
+		rnode_swap((map_rnode *)&node->r_node[pos], 
+				(map_rnode *)&node->r_node[(node->links-1)]);
 					
 	node->links--;
 	if(!node->links) {
@@ -576,12 +579,13 @@ int verify_int_map_hdr(struct int_map_hdr *imap_hdr, int maxgroupnode, int maxrn
  * stores the size of the package. For info on `addr_map' please
  * read get_map_rblock().
  */
-char *pack_map(map_node *map, int *addr_map, int maxgroupnode, map_node *root_node, size_t *pack_sz)
+char *pack_map(map_node *map, int *addr_map, int maxgroupnode, 
+		map_node *root_node, size_t *pack_sz)
 {
 	struct int_map_hdr imap_hdr;
 	map_rnode *rblock;
 	int count;
-	char *package;
+	char *package, *p;
 
 	if(!addr_map)
 		addr_map=(int *)map;
@@ -599,7 +603,8 @@ char *pack_map(map_node *map, int *addr_map, int maxgroupnode, map_node *root_no
 	memcpy(package, &imap_hdr, sizeof(struct int_map_hdr));
 	memcpy(package+sizeof(struct int_map_hdr), map, imap_hdr.int_map_sz);
 	if(rblock) {
-		memcpy(package+sizeof(struct int_map_hdr)+imap_hdr.int_map_sz, rblock, imap_hdr.rblock_sz);
+		p=package+sizeof(struct int_map_hdr)+imap_hdr.int_map_sz;
+		memcpy(p, rblock, imap_hdr.rblock_sz);
 		xfree(rblock);
 	}
 

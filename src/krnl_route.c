@@ -151,8 +151,7 @@ int route_exec(int route_cmd, int route_type, unsigned flags, inet_prefix to,
 		if(!to.data[0] && !to.data[1] && !to.data[2] && !to.data[3]) {
 			/*Add the default gw*/
 			req.rt.rtm_protocol=RTPROT_KERNEL;
-		} else
-			req.rt.rtm_scope=RT_SCOPE_LINK;
+		}
 
 		addattr_l(&req.nh, sizeof(req), RTA_DST, &to.data, to.len);
 	} 
@@ -175,30 +174,31 @@ int route_flush_cache(int family)
 	int len, err;
 	int flush_fd;
 	char ROUTE_FLUSH_SYSCTL[]="/proc/sys/net/ipvX/route/flush";
-	char buf=0;
+	char *buf = "-1";
 
+	len = strlen(buf);
 	if(family==AF_INET)
-		ROUTE_FLUSH_SYSCTL[18]='4';
+		ROUTE_FLUSH_SYSCTL[17]='4';
 	else if(family==AF_INET6)
-		ROUTE_FLUSH_SYSCTL[18]='6';
+		ROUTE_FLUSH_SYSCTL[17]='6';
 	else
 		return -1;
 
 	flush_fd=open(ROUTE_FLUSH_SYSCTL, O_WRONLY);
 	if (flush_fd < 0) {
-		error("Cannot open \"%s\"\n", ROUTE_FLUSH_SYSCTL);
+		debug(DBG_NORMAL, "Cannot open \"%s\"\n", ROUTE_FLUSH_SYSCTL);
 		return -1;
 	}
 		
-	if ((err=write (flush_fd, (void *)&buf, len)) == 0) {
-		error("Warning: Route Cache not flushed\n");
+	if ((err=write (flush_fd, (void *)buf, len)) == 0) {
+		debug(DBG_NORMAL, "Warning: Route Cache not flushed\n");
 		return -1;
-	}
-	else if(err==-1) {
-		error("Cannot flush routing cache: %s\n", strerror(errno));
+	} else if(err==-1) {
+		debug(DBG_NORMAL, "Cannot flush routing cache: %s\n", strerror(errno));
 		return -1;
 	}
 	close(flush_fd);
+
 	return 0;
 }
 

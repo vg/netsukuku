@@ -561,7 +561,7 @@ int hook_init(void)
 	idata[0]=htonl(idata[0]);
 
 	inet_setip(&me.cur_ip, idata, my_family);
-	
+
 	set_ip_and_def_gw(me.cur_dev, me.cur_ip);
 
 	return 0;
@@ -622,6 +622,9 @@ hook_restart_and_retry:
 				"to %s", me.cur_dev, ntop);
 
 		new_gnode=1;
+		
+		/* XXX DEBUG XXX */
+		route_test();
 		
 		goto finish;
 	} else if(hook_retry) {
@@ -809,6 +812,10 @@ finish:
 	tracer_pkt_start_mutex=0;
 	for(i=1; i<tracer_levels; i++)
 		tracer_pkt_start(i-1);
-	
+
+	/* Let's fill the krnl routing table */
+	loginfo("Filling the kernel route table");
+	rt_full_update(0);
+
 	return ret;
 }
