@@ -119,6 +119,24 @@ int div_int(unsigned int *y, unsigned int x)
 	return div_128(z, y);
 }
 
+/* y=y/x */
+int div_mpz(unsigned int *y, mpz_t x)
+{
+	mpz_t yy, res;
+	size_t count;
+
+	mpz_init(res);
+	mpz_init(yy);
+	mpz_import(yy, 4, ORDER, sizeof(y[0]), NATIVE_ENDIAN, 0, y);
+	
+	mpz_tdiv_q(res, yy, x);
+	memset(y, '\0', sizeof(y[0])*4);
+	mpz_export(y, &count, ORDER, sizeof(x[0]), NATIVE_ENDIAN, 0, res);
+	
+	mpz_clear(yy);
+	mpz_clear(res);
+	return 0;	
+}
 
 /* "ORDER can be 1 for most significant word first or -1 for least significant first." */
 int htonl_128(unsigned int *x, unsigned int *y)

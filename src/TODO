@@ -1,10 +1,10 @@
 - [HIGH PRIORITY] -
-gnode support  10%: creazione di un nuovo gnode, qspn di gnode, fusione di gnode uguali...
-gmap.c: load_gmap, save_gmap;
+gnode support  30%: creazione di un nuovo gnode, qspn di gnode, fusione di gnode uguali...
 
 - [MEDIUM PRIORITY] -
 netsukuku.c (Parte minimale)
 come fare per aggiungere un route rule per specificare un'intero range nel campo from?
+unique id per radar_pkt per evitare di falsificare le stats.
 
 - [LOW PRIORITY] -
 tracer.c: store_trcaer_pkt_connect

@@ -21,6 +21,9 @@
 
 #define MAX_ROUTE_TABLES	253
 
+/*The default number of levels that will be kept in the kernel route table*/
+#define DEFAULT_ROUTE_LEVELS	3
+
 struct ctable_route
 {
 	struct ctable_route	*next;
@@ -48,6 +51,17 @@ struct rnode_rtable
 };
 typedef struct rnode_rtable rnode_rt;
 
+/***Set_route pkt, used to mark an arbitrary route*/
+struct set_route_hdr
+{
+	u_int hops;
+};
+struct set_route_pkt
+{
+	char flags;
+	__u16 node;
+};
+#define SET_ROUTE_BLOCK_SZ(hops) (sizeof(struct set_route_hdr)+((sizeof(struct set_route_pkt)*(hops))))
 
 
 void ctr_add(ct_entry *ct, ct_route *ctr);

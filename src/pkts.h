@@ -88,40 +88,6 @@ struct rnode_chunk
 };
 #define NODEBLOCK_SZ(links) (sizeof(struct node_hdr)+sizeof((struct r_node)*(links)))
 
-/***This block is used to send the int_map*/
-struct int_map_hdr
-{
-	u_short root_node;
-	size_t int_map_sz;
-	size_t rblock_sz;
-};
-/*The int_map_block is:
- * 	char map_node[int_map_sz];
- * 	char map_rnode[rblock_sz];
- */
-#define INT_MAP_BLOCK_SZ(int_map_sz, rblock_sz) (sizeof(struct int_map_hdr)+(int_map_sz)+(rblock_sz))
-
-/***This block is used to send the ext_map*/
-struct ext_map_hdr
-{
-	u_int root_gnode;
-	size_t ext_map_sz;
-	size_t rblock_sz;
-};
-#define EXT_MAP_BLOCK_SZ(ext_map_sz, rblock_sz) (sizeof(struct ext_map_hdr)+(ext_map_sz)+(rblock_sz))
-
-/***Set_route pkt, used to mark an arbitrary route*/
-struct set_route_hdr
-{
-	u_int hops;
-};
-struct set_route_pkt
-{
-	char flags;
-	__u16 node;
-};
-#define SET_ROUTE_BLOCK_SZ(hops) (sizeof(struct set_route_hdr)+((sizeof(struct set_route_pkt)*(hops))))
-
 
 /*Functions' declarations*/
 void pkt_addfrom(PACKET *pkt, inet_prefix *from);

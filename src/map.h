@@ -17,12 +17,11 @@
  */
 #include <sys/time.h>
 #include <sys/types.h>
-#include "pkts.h"
 
 #undef  QSPN_EMPIRIC
 
 #ifndef QSPN_EMPIRIC
-	#define MAXGROUPNODE		0x281
+	#define MAXGROUPNODE		641
 	#define MAXROUTES	 	20
 #else
 	#define MAXGROUPNODE		20
@@ -94,29 +93,20 @@ typedef struct
 #define MAXRNODEBLOCK		MAXLINKS*MAXGROUPNODE*sizeof(map_rnode)
 #define INTMAP_END(mapstart)	((sizeof(map_node)*MAXGROUPNODE)+(mapstart))
 
-/* map_bnode is the struct used to create the "map boarder node". 
- * This map keeps for each boarder node of the int_map the gnodes which they are linked to.
- * As always there are some little differences from the map_node:
- *
- *	__u16 		links;		is the number of gnodes the bnode is linked to.
- *	map_rnode	*r_node;	r_node[x].r_node, in this case, points to the position of the bnode's gnode in 
- *					the ext_map.
- *	u_int           brdcast;	Where this node is in the int_map. The position is stored in the usual
- *					pos_from_node() format. (Yep, a dirty hack)
- *
- * So you are asking why didn't I made a new struct for the bmap. Well, I don't want to [re]write all the functions 
- * to handle the map, for example rnode_add,rnode_del, save_map, etc... it's a pain, just for a little map and moreover
- * it adds new potential bugs. In conclusion: laziness + fear == hacks++;
+/*This block is used to send/save the int_map and the bnode_map*/
+struct int_map_hdr
+{
+	u_short root_node;
+	size_t int_map_sz;
+	size_t rblock_sz;
+};
+
+/*The int_map_block is:
+ * 	struct int_map_hdr hdr;
+ * 	char map_node[int_map_sz];
+ * 	char map_rnode[rblock_sz];
  */
-#define bnode_ptr	brdcast		/*Don't kill me*/
-typedef map_node map_bnode;
-
-#define MAXGROUPBNODE		MAXGROUPNODE	/*the maximum number of bnodes in a gnode is equal to the maximum 
-						  number of nodes*/
-#define MAXBNODE_LINKS		0x100		/*The maximum number of gnodes a bnode is linked to*/
-#define MAXBNODE_RNODEBLOCK	MAXBNODE_LINKS*MAXGROUPBNODE*sizeof(map_rnode)
-
-
+#define INT_MAP_BLOCK_SZ(int_map_sz, rblock_sz) (sizeof(struct int_map_hdr)+(int_map_sz)+(rblock_sz))
 
 /* * * Functions' declaration * * */
 /*conversion functions*/
@@ -136,9 +126,6 @@ void rnode_swap(map_rnode *one, map_rnode *two);
 void rnode_del(map_node *node, size_t pos);
 void rnode_destroy(map_node *node);
 
-map_bnode *map_bnode_del(map_bnode *bmap, u_int *bmap_nodes,  map_bnode *bnode);
-int map_find_bnode(map_node *int_map, map_bnode *bmap, int count, map_node *node);
-
 int rnode_rtt_compar(const void *a, const void *b);
 void rnode_rtt_order(map_node *node);
 int rnode_trtt_compar(const void *a, const void *b);
@@ -155,11 +142,12 @@ map_node *get_gw_node(map_node *node, u_short route);
 int merge_maps(map_node *base, map_node *new, map_node *base_root, map_node *new_root);
 int mod_rnode_addr(map_rnode *node, int *map_start, int *new_start);
 int get_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart);
-map_rnode *map_get_rblock(map_node *map, int maxgroupnode, int *count);
+map_rnode *map_get_rblock(map_node *map, int *addr_map, int maxgroupnode, int *count);
 int store_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart);
-int map_store_rblock(map_node *map, int maxgroupnode, map_rnode *rblock, int count);
+int map_store_rblock(map_node *map, int *addr_map int maxgroupnode, map_rnode *rblock);
+
+int verify_int_map_hdr(struct int_map_hdr *imap_hdr, int maxgroupnode, int maxrnodeblock);
+char *pack_map(map_node *map, int *addr_map, int maxgroupnode, map_node *root_node, size_t *pack_sz);
+map_node *unpack_map(char *pack, size_t pack_sz, int *addr_map, map_node *new_root, int maxgroupnode, int maxrnodeblock);
 int save_map(map_node *map, map_node *root_node, char *file);
 map_node *load_map(char *file, map_node **new_root);
-
-int save_bmap(map_bnode *bmap, u_int bmap_nodes, char *file);
-map_bnode *load_bmap(char *file, u_int *bmap_nodes);

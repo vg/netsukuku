@@ -30,11 +30,15 @@ int ntk_tcp_port;
 struct current
 {
 	map_node  	*int_map;	/*Internal Map*/
-	map_gnode 	*ext_map;	/*External Map*/
+	/*TODO: Update the ext_map in the src*/
+	map_gnode 	**ext_map;	/*External Map. It is ext_map[ext_levels] and each element contains the 
+					  entire ext_map for that level*/
 	
-	int 		 cur_gid;	/*G_node id*/
-	map_gnode 	*cur_gnode;
-	inet_prefix	 ipstart;	/*The first ip of our gnode (cur_gnode)*/
+/*TODO: remove these from the src:
+ *	inet_prefix	 ipstart;	The first ip of our gnode (cur_gnode)
+ * 	map_gnode 	 *cur_gnode;
+ * 	int 		 *cur_gid;	G_node id*/
+	quadro_group     cur_quadg;
 	
 	map_bnode	*bnode_map;	/*Current boarder nodes map, read map.h*/
 	u_int 		 bmap_nodes;	/*How many bnodes there are in map_bnode*/

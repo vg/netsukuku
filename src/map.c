@@ -171,9 +171,10 @@ void rnode_del(map_node *node, size_t pos)
 /* rnode_destroy: Wipe out all the rnodes YEAHAHA ^_-*/
 void rnode_destroy(map_node *node)
 {
-	if(node->r_node)
+	if(node->r_node && node->links)
 		xfree(node->r_node);
 	node->r_node=0;
+	node->links=0;
 }
 
 /* map_node_del: It deletes a `node' from the `map'. Really it frees its rnodes and 
@@ -183,36 +184,6 @@ void map_node_del(map_node *node)
 	rnode_destroy(node);
 	memset(node, 0, sizeof(map_node));
 	node->flags|=MAP_VOID;
-}
-
-/* map_bnode_del: It deletes the `bnode' in the `bmap' which has `bmap_nodes'.
- * It returns the newly rescaled `bmap'.
- * It returns 0 if the `bmap' doesn't exist anymore.
- */
-map_bnode *map_bnode_del(map_bnode *bmap, u_int *bmap_nodes,  map_bnode *bnode)
-{
-	map_node_del((map_node *)bnode);
-	
-	if( ((void *)bnode-(void *)bmap)/sizeof(map_bnode) != (*bmap_nodes)-1 )
-		memcpy(bnode, &bmap[bmap_nodes-1], sizeof(map_bnode));
-
-	*bmap_nodes--;
-	if(*bmap_nodes)
-		return xrealloc(bmap, (*bmap_nodes) * sizeof(map_bnode));
-	else {
-		xfree(bmap);
-		return 0;
-	}
-}
-
-/* map_find_bnode: Find the given `node' in the given map_bnode `bmap'.*/
-int map_find_bnode(map_node *int_map, map_bnode *bmap, int count, map_node *node)
-{
-	int e;
-	for(e=0; e<count; e++)
-		if(node_from_pos(bmap[e].bnode_ptr, int_map) == node && !(bmap[e].flags & MAP_VOID))
-			return e;
-	return -1;
 }
 
 /*rnode_rtt_compar: It's used by rnode_rtt_order*/
@@ -441,19 +412,25 @@ int get_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart)
 
 /* map_get_rblock: It uses get_rnode_block to pack all the int_map's rnode.
  * `maxgroupnode' is the number of nodes present in the map.
- * It returns a pointer to the start of the rnode block and stores in "count" 
- * the number of rnode structs packed*/
-map_rnode *map_get_rblock(map_node *map, int maxgroupnode, int *count)
+ * `map' is the actual int_map, while `addr_map' is the address used by get_rnode_block
+ * to change the rnodes' pointers (read get_rnode_block).
+ * It returns a pointer to the start of the rnode block and stores in `count'
+ * the number of rnode structs packed.
+ * On error NULL is returned.*/
+map_rnode *map_get_rblock(map_node *map, int *addr_map, int maxgroupnode, int *count)
 {
 	int i, c=0, tot=0;
  	map_rnode *rblock;
+	*count=0;
 	
 	for(i=0; i<maxgroupnode; i++)
 		tot+=map[i].links;
+	if(!tot)
+		return 0;
 	rblock=(map_rnode *)xmalloc(sizeof(map_rnode)*tot);
 
 	for(i=0; i<maxgroupnode; i++)
-		c+=get_rnode_block((int *)map, &map[i], rblock, c);
+		c+=get_rnode_block((int *)addr_map, &map[i], rblock, c);
 
 	*count=c;	
 	return rblock;
@@ -475,67 +452,149 @@ int store_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart)
 		memcpy(&node->r_node[i], &rblock[i+rstart], sizeof(map_rnode));
 		mod_rnode_addr(&node->r_node[i], 0, map);
 	}
-
-
 	return i;
 }
 
 /* map_store_rblock: Given a correct int_map with `maxgroupnode' nodes,
- * it restores all the r_node structs in the map from the rnode_block 
- * using store_rnode_block. `count' is the number of rnode structs
- * present in the `rblock'.
- */
-int map_store_rblock(map_node *map, int maxgroupnode, map_rnode *rblock, int count)
+ * it restores all the r_node structs in the `map' from the `rblock' 
+ * using store_rnode_block. `addr_map' is the address used to change 
+ * the rnodes' pointers (read store_rnode_block).*/
+int map_store_rblock(map_node *map, int *addr_map int maxgroupnode, map_rnode *rblock)
 {
 	int i, c=0;
-
+	
 	for(i=0; i<maxgroupnode; i++)
-		c+=store_rnode_block((int *)map, &map[i], rblock, c);
-
-	return c; /*If it's all ok "c" has to be == sizeof(rblock)*count*/
+		c+=store_rnode_block(addr_map, &map[i], rblock, c);
+	return c;
 }
 
-/** save/load int_map **/
-int save_map(map_node *map, map_node *root_node, char *file)
+int verify_int_map_hdr(struct int_map_hdr *imap_hdr, int maxgroupnode, int maxrnodeblock)
 {
-	FILE *fd;
+#ifndef QSPN_EMPIRIC /*The qspn_empiric generates a random map which has nodes with map_node.links > MAXGROUPNODE;*/
+	if(imap_hdr->rblock_sz > maxrnodeblock || imap_hdr->int_map_sz > maxgroupnode*sizeof(map_node) 
+			|| imap_hdr->root_node > maxrnodeblock)
+		return 1;
+#endif /*QSPN_EMPIRIC*/
+	return 0;
+}
+
+/* pack_map: It returns a pack of the int_map `map', which has 
+ * `maxgroupnode' nodes ready to be saved or sent. In `pack_sz' it
+ * stores the size of the package. For info on `addr_map' please
+ * read get_map_rblock()*/
+char *pack_map(map_node *map, int *addr_map, int maxgroupnode, map_node *root_node, size_t *pack_sz)
+{
 	struct int_map_hdr imap_hdr;
 	map_rnode *rblock;
 	int count;
-	
-	if((fd=fopen(file, "w"))==NULL) {
-		error("Cannot save the map in %s: %s", file, strerror(errno));
-		return -1;
+	char *package;
+
+	if(!addr_map)
+		addr_map=(int *)map;
+	/*rblock packing*/
+	rblock=map_get_rblock(map, addr_map, maxgroupnode, &count);
+	/*Header creation*/
+	memset(&imap_hdr, 0, sizeof(struct int_map_hdr));
+	imap_hdr.root_node=root_node ? pos_from_node(root_node, map) : 0;
+	imap_hdr.rblock_sz=count*sizeof(map_rnode);
+	imap_hdr.int_map_sz=maxgroupnode*sizeof(map_node);
+
+	/*Package creation*/
+	*pack_sz=INT_MAP_BLOCK_SZ(imap_hdr.int_map_sz, imap_hdr.rblock_sz):
+	package=xmalloc(*pack_sz);
+	memcpy(package, &imap_hdr, sizeof(struct int_map_hdr));
+	memcpy(package+sizeof(struct int_map_hdr), map, imap_hdr.int_map_sz);
+	if(rblock) {
+		memcpy(package+sizeof(struct int_map_hdr)+imap_hdr.int_map_sz, rblock, imap_hdr.rblock_sz);
+		xfree(rblock);
+	}
+
+	return package;	
+}
+
+/* unpack_extmap: Given a valid int_map package (packed with pack_intmap), it 
+ * allocates a brand new int_map and restores in it the map and the rnodes.
+ * It puts in `*new_root' the pointer to the root_node in the loaded map.
+ * For info on `addr_map' please read map_store_rblock().
+ * On success the a pointer to the new int_map is retuned, otherwise 0 will be
+ * the fatal value.*/
+map_node *unpack_map(char *pack, size_t pack_sz, int *addr_map, map_node *new_root, 
+		     int maxgroupnode, int maxrnodeblock)
+{
+	map_node *map;
+	struct int_map_hdr *imap_hdr=(struct int_map_hdr *)pack;
+	map_rnode *rblock;
+	int count, err, nodes;
+	char *p=0;
+
+	if(verify_int_map_hdr(imap_hdr, maxgroupnode, maxrnodeblock)) {
+		error("Malformed int/bmap_map_hdr. Aborting unpack_map().");
+		return 0;
+	}
+		
+	/*Extracting the map...*/
+	p=sizeof(struct int_map_hdr);
+	map=init_map(0);
+	memcpy(map, pack+p, imap_hdr->int_map_sz);
+
+	/*Restoring the rnodes...*/
+	p+=imap_hdr->int_map_sz;
+	if(imap_hdr.rblock_sz) {
+		nodes=imap_hdr.int_map_sz/sizeof(map_node);
+		/*Extracting the rnodes block and merging it to the map*/
+		rblock=pack+p;
+		if(!addr_map)
+			addr_map=(int *)map;
+		err=map_store_rblock(map, addr_map, nodes, rblock);
+		if(err!=imap_hdr.rblock_sz/sizeof(map_rnode)) {
+			error("An error occurred while storing the rnodes block in the int/bnode_map");
+			free_map(map, 0);
+			return 0;
+		}
+	}
+
+	if(new_root) {
+		*new_root=&map[imap_hdr.root_node];
+		new_root->flags|=MAP_ME;
 	}
 	
-	rblock=map_get_rblock(map, MAXGROUPNODE, &count);
-	imap_hdr.root_node=((void *)root_node-(void *)map)/sizeof(map_node);
-	imap_hdr.rblock_sz=count*sizeof(map_rnode);
-	imap_hdr.int_map_sz=MAXGROUPNODE*sizeof(map_node);
-	
-	/*Write!*/
-	fwrite(&imap_hdr, sizeof(struct int_map_hdr), 1, fd);
-	fwrite(map, imap_hdr.int_map_sz, 1, fd);
-	fwrite(rblock, imap_hdr.rblock_sz, 1, fd);
+	return map;
+}
 
-	fclose(fd);
-	xfree(rblock);
+/* * * save/load int_map * * */
+int save_map(map_node *map, map_node *root_node, char *file)
+{
+	FILE *fd;
+	size_t pack_sz;
+	char *pack;
 	
+	if((fd=fopen(file, "w"))==NULL) {
+		error("Cannot save the int_map in %s: %s", file, strerror(errno));
+		return -1;
+	}
+
+	/*Pack!*/
+	pack=pack_map(map, 0, MAXGROUPNODE, root_node, &pack_sz);
+	/*Write!*/
+	fwrite(pack, pack_sz, 1, fd);
+	
+	xfree(pack);
+	fclose(fd);
 	return 0;
 }
 
 /* load_map: It loads the internal_map from `file'.
  * It returns the start of the map and if `new_root' is not NULL, it
  * puts in `*new_root' the pointer to the root_node in the loaded map.
- * On error it returns NULL.
- */
-map_node *load_map(char *file, map_node **new_root)
+ * On error it returns NULL. */
+map_node *load_map(char *file, map_node *new_root)
 {
 	map_node *map;
 	FILE *fd;
 	struct int_map_hdr imap_hdr;
 	map_rnode *rblock;
 	int count, err;
+	char *pack;
 	
 	if((fd=fopen(file, "r"))==NULL) {
 		error("Cannot load the map from %s: %s", file, strerror(errno));
@@ -543,110 +602,20 @@ map_node *load_map(char *file, map_node **new_root)
 	}
 
 	fread(&imap_hdr, sizeof(struct int_map_hdr), 1, fd);
-
-#ifndef QSPN_EMPIRIC /*The qspn_empiric generates a random map which has nodes with map_node.links > MAXGROUPNODE;*/
-
-	if(imap_hdr.rblock_sz > MAXRNODEBLOCK || imap_hdr.int_map_sz > MAXGROUPNODE*sizeof(map_node) 
-			|| imap_hdr.root_node > MAXGROUPNODE) {
+	if(verify_int_map_hdr(&imap_hdr, MAXGROUPNODE, MAXRNODEBLOCK)) {
 		error("Malformed map file. Aborting load_map().");
 		return 0;
 	}
-	
-#endif /*QSPN_EMPIRIC*/
 		
-	/*Extracting the map...*/
-	map=init_map(0);
-	fread(map, imap_hdr.int_map_sz, 1, fd);
-	
-	/*Extracting the rnodes block and merging it to the map*/
-	rblock=xmalloc(imap_hdr.rblock_sz);
-	fread(rblock, imap_hdr.rblock_sz, 1, fd);
-	err=map_store_rblock(map, MAXGROUPNODE, rblock, imap_hdr.rblock_sz/sizeof(map_rnode));
-	if(err!=imap_hdr.rblock_sz/sizeof(map_rnode)) {
-		error("An error occurred while storing the rnodes block in the int_map");
-		free_map(map, 0);
-		xfree(rblock);
-		return 0;
-	}
+	rewind(fd);
+	pack_sz=INT_MAP_BLOCK_SZ(imap_hdr.int_map_sz, imap_hdr.rblock_sz):
+	pack=xmalloc(pack_sz);
+	fread(pack, pack_sz, 1, fd);
+	map=unpack_map(pack, pack_sz, 0, new_root, MAXGROUPNODE, MAXRNODEBLOCK);
+	if(!map)
+		error("Cannot unpack the int_map!");
 
-	if(new_root) {
-		*new_root=&map[imap_hdr.root_node];
-		*new_root->flags|=MAP_ME;
-	}
-
+	xfree(pack);
 	fclose(fd);
-	xfree(rblock);
-	
-	return map;
-}
-
-/**  save/load bnode_map **/
-int save_bmap(map_bnode *bmap, u_int bmap_nodes, char *file)
-{
-	FILE *fd;
-	struct bnode_map_hdr imap_hdr;
-	map_rnode *rblock;
-	int count;
-	
-	if(!bmap_nodes)
-		return 0;
-
-	if((fd=fopen(file, "w"))==NULL) {
-		error("Cannot save the bmap in %s: %s", file, strerror(errno));
-		return -1;
-	}
-	
-	rblock=map_get_rblock(bmap, bmap_nodes, &count);
-	imap_hdr.root_node=0;
-	imap_hdr.rblock_sz=count*sizeof(map_rnode);
-	imap_hdr.bnode_map_sz=bmap_nodes*sizeof(map_bnode);
-	
-	/*Write!*/
-	fwrite(&imap_hdr, sizeof(struct bnode_map_hdr), 1, fd);
-	fwrite(bmap, imap_hdr.bnode_map_sz, 1, fd);
-	fwrite(rblock, imap_hdr.rblock_sz, 1, fd);
-
-	fclose(fd);
-	xfree(rblock);
-}
-
-map_bnode *load_bmap(char *file, u_int *bmap_nodes)
-{
-	map_bnode *bmap;
-	FILE *fd;
-	struct bnode_map_hdr imap_hdr;
-	map_rnode *rblock;
-	int count, err;
-	
-	if((fd=fopen(file, "r"))==NULL) {
-		error("Cannot load the bmap from %s: %s", file, strerror(errno));
-		return 0;
-	}
-
-	fread(&imap_hdr, sizeof(struct bnode_map_hdr), 1, fd);
-
-	if(imap_hdr.rblock_sz > MAXBNODE_RNODEBLOCK || imap_hdr.bnode_map_sz > MAXGROUPBNODE*sizeof(map_bnode)) {
-		error("Malformed bmap file: %s. Aborting load_bmap().", file);
-		return 0;
-	}
-
-	/*Extracting the map...*/
-	*bmap_nodes=imap_hdr.bnode_map_sz/sizeof(map_bnode);
-	bmap=xmalloc(imap_hdr.bnode_map_sz);
-	fread(bmap, imap_hdr.bnode_map_sz, 1, fd);
-	
-	/*Extracting the rnodes block and merging it to the map*/
-	rblock=xmalloc(imap_hdr.rblock_sz);
-	fread(rblock, imap_hdr.rblock_sz, 1, fd);
-	err=map_store_rblock(bmap, *bmap_nodes, rblock, imap_hdr.rblock_sz/sizeof(map_rnode));
-	if(err!=imap_hdr.rblock_sz/sizeof(map_rnode)) {
-		error("An error occurred while storing the rnodes block in the bnode_map");
-		free_map(bmap, *bmap_nodes);
-		xfree(rblock);
-		return 0;
-	}
-	
-	fclose(fd);
-	xfree(rblock);
 	return map;
 }

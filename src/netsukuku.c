@@ -29,6 +29,7 @@ int main(int argc, char **argv)
 	exit(1);
 #endif
 	/*Init stuff
+	void maxgroupnode_level_init(void);
 	char *if_init(char *dev, &me.cur_dev_idx)
 	join_ipv6_multicast();
 	map_init();
@@ -49,4 +50,8 @@ int main(int argc, char **argv)
 	thread(daemon_udp());
 	daemon_tcp(); <<-- here we use this self process for the tcp_daemon
 	*/
+
+	/*destroy stuff
+	  maxgroupnode_level_free();
+	  */
 }

@@ -32,5 +32,8 @@ int sum_int(unsigned int , unsigned int *);
 int sum_128(unsigned int *, unsigned int *);
 int sub_int(unsigned int *, unsigned int);
 int sub_128(unsigned int *, unsigned int *);
+int div_128(unsigned int *, unsigned int *);
+int div_int(unsigned int *, unsigned int);
+int div_mpz(unsigned int *, mpz_t);
 int htonl_128(unsigned int *, unsigned int *);
 int ntohl_128(unsigned int *, unsigned int *);

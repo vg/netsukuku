@@ -79,7 +79,7 @@ bnode_hdr *tracer_build_bentry(map_node *map, map_node *node, bnode_chunk *bnode
 
 	bhdr->bnode=pos_from_node(node, map);
 	for(i=0; i<me.bnode_map[bm].links; i++) {
-		bchunk[i].gnode=GMAP2GI(me.ext_map, me.bnode_map[bm].r_node[i].r_node);
+		bchunk[i].gnode=GMAP2GI(me.ext_map[0], me.bnode_map[bm].r_node[i].r_node);
 		memcpy(&bchunk[i].rtt, &me.bnode_map[bm].r_node[i].rtt, sizeof(struct timeval));
 		bhdr->links++;
 	}
@@ -153,7 +153,7 @@ int tracer_unpack_pkt(PACKET rpkt, brdcast_hdr *new_bcast_hdr, tracer_hdr *new_t
 			!(bcast_hdr->flags & BCAST_TRACER_PKT))
 		return -1;
 
-	iptomap(me.int_map, rpkt.from, me.ipstart, &real_from);
+	iptomap(me.int_map, rpkt.from, me.cur_quadg.ipstart[0], &real_from);
 	if(tracer_verify_pkt(tracer, tracer_hdr->hops, real_from))
 		return -1;
 	
@@ -294,7 +294,7 @@ int tracer_store_pkt(map_node *map, tracer_hdr *tracer_hdr, tracer_chunk *tracer
 				
 				for(e=0; e<bblist_hdr[i]->links; e++) {
 					memset(&rn, 0, sizeof(map_rnode));
-					rn.r_node=GI2GMAP(me.ext_map, bblist[i][e]->gnode);
+					rn.r_node=GI2GMAP(me.ext_map[0], bblist[i][e]->gnode);
 					memcpy(&rn.rtt, &bblist[i][e]->rtt, sizeof(struct timeval));
 					rnode_add(&me.bnode_map[bm], &rn);
 
@@ -467,7 +467,7 @@ int tracer_pkt_send(int(*is_node_excluded)(map_node *, int), map_node *from, PAC
 			continue;
 
 		memset(&to, 0, sizeof(inet_prefix));
-		maptoip(*me.int_map, *me.cur_node->r_node[i].r_node, me.ipstart, &to);
+		maptoip(*me.int_map, *me.cur_node->r_node[i].r_node, me.cur_quadg.ipstart[0], &to);
 		pkt_addto(&pkt, &to);
 		pkt.sk_type=SKT_UDP;
 

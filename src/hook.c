@@ -28,6 +28,7 @@
 #include "map.h"
 #include "gmap.h"
 #include "inet.h"
+#include "radar.h"
 #include "netsukuku.h"
 #include "xmalloc.h"
 #include "log.h"
@@ -145,12 +146,11 @@ finish:
 int put_ext_map(PACKET rq_pkt)
 {
 	PACKET pkt;
-	map_gnode *map=me.ext_map;
-	map_rnode *rblock=0;
 	struct ext_map_hdr emap_hdr;
 	char *ntop; 
-	int count, ret=0;
-	ssize_t err, pkt_sz=0;
+	int ret=0;
+	ssize_t err;
+	size_t pkt_sz=0;
 	
 	ntop=inet_to_str(&rq_pkt.from);
 	debug(DBG_NORMAL, "Sending the PUT_EXT_MAP reply to %s", ntop);
@@ -159,17 +159,8 @@ int put_ext_map(PACKET rq_pkt)
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addsk(&pkt, rq_pkt.sk, rq_pkt.sk_type);
 
-	rblock=gmap_get_rblock(map, &count);
-	emap_hdr.root_node=(me.cur_gnode-me.ext_map)/sizeof(map_gnode);
-	emap_hdr.rblock_sz=count*sizeof(map_rnode);
-	emap_hdr.ext_map_sz=MAXGROUPNODE*sizeof(map_gnode);
-	pkt.hdr.sz=EXT_MAP_BLOCK_SZ(emap_hdr.ext_map_sz, emap_hdr.rblock_sz):
-
-	pkt.msg=xmalloc(pkt.hdr.sz);
-	memcpy(pkt.msg, &emap_hdr, sizeof(struct ext_map_hdr));
-	memcpy(pkt.msg+sizeof(struct ext_map_hdr), map, emap_hdr.ext_map_sz);
-	memcpy(pkt.msg+sizeof(struct ext_map_hdr)+emap_hdr.ext_map_sz, rblock, emap_hdr.rblock_sz);
-
+	pkt.msg=pack_extmap(me.ext_map, MAXGROUPNODE, &me.cur_quadg, &pkt_sz);
+	pkt.hdr.sz=pkt_sz;
 	err=send_rq(&pkt, 0, PUT_EXT_MAP, rq_pkt.hdr.id, 0, 0, 0);
 	if(err==-1) {
 		error("put_ext_maps(): Cannot send the PUT_EXT_MAP reply to %s.", ntop);
@@ -188,15 +179,16 @@ finish:
 /* get_ext_map: It sends the GET_EXT_MAP request to retrieve the 
  * dst_node's ext_map.
  */
-map_gnode *get_ext_map(inet_prefix to, map_gnode *new_root)
+map_gnode *get_ext_map(inet_prefix to, quadro_group *new_quadg)
 {
 	PACKET pkt, rpkt;
-	char *ntop;
+	char *ntop, *pack;
 	int err;
 	struct ext_map_hdr emap_hdr;
 	map_rnode *rblock=0;
-	map_gnode *ext_map=0, ret=0;
-	
+	map_gnode **ext_map=0, *ret=0;
+	size_t pack_sz;
+
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
 	
@@ -211,29 +203,17 @@ map_gnode *get_ext_map(inet_prefix to, map_gnode *new_root)
 	}
 	
 	memcpy(&emap_hdr, rpkt.msg, sizeof(struct ext_map_hdr));
-	if(emap_hdr.rblock_sz > MAXRNODEBLOCK || emap_hdr.ext_map_sz > MAXGROUPNODE*sizeof(map_gnode)
-			|| emap_hdr.root_node > MAXGROUPNODE) {
+	if(verify_ext_map_hdr(&emap_hdr)) {
 		error("Malformed PUT_EXT_MAP request hdr.");
 		ret=0;
 		goto finish;
 	}
-		
-	/*Extracting the map...*/
-	ext_map=init_gmap(0);
-	memcpy(ext_map, rpkt.msg+sizeof(struct ext_map_hdr), emap_hdr.ext_map_sz);
-	
-	/*Extracting the rnodes block and merging it to the map*/
-	rblock=rpkt.msg+sizeof(struct ext_map_hdr)+emap_hdr.ext_map_sz;
-	err=gmap_store_rblock(ext_map, rblock, emap_hdr.rblock_sz/sizeof(map_rnode));
-	if(err!=emap_hdr.rblock_sz/sizeof(map_rnode)) {
-		error("An error occurred while storing the rnodes block in the ext_map");
-		ret=0;
-		free_gmap(ext_map, 0);
-		goto finish;
-	}
-	new_root=(map_node *)(ext_map+(emap_hdr.root_node*sizeof(map_gnode)));
-	new_root->g.flags|=GMAP_ME;
-	
+
+	pack_sz=EXT_MAP_BLOCK_SZ(emap_hdr.ext_map_sz, emap_hdr.total_rblock_sz);
+	pack=rpkt.msg;
+	ret=ext_map=unpack_extmap(pack, pack_sz, new_quadg);
+	if(!ext_map)
+		error("get_ext_map: Malformed ext_map. Cannot unpack the ext_map.");
 finish:
 	pkt_free(&pkt, 0);
 	pkt_free(&rpkt, 1);
@@ -247,11 +227,10 @@ int put_int_map(PACKET rq_pkt)
 {
 	PACKET pkt;
 	map_node *map=me.int_map;
-	map_rnode *rblock=0;
-	struct int_map_hdr imap_hdr;
 	char *ntop; 
 	int count, ret;
-	ssize_t err, pkt_sz=0;
+	ssize_t err;
+	size_t pkt_sz=0;
 	
 	ntop=inet_to_str(&rq_pkt.from);
 	debug(DBG_NORMAL, "Sending the PUT_INT_MAP reply to %s", ntop);
@@ -261,42 +240,28 @@ int put_int_map(PACKET rq_pkt)
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addsk(&pkt, rq_pkt.sk, rq_pkt.sk_type);
 
-	rblock=map_get_rblock(map, MAXGROUPNODE, &count);
-	imap_hdr.root_node=((void *)me.cur_node-(void *)me.int_map)/sizeof(map_node);
-	imap_hdr.rblock_sz=count*sizeof(map_rnode);
-	imap_hdr.int_map_sz=MAXGROUPNODE*sizeof(map_node);
-	pkt.hdr.sz=INT_MAP_BLOCK_SZ(imap_hdr.int_map_sz, imap_hdr.rblock_sz):
-
-	pkt.msg=xmalloc(pkt.hdr.sz);
-	memcpy(pkt.msg, &imap_hdr, sizeof(struct int_map_hdr));
-	memcpy(pkt.msg+sizeof(struct int_map_hdr), map, imap_hdr.int_map_sz);
-	memcpy(pkt.msg+sizeof(struct int_map_hdr)+imap_hdr.int_map_sz, rblock, imap_hdr.rblock_sz);
-
+	pkt.msg=pack_map(map, 0, MAXGROUPNODE, root_node, &pkt_sz);
+	pkt.hdr.sz=pkt_sz;
 	err=send_rq(&pkt, 0, PUT_INT_MAP, rq_pkt.hdr.id, 0, 0, 0);
 	if(err==-1) {
 		error("put_int_maps(): Cannot send the PUT_INT_MAP reply to %s.", ntop);
 		ret=-1;
 		goto finish;
 	}
-
 finish:
-	if(rblock)
-		xfree(rblock);
 	pkt_free(&pkt, 1);
 	xfree(ntop);
 	return ret;
 }
 
 /* get_int_map: It sends the GET_INT_MAP request to retrieve the 
- * dst_node's int_map.
- */
+ * dst_node's int_map. */
 map_node *get_int_map(inet_prefix to, map_node *new_root)
 {
 	PACKET pkt, rpkt;
 	char *ntop;
 	int err;
 	struct int_map_hdr imap_hdr;
-	map_rnode *rblock=0;
 	map_node *int_map, *ret=0;
 	
 	memset(&pkt, '\0', sizeof(PACKET));
@@ -313,28 +278,17 @@ map_node *get_int_map(inet_prefix to, map_node *new_root)
 	}
 	
 	memcpy(&imap_hdr, rpkt.msg, sizeof(struct int_map_hdr));
-	if(imap_hdr.rblock_sz > MAXRNODEBLOCK || imap_hdr.int_map_sz > MAXGROUPNODE*sizeof(map_node)
-			|| imap_hdr.root_node > MAXGROUPNODE) {
+	if(verify_int_map_hdr(&imap_hdr, MAXGROUPNODE, MAXRNODEBLOCK)) {
 		error("Malformed PUT_INT_MAP request hdr.");
 		ret=0;
 		goto finish;
 	}
-		
-	/*Extracting the map...*/
-	ret=int_map=init_map(0);
-	memcpy(int_map, rpkt.msg+sizeof(struct int_map_hdr), imap_hdr.int_map_sz);
 	
-	/*Extracting the rnodes block and merging it to the map*/
-	rblock=rpkt.msg+sizeof(struct int_map_hdr)+imap_hdr.int_map_sz;
-	err=map_store_rblock(int_map, MAXGROUPNODE, rblock, imap_hdr.rblock_sz/sizeof(map_rnode));
-	if(err!=imap_hdr.rblock_sz/sizeof(map_rnode)) {
-		error("An error occurred while storing the rnodes block in the int_map");
-		free_map(int_map, 0);
-		ret=0;
-		goto finish;
-	}
-	new_root=int_map[imap_hdr.root_node];
-	new_root->flags|=MAP_ME;
+	pack_sz=INT_MAP_BLOCK_SZ(imap_hdr.int_map_sz, imap_hdr.rblock_sz):
+	pack=rpkt.msg;
+	ret=int_map=unpack_map(pack, pack_sz, 0, new_root, MAXGROUPNODE, MAXRNODEBLOCK);
+	if(!int_map)
+		error("get_int_map(): Malformed int_map. Cannot load it");
 	
 	/*Finished, yeah*/
 finish:
@@ -344,38 +298,27 @@ finish:
 	return ret;
 }
 
-
 /*  *  *  put/get bnode_map  *  *  */
 
 int put_bnode_map(PACKET rq_pkt)
 {
 	PACKET pkt;
 	map_bnode *bmap=me.bnode_map;
-	map_rnode *rblock=0;
-	struct bnode_map_hdr imap_hdr;
 	char *ntop; 
-	int count, ret;
-	ssize_t err, pkt_sz=0;
+	int ret;
+	ssize_t err;
+	size_t pkt_sz=0;
 	
 	ntop=inet_to_str(&rq_pkt.from);
 	debug(DBG_NORMAL, "Sending the PUT_BNODE_MAP reply to %s", ntop);
-	
+
 	memset(&pkt, '\0', sizeof(PACKET));
 	pkt.sk_type=SKT_TCP;
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addsk(&pkt, rq_pkt.sk, rq_pkt.sk_type);
 
-	rblock=map_get_rblock(bmap, me.bmap_nodes, &count);
-	imap_hdr.root_node=0;
-	imap_hdr.rblock_sz=count*sizeof(map_rnode);
-	imap_hdr.bnode_map_sz=me.bmap_nodes*sizeof(map_bnode);
-	pkt.hdr.sz=BNODE_MAP_BLOCK_SZ(imap_hdr.bnode_map_sz, imap_hdr.rblock_sz):
-
-	pkt.msg=xmalloc(pkt.hdr.sz);
-	memcpy(pkt.msg, &imap_hdr, sizeof(struct bnode_map_hdr));
-	memcpy(pkt.msg+sizeof(struct bnode_map_hdr), bmap, imap_hdr.bnode_map_sz);
-	memcpy(pkt.msg+sizeof(struct bnode_map_hdr)+imap_hdr.bnode_map_sz, rblock, imap_hdr.rblock_sz);
-
+	pkt.msg=pack_map(bmap, me.cur_quadg.gnode[0], me.bmap_nodes, 0, &pkt_sz);
+	pkt.hdr.sz=pkt_sz;
 	err=send_rq(&pkt, 0, PUT_BNODE_MAP, rq_pkt.hdr.id, 0, 0, 0);
 	if(err==-1) {
 		error("put_bnode_maps(): Cannot send the PUT_BNODE_MAP reply to %s.", ntop);
@@ -400,7 +343,6 @@ map_bnode *get_bnode_map(inet_prefix to, u_int *bmap_nodes)
 	char *ntop;
 	int err;
 	struct bnode_map_hdr imap_hdr;
-	map_rnode *rblock=0;
 	map_bnode *bnode_map, *ret=0;
 	
 	memset(&pkt, '\0', sizeof(PACKET));
@@ -417,28 +359,20 @@ map_bnode *get_bnode_map(inet_prefix to, u_int *bmap_nodes)
 	}
 	
 	memcpy(&imap_hdr, rpkt.msg, sizeof(struct bnode_map_hdr));
-	if(imap_hdr.rblock_sz > MAXBNODE_RNODEBLOCK || imap_hdr.bnode_map_sz > MAXGROUPBNODE*sizeof(map_bnode)) {
+	if(verify_int_map_hdr(&imap_hdr, MAXGROUPBNODE, MAXBNODE_RNODEBLOCK)) {
 		error("Malformed PUT_BNODE_MAP request hdr.");
 		ret=0;
 		goto finish;
 	}
-		
-	/*Extracting the map...*/
 	*bmap_nodes=imap_hdr.bnode_map_sz/sizeof(map_bnode);
-	ret=bnode_map=xmalloc(imap_hdr.bnode_map_sz);
-	memcpy(bnode_map, rpkt.msg+sizeof(struct bnode_map_hdr), imap_hdr.bnode_map_sz);
-	
-	/*Extracting the rnodes block and merging it to the map*/
-	rblock=rpkt.msg+sizeof(struct bnode_map_hdr)+imap_hdr.bnode_map_sz;
-	err=map_store_rblock(bnode_map, *bmap_nodes, rblock, imap_hdr.rblock_sz/sizeof(map_rnode));
-	if(err!=imap_hdr.rblock_sz/sizeof(map_rnode)) {
-		error("An error occurred while storing the rnodes block in the bnode_map");
-		free_map(bnode_map, *bmap_nodes);
-		ret=0;
-		goto finish;
-	}
-	
-	/*Finished, yeah*/
+
+	/*Extracting the map...*/
+	pack_sz=INT_MAP_BLOCK_SZ(imap_hdr.int_map_sz, imap_hdr.rblock_sz):
+	pack=rpkt.msg;
+	ret=bnode_map=unpack_map(pack, pack_sz, me.cur_quadg.gnode[0], 0, MAXGROUPBNODE, MAXBNODE_RNODEBLOCK);
+	if(!bnode_map)
+		error("get_bnode_map(): Malformed bnode_map. Cannot load it");
+		
 finish:
 	pkt_free(&pkt, 0);
 	pkt_free(&rpkt, 1);
@@ -457,7 +391,8 @@ int create_gnode(void)
 	
 	if(!me.ext_map) {
 		/*We haven't an ext_map so let's cast the dice*/
-		me.cur_gid=rand_range(0, LAST_GNODE(my_family));
+		me.cur_gid=rand_range(0, /*LAST_GNODE(my_family)*/);
+			/*TODO: gmap support: CONTINUE here*/
 	} else {
 		for(i=0; i<MAXGROUPNODE; i++) {
 			/*TODO: gmap support: CONTINUE here*/
@@ -519,6 +454,8 @@ int netsukuku_hook(char *dev)
 			fatal("%s:%d: This ultra fatal error goes against the laws of the universe. It's not possible!! Pray");
 
 		if(!get_free_ips(rq->ip, &fi_hdr, fips)) {
+			/*We store as fast as possible the cur_qspn_time*/
+			memcpy(&me.cur_qspn_time, &fi_hdr.qtime, sizeof(struct timeval));
 			e=1;
 			break;
 		}
@@ -537,7 +474,8 @@ int netsukuku_hook(char *dev)
 	rq=radar_q;
 	for(i=0; i<me.cur_node->links; i++) {
 		rq=find_ip_radar_q(me.cur_node->r_node[i].r_node);
-		if(!get_ext_map(rq->ip, &me.ext_map, &new_groot)) {
+		/*TODO: CONTINUE HERE: ................. \/ \/ */
+		if(!(me.ext_map=get_ext_map(rq->ip, &new_quadg))) {
 			e=1;
 			break;
 		}
@@ -546,8 +484,10 @@ int netsukuku_hook(char *dev)
 		fatal("None of the rnodes in this area gave me the extern map");
 	/*Now we are ufficially in the fi_hdr.gid gnode*/
 	new_groot->g.flags&=~GMAP_ME;
-	set_cur_gnode(fi_hdr.gid);
-	memcpy(&me.cur_qspn_time, &fi.qtime, sizeof(struct timeval));
+	me.cur_gid=gid;
+	me.cur_gnode=GI2GMAP(me.ext_map, gid);
+	me.cur_gnode->g.flags|=GMAP_ME;
+	/*TODO: iptoquadg();*/
 	memcpy(&me.ipstart, &fi_hdr.ipstart, sizeof(inet_prefix));
 	
 	/*Fetch the int_map from each rnode*/
@@ -557,7 +497,7 @@ int netsukuku_hook(char *dev)
 	memset(merg_map, 0, me.cur_node->links*sizeof(map_node *));
 	for(i=0; i<me.cur_node->links; i++) {
 		rq=find_ip_radar_q(me.cur_node->r_node[i].r_node);
-		if(iptogid(rq->ip) != me.cur_gid)
+		if(iptogid(rq->ip, 0) != me.cur_gid)
 			/*This node isn't part of our gnode, let's skip it*/
 			continue; 
 			
@@ -577,7 +517,7 @@ int netsukuku_hook(char *dev)
 	e=0;
 	for(i=0; i<me.cur_node->links; i++) {
 		rq=find_ip_radar_q(me.cur_node->r_node[i].r_node);
-		if(iptogid(rq->ip) != me.cur_gid)
+		if(iptogid(rq->ip, 0) != me.cur_gid)
 			/*This node isn't part of our gnode, let's skip it*/
 			continue; 
 			
