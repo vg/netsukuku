@@ -21,7 +21,7 @@
 #include "ipv6-gmp.c"
 
 #define MAXGROUPNODE		0x281
-#define MAX_RNODE_LINKS 	20
+#define MAXROUTES	 	20
 
 /*****The real map stuff*****/
 /***flags**/
@@ -82,9 +82,10 @@ typedef qmap_node *qint_map;
 
 
 /***Groupnode stuff***/
-#define GMAP_VOID	1
-#define GMAP_BNODE	(1<<1)
-#define GMAP_FULL	(1<<2)		/*The gnode is full!! aaahh, run away!*/
+#define GMAP_ME		1
+#define GMAP_VOID	(1<<1)
+#define GMAP_BNODE	(1<<2)
+#define GMAP_FULL	(1<<3)		/*The gnode is full!! aaahh, run away!*/
 
 /*Given an ip number it returns the corresponding groupnode id*/
 #define IP2GNODE(ip) ((ip)/MAXGROUPNODE) /*TODO:

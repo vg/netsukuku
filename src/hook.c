@@ -109,7 +109,7 @@ int put_free_ips(PACKET rq_pkt)
 		 * MAP_VOID nodes)*/
 		for(i=0; i<MAXGROUPNODE; i++)
 			if(map[i].flags & MAP_VOID) {
-				free_ips[e]=map[i]-me.int_map;
+				free_ips[e]=(map[i]-me.int_map)/sizeof(map_node);
 				e++:
 			}
 
@@ -132,6 +132,110 @@ finish:
 	return 0;
 }
 
+/*  *  *  put/get ext_map  *  *  */
+
+int put_ext_map(PACKET rq_pkt)
+{
+	PACKET pkt;
+	map_gnode *map=me.ext_map;
+	map_rnode *rblock=0;
+	struct ext_map_hdr emap_hdr;
+	char *ntop; 
+	int count, ret;
+	ssize_t err, pkt_sz=0;
+	
+	ntop=inet_to_str(&rq_pkt.from);
+	debug(DBG_NORMAL, "Sending the PUT_EXT_MAP reply to %s", ntop);
+	
+	memset(&pkt, '\0', sizeof(PACKET));
+	to.family=my_family;
+	pkt_addto(&pkt, &rq_pkt.from);
+	pkt_addport(&pkt, ntk_tcp_port);
+	pkt_addflags(&pkt, NULL);
+	pkt_addsk(&pkt, rq_pkt.sk, rq_pkt.sk_type);
+
+	/*TODO: rblock=get_gnode_rblock(map, &count);*/
+	emap_hdr.root_node=(me.cur_gnode-me.ext_map)/sizeof(map_gnode);
+	emap_hdr.rblock_sz=count*sizeof(map_rnode);
+	emap_hdr.ext_map_sz=MAXGROUPNODE*sizeof(map_gnode);
+	pkt_sz=EXT_MAP_BLOCK_SZ(emap_hdr.ext_map_sz, emap_hdr.rblock_sz):
+
+	pkt_fill_hdr(&pkt.hdr, rq_pkt.hdr.id, PUT_EXT_MAP, pkt_sz);
+	pkt.msg=xmalloc(pkt_sz);
+	memcpy(pkt.msg, &emap_hdr, sizeof(struct ext_map_hdr));
+	memcpy(pkt.msg+sizeof(struct ext_map_hdr), map, emap_hdr.ext_map_sz);
+	memcpy(pkt.msg+sizeof(struct ext_map_hdr)+emap_hdr.ext_map_sz, rblock, emap_hdr.rblock_sz);
+
+	err=pkt_send(pkt);
+	if(err==-1) {
+		error("put_ext_maps(): Cannot send the PUT_EXT_MAP reply to %s.", ntop);
+		ret=-1;
+		goto finish;
+	}
+
+finish:
+	if(rblock)
+		xfree(rblock);
+	pkt_free(&pkt, 1);
+	xfree(ntop);
+	return ret;
+}
+
+/* get_ext_map: It sends the GET_EXT_MAP request to retrieve the 
+ * dst_node's ext_map.
+ */
+int get_ext_map(inet_prefix to, map_gnode *ext_map, map_gnode *new_root)
+{
+	PACKET pkt, rpkt;
+	char *ntop;
+	int ret=0, err;
+	struct ext_map_hdr emap_hdr;
+	map_rnode *rblock=0;
+	
+	memset(&pkt, '\0', sizeof(PACKET));
+	memset(&rpkt, '\0', sizeof(PACKET));
+	
+	ntop=inet_to_str(&to);
+	
+	pkt_addto(&pkt, &to);
+	pkt.sk_type=SKT_TCP;
+	err=send_rq(&pkt, 0, GET_EXT_MAP, 0, PUT_EXT_MAP, 1, &rpkt);
+	if(err==-1) {
+		ret=-1;
+		goto finish;
+	}
+	
+	memcpy(&emap_hdr, rpkt.msg, sizeof(struct ext_map_hdr));
+	if(emap_hdr.rblock_sz > MAXROUTES*sizeof(map_rnode) ||
+			emap_hdr.ext_map_sz > MAXGROUPNODE*sizeof(map_gnode)) {
+		error("Malformed PUT_EXT_MAP request hdr.");
+		ret=-1;
+		goto finish;
+	}
+		
+	/*Extracting the map...*/
+	memcpy(ext_map, rpkt.msg+sizeof(struct ext_map_hdr), emap_hdr.ext_map_sz);
+	
+	/*Extracting the rnodes block and merging it to the map*/
+	rblock=rpkt.msg+sizeof(struct ext_map_hdr)+emap_hdr.ext_map_sz;
+	/*TODO: err=store_rnode_block(ext_map, rblock, emap_hdr.rblock_sz/sizeof(map_rnode));*/
+	if(err!=emap_hdr.rblock_sz) {
+		error("An error occurred while storing the rnodes block in the ext_map");
+		ret=-1;
+		goto finish;
+	}
+	*new_root=(map_node *)(ext_map+emap_hdr.root_node);
+	(map_node *)(*new_root)->flags|=GMAP_ME;
+	
+finish:
+	pkt_free(&pkt, 0);
+	pkt_free(&rpkt, 1);
+        xfree(ntop);
+	return ret;
+}
+
+/*  *  *  put/get int_map  *  *  */
+
 int put_int_map(PACKET rq_pkt)
 {
 	PACKET pkt;
@@ -153,7 +257,7 @@ int put_int_map(PACKET rq_pkt)
 	pkt_addsk(&pkt, rq_pkt.sk, rq_pkt.sk_type);
 
 	rblock=get_rnode_block(map, &count);
-	imap_hdr.root_node=me.cur_node-me.int_map;
+	imap_hdr.root_node=(me.cur_node-me.int_map)/sizeof(map_node);
 	imap_hdr.rblock_sz=count*sizeof(map_rnode);
 	imap_hdr.int_map_sz=MAXGROUPNODE*sizeof(map_node);
 	pkt_sz=INT_MAP_BLOCK_SZ(imap_hdr.int_map_sz, imap_hdr.rblock_sz):
@@ -204,7 +308,7 @@ int get_int_map(inet_prefix to, map_node *int_map, map_node *new_root)
 	}
 	
 	memcpy(&imap_hdr, rpkt.msg, sizeof(struct int_map_hdr));
-	if(imap_hdr.rblock_sz > MAX_RNODE_LINKS*sizeof(map_rnode) ||
+	if(imap_hdr.rblock_sz > MAXROUTES*sizeof(map_rnode) ||
 			imap_hdr.int_map_sz > MAXGROUPNODE*sizeof(map_node)) {
 		error("Malformed PUT_INT_MAP request hdr.");
 		ret=-1;
@@ -339,7 +443,7 @@ int netsukuku_hook(char *dev)
 	
 	snode_transform():
 
-	return;
+	return 0;
 }
 
 int snode_transfrom(void)
