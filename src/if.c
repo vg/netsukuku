@@ -30,8 +30,9 @@
 
 extern int errno;
 
-
-char *get_dev(void) 
+/* get_dev: It returs the first dev it finds up and sets `*dev_ids' to the
+ * device's index. On error NULL is returned.*/
+char *get_dev(int *dev_idx) 
 {
 	int idx;
 
@@ -39,6 +40,8 @@ char *get_dev(void)
 		error("Couldn't find \"up\" devices. Set one dev \"up\", or specify the device name in the options.");
 		return 0;
 	}
+	if(dev_idx)
+		*dev_idx=idx;
 	return ll_index_to_name(idx);
 }
 
@@ -89,8 +92,9 @@ int set_flags(char *dev, u32 flags, u32 mask)
 }
 
 /*if_init: It initializes the if to be used by Netsukuku.
- * It returns the device name or if an error occured it returns NULL*/
-char *if_init(char *dev)
+ * It sets `*dev_idx' to the relative idx of `dev' and returns the device name.
+ * If an error occured it returns NULL.*/
+char *if_init(char *dev, int *dev_idx)
 {
 	struct rtnl_handle rth;
 	int idx;
@@ -99,16 +103,16 @@ char *if_init(char *dev)
 	ll_init_map(&rth);
 
 	if(dev) {
-		if ((idx = ll_name_to_index(dev)) == 0) {
+		if ((*dev_idx = idx = ll_name_to_index(dev)) == 0) {
 			error("if_init: Cannot find device \"%s\"\n", dev);
 			return NULL;
-		} else {
-			if(set_dev_up(char *dev))
-				ret=NULL;	
 		}
 	} else 
-		ret=get_dev();
-
+		dev=get_dev(dev_idx);
+	
+	if(set_dev_up(dev))
+		ret=NULL;	
+	
 	return ret;
 }	
 

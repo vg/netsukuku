@@ -19,9 +19,9 @@
 #include <asm/types.h>
 #include "inet.h"
 
-char *get_dev(void);
+char *get_dev(int *dev_idx);
 int set_dev_up(char *dev);
 int set_dev_down(char *dev);
 int set_flags(char *dev, u32 flags, u32 mask);
-char *if_init(char *dev);
+char *if_init(char *dev, int *dev_idx);
 int set_dev_ip(inet_prefix ip, char *dev);

@@ -68,13 +68,13 @@ int iptomap(u_int mapstart, inet_prefix ip, inet_prefix ipstart, u_int *ret)
 		memcpy(h_ip, ip.data, 4);
 		memcpy(h_ipstart, ipstart.data, 4);
 
+		/* h_ipstart=h_ip - h_ipstart */
 		sub_128(h_ip, h_ipstart);
-		/*The result is always < MAXGROUPNODE, so we can take for grant that
-		 * we have only one u_int
-		 */
+		/* The result is always < MAXGROUPNODE, so we can take for grant that
+		 * we have only one u_int*/
 		*ret=h_ipstart[0]*sizeof(map_node)+mapstart;
-		/*TODO: bisogna usare h_ipstart[0] o h_ipstart[3]?? Spero che sia 0 perche' e' in ntohl*/
 	}
+
 	if(*ret > INTMAP_END(mapstart)) {
 		/*Ok, this is an extern ip to our gnode. 
 		 * ret=iptogid(ip);*/

@@ -29,7 +29,8 @@ int main(int argc, char **argv)
 	exit(1);
 #endif
 	/*Init stuff
-	if_init();
+	char *if_init(char *dev, &me.cur_dev_idx)
+	join_ipv6_multicast();
 	map_init();
 	*/
 	memset(&me, 0, sizeof(struct current));

@@ -35,12 +35,12 @@ int sum_128(unsigned int *x, unsigned int *y)
 	mpz_init(res);
 	mpz_init(xx);
 	mpz_init(yy);
-	mpz_import (xx, 4, 1, sizeof(x[0]), 0, 0, x);
-	mpz_import (yy, 4, 1, sizeof(y[0]), 0, 0, y);
+	mpz_import (xx, 4, ORDER, sizeof(x[0]), NATIVE_ENDIAN, 0, x);
+	mpz_import (yy, 4, ORDER, sizeof(y[0]), NATIVE_ENDIAN, 0, y);
 
 	mpz_add(res, xx, yy);
 	memset(y, '\0', sizeof(y[0])*4);
-	mpz_export(y, &count, 1, sizeof(x[0]), 0,0, res);
+	mpz_export(y, &count, ORDER, sizeof(x[0]), NATIVE_ENDIAN, 0, res);
 	
 	mpz_clear(xx);
 	mpz_clear(yy);
@@ -66,12 +66,12 @@ int sub_128(unsigned int *x, unsigned int *y)
 	mpz_init(res);
 	mpz_init(xx);
 	mpz_init(yy);
-	mpz_import(xx, 4, 1, sizeof(x[0]), 0, 0, x);
-	mpz_import(yy, 4, 1, sizeof(y[0]), 0, 0, y);
+	mpz_import(xx, 4, ORDER, sizeof(x[0]), NATIVE_ENDIAN, 0, x);
+	mpz_import(yy, 4, ORDER, sizeof(y[0]), NATIVE_ENDIAN, 0, y);
 
 	mpz_sub(res, xx, yy);
 	memset(y, '\0', sizeof(y[0])*4);
-	mpz_export(y, &count, 1, sizeof(x[0]), 0,0, res);
+	mpz_export(y, &count, ORDER, sizeof(x[0]), NATIVE_ENDIAN, 0, res);
 	
 	mpz_clear(xx);
 	mpz_clear(yy);
@@ -97,12 +97,12 @@ int div_128(unsigned int *x, unsigned int *y)
 	mpz_init(res);
 	mpz_init(xx);
 	mpz_init(yy);
-	mpz_import(xx, 4, 1, sizeof(x[0]), 0, 0, x);
-	mpz_import(yy, 4, 1, sizeof(y[0]), 0, 0, y);
+	mpz_import(xx, 4, ORDER, sizeof(x[0]), NATIVE_ENDIAN, 0, x);
+	mpz_import(yy, 4, ORDER, sizeof(y[0]), NATIVE_ENDIAN, 0, y);
 	
 	mpz_tdiv_q(res, xx, yy);
 	memset(y, '\0', sizeof(y[0])*4);
-	mpz_export(y, &count, 1, sizeof(x[0]), 0,0, res);
+	mpz_export(y, &count, ORDER, sizeof(x[0]), NATIVE_ENDIAN, 0, res);
 	
 	mpz_clear(xx);
 	mpz_clear(yy);
@@ -121,32 +121,28 @@ int div_int(unsigned int *y, unsigned int x)
 
 
 /* "ORDER can be 1 for most significant word first or -1 for least significant first." */
-int htonl_128(unsigned int *x, unsigned int *y, int order)
+int htonl_128(unsigned int *x, unsigned int *y)
 {
 	mpz_t xx;
 	size_t count;
 	
-	if(!order)
-		order=1;
 	mpz_init(xx);
-	mpz_import(xx, 4, order, sizeof(x[0]), -1, 0, x);
+	mpz_import(xx, 4,     ORDER, sizeof(x[0]), NATIVE_ENDIAN,  0, x);
 	memset(y, '\0', sizeof(y[0])*4);
-	mpz_export(y, &count, order, sizeof(x[0]), 1,0, xx);
+	mpz_export(y, &count, ORDER, sizeof(x[0]), NETWORK_ENDIAN, 0, xx);
 	mpz_clear(xx);
 	return 0;
 }
 
-int ntohl_128(unsigned int *x, unsigned int *y, int order)
+int ntohl_128(unsigned int *x, unsigned int *y)
 {
 	mpz_t xx;
 	size_t count;
 	
-	if(!order)
-		order=1;
 	mpz_init(xx);
-	mpz_import(xx, 4, order, sizeof(x[0]), 1, 0, x);
+	mpz_import(xx, 4,     ORDER, sizeof(x[0]), NETWORK_ENDIAN, 0, x);
 	memset(y, '\0', sizeof(y[0])*4);
-	mpz_export(y, &count, order, sizeof(x[0]), -1,0, xx);	
+	mpz_export(y, &count, ORDER, sizeof(x[0]), NATIVE_ENDIAN,  0, xx);	
 	mpz_clear(xx);
 
 	return 0;

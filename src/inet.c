@@ -39,10 +39,9 @@ int inet_setip(inet_prefix *ip, u_int *data, u_char family)
 		ip->data[0]=ntohl(data[0]);
 		ip->len=4;
 	} else if(family==AF_INET6) {
-		ntohl_128(data, ip->data, 1);
+		ntohl_128(data, ip->data);
 		ip->len=16;
-	}
-	else 
+	} else 
 		return -1;
 	return 0;
 }
@@ -53,15 +52,9 @@ int inet_setip_bcast(inet_prefix *ip)
 		u_int data=INADDR_BROADCAST;
 		inet_setip(ip, &data, ip->family);
 	} else if(ip->family==AF_INET6) {
-		/*"IPv6  supports  several  address  types:  unicast  to address a single host, multicast to address a group of
-		 *hosts, anycast to address the nearest member of a group of hosts (not implemented in Linux), IPv4-on-IPv6 to
-		 *address a IPv4 host, and other reserved address types."
-		 *DAMN!!!
-		 */
-		/*WE CANNOT USE ipv6! HOLY SHIT!*/
-		return -1;			
-	}
-	else 
+		u_int data[4]=IPV6_ADDR_BROADCAST;
+		inet_setip(ip, &data, ip->family);
+	} else 
 		return -1;
 
 	return 0;
@@ -75,13 +68,13 @@ int inet_setip_anyaddr(inet_prefix *ip)
 	} else if(ip->family==AF_INET6) {
 		struct in6_addr ipv6=IN6ADDR_ANY_INIT;
 		inet_setip(ip, (u_int *)(&ipv6), ip->family);
-	}
-	else 
+	} else 
 		return -1;
 
 	return 0;
 }
-/*Coversion functions...*/
+
+/* * * Coversion functions... * * */
 
 /*inet_to_str: It returns the string which represents the given ip*/
 char *inet_to_str(inet_prefix *ip)
@@ -97,7 +90,7 @@ char *inet_to_str(inet_prefix *ip)
 	else if(ip->family==AF_INET6) {
 		struct in6_addr src;
 
-		htonl_128(ip->data, &src, 1);
+		htonl_128(ip->data, &src);
 		dst=xmalloc(INET6_ADDRSTRLEN);
 		inet_ntop(ip->family, &src, dst, INET6_ADDRSTRLEN);
 	}
@@ -117,7 +110,7 @@ int inet_to_sockaddr(inet_prefix *ip, u_short port, struct sockaddr *dst, sockle
 	if(ip->family==AF_INET)
 		*(dst->sa_data+sizeof(u_short))=htonl(ip->data[0]);
 	else if(ip->family==AF_INET6)
-		htonl_128(ip->data, dst->sa_data+sizeof(u_short)+sizeof(u_int), 1);
+		htonl_128(ip->data, dst->sa_data+sizeof(u_short)+sizeof(u_int));
 	else
 		return -1;
 
@@ -155,7 +148,7 @@ int new_socket(int sock_type)
 {
 	int sockfd;
 	if((sockfd=socket(sock_type, SOCK_STREAM, 0)) == -1 ) {
-		error("Socket creation failed");
+		error("Socket SOCK_STREAM creation failed: %s", strerror(errno));
 		return -1;
 	}
 
@@ -166,38 +159,70 @@ int new_dgram_socket(int sock_type)
 {
 	int sockfd;
 	if((sockfd=socket(sock_type, SOCK_DGRAM, 0)) == -1 ) {
-		error("Socket creation failed");
+		error("Socket SOCK_DGRAM creation failed: %s", strerror(errno));
 		return -1;
 	}
 
 	return sockfd;
 }
 
-int set_broadcast_sk(int socket)
+/* join_ipv6_multicast: It adds the membership to the IPV6_ADDR_BROADCAST multicast
+ * group. The device with index `idx' will be used. 
+ */
+int join_ipv6_multicast(int socket, int idx)
 {
-	int broadcast=1;
-	if (setsockopt(socket, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast)) < 0) {
-		error ("Can't set broadcasting");
+	int loop_back=0;
+	struct ipv6_mreq    mreq6;
+	struct in6_addr     addr=IPV6_ADDR_BROADCAST;
+
+	memset(&mreq6, 0, sizeof(struct ipv6_mreq));
+	memcpy(&mreq6.ipv6mr_multiaddr,	&addr, sizeof(struct in6_addr));
+	mreq6.ipv6mr_interface=idx;
+	
+	if(setsockopt(socket, IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, &mreq6, sizeof(mreq6)) < 0) {
+
+	}
+
+	if(setsockopt(socket, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &loop_back, sizeof(loop_back)) < 0) {
+		error("Cannot set IPV6_MULTICAST_LOOP: %s", strerror(errno));
 		return -1;
 	}
+	
 	return socket;
 }
 
-int unset_broadcast_sk(int socket)
+int set_broadcast_sk(int socket, int family)
+{
+	int broadcast=1;
+	if(family == AF_INET) {
+		if (setsockopt(socket, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast)) < 0) {
+			error ("Cannot set broadcasting: %s", strerror(errnno));
+			return -1;
+		}
+	}
+
+	/*The ipv6 doesn't have broadcast so we use multicast. Join_ipv6_multicast must be called
+	 * at the start of the netsukuku daemon*/
+	
+	return socket;
+}
+
+int unset_broadcast_sk(int socket, int family)
 {
 	int broadcast=0;
-	if (setsockopt(socket, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast)) < 0) {
-		error ("Can't set broadcasting");
-		return -1;
+	if(family == AF_INET) {
+		if (setsockopt(socket, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast)) < 0) {
+			error ("Cannot unset broadcasting: %s", strerror(errnno));
+			return -1;
+		}
 	}
 }
 
 int new_broadcast_sk(int sock_type)
 {
 	int sock;
-
 	sock=new_dgram_socket(sock_type);
-	return set_broadcast_sk(sock);
+	return set_broadcast_sk(sock, sock_type);
 }
 	
 int new_tcp_conn(inet_prefix *host, short port)

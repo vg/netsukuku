@@ -40,7 +40,7 @@ typedef struct
         /*The groupnode will cover the range from me.ipstart to me.ipstart+MAXGROUPNODE*/
 
 	__u16 		gid;		/*Gnode Id*/
-	__u16		layer;
+	/*__u16		layer; 		  not used anymore*/
 	__u16 		seeds;		/*The number of active static nodes connected to this gnode.
 					  If seeds == MAXGROUPNODE, the gnode is full ^_^*/
 

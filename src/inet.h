@@ -20,27 +20,36 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+/*This is the "link-scope all-hosts multicast" address: ff02::1.*/
+#define IPV6_ADDR_BROADCAST	{ 0xff020000, 0x0, 0x0, 0x1 } /*Each element is in network order*/
+
 typedef struct
 {
 	__u8 family;
 	__u16 len;
-	__u32 data[4]; 	/*The address is kept in host long format*/
+	__u32 data[4]; 	/*The address is kept in host long format, word ORDER 1 (most significant 
+			  word first)*/
 }inet_prefix;
 
 int inet_setip(inet_prefix *ip, u_int *data, u_char family);
 int inet_setip_bcast(inet_prefix *ip);
 int inet_setip_anyaddr(inet_prefix *ip);
+
 char *inet_to_str(inet_prefix *ip);
 int inet_to_sockaddr(inet_prefix *ip, u_short port, struct sockaddr *dst, socklen_t *dstlen);
 int sockaddr_to_inet(struct sockaddr *ip, inet_prefix *dst, u_short *port);
+
 int new_socket(int sock_type);
 int new_dgram_socket(int sock_type);
-int set_broadcast_sk(int socket);
-int unset_broadcast_sk(int socket);
+int join_ipv6_multicast(int socket, int idx);
+int set_broadcast_sk(int socket, int family);
+int unset_broadcast_sk(int socket, int family);
 int new_broadcast_sk(int sock_type);
+
 int new_tcp_conn(inet_prefix *host, short port);
 int new_udp_conn(inet_prefix *host, short port);
 int new_bcast_conn(inet_prefix *host, short port);
+
 ssize_t inet_recv(int s, void *buf, size_t len, int flags);
 ssize_t inet_recvfrom(int s, void *buf, size_t len, int flags, struct sockaddr *from, socklen_t *fromlen);
 ssize_t inet_send(int s, const void *msg, size_t len, int flags);
