@@ -100,7 +100,7 @@ const char *if_init(char *dev, int *dev_idx)
 
 	ll_init_map(&rth);
 
-	if(dev) {
+	if(dev[0] != 0) {
 		if ((*dev_idx = idx = ll_name_to_index(dev)) == 0) {
 			error("if_init: Cannot find device \"%s\"\n", dev);
 			return NULL;

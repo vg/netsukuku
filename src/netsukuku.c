@@ -100,7 +100,7 @@ void parse_options(int argc, char **argv)
 		int option_index = 0;
 		static struct option long_options[] = {
 			{"help", 0, 0, 'h'},
-			{"dev", 1, 0, 'd'},
+			{"iface", 1, 0, 'i'},
 			{"ipv6", 0, 0, '6'},
 			{"ipv4", 0, 0, '4'},
 			{"int_map", 1, 0, 'I'},
@@ -140,6 +140,9 @@ void parse_options(int argc, char **argv)
 				break;
 			case 'B': 
 				strncpy(server_opt.bnode_map_file, optarg, NAME_MAX); 
+				break;
+			case 'i': 
+				strncpy(server_opt.dev, optarg, IFNAMSIZ); 
 				break;
 			case 'D':
 				server_opt.daemon=0;
