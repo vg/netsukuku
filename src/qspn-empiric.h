@@ -20,21 +20,20 @@
 #include <pthread.h>
 #include "map.h"
 
-#define Q_BACKPRO
+/*I use these define to activate/deactivate the different parts of QSPN*/
 #undef Q_BACKPRO
-#undef Q_OPEN
 #define Q_OPEN
+#undef NO_JOINT
 
 pthread_mutex_t mutex[MAXGROUPNODE];
-int total_threads=0;
+int total_threads=0, disable_joint=0;
 
 map_node *int_map;
 
-/*This struct keeps tracks of the qspn_pkts sent or
- * received by our rnodes*/
+/*This struct keeps tracks of the qspn_pkts sent or received by our rnodes*/
 struct qspn_queue
 {
-	int 	q_id;		/*qspn_id*/
+	int 	q_id;			/*qspn_id*/
 	u_short replier[MAXGROUPNODE];	/*Who has sent these repliesi (qspn_sub_id)*/
 	u_short	flags[MAXGROUPNODE];
 }*qspn_q[MAXGROUPNODE];
@@ -60,6 +59,8 @@ short rt_total[MAXGROUPNODE];
 #define OP_REPLY	69
 #define OP_BACKPRO	66
 
+#define QPKT_REPLY	1
+
 struct q_pkt
 {
 	int q_id;
@@ -68,6 +69,7 @@ struct q_pkt
 	short to;
 	int   broadcast;
 	char  op;
+	char  flags;
 	short *tracer;
 	short routes;
 };

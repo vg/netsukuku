@@ -16,12 +16,24 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * qspn-empiric:
- * This is the living proof of the QSPN algo. qspn-empiric simulates an
- * entire network and runs on it the QSPN algo. Then when all is done it
- * collects the generated data and makes some statistic, in this way I can 
- * tune without much worries the QSPN algorithm. Qspn-empiric can be also 
- * used to solve graph without using djkstra hehehe.
+ * This is the living proof of the QSPN algorithm.
+ * The qspn-empiric simulates an entire network and runs on it the QSPN. 
+ * Then when all is done it collects the generated data and makes some 
+ * statistics, in this way it's possible to watch the effect of a QSPN 
+ * explosion in a network. 
+ * The qspn-empiric can be also used to solve graph without using djkstra 
+ * hehehe.
  * ah,..  yes it uses threads... a lot of them... ^_^ I want a cluster!
+ * -
+ * time to explain how this thing happens to work:
+ * If a map filename to load is not given as argv[1] gen_rnd_map is used 
+ * to create a new random map of MAXGROUPNODE nodes.
+ * Then we choose a random node to be the QSPN_STARTER.
+ * Now, instead of simulate the nodes we simulate the packets! Each pkt
+ * is a thread. When a new thread/pkt is created it sleeps for the rtt that
+ * is between the "from" node and the "to" node.
+ * Now we have only to wait.
+ * enjoy the trip.
  */
 
 #include <stdlib.h>
@@ -31,12 +43,12 @@
 #include "log.h"
 #include "xmalloc.h"
 
-/*thread_joint creates a thread in JOINED STATE or in DETACHED STATE*/
+/* thread_joint creates a thread in JOINED STATE or in DETACHED STATE*/
 void thread_joint(int joint, void * (*start_routine)(void *), void *nopt)
 {	
 	pthread_t thread;
 	total_threads++;
-	if(joint) {
+	if(joint && !disable_joint) {
 		fprintf(stderr, "%u: Joining the thread...", pthread_self());
 		pthread_create(&thread, NULL, start_routine, (void *)nopt);
 		fprintf(stderr, " %u\n", thread);
@@ -47,7 +59,24 @@ void thread_joint(int joint, void * (*start_routine)(void *), void *nopt)
 	}
 }
 
-/* gen_rnd_map: Generate Random Map*/
+/* wait_threads: it waits until the total number of threads doesn't change anymore*/
+void wait_threads(void) {
+	int tt=0;
+	while(total_threads != tt) {
+		tt=total_threads;
+		sleep(5);
+	}
+}
+
+/* gen_rnd_map: Generate Random Map.
+ * It creates the start_node in the map. 
+ * (If back_link >= 0) It then adds the back_link node (with rtt equal to back_link_rtt) 
+ * in the start_node's rnodes and adds other random rnodes (with random rtt).
+ * If the added new rnode doesn't exist yet in the map it calls recusively itself giving 
+ * the rnode as the "start_node" argument, the start_node as back_link and the rnode's rtt
+ * as back_link_rtt. Else if the new rnode exists, it adds the start_node in the rnode's rnodes.
+ * Automagically it terminates.
+ */
 void gen_rnd_map(int start_node, int back_link, int back_link_rtt) 
 {
 	int i=start_node, r=0, e, b=0, rnode_rnd, ms_rnd;
@@ -78,7 +107,7 @@ void gen_rnd_map(int start_node, int back_link, int back_link_rtt)
 	for(e=0; e<r; e++) { /*It's e<r and not e<=r because we've already added the back_link rnode at r position*/
 		memset(&rtmp, '\0', sizeof(map_rnode));
 random_node:
-		//printf("rn\n");
+		/*Are we adding ourself or an already addded node in our rnodes?*/
 		while((rnode_rnd=(random()%(MAXGROUPNODE-0))+0) == i);
 		for(b=0; b<int_map[i].links; b++)
 			if((map_node *)&int_map[rnode_rnd] == (map_node *)int_map[i].r_node[b].r_node) {
@@ -86,6 +115,7 @@ random_node:
 				goto random_node;
 			}
 
+		/*the building of the new rnode is here*/
 		rtmp.r_node=(u_int *)&int_map[rnode_rnd];
 		ms_rnd=(random()%((MAXRTT*1000)-0))+0;
 		rtmp.rtt.tv_usec=ms_rnd*1000;
@@ -116,6 +146,7 @@ random_node:
 	}
 }
 
+/*init the qspn queue*/
 void init_q_queue(map_node *map)
 {
 	int i;
@@ -136,6 +167,10 @@ void free_q_queue(map_node *map)
 	}
 }
 
+/* store_tracer_pkt: It stores the tracer_pkt received in the 
+ * packets' db (used to collect stats after) and it adds our 
+ * entry in the new tracer_pkt that will be sent
+ */
 int store_tracer_pkt(struct q_opt *qopt)
 {
 	int x, pkt, to=qopt->q.to;
@@ -169,9 +204,7 @@ int store_tracer_pkt(struct q_opt *qopt)
 	return pkt;
 }
 
-/*Ok, I see... The qspn_backpro is a completely lame thing!
- * fucker!
- */
+/*Ok, I see... The qspn_backpro is a completely lame thing!*/
 void *send_qspn_backpro(void *argv)
 {
 	struct q_opt *qopt=(struct q_opt *)argv, *nopt;
@@ -217,6 +250,7 @@ void *send_qspn_backpro(void *argv)
 	}
 	xfree(qopt);
 	total_threads--;
+	pthread_exit(NULL);
 }
 
 void *send_qspn_reply(void *argv)
@@ -265,6 +299,7 @@ void *send_qspn_reply(void *argv)
 	}
 	xfree(qopt);
 	total_threads--;
+	pthread_exit(NULL);
 }
 
 /*Holy Disagio, I wrote this piece of code without seeing actually it, I don't
@@ -323,20 +358,20 @@ void *send_qspn_open(void *argv)
 		nopt->q.tracer=pkt_db[to][pkt]->tracer;
 		nopt->sleep=int_map[to].r_node[x].rtt.tv_usec;
 		nopt->q.broadcast=pkt_db[to][pkt]->broadcast;
+		if(x == int_map[to].links-1)
+			qopt->join=1;
 		nopt->join=qopt->join;
 
-		if(!(int_map[to].r_node[x].flags & QSPN_OPENED)) {
-			gbl_stat.qspn_replies++;
-			node_stat[to].qspn_replies++;
-			nopt->q.op=OP_OPEN;
-			thread_joint(qopt->join, send_qspn_open, (void *)nopt);
-		}
+		gbl_stat.qspn_replies++;
+		node_stat[to].qspn_replies++;
+		nopt->q.op=OP_OPEN;
+		thread_joint(qopt->join, send_qspn_open, (void *)nopt);
 	}
 	xfree(qopt);
 	total_threads--;
+	pthread_exit(NULL);
 }
 
-//int opens=0;
 void *send_qspn_pkt(void *argv)
 {
 	struct q_opt *qopt=(struct q_opt *)argv, *nopt;
@@ -365,10 +400,6 @@ void *send_qspn_pkt(void *argv)
 	if(!i && !(int_map[to].flags & QSPN_REPLIED) && !(int_map[to].flags & QSPN_STARTER)) {
 		/*W00t I'm an extreme node!*/
 		fprintf(stderr, "%u: W00t I'm an extreme node!\n", pthread_self());
-/*if(opens)
-	return;
-opens++;
-*/
 		int_map[to].flags|=QSPN_REPLIED;
 		for(x=0; x<int_map[to].links; x++) {	
 			if((map_node *)int_map[to].r_node[x].r_node == &int_map[qopt->q.from]) 
@@ -486,8 +517,10 @@ opens++;
 	}
 	xfree(qopt);
 	total_threads--;
+	pthread_exit(NULL);
 }
 
+/*collect_data: it calculates how many routes we have for each node*/
 void collect_data(void)
 {
 	int i, x, e;
@@ -500,6 +533,7 @@ void collect_data(void)
 					rt_total[i]++;
 }
 
+/*show_temp_stat: Every 5 seconds it shows how is it going*/
 void *show_temp_stat(void *null)
 {
 	FILE *fd=stdout;
@@ -513,6 +547,7 @@ void *show_temp_stat(void *null)
 	}
 }
 
+/*print_map: Print the map in human readable form in the "map_file"*/
 int print_map(map_node *map, char *map_file)
 {
 	int x,e, node;
@@ -533,6 +568,8 @@ int print_map(map_node *map, char *map_file)
 	return 0;
 }
 
+/*lgl_print_map saves the map in the lgl format. 
+ * (LGL is a nice program to generate images of graphs)*/
 int lgl_print_map(map_node *map, char *lgl_mapfile)
 {
 	int x,e,i, c=0, d, node;
@@ -564,6 +601,7 @@ int lgl_print_map(map_node *map, char *lgl_mapfile)
 	return 0;
 }
 
+/*print_data: Prints the accumulated data and statistics in "file"*/
 void print_data(char *file)
 {
 	int i, x, e, null, maxgroupnode;
@@ -680,6 +718,9 @@ int main(int argc, char **argv)
 	
 	printf("Running the first test...\n");
 	thread_joint(0, show_temp_stat, NULL);
+#ifdef NO_JOINT
+	disable_joint=1;
+#endif
 	if(argc > 2)
 		r=atoi(argv[2]);
 	else
@@ -712,6 +753,9 @@ int main(int argc, char **argv)
 		
 		thread_joint(nopt->join, send_qspn_pkt, (void *)nopt);
 	}
+#ifdef NO_JOINT
+	wait_threads();
+#endif
 	end=time(0);
 	time_stat=end-start;
 	int_map[r].flags&=~QSPN_STARTER;
@@ -730,5 +774,6 @@ int main(int argc, char **argv)
 	clear_all();
 	
 	printf("All done yeah\n");
+	fprintf(stderr, "All done yeah\n");
 	exit(0);
 }

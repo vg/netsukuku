@@ -1,4 +1,3 @@
-qspn empiric tests
 continuare in hook.c: dnode_set_ip
 D_node's gathering
 come fare per aggiungere un route rule per specificare un'intero range nel campo from?
