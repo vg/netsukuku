@@ -220,14 +220,7 @@ int radar_recv_reply(PACKET pkt)
 		return -1;
 	}
 	
-	for(i=0; i<ECHO_ME_MAXRQ; i++) {
-		if(pkt.hdr.id == cur_echo_id[i]) {
-			e=1;
-			break;
-		}
-	}
-	
-	if(e) {
+	if(pkt.hdr.id != my_echo_id) {
 		loginfo("I received an ECHO_REPLY with id: %d, but I've never sent an ECHO_ME with that id!", pkt.hdr.id);
 		return -1;
 	}
@@ -249,40 +242,20 @@ int radar_scan(void)
 		return -1;
 
 	radar_scan_mutex=1;	
-	memset(&pkt, '\0', sizeof(PACKET));
-	pkt_fill_hdr(&pkt.hdr, 0, ECHO_ME, 0);
-
-	for(i=0; i<ECHO_ME_MAXRQ; i++) {
-		if(!cur_echo_id[i]) {
-			cur_echo_id[i]=pkt.hdr.id;
-			e=1;
-			break;
-		}
-	}
-	if(e) {
-		error("We have sent already too many echo_me requests!");
-		return -1;
-	}	
-
+	
 	/*We create the PACKET*/
-	my_echo_id=pkt.hdr.id:
-	pkt.msg=0;
+	memset(&pkt, '\0', sizeof(PACKET));
 	broadcast.family=my_family;
 	inet_setip_bcast(&broadcast);
 	pkt_addto(&pkt, &broadcast);
-	pkt_addport(&pkt, ntk_udp_port);
-	pkt_addflags(&pkt, NULL);
-	if((pkt.sk=new_udp_conn(pkt.to, ntk_udp_port))==-1) {
-		error("radar_scan(): Cannot connect for the scan");
-		return -1;
-	}
-	/*We send it*/
-	err=pkt_send(pkt);
-	pkt_free(&pkt);
+	pkt.sk_type=SKT_BCAST;
+	err=send_rq(&pkt, 0, ECHO_ME, 0, 0, 0, 0);
 	if(err==-1) {
 		error("radar_scan(): Error while sending the scan");
 		return -1;
 	}
+	my_echo_id=pkt.hdr.id:
+	pkt_free(&pkt, 1);
 	
 	gettimeofday(&scan_start, 0);
 	sleep(max_radar_wait);
@@ -306,28 +279,24 @@ int radard(PACKET rpkt)
 	PACKET pkt;
 	inet_prefix broadcast;
 	ssize_t err;
-
+	char *ntop;
 
 	/*We create the PACKET*/
 	memset(&pkt, '\0', sizeof(PACKET));
-	pkt_fill_hdr(&pkt.hdr, rpkt.hdr.id, ECHO_REPLY, 0);
-	pkt.msg=0;
+	
 	broadcast.family=my_family;
 	inet_setip_bcast(&broadcast);
 	pkt_addto(&pkt, &broadcast);
-	pkt_addport(&pkt, ntk_udp_port);
-	pkt_addflags(&pkt, NULL);
-	if((pkt.sk=new_udp_conn(pkt.to, ntk_udp_port))==-1) {
-		error("radard(): Couldn't connect for the reply");
-		return -1;
-	}
+	pkt.sk_type=SKT_BCAST;
+	
 	/*We send it*/
-	err=pkt_send(pkt);
-	pkt_free(&pkt);
+	err=send_rq(&pkt, 0, ECHO_REPLY, rpkt.hdr.id, 0, 0, 0);
+	pkt_free(&pkt, 1);
 	if(err==-1) {
-		error("radard(): Cannot ECHO_REPLY to  Error while sending the scan");
+		ntop=inet_to_str(&pkt->to);
+		error("radard(): Cannot send back the ECHO_REPLY to %s.", ntop);
+		xfree(ntop);
 		return -1;
 	}
-
 	return 0;
 }

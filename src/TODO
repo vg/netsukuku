@@ -1,4 +1,4 @@
-continuare in hook.c
+continuare in hook.c: fare get_ext_map, put_ext_map, get_int_map, put_int_map
 Decidere l'order del ntohl_128. ip.data[0] o ip.data[3]?
 Che fare dell'll_init_map??
 connect-wrapper.c: ld.so.preload!

@@ -22,36 +22,43 @@
 
 int op_verify(u_char op)
 {
-	if(op > TOTAL_REQUEST+TOTAL_REPLIES)
-		return 1;
-	return 0;
+	return op > TOTAL_REQUEST+TOTAL_REPLIES ? 1 : 0;
 }
 
 int rq_verify(u_char rq)
 {
-	if(rq > TOTAL_REQUEST)
-		return 1;
-	return 0;
+	return rq > TOTAL_REQUEST ? 1 : 0;
 }
 
 int re_verify(u_char re)
 {
-	if(re > TOTAL_REPLIES && re < TOTAL_REQUEST)
-		return 1;
-	return 0;
+	return re > TOTAL_REPLIES && re < TOTAL_REQUEST ? 1 : 0;
+}
+
+int err_verify(u_char err)
+{
+	return err > TOTAL_ERRORS ? 1 : 0;
 }
 
 char *rq_strerror(int err)
 {
+	if(err_verify)
+		err=0;
 	return error_str[err];
 }
 
-char *rq_to_str(int rq)
+char *rq_to_str(u_char rq)
 {
-	if(rq_verify)
+	if(rq_verify(rq))
 		return unknown_request;
-	
 	return request_str[rq];
+}
+
+char *re_to_str(u_char re)
+{
+	if(re_verify(re))
+		return unknown_reply;
+	return reply_str[re];
 }
 
 void update_rq_tbl(rq_tbl *tbl)

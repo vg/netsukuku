@@ -196,50 +196,54 @@ int new_broadcast_sk(int sock_type)
 	sock=new_dgram_socket(sock_type);
 	return set_broadcast_sk(sock);
 }
-
 	
 int new_tcp_conn(inet_prefix *host, short port)
 {
 	int sk, sa_len;
 	struct sockaddr	sa;
 	PACKET pkt;
-
+	char *ntop;
+	ntop=inet_to_str(host);
+	
 	if(inet_to_sockaddr(host, port, &sa, &sk_len)) {
-		error("Cannot new_connect(): %d Family not supported", host->family);
-		return -1;
+		error("Cannot new_tcp_connect(): %d Family not supported", host->family);
+		sk=-1;
+		goto finish;
 	}
 	
-	if((sk = new_socket(host->family)) == -1)
-		return -1;
+	if((sk = new_socket(host->family)) == -1) {
+		sk=-1;
+		goto finish;
+	}
 
 	if (connect(sk, &sa, sa_len) == -1) {
-		error("Couldn't connect to %s: %s", strerror(errno));
-		return -1;
+		error("Cannot connect to %s: %s", ntop, strerror(errno));
+		sk=-1;
+		goto finish;
 	}
 
 	/*Now we receive the first pkt from the srv. It is an ack. 
 	 * Let's hope it isn't NEGATIVE (-_+)
 	 */
 	memset(&pkt, '\0', sizeof(PACKET));
-	pkt_addsk(&pkt, sk);
+	pkt_addsk(&pkt, sk, SKT_TCP);
 	pkt_addflags(&pkt, NULL);
 	pkt_recv(&pkt);
 
 	/*Last famous words*/
 	if(pkt.hdr.op==ACK_NEGATIVE) {
 		int err;
-		char *ntop;
 
 		memcpy(&err, pkt.buf, pkt.hdr.sz);
-		ntop=inet_to_str(host);
 		error("Cannot connect to %s: %s", ntop, rq_strerror(err));
 
-		xfree(ntop);
-		pkt_free(&pkt);
-		return -1;
+		sk=-1;
+		goto finish;
 	}
 
-	pkt_free(&pkt);
+finish:
+	xfree(ntop);
+	pkt_free(&pkt, 1);
 	return sk;
 }
 
@@ -248,24 +252,53 @@ int new_udp_conn(inet_prefix *host, short port)
 	int sk, sa_len;
 	struct sockaddr	sa;
 	PACKET pkt;
+	char *ntop;
+	ntop=inet_to_str(host);
 
 	if(inet_to_sockaddr(host, port, &sa, &sk_len)) {
-		error("Cannot new_connect(): %d Family not supported", host->family);
+		error("Cannot new_udp_connect(): %d Family not supported", host->family);
+		sk=-1;
+		goto finish;
+	}
+
+	if((sk = new_dgram_socket(host->family)) == -1) {
+		sk=-1;
+		goto finish;
+	}
+
+	if (connect(sk, &sa, sa_len) == -1) {
+		error("Cannot connect to %s: %s", ntop, strerror(errno));
+		sk=-1;
+		goto finish;
+	}
+	
+finish:
+	xfree(ntop);
+	return sk;
+}
+	
+int new_bcast_conn(inet_prefix *host, short port)
+{	
+	int sk, sa_len;
+	struct sockaddr	sa;
+	PACKET pkt;
+
+	if(inet_to_sockaddr(host, port, &sa, &sk_len)) {
+		error("Cannot new_bcast_connect(): %d Family not supported", host->family);
 		return -1;
 	}
 
-	if((sk = new_dgram_socket(host->family)) == -1)
+	if((sk = new_broadcast_sk(host->family)) == -1)
 		return -1;
 
 	if (connect(sk, &sa, sa_len) == -1) {
-		error("Couldn't connect to %s: %s", strerror(errno));
+		error("Cannot connect to the broadcast: %s", strerror(errno));
 		return -1;
 	}
 
 	return sk;
 }
 	
-
 ssize_t inet_recv(int s, void *buf, size_t len, int flags)
 {
 	ssize_t err;

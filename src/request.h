@@ -19,8 +19,10 @@
 #include <time.h>
 #include <sys/types.h>
 
-#define TOTAL_REQUESTS          23
+/*WARNING* Keep it up to date!! *WARNING*/
+#define TOTAL_REQUESTS          24
 #define TOTAL_REPLIES		6
+#define TOTAL_ERRORS		6
 
 /*Requests*/
 enum pkt_op
@@ -72,7 +74,7 @@ enum pkt_op
 
 };
 
-static u_char replies_array[]=
+static u_char reply_array[]=
 {
 	QSPN_RFR_REPLY,
 	PUT_FREE_IPS,
@@ -85,7 +87,8 @@ static u_char replies_array[]=
 	ACK_NEGATIVE
 };
 
-static u_char replies_str[][20]=
+static char unknown_reply[]="Unknow reply";
+static u_char reply_str[][20]=
 {
 	{ "QSPN_RFR_REPLY"   },
 	{ "PUT_FREE_IPS" },
@@ -99,7 +102,7 @@ static u_char replies_str[][20]=
 };
 
 
-enum request_errors
+enum errors
 {
 	/*Request errors*/
 	E_INVALID_REQUEST=1,
@@ -280,12 +283,14 @@ typedef struct request_tbl rq_tbl;
 int update_rq_tbl_mutex;
 
 /*Functions declaration starts here*/
-char *rq_strerror(int err);
-char *rq_to_str(int rq);
-int op_verify(u_char op);
-int rq_verify(u_char rq);
-int re_verify(u_char re);
-void update_rq_tbl(rq_tbl *tbl);
-int is_rq_full(u_char rq, rq_tbl *tbl);
-int find_free_rq_wait(u_char rq, rq_tbl *tbl);
-int add_rq(u_char rq, rq_tbl *tbl);
+char *rq_strerror(u_char err);
+#define re_strerror(err) (rq_strerror((err)))
+char *rq_to_str(u_char );
+char *re_to_str(u_char );
+int op_verify(u_char );
+int rq_verify(u_char );
+int re_verify(u_char );
+void update_rq_tbl(rq_tbl *);
+int is_rq_full(u_char , rq_tbl *);
+int find_free_rq_wait(u_char , rq_tbl *);
+int add_rq(u_char , rq_tbl *);

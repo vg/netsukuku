@@ -23,20 +23,26 @@
 #include "inet.h"
 
 #define NETSUKUKU_ID		"ntk"
-#define MAXMSGSZ		8192
+#define MAXMSGSZ		32768
 
 /* Pkt's op definitions:
  * The request and replies are in request.h
  */
 
+/*Pkt's sk_type*/
+#define SKT_TCP 	1
+#define SKT_UDP		2
+#define SKT_BCAST	3
+
 /*Pkt's flags*/
-#define SEND_ACK		1
+#define SEND_ACK	1
 
 typedef struct
 {
 	inet_prefix from;
 	inet_prefix to;
 	int sk;
+	int sk_type;
 	u_short port;
 	int flags;
 	struct pkt_hdr hdr;
@@ -134,17 +140,18 @@ typedef char * set_route_block;
 /*Functions' declarations*/
 void pkt_addfrom(PACKET *pkt, inet_prefix *from);
 void pkt_addto(PACKET *pkt, inet_prefix *to);
-void pkt_addsk(PACKET *pkt, int sk);
+void pkt_addsk(PACKET *pkt, int sk, int sk_type);
 void pkt_addport(PACKET *pkt, u_short port);
 void pkt_addflags(PACKET *pkt, int flags);
 void pkt_addhdr(PACKET *pkt, struct pkt_hdr *hdr);
 void pkt_addmsg(PACKET *pkt, char *msg);
-void pkt_free(PACKET *pkt);
-char *pkt_pack(PACKET pkt);
+void pkt_free(PACKET *pkt, int close_socket)
+char *pkt_pack(PACKET *pkt);
 PACKET *pkt_unpack(char *pkt);
 int pkt_verify_hdr(PACKET pkt);
-ssize_t pkt_send(PACKET pkt);
+ssize_t pkt_send(PACKET *pkt);
 ssize_t pkt_recv(PACKET *pkt);
 pkt_fill_hdr(struct pkt_hdr *hdr, int id, u_char op, size_t sz);
+int send_rq(PACKET *pkt, int flags, u_char rq, u_int rq_id, u_char re, int check_ack, PACKET *rpkt);
 pkt_err(PACKET pkt, int err);
 int pkt_exec(PACKET pkt);

@@ -28,7 +28,7 @@
 					  the qspn_q.send_qspn will be set*/
 int max_radar_wait=MAX_RADAR_WAIT;
 int radar_scan_mutex;
-int cur_echo_id[ECHO_ME_MAXRQ];
+int my_echo_id=0;
 
 struct radar_queue
 {
@@ -46,8 +46,6 @@ struct radar_queue *radar_q;
 /*How many radar_queue are allocated in radar_q?*/
 int radar_q_alloc;
 
-/*This must be separated from the other threads with pthread_key_create(3)*/ 
-int my_echo_id=0;
 
 
 void init_radar(void);

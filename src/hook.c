@@ -17,6 +17,7 @@
  */
 
 #include <sys/types.h>
+#include <pthread.h>
 #include <signal.h>
 #include <string.h>
 #include <unistd.h>
@@ -32,67 +33,48 @@
 extern struct current me;
 extern int my_family;
 
+/* get_free_ips: It send the GET_FREE_IPS request, used to retrieve the 
+ * list of free/available IPs in the dst_node's gnode*/
 int get_free_ips(inet_prefix to, struct free_ips *fi_hdr, int *ips)
 {
 	PACKET pkt, rpkt;
 	char *ntop;
 	ssize_t err;
-
+	int ret=0;
+	
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
 	
 	ntop=inet_to_str(&to);
-	debug(DBG_NORMAL, "Sending the GET_FREE_IPS request to %s", ntop);
-
-	/* * * the GET_FREE_IPS request * * */
-	pkt_fill_hdr(&pkt.hdr, 0, GET_FREE_IPS, 0);
-	pkt.msg=0;
-	to.family=my_family;
+	
 	pkt_addto(&pkt, &to);
-	pkt_addport(&pkt, ntk_tcp_port);
-	pkt_addport(&rpkt, ntk_tcp_port);
-	pkt_addflags(&pkt, NULL);
-	if((rpkt.sk=pkt.sk=new_tcp_conn(pkt.to, ntk_udp_port))==-1) {
-		error("get_free_ips(): Couldn't connect to %s to launch the GET_FREE_IPS request", ntop);
-		return -1;
-	}
-	/*Let's send the request*/
-	err=pkt_send(pkt);
-	pkt_free(&pkt);
+	pkt.sk_type=SKT_TCP;
+	err=send_rq(&pkt, 0, GET_FREE_IPS, 0, PUT_FREE_IPS, 1, &rpkt);
 	if(err==-1) {
-		error("get_free_ips(): Cannot send the GET_FREE_IPS request to %s. Skipping...", ntop);
-		return -1;
+		error("get_free_ips(): Failed to send the GET_FREE_IPS request to %s. Skipping...", ntop);
+		ret=-1;
+		goto finish;
 	}
-
-	/* * * the reply * * */
-	pkt_recv(&rpkt);
-	if(pkt.hdr.op==ACK_NEGATIVE) {
-		int err_ack;
-		char *n;
-		
-		memcpy(&err_ack, pkt.buf, pkt.hdr.sz);
-		n=inet_to_str(&to);
-		error("GET_FREE_IPS failed. The node %s replied: %s", n, rq_strerror(err_ack));
-		xfree(n);
-		pkt_free(&pkt);
-		return -1;
-	}
-
-	memcpy(fi_hdr, pkt.msg, sizeof(struct free_ips));
+	
+	memcpy(fi_hdr, rpkt.msg, sizeof(struct free_ips));
 	if(fi_hdr->ips <= 0 || fi_hdr->ips >= MAXGROUPNODE) {
-		error("Malformed PUT_FREE_IPS request hdr. It says there are %d free ip", fi_hdr->ips);
-		pkt_free(&pkt);
-                return -1;
+		error("Malformed PUT_FREE_IPS request hdr. It says there are %d free ips", fi_hdr->ips);
+		ret=-1;
+		goto finish;
 	}
 	memcpy(ips, pkt.msg+sizeof(struct free_ips), fi_hdr->ips*sizeof(int));
-	
 	debug(DBG_NORMAL, "received %d free ips", fi_hdr->ips);
-	
-	pkt_free(&rpkt);
+
+finish:
+	pkt_free(&pkt, 0);
+	pkt_free(&rpkt, 1);
         xfree(ntop);
-	return 0;
+	return ret;
 }
 
+/* put_free_ips: It generates the a list of free IPs available in the
+ * cur_gnode.
+ */
 int put_free_ips(PACKET rq_pkt)
 {
 	/*I'm using this temp struct to do pkt.msg=&fipkt; see below*/
@@ -102,7 +84,6 @@ int put_free_ips(PACKET rq_pkt)
 	}fipkt;
 	PACKET pkt;
 	map_node *map=me.int_map;
-	
 	char *ntop; 
 	ssize_t err, list_sz, i, e=0;
 	
@@ -114,10 +95,7 @@ int put_free_ips(PACKET rq_pkt)
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addport(&pkt, ntk_tcp_port);
 	pkt_addflags(&pkt, NULL);
-	if((pkt.sk=new_tcp_conn(pkt.to, ntk_udp_port))==-1) {
-		error("put_free_ips(): Couldn't connect to %s to launch the PUT_FREE_IPS reply", ntop);
-		return -1;
-	}
+	pkt_addsk(&pkt, rq_pkt.sk, rq_pkt.sk_type);
 
 	if(me.cur_gnode.flags & GMAP_FULL) {
 		/*<<My gnode is full, sry>>*/
@@ -141,7 +119,7 @@ int put_free_ips(PACKET rq_pkt)
 		err=pkt_send(pkt);
 	}
 	
-	pkt_free(&pkt);
+	pkt_free(&pkt, 1);
 	if(err==-1) {
 		error("put_free_ips(): Cannot send the PUT_FREE_IPS reply to %s. Skipping...", ntop);
 		return -1;
@@ -151,6 +129,14 @@ int put_free_ips(PACKET rq_pkt)
 	return 0;
 }
 
+/* get_ext_map: It sends the GET_EXT_MAP request to retrieve the 
+ * dst_node's ext_map.
+ */
+int get_ext_map(inet_prefix to, map_node *ext_map)
+{
+	/*TODO: Adesso sono troppo stanco e domani e' una giornata ASSURDA*/
+	return 0;
+}
 
 int netsukuku_hook(char *dev)
 {
@@ -255,12 +241,12 @@ int netsukuku_hook(char *dev)
 	dnode_set_ip(rnd(info.free_ips);
 	QSPN_SEND_DNODE_GATHERING();
 	
-	thread(snode_transform());
+	snode_transform():
 
 	return;
 }
 
-int snode_transfrom()
+int snode_transfrom(void)
 {
 	wait(DNODE_TO_SNODE_WAIT);
 	local_broadcast_send(I_AM_A_SNODE);
