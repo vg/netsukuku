@@ -70,35 +70,20 @@ struct brdcast_hdr
 };
 #define BRDCAST_SZ(pkt_sz) (sizeof(struct brdcast_hdr)+(pkt_sz))
 
-/*Tracer packet. It is encapsulated in a broadcast pkt*/
-struct tracer_hdr
-{
-	/*__u16 ipstart; useless*/
-	u_int hops;
-};
-
-struct tracer_node
-{
-	__u16 node;
-	struct timeval *rtt;
-};
-#define TRACERPKT_SZ(hop) (sizeof(struct tracer_hdr)+sizeof((struct tracer_node)*(hop)))
-
-/*The nodeblock of the node*/
+/***The nodeblock of the node*/
 struct node_hdr
 {
 	struct sockaddr ip;		/*Ip of the node*/
 	__u16 links;			/*Number of r_nodes*/
 };
-
-struct r_node
+struct rnode_chunk
 {	
 	struct sockaddr r_node;         /*Ip of the r_node*/
 	struct timeval  rnode_t;	/*node <-> r_node time*/	
 };
 #define NODEBLOCK_SZ(links) (sizeof(struct node_hdr)+sizeof((struct r_node)*(links)))
 
-/*This block is used to send the int_map*/
+/***This block is used to send the int_map*/
 struct int_map_hdr
 {
 	u_short root_node;
@@ -111,7 +96,7 @@ struct int_map_hdr
  */
 #define INT_MAP_BLOCK_SZ(int_map_sz, rblock_sz) (sizeof(struct int_map_hdr)+(int_map_sz)+(rblock_sz))
 
-/*This block is used to send the int_map*/
+/***This block is used to send the ext_map*/
 struct ext_map_hdr
 {
 	u_int root_gnode;
@@ -120,15 +105,15 @@ struct ext_map_hdr
 };
 #define EXT_MAP_BLOCK_SZ(ext_map_sz, rblock_sz) (sizeof(struct ext_map_hdr)+(ext_map_sz)+(rblock_sz))
 
+/***Set_route pkt, used to mark an arbitrary route*/
 struct set_route_hdr
 {
 	u_int hops;
 };
-
 struct set_route_pkt
 {
 	char flags;
-	struct sockaddr node;
+	__u16 node;
 };
 #define SET_ROUTE_BLOCK_SZ(hops) (sizeof(struct set_route_hdr)+((sizeof(struct set_route_pkt)*(hops))))
 

@@ -31,6 +31,7 @@
 #include "netsukuku.h"
 #include "xmalloc.h"
 #include "log.h"
+#include "misc.h"
 
 extern struct current me;
 extern int my_family;
@@ -410,7 +411,7 @@ int netsukuku_hook(char *dev)
 		fatal("None of the nodes in this area gave me the free_ips info");
 
 	/*Now we choose a random ip from the free ips we received*/
-	e=(rand()%(fi_hdr.ips-0))+0;		/*rnd_range algo: (rand()%(max-min+1))+min*/
+	e=rand_range(0, fi_hdr.ips);
 	maptoip(0, fips[e], fi_hdr.ipstart, &me.cur_ip);
 	if(set_dev_ip(me.cur_ip, dev))
 		fatal("%s:%d: Cannot set the tmp_ip in %s", ERROR_POS, dev);
@@ -469,7 +470,7 @@ finish:
 	 * djkstra(ext_map);
 	 */
 	
-	/* I think that i will abort the use of dnode, cuz the qspn rox enough
+	/* I think I will abort the use of dnode, cuz the qspn rox enough
 	 * dnode_set_ip(rnd(info.free_ips);
 	 * QSPN_SEND_DNODE_GATHERING();
 	 * snode_transform():
@@ -477,8 +478,7 @@ finish:
 	return ret;
 }
 
-/*
- * Action lines to trasform a dnode in a snode
+/* Action lines to trasform a dnode in a snode
 int snode_transfrom(void)
 {
 	wait(DNODE_TO_SNODE_WAIT);

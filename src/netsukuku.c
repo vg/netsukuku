@@ -8,11 +8,16 @@ int main(int argc, char **argv)
 {
 	/*This shall be the main flow:*/
 
+#ifdef QSPN_EMPIRIC
+	error("QSPN_EMPIRIC is activated!!!!");
+	exit(1);
+#endif
 	/*Init stuff
 	if_init();
 	map_init();
-	curme_init();
 	*/
+	memset(&me, 0, sizeof(struct current));
+	/*curme_init();*/
 
 	init_radar();
 	close_radar();

@@ -26,6 +26,7 @@
 #include "xmalloc.h"
 #include "log.h"
 #include "ipv6-gmp.h"
+#include "misc.h"
 
 extern int errno;
 
@@ -160,6 +161,17 @@ void rnode_del(map_node *node, size_t pos)
 					
 	node->links--;
 	node->r_node=xrealloc(node->r_node, node->links*sizeof(map_rnode));
+}
+
+/* map_find_bnode: Find the given `node' in the given map_bnode.*/
+int map_find_bnode(map_bnode *bmap,  int count, map_node *node)
+{
+	int e;
+
+	for(e=0; e<count; e++)
+		if(bmap[e].bnode == node)
+			return e;
+	return -1;
 }
 
 /*rnode_rtt_compar: It's used by rnode_rtt_order*/

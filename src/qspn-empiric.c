@@ -42,6 +42,7 @@
 #include "qspn-empiric.h"
 #include "log.h"
 #include "xmalloc.h"
+#include "misc.h"
 
 /* thread_joint creates a thread in JOINED STATE or in DETACHED STATE*/
 void thread_joint(int joint, void * (*start_routine)(void *), void *nopt)
@@ -83,7 +84,7 @@ void gen_rnd_map(int start_node, int back_link, int back_link_rtt)
 	map_rnode rtmp;
 
 	if(i > MAXGROUPNODE)
-		i=(random()%(MAXGROUPNODE-0))+0;
+		i=rand_range(0, MAXGROUPNODE);
 
 	if(back_link>=0 && back_link<MAXGROUPNODE)
 		b=1;
@@ -91,7 +92,7 @@ void gen_rnd_map(int start_node, int back_link, int back_link_rtt)
 	if(int_map[i].flags & MAP_SNODE)
 		return;
 	
-	r=(random()%(MAXLINKS-0+1))+0;	/*rnd_range algo: (rand()%(max-min+1))+min*/
+	r=rand_range(0, MAXLINKS);
 	int_map[i].flags|=MAP_SNODE;
 	int_map[i].flags&=~MAP_VOID;
 	if(b) {
@@ -108,7 +109,7 @@ void gen_rnd_map(int start_node, int back_link, int back_link_rtt)
 		memset(&rtmp, '\0', sizeof(map_rnode));
 random_node:
 		/*Are we adding ourself or an already addded node in our rnodes?*/
-		while((rnode_rnd=(random()%(MAXGROUPNODE-0))+0) == i);
+		while((rnode_rnd=(rand_range(0, MAXGROUPNODE)))== i);
 		for(b=0; b<int_map[i].links; b++)
 			if((map_node *)&int_map[rnode_rnd] == (map_node *)int_map[i].r_node[b].r_node) {
 				//printf("goto random_node;\n");
@@ -117,7 +118,7 @@ random_node:
 
 		/*the building of the new rnode is here*/
 		rtmp.r_node=(u_int *)&int_map[rnode_rnd];
-		ms_rnd=(random()%((MAXRTT*1000)-0))+0;
+		ms_rnd=rand_range(0, (MAXRTT*1000));
 		rtmp.rtt.tv_usec=ms_rnd*1000;
 		//printf("Node %d -> Adding rnode %d\n", i, rnode_rnd);
 		rnode_add(&int_map[i], &rtmp);
@@ -687,6 +688,10 @@ int main(int argc, char **argv)
 	log_init(argv[0], 1, 1);
 	clear_all();
 
+#ifndef QSPN_EMPIRIC
+	fatal("QSPN_EMPIRIC is not enabled! Aborting.");
+#endif
+	
 	for(i=0; i<MAXGROUPNODE; i++) 
 		pthread_mutex_init(&mutex[i], NULL);
 
@@ -702,7 +707,7 @@ int main(int argc, char **argv)
 		int_map=init_map(sizeof(map_node)*MAXGROUPNODE);
 		printf("Generating a random map...\n");
 		srandom(time(0));
-		i=(random()%(MAXGROUPNODE-0))+0;
+		i=rand_range(0, MAXGROUPNODE);
 		gen_rnd_map(i, -1, 0);
 		for(x=0; x<MAXGROUPNODE; x++)
 			rnode_rtt_order(&int_map[x]);
@@ -724,7 +729,7 @@ int main(int argc, char **argv)
 	if(argc > 2)
 		r=atoi(argv[2]);
 	else
-		r=(random()%(MAXGROUPNODE-0))+0;
+		r=rand_range(0, MAXGROUPNODE);
 	printf("Starting the QSPN spreading from node %d\n", r);
 	int_map[r].flags|=QSPN_STARTER;
 	qspn_id=random();

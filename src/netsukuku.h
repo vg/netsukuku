@@ -36,13 +36,16 @@ struct current
 	map_gnode 	*cur_gnode;
 	inet_prefix	 ipstart;	/*The first ip of our gnode (cur_gnode)*/
 	
+	map_bnode	*cur_bmap;	/*Current boarder nodes map, read map.h*/
+	int 		 bmap_nodes;	/*How many bnodes there are in map_bnode*/
+	
 	inet_prefix	 cur_ip;
 	map_node 	*cur_node;	/*Me in the map*/
 	map_rnode	*cur_rnode;	/*At the hooking time we haven't rnodes, so this will point a stub rnode struct
 					  present at cur_node->r_node*/
 
-	int 		cur_qspn_id;		/*The current qspn_id we are processing*/
-	struct timeval	cur_qspn_time;		/*When the last qspn round was sent*/
+	int 		 cur_qspn_id;	/*The current qspn_id we are processing*/
+	struct timeval	 cur_qspn_time;	/*When the last qspn round was sent*/
 
 	rnode_rt 	*cur_rnrt;
 

@@ -37,7 +37,8 @@ typedef struct
 
 	__u16 		gid;		/*Gnode Id*/
 	__u16		layer;
-	__u16 		seeds;		/*The number of active static nodes connected to this gnode*/
+	__u16 		seeds;		/*The number of active static nodes connected to this gnode.
+					  If seeds == MAXGROUPNODE, the gnode is full ^_^*/
 
 	/*Th4 g_m4p starts here. Note that it is a normal map: each node-struct has the pointer
 	 * to the nodes connected to it*/

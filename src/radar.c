@@ -24,6 +24,7 @@
 #include "pkts.h"
 #include "xmalloc.h"
 #include "log.h"
+#include "misc.h"
 
 extern struct current me;
 extern int my_family;

@@ -67,11 +67,13 @@ void krnl_update_node(map_node *node)
 	maptoip(*me.int_map, *node, me.ipstart, &to);
 
 
+	/*TODO: Add gnode's support. We must use the entire gnode range as destination. can we?*/
+	
 	for(i=0; i<node->links; i++) {
 #ifdef QMAP_STYLE_I
 		maptoip(*me.int_map, *get_gw_node(node, i), me.ipstart, &nh[i].gw);
 #else /*QMAP_STYLE_II*/
-		maptoip(*me.int_map, *node[i].r_node.r_node, me.ipstart, &nh[i].gw);
+		maptoip(*me.int_map, *node.r_node[i].r_node, me.ipstart, &nh[i].gw);
 #endif
 		nh[i].dev=me.cur_dev;
 		nh[i].hops=255-i;

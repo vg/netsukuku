@@ -14,7 +14,7 @@ $(BIN): $(OBJ)
 netsukuku:  $(OBJ)
 	$(LD) -o $@ $(OBJ)
 
-qspn: xmalloc.o qspn-empiric.o map.o ipv6-gmp.o log.o xmalloc.o
+qspn: xmalloc.o qspn-empiric.o map.o ipv6-gmp.o log.o xmalloc.o misc.o
 	$(CC)  $(CFLAGS) $^ -o qspn-empiric -lgmp -lpthread	
 	
 clean: $(OBJ) $(ECT) $(BIN)

@@ -74,7 +74,7 @@ void update_rq_tbl(rq_tbl *tbl)
 	time(&cur_t);
 
 	for(; i<TOTAL_REQUEST; i++) {
-		for(; e < request_array[i][RQ_MAXRQ]; e++) {
+		for(e=0; e < request_array[i][RQ_MAXRQ]; e++) {
 			if(tbl->rq_wait[idx] && tbl->rq_wait[idx]+request_array[i][RQ_WAIT] <= cur_t) {
 				tbl->rq_wait[idx]=0;
 				tbl->rq[i]--;
@@ -93,7 +93,7 @@ int is_rq_full(u_char rq, rq_tbl *tbl)
 	
 	update_rq_tbl(tbl);
 	
-	if(tbl->rq[rq] >= request_array[rq][RQ_MAXRQ])
+	if(tbl->rq[rq] >= request_array[rq][RQ_MAXRQ] && request_array[rq][RQ_MAXRQ])
 		return E_REQUEST_TBL_FULL;
 	
 	return 0;

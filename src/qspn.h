@@ -37,7 +37,7 @@
  *   root_node following recursively the r_nodes. 
  *   The only execption is the root_node itself. The root_node's map_node.r_node keeps
  *   all its rnodes as a normal (non qspn) map would.
- * - map_node.r_node.rtt is the round trip time needed to reach map_node.r_node.r_node 
+ * - map_node.r_node.rtt is the round trip time needed to reach map_node.r_node[x].r_node 
  *   from map_node. 
  * 
  * Instead in the qspn_map styleII:

@@ -213,7 +213,6 @@ void pkt_fill_hdr(struct pkt_hdr *hdr, int id, u_char op, size_t sz)
 	hdr->ntk_id[2]='k';
 
 	if(!id)
-		srandom(time(NULL));
 		id=random();
 		
 	hdr->id=id;

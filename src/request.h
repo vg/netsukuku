@@ -45,8 +45,8 @@ enum pkt_op
 	SET_NO_IDENTITY,		/*Pkt that specify to the last node in the route to change the src ip
 					  of the future incoming pkts*/
 
-	QSPN_REQUEST,			/*The qspn_pkt used to trace the entire g_node*/
-	QSPN_REPLY,			/*The qspn_pkt sent by the e_node*/
+	QSPN_CLOSE,			/*The qspn_pkt used to trace the entire g_node*/
+	QSPN_OPEN,			/*The qspn_pkt sent by the extreme nodes*/
 	QSPN_RFR,			/*RequestForRoute: This is used to get additional routes*/
 	GET_DNODEBLOCK ,
 	GET_DNODEIP,
@@ -69,8 +69,8 @@ enum pkt_op
 	PUT_EXTMAP,
 
 	/*Acks*/
-	ACK_AFFERMATIVE,				/*Ack affermative. Everything is fine.*/
-	ACK_NEGATIVE					/*The request is rejected. The error is in the pkt body*/
+	ACK_AFFERMATIVE,		/*Ack affermative. Everything is fine.*/
+	ACK_NEGATIVE			/*The request is rejected. The error is in the pkt body*/
 
 };
 
@@ -150,9 +150,9 @@ static u_char error_str[][20]=
 #define SPLIT_ROUTE_WAIT		20
 #define SET_NO_IDENTITY_WAIT		20
 
-#define QSPN_REQUEST_WAIT		10
-#define QSPN_REPLY_WAIT			10
-#define QSPN_RFR_WAIT		5
+#define QSPN_CLOSE_WAIT			0
+#define QSPN_OPEN_WAIT			0
+#define QSPN_RFR_WAIT			5
 #define GET_DNODEBLOCK_WAIT		20
 #define GET_DNODEIP_WAIT	     	5
 #define TRACER_PKT_CONNECT_WAIT		10
@@ -182,9 +182,9 @@ static u_char error_str[][20]=
 #define SPLIT_ROUTE_MAXRQ		1
 #define SET_NO_IDENTITY_MAXRQ		1
 
-#define QSPN_REQUEST_MAXRQ		1
-#define QSPN_REPLY_MAXRQ		1
-#define QSPN_RFR_MAXRQ		10
+#define QSPN_CLOSE_MAXRQ		0	/*NO LIMITS*/
+#define QSPN_OPEN_MAXRQ			0	/*NO LIMITS*/
+#define QSPN_RFR_MAXRQ			10
 #define GET_DNODEBLOCK_MAXRQ		1
 #define GET_DNODEIP_MAXRQ		10
 #define TRACER_PKT_CONNECT_MAXRQ	10
@@ -214,13 +214,13 @@ static u_char request_array[][2]=
 	{ DELAYED_BROADCAST_WAIT, DELAYED_BROADCAST_MAXRQ },
 	{ SPLIT_ROUTE_WAIT,       SPLIT_ROUTE_MAXRQ       },
 	{ SET_NO_IDENTITY_WAIT,   SET_NO_IDENTITY_MAXRQ   },
-	{ QSPN_REQUEST_WAIT,      QSPN_REQUEST_MAXRQ      },
-	{ QSPN_REPLY_WAIT,        QSPN_REPLY_MAXRQ        },
+	{ QSPN_CLOSE_WAIT,        QSPN_CLOSE_MAXRQ      },
+	{ QSPN_OPEN_WAIT,         QSPN_OPEN_MAXRQ        },
 	{ QSPN_RFR_WAIT,	  QSPN_RFR_MAXRQ	  },
 	{ GET_DNODEBLOCK_WAIT,    GET_DNODEBLOCK_MAXRQ    },
 	{ GET_DNODEIP_WAIT,       GET_DNODEIP_MAXRQ       },
 	{ TRACER_PKT_CONNECT_WAIT,TRACER_PKT_CONNECT_MAXRQ},
-	{ DEL_SNODE_WAIT,          DEL_SNODE_MAXRQ        },
+	{ DEL_SNODE_WAIT,         DEL_SNODE_MAXRQ        },
 	{ DEL_GNODE_WAIT,         DEL_GNODE_MAXRQ         },
 	{ GET_INTMAP_WAIT,        GET_INTMAP_MAXRQ        },
 	{ GET_EXTMAP_WAIT,        GET_EXTMAP_MAXRQ        }
@@ -243,8 +243,8 @@ static u_char request_str[][20]=
 	{ "DELAYED_BROADCAST" },
 	{ "SPLIT_ROUTE" },
 	{ "SET_NO_IDENTITY" },
-	{ "QSPN_REQUEST"},
-	{ "QSPN_REPLY"},
+	{ "QSPN_CLOSE"},
+	{ "QSPN_OPEN"},
 	{ "QSPN_RFR"},
 	{ "GET_DNODE_BLOCK" },
 	{ "GET_DNODE_IP"},

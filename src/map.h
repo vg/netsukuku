@@ -19,14 +19,14 @@
 #include <sys/types.h>
 #include "pkts.h"
 
-#define QSPN_EMPIRIC    /*I'm working on qspn-empiric. TODO: TO BE REMOVED*/
+#undef  QSPN_EMPIRIC
 
 #ifndef QSPN_EMPIRIC
-#define MAXGROUPNODE		0x281
-#define MAXROUTES	 	20
+	#define MAXGROUPNODE		0x281
+	#define MAXROUTES	 	20
 #else
-#define MAXGROUPNODE		20
-#define MAXROUTES	 	5
+	#define MAXGROUPNODE		20
+	#define MAXROUTES	 	5
 #endif /*QSPN_EMPIRIC*/
 
 #define MAXLINKS		MAXROUTES
@@ -49,13 +49,20 @@
 #define QSPN_REPLIED	(1<<12)		/*When the node send the qspn_reply it will never reply again to the same qspn*/
 #define QSPN_BACKPRO	(1<<13)		/*This marks the r_node where the QSPN_BACKPRO has been sent*/
 
+/* 			    *** Map notes ***
+ * The map is a block of MAXGROUPNODE map_node struct. It is a generic map and it is
+ * used to keep the qspn_map, the internal map and the external map.
+ * The position in the map of each struct corresponds to its relative ip. For
+ * example, if the map goes from 192.128.1.0 to 192.128.3.0, the map will have 512
+ * structs, the first one will correspond to 192.168.1.0, the 50th to 192.168.1.50 and
+ * so on.
+ */
 /*map_rnode is what map_node.r_node points to*/
 typedef struct
 {
 #ifdef QSPN_EMPIRIC
-	u_short 		flags;
+	u_short		flags;
 #endif
-
 	u_int	 	*r_node;		 /*It's the pointer to the struct of the r_node in the map*/
 	struct timeval  rtt;	 		 /*node <-> r_node round trip time*/
 	
@@ -72,31 +79,28 @@ typedef struct
 typedef struct
 {
 	u_short 	flags;
-
 #ifdef QSPN_EMPIRIC
 	u_int		broadcast[MAXGROUPNODE];
 #else
 	u_int		brdcast;	 /*Pkt_id of the last brdcast_pkt sent by this node*/
 #endif /*QSPN_EMPIRIC*/
-
 	__u16		links;		 /*Number of r_nodes*/
 	map_rnode	*r_node;	 /*This structs will be kept in ascending order considering their rnode_t.rtt*/
 }map_node;
 
-/* The internal map and will be MAXGROUPNODE big.
- * The position in the map of each struct corresponds to its relative ip. For
- * example, if the map goes from 192.128.1.0 to 192.128.3.0, the map will have 512
- * structs, the first one will correspond to 192.168.1.0, the 50th to 192.168.1.50 and
- * so on.
- *
- * typedef map_node * int_map;    				      
- */
-
 #define MAXRNODEBLOCK		MAXLINKS*MAXGROUPNODE*sizeof(map_rnode)
 #define INTMAP_END(mapstart)	((sizeof(map_node)*MAXGROUPNODE)+(mapstart))
-	
-/*TODO: spostare da un'altra parte!*/
-#define MILLISEC(x)	(((x).tv_sec*1000)+((x).tv_usec/1000))
+
+/* map_bnode is the struct used to create the "map boarder node". 
+ * This map keeps for each boarder node of the int_map the gnodes which they are linked to.
+ */
+typedef struct
+{
+	map_node 	*bnode;		/*Where this bnode is in the int_map*/
+	__u16 		links;		/*The number of gnodes the bnode is linked to.*/
+	map_rnode	*gnode;		/*gnode[x].r_node points to the position of the gnode in the map_gnode*/
+}map_bnode;
+
 
 /* * * Functions' declaration * * */
 int pos_from_node(map_node *node, map_node *map);
@@ -110,6 +114,7 @@ map_rnode *map_rnode_insert(map_node *node, size_t pos, map_rnode *new);
 map_rnode *rnode_add(map_node *node, map_rnode *new);
 void rnode_swap(map_rnode *one, map_rnode *two);
 void rnode_del(map_node *node, size_t pos);
+int map_find_bnode(map_bnode *bmap,  int count, map_node *node);
 int rnode_rtt_compar(const void *a, const void *b);
 void rnode_rtt_order(map_node *node);
 int rnode_trtt_compar(const void *a, const void *b);
