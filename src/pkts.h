@@ -132,6 +132,7 @@ PACKET *pkt_unpack(char *pkt);
 int pkt_verify_hdr(PACKET pkt);
 ssize_t pkt_send(PACKET *pkt);
 ssize_t pkt_recv(PACKET *pkt);
+int pkt_tcp_connect(inet_prefix *host, short port);
 void pkt_fill_hdr(struct pkt_hdr *hdr, int id, u_char op, size_t sz);
 int send_rq(PACKET *pkt, int flags, u_char rq, u_int rq_id, u_char re, int check_ack, PACKET *rpkt);
 int pkt_err(PACKET pkt, int err);

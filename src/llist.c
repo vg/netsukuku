@@ -46,8 +46,12 @@ typedef struct linked_list l_list;
 #define list_add(list, new)	do{l_list *_i; _i=list_last((list)); _i->next=(new); (new)->prev=_i; (new)->next=0;}while(0)
 
 #define list_del(list)		do{ l_list *_list=(l_list *)(list); \
-				   _list->prev->next=_list->next; _list->next->prev=_list->prev; \
+				   if(_list->prev)_list->prev->next=_list->next; \
+				   if(_list->next)_list->next->prev=_list->prev; \
 			           list_free(_list); }while(0)
+				   
 #define list_for(i)		for(; (i); (i)=(typeof (i))(i)->next)
 				   
 #define list_pos(list,pos)	({int _i=0; l_list *_x=(list); list_for(_x){ if(_i==(pos))break; else _i++; } _x;})
+
+#define list_destroy(list)	do{ l_list *_x=(list); list_for(_x) { list_del(_x); } }

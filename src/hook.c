@@ -36,6 +36,8 @@
 extern struct current me;
 extern int my_family;
 
+/*  *  *  put/get free_ips  *  *  */
+
 /* get_free_ips: It send the GET_FREE_IPS request, used to retrieve the 
  * list of free/available IPs in the dst_node's gnode*/
 int get_free_ips(inet_prefix to, struct free_ips *fi_hdr, int *ips)
@@ -96,7 +98,6 @@ int put_free_ips(PACKET rq_pkt)
 	debug(DBG_NORMAL, "Sending the PUT_FREE_IPS reply to %s", ntop);
 	
 	memset(&pkt, '\0', sizeof(PACKET));
-	to.family=my_family;
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addport(&pkt, ntk_tcp_port);
 	pkt_addflags(&pkt, NULL);
@@ -155,25 +156,21 @@ int put_ext_map(PACKET rq_pkt)
 	debug(DBG_NORMAL, "Sending the PUT_EXT_MAP reply to %s", ntop);
 	
 	memset(&pkt, '\0', sizeof(PACKET));
-	to.family=my_family;
 	pkt_addto(&pkt, &rq_pkt.from);
-	pkt_addport(&pkt, ntk_tcp_port);
-	pkt_addflags(&pkt, NULL);
 	pkt_addsk(&pkt, rq_pkt.sk, rq_pkt.sk_type);
 
 	rblock=gmap_get_rblock(map, &count);
 	emap_hdr.root_node=(me.cur_gnode-me.ext_map)/sizeof(map_gnode);
 	emap_hdr.rblock_sz=count*sizeof(map_rnode);
 	emap_hdr.ext_map_sz=MAXGROUPNODE*sizeof(map_gnode);
-	pkt_sz=EXT_MAP_BLOCK_SZ(emap_hdr.ext_map_sz, emap_hdr.rblock_sz):
+	pkt.hdr.sz=EXT_MAP_BLOCK_SZ(emap_hdr.ext_map_sz, emap_hdr.rblock_sz):
 
-	pkt_fill_hdr(&pkt.hdr, rq_pkt.hdr.id, PUT_EXT_MAP, pkt_sz);
-	pkt.msg=xmalloc(pkt_sz);
+	pkt.msg=xmalloc(pkt.hdr.sz);
 	memcpy(pkt.msg, &emap_hdr, sizeof(struct ext_map_hdr));
 	memcpy(pkt.msg+sizeof(struct ext_map_hdr), map, emap_hdr.ext_map_sz);
 	memcpy(pkt.msg+sizeof(struct ext_map_hdr)+emap_hdr.ext_map_sz, rblock, emap_hdr.rblock_sz);
 
-	err=pkt_send(pkt);
+	err=send_rq(&pkt, 0, PUT_EXT_MAP, rq_pkt.hdr.id, 0, 0, 0);
 	if(err==-1) {
 		error("put_ext_maps(): Cannot send the PUT_EXT_MAP reply to %s.", ntop);
 		ret=-1;
@@ -260,25 +257,22 @@ int put_int_map(PACKET rq_pkt)
 	debug(DBG_NORMAL, "Sending the PUT_INT_MAP reply to %s", ntop);
 	
 	memset(&pkt, '\0', sizeof(PACKET));
-	to.family=my_family;
+	pkt.sk_type=SKT_TCP;
 	pkt_addto(&pkt, &rq_pkt.from);
-	pkt_addport(&pkt, ntk_tcp_port);
-	pkt_addflags(&pkt, NULL);
 	pkt_addsk(&pkt, rq_pkt.sk, rq_pkt.sk_type);
 
-	rblock=map_get_rblock(map, &count);
+	rblock=map_get_rblock(map, MAXGROUPNODE, &count);
 	imap_hdr.root_node=((void *)me.cur_node-(void *)me.int_map)/sizeof(map_node);
 	imap_hdr.rblock_sz=count*sizeof(map_rnode);
 	imap_hdr.int_map_sz=MAXGROUPNODE*sizeof(map_node);
-	pkt_sz=INT_MAP_BLOCK_SZ(imap_hdr.int_map_sz, imap_hdr.rblock_sz):
+	pkt.hdr.sz=INT_MAP_BLOCK_SZ(imap_hdr.int_map_sz, imap_hdr.rblock_sz):
 
-	pkt_fill_hdr(&pkt.hdr, rq_pkt.hdr.id, PUT_INT_MAP, pkt_sz);
-	pkt.msg=xmalloc(pkt_sz);
+	pkt.msg=xmalloc(pkt.hdr.sz);
 	memcpy(pkt.msg, &imap_hdr, sizeof(struct int_map_hdr));
 	memcpy(pkt.msg+sizeof(struct int_map_hdr), map, imap_hdr.int_map_sz);
 	memcpy(pkt.msg+sizeof(struct int_map_hdr)+imap_hdr.int_map_sz, rblock, imap_hdr.rblock_sz);
 
-	err=pkt_send(pkt);
+	err=send_rq(&pkt, 0, PUT_INT_MAP, rq_pkt.hdr.id, 0, 0, 0);
 	if(err==-1) {
 		error("put_int_maps(): Cannot send the PUT_INT_MAP reply to %s.", ntop);
 		ret=-1;
@@ -332,7 +326,7 @@ map_node *get_int_map(inet_prefix to, map_node *new_root)
 	
 	/*Extracting the rnodes block and merging it to the map*/
 	rblock=rpkt.msg+sizeof(struct int_map_hdr)+imap_hdr.int_map_sz;
-	err=map_store_rblock(int_map, rblock, imap_hdr.rblock_sz/sizeof(map_rnode));
+	err=map_store_rblock(int_map, MAXGROUPNODE, rblock, imap_hdr.rblock_sz/sizeof(map_rnode));
 	if(err!=imap_hdr.rblock_sz/sizeof(map_rnode)) {
 		error("An error occurred while storing the rnodes block in the int_map");
 		free_map(int_map, 0);
@@ -351,8 +345,9 @@ finish:
 }
 
 int netsukuku_hook(char *dev)
-{
+	
 	int i, e=0, idx, imaps=0, ret=0;
+	struct radar_queue *rq=radar_q;
 	u_int idata[4];
 	struct free_ips fi_hdr;
 	int fips[MAXGROUPNODE];
@@ -375,7 +370,8 @@ int netsukuku_hook(char *dev)
 	
 	if(route_add_df_gw(dev))
 		fatal("%s:%d: Couldn't set the default gw for %s", ERROR_POS, dev);
-	
+
+		/* * * 		The beginning          * * */
 	debug(DBG_NORMAL, "The hook begins. Starting to scan the area");
 	me.cur_node->flags|=MAP_HNODE;
 	
@@ -397,12 +393,13 @@ int netsukuku_hook(char *dev)
 		goto finish;
 	}
 	
+	rq=radar_q;
 	/*Now we choose the nearest rnode we found and we send it the GET_FREE_IPS request*/
 	for(i=0; i<me.cur_node->links; i++) {
-		if((idx=find_ip_radar_q(me.cur_node->r_node[i].r_node)==-1)) 
+		if(!(rq=find_ip_radar_q(me.cur_node->r_node[i].r_node))) 
 			fatal("%s:%d: This ultra fatal error goes against the laws of the universe. It's not possible!! Pray");
 
-		if(!get_free_ips(radar_q[idx].ip, &fi_hdr, fips)) {
+		if(!get_free_ips(rq->ip, &fi_hdr, fips)) {
 			e=1;
 			break;
 		}
@@ -418,11 +415,12 @@ int netsukuku_hook(char *dev)
 		
 	/*Fetch the ext_map from the nearest rnode*/
 	e=0;
+	rq=radar_q;
 	for(i=0; i<me.cur_node->links; i++) {
-		if((idx=find_ip_radar_q(me.cur_node->r_node[i].r_node)==-1)) 
+		if(!(rq=find_ip_radar_q(me.cur_node->r_node[i].r_node))) 
 			fatal("%s:%d: This ultra fatal error goes against the laws of the universe. It's not possible!! Pray");
 		
-		if(!get_ext_map(radar_q[idx].ip, &me.ext_mapm, &new_groot)) {
+		if(!get_ext_map(rq->ip, &me.ext_mapm, &new_groot)) {
 			e=1;
 			break;
 		}
@@ -436,17 +434,18 @@ int netsukuku_hook(char *dev)
 	
 	/*Fetch the int_map from each rnode*/
 	imaps=0;
+	rq=radar_q;
 	merg_map=xmalloc(me.cur_node->links*sizeof(map_node *));
 	memset(merg_map, 0, me.cur_node->links*sizeof(map_node *));
 	for(i=0; i<me.cur_node->links; i++) {
-		if((idx=find_ip_radar_q(me.cur_node->r_node[i].r_node)==-1)) 
+		if(!(rq=find_ip_radar_q(me.cur_node->r_node[i].r_node))) 
 			fatal("%s:%d: This ultra fatal error goes against the laws of the universe. It's not possible!! Pray");
 		
-		if(iptogid(radar_q[idx].ip) != me.cur_gid)
+		if(iptogid(rq->ip) != me.cur_gid)
 			/*This node isn't part of our gnode, let's skip it*/
 			continue; 
 			
-		if((merg_map[imaps]=get_int_map(radar_q[idx].ip, &new_root))) {
+		if((merg_map[imaps]=get_int_map(rq->ip, &new_root))) {
 			merge_maps(me.int_map, merg_map[imaps], me.cur_node, new_root);
 			imaps++;
 		}

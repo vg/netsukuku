@@ -28,6 +28,7 @@
 #include "xmalloc.h"
 #include "log.h"
 
+
 void *xmalloc(size_t size)
 {
 	void *ptr;
@@ -80,3 +81,10 @@ char *xstrdup(const char *str)
 	strncpy(cp, str, len);
 	return cp;
 }
+
+/*Just to be sure I don't forget to use them*/
+#define malloc  xmalloc
+#define free    xfree
+#define calloc  xcalloc
+#define realloc xrealloc
+#define xstrdup strdup

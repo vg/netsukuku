@@ -67,10 +67,10 @@ void pkt_free(PACKET *pkt, int close_socket)
 	}
 	
 	if(pkt->msg) {
+		memset(pkt, '\0', sizeof(PACKET));
 		xfree(pkt->msg);
 		pkt->msg=0;
 	}
-	memset(pkt, '\0', sizeof(PACKET));
 }
 
 char *pkt_pack(PACKET *pkt)
@@ -206,6 +206,40 @@ ssize_t pkt_recv(PACKET *pkt)
 	return err;
 }
 
+int pkt_tcp_connect(inet_prefix *host, short port)
+{
+	int sk;
+	PACKET pkt;
+	char *ntop;
+	ntop=inet_to_str(host);
+	
+	if((sk=new_tcp_conn(host, port))==-1)
+		goto finish;
+	
+	/*Now we receive the first pkt from the srv. It is an ack. 
+	 * Let's hope it isn't NEGATIVE (-_+)
+	 */
+	memset(&pkt, '\0', sizeof(PACKET));
+	pkt_addsk(&pkt, sk, SKT_TCP);
+	pkt_addflags(&pkt, 0);
+	pkt_recv(&pkt);
+
+	/*Last famous words*/
+	if(pkt.hdr.op==ACK_NEGATIVE) {
+		int err;
+		
+		memcpy(&err, pkt.msg, pkt.hdr.sz);
+		error("Cannot connect to %s: %s", ntop, rq_strerror(err));
+		sk=-1;
+		goto finish;
+	}
+	
+finish:
+	xfree(ntop);
+	pkt_free(&pkt, 1);
+	return sk;
+}
+
 void pkt_fill_hdr(struct pkt_hdr *hdr, int id, u_char op, size_t sz)
 {
 	hdr->ntk_id[0]='n';
@@ -275,7 +309,7 @@ int send_rq(PACKET *pkt, int flags, u_char rq, u_int rq_id, u_char re, int check
 		}
 		
 		if(pkt->sk_type==SKT_TCP)
-			pkt->sk=new_tcp_conn(pkt->to, pkt->port);
+			pkt->sk=pkt_tcp_conn(pkt->to, pkt->port);
 		else if(pkt->sk_type==SKT_UDP)
 			pkt->sk=new_udp_conn(pkt->to, pkt->port);
 		else if(pkt->sk_type==SKT_BCAST)

@@ -1,5 +1,4 @@
-qspn.c	       80%
-map.c:  map_bnode_save, map_bnode_load.
+qspn.c	       85%: usare MAX_LINKS quando viene aggiunta una rotta, qspn_send
 hook.c: send_map_bnode, get_map_bnode.
 gnode support  60%
 netsukuku.c (Parte minimale)

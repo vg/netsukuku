@@ -21,8 +21,8 @@
 /***Tracer packet. It is encapsulated in a broadcast pkt*/
 struct tracer_hdr
 {
-	/*__u16 ipstart; useless*/
 	u_int hops;
+	u_int bblocks;		/*How many bnode blocks are incapsulated in the pkt (if any)*/
 };
 struct tracer_chunk
 {
@@ -49,3 +49,13 @@ struct bnode_chunk
 	struct timeval *rtt;
 };
 #define BNODEBLOCK_SZ(links) (sizeof(bnode_hdr)+sizeof(bnode_chunk)*(links))
+
+
+int tracer_verify_pkt(struct tracer_chunk *tracer, int hops);
+char *tracer_pack_pkt(struct bcast_hdr *bcast_hdr, struct tracer_hdr *tracer_hdr, struct tracer_chunk *tracer, 
+		      struct bnode_hdr *bhdr, struct bnode_chunk *bchunk);
+int tracer_split_bblock(void *bnode_block_start, size_t bblock_sz, struct bnode_hdr *bbl_hdr, struct bnode_chunk *bbl);
+int tracer_store_pkt(map_node *map, struct tracer_hdr *tracer_hdr, struct tracer_chunk *tracer, 
+		     u_short hops, void *bnode_block_start, size_t bblock_sz);
+struct tracer_chunk *tracer_add_entry(map_node *map, map_node *node, struct tracer_chunk *tracer, int *hops);
+struct bnode_hdr *tracer_build_bentry(map_node *map, map_node *node, struct bnode_chunk *bnode_chunk); 

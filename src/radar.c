@@ -32,61 +32,50 @@ extern int my_family;
 void init_radar(void)
 {
 	int i;
-	radar_q=xmalloc(10*sizeof(struct radar_queue));
-	memset(radar_q, '\0', 10*sizeof(struct radar_queue));
-	radar_q_alloc=10;
+	
+	list_init(radar_q);
+	memset(radar_q, 0, sizeof(struct radar_queue));
 	radar_scan_mutex=0;
 }
 
-void reset_radar(int alloc)
-{
-	memset(radar_q, '\0', radar_q_alloc*sizeof(struct radar_queue));
-	radar_q=xrealloc(radar_q, alloc);
-	radar_q_alloc=alloc;
-}
 
 void close_radar(void)
 {
-	xfree(radar_q);
-	radar_q_alloc=0;
+	list_destroy(radar_q);
+	radar_q=0;
+}
+
+void reset_radar(void)
+{
+	close_radar();
+	init_radar();
 }
 
 void free_new_node(void)
 {
-	int i;
-	for(i=0; i<radar_q_alloc; i++)
-		xfree(radar_q[i].node);
+	struct radar_queue *rq=radar_q;
+	list_for(rq)
+		xfree(rq->node);
 }
 
-int find_free_radar_q(void)
+struct radar_queue *find_ip_radar_q(map_node *node)
 {
-	int i;
+	struct radar_queue *rq=radar_q;
 
-	for(i=0; i<radar_q_alloc; i++) {
-		if(!radar_q[i].node)
-			return i;
+	list_for(rq) {
+		if(rq->node==node)
+			return rq;
 	}
-	return -1;
-}
-		
-int find_ip_radar_q(map_node *node)
-{
-	int i;
-
-	for(i=0; i<radar_q_alloc; i++) {
-		if(radar_q[i].node==node)
-			return i;
-	}
-	return -1;
+	return 0;
 }
 
 u_int *find_nnode_radar_q(inet_prefix *node)
 {
-	int i;
+	struct radar_queue *rq=radar_q;
 
-	for(i=0; i<radar_q_alloc; i++) {
-		if(!memcmp(&radar_q[i].ip, node, sizeof(inet_prefix)))
-			return radar_q[i].node;
+	list_for(rq) {
+		if(!memcmp(&rq->ip, node, sizeof(inet_prefix)))
+			return rq->node;
 	}
 	return 0;
 }
@@ -94,23 +83,23 @@ u_int *find_nnode_radar_q(inet_prefix *node)
 
 void final_radar_queue(void)
 {	
-	int i, e;
+	struct radar_queue *rq=radar_q;
+	int e;
 	struct timeval sum;
 	u_int f_rtt;
 
 	memset(&sum, '\0', sizeof(struct timeval));
 
-	for(i=0; i<radar_q_alloc; i++) {
-		if(!radar_q[i].node)
+	list_for(rq) {
+		if(!rq->node)
 			continue;
-		for(e=0; e<radar_q[i].pongs; e++) {
-			timeradd(radar_q[i].rtt[e], &sum, &sum);
+		for(e=0; e<rq->pongs; e++) {
+			timeradd(rq->rtt[e], &sum, &sum);
 		}
 		
 		f_rtt=MILLISEC(sum)/radar_scans;
-		radar_q[i].final_rtt.tv_sec=f_rtt/1000;
-		radar_q[i].final_rtt.tv_usec=(f_rtt - (f_rtt/1000)*1000)*1000;
-		
+		rq->final_rtt.tv_sec=f_rtt/1000;
+		rq->final_rtt.tv_usec=(f_rtt - (f_rtt/1000)*1000)*1000;
 	}
 	
 	my_echo_id=0;
@@ -119,36 +108,48 @@ void final_radar_queue(void)
 void radar_update_map(void)
 {
 	int i, diff, rnode_added=0, rnode_deleted=0;
+	struct radar_queue *rq=radar_q;
 
 	/*Let's consider all our rnodes void, in this way we'll know what
 	 * rnodes will remain void.*/
 	for(i=0; i<me.cur_node->links; i++)
 		me.cur_node->r_node[i].r_node->flags|=MAP_VOID | MAP_UPDATE;
 
-	for(i=0; i<radar_q_alloc; i++) {
-	           if(!radar_q[i].node)
+
+	list_for(rq) {
+	           if(!rq->node)
 			   continue;
 		  
-		   if(!send_qspn_now && radar_q[i].node->links) {
-			   diff=abs(MILLISEC(radar_q[i].node->r_node[0].rtt) - MILLISEC(radar_q[i].final_rtt));
+		   if(!send_qspn_now && rq->node->links) {
+			   diff=abs(MILLISEC(rq->node->r_node[0].rtt) - MILLISEC(rq->final_rtt));
 			   if(diff >= RTT_DELTA)
 				   send_qspn_now=1;
 		   }
 		   
-		   memcpy(&radar_q[i].node->r_node[0].rtt, &radar_q[i].final_rtt, sizeof(struct timeval));
-		   radar_q[i].node->flags&=~MAP_VOID & ~MAP_UPDATE;
+		   memcpy(&rq->node->r_node[0].rtt, &rq->final_rtt, sizeof(struct timeval));
+		   rq->node->flags&=~MAP_VOID & ~MAP_UPDATE;
 		
 		   /*W00t, We've found a new rnode!*/
-		   if(!(radar_q[i].node->flags & MAP_RNODE)) {
-		   	radar_q[i].node->flags|=MAP_RNODE;
-			rnode_add(me.cur_node, radar_q[i].node.r_node);
-			rnode_added++;		   
+		   if(!(rq->node->flags & MAP_RNODE)) {
+			   struct qspn_buffer *qp;
+			   /*First of all we add it in the map... */
+			   rq->node->flags|=MAP_RNODE;
+			   rnode_add(me.cur_node, rq->node.r_node);
+			   /*...and then we update the qspn_buffer*/
+			   qb=xmalloc(qspn_b, sizeof(struct qspn_buffer));
+			   memset(qb, 0, sizeof(struct qspn_buffer));
+			   qb->rnode=rq->node;
+			   if(!me.cur_node->links)
+				   list_init(qspn_b);
+			   list_add(qspn_b, qp);
+			   rnode_added++;		   
 		   }
 	}
 
 	
 	for(i=0; i<me.cur_node->links; i++) {
 		if(me.cur_node->r_node[i].r_node->flags & MAP_VOID) {
+			   struct qspn_buffer *qp=qspn_b;
 			/*Doh, The rnode is dead!*/
 			debug(DBG_NORMAL,"The node %d is dead\n", 
 					((void *)me.cur_node->r_node[i].r_node-(void *)me.int_map)/sizeof(map_node));
@@ -157,6 +158,11 @@ void radar_update_map(void)
 			 * send_qspn_now=1;
 			 */
 			rnode_del(me.cur_node, i);
+			map_node_del((map_node *)me.cur_node->r_node[i].r_node);
+			/*Now we delete it from the qspn_buffer*/
+			list_for(qb)
+				if(qb->rnode == me.cur_node->r_node[i].r_node)
+					list_del(qb);
 			rnode_deleted++;
 		}
 	}
@@ -170,6 +176,7 @@ int add_radar_q(PACKET pkt)
 	u_int idx;
 	map_node *rnode;
 	struct timeval t;
+	struct radar_queue *rq=radar_q;
 	
 	gettimeofday(&t, 0);
 	if(iptomap(me.int_map, pkt.from, me.cur_gnode->ipstart, rnode)) 
@@ -177,7 +184,7 @@ int add_radar_q(PACKET pkt)
 			u_int *gmap;
 			/*The pkt.ip isn't part of our gnode, thus we are a bnode.
 			 * TODO: When the gnode support is complete: Here we have to add the 
-			 * two border nodes (me) and the other in the gnode map
+			 * two border nodes, me and the other in the gnode map and in the bnode map.
 			 * gmap=GI2GMAP(me.ext_map, rnode);
 			 */
 			me.cur_node->flags|=MAP_BNODE;
@@ -197,26 +204,25 @@ int add_radar_q(PACKET pkt)
 		}
 			
 
-	if((idx=find_ip_radar_q(rnode)==-1))
-		if((idx=find_free_radar_q())==-1) {
-			radar_q=xrealloc(radar_q, radar_q_alloc*2);
-			memset(radar_q[radar_q_alloc+1], '\0', radar_q_alloc);
-			radar_q_alloc*=2;
-		}
-
-	if(!radar_q[idx].node) {
-			radar_q[idx].node=rnode;
-			memcpy(&radar_q[idx].ip, &pkt.from, sizeof(inet_prefix));
+	if(!(rq=find_ip_radar_q(rnode))) {
+		rq=xmalloc(sizeof(struct radar_queue));
+		memset(rq, 0, sizeof(struct radar_queue));
+		list_add(radar_q, rq);
 	}
 
-	if(radar_q[idx].pongs<=radar_scans) {
-		timersub(&t, &scan_start, &radar_q[idx].rtt[radar_q[idx].pongs]);
+	if(!rq->node) {
+		rq->node=rnode;
+		memcpy(&rq->ip, &pkt.from, sizeof(inet_prefix));
+	}
+
+	if(rq->pongs<=radar_scans) {
+		timersub(&t, &scan_start, &rq->rtt[rq->pongs]);
 		/* Now we divide the rtt, because (t - scan_start) is the time the pkt used to
 		 * reach B from A and to return to A from B
 		 */
-		radar_q[idx].rtt[radar_q[idx].pongs].tv_sec/=2;
-		radar_q[idx].rtt[radar_q[idx].pongs].tv_usec/=2;
-		radar_q[idx].pongs++;
+		rq->rtt[rq->pongs].tv_sec/=2;
+		rq->rtt[rq->pongs].tv_usec/=2;
+		rq->pongs++;
 	}
 
 	return 0;

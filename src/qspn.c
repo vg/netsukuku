@@ -31,31 +31,32 @@ extern struct current me;
 void qspn_b_clean(void)
 {
 	int i;
-	for(i=0; i<me.cur_node->links; i++) {
-		if(qspn_b[i].replies) {
-			xfree(qspn_b[i].replier);
-			xfree(qspn_b[i].flags);
+	struct qspn_buffer *qb=qspn_b;
+	list_for(qb) {
+		if(qb->replies) {
+			xfree(qb->replier);
+			xfree(qb->flags);
 		}
-		memset(&qspn_b[i], 0, sizeof(struct qspn_buffer));
+		memset(qb, 0, sizeof(struct qspn_buffer));
 	}
 }
 
-void qspn_b_add(u_short rnode, u_short replier, u_short flags)
+void qspn_b_add(struct qspn_buffer *qb, u_short replier, u_short flags)
 {
-	qspn_b[rnode].replies++;
-	qspn_b[rnode].replier=xrealloc(qspn_b[rnode].replier, sizeof(u_short)*qspn_b[rnode].replies);
-	qspn_b[rnode].flags=xrealloc(qspn_b[rnode].flags, sizeof(u_short)*qspn_b[rnode].replies);
+	qb->replies++;
+	qb->replier=xrealloc(qb->replier, sizeof(u_short)*qb->replies);
+	qb->flags=xrealloc(qb->flags, sizeof(u_short)*qb->replies);
 	
-	qspn_b[rnode].replier[qspn_b[rnode].replies-1]=replier;
-	qspn_b[rnode].flags[qspn_b[rnode].replies-1]=flags;
+	qb->replier[qb->replies-1]=replier;
+	qb->flags[qb->replies-1]=flags;
 }
 
-int qspn_b_find_reply(u_short rnode, int sub_id)
+int qspn_b_find_reply(struct qspn_buffer *qb, int sub_id)
 {
 	int i;
 
-	for(i=0; i<qspn_b[rnode].replies; i++)
-		if(qspn_b[rnode].replies[i]==sub_id)
+	for(i=0; i<qb->replies; i++)
+		if(qb->replies[i]==sub_id)
 			return i;
 	return -1;
 }
@@ -93,6 +94,36 @@ void update_qspn_time(void)
 	}
 }
 
+/* qspn_new_round: It prepares all the buffers for the new qspn_round and removes
+ * the QSPN_OLD nodes from the int_map.
+ */
+void qspn_new_round(void)
+{
+	int bm;
+	/*New round activated. Destroy the old one. beep.*/
+	me.cur_qspn_id++;
+	update_qspn_time();
+	qspn_b_clean();
+	me.cur_node->flags&=~QSPN_STARTER;
+	for(i=0; i<me.cur_node->links; i++)
+		me.cur_node->r_node[i].r_node.flags&=~QSPN_CLOSED & ~QSPN_REPLIED;
+
+	/*How to remove the dead nodes from the map? How do we know what are deads?
+	 *Pretty simple, we can't know so we wait until the next qspn_round to break them
+	 *if they didn't show in the while.
+	 */
+	for(i=0; i<MAXGROUPNODE; i++) {
+		if((me.int_map[i].flags & QSPN_OLD) && !(me.int_map[i].flags & MAP_VOID)) {
+			if((me.int_map[i].flags & MAP_BNODE)) {
+				if((bm=map_find_bnode(me.bnode_map, me.bmap_nodes, &me.int_map[i]))!=-1)
+					me.bnode_map=map_bnode_del(me.bnode_map, &me.bmap_nodes, &me.bnode_map[bm]);
+			}
+			map_node_del(&me.int_map[i]);
+		}
+		me.int_map[i].flags|=MAP_OLD;
+	}
+}
+
 int qspn_send(u_char op, u_char bcast_type, u_char reply, int q_id, int q_sub_id)
 {
 	/*TODO: qspn_time, sleep, cycle*/
@@ -102,10 +133,7 @@ int qspn_send(u_char op, u_char bcast_type, u_char reply, int q_id, int q_sub_id
 		qspn_send_mutex=1;
 
 	me.cur_node->flags|=QSPN_STARTER;
-	/*TODO:******************* CONTINUE HERE* *********************+++++
-	 *     radar.c has to update the qspn_b!!
-	 *     if(I_AM_A_BNODE)
-	 *     		do_the_bnode_block_stuff();*/
+	/*TODO:******************* CONTINUE HERE* **********************/
 	qspn_send_mutex=0;
 }
 
@@ -118,10 +146,12 @@ int qspn_close(PACKET rpkt)
 	struct tracer_chunk *tracer=rpkt.msg+sizeof(struct brdcast_hdr)+sizeof(struct tracer_hdr);
 	struct tracer_chunk *new_tracer=0;
 	struct bnode_hdr    *bhdr=0;
+	struct bnode_hdr    *new_bhdr=0;
+	struct bnode_chunk  *new_bchunk=0;
 	inet_prefix to;
 	map_node *from;
 	ssize_t err, bblock_sz=0, tracer_sz=0;
-	int i, not_closed=0, hops, ret=0;
+	int i, not_closed=0, hops, ret=0, bchunks=0;
 	char *ntop;
 
 	if(me.cur_node->flags & QSPN_STARTER) {
@@ -131,12 +161,12 @@ int qspn_close(PACKET rpkt)
 		return 0;
 	}
 
-	tracer_sz=(sizeof(struct tracer_hdr)+(tracer_hdr.hops*sizeof(struct tracer_chunk))+sizeof(struct brdcast_hdr));
+	tracer_sz=(sizeof(struct tracer_hdr)+(tracer_hdr->hops*sizeof(struct tracer_chunk))+sizeof(struct brdcast_hdr));
 	if(rpkt.hdr.sz > tracer_sz) {
 		bblock_sz=rpkt.hdr.sz-tracer_sz;
 		bhdr=rpkt.msg+rpkt.hdr.sz-tracer_sz;
 	}
-	if(bcast_hdr->g_node != me.cur_gid || rpkt.hdr.sz != (tracer_sz-bblock_sz)) {
+	if(bcast_hdr->g_node != me.cur_gid) {
 		ntop=inet_to_str(&rpkt->from);
 		debug(DBG_NOISE, "qspn_close(): The %s node sent an invalid qspn_close pkt here.", ntop);
 		xfree(ntop);
@@ -150,26 +180,21 @@ int qspn_close(PACKET rpkt)
 			ntop=inet_to_str(&rpkt->from);
 			debug(DBG_NOISE, "qspn_close(): The %s sent a qspn_close with a wrong qspn_id");
 			xfree(ntop);
-		} else { /*New round activated. Destroy the old one. beep.*/
-			me.cur_qspn_id++;
-			update_qspn_time();
-			qspn_b_clean();
-			me.cur_node->flags&=~QSPN_STARTER;
-			for(i=0; i<me.cur_node->links; i++)
-				me.cur_node->r_node[i].r_node.flags&=~QSPN_CLOSED & ~QSPN_REPLIED;
-
-			/******TODO: How to remove the old node from the map? TODO*****/
-		}
+		} else
+			qspn_new_round();
 	}
-
 
 	/*Time to update our map*/
 	hops=tracer_hdr.hops;
-	from=node_from_pos(tracer[hops-1].node);
-	tracer_store_pkt(tracer, hops, bhdr, bblock_sz);
+	from=node_from_pos(tracer[hops-1].node, me.int_map);
+	tracer_store_pkt(me.int_map, tracer_hdr, tracer, hops, bhdr, bblock_sz);
 
 	/*Let's add our entry in the tracer*/
-	new_tracer=tracer_add_entry(me.cur_node, tracer, &hops);
+	new_tracer=tracer_add_entry(me.int_map, me.cur_node, tracer, &hops);
+	/*If we are a bnode we have to add the bnode_block too.*/
+	if(me.cur_node->flags & MAP_BNODE)
+		if((new_bhdr=tracer_build_bentry(me.int_map, me.cur_node, &new_bchunk)))
+			new_tracer->bblocks=bchunks=new_bhdr->links;
 
 	for(i=0; i<me.cur_node->links; i++) {
 		if(me.cur_node->r_node[i].r_node == from)
@@ -184,10 +209,10 @@ int qspn_close(PACKET rpkt)
 
 		/*We build d4 p4ck37... */
 		memset(&pkt, '\0', sizeof(PACKET));
-		bcast_hdr->sz=TRACERPKT_SZ(hops);
+		bcast_hdr->sz=TRACERPKT_SZ(hops)+(bchunks ? BNODEBLOCK_SZ(bchunks) : 0);
 		pkt.hdr.sz=BRDCAST_SZ(bcast_hdr->sz);
 		tracer_hdr->hops=hops;
-		pkt.msg=tracer_pack_pkt(bcast_hdr, tracer_hdr, new_tracer);
+		pkt.msg=tracer_pack_pkt(bcast_hdr, tracer_hdr, new_tracer, new_bhdr, new_bchunk);
 
 		/*... to send it to all*/
 		for(i=0; i<me.cur_node->links; i++) {
@@ -214,10 +239,11 @@ int qspn_close(PACKET rpkt)
 
 	/*Here we are building the pkt to... */
 	memset(&pkt, '\0', sizeof(PACKET));
-	bcast_hdr->sz=TRACERPKT_SZ(hops);
+	bcast_hdr->sz=TRACERPKT_SZ(hops)+(bchunks ? BNODEBLOCK_SZ(bchunks) : 0);
 	pkt.hdr.sz=BRDCAST_SZ(bcast_hdr->sz);
 	tracer_hdr->hops=hops;
-	pkt.msg=tracer_pack_pkt(bcast_hdr, tracer_hdr, tracer);
+	pkt.msg=tracer_pack_pkt(bcast_hdr, tracer_hdr, new_tracer, new_bhdr, new_bchunk);
+	
 	/*... forward the qspn_close to our r_nodes*/
 	for(i=0; i<me.cur_node->links; i++) {
 		if(qspn_q[i].flags & QSPN_CLOSED || me.cur_node->r_node[i].r_node == from || \
@@ -242,6 +268,10 @@ finish:
 	pkt_free(&pkt, 1);
 	if(new_tracer)
 		xfree(new_tracer);	
+	if(new_bhdr)
+		xfree(new_bhdr);
+	if(new_bchunk)
+		xfree(new_bchunk);
 	return ret;
 }
 
@@ -253,25 +283,28 @@ int qspn_open(PACKET rpkt)
 	struct tracer_chunk *tracer=rpkt.msg+sizeof(struct brdcast_hdr)+sizeof(struct tracer_hdr);
 	struct tracer_chunk *new_tracer=0;
 	struct bnode_hdr    *bhdr=0;
+	struct bnode_hdr    *new_bhdr=0;
+	struct bnode_chunk  *new_bchunk=0;
 	inet_prefix to;
 	map_node *from;
-	ssize_t err, bblock_sz=0, tracer_sz=0;
+	struct qspn_buffer *qb=qspn_b;
+	ssize_t err, bblock_sz=0, tracer_sz=0, bchunks=0;
 	int i, not_opened=0, hops, ret=0, reply, sub_id;
 	char *ntop;
 
-	if(bcast_hdr.sub_id == pos_from_node(me.cur_node)) {
+	if(bcast_hdr.sub_id == pos_from_node(me.cur_node, me.int_map)) {
 		ntop=inet_to_str(&rpkt->from);
 		debug(DBG_NOISE, "qspn_open(): We received a qspn_open from %s, but we are the opener.", ntop);
 		xfree(ntop);
 		return 0;
 	}
 
-	tracer_sz=(sizeof(struct tracer_hdr)+(tracer_hdr.hops*sizeof(struct tracer_chunk))+sizeof(struct brdcast_hdr));
+	tracer_sz=(sizeof(struct tracer_hdr)+(tracer_hdr->hops*sizeof(struct tracer_chunk))+sizeof(struct brdcast_hdr));
 	if(rpkt.hdr.sz > tracer_sz) {
 		bblock_sz=rpkt.hdr.sz-tracer_sz;
 		bhdr=rpkt.msg+rpkt.hdr.sz-tracer_sz;
 	}
-	if(bcast_hdr->g_node != me.cur_gid || rpkt.hdr.sz != (tracer_sz-bblock_sz)) {
+	if(bcast_hdr->g_node != me.cur_gid) {
 		ntop=inet_to_str(&rpkt->from);
 		debug(DBG_NOISE, "qspn_open(): The %s sent an invalid qspn_open pkt here.", ntop);
 		xfree(ntop);
@@ -289,40 +322,48 @@ int qspn_open(PACKET rpkt)
 	/*Various  abbreviations*/
 	sub_id=buffer_hdr.sub_id;
 	hops=tracer_hdr.hops;
-	from=node_from_pos(tracer[hops-1].node);
+	from=node_from_pos(tracer[hops-1].node, me.int_map);
 
 	/*Time to update our map*/
-	tracer_store_pkt(tracer, hops, bhdr, bblock_sz);
+	tracer_store_pkt(me.int_map, tracer_hdr, tracer, hops, bhdr, bblock_sz);
 
-	/*Let's add our entry in the tracer*/
-	new_tracer=tracer_add_entry(me.cur_node, tracer, &hops);
+	/*Let's add our entry in the new tracer*/
+	new_tracer=tracer_add_entry(me.int_map, me.cur_node, tracer, &hops);
+	/*If we are a bnode we have to add the bnode_block too.*/
+	if(me.cur_node->flags & MAP_BNODE)
+		if((new_bhdr=tracer_build_bentry(me.int_map, me.cur_node, &new_bchunk)))
+			new_tracer->bblocks=bchunks=new_bhdr->links;
 
 	/* We search in the qspn_buffer the reply which has current sub_id. 
 	 * If we don't find it, we add it*/
-	if((reply=qspn_b_find_reply(0, sub_id))==-1)
-		for(i=0; i<me.cur_node->links; i++)
-			qspn_b_add(pos_from_node(me.cur_node->r_node[i].r_node), sub_id, 0);
+	if((reply=qspn_b_find_reply(qspn_b, sub_id))==-1) {
+		qb=qspn_b;
+		list_for(qb)
+			if(qb->rnode == from)
+				qspn_b_add(qb, sub_id, 0);
+	}
 
 	/*Time to open the links*/
-	for(i=0; i<me.cur_node->links; i++) {
-		if(me.cur_node->r_node[i].r_node == from)
-			qspn_b[i].flags[reply]|=QSPN_OPENED;
+	qb=qspn_b;
+	list_for(qb) {
+		if(qb->rnode == from)
+			qb->flags[reply]|=QSPN_OPENED;
 
-		if(!(me.cur_node->r_node[i].r_node[reply] & QSPN_OPENED))
+		if(!(qb->flags[reply] & QSPN_OPENED))
 			not_opened++;
 	}
 	/*Fokke, we've all the links opened. let's take a rest.*/
-	if(!not_opened && !(qspn_b[i].flags & QSPN_REPLIED)) {
+	if(!not_opened) {
 		debug(DBG_NOISE, "qspn_open(): We've finished the qspn_open (sub_id: %d) phase", sub_id);
 		return 0;
 	}
 
 	/*Here we are building the pkt to... */
 	memset(&pkt, '\0', sizeof(PACKET));
-	bcast_hdr->sz=TRACERPKT_SZ(hops);
+	bcast_hdr->sz=TRACERPKT_SZ(hops)+(bchunks ? BNODEBLOCK_SZ(bchunks) : 0);
 	pkt.hdr.sz=BRDCAST_SZ(bcast_hdr->sz);
 	tracer_hdr->hops=hops;
-	pkt.msg=tracer_pack_pkt(bcast_hdr, tracer_hdr, new_tracer);
+	pkt.msg=tracer_pack_pkt(bcast_hdr, tracer_hdr, new_tracer, new_bhdr, new_bchunk);
 	/*... forward the qspn_opened to our r_nodes*/
 	for(i=0; i<me.cur_node->links; i++) {
 		if(qspn_q[i].flags & QSPN_OPENED || me.cur_node->r_node[i].r_node == from || \

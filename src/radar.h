@@ -36,6 +36,8 @@ int send_qspn_now=0;			/*Shall we send the qspn?*/
 
 struct radar_queue
 {
+	struct radar_queue *next;
+	struct radar_queue *prev;
 	map_node       *node;			/*The node we are pinging*/
 	inet_prefix	ip;			/*Node's ip*/
 	char pongs;				/*The total pongs received*/
@@ -44,17 +46,17 @@ struct radar_queue
 						  will keep the average of all the rtts
 						 */
 };
-struct radar_queue *radar_q;
-struct timeval scan_start;			/*the start of the scan*/
-/*How many radar_queue are allocated in radar_q?*/
-int radar_q_alloc;
-
+struct radar_queue *radar_q;	/*the start of the linked list of radar_queue*/
+struct timeval scan_start;	/*the start of the scan*/
 
 void init_radar(void);
-int find_free_radar_q(void);
-int find_ip_radar_q(map_node node);
+void close_radar(void);
+void reset_radar(void);
+void free_new_node(void);
+struct radar_queue *find_ip_radar_q(map_node *node);
+u_int *find_nnode_radar_q(inet_prefix *node);
 void final_radar_queue(void);
 void radar_update_map(void);
-int radar_scan(void);
 int add_radar_q(PACKET pkt);
+int radar_scan(void);
 int radar_recv_reply(PACKET pkt);

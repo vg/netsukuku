@@ -36,8 +36,8 @@ struct current
 	map_gnode 	*cur_gnode;
 	inet_prefix	 ipstart;	/*The first ip of our gnode (cur_gnode)*/
 	
-	map_bnode	*cur_bmap;	/*Current boarder nodes map, read map.h*/
-	int 		 bmap_nodes;	/*How many bnodes there are in map_bnode*/
+	map_bnode	*bnode_map;	/*Current boarder nodes map, read map.h*/
+	u_int 		 bmap_nodes;	/*How many bnodes there are in map_bnode*/
 	
 	inet_prefix	 cur_ip;
 	map_node 	*cur_node;	/*Me in the map*/

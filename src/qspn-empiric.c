@@ -266,11 +266,11 @@ void *send_qspn_reply(void *argv)
 	pkt=store_tracer_pkt(qopt);	
 
 	/*Bad old broadcast pkt*/
-	if(qopt->q.broadcast <= int_map[to].broadcast[qopt->q.from]) {
-		fprintf(stderr, "%u: DROPPED old brdcast: q.broadcast: %d, qopt->q.from broadcast: %d\n", pthread_self(), qopt->q.broadcast, int_map[to].broadcast[qopt->q.from]);
+	if(qopt->q.broadcast <= int_map[to].brdcast[qopt->q.from]) {
+		fprintf(stderr, "%u: DROPPED old brdcast: q.broadcast: %d, qopt->q.from broadcast: %d\n", pthread_self(), qopt->q.broadcast, int_map[to].brdcast[qopt->q.from]);
 		return;
 	} else
-		int_map[to].broadcast[qopt->q.from]=qopt->q.broadcast;
+		int_map[to].brdcast[qopt->q.from]=qopt->q.broadcast;
 
 	/*Let's keep broadcasting*/
 	for(x=0; x<int_map[to].links; x++) {	

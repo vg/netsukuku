@@ -56,10 +56,13 @@
 /* This struct keeps tracks of the qspn_pkts sent or
  * received by our rnodes*/
 struct qspn_buffer
-{
-	u_int	replies;	/*How many replies we forwarded/sent*/
-	u_short *replier;	/*Who has sent these replies (qspn_sub_id)*/
-	u_short	*flags;
+{	
+	struct qspn_buffer *next;
+	struct qspn_buffer *prev;
+	map_node      *	rnode;		/*the rnode this buf is referring to*/
+	u_int	 	replies;	/*How many replies we forwarded/sent*/
+	u_short	      * replier;	/*Who has sent these replies (qspn_sub_id)*/
+	u_short	      * flags;
 };
 struct qspn_buffer *qspn_b;
 

@@ -45,10 +45,13 @@
 #define MAP_VOID	(1<<8)		/*It indicates a non existent node*/
 #define QSPN_CLOSED	(1<<9)		/*This flag is set only to the rnodes, it puts a link in a QSPN_CLOSED state*/
 #define QSPN_OPENED	(1<<10)		/*It puts a link in a QSPN_OPEN state*/
-#define QSPN_STARTER	(1<<11)		/*Used only by qspn-empiric.c*/
 #define QSPN_REPLIED	(1<<12)		/*When the node send the qspn_reply it will never reply again to the same qspn*/
 #define QSPN_BACKPRO	(1<<13)		/*This marks the r_node where the QSPN_BACKPRO has been sent*/
-
+#define QSPN_OLD	(1<<14)		/*If a node isn't updated by the current qspn_round it is marked with QSPN_ROUND.
+					  If in the next qspn_round the same node isn't updated it is removed from the map.*/
+#ifdef QSPN_EMPIRIC
+#define QSPN_STARTER	(1<<15)		/*Used only by qspn-empiric.c*/
+#endif
 /* 			    *** Map notes ***
  * The map is a block of MAXGROUPNODE map_node struct. It is a generic map and it is
  * used to keep the qspn_map, the internal map and the external map.
@@ -80,7 +83,7 @@ typedef struct
 {
 	u_short 	flags;
 #ifdef QSPN_EMPIRIC
-	u_int		broadcast[MAXGROUPNODE];
+	u_int		brdcast[MAXGROUPNODE];
 #else
 	u_int		brdcast;	 /*Pkt_id of the last brdcast_pkt sent by this node*/
 #endif /*QSPN_EMPIRIC*/
@@ -93,44 +96,70 @@ typedef struct
 
 /* map_bnode is the struct used to create the "map boarder node". 
  * This map keeps for each boarder node of the int_map the gnodes which they are linked to.
+ * As always there are some little differences from the map_node:
+ *
+ *	__u16 		links;		is the number of gnodes the bnode is linked to.
+ *	map_rnode	*r_node;	r_node[x].r_node, in this case, points to the position of the bnode's gnode in 
+ *					the ext_map.
+ *	u_int           brdcast;	Where this node is in the int_map. The position is stored in the usual
+ *					pos_from_node() format. (Yep, a dirty hack)
+ *
+ * So you are asking why didn't I made a new struct for the bmap. Well, I don't want to [re]write all the functions 
+ * to handle the map, for example rnode_add,rnode_del, save_map, etc... it's a pain, just for a little map and moreover
+ * it adds new potential bugs. In conclusion: laziness + fear == hacks++;
  */
-typedef struct
-{
-	map_node 	*bnode;		/*Where this bnode is in the int_map*/
-	__u16 		links;		/*The number of gnodes the bnode is linked to.*/
-	map_rnode	*gnode;		/*gnode[x].r_node points to the position of the gnode in the map_gnode*/
-}map_bnode;
+#define bnode_ptr	brdcast		/*Don't kill me*/
+typedef map_node map_bnode;
+
+#define MAXGROUPBNODE		MAXGROUPNODE	/*the maximum number of bnodes in a gnode is equal to the maximum 
+						  number of nodes*/
+#define MAXBNODE_LINKS		0x100		/*The maximum number of gnodes a bnode is linked to*/
+#define MAXBNODE_RNODEBLOCK	MAXBNODE_LINKS*MAXGROUPBNODE*sizeof(map_rnode)
+
 
 
 /* * * Functions' declaration * * */
+/*conversion functions*/
 int pos_from_node(map_node *node, map_node *map);
 map_node *node_from_pos(int pos, map_node *map);
 void maptoip(u_int mapstart, u_int mapoff, inet_prefix ipstart, inet_prefix *ret);
 int iptomap(u_int mapstart, inet_prefix ip, inet_prefix ipstart, u_int *ret);
+
 map_node *init_map(size_t len);
 void free_map(map_node *map, size_t count);
+void map_node_del(map_node *node);
+
 map_rnode *rnode_insert(map_rnode *buf, size_t pos, map_rnode *new);
 map_rnode *map_rnode_insert(map_node *node, size_t pos, map_rnode *new);
 map_rnode *rnode_add(map_node *node, map_rnode *new);
 void rnode_swap(map_rnode *one, map_rnode *two);
 void rnode_del(map_node *node, size_t pos);
-int map_find_bnode(map_bnode *bmap,  int count, map_node *node);
+void rnode_destroy(map_node *node);
+
+map_bnode *map_bnode_del(map_bnode *bmap, u_int *bmap_nodes,  map_bnode *bnode);
+int map_find_bnode(map_node *int_map, map_bnode *bmap, int count, map_node *node);
+
 int rnode_rtt_compar(const void *a, const void *b);
 void rnode_rtt_order(map_node *node);
 int rnode_trtt_compar(const void *a, const void *b);
 void rnode_trtt_order(map_node *node);
 void map_routes_order(map_node *map);
+
 int get_route_rtt(map_node *node, u_short route, struct timeval *rtt);
 void rnode_set_trtt(map_node *node);
 void rnode_recurse_trtt(map_rnode *rnode, int route, struct timeval *trtt);
 void node_recurse_trtt(map_node *node);
 void map_set_trtt(map_node *map);
 map_node *get_gw_node(map_node *node, u_short route);
+
 int merge_maps(map_node *base, map_node *new, map_node *base_root, map_node *new_root);
 int mod_rnode_addr(map_rnode *node, int *map_start, int *new_start);
 int get_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart);
-map_rnode *map_get_rblock(map_node *map, int *count);
+map_rnode *map_get_rblock(map_node *map, int maxgroupnode, int *count);
 int store_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart);
-int map_store_rblock(map_node *map, map_rnode *rblock, int count);
+int map_store_rblock(map_node *map, int maxgroupnode, map_rnode *rblock, int count);
 int save_map(map_node *map, map_node *root_node, char *file);
 map_node *load_map(char *file);
+
+int save_bmap(map_bnode *bmap, u_int bmap_nodes, char *file);
+map_bnode *load_bmap(char *file, u_int *bmap_nodes);
