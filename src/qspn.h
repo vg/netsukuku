@@ -56,9 +56,9 @@
  * real rnode of the root_node.
  * The root_node at level 0 may have also rnode of a different gnode (it is a boarder node).
  * To store these external rnodes in root_node.r_node[x], the root_node.r_node[x].r_node 
- * will point to the relative ext_rnode struct (see gmap.h) and the MAP_GNODE flags will be
- * set in root_node.r_node[x].flags. 
- * The rnodes of the root_node of 0 level are update by the radar(), instead the root_nodes
+ * will point to the relative ext_rnode struct (see gmap.h) and the MAP_GNODE | MAP_ERNODE
+ * flags will be set in root_node.r_node[x].flags.
+ * The rnodes of the root_node of 0 level are updated by the radar(), instead the root_nodes
  * of greater levels are updated by the qspn.
  *
  * Currently the qspn_map styleII is used.
@@ -82,6 +82,7 @@ struct qspn_buffer **qspn_b; /*It is sizeof(struct qspn_buffer)*levels big*/
 int *qspn_send_mutex;	     /*It is sizeof(int)*levels big.*/
 
 
+void qspn_set_map_vars(u_char level, map_node *map, map_node *root_node, int *root_node_pos, map_gnode *gmap);
 void qspn_b_clean(void);
 void qspn_b_add(struct qspn_buffer *qb, u_short replier, u_short flags);
 int qspn_b_find_reply(struct qspn_buffer *qb, int sub_id);

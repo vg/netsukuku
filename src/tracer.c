@@ -10,9 +10,11 @@
 extern int my_family;
 extern struct current me;
 
-/* tracer_verify_pkt: It checks the validity of `tracer': The last entry
+/* 
+ * tracer_verify_pkt: It checks the validity of `tracer': The last entry
  * in the tracer must be a node present in our r_nodes. If `real_from'
- * is non 0, it checks if it is equal to the last entry in the packet. */
+ * is non 0, it checks if it is equal to the last entry in the packet. 
+ */
 int tracer_verify_pkt(tracer_chunk *tracer, u_int hops, map_node *real_from, u_char level)
 {
 	map_node *from;
@@ -35,10 +37,12 @@ int tracer_verify_pkt(tracer_chunk *tracer, u_int hops, map_node *real_from, u_c
 	return 0;
 }
 
-/* tracer_add_entry: Add our entry `node' to the tracer pkt `tracer' wich has `hops'.
+/* 
+ * tracer_add_entry: Add our entry `node' to the tracer pkt `tracer' wich has `hops'.
  * It returns the modified tracer pkt in a newly mallocated struct and it increments the `*hops'.
  * If `tracer' is null it will return the new tracer_pkt.
- * On errors it returns NULL.*/
+ * On errors it returns NULL.
+ */
 tracer_chunk *tracer_add_entry(void *void_map, void *void_node, tracer_chunk *tracer, u_int *hops, u_char level)
 {
 	tracer_chunk *t;
@@ -78,9 +82,12 @@ tracer_chunk *tracer_add_entry(void *void_map, void *void_node, tracer_chunk *tr
 	return t;
 }
 
-/* tracer_build_bentry: It builds the bnode_block to be added in the bnode's entry in 
- * the tracer pkt. It stores in `bnode_chunk' the pointer to the first bnode_chunk and
- * returns a pointer to the bnode_hdr. On errors it returns a NULL pointer.*/
+/* 
+ * tracer_build_bentry: It builds the bnode_block to be added in the bnode's 
+ * entry in the tracer pkt. It stores in `bnode_chunk' the pointer to the 
+ * first bnode_chunk and returns a pointer to the bnode_hdr. On errors it 
+ * returns a NULL pointer.
+ */
 bnode_hdr *tracer_build_bentry(void *void_map, void *void_node, bnode_chunk *bnode_chunk, u_char level) 
 {
 	map_node  *int_map=(map_node *)void_map, *node=(map_node *)void_node;
@@ -124,7 +131,9 @@ error:
 	return 0;
 }
 
-/* tracer_pack_pkt: do ya need explanation? pretty simple: pack the tracer packet*/
+/* 
+ * tracer_pack_pkt: do ya need explanation? pretty simple: pack the tracer packet
+ */
 char *tracer_pack_pkt(brdcast_hdr *bcast_hdr, tracer_hdr *tracer_hdr, tracer_chunk *tracer, 
 		      bnode_hdr *bhdr, bnode_chunk *bchunk)
 {
@@ -762,6 +771,7 @@ int tracer_pkt_connect(PACKET pkt, map_node *dst)
 			 0,                  0,              0, 		/*bnode_block*/
 			 &pkt);				 			/*Where the pkt is built*/
 	xfree(old_bblock);
+
 	/*Diffuse the packet in all the universe!*/
 	tracer_pkt_send(exclude_from_and_glevel, gid, level, from, pkt);
 	return 0;

@@ -1,15 +1,11 @@
 - [HIGH PRIORITY] -
-gnode support  40%: creazione di un nuovo gnode, qspn di gnode, fusione di gnode uguali...
-bmap.c:  pack delle bmap_level, sendare le multiple bmap
-radar.c: il qspn_send(LEVEL) il LEVEL dipende da chi abbiamo come node confinante.
-         ci deve essere un qspn_send per ogni livello coinvolto.
+gnode support  50%: fusione di gnode uguali...
 route.c: void krnl_update_node(map_node *node, /*TODO: XXX u_char level*/)
-hook.c:  il qspn_time_start deve fungere anche per gli altri livelli
+come fare per aggiungere un route rule per specificare un'intero range nel campo from?
 
 - [MEDIUM PRIORITY] -
 broadcast: Tenere in considerazione il gttl
 netsukuku.c (Parte minimale)
-come fare per aggiungere un route rule per specificare un'intero range nel campo from?
 
 - [LOW PRIORITY] -
 tracer.c: store_trcaer_pkt_connect

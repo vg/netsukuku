@@ -23,10 +23,10 @@
 #include "xmalloc.h"
 #include "log.h"
 
-void bmap_level_init(u_char levels, map_bnode *bmap, u_int *bmap_nodes)
+void bmap_level_init(u_char levels, map_bnode **bmap, u_int *bmap_nodes)
 {
 	*bmap=xmalloc(sizeof(map_bnode *) * levels);
-	*bmap_nodes=xmalloc(sizeof(u_int *) * levels);
+	*bmap_nodes=xmalloc(sizeof(u_int) * levels);
 }
 
 void bmap_level_free(map_bnode **bmap, u_int *bmap_nodes)
@@ -96,28 +96,111 @@ int map_find_bnode(map_bnode *bmap, int count, void *void_map, void *node, u_cha
 	return -1;
 }
 
+/* 
+ * pack_all_bmaps: It creates the block of all the `bmaps' which have
+ * `bmap_nodes' nodes. `ext_map' and `quadg' are the structs referring
+ * to the external map. In `pack_sz' is stored the size of the block.
+ * The address pointing to the block is returned otherwise 0 is given.
+ */
+char *
+pack_all_bmaps(map_bnode **bmaps,  u_int *bmap_nodes, map_gnode **ext_map,
+		quadro_group quadg, size_t *pack_sz)
+{
+	struct bmaps_hdr bmap_hdr;
+	int i;
+	size_t sz, tmp_sz[quadg.levels];
+	char **pack, *final_pack, *buf;
+	u_char level;
 
+	*pack_sz=0;
+	pack=xmalloc(sizeof(char *)*quadg.levels);
+	
+	for(level=0; level < quadg.levels; level++) {
+		pack[i]=pack_map(bmaps[level], ext_map[_EL(level)], bmap_nodes[level],
+				0, &sz);
+		tmp_sz[level]=sz;
+		*pack_sz+=sz;
+	}
+
+	bmap_hdr.levels=quadg.levels;
+	bmap_hdr.bmaps_block_sz=*pack_sz;
+	
+	final_pack=xmalloc(*pack_sz + sizeof(struct bmaps_hdr));
+	memcpy(final_pack, &bmap_hdr, sizeof(struct bmaps_hdr));
+	
+	buf=sizeof(struct bmaps_hdr);
+	for(level=0; level < quadg.levels; level++) {
+		memcpy(final_pack+buf, pack[i], tmp_sz[level]);
+		buf+=(char *)tmp_sz[level];
+		xfree(pack[i]);
+	}
+
+	return final_pack;
+}
+
+/*
+ * unpack_all_bmaps: Given a block `pack' of size `pack_sz' containing `levels'
+ * it unpacks each bnode map it finds in it. `ext_map' is the external map used
+ * by the new bmaps.  In `bmap_nodes' unpack_all_bmaps stores the address of the
+ * newly xmallocated array of u_int. Each bmap_nodes[x] contains the number of
+ * nodes of the bmap of level x.  `maxbnodes' is the maximum number of nodes
+ * each bmap can contain while `maxbnode_rnodeblock' is the maximum number of
+ * rnodes each node can contain. 
+ * On error 0 is returned.*/ 
+map_bnode *
+unpack_all_bmaps(char *pack, size_t pack_sz, u_char levels, map_gnode **ext_map,
+		u_int *bmap_nodes, int maxbnodes, int maxbnode_rnodeblock)
+{
+	struct bnode_map_hdr *bmap_hdr;
+	map_bnode **bmap;
+	int i;
+	char *buf;
+
+	bmap_level_init(levels, &bmap, bmap_nodes);
+
+	for(i=0; i<levels; i++) {
+		bmap_hdr=pack+buf;
+		if(verify_int_map_hdr(bmap_hdr, maxbnodes, maxbnode_rnodeblock)) {
+			error("Malformed bmap_hdr at level %d. "
+					"Aborting unpack_all_bmaps().", i);
+			return 0;
+		}
+		*bmap_nodes[i]=bmap_hdr.bnode_map_sz/sizeof(map_bnode);
+
+		/*Extracting the map...*/
+		pack_sz=INT_MAP_BLOCK_SZ(bmap_hdr.bnode_map_sz, bmap_hdr.rblock_sz);
+		pack=xmalloc(pack_sz);
+		bmap[i]=unpack_map(pack[i], pack_sz[i], ext_map[_EL(i)], 0, 
+				maxbnodes, maxbnode_rnodeblock);
+		if(!bmap[i]) {
+			error("Cannot unpack the bnode_map at level %d !", i);
+			return 0;
+		}
+		buf+=pack_sz;
+	}
+	return bmap;
+}
 
 /* * *  save/load bnode_map * * */
 
-/* save_bmap: It saves the bnode_map `bmap' in the `file'. The `bmap' has
- * `bmap_nodes' nodes. `gmap' is the pointer to the group_node the bmap is
- * referring to.*/
-int save_bmap(map_bnode *bmap, int *gmap, u_int bmap_nodes, char *file)
+/* 
+ * save_bmap: It saves the bnode maps `bmaps' in `file'. The each `bmaps[x]' has
+ * `bmap_nodes[x]' nodes. `ext_map' is the pointer to the external map the bmap is
+ * referring to.
+ */
+int save_bmap(map_bnode **bmaps, u_int *bmap_nodes, map_gnode **ext_map, 
+		quadro_group quadg, char *file)
 {
 	FILE *fd;
 	char *pack;
 	size_t pack_sz;
-	
-	if(!bmap_nodes)
-		return 0;
 	
 	if((fd=fopen(file, "w"))==NULL) {
 		error("Cannot save the bnode_map in %s: %s", file, strerror(errno));
 		return -1;
 	}
 	
-	pack=pack_map(map, gmap, bmap_nodes, 0, &pack_sz);
+	pack=pack_all_bmaps(bmaps, ext_map, bmap_nodes, quadg, &pack_sz);
 	fwrite(pack, pack_sz, 1, fd);
 
 	xfree(pack);
@@ -125,35 +208,45 @@ int save_bmap(map_bnode *bmap, int *gmap, u_int bmap_nodes, char *file)
 	return 0;
 }
 
-map_bnode *load_bmap(char *file, int *gmap, u_int *bmap_nodes)
+/*
+ * load_bmap: It loads all the bnode maps from `file' and returns the address
+ * of the array of pointer to the loaded bmaps. `ext_map' is the external maps
+ * the bmap shall refer to. In `bmap_nodes' the address of the u_int array, used
+ * to count the nodes in each bmaps, is stored. On error 0 is returned.
+ */
+map_bnode **load_bmap(char *file, map_gnode **ext_map, u_int *bmap_nodes)
 {
-	map_bnode *bmap;
+	map_bnode **bmap;
 	FILE *fd;
-	struct bnode_map_hdr imap_hdr;
-	int count, err;
+	struct bmaps_hdr bmaps_hdr;
+	size_t pack_sz;
+	int count, err, i;
+	u_char levels;
+	char *pack;
 	
 	if((fd=fopen(file, "r"))==NULL) {
 		error("Cannot load the bmap from %s: %s", file, strerror(errno));
 		return 0;
 	}
 
-	fread(&imap_hdr, sizeof(struct bnode_map_hdr), 1, fd);
-	if(verify_int_map_hdr(&imap_hdr, MAXGROUPBNODE, MAXBNODE_RNODEBLOCK)) {
-		error("Malformed bmap file: %s. Aborting load_bmap().", file);
+	
+	if(fread(&bmaps_hdr, sizeof(struct bmaps_hdr), 1, fd) < 1 ) {
+		error("Cannot load the bmaps_hdr from %s", file);
 		return 0;
 	}
-	*bmap_nodes=imap_hdr.bnode_map_sz/sizeof(map_bnode);
+	levels=bmaps_hdr.levels;
+	pack_sz=bmaps_hdr.bmaps_block_sz;
+	if(levels > GET_LEVELS(my_family) || pack_sz < sizeof(struct bnode_map_hdr)) {
+		error("Malformed bmaps_hdr. Cannot load the bnode maps.");
+		return 0;
+	}
 
-	/*Extracting the map...*/
-	rewind(fd);
-	pack_sz=INT_MAP_BLOCK_SZ(imap_hdr.int_map_sz, imap_hdr.rblock_sz):
-	pack=xmalloc(pack_sz);
-	fread(pack, pack_sz, 1, fd);
-	map=unpack_map(pack, pack_sz, gmap, 0, MAXGROUPBNODE, MAXBNODE_RNODEBLOCK);
-	if(!map)
-		error("Cannot unpack the bnode_map!");
-	
+	/* Extracting the map... */
+	if(fread(pack, bmaps_hdr.bmaps_block_sz, 1, fd) < 1)
+		goto error;
+	bmap=unpack_all_bmaps(pack, pack_sz, levels, ext_map, bmap_nodes, 
+			MAXGROUPNODE, MAXBNODE_RNODEBLOCK);
 	xfree(pack);
 	fclose(fd);
-	return map;
+	return bmap;
 }

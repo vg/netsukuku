@@ -37,14 +37,18 @@
 extern struct current me;
 extern int my_family;
 
-/*  *  *  put/get free_ips  *  *  */
+/*  
+ *  *  *  put/get free_nodes  *  *  *
+ */
 
-/* get_free_ips: It send the GET_FREE_IPS request, used to retrieve the 
- * list of free/available IPs in the dst_node's gnode*/
-int get_free_ips(inet_prefix to, struct free_ips *fi_hdr, int *ips)
+/* 
+ * get_free_nodes: It send the GET_FREE_NODES request, used to retrieve the free_nodes
+ * pkt (see hook.h).
+ */
+int get_free_nodes(inet_prefix to, struct free_nodes *fn_hdr, int *nodes, struct timeval *qtime)
 {
 	PACKET pkt, rpkt;
-	char *ntop;
+	char *ntop, *buf;
 	ssize_t err;
 	int ret=0;
 	
@@ -55,22 +59,31 @@ int get_free_ips(inet_prefix to, struct free_ips *fi_hdr, int *ips)
 	
 	pkt_addto(&pkt, &to);
 	pkt.sk_type=SKT_TCP;
-	err=send_rq(&pkt, 0, GET_FREE_IPS, 0, PUT_FREE_IPS, 1, &rpkt);
+	err=send_rq(&pkt, 0, GET_FREE_NODES, 0, PUT_FREE_NODES, 1, &rpkt);
 	if(err==-1) {
-		error("get_free_ips(): Failed to send the GET_FREE_IPS request to %s. Skipping...", ntop);
+		error("get_free_nodes(): Failed to send the GET_FREE_NODES request to %s. "
+				"Skipping...", ntop);
 		ret=-1;
 		goto finish;
 	}
 	
-	memcpy(fi_hdr, rpkt.msg, sizeof(struct free_ips));
-	if(fi_hdr->ips <= 0 || fi_hdr->ips >= MAXGROUPNODE) {
-		error("Malformed PUT_FREE_IPS request hdr. It says there are %d free ips", fi_hdr->ips);
+	memcpy(fn_hdr, rpkt.msg, sizeof(struct free_nodes));
+	if(fn_hdr->nodes <= 0 || fn_hdr->nodes >= MAXGROUPNODE || 
+			fn_hdr->max_levels >= me.cur_quadg.levels || !fn_hdr->level
+			|| fn_hdr->level >= fn_hdr->max_levels) {
+		error("Malformed PUT_FREE_NODES request hdr from %s.", ntop);
 		ret=-1;
 		goto finish;
 	}
-	memcpy(ips, pkt.msg+sizeof(struct free_ips), fi_hdr->ips*sizeof(int));
-	debug(DBG_NORMAL, "received %d free ips", fi_hdr->ips);
+	
+	buf=sizeof(struct free_nodes_hdr);
+	memcpy(qtime, pkt.msg+buf, fn_hdr->max_levels * sizeof(struct timeval));
+	
+	buf+=fn_hdr->max_levels * sizeof(struct timeval);
+	memcpy(ips, pkt.msg+buf, fn_hdr->nodes * sizeof(int));
 
+	debug(DBG_NORMAL, "Received %d free %s", fn_hdr->ips, 
+			level == 1 ? "nodes" : "gnodes");
 finish:
 	pkt_free(&pkt, 0);
 	pkt_free(&rpkt, 1);
@@ -78,25 +91,34 @@ finish:
 	return ret;
 }
 
-/* put_free_ips: It generates the a list of free IPs available in the
- * cur_gnode.
+/* 
+ * put_free_nodes: It sends a free_nodes pkt to rq_pkt.from. To see what's a
+ * free_nodes pkt go in hook.h.
  */
-int put_free_ips(PACKET rq_pkt)
-{
-	/*I'm using this temp struct to do pkt.msg=&fipkt; see below*/
-	struct fi_pkt {
-		struct free_ips fi_hdr;
-		int free_ips[MAXGROUPNODE];
+int put_free_nodes(PACKET rq_pkt)
+{	
+	struct fn_pkt {
+		struct free_nodes fn_hdr;
+		struct timeval  qtime[me.cur_quadg.levels];
+
+		/* 
+		 * This int free_nodes has maximum MAXGROUPNODE elements, so in
+		 * the pkt it will be truncated to free_nodes[fn_hdr.nodes]
+		 * elements */
+		int free_nodes[MAXGROUPNODE];
 	}fipkt;
-	struct timeval cur_t;
+
 	PACKET pkt;
-	map_node *map=me.int_map;
+	struct timeval cur_t;
+	map_node *map;
+	
+	int ret=0, i, e=0;
+	u_char level;
+	ssize_t err, pkt_sz;
 	char *ntop; 
-	ssize_t err, i, e=0;
-	int ret;
 	
 	ntop=inet_to_str(&rq_pkt.from);
-	debug(DBG_NORMAL, "Sending the PUT_FREE_IPS reply to %s", ntop);
+	debug(DBG_NORMAL, "Sending the PUT_FREE_NODES reply to %s", ntop);
 	
 	memset(&pkt, '\0', sizeof(PACKET));
 	pkt_addto(&pkt, &rq_pkt.from);
@@ -104,44 +126,69 @@ int put_free_ips(PACKET rq_pkt)
 	pkt_addflags(&pkt, NULL);
 	pkt_addsk(&pkt, rq_pkt.sk, rq_pkt.sk_type);
 
-	if(me.cur_gnode.g.flags & GMAP_FULL) {
-		/*<<My gnode is full, sry>>*/
-		pkt_fill_hdr(&pkt.hdr, rq_pkt.hdr.id, PUT_FREE_IPS, 0);
-		err=pkt_err(pkt, E_GNODE_FULL);
-	} else {
-		fi_hdr.gid=me.cur_gid;
-		memcpy(&fi_hdr.ipstart, &me.ipstart, sizeof(inet_prefix));
-		/*Creates the list of our gnode's free ips. (it scans the int_map to find all the 
-		 * MAP_VOID nodes)*/
-		for(i=0; i<MAXGROUPNODE; i++)
-			if(map[i].flags & MAP_VOID) {
-				free_ips[e]=i;
-				e++:
-			}
 
-		fi_hdr.ips=e;
-		gettimeofday(&cur_t, 0);
-		timersub(&cur_t, &me.cur_qspn_time, &fi_hdr.qtime);
-		pkt_fill_hdr(&pkt.hdr, rq_pkt.hdr.id, PUT_FREE_IPS, sizeof(struct fi_pkt));
-		pkt.msg=xmalloc(sizeof(struct fi_pkt));
-		
-		memcpy(pkt.msg, &fipkt, sizeof(struct fi_pkt));
-		err=pkt_send(pkt);
-	}
-	
-	if(err==-1) {
-		error("put_free_ips(): Cannot send the PUT_FREE_IPS reply to %s.", ntop);
-		ret=-1;
+	/* We search in each level an our gnode which is not full. */
+	e=0;
+	for(level=1, level < me.cur_quadg.levels; level++)
+		if(!(me.cur_quadg.gnode[_EL(level)]->g.flags & GMAP_FULL)) {
+			e=1;
+			break;
+		}
+	if(!e) {
+		/* <<My quadro_group is completely full, sry>> */
+		pkt_fill_hdr(&pkt.hdr, rq_pkt.hdr.id, PUT_FREE_NODES, 0);
+		err=pkt_err(pkt, E_QGROUP_FULL);
 		goto finish;
 	}
+
+	/* Ok, we've found one, so let's roll the pkt */
+	fn_pkt.fn_hdr.max_levels=me.cur_quadg.levels;
+	memcpy(&fn_pkt.fn_hdr.ipstart, &me.cur_quadg.ipstart[level], sizeof(inet_prefix));
+	fn_pkt.fn_hdr.level=level;
+	fn_pkt.fn_hdr.gid=me.cur_quadg.gid[level];
+	
+	/*
+	 * Creates the list of our gnode's free nodes. If the gnode level is 1 it
+	 * scans the int_map to find all the MAP_VOID nodes, otherwise it scans
+	 * the gnode map at level-1.
+	 */
+	e=0;
+	if(level == 1)
+		map=me.int_map;
+	else
+		map=me.ext_map[_EL(level-1)];
+	for(i=0; i<MAXGROUPNODE; i++)
+		if(map[i].flags & MAP_VOID) {
+			fn_pkt.free_nodes[e]=i;
+			e++:
+		}
+	fn_pkt.fn_hdr.nodes=e;
+	
+	/* We fill the qspn round time */
+	gettimeofday(&cur_t, 0);
+	for(level=1, level < me.cur_quadg.levels; level++)
+		timersub(&cur_t, &me.cur_qspn_time[level], &fn_pkt.fn_hdr.qtime[level]);
+
+	/* Go pkt, go! Follow your instinct */
+	pkt_sz=FREE_NODES_SZ(fn_pkt.fi_hdr.levels, fn_pkt.fi_hdr.nodes);
+	pkt_fill_hdr(&pkt.hdr, rq_pkt.hdr.id, PUT_FREE_NODES, pkt_sz); 
+	pkt.msg=xmalloc(pkt_sz);
+	memcpy(pkt.msg, &fipkt, pkt_sz);
+	err=pkt_send(pkt);
 	
 finish:	
+	if(err==-1) {
+		error("put_free_nodes(): Cannot send the PUT_FREE_NODES reply to %s.", ntop);
+		ret=-1;
+	}
 	pkt_free(&pkt, 1);
 	xfree(ntop);
-	return 0;
+	return ret;
 }
 
-/*  *  *  put/get ext_map  *  *  */
+/*  
+ *  *  *  put/get ext_map  *  *  *
+ */
 
 int put_ext_map(PACKET rq_pkt)
 {
@@ -176,10 +223,11 @@ finish:
 	return ret;
 }
 
-/* get_ext_map: It sends the GET_EXT_MAP request to retrieve the 
+/* 
+ * get_ext_map: It sends the GET_EXT_MAP request to retrieve the
  * dst_node's ext_map.
  */
-map_gnode *get_ext_map(inet_prefix to, quadro_group *new_quadg)
+map_gnode **get_ext_map(inet_prefix to, quadro_group *new_quadg)
 {
 	PACKET pkt, rpkt;
 	char *ntop, *pack;
@@ -221,7 +269,9 @@ finish:
 	return ret;
 }
 
-/*  *  *  put/get int_map  *  *  */
+/*  
+ *  *  *  put/get int_map  *  *  *
+ */
 
 int put_int_map(PACKET rq_pkt)
 {
@@ -254,8 +304,10 @@ finish:
 	return ret;
 }
 
-/* get_int_map: It sends the GET_INT_MAP request to retrieve the 
- * dst_node's int_map. */
+/* 
+ * get_int_map: It sends the GET_INT_MAP request to retrieve the 
+ * dst_node's int_map. 
+ */
 map_node *get_int_map(inet_prefix to, map_node *new_root)
 {
 	PACKET pkt, rpkt;
@@ -298,12 +350,14 @@ finish:
 	return ret;
 }
 
-/*  *  *  put/get bnode_map  *  *  */
+/*  
+ *  *  *  put/get bnode_map  *  *  *
+ */
 
 int put_bnode_map(PACKET rq_pkt)
 {
 	PACKET pkt;
-	map_bnode *bmap=me.bnode_map;
+	map_bnode **bmaps=me.bnode_map;
 	char *ntop; 
 	int ret;
 	ssize_t err;
@@ -317,7 +371,7 @@ int put_bnode_map(PACKET rq_pkt)
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addsk(&pkt, rq_pkt.sk, rq_pkt.sk_type);
 
-	pkt.msg=pack_map(bmap, me.cur_quadg.gnode[0], me.bmap_nodes, 0, &pkt_sz);
+	pkt.msg=pack_all_bmaps(bmaps, me.ext_map, me.bmap_nodes, me.cur_quadg, &pack_sz);
 	pkt.hdr.sz=pkt_sz;
 	err=send_rq(&pkt, 0, PUT_BNODE_MAP, rq_pkt.hdr.id, 0, 0, 0);
 	if(err==-1) {
@@ -334,16 +388,19 @@ finish:
 	return ret;
 }
 
-/* get_bnode_map: It sends the GET_BNODE_MAP request to retrieve the 
- * dst_node's bnode_map.
+/* 
+ * get_bnode_map: It sends the GET_BNODE_MAP request to retrieve the 
+ * dst_node's bnode_map. 
  */
-map_bnode *get_bnode_map(inet_prefix to, u_int *bmap_nodes)
+map_bnode **get_bnode_map(inet_prefix to, u_int *bmap_nodes)
 {
 	PACKET pkt, rpkt;
 	char *ntop;
 	int err;
-	struct bnode_map_hdr imap_hdr;
-	map_bnode *bnode_map, *ret=0;
+	struct bmaps_hdr bmaps_hdr;
+	map_bnode **bnode_map, *ret=0;
+	size_t pack_sz;
+	u_char levels;
 	
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
@@ -358,21 +415,22 @@ map_bnode *get_bnode_map(inet_prefix to, u_int *bmap_nodes)
 		goto finish;
 	}
 	
-	memcpy(&imap_hdr, rpkt.msg, sizeof(struct bnode_map_hdr));
-	if(verify_int_map_hdr(&imap_hdr, MAXGROUPBNODE, MAXBNODE_RNODEBLOCK)) {
+	memcpy(&bmaps_hdr, rpkt.msg, sizeof(struct bmaps_hdr));
+	levels=bmaps_hdr.levels;
+	pack_sz=bmaps_hdr.bmaps_block_sz;
+	if(levels > GET_LEVELS(my_family) || pack_sz < sizeof(struct bnode_map_hdr)) {
 		error("Malformed PUT_BNODE_MAP request hdr.");
 		ret=0;
 		goto finish;
 	}
-	*bmap_nodes=imap_hdr.bnode_map_sz/sizeof(map_bnode);
 
-	/*Extracting the map...*/
-	pack_sz=INT_MAP_BLOCK_SZ(imap_hdr.int_map_sz, imap_hdr.rblock_sz):
-	pack=rpkt.msg;
-	ret=bnode_map=unpack_map(pack, pack_sz, me.cur_quadg.gnode[0], 0, MAXGROUPBNODE, MAXBNODE_RNODEBLOCK);
+	/* Extracting the map... */
+	pack=rpkt.msg+sizeof(struct bmaps_hdr);
+	ret=bnode_map=unpack_all_bmaps(pack, pack_sz, levels, me.ext_map, bmap_nodes, 
+			MAXGROUPNODE, MAXBNODE_RNODEBLOCK);
 	if(!bnode_map)
 		error("get_bnode_map(): Malformed bnode_map. Cannot load it");
-		
+
 finish:
 	pkt_free(&pkt, 0);
 	pkt_free(&rpkt, 1);
@@ -380,49 +438,66 @@ finish:
 	return ret;
 }
 
-int create_gnode(void)
+/*
+ * create_gnodes: This function is used to create a new gnode (or more) when
+ * we are the first node in the area or when all the other gnodes are
+ * full. 
+ * Our ip will be set to `ip'. If `ip' is NULL, a random ip is chosen. 
+ * create_gnodes() sets also all the vital variables for the new gnode/gnodes
+ * like me.cur_quadg, me.cur_ip, etc...
+ * `final_level' is the highest level where we create the gnode, all the other
+ * gnodes we create are in the sub-levels of `final_level'. 
+ */
+int create_gnodes(inet_prefix *ip, int final_level)
 {
 	int i;
-	
-	/* - scans the old ext_map;
-	 * - Choose a random gnode excluding the one already used in the old map.
-	 * - sit down and rest
+
+	if(!ip)
+		random_ip(0, 0, 0, GET_LEVELS(my_family), me.ext_map, 0, &me.cur_ip);
+	else
+		memcpy(&me.cur_ip, ip, sizeof(inet_prefix));
+
+	/* 
+	 * We remove all the traces of the old gnodesin the ext_map to add the
+	 * new ones.
 	 */
-	
-	if(!me.ext_map) {
-		/*We haven't an ext_map so let's cast the dice*/
-		me.cur_gid=rand_range(0, /*LAST_GNODE(my_family)*/);
-			/*TODO: gmap support: CONTINUE here*/
-	} else {
-		for(i=0; i<MAXGROUPNODE; i++) {
-			/*TODO: gmap support: CONTINUE here*/
-		}
+	for(i=1; i<me.cur_quadg.levels; i++) {
+		me.cur_quadg.gnode[_EL(i)]->flags &= ~GMAP_ME;
+		me.cur_quadg.gnode[_EL(i)]->g.flags &= ~MAP_ME & ~MAP_GNODE;
 	}
+	for(i=1; i<=final_level; i++) 
+		reset_gmap(me.ext_map[_EL(i)], 0);
+
+	/* Now, we update the ext_map with the new gnodes */
+	me.cur_quadg.levels=GET_LEVELS(my_family);
+	iptoquadg(me.cur_ip, me.ext_map, &me.cur_quadg, QUADG_GID | QUADG_GNODE | QUADG_IPSTART);
+
+	for(i=1; i<me.cur_quadg.levels; i++) {
+		me.cur_quadg.gnode[_EL(i)]->flags &= ~GMAP_VOID;
+		me.cur_quadg.gnode[_EL(i)]->flags |=  GMAP_ME;
+		me.cur_quadg.gnode[_EL(i)]->g.flags &~ MAP_VOID;
+		me.cur_quadg.gnode[_EL(i)]->g.flags |= MAP_ME | MAP_GNODE;
+	}
+
 	return 0;
 }
 
 int netsukuku_hook(char *dev)
-	
-	int i, e=0, idx, imaps=0, ret=0;
+{	
 	struct radar_queue *rq=radar_q;
-	u_int idata[4];
-	struct free_ips fi_hdr;
-	int fips[MAXGROUPNODE];
+	struct free_nodes fn_hdr;
 	map_node **merg_map, *new_root;
-	map_gnode *new_groot;
+	map_gnode *new_groot, **old_ext_map;
+	map_bnode **old_bnode_map;	
+	inet_prefix new_ip;
+	int i, e=0, idx, imaps=0, ret=0, new_gnode=0, tracer_levels=0;
+	int fnodes[MAXGROUPNODE], old_bnodes;
+	u_int idata[4];
 
-	srand(time(0));	
-	debug(DBG_NOISE, "Starting the hooking");
-
-	if(my_family==AF_INET)
-		idata[0]=HOOKING_IP;
-	else
-		idata[0]=HOOKING_IP6;
+	/* We set the dev ip to HOOKING_IP to begin our transaction. */
+	(my_family==AF_INET) ? idata[0]=HOOKING_IP : idata[0]=HOOKING_IP6;
 	me.cur_ip.family=my_family;
 	inet_setip(&me.cur_ip, idata, my_family);
-	memcpy(&me.cur_ip, &me.cur_ip);
-	
-	/*We set the dev ip to HOOKING_IP to begin our transaction.*/
 	if(set_dev_ip(me.cur_ip, dev))
 		fatal("%s:%d: Cannot set the HOOKING_IP in %s", ERROR_POS, dev);
 	
@@ -430,98 +505,116 @@ int netsukuku_hook(char *dev)
 		fatal("%s:%d: Couldn't set the default gw for %s", ERROR_POS, dev);
 
 
-		/* * * 		The beginning          * * */
-
-	debug(DBG_NORMAL, "The hook begins. Starting to scan the area");
+	/* 	
+	  	* * 		The beginning          * *	  	
+	 */
+	loginfo("The hook begins. Starting to scan the area");
 	me.cur_node->flags|=MAP_HNODE;
 	
-	/* We do our first scan to know what we've around us. The rnodes are kept in
+	/* 
+	 * We do our first scan to know what we've around us. The rnodes are kept in
 	 * me.cur_node->r_nodes. The fastest one is in me.cur_node->r_nodes[0]
 	 */
 	if(radar_scan())
 		fatal("%s:%d: Scan of the area failed. Cannot continue.", ERROR_POS);
 	
 	if(!me.cur_node->links) {
-		loginfo("No nodes found! This is a black zone. Creating a new_gnode. W00t we're the first node");
-		create_gnode();
+		loginfo("No nodes found! This is a black zone. "
+				"Creating a new_gnode. W00t we're the first node");
+		create_gnodes(0, GET_LEVELS(my_family));
+		new_gnode=1;
 		goto finish;
 	}
-	
+
+	/* 
+	 * Now we choose the nearest rnode we found and we send it the 
+	 * GET_FREE_NODES request.
+	 */
 	rq=radar_q;
-	/*Now we choose the nearest rnode we found and we send it the GET_FREE_IPS request*/
 	for(i=0; i<me.cur_node->links; i++) {
 		if(!(rq=find_ip_radar_q(me.cur_node->r_node[i].r_node))) 
-			fatal("%s:%d: This ultra fatal error goes against the laws of the universe. It's not possible!! Pray");
+			fatal("%s:%d: This ultra fatal error goes against the "
+					"laws of the universe. It's not possible!! Pray");
 
-		if(!get_free_ips(rq->ip, &fi_hdr, fips)) {
-			/*We store as fast as possible the cur_qspn_time*/
-			memcpy(&me.cur_qspn_time, &fi_hdr.qtime, sizeof(struct timeval));
+		if(!get_free_nodes(rq->ip, &fn_hdr, fnodes, me.cur_qspn_time)) {
 			e=1;
 			break;
 		}
 	}	
 	if(!e)
-		fatal("None of the nodes in this area gave me the free_ips info");
+		fatal("None of the nodes in this area gave me the free_nodes info");
 
-	/*Now we choose a random ip from the free ips we received*/
-	e=rand_range(0, fi_hdr.ips);
-	maptoip(0, fips[e], fi_hdr.ipstart, &me.cur_ip);
-	if(set_dev_ip(me.cur_ip, dev))
-		fatal("%s:%d: Cannot set the tmp_ip in %s", ERROR_POS, dev);
-		
-	/*Fetch the ext_map from the nearest rnode*/
-	e=0;
-	rq=radar_q;
-	for(i=0; i<me.cur_node->links; i++) {
-		rq=find_ip_radar_q(me.cur_node->r_node[i].r_node);
-		/*TODO: CONTINUE HERE: ................. \/ \/ */
-		if(!(me.ext_map=get_ext_map(rq->ip, &new_quadg))) {
-			e=1;
-			break;
-		}
+	/* 
+	 * Let's choose a random ip using the free nodes list we received.
+	 */
+	e=rand_range(0, fn_hdr.nodes);
+	if(fn_hdr.level == 1) {
+		new_gnode=0;
+		postoip(fnodes[e], fn_hdr.ipstart, &me.cur_ip);
+	} else {
+		new_gnode=1;
+		random_ip(fn_hdr.ipstart, fn_hdr.level, fn_hdr.gid, 
+				GET_LEVELS(my_family), me.ext_map, 0, &me.cur_ip);
 	}
-	if(!e)
-		fatal("None of the rnodes in this area gave me the extern map");
-	/*Now we are ufficially in the fi_hdr.gid gnode*/
-	new_groot->g.flags&=~GMAP_ME;
-	me.cur_gid=gid;
-	me.cur_gnode=gnode_from_pos(gid, me.ext_map[/*XXX: _EL(level)*/]);
-	me.cur_gnode->g.flags|=GMAP_ME;
-	/*TODO: iptoquadg();*/
-	memcpy(&me.ipstart, &fi_hdr.ipstart, sizeof(inet_prefix));
 	
-	/*Fetch the int_map from each rnode*/
-	imaps=0;
-	rq=radar_q;
-	merg_map=xmalloc(me.cur_node->links*sizeof(map_node *));
-	memset(merg_map, 0, me.cur_node->links*sizeof(map_node *));
-	for(i=0; i<me.cur_node->links; i++) {
-		rq=find_ip_radar_q(me.cur_node->r_node[i].r_node);
-		if(iptogid(rq->ip, 0) != me.cur_gid)
-			/*This node isn't part of our gnode, let's skip it*/
-			continue; 
-			
-		if((merg_map[imaps]=get_int_map(rq->ip, &new_root))) {
-			merge_maps(me.int_map, merg_map[imaps], me.cur_node, new_root);
-			imaps++;
-		}
+	if(set_dev_ip(me.cur_ip, dev))
+		fatal("%s:%d: Cannot set the tmp ip in %s", ERROR_POS, dev);
+
+	/* 
+	 * Fetch the ext_map from the rnode who gave us the free nodes list. 
+	 */
+	old_ext_map=me.ext_map;
+	if(me.ext_map=get_ext_map(rq->ip, &me.cur_quadg)) 
+		fatal("None of the rnodes in this area gave me the extern map");
+	else {
+		free_extmap(old_ext_map, GET_LEVELS(my_family), 0);
 	}
-	if(!imaps)
-		fatal("None of the rnodes in this area gave me the intern map");
 
-	for(i=0, i<imaps; i++)
-		free_map(merg_map[i], 0);
-	xfree(merg_map);
+	/* If we have to create new gnodes, let's do it. */
+	if(new_gnode)
+		create_gnodes(&me.cur_ip, fn_hdr.level);
+	else {
+		/* 
+		 * Fetch the int_map from each rnode and merge them into a
+		 * single, big, shiny map.
+		 */
+		imaps=0;
+		rq=radar_q;
+		merg_map=xmalloc(me.cur_node->links*sizeof(map_node *));
+		memset(merg_map, 0, me.cur_node->links*sizeof(map_node *));
+		for(i=0; i<me.cur_node->links; i++) {
+			rq=find_ip_radar_q(me.cur_node->r_node[i].r_node);
+			
+			if(quadg_diff_gids(rq->quadg, me.cur_quadq)) 
+				/* This node isn't part of our gnode, let's skip it */
+				continue; 
 
-	/*Wow, the last step! Let's get the bnode map. Fast, fast, quick quick!*/
+			if((merg_map[imaps]=get_int_map(rq->ip, &new_root))) {
+				merge_maps(me.int_map, merg_map[imaps], me.cur_node, new_root);
+				imaps++;
+			}
+		}
+		if(!imaps)
+			fatal("None of the rnodes in this area gave me the intern map");
+		
+		for(i=0, i<imaps; i++)
+			free_map(merg_map[i], 0);
+		xfree(merg_map);
+	}
+	
+	/* 
+	 * Wow, the last step! Let's get the bnode map. Fast, fast, quick quick! 
+	 */
 	e=0;
 	for(i=0; i<me.cur_node->links; i++) {
 		rq=find_ip_radar_q(me.cur_node->r_node[i].r_node);
-		if(iptogid(rq->ip, 0) != me.cur_gid)
-			/*This node isn't part of our gnode, let's skip it*/
+		if(quadg_diff_gids(rq->quadg, me.cur_quadq)) 
+			/* This node isn't part of our gnode, let's skip it */
 			continue; 
-			
-		if(!me.bnode_map=get_bnode_map(rq->ip, &me.cur_bnode)) {
+		old_bnode_map=me.bnode_map;	
+		old_bnodes=me.bmap_nodes;
+		if(!me.bnode_map=get_bnode_map(rq->ip, &me.bmap_nodes)) {
+			bmap_level_free(old_bnode_map, old_bnodes);
 			e=1;
 			break;
 		}
@@ -529,36 +622,41 @@ int netsukuku_hook(char *dev)
 	if(!e)
 		fatal("None of the rnodes in this area gave me the bnode map. (Bastards!)");
 
-
 finish:
-	/* We must reset the radar_queue because the first radar_scan used while hooking
+	/* 
+	 * We must reset the radar_queue because the first radar_scan, used while hooking,
 	 * has to keep the list of the rnodes' "inet_prefix ip". In this way we know
 	 * the rnodes' ips even if we haven't an int_map yet.
 	 */
 	reset_radar(me.cur_node->links);
 	me.cur_node->flags&=~MAP_HNODE;
 
-	/*TODO: for now the gnodes aren't supported
-	 * djkstra(ext_map);
+	/* 
+	 * <<Hey there, I'm here, alive>>. We send our firt tracer_pkt, we
+	 * must give to the other nodes the basic routes to reach us.
 	 */
-
-	tracer_pkt_start();	/*<<Ehi there, I'm here, alive.>>. This is out firt tracer_pkt, we must
-				  give to the other nodes the basic routes to reach us.*/
+	if(new_gnode) {
+		if(!me.cur_node->links)
+			/* 
+			 * We are a node lost in the desert, so we don't send
+			 * anything because nobody is listening
+			 */
+			tracer_levels=0;
+		else
+			/* 
+			 * We are a new gnode, so we send the tracer in all higher
+			 * levels
+			 */
+			tracer_levels=fn_hdr.level;
+	} else {
+		/* 
+		 * We are just a normal node inside a gnode, let's notice only
+		 * the other nodes in this gnode.
+		 */
+		tracer_levels=2;
+	}
+	for(i=1; i<tracer_levels; i++)
+		tracer_pkt_start(i);
 	
-	/* I think I will abort the use of dnode, cuz the qspn rox enough
-	 * dnode_set_ip(rnd(info.free_ips);
-	 * QSPN_SEND_DNODE_GATHERING();
-	 * snode_transform():
-	 */
 	return ret;
 }
-
-/* Action lines to trasform a dnode in a snode
-int snode_transfrom(void)
-{
-	wait(DNODE_TO_SNODE_WAIT);
-	local_broadcast_send(I_AM_A_SNODE);
-	rcv(OK_FROM_RNODES);
-	QSPN_SEND();
-}
-*/

@@ -175,35 +175,45 @@ int join_ipv6_multicast(int socket, int idx)
 	struct ipv6_mreq    mreq6;
 	struct in6_addr     addr=IPV6_ADDR_BROADCAST;
 
+	if (bind(socket, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+		error("bind error while joining in the multicast group");
+		close(socket);
+		return -1;
+	}
 	memset(&mreq6, 0, sizeof(struct ipv6_mreq));
 	memcpy(&mreq6.ipv6mr_multiaddr,	&addr, sizeof(struct in6_addr));
 	mreq6.ipv6mr_interface=idx;
 	
 	if(setsockopt(socket, IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, &mreq6, sizeof(mreq6)) < 0) {
-
+		error("Cannot set IPV6_ADD_MEMBERSHIP: %s", strerror(errno));
+	        close(socket);
+		return -1;
 	}
 
 	if(setsockopt(socket, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &loop_back, sizeof(loop_back)) < 0) {
 		error("Cannot set IPV6_MULTICAST_LOOP: %s", strerror(errno));
+	        close(socket);
 		return -1;
 	}
 	
 	return socket;
 }
 
-int set_broadcast_sk(int socket, int family)
+int set_broadcast_sk(int socket, int family, int dev_idx)
 {
 	int broadcast=1;
 	if(family == AF_INET) {
 		if (setsockopt(socket, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast)) < 0) {
 			error ("Cannot set broadcasting: %s", strerror(errnno));
+			close(socket);
+			return -1;
+		}
+	} else if(family == AF_INET6) {
+		if(join_ipv6_multicast(socket, me. dev_idx) < 0) {
 			return -1;
 		}
 	}
 
-	/*The ipv6 doesn't have broadcast so we use multicast. Join_ipv6_multicast must be called
-	 * at the start of the netsukuku daemon*/
-	
 	return socket;
 }
 
@@ -218,11 +228,11 @@ int unset_broadcast_sk(int socket, int family)
 	}
 }
 
-int new_broadcast_sk(int sock_type)
+int new_broadcast_sk(int sock_type, int dev_idx)
 {
 	int sock;
 	sock=new_dgram_socket(sock_type);
-	return set_broadcast_sk(sock, sock_type);
+	return set_broadcast_sk(sock, sock_type, dev_idx);
 }
 	
 int new_tcp_conn(inet_prefix *host, short port)
@@ -282,7 +292,7 @@ finish:
 	return sk;
 }
 	
-int new_bcast_conn(inet_prefix *host, short port)
+int new_bcast_conn(inet_prefix *host, short port, int dev_idx) 
 {	
 	int sk, sa_len;
 	struct sockaddr	sa;
@@ -293,13 +303,14 @@ int new_bcast_conn(inet_prefix *host, short port)
 		return -1;
 	}
 
-	if((sk = new_broadcast_sk(host->family)) == -1)
+	if((sk = new_broadcast_sk(host->family, dev_idx)) == -1)
 		return -1;
 
-	if (connect(sk, &sa, sa_len) == -1) {
-		error("Cannot connect to the broadcast: %s", strerror(errno));
-		return -1;
-	}
+	if(host->family == AF_INET)
+		if(connect(sk, &sa, sa_len) == -1) {
+			error("Cannot connect to the broadcast: %s", strerror(errno));
+			return -1;
+		}
 
 	return sk;
 }

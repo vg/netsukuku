@@ -65,18 +65,39 @@ typedef struct
 {
 	__u16 gnode;
 	u_char level;
-	struct timeval *rtt;
+	struct timeval rtt;
 }bnode_chunk;
 #define BNODEBLOCK_SZ(links) (sizeof(bnode_hdr)+sizeof(bnode_chunk)*(links))
 
 
+/* This is the header placed on top of all the bnode_map blocks.
+ * So the bnode maps final block is:
+ * 	bmaps_hdr
+ * 	---------
+ * 	bnode_map_hdr
+ * 	bnode_map_block
+ * 	---------
+ * 	bnode_map_hdr
+ * 	bnode_map_block
+ * 	---------
+ * 	...
+ */
+struct bmaps_hdr
+{
+	u_char levels;
+	size_t bmaps_block_sz;
+}
+
 /* * * Functions' declaration * * */
-void bmap_level_init(u_char levels, map_bnode *bmap, u_int *bmap_nodes);
+void bmap_level_init(u_char levels, map_bnode **bmap, u_int *bmap_nodes);
 void bmap_level_free(map_bnode **bmap, u_int *bmap_nodes);
 
 int map_add_bnode(map_bnode *bmap, u_int *bmap_nodes, u_int bnode, u_int links);
 map_bnode *map_bnode_del(map_bnode *bmap, u_int *bmap_nodes,  map_bnode *bnode);
 int map_find_bnode(map_bnode *bmap, int count, void *void_map, void *node, u_char level);
 
-int save_bmap(map_bnode *bmap, int *gmap, u_int bmap_nodes, char *file);
-map_bnode *load_bmap(char *file, int *gmap, u_int *bmap_nodes);
+char *pack_all_bmaps(map_bnode **, u_int *, map_gnode **, quadro_group, size_t *);
+map_bnode *unpack_all_bmaps(char *, size_t, u_char, map_gnode **, u_int *, int, int):
+
+int save_bmap(map_bnode **, u_int *, map_gnode **, quadro_group, char *);
+map_bnode **load_bmap(char *, map_gnode **, u_int *);

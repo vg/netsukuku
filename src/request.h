@@ -19,7 +19,9 @@
 #include <time.h>
 #include <sys/types.h>
 
-/*WARNING* Keep it up to date!! *WARNING*/
+/*
+ * WARNING* Keep it up to date!! *WARNING
+ */
 #define TOTAL_REQUESTS          26
 #define TOTAL_REPLIES		7
 #define TOTAL_ERRORS		6
@@ -29,7 +31,7 @@ enum pkt_op
 {
 	ECHO_ME,			/*The node requests to be echoed by the dst_node*/
 	ECHO_REPLY,			/*Yep, this isn't really a reply*/
-	GET_FREE_IPS,			/*it means: <<Get the list of free ips in your gnode, plz>>*/
+	GET_FREE_NODES,			/*it means: <<Get the list of free ips in your gnode, plz>>*/
 	NEW_DNODE,
 	NEW_SNODE,
 	NEW_GNODE,
@@ -65,7 +67,7 @@ enum pkt_op
 
 	/*  *  *  Replies  *  *  */
 	QSPN_RFR_REPLY,
-	PUT_FREE_IPS,			/*it means: <<Here it is the list of free ips in your gnode, cya>>*/
+	PUT_FREE_NODES,			/*it means: <<Here it is the list of free ips in your gnode, cya>>*/
 	PUT_DNODEBLOCK,
 	PUT_DNODEIP,
 	PUT_INT_MAP,
@@ -75,13 +77,12 @@ enum pkt_op
 	/*Acks*/
 	ACK_AFFERMATIVE,		/*Ack affermative. Everything is fine.*/
 	ACK_NEGATIVE			/*The request is rejected. The error is in the pkt body*/
-
 };
 
 static u_char reply_array[]=
 {
 	QSPN_RFR_REPLY,
-	PUT_FREE_IPS,
+	PUT_FREE_NODES,
 	PUT_DNODEBLOCK,
 	PUT_DNODEIP, 	  
 	PUT_INT_MAP, 	
@@ -96,7 +97,7 @@ static char unknown_reply[]="Unknow reply";
 static u_char reply_str[][20]=
 {
 	{ "QSPN_RFR_REPLY"   },
-	{ "PUT_FREE_IPS" },
+	{ "PUT_FREE_NODES" },
 	{ "PUT_DNODEBLOCK" },
 	{ "PUT_DNODEIP"	   },
 	{ "PUT_INT_MAP"	   },
@@ -114,7 +115,7 @@ enum errors
 	E_INVALID_REQUEST=1,
 	E_ACCEPT_TBL_FULL,
 	E_REQUEST_TBL_FULL,
-	E_GNODE_FULL,
+	E_QGROUP_FULL,
 	E_TOO_MANY_CONN
 };
 
@@ -124,7 +125,7 @@ static u_char error_array[]=
 	 E_INVALID_REQUEST ,
 	 E_ACCEPT_TBL_FULL ,
 	 E_REQUEST_TBL_FULL,
-	 E_GNODE_FULL,
+	 E_QGROUP_FULL,
 	 E_TOO_MANY_CONN   ,
 };
 
@@ -133,14 +134,14 @@ static u_char error_str[][20]=
 	{ "Invalid request" },
 	{ "Accept table full" },
 	{ "Request table full" },
-	{ "Gnode full" },
+	{ "Quadro Group full" },
 	{ "Too many connection" },
 };
 
 /*Wait time*/
 #define ECHO_ME_WAIT			5		/*(in seconds)*/
 #define ECHO_REPLY_WAIT			5
-#define GET_FREE_IPS_WAIT		10
+#define GET_FREE_NODES_WAIT		10
 #define NEW_DNODE_WAIT			10
 #define NEW_SNODE_WAIT			10
 #define NEW_GNODE_WAIT			10
@@ -175,7 +176,7 @@ static u_char error_str[][20]=
 /*Max simultaneous requests*/ 
 #define ECHO_ME_MAXRQ			20
 #define ECHO_REPLY_MAXRQ		20
-#define GET_FREE_IPS_MAXRQ		5
+#define GET_FREE_NODES_MAXRQ		5
 #define NEW_DNODE_MAXRQ			5
 #define NEW_SNODE_MAXRQ			5
 #define NEW_GNODE_MAXRQ			5
@@ -211,7 +212,7 @@ static u_char request_array[][2]=
 { 
 	{ ECHO_ME_WAIT,        ECHO_ME_MAXRQ},
 	{ ECHO_REPLY_WAIT,     ECHO_REPLY_MAXRQ},
-	{ GET_FREE_IPS_WAIT, GET_FREE_IPS_MAXRQ },
+	{ GET_FREE_NODES_WAIT, GET_FREE_NODES_MAXRQ },
 
 	{ NEW_DNODE_WAIT, NEW_DNODE_MAXRQ },
 	{ NEW_SNODE_WAIT, NEW_SNODE_MAXRQ},
@@ -242,7 +243,7 @@ static u_char request_str[][20]=
 { 
 	{ "ECHO_ME" },
 	{ "ECHO_REPLY" },
-	{ "GET_FREE_IPS" },
+	{ "GET_FREE_NODES" },
 
 	{ "NEW_DNODE" },
 	{ "NEW_SNODE"},

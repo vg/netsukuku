@@ -30,31 +30,50 @@
 
 extern int errno;
 
-/*pos_from_node: Position from node: It returns the position of the `node' in the `map'.*/
+/*
+ * pos_from_node: Position from node: It returns the position of the `node'
+ * in the `map'.
+ */
 int pos_from_node(map_node *node, map_node *map)
 {
 	return ((void *)node-(void *)map)/sizeof(map_node);
 }
 
-/*Node from position: it returns the node pointer calculated by the given `pos' in the map*/
+/*
+ * Node from position: it returns the node pointer calculated by the given 
+ * `pos' in the map.
+ */
 map_node *node_from_pos(int pos, map_node *map)
 {
 	return (map_node *)((pos*sizeof(map_node))+(void *)map);
 }
 
-/*Converts an address of a struct in the map to an ip*/
-void maptoip(u_int mapstart, u_int mapoff, inet_prefix ipstart, inet_prefix *ret)
+/* 
+ * Position (of a struct in the map) to ip: Converts the node position 
+ * `map_pos' to its relative ip.
+ */
+void postoip(u_int map_pos, inet_prefix ipstart, inet_prefix *ret) 
 {
 	if(ipstart.family==AF_INET) {
-		ret->data[0]=((mapoff-mapstart)/sizeof(map_node))+ipstart.data[0];
+		ret->data[0]=map_pos + ipstart.data[0];
 		ret->family=AF_INET;
 		ret->len=4;
 	} else {
 		ret->family=AF_INET6;
 		ret->len=16;
 		memcpy(ret->data, ipstart.data, sizeof(inet_prefix));
-		sum_int(((mapoff-mapstart)/sizeof(map_node)), ret->data);
+		sum_int(map_pos, ret->data);
 	}
+}
+
+/* 
+ * Map (address) to ip: Converts an address of a struct in the map to the
+ * corresponding ip.
+ */
+void maptoip(u_int mapstart, u_int mapoff, inet_prefix ipstart, inet_prefix *ret)
+{
+	int map_pos=pos_from_node(mapoff, mapstart);
+	postoip(map_pos, ipstart, ret);
 }
 
 /*Converts an ip to an address of a struct in the map*/
@@ -396,17 +415,21 @@ int merge_maps(map_node *base, map_node *new, map_node *base_root, map_node *new
 			continue;
 
 		for(e=0; e<new[i].links; e++) {
-			/*Now we change the r_nodes pointers of the new map to points to 
-			 * the base map's nodes. */
+			/* 
+			 * Now we change the r_nodes pointers of the new map to points to 
+			 * the base map's nodes. 
+			 */
 			nrpos=pos_from_node(new[i].r_node[e].r_node, new);
 			if(nrpos == rpos)
 				/*We skip,cause the new_map it's using the base_root node as gw*/
 				continue;
 
 			if(base[nrpos].flags & MAP_VOID) {
-				/*In the base we haven't the node used as gw in the new_map to reach
+				/*
+				 * In the base we haven't the node used as gw in the new_map to reach
 				 * the new[i].r_node[e] node. We must use the new_root node as gw because
-				 * it is one of our rnode*/
+				 * it is one of our rnode
+				 */
 				new[i].r_node[e].r_node=(int *)new_root_in_base;
 			} else
 				new[i].r_node[e].r_node=base[nrpos].r_node[0].r_node;
@@ -434,14 +457,17 @@ int merge_maps(map_node *base, map_node *new, map_node *base_root, map_node *new
 	return count;
 }
 
-/*mod_rnode_addr: Modify_rnode_address*/
+/* 
+ * mod_rnode_addr: Modify_rnode_address 
+ */
 int mod_rnode_addr(map_rnode *rnode, int *map_start, int *new_start)
 {
 	rnode->r_node = ((int *)rnode->r_node - map_start) + new_start;
 	return 0;
 }
 
-/* get_rnode_block: It packs all the rnode structs of a node. The "r_node" pointer
+/* 
+ * get_rnode_block: It packs all the rnode structs of a node. The "r_node" pointer
  * of the map_rnode struct is changed to point to the position of the node in the map,
  * instead of the address. get_rnode_block returns the number of rnode structs packed
  */
@@ -457,13 +483,15 @@ int get_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart)
 	return e;
 }
 
-/* map_get_rblock: It uses get_rnode_block to pack all the int_map's rnode.
+/* 
+ * map_get_rblock: It uses get_rnode_block to pack all the int_map's rnode.
  * `maxgroupnode' is the number of nodes present in the map.
  * `map' is the actual int_map, while `addr_map' is the address used by get_rnode_block
  * to change the rnodes' pointers (read get_rnode_block).
  * It returns a pointer to the start of the rnode block and stores in `count'
  * the number of rnode structs packed.
- * On error NULL is returned.*/
+ * On error NULL is returned.
+ */
 map_rnode *map_get_rblock(map_node *map, int *addr_map, int maxgroupnode, int *count)
 {
 	int i, c=0, tot=0;
@@ -484,7 +512,8 @@ map_rnode *map_get_rblock(map_node *map, int *addr_map, int maxgroupnode, int *c
 }
 
 
-/* store_rnode_block: Given a correct node it restores in it all the r_node structs
+/* 
+ * store_rnode_block: Given a correct node it restores in it all the r_node structs
  * contained in in the rnode_block. It returns the number of rnode structs restored.
  */
 int store_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart) 
@@ -502,10 +531,12 @@ int store_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart)
 	return i;
 }
 
-/* map_store_rblock: Given a correct int_map with `maxgroupnode' nodes,
+/* 
+ * map_store_rblock: Given a correct int_map with `maxgroupnode' nodes,
  * it restores all the r_node structs in the `map' from the `rblock' 
  * using store_rnode_block. `addr_map' is the address used to change 
- * the rnodes' pointers (read store_rnode_block).*/
+ * the rnodes' pointers (read store_rnode_block).
+ */
 int map_store_rblock(map_node *map, int *addr_map int maxgroupnode, map_rnode *rblock)
 {
 	int i, c=0;
@@ -525,10 +556,12 @@ int verify_int_map_hdr(struct int_map_hdr *imap_hdr, int maxgroupnode, int maxrn
 	return 0;
 }
 
-/* pack_map: It returns a pack of the int/bmap_map `map', which has 
+/* 
+ * pack_map: It returns a pack of the int/bmap_map `map', which has 
  * `maxgroupnode' nodes ready to be saved or sent. In `pack_sz' it
  * stores the size of the package. For info on `addr_map' please
- * read get_map_rblock()*/
+ * read get_map_rblock().
+ */
 char *pack_map(map_node *map, int *addr_map, int maxgroupnode, map_node *root_node, size_t *pack_sz)
 {
 	struct int_map_hdr imap_hdr;
@@ -559,12 +592,14 @@ char *pack_map(map_node *map, int *addr_map, int maxgroupnode, map_node *root_no
 	return package;	
 }
 
-/* unpack_extmap: Given a valid int/bmap_map package (packed with pack_intmap), it 
+/* 
+ * unpack_map: Given a valid int/bmap_map package (packed with pack_intmap), it 
  * allocates a brand new int_map and restores in it the map and the rnodes.
  * It puts in `*new_root' the pointer to the root_node in the loaded map.
  * For info on `addr_map' please read map_store_rblock().
  * On success the a pointer to the new int_map is retuned, otherwise 0 will be
- * the fatal value.*/
+ * the fatal value.
+ */
 map_node *unpack_map(char *pack, size_t pack_sz, int *addr_map, map_node *new_root, 
 		     int maxgroupnode, int maxrnodeblock)
 {
@@ -608,7 +643,11 @@ map_node *unpack_map(char *pack, size_t pack_sz, int *addr_map, map_node *new_ro
 	return map;
 }
 
-/* * * save/load int_map * * */
+
+/* 
+ * * * save/load int_map * * *
+ */
+
 int save_map(map_node *map, map_node *root_node, char *file)
 {
 	FILE *fd;
@@ -630,10 +669,12 @@ int save_map(map_node *map, map_node *root_node, char *file)
 	return 0;
 }
 
-/* load_map: It loads the internal_map from `file'.
+/* 
+ * load_map: It loads the internal_map from `file'.
  * It returns the start of the map and if `new_root' is not NULL, it
  * puts in `*new_root' the pointer to the root_node in the loaded map.
- * On error it returns NULL. */
+ * On error it returns NULL. 
+ */
 map_node *load_map(char *file, map_node *new_root)
 {
 	map_node *map;
@@ -648,16 +689,17 @@ map_node *load_map(char *file, map_node *new_root)
 		return 0;
 	}
 
-	fread(&imap_hdr, sizeof(struct int_map_hdr), 1, fd);
-	if(verify_int_map_hdr(&imap_hdr, MAXGROUPNODE, MAXRNODEBLOCK)) {
-		error("Malformed map file. Aborting load_map().");
-		return 0;
-	}
+	if(fread(&imap_hdr, sizeof(struct int_map_hdr), 1, fd) < 1)
+		goto error;
+	if(verify_int_map_hdr(&imap_hdr, MAXGROUPNODE, MAXRNODEBLOCK))
+		goto error;
 		
 	rewind(fd);
 	pack_sz=INT_MAP_BLOCK_SZ(imap_hdr.int_map_sz, imap_hdr.rblock_sz):
 	pack=xmalloc(pack_sz);
-	fread(pack, pack_sz, 1, fd);
+	if(fread(pack, pack_sz, 1, fd) < 1)
+		goto error;
+
 	map=unpack_map(pack, pack_sz, 0, new_root, MAXGROUPNODE, MAXRNODEBLOCK);
 	if(!map)
 		error("Cannot unpack the int_map!");
@@ -665,4 +707,7 @@ map_node *load_map(char *file, map_node *new_root)
 	xfree(pack);
 	fclose(fd);
 	return map;
+error:
+	error("Malformed map file. Aborting load_map().");
+	return 0;
 }

@@ -69,12 +69,12 @@ typedef struct
  * quadro groups)*/
 typedef struct {
 	u_char      levels;		 /*How many levels we have*/
-	int         *gid;	 /*Group ids. Each element is the gid of the quadrogroup in the 
+	int         gid[MAX_LEVELS];	 /*Group ids. Each element is the gid of the quadrogroup in the 
 					   relative level. (ex: gid[n] is the gid of the quadropgroup a 
 					   the n level)*/
-	map_gnode  **gnode; /*Each element is a pointer to the relative gnode in the 
+	map_gnode  *gnode[MAX_LEVELS-EXTRA_LEVELS]; /*Each element is a pointer to the relative gnode in the 
 						      ext_map. It has levels-EXTRA_LEVELS elements.*/
-	inet_prefix *ipstart; /*The ipstart of each quadg.gid in their respective levels*/
+	inet_prefix ipstart[MAX_LEVELS]; /*The ipstart of each quadg.gid in their respective levels*/
 }quadro_group;
 
 /*These are the flags passed to iptoquadg()*/
@@ -130,16 +130,20 @@ void maxgroupnode_level_init(void);
 void maxgroupnode_level_free(void);
 
 u_short iptogid(inet_prefix ip, u_char level);
-void gidtoipstart(u_short *gid, u_char levels, int family, inet_prefix *ip);
+void gidtoipstart(u_short *gid, u_char total_levels, u_char levels, int family,
+		  inet_prefix *ip);
 void iptoquadg(inet_prefix ip, map_gnode **ext_map, quadro_group *qg, char flags)
 void quadg_free(quadro_group *qg);
 void quadg_destroy(quadro_group *qg);
-int quadg_diff_gids(quadro_group *qg_a, quadro_group *qg_b);
+void random_ip(inet_prefix *ipstart, int final_level, int final_gid, 
+		int total_levels, map_gnode **ext_map, int only_free_gnode, 
+		inet_prefix *new_ip);
+int quadg_diff_gids(quadro_group qg_a, quadro_group qg_b);
 int e_rnode_find(ext_rnode_cache *erc, quadro_group *qg);
 
 map_gnode *init_gmap(u_short groups);
-void free_gmap(map_gnode *gmap, u_short groups);
-map_gnode *init_extmap(u_char levels, u_short groups);
+void reset_gmap(map_gnode *gmap, u_short groups);
+map_gnode **init_extmap(u_char levels, u_short groups);
 void free_extmap(map_gnode **ext_map, u_char levels, u_short groups);
 
 int  g_rnode_find(map_gnode *gnode, map_gnode *n);
@@ -156,4 +160,4 @@ void free_extmap_rblock(map_rnode **rblock, u_char levels);
 char *pack_extmap(map_gnode **ext_map, int maxgroupnode, quadro_group *quadg, size_t *pack_sz);
 map_gnode *unpack_extmap(char *package, size_t pack_sz, quadro_group *quadg);
 int save_extmap(map_gnode **ext_map, int maxgroupnode, quadro_group *quadg, char *file);
-map_gnode *load_extmap(char *file, quadro_group *quadg);
+map_gnode **load_extmap(char *file, quadro_group *quadg);

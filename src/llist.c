@@ -29,30 +29,81 @@ struct linked_list
 }linked_list;
 typedef struct linked_list l_list;
 
-#define list_init(list)		do { list=(typeof (list))xmalloc(sizeof(typeof(*(list)))); \
-				     list->prev=0; list->next=0;} while (0)
+#define list_init(list)							\
+do {									\
+	list=(typeof (list))xmalloc(sizeof(typeof(*(list)))); 		\
+	list->prev=0; 							\
+	list->next=0;							\
+} while (0)
 				     
-#define list_last(list)		({l_list *_i; for(_i=(list); _i->next; _i=(l_list *)_i->next); _i;})
+#define list_last(list)							\
+({									\
+	 l_list *_i;							\
+	 for(_i=(list); _i->next; _i=(l_list *)_i->next); 		\
+ 	 _i;								\
+})
 				     
-#define list_new(size)		({void *_new; _new=(void *)xmalloc(size); _new;})
+#define list_new(size)							\
+({									\
+ 	void *_new; 							\
+ 	_new=(void *)xmalloc(size); 					\
+ 	_new;								\
+})
 				     
-#define list_free(list)		do { xfree((list)); } while(0)
+#define list_free(list)							\
+do { 									\
+	xfree((list));							\
+} while(0)
 				     
-#define list_ins(list, new)	do{ l_list *_list=(l_list *)(list), *_new=(l_list *)(new);		  \
-				_list->next->prev=_new; _list->prev->next=_new;				  \
-				_new->next=_list->next; _new->prev=_list->prev; 	  		  \
-				list_free(_list); }while(0)
+#define list_ins(list, new)						\
+do{ 									\
+	l_list *_list=(l_list *)(list), *_new=(l_list *)(new);		\
+	_list->next->prev=_new; 					\
+	_list->prev->next=_new;						\
+	_new->next=_list->next; 					\
+	_new->prev=_list->prev; 	  				\
+	list_free(_list); 						\
+}while(0)
 				
-#define list_add(list, new)	do{l_list *_i; _i=list_last((list)); _i->next=(new); (new)->prev=_i; (new)->next=0;}while(0)
+#define list_add(list, new)						\
+do{									\
+	l_list *_i; _i=list_last((list)); 				\
+	_i->next=(new); 						\
+	(new)->prev=_i; 						\
+	(new)->next=0;							\
+}while(0)
 
-#define list_del(list)		do{ l_list *_list=(l_list *)(list); \
-				   if(_list->prev)_list->prev->next=_list->next; \
-				   if(_list->next)_list->next->prev=_list->prev; \
-			           list_free(_list); }while(0)
+#define list_del(list)							\
+do{ 									\
+	l_list *_list=(l_list *)(list); 				\
+	if(_list->prev)							\
+		_list->prev->next=_list->next; 				\
+	if(_list->next)							\
+		_list->next->prev=_list->prev; 				\
+        list_free(_list); 						\
+}while(0)
 				   
-#define list_for(i)		for(; (i); (i)=(typeof (i))(i)->next)
+#define list_for(i)	for(; (i); (i)=(typeof (i))(i)->next)
 				   
-#define list_pos(list,pos)	({int _i=0; l_list *_x=(list); list_for(_x){ if(_i==(pos))break; else _i++; } _x;})
+#define list_pos(list,pos)						\
+({									\
+	 int _i=0;							\
+ 	 l_list *_x=(list); 						\
+ 	 list_for(_x) { 						\
+ 	 	if(_i==(pos)) 						\
+ 			break;						\
+		else 							\
+ 			_i++;						\
+ 	 } 								\
+ 	 _x;								\
+})
 
-#define list_destroy(list)	do{ l_list *_x=(list), *_i, *_next; _i=_x; \
-				   for(; _i; _i=next) { next=_x->next; list_del(_x); } }
+#define list_destroy(list)						\
+do{ 									\
+	l_list *_x=(list), *_i, *_next; 				\
+	_i=_x; 								\
+	for(; _i; _i=next) {						\
+		next=_x->next; 						\
+		list_del(_x);						\
+	}								\
+}

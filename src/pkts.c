@@ -313,7 +313,7 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 		else if(pkt->sk_type==SKT_UDP)
 			pkt->sk=new_udp_conn(pkt->to, pkt->port);
 		else if(pkt->sk_type==SKT_BCAST)
-			pkt->sk=new_bcast_conn(pkt->to, pkt->port);
+			pkt->sk=new_bcast_conn(pkt->to, pkt->port, me.cur_dev_idx);
 		else
 			fatal("Unkown socket_type. Something's very wrong!! Be aware");
 
@@ -412,8 +412,8 @@ int pkt_exec(PACKET pkt)
 			err=radar_recv_reply(pkt);
 			break;
 			
-		case GET_FREE_IPS:
-			err=put_free_ips(pkt);
+		case GET_FREE_NODES:
+			err=put_free_nodes(pkt);
 			break;
 		case GET_INT_MAP:
 			err=put_int_map(pkt);
@@ -421,13 +421,19 @@ int pkt_exec(PACKET pkt)
 			err=put_bnode_map(pkt);
 		case GET_EXT_MAP:
 			err=put_ext_map(pkt);
+
+		case TRACER_PKT:
+		case TRACER_PKT_CONNECT:
+			tracer_pkt_recv(pkt);
 		case QSPN_CLOSE:
 			err=qspn_close(pkt);
 		case QSPN_OPEN:
 			err=qspn_open(pkt);
 
 		default:
-			/*never reached... (some months later)... Why the hell did I write this? hahaha*/
+			/* never reached... 
+			 * (some months later)... Why the hell 
+			 * did I write this? hahaha*/
 			break;
 	}
 	

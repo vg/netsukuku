@@ -8,65 +8,78 @@ int init_load_maps(void)
 {
 	if(!(me.int_map=load_map(server_opt.int_map_file, &me.cur_node)))
 		me.int_map=init_map(0);
-	me.bnode_map=load_bmap(server_opt.bnode_map_file, &me.bmap_nodes);
-	me.ext_map=load_extmap(server_opt.ext_map_file, &me.cur_quadg);
+		
+	if(!(me.ext_map=load_extmap(server_opt.ext_map_file, &me.cur_quadg)))
+		me.ext_map=init_extmap(GET_LEVELS(my_family), 0);
+
+	if(!(me.bnode_map=load_bmap(server_opt.bnode_map_file, me.ext_map, &me.bmap_nodes)))
+		bmap_level_init(GET_LEVELS(my_family), &me.bnode_map, &me.bmap_nodes);
 }
 
 int save_maps(void)
 {
 	save_map(me.int_map, me.cur_node, server_opt.int_map_file);
-	save_bmap(me.bnode_map, me.bmap_nodes, server_opt.bnode_map_file);
+	save_bmap(me.bnode_map, me.bmap_nodes, me.ext_map, me.cur_quadg, server_opt.bnode_map_file);
 	save_extmap(me.ext_map, MAXGROUPNODE, me.cur_quadg, server_opt.ext_map_file);
 }
 
-void set_common_map_vars(u_char level, map_node *map, map_node *root_node, int *root_node_pos, map_gnode *gmap)
+int free_maps(void)
 {
-	if(!level) {
-		if(map)
-			*map=me.int_map;
-		if(root_node)
-			*root_node=me.cur_node;
-		if(root_node_pos)
-			*root_node_pos=pos_from_node(me.cur_node, me.int_map);
-	} else {
-		if(map)
-			*map=me.ext_map[_EL(level)];
-		if(gmap)
-			*gmap=*map;
-		if(root_node)
-			*root_node=&me.cur_quadg.gnode[_EL(level)].g;
-		if(root_node_pos)
-			*root_node_pos=pos_from_gnode(me.cur_quadg.gnode[_EL(level)], me.ext_map[_EL(level)]);
-	}
+	bmap_level_free(me.bnode_map, me.bmap_nodes);
+	free_extmap(me.ext_map, GET_LEVELS(my_family), 0);
+	free_map(me.int_map, 0);
+}
+
+void init_netsukuku(void)
+{
+	memset(&me, 0, sizeof(struct current));
+	srand(time(0));	
+
+	/*TODO:
+	void log_init(char *prog, int dbg, int log_stderr): 
+	signal();
+	*/
+	maxgroupnode_level_init();
+	
+
+	my_family=server_opt.family;
+	strncpy(me.cur_dev, server_opt.dev, IFNAMSIZ);
+	if(!if_init(server_opt.dev, &me.cur_dev_idx))
+		fatal("Cannot initialize the %s device", server_opt.dev);
+
+	qspn_init(GET_LEVELS(my_family));
+	init_radar();
+
+	init_load_maps();
+
+	init_accept_tbl(MAX_CONNECTIONS, MAX_ACCEPTS, FREE_ACCEPT_TIME);
+}
+
+void destroy_netsukuku(void)
+{
+	save_maps();
+	free_maps();
+	maxgroupnode_level_free();
+	close_radar();
+	destroy_accept_tbl();
 }
 
 int main(int argc, char **argv)
 {
-	/*This shall be the main flow:*/
+	/*
+	 * The main flow shall never be stopped, and the sand of time will be
+	 * revealed.
+	 */
 
 #ifdef QSPN_EMPIRIC
 	error("QSPN_EMPIRIC is activated!!!!");
 	exit(1);
 #endif
-	/*Init stuff
-	void maxgroupnode_level_init(void);
-	char *if_init(char *dev, &me.cur_dev_idx)
-	join_ipv6_multicast();
-	map_init();
-	ext_maop_init();
-	init_quadg();
-	qspn_init(u_char levels);
-	bmap_level_init(levels, &me.bnode_map, &me.bmap_nodes);
-	*/
-	memset(&me, 0, sizeof(struct current));
-	/*curme_init();*/
 
-	init_radar();
-	close_radar();
-
-	/*Now we hook in the Netsukuku network
-	netsukuku_hook();
-	*/
+	init_netsukuku();
+	
+	/* Now we hook in the Netsukuku network */
+	netsukuku_hook(me.cur_dev);
 
 	/*These are the main threads that keeps Netsukuku up & running.
 	thread(connection_wrapper());
@@ -75,7 +88,5 @@ int main(int argc, char **argv)
 	daemon_tcp(); <<-- here we use this self process for the tcp_daemon
 	*/
 
-	/*destroy stuff
-	  maxgroupnode_level_free();
-	  */
+	destroy_netsukuku();
 }

@@ -28,6 +28,27 @@
 extern int my_family;
 extern struct current me;
 
+void qspn_set_map_vars(u_char level, map_node *map, map_node *root_node, int *root_node_pos, map_gnode *gmap)
+{
+	if(!level) {
+		if(map)
+			*map=me.int_map;
+		if(root_node)
+			*root_node=me.cur_node;
+		if(root_node_pos)
+			*root_node_pos=pos_from_node(me.cur_node, me.int_map);
+	} else {
+		if(map)
+			*map=me.ext_map[_EL(level)];
+		if(gmap)
+			*gmap=me.ext_map[_EL(level)];
+		if(root_node)
+			*root_node=&me.cur_quadg.gnode[_EL(level)].g;
+		if(root_node_pos)
+			*root_node_pos=pos_from_gnode(me.cur_quadg.gnode[_EL(level)], me.ext_map[_EL(level)]);
+	}
+}
+
 void qspn_init(u_char levels)
 {
 	qspn_b=xmalloc(sizeof(struct qspn_buffer)*levels);
@@ -77,8 +98,10 @@ int qspn_b_find_reply(struct qspn_buffer *qb, int sub_id)
 	return -1;
 }
 
-/* qspn_round_left: It returns the milliseconds left before the QSPN_WAIT_ROUND expires.
- * If the returned value is <= 0 the QSPN_WAIT_ROUND is expired.*/
+/* 
+ * qspn_round_left: It returns the milliseconds left before the QSPN_WAIT_ROUND
+ * expires. If the returned value is <= 0 the QSPN_WAIT_ROUND is expired.
+ */
 int qspn_round_left(u_char level)
 {
 	struct timeval cur_t, t;
@@ -89,9 +112,10 @@ int qspn_round_left(u_char level)
 }
 
 
-/* update_qspn_time: It updates me.cur_qspn_time;
- * Oh, sorry this code doesn't show consideration for the relativity time shit. So
- * you can't move at a velocity near the light's speed. I'm sorry.
+/* 
+ * update_qspn_time: It updates me.cur_qspn_time;
+ * Oh, sorry this code doesn't show consideration for the relativity time shit.
+ * So you can't move at a velocity near the light's speed. I'm sorry.
  */
 void update_qspn_time(u_char level)
 {
@@ -110,17 +134,19 @@ void update_qspn_time(u_char level)
 	}
 }
 
-/* qspn_new_round: It prepares all the buffers for the new qspn_round and removes
- * the QSPN_OLD nodes from the map.*/
+/* 
+ * qspn_new_round: It prepares all the buffers for the new qspn_round and 
+ * removes the QSPN_OLD nodes from the map.
+ */
 void qspn_new_round(u_char level)
 {
 	int bm;
 	map_node *map, *root_node;
 	map_gnode *gmap;
 	
-	set_common_map_vars(level, &map, &root_node, 0, &gmap):
+	qspn_set_map_vars(level, &map, &root_node, 0, &gmap):
 
-	/*New round activated. Destroy the old one. beep.*/
+	/* New round activated. Destroy the old one. beep. */
 	me.cur_qspn_id[level]++;
 	update_qspn_time(level);
 	qspn_b_clean(level);
@@ -129,9 +155,11 @@ void qspn_new_round(u_char level)
 	for(i=0; i<root_node->links; i++)
 		root_node->r_node[i].r_node->flags&=~QSPN_CLOSED & ~QSPN_REPLIED;
 
-	/*How to remove the dead nodes from the map? How do we know what are deads?
-	 *Pretty simple, we can't know so we wait until the next qspn_round to break them
-	 *if they didn't show in the while. */
+	/*
+	 * How to remove the dead nodes from the map? How do we know which are deads?
+	 * Pretty simple, we can't know so we wait until the next qspn_round to break them
+	 * if they didn't show in the while. 
+	 */
 	for(i=0; i<MAXGROUPNODE; i++) {
 		if((map[i].flags & QSPN_OLD) && !(map[i].flags & MAP_VOID)) {
 			if((map[i].flags & MAP_BNODE)) {
@@ -161,8 +189,10 @@ int exclude_from_and_opened_and_glevel(TRACER_PKT_EXCLUDE_VARS)
 	return 0;
 }
 
-/* The Holy qspn_send. It is used to send a new qspn_round when something changes around the 
- * root_node (me).*/
+/*
+ * The Holy qspn_send. It is used to send a new qspn_round when something 
+ * changes around the root_node (me).
+ */
 int qspn_send(u_char level)
 {
 	PACKET pkt;
@@ -172,7 +202,7 @@ int qspn_send(u_char level)
 	map_gnode *gmap;
 	u_char upper_level;
 	
-	set_common_map_vars(level, &map, &root_node, &root_node_pos, &gmap):
+	qspn_set_map_vars(level, &map, &root_node, &root_node_pos, &gmap):
 	upper_level=level+1;
 
 	/* Now I explain how does work the level stuff in the qspn. For example, if we want to
@@ -199,7 +229,7 @@ int qspn_send(u_char level)
 	qspn_new_round(level);
 	root_node->flags|=QSPN_STARTER;
 
-	/*The forge of the packet. "One pkt to rule them all". Dum dum*/
+	/* The forge of the packet. "One pkt to rule them all". Dum dum */
 	upper_gid=me.cur_quadg.gid[upper_level];
 	tracer_pkt_build(QSPN_CLOSE, me.cur_qspn_id[level], root_node_pos, /*IDs*/
 			 upper_gid,  level,
@@ -247,13 +277,13 @@ int qspn_close(PACKET rpkt)
 
 	if(!level || level==1) {
 		level=0;
-		set_common_map_vars(level, 0, &root_node, &root_node_pos, 0):
+		qspn_set_map_vars(level, 0, &root_node, &root_node_pos, 0):
 		from=node_from_pos(tracer[hops-1].node, me.int_map);
 		tracer_starter=node_from_pos(tracer[0].node, me.int_map);
                 void_map=me.int_map;
 	} else {
 		level--;
-		set_common_map_vars(level, 0, &root_node, &root_node_pos, 0):
+		qspn_set_map_vars(level, 0, &root_node, &root_node_pos, 0):
 		from=gfrom=gnode_from_pos(tracer[hops-1].node, me.ext_map[_EL(level)]);
 		tracer_starter=gnode_from_pos(tracer[0].node, ext_map[_EL(level)]);
                 void_map=me.ext_map;
@@ -281,8 +311,10 @@ int qspn_close(PACKET rpkt)
 	tracer_store_pkt(void_map, level, tracer_hdr, tracer, (void *)bhdr, bblock_sz,
 			&old_bchunks, &old_bblock, &old_bblock_sz);
 
-	/*Only if we are in the level 0, or if we are a bnode, we can do the real 
-	 * qspn actions, otherwise we simply forward the pkt*/
+	/*
+	 * Only if we are in the level 0, or if we are a bnode, we can do the real 
+	 * qspn actions, otherwise we simply forward the pkt
+	 */
 	not_closed=0;
 	if(!level || (root_node->flags & MAP_BNODE)) {
 		/*We close the from node and we see there are any links still `not_closed'*/
@@ -353,12 +385,12 @@ int qspn_open(PACKET rpkt)
 	upper_level=level=bcast_hdr->level;
 	if(!level || level==1) {
 		level=0;
-		set_common_map_vars(level, 0, &root_node, &root_node_pos, 0):
+		qspn_set_map_vars(level, 0, &root_node, &root_node_pos, 0):
 		from=node_from_pos(tracer[hops-1].node, me.int_map);
                 void_map=me.int_map;
 	} else {
 		level--;
-		set_common_map_vars(level, 0, &root_node, &root_node_pos, 0):
+		qspn_set_map_vars(level, 0, &root_node, &root_node_pos, 0):
 		from=gfrom=gnode_from_pos(tracer[hops-1].node, me.ext_map[_EL(level)]);
                 void_map=me.ext_map;
 	}

@@ -42,13 +42,13 @@ int sockaddr_to_inet(struct sockaddr *ip, inet_prefix *dst, u_short *port);
 int new_socket(int sock_type);
 int new_dgram_socket(int sock_type);
 int join_ipv6_multicast(int socket, int idx);
-int set_broadcast_sk(int socket, int family);
+int set_broadcast_sk(int socket, int family, int dev_idx);
 int unset_broadcast_sk(int socket, int family);
-int new_broadcast_sk(int sock_type);
+int new_broadcast_sk(int sock_type, int dev_idx);
 
 int new_tcp_conn(inet_prefix *host, short port);
 int new_udp_conn(inet_prefix *host, short port);
-int new_bcast_conn(inet_prefix *host, short port);
+int new_bcast_conn(inet_prefix *host, short port, int dev_idx);
 
 ssize_t inet_recv(int s, void *buf, size_t len, int flags);
 ssize_t inet_recvfrom(int s, void *buf, size_t len, int flags, struct sockaddr *from, socklen_t *fromlen);

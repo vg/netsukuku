@@ -18,31 +18,60 @@
 
 #include <sys/types.h>
 
-/*Used for: ip.data[0]=HOOKING_IP;*/
+/* Used for: ip.data[0]=HOOKING_IP; */
 #define HOOKING_IP  0x8f000001      /* 128.0.0.1   */
 #define HOOKING_IP6 0x8f000001
 
-struct free_ips
+/* 
+ * The free_nodes pkt is used to send the list of all the free/not used
+ * nodes/gnodes present at level fn_hdr.level. 
+ * If level is == 1 then the pkt contains the list of free nodes of the fn_hdr.gid
+ * gnode. 
+ * If level is > 1 then it contains the list of free gnodes which are inside
+ * the gnode with `fn_hdr.gid' gid of the `fn_hdr.level'th level. So the free gnodes
+ * are part of the (fn_hdr.level - 1)th level.
+ * 
+ * The free nodes pkt contains also the the qspn round time of all levels.
+ */
+struct free_nodes_hdr
 {
-	u_short  	gid;
-	u_short		ips;
-	inet_prefix 	ipstart;
-	struct timeval  qtime;		/*qspn round time: how many seconds passed away
-					  since the previous qspn round*/
-};
+	u_char 		max_levels;	/* How many levels we are managing */
 
-int get_free_ips(inet_prefix to, struct free_ips *fi_hdr, int *ips):
-int put_free_ips(PACKET rq_pkt);
+	inet_prefix 	ipstart;	/* The ipstart of the gnode */
+	u_char 		level;		/* The level where the gnode belongs */
+	u_short  	gid;		/* The gnode id */
+	u_short		nodes;		/* The number of free nodes/gnodes. 
+					   It cannot be greater than MAXGROUPNODE */
+};
+#define FREE_NODES_SZ(levels, nodes) (sizeof(struct free_nodes_hdr) +	      \
+				 	((levels) * sizeof(struct timeval)) + \
+					  (sizeof(u_short) * (nodes))
+
+/* 
+ * the free_nodes block is:
+ *	struct timeval  qtime[fn_hdr.max_levels];  qspn round time: how many seconds passed away
+ *						   since the previous qspn round. There's a qtime
+ *						   for each fn_hdr.max_levels level
+ *	u_short		free_nodes[fn_hdr.nodes];  If free_nodes[x] is the position of the node in the
+ *						   map.
+ * The free_nodes pkt is:
+ *	fn_hdr;
+ *	fn_block;
+ */
+
+int get_free_nodes(inet_prefix to, struct free_nodes *fn_hdr, int *nodes, struct timeval *qtime);
+int put_free_nodes(PACKET rq_pkt);
 
 int put_ext_map(PACKET rq_pkt);
-map_gnode *get_ext_map(inet_prefix to, map_gnode *new_root);
+map_gnode **get_ext_map(inet_prefix to, quadro_group *new_quadg);
 
 int put_int_map(PACKET rq_pkt);
 map_node *get_int_map(inet_prefix to, map_node *new_root);
 
 int put_bnode_map(PACKET rq_pkt);
-map_bnode *get_bnode_map(inet_prefix to, u_int *bmap_nodes);
+map_bnode **get_bnode_map(inet_prefix to, u_int *bmap_nodes);
 
+int create_gnodes(inet_prefix *ip, int final_level);
 int netsukuku_hook(char *dev);
 
 /*int snode_transfrom();*/

@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 #include <sys/time.h>
+#include <linux/limits.h>
 #include "gmap.h"
 #include "route.h"
 
@@ -50,7 +51,7 @@ struct current
 
 	rnode_rt 	*cur_rnrt;
 
-	char 		*cur_dev;
+	char 		 cur_dev[IFNAMSIZ];
 	int		 cur_dev_idx;
 }me;
 
@@ -59,16 +60,14 @@ int ll_map_initialized=0;
 
 typedef struct
 {
-	char *dev;
-	char *int_map_file;
-	char *bnode_map_file;
-	char *ext_map_file;
+	char 		dev[IFNAMSIZ];
+	int 		family;
+	char 		int_map_file[NAME_MAX];
+	char 		bnode_map_file[NAME_MAX];
+	char 		ext_map_file[NAME_MAX];
 }NtkOpt;
 NtkOpt server_opt;
 
 extern char *__argv0;
 extern int dbg_lvl;
 extern int log_to_stderr;
-
-
-void set_common_map_vars(u_char level, map_node *map, map_node *root_node, int *root_node_pos, map_gnode *gmap);

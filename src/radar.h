@@ -48,8 +48,8 @@ struct radar_queue
 						   
 	char pongs;				/*The total pongs received*/
 	struct timeval rtt[MAX_RADAR_SCANS];	/*The round rtt of each pong*/
-	struct timeval final_rtt;		/*When all the rtt is filled, or when MAX_RADAR_WAIT is passed, final_rtt
-						  will keep the average of all the rtts
+	struct timeval final_rtt;		/*When all the rtt is filled, or when MAX_RADAR_WAIT is expired,
+						  final_rtt will keep the average of all the rtts
 						 */
 };
 struct radar_queue *radar_q;	/*the start of the linked list of radar_queue*/
