@@ -229,7 +229,7 @@ void destroy_netsukuku(void)
 
 int main(int argc, char **argv)
 {
-	pthread_t daemon_radar_thread, daemon_udp_thread;
+	pthread_t daemon_tcp_thread, daemon_udp_thread;
 	pthread_attr_t t_attr;
 	
 	/*
@@ -246,10 +246,6 @@ int main(int argc, char **argv)
 	parse_options(argc, argv);
 	init_netsukuku(argv);
 	
-	/* Now we hook in the Netsukuku network */
-	netsukuku_hook(me.cur_dev);
-
-
 	if(server_opt.daemon) {
 		log_init(argv[0], server_opt.dbg_lvl, 0);
 		if(daemon(0, 0) == -1) {
@@ -267,15 +263,18 @@ int main(int argc, char **argv)
 	 */
 	debug(DBG_NORMAL, "Activating all daemons");
 
-	debug(DBG_SOFT,   "Evocating radar daemon.");
-	pthread_create(&daemon_radar_thread, &t_attr, radar_daemon, NULL);
-	
 	debug(DBG_SOFT,   "Evocating udp daemon.");
 	pthread_create(&daemon_udp_thread,   &t_attr, udp_daemon,  NULL);
 
-	/* We use this self process for the tcp_daemon. */
 	debug(DBG_SOFT,   "Evocating tcp daemon.");
-	tcp_daemon(NULL);
+	pthread_create(&daemon_tcp_thread, &t_attr, tcp_daemon, NULL);
+
+	/* Now we hook in the Netsukuku network */
+	netsukuku_hook(me.cur_dev);
+
+	/* We use this self process for the radar_daemon. */
+	debug(DBG_SOFT,   "Evocating radar daemon.");
+	radar_daemon(NULL);
 	
 	loginfo("Cya m8");
 	pthread_attr_destroy(&t_attr);

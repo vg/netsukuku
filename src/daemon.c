@@ -120,7 +120,7 @@ void *udp_daemon(void *null)
 			pkt_free(&rpkt, 0);
 			continue;
 		}
-			
+		
 		if(add_accept(rpkt.from, 1)) {
 			ntop=inet_to_str(rpkt.from);
 			debug(DBG_NORMAL, "ACPT: dropped UDP pkt from %s: Accept table full.", ntop);
@@ -230,7 +230,6 @@ void *tcp_daemon(void *null)
 		} else {
 			debug(DBG_NORMAL, "ACPT: Accept_tbl ok! accept_idx: %d "
 					"from %s", accept_idx, ntop);
-			
 			/* 
 			 * Ok, the connection is good, send back the
 			 * ACK_AFFERMATIVE.

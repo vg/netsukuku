@@ -199,8 +199,8 @@ void rnode_destroy(map_node *node)
 int rnode_find(map_node *node, map_node *n)
 {
 	int e;
-	for(e=0; e<node->links; e++)
-		if((int)*node->r_node[e].r_node == (int)n)
+	for(e=0; e < node->links; e++)
+		if((map_node *)node->r_node[e].r_node == n)
 			return e;
 	return -1;
 }

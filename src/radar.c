@@ -310,7 +310,7 @@ void radar_update_map(void)
 				   qb=xmalloc(sizeof(struct qspn_buffer));
 				   memset(qb, 0, sizeof(struct qspn_buffer));
 				   qb->rnode=node;
-				   if(!root_node->links)
+				   if(root_node->links == 1)
 					   list_init(qspn_b[level]);
 				   list_add(qspn_b[level], qb);
 
@@ -405,7 +405,7 @@ int add_radar_q(PACKET pkt)
 	memcpy(&rq->ip, &pkt.from, sizeof(inet_prefix));
 	memcpy(&rq->quadg, &quadg, sizeof(quadro_group));
 
-	if(rq->pongs<=radar_scans) {
+	if(rq->pongs <= radar_scans) {
 		timersub(&t, &scan_start, &rq->rtt[rq->pongs]);
 		/* 
 		 * Now we divide the rtt, because (t - scan_start) is the time
@@ -485,7 +485,9 @@ int radar_scan(void)
 	sleep(max_radar_wait);
 
 	final_radar_queue();
+	debug(DBG_NOISE, "radar_scan: radar_update_map();");
 	radar_update_map();
+	debug(DBG_NORMAL, "Radar_scan %d finished", my_echo_id);
 	if(!(me.cur_node->flags & MAP_HNODE)) {
 		for(i=0; i<me.cur_quadg.levels; i++)
 			if(send_qspn_now[i])
@@ -500,26 +502,24 @@ int radar_scan(void)
 }
 
 /* 
- * radard: It sends back via broadcast the ECHO_REPLY to the ECHO_ME pkt received
+ * radard: It sends back to rpkt.from the ECHO_REPLY pkt in reply to the ECHO_ME
+ * pkt received.
  */
 int radard(PACKET rpkt)
 {
 	PACKET pkt;
-	inet_prefix broadcast;
 	ssize_t err;
+	char *ntop;
 
 	/* We create the PACKET */
 	memset(&pkt, '\0', sizeof(PACKET));
-	
-	inet_setip_bcast(&broadcast, my_family);
-	pkt_addto(&pkt, &broadcast);
-	pkt.sk_type=SKT_BCAST;
+	pkt_addto(&pkt, &rpkt.from);
+	pkt_addsk(&pkt, rpkt.sk, SKT_UDP);
 	
 	/* We send it */
 	err=send_rq(&pkt, 0, ECHO_REPLY, rpkt.hdr.id, 0, 0, 0);
-	pkt_free(&pkt, 1);
+	pkt_free(&pkt, 0);
 	if(err==-1) {
-		char *ntop;
 		ntop=inet_to_str(pkt.to);
 		error("radard(): Cannot send back the ECHO_REPLY to %s.", ntop);
 		xfree(ntop);
@@ -528,12 +528,11 @@ int radard(PACKET rpkt)
 	return 0;
 }
 
+/* Oh, what a simple daemon ^_^ */
 void *radar_daemon(void *null)
 {
 	debug(DBG_NORMAL, "Radar daemon up & running");
-	for(;;) {
+	for(;;)
 		radar_scan();
-		sleep(MAX_RADAR_WAIT+2);
-	}
 }
 

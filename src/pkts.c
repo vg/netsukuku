@@ -184,17 +184,15 @@ ssize_t pkt_recv(PACKET *pkt)
 			return -1;
 		}
 		
-		if(!pkt->hdr.sz) {
-			pkt->msg=0;
-			return err;
-		}
-
-		/*let's get the body*/
-		buf=xmalloc(pkt->hdr.sz);
-		err=inet_recv(pkt->sk, buf, pkt->hdr.sz, pkt->flags);
-		if(err != pkt->hdr.sz) {
-			debug(DBG_NOISE, "Cannot inet_recv() the pkt's body");
-			return -1;
+		buf=0;
+		if(pkt->hdr.sz) {
+			/*let's get the body*/
+			buf=xmalloc(pkt->hdr.sz);
+			err=inet_recv(pkt->sk, buf, pkt->hdr.sz, pkt->flags);
+			if(err != pkt->hdr.sz) {
+				debug(DBG_NOISE, "Cannot inet_recv() the pkt's body");
+				return -1;
+			}
 		}
 		
 		/*Now we store in the PACKET what we got*/
@@ -228,17 +226,15 @@ ssize_t pkt_recv(PACKET *pkt)
 			return -1;
 		}
 
-		if(!pkt->hdr.sz) {
-			pkt->msg=0;
-			return err;
-		}
-			
-		/*let's get the body*/
-		buf=xmalloc(pkt->hdr.sz);
-		err=inet_recv(pkt->sk, buf, pkt->hdr.sz, pkt->flags);
-		if(err != pkt->hdr.sz) {
-			debug(DBG_NOISE, "Cannot inet_recv() the pkt's body");
-			return -1;
+		buf=0;
+		if(pkt->hdr.sz) {
+			/*let's get the body*/
+			buf=xmalloc(pkt->hdr.sz);
+			err=inet_recv(pkt->sk, buf, pkt->hdr.sz, pkt->flags);
+			if(err != pkt->hdr.sz) {
+				debug(DBG_NOISE, "Cannot inet_recv() the pkt's body");
+				return -1;
+			}
 		}
 		
 		pkt->msg=buf;
@@ -331,7 +327,7 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 		memset(&rpkt, '\0', sizeof(PACKET));
 
 	ntop=inet_to_str(pkt->to);
-	debug(DBG_NOISE, "Sending the %s op to %s", rq_str, ntop);
+	debug(DBG_INSANE, "Sending the %s op to %s", rq_str, ntop);
 
 	/* * * the request building process * * */
 	pkt_fill_hdr(&pkt->hdr, rq_id, rq, pkt->hdr.sz);
@@ -442,12 +438,20 @@ int pkt_err(PACKET pkt, int err)
 	
 int pkt_exec(PACKET pkt, int acpt_idx)
 {
-	char *ntop;
+	char *ntop, *op_str;
 	int err=0;
 
+	if(!re_verify(pkt.hdr.op))
+		op_str=re_to_str(pkt.hdr.op);
+	else
+		op_str=rq_to_str(pkt.hdr.op);
+
+	debug(DBG_INSANE, "pkt_exec(): id: %d, op: %s, acpt_idx: %d", pkt.hdr.id,
+			op_str, acpt_idx);
 	if((err=add_rq(pkt.hdr.op, &accept_tbl[acpt_idx].rqtbl))) {
 		ntop=inet_to_str(pkt.from);
-		error("From %s: Cannot process the %s request: %s", ntop, rq_to_str(pkt.hdr.op), rq_strerror(err));
+		error("From %s: Cannot process the %s request: %s", ntop, 
+				op_str, rq_strerror(err));
 		if(ntop)
 			xfree(ntop);
 		pkt_err(pkt, err);

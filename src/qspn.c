@@ -56,10 +56,17 @@ void qspn_set_map_vars(u_char level, map_node **map, map_node **root_node,
 
 void qspn_init(u_char levels)
 {
-	qspn_b=xmalloc(sizeof(struct qspn_buffer)*levels);
+	qspn_b=xmalloc(sizeof(struct qspn_buffer *)*levels);
+	memset(qspn_b, 0, sizeof(struct qspn_buffer *)*levels);
+	
 	qspn_send_mutex=xmalloc(sizeof(int)*levels);
+	memset(qspn_send_mutex, 0, sizeof(int)*levels);
+	
 	me.cur_qspn_id=xmalloc(sizeof(int)*levels);
+	memset(me.cur_qspn_id, 0, sizeof(int)*levels);
+	
 	me.cur_qspn_time=xmalloc(sizeof(struct timeval)*levels);
+	memset(me.cur_qspn_time, 0, sizeof(struct timeval)*levels);
 }
 
 void qspn_free(void)

@@ -30,6 +30,9 @@ void bmap_level_init(u_char levels, map_bnode ***bmap, u_int **bmap_nodes)
 {
 	*bmap=xmalloc(sizeof(map_bnode *) * levels);
 	*bmap_nodes=(u_int *)xmalloc(sizeof(u_int) * levels);
+
+	memset(*bmap, 0, sizeof(map_bnode *) * levels);
+	memset(*bmap_nodes, 0, sizeof(u_int) * levels);
 }
 
 void bmap_level_free(map_bnode **bmap, u_int *bmap_nodes)

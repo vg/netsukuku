@@ -110,17 +110,16 @@ static u_char reply_str[][20]=
 enum errors
 {
 	/*Request errors*/
-	E_INVALID_REQUEST=1,
+	E_INVALID_REQUEST,
 	E_ACCEPT_TBL_FULL,
 	E_REQUEST_TBL_FULL,
 	E_QGROUP_FULL,
 	E_TOO_MANY_CONN
 };
-#define TOTAL_ERRORS		(E_TOO_MANY_CONN)
+#define TOTAL_ERRORS		(E_TOO_MANY_CONN+1)
 
 static u_char error_array[]=
 {	
-	 0 ,
 	 E_INVALID_REQUEST ,
 	 E_ACCEPT_TBL_FULL ,
 	 E_REQUEST_TBL_FULL,
@@ -128,8 +127,9 @@ static u_char error_array[]=
 	 E_TOO_MANY_CONN   ,
 };
 
+static char unknown_error[]="Unknow error";
 static u_char error_str[][20]=
-{	{ "Unknown error!" },
+{	
 	{ "Invalid request" },
 	{ "Accept table full" },
 	{ "Request table full" },

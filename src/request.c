@@ -43,8 +43,8 @@ int err_verify(u_char err)
 
 char *rq_strerror(int err)
 {
-	if(err_verify)
-		err=0;
+	if(err_verify(err))
+		return unknown_error;
 	return error_str[err];
 }
 
@@ -121,6 +121,7 @@ int add_rq(u_char rq, rq_tbl *tbl)
 	int err;
 	time_t cur_t;
 	
+	return 0;
 	if((err=is_rq_full(rq, tbl)))
 		return err;
 	
@@ -130,4 +131,3 @@ int add_rq(u_char rq, rq_tbl *tbl)
 	tbl->rq_wait[find_free_rq_wait(rq, tbl)]=cur_t;	
 	return 0;
 }
-

@@ -112,7 +112,7 @@ void print_log(int level, const char *fmt, va_list args)
 	
 	if(log_to_stderr) {
 		vfprintf(stderr, fmt, args);
-		fprintf(stderr, "\r\n");
+		fprintf(stderr, "\n");
 	} else {
 		openlog(__argv0, LOG_PID, log_facility);
 		vsyslog(level | log_facility, fmt, args);
