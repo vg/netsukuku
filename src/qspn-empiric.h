@@ -22,13 +22,22 @@
 
 #define Q_BACKPRO
 #undef Q_BACKPRO
-#define Q_OPEN
 #undef Q_OPEN
+#define Q_OPEN
 
 pthread_mutex_t mutex[MAXGROUPNODE];
 int total_threads=0;
 
 map_node *int_map;
+
+/*This struct keeps tracks of the qspn_pkts sent or
+ * received by our rnodes*/
+struct qspn_queue
+{
+	int 	q_id;		/*qspn_id*/
+	u_short replier[MAXGROUPNODE];	/*Who has sent these repliesi (qspn_sub_id)*/
+	u_short	flags[MAXGROUPNODE];
+}*qspn_q[MAXGROUPNODE];
 
 struct stat
 {
@@ -53,6 +62,8 @@ short rt_total[MAXGROUPNODE];
 
 struct q_pkt
 {
+	int q_id;
+	int q_sub_id;
 	short from;
 	short to;
 	int   broadcast;

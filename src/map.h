@@ -48,7 +48,7 @@
 #define QSPN_STARTER	(1<<11)		/*Used only by qspn-empiric.c*/
 #define QSPN_REPLIED	(1<<12)		/*When the node send the qspn_reply it will never reply again to the same qspn*/
 #define QSPN_BACKPRO	(1<<13)		/*This marks the r_node where the QSPN_BACKPRO has been sent*/
-
+#define QSPN_SENT	(1<<14)		/*This marks the r_node where the QSPN_REQUEST has been sent*/
 
 /*map_rnode is what map_node.r_node points to*/
 typedef struct
@@ -102,6 +102,9 @@ typedef struct
  *
  * typedef qmap_node *int_map;
  */
+#ifndef QSPN_EMPIRIC
+struct qspn_queue *qspn_q;
+#endif
 
 #define MAXRNODEBLOCK		MAXLINKS*MAXGROUPNODE*sizeof(map_rnode)
 #define INTMAP_END(mapstart)	((sizeof(map_node)*MAXGROUPNODE)+(mapstart))

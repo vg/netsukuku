@@ -21,7 +21,7 @@
  * collects the generated data and makes some statistic, in this way I can 
  * tune without much worries the QSPN algorithm. Qspn-empiric can be also 
  * used to solve graph without using djkstra hehehe.
- * ah,..  yes it uses the threads... a lot of them... ^_^ I want a cluster!
+ * ah,..  yes it uses threads... a lot of them... ^_^ I want a cluster!
  */
 
 #include <stdlib.h>
@@ -116,6 +116,26 @@ random_node:
 	}
 }
 
+void init_q_queue(map_node *map)
+{
+	int i;
+
+	for(i=0; i<MAXGROUPNODE; i++) {
+		if(map[i].links) {
+			qspn_q[i]=xmalloc(sizeof(struct qspn_queue)*map[i].links);
+			memset(qspn_q[i], 0, sizeof(struct qspn_queue));
+		}
+	}
+}
+
+void free_q_queue(map_node *map)
+{
+	int i, e, x;
+	for(i=0; i<MAXGROUPNODE; i++) {
+		xfree(qspn_q[i]);
+	}
+}
+
 int store_tracer_pkt(struct q_opt *qopt)
 {
 	int x, pkt, to=qopt->q.to;
@@ -132,6 +152,8 @@ int store_tracer_pkt(struct q_opt *qopt)
 
 	pkt_db[to][pkt]=xmalloc(sizeof(struct q_pkt));
 	memset(pkt_db[to][pkt], 0, sizeof(struct q_pkt));
+	pkt_db[to][pkt]->q_id=qopt->q.q_id;
+	pkt_db[to][pkt]->q_sub_id=qopt->q.q_sub_id;
 	pkt_db[to][pkt]->from=qopt->q.from;
 	pkt_db[to][pkt]->routes=qopt->q.routes+1;
 	if(pkt_db[to][pkt]->routes) {
@@ -147,6 +169,9 @@ int store_tracer_pkt(struct q_opt *qopt)
 	return pkt;
 }
 
+/*Ok, I see... The qspn_backpro is a completely lame thing!
+ * fucker!
+ */
 void *send_qspn_backpro(void *argv)
 {
 	struct q_opt *qopt=(struct q_opt *)argv, *nopt;
@@ -184,9 +209,8 @@ void *send_qspn_backpro(void *argv)
 			nopt->q.broadcast=pkt_db[to][pkt]->broadcast;
 			nopt->join=qopt->join;
 
-			/* gbl_stat.qspn_backpro++;
-			 * node_stat[to].qspn_backpro++;
-			 */
+			gbl_stat.qspn_backpro++;
+			node_stat[to].qspn_backpro++;
 			nopt->q.op=OP_BACKPRO;
 			thread_joint(qopt->join, send_qspn_backpro, (void *)nopt);
 		}
@@ -233,10 +257,9 @@ void *send_qspn_reply(void *argv)
 		nopt->q.broadcast=pkt_db[to][pkt]->broadcast;
 		nopt->join=qopt->join;
 
-		/*
+		
 		gbl_stat.qspn_replies++;
 		node_stat[to].qspn_replies++;
-		*/
 		nopt->q.op=OP_REPLY;
 		thread_joint(qopt->join, send_qspn_reply, (void *)nopt);
 	}
@@ -251,21 +274,28 @@ void *send_qspn_open(void *argv)
 {
 	struct q_opt *qopt=(struct q_opt *)argv, *nopt;
 	int x, i=0, dst, pkt, to=qopt->q.to;
+	int re, sub_id=qopt->q.q_sub_id;
 
 	usleep(qopt->sleep);
-	fprintf(stderr, "%u: qspn_open from %d to %d\n", pthread_self(), qopt->q.from, to);
+	fprintf(stderr, "%u: qspn_open from %d to %d [subid: %d]\n", pthread_self(), qopt->q.from, to, sub_id);
 	
 	pkt=store_tracer_pkt(qopt);	
-	
+
+	if(to == sub_id) {
+		fprintf(stderr, "%u: qspn_pkt: We received a qspn_open, but we are the OPENER!!\n", pthread_self());
+		return;
+	}
+
 	for(x=0; x<int_map[to].links; x++) {
 		if((map_node *)int_map[to].r_node[x].r_node == &int_map[qopt->q.from]) {
-			int_map[to].r_node[x].flags|=QSPN_OPENED;
-			/*fprintf(stderr, "%u: node:%d->rnode %d closed\n", pthread_self(), to, x);*/
+			qspn_q[to][x].flags[sub_id]|=QSPN_OPENED;
+			fprintf(stderr, "%u: node:%d->rnode %d  opened\n", pthread_self(), to, x);
 		}
-		if(!(int_map[to].r_node[x].flags & QSPN_OPENED))
+		
+		if(!(qspn_q[to][x].flags[sub_id] & QSPN_OPENED))
 			i++;
 	}
-	/*Shall we send a QSPN_REPLY?*/
+	/*Shall we send a QSPN_OPEN?*/
 	if(!i) {
 		/*Yai! We've finished the reopening of heaven*/
 		fprintf(stderr, "%u: Yai! We've finished the reopening of heaven\n", pthread_self());
@@ -276,7 +306,7 @@ void *send_qspn_open(void *argv)
 		if((map_node *)int_map[to].r_node[x].r_node == &int_map[qopt->q.from]) 
 			continue;
 
-		if(int_map[to].r_node[x].flags & QSPN_OPENED)
+		if(qspn_q[to][x].flags[sub_id] & QSPN_OPENED)
 			continue;
 
 		dst=((void *)int_map[to].r_node[x].r_node - (void *)int_map)/sizeof(map_node);
@@ -285,6 +315,8 @@ void *send_qspn_open(void *argv)
 
 		nopt=xmalloc(sizeof(struct q_opt));
 		memset(nopt, 0, sizeof(struct q_opt));
+		nopt->q.q_id=qopt->q.q_id;
+		nopt->q.q_sub_id=sub_id;
 		nopt->q.from=to;
 		nopt->q.to=dst;
 		nopt->q.routes=pkt_db[to][pkt]->routes;
@@ -294,8 +326,8 @@ void *send_qspn_open(void *argv)
 		nopt->join=qopt->join;
 
 		if(!(int_map[to].r_node[x].flags & QSPN_OPENED)) {
-			gbl_stat.qspn_requests++;
-			node_stat[to].qspn_requests++;
+			gbl_stat.qspn_replies++;
+			node_stat[to].qspn_replies++;
 			nopt->q.op=OP_OPEN;
 			thread_joint(qopt->join, send_qspn_open, (void *)nopt);
 		}
@@ -304,7 +336,7 @@ void *send_qspn_open(void *argv)
 	total_threads--;
 }
 
-
+//int opens=0;
 void *send_qspn_pkt(void *argv)
 {
 	struct q_opt *qopt=(struct q_opt *)argv, *nopt;
@@ -333,12 +365,19 @@ void *send_qspn_pkt(void *argv)
 	if(!i && !(int_map[to].flags & QSPN_REPLIED) && !(int_map[to].flags & QSPN_STARTER)) {
 		/*W00t I'm an extreme node!*/
 		fprintf(stderr, "%u: W00t I'm an extreme node!\n", pthread_self());
-		
+/*if(opens)
+	return;
+opens++;
+*/
 		int_map[to].flags|=QSPN_REPLIED;
 		for(x=0; x<int_map[to].links; x++) {	
 			if((map_node *)int_map[to].r_node[x].r_node == &int_map[qopt->q.from]) 
 				continue;
-		
+
+			/*if(int_map[to].r_node[x].flags & QSPN_SENT) 
+				continue;
+			*/
+
 			dst=((void *)int_map[to].r_node[x].r_node - (void *)int_map)/sizeof(map_node);
 			gbl_stat.total_pkts++;
 			node_stat[to].total_pkts++;
@@ -346,6 +385,8 @@ void *send_qspn_pkt(void *argv)
 			nopt=xmalloc(sizeof(struct q_opt));
 			memset(nopt, 0, sizeof(struct q_opt));
 			nopt->sleep=int_map[to].r_node[x].rtt.tv_usec;
+			nopt->q.q_id=pkt_db[to][pkt]->q_id;
+			nopt->q.q_sub_id=to;
 			nopt->q.to=dst;
 			nopt->q.from=to;
 			nopt->q.routes=pkt_db[to][pkt]->routes;
@@ -362,7 +403,7 @@ void *send_qspn_pkt(void *argv)
 			return;
 		}
 	}
-#else	/*Q_OPEN*/
+#else	/*Q_OPEN not defined*/
 	/*Shall we send a QSPN_REPLY?*/
 	if(!i && !(int_map[to].flags & QSPN_REPLIED) && !(int_map[to].flags & QSPN_STARTER)) {
 		/*W00t I'm an extreme node!*/
@@ -373,8 +414,9 @@ void *send_qspn_pkt(void *argv)
 			if((map_node *)int_map[to].r_node[x].r_node == &int_map[qopt->q.from]) 
 				continue;
 
-			/*We've to clear the closed link*/
+			/*We've to clear the closed link
 			int_map[to].r_node[x].flags&=~QSPN_CLOSED;
+			*/
 
 			dst=((void *)int_map[to].r_node[x].r_node - (void *)int_map)/sizeof(map_node);
 			gbl_stat.total_pkts++;
@@ -429,15 +471,16 @@ void *send_qspn_pkt(void *argv)
 			gbl_stat.qspn_backpro++;
 			node_stat[to].qspn_backpro++;
 			nopt->q.op=OP_BACKPRO;
-			int_map[to].r_node[x].flags&=QSPN_BACKPRO;
+			int_map[to].r_node[x].flags|=QSPN_BACKPRO;
 			thread_joint(qopt->join, send_qspn_backpro, (void *)nopt);
 #else
 			0;
 #endif	/*Q_BACKPRO*/
-		} else {
+		} else if(!(int_map[to].r_node[x].flags & QSPN_CLOSED)){
 			gbl_stat.qspn_requests++;
 			node_stat[to].qspn_requests++;
 			nopt->q.op=OP_REQUEST;
+			int_map[to].r_node[x].flags|=QSPN_SENT;
 			thread_joint(qopt->join, send_qspn_pkt, (void *)nopt);
 		}
 	}
@@ -600,7 +643,7 @@ void clear_all(void)
 int main(int argc, char **argv)
 {
 	struct q_opt *nopt;
-	int i, r, e, x;
+	int i, r, e, x, qspn_id;
 	time_t start, end;
 
 	log_init(argv[0], 1, 1);
@@ -632,6 +675,8 @@ int main(int argc, char **argv)
 		printf("Saving the map to QSPN-map.raw\n");
 		save_map(int_map, &int_map[i], "QSPN-map.raw");
 	}
+	printf("Initialization of qspn_queue\n");
+	init_q_queue(int_map);
 	
 	printf("Running the first test...\n");
 	thread_joint(0, show_temp_stat, NULL);
@@ -641,6 +686,7 @@ int main(int argc, char **argv)
 		r=(random()%(MAXGROUPNODE-0))+0;
 	printf("Starting the QSPN spreading from node %d\n", r);
 	int_map[r].flags|=QSPN_STARTER;
+	qspn_id=random();
 	start=time(0);
 	for(x=0; x<int_map[r].links; x++) {
 		gbl_stat.total_pkts++;
@@ -648,6 +694,7 @@ int main(int argc, char **argv)
 
 		nopt=xmalloc(sizeof(struct q_opt));
 		memset(nopt, 0, sizeof(struct q_opt));
+		nopt->q.q_id=qspn_id;
 		nopt->q.from=r;
 		nopt->q.to=((void *)int_map[r].r_node[x].r_node - (void *)int_map)/sizeof(map_node);
 		nopt->q.tracer=xmalloc(sizeof(short));
@@ -661,7 +708,7 @@ int main(int argc, char **argv)
 		node_stat[r].qspn_requests++;
 		nopt->q.op=OP_REQUEST;
 		if(x == int_map[r].links-1)
-			nopt->join=1;
+			nopt->join=1; 
 		
 		thread_joint(nopt->join, send_qspn_pkt, (void *)nopt);
 	}
@@ -679,7 +726,9 @@ int main(int argc, char **argv)
 		}
 		xfree(pkt_db[x]);
 	}
+	free_q_queue(int_map); 		/*WARNING* To be used when the int_map it's of no more use*/
 	clear_all();
+	
 	printf("All done yeah\n");
 	exit(0);
 }

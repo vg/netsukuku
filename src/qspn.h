@@ -16,9 +16,13 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-/*This is q super global struct!*/
+
+/*This struct keeps tracks of the qspn_pkts sent or
+ * received by our rnodes*/
 struct qspn_queue
 {
-	u_char 		send_qspn;	/*Has qspn to be sent? 0 or 1*/
-	struct timeval  t;		/*When the qspn request was done*/
-}qspn_q;
+	int 	q_id;		/*qspn_id*/
+	u_int	replies;	/*How many replies we forwarded*/
+	u_short *replier;	/*Who has sent these repliesi (qspn_sub_id)*/
+	u_short	*flags;
+};
