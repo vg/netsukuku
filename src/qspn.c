@@ -69,14 +69,13 @@ int qspn_backpro(PACKET rpkt)
 {
 }
 
-struct tracer_node *qspn_inc_tracer(map_node *node, struct tracer_node *tracer, int *hops)
+int qspn_verify_tracer(struct tracer_node *tracer, int hops)
 {
-	struct tracer_node *t;
 	map_node *from;
 	int e, x=0;
 
-	/*From has to be absolutely one of our rnodes*/
-	from=(map_node *)((t[hops-1].node*sizeof(map_node))+(void *)me.int_map);
+	/*"from" has to be absolutely one of our rnodes*/
+	from=node_from_pos(tracer[hops-1].node, map);
 	for(e=0; e<me.cur_node->links; e++)
 		if((int)*me.cur_node->r_node[e].r_node == (int)*from) {
 			x=1;
@@ -84,16 +83,86 @@ struct tracer_node *qspn_inc_tracer(map_node *node, struct tracer_node *tracer, 
 		}
 	if(!x) {
 		error("The tracer pkt is invalid! We don't have %d as rnode", t[hops-1].node);
-		return 0;
+		return -1;
 	}
+
+	return 0;
+}
+/* qspn_inc_tracer: Add our entry ("node") to the tracer pkt "tracer wich has "hops".
+ * It returns the modified tracer pkt and it increments the *hops */
+struct tracer_node *qspn_inc_tracer(map_node *node, struct tracer_node *tracer, int *hops)
+{
+	struct tracer_node *t;
+
+	if(qspn_verify_tracer(tracer, *hops))
+		return 0;
 	*hops++;
 	t=xrealloc(tracer, sizeof(struct tracer_node)*hops);
 	t[hops-1].node=((void *)node-(void *)me.int_map)/sizeof(map_node);
 	memcpy(&t[hops-1].rtt, me.cur_node->r_node[e].rtt, sizeof(struct timeval));
-
+	
 	return t;
 }
 
-int qspn_store_tracer(map_node *map, char *tracer, int hops)
+/* qspn_store_tracer: This is the main function used to keep the map's karma in peace.
+ * It updates the "map" with the given "tracer" pkt
+ */
+int qspn_store_tracer(map_node *map, map_node *root_node, struct tracer_node *tracer, int hops)
 {
+	int i, e, diff;
+	struct timeval trtt;
+	map_node *from, *node;
+	
+	if(qspn_verify_tracer(tracer, *hops))
+		return 0;
+
+	from=node_from_pos(tracer[hops-1].node, map);
+	if(!(from.flags & MAP_RNODE)) { /*the `from' node isn't in our r_nodes. Add it!*/
+		map_rnode rnn;
+		
+		memset(&rnn, '\0', sizeof(map_rnode));
+		rnn.r_node=from;
+		memcpy(&rnn.rtt, &tracer[hops-1].rtt, sizeof(struct timeval));
+		rnode_add(root_node, &rnn);
+
+		from->flags|=MAP_RNODE;
+		from->flags&=~MAP_VOID & ~MAP_UPDATE;
+	}
+
+	timeradd(tracer[0].rtt, &trtt, &trtt);
+	for(i=hops-1; i != hops; i--) {
+		timeradd(tracer[i].rtt, &trtt, &trtt);
+		
+		node=node_from_pos(tracer[i].node, map);
+		if(!(node->flags & MAP_VOID)) {
+			from->flags&=~MAP_VOID;
+			from->flags|=MAP_UPDATE;
+		}
+		for(e=0; e < node->links; e++) {
+			if(node->r_node[e].r_node == from) {
+			   diff=abs(MILLISEC(node->r_node[e].trtt) - MILLISEC(trtt));
+			   if(diff >= RTT_DELTA) {
+				   memcpy(&node->r_node[e].trtt, &trtt, sizeof(struct timeval));
+				   node->flags|=MAP_UPDATE;
+			   }
+			   f=1;
+			}
+		}
+		if(!f) { /*If the `node' doesn't have `from' in his r_nodes... let's add it*/
+			map_rnode rnn;
+
+			memset(&rnn, '\0', sizeof(map_rnode));
+			rnn.r_node=from;
+			memcpy(&rnn.rtt, &trtt, sizeof(struct timeval));
+			rnode_add(node, &rnn);
+
+			node->flags|=MAP_UPDATE;
+		}
+
+		/*ok, now the kernel needs a refresh*/
+		if(node->flags & MAP_UPDATE) {
+			rnode_trtt_order(node);
+			krnl_update_node(node);
+		}
+	}
 }

@@ -93,15 +93,6 @@ typedef struct
  * typedef map_node * int_map;    				      
  */
 
-/*****QSPN int_map (It's identical to the normal int_map)****
- * Anyway there are a few differences in the qmap:
- * - map_node.links is the number of routes
- * - map_node.r_node points to its r_node that is part of the route to the root_node.
- *   The only execption is the root_node itself. The root_node's map_node.r_node keeps
- *   all its rnodes as a normal (non qspn) map would.
- *
- * typedef qmap_node *int_map;
- */
 
 #define MAXRNODEBLOCK		MAXLINKS*MAXGROUPNODE*sizeof(map_rnode)
 #define INTMAP_END(mapstart)	((sizeof(map_node)*MAXGROUPNODE)+(mapstart))
@@ -110,6 +101,8 @@ typedef struct
 #define MILLISEC(x)	(((x).tv_sec*1000)+((x).tv_usec/1000))
 
 /* * * Functions' declaration * * */
+int pos_from_node(map_node *node, map_node *map);
+map_node *node_from_pos(int pos, map_node *map);
 void maptoip(u_int mapstart, u_int mapoff, inet_prefix ipstart, inet_prefix *ret);
 int iptomap(u_int mapstart, inet_prefix ip, inet_prefix ipstart, u_int *ret);
 map_node *init_map(size_t len);

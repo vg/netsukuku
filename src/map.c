@@ -29,6 +29,18 @@
 
 extern int errno;
 
+/*pos_from_node: Position from node: It returns the position of the `node' in the `map'.*/
+int pos_from_node(map_node *node, map_node *map)
+{
+	return ((void *)node-(void *)map)/sizeof(map_node);
+}
+
+/*Node from position: it returns the node pointer calculated by the given `pos' in the map*/
+map_node *node_from_pos(int pos, map_node *map)
+{
+	return (map_node *)((pos*sizeof(map_node))+(void *)map);
+}
+
 /*Converts an address of a struct in the map to an ip*/
 void maptoip(u_int mapstart, u_int mapoff, inet_prefix ipstart, inet_prefix *ret)
 {
@@ -170,7 +182,7 @@ void rnode_rtt_order(map_node *node)
 	qsort(node->r_node, node->links, sizeof(map_rnode), rnode_rtt_compar);
 }
 
-/*rnode_trtt_compar: It's used rnode_trtt_order*/
+/*rnode_trtt_compar: It's used by rnode_trtt_order*/
 int rnode_trtt_compar(const void *a, const void *b) 
 {
 	map_rnode *rnode_a=(map_rnode *)a, *rnode_b=(map_rnode *)b;
@@ -191,7 +203,8 @@ void rnode_trtt_order(map_node *node)
 	qsort(node->r_node, node->links, sizeof(map_rnode), rnode_trtt_compar);
 }
 
-/* map_routes_order: It order all the routes present in the map.
+/* map_routes_order: It order all the r_node of each node using their trtt.
+ * Used mainly with a qspn map styleII
  */
 void map_routes_order(map_node *map)
 {
@@ -203,6 +216,7 @@ void map_routes_order(map_node *map)
 /* get_route_rtt: It return the round trip time (in millisec) to reach 
  * the root_node of the int_map starting from "node", using the "route"th route.
  * If "rtt" is not null it stores in "rtt" the relative timeval struct
+ * (qspn map styleI)
  */
 int get_route_rtt(map_node *node, u_short route, struct timeval *rtt)
 {
@@ -264,13 +278,12 @@ void node_recurse_trtt(map_node *node)
 			rnode_recurse_trtt(node->r_node, e, &node->r_node[e].trtt);
 }
 
-/* map_set_trtt: Updates the trtt of all the rnodes in the map. 
- * Usually this is called after a qspn.
+/* map_set_trtt: Updates the trtt of all the rnodes in a qspn map styleI.
  */
 void map_set_trtt(map_node *map) 
 {
 	int i, e;	
-	/*We clear all the rnodes' trtt, in this way we can now
+	/*We clear all the rnodes' trtt, in this way we can know
 	 * which nodes aren't already set and we can skip in node_recurse_trtt
 	 * the rnodes with trtt > 0
 	 */
@@ -290,6 +303,7 @@ void map_set_trtt(map_node *map)
 
 /*It return the node to be used as gateway to reach "node" starting from
  * root_node, using the "route"th route.
+ * Used in a qspn map styleI
  */
 map_node *get_gw_node(map_node *node, u_short route)
 {

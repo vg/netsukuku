@@ -18,6 +18,35 @@
 
 #define MAX_CONC_QSPN	5	/*MAX CONCURRENT QSPN*/
 
+/*we are using the qspn_map style II*/
+#define QMAP_STYLE_II
+#undef  QMAP_STYLE_I
+/*****) The qspn int_map (****
+ * The struct it's identical to the normal int_map but there are a few
+ * differences of meaning in the qmap:
+ * We distinguish from qspn_map styleI and styleII.
+ * In the styleI:
+ * - All the nodes have map_node.r_node which points to the r_node that is part of the 
+ *   route to reach the root_node. So from all the nodes it is possible to reach the
+ *   root_node following recursively the r_nodes. 
+ *   The only execption is the root_node itself. The root_node's map_node.r_node keeps
+ *   all its rnodes as a normal (non qspn) map would.
+ * - map_node.r_node.rtt is the round trip time needed to reach map_node.r_node.r_node 
+ *   from map_node. 
+ * 
+ * Instead in the qspn_map styleII:
+ * - map_node.r_node points to the r_node of the root_node to be used as gateway to 
+ *   reach map_node. So map_node.r_node stores only the gateway needed to reach map_node
+ *   from the root_node.
+ *   The only execption is the root_node itself. The root_node's map_node.r_node keeps
+ *   all its rnodes as a normal (non qspn) map would.
+ * - map_node.r_node.rtt isn't used.
+ *
+ * Currently the qspn_map styleII is used
+ * typedef qmap_node *int_map;
+ */
+
+
 /* This struct keeps tracks of the qspn_pkts sent or
  * received by our rnodes*/
 struct qspn_buffer

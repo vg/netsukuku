@@ -59,16 +59,20 @@ u_char rt_find_table(ct_route *ctr, u32 dst, u32 gw)
 
 void krnl_update_node(map_node *node)
 {
-	struct nexthop nh[node.links+1];
+	struct nexthop nh[node->links+1];
 	inet_prefix to;
 	int i;
-	memset(nh, '\0', sizeof(nexthop), node.links+1);
+	memset(nh, '\0', sizeof(nexthop), node->links+1);
 
 	maptoip(*me.int_map, *node, me.ipstart, &to);
 
 
-	for(i=0; i<node.links; i++) {
+	for(i=0; i<node->links; i++) {
+#ifdef QMAP_STYLE_I
 		maptoip(*me.int_map, *get_gw_node(node, i), me.ipstart, &nh[i].gw);
+#else /*QMAP_STYLE_II*/
+		maptoip(*me.int_map, *node[i].r_node.r_node, me.ipstart, &nh[i].gw);
+#endif
 		nh[i].dev=me.cur_dev;
 		nh[i].hops=255-i;
 	}
@@ -88,7 +92,7 @@ void rt_update(void)
 	u_short i;
 	
 	for(i=0; i<MAXGROUPNODE; i++) {
-		if(me.int_map[i].flags & MAP_UPDATE) {
+		if(me.int_map[i].flags & MAP_UPDATE && !(me.int_map[i].flags & MAP_RNODE)) {
 			krnl_update_node(&me.int_map[i]);
 			me.int_map[i].flags&=~MAP_UPDATE;
 		}
