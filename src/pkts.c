@@ -29,10 +29,6 @@
 #include "xmalloc.h"
 #include "log.h"
 
-extern struct current me;
-extern int my_family;
-extern u_short ntk_udp_port, ntk_tcp_port;
-
 /*Handy functions to build the PACKET*/
 void pkt_addfrom(PACKET *pkt, inet_prefix *from)
 {
@@ -187,6 +183,11 @@ ssize_t pkt_recv(PACKET *pkt)
 			error("udp connect(): %s", strerror(errno));
 			return -1;
 		}
+		
+		if(!pkt->hdr.sz) {
+			pkt->msg=0;
+			return err;
+		}
 
 		/*let's get the body*/
 		buf=xmalloc(pkt->hdr.sz);
@@ -227,6 +228,11 @@ ssize_t pkt_recv(PACKET *pkt)
 			return -1;
 		}
 
+		if(!pkt->hdr.sz) {
+			pkt->msg=0;
+			return err;
+		}
+			
 		/*let's get the body*/
 		buf=xmalloc(pkt->hdr.sz);
 		err=inet_recv(pkt->sk, buf, pkt->hdr.sz, pkt->flags);
@@ -307,11 +313,15 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 	ssize_t err;
 	int ret=0;
 
-	rq_str=rq_to_str(rq);
-	if(rq_verify(rq)) {
+	if(op_verify(rq)) {
 		error("\"%s\" request is not valid!", rq_str);
 		return -1;
 	}
+	if(!re_verify(rq))
+		rq_str=rq_to_str(rq);
+	else
+		rq_str=re_to_str(rq);
+
 	if(re && re_verify(re)) {
 		error("\"%s\" reply is not valid!", re_str);
 		return -1;
@@ -437,7 +447,8 @@ int pkt_exec(PACKET pkt, int acpt_idx)
 	if((err=add_rq(pkt.hdr.op, &accept_tbl[acpt_idx].rqtbl))) {
 		ntop=inet_to_str(&pkt.from);
 		error("From %s: Cannot process the %s request: %s", ntop, rq_to_str(pkt.hdr.op), rq_strerror(err));
-		xfree(ntop);
+		if(ntop)
+			xfree(ntop);
 		pkt_err(pkt, err);
 		return -1;
 	}

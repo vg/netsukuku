@@ -31,9 +31,6 @@
 #include "xmalloc.h"
 #include "log.h"
 
-extern int my_family;
-extern struct current me;
-
 /* 
  * tracer_verify_pkt: It checks the validity of `tracer': The last entry
  * in the tracer must be a node present in our r_nodes. If `real_from'

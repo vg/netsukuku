@@ -32,9 +32,6 @@
 #include "log.h"
 #include "misc.h"
 
-extern struct current me;
-extern int my_family;
-
 void init_radar(void)
 {
 	radar_scans=0;
@@ -535,6 +532,7 @@ int radard(PACKET rpkt)
 
 void *radar_daemon(void *null)
 {
+	debug(DBG_NORMAL, "Radar daemon up & running");
 	for(;;) {
 		radar_scan();
 		sleep(MAX_RADAR_WAIT+2);

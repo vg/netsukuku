@@ -249,6 +249,7 @@ int main(int argc, char **argv)
 		if(daemon(0, 0) == -1) {
 			error("Impossible to daemonize: %s.", strerror(errno));
 		}
+		loginfo("Daemonizing: forking in the background");
 	}
 
 	pthread_attr_init(&t_attr);
@@ -259,16 +260,17 @@ int main(int argc, char **argv)
 	 * up & running. 
 	 */
 	debug(DBG_NORMAL, "Activating all daemons");
-
+	
 	debug(DBG_SOFT,   "Evocating radar daemon.");
 	pthread_create(&daemon_radar_thread, &t_attr, radar_daemon, NULL);
 	
 	debug(DBG_SOFT,   "Evocating udp daemon.");
 	pthread_create(&daemon_udp_thread,   &t_attr, udp_daemon,   NULL);
-	
-	debug(DBG_SOFT,   "Evocating tcp daemon.");
-	tcp_daemon(NULL); /* We use this self process for the tcp_daemon */
 
+	/* We use this self process for the tcp_daemon. */
+	debug(DBG_SOFT,   "Evocating tcp daemon.");
+	tcp_daemon(NULL);
+	
 	loginfo("Cya m8");
 	pthread_attr_destroy(&t_attr);
 	destroy_netsukuku();

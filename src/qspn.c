@@ -32,9 +32,6 @@
 #include "xmalloc.h"
 #include "misc.h"
 
-extern int my_family;
-extern struct current me;
-
 void qspn_set_map_vars(u_char level, map_node **map, map_node **root_node, 
 		int *root_node_pos, map_gnode **gmap)
 {

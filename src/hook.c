@@ -34,9 +34,6 @@
 #include "log.h"
 #include "misc.h"
 
-extern struct current me;
-extern int my_family;
-
 /*  
  *  *  *  put/get free_nodes  *  *  *
  */
@@ -520,7 +517,8 @@ int netsukuku_hook(char *dev)
 		fatal("%s:%d: Cannot set the HOOKING_IP in %s", ERROR_POS, dev);
 	
 	if(rt_add_def_gw(dev))
-		debug(DBG_NORMAL, "%s:%d: Couldn't set the default gw for %s", ERROR_POS, dev);
+		debug(DBG_NORMAL, "%s:%d: Couldn't set the default gw for %s", 
+				ERROR_POS, dev);
 
 
 	/* 	
@@ -529,7 +527,7 @@ int netsukuku_hook(char *dev)
 	loginfo("The hook begins. Starting to scan the area");
 	
 	/* We use a fake root_node for a while */
-	me.cur_node=xmalloc(sizeof(map_node));		/*TODO: WARNING XFREE it later!!*/
+	me.cur_node=xmalloc(sizeof(map_node));	/*TODO: WARNING XFREE it later!!*/
 	memset(me.cur_node, 0, sizeof(map_node));
 	me.cur_node->flags|=MAP_HNODE;
 	
@@ -537,14 +535,20 @@ int netsukuku_hook(char *dev)
 	 * We do our first scan to know what we've around us. The rnodes are kept in
 	 * me.cur_node->r_nodes. The fastest one is in me.cur_node->r_nodes[0]
 	 */
-	/*TODO XXX AHAHAHHA
 	if(radar_scan())
-		fatal("%s:%d: Scan of the area failed. Cannot continue.", ERROR_POS);
-	*/
+		fatal("%s:%d: Scan of the area failed. Cannot continue.", 
+				ERROR_POS);
+
 	if(!me.cur_node->links) {
 		loginfo("No nodes found! This is a black zone. "
 				"Creating a new_gnode. W00t we're the first node");
 		create_gnodes(0, GET_LEVELS(my_family));
+		ntop=inet_to_str(&me.cur_ip);
+		if(set_dev_ip(me.cur_ip, dev))
+			fatal("%s:%d: Cannot set the new ip in %s", ERROR_POS, dev);
+		loginfo("Now we are in a brand new gnode. The ip of %s is set "
+				"to %s", dev, ntop);
+		xfree(ntop);
 		new_gnode=1;
 		goto finish;
 	}
@@ -557,7 +561,8 @@ int netsukuku_hook(char *dev)
 	for(i=0; i<me.cur_node->links; i++) {
 		if(!(rq=find_ip_radar_q((map_node *)me.cur_node->r_node[i].r_node))) 
 			fatal("%s:%d: This ultra fatal error goes against the "
-					"laws of the universe. It's not possible!! Pray");
+					"laws of the universe. It's not "
+					"possible!! Pray");
 
 		if(!get_free_nodes(rq->ip, &fn_hdr, fnodes, me.cur_qspn_time)) {
 			e=1;

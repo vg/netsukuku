@@ -30,9 +30,7 @@
 #include "xmalloc.h"
 #include "log.h"
 
-extern int my_family;
-extern u_short ntk_udp_port, ntk_tcp_port;
-extern struct current me;
+extern int errno;
 
 /* 
  * prepare_listen_socket: 
@@ -59,7 +57,7 @@ int prepare_listen_socket(int family, int socktype, u_short port)
 		return -1;
 	}
 
-	for (ai = aitop; ai->ai_next; ai = ai->ai_next) {
+	for (ai = aitop; ai; ai = ai->ai_next) {
 		if (ai->ai_family != AF_INET && ai->ai_family != AF_INET6)
 			continue;
 		
@@ -72,11 +70,13 @@ int prepare_listen_socket(int family, int socktype, u_short port)
 
 		/* Let's bind it! */
 		if(bind(s, ai->ai_addr, ai->ai_addrlen) < 0) {
+			error("Cannot bind the port %d: %s. Trying another "
+					"socket...", port, strerror(errno));
 			close(s);
 			continue;
 		}
 		freeaddrinfo(aitop);
-		return 0;
+		return s;
 	}
 	
 	error("Cannot open inbound socket on port %d: %s", port, strerror(errno));
@@ -91,18 +91,20 @@ void *udp_daemon(void *null)
 	int sk, ret;
 	char *ntop;
 
+	debug(DBG_SOFT, "Preparing the udp listening socket");
 	sk=prepare_listen_socket(my_family, SOCK_DGRAM, ntk_udp_port);
 	if(sk == -1)
 		return;
 
 	set_broadcast_sk(sk, my_family, me.cur_dev_idx);
 
+	debug(DBG_NORMAL, "Udp daemon up & running");
 	for(;;) {
 		FD_ZERO(&fdset);
 		FD_SET(sk, &fdset);
 
 		ret = select(sk+1, &fdset, NULL, NULL, NULL);
-		if (ret < 0 && errno != EINTR) {
+		if (ret < 0) {
 			error("daemon_tcp: select error: %s", strerror(errno));
 			continue;
 		}
@@ -112,7 +114,10 @@ void *udp_daemon(void *null)
 
 		pkt_addsk(&rpkt, sk, SKT_UDP);
 		pkt_addflags(&rpkt, MSG_WAITALL);
-		pkt_recv(&rpkt);
+		if(pkt_recv(&rpkt) < 0) {
+			pkt_free(&rpkt, 0);
+			continue;
+		}
 			
 		if(add_accept(rpkt.from, 1)) {
 			ntop=inet_to_str(&rpkt.from);
@@ -139,8 +144,11 @@ void *recv_loop(void *recv_pkt)
 	memcpy(&rpkt, recv_pkt, sizeof(PACKET));
 
 	while( pkt_recv(&rpkt) != -1 ) {
-		pkt_exec(rpkt, acpt_idx);
-		pkt_free(&rpkt, 0);
+		if(pkt_exec(rpkt, acpt_idx) < 0) {
+			pkt_free(&rpkt, 1);
+			break;
+		} else
+			pkt_free(&rpkt, 0);
 	}
 
 	close_accept(acpt_idx, acpt_sidx);
@@ -159,6 +167,8 @@ void *tcp_daemon(void *null)
 	int sk, fd, ret;
 	char *ntop;
 
+
+	debug(DBG_SOFT, "Preparing the tcp listening socket");
 	sk=prepare_listen_socket(my_family, SOCK_STREAM, ntk_tcp_port);
 	if(sk == -1)
 		return;
@@ -179,8 +189,8 @@ void *tcp_daemon(void *null)
 	pthread_attr_init(&t_attr);
 	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
 
+	debug(DBG_NORMAL, "Tcp daemon up & running");
 	for(;;) {
-		memset(&rpkt, 0, sizeof(PACKET));
 		FD_ZERO(&fdset);
 		FD_SET(sk, &fdset);
 
@@ -199,6 +209,8 @@ void *tcp_daemon(void *null)
 				error("daemon_tcp: accept(): %s", strerror(errno));
 			continue;
 		}
+		
+		memset(&rpkt, 0, sizeof(PACKET));
 		pkt_addsk(&rpkt, fd, SKT_TCP);
 		pkt_addflags(&rpkt, MSG_WAITALL);
 		
@@ -228,7 +240,8 @@ void *tcp_daemon(void *null)
 		if(unset_nonblock_sk(fd))
 			continue;
 	
-		pthread_create(&thread, &t_attr, recv_loop, &rpkt);
+		/*pthread_create(&thread, &t_attr, recv_loop, &rpkt);*/
+		recv_loop(&rpkt);
 	}
 	
 	destroy_accept_tbl();

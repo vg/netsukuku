@@ -31,9 +31,6 @@
 #include "xmalloc.h"
 #include "log.h"
 
-extern int my_family;
-extern struct current me;
-
 u_char rt_find_table(ct_route *ctr, u_int dst, u_int gw)
 {
 	ct_route *i;
