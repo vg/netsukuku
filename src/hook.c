@@ -49,9 +49,9 @@ int free_the_tmp_cur_node;
 int get_free_nodes(inet_prefix to, struct free_nodes_hdr *fn_hdr, u_short *nodes, struct timeval *qtime)
 {
 	PACKET pkt, rpkt;
-	char *ntop;
 	ssize_t err;
-	int ret=0, buf=0;
+	int ret=0;
+	char *ntop, *buf=0;
 	
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
@@ -68,18 +68,18 @@ int get_free_nodes(inet_prefix to, struct free_nodes_hdr *fn_hdr, u_short *nodes
 	
 	memcpy(fn_hdr, rpkt.msg, sizeof(struct free_nodes_hdr));
 	if(fn_hdr->nodes <= 0 || fn_hdr->nodes >= MAXGROUPNODE || 
-			fn_hdr->max_levels > me.cur_quadg.levels || !fn_hdr->level
+			fn_hdr->max_levels > GET_LEVELS(my_family) || !fn_hdr->level
 			|| fn_hdr->level >= fn_hdr->max_levels) {
 		error("Malformed PUT_FREE_NODES request hdr from %s.", ntop);
 		ret=-1;
 		goto finish;
 	}
 	
-	buf=sizeof(struct free_nodes_hdr);
-	memcpy(qtime, pkt.msg+buf, fn_hdr->max_levels * sizeof(struct timeval));
+	buf=rpkt.msg+sizeof(struct free_nodes_hdr);
+	memcpy(qtime, buf, fn_hdr->max_levels * sizeof(struct timeval));
 	
 	buf+=fn_hdr->max_levels * sizeof(struct timeval);
-	memcpy(nodes, pkt.msg+buf, fn_hdr->nodes * sizeof(u_short));
+	memcpy(nodes, buf, fn_hdr->nodes * sizeof(u_short));
 
 	debug(DBG_NORMAL, "Received %d free %s", fn_hdr->nodes, 
 			fn_hdr->level == 1 ? "nodes" : "gnodes");
@@ -109,10 +109,10 @@ int put_free_nodes(PACKET rq_pkt)
 
 	PACKET pkt;
 	struct timeval cur_t;
-	int ret=0, i, e=0, p=0;
+	int ret=0, i, e=0;
 	ssize_t err, pkt_sz;
 	u_char level;
-	char *ntop; 
+	char *ntop, *p=0; 
 	
 	ntop=inet_to_str(rq_pkt.from);
 	debug(DBG_NORMAL, "Sending the PUT_FREE_NODES reply to %s", ntop);
@@ -177,12 +177,13 @@ int put_free_nodes(PACKET rq_pkt)
 	pkt.msg=xmalloc(pkt_sz);
 	memset(pkt.msg, 0, pkt_sz);
 	
-	memcpy(pkt.msg, &fn_pkt.fn_hdr, sizeof(struct free_nodes_hdr));
-	p=sizeof(struct free_nodes_hdr);
-	memcpy(pkt.msg+p, &fn_pkt.qtime, 
+	p=pkt.msg;
+	memcpy(p, &fn_pkt.fn_hdr, sizeof(struct free_nodes_hdr));
+	p+=sizeof(struct free_nodes_hdr);
+	memcpy(p, &fn_pkt.qtime, 
 			sizeof(struct timeval)*fn_pkt.fn_hdr.max_levels);
 	p+=sizeof(struct timeval)*me.cur_quadg.levels;
-	memcpy(pkt.msg+p, &fn_pkt.free_nodes,
+	memcpy(p, &fn_pkt.free_nodes,
 			sizeof(u_short)*fn_pkt.fn_hdr.nodes);
 	
 	err=pkt_send(&pkt);
@@ -306,7 +307,7 @@ int put_int_map(PACKET rq_pkt)
 		goto finish;
 	}
 finish:
-	pkt_free(&pkt, 1);
+	pkt_free(&pkt, 0);
 	xfree(ntop);
 	return ret;
 }
@@ -389,7 +390,7 @@ int put_bnode_map(PACKET rq_pkt)
 	}
 
 finish:
-	pkt_free(&pkt, 1);
+	pkt_free(&pkt, 0);
 	xfree(ntop);
 	return ret;
 }
@@ -444,6 +445,41 @@ finish:
 	return ret;
 }
 
+int hook_init(void)
+{
+	/* We use a fake root_node for a while */
+	free_the_tmp_cur_node=1;
+	me.cur_node=xmalloc(sizeof(map_node));
+	memset(me.cur_node, 0, sizeof(map_node));
+	me.cur_node->flags|=MAP_HNODE;
+
+	return 0;
+}
+
+/* 
+ * set_ip_and_def_gw: Set the device's ip and the default gw.
+ */
+void set_ip_and_def_gw(char *dev, inet_prefix ip)
+{
+	char *ntop;
+	ntop=inet_to_str(ip);
+	
+	debug(DBG_NORMAL, "Setting the %s ip to %s interface", ntop, dev);
+	if(set_dev_ip(ip, dev))
+		fatal("Cannot set the %s  ip to %s", ntop, dev);
+	
+	/*
+	 * We set the default gw to our ip so to avoid the subnetting shit.
+	 * Bleah, Class A, B, C, what a fuck -_^ 
+	 */
+	debug(DBG_NORMAL, "Setting the default gw to %s.", ntop);
+	if(rt_replace_def_gw(dev, ip))
+		fatal("Cannot set the default gw to %s for the %s dev", 
+				ntop, dev);
+	
+	free(ntop);
+}
+
 /*
  * create_gnodes: This function is used to create a new gnode (or more) when
  * we are the first node in the area or when all the other gnodes are
@@ -458,10 +494,14 @@ int create_gnodes(inet_prefix *ip, int final_level)
 {
 	int i;
 
-	if(!ip)
+	if(!ip) {
+retry_rnd_ip:
 		random_ip(0, 0, 0, GET_LEVELS(my_family), me.ext_map, 0, 
 				&me.cur_ip, my_family);
-	else
+		if(inet_validate_ip(me.cur_ip))
+			goto retry_rnd_ip;
+			
+	} else
 		memcpy(&me.cur_ip, ip, sizeof(inet_prefix));
 
 	if(!final_level)
@@ -502,29 +542,7 @@ int create_gnodes(inet_prefix *ip, int final_level)
 	return 0;
 }
 
-/* 
- * set_ip_and_def_gw: Set the device's ip and the default gw.
- */
-void set_ip_and_def_gw(char *dev, inet_prefix ip)
-{
-	char *ntop;
-	ntop=inet_to_str(ip);
-	
-	debug(DBG_NORMAL, "Setting the %s ip to %s interface", ntop, dev);
-	if(set_dev_ip(ip, dev))
-		fatal("Cannot set the %s  ip to %s", ntop, dev);
-	
-	/*
-	 * We set the default gw to our ip so to avoid the subnetting shit.
-	 * Bleah, Class A, B, C, what a fuck -_^ 
-	 */
-	debug(DBG_NORMAL, "Setting the default gw to %s.", ntop);
-	if(rt_replace_def_gw(dev, ip))
-		fatal("Cannot set the default gw to %s for the %s dev", 
-				ntop, dev);
-	
-	free(ntop);
-}
+
 
 int netsukuku_hook(char *dev)
 {	
@@ -534,7 +552,7 @@ int netsukuku_hook(char *dev)
 	map_gnode **old_ext_map;
 	map_bnode **old_bnode_map;	
 	int i, e=0, imaps=0, ret=0, new_gnode=0, tracer_levels=0, *old_bnodes;
-	int total_hooking_nodes;
+	int total_hooking_nodes=0;
 	u_int idata[4];
 	u_short fnodes[MAXGROUPNODE];
 	char *ntop;
@@ -558,13 +576,7 @@ int netsukuku_hook(char *dev)
 	 */
 	loginfo("The hook begins. Starting to scan the area");
 	
-	/* We use a fake root_node for a while */
-	free_the_tmp_cur_node=1;
-	me.cur_node=xmalloc(sizeof(map_node));
 hook_restart_and_retry:
-	memset(me.cur_node, 0, sizeof(map_node));
-	me.cur_node->flags|=MAP_HNODE;
-	
 	/* 
 	 * We do our first scan to know what we've around us. The rnodes are kept in
 	 * me.cur_node->r_nodes. The fastest one is in me.cur_node->r_nodes[0]
@@ -608,7 +620,14 @@ hook_restart_and_retry:
 		 * after them, so we wait that some of them create the new
 		 * gnode.
 		 */
+		loginfo("I've seen %s nodes around us, but one of them is becoming"
+				" a new gnode. We wait and then we'll restart the"
+				" hook");
 		reset_radar();
+		rnode_destroy(me.cur_node);
+		memset(me.cur_node, 0, sizeof(map_node));
+		me.cur_node->flags|=MAP_HNODE;
+
 		goto hook_restart_and_retry;
 	}
 
@@ -638,15 +657,18 @@ hook_restart_and_retry:
 	/* 
 	 * Let's choose a random ip using the free nodes list we received.
 	 */
-	e=rand_range(0, fn_hdr.nodes);
+	e=rand_range(0, fn_hdr.nodes-1);
 	if(fn_hdr.level == 1) {
 		new_gnode=0;
 		postoip(fnodes[e], fn_hdr.ipstart, &me.cur_ip);
 	} else {
 		new_gnode=1;
+retry_rnd_ip:
 		random_ip(&fn_hdr.ipstart, fn_hdr.level, fn_hdr.gid, 
 				GET_LEVELS(my_family), me.ext_map, 0, 
 				&me.cur_ip, my_family);
+		if(inet_validate_ip(me.cur_ip))
+			goto retry_rnd_ip;
 	}
 
 	set_ip_and_def_gw(dev, me.cur_ip);
@@ -693,7 +715,7 @@ hook_restart_and_retry:
 			}
 		}
 		if(!imaps)
-			fatal("None of the rnodes in this area gave me the intern map");
+			fatal("None of the rnodes in this area gave me the int_map");
 		
 		for(i=0; i<imaps; i++)
 			free_map(merg_map[i], 0);
@@ -714,16 +736,15 @@ hook_restart_and_retry:
 		old_bnode_map=me.bnode_map;	
 		old_bnodes=me.bmap_nodes;
 		me.bnode_map=get_bnode_map(rq->ip, &me.bmap_nodes);
-		if(!me.bnode_map) {
+		if(me.bnode_map) {
 			bmap_level_free(old_bnode_map, old_bnodes);
 			e=1;
 			break;
 		}
 	}
-	if(!e)
+	/*XXX: DEBUG: if(!e)
 		fatal("None of the rnodes in this area gave me the bnode map. (Bastards!)");
-
-	
+	*/
 	if(free_the_tmp_cur_node) {
 		free(me.cur_node);
 		free_the_tmp_cur_node=0;
@@ -732,15 +753,19 @@ hook_restart_and_retry:
 	map_node_del(me.cur_node);
 	me.cur_node->flags &= ~MAP_VOID;
 	me.cur_node->flags |= MAP_ME;
+	/* We need a fresh me.cur_node */
+	refresh_hook_root_node(); 
 	
 finish:
+	me.cur_node->flags&=~MAP_HNODE;
+/*	radar_scan(); XXX: DEBUG */
+
 	/* 
 	 * We must reset the radar_queue because the first radar_scan, used while hooking,
 	 * has to keep the list of the rnodes' "inet_prefix ip". In this way we know
 	 * the rnodes' ips even if we haven't an int_map yet.
 	 */
 	reset_radar();
-	me.cur_node->flags&=~MAP_HNODE;
 
 	/* 
 	 * <<Hey there, I'm here, alive>>. We send our firt tracer_pkt, we
@@ -769,7 +794,7 @@ finish:
 
 	tracer_pkt_start_mutex=0;
 	for(i=1; i<tracer_levels; i++)
-		tracer_pkt_start(i);
+		tracer_pkt_start(i-1);
 	
 	return ret;
 }

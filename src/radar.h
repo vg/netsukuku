@@ -18,7 +18,7 @@
 
 
 #define MAX_RADAR_SCANS		10
-#define MAX_RADAR_WAIT		10	/*How much we wait to store the received ECHO_REPLY pkts
+#define MAX_RADAR_WAIT		5	/*How much we wait to store the received ECHO_REPLY pkts
 					  and then to close the current radar session*/
 #define RTT_DELTA		1	/*If the change delta of the new rtt is >= RTT_DELTA, 
 					  the qspn_q.send_qspn will be set*/
@@ -52,16 +52,27 @@ struct radar_queue
 struct radar_queue *radar_q;	/*the start of the linked list of radar_queue*/
 struct timeval scan_start;	/*the start of the scan*/
 
+/* 
+ * The ECHO_ME pkt:
+ * It is just a normal pkt which contains in the body (pkt.msg) one 
+ * u_char echo_scans_count, var. This is the number of scans sent.
+ */
+
 void init_radar(void);
 void close_radar(void);
 void reset_radar(void);
 void free_new_node(void);
+
 struct radar_queue *find_ip_radar_q(map_node *node);
 map_node *find_nnode_radar_q(inet_prefix *node);
 int count_hooking_nodes(void);
+
 void final_radar_queue(void);
 void radar_update_map(void);
+
 int add_radar_q(PACKET pkt);
 int radar_scan(void);
 int radar_recv_reply(PACKET pkt);
 void *radar_daemon(void *null);
+
+int refresh_hook_root_node(void);

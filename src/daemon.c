@@ -258,6 +258,7 @@ void *tcp_daemon(void *null)
 			error("Cannot fork the tcp_recv_loop: %s", strerror(errno));
 		else
 			pthread_detach(thread);
+			
 		if(ntop)
 			xfree(ntop);
 	}

@@ -68,6 +68,17 @@ typedef struct
  * 32. So there are only 32 groups in the last level (3), in fact:
  * ips/(32 * (MAXGROUPNODE^3)) == 0.99999999
  * And to include them we use the unity level, thus IPV4_LEVELS is equal to 3+1.
+ * Sadly we cannot use all this ips, because there are the banned classes, and
+ * the kernel will sput on us.
+ * Here there are the banned ips:
+ * max=MAXGROUPNODE;
+ * Per x>= 511; y>=27;  All the ips >= (max^2 * x) + (max^3 * y) are MULTICAST.
+ * Per y=0; 		All the ips <= (max^3 * y)		 are ZERONET.
+ * Per x>=447; x1<=510;  All the ( ips >= (max^2 * x) + (max^3 * 15) &&
+ * 				 ips <= (max^2 * x1) + max^3*15 ) are LOOPBACK.
+ * So we loose ~301989885 ips!
+ *
+ * 
  * For the IPV6_LEVELS ips = 2^128-1; so:
  * ips/(4 * MAXGROUPNODE^14) == 0.999999999999999
  */
@@ -150,8 +161,8 @@ void maxgroupnode_level_init(void);
 void maxgroupnode_level_free(void);
 
 u_short iptogid(inet_prefix ip, u_char level);
-void gidtoipstart(u_short *gid, u_char total_levels, u_char levels, u_short sgid,
-		int family, inet_prefix *ip);
+void gidtoipstart(u_short *gid, u_char total_levels, u_char levels, int family, 
+		inet_prefix *ip);
 void iptoquadg(inet_prefix ip, map_gnode **ext_map, quadro_group *qg, char flags);
 void quadg_free(quadro_group *qg);
 void quadg_destroy(quadro_group *qg);

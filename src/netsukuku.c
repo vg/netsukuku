@@ -220,6 +220,7 @@ void init_netsukuku(char **argv)
 	init_accept_tbl(server_opt.max_connections, 
 			server_opt.max_accepts_per_host, 
 			server_opt.max_accepts_per_host_time);
+	hook_init();
 }
 
 void destroy_netsukuku(void)
@@ -233,8 +234,8 @@ void destroy_netsukuku(void)
 
 void sigterm_handler(int sig)
 {
-	loginfo("Termination signal caught. Dying, bye, bye");
 	destroy_netsukuku();
+	fatal("Termination signal caught. Dying, bye, bye");
 }
 
 int main(int argc, char **argv)
@@ -281,7 +282,13 @@ int main(int argc, char **argv)
 
 	debug(DBG_SOFT,   "Evocating tcp daemon.");
 	pthread_create(&daemon_tcp_thread, &t_attr, tcp_daemon, NULL);
-	
+
+	/* 
+	 * We have to be sure that the hook will start after the rise of the 
+	 * two daemons.
+	 */
+	usleep(300000); 
+
 	/* Now we hook in the Netsukuku network */
 	netsukuku_hook(me.cur_dev);
 	

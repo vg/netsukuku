@@ -15,7 +15,7 @@
  * this source code; if not, write to:
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  * --
- * 128bit-gmp.c: I made this to handle the HUGE ipv6 numbers
+ * 128bit-gmp.c: Damn! The ipv6 numbers are really BIG ^_.
  */
 
 #include "includes.h"
@@ -31,12 +31,12 @@ int sum_128(unsigned int *x, unsigned int *y)
 	mpz_init(res);
 	mpz_init(xx);
 	mpz_init(yy);
-	mpz_import (xx, 4, ORDER, sizeof(x[0]), NATIVE_ENDIAN, 0, x);
-	mpz_import (yy, 4, ORDER, sizeof(y[0]), NATIVE_ENDIAN, 0, y);
+	mpz_import (xx, 4, HOST_ORDER, sizeof(x[0]), NATIVE_ENDIAN, 0, x);
+	mpz_import (yy, 4, HOST_ORDER, sizeof(y[0]), NATIVE_ENDIAN, 0, y);
 
 	mpz_add(res, xx, yy);
 	memset(y, '\0', sizeof(y[0])*4);
-	mpz_export(y, &count, ORDER, sizeof(x[0]), NATIVE_ENDIAN, 0, res);
+	mpz_export(y, &count, HOST_ORDER, sizeof(x[0]), NATIVE_ENDIAN, 0, res);
 	
 	mpz_clear(xx);
 	mpz_clear(yy);
@@ -62,12 +62,12 @@ int sub_128(unsigned int *x, unsigned int *y)
 	mpz_init(res);
 	mpz_init(xx);
 	mpz_init(yy);
-	mpz_import(xx, 4, ORDER, sizeof(x[0]), NATIVE_ENDIAN, 0, x);
-	mpz_import(yy, 4, ORDER, sizeof(y[0]), NATIVE_ENDIAN, 0, y);
+	mpz_import(xx, 4, HOST_ORDER, sizeof(x[0]), NATIVE_ENDIAN, 0, x);
+	mpz_import(yy, 4, HOST_ORDER, sizeof(y[0]), NATIVE_ENDIAN, 0, y);
 
 	mpz_sub(res, xx, yy);
 	memset(y, '\0', sizeof(y[0])*4);
-	mpz_export(y, &count, ORDER, sizeof(x[0]), NATIVE_ENDIAN, 0, res);
+	mpz_export(y, &count, HOST_ORDER, sizeof(x[0]), NATIVE_ENDIAN, 0, res);
 	
 	mpz_clear(xx);
 	mpz_clear(yy);
@@ -93,12 +93,12 @@ int div_128(unsigned int *x, unsigned int *y)
 	mpz_init(res);
 	mpz_init(xx);
 	mpz_init(yy);
-	mpz_import(xx, 4, ORDER, sizeof(x[0]), NATIVE_ENDIAN, 0, x);
-	mpz_import(yy, 4, ORDER, sizeof(y[0]), NATIVE_ENDIAN, 0, y);
+	mpz_import(xx, 4, HOST_ORDER, sizeof(x[0]), NATIVE_ENDIAN, 0, x);
+	mpz_import(yy, 4, HOST_ORDER, sizeof(y[0]), NATIVE_ENDIAN, 0, y);
 	
 	mpz_tdiv_q(res, xx, yy);
 	memset(y, '\0', sizeof(y[0])*4);
-	mpz_export(y, &count, ORDER, sizeof(x[0]), NATIVE_ENDIAN, 0, res);
+	mpz_export(y, &count, HOST_ORDER, sizeof(x[0]), NATIVE_ENDIAN, 0, res);
 	
 	mpz_clear(xx);
 	mpz_clear(yy);
@@ -123,11 +123,11 @@ int div_mpz(unsigned int *y, mpz_t x)
 
 	mpz_init(res);
 	mpz_init(yy);
-	mpz_import(yy, 4, ORDER, sizeof(y[0]), NATIVE_ENDIAN, 0, y);
+	mpz_import(yy, 4, HOST_ORDER, sizeof(y[0]), NATIVE_ENDIAN, 0, y);
 	
 	mpz_tdiv_q(res, yy, x);
 	memset(y, '\0', sizeof(y[0])*4);
-	mpz_export(y, &count, ORDER, sizeof(x[0]), NATIVE_ENDIAN, 0, res);
+	mpz_export(y, &count, HOST_ORDER, sizeof(x[0]), NATIVE_ENDIAN, 0, res);
 	
 	mpz_clear(yy);
 	mpz_clear(res);
@@ -141,9 +141,9 @@ int htonl_128(unsigned int *x, unsigned int *y)
 	size_t count;
 	
 	mpz_init(xx);
-	mpz_import(xx, 4,     ORDER, sizeof(x[0]), NATIVE_ENDIAN,  0, x);
+	mpz_import(xx, 4,     HOST_ORDER, sizeof(x[0]), NATIVE_ENDIAN,  0, x);
 	memset(y, '\0', sizeof(y[0])*4);
-	mpz_export(y, &count, ORDER, sizeof(x[0]), NETWORK_ENDIAN, 0, xx);
+	mpz_export(y, &count, NETWORK_ORDER, sizeof(x[0]), NETWORK_ENDIAN, 0, xx);
 	mpz_clear(xx);
 	return 0;
 }
@@ -154,9 +154,9 @@ int ntohl_128(unsigned int *x, unsigned int *y)
 	size_t count;
 	
 	mpz_init(xx);
-	mpz_import(xx, 4,     ORDER, sizeof(x[0]), NETWORK_ENDIAN, 0, x);
+	mpz_import(xx, 4,     NETWORK_ORDER, sizeof(x[0]), NETWORK_ENDIAN, 0, x);
 	memset(y, '\0', sizeof(y[0])*4);
-	mpz_export(y, &count, ORDER, sizeof(x[0]), NATIVE_ENDIAN,  0, xx);	
+	mpz_export(y, &count, HOST_ORDER, sizeof(x[0]), NATIVE_ENDIAN,  0, xx);	
 	mpz_clear(xx);
 
 	return 0;

@@ -1,9 +1,10 @@
 - [HIGH PRIORITY] -
-random_ip non deve generare ip non validi.
+Il body dell'udp pkt e' sballato!!!
 testare: 25%, hook.c in progress
 
 - [MEDIUM PRIORITY] -
 broadcast: Tenere in considerazione il gttl
+Ottimizzare la validita' di ip in random_ip()
 
 - [LOW PRIORITY] -
 tracer.c: store_trcaer_pkt_connect

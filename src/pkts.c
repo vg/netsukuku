@@ -77,7 +77,6 @@ void pkt_free(PACKET *pkt, int close_socket)
 	}
 	
 	if(pkt->msg) {
-		memset(pkt->msg, '\0', sizeof(PACKET));
 		xfree(pkt->msg);
 		pkt->msg=0;
 	}
@@ -163,7 +162,11 @@ ssize_t pkt_recv(PACKET *pkt)
 	socklen_t fromlen;
 
 	if(pkt->sk_type==SKT_UDP || pkt->sk_type==SKT_BCAST) {	
+		char *buf[MAXMSGSZ];
+		
+		memset(buf, 0, MAXMSGSZ);
 		memset(&from, 0, sizeof(struct sockaddr));
+		
 		if(pkt->family == AF_INET)
 			fromlen=sizeof(struct sockaddr_in);
 		else if(pkt->family == AF_INET6)
@@ -173,54 +176,34 @@ ssize_t pkt_recv(PACKET *pkt)
 			return -1;
 		}
 
-		/* we get the hdr... */
-		err=inet_recvfrom(pkt->sk, &pkt->hdr, sizeof(pkt_hdr), pkt->flags, &from, &fromlen);
-		if(err != sizeof(pkt_hdr)) {
+		/* we get the whole pkt, */
+		err=inet_recvfrom(pkt->sk, buf, sizeof(pkt_hdr)+MAXMSGSZ, 
+				pkt->flags, &from, &fromlen);
+		if(err < sizeof(pkt_hdr)) {
 			debug(DBG_NOISE, "inet_recvfrom() of the hdr aborted!");
 			return -1;
 		}
 		
-		/* ...and verify it */
-		if(pkt_verify_hdr(*pkt)) {
-			debug(DBG_NOISE, "Error while unpacking the PACKET. Malformed header");
+		/* then we extract... and verify it */
+		memcpy(&pkt->hdr, buf, sizeof(pkt_hdr));
+		if(pkt_verify_hdr(*pkt) || pkt->hdr.sz+sizeof(pkt_hdr) > err) {
+			debug(DBG_NOISE, "Error while unpacking the PACKET."
+					" Malformed header");
 			return -1;
 		}
 
 		if(sockaddr_to_inet(&from, &pkt->from, &pkt->port) < 0) {
-			debug(DBG_NOISE, "Cannot pkt_recv(): %d Family not supported", from.sa_family);
+			debug(DBG_NOISE, "Cannot pkt_recv(): %d"
+					" Family not supported", from.sa_family);
 			return -1;
 		}
 		
-		/* 
-		 * We use connect() to associate the socket to `from', in this 
-		 * way we are sure that the next pkt is sent by `from'.
-		 */
-		if(connect(pkt->sk, &from, fromlen) < 0) {
-			error("udp connect(): %s", strerror(errno));
-			return -1;
-		}
-		
+		pkt->msg=0;
 		if(pkt->hdr.sz) {
 			/*let's get the body*/
 			pkt->msg=xmalloc(pkt->hdr.sz);
-			err=inet_recv(pkt->sk, pkt->msg, pkt->hdr.sz, pkt->flags);
-			if(err != pkt->hdr.sz) {
-				debug(DBG_NOISE, "Cannot inet_recv() the pkt's body");
-				return -1;
-			}
+			memcpy(pkt->msg, buf+sizeof(pkt_hdr), pkt->hdr.sz);
 		}
-
-		/* 
-		 * <<Connectionless sockets may dissolve the association by 
-		 * connecting to an address with the sa_family member of 
-		 * sockaddr set to AF_UNSPEC.>>
-		 */
-		from.sa_family=AF_UNSPEC;
-		if(connect(pkt->sk, &from, fromlen) == -1) {
-			error("udp disconnect(): %s", strerror(errno));
-			return -1;
-		}
-
 	} else if(pkt->sk_type==SKT_TCP) {
 		/*we get the hdr...*/
 		err=inet_recv(pkt->sk, &pkt->hdr, sizeof(pkt_hdr), pkt->flags);

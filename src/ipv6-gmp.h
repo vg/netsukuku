@@ -23,7 +23,8 @@
 /* * * Defines used for mpz_import/export * * */
 /* From info gmp: "ORDER can be 1 for most significant word first or -1 for least 
  * significant first." */
-#define ORDER 			1
+#define NETWORK_ORDER		1
+#define HOST_ORDER		-1
 #define NATIVE_ENDIAN 		0
 #define HOST_ENDIAN  		-1
 #define NETWORK_ENDIAN		1

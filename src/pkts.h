@@ -17,7 +17,7 @@
  */
 
 #define NETSUKUKU_ID		"ntk"
-#define MAXMSGSZ		32768
+#define MAXMSGSZ		65536
 
 /* 
  * Pkt's op definitions:

@@ -84,17 +84,19 @@ tracer_add_entry(void *void_map, void *void_node, tracer_chunk *tracer, u_int *h
 	*hops++;
 	t=xmalloc(sizeof(tracer_chunk) * *hops);
 	memset(t, 0, sizeof(tracer_chunk) * *hops);
-	if(tracer || *hops) {
-		memcpy(t, tracer, sizeof(tracer_chunk) * (*hops-1));
+	if(tracer || (*hops) > 1) {
+		memcpy(t, tracer, sizeof(tracer_chunk) * ((*hops)-1));
 		if(!level) {
-			from=node_from_pos(tracer[*hops-1].node, map);
+			from=node_from_pos(tracer[(*hops)-1].node, map);
 			if((pos=rnode_find(me.cur_node, from)) == -1)
 				return 0;
 			else
 				rfrom=&me.cur_node->r_node[pos];
 		} else {
-			from=(map_node*)gnode_from_pos(tracer[*hops-1].node, ext_map[_EL(level)]);
-			if((pos=g_rnode_find(me.cur_quadg.gnode[_EL(level)], (map_gnode *)from) == -1))
+			from=(map_node*)gnode_from_pos(tracer[(*hops)-1].node, 
+					ext_map[_EL(level)]);
+			if((pos=g_rnode_find(me.cur_quadg.gnode[_EL(level)], 
+							(map_gnode *)from) == -1))
 				return 0;
 			else
 				rfrom=&me.cur_quadg.gnode[_EL(level)]->g.r_node[pos];
@@ -102,12 +104,12 @@ tracer_add_entry(void *void_map, void *void_node, tracer_chunk *tracer, u_int *h
 	}
 
 	if(!level)
-		t[*hops-1].node=pos_from_node(node, map);
+		t[(*hops)-1].node=pos_from_node(node, map);
 	else
-		t[*hops-1].node=pos_from_gnode(gnode, ext_map[_EL(level)]);
+		t[(*hops)-1].node=pos_from_gnode(gnode, ext_map[_EL(level)]);
 		
 	if(rfrom)
-		memcpy(&t[*hops-1].rtt, &rfrom->rtt, sizeof(struct timeval));
+		memcpy(&t[(*hops)-1].rtt, &rfrom->rtt, sizeof(struct timeval));
 	return t;
 }
 
@@ -251,7 +253,7 @@ int tracer_unpack_pkt(PACKET rpkt, brdcast_hdr **new_bcast_hdr, tracer_hdr **new
 	}
 
 	if(!level)
-		iptomap((u_int)me.int_map, rpkt.from, me.cur_quadg.ipstart[0], (u_int *)&real_from);
+		iptomap((u_int)me.int_map, rpkt.from, me.cur_quadg.ipstart[1], (u_int *)&real_from);
 	else {
 		gid=iptogid(rpkt.from, level);
 		real_from=&me.ext_map[_EL(level)][gid].g;
@@ -528,7 +530,7 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 		hops=tracer_hdr->hops;
 	}
 
-	memset(&pkt, 0, sizeof(PACKET));
+	memset(pkt, 0, sizeof(PACKET));
 	pkt->hdr.id=rq_id;
 	pkt->hdr.op=rq;
 	pkt->hdr.flags|=BCAST_PKT;
@@ -544,6 +546,7 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 	
 	/*Time to append our entry in the tracer_pkt*/
 	new_tracer=tracer_add_entry(void_map, void_node, tracer, &hops, gnode_level); 
+
 	/*If we are a bnode we have to append the bnode_block too.*/
 	if(me.cur_node->flags & MAP_BNODE)
 		if((new_bhdr=tracer_build_bentry(void_map, void_node, &new_bchunk, gnode_level)))
@@ -557,7 +560,7 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 	}
 
 	/*Here we are building the pkt to... */
-	memset(&pkt, '\0', sizeof(PACKET));
+	memset(pkt, '\0', sizeof(PACKET));
 	bcast_hdr->sz=TRACERPKT_SZ(hops)+(tracer_hdr->bblocks ? BNODEBLOCK_SZ(tracer_hdr->bblocks) : 0);
 	bcast_hdr->sub_id=bcast_sub_id;
 	pkt->hdr.sz=BRDCAST_SZ(bcast_hdr->sz);
@@ -627,7 +630,7 @@ int tracer_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), int gid,
 			e_rnode=(ext_rnode *)dst_node;
 			memcpy(&to, &e_rnode->ip, sizeof(inet_prefix));
 		} else 
-			maptoip((u_int)me.int_map, (u_int)dst_node, me.cur_quadg.ipstart[0], &to);
+			maptoip((u_int)me.int_map, (u_int)dst_node, me.cur_quadg.ipstart[1], &to);
 		pkt_addto(&pkt, &to);
 		pkt.sk_type=SKT_UDP;
 
@@ -758,9 +761,11 @@ int tracer_pkt_recv(PACKET rpkt)
 
 
 	/*Time to update our map*/
-	if(rpkt.hdr.op == TRACER_PKT) /*This check is made because tracer_pkt_recv handles also TRACER_PKT_CONNECT pkts*/
+	if(rpkt.hdr.op == TRACER_PKT) /*This check is made because tracer_pkt_recv 
+					handles also TRACER_PKT_CONNECT pkts*/
 		tracer_store_pkt(void_map, level, tracer_hdr, tracer, (void *)bhdr, bblock_sz,
 				&old_bchunks, &old_bblock, &old_bblock_sz);
+
 	/*The forge of the packet.*/
 	tracer_pkt_build(rpkt.hdr.op, rpkt.hdr.id, bcast_hdr->sub_id, /*IDs*/
 			 gid,         orig_lvl,			      /*GnodeID and level (ignored)*/

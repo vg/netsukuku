@@ -289,7 +289,15 @@ void radar_update_map(void)
 
 			   if(rnode_pos == -1) { /* W00t, we've found a new rnode! */
 				   struct qspn_buffer *qb;
-				   rnode_pos=root_node->links; /* Now it is the last rnode +1 because we are adding it */
+				   char	*ntop;
+
+				   ntop=inet_to_str(rq->ip);
+				   loginfo("Radar: New node found: %s, ext: %d, level: %d", 
+						   ntop, external_node, level);
+				   xfree(ntop);
+				   
+				   rnode_pos=root_node->links; /* Now it is the last rnode +1
+								  because we are adding it */
 
 				   /* First of all we add it in the map... */
 				   if(external_node && !level) {
@@ -301,15 +309,18 @@ void radar_update_map(void)
 
 					   memset(&rnn, '\0', sizeof(map_rnode));
 					   e_rnode=xmalloc(sizeof(ext_rnode));
+					   memset(e_rnode, 0, sizeof(ext_rnode));
 
 					   memcpy(&e_rnode->quadg, &rq->quadg, sizeof(quadro_group));
-					   e_rnode->node.flags=MAP_BNODE | MAP_GNODE | MAP_RNODE | MAP_ERNODE;
+					   e_rnode->node.flags=MAP_BNODE | MAP_GNODE |
+						   MAP_RNODE | MAP_ERNODE;
 					   rnn.r_node=(u_int *)e_rnode;
 					   node=rq->node=&e_rnode->node;
 					   rnode=&rnn;
 					  
 					   /* Update the external_rnode_cache list */
 					   erc=xmalloc(sizeof(ext_rnode_cache));
+					   memset(erc, 0, sizeof(ext_rnode_cache));
 					   erc->e=e_rnode;
 					   erc->rnode_pos=rnode_pos;
 					   if(!me.cur_erc_counter)
@@ -365,20 +376,22 @@ void radar_update_map(void)
 				    * Nah, We have the node in the map. Let's just update its rtt 
 				    */
 				   if(!send_qspn_now[level] && node->links) {
-					   diff=abs(MILLISEC(root_node->r_node[rnode_pos].rtt) - MILLISEC(rq->final_rtt));
+					   diff=abs(MILLISEC(root_node->r_node[rnode_pos].rtt) -
+							   MILLISEC(rq->final_rtt));
 					   if(diff >= RTT_DELTA)
 						   send_qspn_now[level]=1;
 				   }
 			   }
 			   node->flags&=~MAP_VOID & ~MAP_UPDATE;
-		           memcpy(&root_node->r_node[rnode_pos].rtt, &rq->final_rtt, sizeof(struct timeval));
+		           memcpy(&root_node->r_node[rnode_pos].rtt, &rq->final_rtt,
+					   sizeof(struct timeval));
 			   
 			   /* 
 			    * There's nothing better than updating the bnode_map. 
 			    */
 			   if(external_node && level <= GET_LEVELS(my_family)) {
-				   bm=map_find_bnode(me.bnode_map[level], me.bmap_nodes[level], void_map, 
-						   (void *)root_node, level);
+				   bm=map_find_bnode(me.bnode_map[level], me.bmap_nodes[level],
+						   void_map, (void *)root_node, level);
 				   if(bm==-1)
 					   bm=map_add_bnode(&me.bnode_map[level], &me.bmap_nodes[level], 
 							   (u_int)root_node, 0);
@@ -398,7 +411,7 @@ void radar_update_map(void)
 
 	radar_remove_old_rnodes(rnode_deleted);
 
-	/* My mom always says: <<keep your room tidy... order, ORDER>> */
+	/* <<keep your room tidy... order, ORDER>> */
 	if(rnode_added[0] || rnode_deleted[0])
 		rnode_rtt_order(me.cur_node);
 	for(i=1; i<me.cur_quadg.levels; i++)
@@ -440,7 +453,7 @@ int add_radar_q(PACKET pkt)
 			rnode_add(rnode, &rnn);
 		}
 	} else
-		ret=iptomap((int)me.int_map, pkt.from, me.cur_quadg.ipstart[0],
+		ret=iptomap((int)me.int_map, pkt.from, me.cur_quadg.ipstart[1],
 				(u_int *)&rnode);
 	
 	iptoquadg(pkt.from, me.ext_map, &quadg, QUADG_GID | QUADG_GNODE | QUADG_IPSTART);
@@ -511,7 +524,8 @@ int radar_scan(void)
 	PACKET pkt;
 	inet_prefix broadcast;
 	int i, e=0;
-	ssize_t err;		
+	ssize_t err;
+	u_char echo_scan;
 
 	/* We are already doing a radar scan, that's not good */
 	if(radar_scan_mutex)
@@ -526,7 +540,11 @@ int radar_scan(void)
 
 	gettimeofday(&scan_start, 0);
 
-	for(i=0; i<MAX_RADAR_SCANS; i++) {
+	pkt.hdr.sz=sizeof(u_char);
+	pkt.msg=xmalloc(pkt.hdr.sz);
+	for(i=0, echo_scan=0; i<MAX_RADAR_SCANS; i++, echo_scan++) {
+		memcpy(pkt.msg, &echo_scan, sizeof(u_char));
+		
 		err=send_rq(&pkt, 0, ECHO_ME, my_echo_id, 0, 0, 0);
 		if(err==-1) {
 			error("radar_scan(): Error while sending the scan 0x%x"
@@ -568,14 +586,18 @@ int radard(PACKET rpkt)
 {
 	PACKET pkt;
 	ssize_t err;
-	char *ntop;
+	char *ntop; 
+	u_char echo_scans_count;
 
 	/* If we are hooking we reply only to others hooking nodes */
-	if(me.cur_node->flags & MAP_HNODE && !(rpkt.hdr.flags & HOOK_PKT)) {
-		if(!radar_scan_mutex) {
+	if(me.cur_node->flags & MAP_HNODE)
+		if(rpkt.hdr.flags & HOOK_PKT) {
+			memcpy(&echo_scans_count, rpkt.msg, sizeof(u_char));
+
 			/* 
 			 * So, we are hooking, but we haven't yet started the
-			 * first scan, this means that this node, who is hooking
+			 * first scan or we have done less scans, 
+			 * this means that this node, who is hooking
 			 * too and sent us this rpkt, has started the hook 
 			 * before us. If we are in a black zone, this flag
 			 * will be used to decide which of the hooking nodes
@@ -583,11 +605,16 @@ int radard(PACKET rpkt)
 			 * the other hooking node will create the gnode, then we
 			 * restart the hook. Clear?
 			 */
-			hook_retry=1;
+			if(!radar_scan_mutex || echo_scans_count > radar_scans)
+				hook_retry=1;
+			debug(DBG_NOISE, "Hooking node caught. s: %d, esc: %d," 
+					"hook_retry: %d", radar_scans, 
+					echo_scans_count, hook_retry);
+		} else {
+			debug(DBG_NOISE, "ECHO_ME pkt dropped: We are hooking");	
+			return 0;
 		}
-		return 0;
-	}
-	
+
 	/* We create the PACKET */
 	memset(&pkt, '\0', sizeof(PACKET));
 	pkt_addto(&pkt, &rpkt.from);
@@ -613,3 +640,32 @@ void *radar_daemon(void *null)
 		radar_scan();
 }
 
+
+/* 
+ * refresh_hook_root_node: At hooking the radar_scan doesn't have an int_map, so
+ * all the nodes it found are stored in fake nodes. When we finish the hook,
+ * instead, we have an int_map, so we convert all this fake nodes into real
+ * nodes. To do this we modify each rq->node of the radar_queue and recall the
+ * radar_update_map() func. 
+ * Note: the me.cur_node must be deleted prior the call of this function.
+ */
+int refresh_hook_root_node(void)
+{
+	struct radar_queue *rq;
+	map_node *rnode;
+	int ret;
+
+	rq=radar_q;
+	list_for(rq) {
+		ret=iptomap((int)me.int_map, rq->ip, me.cur_quadg.ipstart[1],
+				(u_int *)&rnode);
+		if(ret)
+			rq->node=(map_node *)RADQ_EXT_RNODE;
+		else
+			rq->node=rnode;
+	}
+
+	radar_update_map();
+}
+
+/*EoW*/

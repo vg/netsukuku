@@ -72,15 +72,15 @@ void krnl_update_node(void *void_node, u_char level)
 		nh=xmalloc(sizeof(struct nexthop)*(node->links+1));
 		memset(nh, '\0', sizeof(struct nexthop)*(node->links+1));
 
-		maptoip((u_int)me.int_map, (u_int)node, me.cur_quadg.ipstart[0], &to);
+		maptoip((u_int)me.int_map, (u_int)node, me.cur_quadg.ipstart[1], &to);
 
 		for(i=0; i<node->links; i++) {
 #ifdef QMAP_STYLE_I
 			maptoip((u_int)me.int_map, (u_int)get_gw_node(node, i),
-					me.cur_quadg.ipstart[0], &nh[i].gw);
+					me.cur_quadg.ipstart[1], &nh[i].gw);
 #else /*QMAP_STYLE_II*/
 			maptoip((u_int)me.int_map, (u_int)node->r_node[i].r_node,
-					me.cur_quadg.ipstart[0], &nh[i].gw);
+					me.cur_quadg.ipstart[1], &nh[i].gw);
 #endif
 		inet_htonl(&nh[i].gw);
 			nh[i].dev=me.cur_dev;
@@ -100,7 +100,7 @@ void krnl_update_node(void *void_node, u_char level)
 		gw_node=get_gw_gnode(me.int_map, me.ext_map, me.bnode_map,
 				me.bmap_nodes, gnode, level, 0);
 		maptoip((u_int)me.int_map, (u_int)gw_node, 
-				me.cur_quadg.ipstart[0], &nh[0].gw);
+				me.cur_quadg.ipstart[1], &nh[0].gw);
 		inet_htonl(&nh[0].gw);
 		nh[0].dev=me.cur_dev;
 

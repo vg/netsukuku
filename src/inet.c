@@ -101,6 +101,94 @@ int inet_setip_anyaddr(inet_prefix *ip, int family)
 	return 0;
 }
 
+/* from linux/net/ipv6/addrconf.c. Modified to use inet_prefix */
+int ipv6_addr_type(inet_prefix addr)
+{
+	int type;
+	u_int st;
+
+	st = htonl(addr.data[0]);
+
+	if ((st & htonl(0xFF000000)) == htonl(0xFF000000)) {
+		type = IPV6_ADDR_MULTICAST;
+
+		switch((st & htonl(0x00FF0000))) {
+			case __constant_htonl(0x00010000):
+				type |= IPV6_ADDR_LOOPBACK;
+				break;
+
+			case  __constant_htonl(0x00020000):
+				type |= IPV6_ADDR_LINKLOCAL;
+				break;
+
+			case  __constant_htonl(0x00050000):
+				type |= IPV6_ADDR_SITELOCAL;
+				break;
+		};
+		return type;
+	}
+
+	type = IPV6_ADDR_UNICAST;
+
+	/* Consider all addresses with the first three bits different of
+	   000 and 111 as finished.
+	 */
+	if ((st & htonl(0xE0000000)) != htonl(0x00000000) &&
+	    (st & htonl(0xE0000000)) != htonl(0xE0000000))
+		return type;
+	
+	if ((st & htonl(0xFFC00000)) == htonl(0xFE800000))
+		return (IPV6_ADDR_LINKLOCAL | type);
+
+	if ((st & htonl(0xFFC00000)) == htonl(0xFEC00000))
+		return (IPV6_ADDR_SITELOCAL | type);
+
+	if ((addr.data[0] | addr.data[1]) == 0) {
+		if (addr.data[2] == 0) {
+			if (addr.data[3] == 0)
+				return IPV6_ADDR_ANY;
+
+			if (htonl(addr.data[3]) == htonl(0x00000001))
+				return (IPV6_ADDR_LOOPBACK | type);
+
+			return (IPV6_ADDR_COMPATv4 | type);
+		}
+
+		if (htonl(addr.data[2]) == htonl(0x0000ffff))
+			return IPV6_ADDR_MAPPED;
+	}
+
+	st &= htonl(0xFF000000);
+	if (st == 0)
+		return IPV6_ADDR_RESERVED;
+	st &= htonl(0xFE000000);
+	if (st == htonl(0x02000000))
+		return IPV6_ADDR_RESERVED;	/* for NSAP */
+	if (st == htonl(0x04000000))
+		return IPV6_ADDR_RESERVED;	/* for IPX */
+	return type;
+}
+
+int inet_validate_ip(inet_prefix ip)
+{
+	int type, ipv4;
+
+	if(ip.family==AF_INET) {
+		ipv4=htonl(ip.data[0]);
+		if(MULTICAST(ipv4) || BADCLASS(ipv4) || ZERONET(ipv4))
+			return -EINVAL;
+		return 0;
+
+	} else if(ip.family==AF_INET) {
+		type=ipv6_addr_type(ip);
+		if( (type & IPV6_ADDR_MULTICAST) )
+			return -EINVAL;
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
 /* * * Coversion functions... * * */
 
 /*

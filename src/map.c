@@ -555,11 +555,15 @@ int map_store_rblock(map_node *map, int *addr_map, int maxgroupnode, map_rnode *
 
 int verify_int_map_hdr(struct int_map_hdr *imap_hdr, int maxgroupnode, int maxrnodeblock)
 {
-#ifndef QSPN_EMPIRIC /*The qspn_empiric generates a random map which has nodes with map_node.links > MAXGROUPNODE;*/
-	if(imap_hdr->rblock_sz > maxrnodeblock || imap_hdr->int_map_sz > maxgroupnode*sizeof(map_node) 
-			|| imap_hdr->root_node > maxrnodeblock)
+#ifndef QSPN_EMPIRIC /*The qspn_empiric generates a random map which has nodes
+		       with map_node.links > MAXGROUPNODE;*/
+	
+	if(imap_hdr->rblock_sz > maxrnodeblock || 
+			imap_hdr->int_map_sz > maxgroupnode*sizeof(map_node) ||
+			imap_hdr->root_node > maxrnodeblock)
 		return 1;
-#endif /*QSPN_EMPIRIC*/
+	
+#endif
 	return 0;
 }
 
@@ -613,7 +617,8 @@ map_node *unpack_map(char *pack, size_t pack_sz, int *addr_map, map_node **new_r
 	map_node *map;
 	struct int_map_hdr *imap_hdr=(struct int_map_hdr *)pack;
 	map_rnode *rblock;
-	int err, nodes, p;
+	int err, nodes;
+	char *p;
 
 	if(verify_int_map_hdr(imap_hdr, maxgroupnode, maxrnodeblock)) {
 		error("Malformed int/bmap_map_hdr. Aborting unpack_map().");
@@ -621,16 +626,17 @@ map_node *unpack_map(char *pack, size_t pack_sz, int *addr_map, map_node **new_r
 	}
 		
 	/*Extracting the map...*/
-	p=sizeof(struct int_map_hdr);
+	p=pack+sizeof(struct int_map_hdr);
 	map=init_map(0);
-	memcpy(map, pack+p, imap_hdr->int_map_sz);
+	if(imap_hdr->int_map_sz)
+		memcpy(map, p, imap_hdr->int_map_sz);
 
 	/*Restoring the rnodes...*/
 	p+=imap_hdr->int_map_sz;
 	if(imap_hdr->rblock_sz) {
 		nodes=imap_hdr->int_map_sz/sizeof(map_node);
 		/*Extracting the rnodes block and merging it to the map*/
-		rblock=(map_rnode *)pack+p;
+		rblock=(map_rnode *)p;
 		if(!addr_map)
 			addr_map=(int *)map;
 		err=map_store_rblock(map, addr_map, nodes, rblock);

@@ -31,12 +31,39 @@ typedef struct
 				   word ORDER 1 (most significant word first)*/
 }inet_prefix;
 
+/* * * defines from linux/in.h * * */
+#define LOOPBACK(x)	(((x) & htonl(0xff000000)) == htonl(0x7f000000))
+#define MULTICAST(x)	(((x) & htonl(0xf0000000)) == htonl(0xe0000000))
+#define BADCLASS(x)	(((x) & htonl(0xf0000000)) == htonl(0xf0000000))
+#define ZERONET(x)	(((x) & htonl(0xff000000)) == htonl(0x00000000))
+#define LOCAL_MCAST(x)	(((x) & htonl(0xFFFFFF00)) == htonl(0xE0000000))
+
+/* * * defines from linux/include/net/ipv6.h * * */
+#define IPV6_ADDR_ANY		0x0000U
+
+#define IPV6_ADDR_UNICAST      	0x0001U	
+#define IPV6_ADDR_MULTICAST    	0x0002U	
+
+#define IPV6_ADDR_LOOPBACK	0x0010U
+#define IPV6_ADDR_LINKLOCAL	0x0020U
+#define IPV6_ADDR_SITELOCAL	0x0040U
+
+#define IPV6_ADDR_COMPATv4	0x0080U
+
+#define IPV6_ADDR_SCOPE_MASK	0x00f0U
+
+#define IPV6_ADDR_MAPPED	0x1000U
+#define IPV6_ADDR_RESERVED	0x2000U	/* reserved address space */
+
+/* * * Functions declaration * * */
 void inet_ntohl(inet_prefix *ip);
 void inet_htonl(inet_prefix *ip);
 int inet_setip(inet_prefix *ip, u_int *data, int family);
 int inet_setip_bcast(inet_prefix *ip, int family);
 int inet_setip_anyaddr(inet_prefix *ip, int family);
 int inet_setip_anyaddr(inet_prefix *ip, int family);
+int ipv6_addr_type(inet_prefix addr);
+int inet_validate_ip(inet_prefix ip);
 
 char *inet_to_str(inet_prefix ip);
 int inet_to_sockaddr(inet_prefix *ip, u_short port, struct sockaddr *dst, socklen_t *dstlen);

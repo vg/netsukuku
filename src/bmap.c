@@ -248,7 +248,7 @@ unpack_all_bmaps(char *pack, size_t pack_sz, u_char levels, map_gnode **ext_map,
 					"Aborting unpack_all_bmaps().", i);
 			return 0;
 		}
-		*bmap_nodes[i]=bmap_hdr->bnode_map_sz/sizeof(map_bnode);
+		(*bmap_nodes)[i]=bmap_hdr->bnode_map_sz/sizeof(map_bnode);
 		bblock=(char *)bmap_hdr;
 
 		/*Extracting the map...*/
