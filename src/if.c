@@ -134,7 +134,6 @@ int set_dev_ip(inet_prefix ip, char *dev)
 		strncpy(req.ifr_name, dev, IFNAMSIZ);
 		inet_to_sockaddr(&ip, 0, &req.ifr_addr, 0);
 
-
 		if(ioctl(s, SIOCSIFADDR, &req)) {
 			error("Error while setting \"%s\" ip: %s", dev, strerror(errno));
 			close(s);

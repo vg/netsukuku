@@ -138,7 +138,7 @@ int rt_add_def_gw(char *dev)
 {
 	inet_prefix to;
 	
-	if(inet_setip_anyaddr(&to)) {
+	if(inet_setip_anyaddr(&to, my_family)) {
 		error("rt_add_def_gw(): Cannot use INADRR_ANY for the %d family\n", to.family);
 		return -1;
 	}

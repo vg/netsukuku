@@ -26,7 +26,7 @@
 
 extern int errno;
 
-int inet_setip(inet_prefix *ip, u_int *data, u_char family)
+int inet_setip(inet_prefix *ip, u_int *data, int family)
 {
 	ip->family=family;
 
@@ -43,31 +43,34 @@ int inet_setip(inet_prefix *ip, u_int *data, u_char family)
 	return 0;
 }
 
-int inet_setip_bcast(inet_prefix *ip)
+int inet_setip_bcast(inet_prefix *ip, int family)
 {
-	if(ip->family==AF_INET) {
-		u_int data=INADDR_BROADCAST;
-		
-		inet_setip(ip, &data, ip->family);
-	} else if(ip->family==AF_INET6) {
+	if(family==AF_INET) {
+		u_int data[4]={0, 0, 0, 0};
+
+		data[0]=INADDR_BROADCAST;
+		inet_setip(ip, data, family);
+	} else if(family==AF_INET6) {
 		u_int data[4]=IPV6_ADDR_BROADCAST;
 
-		inet_setip(ip, data, ip->family);
+		inet_setip(ip, data, family);
 	} else 
 		return -1;
 
 	return 0;
 }
 
-int inet_setip_anyaddr(inet_prefix *ip)
+int inet_setip_anyaddr(inet_prefix *ip, int family)
 {
-	if(ip->family==AF_INET) {
-		u_int data[4];
+	if(family==AF_INET) {
+		u_int data[4]={0, 0, 0, 0};
+		
 		data[0]=INADDR_ANY;
-		inet_setip(ip, data, ip->family);
-	} else if(ip->family==AF_INET6) {
+		inet_setip(ip, data, family);
+	} else if(family==AF_INET6) {
 		struct in6_addr ipv6=IN6ADDR_ANY_INIT;
-		inet_setip(ip, (u_int *)(&ipv6), ip->family);
+		
+		inet_setip(ip, (u_int *)(&ipv6), family);
 	} else 
 		return -1;
 
@@ -117,7 +120,7 @@ int inet_to_sockaddr(inet_prefix *ip, u_short port, struct sockaddr *dst, sockle
 	
 	if(ip->family==AF_INET) {
 		data[0]=htonl(ip->data[0]);
-		p=dst->sa_data+2;
+		p=(int *)dst->sa_data+2;
 		memcpy(p, data, sizeof(int)*4);
 	} else if(ip->family==AF_INET6)
 		htonl_128(ip->data, dst->sa_data+sizeof(u_short)+sizeof(u_int));

@@ -498,6 +498,7 @@ int netsukuku_hook(char *dev)
 	int i, e=0, idx, imaps=0, ret=0, new_gnode=0, tracer_levels=0;
 	int fnodes[MAXGROUPNODE], *old_bnodes;
 	u_int idata[4];
+	char *ntop;
 
 	/* We set the dev ip to HOOKING_IP to begin our transaction. */
 	memset(idata, 0, sizeof(int)*4);
@@ -508,17 +509,25 @@ int netsukuku_hook(char *dev)
 	idata[0]=htonl(idata[0]);
 	me.cur_ip.family=my_family;
 	inet_setip(&me.cur_ip, idata, my_family);
+
+	ntop=inet_to_str(&me.cur_ip);
+	debug(DBG_NORMAL, "Setting the %s ip to %s interface", ntop, dev);
+	xfree(ntop);
 	if(set_dev_ip(me.cur_ip, dev))
 		fatal("%s:%d: Cannot set the HOOKING_IP in %s", ERROR_POS, dev);
 	
 	if(rt_add_def_gw(dev))
-		fatal("%s:%d: Couldn't set the default gw for %s", ERROR_POS, dev);
+		debug(DBG_NORMAL, "%s:%d: Couldn't set the default gw for %s", ERROR_POS, dev);
 
 
 	/* 	
 	  	* * 		The beginning          * *	  	
 	 */
 	loginfo("The hook begins. Starting to scan the area");
+	
+	/* We use a fake root_node for a while */
+	me.cur_node=xmalloc(sizeof(map_node));		/*TODO: WARNING XFREE it later!!*/
+	memset(me.cur_node, 0, sizeof(map_node));
 	me.cur_node->flags|=MAP_HNODE;
 	
 	/* 

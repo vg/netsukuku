@@ -193,8 +193,7 @@ void init_netsukuku(char **argv)
 	ntk_tcp_port=DEFAULT_NTK_TCP_PORT;
 	if(!(dev=if_init(server_opt.dev, &me.cur_dev_idx)))
 		fatal("Cannot initialize the %s device", server_opt.dev);
-	else
-		strncpy(me.cur_dev, dev, IFNAMSIZ);
+	strncpy(me.cur_dev, dev, IFNAMSIZ);
 
 	qspn_init(GET_LEVELS(my_family));
 

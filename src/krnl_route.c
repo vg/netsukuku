@@ -109,6 +109,7 @@ int route_exec(int route_cmd, unsigned flags, inet_prefix to, struct nexthop *nh
 		char   			buf[1024];
 	} req;
 	struct rtnl_handle rth;
+	int rt_type;
 
 	memset(&req, 0, sizeof(req));
 
@@ -149,15 +150,17 @@ int route_exec(int route_cmd, unsigned flags, inet_prefix to, struct nexthop *nh
 
 	if (to.len) {
 		req.rt.rtm_dst_len = to.bits;
-		addattr_l(&req.nh, sizeof(req), RTA_DST, &to.data, to.len);
-		req.rt.rtm_family=to.family;
+		req.rt.rtm_family  = to.family;
 		if(!to.data[0]) {
+			/*Add the default gw*/
 			req.rt.rtm_scope=RT_SCOPE_LINK;
 			req.rt.rtm_protocol=RTPROT_KERNEL;
-			/*Add the default gw*/
-			addattr_l(&req.nh, sizeof(req), RTA_GATEWAY, &nhops[0].gw.data, nhops[0].gw.len);
+			rt_type=RTA_GATEWAY;
 			nhops=0;
-		}	
+		} else
+			rt_type=RTA_DST;
+		
+		addattr_l(&req.nh, sizeof(req), rt_type, &to.data, to.len);
 	} 
 	
 	if(nhops) 

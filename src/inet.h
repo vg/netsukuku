@@ -31,9 +31,10 @@ typedef struct
 				   word ORDER 1 (most significant word first)*/
 }inet_prefix;
 
-int inet_setip(inet_prefix *ip, u_int *data, u_char family);
-int inet_setip_bcast(inet_prefix *ip);
-int inet_setip_anyaddr(inet_prefix *ip);
+int inet_setip(inet_prefix *ip, u_int *data, int family);
+int inet_setip_bcast(inet_prefix *ip, int family);
+int inet_setip_anyaddr(inet_prefix *ip, int family);
+int inet_setip_anyaddr(inet_prefix *ip, int family);
 
 char *inet_to_str(inet_prefix *ip);
 int inet_to_sockaddr(inet_prefix *ip, u_short port, struct sockaddr *dst, socklen_t *dstlen);

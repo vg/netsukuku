@@ -466,9 +466,7 @@ int radar_scan(void)
 	
 	/* We create the PACKET */
 	memset(&pkt, '\0', sizeof(PACKET));
-	broadcast.family=my_family;
-	inet_setip_bcast(&broadcast);
-	pkt_addto(&pkt, &broadcast);
+	inet_setip_bcast(&pkt.to, my_family);
 	pkt.sk_type=SKT_BCAST;
 	my_echo_id=random();
 	for(i=0; i<MAX_RADAR_SCANS; i++) {
@@ -517,8 +515,7 @@ int radard(PACKET rpkt)
 	/* We create the PACKET */
 	memset(&pkt, '\0', sizeof(PACKET));
 	
-	broadcast.family=my_family;
-	inet_setip_bcast(&broadcast);
+	inet_setip_bcast(&broadcast, my_family);
 	pkt_addto(&pkt, &broadcast);
 	pkt.sk_type=SKT_BCAST;
 	

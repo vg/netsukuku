@@ -16,10 +16,11 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include "log.h"
 #include <stdio.h>
 #include <syslog.h>
 #include <stdarg.h>
+
+#include "log.h"
 
 char *__argv0;
 int dbg_lvl;
@@ -81,11 +82,9 @@ void debug(int lvl, const char *fmt,...)
 	}
 }
 
-void print_log(int level, const char *fmt,...)
+void print_log(int level, const char *fmt, va_list args)
 {
-	va_list args;
 	
-	va_start(args, fmt);
 	if(log_to_stderr) {
 		vfprintf(stderr, fmt, args);
 		fprintf(stderr, "\r\n");
@@ -94,5 +93,4 @@ void print_log(int level, const char *fmt,...)
 		vsyslog(level | log_facility, fmt, args);
 		closelog();
 	}
-	va_end(args);
 }
