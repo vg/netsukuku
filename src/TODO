@@ -1,14 +1,10 @@
 - [HIGH PRIORITY] -
 random_ip non deve generare ip non validi.
-testare
+testare: 25%, hook.c in progress
 
 - [MEDIUM PRIORITY] -
-hook: Se due nodi che si trovano in una black zone cercano di fare l'hook
-contemporaneamente succede un casino. Bisogna decidere chi dei due devi creare
-il nuovo gnode.
 broadcast: Tenere in considerazione il gttl
 
 - [LOW PRIORITY] -
 tracer.c: store_trcaer_pkt_connect
-unique id per radar_pkt per evitare di falsificare le stats.
-big endian/little endian per gil int nei pkt.
+big endian/little endian per gli int nei pkt.

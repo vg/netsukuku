@@ -54,7 +54,8 @@ void pkt_addport(PACKET *pkt, u_short port)
 
 void pkt_addflags(PACKET *pkt, int flags)
 {
-	pkt->flags=flags;
+	if(flags)
+		pkt->flags=flags;
 }
 
 void pkt_addhdr(PACKET *pkt, pkt_hdr *hdr)
@@ -88,10 +89,10 @@ char *pkt_pack(PACKET *pkt)
 	
 	buf=(char *)xmalloc(PACKET_SZ(pkt->hdr.sz));
 	memcpy(buf, &pkt->hdr, sizeof(pkt_hdr));
-	if(!pkt->hdr.sz)
-		return buf;
 	
-	memcpy(buf+sizeof(pkt_hdr), &pkt->msg, pkt->hdr.sz);
+	if(pkt->hdr.sz)
+		memcpy(buf+sizeof(pkt_hdr), pkt->msg, pkt->hdr.sz);
+	
 	return buf;
 }
 
@@ -158,7 +159,6 @@ finish:
 ssize_t pkt_recv(PACKET *pkt)
 {
 	ssize_t err=-1;
-	char *buf;
 	struct sockaddr from;
 	socklen_t fromlen;
 
@@ -173,7 +173,6 @@ ssize_t pkt_recv(PACKET *pkt)
 			return -1;
 		}
 
-		pkt->msg=0;
 		/* we get the hdr... */
 		err=inet_recvfrom(pkt->sk, &pkt->hdr, sizeof(pkt_hdr), pkt->flags, &from, &fromlen);
 		if(err != sizeof(pkt_hdr)) {
@@ -201,17 +200,15 @@ ssize_t pkt_recv(PACKET *pkt)
 			return -1;
 		}
 		
-		buf=0;
 		if(pkt->hdr.sz) {
 			/*let's get the body*/
-			buf=xmalloc(pkt->hdr.sz);
-			err=inet_recv(pkt->sk, buf, pkt->hdr.sz, pkt->flags);
+			pkt->msg=xmalloc(pkt->hdr.sz);
+			err=inet_recv(pkt->sk, pkt->msg, pkt->hdr.sz, pkt->flags);
 			if(err != pkt->hdr.sz) {
 				debug(DBG_NOISE, "Cannot inet_recv() the pkt's body");
 				return -1;
 			}
 		}
-		pkt->msg=buf;
 
 		/* 
 		 * <<Connectionless sockets may dissolve the association by 
@@ -237,18 +234,16 @@ ssize_t pkt_recv(PACKET *pkt)
 			return -1;
 		}
 
-		buf=0;
+		pkt->msg=0;
 		if(pkt->hdr.sz) {
 			/*let's get the body*/
-			buf=xmalloc(pkt->hdr.sz);
-			err=inet_recv(pkt->sk, buf, pkt->hdr.sz, pkt->flags);
+			pkt->msg=xmalloc(pkt->hdr.sz);
+			err=inet_recv(pkt->sk, pkt->msg, pkt->hdr.sz, pkt->flags);
 			if(err != pkt->hdr.sz) {
 				debug(DBG_NOISE, "Cannot inet_recv() the pkt's body");
 				return -1;
 			}
 		}
-		
-		pkt->msg=buf;
 	} else
 		fatal("Unkown socket_type. Something's very wrong!! Be aware");
 	
@@ -299,7 +294,7 @@ finish:
 	return sk;
 }
 
-void pkt_fill_hdr(pkt_hdr *hdr, int id, u_char op, size_t sz)
+void pkt_fill_hdr(pkt_hdr *hdr, u_char flags, int id, u_char op, size_t sz)
 {
 	hdr->ntk_id[0]='n';
 	hdr->ntk_id[1]='t';
@@ -309,6 +304,7 @@ void pkt_fill_hdr(pkt_hdr *hdr, int id, u_char op, size_t sz)
 		id=random();
 		
 	hdr->id=id;
+	hdr->flags=flags;
 	hdr->op=op;
 	hdr->sz=sz;
 }
@@ -325,9 +321,11 @@ void pkt_fill_hdr(pkt_hdr *hdr, int id, u_char op, size_t sz)
 int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_ack, PACKET *rpkt)
 {
 	u_short port;
-	char *ntop=0, *rq_str, *re_str;
 	ssize_t err;
 	int ret=0;
+	char *ntop=0, *rq_str, *re_str;
+	u_char hdr_flags=0;
+	
 
 	if(op_verify(rq)) {
 		error("\"%s\" request/reply is not valid!", rq_str);
@@ -350,7 +348,11 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 	debug(DBG_INSANE, "Sending the %s op to %s", rq_str, ntop);
 
 	/* * * the request building process * * */
-	pkt_fill_hdr(&pkt->hdr, rq_id, rq, pkt->hdr.sz);
+	if(check_ack)
+		hdr_flags|=SEND_ACK;
+	if(me.cur_node->flags & MAP_HNODE)
+		hdr_flags|=HOOK_PKT;
+	pkt_fill_hdr(&pkt->hdr, hdr_flags, rq_id, rq, pkt->hdr.sz);
 	if(!pkt->hdr.sz)
 		pkt->msg=0;
 	
@@ -445,7 +447,7 @@ int pkt_err(PACKET pkt, u_char err)
 	char *msg;
 	
 	memcpy(&pkt.to, &pkt.from, sizeof(inet_prefix));
-	pkt_fill_hdr(&pkt.hdr, pkt.hdr.id, ACK_NEGATIVE, sizeof(int));
+	pkt_fill_hdr(&pkt.hdr, 0, pkt.hdr.id, ACK_NEGATIVE, sizeof(int));
 	
 	pkt.msg=msg=xmalloc(sizeof(u_char));
 	memcpy(msg, &err, sizeof(u_char));

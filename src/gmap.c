@@ -180,7 +180,7 @@ void iptoquadg(inet_prefix ip, map_gnode **ext_map, quadro_group *qg, char flags
 		
 		if(flags & QUADG_IPSTART)
 			for(i=0; i<levels; i++)
-				gidtoipstart(gid, levels, levels-i+1, 0, 
+				gidtoipstart(gid, levels, levels-i, 0, 
 						ip.family, &qg->ipstart[i]);
 	}
 	if(flags & QUADG_GNODE) {

@@ -109,7 +109,7 @@ int put_free_nodes(PACKET rq_pkt)
 
 	PACKET pkt;
 	struct timeval cur_t;
-	int ret=0, i, e=0;
+	int ret=0, i, e=0, p=0;
 	ssize_t err, pkt_sz;
 	u_char level;
 	char *ntop; 
@@ -117,7 +117,7 @@ int put_free_nodes(PACKET rq_pkt)
 	ntop=inet_to_str(rq_pkt.from);
 	debug(DBG_NORMAL, "Sending the PUT_FREE_NODES reply to %s", ntop);
 	
-	memset(&pkt, '\0', sizeof(PACKET));
+	memset(&pkt, 0, sizeof(PACKET));
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addport(&pkt, ntk_tcp_port);
 	pkt_addflags(&pkt, 0);
@@ -132,12 +132,13 @@ int put_free_nodes(PACKET rq_pkt)
 	}
 	if(!e) {
 		/* <<My quadro_group is completely full, sry>> */
-		pkt_fill_hdr(&pkt.hdr, rq_pkt.hdr.id, PUT_FREE_NODES, 0);
+		pkt_fill_hdr(&pkt.hdr, HOOK_PKT, rq_pkt.hdr.id, PUT_FREE_NODES, 0);
 		err=pkt_err(pkt, E_QGROUP_FULL);
 		goto finish;
 	}
 
 	/* Ok, we've found one, so let's roll the pkt */
+	memset(&fn_pkt, 0, sizeof(fn_pkt));
 	fn_pkt.fn_hdr.max_levels=me.cur_quadg.levels;
 	memcpy(&fn_pkt.fn_hdr.ipstart, &me.cur_quadg.ipstart[level], sizeof(inet_prefix));
 	fn_pkt.fn_hdr.level=level;
@@ -167,14 +168,23 @@ int put_free_nodes(PACKET rq_pkt)
 	
 	/* We fill the qspn round time */
 	gettimeofday(&cur_t, 0);
-	for(level=0; level < me.cur_quadg.levels; level++)
+	for(level=0; level < fn_pkt.fn_hdr.max_levels; level++)
 		timersub(&cur_t, &me.cur_qspn_time[level], &fn_pkt.qtime[level]);
 
 	/* Go pkt, go! Follow your instinct */
 	pkt_sz=FREE_NODES_SZ(fn_pkt.fn_hdr.max_levels, fn_pkt.fn_hdr.nodes);
-	pkt_fill_hdr(&pkt.hdr, rq_pkt.hdr.id, PUT_FREE_NODES, pkt_sz); 
+	pkt_fill_hdr(&pkt.hdr, HOOK_PKT, rq_pkt.hdr.id, PUT_FREE_NODES, pkt_sz);
 	pkt.msg=xmalloc(pkt_sz);
-	memcpy(pkt.msg, &fn_pkt, pkt_sz);
+	memset(pkt.msg, 0, pkt_sz);
+	
+	memcpy(pkt.msg, &fn_pkt.fn_hdr, sizeof(struct free_nodes_hdr));
+	p=sizeof(struct free_nodes_hdr);
+	memcpy(pkt.msg+p, &fn_pkt.qtime, 
+			sizeof(struct timeval)*fn_pkt.fn_hdr.max_levels);
+	p+=sizeof(struct timeval)*me.cur_quadg.levels;
+	memcpy(pkt.msg+p, &fn_pkt.free_nodes,
+			sizeof(u_short)*fn_pkt.fn_hdr.nodes);
+	
 	err=pkt_send(&pkt);
 	
 finish:	
@@ -524,18 +534,20 @@ int netsukuku_hook(char *dev)
 	map_gnode **old_ext_map;
 	map_bnode **old_bnode_map;	
 	int i, e=0, imaps=0, ret=0, new_gnode=0, tracer_levels=0, *old_bnodes;
+	int total_hooking_nodes;
 	u_int idata[4];
 	u_short fnodes[MAXGROUPNODE];
 	char *ntop;
 
-	/* We set the dev ip to HOOKING_IP to begin our transaction. */
+	/* We set the dev ip to HOOKING_IP+random_number to begin our transaction. */
 	memset(idata, 0, sizeof(int)*4);
 	if(my_family==AF_INET) 
 		idata[0]=HOOKING_IP;
 	else
 		idata[0]=HOOKING_IP6;
+	idata[0]+=rand_range(0, MAXGROUPNODE);
 	idata[0]=htonl(idata[0]);
-	
+
 	me.cur_ip.family=my_family;
 	inet_setip(&me.cur_ip, idata, my_family);
 	
@@ -549,6 +561,7 @@ int netsukuku_hook(char *dev)
 	/* We use a fake root_node for a while */
 	free_the_tmp_cur_node=1;
 	me.cur_node=xmalloc(sizeof(map_node));
+hook_restart_and_retry:
 	memset(me.cur_node, 0, sizeof(map_node));
 	me.cur_node->flags|=MAP_HNODE;
 	
@@ -559,10 +572,24 @@ int netsukuku_hook(char *dev)
 	if(radar_scan())
 		fatal("%s:%d: Scan of the area failed. Cannot continue.", 
 				ERROR_POS);
+	total_hooking_nodes=count_hooking_nodes();
 
-	if(!me.cur_node->links) {
-		loginfo("No nodes found! This is a black zone. "
-				"Creating a new_gnode. W00t we're the first node");
+	if(!me.cur_node->links || 
+			( me.cur_node->links==total_hooking_nodes 
+			  && !hook_retry )) {
+		/* 
+		 * If we have 0 nodes around us, we are alone, so we create a
+		 * new gnode.
+		 * If all the nodes around us are hooking and we started hooking
+		 * before them, we create the new gnode.
+		 */
+		if(!me.cur_node->links)
+			loginfo("No nodes found! This is a black zone. "
+					"Creating a new_gnode.");
+		else
+			loginfo("There are %d nodes around, but they are hooking"
+					" like us, but we came first so we have "
+					"to create the new gnode");
 		create_gnodes(0, GET_LEVELS(my_family));
 		ntop=inet_to_str(me.cur_ip);
 
@@ -574,6 +601,15 @@ int netsukuku_hook(char *dev)
 		xfree(ntop);
 		new_gnode=1;
 		goto finish;
+
+	} else if(hook_retry) {
+		/* 
+		 * There are only hooking nodes, but we started the hooking
+		 * after them, so we wait that some of them create the new
+		 * gnode.
+		 */
+		reset_radar();
+		goto hook_restart_and_retry;
 	}
 
 	loginfo("We have %d nodes around us", me.cur_node->links);
@@ -587,7 +623,9 @@ int netsukuku_hook(char *dev)
 		if(!(rq=find_ip_radar_q((map_node *)me.cur_node->r_node[i].r_node))) 
 			fatal("%s:%d: This ultra fatal error goes against the "
 					"laws of the universe. It's not "
-					"possible!! Pray");
+					"possible!! Pray", ERROR_POS);
+		if(rq->node->flags & MAP_HNODE)
+			continue;
 
 		if(!get_free_nodes(rq->ip, &fn_hdr, fnodes, me.cur_qspn_time)) {
 			e=1;
@@ -626,8 +664,11 @@ int netsukuku_hook(char *dev)
 	if(new_gnode)
 		create_gnodes(&me.cur_ip, fn_hdr.level);
 	else {
+		/* We want a new shiny traslucent map */
+		reset_int_map(me.int_map, 0);
 		iptoquadg(me.cur_ip, me.ext_map, &me.cur_quadg, 
 				QUADG_GID | QUADG_GNODE | QUADG_IPSTART);
+
 		/* 
 		 * Fetch the int_map from each rnode and merge them into a
 		 * single, big, shiny map.
@@ -640,6 +681,8 @@ int netsukuku_hook(char *dev)
 		for(i=0; i<me.cur_node->links; i++) {
 			rq=find_ip_radar_q((map_node *)me.cur_node->r_node[i].r_node);
 			
+			if(rq->node->flags & MAP_HNODE)
+				continue;
 			if(quadg_diff_gids(rq->quadg, me.cur_quadg)) 
 				/* This node isn't part of our gnode, let's skip it */
 				continue; 
@@ -663,6 +706,8 @@ int netsukuku_hook(char *dev)
 	e=0;
 	for(i=0; i<me.cur_node->links; i++) {
 		rq=find_ip_radar_q((map_node *)me.cur_node->r_node[i].r_node);
+		if(rq->node->flags & MAP_HNODE)
+			continue;
 		if(quadg_diff_gids(rq->quadg, me.cur_quadg)) 
 			/* This node isn't part of our gnode, let's skip it */
 			continue; 

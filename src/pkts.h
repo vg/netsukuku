@@ -31,8 +31,12 @@
 
 /* Pkt's flags */
 #define SEND_ACK		1
-#define BCAST_PKT		(1<<1)	/*In this pkt there is encapsulated a 
-					  broadcast pkt. Woa*/
+#define BCAST_PKT		(1<<1)	/* In this pkt there is encapsulated a 
+					 * broadcast pkt. Woa 
+					 */
+#define HOOK_PKT		(1<<2)  /* All the pkts sent while hooking have
+					 * this flag set 
+					 */
 
 /* Broacast ptk's flags */
 #define BCAST_TRACER_PKT	1	/*When a bcast is marked with this, it 
@@ -42,10 +46,11 @@
 
 typedef struct
 {
-	char ntk_id[3];
-	int id;
-	u_char op;
-	size_t sz;
+	char		ntk_id[3];
+	int 		id;
+	u_char		flags; 
+	u_char 		op;
+	size_t 		sz;
 }pkt_hdr;
 #define PACKET_SZ(sz) (sizeof(pkt_hdr)+(sz))		
 
@@ -107,7 +112,7 @@ int pkt_verify_hdr(PACKET pkt);
 ssize_t pkt_send(PACKET *pkt);
 ssize_t pkt_recv(PACKET *pkt);
 int pkt_tcp_connect(inet_prefix *host, short port);
-void pkt_fill_hdr(pkt_hdr *hdr, int id, u_char op, size_t sz);
+void pkt_fill_hdr(pkt_hdr *hdr, u_char flags, int id, u_char op, size_t sz);
 int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_ack, PACKET *rpkt);
 int pkt_err(PACKET pkt, u_char err);
 int pkt_exec(PACKET pkt, int acpt_idx);

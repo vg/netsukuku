@@ -27,7 +27,10 @@ int max_radar_wait;
 int radar_scans;			/*How many ECHO_ME pkts we sent*/
 int radar_scan_mutex;			/*A flag to see if we are already doing a scan*/
 int my_echo_id;			
-int send_qspn_now[MAX_LEVELS];		/*Shall we send the qspn in level? If yes send_qspn_now[level] is != 0*/
+int send_qspn_now[MAX_LEVELS];		/*Shall we send the qspn in level? If yes 
+					  send_qspn_now[level] is != 0*/
+int hook_retry;				/*If we've seen, while hooking, a node who was trying 
+					  to hook before us, `hook_retry' is set to 1.*/
 
 #define RADQ_VOID_RNODE		0
 #define RADQ_EXT_RNODE		1
@@ -55,6 +58,7 @@ void reset_radar(void);
 void free_new_node(void);
 struct radar_queue *find_ip_radar_q(map_node *node);
 map_node *find_nnode_radar_q(inet_prefix *node);
+int count_hooking_nodes(void);
 void final_radar_queue(void);
 void radar_update_map(void);
 int add_radar_q(PACKET pkt);

@@ -146,9 +146,9 @@ void *tcp_recv_loop(void *recv_pkt)
 
 	acpt_idx=accept_idx;
 	acpt_sidx=accept_sidx;
-	add_accept_pid(getpid(), acpt_idx, acpt_sidx);
-	
 	memcpy(&rpkt, recv_pkt, sizeof(PACKET));
+
+	add_accept_pid(getpid(), acpt_idx, acpt_sidx);
 
 	while( pkt_recv(&rpkt) != -1 ) {
 		if(pkt_exec(rpkt, acpt_idx) < 0) {

@@ -34,23 +34,32 @@
 
 void init_radar(void)
 {
-	radar_scans=0;
+	hook_retry=0;
 	my_echo_id=0;
+	radar_scans=0;
+	radar_scan_mutex=0;
+	me.cur_erc_counter=0;
 	max_radar_wait=MAX_RADAR_WAIT;	
+	
 	list_init(radar_q);
+	list_init(me.cur_erc);
+	
 	memset(radar_q, 0, sizeof(struct radar_queue));
 	memset(send_qspn_now, 0, sizeof(int)*MAX_LEVELS);
-	radar_scan_mutex=0;
 }
 
 
 void close_radar(void)
 {
 	struct radar_queue *rq;
-
 	rq=radar_q;
+	
 	list_destroy(radar_q);
+	list_destroy(me.cur_erc);
+	
 	radar_q=0;
+	me.cur_erc=0;
+	me.cur_erc_counter=0;	
 }
 
 void reset_radar(void)
@@ -91,6 +100,20 @@ map_node *find_nnode_radar_q(inet_prefix *node)
 			return rq->node;
 	}
 	return 0;
+}
+
+int count_hooking_nodes(void) 
+{
+	struct radar_queue *rq=radar_q;
+	int i, total_hooking_nodes=0;
+	
+	for(i=0; i<me.cur_node->links; i++) {
+		rq=find_ip_radar_q((map_node *)me.cur_node->r_node[i].r_node);
+		if(rq->node->flags & MAP_HNODE)
+			total_hooking_nodes++;
+	}
+
+	return total_hooking_nodes;
 }
 
 
@@ -338,7 +361,9 @@ void radar_update_map(void)
 			   } else {
 				   if(external_node)
 					   node=(map_node *)root_node->r_node[rnode_pos].r_node;
-				   /* Nah, We have already it. Let's just update its rtt */
+				   /* 
+				    * Nah, We have the node in the map. Let's just update its rtt 
+				    */
 				   if(!send_qspn_now[level] && node->links) {
 					   diff=abs(MILLISEC(root_node->r_node[rnode_pos].rtt) - MILLISEC(rq->final_rtt));
 					   if(diff >= RTT_DELTA)
@@ -348,7 +373,9 @@ void radar_update_map(void)
 			   node->flags&=~MAP_VOID & ~MAP_UPDATE;
 		           memcpy(&root_node->r_node[rnode_pos].rtt, &rq->final_rtt, sizeof(struct timeval));
 			   
-			   /* There's nothing more better than updating the bnode_map. */
+			   /* 
+			    * There's nothing better than updating the bnode_map. 
+			    */
 			   if(external_node && level <= GET_LEVELS(my_family)) {
 				   bm=map_find_bnode(me.bnode_map[level], me.bmap_nodes[level], void_map, 
 						   (void *)root_node, level);
@@ -402,11 +429,18 @@ int add_radar_q(PACKET pkt)
 			memset(rnode, '\0', sizeof(map_node));
 			memset(&rnn, '\0', sizeof(map_rnode));
 
+			if(pkt.hdr.flags & HOOK_PKT) {
+				/* 
+				 * This pkt has been sent from another hooking
+				 * node, let's remember this.
+				 */
+				rnode->flags|=MAP_HNODE;
+			}
 			rnn.r_node=(u_int *)me.cur_node;
 			rnode_add(rnode, &rnn);
 		}
 	} else
-		ret=iptomap((int)me.int_map, pkt.from, me.cur_quadg.ipstart[1],
+		ret=iptomap((int)me.int_map, pkt.from, me.cur_quadg.ipstart[0],
 				(u_int *)&rnode);
 	
 	iptoquadg(pkt.from, me.ext_map, &quadg, QUADG_GID | QUADG_GNODE | QUADG_IPSTART);
@@ -536,6 +570,24 @@ int radard(PACKET rpkt)
 	ssize_t err;
 	char *ntop;
 
+	/* If we are hooking we reply only to others hooking nodes */
+	if(me.cur_node->flags & MAP_HNODE && !(rpkt.hdr.flags & HOOK_PKT)) {
+		if(!radar_scan_mutex) {
+			/* 
+			 * So, we are hooking, but we haven't yet started the
+			 * first scan, this means that this node, who is hooking
+			 * too and sent us this rpkt, has started the hook 
+			 * before us. If we are in a black zone, this flag
+			 * will be used to decide which of the hooking nodes
+			 * have to create the new gnode: if it is set we'll wait,
+			 * the other hooking node will create the gnode, then we
+			 * restart the hook. Clear?
+			 */
+			hook_retry=1;
+		}
+		return 0;
+	}
+	
 	/* We create the PACKET */
 	memset(&pkt, '\0', sizeof(PACKET));
 	pkt_addto(&pkt, &rpkt.from);

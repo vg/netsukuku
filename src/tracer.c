@@ -235,7 +235,7 @@ int tracer_unpack_pkt(PACKET rpkt, brdcast_hdr **new_bcast_hdr, tracer_hdr **new
 	level=bcast_hdr->level;
 	if(level==1)
 		level=0;
-	if(!(bcast_hdr->flags & BCAST_PKT) || !(bcast_hdr->flags & BCAST_TRACER_PKT) || 
+	if(!(rpkt.hdr.flags & BCAST_PKT) || !(bcast_hdr->flags & BCAST_TRACER_PKT) || 
 			level > GET_LEVELS(rpkt.from.family))
 		return -1;
 
@@ -251,7 +251,7 @@ int tracer_unpack_pkt(PACKET rpkt, brdcast_hdr **new_bcast_hdr, tracer_hdr **new
 	}
 
 	if(!level)
-		iptomap((u_int)me.int_map, rpkt.from, me.cur_quadg.ipstart[1], (u_int *)&real_from);
+		iptomap((u_int)me.int_map, rpkt.from, me.cur_quadg.ipstart[0], (u_int *)&real_from);
 	else {
 		gid=iptogid(rpkt.from, level);
 		real_from=&me.ext_map[_EL(level)][gid].g;
@@ -531,7 +531,8 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 	memset(&pkt, 0, sizeof(PACKET));
 	pkt->hdr.id=rq_id;
 	pkt->hdr.op=rq;
-	bcast_hdr->flags|=BCAST_TRACER_PKT | BCAST_PKT;
+	pkt->hdr.flags|=BCAST_PKT;
+	bcast_hdr->flags|=BCAST_TRACER_PKT;
 	
 	if(!gnode_level) {
 		void_map=(void *)me.int_map;
@@ -626,7 +627,7 @@ int tracer_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), int gid,
 			e_rnode=(ext_rnode *)dst_node;
 			memcpy(&to, &e_rnode->ip, sizeof(inet_prefix));
 		} else 
-			maptoip((u_int)me.int_map, (u_int)dst_node, me.cur_quadg.ipstart[1], &to);
+			maptoip((u_int)me.int_map, (u_int)dst_node, me.cur_quadg.ipstart[0], &to);
 		pkt_addto(&pkt, &to);
 		pkt.sk_type=SKT_UDP;
 
