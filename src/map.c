@@ -69,12 +69,16 @@ int iptomap(u_int mapstart, inet_prefix ip, inet_prefix ipstart, u_int *ret)
 
 map_node *init_map(size_t len)
 {
+	int i;
 	map_node *map;
 	if(!len)
 		len=sizeof(map_node)*MAXGROUPNODE;
 	
 	map=(map_node *)xmalloc(len);
 	memset(map, '\0', len);
+	for(i=0; i<MAXGROUNODES; i++)
+		map[i].flags|=MAP_VOID;
+	
 	return map;
 }
 

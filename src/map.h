@@ -22,6 +22,8 @@
 
 #define MAXGROUPNODE		0x281
 #define MAXROUTES	 	20
+#define MAXLINKS		MAXROUTES
+#define MAXRTT			10		/*Max node <--> node rtt (in sec)*/
 
 /*****The real map stuff*****/
 /***flags**/
