@@ -16,9 +16,12 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#include <stdlib.h>
+#include <stdio.h>
 #include <pthread.h>
 #include <unistd.h>
 
+#include "qspn-empiric.h"
 #include "map.h"
 #include "xmalloc.h"
 
@@ -28,10 +31,10 @@ void gen_rnd_map(int start_node)
 	int x, i=start_node, r, e, rnode_rnd, ms_rnd;
 	map_rnode rtmp;
 	
-	if(i > MAXGROUPNODES)
-		i=(rand()%(MAXGROUPNODES-0+1))+0;
+	if(i > MAXGROUPNODE)
+		i=(rand()%(MAXGROUPNODE-0+1))+0;
 	
-	for(x=0; x<MAXGROUPNODES; x++) {
+	for(x=0; x<MAXGROUPNODE; x++) {
 		if(int_map[rnode_rnd] & MAP_SNODE)
 			continue;
 
@@ -39,7 +42,7 @@ void gen_rnd_map(int start_node)
 		int_map[i].flags|=MAP_SNODE;
 		for(e=0; e<=r; e++) {
 			memset(&rtmp, '\0', sizeof(map_node));
-			rnode_rnd=(rand()%(MAXGROUPNODES-0+1))+0;
+			rnode_rnd=(rand()%(MAXGROUPNODE-0+1))+0;
 			rtmp.r_node=(rnode_rnd*sizeof(map_node))+int_map;
 			ms_rnd=(rand()%((MAXRTT*1000)-0+1))+0;
 			rtmp.rtt.tv_usec=ms_rnd*1000;
@@ -262,12 +265,73 @@ void *send_qspn_pkt(void *argv)
 	}
 }
 
+void collect_data(void)
+{
+	int i, x, e;
+
+	for(i=0; i<MAXGROUPNODE; i++)
+		for(e=0; pkt_db[i][e].routes; e++)
+			for(x=0; x<pkt_db[i][e].routes; x++)
+				if((rt_stat[i][pkt_db[i][e].tracer[x]]++)==1)
+					rt_total[i]++;
+}
+
+void print_data(char *file)
+{
+	int i, x, e;
+	FILE *fd;
+
+	fd=fopen((file), "a");
+
+	fprintf(fd, "---- Test dump n. 6 ----\n");
+	
+	for(i=0; i<MAXGROUPNODE; i++)
+		if(rt_total[i]<MAXGROUPNODE)
+			fprintf(fd,"*WARNING* The node %d has only %d/%d routes\n *WARNING*\n", i, rt_total[i], MAXGROUPNODE);
+
+	fprintf(fd, "Gbl_stat{\n\ttotal_pkts: %d\n\tqspn_requests: %d\n\t",
+			"qspn_replies: %d\n\tqspn_backpro: %d }\n",
+			gbl_stat.total_pkts, gbl_stat.qspn_requests,
+			gbl_stat.qspn_replies, gbl_stat.qspn_backpro);
+	
+	for(i=0; i<MAXGROUPNODE; i++) {	
+		fprintf(fd, "Total routes for %d node: ");
+		for(x=0; MAXGROUPNODE; x++)
+			fprintf(fd, "(%d)%d ", x, rt_stat[i][x]);
+	}
+		
+	fprintf("\n--\n\n");
+	fprintf("Node single stats\n");
+
+	for(i=0; i<MAXGROUPNODE; i++)
+		fprintf(fd, "%d_stat{\n\ttotal_pkts: %d\n\tqspn_requests: %d\n\t",
+			"qspn_replies: %d\n\tqspn_backpro: %d }\n", i,
+			node_stat[i].total_pkts, node_stat[i].qspn_requests,
+			node_stat[i].qspn_replies, node_stat[i].qspn_backpro);
+
+	fprintf(fd, "Pkts dump\n");
+	for(i=0; i<MAXGROUPNODE; i++) {
+		for(x=0; x<pkt_dbc[i]; x++) {
+			fprintf(fd, "(%d) { op: %d, from: %d, broadcast: %d }\n",
+					i, pkt_db[i][x].op, pkt_db[i][x].from,
+					pkt_db[i][x].broadcast);
+			fprintf(fd, "tracer: \n");
+			for(e=0; e<pkt_db[i][x].routes; e++)
+				fprintf(fd, "%d -> ",pkt_db[i][x].tracer[e]);
+			fprintf(fd, "\n");
+					
+		}
+	}
+}
+
 void clear_all(void)
 {
 	memset(&gbl_stat, 0, sizeof(struct stat));
-	memset(&node_stat, 0, sizeof(struct stat)*MAXGROUPNODES);
-	memset(&pkt_db, 0, sizeof(struct q_pkt)*MAXGROUPNODES);
-	memset(&pkt_dbc, 0, sizeof(struct q_pkt)*MAXGROUPNODES);
+	memset(&node_stat, 0, sizeof(struct stat)*MAXGROUPNODE);
+	memset(&pkt_db, 0, sizeof(struct q_pkt)*MAXGROUPNODE);
+	memset(&pkt_dbc, 0, sizeof(struct q_pkt)*MAXGROUPNODE);
+	memset(&rt_stat, 0, sizeof(short)*MAXGROUPNODE*MAXGROUPNODE);
+	memset(&rt_total, 0, sizeof(short)*MAXGROUPNODE);
 
 }
 
@@ -280,18 +344,18 @@ int main(int argc, char **argv)
 	
 	clear_all();
 	
-	for(i=0; i<MAXGROUPNODES; i++) 
+	for(i=0; i<MAXGROUPNODE; i++) 
 		pthread_mutex_init(&mutex[i], NULL);
 
 	int_map=init_map(0);
 	
 	printf("Generating a random map...\n");
-	i=(rand()%(MAXGROUPNODES-0+1))+0;
+	i=(rand()%(MAXGROUPNODE-0+1))+0;
 	gen_rnd_map(i);
 	int_map[i].flags|=MAP_ME;
 	
 	printf("Running the first test...\n");
-	r=(rand()%(MAXGROUPNODES-0+1))+0;
+	r=(rand()%(MAXGROUPNODE-0+1))+0;
 	printf("Starting the QSPN spreading from node %d\n", r);
 	int_map[r].flags|=QSPN_STARTER;
 	nopt=xmalloc(sizeof(struct q_opt));
@@ -311,69 +375,19 @@ int main(int argc, char **argv)
 		nopt->q.op=OP_REQUEST;
 		pthread_create(&thread, NULL, send_qspn_pkt, (void *)nopt);
 	}
+	pthread_join(thread, NULL);	
 	xfree(nopt);
 	int_map[r].flags&=~QSPN_STARTER;
 	
-	
-	exit(0);
 	printf("Saving the data to QSPN-test-1 and clearing");
-	for(x=0; x<MAXGROUPNODES; x++) {
-		for(e=0; pkt_db[to][d].routes; e++) {
+	collect_data();
+	print_data("QSPN1");
+	for(x=0; x<MAXGROUPNODE; x++) {
+		for(e=0; pkt_db[to][e].routes; e++) {
 			xfree(pkt_db[to][d].tracer);
 			xfree(pkt_db[to][d]);
 		}
 	}
 	clear_all();
-	/*TODO...*/
-
-	printf("Running the second test...\n");
-	r=(rand()%(MAXGROUPNODES-0+1))+0;
-	printf("Starting the QSPN spreading from node %d and... ", r);
-	int_map[r].flags|=QSPN_STARTER;
-	nopt=xmalloc(sizeof(struct q_opt));
-	for(x=0; x<int_map[r].links; x++) {
-		gbl_stat.total_pkts++;
-		node_stat[r].total_pkts++;
-
-		memset(&nopt, 0, sizeof(struct q_opt));
-		nopt->sleep=int_map[r].r_node[x].rtt.tv_usec;
-		nopt->q.to=x;
-		nopt->q.from=r;
-		nopt->q.routes=0;
-		nopt->q.broadcast=0;
-
-		gbl_stat.qspn_requests++;
-		node_stat[r].qspn_requests++;
-		nopt->q.op=OP_REQUEST;
-		pthread_create(&thread, NULL, send_qspn_pkt, (void *)nopt);
-	}
-	xfree(nopt);
-	int_map[r].flags&=~QSPN_STARTER;
-	r=(rand()%(MAXGROUPNODES-0+1))+0;
-	printf("Starting the QSPN spreading from node %d and... ", r);
-	int_map[r].flags|=QSPN_STARTER;
-	nopt=xmalloc(sizeof(struct q_opt));
-	for(x=0; x<int_map[r].links; x++) {
-		gbl_stat.total_pkts++;
-		node_stat[r].total_pkts++;
-
-		memset(&nopt, 0, sizeof(struct q_opt));
-		nopt->sleep=int_map[r].r_node[x].rtt.tv_usec;
-		nopt->q.to=x;
-		nopt->q.from=r;
-		nopt->q.routes=0;
-		nopt->q.broadcast=0;
-
-		gbl_stat.qspn_requests++;
-		node_stat[r].qspn_requests++;
-		nopt->q.op=OP_REQUEST;
-		pthread_create(&thread, NULL, send_qspn_pkt, (void *)nopt);
-	}
-	xfree(nopt);
-	int_map[r].flags&=~QSPN_STARTER;
-	printf("from node %d\n", r);
-	
-	printf("Saving the data to QSPN-test-2");
-	/*TODO*/
 	exit(0);
 }
