@@ -27,6 +27,24 @@
 
 extern struct current me;
 
+/* iptogi: ip to gnode id conversion function*/
+u_short iptogid(inet_prefix ip)
+{
+	u_short ret;
+	
+	if(ip.family==AF_INET)
+		ret=ip.data[0]/MAXGROUPNODE;
+	else {
+		__u32 h_ip[4];
+
+		memcpy(h_ip, ip.data, 4);
+		div_int(h_ip, MAXGROUPNODE);
+		ret=h_ipstart[3];
+	}
+	
+	return  ret;
+}
+
 map_gnode *init_gmap(size_t len)
 {
 	map_gnode *map;

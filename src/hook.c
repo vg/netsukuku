@@ -225,8 +225,8 @@ int get_ext_map(inet_prefix to, map_gnode *ext_map, map_gnode *new_root)
 		ret=-1;
 		goto finish;
 	}
-	*new_root=(map_node *)(ext_map+emap_hdr.root_node);
-	(map_node *)(*new_root)->flags|=GMAP_ME;
+	*new_root=(map_node *)(ext_map+(emap_hdr.root_node*sizeof(map_gnode)));
+	(map_node *)(*new_root)->g.flags|=GMAP_ME;
 	
 finish:
 	pkt_free(&pkt, 0);
@@ -327,7 +327,7 @@ int get_int_map(inet_prefix to, map_node *int_map, map_node *new_root)
 		ret=-1;
 		goto finish;
 	}
-	*new_root=(map_node *)(int_map+imap_hdr.root_node);
+	*new_root=(map_node *)(int_map+(imap_hdr.root_node*sizeof(map_node)));
 	(map_node *)(*new_root)->flags|=MAP_ME;
 	
 	/*Finished, yeah*/
@@ -340,11 +340,12 @@ finish:
 
 int netsukuku_hook(char *dev)
 {
-	int i, e=0, idx, imaps=0;
+	int i, e=0, idx, imaps=0, ret=0;
 	u_int idata[4];
 	struct free_ips fi_hdr;
 	int fips[MAXGROUPNODE];
 	map_node **merg_map, *new_root;
+	map_gnode *new_groot;
 
 	debug(DBG_NOISE, "Starting the hooking");
 	if(my_family==AF_INET)
@@ -363,7 +364,7 @@ int netsukuku_hook(char *dev)
 		fatal("%s:%d: Couldn't set the default gw for %s", ERROR_POS, dev);
 	
 	debug(DBG_NORMAL, "The hook begins. Starting to scan the area");
-	cur_node->flags|=MAP_HNODE;
+	me.cur_node->flags|=MAP_HNODE;
 	
 	/* We do our first scan to know what we've around us. The rnodes are kept in
 	 * me.cur_node->r_nodes. The fastest one is in me.cur_node->r_nodes[0]
@@ -373,9 +374,14 @@ int netsukuku_hook(char *dev)
 	
 	if(!me.cur_node->links) {
 		/*TODO:
-		 * create_new_gnode();
+		 * create_new_gnode() {
+		 * 	1) scans the old ext_map;
+		 * 	2) Choose a random gnode excluding the one already used in the old map.
+		 * 	3) sit down and rest
+		 * }
 		 */
 		loginfo("No nodes founded! This is a black zone. Creating a new_gnode. W00t we're the first node");
+		goto finish;
 	}
 	
 	/*Now we choose the nearest rnode we found and we send it the GET_FREE_IPS request*/
@@ -403,55 +409,64 @@ int netsukuku_hook(char *dev)
 		if((idx=find_ip_radar_q(me.cur_node->r_node[i].r_node)==-1)) 
 			fatal("%s:%d: This ultra fatal error goes against the laws of the universe. It's not possible!! Pray");
 		
-		if(!get_ext_map(radar_q[idx].ip, &me.ext_map)) {
+		if(!get_ext_map(radar_q[idx].ip, &me.ext_mapm, &new_groot)) {
 			e=1;
 			break;
 		}
 	}
 	if(!e)
 		fatal("None of the rnodes in this area gave me the extern map");
-	
 	/*Now we are ufficially in the fi_hdr.gid gnode*/
+	new_groot->g.flags&=~GMAP_ME;
 	set_cur_gnode(fi_hdr.gid);
 	
 	/*Fetch the int_map from each rnode*/
-	e=0;
+	imaps=0;
 	merg_map=xmalloc(me.cur_node->links*sizeof(map_node *));
 	memset(merg_map, 0, me.cur_node->links*sizeof(map_node *));
 	for(i=0; i<me.cur_node->links; i++) {
 		if((idx=find_ip_radar_q(me.cur_node->r_node[i].r_node)==-1)) 
 			fatal("%s:%d: This ultra fatal error goes against the laws of the universe. It's not possible!! Pray");
-
-		if(!get_int_map(radar_q[idx].ip, merg_map[e], &new_root)) {
+		
+		if(iptogid(radar_q[idx].ip) != me.cur_gid)
+			/*This node isn't part of our gnode, let's skip it*/
+			continue; 
+			
+		if(!get_int_map(radar_q[idx].ip, merg_map[imaps], &new_root)) {
 			*(merg_map+i)=xmalloc(sizeof(map_node)*MAXGROUPNODE);
 			merge_maps(me.int_map, merg_map[i], me.cur_node, new_root);
-			e=++; imaps++;
+			imaps++;
 		}
 	}
-	if(!e)
+	if(!imaps)
 		fatal("None of the rnodes in this area gave me the intern map");
 
 	for(i=0, i<imaps; i++)
 		xfree(merg_map[i]);
 	xfree(merg_map);
-	
+
+finish:
 	/* We must reset the radar_queue because the first radar_scan used while hooking
 	 * has to keep the list of the rnodes' "inet_prefix ip". In this way we know
 	 * the rnodes' ips even if we haven't an int_map yet.
 	 */
 	reset_radar(me.cur_node->links);
+	me.cur_node->flags&=~MAP_HNODE;
 
 	/*TODO: for now the gnodes aren't supported
 	 * djkstra(ext_map);
 	 */
-	dnode_set_ip(rnd(info.free_ips);
-	QSPN_SEND_DNODE_GATHERING();
 	
-	snode_transform():
-
-	return 0;
+	/* I think that i will abort the use of dnode, cuz the qspn rox enough
+	 * dnode_set_ip(rnd(info.free_ips);
+	 * QSPN_SEND_DNODE_GATHERING();
+	 * snode_transform():
+	 */
+	return ret;
 }
 
+/*
+ * Action lines to trasform a dnode in a snode
 int snode_transfrom(void)
 {
 	wait(DNODE_TO_SNODE_WAIT);
@@ -459,3 +474,4 @@ int snode_transfrom(void)
 	rcv(OK_FROM_RNODES);
 	QSPN_SEND();
 }
+*/

@@ -27,10 +27,6 @@
 #define GMAP_BNODE	(1<<2)
 #define GMAP_FULL	(1<<3)		/*The gnode is full!! aaahh, run away!*/
 
-/*Given an ip number it returns the corresponding groupnode id*/
-#define IP2GNODE(ip) ((ip)/MAXGROUPNODE) /*TODO:
-					   USARE le ipv6-gmp per dividere!*/
-
 /*Converts an address of a struct in the map to a Group_node Id*/
 #define GMAP2GI(mapstart, mapoff)	((((mapoff)-(mapstart))/sizeof(map_gnode)))
 /*Converts a Groupnode Id to an address of a struct in the map*/
@@ -55,6 +51,7 @@ typedef map_gnode * ext_map;
 
 
 /* * * Functions' declaration * * */
+u_short iptogid(inet_prefix ip);
 map_gnode *init_gmap(size_t len);
 void free_gmap(map_gnode *map, size_t count);
 void set_cur_gnode(u_short gid);

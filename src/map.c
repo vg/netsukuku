@@ -20,6 +20,7 @@
 #include <string.h>
 #include <sys/time.h>
 
+#include "inet.h"
 #include "map.h"
 #include "gmap.h"
 #include "xmalloc.h"
@@ -60,7 +61,7 @@ int iptomap(u_int mapstart, inet_prefix ip, inet_prefix ipstart, u_int *ret)
 	}
 	if(*ret > INTMAP_END(mapstart)) {
 		/*Ok, this is an extern ip to our gnode. We return the gnode_id of this ip*/
-		ret=IP2GNODE(*ret);
+		ret=iptogid(ip);
 		return 1;
 	}
 	return 0;
@@ -311,8 +312,8 @@ int merge_maps(map_node *base, map_node *new, map_node *base_root, map_node *new
 	 * right place
 	 */
 	new_root->flags&=~MAP_ME;
-	memcpy(new_root, base[new_root-new], sizeof(map_node));
-	new[base_root-base].flags|=MAP_ME;
+	memcpy(new_root, base[(new_root-new)/sizeof(map_node)], sizeof(map_node));
+	new[(base_root-base)/sizeof(map_node)].flags|=MAP_ME;
 	
 	for(i=0; i<MAXGROUPNODE; i++) {
 		for(e=0; e<new[i].links; e++) {

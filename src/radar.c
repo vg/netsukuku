@@ -148,7 +148,7 @@ void radar_update_map(void)
 	for(i=0; i<me.cur_node->links; i++) {
 		if(me.cur_node->r_node[i].r_node->flags & MAP_VOID) {
 			/*Doh, The rnode is dead!*/
-			debug(DBG_NORMAL,"The node %d is dead\n", (int_map-me.cur_node->r_node[i].r_node)/sizeof(map_node));
+			debug(DBG_NORMAL,"The node %d is dead\n", (me.cur_node->r_node[i].r_node-me.int_map)/sizeof(map_node));
 			qspn_q.qspn_send=1;
 			rnode_del(me.cur_node, i);
 			rnode_deleted++;
@@ -174,6 +174,7 @@ int add_radar_q(PACKET pkt)
 			 * two border nodes (me) and the other in the gnode map
 			 * gmap=GI2GMAP(me.ext_map, rnode);
 			 */
+			me.cur_node->flags|=MAP_BNODE;
 			return 1;
 		} else {
 			/*We are hooking, so we haven't yet an int_map, an ext_map, a stable ip..*/

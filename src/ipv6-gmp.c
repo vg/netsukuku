@@ -96,6 +96,38 @@ int sub_int(unsigned int *y, unsigned int x)
 	return sub_128(z, y);
 }
 
+/*y=x/y*/
+int div_128(unsigned int *x, unsigned int *y)
+{
+	mpz_t xx, yy, res;
+	size_t count;
+	
+	mpz_init(res);
+	mpz_init(xx);
+	mpz_init(yy);
+	mpz_import(xx, 4, 1, sizeof(x[0]), 0, 0, x);
+	mpz_import(yy, 4, 1, sizeof(y[0]), 0, 0, y);
+	
+	mpz_tdiv_q(res, xx, yy);
+	memset(y, '\0', sizeof(y[0])*4);
+	mpz_export(y, &count, 1, sizeof(x[0]), 0,0, res);
+	
+	mpz_clear(xx);
+	mpz_clear(yy);
+	mpz_clear(res);
+	return 0;	
+}
+
+/* y=y/x */
+int div_int(unsigned int *y, unsigned int x)
+{
+	unsigned int z[4]=ZERO128;
+
+	z[3]=x;
+	return div_128(z, y);
+}
+
+
 /* "ORDER can be 1 for most significant word first or -1 for least significant first." */
 int htonl_128(unsigned int *x, unsigned int *y, int order)
 {
