@@ -88,8 +88,21 @@ int fill_default_options(void)
 void usage(void)
 {
 	printf("%s\n", VERSION);
-	printf("Fuck!\n");
+	printf("Usage:\n");
+	printf(" -h	this help\n");
+	printf(" -i	interface\n");
+	printf(" -6	ipv6\n");
+	printf(" -4	ipv4\n");
+	printf(" -I	int_map\n");
+	printf(" -E	ext_map\n");
+	printf(" -B	bnode_map\n");
+	printf(" -D	no daemon mode\n");
+	printf(" -dddd  debug (more d, more info\n");
+	printf(" -v	version\n");
+	/* printf(" -h	help\n");
+	printf(" -h	help\n"); */
 }
+
 void parse_options(int argc, char **argv)
 {
 	int c;
