@@ -479,7 +479,7 @@ int radar_scan(void)
 		radar_scans++;
 	}
 	if(!radar_scans) {
-		error("radar_scan(): The scan (%d) faild. It wasn't possible" 
+		error("radar_scan(): The scan (%d) faild. It wasn't possible " 
 				"to send a single scan", my_echo_id);
 		return -1;
 	}
