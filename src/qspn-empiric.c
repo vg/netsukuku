@@ -511,7 +511,7 @@ void *send_qspn_pkt(void *argv)
 			gbl_stat.qspn_requests++;
 			node_stat[to].qspn_requests++;
 			nopt->q.op=OP_REQUEST;
-			int_map[to].r_node[x].flags|=QSPN_SENT;
+			//int_map[to].r_node[x].flags|=QSPN_SENT;
 			thread_joint(qopt->join, send_qspn_pkt, (void *)nopt);
 		}
 	}

@@ -240,7 +240,13 @@ int radar_recv_reply(PACKET pkt)
 }
 
 		            
-	
+/* radar_scan: It starts the scan of the local area.
+ * It sends MAX_RADAR_SCANS packets in broadcast then it waits MAX_RADAR_WAIT and in the while 
+ * the echo replies are gathered. After MAX_RADAR_WAIT it stops to receive echo replies and it 
+ * does a statistical analysis of the gathered echo replies, it updates the r_nodes in the map
+ * and sends a qspn round if something is changed in the map.
+ * It returns 1 if another radar_scan is in progress, -1 if something went wrong, 0 on success.
+ */
 int radar_scan(void) 
 {
 	PACKET pkt;
@@ -250,8 +256,7 @@ int radar_scan(void)
 
 	/*We are already doing a radar scan, that's not good*/
 	if(radar_scan_mutex)
-		return -1;
-
+		return 1;
 	radar_scan_mutex=1;	
 	
 	/*We create the PACKET*/

@@ -17,6 +17,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/time.h>
 #include <pthread.h>
 #include <signal.h>
 #include <string.h>
@@ -83,6 +84,7 @@ int put_free_ips(PACKET rq_pkt)
 		struct free_ips fi_hdr;
 		int free_ips[MAXGROUPNODE];
 	}fipkt;
+	struct timeval cur_t;
 	PACKET pkt;
 	map_node *map=me.int_map;
 	char *ntop; 
@@ -115,8 +117,11 @@ int put_free_ips(PACKET rq_pkt)
 			}
 
 		fi_hdr.ips=e;
+		gettimeofday(&cur_t, 0);
+		timersub(&cur_t, &me.cur_qspn_time, &fi_hdr.qtime);
 		pkt_fill_hdr(&pkt.hdr, rq_pkt.hdr.id, PUT_FREE_IPS, sizeof(struct fi_pkt));
 		pkt.msg=xmalloc(sizeof(struct fi_pkt));
+		
 		memcpy(pkt.msg, &fipkt, sizeof(struct fi_pkt));
 		err=pkt_send(pkt);
 	}
@@ -142,7 +147,7 @@ int put_ext_map(PACKET rq_pkt)
 	map_rnode *rblock=0;
 	struct ext_map_hdr emap_hdr;
 	char *ntop; 
-	int count, ret;
+	int count, ret=0;
 	ssize_t err, pkt_sz=0;
 	
 	ntop=inet_to_str(&rq_pkt.from);
@@ -426,6 +431,7 @@ int netsukuku_hook(char *dev)
 	/*Now we are ufficially in the fi_hdr.gid gnode*/
 	new_groot->g.flags&=~GMAP_ME;
 	set_cur_gnode(fi_hdr.gid);
+	memcpy(&me.cur_qspn_time, &fi.qtime, sizeof(struct timeval));
 	
 	/*Fetch the int_map from each rnode*/
 	imaps=0;

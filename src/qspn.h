@@ -16,8 +16,14 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#define MAX_CONC_QSPN	5	/*MAX CONCURRENT QSPN*/
+#include "map.h"
 
+#define MAX_CONC_QSPN		5	/*MAX CONCURRENT QSPN*/
+#define QSPN_WAIT_ROUND 	60	/*This is a crucial value. It is the number of 
+					  seconds to be waited before the next qspn_round 
+					  can be sent*/
+#define QSPN_WAIT_ROUND_MS	QSPN_WAIT_ROUND*1000
+					  
 /*we are using the qspn_map style II*/
 #define QMAP_STYLE_II
 #undef  QMAP_STYLE_I
@@ -51,12 +57,10 @@
  * received by our rnodes*/
 struct qspn_buffer
 {
-	u_int	replies;	/*How many replies we forwarded*/
+	u_int	replies;	/*How many replies we forwarded/sent*/
 	u_short *replier;	/*Who has sent these replies (qspn_sub_id)*/
 	u_short	*flags;
 };
-struct qspn_queue *qspn_b;
+struct qspn_buffer *qspn_b;
 
-
-int 	q_id;		/*The qspn_id we are processing*/
-int	q_time;
+int qspn_send_mutex=0;

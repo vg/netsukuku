@@ -17,6 +17,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/time.h>
 #include "gmap.h"
 #include "route.h"
 
@@ -40,6 +41,9 @@ struct current
 	map_rnode	*cur_rnode;	/*At the hooking time we haven't rnodes, so this will point a stub rnode struct
 					  present at cur_node->r_node*/
 
+	int 		cur_qspn_id;		/*The current qspn_id we are processing*/
+	struct timeval	cur_qspn_time;		/*When the last qspn round was sent*/
+
 	rnode_rt 	*cur_rnrt;
 
 	char 		*cur_dev;
@@ -59,4 +63,3 @@ typedef struct
 extern char *__argv0;
 extern int dbg_lvl;
 extern int log_to_stderr;
-

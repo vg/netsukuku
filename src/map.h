@@ -48,7 +48,6 @@
 #define QSPN_STARTER	(1<<11)		/*Used only by qspn-empiric.c*/
 #define QSPN_REPLIED	(1<<12)		/*When the node send the qspn_reply it will never reply again to the same qspn*/
 #define QSPN_BACKPRO	(1<<13)		/*This marks the r_node where the QSPN_BACKPRO has been sent*/
-#define QSPN_SENT	(1<<14)		/*This marks the r_node where the QSPN_REQUEST has been sent*/
 
 /*map_rnode is what map_node.r_node points to*/
 typedef struct
@@ -84,7 +83,7 @@ typedef struct
 	map_rnode	*r_node;	 /*This structs will be kept in ascending order considering their rnode_t.rtt*/
 }map_node;
 
-/* This is the internal map and it will be MAXGROUPNODE big.
+/* The internal map and will be MAXGROUPNODE big.
  * The position in the map of each struct corresponds to its relative ip. For
  * example, if the map goes from 192.128.1.0 to 192.128.3.0, the map will have 512
  * structs, the first one will correspond to 192.168.1.0, the 50th to 192.168.1.50 and
@@ -92,7 +91,6 @@ typedef struct
  *
  * typedef map_node * int_map;    				      
  */
-
 
 #define MAXRNODEBLOCK		MAXLINKS*MAXGROUPNODE*sizeof(map_rnode)
 #define INTMAP_END(mapstart)	((sizeof(map_node)*MAXGROUPNODE)+(mapstart))

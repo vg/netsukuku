@@ -16,56 +16,208 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/time.h>
+
+#include "qspn.h"
+#include "log.h"
+#include "xmalloc.h"
+
 extern int my_family;
 extern struct current me;
 
+void clean_qspn_b(void)
+{
+	int i;
+	for(i=0; i<me.cur_node->links; i++) {
+		if(qspn_b[i].replies) {
+			xfree(qspn_b[i].replier);
+			xfree(qspn_b[i].flags);
+		}
+		memset(&qspn_b[i], 0, sizeof(struct qspn_buffer));
+	}
+}
+
+/* qspn_round_left: It returns the seconds left before the QSPN_WAIT_ROUND expires.
+ * If the returned value is <= 0 the QSPN_WAIT_ROUND is expired.*/
+int qspn_round_left(void)
+{
+	struct timeval cur_t, t;
+	
+	gettimeofday(&cur_t, 0);
+	timersub(&cur_t, &me.cur_qspn_time, &t);
+	return QSPN_WAIT_ROUND_MS - MILLISEC(t);
+}
+
+
+/* update_qspn_time: It updates me.cur_qspn_time;
+ * Oh, sorry this code doesn't show consideration for the relativity time shit. So
+ * you can't move at a velocity near the light's speed. I'm sorry.
+ */
+void update_qspn_time(void)
+{
+	struct timeval cur_t, t;
+	int ret;
+
+	gettimeofday(&cur_t, 0);
+	timersub(&cur_t, &me.cur_qspn_time, &t);
+	ret=QSPN_WAIT_ROUND_MS - MILLISEC(t);
+
+	if(ret < 0 && abs(ret) > QSPN_WAIT_ROUND_MS) {
+		ret=ret-(QSPN_WAIT_ROUND_MS*(ret/QSPN_WAIT_ROUND_MS));
+		t.tv_sec=ret/1000;
+		t.tv_usec=(ret - (ret/1000)*1000)*1000
+		timesub(&cur_t, &t, &me.cur_qspn_time);
+	}
+}
+
+/* pack_tracer_pkt: do ya need explanation? pretty simple: pack the tracer packet*/
+char *pack_tracer_pkt(struct bcast_hdr *bcast_hdr, struct tracer_hdr *tracer_hdr, struct tracer_node *tracer)
+{
+	char *msg;
+	
+	msg=xmalloc(pkt.hdr.sz);
+	memset(msg, 0, BRDCAST_SZ(TRACERPKT_SZ(hops)));
+	memcpy(msg, bcast_hdr, sizeof(struct brdcast_hdr));
+	memcpy(msg+sizeof(struct brdcast_hdr), tracer_hdr, sizeof(struct tracer_hdr));
+	memcpy(msg+sizeof(struct brdcast_hdr)+sizeof(struct tracer_hdr), tracer, sizeof(struct tracer_node)*tracer_hdr->hops);
+	return msg;
+}
+
 int qspn_send(u_char op, u_char bcast_type, u_char reply, int q_id, int q_sub_id)
 {
+	/*TODO: qspn_time, sleep, cycle*/
+	if(qspn_send_mutex)
+		return 0;
+	else
+		qspn_send_mutex=1;
+
 	
+	qspn_send_mutex=0;
 }
+
 
 int qspn_close(PACKET rpkt)
 {
+	PACKET pkt;
 	struct brdcast_hdr *bcast_hdr=rpkt.msg;
 	struct tracer_hdr  *tracer_hdr=rpkt.msg+sizeof(struct brdcast_hdr);
 	struct tracer_node *tracer=rpkt.msg+sizeof(struct brdcast_hdr)+sizeof(struct tracer_hdr);
+	struct tracer_node *new_tracer=0;
 	inet_prefix to;
+	map_node *from;
 	ssize_t err;
-	int i;
+	int i, not_closed=0, hops, ret=0;
+	char *ntop;
 
-	if(me.cur_node->flags & QSPN_STARTER && GLI_HOPS_NN_SONO_1)
+	if(me.cur_node->flags & QSPN_STARTER)
 		return 0;
+
+	if(bcast_hdr->g_node != me.cur_gid || rpkt.hdr.sz != \
+			(sizeof(struct tracer_hdr)+(tracer_hdr.hops*sizeof(struct tracer_node)) \
+			 + sizeof(struct brdcast_hdr)) ) {
+		ntop=inet_to_str(&rpkt->from);
+		debug(DBG_NOISE, "The %s sent an invalid qspn_close pkt here.", ntop);
+		xfree(ntop);
+		return -1;
+	}
 	
-	memset(&pkt, '\0', sizeof(PACKET));
+	if(qspn_verify_tracer(tracer, tracer_hdr->hops))
+		return -1;
+
+	if(rpkt.hdr.id != me.cur_qspn_id) {
+		if(qspn_round_left() > 0 || rpkt.hdr.id != me.cur_qspn_id+1) {
+			ntop=inet_to_str(&rpkt->from);
+			debug(DBG_NOISE, "The %s sent a qspn_close with a wrong qspn_id");
+			xfree(ntop);
+		} else { /*New round activated. Destroy the old one. beep.*/
+			me.cur_qspn_id++;
+			update_qspn_time();
+			clean_qspn_b();
+		}
+	}
+
+	/*Let's our entry in the tracer*/
+	hops=tracer_hdr.hops;
+	from=node_from_pos(tracer[hops-1].node);
+	new_tracer=qspn_inc_tracer(me.cur_node, tracer, &hops);
+
 	for(i=0; i<me.cur_node->links; i++) {
-		if(qspn_q[i].flags & QSPN_CLOSED)
+		if(me.cur_node->r_node[i].r_node == from)
+			qspn_b[i].flags|=QSPN_CLOSED;
+
+		if(!(me.cur_node->r_node[i].r_node & QSPN_CLOSED))
+			not_closed++;
+	}
+	/*We have all the links closed, time to diffuse a new qspn_open*/
+	if(!not_closed && !(qspn_b[i].flags & QSPN_REPLIED)) {
+		qspn_b[i].flags|=QSPN_REPLIED;
+
+		/*We build d4 p4ck37... */
+		memset(&pkt, '\0', sizeof(PACKET));
+		bcast_hdr->sz=TRACERPKT_SZ(hops);
+		pkt.hdr.sz=BRDCAST_SZ(bcast_hdr->sz);
+		tracer_hdr->hops=hops;
+		pkt.msg=pack_tracer_pkt(bcast_hdr, tracer_hdr, tracer);
+
+		/*... to send it to all*/
+		for(i=0; i<me.cur_node->links; i++) {
+			if(me.cur_node->r_node[i].r_node == from || (me.cur_node->r_node[i].r_node & MAP_GNODE))
+				continue;
+			
+			memset(&to, 0, sizeof(inet_prefix));
+			maptoip(*me.int_map, *me.cur_node->r_node[i].r_node, me.ipstart, &to);
+			pkt_addto(&pkt, &to);
+			pkt.sk_type=SKT_UDP;
+
+			/*We shot the qspn_open*/
+			err=send_rq(&pkt, 0, QSPN_OPEN, pos_from_node(me.cur_node, me.int_map), 0, 0, 0);
+			if(err==-1) {
+				ntop=inet_to_str(&pkt->to);
+				error("qpsn_close(): Cannot send the QSPN_OPEN[id: %d] to %s.", qspn_id, ntop);
+				xfree(ntop);
+			}
+		}
+		/*nothing to do, let's die*/
+		ret=0;
+		goto finish;
+	}
+
+	/*Here we are building the pkt to... */
+	memset(&pkt, '\0', sizeof(PACKET));
+	bcast_hdr->sz=TRACERPKT_SZ(hops);
+	pkt.hdr.sz=BRDCAST_SZ(bcast_hdr->sz);
+	tracer_hdr->hops=hops;
+	pkt.msg=pack_tracer_pkt(bcast_hdr, tracer_hdr, tracer);
+	/*... forward the qspn_close to our r_nodes*/
+	for(i=0; i<me.cur_node->links; i++) {
+		if(qspn_q[i].flags & QSPN_CLOSED || me.cur_node->r_node[i].r_node == from || \
+				(me.cur_node->r_node[i].r_node & MAP_GNODE))
 			continue;
+		
 		memset(&to, 0, sizeof(inet_prefix));
-		maptoip(*me.int_map, *me.cur_node->r_node[i].r_node, me.ipstart, &to)
+		maptoip(*me.int_map, *me.cur_node->r_node[i].r_node, me.ipstart, &to);
 		pkt_addto(&pkt, &to);
 		pkt.sk_type=SKT_UDP;
 
 		/*Let's send the pkt*/
 		err=send_rq(&pkt, 0, QSPN_CLOSE, rpkt.hdr.id, 0, 0, 0);
-		pkt_free(&pkt, 1);
 		if(err==-1) {
-			char *ntop;
 			ntop=inet_to_str(&pkt->to);
 			error("radard(): Cannot send the QSPN_CLOSE[id: %d] to %s.", qspn_id, ntop);
 			xfree(ntop);
 		}
 	}
+		
+finish:
+	pkt_free(&pkt, 1);
+	if(new_tracer)
+		xfree(new_tracer);	
+	return ret;
 }
 
 int qspn_open(PACKET rpkt)
-{
-}
-
-int qspn_reply(PACKET rpkt)
-{
-}
-
-int qspn_backpro(PACKET rpkt)
 {
 }
 
@@ -89,7 +241,7 @@ int qspn_verify_tracer(struct tracer_node *tracer, int hops)
 	return 0;
 }
 /* qspn_inc_tracer: Add our entry ("node") to the tracer pkt "tracer wich has "hops".
- * It returns the modified tracer pkt and it increments the *hops */
+ * It returns the modified tracer pkt in a new allocated struct and it increments the *hops */
 struct tracer_node *qspn_inc_tracer(map_node *node, struct tracer_node *tracer, int *hops)
 {
 	struct tracer_node *t;
@@ -97,10 +249,10 @@ struct tracer_node *qspn_inc_tracer(map_node *node, struct tracer_node *tracer, 
 	if(qspn_verify_tracer(tracer, *hops))
 		return 0;
 	*hops++;
-	t=xrealloc(tracer, sizeof(struct tracer_node)*hops);
+	t=xmalloc(sizeof(struct tracer_node)*hops);
 	t[hops-1].node=((void *)node-(void *)me.int_map)/sizeof(map_node);
 	memcpy(&t[hops-1].rtt, me.cur_node->r_node[e].rtt, sizeof(struct timeval));
-	
+
 	return t;
 }
 
@@ -112,14 +264,14 @@ int qspn_store_tracer(map_node *map, map_node *root_node, struct tracer_node *tr
 	int i, e, diff;
 	struct timeval trtt;
 	map_node *from, *node;
-	
+
 	if(qspn_verify_tracer(tracer, *hops))
 		return 0;
 
 	from=node_from_pos(tracer[hops-1].node, map);
 	if(!(from.flags & MAP_RNODE)) { /*the `from' node isn't in our r_nodes. Add it!*/
 		map_rnode rnn;
-		
+
 		memset(&rnn, '\0', sizeof(map_rnode));
 		rnn.r_node=from;
 		memcpy(&rnn.rtt, &tracer[hops-1].rtt, sizeof(struct timeval));
@@ -132,7 +284,7 @@ int qspn_store_tracer(map_node *map, map_node *root_node, struct tracer_node *tr
 	timeradd(tracer[0].rtt, &trtt, &trtt);
 	for(i=hops-1; i != hops; i--) {
 		timeradd(tracer[i].rtt, &trtt, &trtt);
-		
+
 		node=node_from_pos(tracer[i].node, map);
 		if(!(node->flags & MAP_VOID)) {
 			from->flags&=~MAP_VOID;
@@ -140,12 +292,12 @@ int qspn_store_tracer(map_node *map, map_node *root_node, struct tracer_node *tr
 		}
 		for(e=0; e < node->links; e++) {
 			if(node->r_node[e].r_node == from) {
-			   diff=abs(MILLISEC(node->r_node[e].trtt) - MILLISEC(trtt));
-			   if(diff >= RTT_DELTA) {
-				   memcpy(&node->r_node[e].trtt, &trtt, sizeof(struct timeval));
-				   node->flags|=MAP_UPDATE;
-			   }
-			   f=1;
+				diff=abs(MILLISEC(node->r_node[e].trtt) - MILLISEC(trtt));
+				if(diff >= RTT_DELTA) {
+					memcpy(&node->r_node[e].trtt, &trtt, sizeof(struct timeval));
+					node->flags|=MAP_UPDATE;
+				}
+				f=1;
 			}
 		}
 		if(!f) { /*If the `node' doesn't have `from' in his r_nodes... let's add it*/

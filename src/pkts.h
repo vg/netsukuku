@@ -63,7 +63,7 @@ typedef struct
 struct brdcast_hdr
 {
 	int sub_id;
-	u_int g_node;		/*The g_node the brdcast_pkt is restricted to*/
+	int g_node;		/*The g_node the brdcast_pkt is restricted to*/
 	u_short gttl;		/*Gnode ttl: How many gnodes the packet can traverse*/
 	size_t sz;		/*Sizeof(the pkt)*/
 	char flags;		/*Various flags*/
@@ -73,8 +73,8 @@ struct brdcast_hdr
 /*Tracer packet. It is encapsulated in a broadcast pkt*/
 struct tracer_hdr
 {
-	__u16 ipstart;
-	int hops;
+	/*__u16 ipstart; useless*/
+	u_int hops;
 };
 
 struct tracer_node
