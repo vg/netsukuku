@@ -328,9 +328,9 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 		memset(rpkt, '\0', sizeof(PACKET));
 
 	ntop=inet_to_str(pkt->to);
-	debug(DBG_INSANE, "Send_rq %s to %s", rq_str, ntop);
 
 	/* * * the request building process * * */
+	hdr_flags=pkt->hdr.flags;
 	if(check_ack)
 		hdr_flags|=SEND_ACK;
 	if(me.cur_node->flags & MAP_HNODE)
@@ -454,9 +454,6 @@ int pkt_exec(PACKET pkt, int acpt_idx)
 		op_str=re_to_str(pkt.hdr.op);
 	else
 		op_str=rq_to_str(pkt.hdr.op);
-
-	debug(DBG_INSANE, "pkt_exec: op: %s, id: 0x%x, acpt_idx: %d", op_str,
-			pkt.hdr.id, acpt_idx);
 
 	if((err=add_rq(pkt.hdr.op, &accept_tbl[acpt_idx].rqtbl))) {
 		ntop=inet_to_str(pkt.from);

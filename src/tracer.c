@@ -48,6 +48,8 @@ int tracer_verify_pkt(tracer_chunk *tracer, u_int hops, map_node *real_from, u_c
 		from=node_from_pos(tracer[hops-1].node, me.int_map);
 		if(from && from != real_from)
 			return -1;
+	
+		/* Is `from' in our rnodes? */
 		if(rnode_find(me.cur_node, from) == -1)
 			return -1;
 	} else {
@@ -55,6 +57,7 @@ int tracer_verify_pkt(tracer_chunk *tracer, u_int hops, map_node *real_from, u_c
 				me.ext_map[_EL(level)]);
 		if(from && (void *)from != (void *)real_from) 
 			return -1;
+			
 		if(g_rnode_find(me.cur_quadg.gnode[_EL(level)], (map_gnode *)from) == -1)
 			return -1;
 	}
@@ -264,19 +267,17 @@ int tracer_unpack_pkt(PACKET rpkt, brdcast_hdr **new_bcast_hdr,
 			return -1;
 	}
 
-	level=bcast_hdr->level;
-	if(level==1)
-		level=0;
+	if((level=bcast_hdr->level) > 0)
+		level--;
 	if(!(rpkt.hdr.flags & BCAST_PKT) || !(bcast_hdr->flags & BCAST_TRACER_PKT) || 
 			level > GET_LEVELS(rpkt.from.family))
-		return -1;
+			return -1;
 
 	/* 
 	 * Now, let's check if we are part of the bcast_hdr->g_node of 
 	 * bcast_hdr->level. If not let's  drop it! Why the hell this pkt is 
 	 * here?
-	 */
-	/*
+	 *
 	 * TODO: something terrible happens: if this iptogid isn't called, the
 	 * next iptogid call with me.cur_quadg.levels-1 will return a wrong
 	 * gid!! DAMN!
@@ -399,18 +400,10 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 		rnode_pos=rnode_find(root_node, from);
 	}
 	
-	if(!(from->flags & MAP_RNODE)) { /*the `from' node isn't in our r_nodes. Add it!*/
-		map_rnode rnn;
-		memset(&rnn, '\0', sizeof(map_rnode));
-
-		rnn.r_node=(u_int *)from;
-		memcpy(&rnn.rtt, &tracer[hops-1].rtt, sizeof(struct timeval));
-		rnode_add(root_node, &rnn);
-
-		if(level)
-			from->flags|=MAP_GNODE | MAP_BNODE;
-		from->flags|=MAP_RNODE;
-		from->flags&=~MAP_VOID & ~MAP_UPDATE;
+	if(!(from->flags & MAP_RNODE)) { 
+		/* The `from' node isn't in our r_nodes, this means that it's a
+		 * crap tracer pkt.*/
+		return -1;
 	}
 
 	if(bblock_sz) {	/*Well, well, we have to take care of bnode blocks*/
@@ -492,7 +485,8 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 			node=&gnode->g;
 		}
 			
-		if(!(node->flags & MAP_VOID)) { /*Ehi, we hadn't this node in the map. Add it.*/
+		if(!(node->flags & MAP_VOID)) { 
+			/*Ehi, we hadn't this node in the map. Add it.*/
 			node->flags&=~MAP_VOID;
 			node->flags|=MAP_UPDATE;
 			
@@ -513,7 +507,8 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 				f=1;
 			}
 		}
-		if(!f) { /*If the `node' doesn't have `from' in his r_nodes... let's add it*/
+		if(!f) { 
+			/*If the `node' doesn't have `from' in his r_nodes... let's add it*/
 			map_rnode rnn;
 			
 			memset(&rnn, '\0', sizeof(map_rnode));
@@ -716,8 +711,10 @@ int tracer_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), int gid,
 
 /* * * these exclude function are used in conjunction with tracer_pkt_send.* * */
 
-/* exclude_glevel: Exclude `node' if it doesn't belong to the gid (`excl_gid') of 
- * the level (`excl_level') specified.*/
+/*
+ * exclude_glevel: Exclude `node' if it doesn't belong to the gid (`excl_gid') of 
+ * the level (`excl_level') specified.
+ */
 int exclude_glevel(TRACER_PKT_EXCLUDE_VARS)
 {
 	map_bnode *bnode;
@@ -796,8 +793,8 @@ int tracer_pkt_recv(PACKET rpkt)
 	}
 
 	hops=trcr_hdr->hops;
-	gid=orig_lvl=bcast_hdr->g_node;
-	level=bcast_hdr->level;
+	gid=bcast_hdr->g_node;
+	level=orig_lvl=bcast_hdr->level;
 	if(!level || level == 1) {
 		level=0;
 		from=node_from_pos(tracer[hops-1].node, me.int_map);
@@ -833,11 +830,12 @@ int tracer_pkt_recv(PACKET rpkt)
 
 	/*The forge of the packet.*/
 	tracer_pkt_build(rpkt.hdr.op, rpkt.hdr.id, bcast_hdr->sub_id, /*IDs*/
-			 gid,         orig_lvl,			      /*GnodeID and level (ignored)*/
+			 gid,         level,			      /*GnodeID and level (ignored)*/
 			 bcast_hdr,   trcr_hdr, tracer, 	      /*Received tracer_pkt*/
 			 old_bchunks, old_bblock, old_bblock_sz,      /*bnode_block*/
 			 &pkt);					      /*Where the pkt is built*/
-	xfree(old_bblock);
+	if(old_bblock)
+		xfree(old_bblock);
 	/*... forward the tracer_pkt to our r_nodes*/
 	tracer_pkt_send(exclude_from_and_glevel, gid, orig_lvl, -1, from, pkt);
 	return 0;

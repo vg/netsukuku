@@ -67,6 +67,7 @@ int get_free_nodes(inet_prefix to, struct free_nodes_hdr *fn_hdr, u_short *nodes
 	
 	pkt_addto(&pkt, &to);
 	pkt.sk_type=SKT_TCP;
+	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_FREE_NODES), ntop);
 	err=send_rq(&pkt, 0, GET_FREE_NODES, 0, PUT_FREE_NODES, 1, &rpkt);
 	if(err==-1) {
 		ret=-1;
@@ -225,6 +226,7 @@ int put_ext_map(PACKET rq_pkt)
 
 	pkt.msg=pack_extmap(me.ext_map, MAXGROUPNODE, &me.cur_quadg, &pkt_sz);
 	pkt.hdr.sz=pkt_sz;
+	debug(DBG_INSANE, "Reply %s to %s", re_to_str(PUT_EXT_MAP), ntop);
 	err=send_rq(&pkt, 0, PUT_EXT_MAP, rq_pkt.hdr.id, 0, 0, 0);
 	if(err==-1) {
 		error("put_ext_maps(): Cannot send the PUT_EXT_MAP reply to %s.", ntop);
@@ -258,6 +260,7 @@ map_gnode **get_ext_map(inet_prefix to, quadro_group *new_quadg)
 	
 	pkt_addto(&pkt, &to);
 	pkt.sk_type=SKT_TCP;
+	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_EXT_MAP), ntop);
 	err=send_rq(&pkt, 0, GET_EXT_MAP, 0, PUT_EXT_MAP, 1, &rpkt);
 	if(err==-1) {
 		ret=0;
@@ -305,6 +308,7 @@ int put_int_map(PACKET rq_pkt)
 
 	pkt.msg=pack_map(map, 0, MAXGROUPNODE, me.cur_node, &pkt_sz);
 	pkt.hdr.sz=pkt_sz;
+	debug(DBG_INSANE, "Reply %s to %s", re_to_str(PUT_INT_MAP), ntop);
 	err=send_rq(&pkt, 0, PUT_INT_MAP, rq_pkt.hdr.id, 0, 0, 0);
 	if(err==-1) {
 		error("put_int_maps(): Cannot send the PUT_INT_MAP reply to %s.", ntop);
@@ -337,6 +341,7 @@ map_node *get_int_map(inet_prefix to, map_node **new_root)
 	
 	pkt_addto(&pkt, &to);
 	pkt.sk_type=SKT_TCP;
+	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_INT_MAP), ntop);
 	err=send_rq(&pkt, 0, GET_INT_MAP, 0, PUT_INT_MAP, 1, &rpkt);
 	if(err==-1) {
 		ret=0;
@@ -386,6 +391,7 @@ int put_bnode_map(PACKET rq_pkt)
 
 	pkt.msg=pack_all_bmaps(bmaps, me.bmap_nodes, me.ext_map, me.cur_quadg, &pack_sz);
 	pkt.hdr.sz=pack_sz;
+	debug(DBG_INSANE, "Reply %s to %s", re_to_str(PUT_BNODE_MAP), ntop);
 	err=send_rq(&pkt, 0, PUT_BNODE_MAP, rq_pkt.hdr.id, 0, 0, 0);
 	if(err==-1) {
 		error("put_bnode_maps(): Cannot send the PUT_BNODE_MAP reply to %s.", ntop);
@@ -420,6 +426,7 @@ map_bnode **get_bnode_map(inet_prefix to, u_int **bmap_nodes)
 	
 	pkt_addto(&pkt, &to);
 	pkt.sk_type=SKT_TCP;
+	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_BNODE_MAP), ntop);
 	err=send_rq(&pkt, 0, GET_BNODE_MAP, 0, PUT_BNODE_MAP, 1, &rpkt);
 	if(err==-1) {
 		ret=0;
@@ -623,9 +630,6 @@ hook_restart_and_retry:
 
 		new_gnode=1;
 		
-		/* XXX DEBUG XXX */
-		route_test();
-		
 		goto finish;
 	} else if(hook_retry) {
 		/* 
@@ -782,12 +786,9 @@ finish:
 	 */
 	reset_radar();
 
+	/* We have finished the hook */
 	me.cur_node->flags&=~MAP_HNODE;
 
-	/* 
-	 * <<Hey there, I'm here, alive>>. We send our firt tracer_pkt, we
-	 * must give to the other nodes the basic routes to reach us.
-	 */
 	if(new_gnode) {
 		if(!me.cur_node->links)
 			/* 
@@ -809,6 +810,17 @@ finish:
 		tracer_levels=2;
 	}
 
+	loginfo("Starting the second radar scan before sending our"
+			" first tracer_pkt");
+	if(radar_scan())
+		fatal("%s:%d: Scan of the area failed. Cannot continue.", 
+				ERROR_POS);
+	
+	/* 
+	 * Now we send a simple tracer_pkt in all the level we have to. This pkt
+	 * is just to say <<Hey there, I'm here, alive>>, thus the other nodes
+	 * of the gnode will have the basic routes to reach us.
+	 */
 	tracer_pkt_start_mutex=0;
 	for(i=1; i<tracer_levels; i++)
 		tracer_pkt_start(i-1);
@@ -816,6 +828,8 @@ finish:
 	/* Let's fill the krnl routing table */
 	loginfo("Filling the kernel route table");
 	rt_full_update(0);
+
+	loginfo("Hook to the gnode %d completed", me.cur_quadg.gid[0]);
 
 	return ret;
 }

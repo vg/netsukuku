@@ -59,32 +59,6 @@ u_char rt_find_table(ct_route *ctr, u_int dst, u_int gw)
 	return 0xff; /*This shouldn't happen!*/
 }
 
-	/* XXX DEBUG XXX */
-void route_test(void)
-{
-	int i,e;
-	int ms_rnd;
-	map_rnode rtmp;
-	i=rand_range(0, MAXGROUPNODE);
-retry:
-	e=rand_range(0, MAXGROUPNODE);
-	if(e==i)
-		goto retry;
-
-	memset(&rtmp, '\0', sizeof(map_rnode));
-	rtmp.r_node=(u_int *)&me.int_map[e];
-	ms_rnd=rand_range(0, (MAXRTT*1000));
-	rtmp.rtt.tv_usec=ms_rnd*1000;
-	rnode_add(&me.int_map[i], &rtmp);
-
-	me.int_map[e].flags|=MAP_RNODE;
-	me.int_map[e].flags&= ~MAP_VOID;
-	me.int_map[i].flags&= ~MAP_VOID;
-	
-	krnl_update_node(&me.int_map[i], 0);
-	
-}
-
 void krnl_update_node(void *void_node, u_char level)
 {
 	map_node *node, *gw_node;

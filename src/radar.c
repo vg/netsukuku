@@ -355,7 +355,7 @@ void radar_update_map(void)
 					   memset(erc, 0, sizeof(ext_rnode_cache));
 					   erc->e=e_rnode;
 					   erc->rnode_pos=rnode_pos;
-					   if(!me.cur_erc_counter)
+					   if(!me.cur_erc_counter || !me.cur_erc)
 						   list_init(me.cur_erc);
 					   list_add(me.cur_erc, e_rnode);
 					   me.cur_erc_counter++;					   
@@ -395,7 +395,7 @@ void radar_update_map(void)
 				   qb=xmalloc(sizeof(struct qspn_buffer));
 				   memset(qb, 0, sizeof(struct qspn_buffer));
 				   qb->rnode=node;
-				   if(root_node->links == 1)
+				   if(root_node->links == 1 || !qspn_b[level])
 					   list_init(qspn_b[level]);
 				   list_add(qspn_b[level], qb);
 
@@ -544,9 +544,6 @@ int radar_exec_reply(PACKET pkt)
 					(radar_scan_mutex ||
 					 radar_scans<=MAX_RADAR_SCANS)) {
 				hook_retry=1;
-				debug(DBG_NOISE, "Hooking node ECHO_REPLY caught. s: %d,"
-						" sca: %d, hook_retry: %d", radar_scans, 
-						scanning, hook_retry);
 			}
 		}
 	}
@@ -645,6 +642,7 @@ int radar_scan(void)
 		pkt.hdr.sz=sizeof(u_char);
 		pkt.msg=xmalloc(pkt.hdr.sz);
 	}
+	debug(DBG_INSANE, "Radar scan 0x%x activated", my_echo_id);
 	for(i=0, echo_scan=0; i<MAX_RADAR_SCANS; i++, echo_scan++) {
 		if(me.cur_node->flags & MAP_HNODE)
 			memcpy(pkt.msg, &echo_scan, sizeof(u_char));
@@ -716,12 +714,8 @@ int radard(PACKET rpkt)
 			 * the other hooking node will create the gnode, then we
 			 * restart the hook. Clear?
 			 */
-			if(!radar_scan_mutex || echo_scans_count > radar_scans) {
+			if(!radar_scan_mutex || echo_scans_count > radar_scans)
 				hook_retry=1;
-				debug(DBG_NOISE, "Hooking node caught. s: %d, esc: %d," 
-						"hook_retry: %d", radar_scans, 
-						echo_scans_count, hook_retry);
-			}
 		} else {
 			debug(DBG_NOISE, "ECHO_ME pkt dropped: We are hooking");	
 			return 0;
@@ -758,7 +752,6 @@ int radard(PACKET rpkt)
 	err=send_rq(&pkt, 0, ECHO_REPLY, rpkt.hdr.id, 0, 0, 0);
 	pkt_free(&pkt, 0);
 	if(err==-1) {
-		ntop=inet_to_str(pkt.to);
 		error("radard(): Cannot send back the ECHO_REPLY to %s.", ntop);
 		return -1;
 	}
@@ -770,6 +763,11 @@ int radard(PACKET rpkt)
 	rq=add_radar_q(rpkt);
 	rq->pings++;
 	
+	if(server_opt.dbg_lvl && rq->pings==1) {
+		ntop=inet_to_str(pkt.to);
+		debug(DBG_INSANE, "%s(0x%x) to %s", rpkt.hdr.id, rq_to_str(ECHO_REPLY), ntop);
+	}
+
 	return 0;
 }
 
@@ -777,11 +775,8 @@ int radard(PACKET rpkt)
 void *radar_daemon(void *null)
 {
 	debug(DBG_NORMAL, "Radar daemon up & running");
-
-	for(;;)
-		radar_scan();
+	for(;;radar_scan());
 }
-
 
 /* 
  * refresh_hook_root_node: At hooking the radar_scan doesn't have an int_map, so
