@@ -148,7 +148,7 @@ void radar_update_map(void)
 	for(i=0; i<me.cur_node->links; i++) {
 		if(me.cur_node->r_node[i].r_node->flags & MAP_VOID) {
 			/*Doh, The rnode is dead!*/
-			debug(DBG_NORMAL,"The node %d is dead\n", (me.cur_node->r_node[i].r_node-me.int_map)/sizeof(map_node));
+			debug(DBG_NORMAL,"The node %d is dead\n", ((void *)me.cur_node->r_node[i].r_node-(void *)me.int_map)/sizeof(map_node));
 			qspn_q.qspn_send=1;
 			rnode_del(me.cur_node, i);
 			rnode_deleted++;

@@ -19,7 +19,14 @@
 #include <sys/types.h>
 #include "pkts.h"
 
+#define QSPN_EMPIRIC    /*I'm working on qspn-empiric. TODO: TO BE REMOVED*/
+
+#ifndef QSPN_EMPIRIC
 #define MAXGROUPNODE		0x281
+#else
+#define MAXGROUPNODE		60
+#endif /*QSPN_EMPIRIC*/
+
 #define MAXROUTES	 	20
 #define MAXLINKS		MAXROUTES
 #define MAXRTT			10		/*Max node <--> node rtt (in sec)*/
@@ -37,6 +44,7 @@
 #define MAP_VOID	(1<<8)		/*It indicates a non existent node*/
 #define QSPN_CLOSED	(1<<9)		/*This flag is set only to the rnodes, it puts a link in a QSPN_CLOSED state*/
 #define QSPN_STARTER	(1<<10)		/*Used only by qspn-empiric.c*/
+
 
 /*map_rnode is what map_node.r_node points to*/
 typedef struct

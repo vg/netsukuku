@@ -76,11 +76,11 @@ void krnl_update_node(map_node *node)
 	if(node.flags & MAP_VOID) {
 		/*Ok, let's delete it*/
 		if(route_del(to, nh, me.cur_dev, 0))
-			error("WARNING: Cannot delete the route entry for %d node!", (&node-me.int_map)/sizeof(map_node));
+			error("WARNING: Cannot delete the route entry for %d node!", ((void *)&node-(void *)me.int_map)/sizeof(map_node));
 	}
 	else
 		if(route_replace(to, nh, me.cur_dev, 0))
-			error("WARNING: Cannot update the route entry for %d node!", (&node-me.int_map)/sizeof(map_node));
+			error("WARNING: Cannot update the route entry for %d node!", ((void *)&node-(void *)me.int_map)/sizeof(map_node));
 }
 
 void rt_update(void)

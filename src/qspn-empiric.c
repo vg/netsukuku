@@ -42,7 +42,7 @@ void gen_rnd_map(int start_node)
 		for(e=0; e<=r; e++) {
 			memset(&rtmp, '\0', sizeof(map_rnode));
 			rnode_rnd=(random()%(MAXGROUPNODE-0))+0;
-			rtmp.r_node=(u_int *)((rnode_rnd*sizeof(map_node))+int_map);
+			rtmp.r_node=(u_int *)&int_map[rnode_rnd];
 			ms_rnd=(random()%((MAXRTT*1000)-0))+0;
 			rtmp.rtt.tv_usec=ms_rnd*1000;
 			rnode_add(&int_map[i], &rtmp);
@@ -50,26 +50,22 @@ void gen_rnd_map(int start_node)
 			if(!(int_map[rnode_rnd].flags & MAP_SNODE))
 				gen_rnd_map(rnode_rnd);
 		}
-			
-		
 	}
 }
 
-void *send_qspn_backpro(void *argv)
+int store_tracer_pkt(struct q_opt *qopt)
 {
-	struct q_opt *qopt=(struct q_opt *)argv, *nopt;
-	int x, dst, pkt, to=qopt->q.to;
-	pthread_t thread;
-
-	usleep(qopt->sleep);
-
-	/*Now we store the received pkt in our pkt_db*/
-	nopt=xmalloc(sizeof(struct q_opt));
-
+	int x, pkt, to=qopt->q.to;
+	
 	pthread_mutex_lock(&mutex[to]);	
 	pkt=pkt_dbc[to];
 	pkt_dbc[to]++;
 	pthread_mutex_unlock(&mutex[to]);	
+
+	if(!pkt)
+		pkt_db[to]=xmalloc(sizeof(struct q_opt *));
+	else
+		pkt_db[to]=xrealloc(pkt_db[to], sizeof(struct q_opt *)*pkt_dbc[to]);
 
 	pkt_db[to][pkt]=xmalloc(sizeof(struct q_pkt));
 	pkt_db[to][pkt]->routes=qopt->q.routes++;
@@ -82,13 +78,25 @@ void *send_qspn_backpro(void *argv)
 	}
 	pkt_db[to][pkt]->op=qopt->q.op;
 	pkt_db[to][pkt]->broadcast=qopt->q.broadcast;
+	
+	return pkt;
+}
 
+void *send_qspn_backpro(void *argv)
+{
+	struct q_opt *qopt=(struct q_opt *)argv, *nopt;
+	int x, dst, pkt, to=qopt->q.to;
+	pthread_t thread;
+
+	fprintf(stderr, "send_qspn_backpro from %d to %d\n", qopt->q.from, to);
+	usleep(qopt->sleep);
+
+	/*Now we store the received pkt in our pkt_db*/
+	pkt=store_tracer_pkt(qopt);	
 
 	/*We've arrived... finally*/
 	if(int_map[to].flags & QSPN_STARTER)
 		return;
-
-	nopt=xmalloc(sizeof(struct q_opt));
 
 	for(x=0; x<int_map[to].links; x++) {
 		
@@ -96,12 +104,13 @@ void *send_qspn_backpro(void *argv)
 			continue;
 
 		if(int_map[to].r_node[x].flags & QSPN_CLOSED) {
-			dst=((map_node *)int_map[to].r_node[x].r_node - int_map)/sizeof(map_node);
+			dst=((void *)int_map[to].r_node[x].r_node - (void *)int_map)/sizeof(map_node);
 
 			gbl_stat.total_pkts++;
 			node_stat[to].total_pkts++;
 
-			memset(&nopt, 0, sizeof(struct q_opt));
+			nopt=xmalloc(sizeof(struct q_opt));
+			memset(nopt, 0, sizeof(struct q_opt));
 			nopt->sleep=int_map[to].r_node[x].rtt.tv_usec;
 			nopt->q.to=dst;
 			nopt->q.from=to;
@@ -111,11 +120,11 @@ void *send_qspn_backpro(void *argv)
 			gbl_stat.qspn_backpro++;
 			node_stat[to].qspn_backpro++;
 			nopt->q.op=OP_BACKPRO;
-			pthread_create(&thread, NULL, send_qspn_backpro, (void *)nopt);
+			pthread_create(&thread, &t_attr, send_qspn_backpro, (void *)nopt);
 		}
 
 	}
-	xfree(nopt);
+	xfree(qopt);
 }
 
 void *send_qspn_reply(void *argv)
@@ -124,6 +133,7 @@ void *send_qspn_reply(void *argv)
 	int x, dst, pkt, to=qopt->q.to;
 	pthread_t thread;
 
+	fprintf(stderr, "send_qspn_reply from %d to %d\n", qopt->q.from, to);
 	usleep(qopt->sleep);
 
 	/*Bad old broadcast pkt*/
@@ -131,37 +141,20 @@ void *send_qspn_reply(void *argv)
 		return;
 
 	/*Now we store the received pkt in our pkt_db*/
-	nopt=xmalloc(sizeof(struct q_opt));
+	pkt=store_tracer_pkt(qopt);	
 
-	pthread_mutex_lock(&mutex[to]);	
-	pkt=pkt_dbc[to];
-	pkt_dbc[to]++;
-	pthread_mutex_unlock(&mutex[to]);	
-
-	pkt_db[to][pkt]=xmalloc(sizeof(struct q_pkt));
-	pkt_db[to][pkt]->routes=qopt->q.routes++;
-	if(pkt_db[to][pkt]->routes) {
-		pkt_db[to][pkt]->tracer=xmalloc(sizeof(short)*pkt_db[to][pkt]->routes);
-		for(x=0; x<qopt->q.routes; x++)
-			pkt_db[to][pkt]->tracer[x]=qopt->q.tracer[x];
-		/*Let's add our entry in the tracer pkt*/
-		pkt_db[to][pkt]->tracer[x+1]=to;
-	}
-	pkt_db[to][pkt]->op=qopt->q.op;
-	pkt_db[to][pkt]->broadcast=qopt->q.broadcast;
-	
 	/*Let's keep broadcasting*/
-	nopt=xmalloc(sizeof(struct q_opt));
 	for(x=0; x<int_map[to].links; x++) {	
 		if((map_node *)int_map[to].r_node[x].r_node == &int_map[qopt->q.from]) 
 			continue;
 
-		dst=((map_node *)int_map[to].r_node[x].r_node - int_map)/sizeof(map_node);
+		dst=((void *)int_map[to].r_node[x].r_node - (void *)int_map)/sizeof(map_node);
 
 		gbl_stat.total_pkts++;
 		node_stat[to].total_pkts++;
 
-		memset(&nopt, 0, sizeof(struct q_opt));
+		nopt=xmalloc(sizeof(struct q_opt));
+		memset(nopt, 0, sizeof(struct q_opt));
 		nopt->sleep=int_map[to].r_node[x].rtt.tv_usec;
 		nopt->q.to=dst;
 		nopt->q.from=to;
@@ -171,9 +164,9 @@ void *send_qspn_reply(void *argv)
 		gbl_stat.qspn_replies++;
 		node_stat[to].qspn_replies++;
 		nopt->q.op=OP_REPLY;
-		pthread_create(&thread, NULL, send_qspn_reply, (void *)nopt);
+		pthread_create(&thread, &t_attr, send_qspn_reply, (void *)nopt);
 	}
-	xfree(nopt);
+	xfree(qopt);
 }
 
 void *send_qspn_pkt(void *argv)
@@ -182,26 +175,11 @@ void *send_qspn_pkt(void *argv)
 	pthread_t thread;
 	int x, i=0, dst, pkt, to=qopt->q.to;
 
+	fprintf(stderr, "send_qspn_pkt from %d to %d\n", qopt->q.from, to);
 	usleep(qopt->sleep);
 
-	nopt=xmalloc(sizeof(struct q_opt));
 	
-	pthread_mutex_lock(&mutex[to]);	
-	pkt=pkt_dbc[to];
-	pkt_dbc[to]++;
-	pthread_mutex_unlock(&mutex[to]);	
-	
-	pkt_db[to][pkt]=xmalloc(sizeof(struct q_pkt));
-	pkt_db[to][pkt]->routes=qopt->q.routes++;
-	if(pkt_db[to][pkt]->routes) {
-		pkt_db[to][pkt]->tracer=xmalloc(sizeof(short)*pkt_db[to][pkt]->routes);
-		for(x=0; x<qopt->q.routes; x++)
-			pkt_db[to][pkt]->tracer[x]=qopt->q.tracer[x];
-		/*Let's add our entry in the tracer pkt*/
-		pkt_db[to][pkt]->tracer[x+1]=to;
-	}
-	pkt_db[to][pkt]->op=qopt->q.op;
-	pkt_db[to][pkt]->broadcast=qopt->q.broadcast;
+	pkt=store_tracer_pkt(qopt);	
 	
 	for(x=0; x<int_map[to].links; x++) {
 		if((map_node *)int_map[to].r_node[x].r_node == &int_map[qopt->q.from]) {
@@ -216,7 +194,8 @@ void *send_qspn_pkt(void *argv)
 		gbl_stat.total_pkts++;
 		node_stat[to].total_pkts++;
 		
-		memset(&nopt, 0, sizeof(struct q_opt));
+		nopt=xmalloc(sizeof(struct q_opt));
+		memset(nopt, 0, sizeof(struct q_opt));
 		nopt->sleep=int_map[to].r_node[x].rtt.tv_usec;
 		nopt->q.to=dst;
 		nopt->q.from=to;
@@ -236,11 +215,12 @@ void *send_qspn_pkt(void *argv)
 		if((map_node *)int_map[to].r_node[x].r_node == &int_map[qopt->q.from]) 
 			continue;
 
-		dst=((map_node *)int_map[to].r_node[x].r_node - int_map)/sizeof(map_node);
+		dst=((void *)int_map[to].r_node[x].r_node - (void *)int_map)/sizeof(map_node);
 		gbl_stat.total_pkts++;
 		node_stat[to].total_pkts++;
 
-		memset(&nopt, 0, sizeof(struct q_opt));
+		nopt=xmalloc(sizeof(struct q_opt));
+		memset(nopt, 0, sizeof(struct q_opt));
 		nopt->sleep=int_map[to].r_node[x].rtt.tv_usec;
 		nopt->q.to=dst;
 		nopt->q.from=to;
@@ -252,21 +232,21 @@ void *send_qspn_pkt(void *argv)
 			gbl_stat.qspn_backpro++;
 			node_stat[to].qspn_backpro++;
 			nopt->q.op=OP_REPLY;
-			xfree(qopt);
-			pthread_create(&thread, NULL, send_qspn_backpro, (void *)nopt);
+			pthread_create(&thread, &t_attr, send_qspn_backpro, (void *)nopt);
 		} else {
 			gbl_stat.qspn_requests++;
 			node_stat[to].qspn_requests++;
 			nopt->q.op=OP_REQUEST;
-			xfree(qopt);
-			pthread_create(&thread, NULL, send_qspn_pkt, (void *)nopt);
+			pthread_create(&thread, &t_attr, send_qspn_pkt, (void *)nopt);
 		}
 	}
-
 	if(int_map[qopt->q.from].flags & QSPN_STARTER) 
-		if((map_node *)&int_map[qopt->q.from].r_node[int_map[qopt->q.from].links-1] == (map_node *)&int_map[qopt->q.to])
+		if((map_node *)&int_map[qopt->q.from].r_node[int_map[qopt->q.from].links-1] == 
+				(map_node *)&int_map[qopt->q.to]) {
+			fprintf(stderr, "Joning the thread, slurp\n");
 			pthread_join(thread, NULL);	
-	
+		}
+	xfree(qopt);
 }
 
 void collect_data(void)
@@ -352,6 +332,9 @@ int main(int argc, char **argv)
 	for(i=0; i<MAXGROUPNODE; i++) 
 		pthread_mutex_init(&mutex[i], NULL);
 
+	pthread_attr_init(&t_attr);
+	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
+	
 	int_map=init_map(sizeof(map_node)*MAXGROUPNODE);
 	printf("Generating a random map...\n");
 	srandom(time(0));
@@ -364,12 +347,12 @@ int main(int argc, char **argv)
 	printf("Starting the QSPN spreading from node %d\n", r);
 	start=time(0);
 	int_map[r].flags|=QSPN_STARTER;
-	nopt=xmalloc(sizeof(struct q_opt));
 	for(x=0; x<int_map[r].links; x++) {
 		gbl_stat.total_pkts++;
 		node_stat[r].total_pkts++;
 
-		memset(&nopt, 0, sizeof(struct q_opt));
+		nopt=xmalloc(sizeof(struct q_opt));
+		memset(nopt, 0, sizeof(struct q_opt));
 		nopt->sleep=int_map[r].r_node[x].rtt.tv_usec;
 		nopt->q.to=x;
 		nopt->q.from=r;
@@ -379,22 +362,22 @@ int main(int argc, char **argv)
 		gbl_stat.qspn_requests++;
 		node_stat[r].qspn_requests++;
 		nopt->q.op=OP_REQUEST;
-		pthread_create(&thread, NULL, send_qspn_pkt, (void *)nopt);
+		pthread_create(&thread, &t_attr, send_qspn_pkt, (void *)nopt);
 	}
 	end=time(0);
 	time_stat=end-start;
-	xfree(nopt);
 	int_map[r].flags&=~QSPN_STARTER;
 	
 	printf("Saving the data to QSPN-test-1 and clearing");
 	collect_data();
 	print_data("QSPN1");
+	clear_all();
 	for(x=0; x<MAXGROUPNODE; x++) {
 		for(e=0; pkt_db[x][e]->routes; e++) {
 			xfree(pkt_db[x][e]->tracer);
 			xfree(pkt_db[x][e]);
 		}
+		xfree(pkt_db[x]);
 	}
-	clear_all();
 	exit(0);
 }

@@ -110,7 +110,7 @@ int put_free_ips(PACKET rq_pkt)
 		 * MAP_VOID nodes)*/
 		for(i=0; i<MAXGROUPNODE; i++)
 			if(map[i].flags & MAP_VOID) {
-				free_ips[e]=(map[i]-me.int_map)/sizeof(map_node);
+				free_ips[e]=i;
 				e++:
 			}
 
@@ -258,7 +258,7 @@ int put_int_map(PACKET rq_pkt)
 	pkt_addsk(&pkt, rq_pkt.sk, rq_pkt.sk_type);
 
 	rblock=map_get_rblock(map, &count);
-	imap_hdr.root_node=(me.cur_node-me.int_map)/sizeof(map_node);
+	imap_hdr.root_node=((void *)me.cur_node-(void *)me.int_map)/sizeof(map_node);
 	imap_hdr.rblock_sz=count*sizeof(map_rnode);
 	imap_hdr.int_map_sz=MAXGROUPNODE*sizeof(map_node);
 	pkt_sz=INT_MAP_BLOCK_SZ(imap_hdr.int_map_sz, imap_hdr.rblock_sz):
@@ -327,7 +327,7 @@ int get_int_map(inet_prefix to, map_node *int_map, map_node *new_root)
 		ret=-1;
 		goto finish;
 	}
-	new_root=(map_node *)(int_map+(imap_hdr.root_node*sizeof(map_node)));
+	new_root=int_map[imap_hdr.root_node];
 	new_root->flags|=MAP_ME;
 	
 	/*Finished, yeah*/

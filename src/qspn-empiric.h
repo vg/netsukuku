@@ -16,11 +16,12 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#define QSPN_EMPIRIC
 
 #include <pthread.h>
 #include "map.h"
-#define MAXGROUPNODE	60
+
+pthread_mutex_t mutex[MAXGROUPNODE];
+pthread_attr_t t_attr;
 
 map_node *int_map;
 
@@ -37,7 +38,7 @@ struct stat gbl_stat;
 struct stat node_stat[MAXGROUPNODE];
 short rt_stat[MAXGROUPNODE][MAXGROUPNODE];
 short rt_total[MAXGROUPNODE];
-pthread_mutex_t mutex[MAXGROUPNODE];
+
 
 #define OP_REQUEST 	82
 #define OP_REPLY	69
@@ -63,6 +64,7 @@ struct q_opt
 };
 
 void gen_rnd_map(int start_node);
+int store_tracer_pkt(struct q_opt *qopt);
 void *send_qspn_backpro(void *argv);
 void *send_qspn_reply(void *argv);
 void *send_qspn_pkt(void *argv);

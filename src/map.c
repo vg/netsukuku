@@ -33,14 +33,14 @@ extern int errno;
 void maptoip(u_int mapstart, u_int mapoff, inet_prefix ipstart, inet_prefix *ret)
 {
 	if(ipstart.family==AF_INET) {
-		ret->data[0]=((mapoff-mapstart)/sizeof(map_node))+ipstart.data[0];
+		ret->data[0]=(((void *)mapoff-(void *)mapstart)/sizeof(map_node))+ipstart.data[0];
 		ret->family=AF_INET;
 		ret->len=4;
 	} else {
 		ret->family=AF_INET6;
 		ret->len=16;
 		memcpy(ret->data, ipstart.data, sizeof(inet_prefix));
-		sum_int(((mapoff-mapstart)/sizeof(map_node)), ret->data);
+		sum_int((((void *)mapoff-(void *)mapstart)/sizeof(map_node)), ret->data);
 	}
 }
 
@@ -106,7 +106,7 @@ void free_map(map_node *map, size_t count)
 
 map_rnode *rnode_insert(map_rnode *buf, size_t pos, map_rnode *new)
 {
-	map_rnode *ptr=buf+(pos*sizeof(map_rnode));
+	map_rnode *ptr=buf+pos;
 	
 	memcpy(ptr, new, sizeof(map_rnode));
 	return ptr;
@@ -144,8 +144,7 @@ void rnode_del(map_node *node, size_t pos)
 	if(pos >= node->links || node->links <= 0)
 		fatal("Error in %s: %d: Cannot delete Map_rnode in %u position. It goes beyond the buffer\n",ERROR_POS, pos);
 	if(pos!=node->links-1)
-		rnode_swap((map_rnode *)node->r_node+(pos*sizeof(map_rnode)), 
-					(map_rnode *)node->r_node+((node->links-1)*sizeof(map_rnode)));
+		rnode_swap((map_rnode *)&node->r_node[pos], (map_rnode *)&node->r_node[(node->links-1)]);
 					
 	node->links--;
 	node->r_node=xrealloc(node->r_node, node->links*sizeof(map_rnode));
@@ -322,8 +321,8 @@ int merge_maps(map_node *base, map_node *new, map_node *base_root, map_node *new
 	 * right place
 	 */
 	new_root->flags&=~MAP_ME;
-	memcpy(new_root, &base[(new_root-new)/sizeof(map_node)], sizeof(map_node));
-	new[(base_root-base)/sizeof(map_node)].flags|=MAP_ME;
+	memcpy(new_root, &base[((void *)new_root-(void *)new)/sizeof(map_node)], sizeof(map_node));
+	new[((void *)base_root-(void *)base)/sizeof(map_node)].flags|=MAP_ME;
 	
 	for(i=0; i<MAXGROUPNODE; i++) {
 		for(e=0; e<new[i].links; e++) {
@@ -441,7 +440,7 @@ int save_map(map_node *map, map_node *root_node, char *file)
 	}
 	
 	rblock=map_get_rblock(map, &count);
-	imap_hdr.root_node=(root_node-map)/sizeof(map_node);
+	imap_hdr.root_node=((void *)root_node-(void *)map)/sizeof(map_node);
 	imap_hdr.rblock_sz=count*sizeof(map_rnode);
 	imap_hdr.int_map_sz=MAXGROUPNODE*sizeof(map_node);
 	
@@ -495,7 +494,7 @@ map_node *load_map(char *file)
 		return 0;
 	}
 	
-	new_root=(map_node *)(map+(imap_hdr.root_node*sizeof(map_node)));
+	new_root=&map[imap_hdr.root_node];
 	new_root->flags|=MAP_ME;
 	
 	fclose(fd);
