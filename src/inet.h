@@ -72,7 +72,7 @@ int inet_setip_anyaddr(inet_prefix *ip, int family);
 int ipv6_addr_type(inet_prefix addr);
 int inet_validate_ip(inet_prefix ip);
 
-char *inet_to_str(inet_prefix ip);
+const char *inet_to_str(inet_prefix ip);
 int inet_to_sockaddr(inet_prefix *ip, u_short port, struct sockaddr *dst, socklen_t *dstlen);
 int sockaddr_to_inet(struct sockaddr *ip, inet_prefix *dst, u_short *port);
 

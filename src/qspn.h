@@ -23,8 +23,8 @@
 #define QSPN_WAIT_ROUND_MS	QSPN_WAIT_ROUND*1000
 
 /*Wait time bound to a specific level*/
-#define QSPN_WAIT_ROUND_LVL(level) ((level)*QSPN_WAIT_ROUND*2+QSPN_WAIT_ROUND)
-#define QSPN_WAIT_ROUND_MS_LVL(level) ((level)*QSPN_WAIT_ROUND_MS*2+QSPN_WAIT_ROUND_MS)
+#define QSPN_WAIT_ROUND_LVL(level) (((level)+1)*QSPN_WAIT_ROUND)
+#define QSPN_WAIT_ROUND_MS_LVL(level) (((level)+1)*QSPN_WAIT_ROUND_MS)
 					  
 /*we are using the qspn_map style II*/
 #define QMAP_STYLE_II
@@ -85,14 +85,14 @@ void qspn_init(u_char levels);
 void qspn_set_map_vars(u_char level, map_node **map, map_node **root_node, 
 		int *root_node_pos, map_gnode **gmap);
 void qspn_b_clean(u_char level);
-int qspn_b_add(struct qspn_buffer *qb, u_short replier, u_short flags);
-int qspn_b_find_reply(struct qspn_buffer *qb, int sub_id);
-int qspn_round_left(u_char level);
+int  qspn_b_add(struct qspn_buffer *qb, u_short replier, u_short flags);
+int  qspn_b_find_reply(struct qspn_buffer *qb, int sub_id);
+int  qspn_round_left(u_char level);
 void update_qspn_time(u_char level);
 
 void qspn_new_round(u_char level);
 
-int exclude_from_and_gnode_and_opened(map_node *node, map_node *from, int pos);
-int qspn_send(u_char level);
-int qspn_close(PACKET rpkt);
-int qspn_open(PACKET rpkt);
+int  exclude_from_and_gnode_and_opened(map_node *node, map_node *from, int pos);
+int  qspn_send(u_char level);
+int  qspn_close(PACKET rpkt);
+int  qspn_open(PACKET rpkt);

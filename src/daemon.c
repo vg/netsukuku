@@ -90,7 +90,7 @@ void *udp_exec_pkt(void *recv_pkt)
 {
 	PACKET rpkt;
 	int acpt_idx, acpt_sidx;
-	char *ntop;
+	const char *ntop;
 
 	acpt_idx=accept_idx;
 	acpt_sidx=accept_sidx;
@@ -107,7 +107,6 @@ void *udp_exec_pkt(void *recv_pkt)
 		ntop=inet_to_str(rpkt.from);
 		debug(DBG_NORMAL, "ACPT: dropped UDP pkt from %s: "
 				"Accept table full.", ntop);
-		xfree(ntop);
 		return NULL;
 	} 
 
@@ -212,7 +211,8 @@ void *tcp_daemon(void *null)
 	inet_prefix ip;
 	fd_set fdset;
 	int sk, fd, ret, err;
-	char *ntop, *rpkt_cp;
+	const char *ntop;
+	char *rpkt_cp;
 
 	pthread_attr_init(&t_attr);
 	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
@@ -297,9 +297,6 @@ void *tcp_daemon(void *null)
 		rpkt_cp=xmalloc(sizeof(PACKET));
 		memcpy(rpkt_cp, &rpkt, sizeof(PACKET));
 		err=pthread_create(&thread, &t_attr, tcp_recv_loop, (void *)rpkt_cp);
-		
-		if(ntop)
-			xfree(ntop);
 	}
 	
 	destroy_accept_tbl();

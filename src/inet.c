@@ -197,24 +197,26 @@ int inet_validate_ip(inet_prefix ip)
 
 /*
  * inet_to_str: It returns the string which represents the given ip.
- * It must be xfreed after.
  */
-char *inet_to_str(inet_prefix ip)
+const char *inet_to_str(inet_prefix ip)
 {
-	struct in_addr src, src6;
-	char *dst;
+	struct in_addr src;
+	struct in6_addr src6;
+	static char dst[INET_ADDRSTRLEN], dst6[INET6_ADDRSTRLEN];
 
 	if(ip.family==AF_INET) {
 		src.s_addr=htonl(ip.data[0]);
-		dst=xmalloc(INET_ADDRSTRLEN);
 		inet_ntop(ip.family, &src, dst, INET_ADDRSTRLEN);
+		
+		return dst;
 	} else if(ip.family==AF_INET6) {
 		htonl_128(ip.data, (int *)&src6);
-		dst=xmalloc(INET6_ADDRSTRLEN);
-		inet_ntop(ip.family, &src6, dst, INET6_ADDRSTRLEN);
+		inet_ntop(ip.family, &src6, dst6, INET6_ADDRSTRLEN);
+
+		return dst6;
 	}
 
-	return dst;
+	return 0;
 }
 
 /*
@@ -448,7 +450,7 @@ int new_tcp_conn(inet_prefix *host, short port)
 {
 	int sk, sa_len;
 	struct sockaddr	sa;
-	char *ntop;
+	const char *ntop;
 	ntop=inet_to_str(*host);
 	
 	if(inet_to_sockaddr(host, port, &sa, &sa_len)) {
@@ -468,7 +470,6 @@ int new_tcp_conn(inet_prefix *host, short port)
 		goto finish;
 	}
 finish:
-	xfree(ntop);
 	return sk;
 }
 
@@ -476,7 +477,7 @@ int new_udp_conn(inet_prefix *host, short port)
 {	
 	int sk, sa_len;
 	struct sockaddr	sa;
-	char *ntop;
+	const char *ntop;
 	ntop=inet_to_str(*host);
 
 	if(inet_to_sockaddr(host, port, &sa, &sa_len)) {
@@ -497,7 +498,6 @@ int new_udp_conn(inet_prefix *host, short port)
 	}
 	
 finish:
-	xfree(ntop);
 	return sk;
 }
 	
@@ -505,7 +505,7 @@ int new_bcast_conn(inet_prefix *host, short port, int dev_idx)
 {	
 	int sk, sa_len;
 	struct sockaddr	sa;
-	char *ntop;
+	const char *ntop;
 
 	if(inet_to_sockaddr(host, port, &sa, &sa_len)) {
 		error("Cannot new_bcast_connect(): %d Family not supported", 
@@ -521,7 +521,6 @@ int new_bcast_conn(inet_prefix *host, short port, int dev_idx)
 			ntop=inet_to_str(*host);
 			error("Cannot connect to the broadcast (%s): %s", ntop,
 					strerror(errno));
-			xfree(ntop);
 			return -1;
 		}
 

@@ -14,6 +14,12 @@
  * You should have received a copy of the GNU Public License along with
  * this source code; if not, write to:
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * --
+ *  
+ * hook.c:
+ * This is code which handles the hooking of a new node in netsukuku, or the
+ * creation of a new gnode.
  */
 
 #include "includes.h"
@@ -51,7 +57,8 @@ int get_free_nodes(inet_prefix to, struct free_nodes_hdr *fn_hdr, u_short *nodes
 	PACKET pkt, rpkt;
 	ssize_t err;
 	int ret=0;
-	char *ntop, *buf=0;
+	const char *ntop;
+	char *buf=0;
 	
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
@@ -86,7 +93,6 @@ int get_free_nodes(inet_prefix to, struct free_nodes_hdr *fn_hdr, u_short *nodes
 finish:
 	pkt_free(&pkt, 0);
 	pkt_free(&rpkt,1);
-        xfree(ntop);
 	return ret;
 }
 
@@ -112,7 +118,8 @@ int put_free_nodes(PACKET rq_pkt)
 	int ret=0, i, e=0;
 	ssize_t err, pkt_sz;
 	u_char level;
-	char *ntop, *p=0; 
+	const char *ntop;
+	char *p=0; 
 	
 	ntop=inet_to_str(rq_pkt.from);
 	debug(DBG_NORMAL, "Sending the PUT_FREE_NODES reply to %s", ntop);
@@ -194,7 +201,6 @@ finish:
 		ret=-1;
 	}
 	pkt_free(&pkt, 0);
-	xfree(ntop);
 	return ret;
 }
 
@@ -205,7 +211,7 @@ finish:
 int put_ext_map(PACKET rq_pkt)
 {
 	PACKET pkt;
-	char *ntop; 
+	const char *ntop; 
 	int ret=0;
 	ssize_t err;
 	size_t pkt_sz=0;
@@ -228,7 +234,6 @@ int put_ext_map(PACKET rq_pkt)
 
 finish:
 	pkt_free(&pkt, 1);
-	xfree(ntop);
 	return ret;
 }
 
@@ -239,7 +244,8 @@ finish:
 map_gnode **get_ext_map(inet_prefix to, quadro_group *new_quadg)
 {
 	PACKET pkt, rpkt;
-	char *ntop, *pack;
+	const char *ntop;
+	char *pack;
 	int err;
 	struct ext_map_hdr emap_hdr;
 	map_gnode **ext_map=0, **ret=0;
@@ -273,7 +279,6 @@ map_gnode **get_ext_map(inet_prefix to, quadro_group *new_quadg)
 finish:
 	pkt_free(&pkt, 0);
 	pkt_free(&rpkt, 1);
-        xfree(ntop);
 	return ret;
 }
 
@@ -285,7 +290,7 @@ int put_int_map(PACKET rq_pkt)
 {
 	PACKET pkt;
 	map_node *map=me.int_map;
-	char *ntop; 
+	const char *ntop; 
 	int ret;
 	ssize_t err;
 	size_t pkt_sz=0;
@@ -308,7 +313,6 @@ int put_int_map(PACKET rq_pkt)
 	}
 finish:
 	pkt_free(&pkt, 0);
-	xfree(ntop);
 	return ret;
 }
 
@@ -323,7 +327,8 @@ map_node *get_int_map(inet_prefix to, map_node **new_root)
 	map_node *int_map, *ret=0;
 	size_t pack_sz;
 	int err;
-	char *pack, *ntop;
+	const char *ntop;
+	char *pack;
 	
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
@@ -355,7 +360,6 @@ map_node *get_int_map(inet_prefix to, map_node **new_root)
 finish:
 	pkt_free(&pkt, 0);
 	pkt_free(&rpkt, 1);
-        xfree(ntop);
 	return ret;
 }
 
@@ -367,7 +371,7 @@ int put_bnode_map(PACKET rq_pkt)
 {
 	PACKET pkt;
 	map_bnode **bmaps=me.bnode_map;
-	char *ntop; 
+	const char *ntop; 
 	int ret;
 	ssize_t err;
 	size_t pack_sz=0;
@@ -391,7 +395,6 @@ int put_bnode_map(PACKET rq_pkt)
 
 finish:
 	pkt_free(&pkt, 0);
-	xfree(ntop);
 	return ret;
 }
 
@@ -407,7 +410,8 @@ map_bnode **get_bnode_map(inet_prefix to, u_int **bmap_nodes)
 	map_bnode **bnode_map, **ret=0;
 	size_t pack_sz;
 	u_char levels;
-	char *ntop, *pack;
+	const char *ntop;
+	char *pack;
 	
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
@@ -441,7 +445,6 @@ map_bnode **get_bnode_map(inet_prefix to, u_int **bmap_nodes)
 finish:
 	pkt_free(&pkt, 0);
 	pkt_free(&rpkt, 1);
-        xfree(ntop);
 	return ret;
 }
 
@@ -451,7 +454,7 @@ finish:
  */
 void set_ip_and_def_gw(char *dev, inet_prefix ip)
 {
-	char *ntop;
+	const char *ntop;
 	ntop=inet_to_str(ip);
 	
 	debug(DBG_NORMAL, "Setting the %s ip to %s interface", ntop, dev);
@@ -467,7 +470,6 @@ void set_ip_and_def_gw(char *dev, inet_prefix ip)
 		fatal("Cannot set the default gw to %s for the %s dev", 
 				ntop, dev);
 	
-	free(ntop);
 }
 
 /*
@@ -575,7 +577,7 @@ int netsukuku_hook(void)
 	int i, e=0, imaps=0, ret=0, new_gnode=0, tracer_levels=0, *old_bnodes;
 	int total_hooking_nodes=0;
 	u_short fnodes[MAXGROUPNODE];
-	char *ntop;
+	const char *ntop;
 
 	/* 	
 	  	* * 		The beginning          * *	  	
@@ -619,7 +621,6 @@ hook_restart_and_retry:
 		loginfo("Now we are in a brand new gnode. The ip of %s is set "
 				"to %s", me.cur_dev, ntop);
 
-		xfree(ntop);
 		new_gnode=1;
 		
 		goto finish;

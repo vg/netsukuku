@@ -15,7 +15,9 @@
  * this source code; if not, write to:
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
+ * -- 
  * accept.c: This is how it works:
+ *
  * When a new accept is made add_accept is called. It first updates the accept
  * table and then, if the accept_tbl isn't full add the new accept in the tbl.
  * If the accept_tbl is full the connection is dropped.

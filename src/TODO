@@ -1,12 +1,14 @@
 - [HIGH PRIORITY] -
-testare: 80%, hook.c in progress
+testare: 90%, hook.c in progress
+testare: 30%, tracer.c in progress
 
 - [MEDIUM PRIORITY] -
-broadcast: Tenere in considerazione il gttl
-Ottimizzare la validita' di ip in random_ip()
+big endian/little endian per gli int nei pkt.
+Ottimizzare la validita' di ip in random_ip(). Una possibile soluzione sarebbe
+quella di azzerare i bit invalidi.
 Portare per *BSD: bisogna usare rt_ioctl.c ed rt_socket.c di quagga
 ( ../othersrc/quagga-*/zebra/ )
 
 - [LOW PRIORITY] -
 tracer.c: store_trcaer_pkt_connect
-big endian/little endian per gli int nei pkt.
+broadcast: Tenere in considerazione il gttl.

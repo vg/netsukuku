@@ -14,6 +14,10 @@
  * You should have received a copy of the GNU Public License along with
  * this source code; if not, write to:
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * --
+ * route.c:
+ * Routing table management code.
  */
 
 #include "includes.h"

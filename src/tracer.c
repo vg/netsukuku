@@ -41,7 +41,9 @@ int tracer_verify_pkt(tracer_chunk *tracer, u_int hops, map_node *real_from, u_c
 {
 	map_node *from;
 
-	/*"from" has to be absolutely one of our rnodes*/
+	/*
+	 * `from' has to be absolutely one of our rnodes
+	 */
 	if(!level) {
 		from=node_from_pos(tracer[hops-1].node, me.int_map);
 		if(from && from != real_from)
@@ -274,6 +276,11 @@ int tracer_unpack_pkt(PACKET rpkt, brdcast_hdr **new_bcast_hdr,
 	 * bcast_hdr->level. If not let's  drop it! Why the hell this pkt is 
 	 * here?
 	 */
+	/*
+	 * TODO: something terrible happens: if this iptogid isn't called, the
+	 * next iptogid call with me.cur_quadg.levels-1 will return a wrong
+	 * gid!! DAMN!
+	 */
 	iptogid(rpkt.from, me.cur_quadg.levels);
 	for(i=me.cur_quadg.levels-1; i>=0; i--) {
 		gid=iptogid(rpkt.from, i);
@@ -411,7 +418,7 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 				&bblist, &found_block_sz);
 		*bblocks_found=bb;
 		if(!bb || bb!=trcr_hdr->bblocks) {
-			error("tracer_store_pkt(): malformed bnode block.");
+			debug(DBG_NORMAL, "tracer_store_pkt(): malformed bnode block.");
 			*bblock_found_sz=0;
 			*bblocks_found_block=0;
 		} else {
@@ -434,18 +441,22 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 				}
 
 				/*Let's check if we have this bnode in the bmap, if not let's add it*/
-				bm=map_find_bnode(me.bnode_map[level], me.bmap_nodes[level], void_map, void_node, level);
+				bm=map_find_bnode(me.bnode_map[level], me.bmap_nodes[level], 
+						void_map, void_node, level);
 				if(bm==-1)
-					bm=map_add_bnode(&me.bnode_map[level], &me.bmap_nodes[level], bblist_hdr[i]->bnode, 
-							bblist_hdr[i]->links);
+					bm=map_add_bnode(&me.bnode_map[level], &me.bmap_nodes[level],
+							bblist_hdr[i]->bnode,  bblist_hdr[i]->links);
 
-				/*Now, we delete all the bnode's gnode_rnodes, then we store the new ones.
-				 * yea, I know I'm raw, ahahaha.*/
+				/*
+				 * Now, we delete all the bnode's gnode_rnodes, then we store the 
+				 * new ones. Yea, I know I'm raw, ahahaha.
+				 */
 				rnode_destroy(&me.bnode_map[level][bm]);
 
-				/*We brought kaos, let's give peace*/
+				/* We brought kaos, let's give peace */
 				for(e=0; e<bblist_hdr[i]->links; e++) {
 					memset(&rn, 0, sizeof(map_rnode));
+					
 					rn.r_node=(u_int *)gnode_from_pos(bblist[i][e]->gnode, 
 							ext_map[_EL(bblist[i][e]->level)]);
 					memcpy(&rn.rtt, &bblist[i][e]->rtt, sizeof(struct timeval));
@@ -464,12 +475,13 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 	
 	/* * Time to store the qspn routes to reach all the nodes of the tracer pkt * */
 	
+	/* We add in the total rtt the first rtt which is me -> from */
+	memst(&trtt, 0, sizeof(struct timeval));	
 	timeradd(&root_node->r_node[rnode_pos].trtt, &trtt, &trtt);
-	/* We skip the node at hops-1 which it is the `from' node. The radar() takes care of him.*/
-	if(!level)
-		skip_rfrom=1;
-	else
-		skip_rfrom=0;
+	
+	/* We skip the node at hops-1 which it is the `from' node. The radar() 
+	 * takes care of him. */
+	skip_rfrom = !level ? 1 : 0;
 	for(i=(hops-skip_rfrom)-1; i >= 0; i--) {
 		timeradd(&tracer[i].rtt, &trtt, &trtt);
 
@@ -483,10 +495,14 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 		if(!(node->flags & MAP_VOID)) { /*Ehi, we hadn't this node in the map. Add it.*/
 			node->flags&=~MAP_VOID;
 			node->flags|=MAP_UPDATE;
-			if(level < GET_LEVELS(my_family))
-				if( (me.cur_quadg.gnode[_EL(level+1)]->seeds++) == MAXGROUPNODE )
+			
+			if(level < GET_LEVELS(my_family)) {
+				me.cur_quadg.gnode[_EL(level+1)]->seeds++;
+				if( me.cur_quadg.gnode[_EL(level+1)]->seeds == MAXGROUPNODE )
 					me.cur_quadg.gnode[_EL(level+1)]->flags|=GMAP_FULL;
+			}
 		}
+		
 		for(e=0; e < node->links; e++) {
 			if(node->r_node[e].r_node == (u_int *)from) {
 				diff=abs(MILLISEC(node->r_node[e].trtt) - MILLISEC(trtt));
@@ -499,22 +515,29 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 		}
 		if(!f) { /*If the `node' doesn't have `from' in his r_nodes... let's add it*/
 			map_rnode rnn;
-
+			
 			memset(&rnn, '\0', sizeof(map_rnode));
 			rnn.r_node=(u_int *)from;
 			memcpy(&rnn.trtt, &trtt, sizeof(struct timeval));
+			
 			rnode_add(node, &rnn);
 			node->flags|=MAP_UPDATE;
 		}
 
-		/*ok, now the kernel needs a refresh*/
+		/* ok, now the kernel needs a refresh in the route table */
 		if(node->flags & MAP_UPDATE) {
 			rnode_trtt_order(node);
-			if(node->links > MAXROUTES) { /*If we have too many routes we purge the worst ones*/
+			
+			if(node->links > MAXROUTES) { 
+				/* 
+				 * If we have too many routes we purge the worst
+				 * ones.
+				 */
 				diff=node->links - MAXROUTES;
 				for(x=MAXROUTES; x < node->links; x++)
 					rnode_del(node, x);
 			}
+			
 			krnl_update_node(node, level);
 		}
 	}
@@ -655,7 +678,7 @@ int tracer_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), int gid,
 	map_node *dst_node;
 	ext_rnode *e_rnode;
 	ssize_t err;
-	char *ntop;
+	const char *ntop;
 	int i, e=0;
 
 	/*Forward the pkt to all our r_nodes (excluding the excluded hehe;)*/
@@ -683,7 +706,6 @@ int tracer_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), int gid,
 			error("tracer_pkt_send(): Cannot send the %s request"
 					" with id: %d to %s.", rq_to_str(pkt.hdr.op),
 					pkt.hdr.id, ntop);
-			xfree(ntop);
 		} else
 			e++;
 	}
@@ -762,14 +784,14 @@ int tracer_pkt_recv(PACKET rpkt)
 	u_short old_bchunks=0;
 	int gid;
 	u_char level, orig_lvl;
-	char *ntop, *old_bblock;
+	const char *ntop;
+	char *old_bblock;
 	void *void_map;
 
 	ret_err=tracer_unpack_pkt(rpkt, &bcast_hdr, &trcr_hdr, &tracer, &bhdr, &bblock_sz);
 	if(ret_err) {
 		ntop=inet_to_str(rpkt.from);
 		debug(DBG_NOISE, "tracer_pkt_recv(): The %s sent an invalid tracer_pkt here.", ntop);
-		xfree(ntop);
 		return -1;
 	}
 
@@ -790,14 +812,14 @@ int tracer_pkt_recv(PACKET rpkt)
 		void_map=me.ext_map;
 	}
 
-	/*This is the check for the broadcast id. If it is <= tracer_starter->brdcast
+	/*
+	 * This is the check for the broadcast id. If it is <= tracer_starter->brdcast
 	 * the pkt is an old broadcast that still dance around.
 	 */
 	if(rpkt.hdr.id <= tracer_starter->brdcast) {
 		ntop=inet_to_str(rpkt.from);
 		debug(DBG_NOISE, "tracer_pkt_recv(): Received from %s an old "
 				"tracer_pkt broadcast: %d", ntop, rpkt.hdr.id);
-		xfree(ntop);
 		return -1;
 	} else
 		tracer_starter->brdcast=rpkt.hdr.id;

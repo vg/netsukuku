@@ -14,6 +14,15 @@
  * You should have received a copy of the GNU Public License along with
  * this source code; if not, write to:
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * --
+ * radar.c:
+ * The radar sends in broadcast a bouquet of MAX_RADAR_SCANS# packets and waits
+ * for the ECHO_REPLY of the nodes which are alive. It then recollects the
+ * replies and builds a small statistic, updates, if necessary, the internal 
+ * maps, the bnode maps and the qspn buffer.
+ * A radar is fired periodically by the radar_daemon(), which is started as a
+ * thread.
  */
 
 #include "includes.h"
@@ -255,6 +264,7 @@ void radar_update_map(void)
 	int rnode_added[MAX_LEVELS], rnode_deleted[MAX_LEVELS], rnode_pos;
 	u_char level, external_node, total_levels;
 	void *void_map;
+	const char *ntop;
 
 	memset(rnode_added, 0, sizeof(int)*MAX_LEVELS);
 	memset(rnode_deleted, 0, sizeof(int)*MAX_LEVELS);
@@ -312,12 +322,10 @@ void radar_update_map(void)
 
 			   if(rnode_pos == -1) { /* W00t, we've found a new rnode! */
 				   struct qspn_buffer *qb;
-				   char	*ntop;
 
 				   ntop=inet_to_str(rq->ip);
 				   loginfo("Radar: New node found: %s, ext: %d, level: %d", 
 						   ntop, external_node, level);
-				   xfree(ntop);
 				   
 				   rnode_pos=root_node->links; /* Now it is the last rnode +1
 								  because we are adding it */
@@ -688,7 +696,7 @@ int radard(PACKET rpkt)
 	PACKET pkt;
 	struct radar_queue *rq;
 	ssize_t err;
-	char *ntop; 
+	const char *ntop; 
 	u_char echo_scans_count;
 
 	/* If we are hooking we reply only to others hooking nodes */
@@ -751,7 +759,6 @@ int radard(PACKET rpkt)
 	if(err==-1) {
 		ntop=inet_to_str(pkt.to);
 		error("radard(): Cannot send back the ECHO_REPLY to %s.", ntop);
-		xfree(ntop);
 		return -1;
 	}
 

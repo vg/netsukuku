@@ -240,7 +240,7 @@ int pkt_tcp_connect(inet_prefix *host, short port)
 {
 	int sk;
 	PACKET pkt;
-	char *ntop;
+	const char *ntop;
 	ssize_t err;
 
 	ntop=inet_to_str(*host);
@@ -274,8 +274,6 @@ int pkt_tcp_connect(inet_prefix *host, short port)
 	}
 	
 finish:
-	if(ntop)
-		xfree(ntop);
 	pkt_free(&pkt, 0);
 	return sk;
 }
@@ -308,8 +306,7 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 {
 	ssize_t err;
 	int ret=0;
-	char *ntop=0;
-	const char *rq_str, *re_str;
+	const char *ntop=0, *rq_str, *re_str;
 	u_char hdr_flags=0;
 	
 
@@ -425,8 +422,6 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 	}
 
 finish:
-	if(ntop)
-		xfree(ntop);
 	return ret;
 }
 
@@ -452,8 +447,7 @@ int pkt_err(PACKET pkt, u_char err)
 	
 int pkt_exec(PACKET pkt, int acpt_idx)
 {
-	char *ntop;
-	const char *op_str;
+	const char *ntop, *op_str;
 	int err=0;
 
 	if(!re_verify(pkt.hdr.op))
@@ -468,8 +462,6 @@ int pkt_exec(PACKET pkt, int acpt_idx)
 		ntop=inet_to_str(pkt.from);
 		error("From %s: Cannot process the %s request: %s", ntop, 
 				op_str, rq_strerror(err));
-		if(ntop)
-			xfree(ntop);
 		pkt_err(pkt, err);
 		return -1;
 	}

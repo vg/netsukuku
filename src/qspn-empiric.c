@@ -529,9 +529,11 @@ void collect_data(void)
 	fprintf(stderr, "Collecting the data!\n");
 	for(i=0; i<MAXGROUPNODE; i++)
 		for(e=0; e<pkt_dbc[i]; e++)
-			for(x=0; x<pkt_db[i][e]->routes; x++)
-				if((rt_stat[i][pkt_db[i][e]->tracer[x]]++)==1)
+			for(x=0; x<pkt_db[i][e]->routes; x++) {
+				rt_stat[i][pkt_db[i][e]->tracer[x]]++;
+				if(rt_stat[i][pkt_db[i][e]->tracer[x]]++==1)
 					rt_total[i]++;
+			}
 }
 
 /*show_temp_stat: Every 5 seconds it shows how is it going*/
