@@ -3,5 +3,5 @@ hook.c: send_map_bnode, get_map_bnode.
 gnode support  60%
 netsukuku.c (Parte minimale)
 come fare per aggiungere un route rule per specificare un'intero range nel campo from?
-Decidere l'order del ntohl_128. ip.data[0] o ip.data[3]?
+Decidere l'order del ntohl_128. ip.data[0] o ip.data[3] ?
 connect-wrapper.c: ld.so.preload!
