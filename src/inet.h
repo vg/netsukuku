@@ -27,6 +27,7 @@ typedef struct
 {
 	__u8 family;
 	__u16 len;
+	u_char bits;
 	__u32 data[4]; 	/*The address is kept in host long format, word ORDER 1 (most significant 
 			  word first)*/
 }inet_prefix;
@@ -42,9 +43,13 @@ int sockaddr_to_inet(struct sockaddr *ip, inet_prefix *dst, u_short *port);
 int new_socket(int sock_type);
 int new_dgram_socket(int sock_type);
 int join_ipv6_multicast(int socket, int idx);
+
+int set_nonblock_sk(int fd);
+int unset_nonblock_sk(int fd);
+int set_reuseaddr_sk(int socket);
 int set_broadcast_sk(int socket, int family, int dev_idx);
 int unset_broadcast_sk(int socket, int family);
-int new_broadcast_sk(int sock_type, int dev_idx);
+int new_broadcast_sk(int family, int dev_idx);
 
 int new_tcp_conn(inet_prefix *host, short port);
 int new_udp_conn(inet_prefix *host, short port);

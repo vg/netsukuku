@@ -66,3 +66,4 @@ void radar_update_map(void);
 int add_radar_q(PACKET pkt);
 int radar_scan(void);
 int radar_recv_reply(PACKET pkt);
+void *radar_daemon(void *null);

@@ -395,15 +395,15 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *tracer_hdr, trace
 		timeradd(&tracer[i].rtt, &trtt, &trtt);
 
 		if(!level)
-		node=node_from_pos(tracer[i].node, map);
+			node=node_from_pos(tracer[i].node, map);
 		else {
 			gnode=gnode_from_pos(tracer[i].node, ext_map[_EL(level)]);
 			node=&gnode->g;
 		}
 			
 		if(!(node->flags & MAP_VOID)) { /*Ehi, we hadn't this node in the map. Add it.*/
-			from->flags&=~MAP_VOID;
-			from->flags|=MAP_UPDATE;
+			node->flags&=~MAP_VOID;
+			node->flags|=MAP_UPDATE;
 			if(level < GET_LEVELS(my_family))
 				if( (me.cur_quadg.gnode[_EL(level+1)]->seeds++) == MAXGROUPNODES )
 					me.cur_quadg.gnode[_EL(level+1)]->flags|=GMAP_FULL;

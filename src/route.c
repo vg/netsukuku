@@ -57,36 +57,50 @@ u_char rt_find_table(ct_route *ctr, u32 dst, u32 gw)
 	return 0xff; /*This shouldn't happen!*/
 }
 
-void krnl_update_node(map_node *node, /*TODO: XXX u_char level*/)
+void krnl_update_node(void *void_node, u_char level)
 {
-	struct nexthop nh[node->links+1];
-	inet_prefix to;
-	int i;
-	memset(nh, '\0', sizeof(nexthop), node->links+1);
-
-	maptoip(me.int_map, node, me.cur_quadg.ipstart[1], &to);
-
-
-	/*TODO: Add gnode's support. We must use the entire gnode range as destination. can we?*/
+	map_node *node=void_node;
+	map_gnode *gnode=void_node;
+	map_gnode *gto;	/*Great Teacher Onizuka*/
 	
-	for(i=0; i<node->links; i++) {
-#ifdef QMAP_STYLE_I
-		maptoip(me.int_map, get_gw_node(node, i), me.cur_quadg.ipstart[1], &nh[i].gw);
-#else /*QMAP_STYLE_II*/
-		maptoip(me.int_map, node.r_node[i].r_node, me.cur_quadg.ipstart[1], &nh[i].gw);
-#endif
-		nh[i].dev=me.cur_dev;
-		nh[i].hops=255-i;
-	}
+	struct nexthop *nh=0;
+	inet_prefix to;
+	int i, node_pos;
 
+	if(!level) {
+		nh=xmalloc(sizeof(struct nexthop)*(node->links+1));
+		memset(nh, '\0', sizeof(nexthop), node->links+1);
+
+		maptoip(me.int_map, node, me.cur_quadg.ipstart[1], &to);
+
+		for(i=0; i<node->links; i++) {
+#ifdef QMAP_STYLE_I
+			maptoip(me.int_map, get_gw_node(node, i), me.cur_quadg.ipstart[1], &nh[i].gw);
+#else /*QMAP_STYLE_II*/
+			maptoip(me.int_map, node.r_node[i].r_node, me.cur_quadg.ipstart[1], &nh[i].gw);
+#endif
+			nh[i].dev=me.cur_dev;
+			nh[i].hops=255-i;
+		}
+		node_pos=pos_from_node(node, me.int_map);
+	} else {
+		node=&gnode->g;
+		node_pos=pos_from_gnode(gnode, me.ext_map[_EL(level)]);
+		gnodetoip(me.ext_map, &me.cur_quadg, gnode, level, &to);
+		nh=0;
+	}
+	
 	if(node.flags & MAP_VOID) {
 		/*Ok, let's delete it*/
 		if(route_del(to, nh, me.cur_dev, 0))
-			error("WARNING: Cannot delete the route entry for %d node!", ((void *)&node-(void *)me.int_map)/sizeof(map_node));
-	}
-	else
+			error("WARNING: Cannot delete the route entry for the ",
+					"%d %cnode!", node_pos, !level ? ' ' : 'g');
+	} else
 		if(route_replace(to, nh, me.cur_dev, 0))
-			error("WARNING: Cannot update the route entry for %d node!", ((void *)&node-(void *)me.int_map)/sizeof(map_node));
+			error("WARNING: Cannot update the route entry for the "
+					"%d %cnode!", node_pos, !level ? ' ' : 'g');
+	if(nh)
+		xfree(nh);
 }
 
 void rt_update(void)

@@ -165,7 +165,7 @@ int route_exec(int route_cmd, unsigned flags, inet_prefix to, struct nexthop *nh
 	}
 
 	if (to) {
-		req.rt.rtm_dst_len = to.len*8;
+		req.rt.rtm_dst_len = to.bits;
 		addattr_l(&req.nh, sizeof(req), RTA_DST, &to.data, to.len);
 		req.rt.rtm_family=to.family;
 		if(!to.data[0]) {

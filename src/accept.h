@@ -17,6 +17,7 @@
  */
 
 #include <time.h>
+#include <pthread.h>
 #include "request.h"
 #include "inet.h"
 
@@ -25,9 +26,10 @@
 #define MAX_ACCEPTS		10
 #define FREE_ACCEPT_TIME	5		/*in seconds*/
 
-/*This struct keep tracks of single connection to the server.
+/*
+ * This struct keep tracks of single connection to the server.
  * The thread_daemon who handle the connection knows the connection
- * position in the accept_tbl
+ * position in the accept_tbl.
  */
 struct accept_table
 {
@@ -44,15 +46,17 @@ struct accept_table
 	struct request_tbl rqtbl;		/*The request table*/
 };
 
-/*This struct keeps all the info regarding each node connected*/
+/* This struct keeps all the info regarding each node connected */
 struct accept_table *accept_tbl;
 
-/*accept_idx it the position of the accept_tbl of a thread.
- *accept_sidx is the second index, it is used for example in pid[accept_sidx] 
- *note: this var are used only in the child and the child doesn't need to modify them!
- *They are handled with pthread_key_create(3)
+/* 
+ * accept_idx it the position of the accept_tbl of a thread.
+ * accept_sidx is the second index, it is used for example in pid[accept_sidx] 
+ * note: this var are used only in the child and the child doesn't need to modify them!
+ * They are handled with pthread_key_create(3)
  */
 int accept_idx, accept_sidx;
+pthread_mutex_t mtx_acpt_idx, mtx_acpt_sidx;
 
 int update_accept_tbl_mutex;
 
@@ -61,11 +65,12 @@ int max_connections, max_accepts_per_host, free_accept_time;
 void init_accept_tbl(int startups, int accepts, int time);
 void destroy_accept_tbl(void);
 void update_accept_tbl(void);
-int find_ip_acpt(inet_prefix ip);
-int find_first_free(void);
-int is_ip_acpt_free(inet_prefix ip, int *index);
-int find_free_acp_t(int idx);
-int add_accept(inet_prefix ip);
-void del_accept(int idx);
-int close_accept(void);
-void add_accept_pid(pid_t pid);
+int  find_ip_acpt(inet_prefix ip);
+int  find_first_free(void);
+int  is_ip_acpt_free(inet_prefix ip, int *index);
+int  find_free_acp_t(int idx);
+int new_accept(int idx, inet_prefix ip);
+int add_accept(inet_prefix ip, int replace);
+void del_accept(int idx, int *sidx);
+int  close_accept(int idx, int sidx);
+void add_accept_pid(pid_t pid, int idx, int sidx);

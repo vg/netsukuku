@@ -519,3 +519,11 @@ int radard(PACKET rpkt)
 	}
 	return 0;
 }
+
+void *radar_daemon(void *null)
+{
+	for(;;) {
+		radar_scan();
+		sleep(MAX_RADAR_WAIT+2);
+	}
+}

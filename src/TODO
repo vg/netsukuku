@@ -1,13 +1,11 @@
 - [HIGH PRIORITY] -
-gnode support  50%: fusione di gnode uguali...
-route.c: void krnl_update_node(map_node *node, /*TODO: XXX u_char level*/)
-come fare per aggiungere un route rule per specificare un'intero range nel campo from?
+Compilare
+testare
 
 - [MEDIUM PRIORITY] -
 broadcast: Tenere in considerazione il gttl
-netsukuku.c (Parte minimale)
 
 - [LOW PRIORITY] -
 tracer.c: store_trcaer_pkt_connect
-connect-wrapper.c: ld.so.preload!
 unique id per radar_pkt per evitare di falsificare le stats.
+big endian/little endian per gil int nei pkt.

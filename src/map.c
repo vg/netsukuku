@@ -64,6 +64,7 @@ void postoip(u_int map_pos, inet_prefix ipstart, inet_prefix *ret)
 		memcpy(ret->data, ipstart.data, sizeof(inet_prefix));
 		sum_int(map_pos, ret->data);
 	}
+	ret->bits=ret->len*8;
 }
 
 /* 
@@ -202,7 +203,7 @@ int rnode_find(map_node *node, map_node *n)
 {
 	int e;
 	for(e=0; e<node->links; e++)
-		if((int)*node->r_node[e].r_node == (int)*from)
+		if((int)*node->r_node[e].r_node == (int)*n)
 			return e;
 	return -1;
 }

@@ -43,6 +43,7 @@ int inet_setip(inet_prefix *ip, u_int *data, u_char family)
 		ip->len=16;
 	} else 
 		return -1;
+	ip->bits=ip->len*8;
 	return 0;
 }
 
@@ -76,7 +77,10 @@ int inet_setip_anyaddr(inet_prefix *ip)
 
 /* * * Coversion functions... * * */
 
-/*inet_to_str: It returns the string which represents the given ip*/
+/*
+ * inet_to_str: It returns the string which represents the given ip.
+ * It must be xfreed after.
+ */
 char *inet_to_str(inet_prefix *ip)
 {
 	char *dst;
@@ -98,7 +102,9 @@ char *inet_to_str(inet_prefix *ip)
 	return dst;
 }
 
-/*inet_to_sockaddr: Converts a inet_prefix struct to a sockaddr struct*/
+/*
+ * inet_to_sockaddr: Converts a inet_prefix struct to a sockaddr struct
+ */
 int inet_to_sockaddr(inet_prefix *ip, u_short port, struct sockaddr *dst, socklen_t *dstlen)
 {
 	memset(dst, '\0',  sizeof(struct sockaddr));
@@ -117,7 +123,7 @@ int inet_to_sockaddr(inet_prefix *ip, u_short port, struct sockaddr *dst, sockle
 	if(!dstlen)
 		return 0;
 
-	*dstlen=ip->len;
+	*dstlen=ip->len;	
 
 	return 0;
 }
@@ -184,19 +190,56 @@ int join_ipv6_multicast(int socket, int idx)
 	memcpy(&mreq6.ipv6mr_multiaddr,	&addr, sizeof(struct in6_addr));
 	mreq6.ipv6mr_interface=idx;
 	
-	if(setsockopt(socket, IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, &mreq6, sizeof(mreq6)) < 0) {
+	if(setsockopt(socket, IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, &mreq6, 
+				sizeof(mreq6)) < 0) {
 		error("Cannot set IPV6_ADD_MEMBERSHIP: %s", strerror(errno));
 	        close(socket);
 		return -1;
 	}
 
-	if(setsockopt(socket, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &loop_back, sizeof(loop_back)) < 0) {
+	if(setsockopt(socket, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &loop_back, 
+				sizeof(loop_back)) < 0) {
 		error("Cannot set IPV6_MULTICAST_LOOP: %s", strerror(errno));
 	        close(socket);
 		return -1;
 	}
 	
 	return socket;
+}
+
+int set_nonblock_sk(int fd)
+{
+	if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0) {
+		error("set_nonblock_sk(): cannot set O_NONBLOCK: %s", 
+				strerror(errno));
+		close(fd);
+		return -1;
+	}
+	return 0;
+}
+
+int unset_nonblock_sk(int fd)
+{
+	if (fcntl(fd, F_SETFL, 0) < 0) {
+		error("unset_nonblock_sk(): cannot unset O_NONBLOCK: %s", 
+				strerror(errno));
+		close(newsock);
+		return -1;
+	}
+	return 0;
+}
+
+int set_reuseaddr_sk(int socket)
+{
+	int reuseaddr=1, ret;
+	/*
+	 * SO_REUSEADDR: <<Go ahead and reuse that port even if it is in
+	 * TIME_WAIT state.
+	 */
+	ret=setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(int));
+	if(ret < 0)
+		error("setsockopt SO_REUSEADDR: %s", strerror(errno));
+	return ret;
 }
 
 int set_broadcast_sk(int socket, int family, int dev_idx)
@@ -228,11 +271,11 @@ int unset_broadcast_sk(int socket, int family)
 	}
 }
 
-int new_broadcast_sk(int sock_type, int dev_idx)
+int new_broadcast_sk(int family, int dev_idx)
 {
 	int sock;
-	sock=new_dgram_socket(sock_type);
-	return set_broadcast_sk(sock, sock_type, dev_idx);
+	sock=new_dgram_socket(family);
+	return set_broadcast_sk(sock, family, dev_idx);
 }
 	
 int new_tcp_conn(inet_prefix *host, short port)

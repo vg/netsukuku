@@ -21,8 +21,9 @@
 /***Tracer packet. It is encapsulated in a broadcast pkt*/
 typedef struct
 {
-	u_int hops;
-	u_int bblocks;		/*How many bnode blocks are incapsulated in the pkt (if any)*/
+	u_int 	hops;
+	u_short bblocks;	/*How many bnode blocks are incapsulated in 
+				  the pkt (if any)*/
 }tracer_hdr;
 
 typedef struct

@@ -21,7 +21,7 @@
 #undef  QSPN_EMPIRIC
 
 #ifndef QSPN_EMPIRIC
-	#define MAXGROUPNODE		641
+	#define MAXGROUPNODE		512
 	#define MAXROUTES	 	20
 #else
 	#define MAXGROUPNODE		20

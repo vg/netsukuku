@@ -98,7 +98,6 @@ char *if_init(char *dev, int *dev_idx)
 {
 	struct rtnl_handle rth;
 	int idx;
-	char *ret=dev;
 
 	ll_init_map(&rth);
 
@@ -111,9 +110,9 @@ char *if_init(char *dev, int *dev_idx)
 		dev=get_dev(dev_idx);
 	
 	if(set_dev_up(dev))
-		ret=NULL;	
+		return NULL;	
 	
-	return ret;
+	return dev;
 }	
 
 int set_dev_ip(inet_prefix ip, char *dev)

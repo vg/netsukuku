@@ -21,6 +21,8 @@
 #include <gmp.h>
 
 #include "gmap.h"
+#include "bmap.h"
+#include "misc.h"
 #include "xmalloc.h"
 #include "log.h"
 
@@ -95,10 +97,10 @@ u_short iptogid(inet_prefix ip, u_char level)
 }
 
 /* 
- * gidtoipstart: It sets in `*ip' the ipstart of the gnode using the `gid' for 
- * each level.
+ * gidtoipstart: It sets in `*ip' the ipstart of the gnode using the `gidi[x]' for
+ * each level x.
  * `total_levels' is the total number of levels and the `gid' array 
- * has `total_levels' element. 
+ * has `total_levels' elements.
  * `levels' is the number of array elements considered, gidtoipstart() will use
  * only the elements going from gid[total_levels] to gid[total_levels-levels].
  * `family' is used to fill the inet_prefix of ipstart.
@@ -129,6 +131,7 @@ void gidtoipstart(u_short *gid, u_char total_levels, u_char levels, int family, 
 	memcpy(ip->data, h_ip, sizeof(int)*4);
 	ip->family=family;
 	ip->len=family == AF_INET ? 4 : 16;
+	ip->bits=ip->len*8;
 }
 
 /* 
@@ -167,6 +170,59 @@ void quadg_destroy(quadro_group *qg)
 {
 	quadg_free(qg);
 	xfree(qg);
+}
+
+/* 
+ * get_gw_gnode: It returns the pointer to the gateway node present in the map
+ * of level `gw_level'. This gateway node is the node to be used as gateway to
+ * reach, from the `gw_level' level,  the `find_gnode' gnode at the `level' level.
+ * If the gw_node isn't found, NULL is returned.
+ */
+void *get_gw_gnode(map_node *int_map, map_gnode **ext_map, map_bnode **bnode_map, u_int *bmap_nodes, 
+		map_gnode *find_gnode, u_char level, u_char gw_level)
+{
+	map_gnode *gnode;
+	map_gnode *gnode_gw;
+	map_node  *node_gw, *node;
+	void	  *void_gw;
+	int i, pos, bpos;
+
+	if(!level || gw_level > level)
+		return 0;
+
+	gnode=find_gnode;
+	node=&gnode->g;
+	for(i=level; i!=gw_level; i--) {
+		if(!node->links)
+			return 0;
+
+		pos=rand_range(0, node->links-1);
+		if(!level)
+			void_gw=node_gw=node->r_node[pos].r_node;
+		else
+			void_gw=gnode_gw=gnode->g.r_node[pos].r_node;
+
+		if(i == gw_level)
+			return void_gw;
+		else if(!i)
+			return 0;
+
+		bpos=map_find_bnode_rnode(bnode_map[i-1], bmap_nodes[i-1], void_gw);
+		if(bpos == -1)
+			return 0;
+		
+		if(!(i-1))
+			node=node_from_pos(bnode_map[i-1][bpos].bnode_ptr, int_map);
+		else {
+			gnode=gnode_from_pos(bnode_map[i-1][bpos].bnode_ptr, 
+					ext_map[_EL(i-1)]);
+			node=&gnode->g;
+		}
+
+		gnode=find_gnode;
+		node=&gnode->g;
+	}
+	return 0;
 }
 
 /*
@@ -235,9 +291,36 @@ void random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 
 	/* 
 	 * Ok, we've set the gids of each level so we recompose them in the
-	 * new_ip
+	 * new_ip.
 	 */
 	gidtoipstart(gid, final_level, final_level, my_family, &new_ip);
+}
+
+/*
+ * gnodetoip: It converts the `gnode' address pointing to the gnode of `level'
+ * level present in the `ext_map' to its corresponding ipstart.
+ * The ip is stored in `ip', and the ip->bits are choosen carefully in the 
+ * CIDR blocks format, in this way the `ip' includes also the ranges of the 
+ * gnode's level: ip <= x <= ip+MAXGROUPNODE^(level+1).
+ */
+void gnodetoip(map_gnode **ext_map, quadro_group *quadg, map_gnode *gnode, u_char level, inet_prefix *ip)
+{
+	int i, int ext_levels, *gid;
+	
+	ext_levels=quadg->levels;	
+	if(level > ext_levels)
+		return;
+	
+	gid=xmalloc(sizeof(int)*ext_levels);
+	memset(gid, 0, sizeof(int)*ext_levels);
+	
+	gid[level]=pos_from_gnode(gnode, ext_map[_EL(level)]);
+	for(i=level+1; i<ext_levels; i++) 
+		gid[i]=quadg->gid[i];
+	
+	gidtoipstart(gid, ext_levels, ext_levels-level, quadg.ipstart[0].family, ip);
+	ip->bits-=(level*9);
+	xfree(gid);
 }
 
 /* e_rnode_find: It searches in the `erc' list a quadro_group struct equal to `qg'.

@@ -26,22 +26,26 @@
 #define NETSUKUKU_ID		"ntk"
 #define MAXMSGSZ		32768
 
-/* Pkt's op definitions:
+/* 
+ * Pkt's op definitions:
  * The request and replies are in request.h
  */
 
-/*Pkt's sk_type*/
+/* Pkt's sk_type */
 #define SKT_TCP 	1
 #define SKT_UDP		2
 #define SKT_BCAST	3
 
-/*Pkt's flags*/
+/* Pkt's flags */
 #define SEND_ACK		1
-#define BCAST_PKT		(1<<1)	/*In this pkt there is encapsulated a broadcast pkt. Woa*/
+#define BCAST_PKT		(1<<1)	/*In this pkt there is encapsulated a 
+					  broadcast pkt. Woa*/
 
-/*Broacast ptk's flags*/
-#define BCAST_TRACER_PKT	1	/*When a bcast is marked with this, it acts as a tracer_pkt ;)*/
-#define QSPN_NO_OPEN		(1<<1)	/*The qspn_close pkts with this flag set will not propagate the qspn_open*/
+/* Broacast ptk's flags */
+#define BCAST_TRACER_PKT	1	/*When a bcast is marked with this, it 
+					  acts as a tracer_pkt ;)*/
+#define QSPN_NO_OPEN		(1<<1)	/*The qspn_close pkts with this flag set
+					  will not propagate the qspn_open*/
 
 typedef struct
 {
@@ -54,26 +58,29 @@ typedef struct
 
 typedef struct
 {
-	inet_prefix from;
-	inet_prefix to;
-	int sk;
-	int sk_type;
-	u_short port;
-	int flags;
-	pkt_hdr hdr;
-	char *msg;
+	inet_prefix 	from;		
+	inet_prefix 	to;
+	int 		sk;
+	char 		sk_type;
+	u_short 	port;
+	int 		flags;
+	
+	pkt_hdr 	hdr;
+	char 		*msg;
 }PACKET;
 	
 /*Broadcast packet*/
 typedef struct
 {
-	int g_node;		/*The gnode the brdcast_pkt is restricted to*/
-	u_char level;		/*The level of the gnode*/
-	inet_prefix g_ipstart;	/*The ipstart of the g_node in level*/
-	u_short gttl;		/*Gnode ttl: How many gnodes the packet can traverse*/
-	int sub_id;		/*The sub_id is the node who sent the pkt, but is only used by the qspn_open*/
-	size_t sz;		/*Sizeof(the pkt)*/
-	char flags;		/*Various flags*/
+	short 		g_node;		/*The gnode the brdcast_pkt is restricted to*/
+	u_char 		level;		/*The level of the gnode*/
+	inet_prefix 	g_ipstart;	/*The ipstart of the g_node in level*/
+	u_short 	gttl;		/*Gnode ttl: How many gnodes the packet
+					  can traverse*/
+	short 		sub_id;		/*The sub_id is the node who sent the pkt,
+					  but is only used by the qspn_open*/
+	size_t 		sz;		/*Sizeof(the pkt)*/
+	char 		flags;		/*Various flags*/
 }brdcast_hdr;
 #define BRDCAST_SZ(pkt_sz) (sizeof(brdcast_hdr)+(pkt_sz))
 
@@ -109,4 +116,4 @@ int pkt_tcp_connect(inet_prefix *host, short port);
 void pkt_fill_hdr(pkt_hdr *hdr, int id, u_char op, size_t sz);
 int send_rq(PACKET *pkt, int flags, u_char rq, u_int rq_id, u_char re, int check_ack, PACKET *rpkt);
 int pkt_err(PACKET pkt, int err);
-int pkt_exec(PACKET pkt);
+int pkt_exec(PACKET pkt, int acpt_idx);

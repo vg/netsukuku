@@ -21,7 +21,7 @@
  * If the accept_tbl is full the connection is dropped.
  * Each accept in the table last for free_accept_time after the close of that
  * connection, so if an host has fulled the accept_tbl has to wait 
- * free_accept_time of seconds to be able reconnect again.
+ * free_accept_time of seconds to be able to reconnect again.
  */
 
 #include <sys/types.h>
@@ -43,6 +43,8 @@ void init_accept_tbl(int startups, int accepts, int time)
 	max_accepts_per_host=accepts;
 	free_accept_time=time;
 	accept_idx=accept_sidx=0;
+	pthread_mutex_init(&mtx_acpt_idx, NULL);
+	pthread_mutex_init(&mtx_acpt_sidx, NULL);
 	
 	accept_tbl=(struct accept_table *)xmalloc(sizeof(struct accept_table)*max_connections);
 	memset(accept_tbl, '\0', sizeof(struct accept_table)*max_connections);
@@ -76,8 +78,8 @@ void destroy_accept_tbl(void)
 
 void update_accept_tbl(void)
 {
-	int i,e,k;
-	time_t cur_t;
+	time_t cur_t, passed_time;
+	int i,e,k,ee, pid_exists;
 	
 	if(update_accept_tbl_mutex)
 		return;
@@ -92,24 +94,34 @@ void update_accept_tbl(void)
 		if(accept_tbl[i].accepts) {
 			for(e=0; e<max_accepts_per_host; e++) {
 				if(!accept_tbl[i].acp_t[e])
-					break;
-				k=kill(accept_tbl[i].pid[e], 0);
-				debug(DBG_SOFT, "ACPT: Updating tbl: cur_t: %d, accept_tbl[%d].acp_t[%d]:%d+%d, accept_tbl[i].pid[e]: %d, kill=%d (ESRCH=%d)",
-						cur_t, i,e, accept_tbl[i].acp_t[e], free_accept_time, accept_tbl[i].pid[e], k, ESRCH);
-				if((accept_tbl[i].closed[e] || (k==-1 && errno==ESRCH)) && 
-						accept_tbl[i].acp_t[e]+free_accept_time <= cur_t) {
-					debug(DBG_SOFT,"ACPT: removing from tbl");
-					accept_tbl[i].accepts--;
-					accept_tbl[i].acp_t[e]=0;
-					accept_tbl[i].closed[e]=0;
-					accept_tbl[i].pid[e]=0;
-					if(!accept_tbl[i].accepts)
-						memset(&accept_tbl[i].ip, '\0', sizeof(inet_prefix));
+					continue;
+				
+				if(accept_tbl[i].pid[e]) {
+					k=kill(accept_tbl[i].pid[e], 0);
+					if(k==-1 && errno==ESRCH)
+						pid_exists=0;
+					else
+						pid_exists=1;
+				} else
+					pid_exists=0;
+
+				debug(DBG_NOISE, "ACPT: Updating tbl: cur_t: %d, "
+						"accept_tbl[%d].acp_t[%d]:%d+%d, "
+						"accept_tbl[i].pid[e]: %d, "
+						"kill=%d (ESRCH=%d)",
+						cur_t, i,e, accept_tbl[i].acp_t[e], 
+						free_accept_time, accept_tbl[i].pid[e], 
+						k, ESRCH);
+
+				passed_time=accept_tbl[i].acp_t[e]+free_accept_time;
+				if((accept_tbl[i].closed[e] || !pid_exists) && 
+						passed_time <= cur_t) {
+					ee=e;
+					del_accept(i, &ee);
 				}
 			}
 		}
 	}
-
 	update_accept_tbl_mutex=0;
 }
 
@@ -166,13 +178,10 @@ int find_free_acp_t(int idx)
 	return -1;	/*This happens if the rq_tbl is full for the "rq" request*/
 }
 
-int add_accept(inet_prefix ip)
+int new_accept(int idx, inet_prefix ip)
 {
-	int err, idx, cl;
+	int idx, cl;
 	time_t cur_t;
-	
-	if((err=is_ip_acpt_free(ip, &idx)))
-		return err;
 	
 	time(&cur_t);
 	
@@ -183,42 +192,67 @@ int add_accept(inet_prefix ip)
 	accept_tbl[idx].closed[cl]=0;
 	memcpy(&accept_tbl[idx].ip, &ip, sizeof(inet_prefix));
 
+	return cl;
+}
+
+/* 
+ * add_accept: It adds a new accept of `ip'. If `replace' is not 0 the `ip's
+ * accepts are not incremented and accept_sidx is set to 0.
+ */
+int add_accept(inet_prefix ip, int replace)
+{
+	int err, idx, cl;
+
+	if((err=is_ip_acpt_free(ip, &idx)))
+		return err;
+
+	if(!replace) {
+		cl=new_accept(idx, ip);
+		if(cl < 0)
+			return -1;
+	} else 
+		cl=0;
+
 	/*This global var will be given to the thread*/
+	pthread_mutex_lock(&mtx_acpt_idx);
 	accept_idx=idx;
+	pthread_mutex_unlock(&mtx_acpt_idx);
+
+	pthread_mutex_lock(&mtx_acpt_sidx);
 	accept_sidx=cl;
+	pthread_mutex_unlock(&mtx_acpt_sidx);
 
 	return 0;
 }
 
-void del_accept(int idx)
+void del_accept(int idx, int *sidx)
 {
 	if(!accept_tbl[idx].accepts) 
 		return;
 
-	if(accept_tbl[idx].acp_t[accept_sidx]) {
+	if(accept_tbl[idx].acp_t[*sidx]) {
 		accept_tbl[idx].accepts--;
-		accept_tbl[idx].acp_t[accept_sidx]=0;
-		accept_tbl[idx].closed[accept_sidx]=0;
+		accept_tbl[idx].acp_t[*sidx]=0;
+		accept_tbl[idx].closed[*sidx]=0;
 		if(!accept_tbl[idx].accepts)
 			memset(&accept_tbl[idx].ip, '\0', sizeof(inet_prefix));
-		accept_sidx--;
+		*sidx--;
 	}
 }
 
-int close_accept(void)
+int close_accept(int idx, int sidx)
 {
-	if(!accept_tbl[accept_idx].accepts) 
+	if(!accept_tbl[idx].accepts) 
 		return -1;
 	
-	accept_tbl[accept_idx].closed[accept_sidx]=0;
-
-	update_accept_tbl();
+	accept_tbl[idx].closed[sidx]=1;
 
 	return 0;
 }
 
-void add_accept_pid(pid_t pid)
+void add_accept_pid(pid_t pid, int idx, int sidx)
 {
-	accept_tbl[accept_idx].pid[accept_sidx]=pid;
-	debug("ACPT: Added pig %d in accept_tbl[%d].pid[%d]", accept_tbl[accept_idx].pid[accept_sidx], accept_idx, accept_sidx);
+	accept_tbl[idx].pid[sidx]=pid;
+	debug("ACPT: Added pig %d in accept_tbl[%d].pid[%d]", 
+			accept_tbl[idx].pid[sidx], idx, sidx);
 }

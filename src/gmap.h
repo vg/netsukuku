@@ -56,7 +56,7 @@ typedef struct
  * These arrays/structs are: quadg.gnode, rblock, ext_map.*/
 #define EXTRA_LEVELS	2		/*One is the Zero Level, and the other one is the Final Level*/
 #define IPV4_LEVELS	(3+EXTRA_LEVELS)
-#define IPV6_LEVELS	(13+EXTRA_LEVELS)
+#define IPV6_LEVELS	(14+EXTRA_LEVELS)
 #define MAX_LEVELS	IPV6_LEVELS
 #define GET_LEVELS(family)	({ (family) == AF_INET ? IPV4_LEVELS : IPV6_LEVELS; })
 
@@ -135,9 +135,14 @@ void gidtoipstart(u_short *gid, u_char total_levels, u_char levels, int family,
 void iptoquadg(inet_prefix ip, map_gnode **ext_map, quadro_group *qg, char flags)
 void quadg_free(quadro_group *qg);
 void quadg_destroy(quadro_group *qg);
+
+void *get_gw_gnode(map_node *int_map, map_gnode **ext_map, map_bnode **bnode_map, 
+		u_int *bmap_nodes, map_gnode *find_gnode, u_char level, u_char gw_level);
 void random_ip(inet_prefix *ipstart, int final_level, int final_gid, 
 		int total_levels, map_gnode **ext_map, int only_free_gnode, 
 		inet_prefix *new_ip);
+void gnodetoip(map_gnode **ext_map, quadro_group *quadg, map_gnode *gnode, u_char level, 
+		inet_prefix *ip);
 int quadg_diff_gids(quadro_group qg_a, quadro_group qg_b);
 int e_rnode_find(ext_rnode_cache *erc, quadro_group *qg);
 

@@ -73,13 +73,13 @@ int rule_exec(int rtm_cmd, inet_prefix from, inet_prefix to, char *dev, int prio
 	}
 
 	if (from) {
-		req.rt.rtm_src_len = from.len*8;
+		req.rt.rtm_src_len = from.bits;
 		addattr_l(&req.nh, sizeof(req), RTA_SRC, &from.data, from.len);
 		req.rt.rtm_family=from.family;
 	}
 
 	if (to) {
-		req.rt.rtm_dst_len = to.len*8;
+		req.rt.rtm_dst_len = to.bits;
 		addattr_l(&req.nh, sizeof(req), RTA_DST, &to.data, to.len);
 		req.rt.rtm_family=to.family;
 	} 

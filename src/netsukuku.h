@@ -22,11 +22,7 @@
 #include "gmap.h"
 #include "route.h"
 
-#define DEFAULT_NTK_UDP_PORT    269
-#define DEFAULT_NTK_TCP_PORT    269
-#define DEFAULT_NTK_PORT_RANGE  10
-int ntk_udp_port;
-int ntk_tcp_port;
+#define VERSION			"NetsukukuD 0.0.1b"
 
 struct current
 {
@@ -55,19 +51,30 @@ struct current
 	int		 cur_dev_idx;
 }me;
 
-int my_family;
+#define DEFAULT_NTK_UDP_PORT    269
+#define DEFAULT_NTK_TCP_PORT    269
+int my_family, ntk_udp_port, ntk_tcp_port;
 int ll_map_initialized=0;
+
+
+#define INT_MAP_FILE	"ntk_internal_map"
+#define EXT_MAP_FILE	"ntk_external_map"
+#define BNODE_MAP_FILE	"ntk_bnode_map"
 
 typedef struct
 {
 	char 		dev[IFNAMSIZ];
 	int 		family;
+
 	char 		int_map_file[NAME_MAX];
 	char 		bnode_map_file[NAME_MAX];
 	char 		ext_map_file[NAME_MAX];
+
+	char 		daemon;
+	char 		dbg_lvl;
+
+	int 		max_connections;
+	int 		max_accepts_per_host;
+	int 		max_accepts_per_host_time;
 }NtkOpt;
 NtkOpt server_opt;
-
-extern char *__argv0;
-extern int dbg_lvl;
-extern int log_to_stderr;

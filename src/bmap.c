@@ -78,14 +78,14 @@ map_bnode *map_bnode_del(map_bnode *bmap, u_int *bmap_nodes,  map_bnode *bnode)
 }
 
 /* map_find_bnode: Find the given `node' in the given map_bnode `bmap'.*/
-int map_find_bnode(map_bnode *bmap, int count, void *void_map, void *node, u_char level)
+int map_find_bnode(map_bnode *bmap, int bmap_nodes, void *void_map, void *node, u_char level)
 {
 	map_gnode **ext_map(map_gnode *)void_map;
 	map_node  *int_map=(map_node *)void_map;
 	int e;
 	void *pos;
 
-	for(e=0; e<count; e++) {
+	for(e=0; e<bmap_nodes; e++) {
 		if(!level)
 			pos=(void *)node_from_pos(bmap[e].bnode_ptr, int_map);
 		else
@@ -94,6 +94,22 @@ int map_find_bnode(map_bnode *bmap, int count, void *void_map, void *node, u_cha
 			return e;
 	}
 	return -1;
+}
+
+/* 
+ * map_find_bnode_rnode: Find the the bnode in the `bmap' which has an rnode
+ * which points to `n'. If itis found the pos of the bnode in the `bmap' is
+ * returned, otherwise -1 is the return value. 
+ */
+int map_find_bnode_rnode(map_bnode *bmap, int bmap_nodes, void *n)
+{
+	int e;
+
+	for(e=0; e<bmap_nodes; e++)
+		if(rnode_find(bmap[e], n) != -1)
+			return e;
+	return -1;
+
 }
 
 /* 

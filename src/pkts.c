@@ -21,6 +21,9 @@
 #include "xmalloc.h"
 #include "log.h"
 
+extern struct current me;
+extern int my_family, ntk_udp_port, ntk_tcp_port;
+
 /*Handy functions to build the PACKET*/
 void pkt_addfrom(PACKET *pkt, inet_prefix *from)
 {
@@ -67,7 +70,7 @@ void pkt_free(PACKET *pkt, int close_socket)
 	}
 	
 	if(pkt->msg) {
-		memset(pkt, '\0', sizeof(PACKET));
+		memset(pkt->msg, '\0', sizeof(PACKET));
 		xfree(pkt->msg);
 		pkt->msg=0;
 	}
@@ -96,7 +99,8 @@ PACKET *pkt_unpack(char *pkt)
 	memcpy(pk->hdr, pkt, sizeof(pkt_hdr));
 	/*and verify it...*/
 	if(pkt_verify_hdr(*pk)) {
-		error("Error while unpacking the PACKET. Malformed header");
+		debug(DBG_NOISE, "Error while unpacking the PACKET. "
+				"Malformed header");
 		return 0;
 	}
 	
@@ -125,7 +129,8 @@ ssize_t pkt_send(PACKET *pkt)
 		socklen_t tolen;
 
 		if(inet_to_sockaddr(&pkt->to, pkt->port, &to, &tolen)) {
-			error("Cannot pkt_send(): %d Family not supported", pkt->to.family);
+			debug(DBG_NOISE, "Cannot pkt_send(): %d "
+					"Family not supported", pkt->to.family);
 			return -1;
 		}
 		return inet_sendto(pkt->sk, buf, PACKET_SZ(pkt->hdr.sz), pkt->flags, &to, tolen);
@@ -150,39 +155,21 @@ ssize_t pkt_recv(PACKET *pkt)
 		/*we get the hdr...*/
 		err=inet_recvfrom(pkt->sk, pkt->hdr, sizeof(pkt_hdr), pkt->flags, &from, &fromlen);
 		if(err != sizeof(pkt_hdr)) {
-			error("inet_recvfrom() of the hdr aborted!");
+			debug(DBG_NOISE, "inet_recvfrom() of the hdr aborted!");
 			return -1;
 		}
 		/*...and verify it*/
 		if(pkt_verify_hdr(*pkt)) {
-			error("Error while unpacking the PACKET. Malformed header");
+			debug(DBG_NOISE, "Error while unpacking the PACKET. Malformed header");
 			return -1;
 		}
 
-		/*let's get the body*/
-		buf=xmalloc(pkt->hdr.sz);
-		err=inet_recvfrom(pkt->sk, buf, pkt->hdr.sz, pkt->flags, &from, &fromlen);
-		if(err != pkt->hdr.sz) {
-			error("Cannot inet_recvfrom() the pkt's body");
-			return -1;
-		}
-		
-		/*Now we store in the PACKET what we got*/
-		pkt->msg=buf;
-		if(sockaddr_to_inet(&from, pkt->from, pkt->port)) {
-			error("Cannot pkt_recv(): %d Family not supported", from.family);
-			return -1;
-		}
-	} else if(pkt->sk_type==SKT_TCP) {
-		/*we get the hdr...*/
-		err=inet_recv(pkt->sk, pkt->hdr, sizeof(pkt_hdr), pkt->flags);
-		if(err != sizeof(pkt_hdr)) {
-			error("inet_recv() of the hdr aborted!");
-			return -1;
-		}
-		/*...and verify it*/
-		if(pkt_verify_hdr(*pkt)) {
-			error("Error while unpacking the PACKET. Malformed header");
+		/* 
+		 * We use connect() to associate the socket to `from', in this 
+		 * way we are sure that the next pkt is sent by `from'.
+		 */
+		if(connect(pkt->sk, &from, fromlen) == -1) {
+			error("udp connect(): %s", strerror(errno));
 			return -1;
 		}
 
@@ -190,14 +177,53 @@ ssize_t pkt_recv(PACKET *pkt)
 		buf=xmalloc(pkt->hdr.sz);
 		err=inet_recv(pkt->sk, buf, pkt->hdr.sz, pkt->flags);
 		if(err != pkt->hdr.sz) {
-			error("Cannot inet_recv() the pkt's body");
+			debug(DBG_NOISE, "Cannot inet_recv() the pkt's body");
 			return -1;
 		}
 		
 		/*Now we store in the PACKET what we got*/
 		pkt->msg=buf;
 		if(sockaddr_to_inet(&from, pkt->from, pkt->port)) {
-			error("Cannot pkt_recv(): %d Family not supported", from.family);
+			debug(DBG_NOISE, "Cannot pkt_recv(): %d Family not supported", from.family);
+			return -1;
+		}
+
+		/* 
+		 * <<Connectionless sockets may dissolve the association by 
+		 * connecting to an address with the sa_family member of 
+		 * sockaddr set to AF_UNSPEC.>>
+		 */
+		from.sa_family=AF_UNSPEC;
+		if(connect(pkt->sk, &from, fromlen) == -1) {
+			error("udp disconnect(): %s", strerror(errno));
+			return -1;
+		}
+
+	} else if(pkt->sk_type==SKT_TCP) {
+		/*we get the hdr...*/
+		err=inet_recv(pkt->sk, pkt->hdr, sizeof(pkt_hdr), pkt->flags);
+		if(err != sizeof(pkt_hdr)) {
+			debug(DBG_NOISE, "inet_recv() of the hdr aborted!");
+			return -1;
+		}
+		/*...and verify it*/
+		if(pkt_verify_hdr(*pkt)) {
+			debug(DBG_NOISE, "Error while unpacking the PACKET. Malformed header");
+			return -1;
+		}
+
+		/*let's get the body*/
+		buf=xmalloc(pkt->hdr.sz);
+		err=inet_recv(pkt->sk, buf, pkt->hdr.sz, pkt->flags);
+		if(err != pkt->hdr.sz) {
+			debug(DBG_NOISE, "Cannot inet_recv() the pkt's body");
+			return -1;
+		}
+		
+		/*Now we store in the PACKET what we got*/
+		pkt->msg=buf;
+		if(sockaddr_to_inet(&from, pkt->from, pkt->port)) {
+			debug(DBG_NOISE, "Cannot pkt_recv(): %d Family not supported", from.family);
 			return -1;
 		}
 	} else
@@ -216,15 +242,16 @@ int pkt_tcp_connect(inet_prefix *host, short port)
 	if((sk=new_tcp_conn(host, port))==-1)
 		goto finish;
 	
-	/*Now we receive the first pkt from the srv. It is an ack. 
+	/*
+	 * Now we receive the first pkt from the srv. It is an ack. 
 	 * Let's hope it isn't NEGATIVE (-_+)
 	 */
 	memset(&pkt, '\0', sizeof(PACKET));
 	pkt_addsk(&pkt, sk, SKT_TCP);
-	pkt_addflags(&pkt, 0);
+	pkt_addflags(&pkt, MSG_WAITALL);
 	pkt_recv(&pkt);
 
-	/*Last famous words*/
+	/* Last famous words */
 	if(pkt.hdr.op==ACK_NEGATIVE) {
 		int err;
 		
@@ -323,8 +350,10 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 			goto finish;
 		}
 	}
-	if(rpkt)
+	if(rpkt) {
 		pkt_addsk(rpkt, pkt->sk, pkt->sk_type);
+		pkt_addflags(rpkt, MSG_WAITALL);
+	}
 	
 	/*Let's send the request*/
 	err=pkt_send(pkt);
@@ -371,7 +400,9 @@ finish:
 	return ret;
 }
 
-/* pkt_err: Sends back to "pkt.from" an error pkt, with ACK_NEGATIVE, containing the "err" code.
+/* 
+ * pkt_err: Sends back to "pkt.from" an error pkt, with ACK_NEGATIVE, 
+ * containing the "err" code.
  */
 int pkt_err(PACKET pkt, int err)
 {
@@ -381,21 +412,21 @@ int pkt_err(PACKET pkt, int err)
 	memcpy(&pkt.to, &pkt.from, sizeof(inet_prefix));
 	pkt_fill_hdr(&pkt.hdr, pkt.hdr.id, ACK_NEGATIVE, sizeof(int));
 	
-	msg=xmalloc(sizeof(int));
+	pkt.msg=msg=xmalloc(sizeof(int));
 	memcpy(msg, err, sizeof(int));
-	
+		
 	err=pkt_send(&pkt);
 	pkt_free(&pkt, 0);
 	return err;
 }
 
 	
-int pkt_exec(PACKET pkt)
+int pkt_exec(PACKET pkt, int acpt_idx)
 {
 	char *ntop;
 	int err=0;
 
-	if((err=add_rq(pkt.hdr.type, &accept_tbl[accept_idx].rq_tbl))) {
+	if((err=add_rq(pkt.hdr.type, &accept_tbl[acpt_idx].rq_tbl))) {
 		ntop=inet_to_str(&pkt.from);
 		error("From %s: Cannot process the %s request: %s", ntop, rq_to_str(pkt.hdr.op), rq_strerror(err));
 		xfree(ntop);
@@ -431,9 +462,7 @@ int pkt_exec(PACKET pkt)
 			err=qspn_open(pkt);
 
 		default:
-			/* never reached... 
-			 * (some months later)... Why the hell 
-			 * did I write this? hahaha*/
+			/* never reached */
 			break;
 	}
 	

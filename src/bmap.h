@@ -25,34 +25,44 @@
  * It is indentical to the map_node but, as always there are some little 
  * differences:
  *
- *	__u16 		links;		is the number of gnodes the bnode is linked to.
- *	map_rnode	*r_node;	r_node[x].r_node, in this case, points to the position of the bnode's gnode in 
+ *	__u16 		links;		is the number of gnodes the bnode is 
+ *					linked to.
+ *	map_rnode	*r_node;	r_node[x].r_node, in this case, points 
+ *					to the position of the bnode's gnode in
  *					the ext_map.
- *	u_int           brdcast;	Where this node is in the int/ext_map. The position is stored in the usual
+ *	u_int           brdcast;	Where this node is in the int/ext_map.
+ *					The position is stored in the usual
  *					pos_from_node() format. (Yep, a dirty hack)
  *
- * So you are asking why didn't I made a new struct for the bmap. Well, I don't want to [re]write all the functions 
- * to handle the map, for example rnode_add,rnode_del, save_map, etc... it's a pain, just for a little map and moreover
- * it adds new potential bugs. In conclusion: laziness + fear == hacks++;
+ * So you are asking why didn't I made a new struct for the bmap. Well, I don't 
+ * want to [re]write all the functions to handle the map, for example 
+ * rnode_add,rnode_del, save_map, etc... it's a pain, just for a little map and 
+ * moreover it adds new potential bugs. In conclusion: laziness + fear == hacks++;
  */
 typedef map_node map_bnode;
-#define MAXGROUPBNODE		MAXGROUPNODE	/*the maximum number of bnodes in a gnode is equal to the maximum 
+#define MAXGROUPBNODE		MAXGROUPNODE	/*the maximum number of bnodes in 
+						  a gnode is equal to the maximum 
 						  number of nodes*/
-#define MAXBNODE_LINKS		0x100		/*The maximum number of gnodes a bnode is linked to*/
+#define MAXBNODE_LINKS		0x100		/*The maximum number of gnodes a
+						  bnode is linked to*/
 #define MAXBNODE_RNODEBLOCK	MAXBNODE_LINKS*MAXGROUPBNODE*sizeof(map_rnode)
 
-/*These defines make the life easier, so instead of writing int_map_hdr I write bnode_map_hdr.
- * Cool eh? ^_^. int_map_hdr is in map.h*/
+/* 
+ * These defines make the life easier, so instead of writing int_map_hdr I
+ * write bnode_map_hdr. Cool eh? ^_^.
+ */
 #define bnode_ptr		brdcast		/*Don't kill me*/
 #define bnode_map_hdr 		int_map_hdr
 #define bnode_map_sz   		int_map_sz
 
 
-/* boarder node block: this is the block which keeps the gnodes linked to the `bnode' boarder_node. 
- * When a bnode has to add his entry in the tracer_pkt it encapsulates the bnode_block at the end
- * of the packet, in this way it is possible to know all the gnodes linked to the bnode's gnode.
- * Note: It is possible that the packet passes trough many bnodes, in this case the bnode block
- * is always put at the end, ex: 
+/* 
+ * boarder node block: this is the block which keeps the gnodes linked to the 
+ * `bnode' boarder_node. When a bnode has to add his entry in the tracer_pkt it 
+ * encapsulates the bnode_block at the end of the packet, in this way it is 
+ * possible to know all the gnodes linked to the bnode's gnode.
+ * Note: It is possible that the packet passes trough many bnodes, in this case 
+ * the bnode block is always put at the end, ex: 
  * |pkt_hdr|brdcast_hdr|tracer_hdr|tracer_chunks|bnode_hdr|bnode_chunks|bnode_hdr|bnode_chunks|...
  * and so on.
  */
@@ -70,7 +80,8 @@ typedef struct
 #define BNODEBLOCK_SZ(links) (sizeof(bnode_hdr)+sizeof(bnode_chunk)*(links))
 
 
-/* This is the header placed on top of all the bnode_map blocks.
+/* 
+ * This is the header placed on top of all the bnode_map blocks.
  * So the bnode maps final block is:
  * 	bmaps_hdr
  * 	---------
@@ -94,7 +105,8 @@ void bmap_level_free(map_bnode **bmap, u_int *bmap_nodes);
 
 int map_add_bnode(map_bnode *bmap, u_int *bmap_nodes, u_int bnode, u_int links);
 map_bnode *map_bnode_del(map_bnode *bmap, u_int *bmap_nodes,  map_bnode *bnode);
-int map_find_bnode(map_bnode *bmap, int count, void *void_map, void *node, u_char level);
+int map_find_bnode(map_bnode *bmap, int bmap_nodes, void *void_map, void *node, u_char level);
+int map_find_bnode_rnode(map_bnode *bmap, int bmap_nodes, void *n);
 
 char *pack_all_bmaps(map_bnode **, u_int *, map_gnode **, quadro_group, size_t *);
 map_bnode *unpack_all_bmaps(char *, size_t, u_char, map_gnode **, u_int *, int, int):
