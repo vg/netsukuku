@@ -21,7 +21,6 @@
 #include "map.h"
 
 pthread_mutex_t mutex[MAXGROUPNODE];
-pthread_attr_t t_attr;
 
 map_node *int_map;
 
@@ -61,9 +60,11 @@ struct q_opt
 {
 	struct q_pkt q;
 	int sleep;
+	int join;
 };
 
-void gen_rnd_map(int start_node);
+void thread_joint(int joint, void * (*start_routine)(void *), void *nopt);
+void gen_rnd_map(int start_node, int back_link, int back_link_rtt);
 int store_tracer_pkt(struct q_opt *qopt);
 void *send_qspn_backpro(void *argv);
 void *send_qspn_reply(void *argv);

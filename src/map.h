@@ -50,7 +50,7 @@
 typedef struct
 {
 #ifdef QSPN_EMPIRIC
-	u_char 		flags;
+	u_short 		flags;
 #endif
 
 	u_int	 	*r_node;		 /*It's the pointer to the struct of the r_node in the map*/
