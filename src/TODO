@@ -1,5 +1,5 @@
+!fare get_gnode_rblock!
 continuare in hook.c.
-fare get_gnode_rblock
 Decidere l'order del ntohl_128. ip.data[0] o ip.data[3]?
 Che fare dell'll_init_map??
 connect-wrapper.c: ld.so.preload!
