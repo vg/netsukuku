@@ -16,17 +16,14 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/time.h>
-#include <errno.h>
+#include "includes.h"
 
+#include "inet.h"
 #include "map.h"
-#include "xmalloc.h"
-#include "log.h"
 #include "ipv6-gmp.h"
 #include "misc.h"
+#include "xmalloc.h"
+#include "log.h"
 
 extern int errno;
 
@@ -73,7 +70,7 @@ void postoip(u_int map_pos, inet_prefix ipstart, inet_prefix *ret)
  */
 void maptoip(u_int mapstart, u_int mapoff, inet_prefix ipstart, inet_prefix *ret)
 {
-	int map_pos=pos_from_node(mapoff, mapstart);
+	int map_pos=pos_from_node((map_node *)mapoff, (map_node *)mapstart);
 	postoip(map_pos, ipstart, ret);
 }
 
@@ -203,7 +200,7 @@ int rnode_find(map_node *node, map_node *n)
 {
 	int e;
 	for(e=0; e<node->links; e++)
-		if((int)*node->r_node[e].r_node == (int)*n)
+		if((int)*node->r_node[e].r_node == (int)n)
 			return e;
 	return -1;
 }
@@ -420,7 +417,7 @@ int merge_maps(map_node *base, map_node *new, map_node *base_root, map_node *new
 			 * Now we change the r_nodes pointers of the new map to points to 
 			 * the base map's nodes. 
 			 */
-			nrpos=pos_from_node(new[i].r_node[e].r_node, new);
+			nrpos=pos_from_node((map_node *)new[i].r_node[e].r_node, new);
 			if(nrpos == rpos)
 				/*We skip,cause the new_map it's using the base_root node as gw*/
 				continue;
@@ -538,7 +535,7 @@ int store_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart)
  * using store_rnode_block. `addr_map' is the address used to change 
  * the rnodes' pointers (read store_rnode_block).
  */
-int map_store_rblock(map_node *map, int *addr_map int maxgroupnode, map_rnode *rblock)
+int map_store_rblock(map_node *map, int *addr_map, int maxgroupnode, map_rnode *rblock)
 {
 	int i, c=0;
 	
@@ -581,7 +578,7 @@ char *pack_map(map_node *map, int *addr_map, int maxgroupnode, map_node *root_no
 	imap_hdr.int_map_sz=maxgroupnode*sizeof(map_node);
 
 	/*Package creation*/
-	*pack_sz=INT_MAP_BLOCK_SZ(imap_hdr.int_map_sz, imap_hdr.rblock_sz):
+	*pack_sz=INT_MAP_BLOCK_SZ(imap_hdr.int_map_sz, imap_hdr.rblock_sz);
 	package=xmalloc(*pack_sz);
 	memcpy(package, &imap_hdr, sizeof(struct int_map_hdr));
 	memcpy(package+sizeof(struct int_map_hdr), map, imap_hdr.int_map_sz);
@@ -601,14 +598,13 @@ char *pack_map(map_node *map, int *addr_map, int maxgroupnode, map_node *root_no
  * On success the a pointer to the new int_map is retuned, otherwise 0 will be
  * the fatal value.
  */
-map_node *unpack_map(char *pack, size_t pack_sz, int *addr_map, map_node *new_root, 
+map_node *unpack_map(char *pack, size_t pack_sz, int *addr_map, map_node **new_root, 
 		     int maxgroupnode, int maxrnodeblock)
 {
 	map_node *map;
 	struct int_map_hdr *imap_hdr=(struct int_map_hdr *)pack;
 	map_rnode *rblock;
-	int count, err, nodes;
-	char *p=0;
+	int count, err, nodes, p;
 
 	if(verify_int_map_hdr(imap_hdr, maxgroupnode, maxrnodeblock)) {
 		error("Malformed int/bmap_map_hdr. Aborting unpack_map().");
@@ -622,14 +618,14 @@ map_node *unpack_map(char *pack, size_t pack_sz, int *addr_map, map_node *new_ro
 
 	/*Restoring the rnodes...*/
 	p+=imap_hdr->int_map_sz;
-	if(imap_hdr.rblock_sz) {
-		nodes=imap_hdr.int_map_sz/sizeof(map_node);
+	if(imap_hdr->rblock_sz) {
+		nodes=imap_hdr->int_map_sz/sizeof(map_node);
 		/*Extracting the rnodes block and merging it to the map*/
-		rblock=pack+p;
+		rblock=(map_rnode *)pack+p;
 		if(!addr_map)
 			addr_map=(int *)map;
 		err=map_store_rblock(map, addr_map, nodes, rblock);
-		if(err!=imap_hdr.rblock_sz/sizeof(map_rnode)) {
+		if(err!=imap_hdr->rblock_sz/sizeof(map_rnode)) {
 			error("An error occurred while storing the rnodes block in the int/bnode_map");
 			free_map(map, 0);
 			return 0;
@@ -637,8 +633,8 @@ map_node *unpack_map(char *pack, size_t pack_sz, int *addr_map, map_node *new_ro
 	}
 
 	if(new_root) {
-		*new_root=&map[imap_hdr.root_node];
-		new_root->flags|=MAP_ME;
+		map[imap_hdr->root_node].flags|=MAP_ME;
+		*new_root=&map[imap_hdr->root_node];
 	}
 	
 	return map;
@@ -676,7 +672,7 @@ int save_map(map_node *map, map_node *root_node, char *file)
  * puts in `*new_root' the pointer to the root_node in the loaded map.
  * On error it returns NULL. 
  */
-map_node *load_map(char *file, map_node *new_root)
+map_node *load_map(char *file, map_node **new_root)
 {
 	map_node *map;
 	FILE *fd;
@@ -684,6 +680,7 @@ map_node *load_map(char *file, map_node *new_root)
 	map_rnode *rblock;
 	int count, err;
 	char *pack;
+	size_t pack_sz;
 	
 	if((fd=fopen(file, "r"))==NULL) {
 		error("Cannot load the map from %s: %s", file, strerror(errno));
@@ -696,7 +693,7 @@ map_node *load_map(char *file, map_node *new_root)
 		goto error;
 		
 	rewind(fd);
-	pack_sz=INT_MAP_BLOCK_SZ(imap_hdr.int_map_sz, imap_hdr.rblock_sz):
+	pack_sz=INT_MAP_BLOCK_SZ(imap_hdr.int_map_sz, imap_hdr.rblock_sz);
 	pack=xmalloc(pack_sz);
 	if(fread(pack, pack_sz, 1, fd) < 1)
 		goto error;

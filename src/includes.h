@@ -14,10 +14,40 @@
  * You should have received a copy of the GNU Public License along with
  * this source code; if not, write to:
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- *
- * misc.c: Miscellaneous functions, nothing else.
  */
 
-#define MILLISEC(x)	(((x).tv_sec*1000)+((x).tv_usec/1000))
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
+#include <sys/time.h>
 
-int rand_range(int, int);
+/*socket*/
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <sys/sendfile.h>
+#include <netinet/in.h>
+#include <linux/socket.h>
+#include <netinet/ip.h>
+#include <linux/in_route.h>
+
+#include <time.h>
+#include <asm/types.h>
+#include <sys/types.h>
+
+#include <gmp.h>
+
+#include <netdb.h>
+#include <unistd.h>
+
+#include <net/if.h>
+#include <sys/ioctl.h>
+
+#include <pthread.h>
+
+#include <fcntl.h>
+
+
+#include <getopt.h>
+#include <linux/limits.h>

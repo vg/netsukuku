@@ -16,30 +16,23 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <syslog.h>
-#include <fcntl.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netinet/ip.h>
-#include <arpa/inet.h>
-#include <string.h>
+#include "includes.h"
 
-#include "libnetlink.c"
+#include "libnetlink.h"
 #include "inet.h"
+#include "krnl_route.h"
+#include "krnl_rule.h"
 #include "xmalloc.h"
 #include "log.h"
 
 int rule_add(inet_prefix from, inet_prefix to, char *dev, int prio, u_char table)
 {
-	return rule_exec(RTM_NEWRULE, table);
+	return rule_exec(RTM_NEWRULE, from, to, dev, prio, table);
 }
 
 int rule_del(inet_prefix from, inet_prefix to, char *dev, int prio, u_char table)
 {
-	return rule_exec(RTM_DELRULE, table);
+	return rule_exec(RTM_DELRULE, from, to, dev, prio, table);
 }
 
 int rule_exec(int rtm_cmd, inet_prefix from, inet_prefix to, char *dev, int prio, u_char table)
@@ -55,8 +48,6 @@ int rule_exec(int rtm_cmd, inet_prefix from, inet_prefix to, char *dev, int prio
 
 	if(!table)
 		table=RT_TABLE_MAIN;
-	else if(table>255)
-		fatal("Error in %s: %d: table %u is invalid", ERROR_POS, table);
 	
 	req.nh.nlmsg_type = rtm_cmd;
 	req.nh.nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg));
@@ -67,18 +58,18 @@ int rule_exec(int rtm_cmd, inet_prefix from, inet_prefix to, char *dev, int prio
 	req.rt.rtm_protocol = RTPROT_NETSUKUKU;
 	req.rt.rtm_table = table;
 
-	if (cmd == RTM_NEWRULE) {
+	if (rtm_cmd == RTM_NEWRULE) {
 		req.nh.nlmsg_flags |= NLM_F_CREATE|NLM_F_EXCL;
 		req.rt.rtm_type = RTN_UNICAST;
 	}
 
-	if (from) {
+	if (from.len) {
 		req.rt.rtm_src_len = from.bits;
 		addattr_l(&req.nh, sizeof(req), RTA_SRC, &from.data, from.len);
 		req.rt.rtm_family=from.family;
 	}
 
-	if (to) {
+	if (to.len) {
 		req.rt.rtm_dst_len = to.bits;
 		addattr_l(&req.nh, sizeof(req), RTA_DST, &to.data, to.len);
 		req.rt.rtm_family=to.family;

@@ -15,8 +15,6 @@
  * this source code; if not, write to:
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
-#include <sys/time.h>
-#include <sys/types.h>
 
 #undef  QSPN_EMPIRIC
 
@@ -48,9 +46,8 @@
 #define QSPN_BACKPRO	(1<<12)		/*This marks the r_node where the QSPN_BACKPRO has been sent*/
 #define QSPN_OLD	(1<<13)		/*If a node isn't updated by the current qspn_round it is marked with QSPN_ROUND.
 					  If in the next qspn_round the same node isn't updated it is removed from the map.*/
-#ifdef QSPN_EMPIRIC
-#define QSPN_STARTER	(1<<14)		/*Used only by qspn-empiric.c*/
-#endif
+#define QSPN_STARTER	(1<<14)		/*The root node is marked with this flag if it is a qspn_starter*/
+
 /* 			    *** Map notes ***
  * The map is a block of MAXGROUPNODE map_node struct. It is a generic map and it is
  * used to keep the qspn_map, the internal map and the external map.
@@ -86,7 +83,7 @@ typedef struct
 #else
 	u_int		brdcast;	 /*Pkt_id of the last brdcast_pkt sent by this node*/
 #endif /*QSPN_EMPIRIC*/
-	__u16		links;		 /*Number of r_nodes*/
+	u_short		links;		 /*Number of r_nodes*/
 	map_rnode	*r_node;	 /*This structs will be kept in ascending order considering their rnode_t.rtt*/
 }map_node;
 
@@ -146,10 +143,10 @@ int mod_rnode_addr(map_rnode *node, int *map_start, int *new_start);
 int get_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart);
 map_rnode *map_get_rblock(map_node *map, int *addr_map, int maxgroupnode, int *count);
 int store_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart);
-int map_store_rblock(map_node *map, int *addr_map int maxgroupnode, map_rnode *rblock);
+int map_store_rblock(map_node *map, int *addr_map, int maxgroupnode, map_rnode *rblock);
 
 int verify_int_map_hdr(struct int_map_hdr *imap_hdr, int maxgroupnode, int maxrnodeblock);
 char *pack_map(map_node *map, int *addr_map, int maxgroupnode, map_node *root_node, size_t *pack_sz);
-map_node *unpack_map(char *pack, size_t pack_sz, int *addr_map, map_node *new_root, int maxgroupnode, int maxrnodeblock);
+map_node *unpack_map(char *pack, size_t pack_sz, int *addr_map, map_node **new_root, int maxgroupnode, int maxrnodeblock);
 int save_map(map_node *map, map_node *root_node, char *file);
 map_node *load_map(char *file, map_node **new_root);

@@ -16,12 +16,6 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <sys/types.h>
-#include <sys/time.h>
-#include <linux/limits.h>
-#include "gmap.h"
-#include "route.h"
-
 #define VERSION			"NetsukukuD 0.0.1b"
 
 struct current
@@ -45,16 +39,15 @@ struct current
 	int 		*cur_qspn_id;	/*The current qspn_id we are processing. It is cur_qspn_id[levels] big*/
 	struct timeval	*cur_qspn_time; /*When the last qspn round was sent. It is cur_qspn_time[levels] big*/
 
-	rnode_rt 	*cur_rnrt;
-
 	char 		 cur_dev[IFNAMSIZ];
 	int		 cur_dev_idx;
 }me;
 
 #define DEFAULT_NTK_UDP_PORT    269
 #define DEFAULT_NTK_TCP_PORT    269
-int my_family, ntk_udp_port, ntk_tcp_port;
-int ll_map_initialized=0;
+int my_family;
+u_short ntk_udp_port, ntk_tcp_port;
+int ll_map_initialized;
 
 
 #define INT_MAP_FILE	"ntk_internal_map"
@@ -78,3 +71,11 @@ typedef struct
 	int 		max_accepts_per_host_time;
 }NtkOpt;
 NtkOpt server_opt;
+
+int init_load_maps(void);
+int save_maps(void);
+int free_maps(void);
+int fill_default_options(void);
+void parse_options(int argc, char **argv);
+void init_netsukuku(char **argv);
+void destroy_netsukuku(void);

@@ -16,13 +16,9 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <sys/sendfile.h>
-#include <errno.h>
-       
+#include "includes.h"
+
+#include "inet.h"
 #include "pkts.h"
 #include "request.h"
 #include "log.h"
@@ -51,10 +47,12 @@ int inet_setip_bcast(inet_prefix *ip)
 {
 	if(ip->family==AF_INET) {
 		u_int data=INADDR_BROADCAST;
+		
 		inet_setip(ip, &data, ip->family);
 	} else if(ip->family==AF_INET6) {
 		u_int data[4]=IPV6_ADDR_BROADCAST;
-		inet_setip(ip, &data, ip->family);
+
+		inet_setip(ip, data, ip->family);
 	} else 
 		return -1;
 
@@ -179,7 +177,10 @@ int join_ipv6_multicast(int socket, int idx)
 {
 	int loop_back=0;
 	struct ipv6_mreq    mreq6;
-	struct in6_addr     addr=IPV6_ADDR_BROADCAST;
+	struct in6_addr     addr;
+	int addr32[4]=IPV6_ADDR_BROADCAST;
+	
+	memcpy(&addr, addr32, sizeof(int)*4);
 
 	if (bind(socket, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 		error("bind error while joining in the multicast group");
@@ -223,7 +224,7 @@ int unset_nonblock_sk(int fd)
 	if (fcntl(fd, F_SETFL, 0) < 0) {
 		error("unset_nonblock_sk(): cannot unset O_NONBLOCK: %s", 
 				strerror(errno));
-		close(newsock);
+		close(fd);
 		return -1;
 	}
 	return 0;
@@ -236,7 +237,7 @@ int set_reuseaddr_sk(int socket)
 	 * SO_REUSEADDR: <<Go ahead and reuse that port even if it is in
 	 * TIME_WAIT state.
 	 */
-	ret=setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(int));
+	ret=setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(int));
 	if(ret < 0)
 		error("setsockopt SO_REUSEADDR: %s", strerror(errno));
 	return ret;
@@ -247,12 +248,12 @@ int set_broadcast_sk(int socket, int family, int dev_idx)
 	int broadcast=1;
 	if(family == AF_INET) {
 		if (setsockopt(socket, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast)) < 0) {
-			error ("Cannot set broadcasting: %s", strerror(errnno));
+			error("Cannot set broadcasting: %s", strerror(errno));
 			close(socket);
 			return -1;
 		}
 	} else if(family == AF_INET6) {
-		if(join_ipv6_multicast(socket, me. dev_idx) < 0) {
+		if(join_ipv6_multicast(socket, dev_idx) < 0) {
 			return -1;
 		}
 	}
@@ -265,7 +266,7 @@ int unset_broadcast_sk(int socket, int family)
 	int broadcast=0;
 	if(family == AF_INET) {
 		if (setsockopt(socket, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast)) < 0) {
-			error ("Cannot unset broadcasting: %s", strerror(errnno));
+			error ("Cannot unset broadcasting: %s", strerror(errno));
 			return -1;
 		}
 	}

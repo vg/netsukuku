@@ -16,23 +16,24 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#include "includes.h"
 #include "request.h"
 #include "xmalloc.h"
 #include "log.h"
 
 int op_verify(u_char op)
 {
-	return op > TOTAL_REQUEST+TOTAL_REPLIES ? 1 : 0;
+	return op > TOTAL_REQUESTS+TOTAL_REPLIES ? 1 : 0;
 }
 
 int rq_verify(u_char rq)
 {
-	return rq > TOTAL_REQUEST ? 1 : 0;
+	return rq > TOTAL_REQUESTS ? 1 : 0;
 }
 
 int re_verify(u_char re)
 {
-	return re > TOTAL_REPLIES && re < TOTAL_REQUEST ? 1 : 0;
+	return re > TOTAL_REPLIES && re < TOTAL_REQUESTS ? 1 : 0;
 }
 
 int err_verify(u_char err)
@@ -73,7 +74,7 @@ void update_rq_tbl(rq_tbl *tbl)
 
 	time(&cur_t);
 
-	for(; i<TOTAL_REQUEST; i++) {
+	for(; i<TOTAL_REQUESTS; i++) {
 		for(e=0; e < request_array[i][RQ_MAXRQ]; e++) {
 			if(tbl->rq_wait[idx] && tbl->rq_wait[idx]+request_array[i][RQ_WAIT] <= cur_t) {
 				tbl->rq_wait[idx]=0;

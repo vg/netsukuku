@@ -16,7 +16,6 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include "map.h"
 
 /***Tracer packet. It is encapsulated in a broadcast pkt*/
 typedef struct
@@ -29,25 +28,39 @@ typedef struct
 typedef struct
 {
 	__u16 node;
-	struct timeval *rtt;
+	struct timeval rtt;
 }tracer_chunk;
-#define TRACERPKT_SZ(hop) (sizeof(tracer_hdr)+sizeof((tracer_chunk)*(hop)))
+#define TRACERPKT_SZ(hops) ( sizeof(tracer_hdr) + ( sizeof( tracer_chunk) * (hops) ))
 
-int tracer_pkt_start_mutex=0;
+int tracer_pkt_start_mutex;
 
 /*Functions definition. Damn I hate to use function with a lot of args. It isn't elegant*/
 int tracer_verify_pkt(tracer_chunk *tracer, u_int hops, map_node *real_from, u_char level);
 char *tracer_pack_pkt(brdcast_hdr *, tracer_hdr *, tracer_chunk *, bnode_hdr *, bnode_chunk *);
-int tracer_split_bblock(void *, size_t, bnode_hdr *, bnode_chunk *, size_t *);
-int tracer_store_pkt(void *, u_char, tracer_hdr *, tracer_chunk *, void *, size_t, u_short *,  char *, size_t *);
-int tracer_unpack_pkt(PACKET, brdcast_hdr *, tracer_hdr *, tracer_chunk *, bnode_hdr *, size_t *);
+u_short tracer_split_bblock(void *, size_t, bnode_hdr ***, bnode_chunk ****, size_t *);
+int tracer_store_pkt(void *, u_char, tracer_hdr *, tracer_chunk *, void *, size_t, u_short *,  char **, size_t *);
+int tracer_unpack_pkt(PACKET, brdcast_hdr **, tracer_hdr **, tracer_chunk **, bnode_hdr **, size_t *);
 tracer_chunk *tracer_add_entry(void *, void *, tracer_chunk *, u_int *, u_char);
-bnode_hdr *tracer_build_bentry(void *, void *, bnode_chunk *, u_char);
+bnode_hdr *tracer_build_bentry(void *, void *, bnode_chunk **, u_char);
+int tracer_pkt_build(u_char, int, int, int, u_char, brdcast_hdr *, tracer_hdr *,
+		     tracer_chunk *, u_short, char *, size_t, PACKET *);
 
+/*
+ * TRACER_PKT_EXCLUDE_VARS:
+ * `node': the destination node we are sending the pkt to.
+ * `from': the node from which the pkt was sent to us.
+ * `pos' : the position of the `node' in the root_node's rnodes.
+ * `excl_gid': The gid the pkt is restricted to. It cannot be sent to other
+ * gids.
+ * `level': The level the pkt is restricted to, it is the level of `excl_gid'.
+ * `sub_id': If the pkt is a qspn_open, it is the qspn open sub_id of the pkt.
+ */
 #define TRACER_PKT_EXCLUDE_VARS		map_node *node, map_node *from, int pos,\
-					int excl_gid, u_char excl_level
-int tracer_pkt_build(u_char, int, int, brdcast_hdr *, tracer_hdr *, tracer_chunk *, u_short, char *, size_t, PACKET *);
-int tracer_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), int gid, u_char level, map_node *from, PACKET pkt);
+					int excl_gid, u_char excl_level, int sub_id
+#define TRACER_PKT_EXCLUDE_VARS_NAME	node, from, pos, excl_gid, excl_level,	\
+					sub_id
+int tracer_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), int gid, 
+		u_char level, int sub_id, map_node *from, PACKET pkt);
 int exclude_from_and_glevel_and_setreplied(TRACER_PKT_EXCLUDE_VARS);
 int exclude_from_and_glevel_and_closed(TRACER_PKT_EXCLUDE_VARS);
 int exclude_from_and_glevel(TRACER_PKT_EXCLUDE_VARS);

@@ -15,7 +15,6 @@
  * this source code; if not, write to:
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
-#include "map.h"
 
 #define MAX_CONC_QSPN		5	/*MAX CONCURRENT QSPN*/
 #define QSPN_WAIT_ROUND 	60	/*This is a crucial value. It is the number of 
@@ -24,8 +23,8 @@
 #define QSPN_WAIT_ROUND_MS	QSPN_WAIT_ROUND*1000
 
 /*Wait time bound to a specific level*/
-#define QSPN_WAIT_ROUTE_LVL(level) ((level)*QSPN_WAIT_ROUND*2+QSPN_WAIT_ROUND)
-#define QSPN_WAIT_ROUTE_MS_LVL(level) ((level)*QSPN_WAIT_ROUND_MS*2+QSPN_WAIT_ROUND_MS)
+#define QSPN_WAIT_ROUND_LVL(level) ((level)*QSPN_WAIT_ROUND*2+QSPN_WAIT_ROUND)
+#define QSPN_WAIT_ROUND_MS_LVL(level) ((level)*QSPN_WAIT_ROUND_MS*2+QSPN_WAIT_ROUND_MS)
 					  
 /*we are using the qspn_map style II*/
 #define QMAP_STYLE_II
@@ -77,21 +76,22 @@ struct qspn_buffer
 	u_short	      * replier;	/*Who has sent these replies (qspn_sub_id)*/
 	u_short	      * flags;
 };
-struct qspn_buffer **qspn_b; /*It is sizeof(struct qspn_buffer)*levels big*/
+struct qspn_buffer **qspn_b; /*It is sizeof(struct qspn_buffer *)*levels big*/
 
 int *qspn_send_mutex;	     /*It is sizeof(int)*levels big.*/
 
 
-void qspn_set_map_vars(u_char level, map_node *map, map_node *root_node, int *root_node_pos, map_gnode *gmap);
-void qspn_b_clean(void);
-void qspn_b_add(struct qspn_buffer *qb, u_short replier, u_short flags);
+void qspn_set_map_vars(u_char level, map_node **map, map_node **root_node, 
+		int *root_node_pos, map_gnode **gmap);
+void qspn_b_clean(u_char level);
+int qspn_b_add(struct qspn_buffer *qb, u_short replier, u_short flags);
 int qspn_b_find_reply(struct qspn_buffer *qb, int sub_id);
-int qspn_round_left(void);
-void update_qspn_time(void);
+int qspn_round_left(u_char level);
+void update_qspn_time(u_char level);
 
-void qspn_new_round(void);
+void qspn_new_round(u_char level);
 
 int exclude_from_and_gnode_and_opened(map_node *node, map_node *from, int pos);
-int qspn_send(u_char gid, u_char level);
+int qspn_send(u_char level);
 int qspn_close(PACKET rpkt);
 int qspn_open(PACKET rpkt);

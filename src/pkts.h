@@ -16,13 +16,6 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <sys/time.h>
-#include <sys/types.h>
-#include <asm/types.h>
-#include <linux/socket.h>
-
-#include "inet.h"
-
 #define NETSUKUKU_ID		"ntk"
 #define MAXMSGSZ		32768
 
@@ -72,12 +65,12 @@ typedef struct
 /*Broadcast packet*/
 typedef struct
 {
-	short 		g_node;		/*The gnode the brdcast_pkt is restricted to*/
+	u_short		g_node;		/*The gnode the brdcast_pkt is restricted to*/
 	u_char 		level;		/*The level of the gnode*/
 	inet_prefix 	g_ipstart;	/*The ipstart of the g_node in level*/
 	u_short 	gttl;		/*Gnode ttl: How many gnodes the packet
 					  can traverse*/
-	short 		sub_id;		/*The sub_id is the node who sent the pkt,
+	u_short 	sub_id;		/*The sub_id is the node who sent the pkt,
 					  but is only used by the qspn_open*/
 	size_t 		sz;		/*Sizeof(the pkt)*/
 	char 		flags;		/*Various flags*/
@@ -114,6 +107,6 @@ ssize_t pkt_send(PACKET *pkt);
 ssize_t pkt_recv(PACKET *pkt);
 int pkt_tcp_connect(inet_prefix *host, short port);
 void pkt_fill_hdr(pkt_hdr *hdr, int id, u_char op, size_t sz);
-int send_rq(PACKET *pkt, int flags, u_char rq, u_int rq_id, u_char re, int check_ack, PACKET *rpkt);
+int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_ack, PACKET *rpkt);
 int pkt_err(PACKET pkt, int err);
 int pkt_exec(PACKET pkt, int acpt_idx);

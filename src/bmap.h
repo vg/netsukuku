@@ -15,11 +15,9 @@
  * this source code; if not, write to:
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
-#include <sys/time.h>
-#include <sys/types.h>
-#include "map.h"
 
-/* map_bnode is the struct used to create the "map boarder node". 
+/* 
+ * map_bnode is the struct used to create the "map boarder node". 
  * This map keeps all the boarder node of the map, making it easy to retrieve
  * the gnode they are linked to.
  * It is indentical to the map_node but, as always there are some little 
@@ -68,12 +66,13 @@ typedef map_node map_bnode;
  */
 typedef struct
 {
-	__u16 bnode;		/*The bnode this bnode_block belongs to*/
-	__u16 links;		/*The number of linked gnode*/
+	u_short bnode;		/*The bnode this bnode_block belongs to*/
+	u_short links;		/*The number of linked gnode*/
 }bnode_hdr;
+
 typedef struct
 {
-	__u16 gnode;
+	u_short gnode;
 	u_char level;
 	struct timeval rtt;
 }bnode_chunk;
@@ -97,19 +96,21 @@ struct bmaps_hdr
 {
 	u_char levels;
 	size_t bmaps_block_sz;
-}
+};
 
 /* * * Functions' declaration * * */
-void bmap_level_init(u_char levels, map_bnode **bmap, u_int *bmap_nodes);
+void bmap_level_init(u_char levels, map_bnode ***bmap, u_int **bmap_nodes);
 void bmap_level_free(map_bnode **bmap, u_int *bmap_nodes);
 
-int map_add_bnode(map_bnode *bmap, u_int *bmap_nodes, u_int bnode, u_int links);
+int map_add_bnode(map_bnode **bmap, u_int *bmap_nodes, u_int bnode, u_int links);
 map_bnode *map_bnode_del(map_bnode *bmap, u_int *bmap_nodes,  map_bnode *bnode);
 int map_find_bnode(map_bnode *bmap, int bmap_nodes, void *void_map, void *node, u_char level);
 int map_find_bnode_rnode(map_bnode *bmap, int bmap_nodes, void *n);
+void *get_gw_gnode(map_node *int_map, map_gnode **ext_map, map_bnode **bnode_map, 
+		u_int *bmap_nodes, map_gnode *find_gnode, u_char level, u_char gw_level);
 
 char *pack_all_bmaps(map_bnode **, u_int *, map_gnode **, quadro_group, size_t *);
-map_bnode *unpack_all_bmaps(char *, size_t, u_char, map_gnode **, u_int *, int, int):
+map_bnode **unpack_all_bmaps(char *, size_t, u_char, map_gnode **, u_int **, int, int);
 
 int save_bmap(map_bnode **, u_int *, map_gnode **, quadro_group, char *);
-map_bnode **load_bmap(char *, map_gnode **, u_int *);
+map_bnode **load_bmap(char *, map_gnode **, u_char, u_int **);

@@ -14,10 +14,8 @@
  * You should have received a copy of the GNU Public License along with
  * this source code; if not, write to:
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- *
- * misc.c: Miscellaneous functions, nothing else.
  */
 
-#define MILLISEC(x)	(((x).tv_sec*1000)+((x).tv_usec/1000))
-
-int rand_range(int, int);
+int rule_add(inet_prefix from, inet_prefix to, char *dev, int prio, u_char table);
+int rule_del(inet_prefix from, inet_prefix to, char *dev, int prio, u_char table);
+int rule_exec(int rtm_cmd, inet_prefix from, inet_prefix to, char *dev, int prio, u_char table);

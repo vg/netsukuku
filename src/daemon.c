@@ -16,14 +16,22 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <unistd.h>
+#include "includes.h"
 
+#include "daemon.h"
+#include "inet.h"
+#include "pkts.h"
+#include "map.h"
+#include "gmap.h"
+#include "bmap.h"
 #include "netsukuku.h"
+#include "request.h"
+#include "accept.h"
+#include "xmalloc.h"
+#include "log.h"
 
-extern int my_family, ntk_udp_port, ntk_tcp_port;
+extern int my_family;
+extern u_short ntk_udp_port, ntk_tcp_port;
 extern struct current me;
 
 /* 
@@ -71,11 +79,11 @@ int prepare_listen_socket(int family, int socktype, u_short port)
 	}
 	
 	error("Cannot open inbound socket on port %d: %s", port, strerror(errno));
-	freeaddrinfo(all_ai);
+	freeaddrinfo(aitop);
 	return -1;
 }
 
-void *daemon_udp(void *null)
+void *udp_daemon(void *null)
 {
 	PACKET rpkt;
 	fd_set fdset;
@@ -103,7 +111,7 @@ void *daemon_udp(void *null)
 
 		pkt_addsk(&rpkt, sk, SKT_UDP);
 		pkt_addflags(&rpkt, MSG_WAITALL);
-		inet_recv(&rpkt):
+		pkt_recv(&rpkt);
 			
 		if(add_accept(rpkt.from, 1)) {
 			ntop=inet_to_str(&rpkt.from);
@@ -129,7 +137,7 @@ void *recv_loop(void *recv_pkt)
 	
 	memcpy(&rpkt, recv_pkt, sizeof(PACKET));
 
-	while( inet_recv(&rpkt) != -1 ) {
+	while( pkt_recv(&rpkt) != -1 ) {
 		pkt_exec(rpkt, acpt_idx);
 		pkt_free(&rpkt, 0);
 	}
@@ -137,7 +145,7 @@ void *recv_loop(void *recv_pkt)
 	close_accept(acpt_idx, acpt_sidx);
 }
 
-void *daemon_tcp(void *null)
+void *tcp_daemon(void *null)
 {
 	pthread_t thread;
 	pthread_attr_t t_attr;
@@ -190,16 +198,18 @@ void *daemon_tcp(void *null)
 				error("daemon_tcp: accept(): %s", strerror(errno));
 			continue;
 		}
+		pkt_addsk(&rpkt, fd, SKT_TCP);
+		pkt_addflags(&rpkt, MSG_WAITALL);
 		
-		sockaddr_to_inet(&addr, &ip, 0);
+		sockaddr_to_inet((struct sockaddr *)&addr, &ip, 0);
 		if(ret=add_accept(ip, 0)) {
 			ntop=inet_to_str(&ip);
 			debug(DBG_NORMAL, "ACPT: drop connection with %s: Accept table full.", ntop);
 			xfree(ntop);
 			
 			/* Omg, we cannot take it anymore, go away: ACK_NEGATIVE */
-			pkt_err(pkt, ret);
-			close(newsock);
+			pkt_err(rpkt, ret);
+			close(fd);
 			continue;
 		} else {
 			ntop=inet_to_str(&ip);
@@ -210,15 +220,13 @@ void *daemon_tcp(void *null)
 			 * Ok, the connection is good, send back the
 			 * ACK_AFFERMATIVE.
 			 */
-			pkt_addto(&pkt, &pkt.from);
-			send_rq(&pkt, 0, ACK_AFFERMATIVE, 0, 0, 0, 0);
+			pkt_addto(&rpkt, &rpkt.from);
+			send_rq(&rpkt, 0, ACK_AFFERMATIVE, 0, 0, 0, 0);
 		}
 
-		if(unset_nonblock(fd))
+		if(unset_nonblock_sk(fd))
 			continue;
 	
-		pkt_addsk(&rpkt, fd, SKT_TCP);
-		pkt_addflags(&rpkt, MSG_WAITALL);
 		pthread_create(&thread, &t_attr, recv_loop, &rpkt);
 	}
 	

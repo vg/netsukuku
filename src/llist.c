@@ -39,7 +39,7 @@ do {									\
 #define list_last(list)							\
 ({									\
 	 l_list *_i;							\
-	 for(_i=(list); _i->next; _i=(l_list *)_i->next); 		\
+	 for(_i=(l_list *)(list); _i->next; _i=(l_list *)_i->next); 	\
  	 _i;								\
 })
 				     
@@ -67,10 +67,12 @@ do{ 									\
 				
 #define list_add(list, new)						\
 do{									\
-	l_list *_i; _i=list_last((list)); 				\
-	_i->next=(new); 						\
-	(new)->prev=_i; 						\
-	(new)->next=0;							\
+	l_list *_i, *_n;						\
+	_i=(l_list *)list_last((list)); 				\
+	_n=(l_list *)(new);						\
+	_i->next=_n;							\
+	_n->prev=_i; 							\
+	_n->next=0;							\
 }while(0)
 
 #define list_del(list)							\
@@ -88,22 +90,23 @@ do{ 									\
 #define list_pos(list,pos)						\
 ({									\
 	 int _i=0;							\
- 	 l_list *_x=(list); 						\
+ 	 l_list *_x=(l_list *)(list);					\
  	 list_for(_x) { 						\
  	 	if(_i==(pos)) 						\
  			break;						\
 		else 							\
  			_i++;						\
  	 } 								\
- 	 _x;								\
+ 	 (typeof((list)))_x;						\
 })
 
 #define list_destroy(list)						\
 do{ 									\
-	l_list *_x=(list), *_i, *_next; 				\
-	_i=_x; 								\
-	for(; _i; _i=next) {						\
-		next=_x->next; 						\
-		list_del(_x);						\
+	l_list *_x=(l_list *)(list), *_i, *_next;			\
+	_i=_x;								\
+	_next=_i->next;							\
+	for(; _i; _i=_next) {						\
+		_next=_i->next; 					\
+		list_del(_i);						\
 	}								\
-}
+}while(0)

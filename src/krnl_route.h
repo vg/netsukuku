@@ -14,10 +14,23 @@
  * You should have received a copy of the GNU Public License along with
  * this source code; if not, write to:
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- *
- * misc.c: Miscellaneous functions, nothing else.
  */
 
-#define MILLISEC(x)	(((x).tv_sec*1000)+((x).tv_usec/1000))
+#define RTPROT_NETSUKUKU     15
 
-int rand_range(int, int);
+struct nexthop 
+{
+	inet_prefix gw;
+	u_char *dev;
+	u_char hops;
+};
+
+
+int route_add(inet_prefix to, struct nexthop *nhops, char *dev, u_char table);
+int route_del(inet_prefix to, struct nexthop *nhops, char *dev, u_char table);
+int route_replace(inet_prefix to, struct nexthop *nhops, char *dev, u_char table);
+int route_change(inet_prefix to, struct nexthop *nhops, char *dev, u_char table);
+int add_nexthops(struct nlmsghdr *n, struct rtmsg *r, struct nexthop *nhop);
+int route_exec(int route_cmd, unsigned flags, inet_prefix to, 
+		struct nexthop *nhops, char *dev, u_char table);
+int route_flush_cache(int family);

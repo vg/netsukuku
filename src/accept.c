@@ -24,12 +24,10 @@
  * free_accept_time of seconds to be able to reconnect again.
  */
 
-#include <sys/types.h>
-#include <signal.h>
-#include <string.h>
-#include <unistd.h>
-#include <errno.h>
+#include "includes.h"
 
+#include "request.h"
+#include "inet.h"
 #include "accept.h"
 #include "xmalloc.h"
 #include "log.h"
@@ -180,7 +178,7 @@ int find_free_acp_t(int idx)
 
 int new_accept(int idx, inet_prefix ip)
 {
-	int idx, cl;
+	int cl;
 	time_t cur_t;
 	
 	time(&cur_t);
@@ -253,6 +251,6 @@ int close_accept(int idx, int sidx)
 void add_accept_pid(pid_t pid, int idx, int sidx)
 {
 	accept_tbl[idx].pid[sidx]=pid;
-	debug("ACPT: Added pig %d in accept_tbl[%d].pid[%d]", 
+	debug(DBG_NOISE, "ACPT: Added pig %d in accept_tbl[%d].pid[%d]", 
 			accept_tbl[idx].pid[sidx], idx, sidx);
 }

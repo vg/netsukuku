@@ -18,11 +18,7 @@
  * 128bit-gmp.c: I made this to handle the HUGE ipv6 numbers
  */
 
-#include <netinet/in.h>
-#include <string.h>
-#include <stdio.h>
-#include <gmp.h>
-#include <stdlib.h>
+#include "includes.h"
 
 #include "ipv6-gmp.h"
 

@@ -16,8 +16,6 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <sys/types.h>
-
 /* Used for: ip.data[0]=HOOKING_IP; */
 #define HOOKING_IP  0x8f000001      /* 128.0.0.1   */
 #define HOOKING_IP6 0x8f000001
@@ -45,7 +43,7 @@ struct free_nodes_hdr
 };
 #define FREE_NODES_SZ(levels, nodes) (sizeof(struct free_nodes_hdr) +	      \
 				 	((levels) * sizeof(struct timeval)) + \
-					  (sizeof(u_short) * (nodes))
+					  (sizeof(u_short) * (nodes)))
 
 /* 
  * the free_nodes block is:
@@ -59,17 +57,17 @@ struct free_nodes_hdr
  *	fn_block;
  */
 
-int get_free_nodes(inet_prefix to, struct free_nodes *fn_hdr, int *nodes, struct timeval *qtime);
+int get_free_nodes(inet_prefix to, struct free_nodes_hdr *fn_hdr, int *nodes, struct timeval *qtime);
 int put_free_nodes(PACKET rq_pkt);
 
 int put_ext_map(PACKET rq_pkt);
 map_gnode **get_ext_map(inet_prefix to, quadro_group *new_quadg);
 
 int put_int_map(PACKET rq_pkt);
-map_node *get_int_map(inet_prefix to, map_node *new_root);
+map_node *get_int_map(inet_prefix to, map_node **new_root);
 
 int put_bnode_map(PACKET rq_pkt);
-map_bnode **get_bnode_map(inet_prefix to, u_int *bmap_nodes);
+map_bnode **get_bnode_map(inet_prefix to, u_int **bmap_nodes);
 
 int create_gnodes(inet_prefix *ip, int final_level);
 int netsukuku_hook(char *dev);

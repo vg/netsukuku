@@ -16,12 +16,17 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <asm/types.h>
-#include "inet.h"
+/* from linux/ipv6.h */
+struct in6_ifreq {
+	struct in6_addr ifr6_addr;
+	__u32           ifr6_prefixlen;
+	int             ifr6_ifindex;
+};
 
-char *get_dev(int *dev_idx);
+
+const char *get_dev(int *dev_idx);
 int set_dev_up(char *dev);
 int set_dev_down(char *dev);
-int set_flags(char *dev, u32 flags, u32 mask);
-char *if_init(char *dev, int *dev_idx);
+int set_flags(char *dev, u_int flags, u_int mask);
+const char *if_init(char *dev, int *dev_idx);
 int set_dev_ip(inet_prefix ip, char *dev);

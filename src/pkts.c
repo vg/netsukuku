@@ -16,23 +16,32 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <string.h>
+#include "includes.h"
+
+#include "inet.h"
 #include "pkts.h"
+#include "map.h"
+#include "gmap.h"
+#include "bmap.h"
+#include "netsukuku.h"
+#include "request.h"
+#include "accept.h"
 #include "xmalloc.h"
 #include "log.h"
 
 extern struct current me;
-extern int my_family, ntk_udp_port, ntk_tcp_port;
+extern int my_family;
+extern u_short ntk_udp_port, ntk_tcp_port;
 
 /*Handy functions to build the PACKET*/
 void pkt_addfrom(PACKET *pkt, inet_prefix *from)
 {
-	memcpy(pkt->from, from, sizeof(inet_prefix));
+	memcpy(&pkt->from, from, sizeof(inet_prefix));
 }
 
 void pkt_addto(PACKET *pkt, inet_prefix *to)
 {
-	memcpy(pkt->to, to, sizeof(inet_prefix));
+	memcpy(&pkt->to, to, sizeof(inet_prefix));
 }
 
 void pkt_addsk(PACKET *pkt, int sk, int sk_type)
@@ -53,7 +62,7 @@ void pkt_addflags(PACKET *pkt, int flags)
 
 void pkt_addhdr(PACKET *pkt, pkt_hdr *hdr)
 {
-	memcpy(pkt->hdr, hdr, sizeof(pkt_hdr));
+	memcpy(&pkt->hdr, hdr, sizeof(pkt_hdr));
 }
 
 void pkt_addmsg(PACKET *pkt, char *msg)
@@ -93,10 +102,10 @@ PACKET *pkt_unpack(char *pkt)
 {
 	PACKET *pk;
 
-	pk=(PAKET *)xmalloc(sizeof(PACKET));
+	pk=(PACKET *)xmalloc(sizeof(PACKET));
 	
 	/*Now, we extract the pkt_hdr...*/
-	memcpy(pk->hdr, pkt, sizeof(pkt_hdr));
+	memcpy(&pk->hdr, pkt, sizeof(pkt_hdr));
 	/*and verify it...*/
 	if(pkt_verify_hdr(*pk)) {
 		debug(DBG_NOISE, "Error while unpacking the PACKET. "
@@ -153,7 +162,7 @@ ssize_t pkt_recv(PACKET *pkt)
 		socklen_t fromlen;
 		
 		/*we get the hdr...*/
-		err=inet_recvfrom(pkt->sk, pkt->hdr, sizeof(pkt_hdr), pkt->flags, &from, &fromlen);
+		err=inet_recvfrom(pkt->sk, &pkt->hdr, sizeof(pkt_hdr), pkt->flags, &from, &fromlen);
 		if(err != sizeof(pkt_hdr)) {
 			debug(DBG_NOISE, "inet_recvfrom() of the hdr aborted!");
 			return -1;
@@ -183,8 +192,8 @@ ssize_t pkt_recv(PACKET *pkt)
 		
 		/*Now we store in the PACKET what we got*/
 		pkt->msg=buf;
-		if(sockaddr_to_inet(&from, pkt->from, pkt->port)) {
-			debug(DBG_NOISE, "Cannot pkt_recv(): %d Family not supported", from.family);
+		if(sockaddr_to_inet(&from, &pkt->from, &pkt->port)) {
+			debug(DBG_NOISE, "Cannot pkt_recv(): %d Family not supported", from.sa_family);
 			return -1;
 		}
 
@@ -201,7 +210,7 @@ ssize_t pkt_recv(PACKET *pkt)
 
 	} else if(pkt->sk_type==SKT_TCP) {
 		/*we get the hdr...*/
-		err=inet_recv(pkt->sk, pkt->hdr, sizeof(pkt_hdr), pkt->flags);
+		err=inet_recv(pkt->sk, &pkt->hdr, sizeof(pkt_hdr), pkt->flags);
 		if(err != sizeof(pkt_hdr)) {
 			debug(DBG_NOISE, "inet_recv() of the hdr aborted!");
 			return -1;
@@ -220,12 +229,7 @@ ssize_t pkt_recv(PACKET *pkt)
 			return -1;
 		}
 		
-		/*Now we store in the PACKET what we got*/
 		pkt->msg=buf;
-		if(sockaddr_to_inet(&from, pkt->from, pkt->port)) {
-			debug(DBG_NOISE, "Cannot pkt_recv(): %d Family not supported", from.family);
-			return -1;
-		}
 	} else
 		fatal("Unkown socket_type. Something's very wrong!! Be aware");
 	
@@ -292,7 +296,6 @@ void pkt_fill_hdr(pkt_hdr *hdr, int id, u_char op, size_t sz)
  */
 int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_ack, PACKET *rpkt)
 {
-	PACKET pkt;
 	u_short port;
 	char *ntop, *rq_str, *re_str;
 	ssize_t err;
@@ -322,7 +325,7 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 	if(pkt->sk_type==SKT_TCP) {
 		pkt_addport(pkt, ntk_tcp_port);
 		if(rpkt)
-			pkt_addport(&rpkt, ntk_tcp_port);
+			pkt_addport(rpkt, ntk_tcp_port);
 	} else if(pkt->sk_type==SKT_UDP || pkt->sk_type==SKT_BCAST)
 		pkt_addport(pkt, ntk_udp_port);
 
@@ -336,11 +339,11 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 		}
 		
 		if(pkt->sk_type==SKT_TCP)
-			pkt->sk=pkt_tcp_conn(pkt->to, pkt->port);
+			pkt->sk=pkt_tcp_connect(&pkt->to, pkt->port);
 		else if(pkt->sk_type==SKT_UDP)
-			pkt->sk=new_udp_conn(pkt->to, pkt->port);
+			pkt->sk=new_udp_conn(&pkt->to, pkt->port);
 		else if(pkt->sk_type==SKT_BCAST)
-			pkt->sk=new_bcast_conn(pkt->to, pkt->port, me.cur_dev_idx);
+			pkt->sk=new_bcast_conn(&pkt->to, pkt->port, me.cur_dev_idx);
 		else
 			fatal("Unkown socket_type. Something's very wrong!! Be aware");
 
@@ -377,7 +380,7 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 
 		if(rpkt->hdr.op==ACK_NEGATIVE && check_ack) {
 			int err_ack;
-			memcpy(&err_ack, rpkt->buf, rpkt->hdr.sz);
+			memcpy(&err_ack, rpkt->msg, sizeof(int));
 			error("%s failed. The node %s replied: %s", rq_str, ntop, rq_strerror(err_ack));
 			ret=-1; 
 			goto finish;
@@ -407,13 +410,12 @@ finish:
 int pkt_err(PACKET pkt, int err)
 {
 	char *msg;
-	int err;
 	
 	memcpy(&pkt.to, &pkt.from, sizeof(inet_prefix));
 	pkt_fill_hdr(&pkt.hdr, pkt.hdr.id, ACK_NEGATIVE, sizeof(int));
 	
 	pkt.msg=msg=xmalloc(sizeof(int));
-	memcpy(msg, err, sizeof(int));
+	memcpy(msg, &err, sizeof(int));
 		
 	err=pkt_send(&pkt);
 	pkt_free(&pkt, 0);
@@ -426,7 +428,7 @@ int pkt_exec(PACKET pkt, int acpt_idx)
 	char *ntop;
 	int err=0;
 
-	if((err=add_rq(pkt.hdr.type, &accept_tbl[acpt_idx].rq_tbl))) {
+	if((err=add_rq(pkt.hdr.op, &accept_tbl[acpt_idx].rqtbl))) {
 		ntop=inet_to_str(&pkt.from);
 		error("From %s: Cannot process the %s request: %s", ntop, rq_to_str(pkt.hdr.op), rq_strerror(err));
 		xfree(ntop);
@@ -434,7 +436,7 @@ int pkt_exec(PACKET pkt, int acpt_idx)
 		return -1;
 	}
 
-	switch(pkt.hdr.type) 
+	switch(pkt.hdr.op) 
 	{
 		case ECHO_ME:
 			err=radard(pkt);

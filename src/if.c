@@ -16,15 +16,13 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <string.h>
-#include <errno.h>
-#include <net/if.h>
-#include <asm/types.h>
-#include <sys/socket.h>
-#include <sys/ioctl.h>
- 
-#include "ll_map.c"
+
+#include "includes.h"
+
 #include "inet.h"
+#include "if.h"
+#include "libnetlink.h"
+#include "ll_map.h"
 #include "xmalloc.h"
 #include "log.h"
 
@@ -32,7 +30,7 @@ extern int errno;
 
 /* get_dev: It returs the first dev it finds up and sets `*dev_ids' to the
  * device's index. On error NULL is returned.*/
-char *get_dev(int *dev_idx) 
+const char *get_dev(int *dev_idx) 
 {
 	int idx;
 
@@ -47,7 +45,7 @@ char *get_dev(int *dev_idx)
 
 int set_dev_up(char *dev)
 {
-	u32 mask=0, flags=0;
+	u_int mask=0, flags=0;
 	
 	mask |= IFF_UP;
 	flags |= IFF_UP;
@@ -56,14 +54,14 @@ int set_dev_up(char *dev)
 
 int set_dev_down(char *dev)
 {
-	u32 mask=0, flags=0;
+	u_int mask=0, flags=0;
 	
 	mask |= IFF_UP;
 	flags &= ~IFF_UP;
 	return set_flags(dev, flags, mask);
 }
 
-int set_flags(char *dev, u32 flags, u32 mask)
+int set_flags(char *dev, u_int flags, u_int mask)
 {
 	struct ifreq ifr;
 	int s;
@@ -82,7 +80,7 @@ int set_flags(char *dev, u32 flags, u32 mask)
 
 	ifr.ifr_flags &= ~mask;
 	ifr.ifr_flags |= mask&flags;
-	ioctl(s, SIOCSIFFLAGS, &ifr){
+	if(ioctl(s, SIOCSIFFLAGS, &ifr)) {
 		error("Error while setting \"%s\" flags: %s", dev, strerror(errno));
 		close(s);
 		return -1;
@@ -91,10 +89,11 @@ int set_flags(char *dev, u32 flags, u32 mask)
 	return 0;
 }
 
-/*if_init: It initializes the if to be used by Netsukuku.
+/*
+ * if_init: It initializes the if to be used by Netsukuku.
  * It sets `*dev_idx' to the relative idx of `dev' and returns the device name.
  * If an error occured it returns NULL.*/
-char *if_init(char *dev, int *dev_idx)
+const char *if_init(char *dev, int *dev_idx)
 {
 	struct rtnl_handle rth;
 	int idx;
@@ -107,12 +106,12 @@ char *if_init(char *dev, int *dev_idx)
 			return NULL;
 		}
 	} else 
-		dev=get_dev(dev_idx);
+		dev=(char *)get_dev(dev_idx);
 	
 	if(set_dev_up(dev))
 		return NULL;	
 	
-	return dev;
+	return (const char *)dev;
 }	
 
 int set_dev_ip(inet_prefix ip, char *dev)
@@ -127,8 +126,8 @@ int set_dev_ip(inet_prefix ip, char *dev)
 			return -1;
 		}
 
-		strncpy(&req.ifr_name, dev, IFNAMSIZ);
-		req.ifr_addr.family=ip.sa_family;
+		strncpy(req.ifr_name, dev, IFNAMSIZ);
+		req.ifr_addr.sa_family=ip.family;
 		memcpy(&req.ifr_addr.sa_data + 2, ip.data, ip.len);
 
 
@@ -137,13 +136,12 @@ int set_dev_ip(inet_prefix ip, char *dev)
 			close(s);
 			return -1;
 		}
-	} 
-	else if(ip.family == AF_INET6) {
+	} else if(ip.family == AF_INET6) {
 		struct in6_ifreq req6;
 
 		req6.ifr6_ifindex=ll_name_to_index(dev);
-		ifr6.ifr6_prefixlen=0;
-		memcpy(&req6.ifr6_addr, ip.data. ip.len);
+		req6.ifr6_prefixlen=0;
+		memcpy(&req6.ifr6_addr, ip.data, ip.len);
 
 		if(ioctl(s, SIOCSIFADDR, &req6)) {
 			error("Error while setting \"%s\" ip: %s", dev, strerror(errno));

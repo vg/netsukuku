@@ -16,11 +16,6 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <time.h>
-#include <pthread.h>
-#include "request.h"
-#include "inet.h"
-
 #define MAX_CONNECTIONS		40
 
 #define MAX_ACCEPTS		10

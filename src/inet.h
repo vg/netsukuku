@@ -16,20 +16,19 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <asm/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-
-/*This is the "link-scope all-hosts multicast" address: ff02::1.*/
-#define IPV6_ADDR_BROADCAST	{ 0xff020000, 0x0, 0x0, 0x1 } /*Each element is in network order*/
+/*
+ * This is the "link-scope all-hosts multicast" address: ff02::1.
+ * Each element is in network order.
+ */
+#define IPV6_ADDR_BROADCAST	{ 0xff020000, 0x0, 0x0, 0x1 } 
 
 typedef struct
 {
-	__u8 family;
-	__u16 len;
-	u_char bits;
-	__u32 data[4]; 	/*The address is kept in host long format, word ORDER 1 (most significant 
-			  word first)*/
+	u_char	family;
+	u_short len;
+	u_char	bits;
+	u_int	data[4]; 	/* The address is kept in host long format, 
+				   word ORDER 1 (most significant word first)*/
 }inet_prefix;
 
 int inet_setip(inet_prefix *ip, u_int *data, u_char family);

@@ -16,35 +16,19 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <syslog.h>
-#include <fcntl.h>
-#include <string.h>
-#include <sys/time.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netinet/ip.h>
-#include <arpa/inet.h>
-#include <linux/in_route.h>
+#include "includes.h"
 
-#include "librtnetlink.c"
+#include "libnetlink.h"
 #include "inet.h"
-#include "ll_map.c"
+#include "krnl_route.h"
+#include "libnetlink.h"
+#include "ll_map.h"
 #include "xmalloc.h"
 #include "log.h"
 
-struct nexthop 
-{
-	inet_prefix gw;
-	u_char *dev;
-	u_char hops;
-};
-
 int route_add(inet_prefix to, struct nexthop *nhops, char *dev, u_char table)
 {
-	return route_exec(RTM_NEWROUTE, NLM_F_REQUEST | NLM_F_EXECL, to, nhops, dev, table);
+	return route_exec(RTM_NEWROUTE, NLM_F_REQUEST | NLM_F_EXCL, to, nhops, dev, table);
 }
 
 int route_del(inet_prefix to, struct nexthop *nhops, char *dev, u_char table)
@@ -74,11 +58,11 @@ int add_nexthops(struct nlmsghdr *n, struct rtmsg *r, struct nexthop *nhop)
 	rta->rta_len = RTA_LENGTH(0);
 	rtnh = RTA_DATA(rta);
 
-	while (nhop[i].gw[0]!=0) {
+	while (nhop[i].dev!=0) {
 		rtnh->rtnh_len = sizeof(*rtnh);
 		rtnh->rtnh_ifindex = 0;
 		rta->rta_len += rtnh->rtnh_len;
-		if (nhop[i].gw) {
+		if (nhop[i].gw.len) {
 			if(nhop[i].gw.family==AF_INET) {
 				rta_addattr32(rta, 4096, RTA_GATEWAY, nhop[i].gw.data[0]);
 				rtnh->rtnh_len += sizeof(struct rtattr) + nhop[i].gw.len;
@@ -96,18 +80,16 @@ int add_nexthops(struct nlmsghdr *n, struct rtmsg *r, struct nexthop *nhop)
 			}
 		}
 		if (nhop[i].dev) 
-			if ((rtnh->rtnh_ifindex = ll_name_to_index(dev)) == 0) {
-				error("Cannot find device \"%s\"\n", dev);
+			if ((rtnh->rtnh_ifindex = ll_name_to_index(nhop[i].dev)) == 0) {
+				error("Cannot find device \"%s\"\n", nhop[i].dev);
 				goto cont;
 			}
 
-		if (nhop[i].hops) {
-			if (hops == 0) {
-				error("hops=%d is invalid. Using hops=255\n", hops);
-				hops=255;
-			}
-			rtnh->rtnh_hops = hops - 1;
-		}
+		if (nhop[i].hops == 0) {
+			error("hops=%d is invalid. Using hops=255\n", nhop[i].hops);
+			rtnh->rtnh_hops=255;
+		} else
+			rtnh->rtnh_hops = nhop[i].hops - 1;
 
 		rtnh = RTNH_NEXT(rtnh);
 cont:
@@ -132,8 +114,6 @@ int route_exec(int route_cmd, unsigned flags, inet_prefix to, struct nexthop *nh
 
 	if(!table)
 		table=RT_TABLE_MAIN;
-	else if(table>255)
-		fatal("Error in %s:%d, table %u is invalid", ERROR_POS, table);
 
 	req.nh.nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg));
 	req.nh.nlmsg_flags = flags;
@@ -164,7 +144,7 @@ int route_exec(int route_cmd, unsigned flags, inet_prefix to, struct nexthop *nh
 		addattr32(&req.nh, sizeof(req), RTA_OIF, idx);
 	}
 
-	if (to) {
+	if (to.len) {
 		req.rt.rtm_dst_len = to.bits;
 		addattr_l(&req.nh, sizeof(req), RTA_DST, &to.data, to.len);
 		req.rt.rtm_family=to.family;
@@ -195,18 +175,20 @@ int route_exec(int route_cmd, unsigned flags, inet_prefix to, struct nexthop *nh
 
 int route_flush_cache(int family)
 {
+	int len, err;
+	int flush_fd;
+	char ROUTE_FLUSH_SYSCTL[]="/proc/sys/net/ipvX/route/flush";
+	char buf=0;
+
 	if(family==AF_INET)
-		char *ROUTE_FLUSH_SYSCTL="/proc/sys/net/ipv4/route/flush";
+		ROUTE_FLUSH_SYSCTL[18]='4';
 	else if(family==AF_INET6)
-		char *ROUTE_FLUSH_SYSCTL="/proc/sys/net/ipv6/route/flush";
+		ROUTE_FLUSH_SYSCTL[18]='6';
 	else
 		return -1;
 
-	int len, err;
-	int fd = open (ROUTE_FLUSH_SYSCTL, O_WRONLY);
-	char buf=0;
-	
-	if (fd < 0) {
+	flush_fd=open(ROUTE_FLUSH_SYSCTL, O_WRONLY);
+	if (flush_fd < 0) {
 		error("Cannot open \"%s\"\n", ROUTE_FLUSH_SYSCTL);
 		return -1;
 	}
