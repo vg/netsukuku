@@ -50,6 +50,7 @@ typedef struct
  * use the EXTRA_LEVELS, thus, they lack of the zero level. To retrieve the position 
  * in the array from the level the _EL macro must be used. 
  * These arrays/structs are: quadg.gnode, rblock, ext_map.*/
+#define ZERO_LEVEL	1
 #define EXTRA_LEVELS	2		/*One is the Zero Level, and the other one is the Final Level*/
 #define IPV4_LEVELS	(3+EXTRA_LEVELS)
 #define IPV6_LEVELS	(14+EXTRA_LEVELS)
@@ -68,7 +69,7 @@ typedef struct {
 	int         gid[MAX_LEVELS];	 /*Group ids. Each element is the gid of the quadrogroup in the 
 					   relative level. (ex: gid[n] is the gid of the quadropgroup a 
 					   the n level)*/
-	map_gnode  *gnode[MAX_LEVELS-EXTRA_LEVELS]; /*Each element is a pointer to the relative gnode in the 
+	map_gnode  *gnode[MAX_LEVELS-ZERO_LEVEL]; /*Each element is a pointer to the relative gnode in the 
 						      ext_map. It has levels-EXTRA_LEVELS elements.*/
 	inet_prefix ipstart[MAX_LEVELS]; /*The ipstart of each quadg.gid in their respective levels*/
 }quadro_group;
@@ -144,6 +145,7 @@ map_gnode *init_gmap(u_short groups);
 void reset_gmap(map_gnode *gmap, u_short groups);
 map_gnode **init_extmap(u_char levels, u_short groups);
 void free_extmap(map_gnode **ext_map, u_char levels, u_short groups);
+void reset_extmap(map_gnode **ext_map, u_char levels, u_short groups);
 
 int  g_rnode_find(map_gnode *gnode, map_gnode *n);
 int  extmap_find_level(map_gnode **ext_map, map_gnode *gnode, u_char max_level);

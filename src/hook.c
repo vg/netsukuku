@@ -462,22 +462,25 @@ int create_gnodes(inet_prefix *ip, int final_level)
 	else
 		memcpy(&me.cur_ip, ip, sizeof(inet_prefix));
 
+	if(!final_level)
+		final_level=GET_LEVELS(my_family);
+	
 	/* 
-	 * We remove all the traces of the old gnodesin the ext_map to add the
+	 * We remove all the traces of the old gnodes in the ext_map to add the
 	 * new ones.
 	 */
-	for(i=1; i<me.cur_quadg.levels; i++) {
-		me.cur_quadg.gnode[_EL(i)]->flags &= ~GMAP_ME;
-		me.cur_quadg.gnode[_EL(i)]->g.flags &= ~MAP_ME & ~MAP_GNODE;
-	}
-	for(i=1; i<=final_level; i++) 
-		reset_gmap(me.ext_map[_EL(i)], 0);
+	if(!(me.cur_node->flags & MAP_HNODE))
+		for(i=1; i<final_level; i++) {
+			me.cur_quadg.gnode[_EL(i)]->flags &= ~GMAP_ME;
+			me.cur_quadg.gnode[_EL(i)]->g.flags &= ~MAP_ME & ~MAP_GNODE;
+		}
+	reset_extmap(me.ext_map, final_level, 0);
 
 	/* Now, we update the ext_map with the new gnodes */
 	me.cur_quadg.levels=GET_LEVELS(my_family);
 	iptoquadg(me.cur_ip, me.ext_map, &me.cur_quadg, QUADG_GID | QUADG_GNODE | QUADG_IPSTART);
 
-	for(i=1; i<me.cur_quadg.levels; i++) {
+	for(i=1; i<final_level; i++) {
 		me.cur_quadg.gnode[_EL(i)]->flags &= ~GMAP_VOID;
 		me.cur_quadg.gnode[_EL(i)]->flags |=  GMAP_ME;
 		me.cur_quadg.gnode[_EL(i)]->g.flags &~ MAP_VOID;
@@ -534,9 +537,10 @@ int netsukuku_hook(char *dev)
 	 * We do our first scan to know what we've around us. The rnodes are kept in
 	 * me.cur_node->r_nodes. The fastest one is in me.cur_node->r_nodes[0]
 	 */
+	/*TODO XXX AHAHAHHA
 	if(radar_scan())
 		fatal("%s:%d: Scan of the area failed. Cannot continue.", ERROR_POS);
-	
+	*/
 	if(!me.cur_node->links) {
 		loginfo("No nodes found! This is a black zone. "
 				"Creating a new_gnode. W00t we're the first node");

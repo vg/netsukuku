@@ -99,7 +99,7 @@ u_short iptogid(inet_prefix ip, u_char level)
 }
 
 /* 
- * gidtoipstart: It sets in `*ip' the ipstart of the gnode using the `gidi[x]' for
+ * gidtoipstart: It sets in `*ip' the ipstart of the gnode using the `gid[x]' for
  * each level x.
  * `total_levels' is the total number of levels and the `gid' array 
  * has `total_levels' elements.
@@ -159,9 +159,11 @@ void iptoquadg(inet_prefix ip, map_gnode **ext_map, quadro_group *qg, char flags
 			for(i=0; i<levels; i++)
 				gidtoipstart(gid, levels, levels-i+1, ip.family, &qg->ipstart[i]);
 	}
-	if(flags & QUADG_GNODE)
+	if(flags & QUADG_GNODE) {
 		for(i=0; i<levels-EXTRA_LEVELS; i++)
 			qg->gnode[i]=gnode_from_pos(qg->gid[i+1], ext_map[i]);
+		qg->gnode[levels-EXTRA_LEVELS]=&ext_map[i][0];
+	}
 }
 
 void quadg_free(quadro_group *qg)
@@ -193,7 +195,7 @@ void random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 		inet_prefix *new_ip, int my_family)
 {
 	int i, level, levels;
-	u_short gid[final_level];
+	u_short gid[total_levels];
 	quadro_group qg;
 
 	if(!ipstart || final_level==total_levels) {
@@ -244,7 +246,7 @@ void random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 	 * Ok, we've set the gids of each level so we recompose them in the
 	 * new_ip.
 	 */
-	gidtoipstart(gid, final_level, final_level, my_family, new_ip);
+	gidtoipstart(gid, levels, levels, my_family, new_ip);
 }
 
 /*
@@ -344,13 +346,13 @@ map_gnode **init_extmap(u_char levels, u_short groups)
 	if(!groups)
 		groups=MAXGROUPNODE;
 
-	levels-=EXTRA_LEVELS; /*We strip off the EXTRA levels*/
-	ext_map=(map_gnode **)xmalloc(sizeof(map_node *) * levels);
+	levels--; /*We strip off the Zero level*/
+	ext_map=(map_gnode **)xmalloc(sizeof(map_gnode *) * (levels));
 	for(i=0; i<levels; i++)
 		ext_map[i]=init_gmap(groups);
 	
 	/*Ok, now we stealthy add the unity_level which has only one gmap.*/
-	ext_map[levels]=(map_gnode *)xmalloc(sizeof(map_gnode));
+	ext_map[levels]=init_gmap(1);
 	return ext_map;
 }
 
@@ -374,6 +376,15 @@ void free_extmap(map_gnode **ext_map, u_char levels, u_short groups)
 	xfree(ext_map[levels]);
 
 	xfree(ext_map);
+}
+
+void reset_extmap(map_gnode **ext_map, u_char levels, u_short groups)
+{
+	int i;
+	
+	for(i=1; i<levels; i++) 
+		reset_gmap(ext_map[_EL(i)], groups);
+	rnode_destroy(&ext_map[_EL(i)][0].g);
 }
 
 /* g_rnode_find: It searches in `gnode'.g a rnode which points to the gnode `n'.

@@ -151,7 +151,7 @@ int route_exec(int route_cmd, unsigned flags, inet_prefix to, struct nexthop *nh
 	if (to.len) {
 		req.rt.rtm_dst_len = to.bits;
 		req.rt.rtm_family  = to.family;
-		if(!to.data[0]) {
+		if(!to.data[0] && !to.data[1] && !to.data[2] && !to.data[3]) {
 			/*Add the default gw*/
 			req.rt.rtm_scope=RT_SCOPE_LINK;
 			req.rt.rtm_protocol=RTPROT_KERNEL;

@@ -85,6 +85,7 @@ void krnl_update_node(void *void_node, u_char level)
 			maptoip((u_int)me.int_map, (u_int)node->r_node[i].r_node,
 					me.cur_quadg.ipstart[1], &nh[i].gw);
 #endif
+		inet_htonl(&nh[i].gw);
 			nh[i].dev=me.cur_dev;
 			nh[i].hops=255-i;
 		}
@@ -97,11 +98,13 @@ void krnl_update_node(void *void_node, u_char level)
 		node=&gnode->g;
 		node_pos=pos_from_gnode(gnode, me.ext_map[_EL(level)]);
 		gnodetoip(me.ext_map, &me.cur_quadg, gnode, level, &to);
+		inet_htonl(&to);
 		
 		gw_node=get_gw_gnode(me.int_map, me.ext_map, me.bnode_map,
 				me.bmap_nodes, gnode, level, 0);
 		maptoip((u_int)me.int_map, (u_int)gw_node, 
 				me.cur_quadg.ipstart[1], &nh[0].gw);
+		inet_htonl(&nh[0].gw);
 		nh[0].dev=me.cur_dev;
 
 		nh[1].dev=0;
@@ -142,5 +145,6 @@ int rt_add_def_gw(char *dev)
 		error("rt_add_def_gw(): Cannot use INADRR_ANY for the %d family\n", to.family);
 		return -1;
 	}
+	inet_htonl(&to);
 	return route_add(to, 0, dev, 0);
 }

@@ -26,19 +26,43 @@
 
 extern int errno;
 
+/* 
+ * inet_ntohl: Converts the ip->data from network to host order 
+ */
+void inet_ntohl(inet_prefix *ip)
+{
+	if(ip->family==AF_INET) {
+		ip->data[0]=ntohl(ip->data[0]);
+	} else
+		ntohl_128(ip->data, ip->data);
+}
+
+/* 
+ * inet_ntohl: Converts the ip->data from host to network order 
+ */
+void inet_htonl(inet_prefix *ip)
+{
+	if(ip->family==AF_INET) {
+		ip->data[0]=htonl(ip->data[0]);
+	} else
+		htonl_128(ip->data, ip->data);
+}
+
 int inet_setip(inet_prefix *ip, u_int *data, int family)
 {
 	ip->family=family;
-
+	memset(ip->data, '\0', sizeof(ip->data));
+	
 	if(family==AF_INET) {
-		memset(ip->data, '\0', sizeof(ip->data));
-		ip->data[0]=ntohl(data[0]);
+		ip->data[0]=data[0];
 		ip->len=4;
 	} else if(family==AF_INET6) {
-		ntohl_128(data, ip->data);
+		memcpy(ip->data, data, sizeof(ip->data));
 		ip->len=16;
 	} else 
 		return -1;
+
+	inet_ntohl(ip);
 	ip->bits=ip->len*8;
 	return 0;
 }
@@ -92,8 +116,7 @@ char *inet_to_str(inet_prefix *ip)
 		src.s_addr=htonl(ip->data[0]);
 		dst=xmalloc(INET_ADDRSTRLEN);
 		inet_ntop(ip->family, &src, dst, INET_ADDRSTRLEN);
-	}
-	else if(ip->family==AF_INET6) {
+	} else if(ip->family==AF_INET6) {
 		struct in6_addr src;
 
 		htonl_128(ip->data, &src);
@@ -109,7 +132,7 @@ char *inet_to_str(inet_prefix *ip)
  */
 int inet_to_sockaddr(inet_prefix *ip, u_short port, struct sockaddr *dst, socklen_t *dstlen)
 {
-	int *p;
+	char *p;
 	int data[4]={0,0,0,0};
 	
 	memset(dst, '\0',  sizeof(struct sockaddr));
@@ -120,17 +143,16 @@ int inet_to_sockaddr(inet_prefix *ip, u_short port, struct sockaddr *dst, sockle
 	
 	if(ip->family==AF_INET) {
 		data[0]=htonl(ip->data[0]);
-		p=(int *)dst->sa_data+2;
+		p=(char *)dst->sa_data+2;
 		memcpy(p, data, sizeof(int)*4);
-	} else if(ip->family==AF_INET6)
-		htonl_128(ip->data, dst->sa_data+sizeof(u_short)+sizeof(u_int));
-	else
+	} else if(ip->family==AF_INET6) {
+		p=(char *)dst->sa_data+sizeof(u_short)+sizeof(u_int);
+		htonl_128(ip->data, p);
+	} else
 		return -1;
 
-	if(!dstlen)
-		return 0;
-
-	*dstlen=ip->len;	
+	if(dstlen)
+		*dstlen=ip->len;
 
 	return 0;
 }
@@ -138,6 +160,7 @@ int inet_to_sockaddr(inet_prefix *ip, u_short port, struct sockaddr *dst, sockle
 int sockaddr_to_inet(struct sockaddr *ip, inet_prefix *dst, u_short *port)
 {
 	u_short po;
+	char *p;
 	
 	memset(dst, '\0',  sizeof(inet_prefix));
 	
@@ -146,11 +169,13 @@ int sockaddr_to_inet(struct sockaddr *ip, inet_prefix *dst, u_short *port)
 	if(port)
 		*port=ntohs(po);
 	
-	if(ip->sa_family==AF_INET) 
-		inet_setip(dst, (u_int *)(&ip->sa_data+sizeof(u_short)), ip->sa_family);
-	else if(ip->sa_family==AF_INET6)
-		inet_setip(dst, (u_int *)(&ip->sa_data+sizeof(u_short)+sizeof(int)), ip->sa_family);
-	else
+	if(ip->sa_family==AF_INET) {
+		p=(char *)ip->sa_data+sizeof(u_short);
+		inet_setip(dst, (u_int *)p, ip->sa_family);
+	} else if(ip->sa_family==AF_INET6) {
+		p=(char *)ip->sa_data+sizeof(u_short)+sizeof(int);
+		inet_setip(dst, (u_int *)p, ip->sa_family);
+	} else
 		return -1;
 
 	return 0;
@@ -284,6 +309,7 @@ int unset_broadcast_sk(int socket, int family)
 int new_broadcast_sk(int family, int dev_idx)
 {
 	int sock;
+
 	sock=new_dgram_socket(family);
 	return set_broadcast_sk(sock, family, dev_idx);
 }
@@ -350,18 +376,23 @@ int new_bcast_conn(inet_prefix *host, short port, int dev_idx)
 	int sk, sa_len;
 	struct sockaddr	sa;
 	PACKET pkt;
+	char *ntop;
 
 	if(inet_to_sockaddr(host, port, &sa, &sa_len)) {
-		error("Cannot new_bcast_connect(): %d Family not supported", host->family);
+		error("Cannot new_bcast_connect(): %d Family not supported", 
+				host->family);
 		return -1;
 	}
 
 	if((sk = new_broadcast_sk(host->family, dev_idx)) == -1)
 		return -1;
-
+	
 	if(host->family == AF_INET)
-		if(connect(sk, &sa, sa_len) == -1) {
-			error("Cannot connect to the broadcast: %s", strerror(errno));
+		if(connect(sk, &sa, sizeof(sa)) == -1) {
+			ntop=inet_to_str(host);
+			error("Cannot connect to the broadcast (%s): %s", ntop,
+					strerror(errno));
+			xfree(ntop);
 			return -1;
 		}
 
@@ -503,7 +534,6 @@ ssize_t inet_sendto(int s, const void *msg, size_t len, int flags, const struct 
 			default:
 				error("inet_sendto: Cannot send(): %s", strerror(errno));
 				return err;
-				/*not reached*/
 				break;
 		}
 	}

@@ -76,6 +76,7 @@ int prepare_listen_socket(int family, int socktype, u_short port)
 			continue;
 		}
 		freeaddrinfo(aitop);
+		return 0;
 	}
 	
 	error("Cannot open inbound socket on port %d: %s", port, strerror(errno));

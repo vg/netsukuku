@@ -31,6 +31,8 @@ typedef struct
 				   word ORDER 1 (most significant word first)*/
 }inet_prefix;
 
+void inet_ntohl(inet_prefix *ip);
+void inet_htonl(inet_prefix *ip);
 int inet_setip(inet_prefix *ip, u_int *data, int family);
 int inet_setip_bcast(inet_prefix *ip, int family);
 int inet_setip_anyaddr(inet_prefix *ip, int family);

@@ -122,6 +122,7 @@ const char *if_init(char *dev, int *dev_idx)
 int set_dev_ip(inet_prefix ip, char *dev)
 {
 	int s;
+	char *p;
 
 	if(ip.family == AF_INET) {
 		struct ifreq req;
@@ -141,10 +142,13 @@ int set_dev_ip(inet_prefix ip, char *dev)
 		}
 	} else if(ip.family == AF_INET6) {
 		struct in6_ifreq req6;
+		struct sockaddr sa;
 
 		req6.ifr6_ifindex=ll_name_to_index(dev);
 		req6.ifr6_prefixlen=0;
-		memcpy(&req6.ifr6_addr, ip.data, ip.len);
+		inet_to_sockaddr(&ip, 0, &sa, 0);
+		p=(char *)sa.sa_data+sizeof(u_short)+sizeof(u_int);
+		memcpy(&req6.ifr6_addr, p, ip.len);
 
 		if(ioctl(s, SIOCSIFADDR, &req6)) {
 			error("Error while setting \"%s\" ip: %s", dev, strerror(errno));

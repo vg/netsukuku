@@ -129,27 +129,33 @@ int pkt_verify_hdr(PACKET pkt)
 
 ssize_t pkt_send(PACKET *pkt)
 {
-	char *buf;
+	ssize_t ret;
+	char *buf=0;
 
 	buf=pkt_pack(pkt);
 
 	if(pkt->sk_type==SKT_UDP || pkt->sk_type==SKT_BCAST) {
 		struct sockaddr to;
 		socklen_t tolen;
-
-		if(inet_to_sockaddr(&pkt->to, pkt->port, &to, &tolen)) {
+		
+		if(inet_to_sockaddr(&pkt->to, pkt->port, &to, &tolen) < 0) {
 			debug(DBG_NOISE, "Cannot pkt_send(): %d "
 					"Family not supported", pkt->to.family);
-			return -1;
+			ret=-1;
+			goto finish;
 		}
-		return inet_sendto(pkt->sk, buf, PACKET_SZ(pkt->hdr.sz), pkt->flags, &to, tolen);
+		
+		ret=inet_sendto(pkt->sk, buf, PACKET_SZ(pkt->hdr.sz), 
+				pkt->flags, &to, sizeof(to));
 	} else if(pkt->sk_type==SKT_TCP)
-		return inet_send(pkt->sk, buf, PACKET_SZ(pkt->hdr.sz), pkt->flags);
+		ret=inet_send(pkt->sk, buf, PACKET_SZ(pkt->hdr.sz), pkt->flags);
 	else
 		fatal("Unkown socket_type. Something's very wrong!! Be aware");
 
-	/*not reached*/
-	return -1;
+finish:
+	if(buf)
+		xfree(buf);
+	return ret;
 }
 
 ssize_t pkt_recv(PACKET *pkt)

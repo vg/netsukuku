@@ -68,7 +68,8 @@ void free_new_node(void)
 
 	rq=radar_q;
 	list_for(rq)
-		xfree(rq->node);
+		if(rq->node)
+			xfree(rq->node);
 }
 
 struct radar_queue *find_ip_radar_q(map_node *node)

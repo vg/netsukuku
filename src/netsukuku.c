@@ -243,12 +243,13 @@ int main(int argc, char **argv)
 	/* Now we hook in the Netsukuku network */
 	netsukuku_hook(me.cur_dev);
 
-	log_init(argv[0], server_opt.dbg_lvl, 0);
 
-	if(server_opt.daemon)
+	if(server_opt.daemon) {
+		log_init(argv[0], server_opt.dbg_lvl, 0);
 		if(daemon(0, 0) == -1) {
 			error("Impossible to daemonize: %s.", strerror(errno));
 		}
+	}
 
 	pthread_attr_init(&t_attr);
 	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
@@ -257,10 +258,18 @@ int main(int argc, char **argv)
 	 * These are the daemons, the main threads that keeps Netsukuku 
 	 * up & running. 
 	 */
+	debug(DBG_NORMAL, "Activating all daemons");
+
+	debug(DBG_SOFT,   "Evocating radar daemon.");
 	pthread_create(&daemon_radar_thread, &t_attr, radar_daemon, NULL);
+	
+	debug(DBG_SOFT,   "Evocating udp daemon.");
 	pthread_create(&daemon_udp_thread,   &t_attr, udp_daemon,   NULL);
+	
+	debug(DBG_SOFT,   "Evocating tcp daemon.");
 	tcp_daemon(NULL); /* We use this self process for the tcp_daemon */
 
+	loginfo("Cya m8");
 	pthread_attr_destroy(&t_attr);
 	destroy_netsukuku();
 }
