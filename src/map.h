@@ -34,22 +34,22 @@
 /*****The real map stuff*****/
 /***flags**/
 #define MAP_ME		1		/*The root_node, in other words, me ;)*/
-#define MAP_HNODE	(1<<1)		/*Hooking node. One node is hooking when it is connecting to netsukuku*/
-#define MAP_SNODE	(1<<2)
-#define MAP_DNODE	(1<<3)
-#define MAP_BNODE	(1<<4)		/*The node is a border_node*/
-#define MAP_GNODE	(1<<5)
-#define MAP_RNODE	(1<<6)		/*If a node has this set, it is one of the rnodes*/
-#define MAP_UPDATE	(1<<7)		/*If it is set, the corresponding route in the krnl will be updated*/
-#define MAP_VOID	(1<<8)		/*It indicates a non existent node*/
+#define MAP_VOID	(1<<1)		/*It indicates a non existent node*/
+#define MAP_HNODE	(1<<2)		/*Hooking node. One node is hooking when it is connecting to netsukuku*/
+#define MAP_SNODE	(1<<3)
+#define MAP_DNODE	(1<<4)
+#define MAP_BNODE	(1<<5)		/*The node is a border_node*/
+#define MAP_GNODE	(1<<6)
+#define MAP_RNODE	(1<<7)		/*If a node has this set, it is one of the rnodes*/
+#define MAP_UPDATE	(1<<8)		/*If it is set, the corresponding route in the krnl will be updated*/
 #define QSPN_CLOSED	(1<<9)		/*This flag is set only to the rnodes, it puts a link in a QSPN_CLOSED state*/
 #define QSPN_OPENED	(1<<10)		/*It puts a link in a QSPN_OPEN state*/
-#define QSPN_REPLIED	(1<<12)		/*When the node send the qspn_reply it will never reply again to the same qspn*/
-#define QSPN_BACKPRO	(1<<13)		/*This marks the r_node where the QSPN_BACKPRO has been sent*/
-#define QSPN_OLD	(1<<14)		/*If a node isn't updated by the current qspn_round it is marked with QSPN_ROUND.
+#define QSPN_REPLIED	(1<<11)		/*When the node send the qspn_reply it will never reply again to the same qspn*/
+#define QSPN_BACKPRO	(1<<12)		/*This marks the r_node where the QSPN_BACKPRO has been sent*/
+#define QSPN_OLD	(1<<13)		/*If a node isn't updated by the current qspn_round it is marked with QSPN_ROUND.
 					  If in the next qspn_round the same node isn't updated it is removed from the map.*/
 #ifdef QSPN_EMPIRIC
-#define QSPN_STARTER	(1<<15)		/*Used only by qspn-empiric.c*/
+#define QSPN_STARTER	(1<<14)		/*Used only by qspn-empiric.c*/
 #endif
 /* 			    *** Map notes ***
  * The map is a block of MAXGROUPNODE map_node struct. It is a generic map and it is
@@ -68,14 +68,14 @@ typedef struct
 	u_int	 	*r_node;		 /*It's the pointer to the struct of the r_node in the map*/
 	struct timeval  rtt;	 		 /*node <-> r_node round trip time*/
 	
-	struct timeval  trtt;			/*node <-> root_node total rtt: The rtt to reach the root_node 
+	struct timeval  trtt;			 /*node <-> root_node total rtt: The rtt to reach the root_node 
 	 					  starting from the node which uses this rnode. 
 	 * Cuz I've explained it in such a bad way I make an example:
 	 * map_node node_A; From node_A "node_A.links"th routes to the root_node start. 
 	 * So I have "node_A.links"th node_A.r_node[s], each of them is a different route to reach the root_node. 
 	 * With the node_A.r_node[route_number_to_follow].trtt I can get the rtt needed to reach the root_node 
 	 * starting from the node_A using the route_number_to_follow. Gotcha? I hope so.
-	 * Note: The trtt is mainly used for the sort of the routes*/
+	 * Note: The trtt is mainly used to sort the routes*/
 }map_rnode;
 
 typedef struct
@@ -125,6 +125,7 @@ map_rnode *rnode_add(map_node *node, map_rnode *new);
 void rnode_swap(map_rnode *one, map_rnode *two);
 void rnode_del(map_node *node, size_t pos);
 void rnode_destroy(map_node *node);
+int rnode_find(map_node *node, map_node *n);
 
 int rnode_rtt_compar(const void *a, const void *b);
 void rnode_rtt_order(map_node *node);

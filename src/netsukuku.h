@@ -30,26 +30,22 @@ int ntk_tcp_port;
 struct current
 {
 	map_node  	*int_map;	/*Internal Map*/
-	/*TODO: Update the ext_map in the src*/
-	map_gnode 	**ext_map;	/*External Map. It is ext_map[ext_levels] and each element contains the 
-					  entire ext_map for that level*/
 	
-/*TODO: remove these from the src:
- *	inet_prefix	 ipstart;	The first ip of our gnode (cur_gnode)
- * 	map_gnode 	 *cur_gnode;
- * 	int 		 *cur_gid;	G_node id*/
+	map_gnode      **ext_map;	/*External Map. It is ext_map[ext_levels] and each element contains the 
+					  entire ext_map for that level*/
 	quadro_group     cur_quadg;
 	
-	map_bnode	*bnode_map;	/*Current boarder nodes map, read map.h*/
-	u_int 		 bmap_nodes;	/*How many bnodes there are in map_bnode*/
+	/*TODO: Aggiornare i src per bnode_map e bmap_nodes*/
+	map_bnode      **bnode_map;	/*Current boarder nodes map, read bmap.h*/
+	u_int 		*bmap_nodes;	/*How many bnodes there are in map_bnode*/
 	
 	inet_prefix	 cur_ip;
 	map_node 	*cur_node;	/*Me in the map*/
 	map_rnode	*cur_rnode;	/*At the hooking time we haven't rnodes, so this will point a stub rnode struct
 					  present at cur_node->r_node*/
 
-	int 		 cur_qspn_id;	/*The current qspn_id we are processing*/
-	struct timeval	 cur_qspn_time;	/*When the last qspn round was sent*/
+	int 		*cur_qspn_id;	/*The current qspn_id we are processing. It is cur_qspn_id[levels] big*/
+	struct timeval	*cur_qspn_time; /*When the last qspn round was sent. It is cur_qspn_time[levels] big*/
 
 	rnode_rt 	*cur_rnrt;
 

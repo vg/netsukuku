@@ -179,13 +179,17 @@ int add_radar_q(PACKET pkt)
 	struct radar_queue *rq=radar_q;
 	
 	gettimeofday(&t, 0);
-	if(iptomap(me.int_map, pkt.from, me.cur_quadg.ipstart[0], &rnode)) 
+	if(iptomap(me.int_map, pkt.from, me.cur_quadg.ipstart[1], &rnode)) 
 		if(!(me.cur_node->flags & MAP_HNODE)) {
 			u_int *gmap;
 			/*The pkt.ip isn't part of our gnode, thus we are a bnode.
 			 * TODO: When the gnode support is complete: Here we have to add the 
-			 * two border nodes, me and the other in the gnode map and in the bnode map.
-			 * gmap=GI2GMAP(me.ext_map, rnode);
+			 * two border nodes, me and the other in the bnode map we also have to 
+			 * set the MAP_BNODE flag in the bnode stored in the root_node's rnodes.
+			 * The rnode ptr will point to the its location in the bmap
+			 * gmap=gnode_from_pos(rnode, me.ext_map);
+			 *
+			 * Use also MAP_RNODE!
 			 */
 			me.cur_node->flags|=MAP_BNODE;
 			return 1;
@@ -294,7 +298,7 @@ int radar_scan(void)
 	radar_update_map();
 	if(!(me.cur_node->flags & MAP_HNODE)) {
 		if(send_qspn_now)
-			qspn_send();	/*We start a new qspn_round*/
+			qspn_send(0);	/*We start a new qspn_round*/
 		reset_radar(me.cur_node->links);
 	}
 	else

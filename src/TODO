@@ -1,11 +1,20 @@
 - [HIGH PRIORITY] -
-gnode support  30%: creazione di un nuovo gnode, qspn di gnode, fusione di gnode uguali...
+
+gnode support  40%: creazione di un nuovo gnode, qspn di gnode, fusione di gnode uguali...
+bmap.c: pack delle bmap_level, sendare le multiple bmap
+il qspn che supporta i livelli.
+qspn.c: am_i_a_quadg_qspn_starter()?
+qspn.c: i nodi normali devono solo forwardare e storarsi il pkt. I bnode aprono e chiudono.
+radar.c: il qspn_send(LEVEL) il LEVEL dipende da chi abbiamo come node confinante.
+         ci deve essere un qspn_send per ogni livello coinvolto.
+route.c:  void krnl_update_node(map_node *node, /*TODO: XXX u_char level*/)
 
 - [MEDIUM PRIORITY] -
+broadcast: Tenere in considerazione il gttl
 netsukuku.c (Parte minimale)
 come fare per aggiungere un route rule per specificare un'intero range nel campo from?
-unique id per radar_pkt per evitare di falsificare le stats.
 
 - [LOW PRIORITY] -
 tracer.c: store_trcaer_pkt_connect
 connect-wrapper.c: ld.so.preload!
+unique id per radar_pkt per evitare di falsificare le stats.

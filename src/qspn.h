@@ -15,7 +15,6 @@
  * this source code; if not, write to:
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
-
 #include "map.h"
 
 #define MAX_CONC_QSPN		5	/*MAX CONCURRENT QSPN*/
@@ -23,6 +22,10 @@
 					  seconds to be waited before the next qspn_round 
 					  can be sent*/
 #define QSPN_WAIT_ROUND_MS	QSPN_WAIT_ROUND*1000
+
+/*Wait time bound to a specific level*/
+#define QSPN_WAIT_ROUTE_LVL(level) ((level)*QSPN_WAIT_ROUND*2+QSPN_WAIT_ROUND)
+#define QSPN_WAIT_ROUTE_MS_LVL(level) ((level)*QSPN_WAIT_ROUND_MS*2+QSPN_WAIT_ROUND_MS)
 					  
 /*we are using the qspn_map style II*/
 #define QMAP_STYLE_II
@@ -48,7 +51,11 @@
  *   all its rnodes as a normal (non qspn) map would.
  * - map_node.r_node.rtt isn't used.
  *
- * Currently the qspn_map styleII is used
+ * The only exception is the root_node. Its rnodes have a different meaning: they are
+ * its effective rnodes, so each map_node.r_node points to the node in the which is the
+ * real rnode of the root_node.
+ *
+ * Currently the qspn_map styleII is used.
  * typedef qmap_node *int_map;
  */
 
@@ -64,9 +71,9 @@ struct qspn_buffer
 	u_short	      * replier;	/*Who has sent these replies (qspn_sub_id)*/
 	u_short	      * flags;
 };
-struct qspn_buffer *qspn_b;
+struct qspn_buffer **qspn_b; /*It is sizeof(struct qspn_buffer)*levels big*/
 
-int qspn_send_mutex=0;
+int *qspn_send_mutex;	     /*It is sizeof(int)*levels big.*/
 
 
 void qspn_b_clean(void);
@@ -77,6 +84,6 @@ void update_qspn_time(void);
 void qspn_new_round(void);
 
 int exclude_from_and_gnode_and_opened(map_node *node, map_node *from, int pos);
-int qspn_send();
+int qspn_send(u_char gid, u_char level);
 int qspn_close(PACKET rpkt);
 int qspn_open(PACKET rpkt);

@@ -177,6 +177,19 @@ void rnode_destroy(map_node *node)
 	node->links=0;
 }
 
+/* rnode_find: It searches in the `node' a rnode which points to the node `n'.
+ * It then returns the position of that rnode.
+ * If the rnode is not found it returns -1;*/
+int rnode_find(map_node *node, map_node *n)
+{
+	int e;
+	for(e=0; e<node->links; e++)
+		if((int)*node->r_node[e].r_node == (int)*from)
+			return e;
+	return -1;
+}
+
+
 /* map_node_del: It deletes a `node' from the `map'. Really it frees its rnodes and 
  * set the node's flags to MAP_VOID.*/
 void map_node_del(map_node *node)
@@ -228,8 +241,7 @@ void rnode_trtt_order(map_node *node)
 }
 
 /* map_routes_order: It order all the r_node of each node using their trtt.
- * Used mainly with a qspn map styleII
- */
+ * Used mainly with a qspn map styleII */
 void map_routes_order(map_node *map)
 {
 	int i;
@@ -240,8 +252,7 @@ void map_routes_order(map_node *map)
 /* get_route_rtt: It return the round trip time (in millisec) to reach 
  * the root_node of the int_map starting from "node", using the "route"th route.
  * If "rtt" is not null it stores in "rtt" the relative timeval struct
- * (qspn map styleI)
- */
+ * (qspn map styleI) */
 int get_route_rtt(map_node *node, u_short route, struct timeval *rtt)
 {
 	map_node *ptr;
@@ -250,15 +261,15 @@ int get_route_rtt(map_node *node, u_short route, struct timeval *rtt)
 	if(route >= node->links || node->flags & MAP_VOID || node->links <= 0)
 		return -1;
 	
-	if(node->flags & MAP_ME)
-		return 0;
-	
 	if(!rtt)
 		rtt=t=(struct timeval *)xmalloc(sizeof(struct timeval));
 	memset(rtt, '\0', sizeof(struct timeval));
 	
+	if(node->flags & MAP_ME)
+		return 0;
+	
 	ptr=(map_node *)node->r_node[route].r_node;
-	while(0) {
+	while(1) {
 		if(ptr->flags & MAP_ME)
 			break;
 		timeradd(&ptr->r_node[route].rtt, t, t);
@@ -268,7 +279,29 @@ int get_route_rtt(map_node *node, u_short route, struct timeval *rtt)
 	return MILLISEC(*t);
 }
 
-/* rnode_set_trtt: It sets the trtt of all the node's rnodes using get_route_rtt*/
+/* get_route_trtt: It's the same of get_route_rtt, but it returns the 
+ * totatl round trip time (trtt).
+ * It's mainly used in the qspn_map styleII*/
+int get_route_trtt(map_node *node, u_short route, struct timeval *trtt)
+{
+	struct timeval *t=trtt;
+	
+	if(route >= node->links || node->flags & MAP_VOID || node->links <= 0)
+		return -1;
+	
+	if(!trtt)
+		trtt=t=(struct timeval *)xmalloc(sizeof(struct timeval));
+	memset(trtt, '\0', sizeof(struct timeval));
+	
+	if(node->flags & MAP_ME)
+		return 0;
+	
+	memcpy(t, &node->r_node[route].trtt, sizeof(struct timeval));
+	return MILLISEC(node->r_node[route].trtt);
+}
+
+/* rnode_set_trtt: It sets the trtt of all the node's rnodes using get_route_rtt.
+ * (qspn map styleI)*/
 void rnode_set_trtt(map_node *node)
 {
 	int e;
@@ -277,6 +310,7 @@ void rnode_set_trtt(map_node *node)
 	
 }
 
+
 void rnode_recurse_trtt(map_rnode *rnode, int route, struct timeval *trtt)
 {
 	int i;
@@ -284,7 +318,7 @@ void rnode_recurse_trtt(map_rnode *rnode, int route, struct timeval *trtt)
 	map_node *ptr;
 	
 	ptr=(map_node *)rnode[route].r_node;
-	while(0) {
+	while(1) {
 		if(ptr->flags & MAP_ME)
 			break;
 		timersub(trtt, &ptr->r_node[route].rtt, &ptr->r_node[route].trtt);
@@ -302,8 +336,7 @@ void node_recurse_trtt(map_node *node)
 			rnode_recurse_trtt(node->r_node, e, &node->r_node[e].trtt);
 }
 
-/* map_set_trtt: Updates the trtt of all the rnodes in a qspn map styleI.
- */
+/* map_set_trtt: Updates the trtt of all the rnodes in a qspn map styleI.*/
 void map_set_trtt(map_node *map) 
 {
 	int i, e;	
@@ -337,7 +370,7 @@ map_node *get_gw_node(map_node *node, u_short route)
 		return NULL;
 	
 	ptr=(map_node *)node;
-	while(0) {
+	while(1) {
 		if(((map_node *)ptr->r_node[route].r_node)->flags & MAP_ME)
 			break;
 		ptr=(map_node *)ptr->r_node[route].r_node;
@@ -349,33 +382,49 @@ map_node *get_gw_node(map_node *node, u_short route)
 /*merge_maps: Given two maps it merge them selecting only the best routes.
  * In the "base" map there will be the resulting map. The "new" map is the
  * second map used. "base_root" points to the root_node in the "base" map.
- * "new_root" points to the root_node in the "new" map.*/
+ * "new_root" points to the root_node in the "new" map.
+ * (qspn_map styleII)*/
 int merge_maps(map_node *base, map_node *new, map_node *base_root, map_node *new_root)
 {
-	int i, e, x, count=0;
+	int i, e, x, count=0, rpos, nrpos;
+	map_node *new_root_in_base;
 	
-	/* We strip off the root_node flag from the new map and we translate it
-	 * to a normal node using the base map and we put the MAP_ME flag in the 
-	 * right place
-	 */
-	new_root->flags&=~MAP_ME;
-	memcpy(new_root, &base[((void *)new_root-(void *)new)/sizeof(map_node)], sizeof(map_node));
-	new[((void *)base_root-(void *)base)/sizeof(map_node)].flags|=MAP_ME;
-	
+	new_root_in_base=&base[pos_from_node(new_root, new)];
+	rpos=pos_from_node(base_root, base);
+		
 	for(i=0; i<MAXGROUPNODE; i++) {
+		if(base[i].flags & MAP_ME || new[i].flags & MAP_ME)
+			continue;
+
 		for(e=0; e<new[i].links; e++) {
+			/*Now we change the r_nodes pointers of the new map to points to 
+			 * the base map's nodes. */
+			nrpos=pos_from_node(new[i].r_node[e].r_node, new);
+			if(nrpos == rpos)
+				/*We skip,cause the new_map it's using the base_root node as gw*/
+				continue;
+
+			if(base[nrpos].flags & MAP_VOID) {
+				/*In the base we haven't the node used as gw in the new_map to reach
+				 * the new[i].r_node[e] node. We must use the new_root node as gw because
+				 * it is one of our rnode*/
+				new[i].r_node[e].r_node=(int *)new_root_in_base;
+			} else
+				new[i].r_node[e].r_node=base[nrpos].r_node[0].r_node;
+			
 			if(e>=base[i].links) {
 				rnode_add(&base[i], &new[i].r_node[e]);
 				rnode_trtt_order(&base[i]);
 				count++;
 				continue;
 			}
-			
-			if(get_route_rtt(&base[i], base[i].links-1, 0) < get_route_rtt(&new[i], e, 0))
+		
+			/*If the worst route in base is less than the new one, let's go ahead*/
+			if(get_route_trtt(&base[i], base[i].links-1, 0) < get_route_trtt(&new[i], e, 0))
 				continue;
 			
 			for(x=0; x<base[i].links; x++) {
-				if(get_route_rtt(&base[i], x, 0) > get_route_rtt(&new[i], e, 0)) {
+				if(get_route_trtt(&base[i], x, 0) > get_route_trtt(&new[i], e, 0)) {
 					map_rnode_insert(&base[i], x, &new[i].r_node[e]);
 					count++;
 					break;
@@ -383,7 +432,6 @@ int merge_maps(map_node *base, map_node *new, map_node *base_root, map_node *new
 			}
 		}
 	}
-	
 	return count;
 }
 
@@ -478,7 +526,7 @@ int verify_int_map_hdr(struct int_map_hdr *imap_hdr, int maxgroupnode, int maxrn
 	return 0;
 }
 
-/* pack_map: It returns a pack of the int_map `map', which has 
+/* pack_map: It returns a pack of the int/bmap_map `map', which has 
  * `maxgroupnode' nodes ready to be saved or sent. In `pack_sz' it
  * stores the size of the package. For info on `addr_map' please
  * read get_map_rblock()*/
@@ -512,7 +560,7 @@ char *pack_map(map_node *map, int *addr_map, int maxgroupnode, map_node *root_no
 	return package;	
 }
 
-/* unpack_extmap: Given a valid int_map package (packed with pack_intmap), it 
+/* unpack_extmap: Given a valid int/bmap_map package (packed with pack_intmap), it 
  * allocates a brand new int_map and restores in it the map and the rnodes.
  * It puts in `*new_root' the pointer to the root_node in the loaded map.
  * For info on `addr_map' please read map_store_rblock().

@@ -12,26 +12,26 @@ extern struct current me;
 
 /* tracer_verify_pkt: It checks the validity of `tracer': The last entry
  * in the tracer must be a node present in our r_nodes. If `real_from'
- * is non 0, it checks if it is equal to the last entry in the packet.
- */
-int tracer_verify_pkt(tracer_chunk *tracer, u_int hops, map_node *real_from)
+ * is non 0, it checks if it is equal to the last entry in the packet. */
+int tracer_verify_pkt(tracer_chunk *tracer, u_int hops, map_node *real_from, u_char level)
 {
 	map_node *from;
 	int e, x=0;
 
 	/*"from" has to be absolutely one of our rnodes*/
-	from=node_from_pos(tracer[hops-1].node, me.int_map);
-	if(from && from != real_from) {
-		return -1;
+	if(!level) {
+		from=node_from_pos(tracer[hops-1].node, me.int_map);
+		if(from && from != real_from)
+			return -1;
+		if(rnode_find(me.cur_node, from) == -1)
+			return -1;
+	} else {
+		from=gnode_from_pos(me.cur_quadg.gid[level], me.ext_map[_EL(level)]);
+		if(from && (void *)from != (void *)real_from) 
+			return -1;
+		if(g_rnode_find(me.cur_quag.gnode[_EL(level)], (map_gnode *)from) == -1)
+			return -1;
 	}
-	for(e=0; e<me.cur_node->links; e++)
-		if((int)*me.cur_node->r_node[e].r_node == (int)*from) {
-			x=1;
-			break;
-		}
-	if(!x) 
-		return -1;
-
 	return 0;
 }
 
@@ -39,48 +39,81 @@ int tracer_verify_pkt(tracer_chunk *tracer, u_int hops, map_node *real_from)
  * It returns the modified tracer pkt in a newly mallocated struct and it increments the `*hops'.
  * If `tracer' is null it will return the new tracer_pkt.
  * On errors it returns NULL.*/
-tracer_chunk *tracer_add_entry(map_node *map, map_node *node, tracer_chunk *tracer, u_int *hops)
+tracer_chunk *tracer_add_entry(void *void_map, void *void_node, tracer_chunk *tracer, u_int *hops, u_char level)
 {
 	tracer_chunk *t;
+	map_node *from;
+	map_rnode *rfrom=0;
+	map_node  *map=(map_node *)void_map, *node=(map_node *)void_node;
+	map_gnode **ext_map=(map_gnode *)void_map, *gnode=(map_gnode *)void_node;
+	int pos;
 
 	*hops++;
 	t=xmalloc(sizeof(tracer_chunk)*hops);
-	if(tracer || *hops)
+	memset(t, 0, sizeof(tracer_chunk)*hops);
+	if(tracer || *hops) {
 		memcpy(t, tracer, sizeof(tracer_chunk) * (*hops-1));
-	t[hops-1].node=pos_from_node(node, map);
-	memcpy(&t[hops-1].rtt, &me.cur_node->r_node[e].rtt, sizeof(struct timeval));
+		if(!level) {
+			from=node_from_pos(tracer[hops-1].node, map);
+			if((pos=rnode_find(me.cur_node, from)) == -1)
+				return 0;
+			else
+				rfrom=&me.cur_node->r_node[pos];
+		} else {
+			from=gnode_from_pos(tracer[hops-1].node, ext_map[_EL(level)]);
+			if((pos=g_rnode_find(me.cur_quag.gnode[_EL(level)], (map_gnode *)from) == -1))
+				return 0;
+			else
+				rfrom=me.cur_quag.gnode[_EL(level)]->g.r_node[pos]
+		}
+	}
 
+	if(!level)
+		t[hops-1].node=pos_from_node(node, map);
+	else
+		t[hops-1].node=pos_from_gnode(gnode, ext_map[_EL(level)]);
+		
+	if(rfrom)
+		memcpy(&t[hops-1].rtt, &rfrom->rtt, sizeof(struct timeval));
 	return t;
 }
 
 /* tracer_build_bentry: It builds the bnode_block to be added in the bnode's entry in 
  * the tracer pkt. It stores in `bnode_chunk' the pointer to the first bnode_chunk and
  * returns a pointer to the bnode_hdr. On errors it returns a NULL pointer.*/
-bnode_hdr *tracer_build_bentry(map_node *map, map_node *node, bnode_chunk *bnode_chunk) 
+bnode_hdr *tracer_build_bentry(void *void_map, void *void_node, bnode_chunk *bnode_chunk, u_char level) 
 {
+	map_node  *int_map=(map_node *)void_map, *node=(map_node *)void_node;
+	map_gnode **ext_map=(map_gnode *)void_map, *gnode=(map_gnode *)void_node;
 	bnode_hdr *bhdr;
 	bnode_chunk *bchunk;
-	int i, bm;
+	int i, bmi;
+	u_char lvl;
 	
 	if(!(node->flags & MAP_BNODE))
 		goto error;
 	
-	if((bm=map_find_bnode(me.bnode_map, me.bmap_nodes, node))==-1) 
+	if((bm=map_find_bnode(me.bnode_map[level], me.bmap_nodes[level], void_map, void_node, level))==-1) 
 		goto error;
 
 	/*This will never happen, but we know the universe is fucking bastard*/
-	if(!me.bnode_map[bm].links)
+	if(!me.bnode_map[level][bm].links)
 		goto error;
 
 	bhdr=xmalloc(sizeof(bnode_hdr));
-	bchunk=xmalloc(sizeof(bnode_chunk)*me.bnode_map[bm].links);
+	bchunk=xmalloc(sizeof(bnode_chunk)*me.bnode_map[level][bm].links);
 	memset(bhdr, 0, sizeof(bnode_hdr));
-	memset(bchunk, 0, sizeof(bnode_chunk)*me.bnode_map[bm].links);
+	memset(bchunk, 0, sizeof(bnode_chunk)*me.bnode_map[level][bm].links);
 
-	bhdr->bnode=pos_from_node(node, map);
-	for(i=0; i<me.bnode_map[bm].links; i++) {
-		bchunk[i].gnode=GMAP2GI(me.ext_map[0], me.bnode_map[bm].r_node[i].r_node);
-		memcpy(&bchunk[i].rtt, &me.bnode_map[bm].r_node[i].rtt, sizeof(struct timeval));
+	if(!level) {
+		bhdr->bnode=pos_from_node(node, map);
+	else
+		bhdr->bnode=pos_from_gnode(gnode, ext_map[_EL(level)]);
+	for(i=0; i<me.bnode_map[level][bm].links; i++) {
+		lvl=extmap_find_level(me.ext_map, me.bnode_map[level][bm].r_node[i].r_node, me.cur_quadg.levels);
+		bchunk[i].gnode=pos_from_gnode(me.bnode_map[level][bm].r_node[i].r_node, me.ext_map[_EL(lvl)]);
+		bchunk[i].level=lvl;
+		memcpy(&bchunk[i].rtt, &me.bnode_map[level][bm].r_node[i].rtt, sizeof(struct timeval));
 		bhdr->links++;
 	}
 
@@ -124,8 +157,7 @@ char *tracer_pack_pkt(brdcast_hdr *bcast_hdr, tracer_hdr *tracer_hdr, tracer_chu
 /* tracer_unpack_pkt: Given a packet `rpkt' it scomposes the rpkt.msg in 
  * `new_bcast_hdr', `new_tracer_hdr', `new_tracer', 'new_bhdr', and 
  * `new_block_sz'.
- * It returns 0 if the packet is valid, otherwise -1 is returned.
- */
+ * It returns 0 if the packet is valid, otherwise -1 is returned.*/
 int tracer_unpack_pkt(PACKET rpkt, brdcast_hdr *new_bcast_hdr, tracer_hdr *new_tracer_hdr, tracer_chunk *new_tracer, 
 		      bnode_hdr *new_bhdr, size_t *new_bblock_sz)
 {
@@ -135,6 +167,7 @@ int tracer_unpack_pkt(PACKET rpkt, brdcast_hdr *new_bcast_hdr, tracer_hdr *new_t
 	bnode_hdr    *bhdr=0;
 	map_node *real_from;
 	size_t bblock_sz=0, tracer_sz=0;
+	u_char level, i, gid;
 
 	*new_bcast_hdr=*new_tracer_hdr=*new_tracer=*new_bhdr=*new_bblock_sz=0; /*Woa, I love the beauty of this string*/
 	
@@ -149,12 +182,28 @@ int tracer_unpack_pkt(PACKET rpkt, brdcast_hdr *new_bcast_hdr, tracer_hdr *new_t
 		if(!bhdr->links)
 			return -1;
 	}
-	if(bcast_hdr->g_node != me.cur_gid  || !(rpkt.hdr.flags & BCAST_PKT) ||
-			!(bcast_hdr->flags & BCAST_TRACER_PKT))
+
+	level=bcast_hdr->level;
+	if(level==1)
+		level=0;
+	if(!(rpkt.hdr.flags & BCAST_PKT) || !(bcast_hdr->flags & BCAST_TRACER_PKT) || 
+			level > GET_LEVELS(rpkt.from.family))
 		return -1;
 
-	iptomap(me.int_map, rpkt.from, me.cur_quadg.ipstart[0], &real_from);
-	if(tracer_verify_pkt(tracer, tracer_hdr->hops, real_from))
+	/* Now, let's check if we are part of the bcast_hdr->g_node of bcast_hdr->level. If not let's 
+	 * drop it! Why the hell this pkt is here?*/
+	for(i=me.cur_quadg.levels-1; i!=0; i++) {
+		gid=iptogid(bcast_hdr->g_ipstart, i);
+		if(gid != me.cur_quadg.gid[i] && !(i < level))
+			return -1;
+	}
+
+	if(!level)
+		iptomap(me.int_map, rpkt.from, me.cur_quadg.ipstart[1], &real_from);
+	else
+		real_from=iptogid(rpkt.from, level);
+
+	if(tracer_verify_pkt(tracer, tracer_hdr->hops, real_from, level, level))
 		return -1;
 	
 	*new_bcast_hdr=bcast_hdr;
@@ -170,8 +219,7 @@ int tracer_unpack_pkt(PACKET rpkt, brdcast_hdr *new_bcast_hdr, tracer_hdr *new_t
  * pointing to the start of the bnode_chunk in the `bbl'. The total size of all the valid bblocks considered
  * is stored in `*bblock_found_sz'.
  * It then returns the number of bblock found. Remember to xfree bbl_hdr and bbl 
- * after using tracer_split_bblock.
- */
+ * after using tracer_split_bblock. */
 u_short tracer_split_bblock(void *bnode_block_start, size_t bblock_sz, bnode_hdr *bbl_hdr, 
 		        bnode_chunk *bbl, size_t *bblock_found_sz)
 {
@@ -219,17 +267,15 @@ skip:
 	return x;
 }
 
-/* tracer_store_pkt: This is the main function used to keep the map's karma in peace.
+/* tracer_store_pkt: This is the main function used to keep the int/ext_map's karma in peace.
  * It updates the `map' with the given `tracer' pkt. The bnode blocks (if any) are
  * unpacked and used to update the data of the boarding gnodes.
  * In `*bblocks_found' it stores the number of bblocks considered and stores in 
  * `bblocks_found_block' these bblocks. The `bblocks_found_block' will be appended
  * in the new tracer_pkt, after our bblock entry (if any). 
  * Remember to xfree(bblocks_found_block);
- * 
- * PS: I hate myself. How can I use so many args? Damn!
  */
-int tracer_store_pkt(map_node *map, tracer_hdr *tracer_hdr, tracer_chunk *tracer, 
+int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *tracer_hdr, tracer_chunk *tracer,
 		     void *bnode_block_start, size_t bblock_sz, 
 		     u_short *bblocks_found,  char *bblocks_found_block, size_t *bblock_found_sz)
 {
@@ -238,15 +284,29 @@ int tracer_store_pkt(map_node *map, tracer_hdr *tracer_hdr, tracer_chunk *tracer
 	bnode_hdr 	**bblist_hdr=0;
 	bnode_chunk 	***bblist=0;
 	struct timeval trtt;
-	map_node *from, *node;
+	map_node *int_map=*from, *node;
+	map_node  *int_map=(map_node *)void_map, *from, *node, *root_node;
+	void *void_node;
+	map_gnode **ext_map=(map_gnode *)void_map, *gfrom, *gnode;
 	map_rnode rn;
-	int i, e, diff, bm, x;
+	int i, e, diff, bm, x, rnode_pos;
 	u_int hops=tracer_hdr->hops;
 	u_short bb;
 	size_t found_block_sz;
 	char *found_block;
+	u_char level;
 
-	from=node_from_pos(tracer[hops-1].node, map);
+	if(!level) {
+		ext_map=me.ext_map;
+	 	from=node_from_pos(tracer[hops-1].node, int_map);
+		root_node=me.cur_node;
+		rnode_pos=rnode_find(root_node, from);
+	} else {
+		from=gfrom=gnode_from_pos(tracer[hops-1].node, ext_map[_EL(level)]);
+		root_node=&me.cur_quadg.gnode[_EL(level)].g;
+		rnode_pos=rnode_find(root_node, from);
+	}
+	
 	if(!(from.flags & MAP_RNODE)) { /*the `from' node isn't in our r_nodes. Add it!*/
 		map_rnode rnn;
 
@@ -273,28 +333,30 @@ int tracer_store_pkt(map_node *map, tracer_hdr *tracer_hdr, tracer_chunk *tracer
 			for(i=0; i<bb; i++) {
 				memcpy(found_block+x, bblist_hdr[i], sizeof(bnode_hdr));
 				x+=sizeof(bnode_hdr);
-				node=node_from_pos(bblist_hdr[i]->bnode, map);
-				node->flags|=MAP_BNODE;
+				if(!level) {
+					node=node_from_pos(bblist_hdr[i]->bnode, map);
+					node->flags|=MAP_BNODE;
+					void_node=(void *)node;
+				} else {
+					gnode=gnode_from_pos(bblist_hdr[i]->bnode, ext_map[_EL(level)]);
+					gnode->g.flags|=MAP_BNODE;
+					void_node=(void *)gnode;
+				}
 
 				/*Let's check if we have this bnode in the bmap, if not let's add it*/
-				if((bm=map_find_bnode(me.bnode_map, me.bmap_nodes, node))==-1) {
-					bm=me.bmap_nodes-1;
-					me.bmap_nodes++;
-					if(me.bmap_nodes == 1)
-						me.bnode_map=xmalloc(sizeof(map_bnode));
-					else
-						me.bnode_map=xrealloc(me.bnode_map, sizeof(map_bnode) * me.bmap_nodes);
-					me.bnode_map[bm].bnode_ptr=pos_from_node(node, map);
-					me.bnode_map[bm].links=bblist_hdr[i]->links;
-				}
+				bm=map_find_bnode(me.bnode_map[level], me.bmap_nodes[level], void_map, void_node, level);
+				if(bm==-1)
+					bm=map_add_bnode(&me.bmap_nodes[level], &me.bmap_nodes[level], bblist_hdr[i]->bnode, 
+							bblist_hdr[i]->links);
 
 				/*Now, we delete all the bnode's gnode_rnodes, then we store the new ones.
 				 * yea, I know I'm raw, ahahaha.*/
 				rnode_destroy(me.bnode_map[bm]);
-				
+
+				/*We brought kaos, let's give peace*/
 				for(e=0; e<bblist_hdr[i]->links; e++) {
 					memset(&rn, 0, sizeof(map_rnode));
-					rn.r_node=GI2GMAP(me.ext_map[0], bblist[i][e]->gnode);
+					rn.r_node=gnode_from_pos(bblist[i][e]->gnode, ext_map[_EL(bblist[i][e]->level)]);
 					memcpy(&rn.rtt, &bblist[i][e]->rtt, sizeof(struct timeval));
 					rnode_add(&me.bnode_map[bm], &rn);
 
@@ -308,16 +370,26 @@ int tracer_store_pkt(map_node *map, tracer_hdr *tracer_hdr, tracer_chunk *tracer
 			xfree(bblist);
 		}
 	}
-		
-	timeradd(tracer[0].rtt, &trtt, &trtt);
-	for(i=hops-1; i != hops; i--) {
-		timeradd(tracer[i].rtt, &trtt, &trtt);
+	
+	/* * Time to store the qspn routes to reach all the nodes of the tracer pkt * */
+	
+	timeradd(&root_node->r_node[rnode_pos].trtt, &trtt, &trtt);
+	for(i=hops-1; i != 0; i--) {
+		timeradd(&tracer[i].rtt, &trtt, &trtt);
 
+		if(!level)
 		node=node_from_pos(tracer[i].node, map);
+		else {
+			gnode=gnode_from_pos(tracer[i].node, ext_map[_EL(level)]);
+			node=&gnode->g;
+		}
+			
 		if(!(node->flags & MAP_VOID)) { /*Ehi, we hadn't this node in the map. Add it.*/
 			from->flags&=~MAP_VOID;
 			from->flags|=MAP_UPDATE;
-			me.cur_gnode->seeds++;
+			if(level < GET_LEVELS(my_family))
+				if( (me.cur_quadg.gnode[_EL(level+1)]->seeds++) == MAXGROUPNODES )
+					me.cur_quadg.gnode[_EL(level+1)]->flags|=GMAP_FULL;
 		}
 		for(e=0; e < node->links; e++) {
 			if(node->r_node[e].r_node == from) {
@@ -334,7 +406,7 @@ int tracer_store_pkt(map_node *map, tracer_hdr *tracer_hdr, tracer_chunk *tracer
 
 			memset(&rnn, '\0', sizeof(map_rnode));
 			rnn.r_node=from;
-			memcpy(&rnn.rtt, &trtt, sizeof(struct timeval));
+			memcpy(&rnn.trtt, &trtt, sizeof(struct timeval));
 			rnode_add(node, &rnn);
 			node->flags|=MAP_UPDATE;
 		}
@@ -347,7 +419,7 @@ int tracer_store_pkt(map_node *map, tracer_hdr *tracer_hdr, tracer_chunk *tracer
 				for(x=MAXROUTES; x < node->links; x++)
 					rnode_del(node, x);
 			}
-			krnl_update_node(node);
+			krnl_update_node(node, level);
 		}
 	}
 	return 0;
@@ -366,6 +438,7 @@ int tracer_store_pkt(map_node *map, tracer_hdr *tracer_hdr, tracer_chunk *tracer
  * It returns -1 on errors. 
  */
 int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
+		     int gnode_id,	     u_char gnode_level,
 		     brdcast_hdr *bcast_hdr, tracer_hdr *tracer_hdr, tracer_chunk *tracer,  
 		     u_short old_bchunks,    char *old_bblock,       size_t old_bblock_sz,  
 		     PACKET *pkt)
@@ -373,6 +446,7 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 	tracer_chunk *new_tracer=0;
 	bnode_hdr    *new_bhdr=0;
 	bnode_chunk  *new_bchunk=0;
+	void *void_map, *void_node;
 	int new_tracer_pkt=0, ret=0;
 	u_int hops;
 
@@ -380,7 +454,9 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 		new_tracer_pkt=1;
 		bcast_hdr=xmalloc(sizeof(brdcast_hdr));
 		memset(bcast_hdr, 0, sizeof(brdcast_hdr));
-		bcast_hdr.g_node=me.cur_gid; 
+		bcast_hdr.g_node=gnode_id; 
+		bcast_hdr.level=gnode_level+1;
+		memcpy(&bcast_hdr.g_ipstart, &me.cur_ip, sizeof(inet_prefix));
 		bcast_hdr.gttl=1;
 		tracer_hdr=xmalloc(sizeof(tracer_hdr));
 		memset(tracer_hdr, 0, sizeof(tracer_hdr));
@@ -394,12 +470,20 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 	pkt->hdr.op=rq;
 	pkt->hdr.flags|=BCAST_PKT;
 	bcast_hdr.flags|=BCAST_TRACER_PKT;
-
+	
+	if(!level) {
+		void_map=(void *)me.int_map;
+		void_node=(void *)me.cur_node;
+	} else {
+		void_map=(void *)me.ext_map;
+		void_node=(void *)me.cur_quadg.gnode[_EL(gnode_level)];
+	}
+	
 	/*Time to append our entry in the tracer_pkt*/
-	new_tracer=tracer_add_entry(me.int_map, me.cur_node, tracer, &hops);
+	new_tracer=tracer_add_entry(void_map, void_node, tracer, &hops, gnode_level); 
 	/*If we are a bnode we have to append the bnode_block too.*/
 	if(me.cur_node->flags & MAP_BNODE)
-		if((new_bhdr=tracer_build_bentry(me.int_map, me.cur_node, &new_bchunk)))
+		if((new_bhdr=tracer_build_bentry(void_map, void_node, &new_bchunk, gnode_level)))
 			tracer_hdr->bblocks=new_bhdr->links;
 
 	/*If in the old tracer_pkt is present a bblock, we append it after the new entry*/
@@ -429,7 +513,7 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 	}
 	return 0;
 }
-/* is_node_excluded: is the `node' included in the `excluded_nodes' list?*/
+/* is_node_excluded: is the `node' included in the `excluded_nodes' list?
 int is_node_excluded(map_node *node, map_node **excluded_nodes, int exclusions)
 {
 	int i;
@@ -442,6 +526,7 @@ int is_node_excluded(map_node *node, map_node **excluded_nodes, int exclusions)
 	}
 	return 0;
 }
+*/
 
 /* tracer_pkt_send: It sends only a normal tracer_pkt. This is useful after the hook,
  * to let all the other nodes know we are alive and to give them the right route.
@@ -454,20 +539,22 @@ int is_node_excluded(map_node *node, map_node **excluded_nodes, int exclusions)
  * The `from' argument to tracer_pkt_send is the node who sent the `pkt'.
  * It returns the number of pkts sent or -1 on errors. Note that the total pkt sent
  * should be == me.cur_node->links-1*/
-int tracer_pkt_send(int(*is_node_excluded)(map_node *, int), map_node *from, PACKET pkt)
+int tracer_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), int gid, u_char level, map_node *from, PACKET pkt)
 {
 	inet_prefix to;
+	map_node *dst_node;
 	ssize_t err;
 	char *ntop;
 	int i, e=0;
 
 	/*Forward the pkt to all our r_nodes (excluding the excluded hehe;)*/
 	for(i=0; i<me.cur_node->links; i++) {
-		if(is_node_excluded((map_node *)me.cur_node->r_node[i].r_node, from, i))
+		dst_node=(map_node *)me.cur_node->r_node[i].r_node;
+		if(is_node_excluded(dst_node, from, i, gid, level))
 			continue;
 
 		memset(&to, 0, sizeof(inet_prefix));
-		maptoip(*me.int_map, *me.cur_node->r_node[i].r_node, me.cur_quadg.ipstart[0], &to);
+		maptoip(*me.int_map, *dst_node, me.cur_quadg.ipstart[1], &to);
 		pkt_addto(&pkt, &to);
 		pkt.sk_type=SKT_UDP;
 
@@ -488,22 +575,46 @@ int tracer_pkt_send(int(*is_node_excluded)(map_node *, int), map_node *from, PAC
 }
 
 /* * * these exclude function are used in conjunction with tracer_pkt_send.* * */
-int exclude_from_and_gnode(map_node *node, map_node *from, int pos) 
+
+/* exclude_glevel: Exclude `node' if it doesn't belong to the gid (`excl_gid') of 
+ * the level (`excl_level') specified.*/
+int exclude_glevel(TRACER_PKT_EXCLUDE_VARS)
 {
-	if(node == from || (node->flags & MAP_GNODE))
+	map_bnode *bnode;
+	int i, level, gid;
+	
+	if(dst_node->flags & MAP_GNODE  && excl_level!=0) {
+		bnode=node;
+		/* If the bnode is near at least with one gnode included in the excl_gid of
+		 * excl_level we can continue to forward the pkt*/
+		for(i=0; i<bnode->links; i++) {
+			level=extmap_find_level(me.ext_map, bnode->r_node[i].r_node, me.cur_quadg.levels);
+			gid=bnode->r_node[i].r_node;
+			if(level < excl_level || ((level == excl_level) && (gid==excl_gid)))
+				return 0;
+		}
+		return 1;
+	}
+	return 0;
+}
+
+/* Exclude the from node, the setreplied node, and the node's gnode of a higher level*/
+int exclude_from_and_glevel_and_setreplied(TRACER_PKT_EXCLUDE_VARS)
+{
+	if(node == from || exclude_glevel(node, from, pos, excl_gid, excl_level))
 		return 1;
 	return 0;
 }
-int exclude_from_and_gnode_and_setreplied(map_node *node, map_node *from, int pos) 
+int exclude_from_and_glevel_and_closed(TRACER_PKT_EXCLUDE_VARS)
 {
-	if(node == from || (node->flags & MAP_GNODE))
+	if(node == from || exclude_glevel(node, from, pos, excl_gid, excl_level))
 		return 1;
 	node->flags|=QSPN_REPLIED;
 	return 0;
 }
-int exclude_from_and_gnode_and_closed(map_node *node, map_node *from, int pos) 
+int exclude_from_and_glevel(TRACER_PKT_EXCLUDE_VARS)
 {
-	if((node->flags & QSPN_CLOSED) || node == from || (node->flags & MAP_GNODE))
+	if((node->flags & QSPN_CLOSED) || node == from || exclude_glevel(node, from, pos, excl_gid, excl_level))
 		return 1;
 	return 0;
 }
@@ -518,12 +629,16 @@ int tracer_pkt_recv(PACKET rpkt)
 	tracer_chunk *tracer;
 	bnode_hdr    *bhdr=0;
 	map_node *from, *tracer_starter;
+	map_gnode *gfrom, *gnode;
 	ssize_t err;
 	int ret=0, ret_err;
 	u_int hops;
 	size_t bblock_sz=0, old_bblock_sz;
 	u_short old_bchunks=0;
+	int gid;
+	u_char level, orig_lvl;
 	char *ntop, *old_bblock;
+	void *void_map;
 
 	ret_err=tracer_unpack_pkt(rpkt, &bcast_hdr, &tracer_hdr, &tracer, &bhdr, &bblock_sz);
 	if(ret_err) {
@@ -534,8 +649,18 @@ int tracer_pkt_recv(PACKET rpkt)
 	}
 
 	hops=tracer_hdr.hops;
-	from=node_from_pos(tracer[hops-1].node, me.int_map);
-	tracer_starter=node_from_pos(tracer[0].node, me.int_map);
+	gid=orig_lvl=bcast_hdr->g_node;
+	level=bcast_hdr->level;
+	if(!level || level == 1) {
+		level=0;
+		from=node_from_pos(tracer[hops-1].node, me.int_map);
+		tracer_starter=node_from_pos(tracer[0].node, me.int_map);
+		void_map=me.int_map;
+	} else {
+		level--;
+		from=gfrom=gnode_from_pos(tracer[hops-1].node, ext_map[_EL(level)]);
+		void_map=me.ext_map;
+	}
 
 	/*This is the check for the broadcast id. If it is <= tracer_starter->brdcast
 	 * the pkt is an old broadcast that still dance around.
@@ -550,21 +675,22 @@ int tracer_pkt_recv(PACKET rpkt)
 
 
 	/*Time to update our map*/
-	if(rpkt.hdr.op == TRACER_PKT) /*This is because tracer_pkt_recv handles also TRACER_PKT_CONNECT pkts*/
-		tracer_store_pkt(me.int_map, tracer_hdr, tracer, (void *)bhdr, bblock_sz,
+	if(rpkt.hdr.op == TRACER_PKT) /*This check is made because tracer_pkt_recv handles also TRACER_PKT_CONNECT pkts*/
+		tracer_store_pkt(void_map, level, tracer_hdr, tracer, (void *)bhdr, bblock_sz,
 				&old_bchunks, &old_bblock, &old_bblock_sz);
 	/*The forge of the packet.*/
 	tracer_pkt_build(rpkt.hdr.op, rpkt.hdr.id, bcast_hdr->sub_id,  			   /*IDs*/
+			 gid,         orig_lvl,						   /*GnodeID and level (ignored)*/
 			 bcast_hdr, tracer_hdr, tracer, 				   /*Received tracer_pkt*/
 			 old_bchunks, old_bblock, old_bblock_sz, 			   /*bnode_block*/
 			 &pkt);								   /*Where the pkt is built*/
 	xfree(old_bblock);
 	/*... forward the tracer_pkt to our r_nodes*/
-	tracer_pkt_send(exclude_from_and_gnode, from, pkt);
+	tracer_pkt_send(exclude_from_and_glevel, gid, orig_lvl, from, pkt);
 	return 0;
 }
 
-int tracer_pkt_start(void)
+int tracer_pkt_start(u_char level)
 {
 	PACKET pkt;
 	map_node *from=me.cur_node;
@@ -576,12 +702,13 @@ int tracer_pkt_start(void)
 
 	me.cur_node->brdcast++;
 	tracer_pkt_build(TRACER_PKT, me.cur_node->brdcast, pos_from_node(me.cur_node, me.int_map),/*IDs*/
-			 0,          0,              0, 				    /*Received tracer_pkt*/
-			 0,          0,              0, 			  	    /*bnode_block*/
+			 me.cur_quadg.gid[level],	   level,		   	    /*GnodeID and level*/
+			 0,          0,                    0, 				    /*Received tracer_pkt*/
+			 0,          0,                    0, 			  	    /*bnode_block*/
 			 &pkt);								    /*Where the pkt is built*/
 	xfree(old_bblock);
 	/*Diffuse the packet in all the universe!*/
-	tracer_pkt_send(exclude_from_and_gnode, from, pkt);
+	tracer_pkt_send(exclude_from_and_glevel, me.cur_quadg.gid[level], level+1, from, pkt);
 	tracer_pkt_start_mutex=0;
 	return 0;
 }
@@ -593,7 +720,8 @@ int tracer_pkt_connect(PACKET pkt, map_node *dst)
 	brdcast_hdr bcast_hdr;
 	tracer_hdr tracer_hdr;
 	tracer_chunk tracer[2];
-	
+	u_char gid=me.cur_quadg.gid[1], level=0; /*The tracer_pkt_connect is valid only in our gnode*/
+
 	tracer_hdr.hops=2;
 	tracer_hdr.bblocks=0;
 	memset(&tracer[0], 0, sizeof(tracer_chunk));
@@ -607,11 +735,12 @@ int tracer_pkt_connect(PACKET pkt, map_node *dst)
 	
 	me.cur_node->brdcast++;
 	tracer_pkt_build(TRACER_PKT_CONNECT, me.cur_node->brdcast, pos_from_node(me.cur_node, me.int_map),/*IDs*/
+			 gid,		     level,
 		         &bcast_hdr,         &tracer_hdr,          tracer,		    /*Received tracer_pkt*/
 			 0,                  0,              0, 			    /*bnode_block*/
 			 &pkt);				 				    /*Where the pkt is built*/
 	xfree(old_bblock);
 	/*Diffuse the packet in all the universe!*/
-	tracer_pkt_send(exclude_from_and_gnode, from, pkt);
+	tracer_pkt_send(exclude_from_and_glevel, gid, level, from, pkt);
 	return 0;
 }

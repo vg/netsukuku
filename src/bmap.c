@@ -23,6 +23,41 @@
 #include "xmalloc.h"
 #include "log.h"
 
+void bmap_level_init(u_char levels, map_bnode *bmap, u_int *bmap_nodes)
+{
+	*bmap=xmalloc(sizeof(map_bnode *) * levels);
+	*bmap_nodes=xmalloc(sizeof(u_int *) * levels);
+}
+
+void bmap_level_free(map_bnode **bmap, u_int *bmap_nodes)
+{
+	xfree(bmap);
+	xfree(bmap_nodes);
+}
+
+/* map_add_bnode: It adds a new bnode in the `bmap' and then returns its position
+ * in the bmap. It also increments the `*bmap_nodes' counter. The bnode_ptr is set
+ * to `bnode' and the links to `links'.
+ * Note that the `bmap' argument must be an adress of a pointer.
+ */
+int map_add_bnode(map_bnode *bmap, u_int *bmap_nodes, u_int bnode, u_int links)
+{
+	map_bnode *bnode_map;
+	int bm;
+	
+	bm=*bmap_nodes; 
+	*bmap_nodes++;
+	if(bmap_nodes == 1)
+		*bmap=xmalloc(sizeof(map_bnode));
+	else
+		*bmap=xrealloc(*bmap, sizeof(map_bnode) * *bmap_nodes);
+
+	bnode_map=*bmap;
+	bnode_map[bm].bnode_ptr=bnode;
+	bnode_map[bm].links=links;
+	return bm;
+}
+
 /* map_bnode_del: It deletes the `bnode' in the `bmap' which has `bmap_nodes'.
  * It returns the newly rescaled `bmap'.
  * It returns 0 if the `bmap' doesn't exist anymore.*/
@@ -43,12 +78,21 @@ map_bnode *map_bnode_del(map_bnode *bmap, u_int *bmap_nodes,  map_bnode *bnode)
 }
 
 /* map_find_bnode: Find the given `node' in the given map_bnode `bmap'.*/
-int map_find_bnode(map_node *int_map, map_bnode *bmap, int count, map_node *node)
+int map_find_bnode(map_bnode *bmap, int count, void *void_map, void *node, u_char level)
 {
+	map_gnode **ext_map(map_gnode *)void_map;
+	map_node  *int_map=(map_node *)void_map;
 	int e;
-	for(e=0; e<count; e++)
-		if(node_from_pos(bmap[e].bnode_ptr, int_map) == node && !(bmap[e].flags & MAP_VOID))
+	void *pos;
+
+	for(e=0; e<count; e++) {
+		if(!level)
+			pos=(void *)node_from_pos(bmap[e].bnode_ptr, int_map);
+		else
+			pos=(void *)gnode_from_pos(bmap[e].bnode_ptr, ext_map[_EL(level)]);
+		if(pos == node && !(bmap[e].flags & MAP_VOID))
 			return e;
+	}
 	return -1;
 }
 

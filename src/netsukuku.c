@@ -9,15 +9,14 @@ int init_load_maps(void)
 	if(!(me.int_map=load_map(server_opt.int_map_file, &me.cur_node)))
 		me.int_map=init_map(0);
 	me.bnode_map=load_bmap(server_opt.bnode_map_file, &me.bmap_nodes);
-	me.ext_map=load_gmap(server_opt.ext_map_file, &me.cur_gnode);
+	me.ext_map=load_extmap(server_opt.ext_map_file, &me.cur_quadg);
 }
 
 int save_maps(void)
 {
 	save_map(me.int_map, me.cur_node, server_opt.int_map_file);
 	save_bmap(me.bnode_map, me.bmap_nodes, server_opt.bnode_map_file);
-	save_gmap(me.ext_map, me.cur_gnode, server_opt.ext_map_file);
-	
+	save_extmap(me.ext_map, MAXGROUPNODE, me.cur_quadg, server_opt.ext_map_file);
 }
 
 int main(int argc, char **argv)
@@ -33,6 +32,8 @@ int main(int argc, char **argv)
 	char *if_init(char *dev, &me.cur_dev_idx)
 	join_ipv6_multicast();
 	map_init();
+	qspn_init(u_char levels);
+	bmap_level_init(levels, &me.bnode_map, &me.bmap_nodes);
 	*/
 	memset(&me, 0, sizeof(struct current));
 	/*curme_init();*/

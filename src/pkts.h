@@ -67,9 +67,11 @@ typedef struct
 /*Broadcast packet*/
 typedef struct
 {
-	int sub_id;		/*The sub_id is the node who sent the pkt, but is only used by the qspn_open*/
-	int g_node;		/*The g_node the brdcast_pkt is restricted to*/
+	int g_node;		/*The gnode the brdcast_pkt is restricted to*/
+	u_char level;		/*The level of the gnode*/
+	inet_prefix g_ipstart;	/*The ipstart of the g_node in level*/
 	u_short gttl;		/*Gnode ttl: How many gnodes the packet can traverse*/
+	int sub_id;		/*The sub_id is the node who sent the pkt, but is only used by the qspn_open*/
 	size_t sz;		/*Sizeof(the pkt)*/
 	char flags;		/*Various flags*/
 }brdcast_hdr;

@@ -21,55 +21,68 @@
 #include "map.h"
 
 /* * * Groupnode stuff * * */
-#define GMAP_ME		1
-#define GMAP_VOID	(1<<1)
-#define GMAP_BNODE	(1<<2)
-#define GMAP_FULL	(1<<3)		/*The gnode is full!! aaahh, run away!*/
+#define GMAP_ME		MAP_ME		/*1*/
+#define GMAP_VOID	MAP_VOID	/*(1<<1)*/
+#define GMAP_FULL	(1<<2)		/*The gnode is full!! aaahh, run away!*/
 
-/*Converts an address of a struct in the map to a Group_node Id*/
-#define GMAP2GI(mapstart, mapoff)	((((mapoff)-(mapstart))/sizeof(map_gnode)))
-/*Converts a Groupnode Id to an address of a struct in the map*/
-#define GI2GMAP(mapstart, gi)		(((gi)*sizeof(map_gnode))+(mapstart))
-
+/* This is the holy external_map. Each struct corresponds to a groupnode. This groupnode
+ * cointains MAXGROUPNODE nodes if we are at level 1 or MAXGROUPNODE groups.
+ * The map is equal to the int_map, infact, a map_node is embedded in a map_gnode. This
+ * int_map uses the QSPN_MAP_STYLEII (see qspn.h). */
 typedef struct
 {
-        /*The groupnode will cover the range from me.ipstart to me.ipstart+MAXGROUPNODE*/
-
-	__u16 		gid;		/*Gnode Id*/
-	/*__u16		layer; 		  not used anymore*/
+	/*The gnode_map starts here. Note that it is a normal map. (See map.h). It is here,
+	 * at the top of the struct to allow to manipulate a map_gnode as a map_node with
+	 * the help of the magic cast. The cast is heavily used in qspn.c*/
+	map_node	g;
+	
+	u_char 		flags;
 	__u16 		seeds;		/*The number of active static nodes connected to this gnode.
 					  If seeds == MAXGROUPNODE, the gnode is full ^_^*/
-
-	/*Th4 g_m4p starts here. Note that it is a normal map: each node-struct has the pointer
-	 * to the nodes connected to it*/
-	map_node	g;
-
-	/*In the own g_node entry there are also the boarder_nodes in g_node.r_node*/
 }map_gnode;
 
 
-/* * * Quadro Group stuff * * */
-#define IPV4_LEVELS	3		/* 0 <= level <IPV4_LEVELS */
-#define IPV6_LEVELS	13		/* 0 <= level <IPV6_LEVELS */
+/* * * Levels stuff * * *
+ * These are the levels of the external_map. Note that the 0 level is never used 
+ * for the ext_map because it corresponds to the internal map. Btw the 0 level is 
+ * counted so the number of LEVELS includes it too. 
+ * But we have to add another extra level: the last exiled level. It is also never 
+ * used but it is vital, cause, its gnode 0 includes the entire Netsukuku, the other
+ * gnodes aren't used, it is a mere symbol. We call it the unity level.
+ *
+ * All the structs/arrays related to the external map, and the ext_map itself, don't
+ * use the EXTRA_LEVELS, thus, they lack of the zero level. To retrieve the position 
+ * in the array from the level the _EL macro must be used. 
+ * These arrays/structs are: quadg.gnode, rblock, ext_map.*/
+#define EXTRA_LEVELS	2		/*One is the Zero Level, and the other one is the Final Level*/
+#define IPV4_LEVELS	3+EXTRA_LEVELS	
+#define IPV6_LEVELS	13+EXTRA_LEVELS
 #define MAX_LEVELS	IPV6_LEVELS
 #define GET_LEVELS(family)	({ (family) == AF_INET ? IPV4_LEVELS : IPV6_LEVELS; })
+
+/* To use the right level. (Ext_mapLevel)*/
+#define _EL(level)    ((level)-1)
+/* And to restore it. (NormalLevel)*/
+#define _NL(level)    ((level)+1)
 
 /* Struct used to keep all the quadro_group ids of a node. (The node is part of this
  * quadro groups)*/
 typedef struct {
-	u_char      levels;		 /*How many levels of quadro_group we have*/
+	u_char      levels;		 /*How many levels we have*/
 	int         gid[MAX_LEVELS];	 /*Group ids. Each element is the gid of the quadrogroup in the 
 					   relative level. (ex: gid[n] is the gid of the quadropgroup a 
 					   the n level)*/
-	map_gnode  *gnode[MAX_LEVELS];	 /*Each element is a pointer to the relative gnode in the ext_map*/
-	inet_prefix ipstart[MAX_LEVELS]; /*The ipstart of each group*/
+	map_gnode  *gnode[MAX_LEVELS-EXTRA_LEVELS]; /*Each element is a pointer to the relative gnode in the 
+						      ext_map*/
+	inet_prefix ipstart[MAX_LEVELS]; /*The ipstart of each quadg.gid in their respective levels*/
 }quadro_group;
 
-/* MAXGROUPNODE per levels. In each levels there is a number 
- * equal to the max number of nodes present in that level.
- * So maxgroupnode_levels[level]=MAXGROUPNODE^level;
- * It is initialized at the start, so the work is done only once*/
-mpz_t maxgroupnode_levels[MAX_LEVELS];
+/* Each array element of maxgroupnode_levels is:
+ * maxgroupnode_levels[x]=MAXGROUPNODE^x;
+ * This is used to get the max number of nodes per levels, in fact,
+ * this number is equal to MAXGROUPNODE^(level+1);
+ * Maxgroupnode_levels is initialized at the start, so the work is done only once*/
+mpz_t maxgroupnode_levels[MAX_LEVELS+1];
 
 /***This block is used to send the ext_map*/
 struct ext_map_hdr
@@ -88,17 +101,24 @@ struct ext_map_hdr
 
 
 /* * * Functions' declaration * * */
+int pos_from_gnode(map_gnode *gnode, map_gnode *map);
+map_node *gnode_from_pos(int pos, map_gnode *map);
+
 void maxgroupnode_level_init(void);
 void maxgroupnode_level_free(void);
 
 u_short iptogid(inet_prefix ip, u_char level);
-void gidtoipstart(u_short gid, u_char level, int family, inet_prefix *ip);
+void gidtoipstart(u_short *gid, u_char levels, int family, inet_prefix *ip);
 void iptoquadg(inet_prefix ip, map_gnode *mapstart, quadro_group *qg);
 
 map_gnode *init_gmap(u_short groups);
 void free_gmap(map_gnode *gmap, u_short groups);
 map_gnode *init_extmap(u_char levels, u_short groups);
 void free_extmap(map_gnode **ext_map, u_char levels, u_short groups);
+
+int  g_rnode_find(map_gnode *gnode, map_gnode *n);
+int  extmap_find_level(map_gnode **ext_map, map_gnode *gnode, u_char max_level);
+void gmap_node_del(map_gnode *gnode);
 
 map_rnode *gmap_get_rblock(map_gnode *map, int maxgroupnode, int *count);
 int gmap_store_rblock(map_gnode *map, int maxgroupnode, map_rnode *rblock);

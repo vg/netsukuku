@@ -26,7 +26,7 @@
  *	__u16 		links;		is the number of gnodes the bnode is linked to.
  *	map_rnode	*r_node;	r_node[x].r_node, in this case, points to the position of the bnode's gnode in 
  *					the ext_map.
- *	u_int           brdcast;	Where this node is in the int_map. The position is stored in the usual
+ *	u_int           brdcast;	Where this node is in the int/ext_map. The position is stored in the usual
  *					pos_from_node() format. (Yep, a dirty hack)
  *
  * So you are asking why didn't I made a new struct for the bmap. Well, I don't want to [re]write all the functions 
@@ -40,14 +40,41 @@ typedef map_node map_bnode;
 #define MAXBNODE_RNODEBLOCK	MAXBNODE_LINKS*MAXGROUPBNODE*sizeof(map_rnode)
 
 /*These defines make the life easier, so instead of writing int_map_hdr I write bnode_map_hdr.
- * Cool eh? ^_^. int_map_hdr is in pkts.h*/
+ * Cool eh? ^_^. int_map_hdr is in map.h*/
 #define bnode_ptr		brdcast		/*Don't kill me*/
 #define bnode_map_hdr 		int_map_hdr
 #define bnode_map_sz   		int_map_sz
 
+
+/* boarder node block: this is the block which keeps the gnodes linked to the `bnode' boarder_node. 
+ * When a bnode has to add his entry in the tracer_pkt it encapsulates the bnode_block at the end
+ * of the packet, in this way it is possible to know all the gnodes linked to the bnode's gnode.
+ * Note: It is possible that the packet passes trough many bnodes, in this case the bnode block
+ * is always put at the end, ex: 
+ * |pkt_hdr|brdcast_hdr|tracer_hdr|tracer_chunks|bnode_hdr|bnode_chunks|bnode_hdr|bnode_chunks|...
+ * and so on.
+ */
+typedef struct
+{
+	__u16 bnode;		/*The bnode this bnode_block belongs to*/
+	__u16 links;		/*The number of linked gnode*/
+}bnode_hdr;
+typedef struct
+{
+	__u16 gnode;
+	u_char level;
+	struct timeval *rtt;
+}bnode_chunk;
+#define BNODEBLOCK_SZ(links) (sizeof(bnode_hdr)+sizeof(bnode_chunk)*(links))
+
+
 /* * * Functions' declaration * * */
+void bmap_level_init(u_char levels, map_bnode *bmap, u_int *bmap_nodes);
+void bmap_level_free(map_bnode **bmap, u_int *bmap_nodes);
+
+int map_add_bnode(map_bnode *bmap, u_int *bmap_nodes, u_int bnode, u_int links);
 map_bnode *map_bnode_del(map_bnode *bmap, u_int *bmap_nodes,  map_bnode *bnode);
-int map_find_bnode(map_node *int_map, map_bnode *bmap, int count, map_node *node);
+int map_find_bnode(map_bnode *bmap, int count, void *void_map, void *node, u_char level);
 
 int save_bmap(map_bnode *bmap, int *gmap, u_int bmap_nodes, char *file);
 map_bnode *load_bmap(char *file, int *gmap, u_int *bmap_nodes);

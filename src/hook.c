@@ -485,7 +485,7 @@ int netsukuku_hook(char *dev)
 	/*Now we are ufficially in the fi_hdr.gid gnode*/
 	new_groot->g.flags&=~GMAP_ME;
 	me.cur_gid=gid;
-	me.cur_gnode=GI2GMAP(me.ext_map, gid);
+	me.cur_gnode=gnode_from_pos(gid, me.ext_map[/*XXX: _EL(level)*/]);
 	me.cur_gnode->g.flags|=GMAP_ME;
 	/*TODO: iptoquadg();*/
 	memcpy(&me.ipstart, &fi_hdr.ipstart, sizeof(inet_prefix));
