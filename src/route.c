@@ -109,11 +109,11 @@ void krnl_update_node(void *void_node, u_char level)
 	
 	if(node->flags & MAP_VOID) {
 		/*Ok, let's delete it*/
-		if(route_del(to, nh, me.cur_dev, 0))
+		if(route_del(0, to, nh, me.cur_dev, 0))
 			error("WARNING: Cannot delete the route entry for the ",
 					"%d %cnode!", node_pos, !level ? ' ' : 'g');
 	} else
-		if(route_replace(to, nh, me.cur_dev, 0))
+		if(route_replace(0, to, nh, me.cur_dev, 0))
 			error("WARNING: Cannot update the route entry for the "
 					"%d %cnode!", node_pos, !level ? ' ' : 'g');
 	if(nh)
@@ -135,8 +135,10 @@ void rt_update(void)
 }
 
 int rt_exec_gw(char *dev, inet_prefix to, inet_prefix gw, 
-		int (*route_function)(inet_prefix to, struct nexthop *nhops, char *dev, u_char table) )
-{	struct nexthop nh[2];
+		int (*route_function)(int type, inet_prefix to, struct nexthop *nhops, 
+			char *dev, u_char table) )
+{
+	struct nexthop nh[2];
 	
 	inet_htonl(&to);
 
@@ -146,7 +148,7 @@ int rt_exec_gw(char *dev, inet_prefix to, inet_prefix gw,
 	nh[0].dev=dev;
 	nh[1].dev=0;
 
-	return route_function(to, nh, dev, 0);
+	return route_function(0, to, nh, dev, 0);
 }
 
 int rt_add_gw(char *dev, inet_prefix to, inet_prefix gw)
@@ -171,7 +173,6 @@ int rt_replace_gw(char *dev, inet_prefix to, inet_prefix gw)
 
 int rt_replace_def_gw(char *dev, inet_prefix gw)
 {
-	struct nexthop nh[2];
 	inet_prefix to;
 	
 	if(inet_setip_anyaddr(&to, my_family)) {
@@ -182,4 +183,47 @@ int rt_replace_def_gw(char *dev, inet_prefix gw)
 	to.bits=0;
 
 	return rt_replace_gw(dev, to, gw);
+}
+
+/* 
+ * rt_del_loopback_net: We remove the loopback net, leaving only the 127.0.0.1
+ * ip for loopback.
+ *  ip route del local 127.0.0.0/8  proto kernel  scope host src 127.0.0.1
+ *  ip route del broadcast 127.255.255.255  proto kernel scope link  src 127.0.0.1
+ *  ip route del broadcast 127.0.0.0  proto kernel  scope link src 127.0.0.1
+ */
+int rt_del_loopback_net(void)
+{
+	inet_prefix to;
+	char lo_dev[]="lo";
+	u_int idata[4];
+
+	memset(idata, 0, sizeof(int)*4);
+	if(my_family!=AF_INET) 
+		return 0;
+
+	/*
+	 * ip route del broadcast 127.0.0.0  proto kernel  scope link      \
+	 * src 127.0.0.1
+	 */
+	idata[0]=LOOPBACK_NET;
+	inet_setip(&to, idata, my_family);
+	route_del(RTN_BROADCAST, to, 0, 0, RT_TABLE_LOCAL);
+	
+	/*
+	 * ip route del local 127.0.0.0/8  proto kernel  scope host 	   \
+	 * src 127.0.0.1
+	 */
+	to.bits=8;
+	route_del(RTN_LOCAL, to, 0, lo_dev, RT_TABLE_LOCAL);
+
+	/* 
+	 * ip route del broadcast 127.255.255.255  proto kernel scope link \
+	 * src 127.0.0.1 
+	 */
+	idata[0]=LOOPBACK_BCAST;
+	inet_setip(&to, idata, my_family);
+	route_del(RTN_BROADCAST, to, 0, lo_dev, RT_TABLE_LOCAL);
+
+	return 0;
 }

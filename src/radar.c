@@ -104,15 +104,17 @@ map_node *find_nnode_radar_q(inet_prefix *node)
 
 int count_hooking_nodes(void) 
 {
-	struct radar_queue *rq=radar_q;
-	int i, total_hooking_nodes=0;
-	
-	for(i=0; i<me.cur_node->links; i++) {
-		rq=find_ip_radar_q((map_node *)me.cur_node->r_node[i].r_node);
+	struct radar_queue *rq;
+	int total_hooking_nodes=0;
+
+	rq=radar_q;
+	list_for(rq) {
+		if(!rq->node)
+			continue;
+
 		if(rq->node->flags & MAP_HNODE)
 			total_hooking_nodes++;
 	}
-
 	return total_hooking_nodes;
 }
 
@@ -246,16 +248,16 @@ void radar_update_map(void)
 	 * rnodes will remain void after the update.
 	 */
 	for(i=0; i<me.cur_node->links; i++) {
+		node=(map_node *)me.cur_node->r_node[i].r_node;
+		
 		if(node->flags & MAP_GNODE) {
 			e_rnode=(ext_rnode *)me.cur_node->r_node[i].r_node;
 			for(e=1; e<e_rnode->quadg.levels; e++) {
 				node=&e_rnode->quadg.gnode[_EL(level)]->g;
 				node->flags|=MAP_VOID | MAP_UPDATE;
 			}
-		} else {
-			node=(map_node *)me.cur_node->r_node[i].r_node;
+		} else
 			node->flags|=MAP_VOID | MAP_UPDATE;
-		}
 	}
 
 	rq=radar_q;
@@ -419,6 +421,11 @@ void radar_update_map(void)
 			rnode_rtt_order(&me.cur_quadg.gnode[_EL(level)]->g);
 }
 
+/* 
+ * add_radar_q: It reads the received ECHO_REPLY pkt and updates the radar
+ * queue, storing the calculated rtt and the other infos relative to the sender
+ * node.
+ */
 int add_radar_q(PACKET pkt)
 {
 	map_node *rnode;
@@ -442,13 +449,6 @@ int add_radar_q(PACKET pkt)
 			memset(rnode, '\0', sizeof(map_node));
 			memset(&rnn, '\0', sizeof(map_rnode));
 
-			if(pkt.hdr.flags & HOOK_PKT) {
-				/* 
-				 * This pkt has been sent from another hooking
-				 * node, let's remember this.
-				 */
-				rnode->flags|=MAP_HNODE;
-			}
 			rnn.r_node=(u_int *)me.cur_node;
 			rnode_add(rnode, &rnn);
 		}
@@ -466,8 +466,17 @@ int add_radar_q(PACKET pkt)
 
 	if(ret)
 		rq->node=(map_node *)RADQ_EXT_RNODE;
-	else
+	else {
 		rq->node=rnode;
+		/* 
+		 * This pkt has been sent from another hooking
+		 * node, let's remember this.
+		 */
+		if(pkt.hdr.flags & HOOK_PKT)
+			rq->node->flags|=MAP_HNODE;
+
+	}
+
 	memcpy(&rq->ip, &pkt.from, sizeof(inet_prefix));
 	memcpy(&rq->quadg, &quadg, sizeof(quadro_group));
 

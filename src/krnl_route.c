@@ -26,25 +26,25 @@
 #include "xmalloc.h"
 #include "log.h"
 
-int route_add(inet_prefix to, struct nexthop *nhops, char *dev, u_char table)
+int route_add(int type, inet_prefix to, struct nexthop *nhops, char *dev, u_char table)
 {
-	return route_exec(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, to, nhops, dev, table);
+	return route_exec(RTM_NEWROUTE, type, NLM_F_CREATE | NLM_F_EXCL, to, nhops, dev, table);
 }
 
-int route_del(inet_prefix to, struct nexthop *nhops, char *dev, u_char table)
+int route_del(int type, inet_prefix to, struct nexthop *nhops, char *dev, u_char table)
 {
-	return route_exec(RTM_DELROUTE, 0, to, nhops, dev, table);
+	return route_exec(RTM_DELROUTE, type, 0, to, nhops, dev, table);
 }
 
 /*If it doesn't exist, CREATE IT! de ih oh oh*/
-int route_replace(inet_prefix to, struct nexthop *nhops, char *dev, u_char table)
+int route_replace(int type, inet_prefix to, struct nexthop *nhops, char *dev, u_char table)
 {
-	return route_exec(RTM_NEWROUTE, NLM_F_REPLACE | NLM_F_CREATE, to, nhops, dev, table);
+	return route_exec(RTM_NEWROUTE, type, NLM_F_REPLACE | NLM_F_CREATE, to, nhops, dev, table);
 }
 
-int route_change(inet_prefix to, struct nexthop *nhops, char *dev, u_char table)
+int route_change(int type, inet_prefix to, struct nexthop *nhops, char *dev, u_char table)
 {
-	return route_exec(RTM_NEWROUTE, NLM_F_REPLACE, to, nhops, dev, table);
+	return route_exec(RTM_NEWROUTE, type, NLM_F_REPLACE, to, nhops, dev, table);
 }
 
 int add_nexthops(struct nlmsghdr *n, struct rtmsg *r, struct nexthop *nhop)
@@ -97,7 +97,8 @@ int add_nexthops(struct nlmsghdr *n, struct rtmsg *r, struct nexthop *nhop)
 	return 0;
 }
 
-int route_exec(int route_cmd, unsigned flags, inet_prefix to, struct nexthop *nhops, char *dev, u_char table)
+int route_exec(int route_cmd, int route_type, unsigned flags, inet_prefix to, 
+		struct nexthop *nhops, char *dev, u_char table)
 {
 	struct rt_request req;
 	struct rtnl_handle rth;
@@ -112,6 +113,7 @@ int route_exec(int route_cmd, unsigned flags, inet_prefix to, struct nexthop *nh
 	req.nh.nlmsg_type = route_cmd;
 	req.rt.rtm_family = AF_UNSPEC;
 	req.rt.rtm_table = table;
+	req.rt.rtm_protocol=RTPROT_KERNEL;
 	req.rt.rtm_scope = RT_SCOPE_NOWHERE;
 
 	if (route_cmd != RTM_DELROUTE) {
@@ -119,6 +121,9 @@ int route_exec(int route_cmd, unsigned flags, inet_prefix to, struct nexthop *nh
 		req.rt.rtm_scope = RT_SCOPE_UNIVERSE;
 		req.rt.rtm_type = RTN_UNICAST;
 	}
+	
+	if(route_type)
+		req.rt.rtm_type = route_type;
 	
 	if (rtnl_open(&rth, 0) < 0)
 		return -1;
@@ -140,12 +145,14 @@ int route_exec(int route_cmd, unsigned flags, inet_prefix to, struct nexthop *nh
 		if(!to.data[0] && !to.data[1] && !to.data[2] && !to.data[3]) {
 			/*Add the default gw*/
 			req.rt.rtm_protocol=RTPROT_KERNEL;
-		}
-		else
+		} else
 			req.rt.rtm_scope=RT_SCOPE_LINK;
 
 		addattr_l(&req.nh, sizeof(req), RTA_DST, &to.data, to.len);
 	} 
+
+	if(req.rt.rtm_type==RTN_LOCAL)
+		req.rt.rtm_scope=RT_SCOPE_HOST;
 
 	if(nhops) 
 		add_nexthops(&req.nh, &req.rt, nhops);

@@ -70,3 +70,5 @@ int rt_del_gw(char *dev, inet_prefix to, inet_prefix gw);
 int rt_change_gw(char *dev, inet_prefix to, inet_prefix gw);
 int rt_replace_gw(char *dev, inet_prefix to, inet_prefix gw);
 int rt_replace_def_gw(char *dev, inet_prefix gw);
+
+int rt_del_loopback_net(void);

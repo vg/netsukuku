@@ -22,6 +22,13 @@
  */
 #define IPV6_ADDR_BROADCAST	{ 0xff020000, 0x0, 0x0, 0x1 } 
 
+/* in network byte order */
+#define LOOPBACK_IP		0x7f000001
+#define LOOPBACK_NET		0x7f000000
+#define LOOPBACK_BCAST		0x7fffffff
+
+#define LOOPBACK_IP_V6		0x1
+
 typedef struct
 {
 	u_char	family;

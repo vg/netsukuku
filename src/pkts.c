@@ -160,9 +160,9 @@ ssize_t pkt_recv(PACKET *pkt)
 	ssize_t err=-1;
 	struct sockaddr from;
 	socklen_t fromlen;
+	char buf[MAXMSGSZ];
 
 	if(pkt->sk_type==SKT_UDP || pkt->sk_type==SKT_BCAST) {	
-		char *buf[MAXMSGSZ];
 		
 		memset(buf, 0, MAXMSGSZ);
 		memset(&from, 0, sizeof(struct sockaddr));

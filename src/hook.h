@@ -17,7 +17,7 @@
  */
 
 /* Used for: ip.data[0]=HOOKING_IP; */
-#define HOOKING_IP  0x80000001      /* 128.0.0.1   */
+#define HOOKING_IP  0x80000001      /* 128.0.0.1  (in host long) */
 #define HOOKING_IP6 0x80000001
 
 /* 

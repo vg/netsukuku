@@ -181,7 +181,8 @@ int inet_validate_ip(inet_prefix ip)
 
 	} else if(ip.family==AF_INET) {
 		type=ipv6_addr_type(ip);
-		if( (type & IPV6_ADDR_MULTICAST) )
+		if( (type & IPV6_ADDR_MULTICAST) || (type & IPV6_ADDR_RESERVED) || 
+				(type & IPV6_ADDR_LOOPBACK))
 			return -EINVAL;
 		return 0;
 	}

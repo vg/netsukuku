@@ -445,16 +445,6 @@ finish:
 	return ret;
 }
 
-int hook_init(void)
-{
-	/* We use a fake root_node for a while */
-	free_the_tmp_cur_node=1;
-	me.cur_node=xmalloc(sizeof(map_node));
-	memset(me.cur_node, 0, sizeof(map_node));
-	me.cur_node->flags|=MAP_HNODE;
-
-	return 0;
-}
 
 /* 
  * set_ip_and_def_gw: Set the device's ip and the default gw.
@@ -543,6 +533,19 @@ retry_rnd_ip:
 }
 
 
+int hook_init(void)
+{
+	/* We use a fake root_node for a while */
+	free_the_tmp_cur_node=1;
+	me.cur_node=xmalloc(sizeof(map_node));
+	memset(me.cur_node, 0, sizeof(map_node));
+	me.cur_node->flags|=MAP_HNODE;
+
+	debug(DBG_NORMAL, "Deleting the loopback network (leaving only 127.0.0.1)");
+	rt_del_loopback_net();
+
+	return 0;
+}
 
 int netsukuku_hook(char *dev)
 {	
@@ -577,6 +580,8 @@ int netsukuku_hook(char *dev)
 	loginfo("The hook begins. Starting to scan the area");
 	
 hook_restart_and_retry:
+	me.cur_node->flags|=MAP_HNODE;
+
 	/* 
 	 * We do our first scan to know what we've around us. The rnodes are kept in
 	 * me.cur_node->r_nodes. The fastest one is in me.cur_node->r_nodes[0]
@@ -621,17 +626,20 @@ hook_restart_and_retry:
 		 * gnode.
 		 */
 		loginfo("I've seen %s nodes around us, but one of them is becoming"
-				" a new gnode. We wait and then we'll restart the"
-				" hook");
+				" a new gnode.\n"
+				"We wait and then we'll restart the hook");
 		reset_radar();
 		rnode_destroy(me.cur_node);
 		memset(me.cur_node, 0, sizeof(map_node));
 		me.cur_node->flags|=MAP_HNODE;
 
+		sleep(MAX_RADAR_WAIT);
+
 		goto hook_restart_and_retry;
 	}
 
-	loginfo("We have %d nodes around us", me.cur_node->links);
+	loginfo("We have %d nodes around us. (%d are hooking)", 
+			me.cur_node->links, total_hooking_nodes);
 
 	/* 
 	 * Now we choose the nearest rnode we found and we send it the 
@@ -742,9 +750,9 @@ retry_rnd_ip:
 			break;
 		}
 	}
-	/*XXX: DEBUG: if(!e)
-		fatal("None of the rnodes in this area gave me the bnode map. (Bastards!)");
-	*/
+	if(!e)
+		loginfo("None of the rnodes in this area gave me the bnode map.");
+	
 	if(free_the_tmp_cur_node) {
 		free(me.cur_node);
 		free_the_tmp_cur_node=0;
@@ -758,7 +766,6 @@ retry_rnd_ip:
 	
 finish:
 	me.cur_node->flags&=~MAP_HNODE;
-/*	radar_scan(); XXX: DEBUG */
 
 	/* 
 	 * We must reset the radar_queue because the first radar_scan, used while hooking,

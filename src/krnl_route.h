@@ -31,11 +31,11 @@ struct rt_request {
 	char   			buf[1024];
 };
 
-int route_add(inet_prefix to, struct nexthop *nhops, char *dev, u_char table);
-int route_del(inet_prefix to, struct nexthop *nhops, char *dev, u_char table);
-int route_replace(inet_prefix to, struct nexthop *nhops, char *dev, u_char table);
-int route_change(inet_prefix to, struct nexthop *nhops, char *dev, u_char table);
+int route_add(int type, inet_prefix to, struct nexthop *nhops, char *dev, u_char table);
+int route_del(int type, inet_prefix to, struct nexthop *nhops, char *dev, u_char table);
+int route_replace(int type, inet_prefix to, struct nexthop *nhops, char *dev, u_char table);
+int route_change(int type, inet_prefix to, struct nexthop *nhops, char *dev, u_char table);
 int add_nexthops(struct nlmsghdr *n, struct rtmsg *r, struct nexthop *nhop);
-int route_exec(int route_cmd, unsigned flags, inet_prefix to, 
+int route_exec(int route_cmd, int route_type, unsigned flags, inet_prefix to, 
 		struct nexthop *nhops, char *dev, u_char table);
 int route_flush_cache(int family);
