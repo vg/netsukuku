@@ -70,6 +70,7 @@ int put_bnode_map(PACKET rq_pkt);
 map_bnode **get_bnode_map(inet_prefix to, u_int **bmap_nodes);
 
 int create_gnodes(inet_prefix *ip, int final_level);
+void set_ip_and_def_gw(char *dev, inet_prefix ip);
 int netsukuku_hook(char *dev);
 
 /*int snode_transfrom();*/

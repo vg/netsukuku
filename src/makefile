@@ -23,9 +23,8 @@ netsukuku:  $(OBJ)
 qspn: xmalloc.o qspn-empiric.o map.o ipv6-gmp.o log.o xmalloc.o misc.o
 	$(CC)  $(CFLAGS) $^ -o qspn-empiric -lgmp -lpthread	
 	
-clean: $(OBJ) $(ECT) $(BIN)
-	$(RM) $^ 
-#	$(RM) $(LOG)
+clean:
+	$(RM) $(OBJ) netsukuku_d
 
 clean-qspn: xmalloc.o qspn-empiric.o map.o ipv6-gmp.o log.o xmalloc.o qspn-empiric
 	$(RM) $^

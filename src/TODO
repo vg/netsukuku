@@ -1,7 +1,11 @@
 - [HIGH PRIORITY] -
+random_ip non deve generare ip non validi.
 testare
 
 - [MEDIUM PRIORITY] -
+hook: Se due nodi che si trovano in una black zone cercano di fare l'hook
+contemporaneamente succede un casino. Bisogna decidere chi dei due devi creare
+il nuovo gnode.
 broadcast: Tenere in considerazione il gttl
 
 - [LOW PRIORITY] -

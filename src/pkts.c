@@ -175,6 +175,11 @@ ssize_t pkt_recv(PACKET *pkt)
 			return -1;
 		}
 
+		if(sockaddr_to_inet(&from, &pkt->from, &pkt->port)) {
+			debug(DBG_NOISE, "Cannot pkt_recv(): %d Family not supported", from.sa_family);
+			return -1;
+		}
+		
 		/* 
 		 * We use connect() to associate the socket to `from', in this 
 		 * way we are sure that the next pkt is sent by `from'.
@@ -194,13 +199,7 @@ ssize_t pkt_recv(PACKET *pkt)
 				return -1;
 			}
 		}
-		
-		/*Now we store in the PACKET what we got*/
 		pkt->msg=buf;
-		if(sockaddr_to_inet(&from, &pkt->from, &pkt->port)) {
-			debug(DBG_NOISE, "Cannot pkt_recv(): %d Family not supported", from.sa_family);
-			return -1;
-		}
 
 		/* 
 		 * <<Connectionless sockets may dissolve the association by 

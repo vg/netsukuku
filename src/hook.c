@@ -492,6 +492,30 @@ int create_gnodes(inet_prefix *ip, int final_level)
 	return 0;
 }
 
+/* 
+ * set_ip_and_def_gw: Set the device's ip and the default gw.
+ */
+void set_ip_and_def_gw(char *dev, inet_prefix ip)
+{
+	char *ntop;
+	ntop=inet_to_str(ip);
+	
+	debug(DBG_NORMAL, "Setting the %s ip to %s interface", ntop, dev);
+	if(set_dev_ip(ip, dev))
+		fatal("Cannot set the %s  ip to %s", ntop, dev);
+	
+	/*
+	 * We set the default gw to our ip so to avoid the subnetting shit.
+	 * Bleah, Class A, B, C, what a fuck -_^ 
+	 */
+	debug(DBG_NORMAL, "Setting the default gw to %s.", ntop);
+	if(rt_replace_def_gw(dev, ip))
+		fatal("Cannot set the default gw to %s for the %s dev", 
+				ntop, dev);
+	
+	free(ntop);
+}
+
 int netsukuku_hook(char *dev)
 {	
 	struct radar_queue *rq=radar_q;
@@ -514,11 +538,8 @@ int netsukuku_hook(char *dev)
 	
 	me.cur_ip.family=my_family;
 	inet_setip(&me.cur_ip, idata, my_family);
-	ntop=inet_to_str(me.cur_ip);
-	debug(DBG_NORMAL, "Setting the %s ip to %s interface", ntop, dev);
-	xfree(ntop);
-	if(set_dev_ip(me.cur_ip, dev))
-		fatal("%s:%d: Cannot set the HOOKING_IP in %s", ERROR_POS, dev);
+	
+	set_ip_and_def_gw(dev, me.cur_ip);
 
 	/* 	
 	  	* * 		The beginning          * *	  	
@@ -544,10 +565,9 @@ int netsukuku_hook(char *dev)
 				"Creating a new_gnode. W00t we're the first node");
 		create_gnodes(0, GET_LEVELS(my_family));
 		ntop=inet_to_str(me.cur_ip);
-		debug(DBG_NORMAL, "Setting the %s ip to %s interface", ntop, dev);
 
-		if(set_dev_ip(me.cur_ip, dev))
-			fatal("%s:%d: Cannot set the new ip in %s", ERROR_POS, dev);
+		set_ip_and_def_gw(dev, me.cur_ip);
+
 		loginfo("Now we are in a brand new gnode. The ip of %s is set "
 				"to %s", dev, ntop);
 
@@ -590,12 +610,8 @@ int netsukuku_hook(char *dev)
 				GET_LEVELS(my_family), me.ext_map, 0, 
 				&me.cur_ip, my_family);
 	}
-	
-	if(set_dev_ip(me.cur_ip, dev))
-		fatal("%s:%d: Cannot set the tmp ip in %s", ERROR_POS, dev);
-	ntop=inet_to_str(me.cur_ip);
-	debug(DBG_NORMAL, "New ip gained: %s", ntop);
-	free(ntop);
+
+	set_ip_and_def_gw(dev, me.cur_ip);
 
 	/* 
 	 * Fetch the ext_map from the rnode who gave us the free nodes list. 

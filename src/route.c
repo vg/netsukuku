@@ -134,9 +134,9 @@ void rt_update(void)
 	route_flush_cache(my_family);
 }
 
-int rt_add_gw(char *dev, inet_prefix to, inet_prefix gw)
-{
-	struct nexthop nh[2];
+int rt_exec_gw(char *dev, inet_prefix to, inet_prefix gw, 
+		int (*route_function)(inet_prefix to, struct nexthop *nhops, char *dev, u_char table) )
+{	struct nexthop nh[2];
 	
 	inet_htonl(&to);
 
@@ -146,10 +146,30 @@ int rt_add_gw(char *dev, inet_prefix to, inet_prefix gw)
 	nh[0].dev=dev;
 	nh[1].dev=0;
 
-	return route_add(to, nh, dev, 0);
+	return route_function(to, nh, dev, 0);
 }
 
-int rt_add_def_gw(char *dev, inet_prefix gw)
+int rt_add_gw(char *dev, inet_prefix to, inet_prefix gw)
+{
+	return rt_exec_gw(dev, to, gw, route_add);
+}
+
+int rt_del_gw(char *dev, inet_prefix to, inet_prefix gw)
+{
+	return rt_exec_gw(dev, to, gw, route_del);
+}
+
+int rt_change_gw(char *dev, inet_prefix to, inet_prefix gw)
+{
+	return rt_exec_gw(dev, to, gw, route_change);
+}
+
+int rt_replace_gw(char *dev, inet_prefix to, inet_prefix gw)
+{
+	return rt_exec_gw(dev, to, gw, route_replace);
+}
+
+int rt_replace_def_gw(char *dev, inet_prefix gw)
 {
 	struct nexthop nh[2];
 	inet_prefix to;
@@ -158,6 +178,8 @@ int rt_add_def_gw(char *dev, inet_prefix gw)
 		error("rt_add_def_gw(): Cannot use INADRR_ANY for the %d family\n", to.family);
 		return -1;
 	}
+	to.len=0;
+	to.bits=0;
 
-	return rt_add_gw(dev, to, gw);
+	return rt_replace_gw(dev, to, gw);
 }

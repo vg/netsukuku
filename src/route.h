@@ -64,5 +64,9 @@ struct set_route_pkt
 u_char rt_find_table(ct_route *ctr, u_int dst, u_int gw);
 void krnl_update_node(void *void_node, u_char level);
 void rt_update(void);
+
 int rt_add_gw(char *dev, inet_prefix to, inet_prefix gw);
-int rt_add_def_gw(char *dev, inet_prefix gw);
+int rt_del_gw(char *dev, inet_prefix to, inet_prefix gw);
+int rt_change_gw(char *dev, inet_prefix to, inet_prefix gw);
+int rt_replace_gw(char *dev, inet_prefix to, inet_prefix gw);
+int rt_replace_def_gw(char *dev, inet_prefix gw);
