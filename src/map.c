@@ -329,8 +329,6 @@ void rnode_set_trtt(map_node *node)
 
 void rnode_recurse_trtt(map_rnode *rnode, int route, struct timeval *trtt)
 {
-	int i;
-	struct timeval diff;
 	map_node *ptr;
 	
 	ptr=(map_node *)rnode[route].r_node;
@@ -604,7 +602,7 @@ map_node *unpack_map(char *pack, size_t pack_sz, int *addr_map, map_node **new_r
 	map_node *map;
 	struct int_map_hdr *imap_hdr=(struct int_map_hdr *)pack;
 	map_rnode *rblock;
-	int count, err, nodes, p;
+	int err, nodes, p;
 
 	if(verify_int_map_hdr(imap_hdr, maxgroupnode, maxrnodeblock)) {
 		error("Malformed int/bmap_map_hdr. Aborting unpack_map().");

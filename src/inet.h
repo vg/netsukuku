@@ -38,7 +38,7 @@ int inet_setip_bcast(inet_prefix *ip, int family);
 int inet_setip_anyaddr(inet_prefix *ip, int family);
 int inet_setip_anyaddr(inet_prefix *ip, int family);
 
-char *inet_to_str(inet_prefix *ip);
+char *inet_to_str(inet_prefix ip);
 int inet_to_sockaddr(inet_prefix *ip, u_short port, struct sockaddr *dst, socklen_t *dstlen);
 int sockaddr_to_inet(struct sockaddr *ip, inet_prefix *dst, u_short *port);
 
@@ -49,6 +49,7 @@ int join_ipv6_multicast(int socket, int idx);
 int set_nonblock_sk(int fd);
 int unset_nonblock_sk(int fd);
 int set_reuseaddr_sk(int socket);
+int set_multicast_loop_sk(int family, int socket);
 int set_broadcast_sk(int socket, int family, int dev_idx);
 int unset_broadcast_sk(int socket, int family);
 int new_broadcast_sk(int family, int dev_idx);

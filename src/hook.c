@@ -54,7 +54,7 @@ int get_free_nodes(inet_prefix to, struct free_nodes_hdr *fn_hdr, int *nodes, st
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
 	
-	ntop=inet_to_str(&to);
+	ntop=inet_to_str(to);
 	
 	pkt_addto(&pkt, &to);
 	pkt.sk_type=SKT_TCP;
@@ -116,7 +116,7 @@ int put_free_nodes(PACKET rq_pkt)
 	ssize_t err, pkt_sz;
 	char *ntop; 
 	
-	ntop=inet_to_str(&rq_pkt.from);
+	ntop=inet_to_str(rq_pkt.from);
 	debug(DBG_NORMAL, "Sending the PUT_FREE_NODES reply to %s", ntop);
 	
 	memset(&pkt, '\0', sizeof(PACKET));
@@ -204,7 +204,7 @@ int put_ext_map(PACKET rq_pkt)
 	ssize_t err;
 	size_t pkt_sz=0;
 	
-	ntop=inet_to_str(&rq_pkt.from);
+	ntop=inet_to_str(rq_pkt.from);
 	debug(DBG_NORMAL, "Sending the PUT_EXT_MAP reply to %s", ntop);
 	
 	memset(&pkt, '\0', sizeof(PACKET));
@@ -242,7 +242,7 @@ map_gnode **get_ext_map(inet_prefix to, quadro_group *new_quadg)
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
 	
-	ntop=inet_to_str(&to);
+	ntop=inet_to_str(to);
 	
 	pkt_addto(&pkt, &to);
 	pkt.sk_type=SKT_TCP;
@@ -284,7 +284,7 @@ int put_int_map(PACKET rq_pkt)
 	ssize_t err;
 	size_t pkt_sz=0;
 	
-	ntop=inet_to_str(&rq_pkt.from);
+	ntop=inet_to_str(rq_pkt.from);
 	debug(DBG_NORMAL, "Sending the PUT_INT_MAP reply to %s", ntop);
 	
 	memset(&pkt, '\0', sizeof(PACKET));
@@ -322,7 +322,7 @@ map_node *get_int_map(inet_prefix to, map_node **new_root)
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
 	
-	ntop=inet_to_str(&to);
+	ntop=inet_to_str(to);
 	
 	pkt_addto(&pkt, &to);
 	pkt.sk_type=SKT_TCP;
@@ -366,7 +366,7 @@ int put_bnode_map(PACKET rq_pkt)
 	ssize_t err;
 	size_t pack_sz=0;
 	
-	ntop=inet_to_str(&rq_pkt.from);
+	ntop=inet_to_str(rq_pkt.from);
 	debug(DBG_NORMAL, "Sending the PUT_BNODE_MAP reply to %s", ntop);
 
 	memset(&pkt, '\0', sizeof(PACKET));
@@ -406,7 +406,7 @@ map_bnode **get_bnode_map(inet_prefix to, u_int **bmap_nodes)
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
 	
-	ntop=inet_to_str(&to);
+	ntop=inet_to_str(to);
 	
 	pkt_addto(&pkt, &to);
 	pkt.sk_type=SKT_TCP;
@@ -509,7 +509,7 @@ int netsukuku_hook(char *dev)
 	me.cur_ip.family=my_family;
 	inet_setip(&me.cur_ip, idata, my_family);
 
-	ntop=inet_to_str(&me.cur_ip);
+	ntop=inet_to_str(me.cur_ip);
 	debug(DBG_NORMAL, "Setting the %s ip to %s interface", ntop, dev);
 	xfree(ntop);
 	if(set_dev_ip(me.cur_ip, dev))
@@ -547,7 +547,7 @@ int netsukuku_hook(char *dev)
 		loginfo("No nodes found! This is a black zone. "
 				"Creating a new_gnode. W00t we're the first node");
 		create_gnodes(0, GET_LEVELS(my_family));
-		ntop=inet_to_str(&me.cur_ip);
+		ntop=inet_to_str(me.cur_ip);
 		debug(DBG_NORMAL, "Setting the %s ip to %s interface", ntop, dev);
 		if(set_dev_ip(me.cur_ip, dev))
 			fatal("%s:%d: Cannot set the new ip in %s", ERROR_POS, dev);

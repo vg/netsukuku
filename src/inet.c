@@ -107,21 +107,19 @@ int inet_setip_anyaddr(inet_prefix *ip, int family)
  * inet_to_str: It returns the string which represents the given ip.
  * It must be xfreed after.
  */
-char *inet_to_str(inet_prefix *ip)
+char *inet_to_str(inet_prefix ip)
 {
+	struct in_addr src, src6;
 	char *dst;
 
-	if(ip->family==AF_INET) {
-		struct in_addr src;
-		src.s_addr=htonl(ip->data[0]);
+	if(ip.family==AF_INET) {
+		src.s_addr=htonl(ip.data[0]);
 		dst=xmalloc(INET_ADDRSTRLEN);
-		inet_ntop(ip->family, &src, dst, INET_ADDRSTRLEN);
-	} else if(ip->family==AF_INET6) {
-		struct in6_addr src;
-
-		htonl_128(ip->data, &src);
+		inet_ntop(ip.family, &src, dst, INET_ADDRSTRLEN);
+	} else if(ip.family==AF_INET6) {
+		htonl_128(ip.data, &src6);
 		dst=xmalloc(INET6_ADDRSTRLEN);
-		inet_ntop(ip->family, &src, dst, INET6_ADDRSTRLEN);
+		inet_ntop(ip.family, &src6, dst, INET6_ADDRSTRLEN);
 	}
 
 	return dst;
@@ -204,8 +202,10 @@ int new_dgram_socket(int sock_type)
 	return sockfd;
 }
 
-/* join_ipv6_multicast: It adds the membership to the IPV6_ADDR_BROADCAST multicast
- * group. The device with index `idx' will be used. 
+
+/* 
+ * join_ipv6_multicast: It adds the membership to the IPV6_ADDR_BROADCAST
+ * multicast group. The device with index `idx' will be used. 
  */
 int join_ipv6_multicast(int socket, int idx)
 {
@@ -277,6 +277,21 @@ int set_reuseaddr_sk(int socket)
 	return ret;
 }
 
+int set_multicast_loop_sk(int family, int socket)
+{
+	int ret;
+	u_char loop=0;    /* 0 = disable, 1 = enable (default) */
+	/*
+	 * <<The IPV6_MULTICAST_LOOP option gives the sender explicit control
+	 * over whether or not subsequent datagrams are looped bac.>>
+	 */
+	if(family==AF_INET6)
+		ret=setsockopt(socket, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &loop, sizeof(loop));
+	if(ret < 0)
+		error("setsockopt IP_MULTICAST_LOOP: %s", strerror(errno));
+	return ret;
+}
+
 int set_broadcast_sk(int socket, int family, int dev_idx)
 {
 	int broadcast=1;
@@ -291,6 +306,8 @@ int set_broadcast_sk(int socket, int family, int dev_idx)
 			return -1;
 		}
 	}
+	
+	set_multicast_loop_sk(family, socket);
 
 	return socket;
 }
@@ -319,7 +336,7 @@ int new_tcp_conn(inet_prefix *host, short port)
 	int sk, sa_len;
 	struct sockaddr	sa;
 	char *ntop;
-	ntop=inet_to_str(host);
+	ntop=inet_to_str(*host);
 	
 	if(inet_to_sockaddr(host, port, &sa, &sa_len)) {
 		error("Cannot new_tcp_connect(): %d Family not supported", host->family);
@@ -347,7 +364,7 @@ int new_udp_conn(inet_prefix *host, short port)
 	int sk, sa_len;
 	struct sockaddr	sa;
 	char *ntop;
-	ntop=inet_to_str(host);
+	ntop=inet_to_str(*host);
 
 	if(inet_to_sockaddr(host, port, &sa, &sa_len)) {
 		error("Cannot new_udp_connect(): %d Family not supported", host->family);
@@ -389,7 +406,7 @@ int new_bcast_conn(inet_prefix *host, short port, int dev_idx)
 	
 	if(host->family == AF_INET)
 		if(connect(sk, &sa, sizeof(sa)) == -1) {
-			ntop=inet_to_str(host);
+			ntop=inet_to_str(*host);
 			error("Cannot connect to the broadcast (%s): %s", ntop,
 					strerror(errno));
 			xfree(ntop);
@@ -447,7 +464,7 @@ ssize_t inet_recvfrom(int s, void *buf, size_t len, int flags, struct sockaddr *
 				ret = select(s+1, &fdset, NULL, NULL, NULL);
 
 				if (ret == -1) {
-					error("inet_recv: select error: %s", strerror(errno));
+					error("inet_recvfrom: select error: %s", strerror(errno));
 					return err;
 				}
 
@@ -456,7 +473,7 @@ ssize_t inet_recvfrom(int s, void *buf, size_t len, int flags, struct sockaddr *
 				break;
 
 			default:
-				error("inet_recv: Cannot recv(): %s", strerror(errno));
+				error("inet_recvfrom: Cannot recv(): %s", strerror(errno));
 				return err;
 				break;
 		}

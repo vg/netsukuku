@@ -94,7 +94,7 @@ void *udp_daemon(void *null)
 	debug(DBG_SOFT, "Preparing the udp listening socket");
 	sk=prepare_listen_socket(my_family, SOCK_DGRAM, ntk_udp_port);
 	if(sk == -1)
-		return;
+		return NULL;
 
 	set_broadcast_sk(sk, my_family, me.cur_dev_idx);
 
@@ -112,15 +112,17 @@ void *udp_daemon(void *null)
 		if(!FD_ISSET(sk, &fdset))
 			continue;
 
+		memset(&rpkt, 0, sizeof(PACKET));
 		pkt_addsk(&rpkt, sk, SKT_UDP);
 		pkt_addflags(&rpkt, MSG_WAITALL);
+
 		if(pkt_recv(&rpkt) < 0) {
 			pkt_free(&rpkt, 0);
 			continue;
 		}
 			
 		if(add_accept(rpkt.from, 1)) {
-			ntop=inet_to_str(&rpkt.from);
+			ntop=inet_to_str(rpkt.from);
 			debug(DBG_NORMAL, "ACPT: dropped UDP pkt from %s: Accept table full.", ntop);
 			xfree(ntop);
 			continue;
@@ -134,7 +136,6 @@ void *udp_daemon(void *null)
 void *tcp_recv_loop(void *recv_pkt)
 {
 	PACKET rpkt;
-	ssize_t ret;
 	int acpt_idx, acpt_sidx;
 
 	acpt_idx=accept_idx;
@@ -145,23 +146,26 @@ void *tcp_recv_loop(void *recv_pkt)
 
 	while( pkt_recv(&rpkt) != -1 ) {
 		if(pkt_exec(rpkt, acpt_idx) < 0) {
-			pkt_free(&rpkt, 1);
+			goto close;
 			break;
 		} else
 			pkt_free(&rpkt, 0);
 	}
 
+close:
+	pkt_free(&rpkt, 1);
 	close_accept(acpt_idx, acpt_sidx);
+
+	return NULL;
 }
 
 void *tcp_daemon(void *null)
 {
 	pthread_t thread;
-	
 	PACKET rpkt;
-	inet_prefix ip;
 	struct sockaddr_storage addr;
 	socklen_t addrlen = sizeof addr;
+	inet_prefix ip;
 	fd_set fdset;
 	int sk, fd, ret, err;
 	char *ntop;
@@ -170,19 +174,19 @@ void *tcp_daemon(void *null)
 	debug(DBG_SOFT, "Preparing the tcp listening socket");
 	sk=prepare_listen_socket(my_family, SOCK_STREAM, ntk_tcp_port);
 	if(sk == -1)
-		return;
+		return NULL;
 
 	/* 
 	 * While we are accepting the connections we keep the socket non
 	 * blocking.
 	 */
 	if(set_nonblock_sk(sk))
-		return;
+		return NULL;
 
 	/* Shhh, it's listening... */
 	if(listen(sk, 5) == -1) {
 		close(sk);
-		return;
+		return NULL;
 	}
 
 	debug(DBG_NORMAL, "Tcp daemon up & running");
@@ -210,20 +214,22 @@ void *tcp_daemon(void *null)
 		pkt_addsk(&rpkt, fd, SKT_TCP);
 		pkt_addflags(&rpkt, MSG_WAITALL);
 		
+		ntop=0;
 		sockaddr_to_inet((struct sockaddr *)&addr, &ip, 0);
-		if(ret=add_accept(ip, 0)) {
-			ntop=inet_to_str(&ip);
-			debug(DBG_NORMAL, "ACPT: drop connection with %s: Accept table full.", ntop);
-			xfree(ntop);
+		if(server_opt.dbg_lvl)
+			ntop=inet_to_str(ip);
+
+		if((ret=add_accept(ip, 0))) {
+			debug(DBG_NORMAL, "ACPT: drop connection with %s: "
+					"Accept table full.", ntop);
 			
 			/* Omg, we cannot take it anymore, go away: ACK_NEGATIVE */
 			pkt_err(rpkt, ret);
 			close(fd);
 			continue;
 		} else {
-			ntop=inet_to_str(&ip);
-			debug(DBG_NORMAL, "ACPT: Accept_tbl ok! accept_idx: %d from %s", accept_idx, ntop);
-			xfree(ntop);
+			debug(DBG_NORMAL, "ACPT: Accept_tbl ok! accept_idx: %d "
+					"from %s", accept_idx, ntop);
 			
 			/* 
 			 * Ok, the connection is good, send back the
@@ -241,7 +247,8 @@ void *tcp_daemon(void *null)
 			error("Cannot fork the tcp_recv_loop: %s", strerror(errno));
 		else
 			pthread_detach(thread);
-		/* tcp_recv_loop(&rpkt); */
+		if(ntop)
+			xfree(ntop);
 	}
 	
 	destroy_accept_tbl();

@@ -18,6 +18,7 @@
 
 #include "includes.h"
 
+#include "misc.h"
 #include "libnetlink.h"
 #include "ll_map.h"
 #include "inet.h"
@@ -27,6 +28,7 @@
 #include "gmap.h"
 #include "bmap.h"
 #include "netsukuku.h"
+#include "qspn.h"
 #include "request.h"
 #include "accept.h"
 #include "daemon.h"
@@ -52,6 +54,7 @@ int init_load_maps(void)
 	if(!(me.bnode_map=load_bmap(server_opt.bnode_map_file, me.ext_map, 
 					GET_LEVELS(my_family), &me.bmap_nodes)))
 		bmap_level_init(GET_LEVELS(my_family), &me.bnode_map, &me.bmap_nodes);
+	return 0;
 }
 
 int save_maps(void)
@@ -110,10 +113,8 @@ void usage(void)
 void parse_options(int argc, char **argv)
 {
 	int c;
-	int digit_optind = 0;
 
 	while (1) {
-		int this_option_optind = optind ? optind : 1;
 		int option_index = 0;
 		static struct option long_options[] = {
 			{"help", 0, 0, 'h'},
@@ -228,7 +229,7 @@ void destroy_netsukuku(void)
 
 int main(int argc, char **argv)
 {
-	pthread_t daemon_radar_thread, daemon_udp_thread, daemon_tcp_thread;
+	pthread_t daemon_radar_thread, daemon_udp_thread;
 	pthread_attr_t t_attr;
 	
 	/*
@@ -265,14 +266,12 @@ int main(int argc, char **argv)
 	 * up & running. 
 	 */
 	debug(DBG_NORMAL, "Activating all daemons");
-	
-	tcp_daemon(NULL);
-	
+
 	debug(DBG_SOFT,   "Evocating radar daemon.");
 	pthread_create(&daemon_radar_thread, &t_attr, radar_daemon, NULL);
 	
 	debug(DBG_SOFT,   "Evocating udp daemon.");
-	pthread_create(&daemon_udp_thread,   &t_attr, udp_daemon,   NULL);
+	pthread_create(&daemon_udp_thread,   &t_attr, udp_daemon,  NULL);
 
 	/* We use this self process for the tcp_daemon. */
 	debug(DBG_SOFT,   "Evocating tcp daemon.");
@@ -281,4 +280,6 @@ int main(int argc, char **argv)
 	loginfo("Cya m8");
 	pthread_attr_destroy(&t_attr);
 	destroy_netsukuku();
+
+	exit(0);
 }

@@ -53,3 +53,5 @@
 
 #include <getopt.h>
 #include <linux/limits.h>
+
+#include <signal.h>

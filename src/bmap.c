@@ -18,6 +18,7 @@
 
 #include "includes.h"
 
+#include "misc.h"
 #include "inet.h"
 #include "map.h"
 #include "gmap.h"
@@ -300,7 +301,6 @@ map_bnode **load_bmap(char *file, map_gnode **ext_map, u_char max_levels, u_int 
 	FILE *fd;
 	struct bmaps_hdr bmaps_hdr;
 	size_t pack_sz;
-	int count, err, i;
 	u_char levels;
 	char *pack;
 	

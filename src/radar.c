@@ -520,7 +520,7 @@ int radard(PACKET rpkt)
 	pkt_free(&pkt, 1);
 	if(err==-1) {
 		char *ntop;
-		ntop=inet_to_str(&pkt.to);
+		ntop=inet_to_str(pkt.to);
 		error("radard(): Cannot send back the ECHO_REPLY to %s.", ntop);
 		xfree(ntop);
 		return -1;

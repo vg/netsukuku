@@ -287,7 +287,7 @@ int qspn_close(PACKET rpkt)
 
 	ret_err=tracer_unpack_pkt(rpkt, &bcast_hdr, &tracer_hdr, &tracer, &bhdr, &bblock_sz);
 	if(ret_err) {
-		ntop=inet_to_str(&rpkt.from);
+		ntop=inet_to_str(rpkt.from);
 		debug(DBG_NOISE, "qspn_close(): The %s node sent an invalid "
 				"qspn_close pkt here.", ntop);
 		xfree(ntop);
@@ -314,7 +314,7 @@ int qspn_close(PACKET rpkt)
 	}
 	
 	if(root_node->flags & QSPN_STARTER || tracer_starter == root_node) {
-		ntop=inet_to_str(&rpkt.from);
+		ntop=inet_to_str(rpkt.from);
 		debug(DBG_NOISE, "qspn_close(): We received a qspn_close from "
 				"%s, but we are the QSPN_STARTER.", ntop);
 		xfree(ntop);
@@ -323,7 +323,7 @@ int qspn_close(PACKET rpkt)
 	
 	if(rpkt.hdr.id != me.cur_qspn_id[level]) {
 		if(qspn_round_left(level) > 0 || rpkt.hdr.id != me.cur_qspn_id[level]+1) {
-			ntop=inet_to_str(&rpkt.from);
+			ntop=inet_to_str(rpkt.from);
 			debug(DBG_NOISE, "qspn_close(): The %s sent a qspn_close"
 					" with a wrong qspn_id", ntop);
 			xfree(ntop);
@@ -407,7 +407,7 @@ int qspn_open(PACKET rpkt)
 
 	ret_err=tracer_unpack_pkt(rpkt, &bcast_hdr, &tracer_hdr, &tracer, &bhdr, &bblock_sz);
 	if(ret_err) {
-		ntop=inet_to_str(&rpkt.from);
+		ntop=inet_to_str(rpkt.from);
 		debug(DBG_NOISE, "qspn_open(): The %s sent an invalid qspn_open pkt here.", ntop);
 		xfree(ntop);
 		return -1;
@@ -431,14 +431,14 @@ int qspn_open(PACKET rpkt)
 
 	sub_id=bcast_hdr->sub_id;
 	if(sub_id == root_node_pos) {
-		ntop=inet_to_str(&rpkt.from);
+		ntop=inet_to_str(rpkt.from);
 		debug(DBG_NOISE, "qspn_open(): We received a qspn_open from %s, but we are the opener.", ntop);
 		xfree(ntop);
 		return 0;
 	}
 
 	if(rpkt.hdr.id != me.cur_qspn_id[level]) {
-		ntop=inet_to_str(&rpkt.from);
+		ntop=inet_to_str(rpkt.from);
 		debug(DBG_NOISE, "qspn_open(): The %s sent a qspn_open with a wrong qspn_id", ntop);
 		xfree(ntop);
 		return -1;

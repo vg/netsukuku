@@ -24,7 +24,7 @@ inline int rand_range(int _min, int _max)
 	return (rand()%(_max - _min + 1)) + _min;
 }
 
-int xsrand(void)
+void xsrand(void)
 {
 	srand(getpid() ^ time(0) ^ clock());
 }

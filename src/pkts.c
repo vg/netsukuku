@@ -253,7 +253,7 @@ int pkt_tcp_connect(inet_prefix *host, short port)
 	int sk;
 	PACKET pkt;
 	char *ntop;
-	ntop=inet_to_str(host);
+	ntop=inet_to_str(*host);
 	
 	if((sk=new_tcp_conn(host, port))==-1)
 		goto finish;
@@ -309,18 +309,18 @@ void pkt_fill_hdr(pkt_hdr *hdr, int id, u_char op, size_t sz)
 int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_ack, PACKET *rpkt)
 {
 	u_short port;
-	char *ntop, *rq_str, *re_str;
+	char *ntop=0, *rq_str, *re_str;
 	ssize_t err;
 	int ret=0;
 
 	if(op_verify(rq)) {
-		error("\"%s\" request is not valid!", rq_str);
+		error("\"%s\" request/reply is not valid!", rq_str);
 		return -1;
 	}
 	if(!re_verify(rq))
-		rq_str=rq_to_str(rq);
-	else
 		rq_str=re_to_str(rq);
+	else
+		rq_str=rq_to_str(rq);
 
 	if(re && re_verify(re)) {
 		error("\"%s\" reply is not valid!", re_str);
@@ -330,8 +330,8 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 	if(rpkt)
 		memset(&rpkt, '\0', sizeof(PACKET));
 
-	ntop=inet_to_str(&pkt->to);
-	debug(DBG_NOISE, "Sending the %s request to %s", rq_str, ntop);
+	ntop=inet_to_str(pkt->to);
+	debug(DBG_NOISE, "Sending the %s op to %s", rq_str, ntop);
 
 	/* * * the request building process * * */
 	pkt_fill_hdr(&pkt->hdr, rq_id, rq, pkt->hdr.sz);
@@ -415,7 +415,8 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 	}
 
 finish:
-	xfree(ntop);
+	if(ntop)
+		xfree(ntop);
 	return ret;
 }
 
@@ -445,7 +446,7 @@ int pkt_exec(PACKET pkt, int acpt_idx)
 	int err=0;
 
 	if((err=add_rq(pkt.hdr.op, &accept_tbl[acpt_idx].rqtbl))) {
-		ntop=inet_to_str(&pkt.from);
+		ntop=inet_to_str(pkt.from);
 		error("From %s: Cannot process the %s request: %s", ntop, rq_to_str(pkt.hdr.op), rq_strerror(err));
 		if(ntop)
 			xfree(ntop);

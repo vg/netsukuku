@@ -16,12 +16,6 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-/*
- * WARNING* Keep it up to date!! *WARNING
- */
-#define TOTAL_REQUESTS          26
-#define TOTAL_REPLIES		7
-#define TOTAL_ERRORS		6
 
 /*In this enum there are all the requests/replies op used by netsukuku in the pkts*/
 enum pkt_op
@@ -76,6 +70,13 @@ enum pkt_op
 	ACK_NEGATIVE			/*The request is rejected. The error is in the pkt body*/
 };
 
+/*
+ * WARNING* Keep it up to date!! *WARNING
+ */
+#define TOTAL_OPS		(ACK_NEGATIVE+1)
+#define TOTAL_REQUESTS          (GET_BNODE_MAP+1)
+#define TOTAL_REPLIES		(TOTAL_OPS-TOTAL_REQUESTS)
+
 static u_char reply_array[]=
 {
 	QSPN_RFR_REPLY,
@@ -115,6 +116,7 @@ enum errors
 	E_QGROUP_FULL,
 	E_TOO_MANY_CONN
 };
+#define TOTAL_ERRORS		(E_TOO_MANY_CONN)
 
 static u_char error_array[]=
 {	

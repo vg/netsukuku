@@ -23,22 +23,22 @@
 
 int op_verify(u_char op)
 {
-	return op > TOTAL_REQUESTS+TOTAL_REPLIES ? 1 : 0;
+	return (op >= TOTAL_OPS) ? 1 : 0;
 }
 
 int rq_verify(u_char rq)
 {
-	return rq > TOTAL_REQUESTS ? 1 : 0;
+	return rq >= TOTAL_REQUESTS ? 1 : 0;
 }
 
 int re_verify(u_char re)
 {
-	return re > TOTAL_REPLIES && re < TOTAL_REQUESTS ? 1 : 0;
+	return ((op_verify(re)) || (re < TOTAL_REQUESTS)) ? 1 : 0;
 }
 
 int err_verify(u_char err)
 {
-	return err > TOTAL_ERRORS ? 1 : 0;
+	return err >= TOTAL_ERRORS ? 1 : 0;
 }
 
 char *rq_strerror(int err)
@@ -59,7 +59,7 @@ char *re_to_str(u_char re)
 {
 	if(re_verify(re))
 		return unknown_reply;
-	return reply_str[re];
+	return reply_str[re-TOTAL_REQUESTS];
 }
 
 void update_rq_tbl(rq_tbl *tbl)
@@ -128,5 +128,6 @@ int add_rq(u_char rq, rq_tbl *tbl)
 	
 	tbl->rq[rq]++;
 	tbl->rq_wait[find_free_rq_wait(rq, tbl)]=cur_t;	
+	return 0;
 }
 

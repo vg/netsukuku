@@ -41,11 +41,17 @@ void *xmalloc(size_t size)
 	return ptr;
 }
 
-void *xcalloc(size_t size)
+void *xcalloc(size_t nmemb, size_t size)
 {
 	void *ptr;
-	ptr=xmalloc(size);
-	memset(ptr, '\0', size);
+
+	if (size == 0 || nmemb == 0)
+		fatal("xcalloc: zero size");
+	ptr=calloc(nmemb, size);
+	if (ptr == NULL)
+		fatal("xcalloc: out of memory (allocating %lu bytes * %lu blocks)",
+				(u_long) size, (u_long) nmemb);
+	return ptr;
 }
 
 void *xrealloc(void *ptr, size_t new_size)

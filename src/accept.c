@@ -204,7 +204,7 @@ int add_accept(inet_prefix ip, int replace)
 	if((err=is_ip_acpt_free(ip, &idx)))
 		return err;
 
-	if(!replace) {
+	if(!replace || !accept_tbl[idx].accepts) {
 		cl=new_accept(idx, ip);
 		if(cl < 0)
 			return -1;

@@ -20,6 +20,7 @@
 
 #include "misc.h"
 #include "inet.h"
+#include "route.h"
 #include "pkts.h"
 #include "map.h"
 #include "gmap.h"
@@ -39,7 +40,6 @@
 int tracer_verify_pkt(tracer_chunk *tracer, u_int hops, map_node *real_from, u_char level)
 {
 	map_node *from;
-	int e, x=0;
 
 	/*"from" has to be absolutely one of our rnodes*/
 	if(!level) {
@@ -333,8 +333,6 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *tracer_hdr, trace
 		     void *bnode_block_start, size_t bblock_sz, 
 		     u_short *bblocks_found,  char **bblocks_found_block, size_t *bblock_found_sz)
 {
-	bnode_hdr 	*bblock_hdr;
-	bnode_chunk 	*bblock;	
 	bnode_hdr 	**bblist_hdr=0;
 	bnode_chunk 	***bblist=0;
 	struct timeval trtt;
@@ -512,7 +510,7 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 	bnode_hdr    *new_bhdr=0;
 	bnode_chunk  *new_bchunk=0;
 	void *void_map, *void_node;
-	int new_tracer_pkt=0, ret=0;
+	int new_tracer_pkt=0;
 	u_int hops=0;
 
 	if(!tracer_hdr || !tracer || !bcast_hdr) {
@@ -635,7 +633,7 @@ int tracer_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), int gid,
 		/*Let's send the pkt*/
 		err=send_rq(&pkt, 0, pkt.hdr.op, pkt.hdr.id, 0, 0, 0);
 		if(err==-1) {
-			ntop=inet_to_str(&pkt.to);
+			ntop=inet_to_str(pkt.to);
 			error("tracer_pkt_send(): Cannot send the %s request with id: %d to %s.", rq_to_str(pkt.hdr.op),
 					pkt.hdr.id, ntop);
 			xfree(ntop);
@@ -711,9 +709,8 @@ int tracer_pkt_recv(PACKET rpkt)
 	tracer_chunk *tracer;
 	bnode_hdr    *bhdr=0;
 	map_node *from, *tracer_starter;
-	map_gnode *gfrom, *gnode;
-	ssize_t err;
-	int ret=0, ret_err;
+	map_gnode *gfrom;
+	int ret_err;
 	u_int hops;
 	size_t bblock_sz=0, old_bblock_sz;
 	u_short old_bchunks=0;
@@ -724,7 +721,7 @@ int tracer_pkt_recv(PACKET rpkt)
 
 	ret_err=tracer_unpack_pkt(rpkt, &bcast_hdr, &tracer_hdr, &tracer, &bhdr, &bblock_sz);
 	if(ret_err) {
-		ntop=inet_to_str(&rpkt.from);
+		ntop=inet_to_str(rpkt.from);
 		debug(DBG_NOISE, "tracer_pkt_recv(): The %s sent an invalid tracer_pkt here.", ntop);
 		xfree(ntop);
 		return -1;
@@ -751,7 +748,7 @@ int tracer_pkt_recv(PACKET rpkt)
 	 * the pkt is an old broadcast that still dance around.
 	 */
 	if(rpkt.hdr.id <= tracer_starter->brdcast) {
-		ntop=inet_to_str(&rpkt.from);
+		ntop=inet_to_str(rpkt.from);
 		debug(DBG_NOISE, "tracer_pkt_recv(): Received from %s an old tracer_pkt broadcast: %d", ntop, rpkt.hdr.id);
 		xfree(ntop);
 		return -1;
