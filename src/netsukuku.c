@@ -70,7 +70,7 @@ int free_maps(void)
 
 int fill_default_options(void)
 {
-	memset(server_opt.dev, 0, IFNAMSIZ);
+	memset(&server_opt, 0, sizeof(NtkOpt));
 	server_opt.family=AF_INET;
 	strncpy(server_opt.int_map_file, INT_MAP_FILE, NAME_MAX);
 	strncpy(server_opt.ext_map_file, EXT_MAP_FILE, NAME_MAX);
@@ -125,7 +125,7 @@ void parse_options(int argc, char **argv)
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long (argc, argv,"d:I:E:B:hvd64D", long_options, &option_index);
+		c = getopt_long (argc, argv,"i:d:I:E:B:hvd64D", long_options, &option_index);
 		if (c == -1)
 			break;
 

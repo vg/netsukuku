@@ -67,7 +67,7 @@ int set_flags(char *dev, u_int flags, u_int mask)
 	int s;
 
 	strcpy(ifr.ifr_name, dev);
-	if((s=new_socket(AF_INET))) {
+	if((s=new_socket(AF_INET)) < 0) {
 		error("Error while setting \"%s\" flags: Cannot open socket", dev);
 		return -1;
 	}
@@ -132,8 +132,7 @@ int set_dev_ip(inet_prefix ip, char *dev)
 		}
 
 		strncpy(req.ifr_name, dev, IFNAMSIZ);
-		req.ifr_addr.sa_family=ip.family;
-		memcpy(&req.ifr_addr.sa_data + 2, ip.data, ip.len);
+		inet_to_sockaddr(&ip, 0, &req.ifr_addr, 0);
 
 
 		if(ioctl(s, SIOCSIFADDR, &req)) {

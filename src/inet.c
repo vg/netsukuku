@@ -62,8 +62,9 @@ int inet_setip_bcast(inet_prefix *ip)
 int inet_setip_anyaddr(inet_prefix *ip)
 {
 	if(ip->family==AF_INET) {
-		u_int data=INADDR_ANY;
-		inet_setip(ip, (u_int *)(&data), ip->family);
+		u_int data[4];
+		data[0]=INADDR_ANY;
+		inet_setip(ip, data, ip->family);
 	} else if(ip->family==AF_INET6) {
 		struct in6_addr ipv6=IN6ADDR_ANY_INIT;
 		inet_setip(ip, (u_int *)(&ipv6), ip->family);
@@ -105,15 +106,20 @@ char *inet_to_str(inet_prefix *ip)
  */
 int inet_to_sockaddr(inet_prefix *ip, u_short port, struct sockaddr *dst, socklen_t *dstlen)
 {
+	int *p;
+	int data[4]={0,0,0,0};
+	
 	memset(dst, '\0',  sizeof(struct sockaddr));
 	
 	dst->sa_family=ip->family;
 	port=htons(port);
 	memcpy(dst->sa_data, &port, sizeof(u_short));
 	
-	if(ip->family==AF_INET)
-		*(dst->sa_data+sizeof(u_short))=htonl(ip->data[0]);
-	else if(ip->family==AF_INET6)
+	if(ip->family==AF_INET) {
+		data[0]=htonl(ip->data[0]);
+		p=dst->sa_data+2;
+		memcpy(p, data, sizeof(int)*4);
+	} else if(ip->family==AF_INET6)
 		htonl_128(ip->data, dst->sa_data+sizeof(u_short)+sizeof(u_int));
 	else
 		return -1;

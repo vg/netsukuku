@@ -112,6 +112,9 @@ int route_exec(int route_cmd, unsigned flags, inet_prefix to, struct nexthop *nh
 
 	memset(&req, 0, sizeof(req));
 
+	if (rtnl_open(&rth, 0) < 0)
+		return -1;
+
 	if(!table)
 		table=RT_TABLE_MAIN;
 
@@ -161,9 +164,6 @@ int route_exec(int route_cmd, unsigned flags, inet_prefix to, struct nexthop *nh
 		add_nexthops(&req.nh, &req.rt, nhops);
 
 	/*Finaly stage: <<Hey krnl, r u there?>>*/
-	if (rtnl_open(&rth, 0) < 0)
-		return -1;
-
 	if (req.rt.rtm_family == AF_UNSPEC)
 		req.rt.rtm_family = AF_INET;
 

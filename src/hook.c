@@ -500,10 +500,12 @@ int netsukuku_hook(char *dev)
 	u_int idata[4];
 
 	/* We set the dev ip to HOOKING_IP to begin our transaction. */
+	memset(idata, 0, sizeof(int)*4);
 	if(my_family==AF_INET) 
 		idata[0]=HOOKING_IP;
 	else
 		idata[0]=HOOKING_IP6;
+	idata[0]=htonl(idata[0]);
 	me.cur_ip.family=my_family;
 	inet_setip(&me.cur_ip, idata, my_family);
 	if(set_dev_ip(me.cur_ip, dev))

@@ -17,8 +17,8 @@
  */
 
 /* Used for: ip.data[0]=HOOKING_IP; */
-#define HOOKING_IP  0x8f000001      /* 128.0.0.1   */
-#define HOOKING_IP6 0x8f000001
+#define HOOKING_IP  0x80000001      /* 128.0.0.1   */
+#define HOOKING_IP6 0x80000001
 
 /* 
  * The free_nodes pkt is used to send the list of all the free/not used
