@@ -399,6 +399,9 @@ int store_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart)
 {
 	int i;
 
+	if(!node->links)
+		return 0;
+
 	node->r_node=xmalloc(sizeof(map_rnode)*node->links);
 	for(i=0; i<node->links; i++) {
 		memcpy(&node->r_node[i], &rblock[i+rstart], sizeof(map_rnode));
@@ -468,6 +471,7 @@ map_node *load_map(char *file)
 	fread(&imap_hdr, sizeof(struct int_map_hdr), 1, fd);
 	if(imap_hdr.rblock_sz > MAXRNODEBLOCK || imap_hdr.int_map_sz > MAXGROUPNODE*sizeof(map_node) 
 			|| imap_hdr.root_node > MAXGROUPNODE) {
+		/*TODO WARNING WARNING XXX DOME: this checks is always true!*/
 		printf("Malformed map file: root_node: %hu/%u, rblock_sz: %u, int_map_sz: %u. Aborting load_map().", 
 				imap_hdr.root_node, MAXRNODEBLOCK, imap_hdr.rblock_sz, imap_hdr.int_map_sz);
 		error("Malformed map file. Aborting load_map().");

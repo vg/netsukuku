@@ -18,9 +18,10 @@
  * qspn-empiric:
  * This is the living proof of the QSPN algo. qspn-empiric simulates an
  * entire network and runs on it the QSPN algo. Then when all is done it
- * collects the generated data and makes a static, in this way I can tune 
- * without too much worry the QSPN algorithm.
- * ah,..  yes it uses the threads... a lot of... ^_^ I want a cluster!
+ * collects the generated data and makes some statistic, in this way I can 
+ * tune without much worries the QSPN algorithm. Qspn-empiric can be also 
+ * used to solve graph without using djkstra hehehe.
+ * ah,..  yes it uses the threads... a lot of them... ^_^ I want a cluster!
  */
 
 #include <stdlib.h>
@@ -183,8 +184,9 @@ void *send_qspn_backpro(void *argv)
 			nopt->q.broadcast=pkt_db[to][pkt]->broadcast;
 			nopt->join=qopt->join;
 
-			gbl_stat.qspn_backpro++;
-			node_stat[to].qspn_backpro++;
+			/* gbl_stat.qspn_backpro++;
+			 * node_stat[to].qspn_backpro++;
+			 */
 			nopt->q.op=OP_BACKPRO;
 			thread_joint(qopt->join, send_qspn_backpro, (void *)nopt);
 		}
@@ -202,8 +204,11 @@ void *send_qspn_reply(void *argv)
 	fprintf(stderr, "%u: qspn_reply from %d to %d\n", pthread_self(), qopt->q.from, to);
 
 	/*Bad old broadcast pkt*/
-	if(qopt->q.broadcast <= int_map[qopt->q.from].broadcast[to])
+	if(qopt->q.broadcast <= int_map[to].broadcast[qopt->q.from]) {
+		fprintf(stderr, "%u: DROPPED old brdcast: q.broadcast: %d, qopt->q.from broadcast: %d\n", pthread_self(), qopt->q.broadcast, int_map[to].broadcast[qopt->q.from]);
 		return;
+	} else
+		int_map[to].broadcast[qopt->q.from]=qopt->q.broadcast;
 
 	/*Now we store the received pkt in our pkt_db*/
 	pkt=store_tracer_pkt(qopt);	
@@ -228,8 +233,10 @@ void *send_qspn_reply(void *argv)
 		nopt->q.broadcast=pkt_db[to][pkt]->broadcast;
 		nopt->join=qopt->join;
 
+		/*
 		gbl_stat.qspn_replies++;
 		node_stat[to].qspn_replies++;
+		*/
 		nopt->q.op=OP_REPLY;
 		thread_joint(qopt->join, send_qspn_reply, (void *)nopt);
 	}
@@ -285,7 +292,8 @@ void *send_qspn_pkt(void *argv)
 			nopt->q.routes=pkt_db[to][pkt]->routes;
 			nopt->q.tracer=pkt_db[to][pkt]->tracer;
 			nopt->q.op=OP_REPLY;
-			nopt->q.broadcast=int_map[to].broadcast[dst]++;
+			int_map[to].broadcast[to]++;
+			nopt->q.broadcast=int_map[to].broadcast[to];
 			nopt->join=qopt->join;
 
 			gbl_stat.qspn_replies++;
@@ -319,11 +327,12 @@ void *send_qspn_pkt(void *argv)
 		nopt->q.broadcast=pkt_db[to][pkt]->broadcast;
 		nopt->join=qopt->join;
 
-		if(int_map[to].r_node[x].flags & QSPN_CLOSED) {
+		if(int_map[to].r_node[x].flags & QSPN_CLOSED && !(int_map[to].r_node[x].flags & QSPN_BACKPRO)) {
 #ifdef BACKPRO
 			gbl_stat.qspn_backpro++;
 			node_stat[to].qspn_backpro++;
-			nopt->q.op=OP_REPLY;
+			nopt->q.op=OP_BACKPRO;
+			int_map[to].r_node[x].flags&=QSPN_BACKPRO;
 			thread_joint(qopt->join, send_qspn_backpro, (void *)nopt);
 #else
 			0;
@@ -426,7 +435,7 @@ void print_data(char *file)
 	fprintf(fd, "---- Test dump n. 6 ----\n");
 
 	for(i=0; i<MAXGROUPNODE; i++)
-		if(rt_total[i]<MAXGROUPNODE)
+		if(rt_total[i]<MAXGROUPNODE && int_map[i].links) 
 			fprintf(fd,"*WARNING* The node %d has only %d/%d routes *WARNING*\n", i, rt_total[i], MAXGROUPNODE);
 
 	fprintf(fd, "- Gbl_stat{\n\ttotal_pkts: %d\n\tqspn_requests: %d"
@@ -438,7 +447,11 @@ void print_data(char *file)
 	for(i=0; i<MAXGROUPNODE; i++) {	
 		fprintf(fd, "Node: %d { ", i);
 		for(x=0; x<MAXGROUPNODE; x++) {
-			fprintf(fd, "(%d)%d ", x,rt_stat[i][x]);
+			if(!int_map[x].links)
+				fprintf(fd, "(%d)NULL ", x);
+			else
+				fprintf(fd, "(%d)%d ", x,rt_stat[i][x]);
+
 			if(!x%20 && x)
 				fprintf(fd, "\n           ");
 		}
@@ -518,10 +531,13 @@ int main(int argc, char **argv)
 		printf("Saving the map to QSPN-map.raw\n");
 		save_map(int_map, &int_map[i], "QSPN-map.raw");
 	}
-exit(0);
+	
 	printf("Running the first test...\n");
 	thread_joint(0, show_temp_stat, NULL);
-	r=(random()%(MAXGROUPNODE-0))+0;
+	if(argc > 2)
+		r=atoi(argv[2]);
+	else
+		r=(random()%(MAXGROUPNODE-0))+0;
 	printf("Starting the QSPN spreading from node %d\n", r);
 	int_map[r].flags|=QSPN_STARTER;
 	start=time(0);

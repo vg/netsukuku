@@ -20,8 +20,8 @@
 #include <pthread.h>
 #include "map.h"
 
-#define BACKPRO
 #undef BACKPRO
+#define BACKPRO
 
 pthread_mutex_t mutex[MAXGROUPNODE];
 int total_threads=0;

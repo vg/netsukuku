@@ -46,6 +46,7 @@
 #define QSPN_CLOSED	(1<<9)		/*This flag is set only to the rnodes, it puts a link in a QSPN_CLOSED state*/
 #define QSPN_STARTER	(1<<10)		/*Used only by qspn-empiric.c*/
 #define QSPN_REPLIED	(1<<11)		/*When the node send the qspn_reply it will never reply again to the same qspn*/
+#define QSPN_BACKPRO	(1<<12)		/*This marks the r_node where the QSPN_BACKPRO has been sent*/
 
 
 /*map_rnode is what map_node.r_node points to*/
