@@ -120,15 +120,19 @@ int qspn_b_find_reply(struct qspn_buffer *qb, int sub_id)
 
 /* 
  * qspn_round_left: It returns the milliseconds left before the QSPN_WAIT_ROUND
- * expires. If the returned value is <= 0 the QSPN_WAIT_ROUND is expired.
+ * expires. If the round is expired it returns 0.
  */
 int qspn_round_left(u_char level)
 {
 	struct timeval cur_t, t;
+	int diff;
 	
 	gettimeofday(&cur_t, 0);
 	timersub(&cur_t, &me.cur_qspn_time[level], &t);
-	return QSPN_WAIT_ROUND_MS_LVL(level) - MILLISEC(t);
+
+	diff=(QSPN_WAIT_ROUND_MS_LVL(level) - MILLISEC(t));
+
+	return diff <= 0 ? 0 : diff;
 }
 
 
@@ -174,8 +178,15 @@ void qspn_new_round(u_char level)
 	int bm, i;
 	map_node *map, *root_node, *node;
 	map_gnode *gmap;
+	void *void_map;
 	
-	qspn_set_map_vars(level, &map, &root_node, 0, &gmap);
+	qspn_set_map_vars(level, 0, &root_node, 0, &gmap);
+	map=me.int_map;
+	if(!level)
+		void_map=map;
+	else 
+		void_map=me.ext_map;
+	
 
 	/* New round activated. Destroy the old one. beep. */
 	me.cur_qspn_id[level]++;
@@ -196,30 +207,42 @@ void qspn_new_round(u_char level)
 	 * break them if they didn't show in the while. 
 	 */
 	for(i=0; i<MAXGROUPNODE; i++) {
-		if((map[i].flags & QSPN_OLD) && !(map[i].flags & MAP_VOID)) {
+		if(!level)
+			node=(map_node *)&map[i];
+		else
+			node=(map_node *)&gmap[i];
 			
-			if((map[i].flags & MAP_BNODE)) {
+		if(node->flags & MAP_ME)
+			continue;
+
+		if((node->flags & QSPN_OLD) && !(node->flags & MAP_VOID)) {
+			
+			if((node->flags & MAP_BNODE)) {
 				/* 
 				 * The node is a boarder node, delete it from
 				 * the bmap.
 				 */
 				bm=map_find_bnode(me.bnode_map[level],
-						me.bmap_nodes[level], map, &map[i], level);
+						me.bmap_nodes[level], void_map, node, level);
 				if(bm != -1)
 					me.bnode_map[level]=map_bnode_del(me.bnode_map[level], 
 							&me.bmap_nodes[level],
 							&me.bnode_map[level][bm]);
 			}
 
-			if(!level)
-				map_node_del(&map[i]);
-			else
-				gmap_node_del(gmap);
+			if(!level) {
+				debug(DBG_NORMAL, "qspn: The node %d is dead", 
+						i);
+				map_node_del(node);
+			} else {
+				debug(DBG_NORMAL, "The groupnode %d of level %d"
+						" is dead", i, level);
+				gmap_node_del((map_gnode *)node);
+			}
 
-			if(level != me.cur_quadg.levels-1)
-				me.cur_quadg.gnode[level+1]->seeds--;
+			me.cur_quadg.gnode[level]->seeds--;
 		} else
-			map[i].flags|=QSPN_OLD;
+			node->flags|=QSPN_OLD;
 	}
 }
 
@@ -306,11 +329,51 @@ int qspn_send(u_char level)
 	tracer_pkt_send(exclude_from_and_glevel_and_closed, upper_gid, 
 			upper_level, -1, from, pkt);
 
-	debug(DBG_INSANE, "Qspn_round sent");
+	debug(DBG_INSANE, "Qspn_round 0x%x sent", me.cur_qspn_id[level]);
 
 	qspn_send_mutex[level]=0;
 	return ret;
 }
+
+/*
+ * qspn_open_start: sends a new qspn_open when all the links are closed.
+ * `from' is the node who sent the last qspn_close which closed the last 
+ * not-closed link. 
+ * `pkt_to_all' is the the last qspn_close pkt sent by `from'. It must be passed
+ * with the new tracer_pkt entry already added because it is sent as is.
+ * `qspn_id', `root_node_pos', `gid' and `level' are the same parameters passed
+ * to tracer_pkt_build to build the `pkt_to_all' pkt.
+ * This functions is called only by qspn_close().
+ */
+int qspn_open_start(map_node *from, PACKET pkt_to_all, int qspn_id, int root_node_pos,
+		int gid, int level)
+{
+	PACKET pkt_to_from;
+	int upper_level;
+
+	upper_level=level+1;
+	
+	debug(DBG_INSANE, "Fwd %s(0x%x) to broadcast", rq_to_str(QSPN_OPEN), qspn_id);
+	
+	/* 
+	 * The `from' node doesn't need all the previous tracer_pkt entry (which
+	 * are kept in `pkt_to_all'), so we build a new tracer_pkt only for it.
+	 */
+	tracer_pkt_build(QSPN_OPEN, qspn_id, root_node_pos, gid, level,  0, 0, 
+			0, 0, 0, 0, &pkt_to_from);	
+
+	/* Send the pkt to `from' */
+	tracer_pkt_send(exclude_all_but_notfrom, gid, upper_level, -1, from,
+			pkt_to_from);
+	
+	/* Send the `pkt_to_all' pkt to all the other rnodes */
+	pkt_to_all.hdr.op=QSPN_OPEN;
+	tracer_pkt_send(exclude_from_glevel_and_setreplied, gid, upper_level, -1, 
+			from, pkt_to_all);
+
+	return 0;
+}
+
 
 /* 
  * qspn_close: It receive a QSPN_CLOSE pkt, analyzes it, stores the routes,
@@ -325,7 +388,7 @@ int qspn_close(PACKET rpkt)
 	tracer_chunk *tracer;
 	bnode_hdr    *bhdr=0;
 	size_t bblock_sz=0, old_bblock_sz;
-	int i, not_closed=0, ret=0, new_qspn_close=0, ret_err;
+	int i, not_closed=0, ret=0, new_qspn_close=0, ret_err, left;
 	u_int hops;
 	u_short old_bchunks=0;
 	const char *ntop;
@@ -353,6 +416,7 @@ int qspn_close(PACKET rpkt)
 	}
 	gid=bcast_hdr->g_node;
 	upper_level=level=bcast_hdr->level;
+	hops=tracer_hdr->hops;
 
 	if(!level || level==1) {
 		level=0;
@@ -374,19 +438,20 @@ int qspn_close(PACKET rpkt)
 	if(tracer_starter == root_node) {
 		ntop=inet_to_str(rpkt.from);
 		debug(DBG_NOISE, "qspn_close(): Dropped qspn_close from "
-				"%s: we are the qspn_starter of that pkt!", 
-				ntop);
+				"%s: we are the qspn_starter of that pkt! (hops: %d)", 
+				ntop, tracer_hdr->hops);
 		return 0;
 	}
 	
 	if(rpkt.hdr.id != me.cur_qspn_id[level]) {
-		if(qspn_round_left(level) > 0 || rpkt.hdr.id != me.cur_qspn_id[level]+1) {
+		if((left=qspn_round_left(level)) > QSPN_WAIT_DELTA_MS ||
+				rpkt.hdr.id != me.cur_qspn_id[level]+1) {
 			ntop=inet_to_str(rpkt.from);
 			debug(DBG_NOISE, "qspn_close(): The %s sent a qspn_close"
 					" with a wrong qspn_id (0x%x)", ntop, 
 					rpkt.hdr.id);
 			debug(DBG_INSANE, "qspn_close(): cur_qspn_id: %d, still left %dms", 
-					me.cur_qspn_id[level], qspn_round_left(level));
+					me.cur_qspn_id[level], left);
 			return -1;
 		} else {
 			debug(DBG_INSANE, "New qspn_round received");
@@ -395,7 +460,6 @@ int qspn_close(PACKET rpkt)
 	}
 
 	/* Time to update our maps */
-	hops=tracer_hdr->hops;
 	tracer_store_pkt(void_map, level, tracer_hdr, tracer, (void *)bhdr, bblock_sz,
 			&old_bchunks, &old_bblock, &old_bblock_sz);
 
@@ -431,24 +495,21 @@ int qspn_close(PACKET rpkt)
 	/*We build d4 p4ck37...*/
 	tracer_pkt_build(QSPN_CLOSE, rpkt.hdr.id, root_node_pos,  /*IDs*/
 			 gid,	     level,
-			 bcast_hdr, tracer_hdr, tracer, 	  /*Received tracer_pkt*/
-			 old_bchunks, old_bblock, old_bblock_sz,  /*bnode_block*/
+			 bcast_hdr,  tracer_hdr,  tracer, 	  /*Received tracer_pkt*/
+			 old_bchunks,old_bblock,  old_bblock_sz,  /*bnode_block*/
 			 &pkt);					  /*Where the pkt is built*/
 	if(old_bblock)
 		xfree(old_bblock);
 
-	if(!not_closed && !(node->flags & QSPN_REPLIED)) {
+	if(!not_closed && !(node->flags & QSPN_REPLIED) && 
+			!(root_node->flags & QSPN_STARTER)) {
 		/*
 		 * We have all the links closed and we haven't sent a 
 		 * QSPN_REPLIED yet, time to diffuse a new qspn_open
 		 */
-		pkt.hdr.op=QSPN_OPEN;
-		debug(DBG_INSANE, "%s(0x%x) to broadcast", rq_to_str(pkt.hdr.op),
-				pkt.hdr.id);
-		tracer_pkt_send(exclude_from_and_glevel_and_setreplied, gid, 
-				upper_level, -1, from, pkt);
+		qspn_open_start(from, pkt, rpkt.hdr.id, root_node_pos, gid, level);
 	} else {
-		debug(DBG_INSANE, "%s(0x%x) to broadcast", rq_to_str(pkt.hdr.op),
+		debug(DBG_INSANE, "Fwd %s(0x%x) to broadcast", rq_to_str(pkt.hdr.op),
 				pkt.hdr.id);
 		/* 
 		 * Forward the qspn_close to all our r_nodes which are not 
@@ -473,7 +534,7 @@ int qspn_open(PACKET rpkt)
 	tracer_chunk *tracer;
 	bnode_hdr    *bhdr=0;
 	struct qspn_buffer *qb=0;
-	int not_opened=0, ret=0, reply, sub_id, ret_err;
+	int not_opened=0, ret=0, reply, sub_id, ret_err, e;
 	u_int hops;
 	size_t bblock_sz=0, old_bblock_sz;
 	u_short old_bchunks=0;
@@ -504,6 +565,7 @@ int qspn_open(PACKET rpkt)
 	hops=tracer_hdr->hops;
 	gid=bcast_hdr->g_node;
 	upper_level=level=bcast_hdr->level;
+	
 	if(!level || level==1) {
 		level=0;
 		qspn_set_map_vars(level, 0, &root_node, &root_node_pos, 0);
@@ -540,11 +602,21 @@ int qspn_open(PACKET rpkt)
 	 * We search in the qspn_buffer the reply which has current sub_id. 
 	 * If we don't find it, we add it.
 	 */
-	if((reply=qspn_b_find_reply(qspn_b[level], sub_id))==-1) {
-		qb=qspn_b[level];
+	qb=qspn_b[level];
+	if((reply=qspn_b_find_reply(qb, sub_id))==-1) {
+		e=0;
 		list_for(qb)
-			if(qb->rnode == from)
+			if(qb->rnode == from) {
 				reply=qspn_b_add(qb, sub_id, 0);
+				e=1;
+			}
+		
+		if(!e) {
+			debug(DBG_NOISE, "qspn_open(): Dropped the qspn_open "
+					"(0x%x) from %s. We haven't it in our "
+					"qspn_buffer", rpkt.hdr.id, sub_id);
+			return -1;
+		}
 	}
 
 	/*

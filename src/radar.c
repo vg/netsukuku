@@ -176,8 +176,8 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 		node=(map_node *)me.cur_node->r_node[i].r_node;
 
 		if(!(node->flags & MAP_VOID))
+			/* The rnode is not really dead! */
 			continue;
-		/* Doh, The rnode is dead! */
 
 		if(node->flags & MAP_ERNODE) {
 			e_rnode=(ext_rnode *)node;
@@ -190,7 +190,6 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 
 		for(level=0; level < total_levels; level++) {
 			qspn_set_map_vars(level, 0, &root_node, 0, 0);
-			qb=qspn_b[level];
 
 			if(!level && external_node) {
 				debug(DBG_NORMAL, "The external node of gid %d is"
@@ -198,7 +197,7 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 			} else if(!level) {
 				void_map=me.int_map;
 				node_pos=pos_from_node(node, me.int_map);
-				debug(DBG_NORMAL, "The node %d is dead", 
+				debug(DBG_NORMAL, "radar: The node %d is dead", 
 						node_pos, me.int_map);
 			} else
 				void_map=me.ext_map; /* not reached */
@@ -207,11 +206,11 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 			 * Just delete it from all the maps.
 			 * We don't care to send the qspn to inform the other nodes of this death. 
 			 * They will wait till the next qspn round to know it.
-			 * send_qspn_now[level]=1;
+			 * //send_qspn_now[level]=1;
 			 */
 			
 			if(!level)
-				map_node_del((map_node *)me.cur_node->r_node[i].r_node);
+				map_node_del(node);
 			else {
 				gmap_node_del(e_rnode->quadg.gnode[_EL(level)]);
 
@@ -233,11 +232,12 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 			rnode_del(root_node, i);
 			
 			/* Now we delete it from the qspn_buffer */
+			qb=qspn_b[level];
 			list_for(qb)
 				if(qb->rnode == node)
 					list_del(qb);
+			
 			rnode_deleted[level]++;
-
 		}
 
 	}
@@ -319,13 +319,12 @@ void radar_update_map(void)
 				   rnode_pos=rnode_find(root_node, node);
 
 			   if(rnode_pos == -1) { /* W00t, we've found a new rnode! */
+				   rnode_pos=root_node->links; 
+				   
 				   ntop=inet_to_str(rq->ip);
 				   loginfo("Radar: New node found: %s, ext: %d, level: %d", 
 						   ntop, external_node, level);
 				   
-				   rnode_pos=root_node->links; /* Now it is the last rnode +1
-								  because we are adding it */
-
 				   /* First of all we add it in the map... */
 				   if(external_node && !level) {
 					   /* 
@@ -346,17 +345,18 @@ void radar_update_map(void)
 					   new_root_rnode=&rnn;
 					  
 					   /* Update the external_rnode_cache list */
-					   e_rnode_add(me.cur_erc, e_rnode, rnode_pos-1, &me.cur_erc_counter);
+					   e_rnode_add(me.cur_erc, e_rnode, rnode_pos-1, 
+							   &me.cur_erc_counter);
 				   } else {
 					   /* 
 					    * We purge all the node's rnodes. 
-					    * We don't need anymore any qspn 
-					    * routes stored in it.
+					    * We don't need any qspn routes 
+					    * stored in it.
 					    */
 					   rnode_destroy(node);
 
 					   /* 
-					    * This node has only one rnodes, 
+					    * This node has only one rnode, 
 					    * and that is the root_node.
 					    */
 					   memset(&rnn, '\0', sizeof(map_rnode));
@@ -409,7 +409,8 @@ void radar_update_map(void)
 							   MILLISEC(rq->final_rtt));
 					   if(diff >= RTT_DELTA) {
 						   send_qspn_now[level]=1;
-						   debug(DBG_INSANE, "rnode %d rtt changed, diff: %d", pos_from_node(node, me.int_map));
+						   debug(DBG_INSANE, "rnode %d rtt changed, diff: %d",
+								   pos_from_node(node, me.int_map));
 					   }
 				   }
 			   }
@@ -575,12 +576,8 @@ int radar_exec_reply(PACKET pkt)
  */
 int radar_recv_reply(PACKET pkt)
 {
-	if(!my_echo_id || !radar_scan_mutex || !radar_scans) {
-		debug(DBG_NORMAL, "I received an ECHO_REPLY with id: 0x%x, but "
-				"I've never sent any ECHO_ME requests..", 
-				pkt.hdr.id);
+	if(!my_echo_id || !radar_scan_mutex || !radar_scans)
 		return -1;
-	}
 	
 	if(pkt.hdr.id != my_echo_id) {
 		debug(DBG_NORMAL,"I received an ECHO_REPLY with id: 0x%x, but "
@@ -648,8 +645,8 @@ int radar_scan(int activate_qspn)
 	if(me.cur_node->flags & MAP_HNODE) {
 		pkt.hdr.sz=sizeof(u_char);
 		pkt.msg=xmalloc(pkt.hdr.sz);
+		debug(DBG_INSANE, "Radar scan 0x%x activated", my_echo_id);
 	}
-	debug(DBG_INSANE, "Radar scan 0x%x activated", my_echo_id);
 	for(i=0, echo_scan=0; i<MAX_RADAR_SCANS; i++, echo_scan++) {
 		if(me.cur_node->flags & MAP_HNODE)
 			memcpy(pkt.msg, &echo_scan, sizeof(u_char));
@@ -725,7 +722,7 @@ int radard(PACKET rpkt)
 			if(!radar_scan_mutex || echo_scans_count > radar_scans)
 				hook_retry=1;
 		} else {
-			debug(DBG_NOISE, "ECHO_ME pkt dropped: We are hooking");	
+			/*debug(DBG_NOISE, "ECHO_ME pkt dropped: We are hooking");*/
 			return 0;
 		}
 	}
@@ -771,7 +768,7 @@ int radard(PACKET rpkt)
 	rq=add_radar_q(rpkt);
 	rq->pings++;
 	
-	if(server_opt.dbg_lvl && rq->pings==1) {
+	if(server_opt.dbg_lvl && rq->pings==1 && me.cur_node->flags & MAP_HNODE) {
 		ntop=inet_to_str(pkt.to);
 		debug(DBG_INSANE, "%s(0x%x) to %s", rq_to_str(ECHO_REPLY), 
 				rpkt.hdr.id, ntop);

@@ -63,7 +63,9 @@ int tracer_pkt_build(u_char, int, int, int, u_char, brdcast_hdr *, tracer_hdr *,
 					sub_id
 int tracer_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), int gid, 
 		u_char level, int sub_id, map_node *from, PACKET pkt);
-int exclude_from_and_glevel_and_setreplied(TRACER_PKT_EXCLUDE_VARS);
+int exclude_from(TRACER_PKT_EXCLUDE_VARS);
+int exclude_all_but_notfrom(TRACER_PKT_EXCLUDE_VARS);
+int exclude_from_glevel_and_setreplied(TRACER_PKT_EXCLUDE_VARS);
 int exclude_from_and_glevel_and_closed(TRACER_PKT_EXCLUDE_VARS);
 int exclude_from_and_glevel(TRACER_PKT_EXCLUDE_VARS);
 

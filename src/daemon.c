@@ -118,15 +118,18 @@ void *udp_exec_pkt(void *recv_pkt)
 
 void *udp_daemon(void *null)
 {
-	pthread_t thread;
-	pthread_attr_t t_attr;
 	PACKET rpkt;
 	fd_set fdset;
 	int ret, sk;
 	char *rpkt_cp;
+	
+#if 0
+	pthread_t thread;
+	pthread_attr_t t_attr;
 
 	pthread_attr_init(&t_attr);
 	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
+#endif
 
 	debug(DBG_SOFT, "Preparing the udp listening socket");
 	sk=prepare_listen_socket(my_family, SOCK_DGRAM, ntk_udp_port);

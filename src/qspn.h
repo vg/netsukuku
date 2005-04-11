@@ -21,6 +21,9 @@
 					  seconds to be waited before the next qspn_round 
 					  can be sent*/
 #define QSPN_WAIT_ROUND_MS	QSPN_WAIT_ROUND*1000
+#define QSPN_WAIT_DELTA_MS	91	/*If a qspn_round is sent while 
+					  qspn_round_left() < QSPN_WAIT_DELTA_MS,
+					  then it is acceptable*/
 
 /*Wait time bound to a specific level*/
 #define QSPN_WAIT_ROUND_LVL(level) (((level)+1)*QSPN_WAIT_ROUND)

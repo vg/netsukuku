@@ -436,11 +436,11 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 	if(bblock_sz) {	/*Well, well, we have to take care of bnode blocks*/
 		bb=tracer_split_bblock(bnode_block_start, bblock_sz, &bblist_hdr,
 				&bblist, &found_block_sz);
-		*bblocks_found=bb;
+		*bblocks_found = bb;
 		if(!bb || bb!=trcr_hdr->bblocks) {
 			debug(DBG_NORMAL, "tracer_store_pkt(): malformed bnode block.");
-			*bblock_found_sz=0;
-			*bblocks_found_block=0;
+			*bblock_found_sz = 0;
+			*bblocks_found_block = 0;
 		} else {
 			x=0;
 			*bblock_found_sz=found_block_sz;
@@ -531,7 +531,7 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 			debug(DBG_INSANE, "TRCR_STORE: node %d added", tracer[i].node);
 		}
 		
-		for(e=0; e < node->links; e++) {
+		for(e=0,f=0; e < node->links; e++) {
 			if(node->r_node[e].r_node == (u_int *)from) {
 				/* update the rtt of the node */
 				diff=abs(MILLISEC(node->r_node[e].trtt) - MILLISEC(trtt));
@@ -553,9 +553,6 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 			
 			rnode_add(node, &rnn);
 			node->flags|=MAP_UPDATE;
-
-			debug(DBG_INSANE, "TRCR_STORE: rnode %d added to %d", from_rnode_pos,
-					tracer[i].node);
 		}
 
 		/* ok, now the kernel needs a refresh in the route table */
@@ -711,26 +708,23 @@ int tracer_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), int gid,
 {
 	inet_prefix to;
 	map_node *dst_node;
-	ext_rnode *e_rnode;
 	ssize_t err;
 	const char *ntop;
 	int i, e=0;
 
-	/*Forward the pkt to all our r_nodes (excluding the excluded hehe;)*/
+	/*Forward the pkt to all our r_nodes (excluding the excluded;)*/
 	for(i=0; i<me.cur_node->links; i++) {
 		dst_node=(map_node *)me.cur_node->r_node[i].r_node;
 		if(is_node_excluded(dst_node, from, i, gid, level, sub_id))
 			continue;
 
 		/* We need the ip of the rnode ;^ */
-		memset(&to, 0, sizeof(inet_prefix));
-		if(dst_node->flags & MAP_ERNODE) {
-			e_rnode=(ext_rnode *)dst_node;
-			memcpy(&to, &e_rnode->ip, sizeof(inet_prefix));
-		} else 
-			maptoip((u_int)me.int_map, (u_int)dst_node, 
-					me.cur_quadg.ipstart[1], &to);
+		rnodetoip((u_int)me.int_map, (u_int)dst_node, 
+				me.cur_quadg.ipstart[1], &to);
 		
+		debug(DBG_INSANE, "tracer_pkt_send(): %s to %s", 
+				rq_to_str(pkt.hdr.op), inet_to_str(to));
+				
 		pkt_addto(&pkt, &to);
 		pkt.sk_type=SKT_UDP;
 
@@ -781,20 +775,45 @@ int exclude_glevel(TRACER_PKT_EXCLUDE_VARS)
 	}
 	return 0;
 }
-int exclude_from_and_glevel(TRACER_PKT_EXCLUDE_VARS)
+
+/* Exclude the `from' node */
+int exclude_from(TRACER_PKT_EXCLUDE_VARS)
 {
-	if(exclude_glevel(TRACER_PKT_EXCLUDE_VARS_NAME) || node == from)
+	if(node == from)
 		return 1;
 	return 0;
 }
-/* Exclude the from node, the setreplied node, and the node's gnode of a higher level*/
-int exclude_from_and_glevel_and_setreplied(TRACER_PKT_EXCLUDE_VARS)
+
+/* Exclude all the nodes, except the from node */
+int exclude_all_but_notfrom(TRACER_PKT_EXCLUDE_VARS)
 {
-	if(exclude_from_and_glevel(TRACER_PKT_EXCLUDE_VARS_NAME))
+	if(!exclude_from(TRACER_PKT_EXCLUDE_VARS_NAME))
 		return 1;
+	return 0;
+}
+
+int exclude_from_and_glevel(TRACER_PKT_EXCLUDE_VARS)
+{
+	if(exclude_glevel(TRACER_PKT_EXCLUDE_VARS_NAME) || 
+			exclude_from(TRACER_PKT_EXCLUDE_VARS_NAME))
+		return 1;
+	return 0;
+}
+
+/*
+ * Exclude the from node, the node's gnode of a higher level, and set the
+ * QSPN_REPLIED flag.
+ */
+int exclude_from_glevel_and_setreplied(TRACER_PKT_EXCLUDE_VARS)
+{
+	if(exclude_glevel(TRACER_PKT_EXCLUDE_VARS_NAME) || 
+			exclude_from(TRACER_PKT_EXCLUDE_VARS_NAME))
+		return 1;
+
 	node->flags|=QSPN_REPLIED;
 	return 0;
 }
+
 int exclude_from_and_glevel_and_closed(TRACER_PKT_EXCLUDE_VARS)
 {
 	if((node->flags & QSPN_CLOSED) || 

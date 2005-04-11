@@ -54,7 +54,7 @@ int free_the_tmp_cur_node;
  * pkt (see hook.h).
  */
 int get_free_nodes(inet_prefix to, struct timeval to_rtt, struct free_nodes_hdr *fn_hdr, 
-		u_short *nodes, struct timeval *qtime)
+		u_short *nodes, struct timeval *qtime, int *qspn_id)
 {
 	PACKET pkt, rpkt;
 	struct timeval cur_t;
@@ -87,8 +87,12 @@ int get_free_nodes(inet_prefix to, struct timeval to_rtt, struct free_nodes_hdr 
 		goto finish;
 	}
 	
-	/* Restoring the qspn_round time */
+	/* Restoring the qspn_id and the qspn_round time */
+	
 	buf=rpkt.msg+sizeof(struct free_nodes_hdr);
+	memcpy(qspn_id, buf, fn_hdr->max_levels * sizeof(int));
+	
+	buf+=fn_hdr->max_levels * sizeof(int);
 	memcpy(qtime, buf, fn_hdr->max_levels * sizeof(struct timeval));
 	gettimeofday(&cur_t, 0);
 	for(level=0; level < fn_hdr->max_levels; level++) {
@@ -119,6 +123,7 @@ int put_free_nodes(PACKET rq_pkt)
 {	
 	struct fn_pkt {
 		struct free_nodes_hdr fn_hdr;
+		int 		qspn_id[me.cur_quadg.levels];
 		struct timeval  qtime[me.cur_quadg.levels];
 
 		/* 
@@ -189,7 +194,9 @@ int put_free_nodes(PACKET rq_pkt)
 	}
 	fn_pkt.fn_hdr.nodes=e;
 	
-	/* We fill the qspn round time */
+	/* We fill the qspn_id and the qspn round time */
+	memcpy(fn_pkt.qspn_id, me.cur_qspn_id, sizeof(int) * fn_pkt.fn_hdr.max_levels);
+	
 	gettimeofday(&cur_t, 0);
 	for(level=0; level < fn_pkt.fn_hdr.max_levels; level++) {
 		update_qspn_time(level);
@@ -206,6 +213,8 @@ int put_free_nodes(PACKET rq_pkt)
 	p=pkt.msg;
 	memcpy(p, &fn_pkt.fn_hdr, sizeof(struct free_nodes_hdr));
 	p+=sizeof(struct free_nodes_hdr);
+	memcpy(p, &fn_pkt.qspn_id,  sizeof(int) * fn_pkt.fn_hdr.max_levels);
+	p+=sizeof(int) * fn_pkt.fn_hdr.max_levels;
 	memcpy(p, &fn_pkt.qtime, 
 			sizeof(struct timeval)*fn_pkt.fn_hdr.max_levels);
 	p+=sizeof(struct timeval)*me.cur_quadg.levels;
@@ -690,7 +699,7 @@ hook_restart_and_retry:
 			continue;
 
 		if( !get_free_nodes(rq->ip, rq->final_rtt, &fn_hdr, fnodes, 
-					me.cur_qspn_time) ) {
+					me.cur_qspn_time, me.cur_qspn_id) ) {
 			e=1;
 			break;
 		}
@@ -843,6 +852,7 @@ finish:
 	 * is just to say <<Hey there, I'm here, alive>>, thus the other nodes
 	 * of the gnode will have the basic routes to reach us.
 	 */
+	sleep(1);
 	tracer_pkt_start_mutex=0;
 	for(i=1; i<tracer_levels; i++)
 		tracer_pkt_start(i-1);

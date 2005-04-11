@@ -36,13 +36,15 @@
  * enjoy the trip.
  */
 
-#include <stdlib.h>
-#include <stdio.h>
 
-#include "qspn-empiric.h"
-#include "log.h"
-#include "xmalloc.h"
+#include "includes.h"
+
 #include "misc.h"
+#include "inet.h"
+#include "map.h"
+#include "qspn-empiric.h"
+#include "xmalloc.h"
+#include "log.h"
 
 /* thread_joint creates a thread in JOINED STATE or in DETACHED STATE*/
 void thread_joint(int joint, void * (*start_routine)(void *), void *nopt)
@@ -383,7 +385,7 @@ void *send_qspn_pkt(void *argv)
 	
 	pkt=store_tracer_pkt(qopt);	
 	
-	if(int_map[to].flags & QSPN_STARTER) {
+	if(qopt->q.routes > 1 && (int_map[to].flags & QSPN_STARTER)) {
 		fprintf(stderr, "%u: qspn_pkt: We received a qspn_pkt, but we are the QSPN_STARTER!!\n", pthread_self());
 		return;
 	}
@@ -403,9 +405,6 @@ void *send_qspn_pkt(void *argv)
 		fprintf(stderr, "%u: W00t I'm an extreme node!\n", pthread_self());
 		int_map[to].flags|=QSPN_REPLIED;
 		for(x=0; x<int_map[to].links; x++) {	
-			if((map_node *)int_map[to].r_node[x].r_node == &int_map[qopt->q.from]) 
-				continue;
-
 			/*if(int_map[to].r_node[x].flags & QSPN_SENT) 
 				continue;
 			*/
@@ -421,8 +420,14 @@ void *send_qspn_pkt(void *argv)
 			nopt->q.q_sub_id=to;
 			nopt->q.to=dst;
 			nopt->q.from=to;
-			nopt->q.routes=pkt_db[to][pkt]->routes;
-			nopt->q.tracer=pkt_db[to][pkt]->tracer;
+			if((map_node *)int_map[to].r_node[x].r_node == &int_map[qopt->q.from]) {
+				nopt->q.tracer=xmalloc(sizeof(short));
+				nopt->q.tracer[0]=nopt->q.from;
+				nopt->q.routes=1;
+			} else {
+				nopt->q.routes=pkt_db[to][pkt]->routes;
+				nopt->q.tracer=pkt_db[to][pkt]->tracer;
+			}
 			nopt->q.op=OP_OPEN;
 			nopt->q.broadcast=pkt_db[to][pkt]->broadcast;
 			nopt->join=qopt->join;
@@ -746,7 +751,7 @@ int main(int argc, char **argv)
 		nopt->q.from=r;
 		nopt->q.to=((void *)int_map[r].r_node[x].r_node - (void *)int_map)/sizeof(map_node);
 		nopt->q.tracer=xmalloc(sizeof(short));
-		nopt->q.tracer[0]=r;
+		nopt->q.tracer[0]=nopt->q.from;
 		nopt->q.routes=1;
 		nopt->sleep=int_map[r].r_node[x].rtt.tv_usec;
 		nopt->q.broadcast=0;

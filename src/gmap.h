@@ -162,6 +162,7 @@ typedef struct ext_rnode_cache ext_rnode_cache;
 inline int get_groups(int family, int lvl);
 int pos_from_gnode(map_gnode *gnode, map_gnode *map);
 map_gnode *gnode_from_pos(int pos, map_gnode *map);
+void rnodetoip(u_int mapstart, u_int maprnode, inet_prefix ipstart, inet_prefix *ret);
 
 void maxgroupnode_level_init(void);
 void maxgroupnode_level_free(void);

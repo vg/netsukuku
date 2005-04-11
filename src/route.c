@@ -70,7 +70,16 @@ void krnl_update_node(void *void_node, u_char level)
 	nh=0;
 	node=(map_node *)void_node;
 	gnode=(map_gnode *)void_node;
-
+	if(level)
+		node=&gnode->g;
+	
+	/* 
+	 * If `node' it's a rnode, do nothing! It is already directly connected
+	 * to me. 
+	 */
+	if(node->flags & MAP_RNODE)
+		goto finish;
+	
 	if(!level) {
 		nh=xmalloc(sizeof(struct nexthop)*(node->links+1));
 		memset(nh, '\0', sizeof(struct nexthop)*(node->links+1));
@@ -86,6 +95,7 @@ void krnl_update_node(void *void_node, u_char level)
 			maptoip((u_int)me.int_map, (u_int)node->r_node[i].r_node,
 					me.cur_quadg.ipstart[1], &nh[i].gw);
 #endif
+			
 			inet_htonl(&nh[i].gw);
 			nh[i].dev=me.cur_dev;
 			nh[i].hops=255-i;
@@ -96,7 +106,6 @@ void krnl_update_node(void *void_node, u_char level)
 		nh=xmalloc(sizeof(struct nexthop)*2);
 		memset(nh, '\0', sizeof(struct nexthop)*2);
 		
-		node=&gnode->g;
 		node_pos=pos_from_gnode(gnode, me.ext_map[_EL(level)]);
 		gnodetoip(me.ext_map, &me.cur_quadg, gnode, level, &to);
 		inet_htonl(&to);

@@ -40,14 +40,16 @@ struct free_nodes_hdr
 	u_short  	gid;		/* The gnode id */
 	u_short		nodes;		/* The number of free nodes/gnodes. 
 					   It cannot be greater than MAXGROUPNODE */
-};
+}_PACKED_;
 #define FREE_NODES_SZ(levels, nodes) (sizeof(struct free_nodes_hdr) +	      \
 				 	((levels) * sizeof(struct timeval)) + \
 					  (sizeof(u_short) * (nodes)))
 
 /* 
  * the free_nodes block is:
- *	struct timeval  qtime[fn_hdr.max_levels];  qspn round time: how many seconds passed away
+ *	int		qspn_id[max_levels];	   the qspn_id of the last qspn_round for each 
+ *						   fn_hdr.max_levels level
+ *	struct timeval  qtime[max_levels];         qspn round time: how many seconds passed away
  *						   since the previous qspn round. There's a qtime
  *						   for each fn_hdr.max_levels level
  *	u_short		free_nodes[fn_hdr.nodes];  If free_nodes[x] is the position of the node in the
@@ -57,7 +59,7 @@ struct free_nodes_hdr
  *	fn_block;
  */
 
-int get_free_nodes(inet_prefix to, struct timeval to_rtt, struct free_nodes_hdr *fn_hdr, u_short *nodes, struct timeval *qtime);
+int get_free_nodes(inet_prefix, struct timeval, struct free_nodes_hdr *, u_short *, struct timeval *, int *);
 int put_free_nodes(PACKET rq_pkt);
 
 int put_ext_map(PACKET rq_pkt);

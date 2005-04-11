@@ -16,9 +16,6 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <pthread.h>
-#include "map.h"
-
 /*I use these define to activate/deactivate the different parts of QSPN*/
 #undef Q_BACKPRO
 #define Q_OPEN

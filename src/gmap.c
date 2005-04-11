@@ -54,6 +54,24 @@ map_gnode *gnode_from_pos(int pos, map_gnode *map)
 	return (map_gnode *)((pos*sizeof(map_gnode))+(void *)map);
 }
 
+/* 
+ * rnodetoip: converts the node `maprnode', which is a rnode of the root_node,
+ * to the relative ip.
+ */
+void rnodetoip(u_int mapstart, u_int maprnode, inet_prefix ipstart, 
+		inet_prefix *ret)
+{
+	ext_rnode *e_rnode;
+	map_node *rnode=(map_node *)maprnode;
+
+	memset(ret, 0, sizeof(inet_prefix));
+	if(rnode->flags & MAP_ERNODE) {
+		e_rnode=(ext_rnode *)rnode;
+		memcpy(ret, &e_rnode->ip, sizeof(inet_prefix));
+	} else 
+		maptoip(mapstart, maprnode, ipstart, ret);
+}
+
 void maxgroupnode_level_init(void)
 {
 	mpz_t base;
@@ -540,10 +558,12 @@ void gmap_node_del(map_gnode *gnode)
 }
 
 
-/* gmap_get_rblock: It uses get_rnode_block to pack all the ext_map's rnodes
+/* 
+ * gmap_get_rblock: It uses get_rnode_block to pack all the ext_map's rnodes
  * `maxgroupnode' is the number of nodes present in the map.
  * It returns a pointer to the start of the rnode block and stores in "count" 
- * the number of rnode structs packed*/
+ * the number of rnode structs packed.
+ */
 map_rnode *gmap_get_rblock(map_gnode *map, int maxgroupnode, int *count)
 {
 	int i, c=0, tot=0;
@@ -575,7 +595,8 @@ int gmap_store_rblock(map_gnode *gmap, int maxgroupnode, map_rnode *rblock)
 	return c;
 }
 
-/* extmap_get_rblock: It packs the rnode_block for each map present in the `ext_map'.
+/* 
+ * extmap_get_rblock: It packs the rnode_block for each map present in the `ext_map'.
  * There are a total of `levels' maps in the ext_map. Each map has `maxgroupnodes' 
  * nodes. In `*ret_count' is stored an array of map's rnodes count, so each element
  * of the array represents the number of rnodes in the rblock of the relative map.
@@ -612,7 +633,8 @@ int extmap_store_rblock(map_gnode **ext_map, u_char levels, int maxgroupnode, ma
 {
 	int i;
 	for(i=0; i<levels; i++)
-		gmap_store_rblock(ext_map[i], maxgroupnode, rblock[i]);
+		if(rblock[i])
+			gmap_store_rblock(ext_map[i], maxgroupnode, rblock[i]);
 	return i;
 }
 
@@ -654,8 +676,8 @@ char *pack_extmap(map_gnode **ext_map, int maxgroupnode, quadro_group *quadg, si
 {
 	struct ext_map_hdr emap_hdr;
 	map_rnode **rblock;
-	int *count, i, p=0;
-	char *package;
+	int *count, i;
+	char *package, *p=0;
 	u_char levels=quadg->levels-EXTRA_LEVELS;
 
 	/*Packing the rblocks*/
@@ -677,15 +699,14 @@ char *pack_extmap(map_gnode **ext_map, int maxgroupnode, quadro_group *quadg, si
 	package=xmalloc(*pack_sz);
 	
 	memcpy(package, &emap_hdr, sizeof(struct ext_map_hdr));
-	p=sizeof(struct ext_map_hdr);
+	p=package+sizeof(struct ext_map_hdr);
 	for(i=0; i<levels; i++) {
-		memcpy(package+p, ext_map[i], maxgroupnode*sizeof(map_gnode));
+		memcpy(p, ext_map[i], maxgroupnode*sizeof(map_gnode));
 		p+=maxgroupnode*sizeof(map_gnode);
 	}
 	
 	if(rblock) {
-		p+=emap_hdr.ext_map_sz;
-		memcpy(package+p, rblock, emap_hdr.total_rblock_sz);
+		memcpy(p, rblock, emap_hdr.total_rblock_sz);
 		free_extmap_rblock(rblock, levels);
 	}
 
@@ -727,17 +748,9 @@ map_gnode **unpack_extmap(char *package, size_t pack_sz, quadro_group *quadg)
 		p+=maxgroupnode*sizeof(map_gnode);
 	}
 
-	/*We restore the quadro_group struct*/
-	memcpy(quadg, &emap_hdr->quadg, sizeof(quadro_group));
-	for(i=0; i<levels; i++)
-		quadg->gnode[i]=gnode_from_pos(quadg->gid[i+1], ext_map[i]);
-
 	/*Let's store in it the lost rnodes.*/
-	p+=emap_hdr->ext_map_sz;
 	if(emap_hdr->total_rblock_sz) {
 		rblock=(map_rnode **)p;
-		/* XXX TODO DEBUG: it blocks in extmap_store_rblock, cause rblock is
-		 * not valid;( */
 		err=extmap_store_rblock(ext_map, levels, maxgroupnode, rblock);
 		if(err!=levels) {
 			error("unpack_extmap(): It was not possible to restore all the rnodes in the ext_map");
@@ -745,6 +758,12 @@ map_gnode **unpack_extmap(char *package, size_t pack_sz, quadro_group *quadg)
 			return 0;
 		}
 	}
+	
+	/*We restore the quadro_group struct*/
+	memcpy(quadg, &emap_hdr->quadg, sizeof(quadro_group));
+	for(i=0; i<levels; i++)
+		quadg->gnode[i]=gnode_from_pos(quadg->gid[i+1], ext_map[i]);
+
 	/*Let's mark our gnodes ;)*/
 	for(i=1; i<levels+EXTRA_LEVELS; i++) {
 		ext_map[_EL(i)][quadg->gid[i]].flags&=~GMAP_VOID;

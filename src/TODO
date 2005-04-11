@@ -1,18 +1,25 @@
 - [HIGH PRIORITY] -
-*******QSPN IS DISABLED, TESTING THE START_TRACER_PKT ONLY *********
 
-testare: 93%, hook.c in progress
-testare: 30%, tracer.c in progress
+. Quando un nodo fa l'hook con un gnode_starter che ha visto altri gnode, si
+ blocca a krnl_update_routes perche' c'e' la bmap sballata.
+ arrotondare il qspn_round_time
+. il qspn non setta le rotte
+
 
 - [MEDIUM PRIORITY] -
 big endian/little endian per gli int nei pkt.
-Ottimizzare la validita' di ip in random_ip(). Una possibile soluzione sarebbe
-quella di azzerare i bit invalidi.
 Portare per *BSD: bisogna usare rt_ioctl.c ed rt_socket.c di quagga
 ( ../othersrc/quagga-*/zebra/ )
 
 - [LOW PRIORITY] -
-tracer.c: store_trcaer_pkt_connect
+gmap.c: Ottimizzare la validita' di ip in random_ip(). Una possibile soluzione sarebbe
+	quella di azzerare i bit invalidi.
+tracer.c:  store_tracer_pkt_connect
 broadcast: Tenere in considerazione il gttl.
-hook.c: anti spoof hook
-hook.c: settare l'essid delle wlan0;)
+hook.c:    anti spoof hook
+hook.c:    settare l'essid delle wlan0
+
+- [ CURRENT TESTS ] -
+95%, hook.c
+50%, tracer.c
+24%, qspn.c
