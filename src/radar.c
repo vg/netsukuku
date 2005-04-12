@@ -53,8 +53,7 @@ void init_radar(void)
 	
 	pthread_attr_init(&radar_qspn_send_t_attr);
 	
-	list_init(radar_q);
-	memset(radar_q, 0, sizeof(struct radar_queue));
+	list_init(radar_q, 0);
 	
 	memset(send_qspn_now, 0, sizeof(u_char)*MAX_LEVELS);
 }
@@ -389,12 +388,10 @@ void radar_update_map(void)
 				   qb=xmalloc(sizeof(struct qspn_buffer));
 				   memset(qb, 0, sizeof(struct qspn_buffer));
 				   qb->rnode=node;
-				   if(root_node->links == 1 || !qspn_b[level]){
-					   /* Initialize the qspn_buffer */
-					   list_init(qspn_b[level]);
-					   memset(qspn_b[level],0,sizeof(struct qspn_buffer));
-				   }
-				   list_add(qspn_b[level], qb);
+				   if(root_node->links == 1 || !qspn_b[level])
+					   list_init(qspn_b[level], qb);
+				   else
+					   list_add(qspn_b[level], qb);
 
 				   rnode_added[level]++;
 				   send_qspn_now[level]=1;
@@ -414,7 +411,7 @@ void radar_update_map(void)
 					   }
 				   }
 			   }
-			   node->flags&=~MAP_VOID & ~MAP_UPDATE;
+			   node->flags&=~MAP_VOID & ~MAP_UPDATE & ~QSPN_OLD;
 		           memcpy(&root_node->r_node[rnode_pos].rtt, &rq->final_rtt,
 					   sizeof(struct timeval));
 			   

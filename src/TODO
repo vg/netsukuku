@@ -2,8 +2,6 @@
 
 . Quando un nodo fa l'hook con un gnode_starter che ha visto altri gnode, si
  blocca a krnl_update_routes perche' c'e' la bmap sballata.
- arrotondare il qspn_round_time
-. il qspn non setta le rotte
 
 
 - [MEDIUM PRIORITY] -

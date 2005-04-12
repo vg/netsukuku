@@ -23,6 +23,7 @@
  * The only limitation is to put _EXACTLY_ struct bla_bla *next;
  * struct bla_bla *prev; at the beginning.
  */
+
 struct linked_list
 {
 	struct linked_list *next;
@@ -30,11 +31,39 @@ struct linked_list
 }linked_list;
 typedef struct linked_list l_list;
 
-#define list_init(list)							\
+#define is_list_zero(list)						\
+({									\
+ 	int _i, _r=1;							\
+	char *_a=(char *)(list);					\
+	for(_i=0; _i<sizeof(typeof(*(list))); _i++, _a++)		\
+		if(*_a)	{						\
+			_r=0;						\
+			break;						\
+		}							\
+	_r;								\
+})
+
+#define list_copy(list, new)						\
+do{									\
+	l_list _o, *_l=(l_list *)(list);				\
+	_o.prev=_l->prev;						\
+	_o.next=_l->next;						\
+	memcpy((list), (new), sizeof(typeof(*(list))));			\
+	_l->prev=_o.prev;						\
+	_l->next=_o.next;						\
+} while(0)
+
+
+#define list_init(list, new)						\
 do {									\
-	(list)=(typeof (list))xmalloc(sizeof(typeof(*(list)))); 	\
-	(list)->prev=0; 						\
-	(list)->next=0;							\
+	l_list *_l;							\
+	(list)=(typeof (list))xmalloc(sizeof(typeof(*(list))));		\
+	_l=(l_list *)(list);						\
+	_l->prev=0; 							\
+	_l->next=0;							\
+	memset((list), 0, sizeof(typeof(*(list)))); 			\
+	if((new))							\
+		list_copy((list), (new));				\
 } while (0)
 				     
 #define list_last(list)							\
@@ -43,38 +72,26 @@ do {									\
 	 for(_i=(l_list *)(list); _i->next; _i=(l_list *)_i->next); 	\
  	 _i;								\
 })
-				     
-#define list_new(size)							\
-({									\
- 	void *_new; 							\
- 	_new=(void *)xmalloc(size); 					\
- 	_new;								\
-})
-				     
-#define list_free(list)							\
-do { 									\
-	xfree((list));							\
-} while(0)
-				     
-#define list_ins(list, new)						\
-do{ 									\
-	l_list *_list=(l_list *)(list), *_new=(l_list *)(new);		\
-	_list->next->prev=_new; 					\
-	_list->prev->next=_new;						\
-	_new->next=_list->next; 					\
-	_new->prev=_list->prev; 	  				\
-	list_free(_list); 						\
-}while(0)
-				
+
 #define list_add(list, new)						\
 do{									\
 	l_list *_i, *_n;						\
-	_i=(l_list *)list_last((list)); 				\
-	_n=(l_list *)(new);						\
-	_i->next=_n;							\
-	_n->prev=_i; 							\
-	_n->next=0;							\
+		_i=(l_list *)list_last((list)); 			\
+		_n=(l_list *)(new);					\
+		_i->next=_n;						\
+		_n->prev=_i; 						\
+		_n->next=0;						\
 }while(0)
+/*	if(is_list_zero((list)))				 	\
+		list_copy((list), (new));				\
+	else {								\
+	}								\
+	*/
+
+#define list_free(list)							\
+do {									\
+	xfree((list));							\
+} while(0)
 
 #define list_del(list)							\
 do{ 									\
@@ -85,8 +102,20 @@ do{ 									\
 		_list->next->prev=_list->prev; 				\
         list_free(_list); 						\
 }while(0)
-				   
-#define list_for(i)	for(; (i); (i)=(typeof (i))(i)->next)
+
+#define list_ins(list, new)						\
+do {									\
+	l_list *_l=(l_list *)(list), *_n=(l_list *)(new);		\
+	if(_l->next)							\
+		_l->next->prev=_n;					\
+	if(_l->prev)							\
+		_l->prev->next=_n;					\
+	_n->next=_l->next;						\
+	_n->prev=_l->prev;						\
+	list_del((list));						\
+} while (0)
+	
+#define list_for(i) for(; (i); (i)=(typeof (i))(i)->next)
 				   
 #define list_pos(list,pos)						\
 ({									\

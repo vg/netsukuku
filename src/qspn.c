@@ -87,8 +87,10 @@ void qspn_b_clean(u_char level)
 				xfree(qb->replier);
 			if(qb->flags)
 				xfree(qb->flags);
+			qb->replies=0;
+			qb->replier=0;
+			qb->flags=0;
 		}
-		memset(qb, 0, sizeof(struct qspn_buffer));
 	}
 }
 
@@ -249,9 +251,10 @@ void qspn_new_round(u_char level)
 /* Exclude function. (see tracer.c) */
 int exclude_from_and_opened_and_glevel(TRACER_PKT_EXCLUDE_VARS)
 {
-	struct qspn_buffer *qb=qspn_b[excl_level], *qbp;
+	struct qspn_buffer *qb, *qbp;
 	int reply;
 
+	qb=qspn_b[excl_level-1];
 	qbp=list_pos(qb, pos);
 
 	reply=qspn_b_find_reply(qb, sub_id);
@@ -434,6 +437,8 @@ int qspn_close(PACKET rpkt)
 		tracer_starter=&gtracer_starter->g;
                 void_map=me.ext_map;
 	}
+
+	from->flags&=~QSPN_OLD;
 	
 	if(tracer_starter == root_node) {
 		ntop=inet_to_str(rpkt.from);
@@ -534,7 +539,7 @@ int qspn_open(PACKET rpkt)
 	tracer_chunk *tracer;
 	bnode_hdr    *bhdr=0;
 	struct qspn_buffer *qb=0;
-	int not_opened=0, ret=0, reply, sub_id, ret_err, e;
+	int not_opened=0, ret=0, reply, sub_id, ret_err;
 	u_int hops;
 	size_t bblock_sz=0, old_bblock_sz;
 	u_short old_bchunks=0;
@@ -579,6 +584,7 @@ int qspn_open(PACKET rpkt)
                 void_map=me.ext_map;
 	}
 
+	from->flags&=~QSPN_OLD;
 	sub_id=bcast_hdr->sub_id;
 	if(sub_id == root_node_pos) {
 		ntop=inet_to_str(rpkt.from);
@@ -603,21 +609,9 @@ int qspn_open(PACKET rpkt)
 	 * If we don't find it, we add it.
 	 */
 	qb=qspn_b[level];
-	if((reply=qspn_b_find_reply(qb, sub_id))==-1) {
-		e=0;
+	if((reply=qspn_b_find_reply(qb, sub_id)) == -1)
 		list_for(qb)
-			if(qb->rnode == from) {
-				reply=qspn_b_add(qb, sub_id, 0);
-				e=1;
-			}
-		
-		if(!e) {
-			debug(DBG_NOISE, "qspn_open(): Dropped the qspn_open "
-					"(0x%x) from %s. We haven't it in our "
-					"qspn_buffer", rpkt.hdr.id, sub_id);
-			return -1;
-		}
-	}
+			reply=qspn_b_add(qb, sub_id, 0);
 
 	/*
 	 * Only if we are in the level 0, or if we are a bnode, we can do the real 

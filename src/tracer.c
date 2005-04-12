@@ -432,6 +432,7 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 		 */
 		return -1;
 	}
+	from->flags&=~QSPN_OLD;
 
 	if(bblock_sz) {	/*Well, well, we have to take care of bnode blocks*/
 		bb=tracer_split_bblock(bnode_block_start, bblock_sz, &bblist_hdr,
@@ -451,11 +452,13 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 				if(!level) {
 					node=node_from_pos(bblist_hdr[i]->bnode, int_map);
 					node->flags|=MAP_BNODE;
+					node->flags&=~QSPN_OLD;
 					me.cur_node->flags|=MAP_BNODE;
 					void_node=(void *)node;
 				} else {
 					gnode=gnode_from_pos(bblist_hdr[i]->bnode, ext_map[_EL(level)]);
 					gnode->g.flags|=MAP_BNODE;
+					gnode->g.flags&=~QSPN_OLD;
 					me.cur_quadg.gnode[_EL(level)]->g.flags|=MAP_BNODE;
 					void_node=(void *)&gnode->g;
 				}
@@ -476,9 +479,11 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 				/* We brought kaos, let's give peace */
 				for(e=0; e<bblist_hdr[i]->links; e++) {
 					memset(&rn, 0, sizeof(map_rnode));
-					
-					rn.r_node=(u_int *)gnode_from_pos(bblist[i][e]->gnode, 
+					gnode=gnode_from_pos(bblist[i][e]->gnode, 
 							ext_map[_EL(bblist[i][e]->level)]);
+					gnode->g.flags&=~QSPN_OLD;
+
+					rn.r_node=(u_int *)gnode;
 					memcpy(&rn.rtt, &bblist[i][e]->rtt, sizeof(struct timeval));
 					rnode_add(&me.bnode_map[level][bm], &rn);
 
@@ -517,6 +522,7 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 			gnode=gnode_from_pos(tracer[i].node, ext_map[_EL(level)]);
 			node=&gnode->g;
 		}
+		node->flags&=~QSPN_OLD;
 			
 		if(node->flags & MAP_VOID) { 
 			/* Ehi, we hadn't this node in the map. Add it. */

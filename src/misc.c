@@ -124,3 +124,12 @@ void xsrand(void)
 	srand(getpid() ^ time(0) ^ clock());
 }
 
+/* Is the buffer `a' filled with `sz'# of zeros? */
+int is_bufzero(char *a, int sz)
+{
+	int i;
+	for(i=0; i<sz; i++, a++)
+		if(*a)
+			return 0;
+	return 1;
+}

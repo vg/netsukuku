@@ -352,12 +352,9 @@ ext_rnode_cache *e_rnode_init(int *counter)
 {
 	ext_rnode_cache *erc;
 
-	list_init(erc);
-	memset(erc, 0, sizeof(ext_rnode_cache));
-
+	list_init(erc, 0);
 	if(counter)
 		*counter=0;
-
 	return erc;
 }
 
@@ -409,12 +406,10 @@ void e_rnode_add(ext_rnode_cache *erc, ext_rnode *e_rnode, int rnode_pos, int *c
 	p->e=e_rnode;
 	p->rnode_pos=rnode_pos;
 	
-	if(!(*counter) || !erc) {
-		list_init(erc);
-		memset(erc, 0, sizeof(ext_rnode_cache));
-	}
-	
-	list_add(erc, p);
+	if(!(*counter) || !erc)
+		list_init(erc, p);
+	else
+		list_add(erc, p);
 	(*counter)++;
 }
 
