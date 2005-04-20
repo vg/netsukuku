@@ -86,7 +86,7 @@ do{									\
 		list_copy((list), (new));				\
 	else {								\
 	}								\
-	*/
+*/
 
 #define list_free(list)							\
 do {									\

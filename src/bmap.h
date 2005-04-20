@@ -104,10 +104,10 @@ void bmap_level_free(map_bnode **bmap, u_int *bmap_nodes);
 
 int map_add_bnode(map_bnode **bmap, u_int *bmap_nodes, u_int bnode, u_int links);
 map_bnode *map_bnode_del(map_bnode *bmap, u_int *bmap_nodes,  map_bnode *bnode);
-int map_find_bnode(map_bnode *bmap, int bmap_nodes, void *void_map, void *node, u_char level);
+int map_find_bnode(map_bnode *bmap, int bmap_nodes, void *void_map, int node);
 int map_find_bnode_rnode(map_bnode *bmap, int bmap_nodes, void *n);
-void *get_gw_gnode(map_node *int_map, map_gnode **ext_map, map_bnode **bnode_map, 
-		u_int *bmap_nodes, map_gnode *find_gnode, u_char level, u_char gw_level);
+void *get_gw_gnode(map_node *, map_gnode **, map_bnode **, 
+		u_int *, map_gnode *, u_char, u_char);
 
 char *pack_all_bmaps(map_bnode **, u_int *, map_gnode **, quadro_group, size_t *);
 map_bnode **unpack_all_bmaps(char *, size_t, u_char, map_gnode **, u_int **, int, int);

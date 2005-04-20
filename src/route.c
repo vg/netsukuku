@@ -74,52 +74,71 @@ void krnl_update_node(void *void_node, u_char level)
 		node=&gnode->g;
 	
 	/* 
-	 * If `node' it's a rnode, do nothing! It is already directly connected
-	 * to me. 
+	 * If `node' it's a rnode of level 0, do nothing! It is already 
+	 * directly connected to me. 
 	 */
-	if(node->flags & MAP_RNODE)
+	if(node->flags & MAP_RNODE && !level)
 		goto finish;
 	
 	if(!level) {
+		if(node->flags & MAP_ME)
+			goto finish;
+
 		nh=xmalloc(sizeof(struct nexthop)*(node->links+1));
 		memset(nh, '\0', sizeof(struct nexthop)*(node->links+1));
 
 		maptoip((u_int)me.int_map, (u_int)node, me.cur_quadg.ipstart[1], &to);
 		inet_htonl(&to);
 
-		for(i=0; i<node->links; i++) {
+		if(!(node->flags & MAP_VOID))
+			for(i=0; i<node->links; i++) {
 #ifdef QMAP_STYLE_I
-			maptoip((u_int)me.int_map, (u_int)get_gw_node(node, i),
-					me.cur_quadg.ipstart[1], &nh[i].gw);
+				maptoip((u_int)me.int_map, (u_int)get_gw_node(node, i),
+						me.cur_quadg.ipstart[1], &nh[i].gw);
 #else /*QMAP_STYLE_II*/
-			maptoip((u_int)me.int_map, (u_int)node->r_node[i].r_node,
-					me.cur_quadg.ipstart[1], &nh[i].gw);
+				maptoip((u_int)me.int_map, (u_int)node->r_node[i].r_node,
+						me.cur_quadg.ipstart[1], &nh[i].gw);
 #endif
-			
-			inet_htonl(&nh[i].gw);
-			nh[i].dev=me.cur_dev;
-			nh[i].hops=255-i;
-		}
+				inet_htonl(&nh[i].gw);
+			}
+		nh[i].dev=me.cur_dev;
+		nh[i].hops=255-i;
 		nh[node->links].dev=0;
 		node_pos=pos_from_node(node, me.int_map);
 	} else {
+		const char *to_ip;
+		
 		nh=xmalloc(sizeof(struct nexthop)*2);
 		memset(nh, '\0', sizeof(struct nexthop)*2);
 		
 		node_pos=pos_from_gnode(gnode, me.ext_map[_EL(level)]);
 		gnodetoip(me.ext_map, &me.cur_quadg, gnode, level, &to);
+		to_ip=inet_to_str(to);
 		inet_htonl(&to);
 		
-		gw_node=get_gw_gnode(me.int_map, me.ext_map, me.bnode_map,
-				me.bmap_nodes, gnode, level, 0);
-		if(!gw_node)
-			goto finish;
-		
-		maptoip((u_int)me.int_map, (u_int)gw_node, 
-				me.cur_quadg.ipstart[1], &nh[0].gw);
-		inet_htonl(&nh[0].gw);
-		nh[0].dev=me.cur_dev;
+		if(!(node->flags & MAP_VOID)) {
 
+			if(node->flags & MAP_ME) {
+				memcpy(&nh[0].gw, &me.cur_ip, sizeof(inet_prefix));
+			} else if(node->flags & MAP_RNODE) {
+				memcpy(&nh[0].gw, &me.cur_quadg.ipstart[level], sizeof(inet_prefix));
+			} else {
+				gw_node=get_gw_gnode(me.int_map, me.ext_map, me.bnode_map,
+						me.bmap_nodes, gnode, level, 0);
+				if(!gw_node) {
+					debug(DBG_NORMAL, "Cannot get the gateway for "
+							"the gnode: %d of level: %d, ip:"
+							"%s", node_pos, level, to_ip);
+					goto finish;
+				}
+
+				maptoip((u_int)me.int_map, (u_int)gw_node, 
+						me.cur_quadg.ipstart[1], &nh[0].gw);
+			}
+
+			inet_htonl(&nh[0].gw);
+		}
+		nh[0].dev=me.cur_dev;
 		nh[1].dev=0;
 	}
 	
@@ -127,11 +146,13 @@ void krnl_update_node(void *void_node, u_char level)
 		/*Ok, let's delete it*/
 		if(route_del(0, to, nh, me.cur_dev, 0))
 			error("WARNING: Cannot delete the route entry for the ",
-					"%d %cnode!", node_pos, !level ? ' ' : 'g');
+					"%cnode %d lvl %d!", !level ? ' ' : 'g',
+					node_pos, level);
 	} else
 		if(route_replace(0, to, nh, me.cur_dev, 0))
 			error("WARNING: Cannot update the route entry for the "
-					"%d %cnode!", node_pos, !level ? ' ' : 'g');
+					"%cnode %d lvl %d",!level ? ' ' : 'g',
+					node_pos, level);
 finish:
 	if(nh)
 		xfree(nh);
@@ -183,17 +204,22 @@ int rt_exec_gw(char *dev, inet_prefix to, inet_prefix gw,
 		int (*route_function)(int type, inet_prefix to, struct nexthop *nhops, 
 			char *dev, u_char table) )
 {
-	struct nexthop nh[2];
-	
-	inet_htonl(&to);
+	struct nexthop nh[2], *neho;
 
-	memset(nh, '\0', sizeof(struct nexthop)*2);	
-	memcpy(&nh[0].gw, &gw, sizeof(inet_prefix));
-	inet_htonl(&nh[0].gw);
-	nh[0].dev=dev;
-	nh[1].dev=0;
+	if(to.len)
+		inet_htonl(&to);
 
-	return route_function(0, to, nh, dev, 0);
+	if(gw.len) {
+		memset(nh, '\0', sizeof(struct nexthop)*2);	
+		memcpy(&nh[0].gw, &gw, sizeof(inet_prefix));
+		inet_htonl(&nh[0].gw);
+		nh[0].dev=dev;
+		nh[1].dev=0;
+		neho=nh;
+	} else
+		neho=0;
+
+	return route_function(0, to, neho, dev, 0);
 }
 
 int rt_add_gw(char *dev, inet_prefix to, inet_prefix gw)

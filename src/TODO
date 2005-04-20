@@ -1,8 +1,17 @@
 - [HIGH PRIORITY] -
 
-. Quando un nodo fa l'hook con un gnode_starter che ha visto altri gnode, si
- blocca a krnl_update_routes perche' c'e' la bmap sballata.
+- Le rotte CIDR per raggiungere i gnode non vengono aggiunte alla tabella di
+  routing.
 
+- Il merge map delle int_map non funge, dovrebbe gia' da subito settare le rotte
+  giuste.
+
+- pc3:~/src# ip route add to  83.196.70.0/24 via 151.95.203.71
+  RTNETLINK answers: Network is unreachable
+  pc3:~/src# arp -n
+  Address                  HWtype  HWaddress           Flags Mask            Iface
+  151.95.203.71            ether   FE:FD:0A:00:00:05   C                     eth0
+  pc3:~/src# 
 
 - [MEDIUM PRIORITY] -
 big endian/little endian per gli int nei pkt.
@@ -10,8 +19,11 @@ Portare per *BSD: bisogna usare rt_ioctl.c ed rt_socket.c di quagga
 ( ../othersrc/quagga-*/zebra/ )
 
 - [LOW PRIORITY] -
-gmap.c: Ottimizzare la validita' di ip in random_ip(). Una possibile soluzione sarebbe
-	quella di azzerare i bit invalidi.
+gmap.c: Ottimizzare la validita' di ip in random_ip(). Una possibile soluzione
+sarebbe quella di azzerare i bit invalidi.
+hook.c: ottimizzare lo spazio di free_node: invece di usare una serie di u_short
+free_nodes, si usano MAXGROUPNODE bits, ed ognuno si setta o no. (Usare
+asm/bitops.h set_bit, clear_bit..., is_set)
 tracer.c:  store_tracer_pkt_connect
 broadcast: Tenere in considerazione il gttl.
 hook.c:    anti spoof hook

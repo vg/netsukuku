@@ -418,6 +418,7 @@ int put_bnode_map(PACKET rq_pkt)
 
 	pkt.msg=pack_all_bmaps(bmaps, me.bmap_nodes, me.ext_map, me.cur_quadg, &pack_sz);
 	pkt.hdr.sz=pack_sz;
+
 	debug(DBG_INSANE, "Reply %s to %s", re_to_str(PUT_BNODE_MAP), ntop);
 	err=send_rq(&pkt, 0, PUT_BNODE_MAP, rq_pkt.hdr.id, 0, 0, 0);
 	if(err==-1) {
@@ -691,7 +692,7 @@ hook_restart_and_retry:
 	 */
 	rq=radar_q;
 	for(i=0; i<me.cur_node->links; i++) {
-		if(!(rq=find_ip_radar_q((map_node *)me.cur_node->r_node[i].r_node))) 
+		if(!(rq=find_node_radar_q((map_node *)me.cur_node->r_node[i].r_node))) 
 			fatal("%s:%d: This ultra fatal error goes against the "
 					"laws of the universe. It's not "
 					"possible!! Pray", ERROR_POS);
@@ -739,7 +740,10 @@ retry_rnd_ip:
 	if(new_gnode)
 		create_gnodes(&me.cur_ip, fn_hdr.level);
 	else {
-		/* We want a new shiny traslucent map */
+		/* 
+		 * We want a new shiny traslucent internal map 
+		 */
+		
 		reset_int_map(me.int_map, 0);
 		iptoquadg(me.cur_ip, me.ext_map, &me.cur_quadg, 
 				QUADG_GID | QUADG_GNODE | QUADG_IPSTART);
@@ -754,7 +758,7 @@ retry_rnd_ip:
 		memset(merg_map, 0, me.cur_node->links*sizeof(map_node *));
 
 		for(i=0; i<me.cur_node->links; i++) {
-			rq=find_ip_radar_q((map_node *)me.cur_node->r_node[i].r_node);
+			rq=find_node_radar_q((map_node *)me.cur_node->r_node[i].r_node);
 			
 			if(rq->node->flags & MAP_HNODE)
 				continue;
@@ -780,7 +784,7 @@ retry_rnd_ip:
 	 */
 	e=0;
 	for(i=0; i<me.cur_node->links; i++) {
-		rq=find_ip_radar_q((map_node *)me.cur_node->r_node[i].r_node);
+		rq=find_node_radar_q((map_node *)me.cur_node->r_node[i].r_node);
 		if(rq->node->flags & MAP_HNODE)
 			continue;
 		if(quadg_diff_gids(rq->quadg, me.cur_quadg)) 

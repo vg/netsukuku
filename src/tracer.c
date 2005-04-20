@@ -146,19 +146,29 @@ tracer_add_entry(void *void_map, void *void_node, tracer_chunk *tracer,
  */
 bnode_hdr *tracer_build_bentry(void *void_map, void *void_node, bnode_chunk **bnodechunk, u_char level) 
 {
-	map_node  *int_map=(map_node *)void_map, *node=(map_node *)void_node;
-	map_gnode **ext_map=(map_gnode **)void_map, *gnode=(map_gnode *)void_node;
+	map_node  *int_map, *node;
+	map_gnode **ext_map, *gnode;
 	map_gnode *gn;
 	bnode_hdr *bhdr;
 	bnode_chunk *bchunk;
-	int i, bm;
+	int i, bm, node_pos;
 	u_char lvl;
+
+	int_map=(map_node *)void_map;
+	node=(map_node *)void_node;
+	ext_map=(map_gnode **)void_map;
+	gnode=(map_gnode *)void_node;
 	
 	if(!(node->flags & MAP_BNODE))
 		goto error;
 
+	if(!level)
+		node_pos=pos_from_node(node, int_map);
+	else
+		node_pos=pos_from_gnode(gnode, ext_map[_EL(level)]);
+	
 	bm=map_find_bnode(me.bnode_map[level], me.bmap_nodes[level], void_map, 
-			void_node, level);
+			node_pos);
 	if(bm==-1)
 		goto error;
 
@@ -170,11 +180,8 @@ bnode_hdr *tracer_build_bentry(void *void_map, void *void_node, bnode_chunk **bn
 	bchunk=xmalloc(sizeof(bnode_chunk)*me.bnode_map[level][bm].links);
 	memset(bhdr, 0, sizeof(bnode_hdr));
 	memset(bchunk, 0, sizeof(bnode_chunk)*me.bnode_map[level][bm].links);
-
-	if(!level)
-		bhdr->bnode=pos_from_node(node, int_map);
-	else
-		bhdr->bnode=pos_from_gnode(gnode, ext_map[_EL(level)]);
+	
+	bhdr->bnode=node_pos;
 	
 	/* Fill the bnode chunks */
 	for(i=0; i < me.bnode_map[level][bm].links; i++) {
@@ -465,7 +472,7 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 
 				/*Let's check if we have this bnode in the bmap, if not let's add it*/
 				bm=map_find_bnode(me.bnode_map[level], me.bmap_nodes[level], 
-						void_map, void_node, level);
+						void_map, bblist_hdr[i]->bnode);
 				if(bm==-1)
 					bm=map_add_bnode(&me.bnode_map[level], &me.bmap_nodes[level],
 							bblist_hdr[i]->bnode,  bblist_hdr[i]->links);
@@ -575,8 +582,9 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 					rnode_del(node, x);
 			}
 			
-			debug(DBG_INSANE, "TRCR_STORE: krnp_update node %d", tracer[i].node);
+			debug(DBG_INSANE, "TRCR_STORE: krnl_update node %d", tracer[i].node);
 			krnl_update_node(node, level);
+			node->flags&=~MAP_UPDATE;
 		}
 	}
 	return 0;

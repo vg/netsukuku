@@ -65,8 +65,8 @@ void close_radar(void);
 void reset_radar(void);
 void free_new_node(void);
 
-struct radar_queue *find_ip_radar_q(map_node *node);
-struct radar_queue *find_nnode_radar_q(inet_prefix *ip);
+struct radar_queue *find_node_radar_q(map_node *node);
+struct radar_queue *find_ip_radar_q(inet_prefix *ip);
 int count_hooking_nodes(void);
 
 void final_radar_queue(void);

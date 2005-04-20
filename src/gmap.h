@@ -23,13 +23,16 @@
 
 /* This is the holy external_map. Each struct corresponds to a groupnode. This groupnode
  * cointains MAXGROUPNODE nodes if we are at level 1 or MAXGROUPNODE groups.
- * The map is equal to the int_map, infact, a map_node is embedded in a map_gnode. This
+ * The map is equal to the int_map, in fact, a map_node is embedded in a map_gnode. This
  * int_map uses the QSPN_MAP_STYLEII (see qspn.h). */
 typedef struct
 {
-	/*The gnode_map starts here. Note that it is a normal map. (See map.h). It is here,
-	 * at the top of the struct to allow to manipulate a map_gnode as a map_node with
-	 * the help of the magic cast. The cast is heavily used in qspn.c*/
+	/* 
+	 * The gnode_map starts here. Note that it is a normal map. (See map.h). 
+	 * It is here, at the top of the struct to allow to manipulate a map_gnode
+	 * as a map_node with the help of the magic cast. The cast is heavily 
+	 * used in qspn.c
+	 */
 	map_node	g;
 	
 	u_char 		flags;
@@ -86,7 +89,7 @@ typedef struct
 #define IPV4_LAST_GROUPS	32		/* The  groups of the level 3 */
 
 #define IPV6_LEVELS		(13+EXTRA_LEVELS)
-#define IPV6_LAST_GROUPS	4
+#define IPV6_LAST_GROUPS	4		/* The groups of the level 14 */
 
 #define MAX_LEVELS		IPV6_LEVELS
 #define GET_LEVELS(family)	({ (family) == AF_INET ? 		        \
@@ -182,7 +185,7 @@ void gnodetoip(map_gnode **ext_map, quadro_group *quadg, map_gnode *gnode, u_cha
 int quadg_diff_gids(quadro_group qg_a, quadro_group qg_b);
 ext_rnode_cache *erc_find(ext_rnode_cache *erc, ext_rnode *e_rnode);
 void e_rnode_del(ext_rnode_cache *erc, int *counter);
-void e_rnode_add(ext_rnode_cache *erc, ext_rnode *e_rnode, int rnode_pos, int *counter);
+void e_rnode_add(ext_rnode_cache **erc, ext_rnode *e_rnode, int rnode_pos, int *counter);
 ext_rnode_cache *e_rnode_init(int *counter);
 void e_rnode_free(ext_rnode_cache *erc, int *counter);
 int e_rnode_find(ext_rnode_cache *erc, quadro_group *qg);

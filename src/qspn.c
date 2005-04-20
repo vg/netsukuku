@@ -177,7 +177,7 @@ void update_qspn_time(u_char level)
  */
 void qspn_new_round(u_char level)
 {
-	int bm, i;
+	int bm, i, node_pos;
 	map_node *map, *root_node, *node;
 	map_gnode *gmap;
 	void *void_map;
@@ -209,15 +209,19 @@ void qspn_new_round(u_char level)
 	 * break them if they didn't show in the while. 
 	 */
 	for(i=0; i<MAXGROUPNODE; i++) {
+		node_pos=i;
 		if(!level)
-			node=(map_node *)&map[i];
-		else
-			node=(map_node *)&gmap[i];
+			node=(map_node *)&map[node_pos];
+		else {
+			node=(map_node *)&gmap[node_pos];
+			if(gmap[node_pos].flags & GMAP_VOID)
+				continue;
+		}
 			
-		if(node->flags & MAP_ME)
+		if(node->flags & MAP_ME || node->flags & MAP_VOID)
 			continue;
 
-		if((node->flags & QSPN_OLD) && !(node->flags & MAP_VOID)) {
+		if((node->flags & QSPN_OLD)) {
 			
 			if((node->flags & MAP_BNODE)) {
 				/* 
@@ -225,7 +229,7 @@ void qspn_new_round(u_char level)
 				 * the bmap.
 				 */
 				bm=map_find_bnode(me.bnode_map[level],
-						me.bmap_nodes[level], void_map, node, level);
+						me.bmap_nodes[level], void_map, node_pos);
 				if(bm != -1)
 					me.bnode_map[level]=map_bnode_del(me.bnode_map[level], 
 							&me.bmap_nodes[level],
@@ -304,7 +308,7 @@ int qspn_send(u_char level)
 	 * We have to wait the finish of the old qspn_round to start the new one.
 	 */
 	while((round_ms=qspn_round_left(level)) > 0) {
-		debug(DBG_INSANE, "Waiting %d to send a new qspn_round, lvl:"
+		debug(DBG_INSANE, "Waiting %dms to send a new qspn_round, lvl:"
 				" %d", round_ms, level);
 		usleep(round_ms*1000);
 		update_qspn_time(level);
@@ -332,7 +336,8 @@ int qspn_send(u_char level)
 	tracer_pkt_send(exclude_from_and_glevel_and_closed, upper_gid, 
 			upper_level, -1, from, pkt);
 
-	debug(DBG_INSANE, "Qspn_round 0x%x sent", me.cur_qspn_id[level]);
+	debug(DBG_INSANE, "Qspn_round lvl: %d id: 0x%x sent", level, 
+			me.cur_qspn_id[level]);
 
 	qspn_send_mutex[level]=0;
 	return ret;

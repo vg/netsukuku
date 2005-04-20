@@ -319,22 +319,22 @@ int get_route_rtt(map_node *node, u_short route, struct timeval *rtt)
 
 /* get_route_trtt: It's the same of get_route_rtt, but it returns the 
  * totatl round trip time (trtt).
- * It's mainly used in the qspn_map styleII*/
+ * It's mainly used in the qspn_map styleII
+ */
 int get_route_trtt(map_node *node, u_short route, struct timeval *trtt)
 {
-	struct timeval *t=trtt;
-	
 	if(route >= node->links || node->flags & MAP_VOID || node->links <= 0)
 		return -1;
-	
-	if(!trtt)
-		trtt=t=(struct timeval *)xmalloc(sizeof(struct timeval));
-	memset(trtt, '\0', sizeof(struct timeval));
-	
+
+	if(trtt)
+		memset(trtt, '\0', sizeof(struct timeval));
+
 	if(node->flags & MAP_ME)
 		return 0;
-	
-	memcpy(t, &node->r_node[route].trtt, sizeof(struct timeval));
+
+	if(trtt)	
+		memcpy(trtt, &node->r_node[route].trtt, sizeof(struct timeval));
+
 	return MILLISEC(node->r_node[route].trtt);
 }
 
@@ -415,42 +415,70 @@ map_node *get_gw_node(map_node *node, u_short route)
 	return ptr;
 }
 
-/*merge_maps: Given two maps it merge them selecting only the best routes.
+/*
+ * merge_maps: 
+ * Given two maps it merge them selecting only the best routes.
  * In the "base" map there will be the resulting map. The "new" map is the
  * second map used. "base_root" points to the root_node in the "base" map.
- * "new_root" points to the root_node in the "new" map.
- * (qspn_map styleII)*/
+ * `new_root' points to the root_node in the "new" map.
+ * It's assumed that `new_root' is an rnode of `base_root'.
+ * (qspn_map styleII)
+ */
 int merge_maps(map_node *base, map_node *new, map_node *base_root, map_node *new_root)
 {
-	int i, e, x, count=0, rpos, nrpos;
-	map_node *new_root_in_base;
+	int i, e, x, count=0, base_root_pos, ngpos, base_trtt, new_trtt;
+	map_node *new_root_in_base, *node_gw;
 	
 	new_root_in_base=&base[pos_from_node(new_root, new)];
-	rpos=pos_from_node(base_root, base);
+	base_root_pos=pos_from_node(base_root, base);
 		
 	for(i=0; i<MAXGROUPNODE; i++) {
 		if(base[i].flags & MAP_ME || new[i].flags & MAP_ME)
 			continue;
-
+		
 		for(e=0; e<new[i].links; e++) {
+			/* 
+			 * The gw to reach the new[i] node, with the
+			 * new_root_node as the starting point; so the node_gw
+			 * is a rnode of new_root_node
+			 */
+			node_gw=(map_node *)new[i].r_node[e].r_node; 
+			
+			ngpos=pos_from_node(node_gw, new);
+			if(ngpos == base_root_pos)
+				/* We skip, cause the new_map it's using the 
+				 * base_root node (me) as gw to reach new[i]. 
+				 */
+				continue;
+
 			/* 
 			 * Now we change the r_nodes pointers of the new map to points to 
 			 * the base map's nodes. 
 			 */
-			nrpos=pos_from_node((map_node *)new[i].r_node[e].r_node, new);
-			if(nrpos == rpos)
-				/*We skip,cause the new_map it's using the base_root node as gw*/
-				continue;
+			if(new[i].flags & MAP_RNODE) {
+				/* 
+				 * new[i] is a rnode of new_root node, so we
+				 * reach it trough new_root.
+				 */
+				new[i].r_node[e].r_node=(int *)new_root_in_base;
 
-			if(base[nrpos].flags & MAP_VOID) {
+			} else if(base[ngpos].flags & MAP_VOID || 
+					!base[ngpos].links) {
 				/*
-				 * In the base we haven't the node used as gw in the new_map to reach
-				 * the new[i].r_node[e] node. We must use the new_root node as gw because
+				 * In the base we haven't the node used as gw in
+				 * the new_map to reach the new[i] node. 
+				 * We must use the new_root node as gw because
 				 * it is one of our rnode
 				 */
 				new[i].r_node[e].r_node=(int *)new_root_in_base;
-			} else
-				new[i].r_node[e].r_node=base[nrpos].r_node[0].r_node;
+			} else {
+				/* 
+				 * In this case the node_gw is already known in
+				 * the base map, so we change it to the gw used
+				 * to reach itself in the base map.
+				 */
+				new[i].r_node[e].r_node=base[ngpos].r_node[0].r_node;
+			}
 			
 			if(e>=base[i].links) {
 				rnode_add(&base[i], &new[i].r_node[e]);
@@ -459,12 +487,19 @@ int merge_maps(map_node *base, map_node *new, map_node *base_root, map_node *new
 				continue;
 			}
 		
-			/*If the worst route in base is less than the new one, let's go ahead*/
-			if(get_route_trtt(&base[i], base[i].links-1, 0) < get_route_trtt(&new[i], e, 0))
+			/* 
+			 * If the worst route in base[i] is less than the new one,
+			 * let's go ahead.
+			 */
+			base_trtt = get_route_trtt(&base[i], base[i].links-1, 0);
+			new_trtt  = get_route_trtt(&new[i], e, 0);
+			if(base_trtt < new_trtt)
 				continue;
 			
 			for(x=0; x<base[i].links; x++) {
-				if(get_route_trtt(&base[i], x, 0) > get_route_trtt(&new[i], e, 0)) {
+				base_trtt = get_route_trtt(&base[i], x, 0);
+				new_trtt  = get_route_trtt(&new[i], e, 0);
+				if(base_trtt > new_trtt) {
 					map_rnode_insert(&base[i], x, &new[i].r_node[e]);
 					count++;
 					break;

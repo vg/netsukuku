@@ -32,9 +32,7 @@ struct current
 	
 	inet_prefix	 cur_ip;
 	map_node 	*cur_node;	/*Me in the map*/
-	map_rnode	*cur_rnode;	/*At the hooking time we haven't rnodes, 
-					  so this will point a stub rnode struct
-					  present at cur_node->r_node*/
+
 	ext_rnode_cache *cur_erc;       /*This is the current external rnode cache list (see gmap.h)*/
 	u_int		cur_erc_counter;
 

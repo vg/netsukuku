@@ -89,31 +89,24 @@ map_bnode *map_bnode_del(map_bnode *bmap, u_int *bmap_nodes,  map_bnode *bnode)
 	}
 }
 
-/* map_find_bnode: Find the given `node' in the given map_bnode `bmap'.*/
-int map_find_bnode(map_bnode *bmap, int bmap_nodes, void *void_map, void *node, u_char level)
+/* 
+ * map_find_bnode: Find the given `node' (in the pos_from_node() format) in the
+ * given map_bnode `bmap'.
+ */
+int map_find_bnode(map_bnode *bmap, int bmap_nodes, void *void_map, int node)
 {
-	map_gnode **ext_map;
-	map_node  *int_map;
 	int e;
-	void *pos;
 
-	ext_map=(map_gnode **)void_map;
-	int_map=(map_node *)void_map;
-
-	for(e=0; e<bmap_nodes; e++) {
-		if(!level)
-			pos=(void *)node_from_pos(bmap[e].bnode_ptr, int_map);
-		else
-			pos=(void *)gnode_from_pos(bmap[e].bnode_ptr, ext_map[_EL(level)]);
-		if(pos == node && !(bmap[e].flags & MAP_VOID))
+	for(e=0; e<bmap_nodes; e++)
+		if(bmap[e].bnode_ptr == node && !(bmap[e].flags & MAP_VOID))
 			return e;
-	}
+	
 	return -1;
 }
 
 /* 
  * map_find_bnode_rnode: Find the the bnode in the `bmap' which has an rnode
- * which points to `n'. If itis found the pos of the bnode in the `bmap' is
+ * which points to `n'. If it is found the pos of the bnode in the `bmap' is
  * returned, otherwise -1 is the return value. 
  */
 int map_find_bnode_rnode(map_bnode *bmap, int bmap_nodes, void *n)
@@ -121,7 +114,7 @@ int map_find_bnode_rnode(map_bnode *bmap, int bmap_nodes, void *n)
 	int e;
 
 	for(e=0; e<bmap_nodes; e++)
-		if(rnode_find(&bmap[e], n) != -1)
+		if(rnode_find((map_node *)&bmap[e], n) != -1)
 			return e;
 	return -1;
 
@@ -133,7 +126,8 @@ int map_find_bnode_rnode(map_bnode *bmap, int bmap_nodes, void *n)
  * reach, from the `gw_level' level,  the `find_gnode' gnode at the `level' level.
  * If the gw_node isn't found, NULL is returned.
  */
-void *get_gw_gnode(map_node *int_map, map_gnode **ext_map, map_bnode **bnode_map, u_int *bmap_nodes, 
+void *get_gw_gnode(map_node *int_map, map_gnode **ext_map,
+		map_bnode **bnode_map, u_int *bmap_nodes, 
 		map_gnode *find_gnode, u_char level, u_char gw_level)
 {
 	map_gnode *gnode;
@@ -145,8 +139,28 @@ void *get_gw_gnode(map_node *int_map, map_gnode **ext_map, map_bnode **bnode_map
 	if(!level || gw_level > level)
 		return 0;
 
+	/* 
+	 * How it works:
+	 * - Start from the level `level' and the gnode `find_gnode'.
+	 * loop:
+	 * 	- Use the map at the current level to get the gw to reach the
+	 * 	  current gnode (at the current level).
+	 * 	- If the level is 0, all is done, return the gw.
+	 * 	- Go one level down: level--;
+	 * 	- At this level use the bnode map and look for the bnode which
+	 * 	  boards to the gw of the upper level we found. (Note that all
+	 * 	  that all the bnode in the bmap point to always at the upper
+	 * 	  level).
+	 * 	- Find the gw to reach the found bnode at this level.
+	 * 	- goto loop;
+	 */
 	gnode=find_gnode;
 	node=&gnode->g;
+
+	/* The gateway to reach me is myself. */
+	if(node->flags & MAP_ME) 
+		return (void *)node;
+	
 	for(i=level; i>=gw_level; i--) {
 		if(!node->links)
 			return 0;
@@ -157,6 +171,7 @@ void *get_gw_gnode(map_node *int_map, map_gnode **ext_map, map_bnode **bnode_map
 			void_gw=(void *)node_gw;
 		} else {
 			gnode_gw=(map_gnode *)gnode->g.r_node[pos].r_node;
+			node_gw=&gnode_gw->g;
 			void_gw=(void *)gnode_gw;
 		}
 
@@ -176,9 +191,6 @@ void *get_gw_gnode(map_node *int_map, map_gnode **ext_map, map_bnode **bnode_map
 					ext_map[_EL(i-1)]);
 			node=&gnode->g;
 		}
-
-		gnode=find_gnode;
-		node=&gnode->g;
 	}
 	return 0;
 }
@@ -202,7 +214,7 @@ pack_all_bmaps(map_bnode **bmaps,  u_int *bmap_nodes, map_gnode **ext_map,
 	*pack_sz=0;
 	
 	for(level=0; level < quadg.levels; level++) {
-		pack[level]=pack_map(bmaps[level], (int *)ext_map[_EL(level)], bmap_nodes[level],
+		pack[level]=pack_map((map_node *)bmaps[level], (int *)ext_map[_EL(level)], bmap_nodes[level],
 				0, &sz);
 		tmp_sz[level]=sz;
 		(*pack_sz)+=sz;
@@ -240,13 +252,14 @@ unpack_all_bmaps(char *pack, size_t pack_sz, u_char levels, map_gnode **ext_map,
 	struct bnode_map_hdr *bmap_hdr;
 	map_bnode **bmap;
 	size_t bblock_sz;
-	int i, buf=0;
-	char *bblock;
+	int i;
+	char *bblock, *buf;
 
 	bmap_level_init(levels, &bmap, bmap_nodes);
 
+	buf=pack;
 	for(i=0; i<levels; i++) {
-		bmap_hdr=(struct bnode_map_hdr *)pack+buf;
+		bmap_hdr=(struct bnode_map_hdr *)buf;
 		if(verify_int_map_hdr(bmap_hdr, maxbnodes, maxbnode_rnodeblock)) {
 			error("Malformed bmap_hdr at level %d. "
 					"Aborting unpack_all_bmaps().", i);
@@ -263,7 +276,8 @@ unpack_all_bmaps(char *pack, size_t pack_sz, u_char levels, map_gnode **ext_map,
 			error("Cannot unpack the bnode_map at level %d !", i);
 			return 0;
 		}
-		buf+=pack_sz;
+
+		buf+=bblock_sz;
 	}
 	return bmap;
 }

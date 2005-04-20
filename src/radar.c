@@ -29,6 +29,7 @@
 
 #include "llist.c"
 #include "inet.h"
+#include "route.h"
 #include "map.h"
 #include "gmap.h"
 #include "bmap.h"
@@ -89,19 +90,18 @@ void free_new_node(void)
 			xfree(rq->node);
 }
 
-struct radar_queue *find_ip_radar_q(map_node *node)
+struct radar_queue *find_node_radar_q(map_node *node)
 {
 	struct radar_queue *rq;
 
 	rq=radar_q;
-	list_for(rq) {
+	list_for(rq)
 		if(rq->node==node)
 			return rq;
-	}
 	return 0;
 }
 
-struct radar_queue *find_nnode_radar_q(inet_prefix *ip)
+struct radar_queue *find_ip_radar_q(inet_prefix *ip)
 {
 	struct radar_queue *rq;
 
@@ -167,9 +167,9 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 	ext_rnode *e_rnode;
 	ext_rnode_cache *erc;
 	struct qspn_buffer *qb;
-	int i, node_pos, bm, rnode_pos;
-	u_char level, external_node, total_levels;
-	void *void_map;
+	int i, node_pos, bm, rnode_pos, root_node_pos;
+	u_char level, external_node, total_levels, first_level;
+	void *void_map, *void_gnode;
 
 	for(i=0; i<me.cur_node->links; i++) {
 		node=(map_node *)me.cur_node->r_node[i].r_node;
@@ -182,24 +182,25 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 			e_rnode=(ext_rnode *)node;
 			external_node=1;
 			total_levels=e_rnode->quadg.levels;
+			first_level=1;
 		} else {
 			external_node=0;
 			total_levels=1;
+			first_level=0;
 		}
 
-		for(level=0; level < total_levels; level++) {
-			qspn_set_map_vars(level, 0, &root_node, 0, 0);
+		for(level=first_level; level < total_levels; level++) {
+			qspn_set_map_vars(level, 0, &root_node, &root_node_pos, 0);
 
-			if(!level && external_node) {
-				debug(DBG_NORMAL, "The external node of gid %d is"
-						" dead", e_rnode->quadg.gid[1]);
-			} else if(!level) {
+			if(!level && !external_node) {
 				void_map=me.int_map;
 				node_pos=pos_from_node(node, me.int_map);
-				debug(DBG_NORMAL, "radar: The node %d is dead", 
-						node_pos, me.int_map);
-			} else
-				void_map=me.ext_map; /* not reached */
+			} else {
+				void_map=me.ext_map;
+				void_gnode=e_rnode->quadg.gnode[_EL(level)];
+				node_pos=pos_from_gnode(e_rnode->quadg.gnode[_EL(level)], 
+						me.ext_map[_EL(level)]); 
+			}
 
 			/*
 			 * Just delete it from all the maps.
@@ -208,26 +209,29 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 			 * //send_qspn_now[level]=1;
 			 */
 			
-			if(!level)
+			if(!level && !external_node) {
+				debug(DBG_NORMAL, "radar: The node %d is dead", 
+						node_pos);
 				map_node_del(node);
-			else {
+			} else {
+				debug(DBG_NORMAL, "The ext_node (gid %d, lvl %d) is"
+						" dead", e_rnode->quadg.gid[level], level);
 				gmap_node_del(e_rnode->quadg.gnode[_EL(level)]);
 
 				/* bnode_map update */
 				bm=map_find_bnode(me.bnode_map[level], me.bmap_nodes[level], 
-						void_map, (void *)root_node, level);
+						void_map, root_node_pos);
 				if(bm != -1) {
 					rnode_pos=rnode_find(&me.bnode_map[level][bm], 
 							(map_node *) e_rnode->quadg.gnode[_EL(level+1)]);
 					if(rnode_pos != -1)
 						rnode_del(&me.bnode_map[level][bm], rnode_pos);
 				}
-
-				/* external rnode cache update */
-				erc=erc_find(me.cur_erc, e_rnode);
-				e_rnode_del(erc, &me.cur_erc_counter);
+			   
+				/* Delete the entry from the routing table */
+				krnl_update_node(void_gnode, level);
 			}
-			
+		
 			rnode_del(root_node, i);
 			
 			/* Now we delete it from the qspn_buffer */
@@ -238,7 +242,21 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 			
 			rnode_deleted[level]++;
 		}
+		
+		/* 
+		 * Kick out the external_node from the root_node and destroy it
+		 * from the ext_rnode_cache
+		 */
+		if(external_node) {
+			level=0;
+			qspn_set_map_vars(level, 0, &root_node, &root_node_pos, 0);
 
+			/* external rnode cache update */
+			erc=erc_find(me.cur_erc, e_rnode);
+			e_rnode_del(erc, &me.cur_erc_counter);
+
+			rnode_del(root_node, i);
+		}
 	}
 	return 0;
 }
@@ -259,7 +277,7 @@ void radar_update_map(void)
 	ext_rnode *e_rnode;
 	int i, e, diff, bm;
 	int rnode_added[MAX_LEVELS], rnode_deleted[MAX_LEVELS], rnode_pos;
-	int level, external_node, total_levels;
+	int level, external_node, total_levels, root_node_pos, node_update;
 	void *void_map;
 	const char *ntop;
 
@@ -305,19 +323,23 @@ void radar_update_map(void)
 		   for(level=0; level < total_levels; level++) {
 			   if(!level) {
 				   root_node=me.cur_node;
+				   root_node_pos=pos_from_node(me.cur_node, me.int_map);
 				   void_map=me.int_map;
 				   node=rq->node;
 			   } else {
 				   root_node=&me.cur_quadg.gnode[_EL(level)]->g;
+				   root_node_pos=pos_from_gnode(me.cur_quadg.gnode[_EL(level)],
+						   me.ext_map[_EL(level)]);
 				   void_map=me.ext_map;
 				   node=&rq->quadg.gnode[_EL(level)]->g;
 			   }
-			   if(external_node)
+			   if(external_node && !level)
 				   rnode_pos=e_rnode_find(me.cur_erc, &rq->quadg);
 			   else
 				   rnode_pos=rnode_find(root_node, node);
 
 			   if(rnode_pos == -1) { /* W00t, we've found a new rnode! */
+				   node_update=1;
 				   rnode_pos=root_node->links; 
 				   
 				   ntop=inet_to_str(rq->ip);
@@ -344,7 +366,7 @@ void radar_update_map(void)
 					   new_root_rnode=&rnn;
 					  
 					   /* Update the external_rnode_cache list */
-					   e_rnode_add(me.cur_erc, e_rnode, rnode_pos-1, 
+					   e_rnode_add(&me.cur_erc, e_rnode, rnode_pos,
 							   &me.cur_erc_counter);
 				   } else {
 					   /* 
@@ -359,7 +381,7 @@ void radar_update_map(void)
 					    * and that is the root_node.
 					    */
 					   memset(&rnn, '\0', sizeof(map_rnode));
-					   rnn.r_node=(u_int *)me.cur_node;
+					   rnn.r_node=(u_int *)root_node;
 					   rnode_add(node, &rnn);
 
 					   node->flags|=MAP_RNODE;
@@ -396,6 +418,7 @@ void radar_update_map(void)
 				   rnode_added[level]++;
 				   send_qspn_now[level]=1;
 			   } else {
+				   node_update=0;
 				   if(external_node)
 					   node=(map_node *)root_node->r_node[rnode_pos].r_node;
 				   /* 
@@ -405,6 +428,7 @@ void radar_update_map(void)
 					   diff=abs(MILLISEC(root_node->r_node[rnode_pos].rtt) -
 							   MILLISEC(rq->final_rtt));
 					   if(diff >= RTT_DELTA) {
+				   		   node_update=1;
 						   send_qspn_now[level]=1;
 						   debug(DBG_INSANE, "rnode %d rtt changed, diff: %d",
 								   pos_from_node(node, me.int_map));
@@ -416,14 +440,16 @@ void radar_update_map(void)
 					   sizeof(struct timeval));
 			   
 			   /* 
-			    * There's nothing better than updating the bnode_map. 
+			    *There's nothing better than updating the bnode_map 
 			    */
 			   if(external_node && (level <= GET_LEVELS(my_family))) {
+				   /* We caught an external node, thus we are a
+				    * boarder node. */
 				   bm=map_find_bnode(me.bnode_map[level], me.bmap_nodes[level],
-						   void_map, (void *)root_node, level);
+						   void_map, root_node_pos);
 				   if(bm==-1)
 					   bm=map_add_bnode(&me.bnode_map[level], &me.bmap_nodes[level], 
-							   (u_int)root_node, 0);
+							   root_node_pos, 0);
 				   rnode_pos=rnode_find(&me.bnode_map[level][bm], 
 						   (map_node *)rq->quadg.gnode[_EL(level+1)]);
 				   if(rnode_pos == -1) {
@@ -435,6 +461,14 @@ void radar_update_map(void)
 				   rnode=&me.bnode_map[level][bm].r_node[rnode_pos];
 				   memcpy(&rnode->rtt, &rq->final_rtt, sizeof(struct timeval));
 			   }
+			   
+			   /*
+			    * If we are dealing with a gnode, update the krnl 
+			    * routing table.
+			    */
+			   if(external_node && level && node_update)
+				   krnl_update_node(node, level);
+			   
 		   } /*for(level=0, ...)*/
 	} /*list_for(rq)*/
 
@@ -467,7 +501,7 @@ add_radar_q(PACKET pkt)
 		 * a stable ip, so we create fake nodes that will be delete after
 		 * the hook.
 		 */
-		if(!(rq=find_nnode_radar_q(&pkt.from))) {
+		if(!(rq=find_ip_radar_q(&pkt.from))) {
 			map_rnode rnn;
 
 			rnode=xmalloc(sizeof(map_node));
@@ -485,17 +519,15 @@ add_radar_q(PACKET pkt)
 	iptoquadg(pkt.from, me.ext_map, &quadg, QUADG_GID | QUADG_GNODE | QUADG_IPSTART);
 
 	if(!ret)
-		rq=find_ip_radar_q(rnode);
+		rq=find_node_radar_q(rnode);
 	else
-		rq=find_nnode_radar_q(&pkt.from);
+		rq=find_ip_radar_q(&pkt.from);
 	
 	/* If pkt.from isn't already in the queue, add it. */
 	if(!rq) { 
 		rq=xmalloc(sizeof(struct radar_queue));
 		memset(rq, 0, sizeof(struct radar_queue));
 		
-		list_add(radar_q, rq);
-
 		if(ret)
 			rq->node=(map_node *)RADQ_EXT_RNODE;
 		else {
@@ -514,6 +546,8 @@ add_radar_q(PACKET pkt)
 
 		memcpy(&rq->ip, &pkt.from, sizeof(inet_prefix));
 		memcpy(&rq->quadg, &quadg, sizeof(quadro_group));
+		
+		list_add(radar_q, rq);
 	}
 
 	return rq;
