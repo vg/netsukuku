@@ -28,10 +28,10 @@
 #include "ll_map.h"
 #include "inet.h"
 #include "if.h"
-#include "route.h"
 #include "map.h"
 #include "gmap.h"
 #include "bmap.h"
+#include "route.h"
 #include "pkts.h"
 #include "tracer.h"
 #include "hook.h"
@@ -97,10 +97,14 @@ int get_free_nodes(inet_prefix to, struct timeval to_rtt, struct free_nodes_hdr 
 	gettimeofday(&cur_t, 0);
 	for(level=0; level < fn_hdr->max_levels; level++) {
 		timeradd(&to_rtt, &qtime[level], &qtime[level]);
-		debug(DBG_INSANE, "qtime[%d] set to %d, to_rtt: %d", level, 
+#if 0
+		 debug(DBG_INSANE, "qtime[%d] set to %d, to_rtt: %d", level, 
 				MILLISEC(qtime[level]), MILLISEC(to_rtt));
+#endif
 		timersub(&cur_t, &qtime[level], &qtime[level]);
+#if 0
 		debug(DBG_INSANE, "qtime left: %d", qspn_round_left(level));
+#endif
 	}
 
 	
@@ -200,8 +204,12 @@ int put_free_nodes(PACKET rq_pkt)
 	gettimeofday(&cur_t, 0);
 	for(level=0; level < fn_pkt.fn_hdr.max_levels; level++) {
 		update_qspn_time(level);
-		timersub(&cur_t, &me.cur_qspn_time[level],&fn_pkt.qtime[level]);
-		debug(DBG_INSANE, "fn_pkt,qtime[%d]: %d, left: %d", level, MILLISEC(fn_pkt.qtime[level]), qspn_round_left(level));
+		if(is_bufzero((char *)&me.cur_qspn_time[level], sizeof(struct timeval)))
+			timersub(&cur_t, &me.cur_qspn_time[level], &fn_pkt.qtime[level]);
+		else
+			memset(&fn_pkt.qtime[level], 0, sizeof(struct timeval));
+		debug(DBG_INSANE, "fn_pkt,qtime[%d]: %d, left: %d", level, 
+				MILLISEC(fn_pkt.qtime[level]), qspn_round_left(level));
 	}
 
 	/* Go pkt, go! Follow your instinct */
@@ -728,7 +736,7 @@ retry_rnd_ip:
 	set_ip_and_def_gw(me.cur_dev, me.cur_ip);
 
 	/* 
-	 * Fetch the ext_map from the rnode who gave us the free nodes list. 
+	 * Fetch the ext_map from the node who gave us the free nodes list. 
 	 */
 	old_ext_map=me.ext_map;
 	if(!(me.ext_map=get_ext_map(rq->ip, &me.cur_quadg))) 
@@ -865,7 +873,7 @@ finish:
 	loginfo("Filling the kernel route table");
 	rt_full_update(0);
 
-	loginfo("Hook to the gnode %d completed", me.cur_quadg.gid[0]);
+	loginfo("Hook completed");
 
 	return ret;
 }

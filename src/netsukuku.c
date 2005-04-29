@@ -257,8 +257,7 @@ int main(int argc, char **argv)
 	 */
 
 #ifdef QSPN_EMPIRIC
-	error("QSPN_EMPIRIC is activated!!!!");
-	exit(1);
+	fatal("Fatal: Netsukuku_d was compiled with the QSPN_EMPIRIC support activated.");
 #endif
 
 	fill_default_options();
@@ -267,6 +266,8 @@ int main(int argc, char **argv)
 
 	signal(SIGTERM, sigterm_handler);
 	signal(SIGQUIT, sigterm_handler);
+	signal(SIGHUP, sigterm_handler);
+	signal(SIGINT, sigterm_handler);
 	
 	if(server_opt.daemon) {
 		log_init(argv[0], server_opt.dbg_lvl, 0);
@@ -303,6 +304,7 @@ int main(int argc, char **argv)
 	debug(DBG_SOFT,   "Evocating radar daemon.");
 	radar_daemon(NULL);
 
+	/* Not reached, hahaha */
 	loginfo("Cya m8");
 	pthread_attr_destroy(&t_attr);
 	destroy_netsukuku();

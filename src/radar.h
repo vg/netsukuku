@@ -23,6 +23,11 @@
 #define RTT_DELTA		1000	/*If the change delta of the new rtt is >= RTT_DELTA, 
 					  the qspn_q.send_qspn will be set. (It's in millisec)*/
 
+#ifdef XXX_DEBUG		
+#undef MAX_RADAR_WAIT
+#define MAX_RADAR_WAIT          1
+#endif
+
 int max_radar_wait;
 int radar_scans;			/*How many ECHO_ME pkts we sent*/
 int radar_scan_mutex;			/*A flag to see if we are already doing a scan*/

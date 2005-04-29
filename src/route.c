@@ -22,6 +22,7 @@
 
 #include "includes.h"
 
+#include "misc.h"
 #include "llist.c"
 #include "libnetlink.h"
 #include "inet.h"
@@ -30,6 +31,7 @@
 #include "map.h"
 #include "gmap.h"
 #include "bmap.h"
+#include "qspn.h"
 #include "netsukuku.h"
 #include "route.h"
 #include "xmalloc.h"
@@ -40,9 +42,9 @@ u_char rt_find_table(ct_route *ctr, u_int dst, u_int gw)
 	ct_route *i;
 	u_char tables[MAX_ROUTE_TABLES];
 	int l;
-	
+
 	memset(tables, '\0', MAX_ROUTE_TABLES);
-	
+
 	for(i=ctr; i; i=i->next) {
 		if(i->ct_dst==dst) {
 			if(i->ct_gw==gw)
@@ -59,103 +61,306 @@ u_char rt_find_table(ct_route *ctr, u_int dst, u_int gw)
 	return 0xff; /*This shouldn't happen!*/
 }
 
-void krnl_update_node(void *void_node, u_char level)
+/* 
+ * get_gw_gnode: It returns the pointer to the gateway node present in the map
+ * of level `gw_level'. This gateway node is the node to be used as gateway to
+ * reach, from the `gw_level' level,  the `find_gnode' gnode at the `gnode_level'
+ * level. If the gw_node isn't found, NULL is returned.
+ */
+void *get_gw_gnode(map_node *int_map, map_gnode **ext_map,
+		map_bnode **bnode_map, u_int *bmap_nodes, 
+		map_gnode *find_gnode, u_char gnode_level, 
+		u_char gw_level)
 {
-	map_node *node, *gw_node;
 	map_gnode *gnode;
-	struct nexthop *nh;
-	inet_prefix to;
-	int i, node_pos;
+	map_gnode *gnode_gw;
+	map_node  *node_gw, *node;
+	void	  *void_gw;
+	int i, pos, bpos;
 
-	nh=0;
-	node=(map_node *)void_node;
-	gnode=(map_gnode *)void_node;
-	if(level)
+	if(!gnode_level || gw_level > gnode_level)
+		return 0;
+
+	/* 
+	 * How it works:
+	 * - Start from the level `gnode_level' and the gnode `find_gnode'.
+	 * loop:
+	 * 	- Use the map at the current level to get the gw to reach the
+	 * 	  current gnode (at the current level). If `find_gnode' is an
+	 * 	  rnode just set gw=`find_gnode'.
+	 * 	- If the level is 0, all is done, return the gw.
+	 * 	- Go one level down: level--;
+	 * 	- At this level use the bnode map and look for the bnode which
+	 * 	  boards to the gw of the upper level we found. (Note that all
+	 * 	  that all the bnode in the bmap point at the upper level always).
+	 * 	- Find the gw to reach the found bnode at this level.
+	 * 	- goto loop;
+	 */
+	gnode=find_gnode;
+	node=&gnode->g;
+
+	/* The gateway to reach me is myself. */
+	if(node->flags & MAP_ME) 
+		return (void *)node;
+
+	for(i=gnode_level; i>=gw_level; i--) {
+		if(!node->links)
+			return 0;
+
+		if(node->flags & MAP_RNODE && i != gw_level) {
+			node_gw=node;
+			void_gw=(void *)node_gw;
+		} else {
+			pos=rand_range(0, node->links-1);
+			if(!i) {
+				if(node->flags & MAP_ME)
+					void_gw=node;
+				else	
+					void_gw=(void *)node->r_node[pos].r_node;
+			} else {
+				gnode_gw=(map_gnode *)gnode->g.r_node[pos].r_node;
+				node_gw=&gnode_gw->g;
+				void_gw=(void *)gnode_gw;
+			}
+		}
+
+		if(i == gw_level)
+			return void_gw;
+		else if(!i)
+			return 0;
+
+		bpos=map_find_bnode_rnode(bnode_map[i-1], bmap_nodes[i-1], void_gw);
+		if(bpos == -1)
+			return 0;
+
+		if(!(i-1))
+			node=node_from_pos(bnode_map[i-1][bpos].bnode_ptr, int_map);
+		else {
+			gnode=gnode_from_pos(bnode_map[i-1][bpos].bnode_ptr, 
+					ext_map[_EL(i-1)]);
+			node=&gnode->g;
+		}
+	}
+	return 0;
+}
+
+/* 
+ * krnl_update_node: It adds/replaces or removes a route from the kernel's
+ * table, if the node's flag is found, respectively, to be set to 
+ * MAP_UPDATE or set to MAP_VOID. The destination of the route can be given
+ * with `dst_ip', `dst_node' or `dst_quadg'.
+ * If `dst_ip' is not null, the given inet_prefix struct is used, it's also 
+ * used the `dst_node' to retrieve the flags.
+ * If the destination of the route is a node which belongs to the level 0, it
+ * must be passed to `dst_node'. 
+ * If `level' is > 0 and `dst_quadg' is not null, then it updates the gnode
+ * which is inside the `dst_quadg' struct: dst_quadg->gnode[_EL(level)]. The 
+ * quadro_group struct must be complete and refer to the groups of the 
+ * given gnode. 
+ * If `level' is > 0 and `dst_quadg' is null, it's assumed that the gnode is passed
+ * in `dst_node' and that the quadro_group for that gnode is me.cur_dst_quadg.
+ * If `void_gw' is not null, it is used as the only gw to reach the destination 
+ * node, otherwise the gw will be calculated.
+ */
+void krnl_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg, 
+		      void *void_gw, u_char level)
+{
+	ext_rnode *e_rnode=0;
+	map_node *node=0, *gw_node=0;
+	map_gnode *gnode=0;
+	struct nexthop *nh=0;
+	inet_prefix to;
+	int i, node_pos=0, route_scope=0;
+#ifdef XXX_DEBUG		
+	char *to_ip, *gw_ip;
+#endif
+
+	node=(map_node *)dst_node;
+	gnode=(map_gnode *)dst_node;
+
+	/* 
+	 * Deduce the destination's ip 
+	 */
+	if(dst_ip)
+		memcpy(&to, dst_ip, sizeof(inet_prefix));
+	else if(level) {
+		if(!dst_quadg) {
+			dst_quadg=&me.cur_quadg;
+			node_pos=pos_from_gnode(gnode, me.ext_map[_EL(level)]);
+		} else {
+			gnode=dst_quadg->gnode[_EL(level)];
+			node_pos=dst_quadg->gid[level];
+		}
 		node=&gnode->g;
-	
+		gnodetoip(dst_quadg, node_pos, level, &to);
+	} else {
+		node_pos=pos_from_node(node, me.int_map);
+		maptoip((u_int)me.int_map, (u_int)node, me.cur_quadg.ipstart[1], &to);
+	}
+#ifdef XXX_DEBUG		
+	to_ip=xstrdup(inet_to_str(to));
+#endif
+	inet_htonl(&to);
+
+	if(void_gw)
+		gw_node=(map_node *)void_gw;
+
 	/* 
 	 * If `node' it's a rnode of level 0, do nothing! It is already 
-	 * directly connected to me. 
+	 * directly connected to me. (If void_gw is not null, skip this check).
 	 */
-	if(node->flags & MAP_RNODE && !level)
+	if(node->flags & MAP_RNODE && !level && !void_gw)
 		goto finish;
 	
-	if(!level) {
-		if(node->flags & MAP_ME)
-			goto finish;
+	if(node->flags & MAP_ME)
+		goto finish;
 
+	/*
+	 * Now, get the gateway to reach the destination.
+	 */
+	if(node->flags & MAP_VOID)
+		goto do_update;
+	else if(void_gw) {
+		nh=xmalloc(sizeof(struct nexthop)*2);
+		memset(nh, '\0', sizeof(struct nexthop)*2);
+		
+		if(gw_node->flags & MAP_ERNODE) {
+			e_rnode=(ext_rnode *)gw_node;
+			memcpy(&nh[0].gw, &e_rnode->quadg.ipstart[0], sizeof(inet_prefix));
+		} else 
+			maptoip((u_int)me.int_map, (u_int)gw_node, 
+					me.cur_quadg.ipstart[1], &nh[0].gw);
+#ifdef XXX_DEBUG		
+		gw_ip=xstrdup(inet_to_str(nh[0].gw));
+#endif
+		inet_htonl(&nh[0].gw);
+		nh[0].dev=me.cur_dev;
+		nh[1].dev=0;
+	} else if(!level) {
 		nh=xmalloc(sizeof(struct nexthop)*(node->links+1));
 		memset(nh, '\0', sizeof(struct nexthop)*(node->links+1));
-
-		maptoip((u_int)me.int_map, (u_int)node, me.cur_quadg.ipstart[1], &to);
-		inet_htonl(&to);
-
+		
 		if(!(node->flags & MAP_VOID))
 			for(i=0; i<node->links; i++) {
-#ifdef QMAP_STYLE_I
-				maptoip((u_int)me.int_map, (u_int)get_gw_node(node, i),
-						me.cur_quadg.ipstart[1], &nh[i].gw);
-#else /*QMAP_STYLE_II*/
 				maptoip((u_int)me.int_map, (u_int)node->r_node[i].r_node,
 						me.cur_quadg.ipstart[1], &nh[i].gw);
+#ifdef XXX_DEBUG		
+				if(!i)
+				gw_ip=xstrdup(inet_to_str(nh[0].gw));
 #endif
 				inet_htonl(&nh[i].gw);
 			}
 		nh[i].dev=me.cur_dev;
 		nh[i].hops=255-i;
 		nh[node->links].dev=0;
-		node_pos=pos_from_node(node, me.int_map);
-	} else {
-		const char *to_ip;
-		
+	} else if(level) {
+		/* TODO: Support for the gnode multipath using nexthop */
 		nh=xmalloc(sizeof(struct nexthop)*2);
 		memset(nh, '\0', sizeof(struct nexthop)*2);
-		
-		node_pos=pos_from_gnode(gnode, me.ext_map[_EL(level)]);
-		gnodetoip(me.ext_map, &me.cur_quadg, gnode, level, &to);
-		to_ip=inet_to_str(to);
-		inet_htonl(&to);
-		
-		if(!(node->flags & MAP_VOID)) {
 
-			if(node->flags & MAP_ME) {
-				memcpy(&nh[0].gw, &me.cur_ip, sizeof(inet_prefix));
-			} else if(node->flags & MAP_RNODE) {
-				memcpy(&nh[0].gw, &me.cur_quadg.ipstart[level], sizeof(inet_prefix));
-			} else {
-				gw_node=get_gw_gnode(me.int_map, me.ext_map, me.bnode_map,
-						me.bmap_nodes, gnode, level, 0);
-				if(!gw_node) {
-					debug(DBG_NORMAL, "Cannot get the gateway for "
-							"the gnode: %d of level: %d, ip:"
-							"%s", node_pos, level, to_ip);
-					goto finish;
-				}
-
-				maptoip((u_int)me.int_map, (u_int)gw_node, 
-						me.cur_quadg.ipstart[1], &nh[0].gw);
-			}
-
-			inet_htonl(&nh[0].gw);
+		gw_node=get_gw_gnode(me.int_map, me.ext_map, me.bnode_map,
+					me.bmap_nodes, gnode, level, 0);
+		if(!gw_node) {
+			debug(DBG_NORMAL, "Cannot get the gateway for "
+					"the gnode: %d of level: %d, ip:"
+					"%s", node_pos, level, to_ip);
+			goto finish;
 		}
+
+		if(gw_node->flags & MAP_ERNODE) {
+			e_rnode=(ext_rnode *)gw_node;
+			memcpy(&nh[0].gw, &e_rnode->quadg.ipstart[0], sizeof(inet_prefix));
+		} else {
+			maptoip((u_int)me.int_map, (u_int)gw_node, 
+					me.cur_quadg.ipstart[1], &nh[0].gw);
+		}
+#ifdef XXX_DEBUG
+		gw_ip=xstrdup(inet_to_str(nh[0].gw));
+#endif
+		inet_htonl(&nh[0].gw);
 		nh[0].dev=me.cur_dev;
 		nh[1].dev=0;
 	}
-	
+
+do_update:
+#ifdef XXX_DEBUG
+	if(node->flags & MAP_VOID)
+		gw_ip=to_ip;
+	debug(DBG_INSANE, "krnl_update_node: to %s/%d via %s", to_ip, to.bits ,gw_ip);
+	xfree(to_ip);
+	xfree(gw_ip);
+#endif
+	if(node->flags & MAP_RNODE && !level)
+		route_scope = RT_SCOPE_LINK;
+
 	if(node->flags & MAP_VOID) {
 		/*Ok, let's delete it*/
-		if(route_del(0, to, nh, me.cur_dev, 0))
+		if(route_del(RTN_UNICAST, 0, to, 0, me.cur_dev, 0))
 			error("WARNING: Cannot delete the route entry for the ",
 					"%cnode %d lvl %d!", !level ? ' ' : 'g',
 					node_pos, level);
-	} else
-		if(route_replace(0, to, nh, me.cur_dev, 0))
+	} else if(route_replace(0, route_scope, to, nh, me.cur_dev, 0))
 			error("WARNING: Cannot update the route entry for the "
 					"%cnode %d lvl %d",!level ? ' ' : 'g',
 					node_pos, level);
 finish:
 	if(nh)
 		xfree(nh);
+}
+
+/* 
+ * rt_rnodes_update: It updates all the node which are rnodes of the root_node
+ * of all the maps. If `check_update_flag' is non zero, the rnode will be
+ * updated only if it has the MAP_UPDATE flag set.
+ */
+void rt_rnodes_update(int check_update_flag)
+{
+	u_short i, level;
+	ext_rnode *e_rnode;
+	map_node *root_node, *node, *rnode;
+	map_gnode *gnode;
+
+	/* If we aren't a bnode it's useless to do all this */
+	if(!(me.cur_node->flags & MAP_BNODE))
+		return;
+	
+	/* Internal map */
+	root_node=me.cur_node;
+	for(i=0; i < root_node->links; i++) {
+		rnode=(map_node *)root_node->r_node[i].r_node;
+
+		if(rnode->flags & MAP_ERNODE) {
+			level=0;
+			e_rnode=(ext_rnode *)rnode;
+			
+			if(!check_update_flag || rnode->flags & MAP_UPDATE)
+				krnl_update_node(&e_rnode->quadg.ipstart[0], rnode, 0,
+						me.cur_node, level);
+
+			for(level=1; level < e_rnode->quadg.levels; level++) {
+				gnode = e_rnode->quadg.gnode[_EL(level)];
+				if(!gnode)
+					continue;
+
+				node = &gnode->g;
+				if(!check_update_flag || node->flags & MAP_UPDATE)
+					krnl_update_node(0, 0, &e_rnode->quadg,
+							rnode, level);
+			}
+		}
+	}
+	/* External maps 
+	for(level=0; level < me.cur_quadg.levels; level++) {
+		qspn_set_map_vars(level, 0, &root_node, 0, 0);
+
+		for(i=0; i < root_node->links; i++) {
+			node=(map_node *)root_node->r_node[i].r_node;
+
+			if(!check_update_flag || node->flags & MAP_UPDATE)
+				krnl_update_node(0, node, 0, 0, level);
+		}
+	}
+	*/
 }
 
 /* 
@@ -168,41 +373,39 @@ void rt_full_update(int check_update_flag)
 {
 	u_short i, l;
 
+	/* Update ext_maps */
+	for(l=me.cur_quadg.levels-1; l>=1; l--)
+		for(i=0; i<MAXGROUPNODE; i++) {
+			if(me.ext_map[_EL(l)][i].g.flags & MAP_VOID || 
+				me.ext_map[_EL(l)][i].flags & GMAP_VOID ||
+				me.ext_map[_EL(l)][i].g.flags & MAP_ME)
+				continue;
+
+			if(check_update_flag && 
+				!(me.ext_map[_EL(l)][i].g.flags & MAP_UPDATE))
+				continue;
+
+			krnl_update_node(0, &me.ext_map[_EL(l)][i].g, 0, 0, l);
+			me.ext_map[_EL(l)][i].g.flags&=~MAP_UPDATE;
+		}
+
 	/* Update int_map */
 	for(i=0, l=0; i<MAXGROUPNODE; i++) {
 		if(me.int_map[i].flags & MAP_VOID || me.int_map[i].flags & MAP_ME)
 			continue;
 
-		if(check_update_flag && 
-				!((me.int_map[i].flags & MAP_UPDATE) && 
-					!(me.int_map[i].flags & MAP_RNODE)))
+		if(check_update_flag && !((me.int_map[i].flags & MAP_UPDATE)))
 			continue;
 
-		krnl_update_node(&me.int_map[i], l);
+		krnl_update_node(0, &me.int_map[i], 0, 0, l);
 		me.int_map[i].flags&=~MAP_UPDATE;
 	}
-
-	/* Update ext_maps */
-	for(l=1; l<me.cur_quadg.levels; l++)
-		for(i=0; i<MAXGROUPNODE; i++) {
-			if(me.ext_map[_EL(l)][i].g.flags & MAP_VOID || 
-					me.ext_map[_EL(l)][i].flags & GMAP_VOID)
-				continue;
-
-			if(check_update_flag && 
-					!(me.ext_map[_EL(l)][i].g.flags & MAP_UPDATE))
-				continue;
-
-			krnl_update_node(&me.ext_map[_EL(l)][i].g, l);
-			me.ext_map[_EL(l)][i].g.flags&=~MAP_UPDATE;
-		}
 
 	route_flush_cache(my_family);
 }
 
 int rt_exec_gw(char *dev, inet_prefix to, inet_prefix gw, 
-		int (*route_function)(int type, inet_prefix to, struct nexthop *nhops, 
-			char *dev, u_char table) )
+		int (*route_function)(ROUTE_CMD_VARS))
 {
 	struct nexthop nh[2], *neho;
 
@@ -219,7 +422,7 @@ int rt_exec_gw(char *dev, inet_prefix to, inet_prefix gw,
 	} else
 		neho=0;
 
-	return route_function(0, to, neho, dev, 0);
+	return route_function(0, 0, to, neho, dev, 0);
 }
 
 int rt_add_gw(char *dev, inet_prefix to, inet_prefix gw)
@@ -245,7 +448,7 @@ int rt_replace_gw(char *dev, inet_prefix to, inet_prefix gw)
 int rt_replace_def_gw(char *dev, inet_prefix gw)
 {
 	inet_prefix to;
-	
+
 	if(inet_setip_anyaddr(&to, my_family)) {
 		error("rt_add_def_gw(): Cannot use INADRR_ANY for the %d family", to.family);
 		return -1;
@@ -279,14 +482,14 @@ int rt_del_loopback_net(void)
 	 */
 	idata[0]=LOOPBACK_NET;
 	inet_setip(&to, idata, my_family);
-	route_del(RTN_BROADCAST, to, 0, 0, RT_TABLE_LOCAL);
-	
+	route_del(RTN_BROADCAST, 0, to, 0, 0, RT_TABLE_LOCAL);
+
 	/*
 	 * ip route del local 127.0.0.0/8  proto kernel  scope host 	   \
 	 * src 127.0.0.1
 	 */
 	to.bits=8;
-	route_del(RTN_LOCAL, to, 0, lo_dev, RT_TABLE_LOCAL);
+	route_del(RTN_LOCAL, 0, to, 0, lo_dev, RT_TABLE_LOCAL);
 
 	/* 
 	 * ip route del broadcast 127.255.255.255  proto kernel scope link \
@@ -294,7 +497,7 @@ int rt_del_loopback_net(void)
 	 */
 	idata[0]=LOOPBACK_BCAST;
 	inet_setip(&to, idata, my_family);
-	route_del(RTN_BROADCAST, to, 0, lo_dev, RT_TABLE_LOCAL);
+	route_del(RTN_BROADCAST, 0, to, 0, lo_dev, RT_TABLE_LOCAL);
 
 	return 0;
 }

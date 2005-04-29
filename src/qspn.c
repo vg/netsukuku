@@ -127,14 +127,20 @@ int qspn_b_find_reply(struct qspn_buffer *qb, int sub_id)
 int qspn_round_left(u_char level)
 {
 	struct timeval cur_t, t;
-	int diff;
+	int wait_round, cur_elapsed, diff;
 	
 	gettimeofday(&cur_t, 0);
-	timersub(&cur_t, &me.cur_qspn_time[level], &t);
 
-	diff=(QSPN_WAIT_ROUND_MS_LVL(level) - MILLISEC(t));
+	if(!is_bufzero((char *)&me.cur_qspn_time[level], sizeof(struct timeval)))
+		return 0;
+	else
+		timersub(&cur_t, &me.cur_qspn_time[level], &t);
 
-	return diff <= 0 ? 0 : diff;
+	wait_round  = QSPN_WAIT_ROUND_MS_LVL(level);
+	cur_elapsed = MILLISEC(t);
+	diff = wait_round - cur_elapsed;
+
+	return cur_elapsed >= wait_round ? 0 : diff;
 }
 
 
@@ -600,8 +606,9 @@ int qspn_open(PACKET rpkt)
 
 	if(rpkt.hdr.id != me.cur_qspn_id[level]) {
 		ntop=inet_to_str(rpkt.from);
-		debug(DBG_NOISE, "qspn_open(): The %s sent a qspn_open with a "
-				"wrong qspn_id", ntop);
+		debug(DBG_NOISE, "qspn_open(): The %s sent a qspn_open"
+				" with a wrong qspn_id (0x%x)", ntop, 
+				rpkt.hdr.id);
 		return -1;
 	}
 

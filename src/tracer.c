@@ -20,11 +20,11 @@
 
 #include "misc.h"
 #include "inet.h"
-#include "route.h"
 #include "pkts.h"
 #include "map.h"
 #include "gmap.h"
 #include "bmap.h"
+#include "route.h"
 #include "tracer.h"
 #include "netsukuku.h"
 #include "radar.h"
@@ -583,7 +583,7 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 			}
 			
 			debug(DBG_INSANE, "TRCR_STORE: krnl_update node %d", tracer[i].node);
-			krnl_update_node(node, level);
+			krnl_update_node(0, node, 0, 0, level);
 			node->flags&=~MAP_UPDATE;
 		}
 	}
@@ -765,22 +765,24 @@ int tracer_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), int gid,
  */
 int exclude_glevel(TRACER_PKT_EXCLUDE_VARS)
 {
-	map_bnode *bnode;
+	map_gnode *gnode;
 	int i, level, gid;
+
+	/* Ehi, if the node isn't even an external rnode, we don't exclude it */
+	if(!(node->flags & MAP_ERNODE))
+		return 0;
 	
-	if((node->flags & MAP_GNODE || node->flags & MAP_ERNODE) && 
-			excl_level != 0) {
-		bnode=node;
+	if((node->flags & MAP_GNODE || node->flags & MAP_BNODE)
+			&& excl_level != 0) {
 		/* 
-		 * If the bnode is near at least with one gnode included in the
+		 * If the node boards at least with one gnode included in the
 		 * excl_gid of excl_level we can continue to forward the pkt
 		 */
-		for(i=0; i<bnode->links; i++) {
-			level=extmap_find_level(me.ext_map, 
-					(map_gnode *)bnode->r_node[i].r_node,
+		for(i=0; i < node->links; i++) {
+			gnode=(map_gnode *)node->r_node[i].r_node;
+			level=extmap_find_level(me.ext_map, gnode, 
 					me.cur_quadg.levels);
-			gid=pos_from_gnode((map_gnode *)bnode->r_node[i].r_node,
-					me.ext_map[_EL(level)]);
+			gid=pos_from_gnode(gnode, me.ext_map[_EL(level)]);
 			if(level < excl_level || ((level == excl_level) && 
 						(gid==excl_gid)))
 				return 0;

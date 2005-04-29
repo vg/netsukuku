@@ -62,7 +62,11 @@ struct set_route_pkt
 
 
 u_char rt_find_table(ct_route *ctr, u_int dst, u_int gw);
-void krnl_update_node(void *void_node, u_char level);
+void *get_gw_gnode(map_node *, map_gnode **, map_bnode **, 
+		u_int *, map_gnode *, u_char, u_char);
+void krnl_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg, 
+		      void *void_gw, u_char level);
+void rt_rnodes_update(int check_update_flag);
 void rt_full_update(int check_update_flag);
 
 int rt_add_gw(char *dev, inet_prefix to, inet_prefix gw);

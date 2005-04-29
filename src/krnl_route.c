@@ -14,6 +14,11 @@
  * You should have received a copy of the GNU Public License along with
  * this source code; if not, write to:
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * - 
+ *
+ * Various parts are ripped from iproute2/iproute.c
+ * written by Alexey Kuznetsov, <kuznet@ms2.inr.ac.ru>.
  */
 
 #include "includes.h"
@@ -26,31 +31,31 @@
 #include "xmalloc.h"
 #include "log.h"
 
-int route_exec(int route_cmd, int route_type, unsigned flags, inet_prefix to, 
-		struct nexthop *nhops, char *dev, u_char table);
+int route_exec(int route_cmd, int route_type, int route_scope, unsigned flags,
+		inet_prefix to, struct nexthop *nhops, char *dev, u_char table);
 
-int route_add(int type, inet_prefix to, struct nexthop *nhops, char *dev, u_char table)
+int route_add(ROUTE_CMD_VARS)
 {
-	return route_exec(RTM_NEWROUTE, type, NLM_F_CREATE | NLM_F_EXCL, to, 
-			nhops, dev, table);
+	return route_exec(RTM_NEWROUTE, type, scope, NLM_F_CREATE | NLM_F_EXCL,
+			to, nhops, dev, table);
 }
 
-int route_del(int type, inet_prefix to, struct nexthop *nhops, char *dev, u_char table)
+int route_del(ROUTE_CMD_VARS)
 {
-	return route_exec(RTM_DELROUTE, type, 0, to, nhops, dev, table);
+	return route_exec(RTM_DELROUTE, type, scope, 0, to, nhops, dev, table);
 }
 
 /*If it doesn't exist, CREATE IT! de ih oh oh*/
-int route_replace(int type, inet_prefix to, struct nexthop *nhops, char *dev, u_char table)
+int route_replace(ROUTE_CMD_VARS)
 {
-	return route_exec(RTM_NEWROUTE, type, NLM_F_REPLACE | NLM_F_CREATE, to,
-			nhops, dev, table);
+	return route_exec(RTM_NEWROUTE, type, scope, NLM_F_REPLACE | NLM_F_CREATE,
+			to, nhops, dev, table);
 }
 
-int route_change(int type, inet_prefix to, struct nexthop *nhops, char *dev, u_char table)
+int route_change(ROUTE_CMD_VARS)
 {
-	return route_exec(RTM_NEWROUTE, type, NLM_F_REPLACE, to, nhops, dev, 
-			table);
+	return route_exec(RTM_NEWROUTE, type, scope, NLM_F_REPLACE, to, nhops, 
+			dev, table);
 }
 
 int add_nexthops(struct nlmsghdr *n, struct rtmsg *r, struct nexthop *nhop)
@@ -103,8 +108,8 @@ int add_nexthops(struct nlmsghdr *n, struct rtmsg *r, struct nexthop *nhop)
 	return 0;
 }
 
-int route_exec(int route_cmd, int route_type, unsigned flags, inet_prefix to, 
-		struct nexthop *nhops, char *dev, u_char table)
+int route_exec(int route_cmd, int route_type, int route_scope, unsigned flags, 
+		inet_prefix to, struct nexthop *nhops, char *dev, u_char table)
 {
 	struct rt_request req;
 	struct rtnl_handle rth;
@@ -130,6 +135,12 @@ int route_exec(int route_cmd, int route_type, unsigned flags, inet_prefix to,
 	
 	if(route_type)
 		req.rt.rtm_type = route_type;
+
+	if(route_scope)
+		req.rt.rtm_scope = route_scope;
+	else if(req.rt.rtm_type==RTN_LOCAL)
+		req.rt.rtm_scope=RT_SCOPE_HOST;
+
 	
 	if (rtnl_open(&rth, 0) < 0)
 		return -1;
@@ -155,9 +166,6 @@ int route_exec(int route_cmd, int route_type, unsigned flags, inet_prefix to,
 
 		addattr_l(&req.nh, sizeof(req), RTA_DST, &to.data, to.len);
 	} 
-
-	if(req.rt.rtm_type==RTN_LOCAL)
-		req.rt.rtm_scope=RT_SCOPE_HOST;
 
 	if(nhops) 
 		add_nexthops(&req.nh, &req.rt, nhops);

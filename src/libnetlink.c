@@ -175,8 +175,7 @@ int rtnl_dump_filter(struct rtnl_handle *rth,
 			return -1;
 		}
 		if (msg.msg_namelen != sizeof(nladdr)) {
-			error("sender address length == %d\n", msg.msg_namelen);
-			exit(1);
+			fatal("sender address length == %d\n", msg.msg_namelen);
 		}
 
 		h = (struct nlmsghdr*)buf;
@@ -218,8 +217,7 @@ skip_it:
 			continue;
 		}
 		if (status) {
-			error("!!!Remnant of size %d\n", status);
-			exit(1);
+			fatal("!!!Remnant of size %d\n", status);
 		}
 	}
 }
@@ -278,8 +276,7 @@ int rtnl_talk(struct rtnl_handle *rtnl, struct nlmsghdr *n, pid_t peer,
 			return -1;
 		}
 		if (msg.msg_namelen != sizeof(nladdr)) {
-			error("sender address length == %d\n", msg.msg_namelen);
-			exit(1);
+			fatal("sender address length == %d\n", msg.msg_namelen);
 		}
 		for (h = (struct nlmsghdr*)buf; status >= sizeof(*h); ) {
 			int err;
@@ -291,8 +288,7 @@ int rtnl_talk(struct rtnl_handle *rtnl, struct nlmsghdr *n, pid_t peer,
 					error("Truncated message\n");
 					return -1;
 				}
-				error("!!!malformed message: len=%d\n", len);
-				exit(1);
+				fatal("!!!malformed message: len=%d\n", len);
 			}
 
 			if (nladdr.nl_pid != peer ||
@@ -335,10 +331,8 @@ int rtnl_talk(struct rtnl_handle *rtnl, struct nlmsghdr *n, pid_t peer,
 			error("Message truncated\n");
 			continue;
 		}
-		if (status) {
-			error("!!!Remnant of size %d\n", status);
-			exit(1);
-		}
+		if (status)
+			fatal("!!!Remnant of size %d\n", status);
 	}
 }
 
@@ -381,8 +375,7 @@ int rtnl_listen(struct rtnl_handle *rtnl,
 			return -1;
 		}
 		if (msg.msg_namelen != sizeof(nladdr)) {
-			error("Sender address length == %d\n", msg.msg_namelen);
-			exit(1);
+			fatal("Sender address length == %d\n", msg.msg_namelen);
 		}
 		for (h = (struct nlmsghdr*)buf; status >= sizeof(*h); ) {
 			int err;
@@ -394,8 +387,7 @@ int rtnl_listen(struct rtnl_handle *rtnl,
 					error("Truncated message\n");
 					return -1;
 				}
-				error("!!!malformed message: len=%d\n", len);
-				exit(1);
+				fatal("!!!malformed message: len=%d\n", len);
 			}
 
 			err = handler(&nladdr, h, jarg);
@@ -410,8 +402,7 @@ int rtnl_listen(struct rtnl_handle *rtnl,
 			continue;
 		}
 		if (status) {
-			error("!!!Remnant of size %d\n", status);
-			exit(1);
+			fatal("!!!Remnant of size %d\n", status);
 		}
 	}
 }

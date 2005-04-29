@@ -1,24 +1,31 @@
 - [HIGH PRIORITY] -
 
-- Le rotte CIDR per raggiungere i gnode non vengono aggiunte alla tabella di
-  routing.
+- Il Qspn funziona tra i gnode?
+  No, aggiustare exclude_glevel
 
-- Il merge map delle int_map non funge, dovrebbe gia' da subito settare le rotte
-  giuste.
+- quando krnl_update_node rimuove una rotta e fallisce, qualcosa va in loop
+  infinito a 100% di cpu
 
-- pc3:~/src# ip route add to  83.196.70.0/24 via 151.95.203.71
-  RTNETLINK answers: Network is unreachable
-  pc3:~/src# arp -n
-  Address                  HWtype  HWaddress           Flags Mask            Iface
-  151.95.203.71            ether   FE:FD:0A:00:00:05   C                     eth0
-  pc3:~/src# 
+- A(gnode) - B(gnode) <- C( B gnode),
+  C quando si aggancia non setta le rotte di gnode per A, in fill_route...:
+  Cannot get gw for....
+
 
 - [MEDIUM PRIORITY] -
-big endian/little endian per gli int nei pkt.
-Portare per *BSD: bisogna usare rt_ioctl.c ed rt_socket.c di quagga
-( ../othersrc/quagga-*/zebra/ )
+
+- Usare il multipath per i gnode. Ad esempio se un bnode e' collegato con piu'
+  nodi di uno stesso gnode esterno li deve mettere come nexthop nella stessa rotta 
+  per raggiungere il gnode esterno. Al contrario se ci sono tanti bnode per
+  raggiungere uno stesso gnode, bisogna usare sempre il multipath.
+  
+- big endian/little endian per gli int nei pkt.
+
+- Portare per *BSD: bisogna usare rt_ioctl.c ed rt_socket.c di quagga
+  ( ../othersrc/quagga-*/zebra/ )
+
 
 - [LOW PRIORITY] -
+
 gmap.c: Ottimizzare la validita' di ip in random_ip(). Una possibile soluzione
 sarebbe quella di azzerare i bit invalidi.
 hook.c: ottimizzare lo spazio di free_node: invece di usare una serie di u_short
@@ -30,6 +37,6 @@ hook.c:    anti spoof hook
 hook.c:    settare l'essid delle wlan0
 
 - [ CURRENT TESTS ] -
-95%, hook.c
-50%, tracer.c
-24%, qspn.c
+97%, hook.c
+60%, tracer.c
+40%, qspn.c

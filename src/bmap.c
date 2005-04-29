@@ -98,7 +98,7 @@ int map_find_bnode(map_bnode *bmap, int bmap_nodes, void *void_map, int node)
 	int e;
 
 	for(e=0; e<bmap_nodes; e++)
-		if(bmap[e].bnode_ptr == node && !(bmap[e].flags & MAP_VOID))
+		if(bmap[e].bnode_ptr == node)
 			return e;
 	
 	return -1;
@@ -121,81 +121,6 @@ int map_find_bnode_rnode(map_bnode *bmap, int bmap_nodes, void *n)
 }
 
 /* 
- * get_gw_gnode: It returns the pointer to the gateway node present in the map
- * of level `gw_level'. This gateway node is the node to be used as gateway to
- * reach, from the `gw_level' level,  the `find_gnode' gnode at the `level' level.
- * If the gw_node isn't found, NULL is returned.
- */
-void *get_gw_gnode(map_node *int_map, map_gnode **ext_map,
-		map_bnode **bnode_map, u_int *bmap_nodes, 
-		map_gnode *find_gnode, u_char level, u_char gw_level)
-{
-	map_gnode *gnode;
-	map_gnode *gnode_gw;
-	map_node  *node_gw, *node;
-	void	  *void_gw;
-	int i, pos, bpos;
-
-	if(!level || gw_level > level)
-		return 0;
-
-	/* 
-	 * How it works:
-	 * - Start from the level `level' and the gnode `find_gnode'.
-	 * loop:
-	 * 	- Use the map at the current level to get the gw to reach the
-	 * 	  current gnode (at the current level).
-	 * 	- If the level is 0, all is done, return the gw.
-	 * 	- Go one level down: level--;
-	 * 	- At this level use the bnode map and look for the bnode which
-	 * 	  boards to the gw of the upper level we found. (Note that all
-	 * 	  that all the bnode in the bmap point to always at the upper
-	 * 	  level).
-	 * 	- Find the gw to reach the found bnode at this level.
-	 * 	- goto loop;
-	 */
-	gnode=find_gnode;
-	node=&gnode->g;
-
-	/* The gateway to reach me is myself. */
-	if(node->flags & MAP_ME) 
-		return (void *)node;
-	
-	for(i=level; i>=gw_level; i--) {
-		if(!node->links)
-			return 0;
-
-		pos=rand_range(0, node->links-1);
-		if(!level) {
-			node_gw=(map_node *)node->r_node[pos].r_node;
-			void_gw=(void *)node_gw;
-		} else {
-			gnode_gw=(map_gnode *)gnode->g.r_node[pos].r_node;
-			node_gw=&gnode_gw->g;
-			void_gw=(void *)gnode_gw;
-		}
-
-		if(i == gw_level)
-			return void_gw;
-		else if(!i)
-			return 0;
-
-		bpos=map_find_bnode_rnode(bnode_map[i-1], bmap_nodes[i-1], void_gw);
-		if(bpos == -1)
-			return 0;
-		
-		if(!(i-1))
-			node=node_from_pos(bnode_map[i-1][bpos].bnode_ptr, int_map);
-		else {
-			gnode=gnode_from_pos(bnode_map[i-1][bpos].bnode_ptr, 
-					ext_map[_EL(i-1)]);
-			node=&gnode->g;
-		}
-	}
-	return 0;
-}
-
-/* 
  * pack_all_bmaps: It creates the block of all the `bmaps' which have
  * `bmap_nodes' nodes. `ext_map' and `quadg' are the structs referring
  * to the external map. In `pack_sz' is stored the size of the block.
@@ -214,8 +139,8 @@ pack_all_bmaps(map_bnode **bmaps,  u_int *bmap_nodes, map_gnode **ext_map,
 	*pack_sz=0;
 	
 	for(level=0; level < quadg.levels; level++) {
-		pack[level]=pack_map((map_node *)bmaps[level], (int *)ext_map[_EL(level)], bmap_nodes[level],
-				0, &sz);
+		pack[level]=pack_map((map_node *)bmaps[level], (int *)ext_map[_EL(level)], 
+				bmap_nodes[level], 0, &sz);
 		tmp_sz[level]=sz;
 		(*pack_sz)+=sz;
 	}
@@ -252,7 +177,7 @@ unpack_all_bmaps(char *pack, size_t pack_sz, u_char levels, map_gnode **ext_map,
 	struct bnode_map_hdr *bmap_hdr;
 	map_bnode **bmap;
 	size_t bblock_sz;
-	int i;
+	int i,e=0;
 	char *bblock, *buf;
 
 	bmap_level_init(levels, &bmap, bmap_nodes);
@@ -260,11 +185,19 @@ unpack_all_bmaps(char *pack, size_t pack_sz, u_char levels, map_gnode **ext_map,
 	buf=pack;
 	for(i=0; i<levels; i++) {
 		bmap_hdr=(struct bnode_map_hdr *)buf;
+		if(!bmap_hdr->bnode_map_sz) {
+			buf+=sizeof(struct bnode_map_hdr);
+			continue;
+		}
+		
 		if(verify_int_map_hdr(bmap_hdr, maxbnodes, maxbnode_rnodeblock)) {
 			error("Malformed bmap_hdr at level %d. "
-					"Aborting unpack_all_bmaps().", i);
-			return 0;
+					"Skipping...", i);
+			e++;
+			buf+=sizeof(struct bnode_map_hdr);
+			continue;
 		}
+
 		(*bmap_nodes)[i]=bmap_hdr->bnode_map_sz/sizeof(map_bnode);
 		bblock=(char *)bmap_hdr;
 
@@ -279,6 +212,9 @@ unpack_all_bmaps(char *pack, size_t pack_sz, u_char levels, map_gnode **ext_map,
 
 		buf+=bblock_sz;
 	}
+	if(e == levels)
+		return 0;
+
 	return bmap;
 }
 

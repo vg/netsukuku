@@ -147,8 +147,10 @@ struct ext_map_hdr
  */
 typedef struct {
 	map_node	node;
-	inet_prefix	ip;
-	quadro_group 	quadg;
+	quadro_group 	quadg;		/* quadg.gnode[level] may be set to 0
+					 * if that gnode doesn't belong to the
+					 * same upper level of me.cur_quadg
+					 */
 }ext_rnode;
 
 /*This cache keeps the list of all the ext_rnode used.*/
@@ -180,8 +182,7 @@ void quadg_destroy(quadro_group *qg);
 void random_ip(inet_prefix *ipstart, int final_level, int final_gid, 
 		int total_levels, map_gnode **ext_map, int only_free_gnode, 
 		inet_prefix *new_ip, int my_family);
-void gnodetoip(map_gnode **ext_map, quadro_group *quadg, map_gnode *gnode, u_char level, 
-		inet_prefix *ip);
+void gnodetoip(quadro_group *quadg, int gnodeid, u_char level, inet_prefix *ip);
 int quadg_diff_gids(quadro_group qg_a, quadro_group qg_b);
 ext_rnode_cache *erc_find(ext_rnode_cache *erc, ext_rnode *e_rnode);
 void e_rnode_del(ext_rnode_cache *erc, int *counter);

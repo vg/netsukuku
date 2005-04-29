@@ -67,7 +67,7 @@ void rnodetoip(u_int mapstart, u_int maprnode, inet_prefix ipstart,
 	memset(ret, 0, sizeof(inet_prefix));
 	if(rnode->flags & MAP_ERNODE) {
 		e_rnode=(ext_rnode *)rnode;
-		memcpy(ret, &e_rnode->ip, sizeof(inet_prefix));
+		memcpy(ret, &e_rnode->quadg.ipstart[0], sizeof(inet_prefix));
 	} else 
 		maptoip(mapstart, maprnode, ipstart, ret);
 }
@@ -162,7 +162,7 @@ void gidtoipstart(int *gid, u_char total_levels, u_char levels, int family,
 
 	memcpy(ip->data, h_ip, sizeof(int)*4);
 	ip->family=family;
-	ip->len=family == AF_INET ? 4 : 16;
+	ip->len = (family == AF_INET) ? 4 : 16;
 	ip->bits=ip->len*8;
 }
 
@@ -302,31 +302,27 @@ void random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 }
 
 /*
- * gnodetoip: It converts the `gnode' address pointing to the gnode of `level'
- * level present in the `ext_map' to its corresponding ipstart.
+ * gnodetoip: It converts the gnode which has the given `gnodeid' at `level'
+ * to its corresponding ipstart. The `quadg' struct must refer to the given
+ * gnode.
  * The ip is stored in `ip', and the ip->bits are choosen carefully in the 
  * CIDR blocks format, in this way the `ip' includes also the ranges of the 
  * gnode's level: ip <= x <= ip+MAXGROUPNODE^(level+1).
  */
-void gnodetoip(map_gnode **ext_map, quadro_group *quadg, map_gnode *gnode, 
-		u_char level, inet_prefix *ip)
+void gnodetoip(quadro_group *quadg, int gnodeid, u_char level, inet_prefix *ip)
 {
-	int i, ext_levels;
 	int gid[quadg->levels];
 	
-	ext_levels=quadg->levels;	
-	if(level > ext_levels)
+	if(level > quadg->levels || !level)
 		return;
 	
-	memset(gid, 0, sizeof(int)*ext_levels);
+	memcpy(gid, quadg->gid, sizeof(int)*quadg->levels);
+	gid[level]=gnodeid;
 	
-	gid[level]=pos_from_gnode(gnode, ext_map[_EL(level)]);
-	for(i=level+1; i<ext_levels; i++) 
-		gid[i]=quadg->gid[i];
-	
-	gidtoipstart(gid, ext_levels, ext_levels-level, quadg->ipstart[0].family,
-			ip);
-	ip->bits-=(level*9);
+	gidtoipstart(gid, quadg->levels, quadg->levels-level, 
+			quadg->ipstart[0].family, ip);
+
+	ip->bits-=(level*MAXGROUPNODE_BITS);
 }
 
 /* 
@@ -671,6 +667,7 @@ void free_extmap_rblock(map_rnode **rblock, u_char levels)
 char *pack_extmap(map_gnode **ext_map, int maxgroupnode, quadro_group *quadg, size_t *pack_sz)
 {
 	struct ext_map_hdr emap_hdr;
+	map_gnode *packed_map;
 	map_rnode **rblock;
 	int *count, i;
 	char *package, *p=0;
@@ -698,6 +695,12 @@ char *pack_extmap(map_gnode **ext_map, int maxgroupnode, quadro_group *quadg, si
 	p=package+sizeof(struct ext_map_hdr);
 	for(i=0; i<levels; i++) {
 		memcpy(p, ext_map[i], maxgroupnode*sizeof(map_gnode));
+		
+		/* Remove the MAP_ME flag from the map we are packing */
+		packed_map=(map_gnode *)p;
+		packed_map[emap_hdr.quadg.gid[i+1]].flags&=~GMAP_ME;
+		packed_map[emap_hdr.quadg.gid[i+1]].g.flags&=~MAP_ME;
+		
 		p+=maxgroupnode*sizeof(map_gnode);
 	}
 	
@@ -749,18 +752,19 @@ map_gnode **unpack_extmap(char *package, size_t pack_sz, quadro_group *quadg)
 		rblock=(map_rnode **)p;
 		err=extmap_store_rblock(ext_map, levels, maxgroupnode, rblock);
 		if(err!=levels) {
-			error("unpack_extmap(): It was not possible to restore all the rnodes in the ext_map");
+			error("unpack_extmap(): It was not possible to restore"
+					" all the rnodes in the ext_map");
 			free_extmap(ext_map, emap_hdr->quadg.levels, maxgroupnode);
 			return 0;
 		}
 	}
 	
-	/*We restore the quadro_group struct*/
+	/* We restore the quadro_group struct */
 	memcpy(quadg, &emap_hdr->quadg, sizeof(quadro_group));
 	for(i=0; i<levels; i++)
 		quadg->gnode[i]=gnode_from_pos(quadg->gid[i+1], ext_map[i]);
 
-	/*Let's mark our gnodes ;)*/
+	/* Let's mark our gnodes ;) */
 	for(i=1; i<emap_hdr->quadg.levels; i++) {
 		ext_map[_EL(i)][quadg->gid[i]].flags&=~GMAP_VOID;
 		ext_map[_EL(i)][quadg->gid[i]].g.flags&=~MAP_VOID;

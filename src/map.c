@@ -287,6 +287,7 @@ void map_routes_order(map_node *map)
 		rnode_trtt_order(&map[i]);
 }
 
+#ifdef QMAP_STYLE_I
 /* get_route_rtt: It return the round trip time (in millisec) to reach 
  * the root_node of the int_map starting from "node", using the "route"th route.
  * If "rtt" is not null it stores in "rtt" the relative timeval struct
@@ -316,6 +317,7 @@ int get_route_rtt(map_node *node, u_short route, struct timeval *rtt)
 	
 	return MILLISEC(*t);
 }
+#endif
 
 /* get_route_trtt: It's the same of get_route_rtt, but it returns the 
  * totatl round trip time (trtt).
@@ -338,6 +340,7 @@ int get_route_trtt(map_node *node, u_short route, struct timeval *trtt)
 	return MILLISEC(node->r_node[route].trtt);
 }
 
+#ifdef QMAP_STYLE_I
 /* rnode_set_trtt: It sets the trtt of all the node's rnodes using get_route_rtt.
  * (qspn map styleI)*/
 void rnode_set_trtt(map_node *node)
@@ -394,7 +397,7 @@ void map_set_trtt(map_node *map)
 }
 
 
-/*It return the node to be used as gateway to reach "node" starting from
+/* It return the node to be used as gateway to reach "node" starting from
  * root_node, using the "route"th route.
  * Used in a qspn map styleI
  */
@@ -414,6 +417,7 @@ map_node *get_gw_node(map_node *node, u_short route)
 
 	return ptr;
 }
+#endif /*QMAP_STYLE_I*/
 
 /*
  * merge_maps: 
@@ -433,14 +437,18 @@ int merge_maps(map_node *base, map_node *new, map_node *base_root, map_node *new
 	base_root_pos=pos_from_node(base_root, base);
 		
 	for(i=0; i<MAXGROUPNODE; i++) {
-		if(base[i].flags & MAP_ME || new[i].flags & MAP_ME)
+		if(base[i].flags & MAP_ME || new[i].flags & MAP_ME ||
+				new[i].flags & MAP_VOID)
 			continue;
+		
+		base[i].flags|=MAP_UPDATE;
+		base[i].flags&=~MAP_VOID;
 		
 		for(e=0; e<new[i].links; e++) {
 			/* 
 			 * The gw to reach the new[i] node, with the
 			 * new_root_node as the starting point; so the node_gw
-			 * is a rnode of new_root_node
+			 * is a rnode of new_root_node.
 			 */
 			node_gw=(map_node *)new[i].r_node[e].r_node; 
 			
@@ -603,6 +611,10 @@ int verify_int_map_hdr(struct int_map_hdr *imap_hdr, int maxgroupnode, int maxrn
 {
 #ifndef QSPN_EMPIRIC /*The qspn_empiric generates a random map which has nodes
 		       with map_node.links > MAXGROUPNODE;*/
+
+	/* No map to care about */
+	if(imap_hdr->int_map_sz)
+		return 0;
 	
 	if(imap_hdr->rblock_sz > maxrnodeblock || 
 			imap_hdr->int_map_sz > maxgroupnode*sizeof(map_node) ||
@@ -641,9 +653,15 @@ char *pack_map(map_node *map, int *addr_map, int maxgroupnode,
 	*pack_sz=INT_MAP_BLOCK_SZ(imap_hdr.int_map_sz, imap_hdr.rblock_sz);
 	package=xmalloc(*pack_sz);
 	memcpy(package, &imap_hdr, sizeof(struct int_map_hdr));
-	memcpy(package+sizeof(struct int_map_hdr), map, imap_hdr.int_map_sz);
-	if(rblock) {
-		p=package+sizeof(struct int_map_hdr)+imap_hdr.int_map_sz;
+	
+	p=package;
+	if(imap_hdr.int_map_sz) {
+		p+=sizeof(struct int_map_hdr);
+		memcpy(p, map, imap_hdr.int_map_sz);
+	}
+	
+	if(imap_hdr.rblock_sz) {
+		p+=imap_hdr.int_map_sz;
 		memcpy(p, rblock, imap_hdr.rblock_sz);
 		xfree(rblock);
 	}
@@ -678,6 +696,8 @@ map_node *unpack_map(char *pack, size_t pack_sz, int *addr_map, map_node **new_r
 	map=init_map(0);
 	if(imap_hdr->int_map_sz)
 		memcpy(map, p, imap_hdr->int_map_sz);
+	else
+		return map;
 
 	/*Restoring the rnodes...*/
 	p+=imap_hdr->int_map_sz;
@@ -737,7 +757,7 @@ int save_map(map_node *map, map_node *root_node, char *file)
  */
 map_node *load_map(char *file, map_node **new_root)
 {
-	map_node *map;
+	map_node *map=0;
 	FILE *fd;
 	struct int_map_hdr imap_hdr;
 	char *pack;
@@ -749,24 +769,26 @@ map_node *load_map(char *file, map_node **new_root)
 	}
 
 	if(fread(&imap_hdr, sizeof(struct int_map_hdr), 1, fd) < 1)
-		goto error;
+		goto finish;
+	
+	if(!imap_hdr.int_map_sz)
+		goto finish;
+
 	if(verify_int_map_hdr(&imap_hdr, MAXGROUPNODE, MAXRNODEBLOCK))
-		goto error;
+		goto finish;
 		
 	rewind(fd);
 	pack_sz=INT_MAP_BLOCK_SZ(imap_hdr.int_map_sz, imap_hdr.rblock_sz);
 	pack=xmalloc(pack_sz);
 	if(fread(pack, pack_sz, 1, fd) < 1)
-		goto error;
+		goto finish;
 
 	map=unpack_map(pack, pack_sz, 0, new_root, MAXGROUPNODE, MAXRNODEBLOCK);
-	if(!map)
-		error("Cannot unpack the int_map!");
 
+finish:
 	xfree(pack);
 	fclose(fd);
+	if(!map)
+		error("Malformed map file. Aborting load_map().");
 	return map;
-error:
-	error("Malformed map file. Aborting load_map().");
-	return 0;
 }

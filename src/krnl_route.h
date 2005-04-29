@@ -31,8 +31,12 @@ struct rt_request {
 	char   			buf[1024];
 };
 
-int route_add(int type, inet_prefix to, struct nexthop *nhops, char *dev, u_char table);
-int route_del(int type, inet_prefix to, struct nexthop *nhops, char *dev, u_char table);
-int route_replace(int type, inet_prefix to, struct nexthop *nhops, char *dev, u_char table);
-int route_change(int type, inet_prefix to, struct nexthop *nhops, char *dev, u_char table);
+
+#define ROUTE_CMD_VARS	 int type, int scope, inet_prefix to, struct nexthop *nhops,\
+			 char *dev, u_char table
+
+int route_add(ROUTE_CMD_VARS);
+int route_del(ROUTE_CMD_VARS);
+int route_replace(ROUTE_CMD_VARS);
+int route_change(ROUTE_CMD_VARS);
 int route_flush_cache(int family);
