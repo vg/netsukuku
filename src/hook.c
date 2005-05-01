@@ -204,10 +204,7 @@ int put_free_nodes(PACKET rq_pkt)
 	gettimeofday(&cur_t, 0);
 	for(level=0; level < fn_pkt.fn_hdr.max_levels; level++) {
 		update_qspn_time(level);
-		if(is_bufzero((char *)&me.cur_qspn_time[level], sizeof(struct timeval)))
-			timersub(&cur_t, &me.cur_qspn_time[level], &fn_pkt.qtime[level]);
-		else
-			memset(&fn_pkt.qtime[level], 0, sizeof(struct timeval));
+		timersub(&cur_t, &me.cur_qspn_time[level], &fn_pkt.qtime[level]);
 		debug(DBG_INSANE, "fn_pkt,qtime[%d]: %d, left: %d", level, 
 				MILLISEC(fn_pkt.qtime[level]), qspn_round_left(level));
 	}
@@ -770,7 +767,7 @@ retry_rnd_ip:
 			
 			if(rq->node->flags & MAP_HNODE)
 				continue;
-			if(quadg_diff_gids(rq->quadg, me.cur_quadg)) 
+			if(quadg_gids_cmp(rq->quadg, me.cur_quadg, 1)) 
 				/* This node isn't part of our gnode, let's skip it */
 				continue; 
 
@@ -795,7 +792,7 @@ retry_rnd_ip:
 		rq=find_node_radar_q((map_node *)me.cur_node->r_node[i].r_node);
 		if(rq->node->flags & MAP_HNODE)
 			continue;
-		if(quadg_diff_gids(rq->quadg, me.cur_quadg)) 
+		if(quadg_gids_cmp(rq->quadg, me.cur_quadg, 1)) 
 			/* This node isn't part of our gnode, let's skip it */
 			continue; 
 		old_bnode_map=me.bnode_map;	

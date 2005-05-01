@@ -114,7 +114,7 @@ int map_find_bnode_rnode(map_bnode *bmap, int bmap_nodes, void *n)
 	int e;
 
 	for(e=0; e<bmap_nodes; e++)
-		if(rnode_find((map_node *)&bmap[e], n) != -1)
+		if(rnode_find((map_node *)&bmap[e], (map_node *)n) != -1)
 			return e;
 	return -1;
 
@@ -139,7 +139,7 @@ pack_all_bmaps(map_bnode **bmaps,  u_int *bmap_nodes, map_gnode **ext_map,
 	*pack_sz=0;
 	
 	for(level=0; level < quadg.levels; level++) {
-		pack[level]=pack_map((map_node *)bmaps[level], (int *)ext_map[_EL(level)], 
+		pack[level]=pack_map((map_node *)bmaps[level], (int *)ext_map[_EL(level+1)], 
 				bmap_nodes[level], 0, &sz);
 		tmp_sz[level]=sz;
 		(*pack_sz)+=sz;
@@ -203,7 +203,7 @@ unpack_all_bmaps(char *pack, size_t pack_sz, u_char levels, map_gnode **ext_map,
 
 		/*Extracting the map...*/
 		bblock_sz=INT_MAP_BLOCK_SZ(bmap_hdr->bnode_map_sz, bmap_hdr->rblock_sz);
-		bmap[i]=unpack_map(bblock, bblock_sz, (int *)ext_map[_EL(i)], 0, 
+		bmap[i]=unpack_map(bblock, bblock_sz, (int *)ext_map[_EL(i+1)], 0, 
 				maxbnodes, maxbnode_rnodeblock);
 		if(!bmap[i]) {
 			error("Cannot unpack the bnode_map at level %d !", i);

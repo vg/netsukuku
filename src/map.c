@@ -613,7 +613,7 @@ int verify_int_map_hdr(struct int_map_hdr *imap_hdr, int maxgroupnode, int maxrn
 		       with map_node.links > MAXGROUPNODE;*/
 
 	/* No map to care about */
-	if(imap_hdr->int_map_sz)
+	if(!imap_hdr->int_map_sz)
 		return 0;
 	
 	if(imap_hdr->rblock_sz > maxrnodeblock || 
@@ -641,13 +641,16 @@ char *pack_map(map_node *map, int *addr_map, int maxgroupnode,
 
 	if(!addr_map)
 		addr_map=(int *)map;
-	/*rblock packing*/
-	rblock=map_get_rblock(map, addr_map, maxgroupnode, &count);
-	/*Header creation*/
-	memset(&imap_hdr, 0, sizeof(struct int_map_hdr));
-	imap_hdr.root_node=root_node ? pos_from_node(root_node, map) : 0;
-	imap_hdr.rblock_sz=count*sizeof(map_rnode);
-	imap_hdr.int_map_sz=maxgroupnode*sizeof(map_node);
+	if(map) {
+		/*rblock packing*/
+		rblock=map_get_rblock(map, addr_map, maxgroupnode, &count);
+		/*Header creation*/
+		memset(&imap_hdr, 0, sizeof(struct int_map_hdr));
+		imap_hdr.root_node=root_node ? pos_from_node(root_node, map) : 0;
+		imap_hdr.rblock_sz=count*sizeof(map_rnode);
+		imap_hdr.int_map_sz=maxgroupnode*sizeof(map_node);
+	} else
+		memset(&imap_hdr, 0, sizeof(struct int_map_hdr));
 
 	/*Package creation*/
 	*pack_sz=INT_MAP_BLOCK_SZ(imap_hdr.int_map_sz, imap_hdr.rblock_sz);

@@ -16,7 +16,6 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#define MAX_CONC_QSPN		5	/*MAX CONCURRENT QSPN*/
 #define QSPN_WAIT_ROUND 	60	/*This is a crucial value. It is the number of 
 					  seconds to be waited before the next qspn_round 
 					  can be sent*/

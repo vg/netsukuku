@@ -326,17 +326,18 @@ void gnodetoip(quadro_group *quadg, int gnodeid, u_char level, inet_prefix *ip)
 }
 
 /* 
- * quadg_diff_gids: It returns 0 if `qg_a' has all the gids equal to
- * the `qg_b''s ones
+ * quadg_gid_cmp: Compares the gids of `a' and `b' starting from the `lvl'th 
+ * level. If the gids compared are the same, zero is returned.
  */
-int quadg_diff_gids(quadro_group qg_a, quadro_group qg_b)
+int quadg_gids_cmp(quadro_group a, quadro_group b, int lvl)
 {
 	int i;
-	if(qg_a.levels != qg_b.levels)
-		return 1;
 	
-	for(i=1; i<qg_a.levels; i++)
-		if(qg_b.gid[i] != qg_b.gid[i])
+	if(a.levels != b.levels)
+		return 1;
+
+	for(i=lvl; i < a.levels; i++)
+		if(a.gid[i] != b.gid[i])
 			return 1;
 	return 0;
 }

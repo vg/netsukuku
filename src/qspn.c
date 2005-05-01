@@ -57,6 +57,9 @@ void qspn_set_map_vars(u_char level, map_node **map, map_node **root_node,
 
 void qspn_init(u_char levels)
 {
+	struct timeval cur_t;
+	int i;
+	
 	qspn_b=xmalloc(sizeof(struct qspn_buffer *)*levels);
 	memset(qspn_b, 0, sizeof(struct qspn_buffer *)*levels);
 	
@@ -67,7 +70,13 @@ void qspn_init(u_char levels)
 	memset(me.cur_qspn_id, 0, sizeof(int)*levels);
 	
 	me.cur_qspn_time=xmalloc(sizeof(struct timeval)*levels);
-	memset(me.cur_qspn_time, 0, sizeof(struct timeval)*levels);
+	gettimeofday(&cur_t, 0);
+	for(i=0; i < levels; i++) {
+		/* We fake the cur_qspn_time, so qspn_round_left thinks that a
+		 * qspn_round was already sent */
+		cur_t.tv_sec-=QSPN_WAIT_ROUND_LVL(i)*2;
+		memcpy(&me.cur_qspn_time[i], &cur_t, sizeof(struct timeval));
+	}
 }
 
 void qspn_free(void)
@@ -131,10 +140,7 @@ int qspn_round_left(u_char level)
 	
 	gettimeofday(&cur_t, 0);
 
-	if(!is_bufzero((char *)&me.cur_qspn_time[level], sizeof(struct timeval)))
-		return 0;
-	else
-		timersub(&cur_t, &me.cur_qspn_time[level], &t);
+	timersub(&cur_t, &me.cur_qspn_time[level], &t);
 
 	wait_round  = QSPN_WAIT_ROUND_MS_LVL(level);
 	cur_elapsed = MILLISEC(t);
@@ -367,7 +373,8 @@ int qspn_open_start(map_node *from, PACKET pkt_to_all, int qspn_id, int root_nod
 
 	upper_level=level+1;
 	
-	debug(DBG_INSANE, "Fwd %s(0x%x) to broadcast", rq_to_str(QSPN_OPEN), qspn_id);
+	debug(DBG_INSANE, "Fwd %s(0x%x) lvl %d, to broadcast", rq_to_str(QSPN_OPEN), 
+			qspn_id, level);
 	
 	/* 
 	 * The `from' node doesn't need all the previous tracer_pkt entry (which
@@ -416,8 +423,8 @@ int qspn_close(PACKET rpkt)
 
 	if(server_opt.dbg_lvl) {
 		ntop=inet_to_str(rpkt.from);
-		debug(DBG_INSANE, "%s(0x%x) from %s", rq_to_str(rpkt.hdr.op),
-				rpkt.hdr.id, ntop);
+		debug(DBG_INSANE, "%s(0x%x) lvl %d from %s", rq_to_str(rpkt.hdr.op),
+				rpkt.hdr.id, level, ntop);
 	}
 	
 	ret_err=tracer_unpack_pkt(rpkt, &bcast_hdr, &tracer_hdr, &tracer, &bhdr,
@@ -464,8 +471,8 @@ int qspn_close(PACKET rpkt)
 				rpkt.hdr.id != me.cur_qspn_id[level]+1) {
 			ntop=inet_to_str(rpkt.from);
 			debug(DBG_NOISE, "qspn_close(): The %s sent a qspn_close"
-					" with a wrong qspn_id (0x%x)", ntop, 
-					rpkt.hdr.id);
+					" with a wrong qspn_id (0x%x) lvl %d", ntop, 
+					rpkt.hdr.id, level);
 			debug(DBG_INSANE, "qspn_close(): cur_qspn_id: %d, still left %dms", 
 					me.cur_qspn_id[level], left);
 			return -1;
@@ -525,8 +532,8 @@ int qspn_close(PACKET rpkt)
 		 */
 		qspn_open_start(from, pkt, rpkt.hdr.id, root_node_pos, gid, level);
 	} else {
-		debug(DBG_INSANE, "Fwd %s(0x%x) to broadcast", rq_to_str(pkt.hdr.op),
-				pkt.hdr.id);
+		debug(DBG_INSANE, "Fwd %s(0x%x) lvl %d to broadcast", rq_to_str(pkt.hdr.op),
+				pkt.hdr.id, level);
 		/* 
 		 * Forward the qspn_close to all our r_nodes which are not 
 		 * closed!

@@ -74,7 +74,7 @@ void *get_gw_gnode(map_node *int_map, map_gnode **ext_map,
 {
 	map_gnode *gnode;
 	map_gnode *gnode_gw;
-	map_node  *node_gw, *node;
+	map_node  *node;
 	void	  *void_gw;
 	int i, pos, bpos;
 
@@ -104,22 +104,20 @@ void *get_gw_gnode(map_node *int_map, map_gnode **ext_map,
 		return (void *)node;
 
 	for(i=gnode_level; i>=gw_level; i--) {
-		if(!node->links)
-			return 0;
 
-		if(node->flags & MAP_RNODE && i != gw_level) {
-			node_gw=node;
-			void_gw=(void *)node_gw;
+		if(node->flags & MAP_RNODE) {
+			void_gw=(void *)node;
+		} else if (node->flags & MAP_ME) {
+			void_gw=(void *)find_gnode;
 		} else {
+			if(!node->links)
+				return 0;
+
 			pos=rand_range(0, node->links-1);
 			if(!i) {
-				if(node->flags & MAP_ME)
-					void_gw=node;
-				else	
-					void_gw=(void *)node->r_node[pos].r_node;
+				void_gw=(void *)node->r_node[pos].r_node;
 			} else {
 				gnode_gw=(map_gnode *)gnode->g.r_node[pos].r_node;
-				node_gw=&gnode_gw->g;
 				void_gw=(void *)gnode_gw;
 			}
 		}
@@ -333,9 +331,11 @@ void rt_rnodes_update(int check_update_flag)
 			level=0;
 			e_rnode=(ext_rnode *)rnode;
 			
-			if(!check_update_flag || rnode->flags & MAP_UPDATE)
+			if(!check_update_flag || rnode->flags & MAP_UPDATE) {
 				krnl_update_node(&e_rnode->quadg.ipstart[0], rnode, 0,
 						me.cur_node, level);
+				rnode->flags&=~MAP_UPDATE;
+			}
 
 			for(level=1; level < e_rnode->quadg.levels; level++) {
 				gnode = e_rnode->quadg.gnode[_EL(level)];
@@ -343,24 +343,14 @@ void rt_rnodes_update(int check_update_flag)
 					continue;
 
 				node = &gnode->g;
-				if(!check_update_flag || node->flags & MAP_UPDATE)
+				if(!check_update_flag || node->flags & MAP_UPDATE) {
 					krnl_update_node(0, 0, &e_rnode->quadg,
 							rnode, level);
+					node->flags&=~MAP_UPDATE;
+				}
 			}
 		}
 	}
-	/* External maps 
-	for(level=0; level < me.cur_quadg.levels; level++) {
-		qspn_set_map_vars(level, 0, &root_node, 0, 0);
-
-		for(i=0; i < root_node->links; i++) {
-			node=(map_node *)root_node->r_node[i].r_node;
-
-			if(!check_update_flag || node->flags & MAP_UPDATE)
-				krnl_update_node(0, node, 0, 0, level);
-		}
-	}
-	*/
 }
 
 /* 

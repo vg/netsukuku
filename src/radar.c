@@ -232,10 +232,16 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 					if(rnode_pos != -1)
 						rnode_del(&me.bnode_map[level][bm], rnode_pos);
 				}
+				if(!me.bnode_map[level][bm].links)
+					me.bnode_map[level]=map_bnode_del(me.bnode_map[level], 
+							&me.bmap_nodes[level], 
+							&me.bnode_map[level][bm]);
 			   
-				/* Delete the entry from the routing table */
-				krnl_update_node(0, 0, &e_rnode->quadg, 0, 
-						level);
+				/* Delete the entries from the routing table */
+				if(level == 1)
+				  krnl_update_node(&e_rnode->quadg.ipstart[0], 
+						  e_rnode, 0, me.cur_node, 0);
+				krnl_update_node(0, 0, &e_rnode->quadg, 0, level);
 			}
 		
 			rnode_del(root_node, i);
@@ -268,18 +274,17 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 }
 
 /* radar_update_bmap: updates the bnode map */
-void radar_update_bmap(struct radar_queue *rq, int level) 
+void radar_update_bmap(struct radar_queue *rq, int level, int gnode_level)
 {
 	map_gnode *gnode;
-	map_node  *node, *root_node;
+	map_node  *root_node;
 	map_rnode *rnode, rn;
 	int  bm, rnode_pos, root_node_pos;
 	void *void_map;
 
 	qspn_set_map_vars(level, 0, &root_node, &root_node_pos, 0);
 	void_map=me.ext_map;
-	gnode=rq->quadg.gnode[_EL(level)];
-	node=&gnode->g;
+	gnode=rq->quadg.gnode[_EL(gnode_level+1)];
 	
 	root_node->flags|=MAP_BNODE;
 	
@@ -290,14 +295,16 @@ void radar_update_bmap(struct radar_queue *rq, int level)
 				root_node_pos, 0);
 		rnode_pos=-1;
 	} else
-		rnode_pos=rnode_find(&me.bnode_map[level][bm], 
-				(map_node *)rq->quadg.gnode[_EL(level+1)]);
+		rnode_pos=rnode_find(&me.bnode_map[level][bm], &gnode->g);
+	
 	if(rnode_pos == -1) {
 		memset(&rn, 0, sizeof(map_rnode));
-		rn.r_node=(u_int *)rq->quadg.gnode[_EL(level+1)];
+		rn.r_node=(u_int *)&gnode->g;
 		rnode_add(&me.bnode_map[level][bm], &rn);
 		rnode_pos=0;
 	}
+
+	me.bnode_map[level][bm].flags&=~MAP_VOID;
 	rnode=&me.bnode_map[level][bm].r_node[rnode_pos];
 	memcpy(&rnode->rtt, &rq->final_rtt, sizeof(struct timeval));
 }
@@ -332,19 +339,18 @@ void radar_update_map(void)
 	 */
 	for(i=0; i<me.cur_node->links; i++) {
 		node=(map_node *)me.cur_node->r_node[i].r_node;
+		node->flags|=MAP_VOID | MAP_UPDATE;
 		
-		if(node->flags & MAP_GNODE) {
+		if(node->flags & MAP_GNODE || node->flags & MAP_ERNODE) {
 			e_rnode=(ext_rnode *)node;
+			
 			for(e=1; e<e_rnode->quadg.levels; e++) {
 				gnode=e_rnode->quadg.gnode[_EL(e)];
 				if(!gnode)
 					continue;
-
-				node=&gnode->g;
-				node->flags|=MAP_VOID | MAP_UPDATE;
+				gnode->g.flags|=MAP_VOID | MAP_UPDATE;
 			}
-		} else
-			node->flags|=MAP_VOID | MAP_UPDATE;
+		}
 	}
 
 	rq=radar_q;
@@ -375,7 +381,7 @@ void radar_update_map(void)
 			   } else {
 				   /* Skip the levels where the ext_rnode belongs
 				    * to our same gids */
-				   if(rq->quadg.gid[level] == me.cur_quadg.gid[level])
+				   if(!quadg_gids_cmp(rq->quadg, me.cur_quadg, level))
 					   continue;
 				   
 				   /* Update only the gnodes which belongs to
@@ -383,7 +389,7 @@ void radar_update_map(void)
 				    * we don't keep the internal info of the
 				    * extern gnodes. */
 				   if((level < rq->quadg.levels-1) &&
-						   rq->quadg.gid[level+1] != me.cur_quadg.gid[level+1]) {
+					quadg_gids_cmp(rq->quadg, me.cur_quadg, level+1)) {
 					   rq->quadg.gnode[_EL(level)]=0;
 					   continue;
 				   }
@@ -498,8 +504,13 @@ void radar_update_map(void)
 		           memcpy(&root_node->r_node[rnode_pos].rtt, &rq->final_rtt,
 					   sizeof(struct timeval));
 			   
-			   if(external_node) 
-				   radar_update_bmap(rq, level);
+			   /* Bnode map stuff */
+			   if(external_node && level) {
+				   for(i=0; i < level; i++)
+					   radar_update_bmap(rq, i, level-1);
+
+				   radar_update_bmap(rq, i, level);
+			   }
 
 			   if(external_node && node_update)
 				   node->flags|=MAP_UPDATE;
@@ -510,14 +521,16 @@ void radar_update_map(void)
 	radar_remove_old_rnodes(rnode_deleted);
 
 	/* <<keep your room tidy... order, ORDER>> */
-	if(rnode_added[0] || rnode_deleted[0])
+	if(rnode_added[0] || rnode_deleted[0]) {
 		rnode_rtt_order(me.cur_node);
-	for(i=1; i<me.cur_quadg.levels; i++)
-		if(rnode_added[i] || rnode_deleted[i])
-			rnode_rtt_order(&me.cur_quadg.gnode[_EL(i)]->g);
+		for(i=1; i<me.cur_quadg.levels; i++)
+			if(rnode_added[i] || rnode_deleted[i])
+				rnode_rtt_order(&me.cur_quadg.gnode[_EL(i)]->g);
+	}
 
 	/* Give a refresh to the kernel */
-	rt_rnodes_update(1);
+	if(rnode_added[0])
+		rt_rnodes_update(1);
 }
 
 /* 
