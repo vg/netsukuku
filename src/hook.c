@@ -554,7 +554,7 @@ retry_rnd_ip:
 	/* Now, we update the ext_map with the new gnodes */
 	reset_extmap(me.ext_map, final_level, 0);
 	me.cur_quadg.levels=GET_LEVELS(my_family);
-	iptoquadg(me.cur_ip, me.ext_map, &me.cur_quadg, QUADG_GID | QUADG_GNODE | QUADG_IPSTART);
+	iptoquadg(me.cur_ip, me.ext_map, &me.cur_quadg, QUADG_GID|QUADG_GNODE|QUADG_IPSTART);
 	
 	for(i=1; i<final_level; i++) {
 		me.cur_quadg.gnode[_EL(i)]->flags &= ~GMAP_VOID;
@@ -751,7 +751,7 @@ retry_rnd_ip:
 		
 		reset_int_map(me.int_map, 0);
 		iptoquadg(me.cur_ip, me.ext_map, &me.cur_quadg, 
-				QUADG_GID | QUADG_GNODE | QUADG_IPSTART);
+				QUADG_GID|QUADG_GNODE|QUADG_IPSTART);
 
 		/* 
 		 * Fetch the int_map from each rnode and merge them into a

@@ -259,9 +259,11 @@ void krnl_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_qua
 		gw_node=get_gw_gnode(me.int_map, me.ext_map, me.bnode_map,
 					me.bmap_nodes, gnode, level, 0);
 		if(!gw_node) {
+#ifdef XXX_DEBUG
 			debug(DBG_NORMAL, "Cannot get the gateway for "
 					"the gnode: %d of level: %d, ip:"
 					"%s", node_pos, level, to_ip);
+#endif
 			goto finish;
 		}
 
@@ -286,6 +288,7 @@ do_update:
 		gw_ip=to_ip;
 	debug(DBG_INSANE, "krnl_update_node: to %s/%d via %s", to_ip, to.bits ,gw_ip);
 	xfree(to_ip);
+	if(!(node->flags & MAP_VOID))
 	xfree(gw_ip);
 #endif
 	if(node->flags & MAP_RNODE && !level)

@@ -49,7 +49,8 @@ int tracer_pkt_build(u_char, int, int, int, u_char, brdcast_hdr *, tracer_hdr *,
 
 /*
  * TRACER_PKT_EXCLUDE_VARS:
- * `node': the destination node we are sending the pkt to.
+ * `e_rnode': if the dst is an external rnode, the relative one is passed.
+ * `node': the destination node/gnode we are sending the pkt to.
  * `from': the node from which the pkt was sent to us.
  * `pos' : the position of the `node' in the root_node's rnodes.
  * `excl_gid': The gid the pkt is restricted to. It cannot be sent to other
@@ -57,10 +58,11 @@ int tracer_pkt_build(u_char, int, int, int, u_char, brdcast_hdr *, tracer_hdr *,
  * `level': The level the pkt is restricted to, it is the level of `excl_gid'.
  * `sub_id': If the pkt is a qspn_open, it is the qspn open sub_id of the pkt.
  */
-#define TRACER_PKT_EXCLUDE_VARS		map_node *node, map_node *from, int pos,\
-					int excl_gid, u_char excl_level, int sub_id
-#define TRACER_PKT_EXCLUDE_VARS_NAME	node, from, pos, excl_gid, excl_level,	\
-					sub_id
+#define TRACER_PKT_EXCLUDE_VARS		ext_rnode *e_rnode, map_node *node,    \
+					map_node *from, int pos, int excl_gid, \
+					u_char excl_level, int sub_id
+#define TRACER_PKT_EXCLUDE_VARS_NAME	e_rnode, node, from, pos, excl_gid,    \
+					excl_level, sub_id
 int tracer_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), int gid, 
 		u_char level, int sub_id, map_node *from, PACKET pkt);
 int exclude_from(TRACER_PKT_EXCLUDE_VARS);

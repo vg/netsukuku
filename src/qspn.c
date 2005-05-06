@@ -70,13 +70,13 @@ void qspn_init(u_char levels)
 	memset(me.cur_qspn_id, 0, sizeof(int)*levels);
 	
 	me.cur_qspn_time=xmalloc(sizeof(struct timeval)*levels);
+
+	/* We fake the cur_qspn_time, so qspn_round_left thinks that a
+	 * qspn_round was already sent */
 	gettimeofday(&cur_t, 0);
-	for(i=0; i < levels; i++) {
-		/* We fake the cur_qspn_time, so qspn_round_left thinks that a
-		 * qspn_round was already sent */
-		cur_t.tv_sec-=QSPN_WAIT_ROUND_LVL(i)*2;
+	cur_t.tv_sec-=QSPN_WAIT_ROUND_LVL(levels)*2;
+	for(i=0; i < levels; i++)
 		memcpy(&me.cur_qspn_time[i], &cur_t, sizeof(struct timeval));
-	}
 }
 
 void qspn_free(void)
@@ -423,8 +423,8 @@ int qspn_close(PACKET rpkt)
 
 	if(server_opt.dbg_lvl) {
 		ntop=inet_to_str(rpkt.from);
-		debug(DBG_INSANE, "%s(0x%x) lvl %d from %s", rq_to_str(rpkt.hdr.op),
-				rpkt.hdr.id, level, ntop);
+		debug(DBG_INSANE, "%s(0x%x) from %s", rq_to_str(rpkt.hdr.op),
+				rpkt.hdr.id, ntop);
 	}
 	
 	ret_err=tracer_unpack_pkt(rpkt, &bcast_hdr, &tracer_hdr, &tracer, &bhdr,
@@ -507,8 +507,10 @@ int qspn_close(PACKET rpkt)
 		for(i=0; i<root_node->links; i++) {
 			node=(map_node *)root_node->r_node[i].r_node;
 
-			if(root_node->r_node[i].r_node == (u_int *)from)
+			if(root_node->r_node[i].r_node == (u_int *)from) {
+				debug(DBG_INSANE, "Closing %x [g]node", node);
 				node->flags|=QSPN_CLOSED;
+			}
 
 			if(!(node->flags & QSPN_CLOSED))
 				not_closed++;

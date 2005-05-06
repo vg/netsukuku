@@ -1,10 +1,9 @@
 - [HIGH PRIORITY] -
 
-- Aggiustare exclude_glevel
-
-- quando krnl_update_node rimuove una rotta e fallisce, qualcosa va in loop
-  infinito a 100% di cpu. Che cazzo e'?
-
+- # The ext_node (gid 13, lvl 3) is dead
+  # krnl_update_node: to 104.0.0.0/5 via 104.0.0.0
+  * RTNETLINK answers (-3): No such process
+  * WARNING: Cannot delete the route entry for the 
 
 - [MEDIUM PRIORITY] -
 

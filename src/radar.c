@@ -379,6 +379,9 @@ void radar_update_map(void)
 				   void_map=me.int_map;
 				   node=rq->node;
 			   } else {
+				   /* Ehi, we are a bnode */
+				   root_node->flags|=MAP_BNODE;
+
 				   /* Skip the levels where the ext_rnode belongs
 				    * to our same gids */
 				   if(!quadg_gids_cmp(rq->quadg, me.cur_quadg, level))
@@ -506,7 +509,7 @@ void radar_update_map(void)
 			   
 			   /* Bnode map stuff */
 			   if(external_node && level) {
-				   for(i=0; i < level; i++)
+				   for(i=1; i < level; i++)
 					   radar_update_bmap(rq, i, level-1);
 
 				   radar_update_bmap(rq, i, level);
@@ -567,7 +570,7 @@ add_radar_q(PACKET pkt)
 		ret=iptomap((int)me.int_map, pkt.from, me.cur_quadg.ipstart[1],
 				(u_int *)&rnode);
 	
-	iptoquadg(pkt.from, me.ext_map, &quadg, QUADG_GID | QUADG_GNODE | QUADG_IPSTART);
+	iptoquadg(pkt.from, me.ext_map, &quadg, QUADG_GID|QUADG_GNODE|QUADG_IPSTART);
 
 	if(!ret)
 		rq=find_node_radar_q(rnode);
@@ -864,6 +867,14 @@ void *radar_daemon(void *null)
 {
 	debug(DBG_NORMAL, "Radar daemon up & running");
 	for(;;radar_scan(1));
+}
+
+/* radar_wait_new_scan: It sleeps until the new radar scan is sent */
+void radar_wait_new_scan(void)
+{
+	int old_echo_id=my_echo_id;
+	for(; old_echo_id == my_echo_id; )
+		usleep(500000);
 }
 
 /* 

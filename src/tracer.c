@@ -40,28 +40,40 @@
 int tracer_verify_pkt(tracer_chunk *tracer, u_int hops, map_node *real_from, u_char level)
 {
 	map_node *from;
+	int retries=0, ret;
 
+	
 	/*
 	 * `from' has to be absolutely one of our rnodes
 	 */
 
 	if(!level) {
 		from=node_from_pos(tracer[hops-1].node, me.int_map);
-		if(from && ( from != real_from ))
+		if(!from || ( from != real_from ))
 			return -1;
 	
 		/* Is `from' in our rnodes? */
-		if(rnode_find(me.cur_node, from) == -1)
+		for(; (ret=rnode_find(me.cur_node, from)) == -1 && !retries;) {
+			radar_wait_new_scan();
+			retries++;
+		}
+		if(ret == -1)
 			return -1;
 	} else {
-		from=(map_node *)gnode_from_pos(me.cur_quadg.gid[level], 
+		from=(map_node *)gnode_from_pos(tracer[hops-1].node,
 				me.ext_map[_EL(level)]);
-		if(from && (void *)from != (void *)real_from) 
+		if(!from || (void *)from != (void *)real_from) 
 			return -1;
 			
-		if(g_rnode_find(me.cur_quadg.gnode[_EL(level)], (map_gnode *)from) == -1)
+		for(; (ret=g_rnode_find(me.cur_quadg.gnode[_EL(level)], (map_gnode *)from)) == -1 &&
+				!retries;) {
+			radar_wait_new_scan();
+			retries++;
+		}
+		if(ret == -1)
 			return -1;
 	}
+	
 	return 0;
 }
 
@@ -255,9 +267,10 @@ int tracer_unpack_pkt(PACKET rpkt, brdcast_hdr **new_bcast_hdr,
 	tracer_hdr  *trcr_hdr;
 	tracer_chunk *tracer;
 	bnode_hdr    *bhdr=0;
-	map_node *real_from;
+	map_node     *real_from;
+	quadro_group quadg;
 	size_t bblock_sz=0, tracer_sz=0;
-	int i, level, gid;
+	int level;
 
 	bcast_hdr=(brdcast_hdr *)rpkt.msg;
 	trcr_hdr=(tracer_hdr *)(rpkt.msg+sizeof(brdcast_hdr));
@@ -297,26 +310,18 @@ int tracer_unpack_pkt(PACKET rpkt, brdcast_hdr **new_bcast_hdr,
 	 * Now, let's check if we are part of the bcast_hdr->g_node of 
 	 * bcast_hdr->level. If not let's  drop it! Why the hell this pkt is 
 	 * here?
-	 *
-	 * TODO: something terrible happens: if this iptogid isn't called, the
-	 * next iptogid call with me.cur_quadg.levels-1 will return a wrong
-	 * gid!! DAMN!
 	 */
-	iptogid(rpkt.from, me.cur_quadg.levels);
-	for(i=me.cur_quadg.levels-1; i>=0; i--) {
-		gid=iptogid(rpkt.from, i);
-		if(gid != me.cur_quadg.gid[i] && i > level) {
+	iptoquadg(rpkt.from, me.ext_map, &quadg, QUADG_GID|QUADG_GNODE);
+	if(quadg_gids_cmp(quadg, me.cur_quadg, level+1)) {
 		debug(DBG_INSANE, "%s:%d", ERROR_POS);
-			return -1;
-		}
+		return -1;
 	}
 
 	if(!level)
-		iptomap((u_int)me.int_map, rpkt.from, me.cur_quadg.ipstart[1], (u_int *)&real_from);
-	else {
-		gid=iptogid(rpkt.from, level);
-		real_from=&me.ext_map[_EL(level)][gid].g;
-	}
+		iptomap((u_int)me.int_map, rpkt.from, me.cur_quadg.ipstart[1], 
+				(u_int *)&real_from);
+	else
+		real_from = &quadg.gnode[_EL(level)]->g;
 
 	if(tracer_verify_pkt(tracer, trcr_hdr->hops, real_from, level)) {
 		debug(DBG_INSANE, "%s:%d", ERROR_POS);
@@ -721,23 +726,34 @@ int tracer_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), int gid,
 		u_char level, int sub_id, map_node *from, PACKET pkt)
 {
 	inet_prefix to;
-	map_node *dst_node;
+	ext_rnode *e_rnode;
+	map_node *dst_node, *node;
 	ssize_t err;
 	const char *ntop;
 	int i, e=0;
 
 	/*Forward the pkt to all our r_nodes (excluding the excluded;)*/
 	for(i=0; i<me.cur_node->links; i++) {
-		dst_node=(map_node *)me.cur_node->r_node[i].r_node;
-		if(is_node_excluded(dst_node, from, i, gid, level, sub_id))
+		node=(map_node *)me.cur_node->r_node[i].r_node;
+		if(node->flags & MAP_ERNODE) {
+			e_rnode=(ext_rnode *)node;
+			dst_node=(map_node *)e_rnode->quadg.gnode[_EL(level-1)];
+		} else {
+			e_rnode=0;
+			dst_node=node;
+		}
+
+		if(!dst_node)
+			continue;
+		if(is_node_excluded(e_rnode, dst_node, from, i, gid, level, sub_id))
 			continue;
 
 		/* We need the ip of the rnode ;^ */
-		rnodetoip((u_int)me.int_map, (u_int)dst_node, 
+		rnodetoip((u_int)me.int_map, (u_int)node, 
 				me.cur_quadg.ipstart[1], &to);
 		
-		debug(DBG_INSANE, "tracer_pkt_send(): %s to %s", 
-				rq_to_str(pkt.hdr.op), inet_to_str(to));
+		debug(DBG_INSANE, "tracer_pkt_send(): %s to %s lvl %d", 
+				rq_to_str(pkt.hdr.op), inet_to_str(to), level-1);
 				
 		pkt_addto(&pkt, &to);
 		pkt.sk_type=SKT_UDP;
@@ -757,7 +773,10 @@ int tracer_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), int gid,
 	return e;
 }
 
-/* * * these exclude function are used in conjunction with tracer_pkt_send.* * */
+/* * * 	Exclude functions * * *
+ * These exclude function are used in conjunction with tracer_pkt_send. 
+ * They return 1 if the node has to be excluded, otherwise 0.
+ */
 
 /*
  * exclude_glevel: Exclude `node' if it doesn't belong to the gid (`excl_gid') of 
@@ -765,31 +784,20 @@ int tracer_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), int gid,
  */
 int exclude_glevel(TRACER_PKT_EXCLUDE_VARS)
 {
-	map_gnode *gnode;
-	int i, level, gid;
-
-	/* Ehi, if the node isn't even an external rnode, we don't exclude it */
+	/* If `node' is null we can exclude it, because it isn't a gnode
+	 * of ours levels */
+	if(!node)
+		return 1;
+	
+	/* Ehi, if the node isn't even an external rnode, we don't exclude it. */
 	if(!(node->flags & MAP_ERNODE))
 		return 0;
+
+	/* Reach the sky */
+	if(excl_level == me.cur_quadg.levels)
+		return 0;
 	
-	if((node->flags & MAP_GNODE || node->flags & MAP_BNODE)
-			&& excl_level != 0) {
-		/* 
-		 * If the node boards at least with one gnode included in the
-		 * excl_gid of excl_level we can continue to forward the pkt
-		 */
-		for(i=0; i < node->links; i++) {
-			gnode=(map_gnode *)node->r_node[i].r_node;
-			level=extmap_find_level(me.ext_map, gnode, 
-					me.cur_quadg.levels);
-			gid=pos_from_gnode(gnode, me.ext_map[_EL(level)]);
-			if(level < excl_level || ((level == excl_level) && 
-						(gid==excl_gid)))
-				return 0;
-		}
-		return 1;
-	}
-	return 0;
+	return quadg_gids_cmp(e_rnode->quadg, me.cur_quadg, excl_level);
 }
 
 /* Exclude the `from' node */
@@ -822,8 +830,7 @@ int exclude_from_and_glevel(TRACER_PKT_EXCLUDE_VARS)
  */
 int exclude_from_glevel_and_setreplied(TRACER_PKT_EXCLUDE_VARS)
 {
-	if(exclude_glevel(TRACER_PKT_EXCLUDE_VARS_NAME) || 
-			exclude_from(TRACER_PKT_EXCLUDE_VARS_NAME))
+	if(exclude_from_and_glevel(TRACER_PKT_EXCLUDE_VARS_NAME))
 		return 1;
 
 	node->flags|=QSPN_REPLIED;

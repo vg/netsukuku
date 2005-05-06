@@ -83,5 +83,6 @@ int radar_scan(int activate_qspn);
 int radard(PACKET rpkt);
 int radar_recv_reply(PACKET pkt);
 void *radar_daemon(void *null);
+void radar_wait_new_scan(void);
 
 int refresh_hook_root_node(void);
