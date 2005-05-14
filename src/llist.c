@@ -76,11 +76,11 @@ do {									\
 #define list_add(list, new)						\
 do{									\
 	l_list *_i, *_n;						\
-		_i=(l_list *)list_last((list)); 			\
-		_n=(l_list *)(new);					\
-		_i->next=_n;						\
-		_n->prev=_i; 						\
-		_n->next=0;						\
+	_i=(l_list *)list_last((list)); 				\
+	_n=(l_list *)(new);						\
+	_i->next=_n;							\
+	_n->prev=_i; 							\
+	_n->next=0;							\
 }while(0)
 /*	if(is_list_zero((list)))				 	\
 		list_copy((list), (new));				\

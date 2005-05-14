@@ -75,7 +75,7 @@ struct qspn_buffer
 	struct qspn_buffer *prev;
 	map_node      *	rnode;		/*the rnode this buf is referring to*/
 	u_int	 	replies;	/*How many replies we forwarded/sent*/
-	u_short	      * replier;	/*Who has sent these replies (qspn_sub_id)*/
+	u_char	      * replier;	/*Who has sent these replies (qspn_sub_id)*/
 	u_short	      * flags;
 };
 struct qspn_buffer **qspn_b; /*It is sizeof(struct qspn_buffer *)*levels big*/
@@ -83,11 +83,12 @@ struct qspn_buffer **qspn_b; /*It is sizeof(struct qspn_buffer *)*levels big*/
 int *qspn_send_mutex;	     /*It is sizeof(int)*levels big.*/
 
 
+void qspn_time_reset(int start_level, int end_level, int levels);
 void qspn_init(u_char levels);
 void qspn_set_map_vars(u_char level, map_node **map, map_node **root_node, 
 		int *root_node_pos, map_gnode **gmap);
 void qspn_b_clean(u_char level);
-int  qspn_b_add(struct qspn_buffer *qb, u_short replier, u_short flags);
+int  qspn_b_add(struct qspn_buffer *qb, u_char replier, u_short flags);
 int  qspn_b_find_reply(struct qspn_buffer *qb, int sub_id);
 int  qspn_round_left(u_char level);
 void update_qspn_time(u_char level);

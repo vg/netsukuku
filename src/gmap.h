@@ -36,8 +36,8 @@ typedef struct
 	map_node	g;
 	
 	u_char 		flags;
-	__u16 		seeds;		/*The number of active static nodes connected to this gnode.
-					  If seeds == MAXGROUPNODE, the gnode is full ^_^*/
+	__u8 		seeds;	/*The number of active static nodes connected to this gnode.
+				  If seeds == MAXGROUPNODE, the gnode is full ^_^*/
 }map_gnode;
 
 
@@ -65,41 +65,30 @@ typedef struct
 #define _NL(level)    ((level)+1)
 
 /* 
- * Using MAXGROUPNODE = 512; IPV4_LEVELS = 3; ips = (2^32-1);
- * 	ips/(MAXGROUPNODE^IPV4_LEVELS) == 31.999999992;
+ * Using MAXGROUPNODE = 2^8; IPV4_LEVELS = 3; ips = 2^32;
+ * 	ips/(MAXGROUPNODE^IPV4_LEVELS) == 256;
  * If we use IPV4_LEVELS = 3, we almost cover all the ips, but the division gives
- * 32. So there are only 32 groups in the last level (3), in fact:
- * ips/(32 * (MAXGROUPNODE^3)) == 0.99999999
+ * 256. So there are only 256 groups in the last level (3), in fact:
+ *      ips/(256 * (MAXGROUPNODE^3)) == 1
  * And to include them we use the unity level, thus IPV4_LEVELS is equal to 3+1.
- * Sadly we cannot use all this ips, because there are the banned classes, and
- * the kernel will sput on us.
- * Here there are the banned ips:
- * max=MAXGROUPNODE;
- * Per x>= 511; y>=27;  All the ips >= (max^2 * x) + (max^3 * y) are MULTICAST.
- * Per y=0; 		All the ips <= (max^3 * y)		 are ZERONET.
- * Per x>=447; x1<=510;  All the ( ips >= (max^2 * x) + (max^3 * 15) &&
- * 				 ips <= (max^2 * x1) + max^3*15 ) are LOOPBACK.
- * So we loose ~301989885 ips!
- *
+ * This means that the unity level is the one which has only one group node which includes
+ * the entire network.
+ * Sadly we cannot use all this ips, because there are the banned classes (MULTICAST,
+ * ZERONET), the kernel will sput on us.
  * 
- * For the IPV6_LEVELS ips = 2^128-1; so:
- * ips/(4 * MAXGROUPNODE^14) == 0.999999999999999
+ * For the ipv6 we have IPV6_LEVELS = 16, ips = 2^128; so:
+ *      ips/(MAXGROUPNODE^16) == 1
  */
 #define IPV4_LEVELS		(2+EXTRA_LEVELS)
-#define IPV4_LAST_GROUPS	32		/* The  groups of the level 3 */
 
-#define IPV6_LEVELS		(13+EXTRA_LEVELS)
-#define IPV6_LAST_GROUPS	4		/* The groups of the level 14 */
+#define IPV6_LEVELS		(15+EXTRA_LEVELS)
 
 #define MAX_LEVELS		IPV6_LEVELS
 #define GET_LEVELS(family)	({ (family) == AF_INET ? 		        \
 				   IPV4_LEVELS : IPV6_LEVELS; })
 
-#define LAST_GROUPS(family)	({ (family) == AF_INET ? 		        \
-				   IPV4_LAST_GROUPS : IPV6_LAST_GROUPS; })
-
 /* Struct used to keep all the quadro_group ids of a node. (The node is part of this
- * quadro groups)*/
+ * quadro groups) */
 typedef struct {
 	u_char      levels;		 /*How many levels we have*/
 	int         gid[MAX_LEVELS];	 /*Group ids. Each element is the gid of the quadrogroup in the 

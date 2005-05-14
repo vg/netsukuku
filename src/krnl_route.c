@@ -124,11 +124,15 @@ int route_exec(int route_cmd, int route_type, int route_scope, unsigned flags,
 	req.nh.nlmsg_type = route_cmd;
 	req.rt.rtm_family = AF_UNSPEC;
 	req.rt.rtm_table = table;
-	req.rt.rtm_protocol=RTPROT_KERNEL;
+	req.rt.rtm_protocol = RTPROT_NETSUKUKU;
 	req.rt.rtm_scope = RT_SCOPE_NOWHERE;
+	req.rt.rtm_type = RTN_UNSPEC;
 
+	/* kernel protocol layer */
+	if(table == RT_TABLE_LOCAL)
+		req.rt.rtm_protocol = RTPROT_KERNEL;
+	
 	if (route_cmd != RTM_DELROUTE) {
-		req.rt.rtm_protocol = RTPROT_NETSUKUKU;
 		req.rt.rtm_scope = RT_SCOPE_UNIVERSE;
 		req.rt.rtm_type = RTN_UNICAST;
 	}

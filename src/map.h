@@ -19,8 +19,8 @@
 #undef  QSPN_EMPIRIC
 
 #ifndef QSPN_EMPIRIC
-	#define MAXGROUPNODE		512
-	#define MAXGROUPNODE_BITS	9	/* 2^MAXGROUPNODE_BITS == MAXGROUPNODE */
+	#define MAXGROUPNODE		256
+	#define MAXGROUPNODE_BITS	8	/* 2^MAXGROUPNODE_BITS == MAXGROUPNODE */
 	#define MAXROUTES	 	20
 #else
 	#define MAXGROUPNODE		20
@@ -50,30 +50,36 @@
 #define QSPN_STARTER	(1<<14)		/*The root node is marked with this flag if it is a qspn_starter*/
 
 /* 			    *** Map notes ***
- * The map is a block of MAXGROUPNODE map_node struct. It is a generic map and it is
- * used to keep the qspn_map, the internal map and the external map.
- * The position in the map of each struct corresponds to its relative ip. For
- * example, if the map goes from 192.128.1.0 to 192.128.3.0, the map will have 512
- * structs, the first one will correspond to 192.168.1.0, the 50th to 192.168.1.50 and
- * so on.
+ * The map is an array of MAXGROUPNODE map_node structs. It is a generic map 
+ * and it is used to keep the qspn_map, the internal map and the external map.
+ * The position in the map of each struct corresponds to its relative ip.
+ * For example, if the map goes from 192.128.1.0 to 192.128.3.0, the map will
+ * have 512 structs, the first one will correspond to 192.168.1.0, the 50th to
+ * 192.168.1.50 and so on.
+ * Note: because MAXGROUPNODE is 256, we can use an u_char for the index of the
+ * array.
  */
-/*map_rnode is what map_node.r_node points to*/
+
+/* map_rnode is what map_node.r_node points to */
 typedef struct
 {
 #ifdef QSPN_EMPIRIC
 	u_short		flags;
 #endif
-	u_int	 	*r_node;		 /*It's the pointer to the struct of the r_node in the map*/
-	struct timeval  rtt;	 		 /*node <-> r_node round trip time*/
+	u_int	 	*r_node;	/*It's the pointer to the struct of the r_node in the map*/
+	struct timeval  rtt;	 	/*node <-> r_node round trip time*/
 	
-	struct timeval  trtt;			 /*node <-> root_node total rtt: The rtt to reach the root_node 
-	 					  starting from the node which uses this rnode. 
+	struct timeval  trtt;		/*node <-> root_node total rtt: The rtt to reach the root_node 
+	 * starting from the node which uses this rnode. 
 	 * Cuz I've explained it in such a bad way I make an example:
-	 * map_node node_A; From node_A "node_A.links"th routes to the root_node start. 
-	 * So I have "node_A.links"th node_A.r_node[s], each of them is a different route to reach the root_node. 
-	 * With the node_A.r_node[route_number_to_follow].trtt I can get the rtt needed to reach the root_node 
-	 * starting from the node_A using the route_number_to_follow. Gotcha? I hope so.
-	 * Note: The trtt is mainly used to sort the routes*/
+	 * map_node node_A; From node_A "node_A.links"th routes to the root_node
+	 * start. So I have "node_A.links"th node_A.r_node[s], each of them is a
+	 * different route to reach the root_node. 
+	 * With the node_A.r_node[route_number_to_follow].trtt I can get the rtt 
+	 * needed to reach the root_node starting from the node_A using the 
+	 * route_number_to_follow. Gotcha? I hope so.
+	 * Note: The trtt is mainly used to sort the routes
+	 */
 }map_rnode;
 
 typedef struct
@@ -88,13 +94,13 @@ typedef struct
 	map_rnode	*r_node;	 /*This structs will be kept in ascending order considering their rnode_t.rtt*/
 }map_node;
 
-#define MAXRNODEBLOCK		MAXLINKS*MAXGROUPNODE*sizeof(map_rnode)
+#define MAXRNODEBLOCK		(MAXLINKS*MAXGROUPNODE*sizeof(map_rnode))
 #define INTMAP_END(mapstart)	((sizeof(map_node)*MAXGROUPNODE)+(mapstart))
 
 /*This block is used to send/save the int_map and the bnode_map*/
 struct int_map_hdr
 {
-	u_short root_node;
+	u_char root_node;
 	size_t int_map_sz;
 	size_t rblock_sz;
 }_PACKED_;

@@ -173,6 +173,9 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 	u_char level, external_node, total_levels, first_level;
 	void *void_map, *void_gnode;
 
+	if(!me.cur_node->links)
+		return 0;
+
 	for(i=0; i<me.cur_node->links; i++) {
 		node=(map_node *)me.cur_node->r_node[i].r_node;
 
@@ -231,11 +234,12 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 							(map_node *) e_rnode->quadg.gnode[_EL(level+1)]);
 					if(rnode_pos != -1)
 						rnode_del(&me.bnode_map[level][bm], rnode_pos);
+					
+					if(me.bnode_map[level][bm].links)
+						me.bnode_map[level]=map_bnode_del(me.bnode_map[level], 
+								&me.bmap_nodes[level], 
+								&me.bnode_map[level][bm]);
 				}
-				if(!me.bnode_map[level][bm].links)
-					me.bnode_map[level]=map_bnode_del(me.bnode_map[level], 
-							&me.bmap_nodes[level], 
-							&me.bnode_map[level][bm]);
 			   
 				/* Delete the entries from the routing table */
 				if(level == 1)
@@ -245,7 +249,12 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 			}
 		
 			rnode_del(root_node, i);
-			
+
+			if(!root_node->links) {
+				/* We are alone in the dark. Sigh. */
+				qspn_time_reset(level, level, GET_LEVELS(my_family));
+			}
+
 			/* Now we delete it from the qspn_buffer */
 			qb=qspn_b[level];
 			list_for(qb)
@@ -260,15 +269,20 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 		 * from the ext_rnode_cache
 		 */
 		if(external_node) {
-			level=0;
-			qspn_set_map_vars(level, 0, &root_node, &root_node_pos, 0);
-
 			/* external rnode cache update */
 			erc=erc_find(me.cur_erc, e_rnode);
-			e_rnode_del(erc, &me.cur_erc_counter);
+			if(erc)
+				e_rnode_del(erc, &me.cur_erc_counter);
 
-			rnode_del(root_node, i);
+			rnode_del(me.cur_node, i);
 		}
+
+		/* If the rnode we deleted from the root_node was swapped with
+		 * the last rnodes, we have to inspect again the same
+		 * root_node->r_node[ `i' ] rnode, because now it is another 
+		 * rnode */
+		if(i != (me.cur_node->links+1) - 1)
+			i--;
 	}
 	return 0;
 }
@@ -381,6 +395,7 @@ void radar_update_map(void)
 			   } else {
 				   /* Ehi, we are a bnode */
 				   root_node->flags|=MAP_BNODE;
+				   me.cur_node->flags|=MAP_BNODE;
 
 				   /* Skip the levels where the ext_rnode belongs
 				    * to our same gids */
@@ -448,12 +463,10 @@ void radar_update_map(void)
 					   rnn.r_node=(u_int *)root_node;
 					   rnode_add(node, &rnn);
 
-					   node->flags|=MAP_RNODE;
-					   if(level) {
-						   /* It is a boarder node */
+					   /* It is a boarder node */
+					   if(level)
 						   node->flags|=MAP_BNODE | MAP_GNODE;
-						   root_node->flags|=MAP_BNODE;
-					   }
+					   node->flags|=MAP_RNODE;
 
 					   /* 
 					    * Fill the rnode to be added in the
@@ -509,7 +522,7 @@ void radar_update_map(void)
 			   
 			   /* Bnode map stuff */
 			   if(external_node && level) {
-				   for(i=1; i < level; i++)
+				   for(i=0; i < level; i++)
 					   radar_update_bmap(rq, i, level-1);
 
 				   radar_update_bmap(rq, i, level);
@@ -524,7 +537,8 @@ void radar_update_map(void)
 	radar_remove_old_rnodes(rnode_deleted);
 
 	/* <<keep your room tidy... order, ORDER>> */
-	if(rnode_added[0] || rnode_deleted[0]) {
+	if(is_bufzero((char *)rnode_added, sizeof(int)*MAX_LEVELS) || 
+			is_bufzero((char *)rnode_deleted, sizeof(int)*MAX_LEVELS)) {
 		rnode_rtt_order(me.cur_node);
 		for(i=1; i<me.cur_quadg.levels; i++)
 			if(rnode_added[i] || rnode_deleted[i])
@@ -532,7 +546,7 @@ void radar_update_map(void)
 	}
 
 	/* Give a refresh to the kernel */
-	if(rnode_added[0])
+	if(is_bufzero((char *)rnode_added, sizeof(int)*MAX_LEVELS))
 		rt_rnodes_update(1);
 }
 
@@ -566,11 +580,15 @@ add_radar_q(PACKET pkt)
 			rnode_add(rnode, &rnn);
 		} else
 			rnode=rq->node;
-	} else
-		ret=iptomap((int)me.int_map, pkt.from, me.cur_quadg.ipstart[1],
-				(u_int *)&rnode);
+	} 
 	
 	iptoquadg(pkt.from, me.ext_map, &quadg, QUADG_GID|QUADG_GNODE|QUADG_IPSTART);
+
+	if(!(me.cur_node->flags & MAP_HNODE)) {
+		ret=iptomap((int)me.int_map, pkt.from, me.cur_quadg.ipstart[1],
+				(u_int *)&rnode);
+		ret=quadg_gids_cmp(me.cur_quadg, quadg, 1);
+	}
 
 	if(!ret)
 		rq=find_node_radar_q(rnode);
@@ -666,7 +684,7 @@ int radar_recv_reply(PACKET pkt)
 	
 	if(pkt.hdr.id != my_echo_id) {
 		debug(DBG_NORMAL,"I received an ECHO_REPLY with id: 0x%x, but "
-				"I've never sent an ECHO_ME with that id!",
+				"I've never sent that request",
 				pkt.hdr.id);
 		return -1;
 	}

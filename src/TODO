@@ -1,9 +1,11 @@
 - [HIGH PRIORITY] -
 
-- # The ext_node (gid 13, lvl 3) is dead
-  # krnl_update_node: to 104.0.0.0/5 via 104.0.0.0
-  * RTNETLINK answers (-3): No such process
-  * WARNING: Cannot delete the route entry for the 
+-  Il qspn per i gnode ancora non funziona alla perfezione, fa i capricci.
+   A - B - C, solamente il gnode A setta la rotta giusta, mentre C resta muto,
+   non gli arriva il qspn_close.
+
+- Scrivere il codice per netsukuku ristretto.
+
 
 - [MEDIUM PRIORITY] -
 
@@ -29,8 +31,33 @@ tracer.c:  store_tracer_pkt_connect
 broadcast: Tenere in considerazione il gttl.
 hook.c:    anti spoof hook
 hook.c:    settare l'essid delle wlan0
+gmap.c/map.c: non usare piu' le libgmp. Per le somme usiamo sum_128.c, e per
+divisioni e le moltiplicazioni, visto che stiamo lavorando su potenze di due,
+usiamo gli shift.
 
 - [ CURRENT TESTS ] -
+12%, krnl_rule.c
+48%, qspn.c
+49%, tracer.c
+79%, radar.c
+82%, route.c
+85%, bmap.c
+90%, krnl_route.c
+90%, pkts.c
+93%, gmap.c
+93%, netsukuku.c
+94%, map.c
+95%, inet.c
 97%, hook.c
-60%, tracer.c
-40%, qspn.c
+99%, daemon.c
+99%, if.c
+99%, request.c
+100%, accept.c
+100%, ipv6-gmp.c
+100%, libnetlink.c
+100%, ll_map.c
+100%, llist.c
+100%, log.c
+100%, misc.c
+100%, qspn-empiric.c
+100%, xmalloc.c

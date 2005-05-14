@@ -36,8 +36,6 @@ inline int get_groups(int family, int lvl)
 { 				
 	if( lvl == GET_LEVELS(family))
 		return 1;
-	else if( lvl == GET_LEVELS(family) - 1 )
-		return LAST_GROUPS(family);
 	else
 		return MAXGROUPNODE;
 }
@@ -349,7 +347,8 @@ ext_rnode_cache *e_rnode_init(int *counter)
 {
 	ext_rnode_cache *erc;
 
-	list_init(erc, 0);
+	/*list_init(erc, 0);*/
+	erc=0;
 	if(counter)
 		*counter=0;
 	return erc;
@@ -358,9 +357,11 @@ ext_rnode_cache *e_rnode_init(int *counter)
 /* e_rnode_free: destroy an ext_rnode_cache list */
 void e_rnode_free(ext_rnode_cache *erc, int *counter)
 {
-	list_destroy(erc);
 	if(counter)
 		counter=0;
+	if(!erc)
+		return;
+	list_destroy(erc);
 }
 
 /* 
@@ -370,6 +371,9 @@ void e_rnode_free(ext_rnode_cache *erc, int *counter)
 ext_rnode_cache *erc_find(ext_rnode_cache *erc, ext_rnode *e_rnode)
 {
 	ext_rnode_cache *p=erc;
+	if(!erc)
+		return 0;
+
 	list_for(p) {
 		if(!p->e)
 			continue;
@@ -381,10 +385,13 @@ ext_rnode_cache *erc_find(ext_rnode_cache *erc, ext_rnode *e_rnode)
 
 void e_rnode_del(ext_rnode_cache *erc, int *counter)
 {
-	if(*counter)
+	if((*counter) <= 0 || !erc)
 		return;
-	if(erc->e)
+
+	if(erc->e) {
 		xfree(erc->e);
+		erc->e=0;
+	}
 	
 	list_del(erc);
 	(*counter)--;
@@ -403,7 +410,7 @@ void e_rnode_add(ext_rnode_cache **erc, ext_rnode *e_rnode, int rnode_pos, int *
 	p->e=e_rnode;
 	p->rnode_pos=rnode_pos;
 	
-	if(!(*counter) || !*erc)
+	if(!(*counter) || !erc)
 		list_init(*erc, p);
 	else
 		list_add(*erc, p);
@@ -418,6 +425,10 @@ void e_rnode_add(ext_rnode_cache **erc, ext_rnode *e_rnode, int rnode_pos, int *
 int e_rnode_find(ext_rnode_cache *erc, quadro_group *qg)
 {
 	ext_rnode_cache *p=erc;
+
+	if(!erc)
+		return -1;
+
 	list_for(p) {
 		if(!p->e)
 			continue;

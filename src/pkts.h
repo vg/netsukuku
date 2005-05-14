@@ -41,7 +41,9 @@
 /* Broacast ptk's flags */
 #define BCAST_TRACER_PKT	1	/*When a bcast is marked with this, it 
 					  acts as a tracer_pkt ;)*/
-#define QSPN_NO_OPEN		(1<<1)	/*The qspn_close pkts with this flag set
+#define BCAST_TRACER_BBLOCK	(1<<1)  /*When set, the tracer pkt carries also
+					  bnodes blocks.*/
+#define QSPN_NO_OPEN		(1<<2)	/*The qspn_close pkts with this flag set
 					  will not propagate the qspn_open*/
 
 typedef struct
@@ -71,11 +73,11 @@ typedef struct
 /*Broadcast packet*/
 typedef struct
 {
-	u_short		g_node;		/*The gnode the brdcast_pkt is restricted to*/
+	u_char		g_node;		/*The gnode the brdcast_pkt is restricted to*/
 	u_char 		level;		/*The level of the gnode*/
-	u_short 	gttl;		/*Gnode ttl: How many gnodes the packet
+	u_char	 	gttl;		/*Gnode ttl: How many gnodes the packet
 					  can traverse*/
-	u_short 	sub_id;		/*The sub_id is the node who sent the pkt,
+	u_char	 	sub_id;		/*The sub_id is the node who sent the pkt,
 					  but is only used by the qspn_open*/
 	size_t 		sz;		/*Sizeof(the pkt)*/
 	char 		flags;		/*Various flags*/

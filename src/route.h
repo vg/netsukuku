@@ -56,7 +56,7 @@ struct set_route_hdr
 struct set_route_pkt
 {
 	char flags;
-	u_short node;
+	u_char node;
 };
 #define SET_ROUTE_BLOCK_SZ(hops) (sizeof(struct set_route_hdr)+((sizeof(struct set_route_pkt)*(hops))))
 

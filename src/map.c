@@ -789,7 +789,8 @@ map_node *load_map(char *file, map_node **new_root)
 	map=unpack_map(pack, pack_sz, 0, new_root, MAXGROUPNODE, MAXRNODEBLOCK);
 
 finish:
-	xfree(pack);
+	if(pack)
+		xfree(pack);
 	fclose(fd);
 	if(!map)
 		error("Malformed map file. Aborting load_map().");

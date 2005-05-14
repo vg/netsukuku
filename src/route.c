@@ -74,8 +74,7 @@ void *get_gw_gnode(map_node *int_map, map_gnode **ext_map,
 {
 	map_gnode *gnode;
 	map_gnode *gnode_gw;
-	map_node  *node;
-	void	  *void_gw;
+	map_node  *node, *node_gw;
 	int i, pos, bpos;
 
 	if(!gnode_level || gw_level > gnode_level)
@@ -103,33 +102,42 @@ void *get_gw_gnode(map_node *int_map, map_gnode **ext_map,
 	if(node->flags & MAP_ME) 
 		return (void *)node;
 
+	debug(DBG_INSANE, "get_gw: find_gnode=%x", find_gnode);
+
 	for(i=gnode_level; i>=gw_level; i--) {
 
 		if(node->flags & MAP_RNODE) {
-			void_gw=(void *)node;
+			node_gw=(void *)node;
+			debug(DBG_INSANE, "get_gw: l=%d, node & MAP_RNODE. node_gw=node=%x",i, node);
 		} else if (node->flags & MAP_ME) {
-			void_gw=(void *)find_gnode;
+			node_gw=(void *)find_gnode;
+			debug(DBG_INSANE, "get_gw: l=%d, node & MAP_ME. find_gnode: %x", i, find_gnode);
 		} else {
 			if(!node->links)
 				return 0;
 
 			pos=rand_range(0, node->links-1);
 			if(!i) {
-				void_gw=(void *)node->r_node[pos].r_node;
+				node_gw=(void *)node->r_node[pos].r_node;
 			} else {
 				gnode_gw=(map_gnode *)gnode->g.r_node[pos].r_node;
-				void_gw=(void *)gnode_gw;
+				node_gw=(void *)gnode_gw;
 			}
+			if(node_gw->flags & MAP_RNODE)
+				find_gnode=(map_gnode *)node_gw;
+			debug(DBG_INSANE, "get_gw: l=%d, node_gw=rnode[pos].r_node=%x, find_gnode=%x", i,node_gw, find_gnode);
 		}
 
 		if(i == gw_level)
-			return void_gw;
+			return (void *)node_gw;
 		else if(!i)
 			return 0;
 
-		bpos=map_find_bnode_rnode(bnode_map[i-1], bmap_nodes[i-1], void_gw);
-		if(bpos == -1)
+		bpos=map_find_bnode_rnode(bnode_map[i-1], bmap_nodes[i-1], (void *)node_gw);
+		if(bpos == -1) {
+			debug(DBG_INSANE, "get_gw: l=%d, node_gw=%x not found in bmap lvl %d", i, node_gw, i-1);
 			return 0;
+		}
 
 		if(!(i-1))
 			node=node_from_pos(bnode_map[i-1][bpos].bnode_ptr, int_map);
@@ -138,6 +146,7 @@ void *get_gw_gnode(map_node *int_map, map_gnode **ext_map,
 					ext_map[_EL(i-1)]);
 			node=&gnode->g;
 		}
+		debug(DBG_INSANE, "get_gw: bmap found = %x", node);
 	}
 	return 0;
 }
@@ -169,7 +178,7 @@ void krnl_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_qua
 	struct nexthop *nh=0;
 	inet_prefix to;
 	int i, node_pos=0, route_scope=0;
-#ifdef XXX_DEBUG		
+#ifdef DEBUG		
 	char *to_ip, *gw_ip;
 #endif
 
@@ -195,7 +204,7 @@ void krnl_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_qua
 		node_pos=pos_from_node(node, me.int_map);
 		maptoip((u_int)me.int_map, (u_int)node, me.cur_quadg.ipstart[1], &to);
 	}
-#ifdef XXX_DEBUG		
+#ifdef DEBUG		
 	to_ip=xstrdup(inet_to_str(to));
 #endif
 	inet_htonl(&to);
@@ -228,7 +237,7 @@ void krnl_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_qua
 		} else 
 			maptoip((u_int)me.int_map, (u_int)gw_node, 
 					me.cur_quadg.ipstart[1], &nh[0].gw);
-#ifdef XXX_DEBUG		
+#ifdef DEBUG		
 		gw_ip=xstrdup(inet_to_str(nh[0].gw));
 #endif
 		inet_htonl(&nh[0].gw);
@@ -242,9 +251,9 @@ void krnl_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_qua
 			for(i=0; i<node->links; i++) {
 				maptoip((u_int)me.int_map, (u_int)node->r_node[i].r_node,
 						me.cur_quadg.ipstart[1], &nh[i].gw);
-#ifdef XXX_DEBUG		
+#ifdef DEBUG		
 				if(!i)
-				gw_ip=xstrdup(inet_to_str(nh[0].gw));
+					gw_ip=xstrdup(inet_to_str(nh[0].gw));
 #endif
 				inet_htonl(&nh[i].gw);
 			}
@@ -259,7 +268,7 @@ void krnl_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_qua
 		gw_node=get_gw_gnode(me.int_map, me.ext_map, me.bnode_map,
 					me.bmap_nodes, gnode, level, 0);
 		if(!gw_node) {
-#ifdef XXX_DEBUG
+#ifdef DEBUG
 			debug(DBG_NORMAL, "Cannot get the gateway for "
 					"the gnode: %d of level: %d, ip:"
 					"%s", node_pos, level, to_ip);
@@ -274,7 +283,7 @@ void krnl_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_qua
 			maptoip((u_int)me.int_map, (u_int)gw_node, 
 					me.cur_quadg.ipstart[1], &nh[0].gw);
 		}
-#ifdef XXX_DEBUG
+#ifdef DEBUG
 		gw_ip=xstrdup(inet_to_str(nh[0].gw));
 #endif
 		inet_htonl(&nh[0].gw);
@@ -283,7 +292,7 @@ void krnl_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_qua
 	}
 
 do_update:
-#ifdef XXX_DEBUG
+#ifdef DEBUG
 	if(node->flags & MAP_VOID)
 		gw_ip=to_ip;
 	debug(DBG_INSANE, "krnl_update_node: to %s/%d via %s", to_ip, to.bits ,gw_ip);
@@ -296,10 +305,12 @@ do_update:
 
 	if(node->flags & MAP_VOID) {
 		/*Ok, let's delete it*/
+#if 0
 		if(route_del(RTN_UNICAST, 0, to, 0, me.cur_dev, 0))
 			error("WARNING: Cannot delete the route entry for the ",
 					"%cnode %d lvl %d!", !level ? ' ' : 'g',
 					node_pos, level);
+#endif
 	} else if(route_replace(0, route_scope, to, nh, me.cur_dev, 0))
 			error("WARNING: Cannot update the route entry for the "
 					"%cnode %d lvl %d",!level ? ' ' : 'g',

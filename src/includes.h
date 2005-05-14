@@ -57,7 +57,6 @@
 
 #define _PACKED_ __attribute__ ((__packed__))
 
-#define XXX_DEBUG
-#ifdef XXX_DEBUG
+#ifdef DEBUG
 #warning the DEBUG code is being built!
 #endif

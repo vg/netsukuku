@@ -55,11 +55,32 @@ void qspn_set_map_vars(u_char level, map_node **map, map_node **root_node,
 	}
 }
 
-void qspn_init(u_char levels)
+/* 
+ * qspn_time_reset: Reset the qspn time of all the levels that go from
+ * `start_level' to `end_level'. The total number of effective levels is
+ * specified in `levels'.
+ */
+void qspn_time_reset(int start_level, int end_level, int levels)
 {
 	struct timeval cur_t;
 	int i;
+
+	if(end_level <= start_level)
+		end_level = start_level+1;
+
+	/* 
+	 * We fake the cur_qspn_time, so qspn_round_left thinks that a
+	 * qspn_round was already sent 
+	 */
+	gettimeofday(&cur_t, 0);
+	cur_t.tv_sec-=QSPN_WAIT_ROUND_LVL(levels)*2;
 	
+	for(i=start_level; i < end_level; i++)
+		memcpy(&me.cur_qspn_time[i], &cur_t, sizeof(struct timeval));
+}
+
+void qspn_init(u_char levels)
+{
 	qspn_b=xmalloc(sizeof(struct qspn_buffer *)*levels);
 	memset(qspn_b, 0, sizeof(struct qspn_buffer *)*levels);
 	
@@ -71,12 +92,7 @@ void qspn_init(u_char levels)
 	
 	me.cur_qspn_time=xmalloc(sizeof(struct timeval)*levels);
 
-	/* We fake the cur_qspn_time, so qspn_round_left thinks that a
-	 * qspn_round was already sent */
-	gettimeofday(&cur_t, 0);
-	cur_t.tv_sec-=QSPN_WAIT_ROUND_LVL(levels)*2;
-	for(i=0; i < levels; i++)
-		memcpy(&me.cur_qspn_time[i], &cur_t, sizeof(struct timeval));
+	qspn_time_reset(0, levels, levels);
 }
 
 void qspn_free(void)
@@ -107,11 +123,11 @@ void qspn_b_clean(u_char level)
  * qspn_b_add: It adds a new element in the qspn_b 'qb' buffer and returns its
  * position. 
  */
-int qspn_b_add(struct qspn_buffer *qb, u_short replier, u_short flags)
+int qspn_b_add(struct qspn_buffer *qb, u_char replier, u_short flags)
 {
 	qb->replies++;
-	qb->replier=xrealloc(qb->replier, sizeof(u_short)*qb->replies);
-	qb->flags=xrealloc(qb->flags, sizeof(u_short)*qb->replies);
+	qb->replier=xrealloc(qb->replier, sizeof(u_char)*qb->replies);
+	qb->flags=xrealloc(qb->flags, sizeof(u_char)*qb->replies);
 	
 	qb->replier[qb->replies-1]=replier;
 	qb->flags[qb->replies-1]=flags;
@@ -489,8 +505,8 @@ int qspn_close(PACKET rpkt)
 	if(hops > 1 && (root_node->flags & QSPN_STARTER)) {
 		ntop=inet_to_str(rpkt.from);
 		debug(DBG_NOISE, "qspn_close(): Dropped qspn_close from %s: we"
-				" are a qspn_starter and the pkts has hops > 1",
-				ntop);
+				" are a qspn_starter and the pkts has (hops=%d) > 1",
+				ntop, hops);
 		return 0;
 	}
 	

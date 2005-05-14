@@ -27,7 +27,7 @@ typedef struct
 
 typedef struct
 {
-	__u16 node;
+	__u8 node;
 	struct timeval rtt;
 }_PACKED_ tracer_chunk;
 #define TRACERPKT_SZ(hops) (sizeof(tracer_hdr) + (sizeof( tracer_chunk) * (hops)))

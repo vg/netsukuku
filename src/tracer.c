@@ -199,12 +199,20 @@ bnode_hdr *tracer_build_bentry(void *void_map, void *void_node, bnode_chunk **bn
 	for(i=0; i < me.bnode_map[level][bm].links; i++) {
 		gn=(map_gnode *)me.bnode_map[level][bm].r_node[i].r_node;
 		lvl=extmap_find_level(me.ext_map, gn, me.cur_quadg.levels);
-		
+
+		if(lvl != level+1)
+			continue;
 		bchunk[i].gnode=pos_from_gnode(gn, me.ext_map[_EL(lvl)]);
 		bchunk[i].level=lvl;
 		memcpy(&bchunk[i].rtt, &me.bnode_map[level][bm].r_node[i].rtt, 
 				sizeof(struct timeval));
 		bhdr->links++;
+	}
+
+	if(!bhdr->links) {
+		xfree(bhdr);
+		xfree(bchunk);
+		goto error;
 	}
 
 	*bnodechunk=bchunk;
@@ -292,8 +300,9 @@ int tracer_unpack_pkt(PACKET rpkt, brdcast_hdr **new_bcast_hdr,
 	if(rpkt.hdr.sz > tracer_sz) {
 		bblock_sz=rpkt.hdr.sz-tracer_sz;
 		bhdr=(bnode_hdr *)rpkt.msg+tracer_sz;
-		if(!bhdr->links){
-		debug(DBG_INSANE, "%s:%d", ERROR_POS);
+		if(!trcr_hdr->bblocks || !(bcast_hdr->flags & BCAST_TRACER_BBLOCK)){
+			debug(DBG_INSANE, "%s:%d links: %d flags: %d", ERROR_POS, 
+					trcr_hdr->bblocks, bcast_hdr->flags);
 			return -1;
 		}
 	}
@@ -358,7 +367,7 @@ u_short tracer_split_bblock(void *bnode_block_start, size_t bblock_sz, bnode_hdr
 	if(!bblock_sz)
 		return -1;
 	
-	for(e=0; e < bblock_sz; ) {
+	for(e=0, x=0; e < bblock_sz; ) {
 		bblock_hdr=bnode_block_start+e;
 		bblock=(void *)bblock_hdr+sizeof(bnode_hdr);
 
@@ -370,10 +379,10 @@ u_short tracer_split_bblock(void *bnode_block_start, size_t bblock_sz, bnode_hdr
 			goto skip;
 
 		/*Are we going far away the end of the buffer?*/
-		if(bblock_sz-e < sizeof(bnode_hdr)+(sizeof(bnode_chunk)*bblock_hdr->links))
+		if(bblock_sz-e < BNODEBLOCK_SZ(bblock_hdr->links))
 			break;
 		
-		bblist_hdr=xrealloc(bblist, sizeof(bnode_hdr *) * (x+1));
+		bblist_hdr=xrealloc(bblist_hdr, sizeof(bnode_hdr *) * (x+1));
 		bblist=xrealloc(bblist, sizeof(bnode_chunk *) * (x+1));
 
 		bblist_hdr[x]=bblock_hdr;
@@ -410,7 +419,8 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 	map_node  *int_map, *from, *node, *root_node;
 	void *void_node;
 	map_gnode **ext_map, *gfrom, *gnode;
-	map_rnode rn;
+	map_rnode rn, rnn;
+			
 	int i, e, diff, bm, x, f, from_rnode_pos, skip_rfrom;
 	u_int hops;
 	u_short bb;
@@ -450,11 +460,14 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 		bb=tracer_split_bblock(bnode_block_start, bblock_sz, &bblist_hdr,
 				&bblist, &found_block_sz);
 		*bblocks_found = bb;
-		if(!bb || bb!=trcr_hdr->bblocks) {
-			debug(DBG_NORMAL, "tracer_store_pkt(): malformed bnode block.");
+		if(!bb) {
+			debug(DBG_NORMAL, "%s:%d: malformed bnode block", ERROR_POS);
 			*bblock_found_sz = 0;
 			*bblocks_found_block = 0;
 		} else {
+			if(bb!=trcr_hdr->bblocks) 
+				debug(DBG_NOISE, "%s:%d: Skipping some bblocks of the "
+						"tracer_pkt", ERROR_POS);
 			x=0;
 			*bblock_found_sz=found_block_sz;
 			*bblocks_found_block=found_block=xmalloc(found_block_sz);
@@ -489,7 +502,7 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 				rnode_destroy(&me.bnode_map[level][bm]);
 
 				/* We brought kaos, let's give peace */
-				for(e=0; e<bblist_hdr[i]->links; e++) {
+				for(e=0; e < bblist_hdr[i]->links; e++) {
 					memset(&rn, 0, sizeof(map_rnode));
 					gnode=gnode_from_pos(bblist[i][e]->gnode, 
 							ext_map[_EL(bblist[i][e]->level)]);
@@ -517,8 +530,15 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 	timeradd(&root_node->r_node[from_rnode_pos].trtt, &trtt, &trtt);
 	
 	/* We skip the node at hops-1 which it is the `from' node. The radar() 
-	 * takes care of him. */
+	 * takes care of him, */
 	skip_rfrom = !level ? 1 : 0;
+	if(level && me.cur_node->flags & MAP_BNODE) {
+		/* but if we are a bnode which boards with the `from' [g]node, then we
+		 * can skip it. */
+		i=map_find_bnode_rnode(me.bnode_map[level-1], me.bmap_nodes[level-1], from);
+		if(i != -1)
+			skip_rfrom = 1;
+	}
 	for(i=(hops-skip_rfrom)-1; i >= 0; i--) {
 		timeradd(&tracer[i].rtt, &trtt, &trtt);
 
@@ -542,16 +562,17 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 			node->flags|=MAP_UPDATE;
 			
 			if(level < GET_LEVELS(my_family)) {
-				me.cur_quadg.gnode[_EL(level+1)]->seeds++;
-				if( me.cur_quadg.gnode[_EL(level+1)]->seeds == MAXGROUPNODE )
+				if(me.cur_quadg.gnode[_EL(level+1)]->seeds == MAXGROUPNODE-1)
 					me.cur_quadg.gnode[_EL(level+1)]->flags|=GMAP_FULL;
+				else
+					me.cur_quadg.gnode[_EL(level+1)]->seeds++;
 			}
 			debug(DBG_INSANE, "TRCR_STORE: node %d added", tracer[i].node);
 		}
 		
+		/* update the rtt of the node */
 		for(e=0,f=0; e < node->links; e++) {
 			if(node->r_node[e].r_node == (u_int *)from) {
-				/* update the rtt of the node */
 				diff=abs(MILLISEC(node->r_node[e].trtt) - MILLISEC(trtt));
 				if(diff >= RTT_DELTA) {
 					memcpy(&node->r_node[e].trtt, &trtt, sizeof(struct timeval));
@@ -563,9 +584,8 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 		}
 		if(!f) { 
 			/*If the `node' doesn't have `from' in his r_nodes... let's add it*/
-			map_rnode rnn;
-			
 			memset(&rnn, '\0', sizeof(map_rnode));
+
 			rnn.r_node=(u_int *)from;
 			memcpy(&rnn.trtt, &trtt, sizeof(struct timeval));
 			
@@ -656,16 +676,17 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 	/* Time to append our entry in the tracer_pkt */
 	new_tracer=tracer_add_entry(void_map, void_node, tracer, &hops, 
 			gnode_level); 
-	if(!hops)
-		fatal("hops 0 in tracer_pkt_build! WTF!?!?!?");
 
 	/* If we are a bnode we have to append the bnode_block too. */
-	if(me.cur_node->flags & MAP_BNODE)
+	if(me.cur_node->flags & MAP_BNODE) {
 		if((new_bhdr=tracer_build_bentry(void_map, void_node, &new_bchunk,
 						gnode_level))) {
 			trcr_hdr->bblocks=new_bhdr->links;
 			new_bblock_sz=BNODEBLOCK_SZ(new_bhdr->links);
+
+			bcast_hdr->flags|=BCAST_TRACER_BBLOCK;
 		}
+	}
 
 	/*
 	 * If in the old tracer_pkt is present a bblock, we append it after the 
@@ -679,6 +700,8 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 		memcpy(p, old_bblock, old_bblock_sz);
 		new_bhdr->links+=old_bchunks;
 		trcr_hdr->bblocks=new_bhdr->links;
+		
+		bcast_hdr->flags|=BCAST_TRACER_BBLOCK;
 	}
 
 	/* 

@@ -41,9 +41,9 @@ typedef map_node map_bnode;
 #define MAXGROUPBNODE		MAXGROUPNODE	/*the maximum number of bnodes in 
 						  a gnode is equal to the maximum 
 						  number of nodes*/
-#define MAXBNODE_LINKS		0x100		/*The maximum number of gnodes a
+#define MAXBNODE_LINKS		(MAXGROUPNODE*2)/*The maximum number of gnodes a
 						  bnode is linked to*/
-#define MAXBNODE_RNODEBLOCK	MAXBNODE_LINKS*MAXGROUPBNODE*sizeof(map_rnode)
+#define MAXBNODE_RNODEBLOCK	(MAXBNODE_LINKS*MAXGROUPBNODE*sizeof(map_rnode))
 
 /* 
  * These defines make the life easier, so instead of writing int_map_hdr I
@@ -66,17 +66,20 @@ typedef map_node map_bnode;
  */
 typedef struct
 {
-	u_short bnode;		/*The bnode this bnode_block belongs to*/
+	u_char bnode;		/*The bnode this bnode_block belongs to*/
 	u_short links;		/*The number of linked gnode*/
 }_PACKED_ bnode_hdr;
 
 typedef struct
 {
-	u_short gnode;
+	/* The `bnode_hdr.bnode' boards with the `gnode' of `level'th level with
+	 * a round trip time which is stored in `rtt'. */
+
+	u_char gnode;	     
 	u_char level;
 	struct timeval rtt;
 }_PACKED_ bnode_chunk;
-#define BNODEBLOCK_SZ(links) (sizeof(bnode_hdr)+sizeof(bnode_chunk)*(links))
+#define BNODEBLOCK_SZ(links) (sizeof(bnode_hdr)+(sizeof(bnode_chunk)*(links)))
 
 
 /* 

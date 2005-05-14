@@ -54,7 +54,7 @@ int free_the_tmp_cur_node;
  * pkt (see hook.h).
  */
 int get_free_nodes(inet_prefix to, struct timeval to_rtt, struct free_nodes_hdr *fn_hdr, 
-		u_short *nodes, struct timeval *qtime, int *qspn_id)
+		u_char *nodes, struct timeval *qtime, int *qspn_id)
 {
 	PACKET pkt, rpkt;
 	struct timeval cur_t;
@@ -79,13 +79,14 @@ int get_free_nodes(inet_prefix to, struct timeval to_rtt, struct free_nodes_hdr 
 	}
 	
 	memcpy(fn_hdr, rpkt.msg, sizeof(struct free_nodes_hdr));
-	if(fn_hdr->nodes <= 0 || fn_hdr->nodes >= MAXGROUPNODE || 
+	if(fn_hdr->nodes <= 0 || fn_hdr->nodes == (MAXGROUPNODE-1) ||
 			fn_hdr->max_levels > GET_LEVELS(my_family) || !fn_hdr->level
 			|| fn_hdr->level >= fn_hdr->max_levels) {
 		error("Malformed PUT_FREE_NODES request hdr from %s.", ntop);
 		ret=-1;
 		goto finish;
 	}
+	fn_hdr->nodes++;
 	
 	/* Restoring the qspn_id and the qspn_round time */
 	
@@ -109,7 +110,7 @@ int get_free_nodes(inet_prefix to, struct timeval to_rtt, struct free_nodes_hdr 
 
 	
 	buf+=fn_hdr->max_levels * sizeof(struct timeval);
-	memcpy(nodes, buf, fn_hdr->nodes * sizeof(u_short));
+	memcpy(nodes, buf, fn_hdr->nodes * sizeof(u_char));
 
 	debug(DBG_NORMAL, "Received %d free %s", fn_hdr->nodes, 
 			fn_hdr->level == 1 ? "nodes" : "gnodes");
@@ -134,7 +135,7 @@ int put_free_nodes(PACKET rq_pkt)
 		 * This int free_nodes has maximum MAXGROUPNODE elements, so in
 		 * the pkt it will be truncated to free_nodes[fn_hdr.nodes]
 		 * elements */
-		u_short free_nodes[MAXGROUPNODE];
+		u_char free_nodes[MAXGROUPNODE];
 	}fn_pkt;
 
 	PACKET pkt;
@@ -196,7 +197,7 @@ int put_free_nodes(PACKET rq_pkt)
 				e++;
 			}
 	}
-	fn_pkt.fn_hdr.nodes=e;
+	fn_pkt.fn_hdr.nodes=(u_char)e-1;
 	
 	/* We fill the qspn_id and the qspn round time */
 	memcpy(fn_pkt.qspn_id, me.cur_qspn_id, sizeof(int) * fn_pkt.fn_hdr.max_levels);
@@ -210,7 +211,7 @@ int put_free_nodes(PACKET rq_pkt)
 	}
 
 	/* Go pkt, go! Follow your instinct */
-	pkt_sz=FREE_NODES_SZ(fn_pkt.fn_hdr.max_levels, fn_pkt.fn_hdr.nodes);
+	pkt_sz=FREE_NODES_SZ(fn_pkt.fn_hdr.max_levels, (fn_pkt.fn_hdr.nodes+1));
 	pkt_fill_hdr(&pkt.hdr, HOOK_PKT, rq_pkt.hdr.id, PUT_FREE_NODES, pkt_sz);
 	pkt.msg=xmalloc(pkt_sz);
 	memset(pkt.msg, 0, pkt_sz);
@@ -223,8 +224,7 @@ int put_free_nodes(PACKET rq_pkt)
 	memcpy(p, &fn_pkt.qtime, 
 			sizeof(struct timeval)*fn_pkt.fn_hdr.max_levels);
 	p+=sizeof(struct timeval)*me.cur_quadg.levels;
-	memcpy(p, &fn_pkt.free_nodes,
-			sizeof(u_short)*fn_pkt.fn_hdr.nodes);
+	memcpy(p, &fn_pkt.free_nodes, sizeof(u_char)*(fn_pkt.fn_hdr.nodes+1));
 	
 	err=pkt_send(&pkt);
 	
@@ -619,7 +619,7 @@ int netsukuku_hook(void)
 	map_bnode **old_bnode_map;	
 	int i, e=0, imaps=0, ret=0, new_gnode=0, tracer_levels=0, *old_bnodes;
 	int total_hooking_nodes=0;
-	u_short fnodes[MAXGROUPNODE];
+	u_char fnodes[MAXGROUPNODE];
 	const char *ntop;
 
 	/* 	
