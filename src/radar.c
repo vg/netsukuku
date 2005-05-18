@@ -169,7 +169,7 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 	ext_rnode *e_rnode;
 	ext_rnode_cache *erc;
 	struct qspn_buffer *qb;
-	int i, node_pos, bm, rnode_pos, root_node_pos;
+	int i, node_pos, bm, rnode_pos, bnode_rnode_pos, root_node_pos;
 	u_char level, external_node, total_levels, first_level;
 	void *void_map, *void_gnode;
 
@@ -200,14 +200,15 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 			if(!level && !external_node) {
 				void_map=me.int_map;
 				node_pos=pos_from_node(node, me.int_map);
+				rnode_pos=i;
 			} else {
 				void_map=me.ext_map;
 				gnode=e_rnode->quadg.gnode[_EL(level)];
 				void_gnode=(void *)gnode;
 				if(!void_gnode)
 					continue;
-
 				node_pos=pos_from_gnode(gnode, me.ext_map[_EL(level)]); 
+				rnode_pos=g_rnode_find((map_gnode *)root_node, gnode);
 			}
 
 			/*
@@ -230,12 +231,12 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 				bm=map_find_bnode(me.bnode_map[level], me.bmap_nodes[level], 
 						void_map, root_node_pos);
 				if(bm != -1) {
-					rnode_pos=rnode_find(&me.bnode_map[level][bm], 
+					bnode_rnode_pos=rnode_find(&me.bnode_map[level][bm], 
 							(map_node *) e_rnode->quadg.gnode[_EL(level+1)]);
-					if(rnode_pos != -1)
-						rnode_del(&me.bnode_map[level][bm], rnode_pos);
+					if(bnode_rnode_pos != -1)
+						rnode_del(&me.bnode_map[level][bm], bnode_rnode_pos);
 					
-					if(me.bnode_map[level][bm].links)
+					if(!me.bnode_map[level][bm].links)
 						me.bnode_map[level]=map_bnode_del(me.bnode_map[level], 
 								&me.bmap_nodes[level], 
 								&me.bnode_map[level][bm]);
@@ -248,8 +249,7 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 				krnl_update_node(0, 0, &e_rnode->quadg, 0, level);
 			}
 		
-			rnode_del(root_node, i);
-
+			rnode_del(root_node, rnode_pos);
 			if(!root_node->links) {
 				/* We are alone in the dark. Sigh. */
 				qspn_time_reset(level, level, GET_LEVELS(my_family));
@@ -259,8 +259,8 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 			qb=qspn_b[level];
 			list_for(qb)
 				if(qb->rnode == node)
-					list_del(qb);
-			
+					qspn_b[level]=list_del(qspn_b[level], qb);
+
 			rnode_deleted[level]++;
 		}
 		
@@ -272,8 +272,7 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 			/* external rnode cache update */
 			erc=erc_find(me.cur_erc, e_rnode);
 			if(erc)
-				e_rnode_del(erc, &me.cur_erc_counter);
-
+				e_rnode_del(&me.cur_erc, &me.cur_erc_counter, erc);
 			rnode_del(me.cur_node, i);
 		}
 
@@ -338,7 +337,7 @@ void radar_update_map(void)
 	map_node  *node, *root_node;
 	map_rnode rnn, *new_root_rnode;
 	ext_rnode *e_rnode;
-	int i, e, diff;
+	int i, e, diff, updated_rnodes;
 	int rnode_added[MAX_LEVELS], rnode_deleted[MAX_LEVELS], rnode_pos;
 	int level, external_node, total_levels, root_node_pos, node_update;
 	void *void_map;
@@ -367,13 +366,14 @@ void radar_update_map(void)
 		}
 	}
 
+	updated_rnodes=0;
 	rq=radar_q;
 	list_for(rq) {
 	           if(!rq->node)
 			   continue;
 		   if(!(me.cur_node->flags & MAP_HNODE) && (rq->flags & MAP_HNODE))
 			   continue;
-		 
+
 		   /* 
 		    * We need to know if it is a node which is not in the gnode
 		    * where we are (external_rnode).
@@ -532,9 +532,13 @@ void radar_update_map(void)
 				   node->flags|=MAP_UPDATE;
 
 		   } /*for(level=0, ...)*/
+		   
+		   updated_rnodes++;
 	} /*list_for(rq)*/
 
-	radar_remove_old_rnodes(rnode_deleted);
+	/* Burn the deads */
+	if(updated_rnodes < me.cur_node->links)
+		radar_remove_old_rnodes(rnode_deleted);
 
 	/* <<keep your room tidy... order, ORDER>> */
 	if(is_bufzero((char *)rnode_added, sizeof(int)*MAX_LEVELS) || 

@@ -28,7 +28,8 @@ typedef struct
 typedef struct
 {
 	__u8 node;
-	struct timeval rtt;
+	struct timeval rtt;	/*The rtt to reach the `node' of the previous
+				  chunk from the node of the current `one'.*/
 }_PACKED_ tracer_chunk;
 #define TRACERPKT_SZ(hops) (sizeof(tracer_hdr) + (sizeof( tracer_chunk) * (hops)))
 
@@ -39,6 +40,8 @@ int tracer_verify_pkt(tracer_chunk *tracer, u_int hops, map_node *real_from, u_c
 char *tracer_pack_pkt(brdcast_hdr *, tracer_hdr *, tracer_chunk *, bnode_hdr *,
 		bnode_chunk *);
 u_short tracer_split_bblock(void *, size_t, bnode_hdr ***, bnode_chunk ****, size_t *);
+int tracer_get_trtt(map_node *root_node, map_node *from, tracer_hdr *trcr_hdr,
+		tracer_chunk *tracer, struct timeval *trtt);
 int tracer_store_pkt(void *, u_char, tracer_hdr *, tracer_chunk *, void *, 
 		size_t, u_short *,  char **, size_t *);
 int tracer_unpack_pkt(PACKET, brdcast_hdr **, tracer_hdr **, tracer_chunk **, bnode_hdr **, size_t *);
@@ -68,8 +71,9 @@ int tracer_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), int gid,
 int exclude_from(TRACER_PKT_EXCLUDE_VARS);
 int exclude_all_but_notfrom(TRACER_PKT_EXCLUDE_VARS);
 int exclude_from_glevel_and_setreplied(TRACER_PKT_EXCLUDE_VARS);
-int exclude_from_and_glevel_and_closed(TRACER_PKT_EXCLUDE_VARS);
 int exclude_from_and_glevel(TRACER_PKT_EXCLUDE_VARS);
+int exclude_from_and_glevel_and_closed(TRACER_PKT_EXCLUDE_VARS);
+int exclude_from_and_glevel_and_notstarter(TRACER_PKT_EXCLUDE_VARS);
 
 int tracer_pkt_recv(PACKET rpkt);
 int tracer_pkt_start(u_char level);

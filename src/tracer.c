@@ -401,7 +401,34 @@ skip:
 	return x;
 }
 
-/* tracer_store_pkt: This is the main function used to keep the int/ext_map's karma in peace.
+/* 
+ * tracer_get_trtt: It stores in `trtt' the total round trip time needed to
+ * reach the `tracer[0].node' from the `root_node'. `from' is the rnode who
+ * forwarded us the pkt. If it succeeds 0 is returned.
+ */
+int tracer_get_trtt(map_node *root_node, map_node *from, tracer_hdr *trcr_hdr,
+		tracer_chunk *tracer, struct timeval *trtt)
+{
+	int hops, i, from_rnode_pos;
+	
+	hops = trcr_hdr->hops;
+	if(!hops)
+		return -1;
+	
+	memset(trtt, 0, sizeof(struct timeval));	
+	from_rnode_pos = rnode_find(root_node, from);
+	
+	/* Add the rtt of me -> from */
+	timeradd(&root_node->r_node[from_rnode_pos].trtt, trtt, trtt);
+
+	for(i=hops-1; i > 0; i--)
+		timeradd(&tracer[i].rtt, trtt, trtt);
+
+	return 0;
+}
+
+/* 
+ * tracer_store_pkt: This is the main function used to keep the int/ext_map's karma in peace.
  * It updates the `map' with the given `tracer' pkt. The bnode blocks (if any) are
  * unpacked and used to update the data of the boarding gnodes.
  * In `*bblocks_found' it stores the number of bblocks considered and stores in 
@@ -525,10 +552,6 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 	
 	/* * Time to store the qspn routes to reach all the nodes of the tracer pkt * */
 	
-	/* We add in the total rtt the first rtt which is me -> from */
-	memset(&trtt, 0, sizeof(struct timeval));	
-	timeradd(&root_node->r_node[from_rnode_pos].trtt, &trtt, &trtt);
-	
 	/* We skip the node at hops-1 which it is the `from' node. The radar() 
 	 * takes care of him, */
 	skip_rfrom = !level ? 1 : 0;
@@ -539,8 +562,18 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
 		if(i != -1)
 			skip_rfrom = 1;
 	}
+	
+	/* We add in the total rtt the first rtt which is me -> from */
+	memset(&trtt, 0, sizeof(struct timeval));	
+	timeradd(&root_node->r_node[from_rnode_pos].trtt, &trtt, &trtt);
+
+	/* If we are skipping the rfrom remember to add its rtt */
+	if(skip_rfrom)
+		timeradd(&tracer[hops-1].rtt, &trtt, &trtt);
+
 	for(i=(hops-skip_rfrom)-1; i >= 0; i--) {
-		timeradd(&tracer[i].rtt, &trtt, &trtt);
+		if(i)
+			timeradd(&tracer[i].rtt, &trtt, &trtt);
 
 		if(!level) {
 			node=node_from_pos(tracer[i].node, int_map);
@@ -630,7 +663,7 @@ int tracer_store_pkt(void *void_map, u_char level, tracer_hdr *trcr_hdr, tracer_
  */
 int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 		     int gnode_id,	     u_char gnode_level,
-		     brdcast_hdr *bcast_hdr, tracer_hdr *trcr_hdr, tracer_chunk *tracer,  
+		     brdcast_hdr *bcast_hdr, tracer_hdr *trcr_hdr,   tracer_chunk *tracer,  
 		     u_short old_bchunks,    char *old_bblock,       size_t old_bblock_sz,  
 		     PACKET *pkt)
 {
@@ -868,6 +901,15 @@ int exclude_from_and_glevel_and_closed(TRACER_PKT_EXCLUDE_VARS)
 	return 0;
 }
 
+int exclude_from_and_glevel_and_notstarter(TRACER_PKT_EXCLUDE_VARS)
+{
+	if(!(node->flags & QSPN_STARTER) || 
+			exclude_from_and_glevel(TRACER_PKT_EXCLUDE_VARS_NAME))
+		return 1;
+	
+	return 0;
+}
+
 /* 
  * tracer_pkt_recv: It receive a TRACER_PKT or a TRACER_PKT_CONNECT, analyzes 
  * the received pkt, adds the new entry in it and forward the pkt to all 
@@ -882,6 +924,7 @@ int tracer_pkt_recv(PACKET rpkt)
 	bnode_hdr    *bhdr=0;
 	map_node *from, *tracer_starter;
 	map_gnode *gfrom;
+	int(*exclude_function)(TRACER_PKT_EXCLUDE_VARS);
 	int ret_err;
 	u_int hops;
 	size_t bblock_sz=0, old_bblock_sz;
@@ -896,7 +939,8 @@ int tracer_pkt_recv(PACKET rpkt)
 	ret_err=tracer_unpack_pkt(rpkt, &bcast_hdr, &trcr_hdr, &tracer, &bhdr, &bblock_sz);
 	if(ret_err) {
 		ntop=inet_to_str(rpkt.from);
-		debug(DBG_NOISE, "tracer_pkt_recv(): The %s sent an invalid tracer_pkt here.", ntop);
+		debug(DBG_NOISE, "tracer_pkt_recv(): The %s sent an invalid "
+				 "tracer_pkt here.", ntop);
 		return -1;
 	}
 
@@ -954,8 +998,14 @@ int tracer_pkt_recv(PACKET rpkt)
 			 &pkt);					      /*Where the pkt is built*/
 	if(old_bblock)
 		xfree(old_bblock);
+
+	if(bcast_hdr->flags & BCAST_TRACER_STARTERS)
+		exclude_function=exclude_from_and_glevel_and_notstarter;
+	else
+		exclude_function=exclude_from_and_glevel;
+
 	/*... forward the tracer_pkt to our r_nodes*/
-	tracer_pkt_send(exclude_from_and_glevel, gid, orig_lvl, -1, from, pkt);
+	tracer_pkt_send(exclude_function, gid, orig_lvl, -1, from, pkt);
 	return 0;
 }
 
@@ -988,7 +1038,7 @@ int tracer_pkt_start(u_char level)
 			 0,          0,                    0, 		 /*bnode_block*/
 			 &pkt);						 /*Where the pkt is built*/
 	/*Diffuse the packet in all the universe!*/
-	debug(DBG_INSANE, "Tracer_pkt(0x%x) starting.", pkt.hdr.id);
+	debug(DBG_INSANE, "Tracer_pkt 0x%x starting.", pkt.hdr.id);
 	tracer_pkt_send(exclude_from_and_glevel, me.cur_quadg.gid[level], 
 			level+1, -1, from, pkt);
 	tracer_pkt_start_mutex=0;

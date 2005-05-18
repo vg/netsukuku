@@ -355,13 +355,14 @@ ext_rnode_cache *e_rnode_init(int *counter)
 }
 
 /* e_rnode_free: destroy an ext_rnode_cache list */
-void e_rnode_free(ext_rnode_cache *erc, int *counter)
+void e_rnode_free(ext_rnode_cache **erc, int *counter)
 {
 	if(counter)
-		counter=0;
-	if(!erc)
+		*counter=0;
+	if(!*erc)
 		return;
-	list_destroy(erc);
+	list_destroy(*erc);
+	*erc=0;
 }
 
 /* 
@@ -383,7 +384,7 @@ ext_rnode_cache *erc_find(ext_rnode_cache *erc, ext_rnode *e_rnode)
 	return 0;
 }
 
-void e_rnode_del(ext_rnode_cache *erc, int *counter)
+void e_rnode_del(ext_rnode_cache **erc_head, int *counter, ext_rnode_cache *erc)
 {
 	if((*counter) <= 0 || !erc)
 		return;
@@ -393,7 +394,7 @@ void e_rnode_del(ext_rnode_cache *erc, int *counter)
 		erc->e=0;
 	}
 	
-	list_del(erc);
+	*erc_head=list_del(*erc_head, erc);
 	(*counter)--;
 }
 

@@ -174,10 +174,10 @@ void random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 void gnodetoip(quadro_group *quadg, int gnodeid, u_char level, inet_prefix *ip);
 int quadg_gids_cmp(quadro_group a, quadro_group b, int lvl);
 ext_rnode_cache *erc_find(ext_rnode_cache *erc, ext_rnode *e_rnode);
-void e_rnode_del(ext_rnode_cache *erc, int *counter);
+void e_rnode_del(ext_rnode_cache **erc_head, int *counter, ext_rnode_cache *erc);
 void e_rnode_add(ext_rnode_cache **erc, ext_rnode *e_rnode, int rnode_pos, int *counter);
 ext_rnode_cache *e_rnode_init(int *counter);
-void e_rnode_free(ext_rnode_cache *erc, int *counter);
+void e_rnode_free(ext_rnode_cache **erc, int *counter);
 int e_rnode_find(ext_rnode_cache *erc, quadro_group *qg);
 
 map_gnode *init_gmap(int groups);

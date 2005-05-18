@@ -38,8 +38,8 @@ struct current
 
 	int 		*cur_qspn_id;	/*The current qspn_id we are processing. 
 					  It is cur_qspn_id[levels] big*/
-	struct timeval	*cur_qspn_time; /*When the last qspn round was sent (gettimeofday format).
-					  It is cur_qspn_time[levels] big*/
+	struct timeval	*cur_qspn_time; /*When the last qspn round was received/sent 
+					  (gettimeofday format)*/
 
 	char 		 cur_dev[IFNAMSIZ];
 	int		 cur_dev_idx;

@@ -1,8 +1,6 @@
 - [HIGH PRIORITY] -
 
--  Il qspn per i gnode ancora non funziona alla perfezione, fa i capricci.
-   A - B - C, solamente il gnode A setta la rotta giusta, mentre C resta muto,
-   non gli arriva il qspn_close.
+- Testare i boarder node blocks.
 
 - Scrivere il codice per netsukuku ristretto.
 

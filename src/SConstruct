@@ -19,6 +19,7 @@ opts.AddOptions(('config', 'Configuration file', '/etc/netsukuku/netsukuku.conf'
 env = Environment(options = opts, ENV = os.environ, CCFLAGS = ' -Wall ')
 if ("yes" in env['debug']) or ("1" in env['debug']):
 	env.Append(CPPDEFINES={'DEBUG' : '${debug}'}, CCFLAGS = ' -ggdb -Wall ')
+	os.system("echo Cscoping...; cscope -b");
 
 Help("""
 *** Usage
@@ -31,15 +32,16 @@ Help("""
 
 
 ##### Configure
-#conf = Configure(env)
-#if not conf.CheckLib('gmp'):
-#        print 'Did not find libgmp.a or gmp.lib, exiting!'
-#	Exit(1)
-#if not conf.CheckLib('pthread'):
-#        print 'Did not find pthread.a or pthread.lib, exiting!'
-#	Exit(1)
-#env = conf.Finish()
-	   
+if os.system("test -f config.log"):
+	print 'Configuring... '
+	conf = Configure(env)
+	if not conf.CheckLib('gmp'):
+	        print 'Did not find libgmp.a or gmp.lib, exiting!'
+		Exit(1)
+	if not conf.CheckLib('pthread'):
+       		print 'Did not find pthread.a or pthread.lib, exiting!'
+		Exit(1)
+	env = conf.Finish()
 
 ##### Build
 netsukuku_d = env.Program('netsukuku_d', sources_netsukuku, LIBS = libs, CPPPATH = '.')

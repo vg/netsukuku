@@ -90,29 +90,38 @@ do{									\
 
 #define list_free(list)							\
 do {									\
+	memset((list), 0, sizeof(typeof(*(list)))); 			\
 	xfree((list));							\
 } while(0)
 
-#define list_del(list)							\
-do{ 									\
-	l_list *_list=(l_list *)(list); 				\
+
+/* It returns the new head of the linked list */
+#define list_del(head, list)						\
+({									\
+	l_list *_list=(l_list *)(list), *_next=0;			\
+	l_list *_head=(l_list *)(head); 				\
 	if(_list->prev)							\
 		_list->prev->next=_list->next; 				\
-	if(_list->next)							\
-		_list->next->prev=_list->prev; 				\
+	if(_list->next)	{						\
+		_next=_list->next; 					\
+		_next->prev=_list->prev; 				\
+	}								\
         list_free(_list); 						\
-}while(0)
+	if(_head == _list && _next)					\
+		_next;							\
+	else 								\
+		(_next=_head);						\
+	(typeof((list)))_next;						\
+})
 
 #define list_ins(list, new)						\
 do {									\
 	l_list *_l=(l_list *)(list), *_n=(l_list *)(new);		\
 	if(_l->next)							\
 		_l->next->prev=_n;					\
-	if(_l->prev)							\
-		_l->prev->next=_n;					\
 	_n->next=_l->next;						\
-	_n->prev=_l->prev;						\
-	list_del((list));						\
+	_l->next=_n;							\
+	_n->prev=_l;							\
 } while (0)
 	
 #define list_for(i) for(; (i); (i)=(typeof (i))(i)->next)
@@ -137,6 +146,6 @@ do{ 									\
 	_next=_i->next;							\
 	for(; _i; _i=_next) {						\
 		_next=_i->next; 					\
-		list_del(_i);						\
+		list_del(_x, _i);					\
 	}								\
 }while(0)

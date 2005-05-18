@@ -91,9 +91,9 @@ void qspn_b_clean(u_char level);
 int  qspn_b_add(struct qspn_buffer *qb, u_char replier, u_short flags);
 int  qspn_b_find_reply(struct qspn_buffer *qb, int sub_id);
 int  qspn_round_left(u_char level);
-void update_qspn_time(u_char level);
+void update_qspn_time(u_char level, struct timeval *);
 
-void qspn_new_round(u_char level);
+void qspn_new_round(u_char level, int new_qspn_id, struct timeval *new_qspn_time);
 
 int  exclude_from_and_gnode_and_opened(map_node *node, map_node *from, int pos);
 int  qspn_send(u_char level);

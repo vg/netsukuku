@@ -106,15 +106,15 @@ void usage(void)
 {
 	printf("%s\n", VERSION);
 	printf("Usage:\n");
-	printf(" -h	this help\n");
-	printf(" -i	interface\n");
-	printf(" -6	ipv6\n");
 	printf(" -4	ipv4\n");
+	printf(" -6	ipv6\n");
+	printf(" -i	interface\n");
+	printf(" -D	no daemon mode\n\n");
 	printf(" -I	int_map\n");
 	printf(" -E	ext_map\n");
-	printf(" -B	bnode_map\n");
-	printf(" -D	no daemon mode\n");
+	printf(" -B	bnode_map\n\n");
 	printf(" -d     debug (more d, more info\n");
+	printf(" -h	this help\n");
 	printf(" -v	version\n");
 }
 
@@ -236,7 +236,7 @@ void destroy_netsukuku(void)
 	free_maps();
 	maxgroupnode_level_free();
 	close_radar();
-	e_rnode_free(me.cur_erc, &me.cur_erc_counter);
+	e_rnode_free(&me.cur_erc, &me.cur_erc_counter);
 	destroy_accept_tbl();
 }
 

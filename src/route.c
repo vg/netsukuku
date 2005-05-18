@@ -305,11 +305,13 @@ do_update:
 
 	if(node->flags & MAP_VOID) {
 		/*Ok, let's delete it*/
-#if 0
+#ifndef DEBUG
 		if(route_del(RTN_UNICAST, 0, to, 0, me.cur_dev, 0))
 			error("WARNING: Cannot delete the route entry for the ",
 					"%cnode %d lvl %d!", !level ? ' ' : 'g',
 					node_pos, level);
+#else
+#warning ***IL CODICE del route_del E DISATTIVATO***
 #endif
 	} else if(route_replace(0, route_scope, to, nh, me.cur_dev, 0))
 			error("WARNING: Cannot update the route entry for the "

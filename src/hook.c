@@ -204,7 +204,7 @@ int put_free_nodes(PACKET rq_pkt)
 	
 	gettimeofday(&cur_t, 0);
 	for(level=0; level < fn_pkt.fn_hdr.max_levels; level++) {
-		update_qspn_time(level);
+		update_qspn_time(level, 0);
 		timersub(&cur_t, &me.cur_qspn_time[level], &fn_pkt.qtime[level]);
 		debug(DBG_INSANE, "fn_pkt,qtime[%d]: %d, left: %d", level, 
 				MILLISEC(fn_pkt.qtime[level]), qspn_round_left(level));

@@ -43,7 +43,9 @@
 					  acts as a tracer_pkt ;)*/
 #define BCAST_TRACER_BBLOCK	(1<<1)  /*When set, the tracer pkt carries also
 					  bnodes blocks.*/
-#define QSPN_NO_OPEN		(1<<2)	/*The qspn_close pkts with this flag set
+#define BCAST_TRACER_STARTERS	(1<<2)  /*Tracer pkt bound to the qspn starter 
+					  continual group*/
+#define QSPN_NO_OPEN		(1<<3)	/*The qspn_close pkts with this flag set
 					  will not propagate the qspn_open*/
 
 typedef struct

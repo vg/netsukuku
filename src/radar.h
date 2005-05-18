@@ -25,7 +25,7 @@
 
 #ifdef DEBUG		
 #undef MAX_RADAR_WAIT
-#define MAX_RADAR_WAIT          1
+#define MAX_RADAR_WAIT          3
 #endif
 
 int max_radar_wait;
