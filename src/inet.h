@@ -23,11 +23,15 @@
 #define IPV6_ADDR_BROADCAST	{ 0xff020000, 0x0, 0x0, 0x1 } 
 
 /* in network byte order */
-#define LOOPBACK_IP		0x7f000001
-#define LOOPBACK_NET		0x7f000000
-#define LOOPBACK_BCAST		0x7fffffff
+#define LOOPBACK_IP			0x7f000001
+#define LOOPBACK_NET			0x7f000000
+#define LOOPBACK_BCAST			0x7fffffff
 
-#define LOOPBACK_IP_V6		0x1
+#define LOOPBACK_IP_V6			0x1
+
+/* in host byte order */
+#define NTK_PRIVATE_CLASS_MASK_IPV4	0x0a000000
+#define NTK_PRIVATE_CLASS_MASK_IPV6	0xfec00000
 
 typedef struct
 {
@@ -69,6 +73,7 @@ int inet_setip(inet_prefix *ip, u_int *data, int family);
 int inet_setip_bcast(inet_prefix *ip, int family);
 int inet_setip_anyaddr(inet_prefix *ip, int family);
 int inet_setip_anyaddr(inet_prefix *ip, int family);
+int inet_setip_localaddr(inet_prefix *ip, int family);
 int ipv6_addr_type(inet_prefix addr);
 int inet_validate_ip(inet_prefix ip);
 

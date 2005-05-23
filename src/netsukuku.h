@@ -66,6 +66,7 @@ typedef struct
 	char 		bnode_map_file[NAME_MAX];
 	char 		ext_map_file[NAME_MAX];
 
+	char 		restricted;
 	char 		daemon;
 	char 		dbg_lvl;
 

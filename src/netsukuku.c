@@ -50,24 +50,29 @@ int init_load_maps(void)
 	else
 		debug(DBG_NORMAL, "Internal map loaded");
 		
-	if(!(me.ext_map=load_extmap(server_opt.ext_map_file, &me.cur_quadg)))
-		me.ext_map=init_extmap(GET_LEVELS(my_family), 0);
-	else
-		debug(DBG_NORMAL, "External map loaded");
-
 	if(!(me.bnode_map=load_bmap(server_opt.bnode_map_file, me.ext_map, 
 					GET_LEVELS(my_family), &me.bmap_nodes)))
 		bmap_level_init(GET_LEVELS(my_family), &me.bnode_map, &me.bmap_nodes);
 	else
 		debug(DBG_NORMAL, "Bnode map loaded");
 	
+	if(!(me.ext_map=load_extmap(server_opt.ext_map_file, &me.cur_quadg)))
+		me.ext_map=init_extmap(GET_LEVELS(my_family), 0);
+	else
+		debug(DBG_NORMAL, "External map loaded");
+
 	return 0;
 }
 
 int save_maps(void)
 {
+	debug(DBG_NORMAL, "Saving the internal map");
 	save_map(me.int_map, me.cur_node, server_opt.int_map_file);
+	
+	debug(DBG_NORMAL, "Saving the boarder nodes map");
 	save_bmap(me.bnode_map, me.bmap_nodes, me.ext_map, me.cur_quadg, server_opt.bnode_map_file);
+	
+	debug(DBG_NORMAL, "Saving the external map");
 	save_extmap(me.ext_map, MAXGROUPNODE, &me.cur_quadg, server_opt.ext_map_file);
 
 	return 0;
@@ -109,11 +114,12 @@ void usage(void)
 	printf(" -4	ipv4\n");
 	printf(" -6	ipv6\n");
 	printf(" -i	interface\n");
-	printf(" -D	no daemon mode\n\n");
+	printf(" -r	run in restricted mode\n");
+	printf(" -D	no daemon mode\n");
 	printf(" -I	int_map\n");
 	printf(" -E	ext_map\n");
-	printf(" -B	bnode_map\n\n");
-	printf(" -d     debug (more d, more info\n");
+	printf(" -B	bnode_map\n");
+	printf(" -d     debug (more d, more info)\n");
 	printf(" -h	this help\n");
 	printf(" -v	version\n");
 }
@@ -133,12 +139,14 @@ void parse_options(int argc, char **argv)
 			{"ext_map", 1, 0, 'E'},
 			{"bnode_map", 1, 0, 'B'},
 			{"no-daemon", 0, 0, 'D'},
+			{"restricted", 0, 0, 'r'},
 			{"debug", 0, 0, 'd'},
 			{"version", 0, 0, 'v'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long (argc, argv,"i:I:E:B:hvd64Dd", long_options, &option_index);
+		c = getopt_long (argc, argv,"i:I:E:B:hvd64Drd", long_options, 
+				&option_index);
 		if (c == -1)
 			break;
 
@@ -173,10 +181,15 @@ void parse_options(int argc, char **argv)
 			case 'D':
 				server_opt.daemon=0;
 				break;
+			case 'r':
+				server_opt.restricted=1;
+				break;
 			case 'd':
 				server_opt.dbg_lvl++;
 				break;
 			default:
+				usage();
+				exit(0);
 				break;
 		}
 	}
@@ -227,6 +240,8 @@ void init_netsukuku(char **argv)
 	init_accept_tbl(server_opt.max_connections, 
 			server_opt.max_accepts_per_host, 
 			server_opt.max_accepts_per_host_time);
+	if(server_opt.restricted)
+		loginfo("netsukuku_d is in restricted mode.");
 	hook_init();
 }
 
@@ -246,16 +261,15 @@ void sigterm_handler(int sig)
 	fatal("Termination signal caught. Dying, bye, bye");
 }
 
+/*
+ * The main flow shall never be stopped, and the sand of time will be
+ * revealed.
+ */
 int main(int argc, char **argv)
 {
 	pthread_t daemon_tcp_thread, daemon_udp_thread;
 	pthread_attr_t t_attr;
 	
-	/*
-	 * The main flow shall never be stopped, and the sand of time will be
-	 * revealed.
-	 */
-
 #ifdef QSPN_EMPIRIC
 	fatal("Fatal: Netsukuku_d was compiled with the QSPN_EMPIRIC support activated.");
 #endif

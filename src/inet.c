@@ -74,12 +74,10 @@ int inet_setip_bcast(inet_prefix *ip, int family)
 {
 	if(family==AF_INET) {
 		u_int data[4]={0, 0, 0, 0};
-
 		data[0]=INADDR_BROADCAST;
 		inet_setip(ip, data, family);
 	} else if(family==AF_INET6) {
 		u_int data[4]=IPV6_ADDR_BROADCAST;
-
 		inet_setip(ip, data, family);
 	} else 
 		return -1;
@@ -96,8 +94,24 @@ int inet_setip_anyaddr(inet_prefix *ip, int family)
 		inet_setip(ip, data, family);
 	} else if(family==AF_INET6) {
 		struct in6_addr ipv6=IN6ADDR_ANY_INIT;
-		
 		inet_setip(ip, (u_int *)(&ipv6), family);
+	} else 
+		return -1;
+
+	return 0;
+}
+
+/* 
+ * inet_setip_localaddr: Restrict the `ip' to a local private class changing the
+ * first byte of the `ip'. In the ipv4 the CLASS A is used, in ipv6 the site
+ * local class.
+ */
+int inet_setip_localaddr(inet_prefix *ip, int family)
+{
+	if(family==AF_INET) {
+		ip->data[0] = (ip->data[0] & ~0xff000000)|NTK_PRIVATE_CLASS_MASK_IPV4;
+	} else if(family==AF_INET6) {
+		ip->data[0] = (ip->data[0] & ~0xffff0000)|NTK_PRIVATE_CLASS_MASK_IPV6;
 	} else 
 		return -1;
 

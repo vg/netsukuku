@@ -285,7 +285,7 @@ void random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 			 * already used in the ext_map. Generally when we hook
 			 * we have loaded the old ext_map, so skipping the
 			 * taken gnodes we increase the possibility to create a
-			 * brand new and not already used gnode.
+			 * brand new, and not already used, gnode.
 			 */
 			while(!(ext_map[_EL(level)][gid[level]].flags & MAP_VOID))
 				gid[level]=rand_range(0, get_groups(my_family, level)-1);
@@ -795,17 +795,19 @@ int save_extmap(map_gnode **ext_map, int maxgroupnode, quadro_group *quadg, char
 	size_t pack_sz;
 	char *pack;
 	
+	/*Pack!*/
+	pack=pack_extmap(ext_map, maxgroupnode, quadg, &pack_sz);
+	if(!pack || !pack_sz)
+		return 0;
+	
 	if((fd=fopen(file, "w"))==NULL) {
 		error("Cannot save the map in %s: %s", file, strerror(errno));
 		return -1;
 	}
-
-	/*Pack!*/
-	pack=pack_extmap(ext_map, maxgroupnode, quadg, &pack_sz);
 	/*Write!*/
 	fwrite(pack, pack_sz, 1, fd);
-	xfree(pack);
 
+	xfree(pack);
 	fclose(fd);
 	return 0;
 }
@@ -823,7 +825,7 @@ map_gnode **load_extmap(char *file, quadro_group *quadg)
 		return 0;
 	}
 
-	if(fread(&emap_hdr, sizeof(struct ext_map_hdr), 1, fd) < 1)
+	if(!fread(&emap_hdr, sizeof(struct ext_map_hdr), 1, fd))
 		goto error;
 	if(verify_ext_map_hdr(&emap_hdr))
 		goto error;
@@ -831,7 +833,7 @@ map_gnode **load_extmap(char *file, quadro_group *quadg)
 	rewind(fd);
 	pack_sz=EXT_MAP_BLOCK_SZ(emap_hdr.ext_map_sz, emap_hdr.total_rblock_sz);
 	pack=xmalloc(pack_sz);
-	if(fread(pack, pack_sz, 1, fd) < 1)
+	if(!fread(pack, pack_sz, 1, fd))
 		goto error;
 
 	ext_map=unpack_extmap(pack, pack_sz, quadg);

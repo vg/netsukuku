@@ -445,7 +445,7 @@ map_bnode **get_bnode_map(inet_prefix to, u_int **bmap_nodes)
 {
 	PACKET pkt, rpkt;
 	int err;
-	struct bmaps_hdr bmaps_hdr;
+	struct bnode_maps_hdr bmaps_hdr;
 	map_bnode **bnode_map, **ret=0;
 	size_t pack_sz;
 	u_char levels;
@@ -466,7 +466,7 @@ map_bnode **get_bnode_map(inet_prefix to, u_int **bmap_nodes)
 		goto finish;
 	}
 	
-	memcpy(&bmaps_hdr, rpkt.msg, sizeof(struct bmaps_hdr));
+	memcpy(&bmaps_hdr, rpkt.msg, sizeof(struct bnode_maps_hdr));
 	levels=bmaps_hdr.levels;
 	pack_sz=bmaps_hdr.bmaps_block_sz;
 	if(levels > GET_LEVELS(my_family) || pack_sz < sizeof(struct bnode_map_hdr)) {
@@ -476,7 +476,7 @@ map_bnode **get_bnode_map(inet_prefix to, u_int **bmap_nodes)
 	}
 
 	/* Extracting the map... */
-	pack=rpkt.msg+sizeof(struct bmaps_hdr);
+	pack=rpkt.msg+sizeof(struct bnode_maps_hdr);
 	ret=bnode_map=unpack_all_bmaps(pack, pack_sz, levels, me.ext_map, bmap_nodes, 
 			MAXGROUPNODE, MAXBNODE_RNODEBLOCK);
 	if(!bnode_map)
@@ -529,14 +529,17 @@ int create_gnodes(inet_prefix *ip, int final_level)
 	int i;
 
 	if(!ip) {
-retry_rnd_ip:
-		random_ip(0, 0, 0, GET_LEVELS(my_family), me.ext_map, 0, 
-				&me.cur_ip, my_family);
-		if(inet_validate_ip(me.cur_ip))
-			goto retry_rnd_ip;
-			
+		for(;;) {
+			random_ip(0, 0, 0, GET_LEVELS(my_family), me.ext_map, 0, 
+					&me.cur_ip, my_family);
+			if(!inet_validate_ip(me.cur_ip))
+				break;
+		}
 	} else
 		memcpy(&me.cur_ip, ip, sizeof(inet_prefix));
+
+	if(server_opt.restricted)
+		inet_setip_localaddr(&me.cur_ip, my_family);
 
 	if(!final_level)
 		final_level=GET_LEVELS(my_family);
@@ -722,14 +725,16 @@ hook_restart_and_retry:
 		postoip(fnodes[e], fn_hdr.ipstart, &me.cur_ip);
 	} else {
 		new_gnode=1;
-retry_rnd_ip:
-		random_ip(&fn_hdr.ipstart, fn_hdr.level, fn_hdr.gid, 
-				GET_LEVELS(my_family), me.ext_map, 0, 
-				&me.cur_ip, my_family);
-		if(inet_validate_ip(me.cur_ip))
-			goto retry_rnd_ip;
+		for(;;) {
+			random_ip(&fn_hdr.ipstart, fn_hdr.level, fn_hdr.gid, 
+					GET_LEVELS(my_family), me.ext_map, 0, 
+					&me.cur_ip, my_family);
+			if(!inet_validate_ip(me.cur_ip))
+				break;
+		}
 	}
-
+	if(server_opt.restricted)
+		inet_setip_localaddr(&me.cur_ip, my_family);
 	set_ip_and_def_gw(me.cur_dev, me.cur_ip);
 
 	/* 

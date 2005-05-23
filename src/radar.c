@@ -56,6 +56,7 @@ void init_radar(void)
 	pthread_attr_init(&radar_qspn_send_t_attr);
 	
 	list_init(radar_q, 0);
+	radar_q_counter=0;
 	
 	memset(send_qspn_now, 0, sizeof(u_char)*MAX_LEVELS);
 }
@@ -65,8 +66,10 @@ void close_radar(void)
 {
 	struct radar_queue *rq;
 	rq=radar_q;
-	
-	list_destroy(radar_q);
+
+	if(radar_q_counter)
+		list_destroy(radar_q);
+	radar_q_counter=0;
 	radar_q=0;
 
 	pthread_attr_destroy(&radar_qspn_send_t_attr);
@@ -624,6 +627,7 @@ add_radar_q(PACKET pkt)
 		memcpy(&rq->quadg, &quadg, sizeof(quadro_group));
 		
 		list_add(radar_q, rq);
+		radar_q_counter++;
 	}
 
 	return rq;

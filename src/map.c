@@ -609,13 +609,13 @@ int map_store_rblock(map_node *map, int *addr_map, int maxgroupnode, map_rnode *
 
 int verify_int_map_hdr(struct int_map_hdr *imap_hdr, int maxgroupnode, int maxrnodeblock)
 {
-#ifndef QSPN_EMPIRIC /*The qspn_empiric generates a random map which has nodes
-		       with map_node.links > MAXGROUPNODE;*/
-
 	/* No map to care about */
 	if(!imap_hdr->int_map_sz)
 		return 0;
-	
+
+#ifndef QSPN_EMPIRIC /*The qspn_empiric generates a random map which has nodes
+		       with map_node.links > MAXGROUPNODE;*/
+
 	if(imap_hdr->rblock_sz > maxrnodeblock || 
 			imap_hdr->int_map_sz > maxgroupnode*sizeof(map_node) ||
 			imap_hdr->root_node > maxrnodeblock)
@@ -641,17 +641,17 @@ char *pack_map(map_node *map, int *addr_map, int maxgroupnode,
 
 	if(!addr_map)
 		addr_map=(int *)map;
+	
+	memset(&imap_hdr, 0, sizeof(struct int_map_hdr));
 	if(map) {
 		/*rblock packing*/
 		rblock=map_get_rblock(map, addr_map, maxgroupnode, &count);
 		/*Header creation*/
-		memset(&imap_hdr, 0, sizeof(struct int_map_hdr));
 		imap_hdr.root_node=root_node ? pos_from_node(root_node, map) : 0;
 		imap_hdr.rblock_sz=count*sizeof(map_rnode);
 		imap_hdr.int_map_sz=maxgroupnode*sizeof(map_node);
-	} else
-		memset(&imap_hdr, 0, sizeof(struct int_map_hdr));
-
+	} 
+	
 	/*Package creation*/
 	*pack_sz=INT_MAP_BLOCK_SZ(imap_hdr.int_map_sz, imap_hdr.rblock_sz);
 	package=xmalloc(*pack_sz);
@@ -736,14 +736,17 @@ int save_map(map_node *map, map_node *root_node, char *file)
 	FILE *fd;
 	size_t pack_sz;
 	char *pack;
+
+	/*Pack!*/
+	pack=pack_map(map, 0, MAXGROUPNODE, root_node, &pack_sz);
+	if(!pack_sz || !pack)
+		return 0;
 	
 	if((fd=fopen(file, "w"))==NULL) {
 		error("Cannot save the int_map in %s: %s", file, strerror(errno));
 		return -1;
 	}
 
-	/*Pack!*/
-	pack=pack_map(map, 0, MAXGROUPNODE, root_node, &pack_sz);
 	/*Write!*/
 	fwrite(pack, pack_sz, 1, fd);
 	
@@ -763,7 +766,7 @@ map_node *load_map(char *file, map_node **new_root)
 	map_node *map=0;
 	FILE *fd;
 	struct int_map_hdr imap_hdr;
-	char *pack;
+	char *pack=0;
 	size_t pack_sz;
 	
 	if((fd=fopen(file, "r"))==NULL) {
@@ -771,7 +774,7 @@ map_node *load_map(char *file, map_node **new_root)
 		return 0;
 	}
 
-	if(fread(&imap_hdr, sizeof(struct int_map_hdr), 1, fd) < 1)
+	if(!fread(&imap_hdr, sizeof(struct int_map_hdr), 1, fd))
 		goto finish;
 	
 	if(!imap_hdr.int_map_sz)
@@ -783,7 +786,7 @@ map_node *load_map(char *file, map_node **new_root)
 	rewind(fd);
 	pack_sz=INT_MAP_BLOCK_SZ(imap_hdr.int_map_sz, imap_hdr.rblock_sz);
 	pack=xmalloc(pack_sz);
-	if(fread(pack, pack_sz, 1, fd) < 1)
+	if(!fread(pack, pack_sz, 1, fd))
 		goto finish;
 
 	map=unpack_map(pack, pack_sz, 0, new_root, MAXGROUPNODE, MAXRNODEBLOCK);

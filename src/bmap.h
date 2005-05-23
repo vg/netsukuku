@@ -85,7 +85,7 @@ typedef struct
 /* 
  * This is the header placed on top of all the bnode_map blocks.
  * So the bnode maps final block is:
- * 	bmaps_hdr
+ * 	bnode_maps_hdr
  * 	---------
  * 	bnode_map_hdr
  * 	bnode_map_block
@@ -95,7 +95,7 @@ typedef struct
  * 	---------
  * 	...
  */
-struct bmaps_hdr
+struct bnode_maps_hdr
 {
 	u_char levels;
 	size_t bmaps_block_sz;

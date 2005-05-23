@@ -32,7 +32,7 @@ int max_radar_wait;
 int radar_scans;			/*How many ECHO_ME pkts we sent*/
 int radar_scan_mutex;			/*A flag to see if we are already doing a scan*/
 int my_echo_id;			
-u_char send_qspn_now[MAX_LEVELS];		/*Shall we send the qspn in level? If yes 
+u_char send_qspn_now[MAX_LEVELS];	/*Shall we send the qspn in level? If yes 
 					  send_qspn_now[level] is != 0*/
 int hook_retry;				/*If we've seen, while hooking, a node who was trying 
 					  to hook before us, `hook_retry' is set to 1.*/
@@ -57,6 +57,8 @@ struct radar_queue
 						  final_rtt will keep the average of all the rtts */
 };
 struct radar_queue *radar_q;	/*the start of the linked list of radar_queue*/
+int radar_q_counter;
+
 struct timeval scan_start;	/*the start of the scan*/
 
 /* 

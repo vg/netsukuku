@@ -1,11 +1,11 @@
-- [HIGH PRIORITY] -
+	 [HIGH PRIORITY] 
 
 - Testare i boarder node blocks.
 
-- Scrivere il codice per netsukuku ristretto.
+- ATTENZIONE: route_del e' disattivato per debugging.
 
 
-- [MEDIUM PRIORITY] -
+	 [MEDIUM PRIORITY] 
 
 - Usare il multipath per i gnode. Ad esempio se un bnode e' collegato con piu'
   nodi di uno stesso gnode esterno li deve mettere come nexthop nella stessa rotta 
@@ -17,8 +17,9 @@
 - Portare per *BSD: bisogna usare rt_ioctl.c ed rt_socket.c di quagga
   ( ../othersrc/quagga-*/zebra/ )
 
+- Load from file of int and bnode maps.
 
-- [LOW PRIORITY] -
+	[LOW PRIORITY]
 
 gmap.c: Ottimizzare la validita' di ip in random_ip(). Una possibile soluzione
 sarebbe quella di azzerare i bit invalidi.
@@ -33,7 +34,9 @@ gmap.c/map.c: non usare piu' le libgmp. Per le somme usiamo sum_128.c, e per
 divisioni e le moltiplicazioni, visto che stiamo lavorando su potenze di due,
 usiamo gli shift.
 
-- [ CURRENT TESTS ] -
+
+ 	[ CURRENT TESTS ]
+	
 12%, krnl_rule.c
 48%, qspn.c
 49%, tracer.c

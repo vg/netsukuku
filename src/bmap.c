@@ -130,13 +130,12 @@ char *
 pack_all_bmaps(map_bnode **bmaps,  u_int *bmap_nodes, map_gnode **ext_map,
 		quadro_group quadg, size_t *pack_sz)
 {
-	struct bmaps_hdr bmap_hdr;
+	struct bnode_maps_hdr bmaps_hdr;
 	int buf;
 	size_t sz, tmp_sz[quadg.levels];
 	char *pack[quadg.levels], *final_pack;
 	u_char level;
 
-	*pack_sz=0;
 	
 	for(level=0; level < quadg.levels; level++) {
 		pack[level]=pack_map((map_node *)bmaps[level], (int *)ext_map[_EL(level+1)], 
@@ -145,13 +144,14 @@ pack_all_bmaps(map_bnode **bmaps,  u_int *bmap_nodes, map_gnode **ext_map,
 		(*pack_sz)+=sz;
 	}
 
-	bmap_hdr.levels=quadg.levels;
-	bmap_hdr.bmaps_block_sz=*pack_sz;
+	bmaps_hdr.levels=quadg.levels;
+	bmaps_hdr.bmaps_block_sz=*pack_sz;
+	(*pack_sz)+=sizeof(struct bnode_maps_hdr);
 	
-	final_pack=xmalloc((*pack_sz) + sizeof(struct bmaps_hdr));
-	memcpy(final_pack, &bmap_hdr, sizeof(struct bmaps_hdr));
+	final_pack=xmalloc((*pack_sz) + sizeof(struct bnode_maps_hdr));
+	memcpy(final_pack, &bmaps_hdr, sizeof(struct bnode_maps_hdr));
 	
-	buf=sizeof(struct bmaps_hdr);
+	buf=sizeof(struct bnode_maps_hdr);
 	for(level=0; level < quadg.levels; level++) {
 		memcpy(final_pack+buf, pack[level], tmp_sz[level]);
 		buf+=tmp_sz[level];
@@ -174,7 +174,7 @@ map_bnode **
 unpack_all_bmaps(char *pack, size_t pack_sz, u_char levels, map_gnode **ext_map,
 		u_int **bmap_nodes, int maxbnodes, int maxbnode_rnodeblock)
 {
-	struct bnode_map_hdr *bmap_hdr;
+	struct bnode_map_hdr *bmaps_hdr;
 	map_bnode **bmap;
 	size_t bblock_sz;
 	int i,e=0;
@@ -184,25 +184,25 @@ unpack_all_bmaps(char *pack, size_t pack_sz, u_char levels, map_gnode **ext_map,
 
 	buf=pack;
 	for(i=0; i<levels; i++) {
-		bmap_hdr=(struct bnode_map_hdr *)buf;
-		if(!bmap_hdr->bnode_map_sz) {
+		bmaps_hdr=(struct bnode_map_hdr *)buf;
+		if(!bmaps_hdr->bnode_map_sz) {
 			buf+=sizeof(struct bnode_map_hdr);
 			continue;
 		}
 		
-		if(verify_int_map_hdr(bmap_hdr, maxbnodes, maxbnode_rnodeblock)) {
-			error("Malformed bmap_hdr at level %d. "
+		if(verify_int_map_hdr(bmaps_hdr, maxbnodes, maxbnode_rnodeblock)) {
+			error("Malformed bmaps_hdr at level %d. "
 					"Skipping...", i);
 			e++;
 			buf+=sizeof(struct bnode_map_hdr);
 			continue;
 		}
 
-		(*bmap_nodes)[i]=bmap_hdr->bnode_map_sz/sizeof(map_bnode);
-		bblock=(char *)bmap_hdr;
+		(*bmap_nodes)[i]=bmaps_hdr->bnode_map_sz/sizeof(map_bnode);
+		bblock=(char *)bmaps_hdr;
 
 		/*Extracting the map...*/
-		bblock_sz=INT_MAP_BLOCK_SZ(bmap_hdr->bnode_map_sz, bmap_hdr->rblock_sz);
+		bblock_sz=INT_MAP_BLOCK_SZ(bmaps_hdr->bnode_map_sz, bmaps_hdr->rblock_sz);
 		bmap[i]=unpack_map(bblock, bblock_sz, (int *)ext_map[_EL(i+1)], 0, 
 				maxbnodes, maxbnode_rnodeblock);
 		if(!bmap[i]) {
@@ -232,12 +232,15 @@ int save_bmap(map_bnode **bmaps, u_int *bmap_nodes, map_gnode **ext_map,
 	char *pack;
 	size_t pack_sz;
 	
+	
+	pack=pack_all_bmaps(bmaps, bmap_nodes, ext_map, quadg, &pack_sz);
+	if(!pack_sz || !pack)
+		return 0;
+
 	if((fd=fopen(file, "w"))==NULL) {
 		error("Cannot save the bnode_map in %s: %s", file, strerror(errno));
 		return -1;
 	}
-	
-	pack=pack_all_bmaps(bmaps, bmap_nodes, ext_map, quadg, &pack_sz);
 	fwrite(pack, pack_sz, 1, fd);
 
 	xfree(pack);
@@ -253,41 +256,39 @@ int save_bmap(map_bnode **bmaps, u_int *bmap_nodes, map_gnode **ext_map,
  */
 map_bnode **load_bmap(char *file, map_gnode **ext_map, u_char max_levels, u_int **bmap_nodes)
 {
-	map_bnode **bmap;
+	map_bnode **bmap=0;
 	FILE *fd;
-	struct bmaps_hdr bmaps_hdr;
+	struct bnode_maps_hdr bmaps_hdr;
 	size_t pack_sz;
 	u_char levels;
-	char *pack;
+	char *pack=0;
 	
 	if((fd=fopen(file, "r"))==NULL) {
 		error("Cannot load the bmap from %s: %s", file, strerror(errno));
 		return 0;
 	}
-
 	
-	if(fread(&bmaps_hdr, sizeof(struct bmaps_hdr), 1, fd) < 1 ) {
-		error("Cannot load the bmaps_hdr from %s", file);
-		return 0;
-	}
+	if(!fread(&bmaps_hdr, sizeof(struct bnode_maps_hdr), 1, fd))
+		goto finish;
+		
 	levels=bmaps_hdr.levels;
 	pack_sz=bmaps_hdr.bmaps_block_sz;
-	if(levels > max_levels || pack_sz < sizeof(struct bnode_map_hdr)) {
-		error("Malformed bmaps_hdr. Cannot load the bnode maps.");
-		return 0;
-	}
+	if(levels > max_levels || pack_sz < sizeof(struct bnode_maps_hdr))
+		goto finish;
 
 	/* Extracting the map... */
 	pack=xmalloc(pack_sz);
-	if(fread(pack, pack_sz, 1, fd) < 1) {
-		bmap=0;
+	if(!fread(pack, pack_sz, 1, fd))
 		goto finish;
-	}
+	
 	bmap=unpack_all_bmaps(pack, pack_sz, levels, ext_map, bmap_nodes, 
 			MAXGROUPNODE, MAXBNODE_RNODEBLOCK);
 	
 finish:
-	xfree(pack);
 	fclose(fd);
+	if(pack)
+		xfree(pack);
+	if(!bmap)
+		error("Malformed bmap file. Cannot load the bnode maps.");
 	return bmap;
 }
