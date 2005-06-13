@@ -1,5 +1,5 @@
 /* This file is part of Netsukuku
- * (c) Copyright 2004 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+ * (c) Copyright 2005 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
  *
  * This source code is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Public License as published 
@@ -95,35 +95,41 @@ void *udp_exec_pkt(void *recv_pkt)
 	acpt_idx=accept_idx;
 	acpt_sidx=accept_sidx;
 	memcpy(&rpkt, recv_pkt, sizeof(PACKET));
+#ifdef UDP_THREAD
 	xfree(recv_pkt);
-
+#endif
 	/* Drop any packet we sent */
 	if(!memcmp(&rpkt.from, &me.cur_ip, sizeof(inet_prefix))) {
 		pkt_free(&rpkt, 0);
-		return NULL;
+		return 0;
 	}
 
 	if(add_accept(rpkt.from, 1)) {
 		ntop=inet_to_str(rpkt.from);
 		debug(DBG_NORMAL, "ACPT: dropped UDP pkt from %s: "
 				"Accept table full.", ntop);
-		return NULL;
+		return 0;
 	} 
 
 	pkt_exec(rpkt, accept_idx);
 	pkt_free(&rpkt, 0);
 	
-	return NULL;
+	return 0;
 }
 
-void *udp_daemon(void *null)
+void *udp_daemon(void *door)
 {
 	PACKET rpkt;
 	fd_set fdset;
 	int ret, sk;
-	char *rpkt_cp;
+	int udp_port=*(int *)door;
+
+#ifdef DEBUG
+	int select_errors=0;
+#endif
 	
-#if 0
+#ifdef UDP_THREAD
+	char *rpkt_cp;
 	pthread_t thread;
 	pthread_attr_t t_attr;
 
@@ -131,8 +137,8 @@ void *udp_daemon(void *null)
 	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
 #endif
 
-	debug(DBG_SOFT, "Preparing the udp listening socket");
-	sk=prepare_listen_socket(my_family, SOCK_DGRAM, ntk_udp_port);
+	debug(DBG_SOFT, "Preparing the udp listening socket, port %d", udp_port);
+	sk=prepare_listen_socket(my_family, SOCK_DGRAM, udp_port);
 	if(sk == -1)
 		return NULL;
 
@@ -141,12 +147,20 @@ void *udp_daemon(void *null)
 	
 	debug(DBG_NORMAL, "Udp daemon up & running");
 	for(;;) {
+		if(!sk)
+			fatal("The udp_daemon socket got corrupted");
+		
 		FD_ZERO(&fdset);
 		FD_SET(sk, &fdset);
-
+		
 		ret = select(sk+1, &fdset, NULL, NULL, NULL);
 		if (ret < 0) {
-			error("daemon_tcp: select error: %s", strerror(errno));
+#ifdef DEBUG
+			if(select_errors > 20)
+				break;
+			select_errors++;
+#endif
+			error("daemon_udp: select error: %s", strerror(errno));
 			continue;
 		}
 		if(!FD_ISSET(sk, &fdset))
@@ -161,16 +175,15 @@ void *udp_daemon(void *null)
 			continue;
 		}
 	
+#ifdef UDP_THREAD
+		/* DON'T use this! The udp pkts are too many to use a thread 
+		 * for each of them */
 		rpkt_cp=xmalloc(sizeof(PACKET));
 		memcpy(rpkt_cp, &rpkt, sizeof(PACKET));
-		udp_exec_pkt(rpkt_cp);
-
-		/* XXX: TODO :XXX
-		 * Damn! Why if I use the threads the process get killed at
-		 * pkt_free ???
-		pthread_mutex_lock(&mtx_udp_pkt);
 		pthread_create(&thread, &t_attr, udp_exec_pkt, rpkt_cp);
-		*/
+#endif
+
+		udp_exec_pkt(&rpkt);
 	}
 
 	destroy_accept_tbl();
@@ -240,6 +253,9 @@ void *tcp_daemon(void *null)
 	
 	debug(DBG_NORMAL, "Tcp daemon up & running");
 	for(;;) {
+		if(!sk)
+			fatal("The tcp_daemon socket got corrupted");
+		
 		FD_ZERO(&fdset);
 		FD_SET(sk, &fdset);
 

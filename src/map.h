@@ -34,20 +34,34 @@
 /***flags**/
 #define MAP_ME		1		/*The root_node, in other words, me ;)*/
 #define MAP_VOID	(1<<1)		/*It indicates a non existent node*/
-#define MAP_HNODE	(1<<2)		/*Hooking node. One node is hooking when it is connecting to netsukuku*/
-#define MAP_SNODE	(1<<3)		/*Static Node*/
-#define MAP_BNODE	(1<<4)		/*The node is a border_node*/
-#define MAP_ERNODE	(1<<5)		/*It is an External Rnode*/
-#define MAP_GNODE	(1<<6)		/*It is a gnode*/
-#define MAP_RNODE	(1<<7)		/*If a node has this set, it is one of the rnodes*/
-#define MAP_UPDATE	(1<<8)		/*If it is set, the corresponding route in the krnl will be updated*/
-#define QSPN_CLOSED	(1<<9)		/*This flag is set only to the rnodes, it puts a link in a QSPN_CLOSED state*/
-#define QSPN_OPENED	(1<<10)		/*It puts a link in a QSPN_OPEN state*/
-#define QSPN_REPLIED	(1<<11)		/*When the node send the qspn_reply it will never reply again to the same qspn*/
-#define QSPN_BACKPRO	(1<<12)		/*This marks the r_node where the QSPN_BACKPRO has been sent*/
-#define QSPN_OLD	(1<<13)		/*If a node isn't updated by the current qspn_round it is marked with QSPN_ROUND.
-					  If in the next qspn_round the same node isn't updated it is removed from the map.*/
-#define QSPN_STARTER	(1<<14)		/*The root node is marked with this flag if it is a qspn_starter*/
+#define MAP_HNODE	(1<<2)		/*Hooking node. One node is hooking when 
+					  it is connecting to netsukuku*/
+#define MAP_BNODE	(1<<3)		/*The node is a border_node. If this 
+					  flag is set to a root_node, this means 
+					  that we are a bnode at the root_node's 
+					  level*/
+#define MAP_ERNODE	(1<<4)		/*It is an External Rnode*/
+#define MAP_GNODE	(1<<5)		/*It is a gnode*/
+#define MAP_RNODE	(1<<6)		/*If a node has this set, it is one of the rnodes*/
+#define MAP_UPDATE	(1<<7)		/*If it is set, the corresponding route 
+					  in the krnl will be updated*/
+#define QSPN_CLOSED	(1<<8)		/*This flag is set only to the rnodes, 
+					  it puts a link in a QSPN_CLOSED state*/
+#define QSPN_OPENED	(1<<9)		/*It puts a link in a QSPN_OPEN state*/
+#define QSPN_OLD	(1<<10)		/*If a node isn't updated by the current
+					  qspn_round it is marked with QSPN_ROUND.
+					  If in the next qspn_round the same node 
+					  isn't updated it is removed from the map.*/
+#define QSPN_STARTER	(1<<11)		/*The root node is marked with this flag
+					  if it is a qspn_starter*/
+#define QSPN_OPENER	(1<<12)		/*If the root_node sent a new qspn_open
+					  it is a qspn_opener*/
+
+#ifdef QSPN_EMPIRIC
+	#define QSPN_BACKPRO	(1<<13)	
+#endif 
+
+
 
 /* 			    *** Map notes ***
  * The map is an array of MAXGROUPNODE map_node structs. It is a generic map 
@@ -66,7 +80,7 @@ typedef struct
 #ifdef QSPN_EMPIRIC
 	u_short		flags;
 #endif
-	u_int	 	*r_node;	/*It's the pointer to the struct of the r_node in the map*/
+	int	 	*r_node;	/*It's the pointer to the struct of the r_node in the map*/
 	struct timeval  rtt;	 	/*node <-> r_node round trip time*/
 	
 	struct timeval  trtt;		/*node <-> root_node total rtt: The rtt to reach the root_node 
@@ -84,14 +98,16 @@ typedef struct
 
 typedef struct
 {
-	u_short 	flags;
 #ifdef QSPN_EMPIRIC
+	u_int		flags;
 	u_int		brdcast[MAXGROUPNODE];
 #else
+	u_short 	flags;
 	u_int		brdcast;	 /*Pkt_id of the last brdcast_pkt sent by this node*/
 #endif /*QSPN_EMPIRIC*/
 	u_short		links;		 /*Number of r_nodes*/
-	map_rnode	*r_node;	 /*This structs will be kept in ascending order considering their rnode_t.rtt*/
+	map_rnode	*r_node;	 /*These structs will be kept in ascending
+					   order considering their rnode_t.rtt*/
 }map_node;
 
 #define MAXRNODEBLOCK		(MAXLINKS*MAXGROUPNODE*sizeof(map_rnode))
@@ -112,7 +128,10 @@ struct int_map_hdr
  */
 #define INT_MAP_BLOCK_SZ(int_map_sz, rblock_sz) (sizeof(struct int_map_hdr)+(int_map_sz)+(rblock_sz))
 
-/* * * Functions' declaration * * */
+/* 
+ * * * Functions' declaration * * *
+ */
+
 /*conversion functions*/
 int pos_from_node(map_node *node, map_node *map);
 map_node *node_from_pos(int pos, map_node *map);

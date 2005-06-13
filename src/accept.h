@@ -16,10 +16,10 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#define MAX_CONNECTIONS		40
+#define MAX_CONNECTIONS		50
 
-#define MAX_ACCEPTS		10
-#define FREE_ACCEPT_TIME	5		/*in seconds*/
+#define MAX_ACCEPTS		16
+#define FREE_ACCEPT_TIME	4		/*in seconds*/
 
 /*
  * This struct keep tracks of single connection to the server.

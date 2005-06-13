@@ -1,8 +1,7 @@
 	 [HIGH PRIORITY] 
 
-- Testare i boarder node blocks.
-
-- ATTENZIONE: route_del e' disattivato per debugging.
+- ATTENZIONE: route_del e' disattivato per debugging. (e' forse il caso
+  disabilitarlo completamente?)
 
 
 	 [MEDIUM PRIORITY] 
@@ -17,39 +16,36 @@
 - Portare per *BSD: bisogna usare rt_ioctl.c ed rt_socket.c di quagga
   ( ../othersrc/quagga-*/zebra/ )
 
-- Load from file of int and bnode maps.
-
 	[LOW PRIORITY]
 
 gmap.c: Ottimizzare la validita' di ip in random_ip(). Una possibile soluzione
-sarebbe quella di azzerare i bit invalidi.
-hook.c: ottimizzare lo spazio di free_node: invece di usare una serie di u_short
-free_nodes, si usano MAXGROUPNODE bits, ed ognuno si setta o no. (Usare
-asm/bitops.h set_bit, clear_bit..., is_set)
+        sarebbe quella di azzerare i bit invalidi.
+hook.c: ottimizzare lo spazio di free_node: invece di usare una serie di u_char
+        free_nodes, si usano MAXGROUPNODE bits, ed ognuno si setta o no. (Usare
+        asm/bitops.h set_bit, clear_bit..., is_set)
 tracer.c:  store_tracer_pkt_connect
 broadcast: Tenere in considerazione il gttl.
 hook.c:    anti spoof hook
-hook.c:    settare l'essid delle wlan0
 gmap.c/map.c: non usare piu' le libgmp. Per le somme usiamo sum_128.c, e per
-divisioni e le moltiplicazioni, visto che stiamo lavorando su potenze di due,
-usiamo gli shift.
+              divisioni e le moltiplicazioni, visto che stiamo lavorando su
+	      potenze di due, usiamo gli shift.
 
 
  	[ CURRENT TESTS ]
 	
 12%, krnl_rule.c
-48%, qspn.c
-49%, tracer.c
-79%, radar.c
-82%, route.c
-85%, bmap.c
-90%, krnl_route.c
-90%, pkts.c
-93%, gmap.c
-93%, netsukuku.c
+56%, qspn.c
+50%, tracer.c
+82%, radar.c
+83%, route.c
+86%, bmap.c
+91%, krnl_route.c
+93%, pkts.c
+94%, gmap.c
+95%, netsukuku.c
 94%, map.c
 95%, inet.c
-97%, hook.c
+98%, hook.c
 99%, daemon.c
 99%, if.c
 99%, request.c

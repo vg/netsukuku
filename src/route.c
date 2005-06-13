@@ -1,5 +1,5 @@
 /* This file is part of Netsukuku
- * (c) Copyright 2004 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+ * (c) Copyright 2005 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
  *
  * This source code is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Public License as published 
@@ -37,33 +37,10 @@
 #include "xmalloc.h"
 #include "log.h"
 
-u_char rt_find_table(ct_route *ctr, u_int dst, u_int gw)
-{
-	ct_route *i;
-	u_char tables[MAX_ROUTE_TABLES];
-	int l;
-
-	memset(tables, '\0', MAX_ROUTE_TABLES);
-
-	for(i=ctr; i; i=i->next) {
-		if(i->ct_dst==dst) {
-			if(i->ct_gw==gw)
-				return i->ct_table;
-			else 
-				tables[i->ct_table]=1;
-		}
-	}
-
-	for(l=1; l<MAX_ROUTE_TABLES; l++)
-		if(!tables[l])
-			return l;
-
-	return 0xff; /*This shouldn't happen!*/
-}
 
 /* 
  * get_gw_gnode: It returns the pointer to the gateway node present in the map
- * of level `gw_level'. This gateway node is the node to be used as gateway to
+ * of level `gw_level'. This gateway is the node to be used as gateway to
  * reach, from the `gw_level' level,  the `find_gnode' gnode at the `gnode_level'
  * level. If the gw_node isn't found, NULL is returned.
  */
@@ -74,7 +51,8 @@ void *get_gw_gnode(map_node *int_map, map_gnode **ext_map,
 {
 	map_gnode *gnode;
 	map_gnode *gnode_gw;
-	map_node  *node, *node_gw;
+	map_node  *node, *node_gw, *root_node;
+	ext_rnode_cache *erc;
 	int i, pos, bpos;
 
 	if(!gnode_level || gw_level > gnode_level)
@@ -82,17 +60,20 @@ void *get_gw_gnode(map_node *int_map, map_gnode **ext_map,
 
 	/* 
 	 * How it works:
-	 * - Start from the level `gnode_level' and the gnode `find_gnode'.
+	 * - Start from the level `gnode_level' and the gnode `find_gnode', set
+	 *   `node' to `find_gnode'.
 	 * loop:
-	 * 	- Use the map at the current level to get the gw to reach the
-	 * 	  current gnode (at the current level). If `find_gnode' is an
-	 * 	  rnode just set gw=`find_gnode'.
+	 * 	- Use the map at the current level to get the gw to reach
+	 * 	  `node', which it is the current gnode (at the current level). 
+	 * 	  If `node' is an rnode or it is a MAP_ME gnode, just set 
+	 * 	  gw = `find_gnode'.
 	 * 	- If the level is 0, all is done, return the gw.
 	 * 	- Go one level down: level--;
 	 * 	- At this level use the bnode map and look for the bnode which
-	 * 	  boards to the gw of the upper level we found. (Note that all
-	 * 	  that all the bnode in the bmap point at the upper level always).
-	 * 	- Find the gw to reach the found bnode at this level.
+	 * 	  borderes on the gw of the upper level we found. (Note that all
+	 * 	  the bnode in the bmap always point at the upper level).
+	 * 	- Find the gw to reach the found bnode at this level and set 
+	 * 	  `node' to this gw.
 	 * 	- goto loop;
 	 */
 	gnode=find_gnode;
@@ -102,16 +83,19 @@ void *get_gw_gnode(map_node *int_map, map_gnode **ext_map,
 	if(node->flags & MAP_ME) 
 		return (void *)node;
 
-	debug(DBG_INSANE, "get_gw: find_gnode=%x", find_gnode);
-
+	debug(DBG_INSANE, "get_gw: find_gnode=%x", find_gnode); 
 	for(i=gnode_level; i>=gw_level; i--) {
 
 		if(node->flags & MAP_RNODE) {
-			node_gw=(void *)node;
-			debug(DBG_INSANE, "get_gw: l=%d, node & MAP_RNODE. node_gw=node=%x",i, node);
+			gnode_gw=(void *)node;
+			node_gw=(map_node *)gnode_gw;
+			debug(DBG_INSANE, "get_gw: l=%d, node & MAP_RNODE. node_gw=node=%x",
+			  i, node);
 		} else if (node->flags & MAP_ME) {
-			node_gw=(void *)find_gnode;
-			debug(DBG_INSANE, "get_gw: l=%d, node & MAP_ME. find_gnode: %x", i, find_gnode);
+			gnode_gw=(void *)find_gnode;
+			node_gw=(map_node *)gnode_gw;
+			debug(DBG_INSANE, "get_gw: l=%d, node & MAP_ME. find_gnode: %x",
+			  i, find_gnode);
 		} else {
 			if(!node->links)
 				return 0;
@@ -125,7 +109,8 @@ void *get_gw_gnode(map_node *int_map, map_gnode **ext_map,
 			}
 			if(node_gw->flags & MAP_RNODE)
 				find_gnode=(map_gnode *)node_gw;
-			debug(DBG_INSANE, "get_gw: l=%d, node_gw=rnode[pos].r_node=%x, find_gnode=%x", i,node_gw, find_gnode);
+			debug(DBG_INSANE, "get_gw: l=%d, node_gw=rnode[pos].r_node=%x,"
+			  " find_gnode=%x", i,node_gw, find_gnode);
 		}
 
 		if(i == gw_level)
@@ -135,7 +120,8 @@ void *get_gw_gnode(map_node *int_map, map_gnode **ext_map,
 
 		bpos=map_find_bnode_rnode(bnode_map[i-1], bmap_nodes[i-1], (void *)node_gw);
 		if(bpos == -1) {
-			debug(DBG_INSANE, "get_gw: l=%d, node_gw=%x not found in bmap lvl %d", i, node_gw, i-1);
+			debug(DBG_INSANE, "get_gw: l=%d, node_gw=%x not found in bmap lvl %d", 
+			 i, node_gw, i-1);
 			return 0;
 		}
 
@@ -145,6 +131,16 @@ void *get_gw_gnode(map_node *int_map, map_gnode **ext_map,
 			gnode=gnode_from_pos(bnode_map[i-1][bpos].bnode_ptr, 
 					ext_map[_EL(i-1)]);
 			node=&gnode->g;
+
+			qspn_set_map_vars(i-1, 0, &root_node, 0, 0);
+			if(me.cur_node->flags & MAP_BNODE && 
+					gnode == (map_gnode *)root_node) {
+				debug(DBG_INSANE, "get_gw: bmap searching ernode for gnode 0x%x", node_gw);
+		
+				erc=erc_find_gnode(me.cur_erc, gnode_gw, i);
+				if(erc)
+					return (void *)erc->e;
+			}
 		}
 		debug(DBG_INSANE, "get_gw: bmap found = %x", node);
 	}
@@ -507,3 +503,30 @@ int rt_del_loopback_net(void)
 
 	return 0;
 }
+
+#if 0
+/* This function shall be used when the gate of dawn will be opened */
+u_char rt_find_table(ct_route *ctr, u_int dst, u_int gw)
+{
+	ct_route *i;
+	u_char tables[MAX_ROUTE_TABLES];
+	int l;
+
+	memset(tables, '\0', MAX_ROUTE_TABLES);
+
+	for(i=ctr; i; i=i->next) {
+		if(i->ct_dst==dst) {
+			if(i->ct_gw==gw)
+				return i->ct_table;
+			else 
+				tables[i->ct_table]=1;
+		}
+	}
+
+	for(l=1; l<MAX_ROUTE_TABLES; l++)
+		if(!tables[l])
+			return l;
+
+	return 0xff; /*This shouldn't happen!*/
+}
+#endif

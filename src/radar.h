@@ -37,6 +37,8 @@ u_char send_qspn_now[MAX_LEVELS];	/*Shall we send the qspn in level? If yes
 int hook_retry;				/*If we've seen, while hooking, a node who was trying 
 					  to hook before us, `hook_retry' is set to 1.*/
 
+int total_radars;			/*Stupid statistic*/
+
 #define RADQ_VOID_RNODE		0
 #define RADQ_EXT_RNODE		1
 

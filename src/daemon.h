@@ -16,7 +16,9 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#undef UDP_THREAD
+
 int prepare_listen_socket(int family, int socktype, u_short port);
 void *tcp_recv_loop(void *recv_pkt);
 void *tcp_daemon(void *null);
-void *udp_daemon(void *null);
+void *udp_daemon(void *door);

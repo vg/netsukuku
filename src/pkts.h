@@ -1,5 +1,5 @@
 /* This file is part of Netsukuku system
- * (c) Copyright 2004 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+ * (c) Copyright 2005 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
  *
  * This source code is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Public License as published 
@@ -25,9 +25,11 @@
  */
 
 /* Pkt's sk_type */
-#define SKT_TCP 	1
-#define SKT_UDP		2
-#define SKT_BCAST	3
+#define SKT_TCP 		1
+#define SKT_UDP			2
+#define SKT_UDP_RADAR		3
+#define SKT_BCAST		4
+#define SKT_BCAST_RADAR		5
 
 /* Pkt's flags */
 #define SEND_ACK		1
@@ -45,8 +47,10 @@
 					  bnodes blocks.*/
 #define BCAST_TRACER_STARTERS	(1<<2)  /*Tracer pkt bound to the qspn starter 
 					  continual group*/
-#define QSPN_NO_OPEN		(1<<3)	/*The qspn_close pkts with this flag set
-					  will not propagate the qspn_open*/
+#define QSPN_BNODE_CLOSED	(1<<3)	/*The last bnode, who forwarded this 
+					  qspn pkt has all its links closed.*/
+#define QSPN_BNODE_OPENED	(1<<4)
+
 
 typedef struct
 {
@@ -76,7 +80,7 @@ typedef struct
 typedef struct
 {
 	u_char		g_node;		/*The gnode the brdcast_pkt is restricted to*/
-	u_char 		level;		/*The level of the gnode*/
+	u_char 		level;		/*The level of the g_node*/
 	u_char	 	gttl;		/*Gnode ttl: How many gnodes the packet
 					  can traverse*/
 	u_char	 	sub_id;		/*The sub_id is the node who sent the pkt,
@@ -108,6 +112,8 @@ void pkt_addport(PACKET *pkt, u_short port);
 void pkt_addflags(PACKET *pkt, int flags);
 void pkt_addhdr(PACKET *pkt, pkt_hdr *hdr);
 void pkt_addmsg(PACKET *pkt, char *msg);
+void pkt_copy(PACKET *dst, PACKET *src);
+void pkt_clear(PACKET *pkt);
 
 void pkt_free(PACKET *pkt, int close_socket);
 char *pkt_pack(PACKET *pkt);

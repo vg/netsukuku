@@ -1,5 +1,5 @@
 /* This file is part of Netsukuku
- * (c) Copyright 2004 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+ * (c) Copyright 2005 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
  *
  * This source code is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Public License as published 
@@ -41,21 +41,21 @@ int err_verify(u_char err)
 	return err >= TOTAL_ERRORS ? 1 : 0;
 }
 
-const char *rq_strerror(int err)
+const u_char *rq_strerror(int err)
 {
 	if(err_verify(err))
 		return unknown_error;
 	return error_str[err];
 }
 
-const char *rq_to_str(u_char rq)
+const u_char *rq_to_str(u_char rq)
 {
 	if(rq_verify(rq))
 		return unknown_request;
 	return request_str[rq];
 }
 
-const char *re_to_str(u_char re)
+const u_char *re_to_str(u_char re)
 {
 	if(re_verify(re))
 		return unknown_reply;

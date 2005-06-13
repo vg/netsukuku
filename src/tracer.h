@@ -20,7 +20,7 @@
 /***Tracer packet. It is encapsulated in a broadcast pkt*/
 typedef struct
 {
-	u_int 	hops;
+	u_short	hops;
 	u_short bblocks;	/*How many bnode blocks are incapsulated in 
 				  the pkt (if any)*/
 }_PACKED_ tracer_hdr;
@@ -31,46 +31,46 @@ typedef struct
 	struct timeval rtt;	/*The rtt to reach the `node' of the previous
 				  chunk from the node of the current `one'.*/
 }_PACKED_ tracer_chunk;
-#define TRACERPKT_SZ(hops) (sizeof(tracer_hdr) + (sizeof( tracer_chunk) * (hops)))
+#define TRACERPKT_SZ(hops) (sizeof(tracer_hdr) + (sizeof(tracer_chunk) * (hops)))
 
 int tracer_pkt_start_mutex;
 
 /*Functions definition. Damn I hate to use functions with a lot of args. It isn't elegant*/
-int tracer_verify_pkt(tracer_chunk *tracer, u_int hops, map_node *real_from, u_char level);
-char *tracer_pack_pkt(brdcast_hdr *, tracer_hdr *, tracer_chunk *, bnode_hdr *,
-		bnode_chunk *);
+int ip_to_rfrom(inet_prefix rip, quadro_group *rip_quadg,
+		quadro_group *new_quadg, char quadg_flags);
+tracer_chunk *tracer_add_entry(void *void_map, void *void_node,
+		tracer_chunk *tracer, u_int *hops, u_char level);
+int tracer_add_rtt(int rpos, tracer_chunk *tracer, u_short hop);
 u_short tracer_split_bblock(void *, size_t, bnode_hdr ***, bnode_chunk ****, size_t *);
-int tracer_get_trtt(map_node *root_node, map_node *from, tracer_hdr *trcr_hdr,
+int tracer_get_trtt(int from_rnode_pos, tracer_hdr *trcr_hdr,
 		tracer_chunk *tracer, struct timeval *trtt);
-int tracer_store_pkt(void *, u_char, tracer_hdr *, tracer_chunk *, void *, 
-		size_t, u_short *,  char **, size_t *);
-int tracer_unpack_pkt(PACKET, brdcast_hdr **, tracer_hdr **, tracer_chunk **, bnode_hdr **, size_t *);
-tracer_chunk *tracer_add_entry(void *, void *, tracer_chunk *, u_int *, u_char);
-bnode_hdr *tracer_build_bentry(void *, void *, bnode_chunk **, u_char);
+int tracer_store_pkt(inet_prefix, quadro_group *, u_char, tracer_hdr *, 
+		tracer_chunk *, void *, size_t, u_short *,  char **, size_t *);
+int tracer_unpack_pkt(PACKET, brdcast_hdr **, tracer_hdr **, tracer_chunk **, 
+		bnode_hdr **, size_t *, quadro_group *, int *);
 int tracer_pkt_build(u_char, int, int, int, u_char, brdcast_hdr *, tracer_hdr *,
 		     tracer_chunk *, u_short, char *, size_t, PACKET *);
 
 /*
  * TRACER_PKT_EXCLUDE_VARS:
- * `e_rnode': if the dst is an external rnode, the relative one is passed.
- * `node': the destination node/gnode we are sending the pkt to.
- * `from': the node from which the pkt was sent to us.
- * `pos' : the position of the `node' in the root_node's rnodes.
- * `excl_gid': The gid the pkt is restricted to. It cannot be sent to other
- * gids.
- * `level': The level the pkt is restricted to, it is the level of `excl_gid'.
- * `sub_id': If the pkt is a qspn_open, it is the qspn open sub_id of the pkt.
+ * `e_rnode':   if the dst is an external rnode, the relative one is passed.
+ * `node':      the destination node/gnode we are sending the pkt to.
+ * `from_rpos': the position in the root_node's rnodes of the node from 
+ *              which the pkt was sent to us.
+ * `pos' :      the position of the `node' in the root_node's rnodes.
+ * `level':     The level where there is the gnode the pkt is restricted to.
+ * `sub_id':    If the pkt is a qspn_open, it is the qspn open sub_id of 
+ * 		the pkt.
  */
 #define TRACER_PKT_EXCLUDE_VARS		ext_rnode *e_rnode, map_node *node,    \
-					map_node *from, int pos, int excl_gid, \
+					int from_rpos, int pos,		       \
 					u_char excl_level, int sub_id
-#define TRACER_PKT_EXCLUDE_VARS_NAME	e_rnode, node, from, pos, excl_gid,    \
+#define TRACER_PKT_EXCLUDE_VARS_NAME	e_rnode, node, from_rpos, pos, 	       \
 					excl_level, sub_id
-int tracer_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), int gid, 
-		u_char level, int sub_id, map_node *from, PACKET pkt);
+int tracer_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), u_char level,
+		int sub_id, int from_rpos, PACKET pkt);
 int exclude_from(TRACER_PKT_EXCLUDE_VARS);
 int exclude_all_but_notfrom(TRACER_PKT_EXCLUDE_VARS);
-int exclude_from_glevel_and_setreplied(TRACER_PKT_EXCLUDE_VARS);
 int exclude_from_and_glevel(TRACER_PKT_EXCLUDE_VARS);
 int exclude_from_and_glevel_and_closed(TRACER_PKT_EXCLUDE_VARS);
 int exclude_from_and_glevel_and_notstarter(TRACER_PKT_EXCLUDE_VARS);

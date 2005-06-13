@@ -23,6 +23,7 @@ enum pkt_op
 	ECHO_ME,			/*The node requests to be echoed by the dst_node*/
 	ECHO_REPLY,			/*Yep, this isn't really a reply*/
 	GET_FREE_NODES,			/*it means: <<Get the list of free ips in your gnode, plz>>*/
+	GET_QSPN_ROUND,			/*<<Yo, Gimme the qspn ids and qspn times>>*/
 	NEW_DNODE,
 	NEW_SNODE,
 	NEW_GNODE,
@@ -59,6 +60,7 @@ enum pkt_op
 	/*  *  *  Replies  *  *  */
 	QSPN_RFR_REPLY,
 	PUT_FREE_NODES,			/*it means: <<Here it is the list of free ips in your gnode, cya>>*/
+	PUT_QSPN_ROUND,
 	PUT_DNODEBLOCK,
 	PUT_DNODEIP,
 	PUT_INT_MAP,
@@ -81,6 +83,7 @@ const static u_char reply_array[]=
 {
 	QSPN_RFR_REPLY,
 	PUT_FREE_NODES,
+	PUT_QSPN_ROUND,
 	PUT_DNODEBLOCK,
 	PUT_DNODEIP, 	  
 	PUT_INT_MAP, 	
@@ -97,6 +100,7 @@ reply_str[][20]=
 {
 	{ "QSPN_RFR_REPLY"   },
 	{ "PUT_FREE_NODES" },
+	{ "PUT_QSPN_ROUND" },
 	{ "PUT_DNODEBLOCK" },
 	{ "PUT_DNODEIP"	   },
 	{ "PUT_INT_MAP"	   },
@@ -128,7 +132,7 @@ const static u_char error_array[]=
 	 E_TOO_MANY_CONN   ,
 };
 
-const static char unknown_error[]="Unknow error";
+const static u_char unknown_error[]="Unknow error";
 const static u_char error_str[][20]=
 {	
 	{ "Invalid request" },
@@ -142,6 +146,7 @@ const static u_char error_str[][20]=
 #define ECHO_ME_WAIT			5		/*(in seconds)*/
 #define ECHO_REPLY_WAIT			5
 #define GET_FREE_NODES_WAIT		10
+#define GET_QSPN_ROUND_WAIT		10
 #define NEW_DNODE_WAIT			10
 #define NEW_SNODE_WAIT			10
 #define NEW_GNODE_WAIT			10
@@ -177,6 +182,7 @@ const static u_char error_str[][20]=
 #define ECHO_ME_MAXRQ			20
 #define ECHO_REPLY_MAXRQ		20
 #define GET_FREE_NODES_MAXRQ		5
+#define GET_QSPN_ROUND_MAXRQ		5
 #define NEW_DNODE_MAXRQ			5
 #define NEW_SNODE_MAXRQ			5
 #define NEW_GNODE_MAXRQ			5
@@ -207,12 +213,13 @@ const static u_char error_str[][20]=
 #define GET_EXT_MAP_MAXRQ		2
 #define GET_BNODE_MAP_MAXRQ		2
 
-const static char unknown_request[]="Unknow request";
+const static u_char unknown_request[]="Unknow request";
 const static u_char request_array[][2]=
 { 
 	{ ECHO_ME_WAIT,        ECHO_ME_MAXRQ},
 	{ ECHO_REPLY_WAIT,     ECHO_REPLY_MAXRQ},
 	{ GET_FREE_NODES_WAIT, GET_FREE_NODES_MAXRQ },
+	{ GET_QSPN_ROUND_WAIT, GET_QSPN_ROUND_MAXRQ },
 
 	{ NEW_DNODE_WAIT, NEW_DNODE_MAXRQ },
 	{ NEW_SNODE_WAIT, NEW_SNODE_MAXRQ},
@@ -245,6 +252,7 @@ const static u_char request_str[][20]=
 	{ "ECHO_ME" },
 	{ "ECHO_REPLY" },
 	{ "GET_FREE_NODES" },
+	{ "GET_QSPN_ROUND" },
 
 	{ "NEW_DNODE" },
 	{ "NEW_SNODE"},
@@ -300,10 +308,10 @@ typedef struct request_tbl rq_tbl;
 int update_rq_tbl_mutex;
 
 /*Functions declaration starts here*/
-const char *rq_strerror(int err);
+const u_char *rq_strerror(int err);
 #define re_strerror(err) (rq_strerror((err)))
-const char *rq_to_str(u_char );
-const char *re_to_str(u_char );
+const u_char *re_to_str(u_char re);
+const u_char *rq_to_str(u_char rq);
 int op_verify(u_char );
 int rq_verify(u_char );
 int re_verify(u_char );

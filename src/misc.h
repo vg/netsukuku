@@ -26,3 +26,4 @@ int hash_time(int *h_sec, int *h_usec);
 int rand_range(int, int);
 void xsrand(void);
 int is_bufzero(char *a, int sz);
+void do_nothing(void);

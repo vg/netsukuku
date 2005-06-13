@@ -16,18 +16,30 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#define QSPN_WAIT_ROUND 	60	/*This is a crucial value. It is the number of 
+#define QSPN_WAIT_ROUND 	32	/*This is a crucial value. It is the number of 
 					  seconds to be waited before the next qspn_round 
 					  can be sent*/
 #define QSPN_WAIT_ROUND_MS	QSPN_WAIT_ROUND*1000
-#define QSPN_WAIT_DELTA_MS	91	/*If a qspn_round is sent while 
+#define QSPN_WAIT_DELTA_MS	64	/*If a qspn_round is sent while 
 					  qspn_round_left() < QSPN_WAIT_DELTA_MS,
 					  then it is acceptable*/
 
-/*Wait time bound to a specific level*/
-#define QSPN_WAIT_ROUND_LVL(level) (((level)+1)*QSPN_WAIT_ROUND)
-#define QSPN_WAIT_ROUND_MS_LVL(level) (((level)+1)*QSPN_WAIT_ROUND_MS)
-					  
+#ifdef DEBUG
+#undef QSPN_WAIT_ROUND
+#define QSPN_WAIT_ROUND		8
+#endif
+
+/*Wait time bound to a specific level:	y = (w/2)*x  + w/(x+1) */
+#define QSPN_WAIT_ROUND_LVL(level) ((level)*(QSPN_WAIT_ROUND/2) + 	       \
+					QSPN_WAIT_ROUND/((level)+1))
+#define QSPN_WAIT_ROUND_MS_LVL(level) (QSPN_WAIT_ROUND_LVL(level)*1000)
+
+/* The delta grows in this way:  y = x*(w/2) + 2*w*x + w; */
+#define QSPN_WAIT_DELTA_MS_LVL(level) ((level)*(QSPN_WAIT_DELTA_MS/2) +	       \
+		2*QSPN_WAIT_DELTA_MS*(level) + QSPN_WAIT_DELTA_MS)
+
+
+
 /*we are using the qspn_map style II*/
 #define QMAP_STYLE_II
 #undef  QMAP_STYLE_I
@@ -55,7 +67,7 @@
  * The only exception is the root_node. Its rnodes have a different meaning: they are
  * its effective rnodes, so each map_node.r_node points to the node which is the
  * real rnode of the root_node.
- * The root_node at level 0 may have also rnode of a different gnode (it is a boarder node).
+ * The root_node at level 0 may have also rnode of a different gnode (it is a border node).
  * To store these external rnodes in root_node.r_node[x], the root_node.r_node[x].r_node 
  * will point to the relative ext_rnode struct (see gmap.h) and the MAP_GNODE | MAP_ERNODE
  * flags will be set in root_node.r_node[x].flags.
@@ -73,9 +85,11 @@ struct qspn_buffer
 {	
 	struct qspn_buffer *next;
 	struct qspn_buffer *prev;
-	map_node      *	rnode;		/*the rnode this buf is referring to*/
-	u_int	 	replies;	/*How many replies we forwarded/sent*/
-	u_char	      * replier;	/*Who has sent these replies (qspn_sub_id)*/
+	
+	map_node      *	rnode;		/* the rnode this buf is referring to */
+	u_int	 	replies;	/* How many replies we forwarded/sent
+					   to `rnode' */
+	u_char	      * replier;	/* Who has sent these replies (qspn_sub_id) */
 	u_short	      * flags;
 };
 struct qspn_buffer **qspn_b; /*It is sizeof(struct qspn_buffer *)*levels big*/
@@ -90,6 +104,7 @@ void qspn_set_map_vars(u_char level, map_node **map, map_node **root_node,
 void qspn_b_clean(u_char level);
 int  qspn_b_add(struct qspn_buffer *qb, u_char replier, u_short flags);
 int  qspn_b_find_reply(struct qspn_buffer *qb, int sub_id);
+struct qspn_buffer *qspn_b_find_rnode(struct qspn_buffer *qb, map_node *rnode);
 int  qspn_round_left(u_char level);
 void update_qspn_time(u_char level, struct timeval *);
 

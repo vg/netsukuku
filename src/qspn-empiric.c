@@ -1,5 +1,5 @@
 /* This file is part of Netsukuku
- * (c) Copyright 2004 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+ * (c) Copyright 2005 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
  *
  * This source code is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Public License as published 
@@ -17,7 +17,8 @@
  *
  * qspn-empiric:
  * This is the living proof of the QSPN algorithm.
- * The qspn-empiric simulates an entire network and runs on it the QSPN. 
+ * The qspn-empiric simulates an entire network and runs on it the QSPN,
+ * but it doesn't simulate the qspn with levels.
  * Then when all is done it collects the generated data and makes some 
  * statistics, in this way it's possible to watch the effect of a QSPN 
  * explosion in a network. 
@@ -91,11 +92,11 @@ void gen_rnd_map(int start_node, int back_link, int back_link_rtt)
 	if(back_link>=0 && back_link<MAXGROUPNODE)
 		b=1;
 	
-	if(int_map[i].flags & MAP_SNODE)
+	if(int_map[i].flags & MAP_HNODE)
 		return;
 	
 	r=rand_range(0, MAXLINKS);
-	int_map[i].flags|=MAP_SNODE;
+	int_map[i].flags|=MAP_HNODE;
 	int_map[i].flags&=~MAP_VOID;
 	if(b) {
 		r++;
@@ -400,10 +401,10 @@ void *send_qspn_pkt(void *argv)
 	}
 
 #ifdef Q_OPEN
-	if(!i && !(int_map[to].flags & QSPN_REPLIED) && !(int_map[to].flags & QSPN_STARTER)) {
+	if(!i && !(int_map[to].flags & QSPN_OPENER) && !(int_map[to].flags & QSPN_STARTER)) {
 		/*W00t I'm an extreme node!*/
 		fprintf(stderr, "%u: W00t I'm an extreme node!\n", pthread_self());
-		int_map[to].flags|=QSPN_REPLIED;
+		int_map[to].flags|=QSPN_OPENER;
 		for(x=0; x<int_map[to].links; x++) {	
 			/*if(int_map[to].r_node[x].flags & QSPN_SENT) 
 				continue;
@@ -442,11 +443,11 @@ void *send_qspn_pkt(void *argv)
 	}
 #else	/*Q_OPEN not defined*/
 	/*Shall we send a QSPN_REPLY?*/
-	if(!i && !(int_map[to].flags & QSPN_REPLIED) && !(int_map[to].flags & QSPN_STARTER)) {
+	if(!i && !(int_map[to].flags & QSPN_OPENER) && !(int_map[to].flags & QSPN_STARTER)) {
 		/*W00t I'm an extreme node!*/
 		fprintf(stderr, "%u: W00t I'm an extreme node!\n", pthread_self());
 		
-		int_map[to].flags|=QSPN_REPLIED;
+		int_map[to].flags|=QSPN_OPENER;
 		for(x=0; x<int_map[to].links; x++) {	
 			if((map_node *)int_map[to].r_node[x].r_node == &int_map[qopt->q.from]) 
 				continue;

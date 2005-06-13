@@ -21,10 +21,11 @@
 #define GMAP_VOID	MAP_VOID	/*(1<<1)*/
 #define GMAP_FULL	(1<<2)		/*The gnode is full!! aaahh, run away!*/
 
-/* This is the holy external_map. Each struct corresponds to a groupnode. This groupnode
- * cointains MAXGROUPNODE nodes if we are at level 1 or MAXGROUPNODE groups.
- * The map is equal to the int_map, in fact, a map_node is embedded in a map_gnode. This
- * int_map uses the QSPN_MAP_STYLEII (see qspn.h). */
+/* This is the holy external_map. Each struct corresponds to a groupnode. 
+ * This groupnode cointains MAXGROUPNODE nodes if we are at level 1 or 
+ * MAXGROUPNODE groups. The map is equal to the int_map, in fact, a map_node
+ * is embedded in a map_gnode. 
+ * This int_map uses the QSPN_MAP_STYLEII (see qspn.h). */
 typedef struct
 {
 	/* 
@@ -81,7 +82,7 @@ typedef struct
  */
 #define IPV4_LEVELS		(2+EXTRA_LEVELS)
 
-#define IPV6_LEVELS		(15+EXTRA_LEVELS)
+#define IPV6_LEVELS		(14+EXTRA_LEVELS)
 
 #define MAX_LEVELS		IPV6_LEVELS
 #define GET_LEVELS(family)	({ (family) == AF_INET ? 		        \
@@ -174,11 +175,13 @@ void random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 void gnodetoip(quadro_group *quadg, int gnodeid, u_char level, inet_prefix *ip);
 int quadg_gids_cmp(quadro_group a, quadro_group b, int lvl);
 ext_rnode_cache *erc_find(ext_rnode_cache *erc, ext_rnode *e_rnode);
-void e_rnode_del(ext_rnode_cache **erc_head, int *counter, ext_rnode_cache *erc);
-void e_rnode_add(ext_rnode_cache **erc, ext_rnode *e_rnode, int rnode_pos, int *counter);
-ext_rnode_cache *e_rnode_init(int *counter);
-void e_rnode_free(ext_rnode_cache **erc, int *counter);
-int e_rnode_find(ext_rnode_cache *erc, quadro_group *qg);
+void e_rnode_del(ext_rnode_cache **erc_head, u_int *counter, ext_rnode_cache *erc);
+void e_rnode_add(ext_rnode_cache **erc, ext_rnode *e_rnode, int rnode_pos, u_int *counter);
+ext_rnode_cache *e_rnode_init(u_int *counter);
+void e_rnode_free(ext_rnode_cache **erc, u_int *counter);
+ext_rnode_cache *e_rnode_find(ext_rnode_cache *erc, quadro_group *qg, int level);
+void erc_update_rnodepos(ext_rnode_cache *erc, map_node *root_node, int old_rnode_pos);
+ext_rnode_cache *erc_find_gnode(ext_rnode_cache *erc, map_gnode *gnode, u_char level);
 
 map_gnode *init_gmap(int groups);
 void reset_gmap(map_gnode *gmap, int groups);
@@ -189,11 +192,6 @@ void reset_extmap(map_gnode **ext_map, u_char levels, int groups);
 int  g_rnode_find(map_gnode *gnode, map_gnode *n);
 int  extmap_find_level(map_gnode **ext_map, map_gnode *gnode, u_char max_level);
 void gmap_node_del(map_gnode *gnode);
-
-map_rnode *gmap_get_rblock(map_gnode *map, int maxgroupnode, int *count);
-int gmap_store_rblock(map_gnode *map, int maxgroupnode, map_rnode *rblock);
-map_rnode **extmap_get_rblock(map_gnode **ext_map, u_char levels, int maxgroupnodes, int **ret_count);
-int extmap_store_rblock(map_gnode **ext_map, u_char levels, int maxgroupnode, map_rnode **rblock);
 
 int verify_ext_map_hdr(struct ext_map_hdr *emap_hdr);
 void free_extmap_rblock(map_rnode **rblock, u_char levels);

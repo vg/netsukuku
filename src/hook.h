@@ -28,8 +28,6 @@
  * If level is > 0 then it contains the list of free gnodes which are inside
  * the gnode with `fn_hdr.gid' gid of the `fn_hdr.level'th level. So the free gnodes
  * are part of the (fn_hdr.level - 1)th level.
- * 
- * The free nodes pkt contains also the the qspn round time of all levels.
  */
 struct free_nodes_hdr
 {
@@ -40,17 +38,11 @@ struct free_nodes_hdr
 	u_char  	gid;		/* The gnode id */
 	u_char		nodes;		/* The number of free nodes/gnodes - 1 */
 }_PACKED_;
-#define FREE_NODES_SZ(levels, nodes) (sizeof(struct free_nodes_hdr) +	      \
-				 	((levels) * sizeof(struct timeval)) + \
-					  (sizeof(u_char) * (nodes)))
+#define FREE_NODES_SZ(nodes) (sizeof(struct free_nodes_hdr)  	      +\
+					    (sizeof(u_char) * (nodes)))
 
 /* 
  * the free_nodes block is:
- *	int		qspn_id[max_levels];	   the qspn_id of the last qspn_round for each 
- *						   fn_hdr.max_levels level
- *	struct timeval  qtime[max_levels];         qspn round time: how many seconds passed away
- *						   since the previous qspn round. There's a qtime
- *						   for each fn_hdr.max_levels level
  *	u_char		free_nodes[fn_hdr.nodes];  If free_nodes[x] is the position of the node in the
  *						   map.
  * The free_nodes pkt is:
@@ -58,18 +50,30 @@ struct free_nodes_hdr
  *	fn_block;
  */
 
-int get_free_nodes(inet_prefix, struct timeval, struct free_nodes_hdr *, u_char *, 
-	           struct timeval *, int *);
+/* 
+ * the qspn_round pkt it:
+ * 	u_char 		max_levels;
+ *	int		qspn_id[max_levels];	   the qspn_id of the last qspn_round for each 
+ *						   fn_hdr.max_levels level
+ *	struct timeval  qtime[max_levels];         qspn round time: how many seconds passed away
+ *						   since the previous qspn round. There's a qtime
+ *						   for each fn_hdr.max_levels level
+ */
+#define QSPN_ROUND_PKT_SZ(levels)	(sizeof(u_char) + 			\
+						((levels) * sizeof(int)) +	\
+			                          ((levels) * sizeof(struct timeval)) )
+
 int put_free_nodes(PACKET rq_pkt);
 
+int get_qspn_round(inet_prefix to, struct timeval to_rtt,struct timeval *qtime,
+		int *qspn_id);
+int put_qspn_round(PACKET rq_pkt);
+
 int put_ext_map(PACKET rq_pkt);
-map_gnode **get_ext_map(inet_prefix to, quadro_group *new_quadg);
 
 int put_int_map(PACKET rq_pkt);
-map_node *get_int_map(inet_prefix to, map_node **new_root);
 
 int put_bnode_map(PACKET rq_pkt);
-map_bnode **get_bnode_map(inet_prefix to, u_int **bmap_nodes);
 
 int create_gnodes(inet_prefix *ip, int final_level);
 void set_ip_and_def_gw(char *dev, inet_prefix ip);

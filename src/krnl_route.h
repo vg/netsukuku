@@ -21,7 +21,7 @@
 struct nexthop 
 {
 	inet_prefix gw;
-	u_char *dev;
+	char *dev;
 	u_char hops;
 };
 
@@ -40,3 +40,4 @@ int route_del(ROUTE_CMD_VARS);
 int route_replace(ROUTE_CMD_VARS);
 int route_change(ROUTE_CMD_VARS);
 int route_flush_cache(int family);
+int route_ip_forward(int family, int enable);

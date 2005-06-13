@@ -1,5 +1,5 @@
 /* This file is part of Netsukuku
- * (c) Copyright 2004 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+ * (c) Copyright 2005 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
  *
  * This source code is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Public License as published 
@@ -36,7 +36,7 @@ extern int errno;
  */
 int pos_from_node(map_node *node, map_node *map)
 {
-	return ((void *)node-(void *)map)/sizeof(map_node);
+	return ((char *)node-(char *)map)/sizeof(map_node);
 }
 
 /*
@@ -45,7 +45,7 @@ int pos_from_node(map_node *node, map_node *map)
  */
 map_node *node_from_pos(int pos, map_node *map)
 {
-	return (map_node *)((pos*sizeof(map_node))+(void *)map);
+	return (map_node *)((pos*sizeof(map_node))+(char *)map);
 }
 
 /* 
@@ -523,7 +523,7 @@ int merge_maps(map_node *base, map_node *new, map_node *base_root, map_node *new
  */
 int mod_rnode_addr(map_rnode *rnode, int *map_start, int *new_start)
 {
-	rnode->r_node = ((void *)rnode->r_node - (void *)map_start) + (void *)new_start;
+	rnode->r_node = (int *)(((char *)rnode->r_node - (char *)map_start) + (char *)new_start);
 	return 0;
 }
 

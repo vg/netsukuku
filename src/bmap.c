@@ -1,5 +1,5 @@
 /* This file is part of Netsukuku
- * (c) Copyright 2004 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+ * (c) Copyright 2005 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
  *
  * This source code is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Public License as published 
@@ -17,7 +17,7 @@
  *
  * --
  * bmap.c:
- * Boarder node map code.
+ * Border node map code.
  */
 
 #include "includes.h"
@@ -30,19 +30,39 @@
 #include "xmalloc.h"
 #include "log.h"
 
-void bmap_level_init(u_char levels, map_bnode ***bmap, u_int **bmap_nodes)
+void bmap_levels_init(u_char levels, map_bnode ***bmap, u_int **bmap_nodes)
 {
 	*bmap=xmalloc(sizeof(map_bnode *) * levels);
 	*bmap_nodes=(u_int *)xmalloc(sizeof(u_int) * levels);
 
 	memset(*bmap, 0, sizeof(map_bnode *) * levels);
-	memset(*bmap_nodes, 0, sizeof(u_int) * levels);
+	bmap_counter_reset(levels, *bmap_nodes);
 }
 
-void bmap_level_free(map_bnode **bmap, u_int *bmap_nodes)
+void bmap_levels_free(map_bnode **bmap, u_int *bmap_nodes)
 {
 	xfree(bmap);
 	xfree(bmap_nodes);
+}
+
+void bmap_counter_init(u_char levels, u_int **bnodes_closed, u_int **bnodes_opened)
+{
+	*bnodes_closed=(u_int *)xmalloc(sizeof(u_int) * levels);
+	*bnodes_opened=(u_int *)xmalloc(sizeof(u_int) * levels);
+	
+	bmap_counter_reset(levels, *bnodes_closed);
+	bmap_counter_reset(levels, *bnodes_opened);
+}
+
+void bmap_counter_free(u_int *bnodes_closed, u_int *bnodes_opened)
+{
+	xfree(bnodes_closed);
+	xfree(bnodes_opened);
+}
+
+void bmap_counter_reset(u_char levels, u_int *counter)
+{
+	memset(counter, 0, sizeof(u_int) * levels);
 }
 
 /* 
@@ -64,6 +84,7 @@ int map_add_bnode(map_bnode **bmap, u_int *bmap_nodes, u_int bnode, u_int links)
 		*bmap=xrealloc(*bmap, sizeof(map_bnode) * *bmap_nodes);
 
 	bnode_map=*bmap;
+	memset(bnode_map, 0, sizeof(map_bnode));
 	bnode_map[bm].bnode_ptr=bnode;
 	bnode_map[bm].links=links;
 	return bm;
@@ -77,13 +98,14 @@ map_bnode *map_bnode_del(map_bnode *bmap, u_int *bmap_nodes,  map_bnode *bnode)
 {
 	map_node_del((map_node *)bnode);
 	
-	if( ((void *)bnode-(void *)bmap)/sizeof(map_bnode) != (*bmap_nodes)-1 )
+	if( ((char *)bnode-(char *)bmap)/sizeof(map_bnode) != (*bmap_nodes)-1 )
 		memcpy(bnode, &bmap[*bmap_nodes-1], sizeof(map_bnode));
 
 	(*bmap_nodes)--;
 	if(*bmap_nodes)
 		return xrealloc(bmap, (*bmap_nodes) * sizeof(map_bnode));
 	else {
+		*bmap_nodes=0;
 		xfree(bmap);
 		return 0;
 	}
@@ -93,7 +115,7 @@ map_bnode *map_bnode_del(map_bnode *bmap, u_int *bmap_nodes,  map_bnode *bnode)
  * map_find_bnode: Find the given `node' (in the pos_from_node() format) in the
  * given map_bnode `bmap'.
  */
-int map_find_bnode(map_bnode *bmap, int bmap_nodes, void *void_map, int node)
+int map_find_bnode(map_bnode *bmap, int bmap_nodes, int node)
 {
 	int e;
 
@@ -132,19 +154,18 @@ pack_all_bmaps(map_bnode **bmaps,  u_int *bmap_nodes, map_gnode **ext_map,
 {
 	struct bnode_maps_hdr bmaps_hdr;
 	int buf;
-	size_t sz, tmp_sz[quadg.levels];
-	char *pack[quadg.levels], *final_pack;
+	size_t sz, tmp_sz[BMAP_LEVELS(quadg.levels)];
+	char *pack[BMAP_LEVELS(quadg.levels)], *final_pack;
 	u_char level;
-
 	
-	for(level=0; level < quadg.levels; level++) {
+	for(level=0; level < BMAP_LEVELS(quadg.levels); level++) {
 		pack[level]=pack_map((map_node *)bmaps[level], (int *)ext_map[_EL(level+1)], 
 				bmap_nodes[level], 0, &sz);
 		tmp_sz[level]=sz;
 		(*pack_sz)+=sz;
 	}
 
-	bmaps_hdr.levels=quadg.levels;
+	bmaps_hdr.levels=BMAP_LEVELS(quadg.levels);
 	bmaps_hdr.bmaps_block_sz=*pack_sz;
 	(*pack_sz)+=sizeof(struct bnode_maps_hdr);
 	
@@ -152,7 +173,7 @@ pack_all_bmaps(map_bnode **bmaps,  u_int *bmap_nodes, map_gnode **ext_map,
 	memcpy(final_pack, &bmaps_hdr, sizeof(struct bnode_maps_hdr));
 	
 	buf=sizeof(struct bnode_maps_hdr);
-	for(level=0; level < quadg.levels; level++) {
+	for(level=0; level < BMAP_LEVELS(quadg.levels); level++) {
 		memcpy(final_pack+buf, pack[level], tmp_sz[level]);
 		buf+=tmp_sz[level];
 		xfree(pack[level]);
@@ -180,7 +201,7 @@ unpack_all_bmaps(char *pack, size_t pack_sz, u_char levels, map_gnode **ext_map,
 	int i,e=0;
 	char *bblock, *buf;
 
-	bmap_level_init(levels, &bmap, bmap_nodes);
+	bmap_levels_init(levels, &bmap, bmap_nodes);
 
 	buf=pack;
 	for(i=0; i<levels; i++) {

@@ -1,5 +1,5 @@
 /* This file is part of Netsukuku
- * (c) Copyright 2004 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+ * (c) Copyright 2005 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
  *
  * This source code is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Public License as published 
@@ -28,6 +28,7 @@
 #include "ll_map.h"
 #include "inet.h"
 #include "if.h"
+#include "krnl_route.h"
 #include "map.h"
 #include "gmap.h"
 #include "bmap.h"
@@ -53,13 +54,11 @@ int free_the_tmp_cur_node;
  * get_free_nodes: It send the GET_FREE_NODES request, used to retrieve the free_nodes
  * pkt (see hook.h).
  */
-int get_free_nodes(inet_prefix to, struct timeval to_rtt, struct free_nodes_hdr *fn_hdr, 
-		u_char *nodes, struct timeval *qtime, int *qspn_id)
+int get_free_nodes(inet_prefix to, struct free_nodes_hdr *fn_hdr, u_char *nodes)
 {
 	PACKET pkt, rpkt;
-	struct timeval cur_t;
 	ssize_t err;
-	int ret=0, level;
+	int ret=0;
 	const char *ntop;
 	char *buf=0;
 	
@@ -86,30 +85,10 @@ int get_free_nodes(inet_prefix to, struct timeval to_rtt, struct free_nodes_hdr 
 		ret=-1;
 		goto finish;
 	}
+	
 	fn_hdr->nodes++;
 	
-	/* Restoring the qspn_id and the qspn_round time */
-	
 	buf=rpkt.msg+sizeof(struct free_nodes_hdr);
-	memcpy(qspn_id, buf, fn_hdr->max_levels * sizeof(int));
-	
-	buf+=fn_hdr->max_levels * sizeof(int);
-	memcpy(qtime, buf, fn_hdr->max_levels * sizeof(struct timeval));
-	gettimeofday(&cur_t, 0);
-	for(level=0; level < fn_hdr->max_levels; level++) {
-		timeradd(&to_rtt, &qtime[level], &qtime[level]);
-#if 0
-		 debug(DBG_INSANE, "qtime[%d] set to %d, to_rtt: %d", level, 
-				MILLISEC(qtime[level]), MILLISEC(to_rtt));
-#endif
-		timersub(&cur_t, &qtime[level], &qtime[level]);
-#if 0
-		debug(DBG_INSANE, "qtime left: %d", qspn_round_left(level));
-#endif
-	}
-
-	
-	buf+=fn_hdr->max_levels * sizeof(struct timeval);
 	memcpy(nodes, buf, fn_hdr->nodes * sizeof(u_char));
 
 	debug(DBG_NORMAL, "Received %d free %s", fn_hdr->nodes, 
@@ -128,8 +107,6 @@ int put_free_nodes(PACKET rq_pkt)
 {	
 	struct fn_pkt {
 		struct free_nodes_hdr fn_hdr;
-		int 		qspn_id[me.cur_quadg.levels];
-		struct timeval  qtime[me.cur_quadg.levels];
 
 		/* 
 		 * This int free_nodes has maximum MAXGROUPNODE elements, so in
@@ -139,7 +116,6 @@ int put_free_nodes(PACKET rq_pkt)
 	}fn_pkt;
 
 	PACKET pkt;
-	struct timeval cur_t;
 	int ret=0, i, e=0;
 	ssize_t err, pkt_sz;
 	u_char level;
@@ -199,19 +175,8 @@ int put_free_nodes(PACKET rq_pkt)
 	}
 	fn_pkt.fn_hdr.nodes=(u_char)e-1;
 	
-	/* We fill the qspn_id and the qspn round time */
-	memcpy(fn_pkt.qspn_id, me.cur_qspn_id, sizeof(int) * fn_pkt.fn_hdr.max_levels);
-	
-	gettimeofday(&cur_t, 0);
-	for(level=0; level < fn_pkt.fn_hdr.max_levels; level++) {
-		update_qspn_time(level, 0);
-		timersub(&cur_t, &me.cur_qspn_time[level], &fn_pkt.qtime[level]);
-		debug(DBG_INSANE, "fn_pkt,qtime[%d]: %d, left: %d", level, 
-				MILLISEC(fn_pkt.qtime[level]), qspn_round_left(level));
-	}
-
 	/* Go pkt, go! Follow your instinct */
-	pkt_sz=FREE_NODES_SZ(fn_pkt.fn_hdr.max_levels, (fn_pkt.fn_hdr.nodes+1));
+	pkt_sz=FREE_NODES_SZ((fn_pkt.fn_hdr.nodes+1));
 	pkt_fill_hdr(&pkt.hdr, HOOK_PKT, rq_pkt.hdr.id, PUT_FREE_NODES, pkt_sz);
 	pkt.msg=xmalloc(pkt_sz);
 	memset(pkt.msg, 0, pkt_sz);
@@ -219,11 +184,6 @@ int put_free_nodes(PACKET rq_pkt)
 	p=pkt.msg;
 	memcpy(p, &fn_pkt.fn_hdr, sizeof(struct free_nodes_hdr));
 	p+=sizeof(struct free_nodes_hdr);
-	memcpy(p, &fn_pkt.qspn_id,  sizeof(int) * fn_pkt.fn_hdr.max_levels);
-	p+=sizeof(int) * fn_pkt.fn_hdr.max_levels;
-	memcpy(p, &fn_pkt.qtime, 
-			sizeof(struct timeval)*fn_pkt.fn_hdr.max_levels);
-	p+=sizeof(struct timeval)*me.cur_quadg.levels;
 	memcpy(p, &fn_pkt.free_nodes, sizeof(u_char)*(fn_pkt.fn_hdr.nodes+1));
 	
 	err=pkt_send(&pkt);
@@ -236,6 +196,129 @@ finish:
 	pkt_free(&pkt, 0);
 	return ret;
 }
+
+
+/*
+ *  *  * put/get qspn_round *  *  *
+ */
+
+/* 
+ * get_free_nodes: It send the GET_QSPN_ROUND request, used to retrieve the 
+ * qspn ids and and qspn times. (see hook.h).
+ */
+int get_qspn_round(inet_prefix to, struct timeval to_rtt, struct timeval *qtime,
+		int *qspn_id)
+{
+	PACKET pkt, rpkt;
+	struct timeval cur_t;
+	ssize_t err;
+	int ret=0, level;
+	const char *ntop;
+	char *buf=0;
+	u_char max_levels;
+	
+	memset(&pkt, '\0', sizeof(PACKET));
+	memset(&rpkt, '\0', sizeof(PACKET));
+	
+	ntop=inet_to_str(to);
+	
+	pkt_addto(&pkt, &to);
+	pkt.sk_type=SKT_TCP;
+	
+	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_QSPN_ROUND), ntop);
+	err=send_rq(&pkt, 0, GET_QSPN_ROUND, 0, PUT_QSPN_ROUND, 1, &rpkt);
+	if(err==-1) {
+		ret=-1;
+		goto finish;
+	}
+	
+	memcpy(&max_levels, rpkt.msg, sizeof(u_char));
+	if(QSPN_ROUND_PKT_SZ(max_levels) != rpkt.hdr.sz ||
+			max_levels > GET_LEVELS(my_family)) {
+		error("Malformed PUT_QSPN_ROUND request hdr from %s.", ntop);
+		ret=-1;
+		goto finish;
+	}
+	
+	/* Restoring the qspn_id and the qspn_round time */
+	buf=rpkt.msg+sizeof(u_char);
+	memcpy(qspn_id, buf, max_levels * sizeof(int));
+	
+	buf+=max_levels * sizeof(int);
+	memcpy(qtime, buf, max_levels * sizeof(struct timeval));
+	gettimeofday(&cur_t, 0);
+	for(level=0; level < max_levels; level++) {
+		timeradd(&to_rtt, &qtime[level], &qtime[level]);
+#ifdef DEBUG
+		 debug(DBG_INSANE, "qspn_id: %d qtime[%d] set to %d, to_rtt: %d", 
+				 qspn_id[level], level, 
+				MILLISEC(qtime[level]), MILLISEC(to_rtt));
+#endif
+		timersub(&cur_t, &qtime[level], &qtime[level]);
+	}
+
+finish:
+	pkt_free(&pkt, 0);
+	pkt_free(&rpkt,1);
+	return ret;
+}
+/* 
+ * put_qspn_round: It sends the current qspn times and ids to rq_pkt.from. 
+ */
+int put_qspn_round(PACKET rq_pkt)
+{	
+	struct qr_pkt {
+		u_char		max_levels;
+		int 		qspn_id[me.cur_quadg.levels];
+		struct timeval  qtime[me.cur_quadg.levels];
+	}_PACKED_ qr_pkt;
+
+	PACKET pkt;
+	struct timeval cur_t;
+	int ret=0;
+	ssize_t err, pkt_sz;
+	u_char level;
+	const char *ntop;
+
+	ntop=inet_to_str(rq_pkt.from);
+	debug(DBG_NORMAL, "Sending the PUT_QSPN_ROUND reply to %s", ntop);
+	
+	memset(&pkt, 0, sizeof(PACKET));
+	pkt_addto(&pkt, &rq_pkt.from);
+	pkt_addport(&pkt, ntk_udp_port);
+	pkt_addflags(&pkt, 0);
+	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
+
+	/* We fill the qspn_id and the qspn round time */
+	qr_pkt.max_levels=me.cur_quadg.levels;
+	memcpy(qr_pkt.qspn_id, me.cur_qspn_id, sizeof(int) * qr_pkt.max_levels);
+	
+	gettimeofday(&cur_t, 0);
+	for(level=0; level < qr_pkt.max_levels; level++) {
+		update_qspn_time(level, 0);
+		timersub(&cur_t, &me.cur_qspn_time[level], &qr_pkt.qtime[level]);
+		debug(DBG_INSANE, "qspn_id: %d, qr_pkt.qtime[%d]: %d", 
+				qr_pkt.qspn_id[level], level,
+				MILLISEC(qr_pkt.qtime[level]));
+	}
+
+	/* Go pkt, go! Follow your instinct */
+	pkt_sz=sizeof(struct qr_pkt);
+	pkt_fill_hdr(&pkt.hdr, HOOK_PKT, rq_pkt.hdr.id, PUT_QSPN_ROUND, pkt_sz);
+	pkt.msg=xmalloc(pkt_sz);
+	memset(pkt.msg, 0, pkt_sz);
+	
+	memcpy(pkt.msg, &qr_pkt, sizeof(struct qr_pkt));
+	err=pkt_send(&pkt);
+	
+	if(err==-1) {
+		error("put_qspn_round(): Cannot send the PUT_QSPN_ROUND reply to %s.", ntop);
+		ret=-1;
+	}
+	pkt_free(&pkt, 0);
+	return ret;
+}
+
 
 /*  
  *  *  *  put/get ext_map  *  *  *
@@ -497,7 +580,7 @@ void set_ip_and_def_gw(char *dev, inet_prefix ip)
 	const char *ntop;
 	ntop=inet_to_str(ip);
 	
-	debug(DBG_NORMAL, "Setting the %s ip to %s interface", ntop, dev);
+	loginfo("Setting the %s ip to %s interface", ntop, dev);
 	set_dev_down(dev);
 	set_dev_up(dev);
 	if(set_dev_ip(ip, dev))
@@ -507,10 +590,12 @@ void set_ip_and_def_gw(char *dev, inet_prefix ip)
 	 * We set the default gw to our ip so to avoid the subnetting shit.
 	 * Bleah, Class A, B, C, what a fuck -_^ 
 	 */
-	debug(DBG_NORMAL, "Setting the default gw to %s.", ntop);
-	if(rt_replace_def_gw(dev, ip))
-		fatal("Cannot set the default gw to %s for the %s dev", 
-				ntop, dev);
+	if(!server_opt.restricted) {
+		debug(DBG_NORMAL, "Setting the default gw to %s.", ntop);
+		if(rt_replace_def_gw(dev, ip))
+			fatal("Cannot set the default gw to %s for the %s dev", 
+					ntop, dev);
+	}
 	
 }
 
@@ -593,6 +678,9 @@ int hook_init(void)
 	debug(DBG_NORMAL, "Deleting the loopback network (leaving only"
 			" 127.0.0.1)");
 	rt_del_loopback_net();
+	
+	debug(DBG_NORMAL, "Activating ip_forward");
+	route_ip_forward(my_family, 1);
 
 	/*
 	 * We set the dev ip to HOOKING_IP+random_number to begin our 
@@ -620,8 +708,9 @@ int netsukuku_hook(void)
 	map_node **merg_map, *new_root;
 	map_gnode **old_ext_map;
 	map_bnode **old_bnode_map;	
-	int i, e=0, imaps=0, ret=0, new_gnode=0, tracer_levels=0, *old_bnodes;
+	int i, e=0, imaps=0, ret=0, new_gnode=0, tracer_levels=0;
 	int total_hooking_nodes=0;
+	u_int *old_bnodes;
 	u_char fnodes[MAXGROUPNODE];
 	const char *ntop;
 
@@ -686,6 +775,7 @@ hook_restart_and_retry:
 		memset(me.cur_node, 0, sizeof(map_node));
 		me.cur_node->flags|=MAP_HNODE;
 
+		usleep(rand_range(0, 1024)); /* ++entropy, thx to katolaz :) */
 		sleep(MAX_RADAR_WAIT);
 
 		goto hook_restart_and_retry;
@@ -698,8 +788,7 @@ hook_restart_and_retry:
 	 * Now we choose the nearest rnode we found and we send it the 
 	 * GET_FREE_NODES request.
 	 */
-	rq=radar_q;
-	for(i=0; i<me.cur_node->links; i++) {
+	for(i=0, e=0; i<me.cur_node->links; i++) {
 		if(!(rq=find_node_radar_q((map_node *)me.cur_node->r_node[i].r_node))) 
 			fatal("%s:%d: This ultra fatal error goes against the "
 					"laws of the universe. It's not "
@@ -707,10 +796,16 @@ hook_restart_and_retry:
 		if(rq->node->flags & MAP_HNODE)
 			continue;
 
-		if( !get_free_nodes(rq->ip, rq->final_rtt, &fn_hdr, fnodes, 
-					me.cur_qspn_time, me.cur_qspn_id) ) {
-			e=1;
-			break;
+		if(!get_free_nodes(rq->ip, &fn_hdr, fnodes)) {
+			
+			/* Get the qspn round infos */
+			if(!get_qspn_round(rq->ip, rq->final_rtt,
+						me.cur_qspn_time,
+						me.cur_qspn_id)) {
+
+				e=1;
+				break;
+			}
 		}
 	}	
 	if(!e)
@@ -804,7 +899,7 @@ hook_restart_and_retry:
 		old_bnodes=me.bmap_nodes;
 		me.bnode_map=get_bnode_map(rq->ip, &me.bmap_nodes);
 		if(me.bnode_map) {
-			bmap_level_free(old_bnode_map, old_bnodes);
+			bmap_levels_free(old_bnode_map, old_bnodes);
 			e=1;
 			break;
 		}
@@ -866,7 +961,7 @@ finish:
 	 * is just to say <<Hey there, I'm here, alive>>, thus the other nodes
 	 * of the gnode will have the basic routes to reach us.
 	 */
-	sleep(1);
+	usleep(rand_range(0, 999999));
 	tracer_pkt_start_mutex=0;
 	for(i=1; i<tracer_levels; i++)
 		tracer_pkt_start(i-1);

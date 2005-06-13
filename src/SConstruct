@@ -18,7 +18,7 @@ opts.AddOptions(('config', 'Configuration file', '/etc/netsukuku/netsukuku.conf'
 
 env = Environment(options = opts, ENV = os.environ, CCFLAGS = ' -Wall ')
 if ("yes" in env['debug']) or ("1" in env['debug']):
-	env.Append(CPPDEFINES={'DEBUG' : '${debug}'}, CCFLAGS = ' -ggdb -Wall ')
+	env.Append(CPPDEFINES={'DEBUG' : '${debug}'}, CCFLAGS = ' -ggdb -Wall')
 	os.system("echo Cscoping...; cscope -b");
 
 Help("""

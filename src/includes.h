@@ -50,7 +50,7 @@
 #include <gmp.h>
 #include <pthread.h>
 
-#include <linux/limits.h>
+#include <limits.h>
 #include <signal.h>
 #include <linux/byteorder/little_endian.h>
 

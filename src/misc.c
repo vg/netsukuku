@@ -1,5 +1,5 @@
 /* This file is part of Netsukuku
- * (c) Copyright 2004 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+ * (c) Copyright 2005 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
  *
  * This source code is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Public License as published 
@@ -133,4 +133,11 @@ int is_bufzero(char *a, int sz)
 		if(*a)
 			return 1;
 	return 0;
+}
+
+
+/* This is the most important function of all the code */
+void do_nothing(void)
+{
+	return;
 }

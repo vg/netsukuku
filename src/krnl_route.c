@@ -1,5 +1,5 @@
 /* This file is part of Netsukuku
- * (c) Copyright 2004 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+ * (c) Copyright 2005 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
  *
  * This source code is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Public License as published 
@@ -214,4 +214,39 @@ int route_flush_cache(int family)
 	return 0;
 }
 
+int route_ip_forward(int family, int enable)
+{
+	int len, err;
+	int flush_fd;
+	char ROUTE_FORWARD_SYSCTL[]="/proc/sys/net/ipvX/ip_forward";
+	char *buf = "1";
+
+	len = strlen(buf);
+	if(family==AF_INET)
+		ROUTE_FORWARD_SYSCTL[17]='4';
+	else if(family==AF_INET6)
+		ROUTE_FORWARD_SYSCTL[17]='6';
+	else
+		return -1;
+
+	if(!enable)
+		buf[0]='0';
+
+	flush_fd=open(ROUTE_FORWARD_SYSCTL, O_WRONLY);
+	if (flush_fd < 0) {
+		debug(DBG_NORMAL, "Cannot open \"%s\"\n", ROUTE_FORWARD_SYSCTL);
+		return -1;
+	}
+		
+	if ((err=write (flush_fd, (void *)buf, len)) == 0) {
+		debug(DBG_NORMAL, "Warning: ip_forward setting changed\n");
+		return -1;
+	} else if(err==-1) {
+		debug(DBG_NORMAL, "Cannot change the ip_forward setting: %s\n", strerror(errno));
+		return -1;
+	}
+	close(flush_fd);
+
+	return 0;
+}
 /*Life is strange*/

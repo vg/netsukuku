@@ -1,5 +1,5 @@
 /* This file is part of Netsukuku
- * (c) Copyright 2004 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+ * (c) Copyright 2005 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
  *
  * This source code is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Public License as published 
@@ -14,6 +14,10 @@
  * You should have received a copy of the GNU Public License along with
  * this source code; if not, write to:
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * --
+ * netsukuku.c:
+ * Where main() resides.
  */
 
 #include "includes.h"
@@ -42,25 +46,32 @@ extern int errno;
 extern char *optarg;
 extern int optind, opterr, optopt;
 
+int destroy_netsukuku_mutex;
+
 
 int init_load_maps(void)
 {
-	if(!(me.int_map=load_map(server_opt.int_map_file, &me.cur_node)))
-		me.int_map=init_map(0);
-	else
+	if((me.int_map=load_map(server_opt.int_map_file, &me.cur_node)))
 		debug(DBG_NORMAL, "Internal map loaded");
-		
-	if(!(me.bnode_map=load_bmap(server_opt.bnode_map_file, me.ext_map, 
-					GET_LEVELS(my_family), &me.bmap_nodes)))
-		bmap_level_init(GET_LEVELS(my_family), &me.bnode_map, &me.bmap_nodes);
 	else
-		debug(DBG_NORMAL, "Bnode map loaded");
-	
-	if(!(me.ext_map=load_extmap(server_opt.ext_map_file, &me.cur_quadg)))
-		me.ext_map=init_extmap(GET_LEVELS(my_family), 0);
-	else
-		debug(DBG_NORMAL, "External map loaded");
+		me.int_map=init_map(0);
 
+#if 0 /* Don't load the bnode mao, it's useless */
+	if((me.bnode_map=load_bmap(server_opt.bnode_map_file, me.ext_map,
+					GET_LEVELS(my_family), &me.bmap_nodes))) {
+		debug(DBG_NORMAL, "Bnode map loaded");
+	} else
+#endif
+		bmap_levels_init(BMAP_LEVELS(GET_LEVELS(my_family)), &me.bnode_map,
+				&me.bmap_nodes);
+	bmap_counter_init(BMAP_LEVELS(GET_LEVELS(my_family)), 
+			&me.bmap_nodes_closed, &me.bmap_nodes_opened);
+
+	if((me.ext_map=load_extmap(server_opt.ext_map_file, &me.cur_quadg)))
+		debug(DBG_NORMAL, "External map loaded");
+	else
+		me.ext_map=init_extmap(GET_LEVELS(my_family), 0);
+	
 	return 0;
 }
 
@@ -68,19 +79,24 @@ int save_maps(void)
 {
 	debug(DBG_NORMAL, "Saving the internal map");
 	save_map(me.int_map, me.cur_node, server_opt.int_map_file);
-	
-	debug(DBG_NORMAL, "Saving the boarder nodes map");
-	save_bmap(me.bnode_map, me.bmap_nodes, me.ext_map, me.cur_quadg, server_opt.bnode_map_file);
+
+#ifdef DEBUG
+	debug(DBG_NORMAL, "Saving the border nodes map");
+	save_bmap(me.bnode_map, me.bmap_nodes, me.ext_map, me.cur_quadg, 
+			server_opt.bnode_map_file);
+#endif
 	
 	debug(DBG_NORMAL, "Saving the external map");
-	save_extmap(me.ext_map, MAXGROUPNODE, &me.cur_quadg, server_opt.ext_map_file);
+	save_extmap(me.ext_map, MAXGROUPNODE, &me.cur_quadg, 
+			server_opt.ext_map_file);
 
 	return 0;
 }
 
 int free_maps(void)
 {
-	bmap_level_free(me.bnode_map, me.bmap_nodes);
+	bmap_levels_free(me.bnode_map, me.bmap_nodes);
+	bmap_counter_free(me.bmap_nodes_closed, me.bmap_nodes_opened);
 	free_extmap(me.ext_map, GET_LEVELS(my_family), 0);
 	free_map(me.int_map, 0);
 
@@ -189,14 +205,14 @@ void parse_options(int argc, char **argv)
 				break;
 			default:
 				usage();
-				exit(0);
+				exit(1);
 				break;
 		}
 	}
 
 	if (optind < argc) {
 		usage();
-		exit(0);
+		exit(1);
 	}
 
 }
@@ -211,13 +227,16 @@ void init_netsukuku(char **argv)
         if (geteuid())
 		fatal("Need root privileges");
 	
+	destroy_netsukuku_mutex=0;
+
 	memset(&me, 0, sizeof(struct current));
 	
 	maxgroupnode_level_init();
 
 	my_family=server_opt.family;
-	ntk_udp_port=DEFAULT_NTK_UDP_PORT;
-	ntk_tcp_port=DEFAULT_NTK_TCP_PORT;
+	ntk_udp_port=NTK_UDP_PORT;
+	ntk_udp_radar_port=NTK_UDP_RADAR_PORT;
+	ntk_tcp_port=NTK_TCP_PORT;
 	if(!(dev=(char *)if_init(server_opt.dev, &me.cur_dev_idx)))
 		fatal("Cannot initialize the %s device", server_opt.dev);
 	strncpy(me.cur_dev, dev, IFNAMSIZ);
@@ -227,6 +246,7 @@ void init_netsukuku(char **argv)
 	me.cur_erc=e_rnode_init(&me.cur_erc_counter);
 	
 	init_radar();
+	total_radars=0;
 
 	init_load_maps();
 
@@ -245,20 +265,26 @@ void init_netsukuku(char **argv)
 	hook_init();
 }
 
-void destroy_netsukuku(void)
+int destroy_netsukuku(void)
 {
+	if(destroy_netsukuku_mutex)
+		return -1;
+	destroy_netsukuku_mutex=1;
+	
 	save_maps();
 	free_maps();
 	maxgroupnode_level_free();
 	close_radar();
 	e_rnode_free(&me.cur_erc, &me.cur_erc_counter);
 	destroy_accept_tbl();
+
+	return 0;
 }
 
 void sigterm_handler(int sig)
 {
-	destroy_netsukuku();
-	fatal("Termination signal caught. Dying, bye, bye");
+	if(!destroy_netsukuku())
+		fatal("Termination signal caught. Dying, bye, bye");
 }
 
 /*
@@ -267,12 +293,15 @@ void sigterm_handler(int sig)
  */
 int main(int argc, char **argv)
 {
+	int *udp_port, *udp_radar_port;
 	pthread_t daemon_tcp_thread, daemon_udp_thread;
 	pthread_attr_t t_attr;
 	
 #ifdef QSPN_EMPIRIC
 	fatal("Fatal: Netsukuku_d was compiled with the QSPN_EMPIRIC support activated.");
 #endif
+	udp_port=xmalloc(sizeof(int));
+	udp_radar_port=xmalloc(sizeof(int));
 
 	fill_default_options();
 	parse_options(argc, argv);
@@ -301,8 +330,13 @@ int main(int argc, char **argv)
 	debug(DBG_NORMAL, "Activating all daemons");
 
 	debug(DBG_SOFT,   "Evocating udp daemon.");
-	pthread_create(&daemon_udp_thread,   &t_attr, udp_daemon,  NULL);
+	*udp_port=ntk_udp_port;
+	pthread_create(&daemon_udp_thread, &t_attr, udp_daemon, (void *)udp_port);
 
+	debug(DBG_SOFT,   "Evocating udp radar daemon.");
+	*udp_radar_port=ntk_udp_radar_port;
+	pthread_create(&daemon_udp_thread, &t_attr, udp_daemon, (void *)udp_radar_port);
+	
 	debug(DBG_SOFT,   "Evocating tcp daemon.");
 	pthread_create(&daemon_tcp_thread, &t_attr, tcp_daemon, NULL);
 
@@ -313,6 +347,8 @@ int main(int argc, char **argv)
 	usleep(300000); 
 	/* Now we hook in the Netsukuku network */
 	netsukuku_hook();
+	xfree(udp_port);
+	xfree(udp_radar_port);
 
 	/* We use this self process for the radar_daemon. */
 	debug(DBG_SOFT,   "Evocating radar daemon.");

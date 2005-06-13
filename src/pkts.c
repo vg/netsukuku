@@ -1,5 +1,5 @@
 /* This file is part of Netsukuku
- * (c) Copyright 2004 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+ * (c) Copyright 2005 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
  *
  * This source code is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Public License as published 
@@ -33,15 +33,21 @@
 #include "xmalloc.h"
 #include "log.h"
 
-/*Handy functions to build the PACKET*/
+/* * * Handy functions to build the PACKET * * */
 void pkt_addfrom(PACKET *pkt, inet_prefix *from)
 {
-	memcpy(&pkt->from, from, sizeof(inet_prefix));
+	if(!from)
+		memset(&pkt->from, 0, sizeof(inet_prefix));
+	else
+		memcpy(&pkt->from, from, sizeof(inet_prefix));
 }
 
 void pkt_addto(PACKET *pkt, inet_prefix *to)
 {
-	memcpy(&pkt->to, to, sizeof(inet_prefix));
+	if(!to)
+		memset(&pkt->to, 0, sizeof(inet_prefix));
+	else
+		memcpy(&pkt->to, to, sizeof(inet_prefix));
 }
 
 void pkt_addsk(PACKET *pkt, int family, int sk, int sk_type)
@@ -64,14 +70,43 @@ void pkt_addflags(PACKET *pkt, int flags)
 
 void pkt_addhdr(PACKET *pkt, pkt_hdr *hdr)
 {
-	memcpy(&pkt->hdr, hdr, sizeof(pkt_hdr));
+	if(!hdr)
+		memset(&pkt->hdr, 0, sizeof(pkt_hdr));
+	else
+		memcpy(&pkt->hdr, hdr, sizeof(pkt_hdr));
 }
 
 void pkt_addmsg(PACKET *pkt, char *msg)
 {
 	pkt->msg=msg;
 }
-/*End of handy stupid functions (^_+)*/
+/* * * End of handy stupid functions (^_+) * * */
+
+/* pkt_clear: blanks the entire PACKET struct, leaving intact only `hdr' 
+ * and `msg' */
+void pkt_clear(PACKET *pkt)
+{
+	pkt_addfrom(pkt, 0);
+	pkt_addto(pkt, 0);
+	pkt_addsk(pkt, 0,0,0);
+	pkt_addport(pkt, 0);
+	pkt_addflags(pkt, 0);
+}
+
+/* 
+ * pkt_copy: Copy the `src' PACKET in `dst'. It xmallocs also a new msg block in
+ * `dst->msg' of `src->hdr.sz' size and copies in it `src->msg'
+ */
+void pkt_copy(PACKET *dst, PACKET *src)
+{
+	memcpy(dst, src, sizeof(PACKET));
+	
+	if(src->hdr.sz && src->msg) {
+		dst->msg=xmalloc(src->hdr.sz);
+		memcpy(dst->msg, src->msg, src->hdr.sz);
+	}
+}
+
 
 void pkt_free(PACKET *pkt, int close_socket)
 {
@@ -135,7 +170,9 @@ ssize_t pkt_send(PACKET *pkt)
 
 	buf=pkt_pack(pkt);
 
-	if(pkt->sk_type==SKT_UDP || pkt->sk_type==SKT_BCAST) {
+	if(pkt->sk_type==SKT_UDP || pkt->sk_type==SKT_BCAST || 
+			pkt->sk_type==SKT_UDP_RADAR || 
+			pkt->sk_type==SKT_BCAST_RADAR) {
 		struct sockaddr to;
 		socklen_t tolen;
 		
@@ -166,7 +203,9 @@ ssize_t pkt_recv(PACKET *pkt)
 	socklen_t fromlen;
 	char buf[MAXMSGSZ];
 
-	if(pkt->sk_type==SKT_UDP || pkt->sk_type==SKT_BCAST) {	
+	if(pkt->sk_type==SKT_UDP || pkt->sk_type==SKT_BCAST ||
+			pkt->sk_type==SKT_UDP_RADAR ||
+			pkt->sk_type==SKT_BCAST_RADAR) {	
 		memset(buf, 0, MAXMSGSZ);
 		memset(&from, 0, sizeof(struct sockaddr));
 		
@@ -211,7 +250,7 @@ ssize_t pkt_recv(PACKET *pkt)
 		/*we get the hdr...*/
 		err=inet_recv(pkt->sk, &pkt->hdr, sizeof(pkt_hdr), pkt->flags);
 		if(err != sizeof(pkt_hdr)) {
-			debug(DBG_NOISE, "inet_recv() of the hdr aborted!");
+			debug(DBG_NOISE, "inet_recv() of the hdr aborted. (connection closed?)");
 			return -1;
 		}
 		/*...and verify it*/
@@ -306,7 +345,8 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 {
 	ssize_t err;
 	int ret=0;
-	const char *ntop=0, *rq_str, *re_str;
+	const char *ntop=0;
+	const u_char *rq_str, *re_str;
 	u_char hdr_flags=0;
 	
 
@@ -340,10 +380,12 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 	if(!pkt->hdr.sz)
 		pkt->msg=0;
 	
-	if(pkt->sk_type==SKT_TCP) {
+	if(pkt->sk_type==SKT_TCP)
 		pkt_addport(pkt, ntk_tcp_port);
-	} else if(pkt->sk_type==SKT_UDP || pkt->sk_type==SKT_BCAST)
+	else if(pkt->sk_type==SKT_UDP || pkt->sk_type==SKT_BCAST)
 		pkt_addport(pkt, ntk_udp_port);
+	else if(pkt->sk_type==SKT_UDP_RADAR || pkt->sk_type==SKT_BCAST_RADAR)
+		pkt_addport(pkt, ntk_udp_radar_port);
 	if(rpkt)
 		pkt_addport(rpkt, pkt->port);
 
@@ -358,9 +400,9 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 		
 		if(pkt->sk_type==SKT_TCP)
 			pkt->sk=pkt_tcp_connect(&pkt->to, pkt->port);
-		else if(pkt->sk_type==SKT_UDP)
+		else if(pkt->sk_type==SKT_UDP || pkt->sk_type==SKT_UDP_RADAR)
 			pkt->sk=new_udp_conn(&pkt->to, pkt->port);
-		else if(pkt->sk_type==SKT_BCAST)
+		else if(pkt->sk_type==SKT_BCAST || pkt->sk_type==SKT_BCAST_RADAR)
 			pkt->sk=new_bcast_conn(&pkt->to, pkt->port, me.cur_dev_idx);
 		else
 			fatal("Unkown socket_type. Something's very wrong!! Be aware");
@@ -388,7 +430,7 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 	if(rpkt) {
 		debug(DBG_NOISE, "Receiving reply for the %s request"
 				" (id 0x%x)", rq_str, pkt->hdr.id);
-		if(pkt->sk_type==SKT_UDP)
+		if(pkt->sk_type==SKT_UDP || pkt->sk_type==SKT_UDP_RADAR)
 			memcpy(&rpkt->from, &pkt->to, sizeof(inet_prefix));
 
 		if((err=pkt_recv(rpkt))==-1) {
@@ -447,7 +489,8 @@ int pkt_err(PACKET pkt, u_char err)
 	
 int pkt_exec(PACKET pkt, int acpt_idx)
 {
-	const char *ntop, *op_str;
+	const char *ntop;
+	const u_char *op_str;
 	int err=0;
 
 	if(!re_verify(pkt.hdr.op))
@@ -476,6 +519,9 @@ int pkt_exec(PACKET pkt, int acpt_idx)
 		/* Hook */
 		case GET_FREE_NODES:
 			err=put_free_nodes(pkt);
+			break;
+		case GET_QSPN_ROUND:
+			err=put_qspn_round(pkt);
 			break;
 		case GET_INT_MAP:
 			err=put_int_map(pkt);

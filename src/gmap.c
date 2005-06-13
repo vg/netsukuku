@@ -1,5 +1,5 @@
 /* This file is part of Netsukuku
- * (c) Copyright 2004 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+ * (c) Copyright 2005 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
  *
  * This source code is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Public License as published 
@@ -43,13 +43,13 @@ inline int get_groups(int family, int lvl)
 /*pos_from_gnode: Position from gnode: It returns the position of the `gnode' in the `map'.*/
 int pos_from_gnode(map_gnode *gnode, map_gnode *map)
 {
-	return ((void *)gnode-(void *)map)/sizeof(map_gnode);
+	return (int)(((char *)gnode-(char *)map)/sizeof(map_gnode));
 }
 
 /*Gnode from position: it returns the fnode pointer calculated by the given `pos' in the map*/
 map_gnode *gnode_from_pos(int pos, map_gnode *map)
 {
-	return (map_gnode *)((pos*sizeof(map_gnode))+(void *)map);
+	return (map_gnode *)((pos*sizeof(map_gnode))+(char *)map);
 }
 
 /* 
@@ -98,7 +98,8 @@ void maxgroupnode_level_free(void)
 int iptogid(inet_prefix ip, int level)
 {
 	mpz_t xx, yy, zz;
-	int upper_level, count, h_ip[4];
+	int upper_level, h_ip[4];
+	size_t count;
 
 	memcpy(h_ip, ip.data, 4);
 	upper_level=level+1;
@@ -140,7 +141,8 @@ void gidtoipstart(int *gid, u_char total_levels, u_char levels, int family,
 		inet_prefix *ip)
 {
 	mpz_t xx, yy;
-	int count, i, h_ip[4];
+	int i, h_ip[4];
+	size_t count;
 
 	memset(h_ip, '\0', sizeof(h_ip[0])*4);
 	mpz_init(xx);
@@ -244,8 +246,8 @@ void random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 		if(my_family == AF_INET)
 			idata[0]=hash_time(0,0);
 		else {
-			hash_time(&idata[0], &idata[1]);
-			hash_time(&idata[2], &idata[3]);
+			hash_time((int *)&idata[0], (int *)&idata[1]);
+			hash_time((int *)&idata[2], (int *)&idata[3]);
 		}
 		
 		inet_setip(new_ip, idata, my_family);
@@ -324,7 +326,7 @@ void gnodetoip(quadro_group *quadg, int gnodeid, u_char level, inet_prefix *ip)
 }
 
 /* 
- * quadg_gid_cmp: Compares the gids of `a' and `b' starting from the `lvl'th 
+ * quadg_gids_cmp: Compares the gids of `a' and `b' starting from the `lvl'th 
  * level. If the gids compared are the same, zero is returned.
  */
 int quadg_gids_cmp(quadro_group a, quadro_group b, int lvl)
@@ -340,10 +342,12 @@ int quadg_gids_cmp(quadro_group a, quadro_group b, int lvl)
 	return 0;
 }
 
-/* * * External rnodes functions * * */
+/* 
+ * * * External rnodes functions * * *
+ */
 
 /* e_rnode_init: Initialize an ext_rnode_cache list and zeros the `counter' */
-ext_rnode_cache *e_rnode_init(int *counter)
+ext_rnode_cache *e_rnode_init(u_int *counter)
 {
 	ext_rnode_cache *erc;
 
@@ -355,7 +359,7 @@ ext_rnode_cache *e_rnode_init(int *counter)
 }
 
 /* e_rnode_free: destroy an ext_rnode_cache list */
-void e_rnode_free(ext_rnode_cache **erc, int *counter)
+void e_rnode_free(ext_rnode_cache **erc, u_int *counter)
 {
 	if(counter)
 		*counter=0;
@@ -366,42 +370,9 @@ void e_rnode_free(ext_rnode_cache **erc, int *counter)
 }
 
 /* 
- * erc_find: Searches in the `erc' ext_rnode_cache list a struct which has the
- * erc->e == e_rnode and returns it
- */
-ext_rnode_cache *erc_find(ext_rnode_cache *erc, ext_rnode *e_rnode)
-{
-	ext_rnode_cache *p=erc;
-	if(!erc)
-		return 0;
-
-	list_for(p) {
-		if(!p->e)
-			continue;
-		if(p->e == e_rnode)
-			return p;
-	}
-	return 0;
-}
-
-void e_rnode_del(ext_rnode_cache **erc_head, int *counter, ext_rnode_cache *erc)
-{
-	if((*counter) <= 0 || !erc)
-		return;
-
-	if(erc->e) {
-		xfree(erc->e);
-		erc->e=0;
-	}
-	
-	*erc_head=list_del(*erc_head, erc);
-	(*counter)--;
-}
-
-/* 
  * e_rnode_add: adds an external node in the ext_rnode_cache list.
  */
-void e_rnode_add(ext_rnode_cache **erc, ext_rnode *e_rnode, int rnode_pos, int *counter)
+void e_rnode_add(ext_rnode_cache **erc, ext_rnode *e_rnode, int rnode_pos, u_int *counter)
 {
 	ext_rnode_cache *p;
 
@@ -418,41 +389,136 @@ void e_rnode_add(ext_rnode_cache **erc, ext_rnode *e_rnode, int rnode_pos, int *
 	(*counter)++;
 }
 
-/* 
- * e_rnode_find: It searches in the `erc' list a quadro_group struct equal to `qg'.
- * If an ext_rnode which has such struct is found it returns its rnode_pos.
- * If nothing is found -1 is returned.
+void e_rnode_del(ext_rnode_cache **erc_head, u_int *counter, ext_rnode_cache *erc)
+{
+	if((*counter) <= 0 || !erc)
+		return;
+
+	if(erc->e) {
+		xfree(erc->e);
+		erc->e=0;
+	}
+	
+	*erc_head=list_del(*erc_head, erc);
+	(*counter)--;
+}
+
+/*
+ * erc_update_rnodepos: When a rnode is deleted from the root_node all the
+ * erc->rnode_pos vars must be updated. For example if there's 
+ * an  erc->rnode_pos == 5 and the 4th rnode is deleted, than the 5th rnode
+ * doesn't exist anymore because it is swapped in the 4th position.
+ * The `old_rnode_pos' holds the deleted rnode position.
+ * Note: it's assumed that the old rnode has been alread deleted.
  */
-int e_rnode_find(ext_rnode_cache *erc, quadro_group *qg)
+void erc_update_rnodepos(ext_rnode_cache *erc, map_node *root_node, int old_rnode_pos)
 {
 	ext_rnode_cache *p=erc;
 
 	if(!erc)
-		return -1;
+		return;
+
+	/* If the old rnode was in the last position, it wasn't swapped */
+	if(old_rnode_pos == root_node->links)
+		return;
 
 	list_for(p) {
 		if(!p->e)
 			continue;
-		if(!memcmp(&p->e->quadg, qg, sizeof(quadro_group)))
-			return p->rnode_pos;
+
+		/* If the ext_rnode was in the last position, now it is swapped
+		 * in `old_rnode_pos' */
+		if(p->rnode_pos == root_node->links)
+			p->rnode_pos=old_rnode_pos;
 	}
-	return -1;
+
+	return;
 }
 
+/* 
+ * erc_find: Searches in the `erc' ext_rnode_cache list a struct which has the
+ * erc->e == e_rnode and returns it.
+ */
+ext_rnode_cache *
+erc_find(ext_rnode_cache *erc, ext_rnode *e_rnode)
+{
+	ext_rnode_cache *p=erc;
+	if(!erc)
+		return 0;
+
+	list_for(p) {
+		if(!p->e)
+			continue;
+		if(p->e == e_rnode)
+			return p;
+	}
+	return 0;
+}
+
+/* 
+ * e_rnode_find: It searches in the `erc' list a quadro_group struct 
+ * equal to `qg', by comparing their gids that goes from gid[`level'] to 
+ * gid[`qg->levels'].
+ * If an ext_rnode which has such struct is found it returns the pointer to the
+ * struct.
+ * If nothing is found 0 is returned.
+ */
+ext_rnode_cache *
+e_rnode_find(ext_rnode_cache *erc, quadro_group *qg, int level)
+{
+	ext_rnode_cache *p=erc;
+
+	if(!erc)
+		return 0;
+
+	list_for(p) {
+		if(!p->e)
+			continue;
+		if(!quadg_gids_cmp(p->e->quadg, *qg, level))
+			return p;
+	}
+	return 0;
+}
+
+/* 
+ * erc_find_gnode; Returns the ext_rnode_cache having 
+ * erc->e->quadg.gnode[_EL( `level' )] == `gnode'
+ */
+ext_rnode_cache *
+erc_find_gnode(ext_rnode_cache *erc, map_gnode *gnode, u_char level)
+{
+	ext_rnode_cache *p=erc;
+
+	if(!erc || !level)
+		return 0;
+
+	list_for(p) {
+		if(!p->e)
+			continue;
+
+		if(p->e->quadg.gnode[_EL(level)] == gnode)
+				return p;
+	}
+	
+	return 0;
+}
+
+/* 
+ * * * External map functions * * *
+ */
 
 map_gnode *init_gmap(int groups)
 {
 	map_gnode *gmap;
 	size_t len;
-	int i;
 	
 	if(!groups)
 		groups=MAXGROUPNODE;
 	len=sizeof(map_gnode) * groups;
 	gmap=(map_gnode *)xmalloc(len);
 	memset(gmap, '\0', len);
-	for(i=0; i < groups; i++)
-		gmap_node_del(&gmap[i]);
+
+	reset_gmap(gmap, groups);
 	
 	return gmap;
 }
@@ -467,7 +533,7 @@ void reset_gmap(map_gnode *gmap, int groups)
 	len=sizeof(map_gnode)*groups;
 	
 	for(i=0; i<groups; i++)
-		rnode_destroy(&gmap[i].g);
+		gmap_node_del(&gmap[i]);
 }
 
 /* init_gmap: Initialize an ext_map with `levels' gmap. Each gmap
@@ -601,14 +667,16 @@ int gmap_store_rblock(map_gnode *gmap, int maxgroupnode, map_rnode *rblock)
 }
 
 /* 
- * extmap_get_rblock: It packs the rnode_block for each map present in the `ext_map'.
- * There are a total of `levels' maps in the ext_map. Each map has `maxgroupnodes' 
- * nodes. In `*ret_count' is stored an array of map's rnodes count, so each element
- * of the array represents the number of rnodes in the rblock of the relative map.
- * It returns an array of rblock's pointer. Each array's element points to the rblock
- * for the map in that level.
- * Ex: ret_count[n] is the number of rnodes placed in rblock[n], and n is also the
- * level of the map which has those rnodes. I hope I was clear ^_-
+ * extmap_get_rblock: It packs the rnode_block for each map present in the 
+ * `ext_map'.
+ * There are a total of `levels' maps in the ext_map. Each map has 
+ * `maxgroupnodes' nodes. In `*ret_count' is stored an array of map's rnodes 
+ * count, so each element of the array represents the number of rnodes in the 
+ * rblock of the relative map.
+ * It returns an array of rblock's pointer. Each array's element points to the 
+ * rblock for the map in that level.
+ * Ex: ret_count[n] is the number of rnodes placed in rblock[n], and n is also 
+ * the level of the map which has those rnodes. I hope I was clear ^_-
  * PS: You'll have to xfree ret_count, rblock[0-levels], and rblock;
  */ 
 map_rnode **extmap_get_rblock(map_gnode **ext_map, u_char levels, int maxgroupnodes, int **ret_count)
@@ -634,12 +702,15 @@ map_rnode **extmap_get_rblock(map_gnode **ext_map, u_char levels, int maxgroupno
  * The rnodes are taken from the `rblock'.
  * The number of map restored is returned and it shall be equal to the number of `levels'.
  */
-int extmap_store_rblock(map_gnode **ext_map, u_char levels, int maxgroupnode, map_rnode **rblock)
+int extmap_store_rblock(map_gnode **ext_map, u_char levels, int maxgroupnode, 
+		map_rnode *rblock, size_t *rblock_sz)
 {
 	int i;
-	for(i=0; i<levels; i++)
-		if(rblock[i])
-			gmap_store_rblock(ext_map[i], maxgroupnode, rblock[i]);
+	for(i=0; i<levels; i++) {
+		if(rblock_sz[i])
+			gmap_store_rblock(ext_map[i], maxgroupnode, rblock);
+		rblock = (map_rnode *)((char *)rblock + rblock_sz[i]);
+	}
 	return i;
 }
 
@@ -718,7 +789,12 @@ char *pack_extmap(map_gnode **ext_map, int maxgroupnode, quadro_group *quadg, si
 	}
 	
 	if(rblock) {
-		memcpy(p, rblock, emap_hdr.total_rblock_sz);
+		for(i=0; i<levels; i++) {
+			if(!emap_hdr.rblock_sz[i])
+				continue;
+			memcpy(p, rblock[i], emap_hdr.rblock_sz[i]);
+			p+=emap_hdr.rblock_sz[i];
+		}
 		free_extmap_rblock(rblock, levels);
 	}
 
@@ -738,7 +814,7 @@ map_gnode **unpack_extmap(char *package, size_t pack_sz, quadro_group *quadg)
 {
 	map_gnode **ext_map;
 	struct ext_map_hdr *emap_hdr=(struct ext_map_hdr *)package;
-	map_rnode **rblock;
+	map_rnode *rblock;
 	u_char levels;
 	int err, i, maxgroupnode;
 	char *p;
@@ -762,8 +838,9 @@ map_gnode **unpack_extmap(char *package, size_t pack_sz, quadro_group *quadg)
 
 	/*Let's store in it the lost rnodes.*/
 	if(emap_hdr->total_rblock_sz) {
-		rblock=(map_rnode **)p;
-		err=extmap_store_rblock(ext_map, levels, maxgroupnode, rblock);
+		rblock=(map_rnode *)p;
+		err=extmap_store_rblock(ext_map, levels, maxgroupnode, rblock,
+				emap_hdr->rblock_sz);
 		if(err!=levels) {
 			error("unpack_extmap(): It was not possible to restore"
 					" all the rnodes in the ext_map");

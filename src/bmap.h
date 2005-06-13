@@ -17,8 +17,8 @@
  */
 
 /* 
- * map_bnode is the struct used to create the "map boarder node". 
- * This map keeps all the boarder node of the map, making it easy to retrieve
+ * map_bnode is the struct used to create the "map border node". 
+ * This map keeps all the border node of the map, making it easy to retrieve
  * the gnode they are linked to.
  * It is indentical to the map_node but, as always there are some little 
  * differences:
@@ -36,6 +36,7 @@
  * want to [re]write all the functions to handle the map, for example 
  * rnode_add,rnode_del, save_map, etc... it's a pain, just for a little map and 
  * moreover it adds new potential bugs. In conclusion: laziness + fear == hacks++;
+ *
  */
 typedef map_node map_bnode;
 #define MAXGROUPBNODE		MAXGROUPNODE	/*the maximum number of bnodes in 
@@ -53,10 +54,16 @@ typedef map_node map_bnode;
 #define bnode_map_hdr 		int_map_hdr
 #define bnode_map_sz   		int_map_sz
 
+/*
+ * The bnode map uses only `me.cur_quadg.levels-1' levels, because each level of
+ * the bmap points to the upper one
+ */
+#define BMAP_LEVELS(levels)	(levels-1)
+#define BMAP_MAX_LEVELS		(BMAP_LEVELS(MAX_LEVELS))
 
 /* 
- * boarder node block: this is the block which keeps the gnodes linked to the 
- * `bnode' boarder_node. When a bnode has to add his entry in the tracer_pkt it 
+ * border node block: this is the block which keeps the gnodes linked to the 
+ * `bnode' border_node. When a bnode has to add his entry in the tracer_pkt it 
  * encapsulates the bnode_block at the end of the packet, in this way it is 
  * possible to know all the gnodes linked to the bnode's gnode.
  * Note: It is possible that the packet passes trough many bnodes, in this case 
@@ -66,20 +73,29 @@ typedef map_node map_bnode;
  */
 typedef struct
 {
-	u_char bnode;		/*The bnode this bnode_block belongs to*/
-	u_short links;		/*The number of linked gnode*/
+	u_char  bnode_levels;
+	u_short links;			/*The number of linked gnode*/
 }_PACKED_ bnode_hdr;
+
+/*
+ * This is part of the bnode_hdr.
+ * 
+ * u_char bnode[bnode_levels];		The bnode this bnode_block belongs to.
+ */
+#define BNODE_HDR_SZ(levels)		(sizeof(bnode_hdr)+sizeof(u_char)*(levels))
+
 
 typedef struct
 {
-	/* The `bnode_hdr.bnode' boards with the `gnode' of `level'th level with
+	/* The `bnode_hdr.bnode' borderes on the `gnode' of `level'th level with
 	 * a round trip time which is stored in `rtt'. */
 
 	u_char gnode;	     
 	u_char level;
 	struct timeval rtt;
 }_PACKED_ bnode_chunk;
-#define BNODEBLOCK_SZ(links) (sizeof(bnode_hdr)+(sizeof(bnode_chunk)*(links)))
+#define BNODEBLOCK_SZ(levels, links) (BNODE_HDR_SZ((levels)) +		       \
+					(sizeof(bnode_chunk)*(links)))
 
 
 /* 
@@ -102,12 +118,15 @@ struct bnode_maps_hdr
 }_PACKED_;
 
 /* * * Functions' declaration * * */
-void bmap_level_init(u_char levels, map_bnode ***bmap, u_int **bmap_nodes);
-void bmap_level_free(map_bnode **bmap, u_int *bmap_nodes);
+void bmap_levels_init(u_char levels, map_bnode ***bmap, u_int **bmap_nodes);
+void bmap_levels_free(map_bnode **bmap, u_int *bmap_nodes);
+void bmap_counter_init(u_char levels, u_int **bnodes_closed, u_int **bnodes_opened);
+void bmap_counter_free(u_int *bnodes_closed, u_int *bnodes_opened);
+void bmap_counter_reset(u_char levels, u_int *counter);
 
 int map_add_bnode(map_bnode **bmap, u_int *bmap_nodes, u_int bnode, u_int links);
 map_bnode *map_bnode_del(map_bnode *bmap, u_int *bmap_nodes,  map_bnode *bnode);
-int map_find_bnode(map_bnode *bmap, int bmap_nodes, void *void_map, int node);
+int map_find_bnode(map_bnode *bmap, int bmap_nodes, int node);
 int map_find_bnode_rnode(map_bnode *bmap, int bmap_nodes, void *n);
 
 char *pack_all_bmaps(map_bnode **, u_int *, map_gnode **, quadro_group, size_t *);

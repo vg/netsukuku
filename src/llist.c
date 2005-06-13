@@ -1,5 +1,5 @@
 /* This file is part of Netsukuku
- * (c) Copyright 2004 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+ * (c) Copyright 2005 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
  *
  * This source code is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Public License as published 
@@ -107,7 +107,7 @@ do {									\
 		_next->prev=_list->prev; 				\
 	}								\
         list_free(_list); 						\
-	if(_head == _list && _next)					\
+	if(_head == _list)						\
 		_next;							\
 	else 								\
 		(_next=_head);						\

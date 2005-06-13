@@ -1,5 +1,5 @@
 /* This file is part of Netsukuku
- * (c) Copyright 2004 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+ * (c) Copyright 2005 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
  *
  * This source code is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Public License as published 
@@ -224,7 +224,7 @@ const char *inet_to_str(inet_prefix ip)
 		
 		return dst;
 	} else if(ip.family==AF_INET6) {
-		htonl_128(ip.data, (int *)&src6);
+		htonl_128(ip.data, (u_int *)&src6);
 		inet_ntop(ip.family, &src6, dst6, INET6_ADDRSTRLEN);
 
 		return dst6;
@@ -253,7 +253,7 @@ int inet_to_sockaddr(inet_prefix *ip, u_short port, struct sockaddr *dst, sockle
 		memcpy(p, data, sizeof(int)*4);
 	} else if(ip->family==AF_INET6) {
 		p=(char *)dst->sa_data+sizeof(u_short)+sizeof(u_int);
-		htonl_128(ip->data, (int *)p);
+		htonl_128(ip->data, (u_int *)p);
 	} else
 		return -1;
 
@@ -462,7 +462,8 @@ int new_broadcast_sk(int family, int dev_idx)
 	
 int new_tcp_conn(inet_prefix *host, short port)
 {
-	int sk, sa_len;
+	int sk;
+	socklen_t sa_len;
 	struct sockaddr	sa;
 	const char *ntop;
 	ntop=inet_to_str(*host);
@@ -489,7 +490,8 @@ finish:
 
 int new_udp_conn(inet_prefix *host, short port)
 {	
-	int sk, sa_len;
+	int sk;
+	socklen_t sa_len;
 	struct sockaddr	sa;
 	const char *ntop;
 	ntop=inet_to_str(*host);
@@ -517,7 +519,8 @@ finish:
 	
 int new_bcast_conn(inet_prefix *host, short port, int dev_idx) 
 {	
-	int sk, sa_len;
+	int sk;
+	socklen_t sa_len;
 	struct sockaddr	sa;
 	const char *ntop;
 
@@ -618,7 +621,8 @@ ssize_t inet_send(int s, const void *msg, size_t len, int flags)
 		{
 			case EMSGSIZE:
 				inet_send(s, msg, len/2, flags);
-				inet_send(s, msg+(len/2), len-(len/2), flags);
+				inet_send(s, (const char *)msg+(len/2), 
+						len-(len/2), flags);
 				break;
 
 			case EAGAIN:
@@ -656,7 +660,8 @@ ssize_t inet_sendto(int s, const void *msg, size_t len, int flags, const struct 
 		{
 			case EMSGSIZE:
 				inet_sendto(s, msg, len/2, flags, to, tolen);
-				inet_sendto(s, (const void *)(msg+(len/2)), len-(len/2), flags, to, tolen);
+				inet_sendto(s, ((const char *)msg+(len/2)), 
+						len-(len/2), flags, to, tolen);
 				break;
 
 			case EAGAIN:

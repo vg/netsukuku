@@ -20,22 +20,27 @@
 
 struct current
 {
+	/* int/ext maps */
 	map_node  	*int_map;	/*Internal Map*/
 	
-	map_gnode      **ext_map;	/*External Map. It is ext_map[ext_levels]
-					  and each element contains the 
-					  entire ext_map for that level*/
+	map_gnode      **ext_map;	/*External Map. */
 	quadro_group     cur_quadg;
 	
-	map_bnode      **bnode_map;	/*Current boarder nodes map, read bmap.h*/
-	u_int 		*bmap_nodes;	/*How many bnodes there are in map_bnode*/
+	/* border nodes maps.(bmap.h) */
+	map_bnode      **bnode_map;
+	u_int 		*bmap_nodes;		/* bnode counter for each map*/
+	u_int		*bmap_nodes_closed;	/* number of closed bnodes   */
+	u_int		*bmap_nodes_opened;	/*   "     " opened   "      */
 	
+	/* Me ^_- */
 	inet_prefix	 cur_ip;
-	map_node 	*cur_node;	/*Me in the map*/
+	map_node 	*cur_node;
 
-	ext_rnode_cache *cur_erc;       /*This is the current external rnode cache list (see gmap.h)*/
+	/* external rnode cache list. (see gmap.h) */
+	ext_rnode_cache *cur_erc;
 	u_int		cur_erc_counter;
 
+	/* Current Qspn id and qspn time */
 	int 		*cur_qspn_id;	/*The current qspn_id we are processing. 
 					  It is cur_qspn_id[levels] big*/
 	struct timeval	*cur_qspn_time; /*When the last qspn round was received/sent 
@@ -45,11 +50,12 @@ struct current
 	int		 cur_dev_idx;
 }me;
 
-#define DEFAULT_NTK_UDP_PORT    269
-#define DEFAULT_NTK_TCP_PORT    269
+#define NTK_UDP_PORT 	   	269
+#define NTK_UDP_RADAR_PORT	270
+#define NTK_TCP_PORT		269
 
 int my_family;
-u_short ntk_udp_port, ntk_tcp_port;
+u_short ntk_udp_port, ntk_udp_radar_port, ntk_tcp_port;
 
 int ll_map_initialized;
 
@@ -75,12 +81,3 @@ typedef struct
 	int 		max_accepts_per_host_time;
 }NtkOpt;
 NtkOpt server_opt;
-
-int init_load_maps(void);
-int save_maps(void);
-int free_maps(void);
-int fill_default_options(void);
-void usage(void);
-void parse_options(int argc, char **argv);
-void init_netsukuku(char **argv);
-void destroy_netsukuku(void);
