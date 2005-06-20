@@ -1,0 +1,42 @@
+			Netsukuku
+
+
+To download the netsukuku src code you have to checkout it from the cvs 
+repository
+
+# cvs -d :pserver:anoncvs@hinezumilabs.org:/home/cvsroot login
+or
+# export CVSROOT=":pserver:anoncvs@hinezumilabs.org:/home/cvsroot"
+# cvs login
+
+then check it out:
+
+# cvs -z3 -d :pserver:anoncvs@hinezumilabs.org:/home/cvsroot co netsukuku
+or
+# cvs -z3 co netsukuku
+(providing the CVSROOT variable was set in the previous step)
+
+
+Once you've checked out a copy of the source tree, you can update 
+your source tree at any time so it is in sync with the latest and 
+greatest by running the command:
+# cvs -z3 update -d -P
+
+A shorter way to get the code is by going to:
+http://www.freaknet.org/alpt/netsukuku/files/
+
+
+-
+
+To compile the code you must have scons installed:
+http://www.scons.org/
+
+The code, for now, depends also on the libgmp. Generally you have it already
+installed in your system, but eventually you can retrieve the libgmp here:
+http://www.swox.com/gmp/
+
+Then go in the src/ directory and type:
+$ scons
+
+The code will be compiled.
+The binary built is "netsukuku_d".

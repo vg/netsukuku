@@ -13,7 +13,7 @@ libs = Split('gmp pthread')
 ##### Options and help
 opts = Options()
 opts.AddOptions(('config', 'Configuration file', '/etc/netsukuku/netsukuku.conf'),
-		EnumOption('debug', 'build the debug code', 'yes', 
+		EnumOption('debug', 'build the debug code', 'no', 
 			allowed_values=('yes', 'no', '1', '0'), map={}, ignorecase=0))
 
 env = Environment(options = opts, ENV = os.environ, CCFLAGS = ' -Wall ')
