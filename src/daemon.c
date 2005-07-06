@@ -67,7 +67,6 @@ int prepare_listen_socket(int family, int socktype, u_short port)
 			continue;
 
 		set_bindtodevice_sk(s, me.cur_dev);
-
 		set_reuseaddr_sk(s);
 
 		/* Let's bind it! */

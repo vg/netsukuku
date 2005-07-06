@@ -20,7 +20,7 @@
  * This is the "link-scope all-hosts multicast" address: ff02::1.
  * Each element is in network order.
  */
-#define IPV6_ADDR_BROADCAST	{ 0xff020000, 0x0, 0x0, 0x1 } 
+#define IPV6_ADDR_BROADCAST		{ 0x2ff, 0x0, 0x0, 0x1000000 }
 
 /* in network byte order */
 #define LOOPBACK_IP			0x7f000001
@@ -30,8 +30,8 @@
 #define LOOPBACK_IP_V6			0x1
 
 /* in host byte order */
-#define NTK_PRIVATE_CLASS_MASK_IPV4	0x0a000000
-#define NTK_PRIVATE_CLASS_MASK_IPV6	0xfec00000
+#define NTK_PRIVATE_CLASS_MASK_IPV4	0x0a000000	/* 10.x.x.x */
+#define NTK_PRIVATE_CLASS_MASK_IPV6	0xfec00000	/* fec0:xxxx:... */
 
 typedef struct
 {
@@ -74,6 +74,7 @@ int inet_setip_bcast(inet_prefix *ip, int family);
 int inet_setip_anyaddr(inet_prefix *ip, int family);
 int inet_setip_anyaddr(inet_prefix *ip, int family);
 int inet_setip_localaddr(inet_prefix *ip, int family);
+int inet_addr_match(const inet_prefix *a, const inet_prefix *b, int bits);
 int ipv6_addr_type(inet_prefix addr);
 int inet_validate_ip(inet_prefix ip);
 
@@ -89,9 +90,6 @@ int set_nonblock_sk(int fd);
 int unset_nonblock_sk(int fd);
 int set_reuseaddr_sk(int socket);
 int set_bindtodevice_sk(int socket, char *dev);
-int set_multicast_loop_sk(int family, int socket);
-int set_broadcast_sk(int socket, int family, int dev_idx);
-int unset_broadcast_sk(int socket, int family);
 int new_broadcast_sk(int family, int dev_idx);
 
 int new_tcp_conn(inet_prefix *host, short port);

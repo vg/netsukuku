@@ -65,10 +65,17 @@ la Rete ci attende.
 	6.2  Tracer pkt: one flood, one route
 	
   7. ANDNA: Abnormal Netsukuku Domain Name Anarchy
-  
-  	7.1  Don't rob my hostname!
-	7.2. Endless rest and Rebirth
-	
+ 
+ 	7.1  ANDNA Metalloid elements: the recipe
+	7.2  Don't rob my hostname!
+	7.3  Count again
+	7.4  Registration step by step
+	7.5  Endless rest and rebirth
+	7.6  Hash_gnodes mutation
+	7.7  Yaq: Yet another queue
+	7.8  noituloser emantsoh esreveR
+	7.9  dns wrapper
+	  
   8. Heavy Load: flood your ass!
   
   9. Spoof the Wired: happy kiddies
@@ -130,11 +137,11 @@ la Rete ci attende.
   dallo Stato. Se, poi, egli osasse esprimere sulla rete un pensiero contrario
   alla dottrina politica del governo, rischierebbe perfino la pena di morte.
 
-  Internet e' nato all'interno di un'organizzazione militare, e
-  nel corso del tempo la sua struttura fondamentale non e' cambiata, ne'
-  potra' cambiare. Pertanto, se Internet ha, di fatto, fallito nella sua 
-  missione di rendere effettiva la libertà di comunicazione tra gli uomini, 
-  allora non ci resta altro da fare che sostituirlo! 
+  Internet e' nato in un contesto militare, e nel corso del tempo la sua 
+  struttura fondamentale non e' cambiata, ne' potra' cambiare. 
+  Pertanto, se Internet ha, di fatto, fallito nella sua missione di rendere
+  effettiva la libertà di comunicazione tra gli uomini, allora non ci resta 
+  altro da fare che sostituirlo! 
   Come?
   Con una rete distribuita, decentralizzata e pienamente efficiente, una rete
   che non possa essere sottoposta a nessun tipo di governo.
@@ -575,7 +582,7 @@ la Rete ci attende.
   
   Un nodo, per joinare in netsukuku, deve agganciarsi ai suoi rnode.
   Ecco cosa avviene:
-  Il nodo si prende un ip compreso tra 128.0.0.1 <= x <= 128.0.0.1+256,
+  Il nodo si prende un ip compreso tra 10.0.0.1 <= x <= 10.0.0.1+256,
   rimuove le reti di loopback dalla tabella locale di routing e setta come
   default gateway l'ip scelto.
   Il primo passo e' quello di lanciare il primo radar per vedere quali sono i
@@ -803,70 +810,195 @@ la Rete ci attende.
   gli ip vengono storati nel formato IP2MAP e quindi sara' usando 
   un u_char, (1 byte invece di 20).
 
+
+
   7.   ANDNA: Abnormal Netsukuku Domain Name Anarchy
 
-  /* TODO: si deve ancora codare */
   ANDNA e' il sistema distribuito, non gerarchico e decentralizzato, di
-  gestione di hostname in netsukuku, sostituisce il poco performante DNS.
-  Il database dell'ANDNA e' sparso in tutto Netsukuku. Ecco come funge:
-  Per risolvere un hostname basta calcolarsi il suo hash. L'hash non e'
-  nient'altro che un numero e questo numero noi lo consideriamo come un
-  ip. Da questo ip ci calcoliamo il gnode corrispondente e cosi' sappiamo a
-  chi mandare la richiesta.  Se il gnode corrispondente non esiste si passa
-  al successivo.  In pratica ogni gnode mantiene un database di cui l'hash
-  di ogni elemento convertito in ip e convertito in gnode corrisponde al
-  gnode stesso. Adesso sicuramente ti ho confuso di piu'.  Cmq, il gnode si
-  gestisce il db come vuole. Puo' per es. dare una copia esatta del db ad
-  ogni nodo oppure suddividere a 5 a 5... etc...
-
-  Ogni nodo ha la liberta' di scegliersi qualsiasi nome host. Quando un nodo
-  sceglie un hostname, prima controlla il gnode corrispondente per vedere se
-  ne esiste gia' uno identico. Se l'hostname esiste il nodo viene avvisato e
-  sconsigliato dal proseguire.  Proseguendo il nodo manda una richiesta al
-  gnode che conservera' l'hostname, la richiesta viene accettata, SEMPRE.
-  Nella gnode-db il nodo viene associato al nome host che ha richiesto
-  e viene memorizzata anche la data di richiesta.  Quando un nodo deve
-  risolvere un hostname consulta il gnode-db, ed estrapola tutti i nodi che
-  hanno quell'hostname.  Subito dopo ordina i nodi dal piu' anziano al piu'
-  giovane in base alla data di richiesta.  Ovviamente considera solo il
-  primo della lista, ma puo' anche scegliere di usare gli altri se per caso
-  il primo non e' raggiungibile, oppure se decide di considerare solamente
-  il terzo della lista per quell'hostname. Quindi e' sconsigliato usare
-  un hostname gia' esistente, si potrebbe rischiare di essere...  ignorati.
-  Un nodo puo' appropriarsi, al massimo, di un numero di hostname pari ad
-  MAX_ANDNA_HOSTNAMES (256).  In ANDNA esistono anche le richieste di revoca
-  di un hostname o di baratto.
+  gestione di hostname in Netsukuku. Sostituisce il poco performante DNS.
+  Il database dell'ANDNA e' sparso in tutto Netsukuku. 
+  
+  Il funzionamento base di ANDNA si articola nel seguente modo:
+  per risolvere un hostname basta calcolarsi il suo hash. 
+  L'hash non e' nient'altro che un numero e questo numero noi lo consideriamo
+  come un ip. Il nodo che corrisponde a questo ip lo chiamiamo
+  andna_hash_node. In pratica l'hash_node, manterra' un piccolo database che
+  associa gli hostname, che corrispondono a lui, con l'ip del nodo che ha
+  registrato quello stesso hostname.
 
   
-  7.1  Don't rob my hostname!
+            Nodo X
+      ip: 123.123.123.123
+      hash( hostname: "andna.acus" ) == 11.22.33.44
+					   ||
+					   ||
+					 Nodo Y
+				     ip: 11.22.33.44
+			   {	[ Database andna del nodo Y ]	 }
+			   {hash_11.22.33.44 ---> 123.123.123.123}
+
+
+  Le richieste di revoca non esistono, l'hostname viene cancellato
+  automaticamente se non viene aggiornato.
+ 
+  7.1  ANDNA Metalloid elements: the recipe
+  
+  In realta', non e' detto che l'hash_node esista nella rete, perche' puo'
+  essere un ip a caso tra i 2^32 ip disponibili, ed ammesso che esista puo'
+  sempre morire e uscire dalla rete. Quindi, per garantire la funzionalita'
+  effettiva di ANDNA, ed anche un minimo di backup, gli hostname non vengono
+  gestiti da singoli nodi, ma da interi gnode. Il gnode che corrisponde
+  all'hash e' l'has_gnode, all'interno ci sara' l'hash_node.
+  
+  Poiche' gli hash_gnode possono anche non esistere al momento, viene adottata
+  una strategia di approsimazione: viene usato il gnode che piu' si avvicina
+  all'hash_gnode, che viene chiamato, rounded_hash_gnode, o in forma breve
+  rounded_gnode. Ad esempio, se l'hash gnode e' il 210, il piu' vicino a lui
+  sara' il 211 ed il 209.
+  In generale, quando si considera solamente il gnode che  ha accettato una
+  registrazione, non si fa differenza tra i due tipi e il gnode si chiama sempre
+  hash_gnode.
+  
+  Per consentire un pronto recupero degli hostname quando un intero hash_gnode
+  viene tagliato fuori da Netsukuku perdendo tutti i suoi link, o quando tutti
+  i nodi che lo compongono muoiono, si usano dei rounded_gnode di backup.
+  Un backup_gnode e' sempre un gnode rounded_gnode, ma mette  a disposizione solo
+  alcuni dei suoi nodi per mantenere l'informazione dell'hostname registrato.
+  Il numero dei nodi che fanno da backup in un backup_gnode e' proporzionale
+  al suo numero totale di nodi (seeds):
+ 	 if(seeds > 8) { backup_nodes = seeds * ( 32 / MAXGROUPNODE ); }
+  		else    { backup_nodes = seeds; }
+  Il numero di backup_gnodes utilizzati per ogni hash_gnode e' pari a
+  MAX_ANDNA_BACKUP_GNODES (2).
+
+  7.2  Don't rob my hostname!
   
   Un nodo, prima di fare una richiesta ad ANDNA, genera una coppia di chiavi
-  rsa, una pubblica (pub_key) ed una privata (priv_key). La pub_key sara'
-  grande quanto l'ip, quindi se l'ip e' di 32bit, anche la pub_key sara'
-  di 32bit.  Assieme alla richiesta di un hostname fatta ad ANDNA, il nodo
-  alleghera' la sua chiave pubblica. In questo modo il nodo porta' fare
-  certificare l'originalita' delle sue future richieste ad ANDNA semplicemente
-  mandando in allegato un messaggio in chiaro ed il suo equivalente criptato
-  con la sua priv_key (il msg puo' essere anche la richiesta stessa).  I nodi
-  potranno cosi' convalidare le richieste decriptando il tutto con la kiave
-  pubblica del nodo, se il msg in chiaro e quello criptato corrispondono,
-  allora la richiesta e' autentica.
+  rsa, una pubblica (pub_key) ed una privata (priv_key). La dimensione della 
+  pub_key sara' limitata, per questioni di spazio.
+  La richiesta di un hostname fatta ad ANDNA verra' firmata con la chiave
+  privata e nella richiesta stessa sara' allegata la chiave pubblica.
+  In questo modo il nodo potra' far certificare l'originalita' delle sue future
+  richieste.
 
-  7.2.   Endless rest and Rebirth
+  7.3  Count again
 
-  Quando un nodo si disconnette dal wired la sua presenza nelle mappe
-  viene eliminata. Se il nodo ha usato un hostname ed una pub_key durante
-  il suo periodo di vita in Netsukuku allora il suo ip ed il suo hostname
-  vengono mantenuti in uno stato di ibernazione.  Il tempo in cui viene
-  mantenuto in questo stato e' costante, pari circa a 4 giorni.  Il tempo
-  di decadimento e' volutamente molto alto per mantenere i domini stabili,
-  in questo modo anche se qualcuno attacca un nodo per appropriarsi del suo
-  dominio, dovra' aspettare 3 giorni.  Quando il tempo di ibernazione si e'
-  esaurito allora avviene la totale morte del nodo: tutti i suoi hostname
-  vengono cancellati. Se invece il nodo si riaggancia durante il tempo di
-  ibernazione allora puo' riacquistare i suoi hostname e se e' possibile
-  anche il suo vecchio ip mandando una richiesta di riaggancio.  Se tutto
-  va a buon fine, il nodo e' redivivo in Netsukuku con i suoi hostname.
+  Il numero massimo di hostnames che un nodo puo' registrare e' pari a 256,
+  per prevenire la registrazione massiccia di hostnames formati da parole
+  comuni da parte di spammer.
+  L'unico problema in andna sarebbe quello di  contare. Il sistema e'
+  totalmente distribuito e, quindi, non si puo' tenere il conto di quanti
+  hostname ha registrato un nodo. Esiste pero' una soluzione: introdurre un
+  nuovo elemento, gli andna_counter_nodes.
+  Un counter_node e' un nodo che ha un ip uguale all'hash dell'ip del nodo che
+  registra gli hostname.
+  hash(resgister_node) == ip dell'andna_counter_node relativo al register_node.
+  Il counter_node si occupa di memorizzare il numero di hostname che
+  ha memorizzaro il register_node che gli corrisponde. Quindi, quando un
+  hash_gnode riceve una richiesta di registrazione, prima di tutto contatta il
+  relativo counter_node, che gli comunica quanti host_name sono gia' stati
+  registrati dal register_node: se il nodo non ha sforato il proprio
+  limite, allora il counter node incrementa il contatore e l'hash_gnode
+  registra effettivamente l'hostname.
+  L'attivazione di un counter_gnode deve essere gestista e mantenuta dallo
+  stesso register_node. Il meccanismo e' identico a quello dell'andna, e,
+  pertanto,  il register_node si deve anche preoccupare di mantenere il suo
+  counter_node attivo seguendo le stesse regole dell'ibernazione (vedi sotto).
+  In pratica, se il counter_node non riceve piu' notifiche dal suo
+  register_node, si disattiva, e tutti gli hostname registrati non sono piu'
+  validi (non si possono piu' aggiornare).
+  
+  7.4  Registration step by step
+  
+  Il nodo x  che vuole registrare il suo hostname, 
+  trova il gnode piu' vicino all'hash_gnode (o l'hash_gnode stesso),
+  contatta un nodo a caso (il nodo y) di quel gnode e gli manda la richiesta.
+  La richiesta include una public key di una coppia di chiavi RSA appena
+  generata (ad ogni registrazione corrisponde una nuova coppia di chiavi). Il
+  pkt viene anche firmato con la priv_key.
+  Il nodo y controlla di essere effettivamente nel gnode che e' piu' vicino
+  all'hash_node, in caso contrario rigetta la richiesta.
+  Il nodo y, contatta il counter_node e gli manda l'ip, l'hostname del
+  register_node e la copia della richiesta. 
+  Il counter verifica i dati e controlla che la firma apposta sulla richiesta
+  sia valida, e da' l'ok.
+  Il nodo y, dopo l'ok, accetta la richiesta, crea l'entry nel suo db
+  annotando la data di registrazione, e manda in broadcast, all'interno del
+  gnode, la richiesta.
+  Gli altri nodi dell'hash_gnode che ricevono la richiesta memorizzano l'entry
+  nel loro db. 
+  A questo punto il nodo x deve solo preoccuparsi di mandare la richiesta ai 
+  backup_gnode. Quando i nodi dei backup_gnode ricevono la richiesta,
+  controllano di essere nel range dei gnode piu' vicini, e riapplicano la
+  stessa procedura.
+  
+  7.5  Endless rest and rebirth
+
+  Gli hash_gnode mantengono gli hostname in uno stato di ibernazione per circa
+  3 giorni dal momento della loro registrazione od aggiornamento.
+  Il tempo di decadimento e' volutamente molto alto per mantenere i domini 
+  stabili. In questo modo, anche se qualcuno attacca un nodo per appropriarsi
+  del suo dominio, dovra' aspettare 3 giorni.
+  Quando il tempo di ibernazione si e' esaurito allora tutti gli hostname
+  scaduti vengono cancellati e vengono sostituiti dagli altri hostname in
+  coda.
+  Un nodo deve mandare una richiesta di aggiornamento dei suoi hostname ogni 
+  qualvolta il suo ip cambia ed in ogni caso prima dello scadere del tempo di
+  ibernazione, in questo modo il suo hostname non sara' cancellato.
+  Il pacchetto della richiesta di aggiornamento ha un id che indica il numero
+  di aggiornamenti gia' mandati. Il pacchetto viene anche firmato con la
+  chiave privata del nodo, per garantire l'autenticita' della richiesta.
+  Il pkt viene mandato ad un nodo qualsiasi dell'hash_gnode. Quest'ultimo nodo
+  contattera' il counter_node, mandando anche una copia della richiesta, per
+  aggiornare le sue entry e per verificare che sia ancora attivo e che l'entry
+  relativa all'hostname da aggiornare sia presente. In caso contrario, la
+  richiesta di aggiornamento viene rigettata.
+  Se tutto va bene, il nodo forwarda la richiesta di aggiornamento all'interno
+  dell'hash_gnode.
+  Il register_node deve poi mandare la richiesta di aggiornamento anche ai
+  backup_gnode.
+  
+
+  7.6  Hash_gnodes mutation
+  
+  Se un generico rounded_gnode viene scavalcato da un nuovo gnode che e' piu'
+  vicino all'hash_gnode deve lasciargli il posto, quindi avviene un
+  trasferimento dal vecchio rounded_gnode al nuovo.
+  La transizione, pero', avviene in maniera passiva: quando il register_node
+  fara' l'aggiornamento dell'hostname, si rivolgera' direttamente al nuovo
+  rounded_gnode. Gli hostname presenti nel vecchio rounded_gnode, non essendo
+  piu' aggiornati, decaderanno.
+  Nel frattempo, quando ancora l'hostname non e' stato aggiornato, tutti i
+  nodi che voglioni risolverlo troveranno il nuovo rounded_gnode come gnode
+  piu' vicino all'hash_gnode, quindi manderanno le richieste al nuovo gnode.
+  Il nuovo rounded_gnode, non avendo ancora il db, chiedera' a sua volta la
+  risoluzione del nome host al rounded_gnode piu' vicino.
+  
+  7.7  Yaq: Yet another queue
+  
+  Ogni nodo ha la liberta' di scegliersi un qualsiasi nome host. Quando un nodo
+  sceglie un hostname, prima controlla il gnode corrispondente per vedere se
+  ne esiste gia' uno identico. Se l'hostname esiste, il nodo viene avvisato e
+  sconsigliato dal proseguire. Proseguendo, il nodo manda una richiesta al
+  gnode che conservera' l'hostname, la richiesta viene accettata, e
+  viene aggiunta in coda, dove massimo possono esserci MAX_ANDNA_QUEUE (5)
+  hostname. Nell'hash_gnode il nodo viene associato al nome host che ha
+  richiesto e viene memorizzata anche la data di richiesta.
+  Quando un nodo deve risolvere un hostname, consulta l'hash_gnode, e l'ip che
+  e' associato a quell'hostname. Il nodo puo' anche scegliere di usare gli
+  altri ip nella coda che sono associati allo stesso hostname.
+
+  7.8  noituloser emantsoh esreveR
+
+  Se un nodo vuole conoscere gli hostname associati da un ip, contatta
+  direttamente il nodo che ha quell'ip.
+  Fine.
+
+  7.9  dns wrapper
+
+  Un wrapper di richieste DNS, si occupera' di mandare al demone di ANDNA gli
+  hostname da risolvere e di restituire gli ip associati ad essi.
+
 
   8.   Heavy Load: flood your ass!
 

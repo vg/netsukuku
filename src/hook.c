@@ -581,11 +581,17 @@ void set_ip_and_def_gw(char *dev, inet_prefix ip)
 	ntop=inet_to_str(ip);
 	
 	loginfo("Setting the %s ip to %s interface", ntop, dev);
-	set_dev_down(dev);
-	set_dev_up(dev);
+
+	if(my_family == AF_INET) {
+		set_dev_down(dev);
+		set_dev_up(dev);
+	} else {
+		ip_addr_flush(my_family, dev, RT_SCOPE_UNIVERSE);
+		ip_addr_flush(my_family, dev, RT_SCOPE_SITE);
+	}
+
 	if(set_dev_ip(ip, dev))
 		fatal("Cannot set the %s  ip to %s", ntop, dev);
-	
 	/*
 	 * We set the default gw to our ip so to avoid the subnetting shit.
 	 * Bleah, Class A, B, C, what a fuck -_^ 
@@ -596,7 +602,6 @@ void set_ip_and_def_gw(char *dev, inet_prefix ip)
 			fatal("Cannot set the default gw to %s for the %s dev", 
 					ntop, dev);
 	}
-	
 }
 
 /*
@@ -675,9 +680,12 @@ int hook_init(void)
 	memset(me.cur_node, 0, sizeof(map_node));
 	me.cur_node->flags|=MAP_HNODE;
 	
-	debug(DBG_NORMAL, "Deleting the loopback network (leaving only"
-			" 127.0.0.1)");
-	rt_del_loopback_net();
+
+	if(my_family == AF_INET) {
+		debug(DBG_NORMAL, "Deleting the loopback network (leaving only"
+				" 127.0.0.1)");
+		rt_del_loopback_net();
+	}
 	
 	debug(DBG_NORMAL, "Activating ip_forward");
 	route_ip_forward(my_family, 1);
@@ -691,7 +699,12 @@ int hook_init(void)
 		idata[0]=HOOKING_IP;
 	else
 		idata[0]=HOOKING_IP6;
-	idata[0]+=rand_range(0, MAXGROUPNODE);
+	
+	idata[0]=ntohl(idata[0]);
+	if(my_family == AF_INET6)
+		idata[3]=rand_range(1, MAXGROUPNODE);
+	else
+		idata[0]+=rand_range(1, MAXGROUPNODE);
 	idata[0]=htonl(idata[0]);
 
 	inet_setip(&me.cur_ip, idata, my_family);

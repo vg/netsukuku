@@ -173,10 +173,11 @@ ssize_t pkt_send(PACKET *pkt)
 	if(pkt->sk_type==SKT_UDP || pkt->sk_type==SKT_BCAST || 
 			pkt->sk_type==SKT_UDP_RADAR || 
 			pkt->sk_type==SKT_BCAST_RADAR) {
-		struct sockaddr to;
+		struct sockaddr_storage saddr_sto;
+		struct sockaddr *to = (struct sockaddr *)&saddr_sto;
 		socklen_t tolen;
 		
-		if(inet_to_sockaddr(&pkt->to, pkt->port, &to, &tolen) < 0) {
+		if(inet_to_sockaddr(&pkt->to, pkt->port, to, &tolen) < 0) {
 			debug(DBG_NOISE, "Cannot pkt_send(): %d "
 					"Family not supported", pkt->to.family);
 			ret=-1;
@@ -184,7 +185,8 @@ ssize_t pkt_send(PACKET *pkt)
 		}
 		
 		ret=inet_sendto(pkt->sk, buf, PACKET_SZ(pkt->hdr.sz), 
-				pkt->flags, &to, sizeof(to));
+				pkt->flags, to, tolen);
+
 	} else if(pkt->sk_type==SKT_TCP)
 		ret=inet_send(pkt->sk, buf, PACKET_SZ(pkt->hdr.sz), pkt->flags);
 	else

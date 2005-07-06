@@ -218,23 +218,24 @@ int route_ip_forward(int family, int enable)
 {
 	int len, err;
 	int flush_fd;
-	char ROUTE_FORWARD_SYSCTL[]="/proc/sys/net/ipvX/ip_forward";
-	char *buf = "1";
+	char *ROUTE_FORWARD_SYSCTL="/proc/sys/net/ipv4/ip_forward";
+	char *ROUTE_FORWARD_SYSCTL_6="/proc/sys/net/ipv6/conf/all/forwarding";
+	char *sysctl_path, *buf = "1";
 
 	len = strlen(buf);
 	if(family==AF_INET)
-		ROUTE_FORWARD_SYSCTL[17]='4';
+		sysctl_path = ROUTE_FORWARD_SYSCTL;
 	else if(family==AF_INET6)
-		ROUTE_FORWARD_SYSCTL[17]='6';
+		sysctl_path = ROUTE_FORWARD_SYSCTL_6;
 	else
 		return -1;
 
 	if(!enable)
 		buf[0]='0';
 
-	flush_fd=open(ROUTE_FORWARD_SYSCTL, O_WRONLY);
+	flush_fd=open(sysctl_path, O_WRONLY);
 	if (flush_fd < 0) {
-		debug(DBG_NORMAL, "Cannot open \"%s\"\n", ROUTE_FORWARD_SYSCTL);
+		debug(DBG_NORMAL, "Cannot open \"%s\"\n", sysctl_path);
 		return -1;
 	}
 		

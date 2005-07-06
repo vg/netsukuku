@@ -118,6 +118,35 @@ int inet_setip_localaddr(inet_prefix *ip, int family)
 	return 0;
 }
 
+/* from iproute2 */
+int inet_addr_match(const inet_prefix *a, const inet_prefix *b, int bits)
+{
+        __u32 *a1 = a->data;
+        __u32 *a2 = b->data;
+        int words = bits >> 0x05;
+        
+        bits &= 0x1f;
+        
+        if (words)
+                if (memcmp(a1, a2, words << 2))
+                        return -1;
+
+        if (bits) {
+                __u32 w1, w2;
+                __u32 mask;
+
+                w1 = a1[words];
+                w2 = a2[words];
+
+                mask = htonl((0xffffffff) << (0x20 - bits));
+
+                if ((w1 ^ w2) & mask)
+                        return 1;
+        }
+
+	return 0;
+}
+
 /* from linux/net/ipv6/addrconf.c. Modified to use inet_prefix */
 int ipv6_addr_type(inet_prefix addr)
 {
@@ -196,7 +225,7 @@ int inet_validate_ip(inet_prefix ip)
 			return -EINVAL;
 		return 0;
 
-	} else if(ip.family==AF_INET) {
+	} else if(ip.family==AF_INET6) {
 		type=ipv6_addr_type(ip);
 		if( (type & IPV6_ADDR_MULTICAST) || (type & IPV6_ADDR_RESERVED) || 
 				(type & IPV6_ADDR_LOOPBACK))
@@ -238,27 +267,35 @@ const char *inet_to_str(inet_prefix ip)
  */
 int inet_to_sockaddr(inet_prefix *ip, u_short port, struct sockaddr *dst, socklen_t *dstlen)
 {
-	char *p;
-	int data[4]={0,0,0,0};
-	
-	memset(dst, '\0',  sizeof(struct sockaddr));
-	
-	dst->sa_family=ip->family;
 	port=htons(port);
-	memcpy(dst->sa_data, &port, sizeof(u_short));
 	
 	if(ip->family==AF_INET) {
-		data[0]=htonl(ip->data[0]);
-		p=(char *)dst->sa_data+2;
-		memcpy(p, data, sizeof(int)*4);
+		struct sockaddr_in sin;
+		memset(&sin, '\0',  sizeof(struct sockaddr_in));
+		
+		sin.sin_family = ip->family;
+		sin.sin_port = port;
+		sin.sin_addr.s_addr = htonl(ip->data[0]);
+		memcpy(dst, &sin, sizeof(struct sockaddr_in));
+		
+		if(dstlen)
+			*dstlen=sizeof(struct sockaddr_in);
+
 	} else if(ip->family==AF_INET6) {
-		p=(char *)dst->sa_data+sizeof(u_short)+sizeof(u_int);
-		htonl_128(ip->data, (u_int *)p);
+		struct sockaddr_in6 sin6;
+		memset(&sin6, '\0',  sizeof(struct sockaddr_in6));
+		
+		sin6.sin6_family = ip->family;
+		sin6.sin6_port = port;
+		sin6.sin6_flowinfo = 0;
+		htonl_128(ip->data, sin6.sin6_addr.s6_addr32);
+
+		memcpy(dst, &sin6, sizeof(struct sockaddr_in6));
+
+		if(dstlen)
+			*dstlen=sizeof(struct sockaddr_in6);
 	} else
 		return -1;
-
-	if(dstlen)
-		*dstlen=ip->len;
 
 	return 0;
 }
@@ -275,14 +312,14 @@ int sockaddr_to_inet(struct sockaddr *ip, inet_prefix *dst, u_short *port)
 	if(port)
 		*port=ntohs(po);
 	
-	if(ip->sa_family==AF_INET) {
+	if(ip->sa_family==AF_INET)
 		p=(char *)ip->sa_data+sizeof(u_short);
-		inet_setip(dst, (u_int *)p, ip->sa_family);
-	} else if(ip->sa_family==AF_INET6) {
+	else if(ip->sa_family==AF_INET6)
 		p=(char *)ip->sa_data+sizeof(u_short)+sizeof(int);
-		inet_setip(dst, (u_int *)p, ip->sa_family);
-	} else
+	else
 		return -1;
+		
+	inet_setip(dst, (u_int *)p, ip->sa_family);
 
 	return 0;
 }
@@ -317,39 +354,38 @@ int new_dgram_socket(int sock_type)
  */
 int join_ipv6_multicast(int socket, int idx)
 {
-	int loop_back=0;
 	struct ipv6_mreq    mreq6;
-	struct in6_addr     addr;
-	int addr32[4]=IPV6_ADDR_BROADCAST;
+	const int addr[4]=IPV6_ADDR_BROADCAST;
 	
-	memcpy(&addr, addr32, sizeof(int)*4);
-
-	if (bind(socket, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-		error("bind error while joining in the multicast group");
-		close(socket);
-		return -1;
-	}
 	memset(&mreq6, 0, sizeof(struct ipv6_mreq));
-	memcpy(&mreq6.ipv6mr_multiaddr,	&addr, sizeof(struct in6_addr));
+	memcpy(&mreq6.ipv6mr_multiaddr,	addr, sizeof(struct in6_addr));
 	mreq6.ipv6mr_interface=idx;
 	
-	if(setsockopt(socket, IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, &mreq6, 
+	if(setsockopt(socket, IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreq6, 
 				sizeof(mreq6)) < 0) {
-		error("Cannot set IPV6_ADD_MEMBERSHIP: %s", strerror(errno));
+		error("Cannot set IPV6_JOIN_GROUP: %s", strerror(errno));
 	        close(socket);
 		return -1;
 	}
 
-	if(setsockopt(socket, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &loop_back, 
-				sizeof(loop_back)) < 0) {
-		error("Cannot set IPV6_MULTICAST_LOOP: %s", strerror(errno));
-	        close(socket);
-		return -1;
-	}
-	
 	return socket;
 }
 
+int set_multicast_if(int socket, int idx)
+{
+	/* man ipv6 */
+
+	if (setsockopt(socket, IPPROTO_IPV6, IPV6_MULTICAST_IF,
+				&idx, sizeof(int)) < 0) {
+		error("set_multicast_if(): cannot set IPV6_MULTICAST_IF: %s",
+				strerror(errno));
+		close(socket);
+		return -1;
+	}
+
+	return 0;
+}
+		
 int set_nonblock_sk(int fd)
 {
 	if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0) {
@@ -400,10 +436,13 @@ int set_bindtodevice_sk(int socket, char *dev)
         return ret;
 }
 
-int set_multicast_loop_sk(int family, int socket)
+/*
+ * `loop': 0 = disable, 1 = enable (default) 
+ */
+int set_multicast_loop_sk(int family, int socket, u_char loop)
 {
 	int ret=0;
-	u_char loop=0;    /* 0 = disable, 1 = enable (default) */
+
 	/*
 	 * <<The IPV6_MULTICAST_LOOP option gives the sender explicit control
 	 * over whether or not subsequent datagrams are looped bac.>>
@@ -415,28 +454,48 @@ int set_multicast_loop_sk(int family, int socket)
 	return ret;
 }
 
-int set_broadcast_sk(int socket, int family, int dev_idx)
+int set_broadcast_sk(int socket, int family, inet_prefix *host, short port,
+		int dev_idx)
 {
+	struct sockaddr_storage saddr_sto;
+	struct sockaddr	*sa=(struct sockaddr *)&saddr_sto;
+	socklen_t alen;
 	int broadcast=1;
 	char *device;
-
+	
 	if(family == AF_INET) {
-		if (setsockopt(socket, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast)) < 0) {
-			error("Cannot set broadcasting: %s", strerror(errno));
+		if (setsockopt(socket, SOL_SOCKET, SO_BROADCAST, &broadcast,
+					sizeof(broadcast)) < 0) {
+			error("Cannot set SO_BROADCAST to socket: %s", strerror(errno));
 			close(socket);
 			return -1;
 		}
 	} else if(family == AF_INET6) {
-		if(join_ipv6_multicast(socket, dev_idx) < 0) {
+		if(join_ipv6_multicast(socket, dev_idx) < 0)
 			return -1;
-		}
+		if(set_multicast_loop_sk(family, socket, 0) < 0)
+			return -1;
+		set_multicast_if(socket, dev_idx);
 	}
 	
-	set_multicast_loop_sk(family, socket);
-
 	device=(char *)ll_index_to_name(dev_idx);
 	set_bindtodevice_sk(socket, device);
 
+	/* Let's bind it! */
+	alen = sizeof(saddr_sto);
+	memset(sa, 0, alen);
+	if (getsockname(socket, sa, &alen) == -1) {
+		error("Cannot getsockname: %s", strerror(errno));
+		close(socket);
+		return -1;
+	}
+	
+	if(bind(socket, sa, alen) < 0) {
+		error("Cannot bind the broadcast socket: %s", strerror(errno));
+		close(socket);
+		return -1;
+	}
+	
 	return socket;
 }
 
@@ -452,23 +511,21 @@ int unset_broadcast_sk(int socket, int family)
 	return 0;
 }
 
-int new_broadcast_sk(int family, int dev_idx)
-{
-	int sock;
 
-	sock=new_dgram_socket(family);
-	return set_broadcast_sk(sock, family, dev_idx);
-}
-	
+/* 
+ *  *  *  Connection functions  *  *  *
+ */
+
 int new_tcp_conn(inet_prefix *host, short port)
 {
 	int sk;
 	socklen_t sa_len;
-	struct sockaddr	sa;
+	struct sockaddr_storage saddr_sto;
+	struct sockaddr	*sa=(struct sockaddr *)&saddr_sto;
 	const char *ntop;
 	ntop=inet_to_str(*host);
 	
-	if(inet_to_sockaddr(host, port, &sa, &sa_len)) {
+	if(inet_to_sockaddr(host, port, sa, &sa_len)) {
 		error("Cannot new_tcp_connect(): %d Family not supported", host->family);
 		sk=-1;
 		goto finish;
@@ -479,7 +536,7 @@ int new_tcp_conn(inet_prefix *host, short port)
 		goto finish;
 	}
 
-	if (connect(sk, &sa, sizeof(sa)) == -1) {
+	if (connect(sk, sa, sa_len) == -1) {
 		error("Cannot tcp_connect() to %s: %s", ntop, strerror(errno));
 		sk=-1;
 		goto finish;
@@ -492,11 +549,12 @@ int new_udp_conn(inet_prefix *host, short port)
 {	
 	int sk;
 	socklen_t sa_len;
-	struct sockaddr	sa;
+	struct sockaddr_storage saddr_sto;
+	struct sockaddr	*sa=(struct sockaddr *)&saddr_sto;
 	const char *ntop;
 	ntop=inet_to_str(*host);
 
-	if(inet_to_sockaddr(host, port, &sa, &sa_len)) {
+	if(inet_to_sockaddr(host, port, sa, &sa_len)) {
 		error("Cannot new_udp_connect(): %d Family not supported", host->family);
 		sk=-1;
 		goto finish;
@@ -507,7 +565,7 @@ int new_udp_conn(inet_prefix *host, short port)
 		goto finish;
 	}
 
-	if (connect(sk, &sa, sizeof(sa)) == -1) {
+	if (connect(sk, sa, sa_len) == -1) {
 		error("Cannot connect to %s: %s", ntop, strerror(errno));
 		sk=-1;
 		goto finish;
@@ -517,33 +575,46 @@ finish:
 	return sk;
 }
 	
-int new_bcast_conn(inet_prefix *host, short port, int dev_idx) 
+int new_bcast_conn(inet_prefix *host, short port, int dev_idx)
 {	
+	struct sockaddr_storage saddr_sto;
+	struct sockaddr	*sa=(struct sockaddr *)&saddr_sto;
+	socklen_t alen;
 	int sk;
-	socklen_t sa_len;
-	struct sockaddr	sa;
 	const char *ntop;
 
-	if(inet_to_sockaddr(host, port, &sa, &sa_len)) {
-		error("Cannot new_bcast_connect(): %d Family not supported", 
-				host->family);
+	if((sk = new_dgram_socket(host->family)) == -1)
+		return -1;
+	sk=set_broadcast_sk(sk, host->family, host, port, dev_idx);
+	
+	/*
+	 * Connect 
+	 */
+	if(inet_to_sockaddr(host, port, sa, &alen)) {
+		error("set_broadcast_sk: %d Family not supported", host->family);
+		return -1;
+	}
+	
+	if(host->family == AF_INET6) {
+		struct sockaddr_in6 *sin6=(struct sockaddr_in6 *)sa;
+		sin6->sin6_scope_id = dev_idx;
+	}
+	
+	if(connect(sk, sa, alen) == -1) {
+		ntop=inet_to_str(*host);
+		error("Cannot connect to the broadcast (%s): %s", ntop,	
+				strerror(errno));
 		return -1;
 	}
 
-	if((sk = new_broadcast_sk(host->family, dev_idx)) == -1)
-		return -1;
-	
-	if(host->family == AF_INET)
-		if(connect(sk, &sa, sizeof(sa)) == -1) {
-			ntop=inet_to_str(*host);
-			error("Cannot connect to the broadcast (%s): %s", ntop,
-					strerror(errno));
-			return -1;
-		}
-
 	return sk;
 }
-	
+
+
+/* 
+ *  *  *  Recv/Send functions  *  *  *
+ */
+
 ssize_t inet_recv(int s, void *buf, size_t len, int flags)
 {
 	ssize_t err;

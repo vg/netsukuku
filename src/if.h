@@ -30,3 +30,4 @@ int set_dev_down(char *dev);
 int set_flags(char *dev, u_int flags, u_int mask);
 const char *if_init(char *dev, int *dev_idx);
 int set_dev_ip(inet_prefix ip, char *dev);
+int ip_addr_flush(int family, char *dev, int scope);
