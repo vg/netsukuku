@@ -1,5 +1,5 @@
 
-	
+
 				    Netsukuku
 			
 			- Cl0se th3 w0rld, OpeN th3 NeX7 -
@@ -88,47 +88,49 @@ la Rete ci attende.
   
   12. Implementation: let's code
   
-  13. The smoked ones who made Netsukuku
+  13.  What to do
+  
+  14. The smoked ones who made Netsukuku
   
 --
  
 
   0.  The old wired
   
-  Internet e' un rete gerarchica gestita da multinazionali ed enti che vengono
+  Internet e' una rete gerarchica gestita da multinazionali ed enti che vengono
   supportati dai governi. Tutti i router principali di Internet sono cosi'
   in mano a loro. Ogni bit di traffico dati passa attraverso le loro backbone
-  ed i loro router. Proseguendo nella lista dei padroni di internet troviamo
+  e i loro router. Proseguendo nella lista dei padroni di internet troviamo
   gli ISP che si appoggiano alle multinazionali.
   I cari Internet Service Provider offrono la connettevita' a tutti i poveri umani
   che si trovano nelle parti piu' basse di questa scala gerarchica garantendo,
   cosi', che internet sia di tutti e per tutti, ovviamente, secondo il giusto e
-  saggio principio dell'uguaglianza. In cambio essi chiedono in cambio una "piccola" 
+  saggio principio dell'uguaglianza. Essi chiedono, in cambio, una "piccola" 
   somma di denaro per poter accedere a questa rete. D'altronde l'informazione, il 
   sapere e la comunicazione non sono di certo frutti che crescono spontaneamente
   sugli alberi, alla luce del sole, gratuitamente e liberamente.
   Grazie al loro benemerito servizio, circa 600 milioni di persone possono 
   connettersi alla grande, libera, ed anonima rete. 
-  Alle restanti 5 miliardi e 400 milioni persone, che non possono permettersi 
+  Alle restanti 5 miliardi e 400 milioni di persone, che non possono permettersi 
   questo lusso, viene detto di riprovare piu' tardi, quando nel mondo non ci
   saranno piu' guerre e regnera' la pace.
   
   Ritornando al discorso delle multinazionali, che cosa accade se una di esse
-  od un ISP decide di non fornire piu' il suo servizio? E' semplice: intere
+  o un ISP decide di non fornire piu' il suo servizio? E' semplice: intere
   nazioni saranno tagliate immediatamente fuori da Internet. Paradossalmente
   Internet e' nato proprio per garantire una comunicazione sicura ed
   inattaccabile tra i vari nodi della rete.
   E che cosa avviene se una di queste multinazionali stipula accordi segreti o
   non con i governi per sorvegliare il traffico dati e rintracciare veri o
   presunti "terroristi"? Niente, assolutamente nulla, il traffico viene intercettato,
-  analizzato ed i potenziali "terroristi" sottoposti, senza alcun vincolo, ad
+  analizzato e i potenziali "terroristi" sottoposti, senza alcun vincolo, ad
   illimitati controlli. Tutto normale. Il sistema funziona.
   La struttura gerarchica e centralizzata di Internet crea di conseguenza
   altri sistemi identici che si appoggiano su di esso, ad esempio il DNS.
   I server del Domain Name Server vengono anch'essi gestiti dai vari ISP, i
   domini vengono letteralmente venduti e le maglie di un sistema centralizzato 
-  rimangono immutatati.
-  Non e' necessario dire che questa tipo di struttura permette in modo semplice 
+  rimangono immutate.
+  Non e' necessario dire che questo tipo di struttura permette in modo semplice 
   ed efficace di localizzare fisicamente qualsiasi computer connesso ad
   Internet in pochissimo tempo e senza alcuno sforzo. Ad esempio, in Cina, 
   l'intera rete e' sorvegliata continuamente da numerosi computer che filtrano
@@ -153,25 +155,25 @@ la Rete ci attende.
  
   1.   The Pure Wired
   
-  Le rete neurali sono delle reti pure, la ragnatela e' una rete pura, la rete
+  Le reti neurali sono delle reti pure, la ragnatela e' una rete pura, la rete
   sociale e' una rete pura, una rete da pesca e' una rete pura, la natura e' una
-  rete pura ed infine lo stesso universo e' un'infinita rete pura nel suo
+  rete pura e infine lo stesso universo e' un'infinita rete pura nel suo
   infinitamente piccolo e nel suo infinitamente grande.
-  In tutte le reti esistenti in natura, non sono mai presenti dei centri di
+  In tutte le reti esistenti in natura non sono mai presenti dei centri di
   smistamento del traffico della rete, perche' non sono di alcuna utilita'.
   Queste reti raggiungono una potenza ed efficacia incredibile perche' sono
-  semplici, non esiste nessuna complicazione.
+  semplici, non esiste alcuna complicazione.
 
   In una rete pura tutti gli ISP, router,... etc non sono assolutamente
   previsti. Tutti i nodi che la compongono sono dei router. In pratica ogni
-  entita' della rete e' un router, e quindi i router non esistono piu'.
+  entita' della rete e' un router, quindi i router non esistono piu'.
 
   La condizione necessaria e sufficiente perche' un nodo appartenga alla rete
   e' quella di essere connesso ad almeno un altro nodo.
   In questo modo tutti i nodi della rete possono mettersi in comunicazione.
-  Se per esempio il nodo (A) (vedi figura) deve mandare un messaggio al nodo (Y),
-  prima lo inviera' a (C).  Il nodo (C) lo inviera' ad (E) poi passera' a (F) ed
-  infine arrivera' a (Y).
+  Se, per esempio, il nodo (A) (vedi figura) deve mandare un messaggio al nodo
+  (Y), prima lo inviera' a (C),  il nodo (C) lo inviera' ad (E), poi passera' a
+  (F) ed infine arrivera' a (Y).
   Riassumendo abbiamo (A)-->(C)-->(E)-->(F)-->(Y).
 
 
@@ -205,23 +207,23 @@ la Rete ci attende.
   
   Netsukuku e' una rete pura che sfrutta il caos, si crea e si mantiene
   autonomamente assumendo la forma di un frattale.
-  La fusione di una rete pura con i frattali ed il caos e' la caratterestica
+  La fusione di una rete pura con i frattali e il caos e' la caratterestica
   che permette a Netsukuku di essere un rete diffusa e distribuita, non
   centralizzata, anonima, anarchica, non controllata ed autonoma.
 
   2.1  No name, no identity
   
   In Netsukuku chiunque, in qualunque luogo e in qualsiasi momento puo'
-  agganciarsi immediatamente alla rete senza bisogno di nessun contratto, od 
+  agganciarsi immediatamente alla rete senza bisogno di alcun contratto, o
   altre vessazioni legate agli adempimenti burocratici e legali, tuttora
   ineluttabili.
-  Inoltre ogni elemento della rete e' estremamente dinamico, e nulla e' uguale
+  Inoltre, ogni elemento della rete e' estremamente dinamico e nulla e' uguale
   a se stesso. L'indirizzo ip che identifica un computer e' scelto
   casualmente, quindi e' impossibile associarlo ad una localita' fisica
   precisa, e le stesse rotte, essendo formate da un numero innumerevole di
-  nodi, tendono ad avere una complessita' e densita' talmente elevata che
-  renderebbe il tracciamento di un nodo un'impresa epica.
-  Poiche' non esiste alcun contratto con nessuna societa', la velocita' del 
+  nodi, tendono ad avere una complessita' e densita' talmente elevata da
+  rendere il tracciamento di un nodo un'impresa epica.
+  Poiche' non esiste alcun contratto con alcuna societa', la velocita' del 
   trasferimento dei dati e' limitata unicamente dalla tecnologia attuale delle
   schede di rete.
 
@@ -234,8 +236,8 @@ la Rete ci attende.
   nodi conoscono quali sono le strade piu' veloci ed efficienti per comunicare 
   con il nuovo arrivato.
   Nessun nodo ha dei privilegi ne' delle limitazioni rispetto ad altri nodi,
-  ognuno fa parte della rete e contribuisce alla sua espansione ed efficienza,
-  e con l'aumentare del loro numero, la rete cresce e si perfeziona.
+  ognuno fa parte della rete e contribuisce alla sua espansione ed efficienza
+  e, con l'aumentare del loro numero, la rete cresce e si perfeziona.
   In Netsukuku non vi e' alcuna differenza tra reti private e pubbliche.
   Netsukuku e' un'immensa rete, dove ogni nodo e' connesso ad altri nodi. Non
   hanno piu' significato le LAN.
@@ -247,14 +249,14 @@ la Rete ci attende.
   l'unico modo per sorvegliare o smantellare Netsukuku e' abbattere fisicamente
   ogni singolo nodo che lo compone.
 
-  Su Netsukuku, essendo una rete distribuita, e non centralizzata si possono
-  facilmente implementare agevolmente altri sistemi distribuiti come ad esempio 
-  l'Abnormal Netsukuku Domain Name Anarchy (ANDNA) che sostituira' l'attuale
-  sistema gerarchico e centralizzato dei DNS.
+  Su Netsukuku, essendo una rete distribuita, e non centralizzata, si possono
+  facilmente implementare altri sistemi distribuiti, come ad esempio l'Abnormal
+  Netsukuku Domain Name Anarchy (ANDNA), che sostituira' l'attuale sistema
+  gerarchico e centralizzato dei DNS.
 
   2.4  So, WTF is it?
   
-  In sostanza Netsukuku e' una mesh network o rete p2p composta da un protocollo
+  In sostanza, Netsukuku e' una mesh network o rete p2p composta da un protocollo
   di rete per il routing dinamico, chiamato Npv7_HB. 
   Attualmente esistono molti protocolli ed algoritmi per il routing dinamico,
   ma vengono utilizzati solo per creare piccole e medie reti. Anche i router di
@@ -267,7 +269,7 @@ la Rete ci attende.
   Netsukuku, dove ogni nodo e' a sua volta un router, perche' la mappa di tutte
   le rotte richiederebbe uno spazio su ciascun pc connesso alla rete di circa un
   centinaio di Gb.
-  Netsukuku usa il suo protocollo: l'Npv7. Questo protocollo struttura
+  Netsukuku un proprio protocollo: l'Npv7. Questo protocollo struttura
   l'intera rete in una disposizione simile ad un frattale, ed usa un
   particolare algoritmo chiamato Quantum Shortest Path Netsukuku (QSPN) per
   calcolare tutte le rotte necessarie a collegare un nodo ad ogni altro nodo
@@ -277,7 +279,7 @@ la Rete ci attende.
   puo' espandersi infinitamente. Questo significa che bastano pochi Kb per
   mantenere l'intera mappa di Netsukuku.
   Il QSPN, invece, e' un meta-algoritmo perche', in realta', non esegue una
-  sequenza di istruzioni matematiche definite, ma sfrutta il caso ed il caos, 
+  sequenza di istruzioni matematiche definite ma sfrutta il caso e il caos, 
   che non richiedono nessun calcolo. In altre parole, in Netsukuku anche una
   semplice calcolatrice puo' usare il QSPN.
 
@@ -320,10 +322,12 @@ la Rete ci attende.
   teorico e' pronto. Gli algoritmi sono definiti. 
   Si incomincia a codare. La maledizione dei coder di protocolli di rete del
   sacro faraone Mortedelprimogenito, si riversa sul codice di Netsukuku. La 
-  pazzia ed il delirio sono la giusta ricompensa a tutti i colori i quali
+  pazzia e il delirio sono la giusta ricompensa a tutti i colori i quali
   osano addentrarsi nella creazione di protocolli di rete pure.
   Nonastante tutto, esattamente dopo un anno e 14 mila righe di codice,
   Netsukuku e' pronto e diventa Beta.
+  Qualche settimana dopo la presentazione di Netsukuku all'Hackmeeting 2005,
+  il protocollo dell'ANDNA e' completamente definito e documentato.
   Il resto giace in potenza e deve ancora divenire.
   
   
@@ -639,7 +643,7 @@ la Rete ci attende.
   cui lui e' presente.  Facendo qualche calcolo con l'ipv4, per usare tutti
   gli ip, si devono usare solamente 3 livelli di mappe. Il che significa che
   prima c'e' il normale groupnode, poi ci sono MAXGROUPNODE di groupnode,
-  ed infine ci sono MAXGROUPNODE di questi ultimi. Nell'ipv6 invece, abbiamo
+  e infine ci sono MAXGROUPNODE di questi ultimi. Nell'ipv6 invece, abbiamo
   una quantita' abnorme di ip, percio' i livelli ammontano a 16.  Facendo una
   stima approssimativa tutte le mappe esterne dei groups nell'ipv4 occupano
   144K di memoria e nell'ipv6 1996K. Questo significa che nessuno si deve
@@ -664,13 +668,13 @@ la Rete ci attende.
   MAXGROUPNODE*(levels+1). Con l'ipv4 abbiamo 1024 rotte, con l'ipv6 4352.
   Tutte queste rotte risiederanno direttamente nel kernel.
 
-  /* TODO: da codare, oppure no. Forse non serve proprio, ed in ogni caso si
+  /* TODO: da codare, oppure no. Forse non serve proprio, e in ogni caso si
    * puo' diminuire il numero di rotte in maniera esponenziale diminuendo il
    * MAXGROUPNODE ed aumentando i livelli, ad esempio se un gnode e' composto
    * da massimo 2^2 di nodi allora i livelli sono 16 nell'ipv4 e le rotte
    * diventano 68.
    */
-  Questo numero enorme di rotte puo' sembrare oneroso, ed infatti lo e'. 
+  Questo numero enorme di rotte puo' sembrare oneroso, e infatti lo e'. 
   Percio' l'utente puo' decidere quanti livelli tenere nel kernel.
   Di default e' presente il livello 0, quindi tutte le MAXGROUPNODE rotte
   per raggiungere i nodi del proprio group_node; i livelli successivi che 
@@ -695,7 +699,7 @@ la Rete ci attende.
   Per avere il qspn effettivo dei groupnode la storia cambia un po'.
   La differenza tra un groupnode ed un nodo singolo risiede nel fatto che il
   nodo e' un'unica entita' che gestisce i suoi link direttamente da se, il
-  groupnode, invece, e' un nodo composto da piu' nodi ed i suoi link sono
+  groupnode, invece, e' un nodo composto da piu' nodi e i suoi link sono
   gestisti da altri nodi che sono i boarder node. Per rendere il groupnode
   un'unica entita' che si comporti esattamente come un nodo singolo basta che
   tutti i bnode del groupnode comunichino tra loro. Quindi, quando un bnode
@@ -762,7 +766,7 @@ la Rete ci attende.
   stato ancora inserito nelle mappe, creera' un pkt con la flag settata a
   "delayed_broadcast". Questo pkt conterra' un messaggio, l'indirizzo di dst e
   il groupnode di dst. Dopo aver forgiato il pkt, si calcolera' la rotta per
-  raggiungere il destination groupnode ed inviera'. Quando il pkt giungera'
+  raggiungere il destination groupnode e inviera'. Quando il pkt giungera'
   ad un qualsiasi nodo del dst_groupnode, verra' propagato in broadcast
   _solamente_ all'interno del groupnode. Il dst_node che riceve il pkt puo'
   rispondere in base al contenuto del msg. Puo' per esempio decidere di
@@ -854,7 +858,7 @@ la Rete ci attende.
   una strategia di approsimazione: viene usato il gnode che piu' si avvicina
   all'hash_gnode, che viene chiamato, rounded_hash_gnode, o in forma breve
   rounded_gnode. Ad esempio, se l'hash gnode e' il 210, il piu' vicino a lui
-  sara' il 211 ed il 209.
+  sara' il 211 e il 209.
   In generale, quando si considera solamente il gnode che  ha accettato una
   registrazione, non si fa differenza tra i due tipi e il gnode si chiama sempre
   hash_gnode.
@@ -866,7 +870,7 @@ la Rete ci attende.
   alcuni dei suoi nodi per mantenere l'informazione dell'hostname registrato.
   Il numero dei nodi che fanno da backup in un backup_gnode e' proporzionale
   al suo numero totale di nodi (seeds):
- 	 if(seeds > 8) { backup_nodes = seeds * ( 32 / MAXGROUPNODE ); }
+ 	 if(seeds > 8) { backup_nodes = (seeds * 32) / MAXGROUPNODE ); }
   		else    { backup_nodes = seeds; }
   Il numero di backup_gnodes utilizzati per ogni hash_gnode e' pari a
   MAX_ANDNA_BACKUP_GNODES (2).
@@ -943,7 +947,7 @@ la Rete ci attende.
   scaduti vengono cancellati e vengono sostituiti dagli altri hostname in
   coda.
   Un nodo deve mandare una richiesta di aggiornamento dei suoi hostname ogni 
-  qualvolta il suo ip cambia ed in ogni caso prima dello scadere del tempo di
+  qualvolta il suo ip cambia e in ogni caso prima dello scadere del tempo di
   ibernazione, in questo modo il suo hostname non sara' cancellato.
   Il pacchetto della richiesta di aggiornamento ha un id che indica il numero
   di aggiornamenti gia' mandati. Il pacchetto viene anche firmato con la
@@ -1033,21 +1037,17 @@ la Rete ci attende.
   
   10.1  Long distance love
   
-  In realta' sarebbero necessari circa 10 satelliti. Tutto qui. Il problema vero
-  sono le grosse distanze. Come si puo' unire la rete Netsukuku dell'Europa con
-  quella dell'America o dell'Asia? 
+  Come si puo' unire la rete Netsukuku dell'Europa con quella dell'America o
+  dell'Asia?
   Non si ci si deve affidare a NESSUNA compagnia, a nessun thirdparty perche',
   cosi' vincolati, Netsukuku non sarebbe piu' libero. Le grosse multinazionali 
-  possono favorire la diffusione della rete solamente connettendosi ad essa e 
-  diventando dei nodi normali, ma nel momento in cui pretendono di "dare una mano" 
-  o di prestare backbone ed esche allettanti, si corre il rischio di ritornare al
-  vecchio Internet. In ogni caso, anche se queste multinazionali mettessero a
-  disposizione le loro risorse per secondi fini, Netsukuku rimarrebbe non
-  controllabile ne' controllato.
-  In alternativa si puo' sfruttare lo stretto di Bering, per connetttere il
-  continente americano all'Europa.
+  possono realmente favorire la diffusione della rete solamente connettendosi
+  ad essa e diventando dei nodi normali.
+  In ogni caso, anche se queste multinazionali mettessero a disposizione le
+  loro risorse per secondi fini, offrendo backbone ed esche allettanti,
+  Netsukuku rimarrebbe non controllabile ne' controllato.
   Per quanto riguarda le distanze locali tra una citta' e l'altra, gli attuali
-  link wifi sono piu' che sufficienti, ed in aggiunta si possono sempre usare
+  link wifi sono piu' che sufficienti, e in aggiunta si possono sempre usare
   dei ripetitori a basso costo da poter spargere un po' ovunque.
   All'interno delle citta' il problema neanche si pone, se ci fosse anche un solo 
   nodo in ogni quartiere, ci sarebbe gia' una piena copertura.
@@ -1088,10 +1088,24 @@ la Rete ci attende.
   che deve fare in Netsukuku e' settare le rotte nella tabella di routing del
   kernel, percio' il demone NetsukukuD gira in userspace.
   Tutto il sistema viene quindi gestito dal demone che gira su ogni nodo. 
-  NetsukukuD comunica con gli altri nodi attraverso l'udp ed il tcp e setta le 
+  NetsukukuD comunica con gli altri nodi attraverso l'udp e il tcp e setta le 
   rotte nella tabella del kernel.
 
-  13.  The smoked ones who made Netsukuku
+  13.  What to do
+
+  Prima di incominciare a diffondere Netsukuku e' necessario compiere ancora
+  qualche passo essenziale:
+  - Scrivere il codice dell'ANDNA. Una rete priva di un sistema di gestione di
+    dominii e' praticamente inusabile.
+  - Testare su larga scala Netsukuku
+  - Completare i src/TODO.
+  - Completare i TODO che si trovano in questo documento ;)
+  - Varie ed eventuali.
+
+  Chi vuole imbarcarsi faccia un fischio.
+
+
+  14.  The smoked ones who made Netsukuku
 
   Andrea Lo Pumo   aka   AlpT				<alpt@freaknet.org>
  

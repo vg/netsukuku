@@ -6,6 +6,7 @@
   -stabilire le funzioni
   -piu'_vicino_all'hash_gnode()
   -ssl
+  -usare l'fnv hash per gli hash
 
 - ATTENZIONE: route_del e' disattivato per debugging. (e' forse il caso
   disabilitarlo completamente?)
