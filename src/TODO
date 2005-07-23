@@ -18,6 +18,8 @@
   nodi di uno stesso gnode esterno li deve mettere come nexthop nella stessa rotta 
   per raggiungere il gnode esterno. Al contrario se ci sono tanti bnode per
   raggiungere uno stesso gnode, bisogna usare sempre il multipath.
+
+- Anti spoof Hook.
   
 - big endian/little endian per gli int nei pkt.
 
