@@ -50,6 +50,7 @@ la Rete ci attende.
   5. Npv7 Hybrid Teory: the final way
   
   	5.1  QSPN: Quantum Shortest Path Netsukuku
+  		5.1.1  QSPN screenshot
 	  	5.1.2  Continual qspn starters
 		5.1.3  The Qspn sickness: RequestForRoute
 		5.1.4  Qspn round
@@ -478,7 +479,7 @@ la Rete ci attende.
   aggiornare la sua mappa, ma se hanno gia' percorso piu' hop o se sono stati
   spediti da lui stesso, li droppa; questo accorgimento garantisce la stabilita'
   nel caso ci siano piu' qspn_starter simultanei. La descrizione approfondita del
-  qspn_starter e' nella sezione 4.2.
+  qspn_starter e' nella sezione successiva 5.1.1.
   
   Alla fine i pacchetti di broadcast che vengono generati con qspn sono pari al
   numero degli e_node (che sono 2 per ogni ciclo, 1 per un segmento singolo
@@ -511,8 +512,45 @@ la Rete ci attende.
   La mappa interna verra' sempre ricopiata nella tabella di routing del
   kernel. In questo modo non ci sara' alcun bisogno di creare ogni volta la
   rotta con il pacchetto set_route, perche' sara' gia' tutto pronto.
-     
-  5.1.1  Continual qspn starters
+
+  5.1.1  QSPN screenshot
+    
+        (A)-----(B)
+      /  | \     |  \
+   (E)   |   \   |  (F)
+      \  |     \ |  /
+        (C)-----(D)
+  
+  Ricapitolando, tutti i nodi estremi dovrebbero inviare un tracer_pkt, ma non
+  si puo' sapere quali essi siano. In questo disegnino si puo' capire, perche',
+  appunto, la mappa e' disegnata, me nella realta' (nel codice di Netsukuku)
+  non esiste una mappa topologica, quindi non si puo' sapere dove inizia un
+  gruppo di nodi e dove finisce.
+
+  Ecco cosa succede, in uno scenario immaginario, se il nodo E manda un
+  qspn_close:
+  E ha mandato il primo qspn_close del nuovo qspn_round, quindi e' diventato
+  un qspn_starter.
+  Mettiamo che A riceva prima di C il qspn_close.
+  A chiude il link E, manda ad B, C, e D.
+  C riceve il pkt, chiude il link E, manda ad A ed a D.
+  C riceve da A, chiude il link.
+
+  B e D hanno ricevuto, e chiudoni i rispettivi link.
+  Mettiamo che B mandi per primo ad F.
+  D manda ad F subito dopo, ma nello stesso tempo F manda a D.
+  D ha ricevuto anche da B.
+  D ed F hanno tutti i link chiusi.
+  Mandano un qspn_open.
+  Tutto avviene nel senso opposto.
+  Finisce il qspn_open.
+  Tutti hanno le rotte per raggiungere tutti.
+
+  In genere, la topologia base a cui si riconduce il qspn e' un rombo con i nodi
+  hai vertici, puoi aggiungere altri rombi uniti tra di loro con i vertici.
+  Tutte le altre situazioni derivano piu' o meno da questa.
+
+  5.1.2  Continual qspn starters
 
   Se piu' qspn_starter che lanciano un qspn sono contigui fra loro allora
   il funzionamento del qspn varia leggermente. Un gruppo di nodi qspn_starter 
@@ -530,7 +568,7 @@ la Rete ci attende.
   declassati a normali tracer_pkt.
   
    
-  5.1.2  The Qspn sickness: RequestForRoute
+  5.1.3  The Qspn sickness: RequestForRoute
   
   /* Da codare, e non realmente necessario */
   L'unico grande difetto di qspn e' l'impossibilita' di avere molte piu' rotte
@@ -553,7 +591,7 @@ la Rete ci attende.
   ha total_routes pari a subrfr. Gli rnode degli rnode eseguiranno la stessa
   procedura e risponderanno direttamente al nodo interessato.
 
-  5.1.3  Qspn round
+  5.1.4  Qspn round
 
   Se un nodo riscontra un cambiamento attorno a se', ad esempio un suo
   rnode e' morto oppure l'rtt che lo distanzia dal suo rnode e' cambiato
@@ -577,8 +615,17 @@ la Rete ci attende.
   
   5.2  Npv7_HT Hook & Unhook
   
-  Un nodo, per joinare in netsukuku, deve agganciarsi ai suoi rnode.
-  Ecco cosa avviene:
+  Un nodo, per joinare in Netsukuku, deve agganciarsi ai suoi rnode.
+  L'hook in Netsukuku non si riferisce ad un aggancio alla rete "fisico",
+  poiche' si presuppone gia' che un nodo sia linkato ad altri (r)_node.
+  Quando un nodo si aggancia significa che comunica con un il suo rnode piu'
+  vicino, se non gli risponde ne sceglie un altro. In pratica durante l'hook,
+  il nodo si prende la mappa interna, quella esterna, la mappa dei boarder node,
+  e si sceglie un ip libero. A questo punto fa ufficialmente parte della rete,
+  quindi manda un normale tracer_pkt. I suoi rnode manderanno in seguito, un
+  qspn.
+  
+  Ecco cosa avviene piu' in dettaglio:
   Il nodo si prende un ip compreso tra 10.0.0.1 <= x <= 10.0.0.1+256,
   rimuove le reti di loopback dalla tabella locale di routing e setta come
   default gateway l'ip scelto.
@@ -1056,6 +1103,71 @@ la Rete ci attende.
   Tutto il sistema viene quindi gestito dal demone che gira su ogni nodo. 
   NetsukukuD comunica con gli altri nodi attraverso l'udp e il tcp e setta le 
   rotte nella tabella del kernel.
+
+  Tutto il codice e' scritto in C ed e' commentato, quindi non dovrebbe essere
+  difficile seguire il flusso del programma, in ogni caso, prima di leggere un
+  .c e' consigliato sbirciare il relativo .h .
+  
+  Netsukuku.c si occupa di lanciare i 4 thread principali demone.
+  Il primo ascolta sulla porta 269-udp con daemon.c/udp_daemon() e passa tutti
+  i pacchetti ricevuti ad pkts.c/pkt_exec(). 
+  Il secondo thread e' identico al primo, con la differenza che ascolta sulla
+  porta 270-udp e riceve solamente pacchetti inviati dal radar.
+  Il terzo thread ascolta sulla porta 269-tcp.
+  In realta', tutti i pacchetti ricevuti dai demoni non vengono passati
+  direttamente a pkts.c/pkt_exec(), ma prima, vengono filtrati da accept.c e da
+  request.c che grazie ad una piccola tabella prevengono eventuali attacchi di
+  flood. (accept.c e' lo stesso codice che e' stato usato per patchare una
+  vulnerabita' user-level-denial-of-service di OpenSSH.)
+  Il quarto ed ultimo thread e' quello che si occupa di lanciare
+  hook.c/netsukuku_hook(), il codice che gestisce l'hook alla rete.
+  
+  Hook.c avviera' per la prima volta il primo radar scan con
+  radar.c/radar_scan(). Tutti i pacchetti ricevuti relativi al radar sono
+  gestiti da radar.c/radard() e da radar.c/radar_recv_reply().
+  Dopo l'aggancio alla rete, il quarto thread si trasformera' nel radar_scan
+  thread, infatti non fara' altro che eseguire in eterno la funzione
+  radar.c/radar_daemon() che lancia un radar_scan() ogni MAX_RADAR_WAIT
+  secondi. Quando il radar_update_map() si accorge di un cambiamento nei suoi
+  rnode spedisce un nuovo qspn_close con qspn.c/qspn_send().
+  Tutto il codice relativo al qspn e ai tracer_pkt si trova in qspn.c e in
+  tracer.c.
+  
+  I socket, sockaddr, le connect, i recv(), i send, etc... sono tutte in
+  inet.c, e vengono utilizzate da pkts.c.
+  pkts.c si occupa di ricevere le richieste con pkt_exec() e mandarne con
+  send_rq(), un front-end utilizzato per impacchettare e spedire la grande
+  maggioranza di richieste.
+  ipv6-gmp.c usa la libreria GMP (GNU multiple precision arithmetic library)
+  per poter manipolare i 16 byte di un ipv6 come se fossero un unico grande
+  numero, questo e' essenziale per alcune formule che agiscono direttamente
+  sull'ip per poter ricavare molte informazioni, infatti, in Netsukuku un ip
+  e' un numero a tutti gli effetti.
+
+  Il codice che si interfaccia al kernel per settare le rotte nella route
+  table e per configurare un'interfaccia di rete si trova in:
+  krnl_route.c, if.c, ll_map.c, krnl_rule.c, libnetlink.c.
+  Route.c fa' da intermediario tra il codice che gestisce il protocollo di
+  netsukuku e tra le funzioni che comunicano con il kernel.
+
+  Per quanto riguarda le mappe tutto si basa su map.c, il sorgente che
+  si occupa di prendersi cura della mappa interna. Tutta le altre mappe si
+  appogiano su map.c, e sono:
+  bmap.c per la border node map, gmap.c per la mappa esterna.
+  
+  Per compilare il codice di Netsukuku non e' necessario usare autoconf,
+  automake e famiglia, ma basta usare il comodo scons (http://www.scons.org).
+  Il file SConstruct e' appunto il "Makefile" di scons.
+
+  L'ultima versione del codice e' sempre disponibile sul cvs degli
+  hinezumilabs: 
+
+  cvs -d :pserver:anoncvs@hinezumilabs.org:/home/cvsroot login
+  
+  oppure date un'occhiata da qui:
+  
+  http://hinezumilabs.org/cgi-bin/viewcvs.cgi/netsukuku/
+  
 
   13.  What to do
 
