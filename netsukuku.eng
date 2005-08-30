@@ -1,0 +1,388 @@
+/*
+ *
+ *			THIS IS UNDER COSTRUCTION
+ *			  IT IS NOT COMPLETE
+ *		       READ IT AT YOUR OWN RISK
+ *		    If you want to help in the italian->english traslation
+ *		    send a mail to alpt (@freaknet.org)
+ */
+
+
+
+
+				   Netsukuku
+			
+			- Cl0se th3 w0rld, OpeN th3 NeX7 -
+
+
+
+
+La Rete, Tao della conoscenza
+che unisce il molteplice nell'uno,
+deve rinascere libera,
+ed avvolgere in un caldo abbraccio
+la dolce madre Gaia.
+
+Questo e' il risveglio, 
+il risveglio di tutti noi che finora 
+siamo vissuti immersi nella nebbia,
+braccati dalla chimera di un putrefatto Wired,
+e' il nostro risveglio.
+
+Unitevi e non abbiate timore,
+le porte sono aperte,
+la Rete ci attende.
+								(AlpT)
+
+--								
+
+ -1. Preface
+
+  0. The old wired
+
+  1. The Pure Wired
+  
+  2. The Netsukuku wired
+  
+  	2.1  No name, no identity
+	2.2  Gandhi
+	2.3  Self Control
+	2.4  So, WTF is it?
+	2.5  Other implementations
+  	2.6  The born
+  
+  3. Netukuku Protocol v7: the seventh son of Ipv7
+
+	3.1  #define Npv7
+	
+  4. Npv7_II: Laser Broadcast
+  
+  5. Npv7 Hybrid Teory: the final way
+  
+  	5.1  QSPN: Quantum Shortest Path Netsukuku
+  		5.1.1  QSPN screenshot
+	  	5.1.2  Continual qspn starters
+		5.1.3  The Qspn sickness: RequestForRoute
+		5.1.4  Qspn round
+		
+	5.2  Npv7_HT Hook & Unhook
+		5.2.1  Qspn Hook & Unhook
+		
+	5.3  The truly Gnode^n for n<=INFINITE
+		5.3.1  Groupnode: one entity
+		5.3.2  Gnode fusion
+	
+  6. Broadcast: There can be only one!
+  
+  	6.1  Delayed Fireball: groupnode broadcast.
+	6.2  Tracer pkt: one flood, one route
+	
+  7. ANDNA: Abnormal Netsukuku Domain Name Anarchy
+ 
+ 	7.1  ANDNA Metalloid elements: the recipe
+	7.2  Don't rob my hostname!
+	7.3  Count again
+	7.4  Registration step by step
+	7.5  Endless rest and rebirth
+	7.6  Hash_gnodes mutation
+	7.7  Yaq: Yet another queue
+	7.8  noituloser emantsoh esreveR
+	7.9  dns wrapper
+	  
+  8. Heavy Load: flood your ass!
+  
+  9. Spoof the Wired: happy kiddies
+  
+  10. /dev/Accessibility
+  
+  11. Internet compatibility
+  
+  12. Implementation: let's code
+  
+  13. What to do
+  
+  14. The smoked ones who made Netsukuku
+  
+--
+ 
+ -1.  Preface
+
+  This document and the relative source code are available on:
+  http://netsukuku.freaknet.org
+
+
+  0.  The old wired
+  
+  Internet it's a hierarchic network managed by multinational companies and 
+  organizations supported by governments. Each bit of Internet traffic passes
+  through their backbones and routers.
+  The well-deserving Internet Service Providers give the connectivity to all of
+  the poor humans, who are in the lowest rank of this hierarchic pyramid,
+  warranting, in this way, the global shared ownership of Internet and its
+  free access, obviously, in accordance with the rightful and wise principle
+  of equality. They ask, in exchange, a "small" money fee to obtain the right to
+  join this network. Beside that, the information, the knowledge and
+  the communication don't surely grow as spontaneous fruits on the trees.
+  Thank to their generous service, about 600 million of people can be
+  connected to the great, free and anonymous network.
+  To the remaining 5 billion and 400 million of people, who cannot allow
+  themself to this luxury, they say to try in another time, when there will be
+  no more wars and the peace will rule.
+
+  Going back to the multinationals: what will happen if one
+  of them or an ISP decides to no more supply the service? The answer is
+  simple: entire nations will be immediately cut out of the Internet.
+  Paradoxally Internet was born with the intent of warranting a secure
+  communication, unattackable between the various nodes of the network.
+  And what will happen if one of these multinationals will stipulate a secret or
+  public agreement with some governments to control the data traffic and trace
+  back real or presumed "terrorists"? The traffic will be traced back,
+  analysed and the potential "terrorists" submitted, without any restrictions,
+  to unlimited controls.
+
+  The centralised and hierarchical structure of Internet creates, as a
+  consequence, other identical systems, which are based on it, i.e. the DNS
+  The servers of the Domain Name Servers are managed by different ISP, as
+  well, and the domains are literally sold out and the  of a centralised
+  system remain unmutated.
+  This kind of structure allows, in a very simple and efficient way, to
+  physically localise any computers, which are connected to Internet, in a
+  very short time and without any particular efforts.
+  In China, the whole net is constantly watched by several computers which
+  filter the Internet traffic: a Chinese will never be able to see or came to
+  know about a site which contains some keywords censored by the government.
+  And if he'll try to express his own ideas on the net, in spite of what the
+  policy or the government is, he will risk the death penality.
+  
+  Internet was born to satisfy the military needs of security for the
+  administration of the American defence. And during the time its basic
+  structure never changed and never will change.
+  Freedom of communication and information on Internet will always be denied:
+  in order to communicate each other we'll always be obliged to ask the
+  permission of the central authority and ask for the support of big
+  multinationals, and in this way they'll continue to expand their own
+  kingdom.
+  If the destiny of all the efforts to make Internet the medium of communication --per  eccellenza--
+  is to fail, then there is no any other solution than change it.
+  How?
+  With a distributed, decentralised and fully efficient net, which will never
+  be under control of any governments.
+  
+  1.   The Pure Wired
+  
+  A neural net, a web, a social network, a fishing net, are pure nets.
+  The nature itself is, indeed, the universe in its whole, from the
+  infinitely small to the infinitely big, are pure nets.
+  
+  --  In all the nets that can be found in nature no any centre of --
+  In tutte le reti esistenti in natura non esistono centri di "smistamento del
+  traffico" della rete, perche' non sono di alcuna utilita'.--
+  -- --
+  The power and efficiency of this kind of nets is such because of their
+  simplicity, therefore no any complications can be found in them.
+  
+  In a pure net every node has the function of router and then there aren't
+  dedicated routers, indispensable, on the contrary, to the other hierarchic
+  nets.
+ 
+  The necessary and sufficient condition in order to consider a node belonging
+  to a pure net is the connection to at least another node.
+  In this way all the nodes of the net be connected to each other.
+  If, for example, the node (A) (see the picture below) is sending a message
+  to the node (Y), before it will send it to (C), the node (C) will send it to
+  (E), then to (F) and at the end it will reach (Y).
+  Let's recap: (A)-->(C)-->(E)-->(F)-->(Y).
+
+
+				         (L)
+				          |
+				          |
+			(A)----(B)-------(H)
+			 |			     (T)
+			 |			      |
+	  (G)----(E)----(C)----(D)-------------------(S)
+	          |		|
+   	          |		|				  (L1)
+	         (F)---(Y)--(1)	|				   |	
+		 		|				   |
+				|				   |
+		       (R)-----(M)---------(Q)		  (Z)----(76)	
+			      / | \			   |	
+			    /	|   \			   |	
+		       (P)/	|     \(O)----------------(U)----(V)
+			  	|	|			  |
+     (5)---------------------- (N)	|			  |
+      |					|			  |
+      |		       (9)     		|			 (X)
+      |			|	       (20)
+     (3)---------------(4)-----(8)
+     
+ 				-| A possible portion of a pure net |-
+
+
+  2.   The Netsukuku wired
+  
+  Netsukuku is a pure net which exploits the chaos, it generates and sustains
+  itself autonomously, having the shape of a fractal.
+  The fusion of pure net with fractals and chaos is the characteristic which
+  allows to Netsukuku to be a diffused and distributed, not centralized,
+  anonymous, anarchical, not controlled and autonomous net.
+
+  2.1  No name, no identity
+  
+  Inside Netsukuku everyone, in any place, at any moment, can hook immediately
+  to the net without coming trough thousands bureaucratical obstacles, which
+  cannot be overpassed.
+  Moreover, every elements of the net is extremely dynamic and it's never the
+  same. The ip address which identify a computer is chosen randomly,
+  therefore it's impossible to associate it to a particular physical place,
+  and the routes themselves, been composed by a huge number of node, show the
+  tendence to have such a high complexity and density to make the trace of a
+  node a titanic task.
+  Since there isn't any contract with any organizations, the speed of the data
+  transfer is uniquely limitated by the actual tecnology of the network cards.
+
+
+  2.2  Gandhi
+
+  Netsukuku is anarchical. It generates itself and can stand alone.
+  A node hooks to Netsukuku, the net automatically rewrites itself and all the
+  other nodes known which are the fastest and more efficient routes to
+  communicate with the new arrived.
+  The nodes don't have privileges or limitation, when compared with other
+  nodes, they are part of the net and give their contribution to its expansion
+  and efficiency.
+  The more they increase in number the more the net grows and becomes perfect.
+  In Netsukuku there is no any differences among private and public nets and
+  talking about LAN became meaningless.
+
+	
+  2.3  Self Control
+
+  Netsukuku can be neither controlled nor destroyed because it is totally
+  decentralized and distributed. The only way to --guard-- or demolish
+  Netsukuku is knocking physically down each single node which is part of it.
+
+  Being Netsukuku a distributed and not centralised net, it is possible to
+  implement real distributed systems on it, e.g. the Abnormal Netsukuku Domain
+  Name Anarchy (ANDNA) which will replace the actual hierarchic and
+  centralized system of DNS.
+  
+  2.4  So, WTF is it?
+  
+  Netsukuku is a mesh network or a p2p net composed by a net protocol for
+  dynamic routing called Npv7_HT.
+  Actually there is wide number of protocols ed algorithms for the dynamic
+  routing, --ma a differenza-- of the Npv7_HT they are solely utilized to
+  create small and medium nets. The routers of Internet are also managed by
+  different protocols as the OSPF, the RIP, or the BGP, based on different
+  classical algorithms, able to find out the best path to reach a node in the
+  net.
+  These protocols require a very high waste of cpu and memory, this is the
+  reason why the Internet routers are computers specifically dedicated to
+  this purpose. It would be impossible to implement one these protocols in
+  order to create and maintain such a net as Netsukuku is, where every each
+  node is a router by itself, because the map of all the routes would require
+  a space, on each pc connected to the net, of about 1 hundred Gb.
+  
+  The Npv7 structures the entire net as a fractal and, in order to calculate
+  all the needed routes which are necessary to connect a node to all the other
+  nodes, it makes use of a particular algorithm called
+  Quantum Shortest Path Netsukuku (QSPN).
+  A fractal is a mathematical structure which can be compressed up to the
+  infinite, because  * TODO CONTINUE *
+  L'Npv7 struttura l'intera rete come un frattale, ed usa un particolare
+  algoritmo chiamato Quantum Shortest Path Netsukuku (QSPN) per calcolare
+  tutte le rotte necessarie a collegare un nodo ad ogni altro nodo. 
+  Un frattale e' una struttura matematica che si puo' comprimere all'infinito,
+  proprio perche', al suo interno, ogni sua parte e' formata dal frattale
+  stesso. Si ha quindi una compressione elevata di una struttura che
+  puo' espandersi infinitamente. Questo significa che bastano pochi Kb per
+  mantenere l'intera mappa di Netsukuku.
+  Il QSPN, invece, e' un meta-algoritmo perche' non esegue una sequenza di
+  istruzioni matematiche definite ma sfrutta il caso e il caos, che non
+  richiedono nessun calcolo. In altre parole, anche una semplice calcolatrice
+  puo' usare il QSPN per stare connessa in Netsukuku.
+
+  2.5  Other implementations
+
+  Netsukuku non e' limitato alla creazione di una rete di soli computer, e' un
+  protocollo che implementa una rete pura, e cosi' come ogni protocollo di rete
+  puo' essere usato in tutte le situazioni in cui si ha bisogno di collegare
+  piu' nodi fra loro.
+  Prendiamo in esame il caso dei cellulari. Anche la rete dei cellulari e' una
+  rete gerarchica e centralizzata. Migliaia di nodi si appoggiano ad una
+  stessa cella, che poi smistera' il traffico alle altre celle, che, infine,
+  consegneranno i dati ai nodi destinatari. Bene, Netsukuku puo' essere
+  adottato anche dai cellulari, rendendo superflua l'esistenza degli attuali
+  gestori di telefonia mobile.
+  Questo ragionamento puo' essere applicato a tutti i sistemi di comunicazione
+  che esistono attualmente.
+  
+  2.6  The born
+
+  La storia di come si sia arrivati a Netsukuku e' lunga e travagliata.
+  Nel lontano 2003, un gruppo di pazzi deliranti concepisce l'idea
+  dell'Ipv7: una rete in cui tutti i pacchetti venivano mandati in broacast,
+  compressi con le zlib7, un algoritmo che comprimeva l'attuale Internet in
+  32byte. In Ipv7 nessun nodo aveva un indirizzo ip. Tutto il sistema era
+  gestito da programmi che si autoscrivevano usando il compilatore nocoder.
+  Ecco che si aveva una rete estremamente decentralizzata e libera.
+  Quelle persone erano felici, e dopo la stesura del primo RFC, un sorriso
+  sereno ed un luce angelica avvolgeva le loro figure.
+  Un anno trascorre, il progetto si perde tra le infinite diramazioni del
+  tempo, ma dopo non molto la polvere viene scrollata dal grande libro
+  dell'Ipv7. Si incomincia a delirare sull'implementazione di una rete pura.
+  I mesi passano. La rete viene definita sempre di piu', diventa quasi 
+  tangibile...
+  <<Ma deve anche supportare una qualche forma di antiflood e antispoofing>>. 
+  <<Gia'! E si deve fare in modo che le rotte non siano mai uguali tra loro>>.
+  <<Si, si, e perche' non facciamo che non esistano piu' in assoluto dei server
+  centrali?>>.
+  Tre mesi dopo, a seguito di numerosissime perigrazioni mistiche, il cuore 
+  teorico e' pronto. Gli algoritmi sono definiti. 
+  Si incomincia a codare. La maledizione dei coder di protocolli di rete del
+  sacro faraone Mortedelprimogenito, si riversa sul codice di Netsukuku. La 
+  pazzia e il delirio sono la giusta ricompensa a tutti i colori i quali
+  osano addentrarsi nella creazione di protocolli di rete pure.
+  Nonostante tutto, esattamente dopo un anno e 14 mila righe di codice,
+  Netsukuku e' pronto e diventa Beta.
+  Qualche settimana dopo la presentazione di Netsukuku all'Hackmeeting 2005,
+  il protocollo dell'ANDNA e' completamente definito e documentato.
+  Il resto giace in potenza e deve ancora divenire.
+  
+
+
+
+
+  3.   Netsukukuku protocol v7
+
+  Netsukuku uses its own protocol, the Npv7 (Netsukuku protocol versoin 7),
+  which derives from three previous versions.
+  The first was similar to the actual dynamic routing protocols:
+  the network was divided in groups of nodes, and each node had a map of the
+  entire network.
+  This system, not optimal, isn't employed because it needs continuous
+  update of the map, and each update brings an overload in the net. Moreover,
+  each time the map changes, it's necessary to recalculate all the routes.
+
+  3.1  #define Npv7
+
+  The basic definitions used in Netsukuk are: 
+
+  r_node: Considering a node X, a remote node (r_node), it's any other node
+	  directly linked to X.
+  g_node: Group node, a group of nodes, or a group of a group of nodes, and so
+  	  on.
+  b_node: Border node, a node connected to rnodes of different gnode.
+  h_node: Hooking node, a node hooking to Netsukuku.
+  
+  int_map: Internal map. The internal map of the node X contains the
+	   informations about the gnode which the node X belongs to.
+  ext_map: External map. The external map contains the informations about the
+	   gnodes.
+  bmap / bnode_map: Border node map. It's the map which keeps the list of
+		    border_nodes.
+
+  quadro_group: A node or a groupnode located at any level, disassembled in
+	        its essential parts. 

@@ -89,7 +89,7 @@ la Rete ci attende.
   
   12. Implementation: let's code
   
-  13.  What to do
+  13. What to do
   
   14. The smoked ones who made Netsukuku
   
@@ -105,18 +105,16 @@ la Rete ci attende.
   0.  The old wired
   
   Internet e' una rete gerarchica gestita da multinazionali ed enti che vengono
-  supportati dai governi. Tutti i router principali di Internet sono cosi'
-  in mano a loro. Ogni bit di traffico dati passa attraverso le loro backbone
-  e i loro router. 
-  I cari Internet Service Provider offrono la connettevita' a tutti i poveri
-  umani che si trovano nelle parti piu' basse di questa scala gerarchica
-  garantendo, cosi', che Internet sia di tutti e per tutti, ovviamente,
-  secondo il giusto e saggio principio dell'uguaglianza. Essi
+  supportati dai governi. Ogni bit di traffico dati passa attraverso le loro
+  backbone e i loro router. 
+  I benemeriti Internet Service Provider offrono la connettevita' a tutti i
+  poveri umani che si trovano nelle parti piu' basse di questa scala
+  gerarchica garantendo, cosi', che Internet sia di tutti e per tutti,
+  ovviamente, secondo il giusto e saggio principio dell'uguaglianza. Essi
   chiedono, in cambio, una "piccola"  somma di denaro per poter accedere a
   questa rete. D'altronde l'informazione, il sapere e la comunicazione non
-  sono di certo frutti che crescono spontaneamente sugli alberi, alla luce del
-  sole, gratuitamente e liberamente.
-  Grazie al loro benemerito servizio, circa 600 milioni di persone possono 
+  sono di certo frutti che crescono sugli alberi, gratuitamente e liberamente.
+  Grazie al loro generoso servizio, circa 600 milioni di persone possono 
   connettersi alla grande, libera, ed anonima rete. 
   Alle restanti 5 miliardi e 400 milioni di persone, che non possono permettersi 
   questo lusso, viene detto di riprovare piu' tardi, quando nel mondo non ci
@@ -148,7 +146,7 @@ la Rete ci attende.
   contrario alla dottrina politica del governo, rischierebbe perfino la pena
   di morte.
 
-  Internet e' nato per soddisfare le esigenza militari di sicurezza
+  Internet e' nato per soddisfare le esigenze militari di sicurezza
   dell'amministrazione della difesa degli USA, e nel corso del tempo, la sua
   struttura fondamentale non e' cambiata, ne' potra' mai mutare.
   La liberta' di comunicazione e d'informazione su Internet saranno sempre
@@ -165,7 +163,7 @@ la Rete ci attende.
  
   1.   The Pure Wired
   
-  Una reti neurale, una ragnatela, una rete sociale, una rete da pesca sono
+  Una rete neurale, una ragnatela, una rete sociale, una rete da pesca sono
   delle reti pure. La natura stessa e, infine, l'universo nel suo insieme,
   dall'infinitamente piccolo all'infinitamente grande, sono delle reti
   pure.
@@ -342,9 +340,7 @@ la Rete ci attende.
   deriva da tre precedenti versioni.
   La prima era strutturata in maniera simile agli attuali protocolli di rete 
   utilizzati per il routing dinamico: la rete era divisa in gruppi di nodi,
-  chiamati appunto group node, ogni nodo possedeva la mappa interna che 
-  conteneva tutte i nodi del gnode di appartenenza ed una mappa esterna che 
-  conteneva tutti i gnode.
+  ogni nodo possedeva la mappa dell'intera rete.
   Questo sistema, non ottimale, non e' adottato da Netsukuku poiche' prevede
   l'aggiornamento continuo della mappa, ed ogni aggiornamento crea un overload
   nella rete. Inoltre, ogni volta che la mappa cambia bisogna ricalcolarsi tutte
@@ -354,23 +350,23 @@ la Rete ci attende.
 
   Le definizioni basilari utilizzate per Netsukuku sono state e, tutt'ora sono:
 
-  r_node: Remote node, e' un qualsiasi nodo che e' collegato direttamente ad un
-          dato nodo A. Se il nodo A, e' direttamente collegato a B,C,E ed F,
-	  tutti questi nodi sono r_nodes del nodo A. 
-  g_node: Group node, un gruppo di nodi, o un gruppo di gruppi di nodi.
+  r_node: Considerando un nodo X, un remote node (r_node) e' un qualsiasi
+	  nodo direttamente collegato ad X.
+  g_node: Group node, un gruppo di nodi, o un gruppo di gruppi di nodi, e
+	  cosi' via.
   b_node: Border node, un nodo che ha rnodes di diversi gnode.
   h_node: Hooking node, un nodo che si sta agganciando a netsukuku.
   
-  int_map: Internal map, mappa interna. La mappa interna del nodo x e' la mappa 
+  int_map: Internal map, mappa interna. La mappa interna del nodo X e' la mappa 
   	   che contiene le informazioni sui nodi che appartengono al gnode a cui
-	   appartiene x.
+	   appartiene X.
   ext_map: External map, mappa esterna. La mappa che contiene le informzioni sui
   	   gnode.
   bmap / bnode_map: Border node map. E' la mappa che tiene la lista dei
                     border node.
 
   quadro_group: Un nodo, o un groupnode di qualsiasi livello, scomposto nelle 
-  		sue parti essenziali   ipstarts
+  		sue parti essenziali.
 
    
   4.   Npv7_II: Laser Broadcast
@@ -891,7 +887,7 @@ la Rete ci attende.
   sempre morire e uscire dalla rete. Quindi, per garantire la funzionalita'
   effettiva di ANDNA, ed anche un minimo di backup, gli hostname non vengono
   gestiti da singoli nodi, ma da interi gnode. Il gnode che corrisponde
-  all'hash e' l'has_gnode, all'interno ci sara' l'hash_node.
+  all'hash e' l'hash_gnode, all'interno ci sara' l'hash_node.
   
   Poiche' gli hash_gnode possono anche non esistere al momento, viene adottata
   una strategia di approsimazione: viene usato il gnode che piu' si avvicina
@@ -933,23 +929,23 @@ la Rete ci attende.
   totalmente distribuito e, quindi, non si puo' tenere il conto di quanti
   hostname ha registrato un nodo. Esiste pero' una soluzione: introdurre un
   nuovo elemento, gli andna_counter_nodes.
-  Un counter_node e' un nodo che ha un ip uguale all'hash dell'ip del nodo che
-  registra gli hostname.
-  hash(resgister_node) == ip dell'andna_counter_node relativo al register_node.
+  Un counter_node e' un nodo che ha un ip uguale all'hash della public key del 
+  nodo che registra gli hostname.
   Il counter_node si occupa di memorizzare il numero di hostname che
-  ha memorizzaro il register_node che gli corrisponde. Quindi, quando un
+  ha memorizzato il register_node che gli corrisponde. Quindi, quando un
   hash_gnode riceve una richiesta di registrazione, prima di tutto contatta il
   relativo counter_node, che gli comunica quanti host_name sono gia' stati
   registrati dal register_node: se il nodo non ha sforato il proprio
   limite, allora il counter node incrementa il contatore e l'hash_gnode
   registra effettivamente l'hostname.
-  L'attivazione di un counter_gnode deve essere gestista e mantenuta dallo
-  stesso register_node. Il meccanismo e' identico a quello dell'andna, e,
-  pertanto,  il register_node si deve anche preoccupare di mantenere il suo
-  counter_node attivo seguendo le stesse regole dell'ibernazione (vedi sotto).
-  In pratica, se il counter_node non riceve piu' notifiche dal suo
-  register_node, si disattiva, e tutti gli hostname registrati non sono piu'
-  validi (non si possono piu' aggiornare).
+  L'attivazione di un counter_gnode avviene con la richiesta di controllo da
+  parte dell'hash_gnode e viene mantenuta dalla successive richieste.
+  Il meccanismo e' identico a quello dell'andna, e, pertanto, il register_node 
+  si deve anche preoccupare di mantenere il suo counter_node attivo seguendo le
+  stesse regole dell'ibernazione (vedi sotto).
+  In pratica, se il counter_node non riceve piu' richieste di controllo da
+  parte degli hash_gnode, si disattiva, e tutti gli hostname registrati non sono
+  piu' validi (non si possono piu' aggiornare).
   
   7.4  Registration step by step
   
@@ -959,8 +955,9 @@ la Rete ci attende.
   La richiesta include una public key di una coppia di chiavi RSA appena
   generata (ad ogni registrazione corrisponde una nuova coppia di chiavi). Il
   pkt viene anche firmato con la priv_key.
-  Il nodo y controlla di essere effettivamente nel gnode che e' piu' vicino
-  all'hash_node, in caso contrario rigetta la richiesta.
+  Il nodo y controlla di essere effettivamente nel gnode piu' vicino
+  all'hash_node, in caso contrario rigetta la richiesta. Viene controllata
+  anche la validita' della firma apposta nella richiesta.
   Il nodo y, contatta il counter_node e gli manda l'ip, l'hostname del
   register_node e la copia della richiesta. 
   Il counter verifica i dati e controlla che la firma apposta sulla richiesta
@@ -968,9 +965,9 @@ la Rete ci attende.
   Il nodo y, dopo l'ok, accetta la richiesta, crea l'entry nel suo db
   annotando la data di registrazione, e manda in broadcast, all'interno del
   gnode, la richiesta.
-  Gli altri nodi dell'hash_gnode che ricevono la richiesta memorizzano l'entry
-  nel loro db. 
-  A questo punto il nodo x deve solo preoccuparsi di mandare la richiesta ai 
+  Gli altri nodi dell'hash_gnode che ricevono la richiesta controllano la sua
+  validita' e la memorizzano l'entry nel loro db. 
+  A questo punto il nodo x deve solo preoccuparsi di mandare la richiesta ai
   backup_gnode. Quando i nodi dei backup_gnode ricevono la richiesta,
   controllano di essere nel range dei gnode piu' vicini, e riapplicano la
   stessa procedura.
@@ -999,7 +996,9 @@ la Rete ci attende.
   Se tutto va bene, il nodo forwarda la richiesta di aggiornamento all'interno
   dell'hash_gnode.
   Il register_node deve poi mandare la richiesta di aggiornamento anche ai
-  backup_gnode.
+  backup_gnode e al counter_node.
+  Se la richiesta di aggiornamento viene mandata troppo presto (nel primo
+  giorno), verra' considerata invalida e sara' ignorata.
   
 
   7.6  Hash_gnodes mutation
@@ -1012,7 +1011,7 @@ la Rete ci attende.
   rounded_gnode. Gli hostname presenti nel vecchio rounded_gnode, non essendo
   piu' aggiornati, decaderanno.
   Nel frattempo, quando ancora l'hostname non e' stato aggiornato, tutti i
-  nodi che voglioni risolverlo troveranno il nuovo rounded_gnode come gnode
+  nodi che vogliono risolverlo, troveranno il nuovo rounded_gnode come gnode
   piu' vicino all'hash_gnode, quindi manderanno le richieste al nuovo gnode.
   Il nuovo rounded_gnode, non avendo ancora il db, chiedera' a sua volta la
   risoluzione del nome host al rounded_gnode piu' vicino.
@@ -1108,22 +1107,22 @@ la Rete ci attende.
   difficile seguire il flusso del programma, in ogni caso, prima di leggere un
   .c e' consigliato sbirciare il relativo .h .
   
-  Netsukuku.c si occupa di lanciare i 4 thread principali demone.
+  Netsukuku.c si occupa di lanciare i 4 thread-demone principali.
   Il primo ascolta sulla porta 269-udp con daemon.c/udp_daemon() e passa tutti
-  i pacchetti ricevuti ad pkts.c/pkt_exec(). 
+  i pacchetti ricevuti a pkts.c/pkt_exec(). 
   Il secondo thread e' identico al primo, con la differenza che ascolta sulla
-  porta 270-udp e riceve solamente pacchetti inviati dal radar.
+  porta 270-udp e riceve solamente i pacchetti inviati dal radar.
   Il terzo thread ascolta sulla porta 269-tcp.
   In realta', tutti i pacchetti ricevuti dai demoni non vengono passati
   direttamente a pkts.c/pkt_exec(), ma prima, vengono filtrati da accept.c e da
   request.c che grazie ad una piccola tabella prevengono eventuali attacchi di
-  flood. (accept.c e' lo stesso codice che e' stato usato per patchare una
+  flood. (accept.c e' lo stesso codice che e' stato usato per patchare la
   vulnerabita' user-level-denial-of-service di OpenSSH.)
   Il quarto ed ultimo thread e' quello che si occupa di lanciare
   hook.c/netsukuku_hook(), il codice che gestisce l'hook alla rete.
   
   Hook.c avviera' per la prima volta il primo radar scan con
-  radar.c/radar_scan(). Tutti i pacchetti ricevuti relativi al radar sono
+  radar.c/radar_scan(). Tutti i pacchetti ricevuti, relativi al radar, sono
   gestiti da radar.c/radard() e da radar.c/radar_recv_reply().
   Dopo l'aggancio alla rete, il quarto thread si trasformera' nel radar_scan
   thread, infatti non fara' altro che eseguire in eterno la funzione
