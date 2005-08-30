@@ -95,7 +95,8 @@ do {									\
 } while(0)
 
 
-/* It returns the new head of the linked list */
+/* It returns the new head of the linked list, so it must be called in this
+ * way: head=list_del(head, list); */
 #define list_del(head, list)						\
 ({									\
 	l_list *_list=(l_list *)(list), *_next=0;			\
@@ -149,3 +150,37 @@ do{ 									\
 		list_del(_x, _i);					\
 	}								\
 }while(0)
+
+
+/*
+ * Here below there are the defines for the linked list with a counter.
+ * The arguments format is:
+ * l_list **_head, int *_counter, l_list *list
+ */
+
+#define clist_add(_head, _counter, _list)				\
+do{									\
+	if(!(*(_counter)) || !(*(_head)))				\
+		list_init(*(_head), (_list));				\
+	else								\
+		list_add(*(_head), (_list));				\
+	(*(_counter))++;						\
+}while(0)
+
+#define clist_del(_head, _counter, _list)				\
+do{									\
+	if((*(_counter)) > 0) {						\
+		*((_head))=list_del(*(_head), (_list));			\
+		(*(_counter))--;					\
+	}								\
+}while(0)
+
+/* 
+ * Zeros the `counter' and set the head pointer to 0.
+ * usage: head=clist_init(&counter);
+ */
+#define clist_init(_counter)						\
+({									\
+	*(_counter)=0;							\
+	0;								\
+})

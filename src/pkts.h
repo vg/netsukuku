@@ -21,24 +21,24 @@
 
 /* 
  * Pkt's op definitions:
- * The request and replies are in request.h
+ * The requests and replies are in request.h
  */
 
 /* Pkt's sk_type */
 #define SKT_TCP 		1
 #define SKT_UDP			2
-#define SKT_UDP_RADAR		3
-#define SKT_BCAST		4
-#define SKT_BCAST_RADAR		5
+#define SKT_BCAST		3
 
 /* Pkt's flags */
 #define SEND_ACK		1
 #define BCAST_PKT		(1<<1)	/* In this pkt there is encapsulated a 
-					 * broadcast pkt. Woa 
-					 */
+					 * broadcast pkt. Woa */
 #define HOOK_PKT		(1<<2)  /* All the pkts sent while hooking have
-					 * this flag set 
-					 */
+					 * this flag set      */
+#define ASYNC_REPLY		(1<<3)	/* Tells the receiver to reply with a new 
+					   connection. The reply pkt will be
+					   handled by the pkt_queue. */
+#define ASYNC_REPLIED		(1<<4)
 
 /* Broacast ptk's flags */
 #define BCAST_TRACER_PKT	1	/*When a bcast is marked with this, it 
@@ -70,11 +70,11 @@ typedef struct
 	int 		sk;
 	char 		sk_type;
 	u_short 	port;
-	int 		flags;
+	int 		flags;		/*Flags used by send/recv*/
 	
 	pkt_hdr 	hdr;
 	char 		*msg;
-}PACKET;
+} PACKET;
 	
 /*Broadcast packet*/
 typedef struct
@@ -104,7 +104,59 @@ struct rnode_chunk
 #define NODEBLOCK_SZ(links) (sizeof(struct node_hdr)+sizeof((struct r_node)*(links)))
 
 
+/* 
+ * In this stable, each op (request or reply) is associated with a
+ * `pkt_exec_func', which pkt_exec() will use to handle the incoming packets of
+ * the same op.
+ * Each op is also associated with its specific socket type (udp, tcp, bcast)
+ * with `sk_type', and the `port' where the pkt will be sent or received.
+ * Each element in the table is equivalent to a request or reply, ie the
+ * function to handle the x request is at pkt_op_table[x].exec_func;
+ */
+struct pkt_op_table {
+	char sk_type;
+	u_short port;
+	void *exec_func;
+} pkt_op_tbl[TOTAL_OPS];
+
+
+
+/* pkt_queue's flags */
+#define PKT_Q_MTX_LOCKED	1		/* We are waiting the reply */
+#define PKT_Q_PKT_RECEIVED	(1<<1)		/* The reply was received */
+#define PKT_Q_TIMEOUT		(1<<2)		/* None replied ._, */
+
+/*
+ * The pkt_queue is used when a reply will be received with a completely new 
+ * connection. This is how it works:
+ * The pkt.hdr.flags is ORed with ASYNC_REPLY, a new struct is added in the
+ * pkt_q linked list, pkt_q->pkt.hdr.id is set to the id of the outgoing pkt
+ * and pkt_q->pkt.hdr.op is set to the waited reply op.
+ * The function x() it's started as a new thread and the request is sent; to 
+ * receive the reply, x() locks twice `mtx'. The thread is now freezed.
+ * The reply is received by pkt_exec() which passes the pkt to the function
+ * y(). y() searches in the pkt_q a struct which has the same pkt.hdr.id of
+ * the received pkt. The reply pkt is copied in the found struct and `mtx' is
+ * unlocked. x() can now continue to read the reply and unlocks `mtx'.
+ * Note that the reply pkt must have the ASYNC_REPLIED flag set in pkt.hdr.flags.
+ */
+struct pkt_queue{
+	struct pkt_queue *next;
+	struct pkt_queue *prev;
+
+	PACKET pkt;
+	pthread_mutex_t mtx;
+
+	char flags;
+};
+typedef  struct pkt_queue pkt_queue;
+
+pkt_queue *pkt_q;
+int pkt_q_counter;
+
 /*Functions' declarations*/
+void pkts_init(int dev_idx, int queue_init);
+	
 void pkt_addfrom(PACKET *pkt, inet_prefix *from);
 void pkt_addto(PACKET *pkt, inet_prefix *to);
 void pkt_addsk(PACKET *pkt, int family, int sk, int sk_type);
@@ -126,7 +178,15 @@ int pkt_tcp_connect(inet_prefix *host, short port);
 
 void pkt_fill_hdr(pkt_hdr *hdr, u_char flags, int id, u_char op, size_t sz);
 
-int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_ack, PACKET *rpkt);
+int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int check_ack, PACKET *rpkt);
+int forward_pkt(PACKET rpkt, inet_prefix to);
 int pkt_err(PACKET pkt, u_char err);
 
+void add_pkt_op(u_char op, char sk_type, u_short port, int (*exec_f)(PACKET pkt));
 int pkt_exec(PACKET pkt, int acpt_idx);
+
+void pkt_queue_init(void);
+void pkt_queue_close(void);
+int pkt_q_wait_recv(int id, inet_prefix *from, PACKET *rpkt);
+int pkt_q_add_pkt(PACKET pkt);
+void pkt_q_del(pkt_queue *pq, int close_socket);

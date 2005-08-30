@@ -158,9 +158,11 @@ int is_ip_acpt_free(inet_prefix ip, int *index)
 	if((idx=find_ip_acpt(ip))==-1)
 		if((idx=find_first_free())==-1)
 			return E_TOO_MANY_CONN;
+	
 	/*debug(DBG_NOISE, "ACPT: accept_tbl[%d].accepts: %d, max_acp: %d", idx,
 			accept_tbl[idx].accepts, max_accepts_per_host); */
-	if(accept_tbl[idx].accepts > max_accepts_per_host)
+
+	if(accept_tbl[idx].accepts >= max_accepts_per_host)
 		return E_ACCEPT_TBL_FULL;
 
 	*index=idx;

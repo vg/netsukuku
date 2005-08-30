@@ -16,7 +16,7 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#define MAX_CONNECTIONS		50
+#define MAX_CONNECTIONS		512
 
 #define MAX_ACCEPTS		16
 #define FREE_ACCEPT_TIME	4		/*in seconds*/

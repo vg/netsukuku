@@ -98,17 +98,18 @@ void maxgroupnode_level_free(void)
 int iptogid(inet_prefix ip, int level)
 {
 	mpz_t xx, yy, zz;
-	int upper_level, h_ip[4];
+	int upper_level, h_ip[MAX_IP_INT];
 	size_t count;
 
-	memcpy(h_ip, ip.data, 4);
+	memcpy(h_ip, ip.data, MAX_IP_SZ);
 	upper_level=level+1;
 
 	mpz_init(xx);
 	mpz_init(yy);
 	mpz_init(zz);
 
-	mpz_import(yy, 4, HOST_ORDER, sizeof(int), NATIVE_ENDIAN, 0, h_ip);
+	mpz_import(yy, MAX_IP_INT, HOST_ORDER, sizeof(int), NATIVE_ENDIAN, 
+			0, h_ip);
 
 	/* 
 	 * gid=(ip/MAXGROUPNODE^level) - (ip/MAXGROUPNODE^(level+1) * MAXGROUPNODE);
@@ -118,7 +119,7 @@ int iptogid(inet_prefix ip, int level)
 	mpz_mul_ui(zz, zz, MAXGROUPNODE);
 	mpz_sub(yy, xx, zz);
 
-	memset(h_ip, '\0', sizeof(int)*4);
+	memset(h_ip, '\0', MAX_IP_SZ);
 	mpz_export(h_ip, &count, HOST_ORDER, sizeof(int), NATIVE_ENDIAN, 0, yy);
 	
 	mpz_clear(xx);
@@ -141,10 +142,10 @@ void gidtoipstart(int *gid, u_char total_levels, u_char levels, int family,
 		inet_prefix *ip)
 {
 	mpz_t xx, yy;
-	int i, h_ip[4];
+	int i, h_ip[MAX_IP_INT];
 	size_t count;
 
-	memset(h_ip, '\0', sizeof(h_ip[0])*4);
+	memset(h_ip, '\0', sizeof(h_ip[0])*MAX_IP_INT);
 	mpz_init(xx);
 	mpz_init(yy);
 	mpz_set_ui(yy, 0);
@@ -160,7 +161,7 @@ void gidtoipstart(int *gid, u_char total_levels, u_char levels, int family,
 	mpz_clear(xx);
 	mpz_clear(yy);
 
-	memcpy(ip->data, h_ip, sizeof(int)*4);
+	memcpy(ip->data, h_ip, MAX_IP_SZ);
 	ip->family=family;
 	ip->len = (family == AF_INET) ? 4 : 16;
 	ip->bits=ip->len*8;
@@ -221,20 +222,21 @@ void quadg_destroy(quadro_group *qg)
  * `total_levels' is the maximum number of levels.
  * `ext_map' is an external map.
  * If `only_free_gnode' is not 0, only the available and empty gnode are chosen.
- * The new ip is stored in `new_ip'.
- * */
-void random_ip(inet_prefix *ipstart, int final_level, int final_gid, 
+ * In this case -1 may be returned if there aren't any free gnode to choose.
+ * The new ip is stored in `new_ip' and on success 0 is returned.
+ */
+int random_ip(inet_prefix *ipstart, int final_level, int final_gid, 
 		int total_levels, map_gnode **ext_map, int only_free_gnode, 
 		inet_prefix *new_ip, int my_family)
 {
 	int i, level, levels;
-	int gid[total_levels];
+	int gid[total_levels], g;
 	quadro_group qg;
 
 	memset(new_ip, 0, sizeof(inet_prefix));
 	
 	if(!ipstart || final_level==total_levels) {
-		u_int idata[4]={0,0,0,0};
+		u_int idata[MAX_IP_INT]={0,0,0,0};
 		
 		/* 
 		 * Let's choose a completely random ip. We must ensure that it
@@ -252,7 +254,7 @@ void random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 		
 		inet_setip(new_ip, idata, my_family);
 		
-		return;
+		return 0;
 	} else {
 		/*
 		 * We can choose only a random ip which is inside the final_gid.
@@ -279,9 +281,14 @@ void random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 	 * Now we choose random gids for each level so we'll have a random ip
 	 * with gidtoipstart();
 	 */
-	for(level=0; level < levels; level++) {
+	for(level=levels-1; level >=0; level--) {
 		gid[level]=rand_range(0, get_groups(my_family, level)-1);
+
 		if(level && only_free_gnode) {
+			g = level + 1 == GET_LEVELS(my_family) ? 0 : gid[level+1];
+			if(ext_map[_EL(level+1)][g].flags & GMAP_FULL)
+				/* nothing to pick */
+				return -1;
 			/* 
 			 * We have to be sure that we're not picking a gnode 
 			 * already used in the ext_map. Generally when we hook
@@ -289,7 +296,7 @@ void random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 			 * taken gnodes we increase the possibility to create a
 			 * brand new, and not already used, gnode.
 			 */
-			while(!(ext_map[_EL(level)][gid[level]].flags & MAP_VOID))
+			while(!(ext_map[_EL(level)][gid[level]].flags & GMAP_VOID))
 				gid[level]=rand_range(0, get_groups(my_family, level)-1);
 		}
 	}
@@ -299,6 +306,8 @@ void random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 	 * new_ip.
 	 */
 	gidtoipstart(gid, total_levels, total_levels, my_family, new_ip);
+
+	return 0;
 }
 
 /*
@@ -349,13 +358,7 @@ int quadg_gids_cmp(quadro_group a, quadro_group b, int lvl)
 /* e_rnode_init: Initialize an ext_rnode_cache list and zeros the `counter' */
 ext_rnode_cache *e_rnode_init(u_int *counter)
 {
-	ext_rnode_cache *erc;
-
-	/*list_init(erc, 0);*/
-	erc=0;
-	if(counter)
-		*counter=0;
-	return erc;
+	return (ext_rnode_cache *)clist_init(counter);
 }
 
 /* e_rnode_free: destroy an ext_rnode_cache list */
@@ -381,26 +384,21 @@ void e_rnode_add(ext_rnode_cache **erc, ext_rnode *e_rnode, int rnode_pos, u_int
 	
 	p->e=e_rnode;
 	p->rnode_pos=rnode_pos;
-	
-	if(!(*counter) || !erc)
-		list_init(*erc, p);
-	else
-		list_add(*erc, p);
-	(*counter)++;
+
+	clist_add(erc, counter, p);
 }
 
 void e_rnode_del(ext_rnode_cache **erc_head, u_int *counter, ext_rnode_cache *erc)
 {
-	if((*counter) <= 0 || !erc)
+	if((*counter) <= 0 || !*erc_head)
 		return;
 
 	if(erc->e) {
 		xfree(erc->e);
 		erc->e=0;
 	}
-	
-	*erc_head=list_del(*erc_head, erc);
-	(*counter)--;
+
+	clist_del(erc_head, counter, erc);
 }
 
 /*

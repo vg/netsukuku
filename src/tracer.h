@@ -67,13 +67,12 @@ int tracer_pkt_build(u_char, int, int, int, u_char, brdcast_hdr *, tracer_hdr *,
 					u_char excl_level, int sub_id
 #define TRACER_PKT_EXCLUDE_VARS_NAME	e_rnode, node, from_rpos, pos, 	       \
 					excl_level, sub_id
-int tracer_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), u_char level,
+int flood_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), u_char level,
 		int sub_id, int from_rpos, PACKET pkt);
 int exclude_from(TRACER_PKT_EXCLUDE_VARS);
+int exclude_glevel(TRACER_PKT_EXCLUDE_VARS);
 int exclude_all_but_notfrom(TRACER_PKT_EXCLUDE_VARS);
 int exclude_from_and_glevel(TRACER_PKT_EXCLUDE_VARS);
-int exclude_from_and_glevel_and_closed(TRACER_PKT_EXCLUDE_VARS);
-int exclude_from_and_glevel_and_notstarter(TRACER_PKT_EXCLUDE_VARS);
 
 int tracer_pkt_recv(PACKET rpkt);
 int tracer_pkt_start(u_char level);

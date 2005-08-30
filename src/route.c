@@ -27,6 +27,7 @@
 #include "libnetlink.h"
 #include "inet.h"
 #include "krnl_route.h"
+#include "request.h"
 #include "pkts.h"
 #include "map.h"
 #include "gmap.h"
@@ -145,7 +146,39 @@ void *get_gw_gnode(map_node *int_map, map_gnode **ext_map,
 		debug(DBG_INSANE, "get_gw: bmap found = %x", node);
 	}
 	return 0;
+
 }
+
+/*
+ * get_gw_ip: It's a wrapper to get_gw_gnode() that stores directly the gw's
+ * ip in `gw_ip'.
+ * On error -1 is returned.
+ */
+int get_gw_ip(map_node *int_map, map_gnode **ext_map,
+		map_bnode **bnode_map, u_int *bmap_nodes, 
+		quadro_group *cur_quadg,
+		map_gnode *find_gnode, u_char gnode_level, 
+		u_char gw_level, inet_prefix *gw_ip)
+{
+	ext_rnode *e_rnode=0;
+	map_node *gw_node=0;
+
+	gw_node=get_gw_gnode(int_map, ext_map, bnode_map, bmap_nodes, 
+			find_gnode, gnode_level, gw_level);
+	
+	if(!gw_node)
+		return -1;
+
+	if(gw_node->flags & MAP_ERNODE) {
+		e_rnode=(ext_rnode *)gw_node;
+		memcpy(gw_ip, &e_rnode->quadg.ipstart[gw_level], sizeof(inet_prefix));
+	} else
+		maptoip((u_int)int_map, (u_int)gw_node, cur_quadg->ipstart[1], 
+				gw_ip);
+
+	return 0;
+}
+
 
 /* 
  * krnl_update_node: It adds/replaces or removes a route from the kernel's
@@ -173,7 +206,7 @@ void krnl_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_qua
 	map_gnode *gnode=0;
 	struct nexthop *nh=0;
 	inet_prefix to;
-	int i, node_pos=0, route_scope=0;
+	int i, node_pos=0, route_scope=0, err;
 #ifdef DEBUG		
 	char *to_ip, *gw_ip;
 #endif
@@ -261,23 +294,16 @@ void krnl_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_qua
 		nh=xmalloc(sizeof(struct nexthop)*2);
 		memset(nh, '\0', sizeof(struct nexthop)*2);
 
-		gw_node=get_gw_gnode(me.int_map, me.ext_map, me.bnode_map,
-					me.bmap_nodes, gnode, level, 0);
-		if(!gw_node) {
+		err=get_gw_ip(me.int_map, me.ext_map, me.bnode_map,
+			     me.bmap_nodes, &me.cur_quadg,
+			     gnode, level, 0, &nh[0].gw);
+		if(err < 0) {
 #ifdef DEBUG
 			debug(DBG_NORMAL, "Cannot get the gateway for "
 					"the gnode: %d of level: %d, ip:"
 					"%s", node_pos, level, to_ip);
 #endif
 			goto finish;
-		}
-
-		if(gw_node->flags & MAP_ERNODE) {
-			e_rnode=(ext_rnode *)gw_node;
-			memcpy(&nh[0].gw, &e_rnode->quadg.ipstart[0], sizeof(inet_prefix));
-		} else {
-			maptoip((u_int)me.int_map, (u_int)gw_node, 
-					me.cur_quadg.ipstart[1], &nh[0].gw);
 		}
 #ifdef DEBUG
 		gw_ip=xstrdup(inet_to_str(nh[0].gw));
@@ -472,9 +498,9 @@ int rt_del_loopback_net(void)
 {
 	inet_prefix to;
 	char lo_dev[]="lo";
-	u_int idata[4];
+	u_int idata[MAX_IP_INT];
 
-	memset(idata, 0, sizeof(int)*4);
+	memset(idata, 0, MAX_IP_SZ);
 	if(my_family!=AF_INET) 
 		return 0;
 

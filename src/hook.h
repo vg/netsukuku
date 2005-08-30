@@ -80,5 +80,3 @@ void set_ip_and_def_gw(char *dev, inet_prefix ip);
 
 int hook_init(void);
 int netsukuku_hook(void);
-
-/*int snode_transfrom();*/

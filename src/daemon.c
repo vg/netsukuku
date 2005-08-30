@@ -20,12 +20,12 @@
 
 #include "daemon.h"
 #include "inet.h"
+#include "request.h"
 #include "pkts.h"
 #include "map.h"
 #include "gmap.h"
 #include "bmap.h"
 #include "netsukuku.h"
-#include "request.h"
 #include "accept.h"
 #include "xmalloc.h"
 #include "log.h"
@@ -121,7 +121,7 @@ void *udp_daemon(void *door)
 	PACKET rpkt;
 	fd_set fdset;
 	int ret, sk;
-	int udp_port=*(int *)door;
+	u_short udp_port=*(u_short *)door;
 
 #ifdef DEBUG
 	int select_errors=0;
@@ -216,7 +216,7 @@ close:
 	return NULL;
 }
 
-void *tcp_daemon(void *null)
+void *tcp_daemon(void *door)
 {
 	pthread_t thread;
 	pthread_attr_t t_attr;
@@ -226,6 +226,7 @@ void *tcp_daemon(void *null)
 	inet_prefix ip;
 	fd_set fdset;
 	int sk, fd, ret, err;
+	u_short tcp_port=*(u_short *)door;
 	const char *ntop;
 	char *rpkt_cp;
 
@@ -233,7 +234,7 @@ void *tcp_daemon(void *null)
 	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
 	
 	debug(DBG_SOFT, "Preparing the tcp listening socket");
-	sk=prepare_listen_socket(my_family, SOCK_STREAM, ntk_tcp_port);
+	sk=prepare_listen_socket(my_family, SOCK_STREAM, tcp_port);
 	if(sk == -1)
 		return NULL;
 
@@ -283,10 +284,13 @@ void *tcp_daemon(void *null)
 		if(server_opt.dbg_lvl)
 			ntop=inet_to_str(ip);
 
-		if(!memcmp(&ip, &me.cur_ip, sizeof(inet_prefix))) {
-			close(fd);
-			continue;
-		}
+		/*
+		 * Not necessary in TCP 
+		 *if(!memcmp(&ip, &me.cur_ip, sizeof(inet_prefix))) {
+		 *	close(fd);
+		 *	continue;
+		 *} 
+		 */
 
 		pkt_addfrom(&rpkt, &ip);
 		if((ret=add_accept(ip, 0))) {

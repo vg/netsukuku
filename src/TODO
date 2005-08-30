@@ -1,18 +1,11 @@
-	 [HIGH PRIORITY] 
+		[HIGH PRIORITY] 
 
-- Codare ANDNA!
-  -struttuture
-  -defines, richieste
-  -stabilire le funzioni
-  -piu'_vicino_all'hash_gnode()
-  -ssl
-  -usare l'fnv hash per gli hash
+- ANDNA:
+  - dns wrapper per mettere 127.0.0.1 in resolv.conf
 
-- ATTENZIONE: route_del e' disattivato per debugging. (e' forse il caso
-  disabilitarlo completamente?)
+- ATTENZIONE: route_del e' disattivato per debugging. 
 
-
-	 [MEDIUM PRIORITY] 
+		[MEDIUM PRIORITY] 
 
 - Usare il multipath per i gnode. Ad esempio se un bnode e' collegato con piu'
   nodi di uno stesso gnode esterno li deve mettere come nexthop nella stessa rotta 
@@ -20,13 +13,20 @@
   raggiungere uno stesso gnode, bisogna usare sempre il multipath.
 
 - Anti spoof Hook.
-  
+
 - big endian/little endian per gli int nei pkt.
 
 - Portare per *BSD: bisogna usare rt_ioctl.c ed rt_socket.c di quagga
   ( ../othersrc/quagga-*/zebra/ )
+  
+- API per il sync delle mappe usando il demone netsukuku_d
 
-	[LOW PRIORITY]
+- Scrivere una guida alle funzioni generali del codice che possono
+  essere usate come API.
+
+		[LOW PRIORITY]
+
+- Testare request.c
 
 gmap.c: Ottimizzare la validita' di ip in random_ip(). Una possibile soluzione
         sarebbe quella di azzerare i bit invalidi.
@@ -41,9 +41,10 @@ gmap.c/map.c: non usare piu' le libgmp. Per le somme usiamo sum_128.c, e per
 	      potenze di due, usiamo gli shift.
 
 
- 	[ CURRENT TESTS ]
+		[ CURRENT TESTS ]
 	
 12%, krnl_rule.c
+19%, request.c
 56%, qspn.c
 50%, tracer.c
 82%, radar.c
@@ -58,7 +59,6 @@ gmap.c/map.c: non usare piu' le libgmp. Per le somme usiamo sum_128.c, e per
 98%, hook.c
 99%, daemon.c
 99%, if.c
-99%, request.c
 100%, accept.c
 100%, ipv6-gmp.c
 100%, libnetlink.c

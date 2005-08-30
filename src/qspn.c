@@ -28,11 +28,11 @@
 #include "map.h"
 #include "gmap.h"
 #include "bmap.h"
+#include "request.h"
 #include "pkts.h"
 #include "tracer.h"
 #include "qspn.h"
 #include "netsukuku.h"
-#include "request.h"
 #include "log.h"
 #include "xmalloc.h"
 #include "misc.h"
@@ -56,10 +56,6 @@ void qspn_set_map_vars(u_char level, map_node **map, map_node **root_node,
 			*root_node=&me.cur_quadg.gnode[_EL(level)]->g;
 		if(root_node_pos)
 			*root_node_pos=me.cur_quadg.gid[level];
-			/* XXX TODO OLD REMOVE XXX
-			 * *root_node_pos=pos_from_gnode(me.cur_quadg.gnode[_EL(level)],
-					me.ext_map[_EL(level)]);
-			*/
 	}
 }
 
@@ -89,6 +85,17 @@ void qspn_time_reset(int start_level, int end_level, int levels)
 
 void qspn_init(u_char levels)
 {
+	/* register the qspn/tracer's ops in the pkt_op_table */
+	add_pkt_op(TRACER_PKT, 	       SKT_UDP, ntk_udp_port, tracer_pkt_recv);
+	add_pkt_op(TRACER_PKT_CONNECT, SKT_UDP, ntk_udp_port, tracer_pkt_recv);
+	add_pkt_op(QSPN_CLOSE, SKT_UDP, ntk_udp_port, qspn_close);
+	add_pkt_op(QSPN_OPEN,  SKT_UDP, ntk_udp_port, qspn_open);
+
+
+	/* 
+	 * Alloc the qspn stuff 
+	 */
+	
 	qspn_b=xmalloc(sizeof(struct qspn_buffer *)*levels);
 	memset(qspn_b, 0, sizeof(struct qspn_buffer *)*levels);
 	
@@ -341,7 +348,7 @@ void qspn_new_round(u_char level, int new_qspn_id, struct timeval *new_qspn_time
 	}
 }
 
-/* Exclude functions. (see tracer.c) */
+/* * *  Exclude functions. (see pkts.h)  * * */
 int exclude_from_and_opened_and_glevel(TRACER_PKT_EXCLUDE_VARS)
 {
 	map_node *rn;
@@ -369,6 +376,29 @@ int exclude_from_and_opened_and_glevel(TRACER_PKT_EXCLUDE_VARS)
 		return 1;
 	return 0;
 }
+
+int exclude_from_and_glevel_and_closed(TRACER_PKT_EXCLUDE_VARS)
+{
+	if((node->flags & QSPN_CLOSED) || 
+			exclude_from_and_glevel(TRACER_PKT_EXCLUDE_VARS_NAME))
+		return 1;
+	return 0;
+}
+
+int exclude_from_and_glevel_and_notstarter(TRACER_PKT_EXCLUDE_VARS)
+{
+	int level=excl_level-1;
+
+	if(exclude_from_and_glevel(TRACER_PKT_EXCLUDE_VARS_NAME))
+		return 1;
+
+	
+	if((!level || (node->flags & MAP_BNODE)) && !(node->flags & QSPN_STARTER))
+		return 1;
+	
+	return 0;
+}
+
 
 /*
  * The Holy qspn_send. It is used to send a new qspn_round when something 
@@ -442,7 +472,7 @@ int qspn_send(u_char level)
 	}
 
 	/*... send the qspn_opened to our r_nodes*/
-	tracer_pkt_send(exclude_from_and_glevel_and_closed, upper_level, -1, 
+	flood_pkt_send(exclude_from_and_glevel_and_closed, upper_level, -1, 
 			-1, pkt);
 
 	debug(DBG_INSANE, "Qspn_round lvl: %d id: 0x%x sent", level, 
@@ -488,13 +518,13 @@ int qspn_open_start(int from_rpos, PACKET pkt_to_all, int qspn_id,
 				"pkt build failed.");
 	else
 		/* Send the pkt to `from' */
-		tracer_pkt_send(exclude_all_but_notfrom, upper_level,
+		flood_pkt_send(exclude_all_but_notfrom, upper_level,
 				-1, from_rpos, pkt_to_from);
 
 	/* Send the `pkt_to_all' pkt to all the other rnodes (if any)*/
 	if(me.cur_node->links > 1) {
 		pkt_to_all.hdr.op=QSPN_OPEN;
-		tracer_pkt_send(exclude_from_and_glevel, upper_level, 
+		flood_pkt_send(exclude_from_and_glevel, upper_level, 
 				-1, from_rpos, pkt_to_all);
 	}
 
@@ -843,7 +873,7 @@ int qspn_close(PACKET rpkt)
 		debug(DBG_INSANE, "Fwd %s(0x%x) lvl %d to the qspn starters	<<<<", 
 				rq_to_str(pkt.hdr.op),  pkt.hdr.id, level);
 		
-		tracer_pkt_send(exclude_from_and_glevel, upper_level, -1,
+		flood_pkt_send(exclude_from_and_glevel, upper_level, -1,
 				real_from_rpos, pkt);
 	} else {
 		/* 
@@ -852,7 +882,7 @@ int qspn_close(PACKET rpkt)
 		 */
 		debug(DBG_INSANE, "Fwd %s(0x%x) lvl %d to broadcast", 
 				rq_to_str(pkt.hdr.op), pkt.hdr.id, level);
-		tracer_pkt_send(exclude_from_and_glevel_and_closed,
+		flood_pkt_send(exclude_from_and_glevel_and_closed,
 				upper_level, -1, real_from_rpos, pkt);
 	}
 finish:
@@ -1067,11 +1097,11 @@ int qspn_open(PACKET rpkt)
 			rq_to_str(pkt.hdr.op), pkt.hdr.id, level);
 
 	if(do_real_qspn_action && !int_qspn_opener) {
-		tracer_pkt_send(exclude_from_and_opened_and_glevel,
+		flood_pkt_send(exclude_from_and_opened_and_glevel,
 				upper_level, sub_id, real_from_rpos, pkt);
 	} else {
 		/* Just forward it without caring of opened or not rnodes */
-		tracer_pkt_send(exclude_from_and_glevel, upper_level, 
+		flood_pkt_send(exclude_from_and_glevel, upper_level, 
 				sub_id, real_from_rpos, pkt);
 	}
 	

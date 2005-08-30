@@ -14,24 +14,37 @@
  * You should have received a copy of the GNU Public License along with
  * this source code; if not, write to:
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * --
+ * pkts.c:
+ * General functions to forge, pack, send, receive, forward and unpack
+ * packets. 
  */
 
 #include "includes.h"
 
+#include "llist.c"
 #include "inet.h"
-#include "pkts.h"
-#include "map.h"
-#include "gmap.h"
-#include "bmap.h"
-#include "netsukuku.h"
-#include "qspn.h"
-#include "tracer.h"
 #include "request.h"
+#include "pkts.h"
 #include "accept.h"
-#include "radar.h"
-#include "hook.h"
 #include "xmalloc.h"
 #include "log.h"
+
+int cur_dev_idx;
+
+/*
+ * Initialize the vital organs of the pkts.c's functions.
+ * `dev_idx' is the current device index of the interface will be used.
+ * If `pkt_queue_init' is not 0, the pkt_queue is initialized too.
+ */
+void pkts_init(int dev_idx, int queue_init)
+{
+	cur_dev_idx=dev_idx;
+	pkt_q_counter=0;
+	if(queue_init)
+		pkt_queue_init();
+}
 
 /* * * Handy functions to build the PACKET * * */
 void pkt_addfrom(PACKET *pkt, inet_prefix *from)
@@ -142,6 +155,7 @@ PACKET *pkt_unpack(char *pkt)
 	
 	/*Now, we extract the pkt_hdr...*/
 	memcpy(&pk->hdr, pkt, sizeof(pkt_hdr));
+
 	/*and verify it...*/
 	if(pkt_verify_hdr(*pk)) {
 		debug(DBG_NOISE, "Error while unpacking the PACKET. "
@@ -155,11 +169,10 @@ PACKET *pkt_unpack(char *pkt)
 	
 int pkt_verify_hdr(PACKET pkt)
 {
-	if(strncmp(pkt.hdr.ntk_id, NETSUKUKU_ID, 3))
+	if(strncmp(pkt.hdr.ntk_id, NETSUKUKU_ID, 3) ||
+			pkt.hdr.sz > MAXMSGSZ)
 		return 1;
-	if(pkt.hdr.sz > MAXMSGSZ)
-		return 1;
-	
+
 	return 0;
 }
 
@@ -170,9 +183,7 @@ ssize_t pkt_send(PACKET *pkt)
 
 	buf=pkt_pack(pkt);
 
-	if(pkt->sk_type==SKT_UDP || pkt->sk_type==SKT_BCAST || 
-			pkt->sk_type==SKT_UDP_RADAR || 
-			pkt->sk_type==SKT_BCAST_RADAR) {
+	if(pkt->sk_type==SKT_UDP || pkt->sk_type==SKT_BCAST) {
 		struct sockaddr_storage saddr_sto;
 		struct sockaddr *to = (struct sockaddr *)&saddr_sto;
 		socklen_t tolen;
@@ -205,9 +216,7 @@ ssize_t pkt_recv(PACKET *pkt)
 	socklen_t fromlen;
 	char buf[MAXMSGSZ];
 
-	if(pkt->sk_type==SKT_UDP || pkt->sk_type==SKT_BCAST ||
-			pkt->sk_type==SKT_UDP_RADAR ||
-			pkt->sk_type==SKT_BCAST_RADAR) {	
+	if(pkt->sk_type==SKT_UDP || pkt->sk_type==SKT_BCAST) {
 		memset(buf, 0, MAXMSGSZ);
 		memset(&from, 0, sizeof(struct sockaddr));
 		
@@ -325,75 +334,83 @@ void pkt_fill_hdr(pkt_hdr *hdr, u_char flags, int id, u_char op, size_t sz)
 	hdr->ntk_id[1]='t';
 	hdr->ntk_id[2]='k';
 
-	if(!id)
-		id=random();
-		
-	hdr->id=id;
-	hdr->flags=flags;
-	hdr->op=op;
-	hdr->sz=sz;
+	hdr->id	   = !id ? rand() : id;
+	hdr->flags = flags;
+	hdr->op	   = op;
+	hdr->sz	   = sz;
 }
 
-/* send_rq: This functions send a `rq' request, with an id set to `rq_id', to `pkt->to'. 
+	
+/* 
+ * add_pkt_op: Add the `exec_f' in the pkt_exec_functions array.
+ * `op' must be add int the pkt_op_tbl if it is a request that will be
+ * received or if it is an op that will be sent with send_rq().
+ */
+void add_pkt_op(u_char op, char sk_type, u_short port, int (*exec_f)(PACKET pkt))
+{
+	pkt_op_tbl[op].sk_type   = sk_type;
+	pkt_op_tbl[op].port	 = port;
+	pkt_op_tbl[op].exec_func = exec_f;
+}
+
+
+/*
+ * send_rq: This functions send a `rq' request, with an id set to `rq_id', to `pkt->to'. 
  * If `pkt->hdr.sz` is > 0 it includes the `pkt->msg' in the packet otherwise it will be NULL. 
  * If `rpkt' is not null it will receive and store the reply pkt in `rpkt'.
- * If `check_ack' is set send_rq, send_rq attempts to receive the reply pkt and it checks its
- * ACK and its id; if the test fails it gives an appropriate error message.
- * If `re'  is not null send_rq confronts the OP of the received reply pkt 
- * with `re'; if the test fails it gives an appropriate error message.
- * If an error occurr send_rq returns -1 otherwise it returns 0.
+ * If `check_ack' is set, send_rq checks the reply pkt ACK and its id; if the test fails it 
+ * gives an appropriate error message.
+ * If `rpkt'  is not null send_rq confronts the OP of the received reply pkt with `re'; if the 
+ * test fails it gives an appropriate error message.
+ * If `pkt'->hdr.flags has the ASYNC_REPLY set, the `rpkt' will be received with
+ * the pkt_queue, in this case, if `rpkt'->from is set to a valid ip, it will
+ * be used to check the sender ip of the reply pkt.
+ * On failure -1 is returned, otherwise 0.
  */
-int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_ack, PACKET *rpkt)
+int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int check_ack, PACKET *rpkt)
 {
 	ssize_t err;
 	int ret=0;
 	const char *ntop=0;
 	const u_char *rq_str, *re_str;
-	u_char hdr_flags=0;
-	
+	inet_prefix *wanted_from=0;
+
 
 	if(op_verify(rq)) {
 		error("\"%s\" request/reply is not valid!", rq_str);
 		return -1;
 	}
+
 	if(!re_verify(rq))
 		rq_str=re_to_str(rq);
 	else
 		rq_str=rq_to_str(rq);
 
-	if(re && re_verify(re)) {
+	if(re_verify(re)) {
 		error("\"%s\" reply is not valid!", re_str);
 		return -1;
 	}
 
-	if(rpkt)
-		memset(rpkt, '\0', sizeof(PACKET));
 
 	ntop=inet_to_str(pkt->to);
 
 	/* * * the request building process * * */
-	hdr_flags=pkt->hdr.flags;
 	if(check_ack)
-		hdr_flags|=SEND_ACK;
-	if(me.cur_node->flags & MAP_HNODE)
-		hdr_flags|=HOOK_PKT;
+		pkt->hdr.flags|=SEND_ACK;
 	
-	pkt_fill_hdr(&pkt->hdr, hdr_flags, rq_id, rq, pkt->hdr.sz);
+	pkt_fill_hdr(&pkt->hdr, pkt->hdr.flags, rq_id, rq, pkt->hdr.sz);
 	if(!pkt->hdr.sz)
 		pkt->msg=0;
-	
-	if(pkt->sk_type==SKT_TCP)
-		pkt_addport(pkt, ntk_tcp_port);
-	else if(pkt->sk_type==SKT_UDP || pkt->sk_type==SKT_BCAST)
-		pkt_addport(pkt, ntk_udp_port);
-	else if(pkt->sk_type==SKT_UDP_RADAR || pkt->sk_type==SKT_BCAST_RADAR)
-		pkt_addport(pkt, ntk_udp_radar_port);
-	if(rpkt)
-		pkt_addport(rpkt, pkt->port);
 
-	pkt_addflags(pkt, flags);
+	if(!pkt->port)
+		pkt_addport(pkt, pkt_op_tbl[rq].port);
+
+	pkt_addflags(pkt, pkt_flags);
 
 	if(!pkt->sk) {
+		if(!pkt->sk_type)
+			pkt->sk_type=pkt_op_tbl[rq].sk_type;
+
 		if(!pkt->to.family || !pkt->to.len) {
 			error("pkt->to isn't set. I can't create the new connection");
 			ret=-1;
@@ -402,10 +419,10 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 		
 		if(pkt->sk_type==SKT_TCP)
 			pkt->sk=pkt_tcp_connect(&pkt->to, pkt->port);
-		else if(pkt->sk_type==SKT_UDP || pkt->sk_type==SKT_UDP_RADAR)
+		else if(pkt->sk_type==SKT_UDP)
 			pkt->sk=new_udp_conn(&pkt->to, pkt->port);
-		else if(pkt->sk_type==SKT_BCAST || pkt->sk_type==SKT_BCAST_RADAR)
-			pkt->sk=new_bcast_conn(&pkt->to, pkt->port, me.cur_dev_idx);
+		else if(pkt->sk_type==SKT_BCAST)
+			pkt->sk=new_bcast_conn(&pkt->to, pkt->port, cur_dev_idx);
 		else
 			fatal("Unkown socket_type. Something's very wrong!! Be aware");
 
@@ -415,11 +432,7 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 			goto finish;
 		}
 	}
-	if(rpkt) {
-		pkt_addsk(rpkt, pkt->to.family, pkt->sk, pkt->sk_type);
-		pkt_addflags(rpkt, MSG_WAITALL);
-	}
-	
+
 	/*Let's send the request*/
 	err=pkt_send(pkt);
 	if(err==-1) {
@@ -430,26 +443,40 @@ int send_rq(PACKET *pkt, int flags, u_char rq, int rq_id, u_char re, int check_a
 
 	/* * * the reply * * */
 	if(rpkt) {
+		memset(rpkt, '\0', sizeof(PACKET));
+		pkt_addport(rpkt, pkt->port);
+		pkt_addsk(rpkt, pkt->to.family, pkt->sk, pkt->sk_type);
+		pkt_addflags(rpkt, MSG_WAITALL);
+		
 		debug(DBG_NOISE, "Receiving reply for the %s request"
 				" (id 0x%x)", rq_str, pkt->hdr.id);
-		if(pkt->sk_type==SKT_UDP || pkt->sk_type==SKT_UDP_RADAR)
+		if(pkt->sk_type==SKT_UDP)
 			memcpy(&rpkt->from, &pkt->to, sizeof(inet_prefix));
 
-		if((err=pkt_recv(rpkt))==-1) {
+		if(pkt->hdr.flags & ASYNC_REPLY) {
+			/* Receive the pkt in the async way */
+			if(rpkt->from.data[0]) 
+				wanted_from=&rpkt->from;
+			err=pkt_q_wait_recv(pkt->hdr.id, wanted_from, rpkt);
+		} else
+			/* Receive the pkt in the standard way */
+			err=pkt_recv(rpkt);
+
+		if(err==-1) {
 			error("Error while receving the reply for the %s request"
 					" from %s.", rq_str, ntop);
 			ret=-1; 
 			goto finish;
 		}
 
-		if(rpkt->hdr.op == ACK_NEGATIVE && check_ack) {
+		if((rpkt->hdr.op == ACK_NEGATIVE) && check_ack) {
 			u_char err_ack;
 			memcpy(&err_ack, rpkt->msg, sizeof(u_char));
 			error("%s failed. The node %s replied: %s", rq_str, ntop, 
 					rq_strerror(err_ack));
 			ret=-1; 
 			goto finish;
-		} else if(re && rpkt->hdr.op != re && check_ack) {
+		} else if(rpkt->hdr.op != re && check_ack) {
 			error("The node %s replied %s but we asked %s!", ntop, 
 					re_to_str(rpkt->hdr.op), re_str);
 			ret=-1;
@@ -469,6 +496,21 @@ finish:
 	return ret;
 }
 
+/*
+ * forward_pkt: forwards the received packet `rpkt' to `to'.
+ */
+int forward_pkt(PACKET rpkt, inet_prefix to)
+{
+	int err;
+
+	rpkt.sk=0;
+	pkt_addto(&rpkt, &to);
+	
+	err=send_rq(&rpkt, 0, rpkt.hdr.op, 0, 0, 0, 0);
+
+	return err;
+}
+
 /* 
  * pkt_err: Sends back to "pkt.from" an error pkt, with ACK_NEGATIVE, 
  * containing the "err" code.
@@ -476,14 +518,19 @@ finish:
 int pkt_err(PACKET pkt, u_char err)
 {
 	char *msg;
+	u_char flags=0;
 	
 	memcpy(&pkt.to, &pkt.from, sizeof(inet_prefix));
-	pkt_fill_hdr(&pkt.hdr, 0, pkt.hdr.id, ACK_NEGATIVE, sizeof(int));
+	if(pkt.hdr.flags & ASYNC_REPLY) {
+		flags|=ASYNC_REPLIED;
+		pkt.sk=0;
+	}
+	pkt_fill_hdr(&pkt.hdr, flags, pkt.hdr.id, ACK_NEGATIVE, sizeof(u_char));
 	
 	pkt.msg=msg=xmalloc(sizeof(u_char));
 	memcpy(msg, &err, sizeof(u_char));
 		
-	err=pkt_send(&pkt);
+	err=send_rq(&pkt, 0, ACK_NEGATIVE, pkt.hdr.id, 0, 0, 0);
 	pkt_free(&pkt, 0);
 	return err;
 }
@@ -493,6 +540,7 @@ int pkt_exec(PACKET pkt, int acpt_idx)
 {
 	const char *ntop;
 	const u_char *op_str;
+	int (*exec_f)(PACKET pkt);
 	int err=0;
 
 	if(!re_verify(pkt.hdr.op))
@@ -508,49 +556,144 @@ int pkt_exec(PACKET pkt, int acpt_idx)
 		return -1;
 	}
 
-	switch(pkt.hdr.op) 
-	{
-		/* Radar */
-		case ECHO_ME:
-			err=radard(pkt);
-			break;
-		case ECHO_REPLY:
-			err=radar_recv_reply(pkt);
-			break;
-			
-		/* Hook */
-		case GET_FREE_NODES:
-			err=put_free_nodes(pkt);
-			break;
-		case GET_QSPN_ROUND:
-			err=put_qspn_round(pkt);
-			break;
-		case GET_INT_MAP:
-			err=put_int_map(pkt);
-			break;
-		case GET_BNODE_MAP:
-			err=put_bnode_map(pkt);
-			break;
-		case GET_EXT_MAP:
-			err=put_ext_map(pkt);
-			break;
-
-		/* Qspn */
-		case TRACER_PKT:
-		case TRACER_PKT_CONNECT:
-			tracer_pkt_recv(pkt);
-			break;
-		case QSPN_CLOSE:
-			err=qspn_close(pkt);
-			break;
-		case QSPN_OPEN:
-			err=qspn_open(pkt);
-			break;
-
-		default:
-			/* never reached */
-			break;
+	/* Call the function associated to `pkt.hdr.op' */
+	exec_f = pkt_op_tbl[pkt.hdr.op].exec_func;
+	if(exec_f)
+		err=(*exec_f)(pkt);
+	else if(pkt_q_counter) {
+		/* 
+		 * There isn't a function to handle this pkt, so maybe it is
+		 * an async reply
+		 */
+		pkt_q_add_pkt(pkt);
 	}
-	
+
 	return err;
+}
+
+/*
+ * * * Pkt queue functions * * *
+ */
+
+pthread_attr_t wait_and_unlock_attr;
+void pkt_queue_init(void)
+{
+	pkt_q_counter=0;
+	list_init(pkt_q, 0);
+
+	pthread_attr_init(&wait_and_unlock_attr);
+        pthread_attr_setdetachstate(&wait_and_unlock_attr, PTHREAD_CREATE_DETACHED);
+}
+
+void pkt_queue_close(void)
+{
+	pkt_queue *pq=pkt_q;
+	if(pkt_q_counter)
+		list_for(pq)
+			pkt_q_del(pq, 1);
+	pthread_attr_destroy(&wait_and_unlock_attr);
+}
+
+/* 
+ * wait_and_unlock: It waits REQUEST_TIMEOUT seconds, then it unlocks `pq'->mtx.
+ * This prevents the dead lock in pkt_q_wait_recv()
+ */
+void *wait_and_unlock(void *m)
+{
+	pkt_queue *pq=(pkt_queue *)m;
+
+	sleep(REQUEST_TIMEOUT);
+	
+	if(pq->flags & PKT_Q_MTX_LOCKED) {
+		pthread_mutex_unlock(&pq->mtx);
+		pq->flags|=PKT_Q_TIMEOUT;
+	}
+	return 0;
+}
+
+/*
+ * pkt_q_wait_recv: adds a new struct in pkt_q and waits REQUEST_TIMEOUT
+ * seconds until a reply with an id equal to `id' is received.
+ * If `from' is not null, the sender ip of the reply is considered too.
+ * The received reply pkt is stored in `rpkt' (if `rpkt' isn't null).
+ */
+int pkt_q_wait_recv(int id, inet_prefix *from, PACKET *rpkt)
+{
+	pthread_t thread;
+	pkt_queue *pq;
+
+
+	pq=xmalloc(sizeof(pkt_queue));
+	memset(pq, 0, sizeof(pkt_queue));
+	
+	if(!pkt_q_counter)
+		pkt_queue_init();
+
+	pq->pkt.hdr.id=id;
+	if(from) 
+		memcpy(&pq->pkt.from, from, sizeof(inet_prefix));
+
+	clist_add(&pkt_q, &pkt_q_counter, pq);
+
+	/* Be sure to unlock me after the timeout */
+	pthread_create(&thread, &wait_and_unlock_attr, wait_and_unlock, 
+			(void *)pq);
+
+	/* Freeze! */
+	pthread_mutex_init(&pq->mtx, 0);
+        pthread_mutex_lock(&pq->mtx);
+        pthread_mutex_lock(&pq->mtx);
+	
+	if(pq->flags & PKT_Q_TIMEOUT)
+		return -1;
+
+	if(rpkt)
+		memcpy(rpkt, &pq->pkt, sizeof(PACKET));
+
+	return 0;
+}
+
+/*
+ * pkt_q_add_pkt: Copy the reply pkt in the struct of pkt_q which has the same
+ * hdr.id, then unlock the mutex of the pkt_q struct.
+ * If the struct in pkt_q isn't found, -1 is returned.
+ */
+int pkt_q_add_pkt(PACKET pkt)
+{
+	pkt_queue *pq=pkt_q;
+	int ret=-1;
+	
+	list_for(pq) {
+		if(pq->pkt.hdr.id == pkt.hdr.id) {
+			if(pq->pkt.from.data[0] && 
+					memcmp(&pq->pkt.from, &pkt.from, sizeof(inet_prefix)))
+					continue; /* The wanted from ip and the
+						     real from ip don't match */
+			if(!(pkt.hdr.flags & ASYNC_REPLIED))
+				continue;
+
+			pkt_copy(&pq->pkt, &pkt);
+			
+			/* Now it's possible to read the reply,
+			 * pkt_q_wait_recv() is now hot again */
+			pthread_mutex_unlock(&pq->mtx);
+			ret=0;
+		}
+	}
+
+	return ret;
+}
+
+/*
+ * pkt_q_del: Delete from pkt_q and frees the `pq' struct. The `pq'->pkt is
+ * also freed and the pq->pkt.sk socket is closed if `close_socket' is non
+ * zero.
+ */
+void pkt_q_del(pkt_queue *pq, int close_socket)
+{
+	pkt_free(&pq->pkt, close_socket);
+	pthread_mutex_unlock(&pq->mtx);
+	pthread_mutex_destroy(&pq->mtx);
+
+	clist_del(&pkt_q, &pkt_q_counter, pq);
 }

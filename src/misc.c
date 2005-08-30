@@ -19,6 +19,62 @@
 #include "includes.h"
 #include "misc.h"
 
+/*		Ripped 32bit Hash function 
+ *
+ * Fowler/Noll/Vo hash
+ *
+ * See  http://www.isthe.com/chongo/tech/comp/fnv/index.html
+ * for more details as well as other forms of the FNV hash.
+ *
+ ***
+ *
+ * Use the recommended 32 bit FNV-1 hash, pass FNV1_32_INIT as the
+ * u_long hashval argument to fnv_32_buf().
+ *
+ ***
+ *
+ * Please do not copyright this code.  This code is in the public domain.
+ *
+ * LANDON CURT NOLL DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+ * INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO
+ * EVENT SHALL LANDON CURT NOLL BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+ * CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF
+ * USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+ * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ *
+ * By:
+ *	chongo <Landon Curt Noll> /\oo/\
+ *      http://www.isthe.com/chongo/
+ * Share and Enjoy!	:-)
+ *
+ * fnv_32_buf - perform a 32 bit Fowler/Noll/Vo hash on a buffer
+ * `hval'	- previous hash value or 0 if first call
+ * returns:
+ *	32 bit hash as a static hash type
+ */
+u_long fnv_32_buf(void *buf, size_t len, u_long hval)
+{
+    u_char *bp = (u_char *)buf;	/* start of buffer */
+    u_char *be = bp + len;		/* beyond end of buffer */
+
+    /*
+     * FNV-1 hash each octet in the buffer
+     */
+    while (bp < be) {
+
+	/* multiply by the 32 bit FNV magic prime mod 2^32 */
+	hval += (hval<<1) + (hval<<4) + (hval<<7) + (hval<<8) + (hval<<24);
+
+	/* xor the bottom with the current octet */
+	hval ^= (u_long)*bp++;
+    }
+
+    /* return our new hash value */
+    return hval;
+}
+
+
 /* Robert Jenkins's 32 bit Mix Function */
 unsigned int inthash(unsigned int key)
 {
@@ -124,6 +180,29 @@ void xsrand(void)
 	srand(getpid() ^ time(0) ^ clock());
 }
 
+char *last_token(char *string, char tok)
+{
+	while(*string == tok)
+		string++;
+	return string;
+}
+
+/*
+ * strip_char: Removes any occurrences of the character `char_to_strip' in the
+ * string `string'.
+ */
+void strip_char(char *string, char char_to_strip)
+{
+	int i; 
+	char *p;
+	for(i=0; i<strlen(string); i++) {
+		if(string[i]==char_to_strip) {
+			p=last_token(&string[i], char_to_strip);
+			strcpy(&string[i], p);
+		}
+	}
+}
+
 /* Is the buffer `a' filled with `sz'# of zeros?
  * If yes return 0. */
 int is_bufzero(char *a, int sz)
@@ -136,7 +215,7 @@ int is_bufzero(char *a, int sz)
 }
 
 
-/* This is the most important function of all the code */
+/* This is the most important function of all */
 void do_nothing(void)
 {
 	return;

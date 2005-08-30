@@ -26,6 +26,7 @@
 #include "libnetlink.h"
 #include "ll_map.h"
 #include "inet.h"
+#include "request.h"
 #include "pkts.h"
 #include "if.h"
 #include "map.h"
@@ -33,9 +34,11 @@
 #include "bmap.h"
 #include "netsukuku.h"
 #include "qspn.h"
-#include "request.h"
 #include "accept.h"
 #include "daemon.h"
+#include "crypto.h"
+#include "andna_cache.h"
+#include "andna.h"
 #include "radar.h"
 #include "hook.h"
 #include "xmalloc.h"
@@ -49,20 +52,20 @@ extern int optind, opterr, optopt;
 int destroy_netsukuku_mutex;
 
 
-int init_load_maps(void)
+int ntk_load_maps(void)
 {
 	if((me.int_map=load_map(server_opt.int_map_file, &me.cur_node)))
 		debug(DBG_NORMAL, "Internal map loaded");
 	else
 		me.int_map=init_map(0);
 
-#if 0 /* Don't load the bnode mao, it's useless */
+#if 0 /* Don't load the bnode map, it's useless */
 	if((me.bnode_map=load_bmap(server_opt.bnode_map_file, me.ext_map,
 					GET_LEVELS(my_family), &me.bmap_nodes))) {
 		debug(DBG_NORMAL, "Bnode map loaded");
 	} else
 #endif
-		bmap_levels_init(BMAP_LEVELS(GET_LEVELS(my_family)), &me.bnode_map,
+	bmap_levels_init(BMAP_LEVELS(GET_LEVELS(my_family)), &me.bnode_map,
 				&me.bmap_nodes);
 	bmap_counter_init(BMAP_LEVELS(GET_LEVELS(my_family)), 
 			&me.bmap_nodes_closed, &me.bmap_nodes_opened);
@@ -75,7 +78,7 @@ int init_load_maps(void)
 	return 0;
 }
 
-int save_maps(void)
+int ntk_save_maps(void)
 {
 	debug(DBG_NORMAL, "Saving the internal map");
 	save_map(me.int_map, me.cur_node, server_opt.int_map_file);
@@ -93,7 +96,7 @@ int save_maps(void)
 	return 0;
 }
 
-int free_maps(void)
+int ntk_free_maps(void)
 {
 	bmap_levels_free(me.bnode_map, me.bmap_nodes);
 	bmap_counter_free(me.bmap_nodes_closed, me.bmap_nodes_opened);
@@ -105,14 +108,21 @@ int free_maps(void)
 
 int fill_default_options(void)
 {
-	memset(&server_opt, 0, sizeof(NtkOpt));
+	memset(&server_opt, 0, sizeof(server_opt));
 	server_opt.family=AF_INET;
 	strncpy(server_opt.int_map_file, INT_MAP_FILE, NAME_MAX);
 	strncpy(server_opt.ext_map_file, EXT_MAP_FILE, NAME_MAX);
 	strncpy(server_opt.bnode_map_file, BNODE_MAP_FILE, NAME_MAX);
 
+	strncpy(server_opt.andna_hnames_file, ANDNA_HNAMES_FILE, NAME_MAX);
+	strncpy(server_opt.andna_cache_file, ANDNA_CACHE_FILE, NAME_MAX);
+	strncpy(server_opt.lcl_file, LCL_FILE, NAME_MAX);
+	strncpy(server_opt.counter_c_file, COUNTER_C_FILE, NAME_MAX);
+
 	server_opt.daemon=1;
 	server_opt.dbg_lvl=0;
+
+	server_opt.disable_andna=0;
 
 	server_opt.max_connections=MAX_CONNECTIONS;
 	server_opt.max_accepts_per_host=MAX_ACCEPTS;
@@ -126,18 +136,25 @@ int fill_default_options(void)
 void usage(void)
 {
 	printf("%s\n", VERSION);
-	printf("Usage:\n");
-	printf(" -4	ipv4\n");
-	printf(" -6	ipv6\n");
-	printf(" -i	interface\n");
-	printf(" -r	run in restricted mode\n");
-	printf(" -D	no daemon mode\n");
-	printf(" -I	int_map\n");
-	printf(" -E	ext_map\n");
-	printf(" -B	bnode_map\n");
-	printf(" -d     debug (more d, more info)\n");
-	printf(" -h	this help\n");
-	printf(" -v	version\n");
+	printf("Usage:\n"
+		" -4	ipv4\n"
+		" -6	ipv6\n"
+		" -i	interface\n"
+		" -a	do not run the ANDNA daemon\n"
+		" -r	run in restricted mode\n"
+		" -D	no daemon mode\n"
+		"\n"
+		" -I	int_map\n"
+		" -E	ext_map\n"
+		" -B	bnode_map\n"
+		" -H	hostnames file\n"
+		" -A	andna_cache file\n"
+		" -L	lcl_cache file\n"
+		" -C	counter_cache file\n"
+		"\n"
+		" -d    debug (more d, more info)\n"
+		" -h	this help\n"
+		" -v	version\n");
 }
 
 void parse_options(int argc, char **argv)
@@ -147,17 +164,23 @@ void parse_options(int argc, char **argv)
 	while (1) {
 		int option_index = 0;
 		static struct option long_options[] = {
-			{"help", 0, 0, 'h'},
-			{"iface", 1, 0, 'i'},
-			{"ipv6", 0, 0, '6'},
-			{"ipv4", 0, 0, '4'},
-			{"int_map", 1, 0, 'I'},
-			{"ext_map", 1, 0, 'E'},
-			{"bnode_map", 1, 0, 'B'},
-			{"no-daemon", 0, 0, 'D'},
-			{"restricted", 0, 0, 'r'},
-			{"debug", 0, 0, 'd'},
-			{"version", 0, 0, 'v'},
+			{"help", 	0, 0, 'h'},
+			{"iface", 	1, 0, 'i'},
+			{"ipv6", 	0, 0, '6'},
+			{"ipv4", 	0, 0, '4'},
+			{"int_map", 	1, 0, 'I'},
+			{"ext_map", 	1, 0, 'E'},
+			{"bnode_map", 	1, 0, 'B'},
+			{"hnames_file", 1, 0, 'H'},
+			{"andna_cache", 1, 0, 'A'},
+			{"lcl_cache",	1, 0, 'L'},
+			{"cc_cache", 	1, 0, 'C'},
+
+			{"no_andna",	0, 0, 'a'},
+			{"no_daemon", 	0, 0, 'D'},
+			{"restricted", 	0, 0, 'r'},
+			{"debug", 	0, 0, 'd'},
+			{"version",	0, 0, 'v'},
 			{0, 0, 0, 0}
 		};
 
@@ -191,11 +214,26 @@ void parse_options(int argc, char **argv)
 			case 'B': 
 				strncpy(server_opt.bnode_map_file, optarg, NAME_MAX); 
 				break;
+			case 'H': 
+				strncpy(server_opt.andna_hnames_file, optarg, NAME_MAX);
+				break;
+			case 'A': 
+				strncpy(server_opt.andna_cache_file, optarg, NAME_MAX);
+				break;
+			case 'L': 
+				strncpy(server_opt.lcl_file, optarg, NAME_MAX);
+				break;
+			case 'C': 
+				strncpy(server_opt.counter_c_file, optarg, NAME_MAX);
+				break;
 			case 'i': 
 				strncpy(server_opt.dev, optarg, IFNAMSIZ); 
 				break;
 			case 'D':
 				server_opt.daemon=0;
+				break;
+			case 'a':
+				server_opt.disable_andna=1;
 				break;
 			case 'r':
 				server_opt.restricted=1;
@@ -229,26 +267,37 @@ void init_netsukuku(char **argv)
 	
 	destroy_netsukuku_mutex=0;
 
-	memset(&me, 0, sizeof(struct current));
+	memset(&me, 0, sizeof(struct current_globals));
 	
 	maxgroupnode_level_init();
 
+	/* 
+	 * Device initialization 
+	 */
 	my_family=server_opt.family;
 	ntk_udp_port=NTK_UDP_PORT;
 	ntk_udp_radar_port=NTK_UDP_RADAR_PORT;
 	ntk_tcp_port=NTK_TCP_PORT;
+	andna_tcp_port=ANDNA_TCP_PORT;
+	andna_udp_port=ANDNA_UDP_PORT;
 	if(!(dev=(char *)if_init(server_opt.dev, &me.cur_dev_idx)))
 		fatal("Cannot initialize the %s device", server_opt.dev);
 	strncpy(me.cur_dev, dev, IFNAMSIZ);
 
+	pkts_init(me.cur_dev_idx, 0);
+
 	qspn_init(GET_LEVELS(my_family));
 
+	if(!server_opt.disable_andna)
+		andna_init();
+
 	me.cur_erc=e_rnode_init(&me.cur_erc_counter);
-	
+
+	rq_wait_idx_init(rq_wait_idx);
 	init_radar();
 	total_radars=0;
 
-	init_load_maps();
+	ntk_load_maps();
 
 	debug(DBG_NORMAL, "ACPT: Initializing the accept_tbl: \n"
 			"	max_connections: %d,\n"
@@ -271,8 +320,9 @@ int destroy_netsukuku(void)
 		return -1;
 	destroy_netsukuku_mutex=1;
 	
-	save_maps();
-	free_maps();
+	ntk_save_maps();
+	ntk_free_maps();
+	andna_save_caches();
 	maxgroupnode_level_free();
 	close_radar();
 	e_rnode_free(&me.cur_erc, &me.cur_erc_counter);
@@ -287,21 +337,31 @@ void sigterm_handler(int sig)
 		fatal("Termination signal caught. Dying, bye, bye");
 }
 
+void sighup_handler(int sig)
+{
+	/* 
+	 * Reload the file where the hostnames to be registered are and
+	 * register the new ones
+	 */
+	load_hostnames(server_opt.andna_hnames_file, &andna_lcl, &lcl_counter);
+	andna_register_new_hnames();
+}
+
 /*
  * The main flow shall never be stopped, and the sand of time will be
  * revealed.
  */
 int main(int argc, char **argv)
 {
-	int *udp_port, *udp_radar_port;
+	u_short *port;
 	pthread_t daemon_tcp_thread, daemon_udp_thread;
 	pthread_attr_t t_attr;
 	
 #ifdef QSPN_EMPIRIC
 	fatal("Fatal: Netsukuku_d was compiled with the QSPN_EMPIRIC support activated.");
 #endif
-	udp_port=xmalloc(sizeof(int));
-	udp_radar_port=xmalloc(sizeof(int));
+
+	port=xmalloc(sizeof(u_short));
 
 	fill_default_options();
 	parse_options(argc, argv);
@@ -309,15 +369,14 @@ int main(int argc, char **argv)
 
 	signal(SIGTERM, sigterm_handler);
 	signal(SIGQUIT, sigterm_handler);
-	signal(SIGHUP, sigterm_handler);
 	signal(SIGINT, sigterm_handler);
+	signal(SIGHUP, sighup_handler);
 	
 	if(server_opt.daemon) {
 		log_init(argv[0], server_opt.dbg_lvl, 0);
 		if(daemon(0, 0) == -1)
 			error("Impossible to daemonize: %s.", strerror(errno));
 		
-		loginfo("Daemonizing: forking in the background");
 	}
 
 	pthread_attr_init(&t_attr);
@@ -329,27 +388,35 @@ int main(int argc, char **argv)
 	 */
 	debug(DBG_NORMAL, "Activating all daemons");
 
-	debug(DBG_SOFT,   "Evocating udp daemon.");
-	*udp_port=ntk_udp_port;
-	pthread_create(&daemon_udp_thread, &t_attr, udp_daemon, (void *)udp_port);
+	debug(DBG_SOFT,   "Evocating the netsukuku udp daemon.");
+	*port=ntk_udp_port;
+	pthread_create(&daemon_udp_thread, &t_attr, udp_daemon, (void *)port);
 
-	debug(DBG_SOFT,   "Evocating udp radar daemon.");
-	*udp_radar_port=ntk_udp_radar_port;
-	pthread_create(&daemon_udp_thread, &t_attr, udp_daemon, (void *)udp_radar_port);
+	debug(DBG_SOFT,   "Evocating the netsukuku udp radar daemon.");
+	*port=ntk_udp_radar_port;
+	pthread_create(&daemon_udp_thread, &t_attr, udp_daemon, (void *)port);
 	
-	debug(DBG_SOFT,   "Evocating tcp daemon.");
-	pthread_create(&daemon_tcp_thread, &t_attr, tcp_daemon, NULL);
+	debug(DBG_SOFT,   "Evocating the netsukuku tcp daemon.");
+	*port=ntk_tcp_port;
+	pthread_create(&daemon_tcp_thread, &t_attr, tcp_daemon, (void *)port);
 
 	/* 
 	 * We have to be sure that the hook will start after the rise of the 
 	 * two daemons.
 	 */
 	usleep(300000); 
-	/* Now we hook in the Netsukuku network */
+	
+	/* Now we hook in Netsukuku */
 	netsukuku_hook();
-	xfree(udp_port);
-	xfree(udp_radar_port);
-
+	
+	/*
+	 * If not disabled, start the ANDNA daemon 
+	 */
+	if(!server_opt.disable_andna)
+		andna_main();
+	
+	xfree(port);
+	
 	/* We use this self process for the radar_daemon. */
 	debug(DBG_SOFT,   "Evocating radar daemon.");
 	radar_daemon(NULL);

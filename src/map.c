@@ -83,10 +83,10 @@ int iptomap(u_int mapstart, inet_prefix ip, inet_prefix ipstart, u_int *ret)
 	if(ip.family==AF_INET)
 		*ret=((ip.data[0]-ipstart.data[0])*sizeof(map_node))+mapstart;
 	else {
-		__u32 h_ip[4], h_ipstart[4];
+		__u32 h_ip[MAX_IP_INT], h_ipstart[MAX_IP_INT];
 
-		memcpy(h_ip, ip.data, 4);
-		memcpy(h_ipstart, ipstart.data, 4);
+		memcpy(h_ip, ip.data, MAX_IP_SZ);
+		memcpy(h_ipstart, ipstart.data, MAX_IP_SZ);
 
 		/* h_ipstart=h_ip - h_ipstart */
 		sub_128(h_ip, h_ipstart);

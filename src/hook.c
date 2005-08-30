@@ -33,13 +33,13 @@
 #include "gmap.h"
 #include "bmap.h"
 #include "route.h"
+#include "request.h"
 #include "pkts.h"
 #include "tracer.h"
 #include "hook.h"
 #include "qspn.h"
 #include "radar.h"
 #include "netsukuku.h"
-#include "request.h"
 #include "xmalloc.h"
 #include "log.h"
 #include "misc.h"
@@ -68,7 +68,6 @@ int get_free_nodes(inet_prefix to, struct free_nodes_hdr *fn_hdr, u_char *nodes)
 	ntop=inet_to_str(to);
 	
 	pkt_addto(&pkt, &to);
-	pkt.sk_type=SKT_TCP;
 	
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_FREE_NODES), ntop);
 	err=send_rq(&pkt, 0, GET_FREE_NODES, 0, PUT_FREE_NODES, 1, &rpkt);
@@ -223,7 +222,6 @@ int get_qspn_round(inet_prefix to, struct timeval to_rtt, struct timeval *qtime,
 	ntop=inet_to_str(to);
 	
 	pkt_addto(&pkt, &to);
-	pkt.sk_type=SKT_TCP;
 	
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_QSPN_ROUND), ntop);
 	err=send_rq(&pkt, 0, GET_QSPN_ROUND, 0, PUT_QSPN_ROUND, 1, &rpkt);
@@ -374,8 +372,8 @@ map_gnode **get_ext_map(inet_prefix to, quadro_group *new_quadg)
 	ntop=inet_to_str(to);
 	
 	pkt_addto(&pkt, &to);
-	pkt.sk_type=SKT_TCP;
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_EXT_MAP), ntop);
+	
 	err=send_rq(&pkt, 0, GET_EXT_MAP, 0, PUT_EXT_MAP, 1, &rpkt);
 	if(err==-1) {
 		ret=0;
@@ -417,7 +415,6 @@ int put_int_map(PACKET rq_pkt)
 	debug(DBG_NORMAL, "Sending the PUT_INT_MAP reply to %s", ntop);
 	
 	memset(&pkt, '\0', sizeof(PACKET));
-	pkt.sk_type=SKT_TCP;
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
 
@@ -426,7 +423,7 @@ int put_int_map(PACKET rq_pkt)
 	debug(DBG_INSANE, "Reply %s to %s", re_to_str(PUT_INT_MAP), ntop);
 	err=send_rq(&pkt, 0, PUT_INT_MAP, rq_pkt.hdr.id, 0, 0, 0);
 	if(err==-1) {
-		error("put_int_maps(): Cannot send the PUT_INT_MAP reply to %s.", ntop);
+		error("put_int_map(): Cannot send the PUT_INT_MAP reply to %s.", ntop);
 		ret=-1;
 		goto finish;
 	}
@@ -455,7 +452,6 @@ map_node *get_int_map(inet_prefix to, map_node **new_root)
 	ntop=inet_to_str(to);
 	
 	pkt_addto(&pkt, &to);
-	pkt.sk_type=SKT_TCP;
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_INT_MAP), ntop);
 	err=send_rq(&pkt, 0, GET_INT_MAP, 0, PUT_INT_MAP, 1, &rpkt);
 	if(err==-1) {
@@ -500,7 +496,6 @@ int put_bnode_map(PACKET rq_pkt)
 	debug(DBG_NORMAL, "Sending the PUT_BNODE_MAP reply to %s", ntop);
 
 	memset(&pkt, '\0', sizeof(PACKET));
-	pkt.sk_type=SKT_TCP;
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
 
@@ -541,7 +536,6 @@ map_bnode **get_bnode_map(inet_prefix to, u_int **bmap_nodes)
 	ntop=inet_to_str(to);
 	
 	pkt_addto(&pkt, &to);
-	pkt.sk_type=SKT_TCP;
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_BNODE_MAP), ntop);
 	err=send_rq(&pkt, 0, GET_BNODE_MAP, 0, PUT_BNODE_MAP, 1, &rpkt);
 	if(err==-1) {
@@ -672,8 +666,20 @@ int create_gnodes(inet_prefix *ip, int final_level)
 
 int hook_init(void)
 {
-	u_int idata[4];
+	u_int idata[MAX_IP_INT];
 
+	/* register the hook's ops in the pkt_op_table */
+	add_pkt_op(GET_FREE_NODES, SKT_TCP, ntk_tcp_port, put_free_nodes);
+	add_pkt_op(PUT_FREE_NODES, SKT_TCP, ntk_tcp_port, 0);
+	add_pkt_op(GET_QSPN_ROUND, SKT_TCP, ntk_tcp_port, put_qspn_round);
+	add_pkt_op(PUT_QSPN_ROUND, SKT_TCP, ntk_tcp_port, 0);
+	add_pkt_op(GET_INT_MAP, SKT_TCP, ntk_tcp_port, put_int_map);
+	add_pkt_op(PUT_INT_MAP, SKT_TCP, ntk_tcp_port, 0);
+	add_pkt_op(GET_EXT_MAP, SKT_TCP, ntk_tcp_port, put_ext_map);
+	add_pkt_op(PUT_EXT_MAP, SKT_TCP, ntk_tcp_port, 0);
+	add_pkt_op(GET_BNODE_MAP, SKT_TCP, ntk_tcp_port, put_bnode_map);
+	add_pkt_op(PUT_BNODE_MAP, SKT_TCP, ntk_tcp_port, 0);
+	
 	/* We use a fake root_node for a while */
 	free_the_tmp_cur_node=1;
 	me.cur_node=xmalloc(sizeof(map_node));
@@ -694,7 +700,7 @@ int hook_init(void)
 	 * We set the dev ip to HOOKING_IP+random_number to begin our 
 	 * transaction. 
 	 */
-	memset(idata, 0, sizeof(int)*4);
+	memset(idata, 0, MAX_IP_SZ);
 	if(my_family==AF_INET) 
 		idata[0]=HOOKING_IP;
 	else

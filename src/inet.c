@@ -22,8 +22,8 @@
 #include "libnetlink.h"
 #include "ll_map.h"
 #include "inet.h"
-#include "pkts.h"
 #include "request.h"
+#include "pkts.h"
 #include "log.h"
 #include "xmalloc.h"
 
@@ -73,11 +73,11 @@ int inet_setip(inet_prefix *ip, u_int *data, int family)
 int inet_setip_bcast(inet_prefix *ip, int family)
 {
 	if(family==AF_INET) {
-		u_int data[4]={0, 0, 0, 0};
+		u_int data[MAX_IP_INT]={0, 0, 0, 0};
 		data[0]=INADDR_BROADCAST;
 		inet_setip(ip, data, family);
 	} else if(family==AF_INET6) {
-		u_int data[4]=IPV6_ADDR_BROADCAST;
+		u_int data[MAX_IP_INT]=IPV6_ADDR_BROADCAST;
 		inet_setip(ip, data, family);
 	} else 
 		return -1;
@@ -88,13 +88,29 @@ int inet_setip_bcast(inet_prefix *ip, int family)
 int inet_setip_anyaddr(inet_prefix *ip, int family)
 {
 	if(family==AF_INET) {
-		u_int data[4]={0, 0, 0, 0};
+		u_int data[MAX_IP_INT]={0, 0, 0, 0};
 		
 		data[0]=INADDR_ANY;
 		inet_setip(ip, data, family);
 	} else if(family==AF_INET6) {
 		struct in6_addr ipv6=IN6ADDR_ANY_INIT;
 		inet_setip(ip, (u_int *)(&ipv6), family);
+	} else 
+		return -1;
+
+	return 0;
+}
+
+int inet_setip_loopback(inet_prefix *ip, int family)
+{
+	if(family==AF_INET) {
+		u_int data[MAX_IP_INT]={0, 0, 0, 0};
+		
+		data[0]=LOOPBACK_IP;
+		inet_setip(ip, data, family);
+	} else if(family==AF_INET6) {
+		u_int data[MAX_IP_INT]=LOOPBACK_IPV6;
+		inet_setip(ip, data, family);
 	} else 
 		return -1;
 
@@ -355,7 +371,7 @@ int new_dgram_socket(int sock_type)
 int join_ipv6_multicast(int socket, int idx)
 {
 	struct ipv6_mreq    mreq6;
-	const int addr[4]=IPV6_ADDR_BROADCAST;
+	const int addr[MAX_IP_INT]=IPV6_ADDR_BROADCAST;
 	
 	memset(&mreq6, 0, sizeof(struct ipv6_mreq));
 	memcpy(&mreq6.ipv6mr_multiaddr,	addr, sizeof(struct in6_addr));
@@ -511,6 +527,29 @@ int unset_broadcast_sk(int socket, int family)
 	return 0;
 }
 
+int set_keepalive_sk(int socket)
+{
+	int on=1;
+
+	if(setsockopt(socket, SOL_SOCKET, SO_KEEPALIVE, (void *)&on, 
+				sizeof(on)) < 0){
+		error("Cannot set keepalive socket: %s", strerror(errno));
+		return -1;
+	}
+	return 0;
+}
+
+int unset_keepalive_sk(int socket)
+{
+	int off=0;
+
+	if(setsockopt(socket, SOL_SOCKET, SO_KEEPALIVE, (void *)&off, 
+				sizeof(off)) < 0){
+		error("Cannot unset keepalive socket: %s", strerror(errno));
+		return -1;
+	}
+	return 0;
+}
 
 /* 
  *  *  *  Connection functions  *  *  *

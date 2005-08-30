@@ -20,6 +20,7 @@
 
 #include "misc.h"
 #include "inet.h"
+#include "request.h"
 #include "pkts.h"
 #include "map.h"
 #include "gmap.h"
@@ -28,7 +29,6 @@
 #include "tracer.h"
 #include "netsukuku.h"
 #include "radar.h"
-#include "request.h"
 #include "xmalloc.h"
 #include "log.h"
 
@@ -805,7 +805,7 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
  * `old_bblock_sz' they are ignored.
  * The `pkt.hdr.op' is set to `rq', `pkt.hdr.id' to `rq_id' and the `bcast_hdr.sub_id' to
  * `bcast_sub_id'.
- * The packet shall be sent with tracer_pkt_send.
+ * The packet shall be sent with flood_pkt_send.
  * It returns -1 on errors. 
  */
 int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
@@ -922,7 +922,8 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 }
 
 /* 
- * tracer_pkt_send: It sends only a normal tracer_pkt which is packed in `pkt'. 
+ * flood_pkt_send: This functions is used to propagate packets, in a broadcast
+ * manner, in a entire gnode of a specified level.
  * It sends the `pkt' to all the nodes excluding the excluded nodes. It knows 
  * if a node is excluded by calling the `is_node_excluded' function. The 
  * second argument to this function is the node who sent the pkt and it must be
@@ -930,13 +931,13 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
  * in the r_node array of me.cur_node. The other arguments are described in
  * tracer.h.
  * If `is_node_excluded' returns a non 0 value, the node is considered as excluded.
- * The `from' argument to tracer_pkt_send is the node who sent the `pkt'.
+ * The `from_rpos' argument is the node who sent the `pkt'.
  * It returns the number of pkts sent or -1 on errors. Note that the total pkt sent
- * should be == me.cur_node->links-1.
- * Note that `level', and `from_rpos' are vars used only by
- * is_node_excluded().
+ * should be == me.cur_node->links-the_excluded_nodes.
+ * Note that `level', `sub_id', and `from_rpos' are vars used only by
+ * is_node_excluded() (see tracer.h).
  */
-int tracer_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), u_char level,
+int flood_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), u_char level,
 		int sub_id, int from_rpos, PACKET pkt)
 {
 	inet_prefix to;
@@ -966,18 +967,17 @@ int tracer_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), u_char leve
 		rnodetoip((u_int)me.int_map, (u_int)node, 
 				me.cur_quadg.ipstart[1], &to);
 		
-		debug(DBG_INSANE, "tracer_pkt_send(0x%x): %s to %s lvl %d", 
+		debug(DBG_INSANE, "flood_pkt_send(0x%x): %s to %s lvl %d", 
 				pkt.hdr.id, rq_to_str(pkt.hdr.op),
 				inet_to_str(to), level-1);
 				
 		pkt_addto(&pkt, &to);
-		pkt.sk_type=SKT_UDP;
 
 		/*Let's send the pkt*/
 		err=send_rq(&pkt, 0, pkt.hdr.op, pkt.hdr.id, 0, 0, 0);
 		if(err==-1) {
 			ntop=inet_to_str(pkt.to);
-			error("tracer_pkt_send(): Cannot send the %s request"
+			error("flood_pkt_send(): Cannot send the %s request"
 					" with id: %d to %s.", rq_to_str(pkt.hdr.op),
 					pkt.hdr.id, ntop);
 		} else
@@ -989,7 +989,7 @@ int tracer_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), u_char leve
 }
 
 /* * * 	Exclude functions * * *
- * These exclude function are used in conjunction with tracer_pkt_send. 
+ * These exclude function are used in conjunction with flood_pkt_send. 
  * They return 1 if the node has to be excluded, otherwise 0.
  */
 
@@ -1039,27 +1039,6 @@ int exclude_from_and_glevel(TRACER_PKT_EXCLUDE_VARS)
 	return 0;
 }
 
-int exclude_from_and_glevel_and_closed(TRACER_PKT_EXCLUDE_VARS)
-{
-	if((node->flags & QSPN_CLOSED) || 
-			exclude_from_and_glevel(TRACER_PKT_EXCLUDE_VARS_NAME))
-		return 1;
-	return 0;
-}
-
-int exclude_from_and_glevel_and_notstarter(TRACER_PKT_EXCLUDE_VARS)
-{
-	int level=excl_level-1;
-
-	if(exclude_from_and_glevel(TRACER_PKT_EXCLUDE_VARS_NAME))
-		return 1;
-
-	
-	if((!level || (node->flags & MAP_BNODE)) && !(node->flags & QSPN_STARTER))
-		return 1;
-	
-	return 0;
-}
 
 /* 
  * tracer_pkt_recv: It receive a TRACER_PKT or a TRACER_PKT_CONNECT, analyzes 
@@ -1181,7 +1160,7 @@ int tracer_pkt_recv(PACKET rpkt)
 
 	/*... forward the tracer_pkt to our r_nodes*/
 	exclude_function=exclude_from_and_glevel;
-	tracer_pkt_send(exclude_function, orig_lvl, real_from_rpos,
+	flood_pkt_send(exclude_function, orig_lvl, real_from_rpos,
 			real_from_rpos, pkt);
 
 	if(old_bblock)
@@ -1219,7 +1198,7 @@ int tracer_pkt_start(u_char level)
 			 &pkt);						 /*Where the pkt is built*/
 	/*Diffuse the packet in all the universe!*/
 	debug(DBG_INSANE, "Tracer_pkt 0x%x starting.", pkt.hdr.id);
-	tracer_pkt_send(exclude_from_and_glevel, level+1, -1, -1, pkt);
+	flood_pkt_send(exclude_from_and_glevel, level+1, -1, -1, pkt);
 	tracer_pkt_start_mutex=0;
 	return 0;
 }
@@ -1255,7 +1234,7 @@ int tracer_pkt_connect(map_node *dst)
 			 &pkt);				 			/*Where the pkt is built*/
 
 	/*Diffuse the packet in all the universe!*/
-	tracer_pkt_send(exclude_from_and_glevel, level, -1, -1, pkt);
+	flood_pkt_send(exclude_from_and_glevel, level, -1, -1, pkt);
 	return 0;
 }
 #endif

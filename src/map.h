@@ -16,6 +16,7 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+/* Generic map defines */
 #undef  QSPN_EMPIRIC
 
 #ifndef QSPN_EMPIRIC
@@ -30,8 +31,7 @@
 #define MAXLINKS		MAXROUTES
 #define MAXRTT			10		/*Max node <--> node rtt (in sec)*/
 
-/*****The real map stuff*****/
-/***flags***/
+/*** flags ***/
 #define MAP_ME		1		/*The root_node, in other words, me ;)*/
 #define MAP_VOID	(1<<1)		/*It indicates a non existent node*/
 #define MAP_HNODE	(1<<2)		/*Hooking node. One node is hooking when 

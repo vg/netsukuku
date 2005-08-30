@@ -21,6 +21,16 @@
 #include "xmalloc.h"
 #include "log.h"
 
+void rq_wait_idx_init(int *rq_wait_idx)
+{
+	int e, idx;
+	
+	for(e=0, idx=0; e<TOTAL_REQUESTS; e++) {
+		rq_wait_idx[e]=idx;
+		idx+=request_array[e][RQ_MAXRQ];
+	}
+}
+
 int op_verify(u_char op)
 {
 	return (op >= TOTAL_OPS) ? 1 : 0;
@@ -76,7 +86,7 @@ void update_rq_tbl(rq_tbl *tbl)
 
 	for(; i<TOTAL_REQUESTS; i++) {
 		for(e=0; e < request_array[i][RQ_MAXRQ]; e++) {
-			if(tbl->rq_wait[idx] && tbl->rq_wait[idx]+request_array[i][RQ_WAIT] <= cur_t) {
+			if(tbl->rq_wait[idx] && (tbl->rq_wait[idx]+request_array[i][RQ_WAIT]) <= cur_t) {
 				tbl->rq_wait[idx]=0;
 				tbl->rq[i]--;
 			}
@@ -96,21 +106,22 @@ int is_rq_full(u_char rq, rq_tbl *tbl)
 	
 	if(tbl->rq[rq] >= request_array[rq][RQ_MAXRQ] && request_array[rq][RQ_MAXRQ])
 		return E_REQUEST_TBL_FULL;
-	
-	return 0;
+	else if(!request_array[rq][RQ_MAXRQ])
+		return -1; /* No limits */
+	else
+		return 0;
 }
+
+
 
 int find_free_rq_wait(u_char rq, rq_tbl *tbl)
 {
-	int e, idx=0;
+	int e, idx;
 	
-	for(e=0; e<rq; e++) {
-		idx+=request_array[e][RQ_MAXRQ];
-	}
-	
-	for(e=idx; e < request_array[rq][RQ_MAXRQ]; e++) {
-		if(!tbl->rq_wait[e])
-			return e;
+	for(e=0; e < request_array[rq][RQ_MAXRQ]; e++) {
+		idx = rq_wait_idx[rq] + e;
+		if(!tbl->rq_wait[idx])
+			return idx;
 	}
 	
 	return -1;	/*This happens if the rq_tbl is full for the "rq" request*/
@@ -121,9 +132,14 @@ int add_rq(u_char rq, rq_tbl *tbl)
 	int err;
 	time_t cur_t;
 	
+	/* TODO: XXX: Activate it and test it!!! */
 	return 0;
-	if((err=is_rq_full(rq, tbl)))
+	/* TODO: XXX: Activate it and test it!!! */
+	
+	if((err=is_rq_full(rq, tbl)) > 0)
 		return err;
+	else if(err < 0)
+		return 0; /* no limits */
 	
 	time(&cur_t);
 	

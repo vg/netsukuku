@@ -34,10 +34,10 @@
 #include "gmap.h"
 #include "bmap.h"
 #include "route.h"
+#include "request.h"
 #include "pkts.h"
 #include "qspn.h"
 #include "radar.h"
-#include "request.h"
 #include "netsukuku.h"
 #include "xmalloc.h"
 #include "log.h"
@@ -54,9 +54,14 @@ void init_radar(void)
 	max_radar_wait=MAX_RADAR_WAIT;	
 	
 	pthread_attr_init(&radar_qspn_send_t_attr);
+	pthread_attr_setdetachstate(&radar_qspn_send_t_attr, PTHREAD_CREATE_DETACHED);	 
 	
 	list_init(radar_q, 0);
 	radar_q_counter=0;
+	
+	/* register the radar's ops in the pkt_op_table */
+	add_pkt_op(ECHO_ME, SKT_BCAST, ntk_udp_radar_port, radard);
+	add_pkt_op(ECHO_REPLY, SKT_UDP, ntk_udp_radar_port, radar_recv_reply);
 	
 	memset(send_qspn_now, 0, sizeof(u_char)*MAX_LEVELS);
 }
@@ -796,8 +801,7 @@ int radar_scan(int activate_qspn)
 	 */
 	memset(&pkt, '\0', sizeof(PACKET));
 	inet_setip_bcast(&pkt.to, my_family);
-	pkt.sk_type=SKT_BCAST_RADAR;
-	my_echo_id=random();
+	my_echo_id=rand();
 
 	gettimeofday(&scan_start, 0);
 
@@ -808,6 +812,7 @@ int radar_scan(int activate_qspn)
 	
 	if(me.cur_node->flags & MAP_HNODE) {
 		pkt.hdr.sz=sizeof(u_char);
+		pkt.hdr.flags|=HOOK_PKT;
 		pkt.msg=xmalloc(pkt.hdr.sz);
 		debug(DBG_INSANE, "Radar scan 0x%x activated", my_echo_id);
 	} else
@@ -896,7 +901,7 @@ int radard(PACKET rpkt)
 	/* We create the ECHO_REPLY pkt */
 	memset(&pkt, '\0', sizeof(PACKET));
 	pkt_addto(&pkt, &rpkt.from);
-	pkt_addsk(&pkt, rpkt.from.family, rpkt.sk, SKT_UDP_RADAR);
+	pkt_addsk(&pkt, rpkt.from.family, rpkt.sk, SKT_UDP);
 
 	if(me.cur_node->flags & MAP_HNODE) {
 		/* 
@@ -909,6 +914,7 @@ int radard(PACKET rpkt)
 		u_char scanning=1;
 		
 		pkt.hdr.sz=sizeof(u_char);
+		pkt.hdr.flags|=HOOK_PKT;
 		pkt.msg=xmalloc(pkt.hdr.sz);
 		if(radar_scans==MAX_RADAR_SCANS)
 			scanning=0;
@@ -948,21 +954,6 @@ int radard(PACKET rpkt)
 	return 0;
 }
 
-/* Oh, what a simple daemon ^_^ */
-void *radar_daemon(void *null)
-{
-	debug(DBG_NORMAL, "Radar daemon up & running");
-	for(;;radar_scan(1));
-}
-
-/* radar_wait_new_scan: It sleeps until the new radar scan is sent */
-void radar_wait_new_scan(void)
-{
-	int old_echo_id=my_echo_id;
-	for(; old_echo_id == my_echo_id; )
-		usleep(500000);
-}
-
 /* 
  * refresh_hook_root_node: At hooking the radar_scan doesn't have an int_map, so
  * all the nodes it found are stored in fake nodes. When we finish the hook,
@@ -991,5 +982,21 @@ int refresh_hook_root_node(void)
 
 	return 0;
 }
+
+/* Oh, what a simple daemon ^_^ */
+void *radar_daemon(void *null)
+{
+	debug(DBG_NORMAL, "Radar daemon up & running");
+	for(;;radar_scan(1));
+}
+
+/* radar_wait_new_scan: It sleeps until the new radar scan is sent */
+void radar_wait_new_scan(void)
+{
+	int old_echo_id=my_echo_id;
+	for(; old_echo_id == my_echo_id; )
+		usleep(500000);
+}
+
 
 /*EoW*/

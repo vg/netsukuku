@@ -16,9 +16,9 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#define VERSION			"NetsukukuD 0.0.1b"
+#define VERSION			"NetsukukuD 0.0.2b"
 
-struct current
+struct current_globals
 {
 	/* int/ext maps */
 	map_node  	*int_map;	/*Internal Map*/
@@ -51,17 +51,26 @@ struct current
 }me;
 
 #define NTK_UDP_PORT 	   	269
-#define NTK_UDP_RADAR_PORT	270
 #define NTK_TCP_PORT		269
+#define NTK_UDP_RADAR_PORT	271
+
+#define ANDNA_UDP_PORT 	   	277
+#define ANDNA_TCP_PORT		277
 
 int my_family;
 u_short ntk_udp_port, ntk_udp_radar_port, ntk_tcp_port;
+u_short andna_udp_port, andna_tcp_port;
 
 int ll_map_initialized;
 
 #define INT_MAP_FILE	"ntk_internal_map"
 #define EXT_MAP_FILE	"ntk_external_map"
 #define BNODE_MAP_FILE	"ntk_bnode_map"
+
+#define ANDNA_HNAMES_FILE	"andna_hostnames"
+#define ANDNA_CACHE_FILE	"andna_cache"
+#define LCL_FILE		"andna_lcl_cache"
+#define COUNTER_C_FILE		"andna_counter_cache"
 
 typedef struct
 {
@@ -72,12 +81,19 @@ typedef struct
 	char 		bnode_map_file[NAME_MAX];
 	char 		ext_map_file[NAME_MAX];
 
+	char		andna_hnames_file[NAME_MAX];
+	char 		andna_cache_file[NAME_MAX];
+	char 		lcl_file[NAME_MAX];
+	char 		counter_c_file[NAME_MAX];
+
 	char 		restricted;
 	char 		daemon;
 	char 		dbg_lvl;
 
+	char		disable_andna;
+
 	int 		max_connections;
 	int 		max_accepts_per_host;
 	int 		max_accepts_per_host_time;
-}NtkOpt;
-NtkOpt server_opt;
+}ServOpt;
+ServOpt server_opt;

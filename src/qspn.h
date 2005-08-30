@@ -110,7 +110,6 @@ void update_qspn_time(u_char level, struct timeval *);
 
 void qspn_new_round(u_char level, int new_qspn_id, struct timeval *new_qspn_time);
 
-int  exclude_from_and_gnode_and_opened(map_node *node, map_node *from, int pos);
 int  qspn_send(u_char level);
 int  qspn_close(PACKET rpkt);
 int  qspn_open(PACKET rpkt);

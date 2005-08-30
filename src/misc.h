@@ -20,10 +20,16 @@
 
 #define MILLISEC(x)	(((x).tv_sec*1000)+((x).tv_usec/1000))
 
+#define FNV_32_PRIME ((u_long)0x01000193)
+#define FNV1_32_INIT ((u_long)0x811c9dc5)
+
+u_long fnv_32_buf(void *buf, size_t len, u_long hval);
 unsigned int inthash(unsigned int key);
 inline unsigned int dl_elf_hash (const unsigned char *name);
 int hash_time(int *h_sec, int *h_usec);
 int rand_range(int, int);
 void xsrand(void);
+void strip_char(char *string, char char_to_strip);
+char *last_token(char *string, char tok);
 int is_bufzero(char *a, int sz);
 void do_nothing(void);

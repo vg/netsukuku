@@ -169,7 +169,7 @@ void iptoquadg(inet_prefix ip, map_gnode **ext_map, quadro_group *qg, char flags
 void quadg_free(quadro_group *qg);
 void quadg_destroy(quadro_group *qg);
 
-void random_ip(inet_prefix *ipstart, int final_level, int final_gid, 
+int random_ip(inet_prefix *ipstart, int final_level, int final_gid, 
 		int total_levels, map_gnode **ext_map, int only_free_gnode, 
 		inet_prefix *new_ip, int my_family);
 void gnodetoip(quadro_group *quadg, int gnodeid, u_char level, inet_prefix *ip);
