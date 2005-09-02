@@ -16,7 +16,7 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#define VERSION			"NetsukukuD 0.0.2b"
+#define VERSION			"NetsukukuD 0.0.3b"
 
 struct current_globals
 {

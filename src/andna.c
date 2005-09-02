@@ -90,14 +90,34 @@ void andna_init(void)
 	lcl_new_keyring(&lcl_keyring);
 }
 
-void andna_hash(void *msg, int len, int hash[MAX_IP_INT])
+/*
+ * andna_hash_by_family: If family is equal to AF_INET, in `hash' it stores the
+ * 32bit hash of the `msg', otherwise it just copies `msg' to `hash_ip'. 
+ * Note that this function is used to hash other hashes, so it operates on the
+ * ANDNA_HASH_SZ fixed length.
+ */
+void andna_hash_by_family(int family, void *msg, int hash[MAX_IP_INT])
 {
 	memset(hash, 0, ANDNA_HASH_SZ);
 	
-	if(my_family==AF_INET)
-		hash[0] = fnv_32_buf(msg, len, FNV1_32_INIT);
+	if(family==AF_INET)
+		hash[0] = fnv_32_buf((u_char *)msg, ANDNA_HASH_SZ, 
+				FNV1_32_INIT);
 	else
-		hash_md5(msg, len, (u_char *)hash);
+		memcpy(hash, msg, ANDNA_HASH_SZ);
+}
+
+/*
+ * andna_hash: This functions makes a digest of `msg' which is `len' bytes
+ * big and stores it in `hash'. If family is equal to AF_INET, in `ip_hash' it
+ * stores the 32bit hash of the `hash', otherwise it just copies `hash' to
+ * `hash_ip'.
+ */
+void andna_hash(int family, void *msg, int len, int hash[MAX_IP_INT],
+		int ip_hash[MAX_IP_INT])
+{
+	hash_md5(msg, len, (u_char *)hash);
+	andna_hash_by_family(family, (u_char *)hash, ip_hash);	
 }
 
 /*
@@ -120,8 +140,8 @@ int andna_find_hash_gnode(int hash[MAX_IP_INT], inet_prefix *to)
 	
 	
 	/*
-	 * This is how the ip nearer to the hash is found:
-	 * - The hash's ip as a quadro_group is in `qg'
+	 * This is how the ip nearer to `hash' is found:
+	 * - The hash's ip as a quadro_group is stored in `qg'
 	 * loop1:
 	 * - Examine each level of the hash's ip starting from the highest.
 	 *   loop2:
@@ -189,6 +209,7 @@ int andna_register_hname(lcl_cache *alcl)
 {
 	PACKET pkt, rpkt;
 	struct andna_reg_pkt req;
+	u_int hash_gnode[MAX_IP_INT];
 	inet_prefix to;
 	
 	char *sign;
@@ -216,7 +237,8 @@ int andna_register_hname(lcl_cache *alcl)
 	 */
 
 	memcpy(req.rip, me.cur_ip.data, MAX_IP_SZ); 
-	andna_hash(alcl->hostname, strlen(alcl->hostname), req.hash);
+	andna_hash(my_family, alcl->hostname, strlen(alcl->hostname),
+			req.hash, hash_gnode);
 	memcpy(req.pubkey, lcl_keyring.pubkey, ANDNA_PKEY_LEN);
 	
 	/* Sign the packet */
@@ -224,7 +246,8 @@ int andna_register_hname(lcl_cache *alcl)
 			lcl_keyring.priv_rsa, 0);
 	memcpy(req.sign, sign, ANDNA_SIGNATURE_LEN);
 	
-	if((err=andna_find_hash_gnode(req.hash, &to)) < 0) {
+	/* Find the hash_gnode that corresponds to the hash `hash_gnode'*/
+	if((err=andna_find_hash_gnode(hash_gnode, &to)) < 0) {
 		ret=-1;
 		goto finish;
 	} else if(err == 1)
@@ -270,6 +293,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 {
 	PACKET pkt;
 	struct andna_reg_pkt *req;
+	u_int hash_gnode[MAX_IP_INT];
 	inet_prefix rfrom, to;
 	RSA *pubkey;
 	andna_cache_queue *acq;
@@ -298,7 +322,9 @@ int andna_recv_reg_rq(PACKET rpkt)
 		goto finish;
 	}
 
-	if((err=andna_find_hash_gnode(req->hash, &to)) < 0) {
+
+	andna_hash_by_family(my_family, (u_char *)req->hash, hash_gnode);
+	if((err=andna_find_hash_gnode(hash_gnode, &to)) < 0) {
 		ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE);
 		goto finish;
 	} else if(err == 1) {
@@ -368,18 +394,18 @@ finish:
 int andna_check_counter(PACKET pkt)
 {
 	PACKET rpkt;
-	int ret=0, pubk_hash[MAX_IP_INT], err;
+	int ret=0, pubk_hash[MAX_IP_INT], hash_gnode[MAX_IP_INT], err;
 	struct andna_reg_pkt *req;
 	const char *ntop; 
 
-	/* Calculate the hash of the ip of the sender node */
+	/* Calculate the hash of the pubkey of the sender node. This hash will
+	 * be used to reach its counter node. */
 	req=(struct andna_reg_pkt *)pkt.msg;
-	memset(pubk_hash, 0, ANDNA_HASH_SZ);
-	andna_hash(req->pubkey, ANDNA_PKEY_LEN, pubk_hash);
+	andna_hash(my_family, req->pubkey, ANDNA_PKEY_LEN, pubk_hash, hash_gnode);
 	
 	/* Find a hash_gnode for the pubk_hash */
 	req->flags&=~ANDNA_FORWARD;
-	if((err=andna_find_hash_gnode(pubk_hash, &pkt.to)) < 0) {
+	if((err=andna_find_hash_gnode(hash_gnode, &pkt.to)) < 0) {
 		ret=-1;
 		goto finish;
 	} else if(err == 1)
@@ -412,7 +438,7 @@ int andna_recv_check_counter(PACKET rpkt)
 	RSA *pubkey;
 	counter_c *cc;
 	counter_c_hashes *cch;
-	int ret=0, pubk_hash[MAX_IP_INT], err;
+	int ret=0, pubk_hash[MAX_IP_INT], hash_gnode[MAX_IP_INT], err;
 
 	req=(struct andna_reg_pkt *)rpkt.msg;
 	if(rpkt.hdr.sz != ANDNA_REG_PKT_SZ+MAX_IP_SZ) {
@@ -435,9 +461,12 @@ int andna_recv_check_counter(PACKET rpkt)
 		goto finish;
 	}
 
-	memset(pubk_hash, 0, ANDNA_HASH_SZ);
-	andna_hash(req->pubkey, ANDNA_PKEY_LEN, pubk_hash);
-	if((err=andna_find_hash_gnode(pubk_hash, &to)) < 0) {
+	/* 
+	 * Check if we are the real counter node or if we have to continue to 
+	 * forward the pkt 
+	 */
+	andna_hash(my_family, req->pubkey, ANDNA_PKEY_LEN, pubk_hash, hash_gnode);
+	if((err=andna_find_hash_gnode(hash_gnode, &to)) < 0) {
 		ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE);
 		goto finish;
 	} else if(err == 1) {
@@ -497,6 +526,9 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	PACKET pkt, rpkt;
 	struct andna_resolve_rq_pkt req;
 	struct andna_resolve_reply_pkt *reply;
+	lcl_cache *lcl;
+	rh_cache *rhc;
+	u_int hash_gnode[MAX_IP_INT];
 	inet_prefix to;
 	
 	const char *ntop; 
@@ -505,14 +537,34 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 
 	memset(&req, 0, sizeof(req));
 	memset(&pkt, 0, sizeof(pkt));
+
+	/*
+	 * Search in the hostname in the local cache first. Maybe we are so
+	 * dumb that we are trying to resolve the same ip we registered.
+	 */
+	if((lcl=lcl_cache_find_hname(andna_lcl, hname))) {
+		memcpy(resolved_ip, &me.cur_ip, sizeof(inet_prefix));
+		return ret;
+	}
+	
+	/*
+	 * Last try before going asking to ANDNA: let's if we have it in the
+	 * resolved_hnames cache
+	 */
+	if((rhc=rh_cache_find_hname(hname))) {
+		memcpy(resolved_ip, &rhc->ip, sizeof(inet_prefix));
+		return ret;
+	}
 	
 	/* 
-	 * Filling the request structure 
+	 * Ok, we have to ask to someone other.
+	 * Fill the request structure.
 	 */
 	memcpy(req.rip, me.cur_ip.data, MAX_IP_SZ);
-	andna_hash(hname, strlen(hname), req.hash);
+	andna_hash(my_family, hname, strlen(hname), req.hash, hash_gnode);
 	
-	if((err=andna_find_hash_gnode(req.hash, &to)) < 0) {
+	/* Let's see to whom we have to send the pkt */
+	if((err=andna_find_hash_gnode(hash_gnode, &to)) < 0) {
 		ret=-1;
 		goto finish;
 	} else if(err == 1)
@@ -544,6 +596,12 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	reply=(struct andna_resolve_reply_pkt *)rpkt.msg;
 	inet_setip(resolved_ip, reply->ip, my_family);
 	
+	/* 
+	 * Add the hostname in the resolved_hnames cache since it was
+	 * successful resolved it ;)
+	 */
+	rh_cache_add(hname, reply->timestamp, resolved_ip);
+	
 finish:
 	pkt_free(&pkt, 1);
 	pkt_free(&rpkt, 1);
@@ -560,6 +618,7 @@ int andna_recv_resolve_rq(PACKET rpkt)
 	struct andna_resolve_rq_pkt *req;
 	struct andna_resolve_reply_pkt reply;
 	andna_cache *ac;
+	u_int hash_gnode[MAX_IP_INT];
 	inet_prefix rfrom, to;
 	int ret=0, err;
 
@@ -575,7 +634,11 @@ int andna_recv_resolve_rq(PACKET rpkt)
 	memcpy(&pkt, &rpkt, sizeof(PACKET));
 	memcpy(&pkt.from, &rfrom, sizeof(inet_prefix));
 
-	if((err=andna_find_hash_gnode(req->hash, &to)) < 0) {
+	/*
+	 * Are we the right hash_gnode or have we to still forward the pkt ?
+	 */
+	andna_hash_by_family(my_family, (u_char *)req->hash, hash_gnode);
+	if((err=andna_find_hash_gnode(hash_gnode, &to)) < 0) {
 		ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE);
 		goto finish;
 	} else if(err == 1) {
@@ -589,7 +652,7 @@ int andna_recv_resolve_rq(PACKET rpkt)
 		goto finish;
 	}
 
-	/* Search for the hostname to resolve in the andna_cache */
+	/* Search the hostname to resolve in the andna_cache */
 	andna_cache_del_expired();
 	if(!(ac=andna_cache_findhash(req->hash))) {
 		/* There isn't it, bye. */
@@ -600,6 +663,7 @@ int andna_recv_resolve_rq(PACKET rpkt)
 	/* Send back the ip associated to the hname */
 	memset(&reply, 0, sizeof(reply));
 	memcpy(reply.ip, ac->acq->rip.data, MAX_IP_SZ);
+	reply.timestamp=ac->acq->timestamp;
 	pkt_fill_hdr(&pkt.hdr, ASYNC_REPLIED, rpkt.hdr.id, ANDNA_RESOLVE_REPLY,
 			sizeof(reply));
 	pkt.msg=xmalloc(pkt.hdr.sz);
@@ -900,6 +964,10 @@ finish:
 	return ret;
 }
 
+/*
+ * andna_hook: The andna_hook gets the andna_cache and the counter_node cache
+ * from the nearest rnodes.
+ */
 void *andna_hook(void *null)
 {
 	inet_prefix to;
@@ -975,8 +1043,8 @@ void andna_register_new_hnames(void)
 }
 
 /*
- * andna_maintain_hnames_active: registers and keep up to date the hostnames
- * of the local cache.
+ * andna_maintain_hnames_active: periodically registers and keep up to date the
+ * hostnames of the local cache.
  */
 void *andna_maintain_hnames_active(void *null)
 {
@@ -990,7 +1058,7 @@ void *andna_maintain_hnames_active(void *null)
 				loginfo("hostnames \"%s\" registered/updated "
 						"successfully", alcl->hostname);
 		}
-		sleep(ANDNA_MIN_UPDATE_TIME + rand_range(1, 20));
+		sleep((ANDNA_EXPIRATION_TIME/2) + rand_range(1, 20));
 	}
 
 	return 0;

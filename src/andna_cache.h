@@ -20,8 +20,10 @@
 #define ANDNA_MAX_QUEUE			5
 #define ANDNA_MAX_HNAME_LEN		512	/* (null terminator included) */
 #define ANDNA_MAX_HOSTNAMES		256	/* Max number of hnames per node */
+#define ANDNA_MAX_RHC_HNAMES		512	/* Max number of hnames kept in
+						   the resolved_hnames cache* */
 #define ANDNA_EXPIRATION_TIME		259200	/* 3 days (in seconds)*/
-#define ANDNA_MIN_UPDATE_TIME		129600	/* The minum amount of time to
+#define ANDNA_MIN_UPDATE_TIME		3600	/* The minum amount of time to
 						   be waited before sending an 
 						   update of the hname. */
 
@@ -46,8 +48,7 @@
 #define ANDNA_ROUNDED	(1<<2)		/* We are a rounded_hash_node */
 #define ANDNA_FULL	(1<<3)		/* Queue full */
 
-char andna_flags;
-	
+/* The andna_cache_queue is part of the andna_cache, see below */
 struct andna_cache_queue
 {
 	struct andna_cache_queue *next;
@@ -61,8 +62,8 @@ struct andna_cache_queue
 typedef struct andna_cache_queue andna_cache_queue;
 		
 /*
- * This is the andna_cache, which keeps the entries of the registered
- * hostnames.
+ * This is the andna_cache, which keeps the entries of the hostnames registered
+ * by other nodes.
  */
 struct andna_cache
 {
@@ -79,6 +80,7 @@ struct andna_cache
 typedef struct andna_cache andna_cache;
 
 
+/* part of the counter cache, see below */
 struct counter_c_hashes
 {
 	struct counter_c_hashes *next;
@@ -109,8 +111,8 @@ typedef struct counter_c counter_c;
 
 
 /*
- * The local andna cache keeps the registered hostnames of the localhost and
- * its keys
+ * The local andna cache keeps the hostnames registered by localhost and
+ * its keys.
  */
 typedef struct lcl_cache_keyring
 {
@@ -124,8 +126,10 @@ struct lcl_cache
 {
 	struct lcl_cache *next;
 	struct lcl_cache *prev;
-	
+
 	char		*hostname;		/* The registered hostname */
+	u_int		hash;			/* hname's hash utilized to 
+						   speed up the searches */
 	u_short		hname_updates;		/* How many updates we've done 
 						   for this hostname */
 	time_t          timestamp;		/* the last time when the hname
@@ -133,6 +137,23 @@ struct lcl_cache
 						   hname has still to be registered */
 };
 typedef struct lcl_cache lcl_cache;
+
+
+struct resolved_hnames_cache
+{
+	struct resolved_hnames_cache *next;
+	struct resolved_hnames_cache *prev;
+
+	u_int		hash;		/* 32bit hash, used just to 
+					   speed up searches */
+	char		*hostname;
+	time_t		timestamp;	/* the last time when the hname
+					   was updated. With this we know that
+					   at timestamp+ANDNA_EXPIRATION_TIME
+					   this cache will expire. */
+	inet_prefix	ip;		/* ip associated to the hname */
+};
+typedef struct resolved_hnames_cache rh_cache;
 
 /*
  * Global vars 
@@ -146,6 +167,9 @@ int cc_counter;
 lcl_cache_keyring lcl_keyring;
 lcl_cache *andna_lcl;
 int lcl_counter;
+
+rh_cache *andna_rhc;
+int rhc_counter;
 
 /*
  * * * ANDNA cache pack stuff * * * 
@@ -164,9 +188,11 @@ struct lcl_cache_pkt_hdr
 };
 /* 
  * The body is:
- *	char		*hostname;
+ * struct lcl_cache_pkt_body {
+ *	char		hostname[strlen(hostname)];
  *	u_short		hname_updates;
  *	time_t          timestamp;
+ * } body[ hdr.tot_caches ];
  */
 #define LCL_CACHE_PACK_SZ	(sizeof(u_short) + sizeof(time_t))
 
@@ -234,6 +260,11 @@ counter_c *counter_c_findpubk(char *pubk);
 counter_c *counter_c_add(inet_prefix *rip, char *pubkey);
 void counter_c_del_expired(void);
 
+rh_cache *rh_cache_new(char *hname, time_t timestamp, inet_prefix *ip);
+rh_cache *rh_cache_add(char *hname, time_t timestamp, inet_prefix *ip);
+rh_cache *rh_cache_find_hname(char *hname);
+void rh_cache_del(rh_cache *rhc);
+void rh_cache_del_expired(void);
 
 char *pack_lcl_cache(lcl_cache_keyring *keyring, lcl_cache *local_cache, size_t *pack_sz);
 lcl_cache *unpack_lcl_cache(lcl_cache_keyring *keyring, char *pack, size_t pack_sz, int *counter);

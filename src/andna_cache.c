@@ -38,7 +38,7 @@ void andna_caches_init(void)
 	andna_lcl=(lcl_cache *)clist_init(&lcl_counter);
 	andna_c=(andna_cache *)clist_init(&andna_c_counter);
 	andna_counter_c=(counter_c *)clist_init(&cc_counter);
-	andna_flags=0;
+	andna_rhc=(rh_cache *)clist_init(&rhc_counter);
 }
 
 /*
@@ -87,6 +87,7 @@ lcl_cache *lcl_cache_new(char *hname)
 	memset(alcl, 0, sizeof(lcl_cache));
 
 	alcl->hostname = xstrdup(hname);
+	alcl->hash = fnv_32_buf(hname, strlen(hname), FNV1_32_INIT);
 
 	return alcl;
 }
@@ -115,12 +116,15 @@ void lcl_cache_destroy(lcl_cache *head, int *counter)
 lcl_cache *lcl_cache_find_hname(lcl_cache *head, char *hname)
 {
 	lcl_cache *alcl=head;
+	u_int hash;
 	
 	if(!alcl || !lcl_counter)
 		return 0;
+
+	hash = fnv_32_buf(hname, strlen(hname), FNV1_32_INIT);
 	list_for(alcl)
-		if(alcl->hostname && 
-				!strcmp(alcl->hostname, hname))
+		if(alcl->hash == hash && alcl->hostname && 
+			!strncmp(alcl->hostname, hname, ANDNA_MAX_HNAME_LEN))
 			return alcl;
 	return 0;
 }
@@ -372,6 +376,83 @@ void counter_c_del_expired(void)
 }
 
 
+/*
+ *  *  * Resolved hostnames cache functions  *  *  *
+ */
+
+rh_cache *rh_cache_new(char *hname, time_t timestamp, inet_prefix *ip)
+{
+	rh_cache *rhc;
+	
+	rhc=xmalloc(sizeof(rh_cache));
+	memset(rhc, 0, sizeof(rh_cache));
+	
+	rhc->hash=fnv_32_buf(hname, strlen(hname), FNV1_32_INIT);
+	rhc->hostname=xstrdup(hname);
+	rhc->timestamp=timestamp;
+	memcpy(&rhc->ip, ip, sizeof(inet_prefix));
+
+	return rhc;
+}
+
+rh_cache *rh_cache_add(char *hname, time_t timestamp, inet_prefix *ip)
+{
+	rh_cache *rhc;
+
+	if(!(rhc=rh_cache_find_hname(hname))) {
+		if(rhc_counter >= ANDNA_MAX_HOSTNAMES) {
+			/* Delete the oldest struct in cache */
+			rhc=andna_rhc;
+			clist_del(&andna_rhc, &rhc_counter, rhc);
+		}
+
+		rhc=rh_cache_new(hname, timestamp, ip);
+		clist_add(&andna_rhc, &rhc_counter, rhc);
+	}
+
+	rhc->timestamp=timestamp;
+	memcpy(&rhc->ip, ip, sizeof(inet_prefix));
+
+	return rhc;
+}
+
+rh_cache *rh_cache_find_hname(char *hname)
+{
+	rh_cache *rhc=andna_rhc;
+	u_int hash;
+
+	if(!rhc || !rhc_counter)
+		return 0;
+	
+	hash=fnv_32_buf(hname, strlen(hname), FNV1_32_INIT);
+	
+	list_for(rhc)
+		if(rhc->hash == hash && !strncmp(hname, rhc->hostname,
+						ANDNA_MAX_HNAME_LEN))
+			return rhc;
+	return 0;
+}
+
+void rh_cache_del(rh_cache *rhc)
+{
+	if(rhc->hostname)
+		xfree(rhc->hostname);
+	clist_del(&andna_rhc, &rhc_counter, rhc);
+}
+
+void rh_cache_del_expired(void)
+{
+	rh_cache *rhc=andna_rhc;
+	time_t cur_t;
+
+	if(!rhc || !rhc_counter)
+		return;
+
+	cur_t=time(0);
+	list_for(rhc) 
+		if(cur_t - rhc->timestamp > ANDNA_EXPIRATION_TIME)
+			rh_cache_del(rhc);
+}
 
 /*
  *  *  *  Pack/Unpack functions  *  *  *
@@ -389,7 +470,7 @@ char *pack_lcl_cache(lcl_cache_keyring *keyring, lcl_cache *local_cache,
 	struct lcl_cache_pkt_hdr lcl_hdr;
 	lcl_cache *alcl=local_cache;
 	size_t sz=0, slen;
-	char *pack, *buf, *p;
+	char *pack, *buf;
 
 	lcl_hdr.tot_caches=0;
 	memcpy(lcl_hdr.pubkey, keyring->pubkey, ANDNA_PKEY_LEN);
@@ -415,9 +496,11 @@ char *pack_lcl_cache(lcl_cache_keyring *keyring, lcl_cache *local_cache,
 			memcpy(buf, alcl->hostname, slen);
 
 			buf+=slen;
-			p=(char *)alcl + sizeof(char *) + (sizeof(lcl_cache *) * 2);
-			memcpy(buf, p, LCL_CACHE_PACK_SZ);
-			buf+=LCL_CACHE_PACK_SZ;
+			memcpy(buf, &alcl->hname_updates, sizeof(u_short));
+			buf+=sizeof(u_short);
+	
+			memcpy(buf, &alcl->timestamp, sizeof(time_t));
+			buf+=sizeof(time_t);
 		}
 	}
 
@@ -435,7 +518,7 @@ lcl_cache *unpack_lcl_cache(lcl_cache_keyring *keyring, char *pack, size_t pack_
 {
 	struct lcl_cache_pkt_hdr *hdr;
 	lcl_cache *alcl, *alcl_head=0;
-	char *buf, *p;
+	char *buf;
 	size_t slen, sz;
 	int i=0;
 		
@@ -463,12 +546,16 @@ lcl_cache *unpack_lcl_cache(lcl_cache_keyring *keyring, char *pack, size_t pack_
 			alcl=xmalloc(sizeof(lcl_cache));
 			memset(alcl, 0, sizeof(lcl_cache));
 			alcl->hostname=xstrdup(buf);
+			alcl->hash=fnv_32_buf(alcl->hostname, 
+					strlen(alcl->hostname), FNV1_32_INIT);
 			buf+=slen;
 			
-			p=(char *)alcl + (sizeof(lcl_cache *) * 2) + sizeof(char *);
-			memcpy(p, buf, LCL_CACHE_PACK_SZ);
-			buf+=LCL_CACHE_PACK_SZ;
-	
+			memcpy(&alcl->hname_updates, buf,  sizeof(u_short));
+			buf+=sizeof(u_short);
+
+			memcpy(&alcl->timestamp, buf, sizeof(time_t));
+			buf+=sizeof(time_t);
+
 			clist_add(&alcl_head, counter, alcl);
 		}
 	}

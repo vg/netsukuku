@@ -69,14 +69,19 @@ la Rete ci attende.
 	
   7. ANDNA: Abnormal Netsukuku Domain Name Anarchy
  
- 	7.1  ANDNA Metalloid elements: the recipe
-	7.2  Don't rob my hostname!
-	7.3  Count again
-	7.4  Registration step by step
-	7.5  Endless rest and rebirth
-	7.6  Hash_gnodes mutation
-	7.7  Yaq: Yet another queue
-	7.8  noituloser emantsoh esreveR
+ 	7.1  ANDNA Metalloid elements: the registration recipe
+  		7.1.1  ANDNA hook
+		7.1.2  Don't rob my hostname!
+		7.1.3  Count again
+		7.1.4  Registration step by step
+		7.1.5  Endless rest and rebirth
+		7.1.6  Hash_gnodes mutation
+		7.1.7  Yaq: Yet another queue
+		
+  	7.8  Hostname resolution
+		7.8.1  Distributed cache for hostname resolution
+		7.8.2  noituloser emantsoh esreveR
+		
 	7.9  dns wrapper
 	  
   8. Heavy Load: flood your ass!
@@ -305,13 +310,13 @@ la Rete ci attende.
 
   La storia di come si sia arrivati a Netsukuku e' lunga e travagliata.
   Nel lontano 2003, un gruppo di pazzi deliranti concepisce l'idea
-  dell'Ipv7: una rete in cui tutti i pacchetti venivano mandati in broacast,
-  compressi con le zlib7, un algoritmo che comprimeva l'attuale Internet in
-  32byte. In Ipv7 nessun nodo aveva un indirizzo ip. Tutto il sistema era
+  dell'Ipv7: una rete in cui tutti i pacchetti venivano mandati in broadcast,
+  compressi con il zlib7, un algoritmo che comprimeva l'attuale Internet in
+  32 byte. In Ipv7 nessun nodo aveva un indirizzo ip. Tutto il sistema era
   gestito da programmi che si autoscrivevano usando il compilatore nocoder.
   Ecco che si aveva una rete estremamente decentralizzata e libera.
   Quelle persone erano felici, e dopo la stesura del primo RFC, un sorriso
-  sereno ed un luce angelica avvolgeva le loro figure.
+  sereno e un luce angelica avvolgeva le loro figure.
   Un anno trascorre, il progetto si perde tra le infinite diramazioni del
   tempo, ma dopo non molto la polvere viene scrollata dal grande libro
   dell'Ipv7. Si incomincia a delirare sull'implementazione di una rete pura.
@@ -321,11 +326,11 @@ la Rete ci attende.
   <<Gia'! E si deve fare in modo che le rotte non siano mai uguali tra loro>>.
   <<Si, si, e perche' non facciamo che non esistano piu' in assoluto dei server
   centrali?>>.
-  Tre mesi dopo, a seguito di numerosissime perigrazioni mistiche, il cuore 
+  Tre mesi dopo, a seguito di numerosissime peregrinazioni mistiche, il cuore 
   teorico e' pronto. Gli algoritmi sono definiti. 
   Si incomincia a codare. La maledizione dei coder di protocolli di rete del
-  sacro faraone Mortedelprimogenito, si riversa sul codice di Netsukuku. La 
-  pazzia e il delirio sono la giusta ricompensa a tutti i colori i quali
+  sacro faraone Mortedelprimogenito si riversa sul codice di Netsukuku. La 
+  pazzia e il delirio sono la giusta ricompensa a tutti coloro i quali
   osano addentrarsi nella creazione di protocolli di rete pure.
   Nonostante tutto, esattamente dopo un anno e 14 mila righe di codice,
   Netsukuku e' pronto e diventa Beta.
@@ -855,15 +860,16 @@ la Rete ci attende.
 
   ANDNA e' il sistema distribuito, non gerarchico e decentralizzato, di
   gestione di hostname in Netsukuku. Sostituisce il DNS.
-  Il database dell'ANDNA e' sparso in tutto Netsukuku. 
+  Il database dell'ANDNA e' sparso in tutto Netsukuku e nel peggiore dei casi
+  ogni nodo dovra' usare circa 355 Kb di memoria.
   
   Il funzionamento base di ANDNA si articola nel seguente modo:
   per risolvere un hostname basta calcolarsi il suo hash. 
   L'hash non e' nient'altro che un numero e questo numero noi lo consideriamo
-  come un ip. Il nodo che corrisponde a questo ip lo chiamiamo
-  andna_hash_node. In pratica l'hash_node, manterra' un piccolo database che
-  associa gli hostname, che corrispondono a lui, con l'ip del nodo che ha
-  registrato quello stesso hostname.
+  come un ip. Il nodo che corrisponde a questo ip lo chiamiamo andna_hash_node.
+  In pratica l'hash_node, manterra' un piccolo database che associa gli
+  hostname, che corrispondono a lui, con l'ip del nodo che ha registrato
+  quello stesso hostname.
 
   
             Nodo X
@@ -880,14 +886,14 @@ la Rete ci attende.
   Le richieste di revoca non esistono, l'hostname viene cancellato
   automaticamente se non viene aggiornato.
  
-  7.1  ANDNA Metalloid elements: the recipe
+  7.1  ANDNA Metalloid elements: registration recipe
   
   In realta', non e' detto che l'hash_node esista nella rete, perche' puo'
   essere un ip a caso tra i 2^32 ip disponibili, ed ammesso che esista puo'
   sempre morire e uscire dalla rete. Quindi, per garantire la funzionalita'
   effettiva di ANDNA, ed anche un minimo di backup, gli hostname non vengono
   gestiti da singoli nodi, ma da interi gnode. Il gnode che corrisponde
-  all'hash e' l'hash_gnode, all'interno ci sara' l'hash_node.
+  all'hash e' l'hash_gnode, all'interno ci sara' anche l'hash_node.
   
   Poiche' gli hash_gnode possono anche non esistere al momento, viene adottata
   una strategia di approsimazione: viene usato il gnode che piu' si avvicina
@@ -910,7 +916,15 @@ la Rete ci attende.
   Il numero di backup_gnodes utilizzati per ogni hash_gnode e' pari a
   MAX_ANDNA_BACKUP_GNODES (2).
 
-  7.2  Don't rob my hostname!
+  7.1.1	 ANDNA hook
+
+  Quando un nodo si aggancia a Netsukuku diventando parte di un hash_gnode,
+  dovra' anche preoccuparsi di agganciarsi ad ANDNA con l'andna_hook.
+  Con l'andna_hook si prendera' dai suoi rnode tutti le caches ed i database
+  che i nodi di quel gnode posseggono. Ovviamente e' prima necessario che il
+  nodo si agganci a Netsukuku.
+
+  7.1.2  Don't rob my hostname!
   
   Un nodo, prima di fare una richiesta ad ANDNA, genera una coppia di chiavi
   rsa, una pubblica (pub_key) ed una privata (priv_key). La dimensione della 
@@ -920,7 +934,7 @@ la Rete ci attende.
   In questo modo il nodo potra' far certificare l'originalita' delle sue future
   richieste.
 
-  7.3  Count again
+  7.1.3  Count again
 
   Il numero massimo di hostnames che un nodo puo' registrare e' pari a 256,
   per prevenire la registrazione massiccia di hostnames formati da parole
@@ -947,11 +961,11 @@ la Rete ci attende.
   parte degli hash_gnode, si disattiva, e tutti gli hostname registrati non sono
   piu' validi (non si possono piu' aggiornare).
   
-  7.4  Registration step by step
+  7.1.4  Registration step by step
   
-  Il nodo x  che vuole registrare il suo hostname, 
-  trova il gnode piu' vicino all'hash_gnode (o l'hash_gnode stesso),
-  contatta un nodo a caso (il nodo y) di quel gnode e gli manda la richiesta.
+  Il nodo x,  che vuole registrare il suo hostname, trova il gnode piu' vicino
+  all'hash_gnode (o l'hash_gnode stesso), contatta un nodo a caso (il nodo y)
+  di quel gnode e gli manda la richiesta.
   La richiesta include una public key di una coppia di chiavi RSA appena
   generata (ad ogni registrazione corrisponde una nuova coppia di chiavi). Il
   pkt viene anche firmato con la priv_key.
@@ -972,7 +986,7 @@ la Rete ci attende.
   controllano di essere nel range dei gnode piu' vicini, e riapplicano la
   stessa procedura.
   
-  7.5  Endless rest and rebirth
+  7.1.5  Endless rest and rebirth
 
   Gli hash_gnode mantengono gli hostname in uno stato di ibernazione per circa
   3 giorni dal momento della loro registrazione od aggiornamento.
@@ -1001,7 +1015,7 @@ la Rete ci attende.
   giorno), verra' considerata invalida e sara' ignorata.
   
 
-  7.6  Hash_gnodes mutation
+  7.1.6  Hash_gnodes mutation
   
   Se un generico rounded_gnode viene scavalcato da un nuovo gnode che e' piu'
   vicino all'hash_gnode deve lasciargli il posto, quindi avviene un
@@ -1016,7 +1030,7 @@ la Rete ci attende.
   Il nuovo rounded_gnode, non avendo ancora il db, chiedera' a sua volta la
   risoluzione del nome host al rounded_gnode piu' vicino.
   
-  7.7  Yaq: Yet another queue
+  7.1.7  Yaq: Yet another queue
   
   Ogni nodo ha la liberta' di scegliersi un qualsiasi nome host. Quando un nodo
   sceglie un hostname, prima controlla il gnode corrispondente per vedere se
@@ -1030,15 +1044,41 @@ la Rete ci attende.
   e' associato a quell'hostname. Il nodo puo' anche scegliere di usare gli
   altri ip nella coda che sono associati allo stesso hostname.
 
-  7.8  noituloser emantsoh esreveR
+  
+  7.8	Hostname resolution
 
-  Se un nodo vuole conoscere gli hostname associati da un ip, contatta
+  Per risolvere un hostname il nodo X deve semplicemente trovare l'hash_gnode
+  relativo all'hostname e mandare ad un nodo a caso di quel gnode la richiesta
+  di risoluzione.
+  
+  7.8.1  Distributed cache for hostname resolution
+
+  Per incrementare l'efficienza di risoluzione di hostname, si adotta una
+  piccola strategia: un nodo, ogni volta che risolve un hostname, memorizza
+  il risultato in una cache. Per ogni risoluzione successiva dello stesso
+  hostname, il nodo avra' gia' il risultato nella sua cache.
+  La resolved_hnames cache e' accessibile a qualunque nodo.
+  Un nodo X, sfruttando questa proprieta', se non ha l'hostname da risolvere
+  nella sua cache, puo' decidere di chiedere ad un qualsiasi bnode Y scelto a
+  caso del suo stesso gnode di risolvere per lui l'hostname desiderato.
+  Il bnode Y, cerchera' nella sua resolved cache l'hostname e in caso di esito
+  negativo, risolvera' l'hostname in modo standard facendo mandare la risposta
+  al nodo X.
+  Questo sistema previene l'overload degli hash_gnode che mantengono hostname
+  molto famosi.
+  
+  7.8.2  noituloser emantsoh esreveR
+
+  Se un nodo vuole conoscere tutti gli hostname associati as un ip, contatta
   direttamente il nodo che ha quell'ip.
 
   7.9  dns wrapper
 
   Un wrapper di richieste DNS, si occupera' di mandare al demone di ANDNA gli
   hostname da risolvere e di restituire gli ip associati ad essi.
+  Grazie al wrapper sara' possibile usare ANDNA senza modificare alcun
+  programma esistente: bastera' usare come server dns il proprio computer.
+  
 
   8.   Heavy Load: flood your ass!
 

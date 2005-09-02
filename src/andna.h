@@ -35,7 +35,7 @@
 struct andna_reg_pkt
 {
 	u_int	 	rip[MAX_IP_INT];	/* register_node ip */
- 	u_int		hash[MAX_IP_INT];	/* hash of the host name to
+ 	u_int		hash[MAX_IP_INT];	/* md5 hash of the host name to
 						   register. */
  	char		pubkey[ANDNA_PKEY_LEN];	/* public key of the register
  						   node. */
@@ -60,7 +60,8 @@ struct andna_resolve_rq_pkt
 	u_int	 	rip[MAX_IP_INT];	/* the ip of the requester node */
 	char		flags;
 	
-	u_int           hash[MAX_IP_INT];       /* hash of the hostname to resolve. */
+	u_int           hash[MAX_IP_INT];       /* md5 hash of the hostname to
+						   resolve. */
 } _PACKED_;
 #define ANDNA_RESOLVE_RQ_PKT_SZ		(sizeof(struct andna_resolve_rq_pkt))
 
@@ -70,6 +71,8 @@ struct andna_resolve_rq_pkt
 struct andna_resolve_reply_pkt
 {
 	u_int		ip[MAX_IP_INT];
+	time_t		timestamp;		/* the last time the resolved 
+						   hname was updated */
 } _PACKED_;
 #define ANDNA_RESOLVE_REPLY_PKT_SZ	(sizeof(struct andna_resolve_reply_pkt))
 
@@ -94,7 +97,6 @@ int andna_load_caches(void);
 int andna_save_caches(void);
 void andna_init(void);
 
-void andna_hash(void *msg, int len, int hash[MAX_IP_INT]);
 int andna_find_hash_gnode(int hash[MAX_IP_INT], inet_prefix *to);
 
 int andna_register_hname(lcl_cache *alcl);

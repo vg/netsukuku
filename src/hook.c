@@ -763,7 +763,7 @@ hook_restart_and_retry:
 			loginfo("No nodes found! This is a black zone. "
 					"Creating a new_gnode.");
 		else
-			loginfo("There are %d nodes around, but they are hooking"
+			loginfo("There are %d nodes around, which are hooking"
 					" like us, but we came first so we have "
 					"to create the new gnode", 
 					total_hooking_nodes);
