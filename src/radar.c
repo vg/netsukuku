@@ -271,6 +271,7 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 			}
 		
 			rnode_del(root_node, rnode_pos);
+			
 			if(!root_node->links) {
 				/* We are alone in the dark. Sigh. */
 				qspn_time_reset(level, level, GET_LEVELS(my_family));
@@ -518,6 +519,7 @@ void radar_update_map(void)
 				    * rnodes.
 				    */
 				   rnode_add(root_node, new_root_rnode);
+				   
 
 				   /* Update the qspn_buffer */
 				   if(!external_node || level) {
@@ -532,6 +534,16 @@ void radar_update_map(void)
 					   send_qspn_now[level]=1;
 				   }
 				   
+				   /* If the new rnode wasn't present in the map, 
+				    * then it is also a new node in the map, so
+				    * update the seeds counter too */
+				   if(level < me.cur_quadg.levels-1 && !(node->flags & MAP_VOID)) {
+					   if(me.cur_quadg.gnode[_EL(level+1)]->seeds == MAXGROUPNODE-1)
+						   me.cur_quadg.gnode[_EL(level+1)]->flags|=GMAP_FULL;
+					   else
+						   me.cur_quadg.gnode[_EL(level+1)]->seeds++;
+				   }
+
 				   rnode_added[level]++;
 			   } else {
 				   /* 
@@ -565,13 +577,13 @@ void radar_update_map(void)
 			   /* Bnode map stuff */
 			   if(external_node && level) {
 				   /* 
-				    * All the root_node bnode which are in the
+				    * All the root_node bnodes which are in the
 				    * bmaps of level less than `level' points to
 				    * the same gnode which is rq->quadg.gnode[_EL(level-1+1)].
 				    * This is because the inferior levels cannot
 				    * have knowledge about the bordering gnode 
 				    * which is in an upper level, but it's necessary that
-				    * they know who the root_node borderes on,
+				    * they know which who the root_node borderes on,
 				    * so the get route algorithm can descend to
 				    * the inferior levels and it will still know
 				    * what is the border node which is linked

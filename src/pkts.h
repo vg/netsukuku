@@ -90,18 +90,6 @@ typedef struct
 }_PACKED_ brdcast_hdr;
 #define BRDCAST_SZ(pkt_sz) (sizeof(brdcast_hdr)+(pkt_sz))
 
-/***The nodeblock of the node*/
-struct node_hdr
-{
-	struct sockaddr ip;		/*Ip of the node*/
-	__u16 links;			/*Number of r_nodes*/
-}_PACKED_;
-struct rnode_chunk
-{	
-	struct sockaddr r_node;         /*Ip of the r_node*/
-	struct timeval  rnode_t;	/*node <-> r_node time*/	
-}_PACKED_;
-#define NODEBLOCK_SZ(links) (sizeof(struct node_hdr)+sizeof((struct r_node)*(links)))
 
 
 /* 

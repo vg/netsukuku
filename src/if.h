@@ -19,7 +19,7 @@
 /* from linux/ipv6.h */
 struct in6_ifreq {
 	struct in6_addr ifr6_addr;
-	__u32           ifr6_prefixlen;
+	uint32_t        ifr6_prefixlen;
 	int             ifr6_ifindex;
 };
 

@@ -342,7 +342,8 @@ void qspn_new_round(u_char level, int new_qspn_id, struct timeval *new_qspn_time
 				gmap_node_del((map_gnode *)node);
 			}
 
-			me.cur_quadg.gnode[level]->seeds--;
+			me.cur_quadg.gnode[_EL(level+1)]->seeds--;
+			me.cur_quadg.gnode[_EL(level+1)]->flags&=~GMAP_FULL;
 		} else
 			node->flags|=QSPN_OLD;
 	}

@@ -462,7 +462,7 @@ int rtnl_from_file(FILE *rtnl, rtnl_filter_t handler,
 	}
 }
 
-int addattr32(struct nlmsghdr *n, int maxlen, int type, __u32 data)
+int addattr32(struct nlmsghdr *n, int maxlen, int type, uint32_t data)
 {
 	int len = RTA_LENGTH(4);
 	struct rtattr *rta;
@@ -509,7 +509,7 @@ int addraw_l(struct nlmsghdr *n, int maxlen, const void *data, int len)
 	return 0;
 }
 
-int rta_addattr32(struct rtattr *rta, int maxlen, int type, __u32 data)
+int rta_addattr32(struct rtattr *rta, int maxlen, int type, uint32_t data)
 {
 	int len = RTA_LENGTH(4);
 	struct rtattr *subrta;

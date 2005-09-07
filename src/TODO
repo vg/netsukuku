@@ -33,7 +33,6 @@ gmap.c: Ottimizzare la validita' di ip in random_ip(). Una possibile soluzione
 hook.c: ottimizzare lo spazio di free_node: invece di usare una serie di u_char
         free_nodes, si usano MAXGROUPNODE bits, ed ognuno si setta o no. (Usare
         asm/bitops.h set_bit, clear_bit..., is_set)
-tracer.c:  store_tracer_pkt_connect
 broadcast: Tenere in considerazione il gttl.
 hook.c:    anti spoof hook
 gmap.c/map.c: non usare piu' le libgmp. Per le somme usiamo sum_128.c, e per

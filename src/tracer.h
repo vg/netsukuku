@@ -27,8 +27,8 @@ typedef struct
 
 typedef struct
 {
-	__u8 node;
-	struct timeval rtt;	/*The rtt to reach the `node' of the previous
+	uint8_t		node;
+	struct timeval	rtt;	/*The rtt to reach the `node' of the previous
 				  chunk from the node of the current `one'.*/
 }_PACKED_ tracer_chunk;
 #define TRACERPKT_SZ(hops) (sizeof(tracer_hdr) + (sizeof(tracer_chunk) * (hops)))

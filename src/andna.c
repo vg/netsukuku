@@ -14,7 +14,14 @@
  * You should have received a copy of the GNU Public License along with
  * this source code; if not, write to:
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * --
+ * andna.c:
+ * Here there are all the functions that send, receive and exec ANDNA packets.
+ * All the threads of the ANDNA daemon and the main andna functions are here 
+ * too.
  */
+
 #include "includes.h"
 
 #include "llist.c"
@@ -50,6 +57,9 @@ int andna_load_caches(void)
 	if((andna_counter_c=load_counter_c(server_opt.counter_c_file, &cc_counter)))
 		debug(DBG_NORMAL, "Counter cache loaded");
 
+	if((andna_rhc=load_rh_cache(server_opt.rhc_file, &rhc_counter)))
+		debug(DBG_NORMAL, "Resolved hostnames cache loaded");
+
 	if((!load_hostnames(server_opt.andna_hnames_file, &andna_lcl, &lcl_counter)))
 		debug(DBG_NORMAL, "Hostnames file loaded");
 
@@ -66,6 +76,9 @@ int andna_save_caches(void)
 
 	debug(DBG_NORMAL, "Saving the andna counter cache");
 	save_counter_c(andna_counter_c, server_opt.counter_c_file);
+
+	debug(DBG_NORMAL, "Saving the resolved hnames cache");
+	save_rh_cache(andna_rhc, server_opt.rhc_file);
 
 	return 0;
 }

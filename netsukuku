@@ -69,7 +69,7 @@ la Rete ci attende.
 	
   7. ANDNA: Abnormal Netsukuku Domain Name Anarchy
  
- 	7.1  ANDNA Metalloid elements: the registration recipe
+ 	7.1  ANDNA Metalloid elements: registration recipe
   		7.1.1  ANDNA hook
 		7.1.2  Don't rob my hostname!
 		7.1.3  Count again
@@ -334,8 +334,9 @@ la Rete ci attende.
   osano addentrarsi nella creazione di protocolli di rete pure.
   Nonostante tutto, esattamente dopo un anno e 14 mila righe di codice,
   Netsukuku e' pronto e diventa Beta.
-  Qualche settimana dopo la presentazione di Netsukuku all'Hackmeeting 2005,
-  il protocollo dell'ANDNA e' completamente definito e documentato.
+  Due mesi dopo la presentazione di Netsukuku all'Hackmeeting 2005,
+  il protocollo dell'ANDNA, cosi' come il suo codice, e' completamente
+  definito e documentato.
   Il resto giace in potenza e deve ancora divenire.
   
   
@@ -394,7 +395,7 @@ la Rete ci attende.
   non deve far altro che settare una backroute con l'informazioni che si
   ritrova nel pkt. Fine.
   L'Npv7_II e la sua versione precedente, non vengono usate, ma sono alla base
-  dell'Npv7_HT, l'attuale versione del protocollo Netsukuk.
+  dell'Npv7_HT, l'attuale versione del protocollo Netsukuku.
   
   5.   Npv7 Hybrid Teory: the final way
 
@@ -1056,7 +1057,11 @@ la Rete ci attende.
   Per incrementare l'efficienza di risoluzione di hostname, si adotta una
   piccola strategia: un nodo, ogni volta che risolve un hostname, memorizza
   il risultato in una cache. Per ogni risoluzione successiva dello stesso
-  hostname, il nodo avra' gia' il risultato nella sua cache.
+  hostname, il nodo avra' gia' il risultato nella sua cache. 
+  Poiche' nei pacchetti di risoluzione degli hostname e' indicato il tempo
+  dell'ultima volta in cui sono stati registrati o aggiornati, un entry nella
+  cache scade esattamente quando l'hostname non e' piu' valido in ANDNA e deve
+  essere aggiornato.
   La resolved_hnames cache e' accessibile a qualunque nodo.
   Un nodo X, sfruttando questa proprieta', se non ha l'hostname da risolvere
   nella sua cache, puo' decidere di chiedere ad un qualsiasi bnode Y scelto a
@@ -1066,6 +1071,7 @@ la Rete ci attende.
   al nodo X.
   Questo sistema previene l'overload degli hash_gnode che mantengono hostname
   molto famosi.
+  
   
   7.8.2  noituloser emantsoh esreveR
 
@@ -1212,9 +1218,7 @@ la Rete ci attende.
 
   Prima di incominciare a diffondere Netsukuku e' necessario compiere ancora
   qualche passo essenziale:
-  - Scrivere il codice dell'ANDNA. Una rete priva di un sistema di gestione di
-    dominii e' praticamente inusabile.
-  - Testare su larga scala Netsukuku
+  - Testare su larga scala Netsukuku ed ANDNA.
   - Completare i src/TODO.
   - Completare i TODO che si trovano in questo documento ;)
   - Varie ed eventuali.

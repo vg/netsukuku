@@ -137,8 +137,8 @@ int inet_setip_localaddr(inet_prefix *ip, int family)
 /* from iproute2 */
 int inet_addr_match(const inet_prefix *a, const inet_prefix *b, int bits)
 {
-        __u32 *a1 = a->data;
-        __u32 *a2 = b->data;
+        uint32_t *a1 = a->data;
+        uint32_t *a2 = b->data;
         int words = bits >> 0x05;
         
         bits &= 0x1f;
@@ -148,8 +148,8 @@ int inet_addr_match(const inet_prefix *a, const inet_prefix *b, int bits)
                         return -1;
 
         if (bits) {
-                __u32 w1, w2;
-                __u32 mask;
+                uint32_t w1, w2;
+                uint32_t mask;
 
                 w1 = a1[words];
                 w2 = a2[words];
@@ -163,7 +163,19 @@ int inet_addr_match(const inet_prefix *a, const inet_prefix *b, int bits)
 	return 0;
 }
 
-/* from linux/net/ipv6/addrconf.c. Modified to use inet_prefix */
+/* 
+ * ipv6_addr_type:
+ * Taken from linux/net/ipv6/addrconf.c. Modified to use inet_prefix 
+ */
+#define ___constant_swab32(x) \
+	((uint32_t)( \
+		(((uint32_t)(x) & (uint32_t)0x000000ffUL) << 24) | \
+		(((uint32_t)(x) & (uint32_t)0x0000ff00UL) <<  8) | \
+		(((uint32_t)(x) & (uint32_t)0x00ff0000UL) >>  8) | \
+		(((uint32_t)(x) & (uint32_t)0xff000000UL) >> 24) ))
+#define __constant_htonl(x) ___constant_swab32((x))
+#define __constant_ntohl(x) ___constant_swab32((x))
+
 int ipv6_addr_type(inet_prefix addr)
 {
 	int type;
@@ -304,7 +316,7 @@ int inet_to_sockaddr(inet_prefix *ip, u_short port, struct sockaddr *dst, sockle
 		sin6.sin6_family = ip->family;
 		sin6.sin6_port = port;
 		sin6.sin6_flowinfo = 0;
-		htonl_128(ip->data, sin6.sin6_addr.s6_addr32);
+		htonl_128(ip->data, (u_int *)&sin6.sin6_addr);
 
 		memcpy(dst, &sin6, sizeof(struct sockaddr_in6));
 

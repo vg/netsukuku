@@ -454,6 +454,14 @@ void rh_cache_del_expired(void)
 			rh_cache_del(rhc);
 }
 
+void rh_cache_flush(void)
+{
+	rh_cache *rhc=andna_rhc;
+	
+	list_for(rhc)
+		rh_cache_del(rhc);
+}
+
 /*
  *  *  *  Pack/Unpack functions  *  *  *
  */
@@ -479,7 +487,7 @@ char *pack_lcl_cache(lcl_cache_keyring *keyring, lcl_cache *local_cache,
 	
 	/* Calculate the final pack size */
 	list_for(alcl) {
-		sz+=strlen(alcl->hostname) + LCL_CACHE_PACK_SZ;
+		sz+=LCL_CACHE_BODY_PACK_SZ(strlen(alcl->hostname)+1);
 		lcl_hdr.tot_caches++;
 	}
 
@@ -492,7 +500,7 @@ char *pack_lcl_cache(lcl_cache_keyring *keyring, lcl_cache *local_cache,
 		alcl=local_cache;
 		
 		list_for(alcl) {
-			slen=strlen(alcl->hostname);
+			slen=strlen(alcl->hostname+1);
 			memcpy(buf, alcl->hostname, slen);
 
 			buf+=slen;
@@ -538,8 +546,8 @@ lcl_cache *unpack_lcl_cache(lcl_cache_keyring *keyring, char *pack, size_t pack_
 		buf=pack + sizeof(struct lcl_cache_pkt_hdr);
 
 		for(i=0, sz=0; i<hdr->tot_caches; i++) {
-			slen=strlen(buf);
-			sz+=slen + LCL_CACHE_PACK_SZ;
+			slen=strlen(buf)+1;
+			sz+=LCL_CACHE_BODY_PACK_SZ(slen);
 			if(slen > ANDNA_MAX_HNAME_LEN || sz > pack_sz)
 				goto finish;
 			
@@ -760,6 +768,102 @@ finish:
 
 
 /*
+ * pack_rh_cache: packs the entire resolved hnames cache linked list that starts 
+ * with the head `rhcache'. The size of the pack is stored in `pack_sz'.
+ * The pointer to the newly allocated pack is returned.
+ */
+char *pack_rh_cache(rh_cache *rhcache, size_t *pack_sz)
+{
+	struct rh_cache_pkt_hdr rh_hdr;
+	rh_cache *rhc=rhcache;
+	size_t sz=0, slen;
+	char *pack, *buf;
+
+	rh_hdr.tot_caches=0;
+	sz=sizeof(struct rh_cache_pkt_hdr);
+	
+	/* Calculate the final pack size */
+	list_for(rhc) {
+		sz+=RH_CACHE_BODY_PACK_SZ(strlen(rhc->hostname)+1);
+		rh_hdr.tot_caches++;
+	}
+
+	pack=xmalloc(sz);
+	memcpy(pack, &rh_hdr, sizeof(struct rh_cache_pkt_hdr));
+	*pack_sz=0;
+
+	if(rh_hdr.tot_caches) {
+		buf=pack + sizeof(struct rh_cache_pkt_hdr);
+		rhc=rhcache;
+		
+		list_for(rhc) {
+			slen=strlen(rhc->hostname)+1;
+			memcpy(buf, rhc->hostname, slen);
+			buf+=slen;
+
+			memcpy(buf, &rhc->timestamp, sizeof(time_t));
+			buf+=sizeof(time_t);
+			
+			memcpy(buf, &rhc->ip, sizeof(inet_prefix));
+			buf+=sizeof(inet_prefix);
+		}
+	}
+
+	*pack_sz=sz;
+	return pack;
+}
+
+/*
+ * unpack_rh_cache: unpacks a packed resolved hnames cache linked list and 
+ * returns its head.
+ * `counter' is set to the number of struct in the llist.
+ * On error 0 is returned.
+ */
+rh_cache *unpack_rh_cache(char *pack, size_t pack_sz, int *counter)
+{
+	struct rh_cache_pkt_hdr *hdr;
+	rh_cache *rhc, *rhc_head=0;
+	char *buf;
+	size_t slen, sz;
+	int i=0;
+		
+	hdr=(struct rh_cache_pkt_hdr *)pack;
+	if(hdr->tot_caches > ANDNA_MAX_RHC_HNAMES)
+		return 0;
+
+	*counter=0;
+	if(hdr->tot_caches) {
+		buf=pack + sizeof(struct rh_cache_pkt_hdr);
+
+		for(i=0, sz=0; i<hdr->tot_caches; i++) {
+			slen=strlen(buf)+1;
+			sz+=RH_CACHE_BODY_PACK_SZ(slen);
+			if(slen > ANDNA_MAX_HNAME_LEN || sz > pack_sz)
+				goto finish;
+			
+			rhc=xmalloc(sizeof(rh_cache));
+			memset(rhc, 0, sizeof(rh_cache));
+			rhc->hostname=xstrdup(buf);
+			rhc->hash=fnv_32_buf(rhc->hostname, 
+					strlen(rhc->hostname), FNV1_32_INIT);
+			buf+=slen;
+			
+			memcpy(&rhc->timestamp, buf, sizeof(time_t));
+			buf+=sizeof(time_t);
+			memcpy(&rhc->ip, buf, sizeof(inet_prefix));
+			buf+=sizeof(inet_prefix);
+
+
+			clist_add(&rhc_head, counter, rhc);
+		}
+	}
+
+finish:
+	return rhc;
+}
+
+
+/*
  *  *  *  Save/Load functions  *  *  *
  */
 
@@ -794,7 +898,7 @@ int save_lcl_cache(lcl_cache_keyring *keyring, lcl_cache *lcl, char *file)
 /*
  * load_lcl_cache: loads from `file' a local cache list and returns the head
  * of the newly allocated llist. In `counter' it is stored the number of
- * list's structs, and in `keyring' it restores the RSA keys.
+ * structs of the llist, and in `keyring' it restores the RSA keys.
  * On error 0 is returned.
  */
 lcl_cache *load_lcl_cache(lcl_cache_keyring *keyring, char *file, int *counter)
@@ -805,7 +909,7 @@ lcl_cache *load_lcl_cache(lcl_cache_keyring *keyring, char *file, int *counter)
 	size_t pack_sz;
 	
 	if((fd=fopen(file, "r"))==NULL) {
-		error("Cannot load the andna_cache from %s: %s", file, strerror(errno));
+		error("Cannot load the lcl_cache from %s: %s", file, strerror(errno));
 		return 0;
 	}
 
@@ -958,6 +1062,73 @@ finish:
 	return countercache;
 }
 
+
+/*
+ * save_rh_cache: saves the resolved hnames cache linked list `rh' in the
+ * `file' specified.
+ */
+int save_rh_cache(rh_cache *rh, char *file)
+{
+	FILE *fd;
+	size_t pack_sz;
+	char *pack;
+
+	/*Pack!*/
+	pack=pack_rh_cache(rh, &pack_sz);
+	if(!pack_sz || !pack)
+		return 0;
+	
+	if((fd=fopen(file, "w"))==NULL) {
+		error("Cannot save the rh_cache in %s: %s", file, strerror(errno));
+		return -1;
+	}
+
+	/*Write!*/
+	fwrite(pack, pack_sz, 1, fd);
+	
+	xfree(pack);
+	fclose(fd);
+	return 0;
+}
+
+/*
+ * load_rh_cache: loads from `file' a resolved hnames cache list and returns 
+ * the head of the newly allocated llist. In `counter' it is stored the number
+ * of structs of the llist.
+ * On error 0 is returned.
+ */
+rh_cache *load_rh_cache(char *file, int *counter)
+{
+	rh_cache *rh;
+	FILE *fd;
+	char *pack=0;
+	size_t pack_sz;
+	
+	if((fd=fopen(file, "r"))==NULL) {
+		error("Cannot load the rh_cache from %s: %s", file, strerror(errno));
+		return 0;
+	}
+
+	fseek(fd, 0, SEEK_END);
+	pack_sz=ftell(fd);
+	rewind(fd);
+	
+	pack=xmalloc(pack_sz);
+	if(!fread(pack, pack_sz, 1, fd))
+		goto finish;
+	
+	rh=unpack_rh_cache(pack, pack_sz, counter);
+
+finish:
+	if(pack)
+		xfree(pack);
+	fclose(fd);
+	if(!rh)
+		error("Malformed rh_cache file. Aborting load_rh_cache().");
+	return rh;
+}
+
+
 /*
  * load_hostnames: reads the `file' specified and reads each line in it.
  * The strings read are the hostnames that will be registered in andna.
@@ -977,7 +1148,7 @@ int load_hostnames(char *file, lcl_cache **old_alcl_head, int *old_alcl_counter)
 	FILE *fd;
 	char buf[ANDNA_MAX_HNAME_LEN+1];
 	size_t slen;
-	int i;
+	int i=0;
 
 	lcl_cache *alcl, *old_alcl, *new_alcl_head;
 	int new_alcl_counter;

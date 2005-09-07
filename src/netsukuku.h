@@ -63,6 +63,8 @@ u_short andna_udp_port, andna_tcp_port;
 
 int ll_map_initialized;
 
+#define NTK_CONFIG_FILE "/etc/netsukuku/netsukuku.conf"
+
 #define INT_MAP_FILE	"ntk_internal_map"
 #define EXT_MAP_FILE	"ntk_external_map"
 #define BNODE_MAP_FILE	"ntk_bnode_map"
@@ -70,10 +72,13 @@ int ll_map_initialized;
 #define ANDNA_HNAMES_FILE	"andna_hostnames"
 #define ANDNA_CACHE_FILE	"andna_cache"
 #define LCL_FILE		"andna_lcl_cache"
+#define RHC_FILE		"andna_rh_cache"
 #define COUNTER_C_FILE		"andna_counter_cache"
 
 typedef struct
 {
+	char		config_file[NAME_MAX];
+
 	char 		dev[IFNAMSIZ];
 	int 		family;
 
@@ -84,6 +89,7 @@ typedef struct
 	char		andna_hnames_file[NAME_MAX];
 	char 		andna_cache_file[NAME_MAX];
 	char 		lcl_file[NAME_MAX];
+	char		rhc_file[NAME_MAX];
 	char 		counter_c_file[NAME_MAX];
 
 	char 		restricted;
@@ -97,3 +103,8 @@ typedef struct
 	int 		max_accepts_per_host_time;
 }ServOpt;
 ServOpt server_opt;
+
+/* Just to be sure */
+#ifdef QSPN_EMPIRIC
+	#error Netsukuku_d cannot be compiled with the QSPN_EMPIRIC support activated.
+#endif

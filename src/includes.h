@@ -30,15 +30,10 @@
 #include <arpa/inet.h>
 #include <sys/sendfile.h>
 #include <netinet/in.h>
-#include <linux/socket.h>
-#include <netinet/ip.h>
-#include <linux/in_route.h>
 
 #include <net/if.h>
 
 #include <time.h>
-#include <asm/types.h>
-#include <sys/types.h>
 
 #include <netdb.h>
 #include <unistd.h>
@@ -52,7 +47,6 @@
 
 #include <limits.h>
 #include <signal.h>
-#include <linux/byteorder/little_endian.h>
 
 
 #define _PACKED_ __attribute__ ((__packed__))

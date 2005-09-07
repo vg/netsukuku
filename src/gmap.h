@@ -37,8 +37,9 @@ typedef struct
 	map_node	g;
 	
 	u_char 		flags;
-	__u8 		seeds;	/*The number of active static nodes connected to this gnode.
-				  If seeds == MAXGROUPNODE, the gnode is full ^_^*/
+	uint8_t		seeds;	/*The number of active static nodes connected to this
+				  gnode minus one (the root_node is not counted).
+				  If seeds == MAXGROUPNODE-1, the gnode is full ^_^*/
 }map_gnode;
 
 
@@ -94,7 +95,7 @@ typedef struct {
 	u_char      levels;		 /*How many levels we have*/
 	int         gid[MAX_LEVELS];	 /*Group ids. Each element is the gid of the quadrogroup in the 
 					   relative level. (ex: gid[n] is the gid of the quadropgroup a 
-					   the n level)*/
+					   the n-th level)*/
 	map_gnode  *gnode[MAX_LEVELS-ZERO_LEVEL]; /*Each element is a pointer to the relative gnode in the 
 						      ext_map. It has levels-EXTRA_LEVELS elements.*/
 	inet_prefix ipstart[MAX_LEVELS]; /*The ipstart of each quadg.gid in their respective levels*/

@@ -688,12 +688,14 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 		 * takes care of him. */
 		skip_rfrom = 1;
 	} else if(from == root_node) {
-		/* If tracer[hops-1].node is an our gnode then we can skip it */
+		/* If tracer[hops-1].node is our gnode then we can skip it */
 		skip_rfrom = 1;
 		from_rnode_pos=ip_to_rfrom(rip, rip_quadg, 0, 0);
 
 		if(hops > 1) {
-			/* hops-2 is an rnode of hops-1, which is our gnode */
+			/* hops-2 is an rnode of hops-1, which is our gnode,
+			 * so we update the `gfrom' and `from' vars and let
+			 * them point to hops-2 */
 			gfrom=gnode_from_pos(tracer[hops-2].node,
 					me.ext_map[_EL(level)]);
 			gfrom->g.flags|=MAP_RNODE;
@@ -743,11 +745,13 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 			node->flags|=MAP_UPDATE;
 			if(level)
 				gnode->flags&=~GMAP_VOID;
-			
-			if(me.cur_quadg.gnode[_EL(level+1)]->seeds == MAXGROUPNODE-1)
-				me.cur_quadg.gnode[_EL(level+1)]->flags|=GMAP_FULL;
-			else
-				me.cur_quadg.gnode[_EL(level+1)]->seeds++;
+		
+			if(level < me.cur_quadg.levels-1) {
+				if(me.cur_quadg.gnode[_EL(level+1)]->seeds == MAXGROUPNODE-1)
+					me.cur_quadg.gnode[_EL(level+1)]->flags|=GMAP_FULL;
+				else
+					me.cur_quadg.gnode[_EL(level+1)]->seeds++;
+			}
 			debug(DBG_INSANE, "TRCR_STORE: node %d added", tracer[i].node);
 		}
 		
@@ -1202,39 +1206,3 @@ int tracer_pkt_start(u_char level)
 	tracer_pkt_start_mutex=0;
 	return 0;
 }
-
-#if 0
-/* Note: the tracer_pkt_connect is valid only in our gnode */
-int tracer_pkt_connect(map_node *dst)
-{
-	PACKET pkt;
-	brdcast_hdr bcast_hdr;
-	tracer_hdr trcr_hdr;
-	tracer_chunk tracer[2];
-	u_char gid=me.cur_quadg.gid[1], level=0; 	
-	int root_node_pos;
-
-	trcr_hdr.hops=2;
-	trcr_hdr.bblocks=0;
-	memset(&tracer[0], 0, sizeof(tracer_chunk));
-	memset(&tracer[1], 0, sizeof(tracer_chunk));
-	tracer[0].node=pos_from_node(me.cur_node, me.int_map);
-	tracer[1].node=pos_from_node(dst, me.int_map);
-	memset(&bcast_hdr, 0, sizeof(brdcast_hdr));
-	bcast_hdr.g_node=gid;
-	bcast_hdr.gttl=1;
-	bcast_hdr.sz=sizeof(tracer_hdr)+(sizeof(tracer_chunk)*2);
-	
-	me.cur_node->brdcast++;
-	root_node_pos=pos_from_node(me.cur_node, me.int_map);
-	tracer_pkt_build(TRACER_PKT_CONNECT, me.cur_node->brdcast, root_node_pos,/*IDs*/
-			 gid,		     level,
-			 &bcast_hdr,         &trcr_hdr,          tracer,        /*Received tracer_pkt*/
-			 0,                  0,              0, 		/*bnode_block*/
-			 &pkt);				 			/*Where the pkt is built*/
-
-	/*Diffuse the packet in all the universe!*/
-	flood_pkt_send(exclude_from_and_glevel, level, -1, -1, pkt);
-	return 0;
-}
-#endif

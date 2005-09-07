@@ -176,13 +176,13 @@ int rhc_counter;
  */
 
 /*
- * local cache pkt used to pack the entire local cache to save it in a file or
- * to send it to a node
+ * The local cache pkt is used to pack the entire local cache to save it in a 
+ * file or to send it to a node.
  */
 struct lcl_cache_pkt_hdr
 {
 	u_short		tot_caches;		/* How many lcl structs there 
-						   are in the pkt's hdr */
+						   are in the pkt's body */
  	char		privkey[ANDNA_SKEY_LEN];
  	char		pubkey[ANDNA_PKEY_LEN];
 };
@@ -194,7 +194,8 @@ struct lcl_cache_pkt_hdr
  *	time_t          timestamp;
  * } body[ hdr.tot_caches ];
  */
-#define LCL_CACHE_PACK_SZ	(sizeof(u_short) + sizeof(time_t))
+#define LCL_CACHE_BODY_PACK_SZ(hname_len)	((hname_len) + sizeof(u_short) \
+							+ sizeof(time_t))
 
 struct andna_cache_pkt_hdr
 {
@@ -232,6 +233,27 @@ struct counter_c_pkt_hdr
 #define COUNTER_CACHE_PACK_SZ(hashes)	((COUNTER_CACHE_HASHES_PACK_SZ*(hashes))\
 					 + COUNTER_CACHE_BODY_PACK_SZ)
 
+/* 
+ * Resolved hostnames cache pkt.
+ */
+struct rh_cache_pkt_hdr
+{
+	u_short		tot_caches;		/* How many lcl structs there 
+						   are in the pkt's hdr */
+};
+/* 
+ * The body is:
+ * struct rh_cache_pkt_body {
+ *	char		hostname[strlen(hostname)];
+ *	time_t		timestamp;
+ *	inet_prefix     ip;
+ * } body[ hdr.tot_caches ];
+ */
+#define RH_CACHE_BODY_PACK_SZ(hname_len)	((hname_len) + sizeof(time_t)+\
+							sizeof(inet_prefix))
+
+
+
 /*
  * * * Functions' declaration * * *
  */
@@ -265,6 +287,7 @@ rh_cache *rh_cache_add(char *hname, time_t timestamp, inet_prefix *ip);
 rh_cache *rh_cache_find_hname(char *hname);
 void rh_cache_del(rh_cache *rhc);
 void rh_cache_del_expired(void);
+void rh_cache_flush(void);
 
 char *pack_lcl_cache(lcl_cache_keyring *keyring, lcl_cache *local_cache, size_t *pack_sz);
 lcl_cache *unpack_lcl_cache(lcl_cache_keyring *keyring, char *pack, size_t pack_sz, int *counter);
@@ -275,6 +298,9 @@ andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter);
 char *pack_counter_cache(counter_c *countercache,  size_t *pack_sz);
 counter_c *unpack_counter_cache(char *pack, size_t pack_sz, int *counter);
 
+char *pack_rh_cache(rh_cache *rhcache, size_t *pack_sz);
+rh_cache *unpack_rh_cache(char *pack, size_t pack_sz, int *counter);
+
 int save_lcl_cache(lcl_cache_keyring *keyring, lcl_cache *lcl, char *file);
 lcl_cache *load_lcl_cache(lcl_cache_keyring *keyring, char *file, int *counter);
 
@@ -283,5 +309,8 @@ andna_cache *load_andna_cache(char *file, int *counter);
 
 int save_counter_c(counter_c *countercache, char *file);
 counter_c *load_counter_c(char *file, int *counter);
+
+int save_rh_cache(rh_cache *rh, char *file);
+rh_cache *load_rh_cache(char *file, int *counter);
 
 int load_hostnames(char *file, lcl_cache **old_alcl_head, int *old_alcl_counter);

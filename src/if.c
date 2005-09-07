@@ -143,6 +143,10 @@ const char *if_init(char *dev, int *dev_idx)
 	return (const char *)dev;
 }	
 
+/*
+ * set_dev_ip: Assign the given `ip' to the interface named `dev'
+ * On success 0 is returned, -1 otherwise.
+ */
 int set_dev_ip(inet_prefix ip, char *dev)
 {
 	int s;

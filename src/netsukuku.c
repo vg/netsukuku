@@ -23,6 +23,7 @@
 #include "includes.h"
 
 #include "misc.h"
+#include "conf.h"
 #include "libnetlink.h"
 #include "ll_map.h"
 #include "inet.h"
@@ -106,33 +107,6 @@ int ntk_free_maps(void)
 	return 0;
 }
 
-int fill_default_options(void)
-{
-	memset(&server_opt, 0, sizeof(server_opt));
-	server_opt.family=AF_INET;
-	strncpy(server_opt.int_map_file, INT_MAP_FILE, NAME_MAX);
-	strncpy(server_opt.ext_map_file, EXT_MAP_FILE, NAME_MAX);
-	strncpy(server_opt.bnode_map_file, BNODE_MAP_FILE, NAME_MAX);
-
-	strncpy(server_opt.andna_hnames_file, ANDNA_HNAMES_FILE, NAME_MAX);
-	strncpy(server_opt.andna_cache_file, ANDNA_CACHE_FILE, NAME_MAX);
-	strncpy(server_opt.lcl_file, LCL_FILE, NAME_MAX);
-	strncpy(server_opt.counter_c_file, COUNTER_C_FILE, NAME_MAX);
-
-	server_opt.daemon=1;
-	server_opt.dbg_lvl=0;
-
-	server_opt.disable_andna=0;
-
-	server_opt.max_connections=MAX_CONNECTIONS;
-	server_opt.max_accepts_per_host=MAX_ACCEPTS;
-	server_opt.max_accepts_per_host_time=FREE_ACCEPT_TIME;
-
-	ll_map_initialized=0;
-
-	return 0;
-}
-
 void usage(void)
 {
 	printf("%s\n", VERSION);
@@ -144,17 +118,81 @@ void usage(void)
 		" -r	run in restricted mode\n"
 		" -D	no daemon mode\n"
 		"\n"
-		" -I	int_map\n"
-		" -E	ext_map\n"
-		" -B	bnode_map\n"
-		" -H	hostnames file\n"
-		" -A	andna_cache file\n"
-		" -L	lcl_cache file\n"
-		" -C	counter_cache file\n"
+		" -c	configuration file\n"
 		"\n"
 		" -d    debug (more d, more info)\n"
 		" -h	this help\n"
 		" -v	version\n");
+}
+
+void fill_default_options(void)
+{
+	strncpy(server_opt.config_file, NTK_CONFIG_FILE, NAME_MAX);
+
+	memset(&server_opt, 0, sizeof(server_opt));
+	server_opt.family=AF_INET;
+
+	strncpy(server_opt.int_map_file, INT_MAP_FILE, NAME_MAX);
+	strncpy(server_opt.ext_map_file, EXT_MAP_FILE, NAME_MAX);
+	strncpy(server_opt.bnode_map_file, BNODE_MAP_FILE, NAME_MAX);
+
+	strncpy(server_opt.andna_hnames_file, ANDNA_HNAMES_FILE, NAME_MAX);
+	strncpy(server_opt.andna_cache_file, ANDNA_CACHE_FILE, NAME_MAX);
+	strncpy(server_opt.lcl_file, LCL_FILE, NAME_MAX);
+	strncpy(server_opt.rhc_file, RHC_FILE, NAME_MAX);
+	strncpy(server_opt.counter_c_file, COUNTER_C_FILE, NAME_MAX);
+
+	server_opt.daemon=1;
+	server_opt.dbg_lvl=0;
+
+	server_opt.disable_andna=0;
+	server_opt.restricted=0;
+
+	server_opt.max_connections=MAX_CONNECTIONS;
+	server_opt.max_accepts_per_host=MAX_ACCEPTS;
+	server_opt.max_accepts_per_host_time=FREE_ACCEPT_TIME;
+
+	ll_map_initialized=0;
+}
+
+/*
+ * fill_loaded_cfg_options: stores in server_opt the options loaded from the
+ * configuration file
+ */
+void fill_loaded_cfg_options(void)
+{
+	char *value;
+
+	if((value=getenv(config_str[CONF_NTK_INT_MAP_FILE])))
+		strncpy(server_opt.int_map_file, value, NAME_MAX);
+	if((value=getenv(config_str[CONF_NTK_BNODE_MAP_FILE])))
+		strncpy(server_opt.bnode_map_file, value, NAME_MAX);
+	if((value=getenv(config_str[CONF_NTK_EXT_MAP_FILE])))
+		strncpy(server_opt.ext_map_file, value, NAME_MAX);
+	
+	if((value=getenv(config_str[CONF_ANDNA_HNAMES_FILE])))
+		strncpy(server_opt.andna_hnames_file, value, NAME_MAX);
+	
+	if((value=getenv(config_str[CONF_ANDNA_CACHE_FILE])))
+		strncpy(server_opt.andna_cache_file, value, NAME_MAX);
+	if((value=getenv(config_str[CONF_ANDNA_LCL_FILE])))
+		strncpy(server_opt.lcl_file, value, NAME_MAX);
+	if((value=getenv(config_str[CONF_ANDNA_RHC_FILE])))
+		strncpy(server_opt.rhc_file, value, NAME_MAX);
+	if((value=getenv(config_str[CONF_ANDNA_COUNTER_C_FILE])))
+		strncpy(server_opt.counter_c_file, value, NAME_MAX);
+
+	if((value=getenv(config_str[CONF_NTK_MAX_CONNECTIONS])))
+		server_opt.max_connections=atoi(value);
+	if((value=getenv(config_str[CONF_NTK_MAX_ACCEPTS_PER_HOST])))
+		server_opt.max_accepts_per_host=atoi(value);
+	if((value=getenv(config_str[CONF_NTK_MAX_ACCEPTS_PER_HOST_TIME])))
+		server_opt.max_accepts_per_host_time=atoi(value);
+
+	if((value=getenv(config_str[CONF_DISABLE_ANDNA])))
+		server_opt.disable_andna=atoi(value);
+	if((value=getenv(config_str[CONF_NTK_RESTRICTED_MODE])))
+		server_opt.restricted=atoi(value);
 }
 
 void parse_options(int argc, char **argv)
@@ -168,13 +206,8 @@ void parse_options(int argc, char **argv)
 			{"iface", 	1, 0, 'i'},
 			{"ipv6", 	0, 0, '6'},
 			{"ipv4", 	0, 0, '4'},
-			{"int_map", 	1, 0, 'I'},
-			{"ext_map", 	1, 0, 'E'},
-			{"bnode_map", 	1, 0, 'B'},
-			{"hnames_file", 1, 0, 'H'},
-			{"andna_cache", 1, 0, 'A'},
-			{"lcl_cache",	1, 0, 'L'},
-			{"cc_cache", 	1, 0, 'C'},
+
+			{"conf", 	1, 0, 'c'},
 
 			{"no_andna",	0, 0, 'a'},
 			{"no_daemon", 	0, 0, 'D'},
@@ -184,7 +217,7 @@ void parse_options(int argc, char **argv)
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long (argc, argv,"i:I:E:B:hvd64Drd", long_options, 
+		c = getopt_long (argc, argv,"i:c:hvd64Drd", long_options, 
 				&option_index);
 		if (c == -1)
 			break;
@@ -205,26 +238,8 @@ void parse_options(int argc, char **argv)
 			case '6':
 				server_opt.family=AF_INET6;
 				break;
-			case 'I': 
-				strncpy(server_opt.int_map_file, optarg, NAME_MAX); 
-				break;
-			case 'E': 
-				strncpy(server_opt.ext_map_file, optarg, NAME_MAX);
-				break;
-			case 'B': 
-				strncpy(server_opt.bnode_map_file, optarg, NAME_MAX); 
-				break;
-			case 'H': 
-				strncpy(server_opt.andna_hnames_file, optarg, NAME_MAX);
-				break;
-			case 'A': 
-				strncpy(server_opt.andna_cache_file, optarg, NAME_MAX);
-				break;
-			case 'L': 
-				strncpy(server_opt.lcl_file, optarg, NAME_MAX);
-				break;
-			case 'C': 
-				strncpy(server_opt.counter_c_file, optarg, NAME_MAX);
+			case 'c': 
+				strncpy(server_opt.config_file, optarg, NAME_MAX);
 				break;
 			case 'i': 
 				strncpy(server_opt.dev, optarg, IFNAMSIZ); 
@@ -262,7 +277,7 @@ void init_netsukuku(char **argv)
 	xsrand();
 	log_init(argv[0], server_opt.dbg_lvl, 1);
 
-        if (geteuid())
+        if(geteuid())
 		fatal("Need root privileges");
 	
 	destroy_netsukuku_mutex=0;
@@ -309,8 +324,10 @@ void init_netsukuku(char **argv)
 	init_accept_tbl(server_opt.max_connections, 
 			server_opt.max_accepts_per_host, 
 			server_opt.max_accepts_per_host_time);
+	
 	if(server_opt.restricted)
 		loginfo("netsukuku_d is in restricted mode.");
+	
 	hook_init();
 }
 
@@ -347,6 +364,15 @@ void sighup_handler(int sig)
 	andna_register_new_hnames();
 }
 
+void sigalrm_handler(int sig)
+{
+	/* 
+	 * Flush the resolved hostnames cache.
+	 */
+	rh_cache_flush();
+}
+
+
 /*
  * The main flow shall never be stopped, and the sand of time will be
  * revealed.
@@ -357,21 +383,23 @@ int main(int argc, char **argv)
 	pthread_t daemon_tcp_thread, daemon_udp_thread;
 	pthread_attr_t t_attr;
 	
-#ifdef QSPN_EMPIRIC
-	fatal("Fatal: Netsukuku_d was compiled with the QSPN_EMPIRIC support activated.");
-#endif
-
-	port=xmalloc(sizeof(u_short));
-
+	
+	/* Options loading... */
 	fill_default_options();
 	parse_options(argc, argv);
+	load_config_file(server_opt.config_file);
+	fill_loaded_cfg_options();
+
+	/* Initialize the whole netsukuku source code */
 	init_netsukuku(argv);
 
+	signal(SIGINT, sigterm_handler);
+	signal(SIGALRM, sigalrm_handler);
 	signal(SIGTERM, sigterm_handler);
 	signal(SIGQUIT, sigterm_handler);
-	signal(SIGINT, sigterm_handler);
 	signal(SIGHUP, sighup_handler);
-	
+
+	/* Angelic foreground or Daemonic background ? */
 	if(server_opt.daemon) {
 		log_init(argv[0], server_opt.dbg_lvl, 0);
 		if(daemon(0, 0) == -1)
@@ -381,6 +409,7 @@ int main(int argc, char **argv)
 
 	pthread_attr_init(&t_attr);
 	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
+	port=xmalloc(sizeof(u_short));
 
 	/* 
 	 * These are the daemons, the main threads that keeps Netsukuku 
