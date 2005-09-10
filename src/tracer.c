@@ -34,7 +34,7 @@
 
 /* 
  * ip_to_rfrom: If `rip_quadg' is null, it converts the `rip' ip in a 
- * quadro_group that is stored in `new_quadg' if it is not null, otherwise it
+ * quadro_group that is stored in `new_quadg' (if it is not null), otherwise it
  * uses `rip_quadg' itself.
  * The flags passed to iptoquadg are orred whith `quadg_flags'. 
  * The rnode position of the root_node of level 0 which corresponds to 
@@ -131,6 +131,7 @@ int tracer_verify_pkt(tracer_chunk *tracer, u_short hops, inet_prefix rip,
 			return 0;
 	}
 
+	/* `from' is a gnode, look in the ext_map */
 	if(level) {
 		/* Look in ext_map */
 		from=(map_node *)gnode_from_pos(tracer[hops-1].node,

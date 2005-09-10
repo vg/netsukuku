@@ -18,6 +18,11 @@
 
 #undef UDP_THREAD
 
+/* These mutexes are used to wait the complete start up of the daemons when
+ * launched. */
+pthread_mutex_t udp_daemon_lock;
+pthread_mutex_t tcp_daemon_lock;
+
 int prepare_listen_socket(int family, int socktype, u_short port);
 void *tcp_recv_loop(void *recv_pkt);
 void *tcp_daemon(void *null);

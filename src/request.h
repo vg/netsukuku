@@ -18,6 +18,10 @@
 
 #define REQUEST_TIMEOUT		300	/* The timeout in seconds for all the 
 					   requests */
+#ifdef DEBUG
+#undef REQUEST_TIMEOUT
+#define REQUEST_TIMEOUT		20
+#endif
 
 /*In this enum there are all the requests/replies op used by netsukuku in the pkts*/
 enum pkt_op

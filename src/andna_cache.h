@@ -28,7 +28,7 @@
 						   update of the hname. */
 
 #define ANDNA_PRIVKEY_BITS		1024
-#define ANDNA_SKEY_LEN			608	/*packed in DER format*/
+#define ANDNA_SKEY_LEN			608	/* RSA packed in DER format */
 #define ANDNA_PKEY_LEN			140
 #define ANDNA_HASH_SZ			(MAX_IP_SZ)
 #define ANDNA_SIGNATURE_LEN		128
@@ -37,6 +37,12 @@
 #define ANDNA_BACKUP_NODES(seeds)	({(seeds) > 8 ? 			\
 					  ((seeds)*32)/MAXGROUPNODE : (seeds);})
 
+#ifdef DEBUG
+#undef ANDNA_EXPIRATION_TIME
+#define ANDNA_EXPIRATION_TIME 60
+#undef ANDNA_MIN_UPDATE_TIME
+#define ANDNA_MIN_UPDATE_TIME 2
+#endif 
 
 /* 
  * * * Cache stuff * * *

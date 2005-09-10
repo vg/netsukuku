@@ -175,6 +175,6 @@ int pkt_exec(PACKET pkt, int acpt_idx);
 
 void pkt_queue_init(void);
 void pkt_queue_close(void);
-int pkt_q_wait_recv(int id, inet_prefix *from, PACKET *rpkt);
+int pkt_q_wait_recv(int id, inet_prefix *from, PACKET *rpkt, pkt_queue **ret_pq);
 int pkt_q_add_pkt(PACKET pkt);
 void pkt_q_del(pkt_queue *pq, int close_socket);

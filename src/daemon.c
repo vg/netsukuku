@@ -136,7 +136,7 @@ void *udp_daemon(void *door)
 	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
 #endif
 
-	debug(DBG_SOFT, "Preparing the udp listening socket, port %d", udp_port);
+	debug(DBG_SOFT, "Preparing the udp listening socket on port %d", udp_port);
 	sk=prepare_listen_socket(my_family, SOCK_DGRAM, udp_port);
 	if(sk == -1)
 		return NULL;
@@ -144,7 +144,8 @@ void *udp_daemon(void *door)
 	
 	/* set_broadcast_sk(sk, my_family, me.cur_dev_idx); */
 	
-	debug(DBG_NORMAL, "Udp daemon up & running");
+	debug(DBG_NORMAL, "Udp daemon on port %d up & running", udp_port);
+	pthread_mutex_unlock(&udp_daemon_lock);
 	for(;;) {
 		if(!sk)
 			fatal("The udp_daemon socket got corrupted");
@@ -168,6 +169,7 @@ void *udp_daemon(void *door)
 		memset(&rpkt, 0, sizeof(PACKET));
 		pkt_addsk(&rpkt, my_family, sk, SKT_UDP);
 		pkt_addflags(&rpkt, MSG_WAITALL);
+		pkt_addport(&rpkt, udp_port);
 
 		if(pkt_recv(&rpkt) < 0) {
 			pkt_free(&rpkt, 0);
@@ -233,7 +235,7 @@ void *tcp_daemon(void *door)
 	pthread_attr_init(&t_attr);
 	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
 	
-	debug(DBG_SOFT, "Preparing the tcp listening socket");
+	debug(DBG_SOFT, "Preparing the tcp listening socket on port %d", tcp_port);
 	sk=prepare_listen_socket(my_family, SOCK_STREAM, tcp_port);
 	if(sk == -1)
 		return NULL;
@@ -251,7 +253,8 @@ void *tcp_daemon(void *door)
 		return NULL;
 	}
 	
-	debug(DBG_NORMAL, "Tcp daemon up & running");
+	debug(DBG_NORMAL, "Tcp daemon on port %d up & running", tcp_port);
+	pthread_mutex_unlock(&tcp_daemon_lock);
 	for(;;) {
 		if(!sk)
 			fatal("The tcp_daemon socket got corrupted");
@@ -278,21 +281,14 @@ void *tcp_daemon(void *door)
 		memset(&rpkt, 0, sizeof(PACKET));
 		pkt_addsk(&rpkt, my_family, fd, SKT_TCP);
 		pkt_addflags(&rpkt, MSG_WAITALL);
+		pkt_addport(&rpkt, tcp_port);
 
 		ntop=0;
 		sockaddr_to_inet((struct sockaddr *)&addr, &ip, 0);
+		pkt_addfrom(&rpkt, &ip);
 		if(server_opt.dbg_lvl)
 			ntop=inet_to_str(ip);
 
-		/*
-		 * Not necessary in TCP 
-		 *if(!memcmp(&ip, &me.cur_ip, sizeof(inet_prefix))) {
-		 *	close(fd);
-		 *	continue;
-		 *} 
-		 */
-
-		pkt_addfrom(&rpkt, &ip);
 		if((ret=add_accept(ip, 0))) {
 			debug(DBG_NORMAL, "ACPT: drop connection with %s: "
 					"Accept table full.", ntop);

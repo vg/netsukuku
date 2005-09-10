@@ -120,4 +120,4 @@ int put_counter_cache(PACKET rq_pkt);
 void *andna_hook(void *);
 void andna_register_new_hnames(void);
 void *andna_maintain_hnames_active(void *null);
-int andna_main(void);
+void *andna_main(void *);

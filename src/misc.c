@@ -164,6 +164,28 @@ int hash_time(int *h_sec, int *h_usec)
 	return inthash(elf_hash);
 }
 
+
+
+/*
+ * swap_ints: Swap intergers.
+ * Swaps the `x' array which has `nmemb' elements and stores it in `y'
+ */
+void swap_ints(int nmemb, unsigned int *x, unsigned int *y) 
+{
+	int i, buf[nmemb], *z;
+	
+	if(y == x)
+		z=buf;
+	else
+		z=y;
+	
+	for(i=nmemb-1; i>=0; i--)
+		z[nmemb-i-1]=x[i];
+
+	if(y == x)
+		memcpy(y, buf, sizeof(int)*nmemb);
+}
+
 /* 
  * rand_range: It returns a random number x which is _min <= x <= _max
  */ 

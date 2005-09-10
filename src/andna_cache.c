@@ -54,10 +54,11 @@ void lcl_new_keyring(lcl_cache_keyring *keyring)
 	u_char *priv_dump, *pub_dump;
 
 	if(!keyring->priv_rsa) {
+		loginfo("Generating a new keyring for the future ANDNA requests.\n"
+				"  The keyring will be saved in the lcl file");
 		/* Generate the new key pair for the first time */
 		keyring->priv_rsa = genrsa(ANDNA_PRIVKEY_BITS, &pub_dump, 0, 
 				&priv_dump, 0);
-
 		memcpy(keyring->privkey, priv_dump, ANDNA_SKEY_LEN);
 		memcpy(keyring->pubkey, pub_dump, ANDNA_PKEY_LEN);
 
@@ -105,8 +106,7 @@ void lcl_cache_destroy(lcl_cache *head, int *counter)
 	if(!alcl || !lcl_counter)
 		return;
 	
-	for(; alcl; alcl=next) {
-		next=alcl->next;
+	list_safe_for(alcl, next) {
 		lcl_cache_free(alcl);
 		xfree(alcl);
 	}
@@ -173,8 +173,8 @@ andna_cache_queue *ac_queue_add(andna_cache *ac, inet_prefix rip, char *pubkey)
 		acq=xmalloc(sizeof(andna_cache_queue));
 		memset(acq, 0, sizeof(andna_cache_queue));
 		
-		clist_add(&ac->acq, &ac->queue_counter, acq);
 		memcpy(acq->pubkey, pubkey, ANDNA_PKEY_LEN);
+		clist_add(&ac->acq, &ac->queue_counter, acq);
 	} else
 		update=1;
 	
@@ -184,7 +184,8 @@ andna_cache_queue *ac_queue_add(andna_cache *ac, inet_prefix rip, char *pubkey)
 		ac->flags|=ANDNA_FULL;
 
 	cur_t=time(0);
-	if(update && (cur_t - acq->timestamp) < ANDNA_MIN_UPDATE_TIME) {
+	if(update && cur_t > acq->timestamp && 
+			(cur_t - acq->timestamp) < ANDNA_MIN_UPDATE_TIME) {
 		/* 
 		 * The request to update the hname was sent too early. 
 		 * Ignore it.
@@ -208,14 +209,15 @@ void ac_queue_del(andna_cache *ac, andna_cache_queue *acq)
  */
 void ac_queue_del_expired(andna_cache *ac)
 {
-	andna_cache_queue *acq=ac->acq;
+	andna_cache_queue *acq, *next;
 	time_t cur_t;
 	
-	if(!acq)
+	if(!ac || !ac->acq)
 		return;
 
 	cur_t=time(0);
-	list_for(acq)
+	acq=ac->acq;
+	list_safe_for(acq, next)
 		if(cur_t - acq->timestamp > ANDNA_EXPIRATION_TIME)
 			ac_queue_del(ac, acq);
 }
@@ -252,12 +254,12 @@ andna_cache *andna_cache_addhash(int hash[MAX_IP_INT])
 
 void andna_cache_del_expired(void)
 {
-        andna_cache *ac=andna_c;
+        andna_cache *ac=andna_c, *next;
 
         if(!andna_c_counter)
                 return;
 
-        list_for(ac) {
+	list_safe_for(ac, next) {
 		ac_queue_del_expired(ac);
 		if(!ac->queue_counter)
 			clist_del(&andna_c, &andna_c_counter, ac);
@@ -304,14 +306,16 @@ void cc_hashes_del(counter_c *cc, counter_c_hashes *cch)
 
 void cc_hashes_del_expired(counter_c *cc)
 {
-	counter_c_hashes *cch=cc->cch;
+	counter_c_hashes *cch, *next;
 	time_t cur_t;
 	
-	if(!cch || cc->hashes)
+	if(!cc || !cc->cch || !cc->hashes)
 		return;
 	
 	cur_t=time(0);
-	list_for(cch)
+	cch=cc->cch;
+
+	list_safe_for(cch, next)
 		if(cur_t - cch->timestamp > ANDNA_EXPIRATION_TIME)
 			cc_hashes_del(cc, cch);
 }
@@ -363,12 +367,12 @@ counter_c *counter_c_add(inet_prefix *rip, char *pubkey)
 
 void counter_c_del_expired(void)
 {
-	counter_c *cc=andna_counter_c;
+	counter_c *cc=andna_counter_c, *next;
 	
 	if(!cc)
 		return;
 	
-	list_for(cc) {
+	list_safe_for(cc, next) {
 		cc_hashes_del_expired(cc);
 		if(!cc->hashes)
 			clist_del(&andna_counter_c, &cc_counter, cc);
@@ -442,23 +446,24 @@ void rh_cache_del(rh_cache *rhc)
 
 void rh_cache_del_expired(void)
 {
-	rh_cache *rhc=andna_rhc;
+	rh_cache *rhc=andna_rhc, *next;
 	time_t cur_t;
 
 	if(!rhc || !rhc_counter)
 		return;
 
 	cur_t=time(0);
-	list_for(rhc) 
+	
+	list_safe_for(rhc, next)
 		if(cur_t - rhc->timestamp > ANDNA_EXPIRATION_TIME)
 			rh_cache_del(rhc);
 }
 
 void rh_cache_flush(void)
 {
-	rh_cache *rhc=andna_rhc;
-	
-	list_for(rhc)
+	rh_cache *rhc=andna_rhc, *next;
+
+	list_safe_for(rhc, next)
 		rh_cache_del(rhc);
 }
 
@@ -481,8 +486,8 @@ char *pack_lcl_cache(lcl_cache_keyring *keyring, lcl_cache *local_cache,
 	char *pack, *buf;
 
 	lcl_hdr.tot_caches=0;
-	memcpy(lcl_hdr.pubkey, keyring->pubkey, ANDNA_PKEY_LEN);
 	memcpy(lcl_hdr.privkey, keyring->privkey, ANDNA_SKEY_LEN);
+	memcpy(lcl_hdr.pubkey, keyring->pubkey, ANDNA_PKEY_LEN);
 	sz=sizeof(struct lcl_cache_pkt_hdr);
 	
 	/* Calculate the final pack size */
@@ -527,6 +532,7 @@ lcl_cache *unpack_lcl_cache(lcl_cache_keyring *keyring, char *pack, size_t pack_
 	struct lcl_cache_pkt_hdr *hdr;
 	lcl_cache *alcl, *alcl_head=0;
 	char *buf;
+	u_char *pk;
 	size_t slen, sz;
 	int i=0;
 		
@@ -537,9 +543,15 @@ lcl_cache *unpack_lcl_cache(lcl_cache_keyring *keyring, char *pack, size_t pack_
 	/*
 	 * Restore the keyring 
 	 */
-	keyring->priv_rsa=get_rsa_priv((const u_char **)&hdr->privkey, ANDNA_SKEY_LEN);
 	memcpy(keyring->privkey, hdr->privkey, ANDNA_SKEY_LEN);
 	memcpy(keyring->pubkey, hdr->pubkey, ANDNA_PKEY_LEN);
+	
+	pk=keyring->privkey;
+	if(!(keyring->priv_rsa=get_rsa_priv((const u_char **)&pk, ANDNA_SKEY_LEN))) {
+		error("Cannot unpack the priv key from the lcl_pack: %s",
+				ssl_strerr());
+		return 0;
+	}
 
 	*counter=0;
 	if(hdr->tot_caches) {
@@ -569,7 +581,7 @@ lcl_cache *unpack_lcl_cache(lcl_cache_keyring *keyring, char *pack, size_t pack_
 	}
 
 finish:
-	return alcl;
+	return alcl_head;
 }
 
 /*
@@ -1150,20 +1162,19 @@ int load_hostnames(char *file, lcl_cache **old_alcl_head, int *old_alcl_counter)
 	size_t slen;
 	int i=0;
 
-	lcl_cache *alcl, *old_alcl, *new_alcl_head;
-	int new_alcl_counter;
+	lcl_cache *alcl, *old_alcl, *new_alcl_head=0;
+	int new_alcl_counter=0;
 
 	if((fd=fopen(file, "r"))==NULL) {
 		error("Cannot load any hostnames from %s: %s", file, strerror(errno));
 		return -1;
 	}
 
-	i=0;
-	new_alcl_head=(lcl_cache *)clist_init(&new_alcl_counter);
-	
 	while(!feof(fd) && i < ANDNA_MAX_HOSTNAMES) {
 		memset(buf, 0, ANDNA_MAX_HNAME_LEN+1);
 		fgets(buf, ANDNA_MAX_HNAME_LEN, fd);
+		if(feof(fd))
+			break;
 
 		if(*buf=='#' || *buf=='\n') {
 			/* Strip off the comment lines */

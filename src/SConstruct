@@ -2,9 +2,9 @@ import os
 
 ##### Sources and libs
 sources_common    = Split('xmalloc.c log.c misc.c')
-sources_qspn      = Split('qspn-empiric.c map.c ipv6-gmp.c') + sources_common
+sources_qspn      = Split('qspn-empiric.c map.c') + sources_common
 sources_netsukuku = Split("""accept.c llist.c map.c request.c bmap.c daemon.c pkts.c 
-		   ll_map.c libnetlink.c  radar.c gmap.c hook.c ipv6-gmp.c 
+		   ll_map.c libnetlink.c  radar.c gmap.c hook.c ipv6-gmp.c
 		   if.c inet.c  krnl_route.c krnl_rule.c qspn.c route.c conf.c
 		   tracer.c crypto.c andna_cache.c andna.c 
 		   netsukuku.c""") + sources_common
@@ -36,12 +36,13 @@ Help("""
 if os.system("test -f config.log"):
 	print 'Configuring... '
 	conf = Configure(env)
-	if not conf.CheckLib('gmp'):
-	        print 'Did not find libgmp.a or gmp.lib, exiting!'
+	if not conf.CheckLib('gmp'): 
+		print 'Did not find libgmp.a or gmp.lib, exiting!'
 		Exit(1)
 	if not conf.CheckLib('pthread'):
        		print 'Did not find pthread.a or pthread.lib, exiting!'
 		Exit(1)
+		
 	env = conf.Finish()
 
 ##### Build

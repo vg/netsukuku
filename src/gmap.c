@@ -19,7 +19,6 @@
 #include "includes.h"
 
 #include "llist.c"
-#include "ipv6-gmp.h"
 #include "inet.h"
 #include "map.h"
 #include "gmap.h"
@@ -70,63 +69,24 @@ void rnodetoip(u_int mapstart, u_int maprnode, inet_prefix ipstart,
 		maptoip(mapstart, maprnode, ipstart, ret);
 }
 
-void maxgroupnode_level_init(void)
-{
-	mpz_t base;
-	int i, e;
-	mpz_init(base);	
-	
-	mpz_set_ui(base, MAXGROUPNODE);
-	for(i=0, e=0; i<MAX_LEVELS+1; i++, e++) {
-		mpz_init(maxgroupnode_levels[i]);
-		mpz_pow_ui(maxgroupnode_levels[i], base, e);
-	}
-	mpz_clear(base);
-}
-
-void maxgroupnode_level_free(void)
-{
-	int i;
-	for(i=0; i<MAX_LEVELS+1; i++) 
-		mpz_clear(maxgroupnode_levels[i]);
-}
-
 /* 
  * iptogid: ip to gnode id, of the specified `level', conversion function.
  * Note: this function cannot fail! So be sure to pass a valid `level'.
  */
 int iptogid(inet_prefix ip, int level)
 {
-	mpz_t xx, yy, zz;
-	int upper_level, h_ip[MAX_IP_INT];
-	size_t count;
-
-	memcpy(h_ip, ip.data, MAX_IP_SZ);
-	upper_level=level+1;
-
-	mpz_init(xx);
-	mpz_init(yy);
-	mpz_init(zz);
-
-	mpz_import(yy, MAX_IP_INT, HOST_ORDER, sizeof(int), NATIVE_ENDIAN, 
-			0, h_ip);
+	u_char *h_ip=(u_char *)ip.data;
+	int gid;
 
 	/* 
+	 * The formula is:
 	 * gid=(ip/MAXGROUPNODE^level) - (ip/MAXGROUPNODE^(level+1) * MAXGROUPNODE);
+	 * but since we have a MAXGROUPNODE equal to 2^8 we can just return
+	 * the `level'-th byte of ip.data.
 	 */
-	mpz_tdiv_q(xx, yy, maxgroupnode_levels[level]);
-	mpz_tdiv_q(zz, yy, maxgroupnode_levels[upper_level]);
-	mpz_mul_ui(zz, zz, MAXGROUPNODE);
-	mpz_sub(yy, xx, zz);
-
-	memset(h_ip, '\0', MAX_IP_SZ);
-	mpz_export(h_ip, &count, HOST_ORDER, sizeof(int), NATIVE_ENDIAN, 0, yy);
+	gid=(int)h_ip[level];
 	
-	mpz_clear(xx);
-	mpz_clear(yy);
-	mpz_clear(zz);
-	
-	return h_ip[0];
+	return gid;	
 }
 
 /* 
@@ -135,32 +95,26 @@ int iptogid(inet_prefix ip, int level)
  * `total_levels' is the total number of levels and the `gid' array 
  * has `total_levels' elements.
  * `levels' is the number of array elements considered, gidtoipstart() will use
- * only the elements going from gid[total_levels-levels] to gid[total_levels].
+ * only the elements going from gid[total_levels-levels] to gid[total_levels-1].
  * `family' is used to fill the inet_prefix of ipstart.
  */
 void gidtoipstart(int *gid, u_char total_levels, u_char levels, int family, 
 		inet_prefix *ip)
 {
-	mpz_t xx, yy;
 	int i, h_ip[MAX_IP_INT];
-	size_t count;
+	u_char *ipstart;
 
-	memset(h_ip, '\0', sizeof(h_ip[0])*MAX_IP_INT);
-	mpz_init(xx);
-	mpz_init(yy);
-	mpz_set_ui(yy, 0);
-	mpz_set_ui(xx, 0);
+	memset(h_ip, '\0', MAX_IP_SZ);
+	ipstart=(u_char *)h_ip;
 
 	for(i=total_levels-ZERO_LEVEL; i>=total_levels-levels; i--) {
-		/* ipstart += MAXGROUPNODE^i * gid[i]; */
-		mpz_mul_ui(xx, maxgroupnode_levels[i], gid[i]);
-		mpz_add(yy, yy, xx);
+		/* The formula is:
+		 * ipstart += MAXGROUPNODE^i * gid[i]; 
+		 * but since MAXGROUPNODE is equal to 2^8 we just set each
+		 * single byte of ipstart. */
+		ipstart[i]=(u_char)gid[i];
 	}
 	
-	mpz_export(h_ip, &count, HOST_ORDER, sizeof(h_ip[0]), NATIVE_ENDIAN, 0, yy);
-	mpz_clear(xx);
-	mpz_clear(yy);
-
 	memcpy(ip->data, h_ip, MAX_IP_SZ);
 	ip->family=family;
 	ip->len = (family == AF_INET) ? 4 : 16;
@@ -584,7 +538,7 @@ void reset_extmap(map_gnode **ext_map, u_char levels, int groups)
 	
 	for(i=1; i<levels; i++) 
 		reset_gmap(ext_map[_EL(i)], groups);
-	rnode_destroy(&ext_map[_EL(i)][0].g);
+	gmap_node_del(&ext_map[_EL(i)][0]);
 }
 
 /* g_rnode_find: It searches in `gnode'.g a rnode which points to the gnode `n'.

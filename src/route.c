@@ -98,7 +98,7 @@ void *get_gw_gnode(map_node *int_map, map_gnode **ext_map,
 			debug(DBG_INSANE, "get_gw: l=%d, node & MAP_ME. find_gnode: %x",
 			  i, find_gnode);
 		} else {
-			if(!node->links)
+			if(!node->links || (i && !gnode))
 				return 0;
 
 			pos=rand_range(0, node->links-1);

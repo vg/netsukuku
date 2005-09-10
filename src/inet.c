@@ -18,6 +18,7 @@
 
 #include "includes.h"
 
+#include "misc.h"
 #include "ipv6-gmp.h"
 #include "libnetlink.h"
 #include "ll_map.h"
@@ -36,8 +37,10 @@ void inet_ntohl(inet_prefix *ip)
 {
 	if(ip->family==AF_INET) {
 		ip->data[0]=ntohl(ip->data[0]);
-	} else
-		ntohl_128(ip->data, ip->data);
+	} else {
+		if(BYTE_ORDER == LITTLE_ENDIAN)
+			swap_ints(MAX_IP_INT, ip->data, ip->data);
+	}
 }
 
 /* 
@@ -47,8 +50,10 @@ void inet_htonl(inet_prefix *ip)
 {
 	if(ip->family==AF_INET) {
 		ip->data[0]=htonl(ip->data[0]);
-	} else
-		htonl_128(ip->data, ip->data);
+	} else {
+		if(BYTE_ORDER == LITTLE_ENDIAN)
+			swap_ints(MAX_IP_INT, ip->data, ip->data);
+	}
 }
 
 int inet_setip(inet_prefix *ip, u_int *data, int family)

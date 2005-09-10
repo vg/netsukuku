@@ -57,13 +57,17 @@ do{									\
 #define list_init(list, new)						\
 do {									\
 	l_list *_l;							\
-	(list)=(typeof (list))xmalloc(sizeof(typeof(*(list))));		\
+	if((new))							\
+		(list)=(new);						\
+	else								\
+		(list)=(typeof (list))xmalloc(sizeof(typeof(*(list))));	\
 	_l=(l_list *)(list);						\
 	_l->prev=0; 							\
 	_l->next=0;							\
-	memset((list), 0, sizeof(typeof(*(list)))); 			\
 	if((new))							\
 		list_copy((list), (new));				\
+	else								\
+		memset((list), 0, sizeof(typeof(*(list)))); 		\
 } while (0)
 				     
 #define list_last(list)							\
@@ -126,6 +130,22 @@ do {									\
 } while (0)
 	
 #define list_for(i) for(; (i); (i)=(typeof (i))(i)->next)
+
+/*
+ * list_safe_for: Use this for if you want to do something like:
+ * 	list_for(list)
+ * 		list_del(list);
+ * If you are trying to do that, the normal list_for isn't safe! That's
+ * because when list_del will free the current `list', list_for will use a
+ * wrong list->next pointer, which doesn't exist at all.
+ * list_for_del is the same as list_for but it takes a second parameter, which
+ * is a list pointer. This pointer will be used to store, before executing the
+ * code inside the for, the list->next pointer.
+ * So this is a safe for.
+ */
+#define list_safe_for(i, next)						\
+for((i) ? (next)=(typeof (i))(i)->next : 0; (i); 			\
+		(i)=(next), (i) ? (next)=(typeof (i))(i)->next : 0)
 				   
 #define list_pos(list,pos)						\
 ({									\

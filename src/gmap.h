@@ -106,13 +106,6 @@ typedef struct {
 #define QUADG_GID     (1<<1)
 #define QUADG_GNODE   (1<<2)
 
-/* Each array element of maxgroupnode_levels is:
- * maxgroupnode_levels[x]=MAXGROUPNODE^x;
- * This is used to get the max number of nodes per levels, in fact,
- * this number is equal to MAXGROUPNODE^(level+1);
- * Maxgroupnode_levels is initialized at the start, so the work is done only once*/
-mpz_t maxgroupnode_levels[MAX_LEVELS+1];
-
 /* This block is used to send the ext_map */
 struct ext_map_hdr
 {
@@ -159,9 +152,6 @@ inline int get_groups(int family, int lvl);
 int pos_from_gnode(map_gnode *gnode, map_gnode *map);
 map_gnode *gnode_from_pos(int pos, map_gnode *map);
 void rnodetoip(u_int mapstart, u_int maprnode, inet_prefix ipstart, inet_prefix *ret);
-
-void maxgroupnode_level_init(void);
-void maxgroupnode_level_free(void);
 
 int iptogid(inet_prefix ip, int level);
 void gidtoipstart(int *gid, u_char total_levels, u_char levels, int family, 

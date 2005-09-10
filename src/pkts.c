@@ -191,8 +191,7 @@ ssize_t pkt_send(PACKET *pkt)
 		if(inet_to_sockaddr(&pkt->to, pkt->port, to, &tolen) < 0) {
 			debug(DBG_NOISE, "Cannot pkt_send(): %d "
 					"Family not supported", pkt->to.family);
-			ret=-1;
-			goto finish;
+			ERROR_FINISH(ret, -1, finish);
 		}
 		
 		ret=inet_sendto(pkt->sk, buf, PACKET_SZ(pkt->hdr.sz), 
@@ -305,6 +304,7 @@ int pkt_tcp_connect(inet_prefix *host, short port)
 	 */
 	pkt_addsk(&pkt, host->family, sk, SKT_TCP);
 	pkt_addflags(&pkt, MSG_WAITALL);
+	pkt_addport(&pkt, port);
 
 	if((err=pkt_recv(&pkt)) < 0) {
 		error("Connection to %s failed: it wasn't possible to receive "
@@ -318,7 +318,7 @@ int pkt_tcp_connect(inet_prefix *host, short port)
 		u_char err;
 		
 		memcpy(&err, pkt.msg, pkt.hdr.sz);
-		error("Cannot connect to %s: %s", ntop, rq_strerror(err));
+		error("Cannot connect to %s:%d: %s", ntop, port, rq_strerror(err));
 		sk=-1;
 		goto finish;
 	}
@@ -386,7 +386,7 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 	else
 		rq_str=rq_to_str(rq);
 
-	if(re_verify(re)) {
+	if(re && re_verify(re)) {
 		error("\"%s\" reply is not valid!", re_str);
 		return -1;
 	}
@@ -402,8 +402,14 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 	if(!pkt->hdr.sz)
 		pkt->msg=0;
 
-	if(!pkt->port)
+	if(!pkt->port) {
+		if(!pkt_op_tbl[rq].port && !pkt->sk) {
+			error("send_rq: The rq %s doesn't have an associated "
+					"port.", rq_str);
+			ERROR_FINISH(ret, -1, finish);
+		}
 		pkt_addport(pkt, pkt_op_tbl[rq].port);
+	}
 
 	pkt_addflags(pkt, pkt_flags);
 
@@ -413,8 +419,7 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 
 		if(!pkt->to.family || !pkt->to.len) {
 			error("pkt->to isn't set. I can't create the new connection");
-			ret=-1;
-			goto finish;
+			ERROR_FINISH(ret, -1, finish);
 		}
 		
 		if(pkt->sk_type==SKT_TCP)
@@ -428,17 +433,15 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 
 		if(pkt->sk==-1) {
 			error("Couldn't connect to %s to launch the %s request", ntop, rq_str);
-			ret=-1; 
-			goto finish;
+			ERROR_FINISH(ret, -1, finish);
 		}
 	}
 
 	/*Let's send the request*/
 	err=pkt_send(pkt);
 	if(err==-1) {
-		error("Cannot send the %s request to %s.", rq_str, ntop);
-		ret=-1; 
-		goto finish;
+		error("Cannot send the %s request to %s:%d.", rq_str, ntop, pkt->port);
+		ERROR_FINISH(ret, -1, finish);
 	}
 
 	/* * * the reply * * */
@@ -454,10 +457,12 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 			memcpy(&rpkt->from, &pkt->to, sizeof(inet_prefix));
 
 		if(pkt->hdr.flags & ASYNC_REPLY) {
+			pkt_queue *pq;
 			/* Receive the pkt in the async way */
 			if(rpkt->from.data[0]) 
 				wanted_from=&rpkt->from;
-			err=pkt_q_wait_recv(pkt->hdr.id, wanted_from, rpkt);
+			err=pkt_q_wait_recv(pkt->hdr.id, wanted_from, rpkt, &pq);
+			pkt_q_del(pq, 0);
 		} else
 			/* Receive the pkt in the standard way */
 			err=pkt_recv(rpkt);
@@ -465,8 +470,7 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 		if(err==-1) {
 			error("Error while receving the reply for the %s request"
 					" from %s.", rq_str, ntop);
-			ret=-1; 
-			goto finish;
+			ERROR_FINISH(ret, -1, finish);
 		}
 
 		if((rpkt->hdr.op == ACK_NEGATIVE) && check_ack) {
@@ -474,21 +478,18 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 			memcpy(&err_ack, rpkt->msg, sizeof(u_char));
 			error("%s failed. The node %s replied: %s", rq_str, ntop, 
 					rq_strerror(err_ack));
-			ret=-1; 
-			goto finish;
+			ERROR_FINISH(ret, -1, finish);
 		} else if(rpkt->hdr.op != re && check_ack) {
 			error("The node %s replied %s but we asked %s!", ntop, 
 					re_to_str(rpkt->hdr.op), re_str);
-			ret=-1;
-			goto finish;
+			ERROR_FINISH(ret, -1, finish);
 		}
 
 		if(check_ack && rpkt->hdr.id != pkt->hdr.id) {
 			error("The id (0x%x) of the reply (%s) doesn't match the"
 					" id of our request (0x%x)", rpkt->hdr.id,
 					re_str, pkt->hdr.id);
-			ret=-1;
-			goto finish;
+			ERROR_FINISH(ret, -1, finish);
 		}
 	}
 
@@ -506,7 +507,7 @@ int forward_pkt(PACKET rpkt, inet_prefix to)
 	rpkt.sk=0;
 	pkt_addto(&rpkt, &to);
 	
-	err=send_rq(&rpkt, 0, rpkt.hdr.op, 0, 0, 0, 0);
+	err=send_rq(&rpkt, 0, rpkt.hdr.op, rpkt.hdr.id, 0, 0, 0);
 
 	return err;
 }
@@ -561,6 +562,8 @@ int pkt_exec(PACKET pkt, int acpt_idx)
 	if(exec_f)
 		err=(*exec_f)(pkt);
 	else if(pkt_q_counter) {
+		debug(DBG_INSANE, "pkt_exec: %s Async reply, id 0x%x", op_str,
+				pkt.hdr.id);
 		/* 
 		 * There isn't a function to handle this pkt, so maybe it is
 		 * an async reply
@@ -587,9 +590,9 @@ void pkt_queue_init(void)
 
 void pkt_queue_close(void)
 {
-	pkt_queue *pq=pkt_q;
+	pkt_queue *pq=pkt_q, *next;
 	if(pkt_q_counter)
-		list_for(pq)
+		list_safe_for(pq, next)
 			pkt_q_del(pq, 1);
 	pthread_attr_destroy(&wait_and_unlock_attr);
 }
@@ -600,14 +603,23 @@ void pkt_queue_close(void)
  */
 void *wait_and_unlock(void *m)
 {
-	pkt_queue *pq=(pkt_queue *)m;
+	pkt_queue *pq=*((pkt_queue **)m);
+	int i;
 
-	sleep(REQUEST_TIMEOUT);
-	
-	if(pq->flags & PKT_Q_MTX_LOCKED) {
-		pthread_mutex_unlock(&pq->mtx);
-		pq->flags|=PKT_Q_TIMEOUT;
+	for(i=0; i<REQUEST_TIMEOUT; i++) {
+		sleep(1);
+		if(!pq || !(pq->flags & PKT_Q_MTX_LOCKED) ||
+				pthread_mutex_trylock(&pq->mtx) != EBUSY)
+			break;
 	}
+
+	if(!pq || !(pq->flags & PKT_Q_MTX_LOCKED) ||
+			pthread_mutex_trylock(&pq->mtx) != EBUSY)
+		return 0;
+
+	debug(DBG_INSANE, "pq->pkt.hdr.id: 0x%x Timeoutted. mtx: 0x%X", pq->pkt.hdr.id, &pq->mtx);
+	pthread_mutex_unlock(&pq->mtx);
+	pq->flags|=PKT_Q_TIMEOUT;
 	return 0;
 }
 
@@ -615,9 +627,13 @@ void *wait_and_unlock(void *m)
  * pkt_q_wait_recv: adds a new struct in pkt_q and waits REQUEST_TIMEOUT
  * seconds until a reply with an id equal to `id' is received.
  * If `from' is not null, the sender ip of the reply is considered too.
- * The received reply pkt is stored in `rpkt' (if `rpkt' isn't null).
+ * The received reply pkt is copied in `rpkt' (if `rpkt' isn't null).
+ * In `ret_pq' is stored the address of the pkt_queue struct that 
+ * corresponds to `rpkt'.
+ * After the use of this function pkt_q_del() must be called.
+ * On error -1 is returned.
  */
-int pkt_q_wait_recv(int id, inet_prefix *from, PACKET *rpkt)
+int pkt_q_wait_recv(int id, inet_prefix *from, PACKET *rpkt, pkt_queue **ret_pq)
 {
 	pthread_t thread;
 	pkt_queue *pq;
@@ -625,6 +641,8 @@ int pkt_q_wait_recv(int id, inet_prefix *from, PACKET *rpkt)
 
 	pq=xmalloc(sizeof(pkt_queue));
 	memset(pq, 0, sizeof(pkt_queue));
+	pq->flags|=PKT_Q_MTX_LOCKED;
+	*ret_pq=pq;
 	
 	if(!pkt_q_counter)
 		pkt_queue_init();
@@ -637,18 +655,30 @@ int pkt_q_wait_recv(int id, inet_prefix *from, PACKET *rpkt)
 
 	/* Be sure to unlock me after the timeout */
 	pthread_create(&thread, &wait_and_unlock_attr, wait_and_unlock, 
-			(void *)pq);
+			(void *)&pq);
+	pthread_detach(thread);
 
-	/* Freeze! */
-	pthread_mutex_init(&pq->mtx, 0);
-        pthread_mutex_lock(&pq->mtx);
-        pthread_mutex_lock(&pq->mtx);
-	
+	if(pq->flags & PKT_Q_MTX_LOCKED) {
+		debug(DBG_INSANE, "pkt_q_wait_recv: Locking!");
+
+		/* Freeze! */
+		pthread_mutex_init(&pq->mtx, 0);
+		pthread_mutex_lock(&pq->mtx);
+		pthread_mutex_lock(&pq->mtx);
+	}
+
+	debug(DBG_INSANE, "We've been unlocked: timeout %d", (pq->flags & PKT_Q_TIMEOUT));
 	if(pq->flags & PKT_Q_TIMEOUT)
 		return -1;
 
-	if(rpkt)
-		memcpy(rpkt, &pq->pkt, sizeof(PACKET));
+	if(rpkt) {
+		memset(rpkt, 0, sizeof(PACKET));
+		pkt_copy(rpkt, &pq->pkt);
+	}
+
+	/* Setting the pq pointer to NULL will cause the wait_and_unlock thread
+	 * to exit */
+	pq=0;
 
 	return 0;
 }
@@ -664,6 +694,7 @@ int pkt_q_add_pkt(PACKET pkt)
 	int ret=-1;
 	
 	list_for(pq) {
+			debug(DBG_INSANE, "pkt_q_add_pkt: %d == %d. data[0]: %d", pq->pkt.hdr.id, pkt.hdr.id, pq->pkt.from.data[0]);
 		if(pq->pkt.hdr.id == pkt.hdr.id) {
 			if(pq->pkt.from.data[0] && 
 					memcmp(&pq->pkt.from, &pkt.from, sizeof(inet_prefix)))
@@ -672,10 +703,16 @@ int pkt_q_add_pkt(PACKET pkt)
 			if(!(pkt.hdr.flags & ASYNC_REPLIED))
 				continue;
 
+			debug(DBG_INSANE, "pkt_q_add_pkt: copy");
 			pkt_copy(&pq->pkt, &pkt);
 			
 			/* Now it's possible to read the reply,
 			 * pkt_q_wait_recv() is now hot again */
+			while(pthread_mutex_trylock(&pq->mtx) != EBUSY)
+				usleep(5000);
+			debug(DBG_INSANE, "Unlocking 0x%X ", &pq->mtx);
+			pq->flags&=~PKT_Q_MTX_LOCKED & ~PKT_Q_TIMEOUT;
+			pthread_mutex_unlock(&pq->mtx);
 			pthread_mutex_unlock(&pq->mtx);
 			ret=0;
 		}

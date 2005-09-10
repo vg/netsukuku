@@ -27,6 +27,7 @@ u_long fnv_32_buf(void *buf, size_t len, u_long hval);
 unsigned int inthash(unsigned int key);
 inline unsigned int dl_elf_hash (const unsigned char *name);
 int hash_time(int *h_sec, int *h_usec);
+void swap_ints(int nmemb, unsigned int *x, unsigned int *y);
 int rand_range(int, int);
 void xsrand(void);
 void strip_char(char *string, char char_to_strip);

@@ -120,17 +120,17 @@ void usage(void)
 		"\n"
 		" -c	configuration file\n"
 		"\n"
-		" -d    debug (more d, more info)\n"
+		" -d	debug (more d, more info)\n"
 		" -h	this help\n"
 		" -v	version\n");
 }
 
 void fill_default_options(void)
 {
-	strncpy(server_opt.config_file, NTK_CONFIG_FILE, NAME_MAX);
-
 	memset(&server_opt, 0, sizeof(server_opt));
 	server_opt.family=AF_INET;
+	
+	strncpy(server_opt.config_file, NTK_CONFIG_FILE, NAME_MAX);
 
 	strncpy(server_opt.int_map_file, INT_MAP_FILE, NAME_MAX);
 	strncpy(server_opt.ext_map_file, EXT_MAP_FILE, NAME_MAX);
@@ -217,7 +217,7 @@ void parse_options(int argc, char **argv)
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long (argc, argv,"i:c:hvd64Drd", long_options, 
+		c = getopt_long (argc, argv,"i:c:hvd64Dra", long_options, 
 				&option_index);
 		if (c == -1)
 			break;
@@ -284,8 +284,6 @@ void init_netsukuku(char **argv)
 
 	memset(&me, 0, sizeof(struct current_globals));
 	
-	maxgroupnode_level_init();
-
 	/* 
 	 * Device initialization 
 	 */
@@ -340,7 +338,6 @@ int destroy_netsukuku(void)
 	ntk_save_maps();
 	ntk_free_maps();
 	andna_save_caches();
-	maxgroupnode_level_free();
 	close_radar();
 	e_rnode_free(&me.cur_erc, &me.cur_erc_counter);
 	destroy_accept_tbl();
@@ -360,6 +357,7 @@ void sighup_handler(int sig)
 	 * Reload the file where the hostnames to be registered are and
 	 * register the new ones
 	 */
+	loginfo("Reloading the andna hostnames file");
 	load_hostnames(server_opt.andna_hnames_file, &andna_lcl, &lcl_counter);
 	andna_register_new_hnames();
 }
@@ -369,6 +367,7 @@ void sigalrm_handler(int sig)
 	/* 
 	 * Flush the resolved hostnames cache.
 	 */
+	loginfo("Flush the resolved hostnames cache");
 	rh_cache_flush();
 }
 
@@ -380,7 +379,7 @@ void sigalrm_handler(int sig)
 int main(int argc, char **argv)
 {
 	u_short *port;
-	pthread_t daemon_tcp_thread, daemon_udp_thread;
+	pthread_t daemon_tcp_thread, daemon_udp_thread, andna_thread;
 	pthread_attr_t t_attr;
 	
 	
@@ -417,23 +416,30 @@ int main(int argc, char **argv)
 	 */
 	debug(DBG_NORMAL, "Activating all daemons");
 
+	pthread_mutex_init(&udp_daemon_lock, 0);
+	pthread_mutex_init(&tcp_daemon_lock, 0);
+
 	debug(DBG_SOFT,   "Evocating the netsukuku udp daemon.");
 	*port=ntk_udp_port;
+	pthread_mutex_lock(&udp_daemon_lock);
 	pthread_create(&daemon_udp_thread, &t_attr, udp_daemon, (void *)port);
+	pthread_mutex_lock(&udp_daemon_lock);
+	pthread_mutex_unlock(&udp_daemon_lock);
 
 	debug(DBG_SOFT,   "Evocating the netsukuku udp radar daemon.");
 	*port=ntk_udp_radar_port;
+	pthread_mutex_lock(&udp_daemon_lock);
 	pthread_create(&daemon_udp_thread, &t_attr, udp_daemon, (void *)port);
+	pthread_mutex_lock(&udp_daemon_lock);
+	pthread_mutex_unlock(&udp_daemon_lock);
 	
 	debug(DBG_SOFT,   "Evocating the netsukuku tcp daemon.");
 	*port=ntk_tcp_port;
+	pthread_mutex_lock(&tcp_daemon_lock);
 	pthread_create(&daemon_tcp_thread, &t_attr, tcp_daemon, (void *)port);
+	pthread_mutex_lock(&tcp_daemon_lock);
+	pthread_mutex_unlock(&tcp_daemon_lock);
 
-	/* 
-	 * We have to be sure that the hook will start after the rise of the 
-	 * two daemons.
-	 */
-	usleep(300000); 
 	
 	/* Now we hook in Netsukuku */
 	netsukuku_hook();
@@ -442,7 +448,7 @@ int main(int argc, char **argv)
 	 * If not disabled, start the ANDNA daemon 
 	 */
 	if(!server_opt.disable_andna)
-		andna_main();
+		pthread_create(&andna_thread, &t_attr, andna_main, 0);
 	
 	xfree(port);
 	

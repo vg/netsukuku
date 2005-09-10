@@ -22,8 +22,8 @@
 #include "includes.h"
 
 #include "inet.h"
-#include "map.h"
 #include "ipv6-gmp.h"
+#include "map.h"
 #include "misc.h"
 #include "xmalloc.h"
 #include "log.h"

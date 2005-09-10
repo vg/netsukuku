@@ -71,18 +71,15 @@ int get_free_nodes(inet_prefix to, struct free_nodes_hdr *fn_hdr, u_char *nodes)
 	
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_FREE_NODES), ntop);
 	err=send_rq(&pkt, 0, GET_FREE_NODES, 0, PUT_FREE_NODES, 1, &rpkt);
-	if(err==-1) {
-		ret=-1;
-		goto finish;
-	}
+	if(err==-1)
+		ERROR_FINISH(ret, -1, finish);
 	
 	memcpy(fn_hdr, rpkt.msg, sizeof(struct free_nodes_hdr));
 	if(fn_hdr->nodes <= 0 || fn_hdr->nodes == (MAXGROUPNODE-1) ||
 			fn_hdr->max_levels > GET_LEVELS(my_family) || !fn_hdr->level
 			|| fn_hdr->level >= fn_hdr->max_levels) {
 		error("Malformed PUT_FREE_NODES request hdr from %s.", ntop);
-		ret=-1;
-		goto finish;
+		ERROR_FINISH(ret, -1, finish);
 	}
 	
 	fn_hdr->nodes++;
@@ -225,17 +222,14 @@ int get_qspn_round(inet_prefix to, struct timeval to_rtt, struct timeval *qtime,
 	
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_QSPN_ROUND), ntop);
 	err=send_rq(&pkt, 0, GET_QSPN_ROUND, 0, PUT_QSPN_ROUND, 1, &rpkt);
-	if(err==-1) {
-		ret=-1;
-		goto finish;
-	}
+	if(err==-1)
+		ERROR_FINISH(ret, -1, finish);
 	
 	memcpy(&max_levels, rpkt.msg, sizeof(u_char));
 	if(QSPN_ROUND_PKT_SZ(max_levels) != rpkt.hdr.sz ||
 			max_levels > GET_LEVELS(my_family)) {
 		error("Malformed PUT_QSPN_ROUND request hdr from %s.", ntop);
-		ret=-1;
-		goto finish;
+		ERROR_FINISH(ret, -1, finish);
 	}
 	
 	/* Restoring the qspn_id and the qspn_round time */
@@ -343,8 +337,7 @@ int put_ext_map(PACKET rq_pkt)
 	err=send_rq(&pkt, 0, PUT_EXT_MAP, rq_pkt.hdr.id, 0, 0, 0);
 	if(err==-1) {
 		error("put_ext_maps(): Cannot send the PUT_EXT_MAP reply to %s.", ntop);
-		ret=-1;
-		goto finish;
+		ERROR_FINISH(ret, -1, finish);
 	}
 
 finish:
@@ -424,8 +417,7 @@ int put_int_map(PACKET rq_pkt)
 	err=send_rq(&pkt, 0, PUT_INT_MAP, rq_pkt.hdr.id, 0, 0, 0);
 	if(err==-1) {
 		error("put_int_map(): Cannot send the PUT_INT_MAP reply to %s.", ntop);
-		ret=-1;
-		goto finish;
+		ERROR_FINISH(ret, -1, finish);
 	}
 finish:
 	pkt_free(&pkt, 0);
@@ -506,8 +498,7 @@ int put_bnode_map(PACKET rq_pkt)
 	err=send_rq(&pkt, 0, PUT_BNODE_MAP, rq_pkt.hdr.id, 0, 0, 0);
 	if(err==-1) {
 		error("put_bnode_maps(): Cannot send the PUT_BNODE_MAP reply to %s.", ntop);
-		ret=-1;
-		goto finish;
+		ERROR_FINISH(ret, -1, finish);
 	}
 
 finish:
