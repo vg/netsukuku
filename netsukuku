@@ -47,7 +47,7 @@ la Rete ci attende.
 	
   4. Npv7_II: Laser Broadcast
   
-  5. Npv7 Hybrid Teory: the final way
+  5. Npv7 Hybrid Theory: the final way
   
   	5.1  QSPN: Quantum Shortest Path Netsukuku
   		5.1.1  QSPN screenshot
@@ -381,58 +381,62 @@ la Rete ci attende.
   Netsukuku viene suddiviso in tanti piccoli groupnode che contengono al
   massimo 600 nodi. Ogni nodo di Netsukuku possiedera' solamente la mappa
   esterna, quella dei groupnode.
-  Questa mappa esterna avra' un limite di 20Mb e quindi i groupnode saranno
-  raggruppati a loro volta in multi groupnode, chiamati quadro groupnode
-  (quad_gnode). 
-  Per la creazione di una rotta, un nodo prima si calcola il percorso di
-  g_node migliore, considerando i g_node come dei nodi normali.
-  A questo punto memorizzera' questa rotta nel pkt. Il pkt viene spedito in
-  broadcast. I border_node che ricevono il pkt controllano se il prossimo
-  g_node settato nella rotta e' proprio quello con cui confinano. Se e' cosi'
-  rimuovono questa entry dal pkt e fanno continuare il broadcast nel g_node
-  successivo. Al contrario droppano il pkt. E cosi'  via.....
-  Il pkt segue i principi del tracer pkt. Quando il dst_node riceve il pkt,
-  non deve far altro che settare una backroute con l'informazioni che si
-  ritrova nel pkt. Fine.
-  L'Npv7_II e la sua versione precedente, non vengono usate, ma sono alla base
+  Gli stessi groupnode vengono raggruppati in multi-groupnode, chiamati quadro
+  groupnode.
+  Per creare una rotta e raggiungere un determinato dst_node, il src_node,
+  usando la mappa esterna, calcola il percorso migliore per raggiungere il
+  gnode di destinazione a cui appartiene il dst_node.
+  La rotta cosi' trovata viene memorizzata nel pacchetto che viene spedito in
+  broadcast all'interno del gnode a cui appartiene l'src_node.
+  I border_node del gnode del src_node ricevono il pkt e controllano se il
+  prossimo gnode a cui deve essere mandato in broadcast il pkt e' proprio un
+  gnode con cui confinano. Se la condizione viene rispettata, i border_node
+  mandano in broadcast il pkt in quel gnode. In caso contrario il pkt viene
+  droppato.
+  E cosi' via...
+  In questo modo il pacchetto arrivera' al gnode di destinazione.
+  Quando il dst_node riceve il pkt non deve far altro che settare una
+  rotta inversa usando la rotta memorizzata nel pkt.
+  L'Npv7_II e la sua versione precedente non vengono usate, ma sono alla base
   dell'Npv7_HT, l'attuale versione del protocollo Netsukuku.
   
-  5.   Npv7 Hybrid Teory: the final way
+  5.   Npv7 Hybrid Theory: the final way
 
-  Dall'unione di Npv7 e Npv7_II e' derivato Npv7 Hybrid Teory. 
+  Dall'unione di Npv7 e Npv7_II e' derivato Npv7 Hybrid Theory. 
   Questa nuova versione, sfrutta i vantaggi della mappa interna e del laser 
   broadcast e cosi' facendo supera le loro imperfezioni.
   In Npv7_HT il numero massimo di nodi presenti in un group node (MAXGROUPNODE)
-  e' pari a 2^8 rendendo i groupnode relativamente piccoli.
+  e' pari a 2^8, i groupnode sono quindi relativamente piccoli.
   In Npv7_HT il cambiamento principale riguarda la sua stessa essenza, infatti,
   si basa su un algoritmo creato appositamente per Netsukuku, chiamato
   Quantum Shortest Path Netsukuku, che permette di ottenere in un solo colpo la
   situazione completa del g_node, tutte le rotte migliori, la riduzione del
-  carico del g_node, la padronanza della dinamicita' del g_node, l'abolizione
-  del bisogno di autenticazione. 
+  carico del g_node, un'efficace gestione dei gnode molto dinamici,
+  l'abolizione del bisogno di autenticazione tra i nodi.
   
   5.1   QSPN: Quantum Shortest Path Netsukuku
 
   In Netsukuku, come in natura, non vi e' alcun bisogno di usare schemi
   matematici creati dalla limitata logica umana. Netsukuku sfrutta il caos. 
-  La mappa e' una concezione che crea troppi problemi, dovendo tenerla sempre
-  aggiornata. La soluzione e' semplice: non usare affatto una mappa e far 
-  diventare ogni richiesta broadcast un tracer_pkt (Vedi 6.2 Tracer pkt).
+  L'uso di una mappa, in un protocollo di reti dinamiche, crea troppi
+  problemi, dovendo tenerla sempre aggiornata. La soluzione e' semplice: non
+  usare affatto una mappa e far diventare ogni richiesta mandata broadcast un
+  tracer_pkt (Vedi 6.2 Tracer pkt).
   In questo modo ogni nodo che ricevera' il pkt, sapra' qual'e' la rotta
-  migliore per raggiungere il src_node e per raggiungere tutti i nodi che stanno
-  in mezzo alla rotta, si memorizzera' queste info nella  sua mappa interna
+  migliore per raggiungere il src_node e tutti i nodi che stanno
+  in mezzo alla rotta, si memorizzera' queste info nella  sua mappa interna,
   aggiungera' la sua entry nel tracer_pkt e fara' continuare il broadcast del
   pkt.
   Rimane un grosso problema: per avere tutte le rotte per tutti i nodi
   bisogna che tutti i nodi mandino in broadcast un tracer_pkt. In realta' questo
-  problema e' totalmente void. Infatti, con il tracer_pkt possiamo ricavare
-  anche le rotte per i nodi intermedi; quindi significa che abbiamo bisogno di
-  un numero < di n pacchetti, dove n e' il numero dei nodi.
-  Sicuramente se ogni nodo rimanda indietro un tracer_pkt ogni volta che ne
-  riceve uno, siamo sicuri che tutti i nodi ricevono tutte le rotte possibili;
-  infatti noi stiamo solamente facendo mandare dei tracer_packet da tutti i nodi
-  in maniera diversa.
-
+  problema e' del tutto inconsistente. Infatti, con il tracer_pkt possiamo
+  ricavare anche le rotte per i nodi intermedi; questo vuol dire che abbiamo
+  bisogno di un numero < di n pacchetti, dove n e' il numero dei nodi.
+  Se ogni nodo rimanda indietro un tracer_pkt ogni volta che ne riceve uno,
+  siamo sicuri che tutti i nodi ricevono tutte le rotte possibili, cosi'
+  facendo ricaviamo lo stesso risultato raggiunto dal far mandare un
+  tracer_pkt da tutti i nodi.
+  
   Per chi ha presente la fisica delle onde, il funzionamento del qspn puo'
   essere facilmente compreso. Se lanciamo un sassolino in uno specchio d'acqua,
   contenuto in una bacinella, dal punto di impatto incominciano a propagarsi

@@ -8,6 +8,107 @@
  */
 
 
+
+				    Netsukuku
+			
+			- Cl0se th3 w0rld, OpeN th3 NeX7 -
+
+
+
+
+La Rete, Tao della conoscenza
+che unisce il molteplice nell'uno,
+deve rinascere libera,
+ed avvolgere in un caldo abbraccio
+la dolce madre Gaia.
+
+Questo e' il risveglio, 
+il risveglio di tutti noi che finora 
+siamo vissuti immersi nella nebbia,
+braccati dalla chimera di un putrefatto Wired,
+e' il nostro risveglio.
+
+Unitevi e non abbiate timore,
+le porte sono aperte,
+la Rete ci attende.
+								(AlpT)
+
+--								
+
+ -1. Preface
+
+  0. The old wired
+
+  1. The Pure Wired
+  
+  2. The Netsukuku wired
+  
+  	2.1  No name, no identity
+	2.2  Gandhi
+	2.3  Self Control
+	2.4  So, WTF is it?
+	2.5  Other implementations
+  	2.6  The born
+  
+  3. Netukuku Protocol v7: the seventh son of Ipv7
+
+	3.1  #define Npv7
+	
+  4. Npv7_II: Laser Broadcast
+  
+  5. Npv7 Hybrid Theory: the final way
+  
+  	5.1  QSPN: Quantum Shortest Path Netsukuku
+  		5.1.1  QSPN screenshot
+	  	5.1.2  Continual qspn starters
+		5.1.3  The Qspn sickness: RequestForRoute
+		5.1.4  Qspn round
+		
+	5.2  Npv7_HT Hook & Unhook
+		5.2.1  Qspn Hook & Unhook
+		
+	5.3  The truly Gnode^n for n<=INFINITE
+		5.3.1  Groupnode: one entity
+		5.3.2  Gnode fusion
+	
+  6. Broadcast: There can be only one!
+  
+  	6.1  Delayed Fireball: groupnode broadcast.
+	6.2  Tracer pkt: one flood, one route
+	
+  7. ANDNA: Abnormal Netsukuku Domain Name Anarchy
+ 
+ 	7.1  ANDNA Metalloid elements: registration recipe
+  		7.1.1  ANDNA hook
+		7.1.2  Don't rob my hostname!
+		7.1.3  Count again
+		7.1.4  Registration step by step
+		7.1.5  Endless rest and rebirth
+		7.1.6  Hash_gnodes mutation
+		7.1.7  Yaq: Yet another queue
+		
+  	7.8  Hostname resolution
+		7.8.1  Distributed cache for hostname resolution
+		7.8.2  noituloser emantsoh esreveR
+		
+	7.9  dns wrapper
+	  
+  8. Heavy Load: flood your ass!
+  
+  9. Spoof the Wired: happy kiddies
+  
+  10. /dev/Accessibility
+  
+  11. Internet compatibility
+  
+  12. Implementation: let's code
+  
+  13. What to do
+  
+  14. The smoked ones who made Netsukuku
+  
+--
+
  -1.  Preface
 
   This document and the relative source code are available on:
@@ -270,6 +371,10 @@
 
   The basic definitions used in Netsukuku are: 
 
+  src_node: Source node. It is the node who send a packet to the dst_node.
+  dst_node: Destination node. It is the node which receives the packet from
+	    the dst_node.
+  
   r_node: Remote node, given a node X, it is any other node directly linked to
 	  X.
   g_node: Group node, a group of nodes, or a group of a group of nodes, and so
@@ -290,61 +395,69 @@
 
   4.   Npv7_II: Laser Broadcast
 
-  Npv7_II e' la seconda versione dell'Npv7. 
-  Netsukuku viene suddiviso in tanti piccoli groupnode che contengono al
-  massimo 600 nodi. Ogni nodo di Netsukuku possiedera' solamente la mappa
-  esterna, quella dei groupnode.
-  Questa mappa esterna avra' un limite di 20Mb e quindi i groupnode saranno
-  raggruppati a loro volta in multi groupnode, chiamati quadro groupnode
-  (quad_gnode). 
-  Per la creazione di una rotta, un nodo prima si calcola il percorso di
-  g_node migliore, considerando i g_node come dei nodi normali.
-  A questo punto memorizzera' questa rotta nel pkt. Il pkt viene spedito in
-  broadcast. I border_node che ricevono il pkt controllano se il prossimo
-  g_node settato nella rotta e' proprio quello con cui confinano. Se e' cosi'
-  rimuovono questa entry dal pkt e fanno continuare il broadcast nel g_node
-  successivo. Al contrario droppano il pkt. E cosi'  via.....
-  Il pkt segue i principi del tracer pkt. Quando il dst_node riceve il pkt,
-  non deve far altro che settare una backroute con l'informazioni che si
-  ritrova nel pkt. Fine.
-  L'Npv7_II e la sua versione precedente, non vengono usate, ma sono alla base
-  dell'Npv7_HT, l'attuale versione del protocollo Netsukuk.
-  
-  5.   Npv7 Hybrid Teory: the final way
+  Npv7_II is the second version of the Npv7.
+  Netsukuku is divided into many smaller groupnodes, which contains up to six
+  hundred nodes each and every node will solely have an external map.
+  All the groupnodes are grouped into multi-groupnodes, calle quadro
+  groupnodes.
+  In order to create a new route and connect to a given dst_node, the
+  src_node, using the external map, firstly tries to find out the best path to
+  reach the destination gnode, which the dst_node belongs to.
+  In this way the founded route is stored in the pkt broadcasted inside the
+  gnode, which the src_node belongs to.
+  The border_nodes of the gnode of the src_node receive the pkt and check if
+  the next gnode, to which the pkt has to be broadcasted, is the proper
+  neighbor gnode. If the condition is true, the border_nodes broadcast the pkt
+  to that same neighbor gnode. Otherwise the pkt is dropped.
+  And so on...
+  In this way the packet will reach the destination gnode.
+  When the dst_node receives the pkt it has just to set an inverse route, using
+  the route already stored in the pkt.
+  The Npv7_II and its previous version are not utilised, but they are just the
+  theoretical base of the Npv7_HT, the actual version of the Netsukuku
+  protocol.
 
-  Dall'unione di Npv7 e Npv7_II e' derivato Npv7 Hybrid Teory. 
-  Questa nuova versione, sfrutta i vantaggi della mappa interna e del laser 
-  broadcast e cosi' facendo supera le loro imperfezioni.
-  In Npv7_HT il numero massimo di nodi presenti in un group node (MAXGROUPNODE)
-  e' pari a 2^8 rendendo i groupnode relativamente piccoli.
-  In Npv7_HT il cambiamento principale riguarda la sua stessa essenza, infatti,
-  si basa su un algoritmo creato appositamente per Netsukuku, chiamato
-  Quantum Shortest Path Netsukuku, che permette di ottenere in un solo colpo la
-  situazione completa del g_node, tutte le rotte migliori, la riduzione del
-  carico del g_node, la padronanza della dinamicita' del g_node, l'abolizione
-  del bisogno di autenticazione. 
+  5.   Npv7 Hybrid Theory: the final way
+
+  From the union of the Npv7 and Npv7_II 
+  Npv7 Hybrid Theory was born from the union of the Npv7 and Npv7_II.
+  This bew version, exploits the advantages of both the internal map and the
+  laser broadcast and in this way it can overpass their limits.
+  In Npv7_HT the maximum number of nodes, present in a group node
+  (MAXGROUPNODE) is equal to 2^8, thus the groupnodes are relatively small.
+  The main change in Npv7_HT is about its own essence, in fact, it's based on a
+  algorithm appositely created for Netsukuku, which is called
+  Quantum Shortest Path Netsukuku, which allows to obtain at once all the
+  informations related to the complete situation of the gnode, all the best
+  routes, the reduction of the load of the gnode, an efficient
+  management of high dynamic gnodes and moreover it's not even necessary to
+  authenticate each node.
   
   5.1   QSPN: Quantum Shortest Path Netsukuku
 
-  In Netsukuku, come in natura, non vi e' alcun bisogno di usare schemi
-  matematici creati dalla limitata logica umana. Netsukuku sfrutta il caos. 
-  La mappa e' una concezione che crea troppi problemi, dovendo tenerla sempre
-  aggiornata. La soluzione e' semplice: non usare affatto una mappa e far 
-  diventare ogni richiesta broadcast un tracer_pkt (Vedi 6.2 Tracer pkt).
-  In questo modo ogni nodo che ricevera' il pkt, sapra' qual'e' la rotta
-  migliore per raggiungere il src_node e per raggiungere tutti i nodi che stanno
-  in mezzo alla rotta, si memorizzera' queste info nella  sua mappa interna
-  aggiungera' la sua entry nel tracer_pkt e fara' continuare il broadcast del
-  pkt.
-  Rimane un grosso problema: per avere tutte le rotte per tutti i nodi
-  bisogna che tutti i nodi mandino in broadcast un tracer_pkt. In realta' questo
-  problema e' totalmente void. Infatti, con il tracer_pkt possiamo ricavare
-  anche le rotte per i nodi intermedi; quindi significa che abbiamo bisogno di
-  un numero < di n pacchetti, dove n e' il numero dei nodi.
-  Sicuramente se ogni nodo rimanda indietro un tracer_pkt ogni volta che ne
-  riceve uno, siamo sicuri che tutti i nodi ricevono tutte le rotte possibili;
-  infatti noi stiamo solamente facendo mandare dei tracer_packet da tutti i nodi
-  in maniera diversa.
+
+  In Netsukuku, as well as in Nature, there is no any need of using
+  mathematical schemes, created by the limitated human logic.
+  Netsukuku exploits the chaos.
+  The use of a map, for a protocol of dynamic nets, can create a lot of
+  troubles, since it has to be continuosly updated. The solution is simple: to
+  avoid totally the use of maps and make every broadcasted request a
+  tracer_pkt (See 6.2 Tracer pkt).
+  In this way every node, which will receive the pkt, will known the best
+  route to reach the src_node and all the nodes which are at the middle of the
+  route itself, it will record these informations inside its internal map, it
+  will add its own entry inside the tracer_pkt and will continue to broadcast
+  the pkt.
+  The left problem is: in order to obtain all the routes for all the nodes
+  it's necessary that all the nodes broadcast a tracer_pkt. Actually this
+  problem doesn't exist at all. In fact, with the tracer_pkt we can obtain
+  also the routes for the middle-nodes: that means we need a smaller number
+  of n packets, where n is the number of nodes.
+
+  If every time a node receives a tracer_pkt, it sends it back to the
+  src_node, in this way we are sure that all the nodes can receive all the
+  possible routes. By using this system we obtain the same result achieved by
+  making every node send a tracer_pkt.
 
   Per chi ha presente la fisica delle onde, il funzionamento del qspn puo'
   essere facilmente compreso. Se lanciamo un sassolino in uno specchio d'acqua,
@@ -768,8 +881,7 @@
   gli ip vengono storati nel formato IP2MAP e quindi sara' usando 
   un u_char, (1 byte invece di 20).
 
-
-
+  
   7.   ANDNA: Abnormal Netsukuku Domain Name Anarchy
 
   ANDNA e' il sistema distribuito, non gerarchico e decentralizzato, di
@@ -970,7 +1082,11 @@
   Per incrementare l'efficienza di risoluzione di hostname, si adotta una
   piccola strategia: un nodo, ogni volta che risolve un hostname, memorizza
   il risultato in una cache. Per ogni risoluzione successiva dello stesso
-  hostname, il nodo avra' gia' il risultato nella sua cache.
+  hostname, il nodo avra' gia' il risultato nella sua cache. 
+  Poiche' nei pacchetti di risoluzione degli hostname e' indicato il tempo
+  dell'ultima volta in cui sono stati registrati o aggiornati, un entry nella
+  cache scade esattamente quando l'hostname non e' piu' valido in ANDNA e deve
+  essere aggiornato.
   La resolved_hnames cache e' accessibile a qualunque nodo.
   Un nodo X, sfruttando questa proprieta', se non ha l'hostname da risolvere
   nella sua cache, puo' decidere di chiedere ad un qualsiasi bnode Y scelto a
@@ -980,6 +1096,7 @@
   al nodo X.
   Questo sistema previene l'overload degli hash_gnode che mantengono hostname
   molto famosi.
+  
   
   7.8.2  noituloser emantsoh esreveR
 
