@@ -455,9 +455,9 @@ la Rete ci attende.
   Un qspn_pkt e' un normale tracer_pkt, ma il modo in cui si diffonde in
   broadcast e' leggermente diverso dal normale. 
   Ogni nodo che riceve il qspn_pkt "chiude" il link da cui ha ricevuto il pkt, e
-  spedisce il pkt a tutti gli altri link.  Se arrivano pacchetti successivi, il
-  nodo continuera' a broadacastare, ma un qspn_pkt non viene mai forwardato
-  attraverso un link gia' chiuso.  
+  spedisce il pkt a tutti gli altri link. Tutti i successivi pacchetti
+  qspn_close che arriveranno al nodo saranno mandati a tutti i link ancora non
+  chiusi.
   Una volta che il qspn_close e' diffuso, alcuni nodi si troveranno con tutti i
   link chiusi. Questi nodi saranno gli extreme_node che invieranno un altro
   qspn_pkt di risposta (chiamato qspn_open), che contiene l'informazione gia'
@@ -466,15 +466,14 @@ la Rete ci attende.
   vuoto.
   Il qspn_open e' un normale qspn_pkt, quindi "apre" tutti i link alla stessa
   maniera del qspn_close. I nodi che si troveranno con tutti i link aperti non
-  faranno assolutamente nulla, questo garantisce la fine del qspn_open. Quando
-  viene creato un qspn_open viene aggiunto al pkt anche un sub_id che
-  corrisponde al numero che identifica il nodo (che sta' creando il pkt) nella
-  mappa interna. Il sub_id, che rimane inalterato per tutti i pacchetti
-  qspn_open generati dal primo pacchetto, viene usato per gestire piu' qspn_pkt
-  simultaneamente, infatti, verra' generato un qspn_open da ogni extreme_node ed
-  ognuno dovra' essere indipendente dall'altro. Tutti i nodi con un solo link
-  sono gli e_node per eccellenza, infatti, appena ricevono un pkt si trovano
-  gia' chiusi, e quindi mandano il qspn_open di risposta. 
+  faranno assolutamente nulla, questo garantisce la fine del qspn_open. 
+  Un qspn_open possiede anche un sub_id, un numero che indentifica nella mappa
+  interna l'extreme_node che l'ha creato. Il sub_id, che rimane inalterato per
+  tutti i pacchetti qspn_open figli generati dal primo pacchetto, viene usato
+  per gestire piu' qspn_pkt simultaneamente, poiche' ogni extreme_node genera
+  un qspn_open ed ognuno dovra' essere indipendente dall'altro.
+  Tutti i nodi con un solo link sono gli e_node per eccellenza, infatti, non
+  appena ricevono un qspn_close sono gia' chiusi.
   
   Una  volta che un nodo ha mandato un qspn_open non rispondera' piu' a
   qualsiasi qspn_pkt che gli arrivera' (sempre relativamente alla sessione

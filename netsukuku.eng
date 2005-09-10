@@ -459,45 +459,48 @@ la Rete ci attende.
   possible routes. By using this system we obtain the same result achieved by
   making every node send a tracer_pkt.
 
-  Per chi ha presente la fisica delle onde, il funzionamento del qspn puo'
-  essere facilmente compreso. Se lanciamo un sassolino in uno specchio d'acqua,
-  contenuto in una bacinella, dal punto di impatto incominciano a propagarsi
-  delle onde circolari. Ogni onda genera un onda figlia che continua ad
-  espandersi ed a generare figli che generano figli e cosi' via...
-  Quando un'onda colpisce i bordi della bacinella, viene riflessa e ritorna
-  verso il punto d'origine; lo stesso avviene se l'onda incontra un ostacolo.
-  Il qspn_starter e' il sassolino gettato nel groupnode ed ogni onda e' un
-  tracerpkt. Ogni onda figlia porta con se l'informazione dell'onda padre.
-  Quando l'onda arriva in un extreme_node (un ostacolo, un vicolo cieco) parte
-  il qspn_open (l'onda riflessa).
+  --da leggere--
+  For those which have in mind the wave physic, the working of the qspn can be
+  easily understood. If we throw a pebble in a mirror of water, contained in a
+  basin, from the point of impact circular waves begin to propagate themself.
+  Each wave generates a child wave that continues to spread and to generate
+  child waves which generates childs, and so on...
+  When a wave hits the borders of the basin, it is reflected and goes back to
+  the start point; the same happens if the wave meet an obstacle.
+  The qspn_starter is the pebble thrown inside the groupnode ed each wave is a
+  tracer_pkt. Each child wave carries with itself the information of the
+  parent wave. When the wave arrive in an extreme_node (an obstacle or a dead
+  road), the qspn_open (the reflected wave) starts.
   
-  Il QSPN si basa su questo principio. Per iniziare il tracciamento del g_node, un
-  qualsiasi nodo manda un qspn_pkt (chiamato qspn_close), questo nodo diventa
-  quindi un qspn_starter.
-  Un qspn_pkt e' un normale tracer_pkt, ma il modo in cui si diffonde in
-  broadcast e' leggermente diverso dal normale. 
-  Ogni nodo che riceve il qspn_pkt "chiude" il link da cui ha ricevuto il pkt, e
-  spedisce il pkt a tutti gli altri link.  Se arrivano pacchetti successivi, il
-  nodo continuera' a broadacastare, ma un qspn_pkt non viene mai forwardato
-  attraverso un link gia' chiuso.  
-  Una volta che il qspn_close e' diffuso, alcuni nodi si troveranno con tutti i
-  link chiusi. Questi nodi saranno gli extreme_node che invieranno un altro
-  qspn_pkt di risposta (chiamato qspn_open), che contiene l'informazione gia'
-  accumulata, a tutti i link, tranne a quello da cui hanno ricevuto l'ultimo
-  qspn_close che li ha completamente chiusi a cui inviaranno un qspn_open
-  vuoto.
-  Il qspn_open e' un normale qspn_pkt, quindi "apre" tutti i link alla stessa
-  maniera del qspn_close. I nodi che si troveranno con tutti i link aperti non
-  faranno assolutamente nulla, questo garantisce la fine del qspn_open. Quando
-  viene creato un qspn_open viene aggiunto al pkt anche un sub_id che
-  corrisponde al numero che identifica il nodo (che sta' creando il pkt) nella
-  mappa interna. Il sub_id, che rimane inalterato per tutti i pacchetti
-  qspn_open generati dal primo pacchetto, viene usato per gestire piu' qspn_pkt
-  simultaneamente, infatti, verra' generato un qspn_open da ogni extreme_node ed
-  ognuno dovra' essere indipendente dall'altro. Tutti i nodi con un solo link
-  sono gli e_node per eccellenza, infatti, appena ricevono un pkt si trovano
-  gia' chiusi, e quindi mandano il qspn_open di risposta. 
-  
+  The QSPN is based on this principle. To begin the tracing of the gnode, any
+  node sends a qspn pkt called qspn_close; this node becomes so a
+  qspn_starter.
+  A qspn pkt is a normal tracer_pkt, but its broadcasting method is lightly
+  different from the normal one.
+  Each node which receive a qspn_close "closes" the link from which the pkt
+  was received and sends the pkt to all its other links. All the following
+  qspn_close pkts, which will arrive to the node, will be sent to all the
+  links not closed yet.
+  When the qspn_close is totally diffused, some nodes will have all their
+  links closed. These nodes will be the extreme_nodes, which will send another
+  qspn_pkt to reply (called qspn_open). The qspn_open contains all the
+  information already stored in the last receveid qspn_close. The
+  extreme_nodes will send the qspn_open to all their links, except the one
+  from which they have received the last qspn_close and to whom they'll send
+  an empty qspn_open.
+  The qspn_open is a normal qspn_pkt, so it "opens" all the links in the same
+  way of the qpsn_close. The nodes, which will have all their links opened
+  will do absolutely nothing, in this way the end of the qspn_close is
+  warranted.
+  A qspn_open pkt has also a sub_id, a number that identifies, in the internal
+  map, the extreme node, which has generated the qspn_open pkt itself. The
+  sub_id, which remains unmodified in all the child qspn_open pkt generated
+  from the first packet, is used to manage simultaneusly more qspn_pkts, since
+  each extreme_node generates one qspn_open and each of them has to be
+  independent from the others.
+  All the nodes, which have only one link are surely e_nodes (extreme nodes),
+  in fact, when they receive a qspn_close they are already closed.
+
   Una  volta che un nodo ha mandato un qspn_open non rispondera' piu' a
   qualsiasi qspn_pkt che gli arrivera' (sempre relativamente alla sessione
   corrente), quindi non mandera' piu' qspn_pkt ne' qspn_open. 
