@@ -255,6 +255,10 @@ int random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 		}
 	}
 
+#ifdef ANDNA_DEBUG
+#warning The random_ip of gid[0] in gmap.c is disabled to debug andna
+	gid[0]=0;
+#endif
 	/* 
 	 * Ok, we've set the gids of each level so we recompose them in the
 	 * new_ip.

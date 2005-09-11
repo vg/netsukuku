@@ -18,10 +18,10 @@
 
 #include "includes.h"
 
-#include "daemon.h"
 #include "inet.h"
 #include "request.h"
 #include "pkts.h"
+#include "daemon.h"
 #include "map.h"
 #include "gmap.h"
 #include "bmap.h"
@@ -85,19 +85,24 @@ int prepare_listen_socket(int family, int socktype, u_short port)
 	return -1;
 }
 
-void *udp_exec_pkt(void *recv_pkt)
+/*
+ *  udp_exec_pkt: passes the received udp packet to pkt_exec().
+ * `passed_argv' is a pointer to a udp_exec_pkt_argv struct 
+ */
+void *udp_exec_pkt(void *passed_argv)
 {
+	struct udp_exec_pkt_argv argv;
+	
 	PACKET rpkt;
-	int acpt_idx, acpt_sidx;
 	const char *ntop;
 
-	acpt_idx=accept_idx;
-	acpt_sidx=accept_sidx;
-	memcpy(&rpkt, recv_pkt, sizeof(PACKET));
-#ifdef UDP_THREAD
-	xfree(recv_pkt);
-#endif
-	/* Drop any packet we sent */
+	memcpy(&argv, passed_argv, sizeof(struct udp_exec_pkt_argv));
+	memcpy(&rpkt, argv.recv_pkt, sizeof(PACKET));
+
+	if(argv.flags & UDP_THREAD_FOR_EACH_PKT)
+		xfree(argv.recv_pkt);
+	
+	/* Drop any packet we sent in broadcast */
 	if(!memcmp(&rpkt.from, &me.cur_ip, sizeof(inet_prefix))) {
 		pkt_free(&rpkt, 0);
 		return 0;
@@ -110,31 +115,40 @@ void *udp_exec_pkt(void *recv_pkt)
 		return 0;
 	} 
 
-	pkt_exec(rpkt, accept_idx);
+	pkt_exec(rpkt, argv.acpt_idx);
 	pkt_free(&rpkt, 0);
 	
 	return 0;
 }
 
-void *udp_daemon(void *door)
+/*
+ * udp_daemon: Takes care of receiving udp packets.
+ * `passed_argv' is a pointer to a udp_daemon_argv struct
+ */
+void *udp_daemon(void *passed_argv)
 {
+	struct udp_daemon_argv argv;
+	struct udp_exec_pkt_argv exec_pkt_argv;
 	PACKET rpkt;
 	fd_set fdset;
 	int ret, sk;
-	u_short udp_port=*(u_short *)door;
-
+	u_short udp_port;
+	PACKET *rpkt_cp;
+	pthread_t thread;
+	pthread_attr_t t_attr;
 #ifdef DEBUG
 	int select_errors=0;
 #endif
 	
-#ifdef UDP_THREAD
-	char *rpkt_cp;
-	pthread_t thread;
-	pthread_attr_t t_attr;
+	memcpy(&argv, passed_argv, sizeof(struct udp_daemon_argv));
+	udp_port=argv.port;
+	memset(&exec_pkt_argv, 0, sizeof(struct udp_exec_pkt_argv));
 
-	pthread_attr_init(&t_attr);
-	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
-#endif
+	if(argv.flags & UDP_THREAD_FOR_EACH_PKT) {
+		pthread_attr_init(&t_attr);
+		pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
+		exec_pkt_argv.flags|=UDP_THREAD_FOR_EACH_PKT;
+	}
 
 	debug(DBG_SOFT, "Preparing the udp listening socket on port %d", udp_port);
 	sk=prepare_listen_socket(my_family, SOCK_DGRAM, udp_port);
@@ -176,15 +190,19 @@ void *udp_daemon(void *door)
 			continue;
 		}
 	
-#ifdef UDP_THREAD
-		/* DON'T use this! The udp pkts are too many to use a thread 
-		 * for each of them */
-		rpkt_cp=xmalloc(sizeof(PACKET));
-		memcpy(rpkt_cp, &rpkt, sizeof(PACKET));
-		pthread_create(&thread, &t_attr, udp_exec_pkt, rpkt_cp);
-#endif
+		exec_pkt_argv.acpt_idx=accept_idx;
+		exec_pkt_argv.acpt_sidx=accept_sidx;
 
-		udp_exec_pkt(&rpkt);
+		if(argv.flags & UDP_THREAD_FOR_EACH_PKT) {
+			rpkt_cp=xmalloc(sizeof(PACKET));
+			memcpy(rpkt_cp, &rpkt, sizeof(PACKET));
+			exec_pkt_argv.recv_pkt=rpkt_cp;
+			pthread_create(&thread, &t_attr, udp_exec_pkt,
+					&exec_pkt_argv);
+		} else {
+			exec_pkt_argv.recv_pkt=&rpkt;
+			udp_exec_pkt(&exec_pkt_argv);
+		}
 	}
 
 	destroy_accept_tbl();

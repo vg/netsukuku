@@ -521,7 +521,7 @@ int pkt_err(PACKET pkt, u_char err)
 	char *msg;
 	u_char flags=0;
 	
-	memcpy(&pkt.to, &pkt.from, sizeof(inet_prefix));
+	pkt_addto(&pkt, &pkt.from);
 	if(pkt.hdr.flags & ASYNC_REPLY) {
 		flags|=ASYNC_REPLIED;
 		pkt.sk=0;
@@ -559,6 +559,14 @@ int pkt_exec(PACKET pkt, int acpt_idx)
 
 	/* Call the function associated to `pkt.hdr.op' */
 	exec_f = pkt_op_tbl[pkt.hdr.op].exec_func;
+#ifdef DEBUG
+	if(pkt.hdr.op != ECHO_ME && pkt.hdr.op != ECHO_REPLY) {
+		ntop=inet_to_str(pkt.from);
+		debug(DBG_INSANE, "Received %s from %s, id 0x%x", op_str, ntop,
+				pkt.hdr.id);
+	}
+#endif
+
 	if(exec_f)
 		err=(*exec_f)(pkt);
 	else if(pkt_q_counter) {
@@ -659,10 +667,10 @@ int pkt_q_wait_recv(int id, inet_prefix *from, PACKET *rpkt, pkt_queue **ret_pq)
 	pthread_detach(thread);
 
 	if(pq->flags & PKT_Q_MTX_LOCKED) {
-		debug(DBG_INSANE, "pkt_q_wait_recv: Locking!");
+		pthread_mutex_init(&pq->mtx, 0);
+		debug(DBG_INSANE, "pkt_q_wait_recv: Locking 0x%x!", &pq->mtx);
 
 		/* Freeze! */
-		pthread_mutex_init(&pq->mtx, 0);
 		pthread_mutex_lock(&pq->mtx);
 		pthread_mutex_lock(&pq->mtx);
 	}
@@ -690,10 +698,10 @@ int pkt_q_wait_recv(int id, inet_prefix *from, PACKET *rpkt, pkt_queue **ret_pq)
  */
 int pkt_q_add_pkt(PACKET pkt)
 {
-	pkt_queue *pq=pkt_q;
+	pkt_queue *pq=pkt_q, *next;
 	int ret=-1;
 	
-	list_for(pq) {
+	list_safe_for(pq, next) {
 			debug(DBG_INSANE, "pkt_q_add_pkt: %d == %d. data[0]: %d", pq->pkt.hdr.id, pkt.hdr.id, pq->pkt.from.data[0]);
 		if(pq->pkt.hdr.id == pkt.hdr.id) {
 			if(pq->pkt.from.data[0] && 
@@ -728,9 +736,9 @@ int pkt_q_add_pkt(PACKET pkt)
  */
 void pkt_q_del(pkt_queue *pq, int close_socket)
 {
-	pkt_free(&pq->pkt, close_socket);
 	pthread_mutex_unlock(&pq->mtx);
 	pthread_mutex_destroy(&pq->mtx);
 
+	pkt_free(&pq->pkt, close_socket);
 	clist_del(&pkt_q, &pkt_q_counter, pq);
 }

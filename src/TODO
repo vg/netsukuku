@@ -1,6 +1,13 @@
 		[HIGH PRIORITY] 
 
 - ANDNA:
+  - exclude_function
+  - find_hashgnode deve sceglie il gid[0] in maniera random
+  - Forwarding della richiesta di resolve da parte dei nuovi hash_gnode che
+    hanno soppiantato il vecchio (dove e' presente il db).
+  - Testare il resolve
+  - Testare il reverse resolve
+  - Testare il forwarding
   - dns wrapper per mettere 127.0.0.1 in resolv.conf
 
 - ATTENZIONE: route_del e' disattivato per debugging. 
@@ -35,10 +42,6 @@ hook.c: ottimizzare lo spazio di free_node: invece di usare una serie di u_char
         asm/bitops.h set_bit, clear_bit..., is_set)
 broadcast: Tenere in considerazione il gttl.
 hook.c:    anti spoof hook
-gmap.c/map.c: non usare piu' le libgmp. Per le somme usiamo sum_128.c, e per
-              divisioni e le moltiplicazioni, visto che stiamo lavorando su
-	      potenze di due, usiamo gli shift.
-
 
 		[ CURRENT TESTS ]
 	

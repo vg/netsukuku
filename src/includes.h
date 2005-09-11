@@ -54,3 +54,4 @@
 #ifdef DEBUG
 #warning the DEBUG code is being built!
 #endif
+#define ANDNA_DEBUG

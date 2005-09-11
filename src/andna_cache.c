@@ -288,6 +288,8 @@ counter_c_hashes *cc_hashes_add(counter_c *cc, int hash[MAX_IP_INT])
 		cch=xmalloc(sizeof(counter_c_hashes));
 		memset(cch, 0, sizeof(counter_c_hashes));
 		memcpy(cch->hash, hash, ANDNA_HASH_SZ);
+
+		clist_add(&cc->cch, &cc->hashes, cch);
 	}
 	
 	cch->timestamp=time(0);
@@ -1160,6 +1162,7 @@ int load_hostnames(char *file, lcl_cache **old_alcl_head, int *old_alcl_counter)
 	FILE *fd;
 	char buf[ANDNA_MAX_HNAME_LEN+1];
 	size_t slen;
+	time_t cur_t, diff;
 	int i=0;
 
 	lcl_cache *alcl, *old_alcl, *new_alcl_head=0;
@@ -1170,6 +1173,7 @@ int load_hostnames(char *file, lcl_cache **old_alcl_head, int *old_alcl_counter)
 		return -1;
 	}
 
+	cur_t=time(0);
 	while(!feof(fd) && i < ANDNA_MAX_HOSTNAMES) {
 		memset(buf, 0, ANDNA_MAX_HNAME_LEN+1);
 		fgets(buf, ANDNA_MAX_HNAME_LEN, fd);
@@ -1198,8 +1202,11 @@ int load_hostnames(char *file, lcl_cache **old_alcl_head, int *old_alcl_counter)
 			old_alcl = lcl_cache_find_hname(*old_alcl_head,
 					alcl->hostname);
 			if(old_alcl) {
-				alcl->timestamp=old_alcl->timestamp;
-				alcl->hname_updates=old_alcl->hname_updates;
+				diff=cur_t - old_alcl->timestamp;
+				if(diff < ANDNA_EXPIRATION_TIME) {
+					alcl->timestamp=old_alcl->timestamp;
+					alcl->hname_updates=old_alcl->hname_updates;
+				}
 			}
 			i++;
 		}

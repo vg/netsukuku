@@ -477,7 +477,7 @@ la Rete ci attende.
   
   Una  volta che un nodo ha mandato un qspn_open non rispondera' piu' a
   qualsiasi qspn_pkt che gli arrivera' (sempre relativamente alla sessione
-  corrente), quindi non mandera' piu' qspn_pkt ne' qspn_open. 
+  corrente), quindi non mandera' piu' qspn_close ne' qspn_open. 
   Il qspn_starter, il nodo che ha innescato il qspn, si comporta come un normale
   nodo pero' non puo' mandare qspn_open perche' ha gia' mandato il primo 
   qspn_close in assoluto, inoltre tutti i qspn_close che riceve li usa per 
@@ -487,26 +487,24 @@ la Rete ci attende.
   qspn_starter e' nella sezione successiva 5.1.1.
   
   Alla fine i pacchetti di broadcast che vengono generati con qspn sono pari al
-  numero degli e_node (che sono 2 per ogni ciclo, 1 per un segmento singolo
-  senza terminazione.)
+  numero degli e_node, che sono 2 per ogni segmento di rete ciclico e 1 per un
+  segmento singolo non ciclico.
 
   L'informazione per le rotte viene in ogni caso accumulata ogni volta che
   qualche tracer_pkt gira per la rete.  Un nodo ricevera' molto probabilmente
-  diverse rotte per raggiungere uno stesso nodo, in questo caso memorizera'
-  un massimo di MAXROUTES (10).  Il pkt_id dei qspn_pkt inizia da 1 e viene
-  incrementato di 1 ogni volta che un nodo ne spedisce uno nuovo. Quindi,
-  tutti i nodi conoscono il pkt_id corrente.  Ogni qualvolta un nodo deve
-  far aggiornare la mappa interna manda un qspn_pkt, solo se non ha ricevuto
-  entro QSPN_WAIT di secondi un'altro qspn_pkt. Se due nodi mandano nello
-  stesso momento un qspn_pkt avranno lo stesso pkt_id, perche' nessuno dei
-  due sa che ne e' stato spedito un altro; ma non cambia nulla, anzi se i
-  due qspn_pkt sono partiti da due luogi molto distanti allora il qspn_pkt
-  si diffondera' molto prima.
+  diverse rotte per raggiungere uno stesso nodo, ma memorizera' solamente le
+  prime MAXROUTES (10) rotte migliori. 
 
-  Se un nodo deve connettersi e non ha alcuna rotta a disposizione per
-  raggiungere il dst_node, allora utilizzera' un tracer_pkt. Da questo
-  tracer_pkt trarranno giovamento tutti gli altri nodi che aggiorneranno la
-  mappa interna.
+  Il pkt_id dei qspn_pkt inizia da 1 e viene incrementato di 1 ogni volta che
+  un nodo ne spedisce uno nuovo.
+  Quindi, tutti i nodi conoscono il pkt_id corrente. Ogni qualvolta un nodo deve
+  far aggiornare la mappa interna o esterna manda un qspn_close, solamente se
+  non ha ricevuto entro i precendenti QSPN_WAIT di secondi un'altro qspn_close.
+  Se due nodi mandano nello stesso momento un qspn_close, useranno lo stesso
+  pkt_id, perche' nessuno dei due sa che ne e' stato gia' spedito un altro; in
+  questo caso il funzionamento del qspn non cambia, anzi se i due qspn_pkt
+  sono partiti da due luogi molto distanti allora il qspn_pkt si diffondera'
+  molto rapidamente.
 
   Quando un nodo prende la mappa interna da un altro nodo, non deve
   far altro che aggiungere l'r_node, da cui ha preso la mappa, all'inizio
@@ -514,9 +512,10 @@ la Rete ci attende.
   tutte le rotte e scegliere la piu' breve. La mappa risultante avra' tutte
   le rotte migliori.
 
-  La mappa interna verra' sempre ricopiata nella tabella di routing del
-  kernel. In questo modo non ci sara' alcun bisogno di creare ogni volta la
-  rotta con il pacchetto set_route, perche' sara' gia' tutto pronto.
+  Le rotte della mappa interna ed esterna verranno sempre ricopiate nella
+  tabella di routing del kernel. In questo modo non ci sara' alcun bisogno di
+  creare ogni volta la rotta necessaria per raggiungere il nodo di
+  destinazione.
 
   5.1.1  QSPN screenshot
     
@@ -527,24 +526,24 @@ la Rete ci attende.
         (C)-----(D)
   
   Ricapitolando, tutti i nodi estremi dovrebbero inviare un tracer_pkt, ma non
-  si puo' sapere quali essi siano. In questo disegnino si puo' capire, perche',
-  appunto, la mappa e' disegnata, me nella realta' (nel codice di Netsukuku)
-  non esiste una mappa topologica, quindi non si puo' sapere dove inizia un
-  gruppo di nodi e dove finisce.
+  si puo' sapere quali essi siano. In questo disegnino e' facile individuarli,
+  perche', appunto, la mappa e' disegnata, me nella realta' (nel codice di
+  Netsukuku) non esiste una mappa topologica, quindi non si puo' sapere dove
+  inizia un gruppo di nodi e dove finisce.
 
   Ecco cosa succede, in uno scenario immaginario, se il nodo E manda un
   qspn_close:
   E ha mandato il primo qspn_close del nuovo qspn_round, quindi e' diventato
   un qspn_starter.
-  Mettiamo che A riceva prima di C il qspn_close.
-  A chiude il link E, manda ad B, C, e D.
-  C riceve il pkt, chiude il link E, manda ad A ed a D.
+  Consideriamo il caso in cui il nodo A riceve prima di C il qspn_close.
+  A chiude il link E, manda il pkt a B, C, e D.
+  C riceve il pkt, chiude il link E, lo manda ad A e a D.
   C riceve da A, chiude il link.
 
   B e D hanno ricevuto, e chiudoni i rispettivi link.
-  Mettiamo che B mandi per primo ad F.
-  D manda ad F subito dopo, ma nello stesso tempo F manda a D.
-  D ha ricevuto anche da B.
+  Consideriamo il caso in cui il nodo B manda per primo il pkt ad F.
+  D lo manda ad F subito dopo, ma nello stesso momento F lo manda a D.
+  D ha riceve il pkt anche da B.
   D ed F hanno tutti i link chiusi.
   Mandano un qspn_open.
   Tutto avviene nel senso opposto.
@@ -552,7 +551,8 @@ la Rete ci attende.
   Tutti hanno le rotte per raggiungere tutti.
 
   In genere, la topologia base a cui si riconduce il qspn e' un rombo con i nodi
-  hai vertici, puoi aggiungere altri rombi uniti tra di loro con i vertici.
+  hai vertici, per renderla piu' complessa e' possibile aggiungere altri rombi
+  uniti tra di loro con i vertici.
   Tutte le altre situazioni derivano piu' o meno da questa.
 
   5.1.2  Continual qspn starters
@@ -858,8 +858,7 @@ la Rete ci attende.
   gli ip vengono storati nel formato IP2MAP e quindi sara' usando 
   un u_char, (1 byte invece di 20).
 
-
-
+  
   7.   ANDNA: Abnormal Netsukuku Domain Name Anarchy
 
   ANDNA e' il sistema distribuito, non gerarchico e decentralizzato, di

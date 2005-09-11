@@ -45,10 +45,9 @@ struct accept_table
 struct accept_table *accept_tbl;
 
 /* 
- * accept_idx it the position of the accept_tbl of a thread.
+ * accept_idx is the position of the accept_tbl of a thread.
  * accept_sidx is the second index, it is used for example in pid[accept_sidx] 
  * note: this var are used only in the child and the child doesn't need to modify them!
- * They are handled with pthread_key_create(3)
  */
 int accept_idx, accept_sidx;
 pthread_mutex_t mtx_acpt_idx, mtx_acpt_sidx;

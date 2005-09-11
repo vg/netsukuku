@@ -827,6 +827,10 @@ hook_restart_and_retry:
 	e=rand_range(0, fn_hdr.nodes-1);
 	if(fn_hdr.level == 1) {
 		new_gnode=0;
+#ifdef ANDNA_DEBUG
+#warning The random ip choose in hook.c is disabled to debug andna
+		e=0;
+#endif
 		postoip(fnodes[e], fn_hdr.ipstart, &me.cur_ip);
 	} else {
 		new_gnode=1;

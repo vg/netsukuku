@@ -316,7 +316,7 @@ finish:
  */
 int andna_recv_reg_rq(PACKET rpkt)
 {
-	PACKET pkt;
+	PACKET pkt, flood_pkt;
 	struct andna_reg_pkt *req;
 	u_int hash_gnode[MAX_IP_INT];
 	inet_prefix rfrom, to;
@@ -345,7 +345,6 @@ int andna_recv_reg_rq(PACKET rpkt)
 	memcpy(&pkt.from, &rfrom, sizeof(inet_prefix));
 	/* Send the replies in UDP, they are so tiny */
 	pkt_addsk(&pkt, my_family, 0, SKT_UDP);
-	pkt_addport(&pkt, rpkt.port);
 	
 	/* Verify the signature */
 	pk=req->pubkey;
@@ -379,8 +378,6 @@ int andna_recv_reg_rq(PACKET rpkt)
 		goto finish;
 	}
 
-#ifndef DEBUG
-	//XXX
 	/* Ask the counter_node if it is ok to register/update the hname */
 	if(andna_check_counter(rpkt) == -1) {
 		debug(DBG_NORMAL, "Registration rq 0x%x rejected: %s", 
@@ -388,7 +385,6 @@ int andna_recv_reg_rq(PACKET rpkt)
 		ret=pkt_err(pkt, E_ANDNA_CHECK_COUNTER);
 		goto finish;
 	}
-#endif
 
 	/* Finally, let's register/update the hname */
 	ac=andna_cache_addhash(req->hash);
@@ -400,13 +396,13 @@ int andna_recv_reg_rq(PACKET rpkt)
 		goto finish;
 	}
 
-	if(acq->hname_updates != req->hname_updates) {
+	if(acq->hname_updates > req->hname_updates) {
 		debug(DBG_NORMAL, "Registration rq 0x%x rejected: hname_updates"
 				" mismatch", rpkt.hdr.id);
 		ret=pkt_err(pkt, E_INVALID_REQUEST);
 		goto finish;
 	} else
-		acq->hname_updates++;
+		acq->hname_updates=req->hname_updates+1;
 
 	cur_t=time(0);	
 	if(cur_t > acq->timestamp && 
@@ -420,9 +416,8 @@ int andna_recv_reg_rq(PACKET rpkt)
 	/* Reply to the requester: <<Yes, don't worry, it worked.>> */
 	if(rpkt.hdr.flags & ASYNC_REPLY && rpkt.hdr.flags & SEND_ACK) {
 		debug(DBG_NORMAL, "Registration rq 0x%x accepted.", rpkt.hdr.id);
-		pkt_fill_hdr(&pkt.hdr, ASYNC_REPLIED, rpkt.hdr.id,
-				ACK_AFFERMATIVE, 0);
 		pkt.msg=0;
+		pkt_fill_hdr(&pkt.hdr, ASYNC_REPLIED, rpkt.hdr.id, ACK_AFFERMATIVE, 0);
 		ret=forward_pkt(pkt, rfrom);
 	}
 	
@@ -431,16 +426,17 @@ int andna_recv_reg_rq(PACKET rpkt)
 	 * other nodes register the hname.
 	 */
 	
-	rpkt.sk=0;
+	pkt_copy(&flood_pkt, &rpkt);
+	flood_pkt.sk=0;
 	/* be sure that the other nodes don't reply to rfrom again */
-	rpkt.hdr.flags&=~SEND_ACK & ~ASYNC_REPLY;
+	flood_pkt.hdr.flags&=~SEND_ACK & ~ASYNC_REPLY;
 	
-	real_from_rpos=ip_to_rfrom(rpkt.from, 0, 0, 0);
+	real_from_rpos=ip_to_rfrom(flood_pkt.from, 0, 0, 0);
 	if(real_from_rpos < 0) {
 		debug(DBG_INSANE, "%s:%d", ERROR_POS);
 		ERROR_FINISH(ret, -1, finish);
 	}
-	flood_pkt_send(exclude_from_and_glevel, 1, -1, real_from_rpos, rpkt);
+	flood_pkt_send(exclude_from_and_glevel, 1, -1, real_from_rpos, flood_pkt);
 
 finish:
 	if(ntop)
@@ -488,22 +484,25 @@ int andna_check_counter(PACKET pkt)
 	
 	/* Throw it */
 	memset(&rpkt, 0, sizeof(PACKET));
+	pkt.sk=0;  /* Create a new connection */
 	ret=send_rq(&pkt, 0, ANDNA_CHECK_COUNTER, 0, ACK_AFFERMATIVE, 1, &rpkt);
 
 finish:
+	pkt_free(&pkt, 1);
+	pkt_free(&rpkt, 0);
 	return ret;
 }
 
 int andna_recv_check_counter(PACKET rpkt)
 {
-	PACKET pkt;
+	PACKET pkt, flood_pkt;
 	struct andna_reg_pkt *req;
 	inet_prefix rfrom, to;
 	RSA *pubkey;
 	counter_c *cc;
 	counter_c_hashes *cch;
 	const u_char *pk;
-	char *ntop=0, *rfrom_ntop=0;
+	char *ntop=0, *rfrom_ntop=0, *buf;
 	int ret=0, pubk_hash[MAX_IP_INT], hash_gnode[MAX_IP_INT], err;
 	int real_from_rpos;
 
@@ -517,18 +516,18 @@ int andna_recv_check_counter(PACKET rpkt)
 	}
 	
 	/* Save the real sender of the request */
-	inet_setip(&rfrom, (u_int *)rpkt.msg+ANDNA_REG_PKT_SZ, my_family);
+	buf=rpkt.msg+ANDNA_REG_PKT_SZ;
+	inet_setip(&rfrom, (u_int *)buf, my_family);
 	inet_htonl(&rfrom);
 
 	rfrom_ntop=xstrdup(inet_to_str(rfrom));
-	debug(DBG_SOFT, "Receveid %s from %s, rfrom %s", rq_to_str(rpkt.hdr.op),
+	debug(DBG_SOFT, "Received %s from %s, rfrom %s", rq_to_str(rpkt.hdr.op),
 			ntop, rfrom_ntop);
 	
 	memcpy(&pkt, &rpkt, sizeof(PACKET));
 	memcpy(&pkt.from, &rfrom, sizeof(inet_prefix));
 	/* Reply to rfrom using a UDP sk, since the replies are very small */
 	pkt_addsk(&pkt, my_family, 0, SKT_UDP);
-	pkt_addport(&pkt, rpkt.port);
 	
 	/* Verify the signature */
 	pk=req->pubkey;
@@ -576,13 +575,13 @@ int andna_recv_check_counter(PACKET rpkt)
 		goto finish;
 	}
 
-	if(cch->hname_updates != req->hname_updates) {
+	if(cch->hname_updates > req->hname_updates) {
 		debug(DBG_NORMAL, "Request %s (0x%x) rejected: hname_updates", 
 			" mismatch", rq_to_str(rpkt.hdr.id), rpkt.hdr.id);
 		ret=pkt_err(pkt, E_INVALID_REQUEST);
 		goto finish;
 	} else
-		cch->hname_updates++;
+		cch->hname_updates=req->hname_updates+1;
 		
 	/* Report the successful result to rfrom */
 	if(rpkt.hdr.flags & ASYNC_REPLY && rpkt.hdr.flags & SEND_ACK) {
@@ -598,16 +597,17 @@ int andna_recv_check_counter(PACKET rpkt)
 	 * other counter_nodes register the hname.
 	 */
 
-	rpkt.sk=0;
+	pkt_copy(&flood_pkt, &rpkt);
+	flood_pkt.sk=0;
 	/* be sure that the other nodes don't reply to rfrom again */
-	rpkt.hdr.flags&=~SEND_ACK & ~ASYNC_REPLY;
+	flood_pkt.hdr.flags&=~SEND_ACK & ~ASYNC_REPLY;
 	
-	real_from_rpos=ip_to_rfrom(rpkt.from, 0, 0, 0);
+	real_from_rpos=ip_to_rfrom(flood_pkt.from, 0, 0, 0);
 	if(real_from_rpos < 0) {
 		debug(DBG_INSANE, "%s:%d", ERROR_POS);
 		ERROR_FINISH(ret, -1, finish);
 	}
-	flood_pkt_send(exclude_from_and_glevel, 1, -1, real_from_rpos, rpkt);
+	flood_pkt_send(exclude_from_and_glevel, 1, -1, real_from_rpos, flood_pkt);
 
 
 finish: 
@@ -617,7 +617,6 @@ finish:
 		xfree(rfrom_ntop);
 	pkt_free(&pkt, 1);
 	return ret;
-
 }
 
 /*
@@ -1126,17 +1125,20 @@ void *andna_hook(void *null)
 void andna_register_new_hnames(void)
 {
 	lcl_cache *alcl=andna_lcl;
-	int ret;
+	int ret, updates=0;
 
 	list_for(alcl) {
 		if(alcl->timestamp)
 			continue;
 		ret=andna_register_hname(alcl);
-		if(!ret)
+		if(!ret) {
 			loginfo("Hostname \"%s\" registered/updated "
 					"successfully", alcl->hostname);
+			updates++;
+		}
 	}
-	save_lcl_cache(&lcl_keyring, andna_lcl, server_opt.lcl_file);
+	if(updates)
+		save_lcl_cache(&lcl_keyring, andna_lcl, server_opt.lcl_file);
 }
 
 /*
@@ -1146,19 +1148,25 @@ void andna_register_new_hnames(void)
 void *andna_maintain_hnames_active(void *null)
 {
 	lcl_cache *alcl;
-	int ret;
+	int ret, updates;
 
 	for(;;) {
+		updates=0;
 		alcl=andna_lcl;
+		
 		list_for(alcl) {
 			ret=andna_register_hname(alcl);
-			if(!ret)
+			if(!ret) {
 				loginfo("Hostname \"%s\" registered/updated "
 						"successfully", alcl->hostname);
+				updates++;
+			}
 		}
 		
-		save_lcl_cache(&lcl_keyring, andna_lcl, server_opt.lcl_file);
-		sleep((ANDNA_EXPIRATION_TIME/2) + rand_range(1, 20));
+		if(updates)
+			save_lcl_cache(&lcl_keyring, andna_lcl, server_opt.lcl_file);
+
+		sleep((ANDNA_EXPIRATION_TIME/2) + rand_range(1, 10));
 	}
 
 	return 0;
@@ -1166,6 +1174,7 @@ void *andna_maintain_hnames_active(void *null)
 
 void *andna_main(void *null)
 {
+	struct udp_daemon_argv ud_argv;
 	u_short *port;
 	pthread_t thread;
 	pthread_attr_t t_attr;
@@ -1173,15 +1182,17 @@ void *andna_main(void *null)
 	pthread_attr_init(&t_attr);
 	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
 
+	memset(&ud_argv, 0, sizeof(struct udp_daemon_argv));
 	port=xmalloc(sizeof(u_short));
 
 	pthread_mutex_init(&udp_daemon_lock, 0);
 	pthread_mutex_init(&tcp_daemon_lock, 0);
 
 	debug(DBG_SOFT,   "Evocating the andna udp daemon.");
-	*port=andna_udp_port;
+	ud_argv.port=andna_udp_port;
+	ud_argv.flags|=UDP_THREAD_FOR_EACH_PKT;
 	pthread_mutex_lock(&udp_daemon_lock);
-	pthread_create(&thread, &t_attr, udp_daemon, (void *)port);
+	pthread_create(&thread, &t_attr, udp_daemon, (void *)&ud_argv);
 	pthread_mutex_lock(&udp_daemon_lock);
 	pthread_mutex_unlock(&udp_daemon_lock);
 
@@ -1192,8 +1203,8 @@ void *andna_main(void *null)
 	pthread_mutex_lock(&tcp_daemon_lock);
 	pthread_mutex_unlock(&tcp_daemon_lock);
 
-#ifndef DEBUG
-	//XXX
+#ifndef DEBUG /* XXX */
+#warning The ANDNA hook is disabled for debugging purpose
 	/* Start the ANDNA hook */
 	pthread_create(&thread, &t_attr, andna_hook, 0);
 #endif

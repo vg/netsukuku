@@ -16,12 +16,28 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#undef UDP_THREAD
-
 /* These mutexes are used to wait the complete start up of the daemons when
  * launched. */
 pthread_mutex_t udp_daemon_lock;
 pthread_mutex_t tcp_daemon_lock;
+
+/* flags for udp_exec_pkt_argv and udp_daemon_argv */
+#define UDP_THREAD_FOR_EACH_PKT		1	/* For each incoming udp
+						   packets use threads */
+
+/* Argv passed to udp_exec_pkt() */
+struct udp_exec_pkt_argv {
+	PACKET 		*recv_pkt;
+	int		acpt_idx;
+	int		acpt_sidx;
+	u_char		flags;
+};
+
+/* Argv passed to udp_daemon */
+struct udp_daemon_argv {
+	u_short		port;
+	u_char		flags;
+};
 
 int prepare_listen_socket(int family, int socktype, u_short port);
 void *tcp_recv_loop(void *recv_pkt);
