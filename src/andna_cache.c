@@ -507,7 +507,7 @@ char *pack_lcl_cache(lcl_cache_keyring *keyring, lcl_cache *local_cache,
 		alcl=local_cache;
 		
 		list_for(alcl) {
-			slen=strlen(alcl->hostname+1);
+			slen=strlen(alcl->hostname)+1;
 			memcpy(buf, alcl->hostname, slen);
 
 			buf+=slen;
@@ -741,7 +741,7 @@ counter_c *unpack_counter_cache(char *pack, size_t pack_sz, int *counter)
 	counter_c_hashes *cch;
 	char *buf, *p;
 	size_t sz;
-	int i, e;
+	int i, e, x;
 
 	hdr=(struct counter_c_pkt_hdr *)pack;
 	*counter=0;
@@ -762,7 +762,7 @@ counter_c *unpack_counter_cache(char *pack, size_t pack_sz, int *counter)
 			memcpy(p, buf, COUNTER_CACHE_BODY_PACK_SZ);
 			buf+=COUNTER_CACHE_BODY_PACK_SZ;
 
-			for(e=0; e < cc->hashes; e++) {
+			for(e=0, x=cc->hashes; e < x; e++) {
 				cch=xmalloc(sizeof(counter_c_hashes));
 				memset(cch, 0, sizeof(counter_c_hashes));
 				

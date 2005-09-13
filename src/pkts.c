@@ -244,7 +244,7 @@ ssize_t pkt_recv(PACKET *pkt)
 			return -1;
 		}
 
-		if(sockaddr_to_inet(&from, &pkt->from, &pkt->port) < 0) {
+		if(sockaddr_to_inet(&from, &pkt->from, 0) < 0) {
 			debug(DBG_NOISE, "Cannot pkt_recv(): %d"
 					" Family not supported", from.sa_family);
 			return -1;
@@ -446,6 +446,11 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 
 	/* * * the reply * * */
 	if(rpkt) {
+		if(rpkt->from.data[0] && rpkt->from.len) {
+			wanted_from=&rpkt->from;
+			ntop=inet_to_str(rpkt->from);
+		}
+
 		memset(rpkt, '\0', sizeof(PACKET));
 		pkt_addport(rpkt, pkt->port);
 		pkt_addsk(rpkt, pkt->to.family, pkt->sk, pkt->sk_type);
@@ -453,19 +458,21 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 		
 		debug(DBG_NOISE, "Receiving reply for the %s request"
 				" (id 0x%x)", rq_str, pkt->hdr.id);
-		if(pkt->sk_type==SKT_UDP)
-			memcpy(&rpkt->from, &pkt->to, sizeof(inet_prefix));
 
 		if(pkt->hdr.flags & ASYNC_REPLY) {
 			pkt_queue *pq;
 			/* Receive the pkt in the async way */
-			if(rpkt->from.data[0]) 
-				wanted_from=&rpkt->from;
 			err=pkt_q_wait_recv(pkt->hdr.id, wanted_from, rpkt, &pq);
 			pkt_q_del(pq, 0);
-		} else
+		} else {
+			if(pkt->sk_type==SKT_UDP) {
+				memcpy(&rpkt->from, &pkt->to, sizeof(inet_prefix));
+				ntop=inet_to_str(rpkt->from);
+			}
+
 			/* Receive the pkt in the standard way */
 			err=pkt_recv(rpkt);
+		}
 
 		if(err==-1) {
 			error("Error while receving the reply for the %s request"
@@ -508,6 +515,8 @@ int forward_pkt(PACKET rpkt, inet_prefix to)
 	pkt_addto(&rpkt, &to);
 	
 	err=send_rq(&rpkt, 0, rpkt.hdr.op, rpkt.hdr.id, 0, 0, 0);
+	if(!err)
+		close(rpkt.sk);
 
 	return err;
 }
@@ -532,7 +541,11 @@ int pkt_err(PACKET pkt, u_char err)
 	memcpy(msg, &err, sizeof(u_char));
 		
 	err=send_rq(&pkt, 0, ACK_NEGATIVE, pkt.hdr.id, 0, 0, 0);
-	pkt_free(&pkt, 0);
+
+	if(pkt.hdr.flags & ASYNC_REPLY)
+		pkt_free(&pkt, 1);
+	else
+		pkt_free(&pkt, 0);
 	return err;
 }
 
@@ -656,8 +669,12 @@ int pkt_q_wait_recv(int id, inet_prefix *from, PACKET *rpkt, pkt_queue **ret_pq)
 		pkt_queue_init();
 
 	pq->pkt.hdr.id=id;
-	if(from) 
+	if(from) {
+		debug(DBG_INSANE, "0x%x wanted_rfrom %s activated", id, 
+				inet_to_str(*from));
 		memcpy(&pq->pkt.from, from, sizeof(inet_prefix));
+		pq->flags|=PKT_Q_CHECK_FROM;
+	}
 
 	clist_add(&pkt_q, &pkt_q_counter, pq);
 
@@ -704,7 +721,7 @@ int pkt_q_add_pkt(PACKET pkt)
 	list_safe_for(pq, next) {
 			debug(DBG_INSANE, "pkt_q_add_pkt: %d == %d. data[0]: %d", pq->pkt.hdr.id, pkt.hdr.id, pq->pkt.from.data[0]);
 		if(pq->pkt.hdr.id == pkt.hdr.id) {
-			if(pq->pkt.from.data[0] && 
+			if(pq->pkt.from.data[0] && (pq->flags & PKT_Q_CHECK_FROM) &&
 					memcmp(&pq->pkt.from, &pkt.from, sizeof(inet_prefix)))
 					continue; /* The wanted from ip and the
 						     real from ip don't match */

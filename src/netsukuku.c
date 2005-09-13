@@ -327,6 +327,8 @@ void init_netsukuku(char **argv)
 		loginfo("netsukuku_d is in restricted mode.");
 	
 	hook_init();
+
+	me.uptime=time(0);
 }
 
 int destroy_netsukuku(void)

@@ -1,13 +1,10 @@
 		[HIGH PRIORITY] 
 
 - ANDNA:
-  - exclude_function
-  - find_hashgnode deve sceglie il gid[0] in maniera random
   - Forwarding della richiesta di resolve da parte dei nuovi hash_gnode che
     hanno soppiantato il vecchio (dove e' presente il db).
-  - Testare il resolve
-  - Testare il reverse resolve
-  - Testare il forwarding
+    - pack_single_cache
+    - find_old_hgnode
   - dns wrapper per mettere 127.0.0.1 in resolv.conf
 
 - ATTENZIONE: route_del e' disattivato per debugging. 
@@ -16,8 +13,10 @@
 
 - Usare il multipath per i gnode. Ad esempio se un bnode e' collegato con piu'
   nodi di uno stesso gnode esterno li deve mettere come nexthop nella stessa rotta 
-  per raggiungere il gnode esterno. Al contrario se ci sono tanti bnode per
-  raggiungere uno stesso gnode, bisogna usare sempre il multipath.
+  per raggiungere il gnode esterno. Se ci sono tanti bnode per raggiungere uno
+  stesso gnode, bisogna usare sempre il multipath.
+
+- Backup_gnodes per l'ANDNA. Necessari?
 
 - Anti spoof Hook.
 

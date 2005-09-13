@@ -113,6 +113,8 @@ struct pkt_op_table {
 #define PKT_Q_MTX_LOCKED	1		/* We are waiting the reply */
 #define PKT_Q_PKT_RECEIVED	(1<<1)		/* The reply was received */
 #define PKT_Q_TIMEOUT		(1<<2)		/* None replied ._, */
+#define PKT_Q_CHECK_FROM	(1<<3)		/* Check the from ip while
+						   receiving the async pkt */
 
 /*
  * The pkt_queue is used when a reply will be received with a completely new 

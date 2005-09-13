@@ -21,33 +21,35 @@
 struct current_globals
 {
 	/* int/ext maps */
-	map_node  	*int_map;	/*Internal Map*/
+	map_node	*int_map;	/*Internal Map*/
 	
-	map_gnode      **ext_map;	/*External Map. */
-	quadro_group     cur_quadg;
+	map_gnode	**ext_map;	/*External Map. */
+	quadro_group	cur_quadg;
 	
 	/* border nodes maps.(bmap.h) */
-	map_bnode      **bnode_map;
+	map_bnode	**bnode_map;
 	u_int 		*bmap_nodes;		/* bnode counter for each map*/
 	u_int		*bmap_nodes_closed;	/* number of closed bnodes   */
 	u_int		*bmap_nodes_opened;	/*   "     " opened   "      */
 	
 	/* Me ^_- */
-	inet_prefix	 cur_ip;
-	map_node 	*cur_node;
+	inet_prefix	cur_ip;
+	map_node	*cur_node;
 
 	/* external rnode cache list. (see gmap.h) */
-	ext_rnode_cache *cur_erc;
+	ext_rnode_cache	*cur_erc;
 	u_int		cur_erc_counter;
 
 	/* Current Qspn id and qspn time */
-	int 		*cur_qspn_id;	/*The current qspn_id we are processing. 
+	int		*cur_qspn_id;	/*The current qspn_id we are processing. 
 					  It is cur_qspn_id[levels] big*/
 	struct timeval	*cur_qspn_time; /*When the last qspn round was received/sent 
 					  (gettimeofday format)*/
 
-	char 		 cur_dev[IFNAMSIZ];
-	int		 cur_dev_idx;
+	char		cur_dev[IFNAMSIZ];
+	int		cur_dev_idx;
+
+	time_t		uptime;		/*The name says it all*/
 }me;
 
 #define NTK_UDP_PORT 	   	269

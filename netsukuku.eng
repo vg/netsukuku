@@ -73,8 +73,7 @@ la Rete ci attende.
 	
   6. Broadcast: There can be only one!
   
-  	6.1  Delayed Fireball: groupnode broadcast.
-	6.2  Tracer pkt: one flood, one route
+	6.1  Tracer pkt: one flood, one route
 	
   7. ANDNA: Abnormal Netsukuku Domain Name Anarchy
  
@@ -234,7 +233,7 @@ la Rete ci attende.
 
   2.1  No name, no identity
   
-  Inside Netsukuku everyone, in any place, at any moment, can hook immediately
+  Inside Netsukuku everyone, in any place, at any moment, ca ook immediately
   to the net without coming trough thousands bureaucratical obstacles, which
   cannot be overpassed.
   Moreover, every elements of the net is extremely dynamic and it's never the
@@ -459,34 +458,33 @@ la Rete ci attende.
   possible routes. By using this system we obtain the same result achieved by
   making every node send a tracer_pkt.
 
-  --da leggere--
-  For those which have in mind the wave physic, the working of the qspn can be
-  easily understood. If we throw a pebble in a mirror of water, contained in a
-  basin, from the point of impact circular waves begin to propagate themself.
+  Those who already know the physic of waves, can easily understand how the
+  qspn works. If we throw a pebble at a mirror of water, contained in a
+  basin, circular waves begin to propagate themself from the point of impact.
   Each wave generates a child wave that continues to spread and to generate
-  child waves which generates childs, and so on...
+  child waves, as well, which generate childs, and so on...
   When a wave hits the borders of the basin, it is reflected and goes back to
-  the start point; the same happens if the wave meet an obstacle.
-  The qspn_starter is the pebble thrown inside the groupnode ed each wave is a
+  the start point. The same happens if the wave meets an obstacle.
+  The qspn_starter is the pebble thrown inside the groupnode and each wave is a
   tracer_pkt. Each child wave carries with itself the information of the
-  parent wave. When the wave arrive in an extreme_node (an obstacle or a dead
+  parent wave. When the wave arrives at an extreme_node (an obstacle or a dead
   road), the qspn_open (the reflected wave) starts.
   
   The QSPN is based on this principle. To begin the tracing of the gnode, any
-  node sends a qspn pkt called qspn_close; this node becomes so a
+  node sends a qspn_pkt called qspn_close and then this node becomes a
   qspn_starter.
-  A qspn pkt is a normal tracer_pkt, but its broadcasting method is lightly
+  A qspn_pkt is a normal tracer_pkt, but its broadcasting method is lightly
   different from the normal one.
-  Each node which receive a qspn_close "closes" the link from which the pkt
-  was received and sends the pkt to all its other links. All the following
+  Each node, which receives a qspn_close "closes" the link the pkt was
+  received and sends the pkt to all its other links. All the following
   qspn_close pkts, which will arrive to the node, will be sent to all the
-  links not closed yet.
+  links, which have not been already closed.
   When the qspn_close is totally diffused, some nodes will have all their
   links closed. These nodes will be the extreme_nodes, which will send another
-  qspn_pkt to reply (called qspn_open). The qspn_open contains all the
-  information already stored in the last receveid qspn_close. The
+  qspn_pkt (called qspn_open) in order to reply. The qspn_open contains all
+  the information already stored in the last qspn_close receveid. The
   extreme_nodes will send the qspn_open to all their links, except the one
-  from which they have received the last qspn_close and to whom they'll send
+  from which they have received the last qspn_close and to which they'll send
   an empty qspn_open.
   The qspn_open is a normal qspn_pkt, so it "opens" all the links in the same
   way of the qpsn_close. The nodes, which will have all their links opened
@@ -494,45 +492,48 @@ la Rete ci attende.
   warranted.
   A qspn_open pkt has also a sub_id, a number that identifies, in the internal
   map, the extreme node, which has generated the qspn_open pkt itself. The
-  sub_id, which remains unmodified in all the child qspn_open pkt generated
+  sub_id, which remains unmodified in all the child qspn_open pkts, generated
   from the first packet, is used to manage simultaneusly more qspn_pkts, since
   each extreme_node generates one qspn_open and each of them has to be
   independent from the others.
-  All the nodes, which have only one link are surely e_nodes (extreme nodes),
-  in fact, when they receive a qspn_close they are already closed.
+  Indeed all the nodes, which have only one link, are surely e_nodes (extreme
+  nodes), in fact, when they receive a qspn_close they are already closed.
 
-  A node, after it sent a qspn_open, cannot reply anymore to any qspn_pkt that
-  it'll receive, thus it will send no more qspn_pkts.
-  The qspn_starter, the node, which has triggered the qspn, acts as a normal
-  node but it will not send qspn_opens, since it already sent the very first
-  qspn_close, moreover it will use, to update its own map, all the qspn_closes
-  it will receive excepting the ones which were sent by itself and that which
-  crossed already more than one hop; doing so, even if there is more than one
-  qspn_starter the stability is maintained. The in-depth description of the
-  qspn_starter is in the following paragraph 5.1.1.
+  A node, after sending a qspn_open, cannot reply anymore to any qspn_pkts that
+  it is going to receive and so it will send no more qspn_pkts.
+  The qspn_starter, the node which has triggered the qspn, acts as a normal
+  node but will not send qspn_opens, since it already sent the very first
+  qspn_close. Moreover, in order to update its own map, it will use all the
+  qspn_closes which are going to be received, excepting those which have been
+  already sent by the qspn_starter and those which already crossed more than
+  one hop. In this way, even if there is more than one qspn_starter, the
+  stability is maintained. 
+  The in-depth description of the qspn_starter is in the following paragraph
+  5.1.1.
 
-  At the end the total number of packets which are sent in broadcast are equal
-  to the number of e_nodes, which are 2 for each cyclic net segment and 1 for
-  each single non-cyclic segment.
+  At the end, the total number of packets, which are sent in broadcast are equal
+  to the number of e_nodes, exactly 2 per cyclic net segment and 1 per single
+  non-cyclic segment.
 
-  Each time a tracer_pkt goes trough the net, the information it carries about
-  the crossed routes are stored by all the nodes that receive it.
+  Every time a tracer_pkt goes trough the net, the information about the
+  crossed routes, which it carries, are stored by all the nodes which receive
+  the tracer_pkt.
   A node will probably receive different routes to reach the same node, but it
   will memorize only the best MAXROUTES (10) routes. 
   
   The qspn_pkt id, which is stored in the pkt itself, is at the beginning set
-  to 1 and it's incremented of one each time a new one is sent by any node.
+  as 1 and is incremented by 1 every time a new qspn_pkt is sent by any nodes.
   Because of that, all the nodes know the current qspn_pkt id. Each time a
-  node wants to update globally the internal or external map, it sends a
-  qspn_close, but only if it hasn't received in the previous QSPN_WAIT seconds
-  another qspn_close.
+  node desires to globally update the internal or external map, it sends a
+  qspn_close, but only if it hasn't received, in the previous QSPN_WAIT
+  seconds, another qspn_close yet.
   If two nodes send, at the same time, a qspn_close, they will use the same
-  pkt id because they don't know that another one, with the same id, was
-  already sent; in this case the working of the qspn doesn't change, in fact,
-  if the two qspn_pkt were sent from places very distant from each other, the
-  qspn_pkt will diffuse spread more rapidly.
+  pkt id 'cause they don't know that another qspn_close, with the same id, was
+  already sent; in this case the way of working of the qspn doesn't change, in
+  fact, if the two qspn_pkt were sent from very distant places, the qspn_pkt
+  will spread more rapidly.
 
-  When a node downloads the internal map from another node it has to restore
+  When a node downloads the internal map from another node, it has to restore
   the map before making use of it. To do that the node has to just to insert the
   r_node, from which it has downloaded the map, to the beginning of all the
   routes. If the node downloads the map from more than one rnode, it will have
@@ -540,8 +541,8 @@ la Rete ci attende.
   have all the best routes.
   
   The routes of the internal and external maps will be always copied in the
-  kernel routing table. In this way it will not be necessary to create each
-  time the route to reach the destination node.
+  kernel routing table. In this way, it will not be necessary to create every
+  time different routes to reach different destination nodes.
   
   5.1.1  QSPN screenshot
     
@@ -551,141 +552,141 @@ la Rete ci attende.
       \  |     \ |  /
         (C)-----(D)
   
-  Summing up, all the extreme nodes shall send a tracer_pkt, be we cannot know
-  who they are. In the above picture it's easy to point them out, because,
-  indeed, the map is drawn, but in the reality (inside the Netsukuku code) a
-  topologic map doesn't exist at all, so we cannot know where a group of nodes
-  begins and where it ends.
+  Let's recap, then! All the extreme nodes shall send a tracer_pkt, but we
+  cannot know which are they. In the above picture it's easy to point them
+  out, because, indeed, they are drawn in a map, but in reality (inside the
+  Netsukuku code) a topologic map doesn't exist at all, so we cannot know
+  where a group of nodes begins and where it ends.
   
-  Here it is what happens, in a theoretical simulation, if the node E sends a
+  This is what will happen, in a theoretical simulation, if the node E sends a
   qspn_close:
   E has sent the first qspn_close of a new qspn_round, so it is now a
   qspn_starter.
-  Let's consider the case when the node A receives before the C the
-  qspn_close.
-  A closes the link E, sends the pkt to B, C and D.
-  C receives the pkt, closes the link E, sends it to A and D.
-  C receives the pkt from A, closes the link.
+  Let's consider the case when the node A receives before C the qspn_close.
+  A closes the link E and sends the pkt to B, C and D.
+  C receives the pkt, closes the link E and sends it to A and D.
+  C receives the pkt from A and closes the link.
 
   B e D have received the pkt and close the respective links.
   Let's consider the case when B sends the pkt before F.
   D, immediately, sends it to F, but at the same time F sends it to D.
-  D receive the pkt from B too.
+  D receives the pkt from B, too.
   D and F have all the links closed.
   They send a qspn_open.
   The qspn_open propagates itself in the opposite sense.
   The qspn_open ends.
   Each node has the routes to reach all the other nodes.
 
-  Generally, the basic topology of a map for the qspn is a rhomb with the
-  nodes at the vertexes, then, to have more complex topology it's possible to
-  add other rhombs united each other from the vertexes.
+  In general, the basic topology of a map for the qspn is a rhomb with the
+  nodes at the vertexes, then, to have a more complex topology it's possible
+  to add other rhombs united each other from the vertexes.
 
   5.1.2  Continual qspn starters
 
-  Se piu' qspn_starter che lanciano un qspn sono contigui fra loro allora
-  il funzionamento del qspn varia leggermente. Un gruppo di nodi qspn_starter 
-  e' contiguo quando tutti i suoi nodi sono collegati a nodi che sono a
-  loro volta dei qspn_starter. In questo scenario i qspn_starter continuano a
-  forwadare tra di loro solo i qspn_close mandati dai qspn_starter; si comportano
-  quindi come dei normali nodi, ma non appena ricevono dei pacchetti provenienti
-  dall'esterno del gruppo contiguo di qspn_starters ritornano a seguire le loro
-  istruzioni originarie. Quindi A manda un qspn_close, B ha mandato pure un
-  qspn_close, quando B riceve il qspn_close di A lo forwarda come un normale
-  tracer_pkt con la flag BCAST_TRACER_STARTERS che si diffonde solo tra gli
-  altri starter.
-  Il motivo di tutto questo deriva dal fatto che in quel gruppo contiguo di 
-  nodi, ogni singolo nodi manda un tracer_pkt, quindi, i qspn_pkt vengono
-  declassati a normali tracer_pkt.
-  
-   
+  If more qspn_starters, which launch a qspn, are contiguous among them, so
+  the way of working of the qspn is slightly different.
+  A group of qspn_starter nodes is contiguous when all its nodes are linked to
+  other nodes, which are qspn_starters, as well. In this scenary the
+  qspn_starters continue to mutually forward solely the qspn_closes sent by
+  the qspn_starters; in fact. they acts as normal nodes, but whenever they
+  receive pkts coming from outside of the contiguous group of qspn_starters,
+  they follow again their basic instructions. So, if A sends a qspn_close and
+  B has already sent a qspn_close, as well, when B receives the qspn_close of
+  A, B forwards it as a normal tracer_pkt with the BCAST_TRACER_STARTERS flag,
+  which will spread only among the other starters.
+  The reason why all this happens is that in the contiguous group of nodes,
+  every single node send a tracer_pkt, therefore, the qspn_pkts are
+  declassified as normal tracer_pkts.
+
   5.1.3  The Qspn sickness: RequestForRoute
   
-  /* Da codare, e non realmente necessario */
-  L'unico grande difetto di qspn e' l'impossibilita' di avere molte piu' rotte
-  per raggiungere uno stesso nodo. Con Qspn si e' sicuri di avere solamente
-  la rotta migliore, e basta. In realta' qspn puo' anche dare infinite
-  rotte, basta che si lascia circolare il broadcast all'infinito (^_-). Per
-  evitare sovraccarichi, complicazioni, segfault, bla, bla, etc... e'
-  meglio lasciare tutto cosi' com'e'. Ma allora che si fa per curare la sua
-  deficenza immunitaria?  Si usa il RequestForRoute! Il RFR verra' usato ogni
-  volta che un nodo si connette ad un altro e non influira' affatto sul questo
-  collegamento, proprio perche', viene fatto girare separatamente. 
-  Ecco cosa succede:
-  il nodo manda a tutti i suoi rnode una richiesta RFR per una determinata
-  rotta, questa richiesta contiene anche il numero di sub richieste che gli
-  rnode devono mandare ai loro rnode. In pratica il nodo decide quante rotte
-  ricevere e si calcola il numero di sub richieste che dovranno mandare i suoi
-  rnode: subrfr=(total_routes-r_node.links)/r_node.links; Dopo invia la rfr.
-  I suoi rnode dopo avergli mandato la rotta che loro usano per raggiungere il
-  dst_node specificato nel rfr_pkt mandano allo stesso modo un rfr che pero'
-  ha total_routes pari a subrfr. Gli rnode degli rnode eseguiranno la stessa
-  procedura e risponderanno direttamente al nodo interessato.
-
+  /* To code, and maybe not really necessary */
+  The only big hole in the qspn is the impossibility of having a vast number
+  of routes in order to reach the same node. With the qspn we are sure to
+  obtain just the best routes, but actually qspn can also generate uncountable
+  routes, all what we need is to let the broadcast working forever, without
+  interruption. Surely, it's unthinkable to wait for the eternity, that's why
+  we use the RequestForRoute! The RFR will be used all the time a node gets
+  connected to another node.
+  This is what happens:
+  the node sends to all its rnodes an RFR request for a specific route. This
+  request contains also the number of sub-requests (total_routes), which the
+  rnodes have to send to their rnodes. Practically, the node decides how many
+  routes wants to receive and calculates the number of sub-requests, which its
+  rnode will send: subrfr=(total_routes-r_node.links)/r_node.links.
+  After that it sends the rfr request. After having sent the route, used to
+  reach the dst_node specified inside the rfr_pkt, its rnodes sends, in the
+  same way, an rfr with the number of total_routes equal to the number of
+  subrfr. The rnodes of the rnodes will execute the same procedure and will
+  directly answer to the requester node.
+  
   5.1.4  Qspn round
 
-  Se un nodo riscontra un cambiamento attorno a se', ad esempio un suo
-  rnode e' morto oppure l'rtt che lo distanzia dal suo rnode e' cambiato
-  considerevolmente, allora mandera' un QSPN. Per evitare che vengano creati
-  dei QSPN continuamente, il nodo deve prima verificare che il QSPN_WAIT_ROUND
-  (60 secondi) sia scaduto. Il QSPN_WAIT_ROUND scade nello stesso momento per
-  tutti i nodi appartenenti allo stesso gnode. Per far si che i nodi siano
-  sincronizzati ad i nodi che si agganciano al gnode viene dato il numero
-  di secondi che sono passati dal precedente QSPN, in questo modo tutti i
-  nodi sapranno quando avverra' la prossima scadenza perche' avverra' dopo
-  (current_time-prev_qspn_round)+QSPN_WAIT_ROUND.
-  Quando un qspn_starter manda un nuovo qspn_pkt, incrementa l'id del
-  qspn_round di 1. 
-  Se il nodo che riceve un qspn_pkt, vede che il suo id e' maggiore del
-  qspn_round id precedente che ha memorizzato, allora vuol dire che ha ricevuto
-  un nuovo qspn_round; in questo caso aggiornera' il suo id locale e il suo
-  qspn_time ( la variabile che indica quando e' stato ricevuto/mandato l'ultimo 
-  qspn ).
-  Per aggiornare il qspn_time, dovra' settarlo a 
-  current_time - somma_degli_rtt_contenuti_nel_tracer_pkt.
-  
+  If a node finds a change around itself, e.g. one of its rnodes is dead, or
+  the rtt, between it and its rnode, has considerably changed, then it will
+  send a qspn. In order to avoid to continuously generate qspns the node must
+  firstly verify that QSPN_WAIT_ROUND (60 seconds) has expired. The
+  QSPN_WAIT_ROUND expires at the same moment for all the nodes belonging to
+  the same gnode. In order to make the nodes which hook to the gnode
+  synchronised to the nodes of the gnode itself, the rnodes give to the
+  hooking nodes the number of seconds passed since the previous qspn, in this
+  way all the nodes will know when the next deadline will be, i.e. it will be
+  after (current_time-prev_qspn_round)+QSPN_WAIT_ROUND seconds.
+  When a qspn_starter sends a new qspn_pkt, it increases by 1 the id of the
+  qspn_round.
+  If a node receiving a qspn_pkt notices that its id is greater than the
+  previous already recorded qspn_round id, it means that it has received a new
+  qspn_round. In this case it will update its local id and its qspn_time (the
+  variable, which indicates when the last qspn has been received or sent).
+  For updating the qspn_tim, it has to set it on
+  current_time - sum_of_the_rtt_contained_in_the_tracer_pkt.
+
   5.2  Npv7_HT Hook & Unhook
+ 
+  In order to make a node join Netsukuku, it has to be hooked to its rnodes. 
+  Hook in Netsukuku doesn't refer to a physical hooking to the net, 'cause we
+  assume that a node has been already physically linked to other (r)_nodes.
+  The hooking of a node is the way the node communicate to its nearest rnodes,
+  if it doesn't receive any answer it will choose another rnode. Practically
+  during the hooking, the node gains the internal map, the external one, the
+  border node map and chooses a free ip. Now it is officially a member of the
+  net, therefore it sends a normal tracer_pkt and its rnodes will send, later,
+  a qspn.
   
-  Un nodo, per joinare in Netsukuku, deve agganciarsi ai suoi rnode.
-  L'hook in Netsukuku non si riferisce ad un aggancio alla rete "fisico",
-  poiche' si presuppone gia' che un nodo sia linkato ad altri (r)_node.
-  Quando un nodo si aggancia significa che comunica con un il suo rnode piu'
-  vicino, se non gli risponde ne sceglie un altro. In pratica durante l'hook,
-  il nodo si prende la mappa interna, quella esterna, la mappa dei boarder node,
-  e si sceglie un ip libero. A questo punto fa ufficialmente parte della rete,
-  quindi manda un normale tracer_pkt. I suoi rnode manderanno in seguito, un
-  qspn.
-  
-  Ecco cosa avviene piu' in dettaglio:
-  Il nodo si prende un ip compreso tra 10.0.0.1 <= x <= 10.0.0.1+256,
-  rimuove le reti di loopback dalla tabella locale di routing e setta come
-  default gateway l'ip scelto.
-  Il primo passo e' quello di lanciare il primo radar per vedere quali sono i
-  suoi r_nodes. Se non ci sono rnodes, crea un nuovo gnode e l'hook termina qui.
-  Poi chiede all'rnode piu' vicino la lista di nodi liberi (free_nodes)
-  presenti nel gnode dell'rnode. Se l'rnode non accetta la richiesta (il gnode
-  potrebbe essere pieno), il nodo chiede la lista ad un altro rnode.
-  Dai free_nodes ricevuti sceglie un ip e lo setta all'interfaccia di rete,
-  modificando il default gw.
-  A questo punto richiede la mappa esterna allo stesso rnode da cui ha preso la
-  list di nodi liberi. Usando la lista di free_nodes vede se deve creare un nuovo
-  gnode. Se non deve, prende l'int_map da ogni r_node.
-  Unisce tutte le int_map ricevute in un unica mappa, in questo modo ha gia'
-  tutte le rotte. Infine, si prende la bnode_map.
-  Se tutto e' andato a buon fine, rilancia un secondo radar, manda un semplice
-  tracer pkt ed aggiorna la sua tabella di routing. Fin.
+  This is in details what really happens:
+  The node chooses an ip included in 10.0.0.1 <= x <= 10.0.0.1+256,
+  removes the loopback nets from the routing table and sets as default gateway
+  the choosen ip.
+  The step number one is to launch the first radar to see what its rnodes are.
+  If there are no rnodes, it creates a new gnode and the hooking ends here.
+  Then it asks to nearest rnode the list of all the available free nodes
+  (free_nodes) presents inside the gnode of the rnode. If the rnode rejects
+  the request (the gnode might be full), the node asks for the list of another
+  rnode. 
+  It chooses an ip from all the received free_nodes and sets it on the network
+  interface, modifying the default gw.
+  The step number two is to ask the external map to the same rnode from which
+  it obtained the list of free nodes. Using this list it checks if it has to
+  create a new gnode. If it found it unnecessary it downloads the int_map from
+  every rnode.
+  Then, it joins all the received int_map into a unique map, in this way it
+  knows all the routes. At the end, it gets the bnode_map.
+  If everything has worked properly, it re-launch a second radar, sends a
+  simple tracer_pkt and updates its routing table. Fin.
   
   5.2.1  Qspn Hook & Unhook
 
-  Un nodo, dopo essersi agganciato al gnode, non deve far altro che mandare
-  un tracer pkt. In questo modo tutti i nodi avranno gia' la rotta esatta
-  per raggiungerlo, aggiorneranno qualche rotta e saranno felici. Poi per
-  quanto riguarda le rotte secondarie ci pensera'il round successivo di QSPN.
-  Quando un nodo muore o si sgancia, non dice nulla a nessuno. La morte sara'
-  pianta silenziosamente nel cuore degli altri nodi. Ci pensera' il QSPN che
-  verra' con il prossimo round a diffondere la triste notizia. Fino a quel
-  momento solamente i nodi che cercaranno di contattare il nodo defunto si
-  accorgeranno della sua scomparsa.
+  After having been hooked to a gnode, what the node has to do is to send a
+  tracer_pkt. In this way all the nodes will already have an exact route to
+  reach it, so they will update some routes and they will be happy. Then for
+  what the secondary routes may concern the match will be played at the next
+  qspn round.
+  When a node dies or un-hooks itself from Netsukuku, doesn't warn anyone. The
+  next qspn round will make all the other nodes aware of its disappearance.
+  Until that time, solely the nodes, which will try to contact the defunct
+  node will know it.
+
+  --TODO CONTINUE DA CONTINUARE--
 
   5.3  The truly Gnode^n for n<=INFINITE
 
@@ -739,32 +740,6 @@ la Rete ci attende.
   MAXGROUPNODE*(levels+1). Con l'ipv4 abbiamo 1024 rotte, con l'ipv6 4352.
   Tutte queste rotte risiederanno direttamente nel kernel.
 
-  /* TODO: da codare, oppure no. Forse non serve proprio, e in ogni caso si
-   * puo' diminuire il numero di rotte in maniera esponenziale diminuendo il
-   * MAXGROUPNODE ed aumentando i livelli, ad esempio se un gnode e' composto
-   * da massimo 2^2 di nodi allora i livelli sono 16 nell'ipv4 e le rotte
-   * diventano 68.
-   */
-  Questo numero enorme di rotte puo' sembrare oneroso, percio' l'utente puo'
-  decidere quanti livelli tenere nel kernel.
-  Di default e' presente il livello 0, quindi tutte le MAXGROUPNODE rotte
-  per raggiungere i nodi del proprio group_node; i livelli successivi che 
-  vengono aggiunti partono dall'ultimo per discendere al secondo. 
-  La variabile che contiene il numero di livelli da memorizzare e' chiamata 
-  level_routes. Se level_routes e' uguale a zero allora tutti i livelli
-  verrano mantenuti nel route table del kernel. 
-  Se, ad esempio, e' uguale a 3 ed n rapressenta il numero di
-  livelli totali di Netsukuku, allora il kernel conterra' il livello 0, il
-  livello n-1, n-2 ed n-3.  Se un livello non e' presente nella krnl route
-  table allora la rotta verra' creata al momento da netsukuku quando il kernel
-  la richiedera'. Ovviamente piu' livelli si mantengono nel kernel e piu'
-  performante e' il tempo di connessione, ma tutto questo va a discapito
-  della memoria. Si deve pero' considerare che ormai i computer hanno Gbytes
-  di ram e che ogni rotta occupera' al massimo 100 byte (stima molto rozza
-  ed approssimativa), percio' con 4352 rotte bisogna usare solo 435200 bytes
-  (425k). Davvero una miseria, ma si sa' l'ottimizzazione non e' mai troppa.
-
-
   5.3.1 Groupnode: one entity
   
   Per avere il qspn effettivo dei groupnode la storia cambia un po'.
@@ -799,16 +774,18 @@ la Rete ci attende.
 
   5.3.2  Gnode fusion
 
-  Quando un nodo crea un nuovo group node, ne sceglie uno completamente random,
-  usando quindi, un ip random. Se due gnode, dapprima isolati, per disgrazia
-  hanno lo stesso groupnode id, (e quindi lo stesso intervallo di ip), uno
-  di loro due deve cambiare; questo significa cambiare l'ip di tutti i nodi
-  del gnode. Se il gnode e' di un livello superiore, e' davvero un disastro.
-  Per evitare tutto cio', basta che l'ip random, sia unico in tutto il globo!
-  La soluzione e' semplice: usiamo degli hash del tempo che diventeranno il
-  nostro ip "random". Visto che consideriamo anche i micro secondi, non ci
-  saranno due ip uguali in tutto il globo.
-  
+  When a node creates a new group_node, it will chose it completely randomly,
+  using a random ip. If two gnode, originally isolated, unfortunately have the
+  same groupnode id, (and also the same range of IPs), one of them must
+  change, that means to change the IPs of all the nodes of the gnode. When the
+  gnode belongs to a higher level, it's a kind of disaster.
+  In order to avoid all this stuff, we just need to keep the random ip unique
+  all over the globe!
+  The solution is simple: we use hash of time, which will be our "random" ip.
+  And since we consider also the micro seconds, we'll never find two identical
+  IPs.
+  Every node has to maintain their clocks syncronised.
+
   6.   Broadcast: There can be only one!
   
   Quando vengono mandati dei pkt in broadcast si deve fare in modo che non
@@ -829,34 +806,7 @@ la Rete ci attende.
   un'area di raggio prefissato, basta settare il ttl al numero di hop di questo
   raggio.
 
-  6.1  Delayed Fireball: groupnode broadcast.
-
-  Un nodo che vuole accertarsi che un altro nodo non e' presente nel
-  Wired oppure vuole stabilire una rotta con un nodo che ancora non e'
-  stato ancora inserito nelle mappe, creera' un pkt con la flag settata a
-  "delayed_broadcast". Questo pkt conterra' un messaggio, l'indirizzo di dst e
-  il groupnode di dst. Dopo aver forgiato il pkt, si calcolera' la rotta per
-  raggiungere il destination groupnode e inviera'. Quando il pkt giungera'
-  ad un qualsiasi nodo del dst_groupnode, verra' propagato in broadcast
-  _solamente_ all'interno del groupnode. Il dst_node che riceve il pkt puo'
-  rispondere in base al contenuto del msg. Puo' per esempio decidere di
-  rispondere ad un semplice "AreYouAlive?" oppure puo' calcolarsi la rotta
-  che giunge al src_node e stabilire un connessione con lui.
-  Ecco cosa si puo' fare con il delayed_broadcast:
-  (1) Un nodo puo' creare delle back_connection con un nodo: Crea la rotta
-      dopo aver ricevuto il pkt "delayed_broadcast",
-      e manda un msg di conferma al nodo src attraverso la rotta. Il src_node
-      a questo punto puo' iniziare la connessione utilizzando quella rotta.
-  (2) Un nodo puo' anche decidere di entrare in Netsukuku senza far aggiornare
-      le mappe di Netsukuku agli altri, in questo
-      modo diventa invisibile a tutti, pero' puo' ancora essere contattato,
-      ma _solo_ da coloro che sanno che e' Up & running. Si puo' usare
-      questo sistema anche per evitare di dover fare da router, infatti,
-      essendo invisibili, nessun nodo potra' scegliere un nodo invisibile
-      proprio perche' non lo vede. Pero' questo comporta un'instabilita'
-      generale, percio' e' meglio che i nodi non usino mai questo sistema.
-
-  6.2  Tracer pkt: one flood, one route
+  6.1  Tracer pkt: one flood, one route
 
   Il tracer pkt non e' altro che il modo per trovare la rotta migliore
   con il broadcast. Se il pkt che viene mandato in broadcast avra' la flag
@@ -887,33 +837,33 @@ la Rete ci attende.
   
   7.   ANDNA: Abnormal Netsukuku Domain Name Anarchy
 
-  ANDNA e' il sistema distribuito, non gerarchico e decentralizzato, di
-  gestione di hostname in Netsukuku. Sostituisce il DNS.
-  Il database dell'ANDNA e' sparso in tutto Netsukuku e nel peggiore dei casi
-  ogni nodo dovra' usare circa 355 Kb di memoria.
+  ANDNA is the distributed, non hierarchical and decentralised system of
+  hostname management in Netsukuku. It substitutes the DNS.
+  The ANDNA database is scattered inside all the Netsukuku and the worst of
+  cases every node will have to use about 355 Kb of memory.
   
-  Il funzionamento base di ANDNA si articola nel seguente modo:
-  per risolvere un hostname basta calcolarsi il suo hash. 
-  L'hash non e' nient'altro che un numero e questo numero noi lo consideriamo
-  come un ip. Il nodo che corrisponde a questo ip lo chiamiamo andna_hash_node.
-  In pratica l'hash_node, manterra' un piccolo database che associa gli
-  hostname, che corrispondono a lui, con l'ip del nodo che ha registrato
-  quello stesso hostname.
-
+  ANDNA works basically in the following way:
+  in order to resolve a hostname we just have to calculate its hash.
+  The hash is nothing more than a number and we consider this number as an ip
+  and the node related to that ip is called andna_hash_node.
+  Practically the hash_node will keep a small database, which associates all
+  the hostnames related to it with the ip of the node, which has registered
+  the same hostnames.
   
-            Nodo X
+            
+	    Node X
       ip: 123.123.123.123
       hash( hostname: "andna.acus" ) == 11.22.33.44
 					   ||
 					   ||
-					 Nodo Y
+					 Node Y
 				     ip: 11.22.33.44
-			   {	[ Database andna del nodo Y ]	 }
+			   {	[ Andna database of the node Y ]    }
 			   {hash_11.22.33.44 ---> 123.123.123.123}
 
 
-  Le richieste di revoca non esistono, l'hostname viene cancellato
-  automaticamente se non viene aggiornato.
+  The revocation requests don't exist, the hostname is automagically deleted
+  when it isn't updated.
  
   7.1  ANDNA Metalloid elements: registration recipe
   
@@ -947,21 +897,21 @@ la Rete ci attende.
 
   7.1.1	 ANDNA hook
 
-  Quando un nodo si aggancia a Netsukuku diventando parte di un hash_gnode,
-  dovra' anche preoccuparsi di agganciarsi ad ANDNA con l'andna_hook.
-  Con l'andna_hook si prendera' dai suoi rnode tutti le caches ed i database
-  che i nodi di quel gnode posseggono. Ovviamente e' prima necessario che il
-  nodo si agganci a Netsukuku.
+  When a node hooks to Netsukuku becoming automatically part of a ash_gnode,
+  it will also wonder about hooking to ANDNA through the andna_hook.
+  With the andna_hook it will get from its rnodes all the caches and
+  databases, which are  already inside the nodes of that gnode.
+  Obviously it is first necesarry the hooking of the node to Netsukuku.
 
   7.1.2  Don't rob my hostname!
   
-  Un nodo, prima di fare una richiesta ad ANDNA, genera una coppia di chiavi
-  rsa, una pubblica (pub_key) ed una privata (priv_key). La dimensione della 
-  pub_key sara' limitata, per questioni di spazio.
-  La richiesta di un hostname fatta ad ANDNA verra' firmata con la chiave
-  privata e nella richiesta stessa sara' allegata la chiave pubblica.
-  In questo modo il nodo potra' far certificare l'originalita' delle sue future
-  richieste.
+  Before making a request to ANDNA, a node generates a couple of RSA keys,
+  i.e. a public one (pub_key) and a private (priv_key). The size of the
+  pub_key will be limitated due to reasons of space.
+  The request of a ostname made to ANDNA will be signed with the private key
+  and in the same request the public key will be attached.
+  In this way, the node will be able to certify the true identity of its
+  future requests.
 
   7.1.3  Count again
 
@@ -1045,40 +995,49 @@ la Rete ci attende.
   
 
   7.1.6  Hash_gnodes mutation
-  
-  Se un generico rounded_gnode viene scavalcato da un nuovo gnode che e' piu'
-  vicino all'hash_gnode deve lasciargli il posto, quindi avviene un
-  trasferimento dal vecchio rounded_gnode al nuovo.
-  La transizione, pero', avviene in maniera passiva: quando il register_node
-  fara' l'aggiornamento dell'hostname, si rivolgera' direttamente al nuovo
-  rounded_gnode. Gli hostname presenti nel vecchio rounded_gnode, non essendo
-  piu' aggiornati, decaderanno.
-  Nel frattempo, quando ancora l'hostname non e' stato aggiornato, tutti i
-  nodi che vogliono risolverlo, troveranno il nuovo rounded_gnode come gnode
-  piu' vicino all'hash_gnode, quindi manderanno le richieste al nuovo gnode.
-  Il nuovo rounded_gnode, non avendo ancora il db, chiedera' a sua volta la
-  risoluzione del nome host al rounded_gnode piu' vicino.
-  
+ 
+  If a generical rounded_gnode is overpassed by a new gnode, which is nearer
+  to the hash_gnode, it will exchange its rule with that of the second one,
+  and so the old rounded_gnode is transformed into the new one.
+  This transition takes place passively: when the register_node will update
+  its hostname, will directly contact the new rounded_gnode and since the
+  hostname stored inside the old rounded_gnode is not up to date, they'll be
+  dropped.
+  In the while, when the hostname has not been updated, all the nodes trying
+  to resolve it, will find the new rounded_gnode as the gnode nearest to the
+  hash_gnode and so they'll send the requests to the new gnode.
+  Since the new rounded_gnode doesn't have the database yet, it will ask to
+  the old hash_gnode to let it get its andna_cache related to the hostname to
+  resolve. Once it receives the cache, it will answer the node and in the
+  while it will broadcast, inside its gnode, the just obtained andna_cache.
+  In this way, the registration of that hostname is automatically transfered
+  into the new gnode.
+  In order to avoid a node to take the hostname away from the legitimate owner
+  before the starting of the transfer, all the nodes of the new hash_gnode,
+  will double check a registration request. In this way, they will come to
+  know if that hostname already exists. In case of positive response, they
+  will start the transfer of the andna_cache and they'll add the node asking for
+  the hname registration in queue.
+ 
+
   7.1.7  Yaq: Yet another queue
   
-  Ogni nodo ha la liberta' di scegliersi un qualsiasi nome host. Quando un nodo
-  sceglie un hostname, prima controlla il gnode corrispondente per vedere se
-  ne esiste gia' uno identico. Se l'hostname esiste, il nodo viene avvisato e
-  sconsigliato dal proseguire. Proseguendo, il nodo manda una richiesta al
-  gnode che conservera' l'hostname, la richiesta viene accettata, e
-  viene aggiunta in coda, dove massimo possono esserci MAX_ANDNA_QUEUE (5)
-  hostname. Nell'hash_gnode il nodo viene associato al nome host che ha
-  richiesto e viene memorizzata anche la data di richiesta.
-  Quando un nodo deve risolvere un hostname, consulta l'hash_gnode, e l'ip che
-  e' associato a quell'hostname. Il nodo puo' anche scegliere di usare gli
-  altri ip nella coda che sono associati allo stesso hostname.
-
+  Every node is free to choose any hostname and even if the hostname has been
+  already chosen by another node, by the way, it can still decide to continue
+  the registration. Then, the node sends a request to the gnode which will
+  keep the hostname, the request is accepted and it is added in the queue,
+  which can be composed of a maximum of MAX_ANDNA_QUEUE (5) elements. 
+  The node is associated to the registered hostname and with that also the
+  date is kept inside the hash_gnode, 
+  When a node has to resolve a hostname, contacts the hash_gnode. The node can
+  also decide to utilise the other queueing IPs associated to the same
+  hostname.
   
   7.8	Hostname resolution
 
-  Per risolvere un hostname il nodo X deve semplicemente trovare l'hash_gnode
-  relativo all'hostname e mandare ad un nodo a caso di quel gnode la richiesta
-  di risoluzione.
+  In order to resolve a hostname the X node has to simply find the hash_gnode
+  related to the hostname itself and randomly send to any node of that gnode
+  the resolution request.
   
   7.8.1  Distributed cache for hostname resolution
 
@@ -1103,70 +1062,69 @@ la Rete ci attende.
   
   7.8.2  noituloser emantsoh esreveR
 
-  Se un nodo vuole conoscere tutti gli hostname associati as un ip, contatta
-  direttamente il nodo che ha quell'ip.
+  If a node wants to know all the related hostnames associated to an ip, it
+  will directly contact the node which possides that ip.
 
   7.9  dns wrapper
 
-  Un wrapper di richieste DNS, si occupera' di mandare al demone di ANDNA gli
-  hostname da risolvere e di restituire gli ip associati ad essi.
-  Grazie al wrapper sara' possibile usare ANDNA senza modificare alcun
-  programma esistente: bastera' usare come server dns il proprio computer.
-  
-
+  The work of a DNS requests wrapper will be to send to the ANDNA daemon the
+  hostnames to resolve and to return the IPs associated to them.
+  Thanks to the wrapper it will be possible to use the ANDNA without modifying
+  any preexistent programs: it will be enough to use its own computer as a dns
+  server.
+ 
   8.   Heavy Load: flood your ass!
 
-  Le rotte settate da Netsukuku sono create col supporto nexthop, che permette
-  ad un nodo di raggiungere un altro nodo usando piu' rotte simultaneamente
-  (multipath), garantendo uno smistamento equo del traffico dei pkts.
-  Lo scudo anti-flood e' una conseguenza dell'avere delle rotte 
-  multipath, ed essere collegati a piu' rnodes. Infatti, anche quando un
-  nodo e'  bombardato da un flusso di dati continuo e sostenuto, riceve
-  quel flusso diviso in differenti rotte e differenti link, e quindi puo'
-  sempre comunicare con altri nodi.
-
+  The routes set by Netsukuku are created with the nexthop support, which
+  allows a node to reach another node using more than one route simultaneusly
+  (multipath), warranting a balanced sorting of the pkts traffic.
+  The anti-flood shield is a consequence of this multipath routes system, in
+  fact, also when a node is bombed by a continuous and consistent flux of
+  data, it receives that flux subdivided into different routes and links,
+  therefore it is always be able to communicate with other nodes.
+  
   9.   Spoof the Wired: happy kiddies
 
-  Se un nodo si aggancia a Netsukuku spoofando un ip, non concludera' nulla
-  semplicemente perche' nessun nodo sapra' come raggiungerlo, avendo gia' la
-  rotta esatta per raggiungere il nodo originale.
-  In secondo luogo, gli rnode non permettono un aggancio di un ip che e' gia'
-  presente nelle mappe.
-
+  If a node hooks Netsukuku spoofing an ip, it will obtain nothing simply
+  because no nodes will know how to reach it, as the exact route to reach the
+  true node is already known.
+  Moreover, the rnodes will not allow a hooking an ip which was already
+  present inside the maps.
+  
   10.  /dev/accessibility
   
-  Il mezzo ideale per connettere i nodi tra loro e', ovviamente, il wifi, ma
-  qualunque tipo di link che connette due nodi serve allo scopo.
-  I cellulari sono un ottimo dispositivo, su cui far girare Netsukuku.
-  Alcuni dei nuovi modelli usano Linux come kernel. 
+  The best medium to make the nodes linked each other is, obviously, the wifi,
+  but any kind of links, which connects two nodes can be used for the same
+  purpose.
+  The mobile phones are a great device, where Netsukuku can run.
+  Some of the newest models use Linux as kernel.
   
   11.  Internet compatibility
 
-  Netsukuku non puo' diffondersi instantaneamente, ed e' impossibile pensare
-  di poter migrare da Internet a Netsukuku immediatamente.
-  Bisogna, quindi, che durante la sua iniziale diffusione, rimanga compatibile
-  con il vecchio Internet e l'unico modo e' quello di limitare temporaneamente
-  l'espandibilita' di Netsukuku.
-  
-  Un nodo che usa Netsukuku non puo' uscire su Internet perche', quando
-  netsukuku_d viene avviato, come default gw viene settato lo stesso indirizzo ip
-  assegnato all'interfaccia di rete, in questo modo le classi di ip non esistono
-  piu', e qualsiasi nodo puo' prendersi qualsiasi ip random; inoltre, dato che
-  gli ip vengono scelti in maniera random, possono accadere molte collisioni con
-  gli attuali ip di Internet.
-  
-  Per mantenere la compabilita' con Internet, Netsukuku deve essere ristretto ad 
-  una sotto classe di ip, in modo da non interferire con il default gw che esce 
-  su Internet. Allora, per non interferire in nessun modo con Internet, usiamo
-  la classe A degli indirizzi privati per l'ipv4, e la classe Site-Local per
-  l'ipv6.
-  
-  Il passaggio dal Netsukuku ristretto al Netsukuku completo e' semplice: 
-  nel momento stesso in cui un utente decide di abbandonare Internet, riavvia
-  NetsukukuD senza l'opzione di restrizione.
+  Netsukuku cannot instantaneusly spread and it's impossibile to imagine to
+  move from the Internet to Netsukuku immediately.
+  Actually, during its early phase of diffusion, we need to make it compatible
+  with the old Internet and the only way is to temporarily limitate the
+  growing of Netsukuku.
 
-  Ovviamente le altre classi private di ip non vengono toccate, per lasciare la
-  possibilita' di creare una LAN con un solo gw/nodo netsukuku.
+  A node which uses Netsukuku cannot enter inside Internet because when
+  netsukuku_d is launched, the same ip address set to the network interface is
+  set as default gateway, as well. In this way, all the classes of ip don't
+  exist anymore and any node can take any random ip, moreover, since the are
+  chosen randomly many collisions with the current Internet ip addresses may
+  happen.
+  
+  In order to keep the compatibility with the Internet, Netsukuku has to be
+  restricted to a subclass of ip, so that it doesn't interfere with the
+  normal default gw for the Internet. Then we use the private A class of ip
+  for the ipv4 and the Site-Local class for the ipv6.
+  
+  The passage from the restricted Netsukuku to the complete one is easy:
+  at the same moment the user decides to abandon the Internet, he will
+  restart NetsukukuD without any options of restriction.
+  
+  Obviously all the other private classes are not influenced, to let the user
+  create a LAN with just one gw/node Netsukuku.
   
   12.  Implementation: let's code
   

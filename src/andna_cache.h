@@ -38,10 +38,10 @@
 					  ((seeds)*32)/MAXGROUPNODE : (seeds);})
 
 #ifdef DEBUG
-#undef ANDNA_EXPIRATION_TIME
-#define ANDNA_EXPIRATION_TIME 60
-#undef ANDNA_MIN_UPDATE_TIME
-#define ANDNA_MIN_UPDATE_TIME 2
+	#undef ANDNA_EXPIRATION_TIME
+	#define ANDNA_EXPIRATION_TIME 60
+	#undef ANDNA_MIN_UPDATE_TIME
+	#define ANDNA_MIN_UPDATE_TIME 2
 #endif 
 
 /* 
@@ -53,6 +53,8 @@
 #define ANDNA_COUNTER	(1<<1)		/* We are a counter_node */
 #define ANDNA_ROUNDED	(1<<2)		/* We are a rounded_hash_node */
 #define ANDNA_FULL	(1<<3)		/* Queue full */
+#define ANDNA_UPDATING	(1<<4)		/* The hname is being updated right
+					   now */
 
 /* The andna_cache_queue is part of the andna_cache, see below */
 struct andna_cache_queue
@@ -141,6 +143,7 @@ struct lcl_cache
 	time_t          timestamp;		/* the last time when the hname
 						   was updated. If it is 0, the
 						   hname has still to be registered */
+	char 		flags;
 };
 typedef struct lcl_cache lcl_cache;
 

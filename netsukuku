@@ -392,7 +392,7 @@ la Rete ci attende.
   prossimo gnode a cui deve essere mandato in broadcast il pkt e' proprio un
   gnode con cui confinano. Se la condizione viene rispettata, i border_node
   mandano in broadcast il pkt in quel gnode. In caso contrario il pkt viene
-  droppato.
+  ignorato.
   E cosi' via...
   In questo modo il pacchetto arrivera' al gnode di destinazione.
   Quando il dst_node riceve il pkt non deve far altro che settare una
@@ -478,16 +478,17 @@ la Rete ci attende.
   Una  volta che un nodo ha mandato un qspn_open non rispondera' piu' a
   qualsiasi qspn_pkt che gli arrivera' (sempre relativamente alla sessione
   corrente), quindi non mandera' piu' qspn_close ne' qspn_open. 
-  Il qspn_starter, il nodo che ha innescato il qspn, si comporta come un normale
-  nodo pero' non puo' mandare qspn_open perche' ha gia' mandato il primo 
-  qspn_close in assoluto, inoltre tutti i qspn_close che riceve li usa per 
-  aggiornare la sua mappa, ma se hanno gia' percorso piu' hop o se sono stati
-  spediti da lui stesso, li droppa; questo accorgimento garantisce la stabilita'
-  nel caso ci siano piu' qspn_starter simultanei. La descrizione approfondita del
-  qspn_starter e' nella sezione successiva 5.1.1.
+  Il qspn_starter, il nodo che ha innescato il qspn, si comporta come un
+  normale nodo pero' non puo' mandare qspn_open perche' ha gia' mandato il
+  primo qspn_close in assoluto, inoltre tutti i qspn_close che riceve li usa
+  per aggiornare la sua mappa, ma se hanno gia' percorso piu' hop o se sono
+  stati spediti da lui stesso, vengono ignorato; questo accorgimento
+  garantisce la stabilita' nel caso ci siano piu' qspn_starter simultanei.
+  La descrizione approfondita del qspn_starter e' nella sezione successiva
+  5.1.1.
   
   Alla fine i pacchetti di broadcast che vengono generati con qspn sono pari al
-  numero degli e_node, che sono 2 per ogni segmento di rete ciclico e 1 per un
+  numero degli e_node, ovvero 2 per ogni segmento di rete ciclico e 1 per un
   segmento singolo non ciclico.
 
   L'informazione per le rotte viene in ogni caso accumulata ogni volta che
@@ -561,13 +562,13 @@ la Rete ci attende.
   il funzionamento del qspn varia leggermente. Un gruppo di nodi qspn_starter 
   e' contiguo quando tutti i suoi nodi sono collegati a nodi che sono a
   loro volta dei qspn_starter. In questo scenario i qspn_starter continuano a
-  forwadare tra di loro solo i qspn_close mandati dai qspn_starter; si comportano
-  quindi come dei normali nodi, ma non appena ricevono dei pacchetti provenienti
-  dall'esterno del gruppo contiguo di qspn_starters ritornano a seguire le loro
-  istruzioni originarie. Quindi A manda un qspn_close, B ha mandato pure un
-  qspn_close, quando B riceve il qspn_close di A lo forwarda come un normale
-  tracer_pkt con la flag BCAST_TRACER_STARTERS che si diffonde solo tra gli
-  altri starter.
+  inoltrare tra di loro solo i qspn_close mandati dai qspn_starter; si comportano
+  quindi come dei normali nodi, infatti non appena ricevono dei pacchetti
+  provenienti dall'esterno del gruppo contiguo di qspn_starters ritornano a
+  seguire le loro istruzioni originarie. Quindi se A manda un qspn_close e B
+  ha mandato pure un qspn_close, quando B riceve il qspn_close di A lo
+  inoltra come un normale tracer_pkt con la flag BCAST_TRACER_STARTERS che si
+  diffonde solo tra gli altri starter.
   Il motivo di tutto questo deriva dal fatto che in quel gruppo contiguo di 
   nodi, ogni singolo nodi manda un tracer_pkt, quindi, i qspn_pkt vengono
   declassati a normali tracer_pkt.
@@ -577,20 +578,19 @@ la Rete ci attende.
   
   /* Da codare, e non realmente necessario */
   L'unico grande difetto di qspn e' l'impossibilita' di avere molte piu' rotte
-  per raggiungere uno stesso nodo. Con Qspn si e' sicuri di avere solamente
-  la rotta migliore, e basta. In realta' qspn puo' anche dare infinite
-  rotte, basta che si lascia circolare il broadcast all'infinito (^_-). Per
-  evitare sovraccarichi, complicazioni, segfault, bla, bla, etc... e'
-  meglio lasciare tutto cosi' com'e'. Ma allora che si fa per curare la sua
-  deficenza immunitaria?  Si usa il RequestForRoute! Il RFR verra' usato ogni
-  volta che un nodo si connette ad un altro e non influira' affatto sul questo
-  collegamento, proprio perche', viene fatto girare separatamente. 
+  per raggiungere uno stesso nodo. Con il qspn si e' sicuri di avere solamente
+  le rotte migliori, e basta. In realta' il qspn puo' anche generare infinite
+  rotte, basta che si lasci circolare il broadcast all'infinito (^_-).
+  Ovviamente e' impensabile aspettare un'intera eternita' o due, quindi si usa
+  il RequestForRoute! Il RFR verra' usato ogni volta che un nodo si connette
+  ad un altro.
   Ecco cosa succede:
   il nodo manda a tutti i suoi rnode una richiesta RFR per una determinata
-  rotta, questa richiesta contiene anche il numero di sub richieste che gli
-  rnode devono mandare ai loro rnode. In pratica il nodo decide quante rotte
-  ricevere e si calcola il numero di sub richieste che dovranno mandare i suoi
-  rnode: subrfr=(total_routes-r_node.links)/r_node.links; Dopo invia la rfr.
+  rotta, questa richiesta contiene anche il numero di sub richieste
+  (total_routes) che gli rnode devono mandare ai loro rnode. In pratica il
+  nodo decide quante rotte ricevere e si calcola il numero di sub richieste
+  che dovranno mandare i suoi rnode:
+  subrfr=(total_routes-r_node.links)/r_node.links. Dopo invia la rfr.
   I suoi rnode dopo avergli mandato la rotta che loro usano per raggiungere il
   dst_node specificato nel rfr_pkt mandano allo stesso modo un rfr che pero'
   ha total_routes pari a subrfr. Gli rnode degli rnode eseguiranno la stessa
@@ -603,11 +603,11 @@ la Rete ci attende.
   considerevolmente, allora mandera' un QSPN. Per evitare che vengano creati
   dei QSPN continuamente, il nodo deve prima verificare che il QSPN_WAIT_ROUND
   (60 secondi) sia scaduto. Il QSPN_WAIT_ROUND scade nello stesso momento per
-  tutti i nodi appartenenti allo stesso gnode. Per far si che i nodi siano
-  sincronizzati ad i nodi che si agganciano al gnode viene dato il numero
-  di secondi che sono passati dal precedente QSPN, in questo modo tutti i
-  nodi sapranno quando avverra' la prossima scadenza perche' avverra' dopo
-  (current_time-prev_qspn_round)+QSPN_WAIT_ROUND.
+  tutti i nodi appartenenti allo stesso gnode. Per far si che i nodi che si
+  agganciano al gnode siano sincronizzato ai nodi del gnode stesso, gli viene
+  dato il numero di secondi che sono passati dal precedente QSPN, in questo
+  modo tutti i nodi sapranno quando avverra' la prossima scadenza, ovvero
+  avverra' dopo (current_time-prev_qspn_round)+QSPN_WAIT_ROUND secondi.
   Quando un qspn_starter manda un nuovo qspn_pkt, incrementa l'id del
   qspn_round di 1. 
   Se il nodo che riceve un qspn_pkt, vede che il suo id e' maggiore del
@@ -620,14 +620,15 @@ la Rete ci attende.
   
   5.2  Npv7_HT Hook & Unhook
   
-  Un nodo, per joinare in Netsukuku, deve agganciarsi ai suoi rnode.
-  L'hook in Netsukuku non si riferisce ad un aggancio alla rete "fisico",
+  Un nodo, per entrare a far parte di Netsukuku, deve agganciarsi ai suoi
+  rnode.
+  L'hook in Netsukuku non si riferisce ad un aggancio alla rete fisico,
   poiche' si presuppone gia' che un nodo sia linkato ad altri (r)_node.
   Quando un nodo si aggancia significa che comunica con un il suo rnode piu'
   vicino, se non gli risponde ne sceglie un altro. In pratica durante l'hook,
   il nodo si prende la mappa interna, quella esterna, la mappa dei boarder node,
   e si sceglie un ip libero. A questo punto fa ufficialmente parte della rete,
-  quindi manda un normale tracer_pkt. I suoi rnode manderanno in seguito, un
+  quindi manda un normale tracer_pkt. I suoi rnode manderanno, in seguito, un
   qspn.
   
   Ecco cosa avviene piu' in dettaglio:
@@ -647,19 +648,19 @@ la Rete ci attende.
   Unisce tutte le int_map ricevute in un unica mappa, in questo modo ha gia'
   tutte le rotte. Infine, si prende la bnode_map.
   Se tutto e' andato a buon fine, rilancia un secondo radar, manda un semplice
-  tracer pkt ed aggiorna la sua tabella di routing. Fin.
+  tracer_pkt e aggiorna la sua tabella di routing. Fin.
   
   5.2.1  Qspn Hook & Unhook
 
   Un nodo, dopo essersi agganciato al gnode, non deve far altro che mandare
-  un tracer pkt. In questo modo tutti i nodi avranno gia' la rotta esatta
+  un tracer_pkt. In questo modo tutti i nodi avranno gia' la rotta esatta
   per raggiungerlo, aggiorneranno qualche rotta e saranno felici. Poi per
   quanto riguarda le rotte secondarie ci pensera'il round successivo di QSPN.
   Quando un nodo muore o si sgancia, non dice nulla a nessuno. La morte sara'
   pianta silenziosamente nel cuore degli altri nodi. Ci pensera' il QSPN che
-  verra' con il prossimo round a diffondere la triste notizia. Fino a quel
-  momento solamente i nodi che cercaranno di contattare il nodo defunto si
-  accorgeranno della sua scomparsa.
+  verra' con il prossimo round a far notare a tutti gli altri nodi la sua
+  scomparsa. Fino a quel momento solamente i nodi che cercaranno di contattare
+  il nodo defunto se ne accorgeranno.
 
   5.3  The truly Gnode^n for n<=INFINITE
 
@@ -773,15 +774,16 @@ la Rete ci attende.
 
   5.3.2  Gnode fusion
 
-  Quando un nodo crea un nuovo group node, ne sceglie uno completamente random,
+  Quando un nodo crea un nuovo group_node, ne sceglie uno completamente random,
   usando quindi, un ip random. Se due gnode, dapprima isolati, per disgrazia
   hanno lo stesso groupnode id, (e quindi lo stesso intervallo di ip), uno
   di loro due deve cambiare; questo significa cambiare l'ip di tutti i nodi
   del gnode. Se il gnode e' di un livello superiore, e' davvero un disastro.
   Per evitare tutto cio', basta che l'ip random, sia unico in tutto il globo!
-  La soluzione e' semplice: usiamo degli hash del tempo che diventeranno il
+  La soluzione e' semplice: usiamo un hash di tempo che diventera' il
   nostro ip "random". Visto che consideriamo anche i micro secondi, non ci
   saranno due ip uguali in tutto il globo.
+  Tutti i nodi devono pero' mantenere i loro orologi sincronizzati.
   
   6.   Broadcast: There can be only one!
   
@@ -870,7 +872,7 @@ la Rete ci attende.
   per risolvere un hostname basta calcolarsi il suo hash. 
   L'hash non e' nient'altro che un numero e questo numero noi lo consideriamo
   come un ip. Il nodo che corrisponde a questo ip lo chiamiamo andna_hash_node.
-  In pratica l'hash_node, manterra' un piccolo database che associa gli
+  In pratica l'hash_node manterra' un piccolo database che associa gli
   hostname, che corrispondono a lui, con l'ip del nodo che ha registrato
   quello stesso hostname.
 
@@ -1017,35 +1019,43 @@ la Rete ci attende.
   Se la richiesta di aggiornamento viene mandata troppo presto (nel primo
   giorno), verra' considerata invalida e sara' ignorata.
   
-
   7.1.6  Hash_gnodes mutation
   
   Se un generico rounded_gnode viene scavalcato da un nuovo gnode che e' piu'
   vicino all'hash_gnode deve lasciargli il posto, quindi avviene un
   trasferimento dal vecchio rounded_gnode al nuovo.
-  La transizione, pero', avviene in maniera passiva: quando il register_node
-  fara' l'aggiornamento dell'hostname, si rivolgera' direttamente al nuovo
-  rounded_gnode. Gli hostname presenti nel vecchio rounded_gnode, non essendo
-  piu' aggiornati, decaderanno.
+  La transizione, pero', avviene in maniera semi-passiva: quando il
+  register_node fara' l'aggiornamento dell'hostname, si rivolgera'
+  direttamente al nuovo rounded_gnode. L'hostname presente nel vecchio
+  rounded_gnode, non essendo piu' aggiornato, decadera'.
   Nel frattempo, quando ancora l'hostname non e' stato aggiornato, tutti i
   nodi che vogliono risolverlo, troveranno il nuovo rounded_gnode come gnode
   piu' vicino all'hash_gnode, quindi manderanno le richieste al nuovo gnode.
-  Il nuovo rounded_gnode, non avendo ancora il db, chiedera' a sua volta la
-  risoluzione del nome host al rounded_gnode piu' vicino.
+  Il nuovo rounded_gnode, non avendo ancora il db, chiedera' al vecchio
+  hash_gnode di dargli la sua andna_cache relativa all'hostname da risolvere.
+  Una volta ricevuta, rispondera' al nodo che ha chiesto la risoluzione
+  dell'hname e nel frattempo mandera' in broadcast, all'intero del suo gnode,
+  l'andna_cache appena ottenuta. In questo modo la registrazione di
+  quell'hostname viene automaticamente trasferita nel nuovo gnode.
+  Per evitare che un nodo sottragga l'hostname al leggittimo proprietario
+  prima che il trasferimento dell'andna_cache avvenga, tutti i nodi del nuovo
+  hash_gnode, per accettare una richiesta di registrazione, controllano
+  se quell'hostname esiste gia' in un hash_gnode vecchio, se questa condizione
+  e' verificata avvieranno il trasferimento dell'andna_cache ed aggiungeranno
+  il nodo che vuole registrare l'hname nella coda.
   
   7.1.7  Yaq: Yet another queue
   
-  Ogni nodo ha la liberta' di scegliersi un qualsiasi nome host. Quando un nodo
-  sceglie un hostname, prima controlla il gnode corrispondente per vedere se
-  ne esiste gia' uno identico. Se l'hostname esiste, il nodo viene avvisato e
-  sconsigliato dal proseguire. Proseguendo, il nodo manda una richiesta al
+  Ogni nodo ha la liberta' di scegliersi un qualsiasi nome host, ed anche se
+  l'hostname e' gia' stato preso da un altro nodo, puo' sempre decidere di
+  proseguire nella registrazione. Proseguendo, il nodo manda una richiesta al
   gnode che conservera' l'hostname, la richiesta viene accettata, e
   viene aggiunta in coda, dove massimo possono esserci MAX_ANDNA_QUEUE (5)
   hostname. Nell'hash_gnode il nodo viene associato al nome host che ha
   richiesto e viene memorizzata anche la data di richiesta.
-  Quando un nodo deve risolvere un hostname, consulta l'hash_gnode, e l'ip che
-  e' associato a quell'hostname. Il nodo puo' anche scegliere di usare gli
-  altri ip nella coda che sono associati allo stesso hostname.
+  Quando un nodo deve risolvere un hostname, consulta l'hash_gnode.
+  Il nodo puo' anche scegliere di usare gli altri ip nella coda che sono
+  associati allo stesso hostname.
 
   
   7.8	Hostname resolution
@@ -1077,7 +1087,7 @@ la Rete ci attende.
   
   7.8.2  noituloser emantsoh esreveR
 
-  Se un nodo vuole conoscere tutti gli hostname associati as un ip, contatta
+  Se un nodo vuole conoscere tutti gli hostname associati a un ip, contatta
   direttamente il nodo che ha quell'ip.
 
   7.9  dns wrapper
@@ -1101,7 +1111,7 @@ la Rete ci attende.
 
   9.   Spoof the Wired: happy kiddies
 
-  Se un nodo si aggancia a Netsukuku spoofando un ip, non concludera' nulla
+  Se un nodo si aggancia a Netsukuku falsificando un ip, non concludera' nulla
   semplicemente perche' nessun nodo sapra' come raggiungerlo, avendo gia' la
   rotta esatta per raggiungere il nodo originale.
   In secondo luogo, gli rnode non permettono un aggancio di un ip che e' gia'

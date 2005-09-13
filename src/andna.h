@@ -16,6 +16,18 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+/* How many different andna pkt can be flooded simultaneusly */
+#define ANDNA_MAX_FLOODS	(ANDNA_MAX_QUEUE*3) 
+
+#define ANDNA_MAX_NEW_GNODE	1024
+
+/* These arrays keeps the latest reg_pkt and counter_check IDs to drop pkts
+ * alreay received during the floods. These arrays are actually a FIFO, so the
+ * last pkt_id will be always at the 0 position, while the first one will be
+ * at the last position */
+int last_reg_pkt_id[ANDNA_MAX_FLOODS];
+int last_counter_pkt_id[ANDNA_MAX_FLOODS];
+
 /*
  * * * ANDNA requests/replies pkt stuff * * * 
  */
@@ -92,12 +104,36 @@ struct andna_rev_resolve_reply_hdr
  * 	...			...
  */
 
-
+/* 
+ * The single_acache pkt is used to get from an old hash_gnode a single
+ * andna_cache, which has the wanted `hash'. Its propagation method is similar
+ * to that of andna_resolve_rq_pkt, but each new hash_gnode adds in the body
+ * pkt its ip. The added ips are used as excluded hash_gnode by
+ * find_hash_gnode(). /TODO: ampiare
+ */
+struct single_acache_hdr
+{
+	u_int		rip[MAX_IP_INT];	/* the ip of the requester node */
+	u_int		hash[MAX_IP_INT];
+	u_short		hgnodes;		/* Number of hgnodes in the 
+						   body. */
+	u_char		flags;
+}
+/*
+ * The single_acache body is:
+ * struct {
+ * 	u_int		hgnode[MAX_IP_INT];
+ * } body[new_hash_gnode_hdr.hgnodes];
+ */
+#define SINGLE_ACACHE_PKT_SZ(hgnodes)	(sizoef(struct single_acache_hdr)+\
+						MAX_IP_SZ*(hgnodes))
+/*
+ * The single_acache_reply is just an andna_cache_pkt with a single cache.
+ */
+	
 int andna_load_caches(void);
 int andna_save_caches(void);
 void andna_init(void);
-
-int andna_find_hash_gnode(int hash[MAX_IP_INT], inet_prefix *to);
 
 int andna_register_hname(lcl_cache *alcl);
 int andna_recv_reg_rq(PACKET rpkt);
