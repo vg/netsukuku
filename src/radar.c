@@ -824,7 +824,7 @@ int radar_scan(int activate_qspn)
 	
 	if(me.cur_node->flags & MAP_HNODE) {
 		pkt.hdr.sz=sizeof(u_char);
-		pkt.hdr.flags|=HOOK_PKT;
+		pkt.hdr.flags|=HOOK_PKT|BCAST_PKT;
 		pkt.msg=xmalloc(pkt.hdr.sz);
 		debug(DBG_INSANE, "Radar scan 0x%x activated", my_echo_id);
 	} else

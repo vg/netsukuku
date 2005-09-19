@@ -38,8 +38,12 @@ void inet_ntohl(inet_prefix *ip)
 	if(ip->family==AF_INET) {
 		ip->data[0]=ntohl(ip->data[0]);
 	} else {
-		if(BYTE_ORDER == LITTLE_ENDIAN)
+		if(BYTE_ORDER == LITTLE_ENDIAN) {
+			int i;
 			swap_ints(MAX_IP_INT, ip->data, ip->data);
+			for(i=0; i<MAX_IP_INT; i++)
+				ip->data[i]=ntohl(ip->data[i]);
+		}
 	}
 }
 
@@ -51,8 +55,12 @@ void inet_htonl(inet_prefix *ip)
 	if(ip->family==AF_INET) {
 		ip->data[0]=htonl(ip->data[0]);
 	} else {
-		if(BYTE_ORDER == LITTLE_ENDIAN)
+		if(BYTE_ORDER == LITTLE_ENDIAN) {
+			int i;
 			swap_ints(MAX_IP_INT, ip->data, ip->data);
+			for(i=0; i<MAX_IP_INT; i++)
+				ip->data[i]=htonl(ip->data[i]);
+		}
 	}
 }
 
@@ -113,6 +121,7 @@ int inet_setip_loopback(inet_prefix *ip, int family)
 		
 		data[0]=LOOPBACK_IP;
 		inet_setip(ip, data, family);
+		inet_htonl(ip);
 	} else if(family==AF_INET6) {
 		u_int data[MAX_IP_INT]=LOOPBACK_IPV6;
 		inet_setip(ip, data, family);

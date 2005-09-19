@@ -604,6 +604,14 @@ int create_gnodes(inet_prefix *ip, int final_level)
 	int i;
 
 	if(!ip) {
+#ifdef ANDNA_DEBUG
+		if(server_opt.debug_ip) {
+			u_int data[MAX_IP_INT]= { server_opt.debug_ip, 0, 0, 0};
+			inet_setip(&me.cur_ip, data, my_family);
+			inet_ntohl(&me.cur_ip);
+		}
+		else
+#endif
 		for(;;) {
 			random_ip(0, 0, 0, GET_LEVELS(my_family), me.ext_map, 0, 
 					&me.cur_ip, my_family);
@@ -732,6 +740,12 @@ int netsukuku_hook(void)
 hook_restart_and_retry:
 	me.cur_node->flags|=MAP_HNODE;
 
+#ifdef ANDNA_DEBUG
+		if(server_opt.debug_ip) {
+			total_hooking_nodes=0;
+			goto skip_radar;
+		}
+#endif
 	/* 
 	 * We do our first scan to know what we've around us. The rnodes are kept in
 	 * me.cur_node->r_nodes. The fastest one is in me.cur_node->r_nodes[0]
@@ -740,7 +754,11 @@ hook_restart_and_retry:
 		fatal("%s:%d: Scan of the area failed. Cannot continue.", 
 				ERROR_POS);
 	total_hooking_nodes=count_hooking_nodes();
-
+	
+#ifdef ANDNA_DEBUG
+skip_radar:
+#endif
+	
 	if(!me.cur_node->links || 
 			( me.cur_node->links==total_hooking_nodes 
 			  && !hook_retry )) {

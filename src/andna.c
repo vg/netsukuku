@@ -45,6 +45,9 @@
 #include "log.h"
 
 
+/*
+ * andna_load_caches: loads all the ANDNA caches
+ */
 int andna_load_caches(void)
 {
 
@@ -88,14 +91,16 @@ void andna_init(void)
 	/* register the andna's ops in the pkt_op_table */
 	add_pkt_op(ANDNA_REGISTER_HNAME, SKT_TCP, andna_tcp_port, andna_recv_reg_rq);
 	add_pkt_op(ANDNA_CHECK_COUNTER,  SKT_TCP, andna_tcp_port, andna_recv_check_counter);
-	add_pkt_op(ANDNA_RESOLVE_HNAME,  SKT_UDP, andna_tcp_port, andna_recv_resolve_rq);
-	add_pkt_op(ANDNA_RESOLVE_REPLY,  SKT_UDP, andna_tcp_port, 0);
+	add_pkt_op(ANDNA_RESOLVE_HNAME,  SKT_UDP, andna_udp_port, andna_recv_resolve_rq);
+	add_pkt_op(ANDNA_RESOLVE_REPLY,  SKT_UDP, andna_udp_port, 0);
 	add_pkt_op(ANDNA_RESOLVE_IP,     SKT_TCP, andna_tcp_port, andna_recv_rev_resolve_rq);
 	add_pkt_op(ANDNA_REV_RESOLVE_REPLY,  SKT_TCP, andna_tcp_port, 0);
 	add_pkt_op(ANDNA_GET_ANDNA_CACHE,SKT_TCP, andna_tcp_port, put_andna_cache);
 	add_pkt_op(ANDNA_PUT_ANDNA_CACHE,SKT_TCP, andna_tcp_port, 0);
 	add_pkt_op(ANDNA_GET_COUNT_CACHE,SKT_TCP, andna_tcp_port, put_counter_cache);
 	add_pkt_op(ANDNA_PUT_COUNT_CACHE,SKT_TCP, andna_tcp_port, 0);
+	add_pkt_op(ANDNA_GET_SINGLE_ACACHE,SKT_UDP, andna_udp_port, put_single_acache);
+	add_pkt_op(ANDNA_SPREAD_SACACHE, SKT_UDP, andna_udp_port, recv_spread_single_acache);
 
 	pkt_queue_init();
 
@@ -106,6 +111,7 @@ void andna_init(void)
 
 	memset(last_reg_pkt_id, 0, sizeof(int)*ANDNA_MAX_FLOODS);
 	memset(last_counter_pkt_id, 0, sizeof(int)*ANDNA_MAX_FLOODS);
+	memset(last_spread_acache_pkt_id, 0, sizeof(int)*ANDNA_MAX_FLOODS);
 }
 
 /*
@@ -140,120 +146,76 @@ void andna_hash(int family, void *msg, int len, int hash[MAX_IP_INT],
 
 /*
  * is_hgnode_excluded: it converts the `qg'->gid to an ip, then it searches a
- * member of `excluded_hgnode' which is equal to the ip. If it is found 1 is
- * returned, otherwise 0 is the return value.
+ * member of `excluded_hgnode', which has all its gids, from the level `lvl` to
+ * GET_LEVELS(my_family), equal to the ip. If it is found 1 is returned,
+ * otherwise 0 will be the return value.
  * This function is utilised by find_hash_gnode() to exclude from the search
  * the hash_gnodes not wanted.
+ * All the `excluded_hgnode[x]' which are a null pointer are skipped.
  */
-int is_hgnode_excluded(quadro_group *qg, u_int *excluded_hgnode[MAX_IP_INT],
-		int tot_excluded_hgnodes)
+int is_hgnode_excluded(quadro_group *qg, u_int **excluded_hgnode,
+		int tot_excluded_hgnodes, int lvl)
 {
-	inet_prefix qip;
-	int i, total_levels=GET_LEVELS(my_family);
+	int i, e, x, total_levels=GET_LEVELS(my_family);
+	inet_prefix ip;
 	
-	gidtoipstart(qg->gid, total_levels, total_levels, my_family, &qip);
-	
-	for(i=0; i<tot_excluded_hgnodes; i++)
-		if(!memcmp(&excluded_hgnode[i][1], &qip.data[1], 
-					MAX_IP_SZ-sizeof(int)))
+	for(e=0; e<tot_excluded_hgnodes; e++) {
+		x=0;
+		if(!excluded_hgnode[e])
+			continue;
+
+		memcpy(ip.data, excluded_hgnode[e], MAX_IP_SZ);
+		for(i=lvl; i<total_levels; i++) {
+			/* XXX TODO remove absolutely this debug print */
+			debug(DBG_INSANE, "is_hgnode_excluded: l %d, qg->gid %d, ipgid %d", i, 
+					qg->gid[i], iptogid(ip, i));
+			if(qg->gid[i] != iptogid(ip, i)) {
+				x=1;
+				break;
+			}
+		}
+		if(!x)
 			return 1;
+	}
 	return 0;
 }
 
 /*
- * find_hash_gnode: It stores in `to' the ip of the node nearer to the
- * `hash'_gnode and returns 0. If we aren't part of the hash_gnode, it sets in 
- * `to' the ip of the bnode_gnode that will route the pkt and returns 1.
- * If either a hash_gnode and a bnode_gnode aren't found, -1 is returned.
- * All the hash_gnodes included in `excluded_hgnode' will be excluded by the
- * algorithm.
- * If `exclude_me' is set to 1, it will not return ourself as the hash_gnode.
+ * is_hgnodeip_excluded: is a wrapper of is_hgnode_excluded() which takes as
+ * first argv an inet_prefix instead of a quadro_group
  */
-int find_hash_gnode(u_int hash[MAX_IP_INT], inet_prefix *to, 
-	u_int *excluded_hgnode[MAX_IP_INT], int tot_excluded_hgnodes,
-	int exclude_me)
+int is_hgnodeip_excluded(inet_prefix *hgnodeip, u_int **excluded_hgnode,
+		int tot_excluded_hgnodes)
 {
-	int level, gid, i, e, steps, total_levels, err, x;
 	quadro_group qg;
-	map_gnode *gnode;
 	
-	total_levels=GET_LEVELS(my_family);
+	iptoquadg(*hgnodeip, 0, &qg, QUADG_GID);
+	return is_hgnode_excluded(&qg, excluded_hgnode, tot_excluded_hgnodes, 0);
+}
 
-	/* Hash to ip and quadro_group conversion */
-	inet_setip(to, hash, my_family);
-	inet_htonl(to);
-	iptoquadg(*to, me.ext_map, &qg, QUADG_GID|QUADG_GNODE);
-	
-	
-	/*
-	 * This is how the ip nearer to `hash' is found:
-	 * - The hash's ip as a quadro_group is stored in `qg'
-	 * loop1:
-	 * - Examine each level of the hash's ip starting from the highest.
-	 *   loop2:
-	 * 	- If the gnode `gq'.gid[level] is down increment or decrement 
-	 * 	  (alternatively) `gq'.gid[level] and continues the loop2.
-	 *	  If it is up, continues in the loop1 if `gq'.gid[level] is a
-	 *	  gnode where we belong, otherwise returns the ip of the
-	 *	  border_node that will be used to forward the pkt to the
-	 *	  hash_gnode. 
-	 * - The ip of the rounded hash gnode is in `gq' and it's converted
-	 *   back in the inet_prefix format.
-	 */
-	
-	for(level=total_levels-1; level >= 1; level--) {
-	
-		debug(DBG_NOISE, "find_hashgnode: lvl %d, start gid %d", level, qg.gid[level]);
-		
-		/* the maximum steps required to complete the second for. */
-		steps = qg.gid[level] >= MAXGROUPNODE/2 ? qg.gid[level] : MAXGROUPNODE-qg.gid[level];
-
-		for(i=0, e=1, gid=qg.gid[level]; i < steps; e&1 ? i++ : i, e++) {
-			/* `i' is incremented only when `e' is odd, while `e'
-			 * is always incremented in each cycle. */
-
-			if(!(e & 1) && (qg.gid[level]+i < MAXGROUPNODE))
-				gid=qg.gid[level]+i;
-			else if(qg.gid[level]-i >= 0)
-				gid=qg.gid[level]-i;
-			else 
-				continue;
-			
-			
-			gnode=gnode_from_pos(gid, me.ext_map[_EL(level)]);
-			if(!(gnode->g.flags & MAP_VOID) &&
-					!(gnode->flags & GMAP_VOID)) {
-				qg.gid[level]=gid;
-			
-				/* Is this hash_gnode not wanted ? */
-				if(excluded_hgnode &&
-					is_hgnode_excluded(qg, excluded_hgnode, tot_excluded_hgnodes))
-					continue; /* yea */
-							
-				if(!quadg_gids_cmp(qg, me.cur_quadg, level)) 
-					break;
-				else {
-					err=get_gw_ip(me.int_map, me.ext_map, me.bnode_map,
-							me.bmap_nodes, &me.cur_quadg,
-							gnode, level, 0, to);
-					debug(DBG_NOISE, "find_hashgnode: ext_found, err %d, to %s!",
-							err, inet_to_str(*to));
-					
-					return err < 0 ? -1 : 1;
-				}
-			}
-		}
-	}
+/*
+ * random_gid_level_0: chooses a random gid of level 0, which is up, and
+ * stores it in `qg'->gid[0], then convert it to an ip and stores it in `to'.
+ * If `exclude_me' isn't zero, it won't choose ourself as the gid of level 0.
+ * If the gid is found 0 is returned otherwise -1 is the return value.
+ * If the gid found is also a MAP_ME node, 2 is returned.
+ */
+int random_gid_level_0(quadro_group *qg, inet_prefix *to, int exclude_me)
+{
+	int x, e, i;
 
 	/* 
-	 * Choose a random gid of level 0 to complete the hash_gnode ip and be
-	 * sure it is up.
+	 * Set `e' and `i' to a rand value from 0 to MAXGROUPNODE-1.
+	 * In the first for go from `e' to MAXGROUPNODE-1, if nothing is found
+	 * continue in the second for and go from `i' to 0. If nothing is
+	 * found return -1. 
 	 */
+
 	for(x=0, e=i=rand_range(0, MAXGROUPNODE-1); e<MAXGROUPNODE; e++) {
 		if(!(me.int_map[e].flags & MAP_VOID)) {
 			if(exclude_me && (me.int_map[e].flags & MAP_ME))
 				continue;
-			qg.gid[0]=e;
+			qg->gid[0]=e;
 			x=1;
 			break;
 		}
@@ -263,20 +225,196 @@ int find_hash_gnode(u_int hash[MAX_IP_INT], inet_prefix *to,
 			if(!(me.int_map[i].flags & MAP_VOID)) {
 				if(exclude_me && (me.int_map[i].flags & MAP_ME))
 					continue;
-				qg.gid[0]=i;
+				qg->gid[0]=i;
 				x=1;
 				break;
 			}
 		}
 	if(x) {
-		gidtoipstart(qg.gid, total_levels, total_levels, my_family, to);
-		debug(DBG_NOISE, "find_hashgnode: Internal found: gid0 %d, to %s!",
-				qg.gid[0], inet_to_str(*to));
-		return 0;
+		gidtoipstart(qg->gid, me.cur_quadg.levels, me.cur_quadg.levels, 
+				my_family, to);
+		debug(DBG_NOISE, "find_hashgnode: Internal found: gid0 %d, to "
+				"%s!", qg->gid[0], inet_to_str(*to));
+		return me.int_map[qg->gid[0]].flags & MAP_ME ? 2 : 0;
 	}
 
-
 	return -1;
+}
+
+/*
+ * find_hash_gnode_recurse: it recurse itself to create multiple sub tree. The
+ * tree is started by find_hash_gnode()
+ */
+int find_hash_gnode_recurse(quadro_group qg, int level, inet_prefix *to,
+		u_int **excluded_hgnode, int tot_excluded_hgnodes,
+		int exclude_me)
+{
+	int gid, i, e, steps, err, ret;
+	map_gnode *gnode;
+
+	if(!level)
+		return random_gid_level_0(&qg, to, exclude_me);
+
+	/*
+	 * This is how the ip nearer to `hash' is found:
+	 * - find_hash_gnode() calls, for the first time, 
+	 *   find_hash_gnode_recurse(). The hash's ip is converted as a 
+	 *   quadro_group and stored in the argv `qg' and the parameter `level'
+	 *   is set to the number of total levels available minus one.
+	 * - if `level' is equal to 0 choose a random gid of level 0 an
+	 *   convert `qg' in the inet_prefix format, store it in `to' and
+	 *   return.
+	 * loop1:
+	 * 	- If the gnode `gq'.gid[level] is down increment or decrement 
+	 * 	  (alternatively) `gq'.gid[level] and continue the loop1.
+	 *	  If (it is up) {
+	 *	  	if (`gq'.gid[level] is a gnode where we belong) {
+	 *	  		call recursively find_hash_gnode_recurse,
+	 *	  		giving the new modified `qg' and `level'-1 as
+	 *	  		new parametres.
+	 *	  		If (the return value is not an error) {
+	 *	  			return now with that value because in
+	 *	  			a sub tree, the hash_gnode was already
+	 *	  			found. 
+	 *	  		} 
+	 *	  	} otherwise {
+	 *	  		return and stor into `to' the ip of the
+	 *	  		border_node that will be used to forward the 
+	 *	  		pkt to the hash_gnode.
+	 *	  	}
+	 *	  }
+	 * - return -1
+	 */
+	
+	debug(DBG_NOISE, "find_hashgnode: lvl %d, start gid %d", level, qg.gid[level]);
+
+	/* the maximum steps required to complete the for. */
+	steps = qg.gid[level] >= MAXGROUPNODE/2 ? qg.gid[level] : MAXGROUPNODE-qg.gid[level];
+
+	for(i=0, e=1, gid=qg.gid[level]; i < steps; e&1 ? i++ : i, e++) {
+		/* `i' is incremented only when `e' is odd, while `e'
+		 * is always incremented in each cycle. */
+
+		if(!(e & 1) && (qg.gid[level]+i < MAXGROUPNODE))
+			gid=qg.gid[level]+i;
+		else if(qg.gid[level]-i >= 0)
+			gid=qg.gid[level]-i;
+		else 
+			continue;
+
+#ifdef ANDNA_DEBUG
+#if 0
+		if(server_opt.debug_ip)
+		debug(DBG_NOISE, "find_hashgnode: ><>>>	lvl %d gid %d", level, gid);
+#endif
+#endif
+		gnode=gnode_from_pos(gid, me.ext_map[_EL(level)]);
+		if(!(gnode->g.flags & MAP_VOID) &&
+				!(gnode->flags & GMAP_VOID)) {
+			qg.gid[level]=gid;
+
+			debug(DBG_NOISE, "find_hashgnode: 	lvl %d gid %d", level, qg.gid[level]);
+
+			if(!quadg_gids_cmp(qg, me.cur_quadg, level)) {
+				/* Is this hash_gnode not wanted ? */
+				if(excluded_hgnode && level == 1 &&
+						is_hgnode_excluded(&qg, excluded_hgnode, 
+							tot_excluded_hgnodes, 1))
+					continue; /* yea, exclude it */
+
+				ret=find_hash_gnode_recurse(qg, level-1, to, excluded_hgnode,
+						tot_excluded_hgnodes, exclude_me);
+				if(ret != -1)
+					/* We have found it in some sub trees. */
+					return ret;
+			} else {
+				/* Check if it is excluded */
+				if(excluded_hgnode && 
+						is_hgnode_excluded(&qg, excluded_hgnode,
+							tot_excluded_hgnodes, level))
+					continue; /* Yes, it is */
+				
+				err=get_gw_ip(me.int_map, me.ext_map, me.bnode_map,
+						me.bmap_nodes, &me.cur_quadg,
+						gnode, level, 0, to);
+				debug(DBG_NOISE, "find_hashgnode: ext_found, err %d, to %s!",
+						err, inet_to_str(*to));
+
+				if(err >= 0)
+					/* 
+					 * Forward the pkt to the found
+					 * border_node, which will forward it
+					 * to the hash_gnode
+					 */
+					return 1;
+			}
+		}
+
+	} /* for(...) */
+
+	debug(DBG_NOISE, "find_hashgnode: Exausted: lvl %d gid %d", level, qg.gid[level]);
+	/* We didn't find anything in the this level, so
+	 * returns from this tree */
+	return -1;
+}
+
+/*
+ * find_hash_gnode: It stores in `to' the ip of the node nearer to the
+ * `hash'_gnode and returns 0. If we aren't part of the hash_gnode, it sets in 
+ * `to' the ip of the bnode_gnode that will route the pkt and returns 1.
+ * If the found hash_gnode is the MAP_ME node itself then 2 is returned.
+ * If either a hash_gnode and a bnode_gnode aren't found, -1 is returned.
+ * All the hash_gnodes included in `excluded_hgnode' will be excluded by the
+ * algorithm.
+ * If `exclude_me' is set to 1, it will not return ourself as the hash_gnode.
+ */
+int find_hash_gnode(u_int hash[MAX_IP_INT], inet_prefix *to, 
+	u_int **excluded_hgnode, int tot_excluded_hgnodes,
+	int exclude_me)
+{
+	int total_levels;
+	quadro_group qg;
+	
+	total_levels=GET_LEVELS(my_family);
+
+	/* Hash to ip and quadro_group conversion */
+	inet_setip(to, hash, my_family);
+	inet_htonl(to);
+	iptoquadg(*to, me.ext_map, &qg, QUADG_GID|QUADG_GNODE);
+	
+		
+	return find_hash_gnode_recurse(qg, total_levels-1, to, excluded_hgnode,
+			tot_excluded_hgnodes, exclude_me);
+}
+
+/*
+ * andna_flood_pkt: Sends the `rpkt' pkt to all the rnodes of our same gnode
+ * and exclude the the rpkt->from node if `exclude_rfrom' is non zero.
+ * The return value of flood_pkt_send() is returned.
+ */
+int andna_flood_pkt(PACKET *rpkt, int exclude_rfrom)
+{
+	PACKET flood_pkt;
+	int real_from_rpos=-1, ret;
+	int(*exclude_function)(TRACER_PKT_EXCLUDE_VARS);
+
+	pkt_copy(&flood_pkt, rpkt);
+	flood_pkt.sk=0;
+	/* be sure that the other nodes don't reply to rfrom again */
+	flood_pkt.hdr.flags&=~ASYNC_REPLY;
+	flood_pkt.hdr.flags|=BCAST_PKT;
+	
+	/* If the pkt was sent from an our rnode, ignore it while flooding */
+	if(exclude_rfrom)
+		real_from_rpos=ip_to_rfrom(flood_pkt.from, 0, 0, 0);
+	if(real_from_rpos < 0 || !exclude_rfrom) {
+		exclude_function=exclude_glevel;
+		real_from_rpos=-1;
+	} else
+		exclude_function=exclude_from_and_glevel;
+	ret=flood_pkt_send(exclude_function, 1, -1, real_from_rpos, flood_pkt);
+
+	return ret;
 }
 
 /* 
@@ -337,7 +475,7 @@ int andna_register_hname(lcl_cache *alcl)
 
 	memset(&req, 0, sizeof(req));
 	memset(&pkt, 0, sizeof(pkt));
-	memset(&rpkt, 0, sizeof(PACKET));
+	memset(&rpkt, 0, sizeof(rpkt));
 	cur_t=time(0);
 
 	if(alcl->flags & ANDNA_UPDATING) 
@@ -372,7 +510,7 @@ int andna_register_hname(lcl_cache *alcl)
 	memcpy(req.sign, sign, ANDNA_SIGNATURE_LEN);
 	
 	/* Find the hash_gnode that corresponds to the hash `hash_gnode'*/
-	if((err=find_hash_gnode(hash_gnode, &to, 1)) < 0) {
+	if((err=find_hash_gnode(hash_gnode, &to, 0, 0, 1)) < 0) {
 		debug(DBG_SOFT, "andna_register_hname: hash_gnode not found ;(");
 		ERROR_FINISH(ret, -1, finish);
 	} else if(err == 1)
@@ -383,8 +521,7 @@ int andna_register_hname(lcl_cache *alcl)
 	
 	/* Fill the packet and send the request */
 	pkt_addto(&pkt, &to);
-	pkt.hdr.flags|=ASYNC_REPLY;
-	pkt.hdr.sz=ANDNA_REG_PKT_SZ;
+	pkt_fill_hdr(&pkt.hdr, ASYNC_REPLY, 0, ANDNA_REGISTER_HNAME, ANDNA_REG_PKT_SZ);
 	pkt.msg=xmalloc(ANDNA_REG_PKT_SZ);
 	memcpy(pkt.msg, &req, ANDNA_REG_PKT_SZ);
 	
@@ -415,26 +552,30 @@ finish:
  */
 int andna_recv_reg_rq(PACKET rpkt)
 {
-	PACKET pkt, flood_pkt;
+	PACKET pkt;
 	struct andna_reg_pkt *req;
-	u_int hash_gnode[MAX_IP_INT];
+	u_int hash_gnode[MAX_IP_INT], *excluded_hgnode[1];
 	inet_prefix rfrom, to;
 	RSA *pubkey;
 	andna_cache_queue *acq;
 	andna_cache *ac;
 	time_t cur_t;
-	int ret=0, err, real_from_rpos;
+	int ret=0, err;
 	char *ntop=0, *rfrom_ntop=0;
+	u_char forwarded_pkt=0;
 	const u_char *pk;
-	int(*exclude_function)(TRACER_PKT_EXCLUDE_VARS);
 
 
 	req=(struct andna_reg_pkt *)rpkt.msg;
 	if(rpkt.hdr.sz != ANDNA_REG_PKT_SZ)
 		ERROR_FINISH(ret, -1, finish);
 
+	if(rpkt.hdr.flags & BCAST_PKT)
+		/* The pkt we received has been only forwarded to us */
+		forwarded_pkt=1;
+
 	/* Check if we already received this pkt during the flood */
-	if(rpkt.hdr.flags & ASYNC_REPLY && rpkt.hdr.flags & SEND_ACK &&
+	if(forwarded_pkt && 
 			andna_add_flood_pkt_id(last_reg_pkt_id, rpkt.hdr.id)) {
 		debug(DBG_INSANE, "Dropped 0x%0x andna pkt, we already "
 				"received it", rpkt.hdr.id);
@@ -447,8 +588,8 @@ int andna_recv_reg_rq(PACKET rpkt)
 
 	ntop=xstrdup(inet_to_str(rpkt.from));
 	rfrom_ntop=xstrdup(inet_to_str(rfrom));
-	debug(DBG_SOFT, "Andna Registration request 0x%x from: %s, "
-			"real from: %s", rpkt.hdr.id, ntop, rfrom_ntop);
+	debug(DBG_SOFT, "Received %s%sfrom %s, rfrom %s", rq_to_str(rpkt.hdr.op),
+			forwarded_pkt ? " (forwarded) " : " ", ntop, rfrom_ntop);
 
 	memcpy(&pkt, &rpkt, sizeof(PACKET));
 	memcpy(&pkt.from, &rfrom, sizeof(inet_prefix));
@@ -463,22 +604,33 @@ int andna_recv_reg_rq(PACKET rpkt)
 		/* Bad, bad signature */
 		debug(DBG_SOFT, "Invalid signature of the 0x%x reg request", 
 				rpkt.hdr.id);
-		if(rpkt.hdr.flags & ASYNC_REPLY && rpkt.hdr.flags & SEND_ACK)
+		if(!forwarded_pkt)
 			ret=pkt_err(pkt, E_INVALID_SIGNATURE);
 		ERROR_FINISH(ret, -1, finish);
 	}
 
+	/* If don't belong to the gnode of `rfrom', then we have to exclude
+	 * it from the find_hash_gnode search, since we have received the 
+	 * pkt from that gnode and it is likely that `rfrom' is the only node 
+	 * of that gnode.
+	 */
+	excluded_hgnode[0] = ip_gids_cmp(rfrom, me.cur_ip, 1) ? rfrom.data : 0;
+
+	/* 
+	 * Are we the hash_gnode for req->hash? Check also if we have to
+	 * continue to forward the pkt to make it reach the real hash_gnode
+	 */
 
 	andna_hash_by_family(my_family, (u_char *)req->hash, hash_gnode);
-	if((err=find_hash_gnode(hash_gnode, &to, 0)) < 0) {
+	if((err=find_hash_gnode(hash_gnode, &to, excluded_hgnode, 1, 0)) < 0) {
 		debug(DBG_SOFT, "We are not the right (rounded)hash_gnode. "
 				"Rejecting the 0x%x reg request", rpkt.hdr.id);
-		if(rpkt.hdr.flags & ASYNC_REPLY && rpkt.hdr.flags & SEND_ACK)
+		if(!forwarded_pkt)
 			ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE);
 		ERROR_FINISH(ret, -1, finish);
 	} else if(err == 1) {
 		if(!(req->flags & ANDNA_FORWARD)) {
-			if(rpkt.hdr.flags & ASYNC_REPLY && rpkt.hdr.flags & SEND_ACK)
+			if(!forwarded_pkt)
 				ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE);
 			ERROR_FINISH(ret, -1, finish);
 		}
@@ -490,11 +642,31 @@ int andna_recv_reg_rq(PACKET rpkt)
 		goto finish;
 	}
 
+	/* Are we a new hash_gnode ? */
+	if(time(0)-me.uptime < (ANDNA_EXPIRATION_TIME/2) && 
+			!(ac=andna_cache_findhash(req->hash))) {
+		/*
+		 * We are a new hash_gnode and we haven't this hostname in our
+		 * andna_cache, so we have to check if there is an
+		 * old hash_gnode which has already registered this hostname.
+		 */
+		if((ac=get_single_andna_c(req->hash, hash_gnode))) {
+			/* 
+			 * The hostname was already registered, so we save it
+			 * in our andna_cache.
+			 */
+			clist_add(&andna_c, &andna_c_counter, ac);
+			
+			/* Spread it in our gnode */
+			spread_single_acache(req->hash);
+		}
+	}
+
 	/* Ask the counter_node if it is ok to register/update the hname */
 	if(andna_check_counter(rpkt) == -1) {
 		debug(DBG_SOFT, "Registration rq 0x%x rejected: %s", 
 				rpkt.hdr.id, rq_strerror(E_ANDNA_CHECK_COUNTER));
-		if(rpkt.hdr.flags & ASYNC_REPLY && rpkt.hdr.flags & SEND_ACK)
+		if(!forwarded_pkt)
 			ret=pkt_err(pkt, E_ANDNA_CHECK_COUNTER);
 		ERROR_FINISH(ret, -1, finish);
 	}
@@ -505,7 +677,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 	if(!acq) {
 		debug(DBG_SOFT, "Registration rq 0x%x rejected: %s", 
 				rpkt.hdr.id, rq_strerror(E_ANDNA_QUEUE_FULL));
-		if(rpkt.hdr.flags & ASYNC_REPLY && rpkt.hdr.flags & SEND_ACK)
+		if(!forwarded_pkt)
 			ret=pkt_err(pkt, E_ANDNA_QUEUE_FULL);
 		ERROR_FINISH(ret, -1, finish);
 	}
@@ -513,7 +685,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 	if(acq->hname_updates > req->hname_updates) {
 		debug(DBG_SOFT, "Registration rq 0x%x rejected: hname_updates"
 				" mismatch", rpkt.hdr.id);
-		if(rpkt.hdr.flags & ASYNC_REPLY && rpkt.hdr.flags & SEND_ACK)
+		if(!forwarded_pkt)
 			ret=pkt_err(pkt, E_INVALID_REQUEST);
 		ERROR_FINISH(ret, -1, finish);
 	} else
@@ -524,13 +696,13 @@ int andna_recv_reg_rq(PACKET rpkt)
 			(cur_t - acq->timestamp) < ANDNA_MIN_UPDATE_TIME) {
 		debug(DBG_SOFT, "Registration rq 0x%x rejected: %s", 
 			rpkt.hdr.id, rq_strerror(E_ANDNA_UPDATE_TOO_EARLY));
-		if(rpkt.hdr.flags & ASYNC_REPLY && rpkt.hdr.flags & SEND_ACK)
+		if(!forwarded_pkt)
 			ret=pkt_err(pkt, E_ANDNA_UPDATE_TOO_EARLY);
 		ERROR_FINISH(ret, -1, finish);
 	}
 	
 	/* Reply to the requester: <<Yes, don't worry, it worked.>> */
-	if(rpkt.hdr.flags & ASYNC_REPLY && rpkt.hdr.flags & SEND_ACK) {
+	if(!forwarded_pkt) {
 		debug(DBG_SOFT, "Registration rq 0x%x accepted.", rpkt.hdr.id);
 		pkt.msg=0;
 		pkt_fill_hdr(&pkt.hdr, ASYNC_REPLIED, rpkt.hdr.id, ACK_AFFERMATIVE, 0);
@@ -541,22 +713,8 @@ int andna_recv_reg_rq(PACKET rpkt)
 	 * Broadcast the request to the entire gnode of level 1 to let the
 	 * other nodes register the hname.
 	 */
+	andna_flood_pkt(&rpkt, 1);
 	
-	pkt_copy(&flood_pkt, &rpkt);
-	flood_pkt.sk=0;
-	/* be sure that the other nodes don't reply to rfrom again */
-	flood_pkt.hdr.flags&=~SEND_ACK & ~ASYNC_REPLY;
-
-	/* If the pkt was sent from an our rnode, ignore it while flooding */
-	real_from_rpos=ip_to_rfrom(flood_pkt.from, 0, 0, 0);
-	if(real_from_rpos < 0) {
-		exclude_function=exclude_glevel;
-		real_from_rpos=-1;
-	} else
-		exclude_function=exclude_from_and_glevel;
-
-	flood_pkt_send(exclude_function, 1, -1, real_from_rpos, flood_pkt);
-
 finish:
 	if(ntop)
 		xfree(ntop);
@@ -584,9 +742,11 @@ int andna_check_counter(PACKET pkt)
 	
 	/* Find a hash_gnode for the pubk_hash */
 	req->flags&=~ANDNA_FORWARD;
-	if((err=find_hash_gnode(hash_gnode, &pkt.to, 0)) < 0)
+	if((err=find_hash_gnode(hash_gnode, &pkt.to, 0, 0, 1)) < 0) {
+		debug(DBG_INSANE, "andna_check_counter: Couldn't find a decent"
+				" counter_gnode");
 		ERROR_FINISH(ret, -1, finish);
-	else if(err == 1)
+	} else if(err == 1)
 		req->flags|=ANDNA_FORWARD;
 	
 	ntop=inet_to_str(pkt.to);
@@ -613,7 +773,7 @@ finish:
 
 int andna_recv_check_counter(PACKET rpkt)
 {
-	PACKET pkt, flood_pkt;
+	PACKET pkt;
 	struct andna_reg_pkt *req;
 	inet_prefix rfrom, to;
 	RSA *pubkey;
@@ -621,9 +781,9 @@ int andna_recv_check_counter(PACKET rpkt)
 	counter_c_hashes *cch;
 	const u_char *pk;
 	char *ntop=0, *rfrom_ntop=0, *buf;
-	int ret=0, pubk_hash[MAX_IP_INT], hash_gnode[MAX_IP_INT], err;
-	int real_from_rpos;
-	int(*exclude_function)(TRACER_PKT_EXCLUDE_VARS);
+	u_char forwarded_pkt;
+	int ret=0, err;
+	u_int pubk_hash[MAX_IP_INT], hash_gnode[MAX_IP_INT], *excluded_hgnode[1];
 
 			
 	ntop=xstrdup(inet_to_str(rpkt.from));
@@ -634,8 +794,12 @@ int andna_recv_check_counter(PACKET rpkt)
 		ERROR_FINISH(ret, -1, finish);
 	}
 	
+	if(rpkt.hdr.flags & BCAST_PKT)
+		/* The pkt we received has been only forwarded to us */
+		forwarded_pkt=1;
+
 	/* Check if we already received this pkt during the flood */
-	if(rpkt.hdr.flags & ASYNC_REPLY && rpkt.hdr.flags & SEND_ACK &&
+	if(forwarded_pkt && 
 			andna_add_flood_pkt_id(last_counter_pkt_id, rpkt.hdr.id)) {
 		debug(DBG_INSANE, "Dropped 0x%0x andna pkt, we already "
 				"received it", rpkt.hdr.id);
@@ -648,8 +812,8 @@ int andna_recv_check_counter(PACKET rpkt)
 	inet_htonl(&rfrom);
 
 	rfrom_ntop=xstrdup(inet_to_str(rfrom));
-	debug(DBG_SOFT, "Received %s from %s, rfrom %s", rq_to_str(rpkt.hdr.op),
-			ntop, rfrom_ntop);
+	debug(DBG_SOFT, "Received %s%sfrom %s, rfrom %s", rq_to_str(rpkt.hdr.op),
+			forwarded_pkt ? " (forwarded) " : " ", ntop, rfrom_ntop);
 	
 	memcpy(&pkt, &rpkt, sizeof(PACKET));
 	memcpy(&pkt.from, &rfrom, sizeof(inet_prefix));
@@ -664,26 +828,35 @@ int andna_recv_check_counter(PACKET rpkt)
 		/* Bad signature */
 		debug(DBG_SOFT, "Invalid signature of the 0x%x check "
 				"counter request", rpkt.hdr.id);
-		if(rpkt.hdr.flags & ASYNC_REPLY && rpkt.hdr.flags & SEND_ACK)
+		if(!forwarded_pkt)
 			ret=pkt_err(pkt, E_INVALID_SIGNATURE);
 		ERROR_FINISH(ret, -1, finish);
 	}
+
+	/* If don't belong to the gnode of `rfrom', then we have to exclude
+	 * it from the find_hash_gnode search, since we have received the 
+	 * pkt from that gnode and it is likely that `rfrom' is the only node 
+	 * of that gnode.
+	 */
+	excluded_hgnode[0] = ip_gids_cmp(rfrom, me.cur_ip, 1) ? rfrom.data : 0;
+	debug(DBG_INSANE, "excluded_hgnode: %x ", excluded_hgnode[0] );
 
 	/* 
 	 * Check if we are the real counter node or if we have to continue to 
 	 * forward the pkt 
 	 */
+
 	andna_hash(my_family, req->pubkey, ANDNA_PKEY_LEN, pubk_hash, hash_gnode);
-	if((err=find_hash_gnode(hash_gnode, &to, 0)) < 0) {
+	if((err=find_hash_gnode(hash_gnode, &to, excluded_hgnode, 1, 0)) < 0) {
 		debug(DBG_SOFT, "We are not the real (rounded)hash_gnode. "
 				"Rejecting the 0x%x check_counter request",
 				rpkt.hdr.id);
-		if(rpkt.hdr.flags & ASYNC_REPLY && rpkt.hdr.flags & SEND_ACK)
+		if(!forwarded_pkt)
 			ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE);
 		ERROR_FINISH(ret, -1, finish);
 	} else if(err == 1) {
 		if(!(req->flags & ANDNA_FORWARD)) {
-			if(rpkt.hdr.flags & ASYNC_REPLY && rpkt.hdr.flags & SEND_ACK)
+			if(!forwarded_pkt)
 				ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE);
 			ERROR_FINISH(ret, -1, finish);
 		}
@@ -700,50 +873,38 @@ int andna_recv_check_counter(PACKET rpkt)
 	cch=cc_hashes_add(cc, req->hash);
 	if(!cch) {
 		debug(DBG_SOFT, "Request %s (0x%x) rejected: %s", 
-				rq_to_str(rpkt.hdr.id), rpkt.hdr.id, 
+				rq_to_str(rpkt.hdr.op), rpkt.hdr.id, 
 				rq_strerror(E_ANDNA_TOO_MANY_HNAME));
-		if(rpkt.hdr.flags & ASYNC_REPLY && rpkt.hdr.flags & SEND_ACK)
+		if(!forwarded_pkt)
 			ret=pkt_err(pkt, E_ANDNA_TOO_MANY_HNAME);
 		ERROR_FINISH(ret, -1, finish);
 	}
 
 	if(cch->hname_updates > req->hname_updates) {
 		debug(DBG_SOFT, "Request %s (0x%x) rejected: hname_updates", 
-			" mismatch", rq_to_str(rpkt.hdr.id), rpkt.hdr.id);
-		if(rpkt.hdr.flags & ASYNC_REPLY && rpkt.hdr.flags & SEND_ACK)
+			" mismatch", rq_to_str(rpkt.hdr.op), rpkt.hdr.id);
+		if(!forwarded_pkt)
 			ret=pkt_err(pkt, E_INVALID_REQUEST);
 		ERROR_FINISH(ret, -1, finish);
 	} else
 		cch->hname_updates=req->hname_updates+1;
 		
 	/* Report the successful result to rfrom */
-	if(rpkt.hdr.flags & ASYNC_REPLY && rpkt.hdr.flags & SEND_ACK) {
+	if(!forwarded_pkt) {
 		debug(DBG_SOFT, "Check_counter rq 0x%x accepted.",
 				rpkt.hdr.id);
-		pkt_fill_hdr(&pkt.hdr, ASYNC_REPLIED, rpkt.hdr.id, ACK_AFFERMATIVE, 0);
+		pkt_fill_hdr(&pkt.hdr, ASYNC_REPLIED, rpkt.hdr.id,
+				ACK_AFFERMATIVE, 0);
 		pkt.msg=0;
 		ret=forward_pkt(pkt, rfrom);
 	}
-	
+
 	/* 
 	 * Broadcast the request to the entire gnode of level 1 to let the
 	 * other counter_nodes register the hname.
 	 */
-
-	pkt_copy(&flood_pkt, &rpkt);
-	flood_pkt.sk=0;
-	/* be sure that the other nodes don't reply to rfrom again */
-	flood_pkt.hdr.flags&=~SEND_ACK & ~ASYNC_REPLY;
+	andna_flood_pkt(&rpkt, forwarded_pkt);
 	
-	/* If the pkt was sent from an our rnode, ignore it while flooding */
-	real_from_rpos=ip_to_rfrom(flood_pkt.from, 0, 0, 0);
-	if(real_from_rpos < 0) {
-		exclude_function=exclude_glevel;
-		real_from_rpos=-1;
-	} else
-		exclude_function=exclude_from_and_glevel;
-	flood_pkt_send(exclude_function, 1, -1, real_from_rpos, flood_pkt);
-
 finish: 
 	if(ntop)
 		xfree(ntop);
@@ -764,6 +925,7 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	struct andna_resolve_reply_pkt *reply;
 	lcl_cache *lcl;
 	rh_cache *rhc;
+	andna_cache *ac;
 	u_int hash_gnode[MAX_IP_INT];
 	inet_prefix to;
 	
@@ -796,14 +958,26 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	}
 	
 	/* 
-	 * Ok, we have to ask to someone other.
 	 * Fill the request structure.
 	 */
 	memcpy(req.rip, me.cur_ip.data, MAX_IP_SZ);
 	andna_hash(my_family, hname, strlen(hname), req.hash, hash_gnode);
 	
-	/* Let's see to whom we have to send the pkt */
-	if((err=find_hash_gnode(hash_gnode, &to, 1)) < 0)
+#ifndef ANDNA_DEBUG
+	/*
+	 * If we managed an andna_cache, it's better to peek at it.
+	 */
+	if((ac=andna_cache_findhash(req.hash))) {
+		memcpy(resolved_ip, &ac->acq->rip, sizeof(inet_prefix));
+		return ret;
+	}
+#endif
+
+	/* 
+	 * Ok, we have to ask to someone for the resolution.
+	 * Let's see to whom we have to send the pkt 
+	 */
+	if((err=find_hash_gnode(hash_gnode, &to, 0, 0, 1)) < 0)
 		ERROR_FINISH(ret, -1, finish);
 	else if(err == 1)
 		req.flags|=ANDNA_FORWARD;
@@ -858,6 +1032,7 @@ int andna_recv_resolve_rq(PACKET rpkt)
 	inet_prefix rfrom, to;
 	int ret=0, err;
 	char *ntop=0, *rfrom_ntop=0;
+	u_char spread_the_acache=0;
 
 	req=(struct andna_resolve_rq_pkt *)rpkt.msg;
 	if(rpkt.hdr.sz != ANDNA_RESOLVE_RQ_PKT_SZ)
@@ -880,7 +1055,7 @@ int andna_recv_resolve_rq(PACKET rpkt)
 	 * Are we the right hash_gnode or have we to still forward the pkt ?
 	 */
 	andna_hash_by_family(my_family, (u_char *)req->hash, hash_gnode);
-	if((err=find_hash_gnode(hash_gnode, &to, 0)) < 0) {
+	if((err=find_hash_gnode(hash_gnode, &to, 0, 0, 0)) < 0) {
 		debug(DBG_SOFT, "We are not the real (rounded)hash_gnode. "
 				"Rejecting the 0x%x resolve_hname request",
 				rpkt.hdr.id);
@@ -904,31 +1079,34 @@ int andna_recv_resolve_rq(PACKET rpkt)
 	if(!(ac=andna_cache_findhash(req->hash))) {
 		/* We don't have that hname in our andna_cache */
 	
-#if 0
-		/*
-		 * If our uptime is less than (ANDNA_EXPIRATION_TIME/2), then 
-		 * we are a new hash_gnode that maybe has replaced another one,
-		 * but since no more than (ANDNA_EXPIRATION_TIME/2) seconds 
-		 * have passed we don't have the andna_cache for the hostname 
-		 * the `rfrom' is asking us to resolve. What we have to do is
-		 * asking to give us the andna_cache for that hname to the old 
-		 * hash_gnode, we store it in our andna_c and we reply to 
-		 * `rfrom'.
-		 * Finally we broadcast the obtained andna_cache inside our
-		 * gnode.
-		 */
-		if(me.uptime < (ANDNA_EXPIRATION_TIME/2)) {
-			if(!get_andna_single_cache();)
+		if(time(0)-me.uptime < (ANDNA_EXPIRATION_TIME/2)) {
+			/*
+			 * We are a new hash_gnode, let's see if there is
+			 * an old hash_gnode which has this hostname.
+			 */
+			if((ac=get_single_andna_c(req->hash, hash_gnode))) {
+				/* 
+				 * We got the andna_cache from the old
+				 * hash_gnode. Save it in our andna_cache, then
+				 * reply to `rfrom' and diffuse it in our gnode
+				 */
+				clist_add(&andna_c, &andna_c_counter, ac);
+
+				spread_the_acache=1;
+				goto reply_resolve_rq;
+			}
 		}
-#endif
-		/* There isn't it, bye. */
+
+
+		/* Nothing to do, there isn't it, bye. */
 		debug(DBG_SOFT, "Request %s (0x%x) rejected: %s", 
-				rq_to_str(rpkt.hdr.id), rpkt.hdr.id, 
+				rq_to_str(rpkt.hdr.op), rpkt.hdr.id, 
 				rq_strerror(E_ANDNA_NO_HNAME));
 		ret=pkt_err(pkt, E_ANDNA_NO_HNAME);
 		goto finish;
 	}
 	
+reply_resolve_rq:
 	/* Send back the ip associated to the hname */
 	debug(DBG_SOFT, "Resolve request 0x%x accepted", rpkt.hdr.id);
 	memset(&reply, 0, sizeof(reply));
@@ -940,6 +1118,11 @@ int andna_recv_resolve_rq(PACKET rpkt)
 	memcpy(pkt.msg, &reply, sizeof(reply));
 	ret=forward_pkt(pkt, rfrom);
 	pkt_free(&pkt, 0);
+
+	if(spread_the_acache) {
+		/* Spread the received andna_cache in our gnode */
+		spread_single_acache(req->hash);
+	}
 	
 finish:
 	if(ntop)
@@ -1024,7 +1207,7 @@ finish:
 }
 
 /*
- * andna_recv__rev_resolve_rq: it replies to a reverse hostname resolve request
+ * andna_recv_rev_resolve_rq: it replies to a reverse hostname resolve request
  * which asks all the hostnames associated with a given ip.
  */
 int andna_recv_rev_resolve_rq(PACKET rpkt)
@@ -1103,9 +1286,6 @@ finish:
 }
 
 
-
-/*****************************************************************************************************************************/
-#ifdef EXPERIMENTAL_ANDNA_CODE
 /*
  * get_single_andna_c: sends the ANDNA_GET_SINGLE_ACACHE request to the old 
  * `hash_gnode' of `hash' to retrieve the andna_cache that contains the
@@ -1117,7 +1297,7 @@ andna_cache *get_single_andna_c(u_int hash[MAX_IP_INT],
 	PACKET pkt, rpkt;
 	struct single_acache_hdr req_hdr;
 	andna_cache *andna_cache, *ret=0;
-	inet_prefix *new_hgnodes;
+	u_int *new_hgnodes[1];
 	size_t pack_sz;
 	int err, counter;
 	const char *ntop;
@@ -1127,11 +1307,15 @@ andna_cache *get_single_andna_c(u_int hash[MAX_IP_INT],
 	memset(&rpkt, '\0', sizeof(PACKET));
 	memset(&req_hdr, '\0', sizeof(PACKET));
 	
-	/* Find the old hash_gnode that corresponds to the hash `hash_gnode'*/
-	new_hgnodes[0]=&me.cur_ip;
+	/*
+	 * Find the old hash_gnode that corresponds to the hash `hash_gnode',
+	 * but exclude from the search ourself 'cause we are a new hash_gnode
+	 * and we are trying to reach the new one.
+	 */
+	new_hgnodes[0]=me.cur_ip.data;
 	if((err=find_hash_gnode(hash_gnode, &pkt.to, new_hgnodes, 1, 1)) < 0) {
 		debug(DBG_SOFT, "get_single_andna_c: old hash_gnode not found");
-		ERROR_FINISH(ret, -1, finish);
+		ERROR_FINISH(ret, 0, finish);
 	} else if(err == 1)
 		req_hdr.flags|=ANDNA_FORWARD;
 	
@@ -1139,6 +1323,7 @@ andna_cache *get_single_andna_c(u_int hash[MAX_IP_INT],
 	memcpy(req_hdr.rip, me.cur_ip.data, MAX_IP_SZ);
 	memcpy(req_hdr.hash, hash, MAX_IP_SZ);
 
+	/* Pack the request */
 	pkt.hdr.flags|=ASYNC_REPLY;
 	pkt.hdr.sz=SINGLE_ACACHE_PKT_SZ(1);
 	pkt.msg=xmalloc(pkt.hdr.sz);
@@ -1150,14 +1335,15 @@ andna_cache *get_single_andna_c(u_int hash[MAX_IP_INT],
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(ANDNA_GET_SINGLE_ACACHE), ntop);
 	err=send_rq(&pkt, 0, ANDNA_GET_SINGLE_ACACHE, 0, ACK_AFFERMATIVE, 1, &rpkt);
 	if(err==-1)
-		ERROR_FINISH(ret, -1, finish);
-	
+		ERROR_FINISH(ret, 0, finish);
+
+	/* Unpack the awaited reply */
 	pack_sz=rpkt.hdr.sz;
 	pack=rpkt.msg;
 	ret=andna_cache=unpack_andna_cache(pack, pack_sz, &counter);
 	if(!andna_cache) {
 		error("get_single_acache(): Malformed andna_cache.");
-		ERROR_FINISH(ret, -1, finish);
+		ERROR_FINISH(ret, 0, finish);
 	}
 	
 finish:
@@ -1167,14 +1353,15 @@ finish:
 }
 
 /*
- * TODO: COMMENT HERE
+ * put_single_acache: It replies to a get_single_acache request as described
+ * in andna.h (near the single_acache_hdr struct).
  */
 int put_single_acache(PACKET rpkt)
 {
 	PACKET pkt;
 	struct single_acache_hdr *req_hdr;
-	u_int hash_gnode[MAX_IP_INT];
-	inet_prefix rfrom, to, *new_hgnodes=0;
+	u_int hash_gnode[MAX_IP_INT], **new_hgnodes=0;
+	inet_prefix rfrom, to;
 	andna_cache *ac, *ac_tmp;
 	char *buf;
 	char *ntop=0, *rfrom_ntop=0;
@@ -1182,7 +1369,7 @@ int put_single_acache(PACKET rpkt)
 	ssize_t err;
 	size_t pkt_sz=0;
 	
-	req_hdr=rpkt.msg;
+	req_hdr=(struct single_acache_hdr *)rpkt.msg;
 	if(rpkt.hdr.sz != SINGLE_ACACHE_PKT_SZ(req_hdr->hgnodes) ||
 			req_hdr->hgnodes > ANDNA_MAX_NEW_GNODES)
 		ERROR_FINISH(ret, -1, finish);
@@ -1200,14 +1387,20 @@ int put_single_acache(PACKET rpkt)
 	memcpy(&pkt.from, &rfrom, sizeof(inet_prefix));
 	pkt_addsk(&pkt, my_family, 0, SKT_UDP);
 
-	new_hgnodes=xmalloc(sizeof(inet_prefix *) * (req_hdr->hgnodes+1));
+	/* Unpack the hash_gnodes to exclude */
+	new_hgnodes=xmalloc(sizeof(u_int *) * (req_hdr->hgnodes+1));
 	buf=rpkt.msg+sizeof(struct single_acache_hdr);
 	for(i=0; i<req_hdr->hgnodes; i++) {
-		new_hgnodes[i]=buf;
+		new_hgnodes[i]=(u_int *)buf;
 		buf+=MAX_IP_SZ;
 	}
 
-	andna_hash_by_family(my_family, (u_char *)req->hash, hash_gnode);
+	/* 
+	 * Check if we are the destined old hash_gnode or if we have to still
+	 * forward the pkt 
+	 */
+	
+	andna_hash_by_family(my_family, (u_char *)req_hdr->hash, hash_gnode);
 	if((err=find_hash_gnode(hash_gnode, &to, new_hgnodes, 
 					req_hdr->hgnodes, 0)) < 0) {
 		debug(DBG_SOFT, "We are not the real (rounded)hash_gnode. "
@@ -1223,47 +1416,76 @@ int put_single_acache(PACKET rpkt)
 		goto finish;
 	}
 
-	if(me.uptime < (ANDNA_EXPIRATION_TIME/2)) {
-		new_hgnodes[req_hdr->hgnodes]=&me.cur_ip;
-		if((err=find_old_hash_gnode(hash_gnode, &to, new_hgnodes, 
-						req_hdr->hgnodes+1, 1)) < 0) {
-			debug(DBG_SOFT, "put_single_andna_c: old hash_gnode not found");
-			ERROR_FINISH(ret, -1, finish);
-		}
-
-		memcpy(&pkt, &rpkt, sizeof(PACKET));
-		pkt.sk=0;
-		pkt.hdr.sz=rpkt.hdr.sz+MAX_IP_SZ;
-		pkt.msg=xmalloc(pkt.hdr.sz);
-		memcpy(pkt.msg, rpkt.msg, rpkt.hdr.sz);
-		memcpy(pkt.msg+rpkt.hdr.sz, me.cur_ip.data, MAX_IP_SZ);
-
-		ret=forward_pkt(pkt, to);
-		pkt_free(&pkt, 1);
-		goto finish;
-	}
 		
+	/*
+	 * Search in our andna_cache if we have what `rfrom' wants.
+	 */
 	andna_cache_del_expired();
 	if(!(ac=andna_cache_findhash(req_hdr->hash))) {
-		/* There isn't it, bye. */
+
+		/*
+		 * Nothing found! Maybe it's because e have an uptime less than
+		 * (ANDNA_EXPIRATION_TIME/2) and so we are a new hash_gnode, 
+		 * therefore we have to forward the pkt to a older hash_gnode.
+		 */ 
+		if(time(0)-me.uptime < (ANDNA_EXPIRATION_TIME/2)) {
+			new_hgnodes[req_hdr->hgnodes]=me.cur_ip.data;
+			if((err=find_hash_gnode(hash_gnode, &to, new_hgnodes, 
+							req_hdr->hgnodes+1, 1)) < 0) {
+				/* Older hash_gnodes don't exist */
+				debug(DBG_SOFT, "put_single_andna_c: old hash_gnode not found");
+				ERROR_FINISH(ret, -1, finish);
+			}
+
+			memcpy(&pkt, &rpkt, sizeof(PACKET));
+			pkt.sk=0;
+			pkt.hdr.sz=rpkt.hdr.sz+MAX_IP_SZ;
+			pkt.msg=xmalloc(pkt.hdr.sz);
+			memcpy(pkt.msg, rpkt.msg, rpkt.hdr.sz);
+			memcpy(pkt.msg+rpkt.hdr.sz, me.cur_ip.data, MAX_IP_SZ);
+
+			debug(DBG_SOFT, "The 0x%x rq pkt will be forwarded "
+					"to an older hgnode: %s", rpkt.hdr.id,
+					inet_to_str(to));
+			ret=forward_pkt(pkt, to);
+			pkt_free(&pkt, 1);
+			goto finish;
+		}
+
+
+		/*
+		 * We are neither a new hash_gnode so the
+		 * get_andna_single_cache propagation ends here and we reply to
+		 * `rfrom': <<That andna_cache doesn't exist, bye bye!>> 
+		 */
 		debug(DBG_SOFT, "Request %s (0x%x) rejected: %s", 
-				rq_to_str(rpkt.hdr.id), rpkt.hdr.id, 
+				rq_to_str(rpkt.hdr.op), rpkt.hdr.id, 
 				rq_strerror(E_ANDNA_NO_HNAME));
 		ret=pkt_err(pkt, E_ANDNA_NO_HNAME);
 		goto finish;
 	}
 	
+	/*
+	 * We found the andna_cache! Let's reply.
+	 * Pack the `ac' andna_cache and send it to `rfrom' 
+	 */
+	
 	memset(&pkt, '\0', sizeof(PACKET));
-	pkt_addto(&pkt, &req_hdr.rip);
+	pkt_fill_hdr(&pkt.hdr, ASYNC_REPLIED, rpkt.hdr.id, ACK_AFFERMATIVE, 0);
+	pkt_addto(&pkt, &rfrom);
 	pkt_addsk(&pkt, my_family, 0, SKT_TCP);
+	pkt_addport(&pkt, rpkt.port);
 
+	/* Exctract the `ac' cache from the llist, so we can pack it alone */
 	ac_tmp=xmalloc(sizeof(andna_cache));
 	memset(ac_tmp, 0, sizeof(andna_cache));
 	list_copy(ac_tmp, ac);
 	pkt.msg=pack_andna_cache(ac_tmp, &pkt_sz);
 	pkt.hdr.sz=pkt_sz;
+
 	debug(DBG_INSANE, "Reply put_single_acache to %s", ntop);
-	err=send_rq(&pkt, ASYNC_REPLIED, ACK_AFFERMATIVE, rpkt.hdr.id, 0, 0, 0);
+	err=send_rq(&pkt, 0, ACK_AFFERMATIVE, rpkt.hdr.id, 0, 0, 0);
+	pkt_free(&pkt, 0);
 	if(err==-1) {
 		error("put_andna_cache(): Cannot send the put_single_acache "
 				"reply to %s.", ntop);
@@ -1279,14 +1501,83 @@ finish:
 	if(rfrom_ntop)
 		xfree(rfrom_ntop);
 
-	pkt_free(&pkt, 0);
 	return ret;
 }
 
-#endif
-/*****************************************************************************************************************************/
+/*
+ * spread_single_acache: tells to all the rnodes to get the single 
+ * andna_cache of `hash' using get_single_andna_c()
+ */
+int spread_single_acache(u_int hash[MAX_IP_INT])
+{
+	PACKET pkt;
+	struct spread_acache_pkt req;
 
+	memset(&pkt, 0, sizeof(PACKET));
+	memcpy(req.hash, hash, MAX_IP_SZ);
+	pkt_fill_hdr(&pkt.hdr, 0, 0, ANDNA_SPREAD_SACACHE, 
+			SPREAD_ACACHE_PKT_SZ);
+	pkt.msg=xmalloc(pkt.hdr.sz);
+	memcpy(pkt.msg, &req, pkt.hdr.sz);
+	
+	debug(DBG_NOISE, "Spreading the single andna_cache 0x%x", pkt.hdr.id);
+	return andna_flood_pkt(&pkt, 0);
+}
 
+/*
+ * recv_spread_single_acache: receives and execute the ANDNA_SPREAD_SACACHE
+ * request.
+ */
+int recv_spread_single_acache(PACKET rpkt)
+{
+	struct spread_acache_pkt *req;
+	andna_cache *ac;
+	u_int hash_gnode[MAX_IP_INT];
+	int ret=0;
+	
+	req=(struct spread_acache_pkt *)rpkt.msg;
+	if(rpkt.hdr.sz != SPREAD_ACACHE_PKT_SZ)
+		ERROR_FINISH(ret, -1, finish);
+	
+	/* Check if we already received this pkt during the flood */
+	if(andna_add_flood_pkt_id(last_spread_acache_pkt_id, rpkt.hdr.id)) {
+		debug(DBG_INSANE, "Dropped 0x%0x andna pkt, we already "
+				"received it", rpkt.hdr.id);
+		ERROR_FINISH(ret, 0, finish);
+	}
+
+	if(time(0)-me.uptime > (ANDNA_EXPIRATION_TIME/2) ||
+			(ac=andna_cache_findhash(req->hash))) {
+		/* We don't need to get the andna_cache from an old
+		 * hash_gnode, since we actually are one of them! */
+		debug(DBG_NOISE, "recv_spread_single_acache: We are an old "
+				"hash_gnode, dropping 0x%x", rpkt.hdr.id);
+		ERROR_FINISH(ret, -1, finish);
+	}
+	
+	debug(DBG_NOISE, "Received the spreaded andna_cache 0x%x", rpkt.hdr.id);
+	
+	/* 
+	 * Do as the rpkt tells us to do: retrieve the andna_hash for
+	 * req->hash from the old hash_gnode and store it.
+	 */
+	andna_hash_by_family(my_family, (u_char *)req->hash, hash_gnode);
+	if((ac=get_single_andna_c(req->hash, hash_gnode))) {
+		/* Save it in our andna_cache.*/
+		clist_add(&andna_c, &andna_c_counter, ac);
+	} else {
+		debug(DBG_NOISE, "recv_spread_single_acache: (0x%x) "
+				"get_single_andna_c request failed", 
+				rpkt.hdr.id);
+		ERROR_FINISH(ret, -1, finish);
+	}
+
+	/* Continue to forward the pkt in the gnode */
+	andna_flood_pkt(&rpkt, 1);
+
+finish:
+	return ret;
+}
 
 /*
  * get_andna_cache: sends the ANDNA_GET_ANDNA_CACHE request to `to' to retrieve the

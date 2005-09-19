@@ -32,13 +32,14 @@
 /* Pkt's flags */
 #define SEND_ACK		1
 #define BCAST_PKT		(1<<1)	/* In this pkt there is encapsulated a 
-					 * broadcast pkt. Woa */
+					 * broadcast/flood pkt. Woa */
 #define HOOK_PKT		(1<<2)  /* All the pkts sent while hooking have
 					 * this flag set      */
 #define ASYNC_REPLY		(1<<3)	/* Tells the receiver to reply with a new 
 					   connection. The reply pkt will be
 					   handled by the pkt_queue. */
 #define ASYNC_REPLIED		(1<<4)
+#define LOOPBACK_PKT		(1<<5)  /* This is a packet destinated to me */
 
 /* Broacast ptk's flags */
 #define BCAST_TRACER_PKT	1	/*When a bcast is marked with this, it 

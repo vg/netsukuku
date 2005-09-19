@@ -39,7 +39,7 @@
 
 #ifdef DEBUG
 	#undef ANDNA_EXPIRATION_TIME
-	#define ANDNA_EXPIRATION_TIME 60
+	#define ANDNA_EXPIRATION_TIME 100
 	#undef ANDNA_MIN_UPDATE_TIME
 	#define ANDNA_MIN_UPDATE_TIME 2
 #endif 
@@ -216,7 +216,7 @@ struct andna_cache_pkt_hdr
  * There are a number of bodies equal to `tot_caches'.
  * So the complete pkt is:
  * 	struct andna_cache_pkt_hdr	hdr;
- * 	char 	acq[ANDNA_CACHE_QUEUE_PACK_SZ * hdr.tot_caches];
+ * 	char 	acq[ANDNA_CACHE_QUEUE_PACK_SZ(hdr.tot_caches)];
  */
 #define ANDNA_CACHE_QUEUE_PACK_SZ	(sizeof(andna_cache_queue) - 		\
 					(sizeof(andna_cache_queue *) * 2))

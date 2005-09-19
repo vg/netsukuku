@@ -662,6 +662,8 @@ int pkt_q_wait_recv(int id, inet_prefix *from, PACKET *rpkt, pkt_queue **ret_pq)
 
 	pq=xmalloc(sizeof(pkt_queue));
 	memset(pq, 0, sizeof(pkt_queue));
+	
+	pthread_mutex_init(&pq->mtx, 0);
 	pq->flags|=PKT_Q_MTX_LOCKED;
 	*ret_pq=pq;
 	
@@ -684,7 +686,6 @@ int pkt_q_wait_recv(int id, inet_prefix *from, PACKET *rpkt, pkt_queue **ret_pq)
 	pthread_detach(thread);
 
 	if(pq->flags & PKT_Q_MTX_LOCKED) {
-		pthread_mutex_init(&pq->mtx, 0);
 		debug(DBG_INSANE, "pkt_q_wait_recv: Locking 0x%x!", &pq->mtx);
 
 		/* Freeze! */
@@ -719,7 +720,8 @@ int pkt_q_add_pkt(PACKET pkt)
 	int ret=-1;
 	
 	list_safe_for(pq, next) {
-			debug(DBG_INSANE, "pkt_q_add_pkt: %d == %d. data[0]: %d", pq->pkt.hdr.id, pkt.hdr.id, pq->pkt.from.data[0]);
+		debug(DBG_INSANE, "pkt_q_add_pkt: %d == %d. data[0]: %d, async replied: %d",
+				pq->pkt.hdr.id, pkt.hdr.id, pq->pkt.from.data[0], (pkt.hdr.flags & ASYNC_REPLIED));
 		if(pq->pkt.hdr.id == pkt.hdr.id) {
 			if(pq->pkt.from.data[0] && (pq->flags & PKT_Q_CHECK_FROM) &&
 					memcmp(&pq->pkt.from, &pkt.from, sizeof(inet_prefix)))

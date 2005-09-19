@@ -165,6 +165,7 @@ int random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 		inet_prefix *new_ip, int my_family);
 void gnodetoip(quadro_group *quadg, int gnodeid, u_char level, inet_prefix *ip);
 int quadg_gids_cmp(quadro_group a, quadro_group b, int lvl);
+int ip_gids_cmp(inet_prefix a, inet_prefix b, int lvl);
 ext_rnode_cache *erc_find(ext_rnode_cache *erc, ext_rnode *e_rnode);
 void e_rnode_del(ext_rnode_cache **erc_head, u_int *counter, ext_rnode_cache *erc);
 void e_rnode_add(ext_rnode_cache **erc, ext_rnode *e_rnode, int rnode_pos, u_int *counter);

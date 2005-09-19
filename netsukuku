@@ -64,8 +64,7 @@ la Rete ci attende.
 	
   6. Broadcast: There can be only one!
   
-  	6.1  Delayed Fireball: groupnode broadcast.
-	6.2  Tracer pkt: one flood, one route
+	6.1  Tracer pkt: one flood, one route
 	
   7. ANDNA: Abnormal Netsukuku Domain Name Anarchy
  
@@ -714,32 +713,6 @@ la Rete ci attende.
   MAXGROUPNODE*(levels+1). Con l'ipv4 abbiamo 1024 rotte, con l'ipv6 4352.
   Tutte queste rotte risiederanno direttamente nel kernel.
 
-  /* TODO: da codare, oppure no. Forse non serve proprio, e in ogni caso si
-   * puo' diminuire il numero di rotte in maniera esponenziale diminuendo il
-   * MAXGROUPNODE ed aumentando i livelli, ad esempio se un gnode e' composto
-   * da massimo 2^2 di nodi allora i livelli sono 16 nell'ipv4 e le rotte
-   * diventano 68.
-   */
-  Questo numero enorme di rotte puo' sembrare oneroso, percio' l'utente puo'
-  decidere quanti livelli tenere nel kernel.
-  Di default e' presente il livello 0, quindi tutte le MAXGROUPNODE rotte
-  per raggiungere i nodi del proprio group_node; i livelli successivi che 
-  vengono aggiunti partono dall'ultimo per discendere al secondo. 
-  La variabile che contiene il numero di livelli da memorizzare e' chiamata 
-  level_routes. Se level_routes e' uguale a zero allora tutti i livelli
-  verrano mantenuti nel route table del kernel. 
-  Se, ad esempio, e' uguale a 3 ed n rapressenta il numero di
-  livelli totali di Netsukuku, allora il kernel conterra' il livello 0, il
-  livello n-1, n-2 ed n-3.  Se un livello non e' presente nella krnl route
-  table allora la rotta verra' creata al momento da netsukuku quando il kernel
-  la richiedera'. Ovviamente piu' livelli si mantengono nel kernel e piu'
-  performante e' il tempo di connessione, ma tutto questo va a discapito
-  della memoria. Si deve pero' considerare che ormai i computer hanno Gbytes
-  di ram e che ogni rotta occupera' al massimo 100 byte (stima molto rozza
-  ed approssimativa), percio' con 4352 rotte bisogna usare solo 435200 bytes
-  (425k). Davvero una miseria, ma si sa' l'ottimizzazione non e' mai troppa.
-
-
   5.3.1 Groupnode: one entity
   
   Per avere il qspn effettivo dei groupnode la storia cambia un po'.
@@ -805,34 +778,7 @@ la Rete ci attende.
   un'area di raggio prefissato, basta settare il ttl al numero di hop di questo
   raggio.
 
-  6.1  Delayed Fireball: groupnode broadcast.
-
-  Un nodo che vuole accertarsi che un altro nodo non e' presente nel
-  Wired oppure vuole stabilire una rotta con un nodo che ancora non e'
-  stato ancora inserito nelle mappe, creera' un pkt con la flag settata a
-  "delayed_broadcast". Questo pkt conterra' un messaggio, l'indirizzo di dst e
-  il groupnode di dst. Dopo aver forgiato il pkt, si calcolera' la rotta per
-  raggiungere il destination groupnode e inviera'. Quando il pkt giungera'
-  ad un qualsiasi nodo del dst_groupnode, verra' propagato in broadcast
-  _solamente_ all'interno del groupnode. Il dst_node che riceve il pkt puo'
-  rispondere in base al contenuto del msg. Puo' per esempio decidere di
-  rispondere ad un semplice "AreYouAlive?" oppure puo' calcolarsi la rotta
-  che giunge al src_node e stabilire un connessione con lui.
-  Ecco cosa si puo' fare con il delayed_broadcast:
-  (1) Un nodo puo' creare delle back_connection con un nodo: Crea la rotta
-      dopo aver ricevuto il pkt "delayed_broadcast",
-      e manda un msg di conferma al nodo src attraverso la rotta. Il src_node
-      a questo punto puo' iniziare la connessione utilizzando quella rotta.
-  (2) Un nodo puo' anche decidere di entrare in Netsukuku senza far aggiornare
-      le mappe di Netsukuku agli altri, in questo
-      modo diventa invisibile a tutti, pero' puo' ancora essere contattato,
-      ma _solo_ da coloro che sanno che e' Up & running. Si puo' usare
-      questo sistema anche per evitare di dover fare da router, infatti,
-      essendo invisibili, nessun nodo potra' scegliere un nodo invisibile
-      proprio perche' non lo vede. Pero' questo comporta un'instabilita'
-      generale, percio' e' meglio che i nodi non usino mai questo sistema.
-
-  6.2  Tracer pkt: one flood, one route
+  6.1  Tracer pkt: one flood, one route
 
   Il tracer pkt non e' altro che il modo per trovare la rotta migliore
   con il broadcast. Se il pkt che viene mandato in broadcast avra' la flag

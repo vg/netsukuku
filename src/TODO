@@ -1,13 +1,7 @@
 		[HIGH PRIORITY] 
 
 - ANDNA:
-  - Forwarding della richiesta di resolve da parte dei nuovi hash_gnode che
-    hanno soppiantato il vecchio (dove e' presente il db).
-    - pack_single_cache
-    - find_old_hgnode
   - dns wrapper per mettere 127.0.0.1 in resolv.conf
-
-- ATTENZIONE: route_del e' disattivato per debugging. 
 
 		[MEDIUM PRIORITY] 
 
@@ -15,6 +9,8 @@
   nodi di uno stesso gnode esterno li deve mettere come nexthop nella stessa rotta 
   per raggiungere il gnode esterno. Se ci sono tanti bnode per raggiungere uno
   stesso gnode, bisogna usare sempre il multipath.
+
+- QSPN dopo il QSPN_WAIT*2 rimuovere i vecchi nodi
 
 - Backup_gnodes per l'ANDNA. Necessari?
 
@@ -41,31 +37,6 @@ hook.c: ottimizzare lo spazio di free_node: invece di usare una serie di u_char
         asm/bitops.h set_bit, clear_bit..., is_set)
 broadcast: Tenere in considerazione il gttl.
 hook.c:    anti spoof hook
-
-		[ CURRENT TESTS ]
-	
-12%, krnl_rule.c
-19%, request.c
-56%, qspn.c
-50%, tracer.c
-82%, radar.c
-83%, route.c
-86%, bmap.c
-91%, krnl_route.c
-93%, pkts.c
-94%, gmap.c
-95%, netsukuku.c
-94%, map.c
-95%, inet.c
-98%, hook.c
-99%, daemon.c
-99%, if.c
-100%, accept.c
-100%, ipv6-gmp.c
-100%, libnetlink.c
-100%, ll_map.c
-100%, llist.c
-100%, log.c
-100%, misc.c
-100%, qspn-empiric.c
-100%, xmalloc.c
+hook.c:	cancellazione di tutte le rotte presenti nella routing table?
+	10.0.0.0/8 dev eth0  proto kernel  scope link  src 10.0.0.5 
+	10.0.0.0/8 dev eth1  proto kernel  scope link  src 10.0.0.6 

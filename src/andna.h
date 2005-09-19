@@ -18,8 +18,8 @@
 
 /* How many different andna pkt can be flooded simultaneusly */
 #define ANDNA_MAX_FLOODS	(ANDNA_MAX_QUEUE*3) 
-
-#define ANDNA_MAX_NEW_GNODE	1024
+/* How many new hash_gnodes are supported in the andna hash_gnode mutation */
+#define ANDNA_MAX_NEW_GNODES	1024
 
 /* These arrays keeps the latest reg_pkt and counter_check IDs to drop pkts
  * alreay received during the floods. These arrays are actually a FIFO, so the
@@ -27,6 +27,7 @@
  * at the last position */
 int last_reg_pkt_id[ANDNA_MAX_FLOODS];
 int last_counter_pkt_id[ANDNA_MAX_FLOODS];
+int last_spread_acache_pkt_id[ANDNA_MAX_FLOODS];
 
 /*
  * * * ANDNA requests/replies pkt stuff * * * 
@@ -107,9 +108,15 @@ struct andna_rev_resolve_reply_hdr
 /* 
  * The single_acache pkt is used to get from an old hash_gnode a single
  * andna_cache, which has the wanted `hash'. Its propagation method is similar
- * to that of andna_resolve_rq_pkt, but each new hash_gnode adds in the body
- * pkt its ip. The added ips are used as excluded hash_gnode by
- * find_hash_gnode(). /TODO: ampiare
+ * to that of andna_resolve_rq_pkt, but each new hash_gnode, which receives
+ * the pkt, adds in the body pkt its ip. The added ips are used as excluded 
+ * hash_gnode by find_hash_gnode(). In this way each time an old hash_gnode 
+ * receives the pkt, can verify if it is, at that current time, the true old 
+ * hash_gnode by excluding the hash_gnodes listed in the pkt body. If it 
+ * notices that there's an hash_gnode older than it, it will append its ip in 
+ * the pkt body and will forward it to that older hash_gnode. And so on, until
+ * the pkt reaches a true old hash_gnode, or cannot be forwarded anymore since
+ * there are no more older hash_gnodes.
  */
 struct single_acache_hdr
 {
@@ -118,19 +125,31 @@ struct single_acache_hdr
 	u_short		hgnodes;		/* Number of hgnodes in the 
 						   body. */
 	u_char		flags;
-}
+} _PACKED_;
 /*
  * The single_acache body is:
  * struct {
  * 	u_int		hgnode[MAX_IP_INT];
  * } body[new_hash_gnode_hdr.hgnodes];
  */
-#define SINGLE_ACACHE_PKT_SZ(hgnodes)	(sizoef(struct single_acache_hdr)+\
+#define SINGLE_ACACHE_PKT_SZ(hgnodes)	(sizeof(struct single_acache_hdr)+\
 						MAX_IP_SZ*(hgnodes))
 /*
  * The single_acache_reply is just an andna_cache_pkt with a single cache.
  */
-	
+
+
+/*
+ * Tell the node, which receives the pkt, to send a ANDNA_GET_SINGLE_ACACHE
+ * request to fetch the andna_cache for the `hash' included in the pkt.
+ */
+struct spread_acache_pkt
+{
+	u_int		hash[MAX_IP_INT];
+} _PACKED_;
+#define SPREAD_ACACHE_PKT_SZ	(sizeof(struct spread_acache_pkt))
+
+
 int andna_load_caches(void);
 int andna_save_caches(void);
 void andna_init(void);
@@ -146,6 +165,12 @@ int andna_recv_resolve_rq(PACKET rpkt);
 
 int andna_reverse_resolve(inet_prefix ip, char ***hostnames);
 int andna_recv_rev_resolve_rq(PACKET rpkt);
+
+int spread_single_acache(u_int hash[MAX_IP_INT]);
+int recv_spread_single_acache(PACKET rpkt);
+
+andna_cache *get_single_andna_c(u_int hash[MAX_IP_INT],	u_int hash_gnode[MAX_IP_INT]);
+int put_single_acache(PACKET rpkt);
 
 andna_cache *get_andna_cache(inet_prefix to, int *counter);
 int put_andna_cache(PACKET rq_pkt);

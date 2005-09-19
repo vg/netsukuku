@@ -214,10 +214,17 @@ void parse_options(int argc, char **argv)
 			{"restricted", 	0, 0, 'r'},
 			{"debug", 	0, 0, 'd'},
 			{"version",	0, 0, 'v'},
+#ifdef ANDNA_DEBUG
+			{"ip", 		1, 0, 'P'},
+#endif
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long (argc, argv,"i:c:hvd64Dra", long_options, 
+		c = getopt_long (argc, argv,"i:c:hvd64Dra"
+#ifdef ANDNA_DEBUG
+				"P:"
+#endif
+				, long_options, 
 				&option_index);
 		if (c == -1)
 			break;
@@ -256,6 +263,11 @@ void parse_options(int argc, char **argv)
 			case 'd':
 				server_opt.dbg_lvl++;
 				break;
+#ifdef DEBUG
+			case 'P':
+				server_opt.debug_ip=atoi(optarg);
+				break;
+#endif
 			default:
 				usage();
 				exit(1);
@@ -353,7 +365,7 @@ void sigterm_handler(int sig)
 		fatal("Termination signal caught. Dying, bye, bye");
 }
 
-void sighup_handler(int sig)
+void *reload_hostname_thread(void *null)
 {
 	/* 
 	 * Reload the file where the hostnames to be registered are and
@@ -362,15 +374,59 @@ void sighup_handler(int sig)
 	loginfo("Reloading the andna hostnames file");
 	load_hostnames(server_opt.andna_hnames_file, &andna_lcl, &lcl_counter);
 	andna_register_new_hnames();
+
+	return 0;
 }
 
-void sigalrm_handler(int sig)
+void sighup_handler(int sig)
+{
+	pthread_t thread;
+	pthread_attr_t t_attr;
+	
+	pthread_attr_init(&t_attr);
+	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
+	pthread_create(&thread, &t_attr, reload_hostname_thread, 0);
+}
+
+void *rh_cache_flush_thread(void *null)
 {
 	/* 
 	 * Flush the resolved hostnames cache.
 	 */
 	loginfo("Flush the resolved hostnames cache");
 	rh_cache_flush();
+#ifdef ANDNA_DEBUG
+	lcl_cache *lcl;
+	debug(DBG_INSANE, "Trying to register illegally \"netsukuku\"");
+	lcl=lcl_cache_new("netsukuku");
+	if(!andna_register_hname(lcl)) {
+		debug(DBG_INSANE, "We've been added in the queue");
+		inet_prefix ip;
+		debug(DBG_INSANE, "Let's see the ip associated to \"netsukuku\"");
+		if(!andna_resolve_hname("netsukuku", &ip)) {
+			char *a= xstrdup(inet_to_str(ip)), *b=xstrdup(inet_to_str(me.cur_ip));
+			debug(DBG_INSANE, "Resolved! ip: %s =? our ip: %s", a,b);
+		}
+		else
+			debug(DBG_INSANE, "Resolved failure Something went wrong");
+
+	}
+	else
+		debug(DBG_INSANE, "We coulnd't register it");
+	
+#endif
+
+	return 0;
+}
+
+void sigalrm_handler(int sig)
+{
+	pthread_t thread;
+	pthread_attr_t t_attr;
+	
+	pthread_attr_init(&t_attr);
+	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
+	pthread_create(&thread, &t_attr, rh_cache_flush_thread, 0);
 }
 
 

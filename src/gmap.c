@@ -305,6 +305,20 @@ int quadg_gids_cmp(quadro_group a, quadro_group b, int lvl)
 	return 0;
 }
 
+/*
+ * ip_gids_cmp: a wrapper to quadg_gids_cmp() that takes inet_prefixes as
+ * argvs.
+ */
+int ip_gids_cmp(inet_prefix a, inet_prefix b, int lvl)
+{
+	quadro_group qa, qb;
+
+	iptoquadg(a, 0, &qa, QUADG_GID);
+	iptoquadg(b, 0, &qb, QUADG_GID);
+
+	return quadg_gids_cmp(qa, qb, lvl);
+}
+
 /* 
  * * * External rnodes functions * * *
  */

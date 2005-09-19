@@ -644,19 +644,19 @@ andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter)
 	andna_cache_queue *acq;
 	char *buf, *p;
 	size_t sz;
-	int i, e;
+	int i, e, fake_int;
 
 	hdr=(struct andna_cache_pkt_hdr *)pack;
 	*counter=0;
 	
 	if(hdr->tot_caches) {
 		buf=pack + sizeof(struct andna_cache_pkt_hdr);
+		sz=sizeof(struct andna_cache_pkt_hdr);
 		
-		for(i=0, sz=0; i<hdr->tot_caches; i++) {
-			ac=(andna_cache *)buf;
-			sz+=ANDNA_CACHE_PACK_SZ(ac->queue_counter);
+		for(i=0; i<hdr->tot_caches; i++) {
+			sz+=ANDNA_CACHE_BODY_PACK_SZ;
 			if(sz > pack_sz)
-				goto finish;
+				goto finish; /* overflow */
 
 			ac=xmalloc(sizeof(andna_cache));
 			memset(ac, 0, sizeof(andna_cache));
@@ -664,6 +664,10 @@ andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter)
 			p=(char *)ac + (sizeof(andna_cache *) * 2);
 			memcpy(p, buf, ANDNA_CACHE_BODY_PACK_SZ);
 			buf+=ANDNA_CACHE_BODY_PACK_SZ;
+
+			sz+=ANDNA_CACHE_QUEUE_PACK_SZ*ac->queue_counter;
+			if(sz > pack_sz)
+				goto finish; /* overflow */
 
 			for(e=0; e < ac->queue_counter; e++) {
 				acq=xmalloc(sizeof(andna_cache_queue));
@@ -673,7 +677,7 @@ andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter)
 				memcpy(p, buf, ANDNA_CACHE_QUEUE_PACK_SZ);
 				buf+=ANDNA_CACHE_QUEUE_PACK_SZ;
 
-				clist_add(&ac->acq, &ac->queue_counter, acq);
+				clist_add(&ac->acq, &fake_int, acq);
 			}
 
 			clist_add(&ac_head, counter, ac);
@@ -741,19 +745,19 @@ counter_c *unpack_counter_cache(char *pack, size_t pack_sz, int *counter)
 	counter_c_hashes *cch;
 	char *buf, *p;
 	size_t sz;
-	int i, e, x;
+	int i, e, fake_int;
 
 	hdr=(struct counter_c_pkt_hdr *)pack;
 	*counter=0;
 	
 	if(hdr->tot_caches) {
 		buf=pack + sizeof(struct counter_c_pkt_hdr);
+		sz=sizeof(struct counter_c_pkt_hdr);
 		
-		for(i=0, sz=0; i<hdr->tot_caches; i++) {
-			cc=(counter_c *)buf;
-			sz+=COUNTER_CACHE_PACK_SZ(cc->hashes);
+		for(i=0; i<hdr->tot_caches; i++) {
+			sz+=COUNTER_CACHE_BODY_PACK_SZ;
 			if(sz > pack_sz)
-				goto finish;
+				goto finish; /* We don't want to overflow */
 
 			cc=xmalloc(sizeof(counter_c));
 			memset(cc, 0, sizeof(counter_c));
@@ -762,7 +766,11 @@ counter_c *unpack_counter_cache(char *pack, size_t pack_sz, int *counter)
 			memcpy(p, buf, COUNTER_CACHE_BODY_PACK_SZ);
 			buf+=COUNTER_CACHE_BODY_PACK_SZ;
 
-			for(e=0, x=cc->hashes; e < x; e++) {
+			sz+=COUNTER_CACHE_HASHES_PACK_SZ * cc->hashes;
+			if(sz > pack_sz)
+				goto finish; /* bleah */
+			
+			for(e=0; e < cc->hashes; e++) {
 				cch=xmalloc(sizeof(counter_c_hashes));
 				memset(cch, 0, sizeof(counter_c_hashes));
 				
@@ -770,7 +778,7 @@ counter_c *unpack_counter_cache(char *pack, size_t pack_sz, int *counter)
 				memcpy(p, buf, COUNTER_CACHE_HASHES_PACK_SZ);
 				buf+=COUNTER_CACHE_HASHES_PACK_SZ;
 
-				clist_add(&cc->cch, &cc->hashes, cch);
+				clist_add(&cc->cch, &fake_int, cch);
 			}
 
 			clist_add(&cc_head, counter, cc);

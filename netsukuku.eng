@@ -967,6 +967,8 @@ la Rete ci attende.
   
   7.1.5  Endless rest and rebirth
 
+  The hash_gnode keeps the hostname in an hibernated state for about 3 days
+  since the moment of their registration or update.
   Gli hash_gnode mantengono gli hostname in uno stato di ibernazione per circa
   3 giorni dal momento della loro registrazione od aggiornamento.
   Il tempo di decadimento e' volutamente molto alto per mantenere i domini 
@@ -1217,7 +1219,7 @@ la Rete ci attende.
   14.  The smoked ones who made Netsukuku
 
   Andrea Lo Pumo   aka   AlpT				<alpt@freaknet.org>
- 
+
   
   Special thanks to:
   
@@ -1252,6 +1254,11 @@ la Rete ci attende.
 
   Poetry Hacklab          <poetry.freaknet.org - poetry.homelinux.org>
   
+  
+
+  About the translator of this document, you have to thanks this guy:
+  
+  Salahuddin, the nipponese old british one, which is always joyful.
   
 --
 This work is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike License. 

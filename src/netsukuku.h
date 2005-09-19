@@ -49,7 +49,9 @@ struct current_globals
 	char		cur_dev[IFNAMSIZ];
 	int		cur_dev_idx;
 
-	time_t		uptime;		/*The name says it all*/
+	time_t		uptime;		/*The time when we finished the hooking, 
+					  to get the the actual uptime just to 
+					  time(0)-me.uptime*/
 }me;
 
 #define NTK_UDP_PORT 	   	269
@@ -103,6 +105,10 @@ typedef struct
 	int 		max_connections;
 	int 		max_accepts_per_host;
 	int 		max_accepts_per_host_time;
+
+#ifdef ANDNA_DEBUG
+	int		debug_ip;
+#endif
 }ServOpt;
 ServOpt server_opt;
 
