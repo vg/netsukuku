@@ -98,7 +98,6 @@ la Rete ci attende.
   14. The smoked ones who made Netsukuku
   
 --
- 
 
  -1.  Preface
 
@@ -625,7 +624,7 @@ la Rete ci attende.
   poiche' si presuppone gia' che un nodo sia linkato ad altri (r)_node.
   Quando un nodo si aggancia significa che comunica con un il suo rnode piu'
   vicino, se non gli risponde ne sceglie un altro. In pratica durante l'hook,
-  il nodo si prende la mappa interna, quella esterna, la mappa dei boarder node,
+  il nodo si prende la mappa interna, quella esterna, la mappa dei border node,
   e si sceglie un ip libero. A questo punto fa ufficialmente parte della rete,
   quindi manda un normale tracer_pkt. I suoi rnode manderanno, in seguito, un
   qspn.
@@ -674,14 +673,14 @@ la Rete ci attende.
   contengono nodi normali ma degli interi gnode, che vengono considerati dei
   nodi a tutti gli effetti...  Procedendo recursivamente netsukuku puo'
   contenere all'incirca INFINITI nodi.
-  Tutto rimane invariato.  
-  Per far questo bisogna tenere piu' mappe esterne. Ogni mappa
-  conterra' un gruppo di qualche cosa. Questi gruppi di gruppi li continuamo
-  a chiamare groupnode. Ogni mappa di groupnode appartiene ad un determinato 
-  livello. Quindi il groupnode normale, che racchiude singoli nodi si trova 
-  a livello 0, la mappa del primo groupnode di gruppi di nodi si trova al primo
-  livello, e la mappa di groupnode di groupnode di groupnode e' al secondo,
-  e cosi' via.
+  Tutto rimane invariato.
+  Per implementare questi gnode frattali e' necessario usare piu' di una mappa
+  esterna che conterranno l'informazione su questi gruppi di gruppi. Questi
+  "gruppi di gruppi" li continuiamo a chiamare groupnode.
+  Ogni mappa di groupnode appartiene ad un determinato livello. Quindi il 
+  groupnode normale, che racchiude singoli nodi si trova a livello 0, la mappa 
+  del primo groupnode di gruppi di nodi si trova al primo livello, e la mappa
+  di groupnode di groupnode di groupnode e' al secondo, e cosi' via.
   Un nodo per poter contattare qualsiasi altro nodo in qualsiasi parte del
   globo deve avere solamente la sua mappa interna, che non e' nient'altro
   che la mappa a livello 0 e poi le mappe di tutti i livelli superiori in
@@ -690,9 +689,10 @@ la Rete ci attende.
   prima c'e' il normale groupnode, poi ci sono MAXGROUPNODE di groupnode,
   e infine ci sono MAXGROUPNODE di questi ultimi. Nell'ipv6 invece, abbiamo
   una quantita' abnorme di ip, percio' i livelli ammontano a 16.  Facendo una
-  stima approssimativa tutte le mappe esterne dei groups nell'ipv4 occupano
+  stima approssimativa, tutte le mappe esterne dei groups nell'ipv4 occupano
   144K di memoria e nell'ipv6 1996K. Questo significa che nessuno si deve
   preoccupare di usare lo swap!  
+
   Per trovare le rotte che connettono i vari gruppi verra' usato il QSPN, 
   avevi dubbi -_^ ?  Il qspn verra' ristretto e lanciato per ogni livello, in
   questo modo, ad esempio, trovera' tutte le rotte che legano i nodi
@@ -700,18 +700,19 @@ la Rete ci attende.
   Questo sistema dei livelli in relta' non e' complesso, basta tenere
   presente che il funzionamento della mappa interna in unione a quella della
   mappa esterna ed applicare recursivamente ad ogni grouppo lo stesso concetto.
-  Basta considerare ogni grouppo un singolo nodo.  
-  Se per raggiungere un groupnode si usa  un range di ip (da ip x ad ip y) 
-  nella routing table, allora per poter raggiungere tutti i nodi presenti in 
-  netsukuku bisogna tenere nella routing table MAXGROUPNODE*(levels+1) rotte. 
+  Basta considerare ogni grouppo un singolo nodo.
+  La rotta usata per raggiungere un groupnode, nella routing table, e' formata
+  da range di ip (da ip x ad ip y) invece di un singolo indirizzo ip.
+  In questo modo, per poter raggiungere tutti i nodi presenti in netsukuku
+  bisogna tenere nella routing table MAXGROUPNODE*(levels+1) rotte.
   Consideriamo il caso dell'ipv4 che ha 3 livelli. 
   Intanto un nodo deve avere tutte le rotte per raggiungere tutti
   i nodi all'interno del suo groupnode, percio' gia' abbiamo MAXGROUPNODE
   di rotte, poi dobbiamo aggiungere tutte le rotte per raggiungere gli
   altri groupnode del suo livello superiore, percio' aggiungiamo altri
   MAXGROUPNODE di rotte. Proseguendo arriviamo all'ultimo livello ed abbiamo
-  MAXGROUPNODE*(levels+1). Con l'ipv4 abbiamo 1024 rotte, con l'ipv6 4352.
-  Tutte queste rotte risiederanno direttamente nel kernel.
+  MAXGROUPNODE*(3+1). Quindi con l'ipv4 abbiamo 1024 rotte, mentre con l'ipv6
+  4352. Tutte queste rotte risiederanno direttamente nel kernel.
 
   5.3.1 Groupnode: one entity
   
@@ -719,11 +720,11 @@ la Rete ci attende.
   La differenza tra un groupnode ed un nodo singolo risiede nel fatto che il
   nodo e' un'unica entita' che gestisce i suoi link direttamente da se, il
   groupnode, invece, e' un nodo composto da piu' nodi e i suoi link sono
-  gestisti da altri nodi che sono i boarder node. Per rendere il groupnode
-  un'unica entita' che si comporti esattamente come un nodo singolo basta che
+  gestisti da altri nodi che sono i border node. Per rendere il groupnode
+  un'unica entita' che si comporti esattamente come un nodo singolo, basta che
   tutti i bnode del groupnode comunichino tra loro. Quindi, quando un bnode
   riceve un qspn_close da un altro groupnode, chiudera' il suo link e quando
-  avra' tutti i suoi link, con gli altri gnode, chiusi lo comunichera' agli
+  avra' tutti i suoi link con gli altri gnode chiusi, lo comunichera' agli
   altri bnode del suo groupnode. Lo stesso faranno gli altri. In questo modo 
   il qspn_open sara' mandato solamente quando tutti i bnode avranno tutti i 
   loro link esterni chiusi.
@@ -741,7 +742,7 @@ la Rete ci attende.
   bnode del suo stesso gnode, allora, anche lui si considerera' un
   QSPN_STARTER e forwardera' il pkt senza aggiungere la sua entry, questo 
   perche' il gnode deve essere come un unico nodo; inoltre, i bnode chiudono
-  ed aprono solo i link esteri, cioe' quelli che li collegano ai bnode dei
+  ed aprono solo i link esterni, cioe' quelli che li collegano ai bnode dei
   gnode confinanti.
   Tutto questo discorso vale anche per il qspn_open.
 
@@ -796,15 +797,16 @@ la Rete ci attende.
   raggiungere il src_node (il nodo che ha spedito il pkt), e conseguentemente 
   le rotte per raggiungere tutti i nodi intermediari.  
   I border_node quando aggiungono la loro entry in un tracer_pkt settano la 
-  flag b_node ed aggiungono in coda l'id del gnode con cui confinano se
-  appartiene al livello superiore a quello in cui il tracer_pkt si sta' 
-  propagando.
+  flag b_node ed aggiungono in coda l'id del gnode con cui confinano, ma
+  solamente se quel gnode appartiene al livello superiore a quello in cui il
+  tracer_pkt si sta' propagando.
   Con questo sistema tutti riceveranno tutte le rotte migliori per raggiungere 
   tutti i nodi del g_node e tutti i g_node confinanti.
 
-  Per ottimizzare al massimo lo spazio utilizzato in un tracerpkt, 
-  gli ip vengono storati nel formato IP2MAP e quindi sara' usando 
-  un u_char, (1 byte invece di 20).
+  Per ottimizzare al massimo lo spazio utilizzato in un tracer_pkt, 
+  gli ip vengono scritti nel formato IP2MAP, che corrisponde all'id dei nodi
+  nel gnode di livello zero. Con questo formato e' richiesto solamente un
+  u_char, 1 byte invece di 20.
 
   
   7.   ANDNA: Abnormal Netsukuku Domain Name Anarchy
@@ -895,15 +897,16 @@ la Rete ci attende.
   hostname ha registrato un nodo. Esiste pero' una soluzione: introdurre un
   nuovo elemento, gli andna_counter_nodes.
   Un counter_node e' un nodo che ha un ip uguale all'hash della public key del 
-  nodo che registra gli hostname.
+  nodo che registra gli hostname. Quindi esiste un counter_node per ogni
+  register_node.
   Il counter_node si occupa di memorizzare il numero di hostname che
-  ha memorizzato il register_node che gli corrisponde. Quindi, quando un
+  ha registrato il register_node che gli corrisponde. Quindi, quando un
   hash_gnode riceve una richiesta di registrazione, prima di tutto contatta il
-  relativo counter_node, che gli comunica quanti host_name sono gia' stati
+  relativo counter_node, che gli comunica quanti hostname sono gia' stati
   registrati dal register_node: se il nodo non ha sforato il proprio
   limite, allora il counter node incrementa il contatore e l'hash_gnode
   registra effettivamente l'hostname.
-  L'attivazione di un counter_gnode avviene con la richiesta di controllo da
+  L'attivazione di un counter_node avviene con la richiesta di controllo da
   parte dell'hash_gnode e viene mantenuta dalla successive richieste.
   Il meccanismo e' identico a quello dell'andna, e, pertanto, il register_node 
   si deve anche preoccupare di mantenere il suo counter_node attivo seguendo le
@@ -911,19 +914,22 @@ la Rete ci attende.
   In pratica, se il counter_node non riceve piu' richieste di controllo da
   parte degli hash_gnode, si disattiva, e tutti gli hostname registrati non sono
   piu' validi (non si possono piu' aggiornare).
+  La stessa regola degli hash_gnode viene applicata anche al counter_node: non
+  esistera' piu' un singolo counter_node, ma un intero gnode di counter_node,
+  chiamato appunto counter_gnode.
   
   7.1.4  Registration step by step
   
   Il nodo x,  che vuole registrare il suo hostname, trova il gnode piu' vicino
   all'hash_gnode (o l'hash_gnode stesso), contatta un nodo a caso (il nodo y)
   di quel gnode e gli manda la richiesta.
-  La richiesta include una public key di una coppia di chiavi RSA appena
-  generata (ad ogni registrazione corrisponde una nuova coppia di chiavi). Il
-  pkt viene anche firmato con la priv_key.
+  La richiesta include una public key della sua coppia di chiavi RSA che
+  rimane valida per tutte le future richieste. Il pkt viene anche firmato con
+  la priv_key.
   Il nodo y controlla di essere effettivamente nel gnode piu' vicino
   all'hash_node, in caso contrario rigetta la richiesta. Viene controllata
   anche la validita' della firma apposta nella richiesta.
-  Il nodo y, contatta il counter_node e gli manda l'ip, l'hostname del
+  Il nodo y contatta il counter_gnode e gli manda l'ip, l'hostname del
   register_node e la copia della richiesta. 
   Il counter verifica i dati e controlla che la firma apposta sulla richiesta
   sia valida, e da' l'ok.
@@ -958,10 +964,10 @@ la Rete ci attende.
   aggiornare le sue entry e per verificare che sia ancora attivo e che l'entry
   relativa all'hostname da aggiornare sia presente. In caso contrario, la
   richiesta di aggiornamento viene rigettata.
-  Se tutto va bene, il nodo forwarda la richiesta di aggiornamento all'interno
-  dell'hash_gnode.
+  Se tutto va bene, il nodo dell'hash_gnode mand in broadcast la richiesta di
+  aggiornamento all'interno del suo gnode.
   Il register_node deve poi mandare la richiesta di aggiornamento anche ai
-  backup_gnode e al counter_node.
+  backup_gnode.
   Se la richiesta di aggiornamento viene mandata troppo presto (nel primo
   giorno), verra' considerata invalida e sara' ignorata.
   
@@ -1100,41 +1106,43 @@ la Rete ci attende.
   
   12.  Implementation: let's code
   
-  Il layer del protocollo Netsukuku non e' low-level, perche'  tutto quello 
-  che deve fare in Netsukuku e' settare le rotte nella tabella di routing del
-  kernel, percio' il demone NetsukukuD gira in userspace.
+  Il protocollo di Netsukuku non e' low-level, perche' tutto quello che deve
+  fare e' settare le rotte nella tabella di routing del kernel, percio' il
+  demone NetsukukuD gira in userspace.
   Tutto il sistema viene quindi gestito dal demone che gira su ogni nodo. 
   NetsukukuD comunica con gli altri nodi attraverso l'udp e il tcp e setta le 
   rotte nella tabella del kernel.
 
   Tutto il codice e' scritto in C ed e' commentato, quindi non dovrebbe essere
   difficile seguire il flusso del programma, in ogni caso, prima di leggere un
-  .c e' consigliato sbirciare il relativo .h .
+  .c e' consigliato sbirciare il relativo .h.
   
-  Netsukuku.c si occupa di lanciare i 4 thread-demone principali.
-  Il primo ascolta sulla porta 269-udp con daemon.c/udp_daemon() e passa tutti
-  i pacchetti ricevuti a pkts.c/pkt_exec(). 
-  Il secondo thread e' identico al primo, con la differenza che ascolta sulla
-  porta 270-udp e riceve solamente i pacchetti inviati dal radar.
-  Il terzo thread ascolta sulla porta 269-tcp.
-  In realta', tutti i pacchetti ricevuti dai demoni non vengono passati
-  direttamente a pkts.c/pkt_exec(), ma prima, vengono filtrati da accept.c e da
-  request.c che grazie ad una piccola tabella prevengono eventuali attacchi di
-  flood. (accept.c e' lo stesso codice che e' stato usato per patchare la
-  vulnerabita' user-level-denial-of-service di OpenSSH.)
-  Il quarto ed ultimo thread e' quello che si occupa di lanciare
-  hook.c/netsukuku_hook(), il codice che gestisce l'hook alla rete.
+  Netsukuku.c si occupa di lanciare i thread principali.
+  Ogni porta su cui ascolta NetsukukuD e' gestita da un demone che lanciato
+  come un singolo thread. Le porte usate sono la 269-udp , 269-tcp, 271-udp,
+  277-udp, 277-tcp.
+  Tutti i pacchetti ricevuti dai demoni vengono vengono filtrati da accept.c e
+  da request.c che grazie ad una piccola tabella prevengono eventuali attacchi
+  di flood. (accept.c e' lo stesso codice che e' stato usato per patchare la
+  vulnerabita' user-level-denial-of-service di OpenSSH.). In secondo luogo
+  vengono passati a  pkts.c/pkt_exec().
+  Quando tutti i demoni sono attivi, viene lanciato hook.c/netsukuku_hook(),
+  il codice che gestisce l'hook alla rete.
   
   Hook.c avviera' per la prima volta il primo radar scan con
   radar.c/radar_scan(). Tutti i pacchetti ricevuti, relativi al radar, sono
   gestiti da radar.c/radard() e da radar.c/radar_recv_reply().
-  Dopo l'aggancio alla rete, il quarto thread si trasformera' nel radar_scan
-  thread, infatti non fara' altro che eseguire in eterno la funzione
-  radar.c/radar_daemon() che lancia un radar_scan() ogni MAX_RADAR_WAIT
-  secondi. Quando il radar_update_map() si accorge di un cambiamento nei suoi
-  rnode spedisce un nuovo qspn_close con qspn.c/qspn_send().
+  Dopo l'aggancio alla rete, verra' avviato il radar_scan thread, che non
+  fara' altro che eseguire in eterno la funzione radar.c/radar_daemon(), che
+  lancia un radar_scan() ogni MAX_RADAR_WAIT secondi. Quando il
+  radar_update_map() si accorge di un cambiamento nei suoi rnode spedisce un
+  nuovo qspn_close con qspn.c/qspn_send().
   Tutto il codice relativo al qspn e ai tracer_pkt si trova in qspn.c e in
   tracer.c.
+
+  Il codice di ANDNA e' diviso in andna_cache.c, che contiene tutte le funzioni
+  usate per gestire le relative cache e in andna.c dove risiede il codice che
+  si occupa i pkt del protocollo ANDNA.
   
   I socket, sockaddr, le connect, i recv(), i send, etc... sono tutte in
   inet.c, e vengono utilizzate da pkts.c.
@@ -1156,11 +1164,10 @@ la Rete ci attende.
   Per quanto riguarda le mappe tutto si basa su map.c, il sorgente che
   si occupa di prendersi cura della mappa interna. Tutta le altre mappe si
   appogiano su map.c, e sono:
-  bmap.c per la border node map, gmap.c per la mappa esterna.
+  bmap.c per la border node map, gmap.c per le mappe esterne.
   
   Per compilare il codice di Netsukuku non e' necessario usare autoconf,
   automake e famiglia, ma basta usare il comodo scons (http://www.scons.org).
-  Il file SConstruct e' appunto il "Makefile" di scons.
 
   L'ultima versione del codice e' sempre disponibile sul cvs degli
   hinezumilabs: 
@@ -1174,11 +1181,9 @@ la Rete ci attende.
 
   13.  What to do
 
-  Prima di incominciare a diffondere Netsukuku e' necessario compiere ancora
-  qualche passo essenziale:
   - Testare su larga scala Netsukuku ed ANDNA.
   - Completare i src/TODO.
-  - Completare i TODO che si trovano in questo documento ;)
+  - Codare, codare, codare.
   - Varie ed eventuali.
 
   Chi vuole imbarcarsi faccia un fischio.
@@ -1224,6 +1229,8 @@ la Rete ci attende.
   
   
 --
-This work is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike License. 
-To view a copy of this license, visit http://creativecommons.org/licenses/by-nc-sa/2.0/ or send a
-letter to Creative Commons, 559 Nathan Abbott Way, Stanford, California 94305, USA.
+This work is licensed under the Creative Commons 
+Attribution-NonCommercial-ShareAlike License.
+To view a copy of this license, visit 
+http://creativecommons.org/licenses/by-nc-sa/2.0/ or send a letter to
+Creative Commons, 559 Nathan Abbott Way, Stanford, California 94305, USA.
