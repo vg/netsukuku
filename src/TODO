@@ -3,6 +3,7 @@
 - ANDNA:
   - dns wrapper per mettere 127.0.0.1 in resolv.conf
 
+
 		[MEDIUM PRIORITY] 
 
 - Usare il multipath per i gnode. Ad esempio se un bnode e' collegato con piu'
@@ -10,33 +11,35 @@
   per raggiungere il gnode esterno. Se ci sono tanti bnode per raggiungere uno
   stesso gnode, bisogna usare sempre il multipath.
 
-- QSPN dopo il QSPN_WAIT*2 rimuovere i vecchi nodi
+- The QSPN has to remove the died nodes after QSPN_WAIT*2 seconds.
 
-- Backup_gnodes per l'ANDNA. Necessari?
+- ANDNA Backup_gnodes. Really necessary?
 
-- Anti spoof Hook.
+- Anti spoof Hook: a node must not give the maps to a node, which is trying to
+  use an ip of another gnode.
 
-- big endian/little endian per gli int nei pkt.
+- Aaah, do all the big endian/little endian stuff for the int and short in
+  the packets.
 
-- Portare per *BSD: bisogna usare rt_ioctl.c ed rt_socket.c di quagga
-  ( ../othersrc/quagga-*/zebra/ )
+- Port the kernel route code for *BSD: take a look at rt_ioctl.c and
+  rt_socket.c of quagga.
   
-- API per il sync delle mappe usando il demone netsukuku_d
+- API for the maps sync with the netsukuku_d daemon.
 
-- Scrivere una guida alle funzioni generali del codice che possono
-  essere usate come API.
+- Write the documentation for the code that can be used by other
+  programs. (By the way it is already commented.)
+
 
 		[LOW PRIORITY]
 
-- Testare request.c
+- Test request.c
 
-gmap.c: Ottimizzare la validita' di ip in random_ip(). Una possibile soluzione
-        sarebbe quella di azzerare i bit invalidi.
-hook.c: ottimizzare lo spazio di free_node: invece di usare una serie di u_char
-        free_nodes, si usano MAXGROUPNODE bits, ed ognuno si setta o no. (Usare
-        asm/bitops.h set_bit, clear_bit..., is_set)
+gmap.c: Optimize random_ip() to return valid IPs. A possible solution would be
+	to zero all the invalid bits.
+hook.c: Optimize the space of the free_node pkt: instead using an array of
+	u_char for each free node, use just one bit and set it to one or zero.
+	Use the nice functions of set_bit, clear_bit..., is_set, in
+	asm/bitops.h.
 broadcast: Tenere in considerazione il gttl.
-hook.c:    anti spoof hook
-hook.c:	cancellazione di tutte le rotte presenti nella routing table?
-	10.0.0.0/8 dev eth0  proto kernel  scope link  src 10.0.0.5 
-	10.0.0.0/8 dev eth1  proto kernel  scope link  src 10.0.0.6 
+hook.c:	Flush all the routes present in the routing table before starting the
+	hook?

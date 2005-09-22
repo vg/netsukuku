@@ -1895,7 +1895,7 @@ void *andna_main(void *null)
 	pthread_mutex_lock(&tcp_daemon_lock);
 	pthread_mutex_unlock(&tcp_daemon_lock);
 
-#ifndef DEBUG /* XXX */
+#ifndef ANDNA_DEBUG /* XXX */
 #warning The ANDNA hook is disabled for debugging purpose
 	/* Start the ANDNA hook */
 	pthread_create(&thread, &t_attr, andna_hook, 0);

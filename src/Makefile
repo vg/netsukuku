@@ -1,3 +1,6 @@
+#Death to all the makefiles o/
+#Long life to SCons! ^_^
+
 netsukuku:
 	scons
 install:

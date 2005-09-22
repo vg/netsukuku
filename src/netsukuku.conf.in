@@ -1,4 +1,5 @@
-#  	NetsukukuD configuration file
+#
+#		NetsukukuD configuration file
 #
 # The comments are started by a '#'.
 # To use the a default option leave its line commented.
@@ -43,20 +44,20 @@
 # 
 # The paths of the Netsukuku maps saved by the daemon
 #
-ntk_ext_map_file	= /usr/share/netsukuku/ext_map_file
-ntk_int_map_file	= /usr/share/netsukuku/int_map_file
-ntk_bnode_map_file	= /usr/share/netsukuku/bnode_map_file
+ntk_ext_map_file	= %(DATA_DIR)s/ext_map_file
+ntk_int_map_file	= %(DATA_DIR)s/int_map_file
+ntk_bnode_map_file	= %(DATA_DIR)s/bnode_map_file
 
 #
 # The andna_hnames_file is the file where the hostnames to be registerd in
 # ANDNA are kept one per line.
 #
-andna_hnames_file	= /etc/netsukuku/andna_hostnames
+andna_hnames_file	= %(CONF_DIR)s/andna_hostnames
 
 #
 # Caches used by the ANDNA daemon
 #
-andna_cache_file	= /usr/share/netsukuku/andna_cache
-andna_lcl_file		= /usr/share/netsukuku/lcl_cache
-andna_rhc_file		= /usr/share/netsukuku/rh_cache
-andna_counter_c_file	= /usr/share/netsukuku/counter_cache
+andna_cache_file	= %(DATA_DIR)s/andna_cache
+andna_lcl_file		= %(DATA_DIR)s/lcl_cache
+andna_rhc_file		= %(DATA_DIR)s/rh_cache
+andna_counter_c_file	= %(DATA_DIR)s/counter_cache

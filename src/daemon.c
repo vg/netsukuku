@@ -333,7 +333,7 @@ void *tcp_daemon(void *door)
 		rpkt_cp=xmalloc(sizeof(PACKET));
 		memcpy(rpkt_cp, &rpkt, sizeof(PACKET));
 		err=pthread_create(&thread, &t_attr, tcp_recv_loop, (void *)rpkt_cp);
-		pthread_detach(&thread);
+		pthread_detach(thread);
 	}
 	
 	destroy_accept_tbl();
