@@ -78,8 +78,10 @@ int load_config_file(char *file)
 	size_t slen;
 	int i=0, e=0;
 
-	if((fd=fopen(file, "r"))==NULL) {
-		error("Cannot load the configuration file from %s: %s", file, strerror(errno));
+	if(!(fd=fopen(file, "r"))) {
+		fatal("Cannot load the configuration file from %s: %s\n"
+			"  Maybe you want to use the -c option ?",
+			file, strerror(errno));
 		return -1;
 	}
 

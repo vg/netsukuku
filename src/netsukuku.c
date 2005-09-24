@@ -243,6 +243,8 @@ void parse_options(int argc, char **argv)
 				server_opt.family=AF_INET;
 				break;
 			case '6':
+				loginfo("WARNING: The ipv6 support is still experimental and under "
+						"development, nothing is assured to work.");
 				server_opt.family=AF_INET6;
 				break;
 			case 'c': 

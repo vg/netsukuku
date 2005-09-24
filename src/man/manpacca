@@ -1,0 +1,3 @@
+#!/bin/bash
+pod2man -s 8 netsukuku_d.pod -c "" -n "NetsukukuD"  -r "`../netsukuku_d -v`" netsukuku_d.8
+pod2man -s 8 netsukuku_wifi.pod -c "" -n "netsukuku_wifi"  -r "`../netsukuku_d -v`" netsukuku_wifi.8

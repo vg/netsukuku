@@ -1,5 +1,5 @@
 #!/bin/bash
-
+#netsukuku_wifi: sets a wifi card in Ad-Hoc mode and its essid to "netsukuku".
 
 if ( test $(id -u) != 0) then
 	echo "Root privileges needed."
