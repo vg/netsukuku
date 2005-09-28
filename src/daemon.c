@@ -66,7 +66,6 @@ int prepare_listen_socket(int family, int socktype, u_short port)
 			/* Maybe we can use another socket...*/
 			continue;
 
-		set_bindtodevice_sk(s, me.cur_dev);
 		set_reuseaddr_sk(s);
 
 		/* Let's bind it! */
@@ -154,8 +153,7 @@ void *udp_daemon(void *passed_argv)
 	sk=prepare_listen_socket(my_family, SOCK_DGRAM, udp_port);
 	if(sk == -1)
 		return NULL;
-
-	
+	set_bindtodevice_sk(sk, me.cur_dev);
 	/* set_broadcast_sk(sk, my_family, me.cur_dev_idx); */
 	
 	debug(DBG_NORMAL, "Udp daemon on port %d up & running", udp_port);
@@ -257,6 +255,7 @@ void *tcp_daemon(void *door)
 	sk=prepare_listen_socket(my_family, SOCK_STREAM, tcp_port);
 	if(sk == -1)
 		return NULL;
+	set_bindtodevice_sk(sk, me.cur_dev);
 
 	/* 
 	 * While we are accepting the connections we keep the socket non

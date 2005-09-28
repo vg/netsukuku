@@ -28,7 +28,7 @@ sources_qspn      = Split('qspn-empiric.c map.c') + sources_common
 sources_netsukuku = Split("""accept.c llist.c map.c request.c bmap.c daemon.c pkts.c 
 		   ll_map.c libnetlink.c  radar.c gmap.c hook.c ipv6-gmp.c
 		   if.c inet.c  krnl_route.c krnl_rule.c qspn.c route.c conf.c
-		   tracer.c crypto.c andna_cache.c andna.c 
+		   tracer.c crypto.c andna_cache.c andna.c dns_wrapper.c dns_pkt.cpp
 		   netsukuku.c""") + sources_common
 
 libs = Split('gmp pthread crypto')
@@ -52,7 +52,7 @@ env = Environment(options = opts, ENV = os.environ, CCFLAGS = ' -Wall ')
 
 if ("yes" in env['debug']) or ("1" in env['debug']):
 	debug = 1
-	env.Append(CPPDEFINES={'DEBUG' : '${debug}'}, CCFLAGS = ' -ggdb -Wall')
+	env.Append(CPPDEFINES={'DEBUG' : '${debug}'}, CCFLAGS = ' -ggdb	-Wall', CXXFLAGS = '-g')
 	os.system("echo Cscoping and ctagging...; cscope -b; ctags *")
 else:
 	debug = 0

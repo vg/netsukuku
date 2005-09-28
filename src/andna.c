@@ -40,6 +40,7 @@
 #include "crypto.h"
 #include "andna_cache.h"
 #include "andna.h"
+#include "dns_wrapper.h"
 #include "misc.h"
 #include "xmalloc.h"
 #include "log.h"
@@ -302,12 +303,6 @@ int find_hash_gnode_recurse(quadro_group qg, int level, inet_prefix *to,
 		else 
 			continue;
 
-#ifdef ANDNA_DEBUG
-#if 0
-		if(server_opt.debug_ip)
-		debug(DBG_NOISE, "find_hashgnode: ><>>>	lvl %d gid %d", level, gid);
-#endif
-#endif
 		gnode=gnode_from_pos(gid, me.ext_map[_EL(level)]);
 		if(!(gnode->g.flags & MAP_VOID) &&
 				!(gnode->flags & GMAP_VOID)) {
@@ -944,7 +939,7 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	 */
 	if((lcl=lcl_cache_find_hname(andna_lcl, hname))) {
 		memcpy(resolved_ip, &me.cur_ip, sizeof(inet_prefix));
-		return ret;
+		return 0;
 	}
 #endif
 	
@@ -954,7 +949,7 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	 */
 	if((rhc=rh_cache_find_hname(hname))) {
 		memcpy(resolved_ip, &rhc->ip, sizeof(inet_prefix));
-		return ret;
+		return 0;
 	}
 	
 	/* 
@@ -969,7 +964,7 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	 */
 	if((ac=andna_cache_findhash(req.hash))) {
 		memcpy(resolved_ip, &ac->acq->rip, sizeof(inet_prefix));
-		return ret;
+		return 0;
 	}
 #endif
 
@@ -1831,32 +1826,18 @@ void *andna_maintain_hnames_active(void *null)
 			save_lcl_cache(&lcl_keyring, andna_lcl, server_opt.lcl_file);
 
 #ifdef ANDNA_DEBUG
+		/* 
+		 * * *  DEBUG ONLY  * * *
+		 */
 		sleep(4);
-//		for(;;) {
-			if(andna_lcl && !andna_c) {
-				inet_prefix ip;
-				debug(DBG_INSANE, "Trying to resolve \"netsukuku\"");
-				if(!andna_resolve_hname("netsukuku", &ip))
-					debug(DBG_INSANE, "Resolved! ip: %s", inet_to_str(ip));
-				else
-					debug(DBG_INSANE, "Resolved failure Something went wrong");
-			}
-#if 0	
-			if(!andna_lcl && andna_c) {
-				int h, i;
-				char **hh;
-					debug(DBG_INSANE, "Trying to rev resolve %s", inet_to_str(andna_c->acq->rip));
-				h=andna_reverse_resolve(andna_c->acq->rip, &hh);
-				if(h > 0) {
-					for(i=0; i<h; i++)
-						debug(DBG_INSANE, "%s -> %s", inet_to_str(andna_c->acq->rip), hh[i]);
-				} else
-					debug(DBG_INSANE, "Rev resolve failed");
-			}
-#endif
-			
-//			sleep(ANDNA_EXPIRATION_TIME + rand_range(1, 10));
-//		}
+		if(andna_lcl && !andna_c) {
+			inet_prefix ip;
+			debug(DBG_INSANE, "Trying to resolve \"netsukuku\"");
+			if(!andna_resolve_hname("netsukuku", &ip))
+				debug(DBG_INSANE, "Resolved! ip: %s", inet_to_str(ip));
+			else
+				debug(DBG_INSANE, "Resolved failure Something went wrong");
+		}
 #endif
 		sleep((ANDNA_EXPIRATION_TIME/2) + rand_range(1, 10));
 	}
@@ -1895,12 +1876,16 @@ void *andna_main(void *null)
 	pthread_mutex_lock(&tcp_daemon_lock);
 	pthread_mutex_unlock(&tcp_daemon_lock);
 
-#ifndef ANDNA_DEBUG /* XXX */
+#ifdef ANDNA_DEBUG 
 #warning The ANDNA hook is disabled for debugging purpose
+#else
 	/* Start the ANDNA hook */
 	pthread_create(&thread, &t_attr, andna_hook, 0);
 #endif
 
+	debug(DBG_SOFT, "Evocating the DNS wrapper daemon.");
+	pthread_create(&thread, &t_attr, dns_wrapper_thread, 0);
+	
 	/* Start the hostnames updater and register */
 	andna_maintain_hnames_active(0);
 	

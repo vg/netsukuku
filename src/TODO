@@ -1,25 +1,21 @@
 		[HIGH PRIORITY] 
 
-- ANDNA:
-  - dns wrapper per mettere 127.0.0.1 in resolv.conf
+- DNS wrapper: ip -> hostnames
+
+- Aaah, do all the big endian/little endian stuff for the int and short in
+  the packets.
+
+- The QSPN has to remove the died nodes after QSPN_WAIT*2 seconds.
+
+- Use the multipath to use more than one route to reach a node.
 
 
 		[MEDIUM PRIORITY] 
-
-- Usare il multipath per i gnode. Ad esempio se un bnode e' collegato con piu'
-  nodi di uno stesso gnode esterno li deve mettere come nexthop nella stessa rotta 
-  per raggiungere il gnode esterno. Se ci sono tanti bnode per raggiungere uno
-  stesso gnode, bisogna usare sempre il multipath.
-
-- The QSPN has to remove the died nodes after QSPN_WAIT*2 seconds.
 
 - ANDNA Backup_gnodes. Really necessary?
 
 - Anti spoof Hook: a node must not give the maps to a node, which is trying to
   use an ip of another gnode.
-
-- Aaah, do all the big endian/little endian stuff for the int and short in
-  the packets.
 
 - Port the kernel route code for *BSD: take a look at rt_ioctl.c and
   rt_socket.c of quagga.
@@ -34,12 +30,13 @@
 
 - Test request.c
 
-gmap.c: Optimize random_ip() to return valid IPs. A possible solution would be
+- Optimize random_ip() to return valid IPs. A possible solution would be
 	to zero all the invalid bits.
-hook.c: Optimize the space of the free_node pkt: instead using an array of
-	u_char for each free node, use just one bit and set it to one or zero.
-	Use the nice functions of set_bit, clear_bit..., is_set, in
-	asm/bitops.h.
-broadcast: Tenere in considerazione il gttl.
-hook.c:	Flush all the routes present in the routing table before starting the
-	hook?
+	
+- Optimize the space of the free_node pkt: instead using an array of
+  u_char for each free node, use just one bit and set it to one or zero.
+  Use the nice functions of set_bit, clear_bit..., is_set, in asm/bitops.h.
+	
+- use the gnode_ttl for broadcast
+
+- Flush all the routes present in the routing table before starting the hook?
