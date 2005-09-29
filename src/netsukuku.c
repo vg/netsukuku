@@ -109,8 +109,8 @@ int ntk_free_maps(void)
 
 void usage(void)
 {
-	printf("%s\n", VERSION);
 	printf("Usage:\n"
+		"    netsukuku_d [-hvadrD46] [-i net_interface] [-c conf_file]\n\n"
 		" -4	ipv4\n"
 		" -6	ipv6\n"
 		" -i	interface\n"
@@ -277,7 +277,6 @@ void init_netsukuku(char **argv)
 	char *dev;
 
 	xsrand();
-	log_init(argv[0], server_opt.dbg_lvl, 1);
 
         if(geteuid())
 		fatal("Need root privileges");
@@ -411,6 +410,7 @@ int main(int argc, char **argv)
 	pthread_t daemon_tcp_thread, daemon_udp_thread, andna_thread;
 	pthread_attr_t t_attr;
 	
+	log_init(argv[0], server_opt.dbg_lvl, 1);
 	
 	/* Options loading... */
 	fill_default_options();

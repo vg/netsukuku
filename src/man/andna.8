@@ -128,22 +128,94 @@
 .rm #[ #] #H #V #F C
 .\" ========================================================================
 .\"
-.IX Title "netsukuku_wifi 8"
-.TH netsukuku_wifi 8 "2005-09-29" "NetsukukuD 0.0.3b" ""
+.IX Title "ANDNA 8"
+.TH ANDNA 8 "2005-09-29" "NetsukukuD 0.0.3b" ""
 .SH "NAME"
-netsukuku_wifi \- configures the specified wifi card to join Netsukuku
-.SH "SYNOPSIS"
-.IX Header "SYNOPSIS"
-netsukuku_wifi \fIwifi_interface\fR
+ANDNA \- Abnormal Netsukuku Domain Name Anarchy
 .SH "DESCRIPTION"
 .IX Header "DESCRIPTION"
-\&\fBNetsukuku_wifi\fR is a bash script, which takes as its first argument the name
-of the wifi network interface to be used in order to join in Netsukuku. Then
-it sets the wifi interface in Ad-Hoc mode and its essid to \*(L"netsukuku\*(R".
-At this point the \fBnetsukuku_d\fR daemon is ready to be launched,
-.SH "EXAMPLES"
-.IX Header "EXAMPLES"
-netsukuku_wifi wlan0
+\&\s-1ANDNA\s0 is the distributed, non hierarchical and decentralised system of hostname
+management in Netsukuku. It substitutes the \s-1DNS\s0.
+The \s-1ANDNA\s0 database is scattered inside all the Netsukuku and the worst of
+cases every node will have to use about 355 Kb of memory.
+.PP
+In order to join \s-1ANDNA\s0 it is necessary to be hooked at Netsukuku with the
+\&\fInetsukuku_d\fR\|(8) daemon.
+.PP
+For more information about \s-1ANDNA\s0 visit:
+<http://netsukuku.freaknet.org>
+.SH "USAGE"
+.IX Header "USAGE"
+First of all be sure to have the \fInetsukuku_d\fR\|(8) daemon up and running.
+.Sh "\s-1HOSTNAME\s0 \s-1REGISTRATION\s0"
+.IX Subsection "HOSTNAME REGISTRATION"
+You can register up to 256 hostnames. Each hostname can be a string of maximum
+512 bytes, which contains a newline (\en) only at its end.
+.PP
+The hostnames to be registered must be listed, one per line, in the
+\&\fIandna_hostnames\fR file, which is by default in
+\&\fI/etc/netsukuku/andna_hostnames\fR.
+.PP
+The \fInetsukuku_d\fR\|(8) daemon reads it when it is started and when it receives the
+\&\s-1SIGHUP\s0 signal. So if you've added a hostname while netsukuku_d was running,
+just do: 
+.PP
+# kill \s-1SIGHUP\s0 <netsukuku_d pid>
+.PP
+All the hostnames, which are already registered by other nodes, are
+added in the queue, in this way, when the other nodes won't update them, your
+hostnames will automatically be the first in the queue.
+.PP
+An hostname expires after 3 days, if it isn't updated. \fBnetsukuku_d\fR
+automatically updates the registered hostnames, therefore your hostnames will
+expire only if you aren't present in the Netsukuku for 3 entire days.
+.PP
+If you want to know the result of a registration read the \fBnetsukuku_d\fR
+logs.
+.Sh "\s-1HOSTNAME\s0 \s-1RESOLUTION\s0"
+.IX Subsection "HOSTNAME RESOLUTION"
+The \fInetsukuku_d\fR\|(8) daemon runs also a \s-1DNS\s0 wrapper which receives standard \s-1DNS\s0
+queries for hostnames resolution. The hostnames are resolved in \s-1ANDNA\s0, then the
+\&\s-1DNS\s0 wrapper will reply to the requester.
+.PP
+In this way to use \s-1ANDNA\s0 with all the actual programs just put \f(CW\*(C`localhost\*(C'\fR in
+the list of \s-1DNS\s0 servers used by your system. For example: 
+.PP
+# cp /etc/resolv.conf /etc/resolv.conf.bak
+.PP
+# echo \*(L"nameserver 127.0.0.1\*(R" > /etc/resolv.conf
+.PP
+All the resolved hostnames are kept, until their expiration date, in the
+\&\f(CW\*(C`resolved hostnames cache\*(C'\fR. The entire cache is flushed each time the
+\&\fInetsukuku_d\fR\|(8) daemon receives the \s-1SIGALRM\s0 signal.
+.PP
+That's all.
+.SH "SIGNALS"
+.IX Header "SIGNALS"
+When the \fB\s-1SIGHUP\s0\fR signal is sent to \fInetsukuku_d\fR\|(8), the \fIandna_hostnames\fR file
+will be reloaded and it will try to register all the new added hostnames.
+.PP
+When the \fB\s-1SIGALRM\s0\fR signal is sent to \fInetsukuku_d\fR\|(8), the resolved hostnames
+cache will be flushed.
+.SH "FILES"
+.IX Header "FILES"
+.IP "\fI/etc/netsukuku/andna_hostnames\fR" 4
+.IX Item "/etc/netsukuku/andna_hostnames"
+It is the file where the hostnames to be registerd in \s-1ANDNA\s0 are kept one per
+line. It's location can be changed by modifying its option in the
+\&\fInetsukuku.conf\fR file.
+.IP "\fI/usr/share/netsukuku/andna_cache\fR" 4
+.IX Item "/usr/share/netsukuku/andna_cache"
+.PD 0
+.IP "\fI/usr/share/netsukuku/lcl_cache\fR" 4
+.IX Item "/usr/share/netsukuku/lcl_cache"
+.IP "\fI/usr/share/netsukuku/rh_cache\fR" 4
+.IX Item "/usr/share/netsukuku/rh_cache"
+.IP "\fI/usr/share/netsukuku/counter_cache\fR" 4
+.IX Item "/usr/share/netsukuku/counter_cache"
+.PD
+They are the saved \s-1ANDNA\s0 caches.  Their locations can be 
+changed in \fInetsukuku.conf\fR.
 .SH "BUGS"
 .IX Header "BUGS"
 { Don't panic! }
@@ -170,4 +242,4 @@ Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
 For more information about Netsukuku visit:
 <http://netsukuku.freaknet.org>
 .PP
-\&\fInetsukuku_d\fR\|(8), \fIandna\fR\|(8), \fIiproute2\fR\|(8), \fIroute\fR\|(8)
+\&\fInetsukuku_d\fR\|(8), \fInetsukuku_wifi\fR\|(8), \fIiproute2\fR\|(8), \fIroute\fR\|(8)

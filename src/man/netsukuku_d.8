@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "NetsukukuD 8"
-.TH NetsukukuD 8 "2005-09-25" "NetsukukuD 0.0.3b" ""
+.TH NetsukukuD 8 "2005-09-29" "NetsukukuD 0.0.3b" ""
 .SH "NAME"
 netsukuku_d \- Netsukuku protocol daemon
 .SH "SYNOPSIS"
@@ -196,6 +196,20 @@ Usually you'll just want to use \fBnetsukuku_d\fR with a wifi device:
 netsukuku_wifi wlan0
 .PP
 netsukuku_d \-i wlan0
+.SH "SIGNALS"
+.IX Header "SIGNALS"
+When the \fB\s-1SIGHUP\s0\fR signal is sent to \fBnetsukuku_d\fR, the \fIandna_hostnames\fR file
+will be reloaded and it will try to register all the new added hostnames.
+.PP
+When the \fB\s-1SIGALRM\s0\fR signal is sent to \fBnetsukuku_d\fR, the resolved hostnames
+cache will be flushed.
+.SH "LOGS"
+.IX Header "LOGS"
+If \fBnetsukuku_d\fR is started as a daemon (without the \fB\-D\fR option), all the
+logs are sent to syslog under the \s-1LOG_DAEMON\s0 category.
+.PP
+If the no-daemon option (\fB\-D\fR) is used, all the logs are printed to
+\&\fIstderr\fR.
 .SH "FILES"
 .IX Header "FILES"
 .IP "\fI/etc/netsukuku/netsukuku.conf\fR" 4
@@ -255,4 +269,4 @@ Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
 For more information about Netsukuku visit:
 <http://netsukuku.freaknet.org>
 .PP
-\&\fInetsukuku_wifi\fR\|(8), \fIiproute2\fR\|(8), \fIroute\fR\|(8)
+\&\fInetsukuku_wifi\fR\|(8), \fIandna\fR\|(8), \fIiproute2\fR\|(8), \fIroute\fR\|(8)

@@ -1,0 +1,137 @@
+=head1 NAME
+
+ANDNA - Abnormal Netsukuku Domain Name Anarchy
+
+=head1 DESCRIPTION
+
+
+ANDNA is the distributed, non hierarchical and decentralised system of hostname
+management in Netsukuku. It substitutes the DNS.
+The ANDNA database is scattered inside all the Netsukuku and the worst of
+cases every node will have to use about 355 Kb of memory.
+
+In order to join ANDNA it is necessary to be hooked at Netsukuku with the
+netsukuku_d(8) daemon.
+
+For more information about ANDNA visit:
+L<http://netsukuku.freaknet.org>
+
+=head1 USAGE
+
+
+First of all be sure to have the netsukuku_d(8) daemon up and running.
+
+=head2 HOSTNAME REGISTRATION
+
+You can register up to 256 hostnames. Each hostname can be a string of maximum
+512 bytes, which contains a newline (\n) only at its end.
+
+The hostnames to be registered must be listed, one per line, in the
+F<andna_hostnames> file, which is by default in
+F</etc/netsukuku/andna_hostnames>.
+
+The netsukuku_d(8) daemon reads it when it is started and when it receives the
+SIGHUP signal. So if you've added a hostname while netsukuku_d was running,
+just do: 
+
+# kill SIGHUP <netsukuku_d pid>
+
+All the hostnames, which are already registered by other nodes, are
+added in the queue, in this way, when the other nodes won't update them, your
+hostnames will automatically be the first in the queue.
+
+An hostname expires after 3 days, if it isn't updated. B<netsukuku_d>
+automatically updates the registered hostnames, therefore your hostnames will
+expire only if you aren't present in the Netsukuku for 3 entire days.
+
+If you want to know the result of a registration read the B<netsukuku_d>
+logs.
+
+=head2 HOSTNAME RESOLUTION
+
+The netsukuku_d(8) daemon runs also a DNS wrapper which receives standard DNS
+queries for hostnames resolution. The hostnames are resolved in ANDNA, then the
+DNS wrapper will reply to the requester.
+
+In this way to use ANDNA with all the actual programs just put C<localhost> in
+the list of DNS servers used by your system. For example: 
+
+# cp /etc/resolv.conf /etc/resolv.conf.bak
+
+# echo "nameserver 127.0.0.1" > /etc/resolv.conf
+
+All the resolved hostnames are kept, until their expiration date, in the
+C<resolved hostnames cache>. The entire cache is flushed each time the
+netsukuku_d(8) daemon receives the SIGALRM signal.
+
+That's all.
+
+=head1 SIGNALS
+
+When the B<SIGHUP> signal is sent to netsukuku_d(8), the F<andna_hostnames> file
+will be reloaded and it will try to register all the new added hostnames.
+
+When the B<SIGALRM> signal is sent to netsukuku_d(8), the resolved hostnames
+cache will be flushed.
+
+=head1 FILES
+
+=over 
+
+=item F</etc/netsukuku/andna_hostnames>
+
+It is the file where the hostnames to be registerd in ANDNA are kept one per
+line. It's location can be changed by modifying its option in the
+F<netsukuku.conf> file.
+
+=back
+
+=over
+
+=item
+F</usr/share/netsukuku/andna_cache>
+
+=item
+F</usr/share/netsukuku/lcl_cache>
+
+=item
+F</usr/share/netsukuku/rh_cache>
+
+=item
+F</usr/share/netsukuku/counter_cache>
+
+They are the saved ANDNA caches.  Their locations can be 
+changed in F<netsukuku.conf>.
+
+=back
+
+=head1 BUGS
+
+{ Don't panic! }
+
+If you encounter any bug, please report it to netsukuku@freaknet.org or
+contacts any author explaining what the problem is and if possible a way to
+reproduce it.
+
+=head1 CONTACTS
+
+Subcrive to the netsukuku mailing to get help, be updated on the latest news
+and discuss on its development.
+
+To subscribe to the list, send a message to:
+   <netsukuku-subscribe@freaknet.org>
+   
+We live night and day in IRC, come to see us in:
+#netsukuku 
+on the FreeNode irc server (irc.freenode.org).
+
+=head1 AUTHORS
+
+Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+
+=head1 SEE ALSO
+
+For more information about Netsukuku visit:
+L<http://netsukuku.freaknet.org>
+
+netsukuku_d(8), netsukuku_wifi(8), iproute2(8), route(8)

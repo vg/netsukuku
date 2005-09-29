@@ -120,6 +120,22 @@ netsukuku_wifi wlan0
 
 netsukuku_d -i wlan0
 
+=head1 SIGNALS
+
+When the B<SIGHUP> signal is sent to B<netsukuku_d>, the F<andna_hostnames> file
+will be reloaded and it will try to register all the new added hostnames.
+
+When the B<SIGALRM> signal is sent to B<netsukuku_d>, the resolved hostnames
+cache will be flushed.
+
+=head1 LOGS
+
+If B<netsukuku_d> is started as a daemon (without the B<-D> option), all the
+logs are sent to syslog under the LOG_DAEMON category.
+
+If the no-daemon option (B<-D>) is used, all the logs are printed to
+F<stderr>.
+
 =head1 FILES
 
 =over
@@ -205,4 +221,4 @@ Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
 For more information about Netsukuku visit:
 L<http://netsukuku.freaknet.org>
 
-netsukuku_wifi(8), iproute2(8), route(8)
+netsukuku_wifi(8), andna(8), iproute2(8), route(8)

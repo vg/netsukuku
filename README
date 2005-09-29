@@ -16,6 +16,9 @@ anonymous, anarchical, not controlled and autonomous net.
 In order to join to Netsukuku you have to use NetsukukuD, which is the daemon
 implenting the Npv7 protocol.
 
+Before doing anything, please read the documentation in doc/ or in
+http://netsukuku.freaknet.org
+
 
 **
 ****  Get the code!
@@ -55,11 +58,12 @@ http://netsukuku.freaknet.org/files/
 To compile the code you must have scons installed:
 http://www.scons.org/
 
-The code depends also on the libgmp and openssl. Generally you have it already
-installed on your system, but eventually you can retrieve the libgmp here:
-http://www.swox.com/gmp/
-and the openssl library here:
-http://openssl.org
+The code depends also on the libgmp, openssl and boost. Generally you have
+already them installed on your system, but eventually you can retrieve them
+here: 
+for the libgmp:			http://www.swox.com/gmp/
+the openssl library here:	http://openssl.org
+the boost libraries:		http://www.boost.org/
 
 Then go in the src/ directory and type:
 $ scons --help
@@ -84,6 +88,7 @@ it) and modify it for your needs, but generally the default options are good.
 Before doing anything do:
 
 $ man netsukuku_d
+$ man andna
 
 when you feel confortable and you are ready to dare type with root
 priviledges:

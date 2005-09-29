@@ -84,6 +84,13 @@ if not os.path.exists("config.log"):
 	if not conf.CheckLib('crypto'): 
 		print 'Did not find the openssl libcrypto.a or libcrypto.lib, exiting!'
 		Exit(1)
+	if not conf.CheckCXXHeader([ "boost/format.hpp", "boost/iterator.hpp",
+			"boost/iterator/reverse_iterator.hpp",
+			"boost/tuple/tuple.hpp", "boost/type_traits.hpp",
+			"boost/scoped_array.hpp", "boost/shared_array.hpp",
+			"boost/tokenizer.hpp" ]):
+		print 'Did not find the boost headers, exitin!'
+		Exit(1)
 		
 	env = conf.Finish()
 
