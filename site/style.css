@@ -1,0 +1,41 @@
+body {
+	font-family: Verdana, Lucida, Helvetica, Arial, sans-serif;
+	color: #FFFFFF;
+}
+
+a:link {
+	        text-decoration: none;
+		        color: grey;
+}
+a.menu:hover {
+
+	text-decoration: none;
+	background-color: #000000;
+	color: #FFFF00;
+	font-size: 13px;
+}
+
+a.menu {
+	border-left: 1px solid #CCCCCC;
+	border-right: 1px solid #CCCCCC;
+	border-bottom: 1px solid #CCCCCC;
+	text-decoration: none;
+	font-size: 13px;	
+	color: #000000;
+	background-color: #CCCCCC;
+	letter-spacing: 2px;
+}
+
+table.puppu {
+	border-top: 1px solid #CCCCCC;
+}
+
+a.iam {
+	border-left: 1px solid #CCCCCC;
+	border-right: 1px solid #CCCCCC;
+	text-decoration: none;
+	font-size: 13px;
+	letter-spacing: 2px;
+	background-color: #000000;
+	color: #FFFF00;
+}

@@ -1,0 +1,7 @@
+- In documentation includere netsukuku e netsukuku.ita direttamente dalla
+  directory corrente "./netsukuku", "./netsukuku.ita"
+  Lo stesso vale per il README in about.
+
+- In download includere tutto quello che c'e' in "files/"
+
+- boh
