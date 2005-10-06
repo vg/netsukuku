@@ -354,6 +354,10 @@ la Rete ci attende.
 
   Le definizioni basilari utilizzate per Netsukuku sono state e, tuttora sono:
 
+  src_node: Il Source node e' il nodo che manda un pacchetto al dst_node.
+  dst_node: Destination node, il node the riceve il pacchetto mandato dal
+	    src_node.
+
   r_node: Considerando un nodo X, un remote node (r_node) e' un qualsiasi
 	  nodo direttamente collegato ad X.
   g_node: Group node, un gruppo di nodi, o un gruppo di gruppi di nodi, e

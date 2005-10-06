@@ -409,7 +409,7 @@ la Rete ci attende.
 
   From the union of the Npv7 and Npv7_II 
   Npv7 Hybrid Theory was born from the union of the Npv7 and Npv7_II.
-  This bew version, exploits the advantages of both the internal map and the
+  This new version, exploits the advantages of both the internal map and the
   laser broadcast and in this way it can overpass their limits.
   In Npv7_HT the maximum number of nodes, present in a group node
   (MAXGROUPNODE) is equal to 2^8, thus the groupnodes are relatively small.
@@ -430,7 +430,7 @@ la Rete ci attende.
   The use of a map, for a protocol of dynamic nets, can create a lot of
   troubles, since it has to be continuosly updated. The solution is simple: to
   avoid totally the use of maps and make every broadcasted request a
-  tracer_pkt (See 6.2 Tracer pkt).
+  tracer_pkt (See 6.1 Tracer pkt).
   In this way every node, which will receive the pkt, will known the best
   route to reach the src_node and all the nodes which are at the middle of the
   route itself, it will record these informations inside its internal map, it
