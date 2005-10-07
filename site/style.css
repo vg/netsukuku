@@ -4,12 +4,13 @@ body {
 }
 
 a:link {
-	        text-decoration: none;
-		        color: grey;
+        text-decoration: none;
+        color: grey;
 }
 a.menu:hover {
 
 	text-decoration: none;
+	border-top: none;
 	background-color: #000000;
 	color: #FFFF00;
 	font-size: 13px;
@@ -19,6 +20,7 @@ a.menu {
 	border-left: 1px solid #CCCCCC;
 	border-right: 1px solid #CCCCCC;
 	border-bottom: 1px solid #CCCCCC;
+	border-top: 2px solid #CCCCCC;
 	text-decoration: none;
 	font-size: 13px;	
 	color: #000000;
@@ -26,16 +28,44 @@ a.menu {
 	letter-spacing: 2px;
 }
 
-table.puppu {
+.puppu {
 	border-top: 1px solid #CCCCCC;
 }
 
 a.iam {
 	border-left: 1px solid #CCCCCC;
 	border-right: 1px solid #CCCCCC;
+	border-top: 2px solid #CCCCCC;
 	text-decoration: none;
 	font-size: 13px;
 	letter-spacing: 2px;
 	background-color: #000000;
 	color: #FFFF00;
 }
+
+pre {
+	font-size: 14px;
+}
+
+.manpage {
+	border: 1px solid #cccccc;
+	color: #FFFF00;
+	font-size: 10px;
+	padding: 5px;
+}
+
+.manpage A:link  {
+	color: #FFFF00;
+	text-decoration: none;
+}
+
+.manpage A:visited {
+	color: #FFFF00;
+	text-decoration: none;
+}
+
+.manpage A:hover {
+	color: #FFFF00;
+	text-decoration: underline;
+}
+

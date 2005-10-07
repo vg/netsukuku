@@ -1,3 +1,4 @@
+
 Q: What is Netsukuku?
 A: Netsukuku is a mesh network or a P2P net system that generates and sustains
    itself autonomously. It is designed to handle an unlimited number of nodes with
@@ -83,8 +84,18 @@ Q: How does it join the network?
 A: It does it by itself. Read the "5.2  Npv7_HT Hook & Unhook" section in the
    document or take a look at hook.c in the code ;)
 
+Q: For using a wifi link do I need of an acces point? What to do?
+A: You just need a wifi network card. Put it in ad-hoc mode using "netsukuku"
+   as essid. ( man netsukuku_wifi )
+
 Q: Why the code is not written in java?
 A: Are you kidding?
+
+Q: Ehi! You're crazy. This shit will not work!
+A: Ehi pal, this doesn't pretend to be _now_ the final solution to the meaning
+   of life, the universe and everything. Why don't you contribute and give us
+   useful hints from your great knowledge? If you want to help in the
+   development, read the code and contact us ;)
 
 Q: My question is not answered here!
 A: Contact us: http://netsukuku.freaknet.org

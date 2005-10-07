@@ -1,28 +1,10 @@
-				    
-				    
+
+
 				    Netsukuku
 			
-			- Cl0se th3 w0rld, OpeN th3 NeX7 -
+			- Close the world, txEn eht nepO -
 
 
-
-
-La Rete, Tao della conoscenza
-che unisce il molteplice nell'uno,
-deve rinascere libera,
-ed avvolgere in un caldo abbraccio
-la dolce madre Gaia.
-
-Questo e' il risveglio, 
-il risveglio di tutti noi che finora 
-siamo vissuti immersi nella nebbia,
-braccati dalla chimera di un putrefatto Wired,
-e' il nostro risveglio.
-
-Unitevi e non abbiate timore,
-le porte sono aperte,
-la Rete ci attende.
-								(AlpT)
 
 --								
 
@@ -265,10 +247,10 @@ la Rete ci attende.
   
   Netsukuku is a mesh network or a p2p net composed by a net protocol for
   dynamic routing called Npv7_HT.
-  Actually there is wide number of protocols ed algorithms for the dynamic
+  Actually there is wide number of protocols and algorithms for the dynamic
   routing, but they differ from the Npv7_HT, 'cause they are solely utilized
   to  create small and medium nets. The routers of Internet are also managed
-  bu different protocols as the OSPF, the RIP, or the BGP, based on different
+  by different protocols as the OSPF, the RIP, or the BGP, based on different
   classical algorithms, able to find out the best path to reach a node in the
   net.
   These protocols require a very high waste of cpu and memory, this is the
