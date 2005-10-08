@@ -1,0 +1,38 @@
+Main authors and maintainers:
+
+Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+
+
+Contributors (in chronological order of initial contribution):
+
+Andrea Leofreddi <andrea.leofreddi@gmail.com> wrote the DNS wrapper code
+(dns_pkt.cpp, dns_rendian.h, dns_utils.h).  
+
+
+Website developers and maintainers:
+
+Crash 		<crash@freaknet.org>,
+Entropika	<e@entropika.net>,
+Black		<black@autistici.org>
+
+
+General contacts:
+
+Subcrive to the netsukuku mailing to get help, be updated on the latest news
+and discuss on its development.
+
+To subscribe to the list, send a message to:
+   netsukuku-subscribe@freaknet.org
+   
+We live night and day in IRC, come to see us in:
+
+#netsukuku 
+on the FreeNode irc server (irc.freenode.org).
+
+
+Related links:
+
+ - http://www.freaknet.org
+ - http://www.dyne.org
+ - http://www.hinezumilabs.org
+ - http://poetry.freaknet.org

@@ -11,7 +11,17 @@ A: Netsukuku is a mesh network or a P2P net system that generates and sustains
    other, then Netsukuku will build the routes.
    For more information read the section "2.4  So, WTF is it?" of the
    document.
-   
+
+Q: What did you choose that name?
+A: Networked Electronic Technician Skilled in Ultimate Killing, Utility and 
+   Kamikaze Uplinking.
+   But there is also another story: we were learning Japanese katakana with
+   slimeforest, a nice game for GNU/Linux.
+   Unfortunately when we encountered the "Network" word, written in Japanese,
+   we didn't know all the relative symbols, so the only katakana we were able
+   to read were: Ne tsu ku ku.
+   By the way, you can always think of any deceitful and hidden meanings.
+
 Q: What does it mean "it uses chaos and fractals"?
 A: The Netsukuku protocol (Npv7) structures the entire net as a fractal and,
    in order to calculate all the needed routes which are necessary to connect a

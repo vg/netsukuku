@@ -7,3 +7,10 @@ Contributors (in chronological order of initial contribution):
 
 Andrea Leofreddi <andrea.leofreddi@gmail.com> wrote the DNS wrapper code
 (dns_pkt.cpp, dns_rendian.h, dns_utils.h).  
+
+
+Website developers and maintainers:
+
+Crash 		<crash@freaknet.org>,
+Entropika	<e@entropika.net>,
+Black		<black@autistici.org>
