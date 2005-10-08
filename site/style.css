@@ -7,6 +7,17 @@ a:link {
         text-decoration: none;
         color: grey;
 }
+
+a:hover {
+	text-decoration: underline;
+	color: grey;
+}
+
+a:visited {
+	text-decoration: none;
+	color: grey;
+}
+
 a.menu:hover {
 
 	text-decoration: none;

@@ -8,7 +8,8 @@ $pages = array(
     "Documentation" => array("netsukuku",
 			     "netsukuku.ita"),	
     "FAQ"	    => array("doc/FAQ", ""),
-    "Download"	    => array("files", ""),
+    "Download"	    => array("http://netsukuku.freaknet.org/files", ""),
+    "Contacts"	    => array("contacts", ""),
 );
 
 /* default page = home */
@@ -40,7 +41,12 @@ if($lang == "it" && strlen($pages[$page][1])) {
     $en_selected = "selected=\"yes\"";
 }
 
-$content = htmlentities(file_get_contents($to_include));
+$content = file_get_contents($to_include);
+if(! ereg("^http:", $to_include)) {
+	$content = htmlentities($content);
+   	$content = preg_replace("/(http:\/\/[^\s\)]*)/", "<a href=\"\\1\">\\1</a>", $content);
+   
+}
 
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
