@@ -4,11 +4,11 @@
 $pages = array(
     /* pagename	    => array(english, italian) */
     "Home"	    => array("home", ""),
-    "About"	    => array("http://netsukuku.freaknet.org/README", ""),
-    "Documentation" => array("http://netsukuku.freaknet.org/netsukuku",
-			     "http://netsukuku.freaknet.org/netsukuku.ita"),	
-    "FAQ"	    => array("http://netsukuku.freaknet.org/doc/FAQ", ""),
-    "Download"	    => array("http://netsukuku.freaknet.org/files", ""),
+    "About"	    => array("README", ""),
+    "Documentation" => array("netsukuku",
+			     "netsukuku.ita"),	
+    "FAQ"	    => array("doc/FAQ", ""),
+    "Download"	    => array("files", ""),
 );
 
 /* default page = home */
@@ -39,6 +39,9 @@ if($lang == "it" && strlen($pages[$page][1])) {
     $to_include = $pages[$page][0];
     $en_selected = "selected=\"yes\"";
 }
+
+$content = htmlentities(file_get_contents($to_include));
+
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html>
@@ -93,7 +96,7 @@ if($lang == "it" && strlen($pages[$page][1])) {
 	<tr>
 		<td>
 		<pre>
-		<?php include($to_include); ?>
+		<?php echo $content; ?>
 		</pre>
 		</td>
 		</tr>
