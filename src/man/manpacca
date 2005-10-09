@@ -5,5 +5,6 @@ pod2man -s 8 netsukuku_d.pod -c "" -n "NetsukukuD"  -r "`../netsukuku_d -v`" net
 pod2man -s 8 netsukuku_wifi.pod -c "" -n "netsukuku_wifi"  -r "`../netsukuku_d -v`" netsukuku_wifi.8
 pod2man -s 8 andna.pod -c "" -n "ANDNA"  -r "`../netsukuku_d -v`" andna.8
 
+mkdir  man_html/
 for i in `ls -1 *.8`; do man2html $i > man_html/`basename $i .8`.html; done
-mv man_html/ ../../doc/
+cp -r man_html/ ../../doc/
