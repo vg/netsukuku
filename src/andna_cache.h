@@ -16,6 +16,9 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#ifndef ANDNA_CACHE_H
+#define ANDNA_CACHE_H
+
 #define ANDNA_MAX_BACKUP_GNODES		2
 #define ANDNA_MAX_QUEUE			5
 #define ANDNA_MAX_HNAME_LEN		512	/* (null terminator included) */
@@ -160,7 +163,7 @@ struct resolved_hnames_cache
 					   was updated. With this we know that
 					   at timestamp+ANDNA_EXPIRATION_TIME
 					   this cache will expire. */
-	inet_prefix	ip;		/* ip associated to the hname */
+	int		ip[MAX_IP_INT];	/* ip associated to the hname */
 };
 typedef struct resolved_hnames_cache rh_cache;
 
@@ -194,7 +197,8 @@ struct lcl_cache_pkt_hdr
 						   are in the pkt's body */
  	char		privkey[ANDNA_SKEY_LEN];
  	char		pubkey[ANDNA_PKEY_LEN];
-};
+}_PACKED_;
+int_info lcl_cache_pkt_hdr_iinfo = { 1, { INT_TYPE_32BIT }, { 0 }, { 1 } };
 /* 
  * The body is:
  * struct lcl_cache_pkt_body {
@@ -205,17 +209,22 @@ struct lcl_cache_pkt_hdr
  */
 #define LCL_CACHE_BODY_PACK_SZ(hname_len)	((hname_len) + sizeof(u_short) \
 							+ sizeof(time_t))
+int_info lcl_cache_pkt_body_iinfo = { 2, { INT_TYPE_16BIT, INT_TYPE_32BIT }, 
+				      { IINFO_DYNAMIC_VALUE, IINFO_DYNAMIC_VALUE }, 
+				      { 1, 1 }
+				    };
 
 struct andna_cache_pkt_hdr
 {
 	u_short		tot_caches;
-};
+}_PACKED_;
+int_info andna_cache_pkt_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
 /*
- * The body is a struct andna_cache but andna_cache->acq in the struct is
+ * The body is a struct andna_cache but the andna_cache->acq in the struct is
  * substituted with the actual pack of the andna_cache_queue linked list.
  * There are a number of bodies equal to `tot_caches'.
  * So the complete pkt is:
- * 	struct andna_cache_pkt_hdr	hdr;
+ * 	struct  andna_cache_pkt_hdr	hdr;
  * 	char 	acq[ANDNA_CACHE_QUEUE_PACK_SZ(hdr.tot_caches)];
  */
 #define ANDNA_CACHE_QUEUE_PACK_SZ	(sizeof(andna_cache_queue) - 		\
@@ -233,7 +242,8 @@ struct andna_cache_pkt_hdr
 struct counter_c_pkt_hdr
 {
 	u_short		tot_caches;
-};
+}_PACKED_;
+int_info counter_c_pkt_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
 #define COUNTER_CACHE_HASHES_PACK_SZ	(sizeof(counter_c_hashes) - 		\
 					(sizeof(counter_c_hashes *) * 2))
 #define COUNTER_CACHE_BODY_PACK_SZ	(sizeof(counter_c) - 			\
@@ -249,18 +259,23 @@ struct rh_cache_pkt_hdr
 {
 	u_short		tot_caches;		/* How many lcl structs there 
 						   are in the pkt's hdr */
-};
+}_PACKED_;
+int_info rh_cache_pkt_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
 /* 
  * The body is:
  * struct rh_cache_pkt_body {
  *	char		hostname[strlen(hostname)];
  *	time_t		timestamp;
- *	inet_prefix     ip;
+ *	int		ip[MAX_IP_INT];
  * } body[ hdr.tot_caches ];
  */
 #define RH_CACHE_BODY_PACK_SZ(hname_len)	((hname_len) + sizeof(time_t)+\
-							sizeof(inet_prefix))
-
+							MAX_IP_SZ)
+int_info rh_cache_pkt_body_iinfo = { 2,
+				    { INT_TYPE_32BIT, INT_TYPE_32BIT },
+				    { IINFO_DYNAMIC_VALUE, IINFO_DYNAMIC_VALUE },
+				    { 1, MAX_IP_INT }
+				   };
 
 
 /*
@@ -323,3 +338,5 @@ int save_rh_cache(rh_cache *rh, char *file);
 rh_cache *load_rh_cache(char *file, int *counter);
 
 int load_hostnames(char *file, lcl_cache **old_alcl_head, int *old_alcl_counter);
+
+#endif		/*ANDNA_CACHE_H*/

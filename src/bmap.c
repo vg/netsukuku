@@ -127,7 +127,7 @@ int map_find_bnode(map_bnode *bmap, int bmap_nodes, int node)
 }
 
 /* 
- * map_find_bnode_rnode: Find the the bnode in the `bmap' which has an rnode
+ * map_find_bnode_rnode: Find the first bnode in the `bmap' which has an rnode
  * which points to `n'. If it is found the pos of the bnode in the `bmap' is
  * returned, otherwise -1 is the return value. 
  */

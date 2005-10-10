@@ -447,7 +447,7 @@ e_rnode_find(ext_rnode_cache *erc, quadro_group *qg, int level)
 }
 
 /* 
- * erc_find_gnode; Returns the ext_rnode_cache having 
+ * erc_find_gnode; Returns the first ext_rnode_cache having 
  * erc->e->quadg.gnode[_EL( `level' )] == `gnode'
  */
 ext_rnode_cache *

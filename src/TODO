@@ -26,7 +26,10 @@
   programs. (By the way it is already commented.)
 
 
+
 		[LOW PRIORITY]
+		
+- Ipv6 support by the DNS wrapper.
 
 - Test request.c
 

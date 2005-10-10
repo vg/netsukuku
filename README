@@ -8,11 +8,17 @@
 ****  What is this?
 **
 
-Netsukuku is a pure net which exploits the chaos, it generates and sustains
-itself autonomously, having the shape of a fractal.
-The fusion of pure net with fractals and chaos is the characteristic which
-allows to Netsukuku to be a diffused and distributed, not centralized,
-anonymous, anarchical, not controlled and autonomous net.
+Netsukuku is a mesh network or a P2P net system that generates and sustains
+itself autonomously. It is designed to handle an unlimited number of nodes with
+minimal CPU and memory resources. Thanks to this feature it can be easily
+used to build a worldwide distributed, anonymous and anarchical network,
+separated from the Internet, without the support of any servers, ISPs or
+authority controls.
+Keep in mind that it is a _physical network_, it isn't built upon any other
+existing net, therefore there must be computers linked _physically_ each
+other, then Netsukuku will build the routes.
+For more information read the section "2.4  So, WTF is it?" of the
+document.
 
 In order to join to Netsukuku you have to use NetsukukuD, which is the daemon
 implenting the Npv7 protocol.
@@ -25,10 +31,13 @@ http://netsukuku.freaknet.org
 ****  Get the code!
 **
 
-(Skip this section if you downloaded the tarball) 
+Get the tarball of the latest stable version from:
+http://netsukuku.freaknet.org/files/
 
-To download the netsukuku src code you have to checkout it from the cvs 
-repository:
+
+If you want to download the development code you have to checkout it from the
+cvs repository:
+(Warning: It is highly probable the development code will not work!)
 
 $ cvs -d :pserver:anoncvs@hinezumilabs.org:/home/cvsroot login
 or
@@ -47,9 +56,6 @@ Once you've checked out a copy of the source tree, you can update
 your source tree at any time so it is in sync with the latest and 
 greatest by running the command:
 # cvs -z3 update -d -P
-
-A shorter way to get the code is by going to:
-http://netsukuku.freaknet.org/files/
 
 
 **

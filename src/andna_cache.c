@@ -25,6 +25,7 @@
 #include "llist.c"
 #include "inet.h"
 #include "crypto.h"
+#include "endianness.h"
 #include "andna_cache.h"
 #include "misc.h"
 #include "xmalloc.h"
@@ -396,7 +397,7 @@ rh_cache *rh_cache_new(char *hname, time_t timestamp, inet_prefix *ip)
 	rhc->hash=fnv_32_buf(hname, strlen(hname), FNV1_32_INIT);
 	rhc->hostname=xstrdup(hname);
 	rhc->timestamp=timestamp;
-	memcpy(&rhc->ip, ip, sizeof(inet_prefix));
+	memcpy(&rhc->ip, ip->data, MAX_IP_SZ);
 
 	return rhc;
 }
@@ -417,7 +418,7 @@ rh_cache *rh_cache_add(char *hname, time_t timestamp, inet_prefix *ip)
 	}
 
 	rhc->timestamp=timestamp;
-	memcpy(&rhc->ip, ip, sizeof(inet_prefix));
+	memcpy(&rhc->ip, ip->data, MAX_IP_SZ);
 
 	return rhc;
 }
@@ -826,8 +827,8 @@ char *pack_rh_cache(rh_cache *rhcache, size_t *pack_sz)
 			memcpy(buf, &rhc->timestamp, sizeof(time_t));
 			buf+=sizeof(time_t);
 			
-			memcpy(buf, &rhc->ip, sizeof(inet_prefix));
-			buf+=sizeof(inet_prefix);
+			memcpy(buf, rhc->ip, MAX_IP_SZ);
+			buf+=MAX_IP_SZ;
 		}
 	}
 
@@ -872,8 +873,8 @@ rh_cache *unpack_rh_cache(char *pack, size_t pack_sz, int *counter)
 			
 			memcpy(&rhc->timestamp, buf, sizeof(time_t));
 			buf+=sizeof(time_t);
-			memcpy(&rhc->ip, buf, sizeof(inet_prefix));
-			buf+=sizeof(inet_prefix);
+			memcpy(rhc->ip, buf, MAX_IP_SZ);
+			buf+=MAX_IP_SZ;
 
 
 			clist_add(&rhc_head, counter, rhc);

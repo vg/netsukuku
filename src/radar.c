@@ -1002,7 +1002,7 @@ void *radar_daemon(void *null)
 	for(;;radar_scan(1));
 }
 
-/* radar_wait_new_scan: It sleeps until the new radar scan is sent */
+/* radar_wait_new_scan: It sleeps until a new radar scan is sent */
 void radar_wait_new_scan(void)
 {
 	int old_echo_id=my_echo_id;

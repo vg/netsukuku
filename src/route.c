@@ -66,13 +66,13 @@ void *get_gw_gnode(map_node *int_map, map_gnode **ext_map,
 	 * loop:
 	 * 	- Use the map at the current level to get the gw to reach
 	 * 	  `node', which it is the current gnode (at the current level). 
-	 * 	  If `node' is an rnode or it is a MAP_ME gnode, just set 
-	 * 	  gw = `find_gnode'.
+	 * 	  If `node' is a rnode set the gw to `node' itself, if instead 
+	 * 	  it is a MAP_ME gnode, just set gw = `find_gnode'.
 	 * 	- If the level is 0, all is done, return the gw.
 	 * 	- Go one level down: level--;
 	 * 	- At this level use the bnode map and look for the bnode which
 	 * 	  borderes on the gw of the upper level we found. (Note that all
-	 * 	  the bnode in the bmap always point at the upper level).
+	 * 	  the bnodes in the bmap always point at the upper level).
 	 * 	- Find the gw to reach the found bnode at this level and set 
 	 * 	  `node' to this gw.
 	 * 	- goto loop;
@@ -136,7 +136,7 @@ void *get_gw_gnode(map_node *int_map, map_gnode **ext_map,
 			qspn_set_map_vars(i-1, 0, &root_node, 0, 0);
 			if(me.cur_node->flags & MAP_BNODE && 
 					gnode == (map_gnode *)root_node) {
-				debug(DBG_INSANE, "get_gw: bmap searching ernode for gnode 0x%x", node_gw);
+				debug(DBG_INSANE, "get_gw: bmap searching ernode for gnode 0x%x",node_gw);
 		
 				erc=erc_find_gnode(me.cur_erc, gnode_gw, i);
 				if(erc)
@@ -145,8 +145,8 @@ void *get_gw_gnode(map_node *int_map, map_gnode **ext_map,
 		}
 		debug(DBG_INSANE, "get_gw: bmap found = %x", node);
 	}
-	return 0;
 
+	return 0;
 }
 
 /*
@@ -254,9 +254,10 @@ void krnl_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_qua
 	/*
 	 * Now, get the gateway to reach the destination.
 	 */
-	if(node->flags & MAP_VOID)
+	if(node->flags & MAP_VOID) {
 		goto do_update;
-	else if(void_gw) {
+		
+	} else if(void_gw) {
 		nh=xmalloc(sizeof(struct nexthop)*2);
 		memset(nh, '\0', sizeof(struct nexthop)*2);
 		
@@ -333,7 +334,7 @@ do_update:
 					"%cnode %d lvl %d!", !level ? ' ' : 'g',
 					node_pos, level);
 #else
-#warning ***IL CODICE del route_del E DISATTIVATO***
+	#warning ***The route_del code is disabled***
 #endif
 	} else if(route_replace(0, route_scope, to, nh, me.cur_dev, 0))
 			error("WARNING: Cannot update the route entry for the "

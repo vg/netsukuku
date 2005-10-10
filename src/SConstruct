@@ -27,9 +27,9 @@ sources_common    = Split('xmalloc.c log.c misc.c')
 sources_qspn      = Split('qspn-empiric.c map.c') + sources_common
 sources_netsukuku = Split("""accept.c llist.c map.c request.c bmap.c daemon.c pkts.c 
 		   ll_map.c libnetlink.c  radar.c gmap.c hook.c ipv6-gmp.c
-		   if.c inet.c  krnl_route.c krnl_rule.c qspn.c route.c conf.c
-		   tracer.c crypto.c andna_cache.c andna.c dns_wrapper.c dns_pkt.cpp
-		   netsukuku.c""") + sources_common
+		   endianness.c if.c inet.c  krnl_route.c krnl_rule.c qspn.c route.c 
+		   conf.c tracer.c crypto.c andna_cache.c andna.c dns_wrapper.c
+		   dns_pkt.cpp netsukuku.c""") + sources_common
 
 libs = Split('gmp pthread crypto')
 

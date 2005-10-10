@@ -38,6 +38,7 @@
 #include "netsukuku.h"
 #include "daemon.h"
 #include "crypto.h"
+#include "endianness.h"
 #include "andna_cache.h"
 #include "andna.h"
 #include "dns_wrapper.h"
@@ -948,7 +949,7 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	 * resolved_hnames cache
 	 */
 	if((rhc=rh_cache_find_hname(hname))) {
-		memcpy(resolved_ip, &rhc->ip, sizeof(inet_prefix));
+		inet_setip(resolved_ip, rhc->ip, my_family);
 		return 0;
 	}
 	
