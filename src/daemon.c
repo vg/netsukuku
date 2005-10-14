@@ -20,6 +20,7 @@
 
 #include "inet.h"
 #include "request.h"
+#include "endianness.h"
 #include "pkts.h"
 #include "daemon.h"
 #include "map.h"

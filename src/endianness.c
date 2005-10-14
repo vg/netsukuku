@@ -22,6 +22,7 @@
 
 #include "includes.h"
 
+#include "misc.h"
 #include "log.h"
 #include "endianness.h"
 
@@ -39,7 +40,44 @@
 
 #define IS_DYNAMIC(i) (0)
 
-#endif
+#endif	/*DEBUG*/
+
+void *int_info_copy(int_info *dst, const int_info *src)
+{
+	return memcpy(dst, src, sizeof(int_info));
+}
+		
+void ints_array_ntohl(int *hostlong, int nmemb)
+{
+	int i;
+	
+	for(i=0; i<nmemb; i++)
+		hostlong[i]=ntohl(hostlong[i]);
+}
+
+void ints_array_htonl(int *netlong, int nmemb)
+{
+	int i;
+	
+	for(i=0; i<nmemb; i++)
+		netlong[i]=htonl(netlong[i]);
+}
+
+void ints_array_ntohs(short *hostshort, int nmemb)
+{
+	int i;
+	
+	for(i=0; i<nmemb; i++)
+		hostshort[i]=ntohs(hostshort[i]);
+}
+
+void ints_array_htons(short *netshort, int nmemb)
+{
+	int i;
+	
+	for(i=0; i<nmemb; i++)
+		netshort[i]=htons(netshort[i]);
+}
 
 
 /*
@@ -49,8 +87,7 @@
  */
 void ints_network_to_host(void *s, int_info iinfo)
 {
-	int i, e, *i32;
-	short *i16;
+	int i;
 	char *p;
 
 	IS_DYNAMIC(iinfo.total_ints);
@@ -61,18 +98,25 @@ void ints_network_to_host(void *s, int_info iinfo)
 		p=(char *)s + iinfo.int_offset[i];
 		
 		IS_DYNAMIC(iinfo.int_nmemb[i]);
-		
-		for(e=0; e < iinfo.int_nmemb[i]; e++) {
-			IS_DYNAMIC(iinfo.int_type[i]);
+		IS_DYNAMIC(iinfo.int_type[i]);
 
-			if(iinfo.int_type[i] & INT_TYPE_32BIT) {
-				i32  = (int *)(p + (sizeof(int) * e));
-				*i32 = ntohl(*i32);
-			} else {
-				i16  = (short *)(p + (sizeof(short) * e));
-				*i16 = ntohs(*i16); 
-			}
+		/* 
+		 * Swap the entire array if it is a single integer and if we 
+		 * are on a little endian machine.
+		 */
+		if(iinfo.int_type[i] & INT_TYPE_WORDS &&
+			BYTE_ORDER == LITTLE_ENDIAN) {
+			
+			if(iinfo.int_type[i] & INT_TYPE_32BIT)
+				swap_ints(iinfo.int_nmemb[i], (int *)p, (int *)p);
+			else
+				swap_shorts(iinfo.int_nmemb[i], (short *)p, (short *)p);
 		}
+		
+		if(iinfo.int_type[i] & INT_TYPE_32BIT)
+			ints_array_ntohl((int *)p, iinfo.int_nmemb[i]);
+		else
+			ints_array_ntohs((short *)p, iinfo.int_nmemb[i]);
 	}
 }
 
@@ -83,8 +127,7 @@ void ints_network_to_host(void *s, int_info iinfo)
  */
 void ints_host_to_network(void *s, int_info iinfo)
 {
-	int i, e, *i32;
-	short *i16;
+	int i;
 	char *p;
 
 	IS_DYNAMIC(iinfo.total_ints);
@@ -95,18 +138,25 @@ void ints_host_to_network(void *s, int_info iinfo)
 		p=(char *)s + iinfo.int_offset[i];
 		
 		IS_DYNAMIC(iinfo.int_nmemb[i]);
+		IS_DYNAMIC(iinfo.int_type[i]);
 
-		for(e=0; e < iinfo.int_nmemb[i]; e++) {
-			IS_DYNAMIC(iinfo.int_type[i]);
-
-			if(iinfo.int_type[i] & INT_TYPE_32BIT) {
-				i32  = (int *)(p + (sizeof(int) * e));
-				*i32 = htonl(*i32);
-			} else {
-				i16  = (short *)(p + (sizeof(short) * e));
-				*i16 = htons(*i16); 
-			}
+		/* 
+		 * Swap the entire array if it is a single integer and if we 
+		 * are on a little endian machine.
+		 */
+		if(iinfo.int_type[i] & INT_TYPE_WORDS &&
+			BYTE_ORDER == LITTLE_ENDIAN) {
+			
+			if(iinfo.int_type[i] & INT_TYPE_32BIT)
+				swap_ints(iinfo.int_nmemb[i], (int *)p, (int *)p);
+			else
+				swap_shorts(iinfo.int_nmemb[i], (short *)p, (short *)p);
 		}
+
+		if(iinfo.int_type[i] & INT_TYPE_32BIT)
+			ints_array_htonl((int *)p, iinfo.int_nmemb[i]);
+		else
+			ints_array_htons((short *)p, iinfo.int_nmemb[i]);
 	}
 }
 
@@ -128,9 +178,9 @@ void ints_printf(void *s, int_info iinfo, void(*print_func(const char *, ...)))
 		p=(char *)s + iinfo.int_offset[i];
 		
 		IS_DYNAMIC(iinfo.int_nmemb[i]);
+		IS_DYNAMIC(iinfo.int_type[i]);
 
 		for(e=0; e < iinfo.int_nmemb[i]; e++) {
-			IS_DYNAMIC(iinfo.int_type[i]);
 
 			print_func("ints_printf: offset %d, nmemb %d, ", 
 					iinfo.int_offset[i], e);

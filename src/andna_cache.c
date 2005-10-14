@@ -32,8 +32,12 @@
 #include "log.h"
 
 
-void andna_caches_init(void)
+int net_family;
+
+void andna_caches_init(int family)
 {
+	net_family = family;
+
 	memset(&lcl_keyring, 0, sizeof(lcl_cache_keyring));
 
 	andna_lcl=(lcl_cache *)clist_init(&lcl_counter);
@@ -179,7 +183,7 @@ andna_cache_queue *ac_queue_add(andna_cache *ac, inet_prefix rip, char *pubkey)
 	} else
 		update=1;
 	
-	memcpy(&acq->rip, &rip, sizeof(inet_prefix));
+	memcpy(&acq->rip, rip.data, MAX_IP_SZ);
 
 	if(ac->queue_counter >= ANDNA_MAX_QUEUE)
 		ac->flags|=ANDNA_FULL;
@@ -363,8 +367,6 @@ counter_c *counter_c_add(inet_prefix *rip, char *pubkey)
 		clist_add(&andna_counter_c, &cc_counter, cc);
 	}
 
-	memcpy(&cc->rip, rip, sizeof(inet_prefix));
-
 	return cc;
 }
 
@@ -479,14 +481,16 @@ void rh_cache_flush(void)
  * the head `local_cache'. The size of the pack is stored in `pack_sz'.
  * The given `keyring' is packed too.
  * The pointer to the newly allocated pack is returned.
+ * Note that the pack is in network byte order.
  */
 char *pack_lcl_cache(lcl_cache_keyring *keyring, lcl_cache *local_cache, 
 		size_t *pack_sz)
 {
 	struct lcl_cache_pkt_hdr lcl_hdr;
 	lcl_cache *alcl=local_cache;
+	int_info body_iinfo;
 	size_t sz=0, slen;
-	char *pack, *buf;
+	char *pack, *buf, *body;
 
 	lcl_hdr.tot_caches=0;
 	memcpy(lcl_hdr.privkey, keyring->privkey, ANDNA_SKEY_LEN);
@@ -501,13 +505,18 @@ char *pack_lcl_cache(lcl_cache_keyring *keyring, lcl_cache *local_cache,
 
 	pack=xmalloc(sz);
 	memcpy(pack, &lcl_hdr, sizeof(struct lcl_cache_pkt_hdr));
+	ints_host_to_network(pack, lcl_cache_pkt_hdr_iinfo);
+	
 	*pack_sz=0;
-
 	if(lcl_hdr.tot_caches) {
+		int_info_copy(&body_iinfo, &lcl_cache_pkt_body_iinfo);
+		
 		buf=pack + sizeof(struct lcl_cache_pkt_hdr);
 		alcl=local_cache;
 		
 		list_for(alcl) {
+			body=buf;
+			
 			slen=strlen(alcl->hostname)+1;
 			memcpy(buf, alcl->hostname, slen);
 
@@ -517,6 +526,10 @@ char *pack_lcl_cache(lcl_cache_keyring *keyring, lcl_cache *local_cache,
 	
 			memcpy(buf, &alcl->timestamp, sizeof(time_t));
 			buf+=sizeof(time_t);
+
+			body_iinfo.int_offset[0]=slen;
+			body_iinfo.int_offset[1]=slen+sizeof(u_short);
+			ints_host_to_network(body, body_iinfo);
 		}
 	}
 
@@ -529,17 +542,21 @@ char *pack_lcl_cache(lcl_cache_keyring *keyring, lcl_cache *local_cache,
  * In `keyring' it restores the packed keys. 
  * `counter' is set to the number of struct in the llist.
  * On error 0 is returned.
+ * Note `pack' is modified during the unpacking.
  */
 lcl_cache *unpack_lcl_cache(lcl_cache_keyring *keyring, char *pack, size_t pack_sz, int *counter)
 {
 	struct lcl_cache_pkt_hdr *hdr;
 	lcl_cache *alcl, *alcl_head=0;
+	int_info body_iinfo;
 	char *buf;
 	u_char *pk;
 	size_t slen, sz;
 	int i=0;
 		
 	hdr=(struct lcl_cache_pkt_hdr *)pack;
+	ints_network_to_host(hdr, lcl_cache_pkt_hdr_iinfo);
+
 	if(hdr->tot_caches > ANDNA_MAX_HOSTNAMES)
 		return 0;
 
@@ -558,6 +575,8 @@ lcl_cache *unpack_lcl_cache(lcl_cache_keyring *keyring, char *pack, size_t pack_
 
 	*counter=0;
 	if(hdr->tot_caches) {
+		int_info_copy(&body_iinfo, &lcl_cache_pkt_body_iinfo);
+		
 		buf=pack + sizeof(struct lcl_cache_pkt_hdr);
 
 		for(i=0, sz=0; i<hdr->tot_caches; i++) {
@@ -565,6 +584,10 @@ lcl_cache *unpack_lcl_cache(lcl_cache_keyring *keyring, char *pack, size_t pack_
 			sz+=LCL_CACHE_BODY_PACK_SZ(slen);
 			if(slen > ANDNA_MAX_HNAME_LEN || sz > pack_sz)
 				goto finish;
+
+			body_iinfo.int_offset[0]=slen;
+			body_iinfo.int_offset[1]=slen+sizeof(u_short);
+			ints_network_to_host(buf, body_iinfo);
 			
 			alcl=xmalloc(sizeof(lcl_cache));
 			memset(alcl, 0, sizeof(lcl_cache));
@@ -591,6 +614,7 @@ finish:
  * pack_andna_cache: packs the entire andna cache linked list that starts with
  * the head `acache'. The size of the pack is stored in `pack_sz'.
  * The pointer to the newly allocated pack is returned.
+ * The pack will be in network order.
  */
 char *pack_andna_cache(andna_cache *acache, size_t *pack_sz)
 {
@@ -610,20 +634,43 @@ char *pack_andna_cache(andna_cache *acache, size_t *pack_sz)
 	
 	pack=xmalloc(sz);
 	memcpy(pack, &hdr, sizeof(struct andna_cache_pkt_hdr));
+	ints_host_to_network(pack, andna_cache_pkt_hdr_iinfo);
 	
 	if(hdr.tot_caches) {
 		buf=pack + sizeof(struct andna_cache_pkt_hdr);
 		ac=acache;
 		list_for(ac) {
-			p=(char *)ac + (sizeof(andna_cache *) * 2);
-			memcpy(buf, p, ANDNA_CACHE_BODY_PACK_SZ);
-			buf+=ANDNA_CACHE_BODY_PACK_SZ;
+			p=buf;
+			
+			memcpy(buf, ac->hash, ANDNA_HASH_SZ);
+			buf+=ANDNA_HASH_SZ;
+			
+			memcpy(buf, &ac->flags, sizeof(char));
+			buf+=sizeof(char);
+
+			memcpy(buf, &ac->queue_counter, sizeof(u_short));
+			buf+=sizeof(u_short);
+			
+			ints_host_to_network(p, andna_cache_body_iinfo);
 
 			acq=ac->acq;
 			list_for(acq) {
-				p=(char *)acq + (sizeof(andna_cache_queue *) * 2);
-				memcpy(buf, p, ANDNA_CACHE_QUEUE_PACK_SZ);
-				buf+=ANDNA_CACHE_QUEUE_PACK_SZ;
+				p=buf;
+				
+				memcpy(buf, acq->rip, MAX_IP_SZ);
+				inet_htonl((u_int *)buf, net_family);
+				buf+=MAX_IP_SZ;
+
+				memcpy(buf, &acq->timestamp, sizeof(time_t));
+				buf+=sizeof(time_t);
+
+				memcpy(buf, &acq->hname_updates, sizeof(u_short));
+				buf+=sizeof(u_short);
+
+				memcpy(buf, &acq->pubkey, ANDNA_PKEY_LEN);
+				buf+=ANDNA_PKEY_LEN;
+				
+				ints_host_to_network(p, andna_cache_queue_body_iinfo);
 			}
 		}
 	}
@@ -637,17 +684,19 @@ char *pack_andna_cache(andna_cache *acache, size_t *pack_sz)
  * unpack_andna_cache: unpacks a packed andna cache linked list and returns the
  * its head.  `counter' is set to the number of struct in the llist.
  * On error 0 is returned.
+ * Warning: `pack' will be modified during the unpacking.
  */
 andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter)
 {
 	struct andna_cache_pkt_hdr *hdr;
 	andna_cache *ac, *ac_head=0;
 	andna_cache_queue *acq;
-	char *buf, *p;
+	char *buf;
 	size_t sz;
 	int i, e, fake_int;
 
 	hdr=(struct andna_cache_pkt_hdr *)pack;
+	ints_network_to_host(hdr, andna_cache_pkt_hdr_iinfo);
 	*counter=0;
 	
 	if(hdr->tot_caches) {
@@ -662,9 +711,16 @@ andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter)
 			ac=xmalloc(sizeof(andna_cache));
 			memset(ac, 0, sizeof(andna_cache));
 			
-			p=(char *)ac + (sizeof(andna_cache *) * 2);
-			memcpy(p, buf, ANDNA_CACHE_BODY_PACK_SZ);
-			buf+=ANDNA_CACHE_BODY_PACK_SZ;
+			ints_network_to_host(buf, andna_cache_body_iinfo);
+			
+			memcpy(ac->hash, buf, ANDNA_HASH_SZ);
+			buf+=ANDNA_HASH_SZ;
+			
+			memcpy(&ac->flags, buf, sizeof(char));
+			buf+=sizeof(char);
+
+			memcpy(&ac->queue_counter, buf, sizeof(u_short));
+			buf+=sizeof(u_short);
 
 			sz+=ANDNA_CACHE_QUEUE_PACK_SZ*ac->queue_counter;
 			if(sz > pack_sz)
@@ -674,9 +730,20 @@ andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter)
 				acq=xmalloc(sizeof(andna_cache_queue));
 				memset(acq, 0, sizeof(andna_cache_queue));
 				
-				p=(char *)acq + (sizeof(andna_cache_queue *) * 2);
-				memcpy(p, buf, ANDNA_CACHE_QUEUE_PACK_SZ);
-				buf+=ANDNA_CACHE_QUEUE_PACK_SZ;
+				ints_network_to_host(buf, andna_cache_queue_body_iinfo);
+				
+				memcpy(acq->rip, buf, MAX_IP_SZ);
+				inet_ntohl(acq->rip, net_family);
+				buf+=MAX_IP_SZ;
+
+				memcpy(&acq->timestamp, buf, sizeof(time_t));
+				buf+=sizeof(time_t);
+
+				memcpy(&acq->hname_updates, buf, sizeof(u_short));
+				buf+=sizeof(u_short);
+
+				memcpy(&acq->pubkey, buf, ANDNA_PKEY_LEN);
+				buf+=ANDNA_PKEY_LEN;
 
 				clist_add(&ac->acq, &fake_int, acq);
 			}
@@ -692,6 +759,7 @@ finish:
  * pack_counter_cache: packs the entire counter cache linked list that starts 
  * with the head `counter'. The size of the pack is stored in `pack_sz'.
  * The pointer to the newly allocated pack is returned.
+ * The pack will be in network order.
  */
 char *pack_counter_cache(counter_c *countercache, size_t *pack_sz)
 {
@@ -711,20 +779,39 @@ char *pack_counter_cache(counter_c *countercache, size_t *pack_sz)
 	
 	pack=xmalloc(sz);
 	memcpy(pack, &hdr, sizeof(struct counter_c_pkt_hdr));
+	ints_host_to_network(pack, counter_c_pkt_hdr_iinfo);
 	
 	if(hdr.tot_caches) {
 		buf=pack + sizeof(struct counter_c_pkt_hdr);
 		cc=countercache;
 		list_for(cc) {
-			p=(char *)cc + (sizeof(counter_c *) * 2);
-			memcpy(buf, p, COUNTER_CACHE_BODY_PACK_SZ);
-			buf+=COUNTER_CACHE_BODY_PACK_SZ;
+			p=buf;
+		
+			memcpy(buf, cc->pubkey, ANDNA_PKEY_LEN);
+			buf+=ANDNA_PKEY_LEN;
 
+			memcpy(buf, &cc->flags, sizeof(char));
+			buf+=sizeof(char);
+
+			memcpy(buf, &cc->hashes, sizeof(u_short));
+			buf+=sizeof(u_short);
+
+			ints_host_to_network(p, counter_c_body_iinfo);
+			
 			cch=cc->cch;
 			list_for(cch) {
-				p=(char *)cch + (sizeof(counter_c_hashes *) * 2);
-				memcpy(buf, p, COUNTER_CACHE_HASHES_PACK_SZ);
-				buf+=COUNTER_CACHE_HASHES_PACK_SZ;
+				p=buf;
+				
+				memcpy(buf, &cch->timestamp, sizeof(time_t));
+				buf+=sizeof(time_t);
+
+				memcpy(buf, &cch->hname_updates, sizeof(u_short));
+				buf+=sizeof(u_short);
+
+				memcpy(buf, cch->hash, ANDNA_HASH_SZ);
+				buf+=ANDNA_HASH_SZ;
+
+				ints_host_to_network(p, counter_c_hashes_body_iinfo);
 			}
 		}
 	}
@@ -738,17 +825,19 @@ char *pack_counter_cache(counter_c *countercache, size_t *pack_sz)
  * unpack_counter_cache: unpacks a packed counter cache linked list and returns the
  * its head.  `counter' is set to the number of struct in the llist.
  * On error 0 is returned.
+ * Note `pack' will be modified during the unpacking.
  */
 counter_c *unpack_counter_cache(char *pack, size_t pack_sz, int *counter)
 {
 	struct counter_c_pkt_hdr *hdr;
 	counter_c *cc, *cc_head=0;
 	counter_c_hashes *cch;
-	char *buf, *p;
+	char *buf;
 	size_t sz;
 	int i, e, fake_int;
 
 	hdr=(struct counter_c_pkt_hdr *)pack;
+	ints_network_to_host(hdr, counter_c_pkt_hdr_iinfo);
 	*counter=0;
 	
 	if(hdr->tot_caches) {
@@ -763,9 +852,17 @@ counter_c *unpack_counter_cache(char *pack, size_t pack_sz, int *counter)
 			cc=xmalloc(sizeof(counter_c));
 			memset(cc, 0, sizeof(counter_c));
 			
-			p=(char *)cc + (sizeof(counter_c *) * 2);
-			memcpy(p, buf, COUNTER_CACHE_BODY_PACK_SZ);
-			buf+=COUNTER_CACHE_BODY_PACK_SZ;
+			ints_network_to_host(buf, counter_c_body_iinfo);
+			
+			memcpy(cc->pubkey, buf, ANDNA_PKEY_LEN);
+			buf+=ANDNA_PKEY_LEN;
+
+			memcpy(&cc->flags, buf, sizeof(char));
+			buf+=sizeof(char);
+
+			memcpy(&cc->hashes, buf, sizeof(u_short));
+			buf+=sizeof(u_short);
+
 
 			sz+=COUNTER_CACHE_HASHES_PACK_SZ * cc->hashes;
 			if(sz > pack_sz)
@@ -775,9 +872,16 @@ counter_c *unpack_counter_cache(char *pack, size_t pack_sz, int *counter)
 				cch=xmalloc(sizeof(counter_c_hashes));
 				memset(cch, 0, sizeof(counter_c_hashes));
 				
-				p=(char *)cch + (sizeof(counter_c_hashes *) * 2);
-				memcpy(p, buf, COUNTER_CACHE_HASHES_PACK_SZ);
-				buf+=COUNTER_CACHE_HASHES_PACK_SZ;
+				ints_network_to_host(buf, counter_c_hashes_body_iinfo);
+
+				memcpy(&cch->timestamp, buf, sizeof(time_t));
+				buf+=sizeof(time_t);
+
+				memcpy(&cch->hname_updates, buf, sizeof(u_short));
+				buf+=sizeof(u_short);
+
+				memcpy(cch->hash, buf, ANDNA_HASH_SZ);
+				buf+=ANDNA_HASH_SZ;
 
 				clist_add(&cc->cch, &fake_int, cch);
 			}
@@ -794,13 +898,15 @@ finish:
  * pack_rh_cache: packs the entire resolved hnames cache linked list that starts 
  * with the head `rhcache'. The size of the pack is stored in `pack_sz'.
  * The pointer to the newly allocated pack is returned.
+ * The pack will be in network order.
  */
 char *pack_rh_cache(rh_cache *rhcache, size_t *pack_sz)
 {
 	struct rh_cache_pkt_hdr rh_hdr;
 	rh_cache *rhc=rhcache;
+	int_info body_iinfo;
 	size_t sz=0, slen;
-	char *pack, *buf;
+	char *pack, *buf, *body;
 
 	rh_hdr.tot_caches=0;
 	sz=sizeof(struct rh_cache_pkt_hdr);
@@ -813,6 +919,7 @@ char *pack_rh_cache(rh_cache *rhcache, size_t *pack_sz)
 
 	pack=xmalloc(sz);
 	memcpy(pack, &rh_hdr, sizeof(struct rh_cache_pkt_hdr));
+	ints_host_to_network(pack, rh_cache_pkt_hdr_iinfo);
 	*pack_sz=0;
 
 	if(rh_hdr.tot_caches) {
@@ -820,6 +927,8 @@ char *pack_rh_cache(rh_cache *rhcache, size_t *pack_sz)
 		rhc=rhcache;
 		
 		list_for(rhc) {
+			body=buf;
+
 			slen=strlen(rhc->hostname)+1;
 			memcpy(buf, rhc->hostname, slen);
 			buf+=slen;
@@ -829,6 +938,11 @@ char *pack_rh_cache(rh_cache *rhcache, size_t *pack_sz)
 			
 			memcpy(buf, rhc->ip, MAX_IP_SZ);
 			buf+=MAX_IP_SZ;
+
+			/* host -> network order */
+			body_iinfo.int_offset[0]=slen;
+			body_iinfo.int_offset[1]=slen+sizeof(time_t);
+			ints_host_to_network(buf, body_iinfo);
 		}
 	}
 
@@ -841,16 +955,20 @@ char *pack_rh_cache(rh_cache *rhcache, size_t *pack_sz)
  * returns its head.
  * `counter' is set to the number of struct in the llist.
  * On error 0 is returned.
+ * Note `pack' will be modified during the unpacking.
  */
 rh_cache *unpack_rh_cache(char *pack, size_t pack_sz, int *counter)
 {
 	struct rh_cache_pkt_hdr *hdr;
-	rh_cache *rhc, *rhc_head=0;
+	rh_cache *rhc=0, *rhc_head=0;
+	int_info body_iinfo;
 	char *buf;
 	size_t slen, sz;
 	int i=0;
 		
 	hdr=(struct rh_cache_pkt_hdr *)pack;
+	ints_network_to_host(hdr, rh_cache_pkt_hdr_iinfo);
+
 	if(hdr->tot_caches > ANDNA_MAX_RHC_HNAMES)
 		return 0;
 
@@ -863,6 +981,10 @@ rh_cache *unpack_rh_cache(char *pack, size_t pack_sz, int *counter)
 			sz+=RH_CACHE_BODY_PACK_SZ(slen);
 			if(slen > ANDNA_MAX_HNAME_LEN || sz > pack_sz)
 				goto finish;
+
+			body_iinfo.int_offset[0]=slen;
+			body_iinfo.int_offset[1]=slen+sizeof(time_t);
+			ints_network_to_host(buf, body_iinfo);
 			
 			rhc=xmalloc(sizeof(rh_cache));
 			memset(rhc, 0, sizeof(rh_cache));
@@ -876,13 +998,12 @@ rh_cache *unpack_rh_cache(char *pack, size_t pack_sz, int *counter)
 			memcpy(rhc->ip, buf, MAX_IP_SZ);
 			buf+=MAX_IP_SZ;
 
-
 			clist_add(&rhc_head, counter, rhc);
 		}
 	}
 
 finish:
-	return rhc;
+	return rhc_head;
 }
 
 
@@ -931,7 +1052,7 @@ lcl_cache *load_lcl_cache(lcl_cache_keyring *keyring, char *file, int *counter)
 	char *pack=0;
 	size_t pack_sz;
 	
-	if((fd=fopen(file, "r"))==NULL) {
+	if(!(fd=fopen(file, "r"))) {
 		error("Cannot load the lcl_cache from %s: %s", file, strerror(errno));
 		return 0;
 	}
@@ -951,7 +1072,8 @@ finish:
 		xfree(pack);
 	fclose(fd);
 	if(!lcl)
-		error("Malformed lcl_cache file. Aborting load_lcl_cache().");
+		debug(DBG_NORMAL, "Malformed or empty lcl_cache file. "
+				"Aborting load_lcl_cache().");
 	return lcl;
 }
 
@@ -1016,7 +1138,8 @@ finish:
 		xfree(pack);
 	fclose(fd);
 	if(!acache)
-		error("Malformed andna_cache file. Aborting load_andna_cache().");
+		debug(DBG_NORMAL, "Malformed or empty andna_cache file."
+				" Aborting load_andna_cache().");
 	return acache;
 }
 
@@ -1081,7 +1204,8 @@ finish:
 		xfree(pack);
 	fclose(fd);
 	if(!countercache)
-		error("Malformed counter_c file. Aborting load_counter_c().");
+		debug(DBG_NORMAL, "Malformed or empty counter_c file. "
+				"Aborting load_counter_c().");
 	return countercache;
 }
 
@@ -1147,7 +1271,8 @@ finish:
 		xfree(pack);
 	fclose(fd);
 	if(!rh)
-		error("Malformed rh_cache file. Aborting load_rh_cache().");
+		debug(DBG_NORMAL, "Malformed or empty rh_cache file. "
+				"Aborting load_rh_cache().");
 	return rh;
 }
 

@@ -26,6 +26,7 @@
 
 #include "llist.c"
 #include "inet.h"
+#include "endianness.h"
 #include "map.h"
 #include "gmap.h"
 #include "bmap.h"
@@ -38,7 +39,6 @@
 #include "netsukuku.h"
 #include "daemon.h"
 #include "crypto.h"
-#include "endianness.h"
 #include "andna_cache.h"
 #include "andna.h"
 #include "dns_wrapper.h"
@@ -106,7 +106,7 @@ void andna_init(void)
 
 	pkt_queue_init();
 
-	andna_caches_init();
+	andna_caches_init(my_family);
 
 	andna_load_caches();
 	lcl_new_keyring(&lcl_keyring);
@@ -168,9 +168,10 @@ int is_hgnode_excluded(quadro_group *qg, u_int **excluded_hgnode,
 
 		memcpy(ip.data, excluded_hgnode[e], MAX_IP_SZ);
 		for(i=lvl; i<total_levels; i++) {
-			/* XXX TODO remove absolutely this debug print */
+#ifdef DEBUG
 			debug(DBG_INSANE, "is_hgnode_excluded: l %d, qg->gid %d, ipgid %d", i, 
 					qg->gid[i], iptogid(ip, i));
+#endif
 			if(qg->gid[i] != iptogid(ip, i)) {
 				x=1;
 				break;
@@ -375,7 +376,7 @@ int find_hash_gnode(u_int hash[MAX_IP_INT], inet_prefix *to,
 
 	/* Hash to ip and quadro_group conversion */
 	inet_setip(to, hash, my_family);
-	inet_htonl(to);
+	inet_htonl(to->data, to->family);
 	iptoquadg(*to, me.ext_map, &qg, QUADG_GID|QUADG_GNODE);
 	
 		
@@ -495,10 +496,13 @@ int andna_register_hname(lcl_cache *alcl)
 	 * Filling the request structure 
 	 */
 
-	memcpy(req.rip, me.cur_ip.data, MAX_IP_SZ); 
+	inet_copy_ipdata(req.rip, &me.cur_ip); 
 	andna_hash(my_family, alcl->hostname, strlen(alcl->hostname),
 			req.hash, hash_gnode);
 	memcpy(req.pubkey, lcl_keyring.pubkey, ANDNA_PKEY_LEN);
+
+	/* Convert the pkt from host to network order */
+	ints_host_to_network((void *)&req, andna_reg_pkt_iinfo);
 	
 	/* Sign the packet */
 	sign=rsa_sign((u_char *)&req, ANDNA_REG_SIGNED_BLOCK_SZ, 
@@ -548,7 +552,7 @@ finish:
  */
 int andna_recv_reg_rq(PACKET rpkt)
 {
-	PACKET pkt;
+	PACKET pkt, rpkt_local_copy;
 	struct andna_reg_pkt *req;
 	u_int hash_gnode[MAX_IP_INT], *excluded_hgnode[1];
 	inet_prefix rfrom, to;
@@ -561,8 +565,9 @@ int andna_recv_reg_rq(PACKET rpkt)
 	u_char forwarded_pkt=0;
 	const u_char *pk;
 
+	pkt_copy(&rpkt_local_copy, &rpkt);
 
-	req=(struct andna_reg_pkt *)rpkt.msg;
+	req=(struct andna_reg_pkt *)rpkt_local_copy.msg;
 	if(rpkt.hdr.sz != ANDNA_REG_PKT_SZ)
 		ERROR_FINISH(ret, -1, finish);
 
@@ -580,7 +585,6 @@ int andna_recv_reg_rq(PACKET rpkt)
 
 	/* Save the real sender of the request */
 	inet_setip(&rfrom, req->rip, my_family);
-	inet_htonl(&rfrom);
 
 	ntop=xstrdup(inet_to_str(rpkt.from));
 	rfrom_ntop=xstrdup(inet_to_str(rfrom));
@@ -589,6 +593,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 
 	memcpy(&pkt, &rpkt, sizeof(PACKET));
 	memcpy(&pkt.from, &rfrom, sizeof(inet_prefix));
+
 	/* Send the replies in UDP, they are so tiny */
 	pkt_addsk(&pkt, my_family, 0, SKT_UDP);
 	
@@ -604,6 +609,9 @@ int andna_recv_reg_rq(PACKET rpkt)
 			ret=pkt_err(pkt, E_INVALID_SIGNATURE);
 		ERROR_FINISH(ret, -1, finish);
 	}
+
+	/* Revert the packet from network to host order */
+	ints_network_to_host((void *)req, andna_reg_pkt_iinfo);
 
 	/* If don't belong to the gnode of `rfrom', then we have to exclude
 	 * it from the find_hash_gnode search, since we have received the 
@@ -716,6 +724,8 @@ finish:
 		xfree(ntop);
 	if(rfrom_ntop)
 		xfree(rfrom_ntop);
+	pkt_free(&rpkt_local_copy, 0);
+	
 	return ret;
 }
 
@@ -754,7 +764,7 @@ int andna_check_counter(PACKET pkt)
 	pkt.hdr.sz+=MAX_IP_SZ;
 	pkt.msg=xmalloc(pkt.hdr.sz);
 	memcpy(pkt.msg, req, ANDNA_REG_PKT_SZ);
-	memcpy(pkt.msg+ANDNA_REG_PKT_SZ, me.cur_ip.data, MAX_IP_SZ);
+	inet_copy_ipdata((u_int *)(pkt.msg+ANDNA_REG_PKT_SZ), &me.cur_ip);
 	
 	/* Throw it */
 	memset(&rpkt, 0, sizeof(PACKET));
@@ -769,7 +779,7 @@ finish:
 
 int andna_recv_check_counter(PACKET rpkt)
 {
-	PACKET pkt;
+	PACKET pkt, rpkt_local_copy;
 	struct andna_reg_pkt *req;
 	inet_prefix rfrom, to;
 	RSA *pubkey;
@@ -781,10 +791,10 @@ int andna_recv_check_counter(PACKET rpkt)
 	int ret=0, err;
 	u_int pubk_hash[MAX_IP_INT], hash_gnode[MAX_IP_INT], *excluded_hgnode[1];
 
-			
+	pkt_copy(&rpkt_local_copy, &rpkt);
 	ntop=xstrdup(inet_to_str(rpkt.from));
 	
-	req=(struct andna_reg_pkt *)rpkt.msg;
+	req=(struct andna_reg_pkt *)rpkt_local_copy.msg;
 	if(rpkt.hdr.sz != ANDNA_REG_PKT_SZ+MAX_IP_SZ) {
 		debug(DBG_SOFT, "Malformed check_counter pkt from %s", ntop);
 		ERROR_FINISH(ret, -1, finish);
@@ -805,7 +815,6 @@ int andna_recv_check_counter(PACKET rpkt)
 	/* Save the real sender of the request */
 	buf=rpkt.msg+ANDNA_REG_PKT_SZ;
 	inet_setip(&rfrom, (u_int *)buf, my_family);
-	inet_htonl(&rfrom);
 
 	rfrom_ntop=xstrdup(inet_to_str(rfrom));
 	debug(DBG_SOFT, "Received %s%sfrom %s, rfrom %s", rq_to_str(rpkt.hdr.op),
@@ -813,6 +822,7 @@ int andna_recv_check_counter(PACKET rpkt)
 	
 	memcpy(&pkt, &rpkt, sizeof(PACKET));
 	memcpy(&pkt.from, &rfrom, sizeof(inet_prefix));
+
 	/* Reply to rfrom using a UDP sk, since the replies are very small */
 	pkt_addsk(&pkt, my_family, 0, SKT_UDP);
 	
@@ -828,6 +838,9 @@ int andna_recv_check_counter(PACKET rpkt)
 			ret=pkt_err(pkt, E_INVALID_SIGNATURE);
 		ERROR_FINISH(ret, -1, finish);
 	}
+
+	/* Revert the packet from network to host order */
+	ints_network_to_host((void *)req, andna_reg_pkt_iinfo);
 
 	/* If don't belong to the gnode of `rfrom', then we have to exclude
 	 * it from the find_hash_gnode search, since we have received the 
@@ -906,6 +919,8 @@ finish:
 		xfree(ntop);
 	if(rfrom_ntop)
 		xfree(rfrom_ntop);
+	pkt_free(&rpkt_local_copy, 0);
+	
 	return ret;
 }
 
@@ -950,21 +965,23 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	 */
 	if((rhc=rh_cache_find_hname(hname))) {
 		inet_setip(resolved_ip, rhc->ip, my_family);
+		inet_ntohl(resolved_ip->data, my_family);
 		return 0;
 	}
 	
 	/* 
 	 * Fill the request structure.
 	 */
-	memcpy(req.rip, me.cur_ip.data, MAX_IP_SZ);
+	inet_copy_ipdata(req.rip, &me.cur_ip);
 	andna_hash(my_family, hname, strlen(hname), req.hash, hash_gnode);
 	
 #ifndef ANDNA_DEBUG
 	/*
-	 * If we managed an andna_cache, it's better to peek at it.
+	 * If we manage an andna_cache, it's better to peek at it.
 	 */
 	if((ac=andna_cache_findhash(req.hash))) {
-		memcpy(resolved_ip, &ac->acq->rip, sizeof(inet_prefix));
+		inet_setip(resolved_ip, ac->acq->rip, my_family);
+		inet_ntohl(resolved_ip->data, my_family);
 		return 0;
 	}
 #endif
@@ -980,8 +997,15 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 		
 	ntop=inet_to_str(to);
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(ANDNA_RESOLVE_HNAME), ntop);
+
 	
-	/* Fill the packet and send the request */
+	/* 
+	 * Fill the packet and send the request 
+	 */
+	
+	/* host -> network order */
+	ints_host_to_network(&req, andna_resolve_rq_pkt_iinfo);
+	
 	pkt_addto(&pkt, &to);
 	pkt.hdr.flags|=ASYNC_REPLY;
 	pkt.hdr.sz=ANDNA_RESOLVE_RQ_PKT_SZ;
@@ -997,10 +1021,15 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 
 	if(rpkt.hdr.sz != ANDNA_RESOLVE_REPLY_PKT_SZ)
 		ERROR_FINISH(ret, -1, finish);
-		
+
+	/* 
+	 * Take the ip we need from the replied pkt 
+	 */
 	reply=(struct andna_resolve_reply_pkt *)rpkt.msg;
 	inet_setip(resolved_ip, reply->ip, my_family);
-	inet_htonl(resolved_ip);
+	
+	/* network -> host order */
+	ints_network_to_host(reply, andna_resolve_reply_pkt_iinfo);
 	
 	/* 
 	 * Add the hostname in the resolved_hnames cache since it was
@@ -1020,7 +1049,7 @@ finish:
  */
 int andna_recv_resolve_rq(PACKET rpkt)
 {
-	PACKET pkt;
+	PACKET pkt, rpkt_local_copy;
 	struct andna_resolve_rq_pkt *req;
 	struct andna_resolve_reply_pkt reply;
 	andna_cache *ac;
@@ -1030,13 +1059,15 @@ int andna_recv_resolve_rq(PACKET rpkt)
 	char *ntop=0, *rfrom_ntop=0;
 	u_char spread_the_acache=0;
 
-	req=(struct andna_resolve_rq_pkt *)rpkt.msg;
+	
 	if(rpkt.hdr.sz != ANDNA_RESOLVE_RQ_PKT_SZ)
 		ERROR_FINISH(ret, -1, finish);
 	
+	pkt_copy(&rpkt_local_copy, &rpkt);
+	req=(struct andna_resolve_rq_pkt *)rpkt_local_copy.msg;
+	
 	/* Save the real sender of the request */
 	inet_setip(&rfrom, req->rip, my_family);
-	inet_htonl(&rfrom);
 
 	ntop=xstrdup(inet_to_str(rpkt.from));
 	rfrom_ntop=xstrdup(inet_to_str(rfrom));
@@ -1046,6 +1077,9 @@ int andna_recv_resolve_rq(PACKET rpkt)
 	memcpy(&pkt, &rpkt, sizeof(PACKET));
 	memcpy(&pkt.from, &rfrom, sizeof(inet_prefix));
 	pkt_addsk(&pkt, my_family, 0, SKT_UDP);
+
+	/* network -> host order conversion of the rpkt_local_copy.smg */
+	ints_network_to_host((void *)req, andna_resolve_rq_pkt_iinfo);
 
 	/*
 	 * Are we the right hash_gnode or have we to still forward the pkt ?
@@ -1103,15 +1137,27 @@ int andna_recv_resolve_rq(PACKET rpkt)
 	}
 	
 reply_resolve_rq:
-	/* Send back the ip associated to the hname */
+	/* 
+	 * Send back the ip associated to the hname 
+	 */
 	debug(DBG_SOFT, "Resolve request 0x%x accepted", rpkt.hdr.id);
+	
+	/* Write the reply */
 	memset(&reply, 0, sizeof(reply));
-	memcpy(reply.ip, ac->acq->rip.data, MAX_IP_SZ);
+	memcpy(reply.ip, ac->acq->rip, MAX_IP_SZ);
 	reply.timestamp=ac->acq->timestamp;
+
+	/* host -> network order */
+	inet_htonl(reply.ip, me.cur_ip.family);
+	ints_host_to_network((void *)&reply, andna_resolve_reply_pkt_iinfo);
+
 	pkt_fill_hdr(&pkt.hdr, ASYNC_REPLIED, rpkt.hdr.id, ANDNA_RESOLVE_REPLY,
 			sizeof(reply));
+	
 	pkt.msg=xmalloc(pkt.hdr.sz);
 	memcpy(pkt.msg, &reply, sizeof(reply));
+	
+	/* Forward it */
 	ret=forward_pkt(pkt, rfrom);
 	pkt_free(&pkt, 0);
 
@@ -1125,6 +1171,7 @@ finish:
 		xfree(ntop);
 	if(rfrom_ntop)
 		xfree(rfrom_ntop);
+	pkt_free(&rpkt_local_copy, 0);
 
 	return ret;
 }
@@ -1140,11 +1187,12 @@ int andna_reverse_resolve(inet_prefix ip, char ***hostnames)
 	PACKET pkt, rpkt;
 	inet_prefix to;
 	struct andna_rev_resolve_reply_hdr *reply;
+	int_info reply_iinfo;
 	
 	const char *ntop; 
 	int ret=0, tot_hnames, i, sz;
 	u_short *hnames_sz;
-	char **hnames, *buf;
+	char **hnames, *buf, *reply_body;
 	ssize_t err;
 
 	memset(&pkt, 0, sizeof(pkt));
@@ -1165,6 +1213,7 @@ int andna_reverse_resolve(inet_prefix ip, char ***hostnames)
 	}
 
 	reply=(struct andna_rev_resolve_reply_hdr *)rpkt.msg;
+			
 	tot_hnames=reply->hostnames;
 	tot_hnames++;
 	if(tot_hnames > ANDNA_MAX_HOSTNAMES || tot_hnames <= 0)
@@ -1173,7 +1222,15 @@ int andna_reverse_resolve(inet_prefix ip, char ***hostnames)
 	/* 
 	 * Split the received hostnames 
 	 */
-	hnames_sz=(u_short *)((char *)rpkt.msg+sizeof(struct andna_rev_resolve_reply_hdr));
+
+	reply_body = (char *)rpkt.msg+sizeof(struct andna_rev_resolve_reply_hdr);
+	
+	/* network -> host order */
+	int_info_copy(&reply_iinfo, &andna_rev_resolve_reply_body_iinfo);
+	reply_iinfo.int_nmemb[0] = tot_hnames;
+	ints_network_to_host((void *)reply_body, reply_iinfo);
+	
+	hnames_sz=(u_short *)reply_body;
 	hnames=xmalloc(tot_hnames * sizeof(char *));
 	
 	sz=sizeof(struct andna_rev_resolve_reply_hdr)+sizeof(u_short)*tot_hnames;
@@ -1210,8 +1267,10 @@ int andna_recv_rev_resolve_rq(PACKET rpkt)
 {
 	PACKET pkt;
 	struct andna_rev_resolve_reply_hdr hdr;
+	int_info reply_iinfo;
+
 	u_short *hnames_sz;
-	char *buf;
+	char *buf, *reply_body;
 	const char *ntop;
 	int i, ret=0, err, hostnames;
 	
@@ -1255,8 +1314,10 @@ int andna_recv_rev_resolve_rq(PACKET rpkt)
 	
 	if(hostnames) {
 		buf+=sizeof(struct andna_rev_resolve_reply_hdr);
+		reply_body=buf;
 
 		memcpy(buf, hnames_sz, sizeof(u_short) * hostnames);
+
 		buf+=sizeof(u_short) * hostnames;
 		
 		i=0;
@@ -1266,6 +1327,11 @@ int andna_recv_rev_resolve_rq(PACKET rpkt)
 			buf+=hnames_sz[i];
 		}
 	}
+	
+	/* host -> network order */
+	int_info_copy(&reply_iinfo, &andna_rev_resolve_reply_body_iinfo);
+	reply_iinfo.int_nmemb[0] = hostnames;
+	ints_host_to_network((void *)reply_body, reply_iinfo);
 
 	/*
 	 * Send it.
@@ -1316,16 +1382,21 @@ andna_cache *get_single_andna_c(u_int hash[MAX_IP_INT],
 		req_hdr.flags|=ANDNA_FORWARD;
 	
 	req_hdr.hgnodes=1;
-	memcpy(req_hdr.rip, me.cur_ip.data, MAX_IP_SZ);
+	inet_copy_ipdata(req_hdr.rip, &me.cur_ip);
 	memcpy(req_hdr.hash, hash, MAX_IP_SZ);
 
+	/* host -> network order */
+	ints_host_to_network((void *)&req_hdr, single_acache_hdr_iinfo);
+	
 	/* Pack the request */
 	pkt.hdr.flags|=ASYNC_REPLY;
 	pkt.hdr.sz=SINGLE_ACACHE_PKT_SZ(1);
 	pkt.msg=xmalloc(pkt.hdr.sz);
 	memcpy(pkt.msg, &req_hdr, pkt.hdr.sz);
-	memcpy(pkt.msg+sizeof(struct single_acache_hdr), me.cur_ip.data,
-			MAX_IP_SZ);
+
+	/* Append our ip at the end of the pkt */
+	inet_copy_ipdata((u_int *)(pkt.msg+sizeof(struct single_acache_hdr)), 
+				&me.cur_ip);
 	
 	ntop=inet_to_str(pkt.to);
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(ANDNA_GET_SINGLE_ACACHE), ntop);
@@ -1333,7 +1404,7 @@ andna_cache *get_single_andna_c(u_int hash[MAX_IP_INT],
 	if(err==-1)
 		ERROR_FINISH(ret, 0, finish);
 
-	/* Unpack the awaited reply */
+	/* Unpack the waited reply */
 	pack_sz=rpkt.hdr.sz;
 	pack=rpkt.msg;
 	ret=andna_cache=unpack_andna_cache(pack, pack_sz, &counter);
@@ -1354,7 +1425,7 @@ finish:
  */
 int put_single_acache(PACKET rpkt)
 {
-	PACKET pkt;
+	PACKET pkt, rpkt_local_copy;
 	struct single_acache_hdr *req_hdr;
 	u_int hash_gnode[MAX_IP_INT], **new_hgnodes=0;
 	inet_prefix rfrom, to;
@@ -1365,14 +1436,16 @@ int put_single_acache(PACKET rpkt)
 	ssize_t err;
 	size_t pkt_sz=0;
 	
-	req_hdr=(struct single_acache_hdr *)rpkt.msg;
+	
+	pkt_copy(&rpkt_local_copy, &rpkt);
+	req_hdr=(struct single_acache_hdr *)rpkt_local_copy.msg;
+	
 	if(rpkt.hdr.sz != SINGLE_ACACHE_PKT_SZ(req_hdr->hgnodes) ||
 			req_hdr->hgnodes > ANDNA_MAX_NEW_GNODES)
 		ERROR_FINISH(ret, -1, finish);
 
 	/* Save the real sender of the request */
 	inet_setip(&rfrom, req_hdr->rip, my_family);
-	inet_htonl(&rfrom);
 
 	ntop=xstrdup(inet_to_str(rpkt.from));
 	rfrom_ntop=xstrdup(inet_to_str(rfrom));
@@ -1383,11 +1456,15 @@ int put_single_acache(PACKET rpkt)
 	memcpy(&pkt.from, &rfrom, sizeof(inet_prefix));
 	pkt_addsk(&pkt, my_family, 0, SKT_UDP);
 
+	/* network -> host order */
+	ints_network_to_host(req_hdr, single_acache_hdr_iinfo);
+	
 	/* Unpack the hash_gnodes to exclude */
 	new_hgnodes=xmalloc(sizeof(u_int *) * (req_hdr->hgnodes+1));
 	buf=rpkt.msg+sizeof(struct single_acache_hdr);
 	for(i=0; i<req_hdr->hgnodes; i++) {
 		new_hgnodes[i]=(u_int *)buf;
+		inet_ntohl(new_hgnodes[i], me.cur_ip.family);
 		buf+=MAX_IP_SZ;
 	}
 
@@ -1420,25 +1497,29 @@ int put_single_acache(PACKET rpkt)
 	if(!(ac=andna_cache_findhash(req_hdr->hash))) {
 
 		/*
-		 * Nothing found! Maybe it's because e have an uptime less than
+		 * Nothing found! Maybe it's because we have an uptime less than
 		 * (ANDNA_EXPIRATION_TIME/2) and so we are a new hash_gnode, 
-		 * therefore we have to forward the pkt to a older hash_gnode.
+		 * therefore we have to forward the pkt to an older hash_gnode.
 		 */ 
 		if(time(0)-me.uptime < (ANDNA_EXPIRATION_TIME/2)) {
 			new_hgnodes[req_hdr->hgnodes]=me.cur_ip.data;
 			if((err=find_hash_gnode(hash_gnode, &to, new_hgnodes, 
 							req_hdr->hgnodes+1, 1)) < 0) {
-				/* Older hash_gnodes don't exist */
+				/* An older hash_gnode doesn't exist */
 				debug(DBG_SOFT, "put_single_andna_c: old hash_gnode not found");
 				ERROR_FINISH(ret, -1, finish);
 			}
 
+			/*
+			 * Append our ip at the end of the pkt and forward it
+			 * to the older hash_gnode.
+			 */
 			memcpy(&pkt, &rpkt, sizeof(PACKET));
 			pkt.sk=0;
 			pkt.hdr.sz=rpkt.hdr.sz+MAX_IP_SZ;
 			pkt.msg=xmalloc(pkt.hdr.sz);
 			memcpy(pkt.msg, rpkt.msg, rpkt.hdr.sz);
-			memcpy(pkt.msg+rpkt.hdr.sz, me.cur_ip.data, MAX_IP_SZ);
+			inet_copy_ipdata((u_int *)(pkt.msg+rpkt.hdr.sz), &me.cur_ip);
 
 			debug(DBG_SOFT, "The 0x%x rq pkt will be forwarded "
 					"to an older hgnode: %s", rpkt.hdr.id,
@@ -1496,6 +1577,7 @@ finish:
 		xfree(ntop);
 	if(rfrom_ntop)
 		xfree(rfrom_ntop);
+	pkt_free(&rpkt_local_copy, 0);
 
 	return ret;
 }
@@ -1511,6 +1593,9 @@ int spread_single_acache(u_int hash[MAX_IP_INT])
 
 	memset(&pkt, 0, sizeof(PACKET));
 	memcpy(req.hash, hash, MAX_IP_SZ);
+	
+	ints_host_to_network(&req, spread_acache_pkt_info);
+
 	pkt_fill_hdr(&pkt.hdr, 0, 0, ANDNA_SPREAD_SACACHE, 
 			SPREAD_ACACHE_PKT_SZ);
 	pkt.msg=xmalloc(pkt.hdr.sz);
@@ -1526,14 +1611,20 @@ int spread_single_acache(u_int hash[MAX_IP_INT])
  */
 int recv_spread_single_acache(PACKET rpkt)
 {
+	PACKET rpkt_local_copy;
 	struct spread_acache_pkt *req;
 	andna_cache *ac;
 	u_int hash_gnode[MAX_IP_INT];
 	int ret=0;
+
+	pkt_copy(&rpkt_local_copy, &rpkt);
+	req=(struct spread_acache_pkt *)rpkt_local_copy.msg;
 	
-	req=(struct spread_acache_pkt *)rpkt.msg;
 	if(rpkt.hdr.sz != SPREAD_ACACHE_PKT_SZ)
 		ERROR_FINISH(ret, -1, finish);
+	
+	/* network -> host order */
+	ints_network_to_host(req, spread_acache_pkt_info);
 	
 	/* Check if we already received this pkt during the flood */
 	if(andna_add_flood_pkt_id(last_spread_acache_pkt_id, rpkt.hdr.id)) {
@@ -1572,6 +1663,7 @@ int recv_spread_single_acache(PACKET rpkt)
 	andna_flood_pkt(&rpkt, 1);
 
 finish:
+	pkt_free(&rpkt_local_copy, 0);
 	return ret;
 }
 
@@ -1727,9 +1819,13 @@ void *andna_hook(void *null)
 	
 	memset(&to, 0, sizeof(inet_prefix));
 
-	if(!me.cur_node->links)
+	loginfo("Starting the ANDNA hook.");
+	
+	if(!me.cur_node->links) {
 		/* nothing to do */
+		debug(DBG_NORMAL, "There are no nodes, skipping the ANDNA hook."); 
 		return 0;
+	}
 
 	/* 
 	 * Send the GET_ANDNA_CACHE request to the nearest rnode we have, if it
@@ -1775,6 +1871,9 @@ void *andna_hook(void *null)
 	if(!e)
 		loginfo("None of the rnodes in this area gave me the counter_cache.");
 
+
+	loginfo("ANDNA hook completed");
+	
 	return 0;
 }
 

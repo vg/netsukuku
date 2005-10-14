@@ -26,6 +26,7 @@
 #include "llist.c"
 #include "inet.h"
 #include "request.h"
+#include "endianness.h"
 #include "pkts.h"
 #include "accept.h"
 #include "xmalloc.h"
@@ -140,6 +141,9 @@ char *pkt_pack(PACKET *pkt)
 	
 	buf=(char *)xmalloc(PACKET_SZ(pkt->hdr.sz));
 	memcpy(buf, &pkt->hdr, sizeof(pkt_hdr));
+
+	/* host -> network order */
+	ints_host_to_network(buf, pkt_hdr_iinfo);
 	
 	if(pkt->hdr.sz)
 		memcpy(buf+sizeof(pkt_hdr), pkt->msg, pkt->hdr.sz);
@@ -147,26 +151,6 @@ char *pkt_pack(PACKET *pkt)
 	return buf;
 }
 
-PACKET *pkt_unpack(char *pkt)
-{
-	PACKET *pk;
-
-	pk=(PACKET *)xmalloc(sizeof(PACKET));
-	
-	/*Now, we extract the pkt_hdr...*/
-	memcpy(&pk->hdr, pkt, sizeof(pkt_hdr));
-
-	/*and verify it...*/
-	if(pkt_verify_hdr(*pk)) {
-		debug(DBG_NOISE, "Error while unpacking the PACKET. "
-				"Malformed header");
-		return 0;
-	}
-	
-	pk->msg=pkt+sizeof(pkt_hdr);
-	return pk;
-}
-	
 int pkt_verify_hdr(PACKET pkt)
 {
 	if(strncmp(pkt.hdr.ntk_id, NETSUKUKU_ID, 3) ||
@@ -238,6 +222,8 @@ ssize_t pkt_recv(PACKET *pkt)
 	
 		/* then we extract the hdr... and verify it */
 		memcpy(&pkt->hdr, buf, sizeof(pkt_hdr));
+		/* network -> host order */
+		ints_network_to_host(&pkt->hdr, pkt_hdr_iinfo);
 		if(pkt_verify_hdr(*pkt) || pkt->hdr.sz+sizeof(pkt_hdr) > err) {
 			debug(DBG_NOISE, "Error while unpacking the PACKET."
 					" Malformed header");
@@ -264,6 +250,7 @@ ssize_t pkt_recv(PACKET *pkt)
 			return -1;
 		}
 		/*...and verify it*/
+		ints_network_to_host(&pkt->hdr, pkt_hdr_iinfo);
 		if(pkt_verify_hdr(*pkt)) {
 			debug(DBG_NOISE, "Error while unpacking the PACKET. Malformed header");
 			return -1;

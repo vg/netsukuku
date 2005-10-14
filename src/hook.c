@@ -24,11 +24,13 @@
 
 #include "includes.h"
 
+#include "misc.h"
 #include "libnetlink.h"
 #include "ll_map.h"
 #include "inet.h"
 #include "if.h"
 #include "krnl_route.h"
+#include "endianness.h"
 #include "map.h"
 #include "gmap.h"
 #include "bmap.h"
@@ -53,12 +55,16 @@ int free_the_tmp_cur_node;
 /* 
  * get_free_nodes: It send the GET_FREE_NODES request, used to retrieve the free_nodes
  * pkt (see hook.h).
+ * `fn_hdr' is the header of the received free_nodes packet.
+ * `nodes' must be an u_char array with at least MAXGROUPNODES members. All the
+ * members that go from `free_nodes[0]' to `free_nodes[fn_hdr.nodes]' will be
+ * filled with the gids of the received free nodes.
  */
 int get_free_nodes(inet_prefix to, struct free_nodes_hdr *fn_hdr, u_char *nodes)
 {
 	PACKET pkt, rpkt;
 	ssize_t err;
-	int ret=0;
+	int ret=0, e, i;
 	const char *ntop;
 	char *buf=0;
 	
@@ -85,7 +91,13 @@ int get_free_nodes(inet_prefix to, struct free_nodes_hdr *fn_hdr, u_char *nodes)
 	fn_hdr->nodes++;
 	
 	buf=rpkt.msg+sizeof(struct free_nodes_hdr);
-	memcpy(nodes, buf, fn_hdr->nodes * sizeof(u_char));
+
+	for(i=0, e=0; i<MAXGROUPNODE; i++) {
+		if(TEST_BIT(buf, i)) {
+			nodes[e]=i;
+			e++;
+		}
+	}
 
 	debug(DBG_NORMAL, "Received %d free %s", fn_hdr->nodes, 
 			fn_hdr->level == 1 ? "nodes" : "gnodes");
@@ -103,13 +115,8 @@ int put_free_nodes(PACKET rq_pkt)
 {	
 	struct fn_pkt {
 		struct free_nodes_hdr fn_hdr;
-
-		/* 
-		 * This int free_nodes has maximum MAXGROUPNODE elements, so in
-		 * the pkt it will be truncated to free_nodes[fn_hdr.nodes]
-		 * elements */
-		u_char free_nodes[MAXGROUPNODE];
-	}fn_pkt;
+		u_char free_nodes[MAXGROUPNODE/8];
+	}_PACKED_ fn_pkt;
 
 	PACKET pkt;
 	int ret=0, i, e=0;
@@ -143,29 +150,30 @@ int put_free_nodes(PACKET rq_pkt)
 
 	/* Ok, we've found one, so let's roll the pkt */
 	memset(&fn_pkt, 0, sizeof(fn_pkt));
+
 	fn_pkt.fn_hdr.max_levels=me.cur_quadg.levels;
-	memcpy(&fn_pkt.fn_hdr.ipstart, &me.cur_quadg.ipstart[level], 
-			sizeof(inet_prefix));
+	inet_copy_ipdata(fn_pkt.fn_hdr.ipstart, &me.cur_quadg.ipstart[level]);
 	fn_pkt.fn_hdr.level=level;
 	fn_pkt.fn_hdr.gid=me.cur_quadg.gid[level];
 	
 	/*
-	 * Creates the list of our gnode's free nodes. If the gnode level is 1 it
-	 * scans the int_map to find all the MAP_VOID nodes, otherwise it scans
-	 * the gnode map at level-1 searching for GMAP_VOID gnodes.
+	 * Creates the list of the free nodes, which belongs to the gnode. If 
+	 * the gnode level is 1 it scans the int_map to find all the MAP_VOID 
+	 * nodes, otherwise it scans the gnode map at level-1 searching for 
+	 * GMAP_VOID gnodes.
 	 */
 	e=0;
 	if(level == 1) {
 		for(i=0; i<MAXGROUPNODE; i++)
 			if(me.int_map[i].flags & MAP_VOID) {
-				fn_pkt.free_nodes[e]=i;
+				SET_BIT(fn_pkt.free_nodes, i);
 				e++;
 			}
 	} else {
 		for(i=0; i<MAXGROUPNODE; i++)
 			if(me.ext_map[_EL(level-1)][i].flags & GMAP_VOID ||
 					me.ext_map[_EL(level-1)][i].g.flags & MAP_VOID) {
-				fn_pkt.free_nodes[e]=i;
+				SET_BIT(fn_pkt.free_nodes, i);
 				e++;
 			}
 	}
@@ -178,9 +186,7 @@ int put_free_nodes(PACKET rq_pkt)
 	memset(pkt.msg, 0, pkt_sz);
 	
 	p=pkt.msg;
-	memcpy(p, &fn_pkt.fn_hdr, sizeof(struct free_nodes_hdr));
-	p+=sizeof(struct free_nodes_hdr);
-	memcpy(p, &fn_pkt.free_nodes, sizeof(u_char)*(fn_pkt.fn_hdr.nodes+1));
+	memcpy(p, &fn_pkt, sizeof(fn_pkt));
 	
 	err=pkt_send(&pkt);
 	
@@ -199,7 +205,7 @@ finish:
  */
 
 /* 
- * get_free_nodes: It send the GET_QSPN_ROUND request, used to retrieve the 
+ * get_qspn_round: It send the GET_QSPN_ROUND request, used to retrieve the 
  * qspn ids and and qspn times. (see hook.h).
  */
 int get_qspn_round(inet_prefix to, struct timeval to_rtt, struct timeval *qtime,
@@ -212,6 +218,8 @@ int get_qspn_round(inet_prefix to, struct timeval to_rtt, struct timeval *qtime,
 	const char *ntop;
 	char *buf=0;
 	u_char max_levels;
+
+	int_info qr_pkt_iinfo;
 	
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
@@ -232,6 +240,13 @@ int get_qspn_round(inet_prefix to, struct timeval to_rtt, struct timeval *qtime,
 		ERROR_FINISH(ret, -1, finish);
 	}
 	
+	/* Convert the pkt from network to host order */
+	int_info_copy(&qr_pkt_iinfo, &qspn_round_pkt_iinfo);
+	qr_pkt_iinfo.int_offset[1] = max_levels*sizeof(int);
+	qr_pkt_iinfo.int_nmemb[0]  = max_levels;
+	qr_pkt_iinfo.int_nmemb[1]  = max_levels*2;
+	ints_network_to_host(rpkt.msg, qr_pkt_iinfo);
+
 	/* Restoring the qspn_id and the qspn_round time */
 	buf=rpkt.msg+sizeof(u_char);
 	memcpy(qspn_id, buf, max_levels * sizeof(int));
@@ -264,6 +279,7 @@ int put_qspn_round(PACKET rq_pkt)
 		int 		qspn_id[me.cur_quadg.levels];
 		struct timeval  qtime[me.cur_quadg.levels];
 	}_PACKED_ qr_pkt;
+	int_info qr_pkt_iinfo;
 
 	PACKET pkt;
 	struct timeval cur_t;
@@ -299,6 +315,13 @@ int put_qspn_round(PACKET rq_pkt)
 	pkt_fill_hdr(&pkt.hdr, HOOK_PKT, rq_pkt.hdr.id, PUT_QSPN_ROUND, pkt_sz);
 	pkt.msg=xmalloc(pkt_sz);
 	memset(pkt.msg, 0, pkt_sz);
+	
+	/* Convert the pkt from host to network order */
+	int_info_copy(&qr_pkt_iinfo, &qspn_round_pkt_iinfo);
+	qr_pkt_iinfo.int_offset[1] = me.cur_quadg.levels*sizeof(int);
+	qr_pkt_iinfo.int_nmemb[0]  = me.cur_quadg.levels;
+	qr_pkt_iinfo.int_nmemb[1]  = me.cur_quadg.levels*2;
+	ints_host_to_network(&qr_pkt, qr_pkt_iinfo);
 	
 	memcpy(pkt.msg, &qr_pkt, sizeof(struct qr_pkt));
 	err=pkt_send(&pkt);
@@ -355,9 +378,7 @@ map_gnode **get_ext_map(inet_prefix to, quadro_group *new_quadg)
 	const char *ntop;
 	char *pack;
 	int err;
-	struct ext_map_hdr emap_hdr;
 	map_gnode **ext_map=0, **ret=0;
-	size_t pack_sz;
 
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
@@ -373,16 +394,8 @@ map_gnode **get_ext_map(inet_prefix to, quadro_group *new_quadg)
 		goto finish;
 	}
 	
-	memcpy(&emap_hdr, rpkt.msg, sizeof(struct ext_map_hdr));
-	if(verify_ext_map_hdr(&emap_hdr)) {
-		error("Malformed PUT_EXT_MAP request hdr.");
-		ret=0;
-		goto finish;
-	}
-
-	pack_sz=EXT_MAP_BLOCK_SZ(emap_hdr.ext_map_sz, emap_hdr.total_rblock_sz);
 	pack=rpkt.msg;
-	ret=ext_map=unpack_extmap(pack, pack_sz, new_quadg);
+	ret=ext_map=unpack_extmap(pack, new_quadg);
 	if(!ext_map)
 		error("get_ext_map: Malformed ext_map. Cannot unpack the ext_map.");
 finish:
@@ -431,9 +444,7 @@ finish:
 map_node *get_int_map(inet_prefix to, map_node **new_root)
 {
 	PACKET pkt, rpkt;
-	struct int_map_hdr imap_hdr;
 	map_node *int_map, *ret=0;
-	size_t pack_sz;
 	int err;
 	const char *ntop;
 	char *pack;
@@ -451,16 +462,9 @@ map_node *get_int_map(inet_prefix to, map_node **new_root)
 		goto finish;
 	}
 	
-	memcpy(&imap_hdr, rpkt.msg, sizeof(struct int_map_hdr));
-	if(verify_int_map_hdr(&imap_hdr, MAXGROUPNODE, MAXRNODEBLOCK)) {
-		error("Malformed PUT_INT_MAP request hdr.");
-		ret=0;
-		goto finish;
-	}
-	
-	pack_sz=INT_MAP_BLOCK_SZ(imap_hdr.int_map_sz, imap_hdr.rblock_sz);
 	pack=rpkt.msg;
-	ret=int_map=unpack_map(pack, pack_sz, 0, new_root, MAXGROUPNODE, MAXRNODEBLOCK);
+	ret=int_map=unpack_map(pack, 0, new_root, MAXGROUPNODE, 
+			MAXRNODEBLOCK_PACK_SZ);
 	if(!int_map)
 		error("get_int_map(): Malformed int_map. Cannot load it");
 	
@@ -514,10 +518,7 @@ map_bnode **get_bnode_map(inet_prefix to, u_int **bmap_nodes)
 {
 	PACKET pkt, rpkt;
 	int err;
-	struct bnode_maps_hdr bmaps_hdr;
 	map_bnode **bnode_map, **ret=0;
-	size_t pack_sz;
-	u_char levels;
 	const char *ntop;
 	char *pack;
 	
@@ -534,18 +535,9 @@ map_bnode **get_bnode_map(inet_prefix to, u_int **bmap_nodes)
 		goto finish;
 	}
 	
-	memcpy(&bmaps_hdr, rpkt.msg, sizeof(struct bnode_maps_hdr));
-	levels=bmaps_hdr.levels;
-	pack_sz=bmaps_hdr.bmaps_block_sz;
-	if(levels > GET_LEVELS(my_family) || pack_sz < sizeof(struct bnode_map_hdr)) {
-		error("Malformed PUT_BNODE_MAP request hdr.");
-		ret=0;
-		goto finish;
-	}
-
 	/* Extracting the map... */
-	pack=rpkt.msg+sizeof(struct bnode_maps_hdr);
-	ret=bnode_map=unpack_all_bmaps(pack, pack_sz, levels, me.ext_map, bmap_nodes, 
+	pack=rpkt.msg;
+	ret=bnode_map=unpack_all_bmaps(pack, GET_LEVELS(my_family), me.ext_map, bmap_nodes, 
 			MAXGROUPNODE, MAXBNODE_RNODEBLOCK);
 	if(!bnode_map)
 		error("get_bnode_map(): Malformed bnode_map. Cannot load it");
@@ -699,9 +691,9 @@ int hook_init(void)
 	
 	idata[0]=ntohl(idata[0]);
 	if(my_family == AF_INET6)
-		idata[3]=rand_range(1, MAXGROUPNODE);
+		idata[3]+=rand_range(0, MAXGROUPNODE-2);
 	else
-		idata[0]+=rand_range(1, MAXGROUPNODE);
+		idata[0]+=rand_range(0, MAXGROUPNODE-2);
 	idata[0]=htonl(idata[0]);
 
 	inet_setip(&me.cur_ip, idata, my_family);
@@ -715,13 +707,19 @@ int netsukuku_hook(void)
 {	
 	struct radar_queue *rq=radar_q;
 	struct free_nodes_hdr fn_hdr;
+	
 	map_node **merg_map, *new_root;
 	map_gnode **old_ext_map;
 	map_bnode **old_bnode_map;	
+	
+	inet_prefix gnode_ipstart;
+	
 	int i, e=0, imaps=0, ret=0, new_gnode=0, tracer_levels=0;
 	int total_hooking_nodes=0;
+	
 	u_int *old_bnodes;
 	u_char fnodes[MAXGROUPNODE];
+	
 	const char *ntop;
 
 	/* 	
@@ -808,6 +806,8 @@ hook_restart_and_retry:
 			continue;
 
 		if(!get_free_nodes(rq->ip, &fn_hdr, fnodes)) {
+			/* Exctract the ipstart of the gnode */
+			inet_setip(&gnode_ipstart, fn_hdr.ipstart, my_family);
 			
 			/* Get the qspn round infos */
 			if(!get_qspn_round(rq->ip, rq->final_rtt,
@@ -825,14 +825,15 @@ hook_restart_and_retry:
 	/* 
 	 * Let's choose a random ip using the free nodes list we received.
 	 */
+
 	e=rand_range(0, fn_hdr.nodes-1);
 	if(fn_hdr.level == 1) {
 		new_gnode=0;
-		postoip(fnodes[e], fn_hdr.ipstart, &me.cur_ip);
+		postoip(fnodes[e], gnode_ipstart, &me.cur_ip);
 	} else {
 		new_gnode=1;
 		for(;;) {
-			random_ip(&fn_hdr.ipstart, fn_hdr.level, fn_hdr.gid, 
+			random_ip(&gnode_ipstart, fn_hdr.level, fn_hdr.gid, 
 					GET_LEVELS(my_family), me.ext_map, 0, 
 					&me.cur_ip, my_family);
 			if(!inet_validate_ip(me.cur_ip))
@@ -913,6 +914,9 @@ hook_restart_and_retry:
 			bmap_levels_free(old_bnode_map, old_bnodes);
 			e=1;
 			break;
+		} else {
+			me.bnode_map=old_bnode_map;
+			me.bmap_nodes=old_bnodes;
 		}
 	}
 	if(!e)

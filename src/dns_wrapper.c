@@ -29,6 +29,7 @@
 
 #include "llist.c"
 #include "inet.h"
+#include "endianness.h"
 #include "map.h"
 #include "gmap.h"
 #include "bmap.h"
@@ -41,7 +42,6 @@
 #include "netsukuku.h"
 #include "daemon.h"
 #include "crypto.h"
-#include "endianness.h"
 #include "andna_cache.h"
 #include "andna.h"
 #include "dns_wrapper.h"

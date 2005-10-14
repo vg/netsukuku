@@ -16,6 +16,10 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#ifndef TRACER_H
+#define TRACER_H
+
+#include "bmap.h"
 
 /***Tracer packet. It is encapsulated in a broadcast pkt*/
 typedef struct
@@ -24,13 +28,19 @@ typedef struct
 	u_short bblocks;	/*How many bnode blocks are incapsulated in 
 				  the pkt (if any)*/
 }_PACKED_ tracer_hdr;
+INT_INFO tracer_hdr_iinfo = { 2, 
+			      { INT_TYPE_16BIT, INT_TYPE_16BIT }, 
+			      { 0, sizeof(u_short) },
+			      { 1, 1 }
+			    };
 
 typedef struct
 {
-	uint8_t		node;
+	u_char		node;
 	struct timeval	rtt;	/*The rtt to reach the `node' of the previous
 				  chunk from the node of the current `one'.*/
 }_PACKED_ tracer_chunk;
+INT_INFO tracer_chunk_iinfo = { 1, { INT_TYPE_32BIT }, { sizeof(char) }, { 2 } };
 #define TRACERPKT_SZ(hops) (sizeof(tracer_hdr) + (sizeof(tracer_chunk) * (hops)))
 
 int tracer_pkt_start_mutex;
@@ -76,3 +86,5 @@ int exclude_from_and_glevel(TRACER_PKT_EXCLUDE_VARS);
 
 int tracer_pkt_recv(PACKET rpkt);
 int tracer_pkt_start(u_char level);
+
+#endif /*TRACER_H*/

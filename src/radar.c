@@ -29,9 +29,7 @@
 #include "includes.h"
 
 #include "llist.c"
-#include "inet.h"
-#include "map.h"
-#include "gmap.h"
+#include "endianness.h"
 #include "bmap.h"
 #include "route.h"
 #include "request.h"
@@ -578,13 +576,13 @@ void radar_update_map(void)
 			   if(external_node && level) {
 				   /* 
 				    * All the root_node bnodes which are in the
-				    * bmaps of level less than `level' points to
+				    * bmaps of level lesser than `level' points to
 				    * the same gnode which is rq->quadg.gnode[_EL(level-1+1)].
 				    * This is because the inferior levels cannot
 				    * have knowledge about the bordering gnode 
 				    * which is in an upper level, but it's necessary that
 				    * they know which who the root_node borderes on,
-				    * so the get route algorithm can descend to
+				    * so the get_route algorithm can descend to
 				    * the inferior levels and it will still know
 				    * what is the border node which is linked
 				    * to the target gnode.

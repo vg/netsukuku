@@ -28,9 +28,8 @@
 #include "inet.h"
 #include "krnl_route.h"
 #include "request.h"
+#include "endianness.h"
 #include "pkts.h"
-#include "map.h"
-#include "gmap.h"
 #include "bmap.h"
 #include "qspn.h"
 #include "netsukuku.h"
@@ -236,7 +235,7 @@ void krnl_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_qua
 #ifdef DEBUG		
 	to_ip=xstrdup(inet_to_str(to));
 #endif
-	inet_htonl(&to);
+	inet_htonl(to.data, to.family);
 
 	if(void_gw)
 		gw_node=(map_node *)void_gw;
@@ -270,7 +269,7 @@ void krnl_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_qua
 #ifdef DEBUG		
 		gw_ip=xstrdup(inet_to_str(nh[0].gw));
 #endif
-		inet_htonl(&nh[0].gw);
+		inet_htonl(nh[0].gw.data, nh[0].gw.family);
 		nh[0].dev=me.cur_dev;
 		nh[1].dev=0;
 	} else if(!level) {
@@ -285,7 +284,7 @@ void krnl_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_qua
 				if(!i)
 					gw_ip=xstrdup(inet_to_str(nh[0].gw));
 #endif
-				inet_htonl(&nh[i].gw);
+				inet_htonl(nh[i].gw.data, nh[i].gw.family);
 			}
 		nh[i].dev=me.cur_dev;
 		nh[i].hops=255-i;
@@ -309,7 +308,7 @@ void krnl_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_qua
 #ifdef DEBUG
 		gw_ip=xstrdup(inet_to_str(nh[0].gw));
 #endif
-		inet_htonl(&nh[0].gw);
+		inet_htonl(nh[0].gw.data, nh[0].gw.family);
 		nh[0].dev=me.cur_dev;
 		nh[1].dev=0;
 	}
@@ -439,12 +438,12 @@ int rt_exec_gw(char *dev, inet_prefix to, inet_prefix gw,
 	struct nexthop nh[2], *neho;
 
 	if(to.len)
-		inet_htonl(&to);
+		inet_htonl(to.data, to.family);
 
 	if(gw.len) {
 		memset(nh, '\0', sizeof(struct nexthop)*2);	
 		memcpy(&nh[0].gw, &gw, sizeof(inet_prefix));
-		inet_htonl(&nh[0].gw);
+		inet_htonl(nh[0].gw.data, nh[0].gw.family);
 		nh[0].dev=dev;
 		nh[1].dev=0;
 		neho=nh;
@@ -530,30 +529,3 @@ int rt_del_loopback_net(void)
 
 	return 0;
 }
-
-#if 0
-/* This function shall be used when the gate of dawn will be opened */
-u_char rt_find_table(ct_route *ctr, u_int dst, u_int gw)
-{
-	ct_route *i;
-	u_char tables[MAX_ROUTE_TABLES];
-	int l;
-
-	memset(tables, '\0', MAX_ROUTE_TABLES);
-
-	for(i=ctr; i; i=i->next) {
-		if(i->ct_dst==dst) {
-			if(i->ct_gw==gw)
-				return i->ct_table;
-			else 
-				tables[i->ct_table]=1;
-		}
-	}
-
-	for(l=1; l<MAX_ROUTE_TABLES; l++)
-		if(!tables[l])
-			return l;
-
-	return 0xff; /*This shouldn't happen!*/
-}
-#endif

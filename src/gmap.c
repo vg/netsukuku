@@ -20,6 +20,7 @@
 
 #include "llist.c"
 #include "inet.h"
+#include "endianness.h"
 #include "map.h"
 #include "gmap.h"
 #include "bmap.h"
@@ -163,6 +164,57 @@ void quadg_destroy(quadro_group *qg)
 {
 	quadg_free(qg);
 	xfree(qg);
+}
+
+/*
+ * pack_quadro_group: packs the `qg' quadro_group struct and stores it in
+ * `pack', which must be QUADRO_GROUP_PACK_SZ bytes big. `pack' will be in
+ * network order.
+ */
+void pack_quadro_group(quadro_group *qg, char *pack)
+{
+	char *buf;
+	int i;
+
+	buf=pack;
+
+	memcpy(buf, &qg->levels, sizeof(u_char));
+	buf+=sizeof(u_char);
+
+	memcpy(buf, qg->gid, sizeof(int)*MAX_LEVELS);
+	buf+=sizeof(int)*MAX_LEVELS;
+
+	for(i=0; i<MAX_LEVELS; i++) {
+		pack_inet_prefix(&qg->ipstart[i], buf);
+		buf+=INET_PREFIX_PACK_SZ;
+	}
+
+	ints_host_to_network(pack, quadro_group_iinfo);
+}
+
+/*
+ * unpack_quadro_group: restores in `qg' the quadro_group struct contained in `pack'.
+ * Note that `pack' will be modified during the restoration.
+ */
+void unpack_quadro_group(quadro_group *qg, char *pack)
+{
+	char *buf;
+	int i;
+
+	buf=pack;
+
+	ints_network_to_host(pack, quadro_group_iinfo);
+
+	memcpy(&qg->levels, buf, sizeof(u_char));
+	buf+=sizeof(u_char);
+
+	memcpy(qg->gid, buf, sizeof(int)*MAX_LEVELS);
+	buf+=sizeof(int)*MAX_LEVELS;
+
+	for(i=0; i<MAX_LEVELS; i++) {
+		unpack_inet_prefix(&qg->ipstart[i], buf);
+		buf+=INET_PREFIX_PACK_SZ;
+	}
 }
 
 /*
@@ -680,20 +732,24 @@ int extmap_store_rblock(map_gnode **ext_map, u_char levels, int maxgroupnode,
 	return i;
 }
 
-/* verify_ext_map_hdr: What to say? It verifies the validity of an ext_map_hdr*/
-int verify_ext_map_hdr(struct ext_map_hdr *emap_hdr)
+/* 
+ * verify_ext_map_hdr: It verifies the validity of an ext_map_hdr.
+ * `quadg' is the unpacked emap_hdr->quadg quadro_group.
+ */
+int verify_ext_map_hdr(struct ext_map_hdr *emap_hdr, quadro_group *quadg)
 {
 	u_char levels;
 	int maxgroupnode, i;
 	
-	levels=emap_hdr->quadg.levels-UNITY_LEVEL;
-	maxgroupnode=emap_hdr->ext_map_sz/(sizeof(map_gnode)*levels);
-	if(maxgroupnode > MAXGROUPNODE || emap_hdr->total_rblock_sz > MAXRNODEBLOCK*levels
-			|| emap_hdr->ext_map_sz > maxgroupnode*sizeof(map_gnode)*levels)
+	levels=quadg->levels-UNITY_LEVEL;
+	maxgroupnode=emap_hdr->ext_map_sz/(MAP_GNODE_PACK_SZ*levels);
+	if(levels > MAX_LEVELS || maxgroupnode > MAXGROUPNODE || 
+			emap_hdr->total_rblock_sz > MAXRNODEBLOCK_PACK_SZ*levels ||
+			emap_hdr->ext_map_sz > maxgroupnode*MAP_GNODE_PACK_SZ*levels)
 		return 1;
 
 	for(i=0; i<levels; i++)
-		if(emap_hdr->quadg.gid[i] > maxgroupnode)
+		if(quadg->gid[i] > maxgroupnode)
 			return 1;
 
 	return 0;
@@ -708,6 +764,47 @@ void free_extmap_rblock(map_rnode **rblock, u_char levels)
 	xfree(rblock);
 }
 
+/*
+ * pack_map_gnode: packs the `qg' map_gnode struct and stores it in
+ * `pack', which must be MAP_GNODE_PACK_SZ bytes big. `pack' will be in
+ * network order.
+ */
+void pack_map_gnode(map_gnode *gnode, char *pack)
+{
+	char *buf;
+
+	buf=pack;
+
+	pack_map_node(&gnode->g, buf);
+	buf+=MAP_NODE_PACK_SZ;
+
+	memcpy(buf, &gnode->flags, sizeof(char));
+	buf+=sizeof(char);
+
+	memcpy(buf, &gnode->seeds, sizeof(char));
+	buf+=sizeof(char);
+}
+
+/*
+ * unpack_map_gnode: restores in `qg' the map_gnode struct contained in `pack'.
+ * Note that `pack' will be modified during the restoration.
+ */
+void unpack_map_gnode(map_gnode *gnode, char *pack)
+{
+	char *buf;
+
+	buf=pack;
+
+	unpack_map_node(&gnode->g, buf);
+	buf+=MAP_NODE_PACK_SZ;
+
+	memcpy(&gnode->flags, buf, sizeof(char));
+	buf+=sizeof(char);
+
+	memcpy(&gnode->seeds, buf, sizeof(char));
+	buf+=sizeof(char);
+}
+
 /* 
  * pack_extmap: It returns the packed `ext_map', ready to be saved or sent. It stores 
  * in `pack_sz' the size of the package. Each gmaps, present in the `ext_map', has 
@@ -717,9 +814,8 @@ void free_extmap_rblock(map_rnode **rblock, u_char levels)
 char *pack_extmap(map_gnode **ext_map, int maxgroupnode, quadro_group *quadg, size_t *pack_sz)
 {
 	struct ext_map_hdr emap_hdr;
-	map_gnode *packed_map;
 	map_rnode **rblock;
-	int *count, i;
+	int *count, i, e;
 	char *package, *p=0;
 	u_char levels=quadg->levels-UNITY_LEVEL;
 
@@ -728,32 +824,30 @@ char *pack_extmap(map_gnode **ext_map, int maxgroupnode, quadro_group *quadg, si
 
 	/*Building the hdr...*/
 	memset(&emap_hdr, 0, sizeof(struct ext_map_hdr));
-	emap_hdr.ext_map_sz=maxgroupnode*sizeof(map_gnode)*levels;
+	emap_hdr.ext_map_sz=maxgroupnode*MAP_GNODE_PACK_SZ*levels;
 	for(i=0; i<levels; i++) {
-		emap_hdr.rblock_sz[i]=count[i]*sizeof(map_rnode);
+		emap_hdr.rblock_sz[i]=count[i]*MAP_RNODE_PACK_SZ;
 		emap_hdr.total_rblock_sz+=emap_hdr.rblock_sz[i];
 	}
-	memcpy(&emap_hdr.quadg, quadg, sizeof(quadro_group));
-	/* emap_hdr.gnode loses its meaning */
-	memset(emap_hdr.quadg.gnode, 0, sizeof(map_gnode *) * MAX_LEVELS);
+	
+	pack_quadro_group(quadg, emap_hdr.quadg);
 
 	/*Let's fuse all in one*/
 	*pack_sz=EXT_MAP_BLOCK_SZ(emap_hdr.ext_map_sz, emap_hdr.total_rblock_sz);
 	package=xmalloc(*pack_sz);
 	
 	memcpy(package, &emap_hdr, sizeof(struct ext_map_hdr));
+	ints_host_to_network(package, ext_map_hdr_iinfo);
+
 	p=package+sizeof(struct ext_map_hdr);
 	for(i=0; i<levels; i++) {
-		memcpy(p, ext_map[i], maxgroupnode*sizeof(map_gnode));
-		
-		/* Remove the MAP_ME flag from the map we are packing */
-		packed_map=(map_gnode *)p;
-		packed_map[emap_hdr.quadg.gid[i+1]].flags&=~GMAP_ME;
-		packed_map[emap_hdr.quadg.gid[i+1]].g.flags&=~MAP_ME;
-		
-		p+=maxgroupnode*sizeof(map_gnode);
+		for(e=0; e<maxgroupnode; e++) {
+			pack_map_gnode(&ext_map[i][e], p);
+			p+=MAP_GNODE_PACK_SZ;
+		}
 	}
 	
+	/* If the rblock is not null copy it in the `package' */
 	if(rblock) {
 		for(i=0; i<levels; i++) {
 			if(!emap_hdr.rblock_sz[i])
@@ -775,31 +869,36 @@ char *pack_extmap(map_gnode **ext_map, int maxgroupnode, quadro_group *quadg, si
  * In `quadg' is stored the quadro_group referring to this ext_map.
  * On success the a pointer to the new ext_map is retuned, otherwise 0 will be
  * the fatal value.
+ * Note: `package' will be modified during the unpacking.
  */
-map_gnode **unpack_extmap(char *package, size_t pack_sz, quadro_group *quadg)
+map_gnode **unpack_extmap(char *package, quadro_group *quadg)
 {
 	map_gnode **ext_map;
 	struct ext_map_hdr *emap_hdr=(struct ext_map_hdr *)package;
 	map_rnode *rblock;
 	u_char levels;
-	int err, i, maxgroupnode;
+	int err, i, e, maxgroupnode;
 	char *p;
 
-	levels=emap_hdr->quadg.levels-UNITY_LEVEL;
-	maxgroupnode=emap_hdr->ext_map_sz/(sizeof(map_gnode)*levels);
+	ints_network_to_host(emap_hdr, ext_map_hdr_iinfo);
+	unpack_quadro_group(quadg, emap_hdr->quadg);
 	
-	if(verify_ext_map_hdr(emap_hdr) || 
-			emap_hdr->ext_map_sz+sizeof(struct ext_map_hdr) > pack_sz) {
+	levels=quadg->levels-UNITY_LEVEL;
+	maxgroupnode=emap_hdr->ext_map_sz/(MAP_GNODE_PACK_SZ*levels);
+	
+	if(verify_ext_map_hdr(emap_hdr, quadg)) {
 		error("Malformed ext_map_hdr. Aborting unpack_map().");
 		return 0;
 	}
 	
 	/*Unpacking the ext_map*/
 	p=package+sizeof(struct ext_map_hdr);
-	ext_map=init_extmap(emap_hdr->quadg.levels, maxgroupnode);
+	ext_map=init_extmap(quadg->levels, maxgroupnode);
 	for(i=0; i<levels; i++) {
-		memcpy(ext_map[i], p, sizeof(map_gnode)*maxgroupnode);
-		p+=maxgroupnode*sizeof(map_gnode);
+		for(e=0; e<maxgroupnode; e++) {
+			unpack_map_gnode(&ext_map[i][e], p);
+			p+=MAP_GNODE_PACK_SZ;
+		}
 	}
 
 	/*Let's store in it the lost rnodes.*/
@@ -810,24 +909,15 @@ map_gnode **unpack_extmap(char *package, size_t pack_sz, quadro_group *quadg)
 		if(err!=levels) {
 			error("unpack_extmap(): It was not possible to restore"
 					" all the rnodes in the ext_map");
-			free_extmap(ext_map, emap_hdr->quadg.levels, maxgroupnode);
+			free_extmap(ext_map, quadg->levels, maxgroupnode);
 			return 0;
 		}
 	}
 	
 	/* We restore the quadro_group struct */
-	memcpy(quadg, &emap_hdr->quadg, sizeof(quadro_group));
 	for(i=0; i<levels; i++)
 		quadg->gnode[i]=gnode_from_pos(quadg->gid[i+1], ext_map[i]);
 
-	/* Let's mark our gnodes ;) */
-	for(i=1; i<emap_hdr->quadg.levels; i++) {
-		ext_map[_EL(i)][quadg->gid[i]].flags&=~GMAP_VOID;
-		ext_map[_EL(i)][quadg->gid[i]].g.flags&=~MAP_VOID;
-		ext_map[_EL(i)][quadg->gid[i]].flags|=GMAP_ME;
-		ext_map[_EL(i)][quadg->gid[i]].g.flags|=MAP_ME;
-	}
-	
 	return ext_map;
 }
 
@@ -870,7 +960,10 @@ map_gnode **load_extmap(char *file, quadro_group *quadg)
 
 	if(!fread(&emap_hdr, sizeof(struct ext_map_hdr), 1, fd))
 		goto error;
-	if(verify_ext_map_hdr(&emap_hdr))
+
+	ints_network_to_host(&emap_hdr, ext_map_hdr_iinfo);
+	unpack_quadro_group(quadg, emap_hdr.quadg);
+	if(verify_ext_map_hdr(&emap_hdr, quadg))
 		goto error;
 
 	rewind(fd);
@@ -879,7 +972,7 @@ map_gnode **load_extmap(char *file, quadro_group *quadg)
 	if(!fread(pack, pack_sz, 1, fd))
 		goto error;
 
-	ext_map=unpack_extmap(pack, pack_sz, quadg);
+	ext_map=unpack_extmap(pack, quadg);
 	if(!ext_map)
 		error("Cannot unpack the ext_map!");
 

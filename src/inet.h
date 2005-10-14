@@ -16,6 +16,11 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#ifndef INET_H
+#define INET_H
+
+#include "endianness.h"
+
 #define MAX_IP_INT	4
 #define MAX_IP_SZ	(MAX_IP_INT*sizeof(int))
 
@@ -41,10 +46,22 @@ typedef struct
 	u_char	family;
 	u_short len;
 	u_char	bits;
-	u_int	data[MAX_IP_SZ];    /* The address is kept in host long format, 
+	u_int	data[MAX_IP_INT];    /* The address is kept in host long format, 
 				       word ORDER 1 (most significant word first)
 				     */
 }inet_prefix;
+
+/* int_info struct used for packing the inet_prefix struct.
+ * Note that `data' is ignored 'cause it will be converted with
+ * inet_htonl() / inet_ntohl() */
+INT_INFO inet_prefix_iinfo = { 1,
+			       { INT_TYPE_16BIT },
+			       { sizeof(u_char) },
+			       { 1 }
+			     };
+#define INET_PREFIX_PACK_SZ (sizeof(u_char) + sizeof(u_short) +\
+				sizeof(u_char) + MAX_IP_SZ)
+
 
 /* * * defines from linux/in.h * * */
 #define LOOPBACK(x)	(((x) & htonl(0xff000000)) == htonl(0x7f000000))
@@ -71,13 +88,16 @@ typedef struct
 #define IPV6_ADDR_RESERVED	0x2000U	/* reserved address space */
 
 /* * * Functions declaration * * */
-void inet_ntohl(inet_prefix *ip);
-void inet_htonl(inet_prefix *ip);
+void inet_ntohl(u_int *data, int family);
+void inet_htonl(u_int *data, int family);
 int inet_setip(inet_prefix *ip, u_int *data, int family);
 int inet_setip_bcast(inet_prefix *ip, int family);
 int inet_setip_anyaddr(inet_prefix *ip, int family);
 int inet_setip_loopback(inet_prefix *ip, int family);
 int inet_setip_localaddr(inet_prefix *ip, int family);
+void inet_copy_ipdata(u_int *dst_data, inet_prefix *ip);
+void pack_inet_prefix(inet_prefix *ip, char *pack);
+void unpack_inet_prefix(inet_prefix *ip, char *pack);
 int inet_addr_match(const inet_prefix *a, const inet_prefix *b, int bits);
 int ipv6_addr_type(inet_prefix addr);
 int inet_validate_ip(inet_prefix ip);
@@ -107,3 +127,5 @@ ssize_t inet_recvfrom(int s, void *buf, size_t len, int flags, struct sockaddr *
 ssize_t inet_send(int s, const void *msg, size_t len, int flags);
 ssize_t inet_sendto(int s, const void *msg, size_t len, int flags, const struct sockaddr *to, socklen_t tolen);
 ssize_t inet_sendfile(int out_fd, int in_fd, off_t *offset, size_t count);
+
+#endif /*INET_H*/

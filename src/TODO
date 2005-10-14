@@ -2,20 +2,14 @@
 
 - DNS wrapper: ip -> hostnames
 
-- Aaah, do all the big endian/little endian stuff for the int and short in
-  the packets.
-
 - The QSPN has to remove the died nodes after QSPN_WAIT*2 seconds.
 
 - Use the multipath to use more than one route to reach a node.
 
+- multi network interface support
+
 
 		[MEDIUM PRIORITY] 
-
-- ANDNA Backup_gnodes. Really necessary?
-
-- Anti spoof Hook: a node must not give the maps to a node, which is trying to
-  use an ip of another gnode.
 
 - Port the kernel route code for *BSD: take a look at rt_ioctl.c and
   rt_socket.c of quagga.
@@ -25,6 +19,8 @@
 - Write the documentation for the code that can be used by other
   programs. (By the way it is already commented.)
 
+- Anti spoof Hook: a node must not give the maps to a node, which is trying to
+  use an ip of another gnode.
 
 
 		[LOW PRIORITY]
@@ -36,10 +32,4 @@
 - Optimize random_ip() to return valid IPs. A possible solution would be
 	to zero all the invalid bits.
 	
-- Optimize the space of the free_node pkt: instead using an array of
-  u_char for each free node, use just one bit and set it to one or zero.
-  Use the nice functions of set_bit, clear_bit..., is_set, in asm/bitops.h.
-	
-- use the gnode_ttl for broadcast
-
 - Flush all the routes present in the routing table before starting the hook?

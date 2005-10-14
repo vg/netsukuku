@@ -24,46 +24,54 @@
 #include "ll_map.h"
 #include "inet.h"
 #include "request.h"
+#include "endianness.h"
 #include "pkts.h"
 #include "log.h"
 #include "xmalloc.h"
 
-extern int errno;
 
 /* 
- * inet_ntohl: Converts the ip->data from network to host order 
+ * inet_ntohl: Converts each element of `data' from network to host order. If
+ * `family' is equal to AF_INET6, the array is swapped too (on big endian
+ * machine).
  */
-void inet_ntohl(inet_prefix *ip)
+void inet_ntohl(u_int *data, int family)
 {
-	if(ip->family==AF_INET) {
-		ip->data[0]=ntohl(ip->data[0]);
+	if(family==AF_INET) {
+		data[0]=ntohl(data[0]);
 	} else {
 		if(BYTE_ORDER == LITTLE_ENDIAN) {
 			int i;
-			swap_ints(MAX_IP_INT, ip->data, ip->data);
+			swap_ints(MAX_IP_INT, data, data);
 			for(i=0; i<MAX_IP_INT; i++)
-				ip->data[i]=ntohl(ip->data[i]);
+				data[i]=ntohl(data[i]);
 		}
 	}
 }
 
 /* 
- * inet_ntohl: Converts the ip->data from host to network order 
+ * inet_htonl: Converts each element of `data' from host to network order. If
+ * `family' is equal to AF_INET6, the array is swapped too (on big endian
+ * machine).
  */
-void inet_htonl(inet_prefix *ip)
+void inet_htonl(u_int *data, int family)
 {
-	if(ip->family==AF_INET) {
-		ip->data[0]=htonl(ip->data[0]);
+	if(family==AF_INET) {
+		data[0]=htonl(data[0]);
 	} else {
 		if(BYTE_ORDER == LITTLE_ENDIAN) {
 			int i;
-			swap_ints(MAX_IP_INT, ip->data, ip->data);
+			swap_ints(MAX_IP_INT, data, data);
 			for(i=0; i<MAX_IP_INT; i++)
-				ip->data[i]=htonl(ip->data[i]);
+				data[i]=htonl(data[i]);
 		}
 	}
 }
 
+/*
+ * inet_setip: fills the `ip' inet_prefix struct with `data' and `family'.
+ * Note that it does a network to host order conversion on `data'.
+ */
 int inet_setip(inet_prefix *ip, u_int *data, int family)
 {
 	ip->family=family;
@@ -78,7 +86,7 @@ int inet_setip(inet_prefix *ip, u_int *data, int family)
 	} else 
 		return -1;
 
-	inet_ntohl(ip);
+	inet_ntohl(ip->data, ip->family);
 	ip->bits=ip->len*8;
 	return 0;
 }
@@ -121,7 +129,7 @@ int inet_setip_loopback(inet_prefix *ip, int family)
 		
 		data[0]=LOOPBACK_IP;
 		inet_setip(ip, data, family);
-		inet_htonl(ip);
+		inet_htonl(ip->data, ip->family);
 	} else if(family==AF_INET6) {
 		u_int data[MAX_IP_INT]=LOOPBACK_IPV6;
 		inet_setip(ip, data, family);
@@ -146,6 +154,73 @@ int inet_setip_localaddr(inet_prefix *ip, int family)
 		return -1;
 
 	return 0;
+}
+
+/*
+ * inet_copy_ipdata: copies `ip'->data in `dst_data' and converts it in network
+ * order.
+ */
+void inet_copy_ipdata(u_int *dst_data, inet_prefix *ip)
+{
+	inet_prefix tmp_ip;
+
+	memcpy(&tmp_ip, ip, sizeof(inet_prefix));
+	
+	inet_htonl(tmp_ip.data, tmp_ip.family);
+	memcpy(dst_data, tmp_ip.data, MAX_IP_SZ);
+}
+
+/*
+ * pack_inet_prefix: packs the `ip' inet_prefix struct and stores it in
+ * `pack', which must be INET_PREFIX_PACK_SZ bytes big. `pack' will be in
+ * network order.
+ */
+void pack_inet_prefix(inet_prefix *ip, char *pack)
+{
+	char *buf;
+
+	buf=pack;
+
+	memcpy(buf, &ip->family, sizeof(u_char));
+	buf+=sizeof(u_char);
+
+	memcpy(buf, &ip->len, sizeof(u_short));
+	buf+=sizeof(u_short);
+
+	memcpy(buf, &ip->bits, sizeof(u_char));
+	buf+=sizeof(u_char);
+
+	memcpy(buf, ip->data, MAX_IP_SZ);
+	inet_htonl((u_int *)buf, ip->family);
+	buf+=MAX_IP_SZ;
+	
+	ints_host_to_network(pack, inet_prefix_iinfo);
+}
+
+/*
+ * unpack_inet_prefix: restores in `ip' the inet_prefix struct contained in `pack'.
+ * Note that `pack' will be modified during the restoration.
+ */
+void unpack_inet_prefix(inet_prefix *ip, char *pack)
+{
+	char *buf;
+
+	buf=pack;
+	
+	ints_network_to_host(pack, inet_prefix_iinfo);
+
+	memcpy(&ip->family, buf, sizeof(u_char));
+	buf+=sizeof(u_char);
+
+	memcpy(&ip->len, buf, sizeof(u_short));
+	buf+=sizeof(u_short);
+
+	memcpy(&ip->bits, buf, sizeof(u_char));
+	buf+=sizeof(u_char);
+
+	memcpy(ip->data, buf, MAX_IP_SZ);
+	inet_ntohl(ip->data, ip->family);
+	buf+=MAX_IP_SZ;
 }
 
 /* from iproute2 */

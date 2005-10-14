@@ -21,7 +21,6 @@
 
 #include "includes.h"
 
-#include "inet.h"
 #include "ipv6-gmp.h"
 #include "map.h"
 #include "misc.h"
@@ -528,17 +527,32 @@ int mod_rnode_addr(map_rnode *rnode, int *map_start, int *new_start)
 }
 
 /* 
- * get_rnode_block: It packs all the rnode structs of a node. The "r_node" pointer
- * of the map_rnode struct is changed to point to the position of the node in the map,
- * instead of the address. get_rnode_block returns the number of rnode structs packed
+ * get_rnode_block: It packs all the rnode structs of a node. The node->r_node
+ * pointer of the map_rnode struct is changed to point to the position of the 
+ * node in the map, instead of the address. get_rnode_block returns the number 
+ * of rnode structs packed.
+ * Note that the packed structs will be in network order.
  */
 int get_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart)
 {
 	int e;
+	char *p;
 
 	for(e=0; e<node->links; e++) {
-		memcpy(&rblock[e+rstart], &node->r_node[e], sizeof(map_rnode));
+		p=(char *)&rblock[e+rstart];
+		
+		memcpy(p, &node->r_node[e].r_node, sizeof(int *));
+		p+=sizeof(int *);
+
+		memcpy(p, &node->r_node[e].rtt, sizeof(struct timeval));
+		p+=sizeof(struct timeval);
+
+		memcpy(p, &node->r_node[e].trtt, sizeof(struct timeval));
+		p+=sizeof(struct timeval);
+		
 		mod_rnode_addr(&rblock[e+rstart], map, 0);
+
+		ints_host_to_network(&rblock[e+rstart], map_rnode_iinfo);
 	}
 
 	return e;
@@ -563,7 +577,7 @@ map_rnode *map_get_rblock(map_node *map, int *addr_map, int maxgroupnode, int *c
 		tot+=map[i].links;
 	if(!tot)
 		return 0;
-	rblock=(map_rnode *)xmalloc(sizeof(map_rnode)*tot);
+	rblock=(map_rnode *)xmalloc(MAP_RNODE_PACK_SZ*tot);
 
 	for(i=0; i<maxgroupnode; i++)
 		c+=get_rnode_block((int *)addr_map, &map[i], rblock, c);
@@ -574,21 +588,36 @@ map_rnode *map_get_rblock(map_node *map, int *addr_map, int maxgroupnode, int *c
 
 
 /* 
- * store_rnode_block: Given a correct node it restores in it all the r_node structs
- * contained in in the rnode_block. It returns the number of rnode structs restored.
+ * store_rnode_block: Given a correct `node' it restores in it all the r_node structs
+ * contained in the rnode_block. It returns the number of rnode structs restored.
+ * Note that `rblock' will be modified during the restoration.
  */
 int store_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart) 
 {
 	int i;
+	char *p;
 
 	if(!node->links)
 		return 0;
 
-	node->r_node=xmalloc(sizeof(map_rnode)*node->links);
+	node->r_node=xmalloc(MAP_RNODE_PACK_SZ*node->links);
 	for(i=0; i<node->links; i++) {
-		memcpy(&node->r_node[i], &rblock[i+rstart], sizeof(map_rnode));
+		p=(char *)&rblock[i+rstart];
+
+		ints_network_to_host(p, map_rnode_iinfo);
+	
+		memcpy(&node->r_node[i].r_node, p, sizeof(int *));
+		p+=sizeof(int *);
+
+		memcpy(&node->r_node[i].rtt, p, sizeof(struct timeval));
+		p+=sizeof(struct timeval);
+
+		memcpy(&node->r_node[i].trtt, p, sizeof(struct timeval));
+		p+=sizeof(struct timeval);
+
 		mod_rnode_addr(&node->r_node[i], 0, map);
 	}
+	
 	return i;
 }
 
@@ -607,6 +636,10 @@ int map_store_rblock(map_node *map, int *addr_map, int maxgroupnode, map_rnode *
 	return c;
 }
 
+/*
+ * verify_int_map_hdr: verifies the validity of an int_map_hdr struct.
+ * If `imap_hdr' is invalid 1 will be returned.
+ */
 int verify_int_map_hdr(struct int_map_hdr *imap_hdr, int maxgroupnode, int maxrnodeblock)
 {
 	/* No map to care about */
@@ -617,12 +650,58 @@ int verify_int_map_hdr(struct int_map_hdr *imap_hdr, int maxgroupnode, int maxrn
 		       with map_node.links > MAXGROUPNODE;*/
 
 	if(imap_hdr->rblock_sz > maxrnodeblock || 
-			imap_hdr->int_map_sz > maxgroupnode*sizeof(map_node) ||
-			imap_hdr->root_node > maxrnodeblock)
+			imap_hdr->int_map_sz > maxgroupnode*MAP_NODE_PACK_SZ)
 		return 1;
 	
 #endif
 	return 0;
+}
+
+/*
+ * pack_map_node: it packs the `node' struct and stores it in `pack'. 
+ * The packed struct will be in network order 
+ */
+void pack_map_node(map_node *node, char *pack)
+{
+	char *buf;
+
+	buf=pack;
+
+	memcpy(buf, &node->flags, sizeof(u_short));
+	buf+=sizeof(u_short);
+
+	memcpy(buf, &node->brdcast, sizeof(u_int));
+	buf+=sizeof(u_int);
+
+	memcpy(buf, &node->links, sizeof(u_short));
+	buf+=sizeof(u_short);
+	
+	ints_host_to_network(pack, map_node_iinfo);
+}
+
+/*
+ * unpack_map_node: it unpacks `pack', which contains a packed map_node struct.
+ * The restored map_node struct will be written in `node'.
+ * Note that `pack' will be modified during the restoration.
+ */
+void unpack_map_node(map_node *node, char *pack)
+{
+	char *buf;
+
+	ints_network_to_host(pack, map_node_iinfo);
+
+	buf=pack;
+
+	memcpy(&node->flags, buf, sizeof(u_short));
+	buf+=sizeof(u_short);
+
+	memcpy(&node->brdcast, buf, sizeof(u_int));
+	buf+=sizeof(u_int);
+
+	memcpy(&node->links, buf, sizeof(u_short));
+	buf+=sizeof(u_short);
+
+	node->r_node=0;
 }
 
 /* 
@@ -630,13 +709,14 @@ int verify_int_map_hdr(struct int_map_hdr *imap_hdr, int maxgroupnode, int maxrn
  * `maxgroupnode' nodes ready to be saved or sent. In `pack_sz' it
  * stores the size of the package. For info on `addr_map' please
  * read get_map_rblock().
+ * The pack will be in network order.
  */
 char *pack_map(map_node *map, int *addr_map, int maxgroupnode, 
 		map_node *root_node, size_t *pack_sz)
 {
 	struct int_map_hdr imap_hdr;
 	map_rnode *rblock;
-	int count;
+	int count, i;
 	char *package, *p;
 
 	if(!addr_map)
@@ -648,23 +728,29 @@ char *pack_map(map_node *map, int *addr_map, int maxgroupnode,
 		rblock=map_get_rblock(map, addr_map, maxgroupnode, &count);
 		/*Header creation*/
 		imap_hdr.root_node=root_node ? pos_from_node(root_node, map) : 0;
-		imap_hdr.rblock_sz=count*sizeof(map_rnode);
-		imap_hdr.int_map_sz=maxgroupnode*sizeof(map_node);
+		imap_hdr.rblock_sz=count*MAP_RNODE_PACK_SZ;
+		imap_hdr.int_map_sz=maxgroupnode*MAP_NODE_PACK_SZ;
 	} 
 	
 	/*Package creation*/
 	*pack_sz=INT_MAP_BLOCK_SZ(imap_hdr.int_map_sz, imap_hdr.rblock_sz);
 	package=xmalloc(*pack_sz);
 	memcpy(package, &imap_hdr, sizeof(struct int_map_hdr));
+	ints_host_to_network(package, int_map_hdr_iinfo);
 	
 	p=package;
 	if(imap_hdr.int_map_sz) {
+		/* Pack the map_node strucs of the `map' */
+
 		p+=sizeof(struct int_map_hdr);
-		memcpy(p, map, imap_hdr.int_map_sz);
+
+		for(i=0; i<maxgroupnode; i++) {
+			pack_map_node(&map[i], 	p);
+			p+=MAP_NODE_PACK_SZ;
+		}
 	}
 	
 	if(imap_hdr.rblock_sz) {
-		p+=imap_hdr.int_map_sz;
 		memcpy(p, rblock, imap_hdr.rblock_sz);
 		xfree(rblock);
 	}
@@ -679,16 +765,19 @@ char *pack_map(map_node *map, int *addr_map, int maxgroupnode,
  * For info on `addr_map' please read map_store_rblock().
  * On success the a pointer to the new int_map is retuned, otherwise 0 will be
  * the fatal value.
+ * Note: `pack' will be modified during the unpacking.
  */
-map_node *unpack_map(char *pack, size_t pack_sz, int *addr_map, map_node **new_root, 
+map_node *unpack_map(char *pack, int *addr_map, map_node **new_root, 
 		     int maxgroupnode, int maxrnodeblock)
 {
 	map_node *map;
 	struct int_map_hdr *imap_hdr=(struct int_map_hdr *)pack;
 	map_rnode *rblock;
-	int err, nodes;
+	int err, nodes, i;
 	char *p;
 
+	ints_network_to_host(imap_hdr, int_map_hdr_iinfo);
+	
 	if(verify_int_map_hdr(imap_hdr, maxgroupnode, maxrnodeblock)) {
 		error("Malformed int/bmap_map_hdr. Aborting unpack_map().");
 		return 0;
@@ -697,21 +786,25 @@ map_node *unpack_map(char *pack, size_t pack_sz, int *addr_map, map_node **new_r
 	/*Extracting the map...*/
 	p=pack+sizeof(struct int_map_hdr);
 	map=init_map(0);
-	if(imap_hdr->int_map_sz)
-		memcpy(map, p, imap_hdr->int_map_sz);
-	else
+	
+	if(!imap_hdr->int_map_sz)
 		return map;
 
+	/* Restore in `map' the packed map_node struct */
+	nodes=imap_hdr->int_map_sz/MAP_NODE_PACK_SZ;
+	for(i=0; i<nodes; i++) {
+		unpack_map_node(&map[i], p);
+		p+=MAP_NODE_PACK_SZ;
+	}
+
 	/*Restoring the rnodes...*/
-	p+=imap_hdr->int_map_sz;
 	if(imap_hdr->rblock_sz) {
-		nodes=imap_hdr->int_map_sz/sizeof(map_node);
 		/*Extracting the rnodes block and merging it to the map*/
 		rblock=(map_rnode *)p;
 		if(!addr_map)
 			addr_map=(int *)map;
 		err=map_store_rblock(map, addr_map, nodes, rblock);
-		if(err!=imap_hdr->rblock_sz/sizeof(map_rnode)) {
+		if(err!=imap_hdr->rblock_sz/MAP_RNODE_PACK_SZ) {
 			error("An error occurred while storing the rnodes block in the int/bnode_map");
 			free_map(map, 0);
 			return 0;
@@ -776,11 +869,13 @@ map_node *load_map(char *file, map_node **new_root)
 
 	if(!fread(&imap_hdr, sizeof(struct int_map_hdr), 1, fd))
 		goto finish;
+
+	ints_network_to_host(&imap_hdr, int_map_hdr_iinfo);
 	
 	if(!imap_hdr.int_map_sz)
 		goto finish;
 
-	if(verify_int_map_hdr(&imap_hdr, MAXGROUPNODE, MAXRNODEBLOCK))
+	if(verify_int_map_hdr(&imap_hdr, MAXGROUPNODE, MAXRNODEBLOCK_PACK_SZ))
 		goto finish;
 		
 	rewind(fd);
@@ -789,7 +884,7 @@ map_node *load_map(char *file, map_node **new_root)
 	if(!fread(pack, pack_sz, 1, fd))
 		goto finish;
 
-	map=unpack_map(pack, pack_sz, 0, new_root, MAXGROUPNODE, MAXRNODEBLOCK);
+	map=unpack_map(pack, 0, new_root, MAXGROUPNODE, MAXRNODEBLOCK_PACK_SZ);
 
 finish:
 	if(pack)

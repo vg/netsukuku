@@ -1,3 +1,19 @@
+0.0.4b
+
+- Endianness fixes: now the packets can be sent between two machines with
+  different endianness.
+  
+- All the the packet are now sent without any alignment.
+
+- The free_nodes struct has been optimised: to keep the list of free nodes it
+  uses single bits instead of single bytes, this means that the list is now of
+  32 bytes instead of 256.
+
+- The bug in the load_rh_cache code is now fixed.
+  
+- The installation path of the man page is now fixed.
+
+
 0.0.3b
 - The ANDNA code, with its DNS wrapper, is completed and tested.
 	

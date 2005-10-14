@@ -24,9 +24,7 @@
 #include "includes.h"
 
 #include "llist.c"
-#include "inet.h"
-#include "map.h"
-#include "gmap.h"
+#include "endianness.h"
 #include "bmap.h"
 #include "request.h"
 #include "pkts.h"
@@ -792,8 +790,8 @@ int qspn_close(PACKET rpkt)
 	not_closed=0;
 	if(do_real_qspn_action && !just_forward_it) {
 		/*
-		 * We close the from node and we see there are any links still 
-		 * `not_closed'.
+		 * We close the from node and we see if there are any links,
+		 * which are still `not_closed'.
 		 */
 		for(i=0; i<root_node->links; i++) {
 			node=(map_node *)root_node->r_node[i].r_node;

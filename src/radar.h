@@ -16,8 +16,12 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#ifndef RADAR_H
+#define RADAR_H
 
-#define MAX_RADAR_SCANS		10
+#include "gmap.h"
+
+#define MAX_RADAR_SCANS		16
 #define MAX_RADAR_WAIT		5	/*How much we wait to store the received ECHO_REPLY pkts
 					  and then to close the current radar session*/
 #define RTT_DELTA		1000	/*If the change delta of the new rtt is >= RTT_DELTA, 
@@ -90,3 +94,5 @@ void *radar_daemon(void *null);
 void radar_wait_new_scan(void);
 
 int refresh_hook_root_node(void);
+
+#endif /*RADAR_H*/

@@ -16,6 +16,9 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#ifndef NETSUKUKU_H
+#define NETSUKUKU_H
+
 #define VERSION			"NetsukukuD 0.0.3b"
 
 struct current_globals
@@ -116,3 +119,5 @@ ServOpt server_opt;
 #ifdef QSPN_EMPIRIC
 	#error Netsukuku_d cannot be compiled with the QSPN_EMPIRIC support activated.
 #endif
+
+#endif /*NETSUKUKU_H*/

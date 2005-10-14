@@ -16,52 +16,17 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#ifndef ROUTE_H
+#define ROUTE_H
+
+
 #define MAX_ROUTE_TABLES	253
 
 /*The default number of levels that will be kept in the kernel route table*/
 #define DEFAULT_ROUTE_LEVELS	3
 
-struct ctable_route
-{
-	struct ctable_route	*next;
-	struct ctable_route	*prev;
-	u_int		 ct_prio;	/*Priority of the route rule.*/
-	u_char		 ct_table;	/*The route table*/
-	u_int		 ct_dst;	/*The connection's dst. The ip is converted with iptomap*/
-	u_int		 ct_gw;		/*Gateway*/
-};
-typedef struct ctable_route ct_route;
 
-/* Connection Table entry. This keeps all the connection infos*/
-typedef struct
-{
-	u_int 		ct_conn; 	/*Total connections*/
-	ct_route	*ctr;
-}ct_entry;
-
-struct rnode_rtable
-{
-	struct rnode_rtable *next;
-	struct rnode_rtable *prev;
-	u_int		 *rt_rnode;	/*This points to the rnode's struct in the int_map*/
-	ct_entry   rt_ct;
-};
-typedef struct rnode_rtable rnode_rt;
-
-/***Set_route pkt, used to mark an arbitrary route*/
-struct set_route_hdr
-{
-	u_int hops;
-};
-struct set_route_pkt
-{
-	char flags;
-	u_char node;
-};
-#define SET_ROUTE_BLOCK_SZ(hops) (sizeof(struct set_route_hdr)+((sizeof(struct set_route_pkt)*(hops))))
-
-
-u_char rt_find_table(ct_route *ctr, u_int dst, u_int gw);
+/* * * Functions declaration * * */
 void *get_gw_gnode(map_node *, map_gnode **, map_bnode **, 
 		u_int *, map_gnode *, u_char, u_char);
 int get_gw_ip(map_node *int_map, map_gnode **ext_map,
@@ -80,3 +45,5 @@ int rt_replace_gw(char *dev, inet_prefix to, inet_prefix gw);
 int rt_replace_def_gw(char *dev, inet_prefix gw);
 
 int rt_del_loopback_net(void);
+
+#endif /*ROUTE_H*/

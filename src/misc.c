@@ -164,26 +164,45 @@ int hash_time(int *h_sec, int *h_usec)
 	return inthash(elf_hash);
 }
 
-
+/*
+ * swap_array: swaps the elements of the `src' array and stores the result in
+ * `dst'. The `src' array has `nmemb'# elements and each of them is `nmemb_sz'
+ * big.
+ */
+void swap_array(int nmemb, size_t nmemb_sz, void *src, void *dst)
+{
+	int i, total_sz;
+	
+	total_sz = nmemb*nmemb_sz;
+	
+	char buf[total_sz], *z;
+	
+	if(src == dst)
+		z=buf;
+	else
+		z=dst;
+	
+	for(i=nmemb-1; i>=0; i--)
+		memcpy(z+(nmemb_sz*(nmemb-i-1)), (char *)src+(nmemb_sz*i),
+				nmemb_sz);
+			
+	if(src == dst)
+		memcpy(dst, buf, total_sz);
+}
 
 /*
- * swap_ints: Swap intergers.
- * Swaps the `x' array which has `nmemb' elements and stores it in `y'
+ * swap_ints: Swap integers.
+ * It swaps the `x' array which has `nmemb' elements and stores the result it 
+ * in `y'.
  */
 void swap_ints(int nmemb, unsigned int *x, unsigned int *y) 
 {
-	int i, buf[nmemb], *z;
-	
-	if(y == x)
-		z=buf;
-	else
-		z=y;
-	
-	for(i=nmemb-1; i>=0; i--)
-		z[nmemb-i-1]=x[i];
+	swap_array(nmemb, sizeof(int), x, y);
+}
 
-	if(y == x)
-		memcpy(y, buf, sizeof(int)*nmemb);
+void swap_shorts(int nmemb, unsigned short *x, unsigned short *y)
+{
+	swap_array(nmemb, sizeof(short), x, y);
 }
 
 /* 
@@ -237,7 +256,7 @@ int is_bufzero(char *a, int sz)
 }
 
 
-/* This is the most important function of all */
+/* This is the most important function */
 void do_nothing(void)
 {
 	return;

@@ -26,6 +26,8 @@
 #include <errno.h>
 #include <sys/time.h>
 
+#include <asm/bitops.h>
+
 /*socket*/
 #include <sys/types.h>
 #include <sys/socket.h>

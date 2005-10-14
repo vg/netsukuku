@@ -16,6 +16,11 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#ifndef GMAP_H
+#define GMAP_H
+
+#include "map.h"
+
 /* * * Groupnode stuff * * */
 #define GMAP_ME		MAP_ME		/*1*/
 #define GMAP_VOID	MAP_VOID	/*(1<<1)*/
@@ -37,10 +42,12 @@ typedef struct
 	map_node	g;
 	
 	u_char 		flags;
-	uint8_t		seeds;	/*The number of active static nodes connected to this
+	u_char		seeds;	/*The number of active static nodes connected to this
 				  gnode minus one (the root_node is not counted).
 				  If seeds == MAXGROUPNODE-1, the gnode is full ^_^*/
 }map_gnode;
+
+#define MAP_GNODE_PACK_SZ	(MAP_NODE_PACK_SZ + sizeof(u_char)*2)
 
 
 /* * * Levels stuff * * *
@@ -96,10 +103,20 @@ typedef struct {
 	int         gid[MAX_LEVELS];	 /*Group ids. Each element is the gid of the quadrogroup in the 
 					   relative level. (ex: gid[n] is the gid of the quadropgroup a 
 					   the n-th level)*/
-	map_gnode  *gnode[MAX_LEVELS-ZERO_LEVEL]; /*Each element is a pointer to the relative gnode in the 
-						      ext_map. It has levels-EXTRA_LEVELS elements.*/
+	map_gnode  *gnode[MAX_LEVELS-ZERO_LEVEL]; /*Each element is a pointer to the relative gnode in the 						      ext_map. It has levels-EXTRA_LEVELS elements.*/
 	inet_prefix ipstart[MAX_LEVELS]; /*The ipstart of each quadg.gid in their respective levels*/
 }quadro_group;
+
+/* Note: this is the int_info of the a packed quadro_group struct, which
+ * hasnt't the `map_gnode *gnode' pointers. The ipstart structs must be also
+ * packed with pack_inet_prefix() */
+INT_INFO quadro_group_iinfo = { 1, 
+				{ INT_TYPE_32BIT },
+				{ sizeof(u_char) },
+				{ MAX_LEVELS }
+			      };
+#define QUADRO_GROUP_PACK_SZ (sizeof(u_char) + sizeof(int)*MAX_LEVELS +     \
+				+ INET_PREFIX_PACK_SZ * MAX_LEVELS)
 
 /*These are the flags passed to iptoquadg()*/
 #define QUADG_IPSTART 1
@@ -109,15 +126,26 @@ typedef struct {
 /* This block is used to send the ext_map */
 struct ext_map_hdr
 {
-	quadro_group quadg;
+	char   quadg[QUADRO_GROUP_PACK_SZ];  /* The packed me.cur_quadg */
+
 	size_t ext_map_sz; 		/*It's the sum of all the gmaps_sz.
 					  The size of a single map is:
-					  ext_map_sz/(sizeof(map_gnode)*
-					  (quadg.levels-EXTRA_LEVELS);
-					 */
+					  (ext_map_sz/(MAP_GNODE_PACK_SZ*
+					  (quadg.levels-EXTRA_LEVELS)); */
 	size_t rblock_sz[MAX_LEVELS];	/*The size of the rblock of each gmap*/
 	size_t total_rblock_sz;		/*The sum of all rblock_sz*/
-};
+}_PACKED_;
+
+/* Note: You have to consider the quadro_group struct when convert between
+ * endianness */
+INT_INFO ext_map_hdr_iinfo = { 3, 
+			       { INT_TYPE_32BIT, INT_TYPE_32BIT, INT_TYPE_32BIT },
+			       { QUADRO_GROUP_PACK_SZ, 
+				   QUADRO_GROUP_PACK_SZ+sizeof(size_t),
+				   QUADRO_GROUP_PACK_SZ+(sizeof(size_t)*(MAX_LEVELS+1)) },
+			       { 1, MAX_LEVELS, 1 }
+			     };
+	
 /* The ext_map_block is:
  * 	struct ext_map_hdr hdr;
  * 	char ext_map[ext_map_sz];
@@ -159,6 +187,8 @@ void gidtoipstart(int *gid, u_char total_levels, u_char levels, int family,
 void iptoquadg(inet_prefix ip, map_gnode **ext_map, quadro_group *qg, char flags);
 void quadg_free(quadro_group *qg);
 void quadg_destroy(quadro_group *qg);
+void pack_quadro_group(quadro_group *qg, char *pack);
+void unpack_quadro_group(quadro_group *qg, char *pack);
 
 int random_ip(inet_prefix *ipstart, int final_level, int final_gid, 
 		int total_levels, map_gnode **ext_map, int only_free_gnode, 
@@ -185,9 +215,13 @@ int  g_rnode_find(map_gnode *gnode, map_gnode *n);
 int  extmap_find_level(map_gnode **ext_map, map_gnode *gnode, u_char max_level);
 void gmap_node_del(map_gnode *gnode);
 
-int verify_ext_map_hdr(struct ext_map_hdr *emap_hdr);
+int verify_ext_map_hdr(struct ext_map_hdr *emap_hdr, quadro_group *quadg);
 void free_extmap_rblock(map_rnode **rblock, u_char levels);
+void pack_map_gnode(map_gnode *gnode, char *pack);
+void unpack_map_gnode(map_gnode *gnode, char *pack);
 char *pack_extmap(map_gnode **ext_map, int maxgroupnode, quadro_group *quadg, size_t *pack_sz);
-map_gnode **unpack_extmap(char *package, size_t pack_sz, quadro_group *quadg);
+map_gnode **unpack_extmap(char *package, quadro_group *quadg);
 int save_extmap(map_gnode **ext_map, int maxgroupnode, quadro_group *quadg, char *file);
 map_gnode **load_extmap(char *file, quadro_group *quadg);
+
+#endif /*GMAP_H*/

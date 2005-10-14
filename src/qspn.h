@@ -16,6 +16,9 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#ifndef QSPN_H
+#define QSPN_H
+
 #define QSPN_WAIT_ROUND 	32	/*This is a crucial value. It is the number of 
 					  seconds to be waited before the next qspn_round 
 					  can be sent*/
@@ -113,3 +116,5 @@ void qspn_new_round(u_char level, int new_qspn_id, struct timeval *new_qspn_time
 int  qspn_send(u_char level);
 int  qspn_close(PACKET rpkt);
 int  qspn_open(PACKET rpkt);
+
+#endif /*QSPN_H*/

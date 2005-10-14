@@ -1,6 +1,6 @@
 Import('env')
 
-idir_man   = '$MAN_DIR'
+idir_man   = '$MAN_DIR/man8'
 
 env.Install(idir_man, ['netsukuku_d.8', 'netsukuku_wifi.8', 'andna.8'])
 env.Alias('install', idir_man)

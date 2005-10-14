@@ -43,6 +43,18 @@ A: The Netsukuku protocol (Npv7) structures the entire net as a fractal and,
    Netsukuku. (read the "5.1   QSPN: Quantum Shortest Path Netsukuku" section
    in the document).
 
+Q: Does it scale in a network with A LOT of nodes?
+A: Simple and not accurate reasons for the scalability of Netsukuku (until there
+   is the technical documentation with math background that is being written):
+   1) the size of the maps is fixed: about 4Kb for the int_map and 16Kb for
+      the ext_map.
+   2) Not all the nodes sends a broadcast discovery.
+   3) There are few floods for each discovery.
+   4) When a node receives a flood it already has the routes without
+      calculating anything.
+   5) A flood is synchronized: the same flood starts at the same time for all
+      the nodes.
+
 Q: Why another p2p network?
 A: Netsukuku is not a p2p net built upon the Internet. It is a physical
    network and it is a dynamic routing system designed to handle 2^128 nodes

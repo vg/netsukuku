@@ -30,8 +30,8 @@
  * If a map filename to load is not given as argv[1] gen_rnd_map is used 
  * to create a new random map of MAXGROUPNODE nodes.
  * Then we choose a random node to be the QSPN_STARTER.
- * Now, instead of simulate the nodes we simulate the packets! Each pkt
- * is a thread. When a new thread/pkt is created it sleeps for the rtt that
+ * Now, instead of simulating the nodes we simulate the packets! Each pkt
+ * is a thread. When a new thread/pkt is created it sleeps for the rtt there
  * is between the "from" node and the "to" node.
  * Now we have only to wait.
  * enjoy the trip.
@@ -42,6 +42,7 @@
 
 #include "misc.h"
 #include "inet.h"
+#include "endianness.h"
 #include "map.h"
 #include "qspn-empiric.h"
 #include "xmalloc.h"

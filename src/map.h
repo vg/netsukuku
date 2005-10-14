@@ -16,6 +16,11 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#ifndef MAP_H
+#define MAP_H
+
+#include "inet.h"
+
 /* Generic map defines */
 #undef  QSPN_EMPIRIC
 
@@ -74,7 +79,7 @@
  * array.
  */
 
-/* map_rnode is what map_node.r_node points to */
+/* map_rnode is what map_node.r_node points to. (read struct map_node below) */
 typedef struct
 {
 #ifdef QSPN_EMPIRIC
@@ -96,6 +101,20 @@ typedef struct
 	 */
 }map_rnode;
 
+/* Note: This int_info is used for the pack of a map_rnode struct (see 
+ * get_rnode_block()). 
+ * Since the r_node pointer, in the pack, is an integer, we add it in the
+ * int_info as a normal 32bit int.
+ * We are considering the timeval vars as int array composed by two
+ * members. */
+INT_INFO map_rnode_iinfo  = { 3, 
+			      { INT_TYPE_32BIT, INT_TYPE_32BIT, INT_TYPE_32BIT },
+			      { 0, sizeof(int), sizeof(int)*3 },
+			      { 1, 2, 2 }
+			    };
+#define MAP_RNODE_PACK_SZ (sizeof(int *)+sizeof(struct timeval)*2)
+
+
 typedef struct
 {
 #ifdef QSPN_EMPIRIC
@@ -104,13 +123,25 @@ typedef struct
 #else
 	u_short 	flags;
 	u_int		brdcast;	 /*Pkt_id of the last brdcast_pkt sent by this node*/
-#endif /*QSPN_EMPIRIC*/
+#endif
+
 	u_short		links;		 /*Number of r_nodes*/
 	map_rnode	*r_node;	 /*These structs will be kept in ascending
 					   order considering their rnode_t.rtt*/
 }map_node;
 
-#define MAXRNODEBLOCK		(MAXLINKS*MAXGROUPNODE*sizeof(map_rnode))
+/* Note: This int_info is used for the pack of a map_rnode struct (see
+ * pack_map()) */
+INT_INFO map_node_iinfo = { 3, 
+			    { INT_TYPE_16BIT, INT_TYPE_32BIT, INT_TYPE_16BIT },
+			    { 0, sizeof(short), sizeof(short)+sizeof(int) },
+			    { 1, 1, 1 }
+			  };
+
+#define MAP_NODE_PACK_SZ (sizeof(u_short)*2 + sizeof(u_int))
+
+#define MAXRNODEBLOCK		(MAXLINKS * MAXGROUPNODE * sizeof(map_rnode))
+#define MAXRNODEBLOCK_PACK_SZ	(MAXLINKS * MAXGROUPNODE * MAP_RNODE_PACK_SZ)
 #define INTMAP_END(mapstart)	((sizeof(map_node)*MAXGROUPNODE)+(mapstart))
 
 /*This block is used to send/save the int_map and the bnode_map*/
@@ -120,13 +151,20 @@ struct int_map_hdr
 	size_t int_map_sz;
 	size_t rblock_sz;
 }_PACKED_;
+INT_INFO int_map_hdr_iinfo = { 2, 
+			       { INT_TYPE_32BIT, INT_TYPE_32BIT }, 
+			       { sizeof(char), sizeof(char)+sizeof(size_t) },
+			       { 1, 1 }
+			     };
 
-/*The int_map_block is:
+/*
+ * The int_map_block is:
  * 	struct int_map_hdr hdr;
  * 	char map_node[int_map_sz];
  * 	char map_rnode[rblock_sz];
  */
 #define INT_MAP_BLOCK_SZ(int_map_sz, rblock_sz) (sizeof(struct int_map_hdr)+(int_map_sz)+(rblock_sz))
+
 
 /* 
  * * * Functions' declaration * * *
@@ -173,7 +211,11 @@ int store_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart);
 int map_store_rblock(map_node *map, int *addr_map, int maxgroupnode, map_rnode *rblock);
 
 int verify_int_map_hdr(struct int_map_hdr *imap_hdr, int maxgroupnode, int maxrnodeblock);
+void pack_map_node(map_node *node, char *pack);
+void unpack_map_node(map_node *node, char *pack);
 char *pack_map(map_node *map, int *addr_map, int maxgroupnode, map_node *root_node, size_t *pack_sz);
-map_node *unpack_map(char *pack, size_t pack_sz, int *addr_map, map_node **new_root, int maxgroupnode, int maxrnodeblock);
+map_node *unpack_map(char *pack, int *addr_map, map_node **new_root, int maxgroupnode, int maxrnodeblock);
 int save_map(map_node *map, map_node *root_node, char *file);
 map_node *load_map(char *file, map_node **new_root);
+
+#endif /*MAP_H*/

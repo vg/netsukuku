@@ -16,6 +16,9 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#ifndef DNS_WRAPPER_H
+#define DNS_WRAPPER_H
+
 #define DNS_WRAPPER_PORT	53
 #define MAX_DNS_PKT_SZ		512
 
@@ -40,3 +43,5 @@ struct dns_exec_pkt_argv
 /* * * Functions declarations * * */
 
 void *dns_wrapper_thread(void *null);
+
+#endif /*DNS_WRAPPER_H*/

@@ -16,6 +16,11 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#ifndef PKTS_H
+#define PKTS_H
+
+#include "inet.h"
+
 #define NETSUKUKU_ID		"ntk"
 #define MAXMSGSZ		65536
 
@@ -52,7 +57,10 @@
 					  qspn pkt has all its links closed.*/
 #define QSPN_BNODE_OPENED	(1<<4)
 
-
+/*
+ * pkt_hdr: the pkt_hdr is always put at the very beginning of any netsukuku
+ * packets
+ */
 typedef struct
 {
 	char		ntk_id[3];
@@ -61,8 +69,18 @@ typedef struct
 	u_char 		op;
 	size_t 		sz;
 }_PACKED_  pkt_hdr;
+
+INT_INFO pkt_hdr_iinfo = { 2, 
+			   { INT_TYPE_32BIT, INT_TYPE_32BIT }, 
+			   { sizeof(char), sizeof(char)*3+sizeof(int) },
+			   { 1, 1 }
+			 };
 #define PACKET_SZ(sz) (sizeof(pkt_hdr)+(sz))		
 
+/*
+ * PACKET: this struct is used only to represent internally a packet, which
+ * will be sent or received
+ */
 typedef struct
 {
 	inet_prefix 	from;		
@@ -89,6 +107,8 @@ typedef struct
 	size_t 		sz;		/*Sizeof(the pkt)*/
 	char 		flags;		/*Various flags*/
 }_PACKED_ brdcast_hdr;
+
+INT_INFO brdcast_hdr_iinfo = { 1, { INT_TYPE_32BIT }, { sizeof(char)*4 }, { 1 } };
 #define BRDCAST_SZ(pkt_sz) (sizeof(brdcast_hdr)+(pkt_sz))
 
 
@@ -107,8 +127,6 @@ struct pkt_op_table {
 	u_short port;
 	void *exec_func;
 } pkt_op_tbl[TOTAL_OPS];
-
-
 
 /* pkt_queue's flags */
 #define PKT_Q_MTX_LOCKED	1		/* We are waiting the reply */
@@ -160,7 +178,6 @@ void pkt_clear(PACKET *pkt);
 
 void pkt_free(PACKET *pkt, int close_socket);
 char *pkt_pack(PACKET *pkt);
-PACKET *pkt_unpack(char *pkt);
 
 int pkt_verify_hdr(PACKET pkt);
 ssize_t pkt_send(PACKET *pkt);
@@ -181,3 +198,5 @@ void pkt_queue_close(void);
 int pkt_q_wait_recv(int id, inet_prefix *from, PACKET *rpkt, pkt_queue **ret_pq);
 int pkt_q_add_pkt(PACKET pkt);
 void pkt_q_del(pkt_queue *pq, int close_socket);
+
+#endif /*PKTS_H*/

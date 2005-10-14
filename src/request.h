@@ -16,6 +16,9 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#ifndef REQUEST_H
+#define REQUEST_H
+
 #define REQUEST_TIMEOUT		300	/* The timeout in seconds for all the 
 					   requests */
 #ifdef DEBUG
@@ -350,3 +353,5 @@ void update_rq_tbl(rq_tbl *);
 int is_rq_full(u_char , rq_tbl *);
 int find_free_rq_wait(u_char , rq_tbl *);
 int add_rq(u_char , rq_tbl *);
+
+#endif /*REQUEST_H*/

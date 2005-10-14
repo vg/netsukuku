@@ -26,19 +26,15 @@
 #include "conf.h"
 #include "libnetlink.h"
 #include "ll_map.h"
-#include "inet.h"
 #include "request.h"
 #include "pkts.h"
 #include "if.h"
-#include "map.h"
-#include "gmap.h"
 #include "bmap.h"
 #include "netsukuku.h"
 #include "qspn.h"
 #include "accept.h"
 #include "daemon.h"
 #include "crypto.h"
-#include "endianness.h"
 #include "andna_cache.h"
 #include "andna.h"
 #include "radar.h"
@@ -341,7 +337,8 @@ int destroy_netsukuku(void)
 	
 	ntk_save_maps();
 	ntk_free_maps();
-	andna_save_caches();
+	if(!server_opt.disable_andna)
+		andna_save_caches();
 	close_radar();
 	e_rnode_free(&me.cur_erc, &me.cur_erc_counter);
 	destroy_accept_tbl();
@@ -411,14 +408,19 @@ int main(int argc, char **argv)
 	pthread_t daemon_tcp_thread, daemon_udp_thread, andna_thread;
 	pthread_attr_t t_attr;
 	
-	log_init(argv[0], server_opt.dbg_lvl, 1);
+	log_init(argv[0], 0, 1);
 	
 	/* Options loading... */
 	fill_default_options();
 	parse_options(argc, argv);
+
+	/* reinit the logs using the new `dbg_lvl' value */
+	log_init(argv[0], server_opt.dbg_lvl, 1);
+
+	/* Load the option from the config file */
 	load_config_file(server_opt.config_file);
 	fill_loaded_cfg_options();
-
+	
 	/* Initialize the whole netsukuku source code */
 	init_netsukuku(argv);
 

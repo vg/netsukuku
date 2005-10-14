@@ -33,7 +33,7 @@ struct free_nodes_hdr
 {
 	u_char 		max_levels;	/* How many levels we are managing */
 
-	inet_prefix 	ipstart;	/* The ipstart of the gnode */
+	int	 	ipstart[MAX_IP_INT];	/* The ipstart of the gnode */
 	u_char 		level;		/* The level where the gnode belongs */
 	u_char  	gid;		/* The gnode id */
 	u_char		nodes;		/* The number of free nodes/gnodes - 1 */
@@ -43,8 +43,13 @@ struct free_nodes_hdr
 
 /* 
  * the free_nodes block is:
- *	u_char		free_nodes[fn_hdr.nodes];  If free_nodes[x] is the position of the node in the
- *						   map.
+ *
+ *	u_char		free_nodes[fn_hdr.nodes/8]; The bit x inside `free_nodes'
+ *						    tells if the node x, i.e.
+ *						    int_map[x], is up or not.
+ *						    If the bit is set to 1, it
+ *						    is.
+ *
  * The free_nodes pkt is:
  *	fn_hdr;
  *	fn_block;
@@ -59,10 +64,21 @@ struct free_nodes_hdr
  *						   since the previous qspn round. There's a qtime
  *						   for each fn_hdr.max_levels level
  */
+/* Note: for this int_info we are considering the timeval array as one int
+ * with `max_levels'*2 members */
+INT_INFO qspn_round_pkt_iinfo = { 2, 
+				  { INT_TYPE_32BIT, INT_TYPE_32BIT }, 
+				  { sizeof(char), IINFO_DYNAMIC_VALUE },
+				  { IINFO_DYNAMIC_VALUE, IINFO_DYNAMIC_VALUE }
+				};
+	
 #define QSPN_ROUND_PKT_SZ(levels)	(sizeof(u_char) + 			\
 						((levels) * sizeof(int)) +	\
 			                          ((levels) * sizeof(struct timeval)) )
 
+
+/* * * Functions declaration * * */
+	
 int put_free_nodes(PACKET rq_pkt);
 
 int get_qspn_round(inet_prefix to, struct timeval to_rtt,struct timeval *qtime,

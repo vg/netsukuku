@@ -65,12 +65,20 @@ struct andna_cache_queue
 	struct andna_cache_queue *next;
 	struct andna_cache_queue *prev;
 		
-	inet_prefix	rip;			/* register_node ip */
+	u_int		rip[MAX_IP_INT];	/* register_node ip */
 	time_t		timestamp;
 	u_short		hname_updates;		/* number of hname's updates */
 	char		pubkey[ANDNA_PKEY_LEN];
 };
 typedef struct andna_cache_queue andna_cache_queue;
+
+/* int_info of the andna_cache_queue struct ignoring the `next' and `prev'
+ * pointers */
+INT_INFO andna_cache_queue_body_iinfo = { 2, /* `rip' is ignored */
+					  { INT_TYPE_32BIT, INT_TYPE_16BIT },
+					  { MAX_IP_SZ, MAX_IP_SZ+sizeof(time_t) },
+					  { 1, 1 }
+					};
 		
 /*
  * This is the andna_cache, which keeps the entries of the hostnames registered
@@ -90,6 +98,12 @@ struct andna_cache
 };
 typedef struct andna_cache andna_cache;
 
+/* int_info of the andna_cache struct ignoring the `next' and `prev'
+ * pointers */
+INT_INFO andna_cache_body_iinfo = { 2, { INT_TYPE_32BIT, INT_TYPE_16BIT },
+				    { 0, MAX_IP_SZ+sizeof(char) },
+				    { MAX_IP_INT, 1 }
+				  };
 
 /* part of the counter cache, see below */
 struct counter_c_hashes
@@ -103,6 +117,14 @@ struct counter_c_hashes
 };
 typedef struct counter_c_hashes counter_c_hashes;
 
+/* int_info of the counter_c_hashes struct ignoring the `next' and `prev'
+ * pointers */
+INT_INFO counter_c_hashes_body_iinfo = { 3, 
+					 { INT_TYPE_32BIT, INT_TYPE_16BIT, INT_TYPE_32BIT },
+					 { 0, sizeof(time_t), sizeof(time_t)+sizeof(u_short) },
+					 { 1, 1, MAX_IP_INT }
+				       };
+
 /*
  * Counter node's cache
  */
@@ -111,7 +133,6 @@ struct counter_c
 	struct counter_c *next;
 	struct counter_c *prev;
 
-	inet_prefix     rip;                    /* register_node ip */
 	char            pubkey[ANDNA_PKEY_LEN];
 	char		flags;
 	
@@ -120,6 +141,13 @@ struct counter_c
 };
 typedef struct counter_c counter_c;
 
+/* int_info of the counter_c_hashes struct ignoring the `next' and `prev'
+ * pointers */
+INT_INFO counter_c_body_iinfo = { 1,
+				  { INT_TYPE_16BIT },
+				  { ANDNA_PKEY_LEN+sizeof(char) },
+				  { 1 }
+				};
 
 /*
  * The local andna cache keeps the hostnames registered by localhost and
@@ -198,18 +226,18 @@ struct lcl_cache_pkt_hdr
  	char		privkey[ANDNA_SKEY_LEN];
  	char		pubkey[ANDNA_PKEY_LEN];
 }_PACKED_;
-int_info lcl_cache_pkt_hdr_iinfo = { 1, { INT_TYPE_32BIT }, { 0 }, { 1 } };
+INT_INFO lcl_cache_pkt_hdr_iinfo = { 1, { INT_TYPE_32BIT }, { 0 }, { 1 } };
 /* 
  * The body is:
  * struct lcl_cache_pkt_body {
- *	char		hostname[strlen(hostname)];
+ *	char		hostname[strlen(hostname)+1];
  *	u_short		hname_updates;
  *	time_t          timestamp;
  * } body[ hdr.tot_caches ];
  */
 #define LCL_CACHE_BODY_PACK_SZ(hname_len)	((hname_len) + sizeof(u_short) \
 							+ sizeof(time_t))
-int_info lcl_cache_pkt_body_iinfo = { 2, { INT_TYPE_16BIT, INT_TYPE_32BIT }, 
+INT_INFO lcl_cache_pkt_body_iinfo = { 2, { INT_TYPE_16BIT, INT_TYPE_32BIT }, 
 				      { IINFO_DYNAMIC_VALUE, IINFO_DYNAMIC_VALUE }, 
 				      { 1, 1 }
 				    };
@@ -218,7 +246,7 @@ struct andna_cache_pkt_hdr
 {
 	u_short		tot_caches;
 }_PACKED_;
-int_info andna_cache_pkt_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
+INT_INFO andna_cache_pkt_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
 /*
  * The body is a struct andna_cache but the andna_cache->acq in the struct is
  * substituted with the actual pack of the andna_cache_queue linked list.
@@ -227,8 +255,8 @@ int_info andna_cache_pkt_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
  * 	struct  andna_cache_pkt_hdr	hdr;
  * 	char 	acq[ANDNA_CACHE_QUEUE_PACK_SZ(hdr.tot_caches)];
  */
-#define ANDNA_CACHE_QUEUE_PACK_SZ	(sizeof(andna_cache_queue) - 		\
-					(sizeof(andna_cache_queue *) * 2))
+#define ANDNA_CACHE_QUEUE_PACK_SZ	(MAX_IP_SZ + sizeof(time_t) +		\
+						sizeof(u_short ) + ANDNA_PKEY_LEN)
 #define ANDNA_CACHE_BODY_PACK_SZ	(ANDNA_HASH_SZ + sizeof(char) +\
 						sizeof(u_short))
 #define ANDNA_CACHE_PACK_SZ(queue_counter)	((ANDNA_CACHE_QUEUE_PACK_SZ *	\
@@ -243,12 +271,11 @@ struct counter_c_pkt_hdr
 {
 	u_short		tot_caches;
 }_PACKED_;
-int_info counter_c_pkt_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
-#define COUNTER_CACHE_HASHES_PACK_SZ	(sizeof(counter_c_hashes) - 		\
-					(sizeof(counter_c_hashes *) * 2))
-#define COUNTER_CACHE_BODY_PACK_SZ	(sizeof(counter_c) - 			\
-					(sizeof(counter_c *) * 2) - 		\
-					 sizeof(counter_c_hashes *))
+INT_INFO counter_c_pkt_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
+#define COUNTER_CACHE_HASHES_PACK_SZ	(sizeof(time_t) + sizeof(u_short) +	\
+						ANDNA_HASH_SZ)
+#define COUNTER_CACHE_BODY_PACK_SZ	(ANDNA_PKEY_LEN + sizeof(char) + 	\
+						sizeof(u_short))
 #define COUNTER_CACHE_PACK_SZ(hashes)	((COUNTER_CACHE_HASHES_PACK_SZ*(hashes))\
 					 + COUNTER_CACHE_BODY_PACK_SZ)
 
@@ -260,18 +287,18 @@ struct rh_cache_pkt_hdr
 	u_short		tot_caches;		/* How many lcl structs there 
 						   are in the pkt's hdr */
 }_PACKED_;
-int_info rh_cache_pkt_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
+INT_INFO rh_cache_pkt_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
 /* 
  * The body is:
  * struct rh_cache_pkt_body {
- *	char		hostname[strlen(hostname)];
+ *	char		hostname[strlen(hostname)+1];
  *	time_t		timestamp;
  *	int		ip[MAX_IP_INT];
  * } body[ hdr.tot_caches ];
  */
 #define RH_CACHE_BODY_PACK_SZ(hname_len)	((hname_len) + sizeof(time_t)+\
 							MAX_IP_SZ)
-int_info rh_cache_pkt_body_iinfo = { 2,
+INT_INFO rh_cache_pkt_body_iinfo = { 2,
 				    { INT_TYPE_32BIT, INT_TYPE_32BIT },
 				    { IINFO_DYNAMIC_VALUE, IINFO_DYNAMIC_VALUE },
 				    { 1, MAX_IP_INT }
@@ -282,7 +309,7 @@ int_info rh_cache_pkt_body_iinfo = { 2,
  * * * Functions' declaration * * *
  */
 
-void andna_caches_init(void);
+void andna_caches_init(int family);
 
 void lcl_new_keyring(lcl_cache_keyring *keyring);
 lcl_cache *lcl_cache_new(char *hname);

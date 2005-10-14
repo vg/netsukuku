@@ -343,7 +343,7 @@
 
   src_node: Source node. It is the node who send a packet to the dst_node.
   dst_node: Destination node. It is the node which receives the packet from
-	    the dst_node.
+	    the src_node.
   
   r_node: Remote node, given a node X, it is any other node directly linked to
 	  X.
