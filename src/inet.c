@@ -69,10 +69,9 @@ void inet_htonl(u_int *data, int family)
 }
 
 /*
- * inet_setip: fills the `ip' inet_prefix struct with `data' and `family'.
- * Note that it does a network to host order conversion on `data'.
+ * inet_setip_raw: fills the `ip' inet_prefix struct with `data' and `family'.
  */
-int inet_setip(inet_prefix *ip, u_int *data, int family)
+int inet_setip_raw(inet_prefix *ip, u_int *data, int family)
 {
 	ip->family=family;
 	memset(ip->data, '\0', sizeof(ip->data));
@@ -86,8 +85,20 @@ int inet_setip(inet_prefix *ip, u_int *data, int family)
 	} else 
 		return -1;
 
-	inet_ntohl(ip->data, ip->family);
 	ip->bits=ip->len*8;
+	
+	return 0;
+}
+
+
+/*
+ * inet_setip: fills the `ip' inet_prefix struct with `data' and `family'.
+ * Note that it does a network to host order conversion on `data'.
+ */
+int inet_setip(inet_prefix *ip, u_int *data, int family)
+{
+	inet_setip_raw(ip, data, family);
+	inet_ntohl(ip->data, ip->family);
 	return 0;
 }
 

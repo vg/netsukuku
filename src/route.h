@@ -19,20 +19,32 @@
 #ifndef ROUTE_H
 #define ROUTE_H
 
+#define MAX_MULTIPATH_ROUTES		24	/* The maximum number of 
+						   nexthops used to create a 
+						   single multipath route. */
 
-#define MAX_ROUTE_TABLES	253
-
-/*The default number of levels that will be kept in the kernel route table*/
-#define DEFAULT_ROUTE_LEVELS	3
-
+/* 
+ * get_gw_gnode_recurse() uses this array to decide the number of forks per
+ * level. The number of forks for the level `x' is located at
+ * sub_gw_links[GET_LEVELS(my_family) - x - 1].  
+ * `x' must be < GET_LEVELS(my_family).
+ * For example, at level 3, in ipv4, it will fork in 4 gateway gnodes, then,
+ * descending in each gw gnodes (in the lower level) it will fork in other 3
+ * gw gnodes. Continuing it will reach the level 1, and there it will choose 2
+ * gw gnodes for each forked gw gnode of the higher level. The total number of
+ * gateways choosen will be MAX_MULTIPATH_ROUTES, which is 4*3*2.
+ * For the ipv6 it's the same thing, but from the level 11 there will be no
+ * more forks.
+ */
+const static int sub_gw_links[MAX_LEVELS] = { 4, 3, 2, 1, 1, 1, 1, 1, 
+					  1, 1, 1, 1, 1, 1, 1, 1 };
 
 /* * * Functions declaration * * */
-void *get_gw_gnode(map_node *, map_gnode **, map_bnode **, 
-		u_int *, map_gnode *, u_char, u_char);
-int get_gw_ip(map_node *int_map, map_gnode **ext_map,
-		map_bnode **bnode_map, u_int *bmap_nodes, 
-		quadro_group *cur_quadg, map_gnode *find_gnode, 
-		u_char gnode_level, u_char gw_level, inet_prefix *gw_ip);
+void **get_gw_gnode(map_node *, map_gnode **, map_bnode **, 
+		u_int *, map_gnode *, u_char, u_char, int);
+int get_gw_ips(map_node *, map_gnode **, map_bnode **, u_int *, 
+		quadro_group *, map_gnode *, u_char, u_char, 
+		inet_prefix *, int);
 void krnl_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg, 
 		      void *void_gw, u_char level);
 void rt_rnodes_update(int check_update_flag);

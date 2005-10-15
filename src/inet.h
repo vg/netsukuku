@@ -90,6 +90,7 @@ INT_INFO inet_prefix_iinfo = { 1,
 /* * * Functions declaration * * */
 void inet_ntohl(u_int *data, int family);
 void inet_htonl(u_int *data, int family);
+int inet_setip_raw(inet_prefix *ip, u_int *data, int family);
 int inet_setip(inet_prefix *ip, u_int *data, int family);
 int inet_setip_bcast(inet_prefix *ip, int family);
 int inet_setip_anyaddr(inet_prefix *ip, int family);

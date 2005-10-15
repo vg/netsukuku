@@ -138,6 +138,10 @@ int count_hooking_nodes(void)
 }
 
 
+/*
+ * final_radar_queue: analyses the received ECHO_REPLY pkt and write the
+ * average rtt of each found node in the radar_queue.
+ */
 void final_radar_queue(void)
 {	
 	struct radar_queue *rq;
@@ -152,6 +156,7 @@ void final_radar_queue(void)
 		if(!rq->node)
 			continue;
 
+		/* Sum the rtt of all the received pongs */
 		for(e=0; e < rq->pongs; e++)
 			timeradd(&rq->rtt[e], &sum, &sum);
 		

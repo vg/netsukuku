@@ -1,5 +1,9 @@
 0.0.4b
 
+- The multipath support has been enabled for the external map, this means that
+  more than one route will be used to reach a gnode. In other words the load
+  balacing has been fully enabled.
+
 - Endianness fixes: now the packets can be sent between two machines with
   different endianness.
   

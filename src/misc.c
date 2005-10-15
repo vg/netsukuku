@@ -14,6 +14,9 @@
  * You should have received a copy of the GNU Public License along with
  * this source code; if not, write to:
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * --
+ * misc.c: some useful functions.
  */
 
 #include "includes.h"
@@ -244,6 +247,21 @@ void strip_char(char *string, char char_to_strip)
 	}
 }
 
+/*
+ * If `x' is present in the `ia' array, which has `nmemb' members, it returns
+ * 1, otherwise 0.
+ */
+int find_int(int x, int *ia, int nmemb)
+{
+	int e;
+	
+	for(e=0; e<nmemb; e++)
+		if(ia[e] == x)
+			return 1;
+
+	return 0;
+}
+
 /* Is the buffer `a' filled with `sz'# of zeros?
  * If yes return 0. */
 int is_bufzero(char *a, int sz)
@@ -254,7 +272,6 @@ int is_bufzero(char *a, int sz)
 			return 1;
 	return 0;
 }
-
 
 /* This is the most important function */
 void do_nothing(void)

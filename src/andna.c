@@ -294,9 +294,9 @@ int find_hash_gnode_recurse(quadro_group qg, int level, inet_prefix *to,
 	/* the maximum steps required to complete the for. */
 	steps = qg.gid[level] >= MAXGROUPNODE/2 ? qg.gid[level] : MAXGROUPNODE-qg.gid[level];
 
-	for(i=0, e=1, gid=qg.gid[level]; i < steps; e&1 ? i++ : i, e++) {
+	for(i=0, e=1, gid=qg.gid[level]; i < steps; e&1 ? i++ : i, e=(~(e & 1)) & 1) {
 		/* `i' is incremented only when `e' is odd, while `e'
-		 * is always incremented in each cycle. */
+		 * is always alternated between 0 and 1. */
 
 		if(!(e & 1) && (qg.gid[level]+i < MAXGROUPNODE))
 			gid=qg.gid[level]+i;
@@ -331,9 +331,9 @@ int find_hash_gnode_recurse(quadro_group qg, int level, inet_prefix *to,
 							tot_excluded_hgnodes, level))
 					continue; /* Yes, it is */
 				
-				err=get_gw_ip(me.int_map, me.ext_map, me.bnode_map,
+				err=get_gw_ips(me.int_map, me.ext_map, me.bnode_map,
 						me.bmap_nodes, &me.cur_quadg,
-						gnode, level, 0, to);
+						gnode, level, 0, to, 1);
 				debug(DBG_NOISE, "find_hashgnode: ext_found, err %d, to %s!",
 						err, inet_to_str(*to));
 
