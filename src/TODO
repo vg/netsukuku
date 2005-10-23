@@ -1,8 +1,6 @@
 		[HIGH PRIORITY] 
 
 - Strange anomalies added in the CVS version to verify: 
-	- ANDNA not always working: it doesn't find the counter
-	  node.
 	- QSPN: sometimes it gives: "connection refused".
 
 - DNS wrapper: ip -> hostnames
@@ -10,6 +8,9 @@
 - The QSPN has to remove the died nodes after QSPN_WAIT*2 seconds.
 
 - multi network interface support
+	- radar.c: 674
+
+- root id check in "scons install"
 
 
 		[MEDIUM PRIORITY] 

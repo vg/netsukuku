@@ -16,6 +16,9 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#ifndef KRNL_ROUTE_H
+#define KRNL_ROUTE_H
+
 #define RTPROT_NETSUKUKU     15
 
 struct nexthop 
@@ -41,3 +44,5 @@ int route_replace(ROUTE_CMD_VARS);
 int route_change(ROUTE_CMD_VARS);
 int route_flush_cache(int family);
 int route_ip_forward(int family, int enable);
+
+#endif /*KRNL_ROUTE_H*/

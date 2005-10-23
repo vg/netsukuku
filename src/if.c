@@ -47,6 +47,38 @@ static struct
         struct rtnl_handle *rth;
 } filter;
 
+/*
+ * ifs_idx_to_devname: returns the pointer to the interface struct of the 
+ * device which has the index equal to `dev_idx'.
+ * `ifs' is the array which keeps the interface list and has `ifs_n' elements.
+ */
+interface *ifs_find_idx(interface *ifs, int ifs_n, int dev_idx)
+{
+	int i;
+
+	for(i=0; i<ifs_n; i++)
+		if(ifs[i].dev_idx == dev_idx)
+			return &ifs[i];
+
+	return 0;
+}
+
+/*
+ * ifs_get_pos: this is a stupid functions which returns the position of the
+ * struct in the `ifs' array which has the dev_idx element equal to
+ * `dev'->dev_idx. The `ifs' array has `ifs_n' members.
+ * If it is not found -1 is returned.
+ */
+int ifs_get_pos(interface *ifs, int ifs_n, interface *dev)
+{
+	int i;
+
+	for(i=0; i<ifs_n; i++)
+		if(ifs[i].dev_idx == dev->dev_idx)
+			return i;
+
+	return -1;
+}
 
 /* 
  * get_dev: It returs the first dev it finds up and sets `*dev_ids' to the
@@ -66,22 +98,30 @@ const char *get_dev(int *dev_idx)
 	return ll_index_to_name(idx);
 }
 
-int set_dev_up(char *dev)
+/*
+ * get_all_ifs: It fills the `ifs' array with all the network interfaces it
+ * finds up. The `ifs' array has `ifs_n'# members.
+ * It returns the number of filled interfaces.
+ */
+int get_all_up_ifs(interface *ifs, int ifs_n)
 {
-	u_int mask=0, flags=0;
-	
-	mask |= IFF_UP;
-	flags |= IFF_UP;
-	return set_flags(dev, flags, mask);
-}
+	int i, idx, n;
 
-int set_dev_down(char *dev)
-{
-	u_int mask=0, flags=0;
+	for(i=0, n=0; i<ifs_n; i++) {
+		idx=ll_nth_up_if(n+1);
+		if(idx <= 0)
+			continue;
+		
+		ifs[n].dev_idx=idx;
+	        strncpy(ifs[n].dev_name, ll_index_to_name(idx), IFNAMSIZ);
+		loginfo("Network interface \"%s\" detected", ifs[n].dev_name);
+		n++;
+
+		if((idx-1) > i)
+			i=idx;
+	}
 	
-	mask |= IFF_UP;
-	flags &= ~IFF_UP;
-	return set_flags(dev, flags, mask);
+	return n;
 }
 
 int set_flags(char *dev, u_int flags, u_int mask)
@@ -112,36 +152,97 @@ int set_flags(char *dev, u_int flags, u_int mask)
 	return 0;
 }
 
+int set_dev_up(char *dev)
+{
+	u_int mask=0, flags=0;
+	
+	mask |= IFF_UP;
+	flags |= IFF_UP;
+	return set_flags(dev, flags, mask);
+}
+
+int set_dev_down(char *dev)
+{
+	u_int mask=0, flags=0;
+	
+	mask |= IFF_UP;
+	flags &= ~IFF_UP;
+	return set_flags(dev, flags, mask);
+}
+
 /*
- * if_init: It initializes the if to be used by Netsukuku.
- * It sets `*dev_idx' to the relative idx of `dev' and returns the device name.
- * If an error occured it returns NULL.*/
-const char *if_init(char *dev, int *dev_idx)
+ * set_all_ifs: for all the `ifs_n' interfaces present in the `ifs' array, it
+ * calls the `set_func' functions, passing as argument ifs[i].dev_name.
+ * (All the above set_* functions can be used as `set_func').
+ * It returns the sum of all each return code, of set_func, therefore if it
+ * returns a negative value, some `set_func' gave an error.
+ */
+int set_all_ifs(interface *ifs, int ifs_n, int (*set_func)(char *dev))
+{
+	int i, ret=0;
+
+	for(i=0; i<ifs_n; i++)
+		ret+=set_func(ifs[i].dev_name);
+
+	return ret;
+}
+
+/*
+ * if_init_all: it initializes all the `ifs_n'# interfaces present in the
+ * `ifs' array. If `ifs_n' is zero it gets all the current up interfaces and
+ * stores them in `new_ifs', updating the `new_ifs_n' counter too. Then it
+ * initializes them.
+ * In the `new_ifs' array, which must be at least big as the `ids' array, it
+ * stores all the initialized interfaces, updating the `new_ifs_n' counter.
+ * On error -1 is returned.
+ */
+int if_init_all(char ifs_name[MAX_INTERFACES][IFNAMSIZ], int ifs_n, 
+		interface *new_ifs, int *new_ifs_n)
 {
 	struct rtnl_handle rth;
-	int idx;
+	int ret=0, i, n;
 
 	if (rtnl_open(&rth, 0) < 0) {
 		error("Cannot open the rtnetlink socket to talk to the kernel's "
 				"soul");
-		return NULL;
+		return -1;
 	}
 	ll_init_map(&rth);
 
-	if(dev[0] != 0) {
-		if ((*dev_idx = idx = ll_name_to_index(dev)) == 0) {
-			error("if_init: Cannot find device \"%s\"\n", dev);
-			return NULL;
+	if(!ifs_n) {
+		ret=get_all_up_ifs(new_ifs, MAX_INTERFACES);
+
+		if(!ret)
+			return -1;
+
+		*new_ifs_n=ret;
+	} else {
+		for(i=0, n=0; i<ifs_n; i++) {
+			
+			new_ifs[n].dev_idx=ll_name_to_index(ifs_name[n]);
+			if(!new_ifs[n].dev_idx) {
+				error("Cannot initialize the %s interface. "
+						"Ignoring it", ifs_name[n]);
+				continue;
+			}
+
+			strncpy(new_ifs[n].dev_name, ifs_name[n], IFNAMSIZ);
+			new_ifs[n].dev_sk=0;
+
+			n++;
 		}
-	} else 
-		if(!(dev=(char *)get_dev(dev_idx)))
-				return NULL;
-	
-	if(set_dev_up(dev))
-		return NULL;	
-	
-	return (const char *)dev;
-}	
+		
+		if(!n)
+			return -1;
+			
+		*new_ifs_n=n;
+	}
+
+	if(set_all_ifs(new_ifs, *new_ifs_n, set_dev_up) < 0)
+		return -1;
+
+	return ret;
+}
 
 /*
  * set_dev_ip: Assign the given `ip' to the interface named `dev'
@@ -192,6 +293,21 @@ int set_dev_ip(inet_prefix ip, char *dev)
 
 	close(s);
 	return 0;
+}
+
+/* 
+ * set_all_dev_ip: it sets the given `ip' to all the `ifs_n'# interfaces
+ * present in the `ifs' array.
+ * On error -1 is returned.
+ */
+int set_all_dev_ip(inet_prefix ip, interface *ifs, int ifs_n)
+{
+	int i, ret=0;
+	
+	for(i=0; i<ifs_n; i++)
+		ret+=set_dev_ip(ip, ifs[i].dev_name);
+
+	return ret;
 }
 
 /*
@@ -366,4 +482,14 @@ int ip_addr_flush(int family, char *dev, int scope)
 		if (flush_update() < 0)
 			return -1;
 	}
+}
+
+int ip_addr_flush_all_ifs(interface *ifs, int ifs_n, int family, int scope)
+{
+	int i, ret=0;
+	
+	for(i=0; i<ifs_n; i++)
+		ret+=ip_addr_flush(family, ifs[i].dev_name, scope);
+
+	return ret;
 }

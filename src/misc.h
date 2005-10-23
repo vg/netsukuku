@@ -18,6 +18,9 @@
  * misc.c: Miscellaneous functions, nothing else.
  */
 
+#ifndef MISC_H
+#define MISC_H
+
 #define MILLISEC(x)	(((x).tv_sec*1000)+((x).tv_usec/1000))
 
 #define FNV_32_PRIME ((u_long)0x01000193)
@@ -42,3 +45,5 @@ char *last_token(char *string, char tok);
 int find_int(int x, int *ia, int nmemb);
 int is_bufzero(char *a, int sz);
 void do_nothing(void);
+
+#endif /*MISC_H*/

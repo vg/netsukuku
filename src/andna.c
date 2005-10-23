@@ -333,7 +333,7 @@ int find_hash_gnode_recurse(quadro_group qg, int level, inet_prefix *to,
 				
 				err=get_gw_ips(me.int_map, me.ext_map, me.bnode_map,
 						me.bmap_nodes, &me.cur_quadg,
-						gnode, level, 0, to, 1);
+						gnode, level, 0, to, 0, 1);
 				debug(DBG_NOISE, "find_hashgnode: ext_found, err %d, to %s!",
 						err, inet_to_str(*to));
 
@@ -787,7 +787,7 @@ int andna_recv_check_counter(PACKET rpkt)
 	counter_c_hashes *cch;
 	const u_char *pk;
 	char *ntop=0, *rfrom_ntop=0, *buf;
-	u_char forwarded_pkt;
+	u_char forwarded_pkt=0;
 	int ret=0, err;
 	u_int pubk_hash[MAX_IP_INT], hash_gnode[MAX_IP_INT], *excluded_hgnode[1];
 

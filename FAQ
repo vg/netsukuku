@@ -29,19 +29,17 @@ A: The Netsukuku protocol (Npv7) structures the entire net as a fractal and,
    in order to calculate all the needed routes which are necessary to connect a
    node to all the other nodes, it makes use of a particular algorithm called
    Quantum Shortest Path Netsukuku (QSPN).
-   A fractal is a mathematical structure which can be compressed up to the
-   infinite, because inside it, every part itself is composed by the same
-   fractal. Thus there is a high compression of a structure which can be
-   infinitely expanded. This means that we need just a few Kb to keep the whole
-   Netsukuku map. (For the in depth description of the map system in Netsukuku
-   read the "5.3  The truly Gnode^n for n<=INFINITE"  section in the document.
+   Here a fractal is meant as a highly clusterized graph of nodes.
+   (For the in depth description of the map system in Netsukuku read the 
+   "5.3  The truly Gnode^n for n<=INFINITE"  section in the document.)
 
    On the other hand, the QSPN is a meta-algorithm in the sense that it
-   doesn't follow any predefined mathematical instructions but exploits the
-   chance and the chaos, which both don't need any computation. In other words,
-   also a simple calculator can work using the QSPN to be connected to
-   Netsukuku. (read the "5.1   QSPN: Quantum Shortest Path Netsukuku" section
-   in the document).
+   has to run on a real (or simulated) network. The nodes have to send the
+   QSPN pkt in order to "execute" it. For this reason it is not always true
+   that a determinate pkt will be sent before another one.
+   This system allows to get the best routes without any computation. 
+   (read the "5.1   QSPN: Quantum Shortest Path Netsukuku" section in the
+   document).
 
 Q: Does it scale in a network with A LOT of nodes?
 A: Simple and not accurate reasons for the scalability of Netsukuku (until there
@@ -54,6 +52,9 @@ A: Simple and not accurate reasons for the scalability of Netsukuku (until there
       calculating anything.
    5) A flood is synchronized: the same flood starts at the same time for all
       the nodes.
+
+   A first draft of the explanation of the Netsukuku scalability is available
+   here: http://lab.dyne.org/Netsukuku_scalability
 
 Q: Why another p2p network?
 A: Netsukuku is not a p2p net built upon the Internet. It is a physical

@@ -1,5 +1,9 @@
 0.0.4b
 
+- The multi-interface support was added, now it is possible to use multiple
+  network interfaces without the need of the bridge, just specify each
+  interface you want to use with the -i option. (man netsukuku_d).
+
 - The multipath support has been enabled for the external map, this means that
   more than one route will be used to reach a gnode. In other words the load
   balacing has been fully enabled.
@@ -13,7 +17,8 @@
   uses single bits instead of single bytes, this means that the list is now of
   32 bytes instead of 256.
 
-- The bug in the load_rh_cache code is now fixed.
+- The bug in the load_rh_cache code is now fixed. (It caused crashes when the
+  daemon was closed)
   
 - The installation path of the man page is now fixed.
 

@@ -154,8 +154,8 @@ INT_INFO ext_map_hdr_iinfo = { 3,
 #define EXT_MAP_BLOCK_SZ(ext_map_sz, rblock_sz) (sizeof(struct ext_map_hdr)+(ext_map_sz)+(rblock_sz))
 
 /* 
- * The root_node at level 0 who has a rnode, who isn't of the same gnode, uses 
- * this external_rnode_struct to refer to that particular rnode.
+ * This struct is used by the root_node to describe all the rnodes which
+ * doesn't belongs to its same gnode.
  */
 typedef struct {
 	map_node	node;
@@ -171,7 +171,8 @@ struct ext_rnode_cache {
 	struct ext_rnode_cache *prev;
 
 	ext_rnode	*e;		/*The pointer to the ext_rnode struct*/
-	int		rnode_pos;	/*The ext_rnode position in the root_node's rnodes*/
+	int		rnode_pos;	/*The ext_rnode position in the 
+					  array of rnodes of the root_node */
 };
 typedef struct ext_rnode_cache ext_rnode_cache;
 
@@ -203,6 +204,7 @@ ext_rnode_cache *e_rnode_init(u_int *counter);
 void e_rnode_free(ext_rnode_cache **erc, u_int *counter);
 ext_rnode_cache *e_rnode_find(ext_rnode_cache *erc, quadro_group *qg, int level);
 void erc_update_rnodepos(ext_rnode_cache *erc, map_node *root_node, int old_rnode_pos);
+void erc_reorder_rnodepos(ext_rnode_cache **erc, u_int *erc_counter, map_node *root_node);
 ext_rnode_cache *erc_find_gnode(ext_rnode_cache *erc, map_gnode *gnode, u_char level);
 
 map_gnode *init_gmap(int groups);

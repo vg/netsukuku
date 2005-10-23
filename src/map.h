@@ -31,10 +31,10 @@
 #else
 	#define MAXGROUPNODE		20
 	#define MAXROUTES	 	5
+	#define MAXRTT			10		/*Max node <--> node rtt (in sec)*/
 #endif /*QSPN_EMPIRIC*/
 
 #define MAXLINKS		MAXROUTES
-#define MAXRTT			10		/*Max node <--> node rtt (in sec)*/
 
 /*** flags ***/
 #define MAP_ME		1		/*The root_node, in other words, me ;)*/

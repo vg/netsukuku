@@ -18,6 +18,9 @@
  * 128bit-gmp.c: I made this to handle the HUGE ipv6 numbers
  */
 
+#ifndef IPV6_GMP_H
+#define IPV6_GMP_H
+
 #define ZERO128		{0,0,0,0}
 
 /* * * Defines used for mpz_import/export * * */
@@ -38,3 +41,5 @@ int div_int(unsigned int *, unsigned int);
 int div_mpz(unsigned int *, mpz_t);
 int htonl_128(unsigned int *, unsigned int *);
 int ntohl_128(unsigned int *, unsigned int *);
+
+#endif /*IPV6_GMP_H*/

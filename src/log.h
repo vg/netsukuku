@@ -16,6 +16,14 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#ifndef LOG_H
+#define LOG_H
+
+/*
+ * Use ERROR_MSG and ERROR_POS in this way:
+ * 	printf(ERROR_MSG "damn! damn! damn!", ERROR_POS);
+ */
+#define ERROR_MSG  "%s:%d:"
 #define ERROR_POS  __FILE__, __LINE__
 
 /*Debug levels*/
@@ -40,3 +48,5 @@ void loginfo(const char *, ...);
 void debug(int lvl, const char *, ...);
 
 void print_log(int level, const char *fmt, va_list args);
+
+#endif /*LOG_H*/

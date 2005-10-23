@@ -16,6 +16,11 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#ifndef DAEMON_H
+#define DAEMON_H
+
+#define MAX_LISTENING_SOCKETS		MAX_INTERFACES
+
 /* These mutexes are used to wait the complete start up of the daemons when
  * launched. */
 pthread_mutex_t udp_daemon_lock;
@@ -39,7 +44,9 @@ struct udp_daemon_argv {
 	u_char		flags;
 };
 
-int prepare_listen_socket(int family, int socktype, u_short port);
+int prepare_listen_socket(int family, int socktype, u_short port, interface *dev);
 void *tcp_recv_loop(void *recv_pkt);
 void *tcp_daemon(void *null);
 void *udp_daemon(void *door);
+
+#endif /*DAEMON_H*/

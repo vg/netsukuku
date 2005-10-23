@@ -19,7 +19,7 @@
 #ifndef NETSUKUKU_H
 #define NETSUKUKU_H
 
-#define VERSION			"NetsukukuD 0.0.3b"
+#define VERSION			"NetsukukuD 0.0.4b"
 
 struct current_globals
 {
@@ -49,11 +49,13 @@ struct current_globals
 	struct timeval	*cur_qspn_time; /*When the last qspn round was received/sent 
 					  (gettimeofday format)*/
 
-	char		cur_dev[IFNAMSIZ];
-	int		cur_dev_idx;
+	
+	interface	cur_ifs[MAX_INTERFACES];
+	int		cur_ifs_n;	/* number of interfaces present
+					   in `cur_ifs' */
 
 	time_t		uptime;		/*The time when we finished the hooking, 
-					  to get the the actual uptime just to 
+					  to get the the actual uptime just do: 
 					  time(0)-me.uptime*/
 }me;
 
@@ -65,10 +67,12 @@ struct current_globals
 #define ANDNA_TCP_PORT		277
 
 int my_family;
-u_short ntk_udp_port, ntk_udp_radar_port, ntk_tcp_port;
-u_short andna_udp_port, andna_tcp_port;
+const static u_short ntk_udp_port 	= NTK_UDP_PORT, 
+		     ntk_udp_radar_port	= NTK_UDP_RADAR_PORT,
+		     ntk_tcp_port	= NTK_TCP_PORT;
+const static u_short andna_udp_port	= ANDNA_UDP_PORT,
+		     andna_tcp_port	= ANDNA_TCP_PORT;
 
-int ll_map_initialized;
 
 #define NTK_CONFIG_FILE 	CONF_DIR"/netsukuku.conf"
 
@@ -85,10 +89,12 @@ int ll_map_initialized;
 typedef struct
 {
 	char		config_file[NAME_MAX];
-
-	char 		dev[IFNAMSIZ];
+	
 	int 		family;
 
+	char		ifs[MAX_INTERFACES][IFNAMSIZ];
+	int		ifs_n;	/* number of interfaces present in `ifs' */
+	
 	char 		int_map_file[NAME_MAX];
 	char 		bnode_map_file[NAME_MAX];
 	char 		ext_map_file[NAME_MAX];

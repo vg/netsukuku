@@ -23,6 +23,11 @@ document.
 
 In order to join to Netsukuku you have to use B<netsukuku_d>, which is the
 daemon implenting the Npv7 protocol.
+The daemon at startup takes the list of all the network interfaces which are
+currently UP and it uses all of them to send and receive packets. If you want
+to force the daemon to use specific interfaces you should use the B<-i>
+option.
+
 
 For more information about Netsukuku visit:
 L<http://netsukuku.freaknet.org>
@@ -51,7 +56,8 @@ experimental.
 =item B<-i> I<interface>, B<--iface> I<interface> 
 
 Specifies the network interface the daemon will use to join Netsukuku, i.e.
-wlan0.
+wlan0. You can use more than one interface by specifying multiple times the
+B<-i> option. For example: B<netsukuku_d> -i wlan0 -i eth0 -i wifi1 -i eth1
 
 =back
 
@@ -125,6 +131,10 @@ Usually you'll just want to use B<netsukuku_d> with a wifi device:
 netsukuku_wifi wlan0
 
 netsukuku_d -i wlan0
+
+If you one to use more than one network interface:
+
+netsukuku_d -i eth0 -i wlan0 -i wifi1 -i eth2
 
 =head1 SIGNALS
 

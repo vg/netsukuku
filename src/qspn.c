@@ -175,6 +175,40 @@ int qspn_b_find_reply(struct qspn_buffer *qb, int sub_id)
 	return -1;
 }
 
+/*
+ * qspn_b_del_dead_rnodes: deletes all the `qspn_buffer' structs present in
+ * the `*qb' llist which point to a rnode which doesn't exist anymore
+ * The number of structs removed is returned.
+ */
+int qspn_b_del_dead_rnodes(struct qspn_buffer **qb, map_node *root_node)
+{
+	struct qspn_buffer *q=*qb, *next;
+	int i;
+
+	list_safe_for(q, next)
+		if(rnode_find(root_node, q->rnode) < 0) {
+			*qb=list_del(*qb, q);
+			i++;
+		}
+
+	return i;
+}
+
+/*
+ * qspn_b_del_all_dead_rnodes: It uses qspn_b_del_dead_rnodes() for each
+ * element of the qspn_b global array
+ */
+void qspn_b_del_all_dead_rnodes(void)
+{
+	int level, tot_levels=GET_LEVELS(my_family);
+	map_node *root_node;
+	
+	for(level=0; level<tot_levels; level++) {
+		qspn_set_map_vars(level, 0, &root_node, 0, 0);
+		qspn_b_del_dead_rnodes(&qspn_b[level], root_node);
+	}
+}
+
 /* 
  * qspn_round_left: It returns the milliseconds left before the QSPN_WAIT_ROUND
  * expires. If the round is expired it returns 0.
@@ -254,53 +288,26 @@ void update_qspn_time(u_char level, struct timeval *new_qspn_time)
 	}
 }
 
-/* 
- * qspn_new_round: It prepares all the buffers for the new qspn_round and 
- * removes the QSPN_OLD nodes from the map. The new qspn_round id is set 
- * to `new_qspn_id'. If `new_qspn_id' is zero then the id is incremented by one
- * If `new_qspn_time' is not null, the qspn_time[level] is set to the current
- * time minus `new_qspn_time'.
+/*
+ * qspn_remove_deads: It removes the dead nodes from the maps at the level
+ * `level' (if any).
  */
-void qspn_new_round(u_char level, int new_qspn_id, struct timeval *new_qspn_time)
+void qspn_remove_deads(u_char level)
 {
 	int bm, i, node_pos;
-	map_node *map, *root_node, *node;
+	map_node *map, *node;
 	map_gnode *gmap;
 	
-	qspn_set_map_vars(level, 0, &root_node, 0, &gmap);
+	qspn_set_map_vars(level, 0, 0, 0, &gmap);
 	map=me.int_map;
-
-	/* New round activated. Destroy the old one. beep. */
-	if(new_qspn_id)
-		me.cur_qspn_id[level]=new_qspn_id;
-	else
-		me.cur_qspn_id[level]++;
-
-	if(new_qspn_time)
-		update_qspn_time(level, new_qspn_time);
-	else
-		update_qspn_time(level, 0);
-	
-	qspn_b_clean(level);
-	bmap_counter_reset(BMAP_LEVELS(me.cur_quadg.levels), 
-			me.bmap_nodes_closed);
-	bmap_counter_reset(BMAP_LEVELS(me.cur_quadg.levels),
-			me.bmap_nodes_opened);
-	 
-
-	/* Clear the flags set during the previous qspn */
-	root_node->flags&=~QSPN_STARTER & ~QSPN_CLOSED & ~QSPN_OPENED;
-	for(i=0; i<root_node->links; i++) {
-		node=(map_node *)root_node->r_node[i].r_node;
-		node->flags &= ~QSPN_CLOSED & ~QSPN_OPENED & 
-			       ~QSPN_STARTER & ~QSPN_OPENER;
-	}
 
 	/*
 	 * How to remove the dead nodes from the map? How do we know which are 
 	 * deads?
-	 * Pretty simple, we can't know so we wait until the next qspn_round to
-	 * break them if they didn't show in the while. 
+	 * Pretty simple, we can't know so we mark all the nodes with the
+	 * QSPN_OLD flag and we wait until the next qspn_round. 
+	 * The nodes which still have the QSPN_OLD flag weren't updated during 
+	 * the previous qspn_round, thus they are dead.
 	 */
 	for(i=0; i<MAXGROUPNODE; i++) {
 		node_pos=i;
@@ -316,6 +323,8 @@ void qspn_new_round(u_char level, int new_qspn_id, struct timeval *new_qspn_time
 			continue;
 
 		if((node->flags & QSPN_OLD)) {
+			/* The node wasn't updated in the previous QSPN.
+			 * Remove it from the maps */
 			
 			if((node->flags & MAP_BNODE) && level < me.cur_quadg.levels-1) {
 				/* 
@@ -343,8 +352,55 @@ void qspn_new_round(u_char level, int new_qspn_id, struct timeval *new_qspn_time
 			me.cur_quadg.gnode[_EL(level+1)]->seeds--;
 			me.cur_quadg.gnode[_EL(level+1)]->flags&=~GMAP_FULL;
 		} else
+			/* We are going to start a new QSPN, but first mark
+			 * this node as OLD, in this way we will be able to
+			 * see if it was updated during the new QSPN. */
 			node->flags|=QSPN_OLD;
 	}
+}
+
+/* 
+ * qspn_new_round: It prepares all the buffers for the new qspn_round and 
+ * removes the QSPN_OLD nodes from the map. The new qspn_round id is set 
+ * to `new_qspn_id'. If `new_qspn_id' is zero then the id is incremented by one
+ * If `new_qspn_time' is not null, the qspn_time[level] is set to the current
+ * time minus `new_qspn_time'.
+ */
+void qspn_new_round(u_char level, int new_qspn_id, struct timeval *new_qspn_time)
+{
+	int i;
+	map_node *root_node, *node;
+	
+	qspn_set_map_vars(level, 0, &root_node, 0, 0);
+
+	/* New round activated. Destroy the old one. beep. */
+	if(new_qspn_id)
+		me.cur_qspn_id[level]=new_qspn_id;
+	else
+		me.cur_qspn_id[level]++;
+
+	if(new_qspn_time)
+		update_qspn_time(level, new_qspn_time);
+	else
+		update_qspn_time(level, 0);
+	
+	qspn_b_clean(level);
+	bmap_counter_reset(BMAP_LEVELS(me.cur_quadg.levels), 
+			me.bmap_nodes_closed);
+	bmap_counter_reset(BMAP_LEVELS(me.cur_quadg.levels),
+			me.bmap_nodes_opened);
+	 
+
+	/* Clear the flags set during the previous qspn */
+	root_node->flags&=~QSPN_STARTER & ~QSPN_CLOSED & ~QSPN_OPENED;
+	for(i=0; i<root_node->links; i++) {
+		node=(map_node *)root_node->r_node[i].r_node;
+		node->flags &= ~QSPN_CLOSED & ~QSPN_OPENED & 
+			       ~QSPN_STARTER & ~QSPN_OPENER;
+	}
+
+	/* remove the dead nodes */
+	qspn_remove_deads(level);
 }
 
 /* * *  Exclude functions. (see pkts.h)  * * */

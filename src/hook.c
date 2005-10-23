@@ -60,7 +60,8 @@ int free_the_tmp_cur_node;
  * members that go from `free_nodes[0]' to `free_nodes[fn_hdr.nodes]' will be
  * filled with the gids of the received free nodes.
  */
-int get_free_nodes(inet_prefix to, struct free_nodes_hdr *fn_hdr, u_char *nodes)
+int get_free_nodes(inet_prefix to, interface *dev, 
+		struct free_nodes_hdr *fn_hdr, u_char *nodes)
 {
 	PACKET pkt, rpkt;
 	ssize_t err;
@@ -74,6 +75,7 @@ int get_free_nodes(inet_prefix to, struct free_nodes_hdr *fn_hdr, u_char *nodes)
 	ntop=inet_to_str(to);
 	
 	pkt_addto(&pkt, &to);
+	pkt_add_dev(&pkt, dev, 1);
 	
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_FREE_NODES), ntop);
 	err=send_rq(&pkt, 0, GET_FREE_NODES, 0, PUT_FREE_NODES, 1, &rpkt);
@@ -133,6 +135,7 @@ int put_free_nodes(PACKET rq_pkt)
 	pkt_addport(&pkt, ntk_tcp_port);
 	pkt_addflags(&pkt, 0);
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
+	pkt_add_dev(&pkt, rq_pkt.dev, 1);
 
 	/* We search in each level a gnode which is not full. */
 	for(level=1, e=0; level < me.cur_quadg.levels; level++) {
@@ -208,8 +211,8 @@ finish:
  * get_qspn_round: It send the GET_QSPN_ROUND request, used to retrieve the 
  * qspn ids and and qspn times. (see hook.h).
  */
-int get_qspn_round(inet_prefix to, struct timeval to_rtt, struct timeval *qtime,
-		int *qspn_id)
+int get_qspn_round(inet_prefix to, interface *dev, struct timeval to_rtt, 
+		struct timeval *qtime, int *qspn_id)
 {
 	PACKET pkt, rpkt;
 	struct timeval cur_t;
@@ -229,6 +232,7 @@ int get_qspn_round(inet_prefix to, struct timeval to_rtt, struct timeval *qtime,
 	pkt_addto(&pkt, &to);
 	
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_QSPN_ROUND), ntop);
+	pkt_add_dev(&pkt, dev, 1);
 	err=send_rq(&pkt, 0, GET_QSPN_ROUND, 0, PUT_QSPN_ROUND, 1, &rpkt);
 	if(err==-1)
 		ERROR_FINISH(ret, -1, finish);
@@ -274,7 +278,7 @@ finish:
  */
 int put_qspn_round(PACKET rq_pkt)
 {	
-	struct qr_pkt {
+	struct qspn_round_pkt {
 		u_char		max_levels;
 		int 		qspn_id[me.cur_quadg.levels];
 		struct timeval  qtime[me.cur_quadg.levels];
@@ -296,6 +300,7 @@ int put_qspn_round(PACKET rq_pkt)
 	pkt_addport(&pkt, ntk_udp_port);
 	pkt_addflags(&pkt, 0);
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
+	pkt_add_dev(&pkt, rq_pkt.dev, 1);
 
 	/* We fill the qspn_id and the qspn round time */
 	qr_pkt.max_levels=me.cur_quadg.levels;
@@ -311,7 +316,7 @@ int put_qspn_round(PACKET rq_pkt)
 	}
 
 	/* Go pkt, go! Follow your instinct */
-	pkt_sz=sizeof(struct qr_pkt);
+	pkt_sz=sizeof(qr_pkt);
 	pkt_fill_hdr(&pkt.hdr, HOOK_PKT, rq_pkt.hdr.id, PUT_QSPN_ROUND, pkt_sz);
 	pkt.msg=xmalloc(pkt_sz);
 	memset(pkt.msg, 0, pkt_sz);
@@ -323,7 +328,7 @@ int put_qspn_round(PACKET rq_pkt)
 	qr_pkt_iinfo.int_nmemb[1]  = me.cur_quadg.levels*2;
 	ints_host_to_network(&qr_pkt, qr_pkt_iinfo);
 	
-	memcpy(pkt.msg, &qr_pkt, sizeof(struct qr_pkt));
+	memcpy(pkt.msg, &qr_pkt, sizeof(qr_pkt));
 	err=pkt_send(&pkt);
 	
 	if(err==-1) {
@@ -353,6 +358,7 @@ int put_ext_map(PACKET rq_pkt)
 	memset(&pkt, '\0', sizeof(PACKET));
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
+	pkt_add_dev(&pkt, rq_pkt.dev, 1);
 
 	pkt.msg=pack_extmap(me.ext_map, MAXGROUPNODE, &me.cur_quadg, &pkt_sz);
 	pkt.hdr.sz=pkt_sz;
@@ -372,7 +378,7 @@ finish:
  * get_ext_map: It sends the GET_EXT_MAP request to retrieve the
  * dst_node's ext_map.
  */
-map_gnode **get_ext_map(inet_prefix to, quadro_group *new_quadg)
+map_gnode **get_ext_map(inet_prefix to, interface *dev, quadro_group *new_quadg)
 {
 	PACKET pkt, rpkt;
 	const char *ntop;
@@ -386,6 +392,7 @@ map_gnode **get_ext_map(inet_prefix to, quadro_group *new_quadg)
 	ntop=inet_to_str(to);
 	
 	pkt_addto(&pkt, &to);
+	pkt_add_dev(&pkt, dev, 1);
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_EXT_MAP), ntop);
 	
 	err=send_rq(&pkt, 0, GET_EXT_MAP, 0, PUT_EXT_MAP, 1, &rpkt);
@@ -423,6 +430,7 @@ int put_int_map(PACKET rq_pkt)
 	memset(&pkt, '\0', sizeof(PACKET));
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
+	pkt_add_dev(&pkt, rq_pkt.dev, 1);
 
 	pkt.msg=pack_map(map, 0, MAXGROUPNODE, me.cur_node, &pkt_sz);
 	pkt.hdr.sz=pkt_sz;
@@ -441,7 +449,7 @@ finish:
  * get_int_map: It sends the GET_INT_MAP request to retrieve the 
  * dst_node's int_map. 
  */
-map_node *get_int_map(inet_prefix to, map_node **new_root)
+map_node *get_int_map(inet_prefix to, interface *dev, map_node **new_root)
 {
 	PACKET pkt, rpkt;
 	map_node *int_map, *ret=0;
@@ -455,6 +463,7 @@ map_node *get_int_map(inet_prefix to, map_node **new_root)
 	ntop=inet_to_str(to);
 	
 	pkt_addto(&pkt, &to);
+	pkt_add_dev(&pkt, dev, 1);
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_INT_MAP), ntop);
 	err=send_rq(&pkt, 0, GET_INT_MAP, 0, PUT_INT_MAP, 1, &rpkt);
 	if(err==-1) {
@@ -494,6 +503,7 @@ int put_bnode_map(PACKET rq_pkt)
 	memset(&pkt, '\0', sizeof(PACKET));
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
+	pkt_add_dev(&pkt, rq_pkt.dev, 1);
 
 	pkt.msg=pack_all_bmaps(bmaps, me.bmap_nodes, me.ext_map, me.cur_quadg, &pack_sz);
 	pkt.hdr.sz=pack_sz;
@@ -514,7 +524,7 @@ finish:
  * get_bnode_map: It sends the GET_BNODE_MAP request to retrieve the 
  * dst_node's bnode_map. 
  */
-map_bnode **get_bnode_map(inet_prefix to, u_int **bmap_nodes)
+map_bnode **get_bnode_map(inet_prefix to, interface *dev, u_int **bmap_nodes)
 {
 	PACKET pkt, rpkt;
 	int err;
@@ -528,6 +538,7 @@ map_bnode **get_bnode_map(inet_prefix to, u_int **bmap_nodes)
 	ntop=inet_to_str(to);
 	
 	pkt_addto(&pkt, &to);
+	pkt_add_dev(&pkt, dev, 1);
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_BNODE_MAP), ntop);
 	err=send_rq(&pkt, 0, GET_BNODE_MAP, 0, PUT_BNODE_MAP, 1, &rpkt);
 	if(err==-1) {
@@ -550,25 +561,32 @@ finish:
 
 
 /* 
- * set_ip_and_def_gw: Set the device's ip and the default gw.
+ * set_ip_and_def_gw: Set the same `ip' to all the devices.
  */
-void set_ip_and_def_gw(char *dev, inet_prefix ip)
+void hook_set_all_ips(inet_prefix ip, interface *ifs, int ifs_n)
 {
 	const char *ntop;
 	ntop=inet_to_str(ip);
 	
-	loginfo("Setting the %s ip to %s interface", ntop, dev);
+	loginfo("Setting the %s ip to all the interfaces", ntop);
 
 	if(my_family == AF_INET) {
-		set_dev_down(dev);
-		set_dev_up(dev);
+		/* Down & Up: reset the configurations of all the interfaces */
+		set_all_ifs(ifs, ifs_n, set_dev_down);
+		set_all_ifs(ifs, ifs_n, set_dev_up);
 	} else {
-		ip_addr_flush(my_family, dev, RT_SCOPE_UNIVERSE);
-		ip_addr_flush(my_family, dev, RT_SCOPE_SITE);
+		ip_addr_flush_all_ifs(ifs, ifs_n, my_family, RT_SCOPE_UNIVERSE);
+		ip_addr_flush_all_ifs(ifs, ifs_n, my_family, RT_SCOPE_SITE);
 	}
 
-	if(set_dev_ip(ip, dev))
-		fatal("Cannot set the %s  ip to %s", ntop, dev);
+	if(set_all_dev_ip(ip, ifs, ifs_n) < 0)
+		fatal("Cannot set the %s ip to all the interfaces", ntop);
+
+#if 0
+	/* From the 0.0.4b version there is no more need to replace the
+	 * default gw because there is the support for the multi-interfaces.
+	 */
+
 	/*
 	 * We set the default gw to our ip so to avoid the subnetting shit.
 	 * Bleah, Class A, B, C, what a fuck -_^ 
@@ -579,6 +597,7 @@ void set_ip_and_def_gw(char *dev, inet_prefix ip)
 			fatal("Cannot set the default gw to %s for the %s dev", 
 					ntop, dev);
 	}
+#endif
 }
 
 /*
@@ -697,8 +716,10 @@ int hook_init(void)
 	idata[0]=htonl(idata[0]);
 
 	inet_setip(&me.cur_ip, idata, my_family);
+	iptoquadg(me.cur_ip, me.ext_map, &me.cur_quadg,	
+			QUADG_GID|QUADG_GNODE|QUADG_IPSTART);
 	
-	set_ip_and_def_gw(me.cur_dev, me.cur_ip);
+	hook_set_all_ips(me.cur_ip, me.cur_ifs, me.cur_ifs_n);
 
 	return 0;
 }
@@ -760,10 +781,10 @@ hook_restart_and_retry:
 		create_gnodes(0, GET_LEVELS(my_family));
 		ntop=inet_to_str(me.cur_ip);
 
-		set_ip_and_def_gw(me.cur_dev, me.cur_ip);
+		hook_set_all_ips(me.cur_ip, me.cur_ifs, me.cur_ifs_n);
 
-		loginfo("Now we are in a brand new gnode. The ip of %s is set "
-				"to %s", me.cur_dev, ntop);
+		loginfo("Now we are in a brand new gnode. The ip %s is now"
+				" used.", ntop);
 
 		new_gnode=1;
 		
@@ -805,12 +826,12 @@ hook_restart_and_retry:
 		if(rq->node->flags & MAP_HNODE)
 			continue;
 
-		if(!get_free_nodes(rq->ip, &fn_hdr, fnodes)) {
+		if(!get_free_nodes(rq->ip, rq->dev, &fn_hdr, fnodes)) {
 			/* Exctract the ipstart of the gnode */
 			inet_setip(&gnode_ipstart, fn_hdr.ipstart, my_family);
 			
 			/* Get the qspn round infos */
-			if(!get_qspn_round(rq->ip, rq->final_rtt,
+			if(!get_qspn_round(rq->ip, rq->dev, rq->final_rtt,
 						me.cur_qspn_time,
 						me.cur_qspn_id)) {
 
@@ -842,13 +863,13 @@ hook_restart_and_retry:
 	}
 	if(server_opt.restricted)
 		inet_setip_localaddr(&me.cur_ip, my_family);
-	set_ip_and_def_gw(me.cur_dev, me.cur_ip);
+	hook_set_all_ips(me.cur_ip, me.cur_ifs, me.cur_ifs_n);
 
 	/* 
 	 * Fetch the ext_map from the node who gave us the free nodes list. 
 	 */
 	old_ext_map=me.ext_map;
-	if(!(me.ext_map=get_ext_map(rq->ip, &me.cur_quadg))) 
+	if(!(me.ext_map=get_ext_map(rq->ip, rq->dev, &me.cur_quadg))) 
 		fatal("None of the rnodes in this area gave me the extern map");
 	else
 		free_extmap(old_ext_map, GET_LEVELS(my_family), 0);
@@ -883,7 +904,7 @@ hook_restart_and_retry:
 				/* This node isn't part of our gnode, let's skip it */
 				continue; 
 
-			if((merg_map[imaps]=get_int_map(rq->ip, &new_root))) {
+			if((merg_map[imaps]=get_int_map(rq->ip, rq->dev, &new_root))) {
 				merge_maps(me.int_map, merg_map[imaps], me.cur_node, new_root);
 				imaps++;
 			}
@@ -909,7 +930,7 @@ hook_restart_and_retry:
 			continue; 
 		old_bnode_map=me.bnode_map;	
 		old_bnodes=me.bmap_nodes;
-		me.bnode_map=get_bnode_map(rq->ip, &me.bmap_nodes);
+		me.bnode_map=get_bnode_map(rq->ip, rq->dev, &me.bmap_nodes);
 		if(me.bnode_map) {
 			bmap_levels_free(old_bnode_map, old_bnodes);
 			e=1;

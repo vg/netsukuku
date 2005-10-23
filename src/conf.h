@@ -16,6 +16,8 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#ifndef CONF_H
+#define CONF_H
 
 #define CONF_MAX_LINES		500	/* Max number of option lines */
 
@@ -64,3 +66,5 @@ const static char config_str[][30]=
 };
 
 int load_config_file(char *file);
+
+#endif /*CONF_H*/

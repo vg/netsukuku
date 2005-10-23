@@ -127,7 +127,7 @@ void dns_wrapper_daemon(u_short port)
 	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
 
 	debug(DBG_SOFT, "Preparing the dns_udp listening socket on port %d", port);
-	sk=prepare_listen_socket(my_family, SOCK_DGRAM, port);
+	sk=prepare_listen_socket(my_family, SOCK_DGRAM, port, 0);
 	if(sk == -1)
 		return;
 

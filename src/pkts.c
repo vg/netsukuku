@@ -32,16 +32,20 @@
 #include "xmalloc.h"
 #include "log.h"
 
-int cur_dev_idx;
+interface cur_ifs[MAX_INTERFACES];
+int cur_ifs_n;
 
 /*
  * Initialize the vital organs of the pkts.c's functions.
- * `dev_idx' is the current device index of the interface will be used.
+ * `ifs' is the array which keeps all the the `ifs_n'# network 
+ * interface that will be used.
  * If `pkt_queue_init' is not 0, the pkt_queue is initialized too.
  */
-void pkts_init(int dev_idx, int queue_init)
+void pkts_init(interface *ifs, int ifs_n, int queue_init)
 {
-	cur_dev_idx=dev_idx;
+	cur_ifs_n = ifs_n > MAX_INTERFACES ? ifs_n : MAX_INTERFACES;
+	memcpy(cur_ifs, ifs, sizeof(interface)*cur_ifs_n);
+	
 	pkt_q_counter=0;
 	if(queue_init)
 		pkt_queue_init();
@@ -62,6 +66,13 @@ void pkt_addto(PACKET *pkt, inet_prefix *to)
 		memset(&pkt->to, 0, sizeof(inet_prefix));
 	else
 		memcpy(&pkt->to, to, sizeof(inet_prefix));
+}
+
+void pkt_add_dev(PACKET *pkt, interface *dev, int bind_the_socket)
+{
+	pkt->dev=dev;
+	if(dev && bind_the_socket)
+		pkt->pkt_flags|=PKT_BIND_DEV;
 }
 
 void pkt_addsk(PACKET *pkt, int family, int sk, int sk_type)
@@ -272,7 +283,7 @@ ssize_t pkt_recv(PACKET *pkt)
 	return err;
 }
 
-int pkt_tcp_connect(inet_prefix *host, short port)
+int pkt_tcp_connect(inet_prefix *host, short port, interface *dev)
 {
 	int sk;
 	PACKET pkt;
@@ -282,7 +293,7 @@ int pkt_tcp_connect(inet_prefix *host, short port)
 	ntop=inet_to_str(*host);
 	memset(&pkt, '\0', sizeof(PACKET));
 	
-	if((sk=new_tcp_conn(host, port))==-1)
+	if((sk=new_tcp_conn(host, port, dev->dev_name))==-1)
 		goto finish;
 	
 	/*
@@ -342,16 +353,21 @@ void add_pkt_op(u_char op, char sk_type, u_short port, int (*exec_f)(PACKET pkt)
 
 
 /*
- * send_rq: This functions send a `rq' request, with an id set to `rq_id', to `pkt->to'. 
- * If `pkt->hdr.sz` is > 0 it includes the `pkt->msg' in the packet otherwise it will be NULL. 
+ * send_rq: This functions send a `rq' request, with an id set to `rq_id', to
+ * `pkt->to'.
+ * If `pkt->hdr.sz` is > 0 it includes the `pkt->msg' in the packet otherwise
+ * it will be NULL. 
  * If `rpkt' is not null it will receive and store the reply pkt in `rpkt'.
- * If `check_ack' is set, send_rq checks the reply pkt ACK and its id; if the test fails it 
- * gives an appropriate error message.
- * If `rpkt'  is not null send_rq confronts the OP of the received reply pkt with `re'; if the 
+ * If `check_ack' is set, send_rq checks the reply pkt ACK and its id; if the
  * test fails it gives an appropriate error message.
+ * If `rpkt'  is not null send_rq confronts the OP of the received reply pkt 
+ * with `re'; if the test fails it gives an appropriate error message.
  * If `pkt'->hdr.flags has the ASYNC_REPLY set, the `rpkt' will be received with
  * the pkt_queue, in this case, if `rpkt'->from is set to a valid ip, it will
  * be used to check the sender ip of the reply pkt.
+ * If `pkt'->dev is not null and the PKT_BIND_DEV flag is set in
+ * `pkt'->pkt_flags, it will bind the socket of the outgoing/ingoing packet to
+ * the device named `pkt'->dev->dev_name.
  * On failure -1 is returned, otherwise 0.
  */
 int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int check_ack, PACKET *rpkt)
@@ -398,6 +414,9 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 		pkt_addport(pkt, pkt_op_tbl[rq].port);
 	}
 
+	/* If the PKT_BIND_DEV flag is set we can use pkt->dev */
+	pkt->dev = (pkt->pkt_flags & PKT_BIND_DEV) ? pkt->dev : 0;
+
 	pkt_addflags(pkt, pkt_flags);
 
 	if(!pkt->sk) {
@@ -410,12 +429,15 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 		}
 		
 		if(pkt->sk_type==SKT_TCP)
-			pkt->sk=pkt_tcp_connect(&pkt->to, pkt->port);
+			pkt->sk=pkt_tcp_connect(&pkt->to, pkt->port, pkt->dev);
 		else if(pkt->sk_type==SKT_UDP)
-			pkt->sk=new_udp_conn(&pkt->to, pkt->port);
-		else if(pkt->sk_type==SKT_BCAST)
-			pkt->sk=new_bcast_conn(&pkt->to, pkt->port, cur_dev_idx);
-		else
+			pkt->sk=new_udp_conn(&pkt->to, pkt->port, pkt->dev->dev_name);
+		else if(pkt->sk_type==SKT_BCAST) {
+			if(!pkt->dev)
+				fatal(ERROR_MSG "cannot broadcast the packet: "
+						"device not specified", ERROR_POS);
+			pkt->sk=new_bcast_conn(&pkt->to, pkt->port, pkt->dev->dev_idx);
+		} else
 			fatal("Unkown socket_type. Something's very wrong!! Be aware");
 
 		if(pkt->sk==-1) {
@@ -498,7 +520,7 @@ int forward_pkt(PACKET rpkt, inet_prefix to)
 {
 	int err;
 
-	rpkt.sk=0;
+	rpkt.sk=0; /* create a new connection */
 	pkt_addto(&rpkt, &to);
 	
 	err=send_rq(&rpkt, 0, rpkt.hdr.op, rpkt.hdr.id, 0, 0, 0);
@@ -536,7 +558,13 @@ int pkt_err(PACKET pkt, u_char err)
 	return err;
 }
 
-	
+
+/*
+ * pkt_exec: It "executes" the received `pkt' passing it to the function which
+ * associated to `pkt'.hdr.op.
+ * `acpt_idx' is the accept table index of the connection where the pkt was
+ * received.
+ */
 int pkt_exec(PACKET pkt, int acpt_idx)
 {
 	const char *ntop;

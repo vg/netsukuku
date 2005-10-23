@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "NetsukukuD 8"
-.TH NetsukukuD 8 "2005-10-09" "NetsukukuD 0.0.3b" ""
+.TH NetsukukuD 8 "2005-10-23" "NetsukukuD 0.0.4b" ""
 .SH "NAME"
 netsukuku_d \- Netsukuku protocol daemon
 .SH "SYNOPSIS"
@@ -151,6 +151,10 @@ document.
 .PP
 In order to join to Netsukuku you have to use \fBnetsukuku_d\fR, which is the
 daemon implenting the Npv7 protocol.
+The daemon at startup takes the list of all the network interfaces which are
+currently \s-1UP\s0 and it uses all of them to send and receive packets. If you want
+to force the daemon to use specific interfaces you should use the \fB\-i\fR
+option.
 .PP
 For more information about Netsukuku visit:
 <http://netsukuku.freaknet.org>
@@ -166,7 +170,8 @@ experimental.
 .IP "\fB\-i\fR \fIinterface\fR, \fB\-\-iface\fR \fIinterface\fR" 4
 .IX Item "-i interface, --iface interface"
 Specifies the network interface the daemon will use to join Netsukuku, i.e.
-wlan0.
+wlan0. You can use more than one interface by specifying multiple times the
+\&\fB\-i\fR option. For example: \fBnetsukuku_d\fR \-i wlan0 \-i eth0 \-i wifi1 \-i eth1
 .IP "\fB\-a\fR, \fB\-\-no_andna\fR" 4
 .IX Item "-a, --no_andna"
 Forces \fBnetsukuku_d\fR to don't run the \s-1ANDNA\s0 daemon when started.
@@ -202,6 +207,10 @@ Usually you'll just want to use \fBnetsukuku_d\fR with a wifi device:
 netsukuku_wifi wlan0
 .PP
 netsukuku_d \-i wlan0
+.PP
+If you one to use more than one network interface:
+.PP
+netsukuku_d \-i eth0 \-i wlan0 \-i wifi1 \-i eth2
 .SH "SIGNALS"
 .IX Header "SIGNALS"
 When the \fB\s-1SIGHUP\s0\fR signal is sent to \fBnetsukuku_d\fR, the \fIandna_hostnames\fR file

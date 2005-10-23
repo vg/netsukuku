@@ -80,15 +80,9 @@ INT_INFO qspn_round_pkt_iinfo = { 2,
 /* * * Functions declaration * * */
 	
 int put_free_nodes(PACKET rq_pkt);
-
-int get_qspn_round(inet_prefix to, struct timeval to_rtt,struct timeval *qtime,
-		int *qspn_id);
 int put_qspn_round(PACKET rq_pkt);
-
 int put_ext_map(PACKET rq_pkt);
-
 int put_int_map(PACKET rq_pkt);
-
 int put_bnode_map(PACKET rq_pkt);
 
 int create_gnodes(inet_prefix *ip, int final_level);

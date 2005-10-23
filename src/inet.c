@@ -589,7 +589,6 @@ int set_broadcast_sk(int socket, int family, inet_prefix *host, short port,
 	struct sockaddr	*sa=(struct sockaddr *)&saddr_sto;
 	socklen_t alen;
 	int broadcast=1;
-	char *device;
 	
 	if(family == AF_INET) {
 		if (setsockopt(socket, SOL_SOCKET, SO_BROADCAST, &broadcast,
@@ -606,9 +605,6 @@ int set_broadcast_sk(int socket, int family, inet_prefix *host, short port,
 		set_multicast_if(socket, dev_idx);
 	}
 	
-	device=(char *)ll_index_to_name(dev_idx);
-	set_bindtodevice_sk(socket, device);
-
 	/* Let's bind it! */
 	alen = sizeof(saddr_sto);
 	memset(sa, 0, alen);
@@ -667,7 +663,7 @@ int unset_keepalive_sk(int socket)
  *  *  *  Connection functions  *  *  *
  */
 
-int new_tcp_conn(inet_prefix *host, short port)
+int new_tcp_conn(inet_prefix *host, short port, char *dev)
 {
 	int sk;
 	socklen_t sa_len;
@@ -687,6 +683,9 @@ int new_tcp_conn(inet_prefix *host, short port)
 		goto finish;
 	}
 
+	if(dev) /* if `dev' is not null bind the socket to it */
+		set_bindtodevice_sk(sk, dev);
+	
 	if (connect(sk, sa, sa_len) == -1) {
 		error("Cannot tcp_connect() to %s: %s", ntop, strerror(errno));
 		sk=-1;
@@ -696,7 +695,7 @@ finish:
 	return sk;
 }
 
-int new_udp_conn(inet_prefix *host, short port)
+int new_udp_conn(inet_prefix *host, short port, char *dev)
 {	
 	int sk;
 	socklen_t sa_len;
@@ -715,6 +714,9 @@ int new_udp_conn(inet_prefix *host, short port)
 		sk=-1;
 		goto finish;
 	}
+	
+	if(dev) /* if `dev' is not null bind the socket to it */
+		set_bindtodevice_sk(sk, dev);
 
 	if (connect(sk, sa, sa_len) == -1) {
 		error("Cannot connect to %s: %s", ntop, strerror(errno));
@@ -750,6 +752,8 @@ int new_bcast_conn(inet_prefix *host, short port, int dev_idx)
 		struct sockaddr_in6 *sin6=(struct sockaddr_in6 *)sa;
 		sin6->sin6_scope_id = dev_idx;
 	}
+	
+	set_bindtodevice_sk(sk, (char *)ll_index_to_name(dev_idx));
 	
 	if(connect(sk, sa, alen) == -1) {
 		ntop=inet_to_str(*host);

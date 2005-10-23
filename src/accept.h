@@ -16,6 +16,9 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#ifndef ACCEPT_H
+#define ACCEPT_H
+
 #define MAX_CONNECTIONS		512
 
 #define MAX_ACCEPTS		16
@@ -68,3 +71,5 @@ int add_accept(inet_prefix ip, int replace);
 void del_accept(int idx, int *sidx);
 int  close_accept(int idx, int sidx);
 void add_accept_pid(pid_t pid, int idx, int sidx);
+
+#endif /*ACCEPT_H*/

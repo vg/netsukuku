@@ -20,12 +20,10 @@
 
 #include "inet.h"
 #include "request.h"
-#include "endianness.h"
+#include "if.h"
 #include "pkts.h"
-#include "daemon.h"
-#include "map.h"
-#include "gmap.h"
 #include "bmap.h"
+#include "daemon.h"
 #include "netsukuku.h"
 #include "accept.h"
 #include "xmalloc.h"
@@ -39,8 +37,12 @@ extern int errno;
  * specified `port'. It sets also the reuseaddr and NONBLOCK
  * socket options, because this new socket shall be used to listen() and
  * accept().
+ * If `dev' is not null, the socket will be binded to the device named 
+ * `dev'->dev_name with the SO_BINDTODEVICE socket option.
+ * The created socket is returned.
  */
-int prepare_listen_socket(int family, int socktype, u_short port) 
+int prepare_listen_socket(int family, int socktype, u_short port, 
+		interface *dev)
 {
 	struct addrinfo hints, *ai, *aitop;
 	char strport[NI_MAXSERV];
@@ -67,7 +69,16 @@ int prepare_listen_socket(int family, int socktype, u_short port)
 			/* Maybe we can use another socket...*/
 			continue;
 
-		set_reuseaddr_sk(s);
+		/* Bind the created socket to the device named dev->dev_name */
+		if(dev && (set_bindtodevice_sk(s, dev->dev_name) < 0)) {
+			close(s);
+			continue;
+		}
+
+		if(set_reuseaddr_sk(s) < 0) {
+			close(s);
+			continue;
+		}
 
 		/* Let's bind it! */
 		if(bind(s, ai->ai_addr, ai->ai_addrlen) < 0) {
@@ -83,6 +94,51 @@ int prepare_listen_socket(int family, int socktype, u_short port)
 	error("Cannot open inbound socket on port %d: %s", port, strerror(errno));
 	freeaddrinfo(aitop);
 	return -1;
+}
+
+
+/*
+ * sockets_all_ifs: create a socket for each interface which is in the `ifs'
+ * array. The array has `ifs_n' members.
+ * Each created socket is stored in ifs[x].dev_sk.
+ * The created socket will be bound to the relative interface.
+ * In `max_sk_idx' is stored the index of the `ifs' struct, which has the
+ * biggest ifs[x].dev_sk.
+ * On error 0 is returned, otherwise the number of utilised interfaces is
+ * returned. Note that `ifs' is modified 'cause all the struct, which contains
+ * interfaces which gave an error, are overwritten.
+ */
+int sockets_all_ifs(int family, int socktype, u_short port, 
+			interface *ifs, int ifs_n, int *max_sk_idx)
+{
+	int i, n;
+
+	*max_sk_idx=0;
+
+	for(i=0, n=0; i<ifs_n; i++) {
+		ifs[i].dev_sk = prepare_listen_socket(family, socktype, port,
+				&ifs[i]);
+		
+		if(ifs[i].dev_sk < 0) {
+			error("Cannot create a socket on the %s interface! "
+					"Ignoring it", ifs[i].dev_name);
+			
+			if(i < ifs_n)
+				/* Overwrite the `n'th struct, which contains
+				 * the device where we got the error */
+				memcpy(&ifs[n], &ifs[i+1], 
+						sizeof(interface) * (ifs_n-i));
+			
+			continue;
+		}
+
+		if(ifs[i].dev_sk >= ifs[*max_sk_idx].dev_sk)
+			*max_sk_idx=i;
+		
+		n++;
+	}
+
+	return n;
 }
 
 /*
@@ -129,13 +185,19 @@ void *udp_daemon(void *passed_argv)
 {
 	struct udp_daemon_argv argv;
 	struct udp_exec_pkt_argv exec_pkt_argv;
+	
+	interface ifs[me.cur_ifs_n];
+	int ifs_n, max_sk_idx;
+
 	PACKET rpkt;
 	fd_set fdset;
-	int ret, sk;
+	int ret, i;
 	u_short udp_port;
+	
 	PACKET *rpkt_cp;
 	pthread_t thread;
 	pthread_attr_t t_attr;
+	
 #ifdef DEBUG
 	int select_errors=0;
 #endif
@@ -151,22 +213,22 @@ void *udp_daemon(void *passed_argv)
 	}
 
 	debug(DBG_SOFT, "Preparing the udp listening socket on port %d", udp_port);
-	sk=prepare_listen_socket(my_family, SOCK_DGRAM, udp_port);
-	if(sk == -1)
+	
+	memcpy(ifs, me.cur_ifs, sizeof(interface) * me.cur_ifs_n);
+	ifs_n=sockets_all_ifs(my_family, SOCK_DGRAM, udp_port, ifs,
+				me.cur_ifs_n, &max_sk_idx);
+	if(!ifs_n)
 		return NULL;
-	set_bindtodevice_sk(sk, me.cur_dev);
-	/* set_broadcast_sk(sk, my_family, me.cur_dev_idx); */
 	
 	debug(DBG_NORMAL, "Udp daemon on port %d up & running", udp_port);
 	pthread_mutex_unlock(&udp_daemon_lock);
 	for(;;) {
-		if(!sk)
-			fatal("The udp_daemon socket got corrupted");
-		
 		FD_ZERO(&fdset);
-		FD_SET(sk, &fdset);
+
+		for(i=0; i < ifs_n; i++)
+			FD_SET(ifs[i].dev_sk, &fdset);
 		
-		ret = select(sk+1, &fdset, NULL, NULL, NULL);
+		ret=select(ifs[max_sk_idx].dev_sk+1, &fdset, NULL, NULL, NULL);
 		if (ret < 0) {
 #ifdef DEBUG
 			if(select_errors > 20)
@@ -176,31 +238,36 @@ void *udp_daemon(void *passed_argv)
 			error("daemon_udp: select error: %s", strerror(errno));
 			continue;
 		}
-		if(!FD_ISSET(sk, &fdset))
-			continue;
 
-		memset(&rpkt, 0, sizeof(PACKET));
-		pkt_addsk(&rpkt, my_family, sk, SKT_UDP);
-		pkt_addflags(&rpkt, MSG_WAITALL);
-		pkt_addport(&rpkt, udp_port);
+		for(i=0; i < ifs_n; i++) {
+			
+			if(!FD_ISSET(ifs[i].dev_sk, &fdset))
+				continue;
 
-		if(pkt_recv(&rpkt) < 0) {
-			pkt_free(&rpkt, 0);
-			continue;
-		}
-	
-		exec_pkt_argv.acpt_idx=accept_idx;
-		exec_pkt_argv.acpt_sidx=accept_sidx;
+			memset(&rpkt, 0, sizeof(PACKET));
+			pkt_addsk(&rpkt, my_family, ifs[i].dev_sk, SKT_UDP);
+			pkt_add_dev(&rpkt, &ifs[i], 0);
+			pkt_addflags(&rpkt, MSG_WAITALL);
+			pkt_addport(&rpkt, udp_port);
 
-		if(argv.flags & UDP_THREAD_FOR_EACH_PKT) {
-			rpkt_cp=xmalloc(sizeof(PACKET));
-			memcpy(rpkt_cp, &rpkt, sizeof(PACKET));
-			exec_pkt_argv.recv_pkt=rpkt_cp;
-			pthread_create(&thread, &t_attr, udp_exec_pkt,
-					&exec_pkt_argv);
-		} else {
-			exec_pkt_argv.recv_pkt=&rpkt;
-			udp_exec_pkt(&exec_pkt_argv);
+			if(pkt_recv(&rpkt) < 0) {
+				pkt_free(&rpkt, 0);
+				continue;
+			}
+
+			exec_pkt_argv.acpt_idx=accept_idx;
+			exec_pkt_argv.acpt_sidx=accept_sidx;
+
+			if(argv.flags & UDP_THREAD_FOR_EACH_PKT) {
+				rpkt_cp=xmalloc(sizeof(PACKET));
+				memcpy(rpkt_cp, &rpkt, sizeof(PACKET));
+				exec_pkt_argv.recv_pkt=rpkt_cp;
+				pthread_create(&thread, &t_attr, udp_exec_pkt,
+						&exec_pkt_argv);
+			} else {
+				exec_pkt_argv.recv_pkt=&rpkt;
+				udp_exec_pkt(&exec_pkt_argv);
+			}
 		}
 	}
 
@@ -239,12 +306,18 @@ void *tcp_daemon(void *door)
 {
 	pthread_t thread;
 	pthread_attr_t t_attr;
+	
+	interface ifs[me.cur_ifs_n];
+	int ifs_n, max_sk_idx;
+
 	PACKET rpkt;
 	struct sockaddr_storage addr;
 	socklen_t addrlen = sizeof addr;
 	inet_prefix ip;
+	
 	fd_set fdset;
-	int sk, fd, ret, err;
+	int fd, ret, err, i;
+	
 	u_short tcp_port=*(u_short *)door;
 	const char *ntop;
 	char *rpkt_cp;
@@ -253,87 +326,93 @@ void *tcp_daemon(void *door)
 	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
 	
 	debug(DBG_SOFT, "Preparing the tcp listening socket on port %d", tcp_port);
-	sk=prepare_listen_socket(my_family, SOCK_STREAM, tcp_port);
-	if(sk == -1)
-		return NULL;
-	set_bindtodevice_sk(sk, me.cur_dev);
 
-	/* 
-	 * While we are accepting the connections we keep the socket non
-	 * blocking.
-	 */
-	if(set_nonblock_sk(sk))
+	memcpy(ifs, me.cur_ifs, sizeof(interface) * me.cur_ifs_n);
+	ifs_n=sockets_all_ifs(my_family, SOCK_STREAM, tcp_port, ifs, 
+				me.cur_ifs_n, &max_sk_idx);
+	if(!ifs_n)
 		return NULL;
 
-	/* Shhh, it's listening... */
-	if(listen(sk, 5) == -1) {
-		close(sk);
-		return NULL;
+	for(i=0; i<ifs_n; i++) {
+		/* 
+		 * While we are accepting the connections we keep the socket non
+		 * blocking.
+		 */
+		if(set_nonblock_sk(ifs[i].dev_sk))
+			return NULL;
+
+		/* Shhh, it's listening... */
+		if(listen(ifs[i].dev_sk, 5) == -1) {
+			close(ifs[i].dev_sk);
+			return NULL;
+		}
 	}
 	
 	debug(DBG_NORMAL, "Tcp daemon on port %d up & running", tcp_port);
 	pthread_mutex_unlock(&tcp_daemon_lock);
 	for(;;) {
-		if(!sk)
-			fatal("The tcp_daemon socket got corrupted");
-		
 		FD_ZERO(&fdset);
-		FD_SET(sk, &fdset);
 
-		ret = select(sk+1, &fdset, NULL, NULL, NULL);
+		for(i=0; i < ifs_n; i++)
+			FD_SET(ifs[i].dev_sk, &fdset);
+
+		ret=select(ifs[max_sk_idx].dev_sk+1, &fdset, NULL, NULL, NULL);
 		if(ret < 0 && errno != EINTR)
 			error("daemon_tcp: select error: %s", strerror(errno));
 		if(ret < 0)
 			continue;
 
-		if(!FD_ISSET(sk, &fdset))
-			continue;
+		for(i=0; i < ifs_n; i++) {
 
-		fd=accept(sk, (struct sockaddr *)&addr, &addrlen);
-		if(fd == -1) {
-			if (errno != EINTR && errno != EWOULDBLOCK)
-				error("daemon_tcp: accept(): %s", strerror(errno));
-			continue;
+			if(!FD_ISSET(ifs[i].dev_sk, &fdset))
+				continue;
+
+			fd=accept(ifs[i].dev_sk, (struct sockaddr *)&addr, &addrlen);
+			if(fd == -1) {
+				if (errno != EINTR && errno != EWOULDBLOCK)
+					error("daemon_tcp: accept(): %s", strerror(errno));
+				continue;
+			}
+
+			memset(&rpkt, 0, sizeof(PACKET));
+			pkt_addsk(&rpkt, my_family, fd, SKT_TCP);
+			pkt_add_dev(&rpkt, &ifs[i], 0);
+			pkt_addflags(&rpkt, MSG_WAITALL);
+			pkt_addport(&rpkt, tcp_port);
+
+			ntop=0;
+			sockaddr_to_inet((struct sockaddr *)&addr, &ip, 0);
+			pkt_addfrom(&rpkt, &ip);
+			if(server_opt.dbg_lvl)
+				ntop=inet_to_str(ip);
+
+			if((ret=add_accept(ip, 0))) {
+				debug(DBG_NORMAL, "ACPT: drop connection with %s: "
+						"Accept table full.", ntop);
+
+				/* Omg, we cannot take it anymore, go away: ACK_NEGATIVE */
+				pkt_err(rpkt, ret);
+				close(fd);
+				continue;
+			} else {
+				debug(DBG_NORMAL, "ACPT: Accept_tbl ok! accept_idx: %d "
+						"from %s", accept_idx, ntop);
+				/* 
+				 * Ok, the connection is good, send back the
+				 * ACK_AFFERMATIVE.
+				 */
+				pkt_addto(&rpkt, &rpkt.from);
+				send_rq(&rpkt, 0, ACK_AFFERMATIVE, 0, 0, 0, 0);
+			}
+
+			if(unset_nonblock_sk(fd))
+				continue;
+
+			rpkt_cp=xmalloc(sizeof(PACKET));
+			memcpy(rpkt_cp, &rpkt, sizeof(PACKET));
+			err=pthread_create(&thread, &t_attr, tcp_recv_loop, (void *)rpkt_cp);
+			pthread_detach(thread);
 		}
-
-		memset(&rpkt, 0, sizeof(PACKET));
-		pkt_addsk(&rpkt, my_family, fd, SKT_TCP);
-		pkt_addflags(&rpkt, MSG_WAITALL);
-		pkt_addport(&rpkt, tcp_port);
-
-		ntop=0;
-		sockaddr_to_inet((struct sockaddr *)&addr, &ip, 0);
-		pkt_addfrom(&rpkt, &ip);
-		if(server_opt.dbg_lvl)
-			ntop=inet_to_str(ip);
-
-		if((ret=add_accept(ip, 0))) {
-			debug(DBG_NORMAL, "ACPT: drop connection with %s: "
-					"Accept table full.", ntop);
-			
-			/* Omg, we cannot take it anymore, go away: ACK_NEGATIVE */
-			pkt_err(rpkt, ret);
-			close(fd);
-			continue;
-		} else {
-			debug(DBG_NORMAL, "ACPT: Accept_tbl ok! accept_idx: %d "
-					"from %s", accept_idx, ntop);
-			/* 
-			 * Ok, the connection is good, send back the
-			 * ACK_AFFERMATIVE.
-			 */
-			pkt_addto(&rpkt, &rpkt.from);
-			send_rq(&rpkt, 0, ACK_AFFERMATIVE, 0, 0, 0, 0);
-		}
-
-		if(unset_nonblock_sk(fd))
-			continue;
-	
-
-		rpkt_cp=xmalloc(sizeof(PACKET));
-		memcpy(rpkt_cp, &rpkt, sizeof(PACKET));
-		err=pthread_create(&thread, &t_attr, tcp_recv_loop, (void *)rpkt_cp);
-		pthread_detach(thread);
 	}
 	
 	destroy_accept_tbl();

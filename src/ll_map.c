@@ -151,17 +151,31 @@ int ll_name_to_index(const char *name)
 	return 0;
 }
 
+/* It returns the idx of the `n'th interface it finds up in the map */
+int ll_nth_up_if(int n)
+{
+	unsigned char i, found;
+	unsigned flags;
+
+	if(n <= 0)
+		fatal("%s:%d: Bad argument given", ERROR_POS);
+	
+	for(found=0, i=n-1; i<16; i++) {
+		flags=ll_index_to_flags(i);
+		if((flags & IFF_UP) && !(flags & IFF_LOOPBACK)) {
+			found++;
+			if(found == n)
+				return i;
+		}
+	}
+	
+	return -1;
+}
+
+/* It returns the first the idx of the first interface it finds up in the map */
 int ll_first_up_if(void)
 {
-	unsigned char i;
-	unsigned flags;
-	
-	for(i=0; i<16; i++) {
-		flags=ll_index_to_flags(i);
-		if((flags & IFF_UP) && !(flags & IFF_LOOPBACK))
-			return i;
-	}
-	return -1;
+	return ll_nth_up_if(1);
 }
 			
 int ll_init_map(struct rtnl_handle *rth)

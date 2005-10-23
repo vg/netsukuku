@@ -3,6 +3,26 @@
 				   
 			 http://netsukuku.freaknet.org
 
+--
+
+  *  What is this?
+  
+  *  Get the code!
+  
+  *  Build and install
+  
+  *  How to use it
+  
+  *  Where to get in touch with us
+  
+  *  Bug report
+  
+  *  Hack the code
+  
+  *  License and that kind of stuff...
+  
+--
+
 
 **
 ****  What is this?
@@ -64,6 +84,8 @@ greatest by running the command:
 
 To compile the code you must have scons installed:
 http://www.scons.org/
+(You should have installed at least the 2.4 version of Python in order to
+avoid dirty bugs in scons)
 
 The code depends also on the libgmp, openssl and boost. Generally you have
 already them installed on your system, but eventually you can retrieve them
@@ -87,6 +109,14 @@ The code will be compiled. If all went well install NetsukukuD with:
 Now you should give a look at /etc/netsukuku.conf (or wherever you installed
 it) and modify it for your needs, but generally the default options are good.
 
+- Notes:
+
+If you want to change some scons option to do another installation, (i.e. you
+may want to reinstall it with another MANDIR path), you have to remove the
+following files:
+src/build.conf, src/config.h, src/netsukuku.conf
+That's because they are generated the first time you launch scons to compile
+the sources.
 
 **
 ****  How to use it
@@ -106,9 +136,15 @@ then just wait... ^_-
 
 (For the first times it's cool to use the -D option to see what happens).
 
+-  Note:
+The daemon at startup takes the list of all the network interfaces which are
+currently UP and it uses all of them to send and receive packets. If you want
+to force the daemon to use specific interfaces you should use the B<-i>
+option.
+
 
 **
-***  Where to get in touch with us
+****  Where to get in touch with us
 **
 
 Subcrive to the netsukuku mailing to get help, be updated on the latest news

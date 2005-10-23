@@ -19,6 +19,8 @@
 #ifndef ROUTE_H
 #define ROUTE_H
 
+#include "gmap.h"
+
 #define MAX_MULTIPATH_ROUTES		24	/* The maximum number of 
 						   nexthops used to create a 
 						   single multipath route. */
@@ -44,9 +46,9 @@ void **get_gw_gnode(map_node *, map_gnode **, map_bnode **,
 		u_int *, map_gnode *, u_char, u_char, int);
 int get_gw_ips(map_node *, map_gnode **, map_bnode **, u_int *, 
 		quadro_group *, map_gnode *, u_char, u_char, 
-		inet_prefix *, int);
-void krnl_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg, 
-		      void *void_gw, u_char level);
+		inet_prefix *, map_node **, int);
+void rt_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg, 
+		      void *void_gw, char *oif, u_char level);
 void rt_rnodes_update(int check_update_flag);
 void rt_full_update(int check_update_flag);
 

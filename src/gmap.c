@@ -453,6 +453,36 @@ void erc_update_rnodepos(ext_rnode_cache *erc, map_node *root_node, int old_rnod
 	return;
 }
 
+/*
+ * erc_reorder_rnodepos: adjusts the erc->rnode_pos value contained in each
+ * ext_rnode_cache struct of the `*erc' list. It checks if the rnode of
+ * `root_node' at the erc->rnode_pos position points to erc->e->node, if not
+ * it finds the right rnode and it updates the erc->rnode_pos value.
+ * If an adequate rnode isn't find, the relative erc struct is removed.
+ */
+void erc_reorder_rnodepos(ext_rnode_cache **erc, u_int *erc_counter, map_node *root_node)
+{
+	ext_rnode_cache *p=*erc, *next;
+
+	if(!erc || !*erc)
+		return;
+	
+	list_safe_for(p, next) {
+		if(p->rnode_pos >= root_node->links || 
+			root_node->r_node[p->rnode_pos].r_node != (int *)&p->e->node) {
+
+			/* Search the right rnode_pos */
+			p->rnode_pos = rnode_find(root_node, &p->e->node);
+			
+			if(p->rnode_pos < 0) {
+				debug(DBG_NOISE, "erc_reorder_rnodepos: Warning erc 0x%x delete. "
+						"Something strange is happening", p);
+				e_rnode_del(erc, erc_counter, p);
+			}
+		}
+	}
+}
+
 /* 
  * erc_find: Searches in the `erc' ext_rnode_cache list a struct which has the
  * erc->e == e_rnode and returns it.

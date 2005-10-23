@@ -122,9 +122,13 @@ void usage(void)
 		" -v	version\n");
 }
 
+/*
+ * fill_default_options: fills the default values in the server_opt struct
+ */
 void fill_default_options(void)
 {
 	memset(&server_opt, 0, sizeof(server_opt));
+	
 	server_opt.family=AF_INET;
 	
 	strncpy(server_opt.config_file, NTK_CONFIG_FILE, NAME_MAX);
@@ -148,8 +152,6 @@ void fill_default_options(void)
 	server_opt.max_connections=MAX_CONNECTIONS;
 	server_opt.max_accepts_per_host=MAX_ACCEPTS;
 	server_opt.max_accepts_per_host_time=FREE_ACCEPT_TIME;
-
-	ll_map_initialized=0;
 }
 
 /*
@@ -241,7 +243,7 @@ void parse_options(int argc, char **argv)
 				strncpy(server_opt.config_file, optarg, NAME_MAX);
 				break;
 			case 'i': 
-				strncpy(server_opt.dev, optarg, IFNAMSIZ); 
+				strncpy(server_opt.ifs[server_opt.ifs_n++], optarg, IFNAMSIZ);
 				break;
 			case 'D':
 				server_opt.daemon=0;
@@ -271,8 +273,6 @@ void parse_options(int argc, char **argv)
 
 void init_netsukuku(char **argv)
 {
-	char *dev;
-
 	xsrand();
 
         if(geteuid())
@@ -282,20 +282,16 @@ void init_netsukuku(char **argv)
 
 	memset(&me, 0, sizeof(struct current_globals));
 	
+	my_family=server_opt.family;
+
 	/* 
 	 * Device initialization 
 	 */
-	my_family=server_opt.family;
-	ntk_udp_port=NTK_UDP_PORT;
-	ntk_udp_radar_port=NTK_UDP_RADAR_PORT;
-	ntk_tcp_port=NTK_TCP_PORT;
-	andna_tcp_port=ANDNA_TCP_PORT;
-	andna_udp_port=ANDNA_UDP_PORT;
-	if(!(dev=(char *)if_init(server_opt.dev, &me.cur_dev_idx)))
-		fatal("Cannot initialize the %s device", server_opt.dev);
-	strncpy(me.cur_dev, dev, IFNAMSIZ);
+	if(if_init_all(server_opt.ifs, server_opt.ifs_n, 
+				me.cur_ifs, &me.cur_ifs_n) < 0)
+		fatal("Cannot initialize any network interfaces");
 
-	pkts_init(me.cur_dev_idx, 0);
+	pkts_init(me.cur_ifs, me.cur_ifs_n, 0);
 
 	qspn_init(GET_LEVELS(my_family));
 
@@ -305,7 +301,7 @@ void init_netsukuku(char **argv)
 	me.cur_erc=e_rnode_init(&me.cur_erc_counter);
 
 	rq_wait_idx_init(rq_wait_idx);
-	init_radar();
+	first_init_radar();
 	total_radars=0;
 
 	ntk_load_maps();

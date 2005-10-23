@@ -18,6 +18,9 @@
  * llist.c: Various functions to handle linked lists
  */
 
+#ifndef LLIST_C
+#define LLIST_C
+
 /*
  * This struct is used as a header to handle all the linked list struct.
  * The only limitation is to put _EXACTLY_ struct bla_bla *next;
@@ -146,8 +149,12 @@ do {									\
 #define list_safe_for(i, next)						\
 for((i) ? (next)=(typeof (i))(i)->next : 0; (i); 			\
 		(i)=(next), (i) ? (next)=(typeof (i))(i)->next : 0)
-				   
-#define list_pos(list,pos)						\
+
+
+/* 
+ * list_pos: returns the `pos'-th struct present in `list'
+ */
+#define list_pos(list, pos)						\
 ({									\
 	 int _i=0;							\
  	 l_list *_x=(l_list *)(list);					\
@@ -158,6 +165,26 @@ for((i) ? (next)=(typeof (i))(i)->next : 0; (i); 			\
  			_i++;						\
  	 } 								\
  	 (typeof((list)))_x;						\
+})
+
+/*
+ * list_get_pos: returns the position of the `list' struct in the `head'
+ * linked list, so that list_pos(head, list_get_pos(head, list)) == list
+ * If `list' is not present in the linked list, -1 is returned.
+ */
+#define list_get_pos(head, list)					\
+({									\
+ 	int _i=0, _e=0;							\
+	l_list *_x=(l_list *)(head);					\
+									\
+	list_for(_x) {							\
+		if(_x == (l_list *)(list)) {				\
+			_e=1;						\
+			break;						\
+		} else							\
+			_i++;						\
+	}								\
+	_e ? _i : -1;							\
 })
 
 #define list_destroy(list)						\
@@ -204,3 +231,5 @@ do{									\
 	*(_counter)=0;							\
 	0;								\
 })
+
+#endif /*LLIST_C*/

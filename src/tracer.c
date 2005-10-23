@@ -22,10 +22,11 @@
 #include "request.h"
 #include "pkts.h"
 #include "bmap.h"
+#include "radar.h"
 #include "route.h"
+#include "radar.h"
 #include "tracer.h"
 #include "netsukuku.h"
-#include "radar.h"
 #include "xmalloc.h"
 #include "log.h"
 
@@ -860,7 +861,7 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 			}
 			
 			debug(DBG_INSANE, "TRCR_STORE: krnl_update node %d", tracer[i].node);
-			krnl_update_node(0, node, 0, 0, level);
+			rt_update_node(0, node, 0, 0, 0, level);
 			node->flags&=~MAP_UPDATE;
 		}
 	}
@@ -1047,6 +1048,7 @@ int flood_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), u_char level
 		pkt_addto(&pkt, &to);
 
 		/*Let's send the pkt*/
+		pkt_add_dev(&pkt, rnl_get_dev(rlist, node), 1);
 		err=send_rq(&pkt, 0, pkt.hdr.op, pkt.hdr.id, 0, 0, 0);
 		if(err==-1) {
 			ntop=inet_to_str(pkt.to);

@@ -16,6 +16,9 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#ifndef CRYPTO_H
+#define CRYPTO_H
+
 #include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <openssl/crypto.h>
@@ -39,3 +42,5 @@ u_char *hash_sha1(u_char *msg, u_int len, u_char *hash);
 u_char *hash_md5(u_char *msg, u_int m_len, u_char *hash);
 u_char *rsa_sign(u_char *msg, u_int m_len, RSA *priv, u_int *siglen);
 int verify_sign(u_char *msg, u_int m_len, u_char *signature, u_int siglen, RSA *pub);
+
+#endif /*CRYPTO_H*/

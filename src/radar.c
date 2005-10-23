@@ -30,6 +30,7 @@
 
 #include "llist.c"
 #include "endianness.h"
+#include "if.h"
 #include "bmap.h"
 #include "route.h"
 #include "request.h"
@@ -43,23 +44,32 @@
 
 pthread_attr_t radar_qspn_send_t_attr;
 
-void init_radar(void)
+void first_init_radar(void)
 {
-	hook_retry=0;
-	my_echo_id=0;
-	radar_scans=0;
-	radar_scan_mutex=0;
 	max_radar_wait=MAX_RADAR_WAIT;	
-	
+
 	pthread_attr_init(&radar_qspn_send_t_attr);
 	pthread_attr_setdetachstate(&radar_qspn_send_t_attr, PTHREAD_CREATE_DETACHED);	 
-	
-	list_init(radar_q, 0);
-	radar_q_counter=0;
 	
 	/* register the radar's ops in the pkt_op_table */
 	add_pkt_op(ECHO_ME, SKT_BCAST, ntk_udp_radar_port, radard);
 	add_pkt_op(ECHO_REPLY, SKT_UDP, ntk_udp_radar_port, radar_recv_reply);
+	
+	rlist=(struct rnode_list *)clist_init(&rlist_counter);
+
+	init_radar();
+}
+
+void init_radar(void)
+{
+	hook_retry=0;
+	my_echo_id=0;
+	total_radar_scans=0;
+	memset(radar_scans, 0, sizeof(radar_scans));
+	radar_scan_mutex=0;
+	
+	list_init(radar_q, 0);
+	radar_q_counter=0;
 	
 	memset(send_qspn_now, 0, sizeof(u_char)*MAX_LEVELS);
 }
@@ -74,8 +84,6 @@ void close_radar(void)
 		list_destroy(radar_q);
 	radar_q_counter=0;
 	radar_q=0;
-
-	pthread_attr_destroy(&radar_qspn_send_t_attr);
 }
 
 void reset_radar(void)
@@ -87,6 +95,10 @@ void reset_radar(void)
 	init_radar();
 }
 
+/*
+ * free_new_node: frees all the temporary alloced rq->node structs used at the
+ * hook time.
+ */
 void free_new_node(void)
 {
 	struct radar_queue *rq;
@@ -97,6 +109,10 @@ void free_new_node(void)
 			xfree(rq->node);
 }
 
+/*
+ * find_node_radar_q: returns the first radar_queue struct which has the 
+ * rq->node pointer equal to `node'.
+ */
 struct radar_queue *find_node_radar_q(map_node *node)
 {
 	struct radar_queue *rq;
@@ -108,6 +124,10 @@ struct radar_queue *find_node_radar_q(map_node *node)
 	return 0;
 }
 
+/*
+ * find_ip_radar_q: returns the first radar_queue struct which has the rq->ip
+ * member equal to the given `ip'.
+ */
 struct radar_queue *find_ip_radar_q(inet_prefix *ip)
 {
 	struct radar_queue *rq;
@@ -120,6 +140,98 @@ struct radar_queue *find_ip_radar_q(inet_prefix *ip)
 	return 0;
 }
 
+/*
+ * rnl_add: adds a new rnode_list struct in the `*rnlist' list. The new
+ * allocated struct will be filled respectively with `rnode_pos' and
+ * `dev'.
+ * `root_node' is the pointer to the current root node in the internal map.
+ * It returns the added `rnode_list' struct.
+ */
+struct rnode_list *rnl_add(struct rnode_list **rnlist, int *rnlist_counter, 
+		map_node *root_node, int rnode_pos, interface *dev)
+{
+	struct rnode_list *rnl;
+
+	rnl	       = xmalloc(sizeof(struct rnode_list));
+	rnl->node      = (map_node *)root_node->r_node[rnode_pos].r_node;
+	rnl->dev       = dev;
+
+	clist_add(rnlist, rnlist_counter, rnl);
+	
+	return rnl;
+}
+
+/*
+ * rnl_del: deletes the `rnl' struct from the `rnlist' rnode_list.
+ */
+void rnl_del(struct rnode_list **rnlist, int *rnlist_counter, 
+		struct rnode_list *rnl)
+{
+	if(rnl)
+		clist_del(rnlist, rnlist_counter, rnl);
+}
+
+/*
+ * rnl_del_dead_rnode: it removes all the rnode_list structs which are related
+ * to a rnode which doesn't exist anymore in `root_node'
+ * It returns the number of delete rnodes_list structs.
+ */
+int rnl_del_dead_rnode(struct rnode_list **rnlist, int *rnlist_counter, 
+			map_node *root_node)
+{
+	struct rnode_list *rnl=*rnlist, *next;
+	int i=0;
+	
+	list_safe_for(rnl, next)
+		if(rnode_find(root_node, rnl->node) < 0) {
+			rnl_del(rnlist, rnlist_counter, rnl);
+			i++;
+		}
+
+	return i;
+}
+
+/*
+ * rnl_find_rpos: returns the first rnode_list struct, contained in
+ * `rnlist', which has rnl->node equal to `node'.
+ */
+struct rnode_list *rnl_find_node(struct rnode_list *rnlist, map_node *node)
+{
+	struct rnode_list *rnl=rnlist;
+
+	list_for(rnl)
+		if(rnl->node == node)
+			return rnl;
+
+	return 0;
+}
+
+interface *rnl_get_dev(struct rnode_list *rnlist, map_node *node)
+{
+	struct rnode_list *rnl;
+
+	rnl=rnl_find_node(rnlist, node);
+	if(!rnl)
+		return 0;
+
+	return rnl->dev;
+}
+
+char *rnl_get_devname(struct rnode_list *rnlist, map_node *node)
+{
+	struct rnode_list *rnl;
+
+	rnl=rnl_find_node(rnlist, node);
+	if(!rnl)
+		return 0;
+
+	return rnl->dev->dev_name;
+}
+
+/*
+ * count_hooking_nodes: returns the number of hooking nodes, which are stored
+ * in the radar_queue.
+ */
 int count_hooking_nodes(void) 
 {
 	struct radar_queue *rq;
@@ -164,7 +276,7 @@ void final_radar_queue(void)
 		for(; e < MAX_RADAR_SCANS; e++)
 			timeradd(&rq->rtt[e-rq->pongs], &sum, &sum);
 
-		f_rtt=MILLISEC(sum)/radar_scans;
+		f_rtt=MILLISEC(sum)/MAX_RADAR_SCANS;
 		rq->final_rtt.tv_sec=f_rtt/1000;
 		rq->final_rtt.tv_usec=(f_rtt - (f_rtt/1000)*1000)*1000;
 	}
@@ -189,6 +301,7 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 	int broot_node_pos;
 	int level, blevel, external_node, total_levels, first_level;
 	void *void_map, *void_gnode;
+	char *oif;
 
 	if(!me.cur_node->links)
 		return 0;
@@ -200,6 +313,8 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 			/* The rnode is not really dead! */
 			continue;
 
+		oif=rnl_get_devname(rlist, node);
+		
 		if(node->flags & MAP_ERNODE) {
 			e_rnode=(ext_rnode *)node;
 			external_node=1;
@@ -219,6 +334,7 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 			 * Just delete it from all the maps.
 			 * We don't care to send the qspn to inform the other nodes of this death. 
 			 * They will wait till the next qspn round to know it.
+			 * //send_qspn_now[level]=1;
 			 */
 			
 			if(!level && !external_node) {
@@ -228,7 +344,9 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 				
 				debug(DBG_NORMAL, "radar: The node %d is dead", 
 						node_pos);
+				rnl_del(&rlist, &rlist_counter, rnl_find_node(rlist, node));
 				map_node_del(node);
+				rt_update_node(0, node, 0, me.cur_node, oif, level);
 			} else {
 				void_map=me.ext_map;
 				gnode=e_rnode->quadg.gnode[_EL(level)];
@@ -268,13 +386,13 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 
 				/* Delete the entries from the routing table */
 				if(level == 1)
-				  krnl_update_node(&e_rnode->quadg.ipstart[0], 
-						  e_rnode, 0, me.cur_node, 0);
-				krnl_update_node(0, 0, &e_rnode->quadg, 0, level);
+				  rt_update_node(&e_rnode->quadg.ipstart[0], 
+						  e_rnode, 0, me.cur_node, oif, 0);
+				rt_update_node(0, 0, &e_rnode->quadg, 0, oif, level);
 			}
 		
 			rnode_del(root_node, rnode_pos);
-			
+	
 			if(!root_node->links) {
 				/* We are alone in the dark. Sigh. */
 				qspn_time_reset(level, level, GET_LEVELS(my_family));
@@ -370,6 +488,8 @@ void radar_update_map(void)
 	map_node  *node, *root_node;
 	map_rnode rnn, *new_root_rnode;
 	ext_rnode *e_rnode;
+	struct rnode_list *rnl;
+	
 	int i, e, diff, updated_rnodes;
 	int rnode_added[MAX_LEVELS], rnode_deleted[MAX_LEVELS], rnode_pos;
 	int level, external_node, total_levels, root_node_pos, node_update;
@@ -467,8 +587,9 @@ void radar_update_map(void)
 				   rnode_pos=root_node->links; 
 				   
 				   ntop=inet_to_str(rq->quadg.ipstart[level]);
-				   loginfo("Radar: New node found: %s, ext: %d, level: %d", 
-						   ntop, external_node, level);
+				   if(server_opt.dbg_lvl || !level)
+					   loginfo("Radar: New node found: %s, ext: %d, level: %d", 
+							   ntop, external_node, level);
 
 				   if(external_node && !level) {
 					   /* 
@@ -547,11 +668,18 @@ void radar_update_map(void)
 						   me.cur_quadg.gnode[_EL(level+1)]->seeds++;
 				   }
 
+				   /*
+				    * Add the rnode in the rnode_list
+				    */
+				   rnl=rnl_add(&rlist, &rlist_counter, root_node, 
+						   root_node->links-1, rq->dev);
+				 
 				   rnode_added[level]++;
 			   } else {
 				   /* 
 				    * Nah, We have the node in the map. Let's if its rtt is changed
 				    */
+
 				   if(!send_qspn_now[level] && node->links) {
 					   diff=abs(MILLISEC(root_node->r_node[rnode_pos].rtt) -
 							   MILLISEC(rq->final_rtt));
@@ -597,7 +725,7 @@ void radar_update_map(void)
 				   send_qspn_now[level-1]=1;
 			   }
 
-			   if(external_node && node_update)
+			   if(node_update)
 				   node->flags|=MAP_UPDATE;
 
 		   } /*for(level=0, ...)*/
@@ -616,10 +744,14 @@ void radar_update_map(void)
 		for(i=1; i<me.cur_quadg.levels; i++)
 			if(rnode_added[i] || rnode_deleted[i])
 				rnode_rtt_order(&me.cur_quadg.gnode[_EL(i)]->g);
+
+		/* adjust the rnode_pos variables in the ext_rnode_cache list */
+		erc_reorder_rnodepos(&me.cur_erc, &me.cur_erc_counter, me.cur_node);
 	}
 
 	/* Give a refresh to the kernel */
-	if(is_bufzero((char *)rnode_added, sizeof(int)*MAX_LEVELS))
+	if(is_bufzero((char *)rnode_added, sizeof(int)*MAX_LEVELS) && 
+			!(me.cur_node->flags & MAP_HNODE))
 		rt_rnodes_update(1);
 }
 
@@ -691,6 +823,7 @@ add_radar_q(PACKET pkt)
 
 		memcpy(&rq->ip, &pkt.from, sizeof(inet_prefix));
 		memcpy(&rq->quadg, &quadg, sizeof(quadro_group));
+		rq->dev = pkt.dev;
 		
 		list_add(radar_q, rq);
 		radar_q_counter++;
@@ -708,11 +841,16 @@ int radar_exec_reply(PACKET pkt)
 {
 	struct timeval t;
 	struct radar_queue *rq;
-	u_int rtt_ms=0;
+	u_int rtt_ms=0, dev_pos;
 	
 	gettimeofday(&t, 0);
 	
 	rq=add_radar_q(pkt);
+
+	dev_pos=ifs_get_pos(me.cur_ifs, me.cur_ifs_n, pkt.dev);
+	if(dev_pos < 0)
+		debug(DBG_NORMAL, "The 0x%x ECHO_REPLY pkt was received by a non "
+				"existent interface", pkt.hdr.id);
 
 	if(me.cur_node->flags & MAP_HNODE) {
 		if(pkt.hdr.flags & HOOK_PKT) {
@@ -726,13 +864,13 @@ int radar_exec_reply(PACKET pkt)
 			 */
 			if(!scanning && !rq->pings && 
 					(radar_scan_mutex ||
-					 radar_scans<=MAX_RADAR_SCANS)) {
+					 radar_scans[dev_pos]<=MAX_RADAR_SCANS)) {
 				hook_retry=1;
 			}
 		}
 	}
 
-	if(rq->pongs < radar_scans) {
+	if(rq->pongs < radar_scans[dev_pos]) {
 		timersub(&t, &scan_start, &rq->rtt[(int)rq->pongs]);
 		/* 
 		 * Now we divide the rtt, because (t - scan_start) is the time
@@ -754,7 +892,7 @@ int radar_exec_reply(PACKET pkt)
  */
 int radar_recv_reply(PACKET pkt)
 {
-	if(!my_echo_id || !radar_scan_mutex || !radar_scans || !radar_q)
+	if(!my_echo_id || !radar_scan_mutex || !total_radar_scans || !radar_q)
 		return -1;
 	
 	if(pkt.hdr.id != my_echo_id) {
@@ -802,14 +940,14 @@ int radar_scan(int activate_qspn)
 {
 	pthread_t thread;
 	PACKET pkt;
-	int i, *p;
+	int i, d, *p;
 	ssize_t err;
 	u_char echo_scan;
 
 	/* We are already doing a radar scan, that's not good */
 	if(radar_scan_mutex)
 		return 1;
-	radar_scan_mutex=1;	
+	radar_scan_mutex=1;
 	
 	/*
 	 * We create the PACKET 
@@ -819,7 +957,6 @@ int radar_scan(int activate_qspn)
 	my_echo_id=rand();
 
 	gettimeofday(&scan_start, 0);
-
 	
 	/*
 	 * Send a bouquet of ECHO_ME pkts 
@@ -833,20 +970,35 @@ int radar_scan(int activate_qspn)
 	} else
 		total_radars++;
 
-	for(i=0, echo_scan=0; i<MAX_RADAR_SCANS; i++, echo_scan++) {
-		if(me.cur_node->flags & MAP_HNODE)
-			memcpy(pkt.msg, &echo_scan, sizeof(u_char));
+	/* Loop through the me.cur_ifs array, sending the bouquet using all the
+	 * interfaces we have */
+	for(d=0; d < me.cur_ifs_n; d++) {
+		
+		pkt_add_dev(&pkt, &me.cur_ifs[d], 1);
+	
+		/* Send MAX_RADAR_SCANS# packets using me.cur_ifs[d] as out
+		 * interface */
+		for(i=0, echo_scan=0; i<MAX_RADAR_SCANS; i++, echo_scan++) {
+			if(me.cur_node->flags & MAP_HNODE)
+				memcpy(pkt.msg, &echo_scan, sizeof(u_char));
 
-		err=send_rq(&pkt, 0, ECHO_ME, my_echo_id, 0, 0, 0);
-		if(err==-1) {
-			error("radar_scan(): Error while sending the scan 0x%x"
-					"... skipping", my_echo_id);
-			continue;
+			err=send_rq(&pkt, 0, ECHO_ME, my_echo_id, 0, 0, 0);
+			if(err==-1) {
+				error("radar_scan(): Error while sending the scan 0x%x"
+						"... skipping", my_echo_id);
+				continue;
+			}
+			radar_scans[d]++;
+			total_radar_scans++;
 		}
-		radar_scans++;
+
+		if(!radar_scans[d])
+			error("radar_scan(): The scan 0x%x on the %s interface failed."
+				" Not a single scan was sent", my_echo_id, 
+				pkt.dev->dev_name);
 	}
 	
-	if(!radar_scans) {
+	if(!total_radar_scans) {
 		error("radar_scan(): The scan 0x%x failed. It wasn't possible" 
 				"to send a single scan", my_echo_id);
 		return -1;
@@ -864,13 +1016,13 @@ int radar_scan(int activate_qspn)
 			if(send_qspn_now[i]) {
 				p=xmalloc(sizeof(int));
 				*p=i;
-				/* We start a new qspn_round in the level `i' */
+				/* We start a new qspn_round in the `i'-th level */
 				pthread_create(&thread, &radar_qspn_send_t_attr, 
 						radar_qspn_send_t, (void *)p);
 			}
 
 	if(!(me.cur_node->flags & MAP_HNODE))
-			reset_radar();
+		reset_radar();
 
 	radar_scan_mutex=0;	
 	return 0;
@@ -886,8 +1038,14 @@ int radard(PACKET rpkt)
 	PACKET pkt;
 	struct radar_queue *rq;
 	ssize_t err;
-	const char *ntop; 
+	int dev_pos;
+	const char *ntop;
 	u_char echo_scans_count;
+
+	dev_pos=ifs_get_pos(me.cur_ifs, me.cur_ifs_n, rpkt.dev);
+	if(dev_pos < 0)
+		debug(DBG_NORMAL, "The 0x%x ECHO_ME pkt was received by a non "
+				"existent interface", rpkt.hdr.id);
 
 	/* If we are hooking we reply only to others hooking nodes */
 	if(me.cur_node->flags & MAP_HNODE) {
@@ -905,7 +1063,7 @@ int radard(PACKET rpkt)
 			 * the other hooking node will create the gnode, then we
 			 * restart the hook. Clear?
 			 */
-			if(!radar_scan_mutex || echo_scans_count >= radar_scans)
+			if(!radar_scan_mutex || echo_scans_count >= radar_scans[dev_pos])
 				hook_retry=1;
 		} else {
 			/*debug(DBG_NOISE, "ECHO_ME pkt dropped: We are hooking");*/
@@ -931,7 +1089,7 @@ int radard(PACKET rpkt)
 		pkt.hdr.sz=sizeof(u_char);
 		pkt.hdr.flags|=HOOK_PKT;
 		pkt.msg=xmalloc(pkt.hdr.sz);
-		if(radar_scans==MAX_RADAR_SCANS)
+		if(radar_scans[dev_pos] == MAX_RADAR_SCANS)
 			scanning=0;
 		memcpy(pkt.msg, &scanning, sizeof(u_char));
 
@@ -975,6 +1133,7 @@ int radard(PACKET rpkt)
  * instead, we have an int_map, so we convert all this fake nodes into real
  * nodes. To do this we modify each rq->node of the radar_queue and recall the
  * radar_update_map() func. 
+ * rnode_list and qspn_b are also updated.
  * Note: the me.cur_node must be deleted prior the call of this function.
  */
 int refresh_hook_root_node(void)
@@ -995,6 +1154,15 @@ int refresh_hook_root_node(void)
 
 	radar_update_map();
 
+	/* 
+	 * Remove all the rnode_list structs which refers to the fake 
+	 * rnodes.
+	 */
+	rnl_del_dead_rnode(&rlist, &rlist_counter, me.cur_node);
+
+	/* Do the same for the qspn_b buffer */
+	qspn_b_del_all_dead_rnodes();
+	
 	return 0;
 }
 

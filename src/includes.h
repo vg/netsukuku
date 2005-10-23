@@ -16,6 +16,9 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#ifndef INCLUDES_H
+#define INCLUDES_H
+
 #include "config.h"
 
 #include <string.h>
@@ -59,3 +62,5 @@
 #warning the DEBUG code is being built!
 #define ANDNA_DEBUG
 #endif
+
+#endif /*INCLUDES_H*/

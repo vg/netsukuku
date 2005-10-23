@@ -19,7 +19,8 @@
 #ifndef PKTS_H
 #define PKTS_H
 
-#include "inet.h"
+#include "if.h"
+#include "request.h"
 
 #define NETSUKUKU_ID		"ntk"
 #define MAXMSGSZ		65536
@@ -29,12 +30,15 @@
  * The requests and replies are in request.h
  */
 
-/* Pkt's sk_type */
+/* Pkt.sk_type */
 #define SKT_TCP 		1
 #define SKT_UDP			2
 #define SKT_BCAST		3
 
-/* Pkt's flags */
+/* Pkt.pkt_flags flags */
+#define PKT_BIND_DEV		1	/* Bind the pkt.sk socket to pkt.dev */
+
+/* Pkt.hdr flags */
 #define SEND_ACK		1
 #define BCAST_PKT		(1<<1)	/* In this pkt there is encapsulated a 
 					 * broadcast/flood pkt. Woa */
@@ -72,25 +76,38 @@ typedef struct
 
 INT_INFO pkt_hdr_iinfo = { 2, 
 			   { INT_TYPE_32BIT, INT_TYPE_32BIT }, 
-			   { sizeof(char), sizeof(char)*3+sizeof(int) },
+			   { sizeof(char)*3, sizeof(char)*5+sizeof(int) },
 			   { 1, 1 }
 			 };
 #define PACKET_SZ(sz) (sizeof(pkt_hdr)+(sz))		
 
 /*
  * PACKET: this struct is used only to represent internally a packet, which
- * will be sent or received
+ * will be sent or received.
  */
 typedef struct
 {
-	inet_prefix 	from;		
-	inet_prefix 	to;
+	/* General informations of the packet */
+	
+	inet_prefix 	from;		/* The sender ip of this packet */
+	inet_prefix 	to;		/* Where to send this packet */
+
+	interface	*dev;		/* Device used to send/receive the 
+					   packet. `sk' will be bound to it
+					   if `dev' is not null and if the 
+					   PKT_BIND_DEV flag is set in
+					   `pkt_flags'. `dev' is a pointer
+					   to a struct contained in the 
+					   me.cur_ifs array. */
+	
 	int		family;
 	int 		sk;
 	char 		sk_type;
 	u_short 	port;
+	u_char		pkt_flags;	/*Flags for this PACKET*/
 	int 		flags;		/*Flags used by send/recv*/
-	
+
+	/* Body of the packet */
 	pkt_hdr 	hdr;
 	char 		*msg;
 } PACKET;
@@ -164,10 +181,11 @@ pkt_queue *pkt_q;
 int pkt_q_counter;
 
 /*Functions' declarations*/
-void pkts_init(int dev_idx, int queue_init);
+void pkts_init(interface *ifs, int ifs_n, int queue_init);
 	
 void pkt_addfrom(PACKET *pkt, inet_prefix *from);
 void pkt_addto(PACKET *pkt, inet_prefix *to);
+void pkt_add_dev(PACKET *pkt, interface *dev, int bind_the_socket);
 void pkt_addsk(PACKET *pkt, int family, int sk, int sk_type);
 void pkt_addport(PACKET *pkt, u_short port);
 void pkt_addflags(PACKET *pkt, int flags);
@@ -182,7 +200,7 @@ char *pkt_pack(PACKET *pkt);
 int pkt_verify_hdr(PACKET pkt);
 ssize_t pkt_send(PACKET *pkt);
 ssize_t pkt_recv(PACKET *pkt);
-int pkt_tcp_connect(inet_prefix *host, short port);
+int pkt_tcp_connect(inet_prefix *host, short port, interface *dev);
 
 void pkt_fill_hdr(pkt_hdr *hdr, u_char flags, int id, u_char op, size_t sz);
 

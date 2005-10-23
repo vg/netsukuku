@@ -117,10 +117,12 @@ int set_nonblock_sk(int fd);
 int unset_nonblock_sk(int fd);
 int set_reuseaddr_sk(int socket);
 int set_bindtodevice_sk(int socket, char *dev);
+int set_broadcast_sk(int socket, int family, inet_prefix *host, short port, 
+		int dev_idx);
 int new_broadcast_sk(int family, int dev_idx);
 
-int new_tcp_conn(inet_prefix *host, short port);
-int new_udp_conn(inet_prefix *host, short port);
+int new_tcp_conn(inet_prefix *host, short port, char *dev);
+int new_udp_conn(inet_prefix *host, short port, char *dev);
 int new_bcast_conn(inet_prefix *host, short port, int dev_idx);
 
 ssize_t inet_recv(int s, void *buf, size_t len, int flags);
