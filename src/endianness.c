@@ -38,7 +38,7 @@
 
 #else
 
-#define IS_DYNAMIC(i) (0)
+#define IS_DYNAMIC(i) ({do_nothing();})
 
 #endif	/*DEBUG*/
 

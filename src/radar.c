@@ -975,6 +975,7 @@ int radar_scan(int activate_qspn)
 	for(d=0; d < me.cur_ifs_n; d++) {
 		
 		pkt_add_dev(&pkt, &me.cur_ifs[d], 1);
+		pkt.sk=0; /* Create a new socket */
 	
 		/* Send MAX_RADAR_SCANS# packets using me.cur_ifs[d] as out
 		 * interface */

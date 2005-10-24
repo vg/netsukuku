@@ -29,6 +29,7 @@
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
 
+#include <sys/types.h>
 
 #define RSA_PUB_EXPONENT	65537
 

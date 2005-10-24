@@ -20,6 +20,16 @@
  * front end to the OpenSSL cryptographic functions
  */
 
+#include <openssl/bio.h>
+#include <openssl/evp.h>
+#include <openssl/crypto.h>
+#include <openssl/x509.h>
+#include <openssl/engine.h>
+#include <openssl/err.h>
+#include <openssl/rand.h>
+#include <openssl/rsa.h>
+#include <openssl/pem.h>
+
 #include "crypto.h"
 
 #include "log.h"
