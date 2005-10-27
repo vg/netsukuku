@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "ANDNA 8"
-.TH ANDNA 8 "2005-09-29" "NetsukukuD 0.0.4b" ""
+.TH ANDNA 8 "2005-10-26" "NetsukukuD 0.0.4b" ""
 .SH "NAME"
 ANDNA \- Abnormal Netsukuku Domain Name Anarchy
 .SH "DESCRIPTION"
@@ -160,7 +160,7 @@ The \fInetsukuku_d\fR\|(8) daemon reads it when it is started and when it receiv
 \&\s-1SIGHUP\s0 signal. So if you've added a hostname while netsukuku_d was running,
 just do: 
 .PP
-# kill \s-1SIGHUP\s0 <netsukuku_d pid>
+# kill \-SIGHUP <netsukuku_d pid>
 .PP
 All the hostnames, which are already registered by other nodes, are
 added in the queue, in this way, when the other nodes won't update them, your

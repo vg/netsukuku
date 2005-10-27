@@ -31,6 +31,8 @@
 #endif
 
 int max_radar_wait;
+int radar_wait_counter;			/* During the scan, it is incremented every 500 ms */
+
 int radar_scans[MAX_INTERFACES];	/*How many ECHO_ME pkts we sent on each interface*/
 int total_radar_scans;			/*The sum of all the values of the `radar_scans' array*/
 int radar_scan_mutex;			/*A flag to see if we are already doing a scan*/

@@ -23,7 +23,7 @@
  * Use ERROR_MSG and ERROR_POS in this way:
  * 	printf(ERROR_MSG "damn! damn! damn!", ERROR_POS);
  */
-#define ERROR_MSG  "%s:%d:"
+#define ERROR_MSG  "%s:%d: "
 #define ERROR_POS  __FILE__, __LINE__
 
 /*Debug levels*/
@@ -32,7 +32,25 @@
 #define DBG_NOISE 	3
 #define DBG_INSANE 	4
 
-/* A kind way to say all was messed up */
+/* 
+ * ERROR_FINISH:
+ * A kind way to say all was messed up, take this example:
+ *
+ * int func(void) // returns -1 on errors
+ * { 
+ * 	int ret=0;
+ *
+ * 	,,,BLA BLA...
+ * 	
+ *	if(error_condition)
+ *		ERROR_FINISH(ret, -1, finish);
+ *
+ * 	,,,BLA BLA...
+ * 	
+ *	finish:
+ *		return ret;
+ * }
+ */
 #define ERROR_FINISH(ret, err, label_finish)				\
 do {									\
 	void *_label_finish=&&label_finish;				\

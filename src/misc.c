@@ -22,6 +22,11 @@
 #include "includes.h"
 #include "misc.h"
 
+/*
+ * * * *  Hash functions  * * * *
+ */
+
+
 /*		Ripped 32bit Hash function 
  *
  * Fowler/Noll/Vo hash
@@ -167,6 +172,13 @@ int hash_time(int *h_sec, int *h_usec)
 	return inthash(elf_hash);
 }
 
+
+
+/*
+ * * * *  Swap functions  * * * *
+ */
+
+
 /*
  * swap_array: swaps the elements of the `src' array and stores the result in
  * `dst'. The `src' array has `nmemb'# elements and each of them is `nmemb_sz'
@@ -208,6 +220,12 @@ void swap_shorts(int nmemb, unsigned short *x, unsigned short *y)
 	swap_array(nmemb, sizeof(short), x, y);
 }
 
+
+
+/*
+ * * * *  Random related functions  * * * *
+ */
+
 /* 
  * rand_range: It returns a random number x which is _min <= x <= _max
  */ 
@@ -223,6 +241,13 @@ void xsrand(void)
 {
 	srand(getpid() ^ time(0) ^ clock());
 }
+
+
+
+/*
+ * * * *  Search functions  * * * *
+ */
+
 
 char *last_token(char *string, char tok)
 {
@@ -272,6 +297,53 @@ int is_bufzero(char *a, int sz)
 			return 1;
 	return 0;
 }
+
+
+/*
+ * xtimer: It sleeps for `secs' seconds. 
+ * `steps' tells to xtimer() how many for cycles it must run to sleep for
+ * `secs' secons. At every cycle it updates `counter'.
+ */
+void xtimer(u_int secs, u_int steps, int *counter)
+{
+	static int i, ms_sleep;
+	static int ms_step; /* how many ms it must sleep at every step */
+	static int s_step;  /* seconds per step */
+	static int mu_step; /* micro seconds per step */
+
+	if(!steps)
+		steps++;
+	if(counter)
+		*counter=0;
+	ms_sleep=secs*1000;
+	
+	if(ms_sleep < secs) {
+		/* We are waiting a LONG TIME, it's useless to have steps < of
+		 * one second */
+		ms_step=1000;
+		steps=secs;
+	} else {
+		ms_step=ms_sleep/steps;
+		
+		if(!ms_step) {
+			ms_step=1;
+			steps=ms_sleep;
+		}
+	}
+
+	s_step=ms_step/1000;
+	mu_step=ms_step*1000;
+	
+	for(i=0; i<steps; i++) {
+		if(ms_step >= 1000)
+			sleep(s_step);
+		else
+			usleep(mu_step);
+		if(counter)
+			(*counter)++;
+	}
+}
+
 
 /* This is the most important function */
 void do_nothing(void)

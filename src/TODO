@@ -1,16 +1,17 @@
 		[HIGH PRIORITY] 
 
 - Strange anomalies added in the CVS version to verify: 
-	- QSPN: sometimes it gives: "connection refused".
-
+	- Quest ANDNA_CHECK_COUNTER to 134.103.184.72
+	  * Cannot tcp_connect() to 163.114.222.44: No route to host
+	  * Couldn't connect to 163.114.222.44 to launch the ANDNA_CHECK_COUNTER
+	  * request
+	
 - DNS wrapper: ip -> hostnames
+	- -r forward to other /etc/resolv.conf dns server
 
 - The QSPN has to remove the died nodes after QSPN_WAIT*2 seconds.
 
-- multi network interface support
-	- radar.c: 674
-
-- root id check in "scons install"
+- multi network interface support [76% completed]
 
 
 		[MEDIUM PRIORITY] 
@@ -37,3 +38,5 @@
 	to zero all the invalid bits.
 	
 - Flush all the routes present in the routing table before starting the hook?
+
+- root id check in "scons install"

@@ -1007,7 +1007,7 @@ int radar_scan(int activate_qspn)
 
 	pkt_free(&pkt, 1);
 	
-	sleep(max_radar_wait);
+	xtimer(max_radar_wait, max_radar_wait<<1, &radar_wait_counter);
 
 	final_radar_queue();
 	radar_update_map();
@@ -1177,9 +1177,19 @@ void *radar_daemon(void *null)
 /* radar_wait_new_scan: It sleeps until a new radar scan is sent */
 void radar_wait_new_scan(void)
 {
-	int old_echo_id=my_echo_id;
-	for(; old_echo_id == my_echo_id; )
-		usleep(500000);
+	int old_echo_id, old_radar_wait_counter;
+	
+	old_echo_id=my_echo_id;
+	old_radar_wait_counter=radar_wait_counter;
+
+	for(; old_echo_id == my_echo_id; ) {
+		usleep(505050);
+
+		/* If the radar_wait_counter doesn't change, that means that
+		 * the radar isn't active */
+		if(radar_wait_counter == old_radar_wait_counter)
+			break;
+	}
 }
 
 

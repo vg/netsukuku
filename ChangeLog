@@ -22,6 +22,7 @@
   
 - The installation path of the man page is now fixed.
 
+- The /usr/share/netsukuku directory is now created during the installation
 
 0.0.3b
 - The ANDNA code, with its DNS wrapper, is completed and tested.

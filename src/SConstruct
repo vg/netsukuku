@@ -58,6 +58,13 @@ else:
 	debug = 0
 opts.Save('build.conf', env)
 
+if os.path.exists("netsukuku.conf") and env.GetOption('clean'):
+	Execute(Delete('netsukuku.conf'))
+if os.path.exists("config.h") and env.GetOption('clean'):
+	Execute(Delete('config.h'))
+if os.path.exists("config.log") and env.GetOption('clean'):
+	Execute(Delete('config.log'))
+	
 Help("""
 *** Usage
       'scons' to build the netsukuku_d binary,
@@ -67,16 +74,21 @@ Help("""
 *** General options
 """ + opts.GenerateHelpText(env))
 
+if ARGUMENTS.get('install'):
+		print "you aren't root"
 
 #
 #	Configure
 #
 
-if not os.path.exists("config.log"):
+if not os.path.exists("config.log") and not env.GetOption('clean'):
 	print 'Configuring... '
 	conf = Configure(env)
 	if not conf.CheckLib('gmp'): 
 		print 'Did not find libgmp.a or gmp.lib, exiting!'
+		Exit(1)
+	if not conf.CheckCHeader([ "gmp.h" ]):
+		print 'Did not find the gmp headers, exiting!'
 		Exit(1)
 	if not conf.CheckLib('pthread'):
        		print 'Did not find pthread.a or pthread.lib, exiting!'
@@ -84,12 +96,18 @@ if not os.path.exists("config.log"):
 	if not conf.CheckLib('crypto'): 
 		print 'Did not find the openssl libcrypto.a or libcrypto.lib, exiting!'
 		Exit(1)
+	if not conf.CheckCHeader([ "openssl/bio.h", "openssl/evp.h",
+			"openssl/crypto.h", "openssl/x509.h",
+			"openssl/engine.h", "openssl/err.h", "openssl/rand.h",
+			"openssl/rsa.h", "openssl/pem.h" ]):
+		print 'Did not find the openssl headers, exiting!'
+		Exit(1)
 	if not conf.CheckCXXHeader([ "boost/format.hpp", "boost/iterator.hpp",
 			"boost/iterator/reverse_iterator.hpp",
 			"boost/tuple/tuple.hpp", "boost/type_traits.hpp",
 			"boost/scoped_array.hpp", "boost/shared_array.hpp",
 			"boost/tokenizer.hpp" ]):
-		print 'Did not find the boost headers, exitin!'
+		print 'Did not find the boost headers, exiting!'
 		Exit(1)
 		
 	env = conf.Finish()
@@ -107,14 +125,18 @@ def conf_build(target, source, env):
     conf_in.close()
     conf.close()
 
-if not os.path.exists("config.h"):
-	print 'Generating config.h from config.h.in'
-	conf_build('config.h', 'config.h.in', env)
+def build_config_files(target = None, source = None, env = None):
+	if not os.path.exists("config.h") and not env.GetOption('clean'):
+		print 'Generating config.h from config.h.in'
+		conf_build('config.h', 'config.h.in', env)
 
-if not os.path.exists("netsukuku.conf"):
-	print 'Generating netsukuku.conf from netsukuku.conf.in'
-	conf_build('netsukuku.conf', 'netsukuku.conf.in', env)
+	if not os.path.exists("netsukuku.conf") and not env.GetOption('clean'):
+		print 'Generating netsukuku.conf from netsukuku.conf.in'
+		conf_build('netsukuku.conf', 'netsukuku.conf.in', env)
+	
+	return 0
 
+build_config_files(env = env)
 
 #
 #	Build
@@ -140,3 +162,7 @@ idir_conf   = '$CONF_DIR'
 env.Install(idir_bin, [netsukuku_d, 'netsukuku_wifi'])
 env.Install(idir_conf, ['netsukuku.conf'])
 env.Alias('install', [idir_bin, idir_conf])
+
+#Dirty hack ;( Why GetOption("install") doesn't work?
+if not os.path.exists(env["DATA_DIR"]) and os.path.exists(env["CONF_DIR"]):
+	Execute(Mkdir(env["DATA_DIR"]))

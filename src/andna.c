@@ -289,7 +289,9 @@ int find_hash_gnode_recurse(quadro_group qg, int level, inet_prefix *to,
 	 * - return -1
 	 */
 	
-	debug(DBG_NOISE, "find_hashgnode: lvl %d, start gid %d", level, qg.gid[level]);
+#if 0	/* TOO NOISY */
+	debug(DBG_INSANE, "find_hashgnode: lvl %d, start gid %d", level, qg.gid[level]);
+#endif
 
 	/* the maximum steps required to complete the for. */
 	steps = qg.gid[level] >= MAXGROUPNODE/2 ? qg.gid[level] : MAXGROUPNODE-qg.gid[level];
@@ -310,7 +312,9 @@ int find_hash_gnode_recurse(quadro_group qg, int level, inet_prefix *to,
 				!(gnode->flags & GMAP_VOID)) {
 			qg.gid[level]=gid;
 
+#if 0	/* TOO NOISY */
 			debug(DBG_NOISE, "find_hashgnode: 	lvl %d gid %d", level, qg.gid[level]);
+#endif
 
 			if(!quadg_gids_cmp(qg, me.cur_quadg, level)) {
 				/* Is this hash_gnode not wanted ? */
@@ -349,7 +353,10 @@ int find_hash_gnode_recurse(quadro_group qg, int level, inet_prefix *to,
 
 	} /* for(...) */
 
-	debug(DBG_NOISE, "find_hashgnode: Exausted: lvl %d gid %d", level, qg.gid[level]);
+
+#if 0	/* TOO NOISY */
+	debug(DBG_INSANE, "find_hashgnode: Exausted: lvl %d gid %d", level, qg.gid[level]);
+#endif
 	/* We didn't find anything in the this level, so
 	 * returns from this tree */
 	return -1;
@@ -464,7 +471,7 @@ int andna_register_hname(lcl_cache *alcl)
 	u_int hash_gnode[MAX_IP_INT];
 	inet_prefix to;
 	
-	char *sign;
+	char *sign=0;
 	const char *ntop; 
 	int ret=0;
 	ssize_t err;
@@ -613,7 +620,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 	/* Revert the packet from network to host order */
 	ints_network_to_host((void *)req, andna_reg_pkt_iinfo);
 
-	/* If don't belong to the gnode of `rfrom', then we have to exclude
+	/* If we don't belong to the gnode of `rfrom', then we have to exclude
 	 * it from the find_hash_gnode search, since we have received the 
 	 * pkt from that gnode and it is likely that `rfrom' is the only node 
 	 * of that gnode.
@@ -739,11 +746,18 @@ int andna_check_counter(PACKET pkt)
 	PACKET rpkt;
 	int ret=0, pubk_hash[MAX_IP_INT], hash_gnode[MAX_IP_INT], err;
 	struct andna_reg_pkt *req;
-	const char *ntop; 
+	const char *ntop;
+	u_char forwarded_pkt=0;
 
+	memset(&rpkt, 0, sizeof(PACKET));
+	req=(struct andna_reg_pkt *)pkt.msg;
+
+	if(pkt.hdr.flags & BCAST_PKT)
+		forwarded_pkt=1;
+
+	
 	/* Calculate the hash of the pubkey of the sender node. This hash will
 	 * be used to reach its counter node. */
-	req=(struct andna_reg_pkt *)pkt.msg;
 	andna_hash(my_family, req->pubkey, ANDNA_PKEY_LEN, pubk_hash, hash_gnode);
 	
 	/* Find a hash_gnode for the pubk_hash */
@@ -766,8 +780,19 @@ int andna_check_counter(PACKET pkt)
 	memcpy(pkt.msg, req, ANDNA_REG_PKT_SZ);
 	inet_copy_ipdata((u_int *)(pkt.msg+ANDNA_REG_PKT_SZ), &me.cur_ip);
 	
+	/* If we are checking a registration pkt which has been only
+	 * forwarded to us (and already registered), we tell the counter_node
+	 * to just check the request. We don't want it to update its
+	 * hname_updates counter */
+	if(forwarded_pkt) {
+		req=(struct andna_reg_pkt *)pkt.msg;
+		req->flags|=ANDNA_JUST_CHECK;
+		
+		/* Adjust the flags */
+		req->flags&=~BCAST_PKT; 
+	}
+
 	/* Throw it */
-	memset(&rpkt, 0, sizeof(PACKET));
 	pkt.sk=0;  /* Create a new connection */
 	ret=send_rq(&pkt, 0, ANDNA_CHECK_COUNTER, 0, ACK_AFFERMATIVE, 1, &rpkt);
 
@@ -785,18 +810,20 @@ int andna_recv_check_counter(PACKET rpkt)
 	RSA *pubkey;
 	counter_c *cc;
 	counter_c_hashes *cch;
-	const u_char *pk;
+	u_int pubk_hash[MAX_IP_INT], hash_gnode[MAX_IP_INT], *excluded_hgnode[1];
+	int ret=0, err, old_updates;
+
 	char *ntop=0, *rfrom_ntop=0, *buf;
 	u_char forwarded_pkt=0;
-	int ret=0, err;
-	u_int pubk_hash[MAX_IP_INT], hash_gnode[MAX_IP_INT], *excluded_hgnode[1];
+	const u_char *pk;
 
 	pkt_copy(&rpkt_local_copy, &rpkt);
 	ntop=xstrdup(inet_to_str(rpkt.from));
 	
 	req=(struct andna_reg_pkt *)rpkt_local_copy.msg;
 	if(rpkt.hdr.sz != ANDNA_REG_PKT_SZ+MAX_IP_SZ) {
-		debug(DBG_SOFT, "Malformed check_counter pkt from %s", ntop);
+		debug(DBG_SOFT, ERROR_MSG "Malformed check_counter pkt from %s: %d != %d", 
+				ERROR_POS, ntop, rpkt.hdr.sz, ANDNA_REG_PKT_SZ+MAX_IP_SZ);
 		ERROR_FINISH(ret, -1, finish);
 	}
 	
@@ -879,7 +906,10 @@ int andna_recv_check_counter(PACKET rpkt)
 
 	/* Finally, let's register/update the hname */
 	cc=counter_c_add(&rfrom, req->pubkey);
-	cch=cc_hashes_add(cc, req->hash);
+	if(!(req->flags & ANDNA_JUST_CHECK))
+		cch=cc_hashes_add(cc, req->hash);
+	else
+		cch=cc_findhash(cc, req->hash);
 	if(!cch) {
 		debug(DBG_SOFT, "Request %s (0x%x) rejected: %s", 
 				rq_to_str(rpkt.hdr.op), rpkt.hdr.id, 
@@ -889,13 +919,15 @@ int andna_recv_check_counter(PACKET rpkt)
 		ERROR_FINISH(ret, -1, finish);
 	}
 
-	if(cch->hname_updates > req->hname_updates) {
+	old_updates = cch->hname_updates;
+	old_updates-= !(req->flags & ANDNA_JUST_CHECK) ? 0 : 1;
+	if(old_updates > req->hname_updates) {
 		debug(DBG_SOFT, "Request %s (0x%x) rejected: hname_updates", 
 			" mismatch", rq_to_str(rpkt.hdr.op), rpkt.hdr.id);
 		if(!forwarded_pkt)
 			ret=pkt_err(pkt, E_INVALID_REQUEST);
 		ERROR_FINISH(ret, -1, finish);
-	} else
+	} else if(!(req->flags & ANDNA_JUST_CHECK))
 		cch->hname_updates=req->hname_updates+1;
 		
 	/* Report the successful result to rfrom */
@@ -1429,7 +1461,7 @@ int put_single_acache(PACKET rpkt)
 	struct single_acache_hdr *req_hdr;
 	u_int hash_gnode[MAX_IP_INT], **new_hgnodes=0;
 	inet_prefix rfrom, to;
-	andna_cache *ac, *ac_tmp;
+	andna_cache *ac, *ac_tmp=0;
 	char *buf;
 	char *ntop=0, *rfrom_ntop=0;
 	int ret, i;

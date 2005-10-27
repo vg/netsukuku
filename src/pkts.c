@@ -764,9 +764,9 @@ int pkt_q_add_pkt(PACKET pkt)
 }
 
 /*
- * pkt_q_del: Delete from pkt_q and frees the `pq' struct. The `pq'->pkt is
- * also freed and the pq->pkt.sk socket is closed if `close_socket' is non
- * zero.
+ * pkt_q_del: Deletes `pq' from the pkt_q llist and frees the `pq' struct. The 
+ * `pq'->pkt is also freed and the pq->pkt.sk socket is closed if `close_socket' 
+ * is non zero.
  */
 void pkt_q_del(pkt_queue *pq, int close_socket)
 {

@@ -299,7 +299,8 @@ error:
  * gateways to IPs. 
  * `gw_ip' is the array of inet_prefix structs where the converted IPs will be
  * stored. It must have MAX_MULTIPATH_ROUTES members.
- * If `single_gw' is not null, only the best gateway will be converted.
+ * If `single_gw' is not null, only the best gateway will be converted and it
+ * is assumed that `gw_ip' has only 1 member.
  * The number of IPs stored in `gw_ip' is returned.
  * The pointer to the gateways node pointers are copied in the `gw_gnodes'
  * array, (if not null), which must have at least MAX_MULTIPATH_ROUTES members.
@@ -314,9 +315,10 @@ int get_gw_ips(map_node *int_map, map_gnode **ext_map,
 {
 	ext_rnode *e_rnode=0;
 	map_node **gw_node=0;
-	int i, e;
+	int i, e, gw_ip_members;
 
-	memset(gw_ip, 0, sizeof(inet_prefix)*MAX_MULTIPATH_ROUTES);
+	gw_ip_members=single_gw ? 1 : MAX_MULTIPATH_ROUTES;
+	memset(gw_ip, 0, sizeof(inet_prefix)*gw_ip_members);
 
 	gw_node=(map_node **)get_gw_gnode(int_map, ext_map, bnode_map, bmap_nodes,
 			find_gnode, gnode_level, gw_level, single_gw);
@@ -346,6 +348,22 @@ int get_gw_ips(map_node *int_map, map_gnode **ext_map,
 	return e ? e : -1;
 }
 
+/*
+ * find_rnode_dev_and_retry: Searches with rnl_get_devname() the rnode_list
+ * which points to `node'. If it is not found it waits the next radar_scan. If
+ * it is not found again NULL is returned, otherwise the device name of the
+ * related rnode_list struct is returned.
+ */
+char *find_rnode_dev_and_retry(map_node *node)
+{
+	int retries=0;
+	char *dev=0;
+	
+	retries=0;
+	for(; !(dev=rnl_get_devname(rlist, node)) && !retries; retries++)
+		radar_wait_new_scan();
+	return dev;
+}
 
 /* 
  * rt_update_node: It adds/replaces or removes a route from the kernel's
@@ -371,11 +389,12 @@ void rt_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg
 		      void *void_gw, char *oif, u_char level)
 {
 	ext_rnode *e_rnode=0;
-	map_node *node=0, *gw_node=0;
+	map_node *node=0, *gw_node=0, *tmp_node;
 	map_gnode *gnode=0;
 	struct nexthop *nh=0;
 	inet_prefix to;
-	int i, node_pos=0, route_scope=0, err;
+	int i, n, node_pos=0, route_scope=0, err;
+
 #ifdef DEBUG		
 #define MAX_GW_IP_STR_SIZE (MAX_MULTIPATH_ROUTES*((INET6_ADDRSTRLEN+1)+IFNAMSIZ)+1)
 	char *to_ip, gw_ip[MAX_GW_IP_STR_SIZE]="";
@@ -444,7 +463,13 @@ void rt_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg
 		strcat(gw_ip, "|");
 #endif
 		inet_htonl(nh[0].gw.data, nh[0].gw.family);
-		nh[0].dev=!oif ? rnl_get_devname(rlist, gw_node) : oif;
+		
+		/* Set the device name */
+		if(!oif && !(nh[0].dev=find_rnode_dev_and_retry(gw_node)))
+			/* It wasn't found any suitable dev */
+			goto finish;
+		else if(oif)
+			nh[0].dev=oif;
 		nh[1].dev=0;
 #ifdef DEBUG
 		strcat(gw_ip, nh[0].dev);
@@ -454,8 +479,10 @@ void rt_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg
 		nh=xmalloc(sizeof(struct nexthop)*(node->links+1));
 		memset(nh, '\0', sizeof(struct nexthop)*(node->links+1));
 
-		for(i=0; i<node->links; i++) {
-			maptoip((u_int)me.int_map, (u_int)node->r_node[i].r_node,
+		for(i=0, n=0; i<node->links; i++) {
+			tmp_node=(map_node *)node->r_node[i].r_node;
+			
+			maptoip((u_int)me.int_map, (u_int)tmp_node,
 					me.cur_quadg.ipstart[1], &nh[i].gw);
 #ifdef DEBUG		
 			strcat(gw_ip, inet_to_str(nh[i].gw));
@@ -463,14 +490,17 @@ void rt_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg
 #endif
 			inet_htonl(nh[i].gw.data, nh[i].gw.family);
 
-			nh[i].dev=rnl_get_devname(rlist, (map_node *)node->r_node[i].r_node);
+			if(!(nh[i].dev=find_rnode_dev_and_retry(tmp_node)))
+				continue;
+
 			nh[i].hops=255-i;
 #ifdef DEBUG
 			strcat(gw_ip, nh[i].dev);
 			strcat(gw_ip, ":");
 #endif
+			n++;
 		}
-		nh[node->links].dev=0;
+		nh[n].dev=0;
 	} else if(level) {
 		inet_prefix gnode_gws[MAX_MULTIPATH_ROUTES];
 		map_node *gw_nodes[MAX_MULTIPATH_ROUTES];
@@ -492,22 +522,26 @@ void rt_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg
 		nh=xmalloc(sizeof(struct nexthop)*(err+1));
 		memset(nh, '\0', sizeof(struct nexthop)*(err+1));
 
-		for(ips=0; ips<err; ips++) {
+		for(ips=0, n=0; ips<err; ips++) {
 			memcpy(&nh[ips].gw, &gnode_gws[ips], sizeof(inet_prefix));
 #ifdef DEBUG
 			strcat(gw_ip, inet_to_str(nh[ips].gw));
 			strcat(gw_ip, "|");
 #endif
 			inet_htonl(nh[ips].gw.data, nh[ips].gw.family);
-			nh[ips].dev=rnl_get_devname(rlist, gw_nodes[ips]);
+			
+			if(!(nh[ips].dev=find_rnode_dev_and_retry(gw_nodes[ips])))
+				continue;
+			
 			nh[ips].hops=255-ips;
 #ifdef DEBUG
 			strcat(gw_ip, nh[ips].dev);
 			strcat(gw_ip, ":");
 #endif
+			n++;
 		}
 		
-		nh[err].dev=0;
+		nh[n].dev=0;
 	}
 
 do_update:

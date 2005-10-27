@@ -63,16 +63,26 @@ int add_nexthops(struct nlmsghdr *n, struct rtmsg *r, struct nexthop *nhop)
 	char buf[1024];
 	struct rtattr *rta = (void*)buf;
 	struct rtnexthop *rtnh;
-	int i=0;
+	int i=0, idx;
 
 	rta->rta_type = RTA_MULTIPATH;
 	rta->rta_len = RTA_LENGTH(0);
 	rtnh = RTA_DATA(rta);
 
-	if(!nhop[i+1].dev && !i) {
+	if(!nhop[i+1].dev) {
 		/* Just one gateway */
 		r->rtm_family = nhop[i].gw.family;
 		addattr_l(n, sizeof(struct rt_request), RTA_GATEWAY, &nhop[i].gw.data, nhop[i].gw.len);
+
+		if(nhop[0].dev) {
+			if ((idx = ll_name_to_index(nhop[0].dev)) == 0) {
+				error(ERROR_MSG "Device \"%s\" doesn't really exist\n", 
+						ERROR_POS, nhop[0].dev);
+				return -1;
+			}
+			addattr32(n, sizeof(struct rt_request), RTA_OIF, idx);
+		}
+
 		return 0;
 	}
 	
@@ -155,8 +165,10 @@ int route_exec(int route_cmd, int route_type, int route_scope, unsigned flags,
 	if (dev) {
 		int idx;
 
-		if ((idx = ll_name_to_index(dev)) == 0)
-			fatal("%s:%d, Device \"%s\" doesn't really exist\n", ERROR_POS, dev);
+		if ((idx = ll_name_to_index(dev)) == 0) {
+			error("%s:%d, Device \"%s\" doesn't really exist\n", ERROR_POS, dev);
+			return -1;
+		}
 		addattr32(&req.nh, sizeof(req), RTA_OIF, idx);
 	}
 

@@ -112,11 +112,9 @@ it) and modify it for your needs, but generally the default options are good.
 - Notes:
 
 If you want to change some scons option to do another installation, (i.e. you
-may want to reinstall it with another MANDIR path), you have to remove the
-following files:
-src/build.conf, src/config.h, src/netsukuku.conf
-That's because they are generated the first time you launch scons to compile
-the sources.
+may want to reinstall it with another MANDIR path), you have to run:
+$ scons --clean
+
 
 **
 ****  How to use it

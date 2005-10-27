@@ -246,7 +246,7 @@ int get_qspn_round(inet_prefix to, interface *dev, struct timeval to_rtt,
 	
 	/* Convert the pkt from network to host order */
 	int_info_copy(&qr_pkt_iinfo, &qspn_round_pkt_iinfo);
-	qr_pkt_iinfo.int_offset[1] = max_levels*sizeof(int);
+	qr_pkt_iinfo.int_offset[1] = me.cur_quadg.levels*sizeof(int)+sizeof(char);
 	qr_pkt_iinfo.int_nmemb[0]  = max_levels;
 	qr_pkt_iinfo.int_nmemb[1]  = max_levels*2;
 	ints_network_to_host(rpkt.msg, qr_pkt_iinfo);
@@ -323,7 +323,7 @@ int put_qspn_round(PACKET rq_pkt)
 	
 	/* Convert the pkt from host to network order */
 	int_info_copy(&qr_pkt_iinfo, &qspn_round_pkt_iinfo);
-	qr_pkt_iinfo.int_offset[1] = me.cur_quadg.levels*sizeof(int);
+	qr_pkt_iinfo.int_offset[1] = me.cur_quadg.levels*sizeof(int)+sizeof(char);
 	qr_pkt_iinfo.int_nmemb[0]  = me.cur_quadg.levels;
 	qr_pkt_iinfo.int_nmemb[1]  = me.cur_quadg.levels*2;
 	ints_host_to_network(&qr_pkt, qr_pkt_iinfo);

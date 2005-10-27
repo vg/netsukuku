@@ -141,7 +141,7 @@ int qspn_b_add(struct qspn_buffer *qb, u_char replier, u_short flags)
 {
 	qb->replies++;
 	qb->replier=xrealloc(qb->replier, sizeof(u_char)*qb->replies);
-	qb->flags=xrealloc(qb->flags, sizeof(u_char)*qb->replies);
+	qb->flags=xrealloc(qb->flags, sizeof(u_short)*qb->replies);
 	
 	qb->replier[qb->replies-1]=replier;
 	qb->flags[qb->replies-1]=flags;

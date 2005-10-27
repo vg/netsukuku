@@ -43,6 +43,7 @@ void xsrand(void);
 void strip_char(char *string, char char_to_strip);
 char *last_token(char *string, char tok);
 int find_int(int x, int *ia, int nmemb);
+void xtimer(u_int secs, u_int steps, int *counter);
 int is_bufzero(char *a, int sz);
 void do_nothing(void);
 

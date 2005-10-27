@@ -34,7 +34,7 @@ The netsukuku_d(8) daemon reads it when it is started and when it receives the
 SIGHUP signal. So if you've added a hostname while netsukuku_d was running,
 just do: 
 
-# kill SIGHUP <netsukuku_d pid>
+# kill -SIGHUP <netsukuku_d pid>
 
 All the hostnames, which are already registered by other nodes, are
 added in the queue, in this way, when the other nodes won't update them, your

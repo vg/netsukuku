@@ -40,6 +40,8 @@ int last_spread_acache_pkt_id[ANDNA_MAX_FLOODS];
 #define ANDNA_UPDATE		1		/* Update the hostname */
 #define ANDNA_FORWARD		(1<<1)		/* Forward this pkt, plz */
 #define ANDNA_REV_RESOLVE	(1<<2)		/* Give me your hostnames */
+#define ANDNA_JUST_CHECK	(1<<3)		/* Check only, don't update 
+						   anything */
 
 /*
  * Andna registration request pkt used to send the register and update requests
