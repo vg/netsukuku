@@ -1314,7 +1314,7 @@ int load_hostnames(char *file, lcl_cache **old_alcl_head, int *old_alcl_counter)
 		if(feof(fd))
 			break;
 
-		if(*buf=='#' || *buf=='\n') {
+		if((*buf)=='#' || (*buf)=='\n' || !(*buf)) {
 			/* Strip off the comment lines */
 			continue;
 		} else {

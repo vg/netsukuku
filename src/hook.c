@@ -695,8 +695,9 @@ int hook_init(void)
 		rt_del_loopback_net();
 	}
 	
-	debug(DBG_NORMAL, "Activating ip_forward");
+	debug(DBG_NORMAL, "Activating ip_forward and disabling rp_filter");
 	route_ip_forward(my_family, 1);
+	route_rp_filter_all_dev(my_family, me.cur_ifs, me.cur_ifs_n, 0);
 
 	/*
 	 * We set the dev ip to HOOKING_IP+random_number to begin our 

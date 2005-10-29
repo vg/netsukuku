@@ -23,6 +23,7 @@
 
 #include "includes.h"
 
+#include "if.h"
 #include "libnetlink.h"
 #include "inet.h"
 #include "krnl_route.h"
@@ -232,8 +233,10 @@ int route_ip_forward(int family, int enable)
 	int flush_fd;
 	char *ROUTE_FORWARD_SYSCTL="/proc/sys/net/ipv4/ip_forward";
 	char *ROUTE_FORWARD_SYSCTL_6="/proc/sys/net/ipv6/conf/all/forwarding";
-	char *sysctl_path, *buf = "1";
+	char *sysctl_path, buf[1];
 
+	buf[0]='1';
+	
 	len = strlen(buf);
 	if(family==AF_INET)
 		sysctl_path = ROUTE_FORWARD_SYSCTL;
@@ -262,4 +265,75 @@ int route_ip_forward(int family, int enable)
 
 	return 0;
 }
+
+/*
+ * route_rp_filter: Modifies the /proc/sys/net/ipv4/conf/INTERFACE/rp_filter
+ * config file.
+ */
+int route_rp_filter(int family, char *dev, int enable)
+{
+	int len, err, ret=0;
+	int flush_fd;
+	
+	/* The path is /proc/sys/net/ipv4/conf/INTERFACE/rp_filter */
+	const char *RP_FILTER_SYSCTL_1="/proc/sys/net/ipv4/conf/";
+	const char *RP_FILTER_SYSCTL_1_IPV6="/proc/sys/net/ipv6/conf/";
+	const char *RP_FILTER_SYSCTL_2="/rp_filter";
+	char *final_path=0, buf[1];
+
+	buf[0]='1';
+#define RP_FILTER_PATH_SZ (strlen(RP_FILTER_SYSCTL_1)+		   \
+			   strlen(RP_FILTER_SYSCTL_2)+IF_NAMESIZE+1)
+	final_path=xmalloc(RP_FILTER_PATH_SZ);
+	memset(final_path, 0, RP_FILTER_PATH_SZ);
+
+	len = strlen(buf);
+	if(family==AF_INET) {
+		strcpy(final_path, RP_FILTER_SYSCTL_1);
+	} else if(family==AF_INET6) {
+		strcpy(final_path, RP_FILTER_SYSCTL_1_IPV6);
+	} else
+		ERROR_FINISH(ret, -1, finish);
+
+	strcat(final_path, dev);
+	strcat(final_path, RP_FILTER_SYSCTL_2);
+
+	if(!enable)
+		buf[0]='0';
+
+	flush_fd=open(final_path, O_WRONLY);
+	if (flush_fd < 0) {
+		debug(DBG_NORMAL, "Cannot open \"%s\"\n", final_path);
+		ERROR_FINISH(ret, -1, finish);
+	}
+		
+	if ((err=write (flush_fd, (void *)buf, len)) == 0) {
+		debug(DBG_NORMAL, "Warning: rp_filter setting changed\n");
+		ERROR_FINISH(ret, -1, finish);
+	} else if(err==-1) {
+		debug(DBG_NORMAL, "Cannot change the rp_filter setting: %s\n", strerror(errno));
+		ERROR_FINISH(ret, -1, finish);
+	}
+	close(flush_fd);
+
+finish:
+	if(final_path)
+		xfree(final_path);
+	return ret;
+}
+
+/*
+ * route_rp_filter_all_dev: do route_rp_filter() for all the interfaces
+ * present in the `ifs' array.
+ */
+int route_rp_filter_all_dev(int family, interface *ifs, int ifs_n, int enable)
+{
+	int i, ret=0;
+
+	for(i=0; i<ifs_n; i++)
+		ret+=route_rp_filter(family, ifs[i].dev_name, enable);
+
+	return ret;
+}
+
 /*Life is strange*/
