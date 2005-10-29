@@ -789,7 +789,7 @@ int andna_check_counter(PACKET pkt)
 		req->flags|=ANDNA_JUST_CHECK;
 		
 		/* Adjust the flags */
-		req->flags&=~BCAST_PKT; 
+		pkt.hdr.flags&=~BCAST_PKT; 
 	}
 
 	/* Throw it */
@@ -814,7 +814,7 @@ int andna_recv_check_counter(PACKET rpkt)
 	int ret=0, err, old_updates;
 
 	char *ntop=0, *rfrom_ntop=0, *buf;
-	u_char forwarded_pkt=0;
+	u_char forwarded_pkt=0, just_check=0;
 	const u_char *pk;
 
 	pkt_copy(&rpkt_local_copy, &rpkt);
@@ -830,6 +830,9 @@ int andna_recv_check_counter(PACKET rpkt)
 	if(rpkt.hdr.flags & BCAST_PKT)
 		/* The pkt we received has been only forwarded to us */
 		forwarded_pkt=1;
+
+	if(req->flags & ANDNA_JUST_CHECK)
+		just_check=1;
 
 	/* Check if we already received this pkt during the flood */
 	if(forwarded_pkt && 
@@ -906,7 +909,7 @@ int andna_recv_check_counter(PACKET rpkt)
 
 	/* Finally, let's register/update the hname */
 	cc=counter_c_add(&rfrom, req->pubkey);
-	if(!(req->flags & ANDNA_JUST_CHECK))
+	if(!just_check)
 		cch=cc_hashes_add(cc, req->hash);
 	else
 		cch=cc_findhash(cc, req->hash);
@@ -920,18 +923,18 @@ int andna_recv_check_counter(PACKET rpkt)
 	}
 
 	old_updates = cch->hname_updates;
-	old_updates-= !(req->flags & ANDNA_JUST_CHECK) ? 0 : 1;
+	old_updates-= !just_check ? 0 : 1;
 	if(old_updates > req->hname_updates) {
 		debug(DBG_SOFT, "Request %s (0x%x) rejected: hname_updates", 
 			" mismatch", rq_to_str(rpkt.hdr.op), rpkt.hdr.id);
 		if(!forwarded_pkt)
 			ret=pkt_err(pkt, E_INVALID_REQUEST);
 		ERROR_FINISH(ret, -1, finish);
-	} else if(!(req->flags & ANDNA_JUST_CHECK))
+	} else if(!just_check)
 		cch->hname_updates=req->hname_updates+1;
 		
 	/* Report the successful result to rfrom */
-	if(!forwarded_pkt) {
+	if(!forwarded_pkt || just_check) {
 		debug(DBG_SOFT, "Check_counter rq 0x%x accepted.",
 				rpkt.hdr.id);
 		pkt_fill_hdr(&pkt.hdr, ASYNC_REPLIED, rpkt.hdr.id,
@@ -944,7 +947,8 @@ int andna_recv_check_counter(PACKET rpkt)
 	 * Broadcast the request to the entire gnode of level 1 to let the
 	 * other counter_nodes register the hname.
 	 */
-	andna_flood_pkt(&rpkt, forwarded_pkt);
+	if(!just_check)
+		andna_flood_pkt(&rpkt, forwarded_pkt);
 	
 finish: 
 	if(ntop)
@@ -1007,7 +1011,7 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	inet_copy_ipdata(req.rip, &me.cur_ip);
 	andna_hash(my_family, hname, strlen(hname), req.hash, hash_gnode);
 	
-#ifndef ANDNA_DEBUG
+//#ifndef ANDNA_DEBUG
 	/*
 	 * If we manage an andna_cache, it's better to peek at it.
 	 */
@@ -1016,7 +1020,7 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 		inet_ntohl(resolved_ip->data, my_family);
 		return 0;
 	}
-#endif
+//#endif
 
 	/* 
 	 * Ok, we have to ask to someone for the resolution.
@@ -1957,6 +1961,7 @@ void *andna_maintain_hnames_active(void *null)
 		if(updates)
 			save_lcl_cache(&lcl_keyring, andna_lcl, server_opt.lcl_file);
 
+#if 0
 #ifdef ANDNA_DEBUG
 		/* 
 		 * * *  DEBUG ONLY  * * *
@@ -1970,6 +1975,7 @@ void *andna_maintain_hnames_active(void *null)
 			else
 				debug(DBG_INSANE, "Resolved failure Something went wrong");
 		}
+#endif
 #endif
 		sleep((ANDNA_EXPIRATION_TIME/2) + rand_range(1, 10));
 	}
@@ -2008,12 +2014,12 @@ void *andna_main(void *null)
 	pthread_mutex_lock(&tcp_daemon_lock);
 	pthread_mutex_unlock(&tcp_daemon_lock);
 
-#ifdef ANDNA_DEBUG 
-#warning The ANDNA hook is disabled for debugging purpose
-#else
+//#ifdef ANDNA_DEBUG 
+//#warning The ANDNA hook is disabled for debugging purpose
+//#else
 	/* Start the ANDNA hook */
 	pthread_create(&thread, &t_attr, andna_hook, 0);
-#endif
+//#endif
 
 	debug(DBG_SOFT, "Evocating the DNS wrapper daemon.");
 	pthread_create(&thread, &t_attr, dns_wrapper_thread, 0);

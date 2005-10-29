@@ -640,11 +640,8 @@
   un tracer_pkt. In questo modo tutti i nodi avranno gia' la rotta esatta
   per raggiungerlo, aggiorneranno qualche rotta e saranno felici. Poi per
   quanto riguarda le rotte secondarie ci pensera' il round successivo di QSPN.
-  Quando un nodo muore o si sgancia, non dice nulla a nessuno. La morte sara'
-  pianta silenziosamente nel cuore degli altri nodi. Ci pensera' il QSPN che
-  verra' con il prossimo round a far notare a tutti gli altri nodi la sua
-  scomparsa. Fino a quel momento solamente i nodi che cercheranno di contattare
-  il nodo defunto se ne accorgeranno.
+  Quando un nodo muore o si sgancia, non dice nulla a nessuno. I suoi rnode si
+  accorgeranno della sua morte e manderanno un nuovo qspn_round.
 
   5.3  The truly Gnode^n for n<=INFINITE
 

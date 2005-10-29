@@ -652,10 +652,8 @@
   reach it, so they will update some routes and they will be happy. Then for
   what the secondary routes may concern the match will be played at the next
   qspn round.
-  When a node dies or un-hooks itself from Netsukuku, doesn't warn anyone. The
-  next qspn round will make all the other nodes aware of its disappearance.
-  Until that time, solely the nodes, which will try to contact the defunct
-  node will know it.
+  When a node dies or un-hooks itself from Netsukuku, doesn't warn anyone.
+  When its rnodes notice its death, they will send a new qspn round.
 
   5.3  The truly Gnode^n for n<=INFINITE
 
