@@ -12,6 +12,6 @@ AC_ARG_WITH(conf_dir, AS_HELP_STRING([--with-conf-dir], \
 [Netsukuku conf dir (default /usr/share/netsukuku)],\
 [conf_dir = "$withval"], [conf_dir="/usr/share/netsukuku"]))
 
-AC_CONFIG_FILES([Makefile src/Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile src/man/Makefile])
 AC_OUTPUT
 

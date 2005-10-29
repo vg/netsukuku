@@ -1,3 +1,4 @@
+SRCDIRS = man
 AM_CFLAGS= -Wall -g -I. 
 AM_CXXFLAGS = -Wall -g -I. 
 bin_PROGRAMS = netsukuku_d
