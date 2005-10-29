@@ -233,9 +233,10 @@ int route_ip_forward(int family, int enable)
 	int flush_fd;
 	char *ROUTE_FORWARD_SYSCTL="/proc/sys/net/ipv4/ip_forward";
 	char *ROUTE_FORWARD_SYSCTL_6="/proc/sys/net/ipv6/conf/all/forwarding";
-	char *sysctl_path, buf[1];
+	char *sysctl_path, buf[2];
 
 	buf[0]='1';
+	buf[1]=0;
 	
 	len = strlen(buf);
 	if(family==AF_INET)
@@ -279,9 +280,10 @@ int route_rp_filter(int family, char *dev, int enable)
 	const char *RP_FILTER_SYSCTL_1="/proc/sys/net/ipv4/conf/";
 	const char *RP_FILTER_SYSCTL_1_IPV6="/proc/sys/net/ipv6/conf/";
 	const char *RP_FILTER_SYSCTL_2="/rp_filter";
-	char *final_path=0, buf[1];
+	char *final_path=0, buf[2];
 
 	buf[0]='1';
+	buf[1]=0;
 #define RP_FILTER_PATH_SZ (strlen(RP_FILTER_SYSCTL_1)+		   \
 			   strlen(RP_FILTER_SYSCTL_2)+IF_NAMESIZE+1)
 	final_path=xmalloc(RP_FILTER_PATH_SZ);
