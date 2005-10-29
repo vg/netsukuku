@@ -19,6 +19,9 @@
 #ifndef NETSUKUKU_H
 #define NETSUKUKU_H
 
+#include "config.h"
+
+
 #define VERSION			"NetsukukuD 0.0.4b"
 
 struct current_globals
@@ -73,8 +76,8 @@ const static u_short ntk_udp_port 	= NTK_UDP_PORT,
 const static u_short andna_udp_port	= ANDNA_UDP_PORT,
 		     andna_tcp_port	= ANDNA_TCP_PORT;
 
+#define NTK_CONFIG_FILE		"/etc/netsukuku/netsukuku.conf"
 
-#define NTK_CONFIG_FILE 	CONF_DIR"/netsukuku.conf"
 
 #define INT_MAP_FILE		"ntk_internal_map"
 #define EXT_MAP_FILE		"ntk_external_map"
