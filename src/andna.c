@@ -982,6 +982,7 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 
 	memset(&req, 0, sizeof(req));
 	memset(&pkt, 0, sizeof(pkt));
+	memset(&rpkt, 0, sizeof(pkt));
 
 
 #ifndef ANDNA_DEBUG

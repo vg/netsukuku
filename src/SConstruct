@@ -48,7 +48,7 @@ opts.AddOptions(('CONF_DIR', """Directory where the Netsukuku configuration file
 				'/usr/bin'),
 		EnumOption('debug', 'build the debug code', 'no', 
 			allowed_values=('yes', 'no', '1', '0'), map={}, ignorecase=0))
-env = Environment(options = opts, ENV = os.environ, CCFLAGS = ' -Wall ')
+env = Environment(options = opts, ENV = os.environ, CCFLAGS = ' -Wall')
 
 if ("yes" in env['debug']) or ("1" in env['debug']):
 	debug = 1
