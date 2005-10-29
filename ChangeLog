@@ -24,6 +24,14 @@
 
 - The /usr/share/netsukuku directory is now created during the installation
 
+- Now /sys/net/ipv4/conf/INTERFACE/rp_filter is automatically disabled for the
+  used interface.
+
+- Errors in load_hostnames() fixed. (It crashed it there was an just an empty
+  '\n').
+
+- Added CC and CXX options in Scontrusct. Changes provided by Tero Auvinen.
+
 0.0.3b
 - The ANDNA code, with its DNS wrapper, is completed and tested.
 	

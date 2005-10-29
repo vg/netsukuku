@@ -59,5 +59,3 @@
 
 /* Version number of package */
 #undef VERSION
-
-#define CONF_DIR /etc/netsukuku

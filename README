@@ -82,10 +82,15 @@ greatest by running the command:
 ****  Build and install
 **
 
-To compile the code you must have scons installed:
+To compile the code you can use scons or just go with the old school way:
+
+# ./configure && make && make install
+
+But SCons is cooler:
 http://www.scons.org/
 (You should have installed at least the 2.4 version of Python in order to
 avoid dirty bugs in scons)
+
 
 The code depends also on the libgmp, openssl and boost. Generally you have
 already them installed on your system, but eventually you can retrieve them
