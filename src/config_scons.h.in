@@ -5,3 +5,5 @@
 #	undef  DEBUG
 #	define DEBUG
 #endif
+
+#define VERSION "0.0.4b"
