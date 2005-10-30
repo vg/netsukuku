@@ -23,9 +23,9 @@ AC_CHECK_HEADERS([openssl/crypto.h], ,\
 AC_CHECK_HEADERS([gmp.h], ,\
 	[echo "========== Unable to find gmp.h"; \
 	 echo "Read README first!!!!!"; exit -1])
-AC_ARG_WITH(conf_dir, AS_HELP_STRING([--with-conf-dir], \
-[Netsukuku conf dir (default /usr/share/netsukuku)],\
-[conf_dir = "$withval"], [conf_dir="/usr/share/netsukuku"]))
+AC_ARG_WITH(gmp-include, AS_HELP_STRING([--with-gmp-include], \
+[gmp include dir]), [gmp="$withval"])
+AC_SUBST(gmp)
 
 AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug], [Enable Netsukuku debug]),\
 [debug_flags="-Wall -DDEBUG"], [debug_flags=""])
