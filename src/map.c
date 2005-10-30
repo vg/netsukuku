@@ -76,11 +76,14 @@ void maptoip(u_int mapstart, u_int mapoff, inet_prefix ipstart, inet_prefix *ret
 	postoip(map_pos, ipstart, ret);
 }
 
-/*Converts an ip to an address of a struct in the map*/
-int iptomap(u_int mapstart, inet_prefix ip, inet_prefix ipstart, u_int *ret)
+/*
+ * iptomap: Converts an ip to an address of a struct in the map and stores it
+ * int `*ret'.
+ */
+int iptomap(u_int mapstart, inet_prefix ip, inet_prefix ipstart, map_node **ret)
 {
 	if(ip.family==AF_INET)
-		*ret=((ip.data[0]-ipstart.data[0])*sizeof(map_node))+mapstart;
+		*ret=(map_node *)(((ip.data[0]-ipstart.data[0])*sizeof(map_node))+mapstart);
 	else {
 		uint32_t h_ip[MAX_IP_INT], h_ipstart[MAX_IP_INT];
 
@@ -91,10 +94,10 @@ int iptomap(u_int mapstart, inet_prefix ip, inet_prefix ipstart, u_int *ret)
 		sub_128(h_ip, h_ipstart);
 		/* The result is always < MAXGROUPNODE, so we can take for grant that
 		 * we have only one u_int*/
-		*ret=h_ipstart[0]*sizeof(map_node)+mapstart;
+		*ret=(map_node *)(h_ipstart[0]*sizeof(map_node)+mapstart);
 	}
 
-	if(*ret > INTMAP_END(mapstart) || *ret < mapstart)
+	if(*ret > (map_node *)INTMAP_END(mapstart) || *ret < (map_node *)mapstart)
 		/*Ok, this is an extern ip to our gnode.*/
 		return 1;
 

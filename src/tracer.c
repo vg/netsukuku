@@ -61,8 +61,7 @@ int ip_to_rfrom(inet_prefix rip, quadro_group *rip_quadg,
 		external_node=1;
 	
 	if(!external_node) {
-		iptomap((u_int)me.int_map, rip, me.cur_quadg.ipstart[1], 
-				(u_int *)&from);
+		iptomap((u_int)me.int_map, rip, me.cur_quadg.ipstart[1], &from);
 		ret=rnode_find(me.cur_node, from);
 	} else {
 		erc=e_rnode_find(me.cur_erc, quadg, 0);
@@ -110,8 +109,7 @@ int tracer_verify_pkt(tracer_chunk *tracer, u_short hops, inet_prefix rip,
 	 */
 	
 	if(!level) {
-		iptomap((u_int)me.int_map, rip, me.cur_quadg.ipstart[1], 
-				(u_int *)&real_from);
+		iptomap((u_int)me.int_map, rip, me.cur_quadg.ipstart[1], &real_from);
 		from = node_from_pos(tracer[hops-1].node, me.int_map);
 	} else {
 		real_gfrom = &quadg->gnode[_EL(level)]->g;

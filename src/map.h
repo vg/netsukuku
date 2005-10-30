@@ -175,7 +175,7 @@ int pos_from_node(map_node *node, map_node *map);
 map_node *node_from_pos(int pos, map_node *map);
 void postoip(u_int map_pos, inet_prefix ipstart, inet_prefix *ret);
 void maptoip(u_int mapstart, u_int mapoff, inet_prefix ipstart, inet_prefix *ret);
-int iptomap(u_int mapstart, inet_prefix ip, inet_prefix ipstart, u_int *ret);
+int iptomap(u_int mapstart, inet_prefix ip, inet_prefix ipstart, map_node **ret);
 
 map_node *init_map(size_t len);
 void free_map(map_node *map, size_t count);

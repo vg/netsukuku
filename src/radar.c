@@ -796,8 +796,7 @@ add_radar_q(PACKET pkt)
 	iptoquadg(pkt.from, me.ext_map, &quadg, QUADG_GID|QUADG_GNODE|QUADG_IPSTART);
 
 	if(!(me.cur_node->flags & MAP_HNODE)) {
-		iptomap((u_int)me.int_map, pkt.from, me.cur_quadg.ipstart[1],
-				(u_int *)&rnode);
+		iptomap((u_int)me.int_map, pkt.from, me.cur_quadg.ipstart[1], &rnode);
 		ret=quadg_gids_cmp(me.cur_quadg, quadg, 1);
 	}
 
@@ -1151,8 +1150,8 @@ int refresh_hook_root_node(void)
 
 	rq=radar_q;
 	list_for(rq) {
-		ret=iptomap((u_int)me.int_map, rq->ip, me.cur_quadg.ipstart[1],
-				(u_int *)&rnode);
+		ret=iptomap((u_int)me.int_map, rq->ip, me.cur_quadg.ipstart[1], 
+				&rnode);
 		if(ret)
 			rq->node=(map_node *)RADQ_EXT_RNODE;
 		else
