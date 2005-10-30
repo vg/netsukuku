@@ -4,14 +4,15 @@
 	- -r forward to other /etc/resolv.conf dns server
 
 - multi network interface support [83% completed]
-23:07 <asbesto> # pkt_q_wait_recv: Locking 0x80f6b9c!
-23:07 <asbesto> # Received ANDNA_GET_SINGLE_ACACHE from 175.97.103.220, id
-0x2a347770
-23:07 <asbesto> *** glibc detected *** double free or corruption (!prev):
-0x080f0c40 ***
-23:07 <asbesto> # Receiving reply for the ANDNA_REGISTER_HNAME request (id
-0x7143c88a)
 
+# pkt_q_wait_recv: Locking 0x80f6b9c!
+# Received ANDNA_GET_SINGLE_ACACHE from 175.97.103.220, id 0x2a347770
+*** glibc detected *** double free or corruption (!prev):***
+# Receiving reply for the ANDNA_REGISTER_HNAME request (id 0x7143c88a)
+
+- Warning with make.
+
+- make install of the mans
 
 		[MEDIUM PRIORITY] 
 

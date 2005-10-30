@@ -420,7 +420,7 @@ int put_int_map(PACKET rq_pkt)
 	PACKET pkt;
 	map_node *map=me.int_map;
 	const char *ntop; 
-	int ret;
+	int ret=0;
 	ssize_t err;
 	size_t pkt_sz=0;
 	
@@ -493,7 +493,7 @@ int put_bnode_map(PACKET rq_pkt)
 	PACKET pkt;
 	map_bnode **bmaps=me.bnode_map;
 	const char *ntop; 
-	int ret;
+	int ret=0;
 	ssize_t err;
 	size_t pack_sz=0;
 	

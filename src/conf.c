@@ -38,7 +38,7 @@
  */
 void parse_config_line(char *file, int pos, char *line)
 {
-	int i, e;
+	int i, e=0;
 	char *value;
 	
 	if(!(value=strchr(line, '=')))

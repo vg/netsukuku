@@ -52,7 +52,7 @@ int get_gw_bnode_recurse(map_node *int_map, map_gnode **ext_map,
 		map_gnode *gnode_gw, map_node *node_gw, u_char gnode_level,
 		u_char gw_level, void **gateways, int gateways_nmembs, int single_gw)
 {
-	map_gnode *gnode;
+	map_gnode *gnode=0;
 	map_node *node, *root_node;
 	ext_rnode_cache *erc;
 	int i, bpos;
@@ -120,7 +120,7 @@ int get_gw_gnode_recurse(map_node *int_map, map_gnode **ext_map,
 		u_char gw_level, void **gateways, int gateways_nmembs, 
 		int single_gw)
 {
-	map_gnode *gnode_gw;
+	map_gnode *gnode_gw=0;
 	map_node  *node_gw;
 	int i, pos, routes, sub_routes, e, ret;
 

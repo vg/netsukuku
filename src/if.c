@@ -250,7 +250,7 @@ int if_init_all(char ifs_name[MAX_INTERFACES][IFNAMSIZ], int ifs_n,
  */
 int set_dev_ip(inet_prefix ip, char *dev)
 {
-	int s;
+	int s=-1;
 
 	if(ip.family == AF_INET) {
 		struct ifreq req;

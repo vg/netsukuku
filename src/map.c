@@ -715,7 +715,7 @@ char *pack_map(map_node *map, int *addr_map, int maxgroupnode,
 		map_node *root_node, size_t *pack_sz)
 {
 	struct int_map_hdr imap_hdr;
-	map_rnode *rblock;
+	map_rnode *rblock=0;
 	int count, i;
 	char *package, *p;
 

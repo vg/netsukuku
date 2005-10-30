@@ -1047,7 +1047,7 @@ int save_lcl_cache(lcl_cache_keyring *keyring, lcl_cache *lcl, char *file)
  */
 lcl_cache *load_lcl_cache(lcl_cache_keyring *keyring, char *file, int *counter)
 {
-	lcl_cache *lcl;
+	lcl_cache *lcl=0;
 	FILE *fd;
 	char *pack=0;
 	size_t pack_sz;
@@ -1113,7 +1113,7 @@ int save_andna_cache(andna_cache *acache, char *file)
  */
 andna_cache *load_andna_cache(char *file, int *counter)
 {
-	andna_cache *acache;
+	andna_cache *acache=0;
 	FILE *fd;
 	char *pack=0;
 	size_t pack_sz;
@@ -1179,7 +1179,7 @@ int save_counter_c(counter_c *countercache, char *file)
  */
 counter_c *load_counter_c(char *file, int *counter)
 {
-	counter_c *countercache;
+	counter_c *countercache=0;
 	FILE *fd;
 	char *pack=0;
 	size_t pack_sz;
@@ -1246,7 +1246,7 @@ int save_rh_cache(rh_cache *rh, char *file)
  */
 rh_cache *load_rh_cache(char *file, int *counter)
 {
-	rh_cache *rh;
+	rh_cache *rh=0;
 	FILE *fd;
 	char *pack=0;
 	size_t pack_sz;

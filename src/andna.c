@@ -1307,7 +1307,7 @@ int andna_recv_rev_resolve_rq(PACKET rpkt)
 	int_info reply_iinfo;
 
 	u_short *hnames_sz;
-	char *buf, *reply_body;
+	char *buf, *reply_body=0;
 	const char *ntop;
 	int i, ret=0, err, hostnames;
 	
@@ -1348,13 +1348,11 @@ int andna_recv_rev_resolve_rq(PACKET rpkt)
 
 	pkt.msg=buf=xmalloc(pkt.hdr.sz);
 	memcpy(buf, &hdr, sizeof(struct andna_rev_resolve_reply_hdr));
-	
+	buf+=sizeof(struct andna_rev_resolve_reply_hdr);
+	reply_body=buf;
+
 	if(hostnames) {
-		buf+=sizeof(struct andna_rev_resolve_reply_hdr);
-		reply_body=buf;
-
 		memcpy(buf, hnames_sz, sizeof(u_short) * hostnames);
-
 		buf+=sizeof(u_short) * hostnames;
 		
 		i=0;
@@ -1469,8 +1467,8 @@ int put_single_acache(PACKET rpkt)
 	andna_cache *ac, *ac_tmp=0;
 	char *buf;
 	char *ntop=0, *rfrom_ntop=0;
-	int ret, i;
-	ssize_t err;
+	int ret=0, i;
+	ssize_t err=0;
 	size_t pkt_sz=0;
 	
 	
@@ -1751,8 +1749,8 @@ int put_andna_cache(PACKET rq_pkt)
 {
 	PACKET pkt;
 	const char *ntop; 
-	int ret;
-	ssize_t err;
+	int ret=0;
+	ssize_t err=0;
 	size_t pkt_sz=0;
 	
 	ntop=inet_to_str(rq_pkt.from);
@@ -1821,8 +1819,8 @@ int put_counter_cache(PACKET rq_pkt)
 {
 	PACKET pkt;
 	const char *ntop; 
-	int ret;
-	ssize_t err;
+	int ret=0;
+	ssize_t err=0;
 	size_t pkt_sz=0;
 	
 	ntop=inet_to_str(rq_pkt.from);

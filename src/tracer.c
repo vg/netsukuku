@@ -513,7 +513,7 @@ u_short tracer_split_bblock(void *bnode_block_start, size_t bblock_sz, bnode_hdr
 	bnode_hdr 	**bblist_hdr=0;
 	bnode_chunk 	***bblist=0;
 	u_char 		*bnode_gid;
-	size_t 		bsz;
+	size_t 		bsz=0;
 	int e,p,x=0;
 		
 	*bblock_found_sz=0;
@@ -610,7 +610,7 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 	struct timeval trtt;
 	map_node *from, *node, *root_node;
 	void *void_node;
-	map_gnode *gfrom, *gnode;
+	map_gnode *gfrom, *gnode=0;
 	map_rnode rn, rnn;
 			
 	int i, e, o, diff, bm, x, f, from_rnode_pos, skip_rfrom;
@@ -894,7 +894,7 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 	tracer_chunk *new_tracer=0;
 	bnode_hdr    *new_bhdr=0;
 	bnode_chunk  *new_bchunk=0;
-	map_node *root_node, *upper_root_node;
+	map_node *root_node, *upper_root_node=0;
 	void *void_map, *void_node, *p;
 	size_t new_bblock_sz=0, total_bblock_sz=0;
 	u_int hops=0;
@@ -1137,7 +1137,7 @@ int tracer_pkt_recv(PACKET rpkt)
 	size_t bblock_sz=0, old_bblock_sz;
 	u_short old_bchunks=0;
 	u_char level, orig_lvl;
-	const char *ntop;
+	const char *ntop=0;
 	char *old_bblock=0;
 	void *void_map;
 

@@ -183,7 +183,7 @@ int qspn_b_find_reply(struct qspn_buffer *qb, int sub_id)
 int qspn_b_del_dead_rnodes(struct qspn_buffer **qb, map_node *root_node)
 {
 	struct qspn_buffer *q=*qb, *next;
-	int i;
+	int i=0;
 
 	list_safe_for(q, next)
 		if(rnode_find(root_node, q->rnode) < 0) {
@@ -463,7 +463,7 @@ int qspn_send(u_char level)
 {
 	PACKET pkt;
 	map_node *from;
-	int round_ms, ret, ret_err, upper_gid, root_node_pos, qid;
+	int round_ms, ret=0, ret_err, upper_gid, root_node_pos, qid;
 	map_node *map, *root_node;
 	map_gnode *gmap;
 	u_char upper_level;

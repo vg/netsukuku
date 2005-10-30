@@ -173,7 +173,7 @@ int pkt_verify_hdr(PACKET pkt)
 
 ssize_t pkt_send(PACKET *pkt)
 {
-	ssize_t ret;
+	ssize_t ret=0;
 	char *buf=0;
 
 	buf=pkt_pack(pkt);
@@ -375,7 +375,7 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 	ssize_t err;
 	int ret=0;
 	const char *ntop=0;
-	const u_char *rq_str, *re_str;
+	const u_char *rq_str=0, *re_str=0;
 	inet_prefix *wanted_from=0;
 
 

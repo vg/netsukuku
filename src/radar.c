@@ -294,7 +294,7 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 	map_node *node, *root_node, *broot_node;
 	map_gnode *gnode;
 	map_bnode *bnode;
-	ext_rnode *e_rnode;
+	ext_rnode *e_rnode=0;
 	ext_rnode_cache *erc;
 	struct qspn_buffer *qb;
 	int i, e, node_pos, bm, rnode_pos, bnode_rnode_pos, root_node_pos;
@@ -490,7 +490,7 @@ void radar_update_map(void)
 	struct qspn_buffer *qb;
 	struct radar_queue *rq;
 	ext_rnode_cache *erc;
-	map_gnode *gnode;
+	map_gnode *gnode=0;
 	map_node  *node, *root_node;
 	map_rnode rnn, *new_root_rnode;
 	ext_rnode *e_rnode;
@@ -1046,7 +1046,7 @@ int radard(PACKET rpkt)
 	struct radar_queue *rq;
 	ssize_t err;
 	int dev_pos;
-	const char *ntop;
+	const char *ntop=0;
 	u_char echo_scans_count;
 
 	dev_pos=ifs_get_pos(me.cur_ifs, me.cur_ifs_n, rpkt.dev);
