@@ -2,7 +2,7 @@ AC_PREREQ(2.59)
 AC_INIT(netsukuku, 0.0.4b)
 AM_INIT_AUTOMAKE(netsukuku, 0.0.4b)
 AC_DEFINE(VERSION, "0.0.4b")
-AM_CONFIG_HEADER(src/config.h src/netsukuku.conf) 
+AM_CONFIG_HEADER(src/config.h) 
 
 dnl -----------------------------------
 dnl Get hostname and other information.
@@ -16,8 +16,13 @@ AC_PROG_CXX
 sysconfdir=/etc/netsukuku
 prefix=/usr
 
+
 AC_HEADER_STDC
 AC_CHECK_HEADERS([unistd.h])
+CONF_DIR="$sysconfdir"
+DATA_DIR="/usr/share/netsukuku"
+AC_SUBST(CONF_DIR)
+AC_SUBST(DATA_DIR)
 
 
 AC_ARG_WITH(gmp-include, AS_HELP_STRING([--with-gmp-include], \
@@ -171,6 +176,6 @@ AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug], [Enable Netsukuku debug]),
 [debug_flags="-Wall -DDEBUG"], [debug_flags=""])
 AC_SUBST(debug_flags)
 
-AC_CONFIG_FILES([Makefile src/Makefile src/man/Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile src/man/Makefile src/netsukuku.conf])
 AC_OUTPUT
 
