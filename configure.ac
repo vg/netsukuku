@@ -20,9 +20,12 @@ prefix=/usr
 AC_HEADER_STDC
 AC_CHECK_HEADERS([unistd.h])
 CONF_DIR="$sysconfdir"
-DATA_DIR="/usr/share/netsukuku"
+DT_DIR="/usr/share/netsukuku"
+
+AC_DEFINE_UNQUOTED(DATA_DIR, "$DT_DIR", "descr")
 AC_SUBST(CONF_DIR)
-AC_SUBST(DATA_DIR)
+AC_SUBST(DT_DIR)
+
 
 
 AC_ARG_WITH(gmp-include, AS_HELP_STRING([--with-gmp-include], \
