@@ -1,6 +1,6 @@
 SUBDIRS = man
-AM_CFLAGS= -Wall -g -I. 
-AM_CXXFLAGS = -Wall -g -I. 
+AM_CFLAGS= -g -I. @debug_flags@ 
+AM_CXXFLAGS = -g -I. @debug_flags@
 bin_PROGRAMS = netsukuku_d
 netsukuku_d_SOURCES= accept.c andna.c andna_cache.c bmap.c conf.c \
 	crypto.c daemon.c dns_pkt.cpp dns_wrapper.c endianness.c \
