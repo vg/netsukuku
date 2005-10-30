@@ -43,7 +43,7 @@ opts.AddOptions(('CONF_DIR', """Directory where the Netsukuku configuration file
 		('DATA_DIR', 'Directory to install data files',	
 				'/usr/share/netsukuku'),
 		('MAN_DIR',  'Where the manuals will be installed', 
-				'/usr/share/man'),
+				'/usr/man'),
 		('BIN_DIR' , 'Directory to install the binaries',
 				'/usr/bin'),
 		EnumOption('debug', 'build the debug code', 'no', 

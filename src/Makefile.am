@@ -1,4 +1,4 @@
-SRCDIRS = man
+SUBDIRS = man
 AM_CFLAGS= -Wall -g -I. 
 AM_CXXFLAGS = -Wall -g -I. 
 bin_PROGRAMS = netsukuku_d
@@ -9,3 +9,4 @@ netsukuku_d_SOURCES= accept.c andna.c andna_cache.c bmap.c conf.c \
 	pkts.c qspn.c request.c radar.c route.c tracer.c \
 	xmalloc.c
 netsukuku_d_LDADD = -lpthread -lgmp -lcrypto
+sysconf_DATA = netsukuku.conf

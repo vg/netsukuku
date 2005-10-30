@@ -1,11 +1,18 @@
 AC_PREREQ(2.59)
 AC_INIT(netsukuku, 0.0.4b)
 AM_INIT_AUTOMAKE(netsukuku, 0.0.4b)
+AC_DEFINE(VERSION, "0.0.4b")
 AM_CONFIG_HEADER(src/config.h src/netsukuku.conf) 
 
 AC_PROG_CC
 AC_PROG_CPP
 AC_PROG_CXX
+
+sysconfdir=/etc/netsukuku
+prefix=/usr
+
+AC_HEADER_STDC
+AC_CHECK_HEADERS([unistd.h])
 
 AC_CHECK_HEADERS([pthread.h], ,\
 	[echo "========== Unable to find pthread.h"; \
