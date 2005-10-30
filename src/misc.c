@@ -20,7 +20,10 @@
  */
 
 #include "includes.h"
+#include <dirent.h>
 #include "misc.h"
+
+#include "log.h"
 
 /*
  * * * *  Hash functions  * * * *
@@ -344,7 +347,37 @@ void xtimer(u_int secs, u_int steps, int *counter)
 	}
 }
 
-
+/*
+ * check_and_create_dir: tries to access in the specified `dir' directory and
+ * if doesn't exist tries to create it.
+ * On success it returns 0
+ */
+int check_and_create_dir(char *dir)
+{
+	DIR *d;
+	
+	/* Try to open the directory */
+	d=opendir(dir);
+	
+	if(!d) {
+		if(errno == ENOENT) {
+			/* The directory doesn't exist, try to create it */
+			if(mkdir(dir, S_IRUSR|S_IWUSR|S_IXUSR) < 0) {
+				error("Cannot create the %d directory: %s", dir,
+						strerror(errno));
+				return -1;
+			}
+		} else {
+			error("Cannot access to the %s directory: %s", dir, 
+					strerror(errno));
+			return -1;
+		}
+	}
+	
+	closedir(d);
+	return 0;
+}
+	
 /* This is the most important function */
 void do_nothing(void)
 {

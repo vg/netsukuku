@@ -284,6 +284,10 @@ void init_netsukuku(char **argv)
 	
 	my_family=server_opt.family;
 
+	/* Check if the DATA_DIR exists, if not create it */
+	if(check_and_create_dir(DATA_DIR))
+		fatal("Cannot access to the %s directory. Exiting.", DATA_DIR);
+	
 	/* 
 	 * Device initialization 
 	 */
@@ -300,6 +304,7 @@ void init_netsukuku(char **argv)
 
 	me.cur_erc=e_rnode_init(&me.cur_erc_counter);
 
+	/* Radar init */
 	rq_wait_idx_init(rq_wait_idx);
 	first_init_radar();
 	total_radars=0;
