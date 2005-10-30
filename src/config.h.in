@@ -1,13 +1,37 @@
 /* src/config.h.in.  Generated from configure.ac by autoheader.  */
 
+/* FreeBSD */
+#undef FREEBSD
+
+/* GNU Linux */
+#undef GNU_LINUX
+
 /* Define to 1 if you have the <gmp.h> header file. */
 #undef HAVE_GMP_H
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
+/* Define to 1 if you have the `kvm' library (-lkvm). */
+#undef HAVE_LIBKVM
+
+/* Define to 1 if you have the `nsl' library (-lnsl). */
+#undef HAVE_LIBNSL
+
+/* Define to 1 if you have the `socket' library (-lsocket). */
+#undef HAVE_LIBSOCKET
+
+/* Define to 1 if you have the `xnet' library (-lxnet). */
+#undef HAVE_LIBXNET
+
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
+
+/* netlink */
+#undef HAVE_NETLINK
+
+/* NET_RT_IFLIST */
+#undef HAVE_NET_RT_IFLIST
 
 /* Define to 1 if you have the <openssl/crypto.h> header file. */
 #undef HAVE_OPENSSL_CRYPTO_H
@@ -36,6 +60,12 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
+/* IRIX 6.5 */
+#undef IRIX_65
+
+/* OpenBSD */
+#undef OPEN_BSD
+
 /* Name of package */
 #undef PACKAGE
 
@@ -56,6 +86,9 @@
 
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
+
+/* SunOS 5 */
+#undef SUNOS_5
 
 /* Version number of package */
 #undef VERSION
