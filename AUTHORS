@@ -8,6 +8,9 @@ Contributors (in chronological order of initial contribution):
 Andrea Leofreddi <andrea.leofreddi@gmail.com> wrote the DNS wrapper code
 (dns_pkt.cpp, dns_rendian.h, dns_utils.h).  
 
+Katolaz wrote the files needed to use Automake/Autoconf.
+(Makefile.am configure.ac, src/Makefile.am, src/man/Makefile.am).
+
 
 Website developers and maintainers:
 
