@@ -14,18 +14,26 @@ prefix=/usr
 AC_HEADER_STDC
 AC_CHECK_HEADERS([unistd.h])
 
-AC_CHECK_HEADERS([pthread.h], ,\
-	[echo "========== Unable to find pthread.h"; \
-	 echo "Read README first!!!!!"; exit -1])
-AC_CHECK_HEADERS([openssl/crypto.h], ,\
-	[echo "========== Unable to find openssl/crypto.h";\
-	 echo "Read README first!!!!!"; exit -1])
-AC_CHECK_HEADERS([gmp.h], ,\
-	[echo "========== Unable to find gmp.h"; \
-	 echo "Read README first!!!!!"; exit -1])
+
 AC_ARG_WITH(gmp-include, AS_HELP_STRING([--with-gmp-include], \
 [gmp include dir]), [gmp="$withval"])
 AC_SUBST(gmp)
+
+AC_ARG_WITH(boost-include, AS_HELP_STRING([--with-boost-include], \
+[boost include dir]), [boost="$withval"])
+AC_SUBST(boost)
+
+
+
+AC_CHECK_HEADERS([pthread.h], ,\
+	[echo "============================ Unable to find pthread.h"; \
+	 echo "Read README first!!!!!" ])
+AC_CHECK_HEADERS([openssl/crypto.h], ,\
+	[echo "============================ Unable to find openssl/crypto.h";\
+	 echo "Read README first!!!!!"])
+AC_CHECK_HEADERS([gmp.h], ,\
+	[echo "============================ Unable to find gmp.h"; \
+	 echo "Read README first!!!!!"])
 
 AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug], [Enable Netsukuku debug]),\
 [debug_flags="-Wall -DDEBUG"], [debug_flags=""])
