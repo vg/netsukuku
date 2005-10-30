@@ -7,7 +7,15 @@ AC_PROG_CC
 AC_PROG_CPP
 AC_PROG_CXX
 
-AC_CHECK_HEADERS([pthread.h openssl/crypto.h gmp.h])
+AC_CHECK_HEADERS([pthread.h], ,\
+	[echo "========== Unable to find pthread.h"; \
+	 echo "Read README first!!!!!"; exit -1])
+AC_CHECK_HEADERS([openssl/crypto.h], ,\
+	[echo "========== Unable to find openssl/crypto.h";\
+	 echo "Read README first!!!!!"; exit -1])
+AC_CHECK_HEADERS([gmp.h], ,\
+	[echo "========== Unable to find gmp.h"; \
+	 echo "Read README first!!!!!"; exit -1])
 AC_ARG_WITH(conf_dir, AS_HELP_STRING([--with-conf-dir], \
 [Netsukuku conf dir (default /usr/share/netsukuku)],\
 [conf_dir = "$withval"], [conf_dir="/usr/share/netsukuku"]))

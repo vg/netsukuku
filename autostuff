@@ -1,5 +1,5 @@
 #!/bin/bash
-aclocal-1.8
+aclocal
 autoconf
 automake --add-missing --copy
 #basta
