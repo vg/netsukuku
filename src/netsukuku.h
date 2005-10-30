@@ -21,8 +21,8 @@
 
 #include "config.h"
 
+#define VERSION_STR				"NetsukukuD "VERSION
 
-/*#define VERSION			"NetsukukuD 0.0.4b"*/
 
 struct current_globals
 {

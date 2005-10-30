@@ -10,8 +10,6 @@
 *** glibc detected *** double free or corruption (!prev):***
 # Receiving reply for the ANDNA_REGISTER_HNAME request (id 0x7143c88a)
 
-- Warning with make.
-
 - make install of the mans
 
 		[MEDIUM PRIORITY] 
@@ -38,5 +36,3 @@
 	to zero all the invalid bits.
 	
 - Flush all the routes present in the routing table before starting the hook?
-
-- root id check in "scons install"

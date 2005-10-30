@@ -18,6 +18,7 @@ wlan=$1
 
 echo "Setting $wlan in \"Ad-Hoc\" mode with essid \"netsukuku\""
 echo ""
+echo "iwconfig $wlan mode Ad-Hoc essid netsukuku"
 iwconfig $wlan mode Ad-Hoc essid netsukuku
 
 if [ "$?" != 0 ] 

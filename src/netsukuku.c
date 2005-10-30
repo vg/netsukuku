@@ -224,7 +224,7 @@ void parse_options(int argc, char **argv)
 		switch(c)
 		{
 			case 'v':
-				printf("%s\n",VERSION);
+				printf("%s\n",VERSION_STR);
 				exit(0); 
 				break;
 			case 'h':

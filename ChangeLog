@@ -25,6 +25,8 @@
 
 - The installation path of the man page is now fixed.
 
+- The installation paths are changed!! BIN_DIR=/usr/bin/, MAN_DIR=/usr/man
+
 - The /usr/share/netsukuku directory is now created during the installation
 
 - Now /sys/net/ipv4/conf/INTERFACE/rp_filter is automatically disabled for the
