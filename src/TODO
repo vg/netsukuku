@@ -1,5 +1,7 @@
 		[HIGH PRIORITY] 
 
+- Gnodes contiguity
+
 - DNS wrapper: ip -> hostnames
 	- -r forward to other /etc/resolv.conf dns server
 
@@ -10,7 +12,7 @@
 *** glibc detected *** double free or corruption (!prev):***
 # Receiving reply for the ANDNA_REGISTER_HNAME request (id 0x7143c88a)
 
-- make install of the mans
+- modificare l'/etc/resolv.conf per aggiungere momentaneamente 127.0.0.1
 
 		[MEDIUM PRIORITY] 
 
@@ -24,6 +26,8 @@
 
 - Anti spoof Hook: a node must not give the maps to a node, which is trying to
   use an ip of another gnode.
+
+- Weight for each entry of the qspn
 
 
 		[LOW PRIORITY]

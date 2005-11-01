@@ -736,7 +736,7 @@ int netsukuku_hook(void)
 	
 	inet_prefix gnode_ipstart;
 	
-	int i, e=0, imaps=0, ret=0, new_gnode=0, tracer_levels=0;
+	int i=0, e=0, imaps=0, ret=0, new_gnode=0, tracer_levels=0;
 	int total_hooking_nodes=0;
 	
 	u_int *old_bnodes;
@@ -748,68 +748,82 @@ int netsukuku_hook(void)
 	  	* * 		The beginning          * *	  	
 	 */
 	loginfo("The hook begins. Starting to scan the area");
-	
-hook_restart_and_retry:
-	me.cur_node->flags|=MAP_HNODE;
 
 	/* 
-	 * We do our first scan to know what we've around us. The rnodes are 
+	 * We do our first scans to know what we've around us. The rnodes are 
 	 * kept in me.cur_node->r_nodes.
 	 * The fastest one is in me.cur_node->r_nodes[0].
+	 *
+	 * If after MAX_FIRST_RADAR_SCANS# tries we haven't found any rnodes
+	 * we start as a new gnode.
 	 */
-	if(radar_scan(0))
-		fatal("%s:%d: Scan of the area failed. Cannot continue.", 
-				ERROR_POS);
-	total_hooking_nodes=count_hooking_nodes();
 	
-	if(!me.cur_node->links || 
-			( me.cur_node->links==total_hooking_nodes 
-			  && !hook_retry )) {
-		/* 
-		 * If we have 0 nodes around us, we are alone, so we create a
-		 * new gnode.
-		 * If all the nodes around us are hooking and we started hooking
-		 * before them, we create the new gnode.
-		 */
-		if(!me.cur_node->links)
-			loginfo("No nodes found! This is a black zone. "
-					"Creating a new_gnode.");
-		else
-			loginfo("There are %d nodes around, which are hooking"
-					" like us, but we came first so we have "
-					"to create the new gnode", 
+	for(i=0; i<MAX_FIRST_RADAR_SCANS; i++) {
+		me.cur_node->flags|=MAP_HNODE;
+
+		loginfo("Launching radar_scan %d of %d", i+1, MAX_FIRST_RADAR_SCANS);
+		
+		if(radar_scan(0))
+			fatal("%s:%d: Scan of the area failed. Cannot continue.", 
+					ERROR_POS);
+		total_hooking_nodes=count_hooking_nodes();
+
+		if(!me.cur_node->links || 
+				( me.cur_node->links==total_hooking_nodes 
+				  && !hook_retry )) {
+			/* 
+			 * We haven't found any rnodes. Let's retry the
+			 * radar_scan if i+1<MAX_FIRST_RADAR_SCANS
+			 */
+			if(i+1 < MAX_FIRST_RADAR_SCANS)
+				continue;
+			
+			/* 
+			 * If we have 0 nodes around us, we are alone, so we create a
+			 * new gnode.
+			 * If all the nodes around us are hooking and we started hooking
+			 * before them, we create the new gnode.
+			 */
+			if(!me.cur_node->links)
+				loginfo("No nodes found! This is a black zone. "
+						"Creating a new_gnode.");
+			else
+				loginfo("There are %d nodes around, which are hooking"
+						" like us, but we came first so we have "
+						"to create the new gnode", 
+						total_hooking_nodes);
+			create_gnodes(0, GET_LEVELS(my_family));
+			ntop=inet_to_str(me.cur_ip);
+
+			hook_set_all_ips(me.cur_ip, me.cur_ifs, me.cur_ifs_n);
+
+			loginfo("Now we are in a brand new gnode. The ip %s is now"
+					" used.", ntop);
+
+			new_gnode=1;
+
+			goto finish;
+		} else if(hook_retry) {
+			/* 
+			 * There are only hooking nodes, but we started the hooking
+			 * after them, so we wait until some of them create the new
+			 * gnode.
+			 */
+			loginfo("I've seen %d hooking nodes around us, and one of them "
+					"is becoming a new gnode.\n"
+					"  We wait, then we'll restart the hook.", 
 					total_hooking_nodes);
-		create_gnodes(0, GET_LEVELS(my_family));
-		ntop=inet_to_str(me.cur_ip);
 
-		hook_set_all_ips(me.cur_ip, me.cur_ifs, me.cur_ifs_n);
+			usleep(rand_range(0, 1024)); /* ++entropy, thx to katolaz :) */
+			sleep(MAX_RADAR_WAIT);
+			i--;
+		} else 
+			break;
 
-		loginfo("Now we are in a brand new gnode. The ip %s is now"
-				" used.", ntop);
-
-		new_gnode=1;
-		
-		goto finish;
-	} else if(hook_retry) {
-		/* 
-		 * There are only hooking nodes, but we started the hooking
-		 * after them, so we wait that some of them create the new
-		 * gnode.
-		 */
-		loginfo("I've seen %d hooking nodes around us, and one of them "
-				"is becoming a new gnode.\n"
-				"  We wait, then we'll restart the hook", 
-				total_hooking_nodes);
-		
 		reset_radar();
 		rnode_destroy(me.cur_node);
 		memset(me.cur_node, 0, sizeof(map_node));
 		me.cur_node->flags|=MAP_HNODE;
-
-		usleep(rand_range(0, 1024)); /* ++entropy, thx to katolaz :) */
-		sleep(MAX_RADAR_WAIT);
-
-		goto hook_restart_and_retry;
 	}
 
 	loginfo("We have %d nodes around us. (%d are hooking)", 

@@ -346,9 +346,7 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 				map_node_del(node);
 				rt_update_node(0, node, 0, me.cur_node, oif, level);
 				
-#ifdef DEBUG	/* We have to test it */
 			 	send_qspn_now[level]=1;
-#endif
 			} else {
 				void_map=me.ext_map;
 				gnode=e_rnode->quadg.gnode[_EL(level)];
@@ -392,9 +390,7 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 						  e_rnode, 0, me.cur_node, oif, 0);
 				rt_update_node(0, 0, &e_rnode->quadg, 0, oif, level);
 			 	
-#ifdef DEBUG	/* We have to test it */
 				send_qspn_now[level]=1;
-#endif
 			}
 		
 			rnode_del(root_node, rnode_pos);

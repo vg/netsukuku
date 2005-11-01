@@ -16,6 +16,10 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#define MAX_FIRST_RADAR_SCANS	3  /* How many time we have to retry 
+				      the first radar_scan if we
+				      didn't found anything */
+
 /* Used for: ip.data[0]=HOOKING_IP; */
 #define HOOKING_IP  0x100000a      /* 10.0.0.1  (in network order) */
 #define HOOKING_IP6 0xc0fe	   /* fec0:: */
