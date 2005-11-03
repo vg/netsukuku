@@ -366,4 +366,7 @@ rh_cache *load_rh_cache(char *file, int *counter);
 
 int load_hostnames(char *file, lcl_cache **old_alcl_head, int *old_alcl_counter);
 
+int add_resolv_conf(char *hname, char *file);
+int del_resolv_conf(char *file);
+
 #endif		/*ANDNA_CACHE_H*/

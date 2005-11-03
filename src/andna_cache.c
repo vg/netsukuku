@@ -1355,3 +1355,154 @@ int load_hostnames(char *file, lcl_cache **old_alcl_head, int *old_alcl_counter)
 
 	return 0;
 }
+
+/*
+ * add_resolv_conf: It opens `file' and write in the first line `hname' moving
+ * down the previous lines. The old `file' is backupped in `file'.bak.
+ * Example: add_resolv_conf("nameserver 127.0.0.1", "/etc/resolv.conf").
+ * Use del_resolv_conf to restore `file' with its backup.
+ * On error -1 is returned.
+ */
+int add_resolv_conf(char *hname, char *file)
+{
+	FILE *fin, 	/* `file' */
+	     *fout,	/* The replaced `file' */
+	     *fout_back;/* The backup of `file' */
+	     
+	char *buf=0, *file_bk=0;
+	size_t buf_sz;
+	int ret=0;
+
+	/*
+	 *  Open and read `file' 
+	 */
+	
+	if(!(fin=fopen(file, "r"))) {
+		error("add_resolv_conf: cannot load %s: %s", file, strerror(errno));
+		ERROR_FINISH(ret, -1, finish);
+	}
+
+	fseek(fin, 0, SEEK_END);
+	buf_sz=ftell(fin);
+	rewind(fin);
+	
+	buf=xmalloc(buf_sz);
+	if(!fread(buf, buf_sz, 1, fin)) {
+		error("add_resolv_conf: it wasn't possible to read the %s file",
+				file);
+		ERROR_FINISH(ret, -1, finish);
+	}
+	
+	/*
+	 * Backup `file' in `file'.bak
+	 */
+	file_bk=xmalloc(strlen(file) + strlen(".bak") + 1);
+	*file_bk=0;
+	strcpy(file_bk, file);
+	strcat(file_bk, ".bak");
+	if(!(fout_back=fopen(file_bk, "w"))) {
+		error("add_resolv_conf: cannot create a backup copy of %s in %s: %s", file,
+			file_bk, strerror(errno));
+		ERROR_FINISH(ret, -1, finish);
+	}
+	fwrite(buf, buf_sz, 1, fout_back);
+
+	/*
+	 * Delete `file'
+	 */
+	fclose(fin);
+	unlink(file);
+	
+	/*
+	 * Add as a first line `hname' in `file'
+	 */
+	if(!(fout=fopen(file, "w"))) {
+		error("add_resolv_conf: cannot reopen %s to overwrite it: %s", file, 
+				strerror(errno));
+		ERROR_FINISH(ret, -1, finish);
+	}
+	fprintf(fout, "%s\n", hname);
+	fwrite(buf, buf_sz, 1, fout);
+	
+finish:
+	if(buf)
+		xfree(buf);
+	if(file_bk)
+		xfree(file_bk);
+	fclose(fin);
+	fclose(fout);
+	fclose(fout_back);
+
+	return ret;
+}
+
+/*
+ * del_resolv_conf: restores the old `file' modified by add_resolv_conf() by 
+ * copying `file'.bak over `file'.
+ * On error it returns -1.
+ */
+int del_resolv_conf(char *file)
+{
+	FILE *fin, *fout;
+	     
+	char *buf=0, *file_bk=0;
+	size_t buf_sz;
+	int ret=0;
+
+	/*
+	 *  Open and read `file'.bak 
+	 */
+	file_bk=xmalloc(strlen(file) + strlen(".bak") + 1);
+	*file_bk=0;
+	strcpy(file_bk, file);
+	strcat(file_bk, ".bak");
+	if(!(fin=fopen(file_bk, "r"))) {
+		error("del_resolv_conf: cannot load %s: %s", file_bk, strerror(errno));
+		ERROR_FINISH(ret, -1, finish);
+	}
+
+	fseek(fin, 0, SEEK_END);
+	buf_sz=ftell(fin);
+	rewind(fin);
+	
+	buf=xmalloc(buf_sz);
+	if(!fread(buf, buf_sz, 1, fin)) {
+		error("del_resolv_conf: It wasn't possible to read the %s file", 
+				file_bk);
+		ERROR_FINISH(ret, -1, finish);
+	}
+	
+	/*
+	 * Delete `file'
+	 */
+	unlink(file);
+
+	/*
+	 * Copy `file'.bak in `file'
+	 */
+	
+	if(!(fout=fopen(file, "w"))) {
+		error("del_resolv_conf: cannot copy %s in %s: %s", file_bk,
+			file, strerror(errno));
+		ERROR_FINISH(ret, -1, finish);
+	}
+	fwrite(buf, buf_sz, 1, fout);
+	
+
+	/*
+	 * delete `file'.bak
+	 */
+	
+	fclose(fin);
+	unlink(file_bk);
+	
+finish:
+	if(buf)
+		xfree(buf);
+	if(file_bk)
+		xfree(file_bk);
+	fclose(fin);
+	fclose(fout);
+
+	return ret;
+}

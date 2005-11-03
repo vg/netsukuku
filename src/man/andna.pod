@@ -53,12 +53,10 @@ The netsukuku_d(8) daemon runs also a DNS wrapper which receives standard DNS
 queries for hostnames resolution. The hostnames are resolved in ANDNA, then the
 DNS wrapper will reply to the requester.
 
-In this way to use ANDNA with all the actual programs just put C<localhost> in
-the list of DNS servers used by your system. For example: 
-
-# cp /etc/resolv.conf /etc/resolv.conf.bak
-
-# echo "nameserver 127.0.0.1" > /etc/resolv.conf
+When the netsukuku_d(8) daemon is started it copies /etc/resolv.conf in
+/etc/resolv.conf.bak and adds in the first line of /etc/resolv.conf the
+"nameserver 127.0.0.1" string. When it is closed it moves back
+/etc/resolv.conf.bak to /etc/resolv.conf.
 
 All the resolved hostnames are kept, until their expiration date, in the
 C<resolved hostnames cache>. The entire cache is flushed each time the

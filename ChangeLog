@@ -20,7 +20,7 @@
 - The bug in the load_rh_cache code is now fixed. (It caused crashes when the
   daemon was closed)
   
-- The Make/configure support was added. Now you can use both SCons os Make to
+- The Make/configure support was added. Now you can use both SCons or Make to
   compile and install Netsukuku.
 
 - The installation path of the man page is now fixed.
@@ -30,12 +30,19 @@
 - The /usr/share/netsukuku directory is now created by the daemon itself.
 
 - Now /sys/net/ipv4/conf/INTERFACE/rp_filter is automatically disabled for the
-  used interface.
+  used network interface.
 
 - Errors in load_hostnames() fixed. (It crashed it there was an just an empty
   '\n').
 
-- Added CC and CXX options in Scontrusct. Changes provided by Tero Auvinen.
+- Added CC and CXX options in Scontruct. Changes provided by Tero Auvinen.
+
+- At hooking the first radar_scan is retried for three times.
+
+- When the daemon is launched /etc/resolv.conf is modified automatically, so
+  the "nameserver 127.0.0.1" is added in the first line of resolv.conf. The
+  old resolv.conf is at /etc/resolv.conf.bak. When the daemon is closed
+  /etc/resolv.conf.bak is moved to /etc/resolv.conf.
 
 0.0.3b
 - The ANDNA code, with its DNS wrapper, is completed and tested.

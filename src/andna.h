@@ -16,6 +16,10 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#define MY_NAMESERV		"nameserver 127.0.0.1"
+#define MY_NAMESERV_IPV6	"nameserver ::1"
+#define ETC_RESOLV_CONF		"/etc/resolv.conf"
+
 /* How many different andna pkt can be flooded simultaneusly */
 #define ANDNA_MAX_FLOODS	(ANDNA_MAX_QUEUE*3) 
 
@@ -183,7 +187,9 @@ INT_INFO spread_acache_pkt_info = { 1, { INT_TYPE_32BIT }, { 0 }, { MAX_IP_INT }
 
 int andna_load_caches(void);
 int andna_save_caches(void);
+
 void andna_init(void);
+void andna_close(void);
 
 int andna_register_hname(lcl_cache *alcl);
 int andna_recv_reg_rq(PACKET rpkt);

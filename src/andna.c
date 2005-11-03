@@ -116,6 +116,11 @@ void andna_init(void)
 	memset(last_spread_acache_pkt_id, 0, sizeof(int)*ANDNA_MAX_FLOODS);
 }
 
+void andna_close(void)
+{
+	del_resolv_conf(ETC_RESOLV_CONF);
+}
+
 /*
  * andna_hash_by_family: If family is equal to AF_INET, in `hash' it stores the
  * 32bit hash of the `msg', otherwise it just copies `msg' to `hash_ip'. 
@@ -1842,6 +1847,20 @@ finish:
 	return ret;
 }
 
+void andna_hook_init(void)
+{
+	int ret;
+	char *my_nameserv;
+	
+	loginfo("Modifying /etc/resolv.conf");
+	
+	my_nameserv = my_family == AF_INET ? MY_NAMESERV : MY_NAMESERV_IPV6;
+	ret=add_resolv_conf(my_nameserv, ETC_RESOLV_CONF);
+	if(ret < 0)
+		error("It wasn't possible to modify %s, you have to add "
+				"\"%s\" by yourself", ETC_RESOLV_CONF, my_nameserv);
+}
+
 /*
  * andna_hook: The andna_hook gets the andna_cache and the counter_node cache
  * from the nearest rnodes.
@@ -1854,6 +1873,8 @@ void *andna_hook(void *null)
 	
 	memset(&to, 0, sizeof(inet_prefix));
 
+	andna_hook_init();
+	
 	loginfo("Starting the ANDNA hook.");
 	
 	if(!me.cur_node->links) {
@@ -1908,7 +1929,7 @@ void *andna_hook(void *null)
 
 
 	loginfo("ANDNA hook completed");
-	
+
 	return 0;
 }
 
