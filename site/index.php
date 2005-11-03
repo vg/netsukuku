@@ -2,14 +2,15 @@
 //error_reporting(E_ERROR|E_WARNING|E_PARSE|E_NOTICE);
 
 $pages = array(
-    /* pagename	    => array(english, italian) */
-    "Home"	    => array("home", ""),
-    "About"	    => array("README", ""),
+    /* pagename     => array(english, italian, target) */
+    "Home"	    => array("home", "", ""),
+    "About"	    => array("README", "", ""),
     "Documentation" => array("netsukuku",
-			     "netsukuku.ita"),	
-    "FAQ"	    => array("doc/FAQ", ""),
-    "Download"	    => array("http://netsukuku.freaknet.org/files", ""),
-    "Contacts"	    => array("contacts", ""),
+			     "netsukuku.ita", ""),	
+    "FAQ"	    => array("doc/FAQ", "", ""),
+    "Download"	    => array("http://netsukuku.freaknet.org/files", "", ""),
+    "Contacts"	    => array("contacts", "", ""),
+    "Wiki"	    => array("refreshing", "", "_blank" )
 );
 
 /* default page = home */
@@ -28,10 +29,11 @@ else
 $navbar = "";
 foreach($pages as $pname => $pdata) {
     $pclass = ($pname == $page) ? "iam" : "menu";
+    $target = $pdata[2] ? "target=\"$pdata[2]\"" : "";
     $navbar .= "<td>&nbsp;&nbsp;&nbsp;</td>".
-	"<td><a href=\"?p=$pname\" class=\"$pclass\">$pname</a></td>";
+	 "<td><a href=\"?p=$pname\" $target class=\"$pclass\">$pname</a></td>";
 }
-
+			
 $it_selected = $en_selected = "";
 if($lang == "it" && strlen($pages[$page][1])) {
     $to_include = $pages[$page][1];
@@ -52,6 +54,12 @@ if(! ereg("^http:", $to_include)) {
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html>
 <head>
+<?php
+if($page == "Wiki") {
+?>
+<meta http-equiv="Refresh"
+	content="1; URL=http://lab.dyne.org/Netsukuku">		 
+<?php } ?>				
 <title>Netsukuku</title>
 </head>
 <link rel="stylesheet" type="text/css" href="style.css" />
