@@ -71,6 +71,7 @@ void lcl_new_keyring(lcl_cache_keyring *keyring)
 		xfree(pub_dump);
 	}
 }
+
 /*
  * lcl_destroy_keyring: destroys accurately the keyring ^_^ 
  */
@@ -1365,9 +1366,9 @@ int load_hostnames(char *file, lcl_cache **old_alcl_head, int *old_alcl_counter)
  */
 int add_resolv_conf(char *hname, char *file)
 {
-	FILE *fin, 	/* `file' */
-	     *fout,	/* The replaced `file' */
-	     *fout_back;/* The backup of `file' */
+	FILE *fin=0,		/* `file' */
+	     *fout=0,		/* The replaced `file' */
+	     *fout_back=0;	/* The backup of `file' */
 	     
 	char *buf=0, *file_bk=0;
 	size_t buf_sz;
@@ -1411,6 +1412,7 @@ int add_resolv_conf(char *hname, char *file)
 	 * Delete `file'
 	 */
 	fclose(fin);
+	fin=0;
 	unlink(file);
 	
 	/*
@@ -1429,9 +1431,12 @@ finish:
 		xfree(buf);
 	if(file_bk)
 		xfree(file_bk);
-	fclose(fin);
-	fclose(fout);
-	fclose(fout_back);
+	if(fin)
+		fclose(fin);
+	if(fout)
+		fclose(fout);
+	if(fout_back)
+		fclose(fout_back);
 
 	return ret;
 }
@@ -1443,7 +1448,7 @@ finish:
  */
 int del_resolv_conf(char *file)
 {
-	FILE *fin, *fout;
+	FILE *fin=0, *fout=0;
 	     
 	char *buf=0, *file_bk=0;
 	size_t buf_sz;
@@ -1501,8 +1506,10 @@ finish:
 		xfree(buf);
 	if(file_bk)
 		xfree(file_bk);
-	fclose(fin);
-	fclose(fout);
+	if(fin)
+		fclose(fin);
+	if(fout)
+		fclose(fout);
 
 	return ret;
 }

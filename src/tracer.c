@@ -670,13 +670,25 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 
 				/* We update only the bmaps which are at
 				 * levels where our gnodes are in common with
-				 * that of the bnode, which sent us this
+				 * those of the bnode, which sent us this
 				 * bblock */
-				for(o=level; o >= 0; o--)
+				for(o=level, f=0; o >= 0; o--)
 					if(bnode_gid[o] != me.cur_quadg.gid[o]) {
-						blevel=o;
+						f=1;
 						break;
 					}
+				if(!f) { 
+					/*
+					 * bnode_gid is equal to me.cur_quadg.gid, so this 
+					 * bnode block was sent by ourself, skip it. 
+					 */
+
+					debug(DBG_NORMAL, ERROR_MSG "skipping the %d bnode,"
+							"it was built by us!", ERROR_POS, i);
+					xfree(bblist[i]);
+					continue;
+				}
+					
 
 				for(blevel=o; blevel < bblist_hdr[i]->bnode_levels; blevel++) {
 					bnode=bnode_gid[blevel];
@@ -795,14 +807,21 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 		if(!level) {
 			node=node_from_pos(tracer[i].node, me.int_map);
 			if(node == me.cur_node) {
-				debug(DBG_INSANE, "Ehi! This is insane, there's "
-						"a hop in the tracer pkt which "
-						"points to me");
-				continue;
+				debug(DBG_INSANE, "Ehi! There's a hop in the "
+						"tracer pkt which points to me");
+				break;
 			}
 		} else {
 			gnode=gnode_from_pos(tracer[i].node, me.ext_map[_EL(level)]);
 			node=&gnode->g;
+
+			if(gnode == me.cur_quadg.gnode[_EL(level)] && 
+					gnode->g.flags & MAP_BNODE) {
+				debug(DBG_INSANE, "There's a hop in the "
+						"tracer pkt which points to me");
+				break;
+			}
+				
 		}
 		node->flags&=~QSPN_OLD;
 			

@@ -639,23 +639,34 @@ void pkt_queue_close(void)
  */
 void *wait_and_unlock(void *m)
 {
-	pkt_queue *pq=*((pkt_queue **)m);
+	pkt_queue *pq, **pq_ptr;
 	int i;
+
+	pq_ptr=(pkt_queue **)m;
+	pq=*pq_ptr;
+	if(!pq)
+		return 0;
 
 	for(i=0; i<REQUEST_TIMEOUT; i++) {
 		sleep(1);
-		if(!pq || !(pq->flags & PKT_Q_MTX_LOCKED) ||
+		if(!(*pq_ptr) || (pq->flags & PKT_Q_PKT_RECEIVED) ||
+				!(pq->flags & PKT_Q_MTX_LOCKED) ||
 				pthread_mutex_trylock(&pq->mtx) != EBUSY)
 			break;
 	}
 
-	if(!pq || !(pq->flags & PKT_Q_MTX_LOCKED) ||
+	if(!(*pq_ptr) || (pq->flags & PKT_Q_PKT_RECEIVED) ||
+			!(pq->flags & PKT_Q_MTX_LOCKED) ||
 			pthread_mutex_trylock(&pq->mtx) != EBUSY)
-		return 0;
+		goto finish;
 
 	debug(DBG_INSANE, "pq->pkt.hdr.id: 0x%x Timeoutted. mtx: 0x%X", pq->pkt.hdr.id, &pq->mtx);
 	pthread_mutex_unlock(&pq->mtx);
 	pq->flags|=PKT_Q_TIMEOUT;
+	
+finish:
+	if(pq_ptr)
+		xfree(pq_ptr);
 	return 0;
 }
 
@@ -672,11 +683,14 @@ void *wait_and_unlock(void *m)
 int pkt_q_wait_recv(int id, inet_prefix *from, PACKET *rpkt, pkt_queue **ret_pq)
 {
 	pthread_t thread;
-	pkt_queue *pq;
+	pkt_queue *pq, **pq_ptr;
 
-
+	
 	pq=xmalloc(sizeof(pkt_queue));
 	memset(pq, 0, sizeof(pkt_queue));
+
+	pq_ptr=xmalloc(sizeof(pkt_queue *));
+	*pq_ptr=pq;
 	
 	pthread_mutex_init(&pq->mtx, 0);
 	pq->flags|=PKT_Q_MTX_LOCKED;
@@ -697,7 +711,7 @@ int pkt_q_wait_recv(int id, inet_prefix *from, PACKET *rpkt, pkt_queue **ret_pq)
 
 	/* Be sure to unlock me after the timeout */
 	pthread_create(&thread, &wait_and_unlock_attr, wait_and_unlock, 
-			(void *)&pq);
+			(void *)pq_ptr);
 	pthread_detach(thread);
 
 	if(pq->flags & PKT_Q_MTX_LOCKED) {
@@ -717,9 +731,8 @@ int pkt_q_wait_recv(int id, inet_prefix *from, PACKET *rpkt, pkt_queue **ret_pq)
 		pkt_copy(rpkt, &pq->pkt);
 	}
 
-	/* Setting the pq pointer to NULL will cause the wait_and_unlock thread
-	 * to exit */
-	pq=0;
+	/* When *pq_ptr is set to 0, the wait_and_unlock thread exits */
+	*pq_ptr=0;
 
 	return 0;
 }
@@ -754,6 +767,7 @@ int pkt_q_add_pkt(PACKET pkt)
 				usleep(5000);
 			debug(DBG_INSANE, "Unlocking 0x%X ", &pq->mtx);
 			pq->flags&=~PKT_Q_MTX_LOCKED & ~PKT_Q_TIMEOUT;
+			pq->flags|=PKT_Q_PKT_RECEIVED;
 			pthread_mutex_unlock(&pq->mtx);
 			pthread_mutex_unlock(&pq->mtx);
 			ret=0;

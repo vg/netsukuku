@@ -1,18 +1,5 @@
 		[HIGH PRIORITY] 
 		
-- tracer_store_pkt: do not consider all the entries which are before our same
-  entry, which we added in the pkt. This happens when there is a qspn_pkt
-  which goes trough a circular loop.
-
-- DNS wrapper: ip -> hostnames
-	- -r forward to other /etc/resolv.conf dns server
-
-- Bug:
-  # pkt_q_wait_recv: Locking 0x80f6b9c!
-  # Received ANDNA_GET_SINGLE_ACACHE from 175.97.103.220, id 0x2a347770
-  *** glibc detected *** double free or corruption (!prev):***
-  # Receiving reply for the ANDNA_REGISTER_HNAME request (id 0x7143c88a)
-
 - Gnodes contiguity
 	- Nodes count in the qspn_pkt which traverses gnodes
 	- gnode re-hook
@@ -33,6 +20,8 @@
 		  of time and retry.
 		- Ban of gnodes which lost the challenge
 
+- DNS wrapper: ip -> hostnames
+	- -r forward to other /etc/resolv.conf dns server
 
 		[MEDIUM PRIORITY] 
 

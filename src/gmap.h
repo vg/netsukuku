@@ -103,7 +103,8 @@ typedef struct {
 	int         gid[MAX_LEVELS];	 /*Group ids. Each element is the gid of the quadrogroup in the 
 					   relative level. (ex: gid[n] is the gid of the quadropgroup a 
 					   the n-th level)*/
-	map_gnode  *gnode[MAX_LEVELS-ZERO_LEVEL]; /*Each element is a pointer to the relative gnode in the 						      ext_map. It has levels-EXTRA_LEVELS elements.*/
+	map_gnode  *gnode[MAX_LEVELS-ZERO_LEVEL]; /*Each element is a pointer to the relative
+						    gnode in the ext_map.*/
 	inet_prefix ipstart[MAX_LEVELS]; /*The ipstart of each quadg.gid in their respective levels*/
 }quadro_group;
 
