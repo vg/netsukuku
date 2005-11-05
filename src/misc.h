@@ -21,7 +21,20 @@
 #ifndef MISC_H
 #define MISC_H
 
+/* 
+ * MILLISEC: converts a timeval struct to a int. The time will be returned in
+ * milliseconds.
+ */
 #define MILLISEC(x)	(((x).tv_sec*1000)+((x).tv_usec/1000))
+
+/*
+ * MILLISEC_TO_TV: Converts `x', which is an int into a t, a timeval struct
+ */
+#define MILLISEC_TO_TV(x,t) 						\
+do{									\
+	(t).tv_sec=(x)/1000; 						\
+	(t).tv_usec=((x) - ((x)/1000)*1000)*1000; 			\
+}while(0)
 
 #define FNV_32_PRIME ((u_long)0x01000193)
 #define FNV1_32_INIT ((u_long)0x811c9dc5)

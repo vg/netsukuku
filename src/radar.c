@@ -277,8 +277,7 @@ void final_radar_queue(void)
 			timeradd(&rq->rtt[e-rq->pongs], &sum, &sum);
 
 		f_rtt=MILLISEC(sum)/MAX_RADAR_SCANS;
-		rq->final_rtt.tv_sec=f_rtt/1000;
-		rq->final_rtt.tv_usec=(f_rtt - (f_rtt/1000)*1000)*1000;
+		MILLISEC_TO_TV(f_rtt, rq->final_rtt);
 	}
 
 	my_echo_id=0;
@@ -878,8 +877,7 @@ int radar_exec_reply(PACKET pkt)
 		 * the pkt used to reach B from A and to return to A from B
 		 */
 		rtt_ms=MILLISEC(rq->rtt[(int)rq->pongs])/2;
-		rq->rtt[(int)rq->pongs].tv_sec=rtt_ms/1000;
-		rq->rtt[(int)rq->pongs].tv_usec=(rtt_ms - (rtt_ms/1000)*1000)*1000;
+		MILLISEC_TO_TV(rtt_ms, rq->rtt[(int)rq->pongs]);
 
 		rq->pongs++;
 	}

@@ -101,6 +101,11 @@ struct qspn_buffer **qspn_b; /*It is sizeof(struct qspn_buffer *)*levels big*/
 
 int *qspn_send_mutex;	     /*It is sizeof(int)*levels big.*/
 
+/*
+ * qspn_gnode_count[x] is the number of nodes present in the gnode
+ * me.cur_quadg.gnode[x], it is updated at each qspn_round.
+ */ 
+u_int qspn_gnode_count[IPV4_LEVELS-ZERO_LEVEL];
 
 void qspn_time_reset(int start_level, int end_level, int levels);
 void qspn_init(u_char levels);

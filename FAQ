@@ -56,6 +56,9 @@ A: Simple and not accurate reasons for the scalability of Netsukuku (until there
    A first draft of the explanation of the Netsukuku scalability is available
    here: http://lab.dyne.org/Netsukuku_scalability
 
+Q: What do you intend to do to solve the IP unicity problem?
+A: It is already solved: http://lab.dyne.org/Ntk_gnodes_contiguity
+
 Q: Why another p2p network?
 A: Netsukuku is not a p2p net built upon the Internet. It is a physical
    network and it is a dynamic routing system designed to handle 2^128 nodes

@@ -215,8 +215,12 @@ tracer_add_entry(void *void_map, void *void_node, tracer_chunk *tracer,
 			}
 
 			rfrom=&me.cur_quadg.gnode[_EL(level)]->g.r_node[pos];
+			
+			/*TODO:
+			 * gcount = COUNT
+			 */
 		}
-		memcpy(&t[new_entry_pos].rtt, &rfrom->rtt, sizeof(struct timeval));
+		t[new_entry_pos].rtt=MILLISEC(rfrom->rtt);
 	}
 
 	if(!level)
@@ -230,13 +234,12 @@ tracer_add_entry(void *void_map, void *void_node, tracer_chunk *tracer,
 /* 
  * tracer_add_rtt: Increments the rtt of the `hop'th `tracer' chunk by adding
  * the rtt of the rnode who is in the `rpos' postion in me.cur_node->r_node.
- * It returns 0 on success.
+ * It returns the new rtt value on success.
  */
 int tracer_add_rtt(int rpos, tracer_chunk *tracer, u_short hop)
 {
-	timeradd(&tracer[hop].rtt, &me.cur_node->r_node[rpos].rtt, 
-			&tracer[hop].rtt);
-	return 0;
+	tracer[hop].rtt+=MILLISEC(me.cur_node->r_node[rpos].rtt);
+	return tracer[hop].rtt;
 }
 
 /* 
@@ -570,6 +573,7 @@ int tracer_get_trtt(int from_rnode_pos, tracer_hdr *trcr_hdr,
 		tracer_chunk *tracer, struct timeval *trtt)
 {
 	int hops, i;
+	u_int trtt_ms=0;
 	
 	memset(trtt, 0, sizeof(struct timeval));	
 
@@ -578,10 +582,12 @@ int tracer_get_trtt(int from_rnode_pos, tracer_hdr *trcr_hdr,
 		return -1;
 	
 	/* Add the rtt of me -> from */
-	timeradd(&me.cur_node->r_node[from_rnode_pos].trtt, trtt, trtt);
+	trtt_ms+=MILLISEC(me.cur_node->r_node[from_rnode_pos].trtt);
 
 	for(i=hops-1; i > 0; i--)
-		timeradd(&tracer[i].rtt, trtt, trtt);
+		trtt_ms+=tracer[i].rtt;
+
+	MILLISEC_TO_TV(trtt_ms, (*trtt));
 
 	return 0;
 }
@@ -605,14 +611,13 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 {
 	bnode_hdr 	**bblist_hdr=0;
 	bnode_chunk 	***bblist=0;
-	struct timeval trtt;
 	map_node *from, *node, *root_node;
 	void *void_node;
 	map_gnode *gfrom, *gnode=0;
 	map_rnode rn, rnn;
 			
 	int i, e, o, diff, bm, x, f, from_rnode_pos, skip_rfrom;
-	u_int hops;
+	u_int hops, trtt_ms=0;
 	u_short bb;
 	size_t found_block_sz, bsz;
 	char *found_block;
@@ -793,16 +798,15 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 	}
 	
 	/* We add in the total rtt the first rtt which is me -> from */
-	memset(&trtt, 0, sizeof(struct timeval));	
-	timeradd(&node->r_node[from_rnode_pos].trtt, &trtt, &trtt);
+	trtt_ms=MILLISEC(node->r_node[from_rnode_pos].trtt);
 
 	/* If we are skipping the rfrom, remember to sum its rtt */
 	if(skip_rfrom)
-		timeradd(&tracer[hops-1].rtt, &trtt, &trtt);
+		trtt_ms+=tracer[hops-1].rtt;
 
 	for(i=(hops-skip_rfrom)-1; i >= 0; i--) {
 		if(i)
-			timeradd(&tracer[i].rtt, &trtt, &trtt);
+			trtt_ms+=tracer[i].rtt;
 
 		if(!level) {
 			node=node_from_pos(tracer[i].node, me.int_map);
@@ -844,9 +848,9 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 		/* update the rtt of the node */
 		for(e=0,f=0; e < node->links; e++) {
 			if(node->r_node[e].r_node == (int *)from) {
-				diff=abs(MILLISEC(node->r_node[e].trtt) - MILLISEC(trtt));
+				diff=abs(MILLISEC(node->r_node[e].trtt) - trtt_ms);
 				if(diff >= RTT_DELTA) {
-					memcpy(&node->r_node[e].trtt, &trtt, sizeof(struct timeval));
+					MILLISEC_TO_TV(trtt_ms, node->r_node[e].trtt);
 					node->flags|=MAP_UPDATE;
 				}
 				f=1;
@@ -858,7 +862,7 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 			memset(&rnn, '\0', sizeof(map_rnode));
 
 			rnn.r_node=(int *)from;
-			memcpy(&rnn.trtt, &trtt, sizeof(struct timeval));
+			MILLISEC_TO_TV(trtt_ms, rnn.trtt);
 			
 			rnode_add(node, &rnn);
 			node->flags|=MAP_UPDATE;

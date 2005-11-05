@@ -105,6 +105,7 @@ void qspn_init(u_char levels)
 	
 	me.cur_qspn_time=xmalloc(sizeof(struct timeval)*levels);
 
+	memset(qspn_gnode_count, 0, sizeof(qspn_gnode_count));
 	qspn_time_reset(0, levels, levels);
 }
 
@@ -277,8 +278,7 @@ void update_qspn_time(u_char level, struct timeval *new_qspn_time)
 		 * latest round.
 		 */
 		ret=ret-(QSPN_WAIT_ROUND_MS_LVL(level)*(ret/QSPN_WAIT_ROUND_MS_LVL(level)));
-		t.tv_sec=ret/1000;
-		t.tv_usec=(ret - (ret/1000)*1000)*1000;
+		MILLISEC_TO_TV(ret, t);
 		
 		/* 
 		 * Now we can calculate when the last round has started, the

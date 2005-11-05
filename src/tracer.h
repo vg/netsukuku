@@ -37,10 +37,17 @@ INT_INFO tracer_hdr_iinfo = { 2,
 typedef struct
 {
 	u_char		node;
-	struct timeval	rtt;	/*The rtt to reach the `node' of the previous
-				  chunk from the node of the current `one'.*/
+	u_int		rtt;	/* The rtt to reach the `node' of the previous
+				   chunk from the node of the current `one'. 
+				   (in milliseconds) */
+	u_int		gcount; /* how many nodes there are in the `node' 
+				   gnode */
 }_PACKED_ tracer_chunk;
-INT_INFO tracer_chunk_iinfo = { 1, { INT_TYPE_32BIT }, { sizeof(char) }, { 2 } };
+INT_INFO tracer_chunk_iinfo = { 2, 
+				{ INT_TYPE_32BIT, INT_TYPE_32BIT }, 
+				{ sizeof(char), sizeof(char)+sizeof(u_int) }, 
+				{ 1, 1 } 
+			      };
 #define TRACERPKT_SZ(hops) (sizeof(tracer_hdr) + (sizeof(tracer_chunk) * (hops)))
 
 int tracer_pkt_start_mutex;
