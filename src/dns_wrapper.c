@@ -88,7 +88,7 @@ void *dns_exec_pkt(void *passed_argv)
 
 	memcpy(&argv, passed_argv, sizeof(struct dns_exec_pkt_argv));
 	memcpy(&buf, argv.rpkt, argv.rpkt_sz);
-	xfree(argv.rpkt);
+	pthread_mutex_unlock(&dns_exec_lock);
 
 	/* Unpack the DNS query and resolve the hostname */
 	answer_length = sizeof(answer_buffer);
@@ -125,6 +125,7 @@ void dns_wrapper_daemon(u_short port)
 	
 	pthread_attr_init(&t_attr);
 	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
+	pthread_mutex_init(&dns_exec_lock, 0);
 
 	debug(DBG_SOFT, "Preparing the dns_udp listening socket on port %d", port);
 	sk=prepare_listen_socket(my_family, SOCK_DGRAM, port, 0);
@@ -172,10 +173,13 @@ void dns_wrapper_daemon(u_short port)
 		/* Exec the pkt in another thread */
 		exec_pkt_argv.sk=sk;
 		exec_pkt_argv.rpkt_sz=err;
-		exec_pkt_argv.rpkt=xmalloc(exec_pkt_argv.rpkt_sz);
-		memcpy(exec_pkt_argv.rpkt, &buf, exec_pkt_argv.rpkt_sz);
+		exec_pkt_argv.rpkt=buf;
+		
+		pthread_mutex_lock(&dns_exec_lock);
 		pthread_create(&thread, &t_attr, dns_exec_pkt, 
 				(void *)&exec_pkt_argv);
+		pthread_mutex_lock(&dns_exec_lock);
+		pthread_mutex_unlock(&dns_exec_lock);
 	}
 }
 

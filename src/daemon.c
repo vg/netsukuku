@@ -266,6 +266,7 @@ void *udp_daemon(void *passed_argv)
 				pthread_create(&thread, &t_attr, udp_exec_pkt,
 						&exec_pkt_argv);
 				pthread_mutex_lock(&udp_exec_lock);
+				pthread_mutex_unlock(&udp_exec_lock);
 			} else {
 				exec_pkt_argv.recv_pkt=&rpkt;
 				udp_exec_pkt(&exec_pkt_argv);
@@ -415,6 +416,7 @@ void *tcp_daemon(void *door)
 			err=pthread_create(&thread, &t_attr, tcp_recv_loop, (void *)&rpkt);
 			pthread_detach(thread);
 			pthread_mutex_lock(&tcp_exec_lock);
+			pthread_mutex_unlock(&tcp_exec_lock);
 		}
 	}
 	

@@ -40,6 +40,8 @@ struct dns_exec_pkt_argv
 	socklen_t	from_len;
 };
 
+pthread_mutex_t dns_exec_lock;
+
 /* * * Functions declarations * * */
 
 void *dns_wrapper_thread(void *null);
