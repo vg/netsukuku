@@ -56,7 +56,8 @@ DNS wrapper will reply to the requester.
 When the netsukuku_d(8) daemon is started it copies /etc/resolv.conf in
 /etc/resolv.conf.bak and adds in the first line of /etc/resolv.conf the
 "nameserver 127.0.0.1" string. When it is closed it moves back
-/etc/resolv.conf.bak to /etc/resolv.conf.
+/etc/resolv.conf.bak to /etc/resolv.conf. Use the B<-R> option if you want to
+disable this behaviour.
 
 All the resolved hostnames are kept, until their expiration date, in the
 C<resolved hostnames cache>. The entire cache is flushed each time the

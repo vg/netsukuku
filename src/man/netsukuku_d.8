@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "NetsukukuD 8"
-.TH NetsukukuD 8 "2005-10-23" "NetsukukuD 0.0.4b" ""
+.TH NetsukukuD 8 "2005-11-05" "NetsukukuD 0.0.4b" ""
 .SH "NAME"
 netsukuku_d \- Netsukuku protocol daemon
 .SH "SYNOPSIS"
@@ -175,6 +175,12 @@ wlan0. You can use more than one interface by specifying multiple times the
 .IP "\fB\-a\fR, \fB\-\-no_andna\fR" 4
 .IX Item "-a, --no_andna"
 Forces \fBnetsukuku_d\fR to don't run the \s-1ANDNA\s0 daemon when started.
+.IP "\fB\-R\fR, \fB\-\-no_resolv\fR" 4
+.IX Item "-R, --no_resolv"
+When \fBNetsukukuD\fR starts it modifies \fI/etc/resolv.conf\fR writing in the first
+line the string \*(L"nameserver 127.0.0.1\*(R". The old \fI/etc/resolv.conf\fR is copied in
+\&\fI/etc/resolv.conf.bak\fR. When the daemon is closed \fI/etc/resolv.conf\fR is
+restored. If you want to disable this set use the \fB\-R\fR option.
 .IP "\fB\-r\fR, \fB\-\-restricted\fR" 4
 .IX Item "-r, --restricted"
 With this option the daemon will run in restricted mode as specified in

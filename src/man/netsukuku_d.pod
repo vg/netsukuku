@@ -71,6 +71,17 @@ Forces B<netsukuku_d> to don't run the ANDNA daemon when started.
 
 =over
 
+=item B<-R>, B<--no_resolv>
+
+When B<NetsukukuD> starts it modifies F</etc/resolv.conf> writing in the first
+line the string "nameserver 127.0.0.1". The old F</etc/resolv.conf> is copied in
+F</etc/resolv.conf.bak>. When the daemon is closed F</etc/resolv.conf> is
+restored. If you want to disable this set use the B<-R> option.
+
+=back
+
+=over
+
 =item B<-r>, B<--restricted> 
 
 With this option the daemon will run in restricted mode as specified in

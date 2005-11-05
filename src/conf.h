@@ -41,6 +41,7 @@ enum config_options
 	CONF_NTK_MAX_ACCEPTS_PER_HOST_TIME,
 
 	CONF_DISABLE_ANDNA,
+	CONF_DISABLE_RESOLVCONF,
 	CONF_NTK_RESTRICTED_MODE,
 };
 
@@ -61,6 +62,7 @@ const static char config_str[][30]=
 	{ "max_accepts_per_host_time" },
 
 	{ "disable_andna" },
+	{ "disable_resolvconf" },
 	{ "ntk_restricted_mode" },
 	{ 0 },
 };

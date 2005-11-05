@@ -113,6 +113,7 @@ typedef struct
 	char 		dbg_lvl;
 
 	char		disable_andna;
+	char		disable_resolvconf;
 
 	int 		max_connections;
 	int 		max_accepts_per_host;

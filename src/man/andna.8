@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "ANDNA 8"
-.TH ANDNA 8 "2005-11-03" "NetsukukuD 0.0.4b" ""
+.TH ANDNA 8 "2005-11-05" "NetsukukuD 0.0.4b" ""
 .SH "NAME"
 ANDNA \- Abnormal Netsukuku Domain Name Anarchy
 .SH "DESCRIPTION"
@@ -181,7 +181,8 @@ queries for hostnames resolution. The hostnames are resolved in \s-1ANDNA\s0, th
 When the \fInetsukuku_d\fR\|(8) daemon is started it copies /etc/resolv.conf in
 /etc/resolv.conf.bak and adds in the first line of /etc/resolv.conf the
 \&\*(L"nameserver 127.0.0.1\*(R" string. When it is closed it moves back
-/etc/resolv.conf.bak to /etc/resolv.conf.
+/etc/resolv.conf.bak to /etc/resolv.conf. Use the \fB\-R\fR option if you want to
+disable this behaviour.
 .PP
 All the resolved hostnames are kept, until their expiration date, in the
 \&\f(CW\*(C`resolved hostnames cache\*(C'\fR. The entire cache is flushed each time the

@@ -118,7 +118,8 @@ void andna_init(void)
 
 void andna_close(void)
 {
-	del_resolv_conf(ETC_RESOLV_CONF);
+	if(!server_opt.disable_resolvconf)
+		del_resolv_conf(ETC_RESOLV_CONF);
 }
 
 /*
@@ -1852,13 +1853,16 @@ void andna_hook_init(void)
 	int ret;
 	char *my_nameserv;
 	
-	loginfo("Modifying /etc/resolv.conf");
-	
-	my_nameserv = my_family == AF_INET ? MY_NAMESERV : MY_NAMESERV_IPV6;
-	ret=add_resolv_conf(my_nameserv, ETC_RESOLV_CONF);
-	if(ret < 0)
-		error("It wasn't possible to modify %s, you have to add "
-				"\"%s\" by yourself", ETC_RESOLV_CONF, my_nameserv);
+	if(!server_opt.disable_resolvconf) {
+		loginfo("Modifying /etc/resolv.conf");
+
+		my_nameserv = my_family == AF_INET ? MY_NAMESERV : MY_NAMESERV_IPV6;
+		ret=add_resolv_conf(my_nameserv, ETC_RESOLV_CONF);
+		if(ret < 0)
+			error("It wasn't possible to modify %s, you have to add "
+					"\"%s\" by yourself", ETC_RESOLV_CONF, my_nameserv);
+	} else
+		loginfo("Modification of /etc/resolv.conf is disabled: do it by yourself.");
 }
 
 /*

@@ -25,6 +25,15 @@
 #
 #disable_andna		= 0
 
+#
+# When NetsukukuD starts it modifies /etc/resolv.conf writing in the first
+# line "nameserver 127.0.0.1". The old /etc/resolv.conf is copied in
+# /etc/resolv.conf.bak. When the daemon is closed /etc/resolv.conf is
+# restored. If you want to disable this set disable_resolvconf to 1.
+# NOTE: Once this option is uncommented, it cannot be overridden by its command
+# line equivalent.
+#
+#disable_resolvconf	= 0
 
 #
 # How many connection the netsukuku daemons can simultaneusly handle.

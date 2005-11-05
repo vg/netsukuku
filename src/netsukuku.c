@@ -110,8 +110,9 @@ void usage(void)
 		"    netsukuku_d [-hvadrD46] [-i net_interface] [-c conf_file]\n\n"
 		" -4	ipv4\n"
 		" -6	ipv6\n"
-		" -i	interface\n"
+		" -i	interface\n\n"
 		" -a	do not run the ANDNA daemon\n"
+		" -R	do not edit /etc/resolv.conf\n"
 		" -r	run in restricted mode\n"
 		" -D	no daemon mode\n"
 		"\n"
@@ -147,6 +148,7 @@ void fill_default_options(void)
 	server_opt.dbg_lvl=0;
 
 	server_opt.disable_andna=0;
+	server_opt.disable_resolvconf=0;
 	server_opt.restricted=0;
 
 	server_opt.max_connections=MAX_CONNECTIONS;
@@ -190,6 +192,8 @@ void fill_loaded_cfg_options(void)
 
 	if((value=getenv(config_str[CONF_DISABLE_ANDNA])))
 		server_opt.disable_andna=atoi(value);
+	if((value=getenv(config_str[CONF_DISABLE_RESOLVCONF])))
+		server_opt.disable_resolvconf=atoi(value);
 	if((value=getenv(config_str[CONF_NTK_RESTRICTED_MODE])))
 		server_opt.restricted=atoi(value);
 }
@@ -210,13 +214,14 @@ void parse_options(int argc, char **argv)
 
 			{"no_andna",	0, 0, 'a'},
 			{"no_daemon", 	0, 0, 'D'},
+			{"no_resolv",   0, 0, 'R'},
 			{"restricted", 	0, 0, 'r'},
 			{"debug", 	0, 0, 'd'},
 			{"version",	0, 0, 'v'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long (argc, argv,"i:c:hvd64Dra", long_options, 
+		c = getopt_long (argc, argv,"i:c:hvd64DRra", long_options, 
 				&option_index);
 		if (c == -1)
 			break;
@@ -250,6 +255,9 @@ void parse_options(int argc, char **argv)
 				break;
 			case 'a':
 				server_opt.disable_andna=1;
+				break;
+			case 'R':
+				server_opt.disable_resolvconf=1;
 				break;
 			case 'r':
 				server_opt.restricted=1;
