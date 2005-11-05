@@ -44,6 +44,9 @@ struct udp_daemon_argv {
 	u_char		flags;
 };
 
+pthread_mutex_t udp_exec_lock;
+pthread_mutex_t tcp_exec_lock;
+
 int prepare_listen_socket(int family, int socktype, u_short port, interface *dev);
 void *tcp_recv_loop(void *recv_pkt);
 void *tcp_daemon(void *null);

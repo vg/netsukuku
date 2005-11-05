@@ -156,7 +156,7 @@ void *udp_exec_pkt(void *passed_argv)
 	memcpy(&rpkt, argv.recv_pkt, sizeof(PACKET));
 
 	if(argv.flags & UDP_THREAD_FOR_EACH_PKT)
-		xfree(argv.recv_pkt);
+		pthread_mutex_unlock(&udp_exec_lock);
 	
 	/* Drop any packet we sent in broadcast */
 	if(!memcmp(&rpkt.from, &me.cur_ip, sizeof(inet_prefix))) {
@@ -194,7 +194,6 @@ void *udp_daemon(void *passed_argv)
 	int ret, i;
 	u_short udp_port;
 	
-	PACKET *rpkt_cp;
 	pthread_t thread;
 	pthread_attr_t t_attr;
 	
@@ -222,6 +221,9 @@ void *udp_daemon(void *passed_argv)
 	
 	debug(DBG_NORMAL, "Udp daemon on port %d up & running", udp_port);
 	pthread_mutex_unlock(&udp_daemon_lock);
+
+	pthread_mutex_init(&udp_exec_lock, 0);
+	
 	for(;;) {
 		FD_ZERO(&fdset);
 
@@ -259,11 +261,11 @@ void *udp_daemon(void *passed_argv)
 			exec_pkt_argv.acpt_sidx=accept_sidx;
 
 			if(argv.flags & UDP_THREAD_FOR_EACH_PKT) {
-				rpkt_cp=xmalloc(sizeof(PACKET));
-				memcpy(rpkt_cp, &rpkt, sizeof(PACKET));
-				exec_pkt_argv.recv_pkt=rpkt_cp;
+				exec_pkt_argv.recv_pkt=&rpkt;
+				pthread_mutex_lock(&udp_exec_lock);
 				pthread_create(&thread, &t_attr, udp_exec_pkt,
 						&exec_pkt_argv);
+				pthread_mutex_lock(&udp_exec_lock);
 			} else {
 				exec_pkt_argv.recv_pkt=&rpkt;
 				udp_exec_pkt(&exec_pkt_argv);
@@ -283,7 +285,7 @@ void *tcp_recv_loop(void *recv_pkt)
 	acpt_idx=accept_idx;
 	acpt_sidx=accept_sidx;
 	memcpy(&rpkt, recv_pkt, sizeof(PACKET));
-	xfree(recv_pkt);
+	pthread_mutex_unlock(&tcp_exec_lock);
 
 	add_accept_pid(getpid(), acpt_idx, acpt_sidx);
 
@@ -320,7 +322,6 @@ void *tcp_daemon(void *door)
 	
 	u_short tcp_port=*(u_short *)door;
 	const char *ntop;
-	char *rpkt_cp;
 
 	pthread_attr_init(&t_attr);
 	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
@@ -332,6 +333,8 @@ void *tcp_daemon(void *door)
 				me.cur_ifs_n, &max_sk_idx);
 	if(!ifs_n)
 		return NULL;
+
+	pthread_mutex_init(&tcp_exec_lock, 0);
 
 	for(i=0; i<ifs_n; i++) {
 		/* 
@@ -408,10 +411,10 @@ void *tcp_daemon(void *door)
 			if(unset_nonblock_sk(fd))
 				continue;
 
-			rpkt_cp=xmalloc(sizeof(PACKET));
-			memcpy(rpkt_cp, &rpkt, sizeof(PACKET));
-			err=pthread_create(&thread, &t_attr, tcp_recv_loop, (void *)rpkt_cp);
+			pthread_mutex_lock(&tcp_exec_lock);
+			err=pthread_create(&thread, &t_attr, tcp_recv_loop, (void *)&rpkt);
 			pthread_detach(thread);
+			pthread_mutex_lock(&tcp_exec_lock);
 		}
 	}
 	
