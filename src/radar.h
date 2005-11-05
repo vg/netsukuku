@@ -96,6 +96,10 @@ int rlist_counter;
  * u_char echo_scans_count, var. This is the number of scans sent.
  */
 
+/*
+ * During the hooking the ECHO_REPLY body pkt is one u_char which is set to 0
+ * if we already finished our scans.
+ */
 
 /* * * Functions declaration * * */
 void first_init_radar(void);

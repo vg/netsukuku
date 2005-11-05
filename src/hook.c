@@ -772,22 +772,22 @@ int netsukuku_hook(void)
 				( me.cur_node->links==total_hooking_nodes 
 				  && !hook_retry )) {
 			/* 
-			 * We haven't found any rnodes. Let's retry the
-			 * radar_scan if i+1<MAX_FIRST_RADAR_SCANS
-			 */
-			if(i+1 < MAX_FIRST_RADAR_SCANS)
-				continue;
-			
-			/* 
 			 * If we have 0 nodes around us, we are alone, so we create a
 			 * new gnode.
 			 * If all the nodes around us are hooking and we started hooking
 			 * before them, we create the new gnode.
 			 */
-			if(!me.cur_node->links)
+			if(!me.cur_node->links) {
+				/* 
+				 * We haven't found any rnodes. Let's retry the
+				 * radar_scan if i+1<MAX_FIRST_RADAR_SCANS
+				 */
+				if(i+1 < MAX_FIRST_RADAR_SCANS)
+					goto hook_retry_scan;
+
 				loginfo("No nodes found! This is a black zone. "
 						"Creating a new_gnode.");
-			else
+			} else
 				loginfo("There are %d nodes around, which are hooking"
 						" like us, but we came first so we have "
 						"to create the new gnode", 
@@ -820,10 +820,12 @@ int netsukuku_hook(void)
 		} else 
 			break;
 
+hook_retry_scan:
 		reset_radar();
 		rnode_destroy(me.cur_node);
 		memset(me.cur_node, 0, sizeof(map_node));
 		me.cur_node->flags|=MAP_HNODE;
+		qspn_b_del_all_dead_rnodes();
 	}
 
 	loginfo("We have %d nodes around us. (%d are hooking)", 

@@ -196,6 +196,7 @@ do{ 									\
 		_next=_i->next; 					\
 		list_del(_x, _i);					\
 	}								\
+	(list)=0;							\
 }while(0)
 
 
