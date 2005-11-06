@@ -689,6 +689,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 	}
 
 	/* Finally, let's register/update the hname */
+	cur_t=time(0);	
 	ac=andna_cache_addhash(req->hash);
 	acq=ac_queue_add(ac, rfrom, req->pubkey);
 	if(!acq) {
@@ -708,7 +709,6 @@ int andna_recv_reg_rq(PACKET rpkt)
 	} else
 		acq->hname_updates=req->hname_updates+1;
 
-	cur_t=time(0);	
 	if(cur_t > acq->timestamp && 
 			(cur_t - acq->timestamp) < ANDNA_MIN_UPDATE_TIME) {
 		debug(DBG_SOFT, "Registration rq 0x%x rejected: %s", 

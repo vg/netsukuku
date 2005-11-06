@@ -5,6 +5,9 @@
 	- gnode re-hook
 		- re-hook of two gnodes with different gid
 		- re-hook of two gnodes with the  same gid
+		- the gnode which re-hooks must zero its uptime counter, in
+		  this way when it receives the hname update request from its
+		  node it will fetch the andna_caches from the other gnode.
 	
 	- Challenge
 		- RSA between rnodes: the nodes which are already hooked ask

@@ -166,6 +166,8 @@ andna_cache_queue *ac_queue_add(andna_cache *ac, inet_prefix rip, char *pubkey)
 	time_t cur_t;
 	int update=0;
 	
+	cur_t=time(0);
+
 	/* 
 	 * This call is not necessary because it's already done by
 	 * andna_cache_del_expired().
@@ -189,7 +191,6 @@ andna_cache_queue *ac_queue_add(andna_cache *ac, inet_prefix rip, char *pubkey)
 	if(ac->queue_counter >= ANDNA_MAX_QUEUE)
 		ac->flags|=ANDNA_FULL;
 
-	cur_t=time(0);
 	if(update && cur_t > acq->timestamp && 
 			(cur_t - acq->timestamp) < ANDNA_MIN_UPDATE_TIME) {
 		/* 
