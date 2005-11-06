@@ -319,6 +319,8 @@ void init_netsukuku(char **argv)
 
 	ntk_load_maps();
 
+	/* TODO: activate and test it !! */
+#if 0
 	debug(DBG_NORMAL, "ACPT: Initializing the accept_tbl: \n"
 			"	max_connections: %d,\n"
 			"	max_accepts_per_host: %d,\n"
@@ -329,6 +331,7 @@ void init_netsukuku(char **argv)
 	init_accept_tbl(server_opt.max_connections, 
 			server_opt.max_accepts_per_host, 
 			server_opt.max_accepts_per_host_time);
+#endif
 	
 	if(server_opt.restricted)
 		loginfo("netsukuku_d is in restricted mode.");

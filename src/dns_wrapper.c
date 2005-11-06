@@ -62,14 +62,14 @@ int resolve_hname_wrap(const char *hostname, uint32_t *ip)
 				hostname, inet_to_str(resolved_ip));
 	
 		/* 
-		 * Store the resolved ip/
+		 * Store the resolved ip
 		 * TODO: Ipv6 support
 		 */
 		*ip=htonl(resolved_ip.data[0]);
 		return 1;
 	}
 
-	debug(DBG_INSANE, "dns_wrapper: %s doesn't exist (idiot)!");
+	debug(DBG_INSANE, "dns_wrapper: %s doesn't exist (idiot)!", hostname);
 	return 0;
 }
 

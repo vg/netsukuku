@@ -37,6 +37,8 @@
 
 void init_accept_tbl(int startups, int accepts, int time)
 {
+	/* TODO: activate and test it !! */
+#if 0
 	int i;
 
 	max_connections=startups;
@@ -59,11 +61,15 @@ void init_accept_tbl(int startups, int accepts, int time)
 		accept_tbl[i].acp_t=(time_t *)xmalloc(sizeof(time_t)*max_accepts_per_host);
 		memset(accept_tbl[i].acp_t, '\0', sizeof(time_t)*max_accepts_per_host);
 	}
+#endif
 }
 
 void destroy_accept_tbl(void)
 {
+	/* TODO: activate and test it !! */
+#if 0
 	int i; 
+	
 	if(!accept_tbl)
 		return;
 	for(i=0; i<max_connections; i++) {
@@ -73,6 +79,7 @@ void destroy_accept_tbl(void)
 	}
 	xfree(accept_tbl);
 	accept_tbl=0;
+#endif
 }
 
 
@@ -105,7 +112,7 @@ void update_accept_tbl(void)
 				} else
 					pid_exists=0;
 
-				/*
+#if 0
 				debug(DBG_NOISE, "ACPT: Updating tbl: cur_t: %d, "
 						"accept_tbl[%d].acp_t[%d]:%d+%d, "
 						"accept_tbl[i].pid[e]: %d, "
@@ -113,7 +120,7 @@ void update_accept_tbl(void)
 						cur_t, i,e, accept_tbl[i].acp_t[e], 
 						free_accept_time, accept_tbl[i].pid[e], 
 						k, ESRCH);
-				*/
+#endif
 
 				passed_time=accept_tbl[i].acp_t[e]+free_accept_time;
 				if((accept_tbl[i].closed[e] || !pid_exists) && 
@@ -183,7 +190,9 @@ int find_free_acp_t(int idx)
 
 int new_accept(int idx, inet_prefix ip)
 {
-	int cl;
+	int cl=0;
+	/* TODO: activate and test it !! */
+#if 0
 	time_t cur_t;
 	
 	time(&cur_t);
@@ -194,7 +203,7 @@ int new_accept(int idx, inet_prefix ip)
 	accept_tbl[idx].acp_t[cl]=cur_t;
 	accept_tbl[idx].closed[cl]=0;
 	memcpy(&accept_tbl[idx].ip, &ip, sizeof(inet_prefix));
-
+#endif
 	return cl;
 }
 
@@ -204,8 +213,10 @@ int new_accept(int idx, inet_prefix ip)
  */
 int add_accept(inet_prefix ip, int replace)
 {
+	/* TODO: activate and test it !! */
+#if 0
 	int err, idx, cl;
-
+	
 	if((err=is_ip_acpt_free(ip, &idx)))
 		return err;
 
@@ -224,12 +235,13 @@ int add_accept(inet_prefix ip, int replace)
 	pthread_mutex_lock(&mtx_acpt_sidx);
 	accept_sidx=cl;
 	pthread_mutex_unlock(&mtx_acpt_sidx);
-
+#endif
 	return 0;
 }
 
 void del_accept(int idx, int *sidx)
 {
+#if 0
 	if(!accept_tbl[idx].accepts) 
 		return;
 
@@ -241,22 +253,27 @@ void del_accept(int idx, int *sidx)
 			memset(&accept_tbl[idx].ip, '\0', sizeof(inet_prefix));
 		(*sidx)--;
 	}
+#endif
 }
 
 int close_accept(int idx, int sidx)
 {
+#if 0
 	if(!accept_tbl[idx].accepts) 
 		return -1;
 	
 	accept_tbl[idx].closed[sidx]=1;
-
+#endif
 	return 0;
 }
 
 void add_accept_pid(pid_t pid, int idx, int sidx)
 {
+	/* TODO: activate and test it !! */
+#if 0
 	accept_tbl[idx].pid[sidx]=pid;
 /*	debug(DBG_NOISE, "ACPT: Added pig %d in accept_tbl[%d].pid[%d]", 
 			accept_tbl[idx].pid[sidx], idx, sidx);
 */
+#endif
 }
