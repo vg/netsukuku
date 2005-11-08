@@ -744,12 +744,13 @@ int pkt_q_wait_recv(int id, inet_prefix *from, PACKET *rpkt, pkt_queue **ret_pq)
  */
 int pkt_q_add_pkt(PACKET pkt)
 {
-	pkt_queue *pq=pkt_q, *next;
+	pkt_queue *pq=pkt_q, *next=0;
 	int ret=-1;
 	
 	list_safe_for(pq, next) {
 		debug(DBG_INSANE, "pkt_q_add_pkt: %d == %d. data[0]: %d, async replied: %d",
-				pq->pkt.hdr.id, pkt.hdr.id, pq->pkt.from.data[0], (pkt.hdr.flags & ASYNC_REPLIED));
+				pq->pkt.hdr.id, pkt.hdr.id, pq->pkt.from.data[0],
+				(pkt.hdr.flags & ASYNC_REPLIED));
 		if(pq->pkt.hdr.id == pkt.hdr.id) {
 			if(pq->pkt.from.data[0] && (pq->flags & PKT_Q_CHECK_FROM) &&
 					memcmp(&pq->pkt.from, &pkt.from, sizeof(inet_prefix)))

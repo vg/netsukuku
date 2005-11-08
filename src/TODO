@@ -1,5 +1,7 @@
 		[HIGH PRIORITY] 
-		
+	
+- Implement the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
+
 - Gnodes contiguity
 	- Nodes count in the qspn_pkt which traverses gnodes
 	- gnode re-hook
@@ -22,6 +24,9 @@
 		- If the challenge was rejected/delayed wait the right amount
 		  of time and retry.
 		- Ban of gnodes which lost the challenge
+		
+- If "nameserver 127.0.0.1" already exists in /etc/resolv.conf don't modify
+  it!
 
 - DNS wrapper: ip -> hostnames
 	- -r forward to other /etc/resolv.conf dns server
@@ -30,6 +35,14 @@
 
 - Bandwidth weight for each entry of the qspn (not just rtt and latency):
 	- what to use to get the bandwidth of a network interface?
+
+- The DNS wrapper, if launched in restricted mode, should forward the query to
+  the other nameservers in /etc/resolv.conf if ANDNA told him that the
+  hostname is inexistent.
+
+- If the daemon is launched in restricted mode and with the -I it should find
+  the nodes connected to Internet and add a default gw to them. Please refer
+  to the NTK_RFC 0003.
 
 - Port the kernel route code for *BSD: take a look at rt_ioctl.c and
   rt_socket.c of quagga.

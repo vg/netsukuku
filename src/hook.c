@@ -280,7 +280,7 @@ int put_qspn_round(PACKET rq_pkt)
 {	
 	struct qspn_round_pkt {
 		u_char		max_levels;
-		int 		qspn_id[me.cur_quadg.levels];
+		int32_t		qspn_id[me.cur_quadg.levels];
 		struct timeval  qtime[me.cur_quadg.levels];
 	}_PACKED_ qr_pkt;
 	int_info qr_pkt_iinfo;

@@ -991,7 +991,7 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	memset(&rpkt, 0, sizeof(pkt));
 
 
-#ifndef ANDNA_DEBUG
+//#ifndef ANDNA_DEBUG
 	/*
 	 * Search in the hostname in the local cache first. Maybe we are so
 	 * dumb that we are trying to resolve the same ip we registered.
@@ -1000,7 +1000,7 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 		memcpy(resolved_ip, &me.cur_ip, sizeof(inet_prefix));
 		return 0;
 	}
-#endif
+//#endif
 	
 	/*
 	 * Last try before going asking to ANDNA: let's if we have it in the
@@ -1018,7 +1018,7 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	inet_copy_ipdata(req.rip, &me.cur_ip);
 	andna_hash(my_family, hname, strlen(hname), req.hash, hash_gnode);
 	
-#ifndef ANDNA_DEBUG
+//#ifndef ANDNA_DEBUG
 	/*
 	 * If we manage an andna_cache, it's better to peek at it.
 	 */
@@ -1027,7 +1027,7 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 		inet_ntohl(resolved_ip->data, my_family);
 		return 0;
 	}
-#endif
+//#endif
 
 	/* 
 	 * Ok, we have to ask to someone for the resolution.

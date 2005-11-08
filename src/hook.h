@@ -37,7 +37,7 @@ struct free_nodes_hdr
 {
 	u_char 		max_levels;	/* How many levels we are managing */
 
-	int	 	ipstart[MAX_IP_INT];	/* The ipstart of the gnode */
+	int32_t	 	ipstart[MAX_IP_INT];	/* The ipstart of the gnode */
 	u_char 		level;		/* The level where the gnode belongs */
 	u_char  	gid;		/* The gnode id */
 	u_char		nodes;		/* The number of free nodes/gnodes - 1 */
