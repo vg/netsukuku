@@ -45,7 +45,7 @@
 int abort_(const char *msg) {
 	std::cerr << msg << std::endl;
 
-	exit(1);
+	pthread_exit(0);
 }
 
 #define TRACE_RESOLVER 0

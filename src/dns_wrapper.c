@@ -92,8 +92,14 @@ void *dns_exec_pkt(void *passed_argv)
 
 	/* Unpack the DNS query and resolve the hostname */
 	answer_length = sizeof(answer_buffer);
-	resolver_process(buf, argv.rpkt_sz, answer_buffer, &answer_length,
-			&resolve_hname_wrap);
+	if (argv.rpkt_sz>11)
+		resolver_process(buf, argv.rpkt_sz, answer_buffer, &answer_length,
+				&resolve_hname_wrap);
+	else
+		{
+			debug(DBG_NORMAL, "Received malformed ANDNA packet");
+			pthread_exit(0);
+		}
 
 	/* Send the DNS reply */
 	debug(DBG_NOISE, "Answer is %i bytes", answer_length);
