@@ -90,16 +90,15 @@ void *dns_exec_pkt(void *passed_argv)
 	memcpy(&buf, argv.rpkt, argv.rpkt_sz);
 	pthread_mutex_unlock(&dns_exec_lock);
 
+	if (argv.rpkt_sz < MIN_DNS_PKT_SZ) {
+		debug(DBG_NORMAL, "Received malformed DNS packet");
+		return 0;
+	}
+	
 	/* Unpack the DNS query and resolve the hostname */
 	answer_length = sizeof(answer_buffer);
-	if (argv.rpkt_sz>11)
-		resolver_process(buf, argv.rpkt_sz, answer_buffer, &answer_length,
-				&resolve_hname_wrap);
-	else
-		{
-			debug(DBG_NORMAL, "Received malformed ANDNA packet");
-			pthread_exit(0);
-		}
+	resolver_process(buf, argv.rpkt_sz, answer_buffer, &answer_length,
+			&resolve_hname_wrap);
 
 	/* Send the DNS reply */
 	debug(DBG_NOISE, "Answer is %i bytes", answer_length);

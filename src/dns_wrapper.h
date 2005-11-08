@@ -21,6 +21,7 @@
 
 #define DNS_WRAPPER_PORT	53
 #define MAX_DNS_PKT_SZ		512
+#define MIN_DNS_PKT_SZ		12
 
 /* DNS wrapper resolver api */
 void resolver_process(const char *question, unsigned question_length, 
