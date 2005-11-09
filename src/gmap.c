@@ -167,6 +167,35 @@ void quadg_destroy(quadro_group *qg)
 }
 
 /*
+ * gnode_inc_seeds: it increments the seeds counter in the
+ * `qg'->gnode[_EL(`level'-1)] gnode, setting the appropriate flag if the gnodes
+ * is full.
+ */
+void gnode_inc_seeds(quadro_group *qg, int level)
+{
+	if(level >= qg->levels-1)
+		return;
+	
+	if(qg->gnode[_EL(level+1)]->seeds == MAXGROUPNODE-1)
+		qg->gnode[_EL(level+1)]->flags|=GMAP_FULL;
+	else
+		qg->gnode[_EL(level+1)]->seeds++;
+}
+
+/*
+ * gnode_dec_seeds: the same of gnode_inc_seeds, but it decrements instead.
+ */
+void gnode_dec_seeds(quadro_group *qg, int level)
+{
+	if(level >= qg->levels-1)
+		return;
+	
+	if(qg->gnode[_EL(level+1)]->seeds-1 >= 0) 
+		qg->gnode[_EL(level+1)]->seeds--;
+	qg->gnode[_EL(level+1)]->flags&=~GMAP_FULL;
+}
+	
+/*
  * pack_quadro_group: packs the `qg' quadro_group struct and stores it in
  * `pack', which must be QUADRO_GROUP_PACK_SZ bytes big. `pack' will be in
  * network order.

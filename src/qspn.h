@@ -107,6 +107,9 @@ int *qspn_send_mutex;	     /*It is sizeof(int)*levels big.*/
  */ 
 u_int qspn_gnode_count[IPV4_LEVELS-ZERO_LEVEL];
 
+/* gcount of the previous qspn_round */
+u_int qspn_old_gcount[IPV4_LEVELS-ZERO_LEVEL]; 
+
 void qspn_time_reset(int start_level, int end_level, int levels);
 void qspn_init(u_char levels);
 void qspn_set_map_vars(u_char level, map_node **map, map_node **root_node, 
@@ -121,6 +124,9 @@ void qspn_b_del_all_dead_rnodes(void);
 
 int  qspn_round_left(u_char level);
 void update_qspn_time(u_char level, struct timeval *);
+
+void qspn_inc_gcount(int *gcount, int level, int inc);
+void qspn_dec_gcount(int *gcount, int level, int dec);
 
 void qspn_new_round(u_char level, int new_qspn_id, struct timeval *new_qspn_time);
 

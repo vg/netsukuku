@@ -26,6 +26,7 @@
 #include "route.h"
 #include "radar.h"
 #include "tracer.h"
+#include "qspn.h"
 #include "netsukuku.h"
 #include "xmalloc.h"
 #include "log.h"
@@ -164,7 +165,7 @@ tracer_add_entry(void *void_map, void *void_node, tracer_chunk *tracer,
 	map_rnode *rfrom=0;
 	map_node  *map, *node;
 	map_gnode **ext_map, *gnode;
-	int pos, new_entry_pos, last_entry_node, nhops;
+	int pos, new_entry_pos, last_entry_node, nhops, gcount;
 
 	map=(map_node *)void_map;
 	node=(map_node *)void_node;
@@ -202,6 +203,7 @@ tracer_add_entry(void *void_map, void *void_node, tracer_chunk *tracer,
 			}
 			
 			rfrom=&me.cur_node->r_node[pos];
+			gcount=1;
 		} else {
 			from=(map_node*)gnode_from_pos(last_entry_node, 
 					ext_map[_EL(level)]);
@@ -215,18 +217,17 @@ tracer_add_entry(void *void_map, void *void_node, tracer_chunk *tracer,
 			}
 
 			rfrom=&me.cur_quadg.gnode[_EL(level)]->g.r_node[pos];
-			
-			/*TODO:
-			 * gcount = COUNT
-			 */
+			gcount = qspn_gnode_count[_EL(level)];
 		}
 		t[new_entry_pos].rtt=MILLISEC(rfrom->rtt);
 	}
 
+	/* Fill the new entry in the tracer_pkt */
 	if(!level)
 		t[new_entry_pos].node=pos_from_node(node, map);
 	else
 		t[new_entry_pos].node=pos_from_gnode(gnode, ext_map[_EL(level)]);
+	t[new_entry_pos].gcount=gcount;
 	
 	return t;
 }
@@ -240,6 +241,55 @@ int tracer_add_rtt(int rpos, tracer_chunk *tracer, u_short hop)
 {
 	tracer[hop].rtt+=MILLISEC(me.cur_node->r_node[rpos].rtt);
 	return tracer[hop].rtt;
+}
+
+/* 
+ * tracer_get_trtt: It stores in `trtt' the total round trip time needed to
+ * reach the `tracer[0].node' from the me.cur_node.
+ * me.cur_node->r_node[`from_rnode_pos'] is the rnode who forwarded us the pkt. 
+ * If it succeeds 0 is returned.
+ */
+int tracer_get_trtt(int from_rnode_pos, tracer_hdr *trcr_hdr,
+		tracer_chunk *tracer, struct timeval *trtt)
+{
+	int hops, i;
+	u_int trtt_ms=0;
+	
+	memset(trtt, 0, sizeof(struct timeval));	
+
+	hops = trcr_hdr->hops;
+	if(!hops)
+		return -1;
+	
+	/* Add the rtt of me -> from */
+	trtt_ms+=MILLISEC(me.cur_node->r_node[from_rnode_pos].trtt);
+
+	for(i=hops-1; i > 0; i--)
+		trtt_ms+=tracer[i].rtt;
+
+	MILLISEC_TO_TV(trtt_ms, (*trtt));
+
+	return 0;
+}
+
+/*
+ * tracer_get_tgcount: it returns the sum of all the gcount values present in
+ * each entry of the `tracer' pkt. It doesn't sum all the entries which are in
+ * positions > `first_hop'.
+ */
+u_int tracer_get_tgcount(tracer_hdr *trcr_hdr, tracer_chunk *tracer,
+		int first_hop)
+{
+	u_int i, hops, tgcount=0;	
+	
+	hops = trcr_hdr->hops;
+	if(!hops)
+		return 0;
+
+	for(i=first_hop; i>=0; i--)
+		tgcount+=tracer[i].gcount;
+
+	return tgcount;
 }
 
 /* 
@@ -563,34 +613,6 @@ skip:
 	return x;
 }
 
-/* 
- * tracer_get_trtt: It stores in `trtt' the total round trip time needed to
- * reach the `tracer[0].node' from the me.cur_node.
- * me.cur_node->r_node[`from_rnode_pos'] is the rnode who forwarded us the pkt. 
- * If it succeeds 0 is returned.
- */
-int tracer_get_trtt(int from_rnode_pos, tracer_hdr *trcr_hdr,
-		tracer_chunk *tracer, struct timeval *trtt)
-{
-	int hops, i;
-	u_int trtt_ms=0;
-	
-	memset(trtt, 0, sizeof(struct timeval));	
-
-	hops = trcr_hdr->hops;
-	if(!hops)
-		return -1;
-	
-	/* Add the rtt of me -> from */
-	trtt_ms+=MILLISEC(me.cur_node->r_node[from_rnode_pos].trtt);
-
-	for(i=hops-1; i > 0; i--)
-		trtt_ms+=tracer[i].rtt;
-
-	MILLISEC_TO_TV(trtt_ms, (*trtt));
-
-	return 0;
-}
 
 /* 
  * tracer_store_pkt: This is the main function used to keep the int/ext_map's
@@ -617,7 +639,8 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 	map_rnode rn, rnn;
 			
 	int i, e, o, diff, bm, x, f, from_rnode_pos, skip_rfrom;
-	u_int hops, trtt_ms=0;
+	int first_gcount_hop;
+	u_int hops, trtt_ms=0, tgcount=0;
 	u_short bb;
 	size_t found_block_sz, bsz;
 	char *found_block;
@@ -767,6 +790,7 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 	
 	skip_rfrom=0;
 	node=root_node;
+	first_gcount_hop=hops-1;
 	if(!level) {
 		/* We skip the node at hops-1 which it is the `from' node. The radar() 
 		 * takes care of him. */
@@ -774,6 +798,7 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 	} else if(from == root_node) {
 		/* If tracer[hops-1].node is our gnode then we can skip it */
 		skip_rfrom = 1;
+		first_gcount_hop=hops-2;
 		from_rnode_pos=ip_to_rfrom(rip, rip_quadg, 0, 0);
 
 		if(hops > 1) {
@@ -796,6 +821,10 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 		if(i != -1)
 			skip_rfrom = 1;
 	}
+
+	/* Get the total gnode count and update `qspn_gnode_count' */
+	tgcount=tracer_get_tgcount(trcr_hdr, tracer, first_gcount_hop);
+	qspn_inc_gcount(qspn_gnode_count, level, tgcount);
 	
 	/* We add in the total rtt the first rtt which is me -> from */
 	trtt_ms=MILLISEC(node->r_node[from_rnode_pos].trtt);
@@ -835,13 +864,8 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 			node->flags|=MAP_UPDATE;
 			if(level)
 				gnode->flags&=~GMAP_VOID;
-		
-			if(level < me.cur_quadg.levels-1) {
-				if(me.cur_quadg.gnode[_EL(level+1)]->seeds == MAXGROUPNODE-1)
-					me.cur_quadg.gnode[_EL(level+1)]->flags|=GMAP_FULL;
-				else
-					me.cur_quadg.gnode[_EL(level+1)]->seeds++;
-			}
+	
+			gnode_inc_seeds(&me.cur_quadg, level);
 			debug(DBG_INSANE, "TRCR_STORE: node %d added", tracer[i].node);
 		}
 		

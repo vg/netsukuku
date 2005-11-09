@@ -63,7 +63,7 @@ typedef struct
  * in the array from the level the _EL macro must be used. In other words: 
  * because the arrays goes from 0 to n-1 we refer to the levels as the arrays,
  * so the level 1 is the level 0, the level 2 is the level 1, and so on.
- * These arrays/structs are: quadg.gnode, rblock, ext_map.
+ * These arrays/structs are: quadg.gnode, rblock, ext_map, qspn_gnode_count.
  */
 #define ZERO_LEVEL	1
 #define UNITY_LEVEL	1
@@ -179,16 +179,19 @@ typedef struct ext_rnode_cache ext_rnode_cache;
 
 /* * * Functions' declaration * * */
 inline int get_groups(int family, int lvl);
-int pos_from_gnode(map_gnode *gnode, map_gnode *map);
-map_gnode *gnode_from_pos(int pos, map_gnode *map);
-void rnodetoip(u_int mapstart, u_int maprnode, inet_prefix ipstart, inet_prefix *ret);
 
-int iptogid(inet_prefix ip, int level);
+int  pos_from_gnode(map_gnode *gnode, map_gnode *map);
+map_gnode * gnode_from_pos(int pos, map_gnode *map);
+void rnodetoip(u_int mapstart, u_int maprnode, inet_prefix ipstart, inet_prefix *ret);
+int  iptogid(inet_prefix ip, int level);
 void gidtoipstart(int *gid, u_char total_levels, u_char levels, int family, 
 		inet_prefix *ip);
 void iptoquadg(inet_prefix ip, map_gnode **ext_map, quadro_group *qg, char flags);
+
 void quadg_free(quadro_group *qg);
 void quadg_destroy(quadro_group *qg);
+void gnode_inc_seeds(quadro_group *qg, int level);
+void gnode_dec_seeds(quadro_group *qg, int level);
 void pack_quadro_group(quadro_group *qg, char *pack);
 void unpack_quadro_group(quadro_group *qg, char *pack);
 

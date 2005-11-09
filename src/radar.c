@@ -341,9 +341,14 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 				debug(DBG_NORMAL, "radar: The node %d is dead", 
 						node_pos);
 
+				/* delete the rnode from the rnode_list */
 				rnl_del(&rlist, &rlist_counter, rnl_find_node(rlist, node));
-				map_node_del(node);
-				rt_update_node(0, node, 0, me.cur_node, oif, level);
+				
+				map_node_del(node);	/* delete it from the int_map */
+				qspn_dec_gcount(qspn_gnode_count, level, 1); /* update the gcount */
+
+				/* delete the route */
+				rt_update_node(0, node, 0, me.cur_node, oif, level); 
 				
 			 	send_qspn_now[level]=1;
 			} else {
@@ -357,7 +362,6 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 
 				debug(DBG_NORMAL, "The ext_node (gid %d, lvl %d) is"
 						" dead", e_rnode->quadg.gid[level], level);
-				gmap_node_del(gnode);
 
 				/* bnode_map update */
 				for(e=0; blevel >= 0; blevel--) {
@@ -380,8 +384,16 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 					} else
 						e=1;
 				}
-				if(!e)
+				if(!e) /* We are no more a bnode */
 					me.cur_node->flags&=~MAP_BNODE;
+
+				/* If we were the only bnode which bordered on
+				 * `gnode', delete it from the map */
+				if(map_find_bnode_rnode(me.bnode_map[level-1], me.bmap_nodes[level-1],
+							gnode) == -1) {
+					gmap_node_del(gnode);
+					gnode_dec_seeds(&me.cur_quadg, level); /* update the seeds */
+				}
 
 				/* Delete the entries from the routing table */
 				if(level == 1)
@@ -407,7 +419,7 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 				if(qb)
 					qspn_b[level]=list_del(qspn_b[level], qb);
 			}
-
+			
 			rnode_deleted[level]++;
 		}
 		
@@ -662,11 +674,10 @@ void radar_update_map(void)
 				   /* If the new rnode wasn't present in the map, 
 				    * then it is also a new node in the map, so
 				    * update the seeds counter too */
-				   if(level < me.cur_quadg.levels-1 && !(node->flags & MAP_VOID)) {
-					   if(me.cur_quadg.gnode[_EL(level+1)]->seeds == MAXGROUPNODE-1)
-						   me.cur_quadg.gnode[_EL(level+1)]->flags|=GMAP_FULL;
-					   else
-						   me.cur_quadg.gnode[_EL(level+1)]->seeds++;
+				   if(!(node->flags & MAP_VOID)) {
+					   gnode_inc_seeds(&me.cur_quadg, level);
+					   if(!external_node)
+						   qspn_inc_gcount(qspn_gnode_count, level, 1);
 				   }
 
 				   /*
@@ -710,7 +721,7 @@ void radar_update_map(void)
 			   if(external_node && level) {
 				   /* 
 				    * All the root_node bnodes which are in the
-				    * bmaps of level lesser than `level' points to
+				    * bmaps of level smaller than `level' points to
 				    * the same gnode which is rq->quadg.gnode[_EL(level-1+1)].
 				    * This is because the inferior levels cannot
 				    * have knowledge about the bordering gnode 

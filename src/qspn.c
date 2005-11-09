@@ -106,6 +106,7 @@ void qspn_init(u_char levels)
 	me.cur_qspn_time=xmalloc(sizeof(struct timeval)*levels);
 
 	memset(qspn_gnode_count, 0, sizeof(qspn_gnode_count));
+	memset(qspn_old_gcount, 0, sizeof(qspn_old_gcount));
 	qspn_time_reset(0, levels, levels);
 }
 
@@ -289,6 +290,33 @@ void update_qspn_time(u_char level, struct timeval *new_qspn_time)
 }
 
 /*
+ * qspn_inc_gcount: It updates the `gcount' array incrementing
+ * each member which is in the position >= _EL(`level') of `inc'. 
+ * For example if level is 2, it will do: gcount[_EL(2)]+=inc;
+ * gcount[_EL(3)]+=inc.
+ * `level' must be < IPV4_LEVELS.
+ */
+void qspn_inc_gcount(int *gcount, int level, int inc)
+{
+	int i;
+
+	for(i=level; i<IPV4_LEVELS; i++)
+		gcount[i]+=inc;
+}
+
+/*
+ * qspn_dec_gcount: the same of qspn_inc_gcount(), but instead it decrements 
+ * `gcount'.
+ */
+void qspn_dec_gcount(int *gcount, int level, int dec)
+{
+	int i;
+
+	for(i=level; i<IPV4_LEVELS; i++)
+		gcount[i]-=dec;
+}
+
+/*
  * qspn_remove_deads: It removes the dead nodes from the maps at the level
  * `level' (if any).
  */
@@ -347,10 +375,8 @@ void qspn_remove_deads(u_char level)
 				debug(DBG_NORMAL,"The groupnode %d of level %d"
 						" is dead", i, level);
 				gmap_node_del((map_gnode *)node);
+				gnode_dec_seeds(&me.cur_quadg, level);
 			}
-
-			me.cur_quadg.gnode[_EL(level+1)]->seeds--;
-			me.cur_quadg.gnode[_EL(level+1)]->flags&=~GMAP_FULL;
 		} else
 			/* We are going to start a new QSPN, but first mark
 			 * this node as OLD, in this way we will be able to
@@ -389,7 +415,10 @@ void qspn_new_round(u_char level, int new_qspn_id, struct timeval *new_qspn_time
 			me.bmap_nodes_closed);
 	bmap_counter_reset(BMAP_LEVELS(me.cur_quadg.levels),
 			me.bmap_nodes_opened);
-	 
+
+	/* Copy the current gnode_count in old_gcount and reset it */
+	memcpy(qspn_old_gcount, qspn_gnode_count, sizeof(qspn_gnode_count));
+	memset(qspn_gnode_count, 0, sizeof(qspn_gnode_count));
 
 	/* Clear the flags set during the previous qspn */
 	root_node->flags&=~QSPN_STARTER & ~QSPN_CLOSED & ~QSPN_OPENED;

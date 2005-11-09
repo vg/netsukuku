@@ -1,5 +1,7 @@
 		[HIGH PRIORITY] 
-	
+
+- Do not delete a route if you want to delete just a nexthop. Replace it!
+
 - Implement the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 
 - Gnodes contiguity
@@ -10,6 +12,8 @@
 		- the gnode which re-hooks must zero its uptime counter, in
 		  this way when it receives the hname update request from its
 		  node it will fetch the andna_caches from the other gnode.
+		- timed re-hook: the node waits that its rnodes, which are
+		  nearer to the other gnode, do the re-hook first.
 	
 	- Challenge
 		- RSA between rnodes: the nodes which are already hooked ask
@@ -25,9 +29,6 @@
 		  of time and retry.
 		- Ban of gnodes which lost the challenge
 		
-- If "nameserver 127.0.0.1" already exists in /etc/resolv.conf don't modify
-  it!
-
 - DNS wrapper: ip -> hostnames
 	- -r forward to other /etc/resolv.conf dns server
 

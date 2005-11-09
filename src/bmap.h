@@ -37,7 +37,7 @@
  *					The position is stored in the usual
  *					pos_from_node() format. (Yep, a dirty hack)
  *
- * So you are asking why didn't I made a new struct for the bmap. Well, I don't 
+ * So you are asking why I didn't made a new struct for the bmap. Well, I don't 
  * want to [re]write all the functions to handle the map, for example 
  * rnode_add,rnode_del, save_map, etc... it's a pain, just for a little map and 
  * moreover it adds new potential bugs. In conclusion: laziness + fear == hacks++;
