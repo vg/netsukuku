@@ -1394,6 +1394,13 @@ int add_resolv_conf(char *hname, char *file)
 				file);
 		ERROR_FINISH(ret, -1, finish);
 	}
+
+	/* 
+	 * If there is already the `hname' string in the first line don't do
+	 * anything.
+	 */
+	if(buf_sz-1 >= strlen(hname) && !strncmp(buf, hname, strlen(hname)))
+		goto finish;
 	
 	/*
 	 * Backup `file' in `file'.bak
@@ -1463,7 +1470,7 @@ int del_resolv_conf(char *file)
 	strcpy(file_bk, file);
 	strcat(file_bk, ".bak");
 	if(!(fin=fopen(file_bk, "r"))) {
-		error("del_resolv_conf: cannot load %s: %s", file_bk, strerror(errno));
+		/*error("del_resolv_conf: cannot load %s: %s", file_bk, strerror(errno));*/
 		ERROR_FINISH(ret, -1, finish);
 	}
 
@@ -1500,6 +1507,7 @@ int del_resolv_conf(char *file)
 	 */
 	
 	fclose(fin);
+	fin=0;
 	unlink(file_bk);
 	
 finish:
