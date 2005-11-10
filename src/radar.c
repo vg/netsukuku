@@ -996,15 +996,18 @@ int radar_scan(int activate_qspn)
 			error("radar_scan(): The scan 0x%x on the %s interface failed."
 				" Not a single scan was sent", my_echo_id, 
 				pkt.dev->dev_name);
+
+		if(pkt.sk > 0)
+			close(pkt.sk);
 	}
 	
+	pkt_free(&pkt, 1);
+
 	if(!total_radar_scans) {
 		error("radar_scan(): The scan 0x%x failed. It wasn't possible" 
 				"to send a single scan", my_echo_id);
 		return -1;
 	}
-
-	pkt_free(&pkt, 1);
 	
 	xtimer(max_radar_wait, max_radar_wait<<1, &radar_wait_counter);
 
