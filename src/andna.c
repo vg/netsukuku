@@ -88,6 +88,26 @@ int andna_save_caches(void)
 	return 0;
 }
 
+/*
+ * andna_resolvconf_init: modifies /etc/resolv.conf. See add_resolv_conf().
+ */
+void andna_resolvconf_init(void)
+{
+	int ret;
+	char *my_nameserv;
+	
+	if(!server_opt.disable_resolvconf) {
+		loginfo("Modifying /etc/resolv.conf");
+
+		my_nameserv = my_family == AF_INET ? MY_NAMESERV : MY_NAMESERV_IPV6;
+		ret=add_resolv_conf(my_nameserv, ETC_RESOLV_CONF);
+		if(ret < 0)
+			error("It wasn't possible to modify %s, you have to add "
+					"\"%s\" by yourself", ETC_RESOLV_CONF, my_nameserv);
+	} else
+		loginfo("Modification of /etc/resolv.conf is disabled: do it by yourself.");
+}
+
 void andna_init(void)
 {
 	/* register the andna's ops in the pkt_op_table */
@@ -111,6 +131,8 @@ void andna_init(void)
 	andna_load_caches();
 	lcl_new_keyring(&lcl_keyring);
 
+	andna_resolvconf_init();
+	
 	memset(last_reg_pkt_id, 0, sizeof(int)*ANDNA_MAX_FLOODS);
 	memset(last_counter_pkt_id, 0, sizeof(int)*ANDNA_MAX_FLOODS);
 	memset(last_spread_acache_pkt_id, 0, sizeof(int)*ANDNA_MAX_FLOODS);
@@ -505,6 +527,11 @@ int andna_register_hname(lcl_cache *alcl)
 		req.hname_updates = ++alcl->hname_updates;
 	}
 
+	/* Don't register the hname while we are (re)-hooking, 
+	 * our IP might change */
+	while(me.cur_node->flags & MAP_HNODE)
+		sleep(1);
+	
 	/* 
 	 * Filling the request structure 
 	 */
@@ -1848,23 +1875,6 @@ finish:
 	return ret;
 }
 
-void andna_hook_init(void)
-{
-	int ret;
-	char *my_nameserv;
-	
-	if(!server_opt.disable_resolvconf) {
-		loginfo("Modifying /etc/resolv.conf");
-
-		my_nameserv = my_family == AF_INET ? MY_NAMESERV : MY_NAMESERV_IPV6;
-		ret=add_resolv_conf(my_nameserv, ETC_RESOLV_CONF);
-		if(ret < 0)
-			error("It wasn't possible to modify %s, you have to add "
-					"\"%s\" by yourself", ETC_RESOLV_CONF, my_nameserv);
-	} else
-		loginfo("Modification of /etc/resolv.conf is disabled: do it by yourself.");
-}
-
 /*
  * andna_hook: The andna_hook gets the andna_cache and the counter_node cache
  * from the nearest rnodes.
@@ -1877,8 +1887,6 @@ void *andna_hook(void *null)
 	
 	memset(&to, 0, sizeof(inet_prefix));
 
-	andna_hook_init();
-	
 	loginfo("Starting the ANDNA hook.");
 	
 	if(!me.cur_node->links) {
@@ -1938,17 +1946,20 @@ void *andna_hook(void *null)
 }
 
 /*
- * andna_register_new_hnames: registers the newly hostnames added in the local
- * cache (usually by load_hostnames()).
+ * andna_register_new_hnames: updates/registers all the hostnames present in
+ * the local cache. If `only_new_hname' is not zero, it registers only the new
+ * hostnames added in the local cache.
  */
-void andna_register_new_hnames(void)
+void andna_update_hnames(int only_new_hname)
 {
 	lcl_cache *alcl=andna_lcl;
 	int ret, updates=0;
 
 	list_for(alcl) {
-		if(alcl->timestamp)
+		if(only_new_hname && alcl->timestamp)
+			/* don't register old hnames */
 			continue;
+		
 		ret=andna_register_hname(alcl);
 		if(!ret) {
 			loginfo("Hostname \"%s\" registered/updated "

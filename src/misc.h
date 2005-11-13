@@ -21,6 +21,11 @@
 #ifndef MISC_H
 #define MISC_H
 
+/*
+ * NMEMB: returns the number of members of the `x' array
+ */
+#define NMEMB(x)        (sizeof((x))/sizeof(typeof((x)[0])))
+
 /* 
  * MILLISEC: converts a timeval struct to a int. The time will be returned in
  * milliseconds.
@@ -39,7 +44,9 @@ do{									\
 #define FNV_32_PRIME ((u_long)0x01000193)
 #define FNV1_32_INIT ((u_long)0x811c9dc5)
 
-/* Bit map related macros.  */
+/* 
+ * Bit map related macros.  
+ */
 #define SET_BIT(a,i)     ((a)[(i)/CHAR_BIT] |= 1<<((i)%CHAR_BIT))
 #define CLR_BIT(a,i)     ((a)[(i)/CHAR_BIT] &= ~(1<<((i)%CHAR_BIT)))
 #define TEST_BIT(a,i)    (((a)[(i)/CHAR_BIT] & (1<<((i)%CHAR_BIT))) ? 1 : 0)

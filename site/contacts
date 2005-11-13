@@ -9,6 +9,9 @@ Contributors (in chronological order of initial contribution):
 Andrea Leofreddi <andrea.leofreddi@gmail.com> wrote the DNS wrapper code
 (dns_pkt.cpp, dns_rendian.h, dns_utils.h).  
 
+Katolaz <katolaz@yahoo.it> wrote the files needed to use Automake/Autoconf.
+(Makefile.am configure.ac, src/Makefile.am, src/man/Makefile.am).
+
 
 Website developers and maintainers:
 
@@ -25,6 +28,9 @@ and discuss on its development.
 To subscribe to the list, send a message to:
    netsukuku-subscribe@freaknet.org
    
+You can browse the archive here:
+http://dir.gmane.org/gmane.network.peer-to-peer.netsukuku
+
 We live night and day in IRC, come to see us in:
 
 #netsukuku 

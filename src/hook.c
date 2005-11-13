@@ -38,9 +38,10 @@
 #include "request.h"
 #include "pkts.h"
 #include "tracer.h"
-#include "hook.h"
 #include "qspn.h"
+#include "hook.h"
 #include "radar.h"
+#include "andna.h"
 #include "netsukuku.h"
 #include "xmalloc.h"
 #include "log.h"
@@ -212,7 +213,7 @@ finish:
  * qspn ids and and qspn times. (see hook.h).
  */
 int get_qspn_round(inet_prefix to, interface *dev, struct timeval to_rtt, 
-		struct timeval *qtime, int *qspn_id)
+		struct timeval *qtime, int *qspn_id, int *qspn_gcount)
 {
 	PACKET pkt, rpkt;
 	struct timeval cur_t;
@@ -221,6 +222,7 @@ int get_qspn_round(inet_prefix to, interface *dev, struct timeval to_rtt,
 	const char *ntop;
 	char *buf=0;
 	u_char max_levels;
+	u_int *gcount;
 
 	int_info qr_pkt_iinfo;
 	
@@ -247,6 +249,7 @@ int get_qspn_round(inet_prefix to, interface *dev, struct timeval to_rtt,
 	/* Convert the pkt from network to host order */
 	int_info_copy(&qr_pkt_iinfo, &qspn_round_pkt_iinfo);
 	qr_pkt_iinfo.int_offset[1] = me.cur_quadg.levels*sizeof(int)+sizeof(char);
+	qr_pkt_iinfo.int_offset[2] = qr_pkt_iinfo.int_offset[1] + sizeof(struct timeval)*max_levels;
 	qr_pkt_iinfo.int_nmemb[0]  = max_levels;
 	qr_pkt_iinfo.int_nmemb[1]  = max_levels*2;
 	ints_network_to_host(rpkt.msg, qr_pkt_iinfo);
@@ -257,16 +260,23 @@ int get_qspn_round(inet_prefix to, interface *dev, struct timeval to_rtt,
 	
 	buf+=max_levels * sizeof(int);
 	memcpy(qtime, buf, max_levels * sizeof(struct timeval));
+	
 	gettimeofday(&cur_t, 0);
 	for(level=0; level < max_levels; level++) {
 		timeradd(&to_rtt, &qtime[level], &qtime[level]);
 #ifdef DEBUG
-		 debug(DBG_INSANE, "qspn_id: %d qtime[%d] set to %d, to_rtt: %d", 
-				 qspn_id[level], level, 
+		debug(DBG_INSANE, "qspn_id: %d qtime[%d] set to %d, to_rtt: %d", 
+				qspn_id[level], level, 
 				MILLISEC(qtime[level]), MILLISEC(to_rtt));
 #endif
 		timersub(&cur_t, &qtime[level], &qtime[level]);
 	}
+
+	/* Extracting the qspn_gnode_count */
+	buf+=max_levels * sizeof(struct timeval);
+	gcount=(u_int *)buf;
+	for(level=0; level < GCOUNT_LEVELS; level++)
+		qspn_inc_gcount(qspn_gcount, level, gcount[level]);
 
 finish:
 	pkt_free(&pkt, 0);
@@ -282,6 +292,7 @@ int put_qspn_round(PACKET rq_pkt)
 		u_char		max_levels;
 		int32_t		qspn_id[me.cur_quadg.levels];
 		struct timeval  qtime[me.cur_quadg.levels];
+		u_int		gcount[GCOUNT_LEVELS];
 	}_PACKED_ qr_pkt;
 	int_info qr_pkt_iinfo;
 
@@ -315,7 +326,10 @@ int put_qspn_round(PACKET rq_pkt)
 				MILLISEC(qr_pkt.qtime[level]));
 	}
 
-	/* Go pkt, go! Follow your instinct */
+	/* copy in the pkt the qspn_gnode_count */
+	memcpy(qr_pkt.gcount, qspn_gnode_count, sizeof(qspn_gnode_count));
+
+	/* fill the PKT header */
 	pkt_sz=sizeof(qr_pkt);
 	pkt_fill_hdr(&pkt.hdr, HOOK_PKT, rq_pkt.hdr.id, PUT_QSPN_ROUND, pkt_sz);
 	pkt.msg=xmalloc(pkt_sz);
@@ -324,10 +338,13 @@ int put_qspn_round(PACKET rq_pkt)
 	/* Convert the pkt from host to network order */
 	int_info_copy(&qr_pkt_iinfo, &qspn_round_pkt_iinfo);
 	qr_pkt_iinfo.int_offset[1] = me.cur_quadg.levels*sizeof(int)+sizeof(char);
+	qr_pkt_iinfo.int_offset[2] = qr_pkt_iinfo.int_offset[1] + 
+						sizeof(struct timeval)*qr_pkt.max_levels;
 	qr_pkt_iinfo.int_nmemb[0]  = me.cur_quadg.levels;
 	qr_pkt_iinfo.int_nmemb[1]  = me.cur_quadg.levels*2;
 	ints_host_to_network(&qr_pkt, qr_pkt_iinfo);
 	
+	/* Go pkt, go! Follow your instinct */
 	memcpy(pkt.msg, &qr_pkt, sizeof(qr_pkt));
 	err=pkt_send(&pkt);
 	
@@ -650,6 +667,9 @@ int create_gnodes(inet_prefix *ip, int final_level)
 		me.cur_quadg.gnode[_EL(i)]->flags |=  GMAP_ME;
 		me.cur_quadg.gnode[_EL(i)]->g.flags&=~ MAP_VOID;
 		me.cur_quadg.gnode[_EL(i)]->g.flags |= MAP_ME | MAP_GNODE;
+
+		/* Increment the gnode seeds counter */
+		gnode_inc_seeds(&me.cur_quadg, i);
 	}
 	
 	/* Tidying up the internal map */
@@ -668,8 +688,6 @@ int create_gnodes(inet_prefix *ip, int final_level)
 
 int hook_init(void)
 {
-	u_int idata[MAX_IP_INT];
-
 	/* register the hook's ops in the pkt_op_table */
 	add_pkt_op(GET_FREE_NODES, SKT_TCP, ntk_tcp_port, put_free_nodes);
 	add_pkt_op(PUT_FREE_NODES, SKT_TCP, ntk_tcp_port, 0);
@@ -682,13 +700,6 @@ int hook_init(void)
 	add_pkt_op(GET_BNODE_MAP, SKT_TCP, ntk_tcp_port, put_bnode_map);
 	add_pkt_op(PUT_BNODE_MAP, SKT_TCP, ntk_tcp_port, 0);
 	
-	/* We use a fake root_node for a while */
-	free_the_tmp_cur_node=1;
-	me.cur_node=xmalloc(sizeof(map_node));
-	memset(me.cur_node, 0, sizeof(map_node));
-	me.cur_node->flags|=MAP_HNODE;
-	
-
 	if(my_family == AF_INET) {
 		debug(DBG_NORMAL, "Deleting the loopback network (leaving only"
 				" 127.0.0.1)");
@@ -699,6 +710,19 @@ int hook_init(void)
 	route_ip_forward(my_family, 1);
 	route_rp_filter_all_dev(my_family, me.cur_ifs, me.cur_ifs_n, 0);
 
+	return 0;
+}
+
+void hook_reset(void)
+{
+	u_int idata[MAX_IP_INT];
+
+	/* We use a fake root_node for a while */
+	free_the_tmp_cur_node=1;
+	me.cur_node=xmalloc(sizeof(map_node));
+	memset(me.cur_node, 0, sizeof(map_node));
+	me.cur_node->flags|=MAP_HNODE;
+	
 	/*
 	 * We set the dev ip to HOOKING_IP+random_number to begin our 
 	 * transaction. 
@@ -721,10 +745,11 @@ int hook_init(void)
 			QUADG_GID|QUADG_GNODE|QUADG_IPSTART);
 	
 	hook_set_all_ips(me.cur_ip, me.cur_ifs, me.cur_ifs_n);
-
-	return 0;
 }
-
+		
+/*
+ * netsukuku_hook: hooks at an existing gnode or creates a new one.
+ */
 int netsukuku_hook(void)
 {	
 	struct radar_queue *rq=radar_q;
@@ -744,8 +769,11 @@ int netsukuku_hook(void)
 	
 	const char *ntop;
 
+	/* Reset the hook */
+	hook_reset();
+	
 	/* 	
-	  	* * 		The beginning          * *	  	
+	  	* *	   The beginning          * *	  	
 	 */
 	loginfo("The hook begins. Starting to scan the area");
 
@@ -850,8 +878,8 @@ hook_retry_scan:
 			/* Get the qspn round infos */
 			if(!get_qspn_round(rq->ip, rq->dev, rq->final_rtt,
 						me.cur_qspn_time,
-						me.cur_qspn_id)) {
-
+						me.cur_qspn_id,
+						qspn_gnode_count)) {
 				e=1;
 				break;
 			}
@@ -902,6 +930,10 @@ hook_retry_scan:
 		reset_int_map(me.int_map, 0);
 		iptoquadg(me.cur_ip, me.ext_map, &me.cur_quadg, 
 				QUADG_GID|QUADG_GNODE|QUADG_IPSTART);
+
+		/* Increment the gnode seeds counter of level one, since
+		 * we are new in that gnode */
+		gnode_inc_seeds(&me.cur_quadg, 0);
 
 		/* 
 		 * Fetch the int_map from each rnode and merge them into a
@@ -1020,10 +1052,62 @@ finish:
 		tracer_pkt_start(i-1);
 
 	/* Let's fill the krnl routing table */
-	loginfo("Filling the kernel route table");
+	loginfo("Filling the kernel routing table");
 	rt_full_update(0);
 
 	loginfo("Hook completed");
 
 	return ret;
 }
+
+/*
+ * rehook: resets all the global variables set during the last hook/rehook,
+ * and launches the netsukuku_hook() again. All the previous map will be lost
+ * if not saved, the IP will also change. 
+ * During the rehook, the radar_daemon and andna_maintain_hnames_active() are
+ * stopped.
+ * After the rehook, the andna_hook will be launched and the stopped daemon
+ * reactivated.
+ */
+int rehook(void)
+{
+	int ret=0;
+
+	/* Stop the radar_daemon */
+	radar_daemon_ctl=0;
+
+	/* Wait the end of the current radar */
+	radar_wait_new_scan();
+
+	/* Mark ourself as hooking, this will stop
+	 * andna_maintain_hnames_active() daemon too. */
+	me.cur_node->flags|=MAP_HNODE;
+
+	/* Reset */
+	rnl_reset(&rlist, &rlist_counter);
+	e_rnode_free(&me.cur_erc, &me.cur_erc_counter);
+	qspn_reset(GET_LEVELS(my_family));
+
+	/* Andna reset */
+	andna_cache_destroy();
+	counter_c_destroy();
+	rh_cache_flush();
+	
+	/* Clear the uptime */
+	me.uptime=time(0);
+
+	/*
+	 * * *  REHOOK!  * * *
+	 */
+	netsukuku_hook();
+	andna_hook(0);
+
+	/* Update our hostnames */
+	andna_update_hnames(0);
+
+	return ret;
+}
+
+/*
+ * And this is the end my dear.
+ */

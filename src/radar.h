@@ -41,7 +41,8 @@ u_char send_qspn_now[MAX_LEVELS];	/*Shall we send the qspn in level? If yes
 					  send_qspn_now[level] is != 0*/
 int hook_retry;				/*If we've seen, while hooking, a node who was trying 
 					  to hook before us, `hook_retry' is set to 1.*/
-
+int radar_daemon_ctl;			/*If it is set to 0 the radar_daemon will stop until
+					  it becomes again 1*/
 int total_radars;			/*Stupid statistic*/
 
 #define RADQ_VOID_RNODE		0
@@ -112,6 +113,7 @@ struct radar_queue *find_node_radar_q(map_node *node);
 struct radar_queue *find_ip_radar_q(inet_prefix *ip);
 int count_hooking_nodes(void);
 
+void rnl_reset(struct rnode_list **rnlist, int *rnlist_counter);
 interface *rnl_get_dev(struct rnode_list *rnlist, map_node *node);
 char *rnl_get_devname(struct rnode_list *rnlist, map_node *node);
 

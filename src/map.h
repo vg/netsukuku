@@ -39,8 +39,8 @@
 /*** flags ***/
 #define MAP_ME		1		/*The root_node, in other words, me ;)*/
 #define MAP_VOID	(1<<1)		/*It indicates a non existent node*/
-#define MAP_HNODE	(1<<2)		/*Hooking node. One node is hooking when 
-					  it is connecting to netsukuku*/
+#define MAP_HNODE	(1<<2)		/*Hooking node. The node is currently 
+					  hooking*/
 #define MAP_BNODE	(1<<3)		/*The node is a border_node. If this 
 					  flag is set to a root_node, this means 
 					  that we are a bnode at the root_node's 

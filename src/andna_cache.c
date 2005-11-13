@@ -23,9 +23,6 @@
 #include "includes.h"
 
 #include "llist.c"
-#include "inet.h"
-#include "crypto.h"
-#include "endianness.h"
 #include "andna_cache.h"
 #include "misc.h"
 #include "xmalloc.h"
@@ -229,6 +226,21 @@ void ac_queue_del_expired(andna_cache *ac)
 			ac_queue_del(ac, acq);
 }
 
+/*
+ * ac_queue_destroy: destroys an andna_cache_queue 
+ */
+void ac_queue_destroy(andna_cache *ac)
+{
+	andna_cache_queue *acq, *next;
+	
+	if(!ac || !ac->acq)
+		return;
+
+	acq=ac->acq;
+	list_safe_for(acq, next)
+		ac_queue_del(ac, acq);
+}
+
 andna_cache *andna_cache_findhash(int hash[MAX_IP_INT])
 {
 	andna_cache *ac=andna_c;
@@ -273,6 +285,21 @@ void andna_cache_del_expired(void)
 	}
 }
 
+/*
+ * andna_cache_destroy: destroys the andna_c llist 
+ */
+void andna_cache_destroy(void)
+{
+	andna_cache *ac=andna_c, *next;
+
+        if(!andna_c_counter)
+                return;
+
+	list_safe_for(ac, next) {
+		ac_queue_destroy(ac);
+		clist_del(&andna_c, &andna_c_counter, ac);
+	}
+}
 
 
 /*
@@ -327,6 +354,18 @@ void cc_hashes_del_expired(counter_c *cc)
 	list_safe_for(cch, next)
 		if(cur_t - cch->timestamp > ANDNA_EXPIRATION_TIME)
 			cc_hashes_del(cc, cch);
+}
+
+void cc_hashes_destroy(counter_c *cc)
+{
+	counter_c_hashes *cch, *next;
+	
+	if(!cc || !cc->cch || !cc->hashes)
+		return;
+
+	cch=cc->cch;
+	list_safe_for(cch, next)
+		cc_hashes_del(cc, cch);
 }
 
 counter_c_hashes *cc_findhash(counter_c *cc, int hash[MAX_IP_INT])
@@ -386,6 +425,21 @@ void counter_c_del_expired(void)
 	}
 }
 
+/*
+ * counter_c_destroy: destroy the andna_counter_c llist
+ */
+void counter_c_destroy(void)
+{
+	counter_c *cc=andna_counter_c, *next;
+	
+	if(!cc)
+		return;
+	
+	list_safe_for(cc, next) {
+		cc_hashes_destroy(cc);
+		clist_del(&andna_counter_c, &cc_counter, cc);
+	}
+}
 
 /*
  *  *  * Resolved hostnames cache functions  *  *  *

@@ -16,6 +16,11 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#ifndef ANDNA_H
+#define ANDNA_H
+
+#include "andna_cache.h"
+
 #define MY_NAMESERV		"nameserver 127.0.0.1"
 #define MY_NAMESERV_IPV6	"nameserver ::1"
 #define ETC_RESOLV_CONF		"/etc/resolv.conf"
@@ -48,8 +53,8 @@ int last_spread_acache_pkt_id[ANDNA_MAX_FLOODS];
 						   anything */
 
 /*
- * Andna registration request pkt used to send the register and update requests
- * to the hash_gnode, backup_gnode and counter_gnode.
+ * Andna registration request pkt used to send the registration and update
+ * requests to the hash_gnode, backup_gnode and counter_gnode.
  * When the pkt is sent to a counter_gnode, a second `rip', which is the ip
  * of the hash_gnode who is contacting the counter_gnode, is appended at the
  * end of the pkt.
@@ -216,6 +221,8 @@ counter_c *get_counter_cache(inet_prefix to, int *counter);
 int put_counter_cache(PACKET rq_pkt);
 
 void *andna_hook(void *);
-void andna_register_new_hnames(void);
+void andna_update_hnames(int only_new_hname);
 void *andna_maintain_hnames_active(void *null);
 void *andna_main(void *);
+
+#endif /*ANDNA_H*/

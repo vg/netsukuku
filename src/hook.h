@@ -16,6 +16,11 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#ifndef HOOK_H
+#define HOOK_H
+
+#include "qspn.h"
+
 #define MAX_FIRST_RADAR_SCANS	3  /* How many time we have to retry 
 				      the first radar_scan if we
 				      didn't found anything */
@@ -67,18 +72,20 @@ struct free_nodes_hdr
  *	struct timeval  qtime[max_levels];         qspn round time: how many seconds passed away
  *						   since the previous qspn round. There's a qtime
  *						   for each fn_hdr.max_levels level
+ *	u_int		gcount[GCOUNT_LEVELS];	   current qspn_gnode_count.
  */
 /* Note: for this int_info we are considering the timeval array as one int
  * with `max_levels'*2 members */
-INT_INFO qspn_round_pkt_iinfo = { 2, 
-				  { INT_TYPE_32BIT, INT_TYPE_32BIT }, 
-				  { sizeof(char), IINFO_DYNAMIC_VALUE },
-				  { IINFO_DYNAMIC_VALUE, IINFO_DYNAMIC_VALUE }
+INT_INFO qspn_round_pkt_iinfo = { 3, 
+				  { INT_TYPE_32BIT, INT_TYPE_32BIT, INT_TYPE_32BIT }, 
+				  { sizeof(char), IINFO_DYNAMIC_VALUE, IINFO_DYNAMIC_VALUE },
+				  { IINFO_DYNAMIC_VALUE, IINFO_DYNAMIC_VALUE, GCOUNT_LEVELS }
 				};
 	
 #define QSPN_ROUND_PKT_SZ(levels)	(sizeof(u_char) + 			\
-						((levels) * sizeof(int)) +	\
-			                          ((levels) * sizeof(struct timeval)) )
+					    ((levels) * sizeof(int)) +		\
+			                    ((levels) * sizeof(struct timeval))+\
+						 (GCOUNT_LEVELS * sizeof(u_int)))
 
 
 /* * * Functions declaration * * */
@@ -94,3 +101,5 @@ void set_ip_and_def_gw(char *dev, inet_prefix ip);
 
 int hook_init(void);
 int netsukuku_hook(void);
+
+#endif /*HOOK_H*/

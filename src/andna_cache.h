@@ -19,6 +19,10 @@
 #ifndef ANDNA_CACHE_H
 #define ANDNA_CACHE_H
 
+#include "inet.h"
+#include "crypto.h"
+#include "endianness.h"
+
 #define ANDNA_MAX_BACKUP_GNODES		2
 #define ANDNA_MAX_QUEUE			5
 #define ANDNA_MAX_HNAME_LEN		512	/* (null terminator included) */
@@ -321,17 +325,21 @@ andna_cache_queue *ac_queue_findpubk(andna_cache *ac, char *pubk);
 andna_cache_queue *ac_queue_add(andna_cache *ac, inet_prefix rip, char *pubkey);
 void ac_queue_del(andna_cache *ac, andna_cache_queue *acq);
 void ac_queue_del_expired(andna_cache *ac);
+void ac_queue_destroy(andna_cache *ac);
 andna_cache *andna_cache_findhash(int hash[MAX_IP_INT]);
 andna_cache *andna_cache_addhash(int hash[MAX_IP_INT]);
 void andna_cache_del_expired(void);
+void andna_cache_destroy(void);
 
 counter_c_hashes *cc_hashes_add(counter_c *cc, int hash[MAX_IP_INT]);
 void cc_hashes_del(counter_c *cc, counter_c_hashes *cch);
 void cc_hashes_del_expired(counter_c *cc);
+void cc_hashes_destroy(counter_c *cc);
 counter_c_hashes *cc_findhash(counter_c *cc, int hash[MAX_IP_INT]);
 counter_c *counter_c_findpubk(char *pubk);
 counter_c *counter_c_add(inet_prefix *rip, char *pubkey);
 void counter_c_del_expired(void);
+void counter_c_destroy(void);
 
 rh_cache *rh_cache_new(char *hname, time_t timestamp, inet_prefix *ip);
 rh_cache *rh_cache_add(char *hname, time_t timestamp, inet_prefix *ip);

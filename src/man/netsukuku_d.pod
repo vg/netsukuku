@@ -172,7 +172,7 @@ F<stderr>.
 =item F</etc/netsukuku/netsukuku.conf>
 
 It is the default path for the B<netsukuku_d> configuration file. It's
-possible to choose another file with the B<-c> option.
+possible to choose another file using the B<-c> option.
 
 =back
 

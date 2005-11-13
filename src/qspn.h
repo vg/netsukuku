@@ -101,16 +101,18 @@ struct qspn_buffer **qspn_b; /*It is sizeof(struct qspn_buffer *)*levels big*/
 
 int *qspn_send_mutex;	     /*It is sizeof(int)*levels big.*/
 
+#define GCOUNT_LEVELS		(IPV4_LEVELS-ZERO_LEVEL)
 /*
  * qspn_gnode_count[x] is the number of nodes present in the gnode
  * me.cur_quadg.gnode[x], it is updated at each qspn_round.
  */ 
-u_int qspn_gnode_count[IPV4_LEVELS-ZERO_LEVEL];
+u_int qspn_gnode_count[GCOUNT_LEVELS];
 
 /* gcount of the previous qspn_round */
-u_int qspn_old_gcount[IPV4_LEVELS-ZERO_LEVEL]; 
+u_int qspn_old_gcount[GCOUNT_LEVELS]; 
 
 void qspn_time_reset(int start_level, int end_level, int levels);
+void qspn_reset(u_char levels);
 void qspn_init(u_char levels);
 void qspn_set_map_vars(u_char level, map_node **map, map_node **root_node, 
 		int *root_node_pos, map_gnode **gmap);
@@ -127,6 +129,7 @@ void update_qspn_time(u_char level, struct timeval *);
 
 void qspn_inc_gcount(int *gcount, int level, int inc);
 void qspn_dec_gcount(int *gcount, int level, int dec);
+void qspn_reset_gcount(int *gcount, int value);
 
 void qspn_new_round(u_char level, int new_qspn_id, struct timeval *new_qspn_time);
 

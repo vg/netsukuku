@@ -24,7 +24,9 @@
 /* * * Groupnode stuff * * */
 #define GMAP_ME		MAP_ME		/*1*/
 #define GMAP_VOID	MAP_VOID	/*(1<<1)*/
-#define GMAP_FULL	(1<<2)		/*The gnode is full!! aaahh, run away!*/
+#define GMAP_HGNODE	(1<<2)		/*Hooking Gnode. The gnode is currently 
+					  hooking */
+#define GMAP_FULL	(1<<3)		/*The gnode is full!! aaahh, run away!*/
 
 /* This is the holy external_map. Each struct corresponds to a groupnode. 
  * This groupnode cointains MAXGROUPNODE nodes if we are at level 1 or 

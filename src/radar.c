@@ -172,6 +172,16 @@ void rnl_del(struct rnode_list **rnlist, int *rnlist_counter,
 }
 
 /*
+ * rnl_reset: reset the whole rnode_list
+ */
+void rnl_reset(struct rnode_list **rnlist, int *rnlist_counter)
+{
+	list_destroy(*rnlist);
+	*rnlist=(struct rnode_list *)clist_init(rnlist_counter);
+}
+
+
+/*
  * rnl_del_dead_rnode: it removes all the rnode_list structs which are related
  * to a rnode which doesn't exist anymore in `root_node'
  * It returns the number of delete rnodes_list structs.
@@ -987,8 +997,8 @@ int radar_scan(int activate_qspn)
 		pkt_add_dev(&pkt, &me.cur_ifs[d], 1);
 		pkt.sk=0; /* Create a new socket */
 	
-		/* Send MAX_RADAR_SCANS# packets using me.cur_ifs[d] as out
-		 * interface */
+		/* Send MAX_RADAR_SCANS# packets using me.cur_ifs[d] as
+		 * outgoing interface */
 		for(i=0, echo_scan=0; i<MAX_RADAR_SCANS; i++, echo_scan++) {
 			if(me.cur_node->flags & MAP_HNODE)
 				memcpy(pkt.msg, &echo_scan, sizeof(u_char));
@@ -1007,7 +1017,12 @@ int radar_scan(int activate_qspn)
 			error("radar_scan(): The scan 0x%x on the %s interface failed."
 				" Not a single scan was sent", my_echo_id, 
 				pkt.dev->dev_name);
+	
+		if(pkt.sk > 0)
+			close(pkt.sk);
 	}
+	
+	pkt_free(&pkt, 1);
 	
 	if(!total_radar_scans) {
 		error("radar_scan(): The scan 0x%x failed. It wasn't possible" 
@@ -1015,8 +1030,6 @@ int radar_scan(int activate_qspn)
 		return -1;
 	}
 
-	pkt_free(&pkt, 1);
-	
 	xtimer(max_radar_wait, max_radar_wait<<1, &radar_wait_counter);
 
 	final_radar_queue();
@@ -1177,11 +1190,22 @@ int refresh_hook_root_node(void)
 	return 0;
 }
 
-/* Oh, what a simple daemon ^_^ */
+/* 
+ * radar_daemon: keeps the radar up until the end of the universe.
+ */
 void *radar_daemon(void *null)
 {
+	/* If `radar_daemon_ctl' is set to 0 the radar_daemon will stop.
+	 * It will restart when it becomes again 1 */
+	radar_daemon_ctl=1;
+	
 	debug(DBG_NORMAL, "Radar daemon up & running");
-	for(;;radar_scan(1));
+	for(;;) {
+		while(!radar_daemon_ctl)
+			sleep(1);
+
+		radar_scan(1);
+	}
 }
 
 /* radar_wait_new_scan: It sleeps until a new radar scan is sent */
@@ -1201,6 +1225,5 @@ void radar_wait_new_scan(void)
 			break;
 	}
 }
-
 
 /*EoW*/

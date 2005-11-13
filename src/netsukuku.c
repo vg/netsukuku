@@ -374,7 +374,7 @@ void *reload_hostname_thread(void *null)
 	 */
 	loginfo("Reloading the andna hostnames file");
 	load_hostnames(server_opt.andna_hnames_file, &andna_lcl, &lcl_counter);
-	andna_register_new_hnames();
+	andna_update_hnames(1);
 
 	return 0;
 }
@@ -435,6 +435,10 @@ int main(int argc, char **argv)
 	load_config_file(server_opt.config_file);
 	fill_loaded_cfg_options();
 	
+	/* If a same option was specified in the config file and in the
+	 * command line, give priority to the latter */
+	parse_options(argc, argv);
+	
 	/* Initialize the whole netsukuku source code */
 	init_netsukuku(argv);
 
@@ -458,7 +462,7 @@ int main(int argc, char **argv)
 	port=xmalloc(sizeof(u_short));
 
 	/* 
-	 * These are the daemons, the main threads that keeps Netsukuku 
+	 * These are the daemons, the main threads that keeps NetsukukuD
 	 * up & running. 
 	 */
 	debug(DBG_NORMAL, "Activating all daemons");
@@ -499,9 +503,9 @@ int main(int argc, char **argv)
 	
 	xfree(port);
 	
-	/* We use this self process for the radar_daemon. */
+	/* We use this same process for the radar_daemon. */
 	debug(DBG_SOFT,   "Evocating radar daemon.");
-	radar_daemon(NULL);
+	radar_daemon(0);
 
 	/* Not reached, hahaha */
 	loginfo("Cya m8");

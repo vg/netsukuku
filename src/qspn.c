@@ -81,6 +81,18 @@ void qspn_time_reset(int start_level, int end_level, int levels)
 		memcpy(&me.cur_qspn_time[i], &cur_t, sizeof(struct timeval));
 }
 
+void qspn_reset(u_char levels)
+{
+	memset(qspn_b, 0, sizeof(struct qspn_buffer *)*levels);
+	memset(qspn_send_mutex, 0, sizeof(int)*levels);
+	memset(me.cur_qspn_id, 0, sizeof(int)*levels);
+
+	/* Reset the qspn counters */
+	qspn_time_reset(0, levels, levels);
+	qspn_reset_gcount(qspn_gnode_count, 1);
+	qspn_reset_gcount(qspn_old_gcount, 1);
+}
+
 void qspn_init(u_char levels)
 {
 	/* register the qspn/tracer's ops in the pkt_op_table */
@@ -89,25 +101,16 @@ void qspn_init(u_char levels)
 	add_pkt_op(QSPN_CLOSE, SKT_UDP, ntk_udp_port, qspn_close);
 	add_pkt_op(QSPN_OPEN,  SKT_UDP, ntk_udp_port, qspn_open);
 
-
 	/* 
 	 * Alloc the qspn stuff 
 	 */
 	
 	qspn_b=xmalloc(sizeof(struct qspn_buffer *)*levels);
-	memset(qspn_b, 0, sizeof(struct qspn_buffer *)*levels);
-	
 	qspn_send_mutex=xmalloc(sizeof(int)*levels);
-	memset(qspn_send_mutex, 0, sizeof(int)*levels);
-	
 	me.cur_qspn_id=xmalloc(sizeof(int)*levels);
-	memset(me.cur_qspn_id, 0, sizeof(int)*levels);
-	
 	me.cur_qspn_time=xmalloc(sizeof(struct timeval)*levels);
 
-	memset(qspn_gnode_count, 0, sizeof(qspn_gnode_count));
-	memset(qspn_old_gcount, 0, sizeof(qspn_old_gcount));
-	qspn_time_reset(0, levels, levels);
+	qspn_reset(levels);
 }
 
 void qspn_free(void)
@@ -290,17 +293,20 @@ void update_qspn_time(u_char level, struct timeval *new_qspn_time)
 }
 
 /*
- * qspn_inc_gcount: It updates the `gcount' array incrementing
- * each member which is in the position >= _EL(`level') of `inc'. 
+ * qspn_inc_gcount: It updates the `gcount' array incrementing k
+ * of `inc' each member which is in the position >= _EL(`level'). 
  * For example if level is 2, it will do: gcount[_EL(2)]+=inc;
  * gcount[_EL(3)]+=inc.
- * `level' must be < IPV4_LEVELS.
+ * `level' must be < GCOUNT_LEVELS+1 and >= 1.
  */
 void qspn_inc_gcount(int *gcount, int level, int inc)
 {
 	int i;
 
-	for(i=level; i<IPV4_LEVELS; i++)
+	if(level < 1 || level >= GCOUNT_LEVELS)
+		return;
+
+	for(i=_EL(level); i<GCOUNT_LEVELS; i++)
 		gcount[i]+=inc;
 }
 
@@ -312,8 +318,22 @@ void qspn_dec_gcount(int *gcount, int level, int dec)
 {
 	int i;
 
-	for(i=level; i<IPV4_LEVELS; i++)
+	if(level < 1 || level >= GCOUNT_LEVELS)
+		return;
+	
+	for(i=_EL(level); i<GCOUNT_LEVELS; i++)
 		gcount[i]-=dec;
+}
+
+/*
+ * qspn_reset_gcount: resets the gcount array by setting all its members to
+ * `value'.
+ */
+void qspn_reset_gcount(int *gcount, int value)
+{
+	int i;
+	for(i=0; i<GCOUNT_LEVELS; i++)
+		gcount[i]=value;
 }
 
 /*

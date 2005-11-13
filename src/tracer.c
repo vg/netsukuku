@@ -854,7 +854,6 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 						"tracer pkt which points to me");
 				break;
 			}
-				
 		}
 		node->flags&=~QSPN_OLD;
 			
