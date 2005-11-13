@@ -679,6 +679,7 @@ char *pack_andna_cache(andna_cache *acache, size_t *pack_sz)
 	andna_cache_queue *acq;
 	char *pack, *buf, *p;
 	size_t sz;
+	time_t cur_t, t;
 	
 	/* Calculate the pack size */
 	hdr.tot_caches=0;
@@ -693,6 +694,8 @@ char *pack_andna_cache(andna_cache *acache, size_t *pack_sz)
 	ints_host_to_network(pack, andna_cache_pkt_hdr_iinfo);
 	
 	if(hdr.tot_caches) {
+		cur_t=time(0);
+		
 		buf=pack + sizeof(struct andna_cache_pkt_hdr);
 		ac=acache;
 		list_for(ac) {
@@ -717,7 +720,8 @@ char *pack_andna_cache(andna_cache *acache, size_t *pack_sz)
 				inet_htonl((u_int *)buf, net_family);
 				buf+=MAX_IP_SZ;
 
-				memcpy(buf, &acq->timestamp, sizeof(time_t));
+				t = cur_t - acq->timestamp;
+				memcpy(buf, &t, sizeof(time_t));
 				buf+=sizeof(time_t);
 
 				memcpy(buf, &acq->hname_updates, sizeof(u_short));
@@ -750,12 +754,15 @@ andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter)
 	char *buf;
 	size_t sz;
 	int i, e, fake_int;
+	time_t cur_t;
 
 	hdr=(struct andna_cache_pkt_hdr *)pack;
 	ints_network_to_host(hdr, andna_cache_pkt_hdr_iinfo);
 	*counter=0;
 	
 	if(hdr->tot_caches) {
+		cur_t=time(0);
+
 		buf=pack + sizeof(struct andna_cache_pkt_hdr);
 		sz=sizeof(struct andna_cache_pkt_hdr);
 		
@@ -793,6 +800,7 @@ andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter)
 				buf+=MAX_IP_SZ;
 
 				memcpy(&acq->timestamp, buf, sizeof(time_t));
+				acq->timestamp = cur_t - acq->timestamp;
 				buf+=sizeof(time_t);
 
 				memcpy(&acq->hname_updates, buf, sizeof(u_short));
@@ -824,6 +832,7 @@ char *pack_counter_cache(counter_c *countercache, size_t *pack_sz)
 	counter_c_hashes *cch;
 	char *pack, *buf, *p;
 	size_t sz;
+	time_t cur_t, t;
 	
 	/* Calculate the pack size */
 	hdr.tot_caches=0;
@@ -838,6 +847,8 @@ char *pack_counter_cache(counter_c *countercache, size_t *pack_sz)
 	ints_host_to_network(pack, counter_c_pkt_hdr_iinfo);
 	
 	if(hdr.tot_caches) {
+		cur_t=time(0);
+
 		buf=pack + sizeof(struct counter_c_pkt_hdr);
 		cc=countercache;
 		list_for(cc) {
@@ -858,7 +869,8 @@ char *pack_counter_cache(counter_c *countercache, size_t *pack_sz)
 			list_for(cch) {
 				p=buf;
 				
-				memcpy(buf, &cch->timestamp, sizeof(time_t));
+				t = cur_t - cch->timestamp;
+				memcpy(buf, &t, sizeof(time_t));
 				buf+=sizeof(time_t);
 
 				memcpy(buf, &cch->hname_updates, sizeof(u_short));
@@ -891,12 +903,15 @@ counter_c *unpack_counter_cache(char *pack, size_t pack_sz, int *counter)
 	char *buf;
 	size_t sz;
 	int i, e, fake_int;
+	time_t cur_t;
 
 	hdr=(struct counter_c_pkt_hdr *)pack;
 	ints_network_to_host(hdr, counter_c_pkt_hdr_iinfo);
 	*counter=0;
 	
 	if(hdr->tot_caches) {
+		cur_t = time(0);
+
 		buf=pack + sizeof(struct counter_c_pkt_hdr);
 		sz=sizeof(struct counter_c_pkt_hdr);
 		
@@ -931,6 +946,7 @@ counter_c *unpack_counter_cache(char *pack, size_t pack_sz, int *counter)
 				ints_network_to_host(buf, counter_c_hashes_body_iinfo);
 
 				memcpy(&cch->timestamp, buf, sizeof(time_t));
+				cch->timestamp = cur_t - cch->timestamp;
 				buf+=sizeof(time_t);
 
 				memcpy(&cch->hname_updates, buf, sizeof(u_short));
@@ -1386,8 +1402,9 @@ int load_hostnames(char *file, lcl_cache **old_alcl_head, int *old_alcl_counter)
 			clist_add(&new_alcl_head, &new_alcl_counter, alcl);
 
 			/*
-			 * If there is an equal entry in the old lcl_cache,
-			 * copy the old data in the new struct.
+			 * If there is an equal entry in the old lcl_cache and
+			 * it isn't expired, copy the old data in the new 
+			 * struct.
 			 */
 			old_alcl = lcl_cache_find_hname(*old_alcl_head,
 					alcl->hostname);

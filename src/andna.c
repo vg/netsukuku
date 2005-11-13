@@ -1105,6 +1105,7 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	 * Add the hostname in the resolved_hnames cache since it was
 	 * successful resolved it ;)
 	 */
+	reply->timestamp = time(0) - reply->timestamp;
 	rh_cache_add(hname, reply->timestamp, resolved_ip);
 	
 finish:
@@ -1215,7 +1216,7 @@ reply_resolve_rq:
 	/* Write the reply */
 	memset(&reply, 0, sizeof(reply));
 	memcpy(reply.ip, ac->acq->rip, MAX_IP_SZ);
-	reply.timestamp=ac->acq->timestamp;
+	reply.timestamp=time(0) - ac->acq->timestamp;
 
 	/* host -> network order */
 	inet_htonl(reply.ip, me.cur_ip.family);

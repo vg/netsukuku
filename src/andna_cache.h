@@ -258,6 +258,9 @@ INT_INFO andna_cache_pkt_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
  * So the complete pkt is:
  * 	struct  andna_cache_pkt_hdr	hdr;
  * 	char 	acq[ANDNA_CACHE_QUEUE_PACK_SZ(hdr.tot_caches)];
+ * 	
+ * acq->timestamp is the difference of the current time with `acq->timestamp'
+ * itself.
  */
 #define ANDNA_CACHE_QUEUE_PACK_SZ	(MAX_IP_SZ + sizeof(time_t) +		\
 						sizeof(u_short ) + ANDNA_PKEY_LEN)

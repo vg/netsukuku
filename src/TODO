@@ -1,10 +1,5 @@
 		[HIGH PRIORITY] 
 
-- time_t pack()/unpack() of the andna pkts: now the current time(0) is sent,
-  but this is wrong since the time can differ from one to another, so the
-  difference of seconds between the current time and time_t must be used.
-  However this doesn't count the rtt between the two nodes!
-
 - remove the fatal() calls in netsukuku_hook(), if something goes wrong the
   hook must be simply restarted. (bug 0002)
 
