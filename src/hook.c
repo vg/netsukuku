@@ -49,6 +49,35 @@
 
 int free_the_tmp_cur_node;
 
+/*
+ * verify_free_nodes_hdr: verifies the validity of the `fn_hdr'
+ * free_nodes_hdr. `to' is the ip of the node which sent the 
+ * put_free_nodes reply.
+ * If the header is valid 0 is returned.
+ */
+int verify_free_nodes_hdr(inet_prefix *to, struct free_nodes_hdr *fn_hdr)
+{
+	inet_prefix ipstart;
+	int ip_match_sz;
+
+	/* If fn_hdr->ipstart != `to' there is an error */
+	inet_setip(&ipstart, fn_hdr->ipstart, my_family);
+	ip_match_sz=sizeof(u_char)*(GET_LEVELS(my_family)-1);
+	if(memcmp(ipstart.data, to->data, ip_match_sz))
+		return 1;
+
+	if(fn_hdr->nodes <= 0 || fn_hdr->nodes == (MAXGROUPNODE-1))
+		return 1;
+	
+	if(fn_hdr->max_levels > GET_LEVELS(my_family) || !fn_hdr->level)
+		return 1;
+	
+	if(fn_hdr->level >= fn_hdr->max_levels)
+		return 1;
+
+	return 0;
+}
+
 /*  
  *  *  *  put/get free_nodes  *  *  *
  */
@@ -84,9 +113,7 @@ int get_free_nodes(inet_prefix to, interface *dev,
 		ERROR_FINISH(ret, -1, finish);
 	
 	memcpy(fn_hdr, rpkt.msg, sizeof(struct free_nodes_hdr));
-	if(fn_hdr->nodes <= 0 || fn_hdr->nodes == (MAXGROUPNODE-1) ||
-			fn_hdr->max_levels > GET_LEVELS(my_family) || !fn_hdr->level
-			|| fn_hdr->level >= fn_hdr->max_levels) {
+	if(verify_free_nodes_hdr(&to, fn_hdr)) {
 		error("Malformed PUT_FREE_NODES request hdr from %s.", ntop);
 		ERROR_FINISH(ret, -1, finish);
 	}

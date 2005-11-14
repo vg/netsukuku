@@ -1,11 +1,8 @@
 		[HIGH PRIORITY] 
 
-- remove the fatal() calls in netsukuku_hook(), if something goes wrong the
-  hook must be simply restarted. (bug 0002)
-
 - Do not delete a route if you want to delete just a nexthop. Replace it!
 
-- Implement the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
+- Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 
 - Gnodes contiguity
 	- Nodes count in the qspn_pkt which traverses gnodes	[ 50% ]
@@ -58,7 +55,9 @@
   programs. (By the way it is already commented.)
 
 		[LOW PRIORITY]
-		
+
+- Change with something else the eliminable fatal() calls in netsukuku_hook()
+
 - Ipv6 support by the DNS wrapper.
 
 - Test request.c

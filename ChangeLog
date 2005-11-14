@@ -2,6 +2,10 @@
 
 - The command line options override the ones specified in the config file.
 
+- Added a check in get_free_nodes to verify the validity of fn_hdr->ipstart.
+  For example if the rnode has an IP which doesn't match with fn_hdr->ipstart
+  there must be some errors. This led to bug 0002.
+
 
 0.0.4b
 
