@@ -1,18 +1,15 @@
 		[HIGH PRIORITY] 
 
-- Do not delete a route if you want to delete just a nexthop. Replace it!
-
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 
 - Gnodes contiguity
 	- Nodes count in the qspn_pkt which traverses gnodes	[ 50% ]
 	- gnode re-hook
 		- rehook() function				[ 50% ]
+			- new gid based on the hash of the same gid, when
+			  all the other gnodes are full.
 		- re-hook of two gnodes with different gid
 		- re-hook of two gnodes with the  same gid
-		- the gnode which re-hooks must zero its uptime counter, in
-		  this way when it receives the hname update request from its
-		  node it will fetch the andna_caches from the other gnode.
 		- timed re-hook: the node waits that its rnodes, which are
 		  nearer to the other gnode, do the re-hook first.
 	
@@ -28,15 +25,12 @@
 		  other which came later.
 		- If the challenge was rejected/delayed wait the right amount
 		  of time and retry.
-		- Ban of gnodes which lost the challenge
+		- Ban of gnodes which lost the challenge ?
 		
 - DNS wrapper: ip -> hostnames
 	- -r forward to other /etc/resolv.conf dns server
 
 		[MEDIUM PRIORITY] 
-
-- Bandwidth weight for each entry of the qspn (not just rtt and latency):
-	- what to use to get the bandwidth of a network interface?
 
 - The DNS wrapper, if launched in restricted mode, should forward the query to
   the other nameservers in /etc/resolv.conf if ANDNA told him that the
@@ -45,6 +39,9 @@
 - If the daemon is launched in restricted mode and with the -I it should find
   the nodes connected to Internet and add a default gw to them. Please refer
   to the NTK_RFC 0003.
+
+- Bandwidth weight for each entry of the qspn (not just rtt and latency):
+	- what to use to get the bandwidth of a network interface?
 
 - Port the kernel route code for *BSD: take a look at rt_ioctl.c and
   rt_socket.c of quagga.
@@ -64,5 +61,3 @@
 
 - Optimize random_ip() to return valid IPs. A possible solution would be
 	to zero all the invalid bits.
-	
-- Flush all the routes present in the routing table before starting the hook?

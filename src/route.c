@@ -382,7 +382,7 @@ char *find_rnode_dev_and_retry(map_node *node)
  * in `dst_node' and that the quadro_group for that gnode is me.cur_quadg.
  * If `void_gw' is not null, it is used as the only gw to reach the destination 
  * node, otherwise the gw will be calculated.
- * `oif', if not null, will be used in conjuction with `voiw_gw' as the output
+ * `oif', if not null, will be used in conjuction with `void_gw' as the output
  * interface to be used in the route.
  */
 void rt_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg, 

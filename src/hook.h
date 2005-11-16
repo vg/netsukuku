@@ -25,9 +25,19 @@
 				      the first radar_scan if we
 				      didn't found anything */
 
-/* Used for: ip.data[0]=HOOKING_IP; */
+/* The IP class used during the hook */
 #define HOOKING_IP  0x100000a      /* 10.0.0.1  (in network order) */
 #define HOOKING_IP6 0xc0fe	   /* fec0:: */
+
+
+/* How many times netsukuku_hook() was launched */
+int total_hooks;		
+
+
+/*
+ * * *  Hook packets stuff  * * *
+ */
+
 
 /* 
  * The free_nodes pkt is used to send the list of all the free/not used
@@ -88,7 +98,9 @@ INT_INFO qspn_round_pkt_iinfo = { 3,
 						 (GCOUNT_LEVELS * sizeof(u_int)))
 
 
-/* * * Functions declaration * * */
+/* 
+ * * * Functions declaration * * *
+ */
 	
 int put_free_nodes(PACKET rq_pkt);
 int put_qspn_round(PACKET rq_pkt);

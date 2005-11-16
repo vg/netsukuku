@@ -26,6 +26,7 @@
 #include "llist.c"
 #include "endianness.h"
 #include "bmap.h"
+#include "route.h"
 #include "request.h"
 #include "pkts.h"
 #include "tracer.h"
@@ -397,6 +398,9 @@ void qspn_remove_deads(u_char level)
 				gmap_node_del((map_gnode *)node);
 				gnode_dec_seeds(&me.cur_quadg, level);
 			}
+
+			/* Delete its route */
+			rt_update_node(0, node, 0, 0, 0, level);
 		} else
 			/* We are going to start a new QSPN, but first mark
 			 * this node as OLD, in this way we will be able to
@@ -534,6 +538,11 @@ int qspn_send(u_char level)
 	/*If we aren't a bnode it's useless to send qspn in higher levels*/
 	if(level && !(me.cur_node->flags & MAP_BNODE))
 		return -1;
+
+	/* Do not send qspn packets if we are hooking! */
+	if(me.cur_node->flags & MAP_HNODE)
+		return 0;
+	
 	
 	if(qspn_send_mutex[level])
 		return 0;
@@ -783,6 +792,9 @@ int qspn_close(PACKET rpkt)
 	int gid, root_node_pos, real_from_rpos, sub_id;
 	u_char level, upper_level, blevel;
 
+	/* Drop the qspn pkt if we are hooking */
+	if(me.cur_node->flags & MAP_HNODE)
+		goto finish;
 
 	/*
 	 * * Unpack the qspn pkt and split it * *
@@ -1017,6 +1029,9 @@ int qspn_open(PACKET rpkt)
 	int gid, root_node_pos, real_from_rpos;
 	u_char level, upper_level, blevel;
 
+	/* Drop the qspn pkt if we are hooking */
+	if(me.cur_node->flags & MAP_HNODE)
+		goto finish;
 	
 	/*
 	 * * Unpack the qspn pkt and split it * *

@@ -24,8 +24,8 @@
 /* * * Groupnode stuff * * */
 #define GMAP_ME		MAP_ME		/*1*/
 #define GMAP_VOID	MAP_VOID	/*(1<<1)*/
-#define GMAP_HGNODE	(1<<2)		/*Hooking Gnode. The gnode is currently 
-					  hooking */
+#define GMAP_HGNODE	(1<<2)		/*Hooked Gnode. We already hooked at 
+					  this gnode */
 #define GMAP_FULL	(1<<3)		/*The gnode is full!! aaahh, run away!*/
 
 /* This is the holy external_map. Each struct corresponds to a groupnode. 
@@ -158,7 +158,7 @@ INT_INFO ext_map_hdr_iinfo = { 3,
 
 /* 
  * This struct is used by the root_node to describe all the rnodes which
- * doesn't belongs to its same gnode.
+ * doesn't belongs to our same gnode.
  */
 typedef struct {
 	map_node	node;

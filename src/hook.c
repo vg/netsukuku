@@ -31,8 +31,6 @@
 #include "if.h"
 #include "krnl_route.h"
 #include "endianness.h"
-#include "map.h"
-#include "gmap.h"
 #include "bmap.h"
 #include "route.h"
 #include "request.h"
@@ -41,7 +39,6 @@
 #include "qspn.h"
 #include "hook.h"
 #include "radar.h"
-#include "andna.h"
 #include "netsukuku.h"
 #include "xmalloc.h"
 #include "log.h"
@@ -737,6 +734,8 @@ int hook_init(void)
 	route_ip_forward(my_family, 1);
 	route_rp_filter_all_dev(my_family, me.cur_ifs, me.cur_ifs_n, 0);
 
+	total_hooks=0;
+
 	return 0;
 }
 
@@ -798,6 +797,7 @@ int netsukuku_hook(void)
 
 	/* Reset the hook */
 	hook_reset();
+	total_hooks++;
 	
 	/* 	
 	  	* *	   The beginning          * *	  	
@@ -1072,65 +1072,20 @@ finish:
 	 * Now we send a simple tracer_pkt in all the level we have to. This pkt
 	 * is just to say <<Hey there, I'm here, alive>>, thus the other nodes
 	 * of the gnode will have the basic routes to reach us.
+	 * Note that this is done only at the first time we hook.
 	 */
-	usleep(rand_range(0, 999999));
-	tracer_pkt_start_mutex=0;
-	for(i=1; i<tracer_levels; i++)
-		tracer_pkt_start(i-1);
+	if(total_hooks == 1) {
+		usleep(rand_range(0, 999999));
+		tracer_pkt_start_mutex=0;
+		for(i=1; i<tracer_levels; i++)
+			tracer_pkt_start(i-1);
+	}
 
 	/* Let's fill the krnl routing table */
 	loginfo("Filling the kernel routing table");
 	rt_full_update(0);
 
 	loginfo("Hook completed");
-
-	return ret;
-}
-
-/*
- * rehook: resets all the global variables set during the last hook/rehook,
- * and launches the netsukuku_hook() again. All the previous map will be lost
- * if not saved, the IP will also change. 
- * During the rehook, the radar_daemon and andna_maintain_hnames_active() are
- * stopped.
- * After the rehook, the andna_hook will be launched and the stopped daemon
- * reactivated.
- */
-int rehook(void)
-{
-	int ret=0;
-
-	/* Stop the radar_daemon */
-	radar_daemon_ctl=0;
-
-	/* Wait the end of the current radar */
-	radar_wait_new_scan();
-
-	/* Mark ourself as hooking, this will stop
-	 * andna_maintain_hnames_active() daemon too. */
-	me.cur_node->flags|=MAP_HNODE;
-
-	/* Reset */
-	rnl_reset(&rlist, &rlist_counter);
-	e_rnode_free(&me.cur_erc, &me.cur_erc_counter);
-	qspn_reset(GET_LEVELS(my_family));
-
-	/* Andna reset */
-	andna_cache_destroy();
-	counter_c_destroy();
-	rh_cache_flush();
-	
-	/* Clear the uptime */
-	me.uptime=time(0);
-
-	/*
-	 * * *  REHOOK!  * * *
-	 */
-	netsukuku_hook();
-	andna_hook(0);
-
-	/* Update our hostnames */
-	andna_update_hnames(0);
 
 	return ret;
 }

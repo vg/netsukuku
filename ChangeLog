@@ -6,6 +6,9 @@
   For example if the rnode has an IP which doesn't match with fn_hdr->ipstart
   there must be some errors. This led to bug 0002.
 
+- qspn_remove_deads() removes the routes of the dead nodes from the routing
+  table of the kernel.
+
 
 0.0.4b
 
