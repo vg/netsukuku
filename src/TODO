@@ -7,7 +7,11 @@
 	- gnode re-hook
 		- rehook() function				[ 50% ]
 			- new gid based on the hash of the same gid, when
-			  all the other gnodes are full.
+			  all the other gnodes are full.	[ 70% ]
+			- ignore the rnodes of the previos gnode.
+			- at least one qspn_round must be passed.
+			- if gnode_count == max then gnode|=GMAP_FULL;
+			- call rehook() from tracer_store()
 		- re-hook of two gnodes with different gid
 		- re-hook of two gnodes with the  same gid
 		- timed re-hook: the node waits that its rnodes, which are
@@ -26,7 +30,8 @@
 		- If the challenge was rejected/delayed wait the right amount
 		  of time and retry.
 		- Ban of gnodes which lost the challenge ?
-		
+		- Challenge between two gnode not contiguous, which have the
+		  same gid.
 - DNS wrapper: ip -> hostnames
 	- -r forward to other /etc/resolv.conf dns server
 

@@ -260,7 +260,7 @@ INT_INFO andna_cache_pkt_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
  * 	char 	acq[ANDNA_CACHE_QUEUE_PACK_SZ(hdr.tot_caches)];
  * 	
  * acq->timestamp is the difference of the current time with `acq->timestamp'
- * itself.
+ * itself, and it is stored as a uint32_t not a time_t!
  */
 #define ANDNA_CACHE_QUEUE_PACK_SZ	(MAX_IP_SZ + sizeof(time_t) +		\
 						sizeof(u_short ) + ANDNA_PKEY_LEN)

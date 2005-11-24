@@ -29,9 +29,15 @@
 #define HOOKING_IP  0x100000a      /* 10.0.0.1  (in network order) */
 #define HOOKING_IP6 0xc0fe	   /* fec0:: */
 
+/*
+ * * *  Global vars  * * *
+ */
 
 /* How many times netsukuku_hook() was launched */
-int total_hooks;		
+int total_hooks;
+
+/* Current join_rate */
+u_int hook_join_rate;
 
 
 /*
@@ -55,8 +61,13 @@ struct free_nodes_hdr
 	int32_t	 	ipstart[MAX_IP_INT];	/* The ipstart of the gnode */
 	u_char 		level;		/* The level where the gnode belongs */
 	u_char  	gid;		/* The gnode id */
-	u_char		nodes;		/* The number of free nodes/gnodes - 1 */
+	u_char		nodes;		/* The number of free (g)nodes - 1 */
+	uint32_t	join_rate;	/* Join_rate of `level' */
 }_PACKED_;
+INT_INFO free_nodes_hdr_iinfo = { 1, { INT_TYPE_32BIT }, 
+				     { sizeof(struct free_nodes_hdr)-sizeof(uint32_t) },
+				     { 1 }
+				};
 #define FREE_NODES_SZ(nodes) (sizeof(struct free_nodes_hdr)  	      +\
 					    (sizeof(u_char) * (nodes)))
 

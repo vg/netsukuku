@@ -638,7 +638,7 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 	map_gnode *gfrom, *gnode=0;
 	map_rnode rn, rnn;
 			
-	int i, e, o, diff, bm, x, f, from_rnode_pos, skip_rfrom;
+	int i, e, o, x, f, p, diff, bm, from_rnode_pos, skip_rfrom;
 	int first_gcount_hop;
 	u_int hops, trtt_ms=0, tgcount=0;
 	u_short bb;
@@ -742,13 +742,17 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 								&me.bmap_nodes[blevel],
 								bnode,  bblist_hdr[i]->links);
 
-					/*
-					 * Now, we delete all the gnode_rnodes of the bnode, then we 
-					 * store the new ones. Yea, I know I'm raw, ahahaha.
-					 */
-					rnode_destroy(&me.bnode_map[blevel][bm]);
-
-					/* We brought kaos, let's give peace */
+					/* This bnode has the BMAP_UPDATE
+					 * flag set, thus this is the first
+					 * time we update him during this new
+					 * qspn_round and for this reason
+					 * delete all its rnodes */
+					if(me.bnode_map[blevel][bm].flags & BMAP_UPDATE) {
+						rnode_destroy(&me.bnode_map[blevel][bm]);
+						me.bnode_map[blevel][bm].flags&=~BMAP_UPDATE;
+					}
+					
+					/* Store the rnodes of the bnode */
 					for(e=0; e < bblist_hdr[i]->links; e++) {
 						memset(&rn, 0, sizeof(map_rnode));
 						debug(DBG_INSANE, "Bnode %d new link %d: gid %d lvl %d", 
@@ -762,7 +766,13 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 						rn.r_node=(int *)gnode;
 						memcpy(&rn.rtt, &bblist[i][e]->rtt, 
 								sizeof(struct timeval));
-						rnode_add(&me.bnode_map[blevel][bm], &rn);
+
+						if((p=rnode_find(&me.bnode_map[blevel][bm], gnode)) > 0) {
+							/* Overwrite the current rnode */
+							map_rnode_insert(&me.bnode_map[blevel][bm],p,&rn);
+						} else
+							/* Add a new rnode */
+							rnode_add(&me.bnode_map[blevel][bm], &rn);
 					}
 				}
 
@@ -815,7 +825,7 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 		 * at level 0 */
 		node=me.cur_node;
 	} else if(me.cur_node->flags & MAP_BNODE) {
-		/* If we are a bnode which borderes on the `from' [g]node, then we
+		/* If we are a bnode which borders on the `from' [g]node, then we
 		 * can skip it. */
 		i=map_find_bnode_rnode(me.bnode_map[level-1], me.bmap_nodes[level-1], from);
 		if(i != -1)

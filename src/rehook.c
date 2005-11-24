@@ -24,6 +24,7 @@
 #include "includes.h"
 
 #include "misc.h"
+#include "llist.c"
 #include "libnetlink.h"
 #include "ll_map.h"
 #include "inet.h"
@@ -49,9 +50,10 @@
  * rehook_argv: argv for the new_rehook_thread thread
  */
 struct rehook_argv {
-		int gnode;
-		int level;
-		int gnode_count;
+	int gid;
+	map_gnode *gnode;
+	int level;
+	int gnode_count;
 };
 
 pthread_attr_t new_rehook_thread_attr;
@@ -123,7 +125,7 @@ void *new_rehook_thread(void *r)
 	 * Send a new challenge if `CHALLENGE_THRESHOLD' was exceeded 
 	 */
 	if(rargv->level && rargv->gnode_count >= CHALLENGE_THRESHOLD)
-		if(send_challenge(rargv->gnode, rargv->level, 
+		if(send_challenge(rargv->gid, rargv->level, 
 					rargv->gnode_count))
 			/* Challenge failed, do not rehook */
 			goto finish;
@@ -137,16 +139,22 @@ void *new_rehook_thread(void *r)
 	 */
 	rehook();
 
-	if(level) {
+	if(rargv->level) {
 		/* Mark all the gnodes we border on as HOOKED, in this way
 		 * we won't try to rehook each time */
 		erc=me.cur_erc;
 		list_for(erc) {	
-			if(!p->e)
+			if(!erc->e)
 				continue;
-			if(erc->quadg.gnode[_EL(rargv->level)])
-				erc->quadg.gnode[_EL(rargv->level)]->flags|=GMAP_HGNODE;
+			if(erc->e->quadg.gnode[_EL(rargv->level)])
+				erc->e->quadg.gnode[_EL(rargv->level)]->flags|=GMAP_HGNODE;
 		}
+
+		/* Mark also rargv->gnode */
+		rargv->gnode->flags|=GMAP_HGNODE;
+		
+		/* TODO: Mark all the gnodes which are rnodes of me at `level'
+		 */
 	}
 
 finish:	
@@ -157,15 +165,15 @@ finish:
 
 /*
  * new_rehook: takes in exam the `gnode' composed by `gnode_count'# nodes, which
- * is at level `level'.
+ * is at level `level' and which has a gnode id equal to `gid'.
  * When `level' is 0, `gnode' is a node and gnode_count isn't considered.
  */
-void new_rehook(int gnode, int level, int gnode_count)
+void new_rehook(map_gnode *gnode, int gid, int level, int gnode_count)
 {
 	struct rehook_argv *rargv;
 	pthread_t thread;
 
-	if(!level && gnode != me.cur_quadg.gid[level])
+	if(!level && gid != me.cur_quadg.gid[level])
 		/* We rehook at level 0 only if we have the same gid of
 		 * another node, so in this case we don't have to rehook */
 		return;
@@ -174,28 +182,29 @@ void new_rehook(int gnode, int level, int gnode_count)
 			/* We have more nodes, we don't have to rehook! */
 			return;
 		else if(gnode_count == qspn_gnode_count[_EL(level)] &&
-				gnode < me.cur_quadg.gid[level])
-			/* We have the same number of nodes, but `gnode' has a
-			 * gid id smaller than our, so it must rehook, not us */
+				gid < me.cur_quadg.gid[level])
+			/* We have the same number of nodes, but `gid' is
+			 * smaller than our gnode id, so it must rehook, 
+			 * not us */
 			return;
 	} 
 	
+	/* check that `gnode' isn't marked as HOOKED, otherwise return. */
+	if(level && gnode->flags & GMAP_HGNODE)
+		return;
+
 	/*
 	 * Update the rehook time and let's see if we can take this new rehook
 	 */
 	if(update_rehook_time(level))
 		return;
 
-	/*
-	 * TODO: CONTINUE HERE
-	 * check that `gnode' isn't marked as HOOKED, otherwise return.
-	 */
-	
 	if(rehook_mutex)
 		return;
 	rehook_mutex=1;
 
 	rargv = xmalloc(sizeof(struct rehook_argv));
+	rargv->gid	   = gid;
 	rargv->gnode	   = gnode;
 	rargv->level	   = level;
 	rargv->gnode_count = gnode_count;

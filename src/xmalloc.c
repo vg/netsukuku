@@ -24,7 +24,9 @@
  * failure (they call fatal if they encounter an error).
  */
 
-#include "includes.h"
+#include <stdlib.h>
+#include <string.h>
+
 #include "xmalloc.h"
 #include "log.h"
 

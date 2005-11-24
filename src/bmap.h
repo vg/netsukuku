@@ -21,6 +21,11 @@
 
 #include "gmap.h"
 
+#define BMAP_UPDATE	MAP_UPDATE	/* At each new qspn_round all the bnodes flags are set 
+					   to BMAP_UPDATE, thus when tracer_store_pkt() updates
+					   them for the first time during the new round, it
+					   deletes their rnodes. */
+					   
 /* 
  * map_bnode is the struct used to create the "map border node". 
  * This map keeps all the border node of the map, making it easy to retrieve
@@ -62,10 +67,11 @@ typedef map_node map_bnode;
 
 /*
  * The bnode map uses only `me.cur_quadg.levels-1' levels, because each level of
- * the bmap points to the upper one
+ * the bmap points to the upper one, therefore the last level is ignored.
  */
 #define BMAP_LEVELS(levels)	(levels-1)
 #define BMAP_MAX_LEVELS		(BMAP_LEVELS(MAX_LEVELS))
+#define GET_BMAP_LEVELS(family) (BMAP_LEVELS(GET_LEVELS((family))))
 
 /* 
  * border node block: this is the block which keeps the gnodes linked to the 
@@ -94,7 +100,7 @@ INT_INFO bnode_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { sizeof(char) }, { 1 } };
 
 typedef struct
 {
-	/* The `bnode_hdr.bnode' borderes on the `gnode' of `level'th level with
+	/* The `bnode_hdr.bnode' borders on the `gnode' of `level'th level with
 	 * a round trip time which is stored in `rtt'. */
 
 	u_char gnode;	     
@@ -138,8 +144,17 @@ void bmap_counter_reset(u_char levels, u_int *counter);
 
 int map_add_bnode(map_bnode **bmap, u_int *bmap_nodes, u_int bnode, u_int links);
 map_bnode *map_bnode_del(map_bnode *bmap, u_int *bmap_nodes,  map_bnode *bnode);
+int bmap_del_rnode_by_level(map_bnode *, int, map_gnode **, int);
 int map_find_bnode(map_bnode *bmap, int bmap_nodes, int node);
 int map_find_bnode_rnode(map_bnode *bmap, int bmap_nodes, void *n);
+
+int map_count_bnode_rnode(map_bnode *bmap, int bmap_nodes, void *n);
+int bmaps_count_bnode_rnode(map_bnode **bmap, int *bmap_nodes, int levels, void *n);
+int map_del_bnode_rnode(map_bnode *bmap, int bmap_nodes, void *n);
+int bmaps_del_bnode_rnode(map_bnode **bmap, int *bmap_nodes, int levels, void *n);
+
+void map_set_bnode_flag(map_bnode *bmap, int bmap_nodes, int flags);
+void bmaps_set_bnode_flag(map_bnode **bmap, int *bmap_nodes, int levels, int flags);
 
 char *pack_all_bmaps(map_bnode **, u_int *, map_gnode **, quadro_group, size_t *);
 map_bnode **unpack_all_bmaps(char *, u_char, map_gnode **, u_int **, int, int);

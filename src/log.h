@@ -19,6 +19,8 @@
 #ifndef LOG_H
 #define LOG_H
 
+#include <stdarg.h>
+
 /*
  * Use ERROR_MSG and ERROR_POS in this way:
  * 	printf(ERROR_MSG "damn! damn! damn!", ERROR_POS);

@@ -204,18 +204,20 @@ void rnode_destroy(map_node *node)
 /* rnode_find: It searches in the `node' a rnode which points to the node `n'.
  * It then returns the position of that rnode.
  * If the rnode is not found it returns -1;*/
-int rnode_find(map_node *node, map_node *n)
+int rnode_find(map_node *node, void *n)
 {
 	int e;
 	for(e=0; e < node->links; e++)
-		if((map_node *)node->r_node[e].r_node == n)
+		if(node->r_node[e].r_node == n)
 			return e;
 	return -1;
 }
 
 
-/* map_node_del: It deletes a `node' from the `map'. Really it frees its rnodes and 
- * set the node's flags to MAP_VOID.*/
+/*
+ * map_node_del: It deletes a `node' from the `map'. Really it frees its rnodes
+ * and set the node's flags to MAP_VOID.
+ */
 void map_node_del(map_node *node)
 {
 	rnode_destroy(node);

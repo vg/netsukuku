@@ -109,7 +109,9 @@ int get_free_nodes(inet_prefix to, interface *dev,
 	if(err==-1)
 		ERROR_FINISH(ret, -1, finish);
 	
+	ints_network_to_host(rpkt.msg, free_nodes_hdr_iinfo);
 	memcpy(fn_hdr, rpkt.msg, sizeof(struct free_nodes_hdr));
+
 	if(verify_free_nodes_hdr(&to, fn_hdr)) {
 		error("Malformed PUT_FREE_NODES request hdr from %s.", ntop);
 		ERROR_FINISH(ret, -1, finish);
@@ -170,7 +172,7 @@ int put_free_nodes(PACKET rq_pkt)
 		}
 	}
 	if(!e) {
-		/* <<My quadro_group is completely full, sry>> */
+		/* <<Netsukuku is completely full, sry>> */
 		pkt_fill_hdr(&pkt.hdr, HOOK_PKT, rq_pkt.hdr.id, PUT_FREE_NODES, 0);
 		err=pkt_err(pkt, E_QGROUP_FULL);
 		goto finish;
@@ -183,6 +185,7 @@ int put_free_nodes(PACKET rq_pkt)
 	inet_copy_ipdata(fn_pkt.fn_hdr.ipstart, &me.cur_quadg.ipstart[level]);
 	fn_pkt.fn_hdr.level=level;
 	fn_pkt.fn_hdr.gid=me.cur_quadg.gid[level];
+	fn_pkt.fn_hdr.join_rate = hook_join_rate;
 	
 	/*
 	 * Creates the list of the free nodes, which belongs to the gnode. If 
@@ -215,6 +218,7 @@ int put_free_nodes(PACKET rq_pkt)
 	
 	p=pkt.msg;
 	memcpy(p, &fn_pkt, sizeof(fn_pkt));
+	ints_host_to_network(p, free_nodes_hdr_iinfo);
 	
 	err=pkt_send(&pkt);
 	
@@ -709,6 +713,97 @@ int create_gnodes(inet_prefix *ip, int final_level)
 	return 0;
 }
 
+/*
+ * update_join_rate: it updates the `hook_join_rate' according to
+ * `gnode_count', which has the gnode count of `hook_gnode' and to `fn_hdr',
+ * which is the free_nodes_hdr received from `hook_gnode'.
+ * If a new_gnode has to be created 1 is returned, (and hook_join_rate will be
+ * 0), otherwise 0 is the returned value.
+ */
+int update_join_rate(map_gnode *hook_gnode, int hook_level, int *gnode_count, 
+		struct free_nodes_hdr *fn_hdr)
+{
+	quadro_group qg;
+	u_int free_nodes, total_bnodes;
+	int new_gnode=0;
+	
+	/*
+	 * `free_nodes' is the number of VOID nodes present at the
+	 * `hook_level' in `hook_gnode', and it is the difference
+	 * between the maximum number of nodes in that level and the
+	 * actual number of nodes in it (gnode_count).
+	 */
+	free_nodes = (1<<(MAXGROUPNODE_BITS*hook_level))-gnode_count[_EL(hook_level)];
+
+	/* There aren't free nodes in `hook_gnode', so skip this function */
+	if(free_nodes <= 0) {
+		new_gnode=1;
+		goto finish;
+	}
+		
+	if(map_find_bnode_rnode(me.bnode_map[hook_level-1], me.bmap_nodes[hook_level-1],
+				hook_gnode) > 0) {
+		/* We border on `hook_gnode' so we initialize
+		 * `hook_join_rate' for this new re-hook session,
+		 * later we'll hook at `hook_gnode'. */
+
+		hook_join_rate = free_nodes;
+
+		for(i=hook_level-1; i >= 0; i--) {
+
+			/* `total_bnodes' = how many bnodes borders to
+			 * `hook_gnode' in level `i'th */
+			total_bnodes = map_count_bnode_rnode(me.bnode_map[i], me.bmap_nodes[i],
+					hook_gnode);
+
+			total_bnodes = total_bnodes ? total_bnodes : 1;
+			hook_join_rate /= total_bnodes;
+		}
+
+	} else if(fn_hdr->join_rate) {
+		/* The join_rate we got from our rnode is > 0, so
+		 * we modify it and we hook at `hook_gnode'. */
+
+		if(me.cur_node->links-1)
+			hook_join_rate=fn_hdr.join_rate/(me.cur_node->links-1);
+		else
+			hook_join_rate=0;
+	} else
+		new_gnode=1;
+
+finish:
+	return new_gnode;
+}
+
+/*
+ * rehook_create_gnode: we are rehooking in the `hook_level'
+ * to `hook_gnode', and we need to create a new gnode. The new
+ * gid will be based on the hash of our current gid.
+ * `old_ip' is the IP we used before the rehook was launched.
+ */
+void rehook_create_gnode(map_gnode *gnode, int hook_level, inet_prefix *old_ip)
+{
+	quadro_group qg;
+	int hash_gid;
+
+	iptoquadg(old_ip, me.ext_map, &qg, QUADG_GID);
+
+	/* 
+	 * Hash our gids starting from the `hook_level' level,
+	 * then xor the bytes of the hash merging them in a single byte.
+	 */
+	hash_gid=fnv_32_buf(&qg.gid[hook_level], 
+			(GET_LEVELS(my_family)-hook_level),
+			FNV1_32_INIT);
+	qg.gid[hook_level]=xor_int(hash_gid);
+
+	/* Be sure to choose VOID gnodes */
+	void_gids(&qg, hook_level, me.ext_map, me.int_map);
+
+	/* Save the new ip in `me.cur_ip' */
+	gidtoipstart(qg.gid, GET_LEVELS(my_family), GET_LEVELS(my_family), 
+			my_family, &me.cur_ip);
+}
 
 int hook_init(void)
 {
@@ -774,9 +869,12 @@ void hook_reset(void)
 }
 		
 /*
- * netsukuku_hook: hooks at an existing gnode or creates a new one.
+ * netsukuku_hook: hooks/rehooks at an existing gnode or creates a new one.
+ * `hook_level' specifies at what level we are hooking, generally it is 0.
+ * If `hook_gnode' is not null, netsukuku_hook will try to hook only to the
+ * rnodes which belongs to the `hook_gnode' at `hook_level' level.
  */
-int netsukuku_hook(void)
+int netsukuku_hook(int hook_level, inet_prefix *hook_gnode)
 {	
 	struct radar_queue *rq=radar_q;
 	struct free_nodes_hdr fn_hdr;
@@ -785,7 +883,7 @@ int netsukuku_hook(void)
 	map_gnode **old_ext_map;
 	map_bnode **old_bnode_map;	
 	
-	inet_prefix gnode_ipstart;
+	inet_prefix gnode_ipstart, old_ip;
 	
 	int i=0, e=0, imaps=0, ret=0, new_gnode=0, tracer_levels=0;
 	int total_hooking_nodes=0;
@@ -794,6 +892,9 @@ int netsukuku_hook(void)
 	u_char fnodes[MAXGROUPNODE];
 	
 	const char *ntop;
+
+	/* Save our current IP before resetting */
+	memcpy(&old_ip, &me.cur_ip, sizeof(inet_prefix));
 
 	/* Reset the hook */
 	hook_reset();
@@ -898,6 +999,8 @@ hook_retry_scan:
 		if(rq->node->flags & MAP_HNODE)
 			continue;
 
+		qspn_backup_gcount(qspn_old_gcount, qspn_gnode_count);
+
 		if(!get_free_nodes(rq->ip, rq->dev, &fn_hdr, fnodes)) {
 			/* Exctract the ipstart of the gnode */
 			inet_setip(&gnode_ipstart, fn_hdr.ipstart, my_family);
@@ -915,24 +1018,51 @@ hook_retry_scan:
 	if(!e)
 		fatal("None of the nodes in this area gave me the free_nodes info");
 
-	/* 
-	 * Let's choose a random ip using the free nodes list we received.
+	/*
+	 * If we are trying to hook at `hook_gnode' let's check that it has
+	 * enough free nodes to welcome all the re-hooking nodes of our gnode.
 	 */
+	if(hook_level && hook_gnode && total_hooks > 1 &&
+		qspn_old_gcount[_EL(hook_level)] > qspn_gnode_count[_EL(hook_level)]) {
 
-	e=rand_range(0, fn_hdr.nodes-1);
-	if(fn_hdr.level == 1) {
-		new_gnode=0;
-		postoip(fnodes[e], gnode_ipstart, &me.cur_ip);
+		/*
+		 * Let's see if we can re-hook at `hook_gnode' or if we have
+		 * to create a new gnode, in other words: update the join_rate
+		 */
+		new_gnode=update_join_rate(hook_gnode, hook_level, qspn_gnode_count, 
+				&fn_hdr);
+
+		if(new_gnode) {
+			/* 
+			 * The `hook_gnode' gnode cannot take all the nodes of our 
+			 * gnode so we just give up and create a new gnode, which has
+			 * a gid based on the hash of our current gid.
+			 */
+			rehook_create_gnode(gnode, hook_level, &old_ip);
+		}
 	} else {
-		new_gnode=1;
-		for(;;) {
-			random_ip(&gnode_ipstart, fn_hdr.level, fn_hdr.gid, 
-					GET_LEVELS(my_family), me.ext_map, 0, 
-					&me.cur_ip, my_family);
-			if(!inet_validate_ip(me.cur_ip))
-				break;
+		
+		/* 
+		 * We are hooking fine,
+		 * let's choose a random ip using the free nodes list we received.
+		 */
+
+		e=rand_range(0, fn_hdr.nodes-1);
+		if(fn_hdr.level == 1) {
+			new_gnode=0;
+			postoip(fnodes[e], gnode_ipstart, &me.cur_ip);
+		} else {
+			new_gnode=1;
+			for(;;) {
+				random_ip(&gnode_ipstart, fn_hdr.level, fn_hdr.gid, 
+						GET_LEVELS(my_family), me.ext_map, 0, 
+						&me.cur_ip, my_family);
+				if(!inet_validate_ip(me.cur_ip))
+					break;
+			}
 		}
 	}
+
 	if(server_opt.restricted)
 		inet_setip_localaddr(&me.cur_ip, my_family);
 	hook_set_all_ips(me.cur_ip, me.cur_ifs, me.cur_ifs_n);

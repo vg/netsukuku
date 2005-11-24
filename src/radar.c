@@ -105,8 +105,10 @@ void free_new_node(void)
 
 	rq=radar_q;
 	list_for(rq)
-		if(rq->node && ((int)rq->node != RADQ_EXT_RNODE))
+		if(rq->node && ((int)rq->node != RADQ_EXT_RNODE)) {
 			xfree(rq->node);
+			rq->node=0;
+		}
 }
 
 /*
@@ -736,7 +738,7 @@ void radar_update_map(void)
 				    * This is because the inferior levels cannot
 				    * have knowledge about the bordering gnode 
 				    * which is in an upper level, but it's necessary that
-				    * they know which who the root_node borderes on,
+				    * they know which who the root_node borders on,
 				    * so the get_route algorithm can descend to
 				    * the inferior levels and it will still know
 				    * what is the border node which is linked

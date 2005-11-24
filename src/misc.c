@@ -146,12 +146,23 @@ inline unsigned int dl_elf_hash (const unsigned char *name)
   return hash;
 }
 
+/*
+ * xor_int: XORs all the bytes of the `i' integer by merging them in a single
+ * byte. It returns the merged byte.
+ */
+char xor_int(int i)
+{
+        char c;
+
+        c = (i & 0xff) ^ ((i & 0xff00)>>8) ^ ((i & 0xff0000)>>16) ^ ((i & 0xff000000)>>24);
+
+        return c;
+}
+
 /* 
  * hash_time: As the name says: hash time!
  * This function generates the hash of the timeval struct which refer
  * to the current time. 
- * The returned integer is a unique number, this function will never return the 
- * same number.
  * If h_sec or h_usec are not null, it stores in them respectively the hash of
  * the second and the microsecond.
  */

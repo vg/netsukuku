@@ -108,8 +108,8 @@ INT_INFO andna_resolve_rq_pkt_iinfo =	{ 1, /* `rip' is ignored */
  */
 struct andna_resolve_reply_pkt
 {
-	u_int		ip[MAX_IP_INT];
-	time_t		timestamp;		/* the difference between the current
+	uint32_t	ip[MAX_IP_INT];
+	uint32_t	timestamp;		/* the difference between the current
 						   time and the last time the resolved
 						   hname was updated */
 } _PACKED_;

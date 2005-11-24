@@ -32,12 +32,9 @@
 /* 
  * get_groups: It returns how many groups there are in the given level.
  */
-inline int get_groups(int family, int lvl)
+inline int get_groups(int max_levels, int lvl)
 { 				
-	if( lvl == GET_LEVELS(family))
-		return 1;
-	else
-		return MAXGROUPNODE;
+	return lvl == max_levels ? 1 : MAXGROUPNODE;
 }
 
 /*pos_from_gnode: Position from gnode: It returns the position of the `gnode' in the `map'.*/
@@ -247,6 +244,140 @@ void unpack_quadro_group(quadro_group *qg, char *pack)
 }
 
 /*
+ * Functions used by increment_gids(), see below
+ */
+
+int is_map_void_flag_set(map_node *node)
+{
+	return node->flags & MAP_VOID ? 1 : 0;
+}
+
+int is_gmap_full_flag_set(map_gnode *gnode)
+{
+	return gnode->flags & GMAP_FULL ? 1 : 0;
+}
+
+int is_gmap_void_flag_set(map_gnode *gnode)
+{
+	return gnode->flags & GMAP_VOID ? 1 : 0;
+}
+
+int isnot_gmap_void_flag_set(map_gnode *gnode)
+{
+	return !is_gmap_void_flag_set(gnode);
+}
+
+/*
+ * increment_gids: It increments the members of the `qg'->gid array until all the 
+ * gids in it point to gnodes present in the ext_map, which don't have the
+ * a particular gnode->flag set (or the node->flag of the gid of level 0).
+ * 
+ * In order to verify that a gnode doesn't have the flag set the
+ * `is_gnode_flag_set' function is called, the same is done for the nodes with
+ * the `is_node_flag_set' function. 
+ * `is_gnode_flag_set' returns 1 if the flag is set.
+ * 
+ * increment_gids() starts from the qg->gid[`level'] member and finishes to 
+ * qg->gid[qg->levels-1].
+ * If all the gids point to gnodes, which have the gnode->flag set, -1 is
+ * returned.
+ * It's assumed that `ext_map' and `int_map' are the maps relative to the
+ * `qg' quadro_group.
+ */
+int increment_gids(quadro_group *qg, int level, map_gnode **ext_map, 
+		map_node *int_map, int(*is_gnode_flag_set)(map_gnode *gnode), 
+		int(*is_node_flag_set)(map_node *node))
+{
+	int g, groups, gid;
+
+	if(level >= qg->levels)
+		return -1;
+
+	g = level == qg->levels ? 0 : qg->gid[level];
+	groups=get_groups(qg->levels, level);
+	gid=qg->gid[level];
+	
+	if((!level && !is_node_flag_set(&int_map[gid])) ||
+			(level && is_gnode_flag_set(&ext_map[_EL(level)][g]))) {	
+
+		/*
+		 * find a gid in this `level' which isn't full
+		 */
+		for(i=0; i < groups; i++) {
+			qg->gid[level]=(gid + i) % groups;
+
+			if((!level && is_node_flag_set(&int_map[qg->gid[level]])) ||
+				(level && !is_gnode_flag_set(&ext_map[_EL(level)][gq->gid[level]]))) {
+				e=1;
+				break;
+			}
+		}
+
+		/*
+		 * not a single free gid was found
+		 */
+		if(!e) {
+			g = level+1 == qg->levels ? 0 : qg->gid[level+1];
+
+			if((is_gmap_full_flag_set == is_gnode_flag_set) && 
+					!(ext_map[_EL(level+1)][g].flags & GMAP_FULL)) {
+				/* 
+				 * There is a logical contradiction here:
+				 * we didn't find any free (g)nodes in this
+				 * level, but the upper gnode at level+1,
+				 * which is the parent of this level, isn't
+				 * marked as full! So what's happening here?
+				 * Ignore this absurd and mark it as full -_-
+				 */
+				ext_map[_EL(level+1)][g].flags|=GMAP_FULL;
+				debug(DBG_NORMAL, ERROR_MSG "logical "
+						"contradiction detected",
+						ERROR_POS);
+			}
+
+			/*
+			 * Recurse by leveling up
+			 */
+			if(!increment_gids(qg, level+1, ext_map, int_map))
+				/* 
+				 * We change one of our upper gid, we can
+				 * retake the old gid we had at this `level'
+				 */
+				qg->gid[level]=gid;
+			else
+				/*
+				 * It's all full!
+				 */
+				return -1;
+		}
+	}
+
+	return 0;
+}
+
+/*
+ * free_gids: it uses increment_gids() to choose gids which don't point to FULL
+ * gnodes.
+ */
+int free_gids(quadro_group *qg, int level, map_gnode **ext_map,
+		map_node *int_map)
+{
+	return increment_gids(qg, level, ext_map, int_map, 
+			is_gmap_full_flag_set, is_map_void_flag_set);
+}
+
+/*
+ * void_gids: it uses increment_gids() to choose gids which point to VOID
+ * gnodes.
+ */
+int void_gids(quadro_group *qg, int level, map_gnode **ext_map,
+		map_node *int_map)
+{
+	return increment_gids(qg, level, ext_map, int_map, 
+			isnot_gmap_void_flag_set, is_map_void_flag_set);
+}
+
+/*
  * random_ip: It generates a new random ip. 
  * If `ipstart' is not NULL the new ip is restricted in the `final_gid' of
  * `final_level', so it'll be taken inside this range:
@@ -264,8 +395,8 @@ int random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 		int total_levels, map_gnode **ext_map, int only_free_gnode, 
 		inet_prefix *new_ip, int my_family)
 {
-	int i, level, levels;
-	int gid[total_levels], g;
+	int i, e, x, level, levels;
+	int gid[total_levels];
 	quadro_group qg;
 
 	memset(new_ip, 0, sizeof(inet_prefix));
@@ -274,56 +405,52 @@ int random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 		u_int idata[MAX_IP_INT]={0,0,0,0};
 		
 		/* 
-		 * Let's choose a completely random ip. We must ensure that it
-		 * is completely unique, because if two gnode are created with
-		 * the same ip it's a mess. To solve this problem we use the
-		 * hash_time function.
+		 * Let's choose a completely random ip.
 		 */
 		levels=total_levels;
 		if(my_family == AF_INET)
-			idata[0]=hash_time(0,0);
+			idata[0]=rand();
 		else {
-			hash_time((int *)&idata[0], (int *)&idata[1]);
-			hash_time((int *)&idata[2], (int *)&idata[3]);
+			idata[0]=rand();	idata[1]=rand();
+			idata[2]=rand();	idata[3]=rand();
 		}
 		
 		inet_setip(new_ip, idata, my_family);
 		
 		return 0;
-	} else {
-		/*
-		 * We can choose only a random ip which is inside the final_gid.
-		 * The `final_gid' is a gnode of the `final_level' level.
-		 * The `final_level' has its `ipstart'; with it we determine
-		 * the its higher levels.
-		 * The work is done in this way:
-		 * - ipstart is splitted in gnode_ids and they are placed in qg.gid.
-		 * - The final_level-1 gid is set to final_gid.
-		 * - The gids of levels lower than `final_level' are chosen
-		 *   randomly.
-		 * - The gids of levels higher than `final_level' are set to the
-		 *   gids of qg.gid[x >= final_level].
-		 * - The ipstart is recomposed from the gids.
-		 */
-		levels=final_level-1;
-		iptoquadg(*ipstart, ext_map, &qg, QUADG_GID);
-		gid[final_level-1]=final_gid;
-		for(i=final_level; i<total_levels; i++)
-			gid[i]=qg.gid[i];
 	}
+	
+	/*
+	 * We can choose only a random ip which is inside the final_gid.
+	 * `final_gid' is a gnode of the `final_level' level.
+	 * `final_level' has its `ipstart'; with it we determine
+	 * its higher levels.
+	 * The work is done in this way:
+	 * - ipstart is splitted in gnode_ids and they are placed in qg.gid.
+	 * - The final_level gid is set to `final_gid'.
+	 * - The gids of levels lower than `final_level' are chosen
+	 *   randomly.
+	 * - The gids of levels higher than `final_level' are set to the
+	 *   gids of qg.gid[x >= final_level].
+	 * - The ipstart is recomposed from the gids.
+	 */
+	levels=final_level;
+	iptoquadg(*ipstart, ext_map, &qg, QUADG_GID);
+	gid[levels]=final_gid;
+	for(i=final_level+1; i<total_levels; i++)
+		gid[i]=qg.gid[i];
+
+	/* Change the gids if some of them point to full gnodes */
+	free_gids(&qg, final_level+1; ext_map, int_map);
 
 	/*
 	 * Now we choose random gids for each level so we'll have a random ip
 	 * with gidtoipstart();
 	 */
 	for(level=levels-1; level >=0; level--) {
-		gid[level]=rand_range(0, get_groups(my_family, level)-1);
+		gid[level]=rand_range(0, get_groups(total_levels, level)-1);
 
 		if(level && only_free_gnode) {
-			g = level + 1 == GET_LEVELS(my_family) ? 0 : gid[level+1];
-			if(ext_map[_EL(level+1)][g].flags & GMAP_FULL)
-				/* nothing to pick */
-				return -1;
 			/* 
 			 * We have to be sure that we're not picking a gnode 
 			 * already used in the ext_map. Generally when we hook
@@ -331,8 +458,32 @@ int random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 			 * taken gnodes we increase the possibility to create a
 			 * brand new, and not already used, gnode.
 			 */
-			while(!(ext_map[_EL(level)][gid[level]].flags & GMAP_VOID))
-				gid[level]=rand_range(0, get_groups(my_family, level)-1);
+			if(!(ext_map[_EL(level)][gid[level]].flags & GMAP_VOID)) {
+				
+				/* Take a random position and loop trough the
+				 * map */
+				i=rand_range(0, get_groups(total_levels, level)-1);
+				
+				for(x=0, e=i; e<MAXGROUPNODE; e++) {
+					if(ext_map[_EL(level)][e].flags & GMAP_VOID) {
+						gid[level]=e;
+						x=1;
+						break;
+					}
+				}
+				if(!x) {
+					for(x=0; i>=0; i--) {
+						if(ext_map[_EL(level)][i].flags & GMAP_VOID) {
+							gid[level]=i;
+							x=1;
+							break;
+						}
+					}
+				}
+				if(!x) 
+					/* not a single free gnode was found */
+					return -1;
+			}
 		}
 	}
 

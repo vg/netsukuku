@@ -48,7 +48,7 @@ int total_rehooks;			/* Number of rehooks made in the current
 
 /*  *  *  Functions declaration  *  *  */
 void rehook_init(void);
-void new_rehook(int gnode, int level, int gnode_count);
+void new_rehook(map_gnode *gnode, int gid, int level, int gnode_count);
 int rehook(void);
 
 #endif /*REHOOK_H*/

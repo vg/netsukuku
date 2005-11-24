@@ -97,6 +97,12 @@ struct qspn_buffer
 	u_char	      * replier;	/* Who has sent these replies (qspn_sub_id) */
 	u_short	      * flags;
 };
+
+
+/*
+ *  *  *  Global vars  *  *  *
+ */
+
 struct qspn_buffer **qspn_b; /*It is sizeof(struct qspn_buffer *)*levels big*/
 
 int *qspn_send_mutex;	     /*It is sizeof(int)*levels big.*/
@@ -111,6 +117,10 @@ u_int qspn_gnode_count[GCOUNT_LEVELS];
 /* gcount of the previous qspn_round */
 u_int qspn_old_gcount[GCOUNT_LEVELS]; 
 
+
+/*
+ *  *  Functions declaration  *  *
+ */
 void qspn_time_reset(int start_level, int end_level, int levels);
 void qspn_reset(u_char levels);
 void qspn_init(u_char levels);
@@ -130,6 +140,7 @@ void update_qspn_time(u_char level, struct timeval *);
 void qspn_inc_gcount(int *gcount, int level, int inc);
 void qspn_dec_gcount(int *gcount, int level, int dec);
 void qspn_reset_gcount(int *gcount, int value);
+void qspn_backup_gcount(int *old_gcount, int *gcount);
 
 void qspn_new_round(u_char level, int new_qspn_id, struct timeval *new_qspn_time);
 

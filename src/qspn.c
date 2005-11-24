@@ -337,13 +337,21 @@ void qspn_reset_gcount(int *gcount, int value)
 		gcount[i]=value;
 }
 
+/* 
+ * qspn_backup_gcount: copies `gcount' in `old_gcount' 
+ */
+void qspn_backup_gcount(int *old_gcount, int *gcount)
+{
+	memcpy(old_gcount, gcount, sizeof(u_int)*GCOUNT_LEVELS);
+}
+
 /*
  * qspn_remove_deads: It removes the dead nodes from the maps at the level
  * `level' (if any).
  */
 void qspn_remove_deads(u_char level)
 {
-	int bm, i, node_pos;
+	int bm, i, l, node_pos;
 	map_node *map, *node;
 	map_gnode *gmap;
 	
@@ -387,6 +395,16 @@ void qspn_remove_deads(u_char level)
 					    map_bnode_del(me.bnode_map[level], 
 						&me.bmap_nodes[level],
 						&me.bnode_map[level][bm]);
+			}
+
+			if(level) {
+				/* 
+				 * Remove all the rnodes of the bnodes which
+				 * point to `node'.
+				 */
+				l=GET_BMAP_LEVELS(my_family);
+				bmaps_del_bnode_rnode(me.bnode_map, me.bmap_nodes, l,
+						node);
 			}
 
 			if(!level) {
@@ -441,7 +459,7 @@ void qspn_new_round(u_char level, int new_qspn_id, struct timeval *new_qspn_time
 			me.bmap_nodes_opened);
 
 	/* Copy the current gnode_count in old_gcount and reset it */
-	memcpy(qspn_old_gcount, qspn_gnode_count, sizeof(qspn_gnode_count));
+	qspn_backup_gcount(qspn_old_gcount, qspn_gnode_count);
 	memset(qspn_gnode_count, 0, sizeof(qspn_gnode_count));
 
 	/* Clear the flags set during the previous qspn */
@@ -452,6 +470,12 @@ void qspn_new_round(u_char level, int new_qspn_id, struct timeval *new_qspn_time
 			       ~QSPN_STARTER & ~QSPN_OPENER;
 	}
 
+	/* Mark all bnodes with the BMAP_UPDATE flag, in this way
+	 * tracer_store_pkt will know what bnodes weren't updated during this
+	 * new round */
+	bmaps_set_bnode_flag(me.bnode_map, me.bmap_nodes, 
+			GET_BMAP_LEVELS(my_family), BMAP_UPDATE);
+	
 	/* remove the dead nodes */
 	qspn_remove_deads(level);
 }

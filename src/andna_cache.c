@@ -679,7 +679,8 @@ char *pack_andna_cache(andna_cache *acache, size_t *pack_sz)
 	andna_cache_queue *acq;
 	char *pack, *buf, *p;
 	size_t sz;
-	time_t cur_t, t;
+	time_t cur_t;
+	u_int t;
 	
 	/* Calculate the pack size */
 	hdr.tot_caches=0;
@@ -721,8 +722,8 @@ char *pack_andna_cache(andna_cache *acache, size_t *pack_sz)
 				buf+=MAX_IP_SZ;
 
 				t = cur_t - acq->timestamp;
-				memcpy(buf, &t, sizeof(time_t));
-				buf+=sizeof(time_t);
+				memcpy(buf, &t, sizeof(uint32_t));
+				buf+=sizeof(uint32_t);
 
 				memcpy(buf, &acq->hname_updates, sizeof(u_short));
 				buf+=sizeof(u_short);
@@ -799,9 +800,10 @@ andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter)
 				inet_ntohl(acq->rip, net_family);
 				buf+=MAX_IP_SZ;
 
-				memcpy(&acq->timestamp, buf, sizeof(time_t));
+				acq->timestamp=0;
+				acq->timestamp+=*(uint32_t *)buf;
 				acq->timestamp = cur_t - acq->timestamp;
-				buf+=sizeof(time_t);
+				buf+=sizeof(uint32_t);
 
 				memcpy(&acq->hname_updates, buf, sizeof(u_short));
 				buf+=sizeof(u_short);
@@ -832,7 +834,8 @@ char *pack_counter_cache(counter_c *countercache, size_t *pack_sz)
 	counter_c_hashes *cch;
 	char *pack, *buf, *p;
 	size_t sz;
-	time_t cur_t, t;
+	time_t cur_t;
+	uint32_t t;
 	
 	/* Calculate the pack size */
 	hdr.tot_caches=0;
@@ -870,8 +873,8 @@ char *pack_counter_cache(counter_c *countercache, size_t *pack_sz)
 				p=buf;
 				
 				t = cur_t - cch->timestamp;
-				memcpy(buf, &t, sizeof(time_t));
-				buf+=sizeof(time_t);
+				memcpy(buf, &t, sizeof(uint32_t));
+				buf+=sizeof(uint32_t);
 
 				memcpy(buf, &cch->hname_updates, sizeof(u_short));
 				buf+=sizeof(u_short);
@@ -945,9 +948,10 @@ counter_c *unpack_counter_cache(char *pack, size_t pack_sz, int *counter)
 				
 				ints_network_to_host(buf, counter_c_hashes_body_iinfo);
 
-				memcpy(&cch->timestamp, buf, sizeof(time_t));
+				cch->timestamp=0;
+				cch->timestamp+=*(uint32_t *)buf;
 				cch->timestamp = cur_t - cch->timestamp;
-				buf+=sizeof(time_t);
+				buf+=sizeof(uint32_t);
 
 				memcpy(&cch->hname_updates, buf, sizeof(u_short));
 				buf+=sizeof(u_short);

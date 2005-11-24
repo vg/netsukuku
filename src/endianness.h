@@ -19,7 +19,7 @@
 #ifndef ENDIANNESS_H
 #define ENDIANNESS_H
 
-#define MAX_INTS_PER_STRUCT	64		/* The maximum number of short/int variables 
+#define MAX_INTS_PER_STRUCT	8		/* The maximum number of short/int variables 
 						   present in a struct */
 
 #define IINFO_DYNAMIC_VALUE	-1		/* This define is used to fill part in a 

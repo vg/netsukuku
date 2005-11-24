@@ -112,6 +112,33 @@ map_bnode *map_bnode_del(map_bnode *bmap, u_int *bmap_nodes,  map_bnode *bnode)
 	}
 }
 
+/*
+ * bmap_del_rnode_by_level: it is pretty specific, it deletes all the rnodes
+ * of `bnode' which point to a gnode located in a level not equal to `level'.
+ * The number of rnode deleted is returned.
+ * `total_levels' must be equal to the maximum levels 
+ * available (use GET_LEVELS(my_family)).
+ */
+int bmap_del_rnode_by_level(map_bnode *bnode, int level, map_gnode **ext_map,
+		int total_levels)
+{ 
+	map_gnode *gn;
+	int i, ret=0, lvl;
+	
+	
+	for(i=0; i < bnode->links; i++) {
+		gn=(map_gnode *)bnode->r_node[i].r_node;
+		lvl=extmap_find_level(ext_map, gn, total_levels);
+
+		if(lvl != level) {
+			rnode_del(bnode, i);
+			ret++;
+		}
+	}
+
+	return ret;
+}
+
 /* 
  * map_find_bnode: Find the given `node' (in the pos_from_node() format) in the
  * given map_bnode `bmap'.
@@ -128,7 +155,7 @@ int map_find_bnode(map_bnode *bmap, int bmap_nodes, int node)
 }
 
 /* 
- * map_find_bnode_rnode: Find the first bnode in the `bmap' which has an rnode
+ * map_find_bnode_rnode: Find the first bnode in the `bmap' which has a rnode
  * which points to `n'. If it is found the pos of the bnode in the `bmap' is
  * returned, otherwise -1 is the return value. 
  */
@@ -139,8 +166,95 @@ int map_find_bnode_rnode(map_bnode *bmap, int bmap_nodes, void *n)
 	for(e=0; e<bmap_nodes; e++)
 		if(rnode_find((map_node *)&bmap[e], (map_node *)n) != -1)
 			return e;
-	return -1;
 
+	return -1;
+}
+
+/*
+ * map_count_bnode_rnode: counts how many bnode which have a rnode which
+ * points to `n' there are in `bmap'.
+ */
+int map_count_bnode_rnode(map_bnode *bmap, int bmap_nodes, void *n)
+{
+	int e, n;
+
+	for(e=0, n=0; e<bmap_nodes; e++)
+		if(rnode_find((map_node *)&bmap[e], (map_node *)n) != -1)
+			n++;
+
+	return n;
+}
+
+/*
+ * bmaps_count_bnode_rnode: applies map_count_bnode_rnode() to each level of
+ * `bmap' and returns the sum of the results.
+ * `levels' are the total levels of `bmap'.
+ */
+int bmaps_count_bnode_rnode(map_bnode **bmap, int *bmap_nodes, int levels, void *n)
+{
+	int i, n;
+
+	for(i=0, n=0; i<levels; i++)
+		n+=map_count_bnode_rnode(bmap[i], bmap_nodes[i], n);
+
+	return n;
+}
+
+/*
+ * map_del_bnode_rnode: deletes all the rnodes of the bnode, present in `bmap',
+ * which points to `n'.
+ * It returns the number of rnodes deleted.
+ */
+int map_del_bnode_rnode(map_bnode *bmap, int bmap_nodes, void *n)
+{
+	int e, p, ret=0;
+
+	for(e=0; e<bmap_nodes; e++)
+		if((p=rnode_find((map_node *)&bmap[e], (map_node *)n)) != -1) {
+			rnode_del(&bmap_[e], p);
+			ret++;
+		}
+
+	return ret;
+}
+
+/*
+ * bmaps_del_bnode_rnode: applies map_del_bnode_rnode() to each level of
+ * `bmap'.
+ * `levels' are the total levels of `bmap'.
+ * It returns the total number of rnodes deleted
+ */
+int bmaps_del_bnode_rnode(map_bnode **bmap, int *bmap_nodes, int levels, void *n)
+{
+	int i, n;
+
+	for(i=0, n=0; i<levels; i++)
+		n+=map_del_bnode_rnode(bmap[i], bmap_nodes[i], n);
+
+	return n;
+}
+
+/*
+ * map_set_bnode_flag: sets the `flags' to all the `bmap_nodes'# present in
+ * `bmap'.
+ */
+void map_set_bnode_flag(map_bnode *bmap, int bmap_nodes, int flags)
+{
+	int e;
+	for(e=0; e<bmap_nodes; e++)
+		bmap[e].flags|=flags;
+}
+
+/*
+ * bmaps_set_bnode_flag: sets the `flags' to all the bnodes present in the
+ * `levels'#  `bmap'.
+ */
+void bmaps_set_bnode_flag(map_bnode **bmap, int *bmap_nodes, int levels, int flags)
+{
+	int i;		
+	
+	for(i=0; i<levels; i++)
+		map_set_bnode_flag(bmap[i], bmap_nodes[i], flags);
 }
 
 /* 

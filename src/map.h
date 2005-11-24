@@ -188,7 +188,7 @@ map_rnode *rnode_add(map_node *node, map_rnode *new);
 void rnode_swap(map_rnode *one, map_rnode *two);
 void rnode_del(map_node *node, size_t pos);
 void rnode_destroy(map_node *node);
-int rnode_find(map_node *node, map_node *n);
+int rnode_find(map_node *node, void *n);
 
 int rnode_rtt_compar(const void *a, const void *b);
 void rnode_rtt_order(map_node *node);

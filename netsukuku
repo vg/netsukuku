@@ -580,7 +580,7 @@
   we use the RequestForRoute! The RFR will be used all the time a node gets
   connected to another node.
   This is what happens:
-  the node sends to all its rnodes an RFR request for a specific route. This
+  the node sends to all its rnodes a RFR request for a specific route. This
   request contains also the number of sub-requests (total_routes), which the
   rnodes have to send to their rnodes. Practically, the node decides how many
   routes wants to receive and calculates the number of sub-requests, which its

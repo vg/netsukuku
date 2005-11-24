@@ -66,7 +66,7 @@ int get_gw_bnode_recurse(map_node *int_map, map_gnode **ext_map,
 	} else if(!i)
 		return -1;
 
-	/* Find the bnode which borderes on the `node_gw' gnode */
+	/* Find the bnode which borders on the `node_gw' gnode */
 	bpos=map_find_bnode_rnode(bnode_map[i-1], bmap_nodes[i-1], (void *)node_gw);
 	if(bpos == -1) {
 		debug(DBG_INSANE, "get_gw: l=%d, node_gw=%x not found in bmap lvl %d", 
@@ -131,7 +131,7 @@ int get_gw_gnode_recurse(map_node *int_map, map_gnode **ext_map,
 		/*
 		 * If `node' is an our rnode, then the gateway to reach it is
 		 * itself, so we set the `gnode_gw' to `node' in order to find
-		 * in the lower level a bnode which borderes on `node'
+		 * in the lower level a bnode which borders on `node'
 		 */
 		gnode_gw=(void *)node;
 		node_gw=(map_node *)gnode_gw;
@@ -141,7 +141,7 @@ int get_gw_gnode_recurse(map_node *int_map, map_gnode **ext_map,
 		/* 
 		 * If `node' is an our gnode. we reset the gnode_gw to
 		 * `find_gnode', in this way, in the lower level we'll find a
-		 * bnode which borderes on `find_gnode'. 
+		 * bnode which borders on `find_gnode'. 
 		 */
 		gnode_gw=(void *)find_gnode;
 		node_gw=(map_node *)gnode_gw;
@@ -235,7 +235,7 @@ void **get_gw_gnode(map_node *int_map, map_gnode **ext_map,
 	 * firstly we find the gnode, at level `gnode_level' that can be used
 	 * as a gateway to reach `find_gnode', then we go down of one level
 	 * and we search the gateway that can be used to reach the border node 
-	 * which borderes to the previously found gateway. The same procedure
+	 * which borders to the previously found gateway. The same procedure
 	 * is done until we arrive at the desired `gw_level' level.
 	 *
 	 * Sadly this procedure can give us only one route to reach the
@@ -261,7 +261,7 @@ void **get_gw_gnode(map_node *int_map, map_gnode **ext_map,
 	 * gnode=find_gnode and launches get_gw_gnode_recurse(gnode), which 
 	 * finds the gateway to reach the given `gnode'. It then forks for
 	 * each gateway found and launches get_gw_bnode_recurse(gateway) which
-	 * searches, in the lower level, the bnode which borderes on `gateway'. 
+	 * searches, in the lower level, the bnode which borders on `gateway'. 
 	 * Then get_gw_bnode_recurse() sets gnode to the found gateway and 
 	 * launches again get_gw_gnode(gnode). The loop continues until the
 	 * `gw_level' is reached.
