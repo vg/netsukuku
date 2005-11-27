@@ -120,6 +120,9 @@ void *new_rehook_thread(void *r)
 {
 	struct rehook_argv *rargv=(struct rehook_argv *)r;
 	ext_rnode_cache *erc;
+	map_node *root_node;
+	map_gnode *gnode;
+	int i;
 	
 	/*
 	 * Send a new challenge if `CHALLENGE_THRESHOLD' was exceeded 
@@ -137,7 +140,7 @@ void *new_rehook_thread(void *r)
 	/*
 	 * Rehook now
 	 */
-	rehook();
+	rehook(gnode, rargv->level);
 
 	if(rargv->level) {
 		/* Mark all the gnodes we border on as HOOKED, in this way
@@ -152,9 +155,14 @@ void *new_rehook_thread(void *r)
 
 		/* Mark also rargv->gnode */
 		rargv->gnode->flags|=GMAP_HGNODE;
-		
-		/* TODO: Mark all the gnodes which are rnodes of me at `level'
-		 */
+	
+		/* Mark all the gnodes which are rnodes of our gnode of the
+		 * `rargv->level' level. */
+		root_node=(map_node *)&me.cur_quadg.gnode[_EL(rargv->level)];
+		for(i=0; i<root_node->links; i++) {
+			gnode=(map_gnode *)root_node->r_node[i].r_node;
+			gnode->g.flags|=GMAP_HGNODE;
+		}
 	}
 
 finish:	
@@ -221,7 +229,7 @@ void new_rehook(map_gnode *gnode, int gid, int level, int gnode_count)
  * After the rehook, the andna_hook will be launched and the stopped daemon
  * reactivated.
  */
-int rehook(void)
+int rehook(map_gnode *hook_gnode, int hook_level)
 {
 	int ret=0;
 
@@ -251,7 +259,7 @@ int rehook(void)
 	/*
 	 * * *  REHOOK!  * * *
 	 */
-	netsukuku_hook();
+	netsukuku_hook(hook_gnode, hook_level);
 	andna_hook(0);
 
 	/* Update our hostnames */

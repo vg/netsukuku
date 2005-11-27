@@ -176,13 +176,13 @@ int map_find_bnode_rnode(map_bnode *bmap, int bmap_nodes, void *n)
  */
 int map_count_bnode_rnode(map_bnode *bmap, int bmap_nodes, void *n)
 {
-	int e, n;
+	int e, i;
 
-	for(e=0, n=0; e<bmap_nodes; e++)
-		if(rnode_find((map_node *)&bmap[e], (map_node *)n) != -1)
-			n++;
+	for(i=0, e=0; i<bmap_nodes; i++)
+		if(rnode_find((map_node *)&bmap[i], (map_node *)n) != -1)
+			e++;
 
-	return n;
+	return e;
 }
 
 /*
@@ -192,12 +192,12 @@ int map_count_bnode_rnode(map_bnode *bmap, int bmap_nodes, void *n)
  */
 int bmaps_count_bnode_rnode(map_bnode **bmap, int *bmap_nodes, int levels, void *n)
 {
-	int i, n;
+	int i, e;
 
-	for(i=0, n=0; i<levels; i++)
-		n+=map_count_bnode_rnode(bmap[i], bmap_nodes[i], n);
+	for(i=0, e=0; i<levels; i++)
+		e+=map_count_bnode_rnode(bmap[i], bmap_nodes[i], n);
 
-	return n;
+	return e;
 }
 
 /*
@@ -211,7 +211,7 @@ int map_del_bnode_rnode(map_bnode *bmap, int bmap_nodes, void *n)
 
 	for(e=0; e<bmap_nodes; e++)
 		if((p=rnode_find((map_node *)&bmap[e], (map_node *)n)) != -1) {
-			rnode_del(&bmap_[e], p);
+			rnode_del(&bmap[e], p);
 			ret++;
 		}
 
@@ -226,12 +226,12 @@ int map_del_bnode_rnode(map_bnode *bmap, int bmap_nodes, void *n)
  */
 int bmaps_del_bnode_rnode(map_bnode **bmap, int *bmap_nodes, int levels, void *n)
 {
-	int i, n;
+	int i, e;
 
-	for(i=0, n=0; i<levels; i++)
-		n+=map_del_bnode_rnode(bmap[i], bmap_nodes[i], n);
+	for(i=0, e=0; i<levels; i++)
+		e+=map_del_bnode_rnode(bmap[i], bmap_nodes[i], n);
 
-	return n;
+	return e;
 }
 
 /*

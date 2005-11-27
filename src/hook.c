@@ -723,9 +723,8 @@ int create_gnodes(inet_prefix *ip, int final_level)
 int update_join_rate(map_gnode *hook_gnode, int hook_level, int *gnode_count, 
 		struct free_nodes_hdr *fn_hdr)
 {
-	quadro_group qg;
 	u_int free_nodes, total_bnodes;
-	int new_gnode=0;
+	int new_gnode=0, i;
 	
 	/*
 	 * `free_nodes' is the number of VOID nodes present at the
@@ -765,7 +764,7 @@ int update_join_rate(map_gnode *hook_gnode, int hook_level, int *gnode_count,
 		 * we modify it and we hook at `hook_gnode'. */
 
 		if(me.cur_node->links-1)
-			hook_join_rate=fn_hdr.join_rate/(me.cur_node->links-1);
+			hook_join_rate=fn_hdr->join_rate/(me.cur_node->links-1);
 		else
 			hook_join_rate=0;
 	} else
@@ -781,12 +780,13 @@ finish:
  * gid will be based on the hash of our current gid.
  * `old_ip' is the IP we used before the rehook was launched.
  */
-void rehook_create_gnode(map_gnode *gnode, int hook_level, inet_prefix *old_ip)
+void rehook_create_gnode(map_gnode *hook_gnode, int hook_level, 
+		inet_prefix *old_ip)
 {
 	quadro_group qg;
 	int hash_gid;
 
-	iptoquadg(old_ip, me.ext_map, &qg, QUADG_GID);
+	iptoquadg(*old_ip, me.ext_map, &qg, QUADG_GID);
 
 	/* 
 	 * Hash our gids starting from the `hook_level' level,
@@ -874,7 +874,7 @@ void hook_reset(void)
  * If `hook_gnode' is not null, netsukuku_hook will try to hook only to the
  * rnodes which belongs to the `hook_gnode' at `hook_level' level.
  */
-int netsukuku_hook(int hook_level, inet_prefix *hook_gnode)
+int netsukuku_hook(map_gnode *hook_gnode, int hook_level)
 {	
 	struct radar_queue *rq=radar_q;
 	struct free_nodes_hdr fn_hdr;
@@ -904,6 +904,19 @@ int netsukuku_hook(int hook_level, inet_prefix *hook_gnode)
 	  	* *	   The beginning          * *	  	
 	 */
 	loginfo("The hook begins. Starting to scan the area");
+
+	/*
+	 * If we are rehooking to `hook_gnode' tell the radar to ignore all
+	 * the other rnodes, which don't belong to it.
+	 */
+	if(hook_gnode && total_hooks > 1) {
+		int gid[MAX_LEVELS];
+
+		memcpy(gid, me.cur_quadg.gid, sizeof(int)*MAX_LEVELS);
+		gid[hook_level]=pos_from_gnode(hook_gnode, me.ext_map[_EL(hook_level)]);
+		new_rnode_allowed(&alwd_rnodes, &alwd_rnodes_counter, 
+				gid, hook_level, GET_LEVELS(my_family));
+	}
 
 	/* 
 	 * We do our first scans to know what we've around us. The rnodes are 
@@ -1038,7 +1051,7 @@ hook_retry_scan:
 			 * gnode so we just give up and create a new gnode, which has
 			 * a gid based on the hash of our current gid.
 			 */
-			rehook_create_gnode(gnode, hook_level, &old_ip);
+			rehook_create_gnode(hook_gnode, hook_level, &old_ip);
 		}
 	} else {
 		
@@ -1167,6 +1180,9 @@ finish:
 	 * the rnodes' ips even if we haven't an int_map yet.
 	 */
 	reset_radar();
+	
+	/* Clear the allowed_rnode llist */
+	reset_rnode_allowed(&alwd_rnodes, &alwd_rnodes_counter);
 
 	/* We have finished the hook */
 	me.cur_node->flags&=~MAP_HNODE;

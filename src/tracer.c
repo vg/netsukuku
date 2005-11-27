@@ -639,7 +639,7 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 	map_rnode rn, rnn;
 			
 	int i, e, o, x, f, p, diff, bm, from_rnode_pos, skip_rfrom;
-	int first_gcount_hop;
+	int first_gcount_hop, gfrom_rnode_pos;
 	u_int hops, trtt_ms=0, tgcount=0;
 	u_short bb;
 	size_t found_block_sz, bsz;
@@ -812,16 +812,34 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 		from_rnode_pos=ip_to_rfrom(rip, rip_quadg, 0, 0);
 
 		if(hops > 1) {
-			/* hops-2 is an rnode of hops-1, which is our gnode,
+			map_rnode rnn;
+			
+			/* 
+			 * hops-2 is an rnode of hops-1, which is our gnode,
 			 * so we update the `gfrom' and `from' vars and let
-			 * them point to hops-2 */
+			 * them point to hops-2.
+			 */
 			gfrom=gnode_from_pos(tracer[hops-2].node,
 					me.ext_map[_EL(level)]);
-			gfrom->g.flags|=MAP_RNODE;
 			from = &gfrom->g;
+			from->flags|=MAP_GNODE | MAP_RNODE;
+
+			gfrom_rnode_pos=rnode_find(root_node, gfrom);
+			if(gfrom_rnode_pos == -1) {
+				gfrom_rnode_pos=root_node->links;
+				
+				/*
+				 * Add an rnode in the root_node which point to
+				 * `gfrom', because it is our new (g)rnode.
+				 */
+				memset(&rnn, '\0', sizeof(map_rnode));
+				rnn.r_node=(int *)gfrom;
+				rnode_add(root_node, &rnn);
+			}
+			MILLISEC_TO_TV(tracer[hops-2].rtt, root_node->r_node[gfrom_rnode_pos].rtt);
 		}
 
-		/* we are using the real from, so the root node it's the one
+		/* we are using the real from, so the root node is the one
 		 * at level 0 */
 		node=me.cur_node;
 	} else if(me.cur_node->flags & MAP_BNODE) {

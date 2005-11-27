@@ -56,6 +56,7 @@ void first_init_radar(void)
 	add_pkt_op(ECHO_REPLY, SKT_UDP, ntk_udp_radar_port, radar_recv_reply);
 	
 	rlist=(struct rnode_list *)clist_init(&rlist_counter);
+	alwd_rnodes=(struct allowed_rnode *)clist_init(&alwd_rnodes_counter);
 
 	init_radar();
 }
@@ -238,6 +239,57 @@ char *rnl_get_devname(struct rnode_list *rnlist, map_node *node)
 		return 0;
 
 	return rnl->dev->dev_name;
+}
+
+/*
+ * is_rnode_allowed: it verifies if the rnode described by the `rip' IP is 
+ * present in the `alr' llist. If it is 1 is returned, otherwise 0.
+ */
+int is_rnode_allowed(inet_prefix rip, struct allowed_rnode *alr)
+{
+	quadro_group qg;
+	int i, e;
+
+	iptoquadg(rip, me.ext_map, &qg, QUADG_GID);
+	
+	list_for(alr) {
+		for(i=alr->min_level; i < alr->max_level; i++)
+			if(qg.gid[i] != alr->gid[i]) {
+				e=1;
+				break;
+			}
+		if(!e)
+			return 1;
+	}
+
+	return 0;
+}
+
+/*
+ * new_rnode_allowed: add a new allowed rnode in the `alr' llist which has
+ * already `*alr_counter' members. `gid', `min_lvl', and `max_lvl' are the
+ * respective field of the new allowed_rnode struct.
+ */
+void new_rnode_allowed(struct allowed_rnode **alr, int *alr_counter,
+		int *gid, int min_lvl, int max_lvl)
+{
+	struct allowed_rnode *new_alr;
+
+	new_alr=xmalloc(sizeof(struct allowed_rnode));
+
+	new_alr->min_level=min_lvl;
+	new_alr->max_level=max_lvl;
+	memset(new_alr->gid, 0, sizeof(int)*MAX_LEVELS);
+	memcpy(new_alr->gid, &gid[min_lvl], sizeof(int)*(max_lvl-min_lvl+1));
+
+	clist_add(alr, alr_counter, new_alr);
+}
+
+void reset_rnode_allowed(struct allowed_rnode **alr, int *alr_counter)
+{
+	if(alr)
+		list_destroy(alr);
+	*alr=(struct allowed_rnode *)clist_init(alr_counter);
 }
 
 /*
@@ -924,6 +976,13 @@ int radar_recv_reply(PACKET pkt)
 		return -1;
 	}
 
+	/* 
+	 * If the `alwd_rnodes_counter' counter isn't zero, verify that
+	 * `pkt.from' is an allowed rnode, otherwise drop this pkt 
+	 */
+	if(alwd_rnodes_counter && !is_rnode_allowed(pkt.from, alwd_rnodes))
+		return -1;
+	
 	return radar_exec_reply(pkt);
 }
 

@@ -197,6 +197,9 @@ void gnode_dec_seeds(quadro_group *qg, int level);
 void pack_quadro_group(quadro_group *qg, char *pack);
 void unpack_quadro_group(quadro_group *qg, char *pack);
 
+int free_gids(quadro_group *qg, int level, map_gnode **ext_map,	map_node *int_map);
+int void_gids(quadro_group *qg, int level, map_gnode **ext_map,	map_node *int_map);
+
 int random_ip(inet_prefix *ipstart, int final_level, int final_gid, 
 		int total_levels, map_gnode **ext_map, int only_free_gnode, 
 		inet_prefix *new_ip, int my_family);

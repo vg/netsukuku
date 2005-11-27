@@ -288,7 +288,7 @@ int increment_gids(quadro_group *qg, int level, map_gnode **ext_map,
 		map_node *int_map, int(*is_gnode_flag_set)(map_gnode *gnode), 
 		int(*is_node_flag_set)(map_node *node))
 {
-	int g, groups, gid;
+	int g, groups, gid, i, e=0;
 
 	if(level >= qg->levels)
 		return -1;
@@ -303,11 +303,11 @@ int increment_gids(quadro_group *qg, int level, map_gnode **ext_map,
 		/*
 		 * find a gid in this `level' which isn't full
 		 */
-		for(i=0; i < groups; i++) {
+		for(i=0, e=0; i < groups; i++) {
 			qg->gid[level]=(gid + i) % groups;
 
 			if((!level && is_node_flag_set(&int_map[qg->gid[level]])) ||
-				(level && !is_gnode_flag_set(&ext_map[_EL(level)][gq->gid[level]]))) {
+				(level && !is_gnode_flag_set(&ext_map[_EL(level)][qg->gid[level]]))) {
 				e=1;
 				break;
 			}
@@ -338,7 +338,8 @@ int increment_gids(quadro_group *qg, int level, map_gnode **ext_map,
 			/*
 			 * Recurse by leveling up
 			 */
-			if(!increment_gids(qg, level+1, ext_map, int_map))
+			if(!increment_gids(qg, level+1, ext_map, int_map, 
+					is_gnode_flag_set, is_node_flag_set))
 				/* 
 				 * We change one of our upper gid, we can
 				 * retake the old gid we had at this `level'
@@ -441,7 +442,7 @@ int random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 		gid[i]=qg.gid[i];
 
 	/* Change the gids if some of them point to full gnodes */
-	free_gids(&qg, final_level+1; ext_map, int_map);
+	free_gids(&qg, final_level+1, ext_map, 0);
 
 	/*
 	 * Now we choose random gids for each level so we'll have a random ip

@@ -33,7 +33,7 @@
 #define MILLISEC(x)	(((x).tv_sec*1000)+((x).tv_usec/1000))
 
 /*
- * MILLISEC_TO_TV: Converts `x', which is an int into a t, a timeval struct
+ * MILLISEC_TO_TV: Converts `x', which is an int into `t', a timeval struct
  */
 #define MILLISEC_TO_TV(x,t) 						\
 do{									\

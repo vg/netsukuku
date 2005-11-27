@@ -3,12 +3,12 @@
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 
 - Gnodes contiguity
-	- Nodes count in the qspn_pkt which traverses gnodes	[ 50% ]
+	- Nodes count in the qspn_pkt which traverses gnodes	  [  50% ]
 	- gnode re-hook
-		- rehook() function				[ 50% ]
+		- rehook() function				  [  50% ]
 			- new gid based on the hash of the same gid, when
-			  all the other gnodes are full.	[ 70% ]
-			- ignore the rnodes of the previos gnode.
+			  all the other gnodes are full.	  [  70% ]
+			- ignore the rnodes of the previos gnode. [ 100% ]
 			- at least one qspn_round must be passed.
 			- if gnode_count == max then gnode|=GMAP_FULL;
 			- call rehook() from tracer_store()

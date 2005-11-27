@@ -493,7 +493,7 @@ int main(int argc, char **argv)
 
 	
 	/* Now we hook in Netsukuku */
-	netsukuku_hook();
+	netsukuku_hook(0, 0);
 	
 	/*
 	 * If not disabled, start the ANDNA daemon 

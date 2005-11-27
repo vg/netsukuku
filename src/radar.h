@@ -54,8 +54,9 @@ struct radar_queue
 	struct radar_queue *prev;
 
 	inet_prefix	ip;			/*Node's ip*/
-	interface	*dev;			/*The pointer to the interface struct present in me.cur_ifs
-						  of the device where we got the node's pongs */
+	interface	*dev;			/*The pointer to the interface struct, present 
+						  in me.cur_ifs, of the device where we got the 
+						  node's pongs */
 	
 	map_node       *node;			/*The node we are pinging*/
 	quadro_group	quadg;			/*Node's data for the ext_map*/
@@ -91,6 +92,27 @@ struct rnode_list
 struct rnode_list *rlist;
 int rlist_counter;
 
+/*
+ * When this list isn't empty, the radar will receive only the ECHO_REPLY sent
+ * from rnodes which are in the allowed_rnode list.
+ */
+struct allowed_rnode
+{
+	struct allowed_rnode *next;
+	struct allowed_rnode *prev;
+	
+	/* 
+	 * In order to see if the rnode X is part of this list we compare all
+	 * its gids in the range of gids[min_level] and gids[max_level-1] with
+	 * the allowed_rnode.gid array.
+	 */
+	u_char 		min_level;
+	u_char		max_level;
+	u_int		gid[MAX_LEVELS];
+};
+struct allowed_rnode *alwd_rnodes;
+int alwd_rnodes_counter;
+
 /* 
  * The ECHO_ME pkt:
  * It is just a normal pkt which contains in the body (pkt.msg) one 
@@ -116,6 +138,10 @@ int count_hooking_nodes(void);
 void rnl_reset(struct rnode_list **rnlist, int *rnlist_counter);
 interface *rnl_get_dev(struct rnode_list *rnlist, map_node *node);
 char *rnl_get_devname(struct rnode_list *rnlist, map_node *node);
+
+void new_rnode_allowed(struct allowed_rnode **alr, int *alr_counter,
+		int *gid, int min_lvl, int max_lvl);
+void reset_rnode_allowed(struct allowed_rnode **alr, int *alr_counter);
 
 void final_radar_queue(void);
 void radar_update_map(void);
