@@ -90,7 +90,7 @@ int update_rehook_time(int level)
 	
 	if(total_rehooks && sec_elapsed > REHOOK_INSTANCE_TIME(level)) {
 		/* 
-		 * REHOOK_INSTANCE_TIME expired: we cannot take no more rehooks
+		 * REHOOK_INSTANCE_TIME expired: we cannot take anymore rehooks
 		 * in this instance. 
 		 */
 		
@@ -110,6 +110,29 @@ int update_rehook_time(int level)
 	total_rehooks++;
 
 	return 0;
+}
+
+/*
+ * wait_new_rnode: it waits until we have a rnode, which belongs to
+ * `rargv->gnode'.
+ */
+void wait_new_rnode(struct rehook_argv *rargv)
+{
+	ext_rnode_cache *erc;
+	quadro_group qg;
+
+	memcpy(&qg, &me.cur_quadg, sizeof(quadro_group));
+	memset(qg.gnode, 0, sizeof(map_gnode *)*(MAX_LEVELS-ZERO_LEVEL));
+	qg.gid[rargv->level]=rargv->gid;
+			
+	for(;;) {
+		erc=me.cur_erc;
+		list_for(erc)
+			if(!quadg_gids_cmp(erc->e->quadg, qg, rargv->level))
+				return;
+
+		radar_wait_new_scan();
+	}
 }
 
 /*
@@ -133,10 +156,13 @@ void *new_rehook_thread(void *r)
 			/* Challenge failed, do not rehook */
 			goto finish;
 
-	/* TODO:
-	wait_rnodes_before_hooking();
-	*/
-	
+	/* Before rehooking, at least one qspn_round has to be completed */
+	while(!me.cur_qspn_id[rargv->level])
+		usleep(505050);
+
+	if(rargv->gid != me.cur_quadg.gid[rargv->level])
+		wait_new_rnode(rargv);
+
 	/*
 	 * Rehook now
 	 */

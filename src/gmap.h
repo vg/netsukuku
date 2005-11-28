@@ -98,6 +98,10 @@ typedef struct
 #define GET_LEVELS(family)	({ (family) == AF_INET ? 		        \
 				   IPV4_LEVELS : IPV6_LEVELS; })
 
+/* NODES_PER_LEVEL: returns the maximum number of nodes which can reside in
+ * a gnode of the `lvl'th level */
+#define NODES_PER_LEVEL(lvl)	((1<<(MAXGROUPNODE_BITS*(lvl))))
+
 /* Struct used to keep all the quadro_group ids of a node. (The node is part of this
  * quadro groups) */
 typedef struct {

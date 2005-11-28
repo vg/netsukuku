@@ -25,6 +25,7 @@
 #include "radar.h"
 #include "route.h"
 #include "radar.h"
+#include "rehook.h"
 #include "tracer.h"
 #include "qspn.h"
 #include "netsukuku.h"
@@ -639,7 +640,7 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 	map_rnode rn, rnn;
 			
 	int i, e, o, x, f, p, diff, bm, from_rnode_pos, skip_rfrom;
-	int first_gcount_hop, gfrom_rnode_pos;
+	int first_gcount_hop, gfrom_rnode_pos, from_tpos;
 	u_int hops, trtt_ms=0, tgcount=0;
 	u_short bb;
 	size_t found_block_sz, bsz;
@@ -657,13 +658,13 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 	if(!level) {
 	 	from   	       = node_from_pos(tracer[hops-1].node, me.int_map);
 		root_node      = me.cur_node;
-		from_rnode_pos = rnode_find(root_node, from);
 	} else {
 		gfrom	       = gnode_from_pos(tracer[hops-1].node, me.ext_map[_EL(level)]);
 		from	       = &gfrom->g;
 		root_node      = &me.cur_quadg.gnode[_EL(level)]->g;
-		from_rnode_pos = rnode_find(root_node, from);
 	}
+	from_rnode_pos = rnode_find(root_node, from);
+	from_tpos      = hops-1;
 
 	/* It's alive, keep it young */
 	from->flags&=~QSPN_OLD;
@@ -823,6 +824,7 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 					me.ext_map[_EL(level)]);
 			from = &gfrom->g;
 			from->flags|=MAP_GNODE | MAP_RNODE;
+			from_tpos = hops-2;
 
 			gfrom_rnode_pos=rnode_find(root_node, gfrom);
 			if(gfrom_rnode_pos == -1) {
@@ -850,6 +852,10 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 			skip_rfrom = 1;
 	}
 
+	/* Let's see if we have to rehook */
+	new_rehook((map_gnode *)from, tracer[from_tpos].node, level,
+			tracer[from_tpos].gcount);
+
 	/* Get the total gnode count and update `qspn_gnode_count' */
 	tgcount=tracer_get_tgcount(trcr_hdr, tracer, first_gcount_hop);
 	qspn_inc_gcount(qspn_gnode_count, level, tgcount);
@@ -870,16 +876,24 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 			if(node == me.cur_node) {
 				debug(DBG_INSANE, "Ehi! There's a hop in the "
 						"tracer pkt which points to me");
+				new_rehook((map_gnode *)node, tracer[i].node, 
+						level, 0);
 				break;
 			}
 		} else {
 			gnode=gnode_from_pos(tracer[i].node, me.ext_map[_EL(level)]);
 			node=&gnode->g;
 
+			if(tracer[i].gcount == NODES_PER_LEVEL(level))
+				/* The gnode is full */
+				gnode->g.flags|=GMAP_FULL;
+			
 			if(gnode == me.cur_quadg.gnode[_EL(level)] && 
 					gnode->g.flags & MAP_BNODE) {
 				debug(DBG_INSANE, "There's a hop in the "
 						"tracer pkt which points to me");
+				new_rehook(gnode, tracer[i].node, level,
+						tracer[i].gcount);
 				break;
 			}
 		}

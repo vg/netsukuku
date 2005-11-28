@@ -687,7 +687,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 	}
 
 	/* Are we a new hash_gnode ? */
-	if(time(0)-me.uptime < (ANDNA_EXPIRATION_TIME/2) && 
+	if(time(0)-me.uptime < (ANDNA_EXPIRATION_TIME/3) && 
 			!(ac=andna_cache_findhash(req->hash))) {
 		/*
 		 * We are a new hash_gnode and we haven't this hostname in our
@@ -1947,12 +1947,30 @@ void *andna_hook(void *null)
 }
 
 /*
+ * andna_min_update_retry: waits ANDNA_MIN_UPDATE_TIME seconds and then
+ * updates `void_alcl'.
+ */
+void *andna_min_update_retry(void *void_alcl)
+{
+	lcl_cache *alcl=(lcl_cache *)void_alcl;
+	int ret;
+
+	sleep(ANDNA_MIN_UPDATE_TIME);
+
+	ret=andna_register_hname(alcl);
+	if(!ret)
+		loginfo("Hostname \"%s\" registered/updated "
+				"successfully", alcl->hostname);
+}
+
+/*
  * andna_register_new_hnames: updates/registers all the hostnames present in
  * the local cache. If `only_new_hname' is not zero, it registers only the new
  * hostnames added in the local cache.
  */
 void andna_update_hnames(int only_new_hname)
 {
+	pthread_t thread;
 	lcl_cache *alcl=andna_lcl;
 	int ret, updates=0;
 
@@ -1966,6 +1984,11 @@ void andna_update_hnames(int only_new_hname)
 			loginfo("Hostname \"%s\" registered/updated "
 					"successfully", alcl->hostname);
 			updates++;
+		} else {
+			/* Wait ANDNA_MIN_UPDATE_TIME seconds then retry to
+			 * update it */
+			pthread_create(&thread, 0, andna_min_update_retry, (void *)alcl);
+			pthread_detach(thread);
 		}
 	}
 	if(updates)

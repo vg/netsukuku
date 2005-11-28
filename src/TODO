@@ -5,17 +5,14 @@
 - Gnodes contiguity
 	- Nodes count in the qspn_pkt which traverses gnodes	  [  50% ]
 	- gnode re-hook
-		- rehook() function				  [  50% ]
+		- rehook() function				  [  55% ]
 			- new gid based on the hash of the same gid, when
-			  all the other gnodes are full.	  [  70% ]
+			  all the other gnodes are full.	  [  55% ]
 			- ignore the rnodes of the previos gnode. [ 100% ]
-			- at least one qspn_round must be passed.
-			- if gnode_count == max then gnode|=GMAP_FULL;
-			- call rehook() from tracer_store()
-		- re-hook of two gnodes with different gid
-		- re-hook of two gnodes with the  same gid
+			- at least one qspn_round must be passed. [ 100% ]
+			- call rehook() from tracer_store()	  [ 100% ]
 		- timed re-hook: the node waits that its rnodes, which are
-		  nearer to the other gnode, do the re-hook first.
+		  nearer to the other gnode, do the re-hook first.[ 100% ]
 	
 	- Challenge
 		- RSA between rnodes: the nodes which are already hooked ask
@@ -32,6 +29,7 @@
 		- Ban of gnodes which lost the challenge ?
 		- Challenge between two gnode not contiguous, which have the
 		  same gid.
+
 - DNS wrapper: ip -> hostnames
 	- -r forward to other /etc/resolv.conf dns server
 

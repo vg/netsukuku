@@ -732,7 +732,7 @@ int update_join_rate(map_gnode *hook_gnode, int hook_level, int *gnode_count,
 	 * between the maximum number of nodes in that level and the
 	 * actual number of nodes in it (gnode_count).
 	 */
-	free_nodes = (1<<(MAXGROUPNODE_BITS*hook_level))-gnode_count[_EL(hook_level)];
+	free_nodes = NODES_PER_LEVEL(hook_level) - gnode_count[_EL(hook_level)];
 
 	/* There aren't free nodes in `hook_gnode', so skip this function */
 	if(free_nodes <= 0) {
@@ -750,7 +750,7 @@ int update_join_rate(map_gnode *hook_gnode, int hook_level, int *gnode_count,
 
 		for(i=hook_level-1; i >= 0; i--) {
 
-			/* `total_bnodes' = how many bnodes borders to
+			/* `total_bnodes' = how many bnodes border to
 			 * `hook_gnode' in level `i'th */
 			total_bnodes = map_count_bnode_rnode(me.bnode_map[i], me.bmap_nodes[i],
 					hook_gnode);

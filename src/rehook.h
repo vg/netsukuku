@@ -26,14 +26,16 @@ int rehook_mutex;	/* The can be only one rehook at the same time */
  * REHOOK_INSTANCE_TIME(level) seconds. After REHOOK_INSTANCE_TIME(level)
  * seconds have passed since the first rehook, REHOOK_WAIT_TIME(level) seconds
  * must be waited before rehooking again.
- * `level' is the level where rehooking is taking place.
+ * `level' is the level where the rehook is taking place.
+ * REHOOK_WAIT_TIME is calculated in this way:
+ * 	((8<<level) - (1<<level)) * 60
  */
 #define REHOOK_PER_INSTANCE		8
 #define REHOOK_INSTANCE_TIME(level)	(REHOOK_PER_INSTANCE*(level)*60)
-#define REHOOK_WAIT_TIME(level)		((REHOOK_PER_INSTANCE<<(level))*60)
+#define REHOOK_WAIT_TIME(level)		(( (8<<(level)) - (1<<(level)) ) * 60)
 
 
-time_t last_instance_rehook;		/* Whe the first rehook of the latest
+time_t last_instance_rehook;		/* When the first rehook of the latest
 					   instance occurred */
 int total_rehooks;			/* Number of rehooks made in the current 
 					   instance. 
@@ -41,8 +43,8 @@ int total_rehooks;			/* Number of rehooks made in the current
 
 
 
-#define CHALLENGE_THRESHOLD	(2<<16)	/* When the gnode X, which must
-					   rehook, has a gnode_count >= (2<<16) 
+#define CHALLENGE_THRESHOLD	(1<<16)	/* When the gnode X, which must
+					   rehook, has a gnode_count >= (1<<16) 
 					   it sends a new challenge. */
 
 
