@@ -39,6 +39,8 @@
 #include "andna.h"
 #include "radar.h"
 #include "hook.h"
+#include "rehook.h"
+
 #include "xmalloc.h"
 #include "log.h"
 
@@ -337,6 +339,7 @@ void init_netsukuku(char **argv)
 		loginfo("netsukuku_d is in restricted mode.");
 	
 	hook_init();
+	rehook_init();
 
 	me.uptime=time(0);
 }

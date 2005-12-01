@@ -54,22 +54,23 @@ int free_the_tmp_cur_node;
  */
 int verify_free_nodes_hdr(inet_prefix *to, struct free_nodes_hdr *fn_hdr)
 {
+	quadro_group qg_a, qg_b;
 	inet_prefix ipstart;
-	int ip_match_sz;
 
-	/* If fn_hdr->ipstart != `to' there is an error */
-	inet_setip(&ipstart, fn_hdr->ipstart, my_family);
-	ip_match_sz=sizeof(u_char)*(GET_LEVELS(my_family)-1);
-	if(memcmp(ipstart.data, to->data, ip_match_sz))
-		return 1;
-
-	if(fn_hdr->nodes <= 0 || fn_hdr->nodes == (MAXGROUPNODE-1))
-		return 1;
-	
 	if(fn_hdr->max_levels > GET_LEVELS(my_family) || !fn_hdr->level)
 		return 1;
 	
 	if(fn_hdr->level >= fn_hdr->max_levels)
+		return 1;
+
+	/* If fn_hdr->ipstart != `to' there is an error */
+	inet_setip(&ipstart, fn_hdr->ipstart, my_family);
+	iptoquadg(ipstart, me.ext_map, &qg_a, QUADG_GID);
+	iptoquadg(*to, me.ext_map, &qg_b, QUADG_GID);
+	if(quadg_gids_cmp(qg_a, qg_b, fn_hdr->level))
+		return 1;
+
+	if(fn_hdr->nodes <= 0 || fn_hdr->nodes == (MAXGROUPNODE-1))
 		return 1;
 
 	return 0;
@@ -903,7 +904,8 @@ int netsukuku_hook(map_gnode *hook_gnode, int hook_level)
 	/* 	
 	  	* *	   The beginning          * *	  	
 	 */
-	loginfo("The hook begins. Starting to scan the area");
+	loginfo("The %s begins. Starting to scan the area", 
+			total_hooks > 1 ? "rehook" : "hook");
 
 	/*
 	 * If we are rehooking to `hook_gnode' tell the radar to ignore all

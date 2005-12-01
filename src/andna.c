@@ -1961,6 +1961,8 @@ void *andna_min_update_retry(void *void_alcl)
 	if(!ret)
 		loginfo("Hostname \"%s\" registered/updated "
 				"successfully", alcl->hostname);
+
+	return 0;
 }
 
 /*

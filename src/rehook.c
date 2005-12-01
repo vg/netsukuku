@@ -243,7 +243,7 @@ void new_rehook(map_gnode *gnode, int gid, int level, int gnode_count)
 	rargv->level	   = level;
 	rargv->gnode_count = gnode_count;
 	pthread_create(&thread, &new_rehook_thread_attr, new_rehook_thread, 
-			(void *)&rargv);
+			(void *)rargv);
 }
 
 /*
@@ -275,9 +275,11 @@ int rehook(map_gnode *hook_gnode, int hook_level)
 	qspn_reset(GET_LEVELS(my_family));
 
 	/* Andna reset */
-	andna_cache_destroy();
-	counter_c_destroy();
-	rh_cache_flush();
+	if(!server_opt.disable_andna) {
+		andna_cache_destroy();
+		counter_c_destroy();
+		rh_cache_flush();
+	}
 	
 	/* Clear the uptime */
 	me.uptime=time(0);
@@ -286,10 +288,12 @@ int rehook(map_gnode *hook_gnode, int hook_level)
 	 * * *  REHOOK!  * * *
 	 */
 	netsukuku_hook(hook_gnode, hook_level);
-	andna_hook(0);
 
-	/* Update our hostnames */
-	andna_update_hnames(0);
+	if(!server_opt.disable_andna) {
+		/* Rehook in ANDNA and update our hostnames */
+		andna_hook(0);
+		andna_update_hnames(0);
+	}
 
 	return ret;
 }

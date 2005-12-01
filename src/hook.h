@@ -24,6 +24,10 @@
 #define MAX_FIRST_RADAR_SCANS	3  /* How many time we have to retry 
 				      the first radar_scan if we
 				      didn't found anything */
+#ifdef DEBUG
+#undef  MAX_FIRST_RADAR_SCANS
+#define MAX_FIRST_RADAR_SCANS	1
+#endif
 
 /* The IP class used during the hook */
 #define HOOKING_IP  0x100000a      /* 10.0.0.1  (in network order) */

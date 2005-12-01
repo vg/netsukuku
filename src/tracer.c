@@ -281,7 +281,8 @@ int tracer_get_trtt(int from_rnode_pos, tracer_hdr *trcr_hdr,
 u_int tracer_get_tgcount(tracer_hdr *trcr_hdr, tracer_chunk *tracer,
 		int first_hop)
 {
-	u_int i, hops, tgcount=0;	
+	u_int hops, tgcount=0;
+	int i;
 	
 	hops = trcr_hdr->hops;
 	if(!hops)
@@ -652,23 +653,30 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 	/* Nothing to store */
 	if(hops <= 0)
 		return 0;
-	else if(hops <= 1 && !bblock_sz)
-		return 0;
 	
+	from_tpos = hops-1;
 	if(!level) {
-	 	from   	       = node_from_pos(tracer[hops-1].node, me.int_map);
+	 	from   	       = node_from_pos(tracer[from_tpos].node, me.int_map);
 		root_node      = me.cur_node;
 	} else {
-		gfrom	       = gnode_from_pos(tracer[hops-1].node, me.ext_map[_EL(level)]);
+		gfrom	       = gnode_from_pos(tracer[from_tpos].node, me.ext_map[_EL(level)]);
 		from	       = &gfrom->g;
 		root_node      = &me.cur_quadg.gnode[_EL(level)]->g;
 	}
 	from_rnode_pos = rnode_find(root_node, from);
-	from_tpos      = hops-1;
 
 	/* It's alive, keep it young */
 	from->flags&=~QSPN_OLD;
 
+#if 0
+	if (hops == 1 && !bblock_sz && 
+			((level && from != root_node) || (level && from == root_node))) {
+		new_rehook((map_gnode *)from, tracer[from_tpos].node, level,
+				tracer[from_tpos].gcount);
+		return 0;
+	}
+#endif
+	
 	if(bblock_sz && level != me.cur_quadg.levels-1) {
 
 		/* Well, well, we have to take care of bnode blocks, split the

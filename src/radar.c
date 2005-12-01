@@ -279,16 +279,20 @@ void new_rnode_allowed(struct allowed_rnode **alr, int *alr_counter,
 
 	new_alr->min_level=min_lvl;
 	new_alr->max_level=max_lvl;
+	
 	memset(new_alr->gid, 0, sizeof(int)*MAX_LEVELS);
-	memcpy(new_alr->gid, &gid[min_lvl], sizeof(int)*(max_lvl-min_lvl+1));
+	memcpy(&new_alr->gid[min_lvl], &gid[min_lvl], sizeof(int)*(max_lvl-min_lvl+1));
+	
+	debug(DBG_SOFT, "new_rnode_allowed: %d, %d, %d, %d. min_lvl: %d, max_lvl: %d", 
+			gid[0], gid[1], gid[2], gid[3], min_lvl, max_lvl);
 
 	clist_add(alr, alr_counter, new_alr);
 }
 
 void reset_rnode_allowed(struct allowed_rnode **alr, int *alr_counter)
 {
-	if(alr)
-		list_destroy(alr);
+	if(*alr)
+		list_destroy((*alr));
 	*alr=(struct allowed_rnode *)clist_init(alr_counter);
 }
 
@@ -980,8 +984,10 @@ int radar_recv_reply(PACKET pkt)
 	 * If the `alwd_rnodes_counter' counter isn't zero, verify that
 	 * `pkt.from' is an allowed rnode, otherwise drop this pkt 
 	 */
-	if(alwd_rnodes_counter && !is_rnode_allowed(pkt.from, alwd_rnodes))
+	if(alwd_rnodes_counter && !is_rnode_allowed(pkt.from, alwd_rnodes)) {
+		debug(DBG_INSANE, "Filtering 0x%x ECHO_REPLY", pkt.hdr.id);
 		return -1;
+	}
 	
 	return radar_exec_reply(pkt);
 }
