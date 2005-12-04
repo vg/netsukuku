@@ -44,46 +44,6 @@
 		2*QSPN_WAIT_DELTA_MS*(level) + QSPN_WAIT_DELTA_MS)
 
 
-
-/*we are using the qspn_map style II*/
-#define QMAP_STYLE_II
-#undef  QMAP_STYLE_I
-/*****) The qspn int_map (****
- * The struct it's identical to the normal int_map but there are a few
- * differences of meaning in the qmap:
- * We distinguish from qspn_map styleI and styleII.
- * In the styleI:
- * - All the nodes have map_node.r_node which points to the r_node that is part of the 
- *   route to reach the root_node. So from all the nodes it is possible to reach the
- *   root_node following recursively the r_nodes. 
- *   The only execption is the root_node itself. The root_node's map_node.r_node keeps
- *   all its rnodes as a normal (non qspn) map would.
- * - map_node.r_node.rtt is the round trip time needed to reach map_node.r_node[x].r_node 
- *   from map_node. 
- * 
- * Instead in the qspn_map styleII:
- * - map_node.r_node points to the r_node of the root_node to be used as gateway to 
- *   reach map_node. So map_node.r_node stores only the gateway needed to reach map_node
- *   from the root_node.
- *   The only execption is the root_node itself. The root_node's map_node.r_node keeps
- *   all its rnodes as a normal (non qspn) map would.
- * - map_node.r_node.rtt isn't used.
- *
- * The only exception is the root_node. Its rnodes have a different meaning: they are
- * its effective rnodes, so each map_node.r_node points to the node which is the
- * real rnode of the root_node.
- * The root_node at level 0 may have also rnode of a different gnode (it is a border node).
- * To store these external rnodes in root_node.r_node[x], the root_node.r_node[x].r_node 
- * will point to the relative ext_rnode struct (see gmap.h) and the MAP_GNODE | MAP_ERNODE
- * flags will be set in root_node.r_node[x].flags.
- * The rnodes of the root_node of 0 level are updated by the radar(), instead the root_nodes
- * of greater levels are updated by the qspn.
- *
- * Currently the qspn_map styleII is used.
- * typedef qmap_node *int_map;
- */
-
-
 /* This list keeps tracks of the qspn_pkts sent or
  * received by our rnodes*/
 struct qspn_buffer
@@ -107,10 +67,11 @@ struct qspn_buffer **qspn_b; /*It is sizeof(struct qspn_buffer *)*levels big*/
 
 int *qspn_send_mutex;	     /*It is sizeof(int)*levels big.*/
 
-#define GCOUNT_LEVELS		(IPV4_LEVELS-ZERO_LEVEL)
+#define GCOUNT_LEVELS		(IPV4_LEVELS-ZERO_LEVEL+UNITY_LEVEL)
 /*
  * qspn_gnode_count[x] is the number of nodes present in the gnode
  * me.cur_quadg.gnode[x], it is updated at each qspn_round.
+ * Use the _EL() macro!
  */ 
 u_int qspn_gnode_count[GCOUNT_LEVELS];
 
@@ -135,14 +96,14 @@ int qspn_b_del_dead_rnodes(struct qspn_buffer **qb, map_node *root_node);
 void qspn_b_del_all_dead_rnodes(void);
 
 int  qspn_round_left(u_char level);
-void update_qspn_time(u_char level, struct timeval *);
+void update_qspn_time(u_char level, u_int new_qspn_time);
 
 void qspn_inc_gcount(int *gcount, int level, int inc);
 void qspn_dec_gcount(int *gcount, int level, int dec);
 void qspn_reset_gcount(int *gcount, int value);
 void qspn_backup_gcount(int *old_gcount, int *gcount);
 
-void qspn_new_round(u_char level, int new_qspn_id, struct timeval *new_qspn_time);
+void qspn_new_round(u_char level, int new_qspn_id, u_int new_qspn_time);
 
 int  qspn_send(u_char level);
 int  qspn_close(PACKET rpkt);

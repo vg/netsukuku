@@ -1,5 +1,8 @@
 		[HIGH PRIORITY] 
 
+- Use an u_int for `trtt' and `rtt' in map_node, instead of using a struct
+  timeval. In this way we save 8 bytes!
+
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 
 - Gnodes contiguity
@@ -13,6 +16,7 @@
 			- call rehook() from tracer_store()	  [ 100% ]
 		- timed re-hook: the node waits that its rnodes, which are
 		  nearer to the other gnode, do the re-hook first.[ 100% ]
+		- merging of ext_maps
 	
 	- Challenge
 		- RSA between rnodes: the nodes which are already hooked ask
@@ -32,6 +36,8 @@
 
 - DNS wrapper: ip -> hostnames
 	- -r forward to other /etc/resolv.conf dns server
+
+- HOOK requests hangs if are made to non existent nodes. Add a timeout.
 
 		[MEDIUM PRIORITY] 
 
@@ -53,6 +59,8 @@
 
 - Write the documentation for the code that can be used by other
   programs. (By the way it is already commented.)
+
+- Interactive shell
 
 		[LOW PRIORITY]
 

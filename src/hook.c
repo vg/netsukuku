@@ -305,7 +305,7 @@ int get_qspn_round(inet_prefix to, interface *dev, struct timeval to_rtt,
 	buf+=max_levels * sizeof(struct timeval);
 	gcount=(u_int *)buf;
 	for(level=0; level < GCOUNT_LEVELS; level++)
-		qspn_inc_gcount(qspn_gcount, level, gcount[level]);
+		qspn_gcount[level]=gcount[level];
 
 finish:
 	pkt_free(&pkt, 0);
@@ -703,7 +703,7 @@ int create_gnodes(inet_prefix *ip, int final_level)
 	
 	/* Tidying up the internal map */
 	if(free_the_tmp_cur_node) {
-		free(me.cur_node);
+		xfree(me.cur_node);
 		free_the_tmp_cur_node=0;
 	}
 	reset_int_map(me.int_map, 0);
@@ -735,6 +735,9 @@ int update_join_rate(map_gnode *hook_gnode, int hook_level, int *gnode_count,
 	 */
 	free_nodes = NODES_PER_LEVEL(hook_level) - gnode_count[_EL(hook_level)];
 
+	debug(DBG_SOFT, "update_join_rate: free_nodes %d, fn_hdr->join_rate %d",
+			free_nodes, fn_hdr->join_rate);
+
 	/* There aren't free nodes in `hook_gnode', so skip this function */
 	if(free_nodes <= 0) {
 		new_gnode=1;
@@ -759,7 +762,7 @@ int update_join_rate(map_gnode *hook_gnode, int hook_level, int *gnode_count,
 			total_bnodes = total_bnodes ? total_bnodes : 1;
 			hook_join_rate /= total_bnodes;
 		}
-
+		
 	} else if(fn_hdr->join_rate) {
 		/* The join_rate we got from our rnode is > 0, so
 		 * we modify it and we hook at `hook_gnode'. */
@@ -770,6 +773,9 @@ int update_join_rate(map_gnode *hook_gnode, int hook_level, int *gnode_count,
 			hook_join_rate=0;
 	} else
 		new_gnode=1;
+
+	debug(DBG_NOISE, "update_join_rate: new join_rate %d, new_gnode %d",
+			hook_join_rate, new_gnode);
 
 finish:
 	return new_gnode;
@@ -804,35 +810,9 @@ void rehook_create_gnode(map_gnode *hook_gnode, int hook_level,
 	/* Save the new ip in `me.cur_ip' */
 	gidtoipstart(qg.gid, GET_LEVELS(my_family), GET_LEVELS(my_family), 
 			my_family, &me.cur_ip);
-}
 
-int hook_init(void)
-{
-	/* register the hook's ops in the pkt_op_table */
-	add_pkt_op(GET_FREE_NODES, SKT_TCP, ntk_tcp_port, put_free_nodes);
-	add_pkt_op(PUT_FREE_NODES, SKT_TCP, ntk_tcp_port, 0);
-	add_pkt_op(GET_QSPN_ROUND, SKT_TCP, ntk_tcp_port, put_qspn_round);
-	add_pkt_op(PUT_QSPN_ROUND, SKT_TCP, ntk_tcp_port, 0);
-	add_pkt_op(GET_INT_MAP, SKT_TCP, ntk_tcp_port, put_int_map);
-	add_pkt_op(PUT_INT_MAP, SKT_TCP, ntk_tcp_port, 0);
-	add_pkt_op(GET_EXT_MAP, SKT_TCP, ntk_tcp_port, put_ext_map);
-	add_pkt_op(PUT_EXT_MAP, SKT_TCP, ntk_tcp_port, 0);
-	add_pkt_op(GET_BNODE_MAP, SKT_TCP, ntk_tcp_port, put_bnode_map);
-	add_pkt_op(PUT_BNODE_MAP, SKT_TCP, ntk_tcp_port, 0);
-	
-	if(my_family == AF_INET) {
-		debug(DBG_NORMAL, "Deleting the loopback network (leaving only"
-				" 127.0.0.1)");
-		rt_del_loopback_net();
-	}
-	
-	debug(DBG_NORMAL, "Activating ip_forward and disabling rp_filter");
-	route_ip_forward(my_family, 1);
-	route_rp_filter_all_dev(my_family, me.cur_ifs, me.cur_ifs_n, 0);
-
-	total_hooks=0;
-
-	return 0;
+	debug(DBG_NORMAL, "rehook_create_gnode: %s is our new ip", 
+			inet_to_str(me.cur_ip));
 }
 
 void hook_reset(void)
@@ -840,6 +820,8 @@ void hook_reset(void)
 	u_int idata[MAX_IP_INT];
 
 	/* We use a fake root_node for a while */
+	if(free_the_tmp_cur_node)
+		xfree(me.cur_node);
 	free_the_tmp_cur_node=1;
 	me.cur_node=xmalloc(sizeof(map_node));
 	memset(me.cur_node, 0, sizeof(map_node));
@@ -868,6 +850,38 @@ void hook_reset(void)
 	
 	hook_set_all_ips(me.cur_ip, me.cur_ifs, me.cur_ifs_n);
 }
+
+int hook_init(void)
+{
+	/* register the hook's ops in the pkt_op_table */
+	add_pkt_op(GET_FREE_NODES, SKT_TCP, ntk_tcp_port, put_free_nodes);
+	add_pkt_op(PUT_FREE_NODES, SKT_TCP, ntk_tcp_port, 0);
+	add_pkt_op(GET_QSPN_ROUND, SKT_TCP, ntk_tcp_port, put_qspn_round);
+	add_pkt_op(PUT_QSPN_ROUND, SKT_TCP, ntk_tcp_port, 0);
+	add_pkt_op(GET_INT_MAP, SKT_TCP, ntk_tcp_port, put_int_map);
+	add_pkt_op(PUT_INT_MAP, SKT_TCP, ntk_tcp_port, 0);
+	add_pkt_op(GET_EXT_MAP, SKT_TCP, ntk_tcp_port, put_ext_map);
+	add_pkt_op(PUT_EXT_MAP, SKT_TCP, ntk_tcp_port, 0);
+	add_pkt_op(GET_BNODE_MAP, SKT_TCP, ntk_tcp_port, put_bnode_map);
+	add_pkt_op(PUT_BNODE_MAP, SKT_TCP, ntk_tcp_port, 0);
+	
+	if(my_family == AF_INET) {
+		debug(DBG_NORMAL, "Deleting the loopback network (leaving only"
+				" 127.0.0.1)");
+		rt_del_loopback_net();
+	}
+	
+	debug(DBG_NORMAL, "Activating ip_forward and disabling rp_filter");
+	route_ip_forward(my_family, 1);
+	route_rp_filter_all_dev(my_family, me.cur_ifs, me.cur_ifs_n, 0);
+
+	total_hooks=0;
+	free_the_tmp_cur_node=0;
+
+	hook_reset();
+
+	return 0;
+}
 		
 /*
  * netsukuku_hook: hooks/rehooks at an existing gnode or creates a new one.
@@ -885,7 +899,8 @@ int netsukuku_hook(map_gnode *hook_gnode, int hook_level)
 	map_bnode **old_bnode_map;	
 	
 	inet_prefix gnode_ipstart, old_ip;
-	
+	quadro_group old_quadg;
+
 	int i=0, e=0, imaps=0, ret=0, new_gnode=0, tracer_levels=0;
 	int total_hooking_nodes=0;
 	
@@ -896,9 +911,11 @@ int netsukuku_hook(map_gnode *hook_gnode, int hook_level)
 
 	/* Save our current IP before resetting */
 	memcpy(&old_ip, &me.cur_ip, sizeof(inet_prefix));
+	memcpy(&old_quadg, &me.cur_quadg, sizeof(quadro_group));
 
 	/* Reset the hook */
-	hook_reset();
+	if(total_hooks)
+		hook_reset();
 	total_hooks++;
 	
 	/* 	
@@ -912,12 +929,9 @@ int netsukuku_hook(map_gnode *hook_gnode, int hook_level)
 	 * the other rnodes, which don't belong to it.
 	 */
 	if(hook_gnode && total_hooks > 1) {
-		int gid[MAX_LEVELS];
-
-		memcpy(gid, me.cur_quadg.gid, sizeof(int)*MAX_LEVELS);
-		gid[hook_level]=pos_from_gnode(hook_gnode, me.ext_map[_EL(hook_level)]);
+		old_quadg.gid[hook_level]=pos_from_gnode(hook_gnode, me.ext_map[_EL(hook_level)]);
 		new_rnode_allowed(&alwd_rnodes, &alwd_rnodes_counter, 
-				gid, hook_level, GET_LEVELS(my_family));
+				old_quadg.gid, hook_level, GET_LEVELS(my_family));
 	}
 
 	/* 
@@ -1034,7 +1048,7 @@ hook_retry_scan:
 		fatal("None of the nodes in this area gave me the free_nodes info");
 
 	/*
-	 * If we are trying to hook at `hook_gnode' let's check that it has
+	 * If we are trying to rehook at `hook_gnode' let's check that it has
 	 * enough free nodes to welcome all the re-hooking nodes of our gnode.
 	 */
 	if(hook_level && hook_gnode && total_hooks > 1 &&
@@ -1165,7 +1179,7 @@ hook_retry_scan:
 		loginfo("None of the rnodes in this area gave me the bnode map.");
 	
 	if(free_the_tmp_cur_node) {
-		free(me.cur_node);
+		xfree(me.cur_node);
 		free_the_tmp_cur_node=0;
 	}
 	me.cur_node = &me.int_map[me.cur_quadg.gid[0]];

@@ -19,20 +19,13 @@
 #ifndef MAP_H
 #define MAP_H
 
+#undef  QSPN_EMPIRIC
 #include "inet.h"
 
 /* Generic map defines */
-#undef  QSPN_EMPIRIC
-
-#ifndef QSPN_EMPIRIC
-	#define MAXGROUPNODE		256
-	#define MAXGROUPNODE_BITS	8	/* 2^MAXGROUPNODE_BITS == MAXGROUPNODE */
-	#define MAXROUTES	 	20
-#else
-	#define MAXGROUPNODE		20
-	#define MAXROUTES	 	5
-	#define MAXRTT			10		/*Max node <--> node rtt (in sec)*/
-#endif /*QSPN_EMPIRIC*/
+#define MAXGROUPNODE		256
+#define MAXGROUPNODE_BITS	8	/* 2^MAXGROUPNODE_BITS == MAXGROUPNODE */
+#define MAXROUTES	 	20
 
 #define MAXLINKS		MAXROUTES
 
@@ -62,11 +55,6 @@
 #define QSPN_OPENER	(1<<12)		/*If the root_node sent a new qspn_open
 					  it is a qspn_opener*/
 
-#ifdef QSPN_EMPIRIC
-	#define QSPN_BACKPRO	(1<<13)	
-#endif 
-
-
 
 /* 			    *** Map notes ***
  * The map is an array of MAXGROUPNODE map_node structs. It is a generic map 
@@ -82,14 +70,12 @@
 /* map_rnode is what map_node.r_node points to. (read struct map_node below) */
 typedef struct
 {
-#ifdef QSPN_EMPIRIC
-	u_short		flags;
-#endif
-	int	 	*r_node;	/*It's the pointer to the struct of the r_node in the map*/
-	struct timeval  rtt;	 	/*node <-> r_node round trip time*/
-	
-	struct timeval  trtt;		/*node <-> root_node total rtt: The rtt to reach the root_node 
-	 * starting from the node which uses this rnode. 
+	int	 	*r_node;	/*It's the pointer to the struct of the
+					  r_node in the map*/
+	u_int		trtt;		
+	/*
+	 * node <-> root_node total rtt: The rtt to reach the root_node 
+	 * starting from the node which uses this rnode (in millisec). 
 	 * Cuz I've explained it in such a bad way I make an example:
 	 * map_node node_A; From node_A "node_A.links"th routes to the root_node
 	 * start. So I have "node_A.links"th node_A.r_node[s], each of them is a
@@ -104,27 +90,39 @@ typedef struct
 /* Note: This int_info is used for the pack of a map_rnode struct (see 
  * get_rnode_block()). 
  * Since the r_node pointer, in the pack, is an integer, we add it in the
- * int_info as a normal 32bit int.
- * We are considering the timeval vars as int array composed by two
- * members. */
-INT_INFO map_rnode_iinfo  = { 3, 
-			      { INT_TYPE_32BIT, INT_TYPE_32BIT, INT_TYPE_32BIT },
-			      { 0, sizeof(int), sizeof(int)*3 },
-			      { 1, 2, 2 }
+ * int_info as a normal 32bit int. */
+INT_INFO map_rnode_iinfo  = { 2, 
+			      { INT_TYPE_32BIT, INT_TYPE_32BIT },
+			      { 0, sizeof(int) },
+			      { 1, 1 }
 			    };
-#define MAP_RNODE_PACK_SZ (sizeof(int *)+sizeof(struct timeval)*2)
+#define MAP_RNODE_PACK_SZ (sizeof(int *)+sizeof(u_int))
 
-
+/*
+ * 		****) The qspn int_map (****
+ *
+ * - map_node.r_node points to the r_node of the root_node to be used as 
+ *   gateway to reach map_node. So map_node.r_node stores only the gateway 
+ *   needed to reach map_node from the root_node.
+ *   The only execption is the root_node itself. The root_node's 
+ *   map_node.r_node keeps all its rnodes as a normal (non qspn) map would.
+ *
+ * The only exception is the root_node. Its rnodes have a different meaning: 
+ * they are its effective rnodes, so each map_node.r_node points to the node 
+ * which is the real rnode of the root_node.
+ * The root_node at level 0 may have also rnode of a different gnode 
+ * (it is a border node).
+ * To store these external rnodes in root_node.r_node[x], the 
+ * root_node.r_node[x].r_node will point to the relative ext_rnode struct 
+ * (see gmap.h) and the MAP_GNODE | MAP_ERNODE flags will be set in 
+ * root_node.r_node[x].flags.
+ * The rnodes of the root_node of 0 level are updated by the radar(), 
+ * instead the root_nodes of greater levels are updated by the qspn.
+ */
 typedef struct
 {
-#ifdef QSPN_EMPIRIC
-	u_int		flags;
-	u_int		brdcast[MAXGROUPNODE];
-#else
 	u_short 	flags;
 	u_int		brdcast;	 /*Pkt_id of the last brdcast_pkt sent by this node*/
-#endif
-
 	u_short		links;		 /*Number of r_nodes*/
 	map_rnode	*r_node;	 /*These structs will be kept in ascending
 					   order considering their rnode_t.rtt*/
@@ -190,8 +188,6 @@ void rnode_del(map_node *node, size_t pos);
 void rnode_destroy(map_node *node);
 int rnode_find(map_node *node, void *n);
 
-int rnode_rtt_compar(const void *a, const void *b);
-void rnode_rtt_order(map_node *node);
 int rnode_trtt_compar(const void *a, const void *b);
 void rnode_trtt_order(map_node *node);
 void map_routes_order(map_node *map);

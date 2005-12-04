@@ -103,13 +103,13 @@ typedef struct
 	/* The `bnode_hdr.bnode' borders on the `gnode' of `level'th level with
 	 * a round trip time which is stored in `rtt'. */
 
-	u_char gnode;	     
-	u_char level;
-	struct timeval rtt;
+	u_char		gnode;	     
+	u_char		level;
+	u_int		rtt;
 }_PACKED_ bnode_chunk;
 #define BNODEBLOCK_SZ(levels, links) (BNODE_HDR_SZ((levels)) +		       \
 					(sizeof(bnode_chunk)*(links)))
-INT_INFO bnode_chunk_iinfo = { 1, { INT_TYPE_32BIT }, { sizeof(char)*2 }, { 2 } };
+INT_INFO bnode_chunk_iinfo = { 1, { INT_TYPE_32BIT }, { sizeof(char)*2 }, { 1 } };
 
 
 /* 

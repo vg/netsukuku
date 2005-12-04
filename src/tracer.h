@@ -60,7 +60,7 @@ tracer_chunk *tracer_add_entry(void *void_map, void *void_node,
 int tracer_add_rtt(int rpos, tracer_chunk *tracer, u_short hop);
 u_short tracer_split_bblock(void *, size_t, bnode_hdr ***, bnode_chunk ****, size_t *);
 int tracer_get_trtt(int from_rnode_pos, tracer_hdr *trcr_hdr,
-		tracer_chunk *tracer, struct timeval *trtt);
+		tracer_chunk *tracer, u_int *trtt);
 int tracer_store_pkt(inet_prefix, quadro_group *, u_char, tracer_hdr *, 
 		tracer_chunk *, void *, size_t, u_short *,  char **, size_t *);
 int tracer_unpack_pkt(PACKET, brdcast_hdr **, tracer_hdr **, tracer_chunk **, 

@@ -253,7 +253,7 @@ int is_rnode_allowed(inet_prefix rip, struct allowed_rnode *alr)
 	iptoquadg(rip, me.ext_map, &qg, QUADG_GID);
 	
 	list_for(alr) {
-		for(i=alr->min_level; i < alr->max_level; i++)
+		for(i=alr->min_level; i < alr->tot_level; i++)
 			if(qg.gid[i] != alr->gid[i]) {
 				e=1;
 				break;
@@ -267,24 +267,24 @@ int is_rnode_allowed(inet_prefix rip, struct allowed_rnode *alr)
 
 /*
  * new_rnode_allowed: add a new allowed rnode in the `alr' llist which has
- * already `*alr_counter' members. `gid', `min_lvl', and `max_lvl' are the
+ * already `*alr_counter' members. `gid', `min_lvl', and `tot_lvl' are the
  * respective field of the new allowed_rnode struct.
  */
 void new_rnode_allowed(struct allowed_rnode **alr, int *alr_counter,
-		int *gid, int min_lvl, int max_lvl)
+		int *gid, int min_lvl, int tot_lvl)
 {
 	struct allowed_rnode *new_alr;
 
 	new_alr=xmalloc(sizeof(struct allowed_rnode));
 
 	new_alr->min_level=min_lvl;
-	new_alr->max_level=max_lvl;
+	new_alr->tot_level=tot_lvl;
 	
 	memset(new_alr->gid, 0, sizeof(int)*MAX_LEVELS);
-	memcpy(&new_alr->gid[min_lvl], &gid[min_lvl], sizeof(int)*(max_lvl-min_lvl+1));
+	memcpy(&new_alr->gid[min_lvl], &gid[min_lvl], sizeof(int)*(tot_lvl-min_lvl));
 	
-	debug(DBG_SOFT, "new_rnode_allowed: %d, %d, %d, %d. min_lvl: %d, max_lvl: %d", 
-			gid[0], gid[1], gid[2], gid[3], min_lvl, max_lvl);
+	debug(DBG_SOFT, "new_rnode_allowed: %d, %d, %d, %d. min_lvl: %d, tot_lvl: %d", 
+			gid[0], gid[1], gid[2], gid[3], min_lvl, tot_lvl);
 
 	clist_add(alr, alr_counter, new_alr);
 }
@@ -412,9 +412,10 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 				/* delete the rnode from the rnode_list */
 				rnl_del(&rlist, &rlist_counter, rnl_find_node(rlist, node));
 				
-				map_node_del(node);	/* delete it from the int_map */
-				qspn_dec_gcount(qspn_gnode_count, level, 1); /* update the gcount */
-
+				/* delete it from the int_map and update the gcount */
+				map_node_del(node);
+				qspn_dec_gcount(qspn_gnode_count, level+1, 1); 
+				
 				/* delete the route */
 				rt_update_node(0, node, 0, me.cur_node, oif, level); 
 				
@@ -422,9 +423,11 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 			} else {
 				void_map=me.ext_map;
 				gnode=e_rnode->quadg.gnode[_EL(level)];
+				
 				void_gnode=(void *)gnode;
 				if(!void_gnode)
 					continue;
+				
 				node_pos=pos_from_gnode(gnode, me.ext_map[_EL(level)]); 
 				rnode_pos=g_rnode_find((map_gnode *)root_node, gnode);
 
@@ -459,6 +462,7 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 				 * `gnode', delete it from the map */
 				if(map_find_bnode_rnode(me.bnode_map[level-1], me.bmap_nodes[level-1],
 							gnode) == -1) {
+					qspn_dec_gcount(qspn_gnode_count, level+1, gnode->gcount);
 					gmap_node_del(gnode);
 					gnode_dec_seeds(&me.cur_quadg, level); /* update the seeds */
 				}
@@ -550,7 +554,7 @@ void radar_update_bmap(struct radar_queue *rq, int level, int gnode_level)
 	}
 
 	rnode=&me.bnode_map[level][bm].r_node[rnode_pos];
-	memcpy(&rnode->rtt, &rq->final_rtt, sizeof(struct timeval));
+	rnode->trtt=MILLISEC(rq->final_rtt);
 }
 
 /* 
@@ -742,10 +746,9 @@ void radar_update_map(void)
 				   /* If the new rnode wasn't present in the map, 
 				    * then it is also a new node in the map, so
 				    * update the seeds counter too */
-				   if(!(node->flags & MAP_VOID)) {
+				   if(!level && !external_node && (node->flags & MAP_VOID)) {
 					   gnode_inc_seeds(&me.cur_quadg, level);
-					   if(!external_node)
-						   qspn_inc_gcount(qspn_gnode_count, level, 1);
+					   qspn_inc_gcount(qspn_gnode_count, level+1, 1);
 				   }
 
 				   /*
@@ -761,7 +764,7 @@ void radar_update_map(void)
 				    */
 
 				   if(!send_qspn_now[level] && node->links) {
-					   diff=abs(MILLISEC(root_node->r_node[rnode_pos].rtt) -
+					   diff=abs(root_node->r_node[rnode_pos].trtt -
 							   MILLISEC(rq->final_rtt));
 					   if(diff >= RTT_DELTA) {
 				   		   node_update=1;
@@ -782,8 +785,7 @@ void radar_update_map(void)
 				   continue;
 			   
 			   /* Update the rtt */
-		           memcpy(&root_node->r_node[rnode_pos].rtt, &rq->final_rtt,
-					   sizeof(struct timeval));
+		           root_node->r_node[rnode_pos].trtt=MILLISEC(rq->final_rtt);
 			   
 			   /* Bnode map stuff */
 			   if(external_node && level) {
@@ -820,10 +822,10 @@ void radar_update_map(void)
 	/* <<keep your room tidy... order, ORDER>> */
 	if(is_bufzero((char *)rnode_added, sizeof(int)*MAX_LEVELS) || 
 			is_bufzero((char *)rnode_deleted, sizeof(int)*MAX_LEVELS)) {
-		rnode_rtt_order(me.cur_node);
+		rnode_trtt_order(me.cur_node);
 		for(i=1; i<me.cur_quadg.levels; i++)
 			if(rnode_added[i] || rnode_deleted[i])
-				rnode_rtt_order(&me.cur_quadg.gnode[_EL(i)]->g);
+				rnode_trtt_order(&me.cur_quadg.gnode[_EL(i)]->g);
 
 		/* adjust the rnode_pos variables in the ext_rnode_cache list */
 		erc_reorder_rnodepos(&me.cur_erc, &me.cur_erc_counter, me.cur_node);

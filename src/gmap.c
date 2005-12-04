@@ -994,6 +994,11 @@ void pack_map_gnode(map_gnode *gnode, char *pack)
 
 	memcpy(buf, &gnode->seeds, sizeof(char));
 	buf+=sizeof(char);
+
+	memcpy(buf, &gnode->gcount, sizeof(u_int));
+	buf+=sizeof(u_int);
+
+	ints_host_to_network(pack, map_gnode_iinfo);
 }
 
 /*
@@ -1006,6 +1011,8 @@ void unpack_map_gnode(map_gnode *gnode, char *pack)
 
 	buf=pack;
 
+	ints_network_to_host(pack, map_gnode_iinfo);
+	
 	unpack_map_node(&gnode->g, buf);
 	buf+=MAP_NODE_PACK_SZ;
 
@@ -1014,6 +1021,9 @@ void unpack_map_gnode(map_gnode *gnode, char *pack)
 
 	memcpy(&gnode->seeds, buf, sizeof(char));
 	buf+=sizeof(char);
+
+	memcpy(&gnode->gcount, buf, sizeof(u_int));
+	buf+=sizeof(u_int);
 }
 
 /* 

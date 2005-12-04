@@ -351,17 +351,18 @@ int inet_validate_ip(inet_prefix ip)
 		ipv4=htonl(ip.data[0]);
 		if(MULTICAST(ipv4) || BADCLASS(ipv4) || ZERONET(ipv4))
 			return -EINVAL;
-		return 0;
 
 	} else if(ip.family==AF_INET6) {
 		type=ipv6_addr_type(ip);
 		if( (type & IPV6_ADDR_MULTICAST) || (type & IPV6_ADDR_RESERVED) || 
 				(type & IPV6_ADDR_LOOPBACK))
 			return -EINVAL;
-		return 0;
 	}
 
-	return -EINVAL;
+	if(!is_bufzero((char *)ip.data, MAX_IP_SZ))
+		return -EINVAL;
+
+	return 0;
 }
 
 /* * * Coversion functions... * * */

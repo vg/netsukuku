@@ -236,39 +236,14 @@ void reset_int_map(map_node *map, int maxgroupnode)
 		map_node_del(&map[i]);
 }
 
-/*rnode_rtt_compar: It's used by rnode_rtt_order*/
-int rnode_rtt_compar(const void *a, const void *b) 
-{
-	map_rnode *rnode_a=(map_rnode *)a, *rnode_b=(map_rnode *)b;
-	
-	if (rnode_a->rtt.tv_sec == rnode_b->rtt.tv_sec) {
-		if(rnode_a->rtt.tv_usec > rnode_b->rtt.tv_usec)
-			return 1;
-		else if(rnode_a->rtt.tv_usec == rnode_b->rtt.tv_usec)
-			return 0;
-		else
-			return -1;
-	} else if(rnode_a->rtt.tv_sec > rnode_b->rtt.tv_sec)
-		return 1;
-	else
-		return -1;
-}
-
-/*rnode_rtt_order: It qsort the rnodes of a map_node comparing their rtt
- */
-void rnode_rtt_order(map_node *node)
-{
-	qsort(node->r_node, node->links, sizeof(map_rnode), rnode_rtt_compar);
-}
-
 /*rnode_trtt_compar: It's used by rnode_trtt_order*/
 int rnode_trtt_compar(const void *a, const void *b) 
 {
 	map_rnode *rnode_a=(map_rnode *)a, *rnode_b=(map_rnode *)b;
 	
-	if (MILLISEC(rnode_a->trtt) > MILLISEC(rnode_b->trtt))
+	if (rnode_a->trtt > rnode_b->trtt)
 		return 1;
-	else if(MILLISEC(rnode_a->trtt) == MILLISEC(rnode_b->trtt))
+	else if(rnode_a->trtt == rnode_b->trtt)
 		return 0;
 	else 
 		return -1;
@@ -282,8 +257,9 @@ void rnode_trtt_order(map_node *node)
 	qsort(node->r_node, node->links, sizeof(map_rnode), rnode_trtt_compar);
 }
 
-/* map_routes_order: It order all the r_node of each node using their trtt.
- * Used mainly with a qspn map styleII */
+/* 
+ * map_routes_order: It order all the r_node of each node using their trtt.
+ */
 void map_routes_order(map_node *map)
 {
 	int i;
@@ -291,137 +267,20 @@ void map_routes_order(map_node *map)
 		rnode_trtt_order(&map[i]);
 }
 
-#ifdef QMAP_STYLE_I
-/* get_route_rtt: It return the round trip time (in millisec) to reach 
- * the root_node of the int_map starting from "node", using the "route"th route.
- * If "rtt" is not null it stores in "rtt" the relative timeval struct
- * (qspn map styleI) */
-int get_route_rtt(map_node *node, u_short route, struct timeval *rtt)
-{
-	map_node *ptr;
-	struct timeval *t=rtt;
-	
-	if(route >= node->links || node->flags & MAP_VOID || node->links <= 0)
-		return -1;
-	
-	if(!rtt)
-		rtt=t=(struct timeval *)xmalloc(sizeof(struct timeval));
-	memset(rtt, '\0', sizeof(struct timeval));
-	
-	if(node->flags & MAP_ME)
-		return 0;
-	
-	ptr=(map_node *)node->r_node[route].r_node;
-	while(1) {
-		if(ptr->flags & MAP_ME)
-			break;
-		timeradd(&ptr->r_node[route].rtt, t, t);
-		ptr=(map_node *)ptr->r_node[route].r_node;
-	}
-	
-	return MILLISEC(*t);
-}
-#endif
-
-/* get_route_trtt: It's the same of get_route_rtt, but it returns the 
- * totatl round trip time (trtt).
- * It's mainly used in the qspn_map styleII
+/* 
+ * get_route_trtt: It returns the total round trip time (trtt) of `node' (in
+ * millisec) for the `route'th route.
  */
-int get_route_trtt(map_node *node, u_short route, struct timeval *trtt)
+int get_route_trtt(map_node *node, u_short route)
 {
 	if(route >= node->links || node->flags & MAP_VOID || node->links <= 0)
 		return -1;
 
-	if(trtt)
-		memset(trtt, '\0', sizeof(struct timeval));
-
 	if(node->flags & MAP_ME)
 		return 0;
 
-	if(trtt)	
-		memcpy(trtt, &node->r_node[route].trtt, sizeof(struct timeval));
-
-	return MILLISEC(node->r_node[route].trtt);
+	return node->r_node[route].trtt;
 }
-
-#ifdef QMAP_STYLE_I
-/* rnode_set_trtt: It sets the trtt of all the node's rnodes using get_route_rtt.
- * (qspn map styleI)*/
-void rnode_set_trtt(map_node *node)
-{
-	int e;
-	for(e=0; e<node->links; e++)
-		get_route_rtt(node, e, &node->r_node[e].trtt);
-	
-}
-
-
-void rnode_recurse_trtt(map_rnode *rnode, int route, struct timeval *trtt)
-{
-	map_node *ptr;
-	
-	ptr=(map_node *)rnode[route].r_node;
-	while(1) {
-		if(ptr->flags & MAP_ME)
-			break;
-		timersub(trtt, &ptr->r_node[route].rtt, &ptr->r_node[route].trtt);
-		ptr=(map_node *)ptr->r_node[route].r_node;
-	}
-}
-
-void node_recurse_trtt(map_node *node)
-{
-	int e;
-	
-	rnode_set_trtt(node);
-	for(e=0; e<node->links; e++)
-		if(!node->r_node[e].trtt.tv_usec && !node->r_node[e].trtt.tv_sec)
-			rnode_recurse_trtt(node->r_node, e, &node->r_node[e].trtt);
-}
-
-/* map_set_trtt: Updates the trtt of all the rnodes in a qspn map styleI.*/
-void map_set_trtt(map_node *map) 
-{
-	int i, e;	
-	/*We clear all the rnodes' trtt, in this way we can know
-	 * which nodes aren't already set and we can skip in node_recurse_trtt
-	 * the rnodes with trtt > 0
-	 */
-	for(i=0; i<MAXGROUPNODE; i++)
-		for(e=0; e<map[i].links; e++)
-			memset(&map[i].r_node[e].trtt, 0, sizeof(struct timeval));
-
-	for(i=0; i<MAXGROUPNODE; i++) {
-		if(map[i].flags & MAP_VOID || map[i].flags & MAP_ME)
-			continue;
-
-		if(!map[i].r_node[0].trtt.tv_usec && !map[i].r_node[0].trtt.tv_sec)
-			node_recurse_trtt(&map[i]);
-	}
-}
-
-
-/* It return the node to be used as gateway to reach "node" starting from
- * root_node, using the "route"th route.
- * Used in a qspn map styleI
- */
-map_node *get_gw_node(map_node *node, u_short route)
-{
-	map_node *ptr;
-	
-	if(route >= node->links || node->flags & MAP_ME)
-		return NULL;
-	
-	ptr=(map_node *)node;
-	while(1) {
-		if(((map_node *)ptr->r_node[route].r_node)->flags & MAP_ME)
-			break;
-		ptr=(map_node *)ptr->r_node[route].r_node;
-	}
-
-	return ptr;
-}
-#endif /*QMAP_STYLE_I*/
 
 /*
  * merge_maps: 
@@ -430,7 +289,6 @@ map_node *get_gw_node(map_node *node, u_short route)
  * second map used. "base_root" points to the root_node in the "base" map.
  * `new_root' points to the root_node in the "new" map.
  * It's assumed that `new_root' is an rnode of `base_root'.
- * (qspn_map styleII)
  */
 int merge_maps(map_node *base, map_node *new, map_node *base_root, map_node *new_root)
 {
@@ -503,14 +361,14 @@ int merge_maps(map_node *base, map_node *new, map_node *base_root, map_node *new
 			 * If the worst route in base[i] is less than the new one,
 			 * let's go ahead.
 			 */
-			base_trtt = get_route_trtt(&base[i], base[i].links-1, 0);
-			new_trtt  = get_route_trtt(&new[i], e, 0);
+			base_trtt = get_route_trtt(&base[i], base[i].links-1);
+			new_trtt  = get_route_trtt(&new[i], e);
 			if(base_trtt < new_trtt)
 				continue;
 			
 			for(x=0; x<base[i].links; x++) {
-				base_trtt = get_route_trtt(&base[i], x, 0);
-				new_trtt  = get_route_trtt(&new[i], e, 0);
+				base_trtt = get_route_trtt(&base[i], x);
+				new_trtt  = get_route_trtt(&new[i], e);
 				if(base_trtt > new_trtt) {
 					map_rnode_insert(&base[i], x, &new[i].r_node[e]);
 					count++;
@@ -549,11 +407,8 @@ int get_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart)
 		memcpy(p, &node->r_node[e].r_node, sizeof(int *));
 		p+=sizeof(int *);
 
-		memcpy(p, &node->r_node[e].rtt, sizeof(struct timeval));
-		p+=sizeof(struct timeval);
-
-		memcpy(p, &node->r_node[e].trtt, sizeof(struct timeval));
-		p+=sizeof(struct timeval);
+		memcpy(p, &node->r_node[e].trtt, sizeof(u_int));
+		p+=sizeof(u_int);
 		
 		mod_rnode_addr(&rblock[e+rstart], map, 0);
 
@@ -614,11 +469,8 @@ int store_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart)
 		memcpy(&node->r_node[i].r_node, p, sizeof(int *));
 		p+=sizeof(int *);
 
-		memcpy(&node->r_node[i].rtt, p, sizeof(struct timeval));
-		p+=sizeof(struct timeval);
-
-		memcpy(&node->r_node[i].trtt, p, sizeof(struct timeval));
-		p+=sizeof(struct timeval);
+		memcpy(&node->r_node[i].trtt, p, sizeof(u_int));
+		p+=sizeof(u_int);
 
 		mod_rnode_addr(&node->r_node[i], 0, map);
 	}

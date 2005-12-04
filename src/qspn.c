@@ -260,7 +260,7 @@ int qspn_round_left(u_char level)
  * Oh, sorry this code doesn't show consideration for the relativity time shit.
  * So you can't move at a velocity near the light's speed. I'm sorry.
  */
-void update_qspn_time(u_char level, struct timeval *new_qspn_time)
+void update_qspn_time(u_char level, u_int new_qspn_time)
 {
 	struct timeval cur_t, t;
 	int ret;
@@ -268,8 +268,8 @@ void update_qspn_time(u_char level, struct timeval *new_qspn_time)
 	gettimeofday(&cur_t, 0);
 
 	if(new_qspn_time) {
-		timersub(&cur_t, new_qspn_time, &me.cur_qspn_time[level]);
-		memcpy(&t, new_qspn_time, sizeof(struct timeval));
+		MILLISEC_TO_TV(new_qspn_time, t);
+		timersub(&cur_t, &t, &me.cur_qspn_time[level]);
 	} else
 		timersub(&cur_t, &me.cur_qspn_time[level], &t);
 
@@ -278,7 +278,7 @@ void update_qspn_time(u_char level, struct timeval *new_qspn_time)
 	if(ret < 0 && abs(ret) > QSPN_WAIT_ROUND_MS_LVL(level)) {
 		ret*=-1;
 		/* 
-		 * we round `ret' to take off the time of the passed round, 
+		 * We round `ret' to take off the time of the passed round, 
 		 * then we can store in `ret' the number of ms passed since the
 		 * latest round.
 		 */
@@ -353,7 +353,7 @@ void qspn_remove_deads(u_char level)
 {
 	int bm, i, l, node_pos;
 	map_node *map, *node;
-	map_gnode *gmap;
+	map_gnode *gmap, *gnode;
 	
 	qspn_set_map_vars(level, 0, 0, 0, &gmap);
 	map=me.int_map;
@@ -371,8 +371,9 @@ void qspn_remove_deads(u_char level)
 		if(!level)
 			node=(map_node *)&map[node_pos];
 		else {
-			node=(map_node *)&gmap[node_pos];
-			if(gmap[node_pos].flags & GMAP_VOID)
+			gnode=&gmap[node_pos];
+			node=&gnode->g;
+			if(gnode->flags & GMAP_VOID)
 				continue;
 		}
 			
@@ -410,12 +411,15 @@ void qspn_remove_deads(u_char level)
 			if(!level) {
 				debug(DBG_NORMAL, "qspn: The node %d is dead", i);
 				map_node_del(node);
+				qspn_dec_gcount(qspn_gnode_count, level+1, 1);
 			} else {
 				debug(DBG_NORMAL,"The groupnode %d of level %d"
 						" is dead", i, level);
-				gmap_node_del((map_gnode *)node);
-				gnode_dec_seeds(&me.cur_quadg, level);
+				qspn_dec_gcount(qspn_gnode_count, level+1,
+						gnode->gcount);
+				gmap_node_del(gnode);
 			}
+			gnode_dec_seeds(&me.cur_quadg, level);
 
 			/* Delete its route */
 			rt_update_node(0, node, 0, 0, 0, level);
@@ -431,10 +435,10 @@ void qspn_remove_deads(u_char level)
  * qspn_new_round: It prepares all the buffers for the new qspn_round and 
  * removes the QSPN_OLD nodes from the map. The new qspn_round id is set 
  * to `new_qspn_id'. If `new_qspn_id' is zero then the id is incremented by one
- * If `new_qspn_time' is not null, the qspn_time[level] is set to the current
+ * If `new_qspn_time' is not zero, the qspn_time[level] is set to the current
  * time minus `new_qspn_time'.
  */
-void qspn_new_round(u_char level, int new_qspn_id, struct timeval *new_qspn_time)
+void qspn_new_round(u_char level, int new_qspn_id, u_int new_qspn_time)
 {
 	int i;
 	map_node *root_node, *node;
@@ -458,10 +462,9 @@ void qspn_new_round(u_char level, int new_qspn_id, struct timeval *new_qspn_time
 	bmap_counter_reset(BMAP_LEVELS(me.cur_quadg.levels),
 			me.bmap_nodes_opened);
 
-	/* Copy the current gnode_count in old_gcount and reset it */
+	/* Copy the current gnode_count in old_gcount */
 	qspn_backup_gcount(qspn_old_gcount, qspn_gnode_count);
-	memset(qspn_gnode_count, 0, sizeof(qspn_gnode_count));
-
+	
 	/* Clear the flags set during the previous qspn */
 	root_node->flags&=~QSPN_STARTER & ~QSPN_CLOSED & ~QSPN_OPENED;
 	for(i=0; i<root_node->links; i++) {
@@ -812,7 +815,7 @@ int qspn_close(PACKET rpkt)
 
 	map_node *from, *root_node, *tracer_starter, *node;
 	quadro_group rip_quadg;
-	struct timeval trtt;
+	u_int trtt;
 	int gid, root_node_pos, real_from_rpos, sub_id;
 	u_char level, upper_level, blevel;
 
@@ -868,8 +871,8 @@ int qspn_close(PACKET rpkt)
 		tracer_get_trtt(real_from_rpos, trcr_hdr, tracer, &trtt);
 		debug(DBG_NOISE, "New qspn_round 0x%x lvl %d received,"
 				" new qspn_time: %dms",	rpkt.hdr.id,
-				level, MILLISEC(trtt));
-		qspn_new_round(level, rpkt.hdr.id, &trtt);
+				level, trtt);
+		qspn_new_round(level, rpkt.hdr.id, trtt);
 
 	} else if(rpkt.hdr.id < me.cur_qspn_id[level]) {
 		/* Reject it, it's old */

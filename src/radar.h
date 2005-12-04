@@ -103,11 +103,11 @@ struct allowed_rnode
 	
 	/* 
 	 * In order to see if the rnode X is part of this list we compare all
-	 * its gids in the range of gids[min_level] and gids[max_level-1] with
+	 * its gids in the range of gids[min_level] and gids[tot_level-1] with
 	 * the allowed_rnode.gid array.
 	 */
 	u_char 		min_level;
-	u_char		max_level;
+	u_char		tot_level;
 	u_int		gid[MAX_LEVELS];
 };
 struct allowed_rnode *alwd_rnodes;

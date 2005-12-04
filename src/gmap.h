@@ -47,9 +47,16 @@ typedef struct
 	u_char		seeds;	/*The number of active static nodes connected to this
 				  gnode minus one (the root_node is not counted).
 				  If seeds == MAXGROUPNODE-1, the gnode is full ^_^*/
-}map_gnode;
+	u_int		gcount;	/*The total number of nodes which are inside this 
+				  gnode*/
+} map_gnode;
 
-#define MAP_GNODE_PACK_SZ	(MAP_NODE_PACK_SZ + sizeof(u_char)*2)
+INT_INFO map_gnode_iinfo = { 1, 
+			     { INT_TYPE_32BIT }, 
+			     { MAP_NODE_PACK_SZ+sizeof(u_char)*2 }, 
+			     { 1 }
+			   };
+#define MAP_GNODE_PACK_SZ	(MAP_NODE_PACK_SZ+sizeof(u_char)*2+sizeof(int))
 
 
 /* * * Levels stuff * * *
@@ -166,10 +173,11 @@ INT_INFO ext_map_hdr_iinfo = { 3,
  */
 typedef struct {
 	map_node	node;
-	quadro_group 	quadg;		/* quadg.gnode[level] may be set to 0
-					 * if that gnode doesn't belong to the
-					 * same upper level of me.cur_quadg
-					 */
+	quadro_group 	quadg;	/* quadg.gnode[level] may be set to 0
+				 * if that gnode doesn't belong to the
+				 * same upper level of me.cur_quadg:
+				 * quadg.gid[level+1] != me.cur_quadg.gid[level+1]
+				 */
 }ext_rnode;
 
 /*This cache keeps the list of all the ext_rnode used.*/
