@@ -941,7 +941,14 @@ int qspn_close(PACKET rpkt)
 			node=(map_node *)root_node->r_node[i].r_node;
 
 			if(root_node->r_node[i].r_node == (int *)from) {
-				debug(DBG_INSANE, "Closing %x [g]node", node);
+#ifdef DEBUG			
+				int pos;
+				pos = !level ? pos_from_node(node, me.int_map) : 
+					pos_from_gnode((map_gnode *)node, 
+							me.ext_map[_EL(level)]);
+				debug(DBG_INSANE, "Closing %d [g]node, lvl %d", 
+						pos, level);
+#endif
 				node->flags|=QSPN_CLOSED;
 			}
 

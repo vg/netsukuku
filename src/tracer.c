@@ -282,14 +282,15 @@ int tracer_get_trtt(int from_rnode_pos, tracer_hdr *trcr_hdr,
  */
 void tracer_update_gcount(tracer_hdr *trcr_hdr, tracer_chunk *tracer,
 		int first_hop, int *gcount_counter, 
-		map_gnode **ext_map, int level)
+		map_node *int_map, map_gnode **ext_map, int level)
 {
+	map_node *node;
 	map_gnode *gnode;
 	u_int hops;
 	int i;
 	
 	hops = trcr_hdr->hops;
-	if(!hops)
+	if(!hops || first_hop >= hops || first_hop < 0)
 		return;
 
 	for(i=first_hop; i>=0; i--) {
@@ -297,9 +298,11 @@ void tracer_update_gcount(tracer_hdr *trcr_hdr, tracer_chunk *tracer,
 			gnode=gnode_from_pos(tracer[i].node, ext_map[_EL(level)]);
 			qspn_dec_gcount(gcount_counter, level+1, gnode->gcount);
 			gnode->gcount=tracer[i].gcount;
-		}
+		} else
+			node = node_from_pos(tracer[i].node, int_map);
 
-		qspn_inc_gcount(gcount_counter, level+1, tracer[i].gcount);
+		if(level || (!level && node->flags & MAP_VOID))
+			qspn_inc_gcount(gcount_counter, level+1, tracer[i].gcount);
 	}
 }
 
@@ -649,7 +652,7 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 	map_rnode rn, rnn;
 			
 	int i, e, o, x, f, p, diff, bm, from_rnode_pos, skip_rfrom;
-	int first_gcount_hop, gfrom_rnode_pos, from_tpos;
+	int gfrom_rnode_pos, from_tpos;
 	u_int hops, trtt_ms=0;
 	u_short bb;
 	size_t found_block_sz, bsz;
@@ -675,15 +678,6 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 
 	/* It's alive, keep it young */
 	from->flags&=~QSPN_OLD;
-
-#if 0
-	if (hops == 1 && !bblock_sz && 
-			((level && from != root_node) || (level && from == root_node))) {
-		new_rehook((map_gnode *)from, tracer[from_tpos].node, level,
-				tracer[from_tpos].gcount);
-		return 0;
-	}
-#endif
 	
 	if(bblock_sz && level != me.cur_quadg.levels-1) {
 
@@ -816,7 +810,6 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 	
 	skip_rfrom=0;
 	node=root_node;
-	first_gcount_hop=hops-1;
 	if(!level) {
 		/* We skip the node at hops-1 which it is the `from' node. The radar() 
 		 * takes care of him. */
@@ -824,7 +817,7 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 	} else if(from == root_node) {
 		/* If tracer[hops-1].node is our gnode then we can skip it */
 		skip_rfrom = 1;
-		first_gcount_hop=hops-2;
+		from_tpos  = hops-2;
 		from_rnode_pos=ip_to_rfrom(rip, rip_quadg, 0, 0);
 
 		if(hops > 1) {
@@ -839,7 +832,6 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 					me.ext_map[_EL(level)]);
 			from = &gfrom->g;
 			from->flags|=MAP_GNODE | MAP_RNODE;
-			from_tpos = hops-2;
 
 			gfrom_rnode_pos=rnode_find(root_node, gfrom);
 			if(gfrom_rnode_pos == -1) {
@@ -867,13 +859,16 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 			skip_rfrom = 1;
 	}
 
-	/* Update `qspn_gnode_count' */
-	tracer_update_gcount(trcr_hdr, tracer, first_gcount_hop, 
-			qspn_gnode_count, me.ext_map, level);
-	
-	/* Let's see if we have to rehook */
-	new_rehook((map_gnode *)from, tracer[from_tpos].node, level,
-			tracer[from_tpos].gcount);
+	if(from_tpos >= 0) { /* Is there a rnode in the tracer ? */
+
+		/* Update `qspn_gnode_count' */
+		tracer_update_gcount(trcr_hdr, tracer, from_tpos, 
+				qspn_gnode_count, me.int_map, me.ext_map, level);
+
+		/* Let's see if we have to rehook */
+		new_rehook((map_gnode *)from, tracer[from_tpos].node, level,
+				tracer[from_tpos].gcount);
+	}
 
 	/* We add in the total rtt the first rtt which is me -> from */
 	trtt_ms=node->r_node[from_rnode_pos].trtt;

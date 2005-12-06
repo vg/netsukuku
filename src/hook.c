@@ -718,15 +718,22 @@ int create_gnodes(inet_prefix *ip, int final_level)
  * update_join_rate: it updates the `hook_join_rate' according to
  * `gnode_count', which has the gnode count of `hook_gnode' and to `fn_hdr',
  * which is the free_nodes_hdr received from `hook_gnode'.
+ * `old_gcount' is the gnode_count we had before the start of the rehook.
  * If a new_gnode has to be created 1 is returned, (and hook_join_rate will be
  * 0), otherwise 0 is the returned value.
+ * If we aren't rehooking or if it isn't necessary to consider the join_rate,
+ * -1 is returned.
  */
-int update_join_rate(map_gnode *hook_gnode, int hook_level, int *gnode_count, 
+int update_join_rate(map_gnode *hook_gnode, int hook_level, 
+		int *old_gcount, int *gnode_count, 
 		struct free_nodes_hdr *fn_hdr)
 {
 	u_int free_nodes, total_bnodes;
 	int new_gnode=0, i;
-	
+
+	if(!hook_level || !hook_gnode || total_hooks <= 1)
+		return -1;
+
 	/*
 	 * `free_nodes' is the number of VOID nodes present at the
 	 * `hook_level' in `hook_gnode', and it is the difference
@@ -735,6 +742,9 @@ int update_join_rate(map_gnode *hook_gnode, int hook_level, int *gnode_count,
 	 */
 	free_nodes = NODES_PER_LEVEL(hook_level) - gnode_count[_EL(hook_level)];
 
+	if(old_gcount[_EL(hook_level)] <= free_nodes)
+		return -1;
+	
 	debug(DBG_SOFT, "update_join_rate: free_nodes %d, fn_hdr->join_rate %d",
 			free_nodes, fn_hdr->join_rate);
 
@@ -1048,29 +1058,19 @@ hook_retry_scan:
 		fatal("None of the nodes in this area gave me the free_nodes info");
 
 	/*
-	 * If we are trying to rehook at `hook_gnode' let's check that it has
-	 * enough free nodes to welcome all the re-hooking nodes of our gnode.
+	 * Let's see if we can re-hook at `hook_gnode' or if we have
+	 * to create a new gnode, in other words: update the join_rate.
 	 */
-	if(hook_level && hook_gnode && total_hooks > 1 &&
-		qspn_old_gcount[_EL(hook_level)] > qspn_gnode_count[_EL(hook_level)]) {
-
-		/*
-		 * Let's see if we can re-hook at `hook_gnode' or if we have
-		 * to create a new gnode, in other words: update the join_rate
+	new_gnode=update_join_rate(hook_gnode, hook_level, qspn_old_gcount, 
+			qspn_gnode_count, &fn_hdr);
+	if(new_gnode > 0) {
+		/* 
+		 * The `hook_gnode' gnode cannot take all the nodes of our 
+		 * gnode so we just give up and create a new gnode, which has
+		 * a gid based on the hash of our current gid.
 		 */
-		new_gnode=update_join_rate(hook_gnode, hook_level, qspn_gnode_count, 
-				&fn_hdr);
-
-		if(new_gnode) {
-			/* 
-			 * The `hook_gnode' gnode cannot take all the nodes of our 
-			 * gnode so we just give up and create a new gnode, which has
-			 * a gid based on the hash of our current gid.
-			 */
-			rehook_create_gnode(hook_gnode, hook_level, &old_ip);
-		}
+		rehook_create_gnode(hook_gnode, hook_level, &old_ip);
 	} else {
-		
 		/* 
 		 * We are hooking fine,
 		 * let's choose a random ip using the free nodes list we received.
@@ -1247,7 +1247,8 @@ finish:
 	loginfo("Filling the kernel routing table");
 	rt_full_update(0);
 
-	loginfo("Hook completed");
+	/* (Re)Hook completed */
+	loginfo("%sook completed", total_hooks == 1 ? "H":"Reh");
 
 	return ret;
 }

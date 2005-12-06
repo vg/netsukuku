@@ -227,6 +227,12 @@ void new_rehook(map_gnode *gnode, int gid, int level, int gnode_count)
 			 * smaller than our gnode id, so it must rehook, 
 			 * not us */
 			return;
+		else if(gnode_count == qspn_gnode_count[_EL(level)] &&
+				gid == me.cur_quadg.gid[level] &&
+				gnode->g.flags & MAP_RNODE)
+			/* If `gnode' has our same gid and it is our rnode,
+			 * it alright. */
+			return;
 	} 
 	
 	/* check that `gnode' isn't marked as HOOKED, otherwise return. */
@@ -234,8 +240,10 @@ void new_rehook(map_gnode *gnode, int gid, int level, int gnode_count)
 		return;
 
 	debug(DBG_NORMAL, "new_rehook: me.gid %d, gnode %d, level %d, gnode_count %d, "
-			"qspn_gcount %d", me.cur_quadg.gid[level], gid, level, 
-			gnode_count, qspn_gnode_count[_EL(level)]);
+			"qspn_gcount %d, our rnode: %d", 
+			me.cur_quadg.gid[level], gid, level,
+			gnode_count, qspn_gnode_count[_EL(level)], 
+			gnode->g.flags & MAP_RNODE);
 
 	/*
 	 * Update the rehook time and let's see if we can take this new rehook
