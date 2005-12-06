@@ -37,8 +37,6 @@
 - DNS wrapper: ip -> hostnames
 	- -r forward to other /etc/resolv.conf dns server
 
-- HOOK requests hangs if are made to non existent nodes. Add a timeout.
-
 		[MEDIUM PRIORITY] 
 
 - The DNS wrapper, if launched in restricted mode, should forward the query to

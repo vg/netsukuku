@@ -43,9 +43,9 @@
 
 typedef struct
 {
-	u_char	family;
-	u_short len;
-	u_char	bits;
+	u_char	family;		     /* AF_INET or AF_INET6 */
+	u_short len;		     /* IP length: 4 or 16 (bytes) */
+	u_char	bits;		     /* Number of used bits of the IP */
 	u_int	data[MAX_IP_INT];    /* The address is kept in host long format, 
 				       word ORDER 1 (most significant word first)
 				     */
@@ -104,6 +104,7 @@ int ipv6_addr_type(inet_prefix addr);
 int inet_validate_ip(inet_prefix ip);
 
 const char *inet_to_str(inet_prefix ip);
+int str_to_inet(const char *src, inet_prefix *ip);
 int inet_to_sockaddr(inet_prefix *ip, u_short port, struct sockaddr *dst, socklen_t *dstlen);
 int sockaddr_to_inet(struct sockaddr *ip, inet_prefix *dst, u_short *port);
 

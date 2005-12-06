@@ -392,6 +392,33 @@ const char *inet_to_str(inet_prefix ip)
 }
 
 /*
+ * str_to_inet: it converts the IP address string contained in `src' and
+ * terminated by a `\0' char to an inet_prefix struct. The result is stored in
+ * `ip'. On error -1 is returned.
+ */
+int str_to_inet(const char *src, inet_prefix *ip)
+{
+	struct in_addr dst;
+	struct in6_addr dst6;
+	int family;
+	u_int *data;
+
+	if(strstr(src, ":")) {
+		family=AF_INET6;
+		data=(u_int *)&dst6;
+	} else {
+		family=AF_INET;
+		data=(u_int *)&dst;
+	}
+
+	if(inet_pton(family, src, (void *)data) < 0)
+		return -1;
+
+	inet_setip(ip, data, family);
+	return 0;
+}
+
+/*
  * inet_to_sockaddr: Converts a inet_prefix struct to a sockaddr struct
  */
 int inet_to_sockaddr(inet_prefix *ip, u_short port, struct sockaddr *dst, socklen_t *dstlen)
