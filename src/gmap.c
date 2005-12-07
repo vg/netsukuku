@@ -857,6 +857,105 @@ void gmap_node_del(map_gnode *gnode)
 	gnode->g.flags|=MAP_VOID;
 }
 
+/*
+ * merge_lvl_ext_maps: merges two ext_maps of a specific `level'. It is used
+ * by merge_ext_maps(), see below.
+ * This function is the exact replica of merge_maps() in map.c, that's why it
+ * isn't commented.
+ */
+int merge_lvl_ext_maps(map_gnode *base, map_gnode *new, quadro_group base_root,
+		quadro_group new_root, int level)
+{
+	map_gnode *gnode_gw, *new_root_in_base;
+	int base_root_pos, ngpos;
+	u_int base_trtt, new_trtt;
+	int i, e, x;
+
+	new_root_in_base=&base[new_root.gid[level]];
+	base_root_pos=base_root.gid[level];
+
+	for(i=0; i<MAXGROUPNODE; i++) {
+		if(base[i].g.flags & MAP_ME 	  || new[i].g.flags & MAP_ME ||
+			new[i].g.flags & MAP_VOID || base[i].flags & GMAP_ME || 
+			new[i].flags & GMAP_ME    || new[i].flags & GMAP_VOID)
+			continue;
+
+		for(e=0; e<new[i].g.links; e++) {
+			gnode_gw=(map_gnode *)new[i].g.r_node[e].r_node; 
+			
+			ngpos=pos_from_gnode(gnode_gw, new);
+			if(ngpos == base_root_pos)
+				continue;
+
+			if(new[i].g.flags & MAP_RNODE)
+				new[i].g.r_node[e].r_node=(int *)new_root_in_base;
+			else if(base[ngpos].g.flags & MAP_VOID || 
+				base[ngpos].flags & GMAP_VOID || !base[ngpos].g.links)
+				new[i].g.r_node[e].r_node=(int *)new_root_in_base;
+			else
+				new[i].g.r_node[e].r_node=base[ngpos].g.r_node[0].r_node;
+						
+			if(e >= base[i].g.links) {
+				rnode_add(&base[i].g, &new[i].g.r_node[e]);
+				rnode_trtt_order(&base[i].g);
+				base[i].g.flags|=MAP_UPDATE;
+				continue;
+			}
+		
+			base_trtt = get_route_trtt(&base[i].g, base[i].g.links-1);
+			new_trtt  = get_route_trtt(&new[i].g, e);
+			if(base_trtt < new_trtt)
+				continue;
+		
+			for(x=0; x<base[i].g.links; x++) {
+				base_trtt = get_route_trtt(&base[i].g, x);
+				new_trtt  = get_route_trtt(&new[i].g, e);
+				if(base_trtt > new_trtt) {
+					map_rnode_insert(&base[i].g, x, &new[i].g.r_node[e]);
+					base[i].g.flags|=MAP_UPDATE;
+					break;
+				}
+			}
+		}
+		
+		if(base[i].g.links) {
+			base[i].g.flags&=~MAP_VOID;
+			base[i].flags&=~GMAP_VOID;
+		} else
+			gmap_node_del(&base[i]);
+	}
+
+	return 0;
+}
+
+/*
+ * merge_ext_maps: it fuses the `base' and `new' ext_maps generating a single
+ * ext_map which has the best routes. The generated map is stored in `base'
+ * `base_root' is the quadro_group related to `base'.
+ * `new_root' is the quadro_group of the `new' ext_map.
+ * On error -1 is returned.
+ */
+int merge_ext_maps(map_gnode **base, map_gnode **new, quadro_group base_root,
+		quadro_group new_root) 
+{
+	int level, i;
+
+	for(level=base_root.levels-1; level >= 0; level--) {
+		
+		if(base_root.gid[level] != base_root.gid[level])
+			break;
+
+		if(level == 1)
+			/* The two maps are of the same quadro_group */
+			return -1;
+	}
+	
+	for(i=level; i < base_root.levels; i++)
+		merge_lvl_ext_maps(base[_EL(i)], new[_EL(i)], base_root, 
+				new_root, i);
+
+	return 0;
+}
 
 /* 
  * gmap_get_rblock: It uses get_rnode_block to pack all the ext_map's rnodes

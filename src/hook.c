@@ -905,7 +905,7 @@ int netsukuku_hook(map_gnode *hook_gnode, int hook_level)
 	struct free_nodes_hdr fn_hdr;
 	
 	map_node **merg_map, *new_root;
-	map_gnode **old_ext_map;
+	map_gnode **old_ext_map, **new_ext_map;
 	map_bnode **old_bnode_map;	
 	
 	inet_prefix gnode_ipstart, old_ip;
@@ -1100,15 +1100,23 @@ hook_retry_scan:
 	 * Fetch the ext_map from the node who gave us the free nodes list. 
 	 */
 	old_ext_map=me.ext_map;
-	if(!(me.ext_map=get_ext_map(rq->ip, rq->dev, &me.cur_quadg))) 
+	if(!(new_ext_map=get_ext_map(rq->ip, rq->dev, &me.cur_quadg))) 
 		fatal("None of the rnodes in this area gave me the extern map");
-	else
-		free_extmap(old_ext_map, GET_LEVELS(my_family), 0);
+	me.ext_map=new_ext_map;
 
 	/* If we have to create new gnodes, let's do it. */
-	if(new_gnode)
+	if(new_gnode) {
+		me.ext_map  = old_ext_map;
+		old_ext_map = new_ext_map;
+		memcpy(&old_quadg, &me.cur_quadg, sizeof(quadro_group));
+		
+		/* Create a new gnode. After this we have a new ip,
+		 * ext_map and quadro_group */
 		create_gnodes(&me.cur_ip, fn_hdr.level);
-	else {
+		
+		/* Merge the received ext_map with our new empty ext_map */
+		merge_ext_maps(me.ext_map, new_ext_map, me.cur_quadg, old_quadg);
+	} else {
 		/* 
 		 * We want a new shiny traslucent internal map 
 		 */
@@ -1151,6 +1159,7 @@ hook_retry_scan:
 			free_map(merg_map[i], 0);
 		xfree(merg_map);
 	}
+	free_extmap(old_ext_map, GET_LEVELS(my_family), 0);
 	
 	/* 
 	 * Wow, the last step! Let's get the bnode map. Fast, fast, quick quick! 

@@ -1,5 +1,9 @@
 0.0.5b
 
+- map_rnode doesn't use anymore the timeval struct and map_rnode.rtt was
+  removed 'cause it was obsolete. In conclusion we gained 12 bytes for each
+  rnode.
+
 - The command line options override the ones specified in the config file.
 
 - Added a check in get_free_nodes to verify the validity of fn_hdr->ipstart.
@@ -8,6 +12,8 @@
 
 - qspn_remove_deads() removes the routes of the dead nodes from the routing
   table of the kernel.
+
+- code heavily cleaned.
 
 
 0.0.4b

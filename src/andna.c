@@ -771,7 +771,7 @@ finish:
 
 /*
  * andna_check_counter: asks to the counter_node if it is ok to register the
- * hnmae present in the register request in `pkt'.
+ * hname present in the register request in `pkt'.
  * If -1 is returned the answer is no.
  */
 int andna_check_counter(PACKET pkt)

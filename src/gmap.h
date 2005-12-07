@@ -238,6 +238,9 @@ int  g_rnode_find(map_gnode *gnode, map_gnode *n);
 int  extmap_find_level(map_gnode **ext_map, map_gnode *gnode, u_char max_level);
 void gmap_node_del(map_gnode *gnode);
 
+int merge_ext_maps(map_gnode **base, map_gnode **new, quadro_group base_root,
+		quadro_group new_root);
+
 int verify_ext_map_hdr(struct ext_map_hdr *emap_hdr, quadro_group *quadg);
 void free_extmap_rblock(map_rnode **rblock, u_char levels);
 void pack_map_gnode(map_gnode *gnode, char *pack);

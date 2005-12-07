@@ -271,7 +271,7 @@ void map_routes_order(map_node *map)
  * get_route_trtt: It returns the total round trip time (trtt) of `node' (in
  * millisec) for the `route'th route.
  */
-int get_route_trtt(map_node *node, u_short route)
+u_int get_route_trtt(map_node *node, u_short route)
 {
 	if(route >= node->links || node->flags & MAP_VOID || node->links <= 0)
 		return -1;
@@ -284,33 +284,32 @@ int get_route_trtt(map_node *node, u_short route)
 
 /*
  * merge_maps: 
- * Given two maps it merge them selecting only the best routes.
- * In the "base" map there will be the resulting map. The "new" map is the
- * second map used. "base_root" points to the root_node in the "base" map.
- * `new_root' points to the root_node in the "new" map.
- * It's assumed that `new_root' is an rnode of `base_root'.
+ * Given two maps it merges them selecting only the best routes.
+ * In `base' map there will be the resulting map. The `new' map is the
+ * second map. `base_root' points to the root_node present in the `base' map.
+ * `new_root' points to the root_node of the `new' map.
+ * It's assumed that `new_root' is a rnode of `base_root'.
+ * Note that the `new' map is modified during the merging!
  */
 int merge_maps(map_node *base, map_node *new, map_node *base_root, map_node *new_root)
 {
-	int i, e, x, count=0, base_root_pos, ngpos, base_trtt, new_trtt;
+	int i, e, x, count=0, base_root_pos, ngpos;
+	u_int base_trtt, new_trtt;
 	map_node *new_root_in_base, *node_gw;
 	
-	new_root_in_base=&base[pos_from_node(new_root, new)];
 	base_root_pos=pos_from_node(base_root, base);
+	new_root_in_base=&base[pos_from_node(new_root, new)];
 		
 	for(i=0; i<MAXGROUPNODE; i++) {
 		if(base[i].flags & MAP_ME || new[i].flags & MAP_ME ||
 				new[i].flags & MAP_VOID)
 			continue;
 		
-		base[i].flags|=MAP_UPDATE;
-		base[i].flags&=~MAP_VOID;
-		
 		for(e=0; e<new[i].links; e++) {
 			/* 
-			 * The gw to reach the new[i] node, with the
-			 * new_root_node as the starting point; so the node_gw
-			 * is a rnode of new_root_node.
+			 * We set in node_gw the gw that must be used to reach
+			 * the new[i] node, with the new_root_node as the 
+			 * starting point; `node_gw' is a rnode of new_root_node.
 			 */
 			node_gw=(map_node *)new[i].r_node[e].r_node; 
 			
@@ -322,8 +321,8 @@ int merge_maps(map_node *base, map_node *new, map_node *base_root, map_node *new
 				continue;
 
 			/* 
-			 * Now we change the r_nodes pointers of the new map to points to 
-			 * the base map's nodes. 
+			 * Now we change the r_nodes pointers of the new map to
+			 * let them point to the base map's nodes. 
 			 */
 			if(new[i].flags & MAP_RNODE) {
 				/* 
@@ -335,10 +334,9 @@ int merge_maps(map_node *base, map_node *new, map_node *base_root, map_node *new
 			} else if(base[ngpos].flags & MAP_VOID || 
 					!base[ngpos].links) {
 				/*
-				 * In the base we haven't the node used as gw in
-				 * the new_map to reach the new[i] node. 
+				 * In the `base' map, `node_gw' is VOID.
 				 * We must use the new_root node as gw because
-				 * it is one of our rnode
+				 * it is one of our rnode.
 				 */
 				new[i].r_node[e].r_node=(int *)new_root_in_base;
 			} else {
@@ -350,33 +348,52 @@ int merge_maps(map_node *base, map_node *new, map_node *base_root, map_node *new
 				new[i].r_node[e].r_node=base[ngpos].r_node[0].r_node;
 			}
 			
-			if(e>=base[i].links) {
+			/*
+			 * new[i] has more routes than base[i]. Add them in
+			 * base[i].
+			 */
+			if(e >= base[i].links) {
 				rnode_add(&base[i], &new[i].r_node[e]);
 				rnode_trtt_order(&base[i]);
+				base[i].flags|=MAP_UPDATE;
 				count++;
+				
 				continue;
 			}
 		
 			/* 
-			 * If the worst route in base[i] is less than the new one,
-			 * let's go ahead.
+			 * If the worst route in base[i] is better than the best
+			 * route in new[i], let's go ahead.
 			 */
 			base_trtt = get_route_trtt(&base[i], base[i].links-1);
 			new_trtt  = get_route_trtt(&new[i], e);
 			if(base_trtt < new_trtt)
 				continue;
-			
+		
+			/* 
+			 * Compare the each route of base[i] with
+			 * new[i].r_node[e]. The first route of base[i] which
+			 * is found to be worse than new[i].r_node[e] is
+			 * deleted and replaced with new[i].r_node[e] itself.
+			 */
 			for(x=0; x<base[i].links; x++) {
 				base_trtt = get_route_trtt(&base[i], x);
 				new_trtt  = get_route_trtt(&new[i], e);
 				if(base_trtt > new_trtt) {
 					map_rnode_insert(&base[i], x, &new[i].r_node[e]);
+					base[i].flags|=MAP_UPDATE;
 					count++;
 					break;
 				}
 			}
 		}
+		
+		if(base[i].links)
+			base[i].flags&=~MAP_VOID;
+		else
+			map_node_del(&base[i]);
 	}
+
 	return count;
 }
 

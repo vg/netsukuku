@@ -192,7 +192,7 @@ int rnode_trtt_compar(const void *a, const void *b);
 void rnode_trtt_order(map_node *node);
 void map_routes_order(map_node *map);
 
-int get_route_rtt(map_node *node, u_short route, struct timeval *rtt);
+u_int get_route_trtt(map_node *node, u_short route);
 void rnode_set_trtt(map_node *node);
 void rnode_recurse_trtt(map_rnode *rnode, int route, struct timeval *trtt);
 void node_recurse_trtt(map_node *node);
