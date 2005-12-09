@@ -26,15 +26,8 @@
 					   by Netsukuku */
 
 typedef struct {
-	
 	char		dev_name[IFNAMSIZ];	/* If name */
 	int		dev_idx;		/* If index */
-	
-	int 		dev_sk;			/* Each interface has its own 
-						   binded socket. In this way 
-						   we can know on what IF a 
-						   packet was received.
-						 */
 } interface;
 
 /* from linux/ipv6.h */
