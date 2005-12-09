@@ -355,6 +355,9 @@ void add_pkt_op(u_char op, char sk_type, u_short port, int (*exec_f)(PACKET pkt)
 /*
  * send_rq: This functions send a `rq' request, with an id set to `rq_id', to
  * `pkt->to'.
+ * If `pkt->sk' is non zero, it will be used to send the request.
+ * If `pkt->sk' is 0, it will create a new socket and connection to `pkt->to',
+ * the new socket is stored in `pkt->sk'.
  * If `pkt->hdr.sz` is > 0 it includes the `pkt->msg' in the packet otherwise
  * it will be NULL. 
  * If `rpkt' is not null it will receive and store the reply pkt in `rpkt'.
