@@ -1069,6 +1069,7 @@ int flood_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), u_char level
 		pkt_addto(&pkt, &to);
 
 		/*Let's send the pkt*/
+		pkt.sk=0;
 		pkt_add_dev(&pkt, rnl_get_dev(rlist, node), 1);
 		err=send_rq(&pkt, 0, pkt.hdr.op, pkt.hdr.id, 0, 0, 0);
 		if(err==-1) {
