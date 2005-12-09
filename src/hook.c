@@ -293,7 +293,7 @@ int get_qspn_round(inet_prefix to, interface *dev, struct timeval to_rtt,
 	gettimeofday(&cur_t, 0);
 	for(level=0; level < max_levels; level++) {
 		timeradd(&to_rtt, &qtime[level], &qtime[level]);
-#ifdef DEBUG
+#if 0
 		debug(DBG_INSANE, "qspn_id: %d qtime[%d] set to %d, to_rtt: %d", 
 				qspn_id[level], level, 
 				MILLISEC(qtime[level]), MILLISEC(to_rtt));
@@ -350,9 +350,11 @@ int put_qspn_round(PACKET rq_pkt)
 	for(level=0; level < qr_pkt.max_levels; level++) {
 		update_qspn_time(level, 0);
 		timersub(&cur_t, &me.cur_qspn_time[level], &qr_pkt.qtime[level]);
+#if 0
 		debug(DBG_INSANE, "qspn_id: %d, qr_pkt.qtime[%d]: %d", 
 				qr_pkt.qspn_id[level], level,
 				MILLISEC(qr_pkt.qtime[level]));
+#endif
 	}
 
 	/* copy in the pkt the qspn_gnode_count */

@@ -227,8 +227,6 @@ int if_init_all(char ifs_name[MAX_INTERFACES][IFNAMSIZ], int ifs_n,
 			}
 
 			strncpy(new_ifs[n].dev_name, ifs_name[n], IFNAMSIZ);
-			new_ifs[n].dev_sk=0;
-
 			n++;
 		}
 		

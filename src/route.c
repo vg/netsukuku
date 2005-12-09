@@ -69,8 +69,8 @@ int get_gw_bnode_recurse(map_node *int_map, map_gnode **ext_map,
 	/* Find the bnode which borders on the `node_gw' gnode */
 	bpos=map_find_bnode_rnode(bnode_map[i-1], bmap_nodes[i-1], (void *)node_gw);
 	if(bpos == -1) {
-		debug(DBG_INSANE, "get_gw: l=%d, node_gw=%x not found in bmap lvl %d", 
-				i, node_gw, i-1);
+		/*debug(DBG_INSANE, "get_gw: l=%d, node_gw=%x not found in bmap lvl %d", 
+				i, node_gw, i-1);*/
 		return -1;
 	}
 
@@ -87,7 +87,7 @@ int get_gw_bnode_recurse(map_node *int_map, map_gnode **ext_map,
 		qspn_set_map_vars(i-1, 0, &root_node, 0, 0);
 		if(me.cur_node->flags & MAP_BNODE && 
 				gnode == (map_gnode *)root_node) {
-			debug(DBG_INSANE, "get_gw: bmap searching ernode for gnode 0x%x",node_gw);
+			/* debug(DBG_INSANE, "get_gw: bmap searching ernode for gnode 0x%x",node_gw); */
 
 			erc=erc_find_gnode(me.cur_erc, gnode_gw, i);
 			if(erc) {
@@ -96,7 +96,8 @@ int get_gw_bnode_recurse(map_node *int_map, map_gnode **ext_map,
 			}
 		}
 	}
-	debug(DBG_INSANE, "get_gw: bmap found = %x", node);
+	
+	/* debug(DBG_INSANE, "get_gw: bmap found = %x", node); */
 
 	/* Descend in the lower level */
 	if((--i) >= gw_level) 
@@ -124,7 +125,7 @@ int get_gw_gnode_recurse(map_node *int_map, map_gnode **ext_map,
 	map_node  *node_gw;
 	int i, pos, routes, sub_routes, e, ret;
 
-	debug(DBG_INSANE, "get_gw: find_gnode=%x", find_gnode); 
+	/*debug(DBG_INSANE, "get_gw: find_gnode=%x", find_gnode);*/
 	i=gnode_level; 
 
 	if(node->flags & MAP_RNODE) {
@@ -135,8 +136,8 @@ int get_gw_gnode_recurse(map_node *int_map, map_gnode **ext_map,
 		 */
 		gnode_gw=(void *)node;
 		node_gw=(map_node *)gnode_gw;
-		debug(DBG_INSANE, "get_gw: l=%d, node & MAP_RNODE. node_gw=node=%x",
-				i, node);
+		/*debug(DBG_INSANE, "get_gw: l=%d, node & MAP_RNODE. node_gw=node=%x",
+				i, node);*/
 	} else if (node->flags & MAP_ME) {
 		/* 
 		 * If `node' is an our gnode. we reset the gnode_gw to
@@ -145,8 +146,8 @@ int get_gw_gnode_recurse(map_node *int_map, map_gnode **ext_map,
 		 */
 		gnode_gw=(void *)find_gnode;
 		node_gw=(map_node *)gnode_gw;
-		debug(DBG_INSANE, "get_gw: l=%d, node & MAP_ME. find_gnode: %x",
-				i, find_gnode);
+		/*debug(DBG_INSANE, "get_gw: l=%d, node & MAP_ME. find_gnode: %x",
+				i, find_gnode);*/
 	} else {
 		
 		if(!node->links || (i && !gnode))
@@ -186,8 +187,8 @@ int get_gw_gnode_recurse(map_node *int_map, map_gnode **ext_map,
 			
 			if(node_gw->flags & MAP_RNODE)
 				find_gnode=(map_gnode *)node_gw;
-			debug(DBG_INSANE, "get_gw: l=%d, e %d node_gw=rnode[%d].r_node=%x,"
-					" find_gnode=%x", i, e, pos, node_gw, find_gnode);
+			/*debug(DBG_INSANE, "get_gw: l=%d, e %d node_gw=rnode[%d].r_node=%x,"
+					" find_gnode=%x", i, e, pos, node_gw, find_gnode);*/
 
 			ret+=get_gw_bnode_recurse(int_map, ext_map, bnode_map, bmap_nodes, 
 					find_gnode, gnode_gw, node_gw, i, gw_level, 
