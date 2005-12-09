@@ -144,7 +144,8 @@ struct radar_queue *find_ip_radar_q(inet_prefix *ip)
  * rnl_add: adds a new rnode_list struct in the `*rnlist' list. The new
  * allocated struct will be filled respectively with `rnode_pos' and
  * `dev'.
- * `root_node' is the pointer to the current root node in the internal map.
+ * `root_node' is the pointer to the current root node in the internal map,
+ * i.e me.cur_node.
  * It returns the added `rnode_list' struct.
  */
 struct rnode_list *rnl_add(struct rnode_list **rnlist, int *rnlist_counter, 
@@ -672,8 +673,9 @@ void radar_update_map(void)
 				   /*
 				    * Add the rnode in the rnode_list
 				    */
-				   rnl=rnl_add(&rlist, &rlist_counter, root_node, 
-						   root_node->links-1, rq->dev);
+				   if(!level)
+					   rnl=rnl_add(&rlist, &rlist_counter, root_node, 
+							   root_node->links-1, rq->dev);
 				 
 				   rnode_added[level]++;
 			   } else {
