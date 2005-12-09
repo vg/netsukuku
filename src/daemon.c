@@ -98,41 +98,36 @@ int prepare_listen_socket(int family, int socktype, u_short port,
 
 
 /*
- * sockets_all_ifs: create a socket for each interface which is in the `ifs'
+ * sockets_all_ifs: creates a socket for each interface which is in the `ifs'
  * array. The array has `ifs_n' members.
- * Each created socket is stored in ifs[x].dev_sk.
+ * Each created socket is stored in the `dev_sk' array, which has `ifs_n'#
+ * members.
  * The created socket will be bound to the relative interface.
- * In `max_sk_idx' is stored the index of the `ifs' struct, which has the
- * biggest ifs[x].dev_sk.
+ * In `max_sk_idx' is stored the index of the `dev_sk' array, which has the
+ * biggest dev_sk.
  * On error 0 is returned, otherwise the number of utilised interfaces is
- * returned. Note that `ifs' is modified 'cause all the struct, which contains
- * interfaces which gave an error, are overwritten.
+ * returned. 
  */
 int sockets_all_ifs(int family, int socktype, u_short port, 
-			interface *ifs, int ifs_n, int *max_sk_idx)
+			interface *ifs, int ifs_n, 
+			int *dev_sk, int *max_sk_idx)
 {
 	int i, n;
 
 	*max_sk_idx=0;
 
 	for(i=0, n=0; i<ifs_n; i++) {
-		ifs[i].dev_sk = prepare_listen_socket(family, socktype, port,
+		dev_sk[i] = prepare_listen_socket(family, socktype, port,
 				&ifs[i]);
 		
-		if(ifs[i].dev_sk < 0) {
+		if(dev_sk[i] < 0) {
 			error("Cannot create a socket on the %s interface! "
 					"Ignoring it", ifs[i].dev_name);
-			
-			if(i < ifs_n)
-				/* Overwrite the `n'th struct, which contains
-				 * the device where we got the error */
-				memcpy(&ifs[n], &ifs[i+1], 
-						sizeof(interface) * (ifs_n-i));
-			
+			dev_sk[i]=0;
 			continue;
 		}
 
-		if(ifs[i].dev_sk >= ifs[*max_sk_idx].dev_sk)
+		if(dev_sk[i] >= dev_sk[*max_sk_idx])
 			*max_sk_idx=i;
 		
 		n++;
@@ -186,12 +181,12 @@ void *udp_daemon(void *passed_argv)
 	struct udp_daemon_argv argv;
 	struct udp_exec_pkt_argv exec_pkt_argv;
 	
-	interface ifs[me.cur_ifs_n];
-	int ifs_n, max_sk_idx;
+	interface *ifs;
+	int max_sk_idx, dev_sk[me.cur_ifs_n];
 
 	PACKET rpkt;
 	fd_set fdset;
-	int ret, i;
+	int ret, i, err;
 	u_short udp_port;
 	
 	pthread_t thread;
@@ -213,10 +208,9 @@ void *udp_daemon(void *passed_argv)
 
 	debug(DBG_SOFT, "Preparing the udp listening socket on port %d", udp_port);
 	
-	memcpy(ifs, me.cur_ifs, sizeof(interface) * me.cur_ifs_n);
-	ifs_n=sockets_all_ifs(my_family, SOCK_DGRAM, udp_port, ifs,
-				me.cur_ifs_n, &max_sk_idx);
-	if(!ifs_n)
+	err=sockets_all_ifs(my_family, SOCK_DGRAM, udp_port, me.cur_ifs,
+				me.cur_ifs_n, dev_sk, &max_sk_idx);
+	if(!err)
 		return NULL;
 	
 	debug(DBG_NORMAL, "Udp daemon on port %d up & running", udp_port);
@@ -227,10 +221,11 @@ void *udp_daemon(void *passed_argv)
 	for(;;) {
 		FD_ZERO(&fdset);
 
-		for(i=0; i < ifs_n; i++)
-			FD_SET(ifs[i].dev_sk, &fdset);
-		
-		ret=select(ifs[max_sk_idx].dev_sk+1, &fdset, NULL, NULL, NULL);
+		for(i=0; i < me.cur_ifs_n; i++)
+			if(dev_sk[i])
+				FD_SET(dev_sk[i], &fdset);
+
+		ret=select(dev_sk[max_sk_idx]+1, &fdset, NULL, NULL, NULL);
 		if (ret < 0) {
 #ifdef DEBUG
 			if(select_errors > 20)
@@ -241,14 +236,17 @@ void *udp_daemon(void *passed_argv)
 			continue;
 		}
 
-		for(i=0; i < ifs_n; i++) {
+		for(i=0; i < me.cur_ifs_n; i++) {
+			ifs=&me.cur_ifs[i];
+			if(!dev_sk[i])
+				continue;
 			
-			if(!FD_ISSET(ifs[i].dev_sk, &fdset))
+			if(!FD_ISSET(dev_sk[i], &fdset))
 				continue;
 
 			memset(&rpkt, 0, sizeof(PACKET));
-			pkt_addsk(&rpkt, my_family, ifs[i].dev_sk, SKT_UDP);
-			pkt_add_dev(&rpkt, &ifs[i], 0);
+			pkt_addsk(&rpkt, my_family, dev_sk[i], SKT_UDP);
+			pkt_add_dev(&rpkt, ifs, 0);
 			pkt_addflags(&rpkt, MSG_WAITALL);
 			pkt_addport(&rpkt, udp_port);
 
@@ -310,9 +308,6 @@ void *tcp_daemon(void *door)
 	pthread_t thread;
 	pthread_attr_t t_attr;
 	
-	interface ifs[me.cur_ifs_n];
-	int ifs_n, max_sk_idx;
-
 	PACKET rpkt;
 	struct sockaddr_storage addr;
 	socklen_t addrlen = sizeof addr;
@@ -320,6 +315,9 @@ void *tcp_daemon(void *door)
 	
 	fd_set fdset;
 	int fd, ret, err, i;
+
+	interface *ifs;
+	int max_sk_idx, dev_sk[me.cur_ifs_n];
 	
 	u_short tcp_port=*(u_short *)door;
 	const char *ntop;
@@ -329,25 +327,27 @@ void *tcp_daemon(void *door)
 	
 	debug(DBG_SOFT, "Preparing the tcp listening socket on port %d", tcp_port);
 
-	memcpy(ifs, me.cur_ifs, sizeof(interface) * me.cur_ifs_n);
-	ifs_n=sockets_all_ifs(my_family, SOCK_STREAM, tcp_port, ifs, 
-				me.cur_ifs_n, &max_sk_idx);
-	if(!ifs_n)
+	err=sockets_all_ifs(my_family, SOCK_STREAM, tcp_port, me.cur_ifs, 
+				me.cur_ifs_n, dev_sk, &max_sk_idx);
+	if(!err)
 		return NULL;
 
 	pthread_mutex_init(&tcp_exec_lock, 0);
 
-	for(i=0; i<ifs_n; i++) {
+	for(i=0; i<me.cur_ifs_n; i++) {
+		if(!dev_sk[i])
+			continue;
 		/* 
 		 * While we are accepting the connections we keep the socket non
 		 * blocking.
 		 */
-		if(set_nonblock_sk(ifs[i].dev_sk))
+		if(set_nonblock_sk(dev_sk[i]))
 			return NULL;
 
 		/* Shhh, it's listening... */
-		if(listen(ifs[i].dev_sk, 5) == -1) {
-			close(ifs[i].dev_sk);
+		if(listen(dev_sk[i], 5) == -1) {
+			close(dev_sk[i]);
+			dev_sk[i]=0;
 			return NULL;
 		}
 	}
@@ -357,21 +357,25 @@ void *tcp_daemon(void *door)
 	for(;;) {
 		FD_ZERO(&fdset);
 
-		for(i=0; i < ifs_n; i++)
-			FD_SET(ifs[i].dev_sk, &fdset);
+		for(i=0; i < me.cur_ifs_n; i++)
+			if(dev_sk[i])
+				FD_SET(dev_sk[i], &fdset);
 
-		ret=select(ifs[max_sk_idx].dev_sk+1, &fdset, NULL, NULL, NULL);
+		ret=select(dev_sk[max_sk_idx]+1, &fdset, NULL, NULL, NULL);
 		if(ret < 0 && errno != EINTR)
 			error("daemon_tcp: select error: %s", strerror(errno));
 		if(ret < 0)
 			continue;
 
-		for(i=0; i < ifs_n; i++) {
-
-			if(!FD_ISSET(ifs[i].dev_sk, &fdset))
+		for(i=0; i < me.cur_ifs_n; i++) {
+			ifs=&me.cur_ifs[i];
+			if(!dev_sk[i])
 				continue;
 
-			fd=accept(ifs[i].dev_sk, (struct sockaddr *)&addr, &addrlen);
+			if(!FD_ISSET(dev_sk[i], &fdset))
+				continue;
+
+			fd=accept(dev_sk[i], (struct sockaddr *)&addr, &addrlen);
 			if(fd == -1) {
 				if (errno != EINTR && errno != EWOULDBLOCK)
 					error("daemon_tcp: accept(): %s", strerror(errno));
@@ -380,7 +384,7 @@ void *tcp_daemon(void *door)
 
 			memset(&rpkt, 0, sizeof(PACKET));
 			pkt_addsk(&rpkt, my_family, fd, SKT_TCP);
-			pkt_add_dev(&rpkt, &ifs[i], 0);
+			pkt_add_dev(&rpkt, ifs, 0);
 			pkt_addflags(&rpkt, MSG_WAITALL);
 			pkt_addport(&rpkt, tcp_port);
 
