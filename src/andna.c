@@ -198,9 +198,9 @@ int is_hgnode_excluded(quadro_group *qg, u_int **excluded_hgnode,
 		for(i=lvl; i<total_levels; i++) {
 #ifdef DEBUG
 			debug(DBG_INSANE, "is_hgnode_excluded: l %d, qg->gid %d, ipgid %d", i, 
-					qg->gid[i], iptogid(ip, i));
+					qg->gid[i], iptogid(&ip, i));
 #endif
-			if(qg->gid[i] != iptogid(ip, i)) {
+			if(qg->gid[i] != iptogid(&ip, i)) {
 				x=1;
 				break;
 			}
@@ -1888,6 +1888,16 @@ void *andna_hook(void *null)
 	
 	memset(&to, 0, sizeof(inet_prefix));
 
+	/* Block these requests */
+	op_filter_set(ANDNA_REGISTER_HNAME);
+        op_filter_set(ANDNA_CHECK_COUNTER);
+        op_filter_set(ANDNA_RESOLVE_HNAME);
+        op_filter_set(ANDNA_RESOLVE_IP);
+        op_filter_set(ANDNA_GET_ANDNA_CACHE);
+        op_filter_set(ANDNA_GET_SINGLE_ACACHE);
+        op_filter_set(ANDNA_SPREAD_SACACHE);
+        op_filter_set(ANDNA_GET_COUNT_CACHE);
+
 	loginfo("Starting the ANDNA hook.");
 	
 	if(!me.cur_node->links) {
@@ -1940,6 +1950,15 @@ void *andna_hook(void *null)
 	if(!e)
 		loginfo("None of the rnodes in this area gave me the counter_cache.");
 
+	/* Un-block these requests */
+	op_filter_clr(ANDNA_REGISTER_HNAME);
+        op_filter_clr(ANDNA_CHECK_COUNTER);
+        op_filter_clr(ANDNA_RESOLVE_HNAME);
+        op_filter_clr(ANDNA_RESOLVE_IP);
+        op_filter_clr(ANDNA_GET_ANDNA_CACHE);
+        op_filter_clr(ANDNA_GET_SINGLE_ACACHE);
+        op_filter_clr(ANDNA_SPREAD_SACACHE);
+        op_filter_clr(ANDNA_GET_COUNT_CACHE);
 
 	loginfo("ANDNA hook completed");
 

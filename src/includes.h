@@ -59,6 +59,11 @@
 
 #define _PACKED_ __attribute__ ((__packed__))
 
+#define DEBUG_TEST
+
+/* Actually the IPV6 is disabled */
+#define IPV6_DISABLED
+
 #ifdef DEBUG
 #warning the DEBUG code is being built!
 #define ANDNA_DEBUG

@@ -19,6 +19,8 @@
 #ifndef REQUEST_H
 #define REQUEST_H
 
+#include "misc.h"
+
 #define REQUEST_TIMEOUT		300	/* The timeout in seconds for all the 
 					   requests */
 #ifdef DEBUG
@@ -34,7 +36,7 @@ enum pkt_op
 	GET_FREE_NODES,			/*it means: <<Get the list of free ips in your gnode, plz>>*/
 	GET_QSPN_ROUND,			/*<<Yo, Gimme the qspn ids and qspn times>>*/
 	
-	REGISTER_EVENTS,		/* (see events.c) */
+	REGISTER_EVENTS,		/* not used */
 	SET_FOREIGN_ROUTE,		/* Set the route in the foreign	groupnode */
 	DEL_FOREIGN_ROUTE,
 	NEW_BACKROUTE,			/*Tells the dst_node to use a different route to reply*/
@@ -127,14 +129,17 @@ enum errors
 	E_ACCEPT_TBL_FULL,
 	E_REQUEST_TBL_FULL,
 	E_QGROUP_FULL,
+	E_NTK_FULL,
 	E_INVALID_SIGNATURE,
-	E_CANNOT_FORWARD  ,
+	E_CANNOT_FORWARD,
+	
 	E_ANDNA_WRONG_HASH_GNODE,
 	E_ANDNA_QUEUE_FULL,
 	E_ANDNA_UPDATE_TOO_EARLY,
 	E_ANDNA_TOO_MANY_HNAME,
 	E_ANDNA_NO_HNAME,
 	E_ANDNA_CHECK_COUNTER,
+	
 	E_TOO_MANY_CONN
 };
 #define TOTAL_ERRORS		(E_TOO_MANY_CONN+1)
@@ -146,6 +151,7 @@ const static u_char error_str[][40]=
 	{ "Accept table full" },
 	{ "Request table full" },
 	{ "Quadro Group full" },
+	{ "Netsukuku is full" },
 	{ "Invalid signature" },
 	{ "Cannot forward the pkt" },
 	{ "Invalid hash_gnode" },
@@ -340,11 +346,27 @@ struct request_tbl
 };
 typedef struct request_tbl rq_tbl;
 
-int	rq_wait_idx[TOTAL_REQUESTS];
+int rq_wait_idx[TOTAL_REQUESTS];
 
 int update_rq_tbl_mutex;
 
-/*Functions declaration starts here*/
+/* 
+ * Each bit of this array corresponds to a request or a reply. If the bit is 
+ * set, the request or reply will be dropped, otherwise it will be executed by
+ * pkts.c/pkt_exec().
+ */
+char filtered_op[TOTAL_OPS>>3];
+#define OP_FILTER_DROP		1
+#define OP_FILTER_ALLOW		0
+#define op_filter_set(op)	SET_BIT(filtered_op, (op))
+#define op_filter_clr(op)	CLR_BIT(filtered_op, (op))
+#define op_filter_test(op)	TEST_BIT(filtered_op, (op))
+#define op_filter_reset(bit)	memset(filtered_op, (bit), sizeof(filtered_op))
+
+
+/* 
+ * Functions declaration starts here
+ */
 void rq_wait_idx_init(int *rq_wait_idx);
 const u_char *rq_strerror(int err);
 #define re_strerror(err) (rq_strerror((err)))
@@ -357,5 +379,8 @@ void update_rq_tbl(rq_tbl *);
 int is_rq_full(u_char , rq_tbl *);
 int find_free_rq_wait(u_char , rq_tbl *);
 int add_rq(u_char , rq_tbl *);
+
+void op_filter_reset_re(int bit);
+void op_filter_reset_rq(int bit);
 
 #endif /*REQUEST_H*/

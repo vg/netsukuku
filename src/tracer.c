@@ -265,7 +265,7 @@ int tracer_get_trtt(int from_rnode_pos, tracer_hdr *trcr_hdr,
 	/* Add the rtt of me -> from */
 	trtt_ms+=me.cur_node->r_node[from_rnode_pos].trtt;
 
-	for(i=hops-1; i > 0; i--)
+	for(i=hops-1; i >= 0; i--)
 		trtt_ms+=tracer[i].rtt;
 
 	*trtt=trtt_ms;

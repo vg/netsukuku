@@ -47,6 +47,9 @@ int total_rehooks;			/* Number of rehooks made in the current
 					   rehook, has a gnode_count >= (1<<16) 
 					   it sends a new challenge. */
 
+/* `rk_gnode_ip' is the ip that will be used if we cannot rehook directly to 
+ * any gnode: a new gnode is created with the ip equal to `rk_gnode_ip'. */
+inet_prefix rk_gnode_ip;
 
 /*  *  *  Functions declaration  *  *  */
 void rehook_init(void);

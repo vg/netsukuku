@@ -68,6 +68,37 @@ void rehook_init(void)
 	pthread_attr_setdetachstate(&new_rehook_thread_attr, PTHREAD_CREATE_DETACHED);	 
 }
 
+/*
+ * rehook_compute_new_gnode: computes the IP which shall be used to create a
+ * new gnode if the we cannot rehook to any gnode.
+ * The computed ip is stored in `new_ip'.
+ * `old_ip' is the IP we used before the rehook was launched.
+ */
+void rehook_compute_new_gnode(inet_prefix *old_ip, inet_prefix *new_ip, 
+		int hook_level)
+{
+	quadro_group qg;
+	int hash_gid;
+
+	iptoquadg(*old_ip, me.ext_map, &qg, QUADG_GID);
+
+	/* 
+	 * Hash our gids starting from the `hook_level' level,
+	 * then xor the bytes of the hash merging them in a single byte.
+	 */
+	hash_gid=fnv_32_buf(&qg.gid[hook_level], 
+			(GET_LEVELS(my_family)-hook_level),
+			FNV1_32_INIT);
+	qg.gid[hook_level]=xor_int(hash_gid);
+
+	/* Be sure to choose VOID gnodes */
+	void_gids(&qg, hook_level, me.ext_map, me.int_map);
+
+	/* Save the new ip in `new_ip' */
+	gidtoipstart(qg.gid, GET_LEVELS(my_family), GET_LEVELS(my_family), 
+			my_family, new_ip);
+}
+
 int send_challenge(int gnode, int level, int gnode_count)
 {
 	/* TODO ^_^ */
@@ -114,31 +145,48 @@ int update_rehook_time(int level)
 
 /*
  * wait_new_rnode: it waits until we have a rnode, which belongs to
- * `rargv->gnode'.
+ * `rargv->gnode' or to `rk_gnode_ip'.
  */
 void wait_new_rnode(struct rehook_argv *rargv)
 {
 	ext_rnode_cache *erc;
-	quadro_group qg;
+	int gid_a[MAX_LEVELS], gid_b[MAX_LEVELS];
+	int e=0, i, retries;
 
 	debug(DBG_NOISE, "wait_new_rnode: waiting the %d rnode %d lvl appearance",
 			rargv->gid, rargv->level);
 
-	memcpy(&qg, &me.cur_quadg, sizeof(quadro_group));
-	memset(qg.gnode, 0, sizeof(map_gnode *)*(MAX_LEVELS-ZERO_LEVEL));
-	qg.gid[rargv->level]=rargv->gid;
+	memcpy(&gid_a, me.cur_quadg.gid, sizeof(me.cur_quadg.gid));
+	gid_a[rargv->level]=rargv->gid;
+	
+	iptogids(&rk_gnode_ip, gid_b, me.cur_quadg.levels);
 			
-	for(;;) {
+	retries = QSPN_WAIT_ROUND_LVL(rargv->level)/MAX_RADAR_WAIT + 1;
+	for(i=0; i<retries; i++) {
+		e=0;
 		erc=me.cur_erc;
-		list_for(erc)
-			if(!quadg_gids_cmp(erc->e->quadg, qg, rargv->level)) {
-				debug(DBG_NOISE, "wait_new_rnode: %d rnode %d "
-						"lvl found", rargv->gid, rargv->level);
-				return;
+		list_for(erc) {
+			if(!gids_cmp(erc->e->quadg.gid, gid_a, rargv->level,
+						me.cur_quadg.levels)) {
+				e=1;
+				break;
 			}
-
+			
+			if(!gids_cmp(erc->e->quadg.gid, gid_b, rargv->level,
+						me.cur_quadg.levels)) {
+				e=1;
+				break;
+			}
+		}
+		if(e) {
+			debug(DBG_NOISE, "wait_new_rnode: %d rnode %d "
+					"lvl found", rargv->gid, rargv->level);
+			return;
+		}
 		radar_wait_new_scan();
 	}
+
+	debug(DBG_NORMAL, "wait_new_rnode: not found! Anyawy, trying to rehook");
 }
 
 /*
@@ -162,6 +210,10 @@ void *new_rehook_thread(void *r)
 			/* Challenge failed, do not rehook */
 			goto finish;
 
+	/* Store in `rk_gnode_ip' our new gnode ip to be used when the rehook
+	 * fails, just in case */
+	rehook_compute_new_gnode(&me.cur_ip, &rk_gnode_ip, rargv->level);
+	
 	/* Before rehooking, at least one qspn_round has to be completed */
 	while(!me.cur_qspn_id[rargv->level])
 		usleep(505050);
@@ -293,7 +345,6 @@ int rehook(map_gnode *hook_gnode, int hook_level)
 	/* Reset */
 	rnl_reset(&rlist, &rlist_counter);
 	e_rnode_free(&me.cur_erc, &me.cur_erc_counter);
-	qspn_reset(GET_LEVELS(my_family));
 
 	/* Andna reset */
 	if(!server_opt.disable_andna) {

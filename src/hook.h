@@ -42,6 +42,7 @@ int total_hooks;
 
 /* Current join_rate */
 u_int hook_join_rate;
+u_int rnodes_rehooked;		/* How many rnodes have rehooked with us */
 
 
 /*

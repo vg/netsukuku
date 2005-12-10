@@ -193,11 +193,13 @@ typedef struct ext_rnode_cache ext_rnode_cache;
 
 /* * * Functions' declaration * * */
 inline int get_groups(int family, int lvl);
+int is_group_invalid(int gid, int lvl, int family);
 
 int  pos_from_gnode(map_gnode *gnode, map_gnode *map);
 map_gnode * gnode_from_pos(int pos, map_gnode *map);
 void rnodetoip(u_int mapstart, u_int maprnode, inet_prefix ipstart, inet_prefix *ret);
-int  iptogid(inet_prefix ip, int level);
+int iptogid(inet_prefix *ip, int level);
+void iptogids(inet_prefix *ip, int *gid, int levels);
 void gidtoipstart(int *gid, u_char total_levels, u_char levels, int family, 
 		inet_prefix *ip);
 void iptoquadg(inet_prefix ip, map_gnode **ext_map, quadro_group *qg, char flags);
@@ -216,6 +218,7 @@ int random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 		int total_levels, map_gnode **ext_map, int only_free_gnode, 
 		inet_prefix *new_ip, int my_family);
 void gnodetoip(quadro_group *quadg, int gnodeid, u_char level, inet_prefix *ip);
+int gids_cmp(int *gids_a, int *gids_b, int lvl, int max_lvl);
 int quadg_gids_cmp(quadro_group a, quadro_group b, int lvl);
 int ip_gids_cmp(inet_prefix a, inet_prefix b, int lvl);
 ext_rnode_cache *erc_find(ext_rnode_cache *erc, ext_rnode *e_rnode);

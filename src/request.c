@@ -147,3 +147,29 @@ int add_rq(u_char rq, rq_tbl *tbl)
 	tbl->rq_wait[find_free_rq_wait(rq, tbl)]=cur_t;	
 	return 0;
 }
+
+/*
+ * op_filter_reset_re: resets all the replies
+ */
+void op_filter_reset_re(int bit)
+{
+	int i;
+	for(i=TOTAL_REQUESTS; i<TOTAL_OPS; i++)
+		if(bit)
+			op_filter_set(i);
+		else
+			op_filter_clr(i);
+}
+
+/*
+ * op_filter_reset_rq: resets all the requests
+ */
+void op_filter_reset_rq(int bit)
+{
+	int i;
+	for(i=0; i<TOTAL_REQUESTS; i++)
+		if(bit)
+			op_filter_set(i);
+		else
+			op_filter_clr(i);
+}

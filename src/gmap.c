@@ -37,6 +37,25 @@ inline int get_groups(int max_levels, int lvl)
 	return lvl == max_levels ? 1 : MAXGROUPNODE;
 }
 
+/* 
+ * is_group_invalid: returns 1 if the `gid' of level `lvl' is invalid and
+ * cannot be used in a regular IP.
+ */
+int is_group_invalid(int gid, int lvl, int family)
+{
+	if(family == AF_INET && lvl == GET_LEVELS(family)-1) {
+		if(!gid) /* ZERONET */
+			return 1;
+		if(gid >= 224 && gid <= 255) /* MULTICAST and BADCLASS */
+			return 1;
+	} else if(family == AF_INET6) {
+		/* TODO: nothing ? */
+		return 0;
+	}
+	
+	return 0;
+}
+
 /*pos_from_gnode: Position from gnode: It returns the position of the `gnode' in the `map'.*/
 int pos_from_gnode(map_gnode *gnode, map_gnode *map)
 {
@@ -71,9 +90,9 @@ void rnodetoip(u_int mapstart, u_int maprnode, inet_prefix ipstart,
  * iptogid: ip to gnode id, of the specified `level', conversion function.
  * Note: this function cannot fail! So be sure to pass a valid `level'.
  */
-int iptogid(inet_prefix ip, int level)
+int iptogid(inet_prefix *ip, int level)
 {
-	u_char *h_ip=(u_char *)ip.data;
+	u_char *h_ip=(u_char *)ip->data;
 	int gid;
 
 	/* 
@@ -85,6 +104,17 @@ int iptogid(inet_prefix ip, int level)
 	gid=(int)h_ip[level];
 	
 	return gid;	
+}
+
+/* 
+ * iptogids: it fills the `gid' array which has `levels'# members with:
+ * 	gid[x] = iptogid(`ip', x);
+ */
+void iptogids(inet_prefix *ip, int *gid, int levels)
+{
+	int i;
+	for(i=0; i<levels; i++)
+		gid[i]=iptogid(ip, i);
 }
 
 /* 
@@ -135,10 +165,8 @@ void iptoquadg(inet_prefix ip, map_gnode **ext_map, quadro_group *qg, char flags
 	qg->levels=levels;
 
 	if(flags & QUADG_GID) {
-		for(i=0; i<levels; i++) {
-			qg->gid[i]=iptogid(ip, i);
-			gid[i]=qg->gid[i];
-		}
+		iptogids(&ip, qg->gid, levels);
+		memcpy(gid, qg->gid, sizeof(gid));
 		
 		if(flags & QUADG_IPSTART)
 			for(i=0; i<levels; i++)
@@ -288,11 +316,13 @@ int increment_gids(quadro_group *qg, int level, map_gnode **ext_map,
 		map_node *int_map, int(*is_gnode_flag_set)(map_gnode *gnode), 
 		int(*is_node_flag_set)(map_node *node))
 {
-	int g, groups, gid, i, e=0;
+	int g, groups, gid, i, e=0, family;
 
 	if(level >= qg->levels)
 		return -1;
 
+	family = qg->ipstart[level].family;
+	
 	g = level == qg->levels ? 0 : qg->gid[level];
 	groups=get_groups(qg->levels, level);
 	gid=qg->gid[level];
@@ -306,6 +336,9 @@ int increment_gids(quadro_group *qg, int level, map_gnode **ext_map,
 		for(i=0, e=0; i < groups; i++) {
 			qg->gid[level]=(gid + i) % groups;
 
+			if(is_group_invalid(qg->gid[level], level, family))
+				continue;
+						
 			if((!level && is_node_flag_set(&int_map[qg->gid[level]])) ||
 				(level && !is_gnode_flag_set(&ext_map[_EL(level)][qg->gid[level]]))) {
 				e=1;
@@ -449,7 +482,7 @@ int random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 	 * with gidtoipstart();
 	 */
 	for(level=levels-1; level >=0; level--) {
-		gid[level]=rand_range(0, get_groups(total_levels, level)-1);
+		gid[level]=rand_range(0, MAXGROUPNODE-1);
 
 		if(level && only_free_gnode) {
 			/* 
@@ -463,9 +496,12 @@ int random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 				
 				/* Take a random position and loop trough the
 				 * map */
-				i=rand_range(0, get_groups(total_levels, level)-1);
+				i=rand_range(0, MAXGROUPNODE-1);
 				
 				for(x=0, e=i; e<MAXGROUPNODE; e++) {
+					if(is_group_invalid(e, level, my_family))
+						continue;
+					
 					if(ext_map[_EL(level)][e].flags & GMAP_VOID) {
 						gid[level]=e;
 						x=1;
@@ -474,6 +510,9 @@ int random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 				}
 				if(!x) {
 					for(x=0; i>=0; i--) {
+						if(is_group_invalid(i, level, my_family))
+							continue;
+						
 						if(ext_map[_EL(level)][i].flags & GMAP_VOID) {
 							gid[level]=i;
 							x=1;
@@ -521,21 +560,32 @@ void gnodetoip(quadro_group *quadg, int gnodeid, u_char level, inet_prefix *ip)
 	ip->bits-=(level*MAXGROUPNODE_BITS);
 }
 
+/*
+ * gids_cmp: compares the two `gids_a' and `gids_b' arrays starting from the
+ * `lvl'th member to the `max_lvl-1'th. If the gids compared are the same,
+ * zero is returned.
+ */
+int gids_cmp(int *gids_a, int *gids_b, int lvl, int max_lvl)
+{
+	int i;
+
+	for(i=lvl; i < max_lvl; i++)
+		if(gids_a[i] != gids_b[i])
+			return 1;
+	return 0;
+
+}
+
 /* 
- * quadg_gids_cmp: Compares the gids of `a' and `b' starting from the `lvl'th 
+ * quadg_gids_cmp: compares the gids of `a' and `b' starting from the `lvl'th 
  * level. If the gids compared are the same, zero is returned.
  */
 int quadg_gids_cmp(quadro_group a, quadro_group b, int lvl)
 {
-	int i;
-	
 	if(a.levels != b.levels)
 		return 1;
 
-	for(i=lvl; i < a.levels; i++)
-		if(a.gid[i] != b.gid[i])
-			return 1;
-	return 0;
+	return gids_cmp(a.gid, b.gid, lvl, a.levels);
 }
 
 /*

@@ -242,6 +242,9 @@ void parse_options(int argc, char **argv)
 				server_opt.family=AF_INET;
 				break;
 			case '6':
+#ifdef IPV6_DISABLED
+				fatal("The ipv6 is still not supported");
+#endif
 				loginfo("WARNING: The ipv6 support is still experimental and under "
 						"development, nothing is assured to work.");
 				server_opt.family=AF_INET6;

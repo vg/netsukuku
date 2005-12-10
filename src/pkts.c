@@ -49,6 +49,8 @@ void pkts_init(interface *ifs, int ifs_n, int queue_init)
 	pkt_q_counter=0;
 	if(queue_init)
 		pkt_queue_init();
+	
+	op_filter_reset(OP_FILTER_ALLOW);
 }
 
 /* * * Handy functions to build the PACKET * * */
@@ -577,8 +579,13 @@ int pkt_exec(PACKET pkt, int acpt_idx)
 
 	if(!re_verify(pkt.hdr.op))
 		op_str=re_to_str(pkt.hdr.op);
-	else
+	else if(!rq_verify(pkt.hdr.op))
 		op_str=rq_to_str(pkt.hdr.op);
+	else {
+		debug(DBG_SOFT, "Dropped pkt from %s: bad op value", 
+				inet_to_str(pkt.from));
+		return -1;	/* bad op */
+	}
 
 	if((err=add_rq(pkt.hdr.op, &accept_tbl[acpt_idx].rqtbl))) {
 		ntop=inet_to_str(pkt.from);
@@ -588,6 +595,16 @@ int pkt_exec(PACKET pkt, int acpt_idx)
 		return -1;
 	}
 
+	if(op_filter_test(pkt.hdr.op)) {
+		/* Drop the pkt, `pkt.hdr.op' has been filtered */ 
+#ifdef DEBUG
+		ntop=inet_to_str(pkt.from);
+		debug(DBG_INSANE, "FILTERED %s from %s, id 0x%x", op_str, ntop,
+				pkt.hdr.id);
+#endif
+		return err;
+	}
+		
 	/* Call the function associated to `pkt.hdr.op' */
 	exec_f = pkt_op_tbl[pkt.hdr.op].exec_func;
 #ifdef DEBUG

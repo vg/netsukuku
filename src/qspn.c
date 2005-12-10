@@ -90,8 +90,8 @@ void qspn_reset(u_char levels)
 
 	/* Reset the qspn counters */
 	qspn_time_reset(0, levels, levels);
-	qspn_reset_gcount(qspn_gnode_count, 1);
-	qspn_reset_gcount(qspn_old_gcount, 1);
+	qspn_reset_gcount(qspn_gnode_count, GCOUNT_LEVELS, 1);
+	qspn_reset_gcount(qspn_old_gcount, GCOUNT_LEVELS, 1);
 }
 
 void qspn_init(u_char levels)
@@ -336,13 +336,13 @@ void qspn_dec_gcount(int *gcount, int level, int dec)
 }
 
 /*
- * qspn_reset_gcount: resets the gcount array by setting all its members to
- * `value'.
+ * qspn_reset_gcount: resets the gcount array by setting all its
+ * first `level'# members to `value'.
  */
-void qspn_reset_gcount(int *gcount, int value)
+void qspn_reset_gcount(int *gcount, int level, int value)
 {
 	int i;
-	for(i=0; i<GCOUNT_LEVELS; i++)
+	for(i=0; i<level; i++)
 		gcount[i]=value;
 }
 
