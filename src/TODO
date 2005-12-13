@@ -5,6 +5,7 @@
 - Gnodes contiguity
 	- Nodes count in the qspn_pkt which traverses gnodes	  [  50% ]
 	- gnode re-hook
+		- test: two nodes with the same IP
 		- rehook() function				  [  55% ]
 			- new gid based on the hash of the same gid, when
 			  all the other gnodes are full.	  [  55% ]
@@ -13,7 +14,7 @@
 			- call rehook() from tracer_store()	  [ 100% ]
 		- timed re-hook: the node waits that its rnodes, which are
 		  nearer to the other gnode, do the re-hook first.[ 100% ]
-		- merging of ext_maps				  [  45% ]
+		- merging of ext_maps				  [  65% ]
 	
 	- Challenge
 		- RSA between rnodes: the nodes which are already hooked ask

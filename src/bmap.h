@@ -150,7 +150,7 @@ int map_find_bnode_rnode(map_bnode *bmap, int bmap_nodes, void *n);
 
 int map_count_bnode_rnode(map_bnode *bmap, int bmap_nodes, void *n);
 int bmaps_count_bnode_rnode(map_bnode **bmap, int *bmap_nodes, int levels, void *n);
-int map_del_bnode_rnode(map_bnode *bmap, int bmap_nodes, void *n);
+int map_del_bnode_rnode(map_bnode **bmap, int *bmap_nodes, void *n);
 int bmaps_del_bnode_rnode(map_bnode **bmap, int *bmap_nodes, int levels, void *n);
 
 void map_set_bnode_flag(map_bnode *bmap, int bmap_nodes, int flags);

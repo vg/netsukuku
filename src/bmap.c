@@ -202,18 +202,27 @@ int bmaps_count_bnode_rnode(map_bnode **bmap, int *bmap_nodes, int levels, void 
 
 /*
  * map_del_bnode_rnode: deletes all the rnodes of the bnode, present in `bmap',
- * which points to `n'.
+ * which points to `n' and deletes the bnodes remained empty.
+ * `bmap' is the address of the pointer to the bmap.
  * It returns the number of rnodes deleted.
  */
-int map_del_bnode_rnode(map_bnode *bmap, int bmap_nodes, void *n)
+int map_del_bnode_rnode(map_bnode **bmap, int *bmap_nodes, void *n)
 {
+	map_bnode *bm;
 	int e, p, ret=0;
 
-	for(e=0; e<bmap_nodes; e++)
-		if((p=rnode_find((map_node *)&bmap[e], (map_node *)n)) != -1) {
-			rnode_del(&bmap[e], p);
+	bm=*bmap;
+	for(e=0; e < *bmap_nodes; e++) {
+		if((p=rnode_find((map_node *)&bm[e], (map_node *)n)) != -1) {
+			rnode_del(&bm[e], p);
+
+			if(!bm[e].links) {
+				*bmap=map_bnode_del(*bmap, bmap_nodes, &bm[e]);
+				bm=*bmap;
+			}
 			ret++;
 		}
+	}
 
 	return ret;
 }
@@ -229,7 +238,7 @@ int bmaps_del_bnode_rnode(map_bnode **bmap, int *bmap_nodes, int levels, void *n
 	int i, e;
 
 	for(i=0, e=0; i<levels; i++)
-		e+=map_del_bnode_rnode(bmap[i], bmap_nodes[i], n);
+		e+=map_del_bnode_rnode(&bmap[i], &bmap_nodes[i], n);
 
 	return e;
 }

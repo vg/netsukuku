@@ -46,6 +46,11 @@
 #include "misc.h"
 
 int free_the_tmp_cur_node;
+int we_are_rehooking; 		/* 1 if it is true */
+
+void hook_reset(void);
+
+
 
 /*
  * verify_free_nodes_hdr: verifies the validity of the `fn_hdr'
@@ -210,14 +215,15 @@ int put_free_nodes(PACKET rq_pkt)
 	 * `fn_pkt.fn_hdr.join_rate' the join_rate destined to `rq_pkt.from'
 	 */
 	links=me.cur_node->links-rnodes_rehooked-1;
-	if(hook_join_rate >= links)
+	if(hook_join_rate >= links && links > 0)
 		fn_pkt.fn_hdr.join_rate = hook_join_rate/links;
 	else if(hook_join_rate > 0)
 		fn_pkt.fn_hdr.join_rate = 1;
+	else
+		fn_pkt.fn_hdr.join_rate = 0;
 	hook_join_rate -= fn_pkt.fn_hdr.join_rate;
 	hook_join_rate = hook_join_rate < 0 ? 0 : hook_join_rate;
 	rnodes_rehooked++;
-	
 	
 	/*
 	 * Creates the list of the free nodes, which belongs to the gnode. If 
@@ -741,7 +747,7 @@ void create_new_qgroup(int hook_level)
 {
 	const char *ntop;
 
-	if(total_hooks > 1)
+	if(we_are_rehooking)
 		create_gnodes(&rk_gnode_ip, hook_level+1);
 	else
 		create_gnodes(0, GET_LEVELS(my_family));
@@ -770,7 +776,7 @@ int update_join_rate(map_gnode *hook_gnode, int hook_level,
 	u_int free_nodes, total_bnodes;
 	int new_gnode=0, i;
 
-	if(!hook_level || !hook_gnode || total_hooks <= 1)
+	if(!hook_level || !hook_gnode || !we_are_rehooking)
 		return -1;
 
 	/*
@@ -779,13 +785,7 @@ int update_join_rate(map_gnode *hook_gnode, int hook_level,
 	 * between the maximum number of nodes in that level and the
 	 * actual number of nodes in it (gnode_count).
 	 */
-#ifdef DEBUG_TEST
-	free_nodes = 3 - gnode_count[_EL(hook_level)];
-	debug(DBG_SOFT, "****free_nodes %d >= old_gcount %d",
-			free_nodes, old_gcount[_EL(hook_level)]);
-#else
 	free_nodes = NODES_PER_LEVEL(hook_level) - gnode_count[_EL(hook_level)];
-#endif
 
 	if(old_gcount[_EL(hook_level)] <= free_nodes)
 		return -1;
@@ -840,6 +840,44 @@ finish:
 	return new_gnode;
 }
 
+
+/* 
+ * hook_init: inits the hook.c code. Call this function only once, at the
+ * start of the daemon. 
+ */
+int hook_init(void)
+{
+	/* register the hook's ops in the pkt_op_table */
+	add_pkt_op(GET_FREE_NODES, SKT_TCP, ntk_tcp_port, put_free_nodes);
+	add_pkt_op(PUT_FREE_NODES, SKT_TCP, ntk_tcp_port, 0);
+	add_pkt_op(GET_QSPN_ROUND, SKT_TCP, ntk_tcp_port, put_qspn_round);
+	add_pkt_op(PUT_QSPN_ROUND, SKT_TCP, ntk_tcp_port, 0);
+	add_pkt_op(GET_INT_MAP, SKT_TCP, ntk_tcp_port, put_int_map);
+	add_pkt_op(PUT_INT_MAP, SKT_TCP, ntk_tcp_port, 0);
+	add_pkt_op(GET_EXT_MAP, SKT_TCP, ntk_tcp_port, put_ext_map);
+	add_pkt_op(PUT_EXT_MAP, SKT_TCP, ntk_tcp_port, 0);
+	add_pkt_op(GET_BNODE_MAP, SKT_TCP, ntk_tcp_port, put_bnode_map);
+	add_pkt_op(PUT_BNODE_MAP, SKT_TCP, ntk_tcp_port, 0);
+	
+	if(my_family == AF_INET) {
+		debug(DBG_NORMAL, "Deleting the loopback network (leaving only"
+				" 127.0.0.1)");
+		rt_del_loopback_net();
+	}
+	
+	debug(DBG_NORMAL, "Activating ip_forward and disabling rp_filter");
+	route_ip_forward(my_family, 1);
+	route_rp_filter_all_dev(my_family, me.cur_ifs, me.cur_ifs_n, 0);
+
+	total_hooks=0;
+	we_are_rehooking=0;
+	free_the_tmp_cur_node=0;
+
+	hook_reset();
+
+	return 0;
+}
+
 /*
  * hook_reset: resets all the variables needed to hook. This function is
  * called at the beginning of netsukuku_hook().
@@ -891,91 +929,27 @@ void hook_reset(void)
 	hook_set_all_ips(me.cur_ip, me.cur_ifs, me.cur_ifs_n);
 }
 
-/* 
- * hook_init: inits the hook.c code. Call this function only once, at the
- * start of the daemon. 
- */
-int hook_init(void)
-{
-	/* register the hook's ops in the pkt_op_table */
-	add_pkt_op(GET_FREE_NODES, SKT_TCP, ntk_tcp_port, put_free_nodes);
-	add_pkt_op(PUT_FREE_NODES, SKT_TCP, ntk_tcp_port, 0);
-	add_pkt_op(GET_QSPN_ROUND, SKT_TCP, ntk_tcp_port, put_qspn_round);
-	add_pkt_op(PUT_QSPN_ROUND, SKT_TCP, ntk_tcp_port, 0);
-	add_pkt_op(GET_INT_MAP, SKT_TCP, ntk_tcp_port, put_int_map);
-	add_pkt_op(PUT_INT_MAP, SKT_TCP, ntk_tcp_port, 0);
-	add_pkt_op(GET_EXT_MAP, SKT_TCP, ntk_tcp_port, put_ext_map);
-	add_pkt_op(PUT_EXT_MAP, SKT_TCP, ntk_tcp_port, 0);
-	add_pkt_op(GET_BNODE_MAP, SKT_TCP, ntk_tcp_port, put_bnode_map);
-	add_pkt_op(PUT_BNODE_MAP, SKT_TCP, ntk_tcp_port, 0);
-	
-	if(my_family == AF_INET) {
-		debug(DBG_NORMAL, "Deleting the loopback network (leaving only"
-				" 127.0.0.1)");
-		rt_del_loopback_net();
-	}
-	
-	debug(DBG_NORMAL, "Activating ip_forward and disabling rp_filter");
-	route_ip_forward(my_family, 1);
-	route_rp_filter_all_dev(my_family, me.cur_ifs, me.cur_ifs_n, 0);
 
-	total_hooks=0;
-	free_the_tmp_cur_node=0;
-
-	hook_reset();
-
-	return 0;
-}
-		
 /*
- * netsukuku_hook: hooks/rehooks at an existing gnode or creates a new one.
- * `hook_level' specifies at what level we are hooking, generally it is 0.
- * If `hook_gnode' is not null, netsukuku_hook will try to hook only to the
- * rnodes which belongs to the `hook_gnode' at `hook_level' level.
+ * hook_first_radar_scan: launches the first scan to know what rnodes we have
+ * around us.
+ * If a new gnode has to be created, 1 is returned.
  */
-int netsukuku_hook(map_gnode *hook_gnode, int hook_level)
-{	
-	struct radar_queue *rq=radar_q;
-	struct free_nodes_hdr fn_hdr;
+int hook_first_radar_scan(map_gnode *hook_gnode, int hook_level, quadro_group *old_quadg)
+{
+	int total_hooking_nodes, i; 
 	
-	map_node **merg_map, *new_root;
-	map_gnode **old_ext_map, **new_ext_map;
-	map_bnode **old_bnode_map;	
-	
-	inet_prefix gnode_ipstart, old_ip;
-	quadro_group old_quadg;
-
-	int i=0, e=0, imaps=0, ret=0, new_gnode=0, tracer_levels=0;
-	int total_hooking_nodes=0;
-	
-	u_int *old_bnodes;
-	u_char fnodes[MAXGROUPNODE];
-
-	int err;
-
-	/* Save our current IP before resetting */
-	memcpy(&old_ip, &me.cur_ip, sizeof(inet_prefix));
-	memcpy(&old_quadg, &me.cur_quadg, sizeof(quadro_group));
-
-	/* Reset the hook */
-	if(total_hooks)
-		hook_reset();
-	total_hooks++;
-	
-	/* 	
-	  	* *	   The beginning          * *	  	
-	 */
-	loginfo("The %s begins. Starting to scan the area", 
-			total_hooks > 1 ? "rehook" : "hook");
-
 	/*
 	 * If we are rehooking to `hook_gnode' tell the radar to ignore all
 	 * the other rnodes, which don't belong to it.
 	 */
-	if(hook_gnode && total_hooks > 1) {
-		old_quadg.gid[hook_level]=pos_from_gnode(hook_gnode, me.ext_map[_EL(hook_level)]);
+	if(hook_gnode && we_are_rehooking) {
+		int gid[NMEMB(old_quadg->gid)];
+
+		memcpy(gid, old_quadg->gid, sizeof(old_quadg->gid));
+		gid[hook_level]=pos_from_gnode(hook_gnode, me.ext_map[_EL(hook_level)]);
 		new_rnode_allowed(&alwd_rnodes, &alwd_rnodes_counter, 
-				old_quadg.gid, hook_level, GET_LEVELS(my_family));
+				gid, hook_level, GET_LEVELS(my_family));
 	}
 
 	/* 
@@ -1022,9 +996,8 @@ int netsukuku_hook(map_gnode *hook_gnode, int hook_level)
 						"to create the new gnode", 
 						total_hooking_nodes);
 			create_new_qgroup(hook_level);
-			new_gnode=1;
 
-			goto finish;
+			return 1;
 		} else if(hook_retry) {
 			/* 
 			 * There are only hooking nodes, but we started the hooking
@@ -1053,11 +1026,29 @@ hook_retry_scan:
 	loginfo("We have %d nodes around us. (%d are hooking)", 
 			me.cur_node->links, total_hooking_nodes);
 
+	return 0;
+}
+
+
+/*
+ * hook_get_free_nodes: gets the free_nodes list and the qson_round info from
+ * our nearest rnode.
+ * In `fn_hdr', `fnodes', `gnode_ipstart' and `new_gcount' there will be stored the relative
+ * value.
+ * If a new gnode has to be created 1 is returned.
+ */
+int hook_get_free_nodes(int hook_level, struct free_nodes_hdr *fn_hdr, 
+		u_char *fnodes, inet_prefix *gnode_ipstart, u_int *new_gcount,
+		struct radar_queue **ret_rq)
+{
+	struct radar_queue *rq=radar_q;
+	int i, e, err;
+	
 	/* 
 	 * Now we choose the nearest rnode we found and we send it the 
 	 * GET_FREE_NODES request.
 	 */
-	for(i=0, e=0; i<me.cur_node->links; i++) {
+	for(i=0, e=0; i < me.cur_node->links; i++) {
 		if(!(rq=find_node_radar_q((map_node *)me.cur_node->r_node[i].r_node))) 
 			fatal("%s:%d: This ultra fatal error goes against the "
 					"laws of the universe. It's not "
@@ -1065,22 +1056,20 @@ hook_retry_scan:
 		if(rq->node->flags & MAP_HNODE)
 			continue;
 
-		qspn_backup_gcount(qspn_old_gcount, qspn_gnode_count);
-		
-		err=get_free_nodes(rq->ip, rq->dev, &fn_hdr, fnodes);
+		err=get_free_nodes(rq->ip, rq->dev, fn_hdr, fnodes);
 		if(err == -2)
 			fatal("Netsukuku is full! Bring down some nodes and retry");
 		else if(err == -1)
 			continue;
 
 		/* Extract the ipstart of the gnode */
-		inet_setip(&gnode_ipstart, fn_hdr.ipstart, my_family);
+		inet_setip(gnode_ipstart, fn_hdr->ipstart, my_family);
 
 		/* Get the qspn round info */
 		if(!get_qspn_round(rq->ip, rq->dev, rq->final_rtt,
 					me.cur_qspn_time,
 					me.cur_qspn_id,
-					qspn_gnode_count)) {
+					new_gcount)) {
 			e=1;
 			break;
 		}
@@ -1089,16 +1078,31 @@ hook_retry_scan:
 		loginfo("It seems all the quadro_groups in this area are full.");
 		loginfo("We now create a new gnode");
 		create_new_qgroup(hook_level);
-		new_gnode=1;
-		goto finish;
-	}
 
+		return 1;
+	}
+	
+	*ret_rq=rq;
+
+	return 0;
+}
+
+/*
+ * hook_choose_new_ip: after reading the received `fn_hdr', it decides our new 
+ * IP and if we have to create a new gnode it returns 1.
+ */
+int hook_choose_new_ip(map_gnode *hook_gnode, int hook_level, 
+		struct free_nodes_hdr *fn_hdr, u_char *fnodes, 
+		inet_prefix *gnode_ipstart)
+{
+	int new_gnode, e;
+	
 	/*
 	 * Let's see if we can re-hook at `hook_gnode' or if we have
 	 * to create a new gnode, in other words: update the join_rate.
 	 */
 	new_gnode=update_join_rate(hook_gnode, hook_level, qspn_old_gcount, 
-			qspn_gnode_count, &fn_hdr);
+			qspn_gnode_count, fn_hdr);
 	if(new_gnode > 0) {
 		/* 
 		 * The `hook_gnode' gnode cannot take all the nodes of our 
@@ -1114,14 +1118,14 @@ hook_retry_scan:
 		 * let's choose a random ip using the free nodes list we received.
 		 */
 
-		e=rand_range(0, fn_hdr.nodes-1);
-		if(fn_hdr.level == 1) {
+		e=rand_range(0, fn_hdr->nodes-1);
+		if(fn_hdr->level == 1) {
 			new_gnode=0;
-			postoip(fnodes[e], gnode_ipstart, &me.cur_ip);
+			postoip(fnodes[e], *gnode_ipstart, &me.cur_ip);
 		} else {
 			new_gnode=1;
 			for(;;) {
-				random_ip(&gnode_ipstart, fn_hdr.level, fn_hdr.gid, 
+				random_ip(gnode_ipstart, fn_hdr->level, fn_hdr->gid, 
 						GET_LEVELS(my_family), me.ext_map, 0, 
 						&me.cur_ip, my_family);
 				if(!inet_validate_ip(me.cur_ip))
@@ -1134,73 +1138,139 @@ hook_retry_scan:
 		inet_setip_localaddr(&me.cur_ip, my_family);
 	hook_set_all_ips(me.cur_ip, me.cur_ifs, me.cur_ifs_n);
 
+	return new_gnode;
+}
+
+
+/*
+ * hook_get_ext_map: gets the external map from the rnodes who sent us the
+ * free_nodes list. `rq' points to that rnode.
+ * `old_ext_map' is the currently used ext_map; it will be merged with the new
+ * received map. 
+ * If a new gnode has been created, 1 is returned.
+ */
+int hook_get_ext_map(int hook_level, int new_gnode, 
+		struct radar_queue *rq, struct free_nodes_hdr *fn_hdr, 
+		map_gnode **old_ext_map, quadro_group *old_quadg)
+{
+	map_gnode **new_ext_map;
+
 	/* 
 	 * Fetch the ext_map from the node who gave us the free nodes list. 
 	 */
-	old_ext_map=me.ext_map;
 	if(!(new_ext_map=get_ext_map(rq->ip, rq->dev, &me.cur_quadg))) 
 		fatal("None of the rnodes in this area gave me the extern map");
 	me.ext_map=new_ext_map;
 
+	if(we_are_rehooking && hook_level) {
+		int gcount, old_gid;
+
+		/* 
+		 * Since we are rehooking, our gnode will change and it will be
+		 * dismantled, our old gcount has to be decremented from our
+		 * old ext_map and the one we receive.
+		 */
+		gcount = new_ext_map[_EL(hook_level)][old_quadg->gid[hook_level]].gcount;
+		qspn_dec_gcount(qspn_gnode_count, hook_level+1, gcount);
+
+		old_gid=old_quadg->gid[hook_level];
+		new_ext_map[_EL(hook_level)][old_gid].gcount=0;
+		old_ext_map[_EL(hook_level)][old_gid].gcount=0;
+
+		/*
+		 * We can also delete our old gid, 'cause it doesn't exist
+		 * anymore
+		 */
+		gmap_node_del(&new_ext_map[_EL(hook_level)][old_gid]);
+		gmap_node_del(&old_ext_map[_EL(hook_level)][old_gid]);
+	}
+	
 	/* If we have to create new gnodes, let's do it. */
 	if(new_gnode) {
 		me.ext_map  = old_ext_map;
 		old_ext_map = new_ext_map;
-		memcpy(&old_quadg, &me.cur_quadg, sizeof(quadro_group));
+		memcpy(old_quadg, &me.cur_quadg, sizeof(quadro_group));
 		
 		/* Create a new gnode. After this we have a new ip,
 		 * ext_map and quadro_group */
-		create_gnodes(&me.cur_ip, fn_hdr.level);
+		create_gnodes(&me.cur_ip, we_are_rehooking ? hook_level : fn_hdr->level);
 		
 		/* Merge the received ext_map with our new empty ext_map */
-		merge_ext_maps(me.ext_map, new_ext_map, me.cur_quadg, old_quadg);
-	} else {
-		/* 
-		 * We want a new shiny traslucent internal map 
-		 */
-		
-		reset_int_map(me.int_map, 0);
-		iptoquadg(me.cur_ip, me.ext_map, &me.cur_quadg, 
-				QUADG_GID|QUADG_GNODE|QUADG_IPSTART);
+		merge_ext_maps(me.ext_map, new_ext_map, me.cur_quadg, *old_quadg);
+		free_extmap(old_ext_map, GET_LEVELS(my_family), 0);
 
-		/* Increment the gnode seeds counter of level one, since
-		 * we are new in that gnode */
-		gnode_inc_seeds(&me.cur_quadg, 0);
-
-		/* 
-		 * Fetch the int_map from each rnode and merge them into a
-		 * single, big, shiny map.
-		 */
-		imaps=0;
-		rq=radar_q;
-		merg_map=xmalloc(me.cur_node->links*sizeof(map_node *));
-		memset(merg_map, 0, me.cur_node->links*sizeof(map_node *));
-
-		for(i=0; i<me.cur_node->links; i++) {
-			rq=find_node_radar_q((map_node *)me.cur_node->r_node[i].r_node);
-			
-			if(rq->node->flags & MAP_HNODE)
-				continue;
-			if(quadg_gids_cmp(rq->quadg, me.cur_quadg, 1)) 
-				/* This node isn't part of our gnode, let's skip it */
-				continue; 
-
-			if((merg_map[imaps]=get_int_map(rq->ip, rq->dev, &new_root))) {
-				merge_maps(me.int_map, merg_map[imaps], me.cur_node, new_root);
-				imaps++;
-			}
-		}
-		if(!imaps)
-			fatal("None of the rnodes in this area gave me the int_map");
-		
-		for(i=0; i<imaps; i++)
-			free_map(merg_map[i], 0);
-		xfree(merg_map);
+		return 1;
 	}
-	free_extmap(old_ext_map, GET_LEVELS(my_family), 0);
 	
+	free_extmap(old_ext_map, GET_LEVELS(my_family), 0);
+	return 0;
+}
+
+/* 
+ * hook_get_int_map: fetch the internal map from a rnode which belongs to our
+ * same gnode.
+ */
+void hook_get_int_map(void)
+{
+	struct radar_queue *rq=radar_q;
+
+	map_node **merg_map, *new_root;
+	int imaps=0, i;
+
 	/* 
-	 * Wow, the last step! Let's get the bnode map. Fast, fast, quick quick! 
+	 * We want a new shiny traslucent internal map 
+	 */
+
+	reset_int_map(me.int_map, 0);
+	iptoquadg(me.cur_ip, me.ext_map, &me.cur_quadg, 
+			QUADG_GID|QUADG_GNODE|QUADG_IPSTART);
+
+	/* Increment the gnode seeds counter of level one, since
+	 * we are new in that gnode */
+	gnode_inc_seeds(&me.cur_quadg, 0);
+
+	/* 
+	 * Fetch the int_map from each rnode and merge them into a
+	 * single, big, shiny map.
+	 */
+	imaps=0;
+	rq=radar_q;
+	merg_map=xmalloc(me.cur_node->links*sizeof(map_node *));
+	memset(merg_map, 0, me.cur_node->links*sizeof(map_node *));
+
+	for(i=0; i<me.cur_node->links; i++) {
+		rq=find_node_radar_q((map_node *)me.cur_node->r_node[i].r_node);
+
+		if(rq->node->flags & MAP_HNODE)
+			continue;
+		if(quadg_gids_cmp(rq->quadg, me.cur_quadg, 1)) 
+			/* This node isn't part of our gnode, let's skip it */
+			continue; 
+
+		if((merg_map[imaps]=get_int_map(rq->ip, rq->dev, &new_root))) {
+			merge_maps(me.int_map, merg_map[imaps], me.cur_node, new_root);
+			imaps++;
+		}
+	}
+	if(!imaps)
+		fatal("None of the rnodes in this area gave me the int_map");
+
+	for(i=0; i<imaps; i++)
+		free_map(merg_map[i], 0);
+	xfree(merg_map);
+}
+
+void hook_get_bnode_map(void)
+{
+	struct radar_queue *rq=radar_q;
+
+	map_bnode **old_bnode_map;	
+	u_int *old_bnodes;
+
+	int e, i;
+
+	/* 
+	 * Let's get the bnode map. Fast, fast, quick quick! 
 	 */
 	e=0;
 	for(i=0; i<me.cur_node->links; i++) {
@@ -1224,19 +1294,16 @@ hook_retry_scan:
 	}
 	if(!e)
 		loginfo("None of the rnodes in this area gave me the bnode map.");
-	
-	if(free_the_tmp_cur_node) {
-		xfree(me.cur_node);
-		free_the_tmp_cur_node=0;
-	}
-	me.cur_node = &me.int_map[me.cur_quadg.gid[0]];
-	map_node_del(me.cur_node);
-	me.cur_node->flags &= ~MAP_VOID;
-	me.cur_node->flags |= MAP_ME;
-	/* We need a fresh me.cur_node */
-	refresh_hook_root_node(); 
-	
-finish:
+
+}
+
+/*
+ * hook_finish: final part of the netsukuku_hook process
+ */
+void hook_finish(int new_gnode, struct free_nodes_hdr *fn_hdr)
+{
+	int tracer_levels, i;
+
 	/* 
 	 * We must reset the radar_queue because the first radar_scan, used while hooking,
 	 * has to keep the list of the rnodes' "inet_prefix ip". In this way we know
@@ -1265,7 +1332,7 @@ finish:
 			 * We are a new gnode, so we send the tracer in all higher
 			 * levels
 			 */
-			tracer_levels=fn_hdr.level;
+			tracer_levels=fn_hdr->level;
 	} else {
 		/* 
 		 * We are just a normal node inside a gnode, let's notice only
@@ -1286,7 +1353,7 @@ finish:
 	 * of the gnode will have the basic routes to reach us.
 	 * Note that this is done only at the first time we hook.
 	 */
-	if(total_hooks == 1) {
+	if(!we_are_rehooking) {
 		usleep(rand_range(0, 999999));
 		tracer_pkt_start_mutex=0;
 		for(i=1; i<tracer_levels; i++)
@@ -1298,8 +1365,99 @@ finish:
 	rt_full_update(0);
 
 	/* (Re)Hook completed */
-	loginfo("%sook completed", total_hooks == 1 ? "H":"Reh");
+	loginfo("%sook completed", we_are_rehooking ? "Reh":"H");
 
+	we_are_rehooking=0;
+}
+
+/*
+ * netsukuku_hook: hooks/rehooks at an existing gnode or creates a new one.
+ * `hook_level' specifies at what level we are hooking, generally it is 0.
+ * If `hook_gnode' is not null, netsukuku_hook will try to hook only to the
+ * rnodes which belongs to the `hook_gnode' at `hook_level' level.
+ */
+int netsukuku_hook(map_gnode *hook_gnode, int hook_level)
+{	
+	struct radar_queue *rq=radar_q;
+	struct free_nodes_hdr fn_hdr;
+	
+	inet_prefix gnode_ipstart, old_ip;
+	quadro_group old_quadg;
+
+	int ret=0, new_gnode=0;
+	u_char fnodes[MAXGROUPNODE];
+
+	/* Save our current IP before resetting */
+	memcpy(&old_ip, &me.cur_ip, sizeof(inet_prefix));
+	memcpy(&old_quadg, &me.cur_quadg, sizeof(quadro_group));
+
+	/* Reset the hook */
+	if(total_hooks) {
+		hook_reset();
+		we_are_rehooking=1;
+	}
+	total_hooks++;
+	
+	/* 	
+	  	* *	   The beginning          * *	  	
+	 */
+	loginfo("The %s begins. Starting to scan the area", 
+			we_are_rehooking ? "rehook" : "hook");
+	new_gnode=hook_first_radar_scan(hook_gnode, hook_level, &old_quadg);
+	if(new_gnode)
+		goto finish;
+
+	/* 
+	 * Get the free nodes list
+	 */
+	qspn_backup_gcount(qspn_old_gcount, qspn_gnode_count);
+	new_gnode=hook_get_free_nodes(hook_level, &fn_hdr, fnodes, 
+			&gnode_ipstart, qspn_gnode_count, &rq);
+	if(new_gnode)
+		goto finish;
+
+	/* 
+	 * Choose a new IP 
+	 */
+	new_gnode=hook_choose_new_ip(hook_gnode, hook_level, &fn_hdr, fnodes, 
+			&gnode_ipstart);
+
+	/*
+	 * Get the external map 
+	 */
+	new_gnode=hook_get_ext_map(hook_level, new_gnode, rq, &fn_hdr, 
+			me.ext_map, &old_quadg);
+	if(new_gnode)
+		goto finish;
+
+	/* 
+	 * Get the internal map 
+	 */
+	hook_get_int_map();
+	
+	/*
+	 * Fetch the bnode map
+	 */
+	hook_get_bnode_map();
+	
+	/*
+	 * And that's all, clean the mess
+	 */
+
+	if(free_the_tmp_cur_node) {
+		xfree(me.cur_node);
+		free_the_tmp_cur_node=0;
+	}
+	me.cur_node = &me.int_map[me.cur_quadg.gid[0]];
+	map_node_del(me.cur_node);
+	me.cur_node->flags &= ~MAP_VOID;
+	me.cur_node->flags |= MAP_ME;
+
+	/* We need a fresh me.cur_node */
+	refresh_hook_root_node(); 
+	
+finish:
+	hook_finish(new_gnode, &fn_hdr);
 	return ret;
 }
 

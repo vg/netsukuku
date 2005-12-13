@@ -213,10 +213,12 @@ void *new_rehook_thread(void *r)
 	/* Store in `rk_gnode_ip' our new gnode ip to be used when the rehook
 	 * fails, just in case */
 	rehook_compute_new_gnode(&me.cur_ip, &rk_gnode_ip, rargv->level);
-	
+
+#if 0
 	/* Before rehooking, at least one qspn_round has to be completed */
 	while(!me.cur_qspn_id[rargv->level])
 		usleep(505050);
+#endif
 
 	if(rargv->gid != me.cur_quadg.gid[rargv->level])
 		wait_new_rnode(rargv);
@@ -283,12 +285,22 @@ void new_rehook(map_gnode *gnode, int gid, int level, int gnode_count)
 				gid == me.cur_quadg.gid[level] &&
 				gnode->g.flags & MAP_RNODE)
 			/* If `gnode' has our same gid and it is our rnode,
-			 * it alright. */
+			 * it's alright. */
 			return;
 	} 
-	
-	/* check that `gnode' isn't marked as HOOKED, otherwise return. */
-	if(level && gnode->flags & GMAP_HGNODE)
+
+	if(gid == me.cur_quadg.gid[level]) {
+		/* 
+		 * There is a (g)node which has our same gid, hence we rehook
+		 * to our gnode of the higher level (hopefully we get a new
+		 * gid).
+		 */
+		if(level+1 < me.cur_quadg.levels)
+			level++;
+		gnode = me.cur_quadg.gnode[_EL(level)];
+
+	} else if(level && gnode->flags & GMAP_HGNODE)
+		/* `gnode' is marked as HOOKED, return. */
 		return;
 
 	debug(DBG_NORMAL, "new_rehook: me.gid %d, gnode %d, level %d, gnode_count %d, "
@@ -360,6 +372,9 @@ int rehook(map_gnode *hook_gnode, int hook_level)
 	 * * *  REHOOK!  * * *
 	 */
 	netsukuku_hook(hook_gnode, hook_level);
+
+	/* Restart the radar daemon */
+	radar_daemon_ctl=1;
 
 	if(!server_opt.disable_andna) {
 		/* Rehook in ANDNA and update our hostnames */

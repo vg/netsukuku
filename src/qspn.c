@@ -311,7 +311,7 @@ void qspn_inc_gcount(int *gcount, int level, int inc)
 		gcount[i]+=inc;
 
 #ifdef DEBUG
-	debug(DBG_INSANE, "Gnode_count changed to: %d %d %d %d", 
+	debug(DBG_INSANE, RED"Gnode_count incremented to: %d %d %d %d"DEFCOL, 
 			gcount[0], gcount[1], gcount[2], gcount[3]);
 #endif
 }
@@ -330,7 +330,7 @@ void qspn_dec_gcount(int *gcount, int level, int dec)
 	for(i=_EL(level); i<GCOUNT_LEVELS; i++)
 		gcount[i]-=dec;
 #ifdef DEBUG
-	debug(DBG_INSANE, "Gnode_count changed to: %d %d %d %d", 
+	debug(DBG_INSANE, RED"Gnode_count decremented to: %d %d %d %d"DEFCOL, 
 			gcount[0], gcount[1], gcount[2], gcount[3]);
 #endif
 }
@@ -344,6 +344,10 @@ void qspn_reset_gcount(int *gcount, int level, int value)
 	int i;
 	for(i=0; i<level; i++)
 		gcount[i]=value;
+#ifdef DEBUG
+	debug(DBG_INSANE, RED"Gnode_count set to: %d %d %d %d"DEFCOL, 
+			gcount[0], gcount[1], gcount[2], gcount[3]);
+#endif
 }
 
 /* 

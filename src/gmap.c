@@ -865,7 +865,7 @@ void reset_extmap(map_gnode **ext_map, u_char levels, int groups)
 	
 	for(i=1; i<levels; i++) 
 		reset_gmap(ext_map[_EL(i)], groups);
-	gmap_node_del(&ext_map[_EL(i)][0]);
+	gmap_node_del(&ext_map[_EL(levels)][0]);
 }
 
 /* g_rnode_find: It searches in `gnode'.g a rnode which points to the gnode `n'.
