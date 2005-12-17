@@ -236,7 +236,9 @@ void reset_int_map(map_node *map, int maxgroupnode)
 		map_node_del(&map[i]);
 }
 
-/*rnode_trtt_compar: It's used by rnode_trtt_order*/
+/*
+ * rnode_trtt_compar: It's used by rnode_trtt_order
+ */
 int rnode_trtt_compar(const void *a, const void *b) 
 {
 	map_rnode *rnode_a=(map_rnode *)a, *rnode_b=(map_rnode *)b;

@@ -48,6 +48,8 @@ int is_group_invalid(int gid, int lvl, int family)
 			return 1;
 		if(gid >= 224 && gid <= 255) /* MULTICAST and BADCLASS */
 			return 1;
+		if(gid == 127) /* LOOPBACK */
+			return 1;
 	} else if(family == AF_INET6) {
 		/* TODO: nothing ? */
 		return 0;

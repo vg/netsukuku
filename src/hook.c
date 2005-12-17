@@ -858,12 +858,14 @@ int hook_init(void)
 	add_pkt_op(PUT_EXT_MAP, SKT_TCP, ntk_tcp_port, 0);
 	add_pkt_op(GET_BNODE_MAP, SKT_TCP, ntk_tcp_port, put_bnode_map);
 	add_pkt_op(PUT_BNODE_MAP, SKT_TCP, ntk_tcp_port, 0);
-	
+
+#if 0
 	if(my_family == AF_INET) {
 		debug(DBG_NORMAL, "Deleting the loopback network (leaving only"
 				" 127.0.0.1)");
 		rt_del_loopback_net();
 	}
+#endif
 	
 	debug(DBG_NORMAL, "Activating ip_forward and disabling rp_filter");
 	route_ip_forward(my_family, 1);

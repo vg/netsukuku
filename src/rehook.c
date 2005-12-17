@@ -186,7 +186,7 @@ void wait_new_rnode(struct rehook_argv *rargv)
 		radar_wait_new_scan();
 	}
 
-	debug(DBG_NORMAL, "wait_new_rnode: not found! Anyawy, trying to rehook");
+	debug(DBG_NORMAL, "wait_new_rnode: not found! Anyway, trying to rehook");
 }
 
 /*
@@ -297,6 +297,7 @@ void new_rehook(map_gnode *gnode, int gid, int level, int gnode_count)
 		 */
 		if(level+1 < me.cur_quadg.levels)
 			level++;
+		gid   = me.cur_quadg.gid[level];
 		gnode = me.cur_quadg.gnode[_EL(level)];
 
 	} else if(level && gnode->flags & GMAP_HGNODE)

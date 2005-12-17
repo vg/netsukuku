@@ -349,7 +349,7 @@ int inet_validate_ip(inet_prefix ip)
 
 	if(ip.family==AF_INET) {
 		ipv4=htonl(ip.data[0]);
-		if(MULTICAST(ipv4) || BADCLASS(ipv4) || ZERONET(ipv4))
+		if(MULTICAST(ipv4) || BADCLASS(ipv4) || ZERONET(ipv4) || LOOPBACK(ipv4))
 			return -EINVAL;
 
 	} else if(ip.family==AF_INET6) {

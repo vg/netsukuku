@@ -21,7 +21,9 @@
 
 #include "bmap.h"
 
-/***Tracer packet. It is encapsulated in a broadcast pkt*/
+/*
+ * *  Tracer packet. It is encapsulated in a broadcast pkt  *
+ */
 typedef struct
 {
 	u_short	hops;
@@ -33,7 +35,6 @@ INT_INFO tracer_hdr_iinfo = { 2,
 			      { 0, sizeof(u_short) },
 			      { 1, 1 }
 			    };
-
 typedef struct
 {
 	u_char		node;
@@ -42,6 +43,8 @@ typedef struct
 				   (in milliseconds) */
 	u_int		gcount; /* how many nodes there are in the `node' 
 				   gnode */
+	u_char		bandwidth; /* The bandwidth of the internet connection
+				      which is shared by `node'. */
 }_PACKED_ tracer_chunk;
 INT_INFO tracer_chunk_iinfo = { 2, 
 				{ INT_TYPE_32BIT, INT_TYPE_32BIT }, 

@@ -115,8 +115,10 @@ void usage(void)
 		" -i	interface\n\n"
 		" -a	do not run the ANDNA daemon\n"
 		" -R	do not edit /etc/resolv.conf\n"
-		" -r	run in restricted mode\n"
 		" -D	no daemon mode\n"
+		"\n"
+		" -r	run in restricted mode\n"
+		" -I	share your internet connection or use a shared one (only with -r)\n"
 		"\n"
 		" -c	configuration file\n"
 		"\n"
@@ -196,8 +198,22 @@ void fill_loaded_cfg_options(void)
 		server_opt.disable_andna=atoi(value);
 	if((value=getenv(config_str[CONF_DISABLE_RESOLVCONF])))
 		server_opt.disable_resolvconf=atoi(value);
+	
 	if((value=getenv(config_str[CONF_NTK_RESTRICTED_MODE])))
 		server_opt.restricted=atoi(value);
+
+	if((value=getenv(config_str[CONF_NTK_INTERNET_GW]))) {
+		strncpy(server_opt.internet_gw, value, INET6_ADDRSTRLEN);
+		server_opt.share_internet=1;
+	}
+	if((value=getenv(config_str[CONF_NTK_INTERNET_UPLOAD])))
+		server_opt.my_upload_bw=atoi(value);
+	if((value=getenv(config_str[CONT_NTK_INTERNET_DOWNLOAD])))
+		server_opt.my_dnload_bw=atoi(value);
+	
+	if(server_opt.my_upload_bw && server_opt.my_dnload_bw)
+		me.my_bandwidth =
+			bandwidth_in_8bit((server_opt.my_upload_bw+server_opt.my_dnload_bw)/2);
 }
 
 void parse_options(int argc, char **argv)
@@ -217,13 +233,16 @@ void parse_options(int argc, char **argv)
 			{"no_andna",	0, 0, 'a'},
 			{"no_daemon", 	0, 0, 'D'},
 			{"no_resolv",   0, 0, 'R'},
+			
 			{"restricted", 	0, 0, 'r'},
+			{"internet",	0, 0, 'I'},
+			
 			{"debug", 	0, 0, 'd'},
 			{"version",	0, 0, 'v'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long (argc, argv,"i:c:hvd64DRra", long_options, 
+		c = getopt_long (argc, argv,"i:c:hvd64DRrIa", long_options, 
 				&option_index);
 		if (c == -1)
 			break;
@@ -267,6 +286,20 @@ void parse_options(int argc, char **argv)
 			case 'r':
 				server_opt.restricted=1;
 				break;
+			case 'I':
+				/* Small hack:
+				 * the optional arguments of getopt_long are
+				 * ugly: -I"argument" or --internet="argument". 
+				 * So we tell getopt that the 'I' option doesn't
+				 * require an argument, but we check it
+				 * anyway.
+				 */
+				if(argv[optind] && argv[optind][0] != '-') {
+					strncpy(server_opt.internet_gw, argv[optind], INET6_ADDRSTRLEN);
+					server_opt.share_internet=1;
+					optind++;
+				}
+				break;
 			case 'd':
 				server_opt.dbg_lvl++;
 				break;
@@ -281,7 +314,22 @@ void parse_options(int argc, char **argv)
 		usage();
 		exit(1);
 	}
+}
 
+void check_conflicting_options(void)
+{
+	if(!server_opt.restricted && 
+		(server_opt.share_internet || server_opt.internet_gw[0]))
+		fatal("You want to share your Internet connection,"
+			"but I am not running in restricted mode (-r), "
+			"'cause I'm not sure of what you want... "
+			"I'm aborting.");
+
+	if(server_opt.share_internet && !me.my_bandwidth)
+		fatal("You want to share your Internet connection but "
+			"your bandwidth is just TOO small."
+			"Do not share it, and do not fake the values in"
+			"netsukuku.conf, or your connection will be saturated");
 }
 
 void init_netsukuku(char **argv)
@@ -309,9 +357,9 @@ void init_netsukuku(char **argv)
 		fatal("Cannot initialize any network interfaces");
 
 	pkts_init(me.cur_ifs, me.cur_ifs_n, 0);
-
 	qspn_init(GET_LEVELS(my_family));
 
+	/* ANDNA init */
 	if(!server_opt.disable_andna)
 		andna_init();
 
@@ -444,6 +492,8 @@ int main(int argc, char **argv)
 	/* If a same option was specified in the config file and in the
 	 * command line, give priority to the latter */
 	parse_options(argc, argv);
+
+	check_conflicting_options();
 	
 	/* Initialize the whole netsukuku source code */
 	init_netsukuku(argv);

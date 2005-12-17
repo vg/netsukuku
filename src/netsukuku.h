@@ -20,6 +20,7 @@
 #define NETSUKUKU_H
 
 #include "config.h"
+#include "igs.h"
 
 #define VERSION_STR				"NetsukukuD "VERSION
 
@@ -52,7 +53,12 @@ struct current_globals
 	struct timeval	*cur_qspn_time; /*When the last qspn round was received/sent 
 					  (gettimeofday format)*/
 
-	
+	/* Internet gateways */
+	inet_gw		**igws;
+	int		*igws_counter;
+	u_char		my_bandwidth;	/*The bandwidth of the Internet connection 
+					  we are sharing*/
+		
 	interface	cur_ifs[MAX_INTERFACES];
 	int		cur_ifs_n;	/* number of interfaces present
 					   in `cur_ifs' */
@@ -108,9 +114,16 @@ typedef struct
 	char		rhc_file[NAME_MAX];
 	char 		counter_c_file[NAME_MAX];
 
-	char 		restricted;
 	char 		daemon;
-	char 		dbg_lvl;
+	
+	char 		restricted;
+	char		share_internet;
+	char		internet_gw[INET6_ADDRSTRLEN];
+	
+	/* The bandwidths of the Internet connection we are sharing.
+	 * If we are just leeching they are all 0. */
+	u_int 		my_upload_bw;
+	u_int		my_dnload_bw;
 
 	char		disable_andna;
 	char		disable_resolvconf;
@@ -118,6 +131,8 @@ typedef struct
 	int 		max_connections;
 	int 		max_accepts_per_host;
 	int 		max_accepts_per_host_time;
+	
+	char 		dbg_lvl;
 
 #ifdef ANDNA_DEBUG
 	int		debug_ip;

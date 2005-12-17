@@ -42,7 +42,11 @@ enum config_options
 
 	CONF_DISABLE_ANDNA,
 	CONF_DISABLE_RESOLVCONF,
+	
 	CONF_NTK_RESTRICTED_MODE,
+	CONF_NTK_INTERNET_GW,
+	CONF_NTK_INTERNET_UPLOAD,
+	CONT_NTK_INTERNET_DOWNLOAD,
 };
 
 const static char config_str[][30]=
@@ -64,6 +68,9 @@ const static char config_str[][30]=
 	{ "disable_andna" },
 	{ "disable_resolvconf" },
 	{ "ntk_restricted_mode" },
+	{ "internet_gateway" },
+	{ "internet_upload_rate" },
+	{ "internet_download_rate" },
 	{ 0 },
 };
 

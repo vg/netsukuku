@@ -1,5 +1,11 @@
 0.0.5b
 
+- Main part of the NTK_RFC 0001 written, the (g)nodes have now the ability to
+  rehook to avoid IP collision.
+
+- Fixed a bug in the multiif code: the packets destined to gnodes were sent
+  only from the first device.
+
 - map_rnode doesn't use anymore the timeval struct and map_rnode.rtt was
   removed 'cause it was obsolete. In conclusion we gained 12 bytes for each
   rnode.
@@ -12,6 +18,8 @@
 
 - qspn_remove_deads() removes the routes of the dead nodes from the routing
   table of the kernel.
+
+- 127.0.0.0/8 banned.
 
 - code heavily cleaned.
 
