@@ -83,3 +83,8 @@ andna_cache_file	= @DT_DIR@/andna_cache
 andna_lcl_file		= @DT_DIR@/lcl_cache
 andna_rhc_file		= @DT_DIR@/rh_cache
 andna_counter_c_file	= @DT_DIR@/counter_cache
+
+#
+# The script launched by NetsukukuD to share the Internet connection
+#
+ip_masquerade_script	= @CONF_DIR@/ip_masquerade.sh

@@ -83,3 +83,8 @@ andna_cache_file	= %(DATA_DIR)s/andna_cache
 andna_lcl_file		= %(DATA_DIR)s/lcl_cache
 andna_rhc_file		= %(DATA_DIR)s/rh_cache
 andna_counter_c_file	= %(DATA_DIR)s/counter_cache
+
+#
+# The script launched by NetsukukuD to share the Internet connection
+#
+ip_masquerade_script	= %(CONF_DIR)s/ip_masquerade.sh

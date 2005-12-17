@@ -46,7 +46,8 @@ enum config_options
 	CONF_NTK_RESTRICTED_MODE,
 	CONF_NTK_INTERNET_GW,
 	CONF_NTK_INTERNET_UPLOAD,
-	CONT_NTK_INTERNET_DOWNLOAD,
+	CONF_NTK_INTERNET_DOWNLOAD,
+	CONF_NTK_IP_MASQ_SCRIPT,
 };
 
 const static char config_str[][30]=
@@ -71,6 +72,7 @@ const static char config_str[][30]=
 	{ "internet_gateway" },
 	{ "internet_upload_rate" },
 	{ "internet_download_rate" },
+	{ "ip_masquerade_script" },
 	{ 0 },
 };
 

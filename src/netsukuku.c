@@ -208,12 +208,13 @@ void fill_loaded_cfg_options(void)
 	}
 	if((value=getenv(config_str[CONF_NTK_INTERNET_UPLOAD])))
 		server_opt.my_upload_bw=atoi(value);
-	if((value=getenv(config_str[CONT_NTK_INTERNET_DOWNLOAD])))
-		server_opt.my_dnload_bw=atoi(value);
-	
+	if((value=getenv(config_str[CONF_NTK_INTERNET_DOWNLOAD])))
+		server_opt.my_dnload_bw=atoi(value);	
 	if(server_opt.my_upload_bw && server_opt.my_dnload_bw)
 		me.my_bandwidth =
 			bandwidth_in_8bit((server_opt.my_upload_bw+server_opt.my_dnload_bw)/2);
+	if((value=getenv(config_str[CONF_NTK_IP_MASQ_SCRIPT])))
+		strncpy(server_opt.ip_masq_script, value, NAME_MAX);
 }
 
 void parse_options(int argc, char **argv)
@@ -318,6 +319,30 @@ void parse_options(int argc, char **argv)
 
 void check_conflicting_options(void)
 {
+#define FATAL_NOT_SPECIFIED(str) 	fatal("You didn't specified the `%s' " \
+						"option in netsukuku.conf",    \
+							(str));		       \
+	
+	if(!server_opt.int_map_file[0])
+		FATAL_NOT_SPECIFIED("ntk_int_map_file");
+	if(!server_opt.ext_map_file[0])
+		FATAL_NOT_SPECIFIED("ntk_ext_map_file");
+	if(!server_opt.bnode_map_file[0])
+		FATAL_NOT_SPECIFIED("ntk_bnode_map_file");
+	if(!server_opt.andna_hnames_file[0])
+		FATAL_NOT_SPECIFIED("andna_hnames_file");
+	if(!server_opt.andna_cache_file[0])
+		FATAL_NOT_SPECIFIED("andna_cache_file");
+	if(!server_opt.lcl_file[0])
+		FATAL_NOT_SPECIFIED("andna_lcl_file");
+	if(!server_opt.rhc_file[0])
+		FATAL_NOT_SPECIFIED("andna_rhc_file");
+	if(!server_opt.counter_c_file[0])
+		FATAL_NOT_SPECIFIED("andna_counter_c_file");
+	
+	if(!server_opt.ip_masq_script[0])
+		FATAL_NOT_SPECIFIED("ip_masquerade_script");
+	
 	if(!server_opt.restricted && 
 		(server_opt.share_internet || server_opt.internet_gw[0]))
 		fatal("You want to share your Internet connection,"
@@ -330,6 +355,11 @@ void check_conflicting_options(void)
 			"your bandwidth is just TOO small."
 			"Do not share it, and do not fake the values in"
 			"netsukuku.conf, or your connection will be saturated");
+	
+	if(me.my_bandwidth && !server_opt.share_internet)
+		loginfo("Warning: You have specified your Internet bandwidth, "
+			"but you haven't set the option to share your "
+			"connection. Set `internet_gateway' in netsukuku.conf");
 }
 
 void init_netsukuku(char **argv)
@@ -356,6 +386,11 @@ void init_netsukuku(char **argv)
 				me.cur_ifs, &me.cur_ifs_n) < 0)
 		fatal("Cannot initialize any network interfaces");
 
+	if(server_opt.share_internet) {
+		init_igws(&me.igws, &me.igws_counter, GET_LEVELS(my_family));
+		igw_exec_masquerade_sh(server_opt.ip_masq_script);
+	}
+	
 	pkts_init(me.cur_ifs, me.cur_ifs_n, 0);
 	qspn_init(GET_LEVELS(my_family));
 

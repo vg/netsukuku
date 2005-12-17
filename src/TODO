@@ -9,7 +9,8 @@
 		- man pages
 		- .conf
 		- command line
-	- 
+	- put_igw()/get_igw() at hook()
+		- build igw from maps
 
 - Gnodes contiguity
 	- Nodes count in the qspn_pkt which traverses gnodes	  [  50% ]

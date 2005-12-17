@@ -9,4 +9,4 @@ netsukuku_d_SOURCES= accept.c andna.c andna_cache.c bmap.c conf.c \
 	pkts.c qspn.c request.c radar.c route.c tracer.c igs.c \
 	xmalloc.c
 netsukuku_d_LDADD = -lpthread -lgmp -lcrypto
-sysconf_DATA = netsukuku.conf
+sysconf_DATA = netsukuku.conf ip_masquerade.sh

@@ -63,4 +63,6 @@ int igw_del_node(inet_gw **igws, int *igws_counter,  int level,
 
 void igw_bandwidth_order(inet_gw **igws, int *igws_counter, int level);
 
+int igw_exec_masquerade_sh(char *script);
+
 #endif /*IGS_H*/

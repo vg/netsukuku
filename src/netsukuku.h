@@ -119,6 +119,7 @@ typedef struct
 	char 		restricted;
 	char		share_internet;
 	char		internet_gw[INET6_ADDRSTRLEN];
+	char		ip_masq_script[NAME_MAX];
 	
 	/* The bandwidths of the Internet connection we are sharing.
 	 * If we are just leeching they are all 0. */

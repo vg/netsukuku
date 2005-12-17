@@ -21,6 +21,7 @@
  */
 
 #include "includes.h"
+#include <sys/wait.h>
 
 #include "llist.c"
 #include "igs.h"
@@ -192,4 +193,22 @@ void igw_bandwidth_order(inet_gw **igws, int *igws_counter, int level)
 	}
 
 	xfree(igw_tmp);
+}
+
+/*
+ * igw_exec_masquerade_sh: executes `script', which will do IP masquerade
+ */
+int igw_exec_masquerade_sh(char *script)
+{
+	int ret;
+	
+	loginfo("Executing %s", script);
+	
+	ret=system(script);
+	if(ret == -1)
+		fatal("Couldn't execute %s: %s", strerror(errno));
+	if(!WIFEXITED(ret) || (WIFEXITED(ret) && WEXITSTATUS(ret) != 0))
+		fatal("%s didn't terminate correctly. Aborting");
+
+	return 0;
 }
