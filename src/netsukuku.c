@@ -203,7 +203,9 @@ void fill_loaded_cfg_options(void)
 		server_opt.restricted=atoi(value);
 
 	if((value=getenv(config_str[CONF_NTK_INTERNET_GW]))) {
-		strncpy(server_opt.internet_gw, value, INET6_ADDRSTRLEN);
+		if(str_to_inet(value, &server_opt.internet_gw))
+			fatal("Malformed `%s' option: %s is not a valid IP",
+					config_str[CONF_NTK_INTERNET_GW], value);
 		server_opt.share_internet=1;
 	}
 	if((value=getenv(config_str[CONF_NTK_INTERNET_UPLOAD])))
@@ -296,7 +298,9 @@ void parse_options(int argc, char **argv)
 				 * anyway.
 				 */
 				if(argv[optind] && argv[optind][0] != '-') {
-					strncpy(server_opt.internet_gw, argv[optind], INET6_ADDRSTRLEN);
+					if(str_to_inet(argv[optind], &server_opt.internet_gw))
+						fatal("Malformed `%s' option: %s is not a valid IP",
+								argv[optind-1], argv[optind]);
 					server_opt.share_internet=1;
 					optind++;
 				}
@@ -344,13 +348,13 @@ void check_conflicting_options(void)
 		FATAL_NOT_SPECIFIED("ip_masquerade_script");
 	
 	if(!server_opt.restricted && 
-		(server_opt.share_internet || server_opt.internet_gw[0]))
+		(server_opt.share_internet || server_opt.internet_gw.data[0]))
 		fatal("You want to share your Internet connection,"
 			"but I am not running in restricted mode (-r), "
 			"'cause I'm not sure of what you want... "
 			"I'm aborting.");
 
-	if(server_opt.share_internet && !me.my_bandwidth)
+	if(server_opt.share_internet && me.my_bandwidth < MIN_CONN_BANDWIDTH)
 		fatal("You want to share your Internet connection but "
 			"your bandwidth is just TOO small."
 			"Do not share it, and do not fake the values in"
@@ -360,6 +364,10 @@ void check_conflicting_options(void)
 		loginfo("Warning: You have specified your Internet bandwidth, "
 			"but you haven't set the option to share your "
 			"connection. Set `internet_gateway' in netsukuku.conf");
+#ifdef IPV6_DISABLED
+	if(server_opt.internet_gw.family == AF_INET6)
+		fatal("Ipv6 is not supported");
+#endif
 }
 
 void init_netsukuku(char **argv)

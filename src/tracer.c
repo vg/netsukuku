@@ -229,10 +229,8 @@ tracer_add_entry(void *void_map, void *void_node, tracer_chunk *tracer,
 		t[new_entry_pos].gcount = qspn_gnode_count[_EL(level)];
 		t[new_entry_pos].node=pos_from_gnode(gnode, ext_map[_EL(level)]);
 	}
-	/* 
-	 * TODO:
-	 * t[new_entry_pos].bandwidth = X;
-	 */
+
+	t[new_entry_pos].bandwidth = me.igws[level]->bandwidth;
 
 	return t;
 }

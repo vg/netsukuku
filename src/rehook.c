@@ -358,6 +358,10 @@ int rehook(map_gnode *hook_gnode, int hook_level)
 	/* Reset */
 	rnl_reset(&rlist, &rlist_counter);
 	e_rnode_free(&me.cur_erc, &me.cur_erc_counter);
+	if(server_opt.restricted) {
+		reset_igws(me.igws, me.igws_counter, me.cur_quadg.levels);
+		free_my_igws(&me.my_igws);
+	}
 
 	/* Andna reset */
 	if(!server_opt.disable_andna) {

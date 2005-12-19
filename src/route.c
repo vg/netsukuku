@@ -713,7 +713,8 @@ int rt_replace_def_gw(char *dev, inet_prefix gw)
 	inet_prefix to;
 
 	if(inet_setip_anyaddr(&to, my_family)) {
-		error("rt_add_def_gw(): Cannot use INADRR_ANY for the %d family", to.family);
+		error("rt_replace_def_gw(): Cannot use INADRR_ANY for the %d "
+				"family", to.family);
 		return -1;
 	}
 	to.len=0;

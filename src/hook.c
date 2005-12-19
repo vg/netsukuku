@@ -645,6 +645,85 @@ finish:
 }
 
 
+/*  
+ *  *  *  put/get internet gateways list  *  *  *
+ */
+
+int put_internet_gws(PACKET rq_pkt)
+{
+	PACKET pkt;
+	const char *ntop; 
+	int ret=0;
+	ssize_t err;
+	size_t pack_sz=0;
+	
+	ntop=inet_to_str(rq_pkt.from);
+	debug(DBG_NORMAL, "Sending the PUT_INTERNET_GWS reply to %s", ntop);
+
+	memset(&pkt, '\0', sizeof(PACKET));
+	pkt_addto(&pkt, &rq_pkt.from);
+	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
+	pkt_add_dev(&pkt, rq_pkt.dev, 1);
+
+	pkt.msg=pack_igws(me.igws, me.igws_counter, me.cur_quadg.levels, 
+			&pack_sz);
+	pkt.hdr.sz=pack_sz;
+
+	debug(DBG_INSANE, "Reply %s to %s", re_to_str(PUT_INTERNET_GWS), ntop);
+	err=send_rq(&pkt, 0, PUT_INTERNET_GWS, rq_pkt.hdr.id, 0, 0, 0);
+	if(err==-1) {
+		error("put_internet_gws(): Cannot send the PUT_INTERNET_GWS "
+				"reply to %s.", ntop);
+		ERROR_FINISH(ret, -1, finish);
+	}
+
+finish:
+	pkt_free(&pkt, 0);
+	return ret;
+}
+
+/* 
+ * get_internet_gws: It sends the GET_INTERNET_GWS request to retrieve the 
+ * Internet Gateways list from `to'.
+ */
+inet_gw **get_internet_gws(inet_prefix to, interface *dev, int **igws_counter)
+{
+	PACKET pkt, rpkt;
+	int err, ret=0;
+	inet_gw **igws=0;
+	const char *ntop;
+	char *pack;
+	
+	memset(&pkt, '\0', sizeof(PACKET));
+	memset(&rpkt, '\0', sizeof(PACKET));
+	
+	ntop=inet_to_str(to);
+	
+	pkt_addto(&pkt, &to);
+	pkt_add_dev(&pkt, dev, 1);
+	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_INTERNET_GWS), ntop);
+	err=send_rq(&pkt, 0, GET_INTERNET_GWS, 0, PUT_INTERNET_GWS, 1, &rpkt);
+	if(err==-1) {
+		ret=0;
+		goto finish;
+	}
+	
+	/* Extracting the list... */
+	pack=rpkt.msg;
+	ret=unpack_igws(pack, rpkt.hdr.sz, me.int_map, me.ext_map,
+			GET_LEVELS(my_family), &igws, igws_counter);
+	if(ret < 0) {
+		error("get_internet_gws(): Malformed internet_gws. Cannot load it");
+		igws=0;
+	}
+
+finish:
+	pkt_free(&pkt, 0);
+	pkt_free(&rpkt, 1);
+	return igws;
+}
+
+
 /* 
  * set_ip_and_def_gw: Set the same `ip' to all the devices.
  */
@@ -858,6 +937,8 @@ int hook_init(void)
 	add_pkt_op(PUT_EXT_MAP, SKT_TCP, ntk_tcp_port, 0);
 	add_pkt_op(GET_BNODE_MAP, SKT_TCP, ntk_tcp_port, put_bnode_map);
 	add_pkt_op(PUT_BNODE_MAP, SKT_TCP, ntk_tcp_port, 0);
+	add_pkt_op(GET_INTERNET_GWS, SKT_TCP, ntk_tcp_port, put_internet_gws);
+	add_pkt_op(PUT_INTERNET_GWS, SKT_TCP, ntk_tcp_port, 0);
 
 #if 0
 	if(my_family == AF_INET) {
@@ -1299,6 +1380,53 @@ void hook_get_bnode_map(void)
 
 }
 
+void hook_get_igw(void)
+{
+	struct radar_queue *rq=radar_q;
+
+	inet_gw **old_igws;
+	int *old_igws_counter;
+
+	int e, i;
+
+	/* 
+	 * Let's get the Internet Gateway list
+	 */
+	e=0;
+	for(i=0; i<me.cur_node->links; i++) {
+		rq=find_node_radar_q((map_node *)me.cur_node->r_node[i].r_node);
+		if(rq->node->flags & MAP_HNODE)
+			continue;
+		if(quadg_gids_cmp(rq->quadg, me.cur_quadg, 1)) 
+			/* This node isn't part of our gnode, let's skip it */
+			continue; 
+		
+		old_igws=me.igws;
+		old_igws_counter=me.igws_counter;
+		me.igws=get_internet_gws(rq->ip, rq->dev, &me.igws_counter);
+		if(me.igws) {
+			free_igws(old_igws, old_igws_counter, GET_LEVELS(my_family));
+			e=1;
+			break;
+		} else {
+			me.igws=old_igws;
+			me.igws_counter=old_igws_counter;
+		}
+	}
+	if(!e) {
+		loginfo("None gave me the Internet Gateway list");
+		reset_igws(me.igws, me.igws_counter, GET_LEVELS(my_family));
+	}
+
+	/*
+	 * Initialize me.my_igws
+	 */
+	free_my_igws(&me.my_igws);
+	init_my_igws(me.igws, me.igws_counter, &me.my_igws, me.my_bandwidth,
+			me.cur_node, &me.cur_quadg);
+}
+
+
 /*
  * hook_finish: final part of the netsukuku_hook process
  */
@@ -1365,6 +1493,9 @@ void hook_finish(int new_gnode, struct free_nodes_hdr *fn_hdr)
 	/* Let's fill the krnl routing table */
 	loginfo("Filling the kernel routing table");
 	rt_full_update(0);
+	/*
+	 * TODO: rt_full_internet_gateways()
+	 */
 
 	/* (Re)Hook completed */
 	loginfo("%sook completed", we_are_rehooking ? "Reh":"H");
@@ -1441,6 +1572,12 @@ int netsukuku_hook(map_gnode *hook_gnode, int hook_level)
 	 * Fetch the bnode map
 	 */
 	hook_get_bnode_map();
+
+	/*
+	 * If we are in restricted mode, get the Internet Gateways
+	 */
+	if(server_opt.restricted)
+		hook_get_igw();
 	
 	/*
 	 * And that's all, clean the mess

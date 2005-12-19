@@ -56,6 +56,9 @@ struct current_globals
 	/* Internet gateways */
 	inet_gw		**igws;
 	int		*igws_counter;
+	inet_gw		**my_igws;	/* my_igws[level] points to our inet gateway 
+					   present at igws[level]. It's the same of using
+					   igw_find_node(igws, me.cur_quadg.gnode[_EL(level)]); */
 	u_char		my_bandwidth;	/*The bandwidth of the Internet connection 
 					  we are sharing*/
 		
@@ -118,7 +121,7 @@ typedef struct
 	
 	char 		restricted;
 	char		share_internet;
-	char		internet_gw[INET6_ADDRSTRLEN];
+	inet_prefix	internet_gw;
 	char		ip_masq_script[NAME_MAX];
 	
 	/* The bandwidths of the Internet connection we are sharing.

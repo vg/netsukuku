@@ -24,6 +24,9 @@
 #include <sys/wait.h>
 
 #include "llist.c"
+#include "map.h"
+#include "gmap.h"
+#include "bmap.h"
 #include "igs.h"
 #include "xmalloc.h"
 #include "log.h"
@@ -69,32 +72,108 @@ u_char bandwidth_in_8bit(u_int x)
 	return 0;
 }
 
+/*
+ * bandwidth_to_32bit: the inverse of bandwidth_in_8bit
+ */
+u_int bandwidth_to_32bit(u_char x)
+{
+	return (u_int)x<<x;
+}
+
 void init_igws(inet_gw ***igws, int **igws_counter, int levels)
 {
 	*igws=xmalloc(sizeof(inet_gw *) * levels);
-	*igws_counter=(int *)xmalloc(sizeof(int)*levels);
-	
 	memset(*igws, 0, sizeof(inet_gw *) * levels);
-	memset(*igws_counter, 0, sizeof(int)*levels);
+
+	if(igws_counter) {
+		*igws_counter=(int *)xmalloc(sizeof(int)*levels);
+		memset(*igws_counter, 0, sizeof(int)*levels);
+	}
 }
 
-void free_igws(inet_gw **igws, int *igws_counter, int levels)
+void reset_igws(inet_gw **igws, int *igws_counter, int levels)
 {
 	int i;
 	
+	if(!igws)
+		return;
+
 	for(i=0; i<levels; i++) {
 		list_destroy(igws[i]);
 		igws_counter[i]=0;
 	}
+}
 
-	xfree(igws);
-	xfree(igws_counter);
+void free_igws(inet_gw **igws, int *igws_counter, int levels)
+{
+	if(!igws)
+		return;
+
+	reset_igws(igws, igws_counter, levels);
+
+	if(igws)
+		xfree(igws);
+	if(igws_counter)
+		xfree(igws_counter);
+}
+
+/* 
+ * init_my_igws: initializses the `my_igws' llist. This list keeps inet_gw
+ * structs which points to our (g)nodes, for example:
+ * my_igws[0]->node == me.cur_node,
+ * my_igws[1]->node == &me.cur_quadg.gnode[_EL(1)]->g.
+ */
+void init_my_igws(inet_gw **igws, int *igws_counter,
+		inet_gw ***my_new_igws, u_char my_bandwidth, 
+		map_node *cur_node, quadro_group *qg)
+{
+	inet_gw *igw, **my_igws;
+	map_node *node;
+	int i=0, e, fake_counter, bw, bw_mean;
+	
+	init_igws(&my_igws, 0, qg->levels);
+	
+	for(i=0; i<qg->levels; i++) {
+		if(!i) {
+			node=cur_node;
+			bw_mean=my_bandwidth;
+		} else {
+			node=&qg->gnode[_EL(i)]->g;
+			
+			bw=e=0;
+			igw=igws[i-1];
+			list_for(igw) {
+				bw_mean+=igw->bandwidth;
+				e++;
+			}
+			bw_mean/=e;
+			
+			if(my_bandwidth && i==1)
+				/* Add our bw in the avarage */
+				bw_mean=(bw_mean*e+my_bandwidth)/(e+1);
+		}
+		
+		igw=igw_add_node(my_igws, &fake_counter, i, qg->gid[i],
+				node, (u_char)bw_mean);
+		if(bw_mean)
+			clist_add(&igws[i], &igws_counter[i], igw);
+	}
+	
+	*my_new_igws=my_igws;
+}
+
+void free_my_igws(inet_gw ***my_igs)
+{
+	if(*my_igs && *my_igs)
+		xfree(*my_igs);
+	*my_igs=0;
 }
 
 /*
  * igw_add_node: adds a new gw in the `igws[`level']' llist.
+ * The pointer to the new inet_gw is returned.
  */
-void igw_add_node(inet_gw **igws, int *igws_counter,  int level,
+inet_gw *igw_add_node(inet_gw **igws, int *igws_counter,  int level,
 		int gid, map_node *node, u_char bandwidth)
 {
 	inet_gw *igw;
@@ -107,6 +186,8 @@ void igw_add_node(inet_gw **igws, int *igws_counter,  int level,
 	igw->bandwidth=bandwidth;
 		
 	clist_add(&igws[level], &igws_counter[level], igw);
+
+	return igw;
 }
 
 /*
@@ -142,24 +223,79 @@ int igw_del_node(inet_gw **igws, int *igws_counter,  int level,
 	return 0;
 }
 
-int igw_bandwidth_cmp(const void *a, const void *b)
+/*
+ * igw_update_gnode_bw: 
+ * call this function _after_ adding and _before_ deleting any nodes
+ * from the me.igws llist. This fuctions will update the `bandwidth' value of
+ * the inet_gw which points to out (g)nodes.
+ */
+void igw_update_gnode_bw(int *igws_counter, inet_gw **my_igws, inet_gw *igw,
+		int new, int level, int maxlevels)
+{
+	int i, bw, old_bw=0;
+	
+	if(!my_igws[level] || level >= maxlevels)
+		return;
+
+	if(new) {
+		if(igws_counter[level] <= 0)
+			return;
+		
+		bw = my_igws[level+1]->bandwidth * (igws_counter[level]-1);
+		bw = (bw + igw->bandwidth) / igws_counter[level];
+	} else {
+		if(igws_counter[level] <= 1)
+			return;
+
+		bw = my_igws[level+1]->bandwidth * igws_counter[level];
+		bw = (bw - igw->bandwidth) / (igws_counter[level]-1);
+	}
+	old_bw = my_igws[level+1]->bandwidth;
+	my_igws[level+1]->bandwidth = bw;
+
+	for(i=level+2; i<maxlevels; i++) {
+		if(!my_igws[i] || igws_counter[i-1] <= 0)
+			break;
+
+		bw = my_igws[i]->bandwidth * igws_counter[i-1];
+		bw = (bw - old_bw + my_igws[i-1]->bandwidth)/igws_counter[i-1];
+		old_bw = my_igws[i]->bandwidth;
+		my_igws[i]->bandwidth = bw;
+	}
+}
+
+
+/*
+ * igw_cmp: compares two inet_gw structs calculating their connection quality: 
+ * bandwith - rtt/1000;
+ */
+int igw_cmp(const void *a, const void *b)
 {
 	inet_gw *gw_a=(inet_gw *)a;
 	inet_gw *gw_b=(inet_gw *)b;
+
+	u_int cq_a, cq_b, trtt;
+
+	/* let's calculate the connection quality of both A and B */
+	trtt = gw_a->node->links ? gw_a->node->r_node[0].trtt/1000 : 0;
+	cq_a = bandwidth_to_32bit(gw_a->bandwidth) - trtt;
+	trtt = gw_b->node->links ? gw_b->node->r_node[0].trtt/1000 : 0;
+	cq_b = bandwidth_to_32bit(gw_b->bandwidth) - trtt;
 	
-	if(gw_a->bandwidth > gw_b->bandwidth)
+	if(cq_a > cq_b)
 		return 1;
-	else if(gw_a->bandwidth == gw_b->bandwidth)
+	else if(cq_a == cq_b)
 		return 0;
 	else
 		return -1;
 }
 
 /*
- * igw_bandwidth_order: orders in decrescent order the `igws[`level']' llist,
- * comparing the igws[level]->bandwidth value.
+ * igw_order: orders in decrescent order the `igws[`level']' llist,
+ * comparing the igws[level]->bandwidth and igws[level]->node->r_node[0].trtt 
+ * values.
  */
-void igw_bandwidth_order(inet_gw **igws, int *igws_counter, int level)
+void igw_order(inet_gw **igws, int *igws_counter, int level)
 {
 	inet_gw *igw, *igw_tmp;
 	int i;
@@ -180,7 +316,7 @@ void igw_bandwidth_order(inet_gw **igws, int *igws_counter, int level)
 		i++;
 	}
 
-	qsort(igw_tmp, i, sizeof(inet_gw), igw_bandwidth_cmp);
+	qsort(igw_tmp, i, sizeof(inet_gw), igw_cmp);
 
 	/* 
 	 * Restore igws[level] 
@@ -210,5 +346,128 @@ int igw_exec_masquerade_sh(char *script)
 	if(!WIFEXITED(ret) || (WIFEXITED(ret) && WEXITSTATUS(ret) != 0))
 		fatal("%s didn't terminate correctly. Aborting");
 
+	return 0;
+}
+
+/*
+ * TODO:
+ * int add_default_gateways
+ * if(rt_replace_def_gw(dev, ip))
+ */
+
+
+char *pack_inet_gw(inet_gw *igw, char *pack)
+{
+	char *buf;
+
+	buf=pack;
+
+	memcpy(buf, &igw->gid, sizeof(u_char));
+	buf+=sizeof(u_char);
+
+	memcpy(buf, &igw->bandwidth, sizeof(u_char));
+	buf+=sizeof(u_char);
+
+	return pack;
+}
+
+inet_gw *unpack_inet_gw(char *pack, inet_gw *igw)
+{
+	char *buf=pack;
+
+	memcpy(&igw->gid, buf, sizeof(u_char));
+	buf+=sizeof(u_char);
+
+	memcpy(&igw->bandwidth, buf, sizeof(u_char));
+	buf+=sizeof(u_char);
+
+	return igw;
+}
+
+/*
+ * pack_igws: it packs the each `igws[`level']' llist and sets the package size
+ * in `pack_sz'. The package is returned, otherwise, on error, NULL is the
+ * value returned.
+ */
+char *pack_igws(inet_gw **igws, int *igws_counter, int levels, int *pack_sz)
+{
+	struct inet_gw_pack_hdr hdr;
+	inet_gw *igw;
+	
+	int lvl;
+	char *pack, *buf;
+
+	memset(&hdr, 0, sizeof(struct inet_gw_pack_hdr));
+
+	/* 
+	 * Fill the pack header and calculate the total pack size 
+	 */
+	hdr.levels=levels;
+	for(lvl=0; lvl<levels; lvl++)
+		hdr.gws[lvl]=INET_GW_PACK_SZ*igws_counter[lvl];
+	*pack_sz=IGWS_PACK_SZ(&hdr);
+
+	buf=pack=xmalloc(*pack_sz);
+
+	memcpy(buf, &hdr, sizeof(struct inet_gw_pack_hdr));
+	buf+=sizeof(struct inet_gw_pack_hdr);
+
+	/* Pack `igws' */
+	for(lvl=0; lvl<levels; lvl++) {
+		igw=igws[lvl];
+		list_for(igw) {
+			pack_inet_gw(igws[lvl], buf);
+			buf+=INET_GW_PACK_SZ;
+		}
+	}
+
+	return pack;
+}
+
+/*
+ * unpack_igws: upacks what pack_igws() packed.
+ * `pack' is the package which is `pack_sz' big.
+ * The pointer to the unpacked igws are stored in `new_igws' and 
+ * `new_igws_counter'. 
+ * On error -1 is returned.
+ */
+int unpack_igws(char *pack, size_t pack_sz,
+		map_node *int_map, map_gnode **ext_map, int levels,
+		inet_gw ***new_igws, int **new_igws_counter)
+{
+	struct inet_gw_pack_hdr *hdr;
+	inet_gw *igw, **igws;
+	
+	size_t sz;
+	int i, lvl=0, *igws_counter;
+	char *buf;
+
+	hdr=(struct inet_gw_pack_hdr *)pack;
+	sz=IGWS_PACK_SZ(hdr);
+
+	/* Verify the package header */
+	if(sz != pack_sz || sz > MAX_IGWS_PACK_SZ(levels) || 
+			hdr->levels > levels) {
+		debug(DBG_NORMAL, "Malformed igws package");
+		return -1;
+	}
+
+	init_igws(&igws, &igws_counter, levels);
+
+	buf=pack+sizeof(struct inet_gw_pack_hdr);
+	for(lvl=0; lvl<hdr->levels; lvl++) {
+		for(i=0; i<hdr->gws[lvl]; i++) {
+			igw=xmalloc(sizeof(inet_gw));
+
+			unpack_inet_gw(buf, igw);
+			igw->node = node_from_pos(igw->gid, int_map);
+			clist_add(&igws[lvl], &igws_counter[lvl], igw);
+
+			buf+=INET_GW_PACK_SZ;
+		}
+	}
+		
+	*new_igws=igws;
+	*new_igws_counter=igws_counter;
 	return 0;
 }

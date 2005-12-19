@@ -7,10 +7,12 @@
 		- man pages
 	- --internet
 		- man pages
-		- .conf
 		- command line
-	- put_igw()/get_igw() at hook()
-		- build igw from maps
+	- do not change default gw if there is already one and it is better
+	  than others
+	- TODO: rt_full_internet_gateways()
+	- consider own default gw
+	- check connection by resolving a hname
 
 - Gnodes contiguity
 	- Nodes count in the qspn_pkt which traverses gnodes	  [  50% ]

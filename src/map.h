@@ -23,8 +23,8 @@
 #include "inet.h"
 
 /* Generic map defines */
-#define MAXGROUPNODE		256
 #define MAXGROUPNODE_BITS	8	/* 2^MAXGROUPNODE_BITS == MAXGROUPNODE */
+#define MAXGROUPNODE		(1<<MAXGROUPNODE_BITS)
 #define MAXROUTES	 	20
 
 #define MAXLINKS		MAXROUTES
