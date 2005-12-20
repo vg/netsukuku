@@ -327,8 +327,7 @@ void check_conflicting_options(void)
 	if(!server_opt.rhc_file[0])
 		FATAL_NOT_SPECIFIED("andna_rhc_file");
 	if(!server_opt.counter_c_file[0])
-		FATAL_NOT_SPECIFIED("andna_counter_c_file");
-	
+		FATAL_NOT_SPECIFIED("andna_counter_c_file");	
 	if(!server_opt.ip_masq_script[0])
 		FATAL_NOT_SPECIFIED("ip_masquerade_script");
 	if(!file_exist(server_opt.ip_masq_script))
@@ -357,7 +356,7 @@ void check_conflicting_options(void)
 void init_netsukuku(char **argv)
 {
 	xsrand();
-
+	
         if(geteuid())
 		fatal("Need root privileges");
 	

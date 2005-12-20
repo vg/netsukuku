@@ -47,8 +47,7 @@ typedef struct
 	u_short len;		     /* IP length: 4 or 16 (bytes) */
 	u_char	bits;		     /* Number of used bits of the IP */
 	u_int	data[MAX_IP_INT];    /* The address is kept in host long format, 
-				       word ORDER 1 (most significant word first)
-				     */
+				       word ORDER 1 (most significant word first) */
 }inet_prefix;
 
 /* int_info struct used for packing the inet_prefix struct.

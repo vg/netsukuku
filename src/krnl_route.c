@@ -32,6 +32,37 @@
 #include "xmalloc.h"
 #include "log.h"
 
+
+static struct
+{
+        int tb;
+        int flushed;
+        char *flushb;
+        int flushp;
+        int flushe;
+        struct rtnl_handle *rth;
+        int protocol, protocolmask;
+        int scope, scopemask;
+        int type, typemask;
+        int tos, tosmask;
+        int iif, iifmask;
+        int oif, oifmask;
+        int realm, realmmask;
+        inet_prefix rprefsrc;
+        inet_prefix rvia;
+        inet_prefix rdst;
+        inet_prefix mdst;
+        inet_prefix rsrc;
+        inet_prefix msrc;
+} filter;
+
+void route_reset_filter()
+{
+        memset(&filter, 0, sizeof(filter));
+        filter.mdst.bits = -1;
+        filter.msrc.bits = -1;
+}
+
 int route_exec(int route_cmd, int route_type, int route_scope, unsigned flags,
 		inet_prefix to, struct nexthop *nhops, char *dev, u_char table);
 
@@ -119,6 +150,10 @@ int add_nexthops(struct nlmsghdr *n, struct rtmsg *r, struct nexthop *nhop)
 	return 0;
 }
 
+/*
+ * route_exec: replaces, adds or deletes a route from the routing table.
+ * `to' and nhops->gw must be addresses given in network order
+ */
 int route_exec(int route_cmd, int route_type, int route_scope, unsigned flags, 
 		inet_prefix to, struct nexthop *nhops, char *dev, u_char table)
 {
@@ -190,6 +225,180 @@ int route_exec(int route_cmd, int route_type, int route_scope, unsigned flags,
 	/*Finaly stage: <<Hey krnl, r u there?>>*/
 	if (rtnl_talk(&rth, &req.nh, 0, 0, NULL, NULL, NULL) < 0)
 		return -1;
+
+	return 0;
+}
+
+/*
+ * route_get_gw: if the route stored in `who' and `n' is matched by the
+ * `filter', it stores the gateway address of that route in `arg', which
+ * is a pointer to an inet_prefix struct. The address is stored in host order.
+ * Only the non-deleted routes are considered.
+ */
+int route_get_gw(const struct sockaddr_nl *who, struct nlmsghdr *n, void *arg)
+{
+	struct rtmsg *r = NLMSG_DATA(n);
+	int len = n->nlmsg_len;
+	struct rtattr * tb[RTA_MAX+1];
+	inet_prefix dst;
+	inet_prefix via;
+	int host_len = -1;
+
+
+	if (n->nlmsg_type != RTM_NEWROUTE && n->nlmsg_type != RTM_DELROUTE)
+		return 0;
+	if (filter.flushb && n->nlmsg_type != RTM_NEWROUTE)
+		return 0;
+	len -= NLMSG_LENGTH(sizeof(*r));
+	if (len < 0)
+		return -1;
+
+	if (r->rtm_family == AF_INET6)
+		host_len = 128;
+	else if (r->rtm_family == AF_INET)
+		host_len = 32;
+	else if (r->rtm_family == AF_DECnet)
+		host_len = 16;
+	else if (r->rtm_family == AF_IPX)
+		host_len = 80;
+
+	if (r->rtm_family == AF_INET6) {
+		if (filter.tb) {
+			if (filter.tb < 0) {
+				if (!(r->rtm_flags&RTM_F_CLONED))
+					return 0;
+			} else {
+				if (r->rtm_flags&RTM_F_CLONED)
+					return 0;
+				if (filter.tb == RT_TABLE_LOCAL) {
+					if (r->rtm_type != RTN_LOCAL)
+						return 0;
+				} else if (filter.tb == RT_TABLE_MAIN) {
+					if (r->rtm_type == RTN_LOCAL)
+						return 0;
+				} else {
+					return 0;
+				}
+			}
+		}
+	} else {
+		if (filter.tb > 0 && filter.tb != r->rtm_table)
+			return 0;
+	}
+	if ((filter.protocol^r->rtm_protocol)&filter.protocolmask)
+		return 0;
+	if ((filter.scope^r->rtm_scope)&filter.scopemask)
+		return 0;
+	if ((filter.type^r->rtm_type)&filter.typemask)
+		return 0;
+	if ((filter.tos^r->rtm_tos)&filter.tosmask)
+		return 0;
+	if (filter.rdst.family &&
+			(r->rtm_family != filter.rdst.family || filter.rdst.bits > r->rtm_dst_len))
+		return 0;
+	if (filter.mdst.family &&
+			(r->rtm_family != filter.mdst.family ||
+			 (filter.mdst.bits < r->rtm_dst_len)))
+		return 0;
+	if (filter.rsrc.family &&
+			(r->rtm_family != filter.rsrc.family || filter.rsrc.bits > r->rtm_src_len))
+		return 0;
+	if (filter.msrc.family &&
+			(r->rtm_family != filter.msrc.family ||
+			 (filter.msrc.bits < r->rtm_src_len)))
+		return 0;
+	if (filter.rvia.family && r->rtm_family != filter.rvia.family)
+		return 0;
+	if (filter.rprefsrc.family && r->rtm_family != filter.rprefsrc.family)
+		return 0;
+
+	parse_rtattr(tb, RTA_MAX, RTM_RTA(r), len);
+
+	memset(&dst, 0, sizeof(dst));
+	dst.family = r->rtm_family;
+	if (tb[RTA_DST]) {
+		memcpy(&dst.data, RTA_DATA(tb[RTA_DST]), (r->rtm_dst_len+7)/8);
+	}
+	if (filter.rdst.family && inet_addr_match(&dst, &filter.rdst, filter.rdst.bits))
+		return 0;
+	if (filter.mdst.family &&
+			inet_addr_match(&dst, &filter.mdst, r->rtm_dst_len))
+		return 0;
+
+	if (n->nlmsg_type == RTM_DELROUTE)
+		return 0;
+
+	/*
+	 * ... and finally if all the tests passed, copy the gateway address
+	 */
+	if(tb[RTA_GATEWAY]) {
+		memcpy(&via.data, RTA_DATA(tb[RTA_GATEWAY]), host_len);
+		via.family=r->rtm_family;
+		inet_setip(arg, (u_int *)&via.data, via.family);
+	} else if(tb[RTA_MULTIPATH]) {
+		struct rtnexthop *nh = RTA_DATA(tb[RTA_MULTIPATH]);
+
+		len = RTA_PAYLOAD(tb[RTA_MULTIPATH]);
+
+		for (;;) {
+			if (len < sizeof(*nh))
+				break;
+			if (nh->rtnh_len > len)
+				break;
+			if (r->rtm_flags&RTM_F_CLONED && r->rtm_type == RTN_MULTICAST)
+				goto skip_nexthop;
+
+			if (nh->rtnh_len > sizeof(*nh)) {
+				parse_rtattr(tb, RTA_MAX, RTNH_DATA(nh), nh->rtnh_len - sizeof(*nh));
+				if (tb[RTA_GATEWAY]) {
+					memcpy(&via.data, RTA_DATA(tb[RTA_GATEWAY]), host_len);
+					via.family=r->rtm_family;
+					inet_setip(arg, (u_int *)&via.data, via.family);
+					break;
+				}
+			}
+skip_nexthop:
+			len -= NLMSG_ALIGN(nh->rtnh_len);
+			nh = RTNH_NEXT(nh);
+		}
+	}
+
+	return 0;
+}
+
+/*
+ * route_get_exact_prefix: it dumps the routing table and search for a route
+ * which has the prefix equal to `prefix', if it is found its destination
+ * address is stored in `dst'.
+ */
+int route_get_exact_prefix_dst(inet_prefix prefix, inet_prefix *dst) 
+{
+	int do_ipv6 = AF_UNSPEC;
+	struct rtnl_handle rth;
+
+	route_reset_filter();
+	filter.tb = RT_TABLE_MAIN;
+
+	filter.mdst=prefix;
+	filter.rdst = filter.mdst;
+
+	if (do_ipv6 == AF_UNSPEC && filter.tb)
+		do_ipv6 = AF_INET;
+
+	if (rtnl_open(&rth, 0) < 0)
+		return -1;
+
+	ll_init_map(&rth);
+
+	if (rtnl_wilddump_request(&rth, do_ipv6, RTM_GETROUTE) < 0) {
+		error(ERROR_MSG"Cannot send dump request"ERROR_POS);
+		return -1;
+	}
+
+	if (rtnl_dump_filter(&rth, route_get_gw, dst, NULL, NULL) < 0) {
+		debug(DBG_NORMAL, ERROR_MSG "Dump terminated" ERROR_POS);
+		return -1;
+	}
 
 	return 0;
 }

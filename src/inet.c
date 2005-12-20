@@ -85,7 +85,7 @@ int inet_setip_raw(inet_prefix *ip, u_int *data, int family)
 	} else 
 		return -1;
 
-	ip->bits=ip->len*8;
+	ip->bits=ip->len<<3; /* bits=len*8 */
 	
 	return 0;
 }
@@ -234,7 +234,10 @@ void unpack_inet_prefix(inet_prefix *ip, char *pack)
 	buf+=MAX_IP_SZ;
 }
 
-/* from iproute2 */
+/* 
+ * inet_addr_match: without hesitating this function was robbed from iproute2.
+ * It compares a->data wih b->data matching `bits'# bits.
+ */
 int inet_addr_match(const inet_prefix *a, const inet_prefix *b, int bits)
 {
         uint32_t *a1 = a->data;
