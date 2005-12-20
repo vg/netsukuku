@@ -121,7 +121,8 @@ typedef struct
 	
 	char 		restricted;
 	char		share_internet;
-	inet_prefix	internet_gw;
+	inet_prefix	inet_gw;
+	char		inet_gw_dev[IFNAMSIZ];
 	char		ip_masq_script[NAME_MAX];
 	
 	/* The bandwidths of the Internet connection we are sharing.

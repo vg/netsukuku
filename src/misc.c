@@ -388,6 +388,19 @@ int check_and_create_dir(char *dir)
 	closedir(d);
 	return 0;
 }
+
+/* 
+ * file_exist: returns 1 if `filename' is a valid existing file.
+ */
+int file_exist(char *filename)
+{
+	FILE *fd;
+
+	if(!(fd=fopen(filename, "r")))
+		return 0;
+	fclose(fd);
+	return 1;
+}
 	
 /* This is the most important function */
 void do_nothing(void)

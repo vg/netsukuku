@@ -10,6 +10,7 @@
 		- command line
 	- do not change default gw if there is already one and it is better
 	  than others
+	- ip_route_get()
 	- TODO: rt_full_internet_gateways()
 	- consider own default gw
 	- check connection by resolving a hname

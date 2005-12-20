@@ -24,9 +24,17 @@
 #include <sys/wait.h>
 
 #include "llist.c"
-#include "map.h"
-#include "gmap.h"
+#include "libnetlink.h"
+#include "inet.h"
+#include "krnl_route.h"
+#include "request.h"
+#include "endianness.h"
+#include "pkts.h"
 #include "bmap.h"
+#include "qspn.h"
+#include "radar.h"
+#include "netsukuku.h"
+#include "route.h"
 #include "igs.h"
 #include "xmalloc.h"
 #include "log.h"
@@ -78,6 +86,34 @@ u_char bandwidth_in_8bit(u_int x)
 u_int bandwidth_to_32bit(u_char x)
 {
 	return (u_int)x<<x;
+}
+
+/*
+ * str_to_inet_gw:
+ * The syntax of `str' is IP:devname, i.e. 192.168.1.1:eth0.
+ * str_to_inet_gw() stores the IP in `gw' and the device name in `dev'.
+ * `dev' must be IFNAMSIZ big.
+ * On error -1 is returned.
+ */
+int str_to_inet_gw(char *str, inet_prefix *gw, char *dev)
+{
+	char *buf;
+
+	memset(dev, 0, IFNAMSIZ);
+
+	/* Copy :devname in `dev' */
+	if(!(buf=rindex(str, ':')))
+		return -1;
+	*buf=0;
+	buf++;
+	strncpy(dev, buf, IFNAMSIZ);
+	dev[IFNAMSIZ-1]=0;
+
+	/* Extract the IP from the first part of `str' */
+	if(str_to_inet(str, gw))
+		return -1;
+
+	return 0;
 }
 
 void init_igws(inet_gw ***igws, int **igws_counter, int levels)
@@ -294,8 +330,10 @@ int igw_cmp(const void *a, const void *b)
  * igw_order: orders in decrescent order the `igws[`level']' llist,
  * comparing the igws[level]->bandwidth and igws[level]->node->r_node[0].trtt 
  * values.
+ * `my_igws[level]' will point to the inet_gw struct which refers to an our
+ * (g)node.
  */
-void igw_order(inet_gw **igws, int *igws_counter, int level)
+void igw_order(inet_gw **igws, int *igws_counter, inet_gw **my_igws, int level)
 {
 	inet_gw *igw, *igw_tmp;
 	int i;
@@ -325,6 +363,8 @@ void igw_order(inet_gw **igws, int *igws_counter, int level)
 	igw=igws[level];
 	list_for(igw) {
 		memcpy(igw, &igw_tmp[i], sizeof(inet_gw));
+		if(igw->node->flags & MAP_ME)
+			my_igws[level]=igw;
 		i++;
 	}
 
@@ -350,11 +390,81 @@ int igw_exec_masquerade_sh(char *script)
 }
 
 /*
- * TODO:
- * int add_default_gateways
- * if(rt_replace_def_gw(dev, ip))
+ * igw_replace_default_gateways: sets the default gw route to reach the
+ * Internet. The route utilises multipath therefore there are more than one
+ * gateway which can be used to reach the Internet, these gateways are choosen
+ * from the `igws' llist.
+ * On error -1 is returned.
  */
+int igw_replace_default_gateways(inet_gw **igws, int *igws_counter, 
+		inet_gw **my_igws, int max_levels, int family)
+{
+	inet_gw *igw;
+	inet_prefix to;
 
+	struct nexthop *nh=0, *nehop;
+	int ni, nexthops, level;
+
+	/* to == 0.0.0.0 */
+	inet_setip_anyaddr(&to, family);
+
+	nh=xmalloc(sizeof(struct nexthop)*MAX_MULTIPATH_ROUTES);
+	memset(nh, 0, sizeof(struct nexthop)*MAX_MULTIPATH_ROUTES);
+	ni=0; /* nexthop index */
+
+	/* 
+	 * If we are sharing our Internet connection use, as the primary 
+	 * gateway `me.internet_gw'.
+	 */
+	if(server_opt.share_internet) {
+		memcpy(&nh[ni].gw, &server_opt.inet_gw, sizeof(inet_prefix));
+		nh[ni].dev=server_opt.inet_gw_dev;
+		nh[ni].hops=255-ni;
+		ni++;
+	}
+
+	for(level=0; level<max_levels; level++) {
+		
+		/* Reorder igws[level] */
+		igw_order(igws, igws_counter, my_igws, level);
+
+		igw=igws[level];
+		nexthops=MAX_MULTIPATH_ROUTES/max_levels;
+		if(server_opt.share_internet)
+			nexthops--;
+
+		/* Take the first `nexthops'# gateways and add them in `nh' */
+		list_for(igw) {
+			if(ni >= nexthops)
+				break;
+
+			if(igw->node->flags & MAP_ME && !server_opt.share_internet) {
+				if(level)
+					continue;
+
+				memcpy(&nh[ni].gw, &server_opt.inet_gw, sizeof(inet_prefix));
+				nh[ni].dev=server_opt.inet_gw_dev;
+				nh[ni].hops=255-ni;
+			} else {
+				nehop=rt_build_nexthop_gw(igw->node, (map_gnode *)igw->node, level, 1);
+				if(!nehop) {
+					debug(DBG_NORMAL, "igw:: Cannot get the gateway for "
+							"the (g)node: %d of level: %d"
+							, igw->gid, level);
+					continue;
+				}
+				nehop->hops=255-ni;
+				memcpy(&nh[ni], nehop, sizeof(struct nexthop));
+				if(nehop)
+					xfree(nehop);
+			}
+			ni++;
+		}
+	}
+	nh[ni].dev=0;
+
+	return 0;
+}
 
 char *pack_inet_gw(inet_gw *igw, char *pack)
 {

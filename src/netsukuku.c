@@ -203,10 +203,10 @@ void fill_loaded_cfg_options(void)
 		server_opt.restricted=atoi(value);
 
 	if((value=getenv(config_str[CONF_NTK_INTERNET_GW]))) {
-		if(str_to_inet(value, &server_opt.internet_gw))
-			fatal("Malformed `%s' option: %s is not a valid IP",
+		if(str_to_inet_gw(value, &server_opt.inet_gw, 
+					server_opt.inet_gw_dev))
+			fatal("Malformed `%s' option. Its syntax is \"IP:dev\"",
 					config_str[CONF_NTK_INTERNET_GW], value);
-		server_opt.share_internet=1;
 	}
 	if((value=getenv(config_str[CONF_NTK_INTERNET_UPLOAD])))
 		server_opt.my_upload_bw=atoi(value);
@@ -215,6 +215,8 @@ void fill_loaded_cfg_options(void)
 	if(server_opt.my_upload_bw && server_opt.my_dnload_bw)
 		me.my_bandwidth =
 			bandwidth_in_8bit((server_opt.my_upload_bw+server_opt.my_dnload_bw)/2);
+	if((value=getenv(config_str[CONF_SHARE_INTERNET])))
+		server_opt.share_internet=atoi(value);
 	if((value=getenv(config_str[CONF_NTK_IP_MASQ_SCRIPT])))
 		strncpy(server_opt.ip_masq_script, value, NAME_MAX);
 }
@@ -238,7 +240,6 @@ void parse_options(int argc, char **argv)
 			{"no_resolv",   0, 0, 'R'},
 			
 			{"restricted", 	0, 0, 'r'},
-			{"internet",	0, 0, 'I'},
 			
 			{"debug", 	0, 0, 'd'},
 			{"version",	0, 0, 'v'},
@@ -289,22 +290,6 @@ void parse_options(int argc, char **argv)
 			case 'r':
 				server_opt.restricted=1;
 				break;
-			case 'I':
-				/* Small hack:
-				 * the optional arguments of getopt_long are
-				 * ugly: -I"argument" or --internet="argument". 
-				 * So we tell getopt that the 'I' option doesn't
-				 * require an argument, but we check it
-				 * anyway.
-				 */
-				if(argv[optind] && argv[optind][0] != '-') {
-					if(str_to_inet(argv[optind], &server_opt.internet_gw))
-						fatal("Malformed `%s' option: %s is not a valid IP",
-								argv[optind-1], argv[optind]);
-					server_opt.share_internet=1;
-					optind++;
-				}
-				break;
 			case 'd':
 				server_opt.dbg_lvl++;
 				break;
@@ -346,9 +331,12 @@ void check_conflicting_options(void)
 	
 	if(!server_opt.ip_masq_script[0])
 		FATAL_NOT_SPECIFIED("ip_masquerade_script");
+	if(!file_exist(server_opt.ip_masq_script))
+		fatal("ip_masquerade_script \"%s\" is inexistent", 
+				server_opt.ip_masq_script);
 	
 	if(!server_opt.restricted && 
-		(server_opt.share_internet || server_opt.internet_gw.data[0]))
+		(server_opt.share_internet))
 		fatal("You want to share your Internet connection,"
 			"but I am not running in restricted mode (-r), "
 			"'cause I'm not sure of what you want... "
@@ -360,12 +348,8 @@ void check_conflicting_options(void)
 			"Do not share it, and do not fake the values in"
 			"netsukuku.conf, or your connection will be saturated");
 	
-	if(me.my_bandwidth && !server_opt.share_internet)
-		loginfo("Warning: You have specified your Internet bandwidth, "
-			"but you haven't set the option to share your "
-			"connection. Set `internet_gateway' in netsukuku.conf");
 #ifdef IPV6_DISABLED
-	if(server_opt.internet_gw.family == AF_INET6)
+	if(server_opt.inet_gw.family == AF_INET6)
 		fatal("Ipv6 is not supported");
 #endif
 }

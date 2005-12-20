@@ -17,20 +17,24 @@
 #ntk_restricted_mode	= 0
 
 #
-# If you want to share your Internet connection among the other Netsukuku
-# nodes, set this option to the gateway you use to reach the Internet, for
-# example: "internet_gateway = 192.168.1.1"
-# To use this option you have to set `ntk_restricted_mode' to 1 too (or just
-# use the command line equivalent). You have also to set your upload and
-# download bandwidth in `internet_upload_rate' and `internet_download_rate'.
-# It is expressed in Kb/s, so if you have a line which maximum can do:
-# 640 Kb/s in dwload and 30 Kb/s in upload, set them to 640 and 30.
-# Please be sure to put correct values or you may experience some weird
-# anomalies.
+# * * If you have an Internet connection please fill this options. * *
+#
+# We are assuming that you are running in restricted mode since you want to
+# be both in Netsukuku and Internet.
+# Set the `internet_gateway' option to the IP of the gateway you use to reach 
+# the Internet and specify the network interface too, for example:
+# "internet_gateway = 192.168.1.1:eth0".
+# You have also to set your upload and download bandwidth in 
+# `internet_upload_rate' and `internet_download_rate'. It is expressed in Kb/s,
+# so if you have a line which maximum can do: 640 Kb/s in dwload and 30 Kb/s in 
+# upload, set them to 640 and 30. 
+# Finally, If you want to share your Internet connection among other Netsukuku
+# nodes, set `share_internet' to 1.
 # 
-#internet_gateway	= 0
+#internet_gateway	= 192.168.1.1:eth0
 #internet_download_rate = 640
 #internet_upload_rate	= 30
+#share_internet		= 1
 
 #
 # To disable the start of the ANDNA daemon at the launch of netsukuku_d, set

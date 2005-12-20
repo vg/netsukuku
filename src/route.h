@@ -47,6 +47,8 @@ void **get_gw_gnode(map_node *, map_gnode **, map_bnode **,
 int get_gw_ips(map_node *, map_gnode **, map_bnode **, u_int *, 
 		quadro_group *, map_gnode *, u_char, u_char, 
 		inet_prefix *, map_node **, int);
+struct nexthop *rt_build_nexthop_gw(map_node *node, map_gnode *gnode, int level,
+		int maxhops);
 void rt_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg, 
 		      void *void_gw, char *oif, u_char level);
 void rt_rnodes_update(int check_update_flag);

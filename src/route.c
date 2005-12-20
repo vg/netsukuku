@@ -366,6 +366,76 @@ char *find_rnode_dev_and_retry(map_node *node)
 	return dev;
 }
 
+/*
+ * rt_build_nexthop_gw: returns an array of nexthop structs, which has a 
+ * maximum of `maxhops' members. The nexthop are all gateway which can be used
+ * to reach `node' or `gnode'.
+ * The array is xmallocateed.
+ * On error NULL is returned.
+ */
+struct nexthop *rt_build_nexthop_gw(map_node *node, map_gnode *gnode, int level,
+		int maxhops)
+{
+	map_node *tmp_node;
+	struct nexthop *nh=0;
+	int n, i, err;
+	
+	if(!level) {
+		nh=xmalloc(sizeof(struct nexthop)*(node->links+1));
+		memset(nh, '\0', sizeof(struct nexthop)*(node->links+1));
+
+		for(i=0, n=0; i<node->links; i++) {
+			tmp_node=(map_node *)node->r_node[i].r_node;
+			
+			maptoip((u_int)me.int_map, (u_int)tmp_node,
+					me.cur_quadg.ipstart[1], &nh[n].gw);
+			inet_htonl(nh[n].gw.data, nh[n].gw.family);
+
+			if(!(nh[n].dev=find_rnode_dev_and_retry(tmp_node)))
+				continue;
+
+			nh[n].hops=255-n;
+			n++;
+
+			if(maxhops && n >= maxhops)
+				break;
+		}
+		nh[n].dev=0;
+	} else if(level) {
+		inet_prefix gnode_gws[MAX_MULTIPATH_ROUTES];
+		map_node *gw_nodes[MAX_MULTIPATH_ROUTES];
+		int ips;
+		
+		err=get_gw_ips(me.int_map, me.ext_map, me.bnode_map,
+			     me.bmap_nodes, &me.cur_quadg,
+			     gnode, level, 0, gnode_gws, gw_nodes, 0);
+		if(err < 0)
+			goto finish;
+
+		nh=xmalloc(sizeof(struct nexthop)*(err+1));
+		memset(nh, '\0', sizeof(struct nexthop)*(err+1));
+
+		for(ips=0, n=0; ips<err; ips++) {
+			memcpy(&nh[n].gw, &gnode_gws[ips], sizeof(inet_prefix));
+			inet_htonl(nh[n].gw.data, nh[n].gw.family);
+			
+			if(!(nh[n].dev=find_rnode_dev_and_retry(gw_nodes[ips])))
+				continue;
+			
+			nh[n].hops=255-ips;
+			n++;
+
+			if(maxhops && n >= maxhops)
+				break;
+		}
+		
+		nh[n].dev=0;
+	}
+finish:
+	return nh;
+}
+
+
 /* 
  * rt_update_node: It adds/replaces or removes a route from the kernel's
  * table, if the node's flag is found, respectively, to be set to 
@@ -390,11 +460,11 @@ void rt_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg
 		      void *void_gw, char *oif, u_char level)
 {
 	ext_rnode *e_rnode=0;
-	map_node *node=0, *gw_node=0, *tmp_node;
+	map_node *node=0, *gw_node=0;
 	map_gnode *gnode=0;
 	struct nexthop *nh=0;
 	inet_prefix to;
-	int i, n, node_pos=0, route_scope=0, err;
+	int n, node_pos=0, route_scope=0;
 
 #ifdef DEBUG		
 #define MAX_GW_IP_STR_SIZE (MAX_MULTIPATH_ROUTES*((INET6_ADDRSTRLEN+1)+IFNAMSIZ)+1)
@@ -459,10 +529,6 @@ void rt_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg
 		} else 
 			maptoip((u_int)me.int_map, (u_int)gw_node, 
 					me.cur_quadg.ipstart[1], &nh[0].gw);
-#ifdef DEBUG		
-		strcat(gw_ip, inet_to_str(nh[0].gw));
-		strcat(gw_ip, "|");
-#endif
 		inet_htonl(nh[0].gw.data, nh[0].gw.family);
 		
 		/* Set the device name */
@@ -472,81 +538,24 @@ void rt_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg
 		else if(oif)
 			nh[0].dev=oif;
 		nh[1].dev=0;
-#ifdef DEBUG
-		strcat(gw_ip, nh[0].dev);
-		strcat(gw_ip, ":");
-#endif
-	} else if(!level) {
-		nh=xmalloc(sizeof(struct nexthop)*(node->links+1));
-		memset(nh, '\0', sizeof(struct nexthop)*(node->links+1));
-
-		for(i=0, n=0; i<node->links; i++) {
-			tmp_node=(map_node *)node->r_node[i].r_node;
-			
-			maptoip((u_int)me.int_map, (u_int)tmp_node,
-					me.cur_quadg.ipstart[1], &nh[i].gw);
-#ifdef DEBUG		
-			strcat(gw_ip, inet_to_str(nh[i].gw));
-			strcat(gw_ip, "|");
-#endif
-			inet_htonl(nh[i].gw.data, nh[i].gw.family);
-
-			if(!(nh[i].dev=find_rnode_dev_and_retry(tmp_node)))
-				continue;
-
-			nh[i].hops=255-i;
-#ifdef DEBUG
-			strcat(gw_ip, nh[i].dev);
-			strcat(gw_ip, ":");
-#endif
-			n++;
-		}
-		nh[n].dev=0;
-	} else if(level) {
-		inet_prefix gnode_gws[MAX_MULTIPATH_ROUTES];
-		map_node *gw_nodes[MAX_MULTIPATH_ROUTES];
-		int ips;
-		
-		err=get_gw_ips(me.int_map, me.ext_map, me.bnode_map,
-			     me.bmap_nodes, &me.cur_quadg,
-			     gnode, level, 0, gnode_gws, gw_nodes, 0);
-		if(err < 0) {
-#ifdef DEBUG
+	} else  {
+		nh=rt_build_nexthop_gw(node, gnode, level, MAX_MULTIPATH_ROUTES);
+		if(!nh) {
 			debug(DBG_NORMAL, "Cannot get the gateway for "
 					"the gnode: %d of level: %d, ip:"
 					"%s", node_pos, level, to_ip);
-#endif
 			goto finish;
 		}
-
-
-		nh=xmalloc(sizeof(struct nexthop)*(err+1));
-		memset(nh, '\0', sizeof(struct nexthop)*(err+1));
-
-		for(ips=0, n=0; ips<err; ips++) {
-			memcpy(&nh[ips].gw, &gnode_gws[ips], sizeof(inet_prefix));
-#ifdef DEBUG
-			strcat(gw_ip, inet_to_str(nh[ips].gw));
-			strcat(gw_ip, "|");
-#endif
-			inet_htonl(nh[ips].gw.data, nh[ips].gw.family);
-			
-			if(!(nh[ips].dev=find_rnode_dev_and_retry(gw_nodes[ips])))
-				continue;
-			
-			nh[ips].hops=255-ips;
-#ifdef DEBUG
-			strcat(gw_ip, nh[ips].dev);
-			strcat(gw_ip, ":");
-#endif
-			n++;
-		}
-		
-		nh[n].dev=0;
 	}
 
 do_update:
 #ifdef DEBUG
+	for(n=0; nh[n].dev; n++){ 
+		strcat(gw_ip, inet_to_str(nh[n].gw));
+		strcat(gw_ip, "|");
+		strcat(gw_ip, nh[n].dev);
+		strcat(gw_ip, ":");
+	}
 	if(node->flags & MAP_VOID)
 		strcpy(gw_ip, "deleted");
 	debug(DBG_INSANE, "rt_update_node: to %s/%d via %s", to_ip, to.bits, gw_ip);
@@ -554,6 +563,7 @@ do_update:
 	xfree(to_ip);
 #endif
 	if(node->flags & MAP_RNODE && !level)
+		/* The dst node is a node directly linked to us */
 		route_scope = RT_SCOPE_LINK;
 
 	if(node->flags & MAP_VOID) {

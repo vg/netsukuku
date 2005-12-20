@@ -82,6 +82,7 @@ struct inet_gw_pack_hdr
 /* * *  Functions declaration  * * */
 
 u_char bandwidth_in_8bit(u_int x);
+int str_to_inet_gw(char *str, inet_prefix *gw, char *dev);
 
 void init_my_igw(void);
 void init_igws(inet_gw ***igws, int **igws_counter, int levels);
@@ -97,9 +98,11 @@ int igw_del_node(inet_gw **igws, int *igws_counter,  int level,
 		map_node *node);
 void igw_update_gnode_bw(int *igws_counter, inet_gw **my_igws, inet_gw *igw,
 		int new, int level, int maxlevels);
-void igw_order(inet_gw **igws, int *igws_counter, int level);
+void igw_order(inet_gw **igws, int *igws_counter, inet_gw **my_igws, int level);
 
 int igw_exec_masquerade_sh(char *script);
+int igw_replace_default_gateways(inet_gw **igws, int *igws_counter, 
+		inet_gw **my_igws, int max_levels, int family);
 
 char *pack_igws(inet_gw **igws, int *igws_counter, int levels, int *pack_sz);
 int unpack_igws(char *pack, size_t pack_sz,
