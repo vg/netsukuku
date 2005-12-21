@@ -8,6 +8,10 @@
  *
  * Authors:	Alexey Kuznetsov, <kuznet@ms2.inr.ac.ru>
  *
+ * --
+ *  
+ * This code has been lightly modified to adapt it in the Netsukuku source
+ * code.
  */
 
 #include <stdio.h>

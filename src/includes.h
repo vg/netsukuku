@@ -37,6 +37,7 @@
 #include <arpa/inet.h>
 #include <sys/sendfile.h>
 #include <netinet/in.h>
+#include <netinet/in_systm.h>
 #include <net/if.h>
 
 #include <sys/stat.h>
