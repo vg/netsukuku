@@ -94,6 +94,16 @@ Internet compatibility.
 
 =over
 
+=item B<-I>, B<--share-inet>
+
+Tells NetsukukuD to run in restricted mode (see B<-r>) and to share your
+Internet connection. Please check the relative options in
+F</etc/netsukuku/netsukuku.conf>
+
+=back
+
+=over
+
 =item B<-D>, B<--no_daemon> 
 
 This option tells B<netsukuku_d> to don't detach to background and

@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "NetsukukuD 8"
-.TH NetsukukuD 8 "2005-11-05" "NetsukukuD 0.0.4b" ""
+.TH NetsukukuD 8 "2005-12-22" "NetsukukuD 0.0.5b" ""
 .SH "NAME"
 netsukuku_d \- Netsukuku protocol daemon
 .SH "SYNOPSIS"
@@ -155,6 +155,8 @@ The daemon at startup takes the list of all the network interfaces which are
 currently \s-1UP\s0 and it uses all of them to send and receive packets. If you want
 to force the daemon to use specific interfaces you should use the \fB\-i\fR
 option.
+The ports it listens to are: 269\-udp, 269\-tcp, 271\-udp, 277\-udp, 277\-tcp. So
+be sure to open them in the firewall.
 .PP
 For more information about Netsukuku visit:
 <http://netsukuku.freaknet.org>
@@ -186,6 +188,11 @@ restored. If you want to disable this set use the \fB\-R\fR option.
 With this option the daemon will run in restricted mode as specified in
 the Npv7, only IPs of the private class will be choosen. It is used for
 Internet compatibility.
+.IP "\fB\-I\fR, \fB\-\-share\-inet\fR" 4
+.IX Item "-I, --share-inet"
+Tells NetsukukuD to run in restricted mode (see \fB\-r\fR) and to share your
+Internet connection. Please check the relative options in
+\&\fI/etc/netsukuku/netsukuku.conf\fR
 .IP "\fB\-D\fR, \fB\-\-no_daemon\fR" 4
 .IX Item "-D, --no_daemon"
 This option tells \fBnetsukuku_d\fR to don't detach to background and
@@ -236,7 +243,7 @@ If the no-daemon option (\fB\-D\fR) is used, all the logs are printed to
 .IP "\fI/etc/netsukuku/netsukuku.conf\fR" 4
 .IX Item "/etc/netsukuku/netsukuku.conf"
 It is the default path for the \fBnetsukuku_d\fR configuration file. It's
-possible to choose another file with the \fB\-c\fR option.
+possible to choose another file using the \fB\-c\fR option.
 .IP "\fI/etc/netsukuku/andna_hostnames\fR" 4
 .IX Item "/etc/netsukuku/andna_hostnames"
 It is the file where the hostnames to be registerd in \s-1ANDNA\s0 are kept one per

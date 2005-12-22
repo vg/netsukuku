@@ -123,9 +123,13 @@ typedef struct
 	char 		daemon;
 	
 	char 		restricted;
+	char		inet_connection;/* If it's 1, we are connected 
+					   to the Internet */
 	char		share_internet;
 	inet_prefix	inet_gw;
 	char		inet_gw_dev[IFNAMSIZ];
+	char		**inet_hosts;	/* Hosts to be pinged in order to check
+					   if the internet connection is up */
 	char		ip_masq_script[NAME_MAX];
 	
 	/* The bandwidths of the Internet connection we are sharing.

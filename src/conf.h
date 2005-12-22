@@ -44,9 +44,11 @@ enum config_options
 	CONF_DISABLE_RESOLVCONF,
 	
 	CONF_NTK_RESTRICTED_MODE,
+	CONF_NTK_INTERNET_CONNECTION,
 	CONF_NTK_INTERNET_GW,
 	CONF_NTK_INTERNET_UPLOAD,
 	CONF_NTK_INTERNET_DOWNLOAD,
+	CONF_NTK_INTERNET_PING_HOSTS,
 	CONF_SHARE_INTERNET,
 	CONF_NTK_IP_MASQ_SCRIPT,
 };
@@ -70,9 +72,11 @@ const static char config_str[][30]=
 	{ "disable_andna" },
 	{ "disable_resolvconf" },
 	{ "ntk_restricted_mode" },
+	{ "internet_connection" },
 	{ "internet_gateway" },
 	{ "internet_upload_rate" },
 	{ "internet_download_rate" },
+	{ "internet_ping_hosts" },
 	{ "share_internet" },
 	{ "ip_masquerade_script" },
 	{ 0 },

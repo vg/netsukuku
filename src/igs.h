@@ -85,15 +85,6 @@ struct inet_gw_pack_hdr
 						INET_GW_PACK_SZ*MAXIGWS*(levels))
 
 /*
- * * *  Globals  * * 
- */
-	
-char **internet_hosts;			/* Hnames to be pinged in order to check 
-					   if the internet connection is alive*/
-int internet_hosts_counter;		/* Number of hnames */
-
-
-/*
  * * *  Functions declaration  * * 
  */
 
@@ -110,6 +101,7 @@ void init_my_igws(inet_gw **igws, int *igws_counter,
 		inet_gw ***my_new_igws, u_char my_bandwidth, 
 		map_node *cur_node, quadro_group *qg);
 void free_my_igws(inet_gw ***my_igs);
+void init_internet_gateway_search(void);
 inet_gw *igw_add_node(inet_gw **igws, int *igws_counter,  int level,
 		int gid, map_node *node, u_char bandwidth);
 int igw_del_node(inet_gw **igws, int *igws_counter,  int level,

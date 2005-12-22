@@ -677,6 +677,20 @@ void rt_full_update(int check_update_flag)
 	route_flush_cache(my_family);
 }
 
+/*
+ * rt_get_default_gw: stores in `gw' the IP address of the current default gw,
+ * and in `dev_name' its utilised net interface. If an error occurred a number
+ * < 0 is returned.
+ * `dev_name' must be of IFNAMSIZ# bytes.
+ */
+int rt_get_default_gw(inet_prefix *gw, char *dev_name)
+{
+	inet_prefix default_gw;
+
+	inet_setip_anyaddr(&default_gw, my_family);
+	return route_get_exact_prefix_dst(default_gw, gw, dev_name);
+}
+
 int rt_exec_gw(char *dev, inet_prefix to, inet_prefix gw, 
 		int (*route_function)(ROUTE_CMD_VARS))
 {

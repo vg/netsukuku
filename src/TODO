@@ -7,15 +7,9 @@
 		- man pages
 	- --internet
 		- man pages
-		- command line
-	- do not change default gw if there is already one and it is better
-	  than others
-	- use ip_route_get()
-	- consider own default gw
-	- init_netsukuku(): if ping==0: Ehi fucker, you cannot share nothing
-	- if restricted and -i IFX and default gw dev IFX: NO!
-	- char **parse_internet_hosts(char *str, int *hosts)
-	- check connection by resolving a hname
+	- igw_add_node in tracer
+	- igw_del_node in qspn_remove_deads
+	- free server_opt
 
 - Gnodes contiguity
 	- Nodes count in the qspn_pkt which traverses gnodes	  [  50% ]
@@ -24,6 +18,8 @@
 			- currently only in particular situations the rehook
 			  isn't possible: A - A,  A - B - A.
 		- restricted mode && rehooking: problems?
+			- maybe yes! In restricted mode filter all the other
+			  IPs which aren't in private classes
 		- rehook() function				  [  55% ]
 			- new gid based on the hash of the same gid, when
 			  all the other gnodes are full.	  [  55% ]

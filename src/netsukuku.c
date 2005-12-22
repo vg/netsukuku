@@ -118,7 +118,7 @@ void usage(void)
 		" -D	no daemon mode\n"
 		"\n"
 		" -r	run in restricted mode\n"
-		" -I	share your internet connection or use a shared one (only with -r)\n"
+		" -I	share your internet connection\n"
 		"\n"
 		" -c	configuration file\n"
 		"\n"
@@ -202,10 +202,12 @@ void fill_loaded_cfg_options(void)
 	if((value=getenv(config_str[CONF_NTK_RESTRICTED_MODE])))
 		server_opt.restricted=atoi(value);
 
+	if((value=getenv(config_str[CONF_NTK_INTERNET_CONNECTION])))
+		server_opt.inet_connection=atoi(value);
 	if((value=getenv(config_str[CONF_NTK_INTERNET_GW]))) {
 		if(str_to_inet_gw(value, &server_opt.inet_gw, 
 					server_opt.inet_gw_dev))
-			fatal("Malformed `%s' option. Its syntax is \"IP:dev\"",
+			fatal("Malformed `%s' option: \"%s\". Its syntax is \"IP:dev\"",
 					config_str[CONF_NTK_INTERNET_GW], value);
 	}
 	if((value=getenv(config_str[CONF_NTK_INTERNET_UPLOAD])))
@@ -215,6 +217,14 @@ void fill_loaded_cfg_options(void)
 	if(server_opt.my_upload_bw && server_opt.my_dnload_bw)
 		me.my_bandwidth =
 			bandwidth_in_8bit((server_opt.my_upload_bw+server_opt.my_dnload_bw)/2);
+	if((value==getenv(config_str[CONF_NTK_INTERNET_PING_HOSTS]))) {
+		int counter;
+		server_opt.inet_hosts=parse_internet_hosts(str, &counter);
+		if(!server_opt.inet_hosts)
+			fatal("Malformed `%s' option: \"%s\". "
+				"Its syntax is \"host1:host2:...\"",
+				config_str[CONF_NTK_INTERNET_PING_HOSTS], value);
+	}
 	if((value=getenv(config_str[CONF_SHARE_INTERNET])))
 		server_opt.share_internet=atoi(value);
 	if((value=getenv(config_str[CONF_NTK_IP_MASQ_SCRIPT])))
@@ -240,6 +250,7 @@ void parse_options(int argc, char **argv)
 			{"no_resolv",   0, 0, 'R'},
 			
 			{"restricted", 	0, 0, 'r'},
+			{"share-inet",	0, 0, 'I'},
 			
 			{"debug", 	0, 0, 'd'},
 			{"version",	0, 0, 'v'},
@@ -290,6 +301,17 @@ void parse_options(int argc, char **argv)
 			case 'r':
 				server_opt.restricted=1;
 				break;
+			case 'I':
+				server_opt.share_internet=1;
+				if(!server_opt.restricted) {
+					loginfo("Share_internet=1. Assuming restricted=1");
+					server_opt.restricted=1;
+				}
+				if(!server_opt.inet_connection) {
+					loginfo("Share_internet=1. Assuming inet_connection=1");
+					server_opt.inet_connection=1;
+				}
+				break;
 			case 'd':
 				server_opt.dbg_lvl++;
 				break;
@@ -328,12 +350,19 @@ void check_conflicting_options(void)
 		FATAL_NOT_SPECIFIED("andna_rhc_file");
 	if(!server_opt.counter_c_file[0])
 		FATAL_NOT_SPECIFIED("andna_counter_c_file");	
+	if(!server_opt.inet_hosts && server_opt.restricted)
+		FATAL_NOT_SPECIFIED("internet_ping_hosts");
 	if(!server_opt.ip_masq_script[0])
 		FATAL_NOT_SPECIFIED("ip_masquerade_script");
 	if(!file_exist(server_opt.ip_masq_script))
 		fatal("ip_masquerade_script \"%s\" is inexistent", 
 				server_opt.ip_masq_script);
 	
+	if(!server_opt.restricted && server_opt.inet_connection)
+		fatal("inet_connection=1 but ntk_restricted_mode=0. If you "
+			"want to be compatible with the Internet, "
+			"set the restricted mode in the options");
+				
 	if(!server_opt.restricted && 
 		(server_opt.share_internet))
 		fatal("You want to share your Internet connection,"
@@ -346,7 +375,14 @@ void check_conflicting_options(void)
 			"your bandwidth is just TOO small."
 			"Do not share it, and do not fake the values in"
 			"netsukuku.conf, or your connection will be saturated");
-	
+
+	if(!server_opt.inet_connection && server_opt.share_internet) {	
+		loginfo("You want to share your Internet connection,"
+			"but `internet_connection' is set to 0."
+			"We are assuming it is 1");
+		server_opt.inet_connection=1;
+	}
+				
 #ifdef IPV6_DISABLED
 	if(server_opt.inet_gw.family == AF_INET6)
 		fatal("Ipv6 is not supported");
@@ -377,11 +413,8 @@ void init_netsukuku(char **argv)
 				me.cur_ifs, &me.cur_ifs_n) < 0)
 		fatal("Cannot initialize any network interfaces");
 
-	if(server_opt.share_internet) {
-		init_igws(&me.igws, &me.igws_counter, GET_LEVELS(my_family));
-		igw_exec_masquerade_sh(server_opt.ip_masq_script);
-	}
-	
+	init_internet_gateway_search();
+
 	pkts_init(me.cur_ifs, me.cur_ifs_n, 0);
 	qspn_init(GET_LEVELS(my_family));
 

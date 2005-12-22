@@ -232,6 +232,84 @@ void free_my_igws(inet_gw ***my_igs)
 }
 
 /*
+ * init_internet_gateway_search: 
+ * Initialization of the igs.c code.
+ */
+void init_internet_gateway_search(void)
+{
+	inet_prefix new_gw;
+	char new_gw_dev[IFNAMSIZ];
+
+	pthread_t ping_thread;
+	pthread_attr_t t_attr;
+	int i;
+
+
+        if(!server_opt.restricted || !server_opt.inet_connection)
+		return;
+
+	init_igws(&me.igws, &me.igws_counter, GET_LEVELS(my_family));
+	
+	if(!server_opt.inet_hosts)
+		fatal("You didn't specified any Internet hosts in the "
+			"configuration file. What hosts should I ping?");
+	
+	if(server_opt.share_internet)
+                igw_exec_masquerade_sh(server_opt.ip_masq_script);
+			
+	ret=rt_get_default_gw(&new_gw, new_gw_dev);
+	if(ret < 0) {
+		loginfo("The retrieval of the default gw from the kernel failed.");
+
+		if(!server_opt.inet_gw.data[0])
+			fatal("The default gw isn't set in the kernel and you "
+				"didn't specified it in netsukuku.conf. "
+				"Cannot continue!");
+
+		loginfo("Trying to set %s dev %s as the default gw",
+			inet_to_str(server_opt.inet_gw), server_opt.inet_gw_dev);
+		if(rt_replace_def_gw(server_opt.inet_gw_dev, server_opt.inet_gw))
+			fatal("Cannot set the default gw to %s for the %s dev",
+				inet_to_str(server_opt.inet_gw),
+				server_opt.inet_gw_dev);
+		
+	} else if(strncmp(new_gw_dev, server_opt.inet_gw_dev, IFNAMSIZ) || 
+		memcmp(new_gw.data, server_opt.inet_gw.data, MAX_IP_SZ)) {
+		loginfo("Your specified Internet gateway doesn't match with "
+			"the one currently stored in the kernel routing table."
+			"I'm going to use the kernel gateway: %s dev %s",
+			inet_to_str(new_gw), new_gw_dev);
+
+		strncpy(server_opt.inet_gw_dev, new_gw_dev, IFNAMSIZ);
+		memcpy(&server_opt.inet_gw, &new_gw, sizeof(inet_prefix));
+	}
+
+	for(i=0; i < me.cur_ifs_n; i++)
+		if(!strcmp(me.cur_ifs[i].dev_name, server_opt.inet_gw_dev))
+			fatal("You have selected the \"%s\" interface but your "
+				"Internet connection uses it and you want the"
+				" compatibilty with the Internet. This is not"
+				" possible. Don't include \"%s\" in the list "
+				"of interfaces utilised by the daemon",
+				server_opt.inet_gw_dev, server_opt.inet_gw_dev);
+		
+	loginfo("Launching the first ping to the Internet hosts");
+	me.inet_connected=igw_check_inet_conn();
+	if(me.inet_connected)
+		loginfo("The Internet connection is up & running");
+	else
+		loginfo("The Internet connection appears to be down");
+	if(!me.inet_connected && me.share_internet)
+		fatal("We are not connected to the Internet, but you want to "
+			"share your connection. Please check your options");
+
+	debug(DBG_SOFT,   "Evocating the ping daemon.");
+        pthread_attr_init(&t_attr);
+        pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
+        pthread_create(&ping_thread, &t_attr, igw_check_inet_conn_t, 0);
+}
+
+/*
  * igw_add_node: adds a new gw in the `igws[`level']' llist.
  * The pointer to the new inet_gw is returned.
  */
@@ -254,8 +332,8 @@ inet_gw *igw_add_node(inet_gw **igws, int *igws_counter,  int level,
 
 /*
  * igw_find_node: finds an inet_gw struct in the `igws[`level']' llist which
- * has points to the given `node'. The pointer to the found struct is
- * returned, otherwise 0.
+ * points to the given `node'. The pointer to the found struct is
+ * returned, otherwise 0 is the return value.
  */
 inet_gw *igw_find_node(inet_gw **igws, int level, map_node *node)
 {
@@ -401,14 +479,14 @@ void igw_order(inet_gw **igws, int *igws_counter, inet_gw **my_igws, int level)
 
 /*
  * igw_check_inet_conn: returns 1 if we are still connected to the Internet.
- * The check is done by pinging the `internet_hosts'.
+ * The check is done by pinging the `server_opt.inet_hosts'.
  */
 int igw_check_inet_conn(void)
 {
 	int i, ret;
 
-	for(i=0; i<internet_hosts_counter; i++) {
-		ret=pingthost(internet_hosts[i], INET_HOST_PING_TIMEOUT);
+	for(i=0; server_opt.inet_hosts && server_opt.inet_hosts[i]; i++) {
+		ret=pingthost(server_opt.inet_hosts[i], INET_HOST_PING_TIMEOUT);
 		if(ret >= 1)
 			return 1;
 	}
@@ -422,9 +500,9 @@ int igw_check_inet_conn(void)
  */
 void *igw_check_inet_conn_t(void *null)
 {
-	inet_prefix default_gw, new_gw;
+	inet_prefix new_gw;
 	char new_gw_dev[IFNAMSIZ];
-	int old_status=0, ret;
+	int old_status, ret;
 	
 	for(;;) {
 		old_status=me.inet_connected;
@@ -432,6 +510,8 @@ void *igw_check_inet_conn_t(void *null)
 
 		if(old_status && !me.inet_connected) {
 			/* Connection lost, disable me.my_igws[0] */
+			loginfo("Internet connection lost. Inet connection sharing disabled");
+					
 			me.my_igws[0]->bandwidth=0;
 			igw_update_gnode_bw(me.igws_counter, me.my_igws,
 				me.my_igws[0], 0, 0, me.cur_quadg.levels);
@@ -442,9 +522,7 @@ void *igw_check_inet_conn_t(void *null)
 				/* Maybe the Internet gateway is changed, it's
 				 * better to check it */
 
-				inet_setip_anyaddr(&default_gw, my_family);
-				ret=route_get_exact_prefix_dst(default_gw, 
-						&new_gw, new_gw_dev);
+				ret=rt_get_default_gw(&new_gw, new_gw_dev);
 				if(ret < 0) {
 					/* 
 					 * Something's wrong, we can reach Inet
@@ -454,14 +532,17 @@ void *igw_check_inet_conn_t(void *null)
 					me.inet_connected=0;
 					goto skip_it;
 				}
-
 				if(strncmp(new_gw_dev, server_opt.inet_gw_dev, IFNAMSIZ) || 
 					memcmp(new_gw.data, server_opt.inet_gw.data, MAX_IP_SZ)) {
 					
 					/* New Internet gw (dialup connection ?)*/
 					strncpy(server_opt.inet_gw_dev, new_gw_dev, IFNAMSIZ);
 					memcpy(&server_opt.inet_gw, &new_gw, sizeof(inet_prefix));
-				}
+					loginfo("Our Internet gateway changed, now it is: %s dev %s",
+							inet_to_str(new_gw), new_gw_dev);
+				} else
+					loginfo("Internet connection is alive again. "
+							"Inet connection sharing enabled");
 			}
 
 			/* Yay! We're connected, enable me.my_igws[0] */
