@@ -27,9 +27,10 @@
 
 struct current_globals
 {
-	/* int/ext maps */
+	/* int map */
 	map_node	*int_map;	/*Internal Map*/
 	
+	/* ext map */
 	map_gnode	**ext_map;	/*External Map. */
 	quadro_group	cur_quadg;
 	
@@ -59,9 +60,11 @@ struct current_globals
 	inet_gw		**my_igws;	/* my_igws[level] points to our inet gateway 
 					   present at igws[level]. It's the same of using
 					   igw_find_node(igws, me.cur_quadg.gnode[_EL(level)]); */
-	u_char		my_bandwidth;	/*The bandwidth of the Internet connection 
-					  we are sharing*/
-		
+	u_char		my_bandwidth;	/* The bandwidth of the Internet connection 
+					   we are sharing*/
+	u_char		inet_connected; /* If it is 1, we are connected to the Internet */
+	
+	/* Network interfaces */
 	interface	cur_ifs[MAX_INTERFACES];
 	int		cur_ifs_n;	/* number of interfaces present
 					   in `cur_ifs' */

@@ -31,7 +31,12 @@
  */
 
 /* Minum bandwidth necessary to share an internet connection */
-#define MIN_CONN_BANDWIDTH	3
+#define MIN_CONN_BANDWIDTH	3		/* 16 Kb/s */
+
+#define MAX_INTERNET_HNAMES	10
+#define MAX_INTERNET_HNAME_SZ	64
+#define INET_HOST_PING_TIMEOUT	3
+#define INET_NEXT_PING_WAIT	5
 
 #define MAXIGWS			MAXGROUPNODE	/* max number of internet 
 						   gateways in each level */
@@ -79,10 +84,23 @@ struct inet_gw_pack_hdr
 #define MAX_IGWS_PACK_SZ(levels)	(sizeof(struct inet_gw_pack_hdr) + \
 						INET_GW_PACK_SZ*MAXIGWS*(levels))
 
-/* * *  Functions declaration  * * */
+/*
+ * * *  Globals  * * 
+ */
+	
+char **internet_hosts;			/* Hnames to be pinged in order to check 
+					   if the internet connection is alive*/
+int internet_hosts_counter;		/* Number of hnames */
+
+
+/*
+ * * *  Functions declaration  * * 
+ */
 
 u_char bandwidth_in_8bit(u_int x);
 int str_to_inet_gw(char *str, inet_prefix *gw, char *dev);
+char **parse_internet_hosts(char *str, int *hosts);
+void free_internet_hosts(char **hnames, int hosts);
 
 void init_my_igw(void);
 void init_igws(inet_gw ***igws, int **igws_counter, int levels);

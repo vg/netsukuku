@@ -230,7 +230,8 @@ tracer_add_entry(void *void_map, void *void_node, tracer_chunk *tracer,
 		t[new_entry_pos].node=pos_from_gnode(gnode, ext_map[_EL(level)]);
 	}
 
-	t[new_entry_pos].bandwidth = me.igws[level]->bandwidth;
+	if(me.igws && me.igws[level])
+		t[new_entry_pos].bandwidth = me.igws[level]->bandwidth;
 
 	return t;
 }

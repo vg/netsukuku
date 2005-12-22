@@ -233,6 +233,7 @@ int route_exec(int route_cmd, int route_type, int route_scope, unsigned flags,
  * route_get_gw: if the route stored in `who' and `n' is matched by the
  * `filter', it stores the gateway address of that route in `arg', which
  * is a pointer to an inet_prefix struct. The address is stored in host order.
+ * The dev name of the route is appended at `arg'+sizeof(inet_prefix).
  * Only the non-deleted routes are considered.
  */
 int route_get_gw(const struct sockaddr_nl *who, struct nlmsghdr *n, void *arg)
@@ -335,6 +336,10 @@ int route_get_gw(const struct sockaddr_nl *who, struct nlmsghdr *n, void *arg)
 		memcpy(&via.data, RTA_DATA(tb[RTA_GATEWAY]), host_len);
 		via.family=r->rtm_family;
 		inet_setip(arg, (u_int *)&via.data, via.family);
+		/* Copy the interface name */
+		if (tb[RTA_OIF] && filter.oifmask != -1)
+			strncpy((char *)arg+sizeof(inet_prefix),
+					ll_index_to_name(*(int*)RTA_DATA(tb[RTA_OIF])), IFNAMSIZ);
 	} else if(tb[RTA_MULTIPATH]) {
 		struct rtnexthop *nh = RTA_DATA(tb[RTA_MULTIPATH]);
 
@@ -354,6 +359,10 @@ int route_get_gw(const struct sockaddr_nl *who, struct nlmsghdr *n, void *arg)
 					memcpy(&via.data, RTA_DATA(tb[RTA_GATEWAY]), host_len);
 					via.family=r->rtm_family;
 					inet_setip(arg, (u_int *)&via.data, via.family);
+
+					/* Copy the interface name */
+					strncpy((char *)arg+sizeof(inet_prefix),
+						ll_index_to_name(nh->rtnh_ifindex), IFNAMSIZ);
 					break;
 				}
 			}
@@ -362,19 +371,22 @@ skip_nexthop:
 			nh = RTNH_NEXT(nh);
 		}
 	}
-
+	
 	return 0;
 }
 
 /*
  * route_get_exact_prefix: it dumps the routing table and search for a route
  * which has the prefix equal to `prefix', if it is found its destination
- * address is stored in `dst'.
+ * address is stored in `dst' and its interface name in `dev_name' (which must
+ * be IFNAMSIZ big).
  */
-int route_get_exact_prefix_dst(inet_prefix prefix, inet_prefix *dst) 
+int route_get_exact_prefix_dst(inet_prefix prefix, inet_prefix *dst, 
+		char *dev_name)
 {
 	int do_ipv6 = AF_UNSPEC;
 	struct rtnl_handle rth;
+	char dst_data[sizeof(inet_prefix) + IFNAMSIZ];
 
 	route_reset_filter();
 	filter.tb = RT_TABLE_MAIN;
@@ -395,10 +407,13 @@ int route_get_exact_prefix_dst(inet_prefix prefix, inet_prefix *dst)
 		return -1;
 	}
 
-	if (rtnl_dump_filter(&rth, route_get_gw, dst, NULL, NULL) < 0) {
+	memset(dst_data, 0, sizeof(dst_data));
+	if (rtnl_dump_filter(&rth, route_get_gw, dst_data, NULL, NULL) < 0) {
 		debug(DBG_NORMAL, ERROR_MSG "Dump terminated" ERROR_POS);
 		return -1;
 	}
+	memcpy(dst, dst_data, sizeof(inet_prefix));
+	memcpy(dev_name, dst_data+sizeof(inet_prefix), IFNAMSIZ);
 
 	return 0;
 }

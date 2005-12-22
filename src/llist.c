@@ -131,6 +131,27 @@ do {									\
 	_l->next=_n;							\
 	_n->prev=_l;							\
 } while (0)
+
+/*
+ * list_join: 
+ * before list_join(list):
+ * 	... <-> A <-> list <-> C <-> ...
+ * after:
+ * 	... <-> A <-> C <-> ...
+ * Note that `list' is not freed!
+ * It returns the head of the list, so call it in this way:
+ * 	head=list_join(head, list);
+ */
+#define list_join(head, list)						\
+({									\
+	l_list *_l=(l_list *)(list), *_h=(l_list *)(head), *_ret;	\
+	if(_l->next)							\
+		_l->next->prev=_l->prev;				\
+	if(_l->prev)							\
+		_l->prev->next=_l->next;				\
+	_ret = _l == _h ? _l->next : _h;				\
+	(typeof((list)))_ret;						\
+})
 	
 #define list_for(i) for(; (i); (i)=(typeof (i))(i)->next)
 
@@ -222,6 +243,25 @@ do{									\
 		(*(_counter))--;					\
 	}								\
 }while(0)
+
+#define clist_ins(_head, _counter, _list)				\
+do{									\
+        if(!(*(_counter)) || !(*(_head)))				\
+		clist_add(_head, _counter, _list);			\
+        else {								\
+                list_ins(*(_head), (_list));                            \
+        	(*(_counter))++;					\
+	}								\
+}while(0)
+
+#define clist_join(_head, _counter, _list)                              \
+do{                  							\
+	if((*(_counter)) > 0) {						\
+		*((_head))=list_join(_head, _list);				\
+		(*(_counter))--;					\
+	}								\
+} while(0)
+	
 
 /* 
  * Zeros the `counter' and set the head pointer to 0.

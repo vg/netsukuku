@@ -35,6 +35,7 @@
 #include "radar.h"
 #include "netsukuku.h"
 #include "route.h"
+#include "libping.h"
 #include "igs.h"
 #include "xmalloc.h"
 #include "log.h"
@@ -116,6 +117,32 @@ int str_to_inet_gw(char *str, inet_prefix *gw, char *dev)
 	return 0;
 }
 
+/*
+ * parse_internet_hosts: given a string which uses the following syntax:
+ * 	"hostname1:hostname2:hostname3:..."
+ * it stores each hostname in a new mallocated array and returns it.
+ * The number of hostnames is written in `*hosts'
+ * On error 0 is returned.
+ */
+char **parse_internet_hosts(char *str, int *hosts)
+{
+	char **hnames;
+	
+	hnames=split_string(str, ":", hosts, MAX_INTERNET_HNAMES,
+			MAX_INTERNET_HNAME_SZ);
+	return hnames;
+}
+
+void free_internet_hosts(char **hnames, int hosts)
+{
+	int i;
+	for(i=0; i<hosts; i++)
+		if(hnames[i])
+			xfree(hnames[i]);
+	if(hnames)
+		xfree(hnames);
+}
+
 void init_igws(inet_gw ***igws, int **igws_counter, int levels)
 {
 	*igws=xmalloc(sizeof(inet_gw *) * levels);
@@ -165,7 +192,7 @@ void init_my_igws(inet_gw **igws, int *igws_counter,
 {
 	inet_gw *igw, **my_igws;
 	map_node *node;
-	int i=0, e, fake_counter, bw, bw_mean;
+	int i=0, e, bw, bw_mean;
 	
 	init_igws(&my_igws, 0, qg->levels);
 	
@@ -185,14 +212,13 @@ void init_my_igws(inet_gw **igws, int *igws_counter,
 			bw_mean/=e;
 			
 			if(my_bandwidth && i==1)
-				/* Add our bw in the avarage */
+				/* Add our bw in the average */
 				bw_mean=(bw_mean*e+my_bandwidth)/(e+1);
 		}
 		
-		igw=igw_add_node(my_igws, &fake_counter, i, qg->gid[i],
+		igw=igw_add_node(igws, igws_counter, i, qg->gid[i],
 				node, (u_char)bw_mean);
-		if(bw_mean)
-			clist_add(&igws[i], &igws_counter[i], igw);
+		my_igws[i]=igw;
 	}
 	
 	*my_new_igws=my_igws;
@@ -261,16 +287,17 @@ int igw_del_node(inet_gw **igws, int *igws_counter,  int level,
 
 /*
  * igw_update_gnode_bw: 
- * call this function _after_ adding and _before_ deleting any nodes
+ * call this function _after_ adding and _before_ deleting the `igw->node' node
  * from the me.igws llist. This fuctions will update the `bandwidth' value of
  * the inet_gw which points to out (g)nodes.
+ * Use `new'=1 if you are adding the node, otherwise use 0.
  */
 void igw_update_gnode_bw(int *igws_counter, inet_gw **my_igws, inet_gw *igw,
 		int new, int level, int maxlevels)
 {
 	int i, bw, old_bw=0;
 	
-	if(!my_igws[level] || level >= maxlevels)
+	if(level >= maxlevels)
 		return;
 
 	if(new) {
@@ -371,6 +398,84 @@ void igw_order(inet_gw **igws, int *igws_counter, inet_gw **my_igws, int level)
 	xfree(igw_tmp);
 }
 
+
+/*
+ * igw_check_inet_conn: returns 1 if we are still connected to the Internet.
+ * The check is done by pinging the `internet_hosts'.
+ */
+int igw_check_inet_conn(void)
+{
+	int i, ret;
+
+	for(i=0; i<internet_hosts_counter; i++) {
+		ret=pingthost(internet_hosts[i], INET_HOST_PING_TIMEOUT);
+		if(ret >= 1)
+			return 1;
+	}
+	
+	return 0;
+}
+
+/*
+ * igw_check_inet_conn_t: checks if we are connected to the internet, then
+ * waits, then checks if we are connected, then ...
+ */
+void *igw_check_inet_conn_t(void *null)
+{
+	inet_prefix default_gw, new_gw;
+	char new_gw_dev[IFNAMSIZ];
+	int old_status=0, ret;
+	
+	for(;;) {
+		old_status=me.inet_connected;
+		me.inet_connected=igw_check_inet_conn();
+
+		if(old_status && !me.inet_connected) {
+			/* Connection lost, disable me.my_igws[0] */
+			me.my_igws[0]->bandwidth=0;
+			igw_update_gnode_bw(me.igws_counter, me.my_igws,
+				me.my_igws[0], 0, 0, me.cur_quadg.levels);
+			clist_join(&me.igws[0], &me.igws_counter[0], me.my_igws[0]);
+			
+		} else if(!old_status && me.inet_connected) {
+			if(server_opt.share_internet) {
+				/* Maybe the Internet gateway is changed, it's
+				 * better to check it */
+
+				inet_setip_anyaddr(&default_gw, my_family);
+				ret=route_get_exact_prefix_dst(default_gw, 
+						&new_gw, new_gw_dev);
+				if(ret < 0) {
+					/* 
+					 * Something's wrong, we can reach Inet
+					 * hosts, but we cannot take the default 
+					 * gw, thus consider ourself not connected.
+					 */
+					me.inet_connected=0;
+					goto skip_it;
+				}
+
+				if(strncmp(new_gw_dev, server_opt.inet_gw_dev, IFNAMSIZ) || 
+					memcmp(new_gw.data, server_opt.inet_gw.data, MAX_IP_SZ)) {
+					
+					/* New Internet gw (dialup connection ?)*/
+					strncpy(server_opt.inet_gw_dev, new_gw_dev, IFNAMSIZ);
+					memcpy(&server_opt.inet_gw, &new_gw, sizeof(inet_prefix));
+				}
+			}
+
+			/* Yay! We're connected, enable me.my_igws[0] */
+			me.my_igws[0]->bandwidth=me.my_bandwidth;
+			clist_ins(&me.igws[0], &me.igws_counter[0], me.my_igws[0]);
+			igw_update_gnode_bw(me.igws_counter, me.my_igws,
+				me.my_igws[0], 1, 0, me.cur_quadg.levels);
+
+		}
+skip_it:	
+		sleep(INET_NEXT_PING_WAIT);
+	}
+}
+
 /*
  * igw_exec_masquerade_sh: executes `script', which will do IP masquerade
  */
@@ -416,7 +521,7 @@ int igw_replace_default_gateways(inet_gw **igws, int *igws_counter,
 	 * If we are sharing our Internet connection use, as the primary 
 	 * gateway `me.internet_gw'.
 	 */
-	if(server_opt.share_internet) {
+	if(server_opt.share_internet && me.inet_connected) {
 		memcpy(&nh[ni].gw, &server_opt.inet_gw, sizeof(inet_prefix));
 		nh[ni].dev=server_opt.inet_gw_dev;
 		nh[ni].hops=255-ni;
@@ -437,6 +542,10 @@ int igw_replace_default_gateways(inet_gw **igws, int *igws_counter,
 		list_for(igw) {
 			if(ni >= nexthops)
 				break;
+
+			/* Skip gateways which have a bandwidth too small */
+			if(igw->bandwidth < MIN_CONN_BANDWIDTH)
+				continue;
 
 			if(igw->node->flags & MAP_ME && !server_opt.share_internet) {
 				if(level)

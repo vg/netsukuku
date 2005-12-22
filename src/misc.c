@@ -21,9 +21,10 @@
 
 #include "includes.h"
 #include <dirent.h>
-#include "misc.h"
 
+#include "misc.h"
 #include "log.h"
+#include "xmalloc.h"
 
 /*
  * * * *  Hash functions  * * * *
@@ -257,11 +258,9 @@ void xsrand(void)
 }
 
 
-
 /*
- * * * *  Search functions  * * * *
+ * * * *  String functions  * * * *
  */
-
 
 char *last_token(char *string, char tok)
 {
@@ -284,6 +283,69 @@ void strip_char(char *string, char char_to_strip)
 			strcpy(&string[i], p);
 		}
 	}
+}
+
+
+
+/*
+ * * * *  Search functions  * * * *
+ */
+
+/*
+ * split_string: splits the `str' strings in at maximum `max_substrings'#
+ * substrings using as divisor the `div_str' string.
+ * Each substring can be at maximum of `max_substring_sz' bytes.
+ * The array of malloced substrings is returned and in `substrings' the number
+ * of saved substrings is stored.
+ * On error 0 is the return value.
+ */
+char **split_string(char *str, const char *div_str, int *substrings, 
+		int max_substrings, int max_substring_sz)
+{
+	int i=0, strings=0, str_len=0, buf_len;
+	char *buf, **splitted=0, *p;
+
+	str_len=strlen(str);
+
+	buf=str-1;
+	while((buf=strstr((const char *)buf+1, div_str)))
+		strings++;
+	if(!strings && !str_len)
+		return 0;
+
+	strings++;
+	if(strings > max_substrings)
+		strings=max_substrings;
+
+	splitted=(char **)xmalloc(sizeof(char *)*strings);
+	
+	buf=str;
+	for(i=0; i<strings; i++) {
+		p=strstr((const char *)buf, div_str);
+		if(p)
+			*p=0;
+
+		buf_len=strlen(buf);
+		if(buf_len <= max_substring_sz && buf_len > 0)
+			splitted[i]=xstrdup(buf);
+		else {
+			i--;
+			strings--;
+			buf=p+1;
+		}
+
+		if(!p) {
+			i++;
+			break;
+		}
+		buf=p+1;
+	}
+	
+	if(i != strings)
+		splitted=(char **)xrealloc(splitted, sizeof(char *)*i);
+
+	*substrings=strings;
+	return splitted;
 }
 
 /*
@@ -311,6 +373,11 @@ int is_bufzero(char *a, int sz)
 			return 1;
 	return 0;
 }
+
+
+/*
+ *  *  *  *  Time functions  *  *  *  *
+ */
 
 
 /*
@@ -357,6 +424,12 @@ void xtimer(u_int secs, u_int steps, int *counter)
 			(*counter)++;
 	}
 }
+
+
+/*
+ *  *  *  *  File & Dir related functions  *  *  *  *
+ */
+
 
 /*
  * check_and_create_dir: tries to access in the specified `dir' directory and

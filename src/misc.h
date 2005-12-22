@@ -64,6 +64,8 @@ int rand_range(int, int);
 void xsrand(void);
 void strip_char(char *string, char char_to_strip);
 char *last_token(char *string, char tok);
+char **split_string(char *str, const char *div_str, int *substrings, 
+		int max_substrings, int max_substring_sz);
 int find_int(int x, int *ia, int nmemb);
 void xtimer(u_int secs, u_int steps, int *counter);
 int check_and_create_dir(char *dir);

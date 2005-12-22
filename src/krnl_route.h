@@ -44,6 +44,7 @@ int route_add(ROUTE_CMD_VARS);
 int route_del(ROUTE_CMD_VARS);
 int route_replace(ROUTE_CMD_VARS);
 int route_change(ROUTE_CMD_VARS);
+int route_get_exact_prefix_dst(inet_prefix, inet_prefix *, char *);
 int route_flush_cache(int family);
 int route_ip_forward(int family, int enable);
 int route_rp_filter(int family, char *dev, int enable);

@@ -12,6 +12,9 @@
 	  than others
 	- use ip_route_get()
 	- consider own default gw
+	- init_netsukuku(): if ping==0: Ehi fucker, you cannot share nothing
+	- if restricted and -i IFX and default gw dev IFX: NO!
+	- char **parse_internet_hosts(char *str, int *hosts)
 	- check connection by resolving a hname
 
 - Gnodes contiguity
