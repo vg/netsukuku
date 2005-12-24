@@ -242,7 +242,7 @@ void init_internet_gateway_search(void)
 
 	pthread_t ping_thread;
 	pthread_attr_t t_attr;
-	int i;
+	int i, ret;
 
 
         if(!server_opt.restricted || !server_opt.inet_connection)
@@ -299,7 +299,7 @@ void init_internet_gateway_search(void)
 		loginfo("The Internet connection is up & running");
 	else
 		loginfo("The Internet connection appears to be down");
-	if(!me.inet_connected && me.share_internet)
+	if(!me.inet_connected && server_opt.share_internet)
 		fatal("We are not connected to the Internet, but you want to "
 			"share your connection. Please check your options");
 

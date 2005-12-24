@@ -378,7 +378,7 @@ struct nexthop *rt_build_nexthop_gw(map_node *node, map_gnode *gnode, int level,
 {
 	map_node *tmp_node;
 	struct nexthop *nh=0;
-	int n, i, err;
+	int n, i, ips, routes;
 	
 	if(!level) {
 		nh=xmalloc(sizeof(struct nexthop)*(node->links+1));
@@ -394,7 +394,7 @@ struct nexthop *rt_build_nexthop_gw(map_node *node, map_gnode *gnode, int level,
 			if(!(nh[n].dev=find_rnode_dev_and_retry(tmp_node)))
 				continue;
 
-			nh[n].hops=255-n;
+			nh[n].hops=node->links-i;	/* multipath weigth */
 			n++;
 
 			if(maxhops && n >= maxhops)
@@ -404,25 +404,24 @@ struct nexthop *rt_build_nexthop_gw(map_node *node, map_gnode *gnode, int level,
 	} else if(level) {
 		inet_prefix gnode_gws[MAX_MULTIPATH_ROUTES];
 		map_node *gw_nodes[MAX_MULTIPATH_ROUTES];
-		int ips;
 		
-		err=get_gw_ips(me.int_map, me.ext_map, me.bnode_map,
+		routes=get_gw_ips(me.int_map, me.ext_map, me.bnode_map,
 			     me.bmap_nodes, &me.cur_quadg,
 			     gnode, level, 0, gnode_gws, gw_nodes, 0);
-		if(err < 0)
+		if(routes < 0)
 			goto finish;
 
-		nh=xmalloc(sizeof(struct nexthop)*(err+1));
-		memset(nh, '\0', sizeof(struct nexthop)*(err+1));
+		nh=xmalloc(sizeof(struct nexthop)*(routes+1));
+		memset(nh, '\0', sizeof(struct nexthop)*(routes+1));
 
-		for(ips=0, n=0; ips<err; ips++) {
+		for(ips=0, n=0; ips < routes; ips++) {
 			memcpy(&nh[n].gw, &gnode_gws[ips], sizeof(inet_prefix));
 			inet_htonl(nh[n].gw.data, nh[n].gw.family);
 			
 			if(!(nh[n].dev=find_rnode_dev_and_retry(gw_nodes[ips])))
 				continue;
 			
-			nh[n].hops=255-ips;
+			nh[n].hops=routes-ips; 	/* multipath weigth */
 			n++;
 
 			if(maxhops && n >= maxhops)

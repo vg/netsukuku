@@ -3,13 +3,10 @@
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 
 - Internet Gateway Search
-	- /etc/netsukuku/masquerade.sh (option in .conf)
-		- man pages
-	- --internet
-		- man pages
 	- igw_add_node in tracer
 	- igw_del_node in qspn_remove_deads
 	- free server_opt
+	- solve NAT multihome problem
 
 - Gnodes contiguity
 	- Nodes count in the qspn_pkt which traverses gnodes	  [  50% ]
@@ -58,9 +55,10 @@
   the other nameservers in /etc/resolv.conf if ANDNA told him that the
   hostname is inexistent.
 
-- If the daemon is launched in restricted mode and with the -I it should find
-  the nodes connected to Internet and add a default gw to them. Please refer
-  to the NTK_RFC 0003.
+- Multi interfaces multipath: if we can reach a rnode trough multiple
+  interfaces, use them all with a multipath route (attribute "random").
+
+- Equalize multipath routes
 
 - Bandwidth weight for each entry of the qspn (not just rtt and latency):
 	- what to use to get the bandwidth of a network interface?
@@ -79,7 +77,8 @@
 
 - Change with something else the eliminable fatal() calls in netsukuku_hook()
 
-- Ipv6 support by the DNS wrapper.
+- Ipv6 support: use ff05::23 for multicast. qspn_gnode_count isn't IPv6
+  compatible!
 
 - Test request.c
 

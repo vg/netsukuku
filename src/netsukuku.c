@@ -219,7 +219,7 @@ void fill_loaded_cfg_options(void)
 			bandwidth_in_8bit((server_opt.my_upload_bw+server_opt.my_dnload_bw)/2);
 	if((value==getenv(config_str[CONF_NTK_INTERNET_PING_HOSTS]))) {
 		int counter;
-		server_opt.inet_hosts=parse_internet_hosts(str, &counter);
+		server_opt.inet_hosts=parse_internet_hosts(value, &counter);
 		if(!server_opt.inet_hosts)
 			fatal("Malformed `%s' option: \"%s\". "
 				"Its syntax is \"host1:host2:...\"",
@@ -287,7 +287,7 @@ void parse_options(int argc, char **argv)
 				strncpy(server_opt.config_file, optarg, NAME_MAX);
 				break;
 			case 'i': 
-				strncpy(server_opt.ifs[server_opt.ifs_n++], optarg, IFNAMSIZ);
+				strncpy(server_opt.ifs[server_opt.ifs_n++], optarg, IFNAMSIZ-1);
 				break;
 			case 'D':
 				server_opt.daemon=0;

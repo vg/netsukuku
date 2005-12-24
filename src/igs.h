@@ -110,6 +110,9 @@ void igw_update_gnode_bw(int *igws_counter, inet_gw **my_igws, inet_gw *igw,
 		int new, int level, int maxlevels);
 void igw_order(inet_gw **igws, int *igws_counter, inet_gw **my_igws, int level);
 
+int igw_check_inet_conn(void);
+void *igw_check_inet_conn_t(void *null);
+
 int igw_exec_masquerade_sh(char *script);
 int igw_replace_default_gateways(inet_gw **igws, int *igws_counter, 
 		inet_gw **my_igws, int max_levels, int family);

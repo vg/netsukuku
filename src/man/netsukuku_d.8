@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "NetsukukuD 8"
-.TH NetsukukuD 8 "2005-12-22" "NetsukukuD 0.0.5b" ""
+.TH NetsukukuD 8 "2005-12-23" "NetsukukuD 0.0.5b" ""
 .SH "NAME"
 netsukuku_d \- Netsukuku protocol daemon
 .SH "SYNOPSIS"
@@ -271,6 +271,10 @@ changed in \fInetsukuku.conf\fR.
 .PD
 They are the saved \s-1ANDNA\s0 caches.  Their locations can be 
 changed in \fInetsukuku.conf\fR.
+.IP "\fI/etc/netsukuku/ip_masquerade.sh\fR" 4
+.IX Item "/etc/netsukuku/ip_masquerade.sh"
+This script is launched by NetsukukuD, at its start, when it shares the Internet
+connection.
 .SH "BUGS"
 .IX Header "BUGS"
 { Don't panic! }

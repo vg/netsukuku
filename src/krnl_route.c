@@ -32,6 +32,10 @@
 #include "xmalloc.h"
 #include "log.h"
 
+#ifdef LINUX_2_6_14
+#include <linux/ip_mp_alg.h>
+#define NTK_MULTIPATH_ALGO IP_MP_ALG_WRANDOM
+#endif
 
 static struct
 {
@@ -117,7 +121,12 @@ int add_nexthops(struct nlmsghdr *n, struct rtmsg *r, struct nexthop *nhop)
 
 		return 0;
 	}
-	
+
+#if 0
+	/* We have more than one nexthop, equalize them */
+	req.rt.rtm_flags|=RTM_F_EQUALIZE;
+#endif
+
 	while (nhop[i].dev!=0) {
 		memset(rtnh, 0, sizeof(*rtnh));
 		rtnh->rtnh_len = sizeof(*rtnh);
@@ -198,6 +207,11 @@ int route_exec(int route_cmd, int route_type, int route_scope, unsigned flags,
 	if (dev || nhops) 
 		ll_init_map(&rth);
 
+#ifdef LINUX_2_6_14
+	uint32_t mp_alg = NTK_MULTIPATH_ALGO;
+	addattr_l(&req.n, sizeof(req), RTA_MP_ALGO, &mp_alg, sizeof(mp_alg));
+#endif
+
 	if (dev) {
 		int idx;
 
@@ -219,7 +233,7 @@ int route_exec(int route_cmd, int route_type, int route_scope, unsigned flags,
 		addattr_l(&req.nh, sizeof(req), RTA_DST, &to.data, to.len);
 	} 
 
-	if(nhops) 
+	if(nhops)
 		add_nexthops(&req.nh, &req.rt, nhops);
 	
 	/*Finaly stage: <<Hey krnl, r u there?>>*/
@@ -333,7 +347,7 @@ int route_get_gw(const struct sockaddr_nl *who, struct nlmsghdr *n, void *arg)
 	 * ... and finally if all the tests passed, copy the gateway address
 	 */
 	if(tb[RTA_GATEWAY]) {
-		memcpy(&via.data, RTA_DATA(tb[RTA_GATEWAY]), host_len);
+		memcpy(&via.data, RTA_DATA(tb[RTA_GATEWAY]), host_len/8);
 		via.family=r->rtm_family;
 		inet_setip(arg, (u_int *)&via.data, via.family);
 		/* Copy the interface name */
@@ -356,7 +370,7 @@ int route_get_gw(const struct sockaddr_nl *who, struct nlmsghdr *n, void *arg)
 			if (nh->rtnh_len > sizeof(*nh)) {
 				parse_rtattr(tb, RTA_MAX, RTNH_DATA(nh), nh->rtnh_len - sizeof(*nh));
 				if (tb[RTA_GATEWAY]) {
-					memcpy(&via.data, RTA_DATA(tb[RTA_GATEWAY]), host_len);
+					memcpy(&via.data, RTA_DATA(tb[RTA_GATEWAY]), host_len/8);
 					via.family=r->rtm_family;
 					inet_setip(arg, (u_int *)&via.data, via.family);
 

@@ -184,7 +184,7 @@ int ll_init_map(struct rtnl_handle *rth)
 		fatal("%s:%d: Cannot send dump request", ERROR_POS);
 
 	if (rtnl_dump_filter(rth, (rtnl_filter_t)ll_remember_index, &idxmap, NULL, NULL) < 0) 
-		fatal("%s:%d: Dump terminated",ERROR_POS);
+		fatal(ERROR_MSG "Dump terminated",ERROR_POS);
 
 	return 0;
 }

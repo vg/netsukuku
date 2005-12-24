@@ -231,6 +231,16 @@ changed in F<netsukuku.conf>.
 
 =back
 
+=over
+
+=item
+F</etc/netsukuku/ip_masquerade.sh>
+
+This script is launched by NetsukukuD, at its start, when it shares the Internet
+connection.
+
+=back
+
 =head1 BUGS
 
 { Don't panic! }
