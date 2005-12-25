@@ -886,11 +886,18 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 
 		if(!level) {
 			node=node_from_pos(tracer[i].node, me.int_map);
-			if(node == me.cur_node) {
+			if(node == me.cur_node && 
+				(i || !me.cur_node->flags & QSPN_STARTER ||
+				 !me.cur_node->flags & QSPN_OPENER)) {
 				debug(DBG_INSANE, "Ehi! There's a hop in the "
-						"tracer pkt which points to me");
+						"tracer pkt which points to me"
+						"i: %d, starter %d opener %d", 
+						i, me.cur_node->flags & QSPN_STARTER,
+						me.cur_node->flags & QSPN_OPENER);
+#ifndef DEBUG_TEST
 				new_rehook((map_gnode *)node, tracer[i].node, 
 						level, 0);
+#endif
 				break;
 			}
 		} else {
@@ -903,6 +910,7 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 			
 			if(gnode == me.cur_quadg.gnode[_EL(level)] && 
 					gnode->g.flags & MAP_BNODE) {
+				/* XXX: stricter check ! */
 				debug(DBG_INSANE, "There's a hop in the "
 						"tracer pkt which points to me");
 				new_rehook(gnode, tracer[i].node, level,

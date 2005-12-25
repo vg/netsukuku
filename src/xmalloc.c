@@ -22,6 +22,10 @@
  *                    All rights reserved
  * Versions of malloc and friends that check their results, and never return
  * failure (they call fatal if they encounter an error).
+ *
+ * Changes:
+ *
+ * xstrndup() added. AlpT
  */
 
 #include <stdlib.h>
@@ -79,13 +83,20 @@ void xfree(void *ptr)
 	free(ptr);
 }
 
-char *xstrdup(const char *str)
+char *xstrndup(const char *str, size_t n)
 {
 	size_t len;
 	char *cp;
 
 	len=strlen(str) + 1;
+	if(len > n)
+		len=n;
 	cp=xmalloc(len);
 	strncpy(cp, str, len);
 	return cp;
+}
+
+char *xstrdup(const char *str)
+{
+	return xstrndup(str, 0);
 }

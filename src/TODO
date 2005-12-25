@@ -2,11 +2,28 @@
 
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 
+- tracer.c:891 (we cannot check a qspn_open if we don't know what is the first
+		qspn_open chunk)
+	- qspn_pkt hdr which indicates what is the first qspn_open chunk,
+	  where the bnode and the igw blocks begin.
+	- tracer.c:913
+
 - Internet Gateway Search
 	- igw_add_node in tracer
 	- igw_del_node in qspn_remove_deads
-	- free server_opt
 	- solve NAT multihome problem
+		- qspn pkt
+		- max gw in a qspn chunk: 16
+		- igws sparse
+			- MAX_IGWS must be respected by igw_add()
+		- Set tunl0 IP to the IP used by the other IFs
+			- forwarding = 1, rp_filter = 0
+		- A node can have MAX_MULTIPATH tunnels. Each of them points
+		  to a gateway. An array is needed to know if tun[x] is
+		  already used or not. The same is necessary for the "from"
+		  rules.
+		- igw_del_node has to free the tun which was associated to it.
+		- igw.flags IGW_TUNNELED
 
 - Gnodes contiguity
 	- Nodes count in the qspn_pkt which traverses gnodes	  [  50% ]
@@ -20,11 +37,6 @@
 		- rehook() function				  [  55% ]
 			- new gid based on the hash of the same gid, when
 			  all the other gnodes are full.	  [  55% ]
-			- ignore the rnodes of the previos gnode. [ 100% ]
-			- at least one qspn_round must be passed. [ 100% ]
-			- call rehook() from tracer_store()	  [ 100% ]
-		- timed re-hook: the node waits that its rnodes, which are
-		  nearer to the other gnode, do the re-hook first.[ 100% ]
 		- merging of ext_maps				  [  65% ]
 	
 	- Challenge

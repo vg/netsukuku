@@ -549,7 +549,7 @@ void rt_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg
 
 do_update:
 #ifdef DEBUG
-	for(n=0; nh[n].dev; n++){ 
+	for(n=0; nh && nh[n].dev; n++){ 
 		strcat(gw_ip, inet_to_str(nh[n].gw));
 		strcat(gw_ip, "|");
 		strcat(gw_ip, nh[n].dev);

@@ -196,7 +196,7 @@ int set_all_ifs(interface *ifs, int ifs_n, int (*set_func)(char *dev))
  * stores all the initialized interfaces, updating the `new_ifs_n' counter.
  * On error -1 is returned.
  */
-int if_init_all(char ifs_name[MAX_INTERFACES][IFNAMSIZ], int ifs_n, 
+int if_init_all(char *ifs_name[MAX_INTERFACES], int ifs_n, 
 		interface *new_ifs, int *new_ifs_n)
 {
 	struct rtnl_handle rth;

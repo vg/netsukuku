@@ -89,7 +89,7 @@ struct inet_gw_pack_hdr
  */
 
 u_char bandwidth_in_8bit(u_int x);
-int str_to_inet_gw(char *str, inet_prefix *gw, char *dev);
+int str_to_inet_gw(char *str, inet_prefix *gw, char **dev);
 char **parse_internet_hosts(char *str, int *hosts);
 void free_internet_hosts(char **hnames, int hosts);
 

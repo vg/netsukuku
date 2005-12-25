@@ -92,11 +92,12 @@ u_int bandwidth_to_32bit(u_char x)
 /*
  * str_to_inet_gw:
  * The syntax of `str' is IP:devname, i.e. 192.168.1.1:eth0.
- * str_to_inet_gw() stores the IP in `gw' and the device name in `dev'.
- * `dev' must be IFNAMSIZ big.
+ * str_to_inet_gw() stores the IP in `gw'.
+ * In `*dev' is returned the pointer to a newly allocated string containing 
+ * the device name.
  * On error -1 is returned.
  */
-int str_to_inet_gw(char *str, inet_prefix *gw, char *dev)
+int str_to_inet_gw(char *str, inet_prefix *gw, char **dev)
 {
 	char *buf;
 
@@ -107,8 +108,14 @@ int str_to_inet_gw(char *str, inet_prefix *gw, char *dev)
 		return -1;
 	*buf=0;
 	buf++;
-	strncpy(dev, buf, IFNAMSIZ);
-	dev[IFNAMSIZ-1]=0;
+	if(!*buf)
+		/* No device was specified */
+		return -1;
+	
+	if(strlen(buf) >= IFNAMSIZ)
+		/* It is too long, truncate it */
+		buf[IFNAMSIZ-1]=0;
+	*dev=xstrndup(buf, IFNAMSIZ);
 
 	/* Extract the IP from the first part of `str' */
 	if(str_to_inet(str, gw))

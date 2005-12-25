@@ -88,7 +88,7 @@ const static u_short ntk_udp_port 	= NTK_UDP_PORT,
 const static u_short andna_udp_port	= ANDNA_UDP_PORT,
 		     andna_tcp_port	= ANDNA_TCP_PORT;
 
-#define NTK_CONFIG_FILE		"/etc/netsukuku/netsukuku.conf"
+#define NTK_CONFIG_FILE		CONF_DIR"/netsukuku.conf"
 
 
 #define INT_MAP_FILE		"ntk_internal_map"
@@ -101,24 +101,26 @@ const static u_short andna_udp_port	= ANDNA_UDP_PORT,
 #define RHC_FILE		"andna_rh_cache"
 #define COUNTER_C_FILE		"andna_counter_cache"
 
+#define IPMASQ_SCRIPT_FILE	CONF_DIR"/ip_masquerade.sh"
+
 typedef struct
 {
-	char		config_file[NAME_MAX];
+	char		*config_file;
 	
 	int 		family;
 
-	char		ifs[MAX_INTERFACES][IFNAMSIZ];
+	char		*ifs[MAX_INTERFACES];
 	int		ifs_n;	/* number of interfaces present in `ifs' */
 	
-	char 		int_map_file[NAME_MAX];
-	char 		bnode_map_file[NAME_MAX];
-	char 		ext_map_file[NAME_MAX];
+	char 		*int_map_file;
+	char 		*ext_map_file;
+	char 		*bnode_map_file;
 
-	char		andna_hnames_file[NAME_MAX];
-	char 		andna_cache_file[NAME_MAX];
-	char 		lcl_file[NAME_MAX];
-	char		rhc_file[NAME_MAX];
-	char 		counter_c_file[NAME_MAX];
+	char		*andna_hnames_file;
+	char 		*andna_cache_file;
+	char 		*lcl_file;
+	char		*rhc_file;
+	char 		*counter_c_file;
 
 	char 		daemon;
 	
@@ -127,10 +129,10 @@ typedef struct
 					   to the Internet */
 	char		share_internet;
 	inet_prefix	inet_gw;
-	char		inet_gw_dev[IFNAMSIZ];
+	char		*inet_gw_dev;
 	char		**inet_hosts;	/* Hosts to be pinged in order to check
 					   if the internet connection is up */
-	char		ip_masq_script[NAME_MAX];
+	char		*ip_masq_script;
 	
 	/* The bandwidths of the Internet connection we are sharing.
 	 * If we are just leeching they are all 0. */

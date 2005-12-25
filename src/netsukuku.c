@@ -136,17 +136,17 @@ void fill_default_options(void)
 	
 	server_opt.family=AF_INET;
 	
-	strncpy(server_opt.config_file, NTK_CONFIG_FILE, NAME_MAX);
+	server_opt.config_file=NTK_CONFIG_FILE;
 
-	strncpy(server_opt.int_map_file, INT_MAP_FILE, NAME_MAX);
-	strncpy(server_opt.ext_map_file, EXT_MAP_FILE, NAME_MAX);
-	strncpy(server_opt.bnode_map_file, BNODE_MAP_FILE, NAME_MAX);
+	server_opt.int_map_file=INT_MAP_FILE;
+	server_opt.ext_map_file=EXT_MAP_FILE;
+	server_opt.bnode_map_file=BNODE_MAP_FILE;
 
-	strncpy(server_opt.andna_hnames_file, ANDNA_HNAMES_FILE, NAME_MAX);
-	strncpy(server_opt.andna_cache_file, ANDNA_CACHE_FILE, NAME_MAX);
-	strncpy(server_opt.lcl_file, LCL_FILE, NAME_MAX);
-	strncpy(server_opt.rhc_file, RHC_FILE, NAME_MAX);
-	strncpy(server_opt.counter_c_file, COUNTER_C_FILE, NAME_MAX);
+	server_opt.andna_hnames_file=ANDNA_HNAMES_FILE;
+	server_opt.andna_cache_file=ANDNA_CACHE_FILE;
+	server_opt.lcl_file=LCL_FILE;
+	server_opt.rhc_file=RHC_FILE;
+	server_opt.counter_c_file=COUNTER_C_FILE;
 
 	server_opt.daemon=1;
 	server_opt.dbg_lvl=0;
@@ -154,6 +154,8 @@ void fill_default_options(void)
 	server_opt.disable_andna=0;
 	server_opt.disable_resolvconf=0;
 	server_opt.restricted=0;
+
+	server_opt.ip_masq_script=IPMASQ_SCRIPT_FILE;
 
 	server_opt.max_connections=MAX_CONNECTIONS;
 	server_opt.max_accepts_per_host=MAX_ACCEPTS;
@@ -169,23 +171,23 @@ void fill_loaded_cfg_options(void)
 	char *value;
 
 	if((value=getenv(config_str[CONF_NTK_INT_MAP_FILE])))
-		strncpy(server_opt.int_map_file, value, NAME_MAX);
+		server_opt.int_map_file=xstrndup(value, NAME_MAX-1);
 	if((value=getenv(config_str[CONF_NTK_BNODE_MAP_FILE])))
-		strncpy(server_opt.bnode_map_file, value, NAME_MAX);
+		server_opt.bnode_map_file=xstrndup(value, NAME_MAX-1);
 	if((value=getenv(config_str[CONF_NTK_EXT_MAP_FILE])))
-		strncpy(server_opt.ext_map_file, value, NAME_MAX);
+		server_opt.ext_map_file=xstrndup(value, NAME_MAX-1);
 	
 	if((value=getenv(config_str[CONF_ANDNA_HNAMES_FILE])))
-		strncpy(server_opt.andna_hnames_file, value, NAME_MAX);
+		server_opt.andna_hnames_file=xstrndup(value, NAME_MAX-1);
 	
 	if((value=getenv(config_str[CONF_ANDNA_CACHE_FILE])))
-		strncpy(server_opt.andna_cache_file, value, NAME_MAX);
+		server_opt.andna_cache_file=xstrndup(value, NAME_MAX-1);
 	if((value=getenv(config_str[CONF_ANDNA_LCL_FILE])))
-		strncpy(server_opt.lcl_file, value, NAME_MAX);
+		server_opt.lcl_file=xstrndup(value, NAME_MAX-1);
 	if((value=getenv(config_str[CONF_ANDNA_RHC_FILE])))
-		strncpy(server_opt.rhc_file, value, NAME_MAX);
+		server_opt.rhc_file=xstrndup(value, NAME_MAX-1);
 	if((value=getenv(config_str[CONF_ANDNA_COUNTER_C_FILE])))
-		strncpy(server_opt.counter_c_file, value, NAME_MAX);
+		server_opt.counter_c_file=xstrndup(value, NAME_MAX-1);
 
 	if((value=getenv(config_str[CONF_NTK_MAX_CONNECTIONS])))
 		server_opt.max_connections=atoi(value);
@@ -206,7 +208,7 @@ void fill_loaded_cfg_options(void)
 		server_opt.inet_connection=atoi(value);
 	if((value=getenv(config_str[CONF_NTK_INTERNET_GW]))) {
 		if(str_to_inet_gw(value, &server_opt.inet_gw, 
-					server_opt.inet_gw_dev))
+					&server_opt.inet_gw_dev))
 			fatal("Malformed `%s' option: \"%s\". Its syntax is \"IP:dev\"",
 					config_str[CONF_NTK_INTERNET_GW], value);
 	}
@@ -217,7 +219,7 @@ void fill_loaded_cfg_options(void)
 	if(server_opt.my_upload_bw && server_opt.my_dnload_bw)
 		me.my_bandwidth =
 			bandwidth_in_8bit((server_opt.my_upload_bw+server_opt.my_dnload_bw)/2);
-	if((value==getenv(config_str[CONF_NTK_INTERNET_PING_HOSTS]))) {
+	if((value=getenv(config_str[CONF_NTK_INTERNET_PING_HOSTS]))) {
 		int counter;
 		server_opt.inet_hosts=parse_internet_hosts(value, &counter);
 		if(!server_opt.inet_hosts)
@@ -228,7 +230,39 @@ void fill_loaded_cfg_options(void)
 	if((value=getenv(config_str[CONF_SHARE_INTERNET])))
 		server_opt.share_internet=atoi(value);
 	if((value=getenv(config_str[CONF_NTK_IP_MASQ_SCRIPT])))
-		strncpy(server_opt.ip_masq_script, value, NAME_MAX);
+		server_opt.ip_masq_script=xstrndup(value, NAME_MAX-1);
+}
+
+void free_server_opt(void)
+{
+	int i;
+	
+	if(server_opt.config_file != NTK_CONFIG_FILE)
+		xfree(server_opt.config_file);
+
+	if(server_opt.int_map_file != INT_MAP_FILE)
+		xfree(server_opt.int_map_file);
+	if(server_opt.ext_map_file != EXT_MAP_FILE)
+		xfree(server_opt.ext_map_file);
+	if(server_opt.bnode_map_file != BNODE_MAP_FILE)
+		xfree(server_opt.bnode_map_file);
+
+	if(server_opt.andna_hnames_file != ANDNA_HNAMES_FILE)
+		xfree(server_opt.andna_hnames_file);
+	if(server_opt.andna_cache_file != ANDNA_CACHE_FILE)
+		xfree(server_opt.andna_cache_file);
+	if(server_opt.lcl_file != LCL_FILE)
+		xfree(server_opt.lcl_file);
+	if(server_opt.rhc_file != RHC_FILE)
+		xfree(server_opt.rhc_file);
+	if(server_opt.counter_c_file != COUNTER_C_FILE)
+		xfree(server_opt.counter_c_file);
+
+	if(server_opt.ip_masq_script != IPMASQ_SCRIPT_FILE)
+		xfree(server_opt.ip_masq_script);
+
+	for(i=0; i<MAX_INTERFACES && server_opt.ifs[i]; i++)
+		xfree(server_opt.ifs[i]);
 }
 
 void parse_options(int argc, char **argv)
@@ -284,10 +318,13 @@ void parse_options(int argc, char **argv)
 				server_opt.family=AF_INET6;
 				break;
 			case 'c': 
-				strncpy(server_opt.config_file, optarg, NAME_MAX);
+				server_opt.config_file=xstrndup(optarg, NAME_MAX-1);
 				break;
 			case 'i': 
-				strncpy(server_opt.ifs[server_opt.ifs_n++], optarg, IFNAMSIZ-1);
+				if(server_opt.ifs_n+1 >= MAX_INTERFACES)
+					fatal("The maximum number of interfaces is %d",
+							MAX_INTERFACES);
+				server_opt.ifs[server_opt.ifs_n++]=xstrndup(optarg, IFNAMSIZ-1);
 				break;
 			case 'D':
 				server_opt.daemon=0;
@@ -352,11 +389,13 @@ void check_conflicting_options(void)
 		FATAL_NOT_SPECIFIED("andna_counter_c_file");	
 	if(!server_opt.inet_hosts && server_opt.restricted)
 		FATAL_NOT_SPECIFIED("internet_ping_hosts");
-	if(!server_opt.ip_masq_script[0])
+	if(server_opt.restricted && server_opt.share_internet &&
+			server_opt.ip_masq_script[0]) {
 		FATAL_NOT_SPECIFIED("ip_masquerade_script");
-	if(!file_exist(server_opt.ip_masq_script))
-		fatal("ip_masquerade_script \"%s\" is inexistent", 
-				server_opt.ip_masq_script);
+		if(!file_exist(server_opt.ip_masq_script))
+			fatal("ip_masquerade_script \"%s\" is inexistent", 
+					server_opt.ip_masq_script);
+	}
 	
 	if(!server_opt.restricted && server_opt.inet_connection)
 		fatal("inet_connection=1 but ntk_restricted_mode=0. If you "
@@ -466,9 +505,11 @@ int destroy_netsukuku(void)
 		andna_save_caches();
 		andna_close();
 	}
+	
 	close_radar();
 	e_rnode_free(&me.cur_erc, &me.cur_erc_counter);
 	destroy_accept_tbl();
+	free_server_opt();
 
 	return 0;
 }

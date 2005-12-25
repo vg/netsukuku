@@ -30,4 +30,5 @@ void	*xmalloc(size_t);
 void	*xrealloc(void *, size_t);
 void 	*xcalloc(size_t nmemb, size_t size);
 void     xfree(void *);
+char 	*xstrndup(const char *str, size_t n);
 char	*xstrdup(const char *);
