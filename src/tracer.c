@@ -32,6 +32,9 @@
 #include "xmalloc.h"
 #include "log.h"
 
+char *tracer_pack_pkt(brdcast_hdr *bcast_hdr, tracer_hdr *trcr_hdr, tracer_chunk *tracer, 
+		      char *bblocks, size_t bblocks_sz);
+
 /* 
  * ip_to_rfrom: If `rip_quadg' is null, it converts the `rip' ip in a 
  * quadro_group that is stored in `new_quadg' (if it is not null), otherwise it
@@ -230,9 +233,6 @@ tracer_add_entry(void *void_map, void *void_node, tracer_chunk *tracer,
 		t[new_entry_pos].node=pos_from_gnode(gnode, ext_map[_EL(level)]);
 	}
 
-	if(me.igws && me.igws[level])
-		t[new_entry_pos].bandwidth = me.igws[level]->bandwidth;
-
 	return t;
 }
 
@@ -412,6 +412,134 @@ error:
 }
 
 /* 
+ * tracer_pkt_build: It builds a tracer_pkt and stores it in `pkt'.
+ * If `trcr_hdr' or `tracer' are null, it will build a brand new tracer_pkt, 
+ * otherwise it will append in the `tracer' the new entry. Tracer_pkt_build 
+ * will append also the old bblock: `old_bchunks' is the number of bblocks, 
+ * `old_bblock' is the block of the old bblock and it is `old_bblock_sz'. 
+ * If `old_bchunks' is 0 or `old_bblock' and `old_bblock_sz' are null they 
+ * are ignored.
+ * The `pkt.hdr.op' is set to `rq', `pkt.hdr.id' to `rq_id' and the 
+ * `bcast_hdr.sub_id' to `bcast_sub_id'.
+ * The packet shall be sent with flood_pkt_send.
+ * It returns -1 on errors. 
+ */
+int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
+		     int gnode_id,	     u_char gnode_level,
+		     brdcast_hdr *bcast_hdr, tracer_hdr *trcr_hdr,   tracer_chunk *tracer,  
+		     u_short old_bchunks,    char *old_bblock,       size_t old_bblock_sz,  
+		     PACKET *pkt)
+{
+	brdcast_hdr bh;
+	tracer_hdr th;
+	
+	tracer_chunk *new_tracer=0;
+	bnode_hdr    *new_bhdr=0;
+	bnode_chunk  *new_bchunk=0;
+	map_node *root_node, *upper_root_node=0;
+	void *void_map, *void_node, *p;
+	size_t new_bblock_sz=0, total_bblock_sz=0;
+	u_int hops=0;
+
+	if(!trcr_hdr || !tracer || !bcast_hdr) {
+		/* Brand new tracer packet */
+		bcast_hdr=&bh;
+		memset(bcast_hdr, 0, sizeof(brdcast_hdr));
+		
+		bcast_hdr->gttl=MAXGROUPNODE-1;
+		bcast_hdr->level=gnode_level+1;
+		bcast_hdr->g_node=gnode_id; 
+		
+		trcr_hdr=&th;
+		memset(trcr_hdr, 0, sizeof(tracer_hdr));
+	} 
+	
+	hops=trcr_hdr->hops;
+
+	memset(pkt, 0, sizeof(PACKET));
+	pkt->hdr.op=rq;
+	pkt->hdr.id=rq_id;
+	pkt->hdr.flags|=BCAST_PKT;
+	bcast_hdr->flags|=BCAST_TRACER_PKT;
+	
+	if(!gnode_level) {
+		void_map=(void *)me.int_map;
+		root_node=me.cur_node;
+		void_node=(void *)root_node;
+	} else {
+		void_map=(void *)me.ext_map;
+		root_node=&me.cur_quadg.gnode[_EL(gnode_level)]->g;
+		void_node=(void *)root_node;
+	}
+	
+	if(gnode_level < me.cur_quadg.levels)
+		upper_root_node=&me.cur_quadg.gnode[_EL(gnode_level+1)]->g;
+
+
+	/* Time to append our entry in the tracer_pkt */
+	new_tracer=tracer_add_entry(void_map, void_node, tracer, &hops, 
+			gnode_level); 
+	if(!new_tracer) {
+		debug(DBG_NOISE, "tracer_pkt_build: Cannot add the new"
+				" entry in the tracer_pkt");
+		return -1;
+	}
+	if(rq == QSPN_OPEN && !trcr_hdr->first_qspn_open_chunk)
+		trcr_hdr->first_qspn_open_chunk=hops;
+
+	/* If we are a bnode we have to append the bnode_block too. */
+	if(me.cur_node->flags & MAP_BNODE &&
+			gnode_level < me.cur_quadg.levels-1 &&
+			upper_root_node->flags & MAP_BNODE) {
+
+		new_bhdr=tracer_build_bentry(void_map, void_node,&me.cur_quadg,
+				&new_bchunk, &trcr_hdr->bblocks, gnode_level);
+		if(new_bhdr) {
+			new_bblock_sz=BNODEBLOCK_SZ(new_bhdr->bnode_levels, 
+					trcr_hdr->bblocks);
+			bcast_hdr->flags|=BCAST_TRACER_BBLOCK;
+		}
+	}
+
+	/*
+	 * If in the old tracer_pkt is present a bblock, we append it after the 
+	 * new entry.
+	 */
+	if(old_bchunks && old_bblock && old_bblock_sz) {
+		total_bblock_sz = new_bblock_sz + old_bblock_sz;
+		
+		new_bhdr=xrealloc(new_bhdr, total_bblock_sz);
+		new_bchunk=(bnode_chunk *)((char *)new_bhdr + 
+				BNODE_HDR_SZ(new_bhdr->bnode_levels));
+	
+		p=(char *)new_bchunk + new_bblock_sz;
+		memcpy(p, old_bblock, old_bblock_sz);
+		
+		trcr_hdr->bblocks += old_bchunks;
+		bcast_hdr->flags|=BCAST_TRACER_BBLOCK;
+	}
+
+	/* 
+	 * Here we are really building the pkt, packing all the stuff into a
+	 * single bullet.
+	 */
+	trcr_hdr->hops=hops;
+	bcast_hdr->sub_id=bcast_sub_id;
+	bcast_hdr->sz=TRACERPKT_SZ(hops)+new_bblock_sz;
+	pkt->hdr.sz=BRDCAST_SZ(bcast_hdr->sz);
+	
+	pkt->msg=tracer_pack_pkt(bcast_hdr, trcr_hdr, new_tracer,
+				(char *)new_bhdr, new_bblock_sz);
+	
+	/* Yea, finished */
+	if(new_tracer)
+		xfree(new_tracer);	
+	if(new_bhdr)
+		xfree(new_bhdr);
+	return 0;
+}
+
+/* 
  * tracer_pack_pkt: do ya need explanation? pretty simple: pack the tracer packet
  */
 char *tracer_pack_pkt(brdcast_hdr *bcast_hdr, tracer_hdr *trcr_hdr, tracer_chunk *tracer, 
@@ -489,13 +617,13 @@ int tracer_unpack_pkt(PACKET rpkt, brdcast_hdr **new_bcast_hdr,
 	size_t bblock_sz=0, tracer_sz=0;
 	int level, i;
 
-	bcast_hdr=(brdcast_hdr *)rpkt.msg;
+	bcast_hdr=BRDCAST_HDR_PTR(rpkt.msg);
 	ints_network_to_host(bcast_hdr, brdcast_hdr_iinfo);
 	
-	trcr_hdr=(tracer_hdr *)(rpkt.msg+sizeof(brdcast_hdr));
+	trcr_hdr=TRACER_HDR_PTR(rpkt.msg);
 	ints_network_to_host(trcr_hdr, tracer_hdr_iinfo);
 	
-	tracer=(tracer_chunk *)(rpkt.msg+sizeof(brdcast_hdr)+sizeof(tracer_hdr));
+	tracer=TRACER_CHUNK_PTR(rpkt.msg);
 
 	*new_bcast_hdr=0;
 	*new_tracer_hdr=0;
@@ -512,6 +640,10 @@ int tracer_unpack_pkt(PACKET rpkt, brdcast_hdr **new_bcast_hdr,
 				trcr_hdr->hops);
 		return -1;
 	}
+
+	if(rpkt.hdr.op == QSPN_CLOSE)
+		/* It can be non-zero only if it is a QSPN_OPEN */
+		trcr_hdr->first_qspn_open_chunk=0;
 	
 	/* Convert the tracer chunks to host order */
 	for(i=0; i<trcr_hdr->hops; i++)
@@ -629,17 +761,226 @@ skip:
 	return x;
 }
 
-
-/* 
- * tracer_store_pkt: This is the main function used to keep the int/ext_map's
- * karma in peace.
- * It updates the `map' with the given `tracer' pkt. The bnode blocks (if any) 
- * are unpacked and used to update the data of the bordering gnodes.
+/*
+ * tracer_store_bblock: stores in the bnode map the chunks of the bblock
+ * starting at `bnode_block_start'.
  * In `*bblocks_found' it stores the number of bblocks considered and stores in
  * `bblocks_found_block' these bblocks. The `bblocks_found_block' remains in 
  * network order because it will be appended in the new tracer_pkt, after our 
  * bblock entry (if any). 
  * Remember to xfree(bblocks_found_block);
+ * On error -1 is returned.
+ */
+int tracer_store_bblock(u_char level, tracer_hdr *trcr_hdr, tracer_chunk *tracer,
+		     void *bnode_block_start, size_t bblock_sz, 
+		     u_short *bblocks_found,  char **bblocks_found_block,
+		     size_t *bblock_found_sz)
+{
+	map_node *node;
+	map_gnode *gnode;
+	void *void_node;
+	
+	bnode_hdr 	**bblist_hdr=0;
+	bnode_chunk 	***bblist=0;
+	map_rnode rn;
+	int i, e, o, x, f, p, bm;
+	u_short bb;
+	size_t found_block_sz, bsz;
+	char *found_block;
+	u_char *bnode_gid, bnode, blevel;
+
+	/*
+	 * Split the block
+	 */
+	bb=tracer_split_bblock(bnode_block_start, bblock_sz, &bblist_hdr,
+			&bblist, &found_block_sz);
+	*bblocks_found = bb;
+	if(!bb) {
+		/* The bblock was malformed -_- */
+		debug(DBG_NORMAL, "%s:%d: malformed bnode block", ERROR_POS);
+		*bblock_found_sz = 0;
+		*bblocks_found_block = 0;
+		return -1;
+	} 
+		
+	/*
+	 * Store the received bnode blocks 
+	 */
+
+	if(bb != trcr_hdr->bblocks) 
+		debug(DBG_NOISE, "%s:%d: Skipping some bblocks of the "
+				"tracer_pkt", ERROR_POS);
+	x=0;
+	*bblock_found_sz=found_block_sz;
+	*bblocks_found_block=found_block=xmalloc(found_block_sz);
+	for(i=0; i<bb; i++) {
+
+		bnode_gid=(char *)bblist_hdr[i] + sizeof(bnode_hdr);
+
+		/* We update only the bmaps which are at
+		 * levels where our gnodes are in common with
+		 * those of the bnode, which sent us this
+		 * bblock */
+		for(o=level, f=0; o >= 0; o--)
+			if(bnode_gid[o] != me.cur_quadg.gid[o]) {
+				f=1;
+				break;
+			}
+		if(!f) { 
+			/*
+			 * bnode_gid is equal to me.cur_quadg.gid, so this 
+			 * bnode block was sent by ourself, skip it. 
+			 */
+
+			debug(DBG_NORMAL, ERROR_MSG "skipping the %d bnode,"
+					"it was built by us!", ERROR_POS, i);
+			xfree(bblist[i]);
+			continue;
+		}
+
+
+		for(blevel=o; blevel < bblist_hdr[i]->bnode_levels; blevel++) {
+			bnode=bnode_gid[blevel];
+
+			if(!blevel) {
+				node=node_from_pos(bnode, me.int_map);
+				node->flags|=MAP_BNODE;
+				node->flags&=~QSPN_OLD;
+				void_node=(void *)node;
+			} else {
+				gnode=gnode_from_pos(bnode, me.ext_map[_EL(blevel)]);
+				gnode->g.flags|=MAP_BNODE;
+				gnode->g.flags&=~QSPN_OLD;
+				void_node=(void *)&gnode->g;
+			}
+
+			/* Let's check if we have this bnode in the bmap, if not let's 
+			 * add it */
+			bm=map_find_bnode(me.bnode_map[blevel], me.bmap_nodes[blevel], 
+					bnode);
+			if(bm==-1)
+				bm=map_add_bnode(&me.bnode_map[blevel], 
+						&me.bmap_nodes[blevel],
+						bnode,  0);
+
+			/* This bnode has the BMAP_UPDATE
+			 * flag set, thus this is the first
+			 * time we update him during this new
+			 * qspn_round and for this reason
+			 * delete all its rnodes */
+			if(me.bnode_map[blevel][bm].flags & BMAP_UPDATE) {
+				rnode_destroy(&me.bnode_map[blevel][bm]);
+				me.bnode_map[blevel][bm].flags&=~BMAP_UPDATE;
+			}
+
+			/* Store the rnodes of the bnode */
+			for(e=0; e < bblist_hdr[i]->links; e++) {
+				memset(&rn, 0, sizeof(map_rnode));
+				debug(DBG_INSANE, "Bnode %d new link %d: gid %d lvl %d", 
+						bnode, e, bblist[i][e]->gnode,
+						bblist[i][e]->level);
+
+				gnode=gnode_from_pos(bblist[i][e]->gnode, 
+						me.ext_map[_EL(bblist[i][e]->level)]);
+				gnode->g.flags&=~QSPN_OLD;
+
+				rn.r_node=(int *)gnode;
+				rn.trtt=bblist[i][e]->rtt;
+
+				if((p=rnode_find(&me.bnode_map[blevel][bm], gnode)) > 0) {
+					/* Overwrite the current rnode */
+					map_rnode_insert(&me.bnode_map[blevel][bm],p,&rn);
+				} else
+					/* Add a new rnode */
+					rnode_add(&me.bnode_map[blevel][bm], &rn);
+			}
+		}
+
+		/* Copy the found bblock in `bblocks_found_block' and converts
+		 * it in network order */
+		bsz=BNODEBLOCK_SZ(bblist_hdr[i]->bnode_levels, bblist_hdr[i]->links);
+		memcpy(found_block+x, bblist_hdr[i], bsz);
+		ints_host_to_network(found_block+x, bnode_hdr_iinfo);
+		ints_host_to_network(found_block+x+sizeof(bnode_hdr), bnode_chunk_iinfo);
+		x+=bsz;
+
+		xfree(bblist[i]);
+	}
+
+	xfree(bblist_hdr);
+	xfree(bblist);
+
+	return 0;
+}
+
+/*
+ * tracer_check_node_collision: if a collision is detected between me and the
+ * (g)node `node', new_rehook shall be called and 1 returned.
+ * `tr_node' is the gid of `node'.
+ */
+int tracer_check_node_collision(tracer_hdr *trcr, int hop, map_node *node, 
+		int tr_node, int tr_gcount, int level)
+{
+	map_gnode *gnode;
+	int probable_collision=0;
+	u_int gcount;
+	map_node *root_node;
+
+	gnode=(map_gnode *)node;
+	if(!level) {
+		gcount=0;
+		root_node=me.cur_node;
+	} else {
+		gcount=tr_gcount;
+		root_node=&me.cur_quadg.gnode[_EL(level)]->g;
+	}
+
+	if(node == root_node && 
+		(
+		   (
+		    trcr->first_qspn_open_chunk && 
+		    !(
+			  (trcr->first_qspn_open_chunk-1 == hop && 
+				  (root_node->flags & QSPN_OPENER)) || 
+			  (hop < trcr->first_qspn_open_chunk-1)
+		     )
+		   ) ||
+		   (
+		    !trcr->first_qspn_open_chunk && 
+		    !(!hop && (root_node->flags & QSPN_STARTER))
+		   )
+		)
+	  )
+		probable_collision=1;
+
+	if(probable_collision) {
+		loginfo("%s collision detected! Checking rehook status...", 
+				!level ? "node" : "gnode");
+		debug(DBG_NORMAL,"collision info: i: %d, starter %d opener %d",
+				hop, me.cur_node->flags & QSPN_STARTER,
+				me.cur_node->flags & QSPN_OPENER);
+		new_rehook(gnode, tr_node, level, gcount);
+
+		return 1;
+	}
+
+	return 0;
+}
+
+/* 
+ * tracer_store_pkt: This is the main function used to keep the int/ext_map's
+ * karma in peace.
+ * It updates the internal or external map with the given tracer pkt.
+ *
+ * `rip' is the rnode ip. It is the last node who forwarded the tracer pkt to
+ * us. `rip_quadg' is a quadro_group struct related to it.
+ *
+ * `trcr_hdr' is the header of the tracer pkt, while `tracer' points at the
+ * start of its body.
+ * 
+ * The bnode blocks (if any) are unpacked and used to update the data of the
+ * bordering gnodes. Read the tracer_store_bblock() description (above) to 
+ * know the meaning of the other arguments.
  */
 int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level, 
 		     tracer_hdr *trcr_hdr,    tracer_chunk *tracer,
@@ -647,20 +988,13 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 		     u_short *bblocks_found,  char **bblocks_found_block, 
 		     size_t *bblock_found_sz)
 {
-	bnode_hdr 	**bblist_hdr=0;
-	bnode_chunk 	***bblist=0;
 	map_node *from, *node, *root_node;
-	void *void_node;
 	map_gnode *gfrom, *gnode=0;
-	map_rnode rn, rnn;
+	map_rnode rnn;
 			
-	int i, e, o, x, f, p, diff, bm, from_rnode_pos, skip_rfrom;
+	int i, e, x, f, diff, from_rnode_pos, skip_rfrom;
 	int gfrom_rnode_pos, from_tpos;
 	u_int hops, trtt_ms=0;
-	u_short bb;
-	size_t found_block_sz, bsz;
-	char *found_block;
-	u_char *bnode_gid, bnode, blevel;
 
 
 	hops = trcr_hdr->hops;
@@ -683,133 +1017,16 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 	from->flags&=~QSPN_OLD;
 	
 	if(bblock_sz && level != me.cur_quadg.levels-1) {
-
 		/* Well, well, we have to take care of bnode blocks, split the
 		 * bblock. */
-		bb=tracer_split_bblock(bnode_block_start, bblock_sz, &bblist_hdr,
-				&bblist, &found_block_sz);
-		*bblocks_found = bb;
-		if(!bb) {
-			/* The bblock was malformed -_- */
-			debug(DBG_NORMAL, "%s:%d: malformed bnode block", ERROR_POS);
-			*bblock_found_sz = 0;
-			*bblocks_found_block = 0;
-		} else {
-			
-			/*
-			 * Store the received bnode blocks 
-			 */
-			
-			if(bb != trcr_hdr->bblocks) 
-				debug(DBG_NOISE, "%s:%d: Skipping some bblocks of the "
-						"tracer_pkt", ERROR_POS);
-			x=0;
-			*bblock_found_sz=found_block_sz;
-			*bblocks_found_block=found_block=xmalloc(found_block_sz);
-			for(i=0; i<bb; i++) {
-				
-				bnode_gid=(char *)bblist_hdr[i] + sizeof(bnode_hdr);
-
-				/* We update only the bmaps which are at
-				 * levels where our gnodes are in common with
-				 * those of the bnode, which sent us this
-				 * bblock */
-				for(o=level, f=0; o >= 0; o--)
-					if(bnode_gid[o] != me.cur_quadg.gid[o]) {
-						f=1;
-						break;
-					}
-				if(!f) { 
-					/*
-					 * bnode_gid is equal to me.cur_quadg.gid, so this 
-					 * bnode block was sent by ourself, skip it. 
-					 */
-
-					debug(DBG_NORMAL, ERROR_MSG "skipping the %d bnode,"
-							"it was built by us!", ERROR_POS, i);
-					xfree(bblist[i]);
-					continue;
-				}
-					
-
-				for(blevel=o; blevel < bblist_hdr[i]->bnode_levels; blevel++) {
-					bnode=bnode_gid[blevel];
-
-					if(!blevel) {
-						node=node_from_pos(bnode, me.int_map);
-						node->flags|=MAP_BNODE;
-						node->flags&=~QSPN_OLD;
-						void_node=(void *)node;
-					} else {
-						gnode=gnode_from_pos(bnode, me.ext_map[_EL(blevel)]);
-						gnode->g.flags|=MAP_BNODE;
-						gnode->g.flags&=~QSPN_OLD;
-						void_node=(void *)&gnode->g;
-					}
-
-					/* Let's check if we have this bnode in the bmap, if not let's 
-					 * add it */
-					bm=map_find_bnode(me.bnode_map[blevel], me.bmap_nodes[blevel], 
-							bnode);
-					if(bm==-1)
-						bm=map_add_bnode(&me.bnode_map[blevel], 
-								&me.bmap_nodes[blevel],
-								bnode,  0);
-
-					/* This bnode has the BMAP_UPDATE
-					 * flag set, thus this is the first
-					 * time we update him during this new
-					 * qspn_round and for this reason
-					 * delete all its rnodes */
-					if(me.bnode_map[blevel][bm].flags & BMAP_UPDATE) {
-						rnode_destroy(&me.bnode_map[blevel][bm]);
-						me.bnode_map[blevel][bm].flags&=~BMAP_UPDATE;
-					}
-					
-					/* Store the rnodes of the bnode */
-					for(e=0; e < bblist_hdr[i]->links; e++) {
-						memset(&rn, 0, sizeof(map_rnode));
-						debug(DBG_INSANE, "Bnode %d new link %d: gid %d lvl %d", 
-								bnode, e, bblist[i][e]->gnode,
-								bblist[i][e]->level);
-
-						gnode=gnode_from_pos(bblist[i][e]->gnode, 
-								me.ext_map[_EL(bblist[i][e]->level)]);
-						gnode->g.flags&=~QSPN_OLD;
-
-						rn.r_node=(int *)gnode;
-						rn.trtt=bblist[i][e]->rtt;
-
-						if((p=rnode_find(&me.bnode_map[blevel][bm], gnode)) > 0) {
-							/* Overwrite the current rnode */
-							map_rnode_insert(&me.bnode_map[blevel][bm],p,&rn);
-						} else
-							/* Add a new rnode */
-							rnode_add(&me.bnode_map[blevel][bm], &rn);
-					}
-				}
-
-				/* Copy the found bblock in `bblocks_found_block' and converts
-				 * it in network order */
-				bsz=BNODEBLOCK_SZ(bblist_hdr[i]->bnode_levels, bblist_hdr[i]->links);
-				memcpy(found_block+x, bblist_hdr[i], bsz);
-				ints_host_to_network(found_block+x, bnode_hdr_iinfo);
-				ints_host_to_network(found_block+x+sizeof(bnode_hdr), bnode_chunk_iinfo);
-				x+=bsz;
-			
-				xfree(bblist[i]);
-			}
-
-			xfree(bblist_hdr);
-			xfree(bblist);
-		}
+		tracer_store_bblock(level, trcr_hdr, tracer, bnode_block_start,
+				bblock_sz, bblocks_found, bblocks_found_block,
+				bblock_found_sz);
 	}
-	
 	
 	/* 
 	 * * Store the qspn routes to reach all the nodes of the tracer pkt *
 	 */
-
 	
 	skip_rfrom=0;
 	node=root_node;
@@ -884,40 +1101,21 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 		if(i)
 			trtt_ms+=tracer[i].rtt;
 
-		if(!level) {
+		if(!level)
 			node=node_from_pos(tracer[i].node, me.int_map);
-			if(node == me.cur_node && 
-				(i || !me.cur_node->flags & QSPN_STARTER ||
-				 !me.cur_node->flags & QSPN_OPENER)) {
-				debug(DBG_INSANE, "Ehi! There's a hop in the "
-						"tracer pkt which points to me"
-						"i: %d, starter %d opener %d", 
-						i, me.cur_node->flags & QSPN_STARTER,
-						me.cur_node->flags & QSPN_OPENER);
-#ifndef DEBUG_TEST
-				new_rehook((map_gnode *)node, tracer[i].node, 
-						level, 0);
-#endif
-				break;
-			}
-		} else {
+		else {
 			gnode=gnode_from_pos(tracer[i].node, me.ext_map[_EL(level)]);
 			node=&gnode->g;
 
 			if(tracer[i].gcount == NODES_PER_LEVEL(level))
 				/* The gnode is full */
 				gnode->g.flags|=GMAP_FULL;
-			
-			if(gnode == me.cur_quadg.gnode[_EL(level)] && 
-					gnode->g.flags & MAP_BNODE) {
-				/* XXX: stricter check ! */
-				debug(DBG_INSANE, "There's a hop in the "
-						"tracer pkt which points to me");
-				new_rehook(gnode, tracer[i].node, level,
-						tracer[i].gcount);
-				break;
-			}
 		}
+		
+		if(tracer_check_node_collision(trcr_hdr, i, node, tracer[i].node, 
+					tracer[i].gcount, level))
+			break;
+				
 		node->flags&=~QSPN_OLD;
 			
 		if(node->flags & MAP_VOID) { 
@@ -975,132 +1173,6 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 	return 0;
 }
 
-
-/* 
- * tracer_pkt_build: It builds a tracer_pkt and stores it in `pkt'.
- * If `trcr_hdr' or `tracer' are null, it will build a brand new tracer_pkt, 
- * otherwise it will append in the `tracer' the new entry. Tracer_pkt_build 
- * will append also the old bblock: `old_bchunks' is the number of bblocks, 
- * `old_bblock' is the block of the old bblock and it is `old_bblock_sz'. 
- * If `old_bchunks' is 0 or `old_bblock' and `old_bblock_sz' are null they 
- * are ignored.
- * The `pkt.hdr.op' is set to `rq', `pkt.hdr.id' to `rq_id' and the 
- * `bcast_hdr.sub_id' to `bcast_sub_id'.
- * The packet shall be sent with flood_pkt_send.
- * It returns -1 on errors. 
- */
-int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
-		     int gnode_id,	     u_char gnode_level,
-		     brdcast_hdr *bcast_hdr, tracer_hdr *trcr_hdr,   tracer_chunk *tracer,  
-		     u_short old_bchunks,    char *old_bblock,       size_t old_bblock_sz,  
-		     PACKET *pkt)
-{
-	brdcast_hdr bh;
-	tracer_hdr th;
-	
-	tracer_chunk *new_tracer=0;
-	bnode_hdr    *new_bhdr=0;
-	bnode_chunk  *new_bchunk=0;
-	map_node *root_node, *upper_root_node=0;
-	void *void_map, *void_node, *p;
-	size_t new_bblock_sz=0, total_bblock_sz=0;
-	u_int hops=0;
-
-	if(!trcr_hdr || !tracer || !bcast_hdr) {
-		/* Brand new tracer packet */
-		bcast_hdr=&bh;
-		memset(bcast_hdr, 0, sizeof(brdcast_hdr));
-		
-		bcast_hdr->gttl=MAXGROUPNODE-1;
-		bcast_hdr->level=gnode_level+1;
-		bcast_hdr->g_node=gnode_id; 
-		
-		trcr_hdr=&th;
-		memset(trcr_hdr, 0, sizeof(tracer_hdr));
-	} 
-	
-	hops=trcr_hdr->hops;
-
-	memset(pkt, 0, sizeof(PACKET));
-	pkt->hdr.op=rq;
-	pkt->hdr.id=rq_id;
-	pkt->hdr.flags|=BCAST_PKT;
-	bcast_hdr->flags|=BCAST_TRACER_PKT;
-	
-	if(!gnode_level) {
-		void_map=(void *)me.int_map;
-		root_node=me.cur_node;
-		void_node=(void *)root_node;
-	} else {
-		void_map=(void *)me.ext_map;
-		root_node=&me.cur_quadg.gnode[_EL(gnode_level)]->g;
-		void_node=(void *)root_node;
-	}
-	
-	if(gnode_level < me.cur_quadg.levels)
-	upper_root_node=&me.cur_quadg.gnode[_EL(gnode_level+1)]->g;
-
-
-	/* Time to append our entry in the tracer_pkt */
-	new_tracer=tracer_add_entry(void_map, void_node, tracer, &hops, 
-			gnode_level); 
-	if(!new_tracer) {
-		debug(DBG_NOISE, "tracer_pkt_build: Cannot add the new"
-				" entry in the tracer_pkt");
-		return -1;
-	}
-
-	/* If we are a bnode we have to append the bnode_block too. */
-	if(me.cur_node->flags & MAP_BNODE &&
-			gnode_level < me.cur_quadg.levels-1 &&
-			upper_root_node->flags & MAP_BNODE) {
-
-		new_bhdr=tracer_build_bentry(void_map, void_node,&me.cur_quadg,
-				&new_bchunk, &trcr_hdr->bblocks, gnode_level);
-		if(new_bhdr) {
-			new_bblock_sz=BNODEBLOCK_SZ(new_bhdr->bnode_levels, 
-					trcr_hdr->bblocks);
-			bcast_hdr->flags|=BCAST_TRACER_BBLOCK;
-		}
-	}
-
-	/*
-	 * If in the old tracer_pkt is present a bblock, we append it after the 
-	 * new entry.
-	 */
-	if(old_bchunks && old_bblock && old_bblock_sz) {
-		total_bblock_sz = new_bblock_sz + old_bblock_sz;
-		
-		new_bhdr=xrealloc(new_bhdr, total_bblock_sz);
-		new_bchunk=(bnode_chunk *)((char *)new_bhdr + 
-				BNODE_HDR_SZ(new_bhdr->bnode_levels));
-	
-		p=(char *)new_bchunk + new_bblock_sz;
-		memcpy(p, old_bblock, old_bblock_sz);
-		
-		trcr_hdr->bblocks += old_bchunks;
-		bcast_hdr->flags|=BCAST_TRACER_BBLOCK;
-	}
-
-	/* 
-	 * Here we are really building the pkt, packing all the stuff into a
-	 * single bullet.
-	 */
-	trcr_hdr->hops=hops;
-	bcast_hdr->sub_id=bcast_sub_id;
-	bcast_hdr->sz=TRACERPKT_SZ(hops)+new_bblock_sz;
-	pkt->hdr.sz=BRDCAST_SZ(bcast_hdr->sz);
-	
-	pkt->msg=tracer_pack_pkt(bcast_hdr, trcr_hdr, new_tracer,
-				(char *)new_bhdr, new_bblock_sz);
-	
-	/* Yea, finished */
-	if(new_tracer)
-		xfree(new_tracer);	
-	if(new_bhdr)
-		xfree(new_bhdr);
-	return 0;
-}
 
 /* 
  * flood_pkt_send: This functions is used to propagate packets, in a broadcast

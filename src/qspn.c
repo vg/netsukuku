@@ -824,7 +824,8 @@ int qspn_close(PACKET rpkt)
 	const char *ntop;
 	char *old_bblock=0;
 	char do_real_qspn_action=0, just_forward_it=0, int_qspn_starter=0;
-	char all_bnodes_are_closed=0;
+	char all_bnodes_are_closed=0, start_new_qspn_open=0;
+	u_char rq;
 
 	map_node *from, *root_node, *tracer_starter, *node;
 	quadro_group rip_quadg;
@@ -983,9 +984,18 @@ int qspn_close(PACKET rpkt)
 			bcast_hdr->flags|=QSPN_BNODE_CLOSED;
 			root_node->flags|=QSPN_CLOSED;
 		}
-		
+
+		if(!just_forward_it && !not_closed && 
+				!(root_node->flags & QSPN_OPENER) &&
+				!(root_node->flags & QSPN_STARTER) &&
+				all_bnodes_are_closed) {
+			rq=QSPN_OPEN;
+			start_new_qspn_open=1;
+		} else
+			rq=QSPN_CLOSE;
+
 		/*We build d4 p4ck37...*/
-		ret_err=tracer_pkt_build(QSPN_CLOSE, rpkt.hdr.id, root_node_pos, /*IDs*/
+		ret_err=tracer_pkt_build(rq, rpkt.hdr.id, root_node_pos,/*IDs*/
 				gid,	level,
 				bcast_hdr,  trcr_hdr,    tracer,        /*Received tracer_pkt*/
 			   	old_bchunks,old_bblock,  old_bblock_sz, /*bnode_block*/
@@ -1018,10 +1028,7 @@ int qspn_close(PACKET rpkt)
 	 * * Forward the new pkt * *
 	 */
 	
-	if(!just_forward_it && !not_closed && 
-		!(root_node->flags & QSPN_OPENER) &&
-			!(root_node->flags & QSPN_STARTER) &&
-			all_bnodes_are_closed) {
+	if(start_new_qspn_open) {
 		/*
 		 * We have all the links closed and we haven't sent a 
 		 * qspn_open yet, time to become an opener

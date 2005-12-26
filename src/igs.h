@@ -40,6 +40,10 @@
 
 #define MAXIGWS			MAXGROUPNODE	/* max number of internet 
 						   gateways in each level */
+/* 
+ * inet_gw flags
+ */
+#define IGW_TUNNELED		1
 
 /*
  * internet_gateway: this struct points to a particular (g)node which is
@@ -50,9 +54,11 @@ struct internet_gateway
 	struct internet_gateway *next;
 	struct internet_gateway *prev;
 
-	u_char		gid;
+/* 	u_char		gid[IPV4_LEVELS]; */
+ 	u_char		gid;
 	map_node	*node;
-	
+
+	char		flags;
 	u_char		bandwidth;	/* Its Internet bandwidth */
 };
 typedef struct internet_gateway inet_gw;

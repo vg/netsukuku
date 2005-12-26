@@ -128,8 +128,8 @@ typedef struct
 }_PACKED_ brdcast_hdr;
 
 INT_INFO brdcast_hdr_iinfo = { 1, { INT_TYPE_32BIT }, { sizeof(char)*4 }, { 1 } };
-#define BRDCAST_SZ(pkt_sz) (sizeof(brdcast_hdr)+(pkt_sz))
-
+#define BRDCAST_SZ(pkt_sz) 	(sizeof(brdcast_hdr)+(pkt_sz))
+#define BRDCAST_HDR_PTR(msg)	((brdcast_hdr *)(msg))
 
 
 /* 

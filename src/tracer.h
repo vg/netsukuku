@@ -19,6 +19,7 @@
 #ifndef TRACER_H
 #define TRACER_H
 
+#include "pkts.h"
 #include "bmap.h"
 
 /*
@@ -29,11 +30,12 @@ typedef struct
 	u_short	hops;
 	u_short bblocks;	/*How many bnode blocks are incapsulated in 
 				  the pkt (if any)*/
+	u_short	first_qspn_open_chunk;
 }_PACKED_ tracer_hdr;
-INT_INFO tracer_hdr_iinfo = { 2, 
-			      { INT_TYPE_16BIT, INT_TYPE_16BIT }, 
-			      { 0, sizeof(u_short) },
-			      { 1, 1 }
+INT_INFO tracer_hdr_iinfo = { 3,
+			      { INT_TYPE_16BIT, INT_TYPE_16BIT, INT_TYPE_16BIT }, 
+			      { 0, sizeof(u_short), sizeof(u_short)*2 },
+			      { 1, 1, 1 }
 			    };
 typedef struct
 {
@@ -43,15 +45,15 @@ typedef struct
 				   (in milliseconds) */
 	u_int		gcount; /* how many nodes there are in the `node' 
 				   gnode */
-	u_char		bandwidth; /* The bandwidth of the internet connection
-				      which is shared by `node'. */
 }_PACKED_ tracer_chunk;
 INT_INFO tracer_chunk_iinfo = { 2, 
 				{ INT_TYPE_32BIT, INT_TYPE_32BIT }, 
 				{ sizeof(char), sizeof(char)+sizeof(u_int) }, 
 				{ 1, 1 } 
 			      };
-#define TRACERPKT_SZ(hops) (sizeof(tracer_hdr) + (sizeof(tracer_chunk) * (hops)))
+#define TRACERPKT_SZ(hops) 	(sizeof(tracer_hdr)+(sizeof(tracer_chunk)*(hops)))
+#define TRACER_HDR_PTR(msg) 	((tracer_hdr *)(((char *)BRDCAST_HDR_PTR((msg)))+sizeof(brdcast_hdr)))
+#define TRACER_CHUNK_PTR(msg)	((tracer_chunk *)(((char *)TRACER_HDR_PTR(msg))+sizeof(tracer_hdr)))
 
 int tracer_pkt_start_mutex;
 

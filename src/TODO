@@ -2,12 +2,6 @@
 
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 
-- tracer.c:891 (we cannot check a qspn_open if we don't know what is the first
-		qspn_open chunk)
-	- qspn_pkt hdr which indicates what is the first qspn_open chunk,
-	  where the bnode and the igw blocks begin.
-	- tracer.c:913
-
 - Internet Gateway Search
 	- igw_add_node in tracer
 	- igw_del_node in qspn_remove_deads
