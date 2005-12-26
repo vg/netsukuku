@@ -31,9 +31,6 @@
 		- test: two (g)nodes with the same IP
 			- currently only in particular situations the rehook
 			  isn't possible: A - A,  A - B - A.
-		- restricted mode && rehooking: problems?
-			- maybe yes! In restricted mode filter all the other
-			  IPs which aren't in private classes
 		- rehook() function				  [  55% ]
 			- new gid based on the hash of the same gid, when
 			  all the other gnodes are full.	  [  55% ]
@@ -62,13 +59,11 @@
 
 - Restricted mode with 172.16.0.0 and 192.168.0.0.
 	- what happens when two different restricted net meet?
+		- they must not rehook!
 
 - The DNS wrapper, if launched in restricted mode, should forward the query to
   the other nameservers in /etc/resolv.conf if ANDNA told him that the
   hostname is inexistent.
-
-- Multi interfaces multipath: if we can reach a rnode trough multiple
-  interfaces, use them all with a multipath route (attribute "random").
 
 - Equalize multipath routes
 

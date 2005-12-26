@@ -51,6 +51,27 @@ do{									\
 #define CLR_BIT(a,i)     ((a)[(i)/CHAR_BIT] &= ~(1<<((i)%CHAR_BIT)))
 #define TEST_BIT(a,i)    (((a)[(i)/CHAR_BIT] & (1<<((i)%CHAR_BIT))) ? 1 : 0)
 
+/*
+ * FIND_PTR:
+ * Given an array of pointers `a' of `n' members, it searches for a member
+ * equal to the pointer `p'. If it is found its position is returned,
+ * otherwise -1 is the value returned.
+ */
+#define FIND_PTR(p, a, n)						\
+({									\
+ 	int _i, _ret;							\
+									\
+	for(_i=0, _ret=-1; _i<(n); _i++)				\
+		if((a)[_i] == (p)) {					\
+			_ret=_i;					\
+			break;						\
+		}							\
+	_ret;								\
+})
+
+/* 
+ *  *  Functions declaration  *  *
+ */
 u_long fnv_32_buf(void *buf, size_t len, u_long hval);
 unsigned int inthash(unsigned int key);
 inline unsigned int dl_elf_hash (const unsigned char *name);

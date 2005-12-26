@@ -49,6 +49,8 @@
 					   handled by the pkt_queue. */
 #define ASYNC_REPLIED		(1<<4)
 #define LOOPBACK_PKT		(1<<5)  /* This is a packet destinated to me */
+#define RESTRICTED_PKT		(1<<6)	/* Packet sent from a node in restricted 
+					   mode */
 
 /* Broacast ptk's flags */
 #define BCAST_TRACER_PKT	1	/*When a bcast is marked with this, it 

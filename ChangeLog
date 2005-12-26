@@ -1,5 +1,10 @@
 0.0.5b
 
+- Multi interfaces multipath: if we can reach a rnode trough multiple
+  interfaces, use them all with a multipath route.
+
+- Restricted nodes and normal nodes are now invisible to each other.
+
 - Main part of the NTK_RFC 0001 written, the (g)nodes have now the ability to
   rehook to avoid IP collision.
 

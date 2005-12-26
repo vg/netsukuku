@@ -1139,7 +1139,7 @@ int hook_get_free_nodes(int hook_level, struct free_nodes_hdr *fn_hdr,
 		if(rq->node->flags & MAP_HNODE)
 			continue;
 
-		err=get_free_nodes(rq->ip, rq->dev, fn_hdr, fnodes);
+		err=get_free_nodes(rq->ip, rq->dev[0], fn_hdr, fnodes);
 		if(err == -2)
 			fatal("Netsukuku is full! Bring down some nodes and retry");
 		else if(err == -1)
@@ -1149,7 +1149,7 @@ int hook_get_free_nodes(int hook_level, struct free_nodes_hdr *fn_hdr,
 		inet_setip(gnode_ipstart, fn_hdr->ipstart, my_family);
 
 		/* Get the qspn round info */
-		if(!get_qspn_round(rq->ip, rq->dev, rq->final_rtt,
+		if(!get_qspn_round(rq->ip, rq->dev[0], rq->final_rtt,
 					me.cur_qspn_time,
 					me.cur_qspn_id,
 					new_gcount)) {
@@ -1241,7 +1241,7 @@ int hook_get_ext_map(int hook_level, int new_gnode,
 	/* 
 	 * Fetch the ext_map from the node who gave us the free nodes list. 
 	 */
-	if(!(new_ext_map=get_ext_map(rq->ip, rq->dev, &me.cur_quadg))) 
+	if(!(new_ext_map=get_ext_map(rq->ip, rq->dev[0], &me.cur_quadg))) 
 		fatal("None of the rnodes in this area gave me the extern map");
 	me.ext_map=new_ext_map;
 
@@ -1330,7 +1330,7 @@ void hook_get_int_map(void)
 			/* This node isn't part of our gnode, let's skip it */
 			continue; 
 
-		if((merg_map[imaps]=get_int_map(rq->ip, rq->dev, &new_root))) {
+		if((merg_map[imaps]=get_int_map(rq->ip, rq->dev[0], &new_root))) {
 			merge_maps(me.int_map, merg_map[imaps], me.cur_node, new_root);
 			imaps++;
 		}
@@ -1365,7 +1365,7 @@ void hook_get_bnode_map(void)
 			continue; 
 		old_bnode_map=me.bnode_map;	
 		old_bnodes=me.bmap_nodes;
-		me.bnode_map=get_bnode_map(rq->ip, rq->dev, &me.bmap_nodes);
+		me.bnode_map=get_bnode_map(rq->ip, rq->dev[0], &me.bmap_nodes);
 		if(me.bnode_map) {
 			bmap_levels_free(old_bnode_map, old_bnodes);
 			e=1;
@@ -1403,7 +1403,7 @@ void hook_get_igw(void)
 		
 		old_igws=me.igws;
 		old_igws_counter=me.igws_counter;
-		me.igws=get_internet_gws(rq->ip, rq->dev, &me.igws_counter);
+		me.igws=get_internet_gws(rq->ip, rq->dev[0], &me.igws_counter);
 		if(me.igws) {
 			free_igws(old_igws, old_igws_counter, GET_LEVELS(my_family));
 			e=1;

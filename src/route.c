@@ -350,20 +350,19 @@ int get_gw_ips(map_node *int_map, map_gnode **ext_map,
 }
 
 /*
- * find_rnode_dev_and_retry: Searches with rnl_get_devname() the rnode_list
+ * find_rnode_dev_and_retry: Searches with rnl_get_dev() the rnode_list
  * which points to `node'. If it is not found it waits the next radar_scan. If
- * it is not found again NULL is returned, otherwise the device name of the
+ * it is not found again NULL is returned, otherwise the devices list of the
  * related rnode_list struct is returned.
  */
-char *find_rnode_dev_and_retry(map_node *node)
+interface **find_rnode_dev_and_retry(map_node *node)
 {
-	int retries=0;
-	char *dev=0;
+	int retries;
+	interface **devs=0;
 	
-	retries=0;
-	for(; !(dev=rnl_get_devname(rlist, node)) && !retries; retries++)
+	for(retries=0; !(devs=rnl_get_dev(rlist, node)) && !retries; retries++)
 		radar_wait_new_scan();
-	return dev;
+	return devs;
 }
 
 /*
@@ -378,6 +377,7 @@ struct nexthop *rt_build_nexthop_gw(map_node *node, map_gnode *gnode, int level,
 {
 	map_node *tmp_node;
 	struct nexthop *nh=0;
+	interface **devs;
 	int n, i, ips, routes;
 	
 	if(!level) {
@@ -390,9 +390,10 @@ struct nexthop *rt_build_nexthop_gw(map_node *node, map_gnode *gnode, int level,
 			maptoip((u_int)me.int_map, (u_int)tmp_node,
 					me.cur_quadg.ipstart[1], &nh[n].gw);
 			inet_htonl(nh[n].gw.data, nh[n].gw.family);
-
-			if(!(nh[n].dev=find_rnode_dev_and_retry(tmp_node)))
+			
+			if(!(devs=find_rnode_dev_and_retry(tmp_node)))
 				continue;
+			nh[n].dev=devs[0]->dev_name;
 
 			nh[n].hops=node->links-i;	/* multipath weigth */
 			n++;
@@ -418,8 +419,9 @@ struct nexthop *rt_build_nexthop_gw(map_node *node, map_gnode *gnode, int level,
 			memcpy(&nh[n].gw, &gnode_gws[ips], sizeof(inet_prefix));
 			inet_htonl(nh[n].gw.data, nh[n].gw.family);
 			
-			if(!(nh[n].dev=find_rnode_dev_and_retry(gw_nodes[ips])))
+			if(!(devs=find_rnode_dev_and_retry(gw_nodes[ips])))
 				continue;
+			nh[n].dev=devs[0]->dev_name;
 			
 			nh[n].hops=routes-ips; 	/* multipath weigth */
 			n++;
@@ -434,32 +436,75 @@ finish:
 	return nh;
 }
 
+struct nexthop *rt_build_nexthop_voidgw(void *void_gw, interface **oifs)
+{
+	map_node *gw_node;
+	ext_rnode *e_rnode=0;
+	struct nexthop *nh;
+	int dev_n, i;
+
+	if(void_gw)
+		gw_node=(map_node *)void_gw;
+
+	if(!oifs && !(oifs=find_rnode_dev_and_retry(gw_node)))
+		/* It wasn't found any suitable dev */
+		return 0;
+	
+	for(dev_n=0; oifs[dev_n]; dev_n++);
+	
+	nh=xmalloc(sizeof(struct nexthop)*(dev_n+1));
+	memset(nh, '\0', sizeof(struct nexthop)*(dev_n+1));
+
+	if(gw_node->flags & MAP_ERNODE) {
+		e_rnode=(ext_rnode *)gw_node;
+		memcpy(&nh[0].gw, &e_rnode->quadg.ipstart[0], sizeof(inet_prefix));
+	} else 
+		maptoip((u_int)me.int_map, (u_int)gw_node, 
+				me.cur_quadg.ipstart[1], &nh[0].gw);
+	inet_htonl(nh[0].gw.data, nh[0].gw.family);
+
+	for(i=0; i<dev_n; i++) {
+		memcpy(&nh[i], &nh[0], sizeof(struct nexthop));
+		nh[i].dev=oifs[i]->dev_name;
+		nh[i].hops=1;
+	}
+	nh[i].dev=0;
+
+	return nh;
+}
 
 /* 
  * rt_update_node: It adds/replaces or removes a route from the kernel's
  * table, if the node's flag is found, respectively, to be set to 
- * MAP_UPDATE or set to MAP_VOID. The destination of the route can be given
- * with `dst_ip', `dst_node' or `dst_quadg'.
+ * MAP_UPDATE or set to MAP_VOID. When a route is deleted only the destination
+ * arguments are required (i.e `void_gw', `oif' are not needed).
+ * 
+ * The destination of the route can be given with `dst_ip', `dst_node' or
+ * `dst_quadg'.
+ * 
  * If `dst_ip' is not null, the given inet_prefix struct is used, it's also 
  * used the `dst_node' to retrieve the flags.
- * If the destination of the route is a node which belongs to the level 0, it
- * must be passed to `dst_node'. 
+ * If the destination of the route is a node which belongs to the level 0, the
+ * same node must be passed in the `dst_node' argument. 
+ * 
  * If `level' is > 0 and `dst_quadg' is not null, then it updates the gnode
  * which is inside the `dst_quadg' struct: dst_quadg->gnode[_EL(level)]. The 
  * quadro_group struct must be complete and refer to the groups of the 
  * given gnode. 
+ * 
  * If `level' is > 0 and `dst_quadg' is null, it's assumed that the gnode is passed
  * in `dst_node' and that the quadro_group for that gnode is me.cur_quadg.
+ * 
  * If `void_gw' is not null, it is used as the only gw to reach the destination 
  * node, otherwise the gw will be calculated.
- * `oif', if not null, will be used in conjuction with `void_gw' as the output
- * interface to be used in the route.
+ * `oifs', if not null, will be used in conjuction with `void_gw' as the output
+ * interfaces to be used in the route. `oifs' is an array of pointers of
+ * maximum MAX_INTERFACES# members.
  */
 void rt_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg, 
-		      void *void_gw, char *oif, u_char level)
+		      void *void_gw, interface **oifs, u_char level)
 {
-	ext_rnode *e_rnode=0;
-	map_node *node=0, *gw_node=0;
+	map_node *node=0;
 	map_gnode *gnode=0;
 	struct nexthop *nh=0;
 	inet_prefix to;
@@ -497,9 +542,10 @@ void rt_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg
 #endif
 	inet_htonl(to.data, to.family);
 
-	if(void_gw)
-		gw_node=(map_node *)void_gw;
-
+	if(node->flags & MAP_VOID)
+		/* We have only to delete the route, skip to do_update */
+		goto do_update;
+		
 	/* 
 	 * If `node' it's a rnode of level 0, do nothing! It is already 
 	 * directly connected to me. (If void_gw is not null, skip this check).
@@ -511,40 +557,18 @@ void rt_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg
 	if(node->flags & MAP_ME)
 		goto finish;
 
-	if(node->flags & MAP_VOID)
-		/* We have only to delete the route, skip to do_update */
-		goto do_update;
-		
 	/*
 	 * Now, get the gateway to reach the destination.
 	 */
-	if(void_gw) {
-		nh=xmalloc(sizeof(struct nexthop)*2);
-		memset(nh, '\0', sizeof(struct nexthop)*2);
-		
-		if(gw_node->flags & MAP_ERNODE) {
-			e_rnode=(ext_rnode *)gw_node;
-			memcpy(&nh[0].gw, &e_rnode->quadg.ipstart[0], sizeof(inet_prefix));
-		} else 
-			maptoip((u_int)me.int_map, (u_int)gw_node, 
-					me.cur_quadg.ipstart[1], &nh[0].gw);
-		inet_htonl(nh[0].gw.data, nh[0].gw.family);
-		
-		/* Set the device name */
-		if(!oif && !(nh[0].dev=find_rnode_dev_and_retry(gw_node)))
-			/* It wasn't found any suitable dev */
-			goto finish;
-		else if(oif)
-			nh[0].dev=oif;
-		nh[1].dev=0;
-	} else  {
+	if(void_gw)
+		nh=rt_build_nexthop_voidgw(void_gw, oifs);
+	else
 		nh=rt_build_nexthop_gw(node, gnode, level, MAX_MULTIPATH_ROUTES);
-		if(!nh) {
-			debug(DBG_NORMAL, "Cannot get the gateway for "
-					"the gnode: %d of level: %d, ip:"
-					"%s", node_pos, level, to_ip);
-			goto finish;
-		}
+	if(!nh) {
+		debug(DBG_NORMAL, "Cannot get the gateway for "
+				"the (g)node: %d of level: %d, ip:"
+				"%s", node_pos, level, to_ip);
+		goto finish;
 	}
 
 do_update:
@@ -595,13 +619,13 @@ void rt_rnodes_update(int check_update_flag)
 	ext_rnode *e_rnode;
 	map_node *root_node, *node, *rnode;
 	map_gnode *gnode;
-	char *oif;
+	interface **out_devs;
 	
 	/* Internal map */
 	root_node=me.cur_node;
 	for(i=0; i < root_node->links; i++) {
 		rnode=(map_node *)root_node->r_node[i].r_node;
-		oif=rnl_get_devname(rlist, rnode);
+		out_devs=rnl_get_dev(rlist, rnode);
 
 		if(rnode->flags & MAP_ERNODE) {
 			level=0;
@@ -609,7 +633,7 @@ void rt_rnodes_update(int check_update_flag)
 			
 			if(!check_update_flag || rnode->flags & MAP_UPDATE) {
 				rt_update_node(&e_rnode->quadg.ipstart[0], rnode, 0,
-						me.cur_node, oif, level);
+						me.cur_node, out_devs, level);
 				rnode->flags&=~MAP_UPDATE;
 			}
 
@@ -621,14 +645,14 @@ void rt_rnodes_update(int check_update_flag)
 				node = &gnode->g;
 				if(!check_update_flag || node->flags & MAP_UPDATE) {
 					rt_update_node(0, 0, &e_rnode->quadg,
-							rnode, oif, level);
+							rnode, out_devs, level);
 					node->flags&=~MAP_UPDATE;
 				}
 			}
 		} else {
 			level=0;
 			if(!check_update_flag || rnode->flags & MAP_UPDATE) {
-				rt_update_node(0, rnode, 0, me.cur_node, oif, level); 
+				rt_update_node(0, rnode, 0, me.cur_node, out_devs, level); 
 				rnode->flags&=~MAP_UPDATE;
 			}
 		}

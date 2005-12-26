@@ -20,6 +20,7 @@
 #define ROUTE_H
 
 #include "gmap.h"
+#include "if.h"
 
 #define MAX_MULTIPATH_ROUTES		24	/* The maximum number of 
 						   nexthops used to create a 
@@ -50,7 +51,7 @@ int get_gw_ips(map_node *, map_gnode **, map_bnode **, u_int *,
 struct nexthop *rt_build_nexthop_gw(map_node *node, map_gnode *gnode, int level,
 		int maxhops);
 void rt_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg, 
-		      void *void_gw, char *oif, u_char level);
+		      void *void_gw, interface **, u_char level);
 void rt_rnodes_update(int check_update_flag);
 void rt_full_update(int check_update_flag);
 

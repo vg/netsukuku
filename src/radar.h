@@ -54,9 +54,10 @@ struct radar_queue
 	struct radar_queue *prev;
 
 	inet_prefix	ip;			/*Node's ip*/
-	interface	*dev;			/*The pointer to the interface struct, present 
+	interface	*dev[MAX_INTERFACES];	/*The pointers to the interface structs, present 
 						  in me.cur_ifs, of the device where we got the 
 						  node's pongs */
+	int		dev_n;			/* Number of devices */
 	
 	map_node       *node;			/*The node we are pinging*/
 	quadro_group	quadg;			/*Node's data for the ext_map*/
@@ -65,8 +66,9 @@ struct radar_queue
 	char 		pings;			/*The total ECHO_ME pkts received from this node*/
 	char 		pongs;			/*The total pongs (ECHO_REPLY) received from this node*/
 	struct timeval 	rtt[MAX_RADAR_SCANS];	/*The round rtt of each pong*/
-	struct timeval 	final_rtt;		/*When all the rtt is filled, or when MAX_RADAR_WAIT is expired,
-						  final_rtt will keep the average of all the rtts */
+	struct timeval 	final_rtt;		/*When all the rtt is filled, or when MAX_RADAR_WAIT
+						  is expired, final_rtt will keep the average of all
+						  the rtts */
 };
 struct radar_queue *radar_q;	/*the start of the linked list of radar_queue*/
 int radar_q_counter;
@@ -82,12 +84,12 @@ struct rnode_list
 	struct rnode_list *next;
 	struct rnode_list *prev;
 
-	map_node	*node;		/* The node which is pointed by this 
-					   rnode */
-	interface	*dev;		/* The pointer to the interface struct 
-					   (in me.cur_ifs), which cointains the 
-					   device where the packets should be 
-					   sent to reach this rnode */
+	map_node	*node;			/* The node which is pointed by this 
+						   rnode */
+	interface       *dev[MAX_INTERFACES];	/* The pointers to the interface structs
+						   (in me.cur_ifs), which cointains the
+						   devices which links ourself with this rnode. */
+	int		dev_n;
 };
 struct rnode_list *rlist;
 int rlist_counter;
@@ -136,8 +138,7 @@ struct radar_queue *find_ip_radar_q(inet_prefix *ip);
 int count_hooking_nodes(void);
 
 void rnl_reset(struct rnode_list **rnlist, int *rnlist_counter);
-interface *rnl_get_dev(struct rnode_list *rnlist, map_node *node);
-char *rnl_get_devname(struct rnode_list *rnlist, map_node *node);
+interface **rnl_get_dev(struct rnode_list *rnlist, map_node *node);
 
 void new_rnode_allowed(struct allowed_rnode **alr, int *alr_counter,
 		int *gid, int min_lvl, int max_lvl);

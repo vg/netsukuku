@@ -145,20 +145,20 @@ struct radar_queue *find_ip_radar_q(inet_prefix *ip)
 
 /*
  * rnl_add: adds a new rnode_list struct in the `*rnlist' list. The new
- * allocated struct will be filled respectively with `rnode_pos' and
- * `dev'.
- * `root_node' is the pointer to the current root node in the internal map,
- * i.e me.cur_node.
+ * allocated struct will be filled respectively with `rnode' and `dev'.
  * It returns the added `rnode_list' struct.
  */
 struct rnode_list *rnl_add(struct rnode_list **rnlist, int *rnlist_counter, 
-		map_node *root_node, int rnode_pos, interface *dev)
+		map_node *rnode, interface *dev)
 {
 	struct rnode_list *rnl;
 
 	rnl	       = xmalloc(sizeof(struct rnode_list));
-	rnl->node      = (map_node *)root_node->r_node[rnode_pos].r_node;
-	rnl->dev       = dev;
+	memset(rnl, 0, sizeof(struct rnode_list));
+	
+	rnl->node      = (map_node *)rnode;
+	rnl->dev[0]    = dev;
+	rnl->dev_n++;
 
 	clist_add(rnlist, rnlist_counter, rnl);
 	
@@ -220,26 +220,131 @@ struct rnode_list *rnl_find_node(struct rnode_list *rnlist, map_node *node)
 	return 0;
 }
 
-interface *rnl_get_dev(struct rnode_list *rnlist, map_node *node)
+/*
+ * rnl_add_dev: 
+ * If `rnl' is 0 a new struct is added in `*rnlist' using `node'.
+ * In both cases the `new_dev' is added in the rnl->dev[] array of
+ * pointers (if it isn't already present there) and rnl->dev_n is
+ * incremented.
+ * On error -1 is returned.
+ */
+int rnl_add_dev(struct rnode_list **rnlist, int *rnlist_counter,
+		struct rnode_list *rnl, map_node *node, interface *new_dev)
 {
-	struct rnode_list *rnl;
+	int i;
 
-	rnl=rnl_find_node(rnlist, node);
-	if(!rnl)
+	if(!rnl) {
+		rnl=rnl_add(rnlist, rnlist_counter, node, new_dev);
 		return 0;
+	}
 
-	return rnl->dev;
+	if(rnl->dev_n >= MAX_INTERFACES)
+		return -1;
+	
+	for(i=0; i<rnl->dev_n; i++)
+		if(rnl->dev[i] == new_dev)
+			return 0;
+
+	rnl->dev[rnl->dev_n++]=new_dev;
+
+	return 0;
 }
 
-char *rnl_get_devname(struct rnode_list *rnlist, map_node *node)
+/*
+ * rnl_del_dev: It searches a pointer in the rnl->dev[] array equal to
+ * `del_dev'. If it is found, it is set to 0 and rnl->dev_n is decremented,
+ * otherwise 0 is returned.
+ * If rnlist->dev_n is 0, the found rnlist struct is deleted from the llist.
+ * On error -1 is returned.
+ */
+int rnl_del_dev(struct rnode_list **rnlist, int *rnlist_counter,
+		struct rnode_list *rnl, interface *del_dev)
+{
+	int i;
+
+	if(!rnl) 
+		return 0;
+
+	if(rnl->dev_n <= 0)
+		return -1;
+	
+	for(i=0; i<rnl->dev_n; i++) {
+		if(rnl->dev[i] == del_dev) {
+			if(i == rnl->dev_n-1)
+				rnl->dev[i]=0;
+			else {
+				rnl->dev[i]=rnl->dev[rnl->dev_n-1];
+				rnl->dev[rnl->dev_n-1]=0;
+			}
+			rnl->dev_n--;
+			break;
+		}
+	}
+
+	if(!rnl->dev_n)
+		rnl_del(rnlist, rnlist_counter, rnl);
+	
+	return 0;
+}
+
+/*
+ * rnl_update_devs: it updates the device array present in the rnode_list
+ * struct of `node'.
+ * It searches in rnlist a struct which have rnlist->node == `node',
+ * then it substitutes rnlist->dev with `devs' and rnlist->dev_n with `dev_n'.
+ * If there is a difference between the new `devs' array and the old one, 1 is
+ * returned.
+ */
+int rnl_update_devs(struct rnode_list **rnlist, int *rnlist_counter,
+	                map_node *node, interface **devs, int dev_n)
+{
+	struct rnode_list *old_rnl, *new_rnl;
+	int i, old_dev_n, dev_pos, update=0;
+
+	old_rnl=rnl_find_node(*rnlist, node);
+	if(!old_rnl)
+		old_dev_n=0;
+
+	if(!dev_n) {
+		/*
+		 * The new `devs' array is empty, therefore delete old_rnl
+		 */
+		rnl_del(rnlist, rnlist_counter, old_rnl);
+		return 0;
+	}
+
+	new_rnl=rnl_add(rnlist, rnlist_counter, node, devs[0]);
+	for(i=1; i < dev_n; i++)
+		rnl_add_dev(rnlist, rnlist_counter, new_rnl, node, devs[i]);
+
+	if(old_dev_n)
+		/*
+		 * Diff old_rnl->dev and `devs'
+		 */
+		for(i=0; i < dev_n; i++) {
+			dev_pos = FIND_PTR(devs[i], old_rnl->dev, old_rnl->dev_n);
+			if(dev_pos < 0) {
+				update=1;
+				break;
+			}
+		}
+	else if(!old_dev_n)
+		update=1;
+	
+	if(update) {
+		list_substitute(old_rnl, new_rnl);
+		list_free(old_rnl);
+	}
+
+	return update;
+}
+
+interface **rnl_get_dev(struct rnode_list *rnlist, map_node *node)
 {
 	struct rnode_list *rnl;
 
 	rnl=rnl_find_node(rnlist, node);
-	if(!rnl)
-		return 0;
-
-	return rnl->dev->dev_name;
+	return !rnl ? 0 : rnl->dev;
 }
 
 /*
@@ -369,7 +474,6 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 	int broot_node_pos;
 	int level, blevel, external_node, total_levels, first_level;
 	void *void_map, *void_gnode;
-	char *oif;
 
 	if(!me.cur_node->links)
 		return 0;
@@ -381,8 +485,6 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 			/* The rnode is not really dead! */
 			continue;
 
-		oif=rnl_get_devname(rlist, node);
-		
 		if(node->flags & MAP_ERNODE) {
 			e_rnode=(ext_rnode *)node;
 			external_node=1;
@@ -418,7 +520,7 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 				qspn_dec_gcount(qspn_gnode_count, level+1, 1); 
 				
 				/* delete the route */
-				rt_update_node(0, node, 0, me.cur_node, oif, level); 
+				rt_update_node(0, node, 0,0,0, level); 
 				
 			 	send_qspn_now[level]=1;
 			} else {
@@ -471,8 +573,8 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 				/* Delete the entries from the routing table */
 				if(level == 1)
 				  rt_update_node(&e_rnode->quadg.ipstart[0], 
-						  e_rnode, 0, me.cur_node, oif, 0);
-				rt_update_node(0, 0, &e_rnode->quadg, 0, oif, level);
+						  0, 0, 0, 0, 0);
+				rt_update_node(0, 0, &e_rnode->quadg, 0, 0, level);
 			 	
 				send_qspn_now[level]=1;
 			}
@@ -574,15 +676,15 @@ void radar_update_map(void)
 	map_node  *node, *root_node;
 	map_rnode rnn, *new_root_rnode;
 	ext_rnode *e_rnode;
-	struct rnode_list *rnl;
 	
-	int i, e, diff, updated_rnodes;
+	int i, e, diff;
 	int rnode_added[MAX_LEVELS], rnode_deleted[MAX_LEVELS], rnode_pos;
 	int level, external_node, total_levels, root_node_pos, node_update;
 	void *void_map;
 	const char *ntop;
+	char updated_rnodes, routes_update, devs_update;
 
-	updated_rnodes=0;
+	updated_rnodes=routes_update=devs_update=0;
 	memset(rnode_added, 0, sizeof(int)*MAX_LEVELS);
 	memset(rnode_deleted, 0, sizeof(int)*MAX_LEVELS);
 	
@@ -627,7 +729,7 @@ void radar_update_map(void)
 
 		   for(level=total_levels-1; level >= 0; level--) {
 			   qspn_set_map_vars(level, 0, &root_node, &root_node_pos, 0);
-			   node_update=0;
+			   node_update=devs_update=0;
 
 			   if(!level) {
 				   void_map=me.int_map;
@@ -752,13 +854,6 @@ void radar_update_map(void)
 					   qspn_inc_gcount(qspn_gnode_count, level+1, 1);
 				   }
 
-				   /*
-				    * Add the rnode in the rnode_list
-				    */
-				   if(!level)
-					   rnl=rnl_add(&rlist, &rlist_counter, root_node, 
-							   root_node->links-1, rq->dev);
-				 
 				   rnode_added[level]++;
 			   } else {
 				   /* 
@@ -781,6 +876,18 @@ void radar_update_map(void)
 			   if(level)
 				   gnode->flags&=~GMAP_VOID;
 			   node->flags&=~MAP_VOID & ~MAP_UPDATE & ~QSPN_OLD;
+
+
+			   /*
+			    * Update the devices list of the rnode
+			    */
+			   if(!level) {
+				  devs_update=rnl_update_devs(&rlist, &rlist_counter,
+					  node, rq->dev, rq->dev_n);
+				  if(devs_update)
+					  routes_update++;
+			   }
+
 
 			   /* Nothing is really changed */
 			   if(!node_update)
@@ -809,7 +916,7 @@ void radar_update_map(void)
 				   send_qspn_now[level-1]=1;
 			   }
 
-			   if(node_update)
+			   if(node_update || devs_update)
 				   node->flags|=MAP_UPDATE;
 
 		   } /*for(level=0, ...)*/
@@ -834,8 +941,8 @@ void radar_update_map(void)
 	}
 
 	/* Give a refresh to the kernel */
-	if(is_bufzero((char *)rnode_added, sizeof(int)*MAX_LEVELS) && 
-			!(me.cur_node->flags & MAP_HNODE))
+	if((is_bufzero((char *)rnode_added, sizeof(int)*MAX_LEVELS) ||
+		routes_update) && !(me.cur_node->flags & MAP_HNODE))
 		rt_rnodes_update(1);
 }
 
@@ -851,6 +958,7 @@ add_radar_q(PACKET pkt)
 	quadro_group quadg;
 	struct radar_queue *rq;
 	u_int ret=0;
+	int dev_pos;
 
 	if(me.cur_node->flags & MAP_HNODE) {
 		/* 
@@ -906,10 +1014,21 @@ add_radar_q(PACKET pkt)
 
 		memcpy(&rq->ip, &pkt.from, sizeof(inet_prefix));
 		memcpy(&rq->quadg, &quadg, sizeof(quadro_group));
-		rq->dev = pkt.dev;
+		rq->dev[0] = pkt.dev;
+		rq->dev_n++;
 		
 		list_add(radar_q, rq);
 		radar_q_counter++;
+	} else {
+		/*
+		 * Check if the input device is in the rq->dev array,
+		 * if not add it.
+		 */
+		if(rq->dev_n < MAX_INTERFACES) {
+			dev_pos=FIND_PTR(pkt.dev, rq->dev, rq->dev_n);
+			if(dev_pos < 0)
+				rq->dev[rq->dev_n++]=pkt.dev;
+		}
 	}
 
 	return rq;
@@ -924,10 +1043,14 @@ int radar_exec_reply(PACKET pkt)
 {
 	struct timeval t;
 	struct radar_queue *rq;
-	u_int rtt_ms=0, dev_pos;
+	u_int rtt_ms=0;
+	int dev_pos;
 	
 	gettimeofday(&t, 0);
-	
+
+	/*
+	 * Get the radar_queue struct relative to pkt.from
+	 */
 	rq=add_radar_q(pkt);
 
 	dev_pos=ifs_get_pos(me.cur_ifs, me.cur_ifs_n, pkt.dev);
@@ -992,6 +1115,14 @@ int radar_recv_reply(PACKET pkt)
 		debug(DBG_INSANE, "Filtering 0x%x ECHO_REPLY", pkt.hdr.id);
 		return -1;
 	}
+
+	/*
+	 * If the rnode is in restricted mode and we are not, drop the pkt.
+	 * If we are in restricted mode and the rnode isn't, drop the pkt
+	 */
+	if((pkt.hdr.flags & RESTRICTED_PKT && !server_opt.restricted) ||
+		(!(pkt.hdr.flags & RESTRICTED_PKT) && server_opt.restricted))
+		return -1;
 	
 	return radar_exec_reply(pkt);
 }
@@ -1060,6 +1191,9 @@ int radar_scan(int activate_qspn)
 		debug(DBG_INSANE, "Radar scan 0x%x activated", my_echo_id);
 	} else
 		total_radars++;
+	
+	if(server_opt.restricted)
+		pkt.hdr.flags|=RESTRICTED_PKT;
 
 	/* Loop through the me.cur_ifs array, sending the bouquet using all the
 	 * interfaces we have */
@@ -1133,15 +1267,15 @@ int radard(PACKET rpkt)
 	PACKET pkt;
 	struct radar_queue *rq;
 	ssize_t err;
-	int dev_pos;
 	const char *ntop=0;
+	int dev_pos;
 	u_char echo_scans_count;
 
 	if(alwd_rnodes_counter && !is_rnode_allowed(rpkt.from, alwd_rnodes)) {
 		debug(DBG_INSANE, "Filtering 0x%x ECHO_ME", rpkt.hdr.id);
 		return -1;
 	}
-		
+	
 	dev_pos=ifs_get_pos(me.cur_ifs, me.cur_ifs_n, rpkt.dev);
 	if(dev_pos < 0)
 		debug(DBG_NORMAL, "The 0x%x ECHO_ME pkt was received by a non "

@@ -153,6 +153,16 @@ do {									\
 	(typeof((list)))_ret;						\
 })
 	
+#define list_substitute(old_list, new_list)				\
+do{									\
+	(new_list)->next=(old_list)->next;				\
+	(new_list)->prev=(old_list)->prev;				\
+	if((new_list)->next)						\
+		(new_list)->next->prev=(new_list);			\
+	if((new_list)->prev)						\
+		(new_list)->prev->next=(new_list);			\
+}while(0)
+
 #define list_for(i) for(; (i); (i)=(typeof (i))(i)->next)
 
 /*

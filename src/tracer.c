@@ -1124,8 +1124,11 @@ int flood_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), u_char level
 	inet_prefix to;
 	ext_rnode *e_rnode;
 	map_node *dst_node, *node;
+	interface **devs;
+
 	ssize_t err;
 	const char *ntop;
+	char *dev_name;
 	int i, e=0;
 
 	/*Forward the pkt to all our r_nodes (excluding the excluded;)*/
@@ -1156,13 +1159,20 @@ int flood_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), u_char level
 
 		/*Let's send the pkt*/
 		pkt.sk=0;
-		pkt_add_dev(&pkt, rnl_get_dev(rlist, node), 1);
-		err=send_rq(&pkt, 0, pkt.hdr.op, pkt.hdr.id, 0, 0, 0);
+		devs=rnl_get_dev(rlist, node);
+		if(!devs || !devs[0])
+			err=-1;
+		else {
+			pkt_add_dev(&pkt, devs[0], 1);
+			err=send_rq(&pkt, 0, pkt.hdr.op, pkt.hdr.id, 0, 0, 0);
+		}
 		if(err==-1) {
 			ntop=inet_to_str(pkt.to);
+			if(!devs)
+				dev_name="NULL";
 			error("flood_pkt_send(): Cannot send the %s request"
-					" with id: %d to %s.", rq_to_str(pkt.hdr.op),
-					pkt.hdr.id, ntop);
+					" with id: %d to %s dev %s.", rq_to_str(pkt.hdr.op),
+					pkt.hdr.id, ntop, dev_name);
 		} else
 			e++;
 	}
