@@ -89,7 +89,7 @@ char *xstrndup(const char *str, size_t n)
 	char *cp;
 
 	len=strlen(str) + 1;
-	if(len > n)
+	if(len > n && n > 0)
 		len=n;
 	cp=xmalloc(len);
 	strncpy(cp, str, len);

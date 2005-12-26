@@ -118,7 +118,7 @@ int get_all_up_ifs(interface *ifs, int ifs_n)
 		n++;
 
 		if((idx-1) > i)
-			i=idx;
+			i=idx-1;
 	}
 	
 	return n;

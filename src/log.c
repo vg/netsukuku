@@ -21,6 +21,12 @@
 #include <string.h>
 #include <syslog.h>
 
+#ifdef DEBUG
+#include <sys/types.h>
+#include <signal.h>
+#include <unistd.h>
+#endif
+
 #include "log.h"
 
 char *__argv0;
@@ -49,6 +55,11 @@ void fatal(const char *fmt,...)
 	va_start(args, fmt);
 	print_log(LOG_CRIT, str, args);
 	va_end(args);
+
+#ifdef DEBUG
+	/* Useful to catch the error in gdb */
+	kill(getpid(), SIGSEGV);
+#endif
 	exit(1);
 }
 

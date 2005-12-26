@@ -950,13 +950,13 @@ int hook_init(void)
 	
 	debug(DBG_NORMAL, "Activating ip_forward and disabling rp_filter");
 	route_ip_forward(my_family, 1);
-	route_rp_filter_all_dev(my_family, me.cur_ifs, me.cur_ifs_n, 0);
 
 	total_hooks=0;
 	we_are_rehooking=0;
 	free_the_tmp_cur_node=0;
 
 	hook_reset();
+	route_rp_filter_all_dev(my_family, me.cur_ifs, me.cur_ifs_n, 0);
 
 	return 0;
 }

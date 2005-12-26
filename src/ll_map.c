@@ -160,7 +160,7 @@ int ll_nth_up_if(int n)
 	if(n <= 0)
 		fatal("%s:%d: Bad argument given", ERROR_POS);
 	
-	for(found=0, i=n-1; i<16; i++) {
+	for(found=0, i=1; i<=16; i++) {
 		flags=ll_index_to_flags(i);
 		if((flags & IFF_UP) && !(flags & IFF_LOOPBACK)) {
 			found++;

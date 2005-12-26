@@ -173,6 +173,8 @@ void rnl_del(struct rnode_list **rnlist, int *rnlist_counter,
 {
 	if(rnl)
 		clist_del(rnlist, rnlist_counter, rnl);
+	if(!(*rnlist_counter))
+		*rnlist=0;
 }
 
 /*
@@ -313,10 +315,6 @@ int rnl_update_devs(struct rnode_list **rnlist, int *rnlist_counter,
 		return 0;
 	}
 
-	new_rnl=rnl_add(rnlist, rnlist_counter, node, devs[0]);
-	for(i=1; i < dev_n; i++)
-		rnl_add_dev(rnlist, rnlist_counter, new_rnl, node, devs[i]);
-
 	if(old_dev_n)
 		/*
 		 * Diff old_rnl->dev and `devs'
@@ -332,8 +330,11 @@ int rnl_update_devs(struct rnode_list **rnlist, int *rnlist_counter,
 		update=1;
 	
 	if(update) {
-		list_substitute(old_rnl, new_rnl);
-		list_free(old_rnl);
+		new_rnl=rnl_add(rnlist, rnlist_counter, node, devs[0]);
+		for(i=1; i < dev_n; i++)
+			rnl_add_dev(rnlist, rnlist_counter, new_rnl, node, devs[i]);
+
+		rnl_del(rnlist, rnlist_counter, old_rnl);
 	}
 
 	return update;
@@ -470,6 +471,7 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 	ext_rnode *e_rnode=0;
 	ext_rnode_cache *erc;
 	struct qspn_buffer *qb;
+	struct rnode_list *rnl;
 	int i, e, node_pos, bm, rnode_pos, bnode_rnode_pos, root_node_pos;
 	int broot_node_pos;
 	int level, blevel, external_node, total_levels, first_level;
@@ -500,6 +502,10 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 			qspn_set_map_vars(level, 0, &root_node, &root_node_pos, 0);
 			blevel=level-1;
 
+			/* delete the rnode from the rnode_list */
+			rnl=rnl_find_node(rlist, node);
+			rnl_del(&rlist, &rlist_counter, rnl);
+
 			/*
 			 * Just delete it from all the maps.
 			 */
@@ -512,9 +518,6 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 				debug(DBG_NORMAL, "radar: The node %d is dead", 
 						node_pos);
 
-				/* delete the rnode from the rnode_list */
-				rnl_del(&rlist, &rlist_counter, rnl_find_node(rlist, node));
-				
 				/* delete it from the int_map and update the gcount */
 				map_node_del(node);
 				qspn_dec_gcount(qspn_gnode_count, level+1, 1); 
