@@ -30,6 +30,7 @@
 #include "inet.h"
 #include "if.h"
 #include "krnl_route.h"
+#include "iptunnel.h"
 #include "endianness.h"
 #include "bmap.h"
 #include "route.h"
@@ -745,6 +746,13 @@ void hook_set_all_ips(inet_prefix ip, interface *ifs, int ifs_n)
 
 	if(set_all_dev_ip(ip, ifs, ifs_n) < 0)
 		fatal("Cannot set the %s ip to all the interfaces", ntop);
+
+	if(server_opt.restricted) {
+		set_all_ifs(&tunl0_if, 1, set_dev_down);
+		set_all_ifs(&tunl0_if, 1, set_dev_up);
+		if(set_all_dev_ip(ip, &tunl0_if, 1) < 0)
+			fatal("Cannot set the %s ip to tunl0", ntop);
+	}
 }
 
 /*
@@ -940,23 +948,16 @@ int hook_init(void)
 	add_pkt_op(GET_INTERNET_GWS, SKT_TCP, ntk_tcp_port, put_internet_gws);
 	add_pkt_op(PUT_INTERNET_GWS, SKT_TCP, ntk_tcp_port, 0);
 
-#if 0
-	if(my_family == AF_INET) {
-		debug(DBG_NORMAL, "Deleting the loopback network (leaving only"
-				" 127.0.0.1)");
-		rt_del_loopback_net();
-	}
-#endif
-	
-	debug(DBG_NORMAL, "Activating ip_forward and disabling rp_filter");
-	route_ip_forward(my_family, 1);
-
 	total_hooks=0;
 	we_are_rehooking=0;
 	free_the_tmp_cur_node=0;
 
 	hook_reset();
+
+	debug(DBG_NORMAL, "Activating ip_forward and disabling rp_filter");
+	route_ip_forward(my_family, 1);
 	route_rp_filter_all_dev(my_family, me.cur_ifs, me.cur_ifs_n, 0);
+	route_rp_filter_all_dev(my_family, &tunl0_if, 1, 0);
 
 	return 0;
 }
@@ -1493,10 +1494,10 @@ void hook_finish(int new_gnode, struct free_nodes_hdr *fn_hdr)
 	/* Let's fill the krnl routing table */
 	loginfo("Filling the kernel routing table");
 	rt_full_update(0);
-	/*
-	 * TODO: rt_full_internet_gateways()
-	 */
-
+	if(server_opt.restricted)
+		igw_replace_default_gateways(me.igws, me.igws_counter, 
+				me.my_igws, me.cur_quadg.levels, my_family);
+	
 	/* (Re)Hook completed */
 	loginfo("%sook completed", we_are_rehooking ? "Reh":"H");
 

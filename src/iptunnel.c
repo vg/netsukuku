@@ -198,12 +198,11 @@ static int fill_tunnel_parm(int cmd, inet_prefix *remote, inet_prefix *local,
 		strncpy(medium, dev, IFNAMSIZ-1);
 
 	sprintf(p->name, "tunl%d", tunl_number);
-			
 	if (cmd == SIOCCHGTUNNEL) {
 		/* Change the old tunnel */
 		struct ip_tunnel_parm old_p;
 		memset(&old_p, 0, sizeof(old_p));
-		if (do_get_ioctl(dev, &old_p))
+		if (do_get_ioctl(p->name, &old_p))
 			return -1;
 		*p = old_p;
 	}
@@ -218,14 +217,6 @@ static int fill_tunnel_parm(int cmd, inet_prefix *remote, inet_prefix *local,
 			return -1;
 	}
 
-	if (p->i_key == 0 && IN_MULTICAST(ntohl(p->iph.daddr))) {
-		p->i_key = p->iph.daddr;
-		p->i_flags |= GRE_KEY;
-	}
-	if (p->o_key == 0 && IN_MULTICAST(ntohl(p->iph.daddr))) {
-		p->o_key = p->iph.daddr;
-		p->o_flags |= GRE_KEY;
-	}
 	if (IN_MULTICAST(ntohl(p->iph.daddr)) && !p->iph.saddr)
 		fatal("Broadcast tunnel requires a source address.");
 
@@ -270,3 +261,22 @@ int do_del(inet_prefix *remote, inet_prefix *local, char *dev, int tunl_number)
 	return -1;
 }
 
+int tun_add_tunl0(interface *ifs)
+{
+	struct rtnl_handle rth;
+
+	if (rtnl_open(&rth, 0) < 0) {
+		error(ERROR_MSG"Cannot open the rtnetlink socket",ERROR_POS);
+		return -1;
+	}
+	ll_init_map(&rth);
+
+	ifs->dev_idx=ll_name_to_index("tunl0");	
+	if(!ifs->dev_idx)
+		return -1;
+	strncpy(ifs->dev_name, "tunl0", IFNAMSIZ);
+
+	rtnl_close(&rth);
+
+	return 0;
+}

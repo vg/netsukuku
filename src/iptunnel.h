@@ -18,10 +18,18 @@
 
 #ifndef IPTUNNEL_H
 #define IPTUNNEL_H
+
+#include "if.h"
+
+#define DEFAULT_TUNL_NUMBER	0	/* The permanent tunl0 device */
+
+interface tunl0_if;
+
 int tunnel_add(inet_prefix *remote, inet_prefix *local, char *dev,
 		int tunl_number);
 int tunnel_change(inet_prefix *remote, inet_prefix *local, char *dev,
 		int tunl_number);
 int tunnel_del(inet_prefix *remote, inet_prefix *local, char *dev,
 		int tunl_number);
+int tun_add_tunl0(interface *ifs);
 #endif

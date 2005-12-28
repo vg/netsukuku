@@ -240,6 +240,8 @@ int route_exec(int route_cmd, int route_type, int route_scope, unsigned flags,
 	if (rtnl_talk(&rth, &req.nh, 0, 0, NULL, NULL, NULL) < 0)
 		return -1;
 
+	rtnl_close(&rth);
+
 	return 0;
 }
 
@@ -428,6 +430,8 @@ int route_get_exact_prefix_dst(inet_prefix prefix, inet_prefix *dst,
 	}
 	memcpy(dst, dst_data, sizeof(inet_prefix));
 	memcpy(dev_name, dst_data+sizeof(inet_prefix), IFNAMSIZ);
+	
+	rtnl_close(&rth);
 
 	return 0;
 }

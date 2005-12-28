@@ -239,6 +239,8 @@ int if_init_all(char *ifs_name[MAX_INTERFACES], int ifs_n,
 	if(set_all_ifs(new_ifs, *new_ifs_n, set_dev_up) < 0)
 		return -1;
 
+	rtnl_close(&rth);
+
 	return ret;
 }
 
@@ -480,6 +482,8 @@ int ip_addr_flush(int family, char *dev, int scope)
 		if (flush_update() < 0)
 			return -1;
 	}
+
+	rtnl_close(&rth);
 }
 
 int ip_addr_flush_all_ifs(interface *ifs, int ifs_n, int family, int scope)

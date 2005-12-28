@@ -54,7 +54,7 @@ struct internet_gateway
 	struct internet_gateway *next;
 	struct internet_gateway *prev;
 
-/* 	u_char		gid[IPV4_LEVELS]; */
+	u_int		ip;
  	u_char		gid;
 	map_node	*node;
 

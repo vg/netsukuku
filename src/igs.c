@@ -35,6 +35,7 @@
 #include "radar.h"
 #include "netsukuku.h"
 #include "route.h"
+#include "iptunnel.h"
 #include "libping.h"
 #include "igs.h"
 #include "xmalloc.h"
@@ -299,7 +300,14 @@ void init_internet_gateway_search(void)
 				" possible. Don't include \"%s\" in the list "
 				"of interfaces utilised by the daemon",
 				server_opt.inet_gw_dev, server_opt.inet_gw_dev);
-		
+
+	loginfo("Configuring the \"tunl%d\" tunnel device", DEFAULT_TUNL_NUMBER);
+	if(tunnel_change(0, 0, 0, DEFAULT_TUNL_NUMBER) < 0)
+		fatal("Cannot initialize \"tunl%d\". Is the \"ipip\""
+			" kernel module loaded?", DEFAULT_TUNL_NUMBER);
+	if(tun_add_tunl0(&tunl0_if) < 0)
+		fatal("Cannot get device info for tunl0");
+	
 	loginfo("Launching the first ping to the Internet hosts");
 	me.inet_connected=igw_check_inet_conn();
 	if(me.inet_connected)
@@ -337,6 +345,15 @@ inet_gw *igw_add_node(inet_gw **igws, int *igws_counter,  int level,
 	return igw;
 }
 
+int igw_del(inet_gw **igws, int *igws_counter, inet_gw *igw, int level)
+{
+	if(!igw)
+		return -1;
+
+	clist_del(&igws[level], &igws_counter[level], igw);
+	return 0;
+}
+
 /*
  * igw_find_node: finds an inet_gw struct in the `igws[`level']' llist which
  * points to the given `node'. The pointer to the found struct is
@@ -363,11 +380,7 @@ int igw_del_node(inet_gw **igws, int *igws_counter,  int level,
 	inet_gw *igw;
 
 	igw=igw_find_node(igws, level, node);
-	if(!igw)
-		return -1;
-
-	clist_del(&igws[level], &igws_counter[level], igw);
-	return 0;
+	return igw_del(igws, igws_counter, igw, level);
 }
 
 /*
@@ -447,7 +460,7 @@ int igw_cmp(const void *a, const void *b)
  */
 void igw_order(inet_gw **igws, int *igws_counter, inet_gw **my_igws, int level)
 {
-	inet_gw *igw, *igw_tmp;
+	inet_gw *igw, *igw_tmp, *next;
 	int i;
 		
 	if(!igws_counter[level] || !igws[level])
@@ -473,10 +486,17 @@ void igw_order(inet_gw **igws, int *igws_counter, inet_gw **my_igws, int level)
 	 */
 	i=0;
 	igw=igws[level];
-	list_for(igw) {
+	list_safe_for(igw, next) {
+		list_substitute(igw, &igw_tmp[i]);
 		memcpy(igw, &igw_tmp[i], sizeof(inet_gw));
+
+		if(i >= MAXIGWS)
+			/* The maximum number of igw has been exceeded */
+			clist_del(&igws[level], &igws_counter[level], igw);
+
 		if(igw->node->flags & MAP_ME)
 			my_igws[level]=igw;
+		
 		i++;
 	}
 
@@ -595,7 +615,7 @@ int igw_replace_default_gateways(inet_gw **igws, int *igws_counter,
 	inet_gw *igw;
 	inet_prefix to;
 
-	struct nexthop *nh=0, *nehop;
+	struct nexthop *nh=0;
 	int ni, nexthops, level;
 
 	/* to == 0.0.0.0 */
@@ -643,17 +663,11 @@ int igw_replace_default_gateways(inet_gw **igws, int *igws_counter,
 				nh[ni].dev=server_opt.inet_gw_dev;
 				nh[ni].hops=255-ni;
 			} else {
-				nehop=rt_build_nexthop_gw(igw->node, (map_gnode *)igw->node, level, 1);
-				if(!nehop) {
-					debug(DBG_NORMAL, "igw:: Cannot get the gateway for "
-							"the (g)node: %d of level: %d"
-							, igw->gid, level);
-					continue;
-				}
-				nehop->hops=255-ni;
-				memcpy(&nh[ni], nehop, sizeof(struct nexthop));
-				if(nehop)
-					xfree(nehop);
+				u_int data[MAX_IP_INT] = {0,0,0,0};
+				data[0]=igw->ip;
+				inet_setip_raw(&nh[ni].gw, data, family);
+				nh[ni].dev=tunl0_if.dev_name;
+				nh[ni].hops=255-ni;
 			}
 			ni++;
 		}
