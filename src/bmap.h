@@ -82,6 +82,9 @@ typedef map_node map_bnode;
  * the bnode block is always put at the end, ex: 
  * |pkt_hdr|brdcast_hdr|tracer_hdr|tracer_chunks|bnode_hdr|bnode_chunks|bnode_hdr|bnode_chunks|...
  * and so on.
+ *
+ * The bblock is also used to store the Internet gateways, see igs.h for more
+ * details.
  */
 typedef struct
 {

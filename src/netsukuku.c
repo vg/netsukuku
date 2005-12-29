@@ -61,19 +61,19 @@ int ntk_load_maps(void)
 
 #if 0 /* Don't load the bnode map, it's useless */
 	if((me.bnode_map=load_bmap(server_opt.bnode_map_file, me.ext_map,
-					GET_LEVELS(my_family), &me.bmap_nodes))) {
+					FAMILY_LVLS, &me.bmap_nodes))) {
 		debug(DBG_NORMAL, "Bnode map loaded");
 	} else
 #endif
-	bmap_levels_init(BMAP_LEVELS(GET_LEVELS(my_family)), &me.bnode_map,
+	bmap_levels_init(BMAP_LEVELS(FAMILY_LVLS), &me.bnode_map,
 				&me.bmap_nodes);
-	bmap_counter_init(BMAP_LEVELS(GET_LEVELS(my_family)), 
-			&me.bmap_nodes_closed, &me.bmap_nodes_opened);
+	bmap_counter_init(BMAP_LEVELS(FAMILY_LVLS), &me.bmap_nodes_closed, 
+			&me.bmap_nodes_opened);
 
 	if((me.ext_map=load_extmap(server_opt.ext_map_file, &me.cur_quadg)))
 		debug(DBG_NORMAL, "External map loaded");
 	else
-		me.ext_map=init_extmap(GET_LEVELS(my_family), 0);
+		me.ext_map=init_extmap(FAMILY_LVLS, 0);
 	
 	return 0;
 }
@@ -100,7 +100,7 @@ int ntk_free_maps(void)
 {
 	bmap_levels_free(me.bnode_map, me.bmap_nodes);
 	bmap_counter_free(me.bmap_nodes_closed, me.bmap_nodes_opened);
-	free_extmap(me.ext_map, GET_LEVELS(my_family), 0);
+	free_extmap(me.ext_map, FAMILY_LVLS, 0);
 	free_map(me.int_map, 0);
 
 	return 0;
@@ -455,7 +455,7 @@ void init_netsukuku(char **argv)
 	init_internet_gateway_search();
 
 	pkts_init(me.cur_ifs, me.cur_ifs_n, 0);
-	qspn_init(GET_LEVELS(my_family));
+	qspn_init(FAMILY_LVLS);
 
 	/* ANDNA init */
 	if(!server_opt.disable_andna)

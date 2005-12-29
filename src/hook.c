@@ -64,7 +64,7 @@ int verify_free_nodes_hdr(inet_prefix *to, struct free_nodes_hdr *fn_hdr)
 	quadro_group qg_a, qg_b;
 	inet_prefix ipstart;
 
-	if(fn_hdr->max_levels > GET_LEVELS(my_family) || !fn_hdr->level)
+	if(fn_hdr->max_levels > FAMILY_LVLS || !fn_hdr->level)
 		return 1;
 	
 	if(fn_hdr->level >= fn_hdr->max_levels)
@@ -308,7 +308,7 @@ int get_qspn_round(inet_prefix to, interface *dev, struct timeval to_rtt,
 	
 	memcpy(&max_levels, rpkt.msg, sizeof(u_char));
 	if(QSPN_ROUND_PKT_SZ(max_levels) != rpkt.hdr.sz ||
-			max_levels > GET_LEVELS(my_family)) {
+			max_levels > FAMILY_LVLS) {
 		error("Malformed PUT_QSPN_ROUND request hdr from %s.", ntop);
 		ERROR_FINISH(ret, -1, finish);
 	}
@@ -634,7 +634,7 @@ map_bnode **get_bnode_map(inet_prefix to, interface *dev, u_int **bmap_nodes)
 	
 	/* Extracting the map... */
 	pack=rpkt.msg;
-	ret=bnode_map=unpack_all_bmaps(pack, GET_LEVELS(my_family), me.ext_map, bmap_nodes, 
+	ret=bnode_map=unpack_all_bmaps(pack, FAMILY_LVLS, me.ext_map, bmap_nodes, 
 			MAXGROUPNODE, MAXBNODE_RNODEBLOCK);
 	if(!bnode_map)
 		error("get_bnode_map(): Malformed bnode_map. Cannot load it");
@@ -711,8 +711,8 @@ inet_gw **get_internet_gws(inet_prefix to, interface *dev, int **igws_counter)
 	
 	/* Extracting the list... */
 	pack=rpkt.msg;
-	ret=unpack_igws(pack, rpkt.hdr.sz, me.int_map, me.ext_map,
-			GET_LEVELS(my_family), &igws, igws_counter);
+	ret=unpack_igws(pack, rpkt.hdr.sz, me.int_map, me.ext_map, FAMILY_LVLS,
+			&igws, igws_counter);
 	if(ret < 0) {
 		error("get_internet_gws(): Malformed internet_gws. Cannot load it");
 		igws=0;
@@ -771,7 +771,7 @@ int create_gnodes(inet_prefix *ip, int final_level)
 
 	if(!ip) {
 		for(;;) {
-			random_ip(0, 0, 0, GET_LEVELS(my_family), me.ext_map, 0, 
+			random_ip(0, 0, 0, FAMILY_LVLS, me.ext_map, 0, 
 					&me.cur_ip, my_family);
 			if(!inet_validate_ip(me.cur_ip))
 				break;
@@ -783,7 +783,7 @@ int create_gnodes(inet_prefix *ip, int final_level)
 		inet_setip_localaddr(&me.cur_ip, my_family);
 
 	if(!final_level)
-		final_level=GET_LEVELS(my_family);
+		final_level=FAMILY_LVLS;
 	
 	/* 
 	 * We remove all the traces of the old gnodes in the ext_map to add the
@@ -797,7 +797,7 @@ int create_gnodes(inet_prefix *ip, int final_level)
 
 	/* Now, we update the ext_map with the new gnodes */
 	reset_extmap(me.ext_map, final_level, 0);
-	me.cur_quadg.levels=GET_LEVELS(my_family);
+	me.cur_quadg.levels=FAMILY_LVLS;
 	iptoquadg(me.cur_ip, me.ext_map, &me.cur_quadg, QUADG_GID|QUADG_GNODE|QUADG_IPSTART);
 	
 	for(i=1; i<final_level; i++) {
@@ -837,7 +837,7 @@ void create_new_qgroup(int hook_level)
 	if(we_are_rehooking)
 		create_gnodes(&rk_gnode_ip, hook_level+1);
 	else
-		create_gnodes(0, GET_LEVELS(my_family));
+		create_gnodes(0, FAMILY_LVLS);
 	ntop=inet_to_str(me.cur_ip);
 
 	hook_set_all_ips(me.cur_ip, me.cur_ifs, me.cur_ifs_n);
@@ -1033,7 +1033,7 @@ int hook_first_radar_scan(map_gnode *hook_gnode, int hook_level, quadro_group *o
 		memcpy(gid, old_quadg->gid, sizeof(old_quadg->gid));
 		gid[hook_level]=pos_from_gnode(hook_gnode, me.ext_map[_EL(hook_level)]);
 		new_rnode_allowed(&alwd_rnodes, &alwd_rnodes_counter, 
-				gid, hook_level, GET_LEVELS(my_family));
+				gid, hook_level, FAMILY_LVLS);
 	}
 
 	/* 
@@ -1210,7 +1210,7 @@ int hook_choose_new_ip(map_gnode *hook_gnode, int hook_level,
 			new_gnode=1;
 			for(;;) {
 				random_ip(gnode_ipstart, fn_hdr->level, fn_hdr->gid, 
-						GET_LEVELS(my_family), me.ext_map, 0, 
+						FAMILY_LVLS, me.ext_map, 0, 
 						&me.cur_ip, my_family);
 				if(!inet_validate_ip(me.cur_ip))
 					break;
@@ -1281,12 +1281,12 @@ int hook_get_ext_map(int hook_level, int new_gnode,
 		
 		/* Merge the received ext_map with our new empty ext_map */
 		merge_ext_maps(me.ext_map, new_ext_map, me.cur_quadg, *old_quadg);
-		free_extmap(old_ext_map, GET_LEVELS(my_family), 0);
+		free_extmap(old_ext_map, FAMILY_LVLS, 0);
 
 		return 1;
 	}
 	
-	free_extmap(old_ext_map, GET_LEVELS(my_family), 0);
+	free_extmap(old_ext_map, FAMILY_LVLS, 0);
 	return 0;
 }
 
@@ -1406,7 +1406,7 @@ void hook_get_igw(void)
 		old_igws_counter=me.igws_counter;
 		me.igws=get_internet_gws(rq->ip, rq->dev[0], &me.igws_counter);
 		if(me.igws) {
-			free_igws(old_igws, old_igws_counter, GET_LEVELS(my_family));
+			free_igws(old_igws, old_igws_counter, FAMILY_LVLS);
 			e=1;
 			break;
 		} else {
@@ -1416,7 +1416,7 @@ void hook_get_igw(void)
 	}
 	if(!e) {
 		loginfo("None gave me the Internet Gateway list");
-		reset_igws(me.igws, me.igws_counter, GET_LEVELS(my_family));
+		reset_igws(me.igws, me.igws_counter, FAMILY_LVLS);
 	}
 
 	/*

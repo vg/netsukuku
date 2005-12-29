@@ -177,8 +177,8 @@ void andna_hash(int family, void *msg, int len, int hash[MAX_IP_INT],
 /*
  * is_hgnode_excluded: it converts the `qg'->gid to an ip, then it searches a
  * member of `excluded_hgnode', which has all its gids, from the level `lvl` to
- * GET_LEVELS(my_family), equal to the ip. If it is found 1 is returned,
- * otherwise 0 will be the return value.
+ * FAMILY_LVLS, equal to the ip. If it is found 1 is returned, otherwise 0
+ * will be the return value.
  * This function is utilised by find_hash_gnode() to exclude from the search
  * the hash_gnodes not wanted.
  * All the `excluded_hgnode[x]' which are a null pointer are skipped.
@@ -186,7 +186,7 @@ void andna_hash(int family, void *msg, int len, int hash[MAX_IP_INT],
 int is_hgnode_excluded(quadro_group *qg, u_int **excluded_hgnode,
 		int tot_excluded_hgnodes, int lvl)
 {
-	int i, e, x, total_levels=GET_LEVELS(my_family);
+	int i, e, x, total_levels=FAMILY_LVLS;
 	inet_prefix ip;
 	
 	for(e=0; e<tot_excluded_hgnodes; e++) {
@@ -407,7 +407,7 @@ int find_hash_gnode(u_int hash[MAX_IP_INT], inet_prefix *to,
 	int total_levels;
 	quadro_group qg;
 	
-	total_levels=GET_LEVELS(my_family);
+	total_levels=FAMILY_LVLS;
 
 	/* Hash to ip and quadro_group conversion */
 	inet_setip(to, hash, my_family);

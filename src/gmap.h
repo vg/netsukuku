@@ -104,6 +104,7 @@ INT_INFO map_gnode_iinfo = { 1,
 #define MAX_LEVELS		IPV6_LEVELS
 #define GET_LEVELS(family)	({ (family) == AF_INET ? 		        \
 				   IPV4_LEVELS : IPV6_LEVELS; })
+#define FAMILY_LVLS		(GET_LEVELS(my_family))
 
 /* NODES_PER_LEVEL: returns the maximum number of nodes which can reside in
  * a gnode of the `lvl'th level */

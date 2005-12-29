@@ -664,7 +664,7 @@ int tracer_unpack_pkt(PACKET rpkt, brdcast_hdr **new_bcast_hdr,
 	if((level=bcast_hdr->level) > 0)
 		level--;
 	if(!(rpkt.hdr.flags & BCAST_PKT) || !(bcast_hdr->flags & BCAST_TRACER_PKT) || 
-			level > GET_LEVELS(rpkt.from.family)) {
+			level > FAMILY_LVLS) {
 		debug(DBG_INSANE, "%s:%d", ERROR_POS);
 			return -1;
 	}

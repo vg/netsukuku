@@ -206,7 +206,7 @@ int qspn_b_del_dead_rnodes(struct qspn_buffer **qb, map_node *root_node)
  */
 void qspn_b_del_all_dead_rnodes(void)
 {
-	int level, tot_levels=GET_LEVELS(my_family);
+	int level, tot_levels=FAMILY_LVLS;
 	map_node *root_node;
 	
 	for(level=0; level<tot_levels; level++) {

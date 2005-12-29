@@ -86,7 +86,11 @@ INT_INFO inet_prefix_iinfo = { 1,
 #define IPV6_ADDR_MAPPED	0x1000U
 #define IPV6_ADDR_RESERVED	0x2000U	/* reserved address space */
 
-/* * * Functions declaration * * */
+int my_family;
+	
+/* 
+ * * * Functions declaration * * 
+ */
 void inet_ntohl(u_int *data, int family);
 void inet_htonl(u_int *data, int family);
 int inet_setip_raw(inet_prefix *ip, u_int *data, int family);

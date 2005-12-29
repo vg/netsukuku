@@ -225,7 +225,7 @@ void init_my_igws(inet_gw **igws, int *igws_counter,
 		}
 		
 		igw=igw_add_node(igws, igws_counter, i, qg->gid[i],
-				node, (u_char)bw_mean);
+				node, qg->ipstart[i].data, (u_char)bw_mean);
 		my_igws[i]=igw;
 	}
 	
@@ -329,13 +329,14 @@ void init_internet_gateway_search(void)
  * The pointer to the new inet_gw is returned.
  */
 inet_gw *igw_add_node(inet_gw **igws, int *igws_counter,  int level,
-		int gid, map_node *node, u_char bandwidth)
+		int gid, map_node *node, int ip[MAX_IP_INT], u_char bandwidth)
 {
 	inet_gw *igw;
 	
 	igw=xmalloc(sizeof(inet_gw));
 	memset(igw, 0, sizeof(inet_gw));
 
+	memcpy(igw->ip, ip, MAX_IP_SZ);
 	igw->node=node;
 	igw->gid=gid;
 	igw->bandwidth=bandwidth;
@@ -460,13 +461,13 @@ int igw_cmp(const void *a, const void *b)
  */
 void igw_order(inet_gw **igws, int *igws_counter, inet_gw **my_igws, int level)
 {
-	inet_gw *igw, *igw_tmp, *next;
-	int i;
+	inet_gw *igw, **igw_tmp, *next, *maxigws_ptr;
+	int i, igw_tmp_n;
 		
 	if(!igws_counter[level] || !igws[level])
 		return;
 	
-	igw_tmp=xmalloc(sizeof(inet_gw)*igws_counter[level]);
+	igw_tmp=xmalloc(sizeof(inet_gw *)*igws_counter[level]);
 	
 	/*
 	 * Save a copy of the igws[leve] llist in the `igw_tmp' static buffer
@@ -475,11 +476,12 @@ void igw_order(inet_gw **igws, int *igws_counter, inet_gw **my_igws, int level)
 	i=0;
 	igw=igws[level];
 	list_for(igw) {
-		memcpy(&igw_tmp[i], igw, sizeof(inet_gw));
+		igw_tmp[i]=igw;
 		i++;
 	}
+	igw_tmp_n=i;
 
-	qsort(igw_tmp, i, sizeof(inet_gw), igw_cmp);
+	qsort(igw_tmp, i, sizeof(inet_gw *), igw_cmp);
 
 	/* 
 	 * Restore igws[level] 
@@ -487,15 +489,24 @@ void igw_order(inet_gw **igws, int *igws_counter, inet_gw **my_igws, int level)
 	i=0;
 	igw=igws[level];
 	list_safe_for(igw, next) {
-		list_substitute(igw, &igw_tmp[i]);
-		memcpy(igw, &igw_tmp[i], sizeof(inet_gw));
-
-		if(i >= MAXIGWS)
+		igw->next = i >= MAXIGWS-1 ? 0 : igw_tmp[i+1];
+		igw->prev = i < 0 ? 0 : igw_tmp[i-1];
+		
+		if(i >= MAXIGWS) {
+			if(igw->node->flags & MAP_ME) {
+				list_substitute(maxigws_ptr, igw);
+				igw=maxigws_ptr;
+			}
+			
 			/* The maximum number of igw has been exceeded */
 			clist_del(&igws[level], &igws_counter[level], igw);
+		}
 
 		if(igw->node->flags & MAP_ME)
 			my_igws[level]=igw;
+		
+		if(i == MAXIGWS-1)
+			maxigws_ptr=igw;
 		
 		i++;
 	}
@@ -663,9 +674,7 @@ int igw_replace_default_gateways(inet_gw **igws, int *igws_counter,
 				nh[ni].dev=server_opt.inet_gw_dev;
 				nh[ni].hops=255-ni;
 			} else {
-				u_int data[MAX_IP_INT] = {0,0,0,0};
-				data[0]=igw->ip;
-				inet_setip_raw(&nh[ni].gw, data, family);
+				inet_setip(&nh[ni].gw, igw->ip, family);
 				nh[ni].dev=tunl0_if.dev_name;
 				nh[ni].hops=255-ni;
 			}
@@ -677,12 +686,85 @@ int igw_replace_default_gateways(inet_gw **igws, int *igws_counter,
 	return 0;
 }
 
+#if 0
+/* 
+ * igw_build_bentry: It builds the Internet gateway bnode blocks to be added
+ * in the bnode's entry in the tracer pkt. For the specification of this type
+ * of bnode block read igs.h
+ * It stores in `bnodechunk' the pointer to the first bnode_chunk and returns 
+ * a pointer to the bnode_hdr.
+ * `bnode_hdr' and `bnode_chunk' are on the same block of alloced memory.
+ * The number of bnode_chunks is stored in `bnode_links'.
+ * On errors it returns a NULL pointer.
+ */
+bnode_hdr *igw_build_bentry(void *void_map,
+		bnode_chunk **bnodechunk,
+		u_short *bnode_links, u_char level)
+{
+	map_node  *int_map, *node;
+	map_gnode **ext_map, *gnode;
+	map_gnode *gn;
+	bnode_hdr *bhdr;
+	bnode_chunk *bchunk;
+	int i, bm, node_pos;
+	size_t bblock_sz;
+	u_char lvl;
+	char *bblock;
+	u_char *bnode_gid;
+
+	int_map=(map_node *)void_map;
+	ext_map=(map_gnode **)void_map;
+	
+	*bnode_links=0;
+
+	if(!level)
+		node_pos=pos_from_node(node, int_map);
+	else
+		node_pos=pos_from_gnode(gnode, ext_map[_EL(level)]);
+/* TODO CONTINUE HERE */	
+	bblock_sz = BNODEBLOCK_SZ(level+1, 1);
+	bblock=xmalloc(bblock_sz);
+	memset(bblock, 0, bblock_sz);
+
+	bhdr=(bnode_hdr *)bblock;
+	bhdr->bnode_levels=level+1;
+
+	bnode_gid=(u_char *)(bblock + sizeof(bnode_hdr));
+	bchunk=(bnode_chunk *)(bnode_gid + sizeof(u_char)*bhdr->bnode_levels);
+	
+//	for(i=0; i<bhdr->bnode_levels; i++)
+//		bnode_gid[i] = node_quadg->gid[i];
+	debug(DBG_INSANE, "igw_build_bentry: igw: %d.%d.%d.%d", bnode_gid[0],
+			bnode_gid[1], bnode_gid[2], bnode_gid[3]);
+	
+	/* Fill the bnode chunks */
+	bchunk[0].gnode=0;
+	bchunk[0].level=FAMILY_LVLS+1;
+	bchunk[0].rtt=;
+	bhdr->links++;
+
+
+	*bnode_links+=bhdr->links;
+	*bnodechunk=bchunk;
+	return bhdr;
+error:
+	*bnode_links=0;
+	*bnodechunk=0;
+	return 0;
+}
+#endif
+
+
 char *pack_inet_gw(inet_gw *igw, char *pack)
 {
 	char *buf;
 
 	buf=pack;
 
+	memcpy(buf, igw->ip, MAX_IP_SZ);
+	inet_htonl((u_int *)buf, my_family);
+	buf+=MAX_IP_SZ;
+	
 	memcpy(buf, &igw->gid, sizeof(u_char));
 	buf+=sizeof(u_char);
 
@@ -696,6 +778,10 @@ inet_gw *unpack_inet_gw(char *pack, inet_gw *igw)
 {
 	char *buf=pack;
 
+	memcpy(igw->ip, buf, MAX_IP_SZ);
+	inet_ntohl(igw->ip, my_family);
+	buf+=MAX_IP_SZ;
+	
 	memcpy(&igw->gid, buf, sizeof(u_char));
 	buf+=sizeof(u_char);
 

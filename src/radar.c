@@ -586,7 +586,7 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 	
 			if(!root_node->links) {
 				/* We are alone in the dark. Sigh. */
-				qspn_time_reset(level, level, GET_LEVELS(my_family));
+				qspn_time_reset(level, level, FAMILY_LVLS);
 			} else if(!external_node)
 				erc_update_rnodepos(me.cur_erc, root_node, rnode_pos);
 

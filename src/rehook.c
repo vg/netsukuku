@@ -87,7 +87,7 @@ void rehook_compute_new_gnode(inet_prefix *old_ip, inet_prefix *new_ip,
 	 * then xor the bytes of the hash merging them in a single byte.
 	 */
 	hash_gid=fnv_32_buf(&qg.gid[hook_level], 
-			(GET_LEVELS(my_family)-hook_level),
+			(FAMILY_LVLS-hook_level),
 			FNV1_32_INIT);
 	qg.gid[hook_level]=xor_int(hash_gid);
 
@@ -95,8 +95,7 @@ void rehook_compute_new_gnode(inet_prefix *old_ip, inet_prefix *new_ip,
 	void_gids(&qg, hook_level, me.ext_map, me.int_map);
 
 	/* Save the new ip in `new_ip' */
-	gidtoipstart(qg.gid, GET_LEVELS(my_family), GET_LEVELS(my_family), 
-			my_family, new_ip);
+	gidtoipstart(qg.gid, FAMILY_LVLS, FAMILY_LVLS, my_family, new_ip);
 }
 
 int send_challenge(int gnode, int level, int gnode_count)

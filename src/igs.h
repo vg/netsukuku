@@ -54,7 +54,7 @@ struct internet_gateway
 	struct internet_gateway *next;
 	struct internet_gateway *prev;
 
-	u_int		ip;
+	u_int		ip[MAX_IP_INT];
  	u_char		gid;
 	map_node	*node;
 
@@ -64,7 +64,7 @@ struct internet_gateway
 typedef struct internet_gateway inet_gw;
 
 /* We pack only `gid' and `bandwidth' */
-#define INET_GW_PACK_SZ		(sizeof(u_char)*2)
+#define INET_GW_PACK_SZ		(sizeof(u_char)*2 + sizeof(u_int))
 
 struct inet_gw_pack_hdr
 {
@@ -90,6 +90,22 @@ struct inet_gw_pack_hdr
 #define MAX_IGWS_PACK_SZ(levels)	(sizeof(struct inet_gw_pack_hdr) + \
 						INET_GW_PACK_SZ*MAXIGWS*(levels))
 
+
+/*
+ * 		Notes on the IGW packed in a qspn pkt
+ *
+ * The simplest way to tell the other nodes that we are sharing our Internet
+ * connection or that in our gnode there is an available gw is to use the
+ * bnode block included in the qspn packets.
+ * We consider an Internet gw as a bnode connected to a virtual gnode (the
+ * Internet), therefore in the relative bnode_chunk we set:
+ * 	bchunk.gnode	= 0;	This value, in this case doesn't matter at all
+ *	bchunk.level	= GET_LEVELS(my_family) + 1;
+ *	bchunk.rtt	= the bandwidth of the internet connection of the gw.
+ *			  It is in the bandwidth_in_8bit() format.
+ */
+
+
 /*
  * * *  Functions declaration  * * 
  */
@@ -109,7 +125,7 @@ void init_my_igws(inet_gw **igws, int *igws_counter,
 void free_my_igws(inet_gw ***my_igs);
 void init_internet_gateway_search(void);
 inet_gw *igw_add_node(inet_gw **igws, int *igws_counter,  int level,
-		int gid, map_node *node, u_char bandwidth);
+		int gid, map_node *node, int ip[MAX_IP_INT], u_char bandwidth);
 int igw_del_node(inet_gw **igws, int *igws_counter,  int level,
 		map_node *node);
 void igw_update_gnode_bw(int *igws_counter, inet_gw **my_igws, inet_gw *igw,

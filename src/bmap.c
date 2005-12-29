@@ -117,7 +117,7 @@ map_bnode *map_bnode_del(map_bnode *bmap, u_int *bmap_nodes,  map_bnode *bnode)
  * of `bnode' which point to a gnode located in a level not equal to `level'.
  * The number of rnode deleted is returned.
  * `total_levels' must be equal to the maximum levels 
- * available (use GET_LEVELS(my_family)).
+ * available (use FAMILY_LVLS).
  */
 int bmap_del_rnode_by_level(map_bnode *bnode, int level, map_gnode **ext_map,
 		int total_levels)

@@ -38,6 +38,8 @@
 		- Challenge between two gnode not contiguous, which have the
 		  same gid.
 
+- ANDNA disable request
+
 - DNS wrapper: ip -> hostnames
 	- -r forward to other /etc/resolv.conf dns server
 

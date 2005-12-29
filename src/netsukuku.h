@@ -81,7 +81,6 @@ struct current_globals
 #define ANDNA_UDP_PORT 	   	277
 #define ANDNA_TCP_PORT		277
 
-int my_family;
 const static u_short ntk_udp_port 	= NTK_UDP_PORT, 
 		     ntk_udp_radar_port	= NTK_UDP_RADAR_PORT,
 		     ntk_tcp_port	= NTK_TCP_PORT;

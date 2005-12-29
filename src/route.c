@@ -160,7 +160,7 @@ int get_gw_gnode_recurse(map_node *int_map, map_gnode **ext_map,
 			sub_routes=1;
 		} else {
 			/* `routes': how many different links we must consider */
-			routes = sub_gw_links[GET_LEVELS(my_family) - i - 1];
+			routes = sub_gw_links[FAMILY_LVLS - i - 1];
 			routes = routes > node->links ? node->links : routes;
 
 			/* How many routes there are in each of the `routes'# links */
