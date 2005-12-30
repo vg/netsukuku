@@ -2,4 +2,5 @@
 aclocal
 autoconf
 automake --add-missing --copy
+#autoheader
 #basta

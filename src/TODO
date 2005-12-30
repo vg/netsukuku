@@ -9,7 +9,7 @@
 		- qspn pkt
 		- max gw in a qspn chunk: 16
 		- igws sparse
-		- use tunnel in replace_def_gw()
+		- use igw_build_bentry()
 
 - Gnodes contiguity
 	- Nodes count in the qspn_pkt which traverses gnodes	  [  50% ]
@@ -42,6 +42,8 @@
 
 - DNS wrapper: ip -> hostnames
 	- -r forward to other /etc/resolv.conf dns server
+
+- Test the BIG ENDIAN code with a BIG ENDIAN arch. Qemu?
 
 		[MEDIUM PRIORITY] 
 

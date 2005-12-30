@@ -28,6 +28,7 @@
 #include "rehook.h"
 #include "tracer.h"
 #include "qspn.h"
+#include "igs.h"
 #include "netsukuku.h"
 #include "xmalloc.h"
 #include "log.h"
@@ -319,7 +320,7 @@ void tracer_update_gcount(tracer_hdr *trcr_hdr, tracer_chunk *tracer,
  */
 bnode_hdr *tracer_build_bentry(void *void_map, void *void_node, 
 		quadro_group *node_quadg, bnode_chunk **bnodechunk,
-		u_short *bnode_links, u_char level)
+		int *bnode_links, u_char level)
 {
 	map_node  *int_map, *node;
 	map_gnode **ext_map, *gnode;
@@ -412,15 +413,20 @@ error:
 }
 
 /* 
- * tracer_pkt_build: It builds a tracer_pkt and stores it in `pkt'.
+ * tracer_pkt_build: 
+ * It builds a tracer_pkt and stores it in `pkt'.
+ * 
  * If `trcr_hdr' or `tracer' are null, it will build a brand new tracer_pkt, 
- * otherwise it will append in the `tracer' the new entry. Tracer_pkt_build 
- * will append also the old bblock: `old_bchunks' is the number of bblocks, 
- * `old_bblock' is the block of the old bblock and it is `old_bblock_sz'. 
+ * otherwise it will append in the `tracer' the new entry. 
+ * Tracer_pkt_build will append also the old bblock: 
+ * `old_bchunks' is the number of bblocks, 
+ * `old_bblock' is the block of the old bblock and it is `old_bblock_sz' big. 
  * If `old_bchunks' is 0 or `old_bblock' and `old_bblock_sz' are null they 
  * are ignored.
+ * 
  * The `pkt.hdr.op' is set to `rq', `pkt.hdr.id' to `rq_id' and the 
  * `bcast_hdr.sub_id' to `bcast_sub_id'.
+ * 
  * The packet shall be sent with flood_pkt_send.
  * It returns -1 on errors. 
  */
@@ -437,9 +443,11 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 	bnode_hdr    *new_bhdr=0;
 	bnode_chunk  *new_bchunk=0;
 	map_node *root_node, *upper_root_node=0;
+	char *igw_pack=0;
 	void *void_map, *void_node, *p;
-	size_t new_bblock_sz=0, total_bblock_sz=0;
+	size_t new_bblock_sz=0, total_bblock_sz=0, igw_pack_sz=0;
 	u_int hops=0;
+	int new_bblocks;
 
 	if(!trcr_hdr || !tracer || !bcast_hdr) {
 		/* Brand new tracer packet */
@@ -493,30 +501,48 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 			upper_root_node->flags & MAP_BNODE) {
 
 		new_bhdr=tracer_build_bentry(void_map, void_node,&me.cur_quadg,
-				&new_bchunk, &trcr_hdr->bblocks, gnode_level);
+				&new_bchunk, &new_bblocks, gnode_level);
 		if(new_bhdr) {
-			new_bblock_sz=BNODEBLOCK_SZ(new_bhdr->bnode_levels, 
-					trcr_hdr->bblocks);
+			new_bblock_sz=BNODEBLOCK_SZ(new_bhdr->bnode_levels,
+					new_bblocks);
 			bcast_hdr->flags|=BCAST_TRACER_BBLOCK;
+			trcr_hdr->flags|=TRCR_BBLOCK;
 		}
 	}
 
+	if((!gnode_level && server_opt.share_internet &&  me.inet_connected) || 
+		(gnode_level && me.igws_counter[gnode_level-1])) {
+		
+		igw_pack=igw_build_bentry(gnode_level, &igw_pack_sz);	
+
+		/* Append the igw_pack after the new bblock */
+		if(igw_pack) {
+			total_bblock_sz = new_bblock_sz + igw_pack_sz;
+			new_bhdr=xrealloc(new_bhdr, total_bblock_sz);
+			
+			trcr_hdr->flags|=TRCR_IGW;
+
+			p=(char *)new_bhdr + new_bblock_sz;
+			memcpy(p, igw_pack, igw_pack_sz);
+		}
+		
+		new_bblock_sz+=igw_pack_sz;
+	}
+	
 	/*
 	 * If in the old tracer_pkt is present a bblock, we append it after the 
 	 * new entry.
 	 */
 	if(old_bchunks && old_bblock && old_bblock_sz) {
 		total_bblock_sz = new_bblock_sz + old_bblock_sz;
-		
 		new_bhdr=xrealloc(new_bhdr, total_bblock_sz);
-		new_bchunk=(bnode_chunk *)((char *)new_bhdr + 
-				BNODE_HDR_SZ(new_bhdr->bnode_levels));
 	
-		p=(char *)new_bchunk + new_bblock_sz;
+		p=(char *)new_bhdr + new_bblock_sz;
 		memcpy(p, old_bblock, old_bblock_sz);
 		
-		trcr_hdr->bblocks += old_bchunks;
 		bcast_hdr->flags|=BCAST_TRACER_BBLOCK;
+		
+		new_bblock_sz+=old_bblock_sz;
 	}
 
 	/* 
@@ -654,9 +680,11 @@ int tracer_unpack_pkt(PACKET rpkt, brdcast_hdr **new_bcast_hdr,
 
 		bblock_sz=rpkt.hdr.sz-tracer_sz;
 		bhdr=(bnode_hdr *)(rpkt.msg+tracer_sz);
-		if(!trcr_hdr->bblocks || !(bcast_hdr->flags & BCAST_TRACER_BBLOCK)){
-			debug(DBG_INSANE, "%s:%d links: %d flags: %d", ERROR_POS, 
-					trcr_hdr->bblocks, bcast_hdr->flags);
+		if(!(trcr_hdr->flags & TRCR_BBLOCK) || 
+				!(bcast_hdr->flags & BCAST_TRACER_BBLOCK)) {
+			debug(DBG_INSANE, "%s:%d trcr_flags: %d flags: %d", 
+					ERROR_POS, trcr_hdr->flags, 
+					bcast_hdr->flags);
 			return -1;
 		}
 	}
@@ -783,7 +811,7 @@ int tracer_store_bblock(u_char level, tracer_hdr *trcr_hdr, tracer_chunk *tracer
 	bnode_hdr 	**bblist_hdr=0;
 	bnode_chunk 	***bblist=0;
 	map_rnode rn;
-	int i, e, o, x, f, p, bm;
+	int i, e, o, x, f, p, bm, igws_founds=0;
 	u_short bb;
 	size_t found_block_sz, bsz;
 	char *found_block;
@@ -807,10 +835,7 @@ int tracer_store_bblock(u_char level, tracer_hdr *trcr_hdr, tracer_chunk *tracer
 	 * Store the received bnode blocks 
 	 */
 
-	if(bb != trcr_hdr->bblocks) 
-		debug(DBG_NOISE, "%s:%d: Skipping some bblocks of the "
-				"tracer_pkt", ERROR_POS);
-	x=0;
+	igws_founds=x=0;
 	*bblock_found_sz=found_block_sz;
 	*bblocks_found_block=found_block=xmalloc(found_block_sz);
 	for(i=0; i<bb; i++) {
@@ -838,7 +863,23 @@ int tracer_store_bblock(u_char level, tracer_hdr *trcr_hdr, tracer_chunk *tracer
 			continue;
 		}
 
+		/*
+		 * Check if this bblock is an IGW. If it is, store it in
+		 * me.igws
+		 */
+		if(bblist[i][e]->level >= FAMILY_LVLS+1) {
+			
+			if(igws_founds <= MAX_IGW_PER_QSPN_CHUNK || 
+				trcr_hdr->flags & TRCR_IGW) {
 
+				igw_store_bblock(bblist_hdr[i], bblist[i][e], level);
+				igws_founds++;
+				
+				goto skip_bmap;
+			} else
+				goto discard_bblock;
+		}
+		
 		for(blevel=o; blevel < bblist_hdr[i]->bnode_levels; blevel++) {
 			bnode=bnode_gid[blevel];
 
@@ -895,7 +936,7 @@ int tracer_store_bblock(u_char level, tracer_hdr *trcr_hdr, tracer_chunk *tracer
 					rnode_add(&me.bnode_map[blevel][bm], &rn);
 			}
 		}
-
+skip_bmap:
 		/* Copy the found bblock in `bblocks_found_block' and converts
 		 * it in network order */
 		bsz=BNODEBLOCK_SZ(bblist_hdr[i]->bnode_levels, bblist_hdr[i]->links);
@@ -903,7 +944,7 @@ int tracer_store_bblock(u_char level, tracer_hdr *trcr_hdr, tracer_chunk *tracer
 		ints_host_to_network(found_block+x, bnode_hdr_iinfo);
 		ints_host_to_network(found_block+x+sizeof(bnode_hdr), bnode_chunk_iinfo);
 		x+=bsz;
-
+discard_bblock:
 		xfree(bblist[i]);
 	}
 

@@ -6,4 +6,4 @@
 #	define DEBUG
 #endif
 
-#define VERSION "0.0.5b"
+#define VERSION "%(VERSION)s"

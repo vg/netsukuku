@@ -103,7 +103,10 @@ int iptogid(inet_prefix *ip, int level)
 	 * but since we have a MAXGROUPNODE equal to 2^8 we can just return
 	 * the `level'-th byte of ip.data.
 	 */
-	gid=(int)h_ip[level];
+	if(BYTE_ORDER == LITTLE_ENDIAN)
+		gid=(int)h_ip[level];
+	else
+		gid=(int)h_ip[MAX_IP_SZ-level-1];
 	
 	return gid;	
 }
@@ -137,12 +140,15 @@ void gidtoipstart(int *gid, u_char total_levels, u_char levels, int family,
 	memset(h_ip, '\0', MAX_IP_SZ);
 	ipstart=(u_char *)h_ip;
 
-	for(i=total_levels-ZERO_LEVEL; i>=total_levels-levels; i--) {
+	for(i=total_levels-ZERO_LEVEL; i >= total_levels-levels; i--) {
 		/* The formula is:
 		 * ipstart += MAXGROUPNODE^i * gid[i]; 
 		 * but since MAXGROUPNODE is equal to 2^8 we just set each
 		 * single byte of ipstart. */
-		ipstart[i]=(u_char)gid[i];
+		if(BYTE_ORDER == LITTLE_ENDIAN)
+			ipstart[i]=(u_char)gid[i];
+		else
+			ipstart[MAX_IP_SZ-i-1]=(u_char)gid[i];
 	}
 	
 	memcpy(ip->data, h_ip, MAX_IP_SZ);

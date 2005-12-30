@@ -23,19 +23,27 @@
 #include "bmap.h"
 
 /*
+ * Tracer_hdr flags
+ */
+
+#define TRCR_BBLOCK		1	/* In this tracer_pkt there are 
+					   encapsulated bblocks */
+#define TRCR_IGW		(1<<1)	/* Internet Gateways are encapsulated
+					   in the pkt */
+
+/*
  * *  Tracer packet. It is encapsulated in a broadcast pkt  *
  */
 typedef struct
 {
-	u_short	hops;
-	u_short bblocks;	/*How many bnode blocks are incapsulated in 
-				  the pkt (if any)*/
-	u_short	first_qspn_open_chunk;
+	u_char		flags;
+	u_short		hops;
+	u_short		first_qspn_open_chunk;
 }_PACKED_ tracer_hdr;
-INT_INFO tracer_hdr_iinfo = { 3,
-			      { INT_TYPE_16BIT, INT_TYPE_16BIT, INT_TYPE_16BIT }, 
-			      { 0, sizeof(u_short), sizeof(u_short)*2 },
-			      { 1, 1, 1 }
+INT_INFO tracer_hdr_iinfo = { 2,
+			      { INT_TYPE_16BIT, INT_TYPE_16BIT }, 
+			      { sizeof(u_char), sizeof(u_char)+sizeof(u_short) },
+			      { 1, 1 }
 			    };
 typedef struct
 {

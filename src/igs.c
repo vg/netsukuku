@@ -686,74 +686,150 @@ int igw_replace_default_gateways(inet_gw **igws, int *igws_counter,
 	return 0;
 }
 
-#if 0
 /* 
  * igw_build_bentry: It builds the Internet gateway bnode blocks to be added
  * in the bnode's entry in the tracer pkt. For the specification of this type
  * of bnode block read igs.h
- * It stores in `bnodechunk' the pointer to the first bnode_chunk and returns 
- * a pointer to the bnode_hdr.
- * `bnode_hdr' and `bnode_chunk' are on the same block of alloced memory.
- * The number of bnode_chunks is stored in `bnode_links'.
- * On errors it returns a NULL pointer.
+ * It returns the mallocated package containing the bblock, in `*pack_sz' it
+ * stores the package's size.
+ * On error it returns NULL.
  */
-bnode_hdr *igw_build_bentry(void *void_map,
-		bnode_chunk **bnodechunk,
-		u_short *bnode_links, u_char level)
+char *igw_build_bentry(u_char level, size_t *pack_sz)
 {
-	map_node  *int_map, *node;
-	map_gnode **ext_map, *gnode;
-	map_gnode *gn;
 	bnode_hdr *bhdr;
 	bnode_chunk *bchunk;
-	int i, bm, node_pos;
-	size_t bblock_sz;
-	u_char lvl;
-	char *bblock;
+	inet_gw *igws_buf[MAX_IGW_PER_QSPN_CHUNK], *igw;
+	inet_prefix ip;
+	
+	int i, e, lvl, found_gws, max_igws, gids[FAMILY_LVLS];
+	size_t total_bblocks_sz, bblock_sz;
+	char *bblock, *buf;
 	u_char *bnode_gid;
 
-	int_map=(map_node *)void_map;
-	ext_map=(map_gnode **)void_map;
-	
-	*bnode_links=0;
+	ip.family=my_family;	
 
-	if(!level)
-		node_pos=pos_from_node(node, int_map);
-	else
-		node_pos=pos_from_gnode(gnode, ext_map[_EL(level)]);
-/* TODO CONTINUE HERE */	
+	/*
+	 * Select the Internet gateways to be included in the bblock
+	 */
+	max_igws=!level ? 1 : MAX_IGW_PER_QSPN_CHUNK;
+	if(!level && me.my_igws[level]->bandwidth)
+		igws_buf[found_gws++]=me.my_igws[level];
+	else {
+		for(lvl=level-1, found_gws=0; 
+			lvl >= 0 && found_gws <= max_igws; i--) {
+
+			igw=me.igws[lvl];
+			list_for(igw) {
+				igws_buf[found_gws++]=igw;
+				if(found_gws == max_igws)
+					break;
+			}
+		}
+	}
+
+	if(!found_gws)
+		/* nothing found */
+		return 0;
+
+	/*
+	 * Create enough space for the bblock
+	 */
 	bblock_sz = BNODEBLOCK_SZ(level+1, 1);
-	bblock=xmalloc(bblock_sz);
-	memset(bblock, 0, bblock_sz);
+	total_bblocks_sz = bblock_sz * found_gws;
+	bblock=xmalloc(total_bblocks_sz);
+	memset(bblock, 0, total_bblocks_sz);
 
-	bhdr=(bnode_hdr *)bblock;
-	bhdr->bnode_levels=level+1;
+	/* 
+	 * Write each IGW in the bblock
+	 */
+	for(i=0, buf=(char *)bblock; i<found_gws; i++) {
+		bhdr=(bnode_hdr *)buf;
+		bhdr->bnode_levels=level+1;
+		bhdr->links=1;
 
-	bnode_gid=(u_char *)(bblock + sizeof(bnode_hdr));
-	bchunk=(bnode_chunk *)(bnode_gid + sizeof(u_char)*bhdr->bnode_levels);
+		bnode_gid=(u_char *)(bblock + sizeof(bnode_hdr));
+		bchunk=(bnode_chunk *)(bnode_gid + sizeof(u_char)*bhdr->bnode_levels);
+
+		/*
+		 * Get the gids of `igw'
+		 */
+		memcpy(ip.data, igws_buf[i]->ip, MAX_IP_SZ);
+		iptogids(&ip, gids, bhdr->bnode_levels);
+		for(e=0; e < bhdr->bnode_levels; e++)
+			bnode_gid[e] = gids[e];
+
+		debug(DBG_INSANE, "igw_build_bentry: ip %s", inet_to_str(ip));
+		
+		/* Fill the bnode chunk */
+		bchunk[0].gnode=0;
+		bchunk[0].level=FAMILY_LVLS+1;
+		bchunk[0].rtt=igws_buf[i]->bandwidth;
+
+		buf+=bblock_sz;
+	}
+
+	*pack_sz=total_bblocks_sz;
+	return (char *)bblock;
+}
+
+/*
+ * igw_store_bblock: it creates an inet_gw struct in me.igws using the bblock
+ * contained in `bchunk'. The hdr of the bblock is `bblock_hdr'.
+ * The bblock has been packed using igw_build_bentry().
+ * `level' is the level where the qspn_pkt which carries the bblock is being
+ * spread. 
+ * The kernel routing is also updated.
+ * On error -1 is returned.
+ */
+int igw_store_bblock(bnode_hdr *bblock_hdr, bnode_chunk *bchunk, u_char level)
+{
+	inet_prefix gw_ip;
+	map_node *node=0;
+	map_gnode *gnode=0;
+
+	int gids[me.cur_quadg.levels], ret;
+	u_char *bnode_gid;
+
+	int i;
 	
-//	for(i=0; i<bhdr->bnode_levels; i++)
-//		bnode_gid[i] = node_quadg->gid[i];
-	debug(DBG_INSANE, "igw_build_bentry: igw: %d.%d.%d.%d", bnode_gid[0],
-			bnode_gid[1], bnode_gid[2], bnode_gid[3]);
+	/*
+	 * Extract the IP of the Internet gateway
+	 */
+	bnode_gid=(char *)bblock_hdr + sizeof(bnode_hdr);
+	for(i=0; i<bblock_hdr->bnode_levels; i++)
+		gids[i]=bnode_gid[i];
+	for(; i < me.cur_quadg.levels; i++)
+		gids[i]=me.cur_quadg.gid[i];
+
+	gidtoipstart(gids, me.cur_quadg.levels, me.cur_quadg.levels, my_family,
+			&gw_ip);
 	
-	/* Fill the bnode chunks */
-	bchunk[0].gnode=0;
-	bchunk[0].level=FAMILY_LVLS+1;
-	bchunk[0].rtt=;
-	bhdr->links++;
+	/*
+	 * Add `gw_ip' in all the levels >= `level' of me.igws
+	 */
+	for(i=level; i<me.cur_quadg.levels; i++) {
+		if(!i)
+			node=node_from_pos(gids[i], me.int_map);
+		else {
+			gnode = gnode_from_pos(gids[i], me.ext_map[_EL(i)]);
+			node  = &gnode->g;
+		}
+		igw_add_node(me.igws, me.igws_counter, i, gids[i], node, 
+				gw_ip.data, bchunk->rtt);
+	}
 
-
-	*bnode_links+=bhdr->links;
-	*bnodechunk=bchunk;
-	return bhdr;
-error:
-	*bnode_links=0;
-	*bnodechunk=0;
+	/* 
+	 * Refresh the Kernel routing table 
+	 */
+	igw_replace_default_gateways(me.igws, me.igws_counter, me.my_igws, 
+			me.cur_quadg.levels, my_family);
+	if(ret == -1) {
+		debug(DBG_SOFT, ERROR_MSG "cannot replace default gateway", 
+				ERROR_POS);
+		return -1;
+	}
 	return 0;
 }
-#endif
-
 
 char *pack_inet_gw(inet_gw *igw, char *pack)
 {

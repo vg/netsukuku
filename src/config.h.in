@@ -1,6 +1,9 @@
 /* src/config.h.in.  Generated from configure.ac by autoheader.  */
 
 /* "descr" */
+#undef CONF_DIR
+
+/* "descr" */
 #undef DATA_DIR
 
 /* FreeBSD */

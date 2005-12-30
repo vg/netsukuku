@@ -23,6 +23,7 @@ CONF_DIR="$sysconfdir"
 DT_DIR="/usr/share/netsukuku"
 
 AC_DEFINE_UNQUOTED(DATA_DIR, "$DT_DIR", "descr")
+AC_DEFINE_UNQUOTED(CONF_DIR, "$CONF_DIR", "descr")
 AC_SUBST(CONF_DIR)
 AC_SUBST(DT_DIR)
 

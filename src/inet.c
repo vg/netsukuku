@@ -385,7 +385,8 @@ const char *inet_to_str(inet_prefix ip)
 		
 		return dst;
 	} else if(ip.family==AF_INET6) {
-		htonl_128(ip.data, (u_int *)&src6);
+		inet_htonl(ip.data, ip.family);
+		memcpy(&src6, ip.data, MAX_IP_SZ);
 		inet_ntop(ip.family, &src6, dst6, INET6_ADDRSTRLEN);
 
 		return dst6;
@@ -424,7 +425,8 @@ int str_to_inet(const char *src, inet_prefix *ip)
 /*
  * inet_to_sockaddr: Converts a inet_prefix struct to a sockaddr struct
  */
-int inet_to_sockaddr(inet_prefix *ip, u_short port, struct sockaddr *dst, socklen_t *dstlen)
+int inet_to_sockaddr(inet_prefix *ip, u_short port, struct sockaddr *dst,
+		socklen_t *dstlen)
 {
 	port=htons(port);
 	
@@ -447,7 +449,9 @@ int inet_to_sockaddr(inet_prefix *ip, u_short port, struct sockaddr *dst, sockle
 		sin6.sin6_family = ip->family;
 		sin6.sin6_port = port;
 		sin6.sin6_flowinfo = 0;
-		htonl_128(ip->data, (u_int *)&sin6.sin6_addr);
+		
+		memcpy(&sin6.sin6_addr, ip->data, MAX_IP_SZ);
+		inet_htonl((u_int *)&sin6.sin6_addr, ip->family);
 
 		memcpy(dst, &sin6, sizeof(struct sockaddr_in6));
 

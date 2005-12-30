@@ -18,6 +18,7 @@
 import sys
 import os
 
+NTK_VERSION="0.0.5b"
 
 #
 #	Sources and libs
@@ -126,6 +127,7 @@ def conf_build(target, source, env):
     conf_defines = {
         "CONF_DIR": env["CONF_DIR"],
 	"DATA_DIR": env["DATA_DIR"],
+	"VERSION": NTK_VERSION,
         "debug": debug # this is an int.  1 for true, 0 for false
     }
 

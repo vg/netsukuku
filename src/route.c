@@ -438,7 +438,7 @@ finish:
 
 struct nexthop *rt_build_nexthop_voidgw(void *void_gw, interface **oifs)
 {
-	map_node *gw_node;
+	map_node *gw_node=0;
 	ext_rnode *e_rnode=0;
 	struct nexthop *nh;
 	int dev_n, i;
@@ -508,11 +508,14 @@ void rt_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg
 	map_gnode *gnode=0;
 	struct nexthop *nh=0;
 	inet_prefix to;
-	int n, node_pos=0, route_scope=0;
+	int node_pos=0, route_scope=0;
 
 #ifdef DEBUG		
 #define MAX_GW_IP_STR_SIZE (MAX_MULTIPATH_ROUTES*((INET6_ADDRSTRLEN+1)+IFNAMSIZ)+1)
+	int n;
 	char *to_ip, gw_ip[MAX_GW_IP_STR_SIZE]="";
+#else
+	const char *to_ip;
 #endif
 
 	node=(map_node *)dst_node;
@@ -539,6 +542,8 @@ void rt_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg
 	}
 #ifdef DEBUG		
 	to_ip=xstrdup(inet_to_str(to));
+#else
+	to_ip=inet_to_str(to); 
 #endif
 	inet_htonl(to.data, to.family);
 

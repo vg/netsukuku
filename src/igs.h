@@ -55,7 +55,7 @@ struct internet_gateway
 	struct internet_gateway *prev;
 
 	u_int		ip[MAX_IP_INT];
- 	u_char		gid;
+	u_char		gid;
 	map_node	*node;
 
 	char		flags;
@@ -105,6 +105,8 @@ struct inet_gw_pack_hdr
  *			  It is in the bandwidth_in_8bit() format.
  */
 
+#define MAX_IGW_PER_QSPN_CHUNK		16
+
 
 /*
  * * *  Functions declaration  * * 
@@ -139,6 +141,8 @@ int igw_exec_masquerade_sh(char *script);
 int igw_replace_default_gateways(inet_gw **igws, int *igws_counter, 
 		inet_gw **my_igws, int max_levels, int family);
 
+char *igw_build_bentry(u_char level, size_t *pack_sz);
+int igw_store_bblock(bnode_hdr *bblock_hdr, bnode_chunk *bchunk, u_char level);
 char *pack_igws(inet_gw **igws, int *igws_counter, int levels, int *pack_sz);
 int unpack_igws(char *pack, size_t pack_sz,
 		map_node *int_map, map_gnode **ext_map, int levels,
