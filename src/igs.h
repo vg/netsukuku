@@ -37,7 +37,7 @@
 #define MAX_INTERNET_HNAMES	10
 #define MAX_INTERNET_HNAME_SZ	64
 #define INET_HOST_PING_TIMEOUT	3
-#define INET_NEXT_PING_WAIT	5
+#define INET_NEXT_PING_WAIT	10
 
 #define IGW_BW_DELTA		1		/* If the difference between the old and the new
 						   igw->bandwidth is >= IGW_BW_DELTA, then 
@@ -45,6 +45,12 @@
 						   updated */
 #define MAXIGWS			MAXGROUPNODE	/* max number of internet 
 						   gateways in each level */
+
+#ifdef DEBUG
+#undef INET_NEXT_PING_WAIT
+#define INET_NEXT_PING_WAIT	5
+#endif
+
 /* 
  * inet_gw flags
  */
@@ -69,7 +75,7 @@ struct internet_gateway
 typedef struct internet_gateway inet_gw;
 
 /* We pack only `gid' and `bandwidth' */
-#define INET_GW_PACK_SZ		(sizeof(u_char)*2 + sizeof(u_int))
+#define INET_GW_PACK_SZ		(sizeof(u_char)*2 + MAX_IP_SZ)
 
 struct inet_gw_pack_hdr
 {

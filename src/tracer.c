@@ -510,8 +510,9 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 		}
 	}
 
-	if((!gnode_level && server_opt.share_internet && me.inet_connected) || 
-		(gnode_level && me.igws_counter[gnode_level-1])) {
+	if(server_opt.restricted &&
+		((!gnode_level && server_opt.share_internet && me.inet_connected) || 
+			(gnode_level && me.igws_counter[gnode_level-1]))) {
 		
 		igw_pack=igw_build_bentry(gnode_level, &igw_pack_sz);	
 
@@ -870,8 +871,9 @@ int tracer_store_bblock(u_char level, tracer_hdr *trcr_hdr, tracer_chunk *tracer
 		 */
 		if(bblist[i][0]->level >= FAMILY_LVLS+1) {
 			
-			if(igws_founds <= MAX_IGW_PER_QSPN_CHUNK || 
-				trcr_hdr->flags & TRCR_IGW) {
+			if(server_opt.restricted && 
+				(igws_founds < MAX_IGW_PER_QSPN_CHUNK ||
+					trcr_hdr->flags & TRCR_IGW)) {
 
 				igw_store_bblock(bblist_hdr[i], bblist[i][0], level);
 				igws_founds++;

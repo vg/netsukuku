@@ -471,8 +471,8 @@ void igw_update_gnode_bw(int *igws_counter, inet_gw **my_igws, inet_gw *igw,
  */
 int igw_cmp(const void *a, const void *b)
 {
-	inet_gw *gw_a=(inet_gw *)a;
-	inet_gw *gw_b=(inet_gw *)b;
+	inet_gw *gw_a=*(inet_gw **)a;
+	inet_gw *gw_b=*(inet_gw **)b;
 
 	u_int cq_a, cq_b, trtt;
 
@@ -499,13 +499,13 @@ int igw_cmp(const void *a, const void *b)
  */
 void igw_order(inet_gw **igws, int *igws_counter, inet_gw **my_igws, int level)
 {
-	inet_gw *igw, **igw_tmp, *next, *maxigws_ptr;
+	inet_gw *igw, *next, *maxigws_ptr;
 	int i, igw_tmp_n;
 		
 	if(!igws_counter[level] || !igws[level])
 		return;
 	
-	igw_tmp=xmalloc(sizeof(inet_gw *)*igws_counter[level]);
+	inet_gw *igw_tmp[igws_counter[level]];
 	
 	/*
 	 * Save a copy of the igws[leve] llist in the `igw_tmp' static buffer
@@ -548,8 +548,6 @@ void igw_order(inet_gw **igws, int *igws_counter, inet_gw **my_igws, int level)
 		
 		i++;
 	}
-
-	xfree(igw_tmp);
 }
 
 
@@ -764,6 +762,7 @@ char *igw_build_bentry(u_char level, size_t *pack_sz)
 	char *bblock, *buf;
 	u_char *bnode_gid;
 
+	*pack_sz=0;
 	ip.family=my_family;	
 
 	/*
@@ -774,7 +773,7 @@ char *igw_build_bentry(u_char level, size_t *pack_sz)
 		igws_buf[found_gws++]=me.my_igws[level];
 	else {
 		for(lvl=level-1, found_gws=0; 
-			lvl >= 0 && found_gws <= max_igws; lvl--) {
+			lvl >= 0 && found_gws < max_igws; lvl--) {
 
 			igw=me.igws[lvl];
 			list_for(igw) {
@@ -836,7 +835,7 @@ char *igw_build_bentry(u_char level, size_t *pack_sz)
  * The bblock has been packed using igw_build_bentry().
  * `level' is the level where the qspn_pkt which carries the bblock is being
  * spread. 
- * The kernel routing is also updated.
+ * The kernel routing table is also updated.
  * On error -1 is returned.
  */
 int igw_store_bblock(bnode_hdr *bblock_hdr, bnode_chunk *bchunk, u_char level)
@@ -965,8 +964,8 @@ char *pack_igws(inet_gw **igws, int *igws_counter, int levels, int *pack_sz)
 	hdr.levels=levels;
 	*pack_sz=sizeof(struct inet_gw_pack_hdr);
 	for(lvl=0; lvl<levels; lvl++) {
-		hdr.gws[lvl]=INET_GW_PACK_SZ*igws_counter[lvl];
-		(*pack_sz)+=INET_GW_PACK_SZ*igws_counter[lvl];
+		hdr.gws[lvl]=igws_counter[lvl];
+		(*pack_sz)+=hdr.gws[lvl]*INET_GW_PACK_SZ;
 	}
 
 	buf=pack=xmalloc(*pack_sz);
@@ -980,7 +979,7 @@ char *pack_igws(inet_gw **igws, int *igws_counter, int levels, int *pack_sz)
 	for(lvl=0; lvl<levels; lvl++) {
 		igw=igws[lvl];
 		list_for(igw) {
-			pack_inet_gw(igws[lvl], buf);
+			pack_inet_gw(igw, buf);
 			buf+=INET_GW_PACK_SZ;
 		}
 	}

@@ -259,7 +259,9 @@ ssize_t pkt_recv(PACKET *pkt)
 		/*we get the hdr...*/
 		err=inet_recv(pkt->sk, &pkt->hdr, sizeof(pkt_hdr), pkt->flags);
 		if(err != sizeof(pkt_hdr)) {
+			/*
 			debug(DBG_NOISE, "inet_recv() of the hdr aborted. (connection closed?)");
+			*/
 			return -1;
 		}
 		/*...and verify it*/
