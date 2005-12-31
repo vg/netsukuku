@@ -170,7 +170,8 @@ void reset_igws(inet_gw **igws, int *igws_counter, int levels)
 		return;
 
 	for(i=0; i<levels; i++) {
-		list_destroy(igws[i]);
+		if(igws[i])
+			list_destroy(igws[i]);
 		igws_counter[i]=0;
 	}
 }
@@ -253,10 +254,20 @@ void init_internet_gateway_search(void)
 	int i, ret;
 
 
-        if(!server_opt.restricted || !server_opt.inet_connection)
+        if(!server_opt.restricted)
 		return;
-
+	
 	init_igws(&me.igws, &me.igws_counter, GET_LEVELS(my_family));
+	
+	loginfo("Configuring the \"tunl%d\" tunnel device", DEFAULT_TUNL_NUMBER);
+	if(tunnel_change(0, 0, 0, DEFAULT_TUNL_NUMBER) < 0)
+		fatal("Cannot initialize \"tunl%d\". Is the \"ipip\""
+			" kernel module loaded?", DEFAULT_TUNL_NUMBER);
+	if(tun_add_tunl0(&tunl0_if) < 0)
+		fatal("Cannot get device info for tunl0");
+	
+	if(!server_opt.inet_connection)
+		return;
 	
 	if(!server_opt.inet_hosts)
 		fatal("You didn't specified any Internet hosts in the "
@@ -266,7 +277,7 @@ void init_internet_gateway_search(void)
                 igw_exec_masquerade_sh(server_opt.ip_masq_script);
 			
 	ret=rt_get_default_gw(&new_gw, new_gw_dev);
-	if(ret < 0) {
+	if(ret < 0 || (!*new_gw_dev && !new_gw.family)) {
 		loginfo("The retrieval of the default gw from the kernel failed.");
 
 		if(!server_opt.inet_gw.data[0])
@@ -281,33 +292,50 @@ void init_internet_gateway_search(void)
 				inet_to_str(server_opt.inet_gw),
 				server_opt.inet_gw_dev);
 		
-	} else if(strncmp(new_gw_dev, server_opt.inet_gw_dev, IFNAMSIZ) || 
-		memcmp(new_gw.data, server_opt.inet_gw.data, MAX_IP_SZ)) {
-		loginfo("Your specified Internet gateway doesn't match with "
-			"the one currently stored in the kernel routing table."
-			"I'm going to use the kernel gateway: %s dev %s",
-			inet_to_str(new_gw), new_gw_dev);
+	} else if(!server_opt.inet_gw_dev || 
+		   strncmp(new_gw_dev, server_opt.inet_gw_dev, IFNAMSIZ) || 
+		   memcmp(new_gw.data, server_opt.inet_gw.data, MAX_IP_SZ)) {
 
-		strncpy(server_opt.inet_gw_dev, new_gw_dev, IFNAMSIZ);
+		if(server_opt.inet_gw.data[0])
+			loginfo("Your specified Internet gateway doesn't match with "
+					"the one currently stored in the kernel routing table."
+					"I'm going to use the kernel gateway: %s dev %s",
+					inet_to_str(new_gw), new_gw_dev);
+
+		if(!server_opt.inet_gw_dev)
+			server_opt.inet_gw_dev=xstrdup(new_gw_dev);
+		else
+			strncpy(server_opt.inet_gw_dev, new_gw_dev, IFNAMSIZ);
 		memcpy(&server_opt.inet_gw, &new_gw, sizeof(inet_prefix));
 	}
+	
+	loginfo("Using \"%s\" as your first Internet gateway.", 
+			inet_to_str(new_gw));
 
 	for(i=0; i < me.cur_ifs_n; i++)
-		if(!strcmp(me.cur_ifs[i].dev_name, server_opt.inet_gw_dev))
-			fatal("You have selected the \"%s\" interface but your "
-				"Internet connection uses it and you want the"
-				" compatibilty with the Internet. This is not"
-				" possible. Don't include \"%s\" in the list "
-				"of interfaces utilised by the daemon",
-				server_opt.inet_gw_dev, server_opt.inet_gw_dev);
+		if(!strcmp(me.cur_ifs[i].dev_name, server_opt.inet_gw_dev)) {
+			for(i=0; i<server_opt.ifs_n; i++)
+				if(!strcmp(server_opt.ifs[i], server_opt.inet_gw_dev))
+					fatal("You specified the \"%s\" interface"
+						" in the options, but this device is also"
+						" part of your primary Internet gw route." 
+						" Don't include \"%s\" in the list of "
+						"interfaces utilised by the daemon", 
+						server_opt.inet_gw_dev, server_opt.inet_gw_dev);
+			
+			loginfo("Deleting the \"%s\" interface from the device "
+				"list since it is part of your primary Internet"
+				" gw route.", me.cur_ifs[i].dev_name);
+			if(i == me.cur_ifs_n-1)
+				memset(&me.cur_ifs[i], 0, sizeof(interface));
+			else {
+				memcpy(&me.cur_ifs[i], &me.cur_ifs[me.cur_ifs_n-1], sizeof(interface));
+				memset(&me.cur_ifs[me.cur_ifs_n-1], 0, sizeof(interface));
+			}
+			me.cur_ifs_n--;
+		}
 
-	loginfo("Configuring the \"tunl%d\" tunnel device", DEFAULT_TUNL_NUMBER);
-	if(tunnel_change(0, 0, 0, DEFAULT_TUNL_NUMBER) < 0)
-		fatal("Cannot initialize \"tunl%d\". Is the \"ipip\""
-			" kernel module loaded?", DEFAULT_TUNL_NUMBER);
-	if(tun_add_tunl0(&tunl0_if) < 0)
-		fatal("Cannot get device info for tunl0");
-	
+
 	loginfo("Launching the first ping to the Internet hosts");
 	me.inet_connected=igw_check_inet_conn();
 	if(me.inet_connected)
@@ -332,7 +360,9 @@ inet_gw *igw_add_node(inet_gw **igws, int *igws_counter,  int level,
 		int gid, map_node *node, int ip[MAX_IP_INT], u_char bandwidth)
 {
 	inet_gw *igw;
-	
+
+	node->flags|=MAP_IGW;
+
 	igw=xmalloc(sizeof(inet_gw));
 	memset(igw, 0, sizeof(inet_gw));
 
@@ -351,13 +381,18 @@ int igw_del(inet_gw **igws, int *igws_counter, inet_gw *igw, int level)
 	if(!igw)
 		return -1;
 
+	igw->node->flags&=~MAP_IGW;
+	
+	if(!igws[level])
+		return -1;
+
 	clist_del(&igws[level], &igws_counter[level], igw);
 	return 0;
 }
 
 /*
  * igw_find_node: finds an inet_gw struct in the `igws[`level']' llist which
- * points to the given `node'. The pointer to the found struct is
+ * points to the given `node'. the pointer to the found struct is
  * returned, otherwise 0 is the return value.
  */
 inet_gw *igw_find_node(inet_gw **igws, int level, map_node *node)
@@ -367,6 +402,17 @@ inet_gw *igw_find_node(inet_gw **igws, int level, map_node *node)
 	igw=igws[level];
 	list_for(igw)
 		if(igw->node == node)
+			return igw;
+	return 0;
+}
+
+inet_gw *igw_find_ip(inet_gw **igws, int level, u_int ip[MAX_IP_INT])
+{
+	inet_gw *igw;
+
+	igw=igws[level];
+	list_for(igw)
+		if(!memcmp(igw->ip, ip, MAX_IP_SZ))
 			return igw;
 	return 0;
 }
@@ -787,10 +833,11 @@ int igw_store_bblock(bnode_hdr *bblock_hdr, bnode_chunk *bchunk, u_char level)
 	map_node *node=0;
 	map_gnode *gnode=0;
 
+	inet_gw *igw;
 	int gids[me.cur_quadg.levels], ret;
 	u_char *bnode_gid;
 
-	int i;
+	int i, update=0;
 	
 	/*
 	 * Extract the IP of the Internet gateway
@@ -804,6 +851,10 @@ int igw_store_bblock(bnode_hdr *bblock_hdr, bnode_chunk *bchunk, u_char level)
 	gidtoipstart(gids, me.cur_quadg.levels, me.cur_quadg.levels, my_family,
 			&gw_ip);
 	
+	if(server_opt.dbg_lvl)
+		debug(DBG_NOISE, GREEN("igw_store_bblock: storing %s IGW, level %d"),
+					inet_to_str(gw_ip), level);
+				
 	/*
 	 * Add `gw_ip' in all the levels >= `level' of me.igws
 	 */
@@ -814,10 +865,24 @@ int igw_store_bblock(bnode_hdr *bblock_hdr, bnode_chunk *bchunk, u_char level)
 			gnode = gnode_from_pos(gids[i], me.ext_map[_EL(i)]);
 			node  = &gnode->g;
 		}
-		igw_add_node(me.igws, me.igws_counter, i, gids[i], node, 
-				gw_ip.data, bchunk->rtt);
+		
+		igw=igw_find_ip(me.igws, i, gw_ip.data);
+		if(igw) {
+			if(abs(igw->bandwidth - (char)bchunk->rtt) >= IGW_BW_DELTA) {
+				igw->bandwidth = (char)bchunk->rtt;
+				update=1;
+			}
+		} else {
+			igw_add_node(me.igws, me.igws_counter, i, gids[i], node, 
+					gw_ip.data, bchunk->rtt);
+			update=1;
+		}
 	}
 
+	if(!update)
+		/* we've finished */
+		return 0;
+	
 	/* 
 	 * Refresh the Kernel routing table 
 	 */

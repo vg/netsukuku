@@ -31,6 +31,7 @@
 #include "pkts.h"
 #include "tracer.h"
 #include "qspn.h"
+#include "igs.h"
 #include "netsukuku.h"
 #include "log.h"
 #include "xmalloc.h"
@@ -364,9 +365,10 @@ void qspn_backup_gcount(int *old_gcount, int *gcount)
  */
 void qspn_remove_deads(u_char level)
 {
-	int bm, i, l, node_pos;
+	int bm, i, l, node_pos, ip[MAX_IP_INT];
 	map_node *map, *node;
 	map_gnode *gmap, *gnode;
+	inet_gw *igw;
 	
 	qspn_set_map_vars(level, 0, 0, 0, &gmap);
 	map=me.int_map;
@@ -396,6 +398,20 @@ void qspn_remove_deads(u_char level)
 		if((node->flags & QSPN_OLD)) {
 			/* The node wasn't updated in the previous QSPN.
 			 * Remove it from the maps */
+
+			if(server_opt.restricted && node->flags & MAP_IGW) {
+				/* The node was an Internet gw, remove it from
+				 * me.igws */
+				igw=igw_find_node(me.igws, i, node);
+				if(igw) {
+					memcpy(ip, igw->ip, MAX_IP_SZ);
+					for(l=i; l<me.cur_quadg.levels; l++) {
+						igw_del(me.igws, me.igws_counter, igw, l);
+						if(l+1 < me.cur_quadg.levels)
+							igw=igw_find_ip(me.igws, i, ip);;
+					}
+				}
+			}
 			
 			if((node->flags & MAP_BNODE) && level < me.cur_quadg.levels-1) {
 				/* 

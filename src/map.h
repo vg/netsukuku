@@ -54,6 +54,7 @@
 					  if it is a qspn_starter*/
 #define QSPN_OPENER	(1<<12)		/*If the root_node sent a new qspn_open
 					  it is a qspn_opener*/
+#define MAP_IGW		(1<<13)		/*This node is an Internet gateway*/
 
 
 /* 			    *** Map notes ***

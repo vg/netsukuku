@@ -20,7 +20,8 @@
 #define IGS_H
 
 /*
- * 	* Bandwidth notes *
+ *		 	* Bandwidth notes *
+ *
  * When we talk of `bandwidth' we mean the average of the download and 
  * upload bandwidth of a particular node.
  * The bandwidth of a gnode is the average of all the bandwidths of the nodes
@@ -38,6 +39,10 @@
 #define INET_HOST_PING_TIMEOUT	3
 #define INET_NEXT_PING_WAIT	5
 
+#define IGW_BW_DELTA		1		/* If the difference between the old and the new
+						   igw->bandwidth is >= IGW_BW_DELTA, then 
+						   me.igws is reordered and the routing table
+						   updated */
 #define MAXIGWS			MAXGROUPNODE	/* max number of internet 
 						   gateways in each level */
 /* 
@@ -128,10 +133,11 @@ void free_my_igws(inet_gw ***my_igs);
 void init_internet_gateway_search(void);
 inet_gw *igw_add_node(inet_gw **igws, int *igws_counter,  int level,
 		int gid, map_node *node, int ip[MAX_IP_INT], u_char bandwidth);
-int igw_del_node(inet_gw **igws, int *igws_counter,  int level,
-		map_node *node);
-void igw_update_gnode_bw(int *igws_counter, inet_gw **my_igws, inet_gw *igw,
-		int new, int level, int maxlevels);
+int igw_del(inet_gw **igws, int *igws_counter, inet_gw *igw, int level);
+inet_gw *igw_find_node(inet_gw **igws, int level, map_node *node);
+inet_gw *igw_find_ip(inet_gw **igws, int level, u_int ip[MAX_IP_INT]);
+int igw_del_node(inet_gw **, int *,  int, map_node *);
+void igw_update_gnode_bw(int *, inet_gw **, inet_gw *, int, int, int);
 void igw_order(inet_gw **igws, int *igws_counter, inet_gw **my_igws, int level);
 
 int igw_check_inet_conn(void);

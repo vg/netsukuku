@@ -3,24 +3,14 @@
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 
 - Internet Gateway Search
-	- igw_add_node, replace_def_gw in tracer
-	- igw_del_node in qspn_remove_deads
-	- solve NAT multihome problem
-		- qspn pkt
-		- max gw in a qspn chunk: 16
-		- igws sparse
-		- use igw_build_bentry()
+	- do not include tunl0 in the list of devices
+	- test it !
 
 - Gnodes contiguity
-	- Nodes count in the qspn_pkt which traverses gnodes	  [  50% ]
 	- gnode re-hook
 		- test: two (g)nodes with the same IP
 			- currently only in particular situations the rehook
 			  isn't possible: A - A,  A - B - A.
-		- rehook() function				  [  55% ]
-			- new gid based on the hash of the same gid, when
-			  all the other gnodes are full.	  [  55% ]
-		- merging of ext_maps				  [  65% ]
 	
 	- Challenge
 		- RSA between rnodes: the nodes which are already hooked ask

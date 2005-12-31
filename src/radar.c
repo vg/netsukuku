@@ -581,9 +581,10 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 			 	
 				send_qspn_now[level]=1;
 			}
-		
-			rnode_del(root_node, rnode_pos);
 	
+			if(rnode_pos >= 0 && root_node->links > 0)
+				rnode_del(root_node, rnode_pos);
+
 			if(!root_node->links) {
 				/* We are alone in the dark. Sigh. */
 				qspn_time_reset(level, level, FAMILY_LVLS);
@@ -1279,6 +1280,10 @@ int radard(PACKET rpkt)
 		return -1;
 	}
 	
+	if((rpkt.hdr.flags & RESTRICTED_PKT && !server_opt.restricted) ||
+		(!(rpkt.hdr.flags & RESTRICTED_PKT) && server_opt.restricted))
+		return -1;
+
 	dev_pos=ifs_get_pos(me.cur_ifs, me.cur_ifs_n, rpkt.dev);
 	if(dev_pos < 0)
 		debug(DBG_NORMAL, "The 0x%x ECHO_ME pkt was received by a non "
@@ -1335,6 +1340,9 @@ int radard(PACKET rpkt)
 		 * Sat Mar 12 20:41:36 CET 2005 
 		 */
 	}
+	
+	if(server_opt.restricted)
+		pkt.hdr.flags|=RESTRICTED_PKT;
 
 	/* We send it */
 	err=send_rq(&pkt, 0, ECHO_REPLY, rpkt.hdr.id, 0, 0, 0);

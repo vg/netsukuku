@@ -796,8 +796,8 @@ int create_gnodes(inet_prefix *ip, int final_level)
 		}
 
 	/* Now, we update the ext_map with the new gnodes */
-	reset_extmap(me.ext_map, final_level, 0);
 	me.cur_quadg.levels=FAMILY_LVLS;
+	reset_extmap(me.ext_map, me.cur_quadg.levels, 0);
 	iptoquadg(me.cur_ip, me.ext_map, &me.cur_quadg, QUADG_GID|QUADG_GNODE|QUADG_IPSTART);
 	
 	for(i=1; i<final_level; i++) {

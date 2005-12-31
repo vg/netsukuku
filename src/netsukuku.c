@@ -389,14 +389,13 @@ void check_conflicting_options(void)
 		FATAL_NOT_SPECIFIED("andna_counter_c_file");	
 	if(!server_opt.inet_hosts && server_opt.restricted)
 		FATAL_NOT_SPECIFIED("internet_ping_hosts");
-	if(server_opt.restricted && server_opt.share_internet &&
-			server_opt.ip_masq_script[0]) {
-		FATAL_NOT_SPECIFIED("ip_masquerade_script");
-		if(!file_exist(server_opt.ip_masq_script))
-			fatal("ip_masquerade_script \"%s\" is inexistent", 
-					server_opt.ip_masq_script);
-	}
-	
+
+
+	if(server_opt.restricted && server_opt.share_internet && 
+			!file_exist(server_opt.ip_masq_script))
+		fatal("ip_masquerade_script \"%s\" is inexistent",
+				server_opt.ip_masq_script);
+
 	if(!server_opt.restricted && server_opt.inet_connection)
 		fatal("inet_connection=1 but ntk_restricted_mode=0. If you "
 			"want to be compatible with the Internet, "
@@ -452,8 +451,11 @@ void init_netsukuku(char **argv)
 				me.cur_ifs, &me.cur_ifs_n) < 0)
 		fatal("Cannot initialize any network interfaces");
 
+	/*
+	 * Initilize the Internet gateway stuff
+	 */
 	init_internet_gateway_search();
-
+	
 	pkts_init(me.cur_ifs, me.cur_ifs_n, 0);
 	qspn_init(FAMILY_LVLS);
 
