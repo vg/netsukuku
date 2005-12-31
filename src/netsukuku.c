@@ -216,6 +216,9 @@ void fill_loaded_cfg_options(void)
 		server_opt.my_upload_bw=atoi(value);
 	if((value=getenv(config_str[CONF_NTK_INTERNET_DOWNLOAD])))
 		server_opt.my_dnload_bw=atoi(value);	
+	if(server_opt.my_upload_bw && server_opt.my_dnload_bw)
+		me.my_bandwidth =
+			bandwidth_in_8bit((server_opt.my_upload_bw+server_opt.my_dnload_bw)/2);
 	if((value=getenv(config_str[CONF_NTK_INTERNET_PING_HOSTS]))) {
 		int counter;
 		server_opt.inet_hosts=parse_internet_hosts(value, &counter);
@@ -410,8 +413,8 @@ void check_conflicting_options(void)
 
 	if(server_opt.share_internet && me.my_bandwidth < MIN_CONN_BANDWIDTH)
 		fatal("You want to share your Internet connection but "
-			"your bandwidth is just TOO small."
-			"Do not share it, and do not fake the values in"
+			"your bandwidth is just TOO small. "
+			"Do not share it, and do not fake the values in "
 			"netsukuku.conf, or your connection will be saturated");
 
 	if(!server_opt.inet_connection && server_opt.share_internet) {	

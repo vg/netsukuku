@@ -510,7 +510,7 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 		}
 	}
 
-	if((!gnode_level && server_opt.share_internet &&  me.inet_connected) || 
+	if((!gnode_level && server_opt.share_internet && me.inet_connected) || 
 		(gnode_level && me.igws_counter[gnode_level-1])) {
 		
 		igw_pack=igw_build_bentry(gnode_level, &igw_pack_sz);	
@@ -520,6 +520,7 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 			total_bblock_sz = new_bblock_sz + igw_pack_sz;
 			new_bhdr=xrealloc(new_bhdr, total_bblock_sz);
 			
+			bcast_hdr->flags|=BCAST_TRACER_BBLOCK;
 			trcr_hdr->flags|=TRCR_IGW;
 
 			p=(char *)new_bhdr + new_bblock_sz;
@@ -680,9 +681,9 @@ int tracer_unpack_pkt(PACKET rpkt, brdcast_hdr **new_bcast_hdr,
 
 		bblock_sz=rpkt.hdr.sz-tracer_sz;
 		bhdr=(bnode_hdr *)(rpkt.msg+tracer_sz);
-		if(!(trcr_hdr->flags & TRCR_BBLOCK) || 
+		if((!(trcr_hdr->flags & TRCR_BBLOCK) && !(trcr_hdr->flags & TRCR_IGW)) ||
 				!(bcast_hdr->flags & BCAST_TRACER_BBLOCK)) {
-			debug(DBG_INSANE, "%s:%d trcr_flags: %d flags: %d", 
+			debug(DBG_INSANE, ERROR_MSG "trcr_flags: %d flags: %d", 
 					ERROR_POS, trcr_hdr->flags, 
 					bcast_hdr->flags);
 			return -1;
@@ -867,12 +868,12 @@ int tracer_store_bblock(u_char level, tracer_hdr *trcr_hdr, tracer_chunk *tracer
 		 * Check if this bblock is an IGW. If it is, store it in
 		 * me.igws
 		 */
-		if(bblist[i][e]->level >= FAMILY_LVLS+1) {
+		if(bblist[i][0]->level >= FAMILY_LVLS+1) {
 			
 			if(igws_founds <= MAX_IGW_PER_QSPN_CHUNK || 
 				trcr_hdr->flags & TRCR_IGW) {
 
-				igw_store_bblock(bblist_hdr[i], bblist[i][e], level);
+				igw_store_bblock(bblist_hdr[i], bblist[i][0], level);
 				igws_founds++;
 				
 				goto skip_bmap;

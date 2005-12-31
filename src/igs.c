@@ -201,8 +201,10 @@ void init_my_igws(inet_gw **igws, int *igws_counter,
 {
 	inet_gw *igw, **my_igws;
 	map_node *node;
-	int i=0, e, bw, bw_mean;
-	
+	int i=0, e, bw_mean;
+
+	init_igws(&my_igws, 0, qg->levels);
+
 	for(i=0; i<qg->levels; i++) {
 		if(!i) {
 			node=cur_node;
@@ -210,21 +212,17 @@ void init_my_igws(inet_gw **igws, int *igws_counter,
 		} else {
 			node=&qg->gnode[_EL(i)]->g;
 			
-			bw=e=0;
+			bw_mean=e=0;
 			igw=igws[i-1];
 			list_for(igw) {
 				bw_mean+=igw->bandwidth;
 				e++;
 			}
 			bw_mean/=e;
-			
-			if(my_bandwidth && i==1)
-				/* Add our bw in the average */
-				bw_mean=(bw_mean*e+my_bandwidth)/(e+1);
 		}
 		
 		igw=igw_add_node(igws, igws_counter, i, qg->gid[i],
-				node, qg->ipstart[i].data, (u_char)bw_mean);
+				node, qg->ipstart[0].data, (u_char)bw_mean);
 		my_igws[i]=igw;
 	}
 	
@@ -529,8 +527,8 @@ void igw_order(inet_gw **igws, int *igws_counter, inet_gw **my_igws, int level)
 	i=0;
 	igw=igws[level];
 	list_safe_for(igw, next) {
-		igw->next = i >= MAXIGWS-1 ? 0 : igw_tmp[i+1];
-		igw->prev = i < 0 ? 0 : igw_tmp[i-1];
+		igw->next = i >= igws_counter[level]-1 ? 0 : igw_tmp[i+1];
+		igw->prev = i-1 < 0 ? 0 : igw_tmp[i-1];
 		
 		if(i >= MAXIGWS) {
 			if(igw->node->flags & MAP_ME) {
@@ -542,7 +540,7 @@ void igw_order(inet_gw **igws, int *igws_counter, inet_gw **my_igws, int level)
 			clist_del(&igws[level], &igws_counter[level], igw);
 		}
 
-		if(igw->node->flags & MAP_ME)
+		if(my_igws && igw->node->flags & MAP_ME)
 			my_igws[level]=igw;
 		
 		if(i == MAXIGWS-1)
@@ -654,13 +652,13 @@ int igw_exec_masquerade_sh(char *script)
 }
 
 /*
- * igw_replace_default_gateways: sets the default gw route to reach the
+ * igw_replace_def_igws: sets the default gw route to reach the
  * Internet. The route utilises multipath therefore there are more than one
  * gateway which can be used to reach the Internet, these gateways are choosen
  * from the `igws' llist.
  * On error -1 is returned.
  */
-int igw_replace_default_gateways(inet_gw **igws, int *igws_counter, 
+int igw_replace_def_igws(inet_gw **igws, int *igws_counter, 
 		inet_gw **my_igws, int max_levels, int family)
 {
 	inet_gw *igw;
@@ -669,8 +667,15 @@ int igw_replace_default_gateways(inet_gw **igws, int *igws_counter,
 	struct nexthop *nh=0;
 	int ni, nexthops, level;
 
+#ifdef DEBUG		
+#define MAX_GW_IP_STR_SIZE (MAX_MULTIPATH_ROUTES*((INET6_ADDRSTRLEN+1)+IFNAMSIZ)+1)
+	int n;
+	char gw_ip[MAX_GW_IP_STR_SIZE]="";
+#endif
+
 	/* to == 0.0.0.0 */
 	inet_setip_anyaddr(&to, family);
+	to.len=to.bits=0;
 
 	nh=xmalloc(sizeof(struct nexthop)*MAX_MULTIPATH_ROUTES);
 	memset(nh, 0, sizeof(struct nexthop)*MAX_MULTIPATH_ROUTES);
@@ -682,6 +687,7 @@ int igw_replace_default_gateways(inet_gw **igws, int *igws_counter,
 	 */
 	if(server_opt.share_internet && me.inet_connected) {
 		memcpy(&nh[ni].gw, &server_opt.inet_gw, sizeof(inet_prefix));
+		inet_htonl(nh[ni].gw.data, nh[ni].gw.family);
 		nh[ni].dev=server_opt.inet_gw_dev;
 		nh[ni].hops=255-ni;
 		ni++;
@@ -706,22 +712,34 @@ int igw_replace_default_gateways(inet_gw **igws, int *igws_counter,
 			if(igw->bandwidth < MIN_CONN_BANDWIDTH)
 				continue;
 
-			if(igw->node->flags & MAP_ME && !server_opt.share_internet) {
-				if(level)
-					continue;
-
-				memcpy(&nh[ni].gw, &server_opt.inet_gw, sizeof(inet_prefix));
-				nh[ni].dev=server_opt.inet_gw_dev;
-				nh[ni].hops=255-ni;
-			} else {
-				inet_setip(&nh[ni].gw, igw->ip, family);
-				nh[ni].dev=tunl0_if.dev_name;
-				nh[ni].hops=255-ni;
-			}
+			if(!memcmp(igw->ip, me.cur_quadg.ipstart[0].data, MAX_IP_SZ))
+				continue;
+			
+			inet_setip(&nh[ni].gw, igw->ip, family);
+			inet_htonl(nh[ni].gw.data, nh[ni].gw.family);
+			nh[ni].dev=tunl0_if.dev_name;
+			nh[ni].hops=255-ni;
 			ni++;
 		}
 	}
 	nh[ni].dev=0;
+
+	if(!ni)
+		return 0;
+
+#ifdef DEBUG
+	for(n=0; nh && nh[n].dev; n++){ 
+		strcat(gw_ip, inet_to_str(nh[n].gw));
+		strcat(gw_ip, "|");
+		strcat(gw_ip, nh[n].dev);
+		strcat(gw_ip, ":");
+	}
+	debug(DBG_INSANE, RED("igw_def_gw: default via %s"), gw_ip);
+#endif
+
+	if(route_replace(0, 0, to, nh, 0, 0))
+		error("WARNING: Cannot update the default route "
+				"lvl %d", level);
 
 	return 0;
 }
@@ -741,7 +759,7 @@ char *igw_build_bentry(u_char level, size_t *pack_sz)
 	inet_gw *igws_buf[MAX_IGW_PER_QSPN_CHUNK], *igw;
 	inet_prefix ip;
 	
-	int i, e, lvl, found_gws, max_igws, gids[FAMILY_LVLS];
+	int i, e, lvl, found_gws=0, max_igws, gids[FAMILY_LVLS];
 	size_t total_bblocks_sz, bblock_sz;
 	char *bblock, *buf;
 	u_char *bnode_gid;
@@ -756,7 +774,7 @@ char *igw_build_bentry(u_char level, size_t *pack_sz)
 		igws_buf[found_gws++]=me.my_igws[level];
 	else {
 		for(lvl=level-1, found_gws=0; 
-			lvl >= 0 && found_gws <= max_igws; i--) {
+			lvl >= 0 && found_gws <= max_igws; lvl--) {
 
 			igw=me.igws[lvl];
 			list_for(igw) {
@@ -880,7 +898,7 @@ int igw_store_bblock(bnode_hdr *bblock_hdr, bnode_chunk *bchunk, u_char level)
 	/* 
 	 * Refresh the Kernel routing table 
 	 */
-	igw_replace_default_gateways(me.igws, me.igws_counter, me.my_igws, 
+	igw_replace_def_igws(me.igws, me.igws_counter, me.my_igws, 
 			me.cur_quadg.levels, my_family);
 	if(ret == -1) {
 		debug(DBG_SOFT, ERROR_MSG "cannot replace default gateway", 
@@ -945,13 +963,17 @@ char *pack_igws(inet_gw **igws, int *igws_counter, int levels, int *pack_sz)
 	 * Fill the pack header and calculate the total pack size 
 	 */
 	hdr.levels=levels;
-	for(lvl=0; lvl<levels; lvl++)
+	*pack_sz=sizeof(struct inet_gw_pack_hdr);
+	for(lvl=0; lvl<levels; lvl++) {
 		hdr.gws[lvl]=INET_GW_PACK_SZ*igws_counter[lvl];
-	*pack_sz=IGWS_PACK_SZ(&hdr);
+		(*pack_sz)+=INET_GW_PACK_SZ*igws_counter[lvl];
+	}
 
 	buf=pack=xmalloc(*pack_sz);
+	memset(pack, 0, *pack_sz);
 
 	memcpy(buf, &hdr, sizeof(struct inet_gw_pack_hdr));
+	ints_host_to_network(buf, inet_gw_pack_hdr_iinfo);
 	buf+=sizeof(struct inet_gw_pack_hdr);
 
 	/* Pack `igws' */
@@ -985,6 +1007,7 @@ int unpack_igws(char *pack, size_t pack_sz,
 	char *buf;
 
 	hdr=(struct inet_gw_pack_hdr *)pack;
+	ints_network_to_host(hdr, inet_gw_pack_hdr_iinfo);
 	sz=IGWS_PACK_SZ(hdr);
 
 	/* Verify the package header */
@@ -1000,6 +1023,7 @@ int unpack_igws(char *pack, size_t pack_sz,
 	for(lvl=0; lvl<hdr->levels; lvl++) {
 		for(i=0; i<hdr->gws[lvl]; i++) {
 			igw=xmalloc(sizeof(inet_gw));
+			memset(igw, 0, sizeof(inet_gw));
 
 			unpack_inet_gw(buf, igw);
 			igw->node = node_from_pos(igw->gid, int_map);

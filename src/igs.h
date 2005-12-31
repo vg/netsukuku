@@ -73,10 +73,11 @@ typedef struct internet_gateway inet_gw;
 
 struct inet_gw_pack_hdr
 {
-	u_char		gws[MAX_LEVELS];/* Number of inet_gws there are in the
-					   pack, for each level, minus one */
+	int16_t		gws[MAX_LEVELS];/* Number of inet_gws there are in the
+					   pack, for each level */
 	u_char		levels;
 }_PACKED_;
+INT_INFO inet_gw_pack_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { MAX_LEVELS } };
 
 /* 
  * The inet_gw_pack_body is:
@@ -88,7 +89,7 @@ struct inet_gw_pack_hdr
 	size_t _sz; int _pi;						\
 	_sz=sizeof(struct inet_gw_pack_hdr);				\
 	for(_pi=0; _pi<(hdr)->levels; _pi++)				\
-		_sz+=INET_GW_PACK_SZ*((hdr)->gws[_pi]+1);		\
+		_sz+=INET_GW_PACK_SZ*((hdr)->gws[_pi]);			\
 	_sz;								\
 })
 
@@ -144,7 +145,7 @@ int igw_check_inet_conn(void);
 void *igw_check_inet_conn_t(void *null);
 
 int igw_exec_masquerade_sh(char *script);
-int igw_replace_default_gateways(inet_gw **igws, int *igws_counter, 
+int igw_replace_def_igws(inet_gw **igws, int *igws_counter, 
 		inet_gw **my_igws, int max_levels, int family);
 
 char *igw_build_bentry(u_char level, size_t *pack_sz);

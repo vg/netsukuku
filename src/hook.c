@@ -1418,13 +1418,6 @@ void hook_get_igw(void)
 		loginfo("None gave me the Internet Gateway list");
 		reset_igws(me.igws, me.igws_counter, FAMILY_LVLS);
 	}
-
-	/*
-	 * Initialize me.my_igws
-	 */
-	free_my_igws(&me.my_igws);
-	init_my_igws(me.igws, me.igws_counter, &me.my_igws, me.my_bandwidth,
-			me.cur_node, &me.cur_quadg);
 }
 
 
@@ -1472,6 +1465,13 @@ void hook_finish(int new_gnode, struct free_nodes_hdr *fn_hdr)
 		tracer_levels=2;
 	}
 
+	/*
+	 * Initialize me.my_igws
+	 */
+	free_my_igws(&me.my_igws);
+	init_my_igws(me.igws, me.igws_counter, &me.my_igws, me.my_bandwidth,
+			me.cur_node, &me.cur_quadg);
+	
 	loginfo("Starting the second radar scan before sending our"
 			" first tracer_pkt");
 	if(radar_scan(0))
@@ -1493,9 +1493,10 @@ void hook_finish(int new_gnode, struct free_nodes_hdr *fn_hdr)
 
 	/* Let's fill the krnl routing table */
 	loginfo("Filling the kernel routing table");
+
 	rt_full_update(0);
 	if(server_opt.restricted)
-		igw_replace_default_gateways(me.igws, me.igws_counter, 
+		igw_replace_def_igws(me.igws, me.igws_counter, 
 				me.my_igws, me.cur_quadg.levels, my_family);
 	
 	/* (Re)Hook completed */
