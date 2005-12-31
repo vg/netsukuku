@@ -34,7 +34,7 @@
 #include "log.h"
 
 char *tracer_pack_pkt(brdcast_hdr *bcast_hdr, tracer_hdr *trcr_hdr, tracer_chunk *tracer, 
-		      char *bblocks, size_t bblocks_sz);
+		      char *bblocks, size_t bblocks_sz, int new_bblocks);
 
 /* 
  * ip_to_rfrom: If `rip_quadg' is null, it converts the `rip' ip in a 
@@ -447,7 +447,7 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 	void *void_map, *void_node, *p;
 	size_t new_bblock_sz=0, total_bblock_sz=0, igw_pack_sz=0;
 	u_int hops=0;
-	int new_bblocks;
+	int new_bblock_links=0, new_bblocks=0, tot_new_bblocks=0;
 
 	if(!trcr_hdr || !tracer || !bcast_hdr) {
 		/* Brand new tracer packet */
@@ -501,10 +501,12 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 			upper_root_node->flags & MAP_BNODE) {
 
 		new_bhdr=tracer_build_bentry(void_map, void_node,&me.cur_quadg,
-				&new_bchunk, &new_bblocks, gnode_level);
+				&new_bchunk, &new_bblock_links, gnode_level);
 		if(new_bhdr) {
+			tot_new_bblocks=new_bblocks++;
 			new_bblock_sz=BNODEBLOCK_SZ(new_bhdr->bnode_levels,
-					new_bblocks);
+					new_bblock_links);
+
 			bcast_hdr->flags|=BCAST_TRACER_BBLOCK;
 			trcr_hdr->flags|=TRCR_BBLOCK;
 		}
@@ -514,12 +516,14 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 		((!gnode_level && server_opt.share_internet && me.inet_connected) || 
 			(gnode_level && me.igws_counter[gnode_level-1]))) {
 		
-		igw_pack=igw_build_bentry(gnode_level, &igw_pack_sz);	
+		igw_pack=igw_build_bentry(gnode_level, &igw_pack_sz, &new_bblocks);
 
 		/* Append the igw_pack after the new bblock */
 		if(igw_pack) {
 			total_bblock_sz = new_bblock_sz + igw_pack_sz;
 			new_bhdr=xrealloc(new_bhdr, total_bblock_sz);
+
+			tot_new_bblocks += new_bblocks;
 			
 			bcast_hdr->flags|=BCAST_TRACER_BBLOCK;
 			trcr_hdr->flags|=TRCR_IGW;
@@ -557,7 +561,7 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 	pkt->hdr.sz=BRDCAST_SZ(bcast_hdr->sz);
 	
 	pkt->msg=tracer_pack_pkt(bcast_hdr, trcr_hdr, new_tracer,
-				(char *)new_bhdr, new_bblock_sz);
+			(char *)new_bhdr, new_bblock_sz, tot_new_bblocks);
 	
 	/* Yea, finished */
 	if(new_tracer)
@@ -568,16 +572,19 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 }
 
 /* 
- * tracer_pack_pkt: do ya need explanation? pretty simple: pack the tracer packet
+ * tracer_pack_pkt: it packs the tracer packet.
+ * 
+ * If `new_bblocks' isn't zero, the first `new_bblocks'# bblocks contained in
+ * `bblocks' are converted to network order.
  */
 char *tracer_pack_pkt(brdcast_hdr *bcast_hdr, tracer_hdr *trcr_hdr, tracer_chunk *tracer, 
-		      char *bblocks, size_t bblocks_sz)
+		      char *bblocks, size_t bblocks_sz, int new_bblocks)
 {
 	bnode_hdr *bhdr;
 	bnode_chunk *bchunk;
 	size_t pkt_sz;
 	char *msg, *buf;
-	int i;
+	int i, e;
 
 	pkt_sz=BRDCAST_SZ(TRACERPKT_SZ(trcr_hdr->hops) + bblocks_sz);
 	
@@ -608,16 +615,17 @@ char *tracer_pack_pkt(brdcast_hdr *bcast_hdr, tracer_hdr *trcr_hdr, tracer_chunk
 		memcpy(buf, bblocks, bblocks_sz);
 	
 		/* and convert it to network order */
-		bhdr=(bnode_hdr *)buf;
-		bchunk=(bnode_chunk *)((char *)buf+sizeof(bnode_hdr)+
-				sizeof(u_char)*bhdr->bnode_levels);
-		
-		for(i=0; i<bhdr->links; i++)
-			ints_host_to_network(&bchunk[i], bnode_chunk_iinfo);
+		for(e=0; e<new_bblocks; e++) {
+			bhdr=(bnode_hdr *)buf;
+			bchunk=(bnode_chunk *)((char *)buf+sizeof(bnode_hdr)+
+					sizeof(u_char)*bhdr->bnode_levels);
 
-		ints_host_to_network(bhdr, bnode_hdr_iinfo);
+			for(i=0; i<bhdr->links; i++)
+				ints_host_to_network(&bchunk[i], bnode_chunk_iinfo);
 
-		buf+=bblocks_sz;
+			buf+=BNODEBLOCK_SZ(bhdr->bnode_levels, bhdr->links);
+			ints_host_to_network(bhdr, bnode_hdr_iinfo);
+		}
 	}
 
 	return msg;
@@ -827,7 +835,7 @@ int tracer_store_bblock(u_char level, tracer_hdr *trcr_hdr, tracer_chunk *tracer
 	*bblocks_found = bb;
 	if(!bb) {
 		/* The bblock was malformed -_- */
-		debug(DBG_NORMAL, "%s:%d: malformed bnode block", ERROR_POS);
+		debug(DBG_NORMAL, ERROR_MSG "malformed bnode block", ERROR_POS);
 		*bblock_found_sz = 0;
 		*bblocks_found_block = 0;
 		return -1;
@@ -870,7 +878,6 @@ int tracer_store_bblock(u_char level, tracer_hdr *trcr_hdr, tracer_chunk *tracer
 		 * me.igws
 		 */
 		if(bblist[i][0]->level >= FAMILY_LVLS+1) {
-			
 			if(server_opt.restricted && 
 				(igws_founds < MAX_IGW_PER_QSPN_CHUNK ||
 					trcr_hdr->flags & TRCR_IGW)) {

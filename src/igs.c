@@ -714,7 +714,6 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 				continue;
 			
 			inet_setip(&nh[ni].gw, igw->ip, family);
-			inet_htonl(nh[ni].gw.data, nh[ni].gw.family);
 			nh[ni].dev=tunl0_if.dev_name;
 			nh[ni].hops=255-ni;
 			ni++;
@@ -746,11 +745,15 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
  * igw_build_bentry: It builds the Internet gateway bnode blocks to be added
  * in the bnode's entry in the tracer pkt. For the specification of this type
  * of bnode block read igs.h
+ * 
  * It returns the mallocated package containing the bblock, in `*pack_sz' it
  * stores the package's size.
+ * The number of different bblock contained in the package is written in
+ * `*bblocks' if `bblocks' is not zero.
+ *
  * On error it returns NULL.
  */
-char *igw_build_bentry(u_char level, size_t *pack_sz)
+char *igw_build_bentry(u_char level, size_t *pack_sz, int *new_bblocks)
 {
 	bnode_hdr *bhdr;
 	bnode_chunk *bchunk;
@@ -763,7 +766,9 @@ char *igw_build_bentry(u_char level, size_t *pack_sz)
 	u_char *bnode_gid;
 
 	*pack_sz=0;
-	ip.family=my_family;	
+	if(new_bblocks)
+		*new_bblocks=0;
+	ip.family=my_family;
 
 	/*
 	 * Select the Internet gateways to be included in the bblock
@@ -787,6 +792,8 @@ char *igw_build_bentry(u_char level, size_t *pack_sz)
 	if(!found_gws)
 		/* nothing found */
 		return 0;
+
+	*new_bblocks = found_gws;
 
 	/*
 	 * Create enough space for the bblock
