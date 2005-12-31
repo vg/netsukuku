@@ -48,7 +48,7 @@ static struct
 } filter;
 
 /*
- * ifs_idx_to_devname: returns the pointer to the interface struct of the 
+ * ifs_find_idx: returns the pointer to the interface struct of the 
  * device which has the index equal to `dev_idx'.
  * `ifs' is the array which keeps the interface list and has `ifs_n' elements.
  */
@@ -61,6 +61,49 @@ interface *ifs_find_idx(interface *ifs, int ifs_n, int dev_idx)
 			return &ifs[i];
 
 	return 0;
+}
+
+int ifs_find_devname(interface *ifs, int ifs_n, char *dev_name)
+{
+	int i;
+
+	for(i=0; i<ifs_n; i++)
+		if(dev_name && ifs[i].dev_name && 
+			!strncmp(ifs[i].dev_name, dev_name, IFNAMSIZ))
+			return i;
+
+	return -1;
+}
+
+/*
+ * ifs_del: removes from the `ifs' array the device which is at the
+ * `if_pos'th position. `*ifs_n' is then decremented.
+ */
+void ifs_del(interface *ifs, int *ifs_n, int if_pos)
+{
+	if(if_pos == (*ifs_n)-1)
+		memset(&ifs[if_pos], 0, sizeof(interface));
+	else {
+		memcpy(&ifs[if_pos], &ifs[(*ifs_n)-1], sizeof(interface));
+		memset(&ifs[(*ifs_n)-1], 0, sizeof(interface));
+	}
+
+	(*ifs_n)--;
+}
+
+/*
+ * ifs_del_byname: deletes from the `ifs' array the device whose name is equal
+ * to `dev_name'
+ */
+void ifs_del_byname(interface *ifs, int *ifs_n, char *dev_name)
+{
+	int if_pos;
+
+	if_pos=ifs_find_devname(ifs, *ifs_n, dev_name);
+	if(if_pos < 0)
+		return;
+
+	ifs_del(ifs, ifs_n, if_pos);
 }
 
 /*

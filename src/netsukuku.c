@@ -216,9 +216,6 @@ void fill_loaded_cfg_options(void)
 		server_opt.my_upload_bw=atoi(value);
 	if((value=getenv(config_str[CONF_NTK_INTERNET_DOWNLOAD])))
 		server_opt.my_dnload_bw=atoi(value);	
-	if(server_opt.my_upload_bw && server_opt.my_dnload_bw)
-		me.my_bandwidth =
-			bandwidth_in_8bit((server_opt.my_upload_bw+server_opt.my_dnload_bw)/2);
 	if((value=getenv(config_str[CONF_NTK_INTERNET_PING_HOSTS]))) {
 		int counter;
 		server_opt.inet_hosts=parse_internet_hosts(value, &counter);
@@ -260,6 +257,9 @@ void free_server_opt(void)
 
 	if(server_opt.ip_masq_script != IPMASQ_SCRIPT_FILE)
 		xfree(server_opt.ip_masq_script);
+
+	if(server_opt.inet_gw_dev)
+		xfree(server_opt.inet_gw_dev);
 
 	for(i=0; i<MAX_INTERFACES && server_opt.ifs[i]; i++)
 		xfree(server_opt.ifs[i]);
@@ -454,6 +454,9 @@ void init_netsukuku(char **argv)
 	/*
 	 * Initilize the Internet gateway stuff
 	 */
+	if(server_opt.my_upload_bw && server_opt.my_dnload_bw)
+		me.my_bandwidth =
+			bandwidth_in_8bit((server_opt.my_upload_bw+server_opt.my_dnload_bw)/2);
 	init_internet_gateway_search();
 	
 	pkts_init(me.cur_ifs, me.cur_ifs_n, 0);

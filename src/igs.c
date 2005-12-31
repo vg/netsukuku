@@ -203,8 +203,6 @@ void init_my_igws(inet_gw **igws, int *igws_counter,
 	map_node *node;
 	int i=0, e, bw, bw_mean;
 	
-	init_igws(&my_igws, 0, qg->levels);
-	
 	for(i=0; i<qg->levels; i++) {
 		if(!i) {
 			node=cur_node;
@@ -265,7 +263,8 @@ void init_internet_gateway_search(void)
 			" kernel module loaded?", DEFAULT_TUNL_NUMBER);
 	if(tun_add_tunl0(&tunl0_if) < 0)
 		fatal("Cannot get device info for tunl0");
-	
+	ifs_del_byname(me.cur_ifs, &me.cur_ifs_n, tunl0_if.dev_name);
+
 	if(!server_opt.inet_connection)
 		return;
 	
@@ -298,8 +297,8 @@ void init_internet_gateway_search(void)
 
 		if(server_opt.inet_gw.data[0])
 			loginfo("Your specified Internet gateway doesn't match with "
-					"the one currently stored in the kernel routing table."
-					"I'm going to use the kernel gateway: %s dev %s",
+				"the one currently stored in the kernel routing table."
+				"I'm going to use the kernel gateway: %s dev %s",
 					inet_to_str(new_gw), new_gw_dev);
 
 		if(!server_opt.inet_gw_dev)
@@ -310,7 +309,7 @@ void init_internet_gateway_search(void)
 	}
 	
 	loginfo("Using \"%s\" as your first Internet gateway.", 
-			inet_to_str(new_gw));
+			inet_to_str(server_opt.inet_gw));
 
 	for(i=0; i < me.cur_ifs_n; i++)
 		if(!strcmp(me.cur_ifs[i].dev_name, server_opt.inet_gw_dev)) {
@@ -326,13 +325,8 @@ void init_internet_gateway_search(void)
 			loginfo("Deleting the \"%s\" interface from the device "
 				"list since it is part of your primary Internet"
 				" gw route.", me.cur_ifs[i].dev_name);
-			if(i == me.cur_ifs_n-1)
-				memset(&me.cur_ifs[i], 0, sizeof(interface));
-			else {
-				memcpy(&me.cur_ifs[i], &me.cur_ifs[me.cur_ifs_n-1], sizeof(interface));
-				memset(&me.cur_ifs[me.cur_ifs_n-1], 0, sizeof(interface));
-			}
-			me.cur_ifs_n--;
+
+			ifs_del(me.cur_ifs, &me.cur_ifs_n, i);
 		}
 
 
