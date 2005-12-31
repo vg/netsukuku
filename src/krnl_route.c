@@ -222,9 +222,9 @@ int route_exec(int route_cmd, int route_type, int route_scope, unsigned flags,
 		addattr32(&req.nh, sizeof(req), RTA_OIF, idx);
 	}
 
+	req.rt.rtm_family  = to.family;
 	if (to.len) {
 		req.rt.rtm_dst_len = to.bits;
-		req.rt.rtm_family  = to.family;
 		if(!to.data[0] && !to.data[1] && !to.data[2] && !to.data[3]) {
 			/*Add the default gw*/
 			req.rt.rtm_protocol=RTPROT_KERNEL;
