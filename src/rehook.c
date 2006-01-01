@@ -266,6 +266,11 @@ void new_rehook(map_gnode *gnode, int gid, int level, int gnode_count)
 	struct rehook_argv *rargv;
 	pthread_t thread;
 
+
+#ifdef DEBUG_TEST
+	return;
+#endif
+	
 	if(!level && gid != me.cur_quadg.gid[level])
 		/* We rehook at level 0 only if we have the same gid of
 		 * another node, so in this case we don't have to rehook */

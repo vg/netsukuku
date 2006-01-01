@@ -503,7 +503,7 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 		new_bhdr=tracer_build_bentry(void_map, void_node,&me.cur_quadg,
 				&new_bchunk, &new_bblock_links, gnode_level);
 		if(new_bhdr) {
-			tot_new_bblocks=new_bblocks++;
+			tot_new_bblocks=1;
 			new_bblock_sz=BNODEBLOCK_SZ(new_bhdr->bnode_levels,
 					new_bblock_links);
 
@@ -869,8 +869,7 @@ int tracer_store_bblock(u_char level, tracer_hdr *trcr_hdr, tracer_chunk *tracer
 
 			debug(DBG_NORMAL, ERROR_MSG "skipping the %d bnode,"
 					"it was built by us!", ERROR_POS, i);
-			xfree(bblist[i]);
-			continue;
+			goto discard_bblock;
 		}
 
 		/*
@@ -886,10 +885,18 @@ int tracer_store_bblock(u_char level, tracer_hdr *trcr_hdr, tracer_chunk *tracer
 				igws_founds++;
 				
 				goto skip_bmap;
-			} else
+			} else {
+				debug(DBG_NOISE, ERROR_MSG "Malforded bblock entry", 
+						ERROR_POS);
 				goto discard_bblock;
+			}
 		}
-		
+	
+		if(!(trcr_hdr->flags & TRCR_BBLOCK)) {
+			debug(DBG_NOISE, ERROR_MSG "Malforded bblock entry", ERROR_POS);
+			goto discard_bblock;
+		}
+
 		for(blevel=o; blevel < bblist_hdr[i]->bnode_levels; blevel++) {
 			bnode=bnode_gid[blevel];
 

@@ -301,11 +301,9 @@ int rnl_update_devs(struct rnode_list **rnlist, int *rnlist_counter,
 	                map_node *node, interface **devs, int dev_n)
 {
 	struct rnode_list *old_rnl, *new_rnl;
-	int i, old_dev_n, dev_pos, update=0;
+	int i, dev_pos, update=0;
 
 	old_rnl=rnl_find_node(*rnlist, node);
-	if(!old_rnl)
-		old_dev_n=0;
 
 	if(!dev_n) {
 		/*
@@ -315,7 +313,7 @@ int rnl_update_devs(struct rnode_list **rnlist, int *rnlist_counter,
 		return 0;
 	}
 
-	if(old_dev_n)
+	if(old_rnl)
 		/*
 		 * Diff old_rnl->dev and `devs'
 		 */
@@ -326,7 +324,7 @@ int rnl_update_devs(struct rnode_list **rnlist, int *rnlist_counter,
 				break;
 			}
 		}
-	else if(!old_dev_n)
+	else if(!old_rnl)
 		update=1;
 	
 	if(update) {

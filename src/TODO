@@ -3,7 +3,8 @@
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 
 - Internet Gateway Search
-	- Ping gateways
+	- tracer.c:896: Malforded bblock entry
+	- rehook.c:271
 	- test it !
 
 - Gnodes contiguity

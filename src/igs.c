@@ -905,8 +905,9 @@ char *igw_build_bentry(u_char level, size_t *pack_sz, int *new_bblocks)
 		for(e=0; e < bhdr->bnode_levels; e++)
 			bnode_gid[e] = gids[e];
 
-		debug(DBG_INSANE, "igw_build_bentry: ip %s", inet_to_str(ip));
-		
+		if(!i || igws_buf[i-1]->ip[0] != igws_buf[i]->ip[0])
+			debug(DBG_INSANE, "igw_build_bentry: ip %s", inet_to_str(ip));
+
 		/* Fill the bnode chunk */
 		bchunk[0].gnode=0;
 		bchunk[0].level=FAMILY_LVLS+1;
