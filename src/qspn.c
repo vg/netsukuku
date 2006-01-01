@@ -400,8 +400,10 @@ void qspn_remove_deads(u_char level)
 			 * Remove it from the maps */
 
 			if(server_opt.restricted && node->flags & MAP_IGW) {
-				/* The node was an Internet gw, remove it from
-				 * me.igws */
+				/*
+				 * The node was an Internet gw, remove it from
+				 * me.igws 
+				 */
 				igw=igw_find_node(me.igws, i, node);
 				if(igw) {
 					memcpy(ip, igw->ip, MAX_IP_SZ);
@@ -410,6 +412,9 @@ void qspn_remove_deads(u_char level)
 						if(l+1 < me.cur_quadg.levels)
 							igw=igw_find_ip(me.igws, i, ip);;
 					}
+
+					igw_replace_def_igws(me.igws, me.igws_counter,
+						me.my_igws, me.cur_quadg.levels, my_family);
 				}
 			}
 			

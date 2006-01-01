@@ -771,10 +771,23 @@ int rt_replace_def_gw(char *dev, inet_prefix gw)
 				"family", to.family);
 		return -1;
 	}
-	to.len=0;
-	to.bits=0;
+	to.len=to.bits=0;
 
 	return rt_replace_gw(dev, to, gw);
+}
+
+int rt_delete_def_gw(void)
+{
+	inet_prefix to;
+
+	if(inet_setip_anyaddr(&to, my_family)) {
+		error("rt_delete_def_gw(): Cannot use INADRR_ANY for the %d "
+				"family", to.family);
+		return -1;
+	}
+	to.len=to.bits=0;
+
+	return route_del(0, 0, to, 0, 0, 0);
 }
 
 /* 

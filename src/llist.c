@@ -267,7 +267,7 @@ do{									\
 #define clist_join(_head, _counter, _list)                              \
 do{                  							\
 	if((*(_counter)) > 0) {						\
-		*((_head))=list_join(_head, _list);				\
+		*((_head))=list_join(_head, _list);			\
 		(*(_counter))--;					\
 	}								\
 } while(0)

@@ -281,14 +281,6 @@ void init_internet_gateway_search(void)
 			fatal("The default gw isn't set in the kernel and you "
 				"didn't specified it in netsukuku.conf. "
 				"Cannot continue!");
-
-		loginfo("Trying to set %s dev %s as the default gw",
-			inet_to_str(server_opt.inet_gw), server_opt.inet_gw_dev);
-		if(rt_replace_def_gw(server_opt.inet_gw_dev, server_opt.inet_gw))
-			fatal("Cannot set the default gw to %s for the %s dev",
-				inet_to_str(server_opt.inet_gw),
-				server_opt.inet_gw_dev);
-		
 	} else if(!server_opt.inet_gw_dev || 
 		   strncmp(new_gw_dev, server_opt.inet_gw_dev, IFNAMSIZ) || 
 		   memcmp(new_gw.data, server_opt.inet_gw.data, MAX_IP_SZ)) {
@@ -308,6 +300,10 @@ void init_internet_gateway_search(void)
 	
 	loginfo("Using \"%s\" as your first Internet gateway.", 
 			inet_to_str(server_opt.inet_gw));
+	if(rt_replace_def_gw(server_opt.inet_gw_dev, server_opt.inet_gw))
+		fatal("Cannot set the default gw to %s for the %s dev",
+				inet_to_str(server_opt.inet_gw),
+				server_opt.inet_gw_dev);
 
 	for(i=0; i < me.cur_ifs_n; i++)
 		if(!strcmp(me.cur_ifs[i].dev_name, server_opt.inet_gw_dev)) {
@@ -315,13 +311,13 @@ void init_internet_gateway_search(void)
 				if(!strcmp(server_opt.ifs[i], server_opt.inet_gw_dev))
 					fatal("You specified the \"%s\" interface"
 						" in the options, but this device is also"
-						" part of your primary Internet gw route." 
+						" part of the primary Internet gw route." 
 						" Don't include \"%s\" in the list of "
 						"interfaces utilised by the daemon", 
 						server_opt.inet_gw_dev, server_opt.inet_gw_dev);
 			
 			loginfo("Deleting the \"%s\" interface from the device "
-				"list since it is part of your primary Internet"
+				"list since it is part of the primary Internet"
 				" gw route.", me.cur_ifs[i].dev_name);
 
 			ifs_del(me.cur_ifs, &me.cur_ifs_n, i);

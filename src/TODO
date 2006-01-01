@@ -3,6 +3,7 @@
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 
 - Internet Gateway Search
+	- Ping gateways
 	- test it !
 
 - Gnodes contiguity
