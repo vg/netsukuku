@@ -37,6 +37,7 @@
 #define MAX_INTERNET_HNAMES	10
 #define MAX_INTERNET_HNAME_SZ	64
 #define INET_HOST_PING_TIMEOUT	3
+#define IGW_HOST_PING_TIMEOUT	4
 #define INET_NEXT_PING_WAIT	10
 
 #define IGW_BW_DELTA		1		/* If the difference between the old and the new
@@ -55,6 +56,8 @@
  * inet_gw flags
  */
 #define IGW_TUNNELED		1
+#define IGW_ACTIVE		(1<<1)		/* This gw is being used in the
+						   routing table */
 
 /*
  * internet_gateway: this struct points to a particular (g)node which is

@@ -106,6 +106,7 @@ int inet_addr_match(const inet_prefix *a, const inet_prefix *b, int bits);
 int ipv6_addr_type(inet_prefix addr);
 int inet_validate_ip(inet_prefix ip);
 
+const char *ipraw_to_str(u_int ip[MAX_IP_INT], int family);
 const char *inet_to_str(inet_prefix ip);
 int str_to_inet(const char *src, inet_prefix *ip);
 int inet_to_sockaddr(inet_prefix *ip, u_short port, struct sockaddr *dst, socklen_t *dstlen);

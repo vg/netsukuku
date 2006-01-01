@@ -371,28 +371,37 @@ int inet_validate_ip(inet_prefix ip)
 /* * * Coversion functions... * * */
 
 /*
- * inet_to_str: It returns the string which represents the given ip.
+ * ipraw_to_str: It returns the string which represents the given ip in host
+ * order.
  */
-const char *inet_to_str(inet_prefix ip)
+const char *ipraw_to_str(u_int ip[MAX_IP_INT], int family)
 {
 	struct in_addr src;
 	struct in6_addr src6;
 	static char dst[INET_ADDRSTRLEN], dst6[INET6_ADDRSTRLEN];
 
-	if(ip.family==AF_INET) {
-		src.s_addr=htonl(ip.data[0]);
-		inet_ntop(ip.family, &src, dst, INET_ADDRSTRLEN);
+	if(family==AF_INET) {
+		src.s_addr=htonl(ip[0]);
+		inet_ntop(family, &src, dst, INET_ADDRSTRLEN);
 		
 		return dst;
-	} else if(ip.family==AF_INET6) {
-		inet_htonl(ip.data, ip.family);
-		memcpy(&src6, ip.data, MAX_IP_SZ);
-		inet_ntop(ip.family, &src6, dst6, INET6_ADDRSTRLEN);
+	} else if(family==AF_INET6) {
+		inet_htonl(ip, family);
+		memcpy(&src6, ip, MAX_IP_SZ);
+		inet_ntop(family, &src6, dst6, INET6_ADDRSTRLEN);
 
 		return dst6;
 	}
 
 	return 0;
+}
+
+/*
+ * inet_to_str: returns the string rapresentation of `ip'
+ */
+const char *inet_to_str(inet_prefix ip)
+{
+	return ipraw_to_str(ip.data, ip.family);
 }
 
 /*

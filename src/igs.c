@@ -334,7 +334,7 @@ void init_internet_gateway_search(void)
 		fatal("We are not connected to the Internet, but you want to "
 			"share your connection. Please check your options");
 
-	debug(DBG_SOFT,   "Evocating the ping daemon.");
+	debug(DBG_SOFT,   "Evocating the Internet ping daemon.");
         pthread_attr_init(&t_attr);
         pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
         pthread_create(&ping_thread, &t_attr, igw_check_inet_conn_t, 0);
@@ -628,6 +628,71 @@ skip_it:
 }
 
 /*
+ * igw_ping_igw: pings `igw->ip' and returns 1 if it replies.
+ */
+int igw_ping_igw(inet_gw *igw)
+{
+	inet_prefix ip;
+	const char *ntop;
+	
+	inet_setip_raw(&ip, igw->ip, my_family);
+	ntop=inet_to_str(ip);
+	
+	return pingthost(ntop, IGW_HOST_PING_TIMEOUT) >= 1 ? 1 : 0;
+}
+
+/*
+ * igw_monitor_igws_t: it pings the Internet gateway which are currently
+ * utilised in the kernel routing table and deletes the ones which don't
+ * reply.
+ */
+void *igw_monitor_igws_t(void *null)
+{
+	inet_gw *igw;
+	int i, nexthops, ip[MAX_IP_INT], l, ni;
+	
+	nexthops=MAX_MULTIPATH_ROUTES/me.cur_quadg.levels;
+	for(;;) {
+		for(i=0; i<me.cur_quadg.levels; i++) {
+			igw=me.igws[i];
+
+			ni=0;
+			list_for(igw) {
+				if(ni >= nexthops)
+					break;
+
+				if(!(igw->flags & IGW_ACTIVE))
+					continue;
+
+				if(!memcmp(igw->ip, me.cur_quadg.ipstart[0].data, MAX_IP_SZ))
+					continue;
+
+				if(!igw_ping_igw(igw)) {
+					memcpy(ip, igw->ip, MAX_IP_SZ);
+					
+					loginfo("The Internet gw %s doesn't responds "
+						"to pings. It is dead.", 
+						ipraw_to_str(igw->ip, my_family));
+
+					for(l=i; l<me.cur_quadg.levels; l++) {
+						igw_del(me.igws, me.igws_counter, igw, l);
+						if(l+1 < me.cur_quadg.levels)
+							igw=igw_find_ip(me.igws, i, ip);;
+					}
+
+					igw_replace_def_igws(me.igws, me.igws_counter,
+							me.my_igws, me.cur_quadg.levels, my_family);
+				}
+
+				ni++;
+			}
+		}
+		
+		sleep(INET_NEXT_PING_WAIT);
+	}
+}
+
+/*
  * igw_exec_masquerade_sh: executes `script', which will do IP masquerade
  */
 int igw_exec_masquerade_sh(char *script)
@@ -659,7 +724,7 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 	inet_prefix to;
 
 	struct nexthop *nh=0;
-	int ni, nexthops, level;
+	int ni, ni_lvl, nexthops, level;
 
 #ifdef DEBUG		
 #define MAX_GW_IP_STR_SIZE (MAX_MULTIPATH_ROUTES*((INET6_ADDRSTRLEN+1)+IFNAMSIZ)+1)
@@ -697,9 +762,10 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 		if(server_opt.share_internet)
 			nexthops--;
 
-		/* Take the first `nexthops'# gateways and add them in `nh' */
+		/* Take the first `nexthops'# gateways and add them in `ni' */
+		ni_lvl=0;
 		list_for(igw) {
-			if(ni >= nexthops)
+			if(ni_lvl >= nexthops)
 				break;
 
 			/* Skip gateways which have a bandwidth too small */
@@ -708,12 +774,19 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 
 			if(!memcmp(igw->ip, me.cur_quadg.ipstart[0].data, MAX_IP_SZ))
 				continue;
-			
+		
+			igw->flags|=IGW_ACTIVE;
 			inet_setip(&nh[ni].gw, igw->ip, family);
 			nh[ni].dev=tunl0_if.dev_name;
 			nh[ni].hops=255-ni;
 			ni++;
+			ni_lvl++;
 		}
+		
+		if(ni_lvl >= nexthops)
+		/* All the other gateways are inactive */
+			list_for(igw)
+				igw->flags&=~IGW_ACTIVE;
 	}
 	nh[ni].dev=0;
 
