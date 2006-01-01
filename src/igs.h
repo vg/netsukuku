@@ -124,6 +124,12 @@ INT_INFO inet_gw_pack_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { MAX_LEVELS }
 
 
 /*
+ * * *  Globals  * * *
+ */
+
+int active_gws;
+
+/*
  * * *  Functions declaration  * * 
  */
 
@@ -152,6 +158,7 @@ void igw_order(inet_gw **igws, int *igws_counter, inet_gw **my_igws, int level);
 
 int igw_check_inet_conn(void);
 void *igw_check_inet_conn_t(void *null);
+void *igw_monitor_igws_t(void *null);
 
 int igw_exec_masquerade_sh(char *script);
 int igw_replace_def_igws(inet_gw **igws, int *igws_counter, 

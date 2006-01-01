@@ -249,7 +249,7 @@ void init_internet_gateway_search(void)
 	pthread_attr_t t_attr;
 	int i, ret;
 
-
+	active_gws=0;
         if(!server_opt.restricted)
 		return;
 	
@@ -304,6 +304,7 @@ void init_internet_gateway_search(void)
 		fatal("Cannot set the default gw to %s for the %s dev",
 				inet_to_str(server_opt.inet_gw),
 				server_opt.inet_gw_dev);
+	active_gws++;
 
 	for(i=0; i < me.cur_ifs_n; i++)
 		if(!strcmp(me.cur_ifs[i].dev_name, server_opt.inet_gw_dev)) {
@@ -648,16 +649,23 @@ int igw_ping_igw(inet_gw *igw)
  */
 void *igw_monitor_igws_t(void *null)
 {
-	inet_gw *igw;
+	inet_gw *igw, *next, *old_igw;
 	int i, nexthops, ip[MAX_IP_INT], l, ni;
 	
 	nexthops=MAX_MULTIPATH_ROUTES/me.cur_quadg.levels;
 	for(;;) {
+		while(me.cur_node->flags & MAP_HNODE)
+			sleep(1);
+
 		for(i=0; i<me.cur_quadg.levels; i++) {
+
+			while(me.cur_node->flags & MAP_HNODE)
+				sleep(1);
+			
 			igw=me.igws[i];
 
 			ni=0;
-			list_for(igw) {
+			list_safe_for(igw, next) {
 				if(ni >= nexthops)
 					break;
 
@@ -670,14 +678,14 @@ void *igw_monitor_igws_t(void *null)
 				if(!igw_ping_igw(igw)) {
 					memcpy(ip, igw->ip, MAX_IP_SZ);
 					
-					loginfo("The Internet gw %s doesn't responds "
+					loginfo("The Internet gw %s doesn't replies "
 						"to pings. It is dead.", 
 						ipraw_to_str(igw->ip, my_family));
 
-					for(l=i; l<me.cur_quadg.levels; l++) {
-						igw_del(me.igws, me.igws_counter, igw, l);
+					for(l=i, old_igw=igw; l<me.cur_quadg.levels; l++) {
+						igw_del(me.igws, me.igws_counter, old_igw, l);
 						if(l+1 < me.cur_quadg.levels)
-							igw=igw_find_ip(me.igws, i, ip);;
+							old_igw=igw_find_ip(me.igws, l+1, ip);
 					}
 
 					igw_replace_def_igws(me.igws, me.igws_counter,
@@ -790,8 +798,13 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 	}
 	nh[ni].dev=0;
 
-	if(!ni)
+	if(!ni && active_gws) {
+		debug(DBG_INSANE, RED("igw_def_gw: no Internet gateways "
+				"available. Deleting the default route"));
+		rt_delete_def_gw();
+		active_gws=0;
 		return 0;
+	}
 
 #ifdef DEBUG
 	for(n=0; nh && nh[n].dev; n++){ 
@@ -806,7 +819,8 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 	if(route_replace(0, 0, to, nh, 0, 0))
 		error("WARNING: Cannot update the default route "
 				"lvl %d", level);
-
+	active_gws=ni;
+	
 	return 0;
 }
 

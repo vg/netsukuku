@@ -582,6 +582,7 @@ int main(int argc, char **argv)
 	struct udp_daemon_argv ud_argv;
 	u_short *port;
 	pthread_t daemon_tcp_thread, daemon_udp_thread, andna_thread;
+	pthread_t ping_igw_thread;
 	pthread_attr_t t_attr;
 	
 	log_init(argv[0], 0, 1);
@@ -667,6 +668,9 @@ int main(int argc, char **argv)
 	
 	xfree(port);
 	
+	debug(DBG_SOFT, "Evocating the Internet gateways pinger daemon");
+	pthread_create(&ping_igw_thread, &t_attr, igw_monitor_igws_t, 0);
+
 	/* We use this same process for the radar_daemon. */
 	debug(DBG_SOFT,   "Evocating radar daemon.");
 	radar_daemon(0);

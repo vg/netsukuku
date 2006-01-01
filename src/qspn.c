@@ -407,10 +407,10 @@ void qspn_remove_deads(u_char level)
 				igw=igw_find_node(me.igws, i, node);
 				if(igw) {
 					memcpy(ip, igw->ip, MAX_IP_SZ);
-					for(l=i; l<me.cur_quadg.levels; l++) {
+					for(l=i; l<me.cur_quadg.levels && igw; l++) {
 						igw_del(me.igws, me.igws_counter, igw, l);
 						if(l+1 < me.cur_quadg.levels)
-							igw=igw_find_ip(me.igws, i, ip);;
+							igw=igw_find_ip(me.igws, l+1, ip);
 					}
 
 					igw_replace_def_igws(me.igws, me.igws_counter,

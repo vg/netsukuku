@@ -927,7 +927,6 @@ finish:
 	return new_gnode;
 }
 
-
 /* 
  * hook_init: inits the hook.c code. Call this function only once, at the
  * start of the daemon. 
