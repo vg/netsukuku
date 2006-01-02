@@ -804,7 +804,8 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 		rt_delete_def_gw();
 		active_gws=0;
 		return 0;
-	}
+	} else if(!ni)
+		return 0;
 
 #ifdef DEBUG
 	for(n=0; nh && nh[n].dev; n++){ 

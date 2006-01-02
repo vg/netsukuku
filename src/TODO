@@ -3,9 +3,11 @@
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 
 - Internet Gateway Search
-	- tracer.c:896: Malforded bblock entry
 	- rehook.c:271
 	- test it !
+		- multigw
+		- rehook
+	
 
 - Gnodes contiguity
 	- gnode re-hook
@@ -46,6 +48,8 @@
   the other nameservers in /etc/resolv.conf if ANDNA told him that the
   hostname is inexistent.
 
+- do not delete a tunnel-gw if there is still traffic on it
+
 - Equalize multipath routes
 
 - Bandwidth weight for each entry of the qspn (not just rtt and latency):
@@ -59,9 +63,10 @@
 - Write the documentation for the code that can be used by other
   programs. (By the way it is already commented.)
 
-- Interactive shell
 
 		[LOW PRIORITY]
+		
+- Interactive shell
 
 - Change with something else the eliminable fatal() calls in netsukuku_hook()
 

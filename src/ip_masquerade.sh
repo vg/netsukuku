@@ -8,6 +8,10 @@ OS=`uname`
 
 if [ $OS == "Linux" ]
 then
+	# Flush all the NAT rules
+	iptables -F POSTROUTING -t nat  
+
+	# Masquerade
 	iptables -A POSTROUTING -t nat -j MASQUERADE
 	exit $?
 fi

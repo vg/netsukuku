@@ -668,8 +668,10 @@ int main(int argc, char **argv)
 	
 	xfree(port);
 	
-	debug(DBG_SOFT, "Evocating the Internet gateways pinger daemon");
-	pthread_create(&ping_igw_thread, &t_attr, igw_monitor_igws_t, 0);
+	if(server_opt.restricted) {
+		debug(DBG_SOFT, "Evocating the Internet gateways pinger daemon");
+		pthread_create(&ping_igw_thread, &t_attr, igw_monitor_igws_t, 0);
+	}
 
 	/* We use this same process for the radar_daemon. */
 	debug(DBG_SOFT,   "Evocating radar daemon.");
