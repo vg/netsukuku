@@ -894,8 +894,9 @@ char *igw_build_bentry(u_char level, size_t *pack_sz, int *new_bblocks)
 		bhdr->bnode_levels=level+1;
 		bhdr->links=1;
 
-		bnode_gid=(u_char *)(bblock + sizeof(bnode_hdr));
-		bchunk=(bnode_chunk *)(bnode_gid + sizeof(u_char)*bhdr->bnode_levels);
+		bnode_gid=(u_char *)(buf + sizeof(bnode_hdr));
+		bchunk=(bnode_chunk *)((char *)bnode_gid +
+				sizeof(u_char)*bhdr->bnode_levels);
 
 		/*
 		 * Get the gids of `igw'

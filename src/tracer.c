@@ -751,49 +751,73 @@ u_short tracer_split_bblock(void *bnode_block_start, size_t bblock_sz, bnode_hdr
 	bnode_chunk 	***bblist=0;
 	u_char 		*bnode_gid;
 	size_t 		bsz=0;
-	int e,p,x=0;
+	int loop,e,p,x=0;
 		
 	*bblock_found_sz=0;
 	if(!bblock_sz)
 		return 0;
 
-	for(e=0, x=0; e < bblock_sz; ) {
-		bblock_hdr=(void *)((char *)bnode_block_start + e);
-		ints_network_to_host(bblock_hdr, bnode_hdr_iinfo);
-		
-		bnode_gid =(char *)bblock_hdr+sizeof(bnode_hdr);
-		bblock=(bnode_chunk *)((char *)bnode_gid +
-				(bblock_hdr->bnode_levels*sizeof(u_char)));
+	for(loop=0; loop <= 1; loop++) {
+		/*
+		 * The second `for' below acts in different ways for different
+		 * values of `loop'.
+		 * When `loop' == 0 it just counts how many valid bblocks there 
+		 * are, then it allocs the right amount of memory for
+		 * `bblist_hdr' and `bblist'.
+		 * When `loop' == 1 it fills the `bblist_hdr' and `bblist'
+		 * arrays.
+		 *
+		 * If we use just one loop we are forced to xrealloc
+		 * `bblist_hdr' and `bblist' many times, because we don't know
+		 * how many bblocks thereare. The malloc operation are slow,
+		 * therefore to use only one xmalloc we prefer to count first.
+		 */
 
-		if(bblock_hdr->links <= 0) {
-			e+=BNODEBLOCK_SZ(bblock_hdr->bnode_levels, 0);
-			continue;
+		for(e=0, x=0; e < bblock_sz; ) {
+			bblock_hdr=(void *)((char *)bnode_block_start + e);
+			if(!loop)
+				ints_network_to_host(bblock_hdr, bnode_hdr_iinfo);
+
+			bnode_gid = (char *)bblock_hdr+sizeof(bnode_hdr);
+			bblock    = (bnode_chunk *)((char *)bnode_gid +
+					(bblock_hdr->bnode_levels*sizeof(u_char)));
+
+			if(bblock_hdr->links <= 0 || bblock_hdr->links >= MAXGROUPNODE) {
+				e+=BNODEBLOCK_SZ(bblock_hdr->bnode_levels, 0);
+				continue;
+			}
+
+			bsz=BNODEBLOCK_SZ(bblock_hdr->bnode_levels, bblock_hdr->links);
+
+			/*Are we going far away the end of the buffer?*/
+			if(bblock_sz-e < bsz)
+				break;
+
+			if(loop) {
+				bblist_hdr[x]=bblock_hdr;
+				bblist[x]=xmalloc(sizeof(bnode_chunk *) * bblock_hdr->links);
+				for(p=0; p<bblock_hdr->links; p++) {
+					bblist[x][p]=&bblock[p];
+					ints_network_to_host(&bblock[p], bnode_chunk_iinfo); 
+				}
+			}
+
+			if(!loop)
+				(*bblock_found_sz)+=bsz;
+			
+			x++;
+			e+=bsz;
 		}
-		if(bblock_hdr->links >= MAXGROUPNODE)
-			goto skip;
 
-		bsz=BNODEBLOCK_SZ(bblock_hdr->bnode_levels, bblock_hdr->links);
-		
-		/*Are we going far away the end of the buffer?*/
-		if(bblock_sz-e < bsz)
-			break;
-		
-		bblist_hdr=xrealloc(bblist_hdr, sizeof(bnode_hdr *) * (x+1));
-		bblist=xrealloc(bblist, sizeof(bnode_chunk *) * (x+1));
+		if(!loop) {
+			if(!x)
+				return 0;
 
-		bblist_hdr[x]=bblock_hdr;
-		bblist[x]=xmalloc(sizeof(bnode_chunk *) * bblock_hdr->links);
-		for(p=0; p<bblock_hdr->links; p++) {
-			bblist[x][p]=&bblock[p];
-			ints_network_to_host(&bblock[p], bnode_chunk_iinfo); 
+			bblist_hdr=xmalloc(sizeof(bnode_hdr *) * x);
+			bblist=xmalloc(sizeof(bnode_chunk *) * x);
 		}
-		
-		(*bblock_found_sz)+=bsz;
-		x++;
-skip:
-		e+=bsz;
 	}
-	
+
 	*bbl_hdr=bblist_hdr;
 	*bbl=bblist;
 	return x;
