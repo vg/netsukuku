@@ -8,8 +8,7 @@
 	- duplicate nexthop entries in the multipath route
 	- test it !
 		- multigw
-		- rehook
-	
+		- rehook	
 
 - Gnodes contiguity
 	- gnode re-hook
