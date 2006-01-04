@@ -4,6 +4,8 @@
 
 - Internet Gateway Search
 	- rehook.c:271
+	- infinite loop between gateways if they use each other as gw
+	- duplicate nexthop entries in the multipath route
 	- test it !
 		- multigw
 		- rehook
