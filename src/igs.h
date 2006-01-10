@@ -20,6 +20,14 @@
 #define IGS_H
 
 /*
+ * There are a lot of problems with this feature, see:
+ * http://marc.theaimsgroup.com/?l=linux-net&m=113550638110682&w=2
+ * and
+ * http://marc.theaimsgroup.com/?l=linux-net&m=113636640615375&w=2
+ */
+#define IGS_MULTI_GW_DISABLE
+
+/*
  *		 	* Bandwidth notes *
  *
  * When we talk of `bandwidth' we mean the average of the download and 

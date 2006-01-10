@@ -6,33 +6,12 @@
 	- rehook.c:271
 	- infinite loop between gateways if they use each other as gw
 	- duplicate nexthop entries in the multipath route
-	- test it !
-		- multigw
-		- rehook	
-
-- Gnodes contiguity
-	- gnode re-hook
-		- test: two (g)nodes with the same IP
-			- currently only in particular situations the rehook
-			  isn't possible: A - A,  A - B - A.
-	
-	- Challenge
-		- RSA between rnodes: the nodes which are already hooked ask
-		  for the public key to the node which is hooking.
-		- Creation of the problem.
-		- Resolution of the problem.
-		- Diffusion of the reply.
-		- Reject of challenge for X time after a first challenge has
-		  been completed.
-		- Do just one challenge at the same time, reject/delay all the
-		  other which came later.
-		- If the challenge was rejected/delayed wait the right amount
-		  of time and retry.
-		- Ban of gnodes which lost the challenge ?
-		- Challenge between two gnode not contiguous, which have the
-		  same gid.
+	- multigw
+	- rehook	
 
 - ANDNA disable request
+
+- Merge the andns code
 
 - DNS wrapper: ip -> hostnames
 	- -r forward to other /etc/resolv.conf dns server
@@ -55,6 +34,28 @@
 
 - Bandwidth weight for each entry of the qspn (not just rtt and latency):
 	- what to use to get the bandwidth of a network interface?
+
+- Gnodes contiguity
+	- gnode re-hook
+		- test: two (g)nodes with the same IP
+			- currently only in particular situations the rehook
+			  isn't possible: A - A,  A - B - A.
+	
+	- Challenge
+		- RSA between rnodes: the nodes which are already hooked ask
+		  for the public key to the node which is hooking.
+		- Creation of the problem.
+		- Resolution of the problem.
+		- Diffusion of the reply.
+		- Reject of challenge for X time after a first challenge has
+		  been completed.
+		- Do just one challenge at the same time, reject/delay all the
+		  other which came later.
+		- If the challenge was rejected/delayed wait the right amount
+		  of time and retry.
+		- Ban of gnodes which lost the challenge ?
+		- Challenge between two gnode not contiguous, which have the
+		  same gid.
 
 - Port the kernel route code for *BSD: take a look at rt_ioctl.c and
   rt_socket.c of quagga.

@@ -761,7 +761,11 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 	}
 
 	for(level=0; level<max_levels; level++) {
-		
+#ifdef IGS_MULTI_GW_DISABLE
+		if(ni)
+			break;
+#endif
+
 		/* Reorder igws[level] */
 		igw_order(igws, igws_counter, my_igws, level);
 
