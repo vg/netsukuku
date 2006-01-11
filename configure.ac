@@ -33,11 +33,6 @@ AC_ARG_WITH(gmp-include, AS_HELP_STRING([--with-gmp-include], \
 [gmp include dir]), [gmp="$withval"])
 AC_SUBST(gmp)
 
-AC_ARG_WITH(boost-include, AS_HELP_STRING([--with-boost-include], \
-[boost include dir]), [boost="$withval"])
-AC_SUBST(boost)
-
-
 
 AC_CHECK_HEADERS([pthread.h], ,\
 	[echo "============================ Unable to find pthread.h"; \

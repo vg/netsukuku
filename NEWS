@@ -1,5 +1,11 @@
 0.0.5b
 
+- The Internet Gateway Search (NTK_RFC 0003) has been implemented.
+  A node can now share its Internet connection among the other nodes (only in
+  restricted mode).
+
+- The dns_wrapper code is no more dependent on Boost.
+
 - Multi interfaces multipath: if we can reach a rnode trough multiple
   interfaces, use them all with a multipath route.
 

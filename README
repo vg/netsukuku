@@ -92,12 +92,11 @@ http://www.scons.org/
 avoid dirty bugs in scons)
 
 
-The code depends also on the libgmp, openssl and boost. Generally you have
+The code depends also on the libgmp and openssl. Generally you have
 already them installed on your system, but eventually you can retrieve them
 here: 
 for the libgmp:			http://www.swox.com/gmp/
 the openssl library here:	http://openssl.org
-the boost libraries:		http://www.boost.org/
 
 Then go in the src/ directory and type:
 $ scons --help
