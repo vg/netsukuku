@@ -1889,21 +1889,14 @@ void *andna_hook(void *null)
 	memset(&to, 0, sizeof(inet_prefix));
 
 	/* Block these requests */
-	op_filter_set(ANDNA_REGISTER_HNAME);
-        op_filter_set(ANDNA_CHECK_COUNTER);
-        op_filter_set(ANDNA_RESOLVE_HNAME);
-        op_filter_set(ANDNA_RESOLVE_IP);
-        op_filter_set(ANDNA_GET_ANDNA_CACHE);
-        op_filter_set(ANDNA_GET_SINGLE_ACACHE);
         op_filter_set(ANDNA_SPREAD_SACACHE);
-        op_filter_set(ANDNA_GET_COUNT_CACHE);
 
 	loginfo("Starting the ANDNA hook.");
 	
 	if(!me.cur_node->links) {
 		/* nothing to do */
 		debug(DBG_NORMAL, "There are no nodes, skipping the ANDNA hook."); 
-		return 0;
+		goto finish;
 	}
 
 	/* 
@@ -1950,15 +1943,9 @@ void *andna_hook(void *null)
 	if(!e)
 		loginfo("None of the rnodes in this area gave me the counter_cache.");
 
+finish:
 	/* Un-block these requests */
-	op_filter_clr(ANDNA_REGISTER_HNAME);
-        op_filter_clr(ANDNA_CHECK_COUNTER);
-        op_filter_clr(ANDNA_RESOLVE_HNAME);
-        op_filter_clr(ANDNA_RESOLVE_IP);
-        op_filter_clr(ANDNA_GET_ANDNA_CACHE);
-        op_filter_clr(ANDNA_GET_SINGLE_ACACHE);
         op_filter_clr(ANDNA_SPREAD_SACACHE);
-        op_filter_clr(ANDNA_GET_COUNT_CACHE);
 
 	loginfo("ANDNA hook completed");
 
