@@ -112,14 +112,6 @@ if not os.path.exists("config.log") and not env.GetOption('clean'):
 		print 'Did not find the openssl headers, exiting!'
 		Execute(Delete('config.log'))
 		Exit(1)
-	if not conf.CheckCXXHeader([ "boost/format.hpp", "boost/iterator.hpp",
-			"boost/iterator/reverse_iterator.hpp",
-			"boost/tuple/tuple.hpp", "boost/type_traits.hpp",
-			"boost/scoped_array.hpp", "boost/shared_array.hpp",
-			"boost/tokenizer.hpp" ]):
-		print 'Did not find the boost headers, exiting!'
-		Execute(Delete('config.log'))
-		Exit(1)
 		
 	env = conf.Finish()
 
