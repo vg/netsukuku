@@ -3,11 +3,9 @@
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 
 - Internet Gateway Search
-	- rehook.c:271
 	- infinite loop between gateways if they use each other as gw
 	- duplicate nexthop entries in the multipath route
 	- multigw
-	- rehook	
 
 - ANDNA disable request
 
@@ -37,6 +35,9 @@
 
 - Gnodes contiguity
 	- gnode re-hook
+		- When we have two different gnodes A and C, and
+		  then B hooks to A, nothing happens, since C, doesn't
+		  receive any qspn_pkt
 		- test: two (g)nodes with the same IP
 			- currently only in particular situations the rehook
 			  isn't possible: A - A,  A - B - A.

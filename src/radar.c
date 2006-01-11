@@ -58,6 +58,7 @@ void first_init_radar(void)
 	rlist=(struct rnode_list *)clist_init(&rlist_counter);
 	alwd_rnodes=(struct allowed_rnode *)clist_init(&alwd_rnodes_counter);
 
+	radar_daemon_ctl=0;
 	init_radar();
 }
 

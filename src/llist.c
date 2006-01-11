@@ -222,7 +222,8 @@ for((i) ? (next)=(typeof (i))(i)->next : 0; (i); 			\
 do{ 									\
 	l_list *_x=(l_list *)(list), *_i, *_next;			\
 	_i=_x;								\
-	_next=_i->next;							\
+	if(_i)								\
+		_next=_i->next;						\
 	for(; _i; _i=_next) {						\
 		_next=_i->next; 					\
 		list_del(_x, _i);					\

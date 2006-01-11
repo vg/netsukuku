@@ -218,6 +218,10 @@ void *new_rehook_thread(void *r)
 	while(!me.cur_qspn_id[rargv->level])
 		usleep(505050);
 #endif
+	
+	/* Wait the radar_daemon, we need it up & running */
+	while(!radar_daemon_ctl)
+		usleep(505050);
 
 	if(rargv->gid != me.cur_quadg.gid[rargv->level])
 		wait_new_rnode(rargv);
@@ -243,7 +247,7 @@ void *new_rehook_thread(void *r)
 	
 		/* Mark all the gnodes which are rnodes of our gnode of the
 		 * `rargv->level' level. */
-		root_node=(map_node *)&me.cur_quadg.gnode[_EL(rargv->level)];
+		root_node=&me.cur_quadg.gnode[_EL(rargv->level)]->g;
 		for(i=0; i<root_node->links; i++) {
 			gnode=(map_gnode *)root_node->r_node[i].r_node;
 			gnode->g.flags|=GMAP_HGNODE;
