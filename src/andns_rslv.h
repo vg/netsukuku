@@ -32,8 +32,4 @@ int d_a_resolve(dns_pkt *dp);
 int d_ptr_resolve(dns_pkt *dp);
 int d_mx_resolve(dns_pkt *dp);
 
-// TO REMOVE
-int andna_reverse_resolve(inet_prefix ip, char ***hostnames);
-int andna_resolve_hname(char *hname, inet_prefix *resolved_ip);
-
 #endif //ANDNS_RSLV_H

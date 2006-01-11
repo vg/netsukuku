@@ -94,7 +94,9 @@ void *dns_exec_pkt(void *passed_argv)
 		debug(DBG_NORMAL, "Received malformed DNS packet");
 		return 0;
 	}
-	
+
+	/* TODO: CONTINUE HERE */
+#if 0	
 	/* Unpack the DNS query and resolve the hostname */
 	answer_length = sizeof(answer_buffer);
 	resolver_process(buf, argv.rpkt_sz, answer_buffer, &answer_length,
@@ -104,6 +106,7 @@ void *dns_exec_pkt(void *passed_argv)
 	debug(DBG_NOISE, "Answer is %i bytes", answer_length);
 	inet_sendto(argv.sk, answer_buffer, answer_length, 0, &argv.from, 
 			argv.from_len);
+#endif
 
 	return 0;
 }

@@ -18,7 +18,26 @@
 *									*
 ************************************************************************/
 
+#include "includes.h"
+
+#include "llist.c"
 #include "inet.h"
+#include "endianness.h"
+#include "map.h"
+#include "gmap.h"
+#include "bmap.h"
+#include "route.h"
+#include "request.h"
+#include "pkts.h"
+#include "tracer.h"
+#include "qspn.h"
+#include "radar.h"
+#include "netsukuku.h"
+#include "daemon.h"
+#include "crypto.h"
+#include "andna_cache.h"
+#include "andna.h"
+
 #include "andns.h"
 #include "andns_rslv.h"
 #include "andns_mem.h"
@@ -26,15 +45,7 @@
 #include "xmalloc.h"
 #include "log.h"
 
-#include <stdio.h>
-#include <string.h>
 #include <resolv.h>
-
-
-// TO REMOVE
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 
 /*
  * This is the main function for the resolution: the dns_wrapper receive the
@@ -418,23 +429,5 @@ int d_mx_resolve(dns_pkt *dp)
 {
 	(dp->pkt_hdr).rcode=RCODE_ENIMPL;
         (dp->pkt_hdr).qr=1;
-	return 0;
-}
-int andna_reverse_resolve(inet_prefix ip, char ***hostnames)
-{
-	char **depo;
-
-	depo=xmalloc(sizeof(char**));
-	depo[0]=xmalloc(512);
-	strcpy(depo[0],"depousceve");
-	*hostnames=depo;
-	return 1;
-}
-int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
-{
-	resolved_ip->family=AF_INET;
-	resolved_ip->len=4;
-	resolved_ip->bits=0;
-	resolved_ip->data[0]=htonl(1);
 	return 0;
 }
