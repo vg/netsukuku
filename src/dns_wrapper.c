@@ -61,7 +61,8 @@ void *dns_exec_pkt(void *passed_argv)
 
 	char buf[MAX_DNS_PKT_SZ];
 	char answer_buffer[ANDNS_MAX_SZ];
-	unsigned answer_length;
+	u_int answer_length;
+	int bytes_sent;
 
 	memcpy(&argv, passed_argv, sizeof(struct dns_exec_pkt_argv));
 	memcpy(&buf, argv.rpkt, argv.rpkt_sz);
@@ -78,8 +79,11 @@ void *dns_exec_pkt(void *passed_argv)
 
 	/* Send the DNS reply */
 	debug(DBG_INSANE, YELLOW("Answer length is %d"), answer_length);
-	inet_sendto(argv.sk, answer_buffer, answer_length, 0, &argv.from, 
-			argv.from_len);
+	bytes_sent=inet_sendto(argv.sk, answer_buffer, answer_length, 0,
+			&argv.from, argv.from_len);
+	if(bytes_sent != answer_length)
+		debug(DBG_SOFT, ERROR_MSG "inet_sendto error: %s", ERROR_POS,
+				strerror(errno));
 
 	return 0;
 }

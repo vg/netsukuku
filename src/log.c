@@ -39,6 +39,9 @@ void log_init(char *prog, int dbg, int log_stderr)
 	__argv0=prog;
 	dbg_lvl=dbg;
 	log_to_stderr=log_stderr;
+
+	if(!log_to_stderr)
+		openlog(__argv0, dbg ? LOG_PID : 0, log_facility);
 }
 
 /* Life is fatal! */
@@ -124,9 +127,6 @@ void print_log(int level, const char *fmt, va_list args)
 	if(log_to_stderr) {
 		vfprintf(stderr, fmt, args);
 		fprintf(stderr, "\n");
-	} else {
-		openlog(__argv0, LOG_PID, log_facility);
+	} else
 		vsyslog(level | log_facility, fmt, args);
-		closelog();
-	}
 }

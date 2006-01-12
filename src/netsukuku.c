@@ -615,6 +615,7 @@ int main(int argc, char **argv)
 
 	/* Angelic foreground or Daemonic background ? */
 	if(server_opt.daemon) {
+		loginfo("Forking to background");
 		log_init(argv[0], server_opt.dbg_lvl, 0);
 		if(daemon(0, 0) == -1)
 			error("Impossible to daemonize: %s.", strerror(errno));
