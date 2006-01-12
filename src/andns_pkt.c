@@ -735,7 +735,7 @@ size_t atodpkt(dns_pkt_a *dpa,char *buf,int limitlen)
         memcpy(buf,&u,2);
         buf+=2;offset+=2;
         memcpy(buf,dpa->rdata,dpa->rdlength);
-        return offset+10+dpa->rdlength;
+        return offset+dpa->rdlength;
 }
 size_t astodpkt(dns_pkt_a *dpa,char *buf,int limitlen,int count)
 {
@@ -770,15 +770,15 @@ size_t dpktpack(dns_pkt *dp,char *buf)
         if((res=qststodpkt(dp,buf,DNS_MAX_SZ-offset))==-1)
                 goto server_fail;
         offset+=res;
-        buf+=offset;
+        buf+=res;
         if ( (res=astodpkt(dp->pkt_answ,buf,DNS_MAX_SZ-offset,DP_ANCOUNT(dp)))==-1)
 		goto server_fail;
 	offset+=res;
-	buf+=offset;
+	buf+=res;
 	if ( (res=astodpkt(dp->pkt_auth,buf,DNS_MAX_SZ-offset,DP_NSCOUNT(dp)))==-1) 
 		goto server_fail;
 	offset+=res;
-	buf+=offset;
+	buf+=res;
         if ( (res=astodpkt(dp->pkt_add,buf,DNS_MAX_SZ-offset,DP_ARCOUNT(dp)))==-1)
 		goto server_fail;
 	offset+=res;
