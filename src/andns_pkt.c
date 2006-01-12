@@ -39,6 +39,49 @@
 static uint8_t _default_realm_;
 uint8_t _dns_forwarding_;
 
+int andns_pkt_init(int restricted)
+{
+	int n,count=0;
+	struct in_addr ai;
+	struct sockaddr_in ns[MAXNS],*nsnow; // MAXNS is defined in resolv.h
+
+	_default_realm_=(restricted)?INET_REALM:NTK_REALM;
+
+	for (n=0;n<MAXNS;n++)
+		memset(ns+n,0,sizeof(struct sockaddr_in));
+	
+	if((n=res_init())) {
+		error(ERROR_MSG "res_init call failed :(", ERROR_POS);
+		return -1;
+	}
+	
+	if (_res.nscount==0)
+		goto no_nsservers;
+
+	for (n=0;n<_res.nscount;n++)
+	{
+		nsnow=_res.nsaddr_list+n;
+		ai=nsnow->sin_addr;
+		if (!LOOPBACK(ai.s_addr))
+		{
+			memcpy(ns+count,nsnow,sizeof(struct sockaddr_in));
+			count++;
+		}
+	}
+	if (!count)
+		goto no_nsservers;
+	for (n=0;n<MAXNS;n++)
+		memcpy(_res.nsaddr_list+n,ns+n,sizeof(struct sockaddr_in));
+	_dns_forwarding_=1;
+	return 0;
+
+no_nsservers:
+	
+	debug(DBG_NORMAL, "andns_init: nameservers not found. dns forwarding disable.");
+	_dns_forwarding_=0;
+	return 0;
+}
+
 /*
  * Takes a label: is there a ptr?
  * Returns:
@@ -156,53 +199,6 @@ int andns_proto(char *buf)
 }
 
 /*
- * This function must be called before all.
- * Sets the default realm for domain name resolution
- * and stores infos about nameservers for dns query.
- * It removes from the structure _res the nameserver entry which
- * belongs to localhost. In this way, the dns_forwarding
- * won't finish in a infinite loop.
- */
-int andns_init(int restricted)
-{
-	int n,count=0;
-	struct in_addr ai;
-	struct sockaddr_in ns[MAXNS],*nsnow; // MAXNS is defined in resolv.h
-
-	_default_realm_=(restricted)?INET_REALM:NTK_REALM;
-
-	for (n=0;n<MAXNS;n++)
-		memset(ns+n,0,sizeof(struct sockaddr_in));
-	
-	if((n=res_init()))
-	{
-		error("In andsn_init: res_init call failed :(");
-		return -1;
-	}
-	if (_res.nscount==0)
-		goto no_nsservers;
-	for (n=0;n<_res.nscount;n++)
-	{
-		nsnow=_res.nsaddr_list+n;
-		ai=nsnow->sin_addr;
-		if (!LOOPBACK(ai.s_addr))
-		{
-			memcpy(ns+count,nsnow,sizeof(struct sockaddr_in));
-			count++;
-		}
-	}
-	if (!count)
-		goto no_nsservers;
-	for (n=0;n<MAXNS;n++)
-		memcpy(_res.nsaddr_list+n,ns+n,sizeof(struct sockaddr_in));
-	_dns_forwarding_=1;
-	return 0;
-no_nsservers:
-		error("In andns_init: nameservers not found. dns forwarding disable.");
-		_dns_forwarding_=0;
-		return 0;
-}
-/*
  * Returns the question relative realm.
  * INET_REALM if you are seraching something on internet.
  * NTK_REALM if you search something on ntk.
@@ -243,8 +239,8 @@ char* rm_realm_prefix(char *from)
 	{
 		dst=xmalloc((size_t)(crow-from)+1);
 		strncpy(dst,from,(size_t)(crow-from)+1);
-	}
-	else dst=strdup(from);
+	} else 
+		dst=xstrdup(from);
 	return dst;
 }
 			

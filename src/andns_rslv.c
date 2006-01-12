@@ -47,6 +47,20 @@
 
 #include <resolv.h>
 
+
+/*
+ * This function must be called before all.
+ * Sets the default realm for domain name resolution
+ * and stores infos about nameservers for dns query.
+ * It removes from the structure _res the nameserver entry which
+ * belongs to localhost. In this way, the dns_forwarding
+ * won't finish in a infinite loop.
+ */
+int andns_init(int restricted)
+{
+	return andns_pkt_init(restricted);
+}
+
 /*
  * This is the main function for the resolution: the dns_wrapper receive the
  * buffer and rslv cares about building the answer.
@@ -385,27 +399,25 @@ int d_a_resolve(dns_pkt *dp)
 int d_ptr_resolve(dns_pkt *dp)
 {
 	dns_pkt_a *dpa;
-	int res;
-
-	if (andns_realm((dp->pkt_qst)->qname)==INET_REALM)
-		return 1;
-	
 	inet_prefix ipres;
 	char **hnames,*temp;
-	int i;
+	int i, res;
 
-	temp=rm_realm_prefix((dp->pkt_qst)->qname);
-	if ((res=str_to_inet(temp,&ipres))==-1)
+	if (andns_realm((dp->pkt_qst)->qname)==INET_REALM)
+		/* XXX: why ? */
+		return 1;
+	
+	/* Alpt: isn't? (dp->pkt_qst)->qname just an IP ?
+	 * temp=rm_realm_prefix((dp->pkt_qst)->qname); */
+	temp=(dp->pkt_qst)->qname;	
+	if ((res=str_to_inet(temp, &ipres))==-1)
 	{	
-		xfree(temp);
 		(dp->pkt_hdr).rcode=RCODE_EINTRPRT;
         	(dp->pkt_hdr).qr=1;
 		return -1;
 	}
-	xfree(temp);
-	if ((res=andna_reverse_resolve(ipres,&hnames))==-1)
+	if ((res=andna_reverse_resolve(ipres, &hnames))==-1)
         {
-        	xfree(temp);
         	(dp->pkt_hdr).rcode=RCODE_ENSDMN;
         	(dp->pkt_hdr).qr=1;
         	return -1;
@@ -417,14 +429,19 @@ int d_ptr_resolve(dns_pkt *dp)
 		dpa->class=C_IN;
 		dpa->ttl=DNS_TTL;
 		strcpy(dpa->name,"localhost");
-		if (nametolbl(hnames[i],dpa->rdata)==-1)
+		if (nametolbl(hnames[i], dpa->rdata)==-1)
 			memset(dpa->rdata,0,MAX_HNAME_LEN);
+
+		xfree(hnames[i]);
 	}
+	xfree(hnames);
+
         (dp->pkt_hdr).rcode=RCODE_NOERR;
         (dp->pkt_hdr).qr=1;
 	DP_ANCOUNT(dp)+=res;
 	return 0;
 }
+
 int d_mx_resolve(dns_pkt *dp)
 {
 	(dp->pkt_hdr).rcode=RCODE_ENIMPL;

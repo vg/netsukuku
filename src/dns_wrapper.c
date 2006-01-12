@@ -44,34 +44,11 @@
 #include "crypto.h"
 #include "andna_cache.h"
 #include "andna.h"
+#include "andns_rslv.h"
 #include "dns_wrapper.h"
 #include "misc.h"
 #include "xmalloc.h"
 #include "log.h"
-
-
-/*
- * resolve_hname_wrap: Wrapper to the andna_resolve_hname function 
- */
-int resolve_hname_wrap(const char *hostname, uint32_t *ip) 
-{
-	inet_prefix resolved_ip;
-	
-	if(!andna_resolve_hname((char *)hostname, &resolved_ip)) {
-		debug(DBG_INSANE, "dns_wrapper: %s hname resolved: %s", 
-				hostname, inet_to_str(resolved_ip));
-	
-		/* 
-		 * Store the resolved ip
-		 * TODO: Ipv6 support
-		 */
-		*ip=htonl(resolved_ip.data[0]);
-		return 1;
-	}
-
-	debug(DBG_INSANE, "dns_wrapper: %s doesn't exist (idiot)!", hostname);
-	return 0;
-}
 
 /*
  * dns_exec_pkt: resolve the hostname contained in the DNS query and sends
@@ -83,7 +60,7 @@ void *dns_exec_pkt(void *passed_argv)
 	struct dns_exec_pkt_argv argv;
 
 	char buf[MAX_DNS_PKT_SZ];
-	char answer_buffer[MAX_DNS_PKT_SZ];
+	char answer_buffer[ANDNS_MAX_SZ];
 	unsigned answer_length;
 
 	memcpy(&argv, passed_argv, sizeof(struct dns_exec_pkt_argv));
@@ -95,18 +72,14 @@ void *dns_exec_pkt(void *passed_argv)
 		return 0;
 	}
 
-	/* TODO: CONTINUE HERE */
-#if 0	
 	/* Unpack the DNS query and resolve the hostname */
-	answer_length = sizeof(answer_buffer);
-	resolver_process(buf, argv.rpkt_sz, answer_buffer, &answer_length,
-			&resolve_hname_wrap);
+	if(!andns_rslv(buf, argv.rpkt_sz, answer_buffer, &answer_length))
+		return 0;
 
 	/* Send the DNS reply */
-	debug(DBG_NOISE, "Answer is %i bytes", answer_length);
+	debug(DBG_INSANE, YELLOW("Answer length is %d"), answer_length);
 	inet_sendto(argv.sk, answer_buffer, answer_length, 0, &argv.from, 
 			argv.from_len);
-#endif
 
 	return 0;
 }

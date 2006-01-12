@@ -24,6 +24,7 @@
 #include "inet.h"
 
 // Functions
+int andns_init(int restricted);
 char* andns_rslv(char *msg,int msglen, char *answer_buf, int *answ_len);
 int a_a_resolve(andns_pkt *ap);
 int a_ptr_resolve(andns_pkt *ap);

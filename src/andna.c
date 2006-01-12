@@ -41,6 +41,7 @@
 #include "crypto.h"
 #include "andna_cache.h"
 #include "andna.h"
+#include "andns_rslv.h"
 #include "dns_wrapper.h"
 #include "misc.h"
 #include "xmalloc.h"
@@ -1264,7 +1265,7 @@ int andna_reverse_resolve(inet_prefix ip, char ***hostnames)
 	int_info reply_iinfo;
 	
 	const char *ntop; 
-	int ret=0, tot_hnames, i, sz;
+	int ret=0, tot_hnames, valid_hnames, i, sz;
 	u_short *hnames_sz;
 	char **hnames, *buf, *reply_body;
 	ssize_t err;
@@ -1274,7 +1275,7 @@ int andna_reverse_resolve(inet_prefix ip, char ***hostnames)
 	memcpy(&to, &ip, sizeof(inet_prefix));
 	
 	ntop=inet_to_str(to);
-	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(ANDNA_REGISTER_HNAME), ntop);
+	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(ANDNA_RESOLVE_IP), ntop);
 	
 	/* Fill the packet and send the request */
 	pkt_addto(&pkt, &to);
@@ -1309,7 +1310,7 @@ int andna_reverse_resolve(inet_prefix ip, char ***hostnames)
 	
 	sz=sizeof(struct andna_rev_resolve_reply_hdr)+sizeof(u_short)*tot_hnames;
 	buf=rpkt.msg+sz;
-	for(i=0; i<tot_hnames; i++) {
+	for(i=valid_hnames=0; i<tot_hnames; i++) {
 		sz+=hnames_sz[i];
 		
 		if(sz > rpkt.hdr.sz)
@@ -1323,9 +1324,10 @@ int andna_reverse_resolve(inet_prefix ip, char ***hostnames)
 		hnames[i][hnames_sz[i]-1]=0;
 
 		buf+=hnames_sz[i];
+		valid_hnames++;
 	}
 
-	ret=tot_hnames;
+	ret=valid_hnames;
 	*hostnames=hnames;
 finish:
 	pkt_free(&pkt, 1);
