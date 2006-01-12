@@ -255,8 +255,7 @@ char *andns_rslv(char *msg, int msglen,
 			goto dns_esrvfail_return;
 		*answ_len=res;
 		return answer;
-	}
-	else // which protocol are you using?
+	} else // which protocol are you using?
 		return NULL; // discard pkt plz
 
 // copy original msg and fill whith appropriate

@@ -733,7 +733,8 @@ int andna_recv_reg_rq(PACKET rpkt)
 
 	if(acq->hname_updates > req->hname_updates) {
 		debug(DBG_SOFT, "Registration rq 0x%x rejected: hname_updates"
-				" mismatch", rpkt.hdr.id);
+				" mismatch %d > %d", rpkt.hdr.id, 
+				acq->hname_updates, req->hname_updates);
 		if(!forwarded_pkt)
 			ret=pkt_err(pkt, E_INVALID_REQUEST);
 		ERROR_FINISH(ret, -1, finish);
@@ -962,8 +963,9 @@ int andna_recv_check_counter(PACKET rpkt)
 	old_updates = cch->hname_updates;
 	old_updates-= !just_check ? 0 : 1;
 	if(old_updates > req->hname_updates) {
-		debug(DBG_SOFT, "Request %s (0x%x) rejected: hname_updates", 
-			" mismatch", rq_to_str(rpkt.hdr.op), rpkt.hdr.id);
+		debug(DBG_SOFT, "Request %s (0x%x) rejected: hname_updates"
+			" mismatch %d > %d", rq_to_str(rpkt.hdr.op), rpkt.hdr.id,
+				old_updates, req->hname_updates);
 		if(!forwarded_pkt)
 			ret=pkt_err(pkt, E_INVALID_REQUEST);
 		ERROR_FINISH(ret, -1, finish);

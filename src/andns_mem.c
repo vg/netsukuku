@@ -88,13 +88,16 @@ void dns_del_last_qst(dns_pkt *dp)
 dns_pkt_a* dns_add_a(dns_pkt_a **dpa)
 {
 	dns_pkt_a *dpa_add,*a;
-	
+
 	a=*dpa;
 	dpa_add=create_dns_pkt_a();
-	if (!a) *dpa=dpa_add;
+	if (!a) 
+		*dpa=dpa_add;
 	else {
-	while (a->next) a=a->next;
-	a->next=dpa_add;}
+		while (a->next)
+			a=a->next;
+		a->next=dpa_add;
+	}
 	return dpa_add;
 }
 void destroy_dns_pkt(dns_pkt *dp)

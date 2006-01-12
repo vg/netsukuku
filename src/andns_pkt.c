@@ -754,6 +754,7 @@ size_t astodpkt(dns_pkt_a *dpa,char *buf,int limitlen,int count)
  * Transform a dns_pkt structure in char stream.
  * On error, returns a stream filled with RCODE_ESRVFAIL.
  * The stream has at least the header section writed.
+ * `buf' must be at least of ANDNS_MAX_SZ bytes.
  *
  * DANGER: This function realeses *ALWAYS* the dns_pkt *dp!!!!
  * The stream buffer is allocated here.
@@ -762,7 +763,6 @@ size_t dpktpack(dns_pkt *dp,char *buf)
 {
         size_t offset,res;
 
-        buf=xmalloc(DNS_MAX_SZ);
         memset(buf,0,DNS_MAX_SZ);
 
         offset=hdrtodpkt(dp,buf);
@@ -785,7 +785,6 @@ size_t dpktpack(dns_pkt *dp,char *buf)
         destroy_dns_pkt(dp);
         return offset;
 server_fail:
-	xfree(buf);
 	destroy_dns_pkt(dp);
 	return -1;
 //	DANSWFAIL(crow,offset);
