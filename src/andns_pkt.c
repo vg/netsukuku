@@ -33,6 +33,9 @@
 #include <resolv.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <arpa/inet.h>
+
 
 #define LOOPBACK(x)     (((x) & htonl(0xff000000)) == htonl(0x7f000000))
 
@@ -44,6 +47,7 @@ int andns_pkt_init(int restricted)
 	int n,count=0;
 	struct in_addr ai;
 	struct sockaddr_in ns[MAXNS],*nsnow; // MAXNS is defined in resolv.h
+	char myaddr[INET_ADDRSTRLEN];
 
 	_default_realm_=(restricted)?INET_REALM:NTK_REALM;
 
@@ -73,10 +77,12 @@ int andns_pkt_init(int restricted)
 	for (n=0;n<MAXNS;n++)
 	{
 		memcpy(_res.nsaddr_list+n,ns+n,sizeof(struct sockaddr_in));
-		if ((ns+n)->sin_addr.s_addr!=0) {
+		if ((ns+n)->sin_addr.s_addr!=0) 
+		{
                         inet_ntop(AF_INET,(const void*)(&((ns+n)->sin_addr)),myaddr,INET_ADDRSTRLEN);
                         loginfo("DNS Query inet related will be forwarded to: %s\n",myaddr);
                 }
+	}
 
 	_dns_forwarding_=1;
 	return 0;
