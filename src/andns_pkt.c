@@ -71,7 +71,13 @@ int andns_pkt_init(int restricted)
 	if (!count)
 		goto no_nsservers;
 	for (n=0;n<MAXNS;n++)
+	{
 		memcpy(_res.nsaddr_list+n,ns+n,sizeof(struct sockaddr_in));
+		if ((ns+n)->sin_addr.s_addr!=0) {
+                        inet_ntop(AF_INET,(const void*)(&((ns+n)->sin_addr)),myaddr,INET_ADDRSTRLEN);
+                        loginfo("DNS Query inet related will be forwarded to: %s\n",myaddr);
+                }
+
 	_dns_forwarding_=1;
 	return 0;
 
