@@ -190,7 +190,7 @@ int andns_proto(char *buf)
 {
         char c;
 	
-	c=*(buf+3)
+	c=*(buf+3);
 	c=(c>>4)&0x03;
 	return c;
 /*        if (c==NK_NTK || c==NK_INET)
