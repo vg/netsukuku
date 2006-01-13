@@ -304,6 +304,8 @@ int a_a_resolve(andns_pkt *ap)
 		ap->qr=1;
 		return -1;
 	}
+
+	inet_htonl(ipres.data, ipres.family);
 	ap->rcode=RCODE_NOERR;
 	ap->qr=1;
 	ap->ancount++;

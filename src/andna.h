@@ -26,7 +26,7 @@
 #define ETC_RESOLV_CONF		"/etc/resolv.conf"
 
 /* How many different andna pkt can be flooded simultaneusly */
-#define ANDNA_MAX_FLOODS	(ANDNA_MAX_QUEUE*3) 
+#define ANDNA_MAX_FLOODS	(ANDNA_MAX_QUEUE*3+1) 
 
 /* How many new hash_gnodes are supported in the andna hash_gnode mutation */
 #define ANDNA_MAX_NEW_GNODES	1024
