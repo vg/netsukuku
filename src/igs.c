@@ -803,8 +803,10 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 	nh[ni].dev=0;
 
 	if(!ni && active_gws) {
+#ifdef DEBUG
 		debug(DBG_INSANE, RED("igw_def_gw: no Internet gateways "
 				"available. Deleting the default route"));
+#endif
 		rt_delete_def_gw();
 		active_gws=0;
 		return 0;
@@ -959,9 +961,11 @@ int igw_store_bblock(bnode_hdr *bblock_hdr, bnode_chunk *bchunk, u_char level)
 	gidtoipstart(gids, me.cur_quadg.levels, me.cur_quadg.levels, my_family,
 			&gw_ip);
 	
+#ifdef DEBUG
 	if(server_opt.dbg_lvl)
 		debug(DBG_NOISE, GREEN("igw_store_bblock: storing %s IGW, level %d"),
 					inet_to_str(gw_ip), level);
+#endif
 				
 	/*
 	 * Add `gw_ip' in all the levels >= `level' of me.igws
