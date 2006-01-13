@@ -188,7 +188,10 @@ size_t lbltoname(char *buf,char *start_pkt,char *dst,int count,int limit_len,int
  */
 int andns_proto(char *buf)
 {
-        char c=C_RSHIFT(*(buf+3),3,1);
+        char c;
+	
+	c=*(buf+3)
+	c=(c>>4)&0x03;
 	return c;
 /*        if (c==NK_NTK || c==NK_INET)
                 return ANDNS_NTK_PROTO;
@@ -400,17 +403,18 @@ size_t dpkttohdr(char *buf,dns_pkt_hdr *dph)
                 // ROW 2
         buf+=2;
         memcpy(&c,buf,sizeof(uint8_t));
-        dph->qr=C_RSHIFT(c,0,1);
-        dph->opcode=C_RSHIFT(c,1,4);
-        dph->aa=C_RSHIFT(c,5,1);
-        dph->tc=C_RSHIFT(c,6,1);
-        dph->rd=C_RSHIFT(c,7,1);
+        dph->qr= (c>>7)&0x01;
+        dph->opcode=(c>>3)&0x0f;
+        dph->aa=(c>>2)&0x01;
+        dph->tc=(c>>1)&0x01;
+        dph->rd=c&0x01;
 
         buf++;
         memcpy(&c,buf,sizeof(uint8_t));
-        dph->ra=C_RSHIFT(c,0,1);
-        dph->z=C_RSHIFT(c,1,3);
-        dph->rcode=C_RSHIFT(c,4,4);
+	dph->ra=(c>>7)&0x01;
+        dph->z=(c>>4)&0x07;
+        dph->rcode=c&0x0f;
+
                 // ROW 3
         buf++;
         memcpy(&s,buf,sizeof(uint16_t));
@@ -715,6 +719,8 @@ size_t atodpkt(dns_pkt_a *dpa,char *buf,int limitlen)
 
         if((rdlen=nametolbl(dpa->name,buf))==-1)
                 return -1;
+	if (dpa->type!=T_A)
+		dpa->rdlength=rdlen;
 	offset=rdlen;
         if (offset+10+dpa->rdlength>limitlen)
         {
@@ -731,7 +737,7 @@ size_t atodpkt(dns_pkt_a *dpa,char *buf,int limitlen)
         i=htonl(dpa->ttl);
         memcpy(buf,&i,4);
         buf+=4;offset+=4;
-        u=htons(rdlen);
+        u=htons(dpa->rdlength);
         memcpy(buf,&u,2);
         buf+=2;offset+=2;
         memcpy(buf,dpa->rdata,dpa->rdlength);
@@ -809,15 +815,15 @@ size_t apkttohdr(char *buf,andns_pkt *ap)
         buf+=2;
 
         memcpy(&c,buf,sizeof(uint8_t));
-        ap->qr=C_RSHIFT(c,0,1);
-        ap->qtype=C_RSHIFT(c,1,4);
-	ap->ancount=(C_RSHIFT(c,5,3))<<1;
-        buf++;
+	ap->qr=(c>>7)&0x01;
+	ap->qtype=(c>>3)&0x0f;
+	ap->ancount=(c<<1)&0x0e;
 
+        buf++;
 	if (((*buf)|0x80)) ap->ancount++;
 
-        ap->nk=C_RSHIFT(c,3,1);
-        ap->rcode=C_RSHIFT(c,4,4);
+	ap->nk=(c>>4)&0x03;
+	ap->rcode=c&0x0f;
         return ANDNS_HDR_SZ;
 }
 /*

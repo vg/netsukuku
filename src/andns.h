@@ -135,8 +135,6 @@ typedef struct andns_pkt
 
 #define AANSWFAIL(msg)    	*((msg)+3)=(((*((msg)+3))&0xf0)|0x02);*((msg)+offset)='\0'
 #define AANSW(c,rcode)		*((c)+3)=(((*((c)+3))&0xf0)|rcode)
-#define C_RSHIFT(c,x,y) 	((c)<<(x))>>(8-(y))
-#define C_LSHIFT(c,x)   	((c)<<(x)
 
 
 /*
