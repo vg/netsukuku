@@ -19,7 +19,6 @@
 #ifndef MAP_H
 #define MAP_H
 
-#undef  QSPN_EMPIRIC
 #include "inet.h"
 
 /* Generic map defines */

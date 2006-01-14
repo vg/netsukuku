@@ -78,9 +78,6 @@ void *dns_exec_pkt(void *passed_argv)
 		return 0;
 
 	/* Send the DNS reply */
-#ifdef DEBUG
-	debug(DBG_INSANE, YELLOW("Answer length is %d"), answer_length);
-#endif
 	bytes_sent=inet_sendto(argv.sk, answer_buffer, answer_length, 0,
 			&argv.from, argv.from_len);
 	if(bytes_sent != answer_length)
@@ -128,6 +125,9 @@ void dns_wrapper_daemon(u_short port)
 		FD_SET(sk, &fdset);
 		
 		ret = select(sk+1, &fdset, NULL, NULL, NULL);
+		if(sigterm_timestamp)
+			/* NetsukukuD has been closed */
+			break;
 		if (ret < 0) {
 #ifdef DEBUG
 			if(select_errors > 20)

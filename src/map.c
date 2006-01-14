@@ -522,14 +522,10 @@ int verify_int_map_hdr(struct int_map_hdr *imap_hdr, int maxgroupnode, int maxrn
 	if(!imap_hdr->int_map_sz)
 		return 0;
 
-#ifndef QSPN_EMPIRIC /*The qspn_empiric generates a random map which has nodes
-		       with map_node.links > MAXGROUPNODE;*/
-
 	if(imap_hdr->rblock_sz > maxrnodeblock || 
 			imap_hdr->int_map_sz > maxgroupnode*MAP_NODE_PACK_SZ)
 		return 1;
 	
-#endif
 	return 0;
 }
 

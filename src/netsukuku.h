@@ -153,9 +153,6 @@ typedef struct
 }ServOpt;
 ServOpt server_opt;
 
-/* Just to be sure */
-#ifdef QSPN_EMPIRIC
-	#error Netsukuku_d cannot be compiled with the QSPN_EMPIRIC support activated.
-#endif
+time_t sigterm_timestamp, sighup_timestamp, sigalrm_timestamp;
 
 #endif /*NETSUKUKU_H*/

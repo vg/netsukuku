@@ -226,6 +226,9 @@ void *udp_daemon(void *passed_argv)
 				FD_SET(dev_sk[i], &fdset);
 
 		ret=select(dev_sk[max_sk_idx]+1, &fdset, NULL, NULL, NULL);
+		if(sigterm_timestamp)
+			/* NetsukukuD has been closed */
+			break;
 		if (ret < 0) {
 #ifdef DEBUG
 			if(select_errors > 20)
@@ -362,6 +365,9 @@ void *tcp_daemon(void *door)
 				FD_SET(dev_sk[i], &fdset);
 
 		ret=select(dev_sk[max_sk_idx]+1, &fdset, NULL, NULL, NULL);
+		if(sigterm_timestamp)
+			/* NetsukukuD has been closed */
+			break;
 		if(ret < 0 && errno != EINTR)
 			error("daemon_tcp: select error: %s", strerror(errno));
 		if(ret < 0)
@@ -424,7 +430,5 @@ void *tcp_daemon(void *door)
 			pthread_mutex_unlock(&tcp_exec_lock);
 		}
 	}
-	
-	destroy_accept_tbl();
 	return NULL;
 }

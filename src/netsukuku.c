@@ -438,6 +438,7 @@ void init_netsukuku(char **argv)
 		fatal("Need root privileges");
 	
 	destroy_netsukuku_mutex=0;
+	sigterm_timestamp=sighup_timestamp=sigalrm_timestamp=0;
 
 	memset(&me, 0, sizeof(struct current_globals));
 	
@@ -524,6 +525,12 @@ int destroy_netsukuku(void)
 
 void sigterm_handler(int sig)
 {
+	time_t cur_t;
+
+	if(sigterm_timestamp == (cur_t=time(0)))
+		return;
+	sigterm_timestamp=time(0);
+	
 	if(!destroy_netsukuku())
 		fatal("Termination signal caught. Dying, bye, bye");
 }
@@ -546,6 +553,12 @@ void sighup_handler(int sig)
 	pthread_t thread;
 	pthread_attr_t t_attr;
 	
+	time_t cur_t;
+
+	if(sighup_timestamp == (cur_t=time(0)))
+		return;
+	sighup_timestamp=time(0);
+	
 	pthread_attr_init(&t_attr);
 	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
 	pthread_create(&thread, &t_attr, reload_hostname_thread, 0);
@@ -567,6 +580,12 @@ void sigalrm_handler(int sig)
 	pthread_t thread;
 	pthread_attr_t t_attr;
 	
+	time_t cur_t;
+
+	if(sigalrm_timestamp == (cur_t=time(0)))
+		return;
+	sigalrm_timestamp=time(0);
+
 	pthread_attr_init(&t_attr);
 	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
 	pthread_create(&thread, &t_attr, rh_cache_flush_thread, 0);
