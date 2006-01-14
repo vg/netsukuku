@@ -305,12 +305,12 @@ int a_a_resolve(andns_pkt *ap)
 		return -1;
 	}
 
-	inet_htonl(ipres.data, ipres.family);
 	ap->rcode=RCODE_NOERR;
 	ap->qr=1;
 	ap->ancount++;
 	apd=andns_add_answ(ap);
 	apd->rdlength=ipres.len;
+	inet_htonl(ipres.data, ipres.family);
 	if (ipres.family==AF_INET)
        	        memcpy(apd->rdata,ipres.data,4);
        	else
@@ -372,8 +372,9 @@ int d_a_resolve(dns_pkt *dp)
 
 	if (andns_realm((dp->pkt_qst)->qname)==INET_REALM)
 		return 1;
+	
 	temp=rm_realm_prefix((dp->pkt_qst)->qname);
-     	if ((res=andna_resolve_hname(temp,&ipres))==-1)
+     	if ((res=andna_resolve_hname(temp, &ipres))==-1)
         {
                 xfree(temp);
                 (dp->pkt_hdr).rcode=RCODE_ENSDMN;
@@ -381,6 +382,7 @@ int d_a_resolve(dns_pkt *dp)
                 return -1;
         }
         xfree(temp);
+	
         (dp->pkt_hdr).rcode=RCODE_NOERR;
         (dp->pkt_hdr).qr=1;
         DP_ANCOUNT(dp)++;
@@ -390,6 +392,7 @@ int d_a_resolve(dns_pkt *dp)
 	dpa->ttl=DNS_TTL;
 	strcpy(dpa->name,"localhost");
         dpa->rdlength=ipres.len;
+	inet_htonl(ipres.data, ipres.family);
         if (ipres.family==AF_INET)
                 memcpy(dpa->rdata,ipres.data,4);
         else

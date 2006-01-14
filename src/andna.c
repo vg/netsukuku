@@ -762,6 +762,8 @@ int andna_recv_reg_rq(PACKET rpkt)
 	 * Broadcast the request to the entire gnode of level 1 to let the
 	 * other nodes register the hname.
 	 */
+	if(!forwarded_pkt)
+		andna_add_flood_pkt_id(last_reg_pkt_id, rpkt.hdr.id);
 	andna_flood_pkt(&rpkt, 1);
 	
 finish:
@@ -986,9 +988,12 @@ int andna_recv_check_counter(PACKET rpkt)
 	 * Broadcast the request to the entire gnode of level 1 to let the
 	 * other counter_nodes register the hname.
 	 */
-	if(!just_check)
+	if(!just_check) {
+		if(!forwarded_pkt)
+			andna_add_flood_pkt_id(last_counter_pkt_id, rpkt.hdr.id);
 		andna_flood_pkt(&rpkt, forwarded_pkt);
-	
+	}
+
 finish: 
 	if(ntop)
 		xfree(ntop);
@@ -1001,7 +1006,7 @@ finish:
 
 /*
  * andna_resolve_hname: stores in `resolved_ip' the ip associated to the
- * `hname' hostname.
+ * `hname' hostname (in host order).
  * On error -1 is returned.
  */
 int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
@@ -1678,6 +1683,7 @@ int spread_single_acache(u_int hash[MAX_IP_INT])
 	memcpy(pkt.msg, &req, pkt.hdr.sz);
 	
 	debug(DBG_NOISE, "Spreading the single andna_cache 0x%x", pkt.hdr.id);
+	andna_add_flood_pkt_id(last_spread_acache_pkt_id, pkt.hdr.id);
 	return andna_flood_pkt(&pkt, 0);
 }
 

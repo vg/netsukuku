@@ -44,10 +44,10 @@ uint8_t _dns_forwarding_;
 
 int andns_pkt_init(int restricted)
 {
-	int n,count=0;
+	int n,e,count=0;
 	struct in_addr ai;
 	struct sockaddr_in ns[MAXNS],*nsnow; // MAXNS is defined in resolv.h
-	char myaddr[INET_ADDRSTRLEN];
+	char myaddr[INET_ADDRSTRLEN], ns_str[MAXNS*(INET_ADDRSTRLEN+2)]="\0";
 
 	_default_realm_=(restricted)?INET_REALM:NTK_REALM;
 
@@ -74,16 +74,21 @@ int andns_pkt_init(int restricted)
 	}
 	if (!count)
 		goto no_nsservers;
-	for (n=0;n<MAXNS;n++)
+	
+	for (n=e=0;n<MAXNS;n++)
 	{
 		memcpy(_res.nsaddr_list+n,ns+n,sizeof(struct sockaddr_in));
 		if ((ns+n)->sin_addr.s_addr!=0) 
 		{
                         inet_ntop(AF_INET,(const void*)(&((ns+n)->sin_addr)),myaddr,INET_ADDRSTRLEN);
-                        loginfo("DNS Query inet related will be forwarded to: %s\n",myaddr);
+			strncat(ns_str, ", ", 2);
+			strncat(ns_str, myaddr, INET_ADDRSTRLEN);
+			e++;
                 }
 	}
-
+	if(e)
+		loginfo("DNS Query inet related will be forwarded to: %s", ns_str);
+			
 	_dns_forwarding_=1;
 	return 0;
 
@@ -249,13 +254,13 @@ int andns_realm(char* qst)
 char* rm_realm_prefix(char *from)
 {
 	char *dst,*crow;
-	if ((crow=strcasestr(from,INET_REALM_PREFIX)) || \
-		(crow=strcasestr(from,NTK_REALM_PREFIX)))
-	{
-		dst=xmalloc((size_t)(crow-from)+1);
-		strncpy(dst,from,(size_t)(crow-from)+1);
+	
+	if ((crow=strcasestr(from,INET_REALM_PREFIX)) || 
+			(crow=strcasestr(from,NTK_REALM_PREFIX))) {
+		dst=xstrndup(from, (size_t)(crow-from)+1);
 	} else 
 		dst=xstrdup(from);
+	
 	return dst;
 }
 			
