@@ -390,7 +390,7 @@ int d_a_resolve(dns_pkt *dp)
 	dpa->type=T_A;
 	dpa->class=C_IN;
 	dpa->ttl=DNS_TTL;
-	strcpy(dpa->name,"localhost");
+	strcpy(dpa->name,dp->pkt_qst->qname);
         dpa->rdlength=ipres.len;
 	inet_htonl(ipres.data, ipres.family);
         if (ipres.family==AF_INET)
