@@ -81,10 +81,11 @@ int andns_pkt_init(int restricted)
 		if ((ns+n)->sin_addr.s_addr!=0) 
 		{
                         inet_ntop(AF_INET,(const void*)(&((ns+n)->sin_addr)),myaddr,INET_ADDRSTRLEN);
-			strncat(ns_str, ", ", 2);
+			if(e)
+				strncat(ns_str, ", ", 2);
 			strncat(ns_str, myaddr, INET_ADDRSTRLEN);
 			e++;
-                }
+		}
 	}
 	if(e)
 		loginfo("DNS Query inet related will be forwarded to: %s", ns_str);

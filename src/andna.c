@@ -2094,17 +2094,20 @@ void *andna_main(void *null)
 	pthread_mutex_lock(&tcp_daemon_lock);
 	pthread_mutex_unlock(&tcp_daemon_lock);
 
-//#ifdef ANDNA_DEBUG 
-//#warning The ANDNA hook is disabled for debugging purpose
-//#else
-	/* Start the ANDNA hook */
+	/*
+	 * Start the ANDNA hook 
+	 */
 	pthread_create(&thread, &t_attr, andna_hook, 0);
-//#endif
 
+	/*
+	 * DNS wrapper
+	 */
 	debug(DBG_SOFT, "Evocating the DNS wrapper daemon.");
 	pthread_create(&thread, &t_attr, dns_wrapper_thread, 0);
 	
-	/* Start the hostnames updater and register */
+	/* 
+	 * Start the hostnames updater and register 
+	 */
 	andna_maintain_hnames_active(0);
 	
 	xfree(port);

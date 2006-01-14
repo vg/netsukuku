@@ -1,5 +1,8 @@
 		[HIGH PRIORITY] 
 
+- andns:
+	- infinite loop in -r mode
+
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 
 - Internet Gateway Search
@@ -7,8 +10,6 @@
 	- duplicate nexthop entries in the multipath route
 	- multigw
 
-- ANDNA:
-# Registration rq 0x74df58ad rejected: hname_updates mismatch 10 > 9
 
 - Merge the andns code
 
@@ -71,6 +72,8 @@
 		[LOW PRIORITY]
 		
 - Interactive shell
+
+- ntk-control.sh: killall -SIGALRM netsukuku_d... etc..
 
 - Change with something else the eliminable fatal() calls in netsukuku_hook()
 
