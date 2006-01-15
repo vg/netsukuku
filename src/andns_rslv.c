@@ -47,6 +47,35 @@
 
 #include <resolv.h>
 
+/* To remove after integration with ntk codes 
+ * For now, DO NOT REMOVE! 
+#include "andns.h"
+#include "andns_rslv.h"
+#include "andns_mem.h"
+#include "andns_pkt.h"
+#include "andna_fake.h"
+#include <stdio.h>
+#include <string.h>
+#include <resolv.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h> */
+void char_print(char *buf, int len)
+{
+        int i,count=0;
+
+        printf("Printing %d bytes\n",len);
+        for (i=0;i<len;i++)
+        {
+                printf("%02X ", (unsigned char)(buf[i]));
+                count++;
+                if ((count%16)==0) printf("\n");
+        }
+        printf("\n");
+        return;
+}
+
+
 
 /*
  * This function must be called before all.
@@ -233,25 +262,44 @@ char *andns_rslv(char *msg, int msglen,
 		}
 		if (res==1)
 		{ 	// Packet forwarding!
+
+			if ((res=dns_forward(dp,msg,msglen,answer))==-1)
+				goto dns_esrvfail_return;
+		/*	*answlen=res;
+			return answer;*/
+		}
+		/*	
+			char forward_buf[DNS_MAX_SZ];
+			dns_pkt *dp_forward;
+
 			debug(DBG_NOISE, "In rslv: forwarding packet....");
-			destroy_dns_pkt(dp);
 			if (!_dns_forwarding_)
 			{
 				error("In rslv: dns forwardind is disable.");
 				goto dns_esrvfail_return;
 			}
-			debug(DBG_NOISE, "ID %d %d",msg[0],msg[1]);
-			res=res_send((const unsigned char*)msg,msglen,(unsigned char*)answer,DNS_MAX_SZ);
-			if (res == -1)
+			dp_forward=dpktcpy(dp);
+			memset(forward_buf,0,DNS_MAX_SZ);
+			if ((res=dpktpack(dp_forward,forward_buf,1))==-1) {
+				printf("In rslv: error packing forwarding buffer.\n");
+				error("In rslv: error packing forwarding buffer.");
 				goto dns_esrvfail_return;
+			}
+					
+			res=res_send((const unsigned char*)forward_buf,res,(unsigned char*)answer,DNS_MAX_SZ);
+			if (res == -1) {
+				printf("Error forwarding!\n");
+				goto dns_esrvfail_return;
+			}
 			
-			debug(DBG_NOISE, "ID %d %d",msg[0],msg[1]);
-			debug(DBG_NOISE, "ID ANSW %d %d",answer[0],answer[1]);
+			 put correct id to packet 
 			memcpy(answer,msg,2);
+			 set answlen 
 			*answ_len=res;
+			destroy_dns_pkt(dp);
 			return answer;
-		}
-		if((res=dpktpack(dp,answer))==-1) // this call free dp
+		}*/
+		else if((res=dpktpack(dp,answer,0))==-1) // this call free dp
 			goto dns_esrvfail_return;
 		*answ_len=res;
 		return answer;
@@ -292,13 +340,59 @@ dns_esrvfail_return:
  * The query is a A_TYPED query, i.e. host->ip.
  * On unsuccesful anserw, -1 is returned. 0 Otherwise.
  */
+
+int dns_forward(dns_pkt *dp,char *msg,int msglen,char* answer)
+{
+	dns_pkt *dp_forward;
+	char fwdbuf[DNS_MAX_SZ];
+	int res;
+
+	if (!_dns_forwarding_) {
+		error("In rslv: dns forwardind is disable.");
+		goto failing;
+	}
+	if (!is_prefixed(dp)) {
+		res=res_send((const unsigned char*)msg,msglen,(unsigned char*)answer,DNS_MAX_SZ);
+		if (res==-1) {
+			error("In dns_forwarding: forward fail.");
+			goto failing;
+		}
+		destroy_dns_pkt(dp);
+		return res;
+	}
+	/* prepare to re-format queiry without prefix */
+	dp_forward=dpktcpy(dp);
+	memset(fwdbuf,0,DNS_MAX_SZ);
+	if ((res=dpktpack(dp_forward,fwdbuf,1))==-1) { /* dp_foward is destroyed */
+		error("In rslv: error packing forwarding buffer.");
+		goto failing;
+	}
+	res=res_send((const unsigned char*)fwdbuf,res,(unsigned char*)answer,DNS_MAX_SZ);
+	if (res == -1) {
+		error("DNS Forwarding error.");
+		printf("Error forwarding!\n");
+		goto failing;
+	}
+	if ((res=dpkt(answer,res,&dp_forward))==-1) 
+		goto failing;
+	dpktacpy(dp,dp_forward,INET_REALM_PREFIX);
+	destroy_dns_pkt(dp_forward);
+	if ((res=dpktpack(dp,answer,0))==-1)
+		goto failing;
+	return res;
+failing:
+	destroy_dns_pkt(dp);
+	return -1;
+}
+					
+
 int a_a_resolve(andns_pkt *ap)
 {
 	int res;
 	andns_pkt_data *apd;
 	inet_prefix ipres;
 		
-	if ((res=andna_resolve_hname(ap->qstdata,&ipres))==-1)
+	if ((res=andna_resolve_hname(ap->qstdata_nopref,&ipres))==-1)
 	{
 		ap->rcode=RCODE_ENSDMN;
 		ap->qr=1;
@@ -329,7 +423,7 @@ int a_ptr_resolve(andns_pkt *ap)
 	int i;
 	int res;
 
-	if ((res=str_to_inet(ap->qstdata,&ipres))==-1)
+	if ((res=str_to_inet(ap->qstdata_nopref,&ipres))==-1)
 	{
 		ap->rcode=RCODE_EINTRPRT;
 		ap->qr=1;
@@ -367,26 +461,21 @@ int d_a_resolve(dns_pkt *dp)
 {
 	dns_pkt_a *dpa;
 	inet_prefix ipres;
-	char *temp;
 	int res;
 
-	if (andns_realm((dp->pkt_qst)->qname)==INET_REALM)
+	if (andns_realm((dp->pkt_qst)->qname,NULL)==INET_REALM)
 		return 1;
 	
-	temp=rm_realm_prefix((dp->pkt_qst)->qname);
-     	if ((res=andna_resolve_hname(temp, &ipres))==-1)
+     	if ((res=andna_resolve_hname(dp->pkt_qst->qname_nopref, &ipres))==-1)
         {
-                xfree(temp);
                 (dp->pkt_hdr).rcode=RCODE_ENSDMN;
         	(dp->pkt_hdr).qr=1;
                 return -1;
         }
-        xfree(temp);
 	
         (dp->pkt_hdr).rcode=RCODE_NOERR;
         (dp->pkt_hdr).qr=1;
-        DP_ANCOUNT(dp)++;
-        dpa=dns_add_a(&(dp->pkt_answ));
+        dpa=DP_ADD_ANSWER(dp);
 	dpa->type=T_A;
 	dpa->class=C_IN;
 	dpa->ttl=DNS_TTL;
@@ -404,17 +493,18 @@ int d_ptr_resolve(dns_pkt *dp)
 {
 	dns_pkt_a *dpa;
 	inet_prefix ipres;
-	char **hnames,*temp;
+	char **hnames;
 	int i, res;
 
-	if (andns_realm((dp->pkt_qst)->qname)==INET_REALM)
+	if (andns_realm((dp->pkt_qst)->qname,NULL)==INET_REALM)
 		/* XXX: why ? */
+		/* Because you have to forward the query..... */
 		return 1;
 	
 	/* Alpt: isn't? (dp->pkt_qst)->qname just an IP ?
 	 * temp=rm_realm_prefix((dp->pkt_qst)->qname); */
-	temp=(dp->pkt_qst)->qname;	
-	if ((res=str_to_inet(temp, &ipres))==-1)
+	/* No: we can have the prefix for the realm to search.... */
+	if ((res=str_to_inet(dp->pkt_qst->qname_nopref, &ipres))==-1)
 	{	
 		(dp->pkt_hdr).rcode=RCODE_EINTRPRT;
         	(dp->pkt_hdr).qr=1;
@@ -428,7 +518,7 @@ int d_ptr_resolve(dns_pkt *dp)
         }
 	for (i=0;i<res;i++)
 	{
-		dpa=dns_add_a(&(dp->pkt_answ));
+		dpa=DP_ADD_ANSWER(dp);
 		dpa->type=T_PTR;
 		dpa->class=C_IN;
 		dpa->ttl=DNS_TTL;
@@ -442,7 +532,6 @@ int d_ptr_resolve(dns_pkt *dp)
 
         (dp->pkt_hdr).rcode=RCODE_NOERR;
         (dp->pkt_hdr).qr=1;
-	DP_ANCOUNT(dp)+=res;
 	return 0;
 }
 

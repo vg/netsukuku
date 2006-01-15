@@ -26,6 +26,8 @@ dns_pkt_a* create_dns_pkt_a();
 dns_pkt_qst* dns_add_qst(dns_pkt *dp);
 void dns_del_last_qst(dns_pkt *dp);
 dns_pkt_a* dns_add_a(dns_pkt_a **dpa);
+void dpktacpy(dns_pkt *dst,dns_pkt *src,const char *prefix);
+dns_pkt* dpktcpy(dns_pkt *src);
 void destroy_dns_pkt(dns_pkt *dp);
 
 andns_pkt* create_andns_pkt();

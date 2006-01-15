@@ -24,6 +24,11 @@
 #include <stdint.h>
 
 
+// PREFIX TO QUERY THE INET REALM
+#define INET_REALM_PREFIX 	".INT"
+#define NTK_REALM_PREFIX 	".NTK"
+#define REALM_PREFIX_LEN 	4
+
 	/*
 	 * STRUCTURES
  	*/
@@ -59,6 +64,10 @@ typedef struct dns_pkt_hdr {
 #define DP_NSCOUNT(dp)  ((dp)->pkt_hdr).nscount
 #define DP_ARCOUNT(dp)  ((dp)->pkt_hdr).arcount
 
+#define DP_ADD_ANSWER(dp)	dns_add_a(&((dp)->pkt_answ));DP_ANCOUNT(dp)+=1;
+#define DP_ADD_AUTH(dp)		dns_add_a(&((dp)->pkt_auth));DP_NSCOUNT(dp)+=1;
+#define DP_ADD_ADD(dp)		dns_add_a(&((dp)->pkt_add));DP_ARCOUNT(dp)+=1;
+
 #define LBL_PTR_MK              0xC0 // Network byte order
 #define LBL_PTR_OFF_MK          0x3fff // N.b. order
 #define LBL_PTR(c)      ((c)&LBL_PTR_MK) // AND whith 0xC000
@@ -70,7 +79,8 @@ typedef struct dns_pkt_hdr {
 #define DANSW(c,rcode)		*((c)+3)=(((*((c)+3))&0xf0)|rcode)
 
 struct dns_pkt_qst {
-	char            	qname[MAX_HNAME_LEN];
+	char            	qname[MAX_HNAME_LEN+REALM_PREFIX_LEN];
+	char            	qname_nopref[MAX_HNAME_LEN];
 	uint16_t       		qtype;
 	uint16_t       		qclass;
 	struct dns_pkt_qst 	*next;
@@ -127,7 +137,8 @@ typedef struct andns_pkt
         uint8_t        	nk;
         uint8_t        	rcode;
 	uint16_t       	qstlength;
-	char	       	qstdata[MAX_ANDNS_QST_LEN];	
+	char	       	qstdata[MAX_ANDNS_QST_LEN+REALM_PREFIX_LEN];	
+	char	       	qstdata_nopref[MAX_ANDNS_QST_LEN];	
         andns_pkt_data  *pkt_answ;
 } andns_pkt;
 #define ANDNS_PKT_SZ sizeof(andns_pkt)
@@ -135,6 +146,7 @@ typedef struct andns_pkt
 
 #define AANSWFAIL(msg)    	*((msg)+3)=(((*((msg)+3))&0xf0)|0x02);*((msg)+offset)='\0'
 #define AANSW(c,rcode)		*((c)+3)=(((*((c)+3))&0xf0)|rcode)
+
 
 
 /*
@@ -167,10 +179,6 @@ typedef struct andns_pkt
 #define DNS_INV_PREFIX          ".IN-ADDR.ARPA"
 #define DNS_INV_PREFIX6         ".IP6.ARPA"
 #define OLD_DNS_INV_PREFIX6     ".IP6.INT" // For backward compatibility
-
-// PREFIX TO QUERY THE INET REALM
-#define INET_REALM_PREFIX 	".INT"
-#define NTK_REALM_PREFIX 	".NTK"
 
 // REALMS TO SEARCH
 #define NTK_REALM 		0

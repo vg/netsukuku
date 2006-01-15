@@ -23,11 +23,20 @@
  * andns_mem.c: memory library for andns structs
  */
 
+
 #include "andns.h"
 #include "andns_mem.h"
 #include "xmalloc.h"
 #include <stdio.h>
 #include <string.h>
+
+/* debug includes 
+#include "andns.h"
+#include "andns_mem.h"
+#include "andna_fake.h"
+#include <stdio.h>
+#include <string.h> */
+
 
 /*
  * DNS FUNCTIONS
@@ -42,21 +51,23 @@ dns_pkt* create_dns_pkt()
 	dp->pkt_auth=NULL;
 	return dp;
 }
+
 dns_pkt_qst* create_dns_pkt_qst()
 {
 	dns_pkt_qst *dpq;
 	dpq=xmalloc(DNS_PKT_QST_SZ);
 	dpq->next=NULL;
-	memset(dpq->qname,0,MAX_HNAME_LEN);
+	memset(dpq->qname,0,MAX_HNAME_LEN+REALM_PREFIX_LEN);
+	memset(dpq->qname_nopref,0,MAX_HNAME_LEN);
 	return dpq;
 }
 dns_pkt_a* create_dns_pkt_a()
 {
 	dns_pkt_a *dpa;
 	dpa=xmalloc(DNS_PKT_A_SZ);
-	dpa->next=NULL;
 	memset(dpa->name,0,MAX_HNAME_LEN);
 	memset(dpa->rdata,0,MAX_HNAME_LEN);
+	dpa->next=NULL;
 	return dpa;
 }
 
@@ -88,18 +99,90 @@ void dns_del_last_qst(dns_pkt *dp)
 dns_pkt_a* dns_add_a(dns_pkt_a **dpa)
 {
 	dns_pkt_a *dpa_add,*a;
+	int count=0;
 
 	a=*dpa;
 	dpa_add=create_dns_pkt_a();
-	if (!a) 
-		*dpa=dpa_add;
+	if (!a) {
+		(*dpa)=dpa_add;
+	}
 	else {
 		while (a->next)
+		{
 			a=a->next;
+			count++;
+		}
 		a->next=dpa_add;
 	}
 	return dpa_add;
 }
+
+void dpktacpy(dns_pkt *dst,dns_pkt *src,const char *prefix)
+{
+	dns_pkt_a *dpas,*dpad;
+	int slen;
+
+	dpas=src->pkt_answ;
+	while(dpas) {
+		dpad=DP_ADD_ANSWER(dst);
+		memcpy(dpad,dpas,sizeof(dns_pkt_a));
+		dpad->next=NULL;
+		if (prefix) {
+			slen=strlen(dpad->name);
+			memcpy(dpad->name+slen,prefix,REALM_PREFIX_LEN);
+			*(dpad->name+slen+REALM_PREFIX_LEN)=0;
+		}
+		dpas=dpas->next;
+	}
+	dpas=src->pkt_auth;
+	while(dpas) {
+		dpad=DP_ADD_AUTH(dst);
+		memcpy(dpad,dpas,sizeof(dns_pkt_a));
+		dpad->next=NULL;
+/*		if (prefix) {
+			slen=strlen(dpad->name);
+			memcpy(dpad->name+slen,prefix,REALM_PREFIX_LEN);
+			*(dpad->name+slen+REALM_PREFIX_LEN)=0;
+		}*/
+		dpas=dpas->next;
+	}
+	dpas=src->pkt_add;
+	while(dpas) {
+		dpad=DP_ADD_ADD(dst);
+		memcpy(dpad,dpas,sizeof(dns_pkt_a));
+		dpad->next=NULL;
+/*		if (prefix) {
+			slen=strlen(dpad->name);
+			memcpy(dpad->name+slen,prefix,REALM_PREFIX_LEN);
+			*(dpad->name+slen+REALM_PREFIX_LEN)=0;
+		}*/
+		dpas=dpas->next;
+	}
+}
+	
+
+dns_pkt* dpktcpy(dns_pkt *src)
+{
+	dns_pkt *dst;
+	dns_pkt_qst *dpq,*dpq_src;
+
+	dst=create_dns_pkt();
+	memcpy(dst,src,sizeof(dns_pkt));
+	dst->pkt_qst=NULL;
+	dst->pkt_answ=NULL;
+	dst->pkt_auth=NULL;
+	dst->pkt_add=NULL;
+
+	dpq_src=src->pkt_qst;
+	while (dpq_src) {
+		dpq=dns_add_qst(dst);
+		memcpy(dpq,dpq_src,sizeof(dns_pkt_qst));
+		dpq_src=dpq_src->next;
+	}
+	dpktacpy(dst,src,NULL);
+	return dst;
+}
+
 void destroy_dns_pkt(dns_pkt *dp)
 {
 	if (dp->pkt_qst)
@@ -160,7 +243,8 @@ andns_pkt* create_andns_pkt()
 	andns_pkt *ap;
 	ap=xmalloc(ANDNS_PKT_SZ);
 	ap->pkt_answ=NULL;
-	memset(ap->qstdata,0,MAX_ANDNS_QST_LEN);
+	memset(ap->qstdata,0,MAX_ANDNS_QST_LEN+REALM_PREFIX_LEN);
+	memset(ap->qstdata_nopref,0,MAX_ANDNS_QST_LEN);
 	return ap;
 }
 

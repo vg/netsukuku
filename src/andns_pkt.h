@@ -28,8 +28,9 @@ int andns_pkt_init(int restricted);
 size_t getlblptr(char *buf);
 size_t lbltoname(char *buf,char *start_pkt,char *dst,int count,int limit_len,int recursion);
 int andns_proto(char *buf);
-int andns_realm(char* qst);
-char* rm_realm_prefix(char *from);
+int andns_realm(char* qst,int *prefixed);
+int is_prefixed(dns_pkt *dp);
+char* rm_realm_prefix(char *from,char *dst);
 char* swapped_straddr(char *src);
 int dnslovesntk(dns_pkt *dp);
 size_t nametolbl(char *name,char *dst);
@@ -42,11 +43,11 @@ size_t dpkttoas(char *start_buf,char *buf,dns_pkt_a **dpa,int limit_len,int coun
 size_t dpkt(char *buf,size_t pktlen,dns_pkt **dpp);
 
 size_t hdrtodpkt(dns_pkt *dp,char *buf);
-size_t qsttodpkt(dns_pkt_qst *dpq,char *buf, int limitlen);
-size_t qststodpkt(dns_pkt *dp,char *buf,int limitlen);
+size_t qsttodpkt(dns_pkt_qst *dpq,char *buf, int limitlen,int nopref);
+size_t qststodpkt(dns_pkt *dp,char *buf,int limitlen,int nopref);
 size_t atodpkt(dns_pkt_a *dpa,char *buf,int limitlen);
 size_t astodpkt(dns_pkt_a *dpa,char *buf,int limitlen,int count);
-size_t dpktpack(dns_pkt *dp,char *buf);
+size_t dpktpack(dns_pkt *dp,char *buf,int nopref);
 
 size_t apkttohdr(char *buf,andns_pkt *ap);
 size_t apkttoqst(char *buf,andns_pkt *ap);

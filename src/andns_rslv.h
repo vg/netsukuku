@@ -20,12 +20,19 @@
 #ifndef ANDNS_RSLV_H
 #define ANDNS_RSLV_H
 
+
 #include "andns.h"
 #include "inet.h"
+
+/* debug includes 
+#include "andns.h"
+#include "andna_fake.h" */
+
 
 // Functions
 int andns_init(int restricted);
 char* andns_rslv(char *msg,int msglen, char *answer_buf, int *answ_len);
+int dns_forward(dns_pkt *dp,char *msg,int msglen,char* answer);
 int a_a_resolve(andns_pkt *ap);
 int a_ptr_resolve(andns_pkt *ap);
 int a_mx_resolve(andns_pkt *ap);
