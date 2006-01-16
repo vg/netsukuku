@@ -335,9 +335,12 @@ int andns_proto(char *buf)
  *  Do you want to know who is 1.2.3.4 in INET_REALM?
  *  ASk for 1.2.3.4.INT
  */
-int andns_realm(char* qst,int *prefixed)
+int andns_realm(dns_pkt_qst *dpq,int *prefixed)
 {
 	int slen;
+	char *qst;
+
+	qst=dpq->qname;
 
 	if (!qst) 
 	{
@@ -345,9 +348,23 @@ int andns_realm(char* qst,int *prefixed)
 		return -1;	
 	}
 	slen=strlen(qst);
+	if (slen<5) return _default_realm_;
+
+	if (dpq->qtype==T_PTR) {
+		if (strcasestr(qst,PTR_INET_REALM_PREFIX)==qst) {
+			if (prefixed) *prefixed=1;
+			return INET_REALM;
+		}
+		if (strcasestr(qst,PTR_NTK_REALM_PREFIX)==qst) {
+			if (prefixed) *prefixed=1;
+			return NTK_REALM;
+		}
+		if (prefixed) *prefixed=0;
+		return _default_realm_;
+	}
+		
 	// if qst is tto short, it's impossible to 
 	// consider a prefix.
-	if (slen<5) return _default_realm_;
 	if (strcasestr(qst+slen-REALM_PREFIX_LEN,INET_REALM_PREFIX)) {
 		if (prefixed) *prefixed=1;
 		return INET_REALM;
@@ -363,18 +380,36 @@ int is_prefixed(dns_pkt *dp)
 {
 	int prefix=0;
 
-	andns_realm(dp->pkt_qst->qname,&prefix);
+	andns_realm(dp->pkt_qst,&prefix);
 	return prefix;
 }
 	
 /*
  * Remove the suffix realm
  */
-char* rm_realm_prefix(char *from,char *dst)
+char* rm_realm_prefix(char *from,char *dst,int type)
 {
-	char *crow;
         int slen;
         slen=strlen(from);
+
+	if (slen<5) 
+		strcpy(dst,from);
+	else if (type==T_PTR) {
+		if (strcasestr(from,PTR_INET_REALM_PREFIX)==from || 
+		    strcasestr(from,PTR_NTK_REALM_PREFIX)==from) 
+			strcpy(dst,from+REALM_PREFIX_LEN);
+		else 
+			strcpy(dst,from);
+		
+	}
+	else if (strcasestr(from+REALM_PREFIX_LEN,INET_REALM_PREFIX) || 
+		 strcasestr(from+REALM_PREFIX_LEN,NTK_REALM_PREFIX)) 
+			strncpy(dst,from,slen-REALM_PREFIX_LEN);
+	else
+		strcpy(dst,from);
+	return dst;
+	/*	
+			
 
         if ((crow=strcasestr(from,INET_REALM_PREFIX)) || \
                 (crow=strcasestr(from,NTK_REALM_PREFIX)))
@@ -386,7 +421,7 @@ char* rm_realm_prefix(char *from,char *dst)
                 return dst;
         }
 	strcpy(dst,from);
-        return dst;
+        return dst;*/
 
 }
 			
@@ -613,7 +648,7 @@ size_t dpkttoqst(char *start_buf,char *buf,dns_pkt *dp,int limit_len)
         dpq->qclass=ntohs(s);
         count+=2;
 
-	rm_realm_prefix(dpq->qname,dpq->qname_nopref);
+	rm_realm_prefix(dpq->qname,dpq->qname_nopref,dpq->qtype);
         return count;
 }
 /*
@@ -897,6 +932,7 @@ size_t atodpkt(dns_pkt_a *dpa,char *buf,int limitlen)
 		offset+=dpa->rdlength;
 	}
 	else {
+		printf("Pacchettiziamo %s\n",dpa->rdata);
 		if ((rdlen=nametolbl(dpa->rdata,buf+2))==-1) {
 			error("In atodpkt: can not write rdata field.");
 			printf("In atodpkt: can not write rdata field.i\n");
@@ -908,6 +944,7 @@ size_t atodpkt(dns_pkt_a *dpa,char *buf,int limitlen)
 	                return -1;
         	}
 		dpa->rdlength=rdlen;
+		printf("Pacchettizato il nome %s con rdlen %d\n",dpa->rdata,rdlen);
 	}
         u=htons(dpa->rdlength);
         memcpy(buf,&u,2);
@@ -1017,7 +1054,7 @@ size_t apkttoqst(char *buf,andns_pkt *ap)
 	}
 	buf+=2;
 	memcpy(ap->qstdata,buf,ap->qstlength);
-	rm_realm_prefix(ap->qstdata,ap->qstdata_nopref);
+	rm_realm_prefix(ap->qstdata,ap->qstdata_nopref,ap->qtype);
 	return ap->qstlength+2;
 }
 

@@ -347,9 +347,10 @@ int andna_reverse_resolve(inet_prefix ip, char ***hostnames)
 {
         char **depo;
 
-        depo=xmalloc(sizeof(char**));
+        depo=xmalloc(sizeof(char*));
         depo[0]=xmalloc(512);
-        strcpy(depo[0],"depousceve");
+        strcpy(depo[0],"abcde.it.it");
+	printf("ANDNA COPIA %s\n",depo[0]);
         *hostnames=depo;
         return 1;
 }
@@ -368,6 +369,7 @@ void dp_print(dns_pkt *dp)
 {
         dns_pkt_hdr *dph;
         dns_pkt_a *dpa;
+	dns_pkt_qst *dpq;
 
         dph=&(dp->pkt_hdr);
         printf(" ID %d\n",dph->id);
@@ -384,12 +386,20 @@ void dp_print(dns_pkt *dp)
         printf(" nscount %d\n",dph->nscount);
         printf(" arcount %d\n",dph->nscount);
 
+	dpq=dp->pkt_qst;
+
+	printf("QUESTION\n");
+	printf("\tQNAME=%s\n",dpq->qname);
+	printf("\tQNAME_nopref=%s\n",dpq->qname_nopref);
+	printf("\tqtype=%d\n",dpq->qtype);
+	printf("\tqclass=%d\n",dpq->qclass);
         dpa=dp->pkt_answ;
 	printf("ANSWERS\n");
 	if (!dpa) printf("Any!\n");
         while (dpa)
         {
                 printf("\tname %s\n", dpa->name);
+                //printf("\tname_nopref %s\n", dpa->name_nopref);
                 printf("\ttype %d\n", dpa->type);
                 printf("\tclass %d\n", dpa->class);
                 printf("\tttl %d\n", dpa->ttl);
@@ -403,6 +413,7 @@ void dp_print(dns_pkt *dp)
         while (dpa)
         {
                 printf("\tname %s\n", dpa->name);
+                //printf("\tname_nopref %s\n", dpa->name_nopref);
                 printf("\ttype %d\n", dpa->type);
                 printf("\tclass %d\n", dpa->class);
                 printf("\tttl %d\n", dpa->ttl);
@@ -416,6 +427,7 @@ void dp_print(dns_pkt *dp)
         while (dpa)
         {
                 printf("\tname %s\n", dpa->name);
+                //printf("\tname_nopref %s\n", dpa->name_nopref);
                 printf("\ttype %d\n", dpa->type);
                 printf("\tclass %d\n", dpa->class);
                 printf("\tttl %d\n", dpa->ttl);

@@ -262,6 +262,7 @@ char *andns_rslv(char *msg, int msglen,
 		}
 		if (res==1)
 		{ 	// Packet forwarding!
+			printf("DNS forwarding.....\n");
 
 			if ((res=dns_forward(dp,msg,msglen,answer))==-1)
 				goto dns_esrvfail_return;
@@ -463,7 +464,7 @@ int d_a_resolve(dns_pkt *dp)
 	inet_prefix ipres;
 	int res;
 
-	if (andns_realm((dp->pkt_qst)->qname,NULL)==INET_REALM)
+	if (andns_realm(dp->pkt_qst,NULL)==INET_REALM)
 		return 1;
 	
      	if ((res=andna_resolve_hname(dp->pkt_qst->qname_nopref, &ipres))==-1)
@@ -496,7 +497,7 @@ int d_ptr_resolve(dns_pkt *dp)
 	char **hnames;
 	int i, res;
 
-	if (andns_realm((dp->pkt_qst)->qname,NULL)==INET_REALM)
+	if (andns_realm(dp->pkt_qst,NULL)==INET_REALM)
 		/* XXX: why ? */
 		/* Because you have to forward the query..... */
 		return 1;
@@ -504,6 +505,7 @@ int d_ptr_resolve(dns_pkt *dp)
 	/* Alpt: isn't? (dp->pkt_qst)->qname just an IP ?
 	 * temp=rm_realm_prefix((dp->pkt_qst)->qname); */
 	/* No: we can have the prefix for the realm to search.... */
+	printf("Ptr andna resolve\n");
 	if ((res=str_to_inet(dp->pkt_qst->qname_nopref, &ipres))==-1)
 	{	
 		(dp->pkt_hdr).rcode=RCODE_EINTRPRT;
@@ -522,9 +524,10 @@ int d_ptr_resolve(dns_pkt *dp)
 		dpa->type=T_PTR;
 		dpa->class=C_IN;
 		dpa->ttl=DNS_TTL;
-		strcpy(dpa->name,"localhost");
-		if (nametolbl(hnames[i], dpa->rdata)==-1)
-			memset(dpa->rdata,0,MAX_HNAME_LEN);
+		strcpy(dpa->name,dp->pkt_qst->qname);
+		strcpy(dpa->rdata,hnames[i]);
+//		if (nametolbl(hnames[i], dpa->rdata)==-1)
+//			memset(dpa->rdata,0,MAX_HNAME_LEN);
 
 		xfree(hnames[i]);
 	}
