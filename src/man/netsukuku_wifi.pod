@@ -39,7 +39,17 @@ on the FreeNode irc server (irc.freenode.org).
 
 =head1 AUTHORS
 
+Main authors and maintainers:
+
 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+
+Main contributors:
+
+Andrea Leofreddi <andrea.leofreddi@gmail.com>, Katolaz <katolaz@yahoo.it>,
+Federico Tomassini <effetom@gmail.com>
+
+For a complete list read the AUTHORS file or visit:
+L<http://netsukuku.freaknet.org/?p=Contacts>
 
 =head1 SEE ALSO
 

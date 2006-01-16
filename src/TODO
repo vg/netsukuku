@@ -10,9 +10,6 @@
 	- duplicate nexthop entries in the multipath route
 	- multigw
 
-
-- Merge the andns code
-
 - DNS wrapper: ip -> hostnames
 	- -r forward to other /etc/resolv.conf dns server
 
@@ -72,8 +69,6 @@
 		[LOW PRIORITY]
 		
 - Interactive shell
-
-- ntk-control.sh: killall -SIGALRM netsukuku_d... etc..
 
 - Change with something else the eliminable fatal() calls in netsukuku_hook()
 

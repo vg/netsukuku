@@ -162,10 +162,10 @@ netsukuku_d -i eth0 -i wlan0 -i wifi1 -i eth2
 =head1 SIGNALS
 
 When the B<SIGHUP> signal is sent to B<netsukuku_d>, the F<andna_hostnames> file
-will be reloaded and it will try to register all the new added hostnames.
+is reloaded and the daemon tries to register all the new added hostnames.
 
 When the B<SIGALRM> signal is sent to B<netsukuku_d>, the resolved hostnames
-cache will be flushed.
+cache is flushed.
 
 =head1 LOGS
 
@@ -263,7 +263,17 @@ on the FreeNode irc server (irc.freenode.org).
 
 =head1 AUTHORS
 
+Main authors and maintainers:
+
 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+
+Main contributors:
+
+Andrea Leofreddi <andrea.leofreddi@gmail.com>, Katolaz <katolaz@yahoo.it>,
+Federico Tomassini <effetom@gmail.com>
+
+For a complete list read the AUTHORS file or visit:
+L<http://netsukuku.freaknet.org/?p=Contacts>
 
 =head1 SEE ALSO
 
