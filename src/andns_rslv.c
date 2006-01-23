@@ -107,21 +107,25 @@ int store_ns(char *ns)
         return 0;
 }
 
-int collect_resolv_conf()
+int collect_resolv_conf(char *resolve_conf)
 {
         FILE *erc;
         char buf[64],*crow,tbuf[64];
         int i=0;
 
-        if (!(erc=fopen("/etc/resolv.conf","r"))) {
+        if (!(erc=fopen(resolve_conf,"r"))) {
                 error("In collect_resolv_conf: error -> %s.", strerror(errno));
                 return -1;
         }
         while ((crow=fgets((char*)buf,64,erc))) {
-                if ((crow=strstr(buf,"nameserver ")))
-                        crow+=11;
-                else continue;
-                while (*(crow+i) && *(crow+i)!='\n') {
+		if((*buf)=='#' || (*buf)=='\n' || !(*buf))
+			/* Strip off the comment lines */
+			continue;
+			
+                if (!(crow=strstr(buf,"nameserver ")))
+			continue;
+		crow+=11;
+		while (*(crow+i) && *(crow+i)!='\n') {
                         *(tbuf+i)=*(crow+i);
                         i++;
                 }
@@ -148,7 +152,7 @@ int collect_resolv_conf()
  * belongs to localhost. In this way, the dns_forwarding
  * won't finish in a infinite loop.
  */
-void andns_init(int restricted)
+void andns_init(int restricted, char *resolv_conf)
 {
         int i,res;
         char msg[(INET_ADDRSTRLEN+2)*MAXNSSERVERS];
@@ -160,7 +164,7 @@ void andns_init(int restricted)
 
 	memset(msg,0,(INET_ADDRSTRLEN+2)*MAXNSSERVERS);
 
-        if ((res=collect_resolv_conf())==-1) {
+        if ((res=collect_resolv_conf(resolv_conf))==-1) {
                 loginfo("ALERT: DNS forwarding disable");
                 _dns_forwarding_=0;
                 return;
