@@ -138,8 +138,9 @@ void andna_init(void)
 	memset(last_counter_pkt_id, 0, sizeof(int)*ANDNA_MAX_FLOODS);
 	memset(last_spread_acache_pkt_id, 0, sizeof(int)*ANDNA_MAX_FLOODS);
 
+	andns_init(server_opt.restricted); /*
 	if(andns_init(server_opt.restricted) < 0)
-		fatal("Failed to initialize the dns wrapper");
+		fatal("Failed to initialize the dns wrapper");*/
 }
 
 void andna_close(void)

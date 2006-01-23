@@ -121,16 +121,18 @@ void dpktacpy(dns_pkt *dst,dns_pkt *src,const char *prefix)
 {
 	dns_pkt_a *dpas,*dpad;
 	int slen;
+	int yet_pref=0;
 
 	dpas=src->pkt_answ;
 	while(dpas) {
 		dpad=DP_ADD_ANSWER(dst);
 		memcpy(dpad,dpas,sizeof(dns_pkt_a));
 		dpad->next=NULL;
-		if (prefix) {
+		if (prefix && !yet_pref) {
 			slen=strlen(dpad->name);
 			memcpy(dpad->name+slen,prefix,REALM_PREFIX_LEN);
 			*(dpad->name+slen+REALM_PREFIX_LEN)=0;
+			yet_pref=1;
 		}
 		dpas=dpas->next;
 	}
@@ -185,9 +187,11 @@ dns_pkt* dpktcpy(dns_pkt *src)
 
 void destroy_dns_pkt(dns_pkt *dp)
 {
+	dns_pkt_a *dpa,*dpa_t;
+	dns_pkt_qst *dpq,*dpq_t;
+
 	if (dp->pkt_qst)
 	{
-		dns_pkt_qst *dpq,*dpq_t;
 		dpq=dp->pkt_qst;
 		while (dpq)
 		{
@@ -198,7 +202,6 @@ void destroy_dns_pkt(dns_pkt *dp)
 	}
 	if (dp->pkt_answ)
 	{
-		dns_pkt_a *dpa,*dpa_t;
 		dpa=dp->pkt_answ;
 		while (dpa)
 		{
@@ -209,7 +212,6 @@ void destroy_dns_pkt(dns_pkt *dp)
 	}
 	if (dp->pkt_add)
 	{
-		dns_pkt_a *dpa,*dpa_t;
 		dpa=dp->pkt_add;
 		while (dpa)
 		{
@@ -220,7 +222,6 @@ void destroy_dns_pkt(dns_pkt *dp)
 	}
 	if (dp->pkt_auth)
 	{
-		dns_pkt_a *dpa,*dpa_t;
 		dpa=dp->pkt_auth;
 		while (dpa)
 		{

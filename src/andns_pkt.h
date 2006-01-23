@@ -22,9 +22,11 @@
 
 #include "andns.h"
 
-uint8_t _dns_forwarding_;
+/* Globals */
 
-int andns_pkt_init(int restricted);
+uint8_t _default_realm_;
+
+//int andns_pkt_init(int restricted);
 size_t getlblptr(char *buf);
 size_t lbltoname(char *buf,char *start_pkt,char *dst,int count,int limit_len,int recursion);
 int andns_proto(char *buf);

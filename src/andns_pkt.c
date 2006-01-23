@@ -59,9 +59,8 @@
 
 
 
-static uint8_t _default_realm_;
-uint8_t _dns_forwarding_;
 
+/*
 int andns_pkt_init(int restricted)
 {
 	int n,e,count=0;
@@ -118,7 +117,7 @@ no_nsservers:
 	debug(DBG_NORMAL, "andns_init: nameservers not found. dns forwarding disable.");
 	_dns_forwarding_=0;
 	return 0;
-}
+}*/
 
 /*
  * Takes a label: is there a ptr?
@@ -153,7 +152,6 @@ int read_label_octet(const char *src,char *dst,int read_yet,int limit_len)
 	how=*src;
 	if ( how+read_yet> limit_len || how+read_yet > MAX_SQLBL_LEN ) {
 		error("In read_label_octet: exceeding pkt. limit_len=%d,read_yet=%d,count=%d",limit_len,read_yet,how);
-		printf("In read_label_octet: exceeding pkt. limit_len=%d,read_yet=%d,count=%d\n",limit_len,read_yet,how);
 		return -1;
 	}
 	memcpy(dst,src+1,how);
@@ -193,7 +191,6 @@ size_t lbltoname(char *buf,char *start_pkt,char *dst,int count,int limit_len,int
 	/* controls the pkt size */
 	if (count>limit_len) {
 		error("In lbltoname: exceeding pkt.");
-		printf("In lbltoname: exceeding pkt.\n");
 		return -1;
 	}
 	/* maybe we are at the last label octet */	
@@ -206,7 +203,6 @@ size_t lbltoname(char *buf,char *start_pkt,char *dst,int count,int limit_len,int
 	if ((temp=getlblptr(buf))) {
 		if (temp==-1 || recursion>MAX_RECURSION_PTR) {
 			error("In lbltoname: malformed pkt");
-			printf("In lbltoname: malformed pkt\n");
                         return -1;
 		}
 		recursion++;
@@ -730,7 +726,6 @@ size_t dpkttoa(char *start_buf,char *buf,dns_pkt_a **dpa_orig,int limit_len)
 	else 
 		if ((ui=lbltoname(buf,start_buf,dpa->rdata,0,MAX_HNAME_LEN,0))==-1) {
 			error("In dpkttpa: can not write rdata field.");
-			printf("In dpkttpa: can not write rdata field.\n");
 			return -1;
 		}
         count+=rdlen;
@@ -859,7 +854,6 @@ size_t qsttodpkt(dns_pkt_qst *dpq,char *buf, int limitlen,int nopref)
 
         if((offset=nametolbl(temp,buf))==-1) {
 		error("In qsttodpkt: error transalting name to sequence labels: name=%s",temp);
-		printf("In qsttodpkt: error transalting name to sequence labels: name=%s",temp);
                 return -1;
 	}
         if (offset+4>limitlen)
@@ -932,10 +926,8 @@ size_t atodpkt(dns_pkt_a *dpa,char *buf,int limitlen)
 		offset+=dpa->rdlength;
 	}
 	else {
-		printf("Pacchettiziamo %s\n",dpa->rdata);
 		if ((rdlen=nametolbl(dpa->rdata,buf+2))==-1) {
 			error("In atodpkt: can not write rdata field.");
-			printf("In atodpkt: can not write rdata field.i\n");
 			return -1;
 		}
 		offset+=rdlen;
@@ -944,7 +936,6 @@ size_t atodpkt(dns_pkt_a *dpa,char *buf,int limitlen)
 	                return -1;
         	}
 		dpa->rdlength=rdlen;
-		printf("Pacchettizato il nome %s con rdlen %d\n",dpa->rdata,rdlen);
 	}
         u=htons(dpa->rdlength);
         memcpy(buf,&u,2);
@@ -991,14 +982,14 @@ size_t dpktpack(dns_pkt *dp,char *buf,int nopref)
         if ( (res=astodpkt(dp->pkt_answ,buf,DNS_MAX_SZ-offset,DP_ANCOUNT(dp)))==-1)
 		goto server_fail;
 	offset+=res;
-	buf+=res;
+	/*buf+=res;
 	if ( (res=astodpkt(dp->pkt_auth,buf,DNS_MAX_SZ-offset,DP_NSCOUNT(dp)))==-1) 
 		goto server_fail;
 	offset+=res;
-	buf+=res;
-        if ( (res=astodpkt(dp->pkt_add,buf,DNS_MAX_SZ-offset,DP_ARCOUNT(dp)))==-1)
+	buf+=res;*/
+        /*if ( (res=astodpkt(dp->pkt_add,buf,DNS_MAX_SZ-offset,DP_ARCOUNT(dp)))==-1)
 		goto server_fail;
-	offset+=res;
+	offset+=res;*/
         destroy_dns_pkt(dp);
         return offset;
 server_fail:

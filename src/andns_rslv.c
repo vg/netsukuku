@@ -60,6 +60,15 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h> */
+
+
+/* Globals */
+
+static uint8_t _dns_forwarding_;
+#define MAXNSSERVERS 3
+static struct sockaddr_in _andns_ns_[MAXNSSERVERS];
+static uint8_t _andns_ns_count_;
+
 void char_print(char *buf, int len)
 {
         int i,count=0;
@@ -75,7 +84,61 @@ void char_print(char *buf, int len)
         return;
 }
 
+int store_ns(char *ns)
+{
+        int res;
+	struct sockaddr_in *saddr;
 
+        if (_andns_ns_count_>=MAXNSSERVERS)
+                return -1;
+        if (strstr(ns,"127.0.0.1"))
+                return -1;
+	saddr=_andns_ns_+_andns_ns_count_;
+	saddr->sin_family=AF_INET;
+	if ((res=inet_pton(AF_INET,ns,&(saddr->sin_addr)))<0) {
+		error("In store_ns: error converting str to sockaddr-> %s\n", strerror(errno));
+		return -1;
+	} else if (res==0) {
+		error("In store_ns: invalid address\n");
+		return -1;
+	}
+	saddr->sin_port=htons(53);
+        _andns_ns_count_++;
+        return 0;
+}
+
+int collect_resolv_conf()
+{
+        FILE *erc;
+        char buf[64],*crow,tbuf[64];
+        int i=0;
+
+        if (!(erc=fopen("/etc/resolv.conf","r"))) {
+                error("In collect_resolv_conf: error -> %s.", strerror(errno));
+                return -1;
+        }
+        while ((crow=fgets((char*)buf,64,erc))) {
+                if ((crow=strstr(buf,"nameserver ")))
+                        crow+=11;
+                else continue;
+                while (*(crow+i) && *(crow+i)!='\n') {
+                        *(tbuf+i)=*(crow+i);
+                        i++;
+                }
+                *(tbuf+i)=0;
+                store_ns(tbuf);
+                i=0;
+        }
+        if (fclose(erc)!=0) {
+                error("In collect_resolv_conf: closing resolv.conf -> %s",strerror(errno));
+                return -1;
+        }
+        if (!_andns_ns_count_) {
+                error("In collect_resolv_conf: no dns server was found.");
+                return -1;
+        }
+        return 0;
+}
 
 /*
  * This function must be called before all.
@@ -85,9 +148,36 @@ void char_print(char *buf, int len)
  * belongs to localhost. In this way, the dns_forwarding
  * won't finish in a infinite loop.
  */
-int andns_init(int restricted)
+void andns_init(int restricted)
 {
-	return andns_pkt_init(restricted);
+        int i,res;
+        char msg[(INET_ADDRSTRLEN+2)*MAXNSSERVERS];
+	char buf[INET_ADDRSTRLEN];
+	struct sockaddr_in *saddr;
+
+        _default_realm_=(restricted)?INET_REALM:NTK_REALM;
+        _andns_ns_count_=0;
+
+	memset(msg,0,(INET_ADDRSTRLEN+2)*MAXNSSERVERS);
+
+        if ((res=collect_resolv_conf())==-1) {
+                loginfo("ALERT: DNS forwarding disable");
+                _dns_forwarding_=0;
+                return;
+        }
+        for (i=0;i<_andns_ns_count_;i++) {
+		saddr=_andns_ns_+i;
+                if(inet_ntop(saddr->sin_family,(void*)&((saddr)->sin_addr),buf,INET_ADDRSTRLEN)) {
+			strncat(msg,buf,INET_ADDRSTRLEN);
+			strncat(msg,i==_andns_ns_count_-1?". ":", ",2);
+		}
+		else 
+			error("In andns_init: error converting sockaddr -> %s.",strerror(errno));
+	}
+					
+        loginfo("Andns init: DNS query inet-related will be forwarded to: %s",msg);
+	_dns_forwarding_=_andns_ns_count_?1:0;
+        return;
 }
 
 /*
@@ -262,7 +352,6 @@ char *andns_rslv(char *msg, int msglen,
 		}
 		if (res==1)
 		{ 	// Packet forwarding!
-			printf("DNS forwarding.....\n");
 
 			if ((res=dns_forward(dp,msg,msglen,answer))==-1)
 				goto dns_esrvfail_return;
@@ -342,6 +431,52 @@ dns_esrvfail_return:
  * On unsuccesful anserw, -1 is returned. 0 Otherwise.
  */
 
+int ns_general_send(char *msg,int msglen,char *answer,int *anslen)
+{
+        int res,i;
+
+        for (i=0;i<MAXNSSERVERS && i<_andns_ns_count_;i++) {
+                res=ns_send(msg,msglen,answer,anslen,_andns_ns_+i,sizeof(struct sockaddr_in));
+                if (res==-1) continue;
+		else break;
+        }
+	return res==-1?res:0;
+//        if (res==-1) return -1;
+  //      return 0;
+}
+
+int ns_send(char *msg,int msglen, char *answer,int *anslen,struct sockaddr_in *ns,socklen_t nslen)
+{
+        int s;
+	ssize_t len;
+
+	if ((s=new_dgram_socket(AF_INET))==-1) {
+		error("In ns_send: can not create socket.");
+		return -1;
+	}
+	if ((connect(s,(struct sockaddr*)ns,nslen))) {
+		error("In ns_send: error connecting socket -> %s.",strerror(errno));
+		goto close_return;
+	}
+	len=inet_send(s,msg,msglen,0);
+        if (len==-1) {
+                error("In ns_send. Pkt not forwarded. %s",strerror(errno));
+		goto close_return;
+        }
+        len=inet_recv(s,(void*)answer,DNS_MAX_SZ,0);
+        if (len==-1) {
+                error("In ns_send. Pkt not received.");
+		goto close_return;
+        }
+        *anslen=len;
+	close(s);
+        return 0;
+close_return:
+	close(s);
+	return -1;
+}
+
+
 int dns_forward(dns_pkt *dp,char *msg,int msglen,char* answer)
 {
 	dns_pkt *dp_forward;
@@ -353,8 +488,8 @@ int dns_forward(dns_pkt *dp,char *msg,int msglen,char* answer)
 		goto failing;
 	}
 	if (!is_prefixed(dp)) {
-		res=res_send((const unsigned char*)msg,msglen,(unsigned char*)answer,DNS_MAX_SZ);
-		if (res==-1) {
+		/*res=res_send((const unsigned char*)msg,msglen,(unsigned char*)answer,DNS_MAX_SZ);*/
+		if(ns_general_send(msg,msglen,answer,&res)) {
 			error("In dns_forwarding: forward fail.");
 			goto failing;
 		}
@@ -368,18 +503,28 @@ int dns_forward(dns_pkt *dp,char *msg,int msglen,char* answer)
 		error("In rslv: error packing forwarding buffer.");
 		goto failing;
 	}
-	res=res_send((const unsigned char*)fwdbuf,res,(unsigned char*)answer,DNS_MAX_SZ);
+/*	res=res_send((const unsigned char*)fwdbuf,res,(unsigned char*)answer,DNS_MAX_SZ);
 	if (res == -1) {
 		error("DNS Forwarding error.");
 		printf("Error forwarding!\n");
 		goto failing;
-	}
-	if ((res=dpkt(answer,res,&dp_forward))==-1) 
+	}*/
+	if (ns_general_send(fwdbuf,res,answer,&res)) {
+		error("DNS Forwarding error.");
 		goto failing;
+	}
+	if ((res=dpkt(answer,res,&dp_forward))==-1) {
+		error("In rslv: can not unpack msg from nameserver.");
+		goto failing;
+	}
 	dpktacpy(dp,dp_forward,INET_REALM_PREFIX);
 	destroy_dns_pkt(dp_forward);
-	if ((res=dpktpack(dp,answer,0))==-1)
-		goto failing;
+	dp->pkt_hdr.nscount=0;
+	dp->pkt_hdr.arcount=0;
+	if ((res=dpktpack(dp,answer,0))==-1) {
+		error("In rslv: can not pack prefixed pkt.");
+		return -1;
+	}
 	return res;
 failing:
 	destroy_dns_pkt(dp);
@@ -505,7 +650,6 @@ int d_ptr_resolve(dns_pkt *dp)
 	/* Alpt: isn't? (dp->pkt_qst)->qname just an IP ?
 	 * temp=rm_realm_prefix((dp->pkt_qst)->qname); */
 	/* No: we can have the prefix for the realm to search.... */
-	printf("Ptr andna resolve\n");
 	if ((res=str_to_inet(dp->pkt_qst->qname_nopref, &ipres))==-1)
 	{	
 		(dp->pkt_hdr).rcode=RCODE_EINTRPRT;

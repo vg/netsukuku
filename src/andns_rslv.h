@@ -28,10 +28,18 @@
 #include "andns.h"
 #include "andna_fake.h" */
 
+/* Globals */
+
+
 
 // Functions
-int andns_init(int restricted);
+void char_print(char *buf, int len);
+int store_ns(char *ns);
+int collect_resolv_conf();
+void andns_init(int restricted);
 char* andns_rslv(char *msg,int msglen, char *answer_buf, int *answ_len);
+int ns_general_send(char *msg,int msglen,char *answer,int *anslen);
+int ns_send(char *msg,int msglen, char *answer,int *anslen,struct sockaddr_in *ns,socklen_t nslen);
 int dns_forward(dns_pkt *dp,char *msg,int msglen,char* answer);
 int a_a_resolve(andns_pkt *ap);
 int a_ptr_resolve(andns_pkt *ap);
