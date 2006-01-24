@@ -122,6 +122,7 @@ void dpktacpy(dns_pkt *dst,dns_pkt *src,const char *prefix)
 	dns_pkt_a *dpas,*dpad;
 	int slen;
 	int yet_pref=0;
+	char temp[257];
 
 	dpas=src->pkt_answ;
 	while(dpas) {
@@ -130,8 +131,15 @@ void dpktacpy(dns_pkt *dst,dns_pkt *src,const char *prefix)
 		dpad->next=NULL;
 		if (prefix && !yet_pref) {
 			slen=strlen(dpad->name);
-			memcpy(dpad->name+slen,prefix,REALM_PREFIX_LEN);
-			*(dpad->name+slen+REALM_PREFIX_LEN)=0;
+			if (dpas->type!=T_PTR) 
+				memcpy(dpad->name+slen,prefix,REALM_PREFIX_LEN);
+			else {
+				strcpy(temp,dpad->name);
+				memcpy(dpad->name,prefix+1,REALM_PREFIX_LEN-1);
+				dpad->name[REALM_PREFIX_LEN-1]='.';
+				strcpy(dpad->name+REALM_PREFIX_LEN,temp);
+			}
+			*(dpad->name+slen+REALM_PREFIX_LEN)=0; 
 			yet_pref=1;
 		}
 		dpas=dpas->next;

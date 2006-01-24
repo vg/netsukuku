@@ -188,9 +188,10 @@ size_t lbltoname(char *buf,char *start_pkt,char *dst,int count,int limit_len,int
 {
         size_t temp,offset;
 
+	if (recursion==0)
 	/* controls the pkt size */
 	if (count>limit_len) {
-		error("In lbltoname: exceeding pkt.");
+		error("In lbltoname: exceeding pkt. LIMIT: %d",limit_len);
 		return -1;
 	}
 	/* maybe we are at the last label octet */	
@@ -779,13 +780,13 @@ size_t dpkt(char *buf,size_t pktlen,dns_pkt **dpp)
 	if ((res=dpkttoas(buf,crow,&(dp->pkt_answ),pktlen-offset,DP_ANCOUNT(dp)))==-1)
 		return -1;
 	offset+=res;
-	crow+=res;
+	/*crow+=res;
 	if ((res=dpkttoas(buf,crow,&(dp->pkt_auth),pktlen-offset,DP_NSCOUNT(dp)))==-1)
 		return -1;
 	offset+=res;
 	crow+=res;
 	if ((res=dpkttoas(buf,crow,&(dp->pkt_add),pktlen-offset,DP_ARCOUNT(dp)))==-1)
-		return -1;
+		return -1;*/
 	return offset;
 }
 /*
@@ -1230,6 +1231,85 @@ int danswtoaansw(dns_pkt *dp,andns_pkt *ap,char *msg)
 	}
 	return 0;
 }
+
+
+
+void dp_print(dns_pkt *dp)
+{
+        dns_pkt_hdr *dph;
+        dns_pkt_a *dpa;
+        dns_pkt_qst *dpq;
+
+        dph=&(dp->pkt_hdr);
+        loginfo(" ID %d\n",dph->id);
+        loginfo(" QR %d\n",dph->qr);
+        loginfo(" opcode %d\n",dph->opcode);
+        loginfo(" aa %d\n",dph->aa);
+        loginfo(" tc %d\n",dph->tc);
+        loginfo(" rd %d\n",dph->rd);
+        loginfo(" ra %d\n",dph->ra);
+        loginfo(" z %d\n",dph->z);
+        loginfo(" rcode %d\n",dph->rcode);
+        loginfo(" qdcount %d\n",dph->qdcount);
+        loginfo(" ancount %d\n",dph->ancount);
+        loginfo(" nscount %d\n",dph->nscount);
+        loginfo(" arcount %d\n",dph->nscount);
+
+        dpq=dp->pkt_qst;
+
+        loginfo("QUESTION\n");
+        loginfo("\tQNAME=%s\n",dpq->qname);
+        loginfo("\tQNAME_nopref=%s\n",dpq->qname_nopref);
+        loginfo("\tqtype=%d\n",dpq->qtype);
+        loginfo("\tqclass=%d\n",dpq->qclass);
+        dpa=dp->pkt_answ;
+        loginfo("ANSWERS\n");
+        if (!dpa) loginfo("Any!\n");
+        while (dpa)
+        {
+                loginfo("\tname %s\n", dpa->name);
+                //loginfo("\tname_nopref %s\n", dpa->name_nopref);
+                loginfo("\ttype %d\n", dpa->type);
+                loginfo("\tclass %d\n", dpa->class);
+                loginfo("\tttl %d\n", dpa->ttl);
+                loginfo("\trdlength %d\n", dpa->rdlength);
+                loginfo("\trdata %s\n", dpa->rdata);
+                dpa=dpa->next;
+        }
+        loginfo("AUTHS\n");
+        dpa=dp->pkt_auth;
+        if (!dpa) loginfo("Any!\n");
+        while (dpa)
+        {
+                loginfo("\tname %s\n", dpa->name);
+                //loginfo("\tname_nopref %s\n", dpa->name_nopref);
+                loginfo("\ttype %d\n", dpa->type);
+                loginfo("\tclass %d\n", dpa->class);
+                loginfo("\tttl %d\n", dpa->ttl);
+                loginfo("\trdlength %d\n", dpa->rdlength);
+                loginfo("\trdata %s\n", dpa->rdata);
+                dpa=dpa->next;
+        }
+        loginfo("ADD\n");
+        dpa=dp->pkt_add;
+        if (!dpa) loginfo("Any!\n");
+        while (dpa)
+        {
+                loginfo("\tname %s\n", dpa->name);
+                //loginfo("\tname_nopref %s\n", dpa->name_nopref);
+                loginfo("\ttype %d\n", dpa->type);
+                loginfo("\tclass %d\n", dpa->class);
+                loginfo("\tttl %d\n", dpa->ttl);
+                loginfo("\trdlength %d\n", dpa->rdlength);
+                loginfo("\trdata %s\n", dpa->rdata);
+                dpa=dpa->next;
+        }
+
+
+
+}
+
+
 
 				
 				

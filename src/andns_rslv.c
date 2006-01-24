@@ -485,12 +485,13 @@ int dns_forward(dns_pkt *dp,char *msg,int msglen,char* answer)
 {
 	dns_pkt *dp_forward;
 	char fwdbuf[DNS_MAX_SZ];
-	int res;
+	int res,len;
 
 	if (!_dns_forwarding_) {
 		error("In rslv: dns forwardind is disable.");
 		goto failing;
 	}
+	loginfo("DNS FORWARDING!");
 	if (!is_prefixed(dp)) {
 		/*res=res_send((const unsigned char*)msg,msglen,(unsigned char*)answer,DNS_MAX_SZ);*/
 		if(ns_general_send(msg,msglen,answer,&res)) {
@@ -500,7 +501,7 @@ int dns_forward(dns_pkt *dp,char *msg,int msglen,char* answer)
 		destroy_dns_pkt(dp);
 		return res;
 	}
-	/* prepare to re-format queiry without prefix */
+	/* prepare to re-format query without prefix */
 	dp_forward=dpktcpy(dp);
 	memset(fwdbuf,0,DNS_MAX_SZ);
 	if ((res=dpktpack(dp_forward,fwdbuf,1))==-1) { /* dp_foward is destroyed */
@@ -513,11 +514,11 @@ int dns_forward(dns_pkt *dp,char *msg,int msglen,char* answer)
 		printf("Error forwarding!\n");
 		goto failing;
 	}*/
-	if (ns_general_send(fwdbuf,res,answer,&res)) {
+	if (ns_general_send(fwdbuf,res,answer,&len)) {
 		error("DNS Forwarding error.");
 		goto failing;
 	}
-	if ((res=dpkt(answer,res,&dp_forward))==-1) {
+	if ((res=dpkt(answer,len,&dp_forward))==-1) {
 		error("In rslv: can not unpack msg from nameserver.");
 		goto failing;
 	}
