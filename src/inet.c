@@ -413,7 +413,7 @@ int str_to_inet(const char *src, inet_prefix *ip)
 {
 	struct in_addr dst;
 	struct in6_addr dst6;
-	int family;
+	int family,res;
 	u_int *data;
 
 	if(strstr(src, ":")) {
@@ -424,8 +424,14 @@ int str_to_inet(const char *src, inet_prefix *ip)
 		data=(u_int *)&dst;
 	}
 
-	if(inet_pton(family, src, (void *)data) < 0)
+	if((res=inet_pton(family, src, (void *)data)) < 0) {
+		error("In str_to_inet: error -> %s.",strerror(errno));
 		return -1;
+	}
+	if (!res) {
+		error("In str_to_inet: impossible to convert, invalid address.");
+		return -1;
+	}
 
 	inet_setip(ip, data, family);
 	return 0;

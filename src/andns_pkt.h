@@ -33,7 +33,7 @@ int andns_proto(char *buf);
 int andns_realm(dns_pkt_qst *dpq,int *prefixed);
 int is_prefixed(dns_pkt *dp);
 char* rm_realm_prefix(char *from,char *dst,int type);
-char* swapped_straddr(char *src);
+int swapped_straddr(char *src,char *dst);
 int dnslovesntk(dns_pkt *dp);
 size_t nametolbl(char *name,char *dst);
 

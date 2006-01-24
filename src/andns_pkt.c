@@ -421,60 +421,52 @@ char* rm_realm_prefix(char *from,char *dst,int type)
 
 }
 			
-/*
- * Returns a ip-stringed from an inverse string:
- * 4.3.2.1-IN-ADDR.ARPA becomes 1.2.3.4
- * blA.blU.IP6.ARPA becomes blU.blA
- * family is ipv4 or ipv6
- * NULL on error.
- */
-char* swapped_straddr(char *src)
+int swapped_straddr(char *src,char *dst)
 {
-        char *temp,*temp1,*dst;
-	int family;
+        int family,count=0;
+        int res,i;
+        char atoms[4][4],*crow,*temp;
 
-	if (!src)
-	{
-		error("In swapped_straddr: NULL argument!");
-		return NULL;
-	}
-	// If I cannot find any inverse prefix
-        if( ! \
-		( (temp=(char*)strcasestr(src,DNS_INV_PREFIX))  ||\
-		  (temp=(char*)strcasestr(src,DNS_INV_PREFIX6)) ||\
-		  (temp=(char*)strcasestr(src,OLD_DNS_INV_PREFIX6))))
-	{
-		error("In swapped_straddr: ptr query without suffix");
-		return NULL;
-	}
-	// IPV4 or IPV6?
-	family=(strcasestr(temp,"6"))?AF_INET6:AF_INET;
-	// If a prefix for inet realm is found, discard the prefix 
-	// part
-	if ( (temp1=(char*)strcasestr(src,INET_REALM_PREFIX)))
-		src+=strlen(INET_REALM_PREFIX);
-
-        dst=xmalloc((size_t)(temp-src));
-        temp--;
-        if (family==AF_INET)
+        if (!src)
         {
-                int count=0;
-                while (temp!=src && *temp--!='.' && ++count)
-                        if (*temp=='.')
-                        {
-                                strncpy(dst,temp+1,count);
-                                dst+=count;
-                                *dst++='.';
-                                count=0;
-                                temp--;
-                        }
-                strncpy(dst,src,++count);
-                dst+=count;
-                *dst='\0';
+                error("In swapped_straddr: NULL argument!");
+                return -1;
         }
-        else while ((*temp--=*src++));
-        return dst;
+        // If I cannot find any inverse prefix
+        if( ! \
+                ( (temp=(char*)strcasestr(src,DNS_INV_PREFIX))  ||\
+                  (temp=(char*)strcasestr(src,DNS_INV_PREFIX6)) ||\
+                  (temp=(char*)strcasestr(src,OLD_DNS_INV_PREFIX6))))
+        {
+                error("In swapped_straddr: ptr query without suffix");
+                return -1;
+        }
+        // IPV4 or IPV6?
+        family=(strstr(temp,"6"))?AF_INET6:AF_INET;
+
+        if (family==AF_INET) {
+                while (src!=temp+1) {
+                        crow=strstr(src,".");
+                        if (!crow) return -1;
+                        strncpy(atoms[count],src,crow-src);
+                        atoms[count][crow-src]=0;
+                        count++;
+                        src=crow+1;
+                }
+                for (i=count-1;i>=0;i--) {
+                        printf("ATom i %s\n", atoms[i]);
+                        res=strlen(atoms[i]);
+                        printf("Len is %d\n",res);
+                        strncpy(dst,atoms[i],res);
+                        dst+=res;
+                        *dst++=i==0?0:'.';
+                }
+
+        }
+        else while ((*temp--=*dst++));
+        return 0;
 }
+
 /*
  * This function controls the integrity of a dns_pkt
  * in the case of a query ntk-related: in such case,

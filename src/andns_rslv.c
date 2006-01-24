@@ -645,16 +645,18 @@ int d_ptr_resolve(dns_pkt *dp)
 	inet_prefix ipres;
 	char **hnames;
 	int i, res;
+	char addr[INET_ADDRSTRLEN];
 
 	if (andns_realm(dp->pkt_qst,NULL)==INET_REALM)
-		/* XXX: why ? */
-		/* Because you have to forward the query..... */
 		return 1;
 	
-	/* Alpt: isn't? (dp->pkt_qst)->qname just an IP ?
-	 * temp=rm_realm_prefix((dp->pkt_qst)->qname); */
-	/* No: we can have the prefix for the realm to search.... */
-	if ((res=str_to_inet(dp->pkt_qst->qname_nopref, &ipres))==-1)
+	if (swapped_straddr(dp->pkt_qst->qname_nopref,addr)) {
+		error("In d_ptr_resolve: can not swap address.");
+		(dp->pkt_hdr).rcode=RCODE_EINTRPRT;
+        	(dp->pkt_hdr).qr=1;
+		return -1;
+	}
+	if ((res=str_to_inet(addr, &ipres))==-1)
 	{	
 		(dp->pkt_hdr).rcode=RCODE_EINTRPRT;
         	(dp->pkt_hdr).qr=1;
