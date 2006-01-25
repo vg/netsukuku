@@ -1276,7 +1276,7 @@ int andna_reverse_resolve(inet_prefix ip, char ***hostnames)
 	char **hnames, *buf, *reply_body;
 	ssize_t err;
 
-	memset(&pkt, 0, sizeof(pkt));
+	memset(&pkt, 0, sizeof(PACKET));
 	memset(&rpkt, 0, sizeof(PACKET));
 	memcpy(&to, &ip, sizeof(inet_prefix));
 	
@@ -1323,14 +1323,15 @@ int andna_reverse_resolve(inet_prefix ip, char ***hostnames)
 			break;
 		
 		if(hnames_sz[i] > ANDNA_MAX_HNAME_LEN)
-			continue;
+			goto skip_it;
 		
-		hnames[i]=xmalloc(hnames_sz[i]);
-		memcpy(hnames[i], buf, hnames_sz[i]);
-		hnames[i][hnames_sz[i]-1]=0;
+		hnames[valid_hnames]=xmalloc(hnames_sz[i]);
+		memcpy(hnames[valid_hnames], buf, hnames_sz[i]);
+		hnames[valid_hnames][hnames_sz[i]-1]=0;
 
-		buf+=hnames_sz[i];
 		valid_hnames++;
+skip_it:
+		buf+=hnames_sz[i];
 	}
 
 	ret=valid_hnames;
@@ -1369,7 +1370,7 @@ int andna_recv_rev_resolve_rq(PACKET rpkt)
 	 */
 	
 	pkt_fill_hdr(&pkt.hdr, 0, rpkt.hdr.id, ANDNA_RESOLVE_REPLY, 0);
-	pkt.hdr.sz=sizeof(struct andna_rev_resolve_reply_hdr)+sizeof(u_short);
+	pkt.hdr.sz=sizeof(struct andna_rev_resolve_reply_hdr);
 	
 	hostnames=lcl_counter;
 	hdr.hostnames=hostnames-1;
