@@ -4,7 +4,7 @@ AM_CXXFLAGS = -g -I. @debug_flags@ -I@gmp@
 bin_PROGRAMS = netsukuku_d
 netsukuku_d_SOURCES= accept.c map.c misc.c pkts.c qspn.c request.c radar.c   \
 	gmap.c hook.c rehook.c if.c inet.c ipv6-gmp.c krnl_route.c \
-	andna.c andna_cache.c andns_mem.c andns_pkt.c andns_rslv.c bmap.c
+	andna.c andna_cache.c andns_mem.c andns_pkt.c andns_rslv.c bmap.c \
 	conf.c crypto.c daemon.c dns_wrapper.c endianness.c   \
 	krnl_rule.c iptunnel.c libnetlink.c ll_map.c llist.c log.c \
 	route.c tracer.c igs.c libping.c xmalloc.c netsukuku.c 

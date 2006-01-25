@@ -7,9 +7,6 @@
 	- duplicate nexthop entries in the multipath route
 	- multigw
 
-- DNS wrapper: ip -> hostnames
-	- -r forward to other /etc/resolv.conf dns server
-
 - Test the BIG ENDIAN code with a BIG ENDIAN arch. Qemu?
 
 		[MEDIUM PRIORITY] 

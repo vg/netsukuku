@@ -269,7 +269,7 @@ Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
 
 Main contributors:
 
-Andrea Leofreddi <andrea.leofreddi@gmail.com>, Katolaz <katolaz@yahoo.it>,
+Andrea Leofreddi <andrea.leofreddi@gmail.com>, Katolaz <katolaz@freaknet.org>,
 Federico Tomassini <effetom@gmail.com>
 
 For a complete list read the AUTHORS file or visit:
