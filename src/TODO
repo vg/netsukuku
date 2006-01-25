@@ -1,8 +1,5 @@
 		[HIGH PRIORITY] 
 
-- andns:
-	- infinite loop in -r mode
-
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 
 - Internet Gateway Search
@@ -20,10 +17,6 @@
 - Restricted mode with 172.16.0.0 and 192.168.0.0.
 	- what happens when two different restricted net meet?
 		- they must not rehook!
-
-- The DNS wrapper, if launched in restricted mode, should forward the query to
-  the other nameservers in /etc/resolv.conf if ANDNA told him that the
-  hostname is inexistent.
 
 - do not delete a tunnel-gw if there is still traffic on it
 
@@ -76,6 +69,3 @@
   compatible!
 
 - Test request.c
-
-- Optimize random_ip() to return valid IPs. A possible solution would be
-	to zero all the invalid bits.
