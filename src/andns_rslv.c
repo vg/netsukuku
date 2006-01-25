@@ -69,6 +69,9 @@ static uint8_t _dns_forwarding_;
 static struct sockaddr_in _andns_ns_[MAXNSSERVERS];
 static uint8_t _andns_ns_count_;
 
+/*
+ * A very stupid function for debugging
+ */
 void char_print(char *buf, int len)
 {
         int i,count=0;
@@ -84,6 +87,15 @@ void char_print(char *buf, int len)
         return;
 }
 
+/*
+ * Saves on globals var _andns_ns_ and _andns_ns_count_
+ * the ip address ns: these infos will be used for DNS
+ * forwarding.
+ *
+ * Returns:
+ * 	-1 on error
+ * 	0 if OK
+ */
 int store_ns(char *ns)
 {
         int res;
@@ -107,6 +119,11 @@ int store_ns(char *ns)
         return 0;
 }
 
+/*
+ * Reads resolv.conf, searching nameserver lines.
+ * Takes the ip address from these lines and calls store_ns
+ * "nameserver 127.0.0.1" is discraded to remove looping beahviors
+ */
 int collect_resolv_conf(char *resolve_conf)
 {
         FILE *erc;
@@ -148,9 +165,6 @@ int collect_resolv_conf(char *resolve_conf)
  * This function must be called before all.
  * Sets the default realm for domain name resolution
  * and stores infos about nameservers for dns query.
- * It removes from the structure _res the nameserver entry which
- * belongs to localhost. In this way, the dns_forwarding
- * won't finish in a infinite loop.
  */
 void andns_init(int restricted, char *resolv_conf)
 {

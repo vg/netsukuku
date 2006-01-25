@@ -107,8 +107,7 @@ dns_pkt_a* dns_add_a(dns_pkt_a **dpa)
 		(*dpa)=dpa_add;
 	}
 	else {
-		while (a->next)
-		{
+		while (a->next) {
 			a=a->next;
 			count++;
 		}

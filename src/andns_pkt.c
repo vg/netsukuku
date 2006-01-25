@@ -57,74 +57,12 @@
 #define LOOPBACK(x)     (((x) & htonl(0xff000000)) == htonl(0x7f000000))*/
 
 
-
-
-
-/*
-int andns_pkt_init(int restricted)
-{
-	int n,e,count=0;
-	struct in_addr ai;
-	struct sockaddr_in ns[MAXNS],*nsnow; // MAXNS is defined in resolv.h
-	char myaddr[INET_ADDRSTRLEN], ns_str[MAXNS*(INET_ADDRSTRLEN+2)]="\0";
-
-	_default_realm_=(restricted)?INET_REALM:NTK_REALM;
-
-	for (n=0;n<MAXNS;n++)
-		memset(ns+n,0,sizeof(struct sockaddr_in));
-	
-	if((n=res_init())) {
-		error(ERROR_MSG "res_init call failed :(", ERROR_POS);
-		return -1;
-	}
-	
-	if (_res.nscount==0)
-		goto no_nsservers;
-
-	for (n=0;n<_res.nscount;n++)
-	{
-		nsnow=_res.nsaddr_list+n;
-		ai=nsnow->sin_addr;
-		if (!LOOPBACK(ai.s_addr))
-		{
-			memcpy(ns+count,nsnow,sizeof(struct sockaddr_in));
-			count++;
-		}
-	}
-	if (!count)
-		goto no_nsservers;
-	
-	for (n=e=0;n<MAXNS;n++)
-	{
-		memcpy(_res.nsaddr_list+n,ns+n,sizeof(struct sockaddr_in));
-		if ((ns+n)->sin_addr.s_addr!=0) 
-		{
-                        inet_ntop(AF_INET,(const void*)(&((ns+n)->sin_addr)),myaddr,INET_ADDRSTRLEN);
-			if(e)
-				strncat(ns_str, ", ", 2);
-			strncat(ns_str, myaddr, INET_ADDRSTRLEN);
-			e++;
-		}
-	}
-	if(e)
-		loginfo("DNS Query inet related will be forwarded to: %s", ns_str);
-			
-	_dns_forwarding_=1;
-	return 0;
-
-no_nsservers:
-	
-	debug(DBG_NORMAL, "andns_init: nameservers not found. dns forwarding disable.");
-	_dns_forwarding_=0;
-	return 0;
-}*/
-
 /*
  * Takes a label: is there a ptr?
  * Returns:
- *  -1 is a malformed label is finded
- *  0 if there's no pointer
- *  <offset from start_pkt> if a pointer is finded
+ *  	-1  is a malformed label is finded
+ *  	 0  if there's no pointer
+ *  	<offset from start_pkt> if a pointer is found
  */
 size_t getlblptr(char *buf)
 {
@@ -134,8 +72,7 @@ size_t getlblptr(char *buf)
 	memcpy(c,buf,2);
 
         if (!LBL_PTR(*c)) /* No ptr */ return 0;
-        if (LBL_PTR(*c)!=LBL_PTR_MK)
-        {
+        if (LBL_PTR(*c)!=LBL_PTR_MK) {
                 error("In getlblptr: label sequence malformed");
                 return -1;
         }
@@ -145,6 +82,14 @@ size_t getlblptr(char *buf)
         return dlbl; // offset
 }
 
+/*
+ * Reads a contiguous octet-sequence-label.
+ * Writes on dst.
+ * read_yet and limit_len are counters: we must not exceede with reading.
+ * Returns:
+ * 	-1 On error
+ * 	Bytes readed if OK
+ */
 int read_label_octet(const char *src,char *dst,int read_yet,int limit_len)
 {
 	int how;
@@ -161,7 +106,10 @@ int read_label_octet(const char *src,char *dst,int read_yet,int limit_len)
 /*
  * The next function is a little complex.
  * It converts a hname from sequence_label format to str.
- * Return bytes read. -1 on error, 1 (=len('\0')) on NULL-name
+ * Returns 
+ * 	bytes read if OK
+ * 	-1 on error
+ * 	1 (=len('\0')) on NULL-name
  *
  * -limit_len- is the maximum allowed space for hname.
  * it depends on pkt_len and others. Anyway, it's a limit that
@@ -182,7 +130,7 @@ int read_label_octet(const char *src,char *dst,int read_yet,int limit_len)
  * about the recursion deep: more recursione than MAX_RECURSION_PTR are forbidded.
  *
  * Anyway,
- *      ***you have to call it with start_pkt=begin_pkt and count=0***
+ *      ***you have to call it with start_pkt=begin_pkt,count=0 and recursion=0***
  */
 size_t lbltoname(char *buf,char *start_pkt,char *dst,int count,int limit_len,int recursion)
 {
@@ -230,76 +178,8 @@ size_t lbltoname(char *buf,char *start_pkt,char *dst,int count,int limit_len,int
 }
 
 /*
-
-
-        while (*buf) // This controls buf-format
-        {
-                // This is the best part of the trip
-                if ((temp=getlblptr(buf)))
-                {
-                        // Malformed ptr or re-recursion mode
-                        if (temp==-1 || recursion>MAX_RECURSION_PTR) 
-			{
-				error("In lbltoname: malformed pkt");
-                                return -1;
-			}
-                        // now, count is set to 0 or not.
-                        // Doesn't matter! count updates itself.
-                        // Start the recursion with recursion+1
-                        if((offset=lbltoname(start_pkt+temp,start_pkt,dst,count,limit_len,recursion+1))==-1) {
-				error("In lbltoname: error recursion.");
-				printf("In lbltoname: error recursion.\n");
-                                return -1;
-			}
-			printf("Recursion is %d. count is %d (+2)\n",recursion,count);
-			if (recursion) return 0; // do not procede with pkt lecture.
-			return count+2;
-                }
-		printf("AHIAHI %s\n",buf);
-		if ((temp=read_label_octet(buf,dst,count,limit_len))==-1) 
-			return -1;
-		count+=temp+1; 
-		buf+=temp+1;
-		dst+=temp;
-				  
-                temp=(size_t)(*buf++);
-                 Update count and control dom_name_len
-                count+=temp+1; // +1 to include "." (i.e. *buf octet)
-                if (count > MAX_HNAME_LEN || count > limit_len)
-                {
-                        debug(DBG_NOISE, "In name_from_label: dom name too long or exceding packet");
-			printf("In name_from_label: dom name too long or exceding packet\n");
-                        return -1;
-                }
-                // It's ok to cp
-                memcpy(dst,buf,temp); 
-                dst+=temp;
-                buf+=temp; 
-		if (*buf==0) {  Lecture finish 
-			*dst=0;
-			count++;
-			return count;
-		}  COntinue, but without recursion set
-		if ((temp=lbltoname(buf,start_pkt,dst,count,limit_len,0))==-1) {
-			error("In lbltoname: error recursion.");
-			printf("In lbltoname: error recursion.\n");
-                               return -1;
-		}
-		return count+temp;
-
-                if (*buf) *dst++='.';
-                // And now, to next label
-        }
-        // ADD "/0" to dom_name
-        *dst=0;
-        count++;
-	printf("lbltoname: readed %d bytes, recursion=%d\n",count,recursion);
-        return count; */
-//}*/
-/*
  * Returns the used protocol which packet belongs,
  * understanding it from NK bit in pkt headers.
- * -1 on error
  */
 int andns_proto(char *buf)
 {
@@ -317,14 +197,16 @@ int andns_proto(char *buf)
 }
 
 /*
- * Returns the question relative realm.
- * INET_REALM if you are seraching something on internet.
- * NTK_REALM if you search something on ntk.
- * -1 on error
- *  _default_realm_ is initialized in andns_init: if 
- *  no realm is specified in the query, 
+ * Returns the realm question.
+ * 	INET_REALM if you are seraching something on internet.
+ * 	NTK_REALM if you search something on ntk.
+ * 	-1 on error
  *
- *  prefixed is set to 1 if a REALM_PREFIX is found.
+ * If there is no sufix, returns _default_realm_, which is set
+ * by andns_init.
+ *
+ * If prefixed is not NULL, and a prefix is found, *prefixed is
+ * set to 1.
  *
  *  Note: in the case of a ptr_query, the suffix-realm has
  *  to be specified if you want a different behavior fron 
@@ -373,6 +255,12 @@ int andns_realm(dns_pkt_qst *dpq,int *prefixed)
 	if (prefixed) *prefixed=0;
 	return _default_realm_;
 }
+
+/*
+ * Returns:
+ * 	0 if the question does not have a suffix
+ * 	1 if the question has suffix
+ */
 int is_prefixed(dns_pkt *dp)
 {
 	int prefix=0;
@@ -382,7 +270,8 @@ int is_prefixed(dns_pkt *dp)
 }
 	
 /*
- * Remove the suffix realm
+ * Remove the suffix realm, if any.
+ * Writes the result on dst.
  */
 char* rm_realm_prefix(char *from,char *dst,int type)
 {
@@ -399,29 +288,22 @@ char* rm_realm_prefix(char *from,char *dst,int type)
 			strcpy(dst,from);
 		
 	}
-	else if (strcasestr(from+REALM_PREFIX_LEN,INET_REALM_PREFIX) || 
-		 strcasestr(from+REALM_PREFIX_LEN,NTK_REALM_PREFIX)) 
+	else if (strcasestr(from+slen-REALM_PREFIX_LEN,INET_REALM_PREFIX) || 
+		 strcasestr(from+slen-REALM_PREFIX_LEN,NTK_REALM_PREFIX)) 
 			strncpy(dst,from,slen-REALM_PREFIX_LEN);
 	else
 		strcpy(dst,from);
 	return dst;
-	/*	
-			
-
-        if ((crow=strcasestr(from,INET_REALM_PREFIX)) || \
-                (crow=strcasestr(from,NTK_REALM_PREFIX)))
-        {
-                if (crow==from) 
-                        strcpy(dst,from+REALM_PREFIX_LEN);
-		else
-                	strncpy(dst,from,slen-REALM_PREFIX_LEN);
-                return dst;
-        }
-	strcpy(dst,from);
-        return dst;*/
-
 }
 			
+/*
+ * DNS PTR query ask for 4.3.2.1.in-addr.arpa to know
+ * who is 1.2.3.4.
+ * This function reads this type of query transalting it
+ * in the second form.
+ * Writes result on *dst.
+ * -1 on error.
+ */
 int swapped_straddr(char *src,char *dst)
 {
         int family,count=0;
@@ -606,7 +488,6 @@ size_t dpkttohdr(char *buf,dns_pkt_hdr *dph)
  * This function alloc a new dns_pkt_qst to store a dns_question_section.
  * The new dns_pkt_qst is also added to the principal dp-struct
  * Returns bytes readed if OK. -1 otherwise.
- * 
  */
 size_t dpkttoqst(char *start_buf,char *buf,dns_pkt *dp,int limit_len)
 {
@@ -747,7 +628,7 @@ size_t dpkttoas(char *start_buf,char *buf,dns_pkt_a **dpa,int limit_len,int coun
 /*
  * This is a main function: takes the pkt-buf and translate
  * it in structured data.
- * It cares about dns_pkt allocation.
+ * It cares about dns_pkt allocations.
  *
  * Returns:
  * -1 on E_INTRPRT
@@ -835,7 +716,12 @@ size_t hdrtodpkt(dns_pkt *dp,char *buf)
 }
 /*
  * Translate a struct dns_pkt_qst in the dns-buffer buf.
- * -1 On error. Bytes writed otherwise
+ * Returns:
+ * 	-1 On error
+ * 	Bytes writed otherwise.
+ *
+ * If nopref, the name for the question is pkt-ized without
+ * realm suffix.
  */
 size_t qsttodpkt(dns_pkt_qst *dpq,char *buf, int limitlen,int nopref)
 {
@@ -866,8 +752,11 @@ size_t qsttodpkt(dns_pkt_qst *dpq,char *buf, int limitlen,int nopref)
 /*
  * Translates the question sections of a struct dns_pkt
  * into buf.
- * -1 on error.
- *  Number of bytes writed otherwise,
+ * Returns:
+ * 	-1 on error.
+ *  	Number of bytes writed otherwise,
+ *
+ * If nopref, names are pkt-ized without prefix
  */
 size_t qststodpkt(dns_pkt *dp,char *buf,int limitlen,int nopref)
 {
@@ -1232,7 +1121,9 @@ int danswtoaansw(dns_pkt *dp,andns_pkt *ap,char *msg)
 	return 0;
 }
 
-
+/*
+ * A very stupid function for debugging
+ */
 
 void dp_print(dns_pkt *dp)
 {
