@@ -199,11 +199,214 @@ void andns_init(int restricted, char *resolv_conf)
 }
 
 /*
+ * This function is a copy of andns_rslv.
+ * It is called by andns_rslv in the case of:
+ *
+ * 	- NTK protocol query
+ * 		*AND*
+ * 	- NTK realm query
+ */
+char* andns_rslv_ntk_ntk(char *msg,int msglen,
+		char *answer,int *answ_len)
+{
+	andns_pkt *ap;
+	int res;
+
+	if ((res=apkt(msg,msglen,&ap))==0)  // pkt malformed
+        	return NULL; // discard pkt!
+        if (res==-1) // Cannot understand
+                goto andns_eintrprt_return; // release *ap
+        switch(ap->qtype) { // query type
+                        /*
+                         * This calls fills *ap with appropriate values.
+                         * After these calls, *ap could be pkt-ized and sended
+                         */
+        	case AT_A:
+                	res=a_a_resolve(ap);
+                        break;
+                case AT_PTR:
+                        res=a_ptr_resolve(ap);
+                        break;
+                case AT_MX:
+                        res=a_mx_resolve(ap);
+                        break;
+                default:
+                        goto andns_eintrprt_return; // release *ap
+	}
+        if((res=apktpack(ap,answer))==-1) // this call free ap
+        	goto andns_esrvfail_return; // Error packing *ap. In this case
+                                                      // answer is not allocated.
+        *answ_len=res;
+        return answer; // all is OK. res is the answer len.
+
+andns_eintrprt_return:
+        destroy_andns_pkt(ap);
+        memcpy(answer,msg,msglen);
+        AANSW(answer,RCODE_EINTRPRT);
+        *answ_len=msglen;
+        return answer;
+andns_esrvfail_return:
+        memcpy(answer,msg,msglen);
+        AANSW(answer,RCODE_ESRVFAIL);
+        *answ_len=msglen;
+        return answer;
+}
+
+/*
+ * This function is a copy of andns_rslv.
+ * It is called by andns_rslv in the case of:
+ *
+ * 	- NTK protocol query
+ * 		*AND*
+ * 	- INET realm query
+ */
+char* andns_rslv_ntk_inet(char *msg,int msglen,
+		char *answer,int *answ_len)
+{
+	andns_pkt *ap;
+	dns_pkt *dp;
+	int res,type;
+
+        if (!_dns_forwarding_)
+        	return NULL; /* there is no nameserver to forward the query */
+        if ((res=apkt(msg,msglen,&ap))==0)
+        	return NULL; /* discard pkt */
+        if (res==-1)
+        	goto andns_eintrprt_return; /* release *ap */
+        switch(ap->qtype) {
+                case AT_A:
+                        type=T_A;
+                        break;
+                case AT_PTR:
+                        type=T_PTR;
+                        break;
+                case AT_MX:
+                        type=T_MX;
+                        break;
+                default:
+                        goto andns_eintrprt_return; // release *ap
+	}
+        /* Prepare answer to be filled.
+         * Now, the query is forwarded to some nameserver.
+	 */
+        if((res=res_query(ap->qstdata,C_IN,type,(unsigned char*) answer,DNS_MAX_SZ))==-1) {
+                        /*
+                         * Query not sent.
+                         */
+                destroy_andns_pkt(ap);
+		goto andns_esrvfail_return;
+	}
+	if ((res=dpkt(answer,res,&dp))==0) {
+        /*
+         * The answer from nameserver is malformed
+         * In this case dp is not allocated.
+         */
+		destroy_andns_pkt(ap);
+                return NULL;
+	}
+	if (res==-1) {
+        /*
+         * The answer from nameserver is not
+         * interpretable.
+         */
+		destroy_dns_pkt(dp);
+		goto andns_eintrprt_return; // release *ap
+	}
+        /*
+         * Now, we need to translate the dns answer to an andns answer.
+         */
+	if ((res=danswtoaansw(dp,ap,answer))==-1) {
+		/* Translation failed.*/
+		destroy_dns_pkt(dp);
+		destroy_andns_pkt(ap);
+		goto andns_esrvfail_return;
+	}
+                
+	destroy_dns_pkt(dp);
+	if((res=apktpack(ap,answer))==-1) // this call free ap
+		goto andns_esrvfail_return;
+	*answ_len=res;
+	return answer;
+
+andns_eintrprt_return:
+        destroy_andns_pkt(ap);
+        memcpy(answer,msg,msglen);
+        AANSW(answer,RCODE_EINTRPRT);
+        *answ_len=msglen;
+        return answer;
+andns_esrvfail_return:
+        memcpy(answer,msg,msglen);
+        AANSW(answer,RCODE_ESRVFAIL);
+        *answ_len=msglen;
+        return answer;
+}
+
+/*
+ * This function is a copy of andns_rslv.
+ * It is called by andns_rslv in the case of:
+ *
+ * 	- DNS protocol query
+ */
+char* andns_rslv_inet(char *msg,int msglen,
+		char *answer,int *answ_len)
+{
+	dns_pkt *dp;
+	int res;
+
+	if ((res=dpkt(msg,msglen,&dp))==0) /* msg malformed */
+		return NULL;
+	if (res==-1)/* error interpreting msg */
+		goto dns_eintrprt_return; /* release *ap */
+	switch((dp->pkt_qst)->qtype) {
+		/*
+		 * The d_*_resolve family functions return 1
+		 * if the query has to be forwarded to some nameserver,
+		 * i.e., if the query is inet-related.
+		 * Otherwise, the answer is made in andna and these
+		 * functions fills *dp whith apropriate values,
+		 * making it ready to be pkt-ized.
+		 */
+		case T_A:
+			res=d_a_resolve(dp);
+			break;
+		case T_PTR:
+			res=d_ptr_resolve(dp);
+			break;
+		case T_MX:
+			res=d_mx_resolve(dp);
+			break;
+		default:
+			goto dns_eintrprt_return; // release *dp
+	}
+	if (res==1) {
+	       /* Packet forwarding! */
+		if ((res=dns_forward(dp,msg,msglen,answer))==-1)
+			goto dns_esrvfail_return;
+	}
+	else if((res=dpktpack(dp,answer,0))==-1) // this call free dp
+        	goto dns_esrvfail_return;
+        *answ_len=res;
+        return answer;
+
+dns_eintrprt_return:
+        destroy_dns_pkt(dp);
+        memcpy(answer,msg,msglen);
+        DANSW(answer,RCODE_EINTRPRT);
+        *answ_len=msglen;
+        return answer;
+dns_esrvfail_return:
+        memcpy(answer,msg,msglen);
+        DANSW(answer,RCODE_ESRVFAIL);
+        *answ_len=msglen;
+        return answer;
+}
+
+
+/*
  * This is the main function for the resolution: the dns_wrapper receive the
  * buffer and rslv cares about building the answer.
- * `answer_buf' is the buffer where the answer will be stored, it must be at
- * least of `ANDNS_MAX_SZ' bytes. If it is null a new buffer will be
- * allocated.
+ * `answer' is the buffer where the answer will be stored, it must be at
+ * least of `ANDNS_MAX_SZ' bytes. 
  *
  * Returns:
  * 	NULL if the pkt has to be discarded.
@@ -212,233 +415,18 @@ void andns_init(int restricted, char *resolv_conf)
  * 		the answer len.
  */
 char *andns_rslv(char *msg, int msglen, 
-		char *answer_buf, int *answ_len)
+		char *answer, int *answ_len)
 {
-	andns_pkt *ap;
-	dns_pkt *dp;
-	int type, res;
-	char *answer;
-
-	answer=answer_buf;
-	if(!answer)
-		answer=xmalloc(ANDNS_MAX_SZ);
 	memset(answer, 0, ANDNS_MAX_SZ);
-		
 	
-	if (andns_proto(msg)==NK_NTK) {
-		
-		/*
-		 * The query is formulated with ntk style AND
-		 * the query is ntk-related.
-		 */
-		// Try to unpack msg
-		if ((res=apkt(msg,msglen,&ap))==0)  // pkt malformed
-			return NULL; // discard pkt!
-		if (res==-1) // Cannot understand
-			goto andns_eintrprt_return; // release *ap
-		switch(ap->qtype) // query type
-		{
-			/*
-			 * This calls fills *ap with appropriate values.
-			 * After these calls, *ap could be pkt-ized and sended
-			 */
-			case AT_A:
-				res=a_a_resolve(ap);
-				break;
-			case AT_PTR:
-				res=a_ptr_resolve(ap);
-				break;
-			case AT_MX:
-				res=a_mx_resolve(ap);
-				break;
-			default:
-				goto andns_eintrprt_return; // release *ap
-		}
-		if((res=apktpack(ap,answer))==-1) // this call free ap
-			goto andns_esrvfail_return; // Error packing *ap. In this case 
-							// answer is not allocated.
-		*answ_len=res;
-		return answer; // all is OK. res is the answer len.
-		
-	} else if (andns_proto(msg)==NK_INET) {
-		
-		/*
-		 * The query is formulated with ntk style, BUT NOT
-		 * ntk related, i.e. inet-related.
-		 * We need to forward the query to some nameserver.
-		 */
-		
-		if (!_dns_forwarding_)
-			return NULL; // there is no nameserver to forward the query
-		// see above
-		if ((res=apkt(msg,msglen,&ap))==0)
-			return NULL;
-		if (res==-1)
-			goto andns_eintrprt_return; // release *ap
-		switch(ap->qtype)
-		{
-			case AT_A:
-				type=T_A;
-				break;
-			case AT_PTR:
-				type=T_PTR;
-				break;
-			case AT_MX:
-				type=T_MX;
-				break;
-			default:
-				goto andns_eintrprt_return; // release *ap
-		}
-		// Prepare answer to be filled.
-		// Now, the query is forwarded to soma nameserver.
-		if((res=res_query(ap->qstdata,C_IN,type,(unsigned char*) answer,DNS_MAX_SZ))==-1) 
-		{
-			/*
-			 * Query not sent.
-			 */
-			destroy_andns_pkt(ap);
-			goto andns_esrvfail_return;
-		}
-		if ((res=dpkt(answer,res,&dp))==0)
-		{
-			/*
-			 * The answer from nameserver is malformed
-			 * In this case dp is not allocated.
-			 */
-			destroy_andns_pkt(ap);
-			if(!answer_buf)
-				xfree(answer);
-			return NULL;
-		}
-		if (res==-1)
-		{
-			/* 
-			 * The answer from nameserver is not 
-			 * interpretable.
-			 */
-			destroy_dns_pkt(dp);
-			goto andns_eintrprt_return; // release *ap
-		}
-		
-		/* 
-		 * Now, we need to translate the dns answer to an andns answer. 
-		 */
-		if ((res=danswtoaansw(dp,ap,answer))==-1)
-		{
-			// Translation failed.
-			destroy_dns_pkt(dp);
-			destroy_andns_pkt(ap);
-			goto andns_esrvfail_return;
-		}
-	
-		destroy_dns_pkt(dp);
-		if((res=apktpack(ap,answer))==-1) // this call free ap
-			goto andns_esrvfail_return;
-		*answ_len=res;
-		return answer;
-	}
-	else if (andns_proto(msg)==NK_OLDSTYLE)
-	{
-		/*
-		 * The query is formulated with dns protocol
-		 */
-		if ((res=dpkt(msg,msglen,&dp))==0) // msg malformed
-			return NULL;
-		if (res==-1)// error interpreting msg
-			goto dns_eintrprt_return; // release *ap
-		switch((dp->pkt_qst)->qtype)
-		{
-			/*
-			 * The d_*_resolve family functions return 1
-			 * if the query has to be forwarded to some nameserver,
-			 * i.e., if the query is inet-related.
-			 * Otherwise, the answer is made in andna and these 
-			 * functions fills *dp whith apropriate values,
-			 * making it ready to be pkt-ized.
-			 */
-			case T_A:
-				res=d_a_resolve(dp);
-				break;
-			case T_PTR:
-				res=d_ptr_resolve(dp);
-				break;
-			case T_MX:
-				res=d_mx_resolve(dp);
-				break;
-			default:
-				goto dns_eintrprt_return; // release *dp
-		}
-		if (res==1)
-		{ 	// Packet forwarding!
-
-			if ((res=dns_forward(dp,msg,msglen,answer))==-1)
-				goto dns_esrvfail_return;
-		/*	*answlen=res;
-			return answer;*/
-		}
-		/*	
-			char forward_buf[DNS_MAX_SZ];
-			dns_pkt *dp_forward;
-
-			debug(DBG_NOISE, "In rslv: forwarding packet....");
-			if (!_dns_forwarding_)
-			{
-				error("In rslv: dns forwardind is disable.");
-				goto dns_esrvfail_return;
-			}
-			dp_forward=dpktcpy(dp);
-			memset(forward_buf,0,DNS_MAX_SZ);
-			if ((res=dpktpack(dp_forward,forward_buf,1))==-1) {
-				printf("In rslv: error packing forwarding buffer.\n");
-				error("In rslv: error packing forwarding buffer.");
-				goto dns_esrvfail_return;
-			}
-					
-			res=res_send((const unsigned char*)forward_buf,res,(unsigned char*)answer,DNS_MAX_SZ);
-			if (res == -1) {
-				printf("Error forwarding!\n");
-				goto dns_esrvfail_return;
-			}
-			
-			 put correct id to packet 
-			memcpy(answer,msg,2);
-			 set answlen 
-			*answ_len=res;
-			destroy_dns_pkt(dp);
-			return answer;
-		}*/
-		else if((res=dpktpack(dp,answer,0))==-1) // this call free dp
-			goto dns_esrvfail_return;
-		*answ_len=res;
-		return answer;
-	} else // which protocol are you using?
+	if (andns_proto(msg)==NK_NTK) 
+		return andns_rslv_ntk_ntk(msg,msglen,answer,answ_len); 
+	else if (andns_proto(msg)==NK_INET) 
+		return andns_rslv_ntk_inet(msg,msglen,answer,answ_len);
+	else if (andns_proto(msg)==NK_OLDSTYLE) 
+		return andns_rslv_inet(msg,msglen,answer,answ_len);
+	else // which protocol are you using?
 		return NULL; // discard pkt plz
-
-// copy original msg and fill whith appropriate
-// rcode. I.e., answer is the question itself, but 
-// whith rcode modified.
-andns_eintrprt_return:
-	destroy_andns_pkt(ap);
-	memcpy(answer,msg,msglen);
-	AANSW(answer,RCODE_EINTRPRT);
-	*answ_len=msglen;
-	return answer;
-andns_esrvfail_return:
-	memcpy(answer,msg,msglen);
-	AANSW(answer,RCODE_ESRVFAIL);
-	*answ_len=msglen;
-	return answer;
-dns_eintrprt_return:
-	destroy_dns_pkt(dp);
-	memcpy(answer,msg,msglen);
-	DANSW(answer,RCODE_EINTRPRT);
-	*answ_len=msglen;
-	return answer;
-dns_esrvfail_return:
-	memcpy(answer,msg,msglen);
-	DANSW(answer,RCODE_ESRVFAIL);
-	*answ_len=msglen;
-	return answer;
 }
 	
 /*
