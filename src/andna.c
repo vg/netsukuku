@@ -649,7 +649,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 		debug(DBG_SOFT, "Invalid signature of the 0x%x reg request", 
 				rpkt.hdr.id);
 		if(!forwarded_pkt)
-			ret=pkt_err(pkt, E_INVALID_SIGNATURE);
+			ret=pkt_err(pkt, E_INVALID_SIGNATURE, 0);
 		ERROR_FINISH(ret, -1, finish);
 	}
 
@@ -673,12 +673,12 @@ int andna_recv_reg_rq(PACKET rpkt)
 		debug(DBG_SOFT, "We are not the right (rounded)hash_gnode. "
 				"Rejecting the 0x%x reg request", rpkt.hdr.id);
 		if(!forwarded_pkt)
-			ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE);
+			ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
 		ERROR_FINISH(ret, -1, finish);
 	} else if(err == 1) {
 		if(!(req->flags & ANDNA_FORWARD)) {
 			if(!forwarded_pkt)
-				ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE);
+				ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
 			ERROR_FINISH(ret, -1, finish);
 		}
 
@@ -714,7 +714,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 		debug(DBG_SOFT, "Registration rq 0x%x rejected: %s", 
 				rpkt.hdr.id, rq_strerror(E_ANDNA_CHECK_COUNTER));
 		if(!forwarded_pkt)
-			ret=pkt_err(pkt, E_ANDNA_CHECK_COUNTER);
+			ret=pkt_err(pkt, E_ANDNA_CHECK_COUNTER, 0);
 		ERROR_FINISH(ret, -1, finish);
 	}
 
@@ -726,7 +726,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 		debug(DBG_SOFT, "Registration rq 0x%x rejected: %s", 
 				rpkt.hdr.id, rq_strerror(E_ANDNA_QUEUE_FULL));
 		if(!forwarded_pkt)
-			ret=pkt_err(pkt, E_ANDNA_QUEUE_FULL);
+			ret=pkt_err(pkt, E_ANDNA_QUEUE_FULL, 0);
 		ERROR_FINISH(ret, -1, finish);
 	}
 
@@ -735,7 +735,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 				" mismatch %d > %d", rpkt.hdr.id, 
 				acq->hname_updates, req->hname_updates);
 		if(!forwarded_pkt)
-			ret=pkt_err(pkt, E_INVALID_REQUEST);
+			ret=pkt_err(pkt, E_INVALID_REQUEST, 0);
 		ERROR_FINISH(ret, -1, finish);
 	} else
 		acq->hname_updates=req->hname_updates+1;
@@ -745,7 +745,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 		debug(DBG_SOFT, "Registration rq 0x%x rejected: %s", 
 			rpkt.hdr.id, rq_strerror(E_ANDNA_UPDATE_TOO_EARLY));
 		if(!forwarded_pkt)
-			ret=pkt_err(pkt, E_ANDNA_UPDATE_TOO_EARLY);
+			ret=pkt_err(pkt, E_ANDNA_UPDATE_TOO_EARLY, 0);
 		ERROR_FINISH(ret, -1, finish);
 	}
 	
@@ -904,7 +904,7 @@ int andna_recv_check_counter(PACKET rpkt)
 		debug(DBG_SOFT, "Invalid signature of the 0x%x check "
 				"counter request", rpkt.hdr.id);
 		if(!forwarded_pkt)
-			ret=pkt_err(pkt, E_INVALID_SIGNATURE);
+			ret=pkt_err(pkt, E_INVALID_SIGNATURE, 0);
 		ERROR_FINISH(ret, -1, finish);
 	}
 
@@ -917,7 +917,7 @@ int andna_recv_check_counter(PACKET rpkt)
 	 * of that gnode.
 	 */
 	excluded_hgnode[0] = ip_gids_cmp(rfrom, me.cur_ip, 1) ? rfrom.data : 0;
-	debug(DBG_INSANE, "excluded_hgnode: %x ", excluded_hgnode[0] );
+	debug(DBG_INSANE, "excluded_hgnode: %x ", excluded_hgnode[0]);
 
 	/* 
 	 * Check if we are the real counter node or if we have to continue to 
@@ -930,12 +930,12 @@ int andna_recv_check_counter(PACKET rpkt)
 				"Rejecting the 0x%x check_counter request",
 				rpkt.hdr.id);
 		if(!forwarded_pkt)
-			ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE);
+			ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
 		ERROR_FINISH(ret, -1, finish);
 	} else if(err == 1) {
 		if(!(req->flags & ANDNA_FORWARD)) {
 			if(!forwarded_pkt)
-				ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE);
+				ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
 			ERROR_FINISH(ret, -1, finish);
 		}
 
@@ -957,7 +957,7 @@ int andna_recv_check_counter(PACKET rpkt)
 				rq_to_str(rpkt.hdr.op), rpkt.hdr.id, 
 				rq_strerror(E_ANDNA_TOO_MANY_HNAME));
 		if(!forwarded_pkt)
-			ret=pkt_err(pkt, E_ANDNA_TOO_MANY_HNAME);
+			ret=pkt_err(pkt, E_ANDNA_TOO_MANY_HNAME, 0);
 		ERROR_FINISH(ret, -1, finish);
 	}
 
@@ -968,7 +968,7 @@ int andna_recv_check_counter(PACKET rpkt)
 			" mismatch %d > %d", rq_to_str(rpkt.hdr.op), rpkt.hdr.id,
 				old_updates, req->hname_updates);
 		if(!forwarded_pkt)
-			ret=pkt_err(pkt, E_INVALID_REQUEST);
+			ret=pkt_err(pkt, E_INVALID_REQUEST, 0);
 		ERROR_FINISH(ret, -1, finish);
 	} else if(!just_check)
 		cch->hname_updates=req->hname_updates+1;
@@ -1170,11 +1170,11 @@ int andna_recv_resolve_rq(PACKET rpkt)
 		debug(DBG_SOFT, "We are not the real (rounded)hash_gnode. "
 				"Rejecting the 0x%x resolve_hname request",
 				rpkt.hdr.id);
-		ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE);
+		ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
 		goto finish;
 	} else if(err == 1) {
 		if(!(req->flags & ANDNA_FORWARD)) {
-			ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE);
+			ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
 			goto finish;
 		}
 
@@ -1213,7 +1213,7 @@ int andna_recv_resolve_rq(PACKET rpkt)
 		debug(DBG_SOFT, "Request %s (0x%x) rejected: %s", 
 				rq_to_str(rpkt.hdr.op), rpkt.hdr.id, 
 				rq_strerror(E_ANDNA_NO_HNAME));
-		ret=pkt_err(pkt, E_ANDNA_NO_HNAME);
+		ret=pkt_err(pkt, E_ANDNA_NO_HNAME, 0);
 		goto finish;
 	}
 	
@@ -1382,7 +1382,7 @@ int andna_recv_rev_resolve_rq(PACKET rpkt)
 			pkt.hdr.sz+=hnames_sz[i];
 		}
 	} else {
-		ret=pkt_err(rpkt, E_ANDNA_NO_HNAME);
+		ret=pkt_err(rpkt, E_ANDNA_NO_HNAME, 0);
 		goto finish;
 	}
 
@@ -1560,7 +1560,7 @@ int put_single_acache(PACKET rpkt)
 		debug(DBG_SOFT, "We are not the real (rounded)hash_gnode. "
 				"Rejecting the 0x%x get_single_acache request",
 				rpkt.hdr.id);
-		ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE);
+		ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
 		goto finish;
 	} else if(err == 1) {
 		/* Continue to forward the received pkt */
@@ -1619,7 +1619,7 @@ int put_single_acache(PACKET rpkt)
 		debug(DBG_SOFT, "Request %s (0x%x) rejected: %s", 
 				rq_to_str(rpkt.hdr.op), rpkt.hdr.id, 
 				rq_strerror(E_ANDNA_NO_HNAME));
-		ret=pkt_err(pkt, E_ANDNA_NO_HNAME);
+		ret=pkt_err(pkt, E_ANDNA_NO_HNAME, 0);
 		goto finish;
 	}
 	

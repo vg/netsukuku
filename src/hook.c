@@ -196,7 +196,7 @@ int put_free_nodes(PACKET rq_pkt)
 			err_reply=E_QGROUP_FULL;
 			
 		pkt_fill_hdr(&pkt.hdr, HOOK_PKT, rq_pkt.hdr.id, PUT_FREE_NODES, 0);
-		err=pkt_err(pkt, err_reply);
+		err=pkt_err(pkt, err_reply, 1);
 		goto finish;
 	}
 

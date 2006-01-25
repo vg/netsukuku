@@ -208,7 +208,7 @@ void pkt_fill_hdr(pkt_hdr *hdr, u_char flags, int id, u_char op, size_t sz);
 
 int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int check_ack, PACKET *rpkt);
 int forward_pkt(PACKET rpkt, inet_prefix to);
-int pkt_err(PACKET pkt, u_char err);
+int pkt_err(PACKET pkt, u_char err, int free_pkt);
 
 void add_pkt_op(u_char op, char sk_type, u_short port, int (*exec_f)(PACKET pkt));
 int pkt_exec(PACKET pkt, int acpt_idx);

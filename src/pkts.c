@@ -540,8 +540,9 @@ int forward_pkt(PACKET rpkt, inet_prefix to)
 /* 
  * pkt_err: Sends back to "pkt.from" an error pkt, with ACK_NEGATIVE, 
  * containing the "err" code.
+ * If `free_pkt' is not 0, `pkt' will be freed.
  */
-int pkt_err(PACKET pkt, u_char err)
+int pkt_err(PACKET pkt, u_char err, int free_pkt)
 {
 	char *msg;
 	u_char flags=0;
@@ -593,7 +594,7 @@ int pkt_exec(PACKET pkt, int acpt_idx)
 		ntop=inet_to_str(pkt.from);
 		error("From %s: Cannot process the %s request: %s", ntop, 
 				op_str, rq_strerror(err));
-		pkt_err(pkt, err);
+		pkt_err(pkt, err, 1);
 		return -1;
 	}
 

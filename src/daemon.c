@@ -405,7 +405,7 @@ void *tcp_daemon(void *door)
 						"Accept table full.", ntop);
 
 				/* Omg, we cannot take it anymore, go away: ACK_NEGATIVE */
-				pkt_err(rpkt, ret);
+				pkt_err(rpkt, ret, 1);
 				close(fd);
 				continue;
 			} else {
