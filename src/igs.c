@@ -322,6 +322,11 @@ void init_internet_gateway_search(void)
 				" gw route.", me.cur_ifs[i].dev_name);
 
 			ifs_del(me.cur_ifs, &me.cur_ifs_n, i);
+			if(me.cur_ifs_n <= 0)
+				fatal("The deleted interface cannot be used by NetsukukuD because it is part\n"
+				      "  of your primary Internet gw route. You have to specify another\n"
+				      "  interface with the -i option or you won't be able share your"
+				      "  Internet connection");
 		}
 
 
