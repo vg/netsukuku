@@ -177,8 +177,6 @@ int andns_init(int restricted, char *resolv_conf)
 	char buf[INET_ADDRSTRLEN];
 	struct sockaddr_in *saddr;
 
-	inet_prefix ip;
-
         _default_realm_=(restricted)?INET_REALM:NTK_REALM;
         _andns_ns_count_=0;
 
@@ -536,7 +534,7 @@ int andns_gethostbyname(char *hname, inet_prefix *ip)
 		error("In andns_gethostbyname: can not unpack msg from nameserver.");
 		return -1;
 	}
-	memcpy(%addr,dp->pkt_answ->rdata,4);
+	memcpy(&addr, dp->pkt_answ->rdata, sizeof(uint32_t));
 	addr=ntohl(addr);
 	if ((res=inet_setip_raw(ip,&addr, AF_INET))==-1) {
 		error("In andns_gethostbyname: can not fill inet_prefix.");
