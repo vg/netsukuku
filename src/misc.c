@@ -382,8 +382,8 @@ int is_bufzero(char *a, int sz)
 
 /*
  * xtimer: It sleeps for `secs' seconds. 
- * `steps' tells to xtimer() how many for cycles it must run to sleep for
- * `secs' secons. At every cycle it updates `counter'.
+ * `steps' tells to xtimer() how many "for" cycles it must run to sleep for
+ * `secs' secons. At each cycle it updates `counter'.
  */
 void xtimer(u_int secs, u_int steps, int *counter)
 {

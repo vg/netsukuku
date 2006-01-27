@@ -1283,6 +1283,11 @@ int andna_reverse_resolve(inet_prefix ip, char ***hostnames)
 	
 	ntop=inet_to_str(to);
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(ANDNA_RESOLVE_IP), ntop);
+
+	/* We have been asked to reverse resolve our same IP */
+	if(!memcmp(to.data, me.cur_ip.data, MAX_IP_SZ) || 
+			LOOPBACK(htonl(to.data[0])))
+		return lcl_get_registered_hnames(andna_lcl, hostnames);
 	
 	/* Fill the packet and send the request */
 	pkt_addto(&pkt, &to);
@@ -1356,9 +1361,9 @@ int andna_recv_rev_resolve_rq(PACKET rpkt)
 	u_short *hnames_sz;
 	char *buf, *reply_body=0;
 	const char *ntop;
-	int i, ret=0, err, hostnames;
+	int i, e, ret=0, err, hostnames=0;
 	
-	lcl_cache *alcl=andna_lcl;
+	lcl_cache *alcl=andna_lcl, *lcl_hnames[ANDNA_MAX_HOSTNAMES];
 
 	memset(&pkt, 0, sizeof(PACKET));
 
@@ -1372,14 +1377,23 @@ int andna_recv_rev_resolve_rq(PACKET rpkt)
 	
 	pkt_fill_hdr(&pkt.hdr, 0, rpkt.hdr.id, ANDNA_RESOLVE_REPLY, 0);
 	pkt.hdr.sz=sizeof(struct andna_rev_resolve_reply_hdr);
-	
-	hostnames=lcl_counter;
+
+	/* Build the list of registered hnames */
+	list_for(alcl) {
+		if(!alcl->timestamp)
+			continue;
+		lcl_hnames[hostnames++]=alcl;
+	}
+	if(hostnames > ANDNA_MAX_HOSTNAMES)
+		hostnames=ANDNA_MAX_HOSTNAMES;
+	lcl_hnames[hostnames]=0;
+
 	hdr.hostnames=hostnames-1;
 	if(hostnames) {
 		hnames_sz=xmalloc(sizeof(u_short) * hostnames);
 		i=0;
-		list_for(alcl) {
-			hnames_sz[i++]=strlen(alcl->hostname)+1;
+		for(e=0; e<hostnames; e++) {
+			hnames_sz[i++]=strlen(lcl_hnames[e]->hostname)+1;
 			pkt.hdr.sz+=hnames_sz[i];
 		}
 	} else {
@@ -1390,7 +1404,7 @@ int andna_recv_rev_resolve_rq(PACKET rpkt)
 	debug(DBG_INSANE, "Reverse resolve request 0x%x accepted", rpkt.hdr.id);
 	
 	/* 
-	 * Pack all the hostnames we have (if any) 
+	 * Pack all the registered hostnames we have (if any) 
 	 */
 
 	pkt.msg=buf=xmalloc(pkt.hdr.sz);
@@ -1403,9 +1417,8 @@ int andna_recv_rev_resolve_rq(PACKET rpkt)
 		buf+=sizeof(u_short) * hostnames;
 		
 		i=0;
-		alcl=andna_lcl;
-		list_for(alcl) {
-			memcpy(buf, alcl->hostname, hnames_sz[i++]);
+		for(e=0; e<hostnames; e++) {
+			memcpy(buf, lcl_hnames[e]->hostname, hnames_sz[i++]);
 			buf+=hnames_sz[i];
 		}
 	}

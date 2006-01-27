@@ -139,7 +139,7 @@ int find_ip_acpt(inet_prefix ip)
 	int i;
 	
 	for(i=0; i<max_accepts_per_host; i++) {
-		if(!memcmp(&accept_tbl[i].ip, &ip, sizeof(inet_prefix)))
+		if(!memcmp(accept_tbl[i].ip.data, &ip.data, MAX_IP_SZ))
 			return i;
 	}
 

@@ -776,7 +776,7 @@ int pkt_q_add_pkt(PACKET pkt)
 				(pkt.hdr.flags & ASYNC_REPLIED));
 		if(pq->pkt.hdr.id == pkt.hdr.id) {
 			if(pq->pkt.from.data[0] && (pq->flags & PKT_Q_CHECK_FROM) &&
-					memcmp(&pq->pkt.from, &pkt.from, sizeof(inet_prefix)))
+					memcmp(pq->pkt.from.data, pkt.from.data, MAX_IP_SZ))
 					continue; /* The wanted from ip and the
 						     real from ip don't match */
 			if(!(pkt.hdr.flags & ASYNC_REPLIED))

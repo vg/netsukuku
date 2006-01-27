@@ -323,6 +323,7 @@ lcl_cache *lcl_cache_new(char *hname);
 void lcl_cache_free(lcl_cache *alcl);
 void lcl_cache_destroy(lcl_cache *head, int *counter);
 lcl_cache *lcl_cache_find_hname(lcl_cache *head, char *hname);
+int lcl_get_registered_hnames(lcl_cache *head, char ***hostnames);
 
 andna_cache_queue *ac_queue_findpubk(andna_cache *ac, char *pubk);
 andna_cache_queue *ac_queue_add(andna_cache *ac, inet_prefix rip, char *pubkey);

@@ -416,6 +416,8 @@ int str_to_inet(const char *src, inet_prefix *ip)
 	int family,res;
 	u_int *data;
 
+	memset(ip, 0, sizeof(inet_prefix));
+
 	if(strstr(src, ":")) {
 		family=AF_INET6;
 		data=(u_int *)&dst6;

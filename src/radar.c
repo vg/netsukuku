@@ -138,7 +138,7 @@ struct radar_queue *find_ip_radar_q(inet_prefix *ip)
 
 	rq=radar_q;
 	list_for(rq)
-		if(!memcmp(&rq->ip, ip, sizeof(inet_prefix)))
+		if(!memcmp(rq->ip.data, ip->data, MAX_IP_SZ))
 			return rq;
 		
 	return 0;

@@ -132,6 +132,41 @@ lcl_cache *lcl_cache_find_hname(lcl_cache *head, char *hname)
 	return 0;
 }
 
+/*
+ * lcl_get_registered_hnames:
+ * In `hostnames' is stored a pointer to a malloced array of pointers. Each
+ * pointer points to a malloced hostname.
+ * The hostnames stored in the array are taken from the `head' llist. Only
+ * the hnames that have been registered are considered.
+ * The number of hnames stored in `hostnames' is returned.
+ */
+int lcl_get_registered_hnames(lcl_cache *head, char ***hostnames)
+{
+	lcl_cache *alcl=head;
+	int i=0, hname_sz;
+	char **hnames;
+
+	*hostnames=0;
+	
+	if(!alcl || !lcl_counter)
+		return 0;
+	
+	hnames=xmalloc(lcl_counter * sizeof(char *));
+	
+	list_for(alcl) {
+		if(!alcl->timestamp)
+			continue;
+		
+		hname_sz=strlen(alcl->hostname)+1;
+		hnames[i]=xmalloc(hname_sz);
+		memcpy(hnames[i], alcl->hostname, hname_sz);
+		i++;
+	}
+
+	*hostnames=hnames;
+	return i;
+}
+
 
 /*
  *  *  *  Andna Cache functions  *  *  *

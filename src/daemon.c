@@ -154,7 +154,7 @@ void *udp_exec_pkt(void *passed_argv)
 		pthread_mutex_unlock(&udp_exec_lock);
 	
 	/* Drop any packet we sent in broadcast */
-	if(!memcmp(&rpkt.from, &me.cur_ip, sizeof(inet_prefix))) {
+	if(!memcmp(rpkt.from.data, me.cur_ip.data, MAX_IP_SZ)) {
 		pkt_free(&rpkt, 0);
 		return 0;
 	}
@@ -289,7 +289,9 @@ void *tcp_recv_loop(void *recv_pkt)
 	memcpy(&rpkt, recv_pkt, sizeof(PACKET));
 	pthread_mutex_unlock(&tcp_exec_lock);
 
+#if 0
 	add_accept_pid(getpid(), acpt_idx, acpt_sidx);
+#endif
 
 	while( pkt_recv(&rpkt) != -1 ) {
 		if(pkt_exec(rpkt, acpt_idx) < 0) {
