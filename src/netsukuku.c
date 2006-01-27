@@ -220,8 +220,8 @@ void fill_loaded_cfg_options(void)
 		me.my_bandwidth =
 			bandwidth_in_8bit((server_opt.my_upload_bw+server_opt.my_dnload_bw)/2);
 	if((value=getenv(config_str[CONF_NTK_INTERNET_PING_HOSTS]))) {
-		int counter;
-		server_opt.inet_hosts=parse_internet_hosts(value, &counter);
+		server_opt.inet_hosts=parse_internet_hosts(value, 
+				&server_opt.inet_hosts_counter);
 		if(!server_opt.inet_hosts)
 			fatal("Malformed `%s' option: \"%s\". "
 				"Its syntax is \"host1:host2:...\"",
@@ -456,7 +456,7 @@ void init_netsukuku(char **argv)
 		fatal("Cannot initialize any network interfaces");
 
 	/*
-	 * Initilize the Internet gateway stuff
+	 * Initialize the Internet gateway stuff
 	 */
 	if(server_opt.my_upload_bw && server_opt.my_dnload_bw)
 		me.my_bandwidth =
@@ -466,11 +466,13 @@ void init_netsukuku(char **argv)
 	pkts_init(me.cur_ifs, me.cur_ifs_n, 0);
 	qspn_init(FAMILY_LVLS);
 
-	/* ANDNA init */
+	me.cur_erc=e_rnode_init(&me.cur_erc_counter);
+
+	/* 
+	 * ANDNA init
+	 */
 	if(!server_opt.disable_andna)
 		andna_init();
-
-	me.cur_erc=e_rnode_init(&me.cur_erc_counter);
 
 	/* Radar init */
 	rq_wait_idx_init(rq_wait_idx);
@@ -479,8 +481,8 @@ void init_netsukuku(char **argv)
 
 	ntk_load_maps();
 
-	/* TODO: activate and test it !! */
 #if 0
+	/* TODO: activate and test it !! */
 	debug(DBG_NORMAL, "ACPT: Initializing the accept_tbl: \n"
 			"	max_connections: %d,\n"
 			"	max_accepts_per_host: %d,\n"
@@ -494,7 +496,7 @@ void init_netsukuku(char **argv)
 #endif
 	
 	if(server_opt.restricted)
-		loginfo("netsukuku_d is in restricted mode.");
+		loginfo("NetsukukuD is in restricted mode.");
 	
 	hook_init();
 	rehook_init();

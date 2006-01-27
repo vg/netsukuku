@@ -1596,14 +1596,15 @@ finish:
 
 /*
  * del_resolv_conf: restores the old `file' modified by add_resolv_conf() by 
- * copying `file'.bak over `file'.
+ * copying `file'.bak over `file'. If the `hname' string is present in
+ * `file'.bak it won't be written in `file'.
  * On error it returns -1.
  */
-int del_resolv_conf(char *file)
+int del_resolv_conf(char *hname, char *file)
 {
 	FILE *fin=0, *fout=0;
 	     
-	char *buf=0, *file_bk=0;
+	char *buf=0, *file_bk=0, tmp_buf[128+1];
 	size_t buf_sz;
 	int ret=0;
 
@@ -1622,12 +1623,20 @@ int del_resolv_conf(char *file)
 	fseek(fin, 0, SEEK_END);
 	buf_sz=ftell(fin);
 	rewind(fin);
+
+	if(!buf_sz) {
+		/* `file_bk' is empty, delete it */
+		unlink(file_bk);
+		ERROR_FINISH(ret, -1, finish);
+	}
 	
 	buf=xmalloc(buf_sz);
-	if(!fread(buf, buf_sz, 1, fin)) {
-		error("del_resolv_conf: It wasn't possible to read the %s file", 
-				file_bk);
-		ERROR_FINISH(ret, -1, finish);
+	*buf=0;
+	while(fgets(tmp_buf, 128, fin)) {
+		/* Skip the line which is equal to `hname' */
+		if(!strncmp(tmp_buf, hname, strlen(hname)))
+			continue;
+		strcat(buf, tmp_buf);
 	}
 	
 	/*
@@ -1644,8 +1653,7 @@ int del_resolv_conf(char *file)
 			file, strerror(errno));
 		ERROR_FINISH(ret, -1, finish);
 	}
-	fwrite(buf, buf_sz, 1, fout);
-	
+	fprintf(fout, "%s", buf);
 
 	/*
 	 * delete `file'.bak

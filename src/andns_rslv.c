@@ -77,8 +77,7 @@ void char_print(char *buf, int len)
         int i,count=0;
 
         printf("Printing %d bytes\n",len);
-        for (i=0;i<len;i++)
-        {
+        for (i=0;i<len;i++) {
                 printf("%02X ", (unsigned char)(buf[i]));
                 count++;
                 if ((count%16)==0) printf("\n");
@@ -180,7 +179,7 @@ int andns_init(int restricted, char *resolv_conf)
 	memset(msg,0,(INET_ADDRSTRLEN+2)*MAXNSSERVERS);
 
         if ((res=collect_resolv_conf(resolv_conf))==-1) {
-                loginfo("ALERT: DNS forwarding disable");
+                debug(DBG_NORMAL, "ALERT: DNS forwarding disable");
                 _dns_forwarding_=0;
                 return -1;
         }
@@ -189,12 +188,11 @@ int andns_init(int restricted, char *resolv_conf)
                 if(inet_ntop(saddr->sin_family,(void*)&((saddr)->sin_addr),buf,INET_ADDRSTRLEN)) {
 			strncat(msg,buf,INET_ADDRSTRLEN);
 			strncat(msg,i==_andns_ns_count_-1?". ":", ",2);
-		}
-		else 
+		} else 
 			error("In andns_init: error converting sockaddr -> %s.",strerror(errno));
 	}
-					
-        loginfo("Andns init: DNS query inet-related will be forwarded to: %s",msg);
+	
+	debug(DBG_NORMAL, "Andns init: DNS query inet-related will be forwarded to: %s",msg);
 	_dns_forwarding_=_andns_ns_count_?1:0;
         return 0;
 }
@@ -383,8 +381,8 @@ char* andns_rslv_inet(char *msg,int msglen,
 	       /* Packet forwarding! */
 		if ((res=dns_forward(dp,msg,msglen,answer))==-1)
 			goto dns_esrvfail_return;
-	}
-	else if((res=dpktpack(dp,answer,0))==-1) // this call free dp
+	} else if((res=dpktpack(dp,answer,0))==-1) 
+		/* this call free dp */
         	goto dns_esrvfail_return;
         *answ_len=res;
         return answer;
@@ -494,7 +492,7 @@ int dns_forward(dns_pkt *dp,char *msg,int msglen,char* answer)
 		error("In rslv: dns forwardind is disable.");
 		goto failing;
 	}
-	loginfo("DNS FORWARDING!");
+	debug(DBG_INSANE, "DNS FORWARDING!");
 	if (!is_prefixed(dp)) {
 		/*res=res_send((const unsigned char*)msg,msglen,(unsigned char*)answer,DNS_MAX_SZ);*/
 		if(ns_general_send(msg,msglen,answer,&res)) {
@@ -546,8 +544,7 @@ int a_a_resolve(andns_pkt *ap)
 	andns_pkt_data *apd;
 	inet_prefix ipres;
 		
-	if ((res=andna_resolve_hname(ap->qstdata_nopref,&ipres))==-1)
-	{
+	if ((res=andna_resolve_hname(ap->qstdata_nopref,&ipres))==-1) {
 		ap->rcode=RCODE_ENSDMN;
 		ap->qr=1;
 		return -1;
@@ -577,20 +574,17 @@ int a_ptr_resolve(andns_pkt *ap)
 	int i;
 	int res;
 
-	if ((res=str_to_inet(ap->qstdata_nopref,&ipres))==-1)
-	{
+	if ((res=str_to_inet(ap->qstdata_nopref,&ipres))==-1) {
 		ap->rcode=RCODE_EINTRPRT;
 		ap->qr=1;
 		return -1;
 	}
-	if ((res=andna_reverse_resolve(ipres,&hnames))==-1)
-	{
+	if ((res=andna_reverse_resolve(ipres,&hnames))==-1) {
 		ap->rcode=RCODE_ENSDMN;
 		ap->qr=1;
 		return -1;
 	}
-	for (i=0;i<res;i++)
-	{
+	for (i=0;i<res;i++) {
 		apd=andns_add_answ(ap);
 		apd->rdlength=strlen(hnames[i]);
 		strcpy(apd->rdata,hnames[i]);
@@ -620,8 +614,7 @@ int d_a_resolve(dns_pkt *dp)
 	if (andns_realm(dp->pkt_qst,NULL)==INET_REALM)
 		return 1;
 	
-     	if ((res=andna_resolve_hname(dp->pkt_qst->qname_nopref, &ipres))==-1)
-        {
+     	if ((res=andna_resolve_hname(dp->pkt_qst->qname_nopref, &ipres))==-1) {
                 (dp->pkt_hdr).rcode=RCODE_ENSDMN;
         	(dp->pkt_hdr).qr=1;
                 return -1;
@@ -660,20 +653,17 @@ int d_ptr_resolve(dns_pkt *dp)
         	(dp->pkt_hdr).qr=1;
 		return -1;
 	}
-	if ((res=str_to_inet(addr, &ipres))==-1)
-	{	
+	if ((res=str_to_inet(addr, &ipres))==-1) {	
 		(dp->pkt_hdr).rcode=RCODE_EINTRPRT;
         	(dp->pkt_hdr).qr=1;
 		return -1;
 	}
-	if ((res=andna_reverse_resolve(ipres, &hnames))==-1)
-        {
+	if ((res=andna_reverse_resolve(ipres, &hnames))==-1) {
         	(dp->pkt_hdr).rcode=RCODE_ENSDMN;
         	(dp->pkt_hdr).qr=1;
         	return -1;
         }
-	for (i=0;i<res;i++)
-	{
+	for (i=0;i<res;i++) {
 		dpa=DP_ADD_ANSWER(dp);
 		dpa->type=T_PTR;
 		dpa->class=C_IN;

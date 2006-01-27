@@ -156,8 +156,7 @@ size_t lbltoname(char *buf,char *start_pkt,char *dst,int count,int limit_len,int
 		}
 		recursion++;
 		buf=start_pkt+temp;
-	}
-	else {
+	} else {
 		if ((temp=read_label_octet(buf,dst,count,limit_len))==-1) 
 			return -1;
 		count+=temp+1; /* read also "." */
@@ -287,8 +286,7 @@ char* rm_realm_prefix(char *from,char *dst,int type)
 		else 
 			strcpy(dst,from);
 		
-	}
-	else if (strcasestr(from+slen-REALM_PREFIX_LEN,INET_REALM_PREFIX) || 
+	} else if (strcasestr(from+slen-REALM_PREFIX_LEN,INET_REALM_PREFIX) || 
 		 strcasestr(from+slen-REALM_PREFIX_LEN,NTK_REALM_PREFIX)) 
 			strncpy(dst,from,slen-REALM_PREFIX_LEN);
 	else
@@ -310,8 +308,7 @@ int swapped_straddr(char *src,char *dst)
         int res,i;
         char atoms[4][4],*crow,*temp;
 
-        if (!src)
-        {
+        if (!src) {
                 error("In swapped_straddr: NULL argument!");
                 return -1;
         }
@@ -319,8 +316,7 @@ int swapped_straddr(char *src,char *dst)
         if( ! \
                 ( (temp=(char*)strcasestr(src,DNS_INV_PREFIX))  ||\
                   (temp=(char*)strcasestr(src,DNS_INV_PREFIX6)) ||\
-                  (temp=(char*)strcasestr(src,OLD_DNS_INV_PREFIX6))))
-        {
+                  (temp=(char*)strcasestr(src,OLD_DNS_INV_PREFIX6)))) {
                 error("In swapped_straddr: ptr query without suffix");
                 return -1;
         }
@@ -345,8 +341,8 @@ int swapped_straddr(char *src,char *dst)
                         *dst++=i==0?0:'.';
                 }
 
-        }
-        else while ((*temp--=*dst++));
+        } else 
+		while ((*temp--=*dst++));
         return 0;
 }
 
@@ -365,24 +361,20 @@ int dnslovesntk(dns_pkt *dp)
         dns_pkt_hdr *dph;
 
         dph=&(dp->pkt_hdr);
-        if (dph->qr || dph->aa || dph->tc || dph->z)
-        {
+        if (dph->qr || dph->aa || dph->tc || dph->z) {
                 error("In dnslovesntk: pkt_hdr with QR || AA || TC || Z");
                 return -1; // We acept only queries, not answers o pkt trunc
         }                  // Z has to be 0 (see rfc)
 
-        if (dph->opcode>=2)
-        { // No Status server or unuesed values
+        if (dph->opcode>=2) { // No Status server or unuesed values
                 error("In dnslovesntk: opcode not supported in ntk realm");
                 return -1;
         }
-        if (DP_QDCOUNT(dp)!=1)
-        {
+        if (DP_QDCOUNT(dp)!=1) {
                 error("In dnslovesntk: i need one and only one query");
                 return -1; // Only a query must exist.
         }
-        if (dph->arcount || dph->ancount || dph->nscount)
-        {
+        if (dph->arcount || dph->ancount || dph->nscount) {
                 error("In dnslovesntk: pkt has AN || NS || AR sections");
                 return -1; // No Answ, Auth, Adds
         }
@@ -399,16 +391,13 @@ size_t nametolbl(char *name,char *dst)
         char *crow;
         size_t offset=0,res;
 
-        if (!name || !strcmp(name,"") || strlen(name)>MAX_HNAME_LEN)
-        {
+        if (!name || !strcmp(name,"") || strlen(name)>MAX_HNAME_LEN) {
                 error("In nametolbl: invalid name");
                 return -1;
         }
-        while ((crow=strstr(name+1,".")))
-        {
+        while ((crow=strstr(name+1,"."))) {
                 res=crow-name;
-                if (res+offset>MAX_SQLBL_LEN)
-                {
+                if (res+offset>MAX_SQLBL_LEN) {
                         error("In nametolbl: sequence label too long");
                         return -1;
                 }
@@ -419,8 +408,7 @@ size_t nametolbl(char *name,char *dst)
                 name+=res+1;dst+=res;offset+=res; // shift ptrs
         }
 	if (!name) return offset;
-	if((res=(char)strlen(name))>MAX_SQLBL_LEN)
-        {
+	if((res=(char)strlen(name))>MAX_SQLBL_LEN) {
                 error("In nametolbl: sequence label too long");
                 return -1;
         }
@@ -502,8 +490,7 @@ size_t dpkttoqst(char *start_buf,char *buf,dns_pkt *dp,int limit_len)
                 return -1;
         buf+=count;
         // Now we have to write 2+2 bytes
-        if (count+4>limit_len)
-        {
+        if (count+4>limit_len) {
                 debug(DBG_NOISE, "In dpkttoqst: limit_len break!");
                 return -1;
         }
@@ -535,8 +522,7 @@ size_t dpkttoqsts(char *start_buf,char *buf,dns_pkt *dp,int limit_len)
         if (!(count=DP_QDCOUNT(dp)))
         	return 0; // No questions.
 
-        for(i=0;i<count;i++)
-        {
+        for(i=0;i<count;i++) {
                 if ( (res=dpkttoqst(start_buf,buf+offset,dp,limit_len-offset))==-1)
                         return -1;
                 offset+=res;
@@ -562,8 +548,7 @@ size_t dpkttoa(char *start_buf,char *buf,dns_pkt_a **dpa_orig,int limit_len)
                 return -1;
         buf+=count;
         // Now we have to write 2+2+4+2 bytes
-        if (count+10>limit_len)
-        {
+        if (count+10>limit_len) {
                 debug(DBG_NOISE, "In npkttoa: limit_len braek!");
                 return -1;
         }
@@ -590,8 +575,7 @@ size_t dpkttoa(char *start_buf,char *buf,dns_pkt_a **dpa_orig,int limit_len)
 
         rdlen=dpa->rdlength;
         // Now we have to write dpa->rdlength bytes
-        if (count+rdlen>limit_len || rdlen>MAX_HNAME_LEN)
-        {
+        if (count+rdlen>limit_len || rdlen>MAX_HNAME_LEN) {
                 debug(DBG_NOISE, "In npkttoa: limit_len break!");
                 return -1;
         }
@@ -616,8 +600,7 @@ size_t dpkttoas(char *start_buf,char *buf,dns_pkt_a **dpa,int limit_len,int coun
         int i;
 
         if (!count) return 0;
-        for(i=0;i<count;i++)
-        {
+        for(i=0;i<count;i++) {
                 if ((res=dpkttoa(start_buf,buf+offset,dpa,limit_len-offset))==-1)
                         return -1;
                 offset+=res;
@@ -735,8 +718,7 @@ size_t qsttodpkt(dns_pkt_qst *dpq,char *buf, int limitlen,int nopref)
 		error("In qsttodpkt: error transalting name to sequence labels: name=%s",temp);
                 return -1;
 	}
-        if (offset+4>limitlen)
-        {
+        if (offset+4>limitlen) {
                 error("In qsttodpkt: limitlen broken");
                 return -1;
         }
@@ -765,8 +747,7 @@ size_t qststodpkt(dns_pkt *dp,char *buf,int limitlen,int nopref)
 	dns_pkt_qst *dpq;
 	dpq=dp->pkt_qst;
 
-        for (i=0;dpq && i<DP_QDCOUNT(dp);i++)
-        {
+        for (i=0;dpq && i<DP_QDCOUNT(dp);i++) {
                 if ((res=qsttodpkt(dpq,buf+offset,limitlen-offset,nopref))==-1)
                         return -1;
                 offset+=res;
@@ -783,8 +764,7 @@ size_t atodpkt(dns_pkt_a *dpa,char *buf,int limitlen)
         if((rdlen=nametolbl(dpa->name,buf))==-1)
                 return -1;
 	offset=rdlen;
-	if (offset+10>limitlen)
-        {
+	if (offset+10>limitlen) {
                 error("In atodpkt: limitlen broken");
                 return -1;
         }
@@ -806,8 +786,7 @@ size_t atodpkt(dns_pkt_a *dpa,char *buf,int limitlen)
         	}
         	memcpy(buf+2,dpa->rdata,dpa->rdlength);
 		offset+=dpa->rdlength;
-	}
-	else {
+	} else {
 		if ((rdlen=nametolbl(dpa->rdata,buf+2))==-1) {
 			error("In atodpkt: can not write rdata field.");
 			return -1;
@@ -828,8 +807,7 @@ size_t astodpkt(dns_pkt_a *dpa,char *buf,int limitlen,int count)
 {
         size_t offset=0,res;
         int i;
-        for (i=0;dpa && i<count;i++)
-        {
+        for (i=0;dpa && i<count;i++) {
                 if ((res=atodpkt(dpa,buf+offset,limitlen-offset))==-1)
                         return -1;
                 offset+=res;
@@ -920,8 +898,7 @@ size_t apkttoqst(char *buf,andns_pkt *ap)
 	uint16_t s;
 	memcpy(&s,buf,sizeof(uint16_t));
 	ap->qstlength=ntohs(s);
-	if (ap->qstlength>=MAX_ANDNS_QST_LEN)
-	{
+	if (ap->qstlength>=MAX_ANDNS_QST_LEN) {
 		error("In apkttoqst: size exceeded");
 		return -1;
 	}
@@ -947,8 +924,7 @@ size_t apkt(char *buf,size_t pktlen,andns_pkt **app)
 	andns_pkt *ap;
 	size_t offset,res;
 
-	if (pktlen<ANDNS_HDR_SZ)
-	{
+	if (pktlen<ANDNS_HDR_SZ) {
 		error("In apkt: pkt sz is less than pkt headers!");
 		return 0;
 	}
@@ -979,8 +955,7 @@ size_t qsttoapkt(andns_pkt *ap,char *buf,size_t limitlen)
 {
 	uint16_t s;
 
-	if (ap->qstlength>MAX_ANDNS_QST_LEN || limitlen < ap->qstlength+2 )
-	{
+	if (ap->qstlength>MAX_ANDNS_QST_LEN || limitlen < ap->qstlength+2 ) {
 		error("In qsttooapkt: size exceeded");
 		return -1;
 	}
@@ -993,8 +968,7 @@ size_t qsttoapkt(andns_pkt *ap,char *buf,size_t limitlen)
 size_t answtoapkt(andns_pkt_data *apd,char *buf,size_t limitlen)
 {
 	uint16_t s;
-	if (apd->rdlength>MAX_ANDNS_ANSW_LEN || limitlen< apd->rdlength+2)
-	{
+	if (apd->rdlength>MAX_ANDNS_ANSW_LEN || limitlen< apd->rdlength+2) {
 		error("In answtoapkt: size exceeded");
 		return -1;
 	}
@@ -1011,8 +985,7 @@ size_t answstoapkt(andns_pkt *ap,char *buf, size_t limitlen)
 	size_t offset=0,res;
 
 	apd=ap->pkt_answ;
-	for (i=0;i<AP_ANCOUNT(ap) && apd;i++)
-	{
+	for (i=0;i<AP_ANCOUNT(ap) && apd;i++) {
 		if((res=answtoapkt(apd,buf+offset,limitlen-offset))==-1)
 			return -1;
 		offset+=res;
@@ -1087,17 +1060,14 @@ int danswtoaansw(dns_pkt *dp,andns_pkt *ap,char *msg)
 	acount=DP_ANCOUNT(dp);
 
 	dpa=dp->pkt_answ;
-	for(i=0;i<acount;i++)
-	{
+	for(i=0;i<acount;i++) {
 		apd=andns_add_answ(ap);
-		if (!dpa)
-		{
+		if (!dpa) {
 			error("In danswtoaansw: ancount is %d, but answers are not.",acount); 
 			return -1;
 		}
 		type=ap->qtype;
-		switch(type)
-		{
+		switch(type) {
 			case AT_A:
 				apd->rdlength=4;
 				memcpy(apd->rdata,dpa->rdata,4);
@@ -1132,78 +1102,64 @@ void dp_print(dns_pkt *dp)
         dns_pkt_qst *dpq;
 
         dph=&(dp->pkt_hdr);
-        loginfo(" ID %d\n",dph->id);
-        loginfo(" QR %d\n",dph->qr);
-        loginfo(" opcode %d\n",dph->opcode);
-        loginfo(" aa %d\n",dph->aa);
-        loginfo(" tc %d\n",dph->tc);
-        loginfo(" rd %d\n",dph->rd);
-        loginfo(" ra %d\n",dph->ra);
-        loginfo(" z %d\n",dph->z);
-        loginfo(" rcode %d\n",dph->rcode);
-        loginfo(" qdcount %d\n",dph->qdcount);
-        loginfo(" ancount %d\n",dph->ancount);
-        loginfo(" nscount %d\n",dph->nscount);
-        loginfo(" arcount %d\n",dph->nscount);
+        debug(DBG_NOISE, " ID %d\n",dph->id);
+        debug(DBG_NOISE, " QR %d\n",dph->qr);
+        debug(DBG_NOISE, " opcode %d\n",dph->opcode);
+        debug(DBG_NOISE, " aa %d\n",dph->aa);
+        debug(DBG_NOISE, " tc %d\n",dph->tc);
+        debug(DBG_NOISE, " rd %d\n",dph->rd);
+        debug(DBG_NOISE, " ra %d\n",dph->ra);
+        debug(DBG_NOISE, " z %d\n",dph->z);
+        debug(DBG_NOISE, " rcode %d\n",dph->rcode);
+        debug(DBG_NOISE, " qdcount %d\n",dph->qdcount);
+        debug(DBG_NOISE, " ancount %d\n",dph->ancount);
+        debug(DBG_NOISE, " nscount %d\n",dph->nscount);
+        debug(DBG_NOISE, " arcount %d\n",dph->nscount);
 
         dpq=dp->pkt_qst;
 
-        loginfo("QUESTION\n");
-        loginfo("\tQNAME=%s\n",dpq->qname);
-        loginfo("\tQNAME_nopref=%s\n",dpq->qname_nopref);
-        loginfo("\tqtype=%d\n",dpq->qtype);
-        loginfo("\tqclass=%d\n",dpq->qclass);
+        debug(DBG_NOISE, "QUESTION\n");
+        debug(DBG_NOISE, "\tQNAME=%s\n",dpq->qname);
+        debug(DBG_NOISE, "\tQNAME_nopref=%s\n",dpq->qname_nopref);
+        debug(DBG_NOISE, "\tqtype=%d\n",dpq->qtype);
+        debug(DBG_NOISE, "\tqclass=%d\n",dpq->qclass);
         dpa=dp->pkt_answ;
-        loginfo("ANSWERS\n");
-        if (!dpa) loginfo("Any!\n");
-        while (dpa)
-        {
-                loginfo("\tname %s\n", dpa->name);
-                //loginfo("\tname_nopref %s\n", dpa->name_nopref);
-                loginfo("\ttype %d\n", dpa->type);
-                loginfo("\tclass %d\n", dpa->class);
-                loginfo("\tttl %d\n", dpa->ttl);
-                loginfo("\trdlength %d\n", dpa->rdlength);
-                loginfo("\trdata %s\n", dpa->rdata);
+        debug(DBG_NOISE, "ANSWERS\n");
+        if (!dpa) debug(DBG_NOISE, "Any!\n");
+        while (dpa) {
+                debug(DBG_NOISE, "\tname %s\n", dpa->name);
+                //debug(DBG_NOISE, "\tname_nopref %s\n", dpa->name_nopref);
+                debug(DBG_NOISE, "\ttype %d\n", dpa->type);
+                debug(DBG_NOISE, "\tclass %d\n", dpa->class);
+                debug(DBG_NOISE, "\tttl %d\n", dpa->ttl);
+                debug(DBG_NOISE, "\trdlength %d\n", dpa->rdlength);
+                debug(DBG_NOISE, "\trdata %s\n", dpa->rdata);
                 dpa=dpa->next;
         }
-        loginfo("AUTHS\n");
+        debug(DBG_NOISE, "AUTHS\n");
         dpa=dp->pkt_auth;
-        if (!dpa) loginfo("Any!\n");
-        while (dpa)
-        {
-                loginfo("\tname %s\n", dpa->name);
-                //loginfo("\tname_nopref %s\n", dpa->name_nopref);
-                loginfo("\ttype %d\n", dpa->type);
-                loginfo("\tclass %d\n", dpa->class);
-                loginfo("\tttl %d\n", dpa->ttl);
-                loginfo("\trdlength %d\n", dpa->rdlength);
-                loginfo("\trdata %s\n", dpa->rdata);
+        if (!dpa) debug(DBG_NOISE, "Any!\n");
+        while (dpa) {
+                debug(DBG_NOISE, "\tname %s\n", dpa->name);
+                //debug(DBG_NOISE, "\tname_nopref %s\n", dpa->name_nopref);
+                debug(DBG_NOISE, "\ttype %d\n", dpa->type);
+                debug(DBG_NOISE, "\tclass %d\n", dpa->class);
+                debug(DBG_NOISE, "\tttl %d\n", dpa->ttl);
+                debug(DBG_NOISE, "\trdlength %d\n", dpa->rdlength);
+                debug(DBG_NOISE, "\trdata %s\n", dpa->rdata);
                 dpa=dpa->next;
         }
-        loginfo("ADD\n");
+        debug(DBG_NOISE, "ADD\n");
         dpa=dp->pkt_add;
-        if (!dpa) loginfo("Any!\n");
-        while (dpa)
-        {
-                loginfo("\tname %s\n", dpa->name);
-                //loginfo("\tname_nopref %s\n", dpa->name_nopref);
-                loginfo("\ttype %d\n", dpa->type);
-                loginfo("\tclass %d\n", dpa->class);
-                loginfo("\tttl %d\n", dpa->ttl);
-                loginfo("\trdlength %d\n", dpa->rdlength);
-                loginfo("\trdata %s\n", dpa->rdata);
+        if (!dpa) debug(DBG_NOISE, "Any!\n");
+        while (dpa) {
+                debug(DBG_NOISE, "\tname %s\n", dpa->name);
+                //debug(DBG_NOISE, "\tname_nopref %s\n", dpa->name_nopref);
+                debug(DBG_NOISE, "\ttype %d\n", dpa->type);
+                debug(DBG_NOISE, "\tclass %d\n", dpa->class);
+                debug(DBG_NOISE, "\tttl %d\n", dpa->ttl);
+                debug(DBG_NOISE, "\trdlength %d\n", dpa->rdlength);
+                debug(DBG_NOISE, "\trdata %s\n", dpa->rdata);
                 dpa=dpa->next;
         }
-
-
-
 }
-
-
-
-				
-				
-		
-		
-	

@@ -109,6 +109,14 @@ void andna_resolvconf_init(void)
 		loginfo("Modification of /etc/resolv.conf is disabled: do it by yourself.");
 }
 
+void andna_resolvconf_close(void)
+{
+	char *my_nameserv;
+
+	my_nameserv = my_family == AF_INET ? MY_NAMESERV : MY_NAMESERV_IPV6;
+	del_resolv_conf(my_nameserv, ETC_RESOLV_CONF);
+}
+
 void andna_init(void)
 {
 	/* register the andna's ops in the pkt_op_table */
@@ -133,7 +141,11 @@ void andna_init(void)
 	lcl_new_keyring(&lcl_keyring);
 
 	if(andns_init(server_opt.restricted, ETC_RESOLV_CONF) < 0)
-		andns_init(server_opt.restricted, ETC_RESOLV_CONF_BAK);
+		if(andns_init(server_opt.restricted, ETC_RESOLV_CONF_BAK) < 0) {
+			error("In %s there isn't a single Internet nameserver.", 
+					ETC_RESOLV_CONF);
+			loginfo("Internet hostname resolution is disabled");
+		}
 	
 	memset(last_reg_pkt_id, 0, sizeof(int)*ANDNA_MAX_FLOODS);
 	memset(last_counter_pkt_id, 0, sizeof(int)*ANDNA_MAX_FLOODS);
@@ -145,7 +157,7 @@ void andna_init(void)
 void andna_close(void)
 {
 	if(!server_opt.disable_resolvconf)
-		del_resolv_conf(ETC_RESOLV_CONF);
+		andna_resolvconf_close();
 }
 
 /*

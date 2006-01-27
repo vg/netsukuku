@@ -298,10 +298,10 @@ void init_internet_gateway_search(void)
 		memcpy(&server_opt.inet_gw, &new_gw, sizeof(inet_prefix));
 	}
 	
-	loginfo("Using \"%s\" as your first Internet gateway.", 
-			inet_to_str(server_opt.inet_gw));
+	loginfo("Using \"%s\":%s as your first Internet gateway.", 
+			inet_to_str(server_opt.inet_gw), server_opt.inet_gw_dev);
 	if(rt_replace_def_gw(server_opt.inet_gw_dev, server_opt.inet_gw))
-		fatal("Cannot set the default gw to %s for the %s dev",
+		fatal("Cannot set the default gw to %s:%s",
 				inet_to_str(server_opt.inet_gw),
 				server_opt.inet_gw_dev);
 	active_gws++;
@@ -561,7 +561,8 @@ int igw_check_inet_conn(void)
 {
 	int i, ret;
 
-	for(i=0; server_opt.inet_hosts && server_opt.inet_hosts[i]; i++) {
+	for(i=0; server_opt.inet_hosts && server_opt.inet_hosts[i] && 
+			i < server_opt.inet_hosts_counter; i++) {
 		ret=pingthost(server_opt.inet_hosts[i], INET_HOST_PING_TIMEOUT);
 		if(ret >= 1)
 			return 1;

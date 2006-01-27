@@ -76,7 +76,10 @@ dns_pkt_qst* dns_add_qst(dns_pkt *dp)
 	dns_pkt_qst *dpq,*temp;
 	dpq=create_dns_pkt_qst();
 	temp=dp->pkt_qst;
-	if (!temp) { dp->pkt_qst=dpq;return dpq;}
+	if (!temp) { 
+		dp->pkt_qst=dpq;
+		return dpq;
+	}
 	while (temp->next) temp=temp->next;
 	temp->next=dpq;
 	return dpq;
@@ -197,41 +200,33 @@ void destroy_dns_pkt(dns_pkt *dp)
 	dns_pkt_a *dpa,*dpa_t;
 	dns_pkt_qst *dpq,*dpq_t;
 
-	if (dp->pkt_qst)
-	{
+	if (dp->pkt_qst) {
 		dpq=dp->pkt_qst;
-		while (dpq)
-		{
+		while (dpq) {
 			dpq_t=dpq->next;
 			xfree(dpq);
 			dpq=dpq_t;
 		}
 	}
-	if (dp->pkt_answ)
-	{
+	if (dp->pkt_answ) {
 		dpa=dp->pkt_answ;
-		while (dpa)
-		{
+		while (dpa) {
 			dpa_t=dpa->next;
 			xfree(dpa);
 			dpa=dpa_t;
 		}
 	}
-	if (dp->pkt_add)
-	{
+	if (dp->pkt_add) {
 		dpa=dp->pkt_add;
-		while (dpa)
-		{
+		while (dpa) {
 			dpa_t=dpa->next;
 			xfree(dpa);
 			dpa=dpa_t;
 		}
 	}
-	if (dp->pkt_auth)
-	{
+	if (dp->pkt_auth) {
 		dpa=dp->pkt_auth;
-		while (dpa)
-		{
+		while (dpa) {
 			dpa_t=dpa->next;
 			xfree(dpa);
 			dpa=dpa_t;
@@ -270,7 +265,10 @@ andns_pkt_data* andns_add_answ(andns_pkt *ap)
 	
 	apd=create_andns_pkt_data();
 	a=ap->pkt_answ;
-	if (!a) {ap->pkt_answ=apd;return apd;}
+	if (!a) {
+		ap->pkt_answ=apd;
+		return apd;
+	}
 	while (a->next) a=a->next;
 	a->next=apd;
 	return apd;;
@@ -279,22 +277,18 @@ andns_pkt_data* andns_add_answ(andns_pkt *ap)
 void destroy_andns_pkt(andns_pkt *ap)
 {
 	/*
-	if (ap->pkt_qst)
-	{
+	if (ap->pkt_qst) {
 		apd=ap->pkt_qst;
-		while (apd)
-		{
+		while (apd) {
 			apd_t=apd->next;
 			xfree(apd);
 			apd=apd_t;
 		}
 	}*/
-	if (ap->pkt_answ)
-	{
+	if (ap->pkt_answ) {
 		andns_pkt_data *apd,*apd_t;
 		apd=ap->pkt_answ;
-		while (apd)
-		{
+		while (apd) {
 			apd_t=apd->next;
 			xfree(apd);
 			apd=apd_t;
