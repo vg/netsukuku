@@ -177,6 +177,8 @@ int andns_init(int restricted, char *resolv_conf)
 	char buf[INET_ADDRSTRLEN];
 	struct sockaddr_in *saddr;
 
+	inet_prefix ip;
+
         _default_realm_=(restricted)?INET_REALM:NTK_REALM;
         _andns_ns_count_=0;
 
@@ -490,6 +492,52 @@ close_return:
 	return -1;
 }
 
+int andns_gethostbyname(char *hname, inet_prefix *ip)
+{
+	dns_pkt *dp;
+	dns_pkt_hdr *dph;
+	dns_pkt_qst *dpq;
+	int res,anslen;
+	char msg[DNS_MAX_SZ],answ[DNS_MAX_SZ];
+	uint32_t addr;
+
+	dp=create_dns_pkt();
+	dph=&(dp->pkt_hdr);
+
+	dph->id=(rand() >> 16) ^ (rand() >> 16);
+	dph->rd=1;
+
+	dpq=dns_add_qst(dp);
+	strcpy(dpq->qname,hname);
+	dpq->qtype=T_A;
+	dpq->qclass=C_IN;
+
+	DP_QDCOUNT(dp)++;
+
+	memset(msg,0,DNS_MAX_SZ);
+	memset(answ,0,DNS_MAX_SZ);
+	if ((res=dpktpack(dp,msg,0))==-1) {
+		error("In andns_gethostbyname: can not pack query.");
+		return -1;
+	}
+	if (ns_general_send(msg,res,answ,&anslen)) {
+		error("In andns_gethostbyname: DNS forwarding error.");
+		return -1;
+	}
+	if ((res=dpkt(answ,anslen,&dp))==-1) {
+		error("In andns_gethostbyname: can not unpack msg from nameserver.");
+		return -1;
+	}
+	memcpy(%addr,dp->pkt_answ->rdata,4);
+	addr=ntohl(addr);
+	if ((res=inet_setip_raw(ip,&addr, AF_INET))==-1) {
+		error("In andns_gethostbyname: can not fill inet_prefix.");
+		return -1;
+	}
+	destroy_dns_pkt(dp);
+	return 0;
+}
+	
 
 int dns_forward(dns_pkt *dp,char *msg,int msglen,char* answer)
 {

@@ -817,7 +817,11 @@ size_t astodpkt(dns_pkt_a *dpa,char *buf,int limitlen,int count)
 }
 /*
  * Transform a dns_pkt structure in char stream.
- * On error, returns  -1
+ *
+ * Returns:
+ * 	-1 on error
+ * 	len(stream) if OK
+ *
  * The stream has at least the header section writed.
  * `buf' must be at least of DNS_MAX_SZ bytes.
  *

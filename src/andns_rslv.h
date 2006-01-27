@@ -40,6 +40,7 @@ int andns_init(int restricted, char *resolv_conf);
 char* andns_rslv(char *msg,int msglen, char *answer_buf, int *answ_len);
 int ns_general_send(char *msg,int msglen,char *answer,int *anslen);
 int ns_send(char *msg,int msglen, char *answer,int *anslen,struct sockaddr_in *ns,socklen_t nslen);
+int andns_gethostbyname(char *hname, inet_prefix *ip);
 int dns_forward(dns_pkt *dp,char *msg,int msglen,char* answer);
 int a_a_resolve(andns_pkt *ap);
 int a_ptr_resolve(andns_pkt *ap);
