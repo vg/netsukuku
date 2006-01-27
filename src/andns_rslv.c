@@ -65,7 +65,6 @@
 /* Globals */
 
 static uint8_t _dns_forwarding_;
-#define MAXNSSERVERS 3
 static struct sockaddr_in _andns_ns_[MAXNSSERVERS];
 static uint8_t _andns_ns_count_;
 
@@ -87,26 +86,27 @@ void char_print(char *buf, int len)
 }
 
 /*
- * Saves on globals var _andns_ns_ and _andns_ns_count_
- * the ip address ns: these infos will be used for DNS
+ * Saves on `nsbuf' and `ns_count' the ip 
+ * address ns: these infos will be used for DNS
  * forwarding.
  *
  * Returns:
  * 	-1 on error
- * 	0 if OK
+ * 	 0 if OK
  */
-int store_ns(char *ns)
+int store_ns(char *ns, struct sockaddr_in *nsbuf, uint8_t *ns_count)
 {
         int res;
 	struct sockaddr_in *saddr;
 
-        if (_andns_ns_count_>=MAXNSSERVERS)
+        if (*ns_count >= MAXNSSERVERS)
                 return -1;
-        if (strstr(ns,"127.0.0.1"))
+        if (strstr(ns, "127.0.0."))
                 return -1;
-	saddr=_andns_ns_+_andns_ns_count_;
+	
+	saddr=nsbuf+(*ns_count);
 	saddr->sin_family=AF_INET;
-	if ((res=inet_pton(AF_INET,ns,&(saddr->sin_addr)))<0) {
+	if ((res=inet_pton(AF_INET, ns, &(saddr->sin_addr)))<0) {
 		error("In store_ns: error converting str to sockaddr-> %s\n", strerror(errno));
 		return -1;
 	} else if (res==0) {
@@ -114,7 +114,7 @@ int store_ns(char *ns)
 		return -1;
 	}
 	saddr->sin_port=htons(53);
-        _andns_ns_count_++;
+        (*ns_count)++;
         return 0;
 }
 
@@ -122,8 +122,12 @@ int store_ns(char *ns)
  * Reads resolv.conf, searching nameserver lines.
  * Takes the ip address from these lines and calls store_ns
  * "nameserver 127.0.0.1" is discraded to remove looping beahviors
+ * The valid nameservers are stored in `nsbuf' array which must have at least
+ * of `MAXNSSERVERS' members. The number of stored nameservers is written in
+ * `*ns_count' and it is returned.
+ * If an error occurred or no hostnames are available -1 is returned.
  */
-int collect_resolv_conf(char *resolve_conf)
+int collect_resolv_conf(char *resolve_conf, struct sockaddr_in *nsbuf, uint8_t *ns_count)
 {
         FILE *erc;
         char buf[64],*crow,tbuf[64];
@@ -146,18 +150,18 @@ int collect_resolv_conf(char *resolve_conf)
                         i++;
                 }
                 *(tbuf+i)=0;
-                store_ns(tbuf);
+                store_ns(tbuf, nsbuf, ns_count);
                 i=0;
         }
         if (fclose(erc)!=0) {
                 error("In collect_resolv_conf: closing resolv.conf -> %s",strerror(errno));
                 return -1;
         }
-        if (!_andns_ns_count_) {
+        if (!(*ns_count)) {
                 error("In collect_resolv_conf: no dns server was found.");
                 return -1;
         }
-        return 0;
+        return *ns_count;
 }
 
 /*
@@ -178,11 +182,16 @@ int andns_init(int restricted, char *resolv_conf)
 
 	memset(msg,0,(INET_ADDRSTRLEN+2)*MAXNSSERVERS);
 
-        if ((res=collect_resolv_conf(resolv_conf))==-1) {
+	res=collect_resolv_conf(resolv_conf, _andns_ns_, &_andns_ns_count_);
+        if (res == -1) {
                 debug(DBG_NORMAL, "ALERT: DNS forwarding disable");
                 _dns_forwarding_=0;
                 return -1;
         }
+
+	/* 
+	 * Debug message 
+	 */
         for (i=0;i<_andns_ns_count_;i++) {
 		saddr=_andns_ns_+i;
                 if(inet_ntop(saddr->sin_family,(void*)&((saddr)->sin_addr),buf,INET_ADDRSTRLEN)) {
@@ -191,8 +200,8 @@ int andns_init(int restricted, char *resolv_conf)
 		} else 
 			error("In andns_init: error converting sockaddr -> %s.",strerror(errno));
 	}
-	
 	debug(DBG_NORMAL, "Andns init: DNS query inet-related will be forwarded to: %s",msg);
+	
 	_dns_forwarding_=_andns_ns_count_?1:0;
         return 0;
 }

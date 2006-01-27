@@ -90,9 +90,9 @@ int andna_save_caches(void)
 }
 
 /*
- * andna_resolvconf_init: modifies /etc/resolv.conf. See add_resolv_conf().
+ * andna_resolvconf_modify: modifies /etc/resolv.conf. See add_resolv_conf().
  */
-void andna_resolvconf_init(void)
+void andna_resolvconf_modify(void)
 {
 	int ret;
 	char *my_nameserv;
@@ -109,9 +109,19 @@ void andna_resolvconf_init(void)
 		loginfo("Modification of /etc/resolv.conf is disabled: do it by yourself.");
 }
 
-void andna_resolvconf_close(void)
+void andna_resolvconf_restore(void)
 {
 	char *my_nameserv;
+	struct sockaddr_in nsbuf[MAXNSSERVERS];
+	uint8_t nscount=0;
+
+	/* 
+	 * If there are valid nameserver in /etc/resolv.conf (excluding
+	 * "127.0.0.1", do not restore the backup. Probably /etc/resolv.conf
+	 * has been edited manually. Damn you, user! Why can't we code you ;)
+	 */
+	if(collect_resolv_conf(ETC_RESOLV_CONF, nsbuf, &nscount) != -1)
+		return;
 
 	my_nameserv = my_family == AF_INET ? MY_NAMESERV : MY_NAMESERV_IPV6;
 	del_resolv_conf(my_nameserv, ETC_RESOLV_CONF);
@@ -151,13 +161,13 @@ void andna_init(void)
 	memset(last_counter_pkt_id, 0, sizeof(int)*ANDNA_MAX_FLOODS);
 	memset(last_spread_acache_pkt_id, 0, sizeof(int)*ANDNA_MAX_FLOODS);
 
-	andna_resolvconf_init();
+	andna_resolvconf_modify();
 }
 
 void andna_close(void)
 {
 	if(!server_opt.disable_resolvconf)
-		andna_resolvconf_close();
+		andna_resolvconf_restore();
 }
 
 /*

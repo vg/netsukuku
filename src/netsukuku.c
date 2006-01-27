@@ -455,6 +455,10 @@ void init_netsukuku(char **argv)
 				me.cur_ifs, &me.cur_ifs_n) < 0)
 		fatal("Cannot initialize any network interfaces");
 
+	if(!server_opt.disable_resolvconf)
+		/* Restore resolv.conf if our backup is still there */
+		andna_resolvconf_restore();
+
 	/*
 	 * Initialize the Internet gateway stuff
 	 */

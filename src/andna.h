@@ -197,8 +197,8 @@ int andna_save_caches(void);
 
 void andna_init(void);
 void andna_close(void);
-void andna_resolvconf_init(void);
-void andna_resolvconf_close(void);
+void andna_resolvconf_modify(void);
+void andna_resolvconf_restore(void);
 
 int andna_register_hname(lcl_cache *alcl);
 int andna_recv_reg_rq(PACKET rpkt);

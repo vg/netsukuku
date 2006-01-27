@@ -28,14 +28,14 @@
 #include "andns.h"
 #include "andna_fake.h" */
 
-/* Globals */
+#define MAXNSSERVERS 3
 
+/* Globals */
 
 
 // Functions
 void char_print(char *buf, int len);
-int store_ns(char *ns);
-int collect_resolv_conf();
+int collect_resolv_conf(char *resolve_conf, struct sockaddr_in *nsbuf, uint8_t *ns_count);
 int andns_init(int restricted, char *resolv_conf);
 char* andns_rslv(char *msg,int msglen, char *answer_buf, int *answ_len);
 int ns_general_send(char *msg,int msglen,char *answer,int *anslen);
