@@ -24,6 +24,7 @@
 #define MY_NAMESERV		"nameserver 127.0.0.1"
 #define MY_NAMESERV_IPV6	"nameserver ::1"
 #define ETC_RESOLV_CONF		"/etc/resolv.conf"
+#define ETC_RESOLV_CONF_BAK	"/etc/resolv.conf.bak"
 
 /* How many different andna pkt can be flooded simultaneusly */
 #define ANDNA_MAX_FLOODS	(ANDNA_MAX_QUEUE*3+1) 

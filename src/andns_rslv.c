@@ -165,8 +165,9 @@ int collect_resolv_conf(char *resolve_conf)
  * This function must be called before all.
  * Sets the default realm for domain name resolution
  * and stores infos about nameservers for dns query.
+ * On error -1 is returned.
  */
-void andns_init(int restricted, char *resolv_conf)
+int andns_init(int restricted, char *resolv_conf)
 {
         int i,res;
         char msg[(INET_ADDRSTRLEN+2)*MAXNSSERVERS];
@@ -181,7 +182,7 @@ void andns_init(int restricted, char *resolv_conf)
         if ((res=collect_resolv_conf(resolv_conf))==-1) {
                 loginfo("ALERT: DNS forwarding disable");
                 _dns_forwarding_=0;
-                return;
+                return -1;
         }
         for (i=0;i<_andns_ns_count_;i++) {
 		saddr=_andns_ns_+i;
@@ -195,7 +196,7 @@ void andns_init(int restricted, char *resolv_conf)
 					
         loginfo("Andns init: DNS query inet-related will be forwarded to: %s",msg);
 	_dns_forwarding_=_andns_ns_count_?1:0;
-        return;
+        return 0;
 }
 
 /*

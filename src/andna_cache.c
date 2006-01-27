@@ -1443,10 +1443,11 @@ int load_hostnames(char *file, lcl_cache **old_alcl_head, int *old_alcl_counter)
 int add_resolv_conf(char *hname, char *file)
 {
 	FILE *fin=0,		/* `file' */
+	     *fin_bak=0,	/* `file'.bak */
 	     *fout=0,		/* The replaced `file' */
 	     *fout_back=0;	/* The backup of `file' */
 	     
-	char *buf=0, *file_bk=0;
+	char *buf=0, *p, *file_bk=0;
 	size_t buf_sz;
 	int ret=0;
 
@@ -1459,6 +1460,13 @@ int add_resolv_conf(char *hname, char *file)
 		ERROR_FINISH(ret, -1, finish);
 	}
 
+	/* Prepare the name of the backup file */
+	file_bk=xmalloc(strlen(file) + strlen(".bak") + 1);
+	*file_bk=0;
+	strcpy(file_bk, file);
+	strcat(file_bk, ".bak");
+	
+reread_fin:
 	fseek(fin, 0, SEEK_END);
 	buf_sz=ftell(fin);
 	rewind(fin);
@@ -1471,19 +1479,32 @@ int add_resolv_conf(char *hname, char *file)
 	}
 
 	/* 
-	 * If there is already the `hname' string in the first line don't do
-	 * anything.
+	 * If there is already the `hname' string in the first line, try to
+	 * read `file'.bak, if it doesn't exist do nothing.
 	 */
-	if(buf_sz-1 >= strlen(hname) && !strncmp(buf, hname, strlen(hname)))
-		goto finish;
+	if(buf_sz-1 >= strlen(hname) && !strncmp(buf, hname, strlen(hname))) {
+		if(fin == fin_bak) {
+			/*
+			 * We've already read `fin_bak', and it has
+			 * the `hname' string in its first line too. Stop it.
+			 */
+			goto finish;
+		}
+		
+		debug(DBG_NORMAL, "add_resolv_conf: Reading %s instead", 
+				file_bk);
+		if(!(fin_bak=fopen(file_bk, "r")))
+			goto finish;
+		
+		fclose(fin);
+		fin=fin_bak;
+		
+		goto reread_fin;
+	}
 	
 	/*
 	 * Backup `file' in `file'.bak
 	 */
-	file_bk=xmalloc(strlen(file) + strlen(".bak") + 1);
-	*file_bk=0;
-	strcpy(file_bk, file);
-	strcat(file_bk, ".bak");
 	if(!(fout_back=fopen(file_bk, "w"))) {
 		error("add_resolv_conf: cannot create a backup copy of %s in %s: %s", file,
 			file_bk, strerror(errno));
@@ -1507,7 +1528,21 @@ int add_resolv_conf(char *hname, char *file)
 		ERROR_FINISH(ret, -1, finish);
 	}
 	fprintf(fout, "%s\n", hname);
-	fwrite(buf, buf_sz, 1, fout);
+	p=buf;
+	while(*p) {
+		if(*p != '#')
+			fprintf(fout, "#");
+		while(*p) { 
+			fprintf(fout, "%c", *p);
+			if(*p == '\n')
+				break;
+			p++;
+		}
+		if(!*p)
+			break;
+		p++;
+	}
+	/*fwrite(buf, buf_sz, 1, fout);*/
 	
 finish:
 	if(buf)

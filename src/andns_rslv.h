@@ -36,7 +36,7 @@
 void char_print(char *buf, int len);
 int store_ns(char *ns);
 int collect_resolv_conf();
-void andns_init(int restricted, char *resolv_conf);
+int andns_init(int restricted, char *resolv_conf);
 char* andns_rslv(char *msg,int msglen, char *answer_buf, int *answ_len);
 int ns_general_send(char *msg,int msglen,char *answer,int *anslen);
 int ns_send(char *msg,int msglen, char *answer,int *anslen,struct sockaddr_in *ns,socklen_t nslen);
