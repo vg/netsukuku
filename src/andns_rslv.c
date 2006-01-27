@@ -491,7 +491,15 @@ close_return:
 	close(s);
 	return -1;
 }
-
+/*
+ * His goal is trivial.
+ * DO NOT USE suffixes query, i.e. query with ".INT" or ".NTK".
+ * NXDOMAIN otherwise.
+ *
+ * Returns:
+ * 	-1 on error
+ * 	o if OK
+ */
 int andns_gethostbyname(char *hname, inet_prefix *ip)
 {
 	dns_pkt *dp;
