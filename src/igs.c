@@ -327,10 +327,10 @@ void init_internet_gateway_search(void)
 		memcpy(&server_opt.inet_gw, &new_gw, sizeof(inet_prefix));
 	}
 	
-	loginfo("Using \"%s\":%s as your first Internet gateway.", 
+	loginfo("Using \"%s dev %s\" as your first Internet gateway.", 
 			inet_to_str(server_opt.inet_gw), server_opt.inet_gw_dev);
 	if(rt_replace_def_gw(server_opt.inet_gw_dev, server_opt.inet_gw))
-		fatal("Cannot set the default gw to %s:%s",
+		fatal("Cannot set the default gw to %s %s",
 				inet_to_str(server_opt.inet_gw),
 				server_opt.inet_gw_dev);
 	active_gws++;
@@ -358,7 +358,8 @@ void init_internet_gateway_search(void)
 				      "  Internet connection");
 		}
 
-	internet_hosts_to_ip();
+	if(!server_opt.disable_andna)
+		internet_hosts_to_ip();
 	loginfo("Launching the first ping to the Internet hosts");
 	me.inet_connected=igw_check_inet_conn();
 	if(me.inet_connected)
