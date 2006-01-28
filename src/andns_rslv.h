@@ -29,11 +29,12 @@
 #include "andna_fake.h" */
 
 #define MAXNSSERVERS 3
+#define DNS_REPLY_TIMEOUT	10	/* seconds */
 
-/* Globals */
 
-
-// Functions
+/*
+ * Functions
+ */
 void char_print(char *buf, int len);
 int collect_resolv_conf(char *resolve_conf, struct sockaddr_in *nsbuf, uint8_t *ns_count);
 int andns_init(int restricted, char *resolv_conf);

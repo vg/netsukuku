@@ -116,6 +116,7 @@ int get_free_nodes(inet_prefix to, interface *dev,
 	
 	pkt_addto(&pkt, &to);
 	pkt_add_dev(&pkt, dev, 1);
+	pkt_addtimeout(&pkt, HOOK_RQ_TIMEOUT, 1, 0);
 	
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_FREE_NODES), ntop);
 	err=send_rq(&pkt, 0, GET_FREE_NODES, 0, PUT_FREE_NODES, 1, &rpkt);
@@ -299,6 +300,7 @@ int get_qspn_round(inet_prefix to, interface *dev, struct timeval to_rtt,
 	ntop=inet_to_str(to);
 	
 	pkt_addto(&pkt, &to);
+	pkt_addtimeout(&pkt, HOOK_RQ_TIMEOUT, 1, 0);
 	
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_QSPN_ROUND), ntop);
 	pkt_add_dev(&pkt, dev, 1);
@@ -479,6 +481,7 @@ map_gnode **get_ext_map(inet_prefix to, interface *dev, quadro_group *new_quadg)
 	
 	pkt_addto(&pkt, &to);
 	pkt_add_dev(&pkt, dev, 1);
+	pkt_addtimeout(&pkt, HOOK_RQ_TIMEOUT, 1, 0);
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_EXT_MAP), ntop);
 	
 	err=send_rq(&pkt, 0, GET_EXT_MAP, 0, PUT_EXT_MAP, 1, &rpkt);
@@ -550,6 +553,8 @@ map_node *get_int_map(inet_prefix to, interface *dev, map_node **new_root)
 	
 	pkt_addto(&pkt, &to);
 	pkt_add_dev(&pkt, dev, 1);
+	pkt_addtimeout(&pkt, HOOK_RQ_TIMEOUT, 1, 0);
+
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_INT_MAP), ntop);
 	err=send_rq(&pkt, 0, GET_INT_MAP, 0, PUT_INT_MAP, 1, &rpkt);
 	if(err==-1) {
@@ -625,6 +630,8 @@ map_bnode **get_bnode_map(inet_prefix to, interface *dev, u_int **bmap_nodes)
 	
 	pkt_addto(&pkt, &to);
 	pkt_add_dev(&pkt, dev, 1);
+	pkt_addtimeout(&pkt, HOOK_RQ_TIMEOUT, 1, 0);
+
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_BNODE_MAP), ntop);
 	err=send_rq(&pkt, 0, GET_BNODE_MAP, 0, PUT_BNODE_MAP, 1, &rpkt);
 	if(err==-1) {
@@ -702,6 +709,8 @@ inet_gw **get_internet_gws(inet_prefix to, interface *dev, int **igws_counter)
 	
 	pkt_addto(&pkt, &to);
 	pkt_add_dev(&pkt, dev, 1);
+	pkt_addtimeout(&pkt, HOOK_RQ_TIMEOUT, 1, 0);
+
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_INTERNET_GWS), ntop);
 	err=send_rq(&pkt, 0, GET_INTERNET_GWS, 0, PUT_INTERNET_GWS, 1, &rpkt);
 	if(err==-1) {

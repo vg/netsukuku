@@ -477,7 +477,8 @@ int ns_send(char *msg,int msglen, char *answer,int *anslen,struct sockaddr_in *n
                 error("In ns_send. Pkt not forwarded. %s",strerror(errno));
 		goto close_return;
         }
-        len=inet_recv(s,(void*)answer,DNS_MAX_SZ,0);
+	
+        len=inet_recv_timeout(s,(void*)answer,DNS_MAX_SZ,0, DNS_REPLY_TIMEOUT);
         if (len==-1) {
                 error("In ns_send. Pkt not received.");
 		goto close_return;
@@ -496,7 +497,7 @@ close_return:
  *
  * Returns:
  * 	-1 on error
- * 	o if OK
+ * 	0 if OK
  */
 int andns_gethostbyname(char *hname, inet_prefix *ip)
 {

@@ -36,6 +36,7 @@ interface cur_ifs[MAX_INTERFACES];
 int cur_ifs_n;
 
 /*
+ * pkts_init:
  * Initialize the vital organs of the pkts.c's functions.
  * `ifs' is the array which keeps all the the `ifs_n'# network 
  * interface that will be used.
@@ -53,7 +54,9 @@ void pkts_init(interface *ifs, int ifs_n, int queue_init)
 	op_filter_reset(OP_FILTER_ALLOW);
 }
 
-/* * * Handy functions to build the PACKET * * */
+/* 
+ * * * Handy functions to build the PACKET * * 
+ */
 void pkt_addfrom(PACKET *pkt, inet_prefix *from)
 {
 	if(!from)
@@ -95,6 +98,15 @@ void pkt_addflags(PACKET *pkt, int flags)
 		pkt->flags=flags;
 }
 
+void pkt_addtimeout(PACKET *pkt, u_int timeout, int recv, int send)
+{
+	pkt->timeout=timeout;
+	if(recv)
+		pkt->pkt_flags|=PKT_RECV_TIMEOUT;
+	if(send)
+		pkt->pkt_flags|=PKT_SEND_TIMEOUT;
+}
+
 void pkt_addhdr(PACKET *pkt, pkt_hdr *hdr)
 {
 	if(!hdr)
@@ -109,8 +121,11 @@ void pkt_addmsg(PACKET *pkt, char *msg)
 }
 /* * * End of handy stupid functions (^_+) * * */
 
-/* pkt_clear: blanks the entire PACKET struct, leaving intact only `hdr' 
- * and `msg' */
+
+/* 
+ * pkt_clear: blanks the entire PACKET struct, leaving intact only `hdr' 
+ * and `msg' 
+ */
 void pkt_clear(PACKET *pkt)
 {
 	pkt_addfrom(pkt, 0);
@@ -191,12 +206,22 @@ ssize_t pkt_send(PACKET *pkt)
 			ERROR_FINISH(ret, -1, finish);
 		}
 		
-		ret=inet_sendto(pkt->sk, buf, PACKET_SZ(pkt->hdr.sz), 
+		if(pkt->pkt_flags & PKT_SEND_TIMEOUT)
+			ret=inet_sendto_timeout(pkt->sk, buf, 
+					PACKET_SZ(pkt->hdr.sz), pkt->flags, to,
+					tolen, pkt->timeout);
+		else
+			ret=inet_sendto(pkt->sk, buf, PACKET_SZ(pkt->hdr.sz),
 				pkt->flags, to, tolen);
 
-	} else if(pkt->sk_type==SKT_TCP)
-		ret=inet_send(pkt->sk, buf, PACKET_SZ(pkt->hdr.sz), pkt->flags);
-	else
+	} else if(pkt->sk_type==SKT_TCP) {
+		if(pkt->pkt_flags & PKT_SEND_TIMEOUT)
+			ret=inet_send_timeout(pkt->sk, buf, PACKET_SZ(pkt->hdr.sz),
+					pkt->flags, pkt->timeout);
+		else
+			ret=inet_send(pkt->sk, buf, PACKET_SZ(pkt->hdr.sz), 
+					pkt->flags);
+	} else
 		fatal("Unkown socket_type. Something's very wrong!! Be aware");
 
 finish:
@@ -226,8 +251,13 @@ ssize_t pkt_recv(PACKET *pkt)
 		}
 
 		/* we get the whole pkt, */
-		err=inet_recvfrom(pkt->sk, buf, sizeof(pkt_hdr)+MAXMSGSZ, 
-				pkt->flags, &from, &fromlen);
+		if(pkt->pkt_flags & PKT_RECV_TIMEOUT)
+		    err=inet_recvfrom_timeout(pkt->sk, buf, PACKET_SZ(MAXMSGSZ),
+				    pkt->flags, &from, &fromlen, pkt->timeout);
+		else
+		    err=inet_recvfrom(pkt->sk, buf, PACKET_SZ(MAXMSGSZ), 
+				    pkt->flags, &from, &fromlen);
+
 		if(err < sizeof(pkt_hdr)) {
 			debug(DBG_NOISE, "inet_recvfrom() of the hdr aborted!");
 			return -1;
@@ -257,7 +287,12 @@ ssize_t pkt_recv(PACKET *pkt)
 		}
 	} else if(pkt->sk_type==SKT_TCP) {
 		/*we get the hdr...*/
-		err=inet_recv(pkt->sk, &pkt->hdr, sizeof(pkt_hdr), pkt->flags);
+		if(pkt->pkt_flags & PKT_RECV_TIMEOUT)
+			err=inet_recv_timeout(pkt->sk, &pkt->hdr, sizeof(pkt_hdr),
+					pkt->flags, pkt->timeout);
+		else
+			err=inet_recv(pkt->sk, &pkt->hdr, sizeof(pkt_hdr), 
+					pkt->flags);
 		if(err != sizeof(pkt_hdr)) {
 			/*
 			debug(DBG_NOISE, "inet_recv() of the hdr aborted. (connection closed?)");
@@ -275,9 +310,18 @@ ssize_t pkt_recv(PACKET *pkt)
 		if(pkt->hdr.sz) {
 			/*let's get the body*/
 			pkt->msg=xmalloc(pkt->hdr.sz);
-			err=inet_recv(pkt->sk, pkt->msg, pkt->hdr.sz, pkt->flags);
+			
+			if(pkt->pkt_flags & PKT_RECV_TIMEOUT)
+				err=inet_recv_timeout(pkt->sk, pkt->msg, 
+						pkt->hdr.sz, pkt->flags,
+						pkt->timeout);
+			else
+				err=inet_recv(pkt->sk, pkt->msg, pkt->hdr.sz, 
+						pkt->flags);
+
 			if(err != pkt->hdr.sz) {
-				debug(DBG_NOISE, "Cannot inet_recv() the pkt's body");
+				debug(DBG_NOISE, ERROR_MSG, "Cannot recv the "
+						"pkt's body", ERROR_FUNC);
 				return -1;
 			}
 		}
@@ -442,7 +486,7 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 		else if(pkt->sk_type==SKT_BCAST) {
 			if(!pkt->dev)
 				fatal(ERROR_MSG "cannot broadcast the packet: "
-						"device not specified", ERROR_POS);
+						"device not specified", ERROR_FUNC);
 			pkt->sk=new_bcast_conn(&pkt->to, pkt->port, pkt->dev->dev_idx);
 		} else
 			fatal("Unkown socket_type. Something's very wrong!! Be aware");
@@ -471,6 +515,8 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 		pkt_addport(rpkt, pkt->port);
 		pkt_addsk(rpkt, pkt->to.family, pkt->sk, pkt->sk_type);
 		pkt_addflags(rpkt, MSG_WAITALL);
+		pkt_addtimeout(rpkt, pkt->timeout, pkt->pkt_flags&PKT_RECV_TIMEOUT,
+				pkt->pkt_flags&PKT_SEND_TIMEOUT); 
 		
 		debug(DBG_NOISE, "Receiving reply for the %s request"
 				" (id 0x%x)", rq_str, pkt->hdr.id);

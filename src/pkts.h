@@ -37,6 +37,8 @@
 
 /* Pkt.pkt_flags flags */
 #define PKT_BIND_DEV		1	/* Bind the pkt.sk socket to pkt.dev */
+#define PKT_RECV_TIMEOUT	(1<<1)
+#define PKT_SEND_TIMEOUT	(1<<2)
 
 /* Pkt.hdr flags */
 #define SEND_ACK		1
@@ -106,8 +108,15 @@ typedef struct
 	int 		sk;
 	char 		sk_type;
 	u_short 	port;
+
 	u_char		pkt_flags;	/*Flags for this PACKET*/
 	int 		flags;		/*Flags used by send/recv*/
+
+	u_int		timeout;	/*After `timeout' seconds give up the
+					  send/recv of the packet. 
+					  The PKT_[RECV/SEND]_TIMEOUT flags are
+					  used to determine its scope (send, 
+					  recv or both).*/
 
 	/* Body of the packet */
 	pkt_hdr 	hdr;
@@ -191,6 +200,7 @@ void pkt_add_dev(PACKET *pkt, interface *dev, int bind_the_socket);
 void pkt_addsk(PACKET *pkt, int family, int sk, int sk_type);
 void pkt_addport(PACKET *pkt, u_short port);
 void pkt_addflags(PACKET *pkt, int flags);
+void pkt_addtimeout(PACKET *pkt, u_int timeout, int recv, int send);
 void pkt_addhdr(PACKET *pkt, pkt_hdr *hdr);
 void pkt_addmsg(PACKET *pkt, char *msg);
 void pkt_copy(PACKET *dst, PACKET *src);

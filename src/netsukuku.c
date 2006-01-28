@@ -459,6 +459,12 @@ void init_netsukuku(char **argv)
 		/* Restore resolv.conf if our backup is still there */
 		andna_resolvconf_restore();
 
+	/* 
+	 * ANDNA init
+	 */
+	if(!server_opt.disable_andna)
+		andna_init();
+
 	/*
 	 * Initialize the Internet gateway stuff
 	 */
@@ -471,12 +477,6 @@ void init_netsukuku(char **argv)
 	qspn_init(FAMILY_LVLS);
 
 	me.cur_erc=e_rnode_init(&me.cur_erc_counter);
-
-	/* 
-	 * ANDNA init
-	 */
-	if(!server_opt.disable_andna)
-		andna_init();
 
 	/* Radar init */
 	rq_wait_idx_init(rq_wait_idx);
@@ -661,21 +661,21 @@ int main(int argc, char **argv)
 	pthread_mutex_init(&udp_daemon_lock, 0);
 	pthread_mutex_init(&tcp_daemon_lock, 0);
 
-	debug(DBG_SOFT,   "Evocating the netsukuku udp daemon.");
+	debug(DBG_SOFT,   "Evoking the netsukuku udp daemon.");
 	ud_argv.port=ntk_udp_port;
 	pthread_mutex_lock(&udp_daemon_lock);
 	pthread_create(&daemon_udp_thread, &t_attr, udp_daemon, (void *)&ud_argv);
 	pthread_mutex_lock(&udp_daemon_lock);
 	pthread_mutex_unlock(&udp_daemon_lock);
 
-	debug(DBG_SOFT,   "Evocating the netsukuku udp radar daemon.");
+	debug(DBG_SOFT,   "Evoking the netsukuku udp radar daemon.");
 	ud_argv.port=ntk_udp_radar_port;
 	pthread_mutex_lock(&udp_daemon_lock);
 	pthread_create(&daemon_udp_thread, &t_attr, udp_daemon, (void *)&ud_argv);
 	pthread_mutex_lock(&udp_daemon_lock);
 	pthread_mutex_unlock(&udp_daemon_lock);
 	
-	debug(DBG_SOFT,   "Evocating the netsukuku tcp daemon.");
+	debug(DBG_SOFT,   "Evoking the netsukuku tcp daemon.");
 	*port=ntk_tcp_port;
 	pthread_mutex_lock(&tcp_daemon_lock);
 	pthread_create(&daemon_tcp_thread, &t_attr, tcp_daemon, (void *)port);
@@ -695,12 +695,12 @@ int main(int argc, char **argv)
 	xfree(port);
 	
 	if(server_opt.restricted) {
-		debug(DBG_SOFT, "Evocating the Internet gateways pinger daemon");
+		debug(DBG_SOFT, "Evoking the Internet gateways pinger daemon");
 		pthread_create(&ping_igw_thread, &t_attr, igw_monitor_igws_t, 0);
 	}
 
 	/* We use this same process for the radar_daemon. */
-	debug(DBG_SOFT,   "Evocating radar daemon.");
+	debug(DBG_SOFT,   "Evoking radar daemon.");
 	radar_daemon(0);
 
 	/* Not reached, hahaha */

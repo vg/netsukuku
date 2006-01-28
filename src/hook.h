@@ -33,6 +33,8 @@
 #define HOOKING_IP  0x100000a      /* 10.0.0.1  (in network order) */
 #define HOOKING_IP6 0xc0fe	   /* fec0:: */
 
+#define HOOK_RQ_TIMEOUT		8  /* seconds */
+
 /*
  * * *  Global vars  * * *
  */

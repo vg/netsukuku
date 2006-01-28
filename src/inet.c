@@ -854,6 +854,33 @@ ssize_t inet_recv(int s, void *buf, size_t len, int flags)
 	return err;
 }
 
+/* 
+ * inet_recv_timeout: is the same as inet_recv() but if no reply is received
+ * for `timeout' seconds it returns -1.
+ */
+ssize_t inet_recv_timeout(int s, void *buf, size_t len, int flags, u_int timeout)
+{
+	struct timeval timeout_t;
+	fd_set fdset;
+	ssize_t err;
+	int ret;
+
+	MILLISEC_TO_TV(timeout*1000, timeout_t);
+
+	FD_ZERO(&fdset);
+	FD_SET(s, &fdset);
+
+	ret = select(s+1, &fdset, NULL, NULL, &timeout_t);
+	if (ret == -1) {
+		error(ERROR_MSG "select error: %s", ERROR_FUNC, strerror(errno));
+		return err;
+	}
+
+	if(FD_ISSET(s, &fdset))
+		return inet_recv(s, buf, len, flags);
+	return -1;
+}
+
 ssize_t inet_recvfrom(int s, void *buf, size_t len, int flags, struct sockaddr *from, socklen_t *fromlen)
 {
 	ssize_t err;
@@ -875,7 +902,7 @@ ssize_t inet_recvfrom(int s, void *buf, size_t len, int flags, struct sockaddr *
 				}
 
 				if(FD_ISSET(s, &fdset))
-					inet_recv(s, buf, len, flags);
+					inet_recvfrom(s, buf, len, flags, from, fromlen);
 				break;
 
 			default:
@@ -887,6 +914,34 @@ ssize_t inet_recvfrom(int s, void *buf, size_t len, int flags, struct sockaddr *
 	return err;
 }
 
+/* 
+ * inet_recvfrom_timeout: is the same as inet_recvfrom() but if no reply is
+ * received for `timeout' seconds it returns -1.
+ */
+ssize_t inet_recvfrom_timeout(int s, void *buf, size_t len, int flags, 
+		struct sockaddr *from, socklen_t *fromlen, u_int timeout)
+{
+	struct timeval timeout_t;
+	fd_set fdset;
+	ssize_t err;
+	int ret;
+
+	MILLISEC_TO_TV(timeout*1000, timeout_t);
+
+	FD_ZERO(&fdset);
+	FD_SET(s, &fdset);
+
+	ret = select(s+1, &fdset, NULL, NULL, &timeout_t);
+	if (ret == -1) {
+		error(ERROR_MSG "select error: %s", ERROR_FUNC, strerror(errno));
+		return err;
+	}
+
+	if(FD_ISSET(s, &fdset))
+		return inet_recvfrom(s, buf, len, flags, from, fromlen);
+	
+	return -1;
+}
 			
 ssize_t inet_send(int s, const void *msg, size_t len, int flags)
 {
@@ -927,6 +982,36 @@ ssize_t inet_send(int s, const void *msg, size_t len, int flags)
 	return err;
 }
 
+/*
+ * inet_send_timeout: is the same as inet_send() but if the packet isn't sent
+ * in `timeout' seconds it timeouts and returns -1.
+ */
+ssize_t inet_send_timeout(int s, const void *msg, size_t len, int flags, u_int timeout)
+{
+	struct timeval timeout_t;
+	ssize_t err;
+	fd_set fdset;
+	int ret;
+
+	MILLISEC_TO_TV(timeout*1000, timeout_t);
+	
+	FD_ZERO(&fdset);
+	FD_SET(s, &fdset);
+
+	ret = select(s+1, NULL, &fdset, NULL, &timeout_t);
+
+	if (ret == -1) {
+		error(ERROR_MSG "select error: %s", ERROR_FUNC, strerror(errno));
+		return err;
+	}
+
+	if(FD_ISSET(s, &fdset))
+		return inet_send(s, msg, len, flags);
+	return -1;
+}
+
+
+
 ssize_t inet_sendto(int s, const void *msg, size_t len, int flags, const struct sockaddr *to, socklen_t tolen)
 {
 	ssize_t err;
@@ -964,6 +1049,36 @@ ssize_t inet_sendto(int s, const void *msg, size_t len, int flags, const struct 
 	}
 	return err;
 }
+
+/*
+ * inet_sendto_timeout: is the same as inet_sendto() but if the packet isn't sent
+ * in `timeout' seconds it timeouts and returns -1.
+ */
+ssize_t inet_sendto_timeout(int s, const void *msg, size_t len, int flags, 
+		const struct sockaddr *to, socklen_t tolen, u_int timeout)
+{
+	struct timeval timeout_t;
+	ssize_t err;
+	fd_set fdset;
+	int ret;
+
+	MILLISEC_TO_TV(timeout*1000, timeout_t);
+	
+	FD_ZERO(&fdset);
+	FD_SET(s, &fdset);
+
+	ret = select(s+1, NULL, &fdset, NULL, &timeout_t);
+
+	if (ret == -1) {
+		error(ERROR_MSG "select error: %s", ERROR_FUNC, strerror(errno));
+		return err;
+	}
+
+	if(FD_ISSET(s, &fdset))
+		return inet_sendto(s, msg, len, flags, to, tolen);
+	return -1;
+}
+
 
 ssize_t inet_sendfile(int out_fd, int in_fd, off_t *offset, size_t count)
 {

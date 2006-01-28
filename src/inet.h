@@ -131,9 +131,17 @@ int new_udp_conn(inet_prefix *host, short port, char *dev);
 int new_bcast_conn(inet_prefix *host, short port, int dev_idx);
 
 ssize_t inet_recv(int s, void *buf, size_t len, int flags);
-ssize_t inet_recvfrom(int s, void *buf, size_t len, int flags, struct sockaddr *from, socklen_t *fromlen);
+ssize_t inet_recvfrom(int s, void *buf, size_t len, int flags, 
+		struct sockaddr *from, socklen_t *fromlen);
+ssize_t inet_recv_timeout(int s, void *buf, size_t len, int flags, u_int timeout);
+ssize_t inet_recvfrom_timeout(int s, void *buf, size_t len, int flags, 
+		struct sockaddr *from, socklen_t *fromlen, u_int timeout);
 ssize_t inet_send(int s, const void *msg, size_t len, int flags);
-ssize_t inet_sendto(int s, const void *msg, size_t len, int flags, const struct sockaddr *to, socklen_t tolen);
+ssize_t inet_sendto(int s, const void *msg, size_t len, int flags, 
+		const struct sockaddr *to, socklen_t tolen);
+ssize_t inet_send_timeout(int s, const void *msg, size_t len, int flags, u_int timeout);
+ssize_t inet_sendto_timeout(int s, const void *msg, size_t len, int flags, 
+		const struct sockaddr *to, socklen_t tolen, u_int timeout);
 ssize_t inet_sendfile(int out_fd, int in_fd, off_t *offset, size_t count);
 
 #endif /*INET_H*/

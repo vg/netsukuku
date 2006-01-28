@@ -33,6 +33,7 @@
 #include "bmap.h"
 #include "qspn.h"
 #include "radar.h"
+#include "andns_rslv.h"
 #include "netsukuku.h"
 #include "route.h"
 #include "iptunnel.h"
@@ -149,6 +150,34 @@ void free_internet_hosts(char **hnames, int hosts)
 			xfree(hnames[i]);
 	if(hnames)
 		xfree(hnames);
+}
+
+/*
+ * internet_hosts_to_ip: replace the hostnames present in
+ * `server_opt.inet_hosts' with IP strings. The IPs are obtained 
+ * with a normal DNS resolution. The hosts which cannot be resolved are
+ * deleted from the `inet_hosts' array.
+ */
+void internet_hosts_to_ip(void)
+{
+	int i;
+
+	for(i=0; i < server_opt.inet_hosts_counter; i++) {
+		inet_prefix ip;
+		
+		if(andns_gethostbyname(server_opt.inet_hosts[i], &ip)) {
+			error("Cannot resolve \"%s\". Check your netsukuku.conf",
+					server_opt.inet_hosts[i]);
+
+			/* remove the hname from `inet_hosts' */
+			xfree(server_opt.inet_hosts[i]);
+			server_opt.inet_hosts[i] = server_opt.inet_hosts[server_opt.inet_hosts_counter-1];
+			server_opt.inet_hosts_counter--;
+		} else {
+			xfree(server_opt.inet_hosts[i]);
+			server_opt.inet_hosts[i]=xstrdup(inet_to_str(ip));
+		}
+	}
 }
 
 void init_igws(inet_gw ***igws, int **igws_counter, int levels)
@@ -329,7 +358,7 @@ void init_internet_gateway_search(void)
 				      "  Internet connection");
 		}
 
-
+	internet_hosts_to_ip();
 	loginfo("Launching the first ping to the Internet hosts");
 	me.inet_connected=igw_check_inet_conn();
 	if(me.inet_connected)
@@ -340,7 +369,7 @@ void init_internet_gateway_search(void)
 		fatal("We are not connected to the Internet, but you want to "
 			"share your connection. Please check your options");
 
-	debug(DBG_SOFT,   "Evocating the Internet ping daemon.");
+	debug(DBG_SOFT,   "Evoking the Internet ping daemon.");
         pthread_attr_init(&t_attr);
         pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
         pthread_create(&ping_thread, &t_attr, igw_check_inet_conn_t, 0);

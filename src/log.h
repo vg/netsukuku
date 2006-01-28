@@ -24,9 +24,11 @@
 /*
  * Use ERROR_MSG and ERROR_POS in this way:
  * 	printf(ERROR_MSG "damn! damn! damn!", ERROR_POS);
+ * 	printf(ERROR_MSG "damn! damn! damn!", ERROR_FUNC);
  */
 #define ERROR_MSG  "%s:%d: "
 #define ERROR_POS  __FILE__, __LINE__
+#define ERROR_FUNC __FUNCTION__, __LINE__
 
 /*Debug levels*/
 #define DBG_NORMAL	1
