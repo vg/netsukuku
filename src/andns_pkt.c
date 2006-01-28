@@ -1106,64 +1106,64 @@ void dp_print(dns_pkt *dp)
         dns_pkt_qst *dpq;
 
         dph=&(dp->pkt_hdr);
-        debug(DBG_NOISE, " ID %d\n",dph->id);
-        debug(DBG_NOISE, " QR %d\n",dph->qr);
-        debug(DBG_NOISE, " opcode %d\n",dph->opcode);
-        debug(DBG_NOISE, " aa %d\n",dph->aa);
-        debug(DBG_NOISE, " tc %d\n",dph->tc);
-        debug(DBG_NOISE, " rd %d\n",dph->rd);
-        debug(DBG_NOISE, " ra %d\n",dph->ra);
-        debug(DBG_NOISE, " z %d\n",dph->z);
-        debug(DBG_NOISE, " rcode %d\n",dph->rcode);
-        debug(DBG_NOISE, " qdcount %d\n",dph->qdcount);
-        debug(DBG_NOISE, " ancount %d\n",dph->ancount);
-        debug(DBG_NOISE, " nscount %d\n",dph->nscount);
-        debug(DBG_NOISE, " arcount %d\n",dph->nscount);
+        debug(DBG_NOISE, " ID %d",dph->id);
+        debug(DBG_NOISE, " QR %d",dph->qr);
+        debug(DBG_NOISE, " opcode %d",dph->opcode);
+        debug(DBG_NOISE, " aa %d",dph->aa);
+        debug(DBG_NOISE, " tc %d",dph->tc);
+        debug(DBG_NOISE, " rd %d",dph->rd);
+        debug(DBG_NOISE, " ra %d",dph->ra);
+        debug(DBG_NOISE, " z %d",dph->z);
+        debug(DBG_NOISE, " rcode %d",dph->rcode);
+        debug(DBG_NOISE, " qdcount %d",dph->qdcount);
+        debug(DBG_NOISE, " ancount %d",dph->ancount);
+        debug(DBG_NOISE, " nscount %d",dph->nscount);
+        debug(DBG_NOISE, " arcount %d",dph->nscount);
 
         dpq=dp->pkt_qst;
 
-        debug(DBG_NOISE, "QUESTION\n");
-        debug(DBG_NOISE, "\tQNAME=%s\n",dpq->qname);
-        debug(DBG_NOISE, "\tQNAME_nopref=%s\n",dpq->qname_nopref);
-        debug(DBG_NOISE, "\tqtype=%d\n",dpq->qtype);
-        debug(DBG_NOISE, "\tqclass=%d\n",dpq->qclass);
+        debug(DBG_NOISE, "QUESTION");
+        debug(DBG_NOISE, "\tQNAME=%s",dpq->qname);
+        debug(DBG_NOISE, "\tQNAME_nopref=%s",dpq->qname_nopref);
+        debug(DBG_NOISE, "\tqtype=%d",dpq->qtype);
+        debug(DBG_NOISE, "\tqclass=%d",dpq->qclass);
         dpa=dp->pkt_answ;
-        debug(DBG_NOISE, "ANSWERS\n");
-        if (!dpa) debug(DBG_NOISE, "Any!\n");
+        debug(DBG_NOISE, "ANSWERS");
+        if (!dpa) debug(DBG_NOISE, "Any!");
         while (dpa) {
-                debug(DBG_NOISE, "\tname %s\n", dpa->name);
-                //debug(DBG_NOISE, "\tname_nopref %s\n", dpa->name_nopref);
-                debug(DBG_NOISE, "\ttype %d\n", dpa->type);
-                debug(DBG_NOISE, "\tclass %d\n", dpa->class);
-                debug(DBG_NOISE, "\tttl %d\n", dpa->ttl);
-                debug(DBG_NOISE, "\trdlength %d\n", dpa->rdlength);
-                debug(DBG_NOISE, "\trdata %s\n", dpa->rdata);
+                debug(DBG_NOISE, "\tname %s", dpa->name);
+                //debug(DBG_NOISE, "\tname_nopref %s", dpa->name_nopref);
+                debug(DBG_NOISE, "\ttype %d", dpa->type);
+                debug(DBG_NOISE, "\tclass %d", dpa->class);
+                debug(DBG_NOISE, "\tttl %d", dpa->ttl);
+                debug(DBG_NOISE, "\trdlength %d", dpa->rdlength);
+                debug(DBG_NOISE, "\trdata %s", dpa->rdata);
                 dpa=dpa->next;
         }
-        debug(DBG_NOISE, "AUTHS\n");
+        debug(DBG_NOISE, "AUTHS");
         dpa=dp->pkt_auth;
-        if (!dpa) debug(DBG_NOISE, "Any!\n");
+        if (!dpa) debug(DBG_NOISE, "Any!");
         while (dpa) {
-                debug(DBG_NOISE, "\tname %s\n", dpa->name);
-                //debug(DBG_NOISE, "\tname_nopref %s\n", dpa->name_nopref);
-                debug(DBG_NOISE, "\ttype %d\n", dpa->type);
-                debug(DBG_NOISE, "\tclass %d\n", dpa->class);
-                debug(DBG_NOISE, "\tttl %d\n", dpa->ttl);
-                debug(DBG_NOISE, "\trdlength %d\n", dpa->rdlength);
-                debug(DBG_NOISE, "\trdata %s\n", dpa->rdata);
+                debug(DBG_NOISE, "\tname %s", dpa->name);
+                //debug(DBG_NOISE, "\tname_nopref %s", dpa->name_nopref);
+                debug(DBG_NOISE, "\ttype %d", dpa->type);
+                debug(DBG_NOISE, "\tclass %d", dpa->class);
+                debug(DBG_NOISE, "\tttl %d", dpa->ttl);
+                debug(DBG_NOISE, "\trdlength %d", dpa->rdlength);
+                debug(DBG_NOISE, "\trdata %s", dpa->rdata);
                 dpa=dpa->next;
         }
-        debug(DBG_NOISE, "ADD\n");
+        debug(DBG_NOISE, "ADD");
         dpa=dp->pkt_add;
-        if (!dpa) debug(DBG_NOISE, "Any!\n");
+        if (!dpa) debug(DBG_NOISE, "Any!");
         while (dpa) {
-                debug(DBG_NOISE, "\tname %s\n", dpa->name);
-                //debug(DBG_NOISE, "\tname_nopref %s\n", dpa->name_nopref);
-                debug(DBG_NOISE, "\ttype %d\n", dpa->type);
-                debug(DBG_NOISE, "\tclass %d\n", dpa->class);
-                debug(DBG_NOISE, "\tttl %d\n", dpa->ttl);
-                debug(DBG_NOISE, "\trdlength %d\n", dpa->rdlength);
-                debug(DBG_NOISE, "\trdata %s\n", dpa->rdata);
+                debug(DBG_NOISE, "\tname %s", dpa->name);
+                //debug(DBG_NOISE, "\tname_nopref %s", dpa->name_nopref);
+                debug(DBG_NOISE, "\ttype %d", dpa->type);
+                debug(DBG_NOISE, "\tclass %d", dpa->class);
+                debug(DBG_NOISE, "\tttl %d", dpa->ttl);
+                debug(DBG_NOISE, "\trdlength %d", dpa->rdlength);
+                debug(DBG_NOISE, "\trdata %s", dpa->rdata);
                 dpa=dpa->next;
         }
 }

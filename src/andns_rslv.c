@@ -438,25 +438,24 @@ char *andns_rslv(char *msg, int msglen,
 }
 	
 /*
- * This function takes a query formulated with
- * the andns protocol and fills the andns_pkt *ap
- * with the answer.
+ * ns_general_send:
+ * This function takes a query formulated with the andns 
+ * protocol and fills the andns_pkt *ap with the answer.
  * The query is a A_TYPED query, i.e. host->ip.
- * On unsuccesful anserw, -1 is returned. 0 Otherwise.
+ * On unsuccesful answer, -1 is returned. 0 Otherwise.
  */
-
 int ns_general_send(char *msg,int msglen,char *answer,int *anslen)
 {
         int res,i;
 
         for (i=0;i<MAXNSSERVERS && i<_andns_ns_count_;i++) {
                 res=ns_send(msg,msglen,answer,anslen,_andns_ns_+i,sizeof(struct sockaddr_in));
-                if (res==-1) continue;
-		else break;
+		
+		if(res != -1)
+			return 0;
         }
-	return res==-1?res:0;
-//        if (res==-1) return -1;
-  //      return 0;
+	
+	return -1;
 }
 
 int ns_send(char *msg,int msglen, char *answer,int *anslen,struct sockaddr_in *ns,socklen_t nslen)
@@ -516,6 +515,7 @@ int andns_gethostbyname(char *hname, inet_prefix *ip)
 
 	dpq=dns_add_qst(dp);
 	strcpy(dpq->qname,hname);
+	strcpy(dpq->qname_nopref,hname);
 	dpq->qtype=T_A;
 	dpq->qclass=C_IN;
 

@@ -23,9 +23,7 @@
 #include "libnetlink.h"
 #include "ll_map.h"
 #include "inet.h"
-#include "request.h"
 #include "endianness.h"
-#include "pkts.h"
 #include "log.h"
 #include "xmalloc.h"
 
