@@ -45,6 +45,7 @@ dns_pkt* create_dns_pkt()
 {
 	dns_pkt *dp;
 	dp=xmalloc(DNS_PKT_SZ);
+	memset(dp,0,DNS_PKT_SZ);
 	dp->pkt_qst=NULL;
 	dp->pkt_answ=NULL;
 	dp->pkt_add=NULL;
