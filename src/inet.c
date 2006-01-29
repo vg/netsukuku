@@ -81,7 +81,7 @@ int inet_setip_raw(inet_prefix *ip, u_int *data, int family)
 		memcpy(ip->data, data, sizeof(ip->data));
 		ip->len=16;
 	} else 
-		return -1;
+		fatal(ERROR_MSG "family not supported", ERROR_POS);
 
 	ip->bits=ip->len<<3; /* bits=len*8 */
 	
@@ -110,7 +110,7 @@ int inet_setip_bcast(inet_prefix *ip, int family)
 		u_int data[MAX_IP_INT]=IPV6_ADDR_BROADCAST;
 		inet_setip(ip, data, family);
 	} else 
-		return -1;
+		fatal(ERROR_MSG "family not supported", ERROR_POS);
 
 	return 0;
 }
@@ -126,7 +126,7 @@ int inet_setip_anyaddr(inet_prefix *ip, int family)
 		struct in6_addr ipv6=IN6ADDR_ANY_INIT;
 		inet_setip(ip, (u_int *)(&ipv6), family);
 	} else 
-		return -1;
+		fatal(ERROR_MSG "family not supported", ERROR_POS);
 
 	return 0;
 }
@@ -143,7 +143,7 @@ int inet_setip_loopback(inet_prefix *ip, int family)
 		u_int data[MAX_IP_INT]=LOOPBACK_IPV6;
 		inet_setip(ip, data, family);
 	} else 
-		return -1;
+		fatal(ERROR_MSG "family not supported", ERROR_POS);
 
 	return 0;
 }
@@ -160,8 +160,23 @@ int inet_setip_localaddr(inet_prefix *ip, int family)
 	} else if(family==AF_INET6) {
 		ip->data[0] = (ip->data[0] & ~0xffff0000)|NTK_PRIVATE_CLASS_MASK_IPV6;
 	} else 
-		return -1;
+		fatal(ERROR_MSG "family not supported", ERROR_POS);
 
+	return 0;
+}
+
+/*
+ * inet_is_ip_local: verifies if `ip' is a local address. If it is 1 is
+ * returned.
+ */
+int inet_is_ip_local(inet_prefix *ip)
+{
+	if(ip->family==AF_INET)
+		return (ip->data[0] & 0xff000000) == NTK_PRIVATE_CLASS_MASK_IPV4;
+	else if(ip->family==AF_INET6)
+		return (ip->data[0] & 0xffff0000) == NTK_PRIVATE_CLASS_MASK_IPV6;
+	else
+		fatal(ERROR_MSG "family not supported", ERROR_POS);
 	return 0;
 }
 
@@ -473,7 +488,7 @@ int inet_to_sockaddr(inet_prefix *ip, u_short port, struct sockaddr *dst,
 		if(dstlen)
 			*dstlen=sizeof(struct sockaddr_in6);
 	} else
-		return -1;
+		fatal(ERROR_MSG "family not supported", ERROR_POS);
 
 	return 0;
 }
@@ -495,7 +510,7 @@ int sockaddr_to_inet(struct sockaddr *ip, inet_prefix *dst, u_short *port)
 	else if(ip->sa_family==AF_INET6)
 		p=(char *)ip->sa_data+sizeof(u_short)+sizeof(int);
 	else
-		return -1;
+		fatal(ERROR_MSG "family not supported", ERROR_POS);
 		
 	inet_setip(dst, (u_int *)p, ip->sa_family);
 
@@ -653,7 +668,8 @@ int set_broadcast_sk(int socket, int family, inet_prefix *host, short port,
 		if(set_multicast_loop_sk(family, socket, 0) < 0)
 			return -1;
 		set_multicast_if(socket, dev_idx);
-	}
+	} else
+		fatal(ERROR_MSG "family not supported", ERROR_POS);
 	
 	/* Let's bind it! */
 	alen = sizeof(saddr_sto);

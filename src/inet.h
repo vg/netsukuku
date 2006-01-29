@@ -99,6 +99,7 @@ int inet_setip_bcast(inet_prefix *ip, int family);
 int inet_setip_anyaddr(inet_prefix *ip, int family);
 int inet_setip_loopback(inet_prefix *ip, int family);
 int inet_setip_localaddr(inet_prefix *ip, int family);
+int inet_is_ip_local(inet_prefix *ip);
 void inet_copy_ipdata(u_int *dst_data, inet_prefix *ip);
 void pack_inet_prefix(inet_prefix *ip, char *pack);
 void unpack_inet_prefix(inet_prefix *ip, char *pack);

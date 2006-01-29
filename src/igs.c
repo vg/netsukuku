@@ -670,11 +670,14 @@ skip_it:
 int igw_ping_igw(inet_gw *igw)
 {
 	inet_prefix ip;
-	const char *ntop;
+	char ntop[INET6_ADDRSTRLEN]="\0";
+	const char *ipstr;
 	
 	inet_setip_raw(&ip, igw->ip, my_family);
-	ntop=inet_to_str(ip);
-	
+	if(!(ipstr=inet_to_str(ip)))
+		return -1;
+			
+	strcpy(ntop, ipstr);
 	return pingthost(ntop, IGW_HOST_PING_TIMEOUT) >= 1 ? 1 : 0;
 }
 
