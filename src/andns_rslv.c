@@ -722,10 +722,13 @@ int d_ptr_resolve(dns_pkt *dp)
 
 	/* 
 	 * If we are in the INET_REALM (restricted mode) and the IP is not a
-	 * local address, forward the query to some nameserver
+	 * local address, forward the query to some nameserver.
+	 * If the IP is a loopback address, don't forward it, andna will
+	 * resolve it, in fact, a reverse query of 127.0.0.X is useful to know
+	 * what hname we've registered.
 	 */
-	if (andns_realm(dp->pkt_qst,NULL)==INET_REALM &&
-			!inet_is_ip_local(&ipres))
+	if (andns_realm(dp->pkt_qst,NULL)==INET_REALM && 
+		!(inet_is_ip_local(&ipres) || LOOPBACK(htonl(ipres.data[0]))))
 		return 1;
 
 	/*

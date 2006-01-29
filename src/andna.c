@@ -1308,7 +1308,7 @@ int andna_reverse_resolve(inet_prefix ip, char ***hostnames)
 
 	/* We have been asked to reverse resolve our same IP */
 	if(!memcmp(to.data, me.cur_ip.data, MAX_IP_SZ) || 
-			LOOPBACK(htonl(to.data[0])))
+		LOOPBACK(htonl(to.data[0])))
 		return lcl_get_registered_hnames(andna_lcl, hostnames);
 	
 	/* Fill the packet and send the request */
@@ -1380,10 +1380,10 @@ int andna_recv_rev_resolve_rq(PACKET rpkt)
 	struct andna_rev_resolve_reply_hdr hdr;
 	int_info reply_iinfo;
 
-	u_short *hnames_sz;
+	u_short *hnames_sz=0;
 	char *buf, *reply_body=0;
 	const char *ntop;
-	int i, e, ret=0, err, hostnames=0;
+	int e, ret=0, err, hostnames=0;
 	
 	lcl_cache *alcl=andna_lcl, *lcl_hnames[ANDNA_MAX_HOSTNAMES];
 
@@ -1413,10 +1413,10 @@ int andna_recv_rev_resolve_rq(PACKET rpkt)
 	hdr.hostnames=hostnames-1;
 	if(hostnames) {
 		hnames_sz=xmalloc(sizeof(u_short) * hostnames);
-		i=0;
+		
 		for(e=0; e<hostnames; e++) {
-			hnames_sz[i++]=strlen(lcl_hnames[e]->hostname)+1;
-			pkt.hdr.sz+=hnames_sz[i];
+			hnames_sz[e]=strlen(lcl_hnames[e]->hostname)+1;
+			pkt.hdr.sz+=hnames_sz[e];
 		}
 	} else {
 		ret=pkt_err(rpkt, E_ANDNA_NO_HNAME, 0);
@@ -1429,6 +1429,7 @@ int andna_recv_rev_resolve_rq(PACKET rpkt)
 	 * Pack all the registered hostnames we have (if any) 
 	 */
 
+	pkt.hdr.sz+=sizeof(u_short) * hostnames;
 	pkt.msg=buf=xmalloc(pkt.hdr.sz);
 	memcpy(buf, &hdr, sizeof(struct andna_rev_resolve_reply_hdr));
 	buf+=sizeof(struct andna_rev_resolve_reply_hdr);
@@ -1438,10 +1439,9 @@ int andna_recv_rev_resolve_rq(PACKET rpkt)
 		memcpy(buf, hnames_sz, sizeof(u_short) * hostnames);
 		buf+=sizeof(u_short) * hostnames;
 		
-		i=0;
 		for(e=0; e<hostnames; e++) {
-			memcpy(buf, lcl_hnames[e]->hostname, hnames_sz[i++]);
-			buf+=hnames_sz[i];
+			memcpy(buf, lcl_hnames[e]->hostname, hnames_sz[e]);
+			buf+=hnames_sz[e];
 		}
 	}
 	
@@ -1460,6 +1460,8 @@ int andna_recv_rev_resolve_rq(PACKET rpkt)
         if(err==-1)
 		ERROR_FINISH(ret, -1, finish);
 finish:
+	if(hnames_sz)
+		xfree(hnames_sz);
 	pkt_free(&pkt, 0);
 	return ret;
 }

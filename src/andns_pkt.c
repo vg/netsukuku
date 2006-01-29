@@ -333,9 +333,9 @@ int swapped_straddr(char *src,char *dst)
                         src=crow+1;
                 }
                 for (i=count-1;i>=0;i--) {
-                        printf("ATom i %s\n", atoms[i]);
+                        /*printf("ATom i %s\n", atoms[i]);*/
                         res=strlen(atoms[i]);
-                        printf("Len is %d\n",res);
+                        /* printf("Len is %d\n",res); */
                         strncpy(dst,atoms[i],res);
                         dst+=res;
                         *dst++=i==0?0:'.';
