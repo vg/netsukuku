@@ -166,7 +166,7 @@ int inet_setip_localaddr(inet_prefix *ip, int family)
 }
 
 /*
- * inet_is_ip_local: verifies if `ip' is a local address. If it is 1 is
+ * inet_is_ip_local: verifies if `ip' is a local address. If it is, 1 is
  * returned.
  */
 int inet_is_ip_local(inet_prefix *ip)

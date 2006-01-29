@@ -708,9 +708,6 @@ int d_ptr_resolve(dns_pkt *dp)
 	int i, res;
 	char addr[INET_ADDRSTRLEN];
 
-	if (andns_realm(dp->pkt_qst,NULL)==INET_REALM)
-		return 1;
-	
 	if (swapped_straddr(dp->pkt_qst->qname_nopref,addr)) {
 		error("In d_ptr_resolve: can not swap address.");
 		(dp->pkt_hdr).rcode=RCODE_EINTRPRT;
@@ -722,11 +719,27 @@ int d_ptr_resolve(dns_pkt *dp)
         	(dp->pkt_hdr).qr=1;
 		return -1;
 	}
+
+	/* 
+	 * If we are in the INET_REALM (restricted mode) and the IP is not a
+	 * local address, forward the query to some nameserver
+	 */
+	if (andns_realm(dp->pkt_qst,NULL)==INET_REALM &&
+			!inet_is_ip_local(&ipres))
+		return 1;
+
+	/*
+	 * Ask ANDNA to reverse resolve the IP 
+	 */
 	if ((res=andna_reverse_resolve(ipres, &hnames))==-1) {
         	(dp->pkt_hdr).rcode=RCODE_ENSDMN;
         	(dp->pkt_hdr).qr=1;
         	return -1;
         }
+
+	/*
+	 * We've got the reply, pack the answer to the DNS query
+	 */
 	for (i=0;i<res;i++) {
 		dpa=DP_ADD_ANSWER(dp);
 		dpa->type=T_PTR;
