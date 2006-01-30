@@ -11,6 +11,8 @@
   
   *  Build and install
   
+  *  Kernel dependencies
+  
   *  How to use it
   
   *  Where to get in touch with us
@@ -119,6 +121,42 @@ If you want to change some scons option to do another installation, (i.e. you
 may want to reinstall it with another MANDIR path), you have to run:
 $ scons --clean
 
+**
+****  Kernel dependencies
+**
+
+On Linux be sure to have the following options set in your kernel .config.
+ 
+	#
+	# Networking options
+	#
+	CONFIG_PACKET=y
+	CONFIG_UNIX=y
+	CONFIG_INET=y
+	CONFIG_IP_MULTICAST=y
+	CONFIG_IP_ADVANCED_ROUTER=y
+	CONFIG_ASK_IP_FIB_HASH=y
+	CONFIG_IP_FIB_HASH=y
+	CONFIG_IP_MULTIPLE_TABLES=y
+	CONFIG_IP_ROUTE_MULTIPATH=y
+	CONFIG_NET_IPIP=y
+	CONFIG_NETFILTER=y
+
+	#
+	# IP: Netfilter Configuration
+	#
+	CONFIG_IP_NF_CONNTRACK=y
+	CONFIG_IP_NF_FTP=y
+	CONFIG_IP_NF_IPTABLES=y
+	CONFIG_IP_NF_FILTER=y
+	CONFIG_IP_NF_TARGET_REJECT=y
+	CONFIG_IP_NF_NAT=y
+	CONFIG_IP_NF_NAT_NEEDED=y
+	CONFIG_IP_NF_TARGET_MASQUERADE=y
+	CONFIG_IP_NF_NAT_FTP=y
+
+If you are using modules you have to load them before launching the daemon.
+
 
 **
 ****  How to use it
@@ -149,7 +187,7 @@ option.
 ****  Where to get in touch with us
 **
 
-Subcrive to the netsukuku mailing to get help, be updated on the latest news
+Subscrive to the netsukuku mailing to get help, be updated on the latest news
 and discuss on its development.
 
 To subscribe to the list, send a message to:

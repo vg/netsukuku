@@ -1,6 +1,8 @@
 		[HIGH PRIORITY] 
 
 - ANDNA .NTK doc in man/
+- kernel option doc
+
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 
 - Internet Gateway Search

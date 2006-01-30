@@ -605,7 +605,7 @@ do_update:
 					node_pos, level);
 #endif
 	} else if(route_replace(0, route_scope, to, nh, 0, 0))
-			error("WARNING: Cannot update the route entry for the "
+			error("WARNING: Cannot update the route entry for the"
 					"%snode %d lvl %d",!level ? " " : " g",
 					node_pos, level);
 finish:

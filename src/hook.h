@@ -111,7 +111,7 @@ INT_INFO qspn_round_pkt_iinfo = { 3,
 				};
 	
 #define QSPN_ROUND_PKT_SZ(levels)	(sizeof(u_char) + 			\
-					    ((levels) * sizeof(int)) +		\
+					    ((levels) * sizeof(int32_t)) +	\
 			                    ((levels) * sizeof(struct timeval))+\
 						 (GCOUNT_LEVELS * sizeof(u_int)))
 

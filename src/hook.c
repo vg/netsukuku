@@ -1168,10 +1168,10 @@ int hook_get_free_nodes(int hook_level, struct free_nodes_hdr *fn_hdr,
 		}
 	}	
 	if(!e) {
-		loginfo("It seems all the quadro_groups in this area are full.");
-		loginfo("We now create a new gnode");
+		loginfo("It seems all the quadro_groups in this area are full or are not cooperating.");
+		loginfo("We are going to create a new gnode");
+		
 		create_new_qgroup(hook_level);
-
 		return 1;
 	}
 	

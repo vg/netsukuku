@@ -34,6 +34,40 @@ be sure to open them in the firewall.
 For more information about Netsukuku visit:
 L<http://netsukuku.freaknet.org>
 
+=head1 KERNEL DEPENDENCIES
+
+On Linux be sure to have the following options set in your kernel .config.
+ 
+	#
+	# Networking options
+	#
+	CONFIG_PACKET=y
+	CONFIG_UNIX=y
+	CONFIG_INET=y
+	CONFIG_IP_MULTICAST=y
+	CONFIG_IP_ADVANCED_ROUTER=y
+	CONFIG_ASK_IP_FIB_HASH=y
+	CONFIG_IP_FIB_HASH=y
+	CONFIG_IP_MULTIPLE_TABLES=y
+	CONFIG_IP_ROUTE_MULTIPATH=y
+	CONFIG_NET_IPIP=y
+	CONFIG_NETFILTER=y
+
+	#
+	# IP: Netfilter Configuration
+	#
+	CONFIG_IP_NF_CONNTRACK=y
+	CONFIG_IP_NF_FTP=y
+	CONFIG_IP_NF_IPTABLES=y
+	CONFIG_IP_NF_FILTER=y
+	CONFIG_IP_NF_TARGET_REJECT=y
+	CONFIG_IP_NF_NAT=y
+	CONFIG_IP_NF_NAT_NEEDED=y
+	CONFIG_IP_NF_TARGET_MASQUERADE=y
+	CONFIG_IP_NF_NAT_FTP=y
+
+If you are using modules you have to load them before launching the daemon.
+
 =head1 OPTIONS
 
 =over
