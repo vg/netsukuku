@@ -158,7 +158,7 @@ int collect_resolv_conf(char *resolve_conf, struct sockaddr_in *nsbuf, uint8_t *
                 return -1;
         }
         if (!(*ns_count)) {
-                error("In collect_resolv_conf: no dns server was found.");
+                debug(DBG_NORMAL, "In collect_resolv_conf: no dns server was found.");
                 return -1;
         }
         return *ns_count;
