@@ -151,9 +151,9 @@ INT_INFO brdcast_hdr_iinfo = { 1, { INT_TYPE_32BIT }, { sizeof(char)*4 }, { 1 } 
  * function to handle the x request is at pkt_op_table[x].exec_func;
  */
 struct pkt_op_table {
-	char sk_type;
-	u_short port;
-	void *exec_func;
+	char 		sk_type;
+	u_short 	port;
+	void 		*exec_func;
 } pkt_op_tbl[TOTAL_OPS];
 
 /* pkt_queue's flags */
@@ -181,10 +181,10 @@ struct pkt_queue{
 	struct pkt_queue *next;
 	struct pkt_queue *prev;
 
-	PACKET pkt;
+	PACKET 		pkt;
 	pthread_mutex_t mtx;
 
-	char flags;
+	char 		flags;
 };
 typedef  struct pkt_queue pkt_queue;
 
