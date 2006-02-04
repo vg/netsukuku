@@ -86,6 +86,9 @@
   Questo documento ed il codice sorgente relativo sono disponibili su:
   http://netsukuku.freaknet.org
 
+  Le future modifiche e aggiunte a questo documento possono essere trovate
+  e proposte qui: http://lab.dyne.org/Netsukuku_RFC
+
 
   0.  The old wired
   
@@ -268,8 +271,8 @@
   mantenere l'intera mappa di Netsukuku.
   Il QSPN, invece, e' un meta-algoritmo perche' non esegue una sequenza di
   istruzioni matematiche definite ma sfrutta il caso e il caos, che non
-  richiedono nessun calcolo. In altre parole, anche una semplice calcolatrice
-  puo' usare il QSPN per stare connessa in Netsukuku.
+  richiedono nessun calcolo pesante. In altre parole, anche una semplice
+  calcolatrice puo' usare il QSPN per stare connessa in Netsukuku.
 
   2.5  Other implementations
 
@@ -401,7 +404,16 @@
   5.1   QSPN: Quantum Shortest Path Netsukuku
 
   In Netsukuku, come in natura, non vi e' alcun bisogno di usare schemi
-  matematici creati dalla limitata logica umana. Netsukuku sfrutta il caos. 
+  matematici. Un ruscello, per raggiungere il mare, calcolera' mai la strada
+  che dovra' percorrere quando ancora si trova in cima alla montagna? Il
+  ruscello scorrera' semplicemente, trasportato dal suo stesso flusso,
+  trovando cosi', prima o poi, la sua rotta ideale.
+  
+  Netsukuku sfrutta lo stesso principio caotico. Il risultato finale
+  restituito dall'algoritmo che esplora la rete puo' essere constituito da
+  risultati intermedi ogni volta differenti, poiche' quest'algoritmo viene
+  "eseguito" dalla rete stessa.
+  
   L'uso di una mappa, in un protocollo di reti dinamiche, crea troppi
   problemi, dovendo tenerla sempre aggiornata. La soluzione e' semplice: non
   usare affatto una mappa e far diventare ogni richiesta mandata in broadcast

@@ -1,4 +1,6 @@
 
+== General Questions ==
+
 Q: What is Netsukuku?
 A: Netsukuku is a mesh network or a P2P net system that generates and sustains
    itself autonomously. It is designed to handle an unlimited number of nodes with
@@ -37,7 +39,7 @@ A: The Netsukuku protocol (Npv7) structures the entire net as a fractal and,
    has to run on a real (or simulated) network. The nodes have to send the
    QSPN pkt in order to "execute" it. For this reason it is not always true
    that a determinate pkt will be sent before another one.
-   This system allows to get the best routes without any computation. 
+   This system allows to get the best routes without any heavy computation.
    (read the "5.1   QSPN: Quantum Shortest Path Netsukuku" section in the
    document).
 
