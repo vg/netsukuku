@@ -155,6 +155,7 @@ void init_my_igws(inet_gw **igws, int *igws_counter,
 		map_node *cur_node, quadro_group *qg);
 void free_my_igws(inet_gw ***my_igs);
 void init_internet_gateway_search(void);
+void close_internet_gateway_search(void);
 inet_gw *igw_add_node(inet_gw **igws, int *igws_counter,  int level,
 		int gid, map_node *node, int ip[MAX_IP_INT], u_char bandwidth);
 int igw_del(inet_gw **igws, int *igws_counter, inet_gw *igw, int level);
@@ -168,7 +169,7 @@ int igw_check_inet_conn(void);
 void *igw_check_inet_conn_t(void *null);
 void *igw_monitor_igws_t(void *null);
 
-int igw_exec_masquerade_sh(char *script);
+int igw_exec_masquerade_sh(char *script, int stop);
 int igw_replace_def_igws(inet_gw **igws, int *igws_counter, 
 		inet_gw **my_igws, int max_levels, int family);
 

@@ -520,7 +520,8 @@ int destroy_netsukuku(void)
 		andna_save_caches();
 		andna_close();
 	}
-	
+
+	close_internet_gateway_search();
 	close_radar();
 	e_rnode_free(&me.cur_erc, &me.cur_erc_counter);
 	destroy_accept_tbl();

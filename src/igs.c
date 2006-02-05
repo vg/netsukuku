@@ -300,7 +300,7 @@ void init_internet_gateway_search(void)
 			"configuration file. What hosts should I ping?");
 	
 	if(server_opt.share_internet)
-                igw_exec_masquerade_sh(server_opt.ip_masq_script);
+                igw_exec_masquerade_sh(server_opt.ip_masq_script, 0);
 			
 	ret=rt_get_default_gw(&new_gw, new_gw_dev);
 	if(ret < 0 || (!*new_gw_dev && !new_gw.family)) {
@@ -374,6 +374,13 @@ void init_internet_gateway_search(void)
         pthread_attr_init(&t_attr);
         pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
         pthread_create(&ping_thread, &t_attr, igw_check_inet_conn_t, 0);
+}
+
+void close_internet_gateway_search(void)
+{
+	igw_exec_masquerade_sh(server_opt.ip_masq_script, 1);
+	free_igws(me.igws, me.igws_counter, me.cur_quadg.levels);
+	free_my_igws(&me.my_igws);
 }
 
 /*
@@ -740,19 +747,41 @@ void *igw_monitor_igws_t(void *null)
 }
 
 /*
- * igw_exec_masquerade_sh: executes `script', which will do IP masquerade
+ * igw_exec_masquerade_sh: executes `script', which will do IP masquerade.
+ * If `stop' is set to 1 the script will be executed as "script stop",
+ * otherwise as "script start".
  */
-int igw_exec_masquerade_sh(char *script)
+int igw_exec_masquerade_sh(char *script, int stop)
 {
+	struct stat sh_stat;
 	int ret;
+	char command[strlen(script)+7];
 	
-	loginfo("Executing %s", script);
+	if(stat(script, &sh_stat))
+		fatal("Couldn't stat %s: %s", strerror(errno));
+
+	if(sh_stat.st_uid != 0 || sh_stat.st_mode & S_ISUID ||
+	    sh_stat.st_mode & S_ISGID || 
+	    (sh_stat.st_gid != 0 && sh_stat.st_mode & S_IWGRP) ||
+	    sh_stat.st_mode & S_IWOTH)
+		fatal("Please adjust the permissions of %s and be sure it "
+			"hasn't been modified.\n"
+			"  Use this command:\n"
+			"  chmod 744 %s; chown root:root %s",
+			script, script, script);
 	
-	ret=system(script);
+	if(stop)
+		sprintf(command, "%s %s", script, "stop");
+	else
+		sprintf(command, "%s %s", script, "start");
+	loginfo("Executing \"%s\"", command);
+	
+	ret=system(command);
 	if(ret == -1)
-		fatal("Couldn't execute %s: %s", strerror(errno));
-	if(!WIFEXITED(ret) || (WIFEXITED(ret) && WEXITSTATUS(ret) != 0))
-		fatal("%s didn't terminate correctly. Aborting");
+		fatal("Couldn't execute %s: %s", script, strerror(errno));
+	
+	if(!stop && (!WIFEXITED(ret) || (WIFEXITED(ret) && WEXITSTATUS(ret) != 0)))
+		fatal("\"%s\" didn't terminate correctly. Aborting", command);
 
 	return 0;
 }
