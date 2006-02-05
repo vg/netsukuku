@@ -39,10 +39,11 @@
 /* 
  * DNS STRUCTS
  */
-#define MAX_HNAME_LEN 	255
-#define MAX_DNS_LL	2
-#define DNS_HDR_SZ	12
-#define DNS_MAX_SZ	512
+#define MAX_HNAME_LEN 		255
+#define MAX_DNS_HNAME_LEN 	255
+#define MAX_DNS_LL		2
+#define DNS_HDR_SZ		12
+#define DNS_MAX_SZ		512
 typedef struct dns_pkt_hdr {
 	uint16_t       id;
         uint8_t        qr;
@@ -75,7 +76,7 @@ typedef struct dns_pkt_hdr {
 #define LBL_PTR(c)      ((c)&LBL_PTR_MK) // AND whith 0xC000
 #define MAX_RECURSION_PTR	20
 
-#define MAX_SQLBL_LEN		255
+#define MAX_SQLBL_LEN		63
 
 #define DANSWFAIL(c,offset)    *((c)+3)=(((*((c)+3))&0xf0)|0x02);*((c)+offset)='\0'
 #define DANSW(c,rcode)		*((c)+3)=(((*((c)+3))&0xf0)|rcode)

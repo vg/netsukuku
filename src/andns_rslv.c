@@ -556,7 +556,7 @@ int dns_forward(dns_pkt *dp,char *msg,int msglen,char* answer)
 		error("In rslv: dns forwardind is disable.");
 		goto failing;
 	}
-	debug(DBG_INSANE, "DNS FORWARDING!");
+	debug(DBG_INSANE, "Forwarding dns query to inet nameservers...");
 	if (!is_prefixed(dp)) {
 		/*res=res_send((const unsigned char*)msg,msglen,(unsigned char*)answer,DNS_MAX_SZ);*/
 		if(ns_general_send(msg,msglen,answer,&res)) {
