@@ -799,8 +799,9 @@ finish:
 }
 
 /*
- * andna_check_counter: asks to the counter_node if it is ok to register the
- * hname present in the register request in `pkt'.
+ * andna_check_counter: asks the counter_node if it is ok to accept the
+ * registration request in `pkt' and register the requested hname.
+ *
  * If -1 is returned the answer is no.
  */
 int andna_check_counter(PACKET pkt)
@@ -818,9 +819,9 @@ int andna_check_counter(PACKET pkt)
 		forwarded_pkt=1;
 
 	
-	/* Calculate the hash of the pubkey of the sender node. This hash will
+	/* Calculate the hash of the IP of the sender node. This hash will
 	 * be used to reach its counter node. */
-	andna_hash(my_family, req->pubkey, ANDNA_PKEY_LEN, pubk_hash, hash_gnode);
+	andna_hash(my_family, req->rip, MAX_IP_SZ, pubk_hash, hash_gnode);
 	
 	/* Find a hash_gnode for the pubk_hash */
 	req->flags&=~ANDNA_FORWARD;
@@ -947,7 +948,7 @@ int andna_recv_check_counter(PACKET rpkt)
 	 * forward the pkt 
 	 */
 
-	andna_hash(my_family, req->pubkey, ANDNA_PKEY_LEN, pubk_hash, hash_gnode);
+	andna_hash(my_family, req->rip, MAX_IP_SZ, pubk_hash, hash_gnode);
 	if((err=find_hash_gnode(hash_gnode, &to, excluded_hgnode, 1, 0)) < 0) {
 		debug(DBG_SOFT, "We are not the real (rounded)hash_gnode. "
 				"Rejecting the 0x%x check_counter request",
@@ -1311,9 +1312,13 @@ int andna_reverse_resolve(inet_prefix ip, char ***hostnames)
 		LOOPBACK(htonl(to.data[0])))
 		return lcl_get_registered_hnames(andna_lcl, hostnames);
 	
-	/* Fill the packet and send the request */
+	/* 
+	 * Fill the packet and send the request 
+	 */
 	pkt_addto(&pkt, &to);
 	pkt_addfrom(&rpkt, &to);
+	pkt_addtimeout(&pkt, ANDNA_REV_RESOLVE_RQ_TIMEOUT, 1, 1);
+	
 	err=send_rq(&pkt, 0, ANDNA_RESOLVE_IP, 0, ANDNA_REV_RESOLVE_REPLY, 1, &rpkt);
 	if(err==-1) {
 		error("andna_reverse_resolve(): Reverse resolution of the %s "

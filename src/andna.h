@@ -42,9 +42,12 @@ int last_reg_pkt_id[ANDNA_MAX_FLOODS];
 int last_counter_pkt_id[ANDNA_MAX_FLOODS];
 int last_spread_acache_pkt_id[ANDNA_MAX_FLOODS];
 
+
 /*
  * * * ANDNA requests/replies pkt stuff * * * 
  */
+
+#define ANDNA_REV_RESOLVE_RQ_TIMEOUT		60
 
 /* * * andna pkt flags * * */
 #define ANDNA_UPDATE		1		/* Update the hostname */

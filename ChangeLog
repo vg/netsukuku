@@ -1,3 +1,9 @@
+0.0.6b
+
+- The NTK_RFC 0007 has been implemented. It fixes a bug in the ANDNA protocol.
+
+- Added a timeout of 60 seconds for the reverse resolution request.
+
 0.0.5b
 
 - The Internet Gateway Search (NTK_RFC 0003) has been implemented.
