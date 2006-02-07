@@ -858,13 +858,13 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 			igw->flags|=IGW_ACTIVE;
 			inet_setip(&nh[ni].gw, igw->ip, family);
 			nh[ni].dev=tunl0_if.dev_name;
-			nh[ni].hops=255-ni;
+			nh[ni].hops=nexthops-ni;
 			ni++;
 			ni_lvl++;
 		}
 		
 		if(ni_lvl >= nexthops)
-		/* All the other gateways are inactive */
+			/* All the other gateways are inactive */
 			list_for(igw)
 				igw->flags&=~IGW_ACTIVE;
 	}

@@ -845,7 +845,7 @@ int tracer_store_bblock(u_char level, tracer_hdr *trcr_hdr, tracer_chunk *tracer
 	bnode_hdr 	**bblist_hdr=0;
 	bnode_chunk 	***bblist=0;
 	map_rnode rn;
-	int i, e, o, x, f, p, bm, igws_founds=0;
+	int i, e, o, x, f, p, bm, igws_found=0;
 	u_short bb;
 	size_t found_block_sz, bsz;
 	char *found_block;
@@ -869,7 +869,7 @@ int tracer_store_bblock(u_char level, tracer_hdr *trcr_hdr, tracer_chunk *tracer
 	 * Store the received bnode blocks 
 	 */
 
-	igws_founds=x=0;
+	igws_found=x=0;
 	*bblock_found_sz=found_block_sz;
 	*bblocks_found_block=found_block=xmalloc(found_block_sz);
 	for(i=0; i<bb; i++) {
@@ -902,11 +902,11 @@ int tracer_store_bblock(u_char level, tracer_hdr *trcr_hdr, tracer_chunk *tracer
 		 */
 		if(bblist[i][0]->level >= FAMILY_LVLS+1) {
 			if(server_opt.restricted && 
-				(igws_founds < MAX_IGW_PER_QSPN_CHUNK ||
+				(igws_found < MAX_IGW_PER_QSPN_CHUNK ||
 					trcr_hdr->flags & TRCR_IGW)) {
 
 				igw_store_bblock(bblist_hdr[i], bblist[i][0], level);
-				igws_founds++;
+				igws_found++;
 				
 				goto skip_bmap;
 			} else {

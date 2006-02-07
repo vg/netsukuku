@@ -1,5 +1,7 @@
 		[HIGH PRIORITY] 
 
+- tracer.c:920
+
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 
 - Internet Gateway Search
@@ -8,9 +10,6 @@
 	- multigw
 
 - Test the BIG ENDIAN code with a BIG ENDIAN arch. Qemu?
-
-- Check permission on /etc/nestsukuku/ip_masquerade.sh, 
-  it has to be: root 744
 
 		[MEDIUM PRIORITY] 
 

@@ -26,6 +26,9 @@
  * http://marc.theaimsgroup.com/?l=linux-net&m=113636640615375&w=2
  */
 #define IGS_MULTI_GW_DISABLE
+#ifdef DEBUG
+#undef IGS_MULTI_GW_DISABLE
+#endif
 
 /*
  *		 	* Bandwidth notes *
