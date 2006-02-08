@@ -1,6 +1,6 @@
 		[HIGH PRIORITY] 
-
-- tracer.c:920
+- is_group_invalid() has to consider the right gid[3] when we are in
+  restricted mode. It has also to consider the netsukuku private IPs
 
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 

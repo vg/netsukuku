@@ -41,6 +41,15 @@
 #define NTK_PRIVATE_CLASS_MASK_IPV4	0x0a000000	/* 10.x.x.x */
 #define NTK_PRIVATE_CLASS_MASK_IPV6	0xfec00000	/* fec0:xxxx:... */
 
+
+/* Is `x' an IP in the range of 192.168.0.0 - 192.168.255.255 ? */
+#define NTK_PRIVATE_C(x)	(((x) & htonl(0xffff0000)) == htonl(0xc0a80000))
+
+
+/*
+ * The inet_prefix struct is used to store IP addresses in the internals of
+ * the Netsukuku code
+ */
 typedef struct
 {
 	u_char	family;		     /* AF_INET or AF_INET6 */
@@ -85,6 +94,10 @@ INT_INFO inet_prefix_iinfo = { 1,
 
 #define IPV6_ADDR_MAPPED	0x1000U
 #define IPV6_ADDR_RESERVED	0x2000U	/* reserved address space */
+
+/* 
+ * Globals
+ */
 
 int my_family;
 	

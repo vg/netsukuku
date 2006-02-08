@@ -359,13 +359,18 @@ int ipv6_addr_type(inet_prefix addr)
 	return type;
 }
 
+/*
+ * inet_validate_ip: returns 0 is `ip' a valid IP which can be set by
+ * Netsukuku to a network interface
+ */
 int inet_validate_ip(inet_prefix ip)
 {
 	int type, ipv4;
 
 	if(ip.family==AF_INET) {
 		ipv4=htonl(ip.data[0]);
-		if(MULTICAST(ipv4) || BADCLASS(ipv4) || ZERONET(ipv4) || LOOPBACK(ipv4))
+		if(MULTICAST(ipv4) || BADCLASS(ipv4) || ZERONET(ipv4) 
+			|| LOOPBACK(ipv4) || NTK_PRIVATE_C(ipv4))
 			return -EINVAL;
 
 	} else if(ip.family==AF_INET6) {
@@ -381,7 +386,9 @@ int inet_validate_ip(inet_prefix ip)
 	return 0;
 }
 
-/* * * Coversion functions... * * */
+/*
+ * * *  Conversion functions...  * * *
+ */
 
 /*
  * ipraw_to_str: It returns the string which represents the given ip in host

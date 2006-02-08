@@ -304,9 +304,9 @@ int isnot_gmap_void_flag_set(map_gnode *gnode)
 }
 
 /*
- * increment_gids: It increments the members of the `qg'->gid array until all the 
- * gids in it point to gnodes present in the ext_map, which don't have the
- * a particular gnode->flag set (or the node->flag of the gid of level 0).
+ * increment_gids: It increments the members of the `qg'->gid array until all its 
+ * gids point to gnodes present in the ext_map, which don't have
+ * a particular gnode->flag or node->flag set.
  * 
  * In order to verify that a gnode doesn't have the flag set the
  * `is_gnode_flag_set' function is called, the same is done for the nodes with
@@ -382,7 +382,7 @@ int increment_gids(quadro_group *qg, int level, map_gnode **ext_map,
 			if(!increment_gids(qg, level+1, ext_map, int_map, 
 					is_gnode_flag_set, is_node_flag_set))
 				/* 
-				 * We change one of our upper gid, we can
+				 * We changed one of our upper gid, we can
 				 * retake the old gid we had at this `level'
 				 */
 				qg->gid[level]=gid;
