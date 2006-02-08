@@ -121,7 +121,7 @@ int get_free_nodes(inet_prefix to, interface *dev,
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_FREE_NODES), ntop);
 	err=send_rq(&pkt, 0, GET_FREE_NODES, 0, PUT_FREE_NODES, 1, &rpkt);
 	if(err==-1) {
-		if((u_char)(*rpkt.msg) == E_NTK_FULL)
+		if(rpkt.hdr.sz && (u_char)(*rpkt.msg) == E_NTK_FULL)
 			ERROR_FINISH(ret, -2, finish);
 		ERROR_FINISH(ret, -1, finish);
 	}

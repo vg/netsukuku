@@ -841,7 +841,7 @@ int qspn_close(PACKET rpkt)
 	bnode_hdr    *bhdr=0;
 	size_t bblock_sz=0, old_bblock_sz;
 	int i, not_closed=0, ret=0, ret_err;
-	u_short hops, old_bchunks=0;
+	u_short hops, old_bblocks_found=0;
 	const char *ntop;
 	char *old_bblock=0;
 	char do_real_qspn_action=0, just_forward_it=0, int_qspn_starter=0;
@@ -937,7 +937,7 @@ int qspn_close(PACKET rpkt)
 	
 	/* Time to update our maps */
 	tracer_store_pkt(rpkt.from, &rip_quadg, level, trcr_hdr, tracer,
-			(void *)bhdr, bblock_sz, &old_bchunks, &old_bblock,
+			(void *)bhdr, bblock_sz, &old_bblocks_found, &old_bblock,
 			&old_bblock_sz);
 
 	
@@ -1016,11 +1016,12 @@ int qspn_close(PACKET rpkt)
 			rq=QSPN_CLOSE;
 
 		/*We build d4 p4ck37...*/
-		ret_err=tracer_pkt_build(rq, rpkt.hdr.id, root_node_pos,/*IDs*/
-				gid,	level,
-				bcast_hdr,  trcr_hdr,    tracer,        /*Received tracer_pkt*/
-			   	old_bchunks,old_bblock,  old_bblock_sz, /*bnode_block*/
-			        &pkt);				        /*Where the pkt is built*/
+		ret_err=tracer_pkt_build(
+				rq, 		   rpkt.hdr.id, root_node_pos, /*IDs*/
+				gid,		   level,
+				bcast_hdr,	   trcr_hdr,    tracer,        /*Received tracer_pkt*/
+			   	old_bblocks_found, old_bblock,  old_bblock_sz, /*bnode_block*/
+			        &pkt);					       /*Where the pkt is built*/
 		if(ret_err) {
 			debug(DBG_NOISE, "Cannot forward the qspn_close: "
 					"pkt build failed.");
@@ -1093,7 +1094,7 @@ int qspn_open(PACKET rpkt)
 	int not_opened=0, ret=0, reply, sub_id, ret_err;
 	u_short hops;
 	size_t bblock_sz=0, old_bblock_sz;
-	u_short old_bchunks=0;
+	u_short old_bblocks_found=0;
 	const char *ntop;
 	char *old_bblock=0;
 	char do_real_qspn_action=0, just_forward_it=0, int_qspn_opener=0;
@@ -1175,7 +1176,7 @@ int qspn_open(PACKET rpkt)
 	
 	/*Time to update our map*/
 	tracer_store_pkt(rpkt.from, &rip_quadg, level, trcr_hdr, tracer, 
-			(void *)bhdr, bblock_sz, &old_bchunks, &old_bblock,
+			(void *)bhdr, bblock_sz, &old_bblocks_found, &old_bblock,
 			&old_bblock_sz);
 	
 	
@@ -1254,11 +1255,12 @@ int qspn_open(PACKET rpkt)
 		}
 
 	   	/* The forge of the packet. "One pkt to rule them all". Dum dum */
-		ret_err=tracer_pkt_build(QSPN_OPEN, rpkt.hdr.id, bcast_hdr->sub_id,/*IDs*/
+		ret_err=tracer_pkt_build(
+			    QSPN_OPEN,   rpkt.hdr.id, bcast_hdr->sub_id, /*IDs*/
 			    gid, 	 level,
-			    bcast_hdr,   trcr_hdr, tracer, 	      /*Received tracer_pkt*/
-			    old_bchunks, old_bblock, old_bblock_sz,   /*bnode_block*/
-			    &pkt);				      /*Where the pkt is built*/
+			    bcast_hdr,   trcr_hdr,    tracer, 	      	 /*Received tracer_pkt*/
+			    old_bblocks_found, old_bblock, old_bblock_sz,/*bnode_block*/
+			    &pkt);					 /*Where the pkt is built*/
 		if(ret_err) {
 			debug(DBG_NOISE, "Cannot forward the qspn_open(0x%x) "
 					"lvl %d sub_id: %d: Pkt build failed.",

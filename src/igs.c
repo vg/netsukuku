@@ -800,14 +800,16 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 	inet_prefix to;
 
 	struct nexthop *nh=0;
-	int ni, ni_lvl, nexthops, level;
+	int ni, ni_lvl, nexthops, level, max_multipath_routes;
 
 #ifdef DEBUG		
 #define MAX_GW_IP_STR_SIZE (MAX_MULTIPATH_ROUTES*((INET6_ADDRSTRLEN+1)+IFNAMSIZ)+1)
 	int n;
 	char gw_ip[MAX_GW_IP_STR_SIZE]="";
 #endif
-
+	
+	max_multipath_routes=MAX_MULTIPATH_ROUTES;
+	
 	/* to == 0.0.0.0 */
 	inet_setip_anyaddr(&to, family);
 	to.len=to.bits=0;
@@ -826,7 +828,11 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 		nh[ni].dev=server_opt.inet_gw_dev;
 		nh[ni].hops=255-ni;
 		ni++;
+		max_multipath_routes--;
 	}
+
+	/* We choose an equal number of nexthops for each level */
+	nexthops=max_multipath_routes/max_levels;
 
 	for(level=0; level<max_levels; level++) {
 #ifdef IGS_MULTI_GW_DISABLE
@@ -837,13 +843,9 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 		/* Reorder igws[level] */
 		igw_order(igws, igws_counter, my_igws, level);
 
-		igw=igws[level];
-		nexthops=MAX_MULTIPATH_ROUTES/max_levels;
-		if(server_opt.share_internet)
-			nexthops--;
-
 		/* Take the first `nexthops'# gateways and add them in `ni' */
 		ni_lvl=0;
+		igw=igws[level];
 		list_for(igw) {
 			if(ni_lvl >= nexthops)
 				break;
@@ -858,7 +860,7 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 			igw->flags|=IGW_ACTIVE;
 			inet_setip(&nh[ni].gw, igw->ip, family);
 			nh[ni].dev=tunl0_if.dev_name;
-			nh[ni].hops=nexthops-ni;
+			nh[ni].hops=max_multipath_routes-ni+1;
 			ni++;
 			ni_lvl++;
 		}
