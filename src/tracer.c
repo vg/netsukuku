@@ -514,7 +514,7 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 		}
 	}
 
-	if(server_opt.restricted &&
+	if(restricted_mode &&
 		((!gnode_level && server_opt.share_internet && me.inet_connected) || 
 			(gnode_level && me.igws_counter[gnode_level-1]))) {
 		
@@ -903,7 +903,7 @@ int tracer_store_bblock(u_char level, tracer_hdr *trcr_hdr, tracer_chunk *tracer
 		 * me.igws
 		 */
 		if(bblist[i][0]->level >= FAMILY_LVLS+1) {
-			if(server_opt.restricted && 
+			if(restricted_mode && 
 				(igws_found < MAX_IGW_PER_QSPN_CHUNK ||
 					trcr_hdr->flags & TRCR_IGW)) {
 

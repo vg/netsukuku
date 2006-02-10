@@ -45,6 +45,11 @@
 /* Is `x' an IP in the range of 192.168.0.0 - 192.168.255.255 ? */
 #define NTK_PRIVATE_C(x)	(((x) & htonl(0xffff0000)) == htonl(0xc0a80000))
 
+/* Is `x' in 172.16.0.0 - 172.31.255.255 ? */
+#define NTK_PRIVATE_B(x)	(((x) & htonl(0xff000000)) == htonl(0xac000000))\
+					&& ((x) & htonl(0x00100000)) && 	\
+						!((x) & htonl(0x00e00000))
+
 
 /*
  * The inet_prefix struct is used to store IP addresses in the internals of
@@ -99,7 +104,14 @@ INT_INFO inet_prefix_iinfo = { 1,
  * Globals
  */
 
-int my_family;
+#define RESTRICTED_10		1	/* We are using the 10.x.x.x class for 
+					   the restricted mode */
+#define RESTRICTED_172		2	/* 172.16.0.0-172.31.255.255 class */
+
+#define RESTRICTED_10_STR	"10.0.0.0-10.255.255.255"
+#define RESTRICTED_172_STR	"172.16.0.0-172.31.255.255"
+
+int my_family, restricted_mode, restricted_class;
 	
 /* 
  * * * Functions declaration * * 

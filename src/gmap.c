@@ -41,15 +41,56 @@ inline int get_groups(int max_levels, int lvl)
  * is_group_invalid: returns 1 if the `gid' of level `lvl' is invalid and
  * cannot be used in a regular IP.
  */
-int is_group_invalid(int gid, int lvl, int family)
+int is_group_invalid(int *gids, int gid, int lvl, int family)
 {
-	if(family == AF_INET && lvl == GET_LEVELS(family)-1) {
-		if(!gid) /* ZERONET */
-			return 1;
-		if(gid >= 224 && gid <= 255) /* MULTICAST and BADCLASS */
-			return 1;
-		if(gid == 127) /* LOOPBACK */
-			return 1;
+	if(family == AF_INET) {
+		if(lvl == GET_LEVELS(family)-1) {
+			if(!gid) /* ZERONET */
+				return 1; 
+			
+			if(gid >= 224 && gid <= 255)
+				/* MULTICAST and BADCLASS */
+				return 1;
+			
+			if(gid == 127) /* LOOPBACK */
+				return 1;
+			
+			if(gid == 192 && gids[lvl-1] == 168)
+				/* 192.168.x.x is private, we cannot use IP of
+				 * that range */
+				return 1;
+
+			if((gid == 172 && (gids[lvl-1] >= 16 || gids[lvl-1] <= 31)) &&
+				!restricted_mode)
+				/* We aren't in restricted mode, so
+				 * 172.16.0.0-172.31.255.255 is a private
+				 * class */
+				return 1;
+
+			if(restricted_mode && 
+			      (
+				(restricted_class == RESTRICTED_10 && gid != 10) ||
+				(
+				 restricted_class == RESTRICTED_172 && 
+				 	!(gid == 172 && (gids[lvl-1] >= 16 ||
+							gids[lvl-1] <= 31))
+				)
+			      )
+			  )
+				/* We are in restricted mode, thus this IP is
+				 * invalid because it isn't in the 10.x.x.x or
+				 * 172.(16-31).x.x format */
+				return 1;
+
+		} else if(lvl == GET_LEVELS(family)-2) {
+			if(gid == 168 && gids[lvl+1] == 192)
+				/* 192.168.x.x */
+				return 1;
+			if(((gid >= 16 || gid <= 31) && gids[lvl+1] == 172) &&
+				!restricted_mode)
+				/* 172.16.0.0-172.31.255.255 */
+				return 1;
+		}
 	} else if(family == AF_INET6) {
 		/* TODO: nothing ? */
 		return 0;
@@ -344,7 +385,7 @@ int increment_gids(quadro_group *qg, int level, map_gnode **ext_map,
 		for(i=0, e=0; i < groups; i++) {
 			qg->gid[level]=(gid + i) % groups;
 
-			if(is_group_invalid(qg->gid[level], level, family))
+			if(is_group_invalid(qg->gid, qg->gid[level], level, family))
 				continue;
 						
 			if((!level && is_node_flag_set(&int_map[qg->gid[level]])) ||
@@ -446,19 +487,23 @@ int random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 	if(!ipstart || final_level==total_levels) {
 		u_int idata[MAX_IP_INT]={0,0,0,0};
 		
-		/* 
-		 * Let's choose a completely random ip.
-		 */
-		levels=total_levels;
-		if(my_family == AF_INET)
-			idata[0]=rand();
-		else {
-			idata[0]=rand();	idata[1]=rand();
-			idata[2]=rand();	idata[3]=rand();
+		for(;;) {	
+			/* 
+			 * Let's choose a completely random ip.
+			 */
+			levels=total_levels;
+			if(my_family == AF_INET)
+				idata[0]=rand();
+			else {
+				idata[0]=rand();	idata[1]=rand();
+				idata[2]=rand();	idata[3]=rand();
+			}
+
+			inet_setip(new_ip, idata, my_family);
+
+			if(!inet_validate_ip(*new_ip))
+				break;
 		}
-		
-		inet_setip(new_ip, idata, my_family);
-		
 		return 0;
 	}
 	
@@ -507,7 +552,7 @@ int random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 				i=rand_range(0, MAXGROUPNODE-1);
 				
 				for(x=0, e=i; e<MAXGROUPNODE; e++) {
-					if(is_group_invalid(e, level, my_family))
+					if(is_group_invalid(gid, e, level, my_family))
 						continue;
 					
 					if(ext_map[_EL(level)][e].flags & GMAP_VOID) {
@@ -518,7 +563,7 @@ int random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 				}
 				if(!x) {
 					for(x=0; i>=0; i--) {
-						if(is_group_invalid(i, level, my_family))
+						if(is_group_invalid(gid, i, level, my_family))
 							continue;
 						
 						if(ext_map[_EL(level)][i].flags & GMAP_VOID) {

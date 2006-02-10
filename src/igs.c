@@ -279,7 +279,7 @@ void init_internet_gateway_search(void)
 	int i, ret;
 
 	active_gws=0;
-        if(!server_opt.restricted)
+        if(!restricted_mode)
 		return;
 	
 	init_igws(&me.igws, &me.igws_counter, GET_LEVELS(my_family));

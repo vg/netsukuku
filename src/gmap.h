@@ -194,7 +194,7 @@ typedef struct ext_rnode_cache ext_rnode_cache;
 
 /* * * Functions' declaration * * */
 inline int get_groups(int family, int lvl);
-int is_group_invalid(int gid, int lvl, int family);
+int is_group_invalid(int *gids, int gid, int lvl, int family);
 
 int  pos_from_gnode(map_gnode *gnode, map_gnode *map);
 map_gnode * gnode_from_pos(int pos, map_gnode *map);

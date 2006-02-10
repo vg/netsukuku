@@ -1,6 +1,6 @@
 		[HIGH PRIORITY] 
-- is_group_invalid() has to consider the right gid[3] when we are in
-  restricted mode. It has also to consider the netsukuku private IPs
+
+- Test the NTK_RFC 0008
 
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 

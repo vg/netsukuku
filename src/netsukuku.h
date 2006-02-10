@@ -124,6 +124,7 @@ typedef struct
 	char 		daemon;
 	
 	char 		restricted;
+	int		restricted_class;
 	char		inet_connection;/* If it's 1, we are connected 
 					   to the Internet */
 	char		share_internet;

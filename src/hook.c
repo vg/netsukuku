@@ -756,7 +756,7 @@ void hook_set_all_ips(inet_prefix ip, interface *ifs, int ifs_n)
 	if(set_all_dev_ip(ip, ifs, ifs_n) < 0)
 		fatal("Cannot set the %s ip to all the interfaces", ntop);
 
-	if(server_opt.restricted) {
+	if(restricted_mode) {
 		set_all_ifs(&tunl0_if, 1, set_dev_down);
 		set_all_ifs(&tunl0_if, 1, set_dev_up);
 		if(set_all_dev_ip(ip, &tunl0_if, 1) < 0)
@@ -779,16 +779,12 @@ int create_gnodes(inet_prefix *ip, int final_level)
 	int i;
 
 	if(!ip) {
-		for(;;) {
-			random_ip(0, 0, 0, FAMILY_LVLS, me.ext_map, 0, 
-					&me.cur_ip, my_family);
-			if(!inet_validate_ip(me.cur_ip))
-				break;
-		}
+		random_ip(0, 0, 0, FAMILY_LVLS, me.ext_map, 0, &me.cur_ip, 
+				my_family);
 	} else
 		memcpy(&me.cur_ip, ip, sizeof(inet_prefix));
 
-	if(server_opt.restricted)
+	if(restricted_mode)
 		inet_setip_localaddr(&me.cur_ip, my_family);
 
 	if(!final_level)
@@ -965,7 +961,7 @@ int hook_init(void)
 	debug(DBG_NORMAL, "Activating ip_forward and disabling rp_filter");
 	route_ip_forward(my_family, 1);
 	route_rp_filter_all_dev(my_family, me.cur_ifs, me.cur_ifs_n, 0);
-	if(server_opt.restricted)
+	if(restricted_mode)
 		route_rp_filter_all_dev(my_family, &tunl0_if, 1, 0);
 
 	return 0;
@@ -1227,7 +1223,7 @@ int hook_choose_new_ip(map_gnode *hook_gnode, int hook_level,
 		}
 	}
 
-	if(server_opt.restricted)
+	if(restricted_mode)
 		inet_setip_localaddr(&me.cur_ip, my_family);
 	hook_set_all_ips(me.cur_ip, me.cur_ifs, me.cur_ifs_n);
 
@@ -1506,7 +1502,7 @@ void hook_finish(int new_gnode, struct free_nodes_hdr *fn_hdr)
 	loginfo("Filling the kernel routing table");
 
 	rt_full_update(0);
-	if(server_opt.restricted)
+	if(restricted_mode)
 		igw_replace_def_igws(me.igws, me.igws_counter, 
 				me.my_igws, me.cur_quadg.levels, my_family);
 	
@@ -1589,7 +1585,7 @@ int netsukuku_hook(map_gnode *hook_gnode, int hook_level)
 	/*
 	 * If we are in restricted mode, get the Internet Gateways
 	 */
-	if(server_opt.restricted)
+	if(restricted_mode)
 		hook_get_igw();
 	
 	/*

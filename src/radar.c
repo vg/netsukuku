@@ -1123,8 +1123,8 @@ int radar_recv_reply(PACKET pkt)
 	 * If the rnode is in restricted mode and we are not, drop the pkt.
 	 * If we are in restricted mode and the rnode isn't, drop the pkt
 	 */
-	if((pkt.hdr.flags & RESTRICTED_PKT && !server_opt.restricted) ||
-		(!(pkt.hdr.flags & RESTRICTED_PKT) && server_opt.restricted))
+	if((pkt.hdr.flags & RESTRICTED_PKT && !restricted_mode) ||
+		(!(pkt.hdr.flags & RESTRICTED_PKT) && restricted_mode))
 		return -1;
 	
 	return radar_exec_reply(pkt);
@@ -1195,7 +1195,7 @@ int radar_scan(int activate_qspn)
 	} else
 		total_radars++;
 	
-	if(server_opt.restricted)
+	if(restricted_mode)
 		pkt.hdr.flags|=RESTRICTED_PKT;
 
 	/* Loop through the me.cur_ifs array, sending the bouquet using all the
@@ -1279,8 +1279,8 @@ int radard(PACKET rpkt)
 		return -1;
 	}
 	
-	if((rpkt.hdr.flags & RESTRICTED_PKT && !server_opt.restricted) ||
-		(!(rpkt.hdr.flags & RESTRICTED_PKT) && server_opt.restricted))
+	if((rpkt.hdr.flags & RESTRICTED_PKT && !restricted_mode) ||
+		(!(rpkt.hdr.flags & RESTRICTED_PKT) && restricted_mode))
 		return -1;
 
 	dev_pos=ifs_get_pos(me.cur_ifs, me.cur_ifs_n, rpkt.dev);
@@ -1340,7 +1340,7 @@ int radard(PACKET rpkt)
 		 */
 	}
 	
-	if(server_opt.restricted)
+	if(restricted_mode)
 		pkt.hdr.flags|=RESTRICTED_PKT;
 
 	/* We send it */

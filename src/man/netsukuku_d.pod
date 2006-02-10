@@ -84,11 +84,14 @@ restored. If you want to disable this set use the B<-R> option.
 
 =over
 
-=item B<-r>, B<--restricted> 
+=item B<-r>I<[bool]>, B<--restricted>=I<[bool]>
 
 With this option the daemon will run in restricted mode as specified in
-the Npv7, only IPs of the private class will be choosen. It is used for
-Internet compatibility.
+the Npv7, only IPs of a private class will be choosen. It is used for
+Internet compatibility. 
+If no argument is given to the option, the default restricted private class
+10.0.0.0 is used, otherwise if I<bool> is not zero, the restricted class will
+be 172.16.0.0-172.31.255.255.
 
 =back
 

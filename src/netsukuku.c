@@ -154,6 +154,7 @@ void fill_default_options(void)
 	server_opt.disable_andna=0;
 	server_opt.disable_resolvconf=0;
 	server_opt.restricted=0;
+	server_opt.restricted_class=RESTRICTED_10;
 
 	server_opt.ip_masq_script=IPMASQ_SCRIPT_FILE;
 
@@ -203,6 +204,8 @@ void fill_loaded_cfg_options(void)
 	
 	if((value=getenv(config_str[CONF_NTK_RESTRICTED_MODE])))
 		server_opt.restricted=atoi(value);
+	if((value=getenv(config_str[CONF_NTK_RESTRICTED_CLASS])))
+		server_opt.restricted_class=atoi(value);
 
 	if((value=getenv(config_str[CONF_NTK_INTERNET_CONNECTION])))
 		server_opt.inet_connection=atoi(value);
@@ -286,7 +289,7 @@ void parse_options(int argc, char **argv)
 			{"no_daemon", 	0, 0, 'D'},
 			{"no_resolv",   0, 0, 'R'},
 			
-			{"restricted", 	0, 0, 'r'},
+			{"restricted", 	2, 0, 'r'},
 			{"share-inet",	0, 0, 'I'},
 			
 			{"debug", 	0, 0, 'd'},
@@ -294,7 +297,7 @@ void parse_options(int argc, char **argv)
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long (argc, argv,"i:c:hvd64DRrIa", long_options, 
+		c = getopt_long (argc, argv,"i:c:hvd64DRr::Ia", long_options, 
 				&option_index);
 		if (c == -1)
 			break;
@@ -340,6 +343,8 @@ void parse_options(int argc, char **argv)
 				break;
 			case 'r':
 				server_opt.restricted=1;
+				if(optarg)
+					server_opt.restricted_class=atoi(optarg);
 				break;
 			case 'I':
 				server_opt.share_internet=1;
@@ -443,6 +448,8 @@ void init_netsukuku(char **argv)
 	memset(&me, 0, sizeof(struct current_globals));
 	
 	my_family=server_opt.family;
+	restricted_mode =server_opt.restricted;
+	restricted_class=server_opt.restricted_class ? RESTRICTED_172 : RESTRICTED_10;
 
 	/* Check if the DATA_DIR exists, if not create it */
 	if(check_and_create_dir(DATA_DIR))
@@ -499,8 +506,10 @@ void init_netsukuku(char **argv)
 			server_opt.max_accepts_per_host_time);
 #endif
 	
-	if(server_opt.restricted)
-		loginfo("NetsukukuD is in restricted mode.");
+	if(restricted_mode)
+		loginfo("NetsukukuD is in restricted mode. "
+			"Restricted class: %s",	
+			server_opt.restricted_class?RESTRICTED_172_STR:RESTRICTED_10_STR);
 	
 	hook_init();
 	rehook_init();
@@ -695,7 +704,7 @@ int main(int argc, char **argv)
 	
 	xfree(port);
 	
-	if(server_opt.restricted) {
+	if(restricted_mode) {
 		debug(DBG_SOFT, "Evoking the Internet gateways pinger daemon");
 		pthread_create(&ping_igw_thread, &t_attr, igw_monitor_igws_t, 0);
 	}

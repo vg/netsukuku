@@ -399,7 +399,7 @@ void qspn_remove_deads(u_char level)
 			/* The node wasn't updated in the previous QSPN.
 			 * Remove it from the maps */
 
-			if(server_opt.restricted && node->flags & MAP_IGW) {
+			if(restricted_mode && node->flags & MAP_IGW) {
 				/*
 				 * The node was an Internet gw, remove it from
 				 * me.igws 

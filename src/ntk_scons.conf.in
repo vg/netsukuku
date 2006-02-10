@@ -14,8 +14,12 @@
 # If this option is set to 1, NetsukukuD will be started in restricted mode to
 # allow the compatibility with Internet. In the restricted mode, are chosen 
 # only IPs of the largest private subnet, i.e. 10.x.x.x.
+# If `ntk_restricted_class' is set to 1 the IPs will be chosen from the
+# 172.16.0.0-172.31.255.255 range (use this option only if you are really
+# can't use the 10.x.x.x class).
 #
 #ntk_restricted_mode	= 0
+#ntk_restricted_class	= 0
 
 #
 # * * If you have an Internet connection please fill this options. * *
