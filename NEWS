@@ -1,4 +1,11 @@
 ==== 0.0.6b ====
+	
+New features:
+
+	* The NTK_RFC 0008 has been implemented.
+	  ( http://lab.dyne.org/Ntk_restricted_ip_classes )
+
+Bug fixes:
 
 	* Execute /etc/netsukuku/ip_masquerade.sh only if it is
 	  writable just by root.
