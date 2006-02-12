@@ -36,13 +36,16 @@ AC_SUBST(gmp)
 
 AC_CHECK_HEADERS([pthread.h], ,\
 	[echo "============================ Unable to find pthread.h"; \
-	 echo "Read README first!!!!!" ])
+	 echo "Do you have the libpthread library installed?" ])
 AC_CHECK_HEADERS([openssl/crypto.h], ,\
 	[echo "============================ Unable to find openssl/crypto.h";\
-	 echo "Read README first!!!!!"])
+	 echo "Read README first!!!!!"; \
+	 echo "Install the openssl library"])
 AC_CHECK_HEADERS([gmp.h], ,\
 	[echo "============================ Unable to find gmp.h"; \
-	 echo "Read README first!!!!!"])
+	 echo "Read README first!!!!!"; \
+	 echo "You need to install the libgmp library."; \
+	 echo "In the debian the package is libgmp3-dev"])
 
 dnl Some systems (Solaris 2.x) require libnsl (Network Services Library)
 AC_MSG_CHECKING(OS)
