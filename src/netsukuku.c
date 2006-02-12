@@ -154,7 +154,7 @@ void fill_default_options(void)
 	server_opt.disable_andna=0;
 	server_opt.disable_resolvconf=0;
 	server_opt.restricted=0;
-	server_opt.restricted_class=RESTRICTED_10;
+	server_opt.restricted_class=0;
 
 	server_opt.ip_masq_script=IPMASQ_SCRIPT_FILE;
 

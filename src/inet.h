@@ -37,9 +37,24 @@
 
 #define LOOPBACK_IPV6			{ 0x0, 0x0, 0x0, 0x1 }
 
-/* in host byte order */
-#define NTK_PRIVATE_CLASS_MASK_IPV4	0x0a000000	/* 10.x.x.x */
-#define NTK_PRIVATE_CLASS_MASK_IPV6	0xfec00000	/* fec0:xxxx:... */
+/*
+ * `x' is in host byte order
+ * 
+ * NTK_RESTRICTED_10_MASK(x):
+ * given an ipv4 IP it returns the equivalent in the 10.x.x.x class, i.e.
+ * 212.13.4.1 --> 10.13.4.1
+ *
+ * NTK_RESTRICTED_172_MASK(x): it's the same of NTK_RESTRICTED_10_MASK() but
+ * it converts the IP in the 172.16.0.0 - 172.31.255.255 range.
+ *
+ * NTK_RESTRICTED_IPV6_MASK(x):
+ * `x' in this case is the first integer of the four of an ipv6 IP.
+ * The conversion is:  `x' --> fec0:xxxx:...
+ *
+ */
+#define NTK_RESTRICTED_10_MASK(x)	(((x) & ~0xff000000)|0x0a000000)
+#define NTK_RESTRICTED_172_MASK(x)	(((((x) & ~0xff000000) | 0xac000000) & ~0x00e00000) | 0x00100000)
+#define NTK_RESTRICTED_IPV6_MASK(x)	(((x) & ~0xffff0000)|0xfec00000) 
 
 
 /* Is `x' an IP in the range of 192.168.0.0 - 192.168.255.255 ? */
@@ -123,8 +138,8 @@ int inet_setip(inet_prefix *ip, u_int *data, int family);
 int inet_setip_bcast(inet_prefix *ip, int family);
 int inet_setip_anyaddr(inet_prefix *ip, int family);
 int inet_setip_loopback(inet_prefix *ip, int family);
-int inet_setip_localaddr(inet_prefix *ip, int family);
-int inet_is_ip_local(inet_prefix *ip);
+int inet_setip_localaddr(inet_prefix *ip, int family, int class);
+int inet_is_ip_local(inet_prefix *ip, int class);
 void inet_copy_ipdata(u_int *dst_data, inet_prefix *ip);
 void pack_inet_prefix(inet_prefix *ip, char *pack);
 void unpack_inet_prefix(inet_prefix *ip, char *pack);

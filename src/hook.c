@@ -785,7 +785,7 @@ int create_gnodes(inet_prefix *ip, int final_level)
 		memcpy(&me.cur_ip, ip, sizeof(inet_prefix));
 
 	if(restricted_mode)
-		inet_setip_localaddr(&me.cur_ip, my_family);
+		inet_setip_localaddr(&me.cur_ip, my_family, restricted_class);
 
 	if(!final_level)
 		final_level=FAMILY_LVLS;
@@ -999,10 +999,10 @@ void hook_reset(void)
 	 * transaction. 
 	 */
 	memset(idata, 0, MAX_IP_SZ);
-	if(my_family==AF_INET) 
-		idata[0]=HOOKING_IP;
-	else
-		idata[0]=HOOKING_IP6;
+	if(my_family==AF_INET) {
+		idata[0]=restricted_class == RESTRICTED_10 ? HOOKING_IP_10 : HOOKING_IP_172;
+	} else
+		idata[0]=HOOKING_IPV6;
 	
 	idata[0]=ntohl(idata[0]);
 	if(my_family == AF_INET6)
@@ -1039,6 +1039,22 @@ int hook_first_radar_scan(map_gnode *hook_gnode, int hook_level, quadro_group *o
 		gid[hook_level]=pos_from_gnode(hook_gnode, me.ext_map[_EL(hook_level)]);
 		new_rnode_allowed(&alwd_rnodes, &alwd_rnodes_counter, 
 				gid, hook_level, FAMILY_LVLS);
+	}
+
+	/*
+	 * If we are in restricted mode, ignore the restricted nodes which
+	 * belong to our opposite restricted class. So, if we are 10.0.0.1
+	 * ignore 172.x.x.x, and viceversa. This happens only in ipv4.
+	 */
+	if(restricted_mode && my_family == AF_INET) {
+		int gid[IPV4_LEVELS]={0,0,0,0};
+		
+		if(restricted_class == RESTRICTED_10)
+			gid[3]=10;
+		else
+			gid[3]=172;
+		new_rnode_allowed(&alwd_rnodes, &alwd_rnodes_counter,
+				gid, 3, FAMILY_LVLS);
 	}
 
 	/* 
@@ -1224,7 +1240,7 @@ int hook_choose_new_ip(map_gnode *hook_gnode, int hook_level,
 	}
 
 	if(restricted_mode)
-		inet_setip_localaddr(&me.cur_ip, my_family);
+		inet_setip_localaddr(&me.cur_ip, my_family, restricted_class);
 	hook_set_all_ips(me.cur_ip, me.cur_ifs, me.cur_ifs_n);
 
 	return new_gnode;

@@ -150,15 +150,19 @@ int inet_setip_loopback(inet_prefix *ip, int family)
 
 /* 
  * inet_setip_localaddr: Restrict the `ip' to a local private class changing the
- * first byte of the `ip'. In the ipv4 the CLASS A is used, in ipv6 the site
- * local class.
+ * first byte of the `ip'. `class' specifies what restricted class is currently 
+ * being used (10.x.x.x or 172.16.x.x). In ipv6 the site local class is the
+ * default.
  */
-int inet_setip_localaddr(inet_prefix *ip, int family)
+int inet_setip_localaddr(inet_prefix *ip, int family, int class)
 {
 	if(family==AF_INET) {
-		ip->data[0] = (ip->data[0] & ~0xff000000)|NTK_PRIVATE_CLASS_MASK_IPV4;
+		if(class == RESTRICTED_10)
+			ip->data[0] = NTK_RESTRICTED_10_MASK(ip->data[0]);
+		else 
+			ip->data[0] = NTK_RESTRICTED_172_MASK(ip->data[0]);
 	} else if(family==AF_INET6) {
-		ip->data[0] = (ip->data[0] & ~0xffff0000)|NTK_PRIVATE_CLASS_MASK_IPV6;
+		ip->data[0] = NTK_RESTRICTED_IPV6_MASK(ip->data[0]);
 	} else 
 		fatal(ERROR_MSG "family not supported", ERROR_POS);
 
@@ -167,14 +171,19 @@ int inet_setip_localaddr(inet_prefix *ip, int family)
 
 /*
  * inet_is_ip_local: verifies if `ip' is a local address. If it is, 1 is
- * returned.
+ * returned. `class' specifies what restricted class is currently 
+ * being used (10.x.x.x or 172.16.x.x). In ipv6 the site local class is the
+ * default.
  */
-int inet_is_ip_local(inet_prefix *ip)
+int inet_is_ip_local(inet_prefix *ip, int class)
 {
-	if(ip->family==AF_INET)
-		return (ip->data[0] & 0xff000000) == NTK_PRIVATE_CLASS_MASK_IPV4;
-	else if(ip->family==AF_INET6)
-		return (ip->data[0] & 0xffff0000) == NTK_PRIVATE_CLASS_MASK_IPV6;
+	if(ip->family==AF_INET) {
+		if(class == RESTRICTED_10)
+			return ip->data[0] == NTK_RESTRICTED_10_MASK(ip->data[0]);
+		else
+			return ip->data[0] == NTK_RESTRICTED_172_MASK(ip->data[0]);
+	} else if(ip->family==AF_INET6)
+		return ip->data[0] == NTK_RESTRICTED_IPV6_MASK(ip->data[0]);
 	else
 		fatal(ERROR_MSG "family not supported", ERROR_POS);
 	return 0;
@@ -371,7 +380,7 @@ int inet_validate_ip(inet_prefix ip)
 		ipv4=htonl(ip.data[0]);
 		if(MULTICAST(ipv4) || BADCLASS(ipv4) || ZERONET(ipv4) 
 			|| LOOPBACK(ipv4) || NTK_PRIVATE_C(ipv4) ||
-			(restricted_mode && NTK_PRIVATE_B(ipv4)))
+			(!restricted_mode && NTK_PRIVATE_B(ipv4)))
 			return -EINVAL;
 
 	} else if(ip.family==AF_INET6) {

@@ -728,7 +728,8 @@ int d_ptr_resolve(dns_pkt *dp)
 	 * what hname we've registered.
 	 */
 	if (andns_realm(dp->pkt_qst,NULL)==INET_REALM && 
-		!(inet_is_ip_local(&ipres) || LOOPBACK(htonl(ipres.data[0]))))
+		!(inet_is_ip_local(&ipres, restricted_class) ||
+			LOOPBACK(htonl(ipres.data[0]))))
 		return 1;
 
 	/*

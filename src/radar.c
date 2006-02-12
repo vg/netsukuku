@@ -353,14 +353,13 @@ interface **rnl_get_dev(struct rnode_list *rnlist, map_node *node)
  */
 int is_rnode_allowed(inet_prefix rip, struct allowed_rnode *alr)
 {
-	quadro_group qg;
-	int i, e;
+	int i, e, gid[MAX_LEVELS];
 
-	iptoquadg(rip, me.ext_map, &qg, QUADG_GID);
+	iptogids(&rip, gid, FAMILY_LVLS);
 	
 	list_for(alr) {
 		for(i=alr->min_level; i < alr->tot_level; i++)
-			if(qg.gid[i] != alr->gid[i]) {
+			if(gid[i] != alr->gid[i]) {
 				e=1;
 				break;
 			}
