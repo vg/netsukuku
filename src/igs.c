@@ -284,6 +284,10 @@ void init_internet_gateway_search(void)
 	
 	init_igws(&me.igws, &me.igws_counter, GET_LEVELS(my_family));
 	
+	/*
+	 * Bring tunl0 up
+	 */
+	
 	loginfo("Configuring the \"tunl%d\" tunnel device", DEFAULT_TUNL_NUMBER);
 	if(tunnel_change(0, 0, 0, DEFAULT_TUNL_NUMBER) < 0)
 		fatal("Cannot initialize \"tunl%d\". Is the \"ipip\""
@@ -298,12 +302,33 @@ void init_internet_gateway_search(void)
 	if(!server_opt.inet_hosts)
 		fatal("You didn't specified any Internet hosts in the "
 			"configuration file. What hosts should I ping?");
-	
+
+	/*
+	 * If we are sharing our internet connection, activate the
+	 * masquerading.
+	 */
 	if(server_opt.share_internet)
                 igw_exec_masquerade_sh(server_opt.ip_masq_script, 0);
-			
+
+	/*
+	 * Get the default gateway route currently set in the kernel routing
+	 * table
+	 */
+	memset(&new_gw, 0, sizeof(inet_prefix));
 	ret=rt_get_default_gw(&new_gw, new_gw_dev);
+
+	/* 
+	 * If there is no IP set in the route, fetch it at least from the
+	 * device included in it.
+	 */
+	if(!new_gw.family && *new_gw_dev) {
+		if(get_dev_ip(&new_gw, my_family, new_gw_dev) < 0)
+			(*new_gw_dev)=0;
+	}
+	
 	if(ret < 0 || (!*new_gw_dev && !new_gw.family)) {
+		/* Nothing useful has been found  */
+		
 		loginfo("The retrieval of the default gw from the kernel failed.");
 
 		if(!server_opt.inet_gw.data[0])
@@ -325,6 +350,9 @@ void init_internet_gateway_search(void)
 		else
 			strncpy(server_opt.inet_gw_dev, new_gw_dev, IFNAMSIZ);
 		memcpy(&server_opt.inet_gw, &new_gw, sizeof(inet_prefix));
+
+		/* Delete the default gw, we are replacing it */
+		rt_delete_def_gw();
 	}
 	
 	loginfo("Using \"%s dev %s\" as your first Internet gateway.", 
@@ -893,7 +921,7 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 	debug(DBG_INSANE, RED("igw_def_gw: default via %s"), gw_ip);
 #endif
 
-	if(route_replace(0, 0, to, nh, 0, 0))
+	if(route_replace(0, 0, &to, nh, 0, 0))
 		error("WARNING: Cannot update the default route "
 				"lvl %d", level);
 	active_gws=ni;

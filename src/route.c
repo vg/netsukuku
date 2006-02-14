@@ -599,12 +599,12 @@ do_update:
 #ifdef DEBUG
 	#warning ***The route_del code is disabled***
 #else
-		if(route_del(RTN_UNICAST, 0, to, 0, 0, 0))
+		if(route_del(RTN_UNICAST, 0, &to, 0, 0, 0))
 			error("WARNING: Cannot delete the route entry for the",
 					"%snode %d lvl %d!", !level ? " " : " g",
 					node_pos, level);
 #endif
-	} else if(route_replace(0, route_scope, to, nh, 0, 0))
+	} else if(route_replace(0, route_scope, &to, nh, 0, 0))
 			error("WARNING: Cannot update the route entry for the"
 					"%snode %d lvl %d",!level ? " " : " g",
 					node_pos, level);
@@ -739,7 +739,7 @@ int rt_exec_gw(char *dev, inet_prefix to, inet_prefix gw,
 	} else
 		neho=0;
 
-	return route_function(0, 0, to, neho, dev, 0);
+	return route_function(0, 0, &to, neho, dev, 0);
 }
 
 int rt_add_gw(char *dev, inet_prefix to, inet_prefix gw)
@@ -787,7 +787,7 @@ int rt_delete_def_gw(void)
 	}
 	to.len=to.bits=0;
 
-	return route_del(0, 0, to, 0, 0, 0);
+	return route_del(0, 0, &to, 0, 0, 0);
 }
 
 /* 
@@ -813,14 +813,14 @@ int rt_del_loopback_net(void)
 	 */
 	idata[0]=LOOPBACK_NET;
 	inet_setip(&to, idata, my_family);
-	route_del(RTN_BROADCAST, 0, to, 0, 0, RT_TABLE_LOCAL);
+	route_del(RTN_BROADCAST, 0, &to, 0, 0, RT_TABLE_LOCAL);
 
 	/*
 	 * ip route del local 127.0.0.0/8  proto kernel  scope host 	   \
 	 * src 127.0.0.1
 	 */
 	to.bits=8;
-	route_del(RTN_LOCAL, 0, to, 0, lo_dev, RT_TABLE_LOCAL);
+	route_del(RTN_LOCAL, 0, &to, 0, lo_dev, RT_TABLE_LOCAL);
 
 	/* 
 	 * ip route del broadcast 127.255.255.255  proto kernel scope link \
@@ -828,7 +828,7 @@ int rt_del_loopback_net(void)
 	 */
 	idata[0]=LOOPBACK_BCAST;
 	inet_setip(&to, idata, my_family);
-	route_del(RTN_BROADCAST, 0, to, 0, lo_dev, RT_TABLE_LOCAL);
+	route_del(RTN_BROADCAST, 0, &to, 0, lo_dev, RT_TABLE_LOCAL);
 
 	return 0;
 }

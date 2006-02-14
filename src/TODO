@@ -11,16 +11,14 @@
 
 		[MEDIUM PRIORITY] 
 
-- Restricted mode with 172.16.0.0 and 192.168.0.0.
-	- what happens when two different restricted net meet?
-		- they must not rehook!
-
 - do not delete a tunnel-gw if there is still traffic on it
 
 - Equalize multipath routes
 
 - Bandwidth weight for each entry of the qspn (not just rtt and latency):
 	- what to use to get the bandwidth of a network interface?
+	  Use `iperf' to measure once the max link bw, then monitor with
+	  iptables the link and calculate the used bw. 
 
 - Gnodes contiguity
 	- gnode re-hook

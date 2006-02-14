@@ -37,7 +37,7 @@ struct rt_request {
 };
 
 
-#define ROUTE_CMD_VARS	 int type, int scope, inet_prefix to, struct nexthop *nhops,\
+#define ROUTE_CMD_VARS	 int type, int scope, inet_prefix *to, struct nexthop *nhops,\
 			 char *dev, u_char table
 
 int route_add(ROUTE_CMD_VARS);

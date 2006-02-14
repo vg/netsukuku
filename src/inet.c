@@ -461,7 +461,8 @@ int str_to_inet(const char *src, inet_prefix *ip)
 		return -1;
 	}
 	if (!res) {
-		error("In str_to_inet: impossible to convert, invalid address.");
+		error("In str_to_inet: impossible to convert \"%s\":"
+				" invalid address.", src);
 		return -1;
 	}
 
@@ -526,8 +527,10 @@ int sockaddr_to_inet(struct sockaddr *ip, inet_prefix *dst, u_short *port)
 		p=(char *)ip->sa_data+sizeof(u_short);
 	else if(ip->sa_family==AF_INET6)
 		p=(char *)ip->sa_data+sizeof(u_short)+sizeof(int);
-	else
-		fatal(ERROR_MSG "family not supported", ERROR_POS);
+	else {
+		error(ERROR_MSG "family not supported", ERROR_POS);
+		return -1;
+	}
 		
 	inet_setip(dst, (u_int *)p, ip->sa_family);
 
