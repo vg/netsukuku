@@ -406,7 +406,8 @@ void init_internet_gateway_search(void)
 
 void close_internet_gateway_search(void)
 {
-	igw_exec_masquerade_sh(server_opt.ip_masq_script, 1);
+	if(server_opt.share_internet)
+		igw_exec_masquerade_sh(server_opt.ip_masq_script, 1);
 	free_igws(me.igws, me.igws_counter, me.cur_quadg.levels);
 	free_my_igws(&me.my_igws);
 }

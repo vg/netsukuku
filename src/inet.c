@@ -288,19 +288,6 @@ int inet_addr_match(const inet_prefix *a, const inet_prefix *b, int bits)
 	return 0;
 }
 
-/* 
- * ipv6_addr_type:
- * Taken from linux/net/ipv6/addrconf.c. Modified to use inet_prefix 
- */
-#define ___constant_swab32(x) \
-	((uint32_t)( \
-		(((uint32_t)(x) & (uint32_t)0x000000ffUL) << 24) | \
-		(((uint32_t)(x) & (uint32_t)0x0000ff00UL) <<  8) | \
-		(((uint32_t)(x) & (uint32_t)0x00ff0000UL) >>  8) | \
-		(((uint32_t)(x) & (uint32_t)0xff000000UL) >> 24) ))
-#define __constant_htonl(x) ___constant_swab32((x))
-#define __constant_ntohl(x) ___constant_swab32((x))
-
 int ipv6_addr_type(inet_prefix addr)
 {
 	int type;

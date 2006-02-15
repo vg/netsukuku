@@ -30,9 +30,9 @@
 #endif
 
 /* The IP class used during the hook */
-#define HOOKING_IP_10		0x100000a	/* 10.0.0.1 (in network order) */
-#define HOOKING_IP_172		0x10010ac	/* 172.16.0.1 (in network order) */
-#define HOOKING_IPV6		0xc0fe		/* fec0:: */
+#define HOOKING_IP_10		0xa000001	/* 10.0.0.1 */
+#define HOOKING_IP_172		0xac100001	/* 172.16.0.1 */
+#define HOOKING_IPV6		0xfec00000	/* fec0:: */
 
 #define HOOK_RQ_TIMEOUT		8  /* seconds */
 

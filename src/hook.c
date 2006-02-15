@@ -1004,14 +1004,12 @@ void hook_reset(void)
 	} else
 		idata[0]=HOOKING_IPV6;
 	
-	idata[0]=ntohl(idata[0]);
 	if(my_family == AF_INET6)
-		idata[3]+=rand_range(0, MAXGROUPNODE-2);
+		idata[0]+=rand_range(0, MAXGROUPNODE-2);
 	else
 		idata[0]+=rand_range(0, MAXGROUPNODE-2);
-	idata[0]=htonl(idata[0]);
 
-	inet_setip(&me.cur_ip, idata, my_family);
+	inet_setip_raw(&me.cur_ip, idata, my_family);
 	iptoquadg(me.cur_ip, me.ext_map, &me.cur_quadg,	
 			QUADG_GID|QUADG_GNODE|QUADG_IPSTART);
 	

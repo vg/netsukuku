@@ -26,11 +26,9 @@
 
 /*
  * This is the "link-scope all-hosts multicast" address: ff02::1.
- * Each element is in network order.
  */
-#define IPV6_ADDR_BROADCAST		{ 0x2ff, 0x0, 0x0, 0x1000000 }
+#define IPV6_ADDR_BROADCAST		{ 0xff020000, 0x0, 0x0, 0x1 }
 
-/* in host byte order */
 #define LOOPBACK_IP			0x7f000001
 #define LOOPBACK_NET			0x7f000000
 #define LOOPBACK_BCAST			0x7fffffff
@@ -58,12 +56,12 @@
 
 
 /* Is `x' an IP in the range of 192.168.0.0 - 192.168.255.255 ? */
-#define NTK_PRIVATE_C(x)	(((x) & htonl(0xffff0000)) == htonl(0xc0a80000))
+#define NTK_PRIVATE_C(x)	(((x) & __constant_htonl(0xffff0000)) == __constant_htonl(0xc0a80000))
 
 /* Is `x' in 172.16.0.0 - 172.31.255.255 ? */
-#define NTK_PRIVATE_B(x)	(((x) & htonl(0xff000000)) == htonl(0xac000000))\
-					&& ((x) & htonl(0x00100000)) && 	\
-						!((x) & htonl(0x00e00000))
+#define NTK_PRIVATE_B(x)	(((x) & __constant_htonl(0xff000000)) == __constant_htonl(0xac000000))\
+					&& ((x) & __constant_htonl(0x00100000)) && 	\
+						!((x) & __constant_htonl(0x00e00000))
 
 
 /*
