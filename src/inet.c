@@ -35,16 +35,16 @@
  */
 void inet_ntohl(u_int *data, int family)
 {
+#if BYTE_ORDER == LITTLE_ENDIAN
 	if(family==AF_INET) {
 		data[0]=ntohl(data[0]);
 	} else {
-		if(BYTE_ORDER == LITTLE_ENDIAN) {
-			int i;
-			swap_ints(MAX_IP_INT, data, data);
-			for(i=0; i<MAX_IP_INT; i++)
-				data[i]=ntohl(data[i]);
-		}
+		int i;
+		swap_ints(MAX_IP_INT, data, data);
+		for(i=0; i<MAX_IP_INT; i++)
+			data[i]=ntohl(data[i]);
 	}
+#endif
 }
 
 /* 
@@ -54,16 +54,16 @@ void inet_ntohl(u_int *data, int family)
  */
 void inet_htonl(u_int *data, int family)
 {
+#if BYTE_ORDER == LITTLE_ENDIAN
 	if(family==AF_INET) {
 		data[0]=htonl(data[0]);
 	} else {
-		if(BYTE_ORDER == LITTLE_ENDIAN) {
-			int i;
-			swap_ints(MAX_IP_INT, data, data);
-			for(i=0; i<MAX_IP_INT; i++)
-				data[i]=htonl(data[i]);
-		}
+		int i;
+		swap_ints(MAX_IP_INT, data, data);
+		for(i=0; i<MAX_IP_INT; i++)
+			data[i]=htonl(data[i]);
 	}
+#endif
 }
 
 /*
