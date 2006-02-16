@@ -358,7 +358,7 @@ int is_rnode_allowed(inet_prefix rip, struct allowed_rnode *alr)
 	iptogids(&rip, gid, FAMILY_LVLS);
 	
 	list_for(alr) {
-		for(i=alr->min_level; i < alr->tot_level; i++)
+		for(e=0, i=alr->min_level; i < alr->tot_level; i++)
 			if(gid[i] != alr->gid[i]) {
 				e=1;
 				break;

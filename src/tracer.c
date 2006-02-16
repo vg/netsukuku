@@ -288,7 +288,7 @@ void tracer_update_gcount(tracer_hdr *trcr_hdr, tracer_chunk *tracer,
 		int first_hop, int *gcount_counter, 
 		map_node *int_map, map_gnode **ext_map, int level)
 {
-	map_node *node;
+	map_node *node=0;
 	map_gnode *gnode;
 	u_int hops;
 	int i;
@@ -1324,8 +1324,8 @@ int flood_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), u_char level
 		}
 		if(err==-1) {
 			ntop=inet_to_str(pkt.to);
-			if(!devs)
-				dev_name="NULL";
+			dev_name = !devs ? "NULL" : devs[0]->dev_name;
+				
 			error("flood_pkt_send(): Cannot send the %s request"
 					" with id: %d to %s dev %s.", rq_to_str(pkt.hdr.op),
 					pkt.hdr.id, ntop, dev_name);

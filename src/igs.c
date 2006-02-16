@@ -567,7 +567,7 @@ int igw_cmp(const void *a, const void *b)
  */
 void igw_order(inet_gw **igws, int *igws_counter, inet_gw **my_igws, int level)
 {
-	inet_gw *igw, *next, *maxigws_ptr;
+	inet_gw *igw, *next, *maxigws_ptr=0;
 	int i, igw_tmp_n;
 		
 	if(!igws_counter[level] || !igws[level])
@@ -1043,7 +1043,7 @@ int igw_store_bblock(bnode_hdr *bblock_hdr, bnode_chunk *bchunk, u_char level)
 	map_gnode *gnode=0;
 
 	inet_gw *igw;
-	int gids[me.cur_quadg.levels], ret;
+	int gids[me.cur_quadg.levels], ret=0;
 	u_char *bnode_gid;
 
 	int i, update=0;
@@ -1097,7 +1097,7 @@ int igw_store_bblock(bnode_hdr *bblock_hdr, bnode_chunk *bchunk, u_char level)
 	/* 
 	 * Refresh the Kernel routing table 
 	 */
-	igw_replace_def_igws(me.igws, me.igws_counter, me.my_igws, 
+	ret=igw_replace_def_igws(me.igws, me.igws_counter, me.my_igws, 
 			me.cur_quadg.levels, my_family);
 	if(ret == -1) {
 		debug(DBG_SOFT, ERROR_MSG "cannot replace default gateway", 

@@ -883,7 +883,6 @@ ssize_t inet_recv_timeout(int s, void *buf, size_t len, int flags, u_int timeout
 {
 	struct timeval timeout_t;
 	fd_set fdset;
-	ssize_t err;
 	int ret;
 
 	MILLISEC_TO_TV(timeout*1000, timeout_t);
@@ -894,7 +893,7 @@ ssize_t inet_recv_timeout(int s, void *buf, size_t len, int flags, u_int timeout
 	ret = select(s+1, &fdset, NULL, NULL, &timeout_t);
 	if (ret == -1) {
 		error(ERROR_MSG "select error: %s", ERROR_FUNC, strerror(errno));
-		return err;
+		return ret;
 	}
 
 	if(FD_ISSET(s, &fdset))
@@ -944,7 +943,6 @@ ssize_t inet_recvfrom_timeout(int s, void *buf, size_t len, int flags,
 {
 	struct timeval timeout_t;
 	fd_set fdset;
-	ssize_t err;
 	int ret;
 
 	MILLISEC_TO_TV(timeout*1000, timeout_t);
@@ -955,7 +953,7 @@ ssize_t inet_recvfrom_timeout(int s, void *buf, size_t len, int flags,
 	ret = select(s+1, &fdset, NULL, NULL, &timeout_t);
 	if (ret == -1) {
 		error(ERROR_MSG "select error: %s", ERROR_FUNC, strerror(errno));
-		return err;
+		return ret;
 	}
 
 	if(FD_ISSET(s, &fdset))
@@ -1010,7 +1008,6 @@ ssize_t inet_send(int s, const void *msg, size_t len, int flags)
 ssize_t inet_send_timeout(int s, const void *msg, size_t len, int flags, u_int timeout)
 {
 	struct timeval timeout_t;
-	ssize_t err;
 	fd_set fdset;
 	int ret;
 
@@ -1023,7 +1020,7 @@ ssize_t inet_send_timeout(int s, const void *msg, size_t len, int flags, u_int t
 
 	if (ret == -1) {
 		error(ERROR_MSG "select error: %s", ERROR_FUNC, strerror(errno));
-		return err;
+		return ret;
 	}
 
 	if(FD_ISSET(s, &fdset))
@@ -1079,7 +1076,6 @@ ssize_t inet_sendto_timeout(int s, const void *msg, size_t len, int flags,
 		const struct sockaddr *to, socklen_t tolen, u_int timeout)
 {
 	struct timeval timeout_t;
-	ssize_t err;
 	fd_set fdset;
 	int ret;
 
@@ -1092,7 +1088,7 @@ ssize_t inet_sendto_timeout(int s, const void *msg, size_t len, int flags,
 
 	if (ret == -1) {
 		error(ERROR_MSG "select error: %s", ERROR_FUNC, strerror(errno));
-		return err;
+		return ret;
 	}
 
 	if(FD_ISSET(s, &fdset))

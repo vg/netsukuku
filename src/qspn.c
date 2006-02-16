@@ -367,7 +367,7 @@ void qspn_remove_deads(u_char level)
 {
 	int bm, i, l, node_pos, ip[MAX_IP_INT];
 	map_node *map, *node;
-	map_gnode *gmap, *gnode;
+	map_gnode *gmap, *gnode=0;
 	inet_gw *igw;
 	
 	qspn_set_map_vars(level, 0, 0, 0, &gmap);
