@@ -301,7 +301,7 @@ void update_qspn_time(u_char level, u_int new_qspn_time)
  * gcount[_EL(3)]+=inc.
  * `level' must be < GCOUNT_LEVELS+1 and >= 1.
  */
-void qspn_inc_gcount(int *gcount, int level, int inc)
+void qspn_inc_gcount(u_int *gcount, int level, int inc)
 {
 	int i;
 

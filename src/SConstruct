@@ -165,7 +165,7 @@ idir_data   = '$DATA_DIR'
 idir_conf   = '$CONF_DIR'
 
 env.Install(idir_bin, [netsukuku_d, 'netsukuku_wifi'])
-env.Install(idir_conf, ['netsukuku.conf', 'ip_masquerade.sh'])
+env.Install(idir_conf, ['netsukuku.conf', 'ip_masquerade.sh', 'andna_hostnames'])
 env.Alias('install', [idir_bin, idir_conf])
 
 #Dirty hack ;( Why GetOption("install") doesn't work?

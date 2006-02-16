@@ -177,7 +177,7 @@ int hash_time(int *h_sec, int *h_usec)
 	memcpy(str, &t, sizeof(struct timeval));
 	str[sizeof(struct timeval)]=0;
 
-	elf_hash=dl_elf_hash(str);
+	elf_hash=dl_elf_hash((u_char *)str);
 	
 	if(h_sec)
 		*h_sec=inthash(t.tv_sec);

@@ -9,4 +9,4 @@ netsukuku_d_SOURCES= accept.c map.c misc.c pkts.c qspn.c request.c radar.c   \
 	krnl_rule.c iptunnel.c libnetlink.c ll_map.c llist.c log.c \
 	route.c tracer.c igs.c libping.c xmalloc.c netsukuku.c 
 netsukuku_d_LDADD = -lpthread -lgmp -lcrypto -lresolv
-sysconf_DATA = netsukuku.conf ip_masquerade.sh
+sysconf_DATA = netsukuku.conf ip_masquerade.sh andna_hostnames

@@ -1166,7 +1166,7 @@ int hook_get_free_nodes(int hook_level, struct free_nodes_hdr *fn_hdr,
 			continue;
 
 		/* Extract the ipstart of the gnode */
-		inet_setip(gnode_ipstart, fn_hdr->ipstart, my_family);
+		inet_setip(gnode_ipstart, (u_int *)fn_hdr->ipstart, my_family);
 
 		/* Get the qspn round info */
 		if(!get_qspn_round(rq->ip, rq->dev[0], rq->final_rtt,
