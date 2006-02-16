@@ -95,11 +95,7 @@ int read_label_octet(const char *src,char *dst,int read_yet,int limit_len)
 	int how;
 
 	how=*src;
-	if ( how > MAX_SQLBL_LEN) {
-		error("In read_label_octet: exceeding label.");
-		return -1;
-	}
-	if ( how+read_yet> limit_len ) {
+	if ( how+read_yet> limit_len || how+read_yet > MAX_SQLBL_LEN ) {
 		error("In read_label_octet: exceeding pkt. limit_len=%d,read_yet=%d,count=%d",limit_len,read_yet,how);
 		return -1;
 	}
@@ -108,10 +104,6 @@ int read_label_octet(const char *src,char *dst,int read_yet,int limit_len)
 }
 
 /*
- * 	It's trivial, but mathematciens do 
- * 	everything complex
- * 	OBSOLETE FUNCTION: SEE LATER
- *
  * The next function is a little complex.
  * It converts a hname from sequence_label format to str.
  * Returns 
@@ -140,8 +132,7 @@ int read_label_octet(const char *src,char *dst,int read_yet,int limit_len)
  * Anyway,
  *      ***you have to call it with start_pkt=begin_pkt,count=0 and recursion=0***
  */
-
-size_t old_lbltoname(char *buf,char *start_pkt,char *dst,int count,int limit_len,int recursion)
+size_t lbltoname(char *buf,char *start_pkt,char *dst,int count,int limit_len,int recursion)
 {
         size_t temp,offset;
 
@@ -178,77 +169,11 @@ size_t old_lbltoname(char *buf,char *start_pkt,char *dst,int count,int limit_len
 			count++;
 		}
 	}
-	if ((offset=old_lbltoname(buf,start_pkt,dst,count,limit_len,recursion))==-1)
+	if ((offset=lbltoname(buf,start_pkt,dst,count,limit_len,recursion))==-1)
 		return -1;
 	if (recursion) 
 		return (recursion==1)?2:0;
 	return offset+temp+1;
-}
-
-/*
- * Converts a dns compliant sequence label name to string.
- * Returns:
- * 	Bytes readed if OK
- * 	-1 on error
- */
-int lbltoname(char *buf,char *start_pkt,char *dst,int limit)
-{
-        char *crow;
-        int how,recursion=0;
-        int ptr;
-	int writed=0,readed=0;
-	int new_limit=limit;
-
-        crow=buf;
-
-        while (*crow) {
-                ptr=getlblptr(crow);
-                if (ptr) { /* Got a pointer.... or got a error*/
-			if (ptr==-1) {
-                        	error("In lbltoname: malformed label!");
-                        	return -1;
-                	}
-                        if (++recursion>MAX_RECURSION_PTR) {
-                                error("In lbltoname: too many pointers.");
-                                return -1;
-                        }
-			if (recursion==1) readed+=2; /* we read the pointer */
-                        crow=start_pkt+ptr;
-			new_limit=limit - (int)(crow - buf);
-			if (new_limit<=0 || new_limit > (int)(buf-start_pkt)+limit) {
-				error("In lbltoname: pointer to deep space!");
-				return -1;
-			}
-                	if (getlblptr(crow)) {
-                        	error("In lbltoname: pointer to pointer.");
-                        	return -1;
-                	}
-                }
-
-                how=*crow++;
-                if (how>MAX_SQLBL_LEN) {
-                        error("In lbltoname: exceeding label!");
-                        return -1;
-                }
-		if (how>new_limit) {
-                        error("In lbltoname: exceeding packet!");
-                        return -1;
-                }
-		if (!recursion) 
-			readed+=how+1;
-		writed+=how+1;
-
-                if (writed>MAX_DNS_HNAME_LEN) {
-                        error("In lbltoname: hname too long.");
-                        return -1;
-                }
-                memcpy(dst,crow,how);
-                dst+=how;
-                crow+=how;
-                *dst++=(*crow)?'.':0;
-        }
-	if (!recursion) readed++;
-        return readed;
 }
 
 /*
@@ -262,6 +187,12 @@ int andns_proto(char *buf)
 	c=*(buf+3);
 	c=(c>>4)&0x03;
 	return c;
+/*        if (c==NK_NTK || c==NK_INET)
+                return ANDNS_NTK_PROTO;
+        if (c==NK_OLDSTYLE)
+                return ANDNS_DNS_PROTO;
+        error("In andns_proto: query protocol?!?!?");
+        return -1;*/
 }
 
 /*
@@ -270,7 +201,7 @@ int andns_proto(char *buf)
  * 	NTK_REALM if you search something on ntk.
  * 	-1 on error
  *
- * If there is no suffix, returns _default_realm_, which is set
+ * If there is no sufix, returns _default_realm_, which is set
  * by andns_init.
  *
  * If prefixed is not NULL, and a prefix is found, *prefixed is
@@ -460,7 +391,7 @@ size_t nametolbl(char *name,char *dst)
         char *crow;
         size_t offset=0,res;
 
-        if (!name || !strcmp(name,"") || strlen(name)>MAX_DNS_HNAME_LEN) {
+        if (!name || !strcmp(name,"") || strlen(name)>MAX_HNAME_LEN) {
                 error("In nametolbl: invalid name");
                 return -1;
         }
@@ -484,6 +415,11 @@ size_t nametolbl(char *name,char *dst)
 	*dst++=(char)res;
 	strcpy(dst,name);
 	offset+=res+2;
+	/*
+	dst++;
+        while ( (*dst++=*name++)) offset++;
+	*dst++=*name++;
+	offset++;*/
         return offset;
 }
 /*
@@ -550,7 +486,7 @@ size_t dpkttoqst(char *start_buf,char *buf,dns_pkt *dp,int limit_len)
 	dpq=dns_add_qst(dp);
 
         // get name
-        if((count=lbltoname(buf,start_buf,dpq->qname,limit_len))==-1)
+        if((count=lbltoname(buf,start_buf,dpq->qname,0,limit_len,0))==-1)
                 return -1;
         buf+=count;
         // Now we have to write 2+2 bytes
@@ -608,7 +544,7 @@ size_t dpkttoa(char *start_buf,char *buf,dns_pkt_a **dpa_orig,int limit_len)
 	dpa=dns_add_a(dpa_orig);
 
         // get name
-        if((count=lbltoname(buf,start_buf,dpa->name,limit_len))==-1)
+        if((count=lbltoname(buf,start_buf,dpa->name,0,limit_len,0))==-1)
                 return -1;
         buf+=count;
         // Now we have to write 2+2+4+2 bytes
@@ -638,19 +574,15 @@ size_t dpkttoa(char *start_buf,char *buf,dns_pkt_a **dpa_orig,int limit_len)
         buf+=2;
 
         rdlen=dpa->rdlength;
-        if (rdlen>MAX_DNS_HNAME_LEN) {
-                debug(DBG_NOISE, "In dpkttoa: rdlen exceeds!");
-                return -1;
-        }
         // Now we have to write dpa->rdlength bytes
-        if (count+rdlen>limit_len) {
+        if (count+rdlen>limit_len || rdlen>MAX_HNAME_LEN) {
                 debug(DBG_NOISE, "In npkttoa: limit_len break!");
                 return -1;
         }
 	if (dpa->type==T_A)
         	memcpy(dpa->rdata,buf,rdlen);
 	else 
-		if ((ui=lbltoname(buf,start_buf,dpa->rdata,rdlen))==-1) {
+		if ((ui=lbltoname(buf,start_buf,dpa->rdata,0,MAX_HNAME_LEN,0))==-1) {
 			error("In dpkttpa: can not write rdata field.");
 			return -1;
 		}
@@ -700,7 +632,7 @@ size_t dpkt(char *buf,size_t pktlen,dns_pkt **dpp)
 
 	// Writes headers
 	offset+=dpkttohdr(buf,&(dp->pkt_hdr));
-	if (pktlen > DNS_MAX_SZ) // If pkt is too long: the headers are written,
+	if (pktlen > DNS_MAX_SZ) // If pkt is too long, the headers are written,
 				// so we can reply with E_INTRPRT
 		return -1;
 	crow+=offset;
@@ -1145,12 +1077,12 @@ int danswtoaansw(dns_pkt *dp,andns_pkt *ap,char *msg)
 				memcpy(apd->rdata,dpa->rdata,4);
 				break;
 			case AT_PTR:
-				if ((res=lbltoname(dpa->rdata,msg,apd->rdata,dpa->rdlength))==-1)
+				if ((res=lbltoname(dpa->rdata,msg,apd->rdata,0,MAX_HNAME_LEN,0))==-1)
 					return -1;
 				apd->rdlength=strlen(apd->rdata);
 				break;
 			case AT_MX:
-				if ((res=lbltoname(dpa->rdata,msg,apd->rdata,dpa->rdlength))==-1)
+				if ((res=lbltoname(dpa->rdata,msg,apd->rdata,0,MAX_HNAME_LEN,0))==-1)
 					return -1;
 				apd->rdlength=strlen(apd->rdata);
 				break;
