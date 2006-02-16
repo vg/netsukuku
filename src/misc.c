@@ -171,7 +171,7 @@ int hash_time(int *h_sec, int *h_usec)
 {
 	struct timeval t;
 	char str[sizeof(struct timeval)+1];
-	int elf_hash;
+	u_int elf_hash;
 	
 	gettimeofday(&t, 0);
 	memcpy(str, &t, sizeof(struct timeval));

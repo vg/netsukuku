@@ -7,14 +7,19 @@ New features:
 
 Bug fixes:
 
+	* The NTK_RFC 0007 has been implemented. It fixes an exploitable bug
+	  in the ANDNA protocol.
+
+	* The ppp connection to the Internet doesn't set an IP address in the
+	  default route of the kernel but only the used ppp interface,
+	  therefore NetsukukuD has to deduce it from the IP assigned to the
+	  ppp interface, i.e. ppp0.
+
 	* Execute /etc/netsukuku/ip_masquerade.sh only if it is
 	  writable just by root.
 
 	* Execute "/etc/netsukuku/ip_masquerade.sh stop" when NetsukukuD is
 	  closed.
-
-	* The NTK_RFC 0007 has been implemented. It fixes an exploitable bug
-	  in the ANDNA protocol.
 
 	* Added a timeout of 60 seconds for the reverse resolution request.
 

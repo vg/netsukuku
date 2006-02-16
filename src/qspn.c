@@ -340,7 +340,7 @@ void qspn_dec_gcount(int *gcount, int level, int dec)
  * qspn_reset_gcount: resets the gcount array by setting all its
  * first `level'# members to `value'.
  */
-void qspn_reset_gcount(int *gcount, int level, int value)
+void qspn_reset_gcount(u_int *gcount, int level, int value)
 {
 	int i;
 	for(i=0; i<level; i++)
@@ -354,7 +354,7 @@ void qspn_reset_gcount(int *gcount, int level, int value)
 /* 
  * qspn_backup_gcount: copies `gcount' in `old_gcount' 
  */
-void qspn_backup_gcount(int *old_gcount, int *gcount)
+void qspn_backup_gcount(u_int *old_gcount, int *gcount)
 {
 	memcpy(old_gcount, gcount, sizeof(u_int)*GCOUNT_LEVELS);
 }

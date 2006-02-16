@@ -23,7 +23,7 @@
 #include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <openssl/crypto.h>
-#include <openssl/md2.h>
+#include <openssl/md5.h>
 #include <openssl/x509.h>
 #include <openssl/err.h>
 #include <openssl/rand.h>

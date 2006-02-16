@@ -1051,7 +1051,7 @@ int igw_store_bblock(bnode_hdr *bblock_hdr, bnode_chunk *bchunk, u_char level)
 	/*
 	 * Extract the IP of the Internet gateway
 	 */
-	bnode_gid=(char *)bblock_hdr + sizeof(bnode_hdr);
+	bnode_gid=(u_char *)bblock_hdr + sizeof(bnode_hdr);
 	for(i=0; i<bblock_hdr->bnode_levels; i++)
 		gids[i]=bnode_gid[i];
 	for(; i < me.cur_quadg.levels; i++)

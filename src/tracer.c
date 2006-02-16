@@ -285,7 +285,7 @@ int tracer_get_trtt(int from_rnode_pos, tracer_hdr *trcr_hdr,
  * It ignores all the tracer chunks < `first_hop'.
  */
 void tracer_update_gcount(tracer_hdr *trcr_hdr, tracer_chunk *tracer,
-		int first_hop, int *gcount_counter, 
+		int first_hop, u_int *gcount_counter, 
 		map_node *int_map, map_gnode **ext_map, int level)
 {
 	map_node *node=0;
@@ -782,7 +782,7 @@ u_short tracer_split_bblock(void *bnode_block_start, size_t bblock_sz, bnode_hdr
 			if(!loop)
 				ints_network_to_host(bblock_hdr, bnode_hdr_iinfo);
 
-			bnode_gid = (char *)bblock_hdr+sizeof(bnode_hdr);
+			bnode_gid = (u_char *)bblock_hdr+sizeof(bnode_hdr);
 			bblock    = (bnode_chunk *)((char *)bnode_gid +
 					(bblock_hdr->bnode_levels*sizeof(u_char)));
 
@@ -876,7 +876,7 @@ int tracer_store_bblock(u_char level, tracer_hdr *trcr_hdr, tracer_chunk *tracer
 	*bblocks_found_block=found_block=xmalloc(found_block_sz);
 	for(i=0; i<bb; i++) {
 
-		bnode_gid=(char *)bblist_hdr[i] + sizeof(bnode_hdr);
+		bnode_gid=(u_char *)bblist_hdr[i] + sizeof(bnode_hdr);
 
 		/* We update only the bmaps which are at
 		 * levels where our gnodes are in common with

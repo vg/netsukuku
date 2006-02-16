@@ -176,7 +176,7 @@ void andna_close(void)
  * Note that this function is used to hash other hashes, so it operates on the
  * ANDNA_HASH_SZ fixed length.
  */
-void andna_hash_by_family(int family, void *msg, int hash[MAX_IP_INT])
+void andna_hash_by_family(int family, void *msg, u_int hash[MAX_IP_INT])
 {
 	memset(hash, 0, ANDNA_HASH_SZ);
 	
@@ -193,8 +193,8 @@ void andna_hash_by_family(int family, void *msg, int hash[MAX_IP_INT])
  * stores the 32bit hash of the `hash', otherwise it just copies `hash' to
  * `hash_ip'.
  */
-void andna_hash(int family, void *msg, int len, int hash[MAX_IP_INT],
-		int ip_hash[MAX_IP_INT])
+void andna_hash(int family, void *msg, int len, u_int hash[MAX_IP_INT],
+		u_int ip_hash[MAX_IP_INT])
 {
 	hash_md5(msg, len, (u_char *)hash);
 	andna_hash_by_family(family, (u_char *)hash, ip_hash);	
@@ -1068,7 +1068,7 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	 * resolved_hnames cache
 	 */
 	if((rhc=rh_cache_find_hname(hname))) {
-		inet_setip(resolved_ip, rhc->ip, my_family);
+		inet_setip(resolved_ip, (u_int *)rhc->ip, my_family);
 		inet_ntohl(resolved_ip->data, my_family);
 		return 0;
 	}
