@@ -38,10 +38,11 @@
 /* 
  * DNS STRUCTS
  */
-#define MAX_HNAME_LEN 	255
-#define MAX_DNS_LL	2
-#define DNS_HDR_SZ	12
-#define DNS_MAX_SZ	512
+#define MAX_HNAME_LEN 		255
+#define MAX_DNS_HNAME_LEN 	255
+#define MAX_DNS_LL		2
+#define DNS_HDR_SZ		12
+#define DNS_MAX_SZ		512
 typedef struct dns_pkt_hdr {
 	uint16_t       id;
         uint8_t        qr;
