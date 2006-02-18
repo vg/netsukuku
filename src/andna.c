@@ -1565,8 +1565,12 @@ int put_single_acache(PACKET rpkt)
 	req_hdr=(struct single_acache_hdr *)rpkt_local_copy.msg;
 	
 	if(rpkt.hdr.sz != SINGLE_ACACHE_PKT_SZ(req_hdr->hgnodes) ||
-			req_hdr->hgnodes > ANDNA_MAX_NEW_GNODES)
+			req_hdr->hgnodes > ANDNA_MAX_NEW_GNODES) {
+		debug(DBG_NOISE, "Malformed GET_SINGLE_ACACHE pkt: %d, %d, %d",
+			rpkt.hdr.sz, SINGLE_ACACHE_PKT_SZ(req_hdr->hgnodes),
+			req_hdr->hgnodes);
 		ERROR_FINISH(ret, -1, finish);
+	}
 
 	/* Save the real sender of the request */
 	inet_setip(&rfrom, req_hdr->rip, my_family);
