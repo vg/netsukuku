@@ -1052,7 +1052,6 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	memset(&rpkt, 0, sizeof(pkt));
 
 
-//#ifndef ANDNA_DEBUG
 	/*
 	 * Search in the hostname in the local cache first. Maybe we are so
 	 * dumb that we are trying to resolve the same ip we registered.
@@ -1061,7 +1060,6 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 		memcpy(resolved_ip, &me.cur_ip, sizeof(inet_prefix));
 		return 0;
 	}
-//#endif
 	
 	/*
 	 * Last try before going asking to ANDNA: let's if we have it in the
@@ -1079,7 +1077,6 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	inet_copy_ipdata(req.rip, &me.cur_ip);
 	andna_hash(my_family, hname, strlen(hname), req.hash, hash_gnode);
 	
-//#ifndef ANDNA_DEBUG
 	/*
 	 * If we manage an andna_cache, it's better to peek at it.
 	 */
@@ -1088,7 +1085,6 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 		inet_ntohl(resolved_ip->data, my_family);
 		return 0;
 	}
-//#endif
 
 	/* 
 	 * Ok, we have to ask to someone for the resolution.
@@ -1564,14 +1560,6 @@ int put_single_acache(PACKET rpkt)
 	pkt_copy(&rpkt_local_copy, &rpkt);
 	req_hdr=(struct single_acache_hdr *)rpkt_local_copy.msg;
 	
-	if(rpkt.hdr.sz != SINGLE_ACACHE_PKT_SZ(req_hdr->hgnodes) ||
-			req_hdr->hgnodes > ANDNA_MAX_NEW_GNODES) {
-		debug(DBG_NOISE, "Malformed GET_SINGLE_ACACHE pkt: %d, %d, %d",
-			rpkt.hdr.sz, SINGLE_ACACHE_PKT_SZ(req_hdr->hgnodes),
-			req_hdr->hgnodes);
-		ERROR_FINISH(ret, -1, finish);
-	}
-
 	/* Save the real sender of the request */
 	inet_setip(&rfrom, req_hdr->rip, my_family);
 
@@ -1586,7 +1574,17 @@ int put_single_acache(PACKET rpkt)
 
 	/* network -> host order */
 	ints_network_to_host(req_hdr, single_acache_hdr_iinfo);
-	
+
+	/* Verify the validity of the header */
+	if(rpkt.hdr.sz != SINGLE_ACACHE_PKT_SZ(req_hdr->hgnodes) ||
+			req_hdr->hgnodes > ANDNA_MAX_NEW_GNODES) {
+		debug(DBG_NOISE, "Malformed GET_SINGLE_ACACHE pkt: %d, %d, %d",
+			rpkt.hdr.sz, SINGLE_ACACHE_PKT_SZ(req_hdr->hgnodes),
+			req_hdr->hgnodes);
+		ret=pkt_err(pkt, E_INVALID_REQUEST, 0);
+		goto finish;
+	}
+
 	/* Unpack the hash_gnodes to exclude */
 	new_hgnodes=xmalloc(sizeof(u_int *) * (req_hdr->hgnodes+1));
 	buf=rpkt.msg+sizeof(struct single_acache_hdr);
