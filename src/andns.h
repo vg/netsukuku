@@ -23,7 +23,6 @@
 #include <sys/types.h>
 #include <stdint.h>
 
-
 /* PREFIX TO QUERY THE INET REALM */
 #define INET_REALM_PREFIX 	".INT"
 #define NTK_REALM_PREFIX 	".NTK"
