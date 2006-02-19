@@ -401,8 +401,6 @@ char* andns_rslv_inet(char *msg,int msglen,
 		default:
 			debug(DBG_INSANE,"Unknow query type: %d.",(dp->pkt_qst)->qtype);
 			err_seterrno(ERR_UFOTOQ);
-			dp_print(dp);
-			char_print(msg,msglen);
 			goto dns_eintrprt_return; // release *dp
 	}
 	if (res==1) {

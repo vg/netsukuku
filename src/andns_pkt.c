@@ -185,6 +185,7 @@ size_t old_lbltoname(char *buf,char *start_pkt,char *dst,int count,int limit_len
 		return (recursion==1)?2:0;
 	return offset+temp+1;
 }
+
 */
 /*
  * Converts a dns compliant sequence label name to string.
