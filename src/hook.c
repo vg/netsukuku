@@ -862,7 +862,7 @@ void create_new_qgroup(int hook_level)
  * -1 is returned.
  */
 int update_join_rate(map_gnode *hook_gnode, int hook_level, 
-		int *old_gcount, int *gnode_count, 
+		u_int *old_gcount, u_int *gnode_count, 
 		struct free_nodes_hdr *fn_hdr)
 {
 	u_int free_nodes, total_bnodes;

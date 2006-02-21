@@ -82,10 +82,10 @@ struct andna_reg_pkt
 #define ANDNA_REG_PKT_SZ	     (sizeof(struct andna_reg_pkt))
 #define ANDNA_REG_SIGNED_BLOCK_SZ (ANDNA_REG_PKT_SZ - ANDNA_SIGNATURE_LEN - \
 				 	sizeof(char))
-INT_INFO andna_reg_pkt_iinfo = 	{ 2, /* `rip' is not considered */
-				 { INT_TYPE_32BIT, INT_TYPE_16BIT },
-				 { MAX_IP_SZ, MAX_IP_SZ*2 + ANDNA_PKEY_LEN },
-				 { MAX_IP_INT, 1},
+INT_INFO andna_reg_pkt_iinfo = 	{ 1, /* `rip' and `hash' aren't considered */
+				 { INT_TYPE_16BIT },
+				 { MAX_IP_SZ*2 + ANDNA_PKEY_LEN },
+				 { 1 },
 			  	};
 				 
 
@@ -101,11 +101,8 @@ struct andna_resolve_rq_pkt
 						   resolve. */
 } _PACKED_;
 #define ANDNA_RESOLVE_RQ_PKT_SZ		(sizeof(struct andna_resolve_rq_pkt))
-INT_INFO andna_resolve_rq_pkt_iinfo =	{ 1, /* `rip' is ignored */
-					  { INT_TYPE_32BIT },
-					  { MAX_IP_SZ+sizeof(char) },
-					  { MAX_IP_INT },
-				  	};
+INT_INFO andna_resolve_rq_pkt_iinfo =	{ 0, /* `rip' and `hash' are ignored */
+					  { 0 }, { 0 }, { 0 }, };
 
 /* 
  * The reply to the resolve request
@@ -164,10 +161,10 @@ struct single_acache_hdr
 						   body. */
 	u_char		flags;
 } _PACKED_;
-INT_INFO single_acache_hdr_iinfo = { 2, /* `rip' is ignored */
-				     { INT_TYPE_32BIT, INT_TYPE_16BIT },
-				     { MAX_IP_SZ, MAX_IP_SZ*2 },
-				     { MAX_IP_INT, 1 },
+INT_INFO single_acache_hdr_iinfo = { 1, /* `rip' and `hash' are ignored */
+				     { INT_TYPE_16BIT },
+				     { MAX_IP_SZ*2 },
+				     { 1 },
 				   };
 /*
  * The single_acache body is:
@@ -192,7 +189,7 @@ struct spread_acache_pkt
 	u_int		hash[MAX_IP_INT];
 } _PACKED_;
 #define SPREAD_ACACHE_PKT_SZ	(sizeof(struct spread_acache_pkt))
-INT_INFO spread_acache_pkt_info = { 1, { INT_TYPE_32BIT }, { 0 }, { MAX_IP_INT } };
+INT_INFO spread_acache_pkt_info = { 0, { 0 }, { 0 }, { 0 } };
 
 
 int andna_load_caches(void);

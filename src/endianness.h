@@ -30,6 +30,8 @@
 
 
 /* flags for int_info.int_type */
+#define INT_TYPE_VOID		0		/* Emptiness is loneliness, and loneliness is 
+						   cleanliness */
 #define INT_TYPE_32BIT		1		/* The int var is of 32 bits */
 #define INT_TYPE_16BIT		(1<<1)		/* The int var is of 16 bits */
 #define INT_TYPE_WORDS		(1<<2)		/* The int var is composed by an array of ints,

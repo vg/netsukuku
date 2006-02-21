@@ -192,6 +192,9 @@ void andna_hash_by_family(int family, void *msg, u_int hash[MAX_IP_INT])
  * big and stores it in `hash'. If family is equal to AF_INET, in `ip_hash' it
  * stores the 32bit hash of the `hash', otherwise it just copies `hash' to
  * `hash_ip'.
+ * 
+ * Note: `hash' is a single string of `MAX_IP_INT'*4 bytes, it is the MD5 hash
+ * of `msg', therefore do not attempt to convert it to network order.
  */
 void andna_hash(int family, void *msg, int len, u_int hash[MAX_IP_INT],
 		u_int ip_hash[MAX_IP_INT])
@@ -807,7 +810,7 @@ finish:
 int andna_check_counter(PACKET pkt)
 {
 	PACKET rpkt;
-	int ret=0, pubk_hash[MAX_IP_INT], hash_gnode[MAX_IP_INT], err;
+	int ret=0, rip_hash[MAX_IP_INT], hash_gnode[MAX_IP_INT], err;
 	struct andna_reg_pkt *req;
 	const char *ntop;
 	u_char forwarded_pkt=0;
@@ -821,9 +824,9 @@ int andna_check_counter(PACKET pkt)
 	
 	/* Calculate the hash of the IP of the sender node. This hash will
 	 * be used to reach its counter node. */
-	andna_hash(my_family, req->rip, MAX_IP_SZ, pubk_hash, hash_gnode);
+	andna_hash(my_family, req->rip, MAX_IP_SZ, rip_hash, hash_gnode);
 	
-	/* Find a hash_gnode for the pubk_hash */
+	/* Find a hash_gnode for the rip_hash */
 	req->flags&=~ANDNA_FORWARD;
 	if((err=find_hash_gnode(hash_gnode, &pkt.to, 0, 0, 1)) < 0) {
 		debug(DBG_INSANE, "andna_check_counter: Couldn't find a decent"
@@ -873,7 +876,7 @@ int andna_recv_check_counter(PACKET rpkt)
 	RSA *pubkey;
 	counter_c *cc;
 	counter_c_hashes *cch;
-	u_int pubk_hash[MAX_IP_INT], hash_gnode[MAX_IP_INT], *excluded_hgnode[1];
+	u_int rip_hash[MAX_IP_INT], hash_gnode[MAX_IP_INT], *excluded_hgnode[1];
 	int ret=0, err, old_updates;
 
 	char *ntop=0, *rfrom_ntop=0, *buf;
@@ -948,7 +951,7 @@ int andna_recv_check_counter(PACKET rpkt)
 	 * forward the pkt 
 	 */
 
-	andna_hash(my_family, req->rip, MAX_IP_SZ, pubk_hash, hash_gnode);
+	andna_hash(my_family, req->rip, MAX_IP_SZ, rip_hash, hash_gnode);
 	if((err=find_hash_gnode(hash_gnode, &to, excluded_hgnode, 1, 0)) < 0) {
 		debug(DBG_SOFT, "We are not the real (rounded)hash_gnode. "
 				"Rejecting the 0x%x check_counter request",
@@ -1062,8 +1065,8 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	}
 	
 	/*
-	 * Last try before going asking to ANDNA: let's if we have it in the
-	 * resolved_hnames cache
+	 * Last try before going asking to ANDNA: let's see if we have it in
+	 * the resolved_hnames cache
 	 */
 	if((rhc=rh_cache_find_hname(hname))) {
 		inet_setip(resolved_ip, (u_int *)rhc->ip, my_family);

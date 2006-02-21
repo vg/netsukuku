@@ -103,6 +103,9 @@ void ints_network_to_host(void *s, int_info iinfo)
 	IS_DYNAMIC(iinfo.total_ints);
 	
 	for(i=0; i < iinfo.total_ints; i++) {
+		if(!iinfo.int_type[i])
+			continue;
+
 		IS_DYNAMIC(iinfo.int_offset[i]);
 		
 		p=(char *)s + iinfo.int_offset[i];
@@ -144,6 +147,9 @@ void ints_host_to_network(void *s, int_info iinfo)
 	IS_DYNAMIC(iinfo.total_ints);
 
 	for(i=0; i < iinfo.total_ints; i++) {
+		if(!iinfo.int_type[i])
+			continue;
+
 		IS_DYNAMIC(iinfo.int_offset[i]);
 
 		p=(char *)s + iinfo.int_offset[i];
@@ -184,6 +190,9 @@ void ints_printf(void *s, int_info iinfo, void(*print_func(const char *, ...)))
 	IS_DYNAMIC(iinfo.total_ints);
 
 	for(i=0; i < iinfo.total_ints; i++) {
+		if(!iinfo.int_type[i])
+			continue;
+
 		IS_DYNAMIC(iinfo.int_offset[i]);
 
 		p=(char *)s + iinfo.int_offset[i];
