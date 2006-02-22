@@ -71,7 +71,7 @@ int verify_free_nodes_hdr(inet_prefix *to, struct free_nodes_hdr *fn_hdr)
 		return 1;
 
 	/* If fn_hdr->ipstart != `to' there is an error */
-	inet_setip(&ipstart, fn_hdr->ipstart, my_family);
+	inet_setip(&ipstart, (u_int *)fn_hdr->ipstart, my_family);
 	iptoquadg(ipstart, me.ext_map, &qg_a, QUADG_GID);
 	iptoquadg(*to, me.ext_map, &qg_b, QUADG_GID);
 	if(quadg_gids_cmp(qg_a, qg_b, fn_hdr->level))

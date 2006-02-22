@@ -67,9 +67,7 @@ do {									\
 	_l=(l_list *)(list);						\
 	_l->prev=0; 							\
 	_l->next=0;							\
-	if((new))							\
-		list_copy((list), (new));				\
-	else								\
+	if(!(new))							\
 		memset((list), 0, sizeof(typeof(*(list)))); 		\
 } while (0)
 				     

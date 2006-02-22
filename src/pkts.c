@@ -781,7 +781,6 @@ int pkt_q_wait_recv(int id, inet_prefix *from, PACKET *rpkt, pkt_queue **ret_pq)
 	/* Be sure to unlock me after the timeout */
 	pthread_create(&thread, &wait_and_unlock_attr, wait_and_unlock, 
 			(void *)pq_ptr);
-	pthread_detach(thread);
 
 	if(pq->flags & PKT_Q_MTX_LOCKED) {
 		debug(DBG_INSANE, "pkt_q_wait_recv: Locking 0x%x!", &pq->mtx);

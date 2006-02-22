@@ -812,7 +812,8 @@ finish:
 int andna_check_counter(PACKET pkt)
 {
 	PACKET rpkt;
-	int ret=0, rip_hash[MAX_IP_INT], hash_gnode[MAX_IP_INT], err;
+	int ret=0, err;
+	u_int rip_hash[MAX_IP_INT], hash_gnode[MAX_IP_INT];
 	struct andna_reg_pkt *req;
 	const char *ntop;
 	u_char forwarded_pkt=0;
