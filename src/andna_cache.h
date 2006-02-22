@@ -35,7 +35,6 @@
 						   update of the hname. */
 
 #define ANDNA_PRIVKEY_BITS		1024
-#define ANDNA_SKEY_LEN			608	/* RSA packed in DER format */
 #define ANDNA_PKEY_LEN			140
 #define ANDNA_HASH_SZ			(MAX_IP_SZ)
 #define ANDNA_SIGNATURE_LEN		128
@@ -159,10 +158,13 @@ INT_INFO counter_c_body_iinfo = { 1,
  */
 typedef struct lcl_cache_keyring
 {
-	char		privkey[ANDNA_SKEY_LEN];
-	char		pubkey[ANDNA_PKEY_LEN];
+	u_int		skey_len;
+	u_int		pkey_len;
+	
+	u_char		*privkey;		/* secret key packed */
+	u_char		*pubkey;		/* pubkey packed */
 
-	RSA		*priv_rsa;
+	RSA		*priv_rsa;		/* key pair unpacked */
 } lcl_cache_keyring;
 
 struct lcl_cache
@@ -227,17 +229,32 @@ struct lcl_cache_pkt_hdr
 {
 	u_short		tot_caches;		/* How many lcl structs there 
 						   are in the pkt's body */
- 	char		privkey[ANDNA_SKEY_LEN];
- 	char		pubkey[ANDNA_PKEY_LEN];
+	u_int		skey_len;
+	u_int		pkey_len;
 }_PACKED_;
-INT_INFO lcl_cache_pkt_hdr_iinfo = { 1, { INT_TYPE_32BIT }, { 0 }, { 1 } };
+/* 
+ * the rest of the hdr is:
+ * 
+ *	char		privkey[hdr.skey_len];
+ *	char		pubkey[hdr.pkey_len];
+ */
+INT_INFO lcl_cache_pkt_hdr_iinfo = { 3, 
+				     { INT_TYPE_16BIT, INT_TYPE_32BIT, INT_TYPE_32BIT }, 
+				     { 0, sizeof(u_short), sizeof(u_short)+sizeof(u_int) }, 
+				     { 1, 1, 1 } 
+				   };
+#define LCL_CACHE_HDR_PACK_SZ(lclhdr)	(sizeof(struct lcl_cache_pkt_hdr) +	\
+		(lclhdr)->skey_len + (lclhdr)->pkey_len)
+		
 /* 
  * The body is:
+ *	
  * struct lcl_cache_pkt_body {
  *	char		hostname[strlen(hostname)+1];
  *	u_short		hname_updates;
  *	time_t          timestamp;
  * } body[ hdr.tot_caches ];
+ * 
  */
 #define LCL_CACHE_BODY_PACK_SZ(hname_len)	((hname_len) + sizeof(u_short) \
 							+ sizeof(time_t))
@@ -319,6 +336,7 @@ INT_INFO rh_cache_pkt_body_iinfo = { 2,
 void andna_caches_init(int family);
 
 void lcl_new_keyring(lcl_cache_keyring *keyring);
+void lcl_destroy_keyring(lcl_cache_keyring *keyring);
 lcl_cache *lcl_cache_new(char *hname);
 void lcl_cache_free(lcl_cache *alcl);
 void lcl_cache_destroy(lcl_cache *head, int *counter);

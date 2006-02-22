@@ -1,5 +1,7 @@
 		[HIGH PRIORITY] 
 
+- andna_cache.c:664
+
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 
 - Internet Gateway Search
@@ -7,7 +9,6 @@
 	- duplicate nexthop entries in the multipath route
 	- multigw
 
-- Test the BIG ENDIAN code with a BIG ENDIAN arch. Qemu?
 
 		[MEDIUM PRIORITY] 
 

@@ -525,10 +525,8 @@ int destroy_netsukuku(void)
 	
 	ntk_save_maps();
 	ntk_free_maps();
-	if(!server_opt.disable_andna) {
-		andna_save_caches();
+	if(!server_opt.disable_andna)
 		andna_close();
-	}
 
 	close_internet_gateway_search();
 	close_radar();
