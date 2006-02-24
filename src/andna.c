@@ -225,7 +225,7 @@ int is_hgnode_excluded(quadro_group *qg, u_int **excluded_hgnode,
 		if(!excluded_hgnode[e])
 			continue;
 
-		memcpy(ip.data, excluded_hgnode[e], MAX_IP_SZ);
+		inet_setip_raw(&ip, excluded_hgnode[e], my_family);
 		for(i=lvl; i<total_levels; i++) {
 #ifdef DEBUG
 			debug(DBG_INSANE, "is_hgnode_excluded: l %d, qg->gid %d, ipgid %d", i, 
