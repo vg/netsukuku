@@ -578,29 +578,6 @@ void sighup_handler(int sig)
 	pthread_create(&thread, &t_attr, reload_hostname_thread, 0);
 }
 
-#ifdef DEBUG
-void sigsegv_handler(int sig)
-{
-	void *array[20];
-	size_t size;
-	char **strings;
-	int i;
-
-	/* Don't double fault... */
-	signal(SIGSEGV, SIG_DFL);
-
-	/* Grab the backtrace before we do much else... */
-	size=backtrace(array, 20);
-	strings=backtrace_symbols(array, size);
-
-	if(size > 2) {
-		/* Ignore the 0th entry, that's our cleanup() */
-		for (i=1; i<size; i++)
-			error("%2d. %s", i, strings[i]);
-	}
-}
-#endif
-
 void *rh_cache_flush_thread(void *null)
 {
 	/* 
@@ -668,10 +645,7 @@ int main(int argc, char **argv)
 	signal(SIGINT, sigterm_handler);
 	signal(SIGTERM, sigterm_handler);
 	signal(SIGQUIT, sigterm_handler);
-#ifdef DEBUG
-	signal(SIGSEGV, sigsegv_handler);
-#endif
-
+	
 	/* Angelic foreground or Daemonic background ? */
 	if(server_opt.daemon) {
 		loginfo("Forking to background");

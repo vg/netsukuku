@@ -794,10 +794,8 @@ int pkt_q_wait_recv(int id, inet_prefix *from, PACKET *rpkt, pkt_queue **ret_pq)
 	if(pq->flags & PKT_Q_TIMEOUT)
 		return -1;
 
-	if(rpkt) {
-		memset(rpkt, 0, sizeof(PACKET));
+	if(rpkt)
 		pkt_copy(rpkt, &pq->pkt);
-	}
 
 	/* When *pq_ptr is set to 0, the wait_and_unlock thread exits */
 	*pq_ptr=0;
