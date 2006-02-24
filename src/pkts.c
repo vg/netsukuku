@@ -320,7 +320,7 @@ ssize_t pkt_recv(PACKET *pkt)
 						pkt->flags);
 
 			if(err != pkt->hdr.sz) {
-				debug(DBG_NOISE, ERROR_MSG, "Cannot recv the "
+				debug(DBG_NOISE, ERROR_MSG "Cannot recv the "
 						"pkt's body", ERROR_FUNC);
 				return -1;
 			}

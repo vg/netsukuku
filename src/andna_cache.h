@@ -35,6 +35,7 @@
 						   update of the hname. */
 
 #define ANDNA_PRIVKEY_BITS		1024
+#define ANDNA_SKEY_MAX_LEN		900
 #define ANDNA_PKEY_LEN			140
 #define ANDNA_HASH_SZ			(MAX_IP_SZ)
 #define ANDNA_SIGNATURE_LEN		128

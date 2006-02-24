@@ -10,6 +10,10 @@ Bug fixes:
 	* The NTK_RFC 0007 has been implemented. It fixes an exploitable bug
 	  in the ANDNA protocol.
 
+	* NetsukukuD has been tested on big endian machines. A lot of
+	  endianness has been fixed during the tests and now it seems to work
+	  gracefully.
+	
 	* The ppp connection to the Internet doesn't set an IP address in the
 	  default route of the kernel but only the used ppp interface,
 	  therefore NetsukukuD has to deduce it from the IP assigned to the

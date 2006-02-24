@@ -661,7 +661,11 @@ lcl_cache *unpack_lcl_cache(lcl_cache_keyring *keyring, char *pack, size_t pack_
 	 */
 	keyring->skey_len=hdr->skey_len;
 	keyring->pkey_len=hdr->pkey_len;
-	/* TODO: XXX: Check skey and pkey len */
+	if(keyring->skey_len > ANDNA_SKEY_MAX_LEN) {
+		error(ERROR_MSG "Invalid keyring header", ERROR_POS);
+		return 0;
+	}
+		
 	keyring->privkey=xmalloc(hdr->skey_len);
 	keyring->pubkey=xmalloc(hdr->pkey_len);
 
@@ -675,8 +679,8 @@ lcl_cache *unpack_lcl_cache(lcl_cache_keyring *keyring, char *pack, size_t pack_
 	pk=keyring->privkey;
 	if(!(keyring->priv_rsa=get_rsa_priv((const u_char **)&pk,
 					keyring->skey_len))) {
-		error("Cannot unpack the priv key from the lcl_pack: %s",
-				ssl_strerr());
+		error(ERROR_MSG "Cannot unpack the priv key from the"
+				" lcl_pack: %s", ERROR_POS, ssl_strerr());
 		return 0;
 	}
 
