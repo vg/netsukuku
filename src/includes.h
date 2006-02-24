@@ -67,6 +67,7 @@
 
 #ifdef DEBUG
 #warning the DEBUG code is being built!
+#include <execinfo.h>
 #define ANDNA_DEBUG
 #endif
 

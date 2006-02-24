@@ -23,6 +23,9 @@ Bug fixes:
 
 	* Added a timeout of 60 seconds for the reverse resolution request.
 
+	* A possible memory overrun in the rsa (un)packing functions has been
+	  fixed.
+
 
 ==== 0.0.5b  ====
 
