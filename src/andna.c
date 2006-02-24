@@ -1493,7 +1493,7 @@ andna_cache *get_single_andna_c(u_int hash[MAX_IP_INT],
 	
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
-	memset(&req_hdr, '\0', sizeof(PACKET));
+	memset(&req_hdr, '\0', sizeof(single_acache_hdr));
 	
 	/*
 	 * Find the old hash_gnode that corresponds to the hash `hash_gnode',
