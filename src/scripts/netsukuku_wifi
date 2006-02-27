@@ -1,0 +1,35 @@
+#!/bin/bash
+#netsukuku_wifi: sets a wifi card in Ad-Hoc mode and its essid to "netsukuku".
+
+if ( test $(id -u) != 0) then
+	echo "Root privileges needed."
+	echo "Get them in someway and then come back again"
+	exit 1
+fi
+
+if [ -z "$1" ]
+then
+	echo "You must specify your wifi interface."
+	echo "Ex: netsukuku_wifi wlan0"
+	exit 1
+fi
+
+wlan=$1
+
+echo "Setting $wlan in \"Ad-Hoc\" mode with essid \"netsukuku\""
+echo ""
+echo "iwconfig $wlan mode Ad-Hoc essid netsukuku"
+iwconfig $wlan mode Ad-Hoc essid netsukuku
+
+if [ "$?" != 0 ] 
+then
+	echo ""
+	echo "iwconfig failed."
+	echo "Retry manually with: "
+	echo "iwconfig $wlan mode Ad-Hoc essid netsukuku"
+	exit 1
+fi
+
+echo ""
+echo "$wlan configured. Now you can launch NetsukukuD with: "
+echo "netsukuku_d -i $wlan"
