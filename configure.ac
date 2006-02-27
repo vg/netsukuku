@@ -47,7 +47,6 @@ AC_CHECK_HEADERS([gmp.h], ,\
 	 echo "You need to install the libgmp library."; \
 	 echo "In the debian the package is libgmp3-dev"])
 
-dnl Some systems (Solaris 2.x) require libnsl (Network Services Library)
 AC_MSG_CHECKING(OS)
 case "$host" in
   *-sunos5.6* | *-solaris2.6*)
@@ -178,6 +177,6 @@ AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug], [Enable Netsukuku debug]),
 [debug_flags="-Wall -DDEBUG"], [debug_flags=""])
 AC_SUBST(debug_flags)
 
-AC_CONFIG_FILES([Makefile src/Makefile src/man/Makefile src/netsukuku.conf])
+AC_CONFIG_FILES([Makefile src/Makefile src/man/Makefile src/scripts/Makefile \
+		 src/conf/Makefile src/conf/netsukuku.conf])
 AC_OUTPUT
-
