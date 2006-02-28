@@ -2,7 +2,7 @@
 
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 
-- Implement the http://lab.dyne.org/Ntk_MX_request RFC  
+- Implement the http://lab.dyne.org/Ntk_MX_request RFC    
 
 - Internet Gateway Search
 	- infinite loop between gateways if they use each other as gw
