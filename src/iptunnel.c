@@ -29,7 +29,6 @@
 
 #include "includes.h"
 
-//#include <linux/if_arp.h>
 #include <linux/ip.h>
 #include <linux/if_tunnel.h>
 
@@ -261,22 +260,26 @@ int do_del(inet_prefix *remote, inet_prefix *local, char *dev, int tunl_number)
 	return -1;
 }
 
-int tun_add_tunl0(interface *ifs)
+/*
+ * tun_add_tunl: it adds in the `ifs' array a new struct which refers to 
+ * the tunnel "tunlX", where X is a number equal to `tunl'.
+ */
+int tun_add_tunl(interface *ifs, u_char tunl)
 {
+	char tunl_name[IFNAMSIZ];
 	struct rtnl_handle rth;
 
 	if (rtnl_open(&rth, 0) < 0) {
-		error(ERROR_MSG"Cannot open the rtnetlink socket",ERROR_POS);
+		error(ERROR_MSG "Cannot open the rtnetlink socket",ERROR_POS);
 		return -1;
 	}
 	ll_init_map(&rth);
 
-	ifs->dev_idx=ll_name_to_index("tunl0");	
-	if(!ifs->dev_idx)
+	sprintf(tunl_name, "tunl%d", tunl);
+	strncpy(ifs->dev_name, tunl_name, IFNAMSIZ);
+	if(!(ifs->dev_idx=ll_name_to_index(tunl_name)))
 		return -1;
-	strncpy(ifs->dev_name, "tunl0", IFNAMSIZ);
 
 	rtnl_close(&rth);
-
 	return 0;
 }

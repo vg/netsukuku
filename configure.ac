@@ -51,12 +51,12 @@ AC_MSG_CHECKING(OS)
 case "$host" in
   *-sunos5.6* | *-solaris2.6*)
       opsys=sol2-6
-      AC_DEFINE(SUNOS_5,,SunOS 5)
+      AC_DEFINE(SUNOS,,SunOS 5)
       AC_CHECK_LIB(xnet, main)
       AC_MSG_RESULT(solaris)
   ;;
   *-sunos5* | *-solaris2*)
-      AC_DEFINE(SUNOS_5,,SunOS 5)
+      AC_DEFINE(SUNOS,,SunOS 5)
       AC_CHECK_LIB(socket, main)
       AC_CHECK_LIB(nsl, main)
       AC_MSG_RESULT(solaris)
@@ -88,7 +88,7 @@ case "$host" in
   ;;
   *-irix6.5)
       opsys=irix
-      AC_DEFINE(IRIX_65,,IRIX 6.5)
+      AC_DEFINE(IRIX,,IRIX 6.5)
       AC_MSG_RESULT(irix)
   ;;
 esac

@@ -29,17 +29,30 @@
 #include "xmalloc.h"
 #include "log.h"
 
-int rule_add(inet_prefix from, inet_prefix to, char *dev, int prio, u_char table)
+int rule_exec(int rtm_cmd, inet_prefix *from, inet_prefix *to, char *dev, 
+		int prio, u_int fwmark, u_char table);
+
+int rule_add(inet_prefix *from, inet_prefix *to, char *dev, 
+		int prio, u_int fwmark, u_char table)
 {
-	return rule_exec(RTM_NEWRULE, from, to, dev, prio, table);
+	return rule_exec(RTM_NEWRULE, from, to, dev, prio, fwmark, table);
 }
 
-int rule_del(inet_prefix from, inet_prefix to, char *dev, int prio, u_char table)
+int rule_del(inet_prefix *from, inet_prefix *to, char *dev, 
+		int prio, u_int fwmark, u_char table)
 {
-	return rule_exec(RTM_DELRULE, from, to, dev, prio, table);
+	return rule_exec(RTM_DELRULE, from, to, dev, prio, fwmark, table);
 }
 
-int rule_exec(int rtm_cmd, inet_prefix from, inet_prefix to, char *dev, int prio, u_char table)
+int rule_replace(inet_prefix *from, inet_prefix *to, char *dev,
+		int prio, u_int fwmark, u_char table)
+{
+	rule_del(from, to, dev, prio, fwmark, table);
+	return	rule_add(from, to, dev, prio, fwmark, table);
+}
+
+int rule_exec(int rtm_cmd, inet_prefix *from, inet_prefix *to, char *dev, 
+		int prio, u_int fwmark, u_char table)
 {
 	struct {
 		struct nlmsghdr 	nh;
@@ -49,9 +62,7 @@ int rule_exec(int rtm_cmd, inet_prefix from, inet_prefix to, char *dev, int prio
 	struct rtnl_handle rth;
 
 	memset(&req, 0, sizeof(req));
-
-	if(!table)
-		table=RT_TABLE_MAIN;
+	table = !table ? RT_TABLE_MAIN : table;
 	
 	req.nh.nlmsg_type = rtm_cmd;
 	req.nh.nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg));
@@ -67,20 +78,23 @@ int rule_exec(int rtm_cmd, inet_prefix from, inet_prefix to, char *dev, int prio
 		req.rt.rtm_type = RTN_UNICAST;
 	}
 
-	if (from.len) {
-		req.rt.rtm_src_len = from.bits;
-		addattr_l(&req.nh, sizeof(req), RTA_SRC, &from.data, from.len);
-		req.rt.rtm_family=from.family;
+	if (from) {
+		req.rt.rtm_src_len = from->bits;
+		addattr_l(&req.nh, sizeof(req), RTA_SRC, &from->data, from->len);
+		req.rt.rtm_family=from->family;
 	}
 
-	if (to.len) {
-		req.rt.rtm_dst_len = to.bits;
-		addattr_l(&req.nh, sizeof(req), RTA_DST, &to.data, to.len);
-		req.rt.rtm_family=to.family;
+	if (to) {
+		req.rt.rtm_dst_len = to->bits;
+		addattr_l(&req.nh, sizeof(req), RTA_DST, &to->data, to->len);
+		req.rt.rtm_family=to->family;
 	} 
 
 	if (prio)
 		addattr32(&req.nh, sizeof(req), RTA_PRIORITY, prio);
+
+	if (fwmark)
+		addattr32(&req.nh, sizeof(req), RTA_PROTOINFO, fwmark);
 
 	if (dev) {
 		addattr_l(&req.nh, sizeof(req), RTA_IIF, dev, strlen(dev)+1);

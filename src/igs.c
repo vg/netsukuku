@@ -292,9 +292,10 @@ void init_internet_gateway_search(void)
 	if(tunnel_change(0, 0, 0, DEFAULT_TUNL_NUMBER) < 0)
 		fatal("Cannot initialize \"tunl%d\". Is the \"ipip\""
 			" kernel module loaded?", DEFAULT_TUNL_NUMBER);
-	if(tun_add_tunl0(&tunl0_if) < 0)
-		fatal("Cannot get device info for tunl0");
-	ifs_del_byname(me.cur_ifs, &me.cur_ifs_n, tunl0_if.dev_name);
+	if(tun_add_tunl(&tunnel_ifs[DEFAULT_TUNL_NUMBER], DEFAULT_TUNL_NUMBER) < 0)
+		fatal("Cannot get device info for tunl%d", DEFAULT_TUNL_NUMBER);
+	ifs_del_byname(me.cur_ifs, &me.cur_ifs_n,
+			tunnel_ifs[DEFAULT_TUNL_NUMBER].dev_name);
 
 	if(!server_opt.inet_connection)
 		return;
@@ -864,7 +865,7 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 	nexthops=max_multipath_routes/max_levels;
 
 	for(level=0; level<max_levels; level++) {
-#ifdef IGS_MULTI_GW_DISABLE
+#ifndef IGS_MULTI_GW
 		if(ni)
 			break;
 #endif
@@ -888,7 +889,7 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 		
 			igw->flags|=IGW_ACTIVE;
 			inet_setip(&nh[ni].gw, igw->ip, family);
-			nh[ni].dev=tunl0_if.dev_name;
+			nh[ni].dev=tunnel_ifs[DEFAULT_TUNL_NUMBER].dev_name; /* XXX TODO */
 			nh[ni].hops=max_multipath_routes-ni+1;
 			ni++;
 			ni_lvl++;

@@ -20,14 +20,11 @@
 #define IGS_H
 
 /*
- * There are a lot of problems with this feature, see:
- * http://marc.theaimsgroup.com/?l=linux-net&m=113550638110682&w=2
- * and
- * http://marc.theaimsgroup.com/?l=linux-net&m=113636640615375&w=2
+ * The IGS_MULTI_GW feature relies heavily on netfilter and the linux advanced
+ * routing.
  */
-#define IGS_MULTI_GW_DISABLE
-#ifdef DEBUG
-#undef IGS_MULTI_GW_DISABLE
+#ifdef GNU_LINUX
+#define IGS_MULTI_GW
 #endif
 
 /*

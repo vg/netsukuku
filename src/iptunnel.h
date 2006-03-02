@@ -23,7 +23,10 @@
 
 #define DEFAULT_TUNL_NUMBER	0	/* The permanent tunl0 device */
 
-interface tunl0_if;
+#define MAX_TUNNEL_IFS		24	/* it must be >= MAX_MULTIPATH_ROUTES,
+					   since in igs.c we are using a tunnel 
+					   for each nexthop inet-gw */
+interface tunnel_ifs[MAX_TUNNEL_IFS];
 
 int tunnel_add(inet_prefix *remote, inet_prefix *local, char *dev,
 		int tunl_number);
@@ -31,5 +34,5 @@ int tunnel_change(inet_prefix *remote, inet_prefix *local, char *dev,
 		int tunl_number);
 int tunnel_del(inet_prefix *remote, inet_prefix *local, char *dev,
 		int tunl_number);
-int tun_add_tunl0(interface *ifs);
+int tun_add_tunl(interface *ifs, u_char tunl);
 #endif

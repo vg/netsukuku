@@ -757,10 +757,11 @@ void hook_set_all_ips(inet_prefix ip, interface *ifs, int ifs_n)
 		fatal("Cannot set the %s ip to all the interfaces", ntop);
 
 	if(restricted_mode) {
-		set_all_ifs(&tunl0_if, 1, set_dev_down);
-		set_all_ifs(&tunl0_if, 1, set_dev_up);
-		if(set_all_dev_ip(ip, &tunl0_if, 1) < 0)
-			fatal("Cannot set the %s ip to tunl0", ntop);
+		set_all_ifs(&tunnel_ifs[DEFAULT_TUNL_NUMBER], 1, set_dev_down);
+		set_all_ifs(&tunnel_ifs[DEFAULT_TUNL_NUMBER], 1, set_dev_up);
+		if(set_all_dev_ip(ip, &tunnel_ifs[DEFAULT_TUNL_NUMBER], 1) < 0)
+			fatal("Cannot set the %s ip to tunl%d",
+					ntop, DEFAULT_TUNL_NUMBER);
 	}
 }
 
@@ -962,7 +963,8 @@ int hook_init(void)
 	route_ip_forward(my_family, 1);
 	route_rp_filter_all_dev(my_family, me.cur_ifs, me.cur_ifs_n, 0);
 	if(restricted_mode)
-		route_rp_filter_all_dev(my_family, &tunl0_if, 1, 0);
+		route_rp_filter_all_dev(my_family,
+				&tunnel_ifs[DEFAULT_TUNL_NUMBER], 1, 0);
 
 	return 0;
 }

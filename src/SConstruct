@@ -134,6 +134,18 @@ def build_config_files(target = None, source = None, env = None):
 	if not os.path.exists("config.h") and not env.GetOption('clean'):
 		print 'Generating config.h from config_scons.h.in'
 		conf_build('config.h', 'config_scons.h.in', env)
+		conf = file("config.h", "a")
+		if sys.platform == 'linux2' or sys.platform == 'linux-i386':
+			conf.write("#define GNU_LINUX\n")
+		elif sys.platform == 'darwin':
+			conf.write("#define DARWIN\n")
+		elif string.find (sys.platform, 'sunos') != -1:
+			conf.write("#define SUNOS\n")
+		elif sys.platform=='openbsd3':
+			conf.write("#define OPEN_BSD\n")
+		elif string.find (sys.platform, 'irix') != -1:
+			conf.write("#define IRIX\n")
+		conf.close()
 
 	if not os.path.exists("conf/netsukuku.conf") and not env.GetOption('clean'):
 		print 'Generating conf/netsukuku.conf from conf/ntk_scons.conf.in'
