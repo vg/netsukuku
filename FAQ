@@ -1,4 +1,43 @@
 
+  0. General
+  	Q: What is Netsukuku?
+	Q: Why did you choose that name?
+	Q: What does it mean "it uses chaos and fractals"?
+	Q: Why another p2p network?
+	Q: Ehi! You're crazy. This shit will not work!
+	Q: Where are current Netsukuku networks that I can connect to?
+
+  1. Technical
+	Q: Does it scale in a network with A LOT of nodes?
+	Q: What do you intend to do to solve the IP unicity problem?
+	Q: Does it really works?
+	Q: Netsukuku is separated from Internet. How?
+	Q: How can I join in Netsukuku?
+	Q: And how does a new node begin to locate any of the other nodes in
+	   the network?
+	Q: Will you provide "Internet to Netsukuku" tunnels?
+	Q: Aside from what I hack myself I was wondering what can be done on
+	   the Netsukuku network?
+	Q: Will we be able to host websites anytime soon?
+	Q: Will glibc be able to resolve names for the ANDNA system?
+	Q: What sort of performance does Netsukuku have? Is it any good for 
+	   voice chat, video chat, games?
+
+  2. Software 
+	Q: On what OS does it run?
+	Q: Will Netsukuku be ported to Windows?
+	Q: Will Netsukuku be ported to PSP / Nintendo DS / wifi phones / PDAs?
+	Q: How does it join the network?
+	Q: For using a wifi link do I need of an acces point? What to do?
+	Q: Why the code is not written in java?
+
+--
+
+
+/		 \
+   0. General
+\		 /
+
 Q: What is Netsukuku?
 A: Netsukuku is a mesh network or a P2P net system that generates and sustains
    itself autonomously. It is designed to handle an unlimited number of nodes with
@@ -18,11 +57,12 @@ Q: Why did you choose that name?
 A: Networked Electronic Technician Skilled in Ultimate Killing, Utility and 
    Kamikaze Uplinking.
    But there is also another story: we were learning Japanese katakana with
-   slimeforest, a nice game for GNU/Linux.
+   `slimeforest', a nice game for GNU/Linux.
    Unfortunately when we encountered the "Network" word, written in Japanese,
    we didn't know all the relative symbols, so the only katakana we were able
    to read were few and mixed with others the name was: Ne tsu ku ku.
-   By the way, you can always think of any deceitful and hidden meanings.
+   By the way, you can always think of any other deceitful and hidden
+   meanings.
 
 Q: What does it mean "it uses chaos and fractals"?
 A: The Netsukuku protocol (Npv7) structures the entire net as a fractal and,
@@ -37,9 +77,32 @@ A: The Netsukuku protocol (Npv7) structures the entire net as a fractal and,
    has to run on a real (or simulated) network. The nodes have to send the
    QSPN pkt in order to "execute" it. For this reason it is not always true
    that a determinate pkt will be sent before another one.
-   This system allows to get the best routes without any computation. 
+   This system allows to get the best routes without any heavy computation.
    (read the "5.1   QSPN: Quantum Shortest Path Netsukuku" section in the
    document).
+
+Q: Why another p2p network?
+A: Netsukuku is not a p2p net built upon the Internet. It is a physical
+   network and it is a dynamic routing system designed to handle 2^128 nodes
+   without any servers or central systems, in this way, it is possible to
+   build a physical network separated from the Internet. Btw, read "What is
+   Netsukuku".
+
+Q: Ehi! You're crazy. This shit will not work!
+A: Ehi pal, this doesn't pretend to be _now_ the final solution to the meaning
+   of life, the universe and everything. Why don't you contribute and give us
+   useful hints from your great knowledge? If you want to help in the
+   development, read the code and contact us ;)
+
+Q: Where are current Netsukuku networks that I can connect to?
+A: Simply we don't know and we can't, but the website team si developing a
+   community portal which will ease the difficulty of coordination. (Think of
+   Google maps).
+
+
+/		 \
+   1. Technical
+\		 /
 
 Q: Does it scale in a network with A LOT of nodes?
 A: Simple and not accurate reasons for the scalability of Netsukuku (until there
@@ -59,17 +122,6 @@ A: Simple and not accurate reasons for the scalability of Netsukuku (until there
 Q: What do you intend to do to solve the IP unicity problem?
 A: It is already solved: http://lab.dyne.org/Ntk_gnodes_contiguity
 
-Q: Why another p2p network?
-A: Netsukuku is not a p2p net built upon the Internet. It is a physical
-   network and it is a dynamic routing system designed to handle 2^128 nodes
-   without any servers or central systems, in this way, it is possible to
-   build a physical network separated from the Internet. Btw, read "What is
-   Netsukuku".
-
-Q: On what OS does it run?
-A: For now it runs only on GNU/Linux, but it is easy to port it on other OS.
-   If you want to join in the development let us now ;)
-
 Q: Does it really works?
 A: ^_^
 
@@ -86,8 +138,14 @@ A: Take out your wifi antenna, and start the Netsukuku daemon on the relative
    network interface, then wait and tell to do the same thing to all your
    friends ^_-
 
+Q: And how does a new node begin to locate any of the other nodes in the
+   network?
+A: The Netsukuku radar sends echo packets about every 10 seconds, if someone
+   replies it communicates with it.
+
 Q: Will you provide "Internet to Netsukuku" tunnels?
-A: Maybe yes, but we still don't know.
+A: Maybe yes, but we still don't know. You can try it if you want:
+   http://lab.dyne.org/Ntk_vpn_test
 
 Q: Aside from what I hack myself I was wondering what can be done on the
    Netsukuku network?
@@ -99,31 +157,53 @@ A: You can do it by now!
 
 Q: Will glibc be able to resolve names for the ANDNA system?
 A: ANDNA comes with a DNS wrapper so it is trasparent to all the programs
-   which uses the glibc. The only thing you have to do is set "127.0.0.1" in
-   the list of your DNS servers (/etc/resolv.conf)
-   Btw, read "man andna"
+   which uses the glibc. Read "man andna":
+   http://netsukuku.freaknet.org/doc/man_html/andna.html
 
-Q: And how does a new node begin to locate any of the other nodes in the
-   network?
-A: The Netsukuku radar sends echo packets about every 10 seconds, if someone
-   replies it communicates with it.
+Q: What sort of performance does Netsukuku have? Is it any good for voice chat
+   video chat?
+A: What do you mean by `performance'? 
 
-Q: How does it join the network?
-A: It does it by itself. Read the "5.2  Npv7_HT Hook & Unhook" section in the
-   document or take a look at hook.c in the code ;)
+   Network performance: it is dependent on the links quality. If the nodes are
+   linked by 100Mbps cable you will feel like in a large LAN. 
+   The distance from yourself and the destination node is also relevant.
+   Remember that the Netsukuku daemon chooses only the best way to reach
+   the other nodes, but cannot improve the roads themself.
+   
+   Software performance: you really shouldn't worry about this:
+   PID   USER  PRI  NI  SIZE  RSS  SHARE %CPU %MEM TIME CPU COMMAND
+   18521 root  15   0   17708 1552 1164  0.0  0.3  0:00 0   netsukuku_d
+   
+
+/		 \
+   2. Software
+\		 /
+
+Q: On what OS does it run?
+A: For now it runs only on GNU/Linux, but it is easy to port it on other OS.
+   If you want to join in the development let us now ;)
+
+Q: Will Netsukuku be ported to Windows?
+A: Short answer: if you code the port, yes.
+   Answer: We need coders for that. There are a lot of things to be done and
+   the Windows port is what we care less.
+
+Q: Will Netsukuku be ported to PSP / Nintendo DS / wifi phones / linux PDAs 
+   etc...
+A: Ports have not yet been created, but should be easy, i.e. the port to
+   uclibc is in the TODO list. Once ported the Netsukuku daemon can be flashed
+   into an AP.
 
 Q: For using a wifi link do I need of an acces point? What to do?
 A: You just need a wifi network card. Put it in ad-hoc mode using "netsukuku"
-   as essid. ( man netsukuku_wifi )
+   as essid. ( man netsukuku_wifi:
+   http://netsukuku.freaknet.org/doc/man_html/netsukuku_wifi.html )
 
 Q: Why the code is not written in java?
 A: Are you kidding?
 
-Q: Ehi! You're crazy. This shit will not work!
-A: Ehi pal, this doesn't pretend to be _now_ the final solution to the meaning
-   of life, the universe and everything. Why don't you contribute and give us
-   useful hints from your great knowledge? If you want to help in the
-   development, read the code and contact us ;)
+
+--
 
 Q: My question is not answered here!
 A: Contact us: http://netsukuku.freaknet.org

@@ -61,7 +61,7 @@ void *dns_exec_pkt(void *passed_argv)
 
 	char buf[MAX_DNS_PKT_SZ];
 	char answer_buffer[ANDNS_MAX_SZ];
-	u_int answer_length;
+	int answer_length;
 	int bytes_sent;
 
 	memcpy(&argv, passed_argv, sizeof(struct dns_exec_pkt_argv));

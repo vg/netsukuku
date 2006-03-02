@@ -301,7 +301,7 @@ void update_qspn_time(u_char level, u_int new_qspn_time)
  * gcount[_EL(3)]+=inc.
  * `level' must be < GCOUNT_LEVELS+1 and >= 1.
  */
-void qspn_inc_gcount(int *gcount, int level, int inc)
+void qspn_inc_gcount(u_int *gcount, int level, int inc)
 {
 	int i;
 
@@ -340,7 +340,7 @@ void qspn_dec_gcount(int *gcount, int level, int dec)
  * qspn_reset_gcount: resets the gcount array by setting all its
  * first `level'# members to `value'.
  */
-void qspn_reset_gcount(int *gcount, int level, int value)
+void qspn_reset_gcount(u_int *gcount, int level, int value)
 {
 	int i;
 	for(i=0; i<level; i++)
@@ -354,7 +354,7 @@ void qspn_reset_gcount(int *gcount, int level, int value)
 /* 
  * qspn_backup_gcount: copies `gcount' in `old_gcount' 
  */
-void qspn_backup_gcount(int *old_gcount, int *gcount)
+void qspn_backup_gcount(u_int *old_gcount, int *gcount)
 {
 	memcpy(old_gcount, gcount, sizeof(u_int)*GCOUNT_LEVELS);
 }
@@ -367,7 +367,7 @@ void qspn_remove_deads(u_char level)
 {
 	int bm, i, l, node_pos, ip[MAX_IP_INT];
 	map_node *map, *node;
-	map_gnode *gmap, *gnode;
+	map_gnode *gmap, *gnode=0;
 	inet_gw *igw;
 	
 	qspn_set_map_vars(level, 0, 0, 0, &gmap);
@@ -399,7 +399,7 @@ void qspn_remove_deads(u_char level)
 			/* The node wasn't updated in the previous QSPN.
 			 * Remove it from the maps */
 
-			if(server_opt.restricted && node->flags & MAP_IGW) {
+			if(restricted_mode && node->flags & MAP_IGW) {
 				/*
 				 * The node was an Internet gw, remove it from
 				 * me.igws 
@@ -841,7 +841,7 @@ int qspn_close(PACKET rpkt)
 	bnode_hdr    *bhdr=0;
 	size_t bblock_sz=0, old_bblock_sz;
 	int i, not_closed=0, ret=0, ret_err;
-	u_short hops, old_bchunks=0;
+	u_short hops, old_bblocks_found=0;
 	const char *ntop;
 	char *old_bblock=0;
 	char do_real_qspn_action=0, just_forward_it=0, int_qspn_starter=0;
@@ -937,7 +937,7 @@ int qspn_close(PACKET rpkt)
 	
 	/* Time to update our maps */
 	tracer_store_pkt(rpkt.from, &rip_quadg, level, trcr_hdr, tracer,
-			(void *)bhdr, bblock_sz, &old_bchunks, &old_bblock,
+			(void *)bhdr, bblock_sz, &old_bblocks_found, &old_bblock,
 			&old_bblock_sz);
 
 	
@@ -1016,11 +1016,12 @@ int qspn_close(PACKET rpkt)
 			rq=QSPN_CLOSE;
 
 		/*We build d4 p4ck37...*/
-		ret_err=tracer_pkt_build(rq, rpkt.hdr.id, root_node_pos,/*IDs*/
-				gid,	level,
-				bcast_hdr,  trcr_hdr,    tracer,        /*Received tracer_pkt*/
-			   	old_bchunks,old_bblock,  old_bblock_sz, /*bnode_block*/
-			        &pkt);				        /*Where the pkt is built*/
+		ret_err=tracer_pkt_build(
+				rq, 		   rpkt.hdr.id, root_node_pos, /*IDs*/
+				gid,		   level,
+				bcast_hdr,	   trcr_hdr,    tracer,        /*Received tracer_pkt*/
+			   	old_bblocks_found, old_bblock,  old_bblock_sz, /*bnode_block*/
+			        &pkt);					       /*Where the pkt is built*/
 		if(ret_err) {
 			debug(DBG_NOISE, "Cannot forward the qspn_close: "
 					"pkt build failed.");
@@ -1093,7 +1094,7 @@ int qspn_open(PACKET rpkt)
 	int not_opened=0, ret=0, reply, sub_id, ret_err;
 	u_short hops;
 	size_t bblock_sz=0, old_bblock_sz;
-	u_short old_bchunks=0;
+	u_short old_bblocks_found=0;
 	const char *ntop;
 	char *old_bblock=0;
 	char do_real_qspn_action=0, just_forward_it=0, int_qspn_opener=0;
@@ -1175,7 +1176,7 @@ int qspn_open(PACKET rpkt)
 	
 	/*Time to update our map*/
 	tracer_store_pkt(rpkt.from, &rip_quadg, level, trcr_hdr, tracer, 
-			(void *)bhdr, bblock_sz, &old_bchunks, &old_bblock,
+			(void *)bhdr, bblock_sz, &old_bblocks_found, &old_bblock,
 			&old_bblock_sz);
 	
 	
@@ -1254,11 +1255,12 @@ int qspn_open(PACKET rpkt)
 		}
 
 	   	/* The forge of the packet. "One pkt to rule them all". Dum dum */
-		ret_err=tracer_pkt_build(QSPN_OPEN, rpkt.hdr.id, bcast_hdr->sub_id,/*IDs*/
+		ret_err=tracer_pkt_build(
+			    QSPN_OPEN,   rpkt.hdr.id, bcast_hdr->sub_id, /*IDs*/
 			    gid, 	 level,
-			    bcast_hdr,   trcr_hdr, tracer, 	      /*Received tracer_pkt*/
-			    old_bchunks, old_bblock, old_bblock_sz,   /*bnode_block*/
-			    &pkt);				      /*Where the pkt is built*/
+			    bcast_hdr,   trcr_hdr,    tracer, 	      	 /*Received tracer_pkt*/
+			    old_bblocks_found, old_bblock, old_bblock_sz,/*bnode_block*/
+			    &pkt);					 /*Where the pkt is built*/
 		if(ret_err) {
 			debug(DBG_NOISE, "Cannot forward the qspn_open(0x%x) "
 					"lvl %d sub_id: %d: Pkt build failed.",

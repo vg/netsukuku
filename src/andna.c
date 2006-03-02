@@ -150,8 +150,8 @@ void andna_init(void)
 	andna_load_caches();
 	lcl_new_keyring(&lcl_keyring);
 
-	if(andns_init(server_opt.restricted, ETC_RESOLV_CONF) < 0)
-		if(andns_init(server_opt.restricted, ETC_RESOLV_CONF_BAK) < 0) {
+	if(andns_init(restricted_mode, ETC_RESOLV_CONF) < 0)
+		if(andns_init(restricted_mode, ETC_RESOLV_CONF_BAK) < 0) {
 			error("In %s there isn't a single Internet nameserver.", 
 					ETC_RESOLV_CONF);
 			loginfo("Internet hostname resolution is disabled");
@@ -166,6 +166,8 @@ void andna_init(void)
 
 void andna_close(void)
 {
+	andna_save_caches();
+	lcl_destroy_keyring(&lcl_keyring);
 	if(!server_opt.disable_resolvconf)
 		andna_resolvconf_restore();
 }
@@ -176,7 +178,7 @@ void andna_close(void)
  * Note that this function is used to hash other hashes, so it operates on the
  * ANDNA_HASH_SZ fixed length.
  */
-void andna_hash_by_family(int family, void *msg, int hash[MAX_IP_INT])
+void andna_hash_by_family(int family, void *msg, u_int hash[MAX_IP_INT])
 {
 	memset(hash, 0, ANDNA_HASH_SZ);
 	
@@ -192,9 +194,12 @@ void andna_hash_by_family(int family, void *msg, int hash[MAX_IP_INT])
  * big and stores it in `hash'. If family is equal to AF_INET, in `ip_hash' it
  * stores the 32bit hash of the `hash', otherwise it just copies `hash' to
  * `hash_ip'.
+ * 
+ * Note: `hash' is a single string of `MAX_IP_INT'*4 bytes, it is the MD5 hash
+ * of `msg', therefore do not attempt to convert it to network order.
  */
-void andna_hash(int family, void *msg, int len, int hash[MAX_IP_INT],
-		int ip_hash[MAX_IP_INT])
+void andna_hash(int family, void *msg, int len, u_int hash[MAX_IP_INT],
+		u_int ip_hash[MAX_IP_INT])
 {
 	hash_md5(msg, len, (u_char *)hash);
 	andna_hash_by_family(family, (u_char *)hash, ip_hash);	
@@ -220,7 +225,7 @@ int is_hgnode_excluded(quadro_group *qg, u_int **excluded_hgnode,
 		if(!excluded_hgnode[e])
 			continue;
 
-		memcpy(ip.data, excluded_hgnode[e], MAX_IP_SZ);
+		inet_setip_raw(&ip, excluded_hgnode[e], my_family);
 		for(i=lvl; i<total_levels; i++) {
 #ifdef DEBUG
 			debug(DBG_INSANE, "is_hgnode_excluded: l %d, qg->gid %d, ipgid %d", i, 
@@ -799,14 +804,16 @@ finish:
 }
 
 /*
- * andna_check_counter: asks to the counter_node if it is ok to register the
- * hname present in the register request in `pkt'.
+ * andna_check_counter: asks the counter_node if it is ok to accept the
+ * registration request in `pkt' and register the requested hname.
+ *
  * If -1 is returned the answer is no.
  */
 int andna_check_counter(PACKET pkt)
 {
 	PACKET rpkt;
-	int ret=0, pubk_hash[MAX_IP_INT], hash_gnode[MAX_IP_INT], err;
+	int ret=0, err;
+	u_int rip_hash[MAX_IP_INT], hash_gnode[MAX_IP_INT];
 	struct andna_reg_pkt *req;
 	const char *ntop;
 	u_char forwarded_pkt=0;
@@ -818,11 +825,11 @@ int andna_check_counter(PACKET pkt)
 		forwarded_pkt=1;
 
 	
-	/* Calculate the hash of the pubkey of the sender node. This hash will
+	/* Calculate the hash of the IP of the sender node. This hash will
 	 * be used to reach its counter node. */
-	andna_hash(my_family, req->pubkey, ANDNA_PKEY_LEN, pubk_hash, hash_gnode);
+	andna_hash(my_family, req->rip, MAX_IP_SZ, rip_hash, hash_gnode);
 	
-	/* Find a hash_gnode for the pubk_hash */
+	/* Find a hash_gnode for the rip_hash */
 	req->flags&=~ANDNA_FORWARD;
 	if((err=find_hash_gnode(hash_gnode, &pkt.to, 0, 0, 1)) < 0) {
 		debug(DBG_INSANE, "andna_check_counter: Couldn't find a decent"
@@ -872,7 +879,7 @@ int andna_recv_check_counter(PACKET rpkt)
 	RSA *pubkey;
 	counter_c *cc;
 	counter_c_hashes *cch;
-	u_int pubk_hash[MAX_IP_INT], hash_gnode[MAX_IP_INT], *excluded_hgnode[1];
+	u_int rip_hash[MAX_IP_INT], hash_gnode[MAX_IP_INT], *excluded_hgnode[1];
 	int ret=0, err, old_updates;
 
 	char *ntop=0, *rfrom_ntop=0, *buf;
@@ -947,7 +954,7 @@ int andna_recv_check_counter(PACKET rpkt)
 	 * forward the pkt 
 	 */
 
-	andna_hash(my_family, req->pubkey, ANDNA_PKEY_LEN, pubk_hash, hash_gnode);
+	andna_hash(my_family, req->rip, MAX_IP_SZ, rip_hash, hash_gnode);
 	if((err=find_hash_gnode(hash_gnode, &to, excluded_hgnode, 1, 0)) < 0) {
 		debug(DBG_SOFT, "We are not the real (rounded)hash_gnode. "
 				"Rejecting the 0x%x check_counter request",
@@ -1051,7 +1058,6 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	memset(&rpkt, 0, sizeof(pkt));
 
 
-//#ifndef ANDNA_DEBUG
 	/*
 	 * Search in the hostname in the local cache first. Maybe we are so
 	 * dumb that we are trying to resolve the same ip we registered.
@@ -1060,14 +1066,13 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 		memcpy(resolved_ip, &me.cur_ip, sizeof(inet_prefix));
 		return 0;
 	}
-//#endif
 	
 	/*
-	 * Last try before going asking to ANDNA: let's if we have it in the
-	 * resolved_hnames cache
+	 * Last try before going asking to ANDNA: let's see if we have it in
+	 * the resolved_hnames cache
 	 */
 	if((rhc=rh_cache_find_hname(hname))) {
-		inet_setip(resolved_ip, rhc->ip, my_family);
+		inet_setip(resolved_ip, (u_int *)rhc->ip, my_family);
 		inet_ntohl(resolved_ip->data, my_family);
 		return 0;
 	}
@@ -1078,7 +1083,6 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	inet_copy_ipdata(req.rip, &me.cur_ip);
 	andna_hash(my_family, hname, strlen(hname), req.hash, hash_gnode);
 	
-//#ifndef ANDNA_DEBUG
 	/*
 	 * If we manage an andna_cache, it's better to peek at it.
 	 */
@@ -1087,7 +1091,6 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 		inet_ntohl(resolved_ip->data, my_family);
 		return 0;
 	}
-//#endif
 
 	/* 
 	 * Ok, we have to ask to someone for the resolution.
@@ -1311,9 +1314,13 @@ int andna_reverse_resolve(inet_prefix ip, char ***hostnames)
 		LOOPBACK(htonl(to.data[0])))
 		return lcl_get_registered_hnames(andna_lcl, hostnames);
 	
-	/* Fill the packet and send the request */
+	/* 
+	 * Fill the packet and send the request 
+	 */
 	pkt_addto(&pkt, &to);
 	pkt_addfrom(&rpkt, &to);
+	pkt_addtimeout(&pkt, ANDNA_REV_RESOLVE_RQ_TIMEOUT, 1, 1);
+	
 	err=send_rq(&pkt, 0, ANDNA_RESOLVE_IP, 0, ANDNA_REV_RESOLVE_REPLY, 1, &rpkt);
 	if(err==-1) {
 		error("andna_reverse_resolve(): Reverse resolution of the %s "
@@ -1486,7 +1493,7 @@ andna_cache *get_single_andna_c(u_int hash[MAX_IP_INT],
 	
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
-	memset(&req_hdr, '\0', sizeof(PACKET));
+	memset(&req_hdr, '\0', sizeof(struct single_acache_hdr));
 	
 	/*
 	 * Find the old hash_gnode that corresponds to the hash `hash_gnode',
@@ -1559,10 +1566,6 @@ int put_single_acache(PACKET rpkt)
 	pkt_copy(&rpkt_local_copy, &rpkt);
 	req_hdr=(struct single_acache_hdr *)rpkt_local_copy.msg;
 	
-	if(rpkt.hdr.sz != SINGLE_ACACHE_PKT_SZ(req_hdr->hgnodes) ||
-			req_hdr->hgnodes > ANDNA_MAX_NEW_GNODES)
-		ERROR_FINISH(ret, -1, finish);
-
 	/* Save the real sender of the request */
 	inet_setip(&rfrom, req_hdr->rip, my_family);
 
@@ -1577,7 +1580,17 @@ int put_single_acache(PACKET rpkt)
 
 	/* network -> host order */
 	ints_network_to_host(req_hdr, single_acache_hdr_iinfo);
-	
+
+	/* Verify the validity of the header */
+	if(rpkt.hdr.sz != SINGLE_ACACHE_PKT_SZ(req_hdr->hgnodes) ||
+			req_hdr->hgnodes > ANDNA_MAX_NEW_GNODES) {
+		debug(DBG_NOISE, "Malformed GET_SINGLE_ACACHE pkt: %d, %d, %d",
+			rpkt.hdr.sz, SINGLE_ACACHE_PKT_SZ(req_hdr->hgnodes),
+			req_hdr->hgnodes);
+		ret=pkt_err(pkt, E_INVALID_REQUEST, 0);
+		goto finish;
+	}
+
 	/* Unpack the hash_gnodes to exclude */
 	new_hgnodes=xmalloc(sizeof(u_int *) * (req_hdr->hgnodes+1));
 	buf=rpkt.msg+sizeof(struct single_acache_hdr);

@@ -270,6 +270,12 @@ void new_rehook(map_gnode *gnode, int gid, int level, int gnode_count)
 	struct rehook_argv *rargv;
 	pthread_t thread;
 
+	if(restricted_mode && level == me.cur_quadg.levels-1 && 
+			gid != me.cur_quadg.gid[level])
+		/* We are in restricted mode. The `gnode' is too restricted.
+		 * Our restricted class isn't the same of `gnode', therefore
+		 * do nothing. The restricted class are immutable. */
+		return;
 
 	if(!level && gid != me.cur_quadg.gid[level])
 		/* We rehook at level 0 only if we have the same gid of
@@ -362,7 +368,7 @@ int rehook(map_gnode *hook_gnode, int hook_level)
 	/* Reset */
 	rnl_reset(&rlist, &rlist_counter);
 	e_rnode_free(&me.cur_erc, &me.cur_erc_counter);
-	if(server_opt.restricted) {
+	if(restricted_mode) {
 		reset_igws(me.igws, me.igws_counter, me.cur_quadg.levels);
 		free_my_igws(&me.my_igws);
 	}

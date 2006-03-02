@@ -86,6 +86,9 @@
   This document and the relative source code are available on:
   http://netsukuku.freaknet.org
 
+  Future extensions to this document can be found and added here:
+  http://lab.dyne.org/Netsukuku_RFC
+
 
   0.  The old wired
   
@@ -271,8 +274,8 @@
   Netsukuku map.
   On the other hand, the QSPN is a meta-algorithm in the sense that it
   doesn't follow any predefined mathematical instructions but exploits the
-  chance and the chaos, which both don't need any computation. In other words,
-  also a simple calculator can work using the QSPN to be connected to
+  chance and the chaos, which both don't need any heavy computation. In other
+  words, also a simple calculator can work using the QSPN to be connected to
   Netsukuku.
 
   2.5  Other implementations
@@ -407,9 +410,16 @@
 
 
   In Netsukuku, as well as in Nature, there is no any need of using
-  mathematical schemes, created by the limitated human logic.
-  Netsukuku exploits the chaos.
-  The use of a map, for a protocol of dynamic nets, can create a lot of
+  mathematical schemes. Does a stream calculate the best route to reach the
+  sea when it is still at the top of the mountain?
+  The stream simply flows and its flux will always find its ideal route.
+  
+  Netsukuku exploits the same chaotic principle. The result of its net
+  discovery algorithm can be different each time, even if the net hasn't
+  changed at all. This is because the discovery algorithm is "executed" by the
+  net itself.
+  
+  The use of a map, for a protocol of dynamic nets, creates a lot of
   troubles, since it has to be continuosly updated. The solution is simple: to
   avoid totally the use of maps and make every broadcasted request a
   tracer_pkt (See 6.1 Tracer pkt).

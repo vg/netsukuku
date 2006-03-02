@@ -44,6 +44,7 @@
 #include "andns_pkt.h"
 #include "xmalloc.h"
 #include "log.h"
+#include "err_errno.h"
 
 #include <resolv.h>
 
@@ -184,9 +185,9 @@ int andns_init(int restricted, char *resolv_conf)
 
 	res=collect_resolv_conf(resolv_conf, _andns_ns_, &_andns_ns_count_);
         if (res == -1) {
-                debug(DBG_NORMAL, "ALERT: DNS forwarding disable");
                 _dns_forwarding_=0;
-                return -1;
+                debug(DBG_NORMAL, "ALERT: DNS forwarding disable");
+		err_ret(ERR_DNSFWD,-1);
         }
 
 	/* 
@@ -220,8 +221,10 @@ char* andns_rslv_ntk_ntk(char *msg,int msglen,
 	andns_pkt *ap;
 	int res;
 
-	if ((res=apkt(msg,msglen,&ap))==0)  // pkt malformed
-        	return NULL; // discard pkt!
+	if ((res=apkt(msg,msglen,&ap))==0) {  // pkt malformed
+		error(err_str);
+		err_ret(ERR_MLFDPK,NULL);
+	}
         if (res==-1) // Cannot understand
                 goto andns_eintrprt_return; // release *ap
         switch(ap->qtype) { // query type
@@ -239,6 +242,7 @@ char* andns_rslv_ntk_ntk(char *msg,int msglen,
                         res=a_mx_resolve(ap);
                         break;
                 default:
+			err_seterrno(ERR_UFOTOQ);
                         goto andns_eintrprt_return; // release *ap
 	}
         if((res=apktpack(ap,answer))==-1) // this call free ap
@@ -252,12 +256,14 @@ andns_eintrprt_return:
         memcpy(answer,msg,msglen);
         AANSW(answer,RCODE_EINTRPRT);
         *answ_len=msglen;
-        return answer;
+	error(err_str);
+	err_ret(ERR_QINTRP,answer);
 andns_esrvfail_return:
         memcpy(answer,msg,msglen);
         AANSW(answer,RCODE_ESRVFAIL);
         *answ_len=msglen;
-        return answer;
+	error(err_str);
+	err_ret(ERR_QPROCS,answer);
 }
 
 /*
@@ -275,10 +281,14 @@ char* andns_rslv_ntk_inet(char *msg,int msglen,
 	dns_pkt *dp;
 	int res,type;
 
-        if (!_dns_forwarding_)
-        	return NULL; /* there is no nameserver to forward the query */
-        if ((res=apkt(msg,msglen,&ap))==0)
-        	return NULL; /* discard pkt */
+        if (!_dns_forwarding_) {
+		debug(DBG_NORMAL,"No nameservers to forward dns queries.");
+		err_ret(ERR_DNSFWD,NULL);
+	}
+        if ((res=apkt(msg,msglen,&ap))==0) {
+		error(err_str);
+		err_ret(ERR_MLFAPK,NULL);
+	}
         if (res==-1)
         	goto andns_eintrprt_return; /* release *ap */
         switch(ap->qtype) {
@@ -310,7 +320,8 @@ char* andns_rslv_ntk_inet(char *msg,int msglen,
          * In this case dp is not allocated.
          */
 		destroy_andns_pkt(ap);
-                return NULL;
+		error(err_str);
+		err_ret(ERR_MLFDPK,NULL);
 	}
 	if (res==-1) {
         /*
@@ -341,12 +352,14 @@ andns_eintrprt_return:
         memcpy(answer,msg,msglen);
         AANSW(answer,RCODE_EINTRPRT);
         *answ_len=msglen;
-        return answer;
+	error(err_str);
+	err_ret(ERR_QINTRP,answer);
 andns_esrvfail_return:
         memcpy(answer,msg,msglen);
         AANSW(answer,RCODE_ESRVFAIL);
         *answ_len=msglen;
-        return answer;
+	error(err_str);
+	err_ret(ERR_QPROCS,answer);
 }
 
 /*
@@ -361,8 +374,10 @@ char* andns_rslv_inet(char *msg,int msglen,
 	dns_pkt *dp;
 	int res;
 
-	if ((res=dpkt(msg,msglen,&dp))==0) /* msg malformed */
-		return NULL;
+	if ((res=dpkt(msg,msglen,&dp))==0) { /* msg malformed */
+		error(err_str);
+		err_ret(ERR_MLFDPK,NULL);
+	}
 	if (res==-1)/* error interpreting msg */
 		goto dns_eintrprt_return; /* release *ap */
 	switch((dp->pkt_qst)->qtype) {
@@ -384,6 +399,8 @@ char* andns_rslv_inet(char *msg,int msglen,
 			res=d_mx_resolve(dp);
 			break;
 		default:
+			debug(DBG_INSANE,"Unknow query type: %d.",(dp->pkt_qst)->qtype);
+			err_seterrno(ERR_UFOTOQ);
 			goto dns_eintrprt_return; // release *dp
 	}
 	if (res==1) {
@@ -397,15 +414,18 @@ char* andns_rslv_inet(char *msg,int msglen,
         return answer;
 
 dns_eintrprt_return:
+	error(err_str);
         destroy_dns_pkt(dp);
         memcpy(answer,msg,msglen);
         DANSW(answer,RCODE_EINTRPRT);
         *answ_len=msglen;
-        return answer;
+	err_ret(ERR_QINTRP,answer);
 dns_esrvfail_return:
+	error(err_str);
         memcpy(answer,msg,msglen);
         DANSW(answer,RCODE_ESRVFAIL);
         *answ_len=msglen;
+	err_ret(ERR_QPROCS,answer);
         return answer;
 }
 
@@ -433,8 +453,10 @@ char *andns_rslv(char *msg, int msglen,
 		return andns_rslv_ntk_inet(msg,msglen,answer,answ_len);
 	else if (andns_proto(msg)==NK_OLDSTYLE) 
 		return andns_rslv_inet(msg,msglen,answer,answ_len);
-	else // which protocol are you using?
-		return NULL; // discard pkt plz
+	else  { // which protocol are you using?
+		debug(DBG_INSANE,"In andns_rslv: unknow proto.");
+		err_ret(ERR_UFOERR,NULL);
+	}
 }
 	
 /*
@@ -455,7 +477,7 @@ int ns_general_send(char *msg,int msglen,char *answer,int *anslen)
 			return 0;
         }
 	
-	return -1;
+	err_ret(ERR_DNSFWD,-1);
 }
 
 int ns_send(char *msg,int msglen, char *answer,int *anslen,struct sockaddr_in *ns,socklen_t nslen)
@@ -487,7 +509,7 @@ int ns_send(char *msg,int msglen, char *answer,int *anslen,struct sockaddr_in *n
         return 0;
 close_return:
 	close(s);
-	return -1;
+	err_ret(ERR_DNSFWD,-1);
 }
 /*
  * His goal is trivial.
@@ -524,15 +546,15 @@ int andns_gethostbyname(char *hname, inet_prefix *ip)
 	memset(msg,0,DNS_MAX_SZ);
 	memset(answ,0,DNS_MAX_SZ);
 	if ((res=dpktpack(dp,msg,0))==-1) {
-		error("In andns_gethostbyname: can not pack query.");
+		error(err_str);
 		return -1;
 	}
 	if (ns_general_send(msg,res,answ,&anslen)) {
-		error("In andns_gethostbyname: DNS forwarding error.");
+		error(err_str);
 		return -1;
 	}
 	if ((res=dpkt(answ,anslen,&dp))==-1) {
-		error("In andns_gethostbyname: can not unpack msg from nameserver.");
+		error(err_str);
 		return -1;
 	}
 	memcpy(&addr, dp->pkt_answ->rdata, sizeof(uint32_t));
@@ -556,11 +578,11 @@ int dns_forward(dns_pkt *dp,char *msg,int msglen,char* answer)
 		error("In rslv: dns forwardind is disable.");
 		goto failing;
 	}
-	debug(DBG_INSANE, "DNS FORWARDING!");
+	debug(DBG_INSANE, "Forwarding dns query to inet nameservers...");
 	if (!is_prefixed(dp)) {
 		/*res=res_send((const unsigned char*)msg,msglen,(unsigned char*)answer,DNS_MAX_SZ);*/
 		if(ns_general_send(msg,msglen,answer,&res)) {
-			error("In dns_forwarding: forward fail.");
+			error(err_str);
 			goto failing;
 		}
 		destroy_dns_pkt(dp);
@@ -570,7 +592,7 @@ int dns_forward(dns_pkt *dp,char *msg,int msglen,char* answer)
 	dp_forward=dpktcpy(dp);
 	memset(fwdbuf,0,DNS_MAX_SZ);
 	if ((res=dpktpack(dp_forward,fwdbuf,1))==-1) { /* dp_foward is destroyed */
-		error("In rslv: error packing forwarding buffer.");
+		error(err_str);
 		goto failing;
 	}
 /*	res=res_send((const unsigned char*)fwdbuf,res,(unsigned char*)answer,DNS_MAX_SZ);
@@ -580,11 +602,11 @@ int dns_forward(dns_pkt *dp,char *msg,int msglen,char* answer)
 		goto failing;
 	}*/
 	if (ns_general_send(fwdbuf,res,answer,&len)) {
-		error("DNS Forwarding error.");
+		error(err_str);
 		goto failing;
 	}
 	if ((res=dpkt(answer,len,&dp_forward))==-1) {
-		error("In rslv: can not unpack msg from nameserver.");
+		error(err_str);
 		goto failing;
 	}
 	dpktacpy(dp,dp_forward,INET_REALM_PREFIX);
@@ -592,15 +614,29 @@ int dns_forward(dns_pkt *dp,char *msg,int msglen,char* answer)
 	dp->pkt_hdr.nscount=0;
 	dp->pkt_hdr.arcount=0;
 	if ((res=dpktpack(dp,answer,0))==-1) {
-		error("In rslv: can not pack prefixed pkt.");
+		error(err_str);
 		return -1;
 	}
 	return res;
 failing:
 	destroy_dns_pkt(dp);
-	return -1;
+	err_ret(ERR_DNSFWD,-1);
 }
 					
+/* Begin of x_y_resolve family functions.
+ * x is the protocol:
+ * 	d -> dns
+ * 	a -> andns
+ * y is the query type.
+ *
+ * The return value of these functions is ignored.
+ * errno is set appropirately, but the bahavior of 
+ * these functions does not interfere with the 
+ * andns engine.
+ *
+ * Anyway, a 0 return means all's OK.
+ * -1 means something wrongs.
+ */
 
 int a_a_resolve(andns_pkt *ap)
 {
@@ -611,7 +647,7 @@ int a_a_resolve(andns_pkt *ap)
 	if ((res=andna_resolve_hname(ap->qstdata_nopref,&ipres))==-1) {
 		ap->rcode=RCODE_ENSDMN;
 		ap->qr=1;
-		return -1;
+		err_ret(ERR_ANDNAR,-1);
 	}
 
 	ap->rcode=RCODE_NOERR;
@@ -641,12 +677,12 @@ int a_ptr_resolve(andns_pkt *ap)
 	if ((res=str_to_inet(ap->qstdata_nopref,&ipres))==-1) {
 		ap->rcode=RCODE_EINTRPRT;
 		ap->qr=1;
-		return -1;
+		err_ret(ERR_QINTRP,-1);
 	}
 	if ((res=andna_reverse_resolve(ipres,&hnames))==-1) {
 		ap->rcode=RCODE_ENSDMN;
 		ap->qr=1;
-		return -1;
+		return 0;
 	}
 	for (i=0;i<res;i++) {
 		apd=andns_add_answ(ap);
@@ -675,13 +711,13 @@ int d_a_resolve(dns_pkt *dp)
 	inet_prefix ipres;
 	int res;
 
-	if (andns_realm(dp->pkt_qst,NULL)==INET_REALM)
+	if (andns_realm(dp->pkt_qst,NULL)==INET_REALM) 
 		return 1;
 	
      	if ((res=andna_resolve_hname(dp->pkt_qst->qname_nopref, &ipres))==-1) {
                 (dp->pkt_hdr).rcode=RCODE_ENSDMN;
         	(dp->pkt_hdr).qr=1;
-                return -1;
+                return 0;
         }
 	
         (dp->pkt_hdr).rcode=RCODE_NOERR;
@@ -709,15 +745,15 @@ int d_ptr_resolve(dns_pkt *dp)
 	char addr[INET_ADDRSTRLEN];
 
 	if (swapped_straddr(dp->pkt_qst->qname_nopref,addr)) {
-		error("In d_ptr_resolve: can not swap address.");
+		error(err_str);
 		(dp->pkt_hdr).rcode=RCODE_EINTRPRT;
         	(dp->pkt_hdr).qr=1;
-		return -1;
+		err_ret(ERR_QINTRP,-1);
 	}
 	if ((res=str_to_inet(addr, &ipres))==-1) {	
 		(dp->pkt_hdr).rcode=RCODE_EINTRPRT;
         	(dp->pkt_hdr).qr=1;
-		return -1;
+		err_ret(ERR_QINTRP,-1);
 	}
 
 	/* 
@@ -728,7 +764,8 @@ int d_ptr_resolve(dns_pkt *dp)
 	 * what hname we've registered.
 	 */
 	if (andns_realm(dp->pkt_qst,NULL)==INET_REALM && 
-		!(inet_is_ip_local(&ipres) || LOOPBACK(htonl(ipres.data[0]))))
+		!(inet_is_ip_local(&ipres, restricted_class) ||
+			LOOPBACK(htonl(ipres.data[0]))))
 		return 1;
 
 	/*
@@ -737,7 +774,7 @@ int d_ptr_resolve(dns_pkt *dp)
 	if ((res=andna_reverse_resolve(ipres, &hnames))==-1) {
         	(dp->pkt_hdr).rcode=RCODE_ENSDMN;
         	(dp->pkt_hdr).qr=1;
-        	return -1;
+        	return 0;
         }
 
 	/*
@@ -764,6 +801,8 @@ int d_ptr_resolve(dns_pkt *dp)
 
 int d_mx_resolve(dns_pkt *dp)
 {
+	if (andns_realm(dp->pkt_qst,NULL)==INET_REALM) 
+		return 1;
 	(dp->pkt_hdr).rcode=RCODE_ENIMPL;
         (dp->pkt_hdr).qr=1;
 	return 0;

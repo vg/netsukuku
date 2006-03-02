@@ -26,9 +26,10 @@
 
 uint8_t _default_realm_;
 
-//int andns_pkt_init(int restricted);
+/* int andns_pkt_init(int restricted); */
 size_t getlblptr(char *buf);
-size_t lbltoname(char *buf,char *start_pkt,char *dst,int count,int limit_len,int recursion);
+/*size_t lbltoname(char *buf,char *start_pkt,char *dst,int count,int limit_len,int recursion);*/
+int lbltoname(char *buf,char *start_pkt,char *dst,int limit);
 int andns_proto(char *buf);
 int andns_realm(dns_pkt_qst *dpq,int *prefixed);
 int is_prefixed(dns_pkt *dp);
@@ -60,8 +61,8 @@ size_t answtoapkt(andns_pkt_data *apd,char *buf,size_t limitlen);
 size_t answstoapkt(andns_pkt *ap,char *buf, size_t limitlen);
 size_t apktpack(andns_pkt *ap,char *buf);
 
-//char* apkttodstream(andns_pkt *ap);
+/* char* apkttodstream(andns_pkt *ap); */
 int danswtoaansw(dns_pkt *dp,andns_pkt *ap,char *msg);
 
 
-#endif //ANDNS_PKT_H
+#endif /* ANDNS_PKT_H */

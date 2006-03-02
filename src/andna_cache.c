@@ -53,19 +53,14 @@ void andna_caches_init(int family)
  */
 void lcl_new_keyring(lcl_cache_keyring *keyring)
 {
-	u_char *priv_dump, *pub_dump;
-
+	memset(keyring, 0, sizeof(lcl_cache_keyring));
+	
 	if(!keyring->priv_rsa) {
 		loginfo("Generating a new keyring for the future ANDNA requests.\n"
 				"  The keyring will be saved in the lcl file");
 		/* Generate the new key pair for the first time */
-		keyring->priv_rsa = genrsa(ANDNA_PRIVKEY_BITS, &pub_dump, 0, 
-				&priv_dump, 0);
-		memcpy(keyring->privkey, priv_dump, ANDNA_SKEY_LEN);
-		memcpy(keyring->pubkey, pub_dump, ANDNA_PKEY_LEN);
-
-		xfree(priv_dump);
-		xfree(pub_dump);
+		keyring->priv_rsa = genrsa(ANDNA_PRIVKEY_BITS, &keyring->pubkey, 
+				&keyring->pkey_len, &keyring->privkey, &keyring->skey_len);
 	}
 }
 
@@ -76,6 +71,11 @@ void lcl_destroy_keyring(lcl_cache_keyring *keyring)
 {
 	if(keyring->priv_rsa)
 		RSA_free(keyring->priv_rsa);
+	if(keyring->pubkey)
+		xfree(keyring->pubkey);
+	if(keyring->privkey)
+		xfree(keyring->privkey);
+	
 	memset(keyring, 0, sizeof(lcl_cache_keyring));
 }
 
@@ -584,9 +584,9 @@ char *pack_lcl_cache(lcl_cache_keyring *keyring, lcl_cache *local_cache,
 	char *pack, *buf, *body;
 
 	lcl_hdr.tot_caches=0;
-	memcpy(lcl_hdr.privkey, keyring->privkey, ANDNA_SKEY_LEN);
-	memcpy(lcl_hdr.pubkey, keyring->pubkey, ANDNA_PKEY_LEN);
-	sz=sizeof(struct lcl_cache_pkt_hdr);
+	lcl_hdr.skey_len=keyring->skey_len;
+	lcl_hdr.pkey_len=keyring->pkey_len;
+	sz=LCL_CACHE_HDR_PACK_SZ(&lcl_hdr);
 	
 	/* Calculate the final pack size */
 	list_for(alcl) {
@@ -594,15 +594,20 @@ char *pack_lcl_cache(lcl_cache_keyring *keyring, lcl_cache *local_cache,
 		lcl_hdr.tot_caches++;
 	}
 
-	pack=xmalloc(sz);
+	pack=buf=xmalloc(sz);
 	memcpy(pack, &lcl_hdr, sizeof(struct lcl_cache_pkt_hdr));
 	ints_host_to_network(pack, lcl_cache_pkt_hdr_iinfo);
+	buf+=sizeof(struct lcl_cache_pkt_hdr);
+		
+	memcpy(buf, keyring->privkey, keyring->skey_len);
+	buf+=keyring->skey_len;
+	memcpy(buf, keyring->pubkey, keyring->pkey_len);
+	buf+=keyring->pkey_len;
 	
 	*pack_sz=0;
 	if(lcl_hdr.tot_caches) {
 		int_info_copy(&body_iinfo, &lcl_cache_pkt_body_iinfo);
 		
-		buf=pack + sizeof(struct lcl_cache_pkt_hdr);
 		alcl=local_cache;
 		
 		list_for(alcl) {
@@ -654,13 +659,28 @@ lcl_cache *unpack_lcl_cache(lcl_cache_keyring *keyring, char *pack, size_t pack_
 	/*
 	 * Restore the keyring 
 	 */
-	memcpy(keyring->privkey, hdr->privkey, ANDNA_SKEY_LEN);
-	memcpy(keyring->pubkey, hdr->pubkey, ANDNA_PKEY_LEN);
+	keyring->skey_len=hdr->skey_len;
+	keyring->pkey_len=hdr->pkey_len;
+	if(keyring->skey_len > ANDNA_SKEY_MAX_LEN) {
+		error(ERROR_MSG "Invalid keyring header", ERROR_POS);
+		return 0;
+	}
+		
+	keyring->privkey=xmalloc(hdr->skey_len);
+	keyring->pubkey=xmalloc(hdr->pkey_len);
+
+	buf=pack+sizeof(struct lcl_cache_pkt_hdr);
+	memcpy(keyring->privkey, buf, hdr->skey_len);
+	buf+=hdr->skey_len;
+
+	memcpy(keyring->pubkey, buf, hdr->pkey_len);
+	buf+=hdr->pkey_len;
 	
 	pk=keyring->privkey;
-	if(!(keyring->priv_rsa=get_rsa_priv((const u_char **)&pk, ANDNA_SKEY_LEN))) {
-		error("Cannot unpack the priv key from the lcl_pack: %s",
-				ssl_strerr());
+	if(!(keyring->priv_rsa=get_rsa_priv((const u_char **)&pk,
+					keyring->skey_len))) {
+		error(ERROR_MSG "Cannot unpack the priv key from the"
+				" lcl_pack: %s", ERROR_POS, ssl_strerr());
 		return 0;
 	}
 
@@ -668,8 +688,6 @@ lcl_cache *unpack_lcl_cache(lcl_cache_keyring *keyring, char *pack, size_t pack_
 	if(hdr->tot_caches) {
 		int_info_copy(&body_iinfo, &lcl_cache_pkt_body_iinfo);
 		
-		buf=pack + sizeof(struct lcl_cache_pkt_hdr);
-
 		for(i=0, sz=0; i<hdr->tot_caches; i++) {
 			slen=strlen(buf)+1;
 			sz+=LCL_CACHE_BODY_PACK_SZ(slen);

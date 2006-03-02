@@ -35,16 +35,16 @@
  */
 void inet_ntohl(u_int *data, int family)
 {
+#if BYTE_ORDER == LITTLE_ENDIAN
 	if(family==AF_INET) {
 		data[0]=ntohl(data[0]);
 	} else {
-		if(BYTE_ORDER == LITTLE_ENDIAN) {
-			int i;
-			swap_ints(MAX_IP_INT, data, data);
-			for(i=0; i<MAX_IP_INT; i++)
-				data[i]=ntohl(data[i]);
-		}
+		int i;
+		swap_ints(MAX_IP_INT, data, data);
+		for(i=0; i<MAX_IP_INT; i++)
+			data[i]=ntohl(data[i]);
 	}
+#endif
 }
 
 /* 
@@ -54,16 +54,16 @@ void inet_ntohl(u_int *data, int family)
  */
 void inet_htonl(u_int *data, int family)
 {
+#if BYTE_ORDER == LITTLE_ENDIAN
 	if(family==AF_INET) {
 		data[0]=htonl(data[0]);
 	} else {
-		if(BYTE_ORDER == LITTLE_ENDIAN) {
-			int i;
-			swap_ints(MAX_IP_INT, data, data);
-			for(i=0; i<MAX_IP_INT; i++)
-				data[i]=htonl(data[i]);
-		}
+		int i;
+		swap_ints(MAX_IP_INT, data, data);
+		for(i=0; i<MAX_IP_INT; i++)
+			data[i]=htonl(data[i]);
 	}
+#endif
 }
 
 /*
@@ -150,15 +150,19 @@ int inet_setip_loopback(inet_prefix *ip, int family)
 
 /* 
  * inet_setip_localaddr: Restrict the `ip' to a local private class changing the
- * first byte of the `ip'. In the ipv4 the CLASS A is used, in ipv6 the site
- * local class.
+ * first byte of the `ip'. `class' specifies what restricted class is currently 
+ * being used (10.x.x.x or 172.16.x.x). In ipv6 the site local class is the
+ * default.
  */
-int inet_setip_localaddr(inet_prefix *ip, int family)
+int inet_setip_localaddr(inet_prefix *ip, int family, int class)
 {
 	if(family==AF_INET) {
-		ip->data[0] = (ip->data[0] & ~0xff000000)|NTK_PRIVATE_CLASS_MASK_IPV4;
+		if(class == RESTRICTED_10)
+			ip->data[0] = NTK_RESTRICTED_10_MASK(ip->data[0]);
+		else 
+			ip->data[0] = NTK_RESTRICTED_172_MASK(ip->data[0]);
 	} else if(family==AF_INET6) {
-		ip->data[0] = (ip->data[0] & ~0xffff0000)|NTK_PRIVATE_CLASS_MASK_IPV6;
+		ip->data[0] = NTK_RESTRICTED_IPV6_MASK(ip->data[0]);
 	} else 
 		fatal(ERROR_MSG "family not supported", ERROR_POS);
 
@@ -167,14 +171,19 @@ int inet_setip_localaddr(inet_prefix *ip, int family)
 
 /*
  * inet_is_ip_local: verifies if `ip' is a local address. If it is, 1 is
- * returned.
+ * returned. `class' specifies what restricted class is currently 
+ * being used (10.x.x.x or 172.16.x.x). In ipv6 the site local class is the
+ * default.
  */
-int inet_is_ip_local(inet_prefix *ip)
+int inet_is_ip_local(inet_prefix *ip, int class)
 {
-	if(ip->family==AF_INET)
-		return (ip->data[0] & 0xff000000) == NTK_PRIVATE_CLASS_MASK_IPV4;
-	else if(ip->family==AF_INET6)
-		return (ip->data[0] & 0xffff0000) == NTK_PRIVATE_CLASS_MASK_IPV6;
+	if(ip->family==AF_INET) {
+		if(class == RESTRICTED_10)
+			return ip->data[0] == NTK_RESTRICTED_10_MASK(ip->data[0]);
+		else
+			return ip->data[0] == NTK_RESTRICTED_172_MASK(ip->data[0]);
+	} else if(ip->family==AF_INET6)
+		return ip->data[0] == NTK_RESTRICTED_IPV6_MASK(ip->data[0]);
 	else
 		fatal(ERROR_MSG "family not supported", ERROR_POS);
 	return 0;
@@ -279,19 +288,6 @@ int inet_addr_match(const inet_prefix *a, const inet_prefix *b, int bits)
 	return 0;
 }
 
-/* 
- * ipv6_addr_type:
- * Taken from linux/net/ipv6/addrconf.c. Modified to use inet_prefix 
- */
-#define ___constant_swab32(x) \
-	((uint32_t)( \
-		(((uint32_t)(x) & (uint32_t)0x000000ffUL) << 24) | \
-		(((uint32_t)(x) & (uint32_t)0x0000ff00UL) <<  8) | \
-		(((uint32_t)(x) & (uint32_t)0x00ff0000UL) >>  8) | \
-		(((uint32_t)(x) & (uint32_t)0xff000000UL) >> 24) ))
-#define __constant_htonl(x) ___constant_swab32((x))
-#define __constant_ntohl(x) ___constant_swab32((x))
-
 int ipv6_addr_type(inet_prefix addr)
 {
 	int type;
@@ -359,13 +355,19 @@ int ipv6_addr_type(inet_prefix addr)
 	return type;
 }
 
+/*
+ * inet_validate_ip: returns 0 is `ip' a valid IP which can be set by
+ * Netsukuku to a network interface
+ */
 int inet_validate_ip(inet_prefix ip)
 {
 	int type, ipv4;
 
 	if(ip.family==AF_INET) {
 		ipv4=htonl(ip.data[0]);
-		if(MULTICAST(ipv4) || BADCLASS(ipv4) || ZERONET(ipv4) || LOOPBACK(ipv4))
+		if(MULTICAST(ipv4) || BADCLASS(ipv4) || ZERONET(ipv4) 
+			|| LOOPBACK(ipv4) || NTK_PRIVATE_C(ipv4) ||
+			(!restricted_mode && NTK_PRIVATE_B(ipv4)))
 			return -EINVAL;
 
 	} else if(ip.family==AF_INET6) {
@@ -381,7 +383,9 @@ int inet_validate_ip(inet_prefix ip)
 	return 0;
 }
 
-/* * * Coversion functions... * * */
+/*
+ * * *  Conversion functions...  * * *
+ */
 
 /*
  * ipraw_to_str: It returns the string which represents the given ip in host
@@ -444,7 +448,8 @@ int str_to_inet(const char *src, inet_prefix *ip)
 		return -1;
 	}
 	if (!res) {
-		error("In str_to_inet: impossible to convert, invalid address.");
+		error("In str_to_inet: impossible to convert \"%s\":"
+				" invalid address.", src);
 		return -1;
 	}
 
@@ -509,8 +514,10 @@ int sockaddr_to_inet(struct sockaddr *ip, inet_prefix *dst, u_short *port)
 		p=(char *)ip->sa_data+sizeof(u_short);
 	else if(ip->sa_family==AF_INET6)
 		p=(char *)ip->sa_data+sizeof(u_short)+sizeof(int);
-	else
-		fatal(ERROR_MSG "family not supported", ERROR_POS);
+	else {
+		error(ERROR_MSG "family not supported", ERROR_POS);
+		return -1;
+	}
 		
 	inet_setip(dst, (u_int *)p, ip->sa_family);
 
@@ -876,7 +883,6 @@ ssize_t inet_recv_timeout(int s, void *buf, size_t len, int flags, u_int timeout
 {
 	struct timeval timeout_t;
 	fd_set fdset;
-	ssize_t err;
 	int ret;
 
 	MILLISEC_TO_TV(timeout*1000, timeout_t);
@@ -887,7 +893,7 @@ ssize_t inet_recv_timeout(int s, void *buf, size_t len, int flags, u_int timeout
 	ret = select(s+1, &fdset, NULL, NULL, &timeout_t);
 	if (ret == -1) {
 		error(ERROR_MSG "select error: %s", ERROR_FUNC, strerror(errno));
-		return err;
+		return ret;
 	}
 
 	if(FD_ISSET(s, &fdset))
@@ -937,7 +943,6 @@ ssize_t inet_recvfrom_timeout(int s, void *buf, size_t len, int flags,
 {
 	struct timeval timeout_t;
 	fd_set fdset;
-	ssize_t err;
 	int ret;
 
 	MILLISEC_TO_TV(timeout*1000, timeout_t);
@@ -948,7 +953,7 @@ ssize_t inet_recvfrom_timeout(int s, void *buf, size_t len, int flags,
 	ret = select(s+1, &fdset, NULL, NULL, &timeout_t);
 	if (ret == -1) {
 		error(ERROR_MSG "select error: %s", ERROR_FUNC, strerror(errno));
-		return err;
+		return ret;
 	}
 
 	if(FD_ISSET(s, &fdset))
@@ -1003,7 +1008,6 @@ ssize_t inet_send(int s, const void *msg, size_t len, int flags)
 ssize_t inet_send_timeout(int s, const void *msg, size_t len, int flags, u_int timeout)
 {
 	struct timeval timeout_t;
-	ssize_t err;
 	fd_set fdset;
 	int ret;
 
@@ -1016,7 +1020,7 @@ ssize_t inet_send_timeout(int s, const void *msg, size_t len, int flags, u_int t
 
 	if (ret == -1) {
 		error(ERROR_MSG "select error: %s", ERROR_FUNC, strerror(errno));
-		return err;
+		return ret;
 	}
 
 	if(FD_ISSET(s, &fdset))
@@ -1072,7 +1076,6 @@ ssize_t inet_sendto_timeout(int s, const void *msg, size_t len, int flags,
 		const struct sockaddr *to, socklen_t tolen, u_int timeout)
 {
 	struct timeval timeout_t;
-	ssize_t err;
 	fd_set fdset;
 	int ret;
 
@@ -1085,7 +1088,7 @@ ssize_t inet_sendto_timeout(int s, const void *msg, size_t len, int flags,
 
 	if (ret == -1) {
 		error(ERROR_MSG "select error: %s", ERROR_FUNC, strerror(errno));
-		return err;
+		return ret;
 	}
 
 	if(FD_ISSET(s, &fdset))

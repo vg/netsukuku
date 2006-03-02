@@ -279,10 +279,14 @@ void init_internet_gateway_search(void)
 	int i, ret;
 
 	active_gws=0;
-        if(!server_opt.restricted)
+        if(!restricted_mode)
 		return;
 	
 	init_igws(&me.igws, &me.igws_counter, GET_LEVELS(my_family));
+	
+	/*
+	 * Bring tunl0 up
+	 */
 	
 	loginfo("Configuring the \"tunl%d\" tunnel device", DEFAULT_TUNL_NUMBER);
 	if(tunnel_change(0, 0, 0, DEFAULT_TUNL_NUMBER) < 0)
@@ -298,12 +302,33 @@ void init_internet_gateway_search(void)
 	if(!server_opt.inet_hosts)
 		fatal("You didn't specified any Internet hosts in the "
 			"configuration file. What hosts should I ping?");
-	
+
+	/*
+	 * If we are sharing our internet connection, activate the
+	 * masquerading.
+	 */
 	if(server_opt.share_internet)
-                igw_exec_masquerade_sh(server_opt.ip_masq_script);
-			
+                igw_exec_masquerade_sh(server_opt.ip_masq_script, 0);
+
+	/*
+	 * Get the default gateway route currently set in the kernel routing
+	 * table
+	 */
+	memset(&new_gw, 0, sizeof(inet_prefix));
 	ret=rt_get_default_gw(&new_gw, new_gw_dev);
+
+	/* 
+	 * If there is no IP set in the route, fetch it at least from the
+	 * device included in it.
+	 */
+	if(!new_gw.family && *new_gw_dev) {
+		if(get_dev_ip(&new_gw, my_family, new_gw_dev) < 0)
+			(*new_gw_dev)=0;
+	}
+	
 	if(ret < 0 || (!*new_gw_dev && !new_gw.family)) {
+		/* Nothing useful has been found  */
+		
 		loginfo("The retrieval of the default gw from the kernel failed.");
 
 		if(!server_opt.inet_gw.data[0])
@@ -325,6 +350,9 @@ void init_internet_gateway_search(void)
 		else
 			strncpy(server_opt.inet_gw_dev, new_gw_dev, IFNAMSIZ);
 		memcpy(&server_opt.inet_gw, &new_gw, sizeof(inet_prefix));
+
+		/* Delete the default gw, we are replacing it */
+		rt_delete_def_gw();
 	}
 	
 	loginfo("Using \"%s dev %s\" as your first Internet gateway.", 
@@ -374,6 +402,14 @@ void init_internet_gateway_search(void)
         pthread_attr_init(&t_attr);
         pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
         pthread_create(&ping_thread, &t_attr, igw_check_inet_conn_t, 0);
+}
+
+void close_internet_gateway_search(void)
+{
+	if(server_opt.share_internet)
+		igw_exec_masquerade_sh(server_opt.ip_masq_script, 1);
+	free_igws(me.igws, me.igws_counter, me.cur_quadg.levels);
+	free_my_igws(&me.my_igws);
 }
 
 /*
@@ -531,7 +567,7 @@ int igw_cmp(const void *a, const void *b)
  */
 void igw_order(inet_gw **igws, int *igws_counter, inet_gw **my_igws, int level)
 {
-	inet_gw *igw, *next, *maxigws_ptr;
+	inet_gw *igw, *next, *maxigws_ptr=0;
 	int i, igw_tmp_n;
 		
 	if(!igws_counter[level] || !igws[level])
@@ -740,19 +776,41 @@ void *igw_monitor_igws_t(void *null)
 }
 
 /*
- * igw_exec_masquerade_sh: executes `script', which will do IP masquerade
+ * igw_exec_masquerade_sh: executes `script', which will do IP masquerade.
+ * If `stop' is set to 1 the script will be executed as "script stop",
+ * otherwise as "script start".
  */
-int igw_exec_masquerade_sh(char *script)
+int igw_exec_masquerade_sh(char *script, int stop)
 {
+	struct stat sh_stat;
 	int ret;
+	char command[strlen(script)+7];
 	
-	loginfo("Executing %s", script);
+	if(stat(script, &sh_stat))
+		fatal("Couldn't stat %s: %s", strerror(errno));
+
+	if(sh_stat.st_uid != 0 || sh_stat.st_mode & S_ISUID ||
+	    sh_stat.st_mode & S_ISGID || 
+	    (sh_stat.st_gid != 0 && sh_stat.st_mode & S_IWGRP) ||
+	    sh_stat.st_mode & S_IWOTH)
+		fatal("Please adjust the permissions of %s and be sure it "
+			"hasn't been modified.\n"
+			"  Use this command:\n"
+			"  chmod 744 %s; chown root:root %s",
+			script, script, script);
 	
-	ret=system(script);
+	if(stop)
+		sprintf(command, "%s %s", script, "stop");
+	else
+		sprintf(command, "%s %s", script, "start");
+	loginfo("Executing \"%s\"", command);
+	
+	ret=system(command);
 	if(ret == -1)
-		fatal("Couldn't execute %s: %s", strerror(errno));
-	if(!WIFEXITED(ret) || (WIFEXITED(ret) && WEXITSTATUS(ret) != 0))
-		fatal("%s didn't terminate correctly. Aborting");
+		fatal("Couldn't execute %s: %s", script, strerror(errno));
+	
+	if(!stop && (!WIFEXITED(ret) || (WIFEXITED(ret) && WEXITSTATUS(ret) != 0)))
+		fatal("\"%s\" didn't terminate correctly. Aborting", command);
 
 	return 0;
 }
@@ -771,14 +829,16 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 	inet_prefix to;
 
 	struct nexthop *nh=0;
-	int ni, ni_lvl, nexthops, level;
+	int ni, ni_lvl, nexthops, level, max_multipath_routes;
 
 #ifdef DEBUG		
 #define MAX_GW_IP_STR_SIZE (MAX_MULTIPATH_ROUTES*((INET6_ADDRSTRLEN+1)+IFNAMSIZ)+1)
 	int n;
 	char gw_ip[MAX_GW_IP_STR_SIZE]="";
 #endif
-
+	
+	max_multipath_routes=MAX_MULTIPATH_ROUTES;
+	
 	/* to == 0.0.0.0 */
 	inet_setip_anyaddr(&to, family);
 	to.len=to.bits=0;
@@ -797,7 +857,11 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 		nh[ni].dev=server_opt.inet_gw_dev;
 		nh[ni].hops=255-ni;
 		ni++;
+		max_multipath_routes--;
 	}
+
+	/* We choose an equal number of nexthops for each level */
+	nexthops=max_multipath_routes/max_levels;
 
 	for(level=0; level<max_levels; level++) {
 #ifdef IGS_MULTI_GW_DISABLE
@@ -808,13 +872,9 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 		/* Reorder igws[level] */
 		igw_order(igws, igws_counter, my_igws, level);
 
-		igw=igws[level];
-		nexthops=MAX_MULTIPATH_ROUTES/max_levels;
-		if(server_opt.share_internet)
-			nexthops--;
-
 		/* Take the first `nexthops'# gateways and add them in `ni' */
 		ni_lvl=0;
+		igw=igws[level];
 		list_for(igw) {
 			if(ni_lvl >= nexthops)
 				break;
@@ -829,13 +889,13 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 			igw->flags|=IGW_ACTIVE;
 			inet_setip(&nh[ni].gw, igw->ip, family);
 			nh[ni].dev=tunl0_if.dev_name;
-			nh[ni].hops=255-ni;
+			nh[ni].hops=max_multipath_routes-ni+1;
 			ni++;
 			ni_lvl++;
 		}
 		
 		if(ni_lvl >= nexthops)
-		/* All the other gateways are inactive */
+			/* All the other gateways are inactive */
 			list_for(igw)
 				igw->flags&=~IGW_ACTIVE;
 	}
@@ -862,7 +922,7 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 	debug(DBG_INSANE, RED("igw_def_gw: default via %s"), gw_ip);
 #endif
 
-	if(route_replace(0, 0, to, nh, 0, 0))
+	if(route_replace(0, 0, &to, nh, 0, 0))
 		error("WARNING: Cannot update the default route "
 				"lvl %d", level);
 	active_gws=ni;
@@ -983,7 +1043,7 @@ int igw_store_bblock(bnode_hdr *bblock_hdr, bnode_chunk *bchunk, u_char level)
 	map_gnode *gnode=0;
 
 	inet_gw *igw;
-	int gids[me.cur_quadg.levels], ret;
+	int gids[me.cur_quadg.levels], ret=0;
 	u_char *bnode_gid;
 
 	int i, update=0;
@@ -991,7 +1051,7 @@ int igw_store_bblock(bnode_hdr *bblock_hdr, bnode_chunk *bchunk, u_char level)
 	/*
 	 * Extract the IP of the Internet gateway
 	 */
-	bnode_gid=(char *)bblock_hdr + sizeof(bnode_hdr);
+	bnode_gid=(u_char *)bblock_hdr + sizeof(bnode_hdr);
 	for(i=0; i<bblock_hdr->bnode_levels; i++)
 		gids[i]=bnode_gid[i];
 	for(; i < me.cur_quadg.levels; i++)
@@ -1037,7 +1097,7 @@ int igw_store_bblock(bnode_hdr *bblock_hdr, bnode_chunk *bchunk, u_char level)
 	/* 
 	 * Refresh the Kernel routing table 
 	 */
-	igw_replace_def_igws(me.igws, me.igws_counter, me.my_igws, 
+	ret=igw_replace_def_igws(me.igws, me.igws_counter, me.my_igws, 
 			me.cur_quadg.levels, my_family);
 	if(ret == -1) {
 		debug(DBG_SOFT, ERROR_MSG "cannot replace default gateway", 

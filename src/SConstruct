@@ -18,7 +18,7 @@
 import sys
 import os
 
-NTK_VERSION="0.0.5b"
+NTK_VERSION="0.0.6b"
 
 #
 #	Sources and libs
@@ -64,8 +64,8 @@ else:
 	debug = 0
 opts.Save('build.conf', env)
 
-if os.path.exists("netsukuku.conf") and env.GetOption('clean'):
-	Execute(Delete('netsukuku.conf'))
+if os.path.exists("conf/netsukuku.conf") and env.GetOption('clean'):
+	Execute(Delete('conf/netsukuku.conf'))
 if os.path.exists("config.h") and env.GetOption('clean'):
 	Execute(Delete('config.h'))
 if os.path.exists("config.log") and env.GetOption('clean'):
@@ -135,9 +135,9 @@ def build_config_files(target = None, source = None, env = None):
 		print 'Generating config.h from config_scons.h.in'
 		conf_build('config.h', 'config_scons.h.in', env)
 
-	if not os.path.exists("netsukuku.conf") and not env.GetOption('clean'):
-		print 'Generating netsukuku.conf from ntk_scons.conf.in'
-		conf_build('netsukuku.conf', 'ntk_scons.conf.in', env)
+	if not os.path.exists("conf/netsukuku.conf") and not env.GetOption('clean'):
+		print 'Generating conf/netsukuku.conf from conf/ntk_scons.conf.in'
+		conf_build('conf/netsukuku.conf', 'conf/ntk_scons.conf.in', env)
 	
 	return 0
 
@@ -157,15 +157,14 @@ Default(netsukuku_d)
 #	Install 
 #
 
-SConscript(['man/SConscript'], 'env')
+SConscript(['man/SConscript', 'scripts/SConscript', 'conf/SConscript'], 'env')
 
 # Here are our installation paths:
 idir_bin    = '$BIN_DIR'
 idir_data   = '$DATA_DIR'
 idir_conf   = '$CONF_DIR'
 
-env.Install(idir_bin, [netsukuku_d, 'netsukuku_wifi'])
-env.Install(idir_conf, ['netsukuku.conf', 'ip_masquerade.sh'])
+env.Install(idir_bin, [netsukuku_d])
 env.Alias('install', [idir_bin, idir_conf])
 
 #Dirty hack ;( Why GetOption("install") doesn't work?

@@ -23,8 +23,7 @@
 #include <sys/types.h>
 #include <stdint.h>
 
-
-// PREFIX TO QUERY THE INET REALM
+/* PREFIX TO QUERY THE INET REALM */
 #define INET_REALM_PREFIX 	".INT"
 #define NTK_REALM_PREFIX 	".NTK"
 #define PTR_INET_REALM_PREFIX 	"INT."
@@ -33,16 +32,17 @@
 
 	/*
 	 * STRUCTURES
- 	*/
+	 */
 
 
 /* 
  * DNS STRUCTS
  */
-#define MAX_HNAME_LEN 	255
-#define MAX_DNS_LL	2
-#define DNS_HDR_SZ	12
-#define DNS_MAX_SZ	512
+#define MAX_HNAME_LEN 		255
+#define MAX_DNS_HNAME_LEN 	255
+#define MAX_DNS_LL		2
+#define DNS_HDR_SZ		12
+#define DNS_MAX_SZ		512
 typedef struct dns_pkt_hdr {
 	uint16_t       id;
         uint8_t        qr;
@@ -60,7 +60,7 @@ typedef struct dns_pkt_hdr {
 } dns_pkt_hdr;
 #define DNS_PKT_HDR_SZ sizeof(dns_pkt_hdr)
 
-//DNS_HDR MACROS
+/* DNS_HDR MACROS */
 #define DP_QDCOUNT(dp)  ((dp)->pkt_hdr).qdcount
 #define DP_ANCOUNT(dp)  ((dp)->pkt_hdr).ancount
 #define DP_NSCOUNT(dp)  ((dp)->pkt_hdr).nscount
@@ -70,9 +70,9 @@ typedef struct dns_pkt_hdr {
 #define DP_ADD_AUTH(dp)		dns_add_a(&((dp)->pkt_auth));DP_NSCOUNT(dp)+=1;
 #define DP_ADD_ADD(dp)		dns_add_a(&((dp)->pkt_add));DP_ARCOUNT(dp)+=1;
 
-#define LBL_PTR_MK              0xC0 // Network byte order
-#define LBL_PTR_OFF_MK          0x3fff // N.b. order
-#define LBL_PTR(c)      ((c)&LBL_PTR_MK) // AND whith 0xC000
+#define LBL_PTR_MK              0xC0			/* Network byte order */
+#define LBL_PTR_OFF_MK          0x3fff 			/* N.b. order */
+#define LBL_PTR(c)      	((c)&LBL_PTR_MK)	/* AND whith 0xC000 */
 #define MAX_RECURSION_PTR	20
 
 #define MAX_SQLBL_LEN		255
@@ -155,48 +155,48 @@ typedef struct andns_pkt
  * INET 
  */
 
-// DNS QUERY-TYPE: others type will be discarded
-#define T_AAAA  28      // h->ip IPV6 
-#define T_A     1	// h->ip IPV4
-#define T_PTR   12	// ip->h
-#define T_MX    15	// h->mx
-// ANDNS QUERY-TYPE
-#define AT_A    	0 // h->ip
-#define AT_PTR  	1 // ip->h
-#define AT_MX   	2 // h->mx
-#define AT_MXPTR        3 // ip->mx
+/* DNS QUERY-TYPE: others type will be discarded */
+#define T_AAAA  28      /* h->ip IPV6  */
+#define T_A     1	/* h->ip IPV4 */
+#define T_PTR   12	/* ip->h */
+#define T_MX    15	/* h->mx */
+/* ANDNS QUERY-TYPE */
+#define AT_A    	0 /* h->ip */
+#define AT_PTR  	1 /* ip->h */
+#define AT_MX   	2 /* h->mx */
+#define AT_MXPTR        3 /* ip->mx */
 
-// CLASSES
-#define C_IN    1 // internet class, others are discarded
+/* CLASSES */
+#define C_IN    1 /* internet class, others are discarded */
 
-// RCODES: The rcodes are portable between ANDNS and DNS
-#define RCODE_NOERR     0 	// No error
-#define RCODE_EINTRPRT  1	// Intepret error
-#define RCODE_ESRVFAIL  2	// Server failure
-#define RCODE_ENSDMN    3	// No such domain
-#define RCODE_ENIMPL    4	// Not implemented
-#define RCODE_ERFSD     5	// Refused
+/* RCODES: The rcodes are portable between ANDNS and DNS */
+#define RCODE_NOERR     0 	/* No error */
+#define RCODE_EINTRPRT  1	/* Intepret error */
+#define RCODE_ESRVFAIL  2	/* Server failure */
+#define RCODE_ENSDMN    3	/* No such domain */
+#define RCODE_ENIMPL    4	/* Not implemented */
+#define RCODE_ERFSD     5	/* Refused */
 
-// PREFIXES FOR PTR QUERY
+/* PREFIXES FOR PTR QUERY */
 #define DNS_INV_PREFIX          ".IN-ADDR.ARPA"
 #define DNS_INV_PREFIX6         ".IP6.ARPA"
-#define OLD_DNS_INV_PREFIX6     ".IP6.INT" // For backward compatibility
+#define OLD_DNS_INV_PREFIX6     ".IP6.INT" /* For backward compatibility */
 
-// REALMS TO SEARCH
+/* REALMS TO SEARCH */
 #define NTK_REALM 		0
 #define INET_REALM		1
 #define DEFAULT_REALM	
 
-// NK BIT
+/* NK BIT */
 #define NK_OLDSTYLE 		0
 #define NK_NTK			1
 #define NK_INET			2
 
-// PROTOCOLS
+/* PROTOCOLS */
 #define ANDNS_NTK_PROTO		0
 #define ANDNS_DNS_PROTO		1
 
 
 
 
-#endif //ANDNS_H
+#endif /*ANDNS_H*/

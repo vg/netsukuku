@@ -1,104 +1,163 @@
-0.0.5b
-
-- The Internet Gateway Search (NTK_RFC 0003) has been implemented.
-  A node can now share its Internet connection among the other nodes (only in
-  restricted mode). 
-  ( Read the RFC: http://lab.dyne.org/Ntk_IGS )
-
-- Main part of the NTK_RFC 0001 written, the (g)nodes have now the ability to
-  rehook to avoid IP collision. 
-  ( http://lab.dyne.org/Ntk_gnodes_contiguity )
-  
-- ANDNS has been implemented. It is a new specification of the DNS protocol
-  for Netsukuku. It is compatible with the actual DNS protocol.
-  ( http://lab.dyne.org/Ntk_andna_and_dns )
-
-- Multi interfaces multipath: if we can reach a rnode trough multiple
-  interfaces, use them all with a multipath route.
-  
-- The dns_wrapper code is no more dependent on Boost.
-
-- map_rnode doesn't use anymore the timeval struct and map_rnode.rtt was
-  removed 'cause it was obsolete. In conclusion we gained 12 bytes for each
-  rnode.
-
-- Added a check in get_free_nodes to verify the validity of fn_hdr->ipstart.
-  For example if the rnode has an IP which doesn't match with fn_hdr->ipstart
-  there must be some errors. This led to bug 0002.
-
-- Fixed a bug in the multiif code: the packets destined to gnodes were sent
-  only from the first device.
-
-- qspn_remove_deads() removes the routes of the dead nodes from the routing
-  table of the kernel.
-
-- Restricted nodes and normal nodes are now invisible to each other.
-
-- 127.0.0.0/8 banned.
-
-- The command line options override the ones specified in the config file.
-
-- code heavily cleaned.
-
-
-0.0.4b
-
-- The multi-interface support was added, now it is possible to use multiple
-  network interfaces without the need of the bridge, just specify each
-  interface you want to use with the -i option. (man netsukuku_d).
-
-- The multipath support has been enabled for the external map, this means that
-  more than one route will be used to reach a gnode. In other words the load
-  balacing has been fully enabled.
-
-- Endianness fixes: now the packets can be sent between two machines with
-  different endianness.
-  
-- All the the packets are now sent without any alignment.
-
-- The free_nodes struct has been optimised: to keep the list of free nodes it
-  uses single bits instead of single bytes, this means that the list is now of
-  32 bytes instead of 256.
-
-- The bug in the load_rh_cache code is now fixed. (It caused crashes when the
-  daemon was closed)
-  
-- The Make/configure support was added. Now you can use both SCons or Make to
-  compile and install Netsukuku.
-
-- The installation path of the man page is now fixed.
-
-- The installation paths are changed!! BIN_DIR=/usr/bin/, MAN_DIR=/usr/man
-
-- The /usr/share/netsukuku directory is now created by the daemon itself.
-
-- Now /sys/net/ipv4/conf/INTERFACE/rp_filter is automatically disabled for the
-  used network interface.
-
-- Errors in load_hostnames() fixed. (It crashed it there was an just an empty
-  '\n').
-
-- Added CC and CXX options in Scontruct. Changes provided by Tero Auvinen.
-
-- At hooking the first radar_scan is retried for three times.
-
-- When the daemon is launched /etc/resolv.conf is modified automatically, so
-  the "nameserver 127.0.0.1" is added in the first line of resolv.conf. The
-  old resolv.conf is at /etc/resolv.conf.bak. When the daemon is closed
-  /etc/resolv.conf.bak is moved to /etc/resolv.conf.
-
-0.0.3b
-- The ANDNA code, with its DNS wrapper, is completed and tested.
+==== 0.0.6b ====
 	
-- The Netsukuku code was cleaned. Now it's ready to be an API.
+New features:
 
-- The Italian to English translation of the document is finished.
+	* The NTK_RFC 0008 has been implemented.
+	  ( http://lab.dyne.org/Ntk_restricted_ip_classes )
 
-0.0.2b
-- NetsukukuD goes beta!
+Bug fixes:
 
-0.0.1a
-- NetsukukuD compiles, at least.
+	* The NTK_RFC 0007 has been implemented. It fixes an exploitable bug
+	  in the ANDNA protocol.
 
-0.0.0a
-- The void and its nulliness filled the existence.
+	* NetsukukuD has been tested on big endian machines. A lot of
+	  endianness bugs has been fixed during the tests and now it seems to
+	  work gracefully.
+	  A lot of thanks to Vampire ;*
+	
+	* The ppp connection to the Internet doesn't set an IP address in the
+	  default route of the kernel but only the used ppp interface,
+	  therefore NetsukukuD has to deduce it from the IP assigned to the
+	  ppp interface, i.e. ppp0.
+
+	* Execute /etc/netsukuku/ip_masquerade.sh only if it is
+	  writable just by root.
+
+	* Execute "/etc/netsukuku/ip_masquerade.sh stop" when NetsukukuD is
+	  closed.
+
+	* Added a timeout of 60 seconds for the reverse resolution request.
+
+	* A possible memory overrun in the rsa (un)packing functions has been
+	  fixed.
+
+
+==== 0.0.5b  ====
+
+New features:
+	* The Internet Gateway Search (NTK_RFC 0003) has been implemented.
+	  A node can now share its Internet connection among the other nodes
+	  (only in restricted mode). 
+	  ( Read the RFC: http://lab.dyne.org/Ntk_IGS )
+
+	* Main part of the NTK_RFC 0001 written, the (g)nodes have now the
+	  ability to rehook to avoid IP collision. 
+	  ( http://lab.dyne.org/Ntk_gnodes_contiguity )
+	  
+	* ANDNS has been implemented. It is a new specification of the DNS
+	  protocol for Netsukuku. It is compatible with the actual DNS
+	  protocol. ( http://lab.dyne.org/Ntk_andna_and_dns )
+
+	* Multi interfaces multipath: if we can reach a rnode trough multiple
+	  interfaces, use them all with a multipath route.
+	  
+	* The dns_wrapper code is no more dependent on Boost.
+
+
+Bug fixes:
+
+	* map_rnode doesn't use anymore the timeval struct and map_rnode.rtt was
+	  removed 'cause it was obsolete. In conclusion we gained 12 bytes for
+	  each rnode.
+
+	* Added a check in get_free_nodes to verify the validity of
+	  fn_hdr->ipstart.
+	  For example if the rnode has an IP which doesn't match with
+	  fn_hdr->ipstart there must be some errors. This led to bug 0002.
+
+	* Fixed a bug in the multiif code: the packets destined to gnodes were
+	  sent only from the first device.
+
+	* qspn_remove_deads() removes the routes of the dead nodes from the
+	  routing table of the kernel.
+
+	* Restricted nodes and normal nodes are now invisible to each other.
+
+	* 127.0.0.0/8 banned.
+
+	* The command line options override the ones specified in the config file.
+
+	* code heavily cleaned.
+
+
+==== 0.0.4b  ====
+
+New features:
+
+	* The multi-interface support was added, now it is possible to use
+	  multiple network interfaces without the need of the bridge, just
+	  specify each interface you want to use with the -i option. (man
+	  netsukuku_d).
+
+	* The multipath support has been enabled for the external map, this
+	  means that more than one route will be used to reach a gnode. In other
+	  words the load balacing has been fully enabled.
+
+	* Endianness fixes: now the packets can be sent between two machines
+	  with different endianness.
+	  
+	* When the daemon is launched /etc/resolv.conf is modified
+	  automatically, so the "nameserver 127.0.0.1" is added in the first
+	  line of resolv.conf. The old resolv.conf is at /etc/resolv.conf.bak.
+	  When the daemon is closed /etc/resolv.conf.bak is moved to
+	  /etc/resolv.conf.
+
+	* Added CC and CXX options in Scontruct. 
+	  Changes provided by Tero Auvinen.
+
+	* At hooking the first radar_scan is retried for three times.
+
+
+	* The Make/configure support was added. Now you can use both SCons or
+	  Make to compile and install Netsukuku.
+
+
+Bug fixes:
+
+	* All the the packets are now sent without any alignment.
+
+	* The free_nodes struct has been optimised: to keep the list of free
+	  nodes it uses single bits instead of single bytes, this means that the
+	  list is now of 32 bytes instead of 256.
+
+	* The bug in the load_rh_cache code is now fixed. (It caused crashes
+	  when the daemon was closed).
+	  
+	* The installation path of the man page is now fixed.
+
+	* The installation paths are changed!! BIN_DIR=/usr/bin/,
+	  MAN_DIR=/usr/man
+
+	* The /usr/share/netsukuku directory is now created by the daemon
+	  itself.
+
+	* Now /sys/net/ipv4/conf/INTERFACE/rp_filter is automatically disabled
+	  for the used network interface.
+
+	* Errors in load_hostnames() fixed. (It crashed if there was an just
+	  an empty '\n').
+
+	
+
+==== 0.0.3b  ====
+
+	* The ANDNA code, with its DNS wrapper, is completed and tested.
+		
+	* The Netsukuku code was cleaned. Now it's ready to be an API.
+
+	* The Italian to English translation of the document is finished.
+
+
+==== 0.0.2b  ====
+
+	* NetsukukuD goes beta!
+
+
+==== 0.0.1b  ====
+
+	* NetsukukuD compiles, at least.
+
+
+==== 0.0.0a  ====
+
+	* The void and its nulliness filled the existence.

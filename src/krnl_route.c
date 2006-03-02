@@ -68,7 +68,7 @@ void route_reset_filter()
 }
 
 int route_exec(int route_cmd, int route_type, int route_scope, unsigned flags,
-		inet_prefix to, struct nexthop *nhops, char *dev, u_char table);
+		inet_prefix *to, struct nexthop *nhops, char *dev, u_char table);
 
 int route_add(ROUTE_CMD_VARS)
 {
@@ -164,7 +164,7 @@ int add_nexthops(struct nlmsghdr *n, struct rtmsg *r, struct nexthop *nhop)
  * `to' and nhops->gw must be addresses given in network order
  */
 int route_exec(int route_cmd, int route_type, int route_scope, unsigned flags, 
-		inet_prefix to, struct nexthop *nhops, char *dev, u_char table)
+		inet_prefix *to, struct nexthop *nhops, char *dev, u_char table)
 {
 	struct rt_request req;
 	struct rtnl_handle rth;
@@ -222,20 +222,26 @@ int route_exec(int route_cmd, int route_type, int route_scope, unsigned flags,
 		addattr32(&req.nh, sizeof(req), RTA_OIF, idx);
 	}
 
-	req.rt.rtm_family  = to.family;
-	if (to.len) {
-		req.rt.rtm_dst_len = to.bits;
-		if(!to.data[0] && !to.data[1] && !to.data[2] && !to.data[3]) {
-			/*Add the default gw*/
-			req.rt.rtm_protocol=RTPROT_KERNEL;
+	if(to) {
+		req.rt.rtm_family = to->family;
+		req.rt.rtm_dst_len = to->bits;
+
+		if(!to->data[0] && !to->data[1] && !to->data[2] && !to->data[3]) {
+			/* Modify the default gw*/
+			if(route_cmd == RTM_DELROUTE)
+				req.rt.rtm_protocol=0;
 		}
 
-		addattr_l(&req.nh, sizeof(req), RTA_DST, &to.data, to.len);
-	} 
+		if(to->len)		
+			addattr_l(&req.nh, sizeof(req), RTA_DST, &to->data, to->len);
+	}
 
 	if(nhops)
 		add_nexthops(&req.nh, &req.rt, nhops);
 	
+        if (req.rt.rtm_family == AF_UNSPEC)
+                req.rt.rtm_family = AF_INET;
+
 	/*Finaly stage: <<Hey krnl, r u there?>>*/
 	if (rtnl_talk(&rth, &req.nh, 0, 0, NULL, NULL, NULL) < 0)
 		return -1;
@@ -352,10 +358,6 @@ int route_get_gw(const struct sockaddr_nl *who, struct nlmsghdr *n, void *arg)
 		memcpy(&via.data, RTA_DATA(tb[RTA_GATEWAY]), host_len/8);
 		via.family=r->rtm_family;
 		inet_setip(arg, (u_int *)&via.data, via.family);
-		/* Copy the interface name */
-		if (tb[RTA_OIF] && filter.oifmask != -1)
-			strncpy((char *)arg+sizeof(inet_prefix),
-					ll_index_to_name(*(int*)RTA_DATA(tb[RTA_OIF])), IFNAMSIZ);
 	} else if(tb[RTA_MULTIPATH]) {
 		struct rtnexthop *nh = RTA_DATA(tb[RTA_MULTIPATH]);
 
@@ -387,6 +389,12 @@ skip_nexthop:
 			nh = RTNH_NEXT(nh);
 		}
 	}
+
+
+	/* Copy the interface name */
+	if (tb[RTA_OIF] && filter.oifmask != -1)
+		strncpy((char *)arg+sizeof(inet_prefix),
+			ll_index_to_name(*(int*)RTA_DATA(tb[RTA_OIF])), IFNAMSIZ);
 	
 	return 0;
 }

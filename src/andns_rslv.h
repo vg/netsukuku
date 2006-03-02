@@ -50,4 +50,4 @@ int d_a_resolve(dns_pkt *dp);
 int d_ptr_resolve(dns_pkt *dp);
 int d_mx_resolve(dns_pkt *dp);
 
-#endif //ANDNS_RSLV_H
+#endif /* ANDNS_RSLV_H */

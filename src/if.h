@@ -40,6 +40,7 @@ struct in6_ifreq {
 
 int ifs_get_pos(interface *ifs, int ifs_n, interface *dev);
 interface *ifs_find_idx(interface *ifs, int ifs_n, int dev_idx);
+int ifs_find_devname(interface *ifs, int ifs_n, char *dev_name);
 void ifs_del(interface *ifs, int *ifs_n, int if_pos);
 void ifs_del_byname(interface *ifs, int *ifs_n, char *dev_name);
 const char *get_dev(int *dev_idx);
@@ -49,6 +50,8 @@ int set_flags(char *dev, u_int flags, u_int mask);
 int set_all_ifs(interface *ifs, int ifs_n, int (*set_func)(char *dev));
 int if_init_all(char *ifs_name[MAX_INTERFACES], int ifs_n, interface *new_ifs, int *new_ifs_n);
 int set_all_dev_ip(inet_prefix ip, interface *ifs, int ifs_n);
+int set_dev_ip(inet_prefix ip, char *dev);
+int get_dev_ip(inet_prefix *ip, int family, char *dev);
 int ip_addr_flush(int family, char *dev, int scope);
 int ip_addr_flush_all_ifs(interface *ifs, int ifs_n, int family, int scope);
 

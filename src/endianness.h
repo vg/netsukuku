@@ -30,6 +30,8 @@
 
 
 /* flags for int_info.int_type */
+#define INT_TYPE_VOID		0		/* Emptiness is loneliness, and loneliness is 
+						   cleanliness */
 #define INT_TYPE_32BIT		1		/* The int var is of 32 bits */
 #define INT_TYPE_16BIT		(1<<1)		/* The int var is of 16 bits */
 #define INT_TYPE_WORDS		(1<<2)		/* The int var is composed by an array of ints,
@@ -87,6 +89,20 @@ typedef struct
 /* Useful to declare constant static int_info structs in .h files */
 #define INT_INFO const static int_info
 
+/* 
+ * Taken from linux/byteorder/little_endian.h
+ */
+#undef ___constant_swab32
+#define ___constant_swab32(x) \
+	((uint32_t)( \
+		(((uint32_t)(x) & (uint32_t)0x000000ffUL) << 24) | \
+		(((uint32_t)(x) & (uint32_t)0x0000ff00UL) <<  8) | \
+		(((uint32_t)(x) & (uint32_t)0x00ff0000UL) >>  8) | \
+		(((uint32_t)(x) & (uint32_t)0xff000000UL) >> 24) ))
+#undef __constant_htonl
+#define __constant_htonl(x) ___constant_swab32((x))
+#undef __constant_ntohl
+#define __constant_ntohl(x) ___constant_swab32((x))
 
 /* * * Functions declaration * * */
 void *int_info_copy(int_info *dst, const int_info *src);

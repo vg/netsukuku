@@ -102,8 +102,17 @@ INT_INFO map_gnode_iinfo = { 1,
 #define IPV6_LEVELS		(14+EXTRA_LEVELS)
 
 #define MAX_LEVELS		IPV6_LEVELS
-#define GET_LEVELS(family)	({ (family) == AF_INET ? 		        \
-				   IPV4_LEVELS : IPV6_LEVELS; })
+#ifdef DEBUG
+#define GET_LEVELS(family)						\
+({ 									\
+	if((family) != AF_INET && (family) != AF_INET6)			\
+		fatal("GET_LEVELS: family not specified!");		\
+	(family) == AF_INET ? IPV4_LEVELS : IPV6_LEVELS;		\
+ })
+#else
+#define GET_LEVELS(family) ({ (family)==AF_INET ? IPV4_LEVELS : IPV6_LEVELS; })
+#endif
+
 #define FAMILY_LVLS		(GET_LEVELS(my_family))
 
 /* NODES_PER_LEVEL: returns the maximum number of nodes which can reside in
@@ -194,7 +203,7 @@ typedef struct ext_rnode_cache ext_rnode_cache;
 
 /* * * Functions' declaration * * */
 inline int get_groups(int family, int lvl);
-int is_group_invalid(int gid, int lvl, int family);
+int is_group_invalid(int *gids, int gid, int lvl, int family);
 
 int  pos_from_gnode(map_gnode *gnode, map_gnode *map);
 map_gnode * gnode_from_pos(int pos, map_gnode *map);

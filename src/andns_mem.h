@@ -35,4 +35,4 @@ andns_pkt_data* create_andns_pkt_data();
 andns_pkt_data* andns_add_answ(andns_pkt *ap);
 void destroy_andns_pkt(andns_pkt *ap);
 
-#endif // ANDNS_MEM_H
+#endif /* ANDNS_MEM_H */

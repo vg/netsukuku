@@ -71,7 +71,7 @@ int verify_free_nodes_hdr(inet_prefix *to, struct free_nodes_hdr *fn_hdr)
 		return 1;
 
 	/* If fn_hdr->ipstart != `to' there is an error */
-	inet_setip(&ipstart, fn_hdr->ipstart, my_family);
+	inet_setip(&ipstart, (u_int *)fn_hdr->ipstart, my_family);
 	iptoquadg(ipstart, me.ext_map, &qg_a, QUADG_GID);
 	iptoquadg(*to, me.ext_map, &qg_b, QUADG_GID);
 	if(quadg_gids_cmp(qg_a, qg_b, fn_hdr->level))
@@ -121,7 +121,7 @@ int get_free_nodes(inet_prefix to, interface *dev,
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_FREE_NODES), ntop);
 	err=send_rq(&pkt, 0, GET_FREE_NODES, 0, PUT_FREE_NODES, 1, &rpkt);
 	if(err==-1) {
-		if((u_char)(*rpkt.msg) == E_NTK_FULL)
+		if(rpkt.hdr.sz && (u_char)(*rpkt.msg) == E_NTK_FULL)
 			ERROR_FINISH(ret, -2, finish);
 		ERROR_FINISH(ret, -1, finish);
 	}
@@ -756,7 +756,7 @@ void hook_set_all_ips(inet_prefix ip, interface *ifs, int ifs_n)
 	if(set_all_dev_ip(ip, ifs, ifs_n) < 0)
 		fatal("Cannot set the %s ip to all the interfaces", ntop);
 
-	if(server_opt.restricted) {
+	if(restricted_mode) {
 		set_all_ifs(&tunl0_if, 1, set_dev_down);
 		set_all_ifs(&tunl0_if, 1, set_dev_up);
 		if(set_all_dev_ip(ip, &tunl0_if, 1) < 0)
@@ -779,17 +779,13 @@ int create_gnodes(inet_prefix *ip, int final_level)
 	int i;
 
 	if(!ip) {
-		for(;;) {
-			random_ip(0, 0, 0, FAMILY_LVLS, me.ext_map, 0, 
-					&me.cur_ip, my_family);
-			if(!inet_validate_ip(me.cur_ip))
-				break;
-		}
+		random_ip(0, 0, 0, FAMILY_LVLS, me.ext_map, 0, &me.cur_ip, 
+				my_family);
 	} else
 		memcpy(&me.cur_ip, ip, sizeof(inet_prefix));
 
-	if(server_opt.restricted)
-		inet_setip_localaddr(&me.cur_ip, my_family);
+	if(restricted_mode)
+		inet_setip_localaddr(&me.cur_ip, my_family, restricted_class);
 
 	if(!final_level)
 		final_level=FAMILY_LVLS;
@@ -866,7 +862,7 @@ void create_new_qgroup(int hook_level)
  * -1 is returned.
  */
 int update_join_rate(map_gnode *hook_gnode, int hook_level, 
-		int *old_gcount, int *gnode_count, 
+		u_int *old_gcount, u_int *gnode_count, 
 		struct free_nodes_hdr *fn_hdr)
 {
 	u_int free_nodes, total_bnodes;
@@ -965,7 +961,7 @@ int hook_init(void)
 	debug(DBG_NORMAL, "Activating ip_forward and disabling rp_filter");
 	route_ip_forward(my_family, 1);
 	route_rp_filter_all_dev(my_family, me.cur_ifs, me.cur_ifs_n, 0);
-	if(server_opt.restricted)
+	if(restricted_mode)
 		route_rp_filter_all_dev(my_family, &tunl0_if, 1, 0);
 
 	return 0;
@@ -1003,19 +999,17 @@ void hook_reset(void)
 	 * transaction. 
 	 */
 	memset(idata, 0, MAX_IP_SZ);
-	if(my_family==AF_INET) 
-		idata[0]=HOOKING_IP;
-	else
-		idata[0]=HOOKING_IP6;
+	if(my_family==AF_INET) {
+		idata[0]=restricted_class == RESTRICTED_10 ? HOOKING_IP_10 : HOOKING_IP_172;
+	} else
+		idata[0]=HOOKING_IPV6;
 	
-	idata[0]=ntohl(idata[0]);
 	if(my_family == AF_INET6)
-		idata[3]+=rand_range(0, MAXGROUPNODE-2);
+		idata[0]+=rand_range(0, MAXGROUPNODE-2);
 	else
 		idata[0]+=rand_range(0, MAXGROUPNODE-2);
-	idata[0]=htonl(idata[0]);
 
-	inet_setip(&me.cur_ip, idata, my_family);
+	inet_setip_raw(&me.cur_ip, idata, my_family);
 	iptoquadg(me.cur_ip, me.ext_map, &me.cur_quadg,	
 			QUADG_GID|QUADG_GNODE|QUADG_IPSTART);
 	
@@ -1043,6 +1037,22 @@ int hook_first_radar_scan(map_gnode *hook_gnode, int hook_level, quadro_group *o
 		gid[hook_level]=pos_from_gnode(hook_gnode, me.ext_map[_EL(hook_level)]);
 		new_rnode_allowed(&alwd_rnodes, &alwd_rnodes_counter, 
 				gid, hook_level, FAMILY_LVLS);
+	}
+
+	/*
+	 * If we are in restricted mode, ignore the restricted nodes which
+	 * belong to our opposite restricted class. So, if we are 10.0.0.1
+	 * ignore 172.x.x.x, and viceversa. This happens only in ipv4.
+	 */
+	if(restricted_mode && my_family == AF_INET) {
+		int gid[IPV4_LEVELS]={0,0,0,0};
+		
+		if(restricted_class == RESTRICTED_10)
+			gid[3]=10;
+		else
+			gid[3]=172;
+		new_rnode_allowed(&alwd_rnodes, &alwd_rnodes_counter,
+				gid, 3, FAMILY_LVLS);
 	}
 
 	/* 
@@ -1156,7 +1166,7 @@ int hook_get_free_nodes(int hook_level, struct free_nodes_hdr *fn_hdr,
 			continue;
 
 		/* Extract the ipstart of the gnode */
-		inet_setip(gnode_ipstart, fn_hdr->ipstart, my_family);
+		inet_setip(gnode_ipstart, (u_int *)fn_hdr->ipstart, my_family);
 
 		/* Get the qspn round info */
 		if(!get_qspn_round(rq->ip, rq->dev[0], rq->final_rtt,
@@ -1227,8 +1237,8 @@ int hook_choose_new_ip(map_gnode *hook_gnode, int hook_level,
 		}
 	}
 
-	if(server_opt.restricted)
-		inet_setip_localaddr(&me.cur_ip, my_family);
+	if(restricted_mode)
+		inet_setip_localaddr(&me.cur_ip, my_family, restricted_class);
 	hook_set_all_ips(me.cur_ip, me.cur_ifs, me.cur_ifs_n);
 
 	return new_gnode;
@@ -1506,7 +1516,7 @@ void hook_finish(int new_gnode, struct free_nodes_hdr *fn_hdr)
 	loginfo("Filling the kernel routing table");
 
 	rt_full_update(0);
-	if(server_opt.restricted)
+	if(restricted_mode)
 		igw_replace_def_igws(me.igws, me.igws_counter, 
 				me.my_igws, me.cur_quadg.levels, my_family);
 	
@@ -1589,7 +1599,7 @@ int netsukuku_hook(map_gnode *hook_gnode, int hook_level)
 	/*
 	 * If we are in restricted mode, get the Internet Gateways
 	 */
-	if(server_opt.restricted)
+	if(restricted_mode)
 		hook_get_igw();
 	
 	/*

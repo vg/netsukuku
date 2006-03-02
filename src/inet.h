@@ -26,21 +26,48 @@
 
 /*
  * This is the "link-scope all-hosts multicast" address: ff02::1.
- * Each element is in network order.
  */
-#define IPV6_ADDR_BROADCAST		{ 0x2ff, 0x0, 0x0, 0x1000000 }
+#define IPV6_ADDR_BROADCAST		{ 0xff020000, 0x0, 0x0, 0x1 }
 
-/* in host byte order */
 #define LOOPBACK_IP			0x7f000001
 #define LOOPBACK_NET			0x7f000000
 #define LOOPBACK_BCAST			0x7fffffff
 
 #define LOOPBACK_IPV6			{ 0x0, 0x0, 0x0, 0x1 }
 
-/* in host byte order */
-#define NTK_PRIVATE_CLASS_MASK_IPV4	0x0a000000	/* 10.x.x.x */
-#define NTK_PRIVATE_CLASS_MASK_IPV6	0xfec00000	/* fec0:xxxx:... */
+/*
+ * `x' is in host byte order
+ * 
+ * NTK_RESTRICTED_10_MASK(x):
+ * given an ipv4 IP it returns the equivalent in the 10.x.x.x class, i.e.
+ * 212.13.4.1 --> 10.13.4.1
+ *
+ * NTK_RESTRICTED_172_MASK(x): it's the same of NTK_RESTRICTED_10_MASK() but
+ * it converts the IP in the 172.16.0.0 - 172.31.255.255 range.
+ *
+ * NTK_RESTRICTED_IPV6_MASK(x):
+ * `x' in this case is the first integer of the four of an ipv6 IP.
+ * The conversion is:  `x' --> fec0:xxxx:...
+ *
+ */
+#define NTK_RESTRICTED_10_MASK(x)	(((x) & ~0xff000000)|0x0a000000)
+#define NTK_RESTRICTED_172_MASK(x)	(((((x) & ~0xff000000) | 0xac000000) & ~0x00e00000) | 0x00100000)
+#define NTK_RESTRICTED_IPV6_MASK(x)	(((x) & ~0xffff0000)|0xfec00000) 
 
+
+/* Is `x' an IP in the range of 192.168.0.0 - 192.168.255.255 ? */
+#define NTK_PRIVATE_C(x)	(((x) & __constant_htonl(0xffff0000)) == __constant_htonl(0xc0a80000))
+
+/* Is `x' in 172.16.0.0 - 172.31.255.255 ? */
+#define NTK_PRIVATE_B(x)	(((x) & __constant_htonl(0xff000000)) == __constant_htonl(0xac000000))\
+					&& ((x) & __constant_htonl(0x00100000)) && 	\
+						!((x) & __constant_htonl(0x00e00000))
+
+
+/*
+ * The inet_prefix struct is used to store IP addresses in the internals of
+ * the Netsukuku code
+ */
 typedef struct
 {
 	u_char	family;		     /* AF_INET or AF_INET6 */
@@ -86,7 +113,18 @@ INT_INFO inet_prefix_iinfo = { 1,
 #define IPV6_ADDR_MAPPED	0x1000U
 #define IPV6_ADDR_RESERVED	0x2000U	/* reserved address space */
 
-int my_family;
+/* 
+ * Globals
+ */
+
+#define RESTRICTED_10		1	/* We are using the 10.x.x.x class for 
+					   the restricted mode */
+#define RESTRICTED_172		2	/* 172.16.0.0-172.31.255.255 class */
+
+#define RESTRICTED_10_STR	"10.0.0.0-10.255.255.255"
+#define RESTRICTED_172_STR	"172.16.0.0-172.31.255.255"
+
+int my_family, restricted_mode, restricted_class;
 	
 /* 
  * * * Functions declaration * * 
@@ -98,8 +136,8 @@ int inet_setip(inet_prefix *ip, u_int *data, int family);
 int inet_setip_bcast(inet_prefix *ip, int family);
 int inet_setip_anyaddr(inet_prefix *ip, int family);
 int inet_setip_loopback(inet_prefix *ip, int family);
-int inet_setip_localaddr(inet_prefix *ip, int family);
-int inet_is_ip_local(inet_prefix *ip);
+int inet_setip_localaddr(inet_prefix *ip, int family, int class);
+int inet_is_ip_local(inet_prefix *ip, int class);
 void inet_copy_ipdata(u_int *dst_data, inet_prefix *ip);
 void pack_inet_prefix(inet_prefix *ip, char *pack);
 void unpack_inet_prefix(inet_prefix *ip, char *pack);

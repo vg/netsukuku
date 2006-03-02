@@ -39,10 +39,10 @@ void *xmalloc(size_t size)
 {
 	void *ptr;
 
-	if (size == 0)
+	if (!size)
 		fatal("xmalloc: zero size");
 	ptr = malloc(size);
-	if (ptr == NULL)
+	if (!ptr)
 		fatal("xmalloc: out of memory (allocating %lu bytes)", (u_long) size);
 	return ptr;
 }
@@ -51,10 +51,10 @@ void *xcalloc(size_t nmemb, size_t size)
 {
 	void *ptr;
 
-	if (size == 0 || nmemb == 0)
+	if (!size || !nmemb)
 		fatal("xcalloc: zero size");
 	ptr=calloc(nmemb, size);
-	if (ptr == NULL)
+	if (!ptr)
 		fatal("xcalloc: out of memory (allocating %lu bytes * %lu blocks)",
 				(u_long) size, (u_long) nmemb);
 	return ptr;
@@ -64,21 +64,21 @@ void *xrealloc(void *ptr, size_t new_size)
 {
 	void *new_ptr;
 
-	if (new_size == 0)
+	if (!new_size)
 		fatal("xrealloc: zero size");
-	if (ptr == NULL)
+	if (!ptr)
 		new_ptr = malloc(new_size);
 	else
 		new_ptr = realloc(ptr, new_size);
 	
-	if (new_ptr == NULL)
+	if (!new_ptr)
 		fatal("xrealloc: out of memory (new_size %lu bytes)", (u_long) new_size);
 	return new_ptr;
 }
 
 void xfree(void *ptr)
 {
-	if (ptr == NULL)
+	if (!ptr)
 		fatal("xfree: NULL pointer given as argument");
 	free(ptr);
 }

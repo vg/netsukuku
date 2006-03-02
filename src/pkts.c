@@ -320,7 +320,7 @@ ssize_t pkt_recv(PACKET *pkt)
 						pkt->flags);
 
 			if(err != pkt->hdr.sz) {
-				debug(DBG_NOISE, ERROR_MSG, "Cannot recv the "
+				debug(DBG_NOISE, ERROR_MSG "Cannot recv the "
 						"pkt's body", ERROR_FUNC);
 				return -1;
 			}
@@ -781,7 +781,6 @@ int pkt_q_wait_recv(int id, inet_prefix *from, PACKET *rpkt, pkt_queue **ret_pq)
 	/* Be sure to unlock me after the timeout */
 	pthread_create(&thread, &wait_and_unlock_attr, wait_and_unlock, 
 			(void *)pq_ptr);
-	pthread_detach(thread);
 
 	if(pq->flags & PKT_Q_MTX_LOCKED) {
 		debug(DBG_INSANE, "pkt_q_wait_recv: Locking 0x%x!", &pq->mtx);
@@ -795,10 +794,8 @@ int pkt_q_wait_recv(int id, inet_prefix *from, PACKET *rpkt, pkt_queue **ret_pq)
 	if(pq->flags & PKT_Q_TIMEOUT)
 		return -1;
 
-	if(rpkt) {
-		memset(rpkt, 0, sizeof(PACKET));
+	if(rpkt)
 		pkt_copy(rpkt, &pq->pkt);
-	}
 
 	/* When *pq_ptr is set to 0, the wait_and_unlock thread exits */
 	*pq_ptr=0;

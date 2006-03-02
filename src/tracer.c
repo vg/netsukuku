@@ -285,10 +285,10 @@ int tracer_get_trtt(int from_rnode_pos, tracer_hdr *trcr_hdr,
  * It ignores all the tracer chunks < `first_hop'.
  */
 void tracer_update_gcount(tracer_hdr *trcr_hdr, tracer_chunk *tracer,
-		int first_hop, int *gcount_counter, 
+		int first_hop, u_int *gcount_counter, 
 		map_node *int_map, map_gnode **ext_map, int level)
 {
-	map_node *node;
+	map_node *node=0;
 	map_gnode *gnode;
 	u_int hops;
 	int i;
@@ -419,10 +419,10 @@ error:
  * If `trcr_hdr' or `tracer' are null, it will build a brand new tracer_pkt, 
  * otherwise it will append in the `tracer' the new entry. 
  * Tracer_pkt_build will append also the old bblock: 
- * `old_bchunks' is the number of bblocks, 
- * `old_bblock' is the block of the old bblock and it is `old_bblock_sz' big. 
- * If `old_bchunks' is 0 or `old_bblock' and `old_bblock_sz' are null they 
- * are ignored.
+ * `old_bblocks' is the number of bblocks, 
+ * `old_bblock_buf' is the block of the old bblock and it is `old_bblock_sz' big. 
+ * If `old_bblocks' is 0 or `old_bblock_buf' and `old_bblock_sz' are null
+ * they are ignored.
  * 
  * The `pkt.hdr.op' is set to `rq', `pkt.hdr.id' to `rq_id' and the 
  * `bcast_hdr.sub_id' to `bcast_sub_id'.
@@ -433,7 +433,7 @@ error:
 int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 		     int gnode_id,	     u_char gnode_level,
 		     brdcast_hdr *bcast_hdr, tracer_hdr *trcr_hdr,   tracer_chunk *tracer,  
-		     u_short old_bchunks,    char *old_bblock,       size_t old_bblock_sz,  
+		     u_short old_bblocks,    char *old_bblock_buf,   size_t old_bblock_sz,  
 		     PACKET *pkt)
 {
 	brdcast_hdr bh;
@@ -447,7 +447,7 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 	void *void_map, *void_node, *p;
 	size_t new_bblock_sz=0, total_bblock_sz=0, igw_pack_sz=0;
 	u_int hops=0;
-	int new_bblock_links=0, new_bblocks=0, tot_new_bblocks=0;
+	int new_bblock_links=0, new_bblocks=0, tot_new_bblocks=0, tot_bblocks=0;
 
 	if(!trcr_hdr || !tracer || !bcast_hdr) {
 		/* Brand new tracer packet */
@@ -484,7 +484,9 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 		upper_root_node=&me.cur_quadg.gnode[_EL(gnode_level+1)]->g;
 
 
-	/* Time to append our entry in the tracer_pkt */
+	/* 
+	 * Time to append our entry in the tracer_pkt 
+	 */
 	new_tracer=tracer_add_entry(void_map, void_node, tracer, &hops, 
 			gnode_level); 
 	if(!new_tracer) {
@@ -512,7 +514,7 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 		}
 	}
 
-	if(server_opt.restricted &&
+	if(restricted_mode &&
 		((!gnode_level && server_opt.share_internet && me.inet_connected) || 
 			(gnode_level && me.igws_counter[gnode_level-1]))) {
 		
@@ -539,18 +541,20 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 	 * If in the old tracer_pkt is present a bblock, we append it after the 
 	 * new entry.
 	 */
-	if(old_bchunks && old_bblock && old_bblock_sz) {
+	if(old_bblocks && old_bblock_buf && old_bblock_sz) {
 		total_bblock_sz = new_bblock_sz + old_bblock_sz;
 		new_bhdr=xrealloc(new_bhdr, total_bblock_sz);
 	
 		p=(char *)new_bhdr + new_bblock_sz;
-		memcpy(p, old_bblock, old_bblock_sz);
+		memcpy(p, old_bblock_buf, old_bblock_sz);
 		
 		bcast_hdr->flags|=BCAST_TRACER_BBLOCK;
 		
 		new_bblock_sz+=old_bblock_sz;
 	}
 
+	tot_bblocks=tot_new_bblocks+old_bblocks;
+	
 	/* 
 	 * Here we are really building the pkt, packing all the stuff into a
 	 * single bullet.
@@ -561,7 +565,7 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 	pkt->hdr.sz=BRDCAST_SZ(bcast_hdr->sz);
 	
 	pkt->msg=tracer_pack_pkt(bcast_hdr, trcr_hdr, new_tracer,
-			(char *)new_bhdr, new_bblock_sz, tot_new_bblocks);
+			(char *)new_bhdr, new_bblock_sz, tot_bblocks);
 	
 	/* Yea, finished */
 	if(new_tracer)
@@ -735,7 +739,7 @@ int tracer_unpack_pkt(PACKET rpkt, brdcast_hdr **new_bcast_hdr,
  * It puts the address of the found bblock_hdr in the `bbl_hdr' (bnode block list)
  * and the address pointing to the start of the bnode_chunk in the `bbl'. The 
  * total size of all the valid bblocks considered is stored in `*bblock_found_sz'.
- * It then returns the number of bblock found. 
+ * It then returns the number of bblocks found. 
  * 
  * During the splitting the bblock is modified 'cause it is converted in host
  * order.
@@ -778,7 +782,7 @@ u_short tracer_split_bblock(void *bnode_block_start, size_t bblock_sz, bnode_hdr
 			if(!loop)
 				ints_network_to_host(bblock_hdr, bnode_hdr_iinfo);
 
-			bnode_gid = (char *)bblock_hdr+sizeof(bnode_hdr);
+			bnode_gid = (u_char *)bblock_hdr+sizeof(bnode_hdr);
 			bblock    = (bnode_chunk *)((char *)bnode_gid +
 					(bblock_hdr->bnode_levels*sizeof(u_char)));
 
@@ -828,8 +832,7 @@ u_short tracer_split_bblock(void *bnode_block_start, size_t bblock_sz, bnode_hdr
  * starting at `bnode_block_start'.
  * In `*bblocks_found' it stores the number of bblocks considered and stores in
  * `bblocks_found_block' these bblocks. The `bblocks_found_block' remains in 
- * network order because it will be appended in the new tracer_pkt, after our 
- * bblock entry (if any). 
+ * host order.
  * Remember to xfree(bblocks_found_block);
  * On error -1 is returned.
  */
@@ -845,9 +848,9 @@ int tracer_store_bblock(u_char level, tracer_hdr *trcr_hdr, tracer_chunk *tracer
 	bnode_hdr 	**bblist_hdr=0;
 	bnode_chunk 	***bblist=0;
 	map_rnode rn;
-	int i, e, o, x, f, p, bm, igws_founds=0;
+	int i, e, o, f, p, bm, igws_found=0;
 	u_short bb;
-	size_t found_block_sz, bsz;
+	size_t found_block_sz, bsz, x;
 	char *found_block;
 	u_char *bnode_gid, bnode, blevel;
 
@@ -869,12 +872,11 @@ int tracer_store_bblock(u_char level, tracer_hdr *trcr_hdr, tracer_chunk *tracer
 	 * Store the received bnode blocks 
 	 */
 
-	igws_founds=x=0;
-	*bblock_found_sz=found_block_sz;
+	igws_found=x=0;
 	*bblocks_found_block=found_block=xmalloc(found_block_sz);
 	for(i=0; i<bb; i++) {
 
-		bnode_gid=(char *)bblist_hdr[i] + sizeof(bnode_hdr);
+		bnode_gid=(u_char *)bblist_hdr[i] + sizeof(bnode_hdr);
 
 		/* We update only the bmaps which are at
 		 * levels where our gnodes are in common with
@@ -901,12 +903,12 @@ int tracer_store_bblock(u_char level, tracer_hdr *trcr_hdr, tracer_chunk *tracer
 		 * me.igws
 		 */
 		if(bblist[i][0]->level >= FAMILY_LVLS+1) {
-			if(server_opt.restricted && 
-				(igws_founds < MAX_IGW_PER_QSPN_CHUNK ||
+			if(restricted_mode && 
+				(igws_found < MAX_IGW_PER_QSPN_CHUNK ||
 					trcr_hdr->flags & TRCR_IGW)) {
 
 				igw_store_bblock(bblist_hdr[i], bblist[i][0], level);
-				igws_founds++;
+				igws_found++;
 				
 				goto skip_bmap;
 			} else {
@@ -982,12 +984,12 @@ skip_bmap:
 		 * it in network order */
 		bsz=BNODEBLOCK_SZ(bblist_hdr[i]->bnode_levels, bblist_hdr[i]->links);
 		memcpy(found_block+x, bblist_hdr[i], bsz);
-		ints_host_to_network(found_block+x, bnode_hdr_iinfo);
-		ints_host_to_network(found_block+x+sizeof(bnode_hdr), bnode_chunk_iinfo);
 		x+=bsz;
 discard_bblock:
 		xfree(bblist[i]);
 	}
+
+	*bblock_found_sz=x;
 
 	xfree(bblist_hdr);
 	xfree(bblist);
@@ -1322,8 +1324,8 @@ int flood_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), u_char level
 		}
 		if(err==-1) {
 			ntop=inet_to_str(pkt.to);
-			if(!devs)
-				dev_name="NULL";
+			dev_name = !devs ? "NULL" : devs[0]->dev_name;
+				
 			error("flood_pkt_send(): Cannot send the %s request"
 					" with id: %d to %s dev %s.", rq_to_str(pkt.hdr.op),
 					pkt.hdr.id, ntop, dev_name);
@@ -1407,7 +1409,7 @@ int tracer_pkt_recv(PACKET rpkt)
 	int ret_err, gid, real_from_rpos;
 	u_int hops;
 	size_t bblock_sz=0, old_bblock_sz;
-	u_short old_bchunks=0;
+	u_short old_bblocks_found=0;
 	u_char level, orig_lvl;
 	const char *ntop=0;
 	char *old_bblock=0;
@@ -1467,7 +1469,7 @@ int tracer_pkt_recv(PACKET rpkt)
 		
 		ret_err=tracer_store_pkt(rpkt.from, &rip_quadg, level,
 				trcr_hdr, tracer, (void *)bhdr,
-				bblock_sz, &old_bchunks, &old_bblock,
+				bblock_sz, &old_bblocks_found, &old_bblock,
 				&old_bblock_sz);
 		if(ret_err) {
 			ntop=inet_to_str(rpkt.from);
@@ -1489,11 +1491,11 @@ int tracer_pkt_recv(PACKET rpkt)
 	if((!level || ((me.cur_node->flags & MAP_BNODE) && 
 					(root_node->flags & MAP_BNODE))) &&
 			from != root_node) {
-		tracer_pkt_build(rpkt.hdr.op, rpkt.hdr.id, bcast_hdr->sub_id, /*IDs*/
-				gid,         level,			    
-				bcast_hdr,   trcr_hdr, tracer, 	      	      /*Received tracer_pkt*/
-				old_bchunks, old_bblock, old_bblock_sz,       /*bnode_block*/
-				&pkt);					      /*Where the pkt is built*/
+		tracer_pkt_build(rpkt.hdr.op, rpkt.hdr.id, bcast_hdr->sub_id,  /*IDs*/
+				 gid,         level,			    
+				 bcast_hdr,   trcr_hdr, tracer, 	       /*Received tracer_pkt*/
+				 old_bblocks_found, old_bblock, old_bblock_sz, /*bnode_block*/
+				 &pkt);					       /*Where the pkt is built*/
 	} else {
 		/* Increment the rtt of the last gnode chunk */
 		ret_err=tracer_add_rtt(real_from_rpos, tracer, hops-1);

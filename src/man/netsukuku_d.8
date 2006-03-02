@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "NetsukukuD 8"
-.TH NetsukukuD 8 "2006-01-31" "NetsukukuD 0.0.5b" ""
+.TH NetsukukuD 8 "2006-02-10" "NetsukukuD 0.0.5b" ""
 .SH "NAME"
 netsukuku_d \- Netsukuku protocol daemon
 .SH "SYNOPSIS"
@@ -183,11 +183,14 @@ When \fBNetsukukuD\fR starts it modifies \fI/etc/resolv.conf\fR writing in the f
 line the string \*(L"nameserver 127.0.0.1\*(R". The old \fI/etc/resolv.conf\fR is copied in
 \&\fI/etc/resolv.conf.bak\fR. When the daemon is closed \fI/etc/resolv.conf\fR is
 restored. If you want to disable this set use the \fB\-R\fR option.
-.IP "\fB\-r\fR, \fB\-\-restricted\fR" 4
-.IX Item "-r, --restricted"
+.IP "\fB\-r\fR\fI[bool]\fR, \fB\-\-restricted\fR=\fI[bool]\fR" 4
+.IX Item "-r[bool], --restricted=[bool]"
 With this option the daemon will run in restricted mode as specified in
-the Npv7, only IPs of the private class will be choosen. It is used for
-Internet compatibility.
+the Npv7, only IPs of a private class will be choosen. It is used for
+Internet compatibility. 
+If no argument is given to the option, the default restricted private class
+10.0.0.0 is used, otherwise if \fIbool\fR is not zero, the restricted class will
+be 172.16.0.0\-172.31.255.255.
 .IP "\fB\-I\fR, \fB\-\-share\-inet\fR" 4
 .IX Item "-I, --share-inet"
 Tells NetsukukuD to run in restricted mode (see \fB\-r\fR) and to share your

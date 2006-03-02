@@ -44,6 +44,7 @@ enum config_options
 	CONF_DISABLE_RESOLVCONF,
 	
 	CONF_NTK_RESTRICTED_MODE,
+	CONF_NTK_RESTRICTED_CLASS,
 	CONF_NTK_INTERNET_CONNECTION,
 	CONF_NTK_INTERNET_GW,
 	CONF_NTK_INTERNET_UPLOAD,
@@ -72,6 +73,7 @@ const static char config_str[][30]=
 	{ "disable_andna" },
 	{ "disable_resolvconf" },
 	{ "ntk_restricted_mode" },
+	{ "ntk_restricted_class" },
 	{ "internet_connection" },
 	{ "internet_gateway" },
 	{ "internet_upload_rate" },

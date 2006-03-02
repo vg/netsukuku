@@ -1,7 +1,7 @@
 AC_PREREQ(2.59)
-AC_INIT(netsukuku, 0.0.5b)
-AM_INIT_AUTOMAKE(netsukuku, 0.0.5b)
-AC_DEFINE(VERSION, "0.0.5b")
+AC_INIT(netsukuku, 0.0.6b)
+AM_INIT_AUTOMAKE(netsukuku, 0.0.6b)
+AC_DEFINE(VERSION, "0.0.6b")
 AM_CONFIG_HEADER(src/config.h) 
 
 dnl -----------------------------------
@@ -36,25 +36,27 @@ AC_SUBST(gmp)
 
 AC_CHECK_HEADERS([pthread.h], ,\
 	[echo "============================ Unable to find pthread.h"; \
-	 echo "Read README first!!!!!" ])
+	 echo "Do you have the libpthread library installed?" ])
 AC_CHECK_HEADERS([openssl/crypto.h], ,\
 	[echo "============================ Unable to find openssl/crypto.h";\
-	 echo "Read README first!!!!!"])
+	 echo "Read README first!!!!!"; \
+	 echo "Install the openssl library"])
 AC_CHECK_HEADERS([gmp.h], ,\
 	[echo "============================ Unable to find gmp.h"; \
-	 echo "Read README first!!!!!"])
+	 echo "Read README first!!!!!"; \
+	 echo "You need to install the libgmp library."; \
+	 echo "In the debian the package is libgmp3-dev"])
 
-dnl Some systems (Solaris 2.x) require libnsl (Network Services Library)
 AC_MSG_CHECKING(OS)
 case "$host" in
   *-sunos5.6* | *-solaris2.6*)
       opsys=sol2-6
-      AC_DEFINE(SUNOS_5,,SunOS 5)
+      AC_DEFINE(SUNOS,,SunOS 5)
       AC_CHECK_LIB(xnet, main)
       AC_MSG_RESULT(solaris)
   ;;
   *-sunos5* | *-solaris2*)
-      AC_DEFINE(SUNOS_5,,SunOS 5)
+      AC_DEFINE(SUNOS,,SunOS 5)
       AC_CHECK_LIB(socket, main)
       AC_CHECK_LIB(nsl, main)
       AC_MSG_RESULT(solaris)
@@ -86,7 +88,7 @@ case "$host" in
   ;;
   *-irix6.5)
       opsys=irix
-      AC_DEFINE(IRIX_65,,IRIX 6.5)
+      AC_DEFINE(IRIX,,IRIX 6.5)
       AC_MSG_RESULT(irix)
   ;;
 esac
@@ -175,6 +177,6 @@ AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug], [Enable Netsukuku debug]),
 [debug_flags="-Wall -DDEBUG"], [debug_flags=""])
 AC_SUBST(debug_flags)
 
-AC_CONFIG_FILES([Makefile src/Makefile src/man/Makefile src/netsukuku.conf])
+AC_CONFIG_FILES([Makefile src/Makefile src/man/Makefile src/scripts/Makefile \
+		 src/conf/Makefile src/conf/netsukuku.conf])
 AC_OUTPUT
-

@@ -30,8 +30,9 @@
 #endif
 
 /* The IP class used during the hook */
-#define HOOKING_IP  0x100000a      /* 10.0.0.1  (in network order) */
-#define HOOKING_IP6 0xc0fe	   /* fec0:: */
+#define HOOKING_IP_10		0xa000001	/* 10.0.0.1 */
+#define HOOKING_IP_172		0xac100001	/* 172.16.0.1 */
+#define HOOKING_IPV6		0xfec00000	/* fec0:: */
 
 #define HOOK_RQ_TIMEOUT		8  /* seconds */
 
@@ -65,7 +66,7 @@ struct free_nodes_hdr
 {
 	u_char 		max_levels;	/* How many levels we are managing */
 
-	int32_t	 	ipstart[MAX_IP_INT];	/* The ipstart of the gnode */
+	uint32_t 	ipstart[MAX_IP_INT];	 /* The ipstart of the gnode */
 	u_char 		level;		/* The level where the gnode belongs */
 	u_char  	gid;		/* The gnode id */
 	u_char		nodes;		/* The number of free (g)nodes - 1 */
