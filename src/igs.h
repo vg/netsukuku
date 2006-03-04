@@ -82,6 +82,10 @@ struct internet_gateway
 
 	char		flags;
 	u_char		bandwidth;	/* Its Internet bandwidth */
+	u_char		tunl;		/* `tunl'-1 is the number of the tunnel
+					   we are using to reach this igw. 
+					   (tunl = 4 means we are using the 
+					   "tunl3" device) */
 };
 typedef struct internet_gateway inet_gw;
 

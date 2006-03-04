@@ -1,13 +1,14 @@
-          		[HIGH PRIORITY] 
+		[HIGH PRIORITY] 
 
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 
 - Implement the http://lab.dyne.org/Ntk_MX_request RFC
 
 - Internet Gateway Search
-	- infinite loop between gateways if they use each other as gw
-	- duplicate nexthop entries in the multipath route
 	- multigw
+		- delete all the tunnels when rehooking or changing IP 'cause
+		  the "local" argument must change.
+	- traffic shaping
 
 
 		[MEDIUM PRIORITY] 

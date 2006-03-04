@@ -283,3 +283,114 @@ int tun_add_tunl(interface *ifs, u_char tunl)
 	rtnl_close(&rth);
 	return 0;
 }
+
+/* 
+ * tun_del_tunl: it removes from the `ifs' array, which must have at least
+ * MAX_TUNNEL_IFS members, the struct which refers the tunnel "tunlX", where X
+ * is a number equal to `tunl'.
+ * If no such struct is found, -1 is returned.
+ */
+int tun_del_tunl(interface *ifs, u_char tunl)
+{
+	char tunl_name[IFNAMSIZ];
+	int i;
+	
+	sprintf(tunl_name, "tunl%d", tunl);
+
+	for(i=0; i<MAX_TUNNEL_IFS; i++)
+		if(!strncmp(ifs[i].dev_name, tunl_name, IFNAMSIZ)) {
+			memset(&ifs[i], 0, sizeof(interface));
+			return 0;
+		}
+	
+	return -1;
+}
+
+
+
+void init_tunnels_ifs(void)
+{
+	memset(tunnel_ifs, 0, sizeof(interface)*MAX_TUNNEL_IFS);
+}
+
+/*
+ * first_free_tunnel_if: returns the position of the first member of the 
+ * `tunnel_ifs' array which isn't used yet.
+ * If the whole array is full, -1 is returned.
+ */
+int first_free_tunnel_if(void)
+{
+	int i;
+
+	for(i=0; i<MAX_TUNNEL_IFS; i++)
+		if(!*tunnel_ifs[i].dev_name && !tunnel_ifs[i].dev_idx)
+			return i;
+	return -1;
+}
+
+/*
+ * set_tunnel_ip: it brings down and up and set the `tunl_ip' IP to the
+ * "tunl`tunl_number'" tunnel device
+ */
+int set_tunnel_ip(int tunl_number, inet_prefix *tunl_ip)
+{
+	const char *ntop;
+	ntop=inet_to_str(*tunl_ip);
+
+	set_all_ifs(&tunnel_ifs[tunl_number], 1, set_dev_down);
+	set_all_ifs(&tunnel_ifs[tunl_number], 1, set_dev_up);
+	if(set_all_dev_ip(*tunl_ip, &tunnel_ifs[tunl_number], 1) < 0) {
+		error("Cannot set the %s ip to tunl%d",
+				ntop, tunl_number);
+		return -1;
+	}
+	return 0;
+}
+
+/*
+ * add_tunnel_if: creates a new tunnel, adds it in the `tunnel_ifs' array, and
+ * if `tunl_ip' isn't null, sets to the tunnel the IP `tunl_ip'.
+ */
+int add_tunnel_if(inet_prefix *remote, inet_prefix *local, char *dev,
+		int tunl_number, inet_prefix *tunl_ip)
+{
+	if(!tunl_number) {
+		if(tunnel_change(remote, local, dev, tunl_number) < 0) {
+			error("Cannot modify the \"tunl%d\" tunnel",
+					tunl_number);
+			return -1;
+		}
+	} else {
+		if(tunnel_add(remote, local, dev, tunl_number) < 0) {
+			error("Cannot add the \"tunl%d\" tunnel", tunl_number);
+			return -1;
+		}
+	}
+
+	if(tun_add_tunl(&tunnel_ifs[tunl_number], tunl_number) < 0)
+		return -1;
+
+	if(tunl_ip) {
+		if(set_tunnel_ip(tunl_number, tunl_ip) < 0)
+			return -1;
+	}
+
+	return 0;
+}
+
+/*
+ * del_tunnel_if: the inverse of add_tunnel_if() (see above)
+ */
+void del_tunnel_if(inet_prefix *remote, inet_prefix *local, char *dev,
+		int tunl_number)
+{
+	if(tunl_number)	{
+		if(tunnel_del(remote, local, dev, tunl_number) < 0) {
+			error("Cannot delete the \"tunl%d\" tunnel", 
+					tunl_number);
+			return -1;
+		}
+	}
+
+	tun_del_tunl(tunnel_ifs, tunl_number);
+}

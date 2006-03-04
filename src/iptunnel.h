@@ -26,7 +26,17 @@
 #define MAX_TUNNEL_IFS		24	/* it must be >= MAX_MULTIPATH_ROUTES,
 					   since in igs.c we are using a tunnel 
 					   for each nexthop inet-gw */
+
+/*
+ * * Globals * *
+ */
+
 interface tunnel_ifs[MAX_TUNNEL_IFS];
+
+
+/* 
+ * Functions declaration
+ */
 
 int tunnel_add(inet_prefix *remote, inet_prefix *local, char *dev,
 		int tunl_number);
@@ -34,5 +44,13 @@ int tunnel_change(inet_prefix *remote, inet_prefix *local, char *dev,
 		int tunl_number);
 int tunnel_del(inet_prefix *remote, inet_prefix *local, char *dev,
 		int tunl_number);
+
 int tun_add_tunl(interface *ifs, u_char tunl);
+void init_tunnels_ifs(void);
+int set_tunnel_ip(int tunl_number, inet_prefix *tunl_ip);
+int first_free_tunnel_if(void);
+int add_tunnel_if(inet_prefix *remote, inet_prefix *local, char *dev,
+		int tunl_number, inet_prefix *tunl_ip);
+void del_tunnel_if(inet_prefix *remote, inet_prefix *local, char *dev,
+		int tunl_number);
 #endif

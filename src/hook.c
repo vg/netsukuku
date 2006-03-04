@@ -756,13 +756,9 @@ void hook_set_all_ips(inet_prefix ip, interface *ifs, int ifs_n)
 	if(set_all_dev_ip(ip, ifs, ifs_n) < 0)
 		fatal("Cannot set the %s ip to all the interfaces", ntop);
 
-	if(restricted_mode) {
-		set_all_ifs(&tunnel_ifs[DEFAULT_TUNL_NUMBER], 1, set_dev_down);
-		set_all_ifs(&tunnel_ifs[DEFAULT_TUNL_NUMBER], 1, set_dev_up);
-		if(set_all_dev_ip(ip, &tunnel_ifs[DEFAULT_TUNL_NUMBER], 1) < 0)
-			fatal("Cannot set the %s ip to tunl%d",
-					ntop, DEFAULT_TUNL_NUMBER);
-	}
+	if(restricted_mode)
+		if(set_tunnel_ip(DEFAULT_TUNL_NUMBER, &ip) < 0)
+			fatal("Cannot assign an IP to the default tunnel");
 }
 
 /*

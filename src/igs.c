@@ -283,23 +283,25 @@ void init_internet_gateway_search(void)
 		return;
 	
 	init_igws(&me.igws, &me.igws_counter, GET_LEVELS(my_family));
+	init_tunnels_ifs();
 	
 	/*
 	 * Bring tunl0 up
 	 */
 	
 	loginfo("Configuring the \"tunl%d\" tunnel device", DEFAULT_TUNL_NUMBER);
-	if(tunnel_change(0, 0, 0, DEFAULT_TUNL_NUMBER) < 0)
+	if(add_tunnel_if(0, 0, 0, DEFAULT_TUNL_NUMBER, 0) < 0)
 		fatal("Cannot initialize \"tunl%d\". Is the \"ipip\""
 			" kernel module loaded?", DEFAULT_TUNL_NUMBER);
-	if(tun_add_tunl(&tunnel_ifs[DEFAULT_TUNL_NUMBER], DEFAULT_TUNL_NUMBER) < 0)
-		fatal("Cannot get device info for tunl%d", DEFAULT_TUNL_NUMBER);
 	ifs_del_byname(me.cur_ifs, &me.cur_ifs_n,
 			tunnel_ifs[DEFAULT_TUNL_NUMBER].dev_name);
 
+
+	/* 
+	 * Check anomalies 
+	 */
 	if(!server_opt.inet_connection)
 		return;
-	
 	if(!server_opt.inet_hosts)
 		fatal("You didn't specified any Internet hosts in the "
 			"configuration file. What hosts should I ping?");
@@ -830,7 +832,7 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 	inet_prefix to;
 
 	struct nexthop *nh=0;
-	int ni, ni_lvl, nexthops, level, max_multipath_routes;
+	int ni, ni_lvl, nexthops, level, max_multipath_routes, i, x;
 
 #ifdef DEBUG		
 #define MAX_GW_IP_STR_SIZE (MAX_MULTIPATH_ROUTES*((INET6_ADDRSTRLEN+1)+IFNAMSIZ)+1)
@@ -865,6 +867,10 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 	nexthops=max_multipath_routes/max_levels;
 
 	for(level=0; level<max_levels; level++) {
+		
+		/* Remember the nexthops we choose at each cycle */
+		inet_gw *taken_nexthops[max_multipath_routes];
+		
 #ifndef IGS_MULTI_GW
 		if(ni)
 			break;
@@ -887,10 +893,34 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 			if(!memcmp(igw->ip, me.cur_quadg.ipstart[0].data, MAX_IP_SZ))
 				continue;
 		
+			/* Do not choose gateways we already included in the
+			 * nexthops array */
+			for(i=0, x=0; i<ni; i++)
+				if(!memcmp(taken_nexthops[i]->ip, igw->ip, MAX_IP_SZ)) {
+					x=1;
+					break;
+				}
+			if(x)
+				continue;
+			
+			taken_nexthops[ni]=igw;
+			
 			igw->flags|=IGW_ACTIVE;
 			inet_setip(&nh[ni].gw, igw->ip, family);
-			nh[ni].dev=tunnel_ifs[DEFAULT_TUNL_NUMBER].dev_name; /* XXX TODO */
 			nh[ni].hops=max_multipath_routes-ni+1;
+
+			if(!igw->tunl) {
+				if((x=first_free_tunnel_if()) < 0)
+					continue;
+				igw->tunl=x+1;
+			}
+			
+			if(!*tunnel_ifs[igw->tunl-1].dev_name)
+				if((add_tunnel_if(0, 0, 0, igw->tunl-1, &me.cur_ip)) < 0)
+					continue;
+				
+			nh[ni].dev=tunnel_ifs[igw->tunl-1].dev_name;
+			
 			ni++;
 			ni_lvl++;
 		}
