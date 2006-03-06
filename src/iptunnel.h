@@ -53,4 +53,5 @@ int add_tunnel_if(inet_prefix *remote, inet_prefix *local, char *dev,
 		int tunl_number, inet_prefix *tunl_ip);
 int del_tunnel_if(inet_prefix *remote, inet_prefix *local, char *dev,
 		int tunl_number);
+void del_all_tunnel_ifs(inet_prefix *remote, inet_prefix *local, char *dev);
 #endif

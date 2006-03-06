@@ -863,6 +863,11 @@ void set_igw_nexhtop_inactive(igw_nexthop *igwn)
 		igwn[i].flags&=~IGW_ACTIVE;
 }
 
+void reset_igw_nexthop(igw_nexthop *igwn)
+{
+	memset(igwn, 0, sizeof(igw_nexthop)*MAX_MULTIPATH_ROUTES);
+}
+
 /*
  * igw_replace_def_igws: sets the default gw route to reach the
  * Internet. The route utilises multipath therefore there are more than one
@@ -908,6 +913,13 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 		max_multipath_routes--;
 	}
 
+	/* 
+	 * Set all our saved nexthop as inactives, then mark as "active" only 
+	 * the nexhtop we are going to re-pick, in this way we can know what
+	 * nexthop have been dropped.
+	 */
+	set_igw_nexhtop_inactive(multigw_nh);
+	
 	/* We choose an equal number of nexthops for each level */
 	nexthops=max_multipath_routes/max_levels;
 
@@ -939,13 +951,15 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 			if(igw->bandwidth < MIN_CONN_BANDWIDTH)
 				continue;
 
-			if(!memcmp(igw->ip, me.cur_quadg.ipstart[0].data, MAX_IP_SZ))
+			/* Do not include ourself as an inet-gw */
+			if(!memcmp(igw->ip, me.cur_ip.data, MAX_IP_SZ))
 				continue;
 		
-			/* Do not choose gateways we already included in the
-			 * nexthops array */
+			/* Avoid duplicates, do not choose gateways we already 
+			 * included in the nexthops array */
 			for(i=0, x=0; i<ni; i++)
-				if(!memcmp(taken_nexthops[i]->ip, igw->ip, MAX_IP_SZ)) {
+				if(!memcmp(taken_nexthops[i]->ip, igw->ip, 
+							MAX_IP_SZ)) {
 					x=1;
 					break;
 				}
@@ -960,12 +974,19 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 					continue;
 			
 			nh[ni].dev=tunnel_ifs[multigw_nh[x].tunl].dev_name;
-			if(!*nh[ni].dev) {
+			if(!*nh[ni].dev) { 
+				/* 
+				 * Initialize the `nh[ni].dev' tunnel, it's
+				 * its first time.
+				 */
+				
 				if((add_tunnel_if(0, 0, 0, multigw_nh[x].tunl, 
-								&me.cur_ip)) < 0)
+							      &me.cur_ip)) < 0)
 					continue;
 				
 				/* 
+				 * Add the table for the new tunnel-gw:
+				 * 
 				 * ip rule add from me.cur_ip  \
 				 *   fwmark multigw_nh[x].tunl \
 				 *   lookup multigw_nh[x].table
@@ -978,6 +999,8 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 				multigw_nh[x].flags|=IGW_RTRULE;
 
 				/*
+				 * Add the default route in the added table:
+				 * 
 				 * ip route replace default via nh[ni].gw \ 
 				 * 	table multigw_nh[x].table
 				 */

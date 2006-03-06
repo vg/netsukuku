@@ -395,3 +395,11 @@ int del_tunnel_if(inet_prefix *remote, inet_prefix *local, char *dev,
 	tun_del_tunl(tunnel_ifs, tunl_number);
 	return 0;
 }
+
+void del_all_tunnel_ifs(inet_prefix *remote, inet_prefix *local, char *dev)
+{
+	int i;
+
+	for(i=0; i<MAX_TUNNEL_IFS; i++)
+		del_tunnel_if(remote, local, dev, i);
+}
