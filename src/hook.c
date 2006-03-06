@@ -779,7 +779,7 @@ int create_gnodes(inet_prefix *ip, int final_level)
 		random_ip(0, 0, 0, FAMILY_LVLS, me.ext_map, 0, &me.cur_ip, 
 				my_family);
 	} else
-		memcpy(&me.cur_ip, ip, sizeof(inet_prefix));
+		inet_copy(&me.cur_ip, ip);
 
 	if(restricted_mode)
 		inet_setip_localaddr(&me.cur_ip, my_family, restricted_class);
@@ -1210,7 +1210,7 @@ int hook_choose_new_ip(map_gnode *hook_gnode, int hook_level,
 		 * gnode so we just give up and create a new gnode, which has
 		 * a gid based on the hash of our current gid.
 		 */
-		memcpy(&me.cur_ip, &rk_gnode_ip, sizeof(inet_prefix));
+		inet_copy(&me.cur_ip, &rk_gnode_ip);
 		debug(DBG_NORMAL, "rehook_create_gnode: %s is our new ip", 
 				inet_to_str(me.cur_ip));
 	} else {
@@ -1542,7 +1542,7 @@ int netsukuku_hook(map_gnode *hook_gnode, int hook_level)
 	u_char fnodes[MAXGROUPNODE];
 
 	/* Save our current IP before resetting */
-	memcpy(&old_ip, &me.cur_ip, sizeof(inet_prefix));
+	inet_copy(&old_ip, &me.cur_ip);
 	memcpy(&old_quadg, &me.cur_quadg, sizeof(quadro_group));
 
 	/* Reset the hook */

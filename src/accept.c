@@ -202,7 +202,7 @@ int new_accept(int idx, inet_prefix ip)
 	accept_tbl[idx].accepts++;
 	accept_tbl[idx].acp_t[cl]=cur_t;
 	accept_tbl[idx].closed[cl]=0;
-	memcpy(&accept_tbl[idx].ip, &ip, sizeof(inet_prefix));
+	inet_copy(&accept_tbl[idx].ip, &ip);
 #endif
 	return cl;
 }

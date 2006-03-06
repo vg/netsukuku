@@ -189,6 +189,19 @@ int inet_is_ip_local(inet_prefix *ip, int class)
 	return 0;
 }
 
+void inet_copy(inet_prefix *dst, inet_prefix *src)
+{
+	memcpy(dst, src, sizeof(inet_prefix));
+}
+
+/*
+ * inet_copy_ipdata_raw: copies `ip'->data in `dst_data'.
+ */
+void inet_copy_ipdata_raw(u_int *dst_data, inet_prefix *ip)
+{
+	memcpy(dst_data, ip->data, MAX_IP_SZ);
+}
+
 /*
  * inet_copy_ipdata: copies `ip'->data in `dst_data' and converts it in network
  * order.
@@ -197,8 +210,7 @@ void inet_copy_ipdata(u_int *dst_data, inet_prefix *ip)
 {
 	inet_prefix tmp_ip;
 
-	memcpy(&tmp_ip, ip, sizeof(inet_prefix));
-	
+	inet_copy(&tmp_ip, ip);
 	inet_htonl(tmp_ip.data, tmp_ip.family);
 	memcpy(dst_data, tmp_ip.data, MAX_IP_SZ);
 }

@@ -381,7 +381,7 @@ int add_tunnel_if(inet_prefix *remote, inet_prefix *local, char *dev,
 /*
  * del_tunnel_if: the inverse of add_tunnel_if() (see above)
  */
-void del_tunnel_if(inet_prefix *remote, inet_prefix *local, char *dev,
+int del_tunnel_if(inet_prefix *remote, inet_prefix *local, char *dev,
 		int tunl_number)
 {
 	if(tunl_number)	{
@@ -393,4 +393,5 @@ void del_tunnel_if(inet_prefix *remote, inet_prefix *local, char *dev,
 	}
 
 	tun_del_tunl(tunnel_ifs, tunl_number);
+	return 0;
 }

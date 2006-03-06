@@ -1014,7 +1014,7 @@ add_radar_q(PACKET pkt)
 		if(pkt.hdr.flags & HOOK_PKT)
 			rq->flags|=MAP_HNODE;
 
-		memcpy(&rq->ip, &pkt.from, sizeof(inet_prefix));
+		inet_copy(&rq->ip, &pkt.from);
 		memcpy(&rq->quadg, &quadg, sizeof(quadro_group));
 		rq->dev[0] = pkt.dev;
 		rq->dev_n++;

@@ -279,6 +279,8 @@ void init_internet_gateway_search(void)
 	int i, ret;
 
 	active_gws=0;
+	memset(multigw_nh, 0, sizeof(igw_nexthop)*MAX_MULTIPATH_ROUTES);
+
         if(!restricted_mode)
 		return;
 	
@@ -819,6 +821,48 @@ int igw_exec_masquerade_sh(char *script, int stop)
 }
 
 /*
+ * add_igw_nexthop:
+ * 	
+ * 	`igwn' is an array of at leat MAX_MULTIPATH_ROUTES members.
+ * 	`ip' is the ip of the nexthop
+ *
+ * add_igw_nexthop() searches `ip' in `igwn', if it is found the position in
+ * the array of the igw_nexthop struct is returned, otherwise it adds `ip' in
+ * the first empty member of the struct (its position is always returned).
+ * If the array is full and nothing can be added -1 is returned.
+ */
+int add_igw_nexthop(igw_nexthop *igwn, inet_prefix *ip)
+{
+	int i;
+
+	for(i=0; i<MAX_MULTIPATH_ROUTES; i++)
+		if(!memcmp(igwn[i].nexthop.data, ip->data, MAX_IP_SZ)) {
+			igwn[i].flags|=IGW_ACTIVE;
+			return i;
+		}
+	
+	for(i=0; i<MAX_MULTIPATH_ROUTES; i++) {
+		if(!(igwn[i].flags & IGW_ACTIVE)) {
+			inet_copy(&igwn[i].nexthop, ip);
+			igwn[i].tunl=i;
+			igwn[i].table=RTTABLE_IGW+i;
+			igwn[i].flags|=IGW_ACTIVE;
+			return i;
+		}
+	}
+
+	return -1;
+}
+
+void set_igw_nexhtop_inactive(igw_nexthop *igwn)
+{
+	int i;
+
+	for(i=0; i<MAX_MULTIPATH_ROUTES; i++)
+		igwn[i].flags&=~IGW_ACTIVE;
+}
+
+/*
  * igw_replace_def_igws: sets the default gw route to reach the
  * Internet. The route utilises multipath therefore there are more than one
  * gateway which can be used to reach the Internet, these gateways are choosen
@@ -879,7 +923,11 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 		/* Reorder igws[level] */
 		igw_order(igws, igws_counter, my_igws, level);
 
-		/* Take the first `nexthops'# gateways and add them in `ni' */
+		
+		/* 
+		 * Take the first `nexthops'# gateways and add them in `ni' 
+		 */
+		
 		ni_lvl=0;
 		igw=igws[level];
 		list_for(igw) {
@@ -903,23 +951,21 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 			if(x)
 				continue;
 			
-			taken_nexthops[ni]=igw;
-			
 			igw->flags|=IGW_ACTIVE;
 			inet_setip(&nh[ni].gw, igw->ip, family);
 			nh[ni].hops=max_multipath_routes-ni+1;
 
-			if(!igw->tunl) {
-				if((x=first_free_tunnel_if()) < 0)
+			if((x=add_igw_nexthop(multigw_nh, &nh[ni].gw)) < 0)
 					continue;
-				igw->tunl=x+1;
-			}
 			
-			if(!*tunnel_ifs[igw->tunl-1].dev_name)
-				if((add_tunnel_if(0, 0, 0, igw->tunl-1, &me.cur_ip)) < 0)
+			nh[ni].dev=tunnel_ifs[multigw_nh[x].tunl].dev_name;
+			if(!*nh[ni].dev) {
+				if((add_tunnel_if(0, 0, 0, multigw_nh[x].tunl, 
+								&me.cur_ip)) < 0)
 					continue;
-				
-			nh[ni].dev=tunnel_ifs[igw->tunl-1].dev_name;
+				/* TODO: add netfilter rule here */
+			}
+			taken_nexthops[ni]=igw;
 			
 			ni++;
 			ni_lvl++;

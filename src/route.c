@@ -334,7 +334,7 @@ int get_gw_ips(map_node *int_map, map_gnode **ext_map,
 
 		if(gw_node[i]->flags & MAP_ERNODE) {
 			e_rnode=(ext_rnode *)gw_node[i];
-			memcpy(&gw_ip[e], &e_rnode->quadg.ipstart[gw_level], sizeof(inet_prefix));
+			inet_copy(&gw_ip[e], &e_rnode->quadg.ipstart[gw_level]);
 		} else
 			maptoip((u_int)int_map, (u_int)gw_node[i], cur_quadg->ipstart[1], 
 					&gw_ip[e]);
@@ -416,7 +416,7 @@ struct nexthop *rt_build_nexthop_gw(map_node *node, map_gnode *gnode, int level,
 		memset(nh, '\0', sizeof(struct nexthop)*(routes+1));
 
 		for(ips=0, n=0; ips < routes; ips++) {
-			memcpy(&nh[n].gw, &gnode_gws[ips], sizeof(inet_prefix));
+			inet_copy(&nh[n].gw, &gnode_gws[ips]);
 			inet_htonl(nh[n].gw.data, nh[n].gw.family);
 			
 			if(!(devs=find_rnode_dev_and_retry(gw_nodes[ips])))
@@ -457,7 +457,7 @@ struct nexthop *rt_build_nexthop_voidgw(void *void_gw, interface **oifs)
 
 	if(gw_node->flags & MAP_ERNODE) {
 		e_rnode=(ext_rnode *)gw_node;
-		memcpy(&nh[0].gw, &e_rnode->quadg.ipstart[0], sizeof(inet_prefix));
+		inet_copy(&nh[0].gw, &e_rnode->quadg.ipstart[0]);
 	} else 
 		maptoip((u_int)me.int_map, (u_int)gw_node, 
 				me.cur_quadg.ipstart[1], &nh[0].gw);
@@ -525,7 +525,7 @@ void rt_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg
 	 * Deduce the destination's ip 
 	 */
 	if(dst_ip)
-		memcpy(&to, dst_ip, sizeof(inet_prefix));
+		inet_copy(&to, dst_ip);
 	else if(level) {
 		if(!dst_quadg) {
 			dst_quadg=&me.cur_quadg;
@@ -731,7 +731,7 @@ int rt_exec_gw(char *dev, inet_prefix to, inet_prefix gw,
 
 	if(gw.len) {
 		memset(nh, '\0', sizeof(struct nexthop)*2);	
-		memcpy(&nh[0].gw, &gw, sizeof(inet_prefix));
+		inet_copy(&nh[0].gw, &gw);
 		inet_htonl(nh[0].gw.data, nh[0].gw.family);
 		nh[0].dev=dev;
 		nh[1].dev=0;

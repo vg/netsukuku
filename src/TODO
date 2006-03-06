@@ -4,11 +4,16 @@
 
 - Implement the http://lab.dyne.org/Ntk_MX_request RFC
 
+- update dependencies: depends on iptables
+
 - Internet Gateway Search
 	- multigw
+		- table for each nexthop igw
 		- delete all the tunnels when rehooking or changing IP 'cause
 		  the "local" argument must change.
+		- do not delete a gw if there still bw passing on it.
 	- traffic shaping
+		- find a good script
 
 
 		[MEDIUM PRIORITY] 

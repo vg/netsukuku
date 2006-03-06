@@ -21,7 +21,7 @@
 
 #include "if.h"
 
-#define RTPROT_NETSUKUKU     15
+#define RTPROT_NETSUKUKU	15
 
 struct nexthop 
 {

@@ -663,7 +663,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 			forwarded_pkt ? " (forwarded) " : " ", ntop, rfrom_ntop);
 
 	memcpy(&pkt, &rpkt, sizeof(PACKET));
-	memcpy(&pkt.from, &rfrom, sizeof(inet_prefix));
+	inet_copy(&pkt.from, &rfrom);
 
 	/* Send the replies in UDP, they are so tiny */
 	pkt_addsk(&pkt, my_family, 0, SKT_UDP);
@@ -920,7 +920,7 @@ int andna_recv_check_counter(PACKET rpkt)
 			forwarded_pkt ? " (forwarded) " : " ", ntop, rfrom_ntop);
 	
 	memcpy(&pkt, &rpkt, sizeof(PACKET));
-	memcpy(&pkt.from, &rfrom, sizeof(inet_prefix));
+	inet_copy(&pkt.from, &rfrom);
 
 	/* Reply to rfrom using a UDP sk, since the replies are very small */
 	pkt_addsk(&pkt, my_family, 0, SKT_UDP);
@@ -1063,7 +1063,7 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	 * dumb that we are trying to resolve the same ip we registered.
 	 */
 	if((lcl=lcl_cache_find_hname(andna_lcl, hname))) {
-		memcpy(resolved_ip, &me.cur_ip, sizeof(inet_prefix));
+		inet_copy(resolved_ip, &me.cur_ip);
 		return 0;
 	}
 	
@@ -1182,7 +1182,7 @@ int andna_recv_resolve_rq(PACKET rpkt)
 			rpkt.hdr.id, ntop, rfrom_ntop);
 	
 	memcpy(&pkt, &rpkt, sizeof(PACKET));
-	memcpy(&pkt.from, &rfrom, sizeof(inet_prefix));
+	inet_copy(&pkt.from, &rfrom);
 	pkt_addsk(&pkt, my_family, 0, SKT_UDP);
 
 	/* network -> host order conversion of the rpkt_local_copy.smg */
@@ -1304,7 +1304,7 @@ int andna_reverse_resolve(inet_prefix ip, char ***hostnames)
 
 	memset(&pkt, 0, sizeof(PACKET));
 	memset(&rpkt, 0, sizeof(PACKET));
-	memcpy(&to, &ip, sizeof(inet_prefix));
+	inet_copy(&to, &ip);
 	
 	ntop=inet_to_str(to);
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(ANDNA_RESOLVE_IP), ntop);
@@ -1575,7 +1575,7 @@ int put_single_acache(PACKET rpkt)
 			"from: %s", rpkt.hdr.id, ntop, rfrom_ntop);
 	
 	memcpy(&pkt, &rpkt, sizeof(PACKET));
-	memcpy(&pkt.from, &rfrom, sizeof(inet_prefix));
+	inet_copy(&pkt.from, &rfrom);
 	pkt_addsk(&pkt, my_family, 0, SKT_UDP);
 
 	/* network -> host order */

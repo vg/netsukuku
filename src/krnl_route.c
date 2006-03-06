@@ -436,7 +436,7 @@ int route_get_exact_prefix_dst(inet_prefix prefix, inet_prefix *dst,
 		debug(DBG_NORMAL, ERROR_MSG "Dump terminated" ERROR_POS);
 		return -1;
 	}
-	memcpy(dst, dst_data, sizeof(inet_prefix));
+	inet_copy(dst, (inet_prefix *)dst_data);
 	memcpy(dev_name, dst_data+sizeof(inet_prefix), IFNAMSIZ);
 	
 	rtnl_close(&rth);

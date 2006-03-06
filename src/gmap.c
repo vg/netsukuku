@@ -124,7 +124,7 @@ void rnodetoip(u_int mapstart, u_int maprnode, inet_prefix ipstart,
 	memset(ret, 0, sizeof(inet_prefix));
 	if(rnode->flags & MAP_ERNODE) {
 		e_rnode=(ext_rnode *)rnode;
-		memcpy(ret, &e_rnode->quadg.ipstart[0], sizeof(inet_prefix));
+		inet_copy(ret, &e_rnode->quadg.ipstart[0]);
 	} else 
 		maptoip(mapstart, maprnode, ipstart, ret);
 }

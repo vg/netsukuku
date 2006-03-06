@@ -19,6 +19,9 @@
 #ifndef IGS_H
 #define IGS_H
 
+#include "route.h"
+
+
 /*
  * The IGS_MULTI_GW feature relies heavily on netfilter and the linux advanced
  * routing.
@@ -55,6 +58,8 @@
 #define MAXIGWS			MAXGROUPNODE	/* max number of internet 
 						   gateways in each level */
 
+#define RTTABLE_IGW		221		/* Routing tables from 221 to 252 */
+
 #ifdef DEBUG
 #undef INET_NEXT_PING_WAIT
 #define INET_NEXT_PING_WAIT	5
@@ -82,10 +87,6 @@ struct internet_gateway
 
 	char		flags;
 	u_char		bandwidth;	/* Its Internet bandwidth */
-	u_char		tunl;		/* `tunl'-1 is the number of the tunnel
-					   we are using to reach this igw. 
-					   (tunl = 4 means we are using the 
-					   "tunl3" device) */
 };
 typedef struct internet_gateway inet_gw;
 
@@ -119,6 +120,30 @@ INT_INFO inet_gw_pack_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { MAX_LEVELS }
 
 
 /*
+ *  *  *  Multi Internet Gateways  *  *  *
+ */
+
+/*
+ * igw_nexthop: the multigw allows the simultaneus use of multiple internet
+ * gateways. The multigw requires one routing table and one tunnel for each
+ * nexthop in the default multipath route. With an array of `igw_nexthop' we
+ * keep track of them.
+ */
+struct default_inet_gw_nexthop {
+	inet_prefix	nexthop;
+
+	u_char		flags;		/* inet_gw flags */
+	
+	u_char		table;
+	u_char		tunl;		/* `tunl' is the number of the tunnel
+					   we are using to reach this igw. 
+					   (tunl = 4 means we are using the 
+					   "tunl4" device) */
+};
+typedef struct default_inet_gw_nexthop igw_nexthop;
+
+
+/*
  * 		Notes on the IGW packed in a qspn pkt
  *
  * The simplest way to tell the other nodes that we are sharing our Internet
@@ -140,6 +165,7 @@ INT_INFO inet_gw_pack_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { MAX_LEVELS }
  */
 
 int active_gws;
+igw_nexthop multigw_nh[MAX_MULTIPATH_ROUTES];
 
 /*
  * * *  Functions declaration  * * 

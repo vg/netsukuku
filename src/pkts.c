@@ -62,7 +62,7 @@ void pkt_addfrom(PACKET *pkt, inet_prefix *from)
 	if(!from)
 		memset(&pkt->from, 0, sizeof(inet_prefix));
 	else
-		memcpy(&pkt->from, from, sizeof(inet_prefix));
+		inet_copy(&pkt->from, from);
 }
 
 void pkt_addto(PACKET *pkt, inet_prefix *to)
@@ -70,7 +70,7 @@ void pkt_addto(PACKET *pkt, inet_prefix *to)
 	if(!to)
 		memset(&pkt->to, 0, sizeof(inet_prefix));
 	else
-		memcpy(&pkt->to, to, sizeof(inet_prefix));
+		inet_copy(&pkt->to, to);
 }
 
 void pkt_add_dev(PACKET *pkt, interface *dev, int bind_the_socket)
@@ -528,7 +528,7 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 			pkt_q_del(pq, 0);
 		} else {
 			if(pkt->sk_type==SKT_UDP) {
-				memcpy(&rpkt->from, &pkt->to, sizeof(inet_prefix));
+				inet_copy(&rpkt->from, &pkt->to);
 				ntop=inet_to_str(rpkt->from);
 			}
 
@@ -772,7 +772,7 @@ int pkt_q_wait_recv(int id, inet_prefix *from, PACKET *rpkt, pkt_queue **ret_pq)
 	if(from) {
 		debug(DBG_INSANE, "0x%x wanted_rfrom %s activated", id, 
 				inet_to_str(*from));
-		memcpy(&pq->pkt.from, from, sizeof(inet_prefix));
+		inet_copy(&pq->pkt.from, from);
 		pq->flags|=PKT_Q_CHECK_FROM;
 	}
 

@@ -51,6 +51,6 @@ int set_tunnel_ip(int tunl_number, inet_prefix *tunl_ip);
 int first_free_tunnel_if(void);
 int add_tunnel_if(inet_prefix *remote, inet_prefix *local, char *dev,
 		int tunl_number, inet_prefix *tunl_ip);
-void del_tunnel_if(inet_prefix *remote, inet_prefix *local, char *dev,
+int del_tunnel_if(inet_prefix *remote, inet_prefix *local, char *dev,
 		int tunl_number);
 #endif
