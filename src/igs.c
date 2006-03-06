@@ -36,6 +36,7 @@
 #include "andns_rslv.h"
 #include "netsukuku.h"
 #include "route.h"
+#include "krnl_rule.h"
 #include "iptunnel.h"
 #include "libping.h"
 #include "igs.h"
@@ -357,12 +358,12 @@ void init_internet_gateway_search(void)
 		memcpy(&server_opt.inet_gw, &new_gw, sizeof(inet_prefix));
 
 		/* Delete the default gw, we are replacing it */
-		rt_delete_def_gw();
+		rt_delete_def_gw(0);
 	}
 	
 	loginfo("Using \"%s dev %s\" as your first Internet gateway.", 
 			inet_to_str(server_opt.inet_gw), server_opt.inet_gw_dev);
-	if(rt_replace_def_gw(server_opt.inet_gw_dev, server_opt.inet_gw))
+	if(rt_replace_def_gw(server_opt.inet_gw_dev, server_opt.inet_gw, 0))
 		fatal("Cannot set the default gw to %s %s",
 				inet_to_str(server_opt.inet_gw),
 				server_opt.inet_gw_dev);
@@ -963,6 +964,26 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 				if((add_tunnel_if(0, 0, 0, multigw_nh[x].tunl, 
 								&me.cur_ip)) < 0)
 					continue;
+				
+				/* 
+				 * ip rule add from me.cur_ip  \
+				 *   fwmark multigw_nh[x].tunl \
+				 *   lookup multigw_nh[x].table
+				 */
+				if(multigw_nh[x].flags & IGW_RTRULE)
+					rule_del(&me.cur_ip, 0, 0, 0,
+						multigw_nh[x].tunl, multigw_nh[x].table);
+				rule_add(&me.cur_ip, 0, 0, 0, multigw_nh[x].tunl, 
+						multigw_nh[x].table);
+				multigw_nh[x].flags|=IGW_RTRULE;
+
+				/*
+				 * ip route replace default via nh[ni].gw \ 
+				 * 	table multigw_nh[x].table
+				 */
+				rt_replace_def_gw(nh[ni].dev, nh[ni].gw, 
+						multigw_nh[x].table);
+				
 				/* TODO: add netfilter rule here */
 			}
 			taken_nexthops[ni]=igw;
@@ -983,7 +1004,7 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 		debug(DBG_INSANE, RED("igw_def_gw: no Internet gateways "
 				"available. Deleting the default route"));
 #endif
-		rt_delete_def_gw();
+		rt_delete_def_gw(0);
 		active_gws=0;
 		return 0;
 	} else if(!ni)

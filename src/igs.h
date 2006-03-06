@@ -71,6 +71,8 @@
 #define IGW_TUNNELED		1
 #define IGW_ACTIVE		(1<<1)		/* This gw is being used in the
 						   routing table */
+#define IGW_RTRULE		(1<<2)		/* The relative table is already 
+						   present */
 
 /*
  * internet_gateway: this struct points to a particular (g)node which is

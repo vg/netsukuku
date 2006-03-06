@@ -722,7 +722,7 @@ int rt_get_default_gw(inet_prefix *gw, char *dev_name)
 }
 
 int rt_exec_gw(char *dev, inet_prefix to, inet_prefix gw, 
-		int (*route_function)(ROUTE_CMD_VARS))
+		int (*route_function)(ROUTE_CMD_VARS), u_char table)
 {
 	struct nexthop nh[2], *neho;
 
@@ -739,30 +739,30 @@ int rt_exec_gw(char *dev, inet_prefix to, inet_prefix gw,
 	} else
 		neho=0;
 
-	return route_function(0, 0, &to, neho, dev, 0);
+	return route_function(0, 0, &to, neho, dev, table);
 }
 
-int rt_add_gw(char *dev, inet_prefix to, inet_prefix gw)
+int rt_add_gw(char *dev, inet_prefix to, inet_prefix gw, u_char table)
 {
-	return rt_exec_gw(dev, to, gw, route_add);
+	return rt_exec_gw(dev, to, gw, route_add, table);
 }
 
-int rt_del_gw(char *dev, inet_prefix to, inet_prefix gw)
+int rt_del_gw(char *dev, inet_prefix to, inet_prefix gw, u_char table)
 {
-	return rt_exec_gw(dev, to, gw, route_del);
+	return rt_exec_gw(dev, to, gw, route_del, table);
 }
 
-int rt_change_gw(char *dev, inet_prefix to, inet_prefix gw)
+int rt_change_gw(char *dev, inet_prefix to, inet_prefix gw, u_char table)
 {
-	return rt_exec_gw(dev, to, gw, route_change);
+	return rt_exec_gw(dev, to, gw, route_change, table);
 }
 
-int rt_replace_gw(char *dev, inet_prefix to, inet_prefix gw)
+int rt_replace_gw(char *dev, inet_prefix to, inet_prefix gw, u_char table)
 {
-	return rt_exec_gw(dev, to, gw, route_replace);
+	return rt_exec_gw(dev, to, gw, route_replace, table);
 }
 
-int rt_replace_def_gw(char *dev, inet_prefix gw)
+int rt_replace_def_gw(char *dev, inet_prefix gw, u_char table)
 {
 	inet_prefix to;
 
@@ -773,10 +773,10 @@ int rt_replace_def_gw(char *dev, inet_prefix gw)
 	}
 	to.len=to.bits=0;
 
-	return rt_replace_gw(dev, to, gw);
+	return rt_replace_gw(dev, to, gw, table);
 }
 
-int rt_delete_def_gw(void)
+int rt_delete_def_gw(u_char table)
 {
 	inet_prefix to;
 
@@ -787,7 +787,7 @@ int rt_delete_def_gw(void)
 	}
 	to.len=to.bits=0;
 
-	return route_del(0, 0, &to, 0, 0, 0);
+	return route_del(0, 0, &to, 0, 0, table);
 }
 
 /* 

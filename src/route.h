@@ -56,12 +56,12 @@ void rt_rnodes_update(int check_update_flag);
 void rt_full_update(int check_update_flag);
 
 int rt_get_default_gw(inet_prefix *gw, char *dev_name);
-int rt_add_gw(char *dev, inet_prefix to, inet_prefix gw);
-int rt_del_gw(char *dev, inet_prefix to, inet_prefix gw);
-int rt_change_gw(char *dev, inet_prefix to, inet_prefix gw);
-int rt_replace_gw(char *dev, inet_prefix to, inet_prefix gw);
-int rt_replace_def_gw(char *dev, inet_prefix gw);
-int rt_delete_def_gw(void);
+int rt_add_gw(char *dev, inet_prefix to, inet_prefix gw, u_char table);
+int rt_del_gw(char *dev, inet_prefix to, inet_prefix gw, u_char table);
+int rt_change_gw(char *dev, inet_prefix to, inet_prefix gw, u_char table);
+int rt_replace_gw(char *dev, inet_prefix to, inet_prefix gw, u_char table);
+int rt_replace_def_gw(char *dev, inet_prefix gw, u_char table);
+int rt_delete_def_gw(u_char);
 
 int rt_del_loopback_net(void);
 
