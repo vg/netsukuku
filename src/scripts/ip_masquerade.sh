@@ -6,7 +6,7 @@
 #
 # "ip_masquerade stop" is executed when NetsukukuD is closed.
 
-EXTIF="$1"
+#EXTIF="$1"
 
 OS=`uname`
 
