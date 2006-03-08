@@ -21,7 +21,6 @@
  */
 
 #include "includes.h"
-#include <sys/wait.h>
 
 #include "llist.c"
 #include "libnetlink.h"
@@ -368,6 +367,15 @@ void init_internet_gateway_search(void)
 				inet_to_str(server_opt.inet_gw),
 				server_opt.inet_gw_dev);
 	active_gws++;
+	
+	/*
+	 * Activate the traffic shaping for the `server_opt.inet_gw_dev'
+	 * device
+	 */
+	if(server_opt.shape_internet)
+		igw_exec_tcshaper_sh(server_opt.tc_shaper_script, 0,
+			server_opt.inet_gw_dev, server_opt.my_upload_bw, 
+			server_opt.my_dnload_bw);
 
 	for(i=0; i < me.cur_ifs_n; i++)
 		if(!strcmp(me.cur_ifs[i].dev_name, server_opt.inet_gw_dev)) {
@@ -414,6 +422,9 @@ void close_internet_gateway_search(void)
 {
 	if(server_opt.share_internet)
 		igw_exec_masquerade_sh(server_opt.ip_masq_script, 1);
+	if(server_opt.shape_internet)
+		igw_exec_tcshaper_sh(server_opt.tc_shaper_script, 1,0,0,0);
+
 	free_igws(me.igws, me.igws_counter, me.cur_quadg.levels);
 	free_my_igws(&me.my_igws);
 }
@@ -782,44 +793,47 @@ void *igw_monitor_igws_t(void *null)
 }
 
 /*
- * igw_exec_masquerade_sh: executes `script', which will do IP masquerade.
+ * igw_exec_masquerade_sh: executes `script', which activate the IP masquerade.
  * If `stop' is set to 1 the script will be executed as "script stop",
  * otherwise as "script start".
  */
 int igw_exec_masquerade_sh(char *script, int stop)
 {
-	struct stat sh_stat;
 	int ret;
-	char command[strlen(script)+7];
+	char argv[7]="";
 	
-	if(stat(script, &sh_stat))
-		fatal("Couldn't stat %s: %s", strerror(errno));
+	sprintf(argv, "%s", stop ? "stop" : "start");
 
-	if(sh_stat.st_uid != 0 || sh_stat.st_mode & S_ISUID ||
-	    sh_stat.st_mode & S_ISGID || 
-	    (sh_stat.st_gid != 0 && sh_stat.st_mode & S_IWGRP) ||
-	    sh_stat.st_mode & S_IWOTH)
-		fatal("Please adjust the permissions of %s and be sure it "
-			"hasn't been modified.\n"
-			"  Use this command:\n"
-			"  chmod 744 %s; chown root:root %s",
-			script, script, script);
-	
-	if(stop)
-		sprintf(command, "%s %s", script, "stop");
-	else
-		sprintf(command, "%s %s", script, "start");
-	loginfo("Executing \"%s\"", command);
-	
-	ret=system(command);
+	ret=exec_root_script(script, argv);
 	if(ret == -1)
-		fatal("Couldn't execute %s: %s", script, strerror(errno));
-	
-	if(!stop && (!WIFEXITED(ret) || (WIFEXITED(ret) && WEXITSTATUS(ret) != 0)))
-		fatal("\"%s\" didn't terminate correctly. Aborting", command);
-
+		fatal("%s wasn't executed. We cannot share the Inet "
+				"connection, aborting.");
 	return 0;
 }
+
+/*
+ * igw_exec_tcshaper_sh: executes `script', which activate the Internet traffic
+ * shaping.
+ * If `stop' is set to 1 the script will be executed as "script stop".
+ */
+int igw_exec_tcshaper_sh(char *script, int stop, 
+		char *dev, int upload_bw, int dnload_bw)
+{
+	int ret;
+	char argv[7]="";
+	
+	if(stop)
+		sprintf(argv, "%s", "stop");
+	else
+		sprintf(argv, "%s %d %d", dev, upload_bw, dnload_bw);
+
+	ret=exec_root_script(script, argv);
+	if(ret == -1)
+		error("%s wasn't executed. The traffic shaping will be "
+				"disabled.");
+	return 0;
+}
+
 
 /*
  * add_igw_nexthop:

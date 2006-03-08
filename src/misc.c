@@ -21,6 +21,7 @@
 
 #include "includes.h"
 #include <dirent.h>
+#include <sys/wait.h>
 
 #include "misc.h"
 #include "log.h"
@@ -474,6 +475,56 @@ int file_exist(char *filename)
 	fclose(fd);
 	return 1;
 }
+
+/*
+ * exec_root_script: executes `script' with the given `argv', but checks first if the
+ * script is:
+ * 	- suid
+ * 	- it isn't owned by root
+ * 	- it isn't writable by others than root
+ * If one of this conditions is true, the script won't be executed.
+ * On success 0 is returned.
+ */
+int exec_root_script(char *script, char *argv)
+{
+	struct stat sh_stat;
+	int ret;
+	char command[strlen(script)+strlen(argv)+2];
+	
+	if(stat(script, &sh_stat)) {
+		error("Couldn't stat %s: %s", strerror(errno));
+		return -1;
+	}
+
+	if(sh_stat.st_uid != 0 || sh_stat.st_mode & S_ISUID ||
+	    sh_stat.st_mode & S_ISGID || 
+	    (sh_stat.st_gid != 0 && sh_stat.st_mode & S_IWGRP) ||
+	    sh_stat.st_mode & S_IWOTH) {
+		error("Please adjust the permissions of %s and be sure it "
+			"hasn't been modified.\n"
+			"  Use this command:\n"
+			"  chmod 744 %s; chown root:root %s",
+			script, script, script);
+		return -1;
+	}
+	
+	sprintf(command, "%s %s", script, argv);
+	loginfo("Executing \"%s\"", command);
+	
+	ret=system(command);
+	if(ret == -1) {
+		error("Couldn't execute %s: %s", script, strerror(errno));
+		return -1;
+	}
+	
+	if(!WIFEXITED(ret) || (WIFEXITED(ret) && WEXITSTATUS(ret) != 0)) {
+		error("\"%s\" didn't terminate correctly", command);
+		return -1;
+	}
+
+	return 0;
+}
+	
 	
 /* This is the most important function */
 void do_nothing(void)

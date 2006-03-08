@@ -6,18 +6,21 @@
 
 - update dependencies: depends on iptables
 
+- Equalize multipath routes
+
 - Internet Gateway Search
 	- multigw
-		- do not delete a gw if there still bw passing on it.
-	- traffic shaping
-		- find a good script
+	- test
+		- multigw
+		- traffic shaping
 
 
 		[MEDIUM PRIORITY] 
 
 - do not delete a tunnel-gw if there is still traffic on it
 
-- Equalize multipath routes
+- bandwidth measurement
+	- do not delete a gw if there still bw passing on it.
 
 - Bandwidth weight for each entry of the qspn (not just rtt and latency):
 	- what to use to get the bandwidth of a network interface?

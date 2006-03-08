@@ -55,7 +55,7 @@ tc qdisc del dev $DEV ingress 2> /dev/null > /dev/null
 
 if [ "$1" = "stop" ] 
 then 
-	exit
+	exit 0
 fi
 
 
@@ -175,3 +175,5 @@ then
 	tc filter add dev $DEV parent ffff: protocol ip prio 50 u32 match ip src \
 	0.0.0.0/0 police rate ${DOWNLINK}kbit burst 10k drop flowid :1
 fi
+
+exit 0
