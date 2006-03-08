@@ -13,7 +13,9 @@
 	- test
 		- multigw
 		- traffic shaping
-
+	- update the howto:
+		- traffic shaping
+		- multigw
 
 		[MEDIUM PRIORITY] 
 

@@ -8,18 +8,60 @@
 #
 # Note: the options will be overridden by their command line equivalent.
 #
-
-
+# Options index:
 # 
-# If this option is set to 1, NetsukukuD will be started in restricted mode to
-# allow the compatibility with Internet. In the restricted mode, are chosen 
-# only IPs of the largest private subnet, i.e. 10.x.x.x.
+# 	## Restricted mode
+#		- ntk_restricted_mode
+#		- ntk_restricted_class
+#	## Internet connection
+#		- internet_connection
+#		- internet_gateway
+#		- internet_download_rate
+#		- internet_upload_rate
+#		- internet_ping_hosts
+#		- share_internet
+#		- shape_internet
+#	## ANDNA
+#		- disable_andna
+#		- disable_resolvconf
+#	## Limits
+#		- ntk_max_connections
+#		- ntk_max_accepts_per_host
+#		- max_accepts_per_host_time
+#	## Files
+#		- ntk_ext_map_file
+#		- ntk_int_map_file
+#		- ntk_bnode_map_file
+#		- andna_hnames_file
+#		- andna_cache_file
+#		- andna_lcl_file
+#		- andna_rhc_file
+#		- andna_counter_c_file
+#		- ip_masquerade_script
+#		- tc_shaper_script
+#
+
+
+##
+#### Restricted mode
+##
+
+#
+# If the `ntk_restricted_mode' option is set to 1, NetsukukuD will be started
+# in restricted mode to allow the compatibility with Internet. In the
+# restricted mode, are chosen only IPs of the largest private subnet, i.e.
+# 10.x.x.x.
 # If `ntk_restricted_class' is set to 1 the IPs will be chosen from the
 # 172.16.0.0-172.31.255.255 range (use this option only if you are really
 # can't use the 10.x.x.x class).
 #
 #ntk_restricted_mode	= 0
 #ntk_restricted_class	= 0
+
+
+##
+#### Internet connection
+##
 
 #
 # * * If you have an Internet connection please fill this options. * *
@@ -44,6 +86,9 @@
 #
 # Finally, If you want to share your Internet connection among other Netsukuku
 # nodes, set `share_internet' to 1.
+#
+# Ah, and you can set `shape_internet' to 1 if you want to shape your outgoing
+# Internet traffic.
 # 
 #internet_connection	= 1
 #internet_gateway	= 192.168.1.1:eth0
@@ -51,6 +96,12 @@ internet_download_rate  = 640
 internet_upload_rate	= 30
 internet_ping_hosts	= google.com:cisco.com:sourceforge.net:dyne.org
 #share_internet		= 1
+#shape_internet		= 1
+
+
+##
+#### ANDNA
+##
 
 #
 # To disable the start of the ANDNA daemon at the launch of netsukuku_d, set
@@ -69,6 +120,11 @@ internet_ping_hosts	= google.com:cisco.com:sourceforge.net:dyne.org
 #
 #disable_resolvconf	= 0
 
+
+##
+#### Limits
+##
+
 #
 # How many connection the netsukuku daemons can simultaneusly handle.
 #
@@ -83,6 +139,10 @@ internet_ping_hosts	= google.com:cisco.com:sourceforge.net:dyne.org
 #
 #max_accepts_per_host_time	= 4	#in seconds
 
+
+##
+#### Files
+##
 
 # 
 # The paths of the Netsukuku maps saved by the daemon
@@ -109,3 +169,8 @@ andna_counter_c_file	= @DT_DIR@/counter_cache
 # The script launched by NetsukukuD to share the Internet connection
 #
 ip_masquerade_script	= @CONF_DIR@/ip_masquerade.sh
+
+#
+# The script launched by NetsukukuD to shape the Internet connection
+#
+tc_shaper_script	= @CONF_DIR@/tc_shaper.sh
