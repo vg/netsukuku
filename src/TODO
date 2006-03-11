@@ -12,10 +12,14 @@
 	- multigw
 	- test
 		- multigw
+			- * RTNETLINK answers (-101): Network is unreachable
+
 		- traffic shaping
 	- update the howto:
 		- traffic shaping
 		- multigw
+
+- Flash NetsukukuD into an AP and test it.
 
 		[MEDIUM PRIORITY] 
 
@@ -75,5 +79,3 @@
   compatible!
 
 - Test request.c
-
-- Port the code to uclibc. The best would be NetsukukuD flashed into an AP.

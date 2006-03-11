@@ -43,6 +43,7 @@ interface *ifs_find_idx(interface *ifs, int ifs_n, int dev_idx);
 int ifs_find_devname(interface *ifs, int ifs_n, char *dev_name);
 void ifs_del(interface *ifs, int *ifs_n, int if_pos);
 void ifs_del_byname(interface *ifs, int *ifs_n, char *dev_name);
+void ifs_del_all_name(interface *ifs, int *ifs_n, char *dev_name);
 const char *get_dev(int *dev_idx);
 int set_dev_up(char *dev);
 int set_dev_down(char *dev);

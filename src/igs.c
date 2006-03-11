@@ -288,15 +288,14 @@ void init_internet_gateway_search(void)
 	init_tunnels_ifs();
 	
 	/*
-	 * Bring tunl0 up
+	 * Bring tunl0 up (just to test if the ipip module is loaded)
 	 */
 	
-	loginfo("Configuring the \"tunl%d\" tunnel device", DEFAULT_TUNL_NUMBER);
-	if(add_tunnel_if(0, 0, 0, DEFAULT_TUNL_NUMBER, 0) < 0)
-		fatal("Cannot initialize \"tunl%d\". Is the \"ipip\""
-			" kernel module loaded?", DEFAULT_TUNL_NUMBER);
-	ifs_del_byname(me.cur_ifs, &me.cur_ifs_n,
-			tunnel_ifs[DEFAULT_TUNL_NUMBER].dev_name);
+	loginfo("Configuring the \"" DEFAULT_TUNL_IF "\" tunnel device");
+	if(tunnel_change(0, 0, 0, DEFAULT_TUNL_NUMBER) < 0)
+		fatal("Cannot initialize \"" DEFAULT_TUNL_IF "\". "
+			"Is the \"ipip\" kernel module loaded?");
+	ifs_del_all_name(me.cur_ifs, &me.cur_ifs_n, DEFAULT_TUNL_PREFIX);
 
 
 	/* 

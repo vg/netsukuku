@@ -67,8 +67,11 @@ int ifs_find_devname(interface *ifs, int ifs_n, char *dev_name)
 {
 	int i;
 
+	if(!dev_name)
+		return -1;
+
 	for(i=0; i<ifs_n; i++)
-		if(dev_name && ifs[i].dev_name && 
+		if(ifs[i].dev_name && 
 			!strncmp(ifs[i].dev_name, dev_name, IFNAMSIZ))
 			return i;
 
@@ -104,6 +107,29 @@ void ifs_del_byname(interface *ifs, int *ifs_n, char *dev_name)
 		return;
 
 	ifs_del(ifs, ifs_n, if_pos);
+}
+
+/*
+ * ifs_del_all_name: deleted from the `ifs' array all the device which have a
+ * device name that begins with `dev_name'. For example, 
+ * ifs_del_all_name(ifs, ifs_n, "tun") deletes all the tunnel iifs
+ */
+void ifs_del_all_name(interface *ifs, int *ifs_n, char *dev_name)
+{
+	int i, dev_len;
+
+	if(!dev_name || (dev_len=strlen(dev_name)) > IFNAMSIZ)
+		return;
+	
+	for(i=0; i<(*ifs_n); i++) {
+		if(ifs[i].dev_name && 
+			!strncmp(ifs[i].dev_name, dev_name, dev_len)) {
+
+				ifs_del(ifs, ifs_n, i);
+				if(i <= (*ifs_n)-1)
+					i--;
+		}
+	}
 }
 
 /*

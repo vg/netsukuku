@@ -21,7 +21,13 @@
 
 #include "if.h"
 
+#define DEFAULT_TUNL_PREFIX	"tunl"
 #define DEFAULT_TUNL_NUMBER	0	/* The permanent tunl0 device */
+#define DEFAULT_TUNL_IF		"tunl0"
+
+/* Usage: printf(TUNL_STRING, TUNL_NUMBER(x)); */
+#define TUNL_STRING		"%s%d"
+#define TUNL_NUMBER(x)		DEFAULT_TUNL_PREFIX, (x)
 
 #define MAX_TUNNEL_IFS		24	/* it must be >= MAX_MULTIPATH_ROUTES,
 					   since in igs.c we are using a tunnel 

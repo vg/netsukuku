@@ -17,8 +17,8 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * --
- * This code derives from iproute2/iprule.c, it was slightly modified to fit
- * in Netsukuku.
+ * This code derives from iproute2/iprule.c, it was modified to fit in 
+ * Netsukuku.
  *
  * Authors:	Alexey Kuznetsov, <kuznet@ms2.inr.ac.ru>
  * Changes:
@@ -34,9 +34,10 @@
 
 #include "libnetlink.h"
 #include "inet.h"
-#include "iptunnel.h"
 #include "libnetlink.h"
 #include "ll_map.h"
+#include "krnl_route.h"
+#include "iptunnel.h"
 #include "xmalloc.h"
 #include "log.h"
 
@@ -236,7 +237,7 @@ static int do_add(int cmd, inet_prefix *remote, inet_prefix *local, char *dev,
 
 	switch (p.iph.protocol) {
 		case IPPROTO_IPIP:
-			return do_add_ioctl(cmd, "tunl0", &p);
+			return do_add_ioctl(cmd, DEFAULT_TUNL_IF, &p);
 		default:	
 			fatal("cannot determine tunnel mode (ipip, gre or sit)\n");
 	}
@@ -253,7 +254,7 @@ int do_del(inet_prefix *remote, inet_prefix *local, char *dev, int tunl_number)
 
 	switch (p.iph.protocol) {
 		case IPPROTO_IPIP:
-			return do_del_ioctl("tunl0", &p);
+			return do_del_ioctl(DEFAULT_TUNL_IF, &p);
 		default:	
 			return do_del_ioctl(p.name, &p);
 	}
@@ -275,7 +276,7 @@ int tun_add_tunl(interface *ifs, u_char tunl)
 	}
 	ll_init_map(&rth);
 
-	sprintf(tunl_name, "tunl%d", tunl);
+	sprintf(tunl_name, TUNL_STRING, TUNL_NUMBER(tunl));
 	strncpy(ifs->dev_name, tunl_name, IFNAMSIZ);
 	if(!(ifs->dev_idx=ll_name_to_index(tunl_name)))
 		return -1;
@@ -295,7 +296,7 @@ int tun_del_tunl(interface *ifs, u_char tunl)
 	char tunl_name[IFNAMSIZ];
 	int i;
 	
-	sprintf(tunl_name, "tunl%d", tunl);
+	sprintf(tunl_name, TUNL_STRING, TUNL_NUMBER(tunl));
 
 	for(i=0; i<MAX_TUNNEL_IFS; i++)
 		if(!strncmp(ifs[i].dev_name, tunl_name, IFNAMSIZ)) {
@@ -340,8 +341,8 @@ int set_tunnel_ip(int tunl_number, inet_prefix *tunl_ip)
 	set_all_ifs(&tunnel_ifs[tunl_number], 1, set_dev_down);
 	set_all_ifs(&tunnel_ifs[tunl_number], 1, set_dev_up);
 	if(set_all_dev_ip(*tunl_ip, &tunnel_ifs[tunl_number], 1) < 0) {
-		error("Cannot set the %s ip to tunl%d",
-				ntop, tunl_number);
+		error("Cannot set the %s ip to " TUNL_STRING,
+				ntop, TUNL_NUMBER(tunl_number));
 		return -1;
 	}
 	return 0;
@@ -356,13 +357,14 @@ int add_tunnel_if(inet_prefix *remote, inet_prefix *local, char *dev,
 {
 	if(!tunl_number) {
 		if(tunnel_change(remote, local, dev, tunl_number) < 0) {
-			error("Cannot modify the \"tunl%d\" tunnel",
-					tunl_number);
+			error("Cannot modify the \"" TUNL_STRING "\" tunnel",
+					TUNL_NUMBER(tunl_number));
 			return -1;
 		}
 	} else {
 		if(tunnel_add(remote, local, dev, tunl_number) < 0) {
-			error("Cannot add the \"tunl%d\" tunnel", tunl_number);
+			error("Cannot add the \"" TUNL_STRING "\" tunnel",
+					TUNL_NUMBER(tunl_number));
 			return -1;
 		}
 	}
@@ -372,6 +374,10 @@ int add_tunnel_if(inet_prefix *remote, inet_prefix *local, char *dev,
 
 	if(tunl_ip) {
 		if(set_tunnel_ip(tunl_number, tunl_ip) < 0)
+			return -1;
+
+		if(route_rp_filter_all_dev(my_family, &tunnel_ifs[tunl_number],
+				1, 0) < 0)
 			return -1;
 	}
 
@@ -386,8 +392,8 @@ int del_tunnel_if(inet_prefix *remote, inet_prefix *local, char *dev,
 {
 	if(tunl_number)	{
 		if(tunnel_del(remote, local, dev, tunl_number) < 0) {
-			error("Cannot delete the \"tunl%d\" tunnel", 
-					tunl_number);
+			error("Cannot delete the \"" TUNL_STRING "\" tunnel",
+					TUNL_NUMBER(tunl_number));
 			return -1;
 		}
 	}
