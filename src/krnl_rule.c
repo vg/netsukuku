@@ -109,6 +109,8 @@ int rule_exec(int rtm_cmd, inet_prefix *from, inet_prefix *to, char *dev,
 	if (rtnl_talk(&rth, &req.nh, 0, 0, NULL, NULL, NULL) < 0)
 		return 2;
 
+	rtnl_close(&rth);
+
 	return 0;
 }
 
@@ -122,8 +124,8 @@ int rule_flush_table_range_filter(const struct sockaddr_nl *who, struct nlmsghdr
         struct rtmsg *r = NLMSG_DATA(n);
         int len = n->nlmsg_len;
         struct rtattr *tb[RTA_MAX+1];
-	int a=*(int *)arg;
-	int b=*((int *)arg+1);
+	u_int a=*(u_int *)arg;
+	u_int b=*((u_int *)arg+1);
 
         len -= NLMSG_LENGTH(sizeof(*r));
         if (len < 0)
@@ -131,7 +133,7 @@ int rule_flush_table_range_filter(const struct sockaddr_nl *who, struct nlmsghdr
 
         parse_rtattr(tb, RTA_MAX, RTM_RTA(r), len);
 
-        if (tb[RTA_PRIORITY] && (r->rtm_table >= a || r->rtm_table <= b)) {
+        if (tb[RTA_PRIORITY] && (r->rtm_table >= a && r->rtm_table <= b)) {
                 n->nlmsg_type = RTM_DELRULE;
                 n->nlmsg_flags = NLM_F_REQUEST;
 
@@ -156,6 +158,9 @@ int rule_flush_table_range(int family, int a, int b)
 	struct rtnl_handle rth;
 	int arg[2];
 	
+	if (rtnl_open(&rth, 0) < 0)
+		return 1;
+
         if (rtnl_wilddump_request(&rth, family, RTM_GETRULE) < 0) {
                 error("Cannot dump the routing rule table");
                 return -1;
@@ -167,6 +172,8 @@ int rule_flush_table_range(int family, int a, int b)
                 error("Flush terminated");
                 return -1;
         }
-        
+	
+	rtnl_close(&rth);
+	
         return 0;
 }
