@@ -381,6 +381,7 @@ int rehook(map_gnode *hook_gnode, int hook_level)
 		del_all_tunnel_ifs(0, &me.cur_ip, 0);
 		reset_igw_nexthop(multigw_nh);
 		reset_igws(me.igws, me.igws_counter, me.cur_quadg.levels);
+		reset_igw_rules();	
 		free_my_igws(&me.my_igws);
 	}
 

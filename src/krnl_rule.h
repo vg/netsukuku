@@ -22,3 +22,4 @@ int rule_del(inet_prefix *from, inet_prefix *to, char *dev,
 		int prio, u_int fwmark, u_char table);
 int rule_replace(inet_prefix *from, inet_prefix *to, char *dev,
 		int prio, u_int fwmark, u_char table);
+int rule_flush_table_range(int family, int a, int b);

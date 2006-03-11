@@ -297,9 +297,14 @@ void init_internet_gateway_search(void)
 			"Is the \"ipip\" kernel module loaded?");
 	ifs_del_all_name(me.cur_ifs, &me.cur_ifs_n, DEFAULT_TUNL_PREFIX);
 
+	/*
+	 * Delete old routing rules
+	 */
+	reset_igw_rules();
 
 	/* 
-	 * Check anomalies 
+	 * Check anomalies: from this point we initialize stuff only if we
+	 * have an Inet connection
 	 */
 	if(!server_opt.inet_connection)
 		return;
@@ -419,11 +424,17 @@ void init_internet_gateway_search(void)
 
 void close_internet_gateway_search(void)
 {
+	/* Flush the MASQUERADE rules */
 	if(server_opt.share_internet)
 		igw_exec_masquerade_sh(server_opt.ip_masq_script, 1);
+
+	/* Disable the traffic shaping */
 	if(server_opt.shape_internet)
 		igw_exec_tcshaper_sh(server_opt.tc_shaper_script, 1,0,0,0);
-
+	
+	/* Delete all the added rules */
+	reset_igw_rules();
+	
 	free_igws(me.igws, me.igws_counter, me.cur_quadg.levels);
 	free_my_igws(&me.my_igws);
 }
@@ -881,6 +892,15 @@ void reset_igw_nexthop(igw_nexthop *igwn)
 	memset(igwn, 0, sizeof(igw_nexthop)*MAX_MULTIPATH_ROUTES);
 }
 
+/* 
+ * reset_igw_rules: flush all the routing rules
+ */
+void reset_igw_rules(void)
+{
+	rule_flush_table_range(my_family, RTTABLE_IGW, 
+			RTTABLE_IGW+MAX_MULTIPATH_ROUTES-1);
+}
+
 /*
  * igw_replace_def_igws: sets the default gw route to reach the
  * Internet. The route utilises multipath therefore there are more than one
@@ -1000,14 +1020,14 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 				/* 
 				 * Add the table for the new tunnel-gw:
 				 * 
-				 * ip rule add from me.cur_ip  \
-				 *   fwmark multigw_nh[x].tunl \
+				 * ip rule add from me.cur_ip    \
+				 *   fwmark multigw_nh[x].tunl+1 \
 				 *   lookup multigw_nh[x].table
 				 */
 				if(multigw_nh[x].flags & IGW_RTRULE)
 					rule_del(&me.cur_ip, 0, 0, 0,
 						multigw_nh[x].tunl, multigw_nh[x].table);
-				rule_add(&me.cur_ip, 0, 0, 0, multigw_nh[x].tunl, 
+				rule_add(&me.cur_ip, 0, 0, 0, multigw_nh[x].tunl+1, 
 						multigw_nh[x].table);
 				multigw_nh[x].flags|=IGW_RTRULE;
 

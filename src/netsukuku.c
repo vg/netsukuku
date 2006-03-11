@@ -233,14 +233,8 @@ void fill_loaded_cfg_options(void)
 	}
 	if((value=getenv(config_str[CONF_SHARE_INTERNET])))
 		server_opt.share_internet=atoi(value);
-	if((value=getenv(config_str[CONF_SHAPE_INTERNET]))) {
-		if(!server_opt.share_internet)
-			fatal("invalid use of `%s': you cannot shape your inetgw"
-				" if you don't share it. Activate `%s'",
-				config_str[CONF_SHAPE_INTERNET], 
-				config_str[CONF_SHARE_INTERNET]);
+	if((value=getenv(config_str[CONF_SHAPE_INTERNET])))
 		server_opt.shape_internet=atoi(value);
-	}
 	if((value=getenv(config_str[CONF_NTK_IP_MASQ_SCRIPT])))
 		server_opt.ip_masq_script=xstrndup(value, NAME_MAX-1);
 	if((value=getenv(config_str[CONF_NTK_TC_SHAPER_SCRIPT])))

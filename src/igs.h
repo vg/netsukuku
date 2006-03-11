@@ -205,6 +205,7 @@ int igw_exec_masquerade_sh(char *script, int stop);
 int igw_exec_tcshaper_sh(char *script, int stop, 
 		char *dev, int upload_bw, int dnload_bw);
 void reset_igw_nexthop(igw_nexthop *igwn);
+void reset_igw_rules(void);
 int igw_replace_def_igws(inet_gw **igws, int *igws_counter, 
 		inet_gw **my_igws, int max_levels, int family);
 

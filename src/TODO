@@ -13,9 +13,6 @@
 - Internet Gateway Search
 	- multigw
 	- test
-		- multigw
-			- * RTNETLINK answers (-101): Network is unreachable
-
 		- traffic shaping
 	- update the howto:
 		- traffic shaping

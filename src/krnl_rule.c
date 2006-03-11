@@ -111,3 +111,62 @@ int rule_exec(int rtm_cmd, inet_prefix *from, inet_prefix *to, char *dev,
 
 	return 0;
 }
+
+/* 
+ * rule_flush_table_range_filter: rtnl_dump filter for
+ * rule_flush_table_range() (see below)
+ */
+int rule_flush_table_range_filter(const struct sockaddr_nl *who, struct nlmsghdr *n, void *arg)
+{
+        struct rtnl_handle rth2;
+        struct rtmsg *r = NLMSG_DATA(n);
+        int len = n->nlmsg_len;
+        struct rtattr *tb[RTA_MAX+1];
+	int a=*(int *)arg;
+	int b=*((int *)arg+1);
+
+        len -= NLMSG_LENGTH(sizeof(*r));
+        if (len < 0)
+                return -1;
+
+        parse_rtattr(tb, RTA_MAX, RTM_RTA(r), len);
+
+        if (tb[RTA_PRIORITY] && (r->rtm_table >= a || r->rtm_table <= b)) {
+                n->nlmsg_type = RTM_DELRULE;
+                n->nlmsg_flags = NLM_F_REQUEST;
+
+                if (rtnl_open(&rth2, 0) < 0)
+                        return -1;
+
+                if (rtnl_talk(&rth2, n, 0, 0, NULL, NULL, NULL) < 0)
+                        return -2;
+
+                rtnl_close(&rth2);
+        }
+
+        return 0;
+}
+
+/*
+ * rule_flush_table_range: deletes all the rules which lookup the table X.
+ * The table X is any table in the range of `a' <= X <= `b'.
+ */
+int rule_flush_table_range(int family, int a, int b)
+{
+	struct rtnl_handle rth;
+	int arg[2];
+	
+        if (rtnl_wilddump_request(&rth, family, RTM_GETRULE) < 0) {
+                error("Cannot dump the routing rule table");
+                return -1;
+        }
+        
+	arg[0]=a;
+	arg[1]=b;
+        if (rtnl_dump_filter(&rth, rule_flush_table_range_filter, arg, NULL, NULL) < 0) {
+                error("Flush terminated");
+                return -1;
+        }
+        
+        return 0;
+}

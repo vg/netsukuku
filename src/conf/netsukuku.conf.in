@@ -96,7 +96,7 @@ internet_download_rate  = 640
 internet_upload_rate	= 30
 internet_ping_hosts	= google.com:cisco.com:sourceforge.net:dyne.org
 #share_internet		= 1
-#shape_internet		= 1
+shape_internet		= 1
 
 
 ##
