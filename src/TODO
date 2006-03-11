@@ -17,8 +17,6 @@
 	- update the howto:
 		- traffic shaping
 		- multigw
-	- in close rimuovere tutte le rule aggiunte, in init pure, in qualche
-	  modo.
 
 - Flash NetsukukuD into an AP and test it.
 

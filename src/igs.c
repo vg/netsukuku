@@ -302,6 +302,11 @@ void init_internet_gateway_search(void)
 	 */
 	reset_igw_rules();
 
+	/*
+	 * Init netfilter
+	 TODO: mark_init();
+	 */
+
 	/* 
 	 * Check anomalies: from this point we initialize stuff only if we
 	 * have an Inet connection
@@ -430,10 +435,15 @@ void close_internet_gateway_search(void)
 
 	/* Disable the traffic shaping */
 	if(server_opt.shape_internet)
-		igw_exec_tcshaper_sh(server_opt.tc_shaper_script, 1,0,0,0);
+		igw_exec_tcshaper_sh(server_opt.tc_shaper_script, 1,
+				server_opt.inet_gw_dev, 0, 0);
 	
 	/* Delete all the added rules */
 	reset_igw_rules();
+
+	/* Destroy the netfilter rules
+	TODO: mark_close();
+	*/
 	
 	free_igws(me.igws, me.igws_counter, me.cur_quadg.levels);
 	free_my_igws(&me.my_igws);
@@ -824,7 +834,7 @@ int igw_exec_masquerade_sh(char *script, int stop)
 /*
  * igw_exec_tcshaper_sh: executes `script', which activate the Internet traffic
  * shaping.
- * If `stop' is set to 1 the script will be executed as "script stop".
+ * If `stop' is set to 1 the script will be executed as "script stop `dev'".
  */
 int igw_exec_tcshaper_sh(char *script, int stop, 
 		char *dev, int upload_bw, int dnload_bw)
@@ -833,14 +843,20 @@ int igw_exec_tcshaper_sh(char *script, int stop,
 	char argv[7]="";
 	
 	if(stop)
-		sprintf(argv, "%s", "stop");
+		sprintf(argv, "%s %s", "stop", dev);
 	else
 		sprintf(argv, "%s %d %d", dev, upload_bw, dnload_bw);
 
 	ret=exec_root_script(script, argv);
-	if(ret == -1)
-		error("%s wasn't executed. The traffic shaping will be "
-				"disabled.");
+	
+	if(ret == -1) {
+		if(!stop)
+			error("%s wasn't executed. The traffic shaping will be "
+					"disabled.");
+		else
+			error("The traffic shaping is still enabled!");
+	}
+			
 	return 0;
 }
 
@@ -1043,7 +1059,9 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 						"route of the table %d ",
 						multigw_nh[x].table);
 				
-				/* TODO: add netfilter rule here */
+				/* TODO: add netfilter rule here 
+				 * create_mark_rules(multigw_nh[x].tunl);
+				 */
 			}
 			taken_nexthops[ni]=igw;
 			

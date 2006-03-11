@@ -33,6 +33,13 @@ NOPRIOPORTSRC=
 NOPRIOPORTDST=
 #########################################################
 
+if [ -z "$1" -o "$1" == "help" ]
+then
+	echo Usage: $0 device upload_bw download_bw
+	echo	    $0 stop device
+	exit 1
+fi
+
 #
 # These parameters are set by NetsukukuD
 # `$1' is the device to be shaped
@@ -40,20 +47,22 @@ NOPRIOPORTDST=
 # `$3' is the download Inet bandwidth in Kilobytes/seconds
 #
 DEV=$1
-UPLINK=$(($2*8))
-DOWNLINK=$(($3*8))
+if [ "$1" == "stop" ]; then
+	if [ -z "$2" ]; then
+		echo specify the device to stop
+		exit 1
+	fi
+	DEV="$2"
+else
+	UPLINK=$(($2*8))
+	DOWNLINK=$(($3*8))
+fi
 
-if [ -z "$DEV" -o -z "$UPLINK" -o -z "$DOWNLINK" ]
-then
-	echo Usage: $0 device upload_bw download_bw
-	exit 1
-exit
-
-# clean existing down- and uplink qdiscs, hide errors
+# clean existing down and uplink qdiscs, hide errors
 tc qdisc del dev $DEV root    2> /dev/null > /dev/null
 tc qdisc del dev $DEV ingress 2> /dev/null > /dev/null
 
-if [ "$1" = "stop" ] 
+if [ "$1" == "stop" ] 
 then 
 	exit 0
 fi
