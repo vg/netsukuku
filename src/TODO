@@ -4,7 +4,9 @@
 
 - Implement the http://lab.dyne.org/Ntk_MX_request RFC
 
-- update dependencies: depends on iptables
+- update dependencies: 
+	- depends on iptables
+	- lartc
 
 - Equalize multipath routes
 
@@ -18,6 +20,8 @@
 	- update the howto:
 		- traffic shaping
 		- multigw
+	- in close rimuovere tutte le rule aggiunte, in init pure, in qualche
+	  modo.
 
 - Flash NetsukukuD into an AP and test it.
 

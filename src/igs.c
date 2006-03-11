@@ -1015,9 +1015,12 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 				 * Add the default route in the added table:
 				 * 
 				 * ip route replace default via nh[ni].gw \ 
-				 * 	table multigw_nh[x].table
+				 * 	table multigw_nh[x].table 	  \
+				 * 	dev nh[ni].dev
 				 */
-				rt_replace_def_gw(nh[ni].dev, nh[ni].gw, 
+				if(route_replace(0, 0, &to, nh, 0, multigw_nh[x].table))
+					error("Cannote replace the default "
+						"route of the table %d ",
 						multigw_nh[x].table);
 				
 				/* TODO: add netfilter rule here */
