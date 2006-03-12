@@ -71,6 +71,8 @@ static const char *err_strings[] = {
 	"Andna resolution failed.",		/* ERR_ANDNAR */
 	"Invalid hostname.",			/* ERR_HNINVL */
 	"Unknow (or not impl.) query type.",	/* ERR_UFOTOQ */
+	"mark_init error!.",			/* ERR_MRKINI */
+	"netfilter interface not loadable.",	/* ERR_NETFIL */
 };
 #define ERR_UFOERR	-1
 #define ERR_MLFDPK	-2
@@ -88,6 +90,8 @@ static const char *err_strings[] = {
 #define ERR_ANDNAR	-14
 #define ERR_HNINVL	-15
 #define ERR_UFOTOQ	-16
+#define ERR_MRKINI	-17
+#define ERR_NETFIL	-18
 
 #define ERR_OVERFLOW    "Error number does not exist."
 

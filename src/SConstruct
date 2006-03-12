@@ -31,8 +31,8 @@ sources_netsukuku = Split("""accept.c llist.c ipv6-gmp.c inet.c request.c map.c
 		   daemon.c crypto.c 
 		   andna_cache.c andna.c andns_mem.c andns_pkt.c andns_rslv.c
 		   ll_map.c libnetlink.c if.c krnl_route.c krnl_rule.c
-		   iptunnel.c route.c conf.c dns_wrapper.c igs.c 
-		   libping.c netsukuku.c""") + sources_common
+		   iptunnel.c route.c conf.c dns_wrapper.c igs.c mark.c 
+		   libiptc/libip4tc.c libping.c netsukuku.c""") + sources_common
 
 libs = Split('gmp pthread crypto resolv')
 

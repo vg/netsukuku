@@ -9,5 +9,6 @@ netsukuku_d_SOURCES= accept.c map.c misc.c pkts.c qspn.c request.c radar.c   \
 	andna.c andna_cache.c andns_mem.c andns_pkt.c andns_rslv.c bmap.c \
 	conf.c crypto.c daemon.c dns_wrapper.c endianness.c   \
 	krnl_rule.c iptunnel.c libnetlink.c ll_map.c llist.c log.c \
-	route.c tracer.c igs.c libping.c xmalloc.c netsukuku.c 
+	route.c tracer.c igs.c libping.c xmalloc.c netsukuku.c \
+	libip4tc.o mark.o
 netsukuku_d_LDADD = -lpthread -lgmp -lcrypto -lresolv
