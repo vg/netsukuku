@@ -2,7 +2,6 @@
 #define MARK_H
 
 #include "libiptc/libiptc.h"
-#include "libiptc/libiptc.h"
 #include <linux/netfilter_ipv4/ip_conntrack.h>
 #include <linux/netfilter_ipv4/ip_conntrack_tuple.h>
 #include "libiptc/ipt_conntrack.h"
