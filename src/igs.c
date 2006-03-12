@@ -41,6 +41,7 @@
 #include "igs.h"
 #include "xmalloc.h"
 #include "log.h"
+#include "err_errno.h"
 
 
 /*
@@ -932,6 +933,7 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 
 	struct nexthop *nh=0;
 	int ni, ni_lvl, nexthops, level, max_multipath_routes, i, x;
+	int res;
 
 #ifdef DEBUG		
 #define MAX_GW_IP_STR_SIZE (MAX_MULTIPATH_ROUTES*((INET6_ADDRSTRLEN+1)+IFNAMSIZ)+1)
@@ -1059,9 +1061,9 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 						"route of the table %d ",
 						multigw_nh[x].table);
 				
-				/* TODO: add netfilter rule here 
-				 * create_mark_rules(multigw_nh[x].tunl);
-				 */
+				 res=create_mark_rules(multigw_nh[x].tunl);
+				 if (res==-1) 
+					 error(err_str);
 			}
 			taken_nexthops[ni]=igw;
 			

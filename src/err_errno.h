@@ -73,6 +73,7 @@ static const char *err_strings[] = {
 	"Unknow (or not impl.) query type.",	/* ERR_UFOTOQ */
 	"mark_init error!.",			/* ERR_MRKINI */
 	"netfilter interface not loadable.",	/* ERR_NETFIL */
+	"error adding netfilter rules.",	/* ERR_NETRUL */
 };
 #define ERR_UFOERR	-1
 #define ERR_MLFDPK	-2
@@ -92,6 +93,7 @@ static const char *err_strings[] = {
 #define ERR_UFOTOQ	-16
 #define ERR_MRKINI	-17
 #define ERR_NETFIL	-18
+#define ERR_NETRUL	-19
 
 #define ERR_OVERFLOW    "Error number does not exist."
 

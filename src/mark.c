@@ -247,7 +247,7 @@ int create_mark_rules(int n)
 	nchain=count_ntk_mark_chain();
 	if (nchain==-1) {
 		error("In create_mark_rules: can not read ntk_mark_chain.");
-		return -1;
+		err_ret(ERR_NETRUL,-1);
 	} 
 /*	if (nchain==0) {
 		loginfo("This is the first mark rule: now creating restore-marking and forward rules.");
@@ -271,7 +271,7 @@ int create_mark_rules(int n)
 	res=mgl_table_init();
 	if (res) {
 		error("In create_mark_rules: can not init mangle table.");
-		return -1;
+		err_ret(ERR_NETRUL,-1);
 	}
 	mark_rule_init(rule);
 	for (i=nchain;i<n;i++) {
@@ -279,13 +279,13 @@ int create_mark_rules(int n)
 		res=iptc_append_entry(NTK_MARK_CHAIN,(struct ipt_entry*)rule,&mgl_table);
 		if (!res) {
 			error("In create_mark_rules: can not append rule -> %s",iptc_strerror(errno));
-			return -1;
+			err_ret(ERR_NETRUL,-1);
 		}
 	}
 	res=iptc_commit(&mgl_table);
 	if (!res) {
 		error("In create_mark_rules: can not commit rules: %s",iptc_strerror(errno));
-		return -1;
+		err_ret(ERR_NETRUL,-1);
 	}
 	debug(DBG_NORMAL,"Created %d marking rules.", n-nchain);
 	return 0;
