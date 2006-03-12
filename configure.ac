@@ -1,7 +1,7 @@
 AC_PREREQ(2.59)
-AC_INIT(netsukuku, 0.0.6b)
-AM_INIT_AUTOMAKE(netsukuku, 0.0.6b)
-AC_DEFINE(VERSION, "0.0.6b")
+AC_INIT(netsukuku, 0.0.7b)
+AM_INIT_AUTOMAKE(netsukuku, 0.0.7b)
+AC_DEFINE(VERSION, 0.0.7b)
 AM_CONFIG_HEADER(src/config.h) 
 
 dnl -----------------------------------
@@ -177,6 +177,6 @@ AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug], [Enable Netsukuku debug]),
 [debug_flags="-Wall -DDEBUG"], [debug_flags=""])
 AC_SUBST(debug_flags)
 
-AC_CONFIG_FILES([Makefile src/Makefile src/man/Makefile src/scripts/Makefile \
-		 src/conf/Makefile src/conf/netsukuku.conf])
+AC_CONFIG_FILES([Makefile src/Makefile src/man/Makefile src/scripts/Makefile\
+		  src/conf/Makefile src/conf/netsukuku.conf])
 AC_OUTPUT
