@@ -2,7 +2,29 @@
 #define _LIBIPTC_H
 /* Library which manipulates filtering rules. */
 
-#include <libiptc/ipt_kernel_headers.h>
+#ifndef _FWCHAINS_KERNEL_HEADERS_H
+#define _FWCHAINS_KERNEL_HEADERS_H
+
+#include <limits.h>
+
+#if defined(__GLIBC__) && __GLIBC__ == 2
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <netinet/udp.h>
+#include <net/if.h>
+#include <sys/types.h>
+#else /* libc5 */
+#include <sys/socket.h>
+#include <linux/ip.h>
+#include <linux/in.h>
+#include <linux/if.h>
+#include <linux/icmp.h>
+#include <linux/tcp.h>
+#include <linux/udp.h>
+#include <linux/types.h>
+#include <linux/in6.h>
+#endif
+#endif
 #include <linux/netfilter_ipv4/ip_tables.h>
 
 #ifdef __cplusplus

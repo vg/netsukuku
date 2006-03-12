@@ -38,6 +38,8 @@
 #include "krnl_rule.h"
 #include "iptunnel.h"
 #include "libping.h"
+#include "libiptc/libiptc.h"
+#include "mark.h"
 #include "igs.h"
 #include "xmalloc.h"
 #include "log.h"
@@ -444,8 +446,9 @@ void close_internet_gateway_search(void)
 	/* Delete all the added rules */
 	reset_igw_rules();
 
-	/* Destroy the netfilter rules
-	*/
+	/*
+	 * Destroy the netfilter rules
+	 */
 	mark_close();
 	
 	free_igws(me.igws, me.igws_counter, me.cur_quadg.levels);
