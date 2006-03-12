@@ -277,7 +277,7 @@ void init_internet_gateway_search(void)
 
 	pthread_t ping_thread;
 	pthread_attr_t t_attr;
-	int i, ret;
+	int i, ret,res;
 
 	active_gws=0;
 	memset(multigw_nh, 0, sizeof(igw_nexthop)*MAX_MULTIPATH_ROUTES);
@@ -305,8 +305,10 @@ void init_internet_gateway_search(void)
 
 	/*
 	 * Init netfilter
-	 TODO: mark_init();
 	 */
+	 res=mark_init();
+	 if (res==-1)
+		 error(err_str);
 
 	/* 
 	 * Check anomalies: from this point we initialize stuff only if we
@@ -443,8 +445,8 @@ void close_internet_gateway_search(void)
 	reset_igw_rules();
 
 	/* Destroy the netfilter rules
-	TODO: mark_close();
 	*/
+	mark_close();
 	
 	free_igws(me.igws, me.igws_counter, me.cur_quadg.levels);
 	free_my_igws(&me.my_igws);
