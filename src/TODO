@@ -24,6 +24,8 @@
 
 - do not delete a tunnel-gw if there is still traffic on it
 
+- set the TOS for the ANDNA resolve requests
+  
 - bandwidth measurement
 	- do not delete a gw if there still bw passing on it.
 
@@ -59,7 +61,7 @@
 
 - Port the kernel route code for *BSD: take a look at rt_ioctl.c and
   rt_socket.c of quagga.
-  
+
 - API for the maps sync with the netsukuku_d daemon.
 
 - Write the documentation for the code that can be used by other
