@@ -1066,7 +1066,7 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 						"route of the table %d ",
 						multigw_nh[x].table);
 				
-				 res=create_mark_rules(multigw_nh[x].tunl);
+				 res=create_mark_rules(multigw_nh[x].tunl+1);
 				 if (res==-1) 
 					 error(err_str);
 			}

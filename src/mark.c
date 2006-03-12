@@ -467,5 +467,6 @@ void mark_close()
 
 	res=delete_ntk_forward_chain();
 	if (res==-1) errs++;
-	loginfo("Mark_close exits with %d errors.", errs);
+	if(errs)
+		loginfo("Mark_close exits with %d errors.", errs);
 }
