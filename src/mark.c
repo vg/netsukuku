@@ -17,6 +17,20 @@
 *  GNU General Public License for more details.				*
 *									*
 ************************************************************************/
+
+/* 
+ * This code is writed with my blood.
+ * My hand was hurt. The keyboard was red.
+ * In this code you can find my sacrifice.
+ *
+ * This code is a netfilter iptc library.
+ * iptc is very bad documented: wisdom and 
+ * debuggers was my friends to understand 
+ * netfilter behavior. 
+ * I hope you'll never need to code netfilter 
+ * apps.
+ * Memory dumpers are with you.
+ */
 #include <string.h>
 #include <stdio.h>
 #include "mark.h"
