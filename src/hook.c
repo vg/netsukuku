@@ -30,6 +30,7 @@
 #include "inet.h"
 #include "if.h"
 #include "krnl_route.h"
+#include "iptunnel.h"
 #include "endianness.h"
 #include "bmap.h"
 #include "route.h"
@@ -754,6 +755,9 @@ void hook_set_all_ips(inet_prefix ip, interface *ifs, int ifs_n)
 
 	if(set_all_dev_ip(ip, ifs, ifs_n) < 0)
 		fatal("Cannot set the %s ip to all the interfaces", ntop);
+	if(restricted_mode && server_opt.share_internet)
+		if(set_dev_ip(ip, DEFAULT_TUNL_IF) < 0)
+			fatal("Cannot assign an IP to the default tunnel");
 }
 
 /*
@@ -953,6 +957,9 @@ int hook_init(void)
 	debug(DBG_NORMAL, "Activating ip_forward and disabling rp_filter");
 	route_ip_forward(my_family, 1);
 	route_rp_filter_all_dev(my_family, me.cur_ifs, me.cur_ifs_n, 0);
+	if(restricted_mode && server_opt.share_internet)
+		route_rp_filter(my_family, DEFAULT_TUNL_IF, 0);
+
 	
 	return 0;
 }

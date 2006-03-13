@@ -289,11 +289,13 @@ void init_internet_gateway_search(void)
 	
 	init_igws(&me.igws, &me.igws_counter, GET_LEVELS(my_family));
 	init_tunnels_ifs();
+
+	/* delete all the old tunnels */
+	del_all_tunnel_ifs(0, 0, 0);
 	
 	/*
 	 * Bring tunl0 up (just to test if the ipip module is loaded)
 	 */
-	
 	loginfo("Configuring the \"" DEFAULT_TUNL_IF "\" tunnel device");
 	if(tunnel_change(0, 0, 0, DEFAULT_TUNL_NUMBER) < 0)
 		fatal("Cannot initialize \"" DEFAULT_TUNL_IF "\". "
@@ -450,7 +452,10 @@ void close_internet_gateway_search(void)
 	 * Destroy the netfilter rules
 	 */
 	mark_close();
-	
+
+	/* Delete all the tunnels */
+	del_all_tunnel_ifs(0, 0, 0);
+
 	free_igws(me.igws, me.igws_counter, me.cur_quadg.levels);
 	free_my_igws(&me.my_igws);
 }
@@ -934,7 +939,7 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 		inet_gw **my_igws, int max_levels, int family)
 {
 	inet_gw *igw;
-	inet_prefix to;
+	inet_prefix to, ip;
 
 	struct nexthop *nh=0;
 	int ni, ni_lvl, nexthops, level, max_multipath_routes, i, x;
@@ -1035,8 +1040,7 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 				 * Initialize the `nh[ni].dev' tunnel, it's
 				 * its first time.
 				 */
-				
-				if((add_tunnel_if(0, 0, 0, multigw_nh[x].tunl, 
+				if((add_tunnel_if(0, &me.cur_ip, 0, multigw_nh[x].tunl,
 							      &me.cur_ip)) < 0)
 					continue;
 				
@@ -1047,10 +1051,12 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 				 *   fwmark multigw_nh[x].tunl+1 \
 				 *   lookup multigw_nh[x].table
 				 */
+				inet_copy(&ip, &me.cur_ip);
+				inet_htonl(ip.data, ip.family);
 				if(multigw_nh[x].flags & IGW_RTRULE)
-					rule_del(&me.cur_ip, 0, 0, 0,
+					rule_del(&ip, 0, 0, 0,
 						multigw_nh[x].tunl, multigw_nh[x].table);
-				rule_add(&me.cur_ip, 0, 0, 0, multigw_nh[x].tunl+1, 
+				rule_add(&ip, 0, 0, 0, multigw_nh[x].tunl+1, 
 						multigw_nh[x].table);
 				multigw_nh[x].flags|=IGW_RTRULE;
 

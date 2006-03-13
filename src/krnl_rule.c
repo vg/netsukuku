@@ -51,6 +51,10 @@ int rule_replace(inet_prefix *from, inet_prefix *to, char *dev,
 	return	rule_add(from, to, dev, prio, fwmark, table);
 }
 
+/*
+ * rule_exec:
+ * `from' and `to' have to be in network order
+ */
 int rule_exec(int rtm_cmd, inet_prefix *from, inet_prefix *to, char *dev, 
 		int prio, u_int fwmark, u_char table)
 {

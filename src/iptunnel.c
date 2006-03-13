@@ -73,7 +73,7 @@ static int do_ioctl_get_ifindex(const char *dev)
 	fd = socket(AF_INET, SOCK_DGRAM, 0);
 	err = ioctl(fd, SIOCGIFINDEX, &ifr);
 	if (err) {
-		error(ERROR_MSG "ioctl: %s",ERROR_POS, strerror(errno));
+		error(ERROR_MSG "ioctl: %s", ERROR_POS, strerror(errno));
 		return 0;
 	}
 	close(fd);
@@ -126,8 +126,10 @@ static int do_get_ioctl(const char *basedev, struct ip_tunnel_parm *p)
 	ifr.ifr_ifru.ifru_data = (void*)p;
 	fd = socket(AF_INET, SOCK_DGRAM, 0);
 	err = ioctl(fd, SIOCGETTUNNEL, &ifr);
-	if (err)
-		error(ERROR_MSG "ioctl: %s",ERROR_POS, strerror(errno));
+	/*
+	 * if (err)
+	 * error(ERROR_MSG "ioctl: %s",ERROR_POS, strerror(errno));
+	 */
 	close(fd);
 	return err;
 }
@@ -223,9 +225,22 @@ static int fill_tunnel_parm(int cmd, inet_prefix *remote, inet_prefix *local,
 	return 0;
 }
 
+/* 
+ * do_get: returns 1 if the tunnel named `dev' exists.
+ */
+int do_get(char *dev)
+{
+	struct ip_tunnel_parm old_p;
+	memset(&old_p, 0, sizeof(old_p));
+
+	if (do_get_ioctl(dev, &old_p))
+		return 0;
+
+	return 1;
+}
 
 static int do_add(int cmd, inet_prefix *remote, inet_prefix *local, char *dev,
-                int tunl_number)
+		int tunl_number)
 {
 	struct ip_tunnel_parm p;
 
@@ -268,20 +283,12 @@ int do_del(inet_prefix *remote, inet_prefix *local, char *dev, int tunl_number)
 int tun_add_tunl(interface *ifs, u_char tunl)
 {
 	char tunl_name[IFNAMSIZ];
-	struct rtnl_handle rth;
-
-	if (rtnl_open(&rth, 0) < 0) {
-		error(ERROR_MSG "Cannot open the rtnetlink socket",ERROR_POS);
-		return -1;
-	}
-	ll_init_map(&rth);
 
 	sprintf(tunl_name, TUNL_STRING, TUNL_NUMBER(tunl));
 	strncpy(ifs->dev_name, tunl_name, IFNAMSIZ);
-	if(!(ifs->dev_idx=ll_name_to_index(tunl_name)))
+	if(!(ifs->dev_idx=do_ioctl_get_ifindex(tunl_name)))
 		return -1;
 
-	rtnl_close(&rth);
 	return 0;
 }
 
@@ -404,8 +411,14 @@ int del_tunnel_if(inet_prefix *remote, inet_prefix *local, char *dev,
 
 void del_all_tunnel_ifs(inet_prefix *remote, inet_prefix *local, char *dev)
 {
+	char tunl_name[IFNAMSIZ];
 	int i;
 
-	for(i=0; i<MAX_TUNNEL_IFS; i++)
-		del_tunnel_if(remote, local, dev, i);
+	for(i=0; i<MAX_TUNNEL_IFS; i++) {
+		sprintf(tunl_name, TUNL_STRING, TUNL_NUMBER(i));
+		if(do_get(tunl_name))
+			del_tunnel_if(remote, local, dev, i);
+		else
+			break;
+	}
 }

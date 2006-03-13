@@ -55,6 +55,7 @@ int tun_add_tunl(interface *ifs, u_char tunl);
 void init_tunnels_ifs(void);
 int set_tunnel_ip(int tunl_number, inet_prefix *tunl_ip);
 int first_free_tunnel_if(void);
+int do_get(char *dev);
 int add_tunnel_if(inet_prefix *remote, inet_prefix *local, char *dev,
 		int tunl_number, inet_prefix *tunl_ip);
 int del_tunnel_if(inet_prefix *remote, inet_prefix *local, char *dev,
