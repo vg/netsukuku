@@ -941,7 +941,7 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 	inet_gw *igw;
 	inet_prefix to, ip;
 
-	struct nexthop *nh=0;
+	struct nexthop *nh=0, nh_tmp[2];
 	int ni, ni_lvl, nexthops, level, max_multipath_routes, i, x;
 	int res;
 
@@ -1067,7 +1067,9 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 				 * 	table multigw_nh[x].table 	  \
 				 * 	dev nh[ni].dev
 				 */
-				if(route_replace(0, 0, &to, nh, 0, multigw_nh[x].table))
+				memset(&nh_tmp, 0, sizeof(struct nexthop)*2);
+				memcpy(&nh_tmp[0], &nh[ni], sizeof(struct nexthop));
+				if(route_replace(0, 0, &to, nh_tmp, 0, multigw_nh[x].table))
 					error("Cannote replace the default "
 						"route of the table %d ",
 						multigw_nh[x].table);
