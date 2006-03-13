@@ -1,3 +1,22 @@
+	         /**************************************
+	        *     AUTHOR: Federico Tomassini        *
+	       *     Copyright (C) Federico Tomassini    *
+	      *     Contact federicotom@aliceposta.it     *
+	     ***********************************************
+	     *******          BEGIN 3/2006          ********
+*************************************************************************
+*                                              				* 
+*  This program is free software; you can redistribute it and/or modify	*
+*  it under the terms of the GNU General Public License as published by	*
+*  the Free Software Foundation; either version 2 of the License, or	*
+*  (at your option) any later version.					*
+*									*
+*  This program is distributed in the hope that it will be useful,	*
+*  but WITHOUT ANY WARRANTY; without even the implied warranty of	*
+*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the	*
+*  GNU General Public License for more details.				*
+*									*
+************************************************************************/
 #include <getopt.h>  
 #include <stdio.h>  
 
@@ -13,7 +32,7 @@ void print_usage()
 		" -v --version		print version, then exit.\n"
 		" -n --nameserver=ns	use nameserver `ns' instead of localhost.\n"
 		" -t --query-type=qt	query type (default A).\n"
-		" -p --proto-type=pt	protocol to be used (default andns).\n"
+/*		" -p --proto-type=pt	protocol to be used (default andns).\n"*/
 		" -r --realm=realm	inet or netsukuku (default) realm to scan.\n"
 		" -s --silent		ntkdig will be not loquacious.\n"
 		" -h --help		display this help, then exit.\n\n");
@@ -102,53 +121,80 @@ int ns_init(const char *hostname,int nslimit)
 		printf("No nameserver found for %s.",hostname);
 		return -1;
 	}
+	printf("Found %d nameservers.\n",globopts.ns_len);
 	freeaddrinfo(ailist);
 	return 0;
 }
 
-int apkt_stream(andns_pkt *ap,char *buf)
+int ask_query(char *q,int qlen,char *an,int *anlen,struct sockaddr_in *saddr)
 {
-        size_t offset,res;
-
-        memset(buf,0,ANDNS_MAX_SZ);
-
-        offset=hdrtoapkt(ap,buf);
-        buf+=offset;
-        if ((res=qsttoapkt(ap,buf,ANDNS_MAX_SZ-offset))==-1)
+	int len,skt;
+	skt=socket(PF_INET,SOCK_DGRAM,0);
+	if (skt==-1) {
+		printf("Internal error opening socket.\n");
+		exit(1);
+	}
+			
+	if ((connect(skt,(struct sockaddr*)saddr,sizeof(struct sockaddr_in)))) {
+                printf("In ask_query: error connecting socket -> %s.",strerror(errno));
+                return -1;
+        }
+	len=send(skt,q,qlen,0);
+	if (len==-1) {
+		printf("In ask_query: error sending pkt -> %s.\n",strerror(errno));
 		return -1;
-        offset+=res;
-        if ((res=answstoapkt(ap,buf,ANDNS_MAX_SZ-offset))==-1)
+	}
+	len=recv(skt,an,ANDNS_MAX_SZ,0);
+	if (len==-1) {
+		printf("In ask_query: error receiving pkt -> %s.\n",strerror(errno));
 		return -1;
-        offset+=res;
-        return offset;
+	}
+	*an=len;
+	return 0;
 }
 
-		
 int do_command(const char *s)
 {
-	int res,msglen;
-	andns_pkt ap;
-	char msg[ANDNS_MAX_SZ];
-	int skt;
+	int res,msglen,answlen;
+	andns_pkt *ap;
+	char msg[ANDNS_MAX_SZ],answ[ANDNS_MAX_SZ];
+	int i;
 
 	printf("Quering for %s\n",s);
-	memset(&ap,0,sizeof(andns_pkt));
-	ap.id=rand()>>16;
-	ap.qtype=globopts.qt;
-	ap.nk=(globopts.realm==REALM_NTK)?NK_NTK:NK_INET;
-	ap.qstlength=strlen(s);
-	memcpy(ap.qstdata,s,ap.qstlength);
-	msglen=apkt_stream(&ap,msg);
+	ap=create_andns_pkt();
+	ap->id=rand()>>16;
+	ap->qtype=globopts.qt;
+	ap->nk=(globopts.realm==REALM_NTK)?NK_NTK:NK_INET;
+	ap->qstlength=strlen(s);
+	memcpy(ap->qstdata,s,ap->qstlength);
+	msglen=apktpack(ap,msg);
 	if (msglen==-1) {
 		printf("Internal error building packet.");
 		exit(1);
 	}
-	res=socket(PF_INET,SOCK_DGRAM,0);
+	res=0;
+	for (i=0;i<globopts.ns_len;i++) {
+		res=ask_query(msg,msglen,answ,&answlen,globopts.ns+i);
+		if (res==-1)
+			continue;
+		else 
+			break;
+	}
 	if (res==-1) {
-		printf("Internal error opening socket.\n");
+		printf("Sending packet failed.\n");
 		exit(1);
 	}
+	else 
+		printf("Uau!\n");
+	msglen=apkt(answ,answlen,&ap);
+	if (msglen==-1) {
+		printf("Answer interpretation error.\n");
+		exit(1);
+	}
+	if (msglen!=answlen) 
+		printf("Answer interpretation: answer stream was %d. Readed %d bytes.\n",answlen,msglen);
 	return 0;
+			
 }
 	/* 
 	 * Query is ntk-related and directed to localhost:53 
@@ -221,7 +267,6 @@ int main(int argc,char **argv)
 		{"version",0,0,'v'},
 		{"nameserver",1,0,'n'},
 		{"query-type",1,0,'t'},
-		{"proto-type",1,0,'p'},
 		{"realm",1,0,'r'},
 		{"silent",0,0,'s'},
 		{"help",0,0,'h'},
@@ -265,7 +310,7 @@ int main(int argc,char **argv)
 					break;
 				}
 				break;
-			case 'p':
+		/*	case 'p':
 				res=opt_set_ptype(optarg);
 				if (res) {
 					printf("Proto type %s is not valid.\n\n"
@@ -276,7 +321,7 @@ int main(int argc,char **argv)
 					exit(1);
 					break;
 				}
-				break;
+				break;*/
 			case 'r':
 				res=opt_set_realm(optarg);
 				if (res) {
