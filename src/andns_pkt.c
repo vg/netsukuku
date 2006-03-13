@@ -61,7 +61,7 @@
 /*
  * Takes a label: is there a ptr?
  * Returns:
- *  	-1  is a malformed label is finded
+ *  	-1  is a malformed label is found
  *  	 0  if there's no pointer
  *  	<offset from start_pkt> if a pointer is found
  */
