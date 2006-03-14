@@ -47,6 +47,68 @@ int mgl_table_init()
 	return 0;
 
 }
+int forward_inet_rule()
+{
+	int res;
+	iptc_handle_t ft;
+	char rule[FILTER_RULE_SZ];
+	struct ipt_entry *e;
+	struct ipt_entry_target *et;
+	struct ipt_connmark_target_info *icmi;
+	struct in_addr not_inet_dst,not_inet_dst_mask;
+
+	ft=iptc_init(FILTER_TABLE);
+	if (!ft) {
+		error("In forward_inet_rule: can not init table: %s.",iptc_strerror(errno));
+		err_ret(ERR_NETFIL,-1);
+	}
+	
+	memset(rule,0,FILTER_RULE_SZ);
+	res=inet_aton(NTK_NET_STR,&not_inet_dst);
+	if (!res) {
+		error("Strange error.");
+		iptc_commit(&ft);
+		return -1;
+	}
+	res=inet_aton(NTK_NET_MASK_STR,&not_inet_dst_mask);
+	if (!res) {
+		error("Strange error.");
+		iptc_commit(&ft);
+		return -1;
+	}
+
+	e=(struct ipt_entry*)rule;
+	et=(struct ipt_entry_target*)(rule+IPT_ENTRY_SZ);
+	icmi=(struct ipt_connmark_target_info*)(rule+IPT_ENTRY_SZ+IPT_ENTRY_TARGET_SZ);
+	
+	e->next_offset=FILTER_RULE_SZ;
+	e->target_offset=IPT_ENTRY_SZ;
+	memcpy(&(e->ip.dst),&not_inet_dst,sizeof(struct in_addr));
+	memcpy(&(e->ip.dmsk),&not_inet_dst_mask,sizeof(struct in_addr));
+	e->ip.invflags=IPT_INV_DSTIP;
+
+	et->u.target_size=TARGET_SZ;
+	et->u.user.target_size=TARGET_SZ;
+	strcpy(et->u.user.name,MOD_CONNMARK);
+
+	icmi->mode=IPT_CONNMARK_SET;
+	icmi->mask= 0xffffffffUL;
+	icmi->mark= INET_MARK;
+
+	res=iptc_insert_entry(CHAIN_FORWARD,(struct ipt_entry*)rule,0,&ft);
+	if (!res) {
+		error("In forward_inet_rule: can not insert rule: %s.",iptc_strerror(errno));
+		iptc_commit(&ft);
+		return -1;
+	}
+	res=iptc_commit(&ft);
+	if (!res) {
+		error("In forward_inet_rule: can not commit rule: %s.",iptc_strerror(errno));
+		return -1;
+	}
+	debug(DBG_NORMAL,"Netfilter inet marking rule created.");
+	return 0;
+}
 /* Put in ,rule, the rule to be passed to the kernel.
  * ,rule, has to be RESTORE_OUTPUT_RULE_SZ-sized
  */
@@ -354,6 +416,11 @@ int mark_init(void)
 	res=ntk_forward_rule_commit();
 	if (res==-1) {
 		error("In mark_init: can not create forward rule.");
+		goto cannot_init;
+	}
+	res=forward_inet_rule();
+	if (res==-1) {
+		error("In mark_init: can not create forward inet rule.");
 		goto cannot_init;
 	}
 	return 0;

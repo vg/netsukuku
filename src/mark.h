@@ -10,13 +10,18 @@
 
 
 #define MANGLE_TABLE		"mangle"
+#define FILTER_TABLE		"filter"
 #define NTK_MARK_CHAIN		"ntk_mark_chain"
 #define CHAIN_OUTPUT		"OUTPUT"
 #define CHAIN_POSTROUTING	"POSTROUTING"
+#define CHAIN_FORWARD		"FORWARD"
 #define TUNNEL_IFACE		"tunl"
 
 #define MOD_CONNTRACK		"conntrack"
 #define MOD_CONNMARK		"CONNMARK"
+
+#define NTK_NET_STR		"10.0.0.0"
+#define NTK_NET_MASK_STR	"255.0.0.0"
 
 iptc_handle_t mgl_table;
 iptc_handle_t ntk_mrk_chain;
@@ -42,6 +47,8 @@ iptc_handle_t ntk_mrk_chain;
 
 #define NTK_FORWARD_RULE_SZ	OFFSET_TARGET_INFO+4
 
+#define FILTER_RULE_SZ		IPT_ENTRY_SZ+TARGET_SZ
+#define INET_MARK		25
 
 
 /* Functions */
