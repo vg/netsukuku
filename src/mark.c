@@ -41,6 +41,18 @@
 #include "err_errno.h"
 #include "log.h"
 
+int table_init(const char *table,iptc_hanlde_t *t)
+{
+	*t=iptc_init(table);
+	if (!(*t)) {
+		error("In table_init, table %s: -> %s", table,iptc_strerror(errno));
+		err_ret(ERR_NETFIL,-1);
+	}
+	return 0;
+
+}
+
+
 int mgl_table_init()
 {
 	mgl_table=iptc_init(MANGLE_TABLE);
