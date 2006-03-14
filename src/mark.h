@@ -19,6 +19,7 @@
 
 #define MOD_CONNTRACK		"conntrack"
 #define MOD_CONNMARK		"CONNMARK"
+#define MARK_TARGET		"MARK"
 
 #define NTK_NET_STR		"10.0.0.0"
 #define NTK_NET_MASK_STR	"255.0.0.0"
@@ -47,7 +48,7 @@ iptc_handle_t ntk_mrk_chain;
 
 #define NTK_FORWARD_RULE_SZ	OFFSET_TARGET_INFO+4
 
-#define FILTER_RULE_SZ		IPT_ENTRY_SZ+TARGET_SZ
+#define FILTER_RULE_SZ		IPT_ENTRY_SZ+IPT_ANTRY_SZ+4
 #define INET_MARK		25
 
 

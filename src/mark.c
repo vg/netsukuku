@@ -51,8 +51,362 @@ int table_init(const char *table, iptc_handle_t *t)
 	return 0;
 
 }
+int insert_rule(const char *rule,iptc_handle_t *t,const char *chain,int pos)
+{
+	int res;
+	res=iptc_insert_entry(chain,(struct ipt_entry*)rule,0,t);
+	if (!res) {
+		error("In insert_rule: %s.",iptc_strerror(errno));
+		err_ret(ERR_NETRUL,-1);
+	}
+	return 0;
+}
+int append_rule(const char *rule,iptc_handle_t *t,const char *chain)
+{
+	int res;
+	res=iptc_append_entry(chain,(struct ipt_entry*)rule,t);
+	if (!res) {
+		error("In append_rule: %s.",iptc_strerror(errno));
+		err_ret(ERR_NETRUL,-1);
+	}
+	return 0;
+}
+int commit_rules(iptc_handle_t *t)
+{
+	int res;
+	res=iptc_commit(t);
+	if (!res) {
+		error("In commit_rules: %s.",iptc_strerror(errno));
+		err_ret(ERR_NETCOM,-1);
+	}
+	return 0;
+}
 
 
+/* Put in ,rule, the rule to be passed to the kernel.
+ * ,rule, has to be RESTORE_OUTPUT_RULE_SZ-sized
+ */
+void restore_output_rule_init(unsigned char *rule)
+{
+	struct ipt_entry *ee;
+	struct ipt_entry_match *em;
+	struct ipt_entry_target *et;
+	struct ipt_conntrack_info *ici;
+	struct ipt_connmark_target_info *icmi;
+
+	memset(rule,0,RESTORE_OUTPUT_RULE_SZ);
+	
+	ee=(struct ipt_entry*)(rule);
+	em=(struct ipt_entry_match*)(rule+OFFSET_MATCH);
+	ici=(struct ipt_conntrack_info*)(rule+OFFSET_MATCH_INFO);
+	et=(struct ipt_entry_target*)(rule+OFFSET_TARGET);
+	icmi=(struct ipt_connmark_target_info*)(rule+OFFSET_TARGET_INFO);
+
+	ee->next_offset=RESTORE_OUTPUT_RULE_SZ;
+	ee->target_offset=OFFSET_TARGET;
+	snprintf(ee->ip.outiface,IFNAMSIZ,"%s+",TUNNEL_IFACE);
+	memset(ee->ip.outiface_mask,1,strlen(ee->ip.outiface));
+
+	strcpy(em->u.user.name,MOD_CONNTRACK);
+	em->u.match_size=MATCH_SZ;;
+	em->u.user.match_size=em->u.match_size;
+	
+	et->u.target_size=TARGET_SZ;
+	et->u.user.target_size=et->u.target_size;
+	strcpy(et->u.user.name,MOD_CONNMARK);
+
+	ici->flags=1;
+	ici->statemask|=IPT_CONNTRACK_STATE_BIT(IP_CT_RELATED);
+	ici->statemask|=IPT_CONNTRACK_STATE_BIT(IP_CT_ESTABLISHED);
+
+	icmi->mode=IPT_CONNMARK_RESTORE;
+	icmi->mask= 0xffffffffUL;
+}
+
+void ntk_forward_rule_init(unsigned char *rule)
+{
+	struct ipt_entry *ee;
+	struct ipt_entry_match *em;
+	struct ipt_entry_target *et;
+	struct ipt_conntrack_info *ici;
+	
+	memset(rule,0,NTK_FORWARD_RULE_SZ);
+	
+	ee=(struct ipt_entry*)(rule);
+	em=(struct ipt_entry_match*)(rule+IPT_ENTRY_SZ);
+	ici=(struct ipt_conntrack_info*)(rule+OFFSET_MATCH_INFO);
+	et=(struct ipt_entry_target*)(rule+OFFSET_TARGET);
+
+	ee->next_offset=NTK_FORWARD_RULE_SZ;
+	ee->target_offset=OFFSET_TARGET;
+	snprintf(ee->ip.outiface,IFNAMSIZ,"%s+",TUNNEL_IFACE);
+	memset(ee->ip.outiface_mask,1,strlen(ee->ip.outiface));
+
+	strcpy(em->u.user.name,MOD_CONNTRACK);
+	em->u.match_size=MATCH_SZ;
+	em->u.user.match_size=em->u.match_size;
+
+	ici->flags=1;
+	ici->statemask|=IPT_CONNTRACK_STATE_BIT(IP_CT_NEW);
+
+	et->u.target_size=IPT_ENTRY_TARGET_SZ+4;
+	et->u.user.target_size=et->u.target_size;
+	strcpy(et->u.user.name,NTK_MARK_CHAIN);
+}
+void mark_rule_init(unsigned char *rule,char *outiface,int outiface_num)
+{
+	struct ipt_entry *ee;
+	struct ipt_entry_target *et;
+	struct ipt_connmark_target_info *icmi;
+
+	memset(rule,0,MARK_RULE_SZ);
+	
+	ee=(struct ipt_entry*)(rule);
+	et=(struct ipt_entry_target*)(rule+IPT_ENTRY_SZ);
+	icmi=(struct ipt_connmark_target_info*)(rule+IPT_ENTRY_SZ+IPT_ENTRY_TARGET_SZ);
+
+	ee->next_offset=MARK_RULE_SZ;
+	ee->target_offset=IPT_ENTRY_SZ;
+
+	et->u.target_size=TARGET_SZ;
+	et->u.user.target_size=et->u.target_size;
+	strcpy(et->u.user.name,MOD_CONNMARK);
+
+	icmi->mode=IPT_CONNMARK_SET;
+	icmi->mask= 0xffffffffUL;
+	snprintf(ee->ip.outiface,IFNAMSIZ,"%s%d",outiface,outiface_num);
+	memset(ee->ip.outiface_mask,1,strlen(ee->ip.outiface));
+	icmi->mark=outiface_num+1;
+}
+/*
+int fill_mark_rule(unsigned char *rule,char *outiface,int outiface_num)
+{
+	struct ipt_entry *ee;
+	struct ipt_connmark_target_info *icmi;
+
+	if (outiface_num>MAX_MARK_RULES) {
+		error("In fill_mark_rule: too many mark rules.");
+		return -1;
+	}
+	ee=(struct ipt_entry*)rule;
+	icmi=(struct ipt_connmark_target_info*)(rule+MARK_RULE_SZ-IPT_CM_TARGET_INFO_SZ);
+
+	snprintf(ee->ip.outiface,IFNAMSIZ,"%s%d",outiface,outiface_num);
+	memset(ee->ip.outiface_mask,1,strlen(ee->ip.outiface));
+	icmi->mark=outiface_num+1;
+	return 0;
+}*/
+void igw_mark_rule_init(char *rule)
+{
+	int res;
+	struct ipt_entry *e;
+	struct ipt_entry_target *et;
+	struct in_addr not_inet_dst,not_inet_dst_mask;
+
+	memset(rule,0,FILTER_RULE_SZ);
+	res=inet_aton(NTK_NET_STR,&not_inet_dst);
+	if (!res) {
+		error("Strange error.");
+		iptc_commit(&ft);
+		return -1;
+	}
+	res=inet_aton(NTK_NET_MASK_STR,&not_inet_dst_mask);
+	if (!res) {
+		error("Strange error.");
+		iptc_commit(&ft);
+		return -1;
+	}
+
+	e=(struct ipt_entry*)rule;
+	et=(struct ipt_entry_target*)(rule+IPT_ENTRY_SZ);
+	
+	e->next_offset=FILTER_RULE_SZ;
+	e->target_offset=IPT_ENTRY_SZ;
+	memcpy(&(e->ip.dst),&not_inet_dst,sizeof(struct in_addr));
+	memcpy(&(e->ip.dmsk),&not_inet_dst_mask,sizeof(struct in_addr));
+	snprintf(e->ip.iniface,IFNAMSIZ,"%s+",TUNNEL_IFACE);
+	memset(e->ip.iniface_mask,1,strlen(e->ip.iniface));
+	e->ip.invflags=IPT_INV_DSTIP;
+
+	et->u.target_size=IPT_ENTRY_TARGET_SZ+4;
+	et->u.user.target_size=et->u.target_size;
+	strcpy(et->u.user.name,MARK_TARGET);
+	et.data=INET_MARK;
+}
+
+int ntk_mark_chain_init(iptc_handle_t *t)
+{
+	int res;
+	res=iptc_is_chain(NTK_MARK_CHAIN,*t);
+	if (res) {
+		debug(DBG_NORMAL,"In mark_init: bizarre, ntk mangle 
+				chain is present yet. it will be flushed.");
+		res=iptc_flush_entries(NTK_MARK_CHAIN,&t);
+		if (!res) 
+			goto dontwork;
+	} else {
+		res=iptc_create_chain(NTK_MARK_CHAIN,t);
+		if (!res) 
+			goto dontwork;
+		debug(DBG_NORMAL,"New iptables chain ntk_mark_chain (mangle table) created.");
+		debug(DBG_NORMAL,"-*- Don't touch this chain! -*-");
+	}
+	return 0;
+dontwork:
+	error("In ntk_mark_chain_init: -> %s", iptc_strerror(errno));
+	err_ret(ERR_NETCHA,-1)
+}
+int new_mark_init()
+{
+	int res;
+	iptc_handle_t t;
+	char rule[RESTORE_OUTPUT_RULE_SZ]; /* the grater rule */
+
+	res=table_init(MANGLE_TABLE,&t);
+	if (res) 
+		goto cannot_init;
+	res=ntk_mark_chain_init(&t);
+	if (res) 
+		goto cannot_init;
+	
+	restore_output_rule_init(rule);
+	res=insert_rule(rule,&t,CHAIN_OUTPUT,0);
+	if (res) 
+		goto cannot_init;
+	ntk_forward_rule_init(rule);
+	res=insert_rule(rule,&t,CHAIN_POSTROUTING,0);
+	if (res) 
+		goto cannot_init;
+
+	res=commit_rules(t);
+	if (res) 
+		goto cannot_init;
+	debug(DBG_NORMAL,"mark_init(): New chain ntk_mark_chain (mangle table) created.");
+	debug(DBG_NORMAL,"mark_init(): Forwarding to ntk_mark_chain rule created.");
+	debug(DBG_NORMAL,"mark_init(): Restoring mark rule created.");
+
+	res=table_init(FILTER_TABLE);
+	if (res) 
+		goto cannot_init;
+	igw_mark_rule_init(rule);
+	res=insert_rule(rule,&t,CHAIN_FORWARD,0);
+	if (res) 
+		goto cannot_init;
+	res=commit_rules(t);
+	if (res) 
+		goto cannot_init;
+	debug(DBG_NORMAL,"mark_init(): Marking igw conntction rule created.");
+	debug(DBG_NORMAL,"mark_init(): All's done.");
+	loginfo("Netfilter altered. Do NOT modify the first rules of:");
+	loginfo("    OUTPUT and POSTROUTING chains, mangle table");
+	loginfo("    FORWARD chain, filter table");
+	loginfo("    Don't touch the chain ntk_mark_chain in mangle table.");
+	loginfo("You're informed!");
+	return 0;
+
+cannot_init:
+	error(err_str);
+	err_ret(ERR_MRKINI,-1);
+}
+/* 
+ * Count the number of rules in ntk_mangle_chain.
+ *
+ * Returns:
+ * 	0
+ * 	-1
+ * 	nums
+ */ 
+int count_ntk_mark_chain(iptc_handle_t *t)
+{
+	int res,nchain=0;
+	const struct ipt_entry *e;
+
+	e=iptc_first_rule(NTK_MARK_CHAIN,t);
+	while (e) {
+		nchain++;
+		e=iptc_next_rule(e,t);
+	}
+	return nchain;
+}
+int new_create_mark_rules(int n)
+{
+	int nchain;
+	int res,i;
+	char rule[MARK_RULE_SZ];
+	iptc_handle_t t;
+
+	res=table_init(MANGLE_TABLE,&t);
+	if (res) {
+		error(err_str);
+		err_ret(ERR_NETRUL,-1);
+	}
+	nchain=count_ntk_mark_chain(&t);
+	if (nchain==-1) {
+		error("In create_mark_rules: can not read ntk_mark_chain.");
+		err_ret(ERR_NETRUL,-1);
+	} 
+	if (nchain>=n) {
+		debug(DBG_NORMAL,"In create_mark_rules: rules present yet.");
+		return 0;
+	}
+	for (i=nchain;i<n;i++) {
+		mark_rule_init(rule,TUNNEL_IFACE,i);
+		res=append_rule(NTK_MARK_CHAIN,(struct ipt_entry*)rule,&t);
+		if (!res) {
+			error(err_str);
+			err_ret(ERR_NETRUL,-1);
+		}
+	}
+	res=commit_rules(&t);
+	if (!res) {
+		error(err_str);
+		err_ret(ERR_NETRUL,-1);
+	}
+	debug(DBG_NORMAL,"Created %d marking rules.", n-nchain);
+	return 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+int delete_ntk_forward_chain()
+{
+	int res;
+	res=mgl_table_init();
+	if (res==-1) {
+		error("In delete_ntk_forward_chain: can not init mgl_table.");
+		return -1;
+	}
+	res=iptc_flush_entries(NTK_MARK_CHAIN,&mgl_table);
+        if (!res) {
+        	error("In mark_init: -> %s", iptc_strerror(errno));
+		return -1;
+	}
+	res=iptc_delete_chain(NTK_MARK_CHAIN,&mgl_table);
+	if (!res) {
+		error("In delete_ntk_forward_chain: can not delete ntk_mark_chain.");
+		iptc_commit(&mgl_table);
+		return -1;
+	}
+	res=iptc_commit(&mgl_table);
+	if (!res) {
+		error("In delete_ntk_forward_chain:: can not commit.");
+		return -1;
+	}
+	debug(DBG_NORMAL,"Mangle chain ntk_mark_chain flushed and deleted.");
+	return 0;
+}
 int mgl_table_init()
 {
 	mgl_table=iptc_init(MANGLE_TABLE);
@@ -127,45 +481,7 @@ int forward_inet_rule()
 	debug(DBG_NORMAL,"Netfilter inet marking rule created.");
 	return 0;
 }
-/* Put in ,rule, the rule to be passed to the kernel.
- * ,rule, has to be RESTORE_OUTPUT_RULE_SZ-sized
- */
-void restore_output_rule_init(unsigned char *rule)
-{
-	struct ipt_entry *ee;
-	struct ipt_entry_match *em;
-	struct ipt_entry_target *et;
-	struct ipt_conntrack_info *ici;
-	struct ipt_connmark_target_info *icmi;
 
-	memset(rule,0,RESTORE_OUTPUT_RULE_SZ);
-	
-	ee=(struct ipt_entry*)(rule);
-	em=(struct ipt_entry_match*)(rule+OFFSET_MATCH);
-	ici=(struct ipt_conntrack_info*)(rule+OFFSET_MATCH_INFO);
-	et=(struct ipt_entry_target*)(rule+OFFSET_TARGET);
-	icmi=(struct ipt_connmark_target_info*)(rule+OFFSET_TARGET_INFO);
-
-	ee->next_offset=RESTORE_OUTPUT_RULE_SZ;
-	ee->target_offset=OFFSET_TARGET;
-	snprintf(ee->ip.outiface,IFNAMSIZ,"%s+",TUNNEL_IFACE);
-	memset(ee->ip.outiface_mask,1,strlen(ee->ip.outiface));
-
-	strcpy(em->u.user.name,MOD_CONNTRACK);
-	em->u.match_size=MATCH_SZ;;
-	em->u.user.match_size=em->u.match_size;
-	
-	et->u.target_size=TARGET_SZ;
-	et->u.user.target_size=et->u.target_size;
-	strcpy(et->u.user.name,MOD_CONNMARK);
-
-	ici->flags=1;
-	ici->statemask|=IPT_CONNTRACK_STATE_BIT(IP_CT_RELATED);
-	ici->statemask|=IPT_CONNTRACK_STATE_BIT(IP_CT_ESTABLISHED);
-
-	icmi->mode=IPT_CONNMARK_RESTORE;
-	icmi->mask= 0xffffffffUL;
-}
 /* Create and commit the rule which will mark outgoing connections.
  * returns:
  * 	0
@@ -207,36 +523,7 @@ problems:
 	return -1;
 }
 
-void ntk_forward_rule_init(unsigned char *rule)
-{
-	struct ipt_entry *ee;
-	struct ipt_entry_match *em;
-	struct ipt_entry_target *et;
-	struct ipt_conntrack_info *ici;
-	
-	memset(rule,0,NTK_FORWARD_RULE_SZ);
-	
-	ee=(struct ipt_entry*)(rule);
-	em=(struct ipt_entry_match*)(rule+IPT_ENTRY_SZ);
-	ici=(struct ipt_conntrack_info*)(rule+OFFSET_MATCH_INFO);
-	et=(struct ipt_entry_target*)(rule+OFFSET_TARGET);
 
-	ee->next_offset=NTK_FORWARD_RULE_SZ;
-	ee->target_offset=OFFSET_TARGET;
-	snprintf(ee->ip.outiface,IFNAMSIZ,"%s+",TUNNEL_IFACE);
-	memset(ee->ip.outiface_mask,1,strlen(ee->ip.outiface));
-
-	strcpy(em->u.user.name,MOD_CONNTRACK);
-	em->u.match_size=MATCH_SZ;
-	em->u.user.match_size=em->u.match_size;
-
-	ici->flags=1;
-	ici->statemask|=IPT_CONNTRACK_STATE_BIT(IP_CT_NEW);
-
-	et->u.target_size=IPT_ENTRY_TARGET_SZ+4;
-	et->u.user.target_size=et->u.target_size;
-	strcpy(et->u.user.name,NTK_MARK_CHAIN);
-}
 
 int ntk_forward_rule_commit()
 {
@@ -294,45 +581,8 @@ int maybe_rule_present(unsigned char *rule,const char *chain,int rule_sz)
 	return 0;
 }
 
-void mark_rule_init(unsigned char *rule)
-{
-	struct ipt_entry *ee;
-	struct ipt_entry_target *et;
-	struct ipt_connmark_target_info *icmi;
 
-	memset(rule,0,MARK_RULE_SZ);
-	
-	ee=(struct ipt_entry*)(rule);
-	et=(struct ipt_entry_target*)(rule+IPT_ENTRY_SZ);
-	icmi=(struct ipt_connmark_target_info*)(rule+IPT_ENTRY_SZ+IPT_ENTRY_TARGET_SZ);
 
-	ee->next_offset=MARK_RULE_SZ;
-	ee->target_offset=IPT_ENTRY_SZ;
-
-	et->u.target_size=TARGET_SZ;
-	et->u.user.target_size=et->u.target_size;
-	strcpy(et->u.user.name,MOD_CONNMARK);
-
-	icmi->mode=IPT_CONNMARK_SET;
-	icmi->mask= 0xffffffffUL;
-}
-int fill_mark_rule(unsigned char *rule,char *outiface,int outiface_num)
-{
-	struct ipt_entry *ee;
-	struct ipt_connmark_target_info *icmi;
-
-	if (outiface_num>MAX_MARK_RULES) {
-		error("In fill_mark_rule: too many mark rules.");
-		return -1;
-	}
-	ee=(struct ipt_entry*)rule;
-	icmi=(struct ipt_connmark_target_info*)(rule+MARK_RULE_SZ-IPT_CM_TARGET_INFO_SZ);
-
-	snprintf(ee->ip.outiface,IFNAMSIZ,"%s%d",outiface,outiface_num);
-	memset(ee->ip.outiface_mask,1,strlen(ee->ip.outiface));
-	icmi->mark=outiface_num+1;
-	return 0;
-}
 int create_mark_rules(int n)
 {
 	int nchain;
@@ -343,21 +593,6 @@ int create_mark_rules(int n)
 		error("In create_mark_rules: can not read ntk_mark_chain.");
 		err_ret(ERR_NETRUL,-1);
 	} 
-/*	if (nchain==0) {
-		loginfo("This is the first mark rule: now creating restore-marking and forward rules.");
-		res=output_rule_commit();
-		if (res) {
-			//error("In create_mark_rules: can not create restore-marking rule.");
-			printf("In create_mark_rules: can not create restore-marking rule.");
-			return -1;
-		}
-		res=ntk_forward_rule_commit();
-		if (res) {
-			//error("In create_mark_rules: can not create ntk-forward rule.");
-			printf("In create_mark_rules: can not create ntk-forward rule.");
-			return -1;
-		}
-	}*/
 	if (nchain>=n) {
 		debug(DBG_NORMAL,"In create_mark_rules: rules present yet.");
 		return 0;
@@ -447,35 +682,7 @@ cannot_init:
 	err_ret(ERR_MRKINI,-1);
 }
 
-/* 
- * Count the number of rules in ntk_mangle_chain.
- *
- * Returns:
- * 	0
- * 	-1
- * 	nums
- */ 
-int count_ntk_mark_chain()
-{
-	int res,nchain=0;
-	const struct ipt_entry *e;
-	res=mgl_table_init();
-	if (res) {
-		error("In count_ntk_mark_chani: can not init mgl_table.");
-		return -1;
-	}
-	e=iptc_first_rule(NTK_MARK_CHAIN,&mgl_table);
-	while (e) {
-		nchain++;
-		e=iptc_next_rule(e,&mgl_table);
-	}
-	res=iptc_commit(&mgl_table);
-	if (!res) {
-		error("In count_ntk_mark_chain: can not close mgl_table.");
-		return -1;
-	}
-	return nchain;
-}
+
 
 int delete_rule_if_exists(unsigned char *rule,const char *chain,int size)
 {
@@ -507,33 +714,7 @@ int delete_rule_if_exists(unsigned char *rule,const char *chain,int size)
 	return 0;
 }
 
-int delete_ntk_forward_chain()
-{
-	int res;
-	res=mgl_table_init();
-	if (res==-1) {
-		error("In delete_ntk_forward_chain: can not init mgl_table.");
-		return -1;
-	}
-	res=iptc_flush_entries(NTK_MARK_CHAIN,&mgl_table);
-        if (!res) {
-        	error("In mark_init: -> %s", iptc_strerror(errno));
-		return -1;
-	}
-	res=iptc_delete_chain(NTK_MARK_CHAIN,&mgl_table);
-	if (!res) {
-		error("In delete_ntk_forward_chain: can not delete ntk_mark_chain.");
-		iptc_commit(&mgl_table);
-		return -1;
-	}
-	res=iptc_commit(&mgl_table);
-	if (!res) {
-		error("In delete_ntk_forward_chain:: can not commit.");
-		return -1;
-	}
-	debug(DBG_NORMAL,"Mangle chain ntk_mark_chain flushed and deleted.");
-	return 0;
-}
+
 
 void mark_close()
 {

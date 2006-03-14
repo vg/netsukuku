@@ -72,8 +72,10 @@ static const char *err_strings[] = {
 	"Invalid hostname.",			/* ERR_HNINVL */
 	"Unknow (or not impl.) query type.",	/* ERR_UFOTOQ */
 	"mark_init error!.",			/* ERR_MRKINI */
-	"netfilter interface not loadable.",	/* ERR_NETFIL */
+	"netfilter table not loadable.",	/* ERR_NETFIL */
 	"error adding netfilter rules.",	/* ERR_NETRUL */
+	"error committing netfilter rules.",	/* ERR_NETCOM */
+	"error initializing ntk_mark_chain.",	/* ERR_NETCHA */
 };
 #define ERR_UFOERR	-1
 #define ERR_MLFDPK	-2
@@ -94,6 +96,8 @@ static const char *err_strings[] = {
 #define ERR_MRKINI	-17
 #define ERR_NETFIL	-18
 #define ERR_NETRUL	-19
+#define ERR_NETCOM	-20
+#define ERR_NETCHA	-20
 
 #define ERR_OVERFLOW    "Error number does not exist."
 
