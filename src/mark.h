@@ -54,6 +54,7 @@ iptc_handle_t ntk_mrk_chain;
 /* Functions */
 
 int mgl_table_init();
+int forward_inet_rule();
 void restore_output_rule_init(unsigned char *rule);
 int output_rule_commit();
 void ntk_forward_rule_init(unsigned char *rule);
