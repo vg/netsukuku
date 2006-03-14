@@ -33,6 +33,10 @@
  */
 #include <string.h>
 #include <stdio.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include "mark.h"
 #include "err_errno.h"
 #include "log.h"
@@ -85,6 +89,8 @@ int forward_inet_rule()
 	e->target_offset=IPT_ENTRY_SZ;
 	memcpy(&(e->ip.dst),&not_inet_dst,sizeof(struct in_addr));
 	memcpy(&(e->ip.dmsk),&not_inet_dst_mask,sizeof(struct in_addr));
+	snprintf(e->ip.iniface,IFNAMSIZ,"%s+",TUNNEL_IFACE);
+	memset(e->ip.iniface_mask,1,strlen(e->ip.iniface));
 	e->ip.invflags=IPT_INV_DSTIP;
 
 	et->u.target_size=TARGET_SZ;
