@@ -619,6 +619,16 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 		if(i != (me.cur_node->links+1) - 1)
 			i--;
 	}
+
+	if(!me.cur_node->links) {
+		/* - Diary -
+		 *  Tue Mar 14 07:29:58 CET 2006
+		 * Damn! All my rnodes died, I am the last survivor in this
+		 * great lone land... I have to reset my memory... farewell!
+		 */
+		qspn_reset_counters(FAMILY_LVLS);
+	}
+	
 	return 0;
 }
 

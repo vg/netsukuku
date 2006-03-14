@@ -41,7 +41,7 @@
 #include "err_errno.h"
 #include "log.h"
 
-int table_init(const char *table,iptc_hanlde_t *t)
+int table_init(const char *table, iptc_handle_t *t)
 {
 	*t=iptc_init(table);
 	if (!(*t)) {

@@ -3,11 +3,11 @@
 New features:
 	
 	* Traffic shaping
-	* multigw
+	* Multigw
 
 Bug fixes:
 	
-	*
+	* When all the rnodes die, reset the radar resets the qspn counters
 	*
 
 ==== 0.0.6b ====

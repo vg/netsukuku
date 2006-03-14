@@ -12,8 +12,6 @@
 
 - Internet Gateway Search
 	- multigw
-	- test
-		- traffic shaping
 	- update the howto:
 		- traffic shaping
 		- multigw

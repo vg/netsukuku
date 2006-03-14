@@ -59,7 +59,9 @@ INT_INFO map_gnode_iinfo = { 1,
 #define MAP_GNODE_PACK_SZ	(MAP_NODE_PACK_SZ+sizeof(u_char)*2+sizeof(int))
 
 
-/* * * Levels stuff * * *
+/*
+ * 			* * * Levels notes * * *
+ * 			
  * These are the levels of the external_map. Note that the 0 level is never used 
  * for the ext_map because it corresponds to the internal map. Btw the 0 level is 
  * counted so the number of LEVELS includes it too. 
