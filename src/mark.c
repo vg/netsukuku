@@ -464,7 +464,6 @@ int mark_close()
 			error("Netfilter ntk-chain on mangle table was not flushed and removed!");
 			errs++;
 		}
-		printf("QUIIIIII\n");
 		res=commit_rules(&t);
 		if (res) {
 			error(err_str);
