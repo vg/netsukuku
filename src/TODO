@@ -11,10 +11,9 @@
 - Equalize multipath routes
 
 - Internet Gateway Search
-	- multigw
-	- update the howto:
-		- traffic shaping
-		- multigw
+	- connmark goes mad if the routing cache is flushed. What is
+	  happening?
+	- anti loop multi-inet_gw
 
 - Flash NetsukukuD into an AP and test it.
 

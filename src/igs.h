@@ -58,7 +58,11 @@
 #define MAXIGWS			MAXGROUPNODE	/* max number of internet 
 						   gateways in each level */
 
-#define RTTABLE_IGW		221		/* Routing tables from 221 to 252 */
+#define RTTABLE_IGW		221		/* Routing tables from 221 to 244 */
+#define RTTABLE_ALISHIELD	245		/* Anti Loop multi-Igw Shield
+						   (what a damn long name, read the Ntk_IGS
+						   RFC) */
+#define FWMARK_ALISHIELD	25
 
 #ifdef DEBUG
 #undef INET_NEXT_PING_WAIT
@@ -71,7 +75,7 @@
 #define IGW_TUNNELED		1
 #define IGW_ACTIVE		(1<<1)		/* This gw is being used in the
 						   routing table */
-#define IGW_RTRULE		(1<<2)		/* The relative table is already 
+#define IGW_RTRULE		(1<<2)		/* The relative routing rule is already
 						   present */
 
 /*

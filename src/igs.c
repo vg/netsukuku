@@ -46,6 +46,8 @@
 #include "err_errno.h"
 
 
+int igw_multi_gw_disabled;
+
 /*
  * bandwidth_in_8bit:
  * `x' is the bandwidth value expressed in Kb/s.
@@ -282,6 +284,7 @@ void init_internet_gateway_search(void)
 	int i, ret,res;
 
 	active_gws=0;
+	igw_multi_gw_disabled=0;
 	memset(multigw_nh, 0, sizeof(igw_nexthop)*MAX_MULTIPATH_ROUTES);
 
         if(!restricted_mode)
@@ -311,8 +314,12 @@ void init_internet_gateway_search(void)
 	 * Init netfilter
 	 */
 	 res=mark_init();
-	 if (res==-1)
+	 if (res==-1) {
 		 error(err_str);
+		 error("Cannot set the netfilter rules needed for the multi-igw. "
+				 "This feature will be disabled");
+		 igw_multi_gw_disabled=1;
+	 }
 
 	/* 
 	 * Check anomalies: from this point we initialize stuff only if we
@@ -383,6 +390,18 @@ void init_internet_gateway_search(void)
 				inet_to_str(server_opt.inet_gw),
 				server_opt.inet_gw_dev);
 	active_gws++;
+
+	/*
+	 * Activate the anti-loop multi-igw shield
+	 */
+	rule_add(0, 0, 0, 0, FWMARK_ALISHIELD, RTTABLE_ALISHIELD);
+	if(rt_replace_def_gw(server_opt.inet_gw_dev, server_opt.inet_gw,
+				RTTABLE_ALISHIELD)) {
+		error("Cannot set the default route in the ALISHIELD table. "
+				"Disabling the multi-inet_gw feature");
+		igw_multi_gw_disabled=1;
+	}
+
 	
 	/*
 	 * Activate the traffic shaping for the `server_opt.inet_gw_dev'
@@ -924,8 +943,12 @@ void reset_igw_nexthop(igw_nexthop *igwn)
  */
 void reset_igw_rules(void)
 {
+	/*
+	 * Reset each rule added for a tunnel-nexthop
+	 * and the rule used for the Anti-loop multi-igw shield.
+	 */
 	rule_flush_table_range(my_family, RTTABLE_IGW, 
-			RTTABLE_IGW+MAX_MULTIPATH_ROUTES-1);
+			RTTABLE_IGW+MAX_MULTIPATH_ROUTES);
 }
 
 /*
@@ -992,7 +1015,9 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 #ifndef IGS_MULTI_GW
 		if(ni)
 			break;
-#endif
+#else
+		if(ni && igw_multi_gw_disabled)
+			break;
 
 		/* Reorder igws[level] */
 		igw_order(igws, igws_counter, my_igws, level);
