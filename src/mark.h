@@ -24,9 +24,6 @@
 #define NTK_NET_STR		"10.0.0.0"
 #define NTK_NET_MASK_STR	"255.0.0.0"
 
-iptc_handle_t mgl_table;
-iptc_handle_t ntk_mrk_chain;
-
 #define IPT_ENTRY_SZ		sizeof(struct ipt_entry)
 #define IPT_ENTRY_MATCH_SZ	sizeof(struct ipt_entry_match)
 #define IPT_ENTRY_TARGET_SZ	sizeof(struct ipt_entry_target)
@@ -48,26 +45,27 @@ iptc_handle_t ntk_mrk_chain;
 
 #define NTK_FORWARD_RULE_SZ	OFFSET_TARGET_INFO+4
 
-#define FILTER_RULE_SZ		IPT_ENTRY_SZ+IPT_ANTRY_SZ+4
+#define FILTER_RULE_SZ		IPT_ENTRY_SZ+IPT_ENTRY_SZ+4
 #define INET_MARK		25
 
+struct in_addr not_inet_dst,not_inet_dst_mask;
 
 /* Functions */
 
-int mgl_table_init();
-int forward_inet_rule();
+int table_init(const char *table, iptc_handle_t *t);
+int insert_rule(const char *rule,iptc_handle_t *t,const char *chain,int pos);
+int append_rule(const char *rule,iptc_handle_t *t,const char *chain);
+int commit_rules(iptc_handle_t *t);
 void restore_output_rule_init(unsigned char *rule);
-int output_rule_commit();
 void ntk_forward_rule_init(unsigned char *rule);
-int ntk_forward_rule_commit();
-int maybe_rule_present(unsigned char *rule,const char *chain,int rule_sz);
-void mark_rule_init(unsigned char *rule);
-int fill_mark_rule(unsigned char *rule,char *outiface,int outiface_num);
+void mark_rule_init(unsigned char *rule,char *outiface,int outiface_num);
+void igw_mark_rule_init(char *rule);
+int ntk_mark_chain_init(iptc_handle_t *t);
+int mark_init();
+int count_ntk_mark_chain(iptc_handle_t *t);
 int create_mark_rules(int n);
-int mark_init(void);
-int count_ntk_mark_chain();
-int delete_rule_if_exists(unsigned char *rule,const char *chain,int size);
-int delete_ntk_forward_chain();
-void mark_close();
+int delete_ntk_forward_chain(iptc_handle_t *t);
+int delete_first_rule(iptc_handle_t *t,const char *chain);
+int mark_close();
 
 #endif /* MARK_H */

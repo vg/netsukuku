@@ -76,6 +76,7 @@ static const char *err_strings[] = {
 	"error adding netfilter rules.",	/* ERR_NETRUL */
 	"error committing netfilter rules.",	/* ERR_NETCOM */
 	"error initializing ntk_mark_chain.",	/* ERR_NETCHA */
+	"error deleting ntk_mark_chain.",	/* ERR_NETDEL */
 };
 #define ERR_UFOERR	-1
 #define ERR_MLFDPK	-2
@@ -97,7 +98,8 @@ static const char *err_strings[] = {
 #define ERR_NETFIL	-18
 #define ERR_NETRUL	-19
 #define ERR_NETCOM	-20
-#define ERR_NETCHA	-20
+#define ERR_NETCHA	-21
+#define ERR_NETDEL	-22
 
 #define ERR_OVERFLOW    "Error number does not exist."
 
@@ -117,7 +119,7 @@ const char *err_func,*err_file;
 #define __err_strerror(n)                                       \
 ({                                                              \
         int __n=-((n)+1);                                       \
-        __n>=ERR_NERR?                                          \
+        (__n>=ERR_NERR || __n<0)?                               \
                 ERR_OVERFLOW:                                   \
                 err_strings[__n];                               \
 })
