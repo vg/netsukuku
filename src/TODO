@@ -8,8 +8,6 @@
 	- depends on iptables
 	- lartc
 
-- Equalize multipath routes
-
 - Internet Gateway Search
 	- connmark goes mad if the routing cache is flushed. What is
 	  happening?
@@ -20,6 +18,8 @@
 		[MEDIUM PRIORITY] 
 
 - do not delete a tunnel-gw if there is still traffic on it
+
+- Equalize multipath routes
 
 - set the TOS for the ANDNA resolve requests
   

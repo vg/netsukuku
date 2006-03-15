@@ -314,7 +314,7 @@ void init_internet_gateway_search(void)
 	 * Init netfilter
 	 */
 	 res=mark_init();
-	 if (res==-1) {
+	 if (res) {
 		 error(err_str);
 		 error("Cannot set the netfilter rules needed for the multi-igw. "
 				 "This feature will be disabled");
@@ -1018,6 +1018,7 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 #else
 		if(ni && igw_multi_gw_disabled)
 			break;
+#endif
 
 		/* Reorder igws[level] */
 		igw_order(igws, igws_counter, my_igws, level);
