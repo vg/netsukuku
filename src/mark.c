@@ -380,13 +380,13 @@ int create_mark_rules(int n)
 	for (i=nchain;i<n;i++) {
 		mark_rule_init(rule,TUNNEL_IFACE,i);
 		res=append_rule(rule,&t,NTK_MARK_CHAIN);
-		if (!res) {
+		if (res) {
 			error(err_str);
 			err_ret(ERR_NETRUL,-1);
 		}
 	}
 	res=commit_rules(&t);
-	if (!res) {
+	if (res) {
 		error(err_str);
 		err_ret(ERR_NETRUL,-1);
 	}
