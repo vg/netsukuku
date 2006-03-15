@@ -398,6 +398,9 @@ int delete_ntk_forward_chain(iptc_handle_t *t)
 {	
 	int res;
 
+	res=iptc_is_chain(NTK_MARK_CHAIN,*t);
+	if (!res)
+		return 0;
 	res=iptc_flush_entries(NTK_MARK_CHAIN,t);
         if (!res) 
 		goto cannot_delete;
@@ -413,7 +416,11 @@ cannot_delete:
 int delete_first_rule(iptc_handle_t *t,const char *chain)
 {
 	int res;
+	const struct ipt_entry *e;
 
+	e=iptc_first_rule(chain,t);
+	if (!e)
+		return 0;
 	res=iptc_delete_num_entry(chain,0,t);
 	if (!res)
 		goto cannot_delete;
