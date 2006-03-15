@@ -334,7 +334,7 @@ int mark_init()
 		debug(DBG_NORMAL,"mark_init(),FILTER_TABLE: %d (0-1) errors encountered.",errss);
 	if (!errs && !errss)
 		debug(DBG_NORMAL,"mark_init(): All's done.");*/
-	return errs;
+	return -errs;
 }
 /* 
  * Count the number of rules in ntk_mangle_chain.
@@ -481,5 +481,5 @@ int mark_close()
 	}
 	debug(DBG_NORMAL,"Netfilter filter table restored with %d errors (0-1).",errss);
 	res=table_init(FILTER_TABLE,&t);*/
-	return errs;
+	return -errs;
 }
