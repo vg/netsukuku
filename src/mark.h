@@ -61,7 +61,7 @@ void ntk_forward_rule_init(unsigned char *rule);
 void mark_rule_init(unsigned char *rule,char *outiface,int outiface_num);
 void igw_mark_rule_init(char *rule);
 int ntk_mark_chain_init(iptc_handle_t *t);
-int mark_init();
+int mark_init(int igw);
 int count_ntk_mark_chain(iptc_handle_t *t);
 int create_mark_rules(int n);
 int delete_ntk_forward_chain(iptc_handle_t *t);

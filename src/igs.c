@@ -313,7 +313,7 @@ void init_internet_gateway_search(void)
 	/*
 	 * Init netfilter
 	 */
-	 res=mark_init();
+	 res=mark_init(0);
 	 if (res) {
 		 error(err_str);
 		 error("Cannot set the netfilter rules needed for the multi-igw. "

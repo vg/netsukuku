@@ -244,7 +244,7 @@ dontwork:
 	error("In ntk_mark_chain_init: -> %s", iptc_strerror(errno));
 	err_ret(ERR_NETCHA,-1)
 }
-int mark_init()
+int mark_init(int igw)
 {
 	int res;
 	iptc_handle_t t;
@@ -288,12 +288,14 @@ int mark_init()
 			error("Netfilter restore-marking rule was not created!");
 			errs++;
 		}	
-		igw_mark_rule_init(rule);
-		res=insert_rule(rule,&t,CHAIN_FORWARD,0);
-		if (res) {
-			error(err_str);
-			error("Netfilter igw death loop rule was not created!");
-			errs+=1;
+		if (igw) {
+			igw_mark_rule_init(rule);
+			res=insert_rule(rule,&t,CHAIN_FORWARD,0);
+			if (res) {
+				error(err_str);
+				error("Netfilter igw death loop rule was not created!");
+				errs+=1;
+			}
 		}
 		res=commit_rules(&t);
 		if (res) {
