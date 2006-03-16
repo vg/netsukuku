@@ -48,7 +48,8 @@
 #define FILTER_RULE_SZ		IPT_ENTRY_SZ+IPT_ENTRY_SZ+4
 #define INET_MARK		25
 
-struct in_addr not_inet_dst,not_inet_dst_mask;
+struct in_addr inet_dst,not_inet_dst_mask;
+struct ipt_entry *rr,*fr,*dr;
 
 /* Functions */
 

@@ -203,7 +203,7 @@ void igw_mark_rule_init(char *rule)
 	int res;
 	struct ipt_entry *e;
 	struct ipt_entry_target *et;
-//	struct in_addr not_inet_dst,not_inet_dst_mask;
+//	struct in_addr inet_dst,not_inet_dst_mask;
 
 	memset(rule,0,FILTER_RULE_SZ);
 	e=(struct ipt_entry*)rule;
@@ -211,8 +211,8 @@ void igw_mark_rule_init(char *rule)
 	
 	e->next_offset=FILTER_RULE_SZ;
 	e->target_offset=IPT_ENTRY_SZ;
-	memcpy(&(e->ip.dst),&not_inet_dst,sizeof(struct in_addr));
-	memcpy(&(e->ip.dmsk),&not_inet_dst_mask,sizeof(struct in_addr));
+	memcpy(&(e->ip.dst),&inet_dst,sizeof(struct in_addr));
+	memcpy(&(e->ip.dmsk),&inet_dst_mask,sizeof(struct in_addr));
 	snprintf(e->ip.iniface,IFNAMSIZ,"%s+",TUNNEL_IFACE);
 	memset(e->ip.iniface_mask,1,strlen(e->ip.iniface));
 	e->ip.invflags=IPT_INV_DSTIP;
@@ -253,15 +253,15 @@ int mark_init(int igw)
 	char rule[RESTORE_OUTPUT_RULE_SZ]; /* the greater rule */
 	int errs=0;
 
-	res=inet_aton(NTK_NET_STR,&not_inet_dst);
+	res=inet_aton(NTK_NET_STR,&inet_dst);
 	if (!res) {
-		error("Strange error.");
-		return -1;
+		error("Can not convert str to addr.");
+		err_ret(ERR_MRKINI,-1);
 	}
-	res=inet_aton(NTK_NET_MASK_STR,&not_inet_dst_mask);
+	res=inet_aton(NTK_NET_MASK_STR,&inet_dst_mask);
 	if (!res) {
-		error("Strange error.");
-		return -1;
+		error("Can not convert str to addr.");
+		err_ret(ERR_MRKINI,-1);
 	}
 
 	res=table_init(MANGLE_TABLE,&t);
