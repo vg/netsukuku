@@ -40,7 +40,8 @@
 #define NK_NTK                  1
 #define NK_INET                 2
 
-char *QTYPE_STR_LIST[]={QTYPE_A_STR,QTYPE_PTR_STR,QTYPE_MX_STR,QTYPE_MXPTR_STR};
+char *QTYPE_STR_LIST[]={QTYPE_A_STR,QTYPE_PTR_STR,\
+			QTYPE_MX_STR,QTYPE_MXPTR_STR};
 int QT_LEN=4;
 int QTP_LEN=4;
 
@@ -55,12 +56,13 @@ int QTP_LEN=4;
 			
 typedef struct ntkdig_opts {
 	struct sockaddr_in	ns[MAX_NS];
-	uint8_t			ns_len;
-	uint8_t			ns_lhost;
-	uint8_t			qt;
-	uint8_t			pt;
-	uint8_t			realm;
-	uint8_t			silent;
+	int8_t			ns_len;
+	int8_t			ns_lhost;
+	int8_t			port;
+	int8_t			qt;
+	int8_t			pt;
+	int8_t			realm;
+	int8_t			silent;
 	char*			question;
 } ntkdig_opts;
 
@@ -138,5 +140,24 @@ ntkdig_opts globopts;
 	}							\
 	__e;})
 
+
+
+void print_usage();
+void print_version();
+void init_opts();
+int opt_set_ns(char *s,int limit);
+int opt_set_qtype(char *s);
+int opt_set_ptype(char *s);
+int opt_set_realm(char *s);
+int ns_init(const char *hostname,int nslimit);
+int ask_query(char *q,int qlen,char *an,int *anlen,struct sockaddr_in *saddr);
+void print_question(andns_pkt *ap);
+void print_answer_name(andns_pkt_data *apd);
+void print_answer_addr(andns_pkt_data *apd);
+andns_pkt* andns_pkt_from_opts();
+int do_command();
+int handle_answer(char *answ,int alen);
+int main(int argc,char **argv);
+int imain(int argc,char **argv);
 
 #endif /* NTK_DIG_H */

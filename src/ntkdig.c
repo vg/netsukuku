@@ -24,7 +24,7 @@
 #include "andns_mem.h"
 #include "andns_pkt.h"
 #include "ntkdig.h"
-
+#include "log.h"
 #include "err_errno.h"
 
 void print_usage() 
@@ -33,8 +33,8 @@ void print_usage()
 		"\tntkdig [OPTIONS] host\n\n"
 		" -v --version		print version, then exit.\n"
 		" -n --nameserver=ns	use nameserver `ns' instead of localhost.\n"
+		" -p --port=port		nameserver port, default 53.\n"
 		" -t --query-type=qt	query type (default A).\n"
-/*		" -p --proto-type=pt	protocol to be used (default andns).\n"*/
 		" -r --realm=realm	inet or netsukuku (default) realm to scan.\n"
 		" -s --silent		ntkdig will be not loquacious.\n"
 		" -h --help		display this help, then exit.\n\n");
@@ -63,6 +63,7 @@ void init_opts()
 	globopts.qt=QTYPE_A;
 	globopts.pt=PROTO_ANDNS;
 	globopts.realm=REALM_NTK;
+	globopts.port=htons(NTKDIG_PORT);
 }
 	
 int opt_set_ns(char *s,int limit)
@@ -72,9 +73,9 @@ int opt_set_ns(char *s,int limit)
 	globopts.ns_lhost=0;
 	return res;
 }
-uint8_t opt_set_qtype(char *s)
+int opt_set_qtype(char *s)
 {
-	uint8_t res;
+	int res;
 	res=QTFROMPREF(s);
 	globopts.qt=res;
 	return res;
@@ -97,6 +98,18 @@ int opt_set_realm(char *s)
 	else return -1;
 	return 0;
 }
+int opt_set_port(char *s)
+{
+	int port;
+	port=atoi(s);
+	if (!port)
+		return -1;
+	globopts.port=htons(port);
+	if (globopts.ns_len) 
+		for (port=0;port<globopts.ns_len;port++)
+			(globopts.ns+port)->sin_port=globopts.port;
+	return 0;
+}
 int ns_init(const char *hostname,int nslimit)
 {
 	int res;
@@ -117,6 +130,7 @@ int ns_init(const char *hostname,int nslimit)
 			continue;
 		memcpy(globopts.ns+globopts.ns_len,aip->ai_addr,
 				sizeof(struct sockaddr_in));
+		(globopts.ns+globopts.ns_len)->sin_port=globopts.port;
 		globopts.ns_len++;
 	}
 	if (!globopts.ns_len) {
@@ -210,13 +224,10 @@ int do_command()
 		printf("Sending packet failed.\n");
 		exit(1);
 	}
-	else 
-		printf("Uau!\n");
-
 	
 	res=handle_answer(answ,answlen);
 	if (res==-1) {
-		error(err_str);
+		printf(err_str);
 		exit(1);
 	}
 	return 0;
@@ -272,74 +283,15 @@ int handle_answer(char *answ,int alen)
 	return 0;
 			
 }
-	/* 
-	 * Query is ntk-related and directed to localhost:53 
-	 * No need to send packet.
-	 * Use andna.
-	 */
-	/*if (globopts.realm==REALM_NTK && globopts.ns_lhost) {
-		switch (globopts.qt) {
-			case QTYPE_A:
-				res=andna_resolve_hname(s, &ipres);
-				if (res==-1) 
-					printf("Ntk host %s does not exist.\n");
-				else
-					printf("%s\n",inet_to_str(ipres));
-				exit(0);
-				break;
-			case QTYPE_PTR:
-				char **hnames;
-				res=str_to_inet(s,&ipres);
-				if (res==-1) {
-					printf("Invalid address %s\n",s);
-					exit(1);
-				}
-				res=andna_reverse_resolve(ipres,&hnames);
-				if (res==-1) {
-					printf("Address %s has no hostname\n",s);
-					exit(1);
-				}
-				for(i=0;i<res;i++) {
-					printf("%s\n",hnames+i);
-					xfree(hnames+i);
-				}
-				xfree(hnames);
-				exit(0);
-				break;
-			case QTYPE_MX:
-				printf("Not implemented.\n");
-				exit(0);
-				break;
-			case QTYPE_MXPTR:
-				printf("Not implemented.\n");
-				exit(0);
-				break;
-			default:
-				printf("Where do you wish to go today? :P\n");
-				exit(1);
-				break;
-		}
-	}*/
-	/* query is ntk-related, but directed to remote host. Use andns proto.*/
-	/*if (globopts.realm==REALM_NTK) {
-	}
-	else {
-		printf("Not implemented.\n");
-		exit(1);
-	}
-	return 0;
-}*/
 
-
-int main()
+int imain(int argc,char **argv)
 {
 	andns_pkt *ap;
 	andns_pkt_data *apd;
 	char a[1024];
 	int o;
-	log_init("CCC",6,1);
-	printf("IHII %d\n",sizeof(struct in_addr));
 	
+	log_init(argv[0],0,1);
 	memset(&globopts,0,sizeof(ntkdig_opts));
 	ap=create_andns_pkt();
 	ap->id=rand()>>16;
@@ -368,7 +320,7 @@ int main()
 	return 0;
 }
 	
-int imain(int argc,char **argv) 
+int main(int argc,char **argv) 
 {
 	int c,res;
 	extern int optind, opterr, optopt;
@@ -378,6 +330,7 @@ int imain(int argc,char **argv)
 	struct option longopts[]= {
 		{"version",0,0,'v'},
 		{"nameserver",1,0,'n'},
+		{"port",1,0,'p'},
 		{"query-type",1,0,'t'},
 		{"realm",1,0,'r'},
 		{"silent",0,0,'s'},
@@ -403,7 +356,7 @@ int imain(int argc,char **argv)
 			case 'n':
 				res=opt_set_ns(optarg,0);
 				if (res) {
-					printf("Nameserver specified is not friendly.\n");
+					printf("Nameserver `%s' is not friendly.\n",optarg);
 					exit(1);
 					break;
 				}
@@ -411,7 +364,7 @@ int imain(int argc,char **argv)
 			case 't':
 				res=opt_set_qtype(optarg);
 				if (res==-1) {
-					printf("Query type %s is not valid.\n\n"
+					printf("Query type `%s' is not valid.\n\n"
 						"Valid query types are:\n"
 						" a\thost -> ip\n"
 						" mx\thost -> mx\n"
@@ -422,18 +375,14 @@ int imain(int argc,char **argv)
 					break;
 				}
 				break;
-		/*	case 'p':
-				res=opt_set_ptype(optarg);
+			case 'p':
+				res=opt_set_port(optarg);
 				if (res) {
-					printf("Proto type %s is not valid.\n\n"
-						"Valid protocols are:\n"
-						" andns\tandns protocol\n"
-						" dns\tdns protocol\n"
-						"(or univoque abbreviation)\n\n",optarg);
+					printf("Port `%s' is not a valid port.\n",optarg);
 					exit(1);
 					break;
 				}
-				break;*/
+				break;
 			case 'r':
 				res=opt_set_realm(optarg);
 				if (res) {
@@ -464,10 +413,3 @@ int imain(int argc,char **argv)
 	res=do_command();
 	return 0;
 }
-			
-				
-
-	
-
-	
-
