@@ -42,6 +42,8 @@
 #include "log.h"
 
 int death_loop_rule;
+int clean_on_exit;
+rule_store rr={0,0},fr={0,0},dr={0,0};
 
 int table_init(const char *table, iptc_handle_t *t)
 {
@@ -238,82 +240,134 @@ int ntk_mark_chain_init(iptc_handle_t *t)
 		res=iptc_create_chain(NTK_MARK_CHAIN,t);
 		if (!res) 
 			goto dontwork;
-		debug(DBG_NORMAL,"New iptables chain ntk_mark_chain (mangle table) created.");
-		debug(DBG_NORMAL,"-*- Don't touch this chain! -*-");
 	}
 	return 0;
 dontwork:
 	error("In ntk_mark_chain_init: -> %s", iptc_strerror(errno));
 	err_ret(ERR_NETCHA,-1)
 }
+int store_rules()
+{
+	int res;
+	iptc_handle_t t;
+
+	res=table_init(MANGLE_TABLE,&t);
+	if (res) {
+		error(err_str);
+		err_ret(ERR_NETSTO,-1);
+	}
+	rr.e=(struct ipt_entry*)iptc_first_rule(CHAIN_OUTPUT,&t);
+	fr.e=(struct ipt_entry*)iptc_first_rule(CHAIN_POSTROUTING,&t);
+	/* Not elegant style, but faster */
+	if (death_loop_rule) {
+		dr.e=(struct ipt_entry*)iptc_first_rule(CHAIN_FORWARD,&t);
+		if (rr.e && fr.e && dr.e) {
+			rr.sz=RESTORE_OUTPUT_RULE_SZ;
+			rr.chain=CHAIN_OUTPUT;
+			fr.sz=NTK_FORWARD_RULE_SZ;
+			fr.chain=CHAIN_POSTROUTING;
+			dr.sz=FILTER_RULE_SZ;
+			dr.chain=CHAIN_FORWARD;
+			commit_rules(&t);
+			return 0;
+		}
+		else {
+			commit_rules(&t);
+			err_ret(ERR_NETSTO,-1);
+		}
+	}
+	if (rr.e && fr.e ) {
+		rr.sz=RESTORE_OUTPUT_RULE_SZ;
+		rr.chain=CHAIN_OUTPUT;
+		fr.sz=NTK_FORWARD_RULE_SZ;
+		fr.chain=CHAIN_POSTROUTING;
+		commit_rules(&t);
+		return 0;
+	}
+	commit_rules(&t);
+	err_ret(ERR_NETSTO,-1);
+}
+
+
+
+	
 int mark_init(int igw)
 {
 	int res;
 	iptc_handle_t t;
-	char rule[RESTORE_OUTPUT_RULE_SZ]; /* the greater rule */
-	int errs=0;
+	char rule[MAX_RULE_SZ];
 
 	res=inet_aton(NTK_NET_STR,&inet_dst);
 	if (!res) {
 		error("Can not convert str to addr.");
-		err_ret(ERR_MRKINI,-1);
+		goto cannot_init;
 	}
 	res=inet_aton(NTK_NET_MASK_STR,&inet_dst_mask);
 	if (!res) {
 		error("Can not convert str to addr.");
-		err_ret(ERR_MRKINI,-1);
+		goto cannot_init;
 	}
 
 	res=table_init(MANGLE_TABLE,&t);
 	if (res) {
 		error(err_str);
-		error("Netfilter mangle table was not altered!");
-		errs+=4;
-	} else {
-		res=ntk_mark_chain_init(&t);
-		if (res) {
-			error(err_str);
-			error("Netfilter ntk_mark_chain was not created!");
-			errs++;
-		}
-		restore_output_rule_init(rule);
-		res=insert_rule(rule,&t,CHAIN_OUTPUT,0);
-		if (res) {
-			error(err_str);
-			error("Netfilter restore-marking rule was not created!");
-			errs++;
-		}
-		ntk_forward_rule_init(rule);
-		res=insert_rule(rule,&t,CHAIN_POSTROUTING,0);
-		if (res) {
-			error(err_str);
-			error("Netfilter restore-marking rule was not created!");
-			errs++;
-		}	
-
-		if (igw) {
-			death_loop_rule=1;
-			igw_mark_rule_init(rule);
-			res=insert_rule(rule,&t,CHAIN_FORWARD,0);
-			if (res) {
-				error(err_str);
-				error("Netfilter igw death loop rule was not created!");
-				errs+=1;
-			}
-		} else
-			death_loop_rule=0;
-
-		res=commit_rules(&t);
-		if (res) {
-			error(err_str);
-			error("Netfilter mangle table was not altered!");
-			errs=4;
-		}
+		goto cannot_init;
 	}
-	if (errs)
-		debug(DBG_NORMAL,"mark_init(),MANGLE_TABLE: %d (0-4) errors encountered.",errs);
-	if (errs<4)
-		debug(DBG_NORMAL,"-*- Don't touch these rules! -*-");
+	res=ntk_mark_chain_init(&t);
+	if (res) {
+		error(err_str);
+		error("Unable to create netfilter ntk_mark_chain.");
+		goto cannot_init;
+	}
+	restore_output_rule_init(rule);
+	res=insert_rule(rule,&t,CHAIN_OUTPUT,0);
+	if (res) {
+		error(err_str);
+		error("Unable to create netfilter restore-marking rule.");
+		goto cannot_init;
+	}
+	ntk_forward_rule_init(rule);
+	res=insert_rule(rule,&t,CHAIN_POSTROUTING,0);
+	if (res) {
+		error(err_str);
+		error("Unable to create netfilter forwarding rule.");
+		goto cannot_init;
+	}	
+	if (igw) {
+		death_loop_rule=1;
+		igw_mark_rule_init(rule);
+		res=insert_rule(rule,&t,CHAIN_FORWARD,0);
+		if (res) {
+			error(err_str);
+			error("Unable to create netfilter igw death loop rule.");
+			death_loop_rule=0;
+			goto cannot_init;
+		}  
+	}
+
+	res=commit_rules(&t);
+	if (res) {
+		error(err_str);
+		error("Netfilter mangle table was not altered!");
+		goto cannot_init;
+	}
+	res=store_rules();
+	if (res) {
+		error(err_str);
+		error("Rules storing failed: autocleaning netfilter on exit disable.");
+		clean_on_exit=0;
+	}
+	clean_on_exit=1;
+	debug(DBG_NORMAL,"Netfilter chain ntk_mark_chain created (mangle).");
+	debug(DBG_NORMAL,"Netfilter restoring rule created (mangle->output).");
+	debug(DBG_NORMAL,"Netfilter forwarding rule created (mangle->postrouting).");
+	if (igw)
+		debug(DBG_NORMAL,"Netfilter death loop igw rule created.");
+	debug(DBG_NORMAL,"mark_init(), netfilter mangle table initialized.");
+	debug(DBG_NORMAL,"-*- Don't touch netsukuku netfilter rules! -*-");
+	return 0;
+cannot_init:
+	err_ret(ERR_MRKINI,-1);
 
 /*	res=table_init(FILTER_TABLE,&t);
 	if (res) {
@@ -336,7 +390,6 @@ int mark_init(int igw)
 		debug(DBG_NORMAL,"mark_init(),FILTER_TABLE: %d (0-1) errors encountered.",errss);
 	if (!errs && !errss)
 		debug(DBG_NORMAL,"mark_init(): All's done.");*/
-	return -errs;
 }
 /* 
  * Count the number of rules in ntk_mangle_chain.
@@ -431,11 +484,94 @@ cannot_delete:
 	error("In delete_first_rule: -> %s", iptc_strerror(errno));
 	err_ret(ERR_NETDEL,-1);
 }
+int rule_position(rule_store *rule,iptc_handle_t *t)
+{
+	const struct ipt_entry *e;
+	int res,count=-1,found=0;
 
+	e=iptc_first_rule(rule->chain,t);
+	while (e) {
+		count++;
+		res=memcmp(e,rule->e,rule->sz);
+		if (!res) {
+			found=1;
+			break;
+		}
+		e=iptc_next_rule(e,t);
+	}
+	return found?count:-1;
+}
+int delete_rule(rule_store *rule,iptc_handle_t *t)
+{
+	int pos,res;
+	pos=rule_position(rule,t);
+	if (pos==-1) {
+		debug(DBG_NORMAL,"No rule in %s to be deleted.",rule->chain);
+		return 0;
+	}
+	res=iptc_delete_num_entry(rule->chain,pos,t);
+	if (!res) {
+		debug(DBG_NORMAL,"Unable to delete rule in chain %s.",rule->chain);
+		err_ret(ERR_NETDEL,-1);
+	}
+	return 0;
+}
+		
 int mark_close()
 {
 	iptc_handle_t t;
 	int res;
+
+	if (!clean_on_exit) {
+		debug(DBG_NORMAL,"mark_close: cleaning is not my task.");
+		return 0;
+	}
+	res=table_init(MANGLE_TABLE,&t);
+	if (res) {
+		error(err_str);
+		err_ret(ERR_NETDEL,-1);
+	}
+	res=0;
+	res+=delete_rule(&rr,&t);
+	res+=delete_rule(&fr,&t);
+	if (death_loop_rule)
+		res+=delete_rule(&dr,&t);
+	if (res) {
+		error(err_str);
+		err_ret(ERR_NETRST,-1);
+	}
+	res=delete_ntk_forward_chain(&t);
+	if (res) {
+		error(err_str);
+		err_ret(ERR_NETRST,-1);
+	}
+	res=commit_rules(&t);
+	if (res) {
+		error(err_str);
+		err_ret(ERR_NETRST,-1);
+	}
+	debug(DBG_NORMAL,"Netfilter completely restored.");
+	return 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	/*
 	int errs=0;
 
 	res=table_init(MANGLE_TABLE,&t);
@@ -480,7 +616,7 @@ int mark_close()
 		}
 	}
 	debug(DBG_NORMAL,"Netfilter mangle table restored with %d errors (0-4).",errs);
-/*	res=table_init(FILTER_TABLE,&t);
+	res=table_init(FILTER_TABLE,&t);
 	if (!res) {
 		error(err_str);
 		error("Netfilter filter chain is not loadable: nothing will be restored.");
@@ -494,6 +630,6 @@ int mark_close()
 		}
 	}
 	debug(DBG_NORMAL,"Netfilter filter table restored with %d errors (0-1).",errss);
-	res=table_init(FILTER_TABLE,&t);*/
+	res=table_init(FILTER_TABLE,&t);
 	return -errs;
-}
+}*/

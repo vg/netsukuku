@@ -48,8 +48,15 @@
 #define FILTER_RULE_SZ		IPT_ENTRY_SZ+IPT_ENTRY_SZ+4
 #define INET_MARK		25
 
-struct in_addr inet_dst,not_inet_dst_mask;
-struct ipt_entry *rr,*fr,*dr;
+#define MAX_RULE_SZ		RESTORE_OUTPUT_RULE_SZ
+
+struct in_addr inet_dst,inet_dst_mask;
+
+typedef struct rule_store {
+	struct ipt_entry 	*e;
+	int			sz;
+	char 			*chain;
+} rule_store;
 
 /* Functions */
 
@@ -62,11 +69,14 @@ void ntk_forward_rule_init(unsigned char *rule);
 void mark_rule_init(unsigned char *rule,char *outiface,int outiface_num);
 void igw_mark_rule_init(char *rule);
 int ntk_mark_chain_init(iptc_handle_t *t);
+int store_rules();
 int mark_init(int igw);
 int count_ntk_mark_chain(iptc_handle_t *t);
 int create_mark_rules(int n);
 int delete_ntk_forward_chain(iptc_handle_t *t);
 int delete_first_rule(iptc_handle_t *t,const char *chain);
+int rule_position(rule_store *rule,iptc_handle_t *t);
+int delete_rule(rule_store *rule,iptc_handle_t *t);
 int mark_close();
 
 #endif /* MARK_H */
