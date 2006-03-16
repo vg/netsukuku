@@ -41,6 +41,8 @@
 #include "err_errno.h"
 #include "log.h"
 
+int death_loop_rule;
+
 int table_init(const char *table, iptc_handle_t *t)
 {
 	*t=iptc_init(table);
@@ -288,7 +290,9 @@ int mark_init(int igw)
 			error("Netfilter restore-marking rule was not created!");
 			errs++;
 		}	
+
 		if (igw) {
+			death_loop_rule=1;
 			igw_mark_rule_init(rule);
 			res=insert_rule(rule,&t,CHAIN_FORWARD,0);
 			if (res) {
@@ -296,7 +300,9 @@ int mark_init(int igw)
 				error("Netfilter igw death loop rule was not created!");
 				errs+=1;
 			}
-		}
+		} else
+			death_loop_rule=0;
+
 		res=commit_rules(&t);
 		if (res) {
 			error(err_str);
@@ -304,13 +310,7 @@ int mark_init(int igw)
 			errs=4;
 		}
 	}
-	if (errs==0) {
-		debug(DBG_NORMAL,"mark_init(): New chain ntk_mark_chain (mangle table) created.");
-		debug(DBG_NORMAL,"mark_init(): Forwarding to ntk_mark_chain rule created.");
-		debug(DBG_NORMAL,"mark_init(): Restoring mark rule created.");
-		debug(DBG_NORMAL,"mark_init(): Igw death loop rule created.");
-	}
-	else 
+	if (errs)
 		debug(DBG_NORMAL,"mark_init(),MANGLE_TABLE: %d (0-4) errors encountered.",errs);
 	if (errs<4)
 		debug(DBG_NORMAL,"-*- Don't touch these rules! -*-");
@@ -431,6 +431,7 @@ cannot_delete:
 	error("In delete_first_rule: -> %s", iptc_strerror(errno));
 	err_ret(ERR_NETDEL,-1);
 }
+
 int mark_close()
 {
 	iptc_handle_t t;
@@ -454,12 +455,17 @@ int mark_close()
 			error("Netfilter ntk-rule on OUTPUT (mangle table) was not deleted!");
 			errs++;
 		}
-		res=delete_first_rule(&t,CHAIN_FORWARD);
-		if (res) {
-			error(err_str);
-			error("Netfilter igw death loop FORWARD (mangle table) was not deleted!");
-			errs++;
+
+		if(death_loop_rule) {
+			res=delete_first_rule(&t,CHAIN_FORWARD);
+			if (res) {
+				error(err_str);
+				error("Netfilter igw death loop FORWARD (mangle table) "
+						"was not deleted!");
+				errs++;
+			}
 		}
+
 		res=delete_ntk_forward_chain(&t);
 		if (res) {
 			error(err_str);
