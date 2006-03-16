@@ -960,7 +960,8 @@ size_t apkttohdr(char *buf,andns_pkt *ap)
 	ap->ancount=(c<<1)&0x0e;
 
         buf++;
-	if (((*buf)|0x80)) ap->ancount++;
+        memcpy(&c,buf,sizeof(uint8_t));
+	if (((*buf)&0x80)) ap->ancount++;
 
 	ap->nk=(c>>4)&0x03;
 	ap->rcode=c&0x0f;
@@ -984,6 +985,43 @@ size_t apkttoqst(char *buf,andns_pkt *ap)
 	rm_realm_prefix(ap->qstdata,ap->qstdata_nopref,ap->qtype);
 	return ap->qstlength+2;
 }
+size_t apkttoansw(char *buf,andns_pkt *ap,int limitlen)
+{
+	uint16_t alen;
+	andns_pkt_data *apd;
+	
+	memcpy(&alen,buf,sizeof(uint16_t));
+	alen=ntohs(alen);
+	if (alen+2>limitlen) 
+		err_ret(ERR_PKTLEN,-1);
+	if (alen>MAX_ANDNS_ANSW_LEN)
+		err_ret(ERR_MLFAPK,-1);
+		
+	apd=andns_add_answ(ap);
+
+	apd->rdlength=alen;
+	memcpy(apd->rdata,buf+2,alen);
+	return alen+2;
+}
+size_t apkttoansws(char *buf,andns_pkt *ap,int limitlen)
+{
+	int ancount,i;
+	size_t offset=0,res;
+
+	ancount=ap->ancount;
+	for (i=0;i<ancount;i++) {
+		res=apkttoansw(buf+offset,ap,limitlen-offset);
+		if (res==-1) {
+			error(err_str);
+			err_ret(ERR_MLFAPK,-1);
+		}
+		offset+=res;
+	}
+	return offset;
+}
+		
+	
+	
 
 /*
  * This is a main function: takes the pkt-buf and translate
@@ -1083,6 +1121,7 @@ size_t apktpack(andns_pkt *ap, char *buf)
 	if ((res=qsttoapkt(ap,buf,ANDNS_MAX_SZ-offset))==-1) 
 		goto server_fail;
 	offset+=res;
+	buf+=res;
 	if ((res=answstoapkt(ap,buf,ANDNS_MAX_SZ-offset))==-1) 
 		goto server_fail;
 	offset+=res;

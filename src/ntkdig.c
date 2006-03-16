@@ -20,10 +20,12 @@
 #include <getopt.h>  
 #include <stdio.h>  
 
-#include "ntkdig.h"
 #include "andns.h"
 #include "andns_mem.h"
 #include "andns_pkt.h"
+#include "ntkdig.h"
+
+#include "err_errno.h"
 
 void print_usage() 
 {
@@ -153,20 +155,44 @@ int ask_query(char *q,int qlen,char *an,int *anlen,struct sockaddr_in *saddr)
 	return 0;
 }
 
-int do_command(const char *s)
+void print_question(andns_pkt *ap)
+{
+	printf("Question Headers:\n");
+	printf(" id=%d\tqr=%s\tqtype=%s\n",ap->id,QR_STR(ap),QTYPE_STR(ap));
+	printf(" ancount=%d\tnk=%s\trcode=%s\n\n",ap->ancount,NK_STR(ap),RCODE_STR(ap));
+}
+void print_answer_name(andns_pkt_data *apd)
+{
+	printf("%s\n",apd->rdata);
+}
+void print_answer_addr(andns_pkt_data *apd)
+{
+	struct in_addr a;
+	memcpy(&a,apd->rdata,sizeof(struct in_addr));
+	printf("%s\n",inet_ntoa(a));
+}
+andns_pkt* andns_pkt_from_opts()
+{
+	andns_pkt *ap;
+
+	ap=create_andns_pkt();
+	ap->id=rand()>>16;
+	ap->qtype=globopts.qt;
+	ap->nk=(globopts.realm==REALM_NTK)?NK_NTK:NK_INET;
+	ap->qstlength=strlen(globopts.question);
+	memcpy(ap->qstdata,globopts.question,ap->qstlength);
+	return ap;
+}
+
+int do_command()
 {
 	int res,msglen,answlen;
 	andns_pkt *ap;
 	char msg[ANDNS_MAX_SZ],answ[ANDNS_MAX_SZ];
 	int i;
 
-	printf("Quering for %s\n",s);
-	ap=create_andns_pkt();
-	ap->id=rand()>>16;
-	ap->qtype=globopts.qt;
-	ap->nk=(globopts.realm==REALM_NTK)?NK_NTK:NK_INET;
-	ap->qstlength=strlen(s);
-	memcpy(ap->qstdata,s,ap->qstlength);
+	printf("Quering for %s\n",globopts.question);
+	ap=andns_pkt_from_opts();
 	msglen=apktpack(ap,msg);
 	if (msglen==-1) {
 		printf("Internal error building packet.");
@@ -186,13 +212,63 @@ int do_command(const char *s)
 	}
 	else 
 		printf("Uau!\n");
-	msglen=apkt(answ,answlen,&ap);
-	if (msglen==-1) {
+
+	
+	res=handle_answer(answ,answlen);
+	if (res==-1) {
+		error(err_str);
+		exit(1);
+	}
+	return 0;
+}
+int handle_answer(char *answ,int alen)
+{
+	int res,i,limitlen;
+	void (*printer)(andns_pkt_data *);
+	int offset;
+	andns_pkt *ap;
+	andns_pkt_data *apd;
+
+	offset=apkt(answ,alen,&ap);
+	if (offset==-1) {
 		printf("Answer interpretation error.\n");
 		exit(1);
 	}
-	if (msglen!=answlen) 
-		printf("Answer interpretation: answer stream was %d. Readed %d bytes.\n",answlen,msglen);
+	if (ap->rcode!=RCODE_NOERR) {
+		print_question(ap);
+		exit(1);
+	}
+	if (!ap->ancount) {
+		printf("Received answer contains no data.");
+		exit(1);
+	}
+
+	limitlen=alen-offset;
+	res=apkttoansws(answ+offset,ap,limitlen);
+	if (res==-1) {
+		printf(err_str);
+		exit(1);
+	}
+	if (res!=limitlen) 
+		printf("Packet length differs from packet contents.");
+	print_question(ap);
+	switch(ap->qtype) {
+		case AT_A:
+			printer=print_answer_addr;
+			break;
+		case AT_PTR || AT_MX || AT_MXPTR:
+			printer=print_answer_name;
+			break;
+		default:
+			printf("Unable to print answer");
+			exit(1);
+	}
+	apd=ap->pkt_answ;
+	for (i=0;i<ap->ancount;i++) {
+		printer(apd);
+		apd=apd->next;
+	}
+	destroy_andns_pkt(ap);
 	return 0;
 			
 }
@@ -255,8 +331,44 @@ int do_command(const char *s)
 }*/
 
 
+int main()
+{
+	andns_pkt *ap;
+	andns_pkt_data *apd;
+	char a[1024];
+	int o;
+	log_init("CCC",6,1);
+	printf("IHII %d\n",sizeof(struct in_addr));
+	
+	memset(&globopts,0,sizeof(ntkdig_opts));
+	ap=create_andns_pkt();
+	ap->id=rand()>>16;
+	ap->qtype=AT_A;
+	ap->nk=NK_NTK;
+	ap->ancount=2;
+	ap->qr=1;
+	ap->qstlength=strlen("CICCIO");
+	memcpy(ap->qstdata,"CICCIO",ap->qstlength);
+	apd=andns_add_answ(ap);
+	apd->rdlength=4;
+	inet_aton("1.2.3.4",(struct in_addr*)apd->rdata);
+//	apd->rdlength=strlen("PLUTO");
+//	strcpy(apd->rdata,"PLUTO");
+	apd=andns_add_answ(ap);
+	apd->rdlength=4;
+	inet_aton("11.12.13.14",(struct in_addr*)apd->rdata);
+//	apd->rdlength=strlen("MINNIE");
+//	strcpy(apd->rdata,"MINNIE");
 
-int main(int argc,char **argv) 
+	o=apktpack(ap,a);
+	printf("Stream is of %d\n",o);
+	handle_answer(a,o);
+//	print_question(ap);
+//	print_answer_name(apd);
+	return 0;
+}
+	
+int imain(int argc,char **argv) 
 {
 	int c,res;
 	extern int optind, opterr, optopt;
@@ -348,7 +460,8 @@ int main(int argc,char **argv)
 		print_usage();
 		exit(1);
 	}
-	res=do_command(argv[optind]);
+	globopts.question=argv[optind];
+	res=do_command();
 	return 0;
 }
 			

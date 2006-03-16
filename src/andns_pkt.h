@@ -54,6 +54,8 @@ size_t dpktpack(dns_pkt *dp,char *buf,int nopref);
 
 size_t apkttohdr(char *buf,andns_pkt *ap);
 size_t apkttoqst(char *buf,andns_pkt *ap);
+size_t apkttoansw(char *buf,andns_pkt *ap,int limitlen);
+size_t apkttoansws(char *buf,andns_pkt *ap,int limitlen);
 size_t apkt(char *buf,size_t pktlen,andns_pkt **app);
 size_t hdrtoapkt(andns_pkt *ap,char *buf);
 size_t qsttoapkt(andns_pkt *ap,char *buf,size_t limitlen);

@@ -61,11 +61,82 @@ typedef struct ntkdig_opts {
 	uint8_t			pt;
 	uint8_t			realm;
 	uint8_t			silent;
+	char*			question;
 } ntkdig_opts;
 
 #define NTKDIG_OPTS_SZ	sizeof(ntkdig_opts)
 
 ntkdig_opts globopts;
+
+
+#define QR_STR(ap)	((ap)->qr==0)?"QUERY":"ANSWER"
+#define QTYPE_STR(ap)						\
+({								\
+ 	char *__c;						\
+ 	switch((ap)->qtype) {					\
+ 		case AT_A:					\
+			__c="Host2Ip";				\
+			break;					\
+ 		case AT_PTR:					\
+			__c="Ip2Host";				\
+			break;					\
+ 		case AT_MX:					\
+			__c="Host2MX";				\
+			break;					\
+ 		case AT_MXPTR:					\
+			__c="Ip2MX";				\
+			break;					\
+		default:					\
+			__c="Unknow";				\
+ 			break;					\
+			}					\
+		__c;})						
+#define NK_STR(ap)						\
+({								\
+	char *__d;						\
+	switch((ap)->nk) {					\
+		case NK_OLDSTYLE:				\
+			__d="DNS";				\
+			break;					\
+		case NK_NTK:					\
+			__d="NtkAnds";				\
+			break;					\
+		case NK_INET:					\
+			__d="InetAnds";				\
+			break;					\
+		default:					\
+			__d="Unknow";				\
+ 			break;					\
+			}					\
+ 		__d;})						
+
+#define RCODE_STR(ap)						\
+({								\
+ 	char *__e;						\
+	switch((ap)->rcode) {					\
+		case RCODE_NOERR:				\
+			__e="Noerr";				\
+			break;					\
+		case RCODE_EINTRPRT:				\
+			__e="Intrprterr";			\
+			break;					\
+		case RCODE_ESRVFAIL:				\
+			__e="Srvrfail";				\
+			break;					\
+		case RCODE_ENSDMN:				\
+			__e="Nosuchhost";			\
+			break;					\
+		case RCODE_ENIMPL:				\
+			__e="NotImpl";				\
+			break;					\
+		case RCODE_ERFSD:				\
+			__e="Refused";				\
+			break;					\
+		default:					\
+			__e="Unknow";				\
+			break;					\
+	}							\
+	__e;})
 
 
 #endif /* NTK_DIG_H */
