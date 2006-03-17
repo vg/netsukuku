@@ -26,9 +26,9 @@
 #define DEFAULT_TUNL_IF		"tunl0"
 #define NTK_TUNL_PREFIX		"ntk_tunl"
 
-/* Usage: printf(TUNL_STRING, TUNL_NUMBER(x)); */
+/* Usage: printf(TUNL_STRING, TUNL_NUMBER("tunl", x)); */
 #define TUNL_STRING		"%s%d"
-#define TUNL_NUMBER(x)		DEFAULT_TUNL_PREFIX, (x)
+#define TUNL_N(prefix, x)	prefix, x
 
 #define MAX_TUNNEL_IFS		24	/* it must be >= MAX_MULTIPATH_ROUTES,
 					   since in igs.c we are using a tunnel 
@@ -45,21 +45,24 @@ interface tunnel_ifs[MAX_TUNNEL_IFS];
  * Functions declaration
  */
 
-int tunnel_add(inet_prefix *remote, inet_prefix *local, char *dev,
-		int tunl_number);
-int tunnel_change(inet_prefix *remote, inet_prefix *local, char *dev,
-		int tunl_number);
-int tunnel_del(inet_prefix *remote, inet_prefix *local, char *dev,
-		int tunl_number);
 
-int tun_add_tunl(interface *ifs, u_char tunl);
+int tunnel_add(inet_prefix *remote, inet_prefix *local, char *dev,
+		char *tunl_prefix, int tunl_number);
+int tunnel_change(inet_prefix *remote, inet_prefix *local, char *dev,
+		char *tunl_prefix, int tunl_number);
+int tunnel_del(inet_prefix *remote, inet_prefix *local, char *dev,
+		char *tunl_prefix, int tunl_number);
+
+int tun_add_tunl(interface *ifs, char *tunl_prefix, u_char tunl_number);
+int tun_del_tunl(interface *ifs, char *tunl_prefix, u_char tunl_number);
 void init_tunnels_ifs(void);
-int set_tunnel_ip(int tunl_number, inet_prefix *tunl_ip);
+int set_tunnel_ip(char *tunl_prefix, int tunl_number, inet_prefix *tunl_ip);
 int first_free_tunnel_if(void);
 int do_get(char *dev);
 int add_tunnel_if(inet_prefix *remote, inet_prefix *local, char *dev,
-		int tunl_number, inet_prefix *tunl_ip);
+		char *tunl_prefix, int tunl_number, inet_prefix *tunl_ip);
 int del_tunnel_if(inet_prefix *remote, inet_prefix *local, char *dev,
-		int tunl_number);
-void del_all_tunnel_ifs(inet_prefix *remote, inet_prefix *local, char *dev);
-#endif
+		char *tunl_prefix, int tunl_number);
+void del_all_tunnel_ifs(inet_prefix *remote, inet_prefix *local, char *dev, 
+		char *tunl_prefix);
+#endif /* IPTUNNEL_H */

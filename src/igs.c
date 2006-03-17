@@ -294,16 +294,16 @@ void init_internet_gateway_search(void)
 	init_tunnels_ifs();
 
 	/* delete all the old tunnels */
-	del_all_tunnel_ifs(0, 0, 0);
+	del_all_tunnel_ifs(0, 0, 0, NTK_TUNL_PREFIX);
 	
 	/*
 	 * Bring tunl0 up (just to test if the ipip module is loaded)
 	 */
 	loginfo("Configuring the \"" DEFAULT_TUNL_IF "\" tunnel device");
-	if(tunnel_change(0, 0, 0, DEFAULT_TUNL_NUMBER) < 0)
+	if(tunnel_change(0, 0, 0, DEFAULT_TUNL_PREFIX, DEFAULT_TUNL_NUMBER) < 0)
 		fatal("Cannot initialize \"" DEFAULT_TUNL_IF "\". "
 			"Is the \"ipip\" kernel module loaded?");
-	ifs_del_all_name(me.cur_ifs, &me.cur_ifs_n, DEFAULT_TUNL_PREFIX);
+	ifs_del_all_name(me.cur_ifs, &me.cur_ifs_n, NTK_TUNL_PREFIX);
 
 	/*
 	 * Delete old routing rules
@@ -475,7 +475,7 @@ void close_internet_gateway_search(void)
 	mark_close();
 
 	/* Delete all the tunnels */
-	del_all_tunnel_ifs(0, 0, 0);
+	del_all_tunnel_ifs(0, 0, 0, NTK_TUNL_PREFIX);
 
 	free_igws(me.igws, me.igws_counter, me.cur_quadg.levels);
 	free_my_igws(&me.my_igws);
@@ -902,15 +902,17 @@ int igw_exec_tcshaper_sh(char *script, int stop,
  * add_igw_nexthop() searches `ip' in `igwn', if it is found the position in
  * the array of the igw_nexthop struct is returned, otherwise it adds `ip' in
  * the first empty member of the struct (its position is always returned).
+ * In the first case `*new' is set to 0, in the second to 1.
  * If the array is full and nothing can be added -1 is returned.
  */
-int add_igw_nexthop(igw_nexthop *igwn, inet_prefix *ip)
+int add_igw_nexthop(igw_nexthop *igwn, inet_prefix *ip, int *new)
 {
 	int i;
 
 	for(i=0; i<MAX_MULTIPATH_ROUTES; i++)
 		if(!memcmp(igwn[i].nexthop.data, ip->data, MAX_IP_SZ)) {
 			igwn[i].flags|=IGW_ACTIVE;
+			*new=0;
 			return i;
 		}
 	
@@ -920,10 +922,12 @@ int add_igw_nexthop(igw_nexthop *igwn, inet_prefix *ip)
 			igwn[i].tunl=i;
 			igwn[i].table=RTTABLE_IGW+i;
 			igwn[i].flags|=IGW_ACTIVE;
+			*new=1;
 			return i;
 		}
 	}
 
+	*new=-1;
 	return -1;
 }
 
@@ -968,7 +972,7 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 
 	struct nexthop *nh=0, nh_tmp[2];
 	int ni, ni_lvl, nexthops, level, max_multipath_routes, i, x;
-	int res;
+	int res, new_nexhtop;
 
 #ifdef DEBUG		
 #define MAX_GW_IP_STR_SIZE (MAX_MULTIPATH_ROUTES*((INET6_ADDRSTRLEN+1)+IFNAMSIZ)+1)
@@ -1059,17 +1063,32 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 			inet_setip(&nh[ni].gw, igw->ip, family);
 			nh[ni].hops=max_multipath_routes-ni+1;
 
-			if((x=add_igw_nexthop(multigw_nh, &nh[ni].gw)) < 0)
+			if((x=add_igw_nexthop(multigw_nh, &nh[ni].gw,
+							&new_nexhtop)) < 0)
 					continue;
 			
 			nh[ni].dev=tunnel_ifs[multigw_nh[x].tunl].dev_name;
+
+			/*
+			 * If we are reusing a tunnel of an old inet-gw,
+			 * delete it.
+			 */
+			if(*nh[ni].dev && new_nexhtop)
+				del_tunnel_if(0, 0, nh[ni].dev, NTK_TUNL_PREFIX, 
+						multigw_nh[x].tunl);
+			
 			if(!*nh[ni].dev) { 
+				memset(&nh_tmp, 0, sizeof(struct nexthop)*2);
+				memcpy(&nh_tmp[0], &nh[ni], sizeof(struct nexthop));
+				inet_ntohl(nh_tmp[0].gw.data, nh_tmp[0].gw.family);
+				
 				/* 
 				 * Initialize the `nh[ni].dev' tunnel, it's
 				 * its first time.
 				 */
-				if((add_tunnel_if(0, &me.cur_ip, 0, multigw_nh[x].tunl,
-							      &me.cur_ip)) < 0)
+				if((add_tunnel_if(&nh_tmp[0].gw, &me.cur_ip, 0, 
+						NTK_TUNL_PREFIX, multigw_nh[x].tunl, 
+						&me.cur_ip)) < 0)
 					continue;
 				
 				/* 
@@ -1080,7 +1099,6 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 				 *   lookup multigw_nh[x].table
 				 */
 				inet_copy(&ip, &me.cur_ip);
-				inet_htonl(ip.data, ip.family);
 				if(multigw_nh[x].flags & IGW_RTRULE)
 					rule_del(&ip, 0, 0, 0,
 						multigw_nh[x].tunl, multigw_nh[x].table);
@@ -1095,8 +1113,7 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 				 * 	table multigw_nh[x].table 	  \
 				 * 	dev nh[ni].dev
 				 */
-				memset(&nh_tmp, 0, sizeof(struct nexthop)*2);
-				memcpy(&nh_tmp[0], &nh[ni], sizeof(struct nexthop));
+				inet_htonl(nh_tmp[0].gw.data, nh_tmp[0].gw.family);
 				if(route_replace(0, 0, &to, nh_tmp, 0, multigw_nh[x].table))
 					error("Cannote replace the default "
 						"route of the table %d ",

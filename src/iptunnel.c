@@ -42,25 +42,28 @@
 #include "log.h"
 
 static int do_add(int cmd, inet_prefix *remote, inet_prefix *local, char *dev,
-                int tunl_number);
-int do_del(inet_prefix *remote, inet_prefix *local, char *dev, int tunl_number);
+		char *tunl_prefix, int tunl_number);
+int do_del(inet_prefix *remote, inet_prefix *local, char *dev,
+		char *tunl_prefix, int tunl_number);
 
 int tunnel_add(inet_prefix *remote, inet_prefix *local, char *dev,
-		int tunl_number)
+		char *tunl_prefix, int tunl_number)
 {
-	return do_add(SIOCADDTUNNEL, remote, local, dev, tunl_number);
+	return do_add(SIOCADDTUNNEL, remote, local, dev, tunl_prefix, 
+			tunl_number);
 }
 
 int tunnel_change(inet_prefix *remote, inet_prefix *local, char *dev,
-		int tunl_number)
+		char *tunl_prefix, int tunl_number)
 {
-	return do_add(SIOCCHGTUNNEL, remote, local, dev, tunl_number);
+	return do_add(SIOCCHGTUNNEL, remote, local, dev, tunl_prefix,
+			tunl_number);
 }
 
 int tunnel_del(inet_prefix *remote, inet_prefix *local, char *dev,
-		int tunl_number)
+		char *tunl_prefix, int tunl_number)
 {
-	return do_del(remote, local, dev, tunl_number);
+	return do_del(remote, local, dev, tunl_prefix, tunl_number);
 }
 
 static int do_ioctl_get_ifindex(const char *dev)
@@ -177,7 +180,8 @@ static int do_del_ioctl(const char *basedev, struct ip_tunnel_parm *p)
  * `remote' and `local' must be in host order
  */
 static int fill_tunnel_parm(int cmd, inet_prefix *remote, inet_prefix *local, 
-		char *dev, int tunl_number, struct ip_tunnel_parm *p)
+		char *dev, char *tunl_prefix, int tunl_number,
+		struct ip_tunnel_parm *p)
 {
 	char medium[IFNAMSIZ];
 
@@ -199,7 +203,7 @@ static int fill_tunnel_parm(int cmd, inet_prefix *remote, inet_prefix *local,
 	if(dev)
 		strncpy(medium, dev, IFNAMSIZ-1);
 
-	sprintf(p->name, "tunl%d", tunl_number);
+	sprintf(p->name, TUNL_STRING, TUNL_N(tunl_prefix, tunl_number));
 	if (cmd == SIOCCHGTUNNEL) {
 		/* Change the old tunnel */
 		struct ip_tunnel_parm old_p;
@@ -240,11 +244,12 @@ int do_get(char *dev)
 }
 
 static int do_add(int cmd, inet_prefix *remote, inet_prefix *local, char *dev,
-		int tunl_number)
+		char *tunl_prefix, int tunl_number)
 {
 	struct ip_tunnel_parm p;
 
-	if (fill_tunnel_parm(cmd, remote, local, dev, tunl_number, &p) < 0)
+	if (fill_tunnel_parm(cmd, remote, local, dev, tunl_prefix, 
+				tunl_number, &p) < 0)
 		return -1;
 
 	if (p.iph.ttl && p.iph.frag_off == 0)
@@ -259,11 +264,12 @@ static int do_add(int cmd, inet_prefix *remote, inet_prefix *local, char *dev,
 	return -1;
 }
 
-int do_del(inet_prefix *remote, inet_prefix *local, char *dev, int tunl_number)
+int do_del(inet_prefix *remote, inet_prefix *local, char *dev, char *tunl_prefix,
+		int tunl_number)
 {
 	struct ip_tunnel_parm p;
 
-	if (fill_tunnel_parm(SIOCDELTUNNEL, remote, local, dev, 
+	if (fill_tunnel_parm(SIOCDELTUNNEL, remote, local, dev, tunl_prefix,
 				tunl_number, &p) < 0)
 		return -1;
 
@@ -280,11 +286,11 @@ int do_del(inet_prefix *remote, inet_prefix *local, char *dev, int tunl_number)
  * tun_add_tunl: it adds in the `ifs' array a new struct which refers to 
  * the tunnel "tunlX", where X is a number equal to `tunl'.
  */
-int tun_add_tunl(interface *ifs, u_char tunl)
+int tun_add_tunl(interface *ifs, char *tunl_prefix, u_char tunl_number)
 {
 	char tunl_name[IFNAMSIZ];
 
-	sprintf(tunl_name, TUNL_STRING, TUNL_NUMBER(tunl));
+	sprintf(tunl_name, TUNL_STRING, TUNL_N(tunl_prefix, tunl_number));
 	strncpy(ifs->dev_name, tunl_name, IFNAMSIZ);
 	if(!(ifs->dev_idx=do_ioctl_get_ifindex(tunl_name)))
 		return -1;
@@ -298,12 +304,12 @@ int tun_add_tunl(interface *ifs, u_char tunl)
  * is a number equal to `tunl'.
  * If no such struct is found, -1 is returned.
  */
-int tun_del_tunl(interface *ifs, u_char tunl)
+int tun_del_tunl(interface *ifs, char *tunl_prefix, u_char tunl_number)
 {
 	char tunl_name[IFNAMSIZ];
 	int i;
 	
-	sprintf(tunl_name, TUNL_STRING, TUNL_NUMBER(tunl));
+	sprintf(tunl_name, TUNL_STRING, TUNL_N(tunl_prefix, tunl_number));
 
 	for(i=0; i<MAX_TUNNEL_IFS; i++)
 		if(!strncmp(ifs[i].dev_name, tunl_name, IFNAMSIZ)) {
@@ -340,18 +346,18 @@ int first_free_tunnel_if(void)
  * set_tunnel_ip: it brings down and up and set the `tunl_ip' IP to the
  * "tunl`tunl_number'" tunnel device
  */
-int set_tunnel_ip(int tunl_number, inet_prefix *tunl_ip)
+int set_tunnel_ip(char *tunl_prefix, int tunl_number, inet_prefix *tunl_ip)
 {
 	const char *ntop;
 	ntop=inet_to_str(*tunl_ip);
 
 	set_all_ifs(&tunnel_ifs[tunl_number], 1, set_dev_down);
-	set_all_ifs(&tunnel_ifs[tunl_number], 1, set_dev_up);
 	if(set_all_dev_ip(*tunl_ip, &tunnel_ifs[tunl_number], 1) < 0) {
 		error("Cannot set the %s ip to " TUNL_STRING,
-				ntop, TUNL_NUMBER(tunl_number));
+				ntop, TUNL_N(tunl_prefix, tunl_number));
 		return -1;
 	}
+	set_all_ifs(&tunnel_ifs[tunl_number], 1, set_dev_up);
 	return 0;
 }
 
@@ -360,27 +366,29 @@ int set_tunnel_ip(int tunl_number, inet_prefix *tunl_ip)
  * if `tunl_ip' isn't null, sets to the tunnel the IP `tunl_ip'.
  */
 int add_tunnel_if(inet_prefix *remote, inet_prefix *local, char *dev,
-		int tunl_number, inet_prefix *tunl_ip)
+		char *tunl_prefix, int tunl_number, inet_prefix *tunl_ip)
 {
-	if(!tunl_number) {
-		if(tunnel_change(remote, local, dev, tunl_number) < 0) {
-			error("Cannot modify the \"" TUNL_STRING "\" tunnel",
-					TUNL_NUMBER(tunl_number));
-			return -1;
-		}
-	} else {
-		if(tunnel_add(remote, local, dev, tunl_number) < 0) {
-			error("Cannot add the \"" TUNL_STRING "\" tunnel",
-					TUNL_NUMBER(tunl_number));
-			return -1;
-		}
+		
+	/* 
+	 * tunl0 zero is a special tunnel, it cannot be created nor destroyed.
+	 * It's pure energy.
+	 */
+	if(!strcmp(tunl_prefix, DEFAULT_TUNL_PREFIX) && !tunl_number)
+		goto skip_krnl_add_tunl;
+	
+	if(tunnel_add(remote, local, dev, tunl_prefix, tunl_number) < 0) {
+		error("Cannot add the \"" TUNL_STRING "\" tunnel",
+				TUNL_N(tunl_prefix, tunl_number));
+		return -1;
 	}
 
-	if(tun_add_tunl(&tunnel_ifs[tunl_number], tunl_number) < 0)
+skip_krnl_add_tunl:
+
+	if(tun_add_tunl(&tunnel_ifs[tunl_number], tunl_prefix, tunl_number) < 0)
 		return -1;
 
 	if(tunl_ip) {
-		if(set_tunnel_ip(tunl_number, tunl_ip) < 0)
+		if(set_tunnel_ip(tunl_prefix, tunl_number, tunl_ip) < 0)
 			return -1;
 
 		if(route_rp_filter_all_dev(my_family, &tunnel_ifs[tunl_number],
@@ -395,29 +403,34 @@ int add_tunnel_if(inet_prefix *remote, inet_prefix *local, char *dev,
  * del_tunnel_if: the inverse of add_tunnel_if() (see above)
  */
 int del_tunnel_if(inet_prefix *remote, inet_prefix *local, char *dev,
-		int tunl_number)
+		char *tunl_prefix, int tunl_number)
 {
-	if(tunl_number)	{
-		if(tunnel_del(remote, local, dev, tunl_number) < 0) {
-			error("Cannot delete the \"" TUNL_STRING "\" tunnel",
-					TUNL_NUMBER(tunl_number));
-			return -1;
-		}
+	/* tunl0 is a highlander */
+	if(!strcmp(tunl_prefix, DEFAULT_TUNL_PREFIX) && !tunl_number)
+		goto skip_krnl_del_tunl;
+
+	if(tunnel_del(remote, local, dev, tunl_prefix, tunl_number) < 0) {
+		error("Cannot delete the \"" TUNL_STRING "\" tunnel",
+				TUNL_N(tunl_prefix, tunl_number));
+		return -1;
 	}
 
-	tun_del_tunl(tunnel_ifs, tunl_number);
+skip_krnl_del_tunl:
+
+	tun_del_tunl(tunnel_ifs, tunl_prefix, tunl_number);
 	return 0;
 }
 
-void del_all_tunnel_ifs(inet_prefix *remote, inet_prefix *local, char *dev)
+void del_all_tunnel_ifs(inet_prefix *remote, inet_prefix *local, char *dev, 
+		char *tunl_prefix)
 {
 	char tunl_name[IFNAMSIZ];
 	int i;
 
 	for(i=0; i<MAX_TUNNEL_IFS; i++) {
-		sprintf(tunl_name, TUNL_STRING, TUNL_NUMBER(i));
+		sprintf(tunl_name, TUNL_STRING, TUNL_N(tunl_prefix, i));
 		if(do_get(tunl_name))
-			del_tunnel_if(remote, local, dev, i);
+			del_tunnel_if(remote, local, 0, tunl_prefix, i);
 		else
 			break;
 	}

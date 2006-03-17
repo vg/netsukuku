@@ -19,6 +19,7 @@
 #ifndef IF_H
 #define IF_H
 
+#include <net/if.h>
 #include "inet.h"
 
 #define MAX_INTERFACES		16	/* The maximum number of network 
