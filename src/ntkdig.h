@@ -101,13 +101,13 @@ ntkdig_opts globopts;
 			__d="DNS";				\
 			break;					\
 		case NK_NTK:					\
-			__d="NtkAnds";				\
+			__d="ANDNA";				\
 			break;					\
 		case NK_INET:					\
-			__d="InetAnds";				\
+			__d="ANDNA";				\
 			break;					\
 		default:					\
-			__d="Unknow";				\
+			__d="UNKNOW";				\
  			break;					\
 			}					\
  		__d;})						
@@ -117,25 +117,25 @@ ntkdig_opts globopts;
  	char *__e;						\
 	switch((ap)->rcode) {					\
 		case RCODE_NOERR:				\
-			__e="Noerr";				\
+			__e="NOERR";				\
 			break;					\
 		case RCODE_EINTRPRT:				\
-			__e="Intrprterr";			\
+			__e="INTRPRT";				\
 			break;					\
 		case RCODE_ESRVFAIL:				\
-			__e="Srvrfail";				\
+			__e="SRFFAIL";				\
 			break;					\
 		case RCODE_ENSDMN:				\
-			__e="Nosuchhost";			\
+			__e="NOXHOST";			\
 			break;					\
 		case RCODE_ENIMPL:				\
-			__e="NotImpl";				\
+			__e="NOTIMPL";				\
 			break;					\
 		case RCODE_ERFSD:				\
-			__e="Refused";				\
+			__e="REFUSED";				\
 			break;					\
 		default:					\
-			__e="Unknow";				\
+			__e="UNKNOW";				\
 			break;					\
 	}							\
 	__e;})

@@ -27,6 +27,7 @@
 #include "log.h"
 #include "err_errno.h"
 
+int n_answers=1;
 void print_usage() 
 {
 	printf("Usage:\n" 
@@ -171,19 +172,22 @@ int ask_query(char *q,int qlen,char *an,int *anlen,struct sockaddr_in *saddr)
 
 void print_question(andns_pkt *ap)
 {
-	printf("Question Headers:\n");
-	printf(" id=%d\tqr=%s\tqtype=%s\n",ap->id,QR_STR(ap),QTYPE_STR(ap));
-	printf(" ancount=%d\tnk=%s\trcode=%s\n\n",ap->ancount,NK_STR(ap),RCODE_STR(ap));
+	printf("\n\t# Question Headers: #\n");
+	printf("# id:%d\tqr:%s\tqtype:%s\n",ap->id,QR_STR(ap),QTYPE_STR(ap));
+	printf("# ancount:%d\tnk:%s\trcode:%s\n",ap->ancount,NK_STR(ap),RCODE_STR(ap));
 }
 void print_answer_name(andns_pkt_data *apd)
 {
-	printf("%s\n",apd->rdata);
+	printf("\n\t# Answer Section: #\n");
+	printf("~ Hostname:\t%s\n",apd->rdata);
 }
 void print_answer_addr(andns_pkt_data *apd)
 {
 	struct in_addr a;
 	memcpy(&a,apd->rdata,sizeof(struct in_addr));
-	printf("%s\n",inet_ntoa(a));
+	printf("\n\t# Answer Section %d: #\n",n_answers);
+	n_answers++;
+	printf("~ Ip Address:\t%s\n",inet_ntoa(a));
 }
 andns_pkt* andns_pkt_from_opts()
 {
@@ -284,7 +288,7 @@ int handle_answer(char *answ,int alen)
 			
 }
 
-int imain(int argc,char **argv)
+int main(int argc,char **argv)
 {
 	andns_pkt *ap;
 	andns_pkt_data *apd;
@@ -313,14 +317,13 @@ int imain(int argc,char **argv)
 //	strcpy(apd->rdata,"MINNIE");
 
 	o=apktpack(ap,a);
-	printf("Stream is of %d\n",o);
 	handle_answer(a,o);
 //	print_question(ap);
 //	print_answer_name(apd);
 	return 0;
 }
 	
-int main(int argc,char **argv) 
+int imain(int argc,char **argv) 
 {
 	int c,res;
 	extern int optind, opterr, optopt;
