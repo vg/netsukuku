@@ -108,8 +108,12 @@ void restore_output_rule_init(unsigned char *rule)
 
 	ee->next_offset=RESTORE_OUTPUT_RULE_SZ;
 	ee->target_offset=OFFSET_TARGET;
+	
+#if 0
+	/* this is bad */
 	snprintf(ee->ip.outiface,IFNAMSIZ,"%s+",TUNNEL_IFACE);
 	memset(ee->ip.outiface_mask,1,strlen(ee->ip.outiface));
+#endif
 
 	strcpy(em->u.user.name,MOD_CONNTRACK);
 	em->u.match_size=MATCH_SZ;;

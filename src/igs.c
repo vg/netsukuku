@@ -394,12 +394,14 @@ void init_internet_gateway_search(void)
 	/*
 	 * Activate the anti-loop multi-igw shield
 	 */
-	rule_add(0, 0, 0, 0, FWMARK_ALISHIELD, RTTABLE_ALISHIELD);
-	if(rt_replace_def_gw(server_opt.inet_gw_dev, server_opt.inet_gw,
-				RTTABLE_ALISHIELD)) {
-		error("Cannot set the default route in the ALISHIELD table. "
-				"Disabling the multi-inet_gw feature");
-		igw_multi_gw_disabled=1;
+	if(server_opt.share_internet) {
+		rule_add(0, 0, 0, 0, FWMARK_ALISHIELD, RTTABLE_ALISHIELD);
+		if(rt_replace_def_gw(server_opt.inet_gw_dev, server_opt.inet_gw,
+					RTTABLE_ALISHIELD)) {
+			error("Cannot set the default route in the ALISHIELD table. "
+					"Disabling the multi-inet_gw feature");
+			igw_multi_gw_disabled=1;
+		}
 	}
 
 	
