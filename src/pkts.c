@@ -92,12 +92,6 @@ void pkt_addport(PACKET *pkt, u_short port)
 	pkt->port=port;
 }
 
-void pkt_addflags(PACKET *pkt, int flags)
-{
-	if(flags)
-		pkt->flags=flags;
-}
-
 void pkt_addtimeout(PACKET *pkt, u_int timeout, int recv, int send)
 {
 	pkt->timeout=timeout;
@@ -132,7 +126,7 @@ void pkt_clear(PACKET *pkt)
 	pkt_addto(pkt, 0);
 	pkt_addsk(pkt, 0,0,0);
 	pkt_addport(pkt, 0);
-	pkt_addflags(pkt, 0);
+	pkt->flags=pkt->pkt_flags=0;
 }
 
 /* 
@@ -349,7 +343,7 @@ int pkt_tcp_connect(inet_prefix *host, short port, interface *dev)
 	 * Let's hope it isn't NEGATIVE (-_+)
 	 */
 	pkt_addsk(&pkt, host->family, sk, SKT_TCP);
-	pkt_addflags(&pkt, MSG_WAITALL);
+	pkt.flags=MSG_WAITALL;
 	pkt_addport(&pkt, port);
 
 	if((err=pkt_recv(&pkt)) < 0) {
@@ -468,8 +462,6 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 	/* If the PKT_BIND_DEV flag is set we can use pkt->dev */
 	pkt->dev = (pkt->pkt_flags & PKT_BIND_DEV) ? pkt->dev : 0;
 
-	pkt_addflags(pkt, pkt_flags);
-
 	if(!pkt->sk) {
 		if(!pkt->sk_type)
 			pkt->sk_type=pkt_op_tbl[rq].sk_type;
@@ -497,6 +489,10 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 		}
 	}
 
+	/* Set the LOWDELAY TOS if necessary */
+	if(pkt->pkt_flags & PKT_SET_LOWDELAY)
+		set_tos_sk(pkt->sk, 1);
+
 	/*Let's send the request*/
 	err=pkt_send(pkt);
 	if(err==-1) {
@@ -514,7 +510,7 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 		memset(rpkt, '\0', sizeof(PACKET));
 		pkt_addport(rpkt, pkt->port);
 		pkt_addsk(rpkt, pkt->to.family, pkt->sk, pkt->sk_type);
-		pkt_addflags(rpkt, MSG_WAITALL);
+		rpkt->flags=MSG_WAITALL;
 		pkt_addtimeout(rpkt, pkt->timeout, pkt->pkt_flags&PKT_RECV_TIMEOUT,
 				pkt->pkt_flags&PKT_SEND_TIMEOUT); 
 		

@@ -113,6 +113,18 @@ INT_INFO inet_prefix_iinfo = { 1,
 #define IPV6_ADDR_MAPPED	0x1000U
 #define IPV6_ADDR_RESERVED	0x2000U	/* reserved address space */
 
+/*
+ * Type of Service
+ */
+#ifndef IPTOS_LOWDELAY
+#define IPTOS_LOWDELAY		0x10
+#define IPTOS_THROUGHPUT	0x08
+#define IPTOS_RELIABILITY	0x04
+#define IPTOS_LOWCOST		0x02
+#define IPTOS_MINCOST		IPTOS_LOWCOST
+#endif /* IPTOS_LOWDELAY */
+
+
 /* 
  * Globals
  */
@@ -166,6 +178,7 @@ int set_bindtodevice_sk(int socket, char *dev);
 int set_broadcast_sk(int socket, int family, inet_prefix *host, short port, 
 		int dev_idx);
 int new_broadcast_sk(int family, int dev_idx);
+int set_tos_sk(int socket, int lowdelay);
 
 int new_tcp_conn(inet_prefix *host, short port, char *dev);
 int new_udp_conn(inet_prefix *host, short port, char *dev);

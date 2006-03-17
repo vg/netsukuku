@@ -69,6 +69,8 @@
 		
 - Interactive shell/console
 
+- renice the NetsukukuD process?
+
 - option to disable the modification of the routing table
 
 - Change with something else the eliminable fatal() calls in netsukuku_hook()

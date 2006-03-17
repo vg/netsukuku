@@ -1113,6 +1113,7 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	ints_host_to_network(&req, andna_resolve_rq_pkt_iinfo);
 	
 	pkt_addto(&pkt, &to);
+	pkt.pkt_flags|=PKT_SET_LOWDELAY;
 	pkt.hdr.flags|=ASYNC_REPLY;
 	pkt.hdr.sz=ANDNA_RESOLVE_RQ_PKT_SZ;
 	pkt.msg=xmalloc(pkt.hdr.sz);
@@ -1184,6 +1185,8 @@ int andna_recv_resolve_rq(PACKET rpkt)
 	memcpy(&pkt, &rpkt, sizeof(PACKET));
 	inet_copy(&pkt.from, &rfrom);
 	pkt_addsk(&pkt, my_family, 0, SKT_UDP);
+	pkt.pkt_flags|=PKT_SET_LOWDELAY;
+	rpkt.pkt_flags|=PKT_SET_LOWDELAY;
 
 	/* network -> host order conversion of the rpkt_local_copy.smg */
 	ints_network_to_host((void *)req, andna_resolve_rq_pkt_iinfo);

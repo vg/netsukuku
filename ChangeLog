@@ -4,6 +4,7 @@ New features:
 	
 	* Traffic shaping
 	* Multigw
+	* The lowdelay TOS is now set in the ANDNA resolve requests
 
 Bug fixes:
 	

@@ -744,6 +744,19 @@ int unset_keepalive_sk(int socket)
 	return 0;
 }
 
+int set_tos_sk(int socket, int lowdelay)
+{
+	int tos = lowdelay ? IPTOS_LOWDELAY : IPTOS_THROUGHPUT;
+
+	/* Only for Ipv4 */
+	if (setsockopt(socket, IPPROTO_IP, IP_TOS, &tos, sizeof(tos)) < 0) {
+		error("setsockopt IP_TOS %d: %s", tos, strerror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+
 /* 
  *  *  *  Connection functions  *  *  *
  */
