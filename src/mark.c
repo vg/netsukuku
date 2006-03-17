@@ -148,7 +148,7 @@ void ntk_forward_rule_init(unsigned char *rule)
 
 	ee->next_offset=NTK_FORWARD_RULE_SZ;
 	ee->target_offset=OFFSET_TARGET;
-	snprintf(ee->ip.outiface,IFNAMSIZ,"%s+",TUNNEL_IFACE);
+	snprintf(ee->ip.outiface,IFNAMSIZ,"%s+",NTK_TUNL_PREFIX);
 	memset(ee->ip.outiface_mask,1,strlen(ee->ip.outiface));
 
 	strcpy(em->u.user.name,MOD_CONNTRACK);
@@ -220,7 +220,7 @@ void igw_mark_rule_init(char *rule)
 	e->target_offset=IPT_ENTRY_SZ;
 	memcpy(&(e->ip.dst),&inet_dst,sizeof(struct in_addr));
 	memcpy(&(e->ip.dmsk),&inet_dst_mask,sizeof(struct in_addr));
-	snprintf(e->ip.iniface,IFNAMSIZ,"%s+",TUNNEL_IFACE);
+	snprintf(e->ip.iniface,IFNAMSIZ,"%s+",DEFAULT_TUNL_PREFIX);
 	memset(e->ip.iniface_mask,1,strlen(e->ip.iniface));
 	e->ip.invflags=IPT_INV_DSTIP;
 
@@ -438,7 +438,7 @@ int create_mark_rules(int n)
 		return 0;
 	}
 	for (i=nchain;i<n;i++) {
-		mark_rule_init(rule,TUNNEL_IFACE,i);
+		mark_rule_init(rule,NTK_TUNL_PREFIX,i);
 		res=append_rule(rule,&t,NTK_MARK_CHAIN);
 		if (res) {
 			error(err_str);
