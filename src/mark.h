@@ -15,7 +15,6 @@
 #define CHAIN_OUTPUT		"OUTPUT"
 #define CHAIN_POSTROUTING	"POSTROUTING"
 #define CHAIN_FORWARD		"FORWARD"
-#define TUNNEL_IFACE		"tunl"
 
 #define MOD_CONNTRACK		"conntrack"
 #define MOD_CONNMARK		"CONNMARK"

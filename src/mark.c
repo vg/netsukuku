@@ -37,6 +37,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include "iptunnel.h"
 #include "mark.h"
 #include "err_errno.h"
 #include "log.h"

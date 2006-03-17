@@ -24,6 +24,7 @@
 #define DEFAULT_TUNL_PREFIX	"tunl"
 #define DEFAULT_TUNL_NUMBER	0	/* The permanent tunl0 device */
 #define DEFAULT_TUNL_IF		"tunl0"
+#define NTK_TUNL_PREFIX		"ntk_tunl"
 
 /* Usage: printf(TUNL_STRING, TUNL_NUMBER(x)); */
 #define TUNL_STRING		"%s%d"
