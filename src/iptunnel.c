@@ -37,6 +37,7 @@
 #include "libnetlink.h"
 #include "ll_map.h"
 #include "krnl_route.h"
+#include "route.h"
 #include "iptunnel.h"
 #include "xmalloc.h"
 #include "log.h"
@@ -352,12 +353,12 @@ int set_tunnel_ip(char *tunl_prefix, int tunl_number, inet_prefix *tunl_ip)
 	ntop=inet_to_str(*tunl_ip);
 
 	set_all_ifs(&tunnel_ifs[tunl_number], 1, set_dev_down);
+	set_all_ifs(&tunnel_ifs[tunl_number], 1, set_dev_up);
 	if(set_all_dev_ip(*tunl_ip, &tunnel_ifs[tunl_number], 1) < 0) {
 		error("Cannot set the %s ip to " TUNL_STRING,
 				ntop, TUNL_N(tunl_prefix, tunl_number));
 		return -1;
 	}
-	set_all_ifs(&tunnel_ifs[tunl_number], 1, set_dev_up);
 	return 0;
 }
 
@@ -368,7 +369,8 @@ int set_tunnel_ip(char *tunl_prefix, int tunl_number, inet_prefix *tunl_ip)
 int add_tunnel_if(inet_prefix *remote, inet_prefix *local, char *dev,
 		char *tunl_prefix, int tunl_number, inet_prefix *tunl_ip)
 {
-		
+	char tunl_name[IFNAMSIZ];
+	
 	/* 
 	 * tunl0 zero is a special tunnel, it cannot be created nor destroyed.
 	 * It's pure energy.
@@ -388,9 +390,21 @@ skip_krnl_add_tunl:
 		return -1;
 
 	if(tunl_ip) {
+
+		/*
+		 * ifconfig tunnel `tunl_ip' up
+		 */
 		if(set_tunnel_ip(tunl_prefix, tunl_number, tunl_ip) < 0)
 			return -1;
 
+		
+		/*
+		 *  ip route append tunl_ip_subnet dev tunnel  proto kernel \
+		 *  scope link  src `tunl_ip'
+		 */
+		sprintf(tunl_name, TUNL_STRING, TUNL_N(tunl_prefix, tunl_number));
+		rt_append_subnet_src(tunl_ip, tunl_name);
+				
 		if(route_rp_filter_all_dev(my_family, &tunnel_ifs[tunl_number],
 				1, 0) < 0)
 			return -1;

@@ -1114,7 +1114,7 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 				 * 	dev nh[ni].dev
 				 */
 				inet_htonl(nh_tmp[0].gw.data, nh_tmp[0].gw.family);
-				if(route_replace(0, 0, &to, nh_tmp, 0, multigw_nh[x].table))
+				if(route_replace(0, 0, 0, &to, nh_tmp, 0, multigw_nh[x].table))
 					error("Cannote replace the default "
 						"route of the table %d ",
 						multigw_nh[x].table);
@@ -1157,7 +1157,7 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 	debug(DBG_INSANE, RED("igw_def_gw: default via %s"), gw_ip);
 #endif
 
-	if(route_replace(0, 0, &to, nh, 0, 0))
+	if(route_replace(0, 0, 0, &to, nh, 0, 0))
 		error("WARNING: Cannot update the default route "
 				"lvl %d", level);
 	active_gws=ni;

@@ -20,6 +20,7 @@
 #define ROUTE_H
 
 #include "gmap.h"
+#include "bmap.h"
 #include "if.h"
 
 #define MAX_MULTIPATH_ROUTES		24	/* The maximum number of 
@@ -64,5 +65,6 @@ int rt_replace_def_gw(char *dev, inet_prefix gw, u_char table);
 int rt_delete_def_gw(u_char);
 
 int rt_del_loopback_net(void);
+int rt_append_subnet_src(inet_prefix *src, char *dev);
 
 #endif /*ROUTE_H*/
