@@ -220,7 +220,7 @@ void igw_mark_rule_init(char *rule)
 //	snprintf(e->ip.iniface,IFNAMSIZ,"%s+",DEFAULT_TUNL_PREFIX);
 	snprintf(e->ip.iniface,IFNAMSIZ,"%s+",NTK_TUNL_PREFIX);
 	memset(e->ip.iniface_mask,1,strlen(e->ip.iniface));
-	e->ip.invflags=IPT_INV_DSTIP;
+//	e->ip.invflags=IPT_INV_DSTIP;
 
 	et->u.target_size=IPT_ENTRY_TARGET_SZ+4;
 	et->u.user.target_size=et->u.target_size;
