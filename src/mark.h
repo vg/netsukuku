@@ -14,6 +14,8 @@
 #define NTK_MARK_CHAIN		"ntk_mark_chain"
 #define CHAIN_OUTPUT		"OUTPUT"
 #define CHAIN_POSTROUTING	"POSTROUTING"
+#define CHAIN_PREROUTING	"PREROUTING"
+#define CHAIN_POSTROUTING	"POSTROUTING"
 #define CHAIN_FORWARD		"FORWARD"
 
 #define MOD_CONNTRACK		"conntrack"
@@ -49,7 +51,7 @@
 
 #define MAX_RULE_SZ		RESTORE_OUTPUT_RULE_SZ
 
-struct in_addr inet_dst,inet_dst_mask;
+//struct in_addr inet_dst,inet_dst_mask;
 
 typedef struct rule_store {
 	struct ipt_entry 	*e;

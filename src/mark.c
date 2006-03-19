@@ -110,11 +110,8 @@ void restore_output_rule_init(unsigned char *rule)
 	ee->next_offset=RESTORE_OUTPUT_RULE_SZ;
 	ee->target_offset=OFFSET_TARGET;
 	
-#if 0
-	/* this is bad */
-	snprintf(ee->ip.outiface,IFNAMSIZ,"%s+",TUNNEL_IFACE);
+	snprintf(ee->ip.outiface,IFNAMSIZ,"%s+",NTK_TUNL_PREFIX);
 	memset(ee->ip.outiface_mask,1,strlen(ee->ip.outiface));
-#endif
 
 	strcpy(em->u.user.name,MOD_CONNTRACK);
 	em->u.match_size=MATCH_SZ;;
@@ -218,9 +215,10 @@ void igw_mark_rule_init(char *rule)
 	
 	e->next_offset=FILTER_RULE_SZ;
 	e->target_offset=IPT_ENTRY_SZ;
-	memcpy(&(e->ip.dst),&inet_dst,sizeof(struct in_addr));
-	memcpy(&(e->ip.dmsk),&inet_dst_mask,sizeof(struct in_addr));
-	snprintf(e->ip.iniface,IFNAMSIZ,"%s+",DEFAULT_TUNL_PREFIX);
+//	memcpy(&(e->ip.dst),&inet_dst,sizeof(struct in_addr));
+//	memcpy(&(e->ip.dmsk),&inet_dst_mask,sizeof(struct in_addr));
+//	snprintf(e->ip.iniface,IFNAMSIZ,"%s+",DEFAULT_TUNL_PREFIX);
+	snprintf(e->ip.iniface,IFNAMSIZ,"%s+",NTK_TUNL_PREFIX);
 	memset(e->ip.iniface_mask,1,strlen(e->ip.iniface));
 	e->ip.invflags=IPT_INV_DSTIP;
 
@@ -265,7 +263,7 @@ int store_rules()
 	fr.e=(struct ipt_entry*)iptc_first_rule(CHAIN_POSTROUTING,&t);
 	/* Not elegant style, but faster */
 	if (death_loop_rule) {
-		dr.e=(struct ipt_entry*)iptc_first_rule(CHAIN_FORWARD,&t);
+		dr.e=(struct ipt_entry*)iptc_first_rule(CHAIN_PREROUTING,&t);
 		if (rr.e && fr.e && dr.e) {
 			rr.sz=RESTORE_OUTPUT_RULE_SZ;
 			rr.chain=CHAIN_OUTPUT;
@@ -278,6 +276,7 @@ int store_rules()
 		}
 		else {
 			commit_rules(&t);
+			error("In store_rules: %s.",iptc_strerror(errno));
 			err_ret(ERR_NETSTO,-1);
 		}
 	}
@@ -302,7 +301,7 @@ int mark_init(int igw)
 	iptc_handle_t t;
 	char rule[MAX_RULE_SZ];
 
-	res=inet_aton(NTK_NET_STR,&inet_dst);
+	/*res=inet_aton(NTK_NET_STR,&inet_dst);
 	if (!res) {
 		error("Can not convert str to addr.");
 		goto cannot_init;
@@ -311,7 +310,7 @@ int mark_init(int igw)
 	if (!res) {
 		error("Can not convert str to addr.");
 		goto cannot_init;
-	}
+	}*/
 
 	res=table_init(MANGLE_TABLE,&t);
 	if (res) {
@@ -341,7 +340,7 @@ int mark_init(int igw)
 	if (igw) {
 		death_loop_rule=1;
 		igw_mark_rule_init(rule);
-		res=insert_rule(rule,&t,CHAIN_FORWARD,0);
+		res=insert_rule(rule,&t,CHAIN_PREROUTING,0);
 		if (res) {
 			error(err_str);
 			error("Unable to create netfilter igw death loop rule.");
