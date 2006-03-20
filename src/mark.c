@@ -146,7 +146,7 @@ void ntk_forward_rule_init(unsigned char *rule)
 	ee->next_offset=NTK_FORWARD_RULE_SZ;
 	ee->target_offset=OFFSET_TARGET;
 	snprintf(ee->ip.outiface,IFNAMSIZ,"%s+",NTK_TUNL_PREFIX);
-	memset(ee->ip.outiface_mask,1,strlen(ee->ip.outiface));
+	memset(ee->ip.outiface_mask,1,strlen(ee->ip.outiface)-1);
 
 	strcpy(em->u.user.name,MOD_CONNTRACK);
 	em->u.match_size=MATCH_SZ;
