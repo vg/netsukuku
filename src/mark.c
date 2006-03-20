@@ -270,7 +270,7 @@ int store_rules()
 			fr.sz=NTK_FORWARD_RULE_SZ;
 			fr.chain=CHAIN_POSTROUTING;
 			dr.sz=FILTER_RULE_SZ;
-			dr.chain=CHAIN_FORWARD;
+			dr.chain=CHAIN_PREROUTING;
 			commit_rules(&t);
 			return 0;
 		}
