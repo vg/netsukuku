@@ -629,16 +629,6 @@ void sigalrm_handler(int sig)
  */
 int main(int argc, char **argv)
 {
-	int res;
-	log_init("CIAO",2,1);
-	res=mark_init();
-	return 0;
-	create_mark_rules(10);
-	return 0;
-	printf("error %d\n",res);
-	res=mark_close();
-	printf("closing error %d\n",res);
-	return 0;
 	struct udp_daemon_argv ud_argv;
 	u_short *port;
 	pthread_t daemon_tcp_thread, daemon_udp_thread, andna_thread;
