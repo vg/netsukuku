@@ -753,7 +753,7 @@ void hook_set_all_ips(inet_prefix ip, interface *ifs, int ifs_n)
 
 	if(set_all_dev_ip(ip, ifs, ifs_n) < 0)
 		fatal("Cannot set the %s ip to all the interfaces", ntop);
-	if(restricted_mode && server_opt.share_internet) {
+	if(restricted_mode) {
 		set_dev_down(DEFAULT_TUNL_IF);
 		set_dev_up(DEFAULT_TUNL_IF);
 		if(set_dev_ip(ip, DEFAULT_TUNL_IF) < 0)
