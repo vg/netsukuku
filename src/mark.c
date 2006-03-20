@@ -44,7 +44,7 @@
 
 int death_loop_rule;
 int clean_on_exit;
-rule_store rr={0,0,0},fr={0,0,0},dr={0,0,0};
+rule_store rr,fr,dr;
 
 int table_init(const char *table, iptc_handle_t *t)
 {
@@ -253,23 +253,27 @@ int store_rules()
 {
 	int res;
 	iptc_handle_t t;
+	struct ipt_entry *r,*f,*d;
 
 	res=table_init(MANGLE_TABLE,&t);
 	if (res) {
 		error(err_str);
 		err_ret(ERR_NETSTO,-1);
 	}
-	rr.e=(struct ipt_entry*)iptc_first_rule(CHAIN_OUTPUT,&t);
-	fr.e=(struct ipt_entry*)iptc_first_rule(CHAIN_POSTROUTING,&t);
+	r=(struct ipt_entry*)iptc_first_rule(CHAIN_OUTPUT,&t);
+	f=(struct ipt_entry*)iptc_first_rule(CHAIN_POSTROUTING,&t);
 	/* Not elegant style, but faster */
 	if (death_loop_rule) {
-		dr.e=(struct ipt_entry*)iptc_first_rule(CHAIN_PREROUTING,&t);
-		if (rr.e && fr.e && dr.e) {
+		d=(struct ipt_entry*)iptc_first_rule(CHAIN_PREROUTING,&t);
+		if (r && f && d) {
 			rr.sz=RESTORE_OUTPUT_RULE_SZ;
+			memcpy(rr.e,r,rr.sz);
 			rr.chain=CHAIN_OUTPUT;
 			fr.sz=NTK_FORWARD_RULE_SZ;
+			memcpy(fr.e,f,fr.sz);
 			fr.chain=CHAIN_POSTROUTING;
 			dr.sz=FILTER_RULE_SZ;
+			memcpy(dr.e,d,dr.sz);
 			dr.chain=CHAIN_PREROUTING;
 			commit_rules(&t);
 			return 0;
@@ -280,10 +284,12 @@ int store_rules()
 			err_ret(ERR_NETSTO,-1);
 		}
 	}
-	if (rr.e && fr.e ) {
+	if (r && f ) {
 		rr.sz=RESTORE_OUTPUT_RULE_SZ;
+		memcpy(rr.e,r,rr.sz);
 		rr.chain=CHAIN_OUTPUT;
 		fr.sz=NTK_FORWARD_RULE_SZ;
+		memcpy(fr.e,f,fr.sz);
 		fr.chain=CHAIN_POSTROUTING;
 		commit_rules(&t);
 		return 0;

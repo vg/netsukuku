@@ -54,7 +54,7 @@
 //struct in_addr inet_dst,inet_dst_mask;
 
 typedef struct rule_store {
-	struct ipt_entry 	*e;
+	char			e[RESTORE_OUTPUT_RULE_SZ];
 	int			sz;
 	char 			*chain;
 } rule_store;
