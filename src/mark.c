@@ -111,7 +111,7 @@ void restore_output_rule_init(unsigned char *rule)
 	ee->target_offset=OFFSET_TARGET;
 	
 	snprintf(ee->ip.outiface,IFNAMSIZ,"%s+",NTK_TUNL_PREFIX);
-	memset(ee->ip.outiface_mask,1,strlen(ee->ip.outiface)-1);
+	memset(ee->ip.outiface_mask,0xFF,strlen(ee->ip.outiface)-1);
 
 	strcpy(em->u.user.name,MOD_CONNTRACK);
 	em->u.match_size=MATCH_SZ;;
@@ -146,7 +146,7 @@ void ntk_forward_rule_init(unsigned char *rule)
 	ee->next_offset=NTK_FORWARD_RULE_SZ;
 	ee->target_offset=OFFSET_TARGET;
 	snprintf(ee->ip.outiface,IFNAMSIZ,"%s+",NTK_TUNL_PREFIX);
-	memset(ee->ip.outiface_mask,1,strlen(ee->ip.outiface)-1);
+	memset(ee->ip.outiface_mask,0xFF,strlen(ee->ip.outiface)-1);
 
 	strcpy(em->u.user.name,MOD_CONNTRACK);
 	em->u.match_size=MATCH_SZ;
@@ -181,7 +181,7 @@ void mark_rule_init(unsigned char *rule,char *outiface,int outiface_num)
 	icmi->mode=IPT_CONNMARK_SET;
 	icmi->mask= 0xffffffffUL;
 	snprintf(ee->ip.outiface,IFNAMSIZ,"%s%d",outiface,outiface_num);
-	memset(ee->ip.outiface_mask,1,strlen(ee->ip.outiface));
+	memset(ee->ip.outiface_mask,0xFF,strlen(ee->ip.outiface));
 	icmi->mark=outiface_num+1;
 }
 /*
@@ -219,7 +219,7 @@ void igw_mark_rule_init(char *rule)
 //	memcpy(&(e->ip.dmsk),&inet_dst_mask,sizeof(struct in_addr));
 //	snprintf(e->ip.iniface,IFNAMSIZ,"%s+",DEFAULT_TUNL_PREFIX);
 	snprintf(e->ip.iniface,IFNAMSIZ,"%s+",NTK_TUNL_PREFIX);
-	memset(e->ip.iniface_mask,1,strlen(e->ip.iniface)-1);
+	memset(e->ip.iniface_mask,0xFF,strlen(e->ip.iniface)-1);
 //	e->ip.invflags=IPT_INV_DSTIP;
 
 	et->u.target_size=IPT_ENTRY_TARGET_SZ+4;
