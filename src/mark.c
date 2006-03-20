@@ -44,7 +44,7 @@
 
 int death_loop_rule;
 int clean_on_exit;
-rule_store rr={0,0},fr={0,0},dr={0,0};
+rule_store rr={0,0,0},fr={0,0,0},dr={0,0,0};
 
 int table_init(const char *table, iptc_handle_t *t)
 {
