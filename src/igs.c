@@ -1102,6 +1102,7 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 				if(multigw_nh[x].flags & IGW_RTRULE)
 					rule_del(&ip, 0, 0, 0,
 						multigw_nh[x].tunl, multigw_nh[x].table);
+				inet_htonl(ip.data, ip.family);
 				rule_add(&ip, 0, 0, 0, multigw_nh[x].tunl+1, 
 						multigw_nh[x].table);
 				multigw_nh[x].flags|=IGW_RTRULE;
