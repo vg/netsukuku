@@ -219,7 +219,7 @@ void igw_mark_rule_init(char *rule)
 //	memcpy(&(e->ip.dmsk),&inet_dst_mask,sizeof(struct in_addr));
 //	snprintf(e->ip.iniface,IFNAMSIZ,"%s+",DEFAULT_TUNL_PREFIX);
 	snprintf(e->ip.iniface,IFNAMSIZ,"%s+",NTK_TUNL_PREFIX);
-	memset(e->ip.iniface_mask,1,strlen(e->ip.iniface));
+	memset(e->ip.iniface_mask,1,strlen(e->ip.iniface)-1);
 //	e->ip.invflags=IPT_INV_DSTIP;
 
 	et->u.target_size=IPT_ENTRY_TARGET_SZ+4;
