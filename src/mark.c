@@ -46,6 +46,11 @@ int death_loop_rule;
 int clean_on_exit;
 rule_store rr,fr,dr;
 
+/* Table init: is too easy for comments. 
+ * Returns:
+ * 	0
+ * 	-1
+ */
 int table_init(const char *table, iptc_handle_t *t)
 {
 	*t=iptc_init(table);
@@ -56,6 +61,13 @@ int table_init(const char *table, iptc_handle_t *t)
 	return 0;
 
 }
+/* 
+ * insert the rule -rule- on chain -chain- 
+ * at the position pos.
+ * Returns:
+ * 	0
+ * 	-1
+ */
 int insert_rule(const char *rule,iptc_handle_t *t,const char *chain,int pos)
 {
 	int res;
@@ -66,6 +78,12 @@ int insert_rule(const char *rule,iptc_handle_t *t,const char *chain,int pos)
 	}
 	return 0;
 }
+/* 
+ * append the rule -rule- on chain -chain-.
+ * Returns:
+ * 	0
+ * 	-1
+ */
 int append_rule(const char *rule,iptc_handle_t *t,const char *chain)
 {
 	int res;
@@ -76,6 +94,12 @@ int append_rule(const char *rule,iptc_handle_t *t,const char *chain)
 	}
 	return 0;
 }
+/*
+ * commit modified rules and chains.
+ * Returns:
+ * 	0
+ * 	-1
+ */
 int commit_rules(iptc_handle_t *t)
 {
 	int res;
@@ -88,8 +112,14 @@ int commit_rules(iptc_handle_t *t)
 }
 
 
-/* Put in ,rule, the rule to be passed to the kernel.
- * ,rule, has to be RESTORE_OUTPUT_RULE_SZ-sized
+/* 
+ * Put in -rule- the netfilter rule:
+ * 
+ *  -A OUTPUT -o ntk_tunl+ -m conntrack  \
+ *  --ctstate RELATED,ESTABLISHED -j CONNMARK \
+ *  --restore-mark
+ *  
+ * -rule- has to be RESTORE_OUTPUT_RULE_SZ-sized
  */
 void restore_output_rule_init(unsigned char *rule)
 {
@@ -128,7 +158,14 @@ void restore_output_rule_init(unsigned char *rule)
 	icmi->mode=IPT_CONNMARK_RESTORE;
 	icmi->mask= 0xffffffffUL;
 }
-
+/* 
+ * Put in -rule- the netfilter rule:
+ * 
+ *  -A POSTROUTING -o ntk_tunl+ -m conntrack 
+ *  --ctstate NEW -j ntk_mark_chain
+ *  
+ * -rule- has to be NTK_FORWARD_RULE_SZ-sized
+ */
 void ntk_forward_rule_init(unsigned char *rule)
 {
 	struct ipt_entry *ee;
@@ -159,6 +196,15 @@ void ntk_forward_rule_init(unsigned char *rule)
 	et->u.user.target_size=et->u.target_size;
 	strcpy(et->u.user.name,NTK_MARK_CHAIN);
 }
+/* 
+ * Put in -rule- the netfilter rule:
+ * 
+ * 
+ *  -A ntk_mark_chain -o ntk_tunl<outiface_num>
+ *  -j CONNMARK --set-mark <outiface_num>
+ *  
+ * -rule- has to be MARK_RULE_SZ-sized
+ */
 void mark_rule_init(unsigned char *rule,char *outiface,int outiface_num)
 {
 	struct ipt_entry *ee;
@@ -184,43 +230,29 @@ void mark_rule_init(unsigned char *rule,char *outiface,int outiface_num)
 	memset(ee->ip.outiface_mask,0xFF,strlen(ee->ip.outiface));
 	icmi->mark=outiface_num+1;
 }
-/*
-int fill_mark_rule(unsigned char *rule,char *outiface,int outiface_num)
-{
-	struct ipt_entry *ee;
-	struct ipt_connmark_target_info *icmi;
-
-	if (outiface_num>MAX_MARK_RULES) {
-		error("In fill_mark_rule: too many mark rules.");
-		return -1;
-	}
-	ee=(struct ipt_entry*)rule;
-	icmi=(struct ipt_connmark_target_info*)(rule+MARK_RULE_SZ-IPT_CM_TARGET_INFO_SZ);
-
-	snprintf(ee->ip.outiface,IFNAMSIZ,"%s%d",outiface,outiface_num);
-	memset(ee->ip.outiface_mask,1,strlen(ee->ip.outiface));
-	icmi->mark=outiface_num+1;
-	return 0;
-}*/
+/* 
+ * Put in -rule- the netfilter rule:
+ * 
+ * 
+ *  -A PREROUTING -o ntk_tunl+ \
+ *  -j CONNMARK --set-mark 25
+ *  
+ * -rule- has to be IGW_FILTER_RULE_SZ-sized
+ */
 void igw_mark_rule_init(char *rule)
 {
 	int res;
 	struct ipt_entry *e;
 	struct ipt_entry_target *et;
-//	struct in_addr inet_dst,not_inet_dst_mask;
 
-	memset(rule,0,FILTER_RULE_SZ);
+	memset(rule,0,IGW_FILTER_RULE_SZ);
 	e=(struct ipt_entry*)rule;
 	et=(struct ipt_entry_target*)(rule+IPT_ENTRY_SZ);
 	
-	e->next_offset=FILTER_RULE_SZ;
+	e->next_offset=IGW_FILTER_RULE_SZ;
 	e->target_offset=IPT_ENTRY_SZ;
-//	memcpy(&(e->ip.dst),&inet_dst,sizeof(struct in_addr));
-//	memcpy(&(e->ip.dmsk),&inet_dst_mask,sizeof(struct in_addr));
-//	snprintf(e->ip.iniface,IFNAMSIZ,"%s+",DEFAULT_TUNL_PREFIX);
 	snprintf(e->ip.iniface,IFNAMSIZ,"%s+",NTK_TUNL_PREFIX);
 	memset(e->ip.iniface_mask,0xFF,strlen(e->ip.iniface)-1);
-//	e->ip.invflags=IPT_INV_DSTIP;
 
 	et->u.target_size=IPT_ENTRY_TARGET_SZ+4;
 	et->u.user.target_size=et->u.target_size;
@@ -228,7 +260,10 @@ void igw_mark_rule_init(char *rule)
 	res=INET_MARK;
 	memcpy(et->data,&res,4);
 }
-
+/*
+ * Build the chain ntk_mark_chain on 
+ * mangle table.
+ */
 int ntk_mark_chain_init(iptc_handle_t *t)
 {
 	int res;
@@ -249,6 +284,15 @@ dontwork:
 	error("In ntk_mark_chain_init: -> %s", iptc_strerror(errno));
 	err_ret(ERR_NETCHA,-1)
 }
+/*
+ * Takes committed rules and copies them
+ * to structs. This is usefule to delete
+ * the rules on exit, even if netfilter
+ * was modified before the deletion/
+ * Returns:
+ * 	0
+ * 	-1
+ */
 int store_rules()
 {
 	int res;
@@ -272,7 +316,7 @@ int store_rules()
 			fr.sz=NTK_FORWARD_RULE_SZ;
 			memcpy(fr.e,f,fr.sz);
 			fr.chain=CHAIN_POSTROUTING;
-			dr.sz=FILTER_RULE_SZ;
+			dr.sz=IGW_FILTER_RULE_SZ;
 			memcpy(dr.e,d,dr.sz);
 			dr.chain=CHAIN_PREROUTING;
 			commit_rules(&t);
@@ -297,10 +341,20 @@ int store_rules()
 	commit_rules(&t);
 	err_ret(ERR_NETSTO,-1);
 }
-
-
-
-	
+/*
+ * This function builds:
+ * 	- OUTPUT rule
+ * 	- POSTROUTING rule
+ * 	- PREROUTING rule
+ * 	- ntk_mark_chain
+ * and store rules for future deletion.
+ *
+ * Returns:
+ * 	0
+ * 	-1
+ *
+ * If -1, any rule will be committed.
+ */
 int mark_init(int igw)
 {
 	int res;
@@ -379,35 +433,12 @@ int mark_init(int igw)
 cannot_init:
 	err_ret(ERR_MRKINI,-1);
 
-/*	res=table_init(FILTER_TABLE,&t);
-	if (res) {
-		error(err_str);
-		error("Netfilter filter table was not altered!");
-		errss+=1;
-	} else {
-	
-		res=commit_rules(&t);
-		if (res) {
-			error(err_str);
-			error("Netfilter filter table was not modified!");
-			errss=1;
-		}
-	}
-	if (errss==0) {
-		debug(DBG_NORMAL,"mark_init(): Marking igw conntction rule created.");
-		debug(DBG_NORMAL,"-*- Don't touch this rule! -*-");
-	} else
-		debug(DBG_NORMAL,"mark_init(),FILTER_TABLE: %d (0-1) errors encountered.",errss);
-	if (!errs && !errss)
-		debug(DBG_NORMAL,"mark_init(): All's done.");*/
 }
 /* 
  * Count the number of rules in ntk_mangle_chain.
  *
- * Returns:
- * 	0
- * 	-1
- * 	nums
+ * Returns the number of rules present in 
+ * this chain.
  */ 
 int count_ntk_mark_chain(iptc_handle_t *t)
 {
@@ -421,6 +452,24 @@ int count_ntk_mark_chain(iptc_handle_t *t)
 	}
 	return nchain;
 }
+/*
+ * This function build the rules:
+ *
+ * -A ntk_mark_chain -o ntk_tunl<m>
+ *  -j CONNMARK --set-mark m
+ *
+ * If:
+ *
+ * s= n-number_of_rules_present
+ * then:
+ * 	if s>0, will be created s rules,
+ * else:
+ * 	nothing.
+ *
+ * Returns:
+ * 	0
+ * 	-1
+ */
 int create_mark_rules(int n)
 {
 	int nchain;
@@ -458,6 +507,13 @@ int create_mark_rules(int n)
 	debug(DBG_NORMAL,"Created %d marking rules.", n-nchain);
 	return 0;
 }
+/*
+ * Deltion function: 
+ * this delete the chain ntk_mark_chain
+ * Returns:
+ * 	0
+ * 	-1
+ */
 
 int delete_ntk_forward_chain(iptc_handle_t *t)
 {	
@@ -478,6 +534,9 @@ cannot_delete:
 	error("In delete_ntk_forward_chain: -> %s", iptc_strerror(errno));
 	err_ret(ERR_NETDEL,-1);
 }
+/* delete the first rule of a chain.
+ * Unused.
+ */
 int delete_first_rule(iptc_handle_t *t,const char *chain)
 {
 	int res;
@@ -494,6 +553,13 @@ cannot_delete:
 	error("In delete_first_rule: -> %s", iptc_strerror(errno));
 	err_ret(ERR_NETDEL,-1);
 }
+/*
+ * Search for the position of rule -rule.rule-
+ * on the chain rule.chain
+ * Returns:
+ * 	pos if rule was found
+ * 	-1  if rule wasn't found
+ */
 int rule_position(rule_store *rule,iptc_handle_t *t)
 {
 	const struct ipt_entry *e;
@@ -511,6 +577,13 @@ int rule_position(rule_store *rule,iptc_handle_t *t)
 	}
 	return found?count:-1;
 }
+/* 
+ * Delete rule -rule.rule- on chain rule.chain.
+ * Returns
+ * 	0 if deletion is Ok or if nothing
+ * 		has to be deleted
+ * 	-1 error
+ */
 int delete_rule(rule_store *rule,iptc_handle_t *t)
 {
 	int pos,res;
@@ -526,6 +599,14 @@ int delete_rule(rule_store *rule,iptc_handle_t *t)
 	}
 	return 0;
 }
+/* 
+ * clean the rules committed by:
+ * 	- mark_init
+ * 	- create_mark_rules()
+ * Returns:
+ * 	0
+ * 	-1
+ */
 		
 int mark_close()
 {
@@ -565,81 +646,3 @@ int mark_close()
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	/*
-	int errs=0;
-
-	res=table_init(MANGLE_TABLE,&t);
-	if (res) {
-		error("Netfilter mangle chain is not loadable: nothing will be restored.");
-		errs+=4;
-	} else {
-		res=delete_first_rule(&t,CHAIN_POSTROUTING);
-		if (res) {
-			error(err_str);
-			error("Netfilter ntk-rule on POSTROUTING (mangle table) was not deleted!");
-			errs++;
-		}
-		res=delete_first_rule(&t,CHAIN_OUTPUT);
-		if (res) {
-			error(err_str);
-			error("Netfilter ntk-rule on OUTPUT (mangle table) was not deleted!");
-			errs++;
-		}
-
-		if(death_loop_rule) {
-			res=delete_first_rule(&t,CHAIN_FORWARD);
-			if (res) {
-				error(err_str);
-				error("Netfilter igw death loop FORWARD (mangle table) "
-						"was not deleted!");
-				errs++;
-			}
-		}
-
-		res=delete_ntk_forward_chain(&t);
-		if (res) {
-			error(err_str);
-			error("Netfilter ntk-chain on mangle table was not flushed and removed!");
-			errs++;
-		}
-		res=commit_rules(&t);
-		if (res) {
-			error(err_str);
-			error("Error committing rules: netfilter mangle table was not restored!");
-			errs++;
-		}
-	}
-	debug(DBG_NORMAL,"Netfilter mangle table restored with %d errors (0-4).",errs);
-	res=table_init(FILTER_TABLE,&t);
-	if (!res) {
-		error(err_str);
-		error("Netfilter filter chain is not loadable: nothing will be restored.");
-		errss++;
-	} else {
-		res=delete_first_rule(&t,CHAIN_FORWARD);
-		if (!res) {
-			error(err_str);
-			error("Netfilter ntk-rule on FORWARD (mangle table) was not deleted!");
-			errss++;
-		}
-	}
-	debug(DBG_NORMAL,"Netfilter filter table restored with %d errors (0-1).",errss);
-	res=table_init(FILTER_TABLE,&t);
-	return -errs;
-}*/
