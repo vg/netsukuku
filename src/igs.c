@@ -304,6 +304,7 @@ void init_internet_gateway_search(void)
 		fatal("Cannot initialize \"" DEFAULT_TUNL_IF "\". "
 			"Is the \"ipip\" kernel module loaded?");
 	ifs_del_all_name(me.cur_ifs, &me.cur_ifs_n, NTK_TUNL_PREFIX);
+	ifs_del_all_name(me.cur_ifs, &me.cur_ifs_n, DEFAULT_TUNL_PREFIX);
 
 	/*
 	 * Delete old routing rules
