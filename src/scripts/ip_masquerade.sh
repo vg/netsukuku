@@ -8,6 +8,9 @@
 
 #EXTIF="$1"
 
+PATH=/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin:/usr/local/sbin/
+export PATH
+
 OS=`uname`
 
 masq_start() {

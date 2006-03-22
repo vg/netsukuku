@@ -8,6 +8,9 @@
 # is 0
 #
 
+PATH=/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin:/usr/local/sbin/
+export PATH
+
 #########################################################
 # Modify these values to your needs	
 #
