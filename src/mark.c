@@ -42,7 +42,7 @@
 #include "err_errno.h"
 #include "log.h"
 
-static int death_loop_rule=0;
+static int death_loop_rule;
 static int clean_on_exit;
 static rule_store rr,fr,dr;
 
@@ -398,7 +398,7 @@ int mark_init(int igw)
 		goto cannot_init;
 	}	
 	if (igw) {
-		death_loop_rule=1; /* It's zero by default */
+		death_loop_rule=1; 
 		igw_mark_rule_init(rule);
 		res=insert_rule(rule,&t,CHAIN_PREROUTING,0);
 		if (res) {
@@ -408,6 +408,8 @@ int mark_init(int igw)
 			goto cannot_init;
 		}  
 	}
+	else
+		death_loop_rule=0;
 
 	res=commit_rules(&t);
 	if (res) {
