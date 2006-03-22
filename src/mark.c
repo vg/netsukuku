@@ -42,9 +42,9 @@
 #include "err_errno.h"
 #include "log.h"
 
-int death_loop_rule;
-int clean_on_exit;
-rule_store rr,fr,dr;
+static int death_loop_rule=0;
+static int clean_on_exit;
+static rule_store rr,fr,dr;
 
 /* Table init: is too easy for comments. 
  * Returns:
@@ -398,7 +398,7 @@ int mark_init(int igw)
 		goto cannot_init;
 	}	
 	if (igw) {
-		death_loop_rule=1;
+		death_loop_rule=1; /* It's zero by default */
 		igw_mark_rule_init(rule);
 		res=insert_rule(rule,&t,CHAIN_PREROUTING,0);
 		if (res) {
@@ -421,7 +421,8 @@ int mark_init(int igw)
 		error("Rules storing failed: autocleaning netfilter on exit disable.");
 		clean_on_exit=0;
 	}
-	clean_on_exit=1;
+	else
+		clean_on_exit=1;
 	debug(DBG_NORMAL,"Netfilter chain ntk_mark_chain created (mangle).");
 	debug(DBG_NORMAL,"Netfilter restoring rule created (mangle->output).");
 	debug(DBG_NORMAL,"Netfilter forwarding rule created (mangle->postrouting).");
