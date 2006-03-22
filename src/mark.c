@@ -625,8 +625,10 @@ int mark_close()
 	res=0;
 	res+=delete_rule(&rr,&t);
 	res+=delete_rule(&fr,&t);
-	if (death_loop_rule)
+	if (death_loop_rule) {
+		debug(DBG_INSANE,"In mark_close: I'm an IGW: deleting death loop rule.");
 		res+=delete_rule(&dr,&t);
+	}
 	if (res) {
 		error(err_str);
 		err_ret(ERR_NETRST,-1);
