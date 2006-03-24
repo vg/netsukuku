@@ -101,6 +101,7 @@ const static u_short andna_udp_port	= ANDNA_UDP_PORT,
 #define COUNTER_C_FILE		"andna_counter_cache"
 
 #define IPMASQ_SCRIPT_FILE	CONF_DIR"/ip_masquerade.sh"
+#define TCSHAPER_SCRIPT_FILE	CONF_DIR"/tc_shaper.sh"
 
 typedef struct
 {
@@ -128,12 +129,14 @@ typedef struct
 	char		inet_connection;/* If it's 1, we are connected 
 					   to the Internet */
 	char		share_internet;
+	char		shape_internet;
 	inet_prefix	inet_gw;
 	char		*inet_gw_dev;
 	char		**inet_hosts;	/* Hosts to be pinged in order to check
 					   if the internet connection is up */
 	int 		inet_hosts_counter;
 	char		*ip_masq_script;
+	char		*tc_shaper_script;
 	
 	/* The bandwidths of the Internet connection we are sharing.
 	 * If we are just leeching they are all 0. */

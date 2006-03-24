@@ -157,6 +157,7 @@ void fill_default_options(void)
 	server_opt.restricted_class=0;
 
 	server_opt.ip_masq_script=IPMASQ_SCRIPT_FILE;
+	server_opt.tc_shaper_script=TCSHAPER_SCRIPT_FILE;
 
 	server_opt.max_connections=MAX_CONNECTIONS;
 	server_opt.max_accepts_per_host=MAX_ACCEPTS;
@@ -227,13 +228,17 @@ void fill_loaded_cfg_options(void)
 				&server_opt.inet_hosts_counter);
 		if(!server_opt.inet_hosts)
 			fatal("Malformed `%s' option: \"%s\". "
-				"Its syntax is \"host1:host2:...\"",
+				"Its syntax is host1:host2:...",
 				config_str[CONF_NTK_INTERNET_PING_HOSTS], value);
 	}
 	if((value=getenv(config_str[CONF_SHARE_INTERNET])))
 		server_opt.share_internet=atoi(value);
+	if((value=getenv(config_str[CONF_SHAPE_INTERNET])))
+		server_opt.shape_internet=atoi(value);
 	if((value=getenv(config_str[CONF_NTK_IP_MASQ_SCRIPT])))
 		server_opt.ip_masq_script=xstrndup(value, NAME_MAX-1);
+	if((value=getenv(config_str[CONF_NTK_TC_SHAPER_SCRIPT])))
+		server_opt.tc_shaper_script=xstrndup(value, NAME_MAX-1);
 }
 
 void free_server_opt(void)
@@ -263,6 +268,8 @@ void free_server_opt(void)
 
 	if(server_opt.ip_masq_script != IPMASQ_SCRIPT_FILE)
 		xfree(server_opt.ip_masq_script);
+	if(server_opt.tc_shaper_script != TCSHAPER_SCRIPT_FILE)
+		xfree(server_opt.tc_shaper_script);
 
 	if(server_opt.inet_gw_dev)
 		xfree(server_opt.inet_gw_dev);
@@ -404,6 +411,11 @@ void check_conflicting_options(void)
 		fatal("ip_masquerade_script \"%s\" is inexistent",
 				server_opt.ip_masq_script);
 
+	if(server_opt.shape_internet && 
+			!file_exist(server_opt.tc_shaper_script))
+		fatal("tc_shaper_script \"%s\" is inexistent",
+				server_opt.ip_masq_script);
+
 	if(!server_opt.restricted && server_opt.inet_connection)
 		fatal("inet_connection=1 but ntk_restricted_mode=0. If you "
 			"want to be compatible with the Internet, "
@@ -428,7 +440,12 @@ void check_conflicting_options(void)
 			"We are assuming it is 1");
 		server_opt.inet_connection=1;
 	}
-				
+
+	if(server_opt.shape_internet && !server_opt.inet_connection)
+		fatal("The Internet traffic shaping option is set, but "
+			"the `internet_connection' is set to 0, please check "
+			"your options.");
+	
 #ifdef IPV6_DISABLED
 	if(server_opt.inet_gw.family == AF_INET6)
 		fatal("Ipv6 is not supported");

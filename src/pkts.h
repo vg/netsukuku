@@ -39,6 +39,7 @@
 #define PKT_BIND_DEV		1	/* Bind the pkt.sk socket to pkt.dev */
 #define PKT_RECV_TIMEOUT	(1<<1)
 #define PKT_SEND_TIMEOUT	(1<<2)
+#define PKT_SET_LOWDELAY	(1<<3)
 
 /* Pkt.hdr flags */
 #define SEND_ACK		1

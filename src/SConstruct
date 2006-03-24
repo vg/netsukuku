@@ -18,7 +18,7 @@
 import sys
 import os
 
-NTK_VERSION="0.0.6b"
+NTK_VERSION="0.0.7b"
 
 #
 #	Sources and libs
@@ -31,8 +31,9 @@ sources_netsukuku = Split("""accept.c llist.c ipv6-gmp.c inet.c request.c map.c
 		   daemon.c crypto.c 
 		   andna_cache.c andna.c andns_mem.c andns_pkt.c andns_rslv.c
 		   ll_map.c libnetlink.c if.c krnl_route.c krnl_rule.c
-		   iptunnel.c route.c conf.c dns_wrapper.c igs.c 
-		   libping.c netsukuku.c""") + sources_common
+		   iptunnel.c route.c conf.c dns_wrapper.c igs.c mark.c 
+		   libiptc/libip4tc.c libping.c netsukuku.c""") + sources_common
+sources_ntkdig    = Split('andns_mem.c andns_pkt.c xmalloc.c ntkdig.c log.c')
 
 libs = Split('gmp pthread crypto resolv')
 
@@ -134,6 +135,18 @@ def build_config_files(target = None, source = None, env = None):
 	if not os.path.exists("config.h") and not env.GetOption('clean'):
 		print 'Generating config.h from config_scons.h.in'
 		conf_build('config.h', 'config_scons.h.in', env)
+		conf = file("config.h", "a")
+		if sys.platform == 'linux2' or sys.platform == 'linux-i386':
+			conf.write("#define GNU_LINUX\n")
+		elif sys.platform == 'darwin':
+			conf.write("#define DARWIN\n")
+		elif string.find (sys.platform, 'sunos') != -1:
+			conf.write("#define SUNOS\n")
+		elif sys.platform=='openbsd3':
+			conf.write("#define OPEN_BSD\n")
+		elif string.find (sys.platform, 'irix') != -1:
+			conf.write("#define IRIX\n")
+		conf.close()
 
 	if not os.path.exists("conf/netsukuku.conf") and not env.GetOption('clean'):
 		print 'Generating conf/netsukuku.conf from conf/ntk_scons.conf.in'
@@ -149,6 +162,7 @@ build_config_files(env = env)
 
 netsukuku_d = env.Program('netsukuku_d', sources_netsukuku, LIBS = libs, CPPPATH = '.')
 qspn        = env.Program('qspn-empiric', sources_qspn, LIBS = libs, CPPPATH = '.')
+ntkdig      = env.Program('ntkdig', sources_ntkdig, LIBS = libs, CPPPATH = '.')
 
 Default(netsukuku_d)
 

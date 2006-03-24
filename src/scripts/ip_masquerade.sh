@@ -6,7 +6,10 @@
 #
 # "ip_masquerade stop" is executed when NetsukukuD is closed.
 
-EXTIF="$1"
+#EXTIF="$1"
+
+PATH=/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin:/usr/local/sbin/
+export PATH
 
 OS=`uname`
 

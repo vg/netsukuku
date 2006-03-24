@@ -55,10 +55,12 @@
 #define NTK_RESTRICTED_IPV6_MASK(x)	(((x) & ~0xffff0000)|0xfec00000) 
 
 
-/* Is `x' an IP in the range of 192.168.0.0 - 192.168.255.255 ? */
+/* `x' is in network order.
+ * Is `x' an IP in the range of 192.168.0.0 - 192.168.255.255 ? */
 #define NTK_PRIVATE_C(x)	(((x) & __constant_htonl(0xffff0000)) == __constant_htonl(0xc0a80000))
 
-/* Is `x' in 172.16.0.0 - 172.31.255.255 ? */
+/* `x' is in network order.
+ * Is `x' in 172.16.0.0 - 172.31.255.255 ? */
 #define NTK_PRIVATE_B(x)	(((x) & __constant_htonl(0xff000000)) == __constant_htonl(0xac000000))\
 					&& ((x) & __constant_htonl(0x00100000)) && 	\
 						!((x) & __constant_htonl(0x00e00000))
@@ -113,6 +115,18 @@ INT_INFO inet_prefix_iinfo = { 1,
 #define IPV6_ADDR_MAPPED	0x1000U
 #define IPV6_ADDR_RESERVED	0x2000U	/* reserved address space */
 
+/*
+ * Type of Service
+ */
+#ifndef IPTOS_LOWDELAY
+#define IPTOS_LOWDELAY		0x10
+#define IPTOS_THROUGHPUT	0x08
+#define IPTOS_RELIABILITY	0x04
+#define IPTOS_LOWCOST		0x02
+#define IPTOS_MINCOST		IPTOS_LOWCOST
+#endif /* IPTOS_LOWDELAY */
+
+
 /* 
  * Globals
  */
@@ -138,7 +152,9 @@ int inet_setip_anyaddr(inet_prefix *ip, int family);
 int inet_setip_loopback(inet_prefix *ip, int family);
 int inet_setip_localaddr(inet_prefix *ip, int family, int class);
 int inet_is_ip_local(inet_prefix *ip, int class);
+void inet_copy_ipdata_raw(u_int *dst_data, inet_prefix *ip);
 void inet_copy_ipdata(u_int *dst_data, inet_prefix *ip);
+void inet_copy(inet_prefix *dst, inet_prefix *src);
 void pack_inet_prefix(inet_prefix *ip, char *pack);
 void unpack_inet_prefix(inet_prefix *ip, char *pack);
 int inet_addr_match(const inet_prefix *a, const inet_prefix *b, int bits);
@@ -164,6 +180,7 @@ int set_bindtodevice_sk(int socket, char *dev);
 int set_broadcast_sk(int socket, int family, inet_prefix *host, short port, 
 		int dev_idx);
 int new_broadcast_sk(int family, int dev_idx);
+int set_tos_sk(int socket, int lowdelay);
 
 int new_tcp_conn(inet_prefix *host, short port, char *dev);
 int new_udp_conn(inet_prefix *host, short port, char *dev);

@@ -53,14 +53,13 @@ map_node *node_from_pos(int pos, map_node *map)
  */
 void postoip(u_int map_pos, inet_prefix ipstart, inet_prefix *ret) 
 {
+	ret->family=ipstart.family;
 	if(ipstart.family==AF_INET) {
 		ret->data[0]=map_pos + ipstart.data[0];
-		ret->family=AF_INET;
 		ret->len=4;
 	} else {
-		ret->family=AF_INET6;
 		ret->len=16;
-		memcpy(ret->data, ipstart.data, sizeof(inet_prefix));
+		inet_copy_ipdata_raw(ret->data, &ipstart);
 		sum_int(map_pos, ret->data);
 	}
 	ret->bits=ret->len*8;

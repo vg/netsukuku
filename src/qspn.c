@@ -83,16 +83,21 @@ void qspn_time_reset(int start_level, int end_level, int levels)
 		memcpy(&me.cur_qspn_time[i], &cur_t, sizeof(struct timeval));
 }
 
+void qspn_reset_counters(u_char levels)
+{
+	/* Reset the qspn counters */
+	qspn_time_reset(0, levels, levels);
+	qspn_reset_gcount(qspn_gnode_count, GCOUNT_LEVELS, 1);
+	qspn_reset_gcount(qspn_old_gcount, GCOUNT_LEVELS, 1);
+}
+
 void qspn_reset(u_char levels)
 {
 	memset(qspn_b, 0, sizeof(struct qspn_buffer *)*levels);
 	memset(qspn_send_mutex, 0, sizeof(int)*levels);
 	memset(me.cur_qspn_id, 0, sizeof(int)*levels);
-
-	/* Reset the qspn counters */
-	qspn_time_reset(0, levels, levels);
-	qspn_reset_gcount(qspn_gnode_count, GCOUNT_LEVELS, 1);
-	qspn_reset_gcount(qspn_old_gcount, GCOUNT_LEVELS, 1);
+	
+	qspn_reset_counters(levels);
 }
 
 void qspn_init(u_char levels)

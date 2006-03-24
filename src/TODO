@@ -1,20 +1,23 @@
-          		[HIGH PRIORITY] 
+		[HIGH PRIORITY] 
 
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 
 - Implement the http://lab.dyne.org/Ntk_MX_request RFC
 
-- Internet Gateway Search
-	- infinite loop between gateways if they use each other as gw
-	- duplicate nexthop entries in the multipath route
-	- multigw
+- update dependencies: 
+	- depends on iptables
+	- lartc
+	
+- restore the network when NetsukukuD is closed (call /etc/rc.d/rc.inet1 ?)
 
+- Flash NetsukukuD into an AP and test it.
 
 		[MEDIUM PRIORITY] 
 
-- do not delete a tunnel-gw if there is still traffic on it
-
 - Equalize multipath routes
+
+- bandwidth measurement
+	- do not delete a gw if there still bw passing on it.
 
 - Bandwidth weight for each entry of the qspn (not just rtt and latency):
 	- what to use to get the bandwidth of a network interface?
@@ -48,7 +51,7 @@
 
 - Port the kernel route code for *BSD: take a look at rt_ioctl.c and
   rt_socket.c of quagga.
-  
+
 - API for the maps sync with the netsukuku_d daemon.
 
 - Write the documentation for the code that can be used by other
@@ -59,7 +62,12 @@
 		
 - Interactive shell/console
 
+- renice the NetsukukuD process?
+
 - option to disable the modification of the routing table
+
+- option to change on runtime the wait-times of the QSPN, radar, etc...
+	-normal, -high, -low
 
 - Change with something else the eliminable fatal() calls in netsukuku_hook()
 
@@ -67,5 +75,3 @@
   compatible!
 
 - Test request.c
-
-- Port the code to uclibc. The best would be NetsukukuD flashed into an AP.

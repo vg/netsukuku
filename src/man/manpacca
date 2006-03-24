@@ -7,17 +7,13 @@ pod2man -s 8 netsukuku_d.pod -c "" -n "NetsukukuD"  -r "`../netsukuku_d -v`" net
 pod2man -s 8 netsukuku_wifi.pod -c "" -n "netsukuku_wifi"  -r "`../netsukuku_d -v`" netsukuku_wifi.8
 pod2man -s 8 andna.pod -c "" -n "ANDNA"  -r "`../netsukuku_d -v`" andna.8
 
-if [ ! -d man_html/ ]; then
-	mkdir  man_html/
-fi
-if [ ! -d man_text/ ]; then
-	mkdir  man_text/
-fi
-
+rm -r man_html man_text
+mkdir  man_html/
+mkdir  man_text/
 
 for i in `ls -1 *.8`; do man2html $i > man_html/`basename $i .8`.html; done
 for i in `ls -1 *.pod`; do pod2text $i > man_text/`basename $i .pod`; done
 
-cp -r man_html/ man_text/ $NTK_REPOSITORY/doc/
-cp -r man_html/ $NTK_REPOSITORY/doc/manuals/html/
+#cp -r man_html/ man_text/ $NTK_REPOSITORY/doc/
+cp -r man_html/* $NTK_REPOSITORY/doc/manuals/html/
 cp -r man_text/*  $NTK_REPOSITORY/doc/manuals/

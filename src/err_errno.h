@@ -71,6 +71,14 @@ static const char *err_strings[] = {
 	"Andna resolution failed.",		/* ERR_ANDNAR */
 	"Invalid hostname.",			/* ERR_HNINVL */
 	"Unknow (or not impl.) query type.",	/* ERR_UFOTOQ */
+	"mark_init error!.",			/* ERR_MRKINI */
+	"netfilter table not loadable.",	/* ERR_NETFIL */
+	"error adding netfilter rules.",	/* ERR_NETRUL */
+	"error committing netfilter rules.",	/* ERR_NETCOM */
+	"error initializing ntk_mark_chain.",	/* ERR_NETCHA */
+	"netfilter delete error.",		/* ERR_NETDEL */
+	"error storing rules.",			/* ERR_NETSTO */
+	"Nefilter was not restored.",		/* ERR_NETRST */
 };
 #define ERR_UFOERR	-1
 #define ERR_MLFDPK	-2
@@ -88,6 +96,14 @@ static const char *err_strings[] = {
 #define ERR_ANDNAR	-14
 #define ERR_HNINVL	-15
 #define ERR_UFOTOQ	-16
+#define ERR_MRKINI	-17
+#define ERR_NETFIL	-18
+#define ERR_NETRUL	-19
+#define ERR_NETCOM	-20
+#define ERR_NETCHA	-21
+#define ERR_NETDEL	-22
+#define ERR_NETSTO	-23
+#define ERR_NETRST	-23
 
 #define ERR_OVERFLOW    "Error number does not exist."
 
@@ -107,7 +123,7 @@ const char *err_func,*err_file;
 #define __err_strerror(n)                                       \
 ({                                                              \
         int __n=-((n)+1);                                       \
-        __n>=ERR_NERR?                                          \
+        (__n>=ERR_NERR || __n<0)?                               \
                 ERR_OVERFLOW:                                   \
                 err_strings[__n];                               \
 })

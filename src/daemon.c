@@ -250,7 +250,7 @@ void *udp_daemon(void *passed_argv)
 			memset(&rpkt, 0, sizeof(PACKET));
 			pkt_addsk(&rpkt, my_family, dev_sk[i], SKT_UDP);
 			pkt_add_dev(&rpkt, ifs, 0);
-			pkt_addflags(&rpkt, MSG_WAITALL);
+			rpkt.flags=MSG_WAITALL;
 			pkt_addport(&rpkt, udp_port);
 
 			if(pkt_recv(&rpkt) < 0) {
@@ -393,7 +393,7 @@ void *tcp_daemon(void *door)
 			memset(&rpkt, 0, sizeof(PACKET));
 			pkt_addsk(&rpkt, my_family, fd, SKT_TCP);
 			pkt_add_dev(&rpkt, ifs, 0);
-			pkt_addflags(&rpkt, MSG_WAITALL);
+			rpkt.flags=MSG_WAITALL;
 			pkt_addport(&rpkt, tcp_port);
 
 			ntop=0;

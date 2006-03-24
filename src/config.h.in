@@ -67,7 +67,7 @@
 #undef HAVE_UNISTD_H
 
 /* IRIX 6.5 */
-#undef IRIX_65
+#undef IRIX
 
 /* OpenBSD */
 #undef OPEN_BSD
@@ -94,7 +94,7 @@
 #undef STDC_HEADERS
 
 /* SunOS 5 */
-#undef SUNOS_5
+#undef SUNOS
 
 /* Version number of package */
 #undef VERSION

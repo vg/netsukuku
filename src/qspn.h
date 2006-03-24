@@ -83,6 +83,7 @@ u_int qspn_old_gcount[GCOUNT_LEVELS];
  *  *  Functions declaration  *  *
  */
 void qspn_time_reset(int start_level, int end_level, int levels);
+void qspn_reset_counters(u_char levels);
 void qspn_reset(u_char levels);
 void qspn_init(u_char levels);
 void qspn_set_map_vars(u_char level, map_node **map, map_node **root_node, 

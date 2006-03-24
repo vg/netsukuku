@@ -33,6 +33,7 @@
 #include "endianness.h"
 #include "bmap.h"
 #include "route.h"
+#include "iptunnel.h"
 #include "request.h"
 #include "pkts.h"
 #include "tracer.h"
@@ -365,11 +366,22 @@ int rehook(map_gnode *hook_gnode, int hook_level)
 	 * andna_maintain_hnames_active() daemon too. */
 	me.cur_node->flags|=MAP_HNODE;
 
-	/* Reset */
+	/* 
+	 * Reset the rnode list and external rnode list 
+	 */
 	rnl_reset(&rlist, &rlist_counter);
 	e_rnode_free(&me.cur_erc, &me.cur_erc_counter);
+	
 	if(restricted_mode) {
+		/* 
+		 * Delete all the tunnels, and reset all the structs used by
+		 * igs.c
+		 */
+
+		del_all_tunnel_ifs(0, 0, 0, NTK_TUNL_PREFIX);
+		reset_igw_nexthop(multigw_nh);
 		reset_igws(me.igws, me.igws_counter, me.cur_quadg.levels);
+		reset_igw_rules();	
 		free_my_igws(&me.my_igws);
 	}
 

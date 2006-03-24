@@ -334,7 +334,7 @@ int get_gw_ips(map_node *int_map, map_gnode **ext_map,
 
 		if(gw_node[i]->flags & MAP_ERNODE) {
 			e_rnode=(ext_rnode *)gw_node[i];
-			memcpy(&gw_ip[e], &e_rnode->quadg.ipstart[gw_level], sizeof(inet_prefix));
+			inet_copy(&gw_ip[e], &e_rnode->quadg.ipstart[gw_level]);
 		} else
 			maptoip((u_int)int_map, (u_int)gw_node[i], cur_quadg->ipstart[1], 
 					&gw_ip[e]);
@@ -416,7 +416,7 @@ struct nexthop *rt_build_nexthop_gw(map_node *node, map_gnode *gnode, int level,
 		memset(nh, '\0', sizeof(struct nexthop)*(routes+1));
 
 		for(ips=0, n=0; ips < routes; ips++) {
-			memcpy(&nh[n].gw, &gnode_gws[ips], sizeof(inet_prefix));
+			inet_copy(&nh[n].gw, &gnode_gws[ips]);
 			inet_htonl(nh[n].gw.data, nh[n].gw.family);
 			
 			if(!(devs=find_rnode_dev_and_retry(gw_nodes[ips])))
@@ -457,7 +457,7 @@ struct nexthop *rt_build_nexthop_voidgw(void *void_gw, interface **oifs)
 
 	if(gw_node->flags & MAP_ERNODE) {
 		e_rnode=(ext_rnode *)gw_node;
-		memcpy(&nh[0].gw, &e_rnode->quadg.ipstart[0], sizeof(inet_prefix));
+		inet_copy(&nh[0].gw, &e_rnode->quadg.ipstart[0]);
 	} else 
 		maptoip((u_int)me.int_map, (u_int)gw_node, 
 				me.cur_quadg.ipstart[1], &nh[0].gw);
@@ -525,7 +525,7 @@ void rt_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg
 	 * Deduce the destination's ip 
 	 */
 	if(dst_ip)
-		memcpy(&to, dst_ip, sizeof(inet_prefix));
+		inet_copy(&to, dst_ip);
 	else if(level) {
 		if(!dst_quadg) {
 			dst_quadg=&me.cur_quadg;
@@ -599,12 +599,12 @@ do_update:
 #ifdef DEBUG
 	#warning ***The route_del code is disabled***
 #else
-		if(route_del(RTN_UNICAST, 0, &to, 0, 0, 0))
+		if(route_del(RTN_UNICAST, 0, 0, &to, 0, 0, 0))
 			error("WARNING: Cannot delete the route entry for the",
 					"%snode %d lvl %d!", !level ? " " : " g",
 					node_pos, level);
 #endif
-	} else if(route_replace(0, route_scope, &to, nh, 0, 0))
+	} else if(route_replace(0, route_scope, 0, &to, nh, 0, 0))
 			error("WARNING: Cannot update the route entry for the"
 					"%snode %d lvl %d",!level ? " " : " g",
 					node_pos, level);
@@ -722,7 +722,7 @@ int rt_get_default_gw(inet_prefix *gw, char *dev_name)
 }
 
 int rt_exec_gw(char *dev, inet_prefix to, inet_prefix gw, 
-		int (*route_function)(ROUTE_CMD_VARS))
+		int (*route_function)(ROUTE_CMD_VARS), u_char table)
 {
 	struct nexthop nh[2], *neho;
 
@@ -731,7 +731,7 @@ int rt_exec_gw(char *dev, inet_prefix to, inet_prefix gw,
 
 	if(gw.len) {
 		memset(nh, '\0', sizeof(struct nexthop)*2);	
-		memcpy(&nh[0].gw, &gw, sizeof(inet_prefix));
+		inet_copy(&nh[0].gw, &gw);
 		inet_htonl(nh[0].gw.data, nh[0].gw.family);
 		nh[0].dev=dev;
 		nh[1].dev=0;
@@ -739,30 +739,30 @@ int rt_exec_gw(char *dev, inet_prefix to, inet_prefix gw,
 	} else
 		neho=0;
 
-	return route_function(0, 0, &to, neho, dev, 0);
+	return route_function(0, 0, 0, &to, neho, dev, table);
 }
 
-int rt_add_gw(char *dev, inet_prefix to, inet_prefix gw)
+int rt_add_gw(char *dev, inet_prefix to, inet_prefix gw, u_char table)
 {
-	return rt_exec_gw(dev, to, gw, route_add);
+	return rt_exec_gw(dev, to, gw, route_add, table);
 }
 
-int rt_del_gw(char *dev, inet_prefix to, inet_prefix gw)
+int rt_del_gw(char *dev, inet_prefix to, inet_prefix gw, u_char table)
 {
-	return rt_exec_gw(dev, to, gw, route_del);
+	return rt_exec_gw(dev, to, gw, route_del, table);
 }
 
-int rt_change_gw(char *dev, inet_prefix to, inet_prefix gw)
+int rt_change_gw(char *dev, inet_prefix to, inet_prefix gw, u_char table)
 {
-	return rt_exec_gw(dev, to, gw, route_change);
+	return rt_exec_gw(dev, to, gw, route_change, table);
 }
 
-int rt_replace_gw(char *dev, inet_prefix to, inet_prefix gw)
+int rt_replace_gw(char *dev, inet_prefix to, inet_prefix gw, u_char table)
 {
-	return rt_exec_gw(dev, to, gw, route_replace);
+	return rt_exec_gw(dev, to, gw, route_replace, table);
 }
 
-int rt_replace_def_gw(char *dev, inet_prefix gw)
+int rt_replace_def_gw(char *dev, inet_prefix gw, u_char table)
 {
 	inet_prefix to;
 
@@ -773,10 +773,10 @@ int rt_replace_def_gw(char *dev, inet_prefix gw)
 	}
 	to.len=to.bits=0;
 
-	return rt_replace_gw(dev, to, gw);
+	return rt_replace_gw(dev, to, gw, table);
 }
 
-int rt_delete_def_gw(void)
+int rt_delete_def_gw(u_char table)
 {
 	inet_prefix to;
 
@@ -787,7 +787,7 @@ int rt_delete_def_gw(void)
 	}
 	to.len=to.bits=0;
 
-	return route_del(0, 0, &to, 0, 0, 0);
+	return route_del(0, 0, 0, &to, 0, 0, table);
 }
 
 /* 
@@ -813,14 +813,14 @@ int rt_del_loopback_net(void)
 	 */
 	idata[0]=LOOPBACK_NET;
 	inet_setip(&to, idata, my_family);
-	route_del(RTN_BROADCAST, 0, &to, 0, 0, RT_TABLE_LOCAL);
+	route_del(RTN_BROADCAST, 0, 0, &to, 0, 0, RT_TABLE_LOCAL);
 
 	/*
 	 * ip route del local 127.0.0.0/8  proto kernel  scope host 	   \
 	 * src 127.0.0.1
 	 */
 	to.bits=8;
-	route_del(RTN_LOCAL, 0, &to, 0, lo_dev, RT_TABLE_LOCAL);
+	route_del(RTN_LOCAL, 0, 0, &to, 0, lo_dev, RT_TABLE_LOCAL);
 
 	/* 
 	 * ip route del broadcast 127.255.255.255  proto kernel scope link \
@@ -828,7 +828,40 @@ int rt_del_loopback_net(void)
 	 */
 	idata[0]=LOOPBACK_BCAST;
 	inet_setip(&to, idata, my_family);
-	route_del(RTN_BROADCAST, 0, &to, 0, lo_dev, RT_TABLE_LOCAL);
+	route_del(RTN_BROADCAST, 0, 0, &to, 0, lo_dev, RT_TABLE_LOCAL);
 
 	return 0;
+}
+
+/*
+ * rt_append_subnet_src:
+ * it appends the subnet relative to a `src' IP and its device in the routing
+ * table, f.e. when you do "ifconfig eth0 10.2.3.1 up" the kernel
+ * automatically adds this route:
+ * 10.0.0.0/8 dev eth0  proto kernel  scope link  src 10.2.3.1
+ * In this case `src'="10.2.3.1"  and `dev'="eth0"
+ */
+int rt_append_subnet_src(inet_prefix *src, char *dev)
+{
+	inet_prefix to, src_htonl;
+
+	if(src->family == AF_INET6)
+		fatal(ERROR_MSG "Family not supported", ERROR_POS);
+	
+	inet_copy(&src_htonl, src);
+	inet_htonl(src_htonl.data, src->family);
+
+	memset(&to, 0, sizeof(inet_prefix));
+	to.family=src->family;
+	to.len=src->len;
+	if(((NTK_PRIVATE_B(src_htonl.data[0])) ||
+			(NTK_PRIVATE_C(src_htonl.data[0])))) {
+		to.bits=16;
+		to.data[0]=htonl((src->data[0] & 0xffff0000));
+	} else {
+		to.bits=8;
+		to.data[0]=htonl((src->data[0] & 0xff000000));
+	}
+
+	return route_append(0, RT_SCOPE_LINK, &src_htonl, &to, 0, dev, 0);
 }

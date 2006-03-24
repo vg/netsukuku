@@ -21,7 +21,6 @@
  */
 
 #include "includes.h"
-#include <sys/wait.h>
 
 #include "llist.c"
 #include "libnetlink.h"
@@ -36,12 +35,18 @@
 #include "andns_rslv.h"
 #include "netsukuku.h"
 #include "route.h"
+#include "krnl_rule.h"
 #include "iptunnel.h"
 #include "libping.h"
+#include "libiptc/libiptc.h"
+#include "mark.h"
 #include "igs.h"
 #include "xmalloc.h"
 #include "log.h"
+#include "err_errno.h"
 
+
+int igw_multi_gw_disabled;
 
 /*
  * bandwidth_in_8bit:
@@ -276,29 +281,53 @@ void init_internet_gateway_search(void)
 
 	pthread_t ping_thread;
 	pthread_attr_t t_attr;
-	int i, ret;
+	int i, ret,res;
 
 	active_gws=0;
+	igw_multi_gw_disabled=0;
+	memset(multigw_nh, 0, sizeof(igw_nexthop)*MAX_MULTIPATH_ROUTES);
+
         if(!restricted_mode)
 		return;
 	
 	init_igws(&me.igws, &me.igws_counter, GET_LEVELS(my_family));
+	init_tunnels_ifs();
+
+	/* delete all the old tunnels */
+	del_all_tunnel_ifs(0, 0, 0, NTK_TUNL_PREFIX);
 	
 	/*
-	 * Bring tunl0 up
+	 * Bring tunl0 up (just to test if the ipip module is loaded)
 	 */
-	
-	loginfo("Configuring the \"tunl%d\" tunnel device", DEFAULT_TUNL_NUMBER);
-	if(tunnel_change(0, 0, 0, DEFAULT_TUNL_NUMBER) < 0)
-		fatal("Cannot initialize \"tunl%d\". Is the \"ipip\""
-			" kernel module loaded?", DEFAULT_TUNL_NUMBER);
-	if(tun_add_tunl0(&tunl0_if) < 0)
-		fatal("Cannot get device info for tunl0");
-	ifs_del_byname(me.cur_ifs, &me.cur_ifs_n, tunl0_if.dev_name);
+	loginfo("Configuring the \"" DEFAULT_TUNL_IF "\" tunnel device");
+	if(tunnel_change(0, 0, 0, DEFAULT_TUNL_PREFIX, DEFAULT_TUNL_NUMBER) < 0)
+		fatal("Cannot initialize \"" DEFAULT_TUNL_IF "\". "
+			"Is the \"ipip\" kernel module loaded?");
+	ifs_del_all_name(me.cur_ifs, &me.cur_ifs_n, NTK_TUNL_PREFIX);
+	ifs_del_all_name(me.cur_ifs, &me.cur_ifs_n, DEFAULT_TUNL_PREFIX);
 
+	/*
+	 * Delete old routing rules
+	 */
+	reset_igw_rules();
+
+	/*
+	 * Init netfilter
+	 */
+	 res=mark_init(server_opt.share_internet);
+	 if (res) {
+		 error(err_str);
+		 error("Cannot set the netfilter rules needed for the multi-igw. "
+				 "This feature will be disabled");
+		 igw_multi_gw_disabled=1;
+	 }
+
+	/* 
+	 * Check anomalies: from this point we initialize stuff only if we
+	 * have an Inet connection
+	 */
 	if(!server_opt.inet_connection)
 		return;
-	
 	if(!server_opt.inet_hosts)
 		fatal("You didn't specified any Internet hosts in the "
 			"configuration file. What hosts should I ping?");
@@ -352,16 +381,39 @@ void init_internet_gateway_search(void)
 		memcpy(&server_opt.inet_gw, &new_gw, sizeof(inet_prefix));
 
 		/* Delete the default gw, we are replacing it */
-		rt_delete_def_gw();
+		rt_delete_def_gw(0);
 	}
 	
 	loginfo("Using \"%s dev %s\" as your first Internet gateway.", 
 			inet_to_str(server_opt.inet_gw), server_opt.inet_gw_dev);
-	if(rt_replace_def_gw(server_opt.inet_gw_dev, server_opt.inet_gw))
+	if(rt_replace_def_gw(server_opt.inet_gw_dev, server_opt.inet_gw, 0))
 		fatal("Cannot set the default gw to %s %s",
 				inet_to_str(server_opt.inet_gw),
 				server_opt.inet_gw_dev);
 	active_gws++;
+
+	/*
+	 * Activate the anti-loop multi-igw shield
+	 */
+	if(server_opt.share_internet) {
+		rule_add(0, 0, 0, 0, FWMARK_ALISHIELD, RTTABLE_ALISHIELD);
+		if(rt_replace_def_gw(server_opt.inet_gw_dev, server_opt.inet_gw,
+					RTTABLE_ALISHIELD)) {
+			error("Cannot set the default route in the ALISHIELD table. "
+					"Disabling the multi-inet_gw feature");
+			igw_multi_gw_disabled=1;
+		}
+	}
+
+	
+	/*
+	 * Activate the traffic shaping for the `server_opt.inet_gw_dev'
+	 * device
+	 */
+	if(server_opt.shape_internet)
+		igw_exec_tcshaper_sh(server_opt.tc_shaper_script, 0,
+			server_opt.inet_gw_dev, server_opt.my_upload_bw, 
+			server_opt.my_dnload_bw);
 
 	for(i=0; i < me.cur_ifs_n; i++)
 		if(!strcmp(me.cur_ifs[i].dev_name, server_opt.inet_gw_dev)) {
@@ -406,8 +458,26 @@ void init_internet_gateway_search(void)
 
 void close_internet_gateway_search(void)
 {
+	/* Flush the MASQUERADE rules */
 	if(server_opt.share_internet)
 		igw_exec_masquerade_sh(server_opt.ip_masq_script, 1);
+
+	/* Disable the traffic shaping */
+	if(server_opt.shape_internet)
+		igw_exec_tcshaper_sh(server_opt.tc_shaper_script, 1,
+				server_opt.inet_gw_dev, 0, 0);
+	
+	/* Delete all the added rules */
+	reset_igw_rules();
+
+	/*
+	 * Destroy the netfilter rules
+	 */
+	mark_close();
+
+	/* Delete all the tunnels */
+	del_all_tunnel_ifs(0, 0, 0, NTK_TUNL_PREFIX);
+
 	free_igws(me.igws, me.igws_counter, me.cur_quadg.levels);
 	free_my_igws(&me.my_igws);
 }
@@ -776,43 +846,116 @@ void *igw_monitor_igws_t(void *null)
 }
 
 /*
- * igw_exec_masquerade_sh: executes `script', which will do IP masquerade.
+ * igw_exec_masquerade_sh: executes `script', which activate the IP masquerade.
  * If `stop' is set to 1 the script will be executed as "script stop",
  * otherwise as "script start".
  */
 int igw_exec_masquerade_sh(char *script, int stop)
 {
-	struct stat sh_stat;
 	int ret;
-	char command[strlen(script)+7];
+	char argv[7]="";
 	
-	if(stat(script, &sh_stat))
-		fatal("Couldn't stat %s: %s", strerror(errno));
+	sprintf(argv, "%s", stop ? "stop" : "start");
 
-	if(sh_stat.st_uid != 0 || sh_stat.st_mode & S_ISUID ||
-	    sh_stat.st_mode & S_ISGID || 
-	    (sh_stat.st_gid != 0 && sh_stat.st_mode & S_IWGRP) ||
-	    sh_stat.st_mode & S_IWOTH)
-		fatal("Please adjust the permissions of %s and be sure it "
-			"hasn't been modified.\n"
-			"  Use this command:\n"
-			"  chmod 744 %s; chown root:root %s",
-			script, script, script);
+	ret=exec_root_script(script, argv);
+	if(ret == -1)
+		fatal("%s wasn't executed. We cannot share the Inet "
+				"connection, aborting.");
+	return 0;
+}
+
+/*
+ * igw_exec_tcshaper_sh: executes `script', which activate the Internet traffic
+ * shaping.
+ * If `stop' is set to 1 the script will be executed as "script stop `dev'".
+ */
+int igw_exec_tcshaper_sh(char *script, int stop, 
+		char *dev, int upload_bw, int dnload_bw)
+{
+	int ret;
+	char argv[7]="";
 	
 	if(stop)
-		sprintf(command, "%s %s", script, "stop");
+		sprintf(argv, "%s %s", "stop", dev);
 	else
-		sprintf(command, "%s %s", script, "start");
-	loginfo("Executing \"%s\"", command);
-	
-	ret=system(command);
-	if(ret == -1)
-		fatal("Couldn't execute %s: %s", script, strerror(errno));
-	
-	if(!stop && (!WIFEXITED(ret) || (WIFEXITED(ret) && WEXITSTATUS(ret) != 0)))
-		fatal("\"%s\" didn't terminate correctly. Aborting", command);
+		sprintf(argv, "%s %d %d", dev, upload_bw, dnload_bw);
 
+	ret=exec_root_script(script, argv);
+	
+	if(ret == -1) {
+		if(!stop)
+			error("%s wasn't executed. The traffic shaping will be "
+					"disabled.");
+		else
+			error("The traffic shaping is still enabled!");
+	}
+			
 	return 0;
+}
+
+
+/*
+ * add_igw_nexthop:
+ * 	
+ * 	`igwn' is an array of at leat MAX_MULTIPATH_ROUTES members.
+ * 	`ip' is the ip of the nexthop
+ *
+ * add_igw_nexthop() searches `ip' in `igwn', if it is found the position in
+ * the array of the igw_nexthop struct is returned, otherwise it adds `ip' in
+ * the first empty member of the struct (its position is always returned).
+ * In the first case `*new' is set to 0, in the second to 1.
+ * If the array is full and nothing can be added -1 is returned.
+ */
+int add_igw_nexthop(igw_nexthop *igwn, inet_prefix *ip, int *new)
+{
+	int i;
+
+	for(i=0; i<MAX_MULTIPATH_ROUTES; i++)
+		if(!memcmp(igwn[i].nexthop.data, ip->data, MAX_IP_SZ)) {
+			igwn[i].flags|=IGW_ACTIVE;
+			*new=0;
+			return i;
+		}
+	
+	for(i=0; i<MAX_MULTIPATH_ROUTES; i++) {
+		if(!(igwn[i].flags & IGW_ACTIVE)) {
+			inet_copy(&igwn[i].nexthop, ip);
+			igwn[i].tunl=i;
+			igwn[i].table=RTTABLE_IGW+i;
+			igwn[i].flags|=IGW_ACTIVE;
+			*new=1;
+			return i;
+		}
+	}
+
+	*new=-1;
+	return -1;
+}
+
+void set_igw_nexhtop_inactive(igw_nexthop *igwn)
+{
+	int i;
+
+	for(i=0; i<MAX_MULTIPATH_ROUTES; i++)
+		igwn[i].flags&=~IGW_ACTIVE;
+}
+
+void reset_igw_nexthop(igw_nexthop *igwn)
+{
+	memset(igwn, 0, sizeof(igw_nexthop)*MAX_MULTIPATH_ROUTES);
+}
+
+/* 
+ * reset_igw_rules: flush all the routing rules
+ */
+void reset_igw_rules(void)
+{
+	/*
+	 * Reset each rule added for a tunnel-nexthop
+	 * and the rule used for the Anti-loop multi-igw shield.
+	 */
+	rule_flush_table_range(my_family, RTTABLE_IGW, 
+			RTTABLE_IGW+MAX_MULTIPATH_ROUTES);
 }
 
 /*
@@ -826,10 +969,11 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 		inet_gw **my_igws, int max_levels, int family)
 {
 	inet_gw *igw;
-	inet_prefix to;
+	inet_prefix to, ip;
 
-	struct nexthop *nh=0;
-	int ni, ni_lvl, nexthops, level, max_multipath_routes;
+	struct nexthop *nh=0, nh_tmp[2];
+	int ni, ni_lvl, nexthops, level, max_multipath_routes, i, x;
+	int res, new_nexhtop;
 
 #ifdef DEBUG		
 #define MAX_GW_IP_STR_SIZE (MAX_MULTIPATH_ROUTES*((INET6_ADDRSTRLEN+1)+IFNAMSIZ)+1)
@@ -860,19 +1004,37 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 		max_multipath_routes--;
 	}
 
+	/* 
+	 * Set all our saved nexthop as inactives, then mark as "active" only 
+	 * the nexhtop we are going to re-pick, in this way we can know what
+	 * nexthop have been dropped.
+	 */
+	set_igw_nexhtop_inactive(multigw_nh);
+	
 	/* We choose an equal number of nexthops for each level */
 	nexthops=max_multipath_routes/max_levels;
 
 	for(level=0; level<max_levels; level++) {
-#ifdef IGS_MULTI_GW_DISABLE
+		
+		/* Remember the nexthops we choose at each cycle */
+		inet_gw *taken_nexthops[max_multipath_routes];
+		
+#ifndef IGS_MULTI_GW
 		if(ni)
+			break;
+#else
+		if(ni && igw_multi_gw_disabled)
 			break;
 #endif
 
 		/* Reorder igws[level] */
 		igw_order(igws, igws_counter, my_igws, level);
 
-		/* Take the first `nexthops'# gateways and add them in `ni' */
+		
+		/* 
+		 * Take the first `nexthops'# gateways and add them in `ni' 
+		 */
+		
 		ni_lvl=0;
 		igw=igws[level];
 		list_for(igw) {
@@ -883,13 +1045,88 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 			if(igw->bandwidth < MIN_CONN_BANDWIDTH)
 				continue;
 
-			if(!memcmp(igw->ip, me.cur_quadg.ipstart[0].data, MAX_IP_SZ))
+			/* Do not include ourself as an inet-gw */
+			if(!memcmp(igw->ip, me.cur_ip.data, MAX_IP_SZ))
 				continue;
 		
+			/* Avoid duplicates, do not choose gateways we already 
+			 * included in the nexthops array */
+			for(i=0, x=0; i<ni; i++)
+				if(!memcmp(taken_nexthops[i]->ip, igw->ip, 
+							MAX_IP_SZ)) {
+					x=1;
+					break;
+				}
+			if(x)
+				continue;
+			
 			igw->flags|=IGW_ACTIVE;
 			inet_setip(&nh[ni].gw, igw->ip, family);
-			nh[ni].dev=tunl0_if.dev_name;
 			nh[ni].hops=max_multipath_routes-ni+1;
+
+			if((x=add_igw_nexthop(multigw_nh, &nh[ni].gw,
+							&new_nexhtop)) < 0)
+					continue;
+			
+			nh[ni].dev=tunnel_ifs[multigw_nh[x].tunl].dev_name;
+
+			/*
+			 * If we are reusing a tunnel of an old inet-gw,
+			 * delete it.
+			 */
+			if(*nh[ni].dev && new_nexhtop)
+				del_tunnel_if(0, 0, nh[ni].dev, NTK_TUNL_PREFIX, 
+						multigw_nh[x].tunl);
+			
+			if(!*nh[ni].dev) { 
+				memset(&nh_tmp, 0, sizeof(struct nexthop)*2);
+				memcpy(&nh_tmp[0], &nh[ni], sizeof(struct nexthop));
+				inet_ntohl(nh_tmp[0].gw.data, nh_tmp[0].gw.family);
+				
+				/* 
+				 * Initialize the `nh[ni].dev' tunnel, it's
+				 * its first time.
+				 */
+				if((add_tunnel_if(&nh_tmp[0].gw, &me.cur_ip, 0, 
+						NTK_TUNL_PREFIX, multigw_nh[x].tunl, 
+						&me.cur_ip)) < 0)
+					continue;
+				
+				/* 
+				 * Add the table for the new tunnel-gw:
+				 * 
+				 * ip rule add from me.cur_ip    \
+				 *   fwmark multigw_nh[x].tunl+1 \
+				 *   lookup multigw_nh[x].table
+				 */
+				inet_copy(&ip, &me.cur_ip);
+				if(multigw_nh[x].flags & IGW_RTRULE)
+					rule_del(&ip, 0, 0, 0,
+						multigw_nh[x].tunl, multigw_nh[x].table);
+				inet_htonl(ip.data, ip.family);
+				rule_add(&ip, 0, 0, 0, multigw_nh[x].tunl+1, 
+						multigw_nh[x].table);
+				multigw_nh[x].flags|=IGW_RTRULE;
+
+				/*
+				 * Add the default route in the added table:
+				 * 
+				 * ip route replace default via nh[ni].gw \ 
+				 * 	table multigw_nh[x].table 	  \
+				 * 	dev nh[ni].dev
+				 */
+				inet_htonl(nh_tmp[0].gw.data, nh_tmp[0].gw.family);
+				if(route_replace(0, 0, 0, &to, nh_tmp, 0, multigw_nh[x].table))
+					error("Cannote replace the default "
+						"route of the table %d ",
+						multigw_nh[x].table);
+				
+				 res=create_mark_rules(multigw_nh[x].tunl+1);
+				 if (res==-1) 
+					 error(err_str);
+			}
+			taken_nexthops[ni]=igw;
+			
 			ni++;
 			ni_lvl++;
 		}
@@ -906,7 +1143,7 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 		debug(DBG_INSANE, RED("igw_def_gw: no Internet gateways "
 				"available. Deleting the default route"));
 #endif
-		rt_delete_def_gw();
+		rt_delete_def_gw(0);
 		active_gws=0;
 		return 0;
 	} else if(!ni)
@@ -922,7 +1159,7 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 	debug(DBG_INSANE, RED("igw_def_gw: default via %s"), gw_ip);
 #endif
 
-	if(route_replace(0, 0, &to, nh, 0, 0))
+	if(route_replace(0, 0, 0, &to, nh, 0, 0))
 		error("WARNING: Cannot update the default route "
 				"lvl %d", level);
 	active_gws=ni;

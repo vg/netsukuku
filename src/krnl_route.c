@@ -68,30 +68,37 @@ void route_reset_filter()
 }
 
 int route_exec(int route_cmd, int route_type, int route_scope, unsigned flags,
-		inet_prefix *to, struct nexthop *nhops, char *dev, u_char table);
+		inet_prefix *src, inet_prefix *to, struct nexthop *nhops, 
+		char *dev, u_char table);
 
 int route_add(ROUTE_CMD_VARS)
 {
 	return route_exec(RTM_NEWROUTE, type, scope, NLM_F_CREATE | NLM_F_EXCL,
-			to, nhops, dev, table);
+			src, to, nhops, dev, table);
 }
 
 int route_del(ROUTE_CMD_VARS)
 {
-	return route_exec(RTM_DELROUTE, type, scope, 0, to, nhops, dev, table);
+	return route_exec(RTM_DELROUTE, type, scope, 0, src, to, nhops, dev, table);
 }
 
 /*If it doesn't exist, CREATE IT! de ih oh oh*/
 int route_replace(ROUTE_CMD_VARS)
 {
 	return route_exec(RTM_NEWROUTE, type, scope, NLM_F_REPLACE | NLM_F_CREATE,
-			to, nhops, dev, table);
+			src, to, nhops, dev, table);
 }
 
 int route_change(ROUTE_CMD_VARS)
 {
-	return route_exec(RTM_NEWROUTE, type, scope, NLM_F_REPLACE, to, nhops, 
+	return route_exec(RTM_NEWROUTE, type, scope, NLM_F_REPLACE, src, to, nhops, 
 			dev, table);
+}
+
+int route_append(ROUTE_CMD_VARS)
+{
+	return route_exec(RTM_NEWROUTE, type, scope, NLM_F_CREATE|NLM_F_APPEND,
+			src, to, nhops, dev, table);
 }
 
 int add_nexthops(struct nlmsghdr *n, struct rtmsg *r, struct nexthop *nhop)
@@ -163,8 +170,9 @@ int add_nexthops(struct nlmsghdr *n, struct rtmsg *r, struct nexthop *nhop)
  * route_exec: replaces, adds or deletes a route from the routing table.
  * `to' and nhops->gw must be addresses given in network order
  */
-int route_exec(int route_cmd, int route_type, int route_scope, unsigned flags, 
-		inet_prefix *to, struct nexthop *nhops, char *dev, u_char table)
+int route_exec(int route_cmd, int route_type, int route_scope, unsigned flags,
+		inet_prefix *src, inet_prefix *to, struct nexthop *nhops, 
+		char *dev, u_char table)
 {
 	struct rt_request req;
 	struct rtnl_handle rth;
@@ -236,6 +244,12 @@ int route_exec(int route_cmd, int route_type, int route_scope, unsigned flags,
 			addattr_l(&req.nh, sizeof(req), RTA_DST, &to->data, to->len);
 	}
 
+	if(src) {
+		if (req.rt.rtm_family == AF_UNSPEC)
+			req.rt.rtm_family = src->family;
+		addattr_l(&req.nh, sizeof(req), RTA_PREFSRC, &src->data, src->len);
+	}
+	
 	if(nhops)
 		add_nexthops(&req.nh, &req.rt, nhops);
 	
@@ -436,7 +450,7 @@ int route_get_exact_prefix_dst(inet_prefix prefix, inet_prefix *dst,
 		debug(DBG_NORMAL, ERROR_MSG "Dump terminated" ERROR_POS);
 		return -1;
 	}
-	memcpy(dst, dst_data, sizeof(inet_prefix));
+	inet_copy(dst, (inet_prefix *)dst_data);
 	memcpy(dev_name, dst_data+sizeof(inet_prefix), IFNAMSIZ);
 	
 	rtnl_close(&rth);

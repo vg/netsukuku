@@ -51,7 +51,9 @@ enum config_options
 	CONF_NTK_INTERNET_DOWNLOAD,
 	CONF_NTK_INTERNET_PING_HOSTS,
 	CONF_SHARE_INTERNET,
+	CONF_SHAPE_INTERNET,
 	CONF_NTK_IP_MASQ_SCRIPT,
+	CONF_NTK_TC_SHAPER_SCRIPT,
 };
 
 const static char config_str[][30]=
@@ -80,7 +82,9 @@ const static char config_str[][30]=
 	{ "internet_download_rate" },
 	{ "internet_ping_hosts" },
 	{ "share_internet" },
+	{ "shape_internet" },
 	{ "ip_masquerade_script" },
+	{ "tc_shaper_script" },
 	{ 0 },
 };
 

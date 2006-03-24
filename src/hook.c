@@ -177,7 +177,6 @@ int put_free_nodes(PACKET rq_pkt)
 	memset(&pkt, 0, sizeof(PACKET));
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addport(&pkt, ntk_tcp_port);
-	pkt_addflags(&pkt, 0);
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
 	pkt_add_dev(&pkt, rq_pkt.dev, 1);
 
@@ -378,7 +377,6 @@ int put_qspn_round(PACKET rq_pkt)
 	memset(&pkt, 0, sizeof(PACKET));
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addport(&pkt, ntk_udp_port);
-	pkt_addflags(&pkt, 0);
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
 	pkt_add_dev(&pkt, rq_pkt.dev, 1);
 
@@ -755,12 +753,11 @@ void hook_set_all_ips(inet_prefix ip, interface *ifs, int ifs_n)
 
 	if(set_all_dev_ip(ip, ifs, ifs_n) < 0)
 		fatal("Cannot set the %s ip to all the interfaces", ntop);
-
 	if(restricted_mode) {
-		set_all_ifs(&tunl0_if, 1, set_dev_down);
-		set_all_ifs(&tunl0_if, 1, set_dev_up);
-		if(set_all_dev_ip(ip, &tunl0_if, 1) < 0)
-			fatal("Cannot set the %s ip to tunl0", ntop);
+		set_dev_down(DEFAULT_TUNL_IF);
+		set_dev_up(DEFAULT_TUNL_IF);
+		if(set_dev_ip(ip, DEFAULT_TUNL_IF) < 0)
+			fatal("Cannot assign an IP to the default tunnel");
 	}
 }
 
@@ -782,7 +779,7 @@ int create_gnodes(inet_prefix *ip, int final_level)
 		random_ip(0, 0, 0, FAMILY_LVLS, me.ext_map, 0, &me.cur_ip, 
 				my_family);
 	} else
-		memcpy(&me.cur_ip, ip, sizeof(inet_prefix));
+		inet_copy(&me.cur_ip, ip);
 
 	if(restricted_mode)
 		inet_setip_localaddr(&me.cur_ip, my_family, restricted_class);
@@ -961,9 +958,10 @@ int hook_init(void)
 	debug(DBG_NORMAL, "Activating ip_forward and disabling rp_filter");
 	route_ip_forward(my_family, 1);
 	route_rp_filter_all_dev(my_family, me.cur_ifs, me.cur_ifs_n, 0);
-	if(restricted_mode)
-		route_rp_filter_all_dev(my_family, &tunl0_if, 1, 0);
+	if(restricted_mode && server_opt.share_internet)
+		route_rp_filter(my_family, DEFAULT_TUNL_IF, 0);
 
+	
 	return 0;
 }
 
@@ -1212,7 +1210,7 @@ int hook_choose_new_ip(map_gnode *hook_gnode, int hook_level,
 		 * gnode so we just give up and create a new gnode, which has
 		 * a gid based on the hash of our current gid.
 		 */
-		memcpy(&me.cur_ip, &rk_gnode_ip, sizeof(inet_prefix));
+		inet_copy(&me.cur_ip, &rk_gnode_ip);
 		debug(DBG_NORMAL, "rehook_create_gnode: %s is our new ip", 
 				inet_to_str(me.cur_ip));
 	} else {
@@ -1544,7 +1542,7 @@ int netsukuku_hook(map_gnode *hook_gnode, int hook_level)
 	u_char fnodes[MAXGROUPNODE];
 
 	/* Save our current IP before resetting */
-	memcpy(&old_ip, &me.cur_ip, sizeof(inet_prefix));
+	inet_copy(&old_ip, &me.cur_ip);
 	memcpy(&old_quadg, &me.cur_quadg, sizeof(quadro_group));
 
 	/* Reset the hook */

@@ -13,9 +13,10 @@ Automake/Autoconf.
 (Makefile.am configure.ac, src/Makefile.am, src/man/Makefile.am).
 
 Federico Tomassini <effetom@gmail.com> wrote andns, which provides DNS
-compatibility for the ANDNA system.
+compatibility for the ANDNA system. He also wrote the interface to the
+libiptc.
 (andns.h andns_mem.c andns_mem.h andns_pkt.c andns_pkt.h andns_rslv.c
-andns_rslv.h)
+andns_rslv.h mark.[ch] libiptc/*)
 
 Website developers and maintainers:
 
