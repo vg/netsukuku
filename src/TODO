@@ -10,20 +10,12 @@
 	
 - restore the network when NetsukukuD is closed (call /etc/rc.d/rc.inet1 ?)
 
-- Internet Gateway Search
-	- connmark goes mad if the routing cache is flushed. What is
-	  happening?
-
 - Flash NetsukukuD into an AP and test it.
 
 		[MEDIUM PRIORITY] 
 
-- do not delete a tunnel-gw if there is still traffic on it
-
 - Equalize multipath routes
 
-- set the TOS for the ANDNA resolve requests
-  
 - bandwidth measurement
 	- do not delete a gw if there still bw passing on it.
 
@@ -73,6 +65,9 @@
 - renice the NetsukukuD process?
 
 - option to disable the modification of the routing table
+
+- option to change on runtime the wait-times of the QSPN, radar, etc...
+	-normal, -high, -low
 
 - Change with something else the eliminable fatal() calls in netsukuku_hook()
 
