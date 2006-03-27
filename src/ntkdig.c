@@ -19,6 +19,8 @@
 ************************************************************************/
 #include <getopt.h>  
 #include <stdio.h>  
+#include <unistd.h>  
+#include <fcntl.h>
 
 #include "andns.h"
 #include "andns_mem.h"
@@ -27,7 +29,9 @@
 #include "log.h"
 #include "err_errno.h"
 
-int n_answers=1;
+static int n_answers=1;
+static ntkdig_opts globopts;
+
 void print_usage() 
 {
 	printf("Usage:\n" 
@@ -52,19 +56,18 @@ void print_version()
 }
 void init_opts()
 {
-	int res;
 	memset(&globopts,0,NTKDIG_OPTS_SZ);
-	res=ns_init(LOCALHOST,1);
+	globopts.port=htons(NTKDIG_PORT);
+	/*res=ns_init(LOCALHOST,1);
 	if (res) {
-		printf("Internal error initializing options.\n");
+		printf("Internal error initializing options (is andna running on localhost?).\n");
 		exit(1);
-	}
-	globopts.ns_len=1;
+	}*/
+	globopts.ns_len=0;
 	globopts.ns_lhost=1;
 	globopts.qt=QTYPE_A;
 	globopts.pt=PROTO_ANDNS;
 	globopts.realm=REALM_NTK;
-	globopts.port=htons(NTKDIG_PORT);
 }
 	
 int opt_set_ns(char *s,int limit)
@@ -138,7 +141,7 @@ int ns_init(const char *hostname,int nslimit)
 		printf("No nameserver found for %s.",hostname);
 		return -1;
 	}
-	printf("Found %d nameservers.\n",globopts.ns_len);
+	//printf("Found %d nameservers.\n",globopts.ns_len);
 	freeaddrinfo(ailist);
 	return 0;
 }
@@ -147,11 +150,16 @@ int ask_query(char *q,int qlen,char *an,int *anlen,struct sockaddr_in *saddr)
 {
 	int len,skt;
 	skt=socket(PF_INET,SOCK_DGRAM,0);
+
 	if (skt==-1) {
 		printf("Internal error opening socket.\n");
 		exit(1);
 	}
 			
+	if (fcntl(skt, F_SETFL, O_NONBLOCK) < 0) {
+		printf("set_nonblock_sk(): cannot set O_NONBLOCK: %s",strerror(errno));
+		exit(1);
+	}
 	if ((connect(skt,(struct sockaddr*)saddr,sizeof(struct sockaddr_in)))) {
                 printf("In ask_query: error connecting socket -> %s.",strerror(errno));
                 return -1;
@@ -173,8 +181,9 @@ int ask_query(char *q,int qlen,char *an,int *anlen,struct sockaddr_in *saddr)
 void print_question(andns_pkt *ap)
 {
 	printf("\n\t# Question Headers: #\n");
-	printf("# id:%d\tqr:%s\tqtype:%s\n",ap->id,QR_STR(ap),QTYPE_STR(ap));
-	printf("# ancount:%d\tnk:%s\trcode:%s\n",ap->ancount,NK_STR(ap),RCODE_STR(ap));
+	printf("# id: %d\tqr: %s\tqtype: %s\n",ap->id,QR_STR(ap),QTYPE_STR(ap));
+	printf("# answers: %d\tnk: %s\trcode: %s\n",ap->ancount,NK_STR(ap),RCODE_STR(ap));
+	printf("# \t\tRealm: %s\n",GET_OPT_REALM);
 }
 void print_answer_name(andns_pkt_data *apd)
 {
@@ -210,6 +219,13 @@ int do_command()
 	int i;
 
 	printf("Quering for %s\n",globopts.question);
+	if (globopts.ns_lhost) {
+		res=ns_init(LOCALHOST,1);
+		if (res==-1) {
+			printf("Where is the ANDNA server?.\n");
+			exit(1);
+		}
+	}
 	ap=andns_pkt_from_opts();
 	msglen=apktpack(ap,msg);
 	if (msglen==-1) {
@@ -254,7 +270,7 @@ int handle_answer(char *answ,int alen)
 		exit(1);
 	}
 	if (!ap->ancount) {
-		printf("Received answer contains no data.");
+		printf("Received answer contains no data.\n");
 		exit(1);
 	}
 
@@ -288,7 +304,7 @@ int handle_answer(char *answ,int alen)
 			
 }
 
-int main(int argc,char **argv)
+int imain(int argc,char **argv)
 {
 	andns_pkt *ap;
 	andns_pkt_data *apd;
@@ -323,7 +339,7 @@ int main(int argc,char **argv)
 	return 0;
 }
 	
-int imain(int argc,char **argv) 
+int main(int argc,char **argv) 
 {
 	int c,res;
 	extern int optind, opterr, optopt;

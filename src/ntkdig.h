@@ -58,7 +58,7 @@ typedef struct ntkdig_opts {
 	struct sockaddr_in	ns[MAX_NS];
 	int8_t			ns_len;
 	int8_t			ns_lhost;
-	int8_t			port;
+	int16_t			port;
 	int8_t			qt;
 	int8_t			pt;
 	int8_t			realm;
@@ -68,7 +68,6 @@ typedef struct ntkdig_opts {
 
 #define NTKDIG_OPTS_SZ	sizeof(ntkdig_opts)
 
-ntkdig_opts globopts;
 
 
 #define QR_STR(ap)	((ap)->qr==0)?"QUERY":"ANSWER"
@@ -140,6 +139,7 @@ ntkdig_opts globopts;
 	}							\
 	__e;})
 
+#define GET_OPT_REALM	(globopts.realm==REALM_NTK)?"NTK":"INET"
 
 
 void print_usage();
