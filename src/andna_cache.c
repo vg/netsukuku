@@ -44,14 +44,17 @@ void andna_caches_init(int family)
 }
 
 /*
- *  *  *  Local Cache functions  *  *  *
+ * 
+ *  *  *  *  Local Cache functions  *  *  *
+ *  
  */
 
 /*
  * lcl_cache_new_keyring: Generates a new keyring for the local cache if there
  * aren't any.
+ * It returns 1 if a new keyring has been generated.
  */
-void lcl_new_keyring(lcl_cache_keyring *keyring)
+int lcl_new_keyring(lcl_cache_keyring *keyring)
 {
 	memset(keyring, 0, sizeof(lcl_cache_keyring));
 	
@@ -61,7 +64,9 @@ void lcl_new_keyring(lcl_cache_keyring *keyring)
 		/* Generate the new key pair for the first time */
 		keyring->priv_rsa = genrsa(ANDNA_PRIVKEY_BITS, &keyring->pubkey, 
 				&keyring->pkey_len, &keyring->privkey, &keyring->skey_len);
+		return 1;
 	}
+	return 0;
 }
 
 /*
@@ -100,6 +105,8 @@ void lcl_cache_free(lcl_cache *alcl)
 {
 	if(alcl->hostname)
 		xfree(alcl->hostname);
+	if(alcl->mxs && alcl->mx_node)
+		xfree(alcl->mx_node);
 }
 
 void lcl_cache_destroy(lcl_cache *head, int *counter)
@@ -128,6 +135,19 @@ lcl_cache *lcl_cache_find_hname(lcl_cache *head, char *hname)
 	list_for(alcl)
 		if(alcl->hash == hash && alcl->hostname && 
 			!strncmp(alcl->hostname, hname, ANDNA_MAX_HNAME_LEN))
+			return alcl;
+	return 0;
+}
+
+lcl_cache *lcl_cache_find_32hash(lcl_cache *head, u_int hash)
+{
+	lcl_cache *alcl=head;
+	
+	if(!alcl || !lcl_counter)
+		return 0;
+
+	list_for(alcl)
+		if(alcl->hash == hash && alcl->hostname)
 			return alcl;
 	return 0;
 }
@@ -168,8 +188,53 @@ int lcl_get_registered_hnames(lcl_cache *head, char ***hostnames)
 }
 
 
+/* 
+ * lcl_mx_is_expired
+ * 
+ * Is `mx' expired? 1==Yes, 0==No
+ */
+int lcl_mx_is_expired(lcl_mx *mx)
+{
+	time_t cur_t=time(0);
+
+	if(cur_t - mx->last_update > ANDNA_MX_EXPIRATION_TIME)
+		return 1;
+	return 0;
+}
+
 /*
- *  *  *  Andna Cache functions  *  *  *
+ * lcl_mx_addid
+ * 
+ * Add a new lcl_mx entry in `alcl' by the nodeid.
+ * It deletes the expired lcl_mx structs.
+ * If the same `nodeid' already exists in the other lcl_mx structs, it just
+ * returns 1, otherwise it increments by one `alcl->mxs', reallocs 
+ * `alcl->mx_node' and fills the data in the new struct returning 0.
+ */
+int lcl_mx_addid(lcl_cache *alcl, u_int nodeid, u_int ip[MAX_IP_INT])
+{
+	time_t cur_t;
+
+	cur_t=time(0);
+	/* TODO: delete expired */
+
+	alcl->mx_node=xrealloc(alcl->mx_node, sizeof(lcl_mx)*(alcl->mxs+1));
+	
+	alcl->mx_node[alcl->mxs].node_id=nodeid;
+	alcl->mx_node[alcl->mxs].updates++;
+	memcpy(alcl->mx_node[alcl->mxs].ip, ip, MAX_IP_SZ);
+	alcl->mx_node[alcl->mxs].last_update=cur_t;
+	
+	alcl->mxs++;
+
+	return 0;
+}
+
+
+/*
+ * 
+ *  *  *  *  Andna Cache functions  *  *  *
+ *  
  */
 
 andna_cache_queue *ac_queue_findpubk(andna_cache *ac, char *pubk)
@@ -338,7 +403,9 @@ void andna_cache_destroy(void)
 
 
 /*
- *  *  *  Counter Cache functions  *  *  *
+ * 
+ *  *  *  *  Counter Cache functions  *  *  *
+ *  
  */
 
 counter_c_hashes *cc_hashes_add(counter_c *cc, int hash[MAX_IP_INT])
@@ -477,7 +544,9 @@ void counter_c_destroy(void)
 }
 
 /*
- *  *  * Resolved hostnames cache functions  *  *  *
+ * 
+ *  *  *  *  Resolved hostnames cache functions  *  *  *
+ *  
  */
 
 rh_cache *rh_cache_new(char *hname, time_t timestamp, inet_prefix *ip)
@@ -488,7 +557,6 @@ rh_cache *rh_cache_new(char *hname, time_t timestamp, inet_prefix *ip)
 	memset(rhc, 0, sizeof(rh_cache));
 	
 	rhc->hash=fnv_32_buf(hname, strlen(hname), FNV1_32_INIT);
-	rhc->hostname=xstrdup(hname);
 	rhc->timestamp=timestamp;
 	memcpy(&rhc->ip, ip->data, MAX_IP_SZ);
 
@@ -501,9 +569,15 @@ rh_cache *rh_cache_add(char *hname, time_t timestamp, inet_prefix *ip)
 
 	if(!(rhc=rh_cache_find_hname(hname))) {
 		if(rhc_counter >= ANDNA_MAX_HOSTNAMES) {
-			/* Delete the oldest struct in cache */
-			rhc=andna_rhc;
-			clist_del(&andna_rhc, &rhc_counter, rhc);
+			/* Delete the expired hnames and see if there's empty
+			 * space */
+			rh_cache_del_expired();
+			
+			if(rhc_counter >= ANDNA_MAX_HOSTNAMES) {
+				/* Delete the oldest struct in cache */
+				rhc=list_last(andna_rhc);
+				clist_del(&andna_rhc, &rhc_counter, rhc);
+			}
 		}
 
 		rhc=rh_cache_new(hname, timestamp, ip);
@@ -511,7 +585,20 @@ rh_cache *rh_cache_add(char *hname, time_t timestamp, inet_prefix *ip)
 	}
 
 	rhc->timestamp=timestamp;
-	memcpy(&rhc->ip, ip->data, MAX_IP_SZ);
+	inet_copy_ipdata_raw(rhc->ip, ip);
+
+	return rhc;
+}
+
+rh_cache *rh_cache_addmx(char *hname, inet_prefix *mxip)
+{
+	rh_cache *rhc;
+
+	if(!(rhc=rh_cache_find_hname(hname)))
+		return 0;
+
+	rhc->flags|=ANDNA_MXHNAME;
+	inet_copy_ipdata_raw(rhc->mx_ip, mxip);
 
 	return rhc;
 }
@@ -527,16 +614,19 @@ rh_cache *rh_cache_find_hname(char *hname)
 	hash=fnv_32_buf(hname, strlen(hname), FNV1_32_INIT);
 	
 	list_for(rhc)
-		if(rhc->hash == hash && !strncmp(hname, rhc->hostname,
-						ANDNA_MAX_HNAME_LEN))
+		if(rhc->hash == hash) {
+			/* 
+			 * Each time we find a hname in the rh_cache, we move
+			 * it on top of the llist.
+			 */
+			andna_rhc=list_moveontop(andna_rhc, rhc);
 			return rhc;
+		}
 	return 0;
 }
 
 void rh_cache_del(rh_cache *rhc)
 {
-	if(rhc->hostname)
-		xfree(rhc->hostname);
 	clist_del(&andna_rhc, &rhc_counter, rhc);
 }
 
@@ -564,8 +654,81 @@ void rh_cache_flush(void)
 }
 
 /*
- *  *  *  Pack/Unpack functions  *  *  *
+ * 
+ *  *  *  *  Pack/Unpack functions  *  *  *
+ *  
  */
+
+char *pack_lcl_keyring(lcl_cache_keyring *keyring, size_t *pack_sz)
+{
+	struct lcl_keyring_pkt_hdr key_hdr;
+	size_t sz;
+	char *pack, *buf;
+
+	key_hdr.skey_len=keyring->skey_len;
+	key_hdr.pkey_len=keyring->pkey_len;
+	sz=LCL_KEYRING_HDR_PACK_SZ(&key_hdr);
+	
+	pack=buf=xmalloc(sz);
+	memcpy(pack, &key_hdr, sizeof(struct lcl_keyring_pkt_hdr));
+	ints_host_to_network(pack, lcl_keyring_pkt_hdr_iinfo);
+	buf+=sizeof(struct lcl_keyring_pkt_hdr);
+
+	memcpy(buf, keyring->privkey, keyring->skey_len);
+	buf+=keyring->skey_len;
+	memcpy(buf, keyring->pubkey, keyring->pkey_len);
+	buf+=keyring->pkey_len;
+	
+	*pack_sz=sz;
+	return pack;
+}
+
+/*
+ * unpack_lcl_keyring: unpacks a lcl keyring. On error it returns -1.
+ * In `keyring' it restores the packed keys. 
+ */
+int unpack_lcl_keyring(lcl_cache_keyring *keyring, char *pack, size_t pack_sz)
+{
+	struct lcl_keyring_pkt_hdr *hdr;
+	char *buf;
+	u_char *pk;
+
+	
+	hdr=(struct lcl_keyring_pkt_hdr *)pack;
+	ints_network_to_host(hdr, lcl_keyring_pkt_hdr_iinfo);
+
+	/*
+	 * Restore the keyring 
+	 */
+	keyring->skey_len=hdr->skey_len;
+	keyring->pkey_len=hdr->pkey_len;
+	if(keyring->skey_len > ANDNA_SKEY_MAX_LEN) {
+		error(ERROR_MSG "Invalid keyring header", ERROR_POS);
+		return -1;
+	}
+	
+	keyring->privkey=xmalloc(hdr->skey_len);
+	keyring->pubkey=xmalloc(hdr->pkey_len);
+
+	/* extract the private key */
+	buf=pack+sizeof(struct lcl_keyring_pkt_hdr);
+	memcpy(keyring->privkey, buf, hdr->skey_len);
+	buf+=hdr->skey_len;
+
+	/* public key */
+	memcpy(keyring->pubkey, buf, hdr->pkey_len);
+	buf+=hdr->pkey_len;
+	
+	pk=keyring->privkey;
+	if(!(keyring->priv_rsa=get_rsa_priv((const u_char **)&pk,
+					keyring->skey_len))) {
+		error(ERROR_MSG "Cannot unpack the priv key from the"
+				" lcl_pack: %s", ERROR_POS, ssl_strerr());
+		return -1;
+	}
+
+	return 0;
+}
 
 /*
  * pack_lcl_cache: packs the entire local cache linked list that starts with
@@ -574,23 +737,21 @@ void rh_cache_flush(void)
  * The pointer to the newly allocated pack is returned.
  * Note that the pack is in network byte order.
  */
-char *pack_lcl_cache(lcl_cache_keyring *keyring, lcl_cache *local_cache, 
-		size_t *pack_sz)
+char *pack_lcl_cache(lcl_cache *local_cache, size_t *pack_sz)
 {
 	struct lcl_cache_pkt_hdr lcl_hdr;
 	lcl_cache *alcl=local_cache;
 	int_info body_iinfo;
 	size_t sz=0, slen;
 	char *pack, *buf, *body;
+	int i;
 
 	lcl_hdr.tot_caches=0;
-	lcl_hdr.skey_len=keyring->skey_len;
-	lcl_hdr.pkey_len=keyring->pkey_len;
 	sz=LCL_CACHE_HDR_PACK_SZ(&lcl_hdr);
 	
 	/* Calculate the final pack size */
 	list_for(alcl) {
-		sz+=LCL_CACHE_BODY_PACK_SZ(strlen(alcl->hostname)+1);
+		sz+=LCL_CACHE_BODY_PACK_SZ(strlen(alcl->hostname)+1, alcl->mxs);
 		lcl_hdr.tot_caches++;
 	}
 
@@ -599,11 +760,6 @@ char *pack_lcl_cache(lcl_cache_keyring *keyring, lcl_cache *local_cache,
 	ints_host_to_network(pack, lcl_cache_pkt_hdr_iinfo);
 	buf+=sizeof(struct lcl_cache_pkt_hdr);
 		
-	memcpy(buf, keyring->privkey, keyring->skey_len);
-	buf+=keyring->skey_len;
-	memcpy(buf, keyring->pubkey, keyring->pkey_len);
-	buf+=keyring->pkey_len;
-	
 	*pack_sz=0;
 	if(lcl_hdr.tot_caches) {
 		int_info_copy(&body_iinfo, &lcl_cache_pkt_body_iinfo);
@@ -623,8 +779,19 @@ char *pack_lcl_cache(lcl_cache_keyring *keyring, lcl_cache *local_cache,
 			memcpy(buf, &alcl->timestamp, sizeof(time_t));
 			buf+=sizeof(time_t);
 
+			memcpy(buf, &alcl->mxs, sizeof(u_short));
+			buf+=sizeof(u_short);
+
+			for(i=0; i<alcl->mxs; i++) {
+				memcpy(buf, &alcl->mx_node[i], sizeof(lcl_mx));
+				ints_host_to_network(buf, lcl_mx_iinfo);
+				inet_htonl((u_int *)buf, net_family);
+				buf+=sizeof(lcl_mx);
+			}
+			
 			body_iinfo.int_offset[0]=slen;
 			body_iinfo.int_offset[1]=slen+sizeof(u_short);
+			body_iinfo.int_offset[2]=slen+sizeof(u_short)+sizeof(time_t);
 			ints_host_to_network(body, body_iinfo);
 		}
 	}
@@ -635,18 +802,16 @@ char *pack_lcl_cache(lcl_cache_keyring *keyring, lcl_cache *local_cache,
 
 /*
  * unpack_lcl_cache: unpacks a packed local cache linked list and returns its head.
- * In `keyring' it restores the packed keys. 
  * `counter' is set to the number of struct in the llist.
  * On error 0 is returned.
  * Note `pack' is modified during the unpacking.
  */
-lcl_cache *unpack_lcl_cache(lcl_cache_keyring *keyring, char *pack, size_t pack_sz, int *counter)
+lcl_cache *unpack_lcl_cache(char *pack, size_t pack_sz, int *counter)
 {
 	struct lcl_cache_pkt_hdr *hdr;
 	lcl_cache *alcl, *alcl_head=0;
 	int_info body_iinfo;
 	char *buf;
-	u_char *pk;
 	size_t slen, sz;
 	int i=0;
 		
@@ -656,48 +821,22 @@ lcl_cache *unpack_lcl_cache(lcl_cache_keyring *keyring, char *pack, size_t pack_
 	if(hdr->tot_caches > ANDNA_MAX_HOSTNAMES)
 		return 0;
 
-	/*
-	 * Restore the keyring 
-	 */
-	keyring->skey_len=hdr->skey_len;
-	keyring->pkey_len=hdr->pkey_len;
-	if(keyring->skey_len > ANDNA_SKEY_MAX_LEN) {
-		error(ERROR_MSG "Invalid keyring header", ERROR_POS);
-		return 0;
-	}
-		
-	keyring->privkey=xmalloc(hdr->skey_len);
-	keyring->pubkey=xmalloc(hdr->pkey_len);
-
-	buf=pack+sizeof(struct lcl_cache_pkt_hdr);
-	memcpy(keyring->privkey, buf, hdr->skey_len);
-	buf+=hdr->skey_len;
-
-	memcpy(keyring->pubkey, buf, hdr->pkey_len);
-	buf+=hdr->pkey_len;
-	
-	pk=keyring->privkey;
-	if(!(keyring->priv_rsa=get_rsa_priv((const u_char **)&pk,
-					keyring->skey_len))) {
-		error(ERROR_MSG "Cannot unpack the priv key from the"
-				" lcl_pack: %s", ERROR_POS, ssl_strerr());
-		return 0;
-	}
-
 	*counter=0;
 	if(hdr->tot_caches) {
 		int_info_copy(&body_iinfo, &lcl_cache_pkt_body_iinfo);
 		
 		for(i=0, sz=0; i<hdr->tot_caches; i++) {
 			slen=strlen(buf)+1;
-			sz+=LCL_CACHE_BODY_PACK_SZ(slen);
+			sz+=LCL_CACHE_BODY_PACK_SZ(slen, 0);
+
 			if(slen > ANDNA_MAX_HNAME_LEN || sz > pack_sz)
 				goto finish;
-
+			
 			body_iinfo.int_offset[0]=slen;
 			body_iinfo.int_offset[1]=slen+sizeof(u_short);
+			body_iinfo.int_offset[2]=slen+sizeof(u_short)+sizeof(time_t);
 			ints_network_to_host(buf, body_iinfo);
-			
+
 			alcl=xmalloc(sizeof(lcl_cache));
 			memset(alcl, 0, sizeof(lcl_cache));
 			alcl->hostname=xstrdup(buf);
@@ -711,6 +850,21 @@ lcl_cache *unpack_lcl_cache(lcl_cache_keyring *keyring, char *pack, size_t pack_
 			memcpy(&alcl->timestamp, buf, sizeof(time_t));
 			buf+=sizeof(time_t);
 
+			memcpy(&alcl->mxs, buf, sizeof(u_short));
+			buf+=sizeof(u_short);
+			
+			sz+=alcl->mxs*sizeof(lcl_mx);
+			if(sz > pack_sz)
+				goto finish;
+			
+			alcl->mx_node=xmalloc(alcl->mxs*sizeof(lcl_mx));
+			for(i=0; i<alcl->mxs; i++) {
+				memcpy(&alcl->mx_node[i], buf, sizeof(lcl_mx));
+				inet_ntohl(alcl->mx_node[i].ip, net_family);
+				ints_network_to_host(&alcl->mx_node[i], lcl_mx_iinfo);
+				buf+=sizeof(lcl_mx);
+			}
+			
 			clist_add(&alcl_head, counter, alcl);
 		}
 	}
@@ -718,6 +872,7 @@ lcl_cache *unpack_lcl_cache(lcl_cache_keyring *keyring, char *pack, size_t pack_
 finish:
 	return alcl_head;
 }
+
 
 /*
  * pack_andna_cache: packs the entire andna cache linked list that starts with
@@ -1024,7 +1179,9 @@ finish:
 
 
 /*
- * pack_rh_cache: packs the entire resolved hnames cache linked list that starts 
+ * pack_rh_cache
+ *
+ * It packs the entire resolved hnames cache linked list that starts 
  * with the head `rhcache'. The size of the pack is stored in `pack_sz'.
  * The pointer to the newly allocated pack is returned.
  * The pack will be in network order.
@@ -1033,18 +1190,15 @@ char *pack_rh_cache(rh_cache *rhcache, size_t *pack_sz)
 {
 	struct rh_cache_pkt_hdr rh_hdr;
 	rh_cache *rhc=rhcache;
-	int_info body_iinfo;
-	size_t sz=0, slen;
+	size_t sz=0;
 	char *pack, *buf, *body;
 
 	rh_hdr.tot_caches=0;
 	sz=sizeof(struct rh_cache_pkt_hdr);
 	
 	/* Calculate the final pack size */
-	list_for(rhc) {
-		sz+=RH_CACHE_BODY_PACK_SZ(strlen(rhc->hostname)+1);
-		rh_hdr.tot_caches++;
-	}
+	sz=RH_CACHE_BODY_PACK_SZ*rhc_counter;
+	rh_hdr.tot_caches=rhc_counter;
 
 	pack=xmalloc(sz);
 	memcpy(pack, &rh_hdr, sizeof(struct rh_cache_pkt_hdr));
@@ -1058,20 +1212,25 @@ char *pack_rh_cache(rh_cache *rhcache, size_t *pack_sz)
 		list_for(rhc) {
 			body=buf;
 
-			slen=strlen(rhc->hostname)+1;
-			memcpy(buf, rhc->hostname, slen);
-			buf+=slen;
+			memcpy(buf, &rhc->hash, sizeof(u_int));
+			buf+=sizeof(u_int);
 
+			memcpy(buf, &rhc->flags, sizeof(char));
+			buf+=sizeof(char);
+			
 			memcpy(buf, &rhc->timestamp, sizeof(time_t));
 			buf+=sizeof(time_t);
 			
 			memcpy(buf, rhc->ip, MAX_IP_SZ);
+			inet_htonl((u_int *)buf, net_family);
+			buf+=MAX_IP_SZ;
+			
+			memcpy(buf, rhc->mx_ip, MAX_IP_SZ);
+			inet_htonl((u_int *)buf, net_family);
 			buf+=MAX_IP_SZ;
 
 			/* host -> network order */
-			body_iinfo.int_offset[0]=slen;
-			body_iinfo.int_offset[1]=slen+sizeof(time_t);
-			ints_host_to_network(buf, body_iinfo);
+			ints_host_to_network(buf, rh_cache_pkt_body_iinfo);
 		}
 	}
 
@@ -1080,8 +1239,9 @@ char *pack_rh_cache(rh_cache *rhcache, size_t *pack_sz)
 }
 
 /*
- * unpack_rh_cache: unpacks a packed resolved hnames cache linked list and 
- * returns its head.
+ * unpack_rh_cache
+ *
+ * unpacks a packed resolved hnames cache linked list and returns its head.
  * `counter' is set to the number of struct in the llist.
  * On error 0 is returned.
  * Note `pack' will be modified during the unpacking.
@@ -1090,9 +1250,8 @@ rh_cache *unpack_rh_cache(char *pack, size_t pack_sz, int *counter)
 {
 	struct rh_cache_pkt_hdr *hdr;
 	rh_cache *rhc=0, *rhc_head=0;
-	int_info body_iinfo;
 	char *buf;
-	size_t slen, sz;
+	size_t sz;
 	int i=0;
 		
 	hdr=(struct rh_cache_pkt_hdr *)pack;
@@ -1106,25 +1265,30 @@ rh_cache *unpack_rh_cache(char *pack, size_t pack_sz, int *counter)
 		buf=pack + sizeof(struct rh_cache_pkt_hdr);
 
 		for(i=0, sz=0; i<hdr->tot_caches; i++) {
-			slen=strlen(buf)+1;
-			sz+=RH_CACHE_BODY_PACK_SZ(slen);
-			if(slen > ANDNA_MAX_HNAME_LEN || sz > pack_sz)
+			sz+=RH_CACHE_BODY_PACK_SZ;
+			if(sz > pack_sz)
 				goto finish;
 
-			body_iinfo.int_offset[0]=slen;
-			body_iinfo.int_offset[1]=slen+sizeof(time_t);
-			ints_network_to_host(buf, body_iinfo);
+			ints_network_to_host(buf, rh_cache_pkt_body_iinfo);
 			
 			rhc=xmalloc(sizeof(rh_cache));
 			memset(rhc, 0, sizeof(rh_cache));
-			rhc->hostname=xstrdup(buf);
-			rhc->hash=fnv_32_buf(rhc->hostname, 
-					strlen(rhc->hostname), FNV1_32_INIT);
-			buf+=slen;
+			
+			memcpy(&rhc->hash, buf, sizeof(u_int));
+			buf+=sizeof(u_int);
+			
+			memcpy(&rhc->flags, buf, sizeof(char));
+			buf+=sizeof(char);
 			
 			memcpy(&rhc->timestamp, buf, sizeof(time_t));
 			buf+=sizeof(time_t);
+			
 			memcpy(rhc->ip, buf, MAX_IP_SZ);
+			inet_ntohl(rhc->ip, net_family);
+			buf+=MAX_IP_SZ;
+			
+			memcpy(rhc->mx_ip, buf, MAX_IP_SZ);
+			inet_ntohl(rhc->mx_ip, net_family);
 			buf+=MAX_IP_SZ;
 
 			clist_add(&rhc_head, counter, rhc);
@@ -1137,21 +1301,90 @@ finish:
 
 
 /*
- *  *  *  Save/Load functions  *  *  *
+ * 
+ *  *  *  *  Save/Load functions  *  *  *
+ * 
  */
 
 /*
- * save_lcl_cache: saves a local cache linked list and the relative keyring in 
- * the `file' specified.
+ * save_lcl_keyring: saves a local cache keyring in the specified `file'.
  */
-int save_lcl_cache(lcl_cache_keyring *keyring, lcl_cache *lcl, char *file)
+int save_lcl_keyring(lcl_cache_keyring *keyring, char *file)
 {
 	FILE *fd;
 	size_t pack_sz;
 	char *pack;
 
 	/*Pack!*/
-	pack=pack_lcl_cache(keyring, lcl, &pack_sz);
+	pack=pack_lcl_keyring(keyring, &pack_sz);
+	if(!pack_sz || !pack)
+		return 0;
+	
+	if((fd=fopen(file, "w"))==NULL) {
+		error("Cannot save the lcl_keyring in %s: %s", file, 
+				strerror(errno));
+		return -1;
+	}
+
+	/*Write!*/
+	fwrite(pack, pack_sz, 1, fd);
+	
+	xfree(pack);
+	fclose(fd);
+	return 0;
+}
+
+/*
+ * load_lcl_keyring: loads from `file' a local cache keyring and restores in
+ * it the RSA keys.
+ * On error -1 is returned.
+ */
+int load_lcl_keyring(lcl_cache_keyring *keyring, char *file)
+{
+	FILE *fd;
+	char *pack=0;
+	size_t pack_sz;
+	int ret=0;
+	
+	if(!(fd=fopen(file, "r"))) {
+		error("Cannot load the lcl_keyring from %s: %s", file,
+				strerror(errno));
+		return -1;
+	}
+
+	fseek(fd, 0, SEEK_END);
+	pack_sz=ftell(fd);
+	rewind(fd);
+	
+	pack=xmalloc(pack_sz);
+	if(!fread(pack, pack_sz, 1, fd))
+		ERROR_FINISH(ret, -1, finish);
+	
+	ret=unpack_lcl_keyring(keyring, pack, pack_sz);
+
+finish:
+	if(pack)
+		xfree(pack);
+	fclose(fd);
+
+	if(ret < 0)
+		debug(DBG_NORMAL, "Malformed or empty lcl_keyring file. "
+				"Aborting load_lcl_keyring().");
+	return ret;
+}
+
+
+/*
+ * save_lcl_cache: saves a local cache linked list in the specified `file'.
+ */
+int save_lcl_cache(lcl_cache *lcl, char *file)
+{
+	FILE *fd;
+	size_t pack_sz;
+	char *pack;
+
+	/*Pack!*/
+	pack=pack_lcl_cache(lcl, &pack_sz);
 	if(!pack_sz || !pack)
 		return 0;
 	
@@ -1171,10 +1404,10 @@ int save_lcl_cache(lcl_cache_keyring *keyring, lcl_cache *lcl, char *file)
 /*
  * load_lcl_cache: loads from `file' a local cache list and returns the head
  * of the newly allocated llist. In `counter' it is stored the number of
- * structs of the llist, and in `keyring' it restores the RSA keys.
+ * structs of the llist.
  * On error 0 is returned.
  */
-lcl_cache *load_lcl_cache(lcl_cache_keyring *keyring, char *file, int *counter)
+lcl_cache *load_lcl_cache(char *file, int *counter)
 {
 	lcl_cache *lcl=0;
 	FILE *fd;
@@ -1194,7 +1427,7 @@ lcl_cache *load_lcl_cache(lcl_cache_keyring *keyring, char *file, int *counter)
 	if(!fread(pack, pack_sz, 1, fd))
 		goto finish;
 	
-	lcl=unpack_lcl_cache(keyring, pack, pack_sz, counter);
+	lcl=unpack_lcl_cache(pack, pack_sz, counter);
 
 finish:
 	if(pack)
@@ -1485,6 +1718,14 @@ int load_hostnames(char *file, lcl_cache **old_alcl_head, int *old_alcl_counter)
 
 	return 0;
 }
+
+
+/*
+ *
+ *  *  *  *  Modify /etc/resolv.conf  *  *  *
+ *  
+ */
+
 
 /*
  * add_resolv_conf: It opens `file' and write in the first line `hname' moving

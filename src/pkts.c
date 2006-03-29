@@ -23,7 +23,6 @@
 
 #include "includes.h"
 
-#include "llist.c"
 #include "inet.h"
 #include "request.h"
 #include "endianness.h"

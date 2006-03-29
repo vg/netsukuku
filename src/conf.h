@@ -32,6 +32,7 @@ enum config_options
 
 	CONF_ANDNA_HNAMES_FILE,
 	CONF_ANDNA_CACHE_FILE,
+	CONF_ANDNA_LCLKEY_FILE,
 	CONF_ANDNA_LCL_FILE,
 	CONF_ANDNA_RHC_FILE,
 	CONF_ANDNA_COUNTER_C_FILE,
@@ -64,6 +65,7 @@ const static char config_str[][30]=
 	
 	{ "andna_hnames_file" },
 	{ "andna_cache_file" },
+	{ "andna_lclkey_file" },
 	{ "andna_lcl_file" },
 	{ "andna_rhc_file" },
 	{ "andna_counter_c_file" },

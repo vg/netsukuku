@@ -161,9 +161,10 @@ andna_hnames_file	= %(CONF_DIR)s/andna_hostnames
 # Caches used by the ANDNA daemon
 #
 andna_cache_file	= %(DATA_DIR)s/andna_cache
-andna_lcl_file		= %(DATA_DIR)s/lcl_cache
-andna_rhc_file		= %(DATA_DIR)s/rh_cache
-andna_counter_c_file	= %(DATA_DIR)s/counter_cache
+andna_lclkey_file	= %(DATA_DIR)s/andna_lcl_keyring
+andna_lcl_file		= %(DATA_DIR)s/andna_lcl_cache
+andna_rhc_file		= %(DATA_DIR)s/andna_rh_cache
+andna_counter_c_file	= %(DATA_DIR)s/andna_counter_cache
 
 #
 # The script launched by NetsukukuD to share the Internet connection

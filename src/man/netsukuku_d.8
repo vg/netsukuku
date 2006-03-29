@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "NetsukukuD 8"
-.TH NetsukukuD 8 "2006-02-10" "NetsukukuD 0.0.7b" ""
+.TH NetsukukuD 8 "2006-03-27" "NetsukukuD 0.0.7b" ""
 .SH "NAME"
 netsukuku_d \- Netsukuku protocol daemon
 .SH "SYNOPSIS"
@@ -262,15 +262,20 @@ line. It's location can be changed by modifying its option in the
 .PD
 They are the Netsukuku maps saved by the daemon. Their locations can be
 changed in \fInetsukuku.conf\fR.
+.IP "\fI/usr/share/netsukuku/andna_lcl_keyring\fR" 4
+.IX Item "/usr/share/netsukuku/andna_lcl_keyring"
+In this keyring your \s-1ANDNA\s0 public and secret keys are saved. Handle this file
+with care: without it, you won't be able to update your hostnames, thus 
+you'll definitely lose them.
 .IP "\fI/usr/share/netsukuku/andna_cache\fR" 4
 .IX Item "/usr/share/netsukuku/andna_cache"
 .PD 0
-.IP "\fI/usr/share/netsukuku/lcl_cache\fR" 4
-.IX Item "/usr/share/netsukuku/lcl_cache"
-.IP "\fI/usr/share/netsukuku/rh_cache\fR" 4
-.IX Item "/usr/share/netsukuku/rh_cache"
-.IP "\fI/usr/share/netsukuku/counter_cache\fR" 4
-.IX Item "/usr/share/netsukuku/counter_cache"
+.IP "\fI/usr/share/netsukuku/andna_lcl_cache\fR" 4
+.IX Item "/usr/share/netsukuku/andna_lcl_cache"
+.IP "\fI/usr/share/netsukuku/andna_rh_cache\fR" 4
+.IX Item "/usr/share/netsukuku/andna_rh_cache"
+.IP "\fI/usr/share/netsukuku/andna_counter_cache\fR" 4
+.IX Item "/usr/share/netsukuku/andna_counter_cache"
 .PD
 They are the saved \s-1ANDNA\s0 caches.  Their locations can be 
 changed in \fInetsukuku.conf\fR.

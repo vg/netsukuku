@@ -1,3 +1,19 @@
+==== 0.0.8b ====
+
+New features:
+	
+	* The ANDNA keyring is now saved separately from the lcl_cache. It is
+	  saved in andna_lcl_keyring.
+
+	* The `andna_' prefix is now used for the filename of the andna
+	  caches.
+
+	* llist.c optimised
+	
+Bug fixes:
+
+	* boh
+
 ==== 0.0.7b ====
 
 New features:
@@ -12,9 +28,10 @@ New features:
 	  automatically use the shared connection of the other nodes. Through
 	  a simple marking system, death loops are avoided.
 	  
-	* Traffic shaping. The nodes which share their Internet connection can
-	  now shape it, in this way they'll prioritize their local outgoing
-	  traffic and the lowdelay one (f.e. SSH).
+	* Traffic shaping.
+	  The nodes which share their Internet connection can now shape it, in
+	  this way they'll prioritize their local outgoingtraffic and the
+	  lowdelay one (f.e. SSH).
 
 	* The lowdelay TOS is now set in the ANDNA resolve requests.
 
@@ -22,7 +39,9 @@ New features:
 Bug fixes:
 	
 	* When all the rnodes die, the radar resets the qspn counters
+	
 	* Code cleaned
+
 	* A lot of bugs, which you haven't and you will never heard, have been
 	  fixed. We've already forgotten them.
 

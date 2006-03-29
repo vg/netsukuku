@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "ANDNA 8"
-.TH ANDNA 8 "2006-01-30" "NetsukukuD 0.0.7b" ""
+.TH ANDNA 8 "2006-03-27" "NetsukukuD 0.0.7b" ""
 .SH "NAME"
 ANDNA \- Abnormal Netsukuku Domain Name Anarchy
 .SH "DESCRIPTION"
@@ -216,15 +216,20 @@ cache will be flushed.
 It is the file where the hostnames to be registerd in \s-1ANDNA\s0 are kept one per
 line. It's location can be changed by modifying its option in the
 \&\fInetsukuku.conf\fR file.
+.IP "\fI/usr/share/netsukuku/andna_lcl_keyring\fR" 4
+.IX Item "/usr/share/netsukuku/andna_lcl_keyring"
+In this keyring your \s-1ANDNA\s0 public and secret keys are saved. Handle this file
+with care: without it, you won't be able to update your hostnames, thus 
+you'll definitely lose them.
 .IP "\fI/usr/share/netsukuku/andna_cache\fR" 4
 .IX Item "/usr/share/netsukuku/andna_cache"
 .PD 0
-.IP "\fI/usr/share/netsukuku/lcl_cache\fR" 4
-.IX Item "/usr/share/netsukuku/lcl_cache"
-.IP "\fI/usr/share/netsukuku/rh_cache\fR" 4
-.IX Item "/usr/share/netsukuku/rh_cache"
-.IP "\fI/usr/share/netsukuku/counter_cache\fR" 4
-.IX Item "/usr/share/netsukuku/counter_cache"
+.IP "\fI/usr/share/netsukuku/andna_lcl_cache\fR" 4
+.IX Item "/usr/share/netsukuku/andna_lcl_cache"
+.IP "\fI/usr/share/netsukuku/andna_rh_cache\fR" 4
+.IX Item "/usr/share/netsukuku/andna_rh_cache"
+.IP "\fI/usr/share/netsukuku/andna_counter_cache\fR" 4
+.IX Item "/usr/share/netsukuku/andna_counter_cache"
 .PD
 They are the saved \s-1ANDNA\s0 caches.  Their locations can be 
 changed in \fInetsukuku.conf\fR.

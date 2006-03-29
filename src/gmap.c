@@ -18,7 +18,6 @@
 
 #include "includes.h"
 
-#include "llist.c"
 #include "inet.h"
 #include "endianness.h"
 #include "map.h"
@@ -30,7 +29,9 @@
 
 
 /* 
- * get_groups: It returns how many groups there are in the given level.
+ * get_groups
+ * 
+ * It returns how many groups there are in the given level.
  */
 inline int get_groups(int max_levels, int lvl)
 { 				
@@ -38,7 +39,9 @@ inline int get_groups(int max_levels, int lvl)
 }
 
 /* 
- * is_group_invalid: returns 1 if the `gid' of level `lvl' is invalid and
+ * is_group_invalid
+ * 
+ * returns 1 if the `gid' of level `lvl' is invalid and
  * cannot be used in a regular IP.
  */
 int is_group_invalid(int *gids, int gid, int lvl, int family)
@@ -99,20 +102,31 @@ int is_group_invalid(int *gids, int gid, int lvl, int family)
 	return 0;
 }
 
-/*pos_from_gnode: Position from gnode: It returns the position of the `gnode' in the `map'.*/
+/*
+ * pos_from_gnode
+ * Position from gnode
+ *
+ * It returns the position of the `gnode' in the `map'
+ */
 int pos_from_gnode(map_gnode *gnode, map_gnode *map)
 {
 	return (int)(((char *)gnode-(char *)map)/sizeof(map_gnode));
 }
 
-/*Gnode from position: it returns the fnode pointer calculated by the given `pos' in the map*/
+/*
+ * Gnode from position
+ *
+ * it returns the fnode pointer calculated by the given `pos' in the map
+ */
 map_gnode *gnode_from_pos(int pos, map_gnode *map)
 {
 	return (map_gnode *)((pos*sizeof(map_gnode))+(char *)map);
 }
 
 /* 
- * rnodetoip: converts the node `maprnode', which is a rnode of the root_node,
+ * rnodetoip
+ * 
+ * converts the node `maprnode', which is a rnode of the root_node,
  * to the relative ip.
  */
 void rnodetoip(u_int mapstart, u_int maprnode, inet_prefix ipstart, 
@@ -130,7 +144,9 @@ void rnodetoip(u_int mapstart, u_int maprnode, inet_prefix ipstart,
 }
 
 /* 
- * iptogid: ip to gnode id, of the specified `level', conversion function.
+ * iptogid
+ * 
+ * ip to gnode id, of the specified `level', conversion function.
  * Note: this function cannot fail! So be sure to pass a valid `level'.
  */
 int iptogid(inet_prefix *ip, int level)
@@ -154,7 +170,9 @@ int iptogid(inet_prefix *ip, int level)
 }
 
 /* 
- * iptogids: it fills the `gid' array which has `levels'# members with:
+ * iptogids
+ *
+ * it fills the `gid' array which has `levels'# members with
  * 	gid[x] = iptogid(`ip', x);
  */
 void iptogids(inet_prefix *ip, int *gid, int levels)
@@ -165,7 +183,9 @@ void iptogids(inet_prefix *ip, int *gid, int levels)
 }
 
 /* 
- * gidtoipstart: It sets in `*ip' the ipstart of the gnode using the `gid[x]' for
+ * gidtoipstart
+ * 
+ * It sets in `*ip' the ipstart of the gnode using the `gid[x]' for
  * each level x.
  * `total_levels' is the total number of levels and the `gid' array 
  * has `total_levels' elements.
@@ -202,7 +222,9 @@ void gidtoipstart(int *gid, u_char total_levels, u_char levels, int family,
 }
 
 /* 
- * iptoquadg: Using the given `ip' it fills the `qg' quadro_group struct. The `flags'
+ * iptoquadg
+ * 
+ * Using the given `ip' it fills the `qg' quadro_group struct. The `flags'
  * given specify what element fill in the struct (the flags are in gmap.h).
  */
 void iptoquadg(inet_prefix ip, map_gnode **ext_map, quadro_group *qg, char flags)
@@ -244,9 +266,10 @@ void quadg_destroy(quadro_group *qg)
 }
 
 /*
- * gnode_inc_seeds: it increments the seeds counter in the
- * `qg'->gnode[_EL(`level'-1)] gnode, setting the appropriate flag if the gnodes
- * is full.
+ * gnode_inc_seeds
+ * 
+ * it increments the seeds counter in the `qg'->gnode[_EL(`level'-1)] gnode,
+ * setting the appropriate flag if the gnodes is full.
  */
 void gnode_inc_seeds(quadro_group *qg, int level)
 {
@@ -260,7 +283,9 @@ void gnode_inc_seeds(quadro_group *qg, int level)
 }
 
 /*
- * gnode_dec_seeds: the same of gnode_inc_seeds, but it decrements instead.
+ * gnode_dec_seeds
+ * 
+ * the same of gnode_inc_seeds, but it decrements instead.
  */
 void gnode_dec_seeds(quadro_group *qg, int level)
 {
@@ -273,9 +298,10 @@ void gnode_dec_seeds(quadro_group *qg, int level)
 }
 	
 /*
- * pack_quadro_group: packs the `qg' quadro_group struct and stores it in
- * `pack', which must be QUADRO_GROUP_PACK_SZ bytes big. `pack' will be in
- * network order.
+ * pack_quadro_group
+ * 
+ * packs the `qg' quadro_group struct and stores it in `pack', which must be 
+ * QUADRO_GROUP_PACK_SZ bytes big. `pack' will be in network order.
  */
 void pack_quadro_group(quadro_group *qg, char *pack)
 {
@@ -299,7 +325,9 @@ void pack_quadro_group(quadro_group *qg, char *pack)
 }
 
 /*
- * unpack_quadro_group: restores in `qg' the quadro_group struct contained in `pack'.
+ * unpack_quadro_group
+ * 
+ * restores in `qg' the quadro_group struct contained in `pack'.
  * Note that `pack' will be modified during the restoration.
  */
 void unpack_quadro_group(quadro_group *qg, char *pack)
@@ -348,7 +376,9 @@ int isnot_gmap_void_flag_set(map_gnode *gnode)
 }
 
 /*
- * increment_gids: It increments the members of the `qg'->gid array until all its 
+ * increment_gids
+ * 
+ * It increments the members of the `qg'->gid array until all its 
  * gids point to gnodes present in the ext_map, which don't have
  * a particular gnode->flag or node->flag set.
  * 
@@ -442,8 +472,9 @@ int increment_gids(quadro_group *qg, int level, map_gnode **ext_map,
 }
 
 /*
- * free_gids: it uses increment_gids() to choose gids which don't point to FULL
- * gnodes.
+ * free_gids
+ * 
+ * it uses increment_gids() to choose gids which don't point to FULL gnodes.
  */
 int free_gids(quadro_group *qg, int level, map_gnode **ext_map,
 		map_node *int_map)
@@ -453,8 +484,9 @@ int free_gids(quadro_group *qg, int level, map_gnode **ext_map,
 }
 
 /*
- * void_gids: it uses increment_gids() to choose gids which point to VOID
- * gnodes.
+ * void_gids
+ * 
+ * it uses increment_gids() to choose gids which point to VOID gnodes.
  */
 int void_gids(quadro_group *qg, int level, map_gnode **ext_map,
 		map_node *int_map)
@@ -464,7 +496,9 @@ int void_gids(quadro_group *qg, int level, map_gnode **ext_map,
 }
 
 /*
- * random_ip: It generates a new random ip. 
+ * random_ip
+ * 
+ * It generates a new random ip. 
  * If `ipstart' is not NULL the new ip is restricted in the `final_gid' of
  * `final_level', so it'll be taken inside this range:
  * 	A=ipstart + (MAXGROUPNODE^( final_level + 1)) * final_gid;
@@ -516,12 +550,12 @@ int random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 	 * `final_level' has its `ipstart'; with it we determine
 	 * its higher levels.
 	 * The work is done in this way:
-	 * - ipstart is splitted in gnode_ids and they are placed in qg.gid.
-	 * - The final_level gid is set to `final_gid'.
-	 * - The gids of levels lower than `final_level' are chosen
-	 *   randomly.
-	 * - The gids of levels higher than `final_level' are set to the
-	 *   gids of qg.gid[x >= final_level].
+	 *   - ipstart is splitted in gnode_ids and they are placed in qg.gid.
+	 *   - The final_level gid is set to `final_gid'.
+	 *   - The gids of levels lower than `final_level' are chosen
+	 *     randomly.
+	 *   - The gids of levels higher than `final_level' are set to the
+	 *     gids of qg.gid[x >= final_level].
 	 * - The ipstart is recomposed from the gids.
 	 */
 	levels=final_level;
@@ -593,7 +627,9 @@ int random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 }
 
 /*
- * gnodetoip: It converts the gnode which has the given `gnodeid' at `level'
+ * gnodetoip
+ * 
+ * It converts the gnode which has the given `gnodeid' at `level'
  * to its corresponding ipstart. The `quadg' struct must refer to the given
  * gnode.
  * The ip is stored in `ip', and the ip->bits are choosen carefully in the 
@@ -617,7 +653,9 @@ void gnodetoip(quadro_group *quadg, int gnodeid, u_char level, inet_prefix *ip)
 }
 
 /*
- * gids_cmp: compares the two `gids_a' and `gids_b' arrays starting from the
+ * gids_cmp
+ * 
+ * compares the two `gids_a' and `gids_b' arrays starting from the
  * `lvl'th member to the `max_lvl-1'th. If the gids compared are the same,
  * zero is returned.
  */
@@ -633,7 +671,9 @@ int gids_cmp(int *gids_a, int *gids_b, int lvl, int max_lvl)
 }
 
 /* 
- * quadg_gids_cmp: compares the gids of `a' and `b' starting from the `lvl'th 
+ * quadg_gids_cmp
+ * 
+ * compares the gids of `a' and `b' starting from the `lvl'th
  * level. If the gids compared are the same, zero is returned.
  */
 int quadg_gids_cmp(quadro_group a, quadro_group b, int lvl)
@@ -645,8 +685,9 @@ int quadg_gids_cmp(quadro_group a, quadro_group b, int lvl)
 }
 
 /*
- * ip_gids_cmp: a wrapper to quadg_gids_cmp() that takes inet_prefixes as
- * argvs.
+ * ip_gids_cmp
+ * 
+ * a wrapper to quadg_gids_cmp() that takes inet_prefixes as argvs.
  */
 int ip_gids_cmp(inet_prefix a, inet_prefix b, int lvl)
 {
@@ -680,7 +721,9 @@ void e_rnode_free(ext_rnode_cache **erc, u_int *counter)
 }
 
 /* 
- * e_rnode_add: adds an external node in the ext_rnode_cache list.
+ * e_rnode_add
+ * 
+ * adds an external node in the ext_rnode_cache list.
  */
 void e_rnode_add(ext_rnode_cache **erc, ext_rnode *e_rnode, int rnode_pos, u_int *counter)
 {
@@ -709,7 +752,9 @@ void e_rnode_del(ext_rnode_cache **erc_head, u_int *counter, ext_rnode_cache *er
 }
 
 /*
- * erc_update_rnodepos: When a rnode is deleted from the root_node all the
+ * erc_update_rnodepos
+ * 
+ * When a rnode is deleted from the root_node all the
  * erc->rnode_pos vars must be updated. For example if there's 
  * an  erc->rnode_pos == 5 and the 4th rnode is deleted, than the 5th rnode
  * doesn't exist anymore because it is swapped in the 4th position.
@@ -741,9 +786,11 @@ void erc_update_rnodepos(ext_rnode_cache *erc, map_node *root_node, int old_rnod
 }
 
 /*
- * erc_reorder_rnodepos: adjusts the erc->rnode_pos value contained in each
- * ext_rnode_cache struct of the `*erc' list. It checks if the rnode of
- * `root_node' at the erc->rnode_pos position points to erc->e->node, if not
+ * erc_reorder_rnodepos
+ * 
+ * adjusts the erc->rnode_pos value contained in each ext_rnode_cache struct
+ * of the `*erc' list. It checks if the rnode of `root_node' at 
+ * the erc->rnode_pos position points to erc->e->node, if not
  * it finds the right rnode and it updates the erc->rnode_pos value.
  * If an adequate rnode isn't find, the relative erc struct is removed.
  */
@@ -771,7 +818,9 @@ void erc_reorder_rnodepos(ext_rnode_cache **erc, u_int *erc_counter, map_node *r
 }
 
 /* 
- * erc_find: Searches in the `erc' ext_rnode_cache list a struct which has the
+ * erc_find
+ * 
+ * Searches in the `erc' ext_rnode_cache list a struct which has the
  * erc->e == e_rnode and returns it.
  */
 ext_rnode_cache *
@@ -791,9 +840,10 @@ erc_find(ext_rnode_cache *erc, ext_rnode *e_rnode)
 }
 
 /* 
- * e_rnode_find: It searches in the `erc' list a quadro_group struct 
- * equal to `qg', by comparing their gids that goes from gid[`level'] to 
- * gid[`qg->levels'].
+ * e_rnode_find
+ * 
+ * It searches in the `erc' list a quadro_group struct equal to `qg', by
+ * comparing their gids that goes from gid[`level'] to gid[`qg->levels'].
  * If an ext_rnode which has such struct is found it returns the pointer to the
  * struct.
  * If nothing is found 0 is returned.
@@ -964,8 +1014,10 @@ void gmap_node_del(map_gnode *gnode)
 }
 
 /*
- * merge_lvl_ext_maps: merges two ext_maps of a specific `level'. It is used
- * by merge_ext_maps(), see below.
+ * merge_lvl_ext_maps
+ * 
+ * merges two ext_maps of a specific `level'. It is used by merge_ext_maps(),
+ * see below.
  * This function is the exact replica of merge_maps() in map.c, that's why it
  * isn't commented.
  */
@@ -1035,7 +1087,9 @@ int merge_lvl_ext_maps(map_gnode *base, map_gnode *new, quadro_group base_root,
 }
 
 /*
- * merge_ext_maps: it fuses the `base' and `new' ext_maps generating a single
+ * merge_ext_maps
+ * 
+ * it fuses the `base' and `new' ext_maps generating a single
  * ext_map which has the best routes. The generated map is stored in `base'
  * `base_root' is the quadro_group related to `base'.
  * `new_root' is the quadro_group of the `new' ext_map.
@@ -1064,7 +1118,9 @@ int merge_ext_maps(map_gnode **base, map_gnode **new, quadro_group base_root,
 }
 
 /* 
- * gmap_get_rblock: It uses get_rnode_block to pack all the ext_map's rnodes
+ * gmap_get_rblock
+ * 
+ * It uses get_rnode_block to pack all the ext_map's rnodes
  * `maxgroupnode' is the number of nodes present in the map.
  * It returns a pointer to the start of the rnode block and stores in "count" 
  * the number of rnode structs packed.
@@ -1101,8 +1157,9 @@ int gmap_store_rblock(map_gnode *gmap, int maxgroupnode, map_rnode *rblock)
 }
 
 /* 
- * extmap_get_rblock: It packs the rnode_block for each map present in the 
- * `ext_map'.
+ * extmap_get_rblock
+ * 
+ * It packs the rnode_block for each map present in the `ext_map'.
  * There are a total of `levels' maps in the ext_map. Each map has 
  * `maxgroupnodes' nodes. In `*ret_count' is stored an array of map's rnodes 
  * count, so each element of the array represents the number of rnodes in the 
@@ -1149,7 +1206,9 @@ int extmap_store_rblock(map_gnode **ext_map, u_char levels, int maxgroupnode,
 }
 
 /* 
- * verify_ext_map_hdr: It verifies the validity of an ext_map_hdr.
+ * verify_ext_map_hdr
+ * 
+ * It verifies the validity of an ext_map_hdr.
  * `quadg' is the unpacked emap_hdr->quadg quadro_group.
  */
 int verify_ext_map_hdr(struct ext_map_hdr *emap_hdr, quadro_group *quadg)
@@ -1181,7 +1240,9 @@ void free_extmap_rblock(map_rnode **rblock, u_char levels)
 }
 
 /*
- * pack_map_gnode: packs the `qg' map_gnode struct and stores it in
+ * pack_map_gnode
+ * 
+ * packs the `qg' map_gnode struct and stores it in
  * `pack', which must be MAP_GNODE_PACK_SZ bytes big. `pack' will be in
  * network order.
  */
@@ -1207,7 +1268,9 @@ void pack_map_gnode(map_gnode *gnode, char *pack)
 }
 
 /*
- * unpack_map_gnode: restores in `qg' the map_gnode struct contained in `pack'.
+ * unpack_map_gnode
+ * 
+ * restores in `qg' the map_gnode struct contained in `pack'.
  * Note that `pack' will be modified during the restoration.
  */
 void unpack_map_gnode(map_gnode *gnode, char *pack)
@@ -1232,7 +1295,9 @@ void unpack_map_gnode(map_gnode *gnode, char *pack)
 }
 
 /* 
- * pack_extmap: It returns the packed `ext_map', ready to be saved or sent. It stores 
+ * pack_extmap
+ * 
+ * It returns the packed `ext_map', ready to be saved or sent. It stores 
  * in `pack_sz' the size of the package. Each gmaps, present in the `ext_map', has 
  * `maxgroupnode' nodes. `quadg' must be a valid quadro_group struct filled with 
  * valid values. 
@@ -1290,7 +1355,9 @@ char *pack_extmap(map_gnode **ext_map, int maxgroupnode, quadro_group *quadg, si
 
 
 /* 
- * unpack_extmap: Given a valid ext_map package (packed with pack_extmap), it 
+ * unpack_extmap
+ * 
+ * Given a valid ext_map package (packed with pack_extmap), it 
  * allocates a brand new ext_map and restores in it the gmaps and the rnodes.
  * In `quadg' is stored the quadro_group referring to this ext_map.
  * On success the a pointer to the new ext_map is retuned, otherwise 0 will be

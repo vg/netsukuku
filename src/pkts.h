@@ -21,6 +21,7 @@
 
 #include "if.h"
 #include "request.h"
+#include "llist.c"
 
 #define NETSUKUKU_ID		"ntk"
 #define MAXMSGSZ		65536
@@ -179,8 +180,7 @@ struct pkt_op_table {
  * Note that the reply pkt must have the ASYNC_REPLIED flag set in pkt.hdr.flags.
  */
 struct pkt_queue{
-	struct pkt_queue *next;
-	struct pkt_queue *prev;
+	LLIST_HDR	(struct pkt_queue);
 
 	PACKET 		pkt;
 	pthread_mutex_t mtx;

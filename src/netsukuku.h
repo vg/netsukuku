@@ -96,6 +96,7 @@ const static u_short andna_udp_port	= ANDNA_UDP_PORT,
 
 #define ANDNA_HNAMES_FILE	"andna_hostnames"
 #define ANDNA_CACHE_FILE	"andna_cache"
+#define LCLKEY_FILE		"andna_lcl_keyring"
 #define LCL_FILE		"andna_lcl_cache"
 #define RHC_FILE		"andna_rh_cache"
 #define COUNTER_C_FILE		"andna_counter_cache"
@@ -118,6 +119,7 @@ typedef struct
 
 	char		*andna_hnames_file;
 	char 		*andna_cache_file;
+	char 		*lclkey_file;
 	char 		*lcl_file;
 	char		*rhc_file;
 	char 		*counter_c_file;

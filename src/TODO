@@ -1,5 +1,19 @@
 		[HIGH PRIORITY] 
 
+- ANDNA MX:
+	-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!LIST_ADD!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	- CONTINUARE la RHCACHE
+		- list_moveontop()
+		- rh_cache: modifica le f()
+			- del_expired is not called!
+	- call *_del_expired only when the cache is full, or when the entry is
+	  returned by *_findhash()
+	- andna_mx_resolve()
+	- register_node part
+	- lcl_mx_addid() -> del_expired()
+	- mx_node part
+	- se non c'e' nessun MX associato, cosa si risponde? il mio IP
+
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 
 - Implement the http://lab.dyne.org/Ntk_MX_request RFC
@@ -23,6 +37,10 @@
 	- what to use to get the bandwidth of a network interface?
 	  Use `iperf' to measure once the max link bw, then monitor with
 	  iptables the link and calculate the used bw. 
+	  
+- Compressed Netsukuku pkts
+
+- use PREFIX in the man pages
 
 - Gnodes contiguity
 	- gnode re-hook
@@ -57,12 +75,17 @@
 - Write the documentation for the code that can be used by other
   programs. (By the way it is already commented.)
 
+- Turn the andna_caches in binary trees, expecially the rh_cache
 
 		[LOW PRIORITY]
 		
 - Interactive shell/console
 
 - renice the NetsukukuD process?
+
+- small memory: if the system has <= X Mb of memory, switch on dumb mode. In
+  this mode NetsukukuD keeps only the list of rnodes and forwards every
+  request to one of them. The lcl_cache is kept too.
 
 - option to disable the modification of the routing table
 
@@ -75,3 +98,6 @@
   compatible!
 
 - Test request.c
+
+- llist.c:
+	- pack=llist_pack(iinfo_struct, func_to_call_for_every_struct())	

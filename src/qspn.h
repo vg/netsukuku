@@ -48,8 +48,7 @@
  * received by our rnodes*/
 struct qspn_buffer
 {	
-	struct qspn_buffer *next;
-	struct qspn_buffer *prev;
+	LLIST_HDR	(struct qspn_buffer);
 	
 	map_node      *	rnode;		/* the rnode this buf is referring to */
 	u_int	 	replies;	/* How many replies we forwarded/sent

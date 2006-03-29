@@ -18,7 +18,7 @@
 import sys
 import os
 
-NTK_VERSION="0.0.7b"
+NTK_VERSION="0.0.8b"
 
 #
 #	Sources and libs

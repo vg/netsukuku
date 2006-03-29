@@ -23,14 +23,18 @@
 
 /*
  * This struct is used as a header to handle all the linked list struct.
- * The only limitation is to put _EXACTLY_ struct bla_bla *next;
- * struct bla_bla *prev; at the beginning.
+ * The only limitation is to put _EXACTLY_ 
+ * 	struct bla_bla *next;
+ * 	struct bla_bla *prev; 
+ * at the beginning.
+ * You can also use the LLIST_HDR() macro.
  */
+
+#define LLIST_HDR(_struct)	_struct *next, *prev
 
 struct linked_list
 {
-	struct linked_list *next;
-	struct linked_list *prev;
+	LLIST_HDR	(struct linked_list);
 }linked_list;
 typedef struct linked_list l_list;
 
@@ -46,6 +50,12 @@ typedef struct linked_list l_list;
 	_r;								\
 })
 
+/*
+ * list_copy
+ *
+ * It copies just the contents of `new' in `list' without overwriting the
+ * ->prev and ->next pointers.
+ */
 #define list_copy(list, new)						\
 do{									\
 	l_list _o, *_l=(l_list *)(list);				\
@@ -56,7 +66,15 @@ do{									\
 	_l->next=_o.next;						\
 } while(0)
 
-
+/*
+ * list_init
+ *
+ * If `new' is 0, it stores in `list' a pointer to a newly malloced 
+ * and zeroed struct.
+ * Its type is the same of `list'.
+ * If `new' is non zero, then `list' is simply set to `new'.
+ * The ->prev and ->next pointers are always set to zero.
+ */
 #define list_init(list, new)						\
 do {									\
 	l_list *_l;							\
@@ -70,66 +88,62 @@ do {									\
 	if(!(new))							\
 		memset((list), 0, sizeof(typeof(*(list)))); 		\
 } while (0)
-				     
+
+/*
+ * list_last
+ *
+ * It returns the last element of the `list' llist
+ */
 #define list_last(list)							\
 ({									\
 	 l_list *_i;							\
 	 for(_i=(l_list *)(list); _i->next; _i=(l_list *)_i->next); 	\
- 	 _i;								\
+ 	 (typeof((list)))_i;						\
 })
 
-#define list_add(list, new)						\
-do{									\
+/*
+ * list_append
+ *
+ * It appends the `_new' struct at the end of the `_head' llist.
+ * If `_tail' is not 0, then it is considered as the end of the llist.
+ * If `_tail' is 0, the end will be reached by traversing the entire llist,
+ * starting from `_head'.
+ * The new tail is returned.
+ * Example: tail=list_append(head, tail, new);
+ * 	    list_append(head, 0, new);
+ */
+#define list_append(_head, _tail, _new)					\
+({									\
 	l_list *_i, *_n;						\
-	_i=(l_list *)list_last((list)); 				\
+	_i=(_tail) ? (_tail) : (l_list *)list_last((_head)); 		\
 	_n=(l_list *)(new);						\
 	_i->next=_n;							\
 	_n->prev=_i; 							\
 	_n->next=0;							\
-}while(0)
-/*	if(is_list_zero((list)))				 	\
-		list_copy((list), (new));				\
-	else {								\
-	}								\
-*/
-
-#define list_free(list)							\
-do {									\
-	memset((list), 0, sizeof(typeof(*(list)))); 			\
-	xfree((list));							\
-} while(0)
-
-
-/* It returns the new head of the linked list, so it must be called in this
- * way: head=list_del(head, list); */
-#define list_del(head, list)						\
-({									\
-	l_list *_list=(l_list *)(list), *_next=0;			\
-	l_list *_head=(l_list *)(head); 				\
-	if(_list->prev)							\
-		_list->prev->next=_list->next; 				\
-	if(_list->next)	{						\
-		_next=_list->next; 					\
-		_next->prev=_list->prev; 				\
-	}								\
-        list_free(_list); 						\
-	if(_head == _list)						\
-		_next;							\
-	else 								\
-		(_next=_head);						\
-	(typeof((list)))_next;						\
+	(typeof((_head)))_new;						\
 })
 
-#define list_ins(list, new)						\
-do {									\
-	l_list *_l=(l_list *)(list), *_n=(l_list *)(new);		\
-	if(_l->next)							\
-		_l->next->prev=_n;					\
-	_n->next=_l->next;						\
-	_l->next=_n;							\
-	_n->prev=_l;							\
-} while (0)
-
+/*
+ * list_add
+ *
+ * It adds the `_new' struct at the start of the `_head' llist.
+ * The new head of the llist is returned.
+ * Example: head=list_add(head, new);
+ */
+#define list_add(_head, _new)						\
+({									\
+ 	l_list *_h, *_n;						\
+ 	_h=(l_list *)(_head);						\
+ 	_n=(l_list *)(_new);						\
+ 	if(_h != _n) {							\
+		_n->next=_h;						\
+		_n->prev=0;						\
+ 		if(_h)							\
+			_h->prev=_n;					\
+	}								\
+	(typeof((_head)))_n;						\
+})
+ 
 /*
  * list_join: 
  * before list_join(list):
@@ -148,23 +162,160 @@ do {									\
 	if(_l->prev)							\
 		_l->prev->next=_l->next;				\
 	_ret = _l == _h ? _l->next : _h;				\
-	(typeof((list)))_ret;						\
+	(typeof((head)))_ret;						\
 })
+
+#define list_free(list)							\
+do {									\
+	memset((list), 0, sizeof(typeof(*(list)))); 			\
+	xfree((list));							\
+} while(0)
+
+/* 
+ * list_del
+ * 
+ * It's the same of list_join() but it frees the `list'.
+ * It returns the new head of the linked list, so it must be called in
+ * this way: head=list_del(head, list); 
+ */
+#define list_del(head, list)						\
+({									\
+	l_list *_list=(l_list *)(list), *_head=(l_list *)(head); 	\
+ 									\
+ 	_head=(l_list *)list_join((head), _list);			\
+        list_free(_list); 						\
+	(typeof((head)))_head;						\
+})
+
+/*
+ * list_ins
+ *
+ * It inserts the `new' struct between the `list' and `list'->next 
+ * structs.
+ */
+#define list_ins(list, new)						\
+do {									\
+	l_list *_l=(l_list *)(list), *_n=(l_list *)(new);		\
+	if(_l->next)							\
+		_l->next->prev=_n;					\
+	_n->next=_l->next;						\
+	_l->next=_n;							\
+	_n->prev=_l;							\
+} while (0)
 	
+/* 
+ * list_substitute
+ *
+ * It removes from the llist the `old_list' struct and inserts in its
+ * position the `new_list' struct
+ * Note that `old_list' isn't freed, it is just unlinked from the llist.
+ */
 #define list_substitute(old_list, new_list)				\
 do{									\
-	(new_list)->next=(old_list)->next;				\
-	(new_list)->prev=(old_list)->prev;				\
-	if((new_list)->next)						\
-		(new_list)->next->prev=(new_list);			\
-	if((new_list)->prev)						\
-		(new_list)->prev->next=(new_list);			\
+	l_list *_n, *_o;						\
+	_n=(l_list *)(new_list);					\
+	_o=(l_list *)(old_list);					\
+	if(_o->next != _n)						\
+		_n->next=_o->next;					\
+	if(_o->prev != _n)						\
+		_n->prev=_o->prev;					\
+	if(_n->next)							\
+		_n->next->prev=_n;					\
+	if(_n->prev)							\
+		_n->prev->next=_n;					\
 }while(0)
 
+/*
+ * list_swap
+ *
+ * Before:	H -> Y <-> [A] <-> I <-> [B] <-> P <-> T
+ * list_swap(A, B);
+ * After:	H -> Y <-> [B] <-> I <-> [A] <-> P <-> T	
+ */
+#define list_swap(a, b)							\
+do{									\
+	l_list _ltmp, *_a, *_b;						\
+	_a=(l_list *)(a);						\
+	_b=(l_list *)(b);						\
+	if(_a->next == _b) {						\
+		list_substitute(_a, _b);				\
+		list_ins(_b, _a);					\
+	} else if(_a->prev == _b) {					\
+		list_substitute(_b, _a);				\
+		list_ins(_a, _b);					\
+	} else {							\
+		_ltmp.next=(l_list *)_b->next;				\
+		_ltmp.prev=(l_list *)_b->prev;				\
+		list_substitute(_a, _b);				\
+		list_substitute(&_ltmp, _a);				\
+	}								\
+}while(0)
+
+/*
+ * list_moveback
+ *
+ * It swaps `list' with its previous struct
+ */
+#define list_moveback(list)						\
+do{									\
+	l_list *_l=(l_list *)(list);					\
+	if(_l->prev)							\
+		list_swap(_l->prev, _l);				\
+}while(0)
+
+/*
+ * list_movefwd
+ *
+ * It swaps `list' with its next struct
+ */
+#define list_movefwd(list)						\
+do{									\
+	l_list *_l=(l_list *)(list);					\
+	if(_l->next)							\
+		list_swap(_l->next, _l);				\
+}while(0)
+ 
+/* 
+ * list_moveontop
+ *
+ * `_list' must be already present in the `_head' llist, otherwise this
+ * function is just equal to list_add().
+ * 
+ * list_moveontop() moves `_list' on top of the `_head' llist, thus:
+ * 	- `_list' is joined (see list_join() above)
+ * 	- `_list' becomes the new head
+ * 	- `_head' goes in `_list'->next
+ * The new head of the llist is returned.
+ * 
+ * Example:	head=list_moveontop(head, list);
+ */
+#define list_moveontop(_head, _list)					\
+({									\
+ 	l_list *_h=(l_list *)(_head), *_l=(l_list *)(_list);		\
+ 									\
+ 	if(_h != _l) {							\
+		_h=list_join((typeof((_head)))_h, _l);			\
+		_h=list_add((typeof((_head)))_h, _l);			\
+	}								\
+	(typeof((_head)))_h;						\
+})
+
+/*
+ * list_for
+ *
+ * Pretty simple, use it in this way:
+ *	 my_llist_ptr *index;
+ *	 index=head_of_the_llist;
+ *	 list_for(index) {
+ *	 	do_something_with(index);
+ *	 }
+ */
 #define list_for(i) for(; (i); (i)=(typeof (i))(i)->next)
 
 /*
- * list_safe_for: Use this for if you want to do something like:
+ * list_safe_for
+ *
+ * Use this for if you want to do something like:
  * 	list_for(list)
  * 		list_del(list);
  * If you are trying to do that, the normal list_for isn't safe! That's
@@ -216,6 +367,12 @@ for((i) ? (next)=(typeof (i))(i)->next : 0; (i); 			\
 	_e ? _i : -1;							\
 })
 
+/* 
+ * list_destroy
+ *
+ * It traverse the entire `list' llist and calls list_del() on each 
+ * struct.
+ */
 #define list_destroy(list)						\
 do{ 									\
 	l_list *_x=(l_list *)(list), *_i, *_next;			\
@@ -241,8 +398,18 @@ do{									\
 	if(!(*(_counter)) || !(*(_head)))				\
 		list_init(*(_head), (_list));				\
 	else								\
-		list_add(*(_head), (_list));				\
+		*((_head))=list_add(*(_head), (_list));			\
 	(*(_counter))++;						\
+}while(0)
+
+#define clist_append(_head, _tail, _counter, _list)			\
+do{									\
+	l_list *_t=_tail ? (l_list *)(*(_tail)) : 0;			\
+	if(!(*(_counter)) || !(*(_head)))				\
+		list_init(*(_head), (_list));				\
+	else								\
+		*((_tail))=list_append(*(_head), _t, (_list));		\
+	(*(_counter))++;                                                \
 }while(0)
 
 #define clist_del(_head, _counter, _list)				\
@@ -256,7 +423,7 @@ do{									\
 #define clist_ins(_head, _counter, _list)				\
 do{									\
         if(!(*(_counter)) || !(*(_head)))				\
-		clist_add(_head, _counter, _list);			\
+		clist_add((_head), (_counter), (_list));		\
         else {								\
                 list_ins(*(_head), (_list));                            \
         	(*(_counter))++;					\
@@ -266,7 +433,7 @@ do{									\
 #define clist_join(_head, _counter, _list)                              \
 do{                  							\
 	if((*(_counter)) > 0) {						\
-		*((_head))=list_join(_head, _list);			\
+		*((_head))=list_join((*(_head)), _list);		\
 		(*(_counter))--;					\
 	}								\
 } while(0)

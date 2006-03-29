@@ -17,7 +17,8 @@
  *
  * --
  *  
- * radar.c:
+ * radar.c
+ * 
  * The radar sends in broadcast a bouquet of MAX_RADAR_SCANS# packets and waits
  * for the ECHO_REPLY of the nodes which are alive. It then recollects the
  * replies and builds a small statistic, updates, if necessary, the internal 
@@ -98,7 +99,9 @@ void reset_radar(void)
 }
 
 /*
- * free_new_node: frees all the temporary alloced rq->node structs used at the
+ * free_new_node
+ * 
+ * frees all the temporary alloced rq->node structs used at the
  * hook time.
  */
 void free_new_node(void)
@@ -114,7 +117,9 @@ void free_new_node(void)
 }
 
 /*
- * find_node_radar_q: returns the first radar_queue struct which has the 
+ * find_node_radar_q
+ * 
+ * returns the first radar_queue struct which has the 
  * rq->node pointer equal to `node'.
  */
 struct radar_queue *find_node_radar_q(map_node *node)
@@ -129,7 +134,9 @@ struct radar_queue *find_node_radar_q(map_node *node)
 }
 
 /*
- * find_ip_radar_q: returns the first radar_queue struct which has the rq->ip
+ * find_ip_radar_q
+ * 
+ * returns the first radar_queue struct which has the rq->ip
  * member equal to the given `ip'.
  */
 struct radar_queue *find_ip_radar_q(inet_prefix *ip)
@@ -145,7 +152,9 @@ struct radar_queue *find_ip_radar_q(inet_prefix *ip)
 }
 
 /*
- * rnl_add: adds a new rnode_list struct in the `*rnlist' list. The new
+ * rnl_add
+ * 
+ * adds a new rnode_list struct in the `*rnlist' list. The new
  * allocated struct will be filled respectively with `rnode' and `dev'.
  * It returns the added `rnode_list' struct.
  */
@@ -167,7 +176,9 @@ struct rnode_list *rnl_add(struct rnode_list **rnlist, int *rnlist_counter,
 }
 
 /*
- * rnl_del: deletes the `rnl' struct from the `rnlist' rnode_list.
+ * rnl_del
+ * 
+ * deletes the `rnl' struct from the `rnlist' rnode_list.
  */
 void rnl_del(struct rnode_list **rnlist, int *rnlist_counter, 
 		struct rnode_list *rnl)
@@ -179,7 +190,9 @@ void rnl_del(struct rnode_list **rnlist, int *rnlist_counter,
 }
 
 /*
- * rnl_reset: reset the whole rnode_list
+ * rnl_reset
+ * 
+ * reset the whole rnode_list
  */
 void rnl_reset(struct rnode_list **rnlist, int *rnlist_counter)
 {
@@ -189,7 +202,9 @@ void rnl_reset(struct rnode_list **rnlist, int *rnlist_counter)
 
 
 /*
- * rnl_del_dead_rnode: it removes all the rnode_list structs which are related
+ * rnl_del_dead_rnode
+ * 
+ * it removes all the rnode_list structs which are related
  * to a rnode which doesn't exist anymore in `root_node'
  * It returns the number of delete rnodes_list structs.
  */
@@ -209,7 +224,9 @@ int rnl_del_dead_rnode(struct rnode_list **rnlist, int *rnlist_counter,
 }
 
 /*
- * rnl_find_rpos: returns the first rnode_list struct, contained in
+ * rnl_find_rpos
+ * 
+ * returns the first rnode_list struct, contained in
  * `rnlist', which has rnl->node equal to `node'.
  */
 struct rnode_list *rnl_find_node(struct rnode_list *rnlist, map_node *node)
@@ -224,7 +241,8 @@ struct rnode_list *rnl_find_node(struct rnode_list *rnlist, map_node *node)
 }
 
 /*
- * rnl_add_dev: 
+ * rnl_add_dev
+ * 
  * If `rnl' is 0 a new struct is added in `*rnlist' using `node'.
  * In both cases the `new_dev' is added in the rnl->dev[] array of
  * pointers (if it isn't already present there) and rnl->dev_n is
@@ -254,7 +272,9 @@ int rnl_add_dev(struct rnode_list **rnlist, int *rnlist_counter,
 }
 
 /*
- * rnl_del_dev: It searches a pointer in the rnl->dev[] array equal to
+ * rnl_del_dev
+ * 
+ * It searches a pointer in the rnl->dev[] array equal to
  * `del_dev'. If it is found, it is set to 0 and rnl->dev_n is decremented,
  * otherwise 0 is returned.
  * If rnlist->dev_n is 0, the found rnlist struct is deleted from the llist.
@@ -291,7 +311,9 @@ int rnl_del_dev(struct rnode_list **rnlist, int *rnlist_counter,
 }
 
 /*
- * rnl_update_devs: it updates the device array present in the rnode_list
+ * rnl_update_devs
+ * 
+ * it updates the device array present in the rnode_list
  * struct of `node'.
  * It searches in rnlist a struct which have rnlist->node == `node',
  * then it substitutes rnlist->dev with `devs' and rnlist->dev_n with `dev_n'.
@@ -348,7 +370,9 @@ interface **rnl_get_dev(struct rnode_list *rnlist, map_node *node)
 }
 
 /*
- * is_rnode_allowed: it verifies if the rnode described by the `rip' IP is 
+ * is_rnode_allowed
+ * 
+ * it verifies if the rnode described by the `rip' IP is 
  * present in the `alr' llist. If it is 1 is returned, otherwise 0.
  */
 int is_rnode_allowed(inet_prefix rip, struct allowed_rnode *alr)
@@ -371,7 +395,9 @@ int is_rnode_allowed(inet_prefix rip, struct allowed_rnode *alr)
 }
 
 /*
- * new_rnode_allowed: add a new allowed rnode in the `alr' llist which has
+ * new_rnode_allowed
+ * 
+ * add a new allowed rnode in the `alr' llist which has
  * already `*alr_counter' members. `gid', `min_lvl', and `tot_lvl' are the
  * respective field of the new allowed_rnode struct.
  */
@@ -402,7 +428,9 @@ void reset_rnode_allowed(struct allowed_rnode **alr, int *alr_counter)
 }
 
 /*
- * count_hooking_nodes: returns the number of hooking nodes, which are stored
+ * count_hooking_nodes
+ * 
+ * returns the number of hooking nodes, which are stored
  * in the radar_queue.
  */
 int count_hooking_nodes(void) 
@@ -424,7 +452,9 @@ int count_hooking_nodes(void)
 
 
 /*
- * final_radar_queue: analyses the received ECHO_REPLY pkt and write the
+ * final_radar_queue
+ * 
+ * analyses the received ECHO_REPLY pkt and write the
  * average rtt of each found node in the radar_queue.
  */
 void final_radar_queue(void)
@@ -457,9 +487,10 @@ void final_radar_queue(void)
 }
 
 /* 
- * radar_remove_old_rnodes: It removes all the old rnodes ^_- It store in 
- * rnode_delete[level] the number of deleted rnodes. This function is used 
- * by radar_update_map
+ * radar_remove_old_rnodes
+ * 
+ * It removes all the old rnodes ^_- It store in rnode_delete[level] the number
+ * of deleted rnodes. This function is used by radar_update_map
  */
 int radar_remove_old_rnodes(int *rnode_deleted) 
 {
@@ -622,7 +653,7 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 
 	if(!me.cur_node->links) {
 		/* - Diary -
-		 *  Tue Mar 14 07:29:58 CET 2006
+		 * Tue Mar 14 07:29:58 CET 2006
 		 * Damn! All my rnodes died, I am the last survivor in this
 		 * great lone land... I have to reset my memory... farewell!
 		 */
@@ -633,9 +664,11 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 }
 
 /* 
- * radar_update_bmap: updates the bnode map of the given `level': the root_node
- * bnode in the bmap will also point to the gnode of level `gnode_level'+1 that
- * is `rq'->quadg.gnode[_EL(gnode_level+1)].
+ * radar_update_bmap
+ *
+ * updates the bnode map of the given `level' the root_node bnode in the bmap 
+ * will also point to the gnode of level `gnode_level'+1 that is
+ * `rq'->quadg.gnode[_EL(gnode_level+1)].
  */
 void radar_update_bmap(struct radar_queue *rq, int level, int gnode_level)
 {
@@ -673,7 +706,9 @@ void radar_update_bmap(struct radar_queue *rq, int level, int gnode_level)
 }
 
 /* 
- * radar_update_map: it updates the int_map and the ext_map if any bnodes are found.
+ * radar_update_map
+ * 
+ * it updates the int_map and the ext_map if any bnodes are found.
  * Note that the rnodes in the map are held in a different way. First of all the qspn
  * is not applied to them (we already know how to reach them ;) and they have only
  * one rnode... ME. So me.cur_node->r_node[x].r_node->r_node[0] == me.cur_node.
@@ -850,10 +885,7 @@ void radar_update_map(void)
 					   qb=xmalloc(sizeof(struct qspn_buffer));
 					   memset(qb, 0, sizeof(struct qspn_buffer));
 					   qb->rnode=node;
-					   if(root_node->links == 1 || !qspn_b[level])
-						   list_init(qspn_b[level], qb);
-					   else
-						   list_add(qspn_b[level], qb);
+					   qspn_b[level]=list_add(qspn_b[level], qb);
 
 					   send_qspn_now[level]=1;
 				   }
@@ -959,12 +991,14 @@ void radar_update_map(void)
 }
 
 /* 
- * add_radar_q: It returns the radar_q struct which handles the pkt.from node.
+ * add_radar_q
+ * 
+ * It returns the radar_q struct which handles the pkt.from node.
  * If the node is not present in the radar_q, it is added, and the
  * relative struct will be returned.
  */
-struct radar_queue *
-add_radar_q(PACKET pkt)
+struct
+radar_queue *add_radar_q(PACKET pkt)
 {
 	map_node *rnode;
 	quadro_group quadg;
@@ -1029,7 +1063,7 @@ add_radar_q(PACKET pkt)
 		rq->dev[0] = pkt.dev;
 		rq->dev_n++;
 		
-		list_add(radar_q, rq);
+		radar_q=list_add(radar_q, rq);
 		radar_q_counter++;
 	} else {
 		/*
@@ -1047,7 +1081,9 @@ add_radar_q(PACKET pkt)
 }
 
 /* 
- * radar_exec_reply: It reads the received ECHO_REPLY pkt and updates the radar
+ * radar_exec_reply
+ * 
+ * It reads the received ECHO_REPLY pkt and updates the radar
  * queue, storing the calculated rtt and the other infos relative to the sender
  * node.
  */
@@ -1105,7 +1141,9 @@ int radar_exec_reply(PACKET pkt)
 
 
 /* 
- * radar_recv_reply: It handles the ECHO_REPLY pkts 
+ * radar_recv_reply
+ * 
+ * It handles the ECHO_REPLY pkts
  */
 int radar_recv_reply(PACKET pkt)
 {
@@ -1140,7 +1178,9 @@ int radar_recv_reply(PACKET pkt)
 }
 
 /* 
- * radar_qspn_send_t: This function is used only by radar_scan().
+ * radar_qspn_send_t
+ * 
+ * This function is used only by radar_scan().
  * It just call the qspn_send() function. We use a thread
  * because the qspn_send() may sleep, and we don't want to halt the
  * radar_scan().
@@ -1160,7 +1200,9 @@ void *radar_qspn_send_t(void *level)
 }
 		            
 /* 
- * radar_scan: It starts the scan of the local area.
+ * radar_scan
+ * 
+ * It starts the scan of the local area.
  * It sends MAX_RADAR_SCANS packets in broadcast then it waits MAX_RADAR_WAIT
  * and in the while the echo replies are gathered. After MAX_RADAR_WAIT it 
  * stops to receive echo replies and it does a statistical analysis of the 
@@ -1271,7 +1313,9 @@ int radar_scan(int activate_qspn)
 
 
 /* 
- * radard: It sends back to rpkt.from the ECHO_REPLY pkt in reply to the ECHO_ME
+ * radard
+ * 
+ * It sends back to rpkt.from the ECHO_REPLY pkt in reply to the ECHO_ME
  * pkt received.
  */
 int radard(PACKET rpkt)
@@ -1381,7 +1425,9 @@ int radard(PACKET rpkt)
 }
 
 /* 
- * refresh_hook_root_node: At hooking the radar_scan doesn't have an int_map, so
+ * refresh_hook_root_node
+ * 
+ * At hooking the radar_scan doesn't have an int_map, so
  * all the nodes it found are stored in fake nodes. When we finish the hook,
  * instead, we have an int_map, so we convert all this fake nodes into real
  * nodes. To do this we modify each rq->node of the radar_queue and recall the
@@ -1420,7 +1466,9 @@ int refresh_hook_root_node(void)
 }
 
 /* 
- * radar_daemon: keeps the radar up until the end of the universe.
+ * radar_daemon
+ * 
+ * keeps the radar up until the end of the universe.
  */
 void *radar_daemon(void *null)
 {
@@ -1437,7 +1485,11 @@ void *radar_daemon(void *null)
 	}
 }
 
-/* radar_wait_new_scan: It sleeps until a new radar scan is sent */
+/* 
+ * radar_wait_new_scan
+ * 
+ * It sleeps until a new radar scan is sent 
+ */
 void radar_wait_new_scan(void)
 {
 	int old_echo_id, old_radar_wait_counter;

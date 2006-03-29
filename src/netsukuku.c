@@ -59,7 +59,8 @@ int ntk_load_maps(void)
 	else
 		me.int_map=init_map(0);
 
-#if 0 /* Don't load the bnode map, it's useless */
+#if 0 
+	/* Don't load the bnode map, it's useless */
 	if((me.bnode_map=load_bmap(server_opt.bnode_map_file, me.ext_map,
 					FAMILY_LVLS, &me.bmap_nodes))) {
 		debug(DBG_NORMAL, "Bnode map loaded");
@@ -144,6 +145,7 @@ void fill_default_options(void)
 
 	server_opt.andna_hnames_file=ANDNA_HNAMES_FILE;
 	server_opt.andna_cache_file=ANDNA_CACHE_FILE;
+	server_opt.lclkey_file=LCLKEY_FILE;
 	server_opt.lcl_file=LCL_FILE;
 	server_opt.rhc_file=RHC_FILE;
 	server_opt.counter_c_file=COUNTER_C_FILE;
@@ -184,6 +186,8 @@ void fill_loaded_cfg_options(void)
 	
 	if((value=getenv(config_str[CONF_ANDNA_CACHE_FILE])))
 		server_opt.andna_cache_file=xstrndup(value, NAME_MAX-1);
+	if((value=getenv(config_str[CONF_ANDNA_LCLKEY_FILE])))
+		server_opt.lclkey_file=xstrndup(value, NAME_MAX-1);
 	if((value=getenv(config_str[CONF_ANDNA_LCL_FILE])))
 		server_opt.lcl_file=xstrndup(value, NAME_MAX-1);
 	if((value=getenv(config_str[CONF_ANDNA_RHC_FILE])))
@@ -259,6 +263,8 @@ void free_server_opt(void)
 		xfree(server_opt.andna_hnames_file);
 	if(server_opt.andna_cache_file != ANDNA_CACHE_FILE)
 		xfree(server_opt.andna_cache_file);
+	if(server_opt.lclkey_file != LCLKEY_FILE)
+		xfree(server_opt.lclkey_file);
 	if(server_opt.lcl_file != LCL_FILE)
 		xfree(server_opt.lcl_file);
 	if(server_opt.rhc_file != RHC_FILE)
@@ -396,6 +402,8 @@ void check_conflicting_options(void)
 		FATAL_NOT_SPECIFIED("andna_hnames_file");
 	if(!server_opt.andna_cache_file[0])
 		FATAL_NOT_SPECIFIED("andna_cache_file");
+	if(!server_opt.lclkey_file[0])
+		FATAL_NOT_SPECIFIED("andna_lclkey_file");
 	if(!server_opt.lcl_file[0])
 		FATAL_NOT_SPECIFIED("andna_lcl_file");
 	if(!server_opt.rhc_file[0])

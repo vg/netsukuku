@@ -27,7 +27,6 @@
 
 #include "includes.h"
 
-#include "llist.c"
 #include "inet.h"
 #include "endianness.h"
 #include "map.h"

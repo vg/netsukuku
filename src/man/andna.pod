@@ -103,16 +103,23 @@ F<netsukuku.conf> file.
 =over
 
 =item
+F</usr/share/netsukuku/andna_lcl_keyring>
+
+In this keyring your ANDNA public and secret keys are saved. Handle this file
+with care: without it, you won't be able to update your hostnames, thus 
+you'll definitely lose them.
+
+=item
 F</usr/share/netsukuku/andna_cache>
 
 =item
-F</usr/share/netsukuku/lcl_cache>
+F</usr/share/netsukuku/andna_lcl_cache>
 
 =item
-F</usr/share/netsukuku/rh_cache>
+F</usr/share/netsukuku/andna_rh_cache>
 
 =item
-F</usr/share/netsukuku/counter_cache>
+F</usr/share/netsukuku/andna_counter_cache>
 
 They are the saved ANDNA caches.  Their locations can be 
 changed in F<netsukuku.conf>.

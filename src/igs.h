@@ -84,8 +84,7 @@
  */
 struct internet_gateway
 {
-	struct internet_gateway *next;
-	struct internet_gateway *prev;
+	LLIST_HDR	(struct internet_gateway);
 
 	u_int		ip[MAX_IP_INT];
 	u_char		gid;

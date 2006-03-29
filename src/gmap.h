@@ -19,6 +19,7 @@
 #ifndef GMAP_H
 #define GMAP_H
 
+#include "llist.c"
 #include "map.h"
 
 /* * * Groupnode stuff * * */
@@ -194,8 +195,7 @@ typedef struct {
 
 /*This cache keeps the list of all the ext_rnode used.*/
 struct ext_rnode_cache {
-	struct ext_rnode_cache *next;
-	struct ext_rnode_cache *prev;
+	LLIST_HDR	(struct ext_rnode_cache);
 
 	ext_rnode	*e;		/*The pointer to the ext_rnode struct*/
 	int		rnode_pos;	/*The ext_rnode position in the 

@@ -23,7 +23,6 @@
 
 #include "includes.h"
 
-#include "llist.c"
 #include "endianness.h"
 #include "bmap.h"
 #include "route.h"
@@ -161,16 +160,12 @@ int qspn_b_add(struct qspn_buffer *qb, u_char replier, u_short flags)
 	return qb->replies-1;
 }
 
-struct qspn_buffer *
-qspn_b_find_rnode(struct qspn_buffer *qb, map_node *rnode)
+struct 
+qspn_buffer *qspn_b_find_rnode(struct qspn_buffer *qb, map_node *rnode)
 {
-	if(!qb)
-		return 0;
-	
 	list_for(qb)
 		if(qb->rnode == rnode)
 			return qb;
-
 	return 0;
 }
 

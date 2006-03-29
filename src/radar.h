@@ -50,8 +50,7 @@ int total_radars;			/*Stupid statistic*/
 
 struct radar_queue
 {
-	struct radar_queue *next;
-	struct radar_queue *prev;
+	LLIST_HDR	(struct radar_queue);
 
 	inet_prefix	ip;			/*Node's ip*/
 	interface	*dev[MAX_INTERFACES];	/*The pointers to the interface structs, present 
@@ -81,8 +80,7 @@ struct timeval scan_start;	/*the start of the scan*/
  */
 struct rnode_list
 {
-	struct rnode_list *next;
-	struct rnode_list *prev;
+	LLIST_HDR	(struct rnode_list);
 
 	map_node	*node;			/* The node which is pointed by this 
 						   rnode */
@@ -100,8 +98,7 @@ int rlist_counter;
  */
 struct allowed_rnode
 {
-	struct allowed_rnode *next;
-	struct allowed_rnode *prev;
+	LLIST_HDR	(struct allowed_rnode);
 	
 	/* 
 	 * In order to see if the rnode X is part of this list we compare all

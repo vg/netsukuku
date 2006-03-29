@@ -616,7 +616,7 @@ char *pack_map(map_node *map, int *addr_map, int maxgroupnode,
 		p+=sizeof(struct int_map_hdr);
 
 		for(i=0; i<maxgroupnode; i++) {
-			pack_map_node(&map[i], 	p);
+			pack_map_node(&map[i], p);
 			p+=MAP_NODE_PACK_SZ;
 		}
 	}

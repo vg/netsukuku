@@ -24,7 +24,6 @@
 
 #include "includes.h"
 
-#include "llist.c"
 #include "inet.h"
 #include "endianness.h"
 #include "map.h"
@@ -49,12 +48,20 @@
 
 
 /*
+ * 
+ *  *  *  *  (de)-Initialization functions  *  *  *
+ *
+ */
+
+/*
  * andna_load_caches: loads all the ANDNA caches
  */
 int andna_load_caches(void)
 {
-
-	if((andna_lcl=load_lcl_cache(&lcl_keyring, server_opt.lcl_file, &lcl_counter)))
+	if((load_lcl_keyring(&lcl_keyring, server_opt.lclkey_file)))
+		debug(DBG_NORMAL, "Andna LCL Keyring loaded");
+	
+	if((andna_lcl=load_lcl_cache(server_opt.lcl_file, &lcl_counter)))
 		debug(DBG_NORMAL, "Andna Local Cache loaded");
 
 	if((andna_c=load_andna_cache(server_opt.andna_cache_file, &andna_c_counter)))
@@ -75,7 +82,7 @@ int andna_load_caches(void)
 int andna_save_caches(void)
 {
 	debug(DBG_NORMAL, "Saving the andna local cache");
-	save_lcl_cache(&lcl_keyring, andna_lcl, server_opt.lcl_file);
+	save_lcl_cache(andna_lcl, server_opt.lcl_file);
 
 	debug(DBG_NORMAL, "Saving the andna cache");
 	save_andna_cache(andna_c, server_opt.andna_cache_file);
@@ -135,6 +142,7 @@ void andna_init(void)
 	add_pkt_op(ANDNA_RESOLVE_HNAME,  SKT_UDP, andna_udp_port, andna_recv_resolve_rq);
 	add_pkt_op(ANDNA_RESOLVE_REPLY,  SKT_UDP, andna_udp_port, 0);
 	add_pkt_op(ANDNA_RESOLVE_IP,     SKT_TCP, andna_tcp_port, andna_recv_rev_resolve_rq);
+	add_pkt_op(ANDNA_RESOLVE_MX,     SKT_TCP, andna_tcp_port, andna_recv_mx_resolve_rq);
 	add_pkt_op(ANDNA_REV_RESOLVE_REPLY,  SKT_TCP, andna_tcp_port, 0);
 	add_pkt_op(ANDNA_GET_ANDNA_CACHE,SKT_TCP, andna_tcp_port, put_andna_cache);
 	add_pkt_op(ANDNA_PUT_ANDNA_CACHE,SKT_TCP, andna_tcp_port, 0);
@@ -144,12 +152,18 @@ void andna_init(void)
 	add_pkt_op(ANDNA_SPREAD_SACACHE, SKT_UDP, andna_udp_port, recv_spread_single_acache);
 
 	pkt_queue_init();
-
+	
 	andna_caches_init(my_family);
 
+	/* Load the good old caches */
 	andna_load_caches();
-	lcl_new_keyring(&lcl_keyring);
+	
+	if(lcl_new_keyring(&lcl_keyring)) {
+		debug(DBG_NORMAL, "Saving the new andna local keyring");
+		save_lcl_keyring(&lcl_keyring, server_opt.lclkey_file);
+	}
 
+	/* Init ANDNS */
 	if(andns_init(restricted_mode, ETC_RESOLV_CONF) < 0)
 		if(andns_init(restricted_mode, ETC_RESOLV_CONF_BAK) < 0) {
 			error("In %s there isn't a single Internet nameserver.", 
@@ -161,6 +175,7 @@ void andna_init(void)
 	memset(last_counter_pkt_id, 0, sizeof(int)*ANDNA_MAX_FLOODS);
 	memset(last_spread_acache_pkt_id, 0, sizeof(int)*ANDNA_MAX_FLOODS);
 
+	/* Modify /etc/resolv.conf if requested */
 	andna_resolvconf_modify();
 }
 
@@ -171,6 +186,13 @@ void andna_close(void)
 	if(!server_opt.disable_resolvconf)
 		andna_resolvconf_restore();
 }
+
+
+/*
+ *
+ *  *  *  *  Hash_node search functions  *  *  *
+ *
+ */
 
 /*
  * andna_hash_by_family: If family is equal to AF_INET, in `hash' it stores the
@@ -450,6 +472,13 @@ int find_hash_gnode(u_int hash[MAX_IP_INT], inet_prefix *to,
 			tot_excluded_hgnodes, exclude_me);
 }
 
+
+/*
+ *
+ *  *  *  *  Packets  *  *  *
+ *
+ */
+
 /*
  * andna_flood_pkt: Sends the `rpkt' pkt to all the rnodes of our same gnode
  * and exclude the the rpkt->from node if `exclude_rfrom' is non zero.
@@ -519,6 +548,13 @@ int andna_add_flood_pkt_id(int *ids_array, int pkt_id)
 
 	return 1;
 }
+
+
+/*
+ *
+ *  *  *  *  Hostname registration  *  *  *
+ *
+ */
 
 /*
  * andna_register_hname: Register or update the `alcl->hostname' hostname.
@@ -1033,9 +1069,18 @@ finish:
 	return ret;
 }
 
+
 /*
- * andna_resolve_hname: stores in `resolved_ip' the ip associated to the
- * `hname' hostname (in host order).
+ * 
+ *  *  *  *  Hostname/IP/MX resolution  *  *  *
+ *
+ */
+
+/*
+ * andna_resolve_hname
+ * 
+ * stores in `resolved_ip' the ip associated to the `hname' hostname
+ * (in host order).
  * On error -1 is returned.
  */
 int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
@@ -1059,7 +1104,7 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 
 
 	/*
-	 * Search in the hostname in the local cache first. Maybe we are so
+	 * Search the hostname in the local cache first. Maybe we are so
 	 * dumb that we are trying to resolve the same ip we registered.
 	 */
 	if((lcl=lcl_cache_find_hname(andna_lcl, hname))) {
@@ -1152,8 +1197,10 @@ finish:
 }
 
 /*
- * andna_recv_resolve_rq: replies to a hostname resolve request by giving the
- * ip associated to the hostname.
+ * andna_recv_resolve_rq
+ * 
+ * replies to a hostname resolve request by giving the ip associated to the
+ * hostname.
  */
 int andna_recv_resolve_rq(PACKET rpkt)
 {
@@ -1287,8 +1334,10 @@ finish:
 }
 
 /*
- * andna_reverse_resolve: it sends to `ip' a reverse resolve request to
- * receive all the hostnames that `ip' has registered.
+ * andna_reverse_resolve
+ *
+ * It sends to `ip' a reverse resolve request to receive all the 
+ * hostnames that `ip' has registered.
  * It returns the number of hostnames that are stored in `hostnames'.
  * If there aren't any hostnames or an error occurred, -1 is returned.
  */
@@ -1381,8 +1430,10 @@ finish:
 }
 
 /*
- * andna_recv_rev_resolve_rq: it replies to a reverse hostname resolve request
- * which asks all the hostnames associated with a given ip.
+ * andna_recv_rev_resolve_rq
+ *
+ * It replies to a reverse hostname resolve request which asks all the 
+ * hostnames associated with a given ip.
  */
 int andna_recv_rev_resolve_rq(PACKET rpkt)
 {
@@ -1407,7 +1458,7 @@ int andna_recv_rev_resolve_rq(PACKET rpkt)
 	 * Build the reply pkt
 	 */
 	
-	pkt_fill_hdr(&pkt.hdr, 0, rpkt.hdr.id, ANDNA_RESOLVE_REPLY, 0);
+	pkt_fill_hdr(&pkt.hdr, 0, rpkt.hdr.id, ANDNA_REV_RESOLVE_REPLY, 0);
 	pkt.hdr.sz=sizeof(struct andna_rev_resolve_reply_hdr);
 
 	/* Build the list of registered hnames */
@@ -1476,11 +1527,91 @@ finish:
 	return ret;
 }
 
+int andna_mx_resolve()
+{
+	/* TODO: code it ;) */
+}
+
+int andna_recv_mx_resolve_rq(PACKET rpkt)
+{
+	PACKET pkt;
+	struct andna_mx_resolve_rq_pkt *req;
+	andna_mx_resolve_reply_pkt reply;
+
+	const char *ntop;
+	int ret=0, err;
+	
+	lcl_cache *alcl=andna_lcl;
+	lcl_mx *mx;
+
+	if(rpkt.hdr.sz != ANDNA_MX_RESOLVE_RQ_PKT_SZ)
+		ERROR_FINISH(ret, -1, finish);
+
+	memset(&pkt, 0, sizeof(PACKET));
+
+	ntop=inet_to_str(rpkt.from);
+	debug(DBG_INSANE, "Andna MX resolve request received 0x%x from %s",
+			rpkt.hdr.id, ntop);
+
+	req=(struct andna_mx_resolve_rq_pkt *)rpkt.msg;
+	ints_network_to_host(req, andna_mx_resolve_rq_pkt_iinfo);
+	
+	/*
+	 * Build the reply pkt
+	 */
+	
+	alcl=lcl_cache_find_32hash(andna_lcl, req->hash);
+	if(!alcl || !alcl->mxs || !alcl->mx_node) {
+		ret=pkt_err(rpkt, E_ANDNA_NO_HNAME, 0);
+		goto finish;
+	}
+
+	/* Choose a random MX node */
+	mx=&alcl->mx_node[rand_range(0, alcl->mxs-1)];
+
+	debug(DBG_INSANE, "MX resolve request 0x%x accepted", rpkt.hdr.id);
+
+	/* Write the reply */
+	memset(&reply, 0, sizeof(reply));
+	memcpy(reply.ip, mx->ip, MAX_IP_SZ);
+	reply.timestamp=time(0) - mx->last_update;
+
+	/* host -> network order */
+	inet_htonl(reply.ip, me.cur_ip.family);
+	ints_host_to_network((void *)&reply, andna_mx_resolve_reply_pkt_iinfo);
+
+	/* fill the pkt */
+	pkt_fill_hdr(&pkt.hdr, 0, rpkt.hdr.id, ANDNA_MX_RESOLVE_REPLY, 0);
+	pkt.hdr.sz=sizeof(reply);
+	pkt.msg=xmalloc(pkt.hdr.sz);
+	memcpy(pkt.msg, &reply, sizeof(reply));
+	
+	/*
+	 * Send it.
+	 */
+
+        pkt_addto(&pkt, &rpkt.from);
+	pkt_addsk(&pkt, my_family, rpkt.sk, rpkt.sk_type);
+        err=send_rq(&pkt, 0, ANDNA_MX_RESOLVE_REPLY, rpkt.hdr.id, 0, 0, 0);
+        if(err==-1)
+		ERROR_FINISH(ret, -1, finish);
+
+finish:
+	pkt_free(&pkt, 0);
+	return ret;
+}
 
 /*
- * get_single_andna_c: sends the ANDNA_GET_SINGLE_ACACHE request to the old 
- * `hash_gnode' of `hash' to retrieve the andna_cache that contains the
- * information about `hash'.
+ *
+ *  *  *  *  Andna caches transfer  *  *  *
+ *  
+ */
+
+/*
+ * get_single_andna_c
+ * 
+ * It sends the ANDNA_GET_SINGLE_ACACHE request to the old `hash_gnode' of `hash'
+ * to retrieve the andna_cache that contains the information about `hash'.
  */
 andna_cache *get_single_andna_c(u_int hash[MAX_IP_INT],
 		u_int hash_gnode[MAX_IP_INT])
@@ -1549,7 +1680,9 @@ finish:
 }
 
 /*
- * put_single_acache: It replies to a get_single_acache request as described
+ * put_single_acache
+ * 
+ * It replies to a get_single_acache request as described
  * in andna.h (near the single_acache_hdr struct).
  */
 int put_single_acache(PACKET rpkt)
@@ -1718,8 +1851,10 @@ finish:
 }
 
 /*
- * spread_single_acache: tells to all the rnodes to get the single 
- * andna_cache of `hash' using get_single_andna_c()
+ * spread_single_acache
+ * 
+ * It tells to all the rnodes to get the single andna_cache of `hash' 
+ * using get_single_andna_c()
  */
 int spread_single_acache(u_int hash[MAX_IP_INT])
 {
@@ -1943,6 +2078,13 @@ finish:
 	return ret;
 }
 
+
+/*
+ *
+ *  *  *  *  ANDNA threads  *  *  *
+ *  
+ */
+
 /*
  * andna_hook: The andna_hook gets the andna_cache and the counter_node cache
  * from the nearest rnodes.
@@ -2067,7 +2209,7 @@ void andna_update_hnames(int only_new_hname)
 		}
 	}
 	if(updates)
-		save_lcl_cache(&lcl_keyring, andna_lcl, server_opt.lcl_file);
+		save_lcl_cache(andna_lcl, server_opt.lcl_file);
 }
 
 /*
@@ -2093,7 +2235,7 @@ void *andna_maintain_hnames_active(void *null)
 		}
 		
 		if(updates)
-			save_lcl_cache(&lcl_keyring, andna_lcl, server_opt.lcl_file);
+			save_lcl_cache(andna_lcl, server_opt.lcl_file);
 
 #if 0
 #ifdef ANDNA_DEBUG

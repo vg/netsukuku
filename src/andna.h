@@ -57,6 +57,8 @@ int last_spread_acache_pkt_id[ANDNA_MAX_FLOODS];
 						   anything */
 
 /*
+ * andna_reg_pkt
+ * 
  * Andna registration request pkt used to send the registration and update
  * requests to the hash_gnode, backup_gnode and counter_gnode.
  * When the pkt is sent to a counter_gnode, a second `rip', which is the ip
@@ -90,7 +92,10 @@ INT_INFO andna_reg_pkt_iinfo = 	{ 1, /* `rip' and `hash' aren't considered */
 				 
 
 /*
- * The andna resolve request pkt is used to resolve hostnames and ips.
+ *   andna_resolve_rq_pkt
+ *
+ * The andna resolve request pkt is used to resolve hostnames, IPs and MX
+ * hostnames.
  */
 struct andna_resolve_rq_pkt
 {
@@ -138,7 +143,20 @@ struct andna_rev_resolve_reply_hdr
  */
 INT_INFO andna_rev_resolve_reply_body_iinfo = { 1, { INT_TYPE_16BIT }, { 0 },
 						{ IINFO_DYNAMIC_VALUE } };
-						
+/*
+ * MX resolve request
+ */
+struct andna_mx_resolve_rq_pkt
+{
+	u_int		hash;		/* 32bit hash of the hostname 
+					   to resolve */
+};
+INT_INFO andna_mx_resolve_rq_pkt_iinfo = { 1, { INT_TYPE_32BIT }, { 0 }, { 1 } };
+#define ANDNA_MX_RESOLVE_RQ_PKT_SZ	(sizeof(struct andna_mx_resolve_rq_pkt))
+
+/* The MX resolve reply pkt is the same of a normal resolve reply */
+typedef struct andna_resolve_reply_pkt andna_mx_resolve_reply_pkt;
+#define andna_mx_resolve_reply_pkt_iinfo andna_resolve_reply_pkt_iinfo
 
 /* 
  * The single_acache pkt is used to get from an old hash_gnode a single
@@ -192,6 +210,11 @@ struct spread_acache_pkt
 INT_INFO spread_acache_pkt_info = { 0, { 0 }, { 0 }, { 0 } };
 
 
+
+/*
+ *  *  *  *  Function declaration  *  *  *
+ */
+
 int andna_load_caches(void);
 int andna_save_caches(void);
 
@@ -211,6 +234,9 @@ int andna_recv_resolve_rq(PACKET rpkt);
 
 int andna_reverse_resolve(inet_prefix ip, char ***hostnames);
 int andna_recv_rev_resolve_rq(PACKET rpkt);
+
+int andna_mx_resolve();
+int andna_recv_mx_resolve_rq(PACKET rpkt);
 
 int spread_single_acache(u_int hash[MAX_IP_INT]);
 int recv_spread_single_acache(PACKET rpkt);
