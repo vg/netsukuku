@@ -888,7 +888,7 @@ ssize_t inet_recv(int s, void *buf, size_t len, int flags)
 				}
 
 				if(FD_ISSET(s, &fdset))
-					inet_recv(s, buf, len, flags);
+					err=inet_recv(s, buf, len, flags);
 				break;
 
 			default:
@@ -947,7 +947,7 @@ ssize_t inet_recvfrom(int s, void *buf, size_t len, int flags, struct sockaddr *
 				}
 
 				if(FD_ISSET(s, &fdset))
-					inet_recvfrom(s, buf, len, flags, from, fromlen);
+					err=inet_recvfrom(s, buf, len, flags, from, fromlen);
 				break;
 
 			default:
@@ -998,7 +998,7 @@ ssize_t inet_send(int s, const void *msg, size_t len, int flags)
 		{
 			case EMSGSIZE:
 				inet_send(s, msg, len/2, flags);
-				inet_send(s, (const char *)msg+(len/2), 
+				err=inet_send(s, (const char *)msg+(len/2), 
 						len-(len/2), flags);
 				break;
 
@@ -1014,7 +1014,7 @@ ssize_t inet_send(int s, const void *msg, size_t len, int flags)
 				}
 
 				if(FD_ISSET(s, &fdset))
-					inet_send(s, msg, len, flags);
+					err=inet_send(s, msg, len, flags);
 				break;
 
 			default:
@@ -1066,7 +1066,7 @@ ssize_t inet_sendto(int s, const void *msg, size_t len, int flags, const struct 
 		{
 			case EMSGSIZE:
 				inet_sendto(s, msg, len/2, flags, to, tolen);
-				inet_sendto(s, ((const char *)msg+(len/2)), 
+				err=inet_sendto(s, ((const char *)msg+(len/2)), 
 						len-(len/2), flags, to, tolen);
 				break;
 
@@ -1081,7 +1081,7 @@ ssize_t inet_sendto(int s, const void *msg, size_t len, int flags, const struct 
 				}
 
 				if(FD_ISSET(s, &fdset))
-					inet_sendto(s, msg, len, flags, to, tolen);
+					err=inet_sendto(s, msg, len, flags, to, tolen);
 				break;
 
 			default:
