@@ -31,7 +31,7 @@
 #include "bmap.h"
 #include "qspn.h"
 #include "radar.h"
-#include "andns_rslv.h"
+#include "andns.h"
 #include "netsukuku.h"
 #include "route.h"
 #include "krnl_rule.h"

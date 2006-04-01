@@ -43,7 +43,7 @@
 #include "crypto.h"
 #include "andna_cache.h"
 #include "andna.h"
-#include "andns_rslv.h"
+#include "andns.h"
 #include "dns_wrapper.h"
 #include "misc.h"
 #include "xmalloc.h"
