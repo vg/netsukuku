@@ -153,7 +153,8 @@ lcl_cache *lcl_cache_find_32hash(lcl_cache *head, u_int hash)
 }
 
 /*
- * lcl_get_registered_hnames:
+ * lcl_get_registered_hnames
+ * 
  * In `hostnames' is stored a pointer to a malloced array of pointers. Each
  * pointer points to a malloced hostname.
  * The hostnames stored in the array are taken from the `head' llist. Only
@@ -187,7 +188,6 @@ int lcl_get_registered_hnames(lcl_cache *head, char ***hostnames)
 	return i;
 }
 
-
 /* 
  * lcl_mx_is_expired
  * 
@@ -216,7 +216,6 @@ int lcl_mx_addid(lcl_cache *alcl, u_int nodeid, u_int ip[MAX_IP_INT])
 	time_t cur_t;
 
 	cur_t=time(0);
-	/* TODO: delete expired */
 
 	alcl->mx_node=xrealloc(alcl->mx_node, sizeof(lcl_mx)*(alcl->mxs+1));
 	
@@ -224,12 +223,63 @@ int lcl_mx_addid(lcl_cache *alcl, u_int nodeid, u_int ip[MAX_IP_INT])
 	alcl->mx_node[alcl->mxs].updates++;
 	memcpy(alcl->mx_node[alcl->mxs].ip, ip, MAX_IP_SZ);
 	alcl->mx_node[alcl->mxs].last_update=cur_t;
+	alcl->flags|=ANDNA_MXHNAME;
 	
 	alcl->mxs++;
 
 	return 0;
 }
 
+int lcl_mx_del(lcl_cache *alcl, int mx_pos)
+{
+	if(!alcl->mxs || !alcl->mx_node)
+		return 0;
+
+	if(mx_pos > alcl->mxs-1)
+		return -1;
+	else if(mx_pos < alcl->mxs-1)
+		memcpy(&alcl->mx_node[mx_pos], &alcl->mx_node[alcl->mxs-1],
+				sizeof(lcl_mx));
+	
+	alcl->mxs--;
+	
+	if(alcl->mxs)
+		alcl->mx_node=xrealloc(alcl->mx_node, sizeof(lcl_mx)*alcl->mxs);
+	else {
+		alcl->mx_node=0;
+		alcl->flags&=~ANDNA_MXHNAME;
+	}
+
+	return 0;
+}
+
+/*
+ * lcl_get_mx
+ *
+ * It returns a pointer to a random MX node which is contained in `alcl'.
+ * If this MX node is expired, it is deleted from the `alcl'->mx_node array
+ * and another node is returned.
+ * If there are no MX nodes to return, 0 shall be the return value.
+ */
+lcl_mx *lcl_get_mx(lcl_cache *alcl)
+{
+	lcl_mx *mx;
+	int mx_pos;
+	
+	if(!alcl || !alcl->mxs || !alcl->mx_node)
+		return 0;
+
+	/* Choose a random MX node */
+	mx_pos=rand_range(0, alcl->mxs-1);
+	mx=&alcl->mx_node[mx_pos];
+
+	if(lcl_mx_is_expired(mx)) {
+		lcl_mx_del(alcl, mx_pos);
+		return lcl_get_mx(alcl);
+	}
+
+	return mx;
+}
 
 /*
  * 
@@ -354,6 +404,26 @@ andna_cache *andna_cache_findhash(int hash[MAX_IP_INT])
 	return 0;
 }
 
+/*
+ * andna_cache_gethash
+ *
+ * It searches an andna_cache entry which has the same hash of `hash'. 
+ * If it found but this entry is expired, it is deleted from the cache and 0 is
+ * returned. 
+ * If it isn't found 0 is returned, otherwise a pointer to the entry is 
+ * returned.
+ */
+andna_cache *andna_cache_gethash(int hash[MAX_IP_INT])
+{
+	andna_cache *ac;
+
+	ac=andna_cache_findhash(hash);
+	if(ac && andna_cache_del_ifexpired(ac))
+		return 0;
+
+	return ac;
+}
+
 andna_cache *andna_cache_addhash(int hash[MAX_IP_INT])
 {
 	andna_cache *ac;
@@ -371,6 +441,23 @@ andna_cache *andna_cache_addhash(int hash[MAX_IP_INT])
 	return ac;
 }
 
+/*
+ * andna_cache_del_ifexpired
+ *
+ * If `ac' is expired, it deletes it and returns 1; otherwise 0 is returned.
+ */
+int andna_cache_del_ifexpired(andna_cache *ac)
+{
+	ac_queue_del_expired(ac);
+	
+	if(!ac->queue_counter) {
+		clist_del(&andna_c, &andna_c_counter, ac);
+		return 1;
+	}
+
+	return 0;
+}
+
 void andna_cache_del_expired(void)
 {
         andna_cache *ac=andna_c, *next;
@@ -378,11 +465,8 @@ void andna_cache_del_expired(void)
         if(!andna_c_counter)
                 return;
 
-	list_safe_for(ac, next) {
-		ac_queue_del_expired(ac);
-		if(!ac->queue_counter)
-			clist_del(&andna_c, &andna_c_counter, ac);
-	}
+	list_safe_for(ac, next)
+		andna_cache_del_ifexpired(ac);
 }
 
 /*
@@ -605,21 +689,27 @@ rh_cache *rh_cache_addmx(char *hname, inet_prefix *mxip)
 
 rh_cache *rh_cache_find_hname(char *hname)
 {
-	rh_cache *rhc=andna_rhc;
+	rh_cache *rhc=andna_rhc, *next;
 	u_int hash;
+	time_t cur_t;
 
 	if(!rhc || !rhc_counter)
 		return 0;
 	
+	cur_t=time(0);
 	hash=fnv_32_buf(hname, strlen(hname), FNV1_32_INIT);
 	
-	list_for(rhc)
+	list_safe_for(rhc, next)
 		if(rhc->hash == hash) {
-			/* 
-			 * Each time we find a hname in the rh_cache, we move
-			 * it on top of the llist.
-			 */
-			andna_rhc=list_moveontop(andna_rhc, rhc);
+			if(cur_t - rhc->timestamp > ANDNA_EXPIRATION_TIME) {
+				/* This hostname expired, delete it from the
+				 * cache */
+				rh_cache_del(rhc);
+				continue;
+			} else
+				/* Each time we find a hname in the rh_cache,
+				 * we move it on top of the llist. */
+				andna_rhc=list_moveontop(andna_rhc, rhc);
 			return rhc;
 		}
 	return 0;

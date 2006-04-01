@@ -1,18 +1,11 @@
 		[HIGH PRIORITY] 
 
 - ANDNA MX:
-	-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!LIST_ADD!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	- CONTINUARE la RHCACHE
-		- list_moveontop()
-		- rh_cache: modifica le f()
-			- del_expired is not called!
-	- call *_del_expired only when the cache is full, or when the entry is
-	  returned by *_findhash()
 	- andna_mx_resolve()
 	- register_node part
-	- lcl_mx_addid() -> del_expired()
 	- mx_node part
 	- se non c'e' nessun MX associato, cosa si risponde? il mio IP
+	- documentation
 
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 

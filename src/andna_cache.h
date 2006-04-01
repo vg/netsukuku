@@ -181,13 +181,15 @@ typedef struct
 	u_int		ip[MAX_IP_INT];		/* IP of the mx_node */
 	u_int		node_id;		/* 32bit hash of the pubk of 
 						   the mx_node */
+	char		priority;
 	
 	u_int		updates;		/* # of previous updates */
 	time_t		last_update;
 } lcl_mx;
 INT_INFO lcl_mx_iinfo = { 3, /* `ip' is ignored */
 			  { INT_TYPE_32BIT, INT_TYPE_32BIT, INT_TYPE_32BIT },
-			  { MAX_IP_SZ, MAX_IP_SZ+sizeof(u_int), MAX_IP_SZ+sizeof(u_int)*2 },
+			  { MAX_IP_SZ, MAX_IP_SZ+sizeof(u_int)+sizeof(char), 
+				  MAX_IP_SZ+sizeof(char)+sizeof(u_int)*2 },
 			  { 1, 1, 1 }
 			};
 /*
@@ -409,6 +411,8 @@ void lcl_cache_destroy(lcl_cache *head, int *counter);
 lcl_cache *lcl_cache_find_hname(lcl_cache *head, char *hname);
 lcl_cache *lcl_cache_find_32hash(lcl_cache *head, u_int hash);
 int lcl_get_registered_hnames(lcl_cache *head, char ***hostnames);
+int lcl_mx_addid(lcl_cache *alcl, u_int nodeid, u_int ip[MAX_IP_INT]);
+lcl_mx *lcl_get_mx(lcl_cache *alcl);
 
 andna_cache_queue *ac_queue_findpubk(andna_cache *ac, char *pubk);
 andna_cache_queue *ac_queue_add(andna_cache *ac, inet_prefix rip, char *pubkey);
@@ -416,12 +420,15 @@ void ac_queue_del(andna_cache *ac, andna_cache_queue *acq);
 void ac_queue_del_expired(andna_cache *ac);
 void ac_queue_destroy(andna_cache *ac);
 andna_cache *andna_cache_findhash(int hash[MAX_IP_INT]);
+andna_cache *andna_cache_gethash(int hash[MAX_IP_INT]);
 andna_cache *andna_cache_addhash(int hash[MAX_IP_INT]);
+int andna_cache_del_ifexpired(andna_cache *ac);
 void andna_cache_del_expired(void);
 void andna_cache_destroy(void);
 
 counter_c_hashes *cc_hashes_add(counter_c *cc, int hash[MAX_IP_INT]);
 void cc_hashes_del(counter_c *cc, counter_c_hashes *cch);
+int counter_c_del_ifexpired(counter_c *cc);
 void cc_hashes_del_expired(counter_c *cc);
 void cc_hashes_destroy(counter_c *cc);
 counter_c_hashes *cc_findhash(counter_c *cc, int hash[MAX_IP_INT]);

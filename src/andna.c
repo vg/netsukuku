@@ -1131,7 +1131,7 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	/*
 	 * If we manage an andna_cache, it's better to peek at it.
 	 */
-	if((ac=andna_cache_findhash(req.hash))) {
+	if((ac=andna_cache_gethash(req.hash))) {
 		inet_setip(resolved_ip, ac->acq->rip, my_family);
 		inet_ntohl(resolved_ip->data, my_family);
 		return 0;
@@ -1261,9 +1261,10 @@ int andna_recv_resolve_rq(PACKET rpkt)
 		goto finish;
 	}
 
-	/* Search the hostname to resolve in the andna_cache */
-	andna_cache_del_expired();
-	if(!(ac=andna_cache_findhash(req->hash))) {
+	/* 
+	 * Search the hostname to resolve in the andna_cache 
+	 */
+	if(!(ac=andna_cache_gethash(req->hash))) {
 		/* We don't have that hname in our andna_cache */
 	
 		if(time(0)-me.uptime < (ANDNA_EXPIRATION_TIME/2)) {
@@ -1527,9 +1528,107 @@ finish:
 	return ret;
 }
 
-int andna_mx_resolve()
+int andna_mx_resolve(char *hname, inet_prefix **mx_ips)
 {
-	/* TODO: code it ;) */
+	PACKET pkt, rpkt;
+	inet_prefix to;
+	struct andna_mx_resolve_rq_pkt req;
+	struct andna_mx_resolve_reply_pkt *reply;
+	int_info reply_iinfo;
+	
+	int ret=0, tot_mxs, valid_hnames, i, sz;
+	u_short *hnames_sz;
+	const char *ntop; 
+	char *buf, *reply_body;
+	ssize_t err;
+
+	lcl_mx *mx;
+
+	memset(&pkt, 0, sizeof(PACKET));
+	memset(&rpkt, 0, sizeof(PACKET));
+
+	/* First of all resolve the hostname of the register node */
+	if(andna_resolve_hname(hname, &to) < 0)
+		return -1;
+	
+	ntop=inet_to_str(to);
+	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(ANDNA_RESOLVE_MX), ntop);
+	
+	/* We have been asked to resolve our MX ip */
+	if(!memcmp(to.data, me.cur_ip.data, MAX_IP_SZ) || 
+		LOOPBACK(htonl(to.data[0]))) {
+		mx=lcl_get_mx(andna_lcl);
+		*mx_ips=xmalloc(sizeof(inet_prefix));
+		if(mx)
+			inet_setip_raw(*mx_ips, mx->ip, my_family);
+		else
+			inet_copy(*mx_ips, &me.cur_ip);
+		return 1;
+	}
+
+	/* 
+	 * fill the packet and send the request 
+	 */
+	pkt_addto(&pkt, &to);
+	pkt.pkt_flags|=PKT_SET_LOWDELAY;
+	
+	err=send_rq(&pkt, 0, ANDNA_RESOLVE_MX, 0, ANDNA_MX_RESOLVE_REPLY, 1, &rpkt);
+	if(err==-1) {
+		error("andna_resolve_mx(): resolution of the %s MX "
+				"failed.", hname);
+		error_finish(ret, -1, finish);
+	}
+
+	reply=(struct andna_mx_resolve_reply_pkt *)rpkt.msg;
+			
+	tot_hnames=reply->hostnames;
+
+	tot_hnames++;
+	if(tot_hnames > andna_max_hostnames || tot_hnames <= 0)
+		error_finish(ret, -1, finish);
+
+	/* 
+	 * split the received hostnames 
+	 */
+
+	reply_body = (char *)rpkt.msg+sizeof(struct andna_rev_resolve_reply_hdr);
+	
+	/* network -> host order */
+	int_info_copy(&reply_iinfo, &andna_rev_resolve_reply_body_iinfo);
+	reply_iinfo.int_nmemb[0] = tot_hnames;
+	ints_network_to_host((void *)reply_body, reply_iinfo);
+	
+	hnames_sz=(u_short *)reply_body;
+	hnames=xmalloc(tot_hnames * sizeof(char *));
+	
+	sz=sizeof(struct andna_rev_resolve_reply_hdr)+sizeof(u_short)*tot_hnames;
+	buf=rpkt.msg+sz;
+	for(i=valid_hnames=0; i<tot_hnames; i++) {
+		sz+=hnames_sz[i];
+		
+		if(sz > rpkt.hdr.sz)
+			break;
+		
+		if(hnames_sz[i] > andna_max_hname_len)
+			goto skip_it;
+		
+		hnames[valid_hnames]=xmalloc(hnames_sz[i]);
+		memcpy(hnames[valid_hnames], buf, hnames_sz[i]);
+		hnames[valid_hnames][hnames_sz[i]-1]=0;
+
+		valid_hnames++;
+skip_it:
+		buf+=hnames_sz[i];
+	}
+
+	ret=valid_hnames;
+	*hostnames=hnames;
+finish:
+	pkt_free(&pkt, 1);
+	pkt_free(&rpkt, 1);
+	return ret;
+
+
 }
 
 int andna_recv_mx_resolve_rq(PACKET rpkt)
@@ -1560,14 +1659,12 @@ int andna_recv_mx_resolve_rq(PACKET rpkt)
 	 * Build the reply pkt
 	 */
 	
+	/* Get the MX */
 	alcl=lcl_cache_find_32hash(andna_lcl, req->hash);
-	if(!alcl || !alcl->mxs || !alcl->mx_node) {
+	if(!(mx=lcl_get_mx(alcl))) {
 		ret=pkt_err(rpkt, E_ANDNA_NO_HNAME, 0);
 		goto finish;
 	}
-
-	/* Choose a random MX node */
-	mx=&alcl->mx_node[rand_range(0, alcl->mxs-1)];
 
 	debug(DBG_INSANE, "MX resolve request 0x%x accepted", rpkt.hdr.id);
 
@@ -1761,8 +1858,7 @@ int put_single_acache(PACKET rpkt)
 	/*
 	 * Search in our andna_cache if we have what `rfrom' wants.
 	 */
-	andna_cache_del_expired();
-	if(!(ac=andna_cache_findhash(req_hdr->hash))) {
+	if(!(ac=andna_cache_gethash(req_hdr->hash))) {
 
 		/*
 		 * Nothing found! Maybe it's because we have an uptime less than

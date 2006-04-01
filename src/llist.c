@@ -294,8 +294,8 @@ do{									\
  	l_list *_h=(l_list *)(_head), *_l=(l_list *)(_list);		\
  									\
  	if(_h != _l) {							\
-		_h=list_join((typeof((_head)))_h, _l);			\
-		_h=list_add((typeof((_head)))_h, _l);			\
+		_h=(l_list *)list_join((typeof((_head)))_h, _l);	\
+		_h=(l_list *)list_add((typeof((_head)))_h, _l);		\
 	}								\
 	(typeof((_head)))_h;						\
 })
