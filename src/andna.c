@@ -1117,8 +1117,7 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	 * the resolved_hnames cache
 	 */
 	if((rhc=rh_cache_find_hname(hname))) {
-		inet_setip(resolved_ip, (u_int *)rhc->ip, my_family);
-		inet_ntohl(resolved_ip->data, my_family);
+		inet_setip_raw(resolved_ip, (u_int *)rhc->ip, my_family);
 		return 0;
 	}
 	
@@ -1132,8 +1131,7 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	 * If we manage an andna_cache, it's better to peek at it.
 	 */
 	if((ac=andna_cache_gethash(req.hash))) {
-		inet_setip(resolved_ip, ac->acq->rip, my_family);
-		inet_ntohl(resolved_ip->data, my_family);
+		inet_setip_raw(resolved_ip, ac->acq->rip, my_family);
 		return 0;
 	}
 
@@ -1528,21 +1526,27 @@ finish:
 	return ret;
 }
 
-int andna_mx_resolve(char *hname, inet_prefix **mx_ips)
+/*
+ * andna_mx_resolve
+ *
+ * It resolves normally the `hname' hostname and asks to the resolved node 
+ * the IP of its MX node. This IP is stored in `mx_ip'.
+ *
+ * On error -1 is returned.
+ */
+int andna_mx_resolve(char *hname, inet_prefix *mx_ip)
 {
 	PACKET pkt, rpkt;
 	inet_prefix to;
 	struct andna_mx_resolve_rq_pkt req;
-	struct andna_mx_resolve_reply_pkt *reply;
-	int_info reply_iinfo;
+	andna_mx_resolve_reply_pkt *reply;
 	
-	int ret=0, tot_mxs, valid_hnames, i, sz;
-	u_short *hnames_sz;
+	int ret=0;
 	const char *ntop; 
-	char *buf, *reply_body;
 	ssize_t err;
 
 	lcl_mx *mx;
+	rh_cache *rhc;
 
 	memset(&pkt, 0, sizeof(PACKET));
 	memset(&rpkt, 0, sizeof(PACKET));
@@ -1558,79 +1562,66 @@ int andna_mx_resolve(char *hname, inet_prefix **mx_ips)
 	if(!memcmp(to.data, me.cur_ip.data, MAX_IP_SZ) || 
 		LOOPBACK(htonl(to.data[0]))) {
 		mx=lcl_get_mx(andna_lcl);
-		*mx_ips=xmalloc(sizeof(inet_prefix));
 		if(mx)
-			inet_setip_raw(*mx_ips, mx->ip, my_family);
+			inet_setip_raw(mx_ip, mx->ip, my_family);
 		else
-			inet_copy(*mx_ips, &me.cur_ip);
+			inet_copy(mx_ip, &me.cur_ip);
 		return 1;
 	}
 
+	/*
+	 * Search in the rh_cache first
+	 */
+	if((rhc=rh_cache_find_hname(hname)) && 
+			(rhc->flags & ANDNA_MXHNAME)) {
+		/* We've found it. This hname MX has been resolved before */
+		inet_setip_raw(mx_ip, (u_int *)rhc->mx_ip, my_family);
+		return 1;
+	}
+
+	/*
+	 * Write the request
+	 */
+	req.hash=fnv_32_buf(hname, strlen(hname), FNV1_32_INIT);
+	ints_host_to_network(&req, andna_mx_resolve_rq_pkt_iinfo);
+	
 	/* 
-	 * fill the packet and send the request 
+	 * Fill the packet and send the request 
 	 */
 	pkt_addto(&pkt, &to);
 	pkt.pkt_flags|=PKT_SET_LOWDELAY;
+	pkt.hdr.sz=ANDNA_MX_RESOLVE_RQ_PKT_SZ;
+	pkt.msg=xmalloc(pkt.hdr.sz);
+	memcpy(pkt.msg, &req, pkt.hdr.sz);
 	
 	err=send_rq(&pkt, 0, ANDNA_RESOLVE_MX, 0, ANDNA_MX_RESOLVE_REPLY, 1, &rpkt);
 	if(err==-1) {
 		error("andna_resolve_mx(): resolution of the %s MX "
 				"failed.", hname);
-		error_finish(ret, -1, finish);
+		ERROR_FINISH(ret, -1, finish);
 	}
 
-	reply=(struct andna_mx_resolve_reply_pkt *)rpkt.msg;
+	if(rpkt.hdr.sz != ANDNA_MX_RESOLVE_REPLY_PKT_SZ)
+		ERROR_FINISH(ret, -1, finish);
+	
+	/* Get the IP of the MX node */
+	reply=(andna_mx_resolve_reply_pkt *)rpkt.msg;
+	inet_setip(mx_ip, reply->ip, my_family);
+
+	/* Add the MX IP in the rh_cache */
+	rh_cache_addmx(hname, mx_ip);
 			
-	tot_hnames=reply->hostnames;
-
-	tot_hnames++;
-	if(tot_hnames > andna_max_hostnames || tot_hnames <= 0)
-		error_finish(ret, -1, finish);
-
-	/* 
-	 * split the received hostnames 
-	 */
-
-	reply_body = (char *)rpkt.msg+sizeof(struct andna_rev_resolve_reply_hdr);
-	
-	/* network -> host order */
-	int_info_copy(&reply_iinfo, &andna_rev_resolve_reply_body_iinfo);
-	reply_iinfo.int_nmemb[0] = tot_hnames;
-	ints_network_to_host((void *)reply_body, reply_iinfo);
-	
-	hnames_sz=(u_short *)reply_body;
-	hnames=xmalloc(tot_hnames * sizeof(char *));
-	
-	sz=sizeof(struct andna_rev_resolve_reply_hdr)+sizeof(u_short)*tot_hnames;
-	buf=rpkt.msg+sz;
-	for(i=valid_hnames=0; i<tot_hnames; i++) {
-		sz+=hnames_sz[i];
-		
-		if(sz > rpkt.hdr.sz)
-			break;
-		
-		if(hnames_sz[i] > andna_max_hname_len)
-			goto skip_it;
-		
-		hnames[valid_hnames]=xmalloc(hnames_sz[i]);
-		memcpy(hnames[valid_hnames], buf, hnames_sz[i]);
-		hnames[valid_hnames][hnames_sz[i]-1]=0;
-
-		valid_hnames++;
-skip_it:
-		buf+=hnames_sz[i];
-	}
-
-	ret=valid_hnames;
-	*hostnames=hnames;
 finish:
 	pkt_free(&pkt, 1);
 	pkt_free(&rpkt, 1);
 	return ret;
-
-
 }
 
+/*
+ * andna_recv_mx_resolve_rq
+ *
+ * It replies to the ANDNA_RESOLVE_MX request contained in `rpkt'.
+ */
 int andna_recv_mx_resolve_rq(PACKET rpkt)
 {
 	PACKET pkt;
@@ -1659,9 +1650,9 @@ int andna_recv_mx_resolve_rq(PACKET rpkt)
 	 * Build the reply pkt
 	 */
 	
-	/* Get the MX */
+	/* Find the hname requested in our local cache */
 	alcl=lcl_cache_find_32hash(andna_lcl, req->hash);
-	if(!(mx=lcl_get_mx(alcl))) {
+	if(!alcl) {
 		ret=pkt_err(rpkt, E_ANDNA_NO_HNAME, 0);
 		goto finish;
 	}
@@ -1670,7 +1661,11 @@ int andna_recv_mx_resolve_rq(PACKET rpkt)
 
 	/* Write the reply */
 	memset(&reply, 0, sizeof(reply));
-	memcpy(reply.ip, mx->ip, MAX_IP_SZ);
+	if(!(mx=lcl_get_mx(alcl)))
+		/* No MX associated, we reply with our IP */
+		memcpy(reply.ip, me.cur_ip.data, MAX_IP_SZ);
+	else
+		memcpy(reply.ip, mx->ip, MAX_IP_SZ);
 	reply.timestamp=time(0) - mx->last_update;
 
 	/* host -> network order */

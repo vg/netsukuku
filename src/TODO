@@ -1,10 +1,8 @@
 		[HIGH PRIORITY] 
 
 - ANDNA MX:
-	- andna_mx_resolve()
 	- register_node part
 	- mx_node part
-	- se non c'e' nessun MX associato, cosa si risponde? il mio IP
 	- documentation
 
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC

@@ -156,7 +156,8 @@ INT_INFO andna_mx_resolve_rq_pkt_iinfo = { 1, { INT_TYPE_32BIT }, { 0 }, { 1 } }
 
 /* The MX resolve reply pkt is the same of a normal resolve reply */
 typedef struct andna_resolve_reply_pkt andna_mx_resolve_reply_pkt;
-#define andna_mx_resolve_reply_pkt_iinfo andna_resolve_reply_pkt_iinfo
+#define ANDNA_MX_RESOLVE_REPLY_PKT_SZ		ANDNA_RESOLVE_REPLY_PKT_SZ
+#define andna_mx_resolve_reply_pkt_iinfo	andna_resolve_reply_pkt_iinfo
 
 /* 
  * The single_acache pkt is used to get from an old hash_gnode a single
@@ -235,7 +236,7 @@ int andna_recv_resolve_rq(PACKET rpkt);
 int andna_reverse_resolve(inet_prefix ip, char ***hostnames);
 int andna_recv_rev_resolve_rq(PACKET rpkt);
 
-int andna_mx_resolve();
+int andna_mx_resolve(char *hname, inet_prefix *mx_ip);
 int andna_recv_mx_resolve_rq(PACKET rpkt);
 
 int spread_single_acache(u_int hash[MAX_IP_INT]);

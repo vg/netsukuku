@@ -674,6 +674,11 @@ rh_cache *rh_cache_add(char *hname, time_t timestamp, inet_prefix *ip)
 	return rhc;
 }
 
+/*
+ * rh_cache_addmx
+ *
+ * It adds an MX ip in the rh_cache
+ */
 rh_cache *rh_cache_addmx(char *hname, inet_prefix *mxip)
 {
 	rh_cache *rhc;
