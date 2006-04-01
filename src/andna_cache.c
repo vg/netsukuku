@@ -22,7 +22,6 @@
 
 #include "includes.h"
 
-#include "llist.c"
 #include "andna_cache.h"
 #include "misc.h"
 #include "xmalloc.h"

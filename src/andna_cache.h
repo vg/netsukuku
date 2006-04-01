@@ -22,6 +22,7 @@
 #include "inet.h"
 #include "crypto.h"
 #include "endianness.h"
+#include "llist.c"
 
 #define ANDNA_MAX_BACKUP_GNODES		2
 #define ANDNA_MAX_QUEUE			5

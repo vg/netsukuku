@@ -15,8 +15,7 @@ Automake/Autoconf.
 Federico Tomassini <effetom@gmail.com> wrote andns, which provides DNS
 compatibility for the ANDNA system. He also wrote the interface to the
 libiptc.
-(andns.h andns_mem.c andns_mem.h andns_pkt.c andns_pkt.h andns_rslv.c
-andns_rslv.h mark.[ch] libiptc/*)
+(andns.[ch] andnslib.[ch] dnslib.[ch] ntkdig.[ch] mark.[ch] )
 
 Website developers and maintainers:
 

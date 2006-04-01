@@ -20,6 +20,7 @@
 #define ANDNA_H
 
 #include "andna_cache.h"
+#include "pkts.h"
 
 #define MY_NAMESERV		"nameserver 127.0.0.1"
 #define MY_NAMESERV_IPV6	"nameserver ::1"

@@ -26,52 +26,31 @@
 #include <string.h>
 #include <stdlib.h>
 
-/*
- * Howto:
- *      You have to define your own error string
- *      just below. After that:
- *
- *      - Include this file
- *      - err_seterrno(ERR_SOMEERROR) sets errno.
- *      - err_intret(ERR_SOMERROR) sets errno and returns -1
- *      - err_voidret(ERR_SOMERROR) sets errno and returns NULL
- *      - err_strerror returns string describing error
- *      - err_str is a classic const char *format.
- *
- *      Note: when errno is set by lib functions, we have  the
- *              following equivalence:
- *
- *              err_strerror(errno):=strerror(errno).
- *
- */
-
-        /*
-         * Define here your error strings
-         * If you want, and probably you want, you
-         * should define here your symbols too.
-         * Note: the symbols must be 'minus'-ed!
-         */
-
-        /* BEGIN DEFS */
-
 static const char *err_strings[] = {
 	"UFO error -o-",			/* ERR_UFOERR */
-	"Malformed dns packet.",		/* ERR_MLFDPK */
-	"Malformed andns packet.",		/* ERR_MLFAPK */
-	"Dns forwarding is disable.",		/* ERR_DNSFWD */
-	"Processing dns packet: fail!.",	/* ERR_DPKPRS */
-	"Processing andns packet: fail!.",	/* ERR_APKPRS */
-	"Nameservers can not be rached.",	/* ERR_NSUNRC */
-	"Packet length break.",			/* ERR_PKTLEN */
-	"Query interpretetion error.",		/* ERR_QINTRP */
-	"Query processing error.",		/* ERR_QPROCS */
-	"Error packing dns structures.",	/* ERR_PKTDST */
-	"Error packing andns structures.",	/* ERR_PKTAST */
-	"Error translating dns to andns.",	/* ERR_DTOATR */
-	"Andna resolution failed.",		/* ERR_ANDNAR */
-	"Invalid hostname.",			/* ERR_HNINVL */
-	"Unknow (or not impl.) query type.",	/* ERR_UFOTOQ */
-	"mark_init error!.",			/* ERR_MRKINI */
+	"Malformed Label Octet.",		/* ERR_DNSMLO */
+	"Malformed Sequence Label.",		/* ERR_DNSMSL */
+	"Malformed Dns Packet.",		/* ERR_DNSMDP */
+	"Malformed Dns Data."			/* ERR_DNSMDD */
+	"Too many Recursive Pointers.",		/* ERR_DNSTRP */
+	"Dns Packet Len Break.",		/* ERR_DNSPLB */
+	"Pointer To Pointer error.",		/* ERR_DNSPTP */
+	"Malformed Data.",			/* ERR_DNSMDA */
+	"Error Packing Dns Struct.",		/* ERR_DNSPDS */
+/**/	
+	"Malformed Andna Packet.",		/* ERR_ANDMAP */
+	"Andns Packet Len Break.",		/* ERR_ANDPLB */
+	"Malformed Andns Data.",		/* ERR_ANDMAD */
+	"Andna Not Compatbile Query.", 		/* ERR_ANDNCQ */
+/**/
+	"Error reading resolv.conf.",		/* ERR_RSLERC */
+	"Andns init error.",			/* ERR_RSLAIE */
+	"There isn't No NameServer.",		/* ERR_RSLNNS */
+	"Error Forwarding DNS Query.",		/* ERR_RSLFDQ */
+	"Resolution Error.",			/* ERR_RSLRSL */
+	"Andns Query Discarded.", 		/* ERR_RSLAQD */
+/**/
+	"mark_init error!.",			/* ERR_NETINI */
 	"netfilter table not loadable.",	/* ERR_NETFIL */
 	"error adding netfilter rules.",	/* ERR_NETRUL */
 	"error committing netfilter rules.",	/* ERR_NETCOM */
@@ -80,30 +59,38 @@ static const char *err_strings[] = {
 	"error storing rules.",			/* ERR_NETSTO */
 	"Nefilter was not restored.",		/* ERR_NETRST */
 };
+
 #define ERR_UFOERR	-1
-#define ERR_MLFDPK	-2
-#define ERR_MLFAPK	-3
-#define ERR_DNSFWD	-4
-#define ERR_DPKPRS	-5
-#define ERR_APKPRS	-6
-#define ERR_NSUNRC	-7
-#define ERR_PKTLEN	-8
-#define ERR_QINTRP	-9
-#define ERR_QPROCS	-10
-#define ERR_PKTDST	-11
-#define ERR_PKTAST	-12
-#define ERR_DTOATR	-13
-#define ERR_ANDNAR	-14
-#define ERR_HNINVL	-15
-#define ERR_UFOTOQ	-16
-#define ERR_MRKINI	-17
-#define ERR_NETFIL	-18
-#define ERR_NETRUL	-19
-#define ERR_NETCOM	-20
-#define ERR_NETCHA	-21
-#define ERR_NETDEL	-22
-#define ERR_NETSTO	-23
-#define ERR_NETRST	-23
+#define ERR_DNSMLO	-2
+#define ERR_DNSMSL	-3
+#define	ERR_DNSMDP	-4
+#define ERR_DNSMDD	-5
+#define ERR_DNSTRP	-6
+#define ERR_DNSPLB	-7
+#define ERR_DNSPTP	-8
+#define ERR_DNSMDA	-9
+#define ERR_DNSPDS	-10
+
+#define ERR_ANDMAP	-11
+#define ERR_ANDPLB	-12
+#define ERR_ANDMAD	-13
+#define ERR_ANDNCQ	-14
+
+#define ERR_RSLERC	-14
+#define ERR_RSLAIE	-15
+#define ERR_RSLNNS	-16
+#define ERR_RSLFDQ	-17
+#define ERR_RSLRSL	-18
+#define ERR_RSLAQD	-19
+
+#define ERR_MRKINI	-20
+#define ERR_NETFIL	-21
+#define ERR_NETRUL	-22
+#define ERR_NETCOM	-23
+#define ERR_NETCHA	-24
+#define ERR_NETDEL	-25
+#define ERR_NETSTO	-26
+#define ERR_NETRST	-27
 
 #define ERR_OVERFLOW    "Error number does not exist."
 
