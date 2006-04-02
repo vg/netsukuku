@@ -37,6 +37,23 @@ static struct sockaddr_in _andns_ns_[MAXNSSERVERS];
 static uint8_t _andns_ns_count_;
 static uint8_t _default_realm_;
 
+int debug_andna_resolve_hname(char *s,inet_prefix *addr)
+{
+        char *ciccio="111.222.123.123";
+        str_to_inet(ciccio,addr);
+        return 0;
+}
+int debug_andna_reverse_resolve(inet_prefix addr,char ***hnames)
+{
+        char **crow;
+        crow=(char**)xmalloc(2*sizeof(char));
+        crow[0]=(char*)xmalloc(40);
+        crow[1]=(char*)xmalloc(40);
+        strcpy(crow[0],"ciaomamma");
+        strcpy(crow[1],"depausceve");
+        *hnames=crow;
+        return 2;
+}
 
 /*
  * Saves on `nsbuf' and `ns_count' the ip
@@ -181,9 +198,19 @@ int ns_send(char *msg,int msglen, char *answer,int *anslen,struct sockaddr_in *n
                 error("In ns_send: error connecting socket -> %s.",strerror(errno));
                 goto close_return;
         }
+	len=set_nonblock_sk(s);
+	if (len==-1) {
+                error("In ns_send: error setting nonblock socket.");
+                goto close_return;
+        }
+
         len=inet_send(s,msg,msglen,0);
         if (len==-1) {
-                error("In ns_send. Pkt not forwarded. %s",strerror(errno));
+                error("In ns_send. Pkt not forwarded.");
+                goto close_return;
+        }
+	if (len!=msglen) {
+		error("In ns_send: have to send %d bytes, sended %d.",msglen,len);
                 goto close_return;
         }
 
@@ -473,7 +500,7 @@ int inet_rslv(dns_pkt *dp,char *msg,int msglen,char *answer)
 	qt=dp->pkt_qst->qtype;
 	rm_realm_prefix(dp->pkt_qst->qname,temp,qt);
 	if (qt==T_A) {
-		res=andna_resolve_hname(temp,&addr);
+		res=debug_andna_resolve_hname(temp,&addr);
 		if (res==-1) {
 			rcode=RCODE_ENSDMN;
 			goto safe_return_rcode;
@@ -502,7 +529,7 @@ int inet_rslv(dns_pkt *dp,char *msg,int msglen,char *answer)
 			rcode=RCODE_ESRVFAIL;
 			goto safe_return_rcode;
 		}
-		res=andna_reverse_resolve(addr, &hnames);
+		res=debug_andna_reverse_resolve(addr, &hnames);
 		if (res==-1) {
 			rcode=RCODE_ENSDMN;
 			goto safe_return_rcode;
@@ -551,7 +578,7 @@ int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 	qt=ap->qtype;
 	if (qt==AT_A) {
 		rm_realm_prefix(ap->qstdata,temp,AT_A);
-		res=andna_resolve_hname(temp,&ipres);
+		res=debug_andna_resolve_hname(temp,&ipres);
 		if (res==-1) {
 			rcode=RCODE_ENSDMN;
 			goto safe_return_rcode;
@@ -572,7 +599,7 @@ int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 			rcode=RCODE_EINTRPRT;
 			goto safe_return_rcode;
 		}
-		res=andna_reverse_resolve(ipres,&hnames);
+		res=debug_andna_reverse_resolve(ipres,&hnames);
 		if (res==-1) {
 			rcode=RCODE_ENSDMN;
 			goto safe_return_rcode;
@@ -614,6 +641,19 @@ return_rcode:
 	ANDNS_SET_QR(answer);
 	return msglen;
 }
+int qtype_a_to_d(int qt) 
+{
+	switch (qt) {
+		case AT_A:
+			return T_A;
+		case AT_PTR:
+			return T_PTR;
+		case AT_MX:
+			return T_MX;
+		default:
+			return -1;
+	}
+}
 int apqsttodpqst(andns_pkt *ap,dns_pkt **dpsrc)
 {
 	dns_pkt *dp;
@@ -624,19 +664,22 @@ int apqsttodpqst(andns_pkt *ap,dns_pkt **dpsrc)
 	char temp[DNS_MAX_HNAME_LEN];
 	const char *crow;
 
+	qt=qtype_a_to_d(ap->qtype);
+	if (qt==-1)
+		err_ret(ERR_ANDNCQ,-1);
+
 	*dpsrc=create_dns_pkt();
 	dp=*dpsrc;
 	dph=&(dp->pkt_hdr);
 	dpq=dns_add_qst(dp);
-	qt=ap->qtype;
 
-	if (qt==AT_A) {
+	if (qt==T_A) {
 		qlen=strlen(ap->qstdata);
 		if (qlen>DNS_MAX_HNAME_LEN) 
 			goto incomp_err;
 		strcpy(dpq->qname,ap->qstdata);
 	}
-	else if (qt==AT_PTR) {
+	else if (qt==T_PTR) {
 		qlen=ap->qstlength;
 		if (qlen==4) 
 			family=AF_INET;
@@ -652,11 +695,11 @@ int apqsttodpqst(andns_pkt *ap,dns_pkt **dpsrc)
 			goto incomp_err;
 		}
 	}
-	else if (qt==AT_MX) {
+	else if (qt==T_MX) {
 		destroy_dns_pkt(dp);
 		return -1;
 	}
-	else if (qt==AT_MXPTR) {
+	else {/* if (qt==AT_MXPTR) {*/
 		destroy_dns_pkt(dp);
 		return -1;
 	}
@@ -672,7 +715,7 @@ incomp_err:
 }
 int dpanswtoapansw(dns_pkt *dp,andns_pkt *ap)
 {
-	int i,rcode;
+	int i,rcode,qt;
 	dns_pkt_a *dpa;
 	andns_pkt_data *apd;
 
@@ -683,18 +726,19 @@ int dpanswtoapansw(dns_pkt *dp,andns_pkt *ap)
 	
 	if (rcode!=DNS_RCODE_NOERR) 
 		return 0;
+	qt=dp->pkt_qst->qtype;
 	for (i=0;i<ap->ancount;i++) {
 		apd=andns_add_answ(ap);
 		dpa=dp->pkt_answ;
-		if (rcode==T_A) {
+		if (qt==T_A) {
 			memcpy(apd->rdata,dpa->rdata,4);
 			apd->rdlength=4;
 		} 
-		else if (rcode==T_PTR) {
+		else if (qt==T_PTR) {
 			strcpy(apd->rdata,dpa->rdata);
 			apd->rdlength=strlen(apd->rdata);
 		}
-		else if (rcode==T_MX) {
+		else if (qt==T_MX) {
 			strcpy(apd->rdata,"Ntkrules");
 			apd->rdlength=8;
 		}
@@ -736,6 +780,7 @@ int nk_forward(andns_pkt *ap,char *msg,int msglen,char *answer)
 	res=dpanswtoapansw(dp,ap);
 	if (res==-1) {
 		rcode=RCODE_ESRVFAIL;
+		destroy_dns_pkt(dp);
 		goto safe_return_rcode;
 	}
 	destroy_dns_pkt(dp);

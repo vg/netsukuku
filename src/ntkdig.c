@@ -1,7 +1,7 @@
 	         /**************************************
 	        *     AUTHOR: Federico Tomassini        *
 	       *     Copyright (C) Federico Tomassini    *
-	      *     Contact federicotom@aliceposta.it     *
+	      *     Contact effetom@gmail.com	          *
 	     ***********************************************
 	     *******          BEGIN 3/2006          ********
 *************************************************************************
@@ -151,29 +151,32 @@ int ask_query(char *q,int qlen,char *an,int *anlen,struct sockaddr_in *saddr)
 
 	if (skt==-1) {
 		printf("Internal error opening socket.\n");
-		exit(1);
+		return -1;
 	}
 			
-	if (fcntl(skt, F_SETFL, O_NONBLOCK) < 0) {
+	/*if (fcntl(skt, F_SETFL, O_NONBLOCK) < 0) {
 		printf("set_nonblock_sk(): cannot set O_NONBLOCK: %s",strerror(errno));
-		exit(1);
-	}
+		goto close_return;
+	}*/
 	if ((connect(skt,(struct sockaddr*)saddr,sizeof(struct sockaddr_in)))) {
                 printf("In ask_query: error connecting socket -> %s.",strerror(errno));
-                return -1;
+		goto close_return;
         }
 	len=send(skt,q,qlen,0);
 	if (len==-1) {
 		printf("In ask_query: error sending pkt -> %s.\n",strerror(errno));
-		return -1;
+		goto close_return;
 	}
 	len=recv(skt,an,ANDNS_MAX_SZ,0);
 	if (len==-1) {
 		printf("In ask_query: error receiving pkt -> %s.\n",strerror(errno));
-		return -1;
+		goto close_return;
 	}
-	*an=len;
+	*anlen=len;
 	return 0;
+close_return:
+	close(skt);
+	return -1;
 }
 
 void print_question(andns_pkt *ap)
@@ -185,14 +188,19 @@ void print_question(andns_pkt *ap)
 }
 void print_answer_name(andns_pkt_data *apd)
 {
-	printf("\n\t# Answer Section: #\n");
+//	printf("\n\t# Answer Section: #\n");
 	printf("~ Hostname:\t%s\n",apd->rdata);
 }
+void print_banner_answer()
+{
+	printf("\n\t# Answer Section: #\n");
+}
+
 void print_answer_addr(andns_pkt_data *apd)
 {
 	struct in_addr a;
 	memcpy(&a,apd->rdata,sizeof(struct in_addr));
-	printf("\n\t# Answer Section %d: #\n",n_answers);
+//	printf("\n\t# Answer Section %d: #\n",n_answers);
 	n_answers++;
 	printf("~ Ip Address:\t%s\n",inet_ntoa(a));
 }
@@ -216,7 +224,7 @@ int do_command()
 	char msg[ANDNS_MAX_SZ],answ[ANDNS_MAX_SZ];
 	int i;
 
-	printf("Quering for %s\n",globopts.question);
+	printf("Quering for %s...\n",globopts.question);
 	if (globopts.ns_lhost) {
 		res=ns_init(LOCALHOST,1);
 		if (res==-1) {
@@ -252,7 +260,7 @@ int do_command()
 }
 int handle_answer(char *answ,int alen)
 {
-	int res,i,limitlen;
+	int i;
 	void (*printer)(andns_pkt_data *);
 	int offset;
 	andns_pkt *ap;
@@ -263,23 +271,17 @@ int handle_answer(char *answ,int alen)
 		printf("Answer interpretation error.\n");
 		exit(1);
 	}
+	if (offset!=alen) 
+		printf("Packet length differs from packet contents: %d vs %d.",alen,offset);
 	if (ap->rcode!=ANDNS_RCODE_NOERR) {
 		print_question(ap);
 		exit(1);
 	}
+
 	if (!ap->ancount) {
 		printf("Received answer contains no data.\n");
 		exit(1);
 	}
-
-	limitlen=alen-offset;
-	res=a_answs_u(answ+offset,ap,limitlen);
-	if (res==-1) {
-		printf(err_str);
-		exit(1);
-	}
-	if (res!=limitlen) 
-		printf("Packet length differs from packet contents.");
 	print_question(ap);
 	switch(ap->qtype) {
 		case AT_A:
@@ -292,6 +294,7 @@ int handle_answer(char *answ,int alen)
 			printf("Unable to print answer");
 			exit(1);
 	}
+	print_banner_answer();
 	apd=ap->pkt_answ;
 	for (i=0;i<ap->ancount;i++) {
 		printer(apd);
@@ -337,6 +340,17 @@ int imain(int argc,char **argv)
 	return 0;
 }
 	
+void consistency_control(void)
+{
+	int len,limit;
+
+	len=strlen(globopts.question);
+	limit=(globopts.realm==REALM_NTK)?ANDNS_MAX_QST_LEN:ANNDS_DNS_MAZ_QST_LEN;
+	if (len>limit) {
+		printf("\nNo. request object is too long.\n");
+		exit(1);
+	}
+}
 int main(int argc,char **argv) 
 {
 	int c,res;
@@ -427,6 +441,7 @@ int main(int argc,char **argv)
 		exit(1);
 	}
 	globopts.question=argv[optind];
+	consistency_control();
 	res=do_command();
 	return 0;
 }

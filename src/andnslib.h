@@ -27,6 +27,7 @@
 
 #define ANDNS_MAX_DATA_LEN	512
 #define ANDNS_MAX_QST_LEN	512
+#define ANNDS_DNS_MAZ_QST_LEN	255
 
 struct andns_pkt_data
 {

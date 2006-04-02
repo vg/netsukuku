@@ -76,6 +76,7 @@ int is_prefixed(dns_pkt *dp);
 int dns_forward(dns_pkt *dp,char *msg,int msglen,char* answer);
 int inet_rslv(dns_pkt *dp,char *msg,int msglen,char *answer);
 int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer);
+int qtype_a_to_d(int qt);
 int apqsttodpqst(andns_pkt *ap,dns_pkt **dpsrc);
 int dpanswtoapansw(dns_pkt *dp,andns_pkt *ap);
 int nk_forward(andns_pkt *ap,char *msg,int msglen,char *answer);
