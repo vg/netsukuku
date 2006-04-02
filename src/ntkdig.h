@@ -13,7 +13,8 @@
 #define NTKDIG_PORT_STR		"53"
 #define MAX_NS			3
 #define LOCALHOST		"localhost"
-#define ANDNS_MAX_SZ    1024
+
+//#define ANDNS_MAX_SZ    1024
 
 #define min(x,y)		(x)<(y)?(x):(y)
 
@@ -37,6 +38,7 @@
 #define QTYPE_MXPTR_STR		"mxptr"
 
 /* NK BIT */
+#define NK_DNS			0
 #define NK_NTK                  1
 #define NK_INET                 2
 
@@ -96,7 +98,7 @@ typedef struct ntkdig_opts {
 ({								\
 	char *__d;						\
 	switch((ap)->nk) {					\
-		case NK_OLDSTYLE:				\
+		case NK_DNS:					\
 			__d="DNS";				\
 			break;					\
 		case NK_NTK:					\
@@ -115,22 +117,22 @@ typedef struct ntkdig_opts {
 ({								\
  	char *__e;						\
 	switch((ap)->rcode) {					\
-		case RCODE_NOERR:				\
+		case ANDNS_RCODE_NOERR:				\
 			__e="NOERR";				\
 			break;					\
-		case RCODE_EINTRPRT:				\
+		case ANDNS_RCODE_EINTRPRT:			\
 			__e="INTRPRT";				\
 			break;					\
-		case RCODE_ESRVFAIL:				\
+		case ANDNS_RCODE_ESRVFAIL:			\
 			__e="SRFFAIL";				\
 			break;					\
-		case RCODE_ENSDMN:				\
-			__e="NOXHOST";			\
+		case ANDNS_RCODE_ENSDMN:			\
+			__e="NOXHOST";				\
 			break;					\
-		case RCODE_ENIMPL:				\
+		case ANDNS_RCODE_ENIMPL:			\
 			__e="NOTIMPL";				\
 			break;					\
-		case RCODE_ERFSD:				\
+		case ANDNS_RCODE_ERFSD:				\
 			__e="REFUSED";				\
 			break;					\
 		default:					\

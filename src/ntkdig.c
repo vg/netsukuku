@@ -22,9 +22,7 @@
 #include <unistd.h>  
 #include <fcntl.h>
 
-#include "andns.h"
-#include "andns_mem.h"
-#include "andns_pkt.h"
+#include "andnslib.h"
 #include "ntkdig.h"
 #include "log.h"
 #include "err_errno.h"
@@ -227,7 +225,7 @@ int do_command()
 		}
 	}
 	ap=andns_pkt_from_opts();
-	msglen=apktpack(ap,msg);
+	msglen=a_p(ap,msg);
 	if (msglen==-1) {
 		printf("Internal error building packet.");
 		exit(1);
@@ -260,12 +258,12 @@ int handle_answer(char *answ,int alen)
 	andns_pkt *ap;
 	andns_pkt_data *apd;
 
-	offset=apkt(answ,alen,&ap);
+	offset=a_u(answ,alen,&ap);
 	if (offset==-1) {
 		printf("Answer interpretation error.\n");
 		exit(1);
 	}
-	if (ap->rcode!=RCODE_NOERR) {
+	if (ap->rcode!=ANDNS_RCODE_NOERR) {
 		print_question(ap);
 		exit(1);
 	}
@@ -275,7 +273,7 @@ int handle_answer(char *answ,int alen)
 	}
 
 	limitlen=alen-offset;
-	res=apkttoansws(answ+offset,ap,limitlen);
+	res=a_answs_u(answ+offset,ap,limitlen);
 	if (res==-1) {
 		printf(err_str);
 		exit(1);
@@ -332,7 +330,7 @@ int imain(int argc,char **argv)
 //	apd->rdlength=strlen("MINNIE");
 //	strcpy(apd->rdata,"MINNIE");
 
-	o=apktpack(ap,a);
+	o=a_p(ap,a);
 	handle_answer(a,o);
 //	print_question(ap);
 //	print_answer_name(apd);
