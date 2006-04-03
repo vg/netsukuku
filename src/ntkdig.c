@@ -229,7 +229,7 @@ void print_conclusions(void)
 	char srv[INET_ADDRSTRLEN];
 	
 	gettimeofday(&time_stop,NULL);
-	printf("\nQuery time: %f\n",diff_time(time_start,time_stop));
+	printf("\nQuery time: %f seconds.\n",diff_time(time_start,time_stop));
 	if (inet_ntop(AF_INET,&((globopts.ns+ns_used)->sin_addr),srv,INET_ADDRSTRLEN))
 		printf("Server: %s\n",srv);
 	printf("\n");

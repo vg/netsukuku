@@ -77,7 +77,8 @@ int store_ns(char *ns, struct sockaddr_in *nsbuf, uint8_t *ns_count)
         saddr=nsbuf+(*ns_count);
         saddr->sin_family=AF_INET;
         if ((res=inet_pton(AF_INET, ns, &(saddr->sin_addr)))<0) {
-                error("In store_ns: error converting str to sockaddr-> %s.", strerror(errno));
+                error("In store_ns: error converting "
+			"str to sockaddr-> %s.", strerror(errno));
                 return -1;
         } else if (res==0) {
                 error("In store_ns: invalid address %s.",ns);
@@ -103,7 +104,8 @@ int collect_resolv_conf(char *resolve_conf, struct sockaddr_in *nsbuf,uint8_t *n
         int i=0;
 
         if (!(erc=fopen(resolve_conf,"r"))) {
-                error("In collect_resolv_conf: error -> %s.", strerror(errno));
+                error("In collect_resolv_conf: "
+			"error -> %s.", strerror(errno));
 		err_ret(ERR_RSLERC,-1);
         }
         while ((crow=fgets((char*)buf,64,erc))) {
@@ -123,7 +125,8 @@ int collect_resolv_conf(char *resolve_conf, struct sockaddr_in *nsbuf,uint8_t *n
                 i=0;
         }
         if (fclose(erc)!=0) {
-                error("In collect_resolv_conf: closing resolv.conf -> %s",strerror(errno));
+                error("In collect_resolv_conf: closing "
+			"resolv.conf -> %s",strerror(errno));
 		err_ret(ERR_RSLERC,-1);
         }
         if (!(*ns_count)) 
@@ -148,7 +151,8 @@ int andns_init(int restricted, char *resolv_conf)
 
         memset(msg,0,(INET_ADDRSTRLEN+2)*MAXNSSERVERS);
 
-        res=collect_resolv_conf(resolv_conf, _andns_ns_, &_andns_ns_count_);
+        res=collect_resolv_conf(resolv_conf,
+			_andns_ns_, &_andns_ns_count_);
         if (res <=0) {
                 _dns_forwarding_=0;
 		debug(DBG_NORMAL,err_str);
@@ -160,13 +164,17 @@ int andns_init(int restricted, char *resolv_conf)
          */
         for (i=0;i<_andns_ns_count_;i++) {
                 saddr=_andns_ns_+i;
-                if(inet_ntop(saddr->sin_family,(void*)&((saddr)->sin_addr),buf,INET_ADDRSTRLEN)) {
+                if(inet_ntop(saddr->sin_family,
+			(void*)&((saddr)->sin_addr),buf,INET_ADDRSTRLEN)) {
                         strncat(msg,buf,INET_ADDRSTRLEN);
                         strncat(msg,i==_andns_ns_count_-1?". ":", ",2);
                 } else
-                        error("In andns_init: error converting sockaddr -> %s.",strerror(errno));
+                        error("In andns_init: error "
+				"converting sockaddr -> %s.",\
+				strerror(errno));
         }
-        debug(DBG_NORMAL, "Andns init: DNS query inet-related will be forwarded to: %s",msg);
+        debug(DBG_NORMAL,"Andns init: DNS query inet-related "
+			"will be forwarded to: %s",msg);
 
         _dns_forwarding_=1;
         return 0;
@@ -176,7 +184,8 @@ int ns_general_send(char *msg,int msglen,char *answer,int *anslen)
         int res,i;
 
         for (i=0;i<MAXNSSERVERS && i<_andns_ns_count_;i++) {
-                res=ns_send(msg,msglen,answer,anslen,_andns_ns_+i,sizeof(struct sockaddr_in));
+                res=ns_send(msg,msglen,answer,
+			anslen,_andns_ns_+i,sizeof(struct sockaddr_in));
 
                 if(res != -1)
                         return 0;
@@ -195,7 +204,8 @@ int ns_send(char *msg,int msglen, char *answer,int *anslen,struct sockaddr_in *n
                 return -1;
         }
         if ((connect(s,(struct sockaddr*)ns,nslen))) {
-                error("In ns_send: error connecting socket -> %s.",strerror(errno));
+                error("In ns_send: error connecting "
+			"socket -> %s.",strerror(errno));
                 goto close_return;
         }
 	len=set_nonblock_sk(s);
@@ -210,7 +220,8 @@ int ns_send(char *msg,int msglen, char *answer,int *anslen,struct sockaddr_in *n
                 goto close_return;
         }
 	if (len!=msglen) {
-		error("In ns_send: have to send %d bytes, sended %d.",msglen,len);
+		error("In ns_send: have to send "
+			"%d bytes, sended %d.",msglen,len);
                 goto close_return;
         }
 
@@ -713,21 +724,23 @@ incomp_err:
 }
 int dpanswtoapansw(dns_pkt *dp,andns_pkt *ap)
 {
-	int i,rcode,qt;
+	int i,rcode,qt,ancount;
 	dns_pkt_a *dpa;
 	andns_pkt_data *apd;
 
+	ancount=DNS_GET_ANCOUNT(dp);
 	rcode=DNS_GET_RCODE(dp);
 	ap->rcode=rcode;
 	ap->qr=1;
-	ap->ancount=DNS_GET_ANCOUNT(dp);
 	
 	if (rcode!=DNS_RCODE_NOERR) 
 		return 0;
 	qt=dp->pkt_qst->qtype;
-	for (i=0;i<ap->ancount;i++) {
+	dpa=dp->pkt_answ;
+	for (i=0;i<ancount;i++) {
+		if (!dpa) 
+			break;
 		apd=andns_add_answ(ap);
-		dpa=dp->pkt_answ;
 		if (qt==T_A) {
 			memcpy(apd->rdata,dpa->rdata,4);
 			apd->rdlength=4;
@@ -746,6 +759,11 @@ int dpanswtoapansw(dns_pkt *dp,andns_pkt *ap)
 		}
 		dpa=dpa->next;
 	}
+	if (i!=ancount)
+		debug(DBG_INSANE,"In dpanswtoapansw: "
+				  "ancount=%d, answers=%d",\
+				DNS_GET_ANCOUNT(dp),i);
+	ap->ancount=i;
 	return 0;
 }
 int nk_forward(andns_pkt *ap,char *msg,int msglen,char *answer)
@@ -821,7 +839,8 @@ char *andns_rslv(char *msg, int msglen,char *answer, int *answ_len)
 	else if (proto==NK_INET || proto ==NK_NTK)
 		res=a_u(msg,msglen,&ap);
 	else {
-		debug(DBG_INSANE,"andns_rslv(): Which language are you speaking?");
+		debug(DBG_INSANE,"andns_rslv(): "
+				 "Which language are you speaking?");
 		return NULL;
 	}
 	if (res==0) 
