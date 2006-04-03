@@ -21,6 +21,8 @@
 #include <stdio.h>  
 #include <unistd.h>  
 #include <fcntl.h>
+#include <sys/time.h>
+#include <time.h>
 
 #include "andnslib.h"
 #include "ntkdig.h"
@@ -30,6 +32,20 @@
 static int n_answers=1;
 static ntkdig_opts globopts;
 
+static struct timeval time_start,time_stop;
+
+static int ns_used; 
+
+double diff_time(struct timeval a,struct timeval b)
+{
+	double res;
+	res=(double)(b.tv_sec-a.tv_sec);
+	if (b.tv_usec<a.tv_usec) 
+		res+=(100.0-a.tv_usec+b.tv_usec)/1000000.0;
+	else 
+		res+=(b.tv_usec-a.tv_usec)/1000000.0;
+	return res;
+}
 void print_usage() 
 {
 	printf("Usage:\n" 
@@ -199,11 +215,26 @@ void print_banner_answer()
 void print_answer_addr(andns_pkt_data *apd)
 {
 	struct in_addr a;
+	char az[INET_ADDRSTRLEN];
 	memcpy(&a,apd->rdata,sizeof(struct in_addr));
 //	printf("\n\t# Answer Section %d: #\n",n_answers);
 	n_answers++;
-	printf("~ Ip Address:\t%s\n",inet_ntoa(a));
+	if (inet_ntop(AF_INET,&a,az,INET_ADDRSTRLEN))
+		printf("~ Ip Address:\t%s\n",az);
+	else
+		printf("~ Ip Address:\tInvalid.\n");
 }
+void print_conclusions(void)
+{
+	char srv[INET_ADDRSTRLEN];
+	
+	gettimeofday(&time_stop,NULL);
+	printf("\nQuery time: %f\n",diff_time(time_start,time_stop));
+	if (inet_ntop(AF_INET,&((globopts.ns+ns_used)->sin_addr),srv,INET_ADDRSTRLEN))
+		printf("Server: %s\n",srv);
+	printf("\n");
+}
+	
 andns_pkt* andns_pkt_from_opts()
 {
 	andns_pkt *ap;
@@ -256,6 +287,7 @@ int do_command()
 		printf(err_str);
 		exit(1);
 	}
+	ns_used=i;
 	return 0;
 }
 int handle_answer(char *answ,int alen)
@@ -300,6 +332,7 @@ int handle_answer(char *answ,int alen)
 		printer(apd);
 		apd=apd->next;
 	}
+	print_conclusions();
 	destroy_andns_pkt(ap);
 	return 0;
 			
@@ -440,6 +473,7 @@ int main(int argc,char **argv)
 		print_usage();
 		exit(1);
 	}
+	res=gettimeofday(&time_start,NULL);
 	globopts.question=argv[optind];
 	consistency_control();
 	res=do_command();
