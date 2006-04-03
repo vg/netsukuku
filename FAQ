@@ -6,6 +6,8 @@
 	Q: Why another p2p network?
 	Q: Ehi! You're crazy. This shit will not work!
 	Q: Where are current Netsukuku networks that I can connect to?
+	Q: What can I do to help the development of Netsukuku? How can I
+	   contribute to its growth?
 
   1. Technical
 	Q: Does it scale in a network with A LOT of nodes?
@@ -28,7 +30,7 @@
 	Q: Will Netsukuku be ported to Windows?
 	Q: Will Netsukuku be ported to PSP / Nintendo DS / wifi phones / PDAs?
 	Q: How does it join the network?
-	Q: For using a wifi link do I need of an acces point? What to do?
+	Q: For using a wifi link do I need of an access point? What to do?
 	Q: Why the code is not written in java?
 
 --
@@ -99,6 +101,10 @@ A: Simply we don't know and we can't, but the website team si developing a
    community portal which will ease the difficulty of coordination. (Think of
    Google maps).
 
+Q: What can I do to help the development of Netsukuku? How can I contribute to
+   its growth?
+A: http://lab.dyne.org/Ntk_Grow_Netsukuku
+
 
 /		 \
    1. Technical
@@ -144,7 +150,7 @@ A: The Netsukuku radar sends echo packets about every 10 seconds, if someone
    replies it communicates with it.
 
 Q: Will you provide "Internet to Netsukuku" tunnels?
-A: Yes, they will be used to link near cities. Please read this for more
+A: Yes, they will be used to link close cities. Please read this for more
    information:
    http://lab.dyne.org/Ntk_Internet_tunnels
 
@@ -194,7 +200,7 @@ Q: Will Netsukuku be ported to PSP / Nintendo DS / wifi phones / linux PDAs
 A: We are currently working on flashing Netsukuku on Access Points (like
    Linksys).
 
-Q: For using a wifi link do I need of an acces point? What to do?
+Q: For using a wifi link do I need of an access point? What to do?
 A: You just need a wifi network card. Put it in ad-hoc mode using "netsukuku"
    as essid. ( man netsukuku_wifi:
    http://netsukuku.freaknet.org/doc/man_html/netsukuku_wifi.html )

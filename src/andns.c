@@ -661,8 +661,6 @@ int apqsttodpqst(andns_pkt *ap,dns_pkt **dpsrc)
 	dns_pkt_qst *dpq;
 	int res,qt;
 	int qlen,family;
-	char temp[DNS_MAX_HNAME_LEN];
-	const char *crow;
 
 	qt=qtype_a_to_d(ap->qtype);
 	if (qt==-1)
