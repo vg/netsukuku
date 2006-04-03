@@ -172,8 +172,8 @@ int swap_straddr(char *src,char *dst)
         *(dst+slen)=0;
         return 0;
 mlf_addr:
-        debug(DBG_INSANE,"in swap_straddr: invalid address %s.\n",src);
-        return -1;
+        debug(DBG_INSANE,"in swap_straddr: invalid address `%s`.\n",src);
+	err_ret(ERR_DNSMDD,-1);
 }
 int swap_straddr6(char *src,char *dst)
 {

@@ -31,7 +31,7 @@ static const char *err_strings[] = {
 	"Malformed Label Octet.",		/* ERR_DNSMLO */
 	"Malformed Sequence Label.",		/* ERR_DNSMSL */
 	"Malformed Dns Packet.",		/* ERR_DNSMDP */
-	"Malformed Dns Data."			/* ERR_DNSMDD */
+	"Malformed Dns Data.",			/* ERR_DNSMDD */
 	"Too many Recursive Pointers.",		/* ERR_DNSTRP */
 	"Dns Packet Len Break.",		/* ERR_DNSPLB */
 	"Pointer To Pointer error.",		/* ERR_DNSPTP */
@@ -76,21 +76,21 @@ static const char *err_strings[] = {
 #define ERR_ANDMAD	-13
 #define ERR_ANDNCQ	-14
 
-#define ERR_RSLERC	-14
-#define ERR_RSLAIE	-15
-#define ERR_RSLNNS	-16
-#define ERR_RSLFDQ	-17
-#define ERR_RSLRSL	-18
-#define ERR_RSLAQD	-19
+#define ERR_RSLERC	-15
+#define ERR_RSLAIE	-16
+#define ERR_RSLNNS	-17
+#define ERR_RSLFDQ	-18
+#define ERR_RSLRSL	-19
+#define ERR_RSLAQD	-20
 
-#define ERR_MRKINI	-20
-#define ERR_NETFIL	-21
-#define ERR_NETRUL	-22
-#define ERR_NETCOM	-23
-#define ERR_NETCHA	-24
-#define ERR_NETDEL	-25
-#define ERR_NETSTO	-26
-#define ERR_NETRST	-27
+#define ERR_MRKINI	-21
+#define ERR_NETFIL	-22
+#define ERR_NETRUL	-23
+#define ERR_NETCOM	-24
+#define ERR_NETCHA	-25
+#define ERR_NETDEL	-26
+#define ERR_NETSTO	-27
+#define ERR_NETRST	-28
 
 #define ERR_OVERFLOW    "Error number does not exist."
 

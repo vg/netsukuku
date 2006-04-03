@@ -681,15 +681,15 @@ int apqsttodpqst(andns_pkt *ap,dns_pkt **dpsrc)
 	}
 	else if (qt==T_PTR) {
 		qlen=ap->qstlength;
-		if (qlen==4) 
-			family=AF_INET;
-		else 
+		if (strstr(ap->qstdata,":")) 
 			family=AF_INET6;
-		crow=inet_ntop(family,(const void*)ap->qstdata,
+		else 
+			family=AF_INET;
+		/*crow=inet_ntop(family,(const void*)ap->qstdata,
 					temp,DNS_MAX_HNAME_LEN);
 		if (!crow) 
-			goto incomp_err;
-		res=swapped_straddr_pref(dpq->qname,temp,family);
+			goto incomp_err; */
+		res=swapped_straddr_pref(ap->qstdata,dpq->qname,family);
 		if (res==-1) {
 			debug(DBG_INSANE,err_str);
 			goto incomp_err;
