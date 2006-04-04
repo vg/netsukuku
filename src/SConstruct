@@ -165,7 +165,7 @@ netsukuku_d = env.Program('netsukuku_d', sources_netsukuku, LIBS = libs, CPPPATH
 qspn        = env.Program('qspn-empiric', sources_qspn, LIBS = libs, CPPPATH = '.')
 ntkdig      = env.Program('ntkdig', sources_ntkdig, LIBS = libs, CPPPATH = '.')
 
-Default(netsukuku_d)
+Default(netsukuku_d,ntkdig)
 
 
 #
@@ -180,6 +180,7 @@ idir_data   = '$DATA_DIR'
 idir_conf   = '$CONF_DIR'
 
 env.Install(idir_bin, [netsukuku_d])
+env.Install(idir_bin, [ntkdig])
 env.Alias('install', [idir_bin, idir_conf])
 
 #Dirty hack ;( Why GetOption("install") doesn't work?

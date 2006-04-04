@@ -70,7 +70,7 @@ typedef struct ntkdig_opts {
 
 #define NTKDIG_OPTS_SZ	sizeof(ntkdig_opts)
 
-
+#define AMISILENT	globopts.silent
 
 #define QR_STR(ap)	((ap)->qr==0)?"QUERY":"ANSWER"
 #define QTYPE_STR(ap)						\

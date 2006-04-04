@@ -64,8 +64,7 @@ void print_version()
 	printf("Copyright (C) 2006.\n"
 		"This is free software.  You may redistribute copies of it under the terms of\n"
 		"the GNU General Public License <http://www.gnu.org/licenses/gpl.html>.\n"
-		"There is NO WARRANTY, to the extent permitted by law.\n\n"
-		"Written by Federico Tomassini.\n");
+		"There is NO WARRANTY, to the extent permitted by law.\n\n");
 
 }
 void init_opts()
@@ -300,21 +299,22 @@ int handle_answer(char *answ,int alen)
 
 	offset=a_u(answ,alen,&ap);
 	if (offset==-1) {
-		printf("Answer interpretation error.\n");
+		printf("++ Answer interpretation error.\n");
 		exit(1);
 	}
 	if (offset!=alen) 
-		printf("Packet length differs from packet contents: %d vs %d.",alen,offset);
+		printf("++ Packet length differs from packet contents: %d vs %d.",alen,offset);
 	if (ap->rcode!=ANDNS_RCODE_NOERR) {
 		print_question(ap);
 		exit(1);
 	}
 
 	if (!ap->ancount) {
-		printf("Received answer contains no data.\n");
+		printf("++ Received answer contains no data.\n");
 		exit(1);
 	}
-	print_question(ap);
+	if (!AMISILENT)
+		print_question(ap);
 	switch(ap->qtype) {
 		case AT_A:
 			printer=print_answer_addr;
@@ -323,16 +323,18 @@ int handle_answer(char *answ,int alen)
 			printer=print_answer_name;
 			break;
 		default:
-			printf("Unable to print answer");
+			printf("++ Received answer is an invalid answer.\n");
 			exit(1);
 	}
-	print_banner_answer();
+	if (!AMISILENT)
+		print_banner_answer();
 	apd=ap->pkt_answ;
 	for (i=0;i<ap->ancount;i++) {
 		printer(apd);
 		apd=apd->next;
 	}
-	print_conclusions();
+	if (!AMISILENT)
+		print_conclusions();
 	destroy_andns_pkt(ap);
 	return 0;
 			
