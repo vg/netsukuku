@@ -2,6 +2,9 @@
 
 New features:
 	
+	* The `netsukuku_d' binary and its man page have been renamed to `ntkd'
+	  `netsukuku_wifi' and its man page have been renamed to `ntk-wifi'.
+	
 	* The ANDNA keyring is now saved separately from the lcl_cache. It is
 	  saved in andna_lcl_keyring.
 

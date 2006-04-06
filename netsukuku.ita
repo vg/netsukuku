@@ -1076,7 +1076,7 @@
   l'espandibilita' di Netsukuku.
   
   Un nodo che usa Netsukuku non puo' uscire su Internet perche', quando
-  netsukuku_d viene avviato, come default gw viene settato lo stesso indirizzo
+  ntkd viene avviato, come default gw viene settato lo stesso indirizzo
   IP assegnato all'interfaccia di rete, in questo modo le classi di IP non
   esistono piu', e qualsiasi nodo puo' prendersi qualsiasi IP random; inoltre,
   dato che gli IP vengono scelti in maniera random, possono accadere molte

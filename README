@@ -163,13 +163,13 @@ If you are using modules you have to load them before launching the daemon.
 
 Before doing anything do:
 
-$ man netsukuku_d
+$ man ntkd
 $ man andna
 
 when you feel confortable and you are ready to dare type with root
 priviledges:
 
-# netsukuku_d
+# ntkd
 
 then just wait... ^_-
 

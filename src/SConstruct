@@ -75,7 +75,7 @@ if os.path.exists("config.log") and env.GetOption('clean'):
 	
 Help("""
 *** Usage
-      'scons' to build the netsukuku_d binary,
+      'scons' to build the ntkd binary,
       'scons debug=yes' to build the debug version.
       'scons install' to install it in the system.
       
@@ -161,11 +161,11 @@ build_config_files(env = env)
 #	Build
 #
 
-netsukuku_d = env.Program('netsukuku_d', sources_netsukuku, LIBS = libs, CPPPATH = '.')
+ntkd = env.Program('ntkd', sources_netsukuku, LIBS = libs, CPPPATH = '.')
 qspn        = env.Program('qspn-empiric', sources_qspn, LIBS = libs, CPPPATH = '.')
 ntkdig      = env.Program('ntkdig', sources_ntkdig, LIBS = libs, CPPPATH = '.')
 
-Default(netsukuku_d,ntkdig)
+Default(ntkd,ntkdig)
 
 
 #
@@ -179,7 +179,7 @@ idir_bin    = '$BIN_DIR'
 idir_data   = '$DATA_DIR'
 idir_conf   = '$CONF_DIR'
 
-env.Install(idir_bin, [netsukuku_d])
+env.Install(idir_bin, [ntkd])
 env.Install(idir_bin, [ntkdig])
 env.Alias('install', [idir_bin, idir_conf])
 

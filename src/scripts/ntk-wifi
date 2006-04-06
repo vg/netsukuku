@@ -1,5 +1,5 @@
 #!/bin/bash
-#netsukuku_wifi: sets a wifi card in Ad-Hoc mode and its essid to "netsukuku".
+# ntk-wifi: sets a wifi card in Ad-Hoc mode and its essid to "netsukuku".
 
 if ( test $(id -u) != 0) then
 	echo "Root privileges needed."
@@ -10,7 +10,7 @@ fi
 if [ -z "$1" ]
 then
 	echo "You must specify your wifi interface."
-	echo "Ex: netsukuku_wifi wlan0"
+	echo "Ex: ntk-wifi wlan0"
 	exit 1
 fi
 
@@ -32,4 +32,4 @@ fi
 
 echo ""
 echo "$wlan configured. Now you can launch NetsukukuD with: "
-echo "netsukuku_d -i $wlan"
+echo "ntkd -i $wlan"

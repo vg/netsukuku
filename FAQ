@@ -179,7 +179,7 @@ A: What do you mean by `performance'?
    
    Software performance: you really shouldn't worry about this:
    PID   USER  PRI  NI  SIZE  RSS  SHARE %CPU %MEM TIME CPU COMMAND
-   18521 root  15   0   17708 1552 1164  0.0  0.3  0:00 0   netsukuku_d
+   18521 root  15   0   17708 1552 1164  0.0  0.3  0:00 0   ntkd
    
 
 /		 \

@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "ANDNA 8"
-.TH ANDNA 8 "2006-03-27" "NetsukukuD 0.0.7b" ""
+.TH ANDNA 8 "2006-04-06" "NetsukukuD 0.0.8b" ""
 .SH "NAME"
 ANDNA \- Abnormal Netsukuku Domain Name Anarchy
 .SH "DESCRIPTION"
@@ -140,13 +140,13 @@ The \s-1ANDNA\s0 database is scattered inside all the Netsukuku and the worst of
 cases every node will have to use about 355 Kb of memory.
 .PP
 In order to join \s-1ANDNA\s0 it is necessary to be hooked at Netsukuku with the
-\&\fInetsukuku_d\fR\|(8) daemon.
+\&\fIntkd\fR\|(8) daemon.
 .PP
 For more information about \s-1ANDNA\s0 visit:
 <http://netsukuku.freaknet.org>
 .SH "USAGE"
 .IX Header "USAGE"
-First of all be sure to have the \fInetsukuku_d\fR\|(8) daemon up and running.
+First of all be sure to have the \fIntkd\fR\|(8) daemon up and running.
 .Sh "\s-1HOSTNAME\s0 \s-1REGISTRATION\s0"
 .IX Subsection "HOSTNAME REGISTRATION"
 You can register up to 256 hostnames. Each hostname can be a string of maximum
@@ -156,29 +156,29 @@ The hostnames to be registered must be listed, one per line, in the
 \&\fIandna_hostnames\fR file, which is by default in
 \&\fI/etc/netsukuku/andna_hostnames\fR.
 .PP
-The \fInetsukuku_d\fR\|(8) daemon reads it when it is started and when it receives the
-\&\s-1SIGHUP\s0 signal. So if you've added a hostname while netsukuku_d was running,
+The \fIntkd\fR\|(8) daemon reads it when it is started and when it receives the
+\&\s-1SIGHUP\s0 signal. So if you've added a hostname while ntkd was running,
 just do: 
 .PP
-# kill \-SIGHUP <netsukuku_d pid>
+# kill \-SIGHUP <ntkd pid>
 .PP
 All the hostnames, which are already registered by other nodes, are
 added in the queue, in this way, when the other nodes won't update them, your
 hostnames will automatically be the first in the queue.
 .PP
-An hostname expires after 3 days, if it isn't updated. \fBnetsukuku_d\fR
+An hostname expires after 3 days, if it isn't updated. \fBntkd\fR
 automatically updates the registered hostnames, therefore your hostnames will
 expire only if you aren't present in the Netsukuku for 3 entire days.
 .PP
-If you want to know the result of a registration read the \fBnetsukuku_d\fR
+If you want to know the result of a registration read the \fBntkd\fR
 logs.
 .Sh "\s-1HOSTNAME\s0 \s-1RESOLUTION\s0"
 .IX Subsection "HOSTNAME RESOLUTION"
-The \fInetsukuku_d\fR\|(8) daemon runs also a \s-1DNS\s0 wrapper which receives standard \s-1DNS\s0
+The \fIntkd\fR\|(8) daemon runs also a \s-1DNS\s0 wrapper which receives standard \s-1DNS\s0
 queries for hostnames resolution. The hostnames are resolved in \s-1ANDNA\s0, then the
 \&\s-1DNS\s0 wrapper will reply to the requester.
 .PP
-When the \fInetsukuku_d\fR\|(8) daemon is started it copies /etc/resolv.conf in
+When the \fIntkd\fR\|(8) daemon is started it copies /etc/resolv.conf in
 /etc/resolv.conf.bak and adds in the first line of /etc/resolv.conf the
 \&\*(L"nameserver 127.0.0.1\*(R" string. When it is closed it moves back
 /etc/resolv.conf.bak to /etc/resolv.conf. Use the \fB\-R\fR option if you want to
@@ -186,7 +186,7 @@ disable this behaviour.
 .PP
 All the resolved hostnames are kept, until their expiration date, in the
 \&\f(CW\*(C`resolved hostnames cache\*(C'\fR. The entire cache is flushed each time the
-\&\fInetsukuku_d\fR\|(8) daemon receives the \s-1SIGALRM\s0 signal.
+\&\fIntkd\fR\|(8) daemon receives the \s-1SIGALRM\s0 signal.
 .PP
 That's all.
 .Sh "\s-1IP\s0 \s-1RESOLUTION\s0"
@@ -204,10 +204,10 @@ what hostnames have been already registered. Note the 127.0.0.2 ip. If you use
 It is currently not supported.
 .SH "SIGNALS"
 .IX Header "SIGNALS"
-When the \fB\s-1SIGHUP\s0\fR signal is sent to \fInetsukuku_d\fR\|(8), the \fIandna_hostnames\fR file
+When the \fB\s-1SIGHUP\s0\fR signal is sent to \fIntkd\fR\|(8), the \fIandna_hostnames\fR file
 will be reloaded and it will try to register all the new added hostnames.
 .PP
-When the \fB\s-1SIGALRM\s0\fR signal is sent to \fInetsukuku_d\fR\|(8), the resolved hostnames
+When the \fB\s-1SIGALRM\s0\fR signal is sent to \fIntkd\fR\|(8), the resolved hostnames
 cache will be flushed.
 .SH "FILES"
 .IX Header "FILES"
@@ -269,4 +269,4 @@ For a complete list read the \s-1AUTHORS\s0 file or visit:
 For more information about Netsukuku visit:
 <http://netsukuku.freaknet.org>
 .PP
-\&\fInetsukuku_d\fR\|(8), \fInetsukuku_wifi\fR\|(8), \fIiproute2\fR\|(8), \fIroute\fR\|(8)
+\&\fIntkd\fR\|(8), \fIntk\-wifi\fR\|(8), \fIiproute2\fR\|(8), \fIroute\fR\|(8)

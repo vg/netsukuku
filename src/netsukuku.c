@@ -110,7 +110,7 @@ int ntk_free_maps(void)
 void usage(void)
 {
 	printf("Usage:\n"
-		"    netsukuku_d [-hvadrD46] [-i net_interface] [-c conf_file]\n\n"
+		"     ntkd [-hvadrD46] [-i net_interface] [-c conf_file]\n\n"
 		" -4	ipv4\n"
 		" -6	ipv6\n"
 		" -i	interface\n\n"

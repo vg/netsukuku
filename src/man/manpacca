@@ -3,9 +3,9 @@
 
 NTK_REPOSITORY="../../"
 
-pod2man -s 8 netsukuku_d.pod -c "" -n "NetsukukuD"  -r "`../netsukuku_d -v`" netsukuku_d.8
-pod2man -s 8 netsukuku_wifi.pod -c "" -n "netsukuku_wifi"  -r "`../netsukuku_d -v`" netsukuku_wifi.8
-pod2man -s 8 andna.pod -c "" -n "ANDNA"  -r "`../netsukuku_d -v`" andna.8
+pod2man -s 8 ntkd.pod -c "" -n "NetsukukuD"  -r "`../ntkd -v`" ntkd.8
+pod2man -s 8 ntk-wifi.pod -c "" -n "ntk-wifi"  -r "`../ntkd -v`" ntk-wifi.8
+pod2man -s 8 andna.pod -c "" -n "ANDNA"  -r "`../ntkd -v`" andna.8
 
 rm -r man_html man_text
 mkdir  man_html/

@@ -11,7 +11,7 @@ The ANDNA database is scattered inside all the Netsukuku and the worst of
 cases every node will have to use about 355 Kb of memory.
 
 In order to join ANDNA it is necessary to be hooked at Netsukuku with the
-netsukuku_d(8) daemon.
+ntkd(8) daemon.
 
 For more information about ANDNA visit:
 L<http://netsukuku.freaknet.org>
@@ -19,7 +19,7 @@ L<http://netsukuku.freaknet.org>
 =head1 USAGE
 
 
-First of all be sure to have the netsukuku_d(8) daemon up and running.
+First of all be sure to have the ntkd(8) daemon up and running.
 
 =head2 HOSTNAME REGISTRATION
 
@@ -30,30 +30,30 @@ The hostnames to be registered must be listed, one per line, in the
 F<andna_hostnames> file, which is by default in
 F</etc/netsukuku/andna_hostnames>.
 
-The netsukuku_d(8) daemon reads it when it is started and when it receives the
-SIGHUP signal. So if you've added a hostname while netsukuku_d was running,
+The ntkd(8) daemon reads it when it is started and when it receives the
+SIGHUP signal. So if you've added a hostname while ntkd was running,
 just do: 
 
-# kill -SIGHUP <netsukuku_d pid>
+# kill -SIGHUP <ntkd pid>
 
 All the hostnames, which are already registered by other nodes, are
 added in the queue, in this way, when the other nodes won't update them, your
 hostnames will automatically be the first in the queue.
 
-An hostname expires after 3 days, if it isn't updated. B<netsukuku_d>
+An hostname expires after 3 days, if it isn't updated. B<ntkd>
 automatically updates the registered hostnames, therefore your hostnames will
 expire only if you aren't present in the Netsukuku for 3 entire days.
 
-If you want to know the result of a registration read the B<netsukuku_d>
+If you want to know the result of a registration read the B<ntkd>
 logs.
 
 =head2 HOSTNAME RESOLUTION
 
-The netsukuku_d(8) daemon runs also a DNS wrapper which receives standard DNS
+The ntkd(8) daemon runs also a DNS wrapper which receives standard DNS
 queries for hostnames resolution. The hostnames are resolved in ANDNA, then the
 DNS wrapper will reply to the requester.
 
-When the netsukuku_d(8) daemon is started it copies /etc/resolv.conf in
+When the ntkd(8) daemon is started it copies /etc/resolv.conf in
 /etc/resolv.conf.bak and adds in the first line of /etc/resolv.conf the
 "nameserver 127.0.0.1" string. When it is closed it moves back
 /etc/resolv.conf.bak to /etc/resolv.conf. Use the B<-R> option if you want to
@@ -61,7 +61,7 @@ disable this behaviour.
 
 All the resolved hostnames are kept, until their expiration date, in the
 C<resolved hostnames cache>. The entire cache is flushed each time the
-netsukuku_d(8) daemon receives the SIGALRM signal.
+ntkd(8) daemon receives the SIGALRM signal.
 
 That's all.
 
@@ -82,10 +82,10 @@ It is currently not supported.
 
 =head1 SIGNALS
 
-When the B<SIGHUP> signal is sent to netsukuku_d(8), the F<andna_hostnames> file
+When the B<SIGHUP> signal is sent to ntkd(8), the F<andna_hostnames> file
 will be reloaded and it will try to register all the new added hostnames.
 
-When the B<SIGALRM> signal is sent to netsukuku_d(8), the resolved hostnames
+When the B<SIGALRM> signal is sent to ntkd(8), the resolved hostnames
 cache will be flushed.
 
 =head1 FILES
@@ -165,4 +165,4 @@ L<http://netsukuku.freaknet.org/?p=Contacts>
 For more information about Netsukuku visit:
 L<http://netsukuku.freaknet.org>
 
-netsukuku_d(8), netsukuku_wifi(8), iproute2(8), route(8)
+ntkd(8), ntk-wifi(8), iproute2(8), route(8)

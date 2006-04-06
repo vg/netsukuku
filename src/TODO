@@ -1,8 +1,16 @@
 		[HIGH PRIORITY] 
 
-- mv netsukuku_d ntkd
+- SNSD
+	- andna_cache
+	- lcl_cache
+	- rh_cache
+	- andna.pod
+	- andna_register_hname()
+	- andna_resolve_hname()
+	- andna_rev_resolve()
+	- snsd_load_files()
 
-- ANDNA MX:
+- Destroy all the ANDNA MX code ;(
 	- register_node part
 	- mx_node part
 	- documentation

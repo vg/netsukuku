@@ -88,8 +88,8 @@ if($page == "Wiki") {
 		<tr><td class="manpage">
 		<b>Man Pages</b><br />
 		<a href="http://netsukuku.freaknet.org/doc/manuals/html/andna.html">andna</a><br />
-		<a href="http://netsukuku.freaknet.org/doc/manuals/html/netsukuku_d.html">netsukuku_d</a><br />
-		<a href="http://netsukuku.freaknet.org/doc/manuals/html/netsukuku_wifi.html">netsukuku_wifi</a><br />
+		<a href="http://netsukuku.freaknet.org/doc/manuals/html/ntkd.html">ntkd</a><br />
+		<a href="http://netsukuku.freaknet.org/doc/manuals/html/ntk-wifi.html">ntk-wifi</a><br />
 		</td>
 		<td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
 		<td>

@@ -1064,7 +1064,7 @@
   growing of Netsukuku.
 
   A node which uses Netsukuku cannot enter inside Internet because when
-  netsukuku_d is launched, the same ip address set to the network interface is
+  ntkd is launched, the same ip address set to the network interface is
   set as default gateway, as well. In this way, all the classes of ip don't
   exist anymore and any node can take any random ip, moreover, since the are
   chosen randomly many collisions with the current Internet ip addresses may
