@@ -99,6 +99,3 @@
   compatible!
 
 - Test request.c
-
-- llist.c:
-	- pack=llist_pack(iinfo_struct, func_to_call_for_every_struct())	

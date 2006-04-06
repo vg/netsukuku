@@ -7,8 +7,8 @@ ANDNA - Abnormal Netsukuku Domain Name Anarchy
 
 ANDNA is the distributed, non hierarchical and decentralised system of hostname
 management in Netsukuku. It substitutes the DNS.
-The ANDNA database is scattered inside all the Netsukuku and the worst of
-cases every node will have to use about 355 Kb of memory.
+The ANDNA database is scattered inside all the Netsukuku and in the worst case
+every node will have to use about some hundreds Kb of memory.
 
 In order to join ANDNA it is necessary to be hooked at Netsukuku with the
 ntkd(8) daemon.

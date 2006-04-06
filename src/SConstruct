@@ -163,7 +163,7 @@ build_config_files(env = env)
 
 ntkd = env.Program('ntkd', sources_netsukuku, LIBS = libs, CPPPATH = '.')
 qspn        = env.Program('qspn-empiric', sources_qspn, LIBS = libs, CPPPATH = '.')
-ntkdig      = env.Program('ntkdig', sources_ntkdig, LIBS = libs, CPPPATH = '.')
+ntkdig      = env.Program('ntk-dig', sources_ntkdig, LIBS = libs, CPPPATH = '.')
 
 Default(ntkd,ntkdig)
 

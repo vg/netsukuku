@@ -49,18 +49,18 @@ double diff_time(struct timeval a,struct timeval b)
 void print_usage() 
 {
 	printf("Usage:\n" 
-		"\tntkdig [OPTIONS] host\n\n"
+		"\tntk-dig [OPTIONS] host\n\n"
 		" -v --version		print version, then exit.\n"
 		" -n --nameserver=ns	use nameserver `ns' instead of localhost.\n"
 		" -p --port=port		nameserver port, default 53.\n"
 		" -t --query-type=qt	query type (default A).\n"
 		" -r --realm=realm	inet or netsukuku (default) realm to scan.\n"
-		" -s --silent		ntkdig will be not loquacious.\n"
+		" -s --silent		ntk-dig will be not loquacious.\n"
 		" -h --help		display this help, then exit.\n\n");
 }
 void print_version()
 {
-	printf("ntkdig version %s (Netsukuku tools)\n\n",VERSION);
+	printf("ntk-dig version %s (Netsukuku tools)\n\n",VERSION);
 	printf("Copyright (C) 2006.\n"
 		"This is free software.  You may redistribute copies of it under the terms of\n"
 		"the GNU General Public License <http://www.gnu.org/licenses/gpl.html>.\n"
