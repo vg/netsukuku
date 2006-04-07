@@ -19,6 +19,7 @@
 ************************************************************************/
 #include <getopt.h>  
 #include <stdio.h>  
+#include <stdlib.h>  
 #include <unistd.h>  
 #include <fcntl.h>
 #include <sys/time.h>
@@ -26,8 +27,6 @@
 
 #include "andnslib.h"
 #include "ntkdig.h"
-#include "log.h"
-#include "err_errno.h"
 
 static int n_answers=1;
 static ntkdig_opts globopts;
@@ -283,7 +282,7 @@ int do_command()
 	
 	res=handle_answer(answ,answlen);
 	if (res==-1) {
-		printf(err_str);
+		printf("Unable to interpret answer. Exit.\n");
 		exit(1);
 	}
 	ns_used=i;
@@ -338,41 +337,6 @@ int handle_answer(char *answ,int alen)
 	destroy_andns_pkt(ap);
 	return 0;
 			
-}
-
-int imain(int argc,char **argv)
-{
-	andns_pkt *ap;
-	andns_pkt_data *apd;
-	char a[1024];
-	int o;
-	
-	log_init(argv[0],0,1);
-	memset(&globopts,0,sizeof(ntkdig_opts));
-	ap=create_andns_pkt();
-	ap->id=rand()>>16;
-	ap->qtype=AT_A;
-	ap->nk=NK_NTK;
-	ap->ancount=2;
-	ap->qr=1;
-	ap->qstlength=strlen("CICCIO");
-	memcpy(ap->qstdata,"CICCIO",ap->qstlength);
-	apd=andns_add_answ(ap);
-	apd->rdlength=4;
-	inet_aton("1.2.3.4",(struct in_addr*)apd->rdata);
-//	apd->rdlength=strlen("PLUTO");
-//	strcpy(apd->rdata,"PLUTO");
-	apd=andns_add_answ(ap);
-	apd->rdlength=4;
-	inet_aton("11.12.13.14",(struct in_addr*)apd->rdata);
-//	apd->rdlength=strlen("MINNIE");
-//	strcpy(apd->rdata,"MINNIE");
-
-	o=a_p(ap,a);
-	handle_answer(a,o);
-//	print_question(ap);
-//	print_answer_name(apd);
-	return 0;
 }
 	
 void consistency_control(void)
