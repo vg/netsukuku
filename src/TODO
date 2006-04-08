@@ -1,11 +1,21 @@
 		[HIGH PRIORITY] 
 
 - SNSD
+	- snsd_service { snsd_node }
 	- andna_cache
+		- pack
+		- unpack
+		- timestamp decoerence when saving on file?
 	- lcl_cache
+		- pack
+		- unpack
 	- rh_cache
-	- andna.pod
+		- pack
+		- unpack
+	- andna.pod (man page)
 	- andna_register_hname()
+		- do not contact the counter_node if we are just registering
+		  a SNSD IP.
 	- andna_resolve_hname()
 	- andna_rev_resolve()
 	- snsd_load_files()
@@ -17,9 +27,7 @@
 
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 
-- Implement the http://lab.dyne.org/Ntk_MX_request RFC
-
-- update dependencies: 
+- update the dependencies list: 
 	- depends on iptables
 	- lartc
 	
@@ -28,6 +36,13 @@
 - Flash NetsukukuD into an AP and test it.
 
 		[MEDIUM PRIORITY] 
+
+- xmalloc.c: Implement a "wrapper heap". We do a big malloc() at the start and
+	     then we manage personally it, in this way we avoid the huge
+	     overhead of malloc.
+	     
+- pkts.c: input_buffer, output_buffer for all the connections: we use them as
+	  queue for the incoming and outcoming packets.
 
 - Equalize multipath routes
 
@@ -40,8 +55,6 @@
 	  iptables the link and calculate the used bw. 
 	  
 - Compressed Netsukuku pkts
-
-- use PREFIX in the man pages
 
 - Gnodes contiguity
 	- gnode re-hook
@@ -99,3 +112,5 @@
   compatible!
 
 - Test request.c
+
+- use PREFIX in the man pages
