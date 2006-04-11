@@ -255,7 +255,16 @@ inline int rand_range(int _min, int _max)
  */
 void xsrand(void)
 {
-	srand(getpid() ^ time(0) ^ clock());
+	FILE *fd;
+	int seed;
+
+	if((fd=fopen("/dev/urandom", "r"))) {
+		fread(&seed, 4,1,fd);
+		fclose(fd);
+	} else
+		seed=getpid() ^ time(0) ^ clock();
+
+	srand(seed); 
 }
 
 

@@ -76,9 +76,9 @@ This command shows your currently registered hostnames. You can use it to know
 what hostnames have been already registered. Note the 127.0.0.2 ip. If you use
 127.0.0.1 you get only the local hostname written in /etc/hosts.
 
-=head2 MX REGISTRATION and RESOLUTION
+=head2 Scattered Name Service Disgregation
 
-It is currently not supported.
+It is currently not documented.
 
 =head1 SIGNALS
 

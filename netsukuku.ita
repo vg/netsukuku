@@ -747,12 +747,10 @@
   usando quindi un IP random. Se due gnode, dapprima isolati, per disgrazia
   hanno lo stesso groupnode id (e quindi lo stesso intervallo di IP), uno
   di loro due deve cambiare; questo significa cambiare l'IP di tutti i nodi
-  del gnode. Se il gnode e' di un livello superiore, e' davvero un disastro.
-  Per evitare tutto cio', basta che l'IP random sia unico in tutto il globo!
-  La soluzione e' semplice: usiamo un hash di tempo che diventera' il
-  nostro IP "random". Visto che consideriamo anche i micro secondi, non ci
-  saranno due IP uguali in tutto il globo.
-  Tutti i nodi devono pero' mantenere i loro orologi sincronizzati.
+  del gnode.
+  
+  La soluzione e' descritta nell'NTK_RFC 0001:
+  http://lab.dyne.org/Ntk_gnodes_contiguity
   
   6.   Broadcast: There can be only one!
   
@@ -999,9 +997,12 @@
   viene aggiunta in coda, dove massimo possono esserci MAX_ANDNA_QUEUE (5)
   hostname. Nell'hash_gnode il nodo viene associato al nome host che ha
   richiesto e viene memorizzata anche la data di richiesta.
-  Quando un nodo deve risolvere un hostname, consulta l'hash_gnode.
-  Il nodo puo' anche scegliere di usare gli altri IP nella coda che sono
-  associati allo stesso hostname.
+  Quando l'hostname, che sta' in cima alla coda, scade, verra' sostituito
+  automaticamente dal secondo, e cosi' via.
+ 
+  Un nodo che vuole risolvere l'hostame, puo' anche richiedere la lista dei
+  nodi presenti nella andna_queue. In questo modo se il primo nodo non e'
+  raggiungibile, potra' provare a contattare gli altri.
   
   7.8	Hostname resolution
 

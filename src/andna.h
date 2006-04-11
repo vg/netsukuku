@@ -51,11 +51,12 @@ int last_spread_acache_pkt_id[ANDNA_MAX_FLOODS];
 #define ANDNA_REV_RESOLVE_RQ_TIMEOUT		60
 
 /* * * andna pkt flags * * */
-#define ANDNA_UPDATE		1		/* Update the hostname */
-#define ANDNA_FORWARD		(1<<1)		/* Forward this pkt, plz */
-#define ANDNA_REV_RESOLVE	(1<<2)		/* Give me your hostnames */
-#define ANDNA_JUST_CHECK	(1<<3)		/* Check only, don't update 
+#define ANDNA_PKT_UPDATE	1		/* Update the hostname */
+#define ANDNA_PKT_FORWARD	(1<<1)		/* Forward this pkt, plz */
+#define ANDNA_PKT_REV_RESOLVE	(1<<2)		/* Give me your hostnames */
+#define ANDNA_PKT_JUST_CHECK	(1<<3)		/* Check only, don't update
 						   anything */
+#define ANDNA_PKT_SNSD		(1<<4)		/* A SNSD request/reply */
 
 /*
  * andna_reg_pkt
@@ -236,9 +237,6 @@ int andna_recv_resolve_rq(PACKET rpkt);
 
 int andna_reverse_resolve(inet_prefix ip, char ***hostnames);
 int andna_recv_rev_resolve_rq(PACKET rpkt);
-
-int andna_mx_resolve(char *hname, inet_prefix *mx_ip);
-int andna_recv_mx_resolve_rq(PACKET rpkt);
 
 int spread_single_acache(u_int hash[MAX_IP_INT]);
 int recv_spread_single_acache(PACKET rpkt);

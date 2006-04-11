@@ -34,13 +34,18 @@
 #define ANDNA_MIN_UPDATE_TIME		3600	/* The minum amount of time to
 						   be waited before sending an 
 						   update of the hname. */
-#define ANDNA_MX_EXPIRATION_TIME	3600	/* Exp. time for the MX entries */
 
 #define ANDNA_PRIVKEY_BITS		1024
 #define ANDNA_SKEY_MAX_LEN		900
 #define ANDNA_PKEY_LEN			140
 #define ANDNA_HASH_SZ			(MAX_IP_SZ)
 #define ANDNA_SIGNATURE_LEN		128
+
+#define SNSD_MAX_RECORDS		256	/* Number of maximum SNSD records
+						   which can be stored in an
+						   andna_cache */
+#define SNSD_MAX_QUEUE_RECORDS		1	/* There can be only one snsd 
+						   record for the queued hnames */
 
 /* Returns the number of nodes to be used in a backup_gnode */
 #define ANDNA_BACKUP_NODES(seeds)	({(seeds) > 8 ? 			\
@@ -66,8 +71,61 @@
 #define ANDNA_FULL	(1<<3)		/* Queue full */
 #define ANDNA_UPDATING	(1<<4)		/* The hname is being updated right
 					   now */
-#define ANDNA_MXHNAME	(1<<5)		/* A MX node is associated to the 
-					   hname */
+
+/* * snsd_node flags * */
+#define SNSD_NODE_HNAME		1	/* A hname is associated in the 
+					   snsd record */
+#define SNSD_NODE_IP		(1<<1)  /* An IP is associated in the 
+					   snsd record */
+
+/*
+ * snsd_node, snsd_service
+ *
+ * They are two linked list. The snsd_node llist is inside each snsd_service
+ * struct:
+ * || service X    <->   service Y    <->   service Z  <-> ... ||
+ *        |		     |			|
+ *        V		     V			V
+ *    snsd_node_1	 snsd_node_1	       ...
+ *        |		     |
+ *        V		     V
+ *    snsd_node_2	    ...
+ *    	  |
+ *    	  V
+ *    	 ...
+ *
+ * These llist are directly embedded in the andna_cache, lcl_cache and
+ * rh_cache.
+ * 
+ * The andna_cache keeps all the SNSD nodes associated to the registered
+ * hostname. The andna_cache doesn't need `snsd_node->pubkey'.
+ */
+struct snsd_node
+{ 
+	LLIST_HDR	(struct snsd_node);
+	
+	u_int		record[MAX_IP_INT];	/* It can be the IP or the md5
+						   hash of the hname of the 
+						   SNSD node */
+	RSA		*pubkey;		/* pubkey of the snsd_node */
+	char		flags;			/* This will tell us what 
+						   `record' is */
+	
+	u_char		priority;		/* Priority of the SNSD */
+	u_char		weight;
+};
+typedef struct snsd_node snsd_node;
+
+struct snsd_service
+{
+	LLIST_HDR	(struct snsd_service);
+
+	u_short		service;		/* Service number */
+	
+	snsd_node	*snsd;
+};
+typedef struct snsd_service snsd_service;
+
 
 /* 
  * andna_cache_queue
@@ -78,16 +136,19 @@ struct andna_cache_queue
 {	
 	LLIST_HDR	(struct andna_cache_queue);
 		
-	u_int		rip[MAX_IP_INT];	/* register_node ip */
 	time_t		timestamp;
 	u_short		hname_updates;		/* number of hname's updates */
 	char		pubkey[ANDNA_PKEY_LEN];
+
+	u_short		snsd_counter;		/* # of `snsd' structs */
+	snsd_service	*snsd;
 };
 typedef struct andna_cache_queue andna_cache_queue;
-INT_INFO andna_cache_queue_body_iinfo = { 2, /* `rip' is ignored */
-					  { INT_TYPE_32BIT, INT_TYPE_16BIT },
-					  { MAX_IP_SZ, MAX_IP_SZ+sizeof(time_t) },
-					  { 1, 1 }
+INT_INFO andna_cache_queue_body_iinfo = { 3, /* `rip' is ignored */
+					  { INT_TYPE_32BIT, INT_TYPE_16BIT, INT_TYPE_16BIT },
+					  { 0, sizeof(time_t), 
+						  sizeof(time_t)+sizeof(u_short)+ANDNA_PKEY_LEN },
+					  { 1, 1, 1 }
 					};
 		
 /*
@@ -169,30 +230,7 @@ typedef struct
 	RSA		*priv_rsa;		/* key pair unpacked */
 } lcl_cache_keyring;
 
-/*
- * lcl_mx
- *
- * It describes a MX node. Since a MX node has to be associated to one of our
- * registered hnames, we embed it directly in the relative `lcl_struct' (see
- * below). In this case the ANDNA_MXHNAME flag will be set in
- * lcl_cache->flags.
- */
-typedef struct
-{ 
-	u_int		ip[MAX_IP_INT];		/* IP of the mx_node */
-	u_int		node_id;		/* 32bit hash of the pubk of 
-						   the mx_node */
-	char		priority;
-	
-	u_int		updates;		/* # of previous updates */
-	time_t		last_update;
-} lcl_mx;
-INT_INFO lcl_mx_iinfo = { 3, /* `ip' is ignored */
-			  { INT_TYPE_32BIT, INT_TYPE_32BIT, INT_TYPE_32BIT },
-			  { MAX_IP_SZ, MAX_IP_SZ+sizeof(u_int)+sizeof(char), 
-				  MAX_IP_SZ+sizeof(char)+sizeof(u_int)*2 },
-			  { 1, 1, 1 }
-			};
+
 /*
  * lcl_cache
  * 
@@ -213,12 +251,9 @@ struct lcl_cache
 						   hname has still to be 
 						   registered */
 	
-	u_short		mxs;			/* Number of `mx_node's */
-	lcl_mx		*mx_node;		/* This is an array which has 
-						   `mxs' members. It describes 
-						   the MXnodes associated to 
-						   `hostname' */
-
+	u_short		snsd_counter;		/* # of `snsds' minus 1 */
+	snds_service	*snsd;
+	
 	char 		flags;
 };
 typedef struct lcl_cache lcl_cache;
@@ -251,7 +286,9 @@ struct resolved_hnames_cache
 					   at timestamp+ANDNA_EXPIRATION_TIME
 					   this cache will expire. */
 	int		ip[MAX_IP_INT];	/* ip associated to the hname */
-	int		mx_ip[MAX_IP_INT]; /* ip of the relative MX_node */
+	
+	u_short		snsd_counter;
+	snds_service	*snsd;
 };
 typedef struct resolved_hnames_cache rh_cache;
 
@@ -315,15 +352,16 @@ INT_INFO lcl_cache_pkt_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
  *	char		hostname[strlen(hostname)+1];  * null terminated *
  *	u_short		hname_updates;
  *	time_t          timestamp;
- *	u_short		mxs;
- *	lcl_mx		mx_node[mxs];	* `lcl_mx_iinfo' must be used to convert
- *					  each member of the array *
+ *	u_short		snsd_counter;
+ *	snsd_node	snsd[snsd_counter];	* `snsd_node_body_iinfo' must 
+ *					        * be used to convert each 
+ *					        * member of the array
  *
  * } body[ hdr.tot_caches ];
  * 
  */
-#define LCL_CACHE_BODY_PACK_SZ(hname_len, mxs)	((hname_len) + sizeof(u_short)*2 \
-						  + sizeof(time_t) + sizeof(lcl_mx)*(mxs))
+#define LCL_CACHE_BODY_PACK_SZ(hname_len, snsdc) ((hname_len) + sizeof(u_short)*2 \
+						  + sizeof(time_t) + sizeof(snsd_node)*(snsdc))
 INT_INFO lcl_cache_pkt_body_iinfo = { 3, { INT_TYPE_16BIT, INT_TYPE_32BIT, INT_TYPE_16BIT }, 
 				      { IINFO_DYNAMIC_VALUE, IINFO_DYNAMIC_VALUE, 
 					      IINFO_DYNAMIC_VALUE },
@@ -345,14 +383,15 @@ INT_INFO andna_cache_pkt_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
  * 	
  * acq->timestamp is the difference of the current time with `acq->timestamp'
  * itself, and it is stored as a uint32_t not a time_t!
+ * The same is for acq->snsd->last_update
  */
-#define ANDNA_CACHE_QUEUE_PACK_SZ	(MAX_IP_SZ + sizeof(time_t) +		\
-						sizeof(u_short ) + ANDNA_PKEY_LEN)
-#define ANDNA_CACHE_BODY_PACK_SZ	(ANDNA_HASH_SZ + sizeof(char) +\
-						sizeof(u_short))
-#define ANDNA_CACHE_PACK_SZ(queue_counter)	((ANDNA_CACHE_QUEUE_PACK_SZ *	\
-						(queue_counter)) +		\
-						ANDNA_CACHE_BODY_PACK_SZ)
+#define ACQ_PACK_SZ(snsd_counter)	(MAX_IP_SZ + sizeof(time_t) + 		\
+					   sizeof(u_short)*2 + ANDNA_PKEY_LEN + \
+					   (snsd_counter)*SNSD_PACK_SZ)
+#define ACACHE_BODY_PACK_SZ		(ANDNA_HASH_SZ + sizeof(char) + 	\
+					   sizeof(u_short))
+#define ACACHE_PACK_SZ(queue_counter)	( (ACQ_PACK_SZ*(queue_counter)) +	\
+					   ACACHE_BODY_PACK_SZ)
 
 /*
  * The counter cache pkt is similar to the andna_cache_pkt, it is completely
@@ -386,15 +425,19 @@ INT_INFO rh_cache_pkt_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
  *	char		flags;
  *	time_t		timestamp;
  *	int		ip[MAX_IP_INT];
- *	int		mx_ip[MAX_IP_INT];
+ *	u_short		snsd_counter;
+ *	snsd_node	snsd[snsd_counter];
  * } body[ hdr.tot_caches ];
  */
-#define RH_CACHE_BODY_PACK_SZ			(sizeof(u_int)+sizeof(time_t)+ \
-						 sizeof(char)+MAX_IP_SZ*2)
-INT_INFO rh_cache_pkt_body_iinfo = { 2,
-				    { INT_TYPE_32BIT, INT_TYPE_32BIT },
-				    { 0, sizeof(u_int)+sizeof(char) },
-				    { 1, 1 }
+#define RH_CACHE_BODY_PACK_SZ(snsd_counter)	(sizeof(u_int)+sizeof(time_t)+ \
+						 sizeof(char)+MAX_IP_SZ*2+     \
+						 sizeof(u_short)+	       \
+						 (snsd_counter)*sizeof(snsd_node))
+INT_INFO rh_cache_pkt_body_iinfo = { 3,
+				    { INT_TYPE_32BIT, INT_TYPE_32BIT, INT_TYPE_16BIT },
+				    { 0, sizeof(u_int)+sizeof(char), 
+					    sizeof(u_int)+sizeof(char)+sizeof(time_t)+MAX_IP_SZ },
+				    { 1, 1, 1 }
 				   };
 
 
@@ -412,8 +455,6 @@ void lcl_cache_destroy(lcl_cache *head, int *counter);
 lcl_cache *lcl_cache_find_hname(lcl_cache *head, char *hname);
 lcl_cache *lcl_cache_find_32hash(lcl_cache *head, u_int hash);
 int lcl_get_registered_hnames(lcl_cache *head, char ***hostnames);
-int lcl_mx_addid(lcl_cache *alcl, u_int nodeid, u_int ip[MAX_IP_INT]);
-lcl_mx *lcl_get_mx(lcl_cache *alcl);
 
 andna_cache_queue *ac_queue_findpubk(andna_cache *ac, char *pubk);
 andna_cache_queue *ac_queue_add(andna_cache *ac, inet_prefix rip, char *pubkey);
@@ -440,7 +481,6 @@ void counter_c_destroy(void);
 
 rh_cache *rh_cache_new(char *hname, time_t timestamp, inet_prefix *ip);
 rh_cache *rh_cache_add(char *hname, time_t timestamp, inet_prefix *ip);
-rh_cache *rh_cache_addmx(char *hname, inet_prefix *mxip);
 rh_cache *rh_cache_find_hname(char *hname);
 void rh_cache_del(rh_cache *rhc);
 void rh_cache_del_expired(void);

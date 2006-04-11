@@ -589,7 +589,7 @@ int andna_register_hname(lcl_cache *alcl)
 			 * update */
 			return -1;
 
-		req.flags|=ANDNA_UPDATE;
+		req.flags|=ANDNA_PKT_UPDATE;
 		req.hname_updates = ++alcl->hname_updates;
 	}
 
@@ -620,7 +620,7 @@ int andna_register_hname(lcl_cache *alcl)
 		debug(DBG_SOFT, "andna_register_hname: hash_gnode not found ;(");
 		ERROR_FINISH(ret, -1, finish);
 	} else if(err == 1)
-		req.flags|=ANDNA_FORWARD;
+		req.flags|=ANDNA_PKT_FORWARD;
 		
 	ntop=inet_to_str(to);
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(ANDNA_REGISTER_HNAME), ntop);
@@ -739,7 +739,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 			ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
 		ERROR_FINISH(ret, -1, finish);
 	} else if(err == 1) {
-		if(!(req->flags & ANDNA_FORWARD)) {
+		if(!(req->flags & ANDNA_PKT_FORWARD)) {
 			if(!forwarded_pkt)
 				ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
 			ERROR_FINISH(ret, -1, finish);
@@ -865,13 +865,13 @@ int andna_check_counter(PACKET pkt)
 	andna_hash(my_family, req->rip, MAX_IP_SZ, rip_hash, hash_gnode);
 	
 	/* Find a hash_gnode for the rip_hash */
-	req->flags&=~ANDNA_FORWARD;
+	req->flags&=~ANDNA_PKT_FORWARD;
 	if((err=find_hash_gnode(hash_gnode, &pkt.to, 0, 0, 1)) < 0) {
 		debug(DBG_INSANE, "andna_check_counter: Couldn't find a decent"
 				" counter_gnode");
 		ERROR_FINISH(ret, -1, finish);
 	} else if(err == 1)
-		req->flags|=ANDNA_FORWARD;
+		req->flags|=ANDNA_PKT_FORWARD;
 	
 	ntop=inet_to_str(pkt.to);
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(ANDNA_CHECK_COUNTER), ntop);
@@ -890,7 +890,7 @@ int andna_check_counter(PACKET pkt)
 	 * hname_updates counter */
 	if(forwarded_pkt) {
 		req=(struct andna_reg_pkt *)pkt.msg;
-		req->flags|=ANDNA_JUST_CHECK;
+		req->flags|=ANDNA_PKT_JUST_CHECK;
 		
 		/* Adjust the flags */
 		pkt.hdr.flags&=~BCAST_PKT; 
@@ -935,7 +935,7 @@ int andna_recv_check_counter(PACKET rpkt)
 		/* The pkt we received has been only forwarded to us */
 		forwarded_pkt=1;
 
-	if(req->flags & ANDNA_JUST_CHECK)
+	if(req->flags & ANDNA_PKT_JUST_CHECK)
 		just_check=1;
 
 	/* Check if we already received this pkt during the flood */
@@ -998,7 +998,7 @@ int andna_recv_check_counter(PACKET rpkt)
 			ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
 		ERROR_FINISH(ret, -1, finish);
 	} else if(err == 1) {
-		if(!(req->flags & ANDNA_FORWARD)) {
+		if(!(req->flags & ANDNA_PKT_FORWARD)) {
 			if(!forwarded_pkt)
 				ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
 			ERROR_FINISH(ret, -1, finish);
@@ -1071,7 +1071,7 @@ finish:
 
 /*
  * 
- *  *  *  *  Hostname/IP/MX resolution  *  *  *
+ *  *  *  *  Hostname/IP resolution  *  *  *
  *
  */
 
@@ -1141,7 +1141,7 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	if((err=find_hash_gnode(hash_gnode, &to, 0, 0, 1)) < 0)
 		ERROR_FINISH(ret, -1, finish);
 	else if(err == 1)
-		req.flags|=ANDNA_FORWARD;
+		req.flags|=ANDNA_PKT_FORWARD;
 		
 	ntop=inet_to_str(to);
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(ANDNA_RESOLVE_HNAME), ntop);
@@ -1246,7 +1246,7 @@ int andna_recv_resolve_rq(PACKET rpkt)
 		ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
 		goto finish;
 	} else if(err == 1) {
-		if(!(req->flags & ANDNA_FORWARD)) {
+		if(!(req->flags & ANDNA_PKT_FORWARD)) {
 			ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
 			goto finish;
 		}
@@ -1525,172 +1525,6 @@ finish:
 	return ret;
 }
 
-/*
- * andna_mx_resolve
- *
- * It resolves normally the `hname' hostname and asks to the resolved node 
- * the IP of its MX node. This IP is stored in `mx_ip'.
- *
- * On error -1 is returned.
- */
-int andna_mx_resolve(char *hname, inet_prefix *mx_ip)
-{
-	PACKET pkt, rpkt;
-	inet_prefix to;
-	struct andna_mx_resolve_rq_pkt req;
-	andna_mx_resolve_reply_pkt *reply;
-	
-	int ret=0;
-	const char *ntop; 
-	ssize_t err;
-
-	lcl_mx *mx;
-	rh_cache *rhc;
-
-	memset(&pkt, 0, sizeof(PACKET));
-	memset(&rpkt, 0, sizeof(PACKET));
-
-	/* First of all resolve the hostname of the register node */
-	if(andna_resolve_hname(hname, &to) < 0)
-		return -1;
-	
-	ntop=inet_to_str(to);
-	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(ANDNA_RESOLVE_MX), ntop);
-	
-	/* We have been asked to resolve our MX ip */
-	if(!memcmp(to.data, me.cur_ip.data, MAX_IP_SZ) || 
-		LOOPBACK(htonl(to.data[0]))) {
-		mx=lcl_get_mx(andna_lcl);
-		if(mx)
-			inet_setip_raw(mx_ip, mx->ip, my_family);
-		else
-			inet_copy(mx_ip, &me.cur_ip);
-		return 1;
-	}
-
-	/*
-	 * Search in the rh_cache first
-	 */
-	if((rhc=rh_cache_find_hname(hname)) && 
-			(rhc->flags & ANDNA_MXHNAME)) {
-		/* We've found it. This hname MX has been resolved before */
-		inet_setip_raw(mx_ip, (u_int *)rhc->mx_ip, my_family);
-		return 1;
-	}
-
-	/*
-	 * Write the request
-	 */
-	req.hash=fnv_32_buf(hname, strlen(hname), FNV1_32_INIT);
-	ints_host_to_network(&req, andna_mx_resolve_rq_pkt_iinfo);
-	
-	/* 
-	 * Fill the packet and send the request 
-	 */
-	pkt_addto(&pkt, &to);
-	pkt.pkt_flags|=PKT_SET_LOWDELAY;
-	pkt.hdr.sz=ANDNA_MX_RESOLVE_RQ_PKT_SZ;
-	pkt.msg=xmalloc(pkt.hdr.sz);
-	memcpy(pkt.msg, &req, pkt.hdr.sz);
-	
-	err=send_rq(&pkt, 0, ANDNA_RESOLVE_MX, 0, ANDNA_MX_RESOLVE_REPLY, 1, &rpkt);
-	if(err==-1) {
-		error("andna_resolve_mx(): resolution of the %s MX "
-				"failed.", hname);
-		ERROR_FINISH(ret, -1, finish);
-	}
-
-	if(rpkt.hdr.sz != ANDNA_MX_RESOLVE_REPLY_PKT_SZ)
-		ERROR_FINISH(ret, -1, finish);
-	
-	/* Get the IP of the MX node */
-	reply=(andna_mx_resolve_reply_pkt *)rpkt.msg;
-	inet_setip(mx_ip, reply->ip, my_family);
-
-	/* Add the MX IP in the rh_cache */
-	rh_cache_addmx(hname, mx_ip);
-			
-finish:
-	pkt_free(&pkt, 1);
-	pkt_free(&rpkt, 1);
-	return ret;
-}
-
-/*
- * andna_recv_mx_resolve_rq
- *
- * It replies to the ANDNA_RESOLVE_MX request contained in `rpkt'.
- */
-int andna_recv_mx_resolve_rq(PACKET rpkt)
-{
-	PACKET pkt;
-	struct andna_mx_resolve_rq_pkt *req;
-	andna_mx_resolve_reply_pkt reply;
-
-	const char *ntop;
-	int ret=0, err;
-	
-	lcl_cache *alcl=andna_lcl;
-	lcl_mx *mx;
-
-	if(rpkt.hdr.sz != ANDNA_MX_RESOLVE_RQ_PKT_SZ)
-		ERROR_FINISH(ret, -1, finish);
-
-	memset(&pkt, 0, sizeof(PACKET));
-
-	ntop=inet_to_str(rpkt.from);
-	debug(DBG_INSANE, "Andna MX resolve request received 0x%x from %s",
-			rpkt.hdr.id, ntop);
-
-	req=(struct andna_mx_resolve_rq_pkt *)rpkt.msg;
-	ints_network_to_host(req, andna_mx_resolve_rq_pkt_iinfo);
-	
-	/*
-	 * Build the reply pkt
-	 */
-	
-	/* Find the hname requested in our local cache */
-	alcl=lcl_cache_find_32hash(andna_lcl, req->hash);
-	if(!alcl) {
-		ret=pkt_err(rpkt, E_ANDNA_NO_HNAME, 0);
-		goto finish;
-	}
-
-	debug(DBG_INSANE, "MX resolve request 0x%x accepted", rpkt.hdr.id);
-
-	/* Write the reply */
-	memset(&reply, 0, sizeof(reply));
-	if(!(mx=lcl_get_mx(alcl)))
-		/* No MX associated, we reply with our IP */
-		memcpy(reply.ip, me.cur_ip.data, MAX_IP_SZ);
-	else
-		memcpy(reply.ip, mx->ip, MAX_IP_SZ);
-	reply.timestamp=time(0) - mx->last_update;
-
-	/* host -> network order */
-	inet_htonl(reply.ip, me.cur_ip.family);
-	ints_host_to_network((void *)&reply, andna_mx_resolve_reply_pkt_iinfo);
-
-	/* fill the pkt */
-	pkt_fill_hdr(&pkt.hdr, 0, rpkt.hdr.id, ANDNA_MX_RESOLVE_REPLY, 0);
-	pkt.hdr.sz=sizeof(reply);
-	pkt.msg=xmalloc(pkt.hdr.sz);
-	memcpy(pkt.msg, &reply, sizeof(reply));
-	
-	/*
-	 * Send it.
-	 */
-
-        pkt_addto(&pkt, &rpkt.from);
-	pkt_addsk(&pkt, my_family, rpkt.sk, rpkt.sk_type);
-        err=send_rq(&pkt, 0, ANDNA_MX_RESOLVE_REPLY, rpkt.hdr.id, 0, 0, 0);
-        if(err==-1)
-		ERROR_FINISH(ret, -1, finish);
-
-finish:
-	pkt_free(&pkt, 0);
-	return ret;
-}
 
 /*
  *
@@ -1730,7 +1564,7 @@ andna_cache *get_single_andna_c(u_int hash[MAX_IP_INT],
 		debug(DBG_SOFT, "get_single_andna_c: old hash_gnode not found");
 		ERROR_FINISH(ret, 0, finish);
 	} else if(err == 1)
-		req_hdr.flags|=ANDNA_FORWARD;
+		req_hdr.flags|=ANDNA_PKT_FORWARD;
 	
 	req_hdr.hgnodes=1;
 	inet_copy_ipdata(req_hdr.rip, &me.cur_ip);

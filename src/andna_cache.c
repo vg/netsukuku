@@ -49,8 +49,9 @@ void andna_caches_init(int family)
  */
 
 /*
- * lcl_cache_new_keyring: Generates a new keyring for the local cache if there
- * aren't any.
+ * lcl_new_keyring
+ *
+ * If the keyring of the local cache is null, it generates a new one.
  * It returns 1 if a new keyring has been generated.
  */
 int lcl_new_keyring(lcl_cache_keyring *keyring)
@@ -58,18 +59,20 @@ int lcl_new_keyring(lcl_cache_keyring *keyring)
 	memset(keyring, 0, sizeof(lcl_cache_keyring));
 	
 	if(!keyring->priv_rsa) {
-		loginfo("Generating a new keyring for the future ANDNA requests.\n"
-				"  The keyring will be saved in the lcl file");
+		loginfo("Generating a new keyring for the future ANDNA requests.");
 		/* Generate the new key pair for the first time */
 		keyring->priv_rsa = genrsa(ANDNA_PRIVKEY_BITS, &keyring->pubkey, 
 				&keyring->pkey_len, &keyring->privkey, &keyring->skey_len);
 		return 1;
 	}
+	
 	return 0;
 }
 
 /*
- * lcl_destroy_keyring: destroys accurately the keyring ^_^ 
+ * lcl_destroy_keyring
+ *
+ * destroys accurately the keyring ^_^ 
  */
 void lcl_destroy_keyring(lcl_cache_keyring *keyring)
 {
@@ -104,8 +107,6 @@ void lcl_cache_free(lcl_cache *alcl)
 {
 	if(alcl->hostname)
 		xfree(alcl->hostname);
-	if(alcl->mxs && alcl->mx_node)
-		xfree(alcl->mx_node);
 }
 
 void lcl_cache_destroy(lcl_cache *head, int *counter)
@@ -185,99 +186,6 @@ int lcl_get_registered_hnames(lcl_cache *head, char ***hostnames)
 
 	*hostnames=hnames;
 	return i;
-}
-
-/* 
- * lcl_mx_is_expired
- * 
- * Is `mx' expired? 1==Yes, 0==No
- */
-int lcl_mx_is_expired(lcl_mx *mx)
-{
-	time_t cur_t=time(0);
-
-	if(cur_t - mx->last_update > ANDNA_MX_EXPIRATION_TIME)
-		return 1;
-	return 0;
-}
-
-/*
- * lcl_mx_addid
- * 
- * Add a new lcl_mx entry in `alcl' by the nodeid.
- * It deletes the expired lcl_mx structs.
- * If the same `nodeid' already exists in the other lcl_mx structs, it just
- * returns 1, otherwise it increments by one `alcl->mxs', reallocs 
- * `alcl->mx_node' and fills the data in the new struct returning 0.
- */
-int lcl_mx_addid(lcl_cache *alcl, u_int nodeid, u_int ip[MAX_IP_INT])
-{
-	time_t cur_t;
-
-	cur_t=time(0);
-
-	alcl->mx_node=xrealloc(alcl->mx_node, sizeof(lcl_mx)*(alcl->mxs+1));
-	
-	alcl->mx_node[alcl->mxs].node_id=nodeid;
-	alcl->mx_node[alcl->mxs].updates++;
-	memcpy(alcl->mx_node[alcl->mxs].ip, ip, MAX_IP_SZ);
-	alcl->mx_node[alcl->mxs].last_update=cur_t;
-	alcl->flags|=ANDNA_MXHNAME;
-	
-	alcl->mxs++;
-
-	return 0;
-}
-
-int lcl_mx_del(lcl_cache *alcl, int mx_pos)
-{
-	if(!alcl->mxs || !alcl->mx_node)
-		return 0;
-
-	if(mx_pos > alcl->mxs-1)
-		return -1;
-	else if(mx_pos < alcl->mxs-1)
-		memcpy(&alcl->mx_node[mx_pos], &alcl->mx_node[alcl->mxs-1],
-				sizeof(lcl_mx));
-	
-	alcl->mxs--;
-	
-	if(alcl->mxs)
-		alcl->mx_node=xrealloc(alcl->mx_node, sizeof(lcl_mx)*alcl->mxs);
-	else {
-		alcl->mx_node=0;
-		alcl->flags&=~ANDNA_MXHNAME;
-	}
-
-	return 0;
-}
-
-/*
- * lcl_get_mx
- *
- * It returns a pointer to a random MX node which is contained in `alcl'.
- * If this MX node is expired, it is deleted from the `alcl'->mx_node array
- * and another node is returned.
- * If there are no MX nodes to return, 0 shall be the return value.
- */
-lcl_mx *lcl_get_mx(lcl_cache *alcl)
-{
-	lcl_mx *mx;
-	int mx_pos;
-	
-	if(!alcl || !alcl->mxs || !alcl->mx_node)
-		return 0;
-
-	/* Choose a random MX node */
-	mx_pos=rand_range(0, alcl->mxs-1);
-	mx=&alcl->mx_node[mx_pos];
-
-	if(lcl_mx_is_expired(mx)) {
-		lcl_mx_del(alcl, mx_pos);
-		return lcl_get_mx(alcl);
-	}
-
-	return mx;
 }
 
 /*
@@ -611,7 +519,9 @@ void counter_c_del_expired(void)
 }
 
 /*
- * counter_c_destroy: destroy the andna_counter_c llist
+ * counter_c_destroy
+ *
+ * destroy the andna_counter_c llist
  */
 void counter_c_destroy(void)
 {
@@ -669,24 +579,6 @@ rh_cache *rh_cache_add(char *hname, time_t timestamp, inet_prefix *ip)
 
 	rhc->timestamp=timestamp;
 	inet_copy_ipdata_raw(rhc->ip, ip);
-
-	return rhc;
-}
-
-/*
- * rh_cache_addmx
- *
- * It adds an MX ip in the rh_cache
- */
-rh_cache *rh_cache_addmx(char *hname, inet_prefix *mxip)
-{
-	rh_cache *rhc;
-
-	if(!(rhc=rh_cache_find_hname(hname)))
-		return 0;
-
-	rhc->flags|=ANDNA_MXHNAME;
-	inet_copy_ipdata_raw(rhc->mx_ip, mxip);
 
 	return rhc;
 }
@@ -988,7 +880,7 @@ char *pack_andna_cache(andna_cache *acache, size_t *pack_sz)
 	hdr.tot_caches=0;
 	sz=sizeof(struct andna_cache_pkt_hdr);
 	list_for(ac) {
-		sz+=ANDNA_CACHE_PACK_SZ(ac->queue_counter);
+		sz+=ACACHE_PACK_SZ(ac->queue_counter);
 		hdr.tot_caches++;
 	}
 	
@@ -1070,7 +962,7 @@ andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter)
 		sz=sizeof(struct andna_cache_pkt_hdr);
 		
 		for(i=0; i<hdr->tot_caches; i++) {
-			sz+=ANDNA_CACHE_BODY_PACK_SZ;
+			sz+=ACACHE_BODY_PACK_SZ;
 			if(sz > pack_sz)
 				goto finish; /* overflow */
 
@@ -1088,7 +980,7 @@ andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter)
 			memcpy(&ac->queue_counter, buf, sizeof(u_short));
 			buf+=sizeof(u_short);
 
-			sz+=ANDNA_CACHE_QUEUE_PACK_SZ*ac->queue_counter;
+			sz+=ACQ_PACK_SZ(0)*ac->queue_counter;
 			if(sz > pack_sz)
 				goto finish; /* overflow */
 
@@ -1103,7 +995,7 @@ andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter)
 				buf+=MAX_IP_SZ;
 
 				acq->timestamp=0;
-				acq->timestamp+=*(uint32_t *)buf;
+				acq->timestamp+=(*(uint32_t *)buf);
 				acq->timestamp = cur_t - acq->timestamp;
 				buf+=sizeof(uint32_t);
 
@@ -1112,6 +1004,13 @@ andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter)
 
 				memcpy(&acq->pubkey, buf, ANDNA_PKEY_LEN);
 				buf+=ANDNA_PKEY_LEN;
+
+				memcpy(&acq->snsd_counter, buf, sizeof(u_short));
+				buf+=sizeof(u_short);
+
+				sz+=sizeof(snsd_node);
+				if(sz > pack_sz)
+					break; /* overflow */
 
 				clist_add(&ac->acq, &fake_int, acq);
 			}

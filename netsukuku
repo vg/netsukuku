@@ -754,14 +754,10 @@
   When a node creates a new group_node, it will chose it completely randomly,
   using a random ip. If two gnode, originally isolated, unfortunately have the
   same groupnode id, (and also the same range of IPs), one of them must
-  change, that means to change the IPs of all the nodes of the gnode. When the
-  gnode belongs to a higher level, it's a kind of disaster.
-  In order to avoid all this stuff, we just need to keep the random ip unique
-  all over the globe!
-  The solution is simple: we use hash of time, which will be our "random" ip.
-  And since we consider also the micro seconds, we'll never find two identical
-  IPs.
-  Every node has to maintain their clocks syncronised.
+  change, that means to change the IPs of all the nodes of the gnode.
+  
+  The solution is described in the NTK_RFC 0001:
+  http://lab.dyne.org/Ntk_gnodes_contiguity
 
   6.   Broadcast: There can be only one!
   
@@ -975,22 +971,25 @@
   before the starting of the transfer, all the nodes of the new hash_gnode,
   will double check a registration request. In this way, they will come to
   know if that hostname already exists. In case of positive response, they
-  will start the transfer of the andna_cache and they'll add the node asking for
-  the hname registration in queue.
+  will start the transfer of the andna_cache and they'll add the node asking
+  for the hname registration in queue.
  
 
   7.1.7  Yaq: Yet another queue
   
-  Every node is free to choose any hostname and even if the hostname has been
-  already chosen by another node, by the way, it can still decide to continue
-  the registration. Then, the node sends a request to the gnode which will
-  keep the hostname, the request is accepted and it is added in the queue,
-  which can be composed of a maximum of MAX_ANDNA_QUEUE (5) elements. 
-  The node is associated to the registered hostname and with that also the
-  date is kept inside the hash_gnode, 
-  When a node has to resolve a hostname, contacts the hash_gnode. The node can
-  also decide to utilise the other queueing IPs associated to the same
-  hostname.
+  Every node is free to choose any hostname, even if the hostname has been
+  already chosen by another node.
+  The node sends a request to the gnode which will keep the hostname, the
+  request is accepted and it is added in the queue, which can have a maximum 
+  of MAX_ANDNA_QUEUE (5) elements. 
+  The node is associated to the registered hostname and the date of the request
+  is memorized by the hash_node.
+  When the hostname on top of the queue expires, it will be automatically
+  substituted by the second hostname, and so on.
+
+  A node which wants to resolve the hostname can also request the list of the
+  nodes stored in the andna_queue. In this way, if the first node is
+  unreacheble, it will try to contact the other ones.
   
   7.8	Hostname resolution
 

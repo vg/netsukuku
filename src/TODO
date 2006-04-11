@@ -1,4 +1,11 @@
-		[HIGH PRIORITY] 
+*
+**
+***		HIGH PRIORITY
+**
+*	
+
+* (generally these TODOs are already being implemented at the moment)
+
 
 - SNSD
 	- snsd_service { snsd_node }
@@ -17,13 +24,9 @@
 		- do not contact the counter_node if we are just registering
 		  a SNSD IP.
 	- andna_resolve_hname()
+		- can a client specify the queue number?
 	- andna_rev_resolve()
 	- snsd_load_files()
-
-- Destroy all the ANDNA MX code ;(
-	- register_node part
-	- mx_node part
-	- documentation
 
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 
@@ -35,7 +38,37 @@
 
 - Flash NetsukukuD into an AP and test it.
 
-		[MEDIUM PRIORITY] 
+
+*
+**
+***		MEDIUM PRIORITY
+**
+*	
+
+
+- Equalize multipath routes. The `equalize' module is still experimental in
+  the kernel.
+
+- bandwidth measurement
+	- do not delete an inet-gw if there still bw passing on it.
+
+- Bandwidth weight for each entry of the qspn (not just rtt and latency):
+	- what to use to get the bandwidth of a network interface?
+	  Use `iperf' to measure once the max link bw, then monitor with
+	  iptables the link and calculate the used bw.
+	- See http://lab.dyne.org/Ntk_bandwidth_measurement
+	  
+- Compressed Netsukuku pkts: modify pkts.c to compress packets which are
+  bigger than X and have the PKT_COMPRESS flag set. Use zlib.
+
+- Port the kernel route code for *BSD: take a look at rt_ioctl.c and
+  rt_socket.c of quagga.
+
+- API for the syncronization of the maps the daemon. A third party program,
+  might want to have always the latest maps. 
+
+- Write the documentation for the code that can be used by other
+  programs. (By the way it is already commented.)
 
 - xmalloc.c: Implement a "wrapper heap". We do a big malloc() at the start and
 	     then we manage personally it, in this way we avoid the huge
@@ -43,19 +76,7 @@
 	     
 - pkts.c: input_buffer, output_buffer for all the connections: we use them as
 	  queue for the incoming and outcoming packets.
-
-- Equalize multipath routes
-
-- bandwidth measurement
-	- do not delete a gw if there still bw passing on it.
-
-- Bandwidth weight for each entry of the qspn (not just rtt and latency):
-	- what to use to get the bandwidth of a network interface?
-	  Use `iperf' to measure once the max link bw, then monitor with
-	  iptables the link and calculate the used bw. 
 	  
-- Compressed Netsukuku pkts
-
 - Gnodes contiguity
 	- gnode re-hook
 		- When we have two different gnodes A and C, and
@@ -81,30 +102,33 @@
 		- Challenge between two gnode not contiguous, which have the
 		  same gid.
 
-- Port the kernel route code for *BSD: take a look at rt_ioctl.c and
-  rt_socket.c of quagga.
 
-- API for the maps sync with the netsukuku_d daemon.
+*
+**
+***		LOW PRIORITY
+**
+*	
 
-- Write the documentation for the code that can be used by other
-  programs. (By the way it is already commented.)
-
-- Turn the andna_caches in binary trees, expecially the rh_cache
-
-		[LOW PRIORITY]
-		
-- Interactive shell/console
+- Interactive shell/console. Some commands that should be implemented:
+	  "stats" gives statistics, 
+	  "rnodes" show the list of rnodes,
+	  "int_map" dumps the internal map in a ASCIIful way,
+	  "ext_map", "bnode_map", "andna_cache", ...,
+	  "flush rhcache"
 
 - renice the NetsukukuD process?
 
-- small memory: if the system has <= X Mb of memory, switch on dumb mode. In
-  this mode NetsukukuD keeps only the list of rnodes and forwards every
+- small memory: if the system has <= X Mb of free memory, switch on dumb mode.
+  In this mode NetsukukuD keeps only the list of rnodes and forwards every
   request to one of them. The lcl_cache is kept too.
 
 - option to disable the modification of the routing table
 
 - option to change on runtime the wait-times of the QSPN, radar, etc...
 	-normal, -high, -low
+
+- option (both on command line and in netsukuku.conf) to disable the saving of
+  caches. (the keyring will always be saved).
 
 - Change with something else the eliminable fatal() calls in netsukuku_hook()
 
