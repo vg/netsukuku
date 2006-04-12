@@ -8,7 +8,8 @@
 
 
 - SNSD
-	- snsd_service { snsd_node }
+	- andna_cache.c:
+		- acq_add()
 	- andna_cache
 		- pack
 		- unpack

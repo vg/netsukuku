@@ -223,10 +223,13 @@ void free_igws(inet_gw **igws, int *igws_counter, int levels)
 }
 
 /* 
- * init_my_igws: initializses the `my_igws' llist. This list keeps inet_gw
- * structs which points to our (g)nodes, for example:
+ * init_my_igws
+ *
+ * initialiases the `my_igws' array. This list keeps inet_gw structs which
+ * points to our (g)nodes, for example:
  * my_igws[0]->node == me.cur_node,
- * my_igws[1]->node == &me.cur_quadg.gnode[_EL(1)]->g.
+ * my_igws[1]->node == &me.cur_quadg.gnode[_EL(1)]->g,
+ * ...
  */
 void init_my_igws(inet_gw **igws, int *igws_counter,
 		inet_gw ***my_new_igws, u_char my_bandwidth, 
@@ -636,37 +639,16 @@ int igw_cmp(const void *a, const void *b)
  */
 void igw_order(inet_gw **igws, int *igws_counter, inet_gw **my_igws, int level)
 {
-	inet_gw *igw, *next, *maxigws_ptr=0;
-	int i, igw_tmp_n;
+	inet_gw *igw, *new_head, *maxigws_ptr;
+	int i;
 		
 	if(!igws_counter[level] || !igws[level])
 		return;
 	
-	inet_gw *igw_tmp[igws_counter[level]];
+	new_head=clist_qsort(igws[level], igws_counter[level], igw_cmp);
 	
-	/*
-	 * Save a copy of the igws[leve] llist in the `igw_tmp' static buffer
-	 * to let `qsort' sort it ._^
-	 */
-	i=0;
-	igw=igws[level];
+	igw=new_head;
 	list_for(igw) {
-		igw_tmp[i]=igw;
-		i++;
-	}
-	igw_tmp_n=i;
-
-	qsort(igw_tmp, i, sizeof(inet_gw *), igw_cmp);
-
-	/* 
-	 * Restore igws[level] 
-	 */
-	i=0;
-	igw=igws[level];
-	list_safe_for(igw, next) {
-		igw->next = i >= igws_counter[level]-1 ? 0 : igw_tmp[i+1];
-		igw->prev = i-1 < 0 ? 0 : igw_tmp[i-1];
-		
 		if(i >= MAXIGWS) {
 			if(igw->node->flags & MAP_ME) {
 				list_substitute(maxigws_ptr, igw);
@@ -682,11 +664,12 @@ void igw_order(inet_gw **igws, int *igws_counter, inet_gw **my_igws, int level)
 		
 		if(i == MAXIGWS-1)
 			maxigws_ptr=igw;
-		
+
 		i++;
 	}
-}
 
+	igws[level]=new_head;
+}
 
 /*
  * igw_check_inet_conn: returns 1 if we are still connected to the Internet.

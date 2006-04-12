@@ -15,7 +15,18 @@
  * this source code; if not, write to:
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * llist.c: Various functions to handle linked lists
+ * --
+ *
+ * llist.c: Various functions to handle (doubled) linked lists
+ * 
+ * Why did I used macros for all these functions?
+ * Well, I just love the blue-smurf-like syntax highlighting of Vim ^_-
+ *
+ * Moreover using `typeof' and other nice tricks each macro can recognize the
+ * size of the arguments, in this way we can have functions like `list_copy',
+ * `list_init'.
+ * Finally, performance is optimised. I don't trust gcc and its -O2, (and they
+ * don't trust me).
  */
 
 #ifndef LLIST_C
@@ -96,8 +107,8 @@ do {									\
  */
 #define list_last(list)							\
 ({									\
-	 l_list *_i;							\
-	 for(_i=(l_list *)(list); _i->next; _i=(l_list *)_i->next); 	\
+	 l_list *_i=(l_list *)(list);					\
+	 for(; _i && _i->next; _i=(l_list *)_i->next);			\
  	 (typeof((list)))_i;						\
 })
 
@@ -105,21 +116,28 @@ do {									\
  * list_append
  *
  * It appends the `_new' struct at the end of the `_head' llist.
- * If `_tail' is not 0, then it is considered as the end of the llist.
+ * If `_tail' is not 0, then it is considered as the end of the llist and the
+ * `_head' argument isn't required.
  * If `_tail' is 0, the end will be reached by traversing the entire llist,
  * starting from `_head'.
- * The new tail is returned.
- * Example: tail=list_append(head, tail, new);
+ * If both `_tail' and `_head' are 0, `new->next' and `new->prev' will be set
+ * to 0.
+ * The new tail is always returned.
+ * Example: tail=list_append(0, tail, new);
+ * 	    or
  * 	    list_append(head, 0, new);
  */
 #define list_append(_head, _tail, _new)					\
 ({									\
-	l_list *_i, *_n;						\
-	_i=(_tail) ? (_tail) : (l_list *)list_last((_head)); 		\
-	_n=(l_list *)(new);						\
-	_i->next=_n;							\
-	_n->prev=_i; 							\
-	_n->next=0;							\
+	l_list *_t, *_n;						\
+	_t=(_tail) ? (_tail) : (l_list *)list_last((_head)); 		\
+	_n=(l_list *)(_new);						\
+ 	if(_n != _t) {							\
+ 		if(_t)							\
+			_t->next=_n;					\
+		_n->prev=_t; 						\
+		_n->next=0;						\
+	}								\
 	(typeof((_head)))_new;						\
 })
 
@@ -313,6 +331,22 @@ do{									\
 #define list_for(i) for(; (i); (i)=(typeof (i))(i)->next)
 
 /*
+ * list_count
+ *
+ * Returns the number of structs present in the llist
+ */
+#define list_count(_head)						\
+({									\
+	l_list *_l=(l_list *)(_head);					\
+	int _i=0; 							\
+									\
+	list_for(_l)							\
+		_i++;							\
+	_i;								\
+})
+
+
+/*
  * list_safe_for
  *
  * Use this for if you want to do something like:
@@ -388,7 +422,7 @@ do{ 									\
 
 
 /*
- * Here below there are the defines for the linked list with a counter.
+ * Here below there are the definitions for the linked list with a counter.
  * The arguments format is:
  * l_list **_head, int *_counter, l_list *list
  */
@@ -404,11 +438,14 @@ do{									\
 
 #define clist_append(_head, _tail, _counter, _list)			\
 do{									\
-	l_list *_t=_tail ? (l_list *)(*(_tail)) : 0;			\
+	l_list *_t=(_tail) ? (l_list *)(*(_tail)) : 0;			\
 	if(!(*(_counter)) || !(*(_head)))				\
 		list_init(*(_head), (_list));				\
-	else								\
-		*((_tail))=list_append(*(_head), _t, (_list));		\
+	else {								\
+		_t=list_append(*(_head), _t, (_list));			\
+		if((_tail))						\
+			*((_tail))=(typeof (*((_tail))))_t;		\
+	}								\
 	(*(_counter))++;                                                \
 }while(0)
 
@@ -448,5 +485,52 @@ do{                  							\
 	*(_counter)=0;							\
 	0;								\
 })
+
+
+/*
+ * clist_qsort
+ *
+ * It qsorts the `_head' llist, which has `_counter' elements.
+ * The `_cmp_func' function will be used to compare two llist.
+ * The new head of the llist is returned. Example:
+ * 	head=clist_qsort(head, counter, my_cmp_func);
+ * `counter' can be also 0, but it's better if you've counted already.
+ * 
+ * Btw, this function just calls qsort(3), this is how it works:
+ * 	- first of all it counts how many elements there are in the llist.
+ * 	  This is done only if `_counter' is 0.
+ * 	- it uses a temporary calloced array to store all the pointers to the
+ * 	  elements of the llist. 
+ * 	  tmp[0]=_head; tmp[1]=_head->next; tmp[..]=_head->next->..
+ * 	- it calls qsort(3) on the tmp array. Note that qsort gives the
+ *        address of &tmp[x] and &tmp[y] to `_cmp_func()', thus `_cmp_func()'
+ *        should be aware of this.
+ * 	- it follows the new order of `tmp' and appends each array element in
+ * 	  a new llist.
+ * 	- the head of the new llist is returned.
+ */
+#define clist_qsort(_head, _counter, _cmp_func)				\
+({									\
+	l_list *_h=(l_list *)(_head), *_n, *_nhead, *_ntail;		\
+	int _i=0, _c;							\
+									\
+	_c = !(_counter) ? list_count(_h) : (_counter);			\
+	l_list *_tmp_list[_c];						\
+									\
+	_n=_h;								\
+	list_for(_n) {							\
+		_tmp_list[_i]=_n;					\
+		_i++;							\
+	}								\
+									\
+	qsort(_tmp_list, _c, sizeof(l_list *), (_cmp_func));		\
+									\
+	_ntail=0;							\
+	_nhead=_tmp_list[0];						\
+	for(_i=0; _i<_c; _i++)						\
+		_ntail=(l_list *)list_append(0, _ntail, _tmp_list[i]);	\
+									\
+	(typeof((_head)))_nhead;					\
+})									\
 
 #endif /*LLIST_C*/

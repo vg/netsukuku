@@ -43,6 +43,98 @@ void andna_caches_init(int family)
 }
 
 /*
+ *  *  *  SNSD structs functions  *  *  *
+ */
+
+snsd_service *snsd_find_service(snsd_service *sns, u_short service)
+{
+	list_for(sns)
+		if(sns->service == service)
+			return sns;
+	return 0;
+}
+
+snsd_service *snsd_add_service(snsd_service **head, u_short service)
+{
+	snsd_service *sns, *new;
+
+	if((sns=snsd_find_service(*head, service)))
+		return sns;
+
+	new=xmalloc(sizeof(snsd_service));
+	memset(new, 0, sizeof(snsd_service));
+	new->service=service;
+	
+	*head=list_add(*head, new);
+
+	return new;
+}
+
+snsd_prio *snsd_find_prio(snsd_prio *snp, u_char prio)
+{
+	list_for(snp)
+		if(snp->prio == prio)
+			return snp;
+	return 0;
+}
+
+snsd_prio *snsd_add_prio(snsd_prio **head, u_char prio)
+{
+	snsd_prio *snp, *new;
+
+	if((snp=snsd_find_prio(*head, prio)))
+		return snp;
+
+	new=xmalloc(sizeof(snsd_prio));
+	memset(new, 0, sizeof(snsd_prio));
+	new->prio=prio;
+	
+	*head=list_add(*head, new);
+
+	return new;
+}
+
+snsd_node *snsd_find_node_by_record(snsd_node *snd, u_int record[MAX_IP_INT])
+{
+	list_for(snd)
+		if(!memcpy(snd->record, record, MAX_IP_SZ))
+			return snd;
+	return 0;
+}
+
+/*
+ * snsd_add_node
+ *
+ * It searches for a snsd_node struct which has the same `record' of the
+ * argument. If it is found, it is returned, otherwise it adds a new
+ * snsd_node struct in the `*head' llist and returns it.
+ * `max_records' is the max number of records allowed in the llist. If no
+ * empty place are left to add the new struct, 0 is returned.
+ */
+snsd_node *snsd_add_node(snsd_node **head, u_short *counter, 
+			 u_short max_records, u_int record[MAX_IP_INT])
+{
+	snsd_node *snd;
+	
+	if((snd=snsd_find_node_by_record(*head, record)))
+		return snd;
+
+	if(*counter >= max_records)
+		/* The llist is full */
+		return 0;
+
+	snd=xmalloc(sizeof(snsd_node));
+	memset(snd, 0, sizeof(snsd_node));
+
+	memcpy(snd->record, record, MAX_IP_SZ);
+
+	clist_add(head, counter, snd);
+
+	return snd;
+}
+
+
+/*
  * 
  *  *  *  *  Local Cache functions  *  *  *
  *  
@@ -123,9 +215,8 @@ void lcl_cache_destroy(lcl_cache *head, int *counter)
 	*counter=0;
 }
 
-lcl_cache *lcl_cache_find_hname(lcl_cache *head, char *hname)
+lcl_cache *lcl_cache_find_hname(lcl_cache *alcl, char *hname)
 {
-	lcl_cache *alcl=head;
 	u_int hash;
 	
 	if(!alcl || !lcl_counter)
@@ -139,10 +230,8 @@ lcl_cache *lcl_cache_find_hname(lcl_cache *head, char *hname)
 	return 0;
 }
 
-lcl_cache *lcl_cache_find_32hash(lcl_cache *head, u_int hash)
+lcl_cache *lcl_cache_find_32hash(lcl_cache *alcl, u_int hash)
 {
-	lcl_cache *alcl=head;
-	
 	if(!alcl || !lcl_counter)
 		return 0;
 
@@ -157,13 +246,12 @@ lcl_cache *lcl_cache_find_32hash(lcl_cache *head, u_int hash)
  * 
  * In `hostnames' is stored a pointer to a malloced array of pointers. Each
  * pointer points to a malloced hostname.
- * The hostnames stored in the array are taken from the `head' llist. Only
+ * The hostnames stored in the array are taken from the `alcl' llist. Only
  * the hnames that have been registered are considered.
  * The number of hnames stored in `hostnames' is returned.
  */
-int lcl_get_registered_hnames(lcl_cache *head, char ***hostnames)
+int lcl_get_registered_hnames(lcl_cache *alcl, char ***hostnames)
 {
-	lcl_cache *alcl=head;
 	int i=0, hname_sz;
 	char **hnames;
 
@@ -236,7 +324,7 @@ andna_cache_queue *ac_queue_add(andna_cache *ac, inet_prefix rip, char *pubkey)
 		memset(acq, 0, sizeof(andna_cache_queue));
 		
 		memcpy(acq->pubkey, pubkey, ANDNA_PKEY_LEN);
-		clist_add(&ac->acq, &ac->queue_counter, acq);
+		clist_append(&ac->acq, 0, &ac->queue_counter, acq);
 	} else
 		update=1;
 	
@@ -842,14 +930,6 @@ lcl_cache *unpack_lcl_cache(char *pack, size_t pack_sz, int *counter)
 			sz+=alcl->mxs*sizeof(lcl_mx);
 			if(sz > pack_sz)
 				goto finish;
-			
-			alcl->mx_node=xmalloc(alcl->mxs*sizeof(lcl_mx));
-			for(i=0; i<alcl->mxs; i++) {
-				memcpy(&alcl->mx_node[i], buf, sizeof(lcl_mx));
-				inet_ntohl(alcl->mx_node[i].ip, net_family);
-				ints_network_to_host(&alcl->mx_node[i], lcl_mx_iinfo);
-				buf+=sizeof(lcl_mx);
-			}
 			
 			clist_add(&alcl_head, counter, alcl);
 		}
@@ -1633,7 +1713,9 @@ finish:
 
 
 /*
- * load_hostnames: reads the `file' specified and reads each line in it.
+ * load_hostnames
+ *
+ * It reads the `file' specified and reads each line in it.
  * The strings read are the hostnames that will be registered in andna.
  * Only ANDNA_MAX_HOSTNAMES lines are read. Each line can be maximum of
  * ANDNA_MAX_HNAME_LEN character long.

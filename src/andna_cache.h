@@ -79,21 +79,25 @@
 					   snsd record */
 
 /*
- * snsd_node, snsd_service
+ * snsd_node, snsd_service, snsd_prio
  *
- * They are two linked list. The snsd_node llist is inside each snsd_service
- * struct:
- * || service X    <->   service Y    <->   service Z  <-> ... ||
- *        |		     |			|
- *        V		     V			V
- *    snsd_node_1	 snsd_node_1	       ...
- *        |		     |
- *        V		     V
- *    snsd_node_2	    ...
+ * They are three linked list. They are all orthogonal to each other.
+ * The snsd_node llist is inside each snsd_prio struct which is inside each
+ * snsd_service struct:
+ * || service X          <->   service Y          <->   service Z  <-> ... ||
+ *        |		           |			    |
+ *        V		           V			    V
+ *    snsd_prio_1-->node       snsd_prio_1-->node          ...-->...
+ *        |		           |
+ *        V		           V
+ *    snsd_prio_2-->node	  ...-->node
  *    	  |
  *    	  V
- *    	 ...
+ *    	 ...-->node
  *
+ * Using this schema, we don't have to sort them, ever. The nodes are already
+ * grouped by service and in each service by priority.
+ * 
  * These llist are directly embedded in the andna_cache, lcl_cache and
  * rh_cache.
  * 
@@ -111,10 +115,19 @@ struct snsd_node
 	char		flags;			/* This will tell us what 
 						   `record' is */
 	
-	u_char		priority;		/* Priority of the SNSD */
 	u_char		weight;
 };
 typedef struct snsd_node snsd_node;
+
+struct snsd_prio
+{
+	LLIST_HDR	(struct snsd_prio);
+	
+	u_char		prio;			/* Priority of the SNSD node */
+	
+	snsd_node	*snsd;
+};
+typedef struct snsd_prio snsd_prio;
 
 struct snsd_service
 {
@@ -122,7 +135,7 @@ struct snsd_service
 
 	u_short		service;		/* Service number */
 	
-	snsd_node	*snsd;
+	snsd_node	*prio;
 };
 typedef struct snsd_service snsd_service;
 
@@ -252,7 +265,7 @@ struct lcl_cache
 						   registered */
 	
 	u_short		snsd_counter;		/* # of `snsds' minus 1 */
-	snds_service	*snsd;
+	snsd_service	*snsd;
 	
 	char 		flags;
 };
@@ -285,16 +298,15 @@ struct resolved_hnames_cache
 					   was updated. With this we know that
 					   at timestamp+ANDNA_EXPIRATION_TIME
 					   this cache will expire. */
-	int		ip[MAX_IP_INT];	/* ip associated to the hname */
 	
 	u_short		snsd_counter;
-	snds_service	*snsd;
+	snsd_service	*snsd;
 };
 typedef struct resolved_hnames_cache rh_cache;
 
 
 /*
- * * *  Global vars   * * *
+ *  * * *  Global vars   * * *
  */
 andna_cache *andna_c;
 int andna_c_counter;
@@ -311,7 +323,7 @@ int rhc_counter;
 
 
 /*
- * * *  ANDNA cache packet stuff  * * * 
+ *  * * *  ANDNA cache packet stuff  * * * 
  */
 
 struct lcl_keyring_pkt_hdr
