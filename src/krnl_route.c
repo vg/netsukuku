@@ -29,6 +29,7 @@
 #include "krnl_route.h"
 #include "libnetlink.h"
 #include "ll_map.h"
+#include "misc.h"
 #include "xmalloc.h"
 #include "log.h"
 
@@ -62,7 +63,7 @@ static struct
 
 void route_reset_filter()
 {
-        memset(&filter, 0, sizeof(filter));
+        setzero(&filter, sizeof(filter));
         filter.mdst.bits = -1;
         filter.msrc.bits = -1;
 }
@@ -135,7 +136,7 @@ int add_nexthops(struct nlmsghdr *n, struct rtmsg *r, struct nexthop *nhop)
 #endif
 
 	while (nhop[i].dev!=0) {
-		memset(rtnh, 0, sizeof(*rtnh));
+		setzero(rtnh, sizeof(*rtnh));
 		rtnh->rtnh_len = sizeof(*rtnh);
 		rta->rta_len += rtnh->rtnh_len;
 
@@ -177,7 +178,7 @@ int route_exec(int route_cmd, int route_type, int route_scope, unsigned flags,
 	struct rt_request req;
 	struct rtnl_handle rth;
 
-	memset(&req, 0, sizeof(req));
+	setzero(&req, sizeof(req));
 
 	if(!table)
 		table=RT_TABLE_MAIN;
@@ -351,7 +352,7 @@ int route_get_gw(const struct sockaddr_nl *who, struct nlmsghdr *n, void *arg)
 
 	parse_rtattr(tb, RTA_MAX, RTM_RTA(r), len);
 
-	memset(&dst, 0, sizeof(dst));
+	setzero(&dst, sizeof(dst));
 	dst.family = r->rtm_family;
 	if (tb[RTA_DST]) {
 		memcpy(&dst.data, RTA_DATA(tb[RTA_DST]), (r->rtm_dst_len+7)/8);
@@ -445,7 +446,7 @@ int route_get_exact_prefix_dst(inet_prefix prefix, inet_prefix *dst,
 		return -1;
 	}
 
-	memset(dst_data, 0, sizeof(dst_data));
+	setzero(dst_data, sizeof(dst_data));
 	if (rtnl_dump_filter(&rth, route_get_gw, dst_data, NULL, NULL) < 0) {
 		debug(DBG_NORMAL, ERROR_MSG "Dump terminated" ERROR_POS);
 		return -1;
@@ -551,7 +552,7 @@ int route_rp_filter(int family, char *dev, int enable)
 #define RP_FILTER_PATH_SZ (strlen(RP_FILTER_SYSCTL_1)+		   \
 			   strlen(RP_FILTER_SYSCTL_2)+IF_NAMESIZE+1)
 	final_path=xmalloc(RP_FILTER_PATH_SZ);
-	memset(final_path, 0, RP_FILTER_PATH_SZ);
+	setzero(final_path, RP_FILTER_PATH_SZ);
 
 	len = strlen(buf);
 	if(family==AF_INET) {

@@ -92,9 +92,9 @@ void qspn_reset_counters(u_char levels)
 
 void qspn_reset(u_char levels)
 {
-	memset(qspn_b, 0, sizeof(struct qspn_buffer *)*levels);
-	memset(qspn_send_mutex, 0, sizeof(int)*levels);
-	memset(me.cur_qspn_id, 0, sizeof(int)*levels);
+	setzero(qspn_b, sizeof(struct qspn_buffer *)*levels);
+	setzero(qspn_send_mutex, sizeof(int)*levels);
+	setzero(me.cur_qspn_id, sizeof(int)*levels);
 	
 	qspn_reset_counters(levels);
 }

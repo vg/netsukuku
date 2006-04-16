@@ -39,6 +39,7 @@
 #include "krnl_route.h"
 #include "route.h"
 #include "iptunnel.h"
+#include "misc.h"
 #include "xmalloc.h"
 #include "log.h"
 

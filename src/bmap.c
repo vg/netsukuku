@@ -36,7 +36,7 @@ void bmap_levels_init(u_char levels, map_bnode ***bmap, u_int **bmap_nodes)
 	*bmap=xmalloc(sizeof(map_bnode *) * levels);
 	*bmap_nodes=(u_int *)xmalloc(sizeof(u_int) * levels);
 
-	memset(*bmap, 0, sizeof(map_bnode *) * levels);
+	setzero(*bmap, sizeof(map_bnode *) * levels);
 	bmap_counter_reset(levels, *bmap_nodes);
 }
 
@@ -63,7 +63,7 @@ void bmap_counter_free(u_int *bnodes_closed, u_int *bnodes_opened)
 
 void bmap_counter_reset(u_char levels, u_int *counter)
 {
-	memset(counter, 0, sizeof(u_int) * levels);
+	setzero(counter, sizeof(u_int) * levels);
 }
 
 /* 
@@ -85,7 +85,7 @@ int map_add_bnode(map_bnode **bmap, u_int *bmap_nodes, u_int bnode, u_int links)
 		*bmap=xrealloc(*bmap, sizeof(map_bnode) * *bmap_nodes);
 
 	bnode_map=*bmap;
-	memset(bnode_map, 0, sizeof(map_bnode));
+	setzero(bnode_map, sizeof(map_bnode));
 	bnode_map[bm].bnode_ptr=bnode;
 	bnode_map[bm].links=links;
 	return bm;

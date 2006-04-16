@@ -181,7 +181,7 @@ tracer_add_entry(void *void_map, void *void_node, tracer_chunk *tracer,
 	nhops=*hops;
 	new_entry_pos=nhops-1;
 	t=xmalloc(sizeof(tracer_chunk) * nhops);
-	memset(t, 0, sizeof(tracer_chunk) * nhops);
+	setzero(t, sizeof(tracer_chunk) * nhops);
 	
 	if(tracer || nhops > 1) {
 		/* 
@@ -356,7 +356,7 @@ bnode_hdr *tracer_build_bentry(void *void_map, void *void_node,
 
 	bblock_sz = BNODEBLOCK_SZ(level+1, me.bnode_map[level][bm].links);
 	bblock=xmalloc(bblock_sz);
-	memset(bblock, 0, bblock_sz);
+	setzero(bblock, bblock_sz);
 
 	bhdr=(bnode_hdr *)bblock;
 	bhdr->bnode_levels=level+1;
@@ -452,19 +452,19 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 	if(!trcr_hdr || !tracer || !bcast_hdr) {
 		/* Brand new tracer packet */
 		bcast_hdr=&bh;
-		memset(bcast_hdr, 0, sizeof(brdcast_hdr));
+		setzero(bcast_hdr, sizeof(brdcast_hdr));
 		
 		bcast_hdr->gttl=MAXGROUPNODE-1;
 		bcast_hdr->level=gnode_level+1;
 		bcast_hdr->g_node=gnode_id; 
 		
 		trcr_hdr=&th;
-		memset(trcr_hdr, 0, sizeof(tracer_hdr));
+		setzero(trcr_hdr, sizeof(tracer_hdr));
 	} 
 	
 	hops=trcr_hdr->hops;
 
-	memset(pkt, 0, sizeof(PACKET));
+	setzero(pkt, sizeof(PACKET));
 	pkt->hdr.op=rq;
 	pkt->hdr.id=rq_id;
 	pkt->hdr.flags|=BCAST_PKT;
@@ -593,7 +593,7 @@ char *tracer_pack_pkt(brdcast_hdr *bcast_hdr, tracer_hdr *trcr_hdr, tracer_chunk
 	pkt_sz=BRDCAST_SZ(TRACERPKT_SZ(trcr_hdr->hops) + bblocks_sz);
 	
 	buf=msg=xmalloc(pkt_sz);
-	memset(msg, 0, pkt_sz);
+	setzero(msg, pkt_sz);
 
 	/* add broadcast header */
 	memcpy(buf, bcast_hdr, sizeof(brdcast_hdr));
@@ -959,7 +959,7 @@ int tracer_store_bblock(u_char level, tracer_hdr *trcr_hdr, tracer_chunk *tracer
 
 			/* Store the rnodes of the bnode */
 			for(e=0; e < bblist_hdr[i]->links; e++) {
-				memset(&rn, 0, sizeof(map_rnode));
+				setzero(&rn, sizeof(map_rnode));
 				debug(DBG_INSANE, "Bnode %d new link %d: gid %d lvl %d", 
 						bnode, e, bblist[i][e]->gnode,
 						bblist[i][e]->level);

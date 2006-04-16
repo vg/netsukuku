@@ -445,7 +445,7 @@ int str_to_inet(const char *src, inet_prefix *ip)
 	int family,res;
 	u_int *data;
 
-	memset(ip, 0, sizeof(inet_prefix));
+	setzero(ip, sizeof(inet_prefix));
 
 	if(strstr(src, ":")) {
 		family=AF_INET6;
@@ -569,7 +569,7 @@ int join_ipv6_multicast(int socket, int idx)
 	struct ipv6_mreq    mreq6;
 	const int addr[MAX_IP_INT]=IPV6_ADDR_BROADCAST;
 	
-	memset(&mreq6, 0, sizeof(struct ipv6_mreq));
+	setzero(&mreq6, sizeof(struct ipv6_mreq));
 	memcpy(&mreq6.ipv6mr_multiaddr,	addr, sizeof(struct in6_addr));
 	mreq6.ipv6mr_interface=idx;
 	
@@ -638,7 +638,7 @@ int set_bindtodevice_sk(int socket, char *dev)
 	struct ifreq ifr;
 	int ret;
 	
-	memset(&ifr, 0, sizeof(ifr));
+	setzero(&ifr, sizeof(ifr));
 	strncpy(ifr.ifr_name, dev, IFNAMSIZ-1);
 	
 	ret=setsockopt(socket, SOL_SOCKET, SO_BINDTODEVICE, dev, strlen(dev)+1);
@@ -692,7 +692,7 @@ int set_broadcast_sk(int socket, int family, inet_prefix *host, short port,
 	
 	/* Let's bind it! */
 	alen = sizeof(saddr_sto);
-	memset(sa, 0, alen);
+	setzero(sa, alen);
 	if (getsockname(socket, sa, &alen) == -1) {
 		error("Cannot getsockname: %s", strerror(errno));
 		close(socket);

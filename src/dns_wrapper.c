@@ -140,9 +140,9 @@ void dns_wrapper_daemon(u_short port)
 		if(!FD_ISSET(sk, &fdset))
 			continue;
 
-		memset(&buf, 0, MAX_DNS_PKT_SZ);
-		memset(&exec_pkt_argv.from, 0, sizeof(struct sockaddr));
-		memset(&exec_pkt_argv, 0, sizeof(struct dns_exec_pkt_argv));
+		setzero(&buf, MAX_DNS_PKT_SZ);
+		setzero(&exec_pkt_argv.from, sizeof(struct sockaddr));
+		setzero(&exec_pkt_argv, sizeof(struct dns_exec_pkt_argv));
 		
 		exec_pkt_argv.from_len = my_family == AF_INET ?
 			sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);

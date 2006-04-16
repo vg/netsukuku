@@ -68,13 +68,13 @@ void init_radar(void)
 	hook_retry=0;
 	my_echo_id=0;
 	total_radar_scans=0;
-	memset(radar_scans, 0, sizeof(radar_scans));
+	setzero(radar_scans, sizeof(radar_scans));
 	radar_scan_mutex=0;
 	
 	list_init(radar_q, 0);
 	radar_q_counter=0;
 	
-	memset(send_qspn_now, 0, sizeof(u_char)*MAX_LEVELS);
+	setzero(send_qspn_now, sizeof(u_char)*MAX_LEVELS);
 }
 
 
@@ -164,7 +164,7 @@ struct rnode_list *rnl_add(struct rnode_list **rnlist, int *rnlist_counter,
 	struct rnode_list *rnl;
 
 	rnl	       = xmalloc(sizeof(struct rnode_list));
-	memset(rnl, 0, sizeof(struct rnode_list));
+	setzero(rnl, sizeof(struct rnode_list));
 	
 	rnl->node      = (map_node *)rnode;
 	rnl->dev[0]    = dev;
@@ -411,7 +411,7 @@ void new_rnode_allowed(struct allowed_rnode **alr, int *alr_counter,
 	new_alr->min_level=min_lvl;
 	new_alr->tot_level=tot_lvl;
 	
-	memset(new_alr->gid, 0, sizeof(int)*MAX_LEVELS);
+	setzero(new_alr->gid, sizeof(int)*MAX_LEVELS);
 	memcpy(&new_alr->gid[min_lvl], &gid[min_lvl], sizeof(int)*(tot_lvl-min_lvl));
 	
 	debug(DBG_SOFT, "new_rnode_allowed: %d, %d, %d, %d. min_lvl: %d, tot_lvl: %d", 
@@ -695,7 +695,7 @@ void radar_update_bmap(struct radar_queue *rq, int level, int gnode_level)
 		rnode_pos=rnode_find(&me.bnode_map[level][bm], &gnode->g);
 	
 	if(rnode_pos == -1) {
-		memset(&rn, 0, sizeof(map_rnode));
+		setzero(&rn, sizeof(map_rnode));
 		rn.r_node=(int *)&gnode->g;
 		rnode_add(&me.bnode_map[level][bm], &rn);
 		rnode_pos=0;
@@ -732,8 +732,8 @@ void radar_update_map(void)
 	char updated_rnodes, routes_update, devs_update;
 
 	updated_rnodes=routes_update=devs_update=0;
-	memset(rnode_added, 0, sizeof(int)*MAX_LEVELS);
-	memset(rnode_deleted, 0, sizeof(int)*MAX_LEVELS);
+	setzero(rnode_added, sizeof(int)*MAX_LEVELS);
+	setzero(rnode_deleted, sizeof(int)*MAX_LEVELS);
 	
 	/*
 	 * Let's consider all our rnodes void, in this way we'll know what
@@ -835,7 +835,7 @@ void radar_update_map(void)
 
 					   memset(&rnn, '\0', sizeof(map_rnode));
 					   e_rnode=xmalloc(sizeof(ext_rnode));
-					   memset(e_rnode, 0, sizeof(ext_rnode));
+					   setzero(e_rnode, sizeof(ext_rnode));
 
 					   memcpy(&e_rnode->quadg, &rq->quadg, sizeof(quadro_group));
 					   e_rnode->node.flags=MAP_BNODE | MAP_GNODE |  MAP_RNODE | 
@@ -883,7 +883,7 @@ void radar_update_map(void)
 				   /* Update the qspn_buffer */
 				   if(!external_node || level) {
 					   qb=xmalloc(sizeof(struct qspn_buffer));
-					   memset(qb, 0, sizeof(struct qspn_buffer));
+					   setzero(qb, sizeof(struct qspn_buffer));
 					   qb->rnode=node;
 					   qspn_b[level]=list_add(qspn_b[level], qb);
 
@@ -1040,7 +1040,7 @@ radar_queue *add_radar_q(PACKET pkt)
 	/* If pkt.from isn't already in the queue, add it. */
 	if(!rq) { 
 		rq=xmalloc(sizeof(struct radar_queue));
-		memset(rq, 0, sizeof(struct radar_queue));
+		setzero(rq, sizeof(struct radar_queue));
 		
 		if(ret)
 			rq->node=(map_node *)RADQ_EXT_RNODE;

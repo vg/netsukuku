@@ -20,6 +20,7 @@
 #include "includes.h"
 #include <fnmatch.h>
 
+#include "misc.h"
 #include "inet.h"
 #include "if.h"
 #include "libnetlink.h"

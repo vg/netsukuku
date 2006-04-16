@@ -135,7 +135,7 @@ void rnodetoip(u_int mapstart, u_int maprnode, inet_prefix ipstart,
 	ext_rnode *e_rnode;
 	map_node *rnode=(map_node *)maprnode;
 
-	memset(ret, 0, sizeof(inet_prefix));
+	setzero(ret, sizeof(inet_prefix));
 	if(rnode->flags & MAP_ERNODE) {
 		e_rnode=(ext_rnode *)rnode;
 		inet_copy(ret, &e_rnode->quadg.ipstart[0]);
@@ -233,7 +233,7 @@ void iptoquadg(inet_prefix ip, map_gnode **ext_map, quadro_group *qg, char flags
 	u_char levels;
 	int gid[MAX_LEVELS];
 
-	memset(qg, 0, sizeof(quadro_group));
+	setzero(qg, sizeof(quadro_group));
 	
 	levels=GET_LEVELS(ip.family);
 	qg->levels=levels;
@@ -256,7 +256,7 @@ void iptoquadg(inet_prefix ip, map_gnode **ext_map, quadro_group *qg, char flags
 
 void quadg_free(quadro_group *qg)
 {
-	memset(qg, 0, sizeof(quadro_group));
+	setzero(qg, sizeof(quadro_group));
 }
 
 void quadg_destroy(quadro_group *qg)
@@ -519,7 +519,7 @@ int random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 	int gid[total_levels];
 	quadro_group qg;
 
-	memset(new_ip, 0, sizeof(inet_prefix));
+	setzero(new_ip, sizeof(inet_prefix));
 	
 	if(!ipstart || final_level==total_levels) {
 		u_int idata[MAX_IP_INT]={0,0,0,0};
@@ -730,7 +730,7 @@ void e_rnode_add(ext_rnode_cache **erc, ext_rnode *e_rnode, int rnode_pos, u_int
 	ext_rnode_cache *p;
 
 	p=xmalloc(sizeof(ext_rnode_cache));
-	memset(p, 0, sizeof(ext_rnode_cache));
+	setzero(p, sizeof(ext_rnode_cache));
 	
 	p->e=e_rnode;
 	p->rnode_pos=rnode_pos;
@@ -1008,7 +1008,7 @@ int  extmap_find_level(map_gnode **ext_map, map_gnode *gnode, u_char max_level)
 void gmap_node_del(map_gnode *gnode)
 {
 	map_node_del(&gnode->g);
-	memset(gnode, 0, sizeof(map_gnode));
+	setzero(gnode, sizeof(map_gnode));
 	gnode->flags|=GMAP_VOID;
 	gnode->g.flags|=MAP_VOID;
 }
@@ -1314,7 +1314,7 @@ char *pack_extmap(map_gnode **ext_map, int maxgroupnode, quadro_group *quadg, si
 	rblock=extmap_get_rblock(ext_map, levels, maxgroupnode, &count);
 
 	/*Building the hdr...*/
-	memset(&emap_hdr, 0, sizeof(struct ext_map_hdr));
+	setzero(&emap_hdr, sizeof(struct ext_map_hdr));
 	emap_hdr.ext_map_sz=maxgroupnode*MAP_GNODE_PACK_SZ*levels;
 	for(i=0; i<levels; i++) {
 		emap_hdr.rblock_sz[i]=count[i]*MAP_RNODE_PACK_SZ;

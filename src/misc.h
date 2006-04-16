@@ -24,13 +24,15 @@
 /*
  * NMEMB: returns the number of members of the `x' array
  */
-#define NMEMB(x)        (sizeof((x))/sizeof(typeof((x)[0])))
+#define NMEMB(x)        	(sizeof((x))/sizeof(typeof((x)[0])))
+
+#define setzero(p, sz)		memset((p), 0, sizeof(sz))
 
 /* 
  * MILLISEC: converts a timeval struct to a int. The time will be returned in
  * milliseconds.
  */
-#define MILLISEC(x)	(((x).tv_sec*1000)+((x).tv_usec/1000))
+#define MILLISEC(x)		(((x).tv_sec*1000)+((x).tv_usec/1000))
 
 /*
  * MILLISEC_TO_TV: Converts `x', which is an int into `t', a timeval struct

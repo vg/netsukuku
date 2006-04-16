@@ -220,7 +220,7 @@ int rnode_find(map_node *node, void *n)
 void map_node_del(map_node *node)
 {
 	rnode_destroy(node);
-	memset(node, 0, sizeof(map_node));
+	setzero(node, sizeof(map_node));
 	node->flags|=MAP_VOID;
 }
 
@@ -593,7 +593,7 @@ char *pack_map(map_node *map, int *addr_map, int maxgroupnode,
 	if(!addr_map)
 		addr_map=(int *)map;
 	
-	memset(&imap_hdr, 0, sizeof(struct int_map_hdr));
+	setzero(&imap_hdr, sizeof(struct int_map_hdr));
 	if(map) {
 		/*rblock packing*/
 		rblock=map_get_rblock(map, addr_map, maxgroupnode, &count);

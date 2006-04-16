@@ -22,6 +22,7 @@
 
 #include "includes.h"
 
+#include "misc.h"
 #include "libnetlink.h"
 #include "inet.h"
 #include "krnl_route.h"
@@ -107,7 +108,7 @@ int str_to_inet_gw(char *str, inet_prefix *gw, char **dev)
 {
 	char *buf;
 
-	memset(dev, 0, IFNAMSIZ);
+	setzero(dev, IFNAMSIZ);
 
 	/* Copy :devname in `dev' */
 	if(!(buf=rindex(str, ':')))
@@ -187,11 +188,11 @@ void internet_hosts_to_ip(void)
 void init_igws(inet_gw ***igws, int **igws_counter, int levels)
 {
 	*igws=xmalloc(sizeof(inet_gw *) * levels);
-	memset(*igws, 0, sizeof(inet_gw *) * levels);
+	setzero(*igws, sizeof(inet_gw *) * levels);
 
 	if(igws_counter) {
 		*igws_counter=(int *)xmalloc(sizeof(int)*levels);
-		memset(*igws_counter, 0, sizeof(int)*levels);
+		setzero(*igws_counter, sizeof(int)*levels);
 	}
 }
 
@@ -287,7 +288,7 @@ void init_internet_gateway_search(void)
 
 	active_gws=0;
 	igw_multi_gw_disabled=0;
-	memset(multigw_nh, 0, sizeof(igw_nexthop)*MAX_MULTIPATH_ROUTES);
+	setzero(multigw_nh, sizeof(igw_nexthop)*MAX_MULTIPATH_ROUTES);
 
         if(!restricted_mode)
 		return;
@@ -345,7 +346,7 @@ void init_internet_gateway_search(void)
 	 * Get the default gateway route currently set in the kernel routing
 	 * table
 	 */
-	memset(&new_gw, 0, sizeof(inet_prefix));
+	setzero(&new_gw, sizeof(inet_prefix));
 	ret=rt_get_default_gw(&new_gw, new_gw_dev);
 
 	/* 
@@ -496,7 +497,7 @@ inet_gw *igw_add_node(inet_gw **igws, int *igws_counter,  int level,
 	node->flags|=MAP_IGW;
 
 	igw=xmalloc(sizeof(inet_gw));
-	memset(igw, 0, sizeof(inet_gw));
+	setzero(igw, sizeof(inet_gw));
 
 	memcpy(igw->ip, ip, MAX_IP_SZ);
 	igw->node=node;
@@ -924,7 +925,7 @@ void set_igw_nexhtop_inactive(igw_nexthop *igwn)
 
 void reset_igw_nexthop(igw_nexthop *igwn)
 {
-	memset(igwn, 0, sizeof(igw_nexthop)*MAX_MULTIPATH_ROUTES);
+	setzero(igwn, sizeof(igw_nexthop)*MAX_MULTIPATH_ROUTES);
 }
 
 /* 
@@ -970,7 +971,7 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 	to.len=to.bits=0;
 
 	nh=xmalloc(sizeof(struct nexthop)*MAX_MULTIPATH_ROUTES);
-	memset(nh, 0, sizeof(struct nexthop)*MAX_MULTIPATH_ROUTES);
+	setzero(nh, sizeof(struct nexthop)*MAX_MULTIPATH_ROUTES);
 	ni=0; /* nexthop index */
 
 	/* 
@@ -1061,7 +1062,7 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 						multigw_nh[x].tunl);
 			
 			if(!*nh[ni].dev) { 
-				memset(&nh_tmp, 0, sizeof(struct nexthop)*2);
+				setzero(&nh_tmp, sizeof(struct nexthop)*2);
 				memcpy(&nh_tmp[0], &nh[ni], sizeof(struct nexthop));
 				inet_ntohl(nh_tmp[0].gw.data, nh_tmp[0].gw.family);
 				
@@ -1209,7 +1210,7 @@ char *igw_build_bentry(u_char level, size_t *pack_sz, int *new_bblocks)
 	bblock_sz = BNODEBLOCK_SZ(level+1, 1);
 	total_bblocks_sz = bblock_sz * found_gws;
 	bblock=xmalloc(total_bblocks_sz);
-	memset(bblock, 0, total_bblocks_sz);
+	setzero(bblock, total_bblocks_sz);
 
 	/* 
 	 * Write each IGW in the bblock
@@ -1375,7 +1376,7 @@ char *pack_igws(inet_gw **igws, int *igws_counter, int levels, int *pack_sz)
 	int lvl;
 	char *pack, *buf;
 
-	memset(&hdr, 0, sizeof(struct inet_gw_pack_hdr));
+	setzero(&hdr, sizeof(struct inet_gw_pack_hdr));
 
 	/* 
 	 * Fill the pack header and calculate the total pack size 
@@ -1388,7 +1389,7 @@ char *pack_igws(inet_gw **igws, int *igws_counter, int levels, int *pack_sz)
 	}
 
 	buf=pack=xmalloc(*pack_sz);
-	memset(pack, 0, *pack_sz);
+	setzero(pack, *pack_sz);
 
 	memcpy(buf, &hdr, sizeof(struct inet_gw_pack_hdr));
 	ints_host_to_network(buf, inet_gw_pack_hdr_iinfo);
@@ -1441,7 +1442,7 @@ int unpack_igws(char *pack, size_t pack_sz,
 	for(lvl=0; lvl<hdr->levels; lvl++) {
 		for(i=0; i<hdr->gws[lvl]; i++) {
 			igw=xmalloc(sizeof(inet_gw));
-			memset(igw, 0, sizeof(inet_gw));
+			setzero(igw, sizeof(inet_gw));
 
 			unpack_inet_gw(buf, igw);
 			igw->node = node_from_pos(igw->gid, int_map);

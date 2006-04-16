@@ -23,6 +23,11 @@
 #include "crypto.h"
 #include "endianness.h"
 #include "llist.c"
+#include "snsd.h"
+
+/*
+ * ANDNA definitions
+ */
 
 #define ANDNA_MAX_BACKUP_GNODES		2
 #define ANDNA_MAX_QUEUE			5
@@ -41,12 +46,6 @@
 #define ANDNA_HASH_SZ			(MAX_IP_SZ)
 #define ANDNA_SIGNATURE_LEN		128
 
-#define SNSD_MAX_RECORDS		256	/* Number of maximum SNSD records
-						   which can be stored in an
-						   andna_cache */
-#define SNSD_MAX_QUEUE_RECORDS		1	/* There can be only one snsd 
-						   record for the queued hnames */
-
 /* Returns the number of nodes to be used in a backup_gnode */
 #define ANDNA_BACKUP_NODES(seeds)	({(seeds) > 8 ? 			\
 					  ((seeds)*32)/MAXGROUPNODE : (seeds);})
@@ -58,87 +57,17 @@
 	#define ANDNA_MIN_UPDATE_TIME 2
 #endif 
 
-
-
 /* 
  * * *  Cache stuff  * * *
  */
 
 /* * andna_cache flags * */
-#define ANDNA_BACKUP	1		/* We are a backup_node */
-#define ANDNA_COUNTER	(1<<1)		/* We are a counter_node */
-#define ANDNA_ROUNDED	(1<<2)		/* We are a rounded_hash_node */
-#define ANDNA_FULL	(1<<3)		/* Queue full */
-#define ANDNA_UPDATING	(1<<4)		/* The hname is being updated right
-					   now */
-
-/* * snsd_node flags * */
-#define SNSD_NODE_HNAME		1	/* A hname is associated in the 
-					   snsd record */
-#define SNSD_NODE_IP		(1<<1)  /* An IP is associated in the 
-					   snsd record */
-
-/*
- * snsd_node, snsd_service, snsd_prio
- *
- * They are three linked list. They are all orthogonal to each other.
- * The snsd_node llist is inside each snsd_prio struct which is inside each
- * snsd_service struct:
- * || service X          <->   service Y          <->   service Z  <-> ... ||
- *        |		           |			    |
- *        V		           V			    V
- *    snsd_prio_1-->node       snsd_prio_1-->node          ...-->...
- *        |		           |
- *        V		           V
- *    snsd_prio_2-->node	  ...-->node
- *    	  |
- *    	  V
- *    	 ...-->node
- *
- * Using this schema, we don't have to sort them, ever. The nodes are already
- * grouped by service and in each service by priority.
- * 
- * These llist are directly embedded in the andna_cache, lcl_cache and
- * rh_cache.
- * 
- * The andna_cache keeps all the SNSD nodes associated to the registered
- * hostname. The andna_cache doesn't need `snsd_node->pubkey'.
- */
-struct snsd_node
-{ 
-	LLIST_HDR	(struct snsd_node);
-	
-	u_int		record[MAX_IP_INT];	/* It can be the IP or the md5
-						   hash of the hname of the 
-						   SNSD node */
-	RSA		*pubkey;		/* pubkey of the snsd_node */
-	char		flags;			/* This will tell us what 
-						   `record' is */
-	
-	u_char		weight;
-};
-typedef struct snsd_node snsd_node;
-
-struct snsd_prio
-{
-	LLIST_HDR	(struct snsd_prio);
-	
-	u_char		prio;			/* Priority of the SNSD node */
-	
-	snsd_node	*snsd;
-};
-typedef struct snsd_prio snsd_prio;
-
-struct snsd_service
-{
-	LLIST_HDR	(struct snsd_service);
-
-	u_short		service;		/* Service number */
-	
-	snsd_node	*prio;
-};
-typedef struct snsd_service snsd_service;
-
+#define ANDNA_BACKUP		1		/* We are a backup_node */
+#define ANDNA_COUNTER		(1<<1)		/* We are a counter_node */
+#define ANDNA_ROUNDED		(1<<2)		/* We are a rounded_hash_node */
+#define ANDNA_FULL		(1<<3)		/* Queue full */
+#define ANDNA_UPDATING		(1<<4)		/* The hname is being updated 
+						   right now */
 
 /* 
  * andna_cache_queue
@@ -150,14 +79,14 @@ struct andna_cache_queue
 	LLIST_HDR	(struct andna_cache_queue);
 		
 	time_t		timestamp;
-	u_short		hname_updates;		/* number of hname's updates */
+	u_short		hname_updates;		/* numbers of hname's updates */
 	char		pubkey[ANDNA_PKEY_LEN];
 
-	u_short		snsd_counter;		/* # of `snsd' structs */
-	snsd_service	*snsd;
+	u_short		snsd_counter;		/* # of `snsd' nodes */
+	snsd_service	*service;
 };
 typedef struct andna_cache_queue andna_cache_queue;
-INT_INFO andna_cache_queue_body_iinfo = { 3, /* `rip' is ignored */
+INT_INFO andna_cache_queue_body_iinfo = { 3,
 					  { INT_TYPE_32BIT, INT_TYPE_16BIT, INT_TYPE_16BIT },
 					  { 0, sizeof(time_t), 
 						  sizeof(time_t)+sizeof(u_short)+ANDNA_PKEY_LEN },
@@ -181,9 +110,9 @@ struct andna_cache
 						   The first is the active one */
 };
 typedef struct andna_cache andna_cache;
-INT_INFO andna_cache_body_iinfo = { 2, { INT_TYPE_32BIT, INT_TYPE_16BIT },
-				    { 0, MAX_IP_SZ+sizeof(char) },
-				    { MAX_IP_INT, 1 }
+INT_INFO andna_cache_body_iinfo = { 1, { INT_TYPE_16BIT },
+				    { MAX_IP_SZ+sizeof(char) },
+				    { 1 }
 				  };
 
 /* part of the counter cache, see below */
@@ -196,10 +125,10 @@ struct counter_c_hashes
 	int		hash[MAX_IP_INT];
 };
 typedef struct counter_c_hashes counter_c_hashes;
-INT_INFO counter_c_hashes_body_iinfo = { 3, 
-					 { INT_TYPE_32BIT, INT_TYPE_16BIT, INT_TYPE_32BIT },
-					 { 0, sizeof(time_t), sizeof(time_t)+sizeof(u_short) },
-					 { 1, 1, MAX_IP_INT }
+INT_INFO counter_c_hashes_body_iinfo = { 2, 
+					 { INT_TYPE_32BIT, INT_TYPE_16BIT },
+					 { 0, sizeof(time_t) },
+					 { 1, 1 }
 				       };
 
 /*
@@ -323,7 +252,14 @@ int rhc_counter;
 
 
 /*
- *  * * *  ANDNA cache packet stuff  * * * 
+ * 
+ *  *  *  *  Package stuff  *  *  * 
+ *  
+ */
+
+
+/*
+ *  * * * lcl cache package * * *
  */
 
 struct lcl_keyring_pkt_hdr
@@ -332,7 +268,7 @@ struct lcl_keyring_pkt_hdr
 	u_int		pkey_len;
 }_PACKED_;
 /* 
- * the rest of the hdr is:
+ * the rest of the pkt is:
  * 
  *	char		privkey[hdr.skey_len];
  *	char		pubkey[hdr.pkey_len];
@@ -364,11 +300,8 @@ INT_INFO lcl_cache_pkt_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
  *	char		hostname[strlen(hostname)+1];  * null terminated *
  *	u_short		hname_updates;
  *	time_t          timestamp;
- *	u_short		snsd_counter;
- *	snsd_node	snsd[snsd_counter];	* `snsd_node_body_iinfo' must 
- *					        * be used to convert each 
- *					        * member of the array
- *
+ *	u_short		snsd_sz;
+ *	char		snsd[snsd_sz];	
  * } body[ hdr.tot_caches ];
  * 
  */
@@ -379,6 +312,10 @@ INT_INFO lcl_cache_pkt_body_iinfo = { 3, { INT_TYPE_16BIT, INT_TYPE_32BIT, INT_T
 					      IINFO_DYNAMIC_VALUE },
 				      { 1, 1, 1}
 				    };
+
+/*
+ *  * * * andna cache package * * *
+ */
 
 struct andna_cache_pkt_hdr
 {
@@ -395,15 +332,13 @@ INT_INFO andna_cache_pkt_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
  * 	
  * acq->timestamp is the difference of the current time with `acq->timestamp'
  * itself, and it is stored as a uint32_t not a time_t!
- * The same is for acq->snsd->last_update
+ * The same is for acq->snsd->last_update.
  */
-#define ACQ_PACK_SZ(snsd_counter)	(MAX_IP_SZ + sizeof(time_t) + 		\
-					   sizeof(u_short)*2 + ANDNA_PKEY_LEN + \
-					   (snsd_counter)*SNSD_PACK_SZ)
+#define ACQ_PACK_SZ(snsd_pack_sz)	(sizeof(time_t) + sizeof(u_short)*2 + \
+					 ANDNA_PKEY_LEN + (snsd_pack_sz))
 #define ACACHE_BODY_PACK_SZ		(ANDNA_HASH_SZ + sizeof(char) + 	\
 					   sizeof(u_short))
-#define ACACHE_PACK_SZ(queue_counter)	( (ACQ_PACK_SZ*(queue_counter)) +	\
-					   ACACHE_BODY_PACK_SZ)
+#define ACACHE_PACK_SZ(acq_pack_sz)	( (acq_pack_sz) + ACACHE_BODY_PACK_SZ)
 
 /*
  * The counter cache pkt is similar to the andna_cache_pkt, it is completely
@@ -416,14 +351,15 @@ struct counter_c_pkt_hdr
 INT_INFO counter_c_pkt_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
 #define COUNTER_CACHE_HASHES_PACK_SZ	(sizeof(time_t) + sizeof(u_short) +	\
 						ANDNA_HASH_SZ)
-#define COUNTER_CACHE_BODY_PACK_SZ	(ANDNA_PKEY_LEN + sizeof(char) + 	\
+#define COUNTER_CACHE_BODY_PACK_SZ	(ANDNA_PKEY_LEN + sizeof(char)    + 	\
 						sizeof(u_short))
 #define COUNTER_CACHE_PACK_SZ(hashes)	((COUNTER_CACHE_HASHES_PACK_SZ*(hashes))\
 					 + COUNTER_CACHE_BODY_PACK_SZ)
 
 /* 
- * Resolved hostnames cache pkt.
+ *  * * * Resolved hostnames cache pkt. * * *
  */
+
 struct rh_cache_pkt_hdr
 {
 	u_short		tot_caches;		/* How many lcl structs there 
@@ -436,9 +372,8 @@ INT_INFO rh_cache_pkt_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
  *	u_int		hash;
  *	char		flags;
  *	time_t		timestamp;
- *	int		ip[MAX_IP_INT];
- *	u_short		snsd_counter;
- *	snsd_node	snsd[snsd_counter];
+ *	u_short		snsd_sz;
+ *	char		snsd[snsd_sz];	
  * } body[ hdr.tot_caches ];
  */
 #define RH_CACHE_BODY_PACK_SZ(snsd_counter)	(sizeof(u_int)+sizeof(time_t)+ \
@@ -448,7 +383,7 @@ INT_INFO rh_cache_pkt_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
 INT_INFO rh_cache_pkt_body_iinfo = { 3,
 				    { INT_TYPE_32BIT, INT_TYPE_32BIT, INT_TYPE_16BIT },
 				    { 0, sizeof(u_int)+sizeof(char), 
-					    sizeof(u_int)+sizeof(char)+sizeof(time_t)+MAX_IP_SZ },
+					    sizeof(u_int)+sizeof(char)+sizeof(time_t) },
 				    { 1, 1, 1 }
 				   };
 

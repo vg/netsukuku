@@ -18,6 +18,7 @@
 
 #include "includes.h"
 
+#include "misc.h"
 #include "inet.h"
 #include "request.h"
 #include "if.h"
@@ -48,7 +49,7 @@ int prepare_listen_socket(int family, int socktype, u_short port,
 	char strport[NI_MAXSERV];
 	int err, s;
 
-	memset(&hints, 0, sizeof(struct addrinfo));
+	setzero(&hints, sizeof(struct addrinfo));
 	hints.ai_family=family;
 	hints.ai_socktype=socktype;
 	hints.ai_flags=AI_PASSIVE;
@@ -198,7 +199,7 @@ void *udp_daemon(void *passed_argv)
 	
 	memcpy(&argv, passed_argv, sizeof(struct udp_daemon_argv));
 	udp_port=argv.port;
-	memset(&exec_pkt_argv, 0, sizeof(struct udp_exec_pkt_argv));
+	setzero(&exec_pkt_argv, sizeof(struct udp_exec_pkt_argv));
 
 	if(argv.flags & UDP_THREAD_FOR_EACH_PKT) {
 		pthread_attr_init(&t_attr);
@@ -247,7 +248,7 @@ void *udp_daemon(void *passed_argv)
 			if(!FD_ISSET(dev_sk[i], &fdset))
 				continue;
 
-			memset(&rpkt, 0, sizeof(PACKET));
+			setzero(&rpkt, sizeof(PACKET));
 			pkt_addsk(&rpkt, my_family, dev_sk[i], SKT_UDP);
 			pkt_add_dev(&rpkt, ifs, 0);
 			rpkt.flags=MSG_WAITALL;
@@ -390,7 +391,7 @@ void *tcp_daemon(void *door)
 				continue;
 			}
 
-			memset(&rpkt, 0, sizeof(PACKET));
+			setzero(&rpkt, sizeof(PACKET));
 			pkt_addsk(&rpkt, my_family, fd, SKT_TCP);
 			pkt_add_dev(&rpkt, ifs, 0);
 			rpkt.flags=MSG_WAITALL;

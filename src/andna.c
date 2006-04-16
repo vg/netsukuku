@@ -170,9 +170,9 @@ void andna_init(void)
 			loginfo("Internet hostname resolution is disabled");
 		}
 	
-	memset(last_reg_pkt_id, 0, sizeof(int)*ANDNA_MAX_FLOODS);
-	memset(last_counter_pkt_id, 0, sizeof(int)*ANDNA_MAX_FLOODS);
-	memset(last_spread_acache_pkt_id, 0, sizeof(int)*ANDNA_MAX_FLOODS);
+	setzero(last_reg_pkt_id, sizeof(int)*ANDNA_MAX_FLOODS);
+	setzero(last_counter_pkt_id, sizeof(int)*ANDNA_MAX_FLOODS);
+	setzero(last_spread_acache_pkt_id, sizeof(int)*ANDNA_MAX_FLOODS);
 
 	/* Modify /etc/resolv.conf if requested */
 	andna_resolvconf_modify();
@@ -201,7 +201,7 @@ void andna_close(void)
  */
 void andna_hash_by_family(int family, void *msg, u_int hash[MAX_IP_INT])
 {
-	memset(hash, 0, ANDNA_HASH_SZ);
+	setzero(hash, ANDNA_HASH_SZ);
 	
 	if(family==AF_INET)
 		hash[0] = fnv_32_buf((u_char *)msg, ANDNA_HASH_SZ, 
@@ -214,7 +214,7 @@ void andna_hash_by_family(int family, void *msg, u_int hash[MAX_IP_INT])
  * andna_hash: This functions makes a digest of `msg' which is `len' bytes
  * big and stores it in `hash'. If family is equal to AF_INET, in `ip_hash' it
  * stores the 32bit hash of the `hash', otherwise it just copies `hash' to
- * `hash_ip'.
+ * `ip_hash'.
  * 
  * Note: `hash' is a single string of `MAX_IP_INT'*4 bytes, it is the MD5 hash
  * of `msg', therefore do not attempt to convert it to network order.
@@ -571,9 +571,9 @@ int andna_register_hname(lcl_cache *alcl)
 	ssize_t err;
 	time_t  cur_t;
 
-	memset(&req, 0, sizeof(req));
-	memset(&pkt, 0, sizeof(pkt));
-	memset(&rpkt, 0, sizeof(rpkt));
+	setzero(&req, sizeof(req));
+	setzero(&pkt, sizeof(pkt));
+	setzero(&rpkt, sizeof(rpkt));
 	cur_t=time(0);
 
 	if(alcl->flags & ANDNA_UPDATING) 
@@ -853,7 +853,7 @@ int andna_check_counter(PACKET pkt)
 	const char *ntop;
 	u_char forwarded_pkt=0;
 
-	memset(&rpkt, 0, sizeof(PACKET));
+	setzero(&rpkt, sizeof(PACKET));
 	req=(struct andna_reg_pkt *)pkt.msg;
 
 	if(pkt.hdr.flags & BCAST_PKT)
@@ -1097,9 +1097,9 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	int ret=0;
 	ssize_t err;
 
-	memset(&req, 0, sizeof(req));
-	memset(&pkt, 0, sizeof(pkt));
-	memset(&rpkt, 0, sizeof(pkt));
+	setzero(&req, sizeof(req));
+	setzero(&pkt, sizeof(pkt));
+	setzero(&rpkt, sizeof(pkt));
 
 
 	/*
@@ -1161,7 +1161,7 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	pkt.msg=xmalloc(pkt.hdr.sz);
 	memcpy(pkt.msg, &req, pkt.hdr.sz);
 	
-	memset(&rpkt, 0, sizeof(PACKET));
+	setzero(&rpkt, sizeof(PACKET));
 	err=send_rq(&pkt, 0, ANDNA_RESOLVE_HNAME, 0, ANDNA_RESOLVE_REPLY, 1, &rpkt);
 	if(err==-1) {
 		error("andna_resolve_hname(): Resolution of \"%s\" failed.", hname);
@@ -1298,7 +1298,7 @@ reply_resolve_rq:
 	debug(DBG_SOFT, "Resolve request 0x%x accepted", rpkt.hdr.id);
 	
 	/* Write the reply */
-	memset(&reply, 0, sizeof(reply));
+	setzero(&reply, sizeof(reply));
 	memcpy(reply.ip, ac->acq->rip, MAX_IP_SZ);
 	reply.timestamp=time(0) - ac->acq->timestamp;
 
@@ -1352,8 +1352,8 @@ int andna_reverse_resolve(inet_prefix ip, char ***hostnames)
 	char **hnames, *buf, *reply_body;
 	ssize_t err;
 
-	memset(&pkt, 0, sizeof(PACKET));
-	memset(&rpkt, 0, sizeof(PACKET));
+	setzero(&pkt, sizeof(PACKET));
+	setzero(&rpkt, sizeof(PACKET));
 	inet_copy(&to, &ip);
 	
 	ntop=inet_to_str(to);
@@ -1446,7 +1446,7 @@ int andna_recv_rev_resolve_rq(PACKET rpkt)
 	
 	lcl_cache *alcl=andna_lcl, *lcl_hnames[ANDNA_MAX_HOSTNAMES];
 
-	memset(&pkt, 0, sizeof(PACKET));
+	setzero(&pkt, sizeof(PACKET));
 
 	ntop=inet_to_str(rpkt.from);
 	debug(DBG_INSANE, "Andna reverse resolve request received 0x%x from %s",
@@ -1747,7 +1747,7 @@ int put_single_acache(PACKET rpkt)
 
 	/* Exctract the `ac' cache from the llist, so we can pack it alone */
 	ac_tmp=xmalloc(sizeof(andna_cache));
-	memset(ac_tmp, 0, sizeof(andna_cache));
+	setzero(ac_tmp, sizeof(andna_cache));
 	list_copy(ac_tmp, ac);
 	pkt.msg=pack_andna_cache(ac_tmp, &pkt_sz);
 	pkt.hdr.sz=pkt_sz;
@@ -1785,7 +1785,7 @@ int spread_single_acache(u_int hash[MAX_IP_INT])
 	PACKET pkt;
 	struct spread_acache_pkt req;
 
-	memset(&pkt, 0, sizeof(PACKET));
+	setzero(&pkt, sizeof(PACKET));
 	memcpy(req.hash, hash, MAX_IP_SZ);
 	
 	ints_host_to_network(&req, spread_acache_pkt_info);
@@ -2019,7 +2019,7 @@ void *andna_hook(void *null)
 	map_node *node;
 	int e=0, i;
 	
-	memset(&to, 0, sizeof(inet_prefix));
+	setzero(&to, sizeof(inet_prefix));
 
 	/* Block these requests */
         op_filter_set(ANDNA_SPREAD_SACACHE);
@@ -2193,7 +2193,7 @@ void *andna_main(void *null)
 	pthread_attr_init(&t_attr);
 	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
 
-	memset(&ud_argv, 0, sizeof(struct udp_daemon_argv));
+	setzero(&ud_argv, sizeof(struct udp_daemon_argv));
 	port=xmalloc(sizeof(u_short));
 
 	pthread_mutex_init(&udp_daemon_lock, 0);

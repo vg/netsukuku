@@ -59,7 +59,7 @@ void pkts_init(interface *ifs, int ifs_n, int queue_init)
 void pkt_addfrom(PACKET *pkt, inet_prefix *from)
 {
 	if(!from)
-		memset(&pkt->from, 0, sizeof(inet_prefix));
+		setzero(&pkt->from, sizeof(inet_prefix));
 	else
 		inet_copy(&pkt->from, from);
 }
@@ -67,7 +67,7 @@ void pkt_addfrom(PACKET *pkt, inet_prefix *from)
 void pkt_addto(PACKET *pkt, inet_prefix *to)
 {
 	if(!to)
-		memset(&pkt->to, 0, sizeof(inet_prefix));
+		setzero(&pkt->to, sizeof(inet_prefix));
 	else
 		inet_copy(&pkt->to, to);
 }
@@ -103,7 +103,7 @@ void pkt_addtimeout(PACKET *pkt, u_int timeout, int recv, int send)
 void pkt_addhdr(PACKET *pkt, pkt_hdr *hdr)
 {
 	if(!hdr)
-		memset(&pkt->hdr, 0, sizeof(pkt_hdr));
+		setzero(&pkt->hdr, sizeof(pkt_hdr));
 	else
 		memcpy(&pkt->hdr, hdr, sizeof(pkt_hdr));
 }
@@ -231,8 +231,8 @@ ssize_t pkt_recv(PACKET *pkt)
 	char buf[MAXMSGSZ];
 
 	if(pkt->sk_type==SKT_UDP || pkt->sk_type==SKT_BCAST) {
-		memset(buf, 0, MAXMSGSZ);
-		memset(&from, 0, sizeof(struct sockaddr));
+		setzero(buf, MAXMSGSZ);
+		setzero(&from, sizeof(struct sockaddr));
 		
 		if(pkt->family == AF_INET)
 			fromlen=sizeof(struct sockaddr_in);
@@ -751,7 +751,7 @@ int pkt_q_wait_recv(int id, inet_prefix *from, PACKET *rpkt, pkt_queue **ret_pq)
 
 	
 	pq=xmalloc(sizeof(pkt_queue));
-	memset(pq, 0, sizeof(pkt_queue));
+	setzero(pq, sizeof(pkt_queue));
 
 	pq_ptr=xmalloc(sizeof(pkt_queue *));
 	*pq_ptr=pq;

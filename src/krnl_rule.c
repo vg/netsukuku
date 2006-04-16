@@ -26,6 +26,7 @@
 #include "inet.h"
 #include "krnl_route.h"
 #include "krnl_rule.h"
+#include "misc.h"
 #include "xmalloc.h"
 #include "log.h"
 
@@ -65,7 +66,7 @@ int rule_exec(int rtm_cmd, inet_prefix *from, inet_prefix *to, char *dev,
 	} req;
 	struct rtnl_handle rth;
 
-	memset(&req, 0, sizeof(req));
+	setzero(&req, sizeof(req));
 	table = !table ? RT_TABLE_MAIN : table;
 	
 	req.nh.nlmsg_type = rtm_cmd;

@@ -34,105 +34,13 @@ void andna_caches_init(int family)
 {
 	net_family = family;
 
-	memset(&lcl_keyring, 0, sizeof(lcl_cache_keyring));
+	setzero(&lcl_keyring, sizeof(lcl_cache_keyring));
 
 	andna_lcl=(lcl_cache *)clist_init(&lcl_counter);
 	andna_c=(andna_cache *)clist_init(&andna_c_counter);
 	andna_counter_c=(counter_c *)clist_init(&cc_counter);
 	andna_rhc=(rh_cache *)clist_init(&rhc_counter);
 }
-
-/*
- *  *  *  SNSD structs functions  *  *  *
- */
-
-snsd_service *snsd_find_service(snsd_service *sns, u_short service)
-{
-	list_for(sns)
-		if(sns->service == service)
-			return sns;
-	return 0;
-}
-
-snsd_service *snsd_add_service(snsd_service **head, u_short service)
-{
-	snsd_service *sns, *new;
-
-	if((sns=snsd_find_service(*head, service)))
-		return sns;
-
-	new=xmalloc(sizeof(snsd_service));
-	memset(new, 0, sizeof(snsd_service));
-	new->service=service;
-	
-	*head=list_add(*head, new);
-
-	return new;
-}
-
-snsd_prio *snsd_find_prio(snsd_prio *snp, u_char prio)
-{
-	list_for(snp)
-		if(snp->prio == prio)
-			return snp;
-	return 0;
-}
-
-snsd_prio *snsd_add_prio(snsd_prio **head, u_char prio)
-{
-	snsd_prio *snp, *new;
-
-	if((snp=snsd_find_prio(*head, prio)))
-		return snp;
-
-	new=xmalloc(sizeof(snsd_prio));
-	memset(new, 0, sizeof(snsd_prio));
-	new->prio=prio;
-	
-	*head=list_add(*head, new);
-
-	return new;
-}
-
-snsd_node *snsd_find_node_by_record(snsd_node *snd, u_int record[MAX_IP_INT])
-{
-	list_for(snd)
-		if(!memcpy(snd->record, record, MAX_IP_SZ))
-			return snd;
-	return 0;
-}
-
-/*
- * snsd_add_node
- *
- * It searches for a snsd_node struct which has the same `record' of the
- * argument. If it is found, it is returned, otherwise it adds a new
- * snsd_node struct in the `*head' llist and returns it.
- * `max_records' is the max number of records allowed in the llist. If no
- * empty place are left to add the new struct, 0 is returned.
- */
-snsd_node *snsd_add_node(snsd_node **head, u_short *counter, 
-			 u_short max_records, u_int record[MAX_IP_INT])
-{
-	snsd_node *snd;
-	
-	if((snd=snsd_find_node_by_record(*head, record)))
-		return snd;
-
-	if(*counter >= max_records)
-		/* The llist is full */
-		return 0;
-
-	snd=xmalloc(sizeof(snsd_node));
-	memset(snd, 0, sizeof(snsd_node));
-
-	memcpy(snd->record, record, MAX_IP_SZ);
-
-	clist_add(head, counter, snd);
-
-	return snd;
-}
-
 
 /*
  * 
@@ -148,7 +56,7 @@ snsd_node *snsd_add_node(snsd_node **head, u_short *counter,
  */
 int lcl_new_keyring(lcl_cache_keyring *keyring)
 {
-	memset(keyring, 0, sizeof(lcl_cache_keyring));
+	setzero(keyring, sizeof(lcl_cache_keyring));
 	
 	if(!keyring->priv_rsa) {
 		loginfo("Generating a new keyring for the future ANDNA requests.");
@@ -175,7 +83,56 @@ void lcl_destroy_keyring(lcl_cache_keyring *keyring)
 	if(keyring->privkey)
 		xfree(keyring->privkey);
 	
-	memset(keyring, 0, sizeof(lcl_cache_keyring));
+	setzero(keyring, sizeof(lcl_cache_keyring));
+}
+
+/*
+ * lcl_cache_new: builds a new lcl_cache generating a new rsa key pair and
+ * setting the hostname in the struct 
+ */
+
+/*
+ * 
+ *  *  *  *  Local Cache functions  *  *  *
+ *  
+ */
+
+/*
+ * lcl_new_keyring
+ *
+ * If the keyring of the local cache is null, it generates a new one.
+ * It returns 1 if a new keyring has been generated.
+ */
+int lcl_new_keyring(lcl_cache_keyring *keyring)
+{
+	setzero(keyring, sizeof(lcl_cache_keyring));
+	
+	if(!keyring->priv_rsa) {
+		loginfo("Generating a new keyring for the future ANDNA requests.");
+		/* Generate the new key pair for the first time */
+		keyring->priv_rsa = genrsa(ANDNA_PRIVKEY_BITS, &keyring->pubkey, 
+				&keyring->pkey_len, &keyring->privkey, &keyring->skey_len);
+		return 1;
+	}
+	
+	return 0;
+}
+
+/*
+ * lcl_destroy_keyring
+ *
+ * destroys accurately the keyring ^_^ 
+ */
+void lcl_destroy_keyring(lcl_cache_keyring *keyring)
+{
+	if(keyring->priv_rsa)
+		RSA_free(keyring->priv_rsa);
+	if(keyring->pubkey)
+		xfree(keyring->pubkey);
+	if(keyring->privkey)
+		xfree(keyring->privkey);
+	
+	setzero(keyring, sizeof(lcl_cache_keyring));
 }
 
 /*
@@ -187,7 +144,7 @@ lcl_cache *lcl_cache_new(char *hname)
 	lcl_cache *alcl;
 	
 	alcl=(lcl_cache *)xmalloc(sizeof(lcl_cache));
-	memset(alcl, 0, sizeof(lcl_cache));
+	setzero(alcl, sizeof(lcl_cache));
 
 	alcl->hostname = xstrdup(hname);
 	alcl->hash = fnv_32_buf(hname, strlen(hname), FNV1_32_INIT);
@@ -244,8 +201,8 @@ lcl_cache *lcl_cache_find_32hash(lcl_cache *alcl, u_int hash)
 /*
  * lcl_get_registered_hnames
  * 
- * In `hostnames' is stored a pointer to a malloced array of pointers. Each
- * pointer points to a malloced hostname.
+ * In `hostnames' is stored a pointer to a mallocated array of pointers. Each
+ * pointer points to a mallocated hostname.
  * The hostnames stored in the array are taken from the `alcl' llist. Only
  * the hnames that have been registered are considered.
  * The number of hnames stored in `hostnames' is returned.
@@ -305,6 +262,9 @@ andna_cache_queue *ac_queue_findpubk(andna_cache *ac, char *pubk)
 andna_cache_queue *ac_queue_add(andna_cache *ac, inet_prefix rip, char *pubkey)
 {
 	andna_cache_queue *acq;
+	snsd_service *sns;
+	snsd_prio *snp;
+	snsd_node *snd;
 	time_t cur_t;
 	int update=0;
 	
@@ -321,14 +281,21 @@ andna_cache_queue *ac_queue_add(andna_cache *ac, inet_prefix rip, char *pubkey)
 			return 0;
 
 		acq=xmalloc(sizeof(andna_cache_queue));
-		memset(acq, 0, sizeof(andna_cache_queue));
+		setzero(acq, sizeof(andna_cache_queue));
 		
 		memcpy(acq->pubkey, pubkey, ANDNA_PKEY_LEN);
 		clist_append(&ac->acq, 0, &ac->queue_counter, acq);
 	} else
 		update=1;
-	
-	memcpy(&acq->rip, rip.data, MAX_IP_SZ);
+
+	sns=snsd_add_service(&acq->service, SNSD_DEFAULT_SERVICE);
+	snp=snsd_add_prio(&sns->prio, SNSD_DEFAULT_PRIO);
+	snd=snsd_add_first_node(&snp->node, &acq->snsd_counter, 1, rip);
+	snd=snsd_add_node(&snp->node, 1, 0);
+	memcpy(snd->record, rip.data, MAX_IP_SZ);
+	snd->flags|=SNSD_NODE_IP;
+	snd->weight=SNSD_DEFAULT_WEIGHT;
+	/*TODO: CONTINUE HERE */
 
 	if(ac->queue_counter >= ANDNA_MAX_QUEUE)
 		ac->flags|=ANDNA_FULL;
@@ -427,7 +394,7 @@ andna_cache *andna_cache_addhash(int hash[MAX_IP_INT])
 	
 	if(!(ac=andna_cache_findhash(hash))) {
 		ac=xmalloc(sizeof(andna_cache));
-		memset(ac, 0, sizeof(andna_cache));
+		setzero(ac, sizeof(andna_cache));
 		memcpy(ac->hash, hash, ANDNA_HASH_SZ);
 
 		clist_add(&andna_c, &andna_c_counter, ac);
@@ -501,7 +468,7 @@ counter_c_hashes *cc_hashes_add(counter_c *cc, int hash[MAX_IP_INT])
 			return 0;
 		
 		cch=xmalloc(sizeof(counter_c_hashes));
-		memset(cch, 0, sizeof(counter_c_hashes));
+		setzero(cch, sizeof(counter_c_hashes));
 		memcpy(cch->hash, hash, ANDNA_HASH_SZ);
 
 		clist_add(&cc->cch, &cc->hashes, cch);
@@ -583,7 +550,7 @@ counter_c *counter_c_add(inet_prefix *rip, char *pubkey)
 
 	if(!(cc=counter_c_findpubk(pubkey))) {
 		cc=xmalloc(sizeof(counter_c));
-		memset(cc, 0, sizeof(counter_c));
+		setzero(cc, sizeof(counter_c));
 
 		memcpy(cc->pubkey, pubkey, ANDNA_PKEY_LEN);
 		clist_add(&andna_counter_c, &cc_counter, cc);
@@ -635,7 +602,7 @@ rh_cache *rh_cache_new(char *hname, time_t timestamp, inet_prefix *ip)
 	rh_cache *rhc;
 	
 	rhc=xmalloc(sizeof(rh_cache));
-	memset(rhc, 0, sizeof(rh_cache));
+	setzero(rhc, sizeof(rh_cache));
 	
 	rhc->hash=fnv_32_buf(hname, strlen(hname), FNV1_32_INIT);
 	rhc->timestamp=timestamp;
@@ -912,7 +879,7 @@ lcl_cache *unpack_lcl_cache(char *pack, size_t pack_sz, int *counter)
 			ints_network_to_host(buf, body_iinfo);
 
 			alcl=xmalloc(sizeof(lcl_cache));
-			memset(alcl, 0, sizeof(lcl_cache));
+			setzero(alcl, sizeof(lcl_cache));
 			alcl->hostname=xstrdup(buf);
 			alcl->hash=fnv_32_buf(alcl->hostname, 
 					strlen(alcl->hostname), FNV1_32_INIT);
@@ -1047,7 +1014,7 @@ andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter)
 				goto finish; /* overflow */
 
 			ac=xmalloc(sizeof(andna_cache));
-			memset(ac, 0, sizeof(andna_cache));
+			setzero(ac, sizeof(andna_cache));
 			
 			ints_network_to_host(buf, andna_cache_body_iinfo);
 			
@@ -1066,7 +1033,7 @@ andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter)
 
 			for(e=0; e < ac->queue_counter; e++) {
 				acq=xmalloc(sizeof(andna_cache_queue));
-				memset(acq, 0, sizeof(andna_cache_queue));
+				setzero(acq, sizeof(andna_cache_queue));
 				
 				ints_network_to_host(buf, andna_cache_queue_body_iinfo);
 				
@@ -1205,7 +1172,7 @@ counter_c *unpack_counter_cache(char *pack, size_t pack_sz, int *counter)
 				goto finish; /* We don't want to overflow */
 
 			cc=xmalloc(sizeof(counter_c));
-			memset(cc, 0, sizeof(counter_c));
+			setzero(cc, sizeof(counter_c));
 			
 			ints_network_to_host(buf, counter_c_body_iinfo);
 			
@@ -1225,7 +1192,7 @@ counter_c *unpack_counter_cache(char *pack, size_t pack_sz, int *counter)
 			
 			for(e=0; e < cc->hashes; e++) {
 				cch=xmalloc(sizeof(counter_c_hashes));
-				memset(cch, 0, sizeof(counter_c_hashes));
+				setzero(cch, sizeof(counter_c_hashes));
 				
 				ints_network_to_host(buf, counter_c_hashes_body_iinfo);
 
@@ -1345,7 +1312,7 @@ rh_cache *unpack_rh_cache(char *pack, size_t pack_sz, int *counter)
 			ints_network_to_host(buf, rh_cache_pkt_body_iinfo);
 			
 			rhc=xmalloc(sizeof(rh_cache));
-			memset(rhc, 0, sizeof(rh_cache));
+			setzero(rhc, sizeof(rh_cache));
 			
 			memcpy(&rhc->hash, buf, sizeof(u_int));
 			buf+=sizeof(u_int);
@@ -1746,7 +1713,7 @@ int load_hostnames(char *file, lcl_cache **old_alcl_head, int *old_alcl_counter)
 
 	cur_t=time(0);
 	while(!feof(fd) && i < ANDNA_MAX_HOSTNAMES) {
-		memset(buf, 0, ANDNA_MAX_HNAME_LEN+1);
+		setzero(buf, ANDNA_MAX_HNAME_LEN+1);
 		fgets(buf, ANDNA_MAX_HNAME_LEN, fd);
 		if(feof(fd))
 			break;

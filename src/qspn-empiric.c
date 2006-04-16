@@ -338,7 +338,7 @@ char *pack_map(map_node *map, int *addr_map, int maxgroupnode,
 	if(!addr_map)
 		addr_map=(int *)map;
 	
-	memset(&imap_hdr, 0, sizeof(struct int_map_hdr));
+	setzero(&imap_hdr, sizeof(struct int_map_hdr));
 	if(map) {
 		/*rblock packing*/
 		rblock=map_get_rblock(map, addr_map, maxgroupnode, &count);
@@ -628,7 +628,7 @@ void init_q_queue(map_node *map)
 	for(i=0; i<MAXGROUPNODE; i++) {
 		if(map[i].links) {
 			qspn_q[i]=xmalloc(sizeof(struct qspn_queue)*map[i].links);
-			memset(qspn_q[i], 0, sizeof(struct qspn_queue));
+			setzero(qspn_q[i], sizeof(struct qspn_queue));
 		}
 	}
 }
@@ -660,7 +660,7 @@ int store_tracer_pkt(struct q_opt *qopt)
 		pkt_db[to]=xrealloc(pkt_db[to], sizeof(struct q_opt *)*pkt_dbc[to]);
 
 	pkt_db[to][pkt]=xmalloc(sizeof(struct q_pkt));
-	memset(pkt_db[to][pkt], 0, sizeof(struct q_pkt));
+	setzero(pkt_db[to][pkt], sizeof(struct q_pkt));
 	pkt_db[to][pkt]->q_id=qopt->q.q_id;
 	pkt_db[to][pkt]->q_sub_id=qopt->q.q_sub_id;
 	pkt_db[to][pkt]->from=qopt->q.from;
@@ -707,7 +707,7 @@ void *send_qspn_backpro(void *argv)
 			node_stat[to].total_pkts++;
 
 			nopt=xmalloc(sizeof(struct q_opt));
-			memset(nopt, 0, sizeof(struct q_opt));
+			setzero(nopt, sizeof(struct q_opt));
 			nopt->sleep=int_map[to].r_node[x].rtt.tv_usec;
 			nopt->q.to=dst;
 			nopt->q.from=to;
@@ -756,7 +756,7 @@ void *send_qspn_reply(void *argv)
 		node_stat[to].total_pkts++;
 
 		nopt=xmalloc(sizeof(struct q_opt));
-		memset(nopt, 0, sizeof(struct q_opt));
+		setzero(nopt, sizeof(struct q_opt));
 		nopt->sleep=int_map[to].r_node[x].rtt.tv_usec;
 		nopt->q.to=dst;
 		nopt->q.from=to;
@@ -823,7 +823,7 @@ void *send_qspn_open(void *argv)
 		node_stat[to].total_pkts++;
 
 		nopt=xmalloc(sizeof(struct q_opt));
-		memset(nopt, 0, sizeof(struct q_opt));
+		setzero(nopt, sizeof(struct q_opt));
 		nopt->q.q_id=qopt->q.q_id;
 		nopt->q.q_sub_id=sub_id;
 		nopt->q.from=to;
@@ -885,7 +885,7 @@ void *send_qspn_pkt(void *argv)
 			node_stat[to].total_pkts++;
 
 			nopt=xmalloc(sizeof(struct q_opt));
-			memset(nopt, 0, sizeof(struct q_opt));
+			setzero(nopt, sizeof(struct q_opt));
 			nopt->sleep=int_map[to].r_node[x].rtt.tv_usec;
 			nopt->q.q_id=pkt_db[to][pkt]->q_id;
 			nopt->q.q_sub_id=to;
@@ -931,7 +931,7 @@ void *send_qspn_pkt(void *argv)
 			node_stat[to].total_pkts++;
 
 			nopt=xmalloc(sizeof(struct q_opt));
-			memset(nopt, 0, sizeof(struct q_opt));
+			setzero(nopt, sizeof(struct q_opt));
 			nopt->sleep=int_map[to].r_node[x].rtt.tv_usec;
 			nopt->q.to=dst;
 			nopt->q.from=to;
@@ -965,7 +965,7 @@ void *send_qspn_pkt(void *argv)
 		node_stat[to].total_pkts++;
 
 		nopt=xmalloc(sizeof(struct q_opt));
-		memset(nopt, 0, sizeof(struct q_opt));
+		setzero(nopt, sizeof(struct q_opt));
 		nopt->q.from=to;
 		nopt->q.to=dst;
 		nopt->q.routes=pkt_db[to][pkt]->routes;
@@ -1149,12 +1149,12 @@ void print_data(char *file)
 void clear_all(void)
 {
 	fprintf(stderr, "Clearing all the dirty\n");
-	memset(&gbl_stat, 0, sizeof(struct qstat));
-	memset(&node_stat, 0, sizeof(struct qstat)*MAXGROUPNODE);
-	memset(&pkt_db, 0, sizeof(struct q_pkt)*MAXGROUPNODE);
-	memset(&pkt_dbc, 0, sizeof(int)*MAXGROUPNODE);
-	memset(&rt_stat, 0, sizeof(short)*MAXGROUPNODE*MAXGROUPNODE);
-	memset(&rt_total, 0, sizeof(short)*MAXGROUPNODE);
+	setzero(&gbl_stat, sizeof(struct qstat));
+	setzero(&node_stat, sizeof(struct qstat)*MAXGROUPNODE);
+	setzero(&pkt_db, sizeof(struct q_pkt)*MAXGROUPNODE);
+	setzero(&pkt_dbc, sizeof(int)*MAXGROUPNODE);
+	setzero(&rt_stat, sizeof(short)*MAXGROUPNODE*MAXGROUPNODE);
+	setzero(&rt_total, sizeof(short)*MAXGROUPNODE);
 }
 
 int main(int argc, char **argv)
@@ -1217,7 +1217,7 @@ int main(int argc, char **argv)
 		node_stat[r].total_pkts++;
 
 		nopt=xmalloc(sizeof(struct q_opt));
-		memset(nopt, 0, sizeof(struct q_opt));
+		setzero(nopt, sizeof(struct q_opt));
 		nopt->q.q_id=qspn_id;
 		nopt->q.from=r;
 		nopt->q.to=((void *)int_map[r].r_node[x].r_node - (void *)int_map)/sizeof(map_node);

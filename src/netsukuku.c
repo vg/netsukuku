@@ -133,7 +133,7 @@ void usage(void)
  */
 void fill_default_options(void)
 {
-	memset(&server_opt, 0, sizeof(server_opt));
+	setzero(&server_opt, sizeof(server_opt));
 	
 	server_opt.family=AF_INET;
 	
@@ -470,7 +470,7 @@ void init_netsukuku(char **argv)
 	destroy_netsukuku_mutex=0;
 	sigterm_timestamp=sighup_timestamp=sigalrm_timestamp=0;
 
-	memset(&me, 0, sizeof(struct current_globals));
+	setzero(&me, sizeof(struct current_globals));
 	
 	my_family=server_opt.family;
 	restricted_mode =server_opt.restricted;
@@ -682,7 +682,7 @@ int main(int argc, char **argv)
 
 	pthread_attr_init(&t_attr);
 	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
-	memset(&ud_argv, 0, sizeof(struct udp_daemon_argv));
+	setzero(&ud_argv, sizeof(struct udp_daemon_argv));
 	port=xmalloc(sizeof(u_short));
 
 	/* 

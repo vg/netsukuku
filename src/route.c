@@ -227,7 +227,7 @@ void **get_gw_gnode(map_node *int_map, map_gnode **ext_map,
 		goto error;
 
 	gateways=xmalloc(sizeof(void *) * MAX_MULTIPATH_ROUTES+1);
-	memset(gateways, 0, sizeof(void *)*(MAX_MULTIPATH_ROUTES+1));
+	setzero(gateways, sizeof(void *)*(MAX_MULTIPATH_ROUTES+1));
 
 	/* 
 	 * In order to find the gateway at level `gw_level', which will be
@@ -318,7 +318,7 @@ int get_gw_ips(map_node *int_map, map_gnode **ext_map,
 	int i, e, gw_ip_members;
 
 	gw_ip_members=single_gw ? 1 : MAX_MULTIPATH_ROUTES;
-	memset(gw_ip, 0, sizeof(inet_prefix)*gw_ip_members);
+	setzero(gw_ip, sizeof(inet_prefix)*gw_ip_members);
 
 	gw_node=(map_node **)get_gw_gnode(int_map, ext_map, bnode_map, bmap_nodes,
 			find_gnode, gnode_level, gw_level, single_gw);
@@ -802,7 +802,7 @@ int rt_del_loopback_net(void)
 	char lo_dev[]="lo";
 	u_int idata[MAX_IP_INT];
 
-	memset(idata, 0, MAX_IP_SZ);
+	setzero(idata, MAX_IP_SZ);
 	if(my_family!=AF_INET) 
 		return 0;
 
@@ -850,7 +850,7 @@ int rt_append_subnet_src(inet_prefix *src, char *dev)
 	inet_copy(&src_htonl, src);
 	inet_htonl(src_htonl.data, src->family);
 
-	memset(&to, 0, sizeof(inet_prefix));
+	setzero(&to, sizeof(inet_prefix));
 	to.family=src->family;
 	to.len=src->len;
 	if(((NTK_PRIVATE_B(src_htonl.data[0])) ||

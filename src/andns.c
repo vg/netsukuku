@@ -832,7 +832,7 @@ char *andns_rslv(char *msg, int msglen,char *answer, int *answ_len)
 	dns_pkt *dp;
 	andns_pkt *ap;
 
-        memset(answer, 0, ANDNS_MAX_SZ);
+        setzero(answer, ANDNS_MAX_SZ);
 	proto=GET_NK_BIT(msg);
         if (proto==NK_DNS) 
 		res=d_u(msg,msglen,&dp);

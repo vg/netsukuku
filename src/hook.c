@@ -174,7 +174,7 @@ int put_free_nodes(PACKET rq_pkt)
 	ntop=inet_to_str(rq_pkt.from);
 	debug(DBG_NORMAL, "Sending the PUT_FREE_NODES reply to %s", ntop);
 	
-	memset(&pkt, 0, sizeof(PACKET));
+	setzero(&pkt, sizeof(PACKET));
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addport(&pkt, ntk_tcp_port);
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
@@ -201,7 +201,7 @@ int put_free_nodes(PACKET rq_pkt)
 	}
 
 	/* Ok, we've found one, so let's roll the pkt */
-	memset(&fn_pkt, 0, sizeof(fn_pkt));
+	setzero(&fn_pkt, sizeof(fn_pkt));
 
 	/*
 	 * Fill the reply packet
@@ -253,7 +253,7 @@ int put_free_nodes(PACKET rq_pkt)
 	pkt_sz=FREE_NODES_SZ((fn_pkt.fn_hdr.nodes+1));
 	pkt_fill_hdr(&pkt.hdr, HOOK_PKT, rq_pkt.hdr.id, PUT_FREE_NODES, pkt_sz);
 	pkt.msg=xmalloc(pkt_sz);
-	memset(pkt.msg, 0, pkt_sz);
+	setzero(pkt.msg, pkt_sz);
 	
 	p=pkt.msg;
 	memcpy(p, &fn_pkt, sizeof(fn_pkt));
@@ -374,7 +374,7 @@ int put_qspn_round(PACKET rq_pkt)
 	ntop=inet_to_str(rq_pkt.from);
 	debug(DBG_NORMAL, "Sending the PUT_QSPN_ROUND reply to %s", ntop);
 	
-	memset(&pkt, 0, sizeof(PACKET));
+	setzero(&pkt, sizeof(PACKET));
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addport(&pkt, ntk_udp_port);
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
@@ -402,7 +402,7 @@ int put_qspn_round(PACKET rq_pkt)
 	pkt_sz=sizeof(qr_pkt);
 	pkt_fill_hdr(&pkt.hdr, HOOK_PKT, rq_pkt.hdr.id, PUT_QSPN_ROUND, pkt_sz);
 	pkt.msg=xmalloc(pkt_sz);
-	memset(pkt.msg, 0, pkt_sz);
+	setzero(pkt.msg, pkt_sz);
 	
 	/* Convert the pkt from host to network order */
 	int_info_copy(&qr_pkt_iinfo, &qspn_round_pkt_iinfo);
@@ -978,7 +978,7 @@ void hook_reset(void)
 		xfree(me.cur_node);
 	free_the_tmp_cur_node=1;
 	me.cur_node=xmalloc(sizeof(map_node));
-	memset(me.cur_node, 0, sizeof(map_node));
+	setzero(me.cur_node, sizeof(map_node));
 	me.cur_node->flags|=MAP_HNODE;
 
 	rnodes_rehooked=hook_join_rate=0;
@@ -996,7 +996,7 @@ void hook_reset(void)
 	 * We set the dev ip to HOOKING_IP+random_number to begin our 
 	 * transaction. 
 	 */
-	memset(idata, 0, MAX_IP_SZ);
+	setzero(idata, MAX_IP_SZ);
 	if(my_family==AF_INET) {
 		idata[0]=restricted_class == RESTRICTED_10 ? HOOKING_IP_10 : HOOKING_IP_172;
 	} else
@@ -1119,7 +1119,7 @@ int hook_first_radar_scan(map_gnode *hook_gnode, int hook_level, quadro_group *o
 hook_retry_scan:
 		reset_radar();
 		rnode_destroy(me.cur_node);
-		memset(me.cur_node, 0, sizeof(map_node));
+		setzero(me.cur_node, sizeof(map_node));
 		me.cur_node->flags|=MAP_HNODE;
 		qspn_b_del_all_dead_rnodes();
 	}
@@ -1337,7 +1337,7 @@ void hook_get_int_map(void)
 	imaps=0;
 	rq=radar_q;
 	merg_map=xmalloc(me.cur_node->links*sizeof(map_node *));
-	memset(merg_map, 0, me.cur_node->links*sizeof(map_node *));
+	setzero(merg_map, me.cur_node->links*sizeof(map_node *));
 
 	for(i=0; i<me.cur_node->links; i++) {
 		rq=find_node_radar_q((map_node *)me.cur_node->r_node[i].r_node);
