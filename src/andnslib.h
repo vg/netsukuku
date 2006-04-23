@@ -31,12 +31,16 @@
 
 struct andns_pkt_data
 {
+	uint8_t			r;
+	uint8_t			wg;
+	uint8_t			prio;
         uint16_t                rdlength;
-        char                    rdata[ANDNS_MAX_DATA_LEN];
+        char                    *rdata;
         struct andns_pkt_data   *next;
 };
 typedef struct andns_pkt_data andns_pkt_data;
 #define ANDNS_PKT_DATA_SZ sizeof(andns_pkt_data)
+#define APD_ALIGN(apd)	apd->rdata=(char*)xmalloc(apd->rdlength)
 
 typedef struct andns_pkt
 {
@@ -44,13 +48,16 @@ typedef struct andns_pkt
         uint8_t         qr;
         uint8_t         qtype;
         uint8_t         ancount;
+        uint8_t         r;
         uint8_t         nk;
         uint8_t         rcode;
+        uint16_t        service; 
         uint16_t        qstlength;
-        char            qstdata[ANDNS_MAX_QST_LEN];
+        char            *qstdata;
         andns_pkt_data  *pkt_answ;
 } andns_pkt;
 #define ANDNS_PKT_SZ sizeof(andns_pkt)
+#define AP_ALIGN(ap)	ap->qstdata=(char*)xmalloc(ap->qstlength)
 
 #define ANDNS_HDR_SZ	4
 #define ANDNS_MAX_SZ 	ANDNS_HDR_SZ+ANDNS_MAX_QST_LEN+ANDNS_MAX_QST_LEN+4
@@ -58,8 +65,6 @@ typedef struct andns_pkt
 /* ANDNS QUERY-TYPE */
 #define AT_A            0 /* h->ip */
 #define AT_PTR          1 /* ip->h */
-#define AT_MX           2 /* h->mx */
-#define AT_MXPTR        3 /* ip->mx */
 /* RCODES: The rcodes are portable between ANDNS and DNS */
 #define ANDNS_RCODE_NOERR     0       /* No error */
 #define ANDNS_RCODE_EINTRPRT  1       /* Intepret error */

@@ -37,6 +37,11 @@ static struct sockaddr_in _andns_ns_[MAXNSSERVERS];
 static uint8_t _andns_ns_count_;
 static uint8_t _default_realm_;
 
+
+
+
+			/* INIT FUNCTIONS */
+
 int debug_andna_resolve_hname(char *s,inet_prefix *addr)
 {
         char *ciccio="111.222.123.123";
@@ -179,6 +184,9 @@ int andns_init(int restricted, char *resolv_conf)
         _dns_forwarding_=1;
         return 0;
 }
+
+			/* NET FUNCTIONS */
+
 int ns_general_send(char *msg,int msglen,char *answer,int *anslen)
 {
         int res,i;
@@ -237,7 +245,9 @@ close_return:
         close(s);
         err_ret(ERR_RSLFDQ,-1);
 }
-	
+
+			/* UTILS FUNCTIONS */
+
 void dpktacpy(dns_pkt *dst,dns_pkt *src,const char *prefix)
 {
         dns_pkt_a *dpas,*dpad;
@@ -250,7 +260,7 @@ void dpktacpy(dns_pkt *dst,dns_pkt *src,const char *prefix)
                 dpad=DP_ADD_ANSWER(dst);
                 memcpy(dpad,dpas,sizeof(dns_pkt_a));
                 dpad->next=NULL;
-                if (prefix && !yet_pref) {
+                if (prefix && !yet_pref) { /* TODO: yet_pref better */
                         slen=strlen(dpad->name);
                         if (dpas->type!=T_PTR)
                                 memcpy(dpad->name+slen,prefix,REALM_PREFIX_LEN);
@@ -340,62 +350,6 @@ dns_pkt* dpktcpy_rm_pref(dns_pkt *src)
 	strcpy(dpq->qname,temp);
 	return dst;
 }
-
-	
-/*
- * His goal is trivial.
- * DO NOT USE suffixes query, i.e. query with ".INT" or ".NTK".
- * NXDOMAIN otherwise.
- *
- * Returns:
- *      -1 on error
- *      0 if OK
- */
-int andns_gethostbyname(char *hname, inet_prefix *ip)
-{
-        dns_pkt *dp;
-        dns_pkt_hdr *dph;
-        dns_pkt_qst *dpq;
-        int res,anslen;
-        char msg[DNS_MAX_SZ],answ[DNS_MAX_SZ];
-        uint32_t addr;
-
-        dp=create_dns_pkt();
-        dph=&(dp->pkt_hdr);
-
-        dph->id=(rand() >> 16) ^ (rand() >> 16);
-        dph->rd=1;
-
-        dpq=dns_add_qst(dp);
-	rm_realm_prefix(hname,dpq->qname,T_A);
-        dpq->qtype=T_A;
-        dpq->qclass=C_IN;
-
-        DP_QDCOUNT(dp)++;
-
-        memset(msg,0,DNS_MAX_SZ);
-        memset(answ,0,DNS_MAX_SZ);
-        if ((res=d_p(dp,msg))==-1) {
-                error(err_str);
-		err_ret(ERR_RSLRSL,-1);
-        }
-        if (ns_general_send(msg,res,answ,&anslen)) {
-                error(err_str);
-		err_ret(ERR_RSLRSL,-1);
-        }
-        if ((res=d_u(answ,anslen,&dp))==-1) {
-                error(err_str);
-		err_ret(ERR_RSLRSL,-1);
-        }
-        memcpy(&addr, dp->pkt_answ->rdata, sizeof(uint32_t));
-        addr=ntohl(addr);
-        if ((res=inet_setip_raw(ip,&addr, AF_INET))==-1) {
-                error("In andns_gethostbyname: can not fill inet_prefix.");
-		err_ret(ERR_RSLRSL,-1);
-        }
-        destroy_dns_pkt(dp);
-	return 0;
-}
 int andns_realm(dns_pkt_qst *dpq,int *prefixed)
 {
         int slen;
@@ -447,211 +401,6 @@ int is_prefixed(dns_pkt *dp)
         return prefix;
 }
 
-int dns_forward(dns_pkt *dp,char *msg,int msglen,char* answer)
-{
-        dns_pkt *dp_forward;
-        char fwdbuf[DNS_MAX_SZ];
-        int res,len;
-
-        if (!_dns_forwarding_) {
-                error("In rslv: dns forwardind is disable.");
-                goto safe_failing;
-        }
-        debug(DBG_INSANE, "Forwarding dns query to inet nameservers...");
-        if (!is_prefixed(dp)) {
-                if(ns_general_send(msg,msglen,answer,&res)) {
-                        error(err_str);
-                        goto safe_failing;
-                }
-                destroy_dns_pkt(dp);
-                return res;
-        }
-        /* prepare to re-format query without prefix */
-	dp_forward=dpktcpy_rm_pref(dp);
-        memset(fwdbuf,0,DNS_MAX_SZ);
-        if ((res=d_p(dp_forward,fwdbuf))==-1) { /* dp_foward is destroyed */
-                error(err_str);
-                goto safe_failing;
-        }
-        if (ns_general_send(fwdbuf,res,answer,&len)) {
-                error(err_str);
-                goto safe_failing;
-        }
-        if ((res=d_u(answer,len,&dp_forward))==-1) {
-                error(err_str);
-                goto safe_failing;
-        }
-        dpktacpy(dp,dp_forward,INET_REALM_PREFIX);
-        destroy_dns_pkt(dp_forward);
-	DNS_SET_NSCOUNT(dp,0);
-	DNS_SET_ARCOUNT(dp,0);
-        if ((res=d_p(dp,answer))==-1) {
-                error(err_str);
-		goto failing;
-        }
-        return res;
-safe_failing:
-	destroy_dns_pkt(dp);
-	goto failing;
-failing:
-	memcpy(answer,msg,msglen);
-	ANDNS_SET_RCODE(answer,RCODE_ESRVFAIL);
-	ANDNS_SET_QR(answer);
-	res=msglen;
-        err_ret(ERR_RSLFDQ,res);
-}
-
-int inet_rslv(dns_pkt *dp,char *msg,int msglen,char *answer)
-{
-	inet_prefix addr;
-	int res,qt,i,rcode;
-	char temp[DNS_MAX_HNAME_LEN];
-	dns_pkt_a *dpa;
-
-	qt=dp->pkt_qst->qtype;
-	rm_realm_prefix(dp->pkt_qst->qname,temp,qt);
-	if (qt==T_A) {
-		res=debug_andna_resolve_hname(temp,&addr);
-		if (res==-1) {
-			rcode=RCODE_ENSDMN;
-			goto safe_return_rcode;
-		}
-		dpa=DP_ADD_ANSWER(dp);
-		dpa->type=T_A;
-		dpa->cl=C_IN;
-		dpa->ttl=DNS_TTL;
-		strcpy(dpa->name,dp->pkt_qst->qname);
-		dpa->rdlength=addr.len;
-       		inet_htonl(addr.data,addr.family);
-	        if (addr.family==AF_INET)
-        	        memcpy(dpa->rdata,addr.data,4);
-        	else
-                	memcpy(dpa->rdata,addr.data,16);
-	} else if (qt==T_PTR) {
-		char tomp[DNS_MAX_HNAME_LEN];
-		char **hnames;
-		res=swapped_straddr(temp,tomp);
-		if (res==-1) {
-			rcode=RCODE_EINTRPRT;
-			goto safe_return_rcode;
-		}
-		res=str_to_inet(tomp,&addr);
-		if (res==-1) {
-			rcode=RCODE_ESRVFAIL;
-			goto safe_return_rcode;
-		}
-		res=debug_andna_reverse_resolve(addr, &hnames);
-		if (res==-1) {
-			rcode=RCODE_ENSDMN;
-			goto safe_return_rcode;
-		}
-		for (i=0;i<res;i++) {
-			dpa=DP_ADD_ANSWER(dp);
-			dpa->type=T_PTR;
-			dpa->cl=C_IN;
-			dpa->ttl=DNS_TTL;
-			strcpy(dpa->name,dp->pkt_qst->qname);
-			strcpy(dpa->rdata,hnames[i]);
-			xfree(hnames[i]);
-		}
-		xfree(hnames);
-	} else if (qt==T_MX) {
-		rcode=RCODE_ENIMPL;
-		goto safe_return_rcode;
-	} else {
-		rcode=RCODE_ENIMPL;
-		goto safe_return_rcode;
-	}
-	DNS_SET_QR(dp,1);
-	res=d_p(dp,answer);
-	if (res==-1) {
-		rcode=RCODE_ESRVFAIL;
-		goto return_rcode;
-	}
-	return res;
-safe_return_rcode:
-	destroy_dns_pkt(dp);
-	goto return_rcode;
-return_rcode:
-	memcpy(answer,msg,msglen);
-	ANDNS_SET_RCODE(answer,rcode);
-	ANDNS_SET_QR(answer);
-	return msglen;
-}
-	
-int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
-{
-	int qt,res,i,rcode;
-	char temp[ANDNS_MAX_QST_LEN];
-	andns_pkt_data *apd;
-	inet_prefix ipres;
-
-	qt=ap->qtype;
-	if (qt==AT_A) {
-		rm_realm_prefix(ap->qstdata,temp,AT_A);
-		res=debug_andna_resolve_hname(temp,&ipres);
-		if (res==-1) {
-			rcode=RCODE_ENSDMN;
-			goto safe_return_rcode;
-		}
-		ap->ancount++;
-		apd=andns_add_answ(ap);
-        	apd->rdlength=ipres.len;
-        	inet_htonl(ipres.data, ipres.family);
-        	if (ipres.family==AF_INET)
-                	memcpy(apd->rdata,ipres.data,4);
-        	else
-                	memcpy(apd->rdata,ipres.data,16);
-	} 
-	else if (qt==AT_PTR) {
-		char **hnames;
-		res=str_to_inet(ap->qstdata,&ipres);
-		if (res==-1) {
-			rcode=RCODE_EINTRPRT;
-			goto safe_return_rcode;
-		}
-		res=debug_andna_reverse_resolve(ipres,&hnames);
-		if (res==-1) {
-			rcode=RCODE_ENSDMN;
-			goto safe_return_rcode;
-		}
-		for (i=0;i<res;i++) {
-			apd=andns_add_answ(ap);
-			ap->ancount++;
-			apd->rdlength=strlen(hnames[i]);
-			strcpy(apd->rdata,hnames[i]);
-			xfree(hnames[i]);
-		}
-	}
-	else if (qt==AT_MX) {
-		rcode=RCODE_ENIMPL;
-		goto safe_return_rcode;
-	}
-	else if (qt==AT_MXPTR) {
-		rcode=RCODE_ENIMPL;
-		goto safe_return_rcode;
-	}
-	else {
-		rcode=RCODE_EINTRPRT;
-		goto safe_return_rcode;
-	}
-	ap->qr=1;
-	ap->rcode=RCODE_NOERR;
-	res=a_p(ap,answer);
-	if (res==-1) {
-		rcode=RCODE_ESRVFAIL;
-		goto return_rcode;
-	}
-	return res;
-safe_return_rcode:
-	destroy_andns_pkt(ap);
-	goto return_rcode;
-return_rcode:
-	memcpy(answer,msg,msglen);
-	ANDNS_SET_RCODE(answer,rcode);
-	ANDNS_SET_QR(answer);
-	return msglen;
-}
 int qtype_a_to_d(int qt) 
 {
 	switch (qt) {
@@ -766,6 +515,292 @@ int dpanswtoapansw(dns_pkt *dp,andns_pkt *ap)
 	ap->ancount=i;
 	return 0;
 }
+
+		/* FINALLY RESOLVING FUNCTIONS */
+
+/*
+ * His goal is trivial.
+ * DO NOT USE suffixes query, i.e. query with ".INT" or ".NTK".
+ * NXDOMAIN otherwise.
+ *
+ * Returns:
+ *      -1 on error
+ *      0 if OK
+ */
+int andns_gethostbyname(char *hname, inet_prefix *ip)
+{
+        dns_pkt *dp;
+        dns_pkt_hdr *dph;
+        dns_pkt_qst *dpq;
+        int res,anslen;
+        char msg[DNS_MAX_SZ],answ[DNS_MAX_SZ];
+        uint32_t addr;
+
+        dp=create_dns_pkt();
+        dph=&(dp->pkt_hdr);
+
+        dph->id=(rand() >> 16) ^ (rand() >> 16);
+        dph->rd=1;
+
+        dpq=dns_add_qst(dp);
+	rm_realm_prefix(hname,dpq->qname,T_A);
+        dpq->qtype=T_A;
+        dpq->qclass=C_IN;
+
+        DP_QDCOUNT(dp)++;
+
+        memset(msg,0,DNS_MAX_SZ);
+        memset(answ,0,DNS_MAX_SZ);
+        if ((res=d_p(dp,msg))==-1) {
+                error(err_str);
+		err_ret(ERR_RSLRSL,-1);
+        }
+        if (ns_general_send(msg,res,answ,&anslen)) {
+                error(err_str);
+		err_ret(ERR_RSLRSL,-1);
+        }
+        if ((res=d_u(answ,anslen,&dp))==-1) {
+                error(err_str);
+		err_ret(ERR_RSLRSL,-1);
+        }
+        memcpy(&addr, dp->pkt_answ->rdata, sizeof(uint32_t));
+        addr=ntohl(addr);
+        if ((res=inet_setip_raw(ip,&addr, AF_INET))==-1) {
+                error("In andns_gethostbyname: can not fill inet_prefix.");
+		err_ret(ERR_RSLRSL,-1);
+        }
+        destroy_dns_pkt(dp);
+	return 0;
+}
+
+
+/* There is a DNS query, internet realm.
+ * I'm going to forward it, but first I have 
+ * to control suffix presence.
+ * 
+ * After this function, `answer` is the answer to be 
+ * sent to the client.
+ *
+ * Returns:
+ * 	answer len
+ */ 
+int dns_forward(dns_pkt *dp,char *msg,int msglen,char* answer)
+{
+        dns_pkt *dp_forward;
+        char fwdbuf[DNS_MAX_SZ];
+        int res,len;
+
+        if (!_dns_forwarding_) {
+                error("In rslv: dns forwardind is disable.");
+                goto safe_failing;
+        }
+        debug(DBG_INSANE, "Forwarding dns query to inet nameservers...");
+        if (!is_prefixed(dp)) {
+                if(ns_general_send(msg,msglen,answer,&res)) {
+                        error(err_str);
+                        goto safe_failing;
+                }
+                destroy_dns_pkt(dp);
+                return res;
+        }
+        /* prepare to re-format query without prefix */
+	dp_forward=dpktcpy_rm_pref(dp);
+        memset(fwdbuf,0,DNS_MAX_SZ);
+        if ((res=d_p(dp_forward,fwdbuf))==-1) { /* dp_foward is destroyed */
+                error(err_str);
+                goto safe_failing;
+        }
+        if (ns_general_send(fwdbuf,res,answer,&len)) {
+                error(err_str);
+                goto safe_failing;
+        }
+        if ((res=d_u(answer,len,&dp_forward))==-1) {
+                error(err_str);
+                goto safe_failing;
+        }
+        dpktacpy(dp,dp_forward,INET_REALM_PREFIX);
+        destroy_dns_pkt(dp_forward);
+	DNS_SET_NSCOUNT(dp,0);
+	DNS_SET_ARCOUNT(dp,0);
+        if ((res=d_p(dp,answer))==-1) {
+                error(err_str);
+		goto failing;
+        }
+        return res;
+safe_failing:
+	destroy_dns_pkt(dp);
+	goto failing;
+failing:
+	memcpy(answer,msg,msglen);
+	ANDNS_SET_RCODE(answer,RCODE_ESRVFAIL);
+	ANDNS_SET_QR(answer);
+	res=msglen;
+        err_ret(ERR_RSLFDQ,res);
+}
+
+/* There is a DNS query, netsukuku realm.
+ *
+ * I'm going to resolve it in ANDNA.
+ *
+ * After this function, `answer` is the answer to be 
+ * sent to the client.
+ *
+ * Returns:
+ * 	answer len
+ */
+
+/* snsd */
+int inet_rslv(dns_pkt *dp,char *msg,int msglen,char *answer)
+{
+	inet_prefix addr;
+	int res,qt,i,rcode;
+	char temp[DNS_MAX_HNAME_LEN];
+	dns_pkt_a *dpa;
+
+	qt=dp->pkt_qst->qtype;
+	rm_realm_prefix(dp->pkt_qst->qname,temp,qt);
+	if (qt==T_A) {
+		res=debug_andna_resolve_hname(temp,&addr);
+		if (res==-1) {
+			rcode=RCODE_ENSDMN;
+			goto safe_return_rcode;
+		}
+		dpa=DP_ADD_ANSWER(dp);
+		dpa->type=T_A;
+		dpa->cl=C_IN;
+		dpa->ttl=DNS_TTL;
+		strcpy(dpa->name,dp->pkt_qst->qname);
+		dpa->rdlength=addr.len;
+       		inet_htonl(addr.data,addr.family);
+	        if (addr.family==AF_INET)
+        	        memcpy(dpa->rdata,addr.data,4);
+        	else
+                	memcpy(dpa->rdata,addr.data,16);
+	} else if (qt==T_PTR) {
+		char tomp[DNS_MAX_HNAME_LEN];
+		char **hnames;
+		res=swapped_straddr(temp,tomp);
+		if (res==-1) {
+			rcode=RCODE_EINTRPRT;
+			goto safe_return_rcode;
+		}
+		res=str_to_inet(tomp,&addr);
+		if (res==-1) {
+			rcode=RCODE_ESRVFAIL;
+			goto safe_return_rcode;
+		}
+		res=debug_andna_reverse_resolve(addr, &hnames);
+		if (res==-1) {
+			rcode=RCODE_ENSDMN;
+			goto safe_return_rcode;
+		}
+		for (i=0;i<res;i++) {
+			dpa=DP_ADD_ANSWER(dp);
+			dpa->type=T_PTR;
+			dpa->cl=C_IN;
+			dpa->ttl=DNS_TTL;
+			strcpy(dpa->name,dp->pkt_qst->qname);
+			strcpy(dpa->rdata,hnames[i]);
+			xfree(hnames[i]);
+		}
+		xfree(hnames);
+	} else if (qt==T_MX) {
+		rcode=RCODE_ENIMPL;
+		goto safe_return_rcode;
+	} else {
+		rcode=RCODE_ENIMPL;
+		goto safe_return_rcode;
+	}
+	DNS_SET_QR(dp,1);
+	res=d_p(dp,answer);
+	if (res==-1) {
+		rcode=RCODE_ESRVFAIL;
+		goto return_rcode;
+	}
+	return res;
+safe_return_rcode:
+	destroy_dns_pkt(dp);
+	goto return_rcode;
+return_rcode:
+	memcpy(answer,msg,msglen);
+	ANDNS_SET_RCODE(answer,rcode);
+	ANDNS_SET_QR(answer);
+	return msglen;
+}
+	
+/* Rewrite this function for snsd */
+int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
+{
+	int qt,res,i,rcode;
+	andns_pkt_data *apd;
+	inet_prefix ipres;
+
+	qt=ap->qtype;
+	if (qt==AT_A) {
+		rm_realm_prefix(ap->qstdata,temp,AT_A);
+		res=debug_andna_resolve_hname(ap->qstdata,&ipres);
+		if (res==-1) {
+			rcode=RCODE_ENSDMN;
+			goto safe_return_rcode;
+		}
+		ap->ancount++;
+		apd=andns_add_answ(ap);
+        	apd->rdlength=ipres.len;
+        	inet_htonl(ipres.data, ipres.family);
+        	if (ipres.family==AF_INET)
+                	memcpy(apd->rdata,ipres.data,4);
+        	else
+                	memcpy(apd->rdata,ipres.data,16);
+	} 
+	else if (qt==AT_PTR) {
+		char **hnames;
+		res=str_to_inet(ap->qstdata,&ipres);
+		if (res==-1) {
+			rcode=RCODE_EINTRPRT;
+			goto safe_return_rcode;
+		}
+		res=debug_andna_reverse_resolve(ipres,&hnames);
+		if (res==-1) {
+			rcode=RCODE_ENSDMN;
+			goto safe_return_rcode;
+		}
+		for (i=0;i<res;i++) {
+			apd=andns_add_answ(ap);
+			ap->ancount++;
+			apd->rdlength=strlen(hnames[i]);
+			strcpy(apd->rdata,hnames[i]);
+			xfree(hnames[i]);
+		}
+	}
+	else if (qt==AT_MX) {
+		rcode=RCODE_ENIMPL;
+		goto safe_return_rcode;
+	}
+	else if (qt==AT_MXPTR) {
+		rcode=RCODE_ENIMPL;
+		goto safe_return_rcode;
+	}
+	else {
+		rcode=RCODE_EINTRPRT;
+		goto safe_return_rcode;
+	}
+	ap->qr=1;
+	ap->rcode=RCODE_NOERR;
+	res=a_p(ap,answer);
+	if (res==-1) {
+		rcode=RCODE_ESRVFAIL;
+		goto return_rcode;
+	}
+	return res;
+safe_return_rcode:
+	destroy_andns_pkt(ap);
+	goto return_rcode;
+return_rcode:
+	memcpy(answer,msg,msglen);
+	ANDNS_SET_RCODE(answer,rcode);
+	ANDNS_SET_QR(answer);
+	return msglen;
+}
 int nk_forward(andns_pkt *ap,char *msg,int msglen,char *answer)
 {
 	int res,rcode;
@@ -816,7 +851,7 @@ safe_return_rcode:
 }
 /*
  * This is the main function for the resolution: the dns_wrapper receive the
- * buffer and rslv cares about building the answer.
+ * buffer and rslv builds the answer.
  * `answer' is the buffer where the answer will be stored, it must be at
  * least of `ANDNS_MAX_SZ' bytes.
  *
@@ -832,7 +867,6 @@ char *andns_rslv(char *msg, int msglen,char *answer, int *answ_len)
 	dns_pkt *dp;
 	andns_pkt *ap;
 
-        setzero(answer, ANDNS_MAX_SZ);
 	proto=GET_NK_BIT(msg);
         if (proto==NK_DNS) 
 		res=d_u(msg,msglen,&dp);
@@ -845,6 +879,7 @@ char *andns_rslv(char *msg, int msglen,char *answer, int *answ_len)
 	}
 	if (res==0) 
 		goto discard;
+        memset(answer, 0, ANDNS_MAX_SZ);
 	if (res==-1) 
 		goto intrprt;
         if (proto==NK_DNS) {
