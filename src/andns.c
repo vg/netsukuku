@@ -401,6 +401,10 @@ int is_prefixed(dns_pkt *dp)
         return prefix;
 }
 
+/*
+ * A very stupid function that converts 
+ * ANDNS code to DNS code.
+ */
 int qtype_a_to_d(int qt) 
 {
 	switch (qt) {
@@ -408,8 +412,8 @@ int qtype_a_to_d(int qt)
 			return T_A;
 		case AT_PTR:
 			return T_PTR;
-		case AT_MX:
-			return T_MX;
+		/*case AT_MX:
+			return T_MX;*/
 		default:
 			return -1;
 	}

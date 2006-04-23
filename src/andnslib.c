@@ -67,11 +67,12 @@ size_t a_hdr_u(char *buf,andns_pkt *ap)
 size_t a_qst_u(char *buf,andns_pkt *ap,int limitlen)
 {
 	size_t ret;
+	uint16_t s;
+	uint8_t c;
 	if (limitlen<5)
 		err_ret(ERR_ANDMAP,-1);
 	switch(ap->qtype) {
 		case AT_A:
-        		uint16_t s;
 			memcpy(&s,buf,2);
 			ap->service=ntohs(s);
 			buf+=2;
@@ -83,18 +84,17 @@ size_t a_qst_u(char *buf,andns_pkt *ap,int limitlen)
                 		err_ret(ERR_ANDPLB,-1);
 			AP_ALIGN(ap);
         		memcpy(ap->qstdata,buf,ap->qstlength);
-			ret=ap->qstlength+4
+			ret=ap->qstlength+4;
 			break;
 		case AT_PTR:
-			uint8_t c=*buf;
 			if (c!=0 && c!=1)
 				err_ret(ERR_ANDMAP,-1)
 			ap->qstlength=c?16:4;
 			if (ap->qstlength>limitlen-1)
 				err_ret(ERR_ANDMAP,-1)
 			AP_ALIGN(ap);
-			memcpy(ap->qstdata,buf=1,ap->qstlength);
-			ret=ap->qstlength+1
+			memcpy(ap->qstdata,buf,ap->qstlength);
+			ret=ap->qstlength+1;
 			break;
 		default:
 			debug(DBG_INSANE,"In a_qst_u: unknow query type.");
@@ -200,23 +200,23 @@ size_t a_hdr_p(andns_pkt *ap,char *buf)
 size_t a_qst_p(andns_pkt *ap,char *buf,size_t limitlen)
 {
 	size_t ret;
+        uint16_t s;
 	switch(ap->qtype){
 		case AT_A:
-        		uint16_t s;
 			if (ap->qstlength+4>limitlen)
-				err_ret(ERR_ANDMAD);
+				err_ret(ERR_ANDMAD,-1);
 			s=htons(ap->service);
-			memcpy(buf,s,2);
+			memcpy(buf,&s,2);
 			buf+=2;
-			s=htons(ap->rdlength);
-			memcpy(buf,s,2);
+			s=htons(ap->qstlength);
+			memcpy(buf,&s,2);
 			buf+=2;
         		memcpy(buf,ap->qstdata,ap->qstlength);
 			ret=ap->qstlength+4;
 			break;
 		case AT_PTR:
 			if (ap->qstlength+1>limitlen)
-				err_ret(ERR_ANDMAD);
+				err_ret(ERR_ANDMAD,-1);
 			if (ap->qstlength==16) 
 				*buf=0x01;
 			else if (ap->qstlength!=4)
@@ -227,7 +227,7 @@ size_t a_qst_p(andns_pkt *ap,char *buf,size_t limitlen)
 			break;
 		default:
 			debug(DBG_INSANE,"In a_qst_p: unknow query type.");
-			err_ret(ERR_ANDMAD);
+			err_ret(ERR_ANDMAD,-1);
 	}
 	return ret;
 }
