@@ -255,7 +255,7 @@ andna_cache_queue *ac_queue_findpubk(andna_cache *ac, char *pubk)
  * ac_queue_add: adds a new entry in the andna cache queue, which is
  * `ac'->acq. The elements in the new `ac'->acq are set to `rip' and `pubkey'.
  * If an `ac'->acq struct with an `ac'->acq->pubkey equal to `pubkey' already
- * exists, then only the ac->acq->timestamp and the ac->acq->rip will be updated.
+ * exists, then only the timestamp and the IP will be updated.
  * It returns the pointer to the acq struct. If it isn't possible to add a new
  * entry in the queue, 0 will be returned.
  */
@@ -291,11 +291,9 @@ andna_cache_queue *ac_queue_add(andna_cache *ac, inet_prefix rip, char *pubkey)
 	sns=snsd_add_service(&acq->service, SNSD_DEFAULT_SERVICE);
 	snp=snsd_add_prio(&sns->prio, SNSD_DEFAULT_PRIO);
 	snd=snsd_add_first_node(&snp->node, &acq->snsd_counter, 1, rip);
-	snd=snsd_add_node(&snp->node, 1, 0);
 	memcpy(snd->record, rip.data, MAX_IP_SZ);
-	snd->flags|=SNSD_NODE_IP;
+	snd->flags|=SNSD_NODE_IP | SNSD_NODE_MAIN_IP;
 	snd->weight=SNSD_DEFAULT_WEIGHT;
-	/*TODO: CONTINUE HERE */
 
 	if(ac->queue_counter >= ANDNA_MAX_QUEUE)
 		ac->flags|=ANDNA_FULL;
@@ -315,6 +313,9 @@ andna_cache_queue *ac_queue_add(andna_cache *ac, inet_prefix rip, char *pubkey)
 
 void ac_queue_del(andna_cache *ac, andna_cache_queue *acq)
 {
+	
+	acq->snsd_counter=0;
+	snsd_service_llist_del(acq->service);
 	clist_del(&ac->acq, &ac->queue_counter, acq);
 	ac->flags&=~ANDNA_FULL;
 }
@@ -906,165 +907,277 @@ finish:
 	return alcl_head;
 }
 
+/*
+ * pack_andna_cache_queue
+ *
+ * It packs an andna_cache_queue struct. The package is stored in `pack' which
+ * has `tot_pack_sz' allocated bytes.
+ * `acq' is the struct which will be packed.
+ * `pack_type' is equal to ACACHE_PACK_FILE or ACACHE_PACK_PKT, it specify if
+ * the package will be stored in a file or will be sent over a network.
+ *
+ * The number of bytes written in `pack' is returned.
+ */
+int pack_andna_cache_queue(char *pack, size_t tot_pack_sz, 
+			   andna_cache_queue *acq, int pack_type)
+{
+	char *buf=pack;
+	u_int t;
+	int pack_sz=0;
+	
+	if(pack_type == ACACHE_PACK_PKT)
+		t = time(0) - acq->timestamp;
+	else 
+		t = acq->timestamp;
+	
+	memcpy(buf, &t, sizeof(uint32_t));
+	buf+=sizeof(uint32_t);
+
+	memcpy(buf, &acq->hname_updates, sizeof(u_short));
+	buf+=sizeof(u_short);
+
+	memcpy(buf, &acq->pubkey, ANDNA_PKEY_LEN);
+	buf+=ANDNA_PKEY_LEN;
+
+	memcpy(buf, &acq->snsd_counter, sizeof(u_short));
+	buf+=sizeof(u_short);
+
+	pack_sz+=ACQ_BODY_PACK_SZ;
+	ints_host_to_network(pack, acq_body_iinfo);
+	
+	pack_sz+=snsd_pack_all_services(buf, tot_pack_sz, acq->service);
+	
+	return pack_sz;
+}
 
 /*
- * pack_andna_cache: packs the entire andna cache linked list that starts with
- * the head `acache'. The size of the pack is stored in `pack_sz'.
- * The pointer to the newly allocated pack is returned.
- * The pack will be in network order.
+ * pack_single_andna_cache
+ *
+ * It packs an andna_cache struct. The package is stored in `pack' which
+ * has `tot_pack_sz' allocated bytes.
+ * `ac' is the struct which will be packed.
+ * `pack_type' is equal to ACACHE_PACK_FILE or ACACHE_PACK_PKT, it specify if
+ * the package will be stored in a file or will be sent over a network.
+ *
+ * The number of bytes written in `pack' is returned.
  */
-char *pack_andna_cache(andna_cache *acache, size_t *pack_sz)
+int pack_single_andna_cache(char *pack, size_t tot_pack_sz,
+			    andna_cache *ac, int pack_type)
+{
+	andna_cache_queue *acq;
+	char *buf=pack, *p;
+	int pack_sz=0, sz;
+
+	memcpy(buf, ac->hash, ANDNA_HASH_SZ);
+	buf+=ANDNA_HASH_SZ;
+
+	memcpy(buf, &ac->flags, sizeof(char));
+	buf+=sizeof(char);
+
+	memcpy(buf, &ac->queue_counter, sizeof(u_short));
+	buf+=sizeof(u_short);
+	
+	pack_sz+=ACACHE_BODY_PACK_SZ;
+	ints_host_to_network(pack, andna_cache_body_iinfo);
+
+	acq=ac->acq;
+	list_for(acq) {
+		psz=pack_andna_cache_queue(buf, tot_pack_sz, acq, pack_type);
+		buf+=psz;
+		pack_sz+=psz;
+		tot_pack_sz-=psz;
+	}
+
+	return pack_sz;
+}
+
+/*
+ * pack_andna_cache
+ * 
+ * It packs the entire andna cache linked list that starts with
+ * the head `acache'. 
+ * The size of the pack is stored in `pack_sz'.
+ * `pack_type' specifies if the package will be saved in a file or sent over
+ * the net, it is equal to ACACHE_PACK_FILE or to ACACHE_PACK_PKT.
+ * 
+ * The pointer to the newly allocated pack is returned.
+ * The pack is written in network order.
+ */
+char *pack_andna_cache(andna_cache *acache, size_t *pack_sz, int pack_type)
 {
 	struct andna_cache_pkt_hdr hdr;
 	andna_cache *ac=acache;
 	andna_cache_queue *acq;
-	char *pack, *buf, *p;
-	size_t sz;
-	time_t cur_t;
-	u_int t;
+	char *pack, *buf;
+	size_t sz, free_sz, acq_sz, service_sz, psz;
 	
 	/* Calculate the pack size */
+	ac=acache;
 	hdr.tot_caches=0;
 	sz=sizeof(struct andna_cache_pkt_hdr);
 	list_for(ac) {
-		sz+=ACACHE_PACK_SZ(ac->queue_counter);
+		acq=ac->acq;
+		list_for(acq) {
+			service_sz = SNSD_SERVICE_LLIST_PACK_SZ(acq->service);
+			acq_sz	   = ACQ_PACK_SZ(service_sz);
+		}
+		sz+=ACACHE_PACK_SZ(acq_sz);
 		hdr.tot_caches++;
 	}
 	
-	pack=xmalloc(sz);
-	memcpy(pack, &hdr, sizeof(struct andna_cache_pkt_hdr));
+	
+	free_sz=sz;
+	buf=pack=xmalloc(sz);
+	
+	/* Write the header of the package */
+	memcpy(buf, &hdr, sizeof(struct andna_cache_pkt_hdr));
+	buf+=sizeof(struct andna_cache_pkt_hdr);
+	free_sz-=sizeof(struct andna_cache_pkt_hdr);
+
 	ints_host_to_network(pack, andna_cache_pkt_hdr_iinfo);
 	
-	if(hdr.tot_caches) {
-		cur_t=time(0);
-		
-		buf=pack + sizeof(struct andna_cache_pkt_hdr);
-		ac=acache;
-		list_for(ac) {
-			p=buf;
-			
-			memcpy(buf, ac->hash, ANDNA_HASH_SZ);
-			buf+=ANDNA_HASH_SZ;
-			
-			memcpy(buf, &ac->flags, sizeof(char));
-			buf+=sizeof(char);
+	if(!hdr.tot_caches)
+		goto finish;
 
-			memcpy(buf, &ac->queue_counter, sizeof(u_short));
-			buf+=sizeof(u_short);
-			
-			ints_host_to_network(p, andna_cache_body_iinfo);
-
-			acq=ac->acq;
-			list_for(acq) {
-				p=buf;
-				
-				memcpy(buf, acq->rip, MAX_IP_SZ);
-				inet_htonl((u_int *)buf, net_family);
-				buf+=MAX_IP_SZ;
-
-				t = cur_t - acq->timestamp;
-				memcpy(buf, &t, sizeof(uint32_t));
-				buf+=sizeof(uint32_t);
-
-				memcpy(buf, &acq->hname_updates, sizeof(u_short));
-				buf+=sizeof(u_short);
-
-				memcpy(buf, &acq->pubkey, ANDNA_PKEY_LEN);
-				buf+=ANDNA_PKEY_LEN;
-				
-				ints_host_to_network(p, andna_cache_queue_body_iinfo);
-			}
-		}
+	/* Pack the rest of the andna_cache */
+	ac=acache;
+	list_for(ac) {
+		psz=pack_single_andna_cache(buf, free_sz, ac, pack_type);
+		buf+=psz;
+		free_sz-=psz;
 	}
 
+finish:
 	*pack_sz=sz;
 	return pack;
 }
 
+/*
+ * unpack_acq_llist
+ *
+ * ac->queue_counter must contain the number of acq structs contained in the
+ * package.
+ *
+ * `*unpacked_sz' is incremented by the number of unpacked bytes.
+ *
+ * `pack_type' specifies if the package will be saved in a file or sent over
+ * the net, it is equal to ACACHE_PACK_FILE or to ACACHE_PACK_PKT.
+ */
+andna_cache_queue *
+unpack_acq_llist(char *pack, size_t pack_sz, size_t *unpacked_sz, 
+			andna_cache *ac, int pack_type)
+{
+	andna_cache_queue *acq;
+	int e, snsd_counter, tmp_counter;
+	time_t cur_t;
+	char *buf;
+	
+	cur_t=time(0);
+	buf=pack;
+	for(e=0; e < ac->queue_counter; e++) {
+		acq=xmalloc(sizeof(andna_cache_queue));
+		setzero(acq, sizeof(andna_cache_queue));
+
+		ints_network_to_host(buf, acq_body_iinfo);
+
+		acq->timestamp=(*(uint32_t *)buf);
+		if(pack_type == ACACHE_PACK_PKT) {
+			acq->timestamp = cur_t - acq->timestamp;
+		}
+		buf+=sizeof(uint32_t);
+
+		memcpy(&acq->hname_updates, buf, sizeof(u_short));
+		buf+=sizeof(u_short);
+
+		memcpy(&acq->pubkey, buf, ANDNA_PKEY_LEN);
+		buf+=ANDNA_PKEY_LEN;
+
+		memcpy(&acq->snsd_counter, buf, sizeof(u_short));
+		buf+=sizeof(u_short);
+
+		pack_sz-=ACACHE_BODY_PACK_SZ;
+		(*unpacked_sz)+=ACACHE_BODY_PACK_SZ;
+		acq->service=snsd_unpack_all_service(buf, pack_sz, unpacked_sz);
+		
+		snsd_counter=snsd_count_nodes(acq->service);
+		if(acq->snsd_counter != snsd_counter) {
+			debug(DBG_SOFT, ERROR_MSG "unpack_acq:" 
+					"snsd_counter != snsd_counter", 
+					ERROR_POS);
+			xfree(acq);
+			list_destroy(ac->acq);
+			return 0;
+		}
+
+		clist_add(&ac->acq, &tmp_counter, acq);
+	}
+
+	return ac->acq;
+}
 
 /*
- * unpack_andna_cache: unpacks a packed andna cache linked list and returns the
- * its head.  `counter' is set to the number of struct in the llist.
+ * unpack_andna_cache
+ *
+ * Unpacks a packed andna cache linked list and returns the
+ * its head.
+ * `counter' is set to the number of struct in the llist.
+ * `pack_type' specifies if the package will be saved in a file or sent over
+ * the net, it is equal to ACACHE_PACK_FILE or to ACACHE_PACK_PKT.
+ * 
  * On error 0 is returned.
  * Warning: `pack' will be modified during the unpacking.
  */
-andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter)
+andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter,
+		int pack_type)
 {
 	struct andna_cache_pkt_hdr *hdr;
 	andna_cache *ac, *ac_head=0;
 	andna_cache_queue *acq;
 	char *buf;
-	size_t sz;
+	size_t sz=0;
 	int i, e, fake_int;
-	time_t cur_t;
+	size_t unpacked_sz=0;
 
 	hdr=(struct andna_cache_pkt_hdr *)pack;
 	ints_network_to_host(hdr, andna_cache_pkt_hdr_iinfo);
 	*counter=0;
 	
-	if(hdr->tot_caches) {
-		cur_t=time(0);
-
-		buf=pack + sizeof(struct andna_cache_pkt_hdr);
-		sz=sizeof(struct andna_cache_pkt_hdr);
+	if(!hdr->tot_caches)
+		goto finish;
 		
-		for(i=0; i<hdr->tot_caches; i++) {
-			sz+=ACACHE_BODY_PACK_SZ;
-			if(sz > pack_sz)
-				goto finish; /* overflow */
+	buf=pack + sizeof(struct andna_cache_pkt_hdr);
+	sz=sizeof(struct andna_cache_pkt_hdr);
 
-			ac=xmalloc(sizeof(andna_cache));
-			setzero(ac, sizeof(andna_cache));
-			
-			ints_network_to_host(buf, andna_cache_body_iinfo);
-			
-			memcpy(ac->hash, buf, ANDNA_HASH_SZ);
-			buf+=ANDNA_HASH_SZ;
-			
-			memcpy(&ac->flags, buf, sizeof(char));
-			buf+=sizeof(char);
+	for(i=0; i<hdr->tot_caches; i++) {
+		sz+=ACACHE_BODY_PACK_SZ;
+		if(sz > pack_sz)
+			goto finish; /* overflow */
 
-			memcpy(&ac->queue_counter, buf, sizeof(u_short));
-			buf+=sizeof(u_short);
+		ac=xmalloc(sizeof(andna_cache));
+		setzero(ac, sizeof(andna_cache));
 
-			sz+=ACQ_PACK_SZ(0)*ac->queue_counter;
-			if(sz > pack_sz)
-				goto finish; /* overflow */
+		ints_network_to_host(buf, andna_cache_body_iinfo);
 
-			for(e=0; e < ac->queue_counter; e++) {
-				acq=xmalloc(sizeof(andna_cache_queue));
-				setzero(acq, sizeof(andna_cache_queue));
-				
-				ints_network_to_host(buf, andna_cache_queue_body_iinfo);
-				
-				memcpy(acq->rip, buf, MAX_IP_SZ);
-				inet_ntohl(acq->rip, net_family);
-				buf+=MAX_IP_SZ;
+		memcpy(ac->hash, buf, ANDNA_HASH_SZ);
+		buf+=ANDNA_HASH_SZ;
 
-				acq->timestamp=0;
-				acq->timestamp+=(*(uint32_t *)buf);
-				acq->timestamp = cur_t - acq->timestamp;
-				buf+=sizeof(uint32_t);
+		memcpy(&ac->flags, buf, sizeof(char));
+		buf+=sizeof(char);
 
-				memcpy(&acq->hname_updates, buf, sizeof(u_short));
-				buf+=sizeof(u_short);
+		memcpy(&ac->queue_counter, buf, sizeof(u_short));
+		buf+=sizeof(u_short);
 
-				memcpy(&acq->pubkey, buf, ANDNA_PKEY_LEN);
-				buf+=ANDNA_PKEY_LEN;
-
-				memcpy(&acq->snsd_counter, buf, sizeof(u_short));
-				buf+=sizeof(u_short);
-
-				sz+=sizeof(snsd_node);
-				if(sz > pack_sz)
-					break; /* overflow */
-
-				clist_add(&ac->acq, &fake_int, acq);
-			}
-
-			clist_add(&ac_head, counter, ac);
-		}
+		sz+=ACQ_PACK_SZ(0)*ac->queue_counter;
+		if(sz > pack_sz)
+			goto finish; /* overflow */
+		
+		unpacked_sz+=ACACHE_BODY_PACK_SZ;
+		
+		ac->acq=unpack_acq_llist(buf, pack_sz-unpacked_sz, &unpacked_sz,
+				ac, pack_type);
+		clist_add(&ac_head, counter, ac);
 	}
+	
 finish:
 	return ac_head;
 }
@@ -1490,7 +1603,7 @@ int save_andna_cache(andna_cache *acache, char *file)
 	char *pack;
 
 	/*Pack!*/
-	pack=pack_andna_cache(acache, &pack_sz);
+	pack=pack_andna_cache(acache, &pack_sz, ACACHE_PACK_FILE);
 	if(!pack_sz || !pack)
 		return 0;
 	
@@ -1533,7 +1646,7 @@ andna_cache *load_andna_cache(char *file, int *counter)
 	if(!fread(pack, pack_sz, 1, fd))
 		goto finish;
 	
-	acache=unpack_andna_cache(pack, pack_sz, counter);
+	acache=unpack_andna_cache(pack, pack_sz, counter, ACACHE_PACK_FILE);
 
 finish:
 	if(pack)

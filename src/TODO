@@ -8,9 +8,6 @@
 
 
 - SNSD
-	- andna_cache.c:
-		- acq_add()
-		- andna_cache destroy: snsd_destroy
 	- andna_cache
 		- pack
 		- unpack

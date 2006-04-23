@@ -86,12 +86,6 @@ struct andna_cache_queue
 	snsd_service	*service;
 };
 typedef struct andna_cache_queue andna_cache_queue;
-INT_INFO andna_cache_queue_body_iinfo = { 3,
-					  { INT_TYPE_32BIT, INT_TYPE_16BIT, INT_TYPE_16BIT },
-					  { 0, sizeof(time_t), 
-						  sizeof(time_t)+sizeof(u_short)+ANDNA_PKEY_LEN },
-					  { 1, 1, 1 }
-					};
 		
 /*
  * andna_cache
@@ -110,10 +104,6 @@ struct andna_cache
 						   The first is the active one */
 };
 typedef struct andna_cache andna_cache;
-INT_INFO andna_cache_body_iinfo = { 1, { INT_TYPE_16BIT },
-				    { MAX_IP_SZ+sizeof(char) },
-				    { 1 }
-				  };
 
 /* part of the counter cache, see below */
 struct counter_c_hashes
@@ -317,28 +307,65 @@ INT_INFO lcl_cache_pkt_body_iinfo = { 3, { INT_TYPE_16BIT, INT_TYPE_32BIT, INT_T
  *  * * * andna cache package * * *
  */
 
+/*
+ * the body of the acq_pkt is:
+ * struct acq_pkt_body {
+ * 	time_t		timestamp;
+ * 	u_short		hname_updates;
+ * 	char		pubkey[ANDNA_PKEY_LEN];
+ *
+ * 	u_short		snsd_counter;
+ * 	char		snsd_service_pack[SNSD_SERVICE_PACK_SZ];
+ * };
+ */
+INT_INFO acq_pkt_body_iinfo = { 3,
+				{ INT_TYPE_32BIT, INT_TYPE_16BIT, INT_TYPE_16BIT },
+				{ 0, sizeof(time_t),
+					sizeof(time_t) + sizeof(u_short) + ANDNA_PKEY_LEN },
+				{ 1, 1, 1 }
+			      };
+#define ACQ_BODY_PACK_SZ		(sizeof(time_t) + sizeof(u_short)*2 + \
+					 ANDNA_PKEY_LEN)
+#define ACQ_PACK_SZ(snsd_pack_sz)	(ACQ_BODY_PACK_SZ + (snsd_pack_sz))
+
 struct andna_cache_pkt_hdr
 {
 	u_short		tot_caches;
 }_PACKED_;
 INT_INFO andna_cache_pkt_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
 /*
- * The body is a struct andna_cache but the andna_cache->acq in the struct is
- * substituted with the actual pack of the andna_cache_queue linked list.
- * There are a number of bodies equal to `tot_caches'.
- * So the complete pkt is:
- * 	struct  andna_cache_pkt_hdr	hdr;
- * 	char 	acq[ANDNA_CACHE_QUEUE_PACK_SZ(hdr.tot_caches)];
- * 	
- * acq->timestamp is the difference of the current time with `acq->timestamp'
- * itself, and it is stored as a uint32_t not a time_t!
- * The same is for acq->snsd->last_update.
+ * The body is:
+ * struct andna_cache_pack {
+ * 	u_int		hash[MAX_IP_INT];
+ * 	char		flags;
+ * 	u_short		queue_counter;
+ * 	char		acq_pack[ACQ_PACK_SZ*queue_counter];
+ * } acache_pack[hdr.tot_caches];
  */
-#define ACQ_PACK_SZ(snsd_pack_sz)	(sizeof(time_t) + sizeof(u_short)*2 + \
-					 ANDNA_PKEY_LEN + (snsd_pack_sz))
+INT_INFO andna_cache_body_iinfo = { 1, 
+				    { INT_TYPE_16BIT },
+				    { MAX_IP_SZ+sizeof(char) },
+				    { 1 }
+				  };
 #define ACACHE_BODY_PACK_SZ		(ANDNA_HASH_SZ + sizeof(char) + 	\
 					   sizeof(u_short))
-#define ACACHE_PACK_SZ(acq_pack_sz)	( (acq_pack_sz) + ACACHE_BODY_PACK_SZ)
+#define ACACHE_PACK_SZ(acq_pack_sz)	((acq_pack_sz) + ACACHE_BODY_PACK_SZ)
+
+/*
+ * If the acache pack will be sent on a network packet, the `acq->timestamp' 
+ * will be the difference of the current time with the same `acq->timestamp',
+ * in this way the node which receives the packet will add its current time to
+ * `acq->timestamp'. This is necessary because the sending and receiving node
+ * don't have the clock synced. Note that the rtt isn't considered because it
+ * is generally very small and the ANDNA times don't need an accurate
+ * precision, f.e. the expiration time is three days long.
+ * If the pack is saved on a file, then `acq->timestamp' remains the same.
+ * Problem: if the clock is changed, acq->timestamp will refer to the old
+ * clock.
+ */
+#define ACACHE_PACK_FILE		1
+#define ACACHE_PACK_PKT			2
+
 
 /*
  * The counter cache pkt is similar to the andna_cache_pkt, it is completely
@@ -439,8 +466,9 @@ int unpack_lcl_keyring(lcl_cache_keyring *keyring, char *pack, size_t pack_sz);
 char *pack_lcl_cache(lcl_cache *local_cache, size_t *pack_sz);
 lcl_cache *unpack_lcl_cache(char *pack, size_t pack_sz, int *counter);
 
-char *pack_andna_cache(andna_cache *acache, size_t *pack_sz);
-andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter);
+char *pack_andna_cache(andna_cache *acache, size_t *pack_sz, int pack_type);
+andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter,
+				int pack_type);
 
 char *pack_counter_cache(counter_c *countercache,  size_t *pack_sz);
 counter_c *unpack_counter_cache(char *pack, size_t pack_sz, int *counter);

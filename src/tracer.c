@@ -314,7 +314,7 @@ void tracer_update_gcount(tracer_hdr *trcr_hdr, tracer_chunk *tracer,
  * tracer_build_bentry: It builds the bnode_block to be added in the bnode's 
  * entry in the tracer pkt. It stores in `bnodechunk' the pointer to the 
  * first bnode_chunk and returns a pointer to the bnode_hdr.
- * `bnode_hdr' and `bnode_chunk' are on the same block of alloced memory.
+ * `bnode_hdr' and `bnode_chunk' are on the same block of allocated memory.
  * The number of bnode_chunks is stored in `bnode_links'.
  * On errors it returns a NULL pointer.
  */
@@ -391,7 +391,7 @@ bnode_hdr *tracer_build_bentry(void *void_map, void *void_node,
 	}	
 	
 	/* Reduce the size of the bblock to its effective size. Initially we 
-	 * alloced it considering all the `me.bnode_map[level][bm].links' 
+	 * allocated it considering all the `me.bnode_map[level][bm].links' 
 	 * links, but if bhdr->links is lesser than 
 	 * me.bnode_map[level][bm].links that means they are not all added in
 	 * the chunks.

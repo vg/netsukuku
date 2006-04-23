@@ -1592,7 +1592,8 @@ andna_cache *get_single_andna_c(u_int hash[MAX_IP_INT],
 	/* Unpack the waited reply */
 	pack_sz=rpkt.hdr.sz;
 	pack=rpkt.msg;
-	ret=andna_cache=unpack_andna_cache(pack, pack_sz, &counter);
+	ret=andna_cache=unpack_andna_cache(pack, pack_sz, &counter,
+			ACACHE_PACK_PKT);
 	if(!andna_cache) {
 		error("get_single_acache(): Malformed andna_cache.");
 		ERROR_FINISH(ret, 0, finish);
@@ -1749,7 +1750,7 @@ int put_single_acache(PACKET rpkt)
 	ac_tmp=xmalloc(sizeof(andna_cache));
 	setzero(ac_tmp, sizeof(andna_cache));
 	list_copy(ac_tmp, ac);
-	pkt.msg=pack_andna_cache(ac_tmp, &pkt_sz);
+	pkt.msg=pack_andna_cache(ac_tmp, &pkt_sz, ACACHE_PACK_PKT);
 	pkt.hdr.sz=pkt_sz;
 
 	debug(DBG_INSANE, "Reply put_single_acache to %s", ntop);
@@ -1890,7 +1891,8 @@ andna_cache *get_andna_cache(inet_prefix to, int *counter)
 	
 	pack_sz=rpkt.hdr.sz;
 	pack=rpkt.msg;
-	ret=andna_cache=unpack_andna_cache(pack, pack_sz, counter);
+	ret=andna_cache=unpack_andna_cache(pack, pack_sz, counter, 
+			ACACHE_PACK_PKT);
 	if(!andna_cache)
 		error("get_andna_cache(): Malformed or empty andna_cache. "
 				"Cannot load it");
@@ -1919,7 +1921,7 @@ int put_andna_cache(PACKET rq_pkt)
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
 
-	pkt.msg=pack_andna_cache(andna_c, &pkt_sz);
+	pkt.msg=pack_andna_cache(andna_c, &pkt_sz, ACACHE_PACK_PKT);
 	pkt.hdr.sz=pkt_sz;
 	debug(DBG_INSANE, "Reply %s to %s", re_to_str(ANDNA_PUT_ANDNA_CACHE), ntop);
 	err=send_rq(&pkt, 0, ANDNA_PUT_ANDNA_CACHE, rq_pkt.hdr.id, 0, 0, 0);

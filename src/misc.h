@@ -26,6 +26,11 @@
  */
 #define NMEMB(x)        	(sizeof((x))/sizeof(typeof((x)[0])))
 
+/*
+ * In bzero(3):
+ * <<4.3BSD.  This function [bzero] is deprecated -- use memset in new 
+ *   programs.>>
+ */
 #define setzero(p, sz)		memset((p), 0, sizeof(sz))
 
 /* 

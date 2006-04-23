@@ -45,6 +45,9 @@
 					 	   snsd record */
 #define SNSD_NODE_IP		(1<<1)		/* An IP is associated in the 
 					   	   snsd record */
+#define SNSD_NODE_MAIN_IP	(1<<2)		/* This is the first IP registered 
+						   to the hname, it can't be
+						   deleted */
 
 
 /*
@@ -110,18 +113,20 @@ struct snsd_service
 	snsd_prio	*prio;
 };
 typedef struct snsd_service snsd_service;
-#define SNSD_SERVICE_PACK_SZ		(sizeof(char))
+#define SNSD_SERVICE_PACK_SZ		(sizeof(u_short))
 
 
 /*
+ * 
  *  * * * snsd structs package * * *
+ *  
  */
 
 struct snsd_node_llist_hdr
 {
 	u_short		count;		/* # of snsd_node structs packed 
 					   in the body */
-};
+}_PACKED_;
 INT_INFO snsd_node_llist_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
 /*
  * the body of the pkt is:
@@ -139,7 +144,7 @@ struct snsd_prio_llist_hdr
 {
 	u_short		count;		/* number of structs packed in 
 					   the body */
-};
+}_PACKED_;
 INT_INFO snsd_prio_llist_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
 /*
  * the body is:
@@ -149,21 +154,44 @@ INT_INFO snsd_prio_llist_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
  * 	char		snsd_node_llist_pack[SNSD_NODE_LLIST_PACK_SZ];
  * } pack[hdr.count];
  */
+#define SNSD_PRIO_LLIST_PACK_SZ(head)					\
+({									\
+	l_list *_s=(l_list *)(head);					\
+	int _priosz=0;							\
+									\
+	list_for(_s)							\
+		_priosz+=SNSD_NODE_LLIST_PACK_SZ(_s->node);		\
+	_priosz+=sizeof(struct snsd_prio_llist_hdr);			\
+	_priosz;							\
+})
+		
 
 struct snsd_service_llist_hdr
 {
 	u_short		count;
-};
+}_PACKED_;
 INT_INFO snsd_service_llist_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
 /*
  * the body is:
  * 	u_short		service;
  * 	char		snsd_prio_llist_pack[SNSD_PRIO_LLIST_PACK_SZ];
  */
-
+#define SNSD_SERVICE_LLIST_PACK_SZ(head)				\
+({									\
+	l_list *_s=(l_list *)(head);					\
+	int _srvsz=0;							\
+ 	if(_s) {							\
+		 list_for(_s)						\
+			 _srvsz+=SNSD_PRIO_PACK_SZ(_s->prio);		\
+		 _srvsz+=sizeof(struct snsd_service_llist_hdr);		\
+	 }								\
+	_srvsz;								\
+})
 
 /*
+ * 
  * * * Functions' declaration * * *
+ *
  */
 
 snsd_service *snsd_find_service(snsd_service *sns, u_short service);
@@ -174,5 +202,8 @@ snsd_node *snsd_find_node_by_record(snsd_node *snd, u_int record[MAX_IP_INT]);
 snsd_node *snsd_choose_wrand(snsd_node *head);
 snsd_node *snsd_add_node(snsd_node **head, u_short *counter, 
 			 u_short max_records, u_int record[MAX_IP_INT]);
+int snsd_pack_service(char *pack, size_t free_sz, snsd_service *service);
+snsd_service *snsd_unpack_service(char *pack, size_t pack_sz, size_t *unpacked_sz);
+
 
 #endif /*SNSD_H*/

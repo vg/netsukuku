@@ -80,7 +80,7 @@ do{									\
 /*
  * list_init
  *
- * If `new' is 0, it stores in `list' a pointer to a newly malloced 
+ * If `new' is 0, it stores in `list' a pointer to a newly mallocated 
  * and zeroed struct.
  * Its type is the same of `list'.
  * If `new' is non zero, then `list' is simply set to `new'.
@@ -486,6 +486,13 @@ do{                  							\
 	0;								\
 })
 
+#define clist_destroy(_head, _counter)					\
+({									\
+ 	list_destroy(*((_head)));					\
+ 	(*(_head))=0;							\
+ 	(*(_counter))=0;						\
+ 	0;								\
+})
 
 /*
  * clist_qsort
@@ -499,7 +506,7 @@ do{                  							\
  * Btw, this function just calls qsort(3), this is how it works:
  * 	- first of all it counts how many elements there are in the llist.
  * 	  This is done only if `_counter' is 0.
- * 	- it uses a temporary calloced array to store all the pointers to the
+ * 	- it uses a temporary callocated array to store all the pointers to the
  * 	  elements of the llist. 
  * 	  tmp[0]=_head; tmp[1]=_head->next; tmp[..]=_head->next->..
  * 	- it calls qsort(3) on the tmp array. Note that qsort gives the
