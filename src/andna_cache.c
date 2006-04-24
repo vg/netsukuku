@@ -90,55 +90,6 @@ void lcl_destroy_keyring(lcl_cache_keyring *keyring)
  * lcl_cache_new: builds a new lcl_cache generating a new rsa key pair and
  * setting the hostname in the struct 
  */
-
-/*
- * 
- *  *  *  *  Local Cache functions  *  *  *
- *  
- */
-
-/*
- * lcl_new_keyring
- *
- * If the keyring of the local cache is null, it generates a new one.
- * It returns 1 if a new keyring has been generated.
- */
-int lcl_new_keyring(lcl_cache_keyring *keyring)
-{
-	setzero(keyring, sizeof(lcl_cache_keyring));
-	
-	if(!keyring->priv_rsa) {
-		loginfo("Generating a new keyring for the future ANDNA requests.");
-		/* Generate the new key pair for the first time */
-		keyring->priv_rsa = genrsa(ANDNA_PRIVKEY_BITS, &keyring->pubkey, 
-				&keyring->pkey_len, &keyring->privkey, &keyring->skey_len);
-		return 1;
-	}
-	
-	return 0;
-}
-
-/*
- * lcl_destroy_keyring
- *
- * destroys accurately the keyring ^_^ 
- */
-void lcl_destroy_keyring(lcl_cache_keyring *keyring)
-{
-	if(keyring->priv_rsa)
-		RSA_free(keyring->priv_rsa);
-	if(keyring->pubkey)
-		xfree(keyring->pubkey);
-	if(keyring->privkey)
-		xfree(keyring->privkey);
-	
-	setzero(keyring, sizeof(lcl_cache_keyring));
-}
-
-/*
- * lcl_cache_new: builds a new lcl_cache generating a new rsa key pair and
- * setting the hostname in the struct 
- */
 lcl_cache *lcl_cache_new(char *hname)
 {
 	lcl_cache *alcl;
@@ -156,6 +107,9 @@ void lcl_cache_free(lcl_cache *alcl)
 {
 	if(alcl->hostname)
 		xfree(alcl->hostname);
+	alcl->snsd_counter=0;
+	if(alcl->service)
+		snsd_service_llist_del(&alcl->service);
 }
 
 void lcl_cache_destroy(lcl_cache *head, int *counter)
@@ -290,7 +244,8 @@ andna_cache_queue *ac_queue_add(andna_cache *ac, inet_prefix rip, char *pubkey)
 
 	sns=snsd_add_service(&acq->service, SNSD_DEFAULT_SERVICE);
 	snp=snsd_add_prio(&sns->prio, SNSD_DEFAULT_PRIO);
-	snd=snsd_add_first_node(&snp->node, &acq->snsd_counter, 1, rip);
+	snd=snsd_add_first_node(&snp->node, &acq->snsd_counter, 
+			SNSD_MAX_QUEUE_RECORDS, rip.data);
 	memcpy(snd->record, rip.data, MAX_IP_SZ);
 	snd->flags|=SNSD_NODE_IP | SNSD_NODE_MAIN_IP;
 	snd->weight=SNSD_DEFAULT_WEIGHT;
@@ -315,7 +270,8 @@ void ac_queue_del(andna_cache *ac, andna_cache_queue *acq)
 {
 	
 	acq->snsd_counter=0;
-	snsd_service_llist_del(acq->service);
+	if(acq->service)
+		snsd_service_llist_del(&acq->service);
 	clist_del(&ac->acq, &ac->queue_counter, acq);
 	ac->flags&=~ANDNA_FULL;
 }
@@ -612,8 +568,12 @@ rh_cache *rh_cache_new(char *hname, time_t timestamp, inet_prefix *ip)
 	return rhc;
 }
 
-rh_cache *rh_cache_add(char *hname, time_t timestamp, inet_prefix *ip)
+rh_cache *rh_cache_add(char *hname, time_t timestamp, inet_prefix *ip,
+			u_short service, u_char prio, u_char weight)
 {
+	snsd_service *sns;
+	snsd_prio *snp;
+	snsd_node *snd;
 	rh_cache *rhc;
 
 	if(!(rhc=rh_cache_find_hname(hname))) {
@@ -634,7 +594,14 @@ rh_cache *rh_cache_add(char *hname, time_t timestamp, inet_prefix *ip)
 	}
 
 	rhc->timestamp=timestamp;
-	inet_copy_ipdata_raw(rhc->ip, ip);
+
+	sns=snsd_add_service(&rhc->service, service);
+	snp=snsd_add_prio(&sns->prio, prio);
+	snd=snsd_add_node(&snp->node, &rhc->snsd_counter, SNSD_MAX_RECORDS,
+			ip->data);
+	memcpy(snd->record, ip->data, MAX_IP_SZ);
+	snd->flags|=SNSD_NODE_IP;
+	snd->weight=SNSD_WEIGHT(weight);
 
 	return rhc;
 }
@@ -669,6 +636,10 @@ rh_cache *rh_cache_find_hname(char *hname)
 
 void rh_cache_del(rh_cache *rhc)
 {
+	rhc->snsd_counter=0;
+	if(rhc->service)
+		snsd_service_llist_del(&rhc->service);
+
 	clist_del(&andna_rhc, &rhc_counter, rhc);
 }
 
@@ -783,17 +754,16 @@ char *pack_lcl_cache(lcl_cache *local_cache, size_t *pack_sz)
 {
 	struct lcl_cache_pkt_hdr lcl_hdr;
 	lcl_cache *alcl=local_cache;
-	int_info body_iinfo;
 	size_t sz=0, slen;
 	char *pack, *buf, *body;
 	int i;
 
 	lcl_hdr.tot_caches=0;
-	sz=LCL_CACHE_HDR_PACK_SZ(&lcl_hdr);
+	sz=LCL_CACHE_HDR_PACK_SZ;
 	
 	/* Calculate the final pack size */
 	list_for(alcl) {
-		sz+=LCL_CACHE_BODY_PACK_SZ(strlen(alcl->hostname)+1, alcl->mxs);
+		sz+=LCL_CACHE_BODY_PACK_SZ(strlen(alcl->hostname)+1);
 		lcl_hdr.tot_caches++;
 	}
 
@@ -804,37 +774,22 @@ char *pack_lcl_cache(lcl_cache *local_cache, size_t *pack_sz)
 		
 	*pack_sz=0;
 	if(lcl_hdr.tot_caches) {
-		int_info_copy(&body_iinfo, &lcl_cache_pkt_body_iinfo);
-		
 		alcl=local_cache;
 		
 		list_for(alcl) {
 			body=buf;
 			
-			slen=strlen(alcl->hostname)+1;
-			memcpy(buf, alcl->hostname, slen);
-
-			buf+=slen;
 			memcpy(buf, &alcl->hname_updates, sizeof(u_short));
 			buf+=sizeof(u_short);
 	
 			memcpy(buf, &alcl->timestamp, sizeof(time_t));
 			buf+=sizeof(time_t);
 
-			memcpy(buf, &alcl->mxs, sizeof(u_short));
-			buf+=sizeof(u_short);
-
-			for(i=0; i<alcl->mxs; i++) {
-				memcpy(buf, &alcl->mx_node[i], sizeof(lcl_mx));
-				ints_host_to_network(buf, lcl_mx_iinfo);
-				inet_htonl((u_int *)buf, net_family);
-				buf+=sizeof(lcl_mx);
-			}
+			slen=strlen(alcl->hostname)+1;
+			memcpy(buf, alcl->hostname, slen);
+			buf+=slen;
 			
-			body_iinfo.int_offset[0]=slen;
-			body_iinfo.int_offset[1]=slen+sizeof(u_short);
-			body_iinfo.int_offset[2]=slen+sizeof(u_short)+sizeof(time_t);
-			ints_host_to_network(body, body_iinfo);
+			ints_host_to_network(body, lcl_cache_pkt_body_iinfo);
 		}
 	}
 
@@ -852,12 +807,14 @@ lcl_cache *unpack_lcl_cache(char *pack, size_t pack_sz, int *counter)
 {
 	struct lcl_cache_pkt_hdr *hdr;
 	lcl_cache *alcl, *alcl_head=0;
-	int_info body_iinfo;
 	char *buf;
-	size_t slen, sz;
+	size_t slen, unpacked_sz;
 	int i=0;
 		
-	hdr=(struct lcl_cache_pkt_hdr *)pack;
+	buf=pack;
+	hdr=(struct lcl_cache_pkt_hdr *)buf;
+	buf+=sizeof(struct lcl_cache_pkt_hdr);
+	unpacked_sz=sizeof(struct lcl_cache_pkt_hdr);
 	ints_network_to_host(hdr, lcl_cache_pkt_hdr_iinfo);
 
 	if(hdr->tot_caches > ANDNA_MAX_HOSTNAMES)
@@ -865,40 +822,32 @@ lcl_cache *unpack_lcl_cache(char *pack, size_t pack_sz, int *counter)
 
 	*counter=0;
 	if(hdr->tot_caches) {
-		int_info_copy(&body_iinfo, &lcl_cache_pkt_body_iinfo);
-		
-		for(i=0, sz=0; i<hdr->tot_caches; i++) {
-			slen=strlen(buf)+1;
-			sz+=LCL_CACHE_BODY_PACK_SZ(slen, 0);
-
-			if(slen > ANDNA_MAX_HNAME_LEN || sz > pack_sz)
+		for(i=0; i<hdr->tot_caches; i++) {
+			unpacked_sz+=LCL_CACHE_BODY_PACK_SZ(0);
+			if(unpacked_sz > pack_sz)
 				goto finish;
 			
-			body_iinfo.int_offset[0]=slen;
-			body_iinfo.int_offset[1]=slen+sizeof(u_short);
-			body_iinfo.int_offset[2]=slen+sizeof(u_short)+sizeof(time_t);
-			ints_network_to_host(buf, body_iinfo);
+			slen=strlen(buf+sizeof(u_short)+sizeof(time_t))+1;
+			if(slen > ANDNA_MAX_HNAME_LEN || 
+					(unpacked_sz+=slen) > pack_sz)
+				goto finish;
 
+			ints_network_to_host(buf, lcl_cache_pkt_body_iinfo);
+		
 			alcl=xmalloc(sizeof(lcl_cache));
 			setzero(alcl, sizeof(lcl_cache));
-			alcl->hostname=xstrdup(buf);
-			alcl->hash=fnv_32_buf(alcl->hostname, 
-					strlen(alcl->hostname), FNV1_32_INIT);
-			buf+=slen;
 			
 			memcpy(&alcl->hname_updates, buf,  sizeof(u_short));
 			buf+=sizeof(u_short);
 
 			memcpy(&alcl->timestamp, buf, sizeof(time_t));
 			buf+=sizeof(time_t);
+			
+			alcl->hostname=xstrdup(buf);
+			alcl->hash=fnv_32_buf(alcl->hostname, 
+					strlen(alcl->hostname), FNV1_32_INIT);
+			buf+=slen;
 
-			memcpy(&alcl->mxs, buf, sizeof(u_short));
-			buf+=sizeof(u_short);
-			
-			sz+=alcl->mxs*sizeof(lcl_mx);
-			if(sz > pack_sz)
-				goto finish;
-			
 			clist_add(&alcl_head, counter, alcl);
 		}
 	}
@@ -1020,8 +969,8 @@ char *pack_andna_cache(andna_cache *acache, size_t *pack_sz, int pack_type)
 		list_for(acq) {
 			service_sz = SNSD_SERVICE_LLIST_PACK_SZ(acq->service);
 			acq_sz	   = ACQ_PACK_SZ(service_sz);
+			sz+=ACACHE_PACK_SZ(acq_sz);
 		}
-		sz+=ACACHE_PACK_SZ(acq_sz);
 		hdr.tot_caches++;
 	}
 	
@@ -1081,9 +1030,8 @@ unpack_acq_llist(char *pack, size_t pack_sz, size_t *unpacked_sz,
 		ints_network_to_host(buf, acq_body_iinfo);
 
 		acq->timestamp=(*(uint32_t *)buf);
-		if(pack_type == ACACHE_PACK_PKT) {
+		if(pack_type == ACACHE_PACK_PKT)
 			acq->timestamp = cur_t - acq->timestamp;
-		}
 		buf+=sizeof(uint32_t);
 
 		memcpy(&acq->hname_updates, buf, sizeof(u_short));
@@ -1343,23 +1291,26 @@ char *pack_rh_cache(rh_cache *rhcache, size_t *pack_sz)
 {
 	struct rh_cache_pkt_hdr rh_hdr;
 	rh_cache *rhc=rhcache;
-	size_t sz=0;
+	size_t tot_pack_sz=0, service_sz;
 	char *pack, *buf, *body;
 
 	rh_hdr.tot_caches=0;
-	sz=sizeof(struct rh_cache_pkt_hdr);
+	tot_pack_sz=sizeof(struct rh_cache_pkt_hdr);
 	
 	/* Calculate the final pack size */
-	sz=RH_CACHE_BODY_PACK_SZ*rhc_counter;
-	rh_hdr.tot_caches=rhc_counter;
+	list_for(rhc) {
+		service_sz=SNSD_SERVICE_LLIST_PACK_SZ(rhc->service);
+		tot_pack_sz+=RH_CACHE_BODY_PACK_SZ(service_sz);
+		rh_hdr.tot_caches++;
+	}
 
-	pack=xmalloc(sz);
+	buf=pack=xmalloc(tot_pack_sz);
 	memcpy(pack, &rh_hdr, sizeof(struct rh_cache_pkt_hdr));
+	buf+=sizeof(struct rh_cache_pkt_hdr);
 	ints_host_to_network(pack, rh_cache_pkt_hdr_iinfo);
 	*pack_sz=0;
 
 	if(rh_hdr.tot_caches) {
-		buf=pack + sizeof(struct rh_cache_pkt_hdr);
 		rhc=rhcache;
 		
 		list_for(rhc) {
@@ -1374,14 +1325,11 @@ char *pack_rh_cache(rh_cache *rhcache, size_t *pack_sz)
 			memcpy(buf, &rhc->timestamp, sizeof(time_t));
 			buf+=sizeof(time_t);
 			
-			memcpy(buf, rhc->ip, MAX_IP_SZ);
-			inet_htonl((u_int *)buf, net_family);
-			buf+=MAX_IP_SZ;
-			
-			memcpy(buf, rhc->mx_ip, MAX_IP_SZ);
-			inet_htonl((u_int *)buf, net_family);
-			buf+=MAX_IP_SZ;
+			pack_sz+=RH_CACHE_BODY_PACK_SZ(0);
 
+			pack_sz+=snsd_pack_all_services(buf, tot_pack_sz-pack_sz, 
+					rhc->service);
+			
 			/* host -> network order */
 			ints_host_to_network(buf, rh_cache_pkt_body_iinfo);
 		}
@@ -1404,7 +1352,7 @@ rh_cache *unpack_rh_cache(char *pack, size_t pack_sz, int *counter)
 	struct rh_cache_pkt_hdr *hdr;
 	rh_cache *rhc=0, *rhc_head=0;
 	char *buf;
-	size_t sz;
+	size_t unpacked_sz=0;
 	int i=0;
 		
 	hdr=(struct rh_cache_pkt_hdr *)pack;
@@ -1416,10 +1364,11 @@ rh_cache *unpack_rh_cache(char *pack, size_t pack_sz, int *counter)
 	*counter=0;
 	if(hdr->tot_caches) {
 		buf=pack + sizeof(struct rh_cache_pkt_hdr);
+		unpacked_sz=sizeof(struct rh_cache_pkt_hdr);
 
-		for(i=0, sz=0; i<hdr->tot_caches; i++) {
-			sz+=RH_CACHE_BODY_PACK_SZ;
-			if(sz > pack_sz)
+		for(i=0; i<hdr->tot_caches; i++) {
+			unpacked_sz+=RH_CACHE_BODY_PACK_SZ(0);
+			if(unpacked_sz > pack_sz)
 				goto finish;
 
 			ints_network_to_host(buf, rh_cache_pkt_body_iinfo);
@@ -1435,15 +1384,10 @@ rh_cache *unpack_rh_cache(char *pack, size_t pack_sz, int *counter)
 			
 			memcpy(&rhc->timestamp, buf, sizeof(time_t));
 			buf+=sizeof(time_t);
-			
-			memcpy(rhc->ip, buf, MAX_IP_SZ);
-			inet_ntohl(rhc->ip, net_family);
-			buf+=MAX_IP_SZ;
-			
-			memcpy(rhc->mx_ip, buf, MAX_IP_SZ);
-			inet_ntohl(rhc->mx_ip, net_family);
-			buf+=MAX_IP_SZ;
 
+			rhc->service=snsd_unpack_all_service(buf, pack_sz, 
+					&unpacked_sz);
+			
 			clist_add(&rhc_head, counter, rhc);
 		}
 	}

@@ -438,13 +438,16 @@ do{									\
 
 #define clist_append(_head, _tail, _counter, _list)			\
 do{									\
-	l_list *_t=(_tail) ? (l_list *)(*(_tail)) : 0;			\
+									\
+	l_list *_t=0, **_targv=(l_list **)(_tail);			\
+	if(_targv)							\
+		_t=*_targv;						\
 	if(!(*(_counter)) || !(*(_head)))				\
 		list_init(*(_head), (_list));				\
 	else {								\
 		_t=list_append(*(_head), _t, (_list));			\
 		if((_tail))						\
-			*((_tail))=(typeof (*((_tail))))_t;		\
+			(*_targv)=_t;					\
 	}								\
 	(*(_counter))++;                                                \
 }while(0)

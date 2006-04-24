@@ -1185,7 +1185,10 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	 * successful resolved it ;)
 	 */
 	reply->timestamp = time(0) - reply->timestamp;
-	rh_cache_add(hname, reply->timestamp, resolved_ip);
+	rh_cache_add(hname, reply->timestamp, resolved_ip,
+			SNSD_DEFAULT_SERVICE,
+			SNSD_DEFAULT_PRIO,
+			SNSD_DEFAULT_WEIGHT);
 	
 finish:
 	pkt_free(&pkt, 1);

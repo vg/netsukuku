@@ -184,7 +184,7 @@ struct lcl_cache
 						   registered */
 	
 	u_short		snsd_counter;		/* # of `snsds' minus 1 */
-	snsd_service	*snsd;
+	snsd_service	*service;
 	
 	char 		flags;
 };
@@ -219,7 +219,7 @@ struct resolved_hnames_cache
 					   this cache will expire. */
 	
 	u_short		snsd_counter;
-	snsd_service	*snsd;
+	snsd_service	*service;
 };
 typedef struct resolved_hnames_cache rh_cache;
 
@@ -281,26 +281,23 @@ struct lcl_cache_pkt_hdr
 						   are in the pkt's body */
 }_PACKED_;
 INT_INFO lcl_cache_pkt_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
-#define LCL_CACHE_HDR_PACK_SZ(lclhdr)	(sizeof(struct lcl_cache_pkt_hdr))
+#define LCL_CACHE_HDR_PACK_SZ		(sizeof(struct lcl_cache_pkt_hdr))
 		
 /* 
  * The body is:
  *	
  * struct lcl_cache_pkt_body {
- *	char		hostname[strlen(hostname)+1];  * null terminated *
  *	u_short		hname_updates;
  *	time_t          timestamp;
- *	u_short		snsd_sz;
- *	char		snsd[snsd_sz];	
+ *	char		hostname[strlen(hostname)+1];  * null terminated *
  * } body[ hdr.tot_caches ];
  * 
  */
-#define LCL_CACHE_BODY_PACK_SZ(hname_len, snsdc) ((hname_len) + sizeof(u_short)*2 \
-						  + sizeof(time_t) + sizeof(snsd_node)*(snsdc))
-INT_INFO lcl_cache_pkt_body_iinfo = { 3, { INT_TYPE_16BIT, INT_TYPE_32BIT, INT_TYPE_16BIT }, 
-				      { IINFO_DYNAMIC_VALUE, IINFO_DYNAMIC_VALUE, 
-					      IINFO_DYNAMIC_VALUE },
-				      { 1, 1, 1}
+#define LCL_CACHE_BODY_PACK_SZ(hname_len) 	((hname_len) + sizeof(u_short) \
+						  + sizeof(time_t)
+INT_INFO lcl_cache_pkt_body_iinfo = { 2, { INT_TYPE_16BIT, INT_TYPE_32BIT }, 
+				      { 0, sizeof(u_short) },
+				      { 1, 1 }
 				    };
 
 /*
@@ -393,20 +390,20 @@ struct rh_cache_pkt_hdr
 						   are in the pkt's hdr */
 }_PACKED_;
 INT_INFO rh_cache_pkt_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
-/* 
+/*
  * The body is:
  * struct rh_cache_pkt_body {
  *	u_int		hash;
  *	char		flags;
  *	time_t		timestamp;
- *	u_short		snsd_sz;
- *	char		snsd[snsd_sz];	
+ *
+ * 	u_short		snsd_counter;
+ * 	char		snsd_service_pack[SNSD_SERVICE_PACK_SZ];
  * } body[ hdr.tot_caches ];
  */
-#define RH_CACHE_BODY_PACK_SZ(snsd_counter)	(sizeof(u_int)+sizeof(time_t)+ \
-						 sizeof(char)+MAX_IP_SZ*2+     \
-						 sizeof(u_short)+	       \
-						 (snsd_counter)*sizeof(snsd_node))
+#define RH_CACHE_BODY_PACK_SZ(snsd_pack_sz)	(sizeof(u_int)+sizeof(char)+ \
+						 sizeof(time_t)+sizeof(u_short)+\
+						 (snsd_pack_sz))
 INT_INFO rh_cache_pkt_body_iinfo = { 3,
 				    { INT_TYPE_32BIT, INT_TYPE_32BIT, INT_TYPE_16BIT },
 				    { 0, sizeof(u_int)+sizeof(char), 
@@ -454,7 +451,8 @@ void counter_c_del_expired(void);
 void counter_c_destroy(void);
 
 rh_cache *rh_cache_new(char *hname, time_t timestamp, inet_prefix *ip);
-rh_cache *rh_cache_add(char *hname, time_t timestamp, inet_prefix *ip);
+rh_cache *rh_cache_add(char *hname, time_t timestamp, inet_prefix *ip,
+			u_short service, u_char prio, u_char weight);
 rh_cache *rh_cache_find_hname(char *hname);
 void rh_cache_del(rh_cache *rhc);
 void rh_cache_del_expired(void);

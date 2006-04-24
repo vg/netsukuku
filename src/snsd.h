@@ -75,6 +75,11 @@
  * 
  * The andna_cache keeps all the SNSD nodes associated to the registered
  * hostname. The andna_cache doesn't need `snsd_node->pubkey'.
+ *
+ * The rh_cache stores only records which are of the SNSD_NODE_IP type.
+ *
+ * When the lcl_cache is saved, its snsd llist is discarded because it is
+ * loaded each time from the /etc/netsukuku/snsd_nodes file.
  */
 struct snsd_node
 { 
@@ -202,6 +207,9 @@ snsd_node *snsd_find_node_by_record(snsd_node *snd, u_int record[MAX_IP_INT]);
 snsd_node *snsd_choose_wrand(snsd_node *head);
 snsd_node *snsd_add_node(snsd_node **head, u_short *counter, 
 			 u_short max_records, u_int record[MAX_IP_INT]);
+snsd_node *snsd_add_first_node(snsd_node **head, u_short *counter,
+				u_short max_records, u_int record[MAX_IP_INT]);
+void snsd_service_llist_del(snsd_service **head);
 int snsd_pack_service(char *pack, size_t free_sz, snsd_service *service);
 snsd_service *snsd_unpack_service(char *pack, size_t pack_sz, size_t *unpacked_sz);
 
