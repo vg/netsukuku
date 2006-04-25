@@ -62,8 +62,8 @@
 
 #define ANDNS_SET_RCODE(s,c)	*((s)+3)=(((*((s)+3))&0xf0)|c)
 #define ANDNS_SET_QR(s)		(*((s)+2))|=0x80
-int store_ns(char *ns, struct sockaddr_in *nsbuf, uint8_t *ns_count);
-int collect_resolv_conf(char *resolve_conf, struct sockaddr_in *nsbuf,uint8_t *ns_count);
+int store_ns(char *ns);
+int collect_resolv_conf(char *resolve_conf);
 int andns_init(int restricted, char *resolv_conf);
 int ns_general_send(char *msg,int msglen,char *answer,int *anslen);
 int ns_send(char *msg,int msglen, char *answer,int *anslen,struct sockaddr_in *ns,socklen_t nslen);

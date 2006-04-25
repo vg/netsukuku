@@ -70,7 +70,7 @@ int debug_andna_reverse_resolve(inet_prefix addr,char ***hnames)
  *      -1 on error
  *       0 if OK
  */
-int store_ns(char *ns, struct sockaddr_in *nsbuf, uint8_t *ns_count)
+int store_ns(char *ns)
 {
         int res;
 	struct addrinfo *ai;
@@ -78,25 +78,24 @@ int store_ns(char *ns, struct sockaddr_in *nsbuf, uint8_t *ns_count)
         if (strstr(ns, "127.0.0.")) /* TODO: make it proto independent  */
                 return -1;
 
-	ai=_andns_ns_+*ns_count;
+	ai=_andns_ns_+_andns_ns_count_;
 	res=getaddrinfo(ns,DNS_PORT_STR,_ns_filter_,&ai);
 	if (!res) {
-		debug(DBG_NORMAL,"In store_ns: gai %s -> %s",ns,gai_strerror(errno));
+		debug(DBG_NORMAL,"In store_ns(): gai %s -> %s",ns,gai_strerror(errno));
 		return -1;
 	}
-	(*ns_count)++;
+	_andns_ns_count_++;
         return 0;
 }
 /*
  * Reads resolv.conf, searching nameserver lines.
  * Takes the ip address from these lines and calls store_ns.
  * "nameserver 127.0.0.1" is discarded to remove looping behaviors.
- * The valid nameservers are stored in `nsbuf' array which must have at least
- * `MAXNSSERVERS' members. The number of stored nameservers is written in
+ * The number of stored nameservers is written in
  * `*ns_count' and it is returned.
- * If an error occurred or no hostnames are available -1 is returned.
+ * If an error occurred or no hostnames are available, -1 is returned.
  */
-int collect_resolv_conf(char *resolve_conf, struct sockaddr_in *nsbuf,uint8_t *ns_count)
+int collect_resolv_conf(char *resolve_conf)
 {
         FILE *erc;
         char buf[512],*crow,*t;
@@ -107,7 +106,7 @@ int collect_resolv_conf(char *resolve_conf, struct sockaddr_in *nsbuf,uint8_t *n
 			"error -> %s.", strerror(errno));
 		err_ret(ERR_RSLERC,-1);
         }
-        while ((crow=fgets(buf,512,erc)) && *ns_count<MAXNSSERVERS) {
+        while ((crow=fgets(buf,512,erc)) && *_andns_ns_count_<MAXNSSERVERS) {
                 if (!(crow=strstr(buf,"nameserver "))) /* is a good line? */
                         continue;
 		t=buf;
@@ -117,14 +116,14 @@ int collect_resolv_conf(char *resolve_conf, struct sockaddr_in *nsbuf,uint8_t *n
                 crow+=11;
 		if ((t=strstr(crow,"\n"))) /* remove newline char */
 			*t=0;
-                store_ns(crow, nsbuf, ns_count);
+                store_ns(crow); /* finally store nameserver */
         }
         if (fclose(erc)!=0) {
                 error("In collect_resolv_conf: closing "
 			"resolv.conf -> %s",strerror(errno));
 		err_ret(ERR_RSLERC,-1);
         }
-        if (!(*ns_count)) 
+        if (!_andns_ns_count_) 
 		err_ret(ERR_RSLNNS,-1);
         return *ns_count;
 }
@@ -137,8 +136,8 @@ int collect_resolv_conf(char *resolve_conf, struct sockaddr_in *nsbuf,uint8_t *n
 int andns_init(int restricted, char *resolv_conf)
 {
         int i,res;
-        char msg[(INET_ADDRSTRLEN+2)*MAXNSSERVERS];
-        char buf[INET_ADDRSTRLEN];
+        char msg[(INET6_ADDRSTRLEN+2)*MAXNSSERVERS];
+        char buf[INET6_ADDRSTRLEN];
         struct sockaddr_in *saddr;
 
 	memset(_ns_filter_,0,sizeof(struct addrinfo));
@@ -149,8 +148,7 @@ int andns_init(int restricted, char *resolv_conf)
 
         memset(msg,0,(INET_ADDRSTRLEN+2)*MAXNSSERVERS);
 
-        res=collect_resolv_conf(resolv_conf,
-			_andns_ns_, &_andns_ns_count_);
+        res=collect_resolv_conf(resolv_conf);
         if (res <=0) {
                 _dns_forwarding_=0;
 		debug(DBG_NORMAL,err_str);
@@ -161,9 +159,9 @@ int andns_init(int restricted, char *resolv_conf)
          * Debug message
          */
         for (i=0;i<_andns_ns_count_;i++) {
-                saddr=_andns_ns_+i;
+                saddr=(_andns_ns_+i)->ai_addr;
                 if(inet_ntop(saddr->sin_family,
-			(void*)&((saddr)->sin_addr),buf,INET_ADDRSTRLEN)) {
+			(void*)&((saddr)->sin_addr),buf,INET6_ADDRSTRLEN)) {
                         strncat(msg,buf,INET_ADDRSTRLEN);
                         strncat(msg,i==_andns_ns_count_-1?". ":", ",2);
                 } else
