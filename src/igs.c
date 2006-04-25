@@ -132,7 +132,9 @@ int str_to_inet_gw(char *str, inet_prefix *gw, char **dev)
 }
 
 /*
- * parse_internet_hosts: given a string which uses the following syntax:
+ * parse_internet_hosts
+ *
+ * given a string which uses the following syntax:
  * 	"hostname1:hostname2:hostname3:..."
  * it stores each hostname in a new mallocated array and returns it.
  * The number of hostnames is written in `*hosts'

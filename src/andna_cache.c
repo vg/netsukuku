@@ -1818,6 +1818,122 @@ int load_hostnames(char *file, lcl_cache **old_alcl_head, int *old_alcl_counter)
 	return 0;
 }
 
+/*
+ * load_snsd
+ *
+ * It loads the SNSD records to be registered from the given `file'.
+ * In ths file there shall be one record per line. 
+ * Each line has to be written in the following format:
+ * 	hostname:snsd_hostname:service:priority:weight[:pub_key_file]
+ * or
+ * 	hostname:snsd_ip:service:priority:weight[:pub_key_file]
+ * The loaded records will be stored in the lcl_cache pointed by `alcl_head'.
+ *
+ * On error -1 is returned.
+ */
+int load_snsd(char *file, lcl_cache *alcl_head)
+{
+#define MAX_SNSD_LINE_SZ		(ANDNA_MAX_HNAME_LEN*4)
+	
+	FILE *fd;
+	char buf[MAX_SNSD_LINE_SZ+1], **records;
+	size_t slen;
+	int line=0, fields, e;
+
+	lcl_cache *alcl;
+	snsd_service *sns;
+	snsd_prio *snp;
+	snsd_node *snd, snsd_node;
+	inet_prefix ip;
+
+	if((fd=fopen(file, "r"))==NULL) {
+		error("Cannot open the snsd_nodes file from %s: %s", 
+				file, strerror(errno));
+		return -1;
+	}
+
+	line=1;
+	while(!feof(fd) && line <= SNSD_MAX_RECORDS) {
+		setzero(buf, MAX_SNSD_LINE_SZ+1);
+		fgets(buf, MAX_SNSD_LINE_SZ, fd);
+		if(feof(fd))
+			break;
+
+		if((*buf)=='#' || (*buf)=='\n' || !(*buf)) {
+			/* Strip off the comment lines */
+			continue;
+		} else {
+			slen=strlen(buf);
+			if(buf[slen-1] == '\n') {
+				/* Don't include the newline in the string */
+				buf[slen-1]='\0';
+				slen=strlen(buf);
+			}
+			
+			records=split_string(buf, ":", &fields, MAX_SNSD_FIELDS,
+					ANDNA_MAX_HNAME_LEN*2);
+			if(fields < MIN_SNSD_FIELDS) {
+				error("%s: Syntax error in line %d.\n"
+					"  The correct syntax is:\n"
+					"  \thostname:snsd_hostname:service:"
+					     "priority:weight[:pub_key_file]\n"
+					"  or\n"
+					"  \thostname:snsd_ip:service:"
+					"  priority:weight[:pub_key_file]",
+					file, line);
+				goto skip_line;
+			}
+			
+			/* hostname */
+			alcl=lcl_cache_find_hname(alcl_head, records[0]);
+			if(!alcl) {
+				error("%s: line %d: The hostname \"%s\" doesn't"
+					" exist in your local cache.\n"
+					"  Register it in %s/%s",
+					file, line, records[0],
+					CONF_DIR, ANDNA_HNAMES_FILE);
+				goto skip_line;
+			}
+			
+			/* snsd record */
+			if(str_to_inet(records[1], &ip) >= 0) {
+				memcpy(snsd_node.record, ip.data, MAX_IP_SZ);
+				snsd_node.flags=SNSD_NODE_IP;
+			} else {
+				hash_md5(records[1], strlen(records[1]), 
+						(u_char *)snsd_node.record);
+				snsd_node.flags=SNSD_NODE_HNAME;
+			}
+
+			/* service */
+			sns=snsd_add_service(&alcl->service, atoi(records[2]));
+			
+			/* priority */
+			snp=snsd_add_prio(&sns->prio, atoi(records[3]));
+			
+			/* node and weight */
+			snd=snsd_add_node(&snp->node, &alcl->snsd_counter,
+					SNSD_MAX_RECORDS, snsd_node.record);
+			snd->weight=SNSD_WEIGHT(atoi(records[4]));
+			snd->flags|=snsd_node.flags;
+			
+			/* pub_key_file 
+			 * TODO: 
+			 * if(fields >= 6)
+			 *   snd->pubkey=load_pubkey(records[5])
+			 */
+
+
+skip_line:
+			for(e=0; e<fields; e++)
+				xfree(records[e]);
+		}
+		line++;
+	}
+
+	return 0;
+}
+
 
 /*
  *

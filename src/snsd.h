@@ -37,15 +37,22 @@
 #define SNSD_DEFAULT_PRIO		16
 #define SNSD_DEFAULT_WEIGHT		1
 
-#define SNSD_WEIGHT(x)		((x) & 0x7f) 	/* The snsd weight has to 
-						   be <= 127 */
+#define SNSD_WEIGHT(x)			((x) & 0x7f) 	/* The snsd weight has to 
+						   	   be <= 127 */
+
+/* Fields used in the syntax for the `snsd_nodes' file:
+ * 	hostname:snsd_hostname:service:priority:weight[:pub_key_file]
+ */
+#define MAX_SNSD_LINE_SZ                (ANDNA_MAX_HNAME_LEN*4)
+#define MAX_SNSD_FIELDS			6
+#define MIN_SNSD_FIELDS			5
 
 /* * snsd_node flags * */
-#define SNSD_NODE_HNAME		1		/* A hname is associated in the 
+#define SNSD_NODE_HNAME			1	/* A hname is associated in the 
 					 	   snsd record */
-#define SNSD_NODE_IP		(1<<1)		/* An IP is associated in the 
+#define SNSD_NODE_IP			(1<<1)	/* An IP is associated in the 
 					   	   snsd record */
-#define SNSD_NODE_MAIN_IP	(1<<2)		/* This is the first IP registered 
+#define SNSD_NODE_MAIN_IP		(1<<2)	/* This is the first IP registered 
 						   to the hname, it can't be
 						   deleted */
 
