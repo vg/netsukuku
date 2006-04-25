@@ -95,17 +95,17 @@ int store_ns(char *ns, struct sockaddr_in *nsbuf, uint8_t *ns_count)
 }
 /*
  * Reads resolv.conf, searching nameserver lines.
- * Takes the ip address from these lines and calls store_ns
- * "nameserver 127.0.0.1" is discarded to remove looping behaviors
+ * Takes the ip address from these lines and calls store_ns.
+ * "nameserver 127.0.0.1" is discarded to remove looping behaviors.
  * The valid nameservers are stored in `nsbuf' array which must have at least
- * of `MAXNSSERVERS' members. The number of stored nameservers is written in
+ * `MAXNSSERVERS' members. The number of stored nameservers is written in
  * `*ns_count' and it is returned.
  * If an error occurred or no hostnames are available -1 is returned.
  */
 int collect_resolv_conf(char *resolve_conf, struct sockaddr_in *nsbuf,uint8_t *ns_count)
 {
         FILE *erc;
-        char buf[64],*crow,tbuf[64];
+        char buf[512],*crow,*t;
         int i=0;
 
         if (!(erc=fopen(resolve_conf,"r"))) {
@@ -113,21 +113,17 @@ int collect_resolv_conf(char *resolve_conf, struct sockaddr_in *nsbuf,uint8_t *n
 			"error -> %s.", strerror(errno));
 		err_ret(ERR_RSLERC,-1);
         }
-        while ((crow=fgets((char*)buf,64,erc))) {
-                if((*buf)=='#' || (*buf)=='\n' || !(*buf))
-                        /* Strip off the comment lines */
+        while ((crow=fgets(buf,512,erc))) {
+                if (!(crow=strstr(buf,"nameserver "))) /* is a good line? */
                         continue;
-
-                if (!(crow=strstr(buf,"nameserver ")))
-                        continue;
+		t=buf;
+		while (t!=crow)  /* is line commented? */
+			if (*t++='#')
+				continue;
                 crow+=11;
-                while (*(crow+i) && *(crow+i)!='\n') {
-                        *(tbuf+i)=*(crow+i);
-                        i++;
-                }
-                *(tbuf+i)=0;
-                store_ns(tbuf, nsbuf, ns_count);
-                i=0;
+		if ((t=strstr(crow,"\n"))) /* remove newline char */
+			*t=0;
+                store_ns(crow, nsbuf, ns_count);
         }
         if (fclose(erc)!=0) {
                 error("In collect_resolv_conf: closing "
