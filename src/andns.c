@@ -33,10 +33,11 @@
 
 
 static uint8_t _dns_forwarding_;
-static struct sockaddr_in _andns_ns_[MAXNSSERVERS];
 static uint8_t _andns_ns_count_;
 static uint8_t _default_realm_;
 
+static struct addrinfo _ns_filter_;
+static struct addrinfo *_andns_ns_[MAXNSSERVERS];
 
 
 
@@ -72,25 +73,18 @@ int debug_andna_reverse_resolve(inet_prefix addr,char ***hnames)
 int store_ns(char *ns, struct sockaddr_in *nsbuf, uint8_t *ns_count)
 {
         int res;
-        struct sockaddr_in *saddr;
+	struct addrinfo *ai;
 
-        if (*ns_count >= MAXNSSERVERS)
-                return -1;
-        if (strstr(ns, "127.0.0."))
+        if (strstr(ns, "127.0.0.")) /* TODO: make it proto independent  */
                 return -1;
 
-        saddr=nsbuf+(*ns_count);
-        saddr->sin_family=AF_INET;
-        if ((res=inet_pton(AF_INET, ns, &(saddr->sin_addr)))<0) {
-                error("In store_ns: error converting "
-			"str to sockaddr-> %s.", strerror(errno));
-                return -1;
-        } else if (res==0) {
-                error("In store_ns: invalid address %s.",ns);
-                return -1;
-        }
-        saddr->sin_port=htons(DNS_PORT);
-        (*ns_count)++;
+	ai=_andns_ns_+*ns_count;
+	res=getaddrinfo(ns,DNS_PORT_STR,_ns_filter_,&ai);
+	if (!res) {
+		debug(DBG_NORMAL,"In store_ns: gai %s -> %s",ns,gai_strerror(errno));
+		return -1;
+	}
+	(*ns_count)++;
         return 0;
 }
 /*
@@ -113,7 +107,7 @@ int collect_resolv_conf(char *resolve_conf, struct sockaddr_in *nsbuf,uint8_t *n
 			"error -> %s.", strerror(errno));
 		err_ret(ERR_RSLERC,-1);
         }
-        while ((crow=fgets(buf,512,erc))) {
+        while ((crow=fgets(buf,512,erc)) && *ns_count<MAXNSSERVERS) {
                 if (!(crow=strstr(buf,"nameserver "))) /* is a good line? */
                         continue;
 		t=buf;
@@ -146,6 +140,9 @@ int andns_init(int restricted, char *resolv_conf)
         char msg[(INET_ADDRSTRLEN+2)*MAXNSSERVERS];
         char buf[INET_ADDRSTRLEN];
         struct sockaddr_in *saddr;
+
+	memset(_ns_filter_,0,sizeof(struct addrinfo));
+	_ns_filter_->ai_socktype=SOCK_DGRAM;
 
         _default_realm_=(restricted)?INET_REALM:NTK_REALM;
         _andns_ns_count_=0;

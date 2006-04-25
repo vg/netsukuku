@@ -31,6 +31,7 @@
 #define DNS_REPLY_TIMEOUT       10      /* seconds */
 
 #define DNS_PORT		53
+#define DNS_PORT_STR		"53"
 
 /* PREFIX TO QUERY THE INET REALM */
 #define INET_REALM_PREFIX       ".INT"
