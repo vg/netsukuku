@@ -8,14 +8,8 @@
 
 
 - SNSD
-	- andna_cache
-		- pack
-		- unpack
-		- timestamp decoerence when saving on file?
+	- snsd_load_files()
 	- lcl_cache
-		- pack
-		- unpack
-	- rh_cache
 		- pack
 		- unpack
 	- andna.pod (man page)
@@ -25,7 +19,6 @@
 	- andna_resolve_hname()
 		- can a client specify the queue number?
 	- andna_rev_resolve()
-	- snsd_load_files()
 
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 

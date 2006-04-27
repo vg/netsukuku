@@ -78,7 +78,20 @@ what hostnames have been already registered. Note the 127.0.0.2 ip. If you use
 
 =head2 Scattered Name Service Disgregation
 
-It is currently not documented.
+The Scattered Name Service Disgregation is the ANDNA equivalent of the
+SRV Record of the Internet Domain Name System.
+For a complete description of the SNSD read the NTK_RFC 0009:
+L<http://lab.dyne.org/Ntk_SNSD>
+
+=head3 SNSD node registration
+
+ * Modify the F</etc/netsukuku/snsd_nodes> file.
+ * Copy the needed public keys
+ * Send a SIGHUP to the NetsukukuD of the register node:
+
+=head3 SNSD node deletion
+
+Not implemented
 
 =head1 SIGNALS
 
@@ -97,6 +110,15 @@ cache will be flushed.
 It is the file where the hostnames to be registerd in ANDNA are kept one per
 line. It's location can be changed by modifying its option in the
 F<netsukuku.conf> file.
+
+=back
+
+=over
+
+=item F</etc/netsukuku/snsd_nodes>
+
+The snsd_nodes_file keeps the list of the SNSD records which will be
+register in ANDNA.
 
 =back
 

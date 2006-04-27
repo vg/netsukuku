@@ -33,7 +33,9 @@
 #		- ntk_int_map_file
 #		- ntk_bnode_map_file
 #		- andna_hnames_file
+#		- snsd_nodes_file
 #		- andna_cache_file
+#		- andna_lclkey_file
 #		- andna_lcl_file
 #		- andna_rhc_file
 #		- andna_counter_c_file
@@ -152,10 +154,16 @@ ntk_int_map_file	= %(DATA_DIR)s/int_map_file
 ntk_bnode_map_file	= %(DATA_DIR)s/bnode_map_file
 
 #
-# The andna_hnames_file is the file where the hostnames to be registerd in
-# ANDNA are kept one per line.
+# The hostnames that will be registered in ANDNA are kept, one per line, in
+# this file.
 #
 andna_hnames_file	= %(CONF_DIR)s/andna_hostnames
+
+#
+# The snsd_nodes_file keeps the list of the SNSD records which will be
+# register in ANDNA.
+#
+snsd_nodes_file		= %(CONF_DIR)s/snsd_nodes
 
 #
 # Caches used by the ANDNA daemon

@@ -31,6 +31,7 @@ enum config_options
 	CONF_NTK_EXT_MAP_FILE,
 
 	CONF_ANDNA_HNAMES_FILE,
+	CONF_SNSD_NODES_FILE,
 	CONF_ANDNA_CACHE_FILE,
 	CONF_ANDNA_LCLKEY_FILE,
 	CONF_ANDNA_LCL_FILE,
@@ -64,6 +65,7 @@ const static char config_str[][30]=
 	{ "ntk_ext_map_file" },
 	
 	{ "andna_hnames_file" },
+	{ "snsd_nodes_file" },
 	{ "andna_cache_file" },
 	{ "andna_lclkey_file" },
 	{ "andna_lcl_file" },

@@ -84,7 +84,10 @@ tc qdisc add dev $DEV root handle 1: cbq avpkt 1000 bandwidth 10mbit
 # main class
 
 tc class add dev $DEV parent 1: classid 1:1 cbq rate ${UPLINK}kbit \
-allot 1500 prio 5 bounded isolated 
+allot 1500 prio 5 bounded isolated
+
+#no limit class
+tc qdisc add dev $DEV parent 1:1 handle 11: pfifo
 
 # high prio class 1:10:
 
@@ -110,8 +113,8 @@ tc qdisc add dev $DEV parent 1:30 handle 30: sfq perturb 10
 # Give priority to traffic going to the LAN
 if [ ! -z "$LOCAL_SUBNET" ]
 then
-	tc filter add dev $DEV parent 1:0 prio 10 protocol ip u32 match \
-	   ip dst "$LOCAL_SUBNET" flowid 1:10
+	tc filter add dev $DEV parent 1:0 prio 1 protocol ip u32 match  \
+	ip dst "$LOCAL_SUBNET" flowid 1:1
 fi
 
 # start filters

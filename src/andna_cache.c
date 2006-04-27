@@ -1905,6 +1905,12 @@ int load_snsd(char *file, lcl_cache *alcl_head)
 				snsd_node.flags=SNSD_NODE_HNAME;
 			}
 
+			if(!strncmp(records[0], records[1],
+					ANDNA_MAX_HNAME_LEN) &&
+						!strcmp(records[2], "0"))
+				snsd_node.flags=SNSD_NODE_MAIN_IP | SNSD_NODE_IP;
+			/* TODO: continue here */
+
 			/* service */
 			sns=snsd_add_service(&alcl->service, atoi(records[2]));
 			

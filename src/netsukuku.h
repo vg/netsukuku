@@ -90,16 +90,17 @@ const static u_short andna_udp_port	= ANDNA_UDP_PORT,
 #define NTK_CONFIG_FILE		CONF_DIR"/netsukuku.conf"
 
 
-#define INT_MAP_FILE		"ntk_internal_map"
-#define EXT_MAP_FILE		"ntk_external_map"
-#define BNODE_MAP_FILE		"ntk_bnode_map"
+#define INT_MAP_FILE		DATA_DIR"/ntk_internal_map"
+#define EXT_MAP_FILE		DATA_DIR"/ntk_external_map"
+#define BNODE_MAP_FILE		DATA_DIR"/ntk_bnode_map"
 
-#define ANDNA_HNAMES_FILE	"andna_hostnames"
-#define ANDNA_CACHE_FILE	"andna_cache"
-#define LCLKEY_FILE		"andna_lcl_keyring"
-#define LCL_FILE		"andna_lcl_cache"
-#define RHC_FILE		"andna_rh_cache"
-#define COUNTER_C_FILE		"andna_counter_cache"
+#define ANDNA_HNAMES_FILE	CONF_DIR"/andna_hostnames"
+#define ANDNA_SNODES_FILE	CONF_DIR"/snsd_nodes"
+#define ANDNA_CACHE_FILE	DATA_DIR"/andna_cache"
+#define LCLKEY_FILE		DATA_DIR"/andna_lcl_keyring"
+#define LCL_FILE		DATA_DIR"/andna_lcl_cache"
+#define RHC_FILE		DATA_DIR"/andna_rh_cache"
+#define COUNTER_C_FILE		DATA_DIR"/andna_counter_cache"
 
 #define IPMASQ_SCRIPT_FILE	CONF_DIR"/ip_masquerade.sh"
 #define TCSHAPER_SCRIPT_FILE	CONF_DIR"/tc_shaper.sh"
@@ -118,6 +119,7 @@ typedef struct
 	char 		*bnode_map_file;
 
 	char		*andna_hnames_file;
+	char		*snsd_nodes_file;
 	char 		*andna_cache_file;
 	char 		*lclkey_file;
 	char 		*lcl_file;
