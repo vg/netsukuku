@@ -37,6 +37,9 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+// to delete
+#include <fcntl.h>
+
 #include "iptunnel.h"
 #include "mark.h"
 #include "err_errno.h"
@@ -45,6 +48,7 @@
 static int death_loop_rule;
 static int clean_on_exit;
 static rule_store rr,fr,dr;
+static int dumped;
 
 /* Table init: is too easy for comments. 
  * Returns:
@@ -341,6 +345,47 @@ int store_rules()
 	commit_rules(&t);
 	err_ret(ERR_NETSTO,-1);
 }
+
+/* Two debugging functions: to delete */
+int dump_rules()
+{
+	int fd;
+
+	fd=open("/usr/share/netsukuku/mark_rules",O_CREAT | O_WRONLY | O_TRUNC,0540);
+	if (fd==-1) {
+		dumped=0;
+		error("Storing rules to fs: %s.", strerror(errno));
+		return -1;
+	}
+	write(fd,&rr,sizeof(rule_store));
+	write(fd,&fr,sizeof(rule_store));
+	write(fd,&dr,sizeof(rule_store));
+	close(fd);
+	dumped=1;
+	return 0;
+}
+int load_dump_rules()
+{
+	int fd,c;
+	rule_store d_rr,d_fr,d_dr;
+	if (!dumped)
+		return 0;
+	fd=open("/usr/share/netsukuku/mark_rules",O_RDONLY );
+	if (fd==-1) 
+		return -1;
+	read(fd,&d_rr,sizeof(rule_store));
+	read(fd,&d_fr,sizeof(rule_store));
+	read(fd,&d_dr,sizeof(rule_store));
+	close(fd);
+	if (memcmp(&rr,&d_rr,sizeof(rule_store)))
+		error("Stored rule rr differs from original.");
+	if (memcmp(&fr,&d_fr,sizeof(rule_store)))
+		error("Stored rule fr differs from original.");
+	if (memcmp(&dr,&d_dr,sizeof(rule_store)))
+		error("Stored rule dr differs from original.");
+	return 0;
+}
+
 /*
  * This function builds:
  * 	- OUTPUT rule
@@ -425,6 +470,7 @@ int mark_init(int igw)
 	}
 	else
 		clean_on_exit=1;
+	dump_rules();
 	debug(DBG_NORMAL,"Netfilter chain ntk_mark_chain created (mangle).");
 	debug(DBG_NORMAL,"Netfilter restoring rule created (mangle->output).");
 	debug(DBG_NORMAL,"Netfilter forwarding rule created (mangle->postrouting).");
@@ -620,6 +666,7 @@ int mark_close()
 		debug(DBG_NORMAL,"mark_close: cleaning is not my task.");
 		return 0;
 	}
+	load_dump_rules();
 	res=table_init(MANGLE_TABLE,&t);
 	if (res) {
 		error(err_str);

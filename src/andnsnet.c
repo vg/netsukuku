@@ -47,7 +47,7 @@ int w_connect(struct addrinfo *ai,int die)
 		return sk;
 	}
 	if (die)
-		fatal("w_connect: %s.",strerror(errno));
+		fatal("Unable to connect: %s.", strerror(errno));
 	debug(DBG_NORMAL,"w_connect: %s.",strerror(errno));
 	close(sk);
 	return -1;
@@ -60,7 +60,7 @@ int serial_connect(struct addrinfo *ai,int die)
 	temp=ai;
 	if (!temp) {
 		if (die)
-			fatal("serial_connect: no host specified.");
+			fatal("Unable to connect: no host specified.");
 		debug(DBG_NORMAL,"serial_connect: no host specified.");
 		return -1;
 	}
@@ -70,8 +70,8 @@ int serial_connect(struct addrinfo *ai,int die)
 	} while (res==-1 && temp);
 	if (res==-1)  {
 		if (die)
-			fatal("serial_connect: unable to establish connection.");
-		debug(DBG_NORMAL,"serial_connect: unable to establish connection.");
+			fatal("Unable to connect.");
+		debug(DBG_NORMAL,"serial_connect: unable to connect.");
 		return -1;
 	}
 	return res;
@@ -127,7 +127,7 @@ ssize_t w_send(int sk,const void *buf,size_t len,int die)
 	ret=send(sk,buf,len,0);
 	if (ret!=len) {
 		if (die)
-			fatal("w_send(): %s.",strerror(errno));
+			fatal("Unable to send(): %s.",strerror(errno));
 		debug(DBG_NORMAL,"w_send(): %s.",strerror(errno));
 	}
 	return ret;
@@ -141,7 +141,7 @@ ssize_t w_recv(int sk,void *buf,size_t len,int die)
 	ret=recv(sk,buf,len,0);
 	if (ret==-1) {
 		if (die)
-			fatal("w_recv(): %s.",strerror(errno));
+			fatal("Unable to recv(): %s.",strerror(errno));
 		debug(DBG_NORMAL,"w_recv(): %s.",strerror(errno));
 	}
 	return ret;

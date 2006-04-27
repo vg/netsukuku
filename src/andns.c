@@ -178,21 +178,21 @@ int andns_init(int restricted, char *resolv_conf)
 
 			/* NET FUNCTIONS */
 
-int ns_general_send(char *msg,int msglen,char *answer,int *anslen)
+int ns_general_send(char *msg,int msglen,char *answer,int anslen)
 {
         int res,i;
 
         for (i=0;i<MAXNSSERVERS && i<_andns_ns_count_;i++) {
-                res=ns_send(msg,msglen,answer,
-			anslen,_andns_ns_+i,sizeof(struct sockaddr_in));
-
+		res=ai_squit(_andns_ns_+i,msg,msglen,answer,anslen,0,0);
+/*                res=ns_send(msg,msglen,answer,
+			anslen,_andns_ns_+i,sizeof(struct sockaddr_in));*/
                 if(res != -1)
-                        return 0;
+                        return res;
         }
 
         err_ret(ERR_RSLFDQ,-1);
 }
-
+/*
 int ns_send(char *msg,int msglen, char *answer,int *anslen,struct sockaddr_in *ns,socklen_t nslen)
 {
         int s;
@@ -235,7 +235,7 @@ int ns_send(char *msg,int msglen, char *answer,int *anslen,struct sockaddr_in *n
 close_return:
         close(s);
         err_ret(ERR_RSLFDQ,-1);
-}
+}*/
 
 			/* UTILS FUNCTIONS */
 
@@ -351,6 +351,9 @@ int andns_realm(dns_pkt_qst *dpq,int *prefixed)
         if (!qst)
                 err_ret(ERR_UFOERR,-1);
         slen=strlen(qst);
+
+        /* if qst is tto short, it's impossible to
+           consider a prefix. */
         if (slen<5) return _default_realm_;
 
         if (dpq->qtype==T_PTR) {
@@ -365,9 +368,6 @@ int andns_realm(dns_pkt_qst *dpq,int *prefixed)
                 if (prefixed) *prefixed=0;
                 return _default_realm_;
         }
-
-        // if qst is tto short, it's impossible to
-        // consider a prefix.
         if (strcasestr(qst+slen-REALM_PREFIX_LEN,INET_REALM_PREFIX)) {
                 if (prefixed) *prefixed=1;
                 return INET_REALM;
@@ -550,11 +550,11 @@ int andns_gethostbyname(char *hname, inet_prefix *ip)
                 error(err_str);
 		err_ret(ERR_RSLRSL,-1);
         }
-        if (ns_general_send(msg,res,answ,&anslen)) {
+        if ((res=ns_general_send(msg,res,answ,DNS_MAX_SZ))==-1) {
                 error(err_str);
 		err_ret(ERR_RSLRSL,-1);
         }
-        if ((res=d_u(answ,anslen,&dp))==-1) {
+        if ((res=d_u(answ,res,&dp))==-1) {
                 error(err_str);
 		err_ret(ERR_RSLRSL,-1);
         }
@@ -591,7 +591,7 @@ int dns_forward(dns_pkt *dp,char *msg,int msglen,char* answer)
         }
         debug(DBG_INSANE, "Forwarding dns query to inet nameservers...");
         if (!is_prefixed(dp)) {
-                if(ns_general_send(msg,msglen,answer,&res)) {
+                if((res=ns_general_send(msg,msglen,answer,ANDNS_MAX_SZ))==-1) {
                         error(err_str);
                         goto safe_failing;
                 }
@@ -605,11 +605,11 @@ int dns_forward(dns_pkt *dp,char *msg,int msglen,char* answer)
                 error(err_str);
                 goto safe_failing;
         }
-        if (ns_general_send(fwdbuf,res,answer,&len)) {
+        if ((res=ns_general_send(fwdbuf,res,answer,ANDNS_MAX_SZ)==-1)) {
                 error(err_str);
                 goto safe_failing;
         }
-        if ((res=d_u(answer,len,&dp_forward))==-1) {
+        if ((res=d_u(answer,res,&dp_forward))==-1) {
                 error(err_str);
                 goto safe_failing;
         }
@@ -801,7 +801,6 @@ int nk_forward(andns_pkt *ap,char *msg,int msglen,char *answer)
 	int res,rcode;
 	dns_pkt *dp;
 	char new_answ[DNS_MAX_SZ];
-	int new_answ_len;
 
 	res=apqsttodpqst(ap,&dp);
 	if (res==-1) {
@@ -813,12 +812,12 @@ int nk_forward(andns_pkt *ap,char *msg,int msglen,char *answer)
 		rcode=RCODE_EINTRPRT;
 		goto safe_return_rcode;
 	}
-	res=ns_general_send(answer,res,new_answ,&new_answ_len);
+	res=ns_general_send(answer,res,new_answ,ANDNS_MAX_SZ);
 	if (res==-1) {
 		rcode=RCODE_ESRVFAIL;
 		goto safe_return_rcode;
 	}
-	res=d_u(new_answ,new_answ_len,&dp);
+	res=d_u(new_answ,res,&dp);
 	if (res==-1) {
 		rcode=RCODE_ESRVFAIL;
 		goto safe_return_rcode;
