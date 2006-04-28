@@ -109,13 +109,19 @@ int collect_resolv_conf(char *resolve_conf)
         while ((crow=fgets(buf,512,erc)) && *_andns_ns_count_<MAXNSSERVERS) {
                 if (!(crow=strstr(buf,"nameserver "))) /* is a good line? */
                         continue;
-		t=buf;
-		while (t!=crow)  /* is line commented? */
-			if (*t++='#')
-				continue;
+		
+		/* Skip if the line is commented */
+		*crow=0;
+		if(strchr(buf, "#"))
+			continue;
+		
                 crow+=11;
-		if ((t=strstr(crow,"\n"))) /* remove newline char */
-			*t=0;
+	
+		/* remove unwanted chars */
+		strip_char(crow, '\t');
+		strip_char(crow, ' ');
+		strip_char(crow, '\n');
+			
                 store_ns(crow); /* finally store nameserver */
         }
         if (fclose(erc)!=0) {
