@@ -29,6 +29,7 @@
 #include "xmalloc.h"
 #include "andna.h"
 #include "andnslib.h"
+#include "andnsnet.h"
 #include "dnslib.h"
 
 
@@ -78,8 +79,8 @@ int store_ns(char *ns)
         if (strstr(ns, "127.0.0.")) /* TODO: make it proto independent  */
                 return -1;
 
-	ai=&_andns_ns_[_andns_ns_count_];
-	res=getaddrinfo(ns, DNS_PORT_STR, _ns_filter_, &ai);
+	ai=_andns_ns_[_andns_ns_count_];
+	res=getaddrinfo(ns, DNS_PORT_STR, &_ns_filter_, &ai);
 	if (!res) {
 		debug(DBG_NORMAL,"In store_ns(): gai %s -> %s",ns,gai_strerror(errno));
 		return -1;
@@ -98,21 +99,20 @@ int store_ns(char *ns)
 int collect_resolv_conf(char *resolve_conf)
 {
         FILE *erc;
-        char buf[512],*crow,*t;
-        int i=0;
+        char buf[512],*crow;
 
         if (!(erc=fopen(resolve_conf,"r"))) {
                 error("In collect_resolv_conf: "
 			"error -> %s.", strerror(errno));
 		err_ret(ERR_RSLERC,-1);
         }
-        while ((crow=fgets(buf,512,erc)) && *_andns_ns_count_<MAXNSSERVERS) {
+        while ((crow=fgets(buf,512,erc)) && _andns_ns_count_<MAXNSSERVERS) {
                 if (!(crow=strstr(buf,"nameserver "))) /* is a good line? */
                         continue;
 		
 		/* Skip if the line is commented */
 		*crow=0;
-		if(strchr(buf, "#"))
+		if(strchr(buf, '#'))
 			continue;
 		
                 crow+=11;
@@ -131,7 +131,7 @@ int collect_resolv_conf(char *resolve_conf)
         }
         if (!_andns_ns_count_) 
 		err_ret(ERR_RSLNNS,-1);
-        return *ns_count;
+        return _andns_ns_count_;
 }
 
 void reset_andns_ns(void)
@@ -155,10 +155,10 @@ int andns_init(int restricted, char *resolv_conf)
         int i,res;
         char msg[(INET6_ADDRSTRLEN+2)*MAXNSSERVERS];
         char buf[INET6_ADDRSTRLEN];
-        struct sockaddr_in *saddr;
+        struct sockaddr *saddr;
 
-	memset(_ns_filter_,0,sizeof(struct addrinfo));
-	_ns_filter_->ai_socktype=SOCK_DGRAM;
+	memset(&_ns_filter_,0,sizeof(struct addrinfo));
+	_ns_filter_.ai_socktype=SOCK_DGRAM;
 
         _default_realm_=(restricted)?INET_REALM:NTK_REALM;
         _andns_ns_count_=0;
@@ -177,7 +177,7 @@ int andns_init(int restricted, char *resolv_conf)
          * Debug message
          */
         for (i=0;i<_andns_ns_count_;i++) {
-                saddr=(_andns_ns_+i)->ai_addr;
+                saddr=_andns_ns_[i]->ai_addr;
                 if(inet_ntop(saddr->sin_family,
 			(void*)&((saddr)->sin_addr),buf,INET6_ADDRSTRLEN)) {
                         strncat(msg,buf,INET_ADDRSTRLEN);
@@ -207,7 +207,7 @@ int ns_general_send(char *msg,int msglen,char *answer,int anslen)
         int res,i;
 
         for (i=0;i<MAXNSSERVERS && i<_andns_ns_count_;i++) {
-		res=ai_squit(_andns_ns_+i,msg,msglen,answer,anslen,0,0);
+		res=ai_squit(_andns_ns_[i],msg,msglen,answer,anslen,0,0);
 /*                res=ns_send(msg,msglen,answer,
 			anslen,_andns_ns_+i,sizeof(struct sockaddr_in));*/
                 if(res != -1)
@@ -551,7 +551,7 @@ int andns_gethostbyname(char *hname, inet_prefix *ip)
         dns_pkt *dp;
         dns_pkt_hdr *dph;
         dns_pkt_qst *dpq;
-        int res,anslen;
+        int res;
         char msg[DNS_MAX_SZ],answ[DNS_MAX_SZ];
         uint32_t addr;
 
@@ -607,7 +607,7 @@ int dns_forward(dns_pkt *dp,char *msg,int msglen,char* answer)
 {
         dns_pkt *dp_forward;
         char fwdbuf[DNS_MAX_SZ];
-        int res,len;
+        int res;
 
         if (!_dns_forwarding_) {
                 error("In rslv: dns forwardind is disable.");

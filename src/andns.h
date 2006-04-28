@@ -67,8 +67,9 @@ int collect_resolv_conf(char *resolve_conf);
 void reset_andns_ns(void);
 int andns_init(int restricted, char *resolv_conf);
 void andns_close(void);
-int ns_general_send(char *msg,int msglen,char *answer,int *anslen);
-int ns_send(char *msg,int msglen, char *answer,int *anslen,struct sockaddr_in *ns,socklen_t nslen);
+int ns_general_send(char *msg,int msglen,char *answer,int anslen);
+//int ns_general_send(char *msg,int msglen,char *answer,int *anslen); TO DELETE
+//int ns_send(char *msg,int msglen, char *answer,int *anslen,struct sockaddr_in *ns,socklen_t nslen);
 void dpktacpy(dns_pkt *dst,dns_pkt *src,const char *prefix);
 dns_pkt* dpktcpy(dns_pkt *src,const char *prefix);
 char* rm_realm_prefix(char *from,char *dst,int type);
