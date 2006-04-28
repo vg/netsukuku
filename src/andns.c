@@ -78,8 +78,8 @@ int store_ns(char *ns)
         if (strstr(ns, "127.0.0.")) /* TODO: make it proto independent  */
                 return -1;
 
-	ai=_andns_ns_+_andns_ns_count_;
-	res=getaddrinfo(ns,DNS_PORT_STR,_ns_filter_,&ai);
+	ai=&_andns_ns_[_andns_ns_count_];
+	res=getaddrinfo(ns, DNS_PORT_STR, _ns_filter_, &ai);
 	if (!res) {
 		debug(DBG_NORMAL,"In store_ns(): gai %s -> %s",ns,gai_strerror(errno));
 		return -1;
@@ -133,6 +133,17 @@ int collect_resolv_conf(char *resolve_conf)
 		err_ret(ERR_RSLNNS,-1);
         return *ns_count;
 }
+
+void reset_andns_ns(void)
+{
+	int i;
+	for(i=0;  i<_andns_ns_count_; i++)
+		if(_andns_ns_[i])
+			freeaddrinfo(_andns_ns_[i]);
+	_andns_ns_count_=0;
+	setzero(_andns_ns_, sizeof(struct addrinfo *)*MAXNSSERVERS);
+}
+
 /*
  * This function must be called before all.
  * Sets the default realm for domain name resolution
@@ -151,6 +162,7 @@ int andns_init(int restricted, char *resolv_conf)
 
         _default_realm_=(restricted)?INET_REALM:NTK_REALM;
         _andns_ns_count_=0;
+	setzero(_andns_ns_, sizeof(struct addrinfo *)*MAXNSSERVERS);
 
         memset(msg,0,(INET_ADDRSTRLEN+2)*MAXNSSERVERS);
 
@@ -181,6 +193,12 @@ int andns_init(int restricted, char *resolv_conf)
         _dns_forwarding_=1;
         return 0;
 }
+
+void andns_close(void)
+{
+	reset_andns_ns();
+}
+
 
 			/* NET FUNCTIONS */
 
