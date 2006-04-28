@@ -34,6 +34,7 @@
 #define SNSD_MAX_QUEUE_RECORDS		1	/* There can be only one snsd 
 						   record for the queued hnames */
 #define SNSD_DEFAULT_SERVICE		0
+#define SNSD_DEFAULT_PROTO		1	/* tcp */
 #define SNSD_DEFAULT_PRIO		16
 #define SNSD_DEFAULT_WEIGHT		1
 
@@ -121,11 +122,13 @@ struct snsd_service
 	LLIST_HDR	(struct snsd_service);
 
 	u_short		service;		/* Service number */
+	u_char		proto;			/* TCP/UDP, see the `proto_str'
+						   static array below */
 	
 	snsd_prio	*prio;
 };
 typedef struct snsd_service snsd_service;
-#define SNSD_SERVICE_PACK_SZ		(sizeof(u_short))
+#define SNSD_SERVICE_PACK_SZ		(sizeof(u_short)+sizeof(u_char))
 
 
 /*
@@ -168,11 +171,11 @@ INT_INFO snsd_prio_llist_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
  */
 #define SNSD_PRIO_LLIST_PACK_SZ(head)					\
 ({									\
-	l_list *_s=(l_list *)(head);					\
+	snsd_prio *_p=(head);						\
 	int _priosz=0;							\
 									\
-	list_for(_s)							\
-		_priosz+=SNSD_NODE_LLIST_PACK_SZ(_s->node);		\
+	list_for(_p)							\
+		_priosz+=SNSD_NODE_LLIST_PACK_SZ(_p->node);		\
 	_priosz+=sizeof(struct snsd_prio_llist_hdr);			\
 	_priosz;							\
 })
@@ -190,15 +193,33 @@ INT_INFO snsd_service_llist_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
  */
 #define SNSD_SERVICE_LLIST_PACK_SZ(head)				\
 ({									\
-	l_list *_s=(l_list *)(head);					\
+	snsd_service *_s=(head);					\
 	int _srvsz=0;							\
  	if(_s) {							\
 		 list_for(_s)						\
-			 _srvsz+=SNSD_PRIO_PACK_SZ(_s->prio);		\
+			 _srvsz+=SNSD_PRIO_LLIST_PACK_SZ(_s->prio);	\
 		 _srvsz+=sizeof(struct snsd_service_llist_hdr);		\
 	 }								\
 	_srvsz;								\
 })
+
+/*
+ * This array is used to associate a 8bit number to a protocol name.
+ * The number is the position of the protocol name in this array.
+ * For example: "tcp" is in the first position so its associated number is 1,
+ * while the number for "udp" is 2.
+ *
+ * Since we limit the proto number to an 8bit number, there can be only 255
+ * protocols in this array.
+ */
+const char proto_str[][5] =
+{
+	{ "tcp" },
+	{ "udp" },
+	{ 0 },
+};
+
+
 
 /*
  * 
@@ -206,19 +227,24 @@ INT_INFO snsd_service_llist_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
  *
  */
 
-snsd_service *snsd_find_service(snsd_service *sns, u_short service);
-snsd_service *snsd_add_service(snsd_service **head, u_short service);
+void snsd_init(int family);
+u_char proto_to_8bit(char *proto_name);
+
+snsd_service *snsd_find_service(snsd_service *sns, u_short service, u_char proto);
+snsd_service *snsd_add_service(snsd_service **head, u_short service, u_char proto);
 snsd_prio *snsd_find_prio(snsd_prio *snp, u_char prio);
 snsd_prio *snsd_add_prio(snsd_prio **head, u_char prio);
 snsd_node *snsd_find_node_by_record(snsd_node *snd, u_int record[MAX_IP_INT]);
-snsd_node *snsd_choose_wrand(snsd_node *head);
+int snsd_count_nodes(snsd_service *head);
 snsd_node *snsd_add_node(snsd_node **head, u_short *counter, 
 			 u_short max_records, u_int record[MAX_IP_INT]);
 snsd_node *snsd_add_first_node(snsd_node **head, u_short *counter,
 				u_short max_records, u_int record[MAX_IP_INT]);
 void snsd_service_llist_del(snsd_service **head);
-int snsd_pack_service(char *pack, size_t free_sz, snsd_service *service);
-snsd_service *snsd_unpack_service(char *pack, size_t pack_sz, size_t *unpacked_sz);
+int snsd_pack_all_services(char *pack, size_t pack_sz, snsd_service *head);
+snsd_service *snsd_unpack_all_service(char *pack, size_t pack_sz, size_t *unpacked_sz);
 
+snsd_node *snsd_choose_wrand(snsd_node *head);
+snsd_prio *snsd_highest_prio(snsd_prio *head);
 
 #endif /*SNSD_H*/

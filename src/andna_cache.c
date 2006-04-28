@@ -23,6 +23,7 @@
 #include "includes.h"
 
 #include "andna_cache.h"
+#include "snsd.h"
 #include "misc.h"
 #include "xmalloc.h"
 #include "log.h"
@@ -242,10 +243,11 @@ andna_cache_queue *ac_queue_add(andna_cache *ac, inet_prefix rip, char *pubkey)
 	} else
 		update=1;
 
-	sns=snsd_add_service(&acq->service, SNSD_DEFAULT_SERVICE);
+	sns=snsd_add_service(&acq->service, SNSD_DEFAULT_SERVICE,
+				SNSD_DEFAULT_PROTO);
 	snp=snsd_add_prio(&sns->prio, SNSD_DEFAULT_PRIO);
 	snd=snsd_add_first_node(&snp->node, &acq->snsd_counter, 
-			SNSD_MAX_QUEUE_RECORDS, rip.data);
+				SNSD_MAX_QUEUE_RECORDS, rip.data);
 	memcpy(snd->record, rip.data, MAX_IP_SZ);
 	snd->flags|=SNSD_NODE_IP | SNSD_NODE_MAIN_IP;
 	snd->weight=SNSD_DEFAULT_WEIGHT;
@@ -554,7 +556,7 @@ void counter_c_destroy(void)
  *  
  */
 
-rh_cache *rh_cache_new(char *hname, time_t timestamp, inet_prefix *ip)
+rh_cache *rh_cache_new(char *hname, time_t timestamp)
 {
 	rh_cache *rhc;
 	
@@ -563,13 +565,13 @@ rh_cache *rh_cache_new(char *hname, time_t timestamp, inet_prefix *ip)
 	
 	rhc->hash=fnv_32_buf(hname, strlen(hname), FNV1_32_INIT);
 	rhc->timestamp=timestamp;
-	memcpy(&rhc->ip, ip->data, MAX_IP_SZ);
 
 	return rhc;
 }
 
 rh_cache *rh_cache_add(char *hname, time_t timestamp, inet_prefix *ip,
-			u_short service, u_char prio, u_char weight)
+			u_short service, u_char proto, u_char prio,
+			u_char weight)
 {
 	snsd_service *sns;
 	snsd_prio *snp;
@@ -589,13 +591,13 @@ rh_cache *rh_cache_add(char *hname, time_t timestamp, inet_prefix *ip,
 			}
 		}
 
-		rhc=rh_cache_new(hname, timestamp, ip);
+		rhc=rh_cache_new(hname, timestamp);
 		clist_add(&andna_rhc, &rhc_counter, rhc);
 	}
 
 	rhc->timestamp=timestamp;
 
-	sns=snsd_add_service(&rhc->service, service);
+	sns=snsd_add_service(&rhc->service, service, proto);
 	snp=snsd_add_prio(&sns->prio, prio);
 	snd=snsd_add_node(&snp->node, &rhc->snsd_counter, SNSD_MAX_RECORDS,
 			ip->data);
@@ -756,7 +758,6 @@ char *pack_lcl_cache(lcl_cache *local_cache, size_t *pack_sz)
 	lcl_cache *alcl=local_cache;
 	size_t sz=0, slen;
 	char *pack, *buf, *body;
-	int i;
 
 	lcl_hdr.tot_caches=0;
 	sz=LCL_CACHE_HDR_PACK_SZ;
@@ -914,8 +915,9 @@ int pack_single_andna_cache(char *pack, size_t tot_pack_sz,
 			    andna_cache *ac, int pack_type)
 {
 	andna_cache_queue *acq;
-	char *buf=pack, *p;
-	int pack_sz=0, sz;
+	char *buf=pack;
+	int pack_sz=0;
+	size_t psz;
 
 	memcpy(buf, ac->hash, ANDNA_HASH_SZ);
 	buf+=ANDNA_HASH_SZ;
@@ -1080,10 +1082,9 @@ andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter,
 {
 	struct andna_cache_pkt_hdr *hdr;
 	andna_cache *ac, *ac_head=0;
-	andna_cache_queue *acq;
 	char *buf;
 	size_t sz=0;
-	int i, e, fake_int;
+	int i;
 	size_t unpacked_sz=0;
 
 	hdr=(struct andna_cache_pkt_hdr *)pack;
@@ -1303,12 +1304,15 @@ char *pack_rh_cache(rh_cache *rhcache, size_t *pack_sz)
 		tot_pack_sz+=RH_CACHE_BODY_PACK_SZ(service_sz);
 		rh_hdr.tot_caches++;
 	}
+	*pack_sz=tot_pack_sz;
 
 	buf=pack=xmalloc(tot_pack_sz);
+	
 	memcpy(pack, &rh_hdr, sizeof(struct rh_cache_pkt_hdr));
 	buf+=sizeof(struct rh_cache_pkt_hdr);
+	tot_pack_sz-=sizeof(struct rh_cache_pkt_hdr);
+	
 	ints_host_to_network(pack, rh_cache_pkt_hdr_iinfo);
-	*pack_sz=0;
 
 	if(rh_hdr.tot_caches) {
 		rhc=rhcache;
@@ -1325,17 +1329,16 @@ char *pack_rh_cache(rh_cache *rhcache, size_t *pack_sz)
 			memcpy(buf, &rhc->timestamp, sizeof(time_t));
 			buf+=sizeof(time_t);
 			
-			pack_sz+=RH_CACHE_BODY_PACK_SZ(0);
+			tot_pack_sz-=RH_CACHE_BODY_PACK_SZ(0);
 
-			pack_sz+=snsd_pack_all_services(buf, tot_pack_sz-pack_sz, 
-					rhc->service);
+			tot_pack_sz-=snsd_pack_all_services(buf, tot_pack_sz, 
+								 rhc->service);
 			
 			/* host -> network order */
 			ints_host_to_network(buf, rh_cache_pkt_body_iinfo);
 		}
 	}
 
-	*pack_sz=sz;
 	return pack;
 }
 
@@ -1836,9 +1839,11 @@ int load_snsd(char *file, lcl_cache *alcl_head)
 #define MAX_SNSD_LINE_SZ		(ANDNA_MAX_HNAME_LEN*4)
 	
 	FILE *fd;
-	char buf[MAX_SNSD_LINE_SZ+1], **records;
 	size_t slen;
-	int line=0, fields, e;
+	int line=0, fields, e, service;
+	struct servent *st;
+	char buf[MAX_SNSD_LINE_SZ+1], **records, *servname, *servproto;
+	u_char proto;
 
 	lcl_cache *alcl;
 	snsd_service *sns;
@@ -1889,9 +1894,8 @@ int load_snsd(char *file, lcl_cache *alcl_head)
 			if(!alcl) {
 				error("%s: line %d: The hostname \"%s\" doesn't"
 					" exist in your local cache.\n"
-					"  Register it in %s/%s",
-					file, line, records[0],
-					CONF_DIR, ANDNA_HNAMES_FILE);
+					"  Register it in the `andna_hostnames' file",
+					file, line, records[0]);
 				goto skip_line;
 			}
 			
@@ -1909,10 +1913,37 @@ int load_snsd(char *file, lcl_cache *alcl_head)
 					ANDNA_MAX_HNAME_LEN) &&
 						!strcmp(records[2], "0"))
 				snsd_node.flags=SNSD_NODE_MAIN_IP | SNSD_NODE_IP;
-			/* TODO: continue here */
+			
+			/*
+			 * service 
+			 */
 
-			/* service */
-			sns=snsd_add_service(&alcl->service, atoi(records[2]));
+			/* Get the protocol */
+			servname=records[2];
+			if((servproto=strchr(records[2], '/'))) {
+				*servproto=0;
+				servproto++;
+				if(!(proto=proto_to_8bit(servproto))) {
+					error("%s: error in line %d: \"%s\""
+						" isn't a valid protocol\n",
+						file, line, servproto);
+					goto skip_line;
+				}
+			} else
+				proto=SNSD_DEFAULT_PROTO;
+
+			if(!isdigit(servname[0])) {
+				if(!(st=getservbyname(servname, 0))) {
+					error("%s: error in line %d: \"%s\""
+						" isn't a valid service\n",
+						file, line, servname);
+					goto skip_line;
+				}
+				service=ntohs(st->s_port);
+			} else
+				service=atoi(servname);
+
+			sns=snsd_add_service(&alcl->service, service, proto);
 			
 			/* priority */
 			snp=snsd_add_prio(&sns->prio, atoi(records[3]));

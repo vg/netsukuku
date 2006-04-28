@@ -445,7 +445,7 @@ do{									\
 	if(!(*(_counter)) || !(*(_head)))				\
 		list_init(*(_head), (_list));				\
 	else {								\
-		_t=list_append(*(_head), _t, (_list));			\
+		_t=(l_list *)list_append(*(_head), _t, (_list));	\
 		if((_tail))						\
 			(*_targv)=_t;					\
 	}								\

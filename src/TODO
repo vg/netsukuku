@@ -8,7 +8,6 @@
 
 
 - SNSD
-	- snsd_load_files()
 	- lcl_cache
 		- pack
 		- unpack
@@ -37,6 +36,9 @@
 **
 *	
 
+- Keep an active tcp connection for each rnode. These sockets will be used to
+  send various packets, like big QSPN pkts or maps.
+  The socket shall be save in the "struct rnode_list" relative to the rnode.
 
 - Equalize multipath routes. The `equalize' module is still experimental in
   the kernel.

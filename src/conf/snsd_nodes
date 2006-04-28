@@ -22,6 +22,9 @@
 #
 # `service' specifies the service of the snsd record. It is one of the
 # service listed in /etc/services. It can be expressed also in numeric form.
+# It is also possible to specify the protocol, f.e: 
+# 	"domain", "53", "53/udp", "domain/udp"
+# are valid service strings.
 #
 # `priority' is an integer between 0 and 255, it specifies the "backup"
 # priority of the snsd record.

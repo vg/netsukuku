@@ -126,8 +126,10 @@ void andna_resolvconf_restore(void)
 	 * "127.0.0.1", do not restore the backup. Probably /etc/resolv.conf
 	 * has been edited manually. Damn you, user! Why can't we code you ;)
 	 */
-	if(collect_resolv_conf(ETC_RESOLV_CONF, nsbuf, &nscount) != -1)
+	reset_andns_ns();
+	if(collect_resolv_conf(ETC_RESOLV_CONF) != -1)
 		return;
+	reset_andns_ns();
 
 	my_nameserv = my_family == AF_INET ? MY_NAMESERV : MY_NAMESERV_IPV6;
 	del_resolv_conf(my_nameserv, ETC_RESOLV_CONF);
@@ -141,7 +143,6 @@ void andna_init(void)
 	add_pkt_op(ANDNA_RESOLVE_HNAME,  SKT_UDP, andna_udp_port, andna_recv_resolve_rq);
 	add_pkt_op(ANDNA_RESOLVE_REPLY,  SKT_UDP, andna_udp_port, 0);
 	add_pkt_op(ANDNA_RESOLVE_IP,     SKT_TCP, andna_tcp_port, andna_recv_rev_resolve_rq);
-	add_pkt_op(ANDNA_RESOLVE_MX,     SKT_TCP, andna_tcp_port, andna_recv_mx_resolve_rq);
 	add_pkt_op(ANDNA_REV_RESOLVE_REPLY,  SKT_TCP, andna_tcp_port, 0);
 	add_pkt_op(ANDNA_GET_ANDNA_CACHE,SKT_TCP, andna_tcp_port, put_andna_cache);
 	add_pkt_op(ANDNA_PUT_ANDNA_CACHE,SKT_TCP, andna_tcp_port, 0);
@@ -150,9 +151,14 @@ void andna_init(void)
 	add_pkt_op(ANDNA_GET_SINGLE_ACACHE,SKT_UDP, andna_udp_port, put_single_acache);
 	add_pkt_op(ANDNA_SPREAD_SACACHE, SKT_UDP, andna_udp_port, recv_spread_single_acache);
 
+	if(!server_opt.disable_resolvconf)
+		/* Restore resolv.conf if our backup is still there */
+		andna_resolvconf_restore();
+
 	pkt_queue_init();
 	
 	andna_caches_init(my_family);
+	snsd_init(my_family);
 
 	/* Load the good old caches */
 	andna_load_caches();
@@ -184,6 +190,7 @@ void andna_close(void)
 	lcl_destroy_keyring(&lcl_keyring);
 	if(!server_opt.disable_resolvconf)
 		andna_resolvconf_restore();
+	andns_close();
 }
 
 
@@ -1092,7 +1099,11 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	andna_cache *ac;
 	u_int hash_gnode[MAX_IP_INT];
 	inet_prefix to;
-	
+
+	snsd_service *sns;
+	snsd_prio *snp;
+	snsd_node *snd;
+
 	const char *ntop; 
 	int ret=0;
 	ssize_t err;
@@ -1115,8 +1126,13 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	 * Last try before going asking to ANDNA: let's see if we have it in
 	 * the resolved_hnames cache
 	 */
-	if((rhc=rh_cache_find_hname(hname))) {
-		inet_setip_raw(resolved_ip, (u_int *)rhc->ip, my_family);
+	if((rhc=rh_cache_find_hname(hname)) &&
+			(sns=snsd_find_service(rhc->service, 
+					SNSD_DEFAULT_SERVICE, 
+					SNSD_DEFAULT_PROTO)) &&
+			(snp=snsd_highest_prio(sns->prio)) &&
+			(snd=snsd_choose_wrand(snp->node))) {
+		inet_setip_raw(resolved_ip, snd->record, my_family);
 		return 0;
 	}
 	
@@ -1129,8 +1145,13 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	/*
 	 * If we manage an andna_cache, it's better to peek at it.
 	 */
-	if((ac=andna_cache_gethash(req.hash))) {
-		inet_setip_raw(resolved_ip, ac->acq->rip, my_family);
+	if((ac=andna_cache_gethash(req.hash)) &&
+			(sns=snsd_find_service(ac->acq->service,
+					SNSD_DEFAULT_SERVICE, 
+					SNSD_DEFAULT_PROTO)) &&
+			(snp=snsd_highest_prio(sns->prio)) &&
+			(snd=snsd_choose_wrand(snp->node))) {
+		inet_setip_raw(resolved_ip, snd->record, my_family);
 		return 0;
 	}
 
@@ -1187,6 +1208,7 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	reply->timestamp = time(0) - reply->timestamp;
 	rh_cache_add(hname, reply->timestamp, resolved_ip,
 			SNSD_DEFAULT_SERVICE,
+			SNSD_DEFAULT_PROTO,
 			SNSD_DEFAULT_PRIO,
 			SNSD_DEFAULT_WEIGHT);
 	
@@ -1208,6 +1230,11 @@ int andna_recv_resolve_rq(PACKET rpkt)
 	struct andna_resolve_rq_pkt *req;
 	struct andna_resolve_reply_pkt reply;
 	andna_cache *ac;
+	
+	snsd_service *sns;
+	snsd_prio *snp;
+	snsd_node *snd;
+
 	u_int hash_gnode[MAX_IP_INT];
 	inet_prefix rfrom, to;
 	int ret=0, err;
@@ -1265,6 +1292,7 @@ int andna_recv_resolve_rq(PACKET rpkt)
 	 * Search the hostname to resolve in the andna_cache 
 	 */
 	if(!(ac=andna_cache_gethash(req->hash))) {
+
 		/* We don't have that hname in our andna_cache */
 	
 		if(time(0)-me.uptime < (ANDNA_EXPIRATION_TIME/2)) {
@@ -1302,7 +1330,12 @@ reply_resolve_rq:
 	
 	/* Write the reply */
 	setzero(&reply, sizeof(reply));
-	memcpy(reply.ip, ac->acq->rip, MAX_IP_SZ);
+	sns=snsd_find_service(ac->acq->service,
+			SNSD_DEFAULT_SERVICE, 
+			SNSD_DEFAULT_PROTO);
+	snp=snsd_highest_prio(sns->prio);
+	snd=snsd_choose_wrand(snp->node);
+	memcpy(reply.ip, snd->record, MAX_IP_SZ);
 	reply.timestamp=time(0) - ac->acq->timestamp;
 
 	/* host -> network order */

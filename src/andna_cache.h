@@ -294,7 +294,7 @@ INT_INFO lcl_cache_pkt_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
  * 
  */
 #define LCL_CACHE_BODY_PACK_SZ(hname_len) 	((hname_len) + sizeof(u_short) \
-						  + sizeof(time_t)
+						  + sizeof(time_t))
 INT_INFO lcl_cache_pkt_body_iinfo = { 2, { INT_TYPE_16BIT, INT_TYPE_32BIT }, 
 				      { 0, sizeof(u_short) },
 				      { 1, 1 }
@@ -315,12 +315,12 @@ INT_INFO lcl_cache_pkt_body_iinfo = { 2, { INT_TYPE_16BIT, INT_TYPE_32BIT },
  * 	char		snsd_service_pack[SNSD_SERVICE_PACK_SZ];
  * };
  */
-INT_INFO acq_pkt_body_iinfo = { 3,
-				{ INT_TYPE_32BIT, INT_TYPE_16BIT, INT_TYPE_16BIT },
-				{ 0, sizeof(time_t),
-					sizeof(time_t) + sizeof(u_short) + ANDNA_PKEY_LEN },
-				{ 1, 1, 1 }
-			      };
+INT_INFO acq_body_iinfo = { 3,
+			    { INT_TYPE_32BIT, INT_TYPE_16BIT, INT_TYPE_16BIT },
+			    { 0, sizeof(time_t),
+				    sizeof(time_t) + sizeof(u_short) + ANDNA_PKEY_LEN },
+			    { 1, 1, 1 }
+			  };
 #define ACQ_BODY_PACK_SZ		(sizeof(time_t) + sizeof(u_short)*2 + \
 					 ANDNA_PKEY_LEN)
 #define ACQ_PACK_SZ(snsd_pack_sz)	(ACQ_BODY_PACK_SZ + (snsd_pack_sz))
@@ -450,9 +450,10 @@ counter_c *counter_c_add(inet_prefix *rip, char *pubkey);
 void counter_c_del_expired(void);
 void counter_c_destroy(void);
 
-rh_cache *rh_cache_new(char *hname, time_t timestamp, inet_prefix *ip);
+rh_cache *rh_cache_new(char *hname, time_t timestamp);
 rh_cache *rh_cache_add(char *hname, time_t timestamp, inet_prefix *ip,
-			u_short service, u_char prio, u_char weight);
+			u_short service, u_char proto, u_char prio, 
+			u_char weight);
 rh_cache *rh_cache_find_hname(char *hname);
 void rh_cache_del(rh_cache *rhc);
 void rh_cache_del_expired(void);

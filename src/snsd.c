@@ -40,27 +40,52 @@ void snsd_init(int family)
 }
 
 /*
+ * proto_to_8bit
+ *
+ * It returns the protocol number associated to `proto_name'.
+ * (See the `proto_str' static array in snsd.h)
+ *
+ * If no protocol matched, 0 is returned.
+ */
+u_char proto_to_8bit(char *proto_name)
+{
+	int i;
+	
+	for(i=0; i<=256; i++) {
+		if(!proto_str[i])
+			break;
+		if(!strcmp(proto_name, proto_str[i]))
+			return i+1;
+	}
+
+	return 0;
+}
+
+/*
  *  *  *  SNSD structs functions  *  *  *
  */
 
-snsd_service *snsd_find_service(snsd_service *sns, u_short service)
+snsd_service *snsd_find_service(snsd_service *sns, u_short service, 
+				u_char proto)
 {
 	list_for(sns)
-		if(sns->service == service)
+		if(sns->service == service && sns->proto == proto)
 			return sns;
 	return 0;
 }
 
-snsd_service *snsd_add_service(snsd_service **head, u_short service)
+snsd_service *snsd_add_service(snsd_service **head, u_short service, 
+				u_char proto)
 {
 	snsd_service *sns, *new;
 
-	if((sns=snsd_find_service(*head, service)))
+	if((sns=snsd_find_service(*head, service, proto)))
 		return sns;
 
 	new=xmalloc(sizeof(snsd_service));
 	setzero(new, snsd_service);
 	new->service=service;
+	new->proto=proto;
 	
 	*head=list_add(*head, new);
 
@@ -172,47 +197,6 @@ void snsd_service_llist_del(snsd_service **head)
 	clist_destroy(head, &counter);
 }
 
-int snsd_count_nodes(snsd_service *head)
-{
-	int count=0;
-	
-	list_for(head)
-		list_for(head->prio)
-			count+=list_count(head->prio->node);
-	return count;
-}
-
-/*
- * snsd_choose_wrand
- *
- * It returns a snsd_node of the `head' llist. The snsd_node is chosen
- * randomly. The weight of a node is proportional to its probability of being
- * picked.
- * On error (no nodes?) 0 is returned.
- */
-snsd_node *snsd_choose_wrand(snsd_node *head)
-{
-	snsd_node *snd=head;
-	int tot_w=0, r=0, nmemb=0;
-
-	nmemb=list_count(snd);
-	list_for(snd)
-		tot_w+=snd->weight;
-
-	if(!tot_w)
-		return list_pos(snd, rand_range(0, nmemb-1));
-		
-	r=rand_range(1, tot_w);
-
-	tot_w=0; snd=head;
-	list_for(snd) {
-		if(r > tot_w && (r <= tot_w+snd->weight))
-			return snd;
-		tot_w+=snd->weight;
-	}
-	
-	return 0;
-}
 		
 /*
  *
@@ -527,7 +511,11 @@ int snsd_pack_service(char *pack, size_t free_sz, snsd_service *service)
 	
 	(*(u_short *)(buf))=htons(service->service);
 	buf+=sizeof(short);
-	wsz+=sizeof(short);
+	
+	(*(u_char *)(buf))=service->proto;
+	buf+=sizeof(u_char);
+	
+	wsz+=SNSD_SERVICE_PACK_SZ;
 	
 	sz=snsd_pack_all_prios(buf, free_sz-wsz, service->prio);
 	if(sz <= 0)
@@ -558,9 +546,14 @@ snsd_service *snsd_unpack_service(char *pack, size_t pack_sz, size_t *unpacked_s
 	
 	sns->service=ntohs((*(u_short *)pack));
 	pack+=sizeof(short);
-	(*unpacked_sz)+=sizeof(short);
+	
+	sns->proto=(*(u_char *)pack);
+	pack+=sizeof(u_char);
+	
+	(*unpacked_sz)+=SNSD_SERVICE_PACK_SZ;
 
-	sns->prio=snsd_unpack_all_prios(pack, pack_sz-sizeof(short), unpacked_sz);
+	pack_sz-=SNSD_SERVICE_PACK_SZ;
+	sns->prio=snsd_unpack_all_prios(pack, pack_sz, unpacked_sz);
 	if(!sns->prio)
 		return 0;
 
@@ -649,4 +642,68 @@ snsd_service *snsd_unpack_all_service(char *pack, size_t pack_sz, size_t *unpack
 
 	(*unpacked_sz)+=usz;
 	return sns_head;
+}
+
+/*
+ *
+ *   *  *  *  Misc functions  *  *  *
+ *   
+ */
+
+int snsd_count_nodes(snsd_service *head)
+{
+	int count=0;
+	
+	list_for(head)
+		list_for(head->prio)
+			count+=list_count(head->prio->node);
+	return count;
+}
+
+/*
+ * snsd_choose_wrand
+ *
+ * It returns a snsd_node of the `head' llist. The snsd_node is chosen
+ * randomly. The weight of a node is proportional to its probability of being
+ * picked.
+ * On error (no nodes?) 0 is returned.
+ */
+snsd_node *snsd_choose_wrand(snsd_node *head)
+{
+	snsd_node *snd=head;
+	int tot_w=0, r=0, nmemb=0;
+
+	nmemb=list_count(snd);
+	list_for(snd)
+		tot_w+=snd->weight;
+
+	if(!tot_w)
+		return list_pos(snd, rand_range(0, nmemb-1));
+		
+	r=rand_range(1, tot_w);
+
+	tot_w=0; snd=head;
+	list_for(snd) {
+		if(r > tot_w && (r <= tot_w+snd->weight))
+			return snd;
+		tot_w+=snd->weight;
+	}
+	
+	return 0;
+}
+
+/*
+ * snsd_highest_prio
+ *
+ * It returns the snsd_prio struct which has the highest `prio' value.
+ */
+snsd_prio *snsd_highest_prio(snsd_prio *head)
+{
+	snsd_prio *highest=head;
+
+	list_for(head)
+		if(head->prio > highest->prio)
+			highest=head;
+
+	return highest;
 }

@@ -487,10 +487,6 @@ void init_netsukuku(char **argv)
 				me.cur_ifs, &me.cur_ifs_n) < 0)
 		fatal("Cannot initialize any network interfaces");
 
-	if(!server_opt.disable_resolvconf)
-		/* Restore resolv.conf if our backup is still there */
-		andna_resolvconf_restore();
-
 	/* 
 	 * ANDNA init
 	 */
@@ -501,8 +497,8 @@ void init_netsukuku(char **argv)
 	 * Initialize the Internet gateway stuff
 	 */
 	if(server_opt.my_upload_bw && server_opt.my_dnload_bw)
-		me.my_bandwidth =
-			bandwidth_in_8bit((server_opt.my_upload_bw+server_opt.my_dnload_bw)/2);
+	      me.my_bandwidth = bandwidth_in_8bit((server_opt.my_upload_bw + 
+						   server_opt.my_dnload_bw)/2);
 	init_internet_gateway_search();
 	
 	pkts_init(me.cur_ifs, me.cur_ifs_n, 0);
