@@ -28,6 +28,8 @@
 #define ANDNS_MAX_DATA_LEN	512
 #define ANDNS_MAX_QST_LEN	512
 #define ANNDS_DNS_MAZ_QST_LEN	255
+#define ANDNS_MAX_ANSW_IP_LEN	20
+#define ANDNS_MAX_ANSW_H_LEN	516
 
 struct andns_pkt_data
 {
@@ -46,6 +48,7 @@ typedef struct andns_pkt
 {
         uint16_t        id;
         uint8_t         qr;
+        uint8_t         p;
         uint8_t         qtype;
         uint8_t         ancount;
         uint8_t         r;
@@ -72,6 +75,10 @@ typedef struct andns_pkt
 #define ANDNS_RCODE_ENSDMN    3       /* No such domain */
 #define ANDNS_RCODE_ENIMPL    4       /* Not implemented */
 #define ANDNS_RCODE_ERFSD     5       /* Refused */
+/* REALMS TO SEARCH */
+#define NTK_REALM               0
+#define INET_REALM              1
+
 
 size_t a_hdr_u(char *buf,andns_pkt *ap);
 size_t a_qst_u(char *buf,andns_pkt *ap,int limitlen);

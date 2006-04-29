@@ -58,6 +58,8 @@ static const char *err_strings[] = {
 	"netfilter delete error.",		/* ERR_NETDEL */
 	"error storing rules.",			/* ERR_NETSTO */
 	"Nefilter was not restored.",		/* ERR_NETRST */
+/**/	
+	"SNSD main record not found.",		/* ERR_SNDMRF */
 };
 
 #define ERR_UFOERR	-1

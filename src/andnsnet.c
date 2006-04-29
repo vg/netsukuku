@@ -150,7 +150,7 @@ ssize_t w_recv(int sk,void *buf,size_t len,int die)
 /* Dialog Layer */
 
 /* "Botta e risposta" */
-ssize_t squit(const char *host,uint16_t port,int type,void *buf,
+ssize_t hn_send_recv_close(const char *host,uint16_t port,int type,void *buf,
 		size_t buflen,void *anbuf,size_t anlen,int die)
 {
 	ssize_t ret;
@@ -167,7 +167,7 @@ ssize_t squit(const char *host,uint16_t port,int type,void *buf,
 	return ret;
 }
 /* "Botta e risposta" */
-ssize_t ai_squit(struct addrinfo *ai,void *buf,size_t buflen,
+ssize_t ai_send_recv_close(struct addrinfo *ai,void *buf,size_t buflen,
 		void *anbuf,size_t anlen,int die,int free_ai)
 {
 	ssize_t ret;
@@ -183,6 +183,7 @@ ssize_t ai_squit(struct addrinfo *ai,void *buf,size_t buflen,
 	close(res);
 	return ret;
 }
+	
 /*
 void char_print(char *buf, int len)
 {

@@ -46,7 +46,8 @@ size_t a_hdr_u(char *buf,andns_pkt *ap)
 
         memcpy(&c,buf,sizeof(uint8_t));
         ap->qr=(c>>7)&0x01;
-        ap->qtype=(c>>3)&0x0f;
+        ap->p=c&0x40?1:0;
+        ap->qtype=(c>>3)&0x07;
         ap->ancount=(c<<1)&0x0e;
 
         buf++;
@@ -69,24 +70,34 @@ size_t a_qst_u(char *buf,andns_pkt *ap,int limitlen)
 	size_t ret;
 	uint16_t s;
 	uint8_t c;
-	if (limitlen<5)
+	if (limitlen<4)
 		err_ret(ERR_ANDMAP,-1);
 	switch(ap->qtype) {
 		case AT_A:
 			memcpy(&s,buf,2);
 			ap->service=ntohs(s);
 			buf+=2;
-			memcpy(&s,buf,2);
-			ap->qstlength=ntohs(s);
-			buf+=2;
-        		if (ap->qstlength>=ANDNS_MAX_QST_LEN || 
+			if (ap->nk==NTK_REALM) {
+				ap->qstlength=16;
+				if (ap->qstlength>limitlen-2)
+                			err_ret(ERR_ANDPLB,-1);
+				AP_ALIGN(ap);
+				memcpy(ap->qstdata,buf,16);
+				ret=18;
+			} else {
+				memcpy(&s,buf,2);
+				ap->qstlength=ntohs(s);
+				buf+=2;
+        			if (ap->qstlength>=ANDNS_MAX_QST_LEN || 
 					ap->qstlength>limitlen-4)
-                		err_ret(ERR_ANDPLB,-1);
-			AP_ALIGN(ap);
-        		memcpy(ap->qstdata,buf,ap->qstlength);
-			ret=ap->qstlength+4;
+                			err_ret(ERR_ANDPLB,-1);
+				AP_ALIGN(ap);
+        			memcpy(ap->qstdata,buf,ap->qstlength);
+				ret=ap->qstlength+4;
+			}
 			break;
 		case AT_PTR:
+			c=*buf;
 			if (c!=0 && c!=1)
 				err_ret(ERR_ANDMAP,-1)
 			ap->qstlength=c?16:4;
@@ -105,7 +116,6 @@ size_t a_qst_u(char *buf,andns_pkt *ap,int limitlen)
 size_t a_answ_u(char *buf,andns_pkt *ap,int limitlen)
 {
         uint16_t alen;
-	uint8_t c;
         andns_pkt_data *apd;
 
 	if (limitlen<5)
@@ -188,6 +198,8 @@ size_t a_hdr_p(andns_pkt *ap,char *buf)
         buf+=2;
         if (ap->qr)
                 (*buf)|=0x80;
+	if (ap->p)
+		(*buf)|=0x40;
         (*buf)|=( (ap->qtype)<<3);
         (*buf++)|=( (ap->ancount)>>1);
         (*buf)|=( (ap->ancount)<<7);
@@ -208,11 +220,15 @@ size_t a_qst_p(andns_pkt *ap,char *buf,size_t limitlen)
 			s=htons(ap->service);
 			memcpy(buf,&s,2);
 			buf+=2;
-			s=htons(ap->qstlength);
-			memcpy(buf,&s,2);
-			buf+=2;
+			ret=ap->qstlength+2;
+			if (ap->nk==INET_REALM) {
+				s=htons(ap->qstlength);
+				memcpy(buf,&s,2);
+				buf+=2;
+				ret+=2;
+			}
+			memcpy(buf,ap->qstdata,ap->qstlength);
         		memcpy(buf,ap->qstdata,ap->qstlength);
-			ret=ap->qstlength+4;
 			break;
 		case AT_PTR:
 			if (ap->qstlength+1>limitlen)

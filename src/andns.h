@@ -40,10 +40,6 @@
 #define PTR_NTK_REALM_PREFIX    "NTK."
 #define REALM_PREFIX_LEN        4
 
-/* REALMS TO SEARCH */
-#define NTK_REALM               0
-#define INET_REALM              1
-
 #define DNS_PROTO		0
 #define ANDNS_PROTO		1
 

@@ -155,7 +155,7 @@ int andns_init(int restricted, char *resolv_conf)
         int i,res;
         char msg[(INET6_ADDRSTRLEN+2)*MAXNSSERVERS];
         char buf[INET6_ADDRSTRLEN];
-        struct sockaddr *saddr;
+        struct addrinfo *ai;
 
 	memset(&_ns_filter_,0,sizeof(struct addrinfo));
 	_ns_filter_.ai_socktype=SOCK_DGRAM;
@@ -177,12 +177,14 @@ int andns_init(int restricted, char *resolv_conf)
          * Debug message
          */
         for (i=0;i<_andns_ns_count_;i++) {
-                saddr=_andns_ns_[i]->ai_addr;
-                if(inet_ntop(saddr->sin_family,
-			(void*)&((saddr)->sin_addr),buf,INET6_ADDRSTRLEN)) {
+		ai=_andns_ns_[i];
+		if (inet_ntop(ai->ai_family,(void*)(ai->ai_addr),buf,
+					INET6_ADDRSTRLEN)) 
+		{
                         strncat(msg,buf,INET_ADDRSTRLEN);
                         strncat(msg,i==_andns_ns_count_-1?". ":", ",2);
-                } else
+                } 
+		else
                         error("In andns_init: error "
 				"converting sockaddr -> %s.",\
 				strerror(errno));
@@ -207,62 +209,20 @@ int ns_general_send(char *msg,int msglen,char *answer,int anslen)
         int res,i;
 
         for (i=0;i<MAXNSSERVERS && i<_andns_ns_count_;i++) {
-		res=ai_squit(_andns_ns_[i],msg,msglen,answer,anslen,0,0);
-/*                res=ns_send(msg,msglen,answer,
-			anslen,_andns_ns_+i,sizeof(struct sockaddr_in));*/
+		res=ai_send_recv_close(_andns_ns_[i],msg,msglen,answer,anslen,0,0);
                 if(res != -1)
                         return res;
         }
 
         err_ret(ERR_RSLFDQ,-1);
 }
-/*
-int ns_send(char *msg,int msglen, char *answer,int *anslen,struct sockaddr_in *ns,socklen_t nslen)
-{
-        int s;
-        ssize_t len;
-
-        if ((s=new_dgram_socket(AF_INET))==-1) {
-                error("In ns_send: can not create socket.");
-                return -1;
-        }
-        if ((connect(s,(struct sockaddr*)ns,nslen))) {
-                error("In ns_send: error connecting "
-			"socket -> %s.",strerror(errno));
-                goto close_return;
-        }
-	len=set_nonblock_sk(s);
-	if (len==-1) {
-                error("In ns_send: error setting nonblock socket.");
-                goto close_return;
-        }
-
-        len=inet_send(s,msg,msglen,0);
-        if (len==-1) {
-                error("In ns_send. Pkt not forwarded.");
-                goto close_return;
-        }
-	if (len!=msglen) {
-		error("In ns_send: have to send "
-			"%d bytes, sended %d.",msglen,len);
-                goto close_return;
-        }
-
-        len=inet_recv_timeout(s,(void*)answer,DNS_MAX_SZ,0, DNS_REPLY_TIMEOUT);
-        if (len==-1) {
-                error("In ns_send. Pkt not received.");
-                goto close_return;
-        }
-        *anslen=len;
-        close(s);
-        return 0;
-close_return:
-        close(s);
-        err_ret(ERR_RSLFDQ,-1);
-}*/
 
 			/* UTILS FUNCTIONS */
 
+/*
+ * Make a copy of DNS pkt data. If prefix is not NULL,
+ * the prefix is added to strings.
+ */
 void dpktacpy(dns_pkt *dst,dns_pkt *src,const char *prefix)
 {
         dns_pkt_a *dpas,*dpad;
@@ -305,6 +265,11 @@ void dpktacpy(dns_pkt *dst,dns_pkt *src,const char *prefix)
                 dpas=dpas->next;
         }
 }
+
+/*
+ * Make a full copy of a dns pkt. If prefix is not
+ * null, prefix is add to names.
+ */
 dns_pkt* dpktcpy(dns_pkt *src,const char *prefix)
 {
         dns_pkt *dst;
@@ -354,6 +319,9 @@ char* rm_realm_prefix(char *from,char *dst,int type)
         return dst;
 }
 
+/* Make a copy of a dns pkt, only for headers and questions.
+ * If the question is prefixed, the prefix is removed.
+ */
 dns_pkt* dpktcpy_rm_pref(dns_pkt *src)
 {
 	dns_pkt *dst;
@@ -420,15 +388,18 @@ int is_prefixed(dns_pkt *dp)
  * A very stupid function that converts 
  * ANDNS code to DNS code.
  */
-int qtype_a_to_d(int qt) 
+int qtype_a_to_d(andns_pkt *ap) 
 {
-	switch (qt) {
-		case AT_A:
-			return T_A;
+	switch (ap->qtype) {
 		case AT_PTR:
 			return T_PTR;
-		/*case AT_MX:
-			return T_MX;*/
+		case AT_A:
+			if (ap->service==25)
+				return T_MX;
+			else if (!ap->service)
+				return T_A;
+			else 
+				return -1;
 		default:
 			return -1;
 	}
@@ -441,7 +412,7 @@ int apqsttodpqst(andns_pkt *ap,dns_pkt **dpsrc)
 	int res,qt;
 	int qlen,family;
 
-	qt=qtype_a_to_d(ap->qtype);
+	qt=qtype_a_to_d(ap);
 	if (qt==-1)
 		err_ret(ERR_ANDNCQ,-1);
 
@@ -450,7 +421,7 @@ int apqsttodpqst(andns_pkt *ap,dns_pkt **dpsrc)
 	dph=&(dp->pkt_hdr);
 	dpq=dns_add_qst(dp);
 
-	if (qt==T_A) {
+	if (qt==T_A || qt==T_MX) {
 		qlen=strlen(ap->qstdata);
 		if (qlen>DNS_MAX_HNAME_LEN) 
 			goto incomp_err;
@@ -458,28 +429,20 @@ int apqsttodpqst(andns_pkt *ap,dns_pkt **dpsrc)
 	}
 	else if (qt==T_PTR) {
 		qlen=ap->qstlength;
-		if (strstr(ap->qstdata,":")) 
-			family=AF_INET6;
-		else 
+		if (qlen==4)
 			family=AF_INET;
-		/*crow=inet_ntop(family,(const void*)ap->qstdata,
-					temp,DNS_MAX_HNAME_LEN);
-		if (!crow) 
-			goto incomp_err; */
+		else if (qlen==16)
+			family=AF_INET6;
+		else
+			goto incomp_err;
 		res=swapped_straddr_pref(ap->qstdata,dpq->qname,family);
 		if (res==-1) {
 			debug(DBG_INSANE,err_str);
 			goto incomp_err;
 		}
 	}
-	else if (qt==T_MX) {
-		destroy_dns_pkt(dp);
-		return -1;
-	}
-	else {/* if (qt==AT_MXPTR) {*/
-		destroy_dns_pkt(dp);
-		return -1;
-	}
+	else 
+		goto incomp_err;
 	dph->id=ap->id;
 	dph->rd=1;
 	dph->qdcount++;
@@ -673,17 +636,30 @@ int inet_rslv(dns_pkt *dp,char *msg,int msglen,char *answer)
 {
 	inet_prefix addr;
 	int res,qt,i,rcode;
+	u_short service;
+	snsd_service *ss;
+	int records;
+	u_char proto;
 	char temp[DNS_MAX_HNAME_LEN];
 	dns_pkt_a *dpa;
 
 	qt=dp->pkt_qst->qtype;
 	rm_realm_prefix(dp->pkt_qst->qname,temp,qt);
-	if (qt==T_A) {
-		res=debug_andna_resolve_hname(temp,&addr);
-		if (res==-1) {
+
+	if (qt==T_A || qt==T_MX) {
+		service=(qt==T_A)?0:25;
+		proto=(qt==T_A)?0:1;
+		ss=snsd_resolve_hname(temp,service,proto,&records);
+		if (!ss) {
 			rcode=RCODE_ENSDMN;
 			goto safe_return_rcode;
 		}
+		res=snsd_node_to_data
+		
+		
+		res=debug_andna_resolve_hname(temp,&addr);
+		if (res==-1) {
+
 		dpa=DP_ADD_ANSWER(dp);
 		dpa->type=T_A;
 		dpa->cl=C_IN;
