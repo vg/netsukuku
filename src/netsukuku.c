@@ -144,6 +144,7 @@ void fill_default_options(void)
 	server_opt.bnode_map_file=BNODE_MAP_FILE;
 
 	server_opt.andna_hnames_file=ANDNA_HNAMES_FILE;
+	server_opt.snsd_nodes_file=SNSD_NODES_FILE;
 	server_opt.andna_cache_file=ANDNA_CACHE_FILE;
 	server_opt.lclkey_file=LCLKEY_FILE;
 	server_opt.lcl_file=LCL_FILE;
@@ -183,6 +184,8 @@ void fill_loaded_cfg_options(void)
 	
 	if((value=getenv(config_str[CONF_ANDNA_HNAMES_FILE])))
 		server_opt.andna_hnames_file=xstrndup(value, NAME_MAX-1);
+	if((value=getenv(config_str[CONF_SNSD_NODES_FILE])))
+		server_opt.snsd_nodes_file=xstrndup(value, NAME_MAX-1);
 	
 	if((value=getenv(config_str[CONF_ANDNA_CACHE_FILE])))
 		server_opt.andna_cache_file=xstrndup(value, NAME_MAX-1);
@@ -261,6 +264,8 @@ void free_server_opt(void)
 
 	if(server_opt.andna_hnames_file != ANDNA_HNAMES_FILE)
 		xfree(server_opt.andna_hnames_file);
+	if(server_opt.snsd_nodes_file != SNSD_NODES_FILE)
+		xfree(server_opt.snsd_nodes_file);
 	if(server_opt.andna_cache_file != ANDNA_CACHE_FILE)
 		xfree(server_opt.andna_cache_file);
 	if(server_opt.lclkey_file != LCLKEY_FILE)
@@ -392,24 +397,6 @@ void check_conflicting_options(void)
 						"option in netsukuku.conf",    \
 							(str));		       \
 	
-	if(!server_opt.int_map_file[0])
-		FATAL_NOT_SPECIFIED("ntk_int_map_file");
-	if(!server_opt.ext_map_file[0])
-		FATAL_NOT_SPECIFIED("ntk_ext_map_file");
-	if(!server_opt.bnode_map_file[0])
-		FATAL_NOT_SPECIFIED("ntk_bnode_map_file");
-	if(!server_opt.andna_hnames_file[0])
-		FATAL_NOT_SPECIFIED("andna_hnames_file");
-	if(!server_opt.andna_cache_file[0])
-		FATAL_NOT_SPECIFIED("andna_cache_file");
-	if(!server_opt.lclkey_file[0])
-		FATAL_NOT_SPECIFIED("andna_lclkey_file");
-	if(!server_opt.lcl_file[0])
-		FATAL_NOT_SPECIFIED("andna_lcl_file");
-	if(!server_opt.rhc_file[0])
-		FATAL_NOT_SPECIFIED("andna_rhc_file");
-	if(!server_opt.counter_c_file[0])
-		FATAL_NOT_SPECIFIED("andna_counter_c_file");	
 	if(!server_opt.inet_hosts && server_opt.restricted)
 		FATAL_NOT_SPECIFIED("internet_ping_hosts");
 
@@ -438,9 +425,8 @@ void check_conflicting_options(void)
 
 	if(server_opt.share_internet && me.my_bandwidth < MIN_CONN_BANDWIDTH)
 		fatal("You want to share your Internet connection but "
-			"your bandwidth is just TOO small. "
-			"Do not share it, and do not fake the values in "
-			"netsukuku.conf, or your connection will be saturated");
+			"your bandwidth is just TOO small. Do not share "
+			"it, or your connection will be saturated");
 
 	if(!server_opt.inet_connection && server_opt.share_internet) {	
 		loginfo("You want to share your Internet connection,"
@@ -578,6 +564,7 @@ void *reload_hostname_thread(void *null)
 	 */
 	loginfo("Reloading the andna hostnames file");
 	load_hostnames(server_opt.andna_hnames_file, &andna_lcl, &lcl_counter);
+	load_snsd(server_opt.snsd_nodes_file, andna_lcl);
 	andna_update_hnames(1);
 
 	return 0;

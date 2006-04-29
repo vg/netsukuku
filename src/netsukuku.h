@@ -25,6 +25,11 @@
 #define VERSION_STR				"NetsukukuD "VERSION
 
 
+/*
+ * current_globals
+ *
+ * Here there are the main globals variables used among the code.
+ */
 struct current_globals
 {
 	/* int map */
@@ -95,7 +100,7 @@ const static u_short andna_udp_port	= ANDNA_UDP_PORT,
 #define BNODE_MAP_FILE		DATA_DIR"/ntk_bnode_map"
 
 #define ANDNA_HNAMES_FILE	CONF_DIR"/andna_hostnames"
-#define ANDNA_SNODES_FILE	CONF_DIR"/snsd_nodes"
+#define SNSD_NODES_FILE		CONF_DIR"/snsd_nodes"
 #define ANDNA_CACHE_FILE	DATA_DIR"/andna_cache"
 #define LCLKEY_FILE		DATA_DIR"/andna_lcl_keyring"
 #define LCL_FILE		DATA_DIR"/andna_lcl_cache"
@@ -105,6 +110,11 @@ const static u_short andna_udp_port	= ANDNA_UDP_PORT,
 #define IPMASQ_SCRIPT_FILE	CONF_DIR"/ip_masquerade.sh"
 #define TCSHAPER_SCRIPT_FILE	CONF_DIR"/tc_shaper.sh"
 
+/*
+ * ServOpt
+ *
+ * Options
+ */
 typedef struct
 {
 	char		*config_file;

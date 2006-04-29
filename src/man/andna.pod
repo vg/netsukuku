@@ -95,8 +95,9 @@ Not implemented
 
 =head1 SIGNALS
 
-When the B<SIGHUP> signal is sent to ntkd(8), the F<andna_hostnames> file
-will be reloaded and it will try to register all the new added hostnames.
+When the B<SIGHUP> signal is sent to ntkd(8), the F<andna_hostnames> and
+F<snsd_nodes> files will be reloaded and it will try to register all the new
+added hostnames and snsd records.
 
 When the B<SIGALRM> signal is sent to ntkd(8), the resolved hostnames
 cache will be flushed.

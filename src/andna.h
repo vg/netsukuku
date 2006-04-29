@@ -57,6 +57,7 @@ int last_spread_acache_pkt_id[ANDNA_MAX_FLOODS];
 #define ANDNA_PKT_JUST_CHECK	(1<<3)		/* Check only, don't update
 						   anything */
 #define ANDNA_PKT_SNSD		(1<<4)		/* A SNSD request/reply */
+#define ANDNA_PKT_SNSD_DEL	(1<<5)		/* SNSD delete request */
 
 /*
  * andna_reg_pkt
@@ -66,6 +67,11 @@ int last_spread_acache_pkt_id[ANDNA_MAX_FLOODS];
  * When the pkt is sent to a counter_gnode, a second `rip', which is the ip
  * of the hash_gnode who is contacting the counter_gnode, is appended at the
  * end of the pkt.
+ *
+ * If the ANDNA_PKT_SNSD flag is set, at the end of the packet is included a
+ * packed snsd_service linked list. It is the list of snsd_records that have
+ * to be registered. However the packet forwarded to the counter node won't 
+ * keep this part.
  */
 struct andna_reg_pkt
 {
@@ -78,8 +84,9 @@ struct andna_reg_pkt
 						   made for the hostname */
 	
  	char		sign[ANDNA_SIGNATURE_LEN]; /* RSA signature of the 
-						      entire pkt (excluding sign
-						      itself and flags */
+						      entire pkt (excluding 
+						      `sign' itself and `flags'
+						    */
 	char 		flags;
 	
 } _PACKED_;
@@ -145,21 +152,6 @@ struct andna_rev_resolve_reply_hdr
  */
 INT_INFO andna_rev_resolve_reply_body_iinfo = { 1, { INT_TYPE_16BIT }, { 0 },
 						{ IINFO_DYNAMIC_VALUE } };
-/*
- * MX resolve request
- */
-struct andna_mx_resolve_rq_pkt
-{
-	u_int		hash;		/* 32bit hash of the hostname 
-					   to resolve */
-};
-INT_INFO andna_mx_resolve_rq_pkt_iinfo = { 1, { INT_TYPE_32BIT }, { 0 }, { 1 } };
-#define ANDNA_MX_RESOLVE_RQ_PKT_SZ	(sizeof(struct andna_mx_resolve_rq_pkt))
-
-/* The MX resolve reply pkt is the same of a normal resolve reply */
-typedef struct andna_resolve_reply_pkt andna_mx_resolve_reply_pkt;
-#define ANDNA_MX_RESOLVE_REPLY_PKT_SZ		ANDNA_RESOLVE_REPLY_PKT_SZ
-#define andna_mx_resolve_reply_pkt_iinfo	andna_resolve_reply_pkt_iinfo
 
 /* 
  * The single_acache pkt is used to get from an old hash_gnode a single

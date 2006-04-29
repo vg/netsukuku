@@ -8,13 +8,15 @@
 
 
 - SNSD
-	- lcl_cache
-		- pack
-		- unpack
+	- snsd_cache.c:240
+	- andna.c:856
+	- andna_recv_reg_rq
+		- hname:hname:0
 	- andna.pod (man page)
 	- andna_register_hname()
 		- do not contact the counter_node if we are just registering
 		  a SNSD IP.
+		- increment `hname_update'
 	- andna_resolve_hname()
 		- can a client specify the queue number?
 	- andna_rev_resolve()
@@ -25,6 +27,11 @@
 	- depends on iptables
 	- lartc
 	
+- Keep an active tcp connection for each rnode. These sockets will be used to
+  send the majority of packets.
+  The socket shall be saved in the "struct rnode_list" relative to the rnode.
+  	- minimize the use of UDP. Use the UDP only for the radar?
+
 - restore the network when NetsukukuD is closed (call /etc/rc.d/rc.inet1 ?)
 
 - Flash NetsukukuD into an AP and test it.
@@ -35,10 +42,6 @@
 ***		MEDIUM PRIORITY
 **
 *	
-
-- Keep an active tcp connection for each rnode. These sockets will be used to
-  send various packets, like big QSPN pkts or maps.
-  The socket shall be save in the "struct rnode_list" relative to the rnode.
 
 - Equalize multipath routes. The `equalize' module is still experimental in
   the kernel.

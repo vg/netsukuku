@@ -74,6 +74,9 @@ int andna_load_caches(void)
 
 	if((!load_hostnames(server_opt.andna_hnames_file, &andna_lcl, &lcl_counter)))
 		debug(DBG_NORMAL, "Hostnames file loaded");
+	
+	if((!load_snsd(server_opt.snsd_nodes_file, andna_lcl)))
+		debug(DBG_NORMAL, "SNSD nodes loaded");
 
 	return 0;
 }
@@ -563,19 +566,27 @@ int andna_add_flood_pkt_id(int *ids_array, int pkt_id)
  */
 
 /*
- * andna_register_hname: Register or update the `alcl->hostname' hostname.
+ * andna_register_hname
+ * 
+ * Registers or updates the `alcl->hostname' hostname. It also registers the
+ * snsd records present in `alcl->service'.
+ * 
+ * If `snsd_delete' is not null, the registration request becomes a deletion
+ * request: it will ask to andna to delete all the snsd records equal to
+ * `snsd_delete'.
  */
-int andna_register_hname(lcl_cache *alcl)
+int andna_register_hname(lcl_cache *alcl, snsd_service *snsd_delete)
 {
 	PACKET pkt, rpkt;
 	struct andna_reg_pkt req;
 	u_int hash_gnode[MAX_IP_INT];
 	inet_prefix to;
-	
-	char *sign=0;
+		
+	snsd_service *snsd;
+	char *sign=0, *buf;
 	const char *ntop; 
 	int ret=0;
-	ssize_t err;
+	ssize_t err, pkt_sz=0;
 	time_t  cur_t;
 
 	setzero(&req, sizeof(req));
@@ -628,15 +639,32 @@ int andna_register_hname(lcl_cache *alcl)
 		ERROR_FINISH(ret, -1, finish);
 	} else if(err == 1)
 		req.flags|=ANDNA_PKT_FORWARD;
+
+	req.flags|=ANDNA_PKT_SNSD;
+	if(snsd_delete) {
+		snsd=snsd_delete;
+		req.flags|=ANDNA_PKT_SNSD_DEL;
+	} else {
+		snsd=alcl->service;
 		
 	ntop=inet_to_str(to);
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(ANDNA_REGISTER_HNAME), ntop);
 	
 	/* Fill the packet and send the request */
+	pkt_sz=ANDNA_REG_PKT_SZ+SNSD_SERVICE_LLIST_PACK_SZ(alcl->service);
 	pkt_addto(&pkt, &to);
-	pkt_fill_hdr(&pkt.hdr, ASYNC_REPLY, 0, ANDNA_REGISTER_HNAME, ANDNA_REG_PKT_SZ);
-	pkt.msg=xmalloc(ANDNA_REG_PKT_SZ);
+	pkt_fill_hdr(&pkt.hdr, ASYNC_REPLY, 0, ANDNA_REGISTER_HNAME, pkt_sz);
+	
+	pkt.msg=buf=xmalloc(pkt_sz);
+	
 	memcpy(pkt.msg, &req, ANDNA_REG_PKT_SZ);
+	buf+=ANDNA_REG_PKT_SZ;
+	
+	if(snsd_pack_all_services(buf, pkt_sz-ANDNA_REG_PKT_SZ, snsd) < 0) {
+		debug(DBG_SOFT, "andna_register_hname: couldn't pack "
+				"alcl->service");
+		ERROR_FINISH(ret, -1, finish);
+	}
 	
 	err=send_rq(&pkt, 0, ANDNA_REGISTER_HNAME, 0, ACK_AFFERMATIVE, 1, &rpkt);
 	if(err==-1) {
@@ -651,7 +679,7 @@ int andna_register_hname(lcl_cache *alcl)
 finish:
 	alcl->flags&=~ANDNA_UPDATING;
 	if(sign)
-		xfree(sign);	
+		xfree(sign);
 	pkt_free(&pkt, 1);
 	pkt_free(&rpkt, 0);
 	return ret;
@@ -669,20 +697,28 @@ int andna_recv_reg_rq(PACKET rpkt)
 	struct andna_reg_pkt *req;
 	u_int hash_gnode[MAX_IP_INT], *excluded_hgnode[1];
 	inet_prefix rfrom, to;
+	
 	RSA *pubkey;
 	andna_cache_queue *acq;
 	andna_cache *ac;
+	snsd_service *snsd_unpacked;
+	
 	time_t cur_t;
 	int ret=0, err;
-	char *ntop=0, *rfrom_ntop=0;
+	size_t unpacked_sz, packed_sz;
+	char *ntop=0, *rfrom_ntop=0, *snsd_pack;
 	u_char forwarded_pkt=0;
 	const u_char *pk;
 
 	pkt_copy(&rpkt_local_copy, &rpkt);
 
 	req=(struct andna_reg_pkt *)rpkt_local_copy.msg;
-	if(rpkt.hdr.sz != ANDNA_REG_PKT_SZ)
+	if(rpkt.hdr.sz <= ANDNA_REG_PKT_SZ || 
+			rpkt.hdr.sz > SNSD_SERVICE_MAX_LLIST_PACK_SZ)
 		ERROR_FINISH(ret, -1, finish);
+	
+	packed_sz=rpkt.hdr.sz - ANDNA_REG_PKT_SZ;
+	snsd_pack=rpkt_local_copy.msg+ANDNA_REG_PKT_SZ;
 
 	if(rpkt.hdr.flags & BCAST_PKT)
 		/* The pkt we received has been only forwarded to us */
@@ -780,24 +816,44 @@ int andna_recv_reg_rq(PACKET rpkt)
 	}
 
 	/* Ask the counter_node if it is ok to register/update the hname */
-	if(andna_check_counter(rpkt) == -1) {
-		debug(DBG_SOFT, "Registration rq 0x%x rejected: %s", 
-				rpkt.hdr.id, rq_strerror(E_ANDNA_CHECK_COUNTER));
-		if(!forwarded_pkt)
-			ret=pkt_err(pkt, E_ANDNA_CHECK_COUNTER, 0);
-		ERROR_FINISH(ret, -1, finish);
+	if(!(req->flags & ANDNA_PKT_SNSD_DEL)) {
+		if(andna_check_counter(rpkt) == -1) {
+			debug(DBG_SOFT, "Registration rq 0x%x rejected: %s", 
+					rpkt.hdr.id,
+					rq_strerror(E_ANDNA_CHECK_COUNTER));
+			if(!forwarded_pkt)
+				ret=pkt_err(pkt, E_ANDNA_CHECK_COUNTER, 0);
+			ERROR_FINISH(ret, -1, finish);
+		}
 	}
 
 	/* Finally, let's register/update the hname */
 	cur_t=time(0);	
 	ac=andna_cache_addhash(req->hash);
-	acq=ac_queue_add(ac, rfrom, req->pubkey);
+	acq=ac_queue_add(ac, req->pubkey);
 	if(!acq) {
 		debug(DBG_SOFT, "Registration rq 0x%x rejected: %s", 
 				rpkt.hdr.id, rq_strerror(E_ANDNA_QUEUE_FULL));
 		if(!forwarded_pkt)
 			ret=pkt_err(pkt, E_ANDNA_QUEUE_FULL, 0);
 		ERROR_FINISH(ret, -1, finish);
+	}
+	
+	snsd_unpacked=snsd_unpack_all_service(snsd_pack, packed_sz, 
+			&unpacked_sz);
+	if(!snsd_unpacked) {
+		debug(DBG_SOFT, "Registration rq 0x%x rejected: couldn't unpack"
+				" the snsd llist", rpkt.hdr.id);
+		if(!forwarded_pkt)
+			ret=pkt_err(pkt, E_INVALID_REQUEST, 0);
+		ERROR_FINISH(ret, -1, finish);
+	}
+
+	if(req->flags & ANDNA_PKT_SNSD_DEL) {
+		snsd_service_del_selected(&acq->service, snsd_unpacked);
+	} else {
+		snsd_service_llist_del(&acq->service);
+		/* TODO: continue here too */
 	}
 
 	if(acq->hname_updates > req->hname_updates) {
@@ -818,6 +874,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 			ret=pkt_err(pkt, E_ANDNA_UPDATE_TOO_EARLY, 0);
 		ERROR_FINISH(ret, -1, finish);
 	}
+
 	
 	/* Reply to the requester: <<Yes, don't worry, it worked.>> */
 	if(!forwarded_pkt) {
@@ -846,8 +903,10 @@ finish:
 }
 
 /*
- * andna_check_counter: asks the counter_node if it is ok to accept the
- * registration request in `pkt' and register the requested hname.
+ * andna_check_counter
+ *
+ * asks the counter_node if it is ok to accept the registration request in 
+ * `pkt' and register the requested hname.
  *
  * If -1 is returned the answer is no.
  */
@@ -886,7 +945,7 @@ int andna_check_counter(PACKET pkt)
 	pkt.hdr.flags|=ASYNC_REPLY;
 	
 	/* Append our ip in the pkt */
-	pkt.hdr.sz+=MAX_IP_SZ;
+	pkt.hdr.sz=ANDNA_REG_PKT_SZ+MAX_IP_SZ;
 	pkt.msg=xmalloc(pkt.hdr.sz);
 	memcpy(pkt.msg, req, ANDNA_REG_PKT_SZ);
 	inet_copy_ipdata((u_int *)(pkt.msg+ANDNA_REG_PKT_SZ), &me.cur_ip);
@@ -1123,7 +1182,7 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	}
 	
 	/*
-	 * Last try before going asking to ANDNA: let's see if we have it in
+	 * Last try before asking to ANDNA: let's see if we have it in
 	 * the resolved_hnames cache
 	 */
 	if((rhc=rh_cache_find_hname(hname)) &&
@@ -2143,9 +2202,11 @@ void *andna_min_update_retry(void *void_alcl)
 }
 
 /*
- * andna_register_new_hnames: updates/registers all the hostnames present in
- * the local cache. If `only_new_hname' is not zero, it registers only the new
- * hostnames added in the local cache.
+ * andna_update_hnames
+ *
+ * updates/registers all the hostnames present in the local cache. 
+ * If `only_new_hname' is not zero, it registers only the new hostnames
+ * added in the local cache.
  */
 void andna_update_hnames(int only_new_hname)
 {
@@ -2175,8 +2236,9 @@ void andna_update_hnames(int only_new_hname)
 }
 
 /*
- * andna_maintain_hnames_active: periodically registers and keep up to date the
- * hostnames of the local cache.
+ * andna_maintain_hnames_active
+ * 
+ * periodically registers and keep up to date the hostnames of the local cache.
  */
 void *andna_maintain_hnames_active(void *null)
 {

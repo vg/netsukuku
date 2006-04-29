@@ -207,19 +207,18 @@ andna_cache_queue *ac_queue_findpubk(andna_cache *ac, char *pubk)
 }
 
 /*
- * ac_queue_add: adds a new entry in the andna cache queue, which is
- * `ac'->acq. The elements in the new `ac'->acq are set to `rip' and `pubkey'.
+ * ac_queue_add
+ *
+ * adds a new entry in the andna cache queue, which is `ac'->acq. 
+ * The elements in the new `ac'->acq are updated.
  * If an `ac'->acq struct with an `ac'->acq->pubkey equal to `pubkey' already
  * exists, then only the timestamp and the IP will be updated.
  * It returns the pointer to the acq struct. If it isn't possible to add a new
  * entry in the queue, 0 will be returned.
  */
-andna_cache_queue *ac_queue_add(andna_cache *ac, inet_prefix rip, char *pubkey)
+andna_cache_queue *ac_queue_add(andna_cache *ac, char *pubkey)
 {
 	andna_cache_queue *acq;
-	snsd_service *sns;
-	snsd_prio *snp;
-	snsd_node *snd;
 	time_t cur_t;
 	int update=0;
 	
@@ -243,15 +242,7 @@ andna_cache_queue *ac_queue_add(andna_cache *ac, inet_prefix rip, char *pubkey)
 	} else
 		update=1;
 
-	sns=snsd_add_service(&acq->service, SNSD_DEFAULT_SERVICE,
-				SNSD_DEFAULT_PROTO);
-	snp=snsd_add_prio(&sns->prio, SNSD_DEFAULT_PRIO);
-	snd=snsd_add_first_node(&snp->node, &acq->snsd_counter, 
-				SNSD_MAX_QUEUE_RECORDS, rip.data);
-	memcpy(snd->record, rip.data, MAX_IP_SZ);
-	snd->flags|=SNSD_NODE_IP | SNSD_NODE_MAIN_IP;
-	snd->weight=SNSD_DEFAULT_WEIGHT;
-
+	
 	if(ac->queue_counter >= ANDNA_MAX_QUEUE)
 		ac->flags|=ANDNA_FULL;
 
@@ -1746,13 +1737,17 @@ finish:
  * The strings read are the hostnames that will be registered in andna.
  * Only ANDNA_MAX_HOSTNAMES lines are read. Each line can be maximum of
  * ANDNA_MAX_HNAME_LEN character long.
+ * 
  * This function updates automagically the old local cache that is pointed by 
  * `*old_alcl_head'. The hostnames that are no more present in the loaded
  * `file' are discarded from the local cache.
  * Since a new local cache is allocated and the old is destroyed, the new
- * pointer to it is written in `**old_alcl_head'.
+ * pointer to it is written in `*old_alcl_head'.
+ * 
  * The `old_alcl_counter' is updated too.
+ * 
  * This function shall be used each time the `file' changes.
+ * 
  * On error -1 is returned, otherwise 0 shall be the sacred value.
  */
 int load_hostnames(char *file, lcl_cache **old_alcl_head, int *old_alcl_counter)
@@ -1825,12 +1820,16 @@ int load_hostnames(char *file, lcl_cache **old_alcl_head, int *old_alcl_counter)
  * load_snsd
  *
  * It loads the SNSD records to be registered from the given `file'.
- * In ths file there shall be one record per line. 
+ * In the file there shall be one record per line, up to SNSD_MAX_RECORDS#
+ * records.
+ * 
  * Each line has to be written in the following format:
  * 	hostname:snsd_hostname:service:priority:weight[:pub_key_file]
  * or
  * 	hostname:snsd_ip:service:priority:weight[:pub_key_file]
- * The loaded records will be stored in the lcl_cache pointed by `alcl_head'.
+ * 
+ * The old records present in `alcl_head' will be deleted and substituted by
+ * the loaded ones.
  *
  * On error -1 is returned.
  */
@@ -1850,6 +1849,12 @@ int load_snsd(char *file, lcl_cache *alcl_head)
 	snsd_prio *snp;
 	snsd_node *snd, snsd_node;
 	inet_prefix ip;
+
+	/* Delete all the old snsd records */
+	alcl=alcl_head;
+	list_for(alcl)
+		if(alcl->service)
+			snsd_service_llist_del(&alcl->service);
 
 	if((fd=fopen(file, "r"))==NULL) {
 		error("Cannot open the snsd_nodes file from %s: %s", 
