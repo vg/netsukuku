@@ -592,7 +592,8 @@ rh_cache *rh_cache_add(char *hname, time_t timestamp, inet_prefix *ip,
 	snp=snsd_add_prio(&sns->prio, prio);
 	snd=snsd_add_node(&snp->node, &rhc->snsd_counter, SNSD_MAX_RECORDS,
 			ip->data);
-	memcpy(snd->record, ip->data, MAX_IP_SZ);
+
+	inet_copy_ipdata_raw(snd->record, ip->data);
 	snd->flags|=SNSD_NODE_IP;
 	snd->weight=SNSD_WEIGHT(weight);
 
@@ -1894,7 +1895,9 @@ int load_snsd(char *file, lcl_cache *alcl_head)
 				goto skip_line;
 			}
 			
-			/* hostname */
+			/* 
+			 * hostname 
+			 */
 			alcl=lcl_cache_find_hname(alcl_head, records[0]);
 			if(!alcl) {
 				error("%s: line %d: The hostname \"%s\" doesn't"
@@ -1904,9 +1907,11 @@ int load_snsd(char *file, lcl_cache *alcl_head)
 				goto skip_line;
 			}
 			
-			/* snsd record */
+			/* 
+			 * snsd record 
+			 */
 			if(str_to_inet(records[1], &ip) >= 0) {
-				memcpy(snsd_node.record, ip.data, MAX_IP_SZ);
+				inet_copy_ipdata_raw(snsd_node.record, ip.data);
 				snsd_node.flags=SNSD_NODE_IP;
 			} else {
 				hash_md5(records[1], strlen(records[1]), 

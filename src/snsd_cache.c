@@ -171,7 +171,10 @@ snsd_node *snsd_add_first_node(snsd_node **head, u_short *counter,
 	return *head;
 }
 
-void snsd_add_first_mainip(snsd_node **head, u_short *counter,
+/*
+ * just a wrapper
+ */
+snsd_node *snsd_add_first_mainip(snsd_node **head, u_short *counter,
 				u_short max_records, u_int record[MAX_IP_INT])
 {
 	snsd_service *sns;
@@ -185,8 +188,17 @@ void snsd_add_first_mainip(snsd_node **head, u_short *counter,
 	memcpy(snd->record, record, MAX_IP_SZ);
 	snd->flags|=SNSD_NODE_IP | SNSD_NODE_MAIN_IP;
 	snd->weight=SNSD_DEFAULT_WEIGHT;
+
+	return snd;
 }
-	
+
+
+/*
+ * 
+ *  *  *  *  Destroyer functions  *  *  *
+ *
+ */
+
 void snsd_node_llist_del(snsd_node **head, u_short *counter)
 {
 	clist_destroy(head, counter);
@@ -213,7 +225,16 @@ void snsd_service_llist_del(snsd_service **head)
 	clist_destroy(head, &counter);
 }
 
-void snsd_node_del_selected(snsd_service **head, int *snd_counter, 
+/*
+ * snsd_record_del_selected
+ *
+ * It deletes from the `*head' llist all the snsd records 
+ * which are found in the `selected' llist. In other words, if a snsd record
+ * present in the `selected' llist is found `*head', it is removed from
+ * `*head'.
+ * `snsd_counter' is the record counter of `*head'.
+ */
+void snsd_record_del_selected(snsd_service **head, int *snd_counter, 
 			snsd_service *selected)
 {
 	snsd_service *sns;
@@ -233,26 +254,31 @@ void snsd_node_del_selected(snsd_service **head, int *snd_counter,
 
 			snd_sel=snp_sel->node;
 			list_for(snd_sel) {
-				snd=snsd_find_node_by_record(snp->node,
-						snd_sel->record);
-				if(!snd)
-					continue;
-				/* TODO: continue here
-				 * there can be multiple nodes with the same
-				 * record, delete them all
-				 */
+				while((snd=snsd_find_node_by_record(snp->node,
+							snd_sel->record))) {
+					/* 
+					 * there can be multiple nodes with the same
+					 * record, delete them all with this
+					 * `while'.
+					 */
 
-				clist_del(&snp->node, snd_counter, snd);
+					clist_del(&snp->node, snd_counter, snd);
+				}
 			}
 
 			if(!snp->node)
+				/* if we emptied the snp->node llist, delete
+				 * this prio struct too */
 				sns->prio=list_del(sns->prio, snp);
 		}
 
 		if(!sns->prio)
+			/* if we emptied the sns->prio llist, delete
+			 * this service struct too */
 			*head=list_del((*head), sns);
 	}
 }
+
 
 /*
  *
@@ -762,4 +788,52 @@ snsd_prio *snsd_highest_prio(snsd_prio *head)
 			highest=head;
 
 	return highest;
+}
+
+/*
+ * snsd_find_mainip
+ *
+ * It searches through the whole `sns' llist a snsd_node which has the
+ * SNSD_NODE_MAIN_IP flag set.
+ * 
+ * If it is found, it returns a pointer to it, otherwise 0 it returned.
+ */
+snsd_node *snsd_find_mainip(snsd_service *sns)
+{
+	snsd_prio *snp;
+	snsd_node *snd;
+	
+	list_for(sns) {
+		snp=sns->prio;
+		list_for(snp) {
+			snd=snp->node;
+			list_for(snd)
+				if(snd->flags & SNSD_NODE_MAIN_IP)
+					return snd;
+		}
+	}
+
+	return 0;
+}
+
+/*
+ * snsd_unset_all_flags
+ *
+ * It unset the given `flag' in all the snsd records of the `sns' llist.
+ */
+void snsd_unset_all_flags(snsd_service *sns, u_char flag)
+{
+	snsd_prio *snp;
+	snsd_node *snd;
+	
+	list_for(sns) {
+		snp=sns->prio;
+		list_for(snp) {
+			snd=snp->node;
+			list_for(snd)
+				snd->flags&=~flag;
+		}
+	}
+
+	return 0;
 }

@@ -1,6 +1,7 @@
 
   0. General
   	Q: What is Netsukuku?
+	Q: What are its features?
 	Q: Why did you choose that name?
 	Q: What does it mean "it uses chaos and fractals"?
 	Q: Why another p2p network?
@@ -55,6 +56,10 @@ A: Netsukuku is a mesh network or a P2P net system that generates and sustains
    For more information read the section "2.4  So, WTF is it?" of the
    document.
 
+Q: What are its features?
+A: The complete list of features is here:
+   http://netsukuku.freaknet.org/files/doc/misc/Ntk_features_list
+
 Q: Why did you choose that name?
 A: Networked Electronic Technician Skilled in Ultimate Killing, Utility and 
    Kamikaze Uplinking.
@@ -90,7 +95,7 @@ A: Netsukuku is not a p2p net built upon the Internet. It is a physical
    build a physical network separated from the Internet. Btw, read "What is
    Netsukuku".
 
-Q: Ehi! You're crazy. This shit will not work!
+Q: Ehi! You're crazy. It won't work!
 A: Ehi pal, this doesn't pretend to be _now_ the final solution to the meaning
    of life, the universe and everything. Why don't you contribute and give us
    useful hints from your great knowledge? If you want to help in the
@@ -165,7 +170,7 @@ A: You can do it by now!
 Q: Will glibc be able to resolve names for the ANDNA system?
 A: ANDNA comes with a DNS wrapper so it is trasparent to all the programs
    which uses the glibc. Read "man andna":
-   http://netsukuku.freaknet.org/doc/man_html/andna.html
+   http://netsukuku.freaknet.org/doc/manuals/html/andna.html
 
 Q: What sort of performance does Netsukuku have? Is it any good for voice chat
    video chat?

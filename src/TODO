@@ -8,8 +8,7 @@
 
 
 - SNSD
-	- snsd_cache.c:240
-	- andna.c:856
+	- andna.c:880
 	- andna_recv_reg_rq
 		- hname:hname:0
 	- andna.pod (man page)
@@ -57,6 +56,8 @@
 	  
 - Compressed Netsukuku pkts: modify pkts.c to compress packets which are
   bigger than X and have the PKT_COMPRESS flag set. Use zlib.
+
+- Sharing willingness: http://lab.dyne.org/Ntk_IGS
 
 - Port the kernel route code for *BSD: take a look at rt_ioctl.c and
   rt_socket.c of quagga.
@@ -113,6 +114,11 @@
 	  "ext_map", "bnode_map", "andna_cache", ...,
 	  "flush rhcache"
 
+- ntk-finger: it would be handy to be able to know some info on a particular
+  node. The user puts his node info in /etc/netsukuku/finger.
+  $ ntk-finger remote_node_ip
+  will print out its /etc/netsukuku/finger.
+  
 - renice the NetsukukuD process?
 
 - small memory: if the system has <= X Mb of free memory, switch on dumb mode.

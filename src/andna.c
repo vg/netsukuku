@@ -704,7 +704,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 	snsd_service *snsd_unpacked;
 	
 	time_t cur_t;
-	int ret=0, err;
+	int ret=0, err, snsd_counter;
 	size_t unpacked_sz, packed_sz;
 	char *ntop=0, *rfrom_ntop=0, *snsd_pack;
 	u_char forwarded_pkt=0;
@@ -838,22 +838,50 @@ int andna_recv_reg_rq(PACKET rpkt)
 			ret=pkt_err(pkt, E_ANDNA_QUEUE_FULL, 0);
 		ERROR_FINISH(ret, -1, finish);
 	}
-	
-	snsd_unpacked=snsd_unpack_all_service(snsd_pack, packed_sz, 
-			&unpacked_sz);
-	if(!snsd_unpacked) {
-		debug(DBG_SOFT, "Registration rq 0x%x rejected: couldn't unpack"
-				" the snsd llist", rpkt.hdr.id);
-		if(!forwarded_pkt)
-			ret=pkt_err(pkt, E_INVALID_REQUEST, 0);
-		ERROR_FINISH(ret, -1, finish);
-	}
 
-	if(req->flags & ANDNA_PKT_SNSD_DEL) {
-		snsd_service_del_selected(&acq->service, snsd_unpacked);
+	if(acq != ac->acq) {
+		/* 
+		 * This request has been queued in the acq. We store the main
+		 * ip and discard the rest of the snsd records 
+		 */
+		snsd_add_first_mainip(&snsd_unpacked, &snsd_counter,
+					SNSD_MAX_QUEUE_RECORDS, rfrom.data);
 	} else {
-		snsd_service_llist_del(&acq->service);
-		/* TODO: continue here too */
+		/* 
+		 * Register the snsd records 
+		 */
+		snsd_unpacked=snsd_unpack_all_service(snsd_pack, packed_sz, 
+				&unpacked_sz);
+		snsd_counter=snsd_count_nodes(snsd_unpacked);
+		
+		if(!snsd_unpacked || snsd_counter > SNSD_MAX_RECORDS) {
+			debug(DBG_SOFT, "Registration rq 0x%x rejected: couldn't unpack"
+					" the snsd llist", rpkt.hdr.id);
+			if(!forwarded_pkt)
+				ret=pkt_err(pkt, E_INVALID_REQUEST, 0);
+			ERROR_FINISH(ret, -1, finish);
+		}
+
+		if(req->flags & ANDNA_PKT_SNSD_DEL) {
+			/* Fulfil the deletion request */
+			snsd_record_del_selected(&acq->service, snsd_unpacked);
+		} else {
+			snd=snsd_find_mainip(snsd_unpacked);
+			if(!snd)
+				snd=snsd_add_first_mainip(&snsd_unpacked,
+						&snsd_counter,
+						SNSD_MAX_QUEUE_RECORDS,
+						rfrom.data);
+
+			/* Set the mainip flag only to the real mainip record,
+			 * in this way we're sure that there is only one. */
+			snsd_unset_all_flags(snsd_unpacked, SNSD_NODE_MAIN_IP);
+			snd->flags|=SNSD_NODE_MAIN_IP;
+			
+			inet_copy_ipdata_raw(snd->record, rfrom.data);
+			snsd_service_llist_del(&acq->service);
+			acq->service=snsd_unpacked;
+		}
 	}
 
 	if(acq->hname_updates > req->hname_updates) {
