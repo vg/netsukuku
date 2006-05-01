@@ -94,12 +94,15 @@ int snsd_prio_to_aansw(char *buf,snsd_prio *sp,int *count)
  * Differently from snsd_node_to_aansw, the function
  * writes only the ip data on buf.
  */
-int snsd_node_to_data(char *buf,snsd_node *sn,u_char prio)
+int snsd_node_to_data(char *buf,snsd_node *sn,int iplen)
 {
 	int res;
+	int family;
         if (sn->flags & SNSD_NODE_IP ||
             sn->flags & SNSD_NODE_MAIN_IP) {
-                memcpy(buf,sn->record,10); /* TODO */
+                memcpy(buf,sn->record,iplen); 
+		family==(iplen==4)?AF_INET:AF_INET6;
+		inet_htonl(buf,family);
         } else {
                 snsd_node snt;
                 res=snsd_main_ip(sn->record,&snt);
@@ -107,9 +110,43 @@ int snsd_node_to_data(char *buf,snsd_node *sn,u_char prio)
                         error(err_str);
                         return -1;
                 }
-                res=snsd_node_to_data(buf,&snt,prio); /* this is now a safe call */
+                res=snsd_node_to_data(buf,&snt); /* this is now a safe call */
         }
         return 0;
 }
+/*
+ * Given a dns_packet, this function add an answer to it
+ * and returns 0;
+ * Otherwise returns -1 and nothing has to be done.
+ */
+int snsd_node_to_dp_answ(dns_pkt *dp,snsd_node *sn,int iplen)
+{
+	char temp[16];
+	dns_pkt_a *dpa;
 
-
+	if (snsd_node_to_data(temp,sn,iplen))
+		return -1;
+	dpa=DP_ADD_ANSWER(dp);
+	dns_a_default_fill(dp,dpa);
+	dpa->rdlength=_ip_len_;
+	memcpy(dpa->rdata,temp,iplen);
+	return 0;
+}
+/*
+ * Converts a snsd_prio struct, adding a set of answers to
+ * the dns_packet dp.
+ * Returns the number of answers added to dp.
+ */
+int snsd_prio_to_dp_answs(dns_pkt *dp,snsd_prio *sp,int iplen)
+{
+	int res=0;
+	snsd_node *sn;
+	
+	sn=sp->node;
+	listfor(sn) 
+		if (!snsd_node_to_dp_answ(dp,sn,iplen))
+			res++;
+	return res;
+}
+		
+		

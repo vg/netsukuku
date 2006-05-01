@@ -147,9 +147,10 @@ typedef struct dns_pkt
 #define DNS_SET_NSCOUNT(dp,x)	(dp)->pkt_hdr.nscount=x
 #define DNS_SET_ARCOUNT(dp,x)	(dp)->pkt_hdr.arcount=x
 
-#define DP_ADD_ANSWER(dp)       dns_add_a(&((dp)->pkt_answ));DP_ANCOUNT(dp)+=1;
-#define DP_ADD_AUTH(dp)         dns_add_a(&((dp)->pkt_auth));DP_NSCOUNT(dp)+=1;
-#define DP_ADD_ADD(dp)          dns_add_a(&((dp)->pkt_add));DP_ARCOUNT(dp)+=1;
+#define DP_ADD_ANSWER(dp)       dns_add_a(&((dp)->pkt_answ));DP_ANCOUNT(dp)+=1;	
+#define DP_ADD_AUTH(dp)         dns_add_a(&((dp)->pkt_auth));DP_NSCOUNT(dp)+=1;	
+#define DP_ADD_ADD(dp)          dns_add_a(&((dp)->pkt_add));DP_ARCOUNT(dp)+=1;	
+
 size_t getlblptr(char *buf);
 int read_label_octet(const char *src,char *dst,int limit);
 int lbltoname(char *buf,char *start_pkt,char *dst,int limit);
@@ -178,6 +179,7 @@ dns_pkt_a* create_dns_pkt_a(void);
 dns_pkt_qst* dns_add_qst(dns_pkt *dp);
 void dns_del_last_qst(dns_pkt *dp);
 dns_pkt_a* dns_add_a(dns_pkt_a **dpa);
+void dns_a_default_fill(dns_pkt *dp,dns_pkt_a *dpa);
 void destroy_dns_pkt(dns_pkt *dp);
 
 #endif /* DNSLIB_H */

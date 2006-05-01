@@ -64,8 +64,6 @@ void reset_andns_ns(void);
 int andns_init(int restricted, char *resolv_conf);
 void andns_close(void);
 int ns_general_send(char *msg,int msglen,char *answer,int anslen);
-//int ns_general_send(char *msg,int msglen,char *answer,int *anslen); TO DELETE
-//int ns_send(char *msg,int msglen, char *answer,int *anslen,struct sockaddr_in *ns,socklen_t nslen);
 void dpktacpy(dns_pkt *dst,dns_pkt *src,const char *prefix);
 dns_pkt* dpktcpy(dns_pkt *src,const char *prefix);
 char* rm_realm_prefix(char *from,char *dst,int type);
@@ -76,7 +74,7 @@ int is_prefixed(dns_pkt *dp);
 int dns_forward(dns_pkt *dp,char *msg,int msglen,char* answer);
 int inet_rslv(dns_pkt *dp,char *msg,int msglen,char *answer);
 int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer);
-int qtype_a_to_d(int qt);
+int qtype_a_to_d(andns_pkt *ap);
 int apqsttodpqst(andns_pkt *ap,dns_pkt **dpsrc);
 int dpanswtoapansw(dns_pkt *dp,andns_pkt *ap);
 int nk_forward(andns_pkt *ap,char *msg,int msglen,char *answer);

@@ -638,6 +638,8 @@ int inet_rslv(dns_pkt *dp,char *msg,int msglen,char *answer)
 	int res,qt,i,rcode;
 	u_short service;
 	snsd_service *ss;
+	snsd_prio *sp;
+	snsd_node *sn;
 	int records;
 	u_char proto;
 	char temp[DNS_MAX_HNAME_LEN];
@@ -646,7 +648,7 @@ int inet_rslv(dns_pkt *dp,char *msg,int msglen,char *answer)
 	qt=dp->pkt_qst->qtype;
 	rm_realm_prefix(dp->pkt_qst->qname,temp,qt);
 
-	if (qt==T_A || qt==T_MX) {
+	if (qt==T_A || qt==T_MX) { /* snsd tcp resolution service */
 		service=(qt==T_A)?0:25;
 		proto=(qt==T_A)?0:1;
 		ss=snsd_resolve_hname(temp,service,proto,&records);
@@ -654,23 +656,18 @@ int inet_rslv(dns_pkt *dp,char *msg,int msglen,char *answer)
 			rcode=RCODE_ENSDMN;
 			goto safe_return_rcode;
 		}
-		res=snsd_node_to_data
-		
-		
-		res=debug_andna_resolve_hname(temp,&addr);
-		if (res==-1) {
-
-		dpa=DP_ADD_ANSWER(dp);
-		dpa->type=T_A;
-		dpa->cl=C_IN;
-		dpa->ttl=DNS_TTL;
-		strcpy(dpa->name,dp->pkt_qst->qname);
-		dpa->rdlength=addr.len;
-       		inet_htonl(addr.data,addr.family);
-	        if (addr.family==AF_INET)
-        	        memcpy(dpa->rdata,addr.data,4);
-        	else
-                	memcpy(dpa->rdata,addr.data,16);
+		sp=ss->prio;
+		snsd_prio_to_dp_answs(dp,sp,_ip_len_);
+	/*	listfor(sp) {
+			sn=sp->node;
+			listfor(sn) {
+				dpa=DP_ADD_ANSWER(dp);
+				dns_a_default_fill(dp,dpa);
+				dpa->rdlength=_ip_len_;
+				snsd_node_to_data(dpa->rdata,sn,_ip_len_);
+			}
+		}*/
+		snsd_service_llist_del(&ss);
 	} else if (qt==T_PTR) {
 		char tomp[DNS_MAX_HNAME_LEN];
 		char **hnames;
@@ -691,10 +688,7 @@ int inet_rslv(dns_pkt *dp,char *msg,int msglen,char *answer)
 		}
 		for (i=0;i<res;i++) {
 			dpa=DP_ADD_ANSWER(dp);
-			dpa->type=T_PTR;
-			dpa->cl=C_IN;
-			dpa->ttl=DNS_TTL;
-			strcpy(dpa->name,dp->pkt_qst->qname);
+			dns_a_default_fill(dp,dpa);
 			strcpy(dpa->rdata,hnames[i]);
 			xfree(hnames[i]);
 		}
