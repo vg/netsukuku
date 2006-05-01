@@ -174,7 +174,7 @@ snsd_node *snsd_add_first_node(snsd_node **head, u_short *counter,
 /*
  * just a wrapper
  */
-snsd_node *snsd_add_first_mainip(snsd_node **head, u_short *counter,
+snsd_node *snsd_add_first_mainip(snsd_service **head, u_short *counter,
 				u_short max_records, u_int record[MAX_IP_INT])
 {
 	snsd_service *sns;
@@ -183,7 +183,7 @@ snsd_node *snsd_add_first_mainip(snsd_node **head, u_short *counter,
 
 	sns=snsd_add_service(head, SNSD_DEFAULT_SERVICE, SNSD_DEFAULT_PROTO);
 	snp=snsd_add_prio(&sns->prio, SNSD_DEFAULT_PRIO);
-	snd=snsd_add_first_node(&snp->node, &acq->snsd_counter, 
+	snd=snsd_add_first_node(&snp->node, counter, 
 				SNSD_MAX_QUEUE_RECORDS, record);
 	memcpy(snd->record, record, MAX_IP_SZ);
 	snd->flags|=SNSD_NODE_IP | SNSD_NODE_MAIN_IP;
@@ -399,24 +399,22 @@ snsd_node *snsd_unpack_all_nodes(char *pack, size_t pack_sz,
 {
 	snsd_node *snd_head=0, *snd;
 	char *buf=pack;
-	int i, sz=0, counter;
+	int i, sz=0;
+	u_short counter;
 	
-#define INC_SZ_AND_CHECK_OVERFLOW(inc) {				\
-	sz+=(inc);							\
-	if(sz >= pack_sz) return 0;					\
-}
-	
-	INC_SZ_AND_CHECK_OVERFLOW(sizeof(struct snsd_node_llist_hdr));
-	
+	if((sz+=sizeof(struct snsd_node_llist_hdr)) >= pack_sz)
+		ERROR_FINISH(snd_head, 0, finish);
+
 	counter=ntohs((*(short *)buf));
 	buf+=sizeof(short);
 
-	if(counter > SNSD_MAX_RECORDS)
-		return 0;
+	if(counter > SNSD_MAX_REC_SERV)
+		ERROR_FINISH(snd_head, 0, finish);
 	
 	*nodes_counter=0;
 	for(i=0; i<counter; i++) {
-		INC_SZ_AND_CHECK_OVERFLOW(SNSD_NODE_PACK_SZ);
+		if((sz+=SNSD_NODE_PACK_SZ) >= pack_sz)
+			ERROR_FINISH(snd_head, 0, finish);
 		
 		snd=snsd_unpack_node(buf);
 		buf+=SNSD_NODE_PACK_SZ;
@@ -424,6 +422,7 @@ snsd_node *snsd_unpack_all_nodes(char *pack, size_t pack_sz,
 		clist_add(&snd_head, nodes_counter, snd);
 	}
 
+finish:
 	(*unpacked_sz)+=sz;
 	return snd_head;
 }
@@ -463,17 +462,19 @@ int snsd_pack_prio(char *pack, size_t free_sz, snsd_prio *prio)
  * It unpacks a packed snsd_prio struct and returns it.
  * `pack' is the package, which is `pack_sz' big.
  *
- * in the prio->node llist.
+ * The number of unpacked snsd_node structs is written in `nodes_counter'.
  *
  * `*unpacked_sz' is incremented by the number of unpacked bytes.
  * 
  * On error 0 is returned
  */
-snsd_prio *snsd_unpack_prio(char *pack, size_t pack_sz, size_t *unpacked_sz)
+snsd_prio *snsd_unpack_prio(char *pack, size_t pack_sz, size_t *unpacked_sz,
+				int *nodes_counter)
 {
 	snsd_prio *snp;
-	int tmp_counter;
+	int tmp_counter, counter=0;
 
+	*nodes_counter=counter;
 	snp=xmalloc(sizeof(snsd_prio));
 	setzero(snp, snsd_prio);
 	
@@ -482,10 +483,12 @@ snsd_prio *snsd_unpack_prio(char *pack, size_t pack_sz, size_t *unpacked_sz)
 	(*unpacked_sz)+=sizeof(char);
 
 	snp->node=snsd_unpack_all_nodes(pack, pack_sz-sizeof(char), unpacked_sz,
-			&tmp_counter);
-	if(!snp->node)
+					&tmp_counter);
+	counter+=tmp_counter;
+	if(!snp->node || counter > SNSD_MAX_REC_SERV)
 		return 0;
 
+	*nodes_counter=counter;
 	return snp;
 }
 
@@ -529,38 +532,42 @@ int snsd_pack_all_prios(char *pack, size_t pack_sz, snsd_prio *head)
  *
  * It unpacks the packed snsd_prio llist.
  * The head of the newly allocated llist is returned.
- * in the prio->node linked lists
+ *
+ * The number of unpacked snsd_node structs is written in `nodes_counter'.
  *
  * `*unpacked_sz' is incremented by the number of unpacked bytes.
  *
  * On error 0 is returned.
  */
-snsd_prio *snsd_unpack_all_prios(char *pack, size_t pack_sz, size_t *unpacked_sz)
+snsd_prio *snsd_unpack_all_prios(char *pack, size_t pack_sz, 
+				 size_t *unpacked_sz, int *nodes_counter)
 {
 	snsd_prio *snp_head=0, *snp;
 	char *buf=pack;
-	int i, sz=0, tmp_sz, usz=0, counter, tmp_counter;
-	
-#define INC_SZ_AND_CHECK_OVERFLOW(inc) {				\
-	sz+=(inc);							\
-	if(sz >= pack_sz) return 0;					\
-}
-	INC_SZ_AND_CHECK_OVERFLOW(sizeof(struct snsd_prio_llist_hdr));
-	
+	int i, sz=0, tmp_sz, usz=0, counter, ncounter=0, tmp_counter;
+
+	*nodes_counter=ncounter;
+
+	if((sz+=sizeof(struct snsd_prio_llist_hdr)) >= pack_sz)
+		ERROR_FINISH(snp_head, 0, finish);
+
 	counter=ntohs((*(short *)buf));
 	buf+=sizeof(short);
 	usz+=sizeof(short);
 
-	if(counter > SNSD_MAX_RECORDS)
-		return 0;
+	if(counter > SNSD_MAX_REC_SERV || counter <= 0)
+		ERROR_FINISH(snp_head, 0, finish);
 	
 	for(i=0; i<counter; i++) {
-		INC_SZ_AND_CHECK_OVERFLOW(SNSD_PRIO_PACK_SZ);
-		
+		if((sz+=SNSD_PRIO_PACK_SZ) >= pack_sz)
+			ERROR_FINISH(snp_head, 0, finish);
+
 		tmp_sz=(*unpacked_sz);
-		snp=snsd_unpack_prio(buf, pack_sz-usz, unpacked_sz);
-		if(!snp)
-			return 0;
+		snp=snsd_unpack_prio(buf, pack_sz-usz, unpacked_sz, 
+				     &tmp_counter);
+		ncounter+=tmp_counter;
+		if(!snp || ncounter > SNSD_MAX_REC_SERV)
+			ERROR_FINISH(snp_head, 0, finish);
 
 		/* tmp_sz=how much we've read so far from `buf' */
 		tmp_sz=(*unpacked_sz)-tmp_sz;	
@@ -570,6 +577,8 @@ snsd_prio *snsd_unpack_all_prios(char *pack, size_t pack_sz, size_t *unpacked_sz
 		clist_add(&snp_head, &tmp_counter, snp);
 	}
 
+finish:
+	*nodes_counter=ncounter;
 	(*unpacked_sz)+=usz;
 	return snp_head;
 }
@@ -613,16 +622,19 @@ int snsd_pack_service(char *pack, size_t free_sz, snsd_service *service)
  * It unpacks a packed snsd_service struct and returns it.
  * `pack' is the package, which is `pack_sz' big.
  *
- * in the service->prio->node llist.
+ * The number of unpacked snsd_node structs is written in `nodes_counter'.
  *
  * `*unpacked_sz' is incremented by the number of unpacked bytes.
  * 
  * On error 0 is returned
  */
-snsd_service *snsd_unpack_service(char *pack, size_t pack_sz, size_t *unpacked_sz)
+snsd_service *snsd_unpack_service(char *pack, size_t pack_sz, 
+				  size_t *unpacked_sz, int *nodes_counter)
 {
 	snsd_service *sns;
+	int tmp_counter, counter=0;
 
+	*nodes_counter=counter;
 	sns=xmalloc(sizeof(snsd_service));
 	setzero(sns, snsd_service);
 	
@@ -635,10 +647,13 @@ snsd_service *snsd_unpack_service(char *pack, size_t pack_sz, size_t *unpacked_s
 	(*unpacked_sz)+=SNSD_SERVICE_PACK_SZ;
 
 	pack_sz-=SNSD_SERVICE_PACK_SZ;
-	sns->prio=snsd_unpack_all_prios(pack, pack_sz, unpacked_sz);
-	if(!sns->prio)
+	sns->prio=snsd_unpack_all_prios(pack, pack_sz, unpacked_sz, 
+					&tmp_counter);
+	counter+=tmp_counter;
+	if(!sns->prio || counter > SNSD_MAX_REC_SERV)
 		return 0;
 
+	*nodes_counter=counter;
 	return sns;
 }
 
@@ -681,38 +696,43 @@ int snsd_pack_all_services(char *pack, size_t pack_sz, snsd_service *head)
  *
  * It unpacks the packed snsd_service llist.
  * The head of the newly allocated llist is returned.
- * in the service->node linked lists
+ *
+ * The number of unpacked snsd_node structs is written in `nodes_counter'.
  *
  * `*unpacked_sz' is incremented by the number of unpacked bytes.
  *
  * On error 0 is returned.
  */
-snsd_service *snsd_unpack_all_service(char *pack, size_t pack_sz, size_t *unpacked_sz)
+snsd_service *snsd_unpack_all_service(char *pack, size_t pack_sz, 
+				        size_t *unpacked_sz, int *nodes_counter)
 {
 	snsd_service *sns_head=0, *sns=0;
 	char *buf=pack;
-	int i, sz=0, tmp_sz, usz=0, counter, tmp_counter;
+	int i, sz=0, tmp_sz, usz=0, counter=0, ncounter=0, tmp_counter;
 	
-#define INC_SZ_AND_CHECK_OVERFLOW(inc) {				\
-	sz+=(inc);							\
-	if(sz >= pack_sz) return 0;					\
-}
-	INC_SZ_AND_CHECK_OVERFLOW(sizeof(struct snsd_service_llist_hdr));
+	if(nodes_counter)
+		*nodes_counter=ncounter;
 	
+	if((sz+=sizeof(struct snsd_service_llist_hdr)) >= pack_sz)
+		ERROR_FINISH(sns_head, 0, finish);
+
 	counter=ntohs((*(short *)buf));
 	buf+=sizeof(short);
 	usz+=sizeof(short);
 
-	if(counter > SNSD_MAX_RECORDS)
-		return 0;
+	if(counter > SNSD_MAX_RECORDS || counter <= 0)
+		ERROR_FINISH(sns_head, 0, finish);
 	
 	for(i=0; i<counter; i++) {
-		INC_SZ_AND_CHECK_OVERFLOW(SNSD_SERVICE_PACK_SZ);
-		
+		if((sz+=SNSD_SERVICE_PACK_SZ) >= pack_sz)
+			ERROR_FINISH(sns_head, 0, finish);
+
 		tmp_sz=(*unpacked_sz);
-		sns=snsd_unpack_service(buf, pack_sz-usz, unpacked_sz);
-		if(!sns)
-			return 0;
+		sns=snsd_unpack_service(buf, pack_sz-usz, unpacked_sz, 
+					&tmp_counter);
+		ncounter+=tmp_counter;
+		if(!sns || ncounter > SNSD_MAX_RECORDS)
+			ERROR_FINISH(sns_head, 0, finish);
 
 		/* tmp_sz=how much we've read from `buf' */
 		tmp_sz=(*unpacked_sz)-tmp_sz;	
@@ -722,6 +742,9 @@ snsd_service *snsd_unpack_all_service(char *pack, size_t pack_sz, size_t *unpack
 		clist_add(&sns_head, &tmp_counter, sns);
 	}
 
+finish:
+	if(nodes_counter)
+		*nodes_counter=ncounter;
 	(*unpacked_sz)+=usz;
 	return sns_head;
 }
@@ -732,13 +755,21 @@ snsd_service *snsd_unpack_all_service(char *pack, size_t pack_sz, size_t *unpack
  *   
  */
 
+int snsd_count_prio_nodes(snsd_prio *head)
+{
+	int count=0;
+	
+	list_for(head)
+		count+=list_count(head->node);
+	return count;
+}
+
 int snsd_count_nodes(snsd_service *head)
 {
 	int count=0;
 	
 	list_for(head)
-		list_for(head->prio)
-			count+=list_count(head->prio->node);
+		count+=snsd_count_prio_nodes(head->prio);
 	return count;
 }
 
@@ -835,5 +866,42 @@ void snsd_unset_all_flags(snsd_service *sns, u_char flag)
 		}
 	}
 
-	return 0;
+	return;
+}
+
+
+/*
+ * snsd_prio_llist_copy
+ * 
+ * It duplicates an entire snsd_prio llist in a new mallocated space.
+ * The other sub-llist are duplicated too.
+ * The head of the new llist is returned.
+ */
+snsd_prio *snsd_prio_llist_copy(snsd_prio *snp)
+{
+	snsd_prio *new_snp=0;
+	
+	snp=new_snp=list_copy_all(snp);
+	list_for(snp)
+		snp->node=list_copy_all(snp->node);
+	
+	return new_snp;
+}
+
+/*
+ * snsd_service_llist_copy
+ *
+ * It duplicates an entire snsd_service llist in a new mallocated space.
+ * The other sub-llist are duplicated too.
+ * The head of the new llist is returned.
+ */
+snsd_service *snsd_service_llist_copy(snsd_service *sns)
+{
+	snsd_service *new_sns=0;
+	
+	sns=new_sns=list_copy_all(sns);
+	list_for(sns)
+		sns->prio=snsd_prio_llist_copy(sns->prio);
+
+	return new_sns;
 }

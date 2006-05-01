@@ -57,6 +57,8 @@
  */
 int andna_load_caches(void)
 {
+	int ret;
+	
 	if((load_lcl_keyring(&lcl_keyring, server_opt.lclkey_file)))
 		debug(DBG_NORMAL, "Andna LCL Keyring loaded");
 	
@@ -72,11 +74,13 @@ int andna_load_caches(void)
 	if((andna_rhc=load_rh_cache(server_opt.rhc_file, &rhc_counter)))
 		debug(DBG_NORMAL, "Resolved hostnames cache loaded");
 
-	if((!load_hostnames(server_opt.andna_hnames_file, &andna_lcl, &lcl_counter)))
+	if(!(load_hostnames(server_opt.andna_hnames_file, &andna_lcl, &lcl_counter)))
 		debug(DBG_NORMAL, "Hostnames file loaded");
 	
-	if((!load_snsd(server_opt.snsd_nodes_file, andna_lcl)))
+	if(!(ret=load_snsd(server_opt.snsd_nodes_file, andna_lcl)))
 		debug(DBG_NORMAL, "SNSD nodes loaded");
+	else if(ret == -2)
+		fatal("Malformed %s file", server_opt.snsd_nodes_file);
 
 	return 0;
 }
@@ -851,8 +855,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 		 * Register the snsd records 
 		 */
 		snsd_unpacked=snsd_unpack_all_service(snsd_pack, packed_sz, 
-				&unpacked_sz);
-		snsd_counter=snsd_count_nodes(snsd_unpacked);
+				&unpacked_sz, &snsd_counter);
 		
 		if(!snsd_unpacked || snsd_counter > SNSD_MAX_RECORDS) {
 			debug(DBG_SOFT, "Registration rq 0x%x rejected: couldn't unpack"
@@ -1170,57 +1173,44 @@ finish:
  */
 
 /*
- * andna_resolve_hname
- * 
- * stores in `resolved_ip' the ip associated to the `hname' hostname
- * (in host order).
- * On error -1 is returned.
+ * andna_resolve_hname_locally
+ *
+ * It tries to resolve the given `hname' by searching in the local andna caches.
+ * It uses the same arguments of `andna_resolve_hname' (see below).
  */
-int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
+snsd_service *andna_resolve_hname_locally(char *hname, int service, 
+					  u_char proto,int *records)
 {
-	PACKET pkt, rpkt;
 	struct andna_resolve_rq_pkt req;
-	struct andna_resolve_reply_pkt *reply;
 	lcl_cache *lcl;
 	rh_cache *rhc;
 	andna_cache *ac;
-	u_int hash_gnode[MAX_IP_INT];
-	inet_prefix to;
 
 	snsd_service *sns;
 	snsd_prio *snp;
 	snsd_node *snd;
 
-	const char *ntop; 
 	int ret=0;
 	ssize_t err;
 
 	setzero(&req, sizeof(req));
-	setzero(&pkt, sizeof(pkt));
-	setzero(&rpkt, sizeof(pkt));
-
-
+	
 	/*
 	 * Search the hostname in the local cache first. Maybe we are so
 	 * dumb that we are trying to resolve the same ip we registered.
 	 */
 	if((lcl=lcl_cache_find_hname(andna_lcl, hname))) {
-		inet_copy(resolved_ip, &me.cur_ip);
-		return 0;
+		*records=lcl->snsd_counter;
+		return snsd_service_llist_copy(lcl->service);
 	}
 	
 	/*
 	 * Last try before asking to ANDNA: let's see if we have it in
 	 * the resolved_hnames cache
 	 */
-	if((rhc=rh_cache_find_hname(hname)) &&
-			(sns=snsd_find_service(rhc->service, 
-					SNSD_DEFAULT_SERVICE, 
-					SNSD_DEFAULT_PROTO)) &&
-			(snp=snsd_highest_prio(sns->prio)) &&
-			(snd=snsd_choose_wrand(snp->node))) {
-		inet_setip_raw(resolved_ip, snd->record, my_family);
-		return 0;
+	if((rhc=rh_cache_find_hname(hname))) {
+		*records=rhc->snsd_counter;
+		return snsd_service_llist_copy(rhc->service);
 	}
 	
 	/* 
@@ -1232,16 +1222,64 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	/*
 	 * If we manage an andna_cache, it's better to peek at it.
 	 */
-	if((ac=andna_cache_gethash(req.hash)) &&
-			(sns=snsd_find_service(ac->acq->service,
-					SNSD_DEFAULT_SERVICE, 
-					SNSD_DEFAULT_PROTO)) &&
-			(snp=snsd_highest_prio(sns->prio)) &&
-			(snd=snsd_choose_wrand(snp->node))) {
-		inet_setip_raw(resolved_ip, snd->record, my_family);
-		return 0;
+	if((ac=andna_cache_gethash(req.hash))) {
+		*records=ac->acq->snsd_counter;
+		return snsd_service_llist_copy(ac->acq->service);
 	}
 
+	return 0;
+}
+
+/*
+ * andna_resolve_hname
+ * 
+ * It returns a snsd_service llist (see snsd.h) which contains the snsd
+ * records of the resolved `hname'. Among them there's at least the mainip
+ * record which can be found using snsd_find_mainip().
+ * 
+ * In `*records' the number of records stored in the returned snsd_service
+ * llist is written.
+ * 
+ * It returns 0 on error
+ */
+snsd_service *andna_resolve_hname(char *hname, int service, u_char proto, 
+				  int *records)
+{
+	PACKET pkt, rpkt;
+	struct andna_resolve_rq_pkt req;
+	struct andna_resolve_reply_pkt *reply;
+	lcl_cache *lcl;
+	rh_cache *rhc;
+	andna_cache *ac;
+	u_int hash_gnode[MAX_IP_INT];
+	inet_prefix to;
+
+	snsd_service *sns, *snsd_unpacked;
+	snsd_prio *snp;
+	snsd_node *snd;
+
+	const char *ntop;
+	char *snsd_packed;
+	int ret=0;
+	ssize_t err;
+
+	setzero(&req, sizeof(req));
+	setzero(&pkt, sizeof(pkt));
+	setzero(&rpkt, sizeof(pkt));
+
+
+	/* Try to resolve the hostname locally */
+	if((sns=andna_resolve_hname_locally(hname, service, proto, records)))
+		return sns;
+
+	/* 
+	 * Fill the request structure.
+	 */
+	req.service=service;
+	req.proto=proto;
+	inet_copy_ipdata(req.rip, &me.cur_ip);
+	andna_hash(my_family, hname, strlen(hname), req.hash, hash_gnode);
+	
 	/* 
 	 * Ok, we have to ask to someone for the resolution.
 	 * Let's see to whom we have to send the pkt 
@@ -1283,10 +1321,24 @@ int andna_resolve_hname(char *hname, inet_prefix *resolved_ip)
 	 * Take the ip we need from the replied pkt 
 	 */
 	reply=(struct andna_resolve_reply_pkt *)rpkt.msg;
-	inet_setip(resolved_ip, reply->ip, my_family);
 	
 	/* network -> host order */
 	ints_network_to_host(reply, andna_resolve_reply_pkt_iinfo);
+/******************TODO: continue here ***********/
+	snsd_packed=rpkt.msg+sizeof(struct andna_resolve_reply_pkt);
+	snsd_unpacked=snsd_unpack_all_service(snsd_pack, packed_sz, 
+					        &unpacked_sz, &snsd_counter);
+	snsd_counter=snsd_count_nodes(snsd_unpacked);
+	if(!snsd_unpacked || snsd_counter > SNSD_MAX_RECORDS) {
+		debug(DBG_SOFT, "Registration rq 0x%x rejected: couldn't unpack"
+				" the snsd llist", rpkt.hdr.id);
+		if(!forwarded_pkt)
+			ret=pkt_err(pkt, E_INVALID_REQUEST, 0);
+		ERROR_FINISH(ret, -1, finish);
+	}
+/******************TODO: continue here ***********/
+
+
 	
 	/* 
 	 * Add the hostname in the resolved_hnames cache since it was

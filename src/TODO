@@ -8,14 +8,9 @@
 
 
 - SNSD
-	- andna.c:880
-	- andna_recv_reg_rq
-		- hname:hname:0
 	- andna.pod (man page)
-	- andna_register_hname()
-		- do not contact the counter_node if we are just registering
-		  a SNSD IP.
-		- increment `hname_update'
+	- andna_recv_resolve()
+		- reply only SNSD_MAX_REC_SERV records per services.
 	- andna_resolve_hname()
 		- can a client specify the queue number?
 	- andna_rev_resolve()

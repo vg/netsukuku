@@ -56,8 +56,7 @@ int last_spread_acache_pkt_id[ANDNA_MAX_FLOODS];
 #define ANDNA_PKT_REV_RESOLVE	(1<<2)		/* Give me your hostnames */
 #define ANDNA_PKT_JUST_CHECK	(1<<3)		/* Check only, don't update
 						   anything */
-#define ANDNA_PKT_SNSD		(1<<4)		/* A SNSD request/reply */
-#define ANDNA_PKT_SNSD_DEL	(1<<5)		/* SNSD delete request */
+#define ANDNA_PKT_SNSD_DEL	(1<<4)		/* SNSD delete request */
 
 /*
  * andna_reg_pkt
@@ -68,10 +67,10 @@ int last_spread_acache_pkt_id[ANDNA_MAX_FLOODS];
  * of the hash_gnode who is contacting the counter_gnode, is appended at the
  * end of the pkt.
  *
- * If the ANDNA_PKT_SNSD flag is set, at the end of the packet is included a
- * packed snsd_service linked list. It is the list of snsd_records that have
- * to be registered. However the packet forwarded to the counter node won't 
- * keep this part.
+ * When the packet is sent to a hash_gnode, at the end of the packet is 
+ * included a packed snsd_service linked list. It is the list of snsd_records
+ * that have to be registered. However the packet forwarded to the counter 
+ * node won't keep this part.
  */
 struct andna_reg_pkt
 {
@@ -113,25 +112,34 @@ struct andna_resolve_rq_pkt
 	
 	u_int           hash[MAX_IP_INT];       /* md5 hash of the hostname to
 						   resolve. */
+	int		service;		/* the snsd service of the hname */
+	u_char		proto;			/* the protocol of `service' */
 } _PACKED_;
 #define ANDNA_RESOLVE_RQ_PKT_SZ		(sizeof(struct andna_resolve_rq_pkt))
-INT_INFO andna_resolve_rq_pkt_iinfo =	{ 0, /* `rip' and `hash' are ignored */
-					  { 0 }, { 0 }, { 0 }, };
+INT_INFO andna_resolve_rq_pkt_iinfo =	{ 1, /* `rip' and `hash' are ignored */
+					  { INT_TYPE_32BIT },
+					  { MAX_IP_SZ*2+sizeof(char) },
+					  { 1 },
+					};
 
 /* 
  * The reply to the resolve request
  */
 struct andna_resolve_reply_pkt
 {
-	uint32_t	ip[MAX_IP_INT];
 	uint32_t	timestamp;		/* the difference between the current
 						   time and the last time the resolved
 						   hname was updated */
+	/*
+	 * the rest of the pkt is a pack of one snsd_service llist:
+	 * char		service[SNSD_SERVICE_LLIST_PACK_SZ(service)];
+	 */
 } _PACKED_;
-#define ANDNA_RESOLVE_REPLY_PKT_SZ	(sizeof(struct andna_resolve_reply_pkt))
+#define ANDNA_RESOLVE_REPLY_PKT_SZ(snsd_sz)	((snsd_sz) +		\
+						  sizeof(struct andna_resolve_reply_pkt))
 INT_INFO andna_resolve_reply_pkt_iinfo = { 1, /* `ip' is ignored */
 					   { INT_TYPE_32BIT }, 
-					   { MAX_IP_SZ }, 
+					   { 0 }, 
 					   { 1 }
 					 };
 

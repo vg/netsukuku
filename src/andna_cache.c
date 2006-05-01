@@ -23,7 +23,7 @@
 #include "includes.h"
 
 #include "andna_cache.h"
-#include "snsd.h"
+#include "snsd_cache.h"
 #include "misc.h"
 #include "xmalloc.h"
 #include "log.h"
@@ -593,7 +593,7 @@ rh_cache *rh_cache_add(char *hname, time_t timestamp, inet_prefix *ip,
 	snd=snsd_add_node(&snp->node, &rhc->snsd_counter, SNSD_MAX_RECORDS,
 			ip->data);
 
-	inet_copy_ipdata_raw(snd->record, ip->data);
+	inet_copy_ipdata_raw(snd->record, ip);
 	snd->flags|=SNSD_NODE_IP;
 	snd->weight=SNSD_WEIGHT(weight);
 
@@ -1039,9 +1039,8 @@ unpack_acq_llist(char *pack, size_t pack_sz, size_t *unpacked_sz,
 
 		pack_sz-=ACACHE_BODY_PACK_SZ;
 		(*unpacked_sz)+=ACACHE_BODY_PACK_SZ;
-		acq->service=snsd_unpack_all_service(buf, pack_sz, unpacked_sz);
-		
-		snsd_counter=snsd_count_nodes(acq->service);
+		acq->service=snsd_unpack_all_service(buf, pack_sz, unpacked_sz,
+							&snsd_counter);
 		if(acq->snsd_counter != snsd_counter) {
 			debug(DBG_SOFT, ERROR_MSG "unpack_acq:" 
 					"snsd_counter != snsd_counter", 
@@ -1380,8 +1379,8 @@ rh_cache *unpack_rh_cache(char *pack, size_t pack_sz, int *counter)
 			memcpy(&rhc->timestamp, buf, sizeof(time_t));
 			buf+=sizeof(time_t);
 
-			rhc->service=snsd_unpack_all_service(buf, pack_sz, 
-					&unpacked_sz);
+			rhc->service=snsd_unpack_all_service(buf, pack_sz,
+					&unpacked_sz, 0);
 			
 			clist_add(&rhc_head, counter, rhc);
 		}
@@ -1833,6 +1832,7 @@ int load_hostnames(char *file, lcl_cache **old_alcl_head, int *old_alcl_counter)
  * the loaded ones.
  *
  * On error -1 is returned.
+ * If a syntax error is encountered in the file -2 is returned.
  */
 int load_snsd(char *file, lcl_cache *alcl_head)
 {
@@ -1843,7 +1843,7 @@ int load_snsd(char *file, lcl_cache *alcl_head)
 	int line=0, fields, e, service;
 	struct servent *st;
 	char buf[MAX_SNSD_LINE_SZ+1], **records, *servname, *servproto;
-	u_char proto;
+	u_char proto, abort=0;
 
 	lcl_cache *alcl;
 	snsd_service *sns;
@@ -1892,7 +1892,7 @@ int load_snsd(char *file, lcl_cache *alcl_head)
 					"  \thostname:snsd_ip:service:"
 					"  priority:weight[:pub_key_file]",
 					file, line);
-				goto skip_line;
+				ERROR_FINISH(abort, 1, skip_line);
 			}
 			
 			/* 
@@ -1904,14 +1904,14 @@ int load_snsd(char *file, lcl_cache *alcl_head)
 					" exist in your local cache.\n"
 					"  Register it in the `andna_hostnames' file",
 					file, line, records[0]);
-				goto skip_line;
+				ERROR_FINISH(abort, 1, skip_line);
 			}
 			
 			/* 
 			 * snsd record 
 			 */
 			if(str_to_inet(records[1], &ip) >= 0) {
-				inet_copy_ipdata_raw(snsd_node.record, ip.data);
+				inet_copy_ipdata_raw(snsd_node.record, &ip);
 				snsd_node.flags=SNSD_NODE_IP;
 			} else {
 				hash_md5(records[1], strlen(records[1]), 
@@ -1937,7 +1937,7 @@ int load_snsd(char *file, lcl_cache *alcl_head)
 					error("%s: error in line %d: \"%s\""
 						" isn't a valid protocol\n",
 						file, line, servproto);
-					goto skip_line;
+					ERROR_FINISH(abort, 1, skip_line);
 				}
 			} else
 				proto=SNSD_DEFAULT_PROTO;
@@ -1947,7 +1947,7 @@ int load_snsd(char *file, lcl_cache *alcl_head)
 					error("%s: error in line %d: \"%s\""
 						" isn't a valid service\n",
 						file, line, servname);
-					goto skip_line;
+					ERROR_FINISH(abort, 1, skip_line);
 				}
 				service=ntohs(st->s_port);
 			} else
@@ -1957,7 +1957,14 @@ int load_snsd(char *file, lcl_cache *alcl_head)
 			
 			/* priority */
 			snp=snsd_add_prio(&sns->prio, atoi(records[3]));
-			
+			if(snsd_count_prio_nodes(snp) >= SNSD_MAX_REC_SERV) {
+				error("%s: The maximum number of records for"
+				      " the service \"%s\" has been reached.\n"
+				      "  The maximum is %d records per service",
+				      file, servname, SNSD_MAX_REC_SERV);
+				ERROR_FINISH(abort, 1, skip_line);
+			}
+				
 			/* node and weight */
 			snd=snsd_add_node(&snp->node, &alcl->snsd_counter,
 					SNSD_MAX_RECORDS, snsd_node.record);
@@ -1974,6 +1981,8 @@ int load_snsd(char *file, lcl_cache *alcl_head)
 skip_line:
 			for(e=0; e<fields; e++)
 				xfree(records[e]);
+			if(abort)
+				return -2;
 		}
 		line++;
 	}

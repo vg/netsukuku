@@ -3,8 +3,10 @@
 #
 # List, one per line, the SNSD records you want register in ANDNA.
 #
-# You can register up to 256 records. Each line must be in the following
-# format:
+# You can register up to 256 records and you can associate a maximum of 16
+# records to a service.
+#
+# Each line must be in the following format:
 #
 #	hostname:snsd_hostname:service:priority:weight[:pub_key_file]
 # or
@@ -12,7 +14,7 @@
 #
 #
 # The `pub_key_file' parameter is optional. If you specify it, NetsukukuD will
-# check periodically `snsd_hostname' and it will verify if it is always the
+# challenge periodically `snsd_hostname' and it will verify if it is always the
 # same machine. If it isn't, the relative snsd will be deleted.
 #
 # `hostname' must be one of the hostnames listed in the andna_hostnames file.
@@ -32,6 +34,18 @@
 # `weight' is an integer between 0 and 12, it specifies the "load balancing"
 # weight of the snsd record.
 #
+# --
+#
+# The main IP associated to a normal hostname has these default values:
+#	IP	 = register_node IP	# This value can't be changed
+#	service  = 0
+#	priority = 16
+#	weight   = 1
+# If you want to modify the paremeters of the mainip use this syntax:
+#	hostname:hostname:0:priority:weight
+# Only one line with this syntax is allowed, duplicates will be ignored.
+#
+
 
 #my_cool_hostname:mysnsdnode:http:23:2
 #my_cool_hostname:1.2.4.5:21:1:4

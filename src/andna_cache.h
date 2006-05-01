@@ -23,7 +23,7 @@
 #include "crypto.h"
 #include "endianness.h"
 #include "llist.c"
-#include "snsd.h"
+#include "snsd_cache.h"
 
 /*
  * ANDNA definitions
@@ -428,7 +428,7 @@ lcl_cache *lcl_cache_find_32hash(lcl_cache *head, u_int hash);
 int lcl_get_registered_hnames(lcl_cache *head, char ***hostnames);
 
 andna_cache_queue *ac_queue_findpubk(andna_cache *ac, char *pubk);
-andna_cache_queue *ac_queue_add(andna_cache *ac, inet_prefix rip, char *pubkey);
+andna_cache_queue *ac_queue_add(andna_cache *ac, char *pubkey);
 void ac_queue_del(andna_cache *ac, andna_cache_queue *acq);
 void ac_queue_del_expired(andna_cache *ac);
 void ac_queue_destroy(andna_cache *ac);

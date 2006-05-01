@@ -33,6 +33,11 @@
 						   andna_cache */
 #define SNSD_MAX_QUEUE_RECORDS		1	/* There can be only one snsd 
 						   record for the queued hnames */
+#define SNSD_MAX_REC_SERV		16	/* Maximum records per service */
+
+#define SNSD_ALL_SERVICE		(-1)	/* A service number equal to -1
+						   refers to all the available
+						   services */
 #define SNSD_DEFAULT_SERVICE		0
 #define SNSD_DEFAULT_PROTO		1	/* tcp */
 #define SNSD_DEFAULT_PRIO		16
@@ -245,16 +250,19 @@ snsd_node *snsd_add_node(snsd_node **head, u_short *counter,
 			 u_short max_records, u_int record[MAX_IP_INT]);
 snsd_node *snsd_add_first_node(snsd_node **head, u_short *counter,
 				u_short max_records, u_int record[MAX_IP_INT]);
-snsd_node *snsd_add_first_mainip(snsd_node **head, u_short *counter,
+snsd_node *snsd_add_first_mainip(snsd_service **head, u_short *counter,
 				u_short max_records, u_int record[MAX_IP_INT]);
 void snsd_service_llist_del(snsd_service **head);
 void snsd_record_del_selected(snsd_service **head, int *snd_counter, 
 			snsd_service *selected);
 int snsd_pack_all_services(char *pack, size_t pack_sz, snsd_service *head);
-snsd_service *snsd_unpack_all_service(char *pack, size_t pack_sz, size_t *unpacked_sz);
+snsd_service *snsd_unpack_all_service(char *pack, size_t pack_sz, 
+				        size_t *unpacked_sz, int *nodes_counter);
 
 snsd_node *snsd_choose_wrand(snsd_node *head);
 snsd_prio *snsd_highest_prio(snsd_prio *head);
 snsd_node *snsd_find_mainip(snsd_service *sns);
 void snsd_unset_all_flags(snsd_service *sns, u_char flag);
+snsd_service *snsd_service_llist_copy(snsd_service *sns);
+int snsd_count_prio_nodes(snsd_prio *head);
 #endif /*SNSD_H*/

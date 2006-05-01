@@ -138,7 +138,7 @@ do {									\
 		_n->prev=_t; 						\
 		_n->next=0;						\
 	}								\
-	(typeof((_head)))_new;						\
+	_new;								\
 })
 
 /*
@@ -327,6 +327,15 @@ do{									\
  *	 list_for(index) {
  *	 	do_something_with(index);
  *	 }
+ *
+ * WARNING: do not use expressions!! For example:
+ *    DO NOT THIS
+ * 	list_for(index=head_of_the_llist) {
+ * 		...
+ * 	}
+ *    DO NOT THIS
+ * In this case `index' will be set to `head_of_the_llist' each time and
+ * you'll get an infinite loop;
  */
 #define list_for(i) for(; (i); (i)=(typeof (i))(i)->next)
 
@@ -359,6 +368,9 @@ do{									\
  * is a list pointer. This pointer will be used to store, before executing the
  * code inside the for, the list->next pointer.
  * So this is a safe for.
+ *
+ * WARNING: do not use expressions in the arguments, (see the warning above
+ * for the normal list_for)
  */
 #define list_safe_for(i, next)						\
 for((i) ? (next)=(typeof (i))(i)->next : 0; (i); 			\
@@ -420,6 +432,26 @@ do{ 									\
 	(list)=0;							\
 }while(0)
 
+/*
+ * list_copy_all
+ *
+ * It copies the entire `list' llist in a new allocated one.
+ * It returns the head to the replicated llist.
+ * The `list' llist is not modified.
+ */
+#define list_copy_all(list)						\
+({									\
+ 	l_list *_new=0, *_head=0, *_tail=0, *_l=(l_list *)(list);	\
+									\
+	list_for(_l) {							\
+		_new=xmalloc(sizeof(typeof(*(list))));			\
+ 		if(!_head) _head=_new;					\
+		memcpy(_new, _l, sizeof(typeof(*(list))));		\
+		_tail=list_append(0, _tail, _new);			\
+	}								\
+ 									\
+ 	(typeof((list)))_head;						\
+})
 
 /*
  * Here below there are the definitions for the linked list with a counter.
