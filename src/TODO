@@ -9,10 +9,6 @@
 
 - SNSD
 	- andna.pod (man page)
-	- andna_recv_resolve()
-		- reply only SNSD_MAX_REC_SERV records per services.
-	- andna_resolve_hname()
-		- can a client specify the queue number?
 	- andna_rev_resolve()
 
 - Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC

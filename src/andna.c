@@ -125,8 +125,6 @@ void andna_resolvconf_modify(void)
 void andna_resolvconf_restore(void)
 {
 	char *my_nameserv;
-	struct sockaddr_in nsbuf[MAXNSSERVERS];
-	uint8_t nscount=0;
 
 	/* 
 	 * If there are valid nameserver in /etc/resolv.conf (excluding
@@ -644,11 +642,10 @@ int andna_register_hname(lcl_cache *alcl, snsd_service *snsd_delete)
 	} else if(err == 1)
 		req.flags|=ANDNA_PKT_FORWARD;
 
-	req.flags|=ANDNA_PKT_SNSD;
 	if(snsd_delete) {
 		snsd=snsd_delete;
 		req.flags|=ANDNA_PKT_SNSD_DEL;
-	} else {
+	} else
 		snsd=alcl->service;
 		
 	ntop=inet_to_str(to);
@@ -706,9 +703,11 @@ int andna_recv_reg_rq(PACKET rpkt)
 	andna_cache_queue *acq;
 	andna_cache *ac;
 	snsd_service *snsd_unpacked;
+	snsd_node *snd;
 	
 	time_t cur_t;
-	int ret=0, err, snsd_counter;
+	u_short snsd_counter;
+	int ret=0, err;
 	size_t unpacked_sz, packed_sz;
 	char *ntop=0, *rfrom_ntop=0, *snsd_pack;
 	u_char forwarded_pkt=0;
@@ -867,7 +866,8 @@ int andna_recv_reg_rq(PACKET rpkt)
 
 		if(req->flags & ANDNA_PKT_SNSD_DEL) {
 			/* Fulfil the deletion request */
-			snsd_record_del_selected(&acq->service, snsd_unpacked);
+			snsd_record_del_selected(&acq->service, &acq->snsd_counter,
+						 snsd_unpacked);
 		} else {
 			snd=snsd_find_mainip(snsd_unpacked);
 			if(!snd)
@@ -881,7 +881,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 			snsd_unset_all_flags(snsd_unpacked, SNSD_NODE_MAIN_IP);
 			snd->flags|=SNSD_NODE_MAIN_IP;
 			
-			inet_copy_ipdata_raw(snd->record, rfrom.data);
+			inet_copy_ipdata_raw(snd->record, &rfrom);
 			snsd_service_llist_del(&acq->service);
 			acq->service=snsd_unpacked;
 		}
@@ -1186,12 +1186,7 @@ snsd_service *andna_resolve_hname_locally(char *hname, int service,
 	rh_cache *rhc;
 	andna_cache *ac;
 
-	snsd_service *sns;
-	snsd_prio *snp;
-	snsd_node *snd;
-
-	int ret=0;
-	ssize_t err;
+	u_int hash_gnode[MAX_IP_INT];
 
 	setzero(&req, sizeof(req));
 	
@@ -1201,7 +1196,7 @@ snsd_service *andna_resolve_hname_locally(char *hname, int service,
 	 */
 	if((lcl=lcl_cache_find_hname(andna_lcl, hname))) {
 		*records=lcl->snsd_counter;
-		return snsd_service_llist_copy(lcl->service);
+		return snsd_service_llist_copy(lcl->service, service, proto);
 	}
 	
 	/*
@@ -1210,7 +1205,7 @@ snsd_service *andna_resolve_hname_locally(char *hname, int service,
 	 */
 	if((rhc=rh_cache_find_hname(hname))) {
 		*records=rhc->snsd_counter;
-		return snsd_service_llist_copy(rhc->service);
+		return snsd_service_llist_copy(rhc->service, service, proto);
 	}
 	
 	/* 
@@ -1224,7 +1219,8 @@ snsd_service *andna_resolve_hname_locally(char *hname, int service,
 	 */
 	if((ac=andna_cache_gethash(req.hash))) {
 		*records=ac->acq->snsd_counter;
-		return snsd_service_llist_copy(ac->acq->service);
+		return snsd_service_llist_copy(ac->acq->service, service, 
+						proto);
 	}
 
 	return 0;
@@ -1236,6 +1232,12 @@ snsd_service *andna_resolve_hname_locally(char *hname, int service,
  * It returns a snsd_service llist (see snsd.h) which contains the snsd
  * records of the resolved `hname'. Among them there's at least the mainip
  * record which can be found using snsd_find_mainip().
+ *
+ * `service' specifies the service number of the resolution. If it is equal to
+ * -1 the resolution will return all the registered snds records.
+ *
+ * `proto' is the protocol of the `service', it must be specified in the
+ * proto_to_8bit() format.
  * 
  * In `*records' the number of records stored in the returned snsd_service
  * llist is written.
@@ -1248,21 +1250,19 @@ snsd_service *andna_resolve_hname(char *hname, int service, u_char proto,
 	PACKET pkt, rpkt;
 	struct andna_resolve_rq_pkt req;
 	struct andna_resolve_reply_pkt *reply;
-	lcl_cache *lcl;
 	rh_cache *rhc;
-	andna_cache *ac;
 	u_int hash_gnode[MAX_IP_INT];
 	inet_prefix to;
 
-	snsd_service *sns, *snsd_unpacked;
-	snsd_prio *snp;
-	snsd_node *snd;
+	snsd_service *sns, *snsd_unpacked, *ret=0;
 
 	const char *ntop;
 	char *snsd_packed;
-	int ret=0;
+	u_short snsd_counter;
+	size_t packed_sz, unpacked_sz;
 	ssize_t err;
 
+	*records=0;
 	setzero(&req, sizeof(req));
 	setzero(&pkt, sizeof(pkt));
 	setzero(&rpkt, sizeof(pkt));
@@ -1285,7 +1285,7 @@ snsd_service *andna_resolve_hname(char *hname, int service, u_char proto,
 	 * Let's see to whom we have to send the pkt 
 	 */
 	if((err=find_hash_gnode(hash_gnode, &to, 0, 0, 1)) < 0)
-		ERROR_FINISH(ret, -1, finish);
+		ERROR_FINISH(ret, 0, finish);
 	else if(err == 1)
 		req.flags|=ANDNA_PKT_FORWARD;
 		
@@ -1311,11 +1311,12 @@ snsd_service *andna_resolve_hname(char *hname, int service, u_char proto,
 	err=send_rq(&pkt, 0, ANDNA_RESOLVE_HNAME, 0, ANDNA_RESOLVE_REPLY, 1, &rpkt);
 	if(err==-1) {
 		error("andna_resolve_hname(): Resolution of \"%s\" failed.", hname);
-		ERROR_FINISH(ret, -1, finish);
+		ERROR_FINISH(ret, 0, finish);
 	}
 
-	if(rpkt.hdr.sz != ANDNA_RESOLVE_REPLY_PKT_SZ)
-		ERROR_FINISH(ret, -1, finish);
+	if(rpkt.hdr.sz <= ANDNA_RESOLVE_REPLY_PKT_SZ || 
+			rpkt.hdr.sz > SNSD_SERVICE_MAX_PACK_SZ)
+		ERROR_FINISH(ret, 0, finish);
 
 	/* 
 	 * Take the ip we need from the replied pkt 
@@ -1324,32 +1325,37 @@ snsd_service *andna_resolve_hname(char *hname, int service, u_char proto,
 	
 	/* network -> host order */
 	ints_network_to_host(reply, andna_resolve_reply_pkt_iinfo);
-/******************TODO: continue here ***********/
+
+	/* Unpack the received snsd records */
 	snsd_packed=rpkt.msg+sizeof(struct andna_resolve_reply_pkt);
-	snsd_unpacked=snsd_unpack_all_service(snsd_pack, packed_sz, 
-					        &unpacked_sz, &snsd_counter);
-	snsd_counter=snsd_count_nodes(snsd_unpacked);
-	if(!snsd_unpacked || snsd_counter > SNSD_MAX_RECORDS) {
-		debug(DBG_SOFT, "Registration rq 0x%x rejected: couldn't unpack"
-				" the snsd llist", rpkt.hdr.id);
-		if(!forwarded_pkt)
-			ret=pkt_err(pkt, E_INVALID_REQUEST, 0);
-		ERROR_FINISH(ret, -1, finish);
+	packed_sz=rpkt.hdr.sz-sizeof(struct andna_resolve_reply_pkt);
+	if(service == -1)
+		snsd_unpacked=snsd_unpack_all_service(snsd_packed, packed_sz,
+							&unpacked_sz, 
+							&snsd_counter);
+	else
+		snsd_unpacked=snsd_unpack_service(snsd_packed, packed_sz,
+							&unpacked_sz,
+							&snsd_counter);
+		
+	if(!snsd_unpacked || !snsd_find_mainip(snsd_unpacked)) {
+		debug(DBG_SOFT, ERROR_MSG "Malformed resolution reply (0x%x)",
+				ERROR_POS, rpkt.hdr.id);
+		ERROR_FINISH(ret, 0, finish);
 	}
-/******************TODO: continue here ***********/
-
-
+	*records=snsd_counter;
+	ret=snsd_unpacked;
 	
 	/* 
 	 * Add the hostname in the resolved_hnames cache since it was
 	 * successful resolved it ;)
 	 */
 	reply->timestamp = time(0) - reply->timestamp;
-	rh_cache_add(hname, reply->timestamp, resolved_ip,
-			SNSD_DEFAULT_SERVICE,
-			SNSD_DEFAULT_PROTO,
-			SNSD_DEFAULT_PRIO,
-			SNSD_DEFAULT_WEIGHT);
+	rhc=rh_cache_add(hname, reply->timestamp);
+	if(rhc->service)
+		snsd_service_llist_del(&rhc->service);
+	rhc->snsd_counter=snsd_counter;
+	rhc->service=snsd_unpacked;
 	
 finish:
 	pkt_free(&pkt, 1);
@@ -1360,24 +1366,24 @@ finish:
 /*
  * andna_recv_resolve_rq
  * 
- * replies to a hostname resolve request by giving the ip associated to the
- * hostname.
+ * replies to a hostname resolve request by giving the snsd records associated 
+ * to the hostname.
  */
 int andna_recv_resolve_rq(PACKET rpkt)
 {
 	PACKET pkt, rpkt_local_copy;
 	struct andna_resolve_rq_pkt *req;
 	struct andna_resolve_reply_pkt reply;
-	andna_cache *ac;
 	
+	andna_cache *ac;
 	snsd_service *sns;
-	snsd_prio *snp;
-	snsd_node *snd;
 
 	u_int hash_gnode[MAX_IP_INT];
 	inet_prefix rfrom, to;
+	u_short service;
+	size_t pack_sz;
 	int ret=0, err;
-	char *ntop=0, *rfrom_ntop=0;
+	char *ntop=0, *rfrom_ntop=0, *buf;
 	u_char spread_the_acache=0;
 
 	
@@ -1469,24 +1475,38 @@ reply_resolve_rq:
 	
 	/* Write the reply */
 	setzero(&reply, sizeof(reply));
-	sns=snsd_find_service(ac->acq->service,
-			SNSD_DEFAULT_SERVICE, 
-			SNSD_DEFAULT_PROTO);
-	snp=snsd_highest_prio(sns->prio);
-	snd=snsd_choose_wrand(snp->node);
-	memcpy(reply.ip, snd->record, MAX_IP_SZ);
 	reply.timestamp=time(0) - ac->acq->timestamp;
 
 	/* host -> network order */
-	inet_htonl(reply.ip, me.cur_ip.family);
 	ints_host_to_network((void *)&reply, andna_resolve_reply_pkt_iinfo);
 
+	pack_sz=sizeof(reply);
+	pack_sz+=req->service == -1 ?
+		  SNSD_SERVICE_LLIST_PACK_SZ(ac->acq->service) : 
+			  SNSD_SERVICE_SINGLE_PACK_SZ(ac->acq->service);
 	pkt_fill_hdr(&pkt.hdr, ASYNC_REPLIED, rpkt.hdr.id, ANDNA_RESOLVE_REPLY,
-			sizeof(reply));
+			pack_sz);
 	
-	pkt.msg=xmalloc(pkt.hdr.sz);
+	pkt.msg=buf=xmalloc(pkt.hdr.sz);
 	memcpy(pkt.msg, &reply, sizeof(reply));
+	buf+=sizeof(reply);
+	pack_sz-=sizeof(reply);
 	
+	if(req->service == -1)
+		/* Pack all the registered snsd records */
+		ret=snsd_pack_all_services(buf, pack_sz, ac->acq->service);
+	else {
+		/* Pack the snsd records of the specified service number */
+		service=(u_short)req->service;
+		sns=snsd_find_service(ac->acq->service, service, req->proto);
+		ret=snsd_pack_service(buf, pack_sz, sns);
+	}
+	if(ret < 0) {
+		debug(DBG_NORMAL, "Cannot pack the services for the 0x%x "
+					"resolve request", rpkt.hdr.id);
+		goto finish;
+	}
+
 	/* Forward it */
 	ret=forward_pkt(pkt, rfrom);
 	pkt_free(&pkt, 0);
@@ -2140,7 +2160,8 @@ counter_c *get_counter_cache(inet_prefix to, int *counter)
 	pack=rpkt.msg;
 	ret=ccache=unpack_counter_cache(pack, pack_sz, counter);
 	if(!ccache)
-		error("get_counter_cache(): Malformed or empty counter_cache. Cannot load it");
+		error(ERROR_MSG "Malformed or empty counter_cache."
+				" Cannot load it", ERROR_POS);
 	
 finish:
 	pkt_free(&pkt, 0);
@@ -2263,8 +2284,9 @@ finish:
 }
 
 /*
- * andna_min_update_retry: waits ANDNA_MIN_UPDATE_TIME seconds and then
- * updates `void_alcl'.
+ * andna_min_update_retry
+ *
+ * waits ANDNA_MIN_UPDATE_TIME seconds and then updates `void_alcl'.
  */
 void *andna_min_update_retry(void *void_alcl)
 {
@@ -2273,7 +2295,7 @@ void *andna_min_update_retry(void *void_alcl)
 
 	sleep(ANDNA_MIN_UPDATE_TIME);
 
-	ret=andna_register_hname(alcl);
+	ret=andna_register_hname(alcl, 0);
 	if(!ret)
 		loginfo("Hostname \"%s\" registered/updated "
 				"successfully", alcl->hostname);
@@ -2299,7 +2321,7 @@ void andna_update_hnames(int only_new_hname)
 			/* don't register old hnames */
 			continue;
 		
-		ret=andna_register_hname(alcl);
+		ret=andna_register_hname(alcl, 0);
 		if(!ret) {
 			loginfo("Hostname \"%s\" registered/updated "
 					"successfully", alcl->hostname);
@@ -2330,7 +2352,7 @@ void *andna_maintain_hnames_active(void *null)
 		alcl=andna_lcl;
 		
 		list_for(alcl) {
-			ret=andna_register_hname(alcl);
+			ret=andna_register_hname(alcl, 0);
 			if(!ret) {
 				loginfo("Hostname \"%s\" registered/updated "
 						"successfully", alcl->hostname);

@@ -135,8 +135,7 @@ struct andna_resolve_reply_pkt
 	 * char		service[SNSD_SERVICE_LLIST_PACK_SZ(service)];
 	 */
 } _PACKED_;
-#define ANDNA_RESOLVE_REPLY_PKT_SZ(snsd_sz)	((snsd_sz) +		\
-						  sizeof(struct andna_resolve_reply_pkt))
+#define ANDNA_RESOLVE_REPLY_PKT_SZ	(sizeof(struct andna_resolve_reply_pkt))
 INT_INFO andna_resolve_reply_pkt_iinfo = { 1, /* `ip' is ignored */
 					   { INT_TYPE_32BIT }, 
 					   { 0 }, 
@@ -226,13 +225,14 @@ void andna_close(void);
 void andna_resolvconf_modify(void);
 void andna_resolvconf_restore(void);
 
-int andna_register_hname(lcl_cache *alcl);
+int andna_register_hname(lcl_cache *alcl, snsd_service *snsd_delete);
 int andna_recv_reg_rq(PACKET rpkt);
 
 int andna_check_counter(PACKET pkt);
 int andna_recv_check_counter(PACKET rpkt);
 
-int andna_resolve_hname(char *hname, inet_prefix *resolved_ip);
+snsd_service *andna_resolve_hname(char *hname, int service, u_char proto, 
+				  int *records);
 int andna_recv_resolve_rq(PACKET rpkt);
 
 int andna_reverse_resolve(inet_prefix ip, char ***hostnames);

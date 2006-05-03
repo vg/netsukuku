@@ -19,7 +19,7 @@
 ************************************************************************/
 
 /* 
- * This code is writed with my blood.
+ * This code is written with my blood.
  * My hand was hurt. The keyboard was red.
  * In this code you can find my sacrifice.
  *
@@ -31,11 +31,7 @@
  * apps.
  * Memory dumpers are with you.
  */
-#include <string.h>
-#include <stdio.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+#include "includes.h"
 
 // to delete
 #include <fcntl.h>
@@ -351,7 +347,7 @@ int dump_rules()
 {
 	int fd;
 
-	fd=open("/usr/share/netsukuku/mark_rules",O_CREAT | O_WRONLY | O_TRUNC,0540);
+	fd=open(DATA_DIR"/mark_rules",O_CREAT | O_WRONLY | O_TRUNC,0540);
 	if (fd==-1) {
 		dumped=0;
 		error("Storing rules to fs: %s.", strerror(errno));
@@ -366,7 +362,7 @@ int dump_rules()
 }
 int load_dump_rules()
 {
-	int fd,c;
+	int fd;
 	rule_store d_rr,d_fr,d_dr;
 	if (!dumped)
 		return 0;
@@ -696,5 +692,3 @@ int mark_close()
 	debug(DBG_NORMAL,"Netfilter completely restored.");
 	return 0;
 }
-
-

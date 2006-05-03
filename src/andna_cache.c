@@ -560,13 +560,17 @@ rh_cache *rh_cache_new(char *hname, time_t timestamp)
 	return rhc;
 }
 
-rh_cache *rh_cache_add(char *hname, time_t timestamp, inet_prefix *ip,
-			u_short service, u_char proto, u_char prio,
-			u_char weight)
+/*
+ * rh_cache_add
+ *
+ * It searches a struct in the rh_cache which is associated to `hname'.
+ * If it isn't found a new one is added. In both cases the pointer to the
+ * struct will be returned.
+ * 
+ * On error 0 is returned.
+ */
+rh_cache *rh_cache_add(char *hname, time_t timestamp)
 {
-	snsd_service *sns;
-	snsd_prio *snp;
-	snsd_node *snd;
 	rh_cache *rhc;
 
 	if(!(rhc=rh_cache_find_hname(hname))) {
@@ -587,15 +591,6 @@ rh_cache *rh_cache_add(char *hname, time_t timestamp, inet_prefix *ip,
 	}
 
 	rhc->timestamp=timestamp;
-
-	sns=snsd_add_service(&rhc->service, service, proto);
-	snp=snsd_add_prio(&sns->prio, prio);
-	snd=snsd_add_node(&snp->node, &rhc->snsd_counter, SNSD_MAX_RECORDS,
-			ip->data);
-
-	inet_copy_ipdata_raw(snd->record, ip);
-	snd->flags|=SNSD_NODE_IP;
-	snd->weight=SNSD_WEIGHT(weight);
 
 	return rhc;
 }
@@ -1011,7 +1006,8 @@ unpack_acq_llist(char *pack, size_t pack_sz, size_t *unpacked_sz,
 			andna_cache *ac, int pack_type)
 {
 	andna_cache_queue *acq;
-	int e, snsd_counter, tmp_counter;
+	int e, tmp_counter;
+	u_short snsd_counter;
 	time_t cur_t;
 	char *buf;
 	

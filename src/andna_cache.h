@@ -183,7 +183,7 @@ struct lcl_cache
 						   hname has still to be 
 						   registered */
 	
-	u_short		snsd_counter;		/* # of `snsds' minus 1 */
+	u_short		snsd_counter;		/* # of `snsds' */
 	snsd_service	*service;
 	
 	char 		flags;
@@ -451,9 +451,7 @@ void counter_c_del_expired(void);
 void counter_c_destroy(void);
 
 rh_cache *rh_cache_new(char *hname, time_t timestamp);
-rh_cache *rh_cache_add(char *hname, time_t timestamp, inet_prefix *ip,
-			u_short service, u_char proto, u_char prio, 
-			u_char weight);
+rh_cache *rh_cache_add(char *hname, time_t timestamp);
 rh_cache *rh_cache_find_hname(char *hname);
 void rh_cache_del(rh_cache *rhc);
 void rh_cache_del_expired(void);
@@ -491,6 +489,7 @@ int save_rh_cache(rh_cache *rh, char *file);
 rh_cache *load_rh_cache(char *file, int *counter);
 
 int load_hostnames(char *file, lcl_cache **old_alcl_head, int *old_alcl_counter);
+int load_snsd(char *file, lcl_cache *alcl_head);
 
 int add_resolv_conf(char *hname, char *file);
 int del_resolv_conf(char *hname, char *file);

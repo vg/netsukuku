@@ -234,7 +234,7 @@ void snsd_service_llist_del(snsd_service **head)
  * `*head'.
  * `snsd_counter' is the record counter of `*head'.
  */
-void snsd_record_del_selected(snsd_service **head, int *snd_counter, 
+void snsd_record_del_selected(snsd_service **head, u_short *snd_counter, 
 			snsd_service *selected)
 {
 	snsd_service *sns;
@@ -395,7 +395,7 @@ int snsd_pack_all_nodes(char *pack, size_t pack_sz, snsd_node *head)
  * On error 0 is returned.
  */
 snsd_node *snsd_unpack_all_nodes(char *pack, size_t pack_sz, 
-					size_t *unpacked_sz, int *nodes_counter)
+					size_t *unpacked_sz, u_short *nodes_counter)
 {
 	snsd_node *snd_head=0, *snd;
 	char *buf=pack;
@@ -469,10 +469,10 @@ int snsd_pack_prio(char *pack, size_t free_sz, snsd_prio *prio)
  * On error 0 is returned
  */
 snsd_prio *snsd_unpack_prio(char *pack, size_t pack_sz, size_t *unpacked_sz,
-				int *nodes_counter)
+				u_short *nodes_counter)
 {
 	snsd_prio *snp;
-	int tmp_counter, counter=0;
+	u_short tmp_counter, counter=0;
 
 	*nodes_counter=counter;
 	snp=xmalloc(sizeof(snsd_prio));
@@ -540,11 +540,12 @@ int snsd_pack_all_prios(char *pack, size_t pack_sz, snsd_prio *head)
  * On error 0 is returned.
  */
 snsd_prio *snsd_unpack_all_prios(char *pack, size_t pack_sz, 
-				 size_t *unpacked_sz, int *nodes_counter)
+				 size_t *unpacked_sz, u_short *nodes_counter)
 {
 	snsd_prio *snp_head=0, *snp;
 	char *buf=pack;
-	int i, sz=0, tmp_sz, usz=0, counter, ncounter=0, tmp_counter;
+	u_short counter, ncounter=0, tmp_counter;
+	int i, sz=0, tmp_sz, usz=0;
 
 	*nodes_counter=ncounter;
 
@@ -629,10 +630,10 @@ int snsd_pack_service(char *pack, size_t free_sz, snsd_service *service)
  * On error 0 is returned
  */
 snsd_service *snsd_unpack_service(char *pack, size_t pack_sz, 
-				  size_t *unpacked_sz, int *nodes_counter)
+				  size_t *unpacked_sz, u_short *nodes_counter)
 {
 	snsd_service *sns;
-	int tmp_counter, counter=0;
+	u_short tmp_counter, counter=0;
 
 	*nodes_counter=counter;
 	sns=xmalloc(sizeof(snsd_service));
@@ -704,11 +705,12 @@ int snsd_pack_all_services(char *pack, size_t pack_sz, snsd_service *head)
  * On error 0 is returned.
  */
 snsd_service *snsd_unpack_all_service(char *pack, size_t pack_sz, 
-				        size_t *unpacked_sz, int *nodes_counter)
+				        size_t *unpacked_sz, u_short *nodes_counter)
 {
 	snsd_service *sns_head=0, *sns=0;
 	char *buf=pack;
-	int i, sz=0, tmp_sz, usz=0, counter=0, ncounter=0, tmp_counter;
+	u_short counter=0, ncounter=0, tmp_counter;
+	int i, sz=0, tmp_sz, usz=0;
 	
 	if(nodes_counter)
 		*nodes_counter=ncounter;
@@ -888,18 +890,37 @@ snsd_prio *snsd_prio_llist_copy(snsd_prio *snp)
 	return new_snp;
 }
 
+int is_equal_to_serv_proto(snsd_service *sns, u_short service, u_char proto)
+{
+	return sns->service == service && sns->proto == proto;
+}
+
 /*
  * snsd_service_llist_copy
  *
- * It duplicates an entire snsd_service llist in a new mallocated space.
+ * If `service' is equal to -1, it duplicates an entire snsd_service llist 
+ * in a new mallocated space, otherwise it duplicates only the snsd_service
+ * structures which have the same service and proto values of `service' and
+ * `proto'.
  * The other sub-llist are duplicated too.
+ *
  * The head of the new llist is returned.
+ * If nothing has been duplicated, 0 is returned.
  */
-snsd_service *snsd_service_llist_copy(snsd_service *sns)
+snsd_service *snsd_service_llist_copy(snsd_service *sns, int service, 
+					u_char proto)
 {
 	snsd_service *new_sns=0;
+	u_short	short_service=(u_short)service;
 	
-	sns=new_sns=list_copy_all(sns);
+	if(!sns)
+		return 0;
+	
+	if(service == -1)
+		sns=new_sns=list_copy_all(sns);
+	else
+		sns=new_sns=list_copy_some(sns, is_equal_to_serv_proto, 
+					   short_service, proto);
 	list_for(sns)
 		sns->prio=snsd_prio_llist_copy(sns->prio);
 

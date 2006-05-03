@@ -208,10 +208,18 @@ INT_INFO snsd_service_llist_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
 	_srvsz;								\
 })
 
+#define SNSD_SERVICE_SINGLE_PACK_SZ(head)				\
+({	SNSD_SERVICE_PACK_SZ +						\
+		SNSD_PRIO_LLIST_PACK_SZ((head)->prio);			\
+})
+ 	
+#define SNSD_SERVICE_MAX_PACK_SZ					\
+		(( (SNSD_NODE_PACK_SZ + SNSD_PRIO_PACK_SZ) * 		\
+		 	(SNSD_MAX_REC_SERV) ) + SNSD_SERVICE_PACK_SZ)
 #define SNSD_SERVICE_MAX_LLIST_PACK_SZ					\
 		((SNSD_NODE_PACK_SZ + SNSD_PRIO_PACK_SZ +		\
 		  SNSD_SERVICE_PACK_SZ)*SNSD_MAX_RECORDS)
-		
+
 
 /*
  * This array is used to associate a 8bit number to a protocol name.
@@ -253,16 +261,21 @@ snsd_node *snsd_add_first_node(snsd_node **head, u_short *counter,
 snsd_node *snsd_add_first_mainip(snsd_service **head, u_short *counter,
 				u_short max_records, u_int record[MAX_IP_INT]);
 void snsd_service_llist_del(snsd_service **head);
-void snsd_record_del_selected(snsd_service **head, int *snd_counter, 
+void snsd_record_del_selected(snsd_service **head, u_short *snd_counter, 
 			snsd_service *selected);
+
+int snsd_pack_service(char *pack, size_t free_sz, snsd_service *service);
+snsd_service *snsd_unpack_service(char *pack, size_t pack_sz, 
+				  size_t *unpacked_sz, u_short *nodes_counter);
 int snsd_pack_all_services(char *pack, size_t pack_sz, snsd_service *head);
 snsd_service *snsd_unpack_all_service(char *pack, size_t pack_sz, 
-				        size_t *unpacked_sz, int *nodes_counter);
+				        size_t *unpacked_sz, u_short *nodes_counter);
 
 snsd_node *snsd_choose_wrand(snsd_node *head);
 snsd_prio *snsd_highest_prio(snsd_prio *head);
 snsd_node *snsd_find_mainip(snsd_service *sns);
 void snsd_unset_all_flags(snsd_service *sns, u_char flag);
-snsd_service *snsd_service_llist_copy(snsd_service *sns);
+snsd_service *snsd_service_llist_copy(snsd_service *sns, int service, 
+					u_char proto);
 int snsd_count_prio_nodes(snsd_prio *head);
 #endif /*SNSD_H*/

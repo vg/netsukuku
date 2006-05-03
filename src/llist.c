@@ -432,20 +432,36 @@ do{ 									\
 	(list)=0;							\
 }while(0)
 
+
 /*
- * list_copy_all
+ * list_copy_some
  *
- * It copies the entire `list' llist in a new allocated one.
- * It returns the head to the replicated llist.
+ * It calls the `check_func' function for each struct of the `list' llist,
+ * passing to it, as first argument, a pointer to the struct itself.
+ * The other parameters to list_copy_some are passed to `check_func', for
+ * example by calling:
+ * 	list_copy_some(list, my_check_func, arg1, arg2, arg3);
+ * the `my_check_func' will be called in this way:
+ * 	my_check_func(arg1, arg2, arg3);
+ * 
+ * If the `check_func' function returns a non zero value, the struct is 
+ * copied in a new allocated space.
+ * All the copied structs form the replicated llist.
+ * Its head is returned.
+ * 
  * The `list' llist is not modified.
  */
-#define list_copy_all(list)						\
+#define list_copy_some(list, check_func, func_args...)			\
 ({									\
  	l_list *_new=0, *_head=0, *_tail=0, *_l=(l_list *)(list);	\
 									\
 	list_for(_l) {							\
+ 		if(!check_func(((typeof((list)))_l), ## func_args ))	\
+ 			continue;					\
+ 									\
 		_new=xmalloc(sizeof(typeof(*(list))));			\
  		if(!_head) _head=_new;					\
+ 									\
 		memcpy(_new, _l, sizeof(typeof(*(list))));		\
 		_tail=list_append(0, _tail, _new);			\
 	}								\
@@ -453,6 +469,16 @@ do{ 									\
  	(typeof((list)))_head;						\
 })
 
+/*
+ * list_copy_all
+ *
+ * It copies the entire `list' llist in a new allocated one.
+ * It returns the head to the replicated llist.
+ * The `list' llist is not modified.
+ */
+#define list_copy_all_yes(_p)	(1)
+#define list_copy_all(list)	list_copy_some((list), list_copy_all_yes)
+ 
 /*
  * Here below there are the definitions for the linked list with a counter.
  * The arguments format is:
