@@ -425,7 +425,7 @@ void lcl_cache_free(lcl_cache *alcl);
 void lcl_cache_destroy(lcl_cache *head, int *counter);
 lcl_cache *lcl_cache_find_hname(lcl_cache *head, char *hname);
 lcl_cache *lcl_cache_find_32hash(lcl_cache *head, u_int hash);
-int lcl_get_registered_hnames(lcl_cache *head, char ***hostnames);
+lcl_cache *lcl_get_registered_hnames(lcl_cache *alcl);
 
 andna_cache_queue *ac_queue_findpubk(andna_cache *ac, char *pubk);
 andna_cache_queue *ac_queue_add(andna_cache *ac, char *pubkey);

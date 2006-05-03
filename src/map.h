@@ -96,7 +96,7 @@ INT_INFO map_rnode_iinfo  = { 2,
 			      { 0, sizeof(int) },
 			      { 1, 1 }
 			    };
-#define MAP_RNODE_PACK_SZ (sizeof(int *)+sizeof(u_int))
+#define MAP_RNODE_PACK_SZ	(sizeof(int *)+sizeof(u_int))
 
 /*
  * 		****) The qspn int_map (****
@@ -136,7 +136,7 @@ INT_INFO map_node_iinfo = { 3,
 			    { 1, 1, 1 }
 			  };
 
-#define MAP_NODE_PACK_SZ (sizeof(u_short)*2 + sizeof(u_int))
+#define MAP_NODE_PACK_SZ	(sizeof(u_short)*2 + sizeof(u_int))
 
 #define MAXRNODEBLOCK		(MAXLINKS * MAXGROUPNODE * sizeof(map_rnode))
 #define MAXRNODEBLOCK_PACK_SZ	(MAXLINKS * MAXGROUPNODE * MAP_RNODE_PACK_SZ)

@@ -142,23 +142,11 @@ INT_INFO andna_resolve_reply_pkt_iinfo = { 1, /* `ip' is ignored */
 					   { 1 }
 					 };
 
+
 /* 
- * The reply to the reverse resolve request 
+ * The reply to the reverse resolve request is just the packed local cache.
  */
-struct andna_rev_resolve_reply_hdr
-{
-	u_char 		hostnames;	/* number of hostnames listed in the 
-					   packed minus one */ 
-} _PACKED_;
-/*
- * The body of the reverse resolve reply is:
- * 	u_short		hname_sz[hdr.hostnames];
- * 	char		hostname1[ hname_sz[0] ];
- * 	char		hostname2[ hname_sz[1] ];
- * 	...			...
- */
-INT_INFO andna_rev_resolve_reply_body_iinfo = { 1, { INT_TYPE_16BIT }, { 0 },
-						{ IINFO_DYNAMIC_VALUE } };
+
 
 /* 
  * The single_acache pkt is used to get from an old hash_gnode a single
@@ -235,7 +223,7 @@ snsd_service *andna_resolve_hname(char *hname, int service, u_char proto,
 				  int *records);
 int andna_recv_resolve_rq(PACKET rpkt);
 
-int andna_reverse_resolve(inet_prefix ip, char ***hostnames);
+lcl_cache *andna_reverse_resolve(inet_prefix ip);
 int andna_recv_rev_resolve_rq(PACKET rpkt);
 
 int spread_single_acache(u_int hash[MAX_IP_INT]);

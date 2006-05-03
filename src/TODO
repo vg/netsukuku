@@ -9,9 +9,6 @@
 
 - SNSD
 	- andna.pod (man page)
-	- andna_rev_resolve()
-
-- Implement all the NTK_RFC: http://lab.dyne.org/Netsukuku_RFC
 
 - update the dependencies list: 
 	- depends on iptables
@@ -49,6 +46,8 @@
   bigger than X and have the PKT_COMPRESS flag set. Use zlib.
 
 - Sharing willingness: http://lab.dyne.org/Ntk_IGS
+
+- Viphilama: http://lab.dyne.org/Ntk_viphilama
 
 - Port the kernel route code for *BSD: take a look at rt_ioctl.c and
   rt_socket.c of quagga.

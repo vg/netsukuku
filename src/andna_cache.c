@@ -153,39 +153,22 @@ lcl_cache *lcl_cache_find_32hash(lcl_cache *alcl, u_int hash)
 	return 0;
 }
 
+int is_lcl_hname_registered(lcl_cache *alcl)
+{
+	return alcl->timestamp;
+}
+
 /*
  * lcl_get_registered_hnames
  * 
- * In `hostnames' is stored a pointer to a mallocated array of pointers. Each
- * pointer points to a mallocated hostname.
- * The hostnames stored in the array are taken from the `alcl' llist. Only
- * the hnames that have been registered are considered.
- * The number of hnames stored in `hostnames' is returned.
+ * It returns a duplicated lcl_cache of `alcl', which contains only 
+ * hostnames already registered.
+ * Note that the structs present in the returned cache are in a different
+ * mallocated space, so you should free them.
  */
-int lcl_get_registered_hnames(lcl_cache *alcl, char ***hostnames)
+lcl_cache *lcl_get_registered_hnames(lcl_cache *alcl)
 {
-	int i=0, hname_sz;
-	char **hnames;
-
-	*hostnames=0;
-	
-	if(!alcl || !lcl_counter)
-		return 0;
-	
-	hnames=xmalloc(lcl_counter * sizeof(char *));
-	
-	list_for(alcl) {
-		if(!alcl->timestamp)
-			continue;
-		
-		hname_sz=strlen(alcl->hostname)+1;
-		hnames[i]=xmalloc(hname_sz);
-		memcpy(hnames[i], alcl->hostname, hname_sz);
-		i++;
-	}
-
-	*hostnames=hnames;
-	return i;
+	return list_copy_some(alcl, is_lcl_hname_registered);
 }
 
 /*
@@ -705,7 +688,7 @@ int unpack_lcl_keyring(lcl_cache_keyring *keyring, char *pack, size_t pack_sz)
 	keyring->skey_len=hdr->skey_len;
 	keyring->pkey_len=hdr->pkey_len;
 	if(keyring->skey_len > ANDNA_SKEY_MAX_LEN) {
-		error(ERROR_MSG "Invalid keyring header", ERROR_POS);
+		error(ERROR_MSG "Invalid keyring header", ERROR_FUNC);
 		return -1;
 	}
 	
@@ -733,9 +716,10 @@ int unpack_lcl_keyring(lcl_cache_keyring *keyring, char *pack, size_t pack_sz)
 }
 
 /*
- * pack_lcl_cache: packs the entire local cache linked list that starts with
- * the head `local_cache'. The size of the pack is stored in `pack_sz'.
- * The given `keyring' is packed too.
+ * pack_lcl_cache
+ *
+ * packs the entire local cache linked list that starts with the head 
+ * `local_cache'. The size of the pack is stored in `pack_sz'.
  * The pointer to the newly allocated pack is returned.
  * Note that the pack is in network byte order.
  */

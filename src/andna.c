@@ -1024,7 +1024,7 @@ int andna_recv_check_counter(PACKET rpkt)
 	req=(struct andna_reg_pkt *)rpkt_local_copy.msg;
 	if(rpkt.hdr.sz != ANDNA_REG_PKT_SZ+MAX_IP_SZ) {
 		debug(DBG_SOFT, ERROR_MSG "Malformed check_counter pkt from %s: %d != %d", 
-				ERROR_POS, ntop, rpkt.hdr.sz, ANDNA_REG_PKT_SZ+MAX_IP_SZ);
+				ERROR_FUNC, ntop, rpkt.hdr.sz, ANDNA_REG_PKT_SZ+MAX_IP_SZ);
 		ERROR_FINISH(ret, -1, finish);
 	}
 	
@@ -1340,7 +1340,7 @@ snsd_service *andna_resolve_hname(char *hname, int service, u_char proto,
 		
 	if(!snsd_unpacked || !snsd_find_mainip(snsd_unpacked)) {
 		debug(DBG_SOFT, ERROR_MSG "Malformed resolution reply (0x%x)",
-				ERROR_POS, rpkt.hdr.id);
+				ERROR_FUNC, rpkt.hdr.id);
 		ERROR_FINISH(ret, 0, finish);
 	}
 	*records=snsd_counter;
@@ -1529,22 +1529,19 @@ finish:
 /*
  * andna_reverse_resolve
  *
- * It sends to `ip' a reverse resolve request to receive all the 
- * hostnames that `ip' has registered.
- * It returns the number of hostnames that are stored in `hostnames'.
- * If there aren't any hostnames or an error occurred, -1 is returned.
+ * It returns the copy of the local cache of a remote node.
+ * The ip of the node is specified in `ip'.
+ *
+ * On error 0 is returned.
  */
-int andna_reverse_resolve(inet_prefix ip, char ***hostnames)
+lcl_cache *andna_reverse_resolve(inet_prefix ip)
 {
 	PACKET pkt, rpkt;
+	lcl_cache *unpacked_lcl=0, *ret=0;
 	inet_prefix to;
-	struct andna_rev_resolve_reply_hdr *reply;
-	int_info reply_iinfo;
 	
 	const char *ntop; 
-	int ret=0, tot_hnames, valid_hnames, i, sz;
-	u_short *hnames_sz;
-	char **hnames, *buf, *reply_body;
+	int tmp_counter;
 	ssize_t err;
 
 	setzero(&pkt, sizeof(PACKET));
@@ -1556,8 +1553,8 @@ int andna_reverse_resolve(inet_prefix ip, char ***hostnames)
 
 	/* We have been asked to reverse resolve our same IP */
 	if(!memcmp(to.data, me.cur_ip.data, MAX_IP_SZ) || 
-		LOOPBACK(htonl(to.data[0])))
-		return lcl_get_registered_hnames(andna_lcl, hostnames);
+			LOOPBACK(htonl(to.data[0])))
+		return lcl_get_registered_hnames(andna_lcl);
 	
 	/* 
 	 * Fill the packet and send the request 
@@ -1568,54 +1565,16 @@ int andna_reverse_resolve(inet_prefix ip, char ***hostnames)
 	
 	err=send_rq(&pkt, 0, ANDNA_RESOLVE_IP, 0, ANDNA_REV_RESOLVE_REPLY, 1, &rpkt);
 	if(err==-1) {
-		error("andna_reverse_resolve(): Reverse resolution of the %s "
-				"ip failed.", inet_to_str(to));
-		ERROR_FINISH(ret, -1, finish);
+		error(ERROR_MSG "Reverse resolution of the %s "
+				"ip failed.", ERROR_FUNC, inet_to_str(to));
+		ERROR_FINISH(ret, 0, finish);
 	}
 
-	reply=(struct andna_rev_resolve_reply_hdr *)rpkt.msg;
-			
-	tot_hnames=reply->hostnames;
-	tot_hnames++;
-	if(tot_hnames > ANDNA_MAX_HOSTNAMES || tot_hnames <= 0)
-		ERROR_FINISH(ret, -1, finish);
+	unpacked_lcl=unpack_lcl_cache(rpkt.msg, rpkt.hdr.sz, &tmp_counter);
+	if(tmp_counter > ANDNA_MAX_HOSTNAMES || tmp_counter < 0)
+		ERROR_FINISH(ret, 0, finish);
+	ret=unpacked_lcl;
 
-	/* 
-	 * Split the received hostnames 
-	 */
-
-	reply_body = (char *)rpkt.msg+sizeof(struct andna_rev_resolve_reply_hdr);
-	
-	/* network -> host order */
-	int_info_copy(&reply_iinfo, &andna_rev_resolve_reply_body_iinfo);
-	reply_iinfo.int_nmemb[0] = tot_hnames;
-	ints_network_to_host((void *)reply_body, reply_iinfo);
-	
-	hnames_sz=(u_short *)reply_body;
-	hnames=xmalloc(tot_hnames * sizeof(char *));
-	
-	sz=sizeof(struct andna_rev_resolve_reply_hdr)+sizeof(u_short)*tot_hnames;
-	buf=rpkt.msg+sz;
-	for(i=valid_hnames=0; i<tot_hnames; i++) {
-		sz+=hnames_sz[i];
-		
-		if(sz > rpkt.hdr.sz)
-			break;
-		
-		if(hnames_sz[i] > ANDNA_MAX_HNAME_LEN)
-			goto skip_it;
-		
-		hnames[valid_hnames]=xmalloc(hnames_sz[i]);
-		memcpy(hnames[valid_hnames], buf, hnames_sz[i]);
-		hnames[valid_hnames][hnames_sz[i]-1]=0;
-
-		valid_hnames++;
-skip_it:
-		buf+=hnames_sz[i];
-	}
-
-	ret=valid_hnames;
-	*hostnames=hnames;
 finish:
 	pkt_free(&pkt, 1);
 	pkt_free(&rpkt, 1);
@@ -1631,15 +1590,11 @@ finish:
 int andna_recv_rev_resolve_rq(PACKET rpkt)
 {
 	PACKET pkt;
-	struct andna_rev_resolve_reply_hdr hdr;
-	int_info reply_iinfo;
 
-	u_short *hnames_sz=0;
-	char *buf, *reply_body=0;
 	const char *ntop;
-	int e, ret=0, err, hostnames=0;
+	int ret=0, err;
 	
-	lcl_cache *alcl=andna_lcl, *lcl_hnames[ANDNA_MAX_HOSTNAMES];
+	lcl_cache *alcl=andna_lcl;
 
 	setzero(&pkt, sizeof(PACKET));
 
@@ -1652,58 +1607,15 @@ int andna_recv_rev_resolve_rq(PACKET rpkt)
 	 */
 	
 	pkt_fill_hdr(&pkt.hdr, 0, rpkt.hdr.id, ANDNA_REV_RESOLVE_REPLY, 0);
-	pkt.hdr.sz=sizeof(struct andna_rev_resolve_reply_hdr);
 
 	/* Build the list of registered hnames */
-	list_for(alcl) {
-		if(!alcl->timestamp)
-			continue;
-		lcl_hnames[hostnames++]=alcl;
-	}
-	if(hostnames > ANDNA_MAX_HOSTNAMES)
-		hostnames=ANDNA_MAX_HOSTNAMES;
-	lcl_hnames[hostnames]=0;
-
-	hdr.hostnames=hostnames-1;
-	if(hostnames) {
-		hnames_sz=xmalloc(sizeof(u_short) * hostnames);
-		
-		for(e=0; e<hostnames; e++) {
-			hnames_sz[e]=strlen(lcl_hnames[e]->hostname)+1;
-			pkt.hdr.sz+=hnames_sz[e];
-		}
-	} else {
+	if(!(pkt.msg=pack_lcl_cache(alcl, &pkt.hdr.sz))) {
 		ret=pkt_err(rpkt, E_ANDNA_NO_HNAME, 0);
 		goto finish;
 	}
 
 	debug(DBG_INSANE, "Reverse resolve request 0x%x accepted", rpkt.hdr.id);
 	
-	/* 
-	 * Pack all the registered hostnames we have (if any) 
-	 */
-
-	pkt.hdr.sz+=sizeof(u_short) * hostnames;
-	pkt.msg=buf=xmalloc(pkt.hdr.sz);
-	memcpy(buf, &hdr, sizeof(struct andna_rev_resolve_reply_hdr));
-	buf+=sizeof(struct andna_rev_resolve_reply_hdr);
-	reply_body=buf;
-
-	if(hostnames) {
-		memcpy(buf, hnames_sz, sizeof(u_short) * hostnames);
-		buf+=sizeof(u_short) * hostnames;
-		
-		for(e=0; e<hostnames; e++) {
-			memcpy(buf, lcl_hnames[e]->hostname, hnames_sz[e]);
-			buf+=hnames_sz[e];
-		}
-	}
-	
-	/* host -> network order */
-	int_info_copy(&reply_iinfo, &andna_rev_resolve_reply_body_iinfo);
-	reply_iinfo.int_nmemb[0] = hostnames;
-	ints_host_to_network((void *)reply_body, reply_iinfo);
-
 	/*
 	 * Send it.
 	 */
@@ -1714,8 +1626,6 @@ int andna_recv_rev_resolve_rq(PACKET rpkt)
         if(err==-1)
 		ERROR_FINISH(ret, -1, finish);
 finish:
-	if(hnames_sz)
-		xfree(hnames_sz);
 	pkt_free(&pkt, 0);
 	return ret;
 }
@@ -2161,7 +2071,7 @@ counter_c *get_counter_cache(inet_prefix to, int *counter)
 	ret=ccache=unpack_counter_cache(pack, pack_sz, counter);
 	if(!ccache)
 		error(ERROR_MSG "Malformed or empty counter_cache."
-				" Cannot load it", ERROR_POS);
+				" Cannot load it", ERROR_FUNC);
 	
 finish:
 	pkt_free(&pkt, 0);
