@@ -22,6 +22,7 @@
 
 #include "includes.h"
 
+#include "crypto.h"
 #include "andna_cache.h"
 #include "snsd_cache.h"
 #include "misc.h"
@@ -41,6 +42,19 @@ void andna_caches_init(int family)
 	andna_c=(andna_cache *)clist_init(&andna_c_counter);
 	andna_counter_c=(counter_c *)clist_init(&cc_counter);
 	andna_rhc=(rh_cache *)clist_init(&rhc_counter);
+}
+
+/*
+ * andna_32bit_hash
+ *
+ * It returns the 32bit hash of the md5 hash of the `hname' string.
+ */
+u_int andna_32bit_hash(char *hname)
+{
+	u_char hashm5[ANDNA_HASH_SZ];
+	
+	hash_md5(hname, strlen(hname), hashm5);
+	return fnv_32_buf(hashm5, ANDNA_HASH_SZ, FNV1_32_INIT);
 }
 
 /*
@@ -99,7 +113,7 @@ lcl_cache *lcl_cache_new(char *hname)
 	setzero(alcl, sizeof(lcl_cache));
 
 	alcl->hostname = xstrdup(hname);
-	alcl->hash = fnv_32_buf(hname, strlen(hname), FNV1_32_INIT);
+	alcl->hash = andna_32bit_hash(hname);
 
 	return alcl;
 }
@@ -134,7 +148,7 @@ lcl_cache *lcl_cache_find_hname(lcl_cache *alcl, char *hname)
 	if(!alcl || !lcl_counter)
 		return 0;
 
-	hash = fnv_32_buf(hname, strlen(hname), FNV1_32_INIT);
+	hash = andna_32bit_hash(hname);
 	list_for(alcl)
 		if(alcl->hash == hash && alcl->hostname && 
 			!strncmp(alcl->hostname, hname, ANDNA_MAX_HNAME_LEN))
@@ -142,7 +156,7 @@ lcl_cache *lcl_cache_find_hname(lcl_cache *alcl, char *hname)
 	return 0;
 }
 
-lcl_cache *lcl_cache_find_32hash(lcl_cache *alcl, u_int hash)
+lcl_cache *lcl_cache_find_hash(lcl_cache *alcl, u_int hash)
 {
 	if(!alcl || !lcl_counter)
 		return 0;
@@ -530,14 +544,55 @@ void counter_c_destroy(void)
  *  
  */
 
-rh_cache *rh_cache_new(char *hname, time_t timestamp)
+rh_cache *rh_cache_new_hash(u_int hash, time_t timestamp)
 {
 	rh_cache *rhc;
 	
 	rhc=xmalloc(sizeof(rh_cache));
 	setzero(rhc, sizeof(rh_cache));
 	
-	rhc->hash=fnv_32_buf(hname, strlen(hname), FNV1_32_INIT);
+	rhc->hash=hash;
+	rhc->timestamp=timestamp;
+
+	return rhc;
+}
+
+rh_cache *rh_cache_new(char *hname, time_t timestamp)
+{
+	return rh_cache_new_hash(andna_32bit_hash(hname), timestamp);
+}
+
+/*
+ * rh_cache_add_hash
+ *
+ * It searches a struct in the rh_cache which has the hash value equal to
+ * `hash'.
+ * If it isn't found a new one is added. In both cases the pointer to the
+ * struct will be returned.
+ * 
+ * On error 0 is returned.
+ */
+rh_cache *rh_cache_add_hash(u_int hash, time_t timestamp)
+{
+	rh_cache *rhc;
+
+	if(!(rhc=rh_cache_find_hash(hash))) {
+		if(rhc_counter >= ANDNA_MAX_HOSTNAMES) {
+			/* Delete the expired hnames and see if there's empty
+			 * space */
+			rh_cache_del_expired();
+			
+			if(rhc_counter >= ANDNA_MAX_HOSTNAMES) {
+				/* Delete the oldest struct in cache */
+				rhc=list_last(andna_rhc);
+				clist_del(&andna_rhc, &rhc_counter, rhc);
+			}
+		}
+
+		rhc=rh_cache_new_hash(hash, timestamp);
+		clist_add(&andna_rhc, &rhc_counter, rhc);
+	}
+
 	rhc->timestamp=timestamp;
 
 	return rhc;
@@ -554,41 +609,18 @@ rh_cache *rh_cache_new(char *hname, time_t timestamp)
  */
 rh_cache *rh_cache_add(char *hname, time_t timestamp)
 {
-	rh_cache *rhc;
-
-	if(!(rhc=rh_cache_find_hname(hname))) {
-		if(rhc_counter >= ANDNA_MAX_HOSTNAMES) {
-			/* Delete the expired hnames and see if there's empty
-			 * space */
-			rh_cache_del_expired();
-			
-			if(rhc_counter >= ANDNA_MAX_HOSTNAMES) {
-				/* Delete the oldest struct in cache */
-				rhc=list_last(andna_rhc);
-				clist_del(&andna_rhc, &rhc_counter, rhc);
-			}
-		}
-
-		rhc=rh_cache_new(hname, timestamp);
-		clist_add(&andna_rhc, &rhc_counter, rhc);
-	}
-
-	rhc->timestamp=timestamp;
-
-	return rhc;
+	return rh_cache_add_hash(andna_32bit_hash(hname), timestamp);
 }
 
-rh_cache *rh_cache_find_hname(char *hname)
+rh_cache *rh_cache_find_hash(u_int hash)
 {
 	rh_cache *rhc=andna_rhc, *next;
-	u_int hash;
 	time_t cur_t;
 
 	if(!rhc || !rhc_counter)
 		return 0;
 	
 	cur_t=time(0);
-	hash=fnv_32_buf(hname, strlen(hname), FNV1_32_INIT);
 	
 	list_safe_for(rhc, next)
 		if(rhc->hash == hash) {
@@ -604,6 +636,14 @@ rh_cache *rh_cache_find_hname(char *hname)
 			return rhc;
 		}
 	return 0;
+}
+
+rh_cache *rh_cache_find_hname(char *hname)
+{
+	u_int hash;
+
+	hash=andna_32bit_hash(hname);
+	return rh_cache_find_hash(hash);
 }
 
 void rh_cache_del(rh_cache *rhc)
@@ -816,8 +856,7 @@ lcl_cache *unpack_lcl_cache(char *pack, size_t pack_sz, int *counter)
 			buf+=sizeof(time_t);
 			
 			alcl->hostname=xstrdup(buf);
-			alcl->hash=fnv_32_buf(alcl->hostname, 
-					strlen(alcl->hostname), FNV1_32_INIT);
+			alcl->hash=andna_32bit_hash(alcl->hostname);
 			buf+=slen;
 
 			clist_add(&alcl_head, counter, alcl);

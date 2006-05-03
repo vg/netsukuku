@@ -219,6 +219,8 @@ int andna_recv_reg_rq(PACKET rpkt);
 int andna_check_counter(PACKET pkt);
 int andna_recv_check_counter(PACKET rpkt);
 
+snsd_service *andna_resolve_hash(u_int hname_hash[MAX_IP_INT], int service, 
+				 u_char proto, int *records);
 snsd_service *andna_resolve_hname(char *hname, int service, u_char proto, 
 				  int *records);
 int andna_recv_resolve_rq(PACKET rpkt);

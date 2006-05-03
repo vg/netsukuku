@@ -206,7 +206,9 @@ void andna_close(void)
  */
 
 /*
- * andna_hash_by_family: If family is equal to AF_INET, in `hash' it stores the
+ * andna_hash_by_family
+ *
+ * If `family' is equal to AF_INET, in `hash' it stores the
  * 32bit hash of the `msg', otherwise it just copies `msg' to `hash_ip'. 
  * Note that this function is used to hash other hashes, so it operates on the
  * ANDNA_HASH_SZ fixed length.
@@ -223,10 +225,12 @@ void andna_hash_by_family(int family, void *msg, u_int hash[MAX_IP_INT])
 }
 
 /*
- * andna_hash: This functions makes a digest of `msg' which is `len' bytes
- * big and stores it in `hash'. If family is equal to AF_INET, in `ip_hash' it
- * stores the 32bit hash of the `hash', otherwise it just copies `hash' to
- * `ip_hash'.
+ * andna_hash
+ *
+ * This functions makes a digest of `msg' which is `len' bytes big and 
+ * stores it in `hash'. 
+ * If `family'is equal to AF_INET, in `ip_hash' it stores the 32bit hash
+ * of the `hash', otherwise it just copies `hash' to `ip_hash'.
  * 
  * Note: `hash' is a single string of `MAX_IP_INT'*4 bytes, it is the MD5 hash
  * of `msg', therefore do not attempt to convert it to network order.
@@ -1173,28 +1177,30 @@ finish:
  */
 
 /*
- * andna_resolve_hname_locally
+ * andna_resolve_hash_locally
  *
- * It tries to resolve the given `hname' by searching in the local andna caches.
- * It uses the same arguments of `andna_resolve_hname' (see below).
+ * It tries to resolve the given md5 hname-hash by searching in the
+ * local andna caches.
+ * It uses the same arguments of `andna_resolve_hash' see below).
  */
-snsd_service *andna_resolve_hname_locally(char *hname, int service, 
+snsd_service *andna_resolve_hash_locally(u_int hname_hash[MAX_IP_INT], int service, 
 					  u_char proto,int *records)
 {
 	struct andna_resolve_rq_pkt req;
 	lcl_cache *lcl;
 	rh_cache *rhc;
 	andna_cache *ac;
-
-	u_int hash_gnode[MAX_IP_INT];
+	u_int hash;
 
 	setzero(&req, sizeof(req));
+	
+	hash = fnv_32_buf(hname_hash, ANDNA_HASH_SZ, FNV1_32_INIT);
 	
 	/*
 	 * Search the hostname in the local cache first. Maybe we are so
 	 * dumb that we are trying to resolve the same ip we registered.
 	 */
-	if((lcl=lcl_cache_find_hname(andna_lcl, hname))) {
+	if((lcl=lcl_cache_find_hash(andna_lcl, hash))) {
 		*records=lcl->snsd_counter;
 		return snsd_service_llist_copy(lcl->service, service, proto);
 	}
@@ -1203,21 +1209,15 @@ snsd_service *andna_resolve_hname_locally(char *hname, int service,
 	 * Last try before asking to ANDNA: let's see if we have it in
 	 * the resolved_hnames cache
 	 */
-	if((rhc=rh_cache_find_hname(hname))) {
+	if((rhc=rh_cache_find_hash(hash))) {
 		*records=rhc->snsd_counter;
 		return snsd_service_llist_copy(rhc->service, service, proto);
 	}
 	
-	/* 
-	 * Fill the request structure.
-	 */
-	inet_copy_ipdata(req.rip, &me.cur_ip);
-	andna_hash(my_family, hname, strlen(hname), req.hash, hash_gnode);
-	
 	/*
 	 * If we manage an andna_cache, it's better to peek at it.
 	 */
-	if((ac=andna_cache_gethash(req.hash))) {
+	if((ac=andna_cache_gethash(hname_hash))) {
 		*records=ac->acq->snsd_counter;
 		return snsd_service_llist_copy(ac->acq->service, service, 
 						proto);
@@ -1227,11 +1227,13 @@ snsd_service *andna_resolve_hname_locally(char *hname, int service,
 }
 
 /*
- * andna_resolve_hname
+ * andna_resolve_hash
  * 
  * It returns a snsd_service llist (see snsd.h) which contains the snsd
- * records of the resolved `hname'. Among them there's at least the mainip
+ * records of the resolved hostname. Among them there's at least the mainip
  * record which can be found using snsd_find_mainip().
+ *
+ * `hname_hash' is the md5 hash of the hostname we want to resolve.
  *
  * `service' specifies the service number of the resolution. If it is equal to
  * -1 the resolution will return all the registered snds records.
@@ -1244,14 +1246,14 @@ snsd_service *andna_resolve_hname_locally(char *hname, int service,
  * 
  * It returns 0 on error
  */
-snsd_service *andna_resolve_hname(char *hname, int service, u_char proto, 
-				  int *records)
+snsd_service *andna_resolve_hash(u_int hname_hash[MAX_IP_INT], int service, 
+				 u_char proto, int *records)
 {
 	PACKET pkt, rpkt;
 	struct andna_resolve_rq_pkt req;
 	struct andna_resolve_reply_pkt *reply;
 	rh_cache *rhc;
-	u_int hash_gnode[MAX_IP_INT];
+	u_int hash_gnode[MAX_IP_INT], hash32;
 	inet_prefix to;
 
 	snsd_service *sns, *snsd_unpacked, *ret=0;
@@ -1267,9 +1269,11 @@ snsd_service *andna_resolve_hname(char *hname, int service, u_char proto,
 	setzero(&pkt, sizeof(pkt));
 	setzero(&rpkt, sizeof(pkt));
 
+	hash32=fnv_32_buf((u_char *)hname_hash, ANDNA_HASH_SZ, FNV1_32_INIT);
 
 	/* Try to resolve the hostname locally */
-	if((sns=andna_resolve_hname_locally(hname, service, proto, records)))
+	sns=andna_resolve_hash_locally(hname_hash, service, proto, records);
+	if(sns)
 		return sns;
 
 	/* 
@@ -1278,7 +1282,8 @@ snsd_service *andna_resolve_hname(char *hname, int service, u_char proto,
 	req.service=service;
 	req.proto=proto;
 	inet_copy_ipdata(req.rip, &me.cur_ip);
-	andna_hash(my_family, hname, strlen(hname), req.hash, hash_gnode);
+	memcpy(req.hash, hname_hash, ANDNA_HASH_SZ);
+	andna_hash_by_family(my_family, hname_hash, hash_gnode);
 	
 	/* 
 	 * Ok, we have to ask to someone for the resolution.
@@ -1310,7 +1315,8 @@ snsd_service *andna_resolve_hname(char *hname, int service, u_char proto,
 	setzero(&rpkt, sizeof(PACKET));
 	err=send_rq(&pkt, 0, ANDNA_RESOLVE_HNAME, 0, ANDNA_RESOLVE_REPLY, 1, &rpkt);
 	if(err==-1) {
-		error("andna_resolve_hname(): Resolution of \"%s\" failed.", hname);
+		debug(DBG_NORMAL, ERROR_MSG "Resolution of 0x%x failed.",
+				  ERROR_FUNC, pkt.hdr.id);
 		ERROR_FINISH(ret, 0, finish);
 	}
 
@@ -1351,7 +1357,7 @@ snsd_service *andna_resolve_hname(char *hname, int service, u_char proto,
 	 * successful resolved it ;)
 	 */
 	reply->timestamp = time(0) - reply->timestamp;
-	rhc=rh_cache_add(hname, reply->timestamp);
+	rhc=rh_cache_add_hash(hash32, reply->timestamp);
 	if(rhc->service)
 		snsd_service_llist_del(&rhc->service);
 	rhc->snsd_counter=snsd_counter;
@@ -1361,6 +1367,24 @@ finish:
 	pkt_free(&pkt, 1);
 	pkt_free(&rpkt, 0);
 	return ret;
+}
+
+/*
+ * andna_resolve_hname
+ * 
+ * It is a wrapper to andna_resolve_hash() (see above): it hashes the given
+ * `hname' string and calls andna_resolve_hash.
+ * 
+ * It returns 0 on error
+ */
+snsd_service *andna_resolve_hname(char *hname, int service, u_char proto, 
+				  int *records)
+{
+	u_int hname_hash[MAX_IP_INT];
+
+	hash_md5(hname, strlen(hname), (u_char *)hname_hash);
+
+	return andna_resolve_hash(hname_hash, service, proto, records);
 }
 
 /*

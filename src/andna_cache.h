@@ -174,8 +174,8 @@ struct lcl_cache
 	LLIST_HDR	(struct lcl_cache);
 
 	char		*hostname;		/* The registered hostname */
-	u_int		hash;			/* hname's hash utilized to 
-						   speed up the searches */
+	u_int		hash;			/* 32bit hash of the md5 hash 
+						   of the hname */
 	u_short		hname_updates;		/* How many updates we've done 
 						   for this hostname */
 	time_t          timestamp;		/* the last time when the hname
@@ -209,8 +209,8 @@ struct resolved_hnames_cache
 {
 	LLIST_HDR	(struct resolved_hnames_cache);
 
-	u_int		hash;		/* 32bit hash, used just to 
-					   speed up searches */
+	u_int		hash;		/* 32bit hash of the md5 hash of the
+					   hname */
 	char		flags;
 	
 	time_t		timestamp;	/* the last time when the hname
@@ -424,7 +424,7 @@ lcl_cache *lcl_cache_new(char *hname);
 void lcl_cache_free(lcl_cache *alcl);
 void lcl_cache_destroy(lcl_cache *head, int *counter);
 lcl_cache *lcl_cache_find_hname(lcl_cache *head, char *hname);
-lcl_cache *lcl_cache_find_32hash(lcl_cache *head, u_int hash);
+lcl_cache *lcl_cache_find_hash(lcl_cache *alcl, u_int hash);
 lcl_cache *lcl_get_registered_hnames(lcl_cache *alcl);
 
 andna_cache_queue *ac_queue_findpubk(andna_cache *ac, char *pubk);
@@ -451,7 +451,9 @@ void counter_c_del_expired(void);
 void counter_c_destroy(void);
 
 rh_cache *rh_cache_new(char *hname, time_t timestamp);
+rh_cache *rh_cache_add_hash(u_int hash, time_t timestamp);
 rh_cache *rh_cache_add(char *hname, time_t timestamp);
+rh_cache *rh_cache_find_hash(u_int hash);
 rh_cache *rh_cache_find_hname(char *hname);
 void rh_cache_del(rh_cache *rhc);
 void rh_cache_del_expired(void);
