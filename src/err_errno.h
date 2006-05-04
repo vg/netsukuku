@@ -60,6 +60,7 @@ static const char *err_strings[] = {
 	"Nefilter was not restored.",		/* ERR_NETRST */
 /**/	
 	"SNSD main record not found.",		/* ERR_SNDMRF */
+	"SNSD recursion failed.",		/* ERR_SNDRCS */
 };
 
 #define ERR_UFOERR	-1
@@ -93,6 +94,9 @@ static const char *err_strings[] = {
 #define ERR_NETDEL	-26
 #define ERR_NETSTO	-27
 #define ERR_NETRST	-28
+
+#define ERR_SNDMRF	-29
+#define ERR_SNDRCS	-30
 
 #define ERR_OVERFLOW    "Error number does not exist."
 

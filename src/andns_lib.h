@@ -18,8 +18,8 @@
 *                                                                       *
 ************************************************************************/
 
-#ifndef ANDNSLIB_H
-#define ANDNSLIB_H
+#ifndef ANDNS_LIB_H
+#define ANDNS_LIB_H
 
 #include <string.h>
 #include <stdint.h>
@@ -95,5 +95,5 @@ andns_pkt_data* create_andns_pkt_data(void);
 andns_pkt_data* andns_add_answ(andns_pkt *ap);
 void destroy_andns_pkt(andns_pkt *ap);
 
-#endif /* ANDNSLIB_H */
+#endif /* ANDNS_LIB_H */
 

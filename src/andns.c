@@ -658,19 +658,12 @@ int inet_rslv(dns_pkt *dp,char *msg,int msglen,char *answer)
 		}
 		sp=ss->prio;
 		snsd_prio_to_dp_answs(dp,sp,_ip_len_);
-	/*	listfor(sp) {
-			sn=sp->node;
-			listfor(sn) {
-				dpa=DP_ADD_ANSWER(dp);
-				dns_a_default_fill(dp,dpa);
-				dpa->rdlength=_ip_len_;
-				snsd_node_to_data(dpa->rdata,sn,_ip_len_);
-			}
-		}*/
 		snsd_service_llist_del(&ss);
 	} else if (qt==T_PTR) {
 		char tomp[DNS_MAX_HNAME_LEN];
 		char **hnames;
+		lcl_cache *lc;
+			  
 		res=swapped_straddr(temp,tomp);
 		if (res==-1) {
 			rcode=RCODE_EINTRPRT;
@@ -681,21 +674,12 @@ int inet_rslv(dns_pkt *dp,char *msg,int msglen,char *answer)
 			rcode=RCODE_ESRVFAIL;
 			goto safe_return_rcode;
 		}
-		res=debug_andna_reverse_resolve(addr, &hnames);
-		if (res==-1) {
+		lc=debug_andna_reverse_resolve(addr, &hnames);
+		res=lcl_cache_to_dp_answs(dp,lc); /* destroy lc */
+		if (!res) {
 			rcode=RCODE_ENSDMN;
 			goto safe_return_rcode;
 		}
-		for (i=0;i<res;i++) {
-			dpa=DP_ADD_ANSWER(dp);
-			dns_a_default_fill(dp,dpa);
-			strcpy(dpa->rdata,hnames[i]);
-			xfree(hnames[i]);
-		}
-		xfree(hnames);
-	} else if (qt==T_MX) {
-		rcode=RCODE_ENIMPL;
-		goto safe_return_rcode;
 	} else {
 		rcode=RCODE_ENIMPL;
 		goto safe_return_rcode;
@@ -720,67 +704,56 @@ return_rcode:
 /* Rewrite this function for snsd */
 int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 {
-	int qt,res,i,rcode;
+	int qt,res,i,rcode,records;
 	andns_pkt_data *apd;
 	inet_prefix ipres;
+	
 
 	qt=ap->qtype;
 	if (qt==AT_A) {
-		rm_realm_prefix(ap->qstdata,temp,AT_A);
-		res=debug_andna_resolve_hname(ap->qstdata,&ipres);
-		if (res==-1) {
+		snsd_service *ss;
+		ss=debug_andna_resolve_hname(ap->qstdata,
+				ap->service,a_p,&records);
+		if (!ss) {
 			rcode=RCODE_ENSDMN;
 			goto safe_return_rcode;
 		}
-		ap->ancount++;
-		apd=andns_add_answ(ap);
-        	apd->rdlength=ipres.len;
-        	inet_htonl(ipres.data, ipres.family);
-        	if (ipres.family==AF_INET)
-                	memcpy(apd->rdata,ipres.data,4);
-        	else
-                	memcpy(apd->rdata,ipres.data,16);
-	} 
-	else if (qt==AT_PTR) {
-		char **hnames;
+		res=snsd_prio_to_aansws(answer+msglen,
+				ss->prio,&records);
+		if (!res) {
+			rcode=RCODE_ENSDMN;
+			goto safe_return_rcode;
+		}
+		snsd_service_llist_del(&ss);
+	} else if (qt==AT_PTR) {
+		lcl_cache *lc;
+		
 		res=str_to_inet(ap->qstdata,&ipres);
 		if (res==-1) {
 			rcode=RCODE_EINTRPRT;
 			goto safe_return_rcode;
 		}
-		res=debug_andna_reverse_resolve(ipres,&hnames);
-		if (res==-1) {
+		lc=debug_andna_reverse_resolve(ipres);
+		if (!lc) {
 			rcode=RCODE_ENSDMN;
 			goto safe_return_rcode;
 		}
-		for (i=0;i<res;i++) {
-			apd=andns_add_answ(ap);
-			ap->ancount++;
-			apd->rdlength=strlen(hnames[i]);
-			strcpy(apd->rdata,hnames[i]);
-			xfree(hnames[i]);
-		}
-	}
-	else if (qt==AT_MX) {
-		rcode=RCODE_ENIMPL;
-		goto safe_return_rcode;
-	}
-	else if (qt==AT_MXPTR) {
-		rcode=RCODE_ENIMPL;
-		goto safe_return_rcode;
-	}
-	else {
+		res=lcl_cache_to_aansws(answer+msglen,lc,&records);
+		destroy(lc);
+	} else {
 		rcode=RCODE_EINTRPRT;
 		goto safe_return_rcode;
 	}
-	ap->qr=1;
-	ap->rcode=RCODE_NOERR;
-	res=a_p(ap,answer);
+	memcpy(answer,msg,msglen);
+	ANDNS_SET_RCODE(answer,RCODE_NOERR);
+	ANDNS_SET_QR(answer);
+	ANNDS_SET_ANCOUNT(answer,records);
+/*	res=a_p(ap,answer);
 	if (res==-1) {
 		rcode=RCODE_ESRVFAIL;
 		goto return_rcode;
-	}
-	return res;
+	}*/
+	return res+msglen;
 safe_return_rcode:
 	destroy_andns_pkt(ap);
 	goto return_rcode;
@@ -803,7 +776,7 @@ int nk_forward(andns_pkt *ap,char *msg,int msglen,char *answer)
 	}
 	res=d_p(dp,answer);
 	if (res==-1) {
-		rcode=RCODE_EINTRPRT;
+		rcode=RCODE_ESRVFAIL;
 		goto safe_return_rcode;
 	}
 	res=ns_general_send(answer,res,new_answ,ANDNS_MAX_SZ);
@@ -825,7 +798,7 @@ int nk_forward(andns_pkt *ap,char *msg,int msglen,char *answer)
 	destroy_dns_pkt(dp);
 	res=a_p(ap,answer);
 	if (res==-1) {
-		rcode=RCODE_EINTRPRT;
+		rcode=RCODE_ESRVFAIL;
 		goto safe_return_rcode;
 	}
 	return res;

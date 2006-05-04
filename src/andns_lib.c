@@ -18,7 +18,7 @@
 *                                                                       *
 ************************************************************************/
 
-#include "andnslib.h"
+#include "andns_lib.h"
 #include "log.h"
 #include "err_errno.h"
 #include "xmalloc.h"

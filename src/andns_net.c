@@ -21,7 +21,7 @@
 #include <netdb.h>
 
 #include "log.h"
-#include "andnsnet.h"
+#include "andns_net.h"
 /* Connection Layer */
 
 int w_socket(int family,int type, int proto,int die)

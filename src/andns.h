@@ -58,6 +58,7 @@
 
 #define ANDNS_SET_RCODE(s,c)	*((s)+3)=(((*((s)+3))&0xf0)|c)
 #define ANDNS_SET_QR(s)		(*((s)+2))|=0x80
+#define ANDNS_SET_AN(s,n)	FA_QUALCOSA
 int store_ns(char *ns);
 int collect_resolv_conf(char *resolve_conf);
 void reset_andns_ns(void);
