@@ -1,5 +1,9 @@
 #include "andns_snsd.h"
-#include "snsd_cache.h"
+#include "andna_cache.h"
+#include "err_errno.h"
+#include "andna.h"
+#include "log.h"
+#include "llist.h"
 #include <string.h>
 
 
@@ -15,14 +19,14 @@
  * 	0
  * 	-1
  */
-int snsd_main_ip(char *hname_hash,snsd_node *dst)
+int snsd_main_ip(u_int *hname_hash,snsd_node *dst)
 {
-	snsd_service *ss,sst;
+	snsd_service *ss;
 	snsd_prio *sp;
 	snsd_node *sn;
 	int records;
 
-	ss=snsd_resolve_hash(hname_hash,0,0,*records);
+	ss=andna_resolve_hash(hname_hash,0,0,&records);
 	if (!ss) 
 		err_ret(ERR_SNDMRF,-1);
 	if (!(sp=ss->prio)) {
@@ -61,7 +65,7 @@ size_t snsd_node_to_aansw(char *buf,snsd_node *sn,u_char prio,int iplen)
 		error(err_str);
 		return -1;
 	}
-	*buf++=sn->weigth;
+	*buf++=sn->weight;
 	*buf=prio;
 	return 0; /* TODO */
 }
@@ -83,7 +87,7 @@ int snsd_node_to_data(char *buf,snsd_node *sn,int iplen)
             sn->flags & SNSD_NODE_MAIN_IP) {
                 memcpy(buf,sn->record,iplen); 
 		family=(iplen==4)?AF_INET:AF_INET6;
-		inet_htonl(buf,family);
+		inet_htonl((u_int*)buf,family);
         } else {
                 snsd_node snt;
                 res=snsd_main_ip(sn->record,&snt);
@@ -102,7 +106,7 @@ int snsd_node_to_data(char *buf,snsd_node *sn,int iplen)
  * to be sent.
  *
  * Returns the number of answers writed to buf.
- * The size is comptable with iplen.
+ * The size is computable with iplen.
  *
  * buf has to be long enough, ie, you have to count node
  * in prio list and take ANDNS_MAX_ANSW_IP_LEN * n space.
@@ -110,18 +114,17 @@ int snsd_node_to_data(char *buf,snsd_node *sn,int iplen)
  */
 int snsd_prio_to_aansws(char *buf,snsd_prio *sp,int iplen)
 {
-	int res=0,rest;
+	int res;
 	int count=0;
 	snsd_node *sn;
 	
-	*count=0;
 	sn=sp->node;
 	list_for(sn) {
-		rest=snsd_node_to_aansw(buf,sn,iplen);
-		if (rest==-1) 
+		res=snsd_node_to_aansw(buf,sn,sp->prio,iplen);
+		if (res==-1) 
 			continue;
 		count++;
-		buf+=QUALCOSA+iplen /*TODO*/
+		buf+=QUALCOSA+iplen; /*TODO*/
 	}
 	return count;
 }
@@ -140,7 +143,7 @@ int snsd_node_to_dansw(dns_pkt *dp,snsd_node *sn,int iplen)
 		return -1;
 	dpa=DP_ADD_ANSWER(dp);
 	dns_a_default_fill(dp,dpa);
-	dpa->rdlength=_ip_len_;
+	dpa->rdlength=iplen;
 	memcpy(dpa->rdata,temp,iplen);
 	return 0;
 }

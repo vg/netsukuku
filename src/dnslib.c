@@ -843,7 +843,7 @@ void dns_a_default_fill(dns_pkt *dp,dns_pkt_a *dpa)
 	strcpy(dpa->name,dp->pkt_qst->qname);
 	dpa->cl=C_IN;
 	dpa->ttl=DNS_TTL;
-	dpq->qtype=dp->pkt_qst->qtype;
+	dpa->type=dp->pkt_qst->qtype;
 }
 void destroy_dns_pkt(dns_pkt *dp)
 {

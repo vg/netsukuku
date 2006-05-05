@@ -174,8 +174,8 @@ void andna_init(void)
 	}
 
 	/* Init ANDNS */
-	if(andns_init(restricted_mode, ETC_RESOLV_CONF) < 0)
-		if(andns_init(restricted_mode, ETC_RESOLV_CONF_BAK) < 0) {
+	if(andns_init(restricted_mode, ETC_RESOLV_CONF,my_family) < 0)
+		if(andns_init(restricted_mode, ETC_RESOLV_CONF_BAK,my_family) < 0) {
 			error("In %s there isn't a single Internet nameserver.", 
 					ETC_RESOLV_CONF);
 			loginfo("Internet hostname resolution is disabled");

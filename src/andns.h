@@ -24,7 +24,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include "dnslib.h"
-#include "andnslib.h"
+#include "andns_lib.h"
 #include "inet.h"
 
 #define MAXNSSERVERS 3
@@ -62,7 +62,7 @@
 int store_ns(char *ns);
 int collect_resolv_conf(char *resolve_conf);
 void reset_andns_ns(void);
-int andns_init(int restricted, char *resolv_conf);
+int andns_init(int restricted, char *resolv_conf,int family);
 void andns_close(void);
 int ns_general_send(char *msg,int msglen,char *answer,int anslen);
 void dpktacpy(dns_pkt *dst,dns_pkt *src,const char *prefix);

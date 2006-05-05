@@ -28,8 +28,9 @@
 #include "err_errno.h"
 #include "xmalloc.h"
 #include "andna.h"
-#include "andnslib.h"
-#include "andnsnet.h"
+#include "andns_lib.h"
+#include "andns_net.h"
+#include "andns_snsd.h"
 #include "dnslib.h"
 
 
@@ -40,6 +41,7 @@ static uint8_t _default_realm_;
 static struct addrinfo _ns_filter_;
 static struct addrinfo *_andns_ns_[MAXNSSERVERS];
 
+static int _ip_len_;
 
 
 			/* INIT FUNCTIONS */
@@ -150,7 +152,7 @@ void reset_andns_ns(void)
  * and stores infos about nameservers for dns query.
  * On error -1 is returned.
  */
-int andns_init(int restricted, char *resolv_conf)
+int andns_init(int restricted, char *resolv_conf,int family)
 {
         int i,res;
         char msg[(INET6_ADDRSTRLEN+2)*MAXNSSERVERS];
@@ -172,6 +174,7 @@ int andns_init(int restricted, char *resolv_conf)
 		debug(DBG_NORMAL,err_str);
                 err_ret(ERR_RSLAIE,-1);
         }
+	_ip_len_=family==AF_INET?4:16;
 
         /*
          * Debug message
@@ -635,15 +638,13 @@ failing:
 int inet_rslv(dns_pkt *dp,char *msg,int msglen,char *answer)
 {
 	inet_prefix addr;
-	int res,qt,i,rcode;
+	int res,qt,rcode;
 	u_short service;
 	snsd_service *ss;
 	snsd_prio *sp;
-	snsd_node *sn;
 	int records;
 	u_char proto;
 	char temp[DNS_MAX_HNAME_LEN];
-	dns_pkt_a *dpa;
 
 	qt=dp->pkt_qst->qtype;
 	rm_realm_prefix(dp->pkt_qst->qname,temp,qt);
@@ -651,17 +652,16 @@ int inet_rslv(dns_pkt *dp,char *msg,int msglen,char *answer)
 	if (qt==T_A || qt==T_MX) { /* snsd tcp resolution service */
 		service=(qt==T_A)?0:25;
 		proto=(qt==T_A)?0:1;
-		ss=snsd_resolve_hname(temp,service,proto,&records);
+		ss=andna_resolve_hname(temp,service,proto,&records);
 		if (!ss) {
 			rcode=RCODE_ENSDMN;
 			goto safe_return_rcode;
 		}
 		sp=ss->prio;
-		snsd_prio_to_dp_answs(dp,sp,_ip_len_);
+		snsd_prio_to_dansws(dp,sp,_ip_len_);
 		snsd_service_llist_del(&ss);
 	} else if (qt==T_PTR) {
 		char tomp[DNS_MAX_HNAME_LEN];
-		char **hnames;
 		lcl_cache *lc;
 			  
 		res=swapped_straddr(temp,tomp);
@@ -674,8 +674,8 @@ int inet_rslv(dns_pkt *dp,char *msg,int msglen,char *answer)
 			rcode=RCODE_ESRVFAIL;
 			goto safe_return_rcode;
 		}
-		lc=debug_andna_reverse_resolve(addr, &hnames);
-		res=lcl_cache_to_dp_answs(dp,lc); /* destroy lc */
+		lc=andna_reverse_resolve(addr);
+		res=lcl_cache_to_dansws(dp,lc); /* destroy lc */
 		if (!res) {
 			rcode=RCODE_ENSDMN;
 			goto safe_return_rcode;
@@ -704,22 +704,22 @@ return_rcode:
 /* Rewrite this function for snsd */
 int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 {
-	int qt,res,i,rcode,records;
-	andns_pkt_data *apd;
+	int qt,res,rcode,records;
 	inet_prefix ipres;
 	
 
 	qt=ap->qtype;
 	if (qt==AT_A) {
 		snsd_service *ss;
-		ss=debug_andna_resolve_hname(ap->qstdata,
-				ap->service,a_p,&records);
+		ss=andna_resolve_hname(ap->qstdata,
+				ap->service,ap->p,&records);
 		if (!ss) {
 			rcode=RCODE_ENSDMN;
 			goto safe_return_rcode;
 		}
 		res=snsd_prio_to_aansws(answer+msglen,
-				ss->prio,&records);
+				ss->prio,_ip_len_);
+		/* RICORDATI DI CALCOLARE SIZE */
 		if (!res) {
 			rcode=RCODE_ENSDMN;
 			goto safe_return_rcode;
@@ -733,13 +733,13 @@ int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 			rcode=RCODE_EINTRPRT;
 			goto safe_return_rcode;
 		}
-		lc=debug_andna_reverse_resolve(ipres);
+		lc=andna_reverse_resolve(ipres);
 		if (!lc) {
 			rcode=RCODE_ENSDMN;
 			goto safe_return_rcode;
 		}
 		res=lcl_cache_to_aansws(answer+msglen,lc,&records);
-		destroy(lc);
+		/* RICORDATI destroy(lc); */
 	} else {
 		rcode=RCODE_EINTRPRT;
 		goto safe_return_rcode;
@@ -747,7 +747,7 @@ int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 	memcpy(answer,msg,msglen);
 	ANDNS_SET_RCODE(answer,RCODE_NOERR);
 	ANDNS_SET_QR(answer);
-	ANNDS_SET_ANCOUNT(answer,records);
+	/* RICORDATI ANNDS_SET_ANCOUNT(answer,records); */
 /*	res=a_p(ap,answer);
 	if (res==-1) {
 		rcode=RCODE_ESRVFAIL;
