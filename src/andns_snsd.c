@@ -1,10 +1,10 @@
+#include "includes.h"
+
+#include "llist.c"
 #include "andns_snsd.h"
-#include "andna_cache.h"
 #include "err_errno.h"
 #include "andna.h"
 #include "log.h"
-#include "llist.h"
-#include <string.h>
 
 
 

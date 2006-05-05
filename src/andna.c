@@ -1993,7 +1993,9 @@ finish:
 }
 
 /*
- * get_andna_cache: sends the ANDNA_GET_ANDNA_CACHE request to `to' to retrieve the
+ * get_andna_cache
+ *
+ * sends the ANDNA_GET_ANDNA_CACHE request to `to' to retrieve the
  * andna_cache from `to'.
  */
 andna_cache *get_andna_cache(inet_prefix to, int *counter)
