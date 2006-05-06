@@ -19,6 +19,9 @@
 ************************************************************************/
 #include <errno.h>
 #include <netdb.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "log.h"
 #include "andns_net.h"
@@ -54,7 +57,7 @@ int w_connect(struct addrinfo *ai,int die)
 }
 int serial_connect(struct addrinfo *ai,int die)
 {
-	int res,n,i;
+	int res;
 	struct addrinfo *temp;
 
 	temp=ai;
@@ -121,7 +124,6 @@ int ai_connect(struct addrinfo *ai,int die,int free_ai)
 
 ssize_t w_send(int sk,const void *buf,size_t len,int die) 
 {
-	int res;
 	ssize_t ret;
 
 	ret=send(sk,buf,len,0);
@@ -135,7 +137,6 @@ ssize_t w_send(int sk,const void *buf,size_t len,int die)
 
 ssize_t w_recv(int sk,void *buf,size_t len,int die)
 {
-	int res;
 	ssize_t ret;
 
 	ret=recv(sk,buf,len,0);

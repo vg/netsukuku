@@ -158,8 +158,8 @@ int snsd_prio_to_dansws(dns_pkt *dp,snsd_prio *sp,int iplen)
 	snsd_node *sn;
 	
 	sn=sp->node;
-	listfor(sn) 
-		if (!snsd_node_to_dp_answ(dp,sn,iplen))
+	list_for(sn) 
+		if (!snsd_node_to_dansw(dp,sn,iplen))
 			res++;
 	return res;
 }
@@ -173,7 +173,7 @@ int lcl_cache_to_dansws(dns_pkt *dp,lcl_cache *lc)
 	dns_pkt_a *dpa;
 	int res=0;
 	
-	listfor(lc) {
+	list_for(lc) {
 		dpa=DP_ADD_ANSWER(dp);
 		dns_a_default_fill(dp,dpa);
 		strcpy(dpa->rdata,lc->hostname);
@@ -186,7 +186,7 @@ int lcl_cache_to_dansws(dns_pkt *dp,lcl_cache *lc)
 
 size_t lcl_cache_to_aansws(char *buf,lcl_cache *lc,int *count)
 {
-	listfor(lc) {
+	list_for(lc) {
 		FA_IL_PACCHETTO;
 		return;
 	}
