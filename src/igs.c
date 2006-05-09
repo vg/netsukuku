@@ -286,7 +286,7 @@ void init_internet_gateway_search(void)
 
 	pthread_t ping_thread;
 	pthread_attr_t t_attr;
-	int i, ret,res;
+	int i, ret,res,e;
 
 	active_gws=0;
 	igw_multi_gw_disabled=0;
@@ -422,7 +422,7 @@ void init_internet_gateway_search(void)
 
 	for(i=0; i < me.cur_ifs_n; i++)
 		if(!strcmp(me.cur_ifs[i].dev_name, server_opt.inet_gw_dev)) {
-			for(i=0; i<server_opt.ifs_n; i++)
+			for(e=0; e<server_opt.ifs_n; e++)
 				if(!strcmp(server_opt.ifs[i], server_opt.inet_gw_dev))
 					fatal("You specified the \"%s\" interface"
 						" in the options, but this device is also"
