@@ -33,7 +33,7 @@
 
 struct andns_pkt_data
 {
-	uint8_t			r;
+	uint8_t			m;
 	uint8_t			wg;
 	uint8_t			prio;
         uint16_t                rdlength;
@@ -51,7 +51,7 @@ typedef struct andns_pkt
         uint8_t         p;
         uint8_t         qtype;
         uint8_t         ancount;
-        uint8_t         r;
+        uint8_t         ipv;
         uint8_t         nk;
         uint8_t         rcode;
         uint16_t        service; 
@@ -87,7 +87,7 @@ size_t a_answs_u(char *buf,andns_pkt *ap,int limitlen);
 size_t a_u(char *buf,size_t pktlen,andns_pkt **app);
 size_t a_hdr_p(andns_pkt *ap,char *buf);
 size_t a_qst_p(andns_pkt *ap,char *buf,size_t limitlen);
-size_t a_answ_p(andns_pkt_data *apd,char *buf,size_t limitlen);
+size_t a_answ_p(andns_pkt *ap,andns_pkt_data *apd,char *buf,size_t limitlen);
 size_t a_answs_p(andns_pkt *ap,char *buf, size_t limitlen);
 size_t a_p(andns_pkt *ap, char *buf);
 andns_pkt* create_andns_pkt(void);

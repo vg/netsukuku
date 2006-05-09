@@ -54,7 +54,7 @@ size_t a_hdr_u(char *buf,andns_pkt *ap)
         memcpy(&c,buf,sizeof(uint8_t));
         if (((*buf)&0x80)) ap->ancount++;
 
-	ap->r=(c>>6)&0x01;
+	ap->ipv=(c>>6)&0x01;
         ap->nk=(c>>4)&0x03;
         ap->rcode=c&0x0f;
         return ANDNS_HDR_SZ;
@@ -69,9 +69,10 @@ size_t a_qst_u(char *buf,andns_pkt *ap,int limitlen)
 {
 	size_t ret;
 	uint16_t s;
-	uint8_t c;
-	if (limitlen<4)
+
+	if (limitlen<3)
 		err_ret(ERR_ANDMAP,-1);
+
 	switch(ap->qtype) {
 		case AT_A:
 			memcpy(&s,buf,2);
@@ -84,7 +85,7 @@ size_t a_qst_u(char *buf,andns_pkt *ap,int limitlen)
 				AP_ALIGN(ap);
 				memcpy(ap->qstdata,buf,16);
 				ret=18;
-			} else {
+			} else if (ap->nk==INET_REALM) {
 				memcpy(&s,buf,2);
 				ap->qstlength=ntohs(s);
 				buf+=2;
@@ -94,18 +95,16 @@ size_t a_qst_u(char *buf,andns_pkt *ap,int limitlen)
 				AP_ALIGN(ap);
         			memcpy(ap->qstdata,buf,ap->qstlength);
 				ret=ap->qstlength+4;
-			}
+			} else
+				return -1;
 			break;
 		case AT_PTR:
-			c=*buf;
-			if (c!=0 && c!=1)
-				err_ret(ERR_ANDMAP,-1)
-			ap->qstlength=c?16:4;
+			ap->qstlength=ap->ipv?16:4;
 			if (ap->qstlength>limitlen-1)
 				err_ret(ERR_ANDMAP,-1)
 			AP_ALIGN(ap);
 			memcpy(ap->qstdata,buf,ap->qstlength);
-			ret=ap->qstlength+1;
+			ret=ap->qstlength;
 			break;
 		default:
 			debug(DBG_INSANE,"In a_qst_u: unknow query type.");
@@ -117,25 +116,41 @@ size_t a_answ_u(char *buf,andns_pkt *ap,int limitlen)
 {
         uint16_t alen;
         andns_pkt_data *apd;
+	int limit;
 
-	if (limitlen<5)
+	if (limitlen<3)
 		err_ret(ERR_ANDMAP,-1);
-        memcpy(&alen,buf+2,sizeof(uint16_t));
-        alen=ntohs(alen);
-        if (alen+4>limitlen)
-                err_ret(ERR_ANDPLB,-1);
-        if (alen>ANDNS_MAX_DATA_LEN)
-                err_ret(ERR_ANDPLB,-1);
-
-        apd=andns_add_answ(ap);
-	if (*buf&0x80)
-		apd->r=1;
-	apd->wg=(*buf&0x7f);
-	apd->prio=(*(buf+1));
-        apd->rdlength=alen;
-	APD_ALIGN(apd);
-        memcpy(apd->rdata,buf+4,alen);
-        return alen+4;
+	switch (ap->qtype) {
+		case AT_A:
+			limit=ap->ipv?16:4;
+			if (limitlen<limit+2)
+				err_ret(ERR_ANDMAP,-1);
+			apd=andns_add_answ(ap);
+			if (*buf&0x80)
+				apd->m=1;
+			apd->wg=(*buf&0x7f);
+			apd->prio=(*(buf+1));
+			apd->rdlength=limit;
+			memcpy(apd->rdata,buf+2,limit);
+			limit+=2;
+			break;
+		case AT_PTR:
+        		memcpy(&alen,buf+2,sizeof(uint16_t));
+		        alen=ntohs(alen);
+        		if (alen+2>limitlen)
+		                err_ret(ERR_ANDPLB,-1);
+        		if (alen>ANDNS_MAX_DATA_LEN)
+                		err_ret(ERR_ANDPLB,-1);
+		        apd=andns_add_answ(ap);
+        		apd->rdlength=alen;
+			APD_ALIGN(apd);
+        		memcpy(apd->rdata,buf+2,alen);
+			limit=alen+2;
+			break;
+		default:
+			err_ret(ERR_ANDMAP,-1);
+	}
+        return limit;
 }
 size_t a_answs_u(char *buf,andns_pkt *ap,int limitlen)
 {
@@ -203,7 +218,7 @@ size_t a_hdr_p(andns_pkt *ap,char *buf)
         (*buf)|=( (ap->qtype)<<3);
         (*buf++)|=( (ap->ancount)>>1);
         (*buf)|=( (ap->ancount)<<7);
-	if (ap->r)
+	if (ap->ipv)
 		*buf|=0x40;
         (*buf)|=( (ap->nk)<<4);
         (*buf)|=(  ap->rcode);
@@ -211,57 +226,77 @@ size_t a_hdr_p(andns_pkt *ap,char *buf)
 }
 size_t a_qst_p(andns_pkt *ap,char *buf,size_t limitlen)
 {
-	size_t ret;
+	size_t ret=0;
         uint16_t s;
+	int limit;
+
 	switch(ap->qtype){
 		case AT_A:
-			if (ap->qstlength+4>limitlen)
+			limit=ap->nk==NTK_REALM?18:ap->qstlength+4;
+			if (limitlen<limit)
 				err_ret(ERR_ANDMAD,-1);
 			s=htons(ap->service);
 			memcpy(buf,&s,2);
-			buf+=2;
-			ret=ap->qstlength+2;
-			if (ap->nk==INET_REALM) {
+			buf+=2; /* here INET and NTK REALM change */
+			if (ap->nk==NTK_REALM) {
+				memcpy(buf,ap->qstdata,16);
+				ret=16+2;
+			} else if (ap->nk==INET_REALM) {
 				s=htons(ap->qstlength);
 				memcpy(buf,&s,2);
-				buf+=2;
-				ret+=2;
-			}
-			memcpy(buf,ap->qstdata,ap->qstlength);
-        		memcpy(buf,ap->qstdata,ap->qstlength);
+				buf+=2; 
+				memcpy(buf,ap->qstdata,ap->qstlength);
+				ret=ap->qstlength+4;
+			} else
+				err_ret(ERR_ANDMAD,-1);
 			break;
 		case AT_PTR:
-			if (ap->qstlength+1>limitlen)
+			limit=ap->ipv?16:4;
+			if (limitlen<limit)
 				err_ret(ERR_ANDMAD,-1);
-			if (ap->qstlength==16) 
-				*buf=0x01;
-			else if (ap->qstlength!=4)
-				err_ret(ERR_ANDMAD,-1);
-			buf++;
-			memcpy(buf,ap->qstdata,ap->qstlength);
-			ret=ap->qstlength+1;
+			memcpy(buf,ap->qstdata,limit);
+			ret=limit;
 			break;
 		default:
 			debug(DBG_INSANE,"In a_qst_p: unknow query type.");
 			err_ret(ERR_ANDMAD,-1);
+			break;
 	}
 	return ret;
 }
-size_t a_answ_p(andns_pkt_data *apd,char *buf,size_t limitlen)
+size_t a_answ_p(andns_pkt *ap,andns_pkt_data *apd,char *buf,size_t limitlen)
 {
         uint16_t s;
-        if (apd->rdlength>ANDNS_MAX_DATA_LEN || 
-			limitlen< apd->rdlength+4)
-                err_ret(ERR_ANDPLB,-1);
-	if (apd->r)
-		*buf|=0x80;
-	*buf++|= (apd->wg&0x7f);
-	*buf++|=apd->prio;
-        s=htons(apd->rdlength);
-        memcpy(buf,&s,sizeof(uint16_t));
-        buf+=2;
-        memcpy(buf,apd->rdata,apd->rdlength);
-        return apd->rdlength+4;
+	int limit;
+	size_t ret;
+	
+	switch(ap->qtype) {
+		case AT_A:
+			limit=ap->ipv?16:4;
+			if (limitlen<limit+2)
+                		err_ret(ERR_ANDPLB,-1);
+			if (apd->m)
+				*buf|=0x80;
+			*buf++|= (apd->wg&0x7f);
+			*buf++|=apd->prio;
+			memcpy(buf,apd->rdata,limit);
+			ret=limit+2;
+			break;
+		case AT_PTR:
+			if (limitlen<apd->rdlength+2)
+                		err_ret(ERR_ANDPLB,-1);
+        		s=htons(apd->rdlength);
+		        memcpy(buf,&s,sizeof(uint16_t));
+		        buf+=2;
+        		memcpy(buf,apd->rdata,apd->rdlength);
+			ret=apd->rdlength+2;
+			break;
+		default:
+			debug(DBG_INSANE,"In a_answ_p(): unknow query type.");
+			err_ret(ERR_ANDMAD,-1);
+			break;
+	}
+	return ret;
 }
 size_t a_answs_p(andns_pkt *ap,char *buf, size_t limitlen)
 {
@@ -271,7 +306,7 @@ size_t a_answs_p(andns_pkt *ap,char *buf, size_t limitlen)
 
         apd=ap->pkt_answ;
         for (i=0;i<ap->ancount && apd;i++) {
-                if((res=a_answ_p(apd,buf+offset,limitlen-offset))==-1) {
+                if((res=a_answ_p(ap,apd,buf+offset,limitlen-offset))==-1) {
                         error(err_str);
                         err_ret(ERR_ANDMAD,-1);
                 }
