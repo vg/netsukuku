@@ -197,6 +197,7 @@ size_t lcl_cache_to_aansws(char *buf,lcl_cache *lc,int *count)
 {
 	uint16_t slen;
 	size_t ret=0;
+	int lcount=0;
 	
 	list_for(lc) {
 		slen=strlen(lc->hostname);
@@ -205,6 +206,9 @@ size_t lcl_cache_to_aansws(char *buf,lcl_cache *lc,int *count)
 		buf+=2;
 		strcpy(buf,lc->hostname);
 		ret+=2+slen;
+		lcount++;
 	}
+	*count=lcount;
+	lcl_cache_free(lc);
 	return ret;
 }

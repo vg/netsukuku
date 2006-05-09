@@ -458,7 +458,7 @@ incomp_err:
 }
 int dpanswtoapansw(dns_pkt *dp,andns_pkt *ap)
 {
-	int i,rcode,qt,ancount;
+	int i,rcode,qt,ancount,nan=0;
 	dns_pkt_a *dpa;
 	andns_pkt_data *apd;
 
@@ -469,6 +469,7 @@ int dpanswtoapansw(dns_pkt *dp,andns_pkt *ap)
 	
 	if (rcode!=DNS_RCODE_NOERR) 
 		return 0;
+
 	qt=dp->pkt_qst->qtype;
 	dpa=dp->pkt_answ;
 	for (i=0;i<ancount;i++) {
@@ -476,28 +477,31 @@ int dpanswtoapansw(dns_pkt *dp,andns_pkt *ap)
 			break;
 		apd=andns_add_answ(ap);
 		if (qt==T_A) {
-			memcpy(apd->rdata,dpa->rdata,4);
-			apd->rdlength=4;
+			memcpy(apd->rdata,dpa->rdata,_ip_len_);
+			apd->rdlength=_ip_len_;
+			nan++;
 		} 
 		else if (qt==T_PTR) {
 			strcpy(apd->rdata,dpa->rdata);
 			apd->rdlength=strlen(apd->rdata);
+			nan++;
 		}
 		else if (qt==T_MX) {
+			/* TODO */
 			strcpy(apd->rdata,"Ntkrules");
 			apd->rdlength=8;
+			nan++;
 		}
-		else {
-			strcpy(apd->rdata,"Ntkrules");
-			apd->rdlength=8;
-		}
+		else 
+			andns_del_answ(ap);
 		dpa=dpa->next;
 	}
-	if (i!=ancount)
+	if (i!=ancount || nan!=ancount)
 		debug(DBG_INSANE,"In dpanswtoapansw: "
-				  "ancount=%d, answers=%d",\
+				  "ancount=%d, andns answers=%d",\
 				DNS_GET_ANCOUNT(dp),i);
-	ap->ancount=i;
+	ap->ancount=nan;
+
 	return 0;
 }
 
@@ -634,7 +638,6 @@ failing:
  * 	answer len
  */
 
-/* snsd */
 int inet_rslv(dns_pkt *dp,char *msg,int msglen,char *answer)
 {
 	inet_prefix addr;
@@ -706,8 +709,8 @@ int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 {
 	int qt,res,rcode,records;
 	inet_prefix ipres;
+	uint8_t recs;
 	
-
 	qt=ap->qtype;
 	if (qt==AT_A) {
 		snsd_service *ss;
@@ -719,13 +722,15 @@ int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 		}
 		res=snsd_prio_to_aansws(answer+msglen,
 				ss->prio,_ip_len_);
-		/* RICORDATI DI CALCOLARE SIZE */
 		if (!res) {
 			rcode=RCODE_ENSDMN;
 			goto safe_return_rcode;
 		}
 		snsd_service_llist_del(&ss);
-	} else if (qt==AT_PTR) {
+		records=res;
+		res*=(_ip_len_+2);
+	} 
+	else if (qt==AT_PTR) {
 		lcl_cache *lc;
 		
 		res=str_to_inet(ap->qstdata,&ipres);
@@ -738,8 +743,7 @@ int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 			rcode=RCODE_ENSDMN;
 			goto safe_return_rcode;
 		}
-		res=lcl_cache_to_aansws(answer+msglen,lc,&records);
-		/* RICORDATI destroy(lc); */
+		res=lcl_cache_to_aansws(answer+msglen,lc,&records); /* destroys lc */
 	} else {
 		rcode=RCODE_EINTRPRT;
 		goto safe_return_rcode;
@@ -747,12 +751,8 @@ int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 	memcpy(answer,msg,msglen);
 	ANDNS_SET_RCODE(answer,RCODE_NOERR);
 	ANDNS_SET_QR(answer);
-	/* RICORDATI ANNDS_SET_ANCOUNT(answer,records); */
-/*	res=a_p(ap,answer);
-	if (res==-1) {
-		rcode=RCODE_ESRVFAIL;
-		goto return_rcode;
-	}*/
+	recs=(uint8_t)records;
+	ANDNS_SET_ANCOUNT(answer,recs);
 	return res+msglen;
 safe_return_rcode:
 	destroy_andns_pkt(ap);

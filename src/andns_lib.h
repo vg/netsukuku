@@ -79,7 +79,6 @@ typedef struct andns_pkt
 #define NTK_REALM               0
 #define INET_REALM              1
 
-
 size_t a_hdr_u(char *buf,andns_pkt *ap);
 size_t a_qst_u(char *buf,andns_pkt *ap,int limitlen);
 size_t a_answ_u(char *buf,andns_pkt *ap,int limitlen);
@@ -93,7 +92,9 @@ size_t a_p(andns_pkt *ap, char *buf);
 andns_pkt* create_andns_pkt(void);
 andns_pkt_data* create_andns_pkt_data(void);
 andns_pkt_data* andns_add_answ(andns_pkt *ap);
+void destroy_andns_pkt_data(andns_pkt_data *apd);
+void andns_del_answ(andns_pkt *ap);
+void destroy_andns_pkt_datas(andns_pkt *ap);
 void destroy_andns_pkt(andns_pkt *ap);
 
 #endif /* ANDNS_LIB_H */
-

@@ -378,6 +378,22 @@ void destroy_andns_pkt_data(andns_pkt_data *apd)
 		xfree(apd->rdata);
 	xfree(apd);
 }
+void andns_del_answ(andns_pkt *ap)
+{
+	andns_pkt_data *apd,*apdt;
+
+	apd=ap->pkt_answ;
+	if (!apd)
+		return;
+	apdt=apd->next;
+	while (apdt) {
+		apd=apdt;
+		apdt=apdt->next;
+	}
+	apd->next=NULL;
+	destroy_andns_pkt_data(apdt);
+}
+
 void destroy_andns_pkt_datas(andns_pkt *ap)
 {
 	andns_pkt_data *apd,*apd_t;
