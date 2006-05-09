@@ -48,33 +48,10 @@ destroy_return:
 }
 
 /*
- * Converts a snsd_node struct to andns data.
- * data means a packed answer.
- * buf has to be ANDNS_MAX_ANSW_IP_LEN long.
- *
- * returns -1 on error, answer len otherwise.
- *
- */
-
-size_t snsd_node_to_aansw(char *buf,snsd_node *sn,u_char prio,int iplen)
-{
-	int res;
-
-	res=snsd_node_to_data(buf+2,sn,iplen);
-	if (res==-1) {
-		error(err_str);
-		return -1;
-	}
-	*buf++=sn->weight;
-	*buf=prio;
-	return 0; /* TODO */
-}
-
-/*
  * Convert a snsd_node to a binary ip.
  * If snsd_node does not contain a ip, but a hostname hash,
- * calls another resolution with service=0; only the main
- * ip is considered for the new resolution.
+ * calls another resolution with service=0.
+ *
  * Returns:
  * 	0
  * 	-1
@@ -100,6 +77,31 @@ int snsd_node_to_data(char *buf,snsd_node *sn,int iplen)
         }
         return 0;
 }
+
+/*
+ * Converts a snsd_node struct to andns data.
+ * data means a packed answer.
+ * buf has to be ANDNS_MAX_ANSW_IP_LEN long.
+ *
+ * returns -1 on error, answer len otherwise.
+ *
+ */
+
+size_t snsd_node_to_aansw(char *buf,snsd_node *sn,u_char prio,int iplen)
+{
+	int res;
+
+	res=snsd_node_to_data(buf+2,sn,iplen);
+	if (res==-1) {
+		error(err_str);
+		return -1;
+	}
+	if (sn->flags & SNSD_NODE_MAIN_IP)
+		*buf|=0x80;
+	*buf++=sn->weight;
+	*buf=prio;
+	return 0; /* TODO */
+}
 /*
  * Converts a snsd_prio list to andns data.
  * data means a set of contiguous answers ready 
@@ -124,7 +126,7 @@ int snsd_prio_to_aansws(char *buf,snsd_prio *sp,int iplen)
 		if (res==-1) 
 			continue;
 		count++;
-		buf+=QUALCOSA+iplen; /*TODO*/
+		buf+=2+iplen; 
 	}
 	return count;
 }
@@ -168,6 +170,10 @@ int snsd_prio_to_dansws(dns_pkt *dp,snsd_prio *sp,int iplen)
 		
 	/* ip2h functions */
 
+/*
+ * Converts a lcl_cache struct to a set of dns answers.
+ * Returns the number of answers added.
+ */
 int lcl_cache_to_dansws(dns_pkt *dp,lcl_cache *lc)
 {
 	dns_pkt_a *dpa;
@@ -179,15 +185,26 @@ int lcl_cache_to_dansws(dns_pkt *dp,lcl_cache *lc)
 		strcpy(dpa->rdata,lc->hostname);
 		res++;
 	}
-	FREE(lc);
+	lcl_cache_free(lc);
 	return res;
 }
 
-
+/* 
+ * Converts a lcl_cache to andns data. 
+ * Returns the number of bytes writed.
+ */
 size_t lcl_cache_to_aansws(char *buf,lcl_cache *lc,int *count)
 {
+	uint16_t slen;
+	size_t ret=0;
+	
 	list_for(lc) {
-		FA_IL_PACCHETTO;
-		return;
+		slen=strlen(lc->hostname);
+		slen=htons(slen);
+		memcpy(buf,&slen,2);
+		buf+=2;
+		strcpy(buf,lc->hostname);
+		ret+=2+slen;
 	}
+	return ret;
 }
