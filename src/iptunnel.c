@@ -29,11 +29,12 @@
 
 #include "includes.h"
 
+#include "inet.h"
+#include <linux/byteorder/little_endian.h>
 #include <linux/ip.h>
 #include <linux/if_tunnel.h>
 
 #include "libnetlink.h"
-#include "inet.h"
 #include "libnetlink.h"
 #include "ll_map.h"
 #include "krnl_route.h"

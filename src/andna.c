@@ -37,6 +37,7 @@
 #include "netsukuku.h"
 #include "daemon.h"
 #include "crypto.h"
+#include "snsd_cache.h"
 #include "andna_cache.h"
 #include "andna.h"
 #include "andns.h"
@@ -163,7 +164,7 @@ void andna_init(void)
 	pkt_queue_init();
 	
 	andna_caches_init(my_family);
-	snsd_init(my_family);
+	snsd_cache_init(my_family);
 
 	/* Load the good old caches */
 	andna_load_caches();

@@ -9,6 +9,7 @@
 
 - SNSD
 	- andna.pod (man page)
+	- pubkey: automatic deletion request
 
 - update the dependencies list: 
 	- depends on iptables

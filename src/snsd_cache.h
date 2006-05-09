@@ -230,7 +230,7 @@ INT_INFO snsd_service_llist_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
  * Since we limit the proto number to an 8bit number, there can be only 255
  * protocols in this array.
  */
-const char proto_str[][5] =
+const static char proto_str[][5] =
 {
 	{ "tcp" },
 	{ "udp" },
@@ -245,7 +245,7 @@ const char proto_str[][5] =
  *
  */
 
-void snsd_init(int family);
+void snsd_cache_init(int family);
 u_char proto_to_8bit(char *proto_name);
 
 snsd_service *snsd_find_service(snsd_service *sns, u_short service, u_char proto);
