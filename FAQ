@@ -53,7 +53,7 @@ A: Netsukuku is a mesh network or a P2P net system that generates and sustains
    other, then Netsukuku will build the routes.
    In other words Netsukuku replaces the level 3 of the model iso/osi with
    another routing protocol.
-   For more information read the section "2.4  So, WTF is it?" of the
+   For more information read the section "2.3  So, WTF is it?" of the
    document.
 
 Q: What are its features?

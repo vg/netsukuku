@@ -16,12 +16,11 @@
   
   2. The Netsukuku wired
   
-  	2.1  No name, no identity
-	2.2  Gandhi
-	2.3  Self Control
-	2.4  So, WTF is it?
-	2.5  Other implementations
-  	2.6  The born
+	2.1  Gandhi
+  	2.2  No name, no identity
+	2.3  So, WTF is it?
+	2.4  Other implementations
+  	2.5  The born
   
   3. Netukuku Protocol v7: the seventh son of Ipv7
 
@@ -87,7 +86,7 @@
   http://netsukuku.freaknet.org
 
   Future extensions to this document can be found and added here:
-  http://lab.dyne.org/Netsukuku_RFC
+  http://lab.dyne.org/Netsukuku
 
 
   0.  The old wired
@@ -136,81 +135,26 @@
   no privilege and no conditioning means, as authentic citizens of the
   Information society.
  
- 
-  1.   The Pure Wired
+  2.  The Netsukuku wired
+
+  Netsukuku is a mesh network or a P2P net system that generates and sustains
+  itself autonomously. It is designed to handle an unlimited number of nodes
+  with minimal CPU and memory resources. Thanks to this feature it can be
+  easily used to build a worldwide distributed, anonymous and anarchical
+  network, separated from the Internet, without the support of any servers,
+  ISPs or authority controls.
+  Keep in mind that it is a _physical network_, it isn't built upon any other
+  existing net, therefore there must be computers linked _physically_ each
+  other, then Netsukuku will build the routes.
+  In other words Netsukuku replaces the level 3 of the model iso/osi with
+  another routing protocol.
+
+  Being Netsukuku a distributed and decentralised net, it is possible to
+  implement real distributed systems on it, e.g. the Abnormal Netsukuku Domain
+  Name Anarchy (ANDNA) which will replace the actual hierarchic and
+  centralized system of DNS.
   
-  A neural net, a web, a social network, a fishing net, are pure nets.
-  The nature itself is, indeed, the universe in its whole, from the
-  infinitely small to the infinitely big, are pure nets.
-  
-  In all the nets that can be found in nature no any centre of sorting of the
-  net traffic exist. 'cause they are useless.
-  The power and efficiency of this kind of nets is such because of their
-  simplicity, therefore no any complications can be found in them.
-  
-  In a pure net every node has the function of router and then there aren't
-  dedicated routers, indispensable, on the contrary, to the other hierarchic
-  nets.
- 
-  The necessary and sufficient condition in order to consider a node belonging
-  to a pure net is the connection to at least another node.
-  In this way all the nodes of the net be connected to each other.
-  If, for example, the node (A) (see the picture below) is sending a message
-  to the node (Y), before it will send it to (C), the node (C) will send it to
-  (E), then to (F) and at the end it will reach (Y).
-  Let's recap: (A)-->(C)-->(E)-->(F)-->(Y).
-
-
-				         (L)
-				          |
-				          |
-			(A)----(B)-------(H)
-			 |			     (T)
-			 |			      |
-	  (G)----(E)----(C)----(D)-------------------(S)
-	          |		|
-   	          |		|				  (L1)
-	         (F)---(Y)--(1)	|				   |	
-		 		|				   |
-				|				   |
-		       (R)-----(M)---------(Q)		  (Z)----(76)	
-			      / | \			   |	
-			    /	|   \			   |	
-		       (P)/	|     \(O)----------------(U)----(V)
-			  	|	|			  |
-     (5)---------------------- (N)	|			  |
-      |					|			  |
-      |		       (9)     		|			 (X)
-      |			|	       (20)
-     (3)---------------(4)-----(8)
-     
- 				-| A possible portion of a pure net |-
-
-
-  2.   The Netsukuku wired
-  
-  Netsukuku is a pure net which exploits the chaos, it generates and sustains
-  itself autonomously, having the shape of a fractal.
-  The fusion of pure net with fractals and chaos is the characteristic which
-  allows to Netsukuku to be a diffused and distributed, not centralized,
-  anonymous, anarchical, not controlled and autonomous net.
-
-  2.1  No name, no identity
-  
-  Inside Netsukuku everyone, in any place, at any moment, ca ook immediately
-  to the net without coming trough thousands bureaucratical obstacles, which
-  cannot be overpassed.
-  Moreover, every elements of the net is extremely dynamic and it's never the
-  same. The ip address which identify a computer is chosen randomly,
-  therefore it's impossible to associate it to a particular physical place,
-  and the routes themselves, been composed by a huge number of node, show the
-  tendence to have such a high complexity and density to make the trace of a
-  node a titanic task.
-  Since there isn't any contract with any organizations, the speed of the data
-  transfer is uniquely limitated by the actual tecnology of the network cards.
-
-
-  2.2  Gandhi
+  2.1  Gandhi
 
   Netsukuku is anarchical. It generates itself and can stand alone.
   A node hooks to Netsukuku, the net automatically rewrites itself and all the
@@ -222,20 +166,26 @@
   The more they increase in number the more the net grows and becomes perfect.
   In Netsukuku there is no any differences among private and public nets and
   talking about LAN became meaningless.
-
-	
-  2.3  Self Control
-
-  Netsukuku can be neither controlled nor destroyed because it is totally
-  decentralized and distributed. The only way to control or demolish
-  Netsukuku is knocking physically down each single node which is part of it.
-
-  Being Netsukuku a distributed and not centralised net, it is possible to
-  implement real distributed systems on it, e.g. the Abnormal Netsukuku Domain
-  Name Anarchy (ANDNA) which will replace the actual hierarchic and
-  centralized system of DNS.
   
-  2.4  So, WTF is it?
+  It can be neither controlled nor destroyed because it is totally
+  decentralised and distributed.
+  The only way to control or demolish Netsukuku is knocking physically down
+  each single node which is part of it.
+  
+  2.2  No name, no identity
+  
+  Inside Netsukuku everyone, in any place, at any moment, can hook immediately
+  to the net without coming trough any bureaucratic or legal compliance.
+  Moreover, every elements of the net is extremely dynamic and it's never the
+  same. The ip address which identify a computer is chosen randomly,
+  therefore it's impossible to associate it to a particular physical place,
+  and the routes themselves, been composed by a huge number of node, show the
+  tendence to have such a high complexity and density to make the trace of a
+  node a titanic task.
+  Since there isn't any contract with any organisations, the speed of the data
+  transfer is uniquely limited by the actual tecnology of the network cards.
+
+  2.3  So, WTF is it?
   
   Netsukuku is a mesh network or a p2p net composed by a net protocol for
   dynamic routing called Npv7_HT.
@@ -250,7 +200,7 @@
   this purpose. It would be impossible to implement one these protocols in
   order to create and maintain such a net as Netsukuku is, where every each
   node is a router by itself, because the map of all the routes would require
-  a space, on each pc connected to the net, of about 1 hundred Gb.
+  a space, on each pc connected to the net, of about ten Gb.
   
   The Npv7 structures the entire net as a fractal and, in order to calculate
   all the needed routes which are necessary to connect a node to all the other
@@ -261,13 +211,21 @@
   fractal. Thus there is a high compression of a structure which can be
   infinitely expanded. This means that we need just a few Kb to keep the whole
   Netsukuku map.
+  The map structure of Netsukuku can be also defined more precisely by
+  calling it a highly clusterised graph of nodes.
+  
   On the other hand, the QSPN is a meta-algorithm in the sense that it
   doesn't follow any predefined mathematical instructions but exploits the
   chance and the chaos, which both don't need any heavy computation. In other
   words, also a simple calculator can work using the QSPN to be connected to
-  Netsukuku.
+  Netsukuku. 
+  This means that the QSPN has to be executed on a real (or simulated)
+  network. The nodes have to send the QSPN pkts in order to "execute" it.
+  For this reason it is not always true that a determinate pkt will be sent
+  before another one. This system allows to get the best routes without any
+  heavy computation.
 
-  2.5  Other implementations
+  2.4  Other implementations
 
   Netsukuku is not restricted solely to the creation of a net of computers, it
   is a protocol which implements a pure net, and alike every net protocol can
@@ -277,26 +235,29 @@
   Let's take in exam the case of mobile phones. Also the mobile phone net is a
   hierarchic and centralised net. Thousands of nodes hook to a same cell,
   which will sort the traffic to the other cells and these, finally, will send
-  the data to the destinator-nodes. Well, Netsukuku can be used also by
+  the data to the destination-nodes. Well, Netsukuku can be used also by
   mobile phones, making pointless the existence of all the mobile
   telecommunication companies.
 
   This can be applied to all the systems of communication which are used
   nowadays. 
   
-  2.6  The born
-
+  2.5  The born
 
   The story of how the idea of Netsukuku was born is quite a long and
   complicated story.
-  In the far 2003, a crew of crazy freaks started to think about Ipv7: a net
-  in which all the packets was sent in broadcasted, compressed with the zlib7,
-  an algorithm which could compress all the existent Internet into just
-  32 byte. In Ipv7 the nodes were devoid of an ip address. 
-  In this way we could obtain an extremely decentralised and totally free net.
-  Those people were really happy after the first draft of the RFC.
-  One year later, the project is lost in the infinite forks of time, but after
-  some time, the dust is shaked off the great Ipv7 book.
+  During a historical transmission of radio Cybernet at the Hackmeeting 2000,
+  the idea of Ipv7, nocoder, nocrypt came to life. They were absurd theoric
+  jokes about a IP protocols, intelligent compiler and crypto programs.
+  In the far 2003, a crew of crazy freaks continued to expand the concepts of
+  the Ipv7: a net in which all the packets were sent in broadcasted, compressed
+  with the zlib7, an algorithm which could compress all the existent Internet
+  into just 32 byte ( See http://idiki.dyne.org/wiki/Zlib7 ).
+  In Ipv7 the nodes were devoid of an ip address, it was an extremely
+  decentralised and totally free net. Those people were really happy after the
+  first draft of the RFC.
+  One year later, the project was lost in the infinite forks of time, but after
+  some time, the dust was shaked off the great Ipv7 book.
   We started to delineate the idea of the implementation of a pure net. Month
   by month the net became more and more refined, and the project became
   something concrete.
@@ -309,12 +270,24 @@
   theoretical kernel was ready. The algorithms were defined.
   We started to code. The curse of the protocols coders of Pharaon
   Mortedelprimogenito invaded the Netsukuku code. The delirium is the right
-  reward to all those who dare to create protocols of pure nets. 
+  reward to all those who dare to create protocols of pure nets.
   In spite of all, exactly after one year and after fourteen thousand lines of
   code, Netsukuku Beta version was ready and immediately presented at the
   National Hackmeeting 2005 in Naples. The ANDNA was completed and
   documented. 
+  In October, the first public version of Netsukuku was released.
+  By now, in May 2006, the protocol was greatly improved, and feature after
+  feature the daemon reached forty thousand lines of code.
   What's left sleeps in our minds and still have to become.
+
+
+-- 			
+
+
+			The Netsukuku Protocol
+				Nvp7
+ 
+
 
   3.   Netsukukuku protocol v7
 
@@ -328,6 +301,10 @@
   will bring an overload in the net.
   Moreover, each time the map changes, it's necessary to recalculate all the
   routes.
+
+  Future extensions to the Npv7 can be found and added here:
+  http://lab.dyne.org/Netsukuku_RFC
+ 
 
   3.1  #define Npv7
 
