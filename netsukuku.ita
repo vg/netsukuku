@@ -8,21 +8,20 @@
 
 --								
 
- -1. Preface
+0. Preface
 
-  0. The old wired
+  1. The old wired
 
-  1. The Pure Wired
-  
   2. The Netsukuku wired
   
-  	2.1  No name, no identity
-	2.2  Gandhi
-	2.3  Self Control
-	2.4  So, WTF is it?
-	2.5  Other implementations
-  	2.6  The born
-  
+	2.1  Gandhi
+  	2.2  No name, no identity
+	2.3  So, WTF is it?
+	2.4  Other implementations
+  	2.5  The born
+
+--
+
   3. Netukuku Protocol v7: the seventh son of Ipv7
 
 	3.1  #define Npv7
@@ -81,43 +80,40 @@
   
 --
 
- -1.  Preface
+  0.  Preface
 
   Questo documento ed il codice sorgente relativo sono disponibili su:
   http://netsukuku.freaknet.org
 
   Le future modifiche e aggiunte a questo documento possono essere trovate
-  e proposte qui: http://lab.dyne.org/Netsukuku_RFC
+  e proposte qui: http://lab.dyne.org/Netsukuku
 
 
-  0.  The old wired
+  1.  The old wired
   
   Internet e' una rete gerarchica gestita da multinazionali ed enti che vengono
   supportati dai governi. Ogni bit di traffico dati passa attraverso le loro
   backbone e i loro router. 
-  I benemeriti Internet Service Provider offrono la connettivita' a tutti i
-  poveri umani che si trovano nelle parti piu' basse di questa scala
-  gerarchica garantendo, cosi', che Internet sia di tutti e per tutti,
-  ovviamente, secondo il giusto e saggio principio dell'uguaglianza. Essi
-  chiedono, in cambio, una "piccola"  somma di denaro per poter accedere a
-  questa rete. D'altronde l'informazione, il sapere e la comunicazione non
-  sono di certo frutti che crescono sugli alberi, gratuitamente e liberamente.
-  Grazie al loro generoso servizio, circa 600 milioni di persone possono 
-  connettersi alla grande, libera, ed anonima rete. 
-  Ai restanti 5 miliardi e 400 milioni di persone, che non possono permettersi 
-  questo lusso, viene detto di riprovare piu' tardi, quando nel mondo non ci
-  saranno piu' guerre e regnera' la pace.
+  Gli Internet Service Provider offrono la connettivita' a tutti gli utenti,
+  che si trovano nelle parti piu' basse di questa scala gerarchica.
+  Non esiste alcun modo per condividere la proprieta' di Internet e quindi,
+  gli utenti, per connettersi alla grande Rete, sono costretti a sottostare
+  alle pesanti condizioni imposte dalle mega-corporation.
+  Internet e' oggi il mezzo di comunicazione per eccellenza che permette la
+  diffusione e la condivisione globale del sapere e dell'informazione.
+  Circa 1 miliardo di persone possono connettersi a questa grande rete
+  proprietaria, ma le restanti 5 miliardi, che non hanno sufficienti
+  risorse economiche, aspettano tutt'ora che le multinazionali offrano loro
+  un servizio realmente accessibile.
   
-  Ritornando al discorso delle multinazionali, che cosa accade se una di esse
-  o un ISP decide di non fornire piu' il suo servizio? E' semplice: intere
-  nazioni saranno tagliate immediatamente fuori da Internet. Paradossalmente
-  Internet e' nato proprio per garantire una comunicazione sicura ed
-  inattaccabile tra i vari nodi della rete.
-  E che cosa avviene se una di queste multinazionali stipula accordi segreti o
-  non con i governi per sorvegliare il traffico dati e rintracciare veri o
-  presunti "terroristi"? Il traffico viene intercettato, analizzato e i
-  potenziali "terroristi" sottoposti, senza alcun vincolo, ad illimitati
-  controlli.
+  Internet e' nato per garantire una comunicazione sicura e inattaccabile tra
+  i vari nodi della rete, ma adesso, paradossalmente, quando un ISP decide di
+  non fornire piu' il suo servizio intere sono immediatamente tagliate fuori
+  da Internet.
+  
+  Inoltre, Internet non e' una rete anonima: gli ISP e le multinazionali
+  possono intercettare e analizzare il traffico che passa dai loro server
+  senza alcun vincolo.
 
   La struttura gerarchica e centralizzata di Internet crea, di conseguenza,
   altri sistemi identici che poggiano su di essa, come ad esempio il DNS.
@@ -127,6 +123,7 @@
   Questo tipo di struttura permette, in modo semplice ed efficace, di
   localizzare fisicamente qualsiasi computer connesso ad Internet in
   pochissimo tempo e senza alcuno sforzo.
+
   In Cina, l'intera rete e' sorvegliata continuamente da numerosi computer che
   filtrano il traffico Internet: un cinese non potra' mai vedere e in ogni
   caso venire a conoscenza di un sito che contiene delle parole chiavi
@@ -149,69 +146,46 @@
   Con una rete distribuita, decentralizzata e pienamente efficiente, una rete
   che non possa essere sottoposta a nessun tipo di governo.
  
-  1.   The Pure Wired
-  
-  Una rete neurale, una ragnatela, una rete sociale, una rete da pesca sono
-  delle reti pure. La natura stessa e, infine, l'universo nel suo insieme,
-  dall'infinitamente piccolo all'infinitamente grande, sono delle reti
-  pure.
-  
-  In tutte le reti esistenti in natura non esistono centri di "smistamento del
-  traffico" della rete, perche' non sono di alcuna utilita'.
-  Queste reti raggiungono una potenza ed efficacia incredibile perche' sono
-  semplici, non esiste alcuna complicazione.
-
-  In una rete pura ogni nodo svolge la funzione di un router e quindi non
-  esistono i router dedicati, indispensabili, invece, alle reti gerarchiche.
-  
-  La condizione necessaria e sufficiente perche' un nodo appartenga alla rete
-  pura e' quella di essere connesso ad almeno un altro nodo.
-  In questo modo tutti i nodi della rete possono mettersi in comunicazione.
-  Se, per esempio, il nodo (A) (vedi figura) deve mandare un messaggio al nodo
-  (Y), prima lo inviera' a (C),  il nodo (C) lo inviera' ad (E), poi passera' a
-  (F) ed infine arrivera' a (Y).
-  Riassumendo abbiamo (A)-->(C)-->(E)-->(F)-->(Y).
-
-
-				         (L)
-				          |
-				          |
-			(A)----(B)-------(H)
-			 |			     (T)
-			 |			      |
-	  (G)----(E)----(C)----(D)-------------------(S)
-	          |		|
-   	          |		|				  (L1)
-	         (F)---(Y)--(1)	|				   |	
-		 		|				   |
-				|				   |
-		       (R)-----(M)---------(Q)		  (Z)----(76)	
-			      / | \			   |	
-			    /	|   \			   |	
-		       (P)/	|     \(O)----------------(U)----(V)
-			  	|	|			  |
-     (5)---------------------- (N)	|			  |
-      |					|			  |
-      |		       (9)     		|			 (X)
-      |			|	       (20)
-     (3)---------------(4)-----(8)
-     
- 				-| Una possibile porzione di una rete pura |-
-
-
   2.   The Netsukuku wired
   
-  Netsukuku e' una rete pura che sfrutta il caos, si crea e si mantiene
-  autonomamente assumendo la forma di un frattale.
-  La fusione di una rete pura con i frattali e il caos e' la caratterestica
-  che permette a Netsukuku di essere un rete diffusa e distribuita, non
-  centralizzata, anonima, anarchica, non controllata ed autonoma.
-
-  2.1  No name, no identity
+  Netsukuku e' una mesh network o un sistema p2p che si crea e si mantiene
+  autonomamente.
+  Netsukuku e' stato progettato per gestire un numero illimitato di nodi con
+  un minimo uso di CPU e memoria. Questa sua caratteristica puo' essere
+  sfruttata per costruire, senza il supporto di alcun server o ISP, una rete
+  globale distribuita, anonima e anarchica, separata da Internet.
+  Questa rete e' formata da computer collegati fisicamente tra loro, quindi
+  non e' costruita su alcuna altra rete. Netsukuku si occupa solamente di
+  costruire le rotte che collegano tutti i computer della rete.
+  In altre parole, Netsukuku sostituisce il livello 3 del modello iso/osi con
+  un altro protocollo di routing.
   
+  Poiche' Netsukuku, e' una rete distribuita, e non centralizzata, e'
+  possibile implementare su di essa effettivi sistemi distribuiti, come ad
+  esempio l'Abnormal Netsukuku Domain Name Anarchy (ANDNA), che sostituira'
+  l'attuale sistema gerarchico e centralizzato dei DNS.
+
+  2.1  Gandhi
+ 
+  Netsukuku e' anarchico. Si crea e si gestisce da se'.
+  Un nodo si aggancia a Netsukuku, la rete si auto-riscrive e tutti gli altri 
+  nodi conoscono quali sono le strade piu' veloci ed efficienti per comunicare 
+  con il nuovo arrivato.
+  I nodi non hanno privilegi o limitazioni rispetto ad altri nodi, fanno parte
+  della rete e contribuiscono alla sua espansione ed efficienza.
+  Con l'aumentare del loro numero, la rete cresce e si perfeziona.
+  In Netsukuku non vi e' alcuna differenza tra reti private e pubbliche e non
+  ha piu' alcun significato parlare di LAN.
+ 
+  Netsukuku non puo' essere controllato ne' distrutto poiche' e' totalmente
+  decentralizzato e distribuito. L'unico modo per sorvegliare o smantellare
+  Netsukuku e' abbattere fisicamente ogni singolo nodo che lo compone.
+
+  2.2  No name, no identity
+
   In Netsukuku chiunque, in qualunque luogo e in qualsiasi momento puo'
   agganciarsi immediatamente alla rete senza dover passare attraverso
-  adempimenti burocratici o contrattuali, tuttora ineluttabili.
+  adempimenti burocratici o contrattuali.
   Inoltre, ogni elemento della rete e' estremamente dinamico e non rimane mai
   uguale a se' stesso. L'indirizzo IP che identifica un computer e' scelto
   casualmente, quindi e' impossibile associarlo ad una localita' fisica
@@ -222,44 +196,21 @@
   trasferimento dei dati e' limitata unicamente dalla tecnologia attuale delle
   schede di rete.
 
-  2.2  Gandhi
-
-  Netsukuku e' anarchico. Si crea e si gestisce da se'.
-  Un nodo si aggancia a Netsukuku, la rete si auto-riscrive e tutti gli altri 
-  nodi conoscono quali sono le strade piu' veloci ed efficienti per comunicare 
-  con il nuovo arrivato.
-  I nodi non hanno privilegi o limitazioni rispetto ad altri nodi, fanno parte
-  della rete e contribuiscono alla sua espansione ed efficienza.
-  Con l'aumentare del loro numero, la rete cresce e si perfeziona.
-  In Netsukuku non vi e' alcuna differenza tra reti private e pubbliche e non
-  ha piu' alcun significato parlare di LAN.
-	
-  2.3  Self Control
-
-  Netsukuku non puo' essere controllato ne' distrutto poiche' e' totalmente
-  decentralizzato e distribuito. L'unico modo per sorvegliare o smantellare
-  Netsukuku e' abbattere fisicamente ogni singolo nodo che lo compone.
-
-  Su Netsukuku, essendo una rete distribuita, e non centralizzata, si possono
-  implementare effettivi sistemi distribuiti, come ad esempio l'Abnormal
-  Netsukuku Domain Name Anarchy (ANDNA), che sostituira' l'attuale sistema
-  gerarchico e centralizzato dei DNS.
-
-  2.4  So, WTF is it?
+  2.3  So, WTF is it?
   
   Netsukuku e' una mesh network o rete p2p composta da un protocollo di rete
   per il routing dinamico, chiamato Npv7_HT.
   Attualmente esistono molti protocolli ed algoritmi per il routing dinamico,
   ma a differenza dell'Npv7_HT, vengono utilizzati solo per creare piccole e
   medie reti. Anche i router di Internet sono gestisti da vari protocoli come
-  l'OSPF, il RIP od il BGP, che usano diversi algoritmi classici per trovare
+  l'OSPF, il RIP o il BGP, che usano diversi algoritmi classici per trovare
   il percorso migliore per raggiungere un nodo in una rete.
   Questi protocolli richiedono un consumo di cpu e memoria elevatissimo, ed e'
   per questo motivo che i router di Internet sono dei computer appositamente
   dedicati. Sarebbe impossibile adottare uno di questi protocolli per creare
   e mantenere una rete come Netsukuku, dove ogni nodo e' a sua volta un
   router, perche' la mappa di tutte le rotte richiederebbe uno spazio, su
-  ciascun pc connesso alla rete, di circa un centinaio di Gb.
+  ciascun pc connesso alla rete, di circa dieci Gb.
   
   L'Npv7 struttura l'intera rete come un frattale, ed usa un particolare
   algoritmo chiamato Quantum Shortest Path Netsukuku (QSPN) per calcolare
@@ -269,12 +220,18 @@
   stesso. Si ha quindi una compressione elevata di una struttura che
   puo' espandersi infinitamente. Questo significa che bastano pochi Kb per
   mantenere l'intera mappa di Netsukuku.
+  La struttura della mappa puo' anche essere definita in modo piu' preciso
+  come un grafo altamente clusterizzato.
+  
   Il QSPN, invece, e' un meta-algoritmo perche' non esegue una sequenza di
   istruzioni matematiche definite ma sfrutta il caso e il caos, che non
-  richiedono nessun calcolo pesante. In altre parole, anche una semplice
-  calcolatrice puo' usare il QSPN per stare connessa in Netsukuku.
-
-  2.5  Other implementations
+  richiedono nessun calcolo pesante. 
+  Il QSPN deve essere eseguito su una rete reale (o simulata). I nodi devono
+  mandare i pacchetti QSPN per "eseguire" l'algoritmo, e per questo motivo
+  non e' sempre vero che un determinato pacchetto sara' mandato prima di un
+  altro.
+  
+  2.4  Other implementations
 
   Netsukuku non e' limitato alla creazione di una rete di soli computer, e' un
   protocollo che implementa una rete pura, e cosi' come ogni protocollo di rete
@@ -289,20 +246,24 @@
   Questo ragionamento puo' essere applicato a tutti i sistemi di comunicazione
   che esistono attualmente.
   
-  2.6  The born
+  2.5  The born
 
   La storia di come si sia arrivati a Netsukuku e' lunga e travagliata.
-  Nel lontano 2003, un gruppo di pazzi deliranti concepisce l'idea
-  dell'Ipv7: una rete in cui tutti i pacchetti venivano mandati in broadcast,
-  compressi con le zlib7, un algoritmo che comprimeva l'attuale Internet in
-  32 byte. In Ipv7 nessun nodo aveva un indirizzo IP. Tutto il sistema era
-  gestito da programmi che si autoscrivevano usando il compilatore nocoder.
-  Ecco che si aveva una rete estremamente decentralizzata e libera.
-  Quelle persone erano felici, e dopo la stesura del primo RFC, un sorriso
-  sereno e una luce angelica avvolgeva le loro figure.
+  Durante un storica trasmissione di radio Cybernet, all'Hackmeeting del
+  2000, nasce l'idea dell'Ipv7, di nocoder e nocrypt: sono assurdi scherzi
+  teorici che trattano protocolli di rete, compilatori intelligenti e
+  programmi cryptografici.
+  Nel lontano 2003, un gruppo di pazzi deliranti continua a espandere i
+  concetti dell'Ipv7: una rete in cui tutti i pacchetti vengono mandati in
+  broadcast, compressi con le zlib7, un algoritmo che comprime l'attuale
+  Internet in 32 byte ( Vedi http://idiki.dyne.org/wiki/Zlib7 ). 
+  In Ipv7 nessun nodo possiede un indirizzo IP e la rete e' estremamente
+  decentralizzata e libera. Quelle persone erano felici, e dopo la stesura del
+  primo RFC, un sorriso sereno e una luce angelica avvolgeva le loro figure.
+  
   Un anno trascorre, il progetto si perde tra le infinite diramazioni del
   tempo, ma dopo non molto la polvere viene scrollata dal grande libro
-  dell'Ipv7. Si incomincia a delirare sull'implementazione di una rete pura.
+  dell'Ipv7. Si comincia a delirare sull'implementazione di una rete pura.
   I mesi passano. La rete viene definita sempre di piu', diventa quasi 
   tangibile...
   <<Ma deve anche supportare una qualche forma di antiflood e antispoofing>>. 
@@ -311,18 +272,32 @@
   centrali?>>.
   Tre mesi dopo, a seguito di numerosissime peregrinazioni mistiche, il cuore 
   teorico e' pronto. Gli algoritmi sono definiti. 
-  Si incomincia a codare. La maledizione dei coder di protocolli di rete del
+  Si comincia a codare. La maledizione dei coder di protocolli di rete del
   sacro faraone Mortedelprimogenito si riversa sul codice di Netsukuku. La 
   pazzia e il delirio sono la giusta ricompensa a tutti coloro i quali
   osano addentrarsi nella creazione di protocolli di reti pure.
+  
   Nonostante tutto, esattamente dopo un anno e 14 mila righe di codice,
   Netsukuku e' pronto e diventa Beta.
   Due mesi dopo la presentazione di Netsukuku all'Hackmeeting 2005, il
-  protocollo dell'ANDNA, cosi' come il suo codice, e' completamente
+  protocollo di ANDNA, cosi' come il suo codice, e' completamente
   definito e documentato.
+  In Ottobre, viene stata rilasciata la prima versione publica di Netsukuku.
+  
+  Nel corso dei mesi il protocollo e il demone sono stati profondamente
+  migliorati e adesso, a Maggio del 2006, il codice ha raggiunto quaranta mila
+  righe.
+
   Il resto giace in potenza e deve ancora divenire.
   
   
+-- 			
+
+			The Netsukuku Protocol
+				Npv7
+
+
+
   3.   Netsukukuku protocol v7
 
   Netsukuku, usa l'Npv7 (Netsukuku protocol version 7), il suo protocollo, che

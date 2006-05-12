@@ -8,12 +8,10 @@
 
 --								
 
- -1. Preface
+  0. Preface
 
-  0. The old wired
+  1. The old wired
 
-  1. The Pure Wired
-  
   2. The Netsukuku wired
   
 	2.1  Gandhi
@@ -21,7 +19,9 @@
 	2.3  So, WTF is it?
 	2.4  Other implementations
   	2.5  The born
-  
+
+--
+
   3. Netukuku Protocol v7: the seventh son of Ipv7
 
 	3.1  #define Npv7
@@ -80,7 +80,7 @@
   
 --
 
- -1.  Preface
+  0.  Preface
 
   This document and the relative source code are available on:
   http://netsukuku.freaknet.org
@@ -89,35 +89,42 @@
   http://lab.dyne.org/Netsukuku
 
 
-  0.  The old wired
+  1.  The old wired
   
-  Internet is a hierarchic network managed by multinational companies and 
+  The Internet is a hierarchic network managed by multinational companies and 
   organizations supported by governments. Each bit of Internet traffic passes
   through proprietary backbones and routers.
   The Internet Service Providers give the connectivity to all the users, who
   are in the lowest rank of this hierarchic pyramid. There is no way to share
   the ownership of Internet and people can join the Net only in accordance
   with conditions and terms imposed by the Majors.
-  Internet represents, today, the means to access information, knowledge and
-  communication. About 1 billion of people can surf the documents inside the
-  World Wide Web, but the remaining 5 billion of people, not connected to this
-  great proprietary network, are still waiting the Majors to decide to supply
-  the service, leaving entire nations cut out of the Internet.
-  Beside that, Internet is not anonymous: multinationals can trace back and
-  analyse the traffic of data going through their server.
+  The Internet represents, today, the means to access information, knowledge
+  and communication. About 1 billion of people can connect to this great
+  proprietary network, but the remaining 5 billion of people, which don't have
+  enough economic resource, are still waiting the multinationals to supply a
+  service with in their reach.
+  
+  The Internet was born with the intent of warranting a secure and
+  unattackable communication between the various nodes of the network, but
+  now, paradoxally, when an ISP decide to stop to provide its service, entire
+  nations are immediately cut out of the Internet.
+  
+  Beside that, Internet is not anonymous: the ISP and the multinationals can
+  trace back and analyse the traffic of data going through their servers,
+  without any limits.
  
   The centralised and hierarchical structure of Internet creates, as a
-  consequence, other identical systems, based on it, i.e. the DNS.  The
-  servers of the Domain Name Servers are managed by different ISPs, as well
+  consequence, other identical systems, based on it, i.e. the DNS.  
+  The servers of the Domain Name System are managed by different ISPs, as well
   and the domains are literally sold through a similar centralised system.
   This kind of structures allows, in a very simple and efficient way, to
-  physically localise any computers, which are connected to Internet, in a
+  physically localise any computers, which are connected to the Internet, in a
   very short time and without any particular efforts.
   
   In China, the whole net is constantly watched by several computers filtering
   the Internet traffic: a Chinese will never be able to see or came to know
   about a site containing some keywords, such as "democracy", censored by
-  the government. Beside that he'll never be able to express his own ideas on
+  the government. Beside that, he'll never be able to express his own ideas on
   the net, e.g. about his government's policy, without risking till the death
   penalty.
 
@@ -130,23 +137,23 @@
   As long as all the efforts to bring more freedom, privacy and accessibility
   in the Internet face aversions, fears, contrary interests of governments and
   private companies, the very alternative solution to this problem is to let
-  the users and the documents migrate toward a distributed, decentralised and
-  fully efficient net, in which all the users interact at the same level, with
-  no privilege and no conditioning means, as authentic citizens of the
-  Information society.
+  the users migrate toward a distributed, decentralised and fully efficient
+  net, in which all the users interact at the same level, with no privilege
+  and no conditioning means, as authentic citizens of a free world wide
+  community.
  
   2.  The Netsukuku wired
 
-  Netsukuku is a mesh network or a P2P net system that generates and sustains
+  Netsukuku is a mesh network or a p2p net system that generates and sustains
   itself autonomously. It is designed to handle an unlimited number of nodes
   with minimal CPU and memory resources. Thanks to this feature it can be
   easily used to build a worldwide distributed, anonymous and anarchical
   network, separated from the Internet, without the support of any servers,
   ISPs or authority controls.
-  Keep in mind that it is a _physical network_, it isn't built upon any other
-  existing net, therefore there must be computers linked _physically_ each
-  other, then Netsukuku will build the routes.
-  In other words Netsukuku replaces the level 3 of the model iso/osi with
+  This net is composed by computers linked physically each other, therefore
+  it isn't build upon any existing network. Netsukuku builds only the routes
+  which connects all the computers of the net.
+  In other words, Netsukuku replaces the level 3 of the model iso/osi with
   another routing protocol.
 
   Being Netsukuku a distributed and decentralised net, it is possible to
@@ -216,15 +223,12 @@
   
   On the other hand, the QSPN is a meta-algorithm in the sense that it
   doesn't follow any predefined mathematical instructions but exploits the
-  chance and the chaos, which both don't need any heavy computation. In other
-  words, also a simple calculator can work using the QSPN to be connected to
-  Netsukuku. 
-  This means that the QSPN has to be executed on a real (or simulated)
-  network. The nodes have to send the QSPN pkts in order to "execute" it.
-  For this reason it is not always true that a determinate pkt will be sent
-  before another one. This system allows to get the best routes without any
-  heavy computation.
-
+  chance and the chaos, which both don't need any heavy computation.
+  The QSPN has to be executed on a real (or simulated) network. The nodes have
+  to send the QSPN packets in order to "execute" it.
+  For this reason it is not always true that a determinated pkt will be sent
+  before another one. 
+  
   2.4  Other implementations
 
   Netsukuku is not restricted solely to the creation of a net of computers, it
@@ -276,8 +280,8 @@
   National Hackmeeting 2005 in Naples. The ANDNA was completed and
   documented. 
   In October, the first public version of Netsukuku was released.
-  By now, in May 2006, the protocol was greatly improved, and feature after
-  feature the daemon reached forty thousand lines of code.
+  By now, in May 2006, the protocol has been greatly improved, and feature
+  after feature the daemon has reached forty thousand lines of code.
   What's left sleeps in our minds and still have to become.
 
 
