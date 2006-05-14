@@ -7,12 +7,16 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
+#include "andns_lib.h"
+
 #define VERSION			"0.1"
 
 #define NTKDIG_PORT		53
 #define NTKDIG_PORT_STR		"53"
 #define MAX_NS			3
 #define LOCALHOST		"localhost"
+
+#define MAX_HOSTNAME_LEN	512
 
 //#define ANDNS_MAX_SZ    1024
 
@@ -23,29 +27,25 @@
 #define REALM_NTK_STR		"ntk"
 #define REALM_INT_STR		"inet"
 
-#define PROTO_ANDNS		0
-#define PROTO_DNS		1
-#define PROTO_ANDNS_STR		"andns"
-#define PROTO_DNS_STR		"dns"
-
 #define QTYPE_A			0
 #define QTYPE_PTR		1
-#define QTYPE_MX		2
-#define QTYPE_MXPTR		3
-#define QTYPE_A_STR		"a"
-#define QTYPE_MX_STR		"mx"
+#define QTYPE_A_STR		"snsd"
 #define QTYPE_PTR_STR		"ptr"
-#define QTYPE_MXPTR_STR		"mxptr"
+
+#define SNSD_PROTO_TCP		0
+#define SNSD_PROTO_UDP		1
+#define SNSD_PROTO_TCP_STR	"tcp"
+#define SNSD_PROTO_UDP_STR	"udp"
 
 /* NK BIT */
 #define NK_DNS			0
 #define NK_NTK                  1
 #define NK_INET                 2
 
-char *QTYPE_STR_LIST[]={QTYPE_A_STR,QTYPE_PTR_STR,\
-			QTYPE_MX_STR,QTYPE_MXPTR_STR};
-int QT_LEN=4;
-int QTP_LEN=4;
+#define TIME_SCALE		1000000.0
+
+char *QTYPE_STR_LIST[]={QTYPE_A_STR,QTYPE_PTR_STR};
+int QT_LEN=2;
 
 #define QTFROMPREF(s)							\
 ({									\
@@ -54,23 +54,33 @@ int QTP_LEN=4;
 		if (!strncasecmp(s,QTYPE_STR_LIST[__n],strlen(s))) 	\
  			{__res=__n;break;}				\
 	__res; })			
+#define REALMFROMPREF(s)						\
+({									\
+	uint8_t __res=2;						\
+	if (!strncasecmp(REALM_NTK_STR,s,strlen(s)))			\
+		__res=REALM_NTK;					\
+	else if (!strncasecmp(REALM_INT_STR,s,strlen(s)))		\
+ 		__res=REALM_INT; 					\
+		__res; })	
+#define PROTOFROMPREF(s)						\
+({									\
+ 	uint8_t __res=2;						\
+	if (!strncasecmp(SNSD_PROTO_UDP_STR,s,strlen(s)))		\
+		__res=SNSD_PROTO_UDP;					\
+	else if (!strncasecmp(SNSD_PROTO_TCP_STR,s,strlen(s)))		\
+ 		__res=SNSD_PROTO_TCP; 					\
+		__res; })	
+
 		
 			
 typedef struct ntkdig_opts {
-	struct sockaddr_in	ns[MAX_NS];
-	int8_t			ns_len;
-	int8_t			ns_lhost;
-	int16_t			port;
-	int8_t			qt;
-	int8_t			pt;
-	int8_t			realm;
-	int8_t			silent;
-	char*			question;
+	char		nsserver[MAX_HOSTNAME_LEN];
+	int16_t		port;
+	int8_t		silent;
+	andns_pkt	*q;
 } ntkdig_opts;
 
 #define NTKDIG_OPTS_SZ	sizeof(ntkdig_opts)
-
-#define AMISILENT	globopts.silent
 
 #define QR_STR(ap)	((ap)->qr==0)?"QUERY":"ANSWER"
 #define QTYPE_STR(ap)						\
@@ -143,23 +153,42 @@ typedef struct ntkdig_opts {
 
 #define GET_OPT_REALM	(globopts.realm==REALM_NTK)?"NTK":"INET"
 
+/* CODE UTILS */
+#define say             printf
+#define bye             if (!AMISILENT) say("\tBye\n");
 
-void print_usage();
-void print_version();
-void init_opts();
-int opt_set_ns(char *s,int limit);
-int opt_set_qtype(char *s);
-int opt_set_ptype(char *s);
-int opt_set_realm(char *s);
-int ns_init(const char *hostname,int nslimit);
-int ask_query(char *q,int qlen,char *an,int *anlen,struct sockaddr_in *saddr);
-void print_question(andns_pkt *ap);
-void print_answer_name(andns_pkt_data *apd);
-void print_answer_addr(andns_pkt_data *apd);
-andns_pkt* andns_pkt_from_opts();
-int do_command();
-int handle_answer(char *answ,int alen);
-int main(int argc,char **argv);
-int imain(int argc,char **argv);
+#define GOP             globopts
+#define AMISILENT       GOP.silent
+#define GQT             GOP.q
+
+#define COMPUTE_TIME    diff_time(time_start,time_stop)
+#define time_report     if (!AMISILENT){gettimeofday(&time_stop,NULL);          \
+                        say("\nQuery time: %f seconds.\n"                       \
+                                        ,COMPUTE_TIME);}
+
+#define G_ALIGN(len)    GQT->qstlength=len;GQT->qstdata=(char*)                   \
+                                xmalloc(len*sizeof(char));                      \
+                                if (!GQT->qstdata){say("Fatal malloc!\n");       \
+                                        exit(1);}
+#define G_SETQST_A(s)   G_ALIGN(strlen(s));strcpy(GQT->qstdata,s);               \
+                                GQT->qstlength=strlen(s);
+
+/* FUNCTIONS */
+void version(void);
+void usage(void);
+void qt_usage(char *arg);
+void realm_usage(char *arg);
+void proto_usage(char *arg);
+double diff_time(struct timeval a,struct timeval b);
+void opts_init(void);
+void opts_set_silent();
+void opts_set_port(char *arg);
+void opts_set_ns(char *arg);
+void opts_set_qt(char *arg);
+void opts_set_realm(char *arg);
+void opts_set_service(char *arg);
+void opts_set_proto(char *arg) ;
+void do_command();
+int main(int argc, char **argv);
 
 #endif /* NTK_DIG_H */

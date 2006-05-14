@@ -46,22 +46,39 @@ static int _ip_len_;
 
 			/* INIT FUNCTIONS */
 
-int debug_andna_resolve_hname(char *s,inet_prefix *addr)
+snsd_service* debug_andna_resolve_hname(char *s,int service,u_char proto,int *records)
 {
         char *ciccio="111.222.123.123";
-        str_to_inet(ciccio,addr);
-        return 0;
+	debug(DBG_NORMAL,"Entering debug_andna_resolve.");
+	snsd_service *ss;
+	snsd_prio *sp;
+	snsd_node *sn;
+	ss=xmalloc(sizeof(snsd_service));
+	ss->prio=xmalloc(sizeof(snsd_prio));
+	sp=ss->prio;
+	sp->node=xmalloc(sizeof(snsd_node));
+	sn=sp->node;
+	inet_pton(AF_INET,ciccio,sn->record);
+	sn->flags|=SNSD_NODE_MAIN_IP;
+	sn->flags|=SNSD_NODE_IP;
+	ss->next=0;
+	ss->prev=0;
+	sp->next=0;
+	sp->prev=0;
+	sn->next=0;
+	sn->prev=0;
+	*records=1;
+        return ss;
 }
-int debug_andna_reverse_resolve(inet_prefix addr,char ***hnames)
+lcl_cache* debug_andna_reverse_resolve(inet_prefix addr)
 {
-        char **crow;
-        crow=(char**)xmalloc(2*sizeof(char));
-        crow[0]=(char*)xmalloc(40);
-        crow[1]=(char*)xmalloc(40);
-        strcpy(crow[0],"ciaomamma");
-        strcpy(crow[1],"depausceve");
-        *hnames=crow;
-        return 2;
+	lcl_cache *lc;
+	debug(DBG_NORMAL,"Entering debug_andna_reverse.");
+	lc=xmalloc(sizeof(lcl_cache));
+	memset(lc,0,sizeof(lcl_cache));
+	lc->hostname=xmalloc(12);
+	strcpy(lc->hostname,"Ciao mamma");
+	return lc;
 }
 
 /*
@@ -83,8 +100,8 @@ int store_ns(char *ns)
 
 	ai=_andns_ns_[_andns_ns_count_];
 	res=getaddrinfo(ns, DNS_PORT_STR, &_ns_filter_, &ai);
-	if (!res) {
-		debug(DBG_NORMAL,"In store_ns(): gai %s -> %s",ns,gai_strerror(errno));
+	if (res) {
+		debug(DBG_NORMAL,"In store_ns(): gai `%s' -> %s",ns,gai_strerror(errno));
 		return -1;
 	}
 	_andns_ns_count_++;
@@ -655,7 +672,8 @@ int inet_rslv(dns_pkt *dp,char *msg,int msglen,char *answer)
 	if (qt==T_A || qt==T_MX) { /* snsd tcp resolution service */
 		service=(qt==T_A)?0:25;
 		proto=(qt==T_A)?0:1;
-		ss=andna_resolve_hname(temp,service,proto,&records);
+		//ss=andna_resolve_hname(temp,service,proto,&records);
+		ss=debug_andna_resolve_hname(temp,service,proto,&records);
 		if (!ss) {
 			rcode=RCODE_ENSDMN;
 			goto safe_return_rcode;
@@ -677,7 +695,8 @@ int inet_rslv(dns_pkt *dp,char *msg,int msglen,char *answer)
 			rcode=RCODE_ESRVFAIL;
 			goto safe_return_rcode;
 		}
-		lc=andna_reverse_resolve(addr);
+		lc=debug_andna_reverse_resolve(addr);
+		//lc=andna_reverse_resolve(addr);
 		res=lcl_cache_to_dansws(dp,lc); /* destroy lc */
 		if (!res) {
 			rcode=RCODE_ENSDMN;
@@ -714,8 +733,10 @@ int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 	qt=ap->qtype;
 	if (qt==AT_A) {
 		snsd_service *ss;
-		ss=andna_resolve_hname(ap->qstdata,
+		ss=debug_andna_resolve_hname(ap->qstdata,
 				ap->service,ap->p,&records);
+		//ss=andna_resolve_hname(ap->qstdata, //USE HASH!
+		//		ap->service,ap->p,&records);
 		if (!ss) {
 			rcode=RCODE_ENSDMN;
 			goto safe_return_rcode;
@@ -738,7 +759,8 @@ int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 			rcode=RCODE_EINTRPRT;
 			goto safe_return_rcode;
 		}
-		lc=andna_reverse_resolve(ipres);
+		lc=debug_andna_reverse_resolve(ipres);
+		//lc=andna_reverse_resolve(ipres);
 		if (!lc) {
 			rcode=RCODE_ENSDMN;
 			goto safe_return_rcode;

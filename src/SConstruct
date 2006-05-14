@@ -182,7 +182,7 @@ idir_data   = '$DATA_DIR'
 idir_conf   = '$CONF_DIR'
 
 env.Install(idir_bin, [ntkd])
-env.Install(idir_bin, [ntkdig])
+#env.Install(idir_bin, [ntkdig])
 env.Alias('install', [idir_bin, idir_conf])
 
 #Dirty hack ;( Why GetOption("install") doesn't work?

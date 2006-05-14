@@ -25,6 +25,12 @@
 #include <stdint.h>
 #include <sys/types.h>
 
+#define ANDNS_MAX_QUESTION_LEN	263 /* TODO */
+#define ANDNS_MAX_ANSWER_LEN	516
+#define ANDNS_MAX_ANSWERS_NUM	256
+#define ANDNS_MAX_PK_LEN	ANDNS_MAX_QUESTION_LEN+\
+				ANDNS_MAX_ANSWERS_NUM*ANDNS_MAX_ANSWER_LEN
+
 #define ANDNS_MAX_DATA_LEN	512
 #define ANDNS_MAX_QST_LEN	512
 #define ANNDS_DNS_MAZ_QST_LEN	255
@@ -60,7 +66,7 @@ typedef struct andns_pkt
         andns_pkt_data  *pkt_answ;
 } andns_pkt;
 #define ANDNS_PKT_SZ sizeof(andns_pkt)
-#define AP_ALIGN(ap)	ap->qstdata=(char*)xmalloc(ap->qstlength)
+#define AP_ALIGN(ap)	(ap)->qstdata=(char*)xmalloc((ap)->qstlength)
 
 #define ANDNS_HDR_SZ	4
 #define ANDNS_MAX_SZ 	ANDNS_HDR_SZ+ANDNS_MAX_QST_LEN+ANDNS_MAX_QST_LEN+4
@@ -78,6 +84,9 @@ typedef struct andns_pkt
 /* REALMS TO SEARCH */
 #define NTK_REALM               0
 #define INET_REALM              1
+/* IP VERSION */
+#define ANDNS_IPV4		0
+#define ANDNS_IPV6		1
 
 size_t a_hdr_u(char *buf,andns_pkt *ap);
 size_t a_qst_u(char *buf,andns_pkt *ap,int limitlen);

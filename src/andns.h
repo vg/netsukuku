@@ -59,6 +59,10 @@
 #define ANDNS_SET_RCODE(s,c)	*((s)+3)=(((*((s)+3))&0xf0)|c)
 #define ANDNS_SET_QR(s)		(*((s)+2))|=0x80
 #define ANDNS_SET_ANCOUNT(s,n)	*(s)|=(n)>>1;*(s+1)|=((n)<<7);
+
+
+	/* FUNCTIONS */
+
 int store_ns(char *ns);
 int collect_resolv_conf(char *resolve_conf);
 void reset_andns_ns(void);
@@ -80,4 +84,5 @@ int apqsttodpqst(andns_pkt *ap,dns_pkt **dpsrc);
 int dpanswtoapansw(dns_pkt *dp,andns_pkt *ap);
 int nk_forward(andns_pkt *ap,char *msg,int msglen,char *answer);
 char *andns_rslv(char *msg, int msglen,char *answer, int *answ_len);
+
 #endif /* ANDNS_H */

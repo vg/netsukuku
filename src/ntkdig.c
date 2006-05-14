@@ -1,447 +1,297 @@
-	         /**************************************
-	        *     AUTHOR: Federico Tomassini        *
-	       *     Copyright (C) Federico Tomassini    *
-	      *     Contact effetom@gmail.com	          *
-	     ***********************************************
-	     *******          BEGIN 3/2006          ********
-*************************************************************************
-*                                              				* 
-*  This program is free software; you can redistribute it and/or modify	*
-*  it under the terms of the GNU General Public License as published by	*
-*  the Free Software Foundation; either version 2 of the License, or	*
-*  (at your option) any later version.					*
-*									*
-*  This program is distributed in the hope that it will be useful,	*
-*  but WITHOUT ANY WARRANTY; without even the implied warranty of	*
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the	*
-*  GNU General Public License for more details.				*
-*									*
-************************************************************************/
-#include <getopt.h>  
-#include <stdio.h>  
-#include <stdlib.h>  
-#include <unistd.h>  
-#include <fcntl.h>
+#include <getopt.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <strings.h>
 #include <sys/time.h>
 #include <time.h>
 
-#include "andnslib.h"
 #include "ntkdig.h"
+#include "xmalloc.h"
 
-static int n_answers=1;
 static ntkdig_opts globopts;
-
 static struct timeval time_start,time_stop;
 
-static int ns_used; 
+void version(void)
+{
+        say("ntk-dig version %s (Netsukuku tools)\n\n"
+            "Copyright (C) 2006.\n"
+            "This is free software.  You may redistribute copies of it under the terms of\n"
+            "the GNU General Public License <http://www.gnu.org/licenses/gpl.html>.\n"
+            "There is NO WARRANTY, to the extent permitted by law.\n\n",VERSION);
+	exit(1);
+}
+
+
+void usage(void)
+{
+        say("Usage:\n"
+                "\tntk-dig [OPTIONS] host\n\n"
+                " -v --version          print version, then exit.\n"
+                " -n --nameserver=ns    use nameserver `ns' instead of localhost.\n"
+                " -P --port=port        nameserver port, default 53.\n"
+                " -t --query-type=qt    query type (default A).\n"
+                " -r --realm=realm      inet or netsukuku (default) realm to scan.\n"
+                " -s --service=service  SNSD service.\n"
+                " -p --protocolo=proto  SNSD protocol (udp/tcp).\n"
+                " -S --silent           ntk-dig will be not loquacious.\n"
+                " -h --help             display this help, then exit.\n\n");
+	exit(1);
+}
+void qt_usage(char *arg)
+{
+	say("Bad Query Type %s\n"
+	    "Valid query types are:\n"
+            " snsd\thost:port -> ip\n"
+            " ptr\tip -> host\n"
+            "(you can also use univoque abbreviation)\n\n",arg);
+	exit(1);
+}
+void realm_usage(char *arg)
+{
+	say("Bad Realm %s\n"
+	    "Valid realms are:\n"
+            " ntk\tnetsukuku realm\n"
+            " inet\tinternet realm\n"
+            "(you can also use univoque abbreviation)\n\n",arg);
+	exit(1);
+}
+void proto_usage(char *arg)
+{
+	say("Bad Protocol %s\n"
+	    "Valid protocols are:\n"
+            " udp\n"
+            " tcp\n"
+            "(you can also use univoque abbreviation)\n\n",arg);
+	exit(1);
+}
 
 double diff_time(struct timeval a,struct timeval b)
 {
-	double res;
-	res=(double)(b.tv_sec-a.tv_sec);
-	if (b.tv_usec<a.tv_usec) 
-		res+=(100.0-a.tv_usec+b.tv_usec)/1000000.0;
-	else 
-		res+=(b.tv_usec-a.tv_usec)/1000000.0;
-	return res;
+        double res;
+        res=(double)(b.tv_sec-a.tv_sec);
+        if (b.tv_usec<a.tv_usec)
+                res+=(100.0-a.tv_usec+b.tv_usec);
+        else
+                res+=(b.tv_usec-a.tv_usec);
+	res/=TIME_SCALE;
+        return res;
 }
-void print_usage() 
-{
-	printf("Usage:\n" 
-		"\tntk-dig [OPTIONS] host\n\n"
-		" -v --version		print version, then exit.\n"
-		" -n --nameserver=ns	use nameserver `ns' instead of localhost.\n"
-		" -p --port=port		nameserver port, default 53.\n"
-		" -t --query-type=qt	query type (default A).\n"
-		" -r --realm=realm	inet or netsukuku (default) realm to scan.\n"
-		" -s --silent		ntk-dig will be not loquacious.\n"
-		" -h --help		display this help, then exit.\n\n");
-}
-void print_version()
-{
-	printf("ntk-dig version %s (Netsukuku tools)\n\n",VERSION);
-	printf("Copyright (C) 2006.\n"
-		"This is free software.  You may redistribute copies of it under the terms of\n"
-		"the GNU General Public License <http://www.gnu.org/licenses/gpl.html>.\n"
-		"There is NO WARRANTY, to the extent permitted by law.\n\n");
 
-}
-void init_opts()
+
+void opts_init(void)
 {
-	memset(&globopts,0,NTKDIG_OPTS_SZ);
-	globopts.port=htons(NTKDIG_PORT);
-	/*res=ns_init(LOCALHOST,1);
-	if (res) {
-		printf("Internal error initializing options (is andna running on localhost?).\n");
-		exit(1);
-	}*/
-	globopts.ns_len=0;
-	globopts.ns_lhost=1;
-	globopts.qt=QTYPE_A;
-	globopts.pt=PROTO_ANDNS;
-	globopts.realm=REALM_NTK;
+	memset(&GOP,0,NTKDIG_OPTS_SZ);
+	strcpy(GOP.nsserver,LOCALHOST);
+	GOP.port=htons(NTKDIG_PORT);
+	GQT=create_andns_pkt();
+	srand((unsigned int)time(NULL));
 }
-	
-int opt_set_ns(char *s,int limit)
+
+void opts_set_silent(void)
+{
+	GOP.silent=1;
+}
+
+void opts_set_port(char *arg)
 {
 	int res;
-	res=ns_init(s,(limit)?1:MAX_NS);
-	globopts.ns_lhost=0;
-	return res;
+	uint16_t port;
+
+	res=atoi(arg);
+	port=(uint16_t)res;
+
+	if (port!=res) {
+		say("Bad port %s.",arg);
+		exit(1);
+	}
+	GOP.port=htons(port);
 }
-int opt_set_qtype(char *s)
+
+void opts_set_ns(char *arg)
+{
+	int slen;
+
+	slen=strlen(arg);
+	if (slen>=MAX_HOSTNAME_LEN) {
+		say("Server hostname too long.");
+		exit(1);
+	}
+	strcpy(GOP.nsserver,arg);
+	GOP.nsserver[slen]=0;
+}
+
+void opts_set_qt(char *arg)
 {
 	int res;
-	res=QTFROMPREF(s);
-	globopts.qt=res;
-	return res;
+
+	res=QTFROMPREF(arg);
+	if (res==-1) 
+		qt_usage(arg);
+	GQT->qtype=res;
 }
-int opt_set_ptype(char *s)
+
+void opts_set_realm(char *arg)
 {
-	if (!strncasecmp(PROTO_ANDNS_STR,s,strlen(s)))
-		globopts.realm=PROTO_ANDNS;
-	else if (!strncasecmp(PROTO_DNS_STR,s,strlen(s)))
-		globopts.realm=PROTO_DNS;
-	else return -1;
-	return 0;
+	uint8_t res;
+
+	res=REALMFROMPREF(arg);
+	if (res==2) 
+		realm_usage(arg);
+	GQT->nk=res;
 }
-int opt_set_realm(char *s)
-{
-	if (!strncasecmp(REALM_NTK_STR,s,strlen(s)))
-		globopts.realm=REALM_NTK;
-	else if (!strncasecmp(REALM_INT_STR,s,strlen(s)))
-		globopts.realm=REALM_INT;
-	else return -1;
-	return 0;
-}
-int opt_set_port(char *s)
-{
-	int port;
-	port=atoi(s);
-	if (!port)
-		return -1;
-	globopts.port=htons(port);
-	if (globopts.ns_len) 
-		for (port=0;port<globopts.ns_len;port++)
-			(globopts.ns+port)->sin_port=globopts.port;
-	return 0;
-}
-int ns_init(const char *hostname,int nslimit)
+void opts_set_service(char *arg)
 {
 	int res;
-	struct addrinfo	*ailist,*aip,filter;
+	uint16_t service;
 
-	memset(&filter,0,sizeof(struct addrinfo));
-	filter.ai_family=AF_INET;
-	filter.ai_socktype=SOCK_DGRAM;
+	res=atoi(arg);
+	service=(uint16_t)res;
 
-	res=getaddrinfo(hostname,NTKDIG_PORT_STR,&filter,&ailist);
-	if (res) {
-		printf("Invalid address: %s\n",gai_strerror(errno));
-		return -1;
+	if (service!=res) {
+		say("Bad service %s.",arg);
+		exit(1);
 	}
-	res=min(MAX_NS,nslimit);
-	for (aip=ailist;aip && globopts.ns_len<res;aip=aip->ai_next) {
-		if (aip->ai_family!=AF_INET)
-			continue;
-		memcpy(globopts.ns+globopts.ns_len,aip->ai_addr,
-				sizeof(struct sockaddr_in));
-		(globopts.ns+globopts.ns_len)->sin_port=globopts.port;
-		globopts.ns_len++;
-	}
-	if (!globopts.ns_len) {
-		printf("No nameserver found for %s.",hostname);
-		return -1;
-	}
-	//printf("Found %d nameservers.\n",globopts.ns_len);
-	freeaddrinfo(ailist);
-	return 0;
+	GQT->service=service;
+}
+void opts_set_proto(char *arg) 
+{
+	uint8_t p;
+
+	p=PROTOFROMPREF(arg);
+	if (p==2) 
+		proto_usage(arg);
+	GQT->p=p;
 }
 
-int ask_query(char *q,int qlen,char *an,int *anlen,struct sockaddr_in *saddr)
+void opts_set_question(char *arg)
 {
-	int len,skt;
-	skt=socket(PF_INET,SOCK_DGRAM,0);
-
-	if (skt==-1) {
-		printf("Internal error opening socket.\n");
-		return -1;
-	}
-			
-	/*if (fcntl(skt, F_SETFL, O_NONBLOCK) < 0) {
-		printf("set_nonblock_sk(): cannot set O_NONBLOCK: %s",strerror(errno));
-		goto close_return;
-	}*/
-	if ((connect(skt,(struct sockaddr*)saddr,sizeof(struct sockaddr_in)))) {
-                printf("In ask_query: error connecting socket -> %s.",strerror(errno));
-		goto close_return;
-        }
-	len=send(skt,q,qlen,0);
-	if (len==-1) {
-		printf("In ask_query: error sending pkt -> %s.\n",strerror(errno));
-		goto close_return;
-	}
-	len=recv(skt,an,ANDNS_MAX_SZ,0);
-	if (len==-1) {
-		printf("In ask_query: error receiving pkt -> %s.\n",strerror(errno));
-		goto close_return;
-	}
-	*anlen=len;
-	return 0;
-close_return:
-	close(skt);
-	return -1;
-}
-
-void print_question(andns_pkt *ap)
-{
-	printf("\n\t# Question Headers: #\n");
-	printf("# id: %d\tqr: %s\tqtype: %s\n",ap->id,QR_STR(ap),QTYPE_STR(ap));
-	printf("# answers: %d\tnk: %s\trcode: %s\n",ap->ancount,NK_STR(ap),RCODE_STR(ap));
-	printf("# \t\tRealm: %s\n",GET_OPT_REALM);
-}
-void print_answer_name(andns_pkt_data *apd)
-{
-//	printf("\n\t# Answer Section: #\n");
-	printf("~ Hostname:\t%s\n",apd->rdata);
-}
-void print_banner_answer()
-{
-	printf("\n\t# Answer Section: #\n");
-}
-
-void print_answer_addr(andns_pkt_data *apd)
-{
-	struct in_addr a;
-	char az[INET_ADDRSTRLEN];
-	memcpy(&a,apd->rdata,sizeof(struct in_addr));
-//	printf("\n\t# Answer Section %d: #\n",n_answers);
-	n_answers++;
-	if (inet_ntop(AF_INET,&a,az,INET_ADDRSTRLEN))
-		printf("~ Ip Address:\t%s\n",az);
-	else
-		printf("~ Ip Address:\tInvalid.\n");
-}
-void print_conclusions(void)
-{
-	char srv[INET_ADDRSTRLEN];
+	struct in_addr ia;
+	struct in6_addr i6a;
+	int res;
 	
-	gettimeofday(&time_stop,NULL);
-	printf("\nQuery time: %f seconds.\n",diff_time(time_start,time_stop));
-	if (inet_ntop(AF_INET,&((globopts.ns+ns_used)->sin_addr),srv,INET_ADDRSTRLEN))
-		printf("Server: %s\n",srv);
-	printf("\n");
-}
-	
-andns_pkt* andns_pkt_from_opts()
-{
-	andns_pkt *ap;
-
-	ap=create_andns_pkt();
-	ap->id=rand()>>16;
-	ap->qtype=globopts.qt;
-	ap->nk=(globopts.realm==REALM_NTK)?NK_NTK:NK_INET;
-	ap->qstlength=strlen(globopts.question);
-	memcpy(ap->qstdata,globopts.question,ap->qstlength);
-	return ap;
-}
-
-int do_command()
-{
-	int res,msglen,answlen;
-	andns_pkt *ap;
-	char msg[ANDNS_MAX_SZ],answ[ANDNS_MAX_SZ];
-	int i;
-
-	printf("Quering for %s...\n",globopts.question);
-	if (globopts.ns_lhost) {
-		res=ns_init(LOCALHOST,1);
-		if (res==-1) {
-			printf("Where is the ANDNA server?.\n");
-			exit(1);
-		}
-	}
-	ap=andns_pkt_from_opts();
-	msglen=a_p(ap,msg);
-	if (msglen==-1) {
-		printf("Internal error building packet.");
-		exit(1);
-	}
-	res=0;
-	for (i=0;i<globopts.ns_len;i++) {
-		res=ask_query(msg,msglen,answ,&answlen,globopts.ns+i);
-		if (res==-1)
-			continue;
-		else 
-			break;
-	}
-	if (res==-1) {
-		printf("Sending packet failed.\n");
-		exit(1);
-	}
-	
-	res=handle_answer(answ,answlen);
-	if (res==-1) {
-		printf("Unable to interpret answer. Exit.\n");
-		exit(1);
-	}
-	ns_used=i;
-	return 0;
-}
-int handle_answer(char *answ,int alen)
-{
-	int i;
-	void (*printer)(andns_pkt_data *);
-	int offset;
-	andns_pkt *ap;
-	andns_pkt_data *apd;
-
-	offset=a_u(answ,alen,&ap);
-	if (offset==-1) {
-		printf("++ Answer interpretation error.\n");
-		exit(1);
-	}
-	if (offset!=alen) 
-		printf("++ Packet length differs from packet contents: %d vs %d.",alen,offset);
-	if (ap->rcode!=ANDNS_RCODE_NOERR) {
-		print_question(ap);
-		exit(1);
-	}
-
-	if (!ap->ancount) {
-		printf("++ Received answer contains no data.\n");
-		exit(1);
-	}
-	if (!AMISILENT)
-		print_question(ap);
-	switch(ap->qtype) {
-		case AT_A:
-			printer=print_answer_addr;
-			break;
-		case AT_PTR || AT_MX || AT_MXPTR:
-			printer=print_answer_name;
-			break;
+	switch(GQT->qtype) {
+		case QTYPE_A:
+			G_SETQST_A(arg);
+			return;
+		case QTYPE_PTR:
+			res=inet_pton(AF_INET,arg,&ia);
+			if (res) {
+				G_ALIGN(4);
+				memcpy(GQT->qstdata,&ia.s_addr,4);
+				return;
+			}
+			res=inet_pton(AF_INET6,arg,&i6a);
+			if (!res) {
+				say("Bad address `%s'\n",arg);
+				exit(1);
+			}
+			G_ALIGN(16);
+			memcpy(GQT->qstdata,&i6a.in6_u,16);
+			GQT->ipv=ANDNS_IPV6;
+			return;
 		default:
-			printf("++ Received answer is an invalid answer.\n");
-			exit(1);
+			say("?!?\n");
+			return;
 	}
-	if (!AMISILENT)
-		print_banner_answer();
-	apd=ap->pkt_answ;
-	for (i=0;i<ap->ancount;i++) {
-		printer(apd);
-		apd=apd->next;
-	}
-	if (!AMISILENT)
-		print_conclusions();
-	destroy_andns_pkt(ap);
-	return 0;
-			
 }
-	
-void consistency_control(void)
+void opts_finish(char *arg)
 {
-	int len,limit;
+	int r;
 
-	len=strlen(globopts.question);
-	limit=(globopts.realm==REALM_NTK)?ANDNS_MAX_QST_LEN:ANNDS_DNS_MAZ_QST_LEN;
-	if (len>limit) {
-		printf("\nNo. request object is too long.\n");
+	r=rand();
+	GQT->id=r>>16;
+	opts_set_question(arg);
+}
+
+
+void do_command(void)
+{
+	char buf[ANDNS_MAX_QUESTION_LEN];
+	char answer[ANDNS_MAX_PK_LEN];
+	size_t res;
+
+	res=a_p(GQT,buf);
+	if (res==-1) {
+		say("Error building question.\n");
 		exit(1);
 	}
+	res=hn_send_recv_close(GOP.nsserver,GOP.port,
+			SOCK_DGRAM,buf,res,answer,ANDNS_MAX_PK_LEN,1);
+	if (res==-1) {
+		say("Communication failed with %s.\n",GOP.nsserver);
+		exit(1);
+	}
+	res=a_u(answer,res,&GQT);
+	if (res<=0) {
+		say("Error interpreting server answer.\n");
+		exit(1);
+	}
+	say("Ale'.\n");
 }
-int main(int argc,char **argv) 
+int main(int argc, char **argv)
 {
-	int c,res;
-	extern int optind, opterr, optopt;
-	extern char *optarg;
+        int c;
+        extern int optind, opterr, optopt;
+        extern char *optarg;
 
-	init_opts();
+	log_init("",5,1);
+	gettimeofday(&time_start,NULL);
+
+	opts_init();
 	struct option longopts[]= {
-		{"version",0,0,'v'},
-		{"nameserver",1,0,'n'},
-		{"port",1,0,'p'},
-		{"query-type",1,0,'t'},
-		{"realm",1,0,'r'},
-		{"silent",0,0,'s'},
-		{"help",0,0,'h'},
-		{0,0,0,0}
-	};
+                {"version",0,0,'v'},
+                {"nameserver",1,0,'n'},
+                {"port",1,0,'P'},
+                {"query-type",1,0,'t'},
+                {"realm",1,0,'r'},
+                {"service",1,0,'s'},
+                {"proto",1,0,'p'},
+                {"silent",0,0,'S'},
+                {"help",0,0,'h'},
+                {0,0,0,0}
+        };
 
-	while (1) {
-		int option_index=0;
-		c=getopt_long(argc, argv, "vn:t:p:r:sh", longopts, &option_index);
-		if (c==-1) 
+	while(1) {
+		int oindex=0;
+		c=getopt_long(argc, argv, 
+			"vn:P:t:r:s:p:Sh", longopts, &oindex);
+		if (c==-1)
 			break;
-		switch (c) {
+		switch(c) {
 			case 'v':
-				print_version();
-				exit(1);
-			case 's':
-				globopts.silent=1;
-				break;
-			case 'h':
-				print_usage();
-				exit(1);
+				version();
 			case 'n':
-				res=opt_set_ns(optarg,0);
-				if (res) {
-					printf("Nameserver `%s' is not friendly.\n",optarg);
-					exit(1);
-					break;
-				}
+				opts_set_ns(optarg);
+				break;
+			case 'P':
+				opts_set_port(optarg);
 				break;
 			case 't':
-				res=opt_set_qtype(optarg);
-				if (res==-1) {
-					printf("Query type `%s' is not valid.\n\n"
-						"Valid query types are:\n"
-						" a\thost -> ip\n"
-						" mx\thost -> mx\n"
-						" ptr\tip -> host\n"
-						" ptrmx\tip ->mx\n"
-						"(or univoque abbreviation)\n\n",optarg);
-					exit(1);
-					break;
-				}
-				break;
-			case 'p':
-				res=opt_set_port(optarg);
-				if (res) {
-					printf("Port `%s' is not a valid port.\n",optarg);
-					exit(1);
-					break;
-				}
+				opts_set_qt(optarg);
 				break;
 			case 'r':
-				res=opt_set_realm(optarg);
-				if (res) {
-					printf("%s is not a valid realm.\n\n"
-						"Valid realms are:\n"
-						" ntk\tnetsukuku realm\n"
-						" inet\tinternet realm\n"
-						"(or univoque abbreviation)\n\n",optarg);
-					exit(1);
-					break;
-				}
+				opts_set_realm(optarg);
 				break;
-
-			/*case '?':
-				printf("111%s: option `-%c' is invalid: ignored\n",argv[0], optopt);
-				break;*/
+			case 's':
+				opts_set_service(optarg);
+				break;	
+			case 'p':
+				opts_set_proto(optarg);
+				break;
+			case 'h':
+				usage();
+			case 'S':
+				opts_set_silent();
+				break;
 			default:
-				print_usage();
-				exit(1);
-				break;
+				usage();
 		}
 	}
-	if (optind==argc) {
-		print_usage();
-		exit(1);
-	}
-	res=gettimeofday(&time_start,NULL);
-	globopts.question=argv[optind];
-	consistency_control();
-	res=do_command();
+	if (optind==argc)
+		usage();
+	opts_finish(argv[optind]);
+	do_command();
+	time_report;
+	bye;
 	return 0;
 }

@@ -6,6 +6,7 @@ NTK_REPOSITORY="../../"
 pod2man -s 8 ntkd.pod -c "" -n "NetsukukuD"  -r "`../ntkd -v`" ntkd.8
 pod2man -s 8 ntk-wifi.pod -c "" -n "ntk-wifi"  -r "`../ntkd -v`" ntk-wifi.8
 pod2man -s 8 andna.pod -c "" -n "ANDNA"  -r "`../ntkd -v`" andna.8
+pod2man -s 8 ntk-dig.pod -c "" -n "ntk-dig" ntk-dig.8
 
 rm -r man_html man_text
 mkdir  man_html/
