@@ -32,14 +32,13 @@ Contributors (in chronological order of initial contribution):
 Andrea Leofreddi <andrea.leofreddi@gmail.com> wrote the DNS wrapper code
 (dns_pkt.cpp, dns_rendian.h, dns_utils.h).  
 
-Katolaz <katolaz@netsukuku.org> wrote the files needed to use Automake/Autoconf.
-(Makefile.am configure.ac, src/Makefile.am, src/man/Makefile.am).
+Enzo Nicosia (Katolaz) <katolaz@netsukuku.org> wrote the files needed to use
+Automake/Autoconf. (Makefile.am configure.ac, src/Makefile.am,
+src/man/Makefile.am).
 
-Federico Tomassini <efphe@netsukuku.org> wrote andns, which provides DNS
-compatibility for the ANDNA system. He also wrote the interface to the
-libiptc.
-(andns.h andns_mem.c andns_mem.h andns_pkt.c andns_pkt.h andns_rslv.c
-andns_rslv.h mark.[ch] libiptc/*)
+Federico Tomassini (Efphe) <efphe@netsukuku.org> wrote andns, which provides
+DNS compatibility for the ANDNA system. He also wrote the interface to the
+libiptc. (andns* dnslib.[ch] mark.[ch] libiptc/*)
 
 
 Website developers and maintainers:

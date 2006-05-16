@@ -20,8 +20,6 @@
 	2.4  Other implementations
   	2.5  The born
 
---
-
   3. Netukuku Protocol v7: the seventh son of Ipv7
 
 	3.1  #define Npv7
@@ -310,11 +308,11 @@
   What's left sleeps in our minds and still have to become.
 
 
--- 			
+--								            --
 
 
-			The Netsukuku Protocol
-				Npv7
+ 			     The Netsukuku Protocol
+				     Npv7
  
 
 
@@ -1539,7 +1537,7 @@
   
   or give a look on the online web cvs:
   
-  http://hinezumilabs.org/cgi-bin/viewcvs.cgi/netsukuku/
+  http://cvs.netsukuku.org/
   
   
   13.  What to do
@@ -1554,9 +1552,24 @@
   
   14.  The smoked ones who made Netsukuku
 
-  Andrea Lo Pumo   aka   AlpT				<alpt@freaknet.org>
-
+  Main theory and the documentation:
   
+  Andrea Lo Pumo   	aka    AlpT			<alpt@netsukuku.org>
+ 
+ 
+  The NTK_RFC 0006 "Andna and dns":
+  
+  Federico Tomassini    aka    Efphe			<efphe@netsukuku.org>
+  
+  
+  The NTK_RFC 0001 "Gnode contiguity":
+
+  Andrea Lo Pumo   	aka    AlpT			<alpt@netsukuku.org>
+  Enzo Nicosia		aka    Katolaz               <katolaz@netsukuku.org>
+  Andrea Milazzo	aka    Mancausoft	   <andreamilazzo@gmail.com>
+  Emanuele Cammarata	aka    U scinziatu          <scinziatu@freaknet.org>
+  
+
   Special thanks to:
   
   Valvoline the non-existent entity for the implementation advices,
