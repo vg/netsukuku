@@ -93,13 +93,13 @@ lcl_cache* debug_andna_reverse_resolve(inet_prefix addr)
 int store_ns(char *ns)
 {
         int res;
-	struct addrinfo *ai;
+	struct addrinfo **ai;
 
         if (strstr(ns, "127.0.0.")) /* TODO: make it proto independent  */
                 return -1;
 
-	ai=_andns_ns_[_andns_ns_count_];
-	res=getaddrinfo(ns, DNS_PORT_STR, &_ns_filter_, &ai);
+	ai=&_andns_ns_[_andns_ns_count_];
+	res=getaddrinfo(ns, DNS_PORT_STR, &_ns_filter_, ai);
 	if (res) {
 		debug(DBG_NORMAL,"In store_ns(): gai `%s' -> %s",ns,gai_strerror(errno));
 		return -1;
