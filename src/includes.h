@@ -63,7 +63,7 @@
 
 #define DEBUG_TEST
 
-/* Actually the IPV6 is disabled */
+/* Currently the IPV6 is disabled */
 #define IPV6_DISABLED
 
 #ifdef DEBUG

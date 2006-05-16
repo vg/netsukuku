@@ -35,7 +35,7 @@
 
 /* 
  * These arrays keeps the latest reg_pkt and counter_check IDs to drop pkts
- * alreay received during the floods. These arrays are actually a FIFO, so the
+ * alreay received during the floods. These arrays are a FIFO, so the
  * last pkt_id will be always at the 0 position, while the first one will be
  * at the last position 
  */

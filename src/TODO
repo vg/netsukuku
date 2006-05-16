@@ -22,6 +22,8 @@
 
 - restore the network when NetsukukuD is closed (call /etc/rc.d/rc.inet1 ?)
 
+- check for other active process when starting
+
 - Flash NetsukukuD into an AP and test it.
 
 

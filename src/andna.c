@@ -1962,7 +1962,7 @@ int recv_spread_single_acache(PACKET rpkt)
 	if(time(0)-me.uptime > (ANDNA_EXPIRATION_TIME/2) ||
 			(ac=andna_cache_findhash(req->hash))) {
 		/* We don't need to get the andna_cache from an old
-		 * hash_gnode, since we actually are one of them! */
+		 * hash_gnode, since we currently are one of them! */
 		debug(DBG_NOISE, "recv_spread_single_acache: We are an old "
 				"hash_gnode, dropping 0x%x", rpkt.hdr.id);
 		ERROR_FINISH(ret, -1, finish);
