@@ -19,12 +19,17 @@
 		if (ereg("/", $line)) { //e` directory
 			$line = ereg_replace("/\n", '', $line);
 			$tpl_page .= '<a href="documentazione2.php?dir='.$line.'">'.$line.'</a>';
-			print(NTK_DOCROOT.$_GET['dir'].$line.".info<br />");
-				if (file_exists(NTK_DOCROOT.$_GET['dir'].$line.".info")) {
-					$file_info = fopen(NTK_DOCROOT.$_GET['dir'].$line.".info", "r");
+			
+			//print(NTK_DOCROOT.$_GET['dir'].$line.".info<br />");
+		
+			$file_info = @fopen(NTK_DOCROOT.$_GET['dir'].$line.".info", "r");
+				if ($file_info != NULL) {
+					//$file_info = fopen(NTK_DOCROOT.$_GET['dir'].$line.".info", "r");
                                         $info_line = fgets($file_info);
                                         $tpl_page .= ' --> ' . $info_line;
-                                        $file_info = fclose($file_info);	
+                                        $file_info = fclose($file_info);
+				} else {
+					$tpl_page .= "<br />";
 				}
 		} else if (empty($line)) //e` empty line
 			continue;
@@ -34,30 +39,20 @@
 				continue;
 			else {
 				$tpl_page .= '<a href="documentazione2.php?file='.$line.'">'.$line.'</a>';
-				if (file_exists(NTK_DOCROOT.$_GET['dir'].$line.".info")) {
-					$file_info = fopen(NTK_DOCROOT.$_GET['dir'].$line.".info", "r");
+				$file_info = @fopen(NTK_DOCROOT.$_GET['dir'].$line.".info", "r");
+					
+				if ($file_info != NULL) {
 					$info_line = fgets($file_info);
 					$tpl_page .= ' --> ' . $info_line;
 					$file_info = fclose($file_info);
+				} else {
+					$tpl_page .= "<br />";
 				}
-					
 			}
-			
-			
-			/*if (ereg(".info", $line)) { //e` un file .info, va messo subito dopo il file caricato precedentemente
-				$file_info = fopen(NTK_DOCROOT.$_GET['dir'].$line, "r");
-				$info_line = fgets($file_info);
-				$tpl_page .= ' --> '. $info_line;
-				$file_info = fclose($file_info);
-			} else {
-				$tpl_page .= '<a href="documentazione2.php?file='.$line.'">'.$line.'</a>';
-				if (!file_exists(NTK_DOCROOT.$_GET['dir'].$line.".info"))
-					$tpl_page .= '<br />';
-					
-			}*/
+				
 		}
-			
 	}
+			
 
 	$foo = fclose($foo);
 
