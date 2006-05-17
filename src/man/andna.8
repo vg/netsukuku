@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "ANDNA 8"
-.TH ANDNA 8 "2006-04-27" "aaa" ""
+.TH ANDNA 8 "2006-04-28" "NetsukukuD 0.0.8b" ""
 .SH "NAME"
 ANDNA \- Abnormal Netsukuku Domain Name Anarchy
 .SH "DESCRIPTION"
@@ -221,8 +221,9 @@ For a complete description of the \s-1SNSD\s0 read the \s-1NTK_RFC\s0 0009:
 Not implemented
 .SH "SIGNALS"
 .IX Header "SIGNALS"
-When the \fB\s-1SIGHUP\s0\fR signal is sent to \fIntkd\fR\|(8), the \fIandna_hostnames\fR file
-will be reloaded and it will try to register all the new added hostnames.
+When the \fB\s-1SIGHUP\s0\fR signal is sent to \fIntkd\fR\|(8), the \fIandna_hostnames\fR and
+\&\fIsnsd_nodes\fR files will be reloaded and it will try to register all the new
+added hostnames and snsd records.
 .PP
 When the \fB\s-1SIGALRM\s0\fR signal is sent to \fIntkd\fR\|(8), the resolved hostnames
 cache will be flushed.

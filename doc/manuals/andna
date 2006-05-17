@@ -4,8 +4,8 @@ NAME
 DESCRIPTION
     ANDNA is the distributed, non hierarchical and decentralised system of
     hostname management in Netsukuku. It substitutes the DNS. The ANDNA
-    database is scattered inside all the Netsukuku and the worst of cases
-    every node will have to use about 355 Kb of memory.
+    database is scattered inside all the Netsukuku and in the worst case
+    every node will have to use about some hundreds Kb of memory.
 
     In order to join ANDNA it is necessary to be hooked at Netsukuku with
     the ntkd(8) daemon.
@@ -68,12 +68,24 @@ USAGE
     ip. If you use 127.0.0.1 you get only the local hostname written in
     /etc/hosts.
 
-  MX REGISTRATION and RESOLUTION
-    It is currently not supported.
+  Scattered Name Service Disgregation
+    The Scattered Name Service Disgregation is the ANDNA equivalent of the
+    SRV Record of the Internet Domain Name System. For a complete
+    description of the SNSD read the NTK_RFC 0009:
+    <http://lab.dyne.org/Ntk_SNSD>
+
+   SNSD node registration
+     * Modify the F</etc/netsukuku/snsd_nodes> file.
+     * Copy the needed public keys
+     * Send a SIGHUP to the NetsukukuD of the register node:
+
+   SNSD node deletion
+    Not implemented
 
 SIGNALS
-    When the SIGHUP signal is sent to ntkd(8), the andna_hostnames file will
-    be reloaded and it will try to register all the new added hostnames.
+    When the SIGHUP signal is sent to ntkd(8), the andna_hostnames and
+    snsd_nodes files will be reloaded and it will try to register all the
+    new added hostnames and snsd records.
 
     When the SIGALRM signal is sent to ntkd(8), the resolved hostnames cache
     will be flushed.
@@ -83,6 +95,10 @@ FILES
         It is the file where the hostnames to be registerd in ANDNA are kept
         one per line. It's location can be changed by modifying its option
         in the netsukuku.conf file.
+
+    /etc/netsukuku/snsd_nodes
+        The snsd_nodes_file keeps the list of the SNSD records which will be
+        register in ANDNA.
 
     /usr/share/netsukuku/andna_lcl_keyring
         In this keyring your ANDNA public and secret keys are saved. Handle

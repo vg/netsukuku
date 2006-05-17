@@ -16,5 +16,5 @@ for i in `ls -1 *.8`; do man2html $i > man_html/`basename $i .8`.html; done
 for i in `ls -1 *.pod`; do pod2text $i > man_text/`basename $i .pod`; done
 
 #cp -r man_html/ man_text/ $NTK_REPOSITORY/doc/
-cp -r man_html/* $NTK_REPOSITORY/doc/manuals/html/
+#cp -r man_html/* $NTK_REPOSITORY/doc/manuals/html/
 cp -r man_text/*  $NTK_REPOSITORY/doc/manuals/
