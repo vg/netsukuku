@@ -2,12 +2,15 @@
 
 	define('NTK_DOCROOT', 'http://netsukuku.freaknet.org/2html/documentation/');
 
-	//$dirs = array();
-	//$files = array();
 	if (empty($_GET['dir'])) {
 		$_GET['dir'] = "";
 	} else {
 		$_GET['dir'] .= "/";
+	}
+
+	if (!empty($_GET['file'])) {
+		include(NTK_DOCROOT.$_GET['file']);
+		exit(0);
 	}
 
 	$tpl_page = '<pre id="filez">';
@@ -18,10 +21,8 @@
 		$line = fgets($foo);
 		if (ereg("/", $line)) { //e` directory
 			$line = ereg_replace("/\n", '', $line);
-			$tpl_page .= '<a href="documentazione2.php?dir='.$line.'">'.$line.'</a>';
+			$tpl_page .= '<a href="documentazione2.php?dir='.$_GET['dir'].$line.'">'.$line.'</a>';
 			
-			//print(NTK_DOCROOT.$_GET['dir'].$line.".info<br />");
-		
 			$file_info = @fopen(NTK_DOCROOT.$_GET['dir'].$line.".info", "r");
 				if ($file_info != NULL) {
 					//$file_info = fopen(NTK_DOCROOT.$_GET['dir'].$line.".info", "r");
@@ -38,7 +39,7 @@
 			if (ereg(".info", $line))
 				continue;
 			else {
-				$tpl_page .= '<a href="documentazione2.php?file='.$line.'">'.$line.'</a>';
+				$tpl_page .= '<a href="documentazione2.php?file='.$_GET['dir'].$line.'">'.$line.'</a>';
 				$file_info = @fopen(NTK_DOCROOT.$_GET['dir'].$line.".info", "r");
 					
 				if ($file_info != NULL) {
@@ -53,7 +54,6 @@
 		}
 	}
 			
-
 	$foo = fclose($foo);
 
 	$tpl_page .= "</pre>";
