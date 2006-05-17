@@ -36,7 +36,7 @@ void andna_caches_init(int family)
 {
 	net_family = family;
 
-	setzero(&lcl_keyring, sizeof(lcl_cache_keyring));
+	setzero(&lcl_keyring, lcl_cache_keyring);
 
 	andna_lcl=(lcl_cache *)clist_init(&lcl_counter);
 	andna_c=(andna_cache *)clist_init(&andna_c_counter);
