@@ -4,31 +4,57 @@
 
 	//$dirs = array();
 	//$files = array();
+	if (empty($_GET['dir'])) {
+		$_GET['dir'] = "";
+	} else {
+		$_GET['dir'] .= "/";
+	}
 
 	$tpl_page = '<pre id="filez">';
 
-	$foo = fopen(NTK_DOCROOT.'.list', "r");
+	$foo = fopen(NTK_DOCROOT.$_GET['dir'].'.list', "r");
 
 	while (!feof($foo)) {
 		$line = fgets($foo);
-		if (ereg("/", $line)) //e` directory
-			$tpl_page .= '<a href="index.php?pag=documentation&amp;dir='.$line.'">'.$line.'</a>';
-		else if (empty($line)) //e` empty line
+		if (ereg("/", $line)) { //e` directory
+			$line = ereg_replace("/\n", '', $line);
+			$tpl_page .= '<a href="documentazione2.php?dir='.$line.'">'.$line.'</a>';
+			print(NTK_DOCROOT.$_GET['dir'].$line.".info<br />");
+				if (file_exists(NTK_DOCROOT.$_GET['dir'].$line.".info")) {
+					$file_info = fopen(NTK_DOCROOT.$_GET['dir'].$line.".info", "r");
+                                        $info_line = fgets($file_info);
+                                        $tpl_page .= ' --> ' . $info_line;
+                                        $file_info = fclose($file_info);	
+				}
+		} else if (empty($line)) //e` empty line
 			continue;
 		else { //e` un file
-			/*if (ereg(".info", $line)) { //e` un file .info, va messo subito dopo il file caricato precedentemente
-				$line = ereg_replace(' ', '', $line);
-				$file_info = fopen(NTK_DOCROOT.$line, "r");
-				//$info_line = fgets($file_info);
-				//$tpl_page .= ' --> '. $info_line;
-				$file_info = fclose($file_info);
-			}*/
-			//$file_info = fopen(NTK_DOCROOT . 'articles.info ', "r");
-			$file_info = fopen("http://netsukuku.freaknet.org/2html/documentation/".$line, "r");
-			$info_line = fgets($file_info);
-			$tpl_page .= ' --> ' . $info_line;
-			$file_info = fclose($file_info);
+			$line = ereg_replace("\n", '', $line);
+			if (ereg(".info", $line))
+				continue;
+			else {
+				$tpl_page .= '<a href="documentazione2.php?file='.$line.'">'.$line.'</a>';
+				if (file_exists(NTK_DOCROOT.$_GET['dir'].$line.".info")) {
+					$file_info = fopen(NTK_DOCROOT.$_GET['dir'].$line.".info", "r");
+					$info_line = fgets($file_info);
+					$tpl_page .= ' --> ' . $info_line;
+					$file_info = fclose($file_info);
+				}
 					
+			}
+			
+			
+			/*if (ereg(".info", $line)) { //e` un file .info, va messo subito dopo il file caricato precedentemente
+				$file_info = fopen(NTK_DOCROOT.$_GET['dir'].$line, "r");
+				$info_line = fgets($file_info);
+				$tpl_page .= ' --> '. $info_line;
+				$file_info = fclose($file_info);
+			} else {
+				$tpl_page .= '<a href="documentazione2.php?file='.$line.'">'.$line.'</a>';
+				if (!file_exists(NTK_DOCROOT.$_GET['dir'].$line.".info"))
+					$tpl_page .= '<br />';
+					
+			}*/
 		}
 			
 	}
