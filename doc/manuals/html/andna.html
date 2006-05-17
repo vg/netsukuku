@@ -1,0 +1,224 @@
+Content-type: text/html
+
+<HTML><HEAD><TITLE>Manpage of ANDNA</TITLE>
+</HEAD><BODY>
+<H1>ANDNA</H1>
+Section:  (8)<BR>Updated: 2006-04-06<BR><A HREF="#index">Index</A>
+<A HREF="http://localhost/cgi-bin/man/man2html">Return to Main Contents</A><HR>
+
+<A NAME="lbAB">&nbsp;</A>
+<H2>NAME</H2>
+
+ANDNA - Abnormal Netsukuku Domain Name Anarchy
+<A NAME="lbAC">&nbsp;</A>
+<H2>DESCRIPTION</H2>
+
+<A NAME="ixAAC"></A>
+<FONT SIZE="-1">ANDNA</FONT> is the distributed, non hierarchical and decentralised system of hostname
+management in Netsukuku. It substitutes the <FONT SIZE="-1">DNS</FONT>.
+The <FONT SIZE="-1">ANDNA</FONT> database is scattered inside all the Netsukuku and the worst of
+cases every node will have to use about 355 Kb of memory.
+<P>
+
+In order to join <FONT SIZE="-1">ANDNA</FONT> it is necessary to be hooked at Netsukuku with the
+<I><A HREF="http://localhost/cgi-bin/man/man2html?8+ntkd">ntkd</A></I>(8) daemon.
+<P>
+
+For more information about <FONT SIZE="-1">ANDNA</FONT> visit:
+&lt;<A HREF="http://netsukuku.freaknet.org">http://netsukuku.freaknet.org</A>&gt;
+<A NAME="lbAD">&nbsp;</A>
+<H2>USAGE</H2>
+
+<A NAME="ixAAD"></A>
+First of all be sure to have the <I><A HREF="http://localhost/cgi-bin/man/man2html?8+ntkd">ntkd</A></I>(8) daemon up and running.
+<A NAME="lbAE">&nbsp;</A>
+<H2><FONT SIZE="-1">HOSTNAME</FONT> <FONT SIZE="-1">REGISTRATION</FONT></H2>
+
+<A NAME="ixAAE"></A>
+You can register up to 256 hostnames. Each hostname can be a string of maximum
+512 bytes, which contains a newline (\n) only at its end.
+<P>
+
+The hostnames to be registered must be listed, one per line, in the
+<I>andna_hostnames</I> file, which is by default in
+<I>/etc/netsukuku/andna_hostnames</I>.
+<P>
+
+The <I><A HREF="http://localhost/cgi-bin/man/man2html?8+ntkd">ntkd</A></I>(8) daemon reads it when it is started and when it receives the
+<FONT SIZE="-1">SIGHUP</FONT> signal. So if you've added a hostname while ntkd was running,
+just do: 
+<P>
+
+# kill -SIGHUP &lt;ntkd pid&gt;
+<P>
+
+All the hostnames, which are already registered by other nodes, are
+added in the queue, in this way, when the other nodes won't update them, your
+hostnames will automatically be the first in the queue.
+<P>
+
+An hostname expires after 3 days, if it isn't updated. <B>ntkd</B>
+automatically updates the registered hostnames, therefore your hostnames will
+expire only if you aren't present in the Netsukuku for 3 entire days.
+<P>
+
+If you want to know the result of a registration read the <B>ntkd</B>
+logs.
+<A NAME="lbAF">&nbsp;</A>
+<H2><FONT SIZE="-1">HOSTNAME</FONT> <FONT SIZE="-1">RESOLUTION</FONT></H2>
+
+<A NAME="ixAAF"></A>
+The <I><A HREF="http://localhost/cgi-bin/man/man2html?8+ntkd">ntkd</A></I>(8) daemon runs also a <FONT SIZE="-1">DNS</FONT> wrapper which receives standard <FONT SIZE="-1">DNS</FONT>
+queries for hostnames resolution. The hostnames are resolved in <FONT SIZE="-1">ANDNA</FONT>, then the
+<FONT SIZE="-1">DNS</FONT> wrapper will reply to the requester.
+<P>
+
+When the <I><A HREF="http://localhost/cgi-bin/man/man2html?8+ntkd">ntkd</A></I>(8) daemon is started it copies /etc/resolv.conf in
+/etc/resolv.conf.bak and adds in the first line of /etc/resolv.conf the
+``nameserver 127.0.0.1'' string. When it is closed it moves back
+/etc/resolv.conf.bak to /etc/resolv.conf. Use the <B>-R</B> option if you want to
+disable this behaviour.
+<P>
+
+All the resolved hostnames are kept, until their expiration date, in the
+<TT>&quot;resolved hostnames cache&quot;</TT>. The entire cache is flushed each time the
+<I><A HREF="http://localhost/cgi-bin/man/man2html?8+ntkd">ntkd</A></I>(8) daemon receives the <FONT SIZE="-1">SIGALRM</FONT> signal.
+<P>
+
+That's all.
+<A NAME="lbAG">&nbsp;</A>
+<H2><FONT SIZE="-1">IP</FONT> <FONT SIZE="-1">RESOLUTION</FONT></H2>
+
+<A NAME="ixAAG"></A>
+It is possible to know the list of hostnames registered by a node. You have to
+simply reverse resolve its ip. For example:
+<P>
+
+# dig -x 127.0.0.2
+<P>
+
+This command shows your currently registered hostnames. You can use it to know
+what hostnames have been already registered. Note the 127.0.0.2 ip. If you use
+127.0.0.1 you get only the local hostname written in /etc/hosts.
+<A NAME="lbAH">&nbsp;</A>
+<H2><FONT SIZE="-1">MX</FONT> <FONT SIZE="-1">REGISTRATION</FONT> and <FONT SIZE="-1">RESOLUTION</FONT></H2>
+
+<A NAME="ixAAH"></A>
+It is currently not supported.
+<A NAME="lbAI">&nbsp;</A>
+<H2>SIGNALS</H2>
+
+<A NAME="ixAAI"></A>
+When the <B></B><FONT SIZE="-1"><B>SIGHUP</B></FONT><B></B> signal is sent to <I><A HREF="http://localhost/cgi-bin/man/man2html?8+ntkd">ntkd</A></I>(8), the <I>andna_hostnames</I> file
+will be reloaded and it will try to register all the new added hostnames.
+<P>
+
+When the <B></B><FONT SIZE="-1"><B>SIGALRM</B></FONT><B></B> signal is sent to <I><A HREF="http://localhost/cgi-bin/man/man2html?8+ntkd">ntkd</A></I>(8), the resolved hostnames
+cache will be flushed.
+<A NAME="lbAJ">&nbsp;</A>
+<H2>FILES</H2>
+
+<A NAME="ixAAJ"></A>
+<DL COMPACT>
+<DT><I>/etc/netsukuku/andna_hostnames</I><DD>
+<A NAME="ixAAK"></A>
+It is the file where the hostnames to be registerd in <FONT SIZE="-1">ANDNA</FONT> are kept one per
+line. It's location can be changed by modifying its option in the
+<I>netsukuku.conf</I> file.
+<DT><I>/usr/share/netsukuku/andna_lcl_keyring</I><DD>
+<A NAME="ixAAL"></A>
+In this keyring your <FONT SIZE="-1">ANDNA</FONT> public and secret keys are saved. Handle this file
+with care: without it, you won't be able to update your hostnames, thus 
+you'll definitely lose them.
+<DT><I>/usr/share/netsukuku/andna_cache</I><DD>
+<A NAME="ixAAM"></A>
+
+<DT><I>/usr/share/netsukuku/andna_lcl_cache</I><DD>
+<A NAME="ixAAN"></A>
+<DT><I>/usr/share/netsukuku/andna_rh_cache</I><DD>
+<A NAME="ixAAO"></A>
+<DT><I>/usr/share/netsukuku/andna_counter_cache</I><DD>
+<A NAME="ixAAP"></A>
+
+They are the saved <FONT SIZE="-1">ANDNA</FONT> caches.  Their locations can be 
+changed in <I>netsukuku.conf</I>.
+</DL>
+<A NAME="lbAK">&nbsp;</A>
+<H2>BUGS</H2>
+
+<A NAME="ixAAQ"></A>
+{ Don't panic! }
+<P>
+
+If you encounter any bug, please report it to <A HREF="mailto:netsukuku@freaknet.org">netsukuku@freaknet.org</A> or
+contacts any author explaining what the problem is and if possible a way to
+reproduce it.
+<A NAME="lbAL">&nbsp;</A>
+<H2>CONTACTS</H2>
+
+<A NAME="ixAAR"></A>
+Subcrive to the netsukuku mailing to get help, be updated on the latest news
+and discuss on its development.
+<P>
+
+To subscribe to the list, send a message to:
+<BR>&nbsp;&nbsp;&nbsp;&lt;<A HREF="mailto:netsukuku-subscribe@freaknet.org">netsukuku-subscribe@freaknet.org</A>&gt;
+<P>
+
+We live night and day in <FONT SIZE="-1">IRC</FONT>, come to see us in:
+#netsukuku 
+on the FreeNode irc server (irc.freenode.org).
+<A NAME="lbAM">&nbsp;</A>
+<H2>AUTHORS</H2>
+
+<A NAME="ixAAS"></A>
+Main authors and maintainers:
+<P>
+
+Andrea Lo Pumo aka AlpT &lt;<A HREF="mailto:alpt@freaknet.org">alpt@freaknet.org</A>&gt;
+<P>
+
+Main contributors:
+<P>
+
+Andrea Leofreddi &lt;<A HREF="mailto:andrea.leofreddi@gmail.com">andrea.leofreddi@gmail.com</A>&gt;, Katolaz &lt;<A HREF="mailto:katolaz@freaknet.org">katolaz@freaknet.org</A>&gt;,
+Federico Tomassini &lt;<A HREF="mailto:effetom@gmail.com">effetom@gmail.com</A>&gt;
+<P>
+
+For a complete list read the <FONT SIZE="-1">AUTHORS</FONT> file or visit:
+&lt;<A HREF="http://netsukuku.freaknet.org/?p=Contacts">http://netsukuku.freaknet.org/?p=Contacts</A>&gt;
+<A NAME="lbAN">&nbsp;</A>
+<H2>SEE ALSO</H2>
+
+<A NAME="ixAAT"></A>
+For more information about Netsukuku visit:
+&lt;<A HREF="http://netsukuku.freaknet.org">http://netsukuku.freaknet.org</A>&gt;
+<P>
+
+<I><A HREF="http://localhost/cgi-bin/man/man2html?8+ntkd">ntkd</A></I>(8), <I><A HREF="http://localhost/cgi-bin/man/man2html?8+ntk-wifi">ntk-wifi</A></I>(8), <I><A HREF="http://localhost/cgi-bin/man/man2html?8+iproute2">iproute2</A></I>(8), <I><A HREF="http://localhost/cgi-bin/man/man2html?8+route">route</A></I>(8)
+<P>
+
+<HR>
+<A NAME="index">&nbsp;</A><H2>Index</H2>
+<DL>
+<DT><A HREF="#lbAB">NAME</A><DD>
+<DT><A HREF="#lbAC">DESCRIPTION</A><DD>
+<DT><A HREF="#lbAD">USAGE</A><DD>
+<DT><A HREF="#lbAE"><FONT SIZE="-1">HOSTNAME</FONT> <FONT SIZE="-1">REGISTRATION</FONT></A><DD>
+<DT><A HREF="#lbAF"><FONT SIZE="-1">HOSTNAME</FONT> <FONT SIZE="-1">RESOLUTION</FONT></A><DD>
+<DT><A HREF="#lbAG"><FONT SIZE="-1">IP</FONT> <FONT SIZE="-1">RESOLUTION</FONT></A><DD>
+<DT><A HREF="#lbAH"><FONT SIZE="-1">MX</FONT> <FONT SIZE="-1">REGISTRATION</FONT> and <FONT SIZE="-1">RESOLUTION</FONT></A><DD>
+<DT><A HREF="#lbAI">SIGNALS</A><DD>
+<DT><A HREF="#lbAJ">FILES</A><DD>
+<DT><A HREF="#lbAK">BUGS</A><DD>
+<DT><A HREF="#lbAL">CONTACTS</A><DD>
+<DT><A HREF="#lbAM">AUTHORS</A><DD>
+<DT><A HREF="#lbAN">SEE ALSO</A><DD>
+</DL>
+<HR>
+This document was created by
+<A HREF="http://localhost/cgi-bin/man/man2html">man2html</A>,
+using the manual pages.<BR>
+Time: 08:43:08 GMT, April 06, 2006
+</BODY>
+</HTML>
