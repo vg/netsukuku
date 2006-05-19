@@ -1,0 +1,34 @@
+<?php
+
+$motd = <<<EOF
+<pre id="filez">
+
+
+                                    Netsukuku
+
+                        - Close the world, txEn eht nepO -
+
+
+
+
+La Rete, Tao della conoscenza
+che unisce il molteplice nell'uno,
+deve rinascere libera,
+ed avvolgere in un caldo abbraccio
+la dolce madre Gaia.
+
+Questo e' il risveglio,
+il risveglio di tutti noi che finora
+siamo vissuti immersi nella nebbia,
+braccati dalla chimera di un putrefatto Wired,
+e' il nostro risveglio.
+
+Unitevi e non abbiate timore,
+le porte sono aperte,
+la Rete ci attende.
+</pre>
+EOF;
+
+print $motd;
+
+?>
