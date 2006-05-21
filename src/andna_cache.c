@@ -1891,6 +1891,7 @@ int load_snsd(char *file, lcl_cache *alcl_head)
 
 		if((*buf)=='#' || (*buf)=='\n' || !(*buf)) {
 			/* Strip off the comment lines */
+			line++;
 			continue;
 		} else {
 			slen=strlen(buf);
@@ -1909,7 +1910,7 @@ int load_snsd(char *file, lcl_cache *alcl_head)
 					     "priority:weight[:pub_key_file]\n"
 					"  or\n"
 					"  \thostname:snsd_ip:service:"
-					"  priority:weight[:pub_key_file]",
+					     "priority:weight[:pub_key_file]",
 					file, line);
 				ERROR_FINISH(abort, 1, skip_line);
 			}

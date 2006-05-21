@@ -150,6 +150,8 @@ snsd_node *snsd_add_node(snsd_node **head, u_short *counter,
 	snd=xmalloc(sizeof(snsd_node));
 	setzero(snd, sizeof(snsd_node));
 
+	memcpy(snd->record, record, MAX_IP_SZ);
+
 	clist_add(head, counter, snd);
 
 	return snd;
@@ -185,7 +187,6 @@ snsd_node *snsd_add_first_mainip(snsd_service **head, u_short *counter,
 	snp=snsd_add_prio(&sns->prio, SNSD_DEFAULT_PRIO);
 	snd=snsd_add_first_node(&snp->node, counter, 
 				SNSD_MAX_QUEUE_RECORDS, record);
-	memcpy(snd->record, record, MAX_IP_SZ);
 	snd->flags|=SNSD_NODE_IP | SNSD_NODE_MAIN_IP;
 	snd->weight=SNSD_DEFAULT_WEIGHT;
 

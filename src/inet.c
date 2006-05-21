@@ -456,12 +456,13 @@ int str_to_inet(const char *src, inet_prefix *ip)
 	}
 
 	if((res=inet_pton(family, src, (void *)data)) < 0) {
-		error("In str_to_inet: error -> %s.",strerror(errno));
+		debug(DBG_NORMAL, ERROR_MSG "error -> %s.", 
+				ERROR_FUNC, strerror(errno));
 		return -1;
 	}
 	if (!res) {
-		error("In str_to_inet: impossible to convert \"%s\":"
-				" invalid address.", src);
+		debug(DBG_NORMAL, ERROR_MSG "impossible to convert \"%s\":"
+				" invalid address.", ERROR_FUNC, src);
 		return -1;
 	}
 

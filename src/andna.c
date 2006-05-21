@@ -2036,8 +2036,10 @@ finish:
 }
 
 /*
- * put_andna_cache: replies to a ANDNA_GET_ANDNA_CACHE request, sending back the
- * complete andna cache
+ * put_andna_cache
+ *
+ * replies to a ANDNA_GET_ANDNA_CACHE request, sending back the complete 
+ * andna cache
  */
 int put_andna_cache(PACKET rq_pkt)
 {
@@ -2049,7 +2051,7 @@ int put_andna_cache(PACKET rq_pkt)
 	
 	ntop=inet_to_str(rq_pkt.from);
 	
-	memset(&pkt, '\0', sizeof(PACKET));
+	setzero(&pkt, sizeof(PACKET));
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
 
