@@ -31,7 +31,7 @@
  * <<4.3BSD.  This function [bzero] is deprecated -- use memset in new 
  *   programs.>>
  */
-#define setzero(p, sz)		memset((p), 0, sizeof(sz))
+#define setzero(p, sz)		memset((p), 0, (sz))
 
 /* 
  * MILLISEC: converts a timeval struct to a int. The time will be returned in
