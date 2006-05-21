@@ -6,6 +6,10 @@
 
 * (generally these TODOs are already being implemented at the moment)
 
+- bugs
+	- # Reply ANDNA_PUT_ANDNA_CACHE to 90.244.217.235
+	    *** glibc detected *** free(): invalid next size (fast): 0x080a9210
+	    It seems that pack_andna_cache() has some problems
 
 - SNSD
 	- andna.pod (man page)

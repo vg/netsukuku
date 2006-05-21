@@ -455,7 +455,6 @@ void init_netsukuku(char **argv)
 	
 	destroy_netsukuku_mutex=0;
 	sigterm_timestamp=sighup_timestamp=sigalrm_timestamp=0;
-
 	setzero(&me, sizeof(struct current_globals));
 	
 	my_family=server_opt.family;

@@ -179,8 +179,10 @@ INT_INFO snsd_prio_llist_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
 	snsd_prio *_p=(head);						\
 	int _priosz=0;							\
 									\
-	list_for(_p)							\
+	list_for(_p) {							\
 		_priosz+=SNSD_NODE_LLIST_PACK_SZ(_p->node);		\
+ 		_priosz+=SNSD_PRIO_PACK_SZ;				\
+ 	}								\
 	_priosz+=sizeof(struct snsd_prio_llist_hdr);			\
 	_priosz;							\
 })
@@ -194,6 +196,7 @@ INT_INFO snsd_service_llist_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
 /*
  * the body is:
  * 	u_short		service;
+ * 	u_char		proto;
  * 	char		snsd_prio_llist_pack[SNSD_PRIO_LLIST_PACK_SZ];
  */
 #define SNSD_SERVICE_LLIST_PACK_SZ(head)				\
@@ -201,8 +204,10 @@ INT_INFO snsd_service_llist_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
 	snsd_service *_s=(head);					\
 	int _srvsz=0;							\
  	if(_s) {							\
-		 list_for(_s)						\
+		 list_for(_s) {						\
 			 _srvsz+=SNSD_PRIO_LLIST_PACK_SZ(_s->prio);	\
+ 			 _srvsz+=SNSD_SERVICE_PACK_SZ;			\
+ 		 }							\
 		 _srvsz+=sizeof(struct snsd_service_llist_hdr);		\
 	 }								\
 	_srvsz;								\
@@ -214,11 +219,18 @@ INT_INFO snsd_service_llist_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { 1 } };
 })
  	
 #define SNSD_SERVICE_MAX_PACK_SZ					\
-		(( (SNSD_NODE_PACK_SZ + SNSD_PRIO_PACK_SZ) * 		\
-		 	(SNSD_MAX_REC_SERV) ) + SNSD_SERVICE_PACK_SZ)
+(	( (SNSD_NODE_PACK_SZ + SNSD_PRIO_PACK_SZ) * 			\
+		 	(SNSD_MAX_REC_SERV) 		) + 		\
+	SNSD_SERVICE_PACK_SZ 				  +		\
+	sizeof(struct snsd_prio_llist_hdr) 		  +		\
+	sizeof(struct snsd_service_llist_hdr)				\
+)
+
 #define SNSD_SERVICE_MAX_LLIST_PACK_SZ					\
-		((SNSD_NODE_PACK_SZ + SNSD_PRIO_PACK_SZ +		\
-		  SNSD_SERVICE_PACK_SZ)*SNSD_MAX_RECORDS)
+((	SNSD_NODE_PACK_SZ + SNSD_PRIO_PACK_SZ + SNSD_SERVICE_PACK_SZ +	\
+		sizeof(struct snsd_prio_llist_hdr))*SNSD_MAX_RECORDS +  \
+        sizeof(struct snsd_service_llist_hdr)				\
+)
 
 
 /*
