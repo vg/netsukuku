@@ -1084,7 +1084,7 @@ unpack_acq_llist(char *pack, size_t pack_sz, size_t *unpacked_sz,
  * `pack_type' specifies if the package will be saved in a file or sent over
  * the net, it is equal to ACACHE_PACK_FILE or to ACACHE_PACK_PKT.
  * 
- * On error 0 is returned.
+ * On error 0 is returned and `*counter' is set to -1.
  * Warning: `pack' will be modified during the unpacking.
  */
 andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter,
@@ -1094,7 +1094,7 @@ andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter,
 	andna_cache *ac, *ac_head=0;
 	char *buf;
 	size_t sz=0;
-	int i;
+	int i, err=0;
 	size_t unpacked_sz=0;
 
 	hdr=(struct andna_cache_pkt_hdr *)pack;
@@ -1102,7 +1102,7 @@ andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter,
 	*counter=0;
 	
 	if(!hdr->tot_caches)
-		goto finish;
+		ERROR_FINISH(err, 1, finish);
 		
 	buf=pack + sizeof(struct andna_cache_pkt_hdr);
 	sz=sizeof(struct andna_cache_pkt_hdr);
@@ -1110,7 +1110,7 @@ andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter,
 	for(i=0; i<hdr->tot_caches; i++) {
 		sz+=ACACHE_BODY_PACK_SZ;
 		if(sz > pack_sz)
-			goto finish; /* overflow */
+			ERROR_FINISH(err, 1, finish); /* overflow */
 
 		ac=xmalloc(sizeof(andna_cache));
 		setzero(ac, sizeof(andna_cache));
@@ -1128,7 +1128,7 @@ andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter,
 
 		sz+=ACQ_PACK_SZ(0)*ac->queue_counter;
 		if(sz > pack_sz)
-			goto finish; /* overflow */
+			ERROR_FINISH(err, 1, finish); /* overflow */
 		
 		unpacked_sz+=ACACHE_BODY_PACK_SZ;
 		
@@ -1138,6 +1138,8 @@ andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter,
 	}
 	
 finish:
+	if(err)
+		*counter=-1;
 	return ac_head;
 }
 
@@ -1609,9 +1611,12 @@ finish:
 	if(pack)
 		xfree(pack);
 	fclose(fd);
-	if(!acache)
-		debug(DBG_NORMAL, "Malformed or empty andna_cache file."
+	if(!acache && counter < 0)
+		error("Malformed andna_cache file."
 				" Aborting load_andna_cache().");
+	else if(!acache)
+		debug(DBG_NORMAL, "Empty andna_cache file.");
+
 	return acache;
 }
 

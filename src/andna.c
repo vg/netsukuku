@@ -1724,7 +1724,7 @@ andna_cache *get_single_andna_c(u_int hash[MAX_IP_INT],
 	pack=rpkt.msg;
 	ret=andna_cache=unpack_andna_cache(pack, pack_sz, &counter,
 			ACACHE_PACK_PKT);
-	if(!andna_cache) {
+	if(!andna_cache && counter < 0) {
 		error("get_single_acache(): Malformed andna_cache.");
 		ERROR_FINISH(ret, 0, finish);
 	}
@@ -2025,7 +2025,7 @@ andna_cache *get_andna_cache(inet_prefix to, int *counter)
 	pack=rpkt.msg;
 	ret=andna_cache=unpack_andna_cache(pack, pack_sz, counter, 
 			ACACHE_PACK_PKT);
-	if(!andna_cache)
+	if(!andna_cache && counter < 0)
 		error("get_andna_cache(): Malformed or empty andna_cache. "
 				"Cannot load it");
 	

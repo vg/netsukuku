@@ -28,6 +28,8 @@
 
 - check for other active process when starting
 
+- static compilation
+
 - Flash NetsukukuD into an AP and test it.
 
 
