@@ -518,8 +518,8 @@ size_t d_u(char *buf,size_t pktlen,dns_pkt **dpp)
 
         crow=buf;
         /* Controls pkt consistency: we must at least read pkt headers */
-        if (pktlen<DNS_HDR_SZ)
-                return 0; // pkt MUST be discarded!
+        if (pktlen<DNS_HDR_SZ) 
+		err_ret(ERR_DNSMDP,0);
         *dpp=dp=create_dns_pkt();
 
         /* Writes headers */

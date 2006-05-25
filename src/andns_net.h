@@ -1,6 +1,7 @@
 #ifndef ANDNS_NET_H
 #define ANDNS_NET_H
 
+int idp_inet_ntop(int family,struct sockaddr *addr,char *buf,int buflen);
 int w_socket(int family,int type, int proto,int die);
 int w_connect(struct addrinfo *ai,int die) ;
 int serial_connect(struct addrinfo *ai,int die);

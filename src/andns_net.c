@@ -22,9 +22,35 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 
 #include "log.h"
 #include "andns_net.h"
+
+int idp_inet_ntop(int family,struct sockaddr *addr,char *buf,int buflen)
+{
+	const char *res;
+	struct sockaddr_in *saddr;
+	struct sockaddr_in6 *saddr6;
+
+	switch(family) {
+		case AF_INET:
+			saddr=(struct sockaddr_in*)addr;
+			res=inet_ntop(family,(void*)(&(saddr->sin_addr)),buf,buflen);
+			break;
+		case AF_INET6:
+			saddr6=(struct sockaddr_in6*)addr;
+			res=inet_ntop(family,(void*)(&(saddr6->sin6_addr)),buf,buflen);
+			break;
+		default:
+			return -1;
+	}
+	if (!res)
+		return -1;
+	return 0;
+}
 /* Connection Layer */
 
 int w_socket(int family,int type, int proto,int die)
@@ -140,7 +166,7 @@ ssize_t w_recv(int sk,void *buf,size_t len,int die)
 	ssize_t ret;
 
 	ret=recv(sk,buf,len,0);
-	if (ret==-1) {
+	if (ret<=0) {
 		if (die)
 			fatal("Unable to recv(): %s.",strerror(errno));
 		debug(DBG_NORMAL,"w_recv(): %s.",strerror(errno));

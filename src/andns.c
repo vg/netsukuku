@@ -198,13 +198,12 @@ int andns_init(int restricted, char *resolv_conf,int family)
          */
         for (i=0;i<_andns_ns_count_;i++) {
 		ai=_andns_ns_[i];
-		if (inet_ntop(ai->ai_family,(void*)(ai->ai_addr),buf,
-					INET6_ADDRSTRLEN)) 
-		{
+		res=idp_inet_ntop(ai->ai_family,ai->ai_addr,buf,
+					INET6_ADDRSTRLEN);
+		if (!res) {
                         strncat(msg,buf,INET_ADDRSTRLEN);
                         strncat(msg,i==_andns_ns_count_-1?". ":", ",2);
-                } 
-		else
+                } else
                         error("In andns_init: error "
 				"converting sockaddr -> %s.",\
 				strerror(errno));
@@ -228,7 +227,7 @@ int ns_general_send(char *msg,int msglen,char *answer,int anslen)
 {
         int res,i;
 
-        for (i=0;i<MAXNSSERVERS && i<_andns_ns_count_;i++) {
+        for (i=0; i<_andns_ns_count_;i++) {
 		res=ai_send_recv_close(_andns_ns_[i],msg,msglen,answer,anslen,0,0);
                 if(res != -1)
                         return res;
@@ -288,7 +287,7 @@ void dpktacpy(dns_pkt *dst,dns_pkt *src,const char *prefix)
 
 /*
  * Make a full copy of a dns pkt. If prefix is not
- * null, prefix is add to names.
+ * null, prefix is added to names.
  */
 dns_pkt* dpktcpy(dns_pkt *src,const char *prefix)
 {
@@ -306,6 +305,7 @@ dns_pkt* dpktcpy(dns_pkt *src,const char *prefix)
         while (dpq_src) {
                 dpq=dns_add_qst(dst);
                 memcpy(dpq,dpq_src,sizeof(dns_pkt_qst));
+		dpq->next=NULL;
                 dpq_src=dpq_src->next;
         }
         dpktacpy(dst,src,prefix);
@@ -346,11 +346,12 @@ dns_pkt* dpktcpy_rm_pref(dns_pkt *src)
 {
 	dns_pkt *dst;
 	dns_pkt_qst *dpq;
-	char temp[DNS_MAX_HNAME_LEN];
+//	char temp[DNS_MAX_HNAME_LEN];
+
 	dst=dpktcpy(src,NULL);
 	dpq=dst->pkt_qst;
-	rm_realm_prefix(dpq->qname,temp,dpq->qtype);
-	strcpy(dpq->qname,temp);
+	rm_realm_prefix(src->pkt_qst->qname,dpq->qname,dpq->qtype);
+//	strcpy(dpq->qname,temp);
 	return dst;
 }
 int andns_realm(dns_pkt_qst *dpq,int *prefixed)
@@ -620,7 +621,9 @@ int dns_forward(dns_pkt *dp,char *msg,int msglen,char* answer)
                 error(err_str);
                 goto safe_failing;
         }
-        if ((res=d_u(answer,res,&dp_forward))==-1) {
+	loginfo("AAAAA ns_genral returned %d",res);
+	res=d_u(answer,res,&dp_forward);
+        if (res<=0) {
                 error(err_str);
                 goto safe_failing;
         }
