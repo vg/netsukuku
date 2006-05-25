@@ -211,7 +211,6 @@ ssize_t ai_send_recv_close(struct addrinfo *ai,void *buf,size_t buflen,
 	return ret;
 }
 	
-/*
 void char_print(char *buf, int len)
 {
         int i,count=0;
@@ -226,13 +225,3 @@ void char_print(char *buf, int len)
         return;
 }
 
-
-int main(int argc, char **argv)
-{
-	int res;
-		
-	log_init("DPPO",7,1);
-	res=host_connect("151.99.125.2",53,SOCK_DGRAM,1);
-	res=host_connect("www.google.com",80,SOCK_STREAM,1);
-	return 0;
-}*/
