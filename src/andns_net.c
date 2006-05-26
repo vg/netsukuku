@@ -158,6 +158,7 @@ ssize_t w_send(int sk,const void *buf,size_t len,int die)
 			fatal("Unable to send(): %s.",strerror(errno));
 		debug(DBG_NORMAL,"w_send(): %s.",strerror(errno));
 	}
+	debug(DBG_INSANE,"w_send(): %d bytes sent.",ret);
 	return ret;
 }
 
@@ -169,8 +170,9 @@ ssize_t w_recv(int sk,void *buf,size_t len,int die)
 	if (ret<=0) {
 		if (die)
 			fatal("Unable to recv(): %s.",strerror(errno));
-		debug(DBG_NORMAL,"w_recv(): %s.",strerror(errno));
+		debug(DBG_INSANE,"w_recv(): %s.",strerror(errno));
 	}
+	debug(DBG_INSANE,"w_recv(): %d bytes received.",ret);
 	return ret;
 }
 

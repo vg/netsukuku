@@ -34,10 +34,9 @@ sources_netsukuku = Split("""accept.c llist.c ipv6-gmp.c inet.c request.c map.c
 		   ll_map.c libnetlink.c if.c krnl_route.c krnl_rule.c
 		   iptunnel.c route.c conf.c dns_wrapper.c igs.c mark.c 
 		   libiptc/libip4tc.c libping.c netsukuku.c""") + sources_common
-sources_ntkdig    = Split('andns_lib.c xmalloc.c ntkdig.c log.c')
+sources_ntkdig    = Split('andns_lib.c xmalloc.c ntkdig.c log.c andns_net.c')
 
 libs = Split('gmp pthread crypto ')
-#libs = Split('gmp pthread crypto resolv')
 
 #
 #	Command line options and help
@@ -166,8 +165,8 @@ ntkd = env.Program('ntkd', sources_netsukuku, LIBS = libs, CPPPATH = '.')
 qspn        = env.Program('qspn-empiric', sources_qspn, LIBS = libs, CPPPATH = '.')
 ntkdig      = env.Program('ntk-dig', sources_ntkdig, LIBS = libs, CPPPATH = '.')
 
-Default(ntkd)
-#Default(ntkd,ntkdig)
+#Default(ntkd)
+Default(ntkd,ntkdig)
 
 
 #
@@ -182,7 +181,7 @@ idir_data   = '$DATA_DIR'
 idir_conf   = '$CONF_DIR'
 
 env.Install(idir_bin, [ntkd])
-#env.Install(idir_bin, [ntkdig])
+env.Install(idir_bin, [ntkdig])
 env.Alias('install', [idir_bin, idir_conf])
 
 #Dirty hack ;( Why GetOption("install") doesn't work?

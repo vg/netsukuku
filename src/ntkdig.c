@@ -7,6 +7,7 @@
 
 #include "ntkdig.h"
 #include "xmalloc.h"
+#include "andns_net.h"
 
 static ntkdig_opts globopts;
 static struct timeval time_start,time_stop;
@@ -82,7 +83,7 @@ void opts_init(void)
 {
 	memset(&GOP,0,NTKDIG_OPTS_SZ);
 	strcpy(GOP.nsserver,LOCALHOST);
-	GOP.port=htons(NTKDIG_PORT);
+	GOP.port=NTKDIG_PORT;
 	GQT=create_andns_pkt();
 	srand((unsigned int)time(NULL));
 }
@@ -104,7 +105,7 @@ void opts_set_port(char *arg)
 		say("Bad port %s.",arg);
 		exit(1);
 	}
-	GOP.port=htons(port);
+	GOP.port=port;
 }
 
 void opts_set_ns(char *arg)
@@ -216,7 +217,7 @@ void do_command(void)
 		exit(1);
 	}
 	res=hn_send_recv_close(GOP.nsserver,GOP.port,
-			SOCK_DGRAM,buf,res,answer,ANDNS_MAX_PK_LEN,1);
+			SOCK_DGRAM,buf,res,answer,ANDNS_MAX_PK_LEN,0);
 	if (res==-1) {
 		say("Communication failed with %s.\n",GOP.nsserver);
 		exit(1);
