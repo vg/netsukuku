@@ -228,10 +228,8 @@ int ns_general_send(char *msg,int msglen,char *answer,int anslen)
         int res,i;
 
         for (i=0; i<_andns_ns_count_;i++) {
-		debug(DBG_INSANE,"ns_general_send: talking to nameserver: %d",i+1);
 		res=ai_send_recv_close(_andns_ns_[i],msg,msglen,answer,anslen,0,0);
                 if(res != -1) {
-			debug(DBG_INSANE,"ns_general_send: returning %d.",res);
                         return res;
 		}
         }
@@ -625,7 +623,6 @@ int dns_forward(dns_pkt *dp,char *msg,int msglen,char* answer)
                 error(err_str);
                 goto safe_failing;
         }
-	loginfo("AAAAA ns_genral returned %d",res);
 	res=d_u(answer,res,&dp_forward);
         if (res<=0) {
                 error(err_str);
