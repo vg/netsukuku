@@ -1864,7 +1864,7 @@ int load_snsd(char *file, lcl_cache *alcl_head)
 	
 	FILE *fd;
 	size_t slen;
-	int line=0, fields, e, service;
+	int line=0, fields, e, service, nodes;
 	struct servent *st;
 	char buf[MAX_SNSD_LINE_SZ+1], **records, *servname, *servproto;
 	u_char proto, abort=0;
@@ -1982,7 +1982,8 @@ int load_snsd(char *file, lcl_cache *alcl_head)
 			
 			/* priority */
 			snp=snsd_add_prio(&sns->prio, atoi(records[3]));
-			if(snsd_count_prio_nodes(snp) >= SNSD_MAX_REC_SERV) {
+			nodes=snsd_count_prio_nodes(sns->prio);
+			if(nodes >= SNSD_MAX_REC_SERV) {
 				error("%s: The maximum number of records for"
 				      " the service \"%s\" has been reached.\n"
 				      "  The maximum is %d records per service",

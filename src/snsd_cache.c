@@ -119,7 +119,7 @@ snsd_prio *snsd_add_prio(snsd_prio **head, u_char prio)
 snsd_node *snsd_find_node_by_record(snsd_node *snd, u_int record[MAX_IP_INT])
 {
 	list_for(snd)
-		if(!memcpy(snd->record, record, MAX_IP_SZ))
+		if(!memcmp(snd->record, record, MAX_IP_SZ))
 			return snd;
 	return 0;
 }
@@ -150,7 +150,8 @@ snsd_node *snsd_add_node(snsd_node **head, u_short *counter,
 	snd=xmalloc(sizeof(snsd_node));
 	setzero(snd, sizeof(snsd_node));
 
-	memcpy(snd->record, record, MAX_IP_SZ);
+	if(record)
+		memcpy(snd->record, record, MAX_IP_SZ);
 
 	clist_add(head, counter, snd);
 
@@ -183,10 +184,13 @@ snsd_node *snsd_add_first_mainip(snsd_service **head, u_short *counter,
 	snsd_prio *snp;
 	snsd_node *snd;
 
-	sns=snsd_add_service(head, SNSD_DEFAULT_SERVICE, SNSD_DEFAULT_PROTO);
-	snp=snsd_add_prio(&sns->prio, SNSD_DEFAULT_PRIO);
-	snd=snsd_add_first_node(&snp->node, counter, 
-				SNSD_MAX_QUEUE_RECORDS, record);
+	if(!(sns=snsd_add_service(head, SNSD_DEFAULT_SERVICE, 
+					SNSD_DEFAULT_PROTO)) ||
+		!(snp=snsd_add_prio(&sns->prio, 
+					SNSD_DEFAULT_PRIO))  ||
+		!(snd=snsd_add_first_node(&snp->node, counter, 
+					SNSD_MAX_QUEUE_RECORDS, record)))
+		return 0;
 	snd->flags|=SNSD_NODE_IP | SNSD_NODE_MAIN_IP;
 	snd->weight=SNSD_DEFAULT_WEIGHT;
 
@@ -403,7 +407,7 @@ snsd_node *snsd_unpack_all_nodes(char *pack, size_t pack_sz,
 	int i, sz=0;
 	u_short counter;
 	
-	if((sz+=sizeof(struct snsd_node_llist_hdr)) >= pack_sz)
+	if((sz+=sizeof(struct snsd_node_llist_hdr)) > pack_sz)
 		ERROR_FINISH(snd_head, 0, finish);
 
 	counter=ntohs((*(short *)buf));
@@ -414,7 +418,7 @@ snsd_node *snsd_unpack_all_nodes(char *pack, size_t pack_sz,
 	
 	*nodes_counter=0;
 	for(i=0; i<counter; i++) {
-		if((sz+=SNSD_NODE_PACK_SZ) >= pack_sz)
+		if((sz+=SNSD_NODE_PACK_SZ) > pack_sz)
 			ERROR_FINISH(snd_head, 0, finish);
 		
 		snd=snsd_unpack_node(buf);
@@ -473,7 +477,7 @@ snsd_prio *snsd_unpack_prio(char *pack, size_t pack_sz, size_t *unpacked_sz,
 				u_short *nodes_counter)
 {
 	snsd_prio *snp;
-	u_short tmp_counter, counter=0;
+	u_short counter=0;
 
 	*nodes_counter=counter;
 	snp=xmalloc(sizeof(snsd_prio));
@@ -484,8 +488,7 @@ snsd_prio *snsd_unpack_prio(char *pack, size_t pack_sz, size_t *unpacked_sz,
 	(*unpacked_sz)+=sizeof(char);
 
 	snp->node=snsd_unpack_all_nodes(pack, pack_sz-sizeof(char), unpacked_sz,
-					&tmp_counter);
-	counter+=tmp_counter;
+					&counter);
 	if(!snp->node || counter > SNSD_MAX_REC_SERV)
 		return 0;
 
@@ -509,7 +512,7 @@ int snsd_pack_all_prios(char *pack, size_t pack_sz, snsd_prio *head)
 {
 	struct snsd_prio_llist_hdr *hdr;
 	snsd_prio *snp=head;
-	int sz=0, wsz=0, counter;
+	int sz=0, wsz=0, counter=0;
 
 	hdr=(struct snsd_prio_llist_hdr *)pack;
 	pack+=sizeof(struct snsd_prio_llist_hdr);
@@ -545,23 +548,24 @@ snsd_prio *snsd_unpack_all_prios(char *pack, size_t pack_sz,
 {
 	snsd_prio *snp_head=0, *snp;
 	char *buf=pack;
-	u_short counter, ncounter=0, tmp_counter;
+	u_short counter=0, ncounter=0, tmp_counter=0;
 	int i, sz=0, tmp_sz, usz=0;
 
 	*nodes_counter=ncounter;
 
-	if((sz+=sizeof(struct snsd_prio_llist_hdr)) >= pack_sz)
+	if((sz+=sizeof(struct snsd_prio_llist_hdr)) > pack_sz)
 		ERROR_FINISH(snp_head, 0, finish);
 
 	counter=ntohs((*(short *)buf));
 	buf+=sizeof(short);
 	usz+=sizeof(short);
+	(*unpacked_sz)+=sizeof(short);
 
 	if(counter > SNSD_MAX_REC_SERV || counter <= 0)
 		ERROR_FINISH(snp_head, 0, finish);
 	
 	for(i=0; i<counter; i++) {
-		if((sz+=SNSD_PRIO_PACK_SZ) >= pack_sz)
+		if((sz+=SNSD_PRIO_PACK_SZ) > pack_sz)
 			ERROR_FINISH(snp_head, 0, finish);
 
 		tmp_sz=(*unpacked_sz);
@@ -581,7 +585,6 @@ snsd_prio *snsd_unpack_all_prios(char *pack, size_t pack_sz,
 
 finish:
 	*nodes_counter=ncounter;
-	(*unpacked_sz)+=usz;
 	return snp_head;
 }
 
@@ -634,7 +637,7 @@ snsd_service *snsd_unpack_service(char *pack, size_t pack_sz,
 				  size_t *unpacked_sz, u_short *nodes_counter)
 {
 	snsd_service *sns;
-	u_short tmp_counter, counter=0;
+	u_short tmp_counter=0, counter=0;
 
 	*nodes_counter=counter;
 	sns=xmalloc(sizeof(snsd_service));
@@ -647,8 +650,8 @@ snsd_service *snsd_unpack_service(char *pack, size_t pack_sz,
 	pack+=sizeof(u_char);
 	
 	(*unpacked_sz)+=SNSD_SERVICE_PACK_SZ;
-
 	pack_sz-=SNSD_SERVICE_PACK_SZ;
+
 	sns->prio=snsd_unpack_all_prios(pack, pack_sz, unpacked_sz, 
 					&tmp_counter);
 	counter+=tmp_counter;
@@ -675,7 +678,7 @@ int snsd_pack_all_services(char *pack, size_t pack_sz, snsd_service *head)
 {
 	struct snsd_service_llist_hdr *hdr;
 	snsd_service *sns=head;
-	int sz=0, wsz=0, counter;
+	int sz=0, wsz=0, counter=0;
 
 	hdr=(struct snsd_service_llist_hdr *)pack;
 	pack+=sizeof(struct snsd_service_llist_hdr);
@@ -710,24 +713,26 @@ snsd_service *snsd_unpack_all_service(char *pack, size_t pack_sz,
 {
 	snsd_service *sns_head=0, *sns=0;
 	char *buf=pack;
-	u_short counter=0, ncounter=0, tmp_counter;
+	u_short counter=0, ncounter=0, tmp_counter=0;
 	int i, sz=0, tmp_sz, usz=0;
 	
 	if(nodes_counter)
 		*nodes_counter=ncounter;
 	
-	if((sz+=sizeof(struct snsd_service_llist_hdr)) >= pack_sz)
+	if((sz+=sizeof(struct snsd_service_llist_hdr)) > pack_sz)
 		ERROR_FINISH(sns_head, 0, finish);
 
 	counter=ntohs((*(short *)buf));
 	buf+=sizeof(short);
 	usz+=sizeof(short);
+	(*unpacked_sz)+=sizeof(short);
+
 
 	if(counter > SNSD_MAX_RECORDS || counter <= 0)
 		ERROR_FINISH(sns_head, 0, finish);
 	
 	for(i=0; i<counter; i++) {
-		if((sz+=SNSD_SERVICE_PACK_SZ) >= pack_sz)
+		if((sz+=SNSD_SERVICE_PACK_SZ) > pack_sz)
 			ERROR_FINISH(sns_head, 0, finish);
 
 		tmp_sz=(*unpacked_sz);
@@ -748,7 +753,6 @@ snsd_service *snsd_unpack_all_service(char *pack, size_t pack_sz,
 finish:
 	if(nodes_counter)
 		*nodes_counter=ncounter;
-	(*unpacked_sz)+=usz;
 	return sns_head;
 }
 
@@ -926,4 +930,54 @@ snsd_service *snsd_service_llist_copy(snsd_service *sns, int service,
 		sns->prio=snsd_prio_llist_copy(sns->prio);
 
 	return new_sns;
+}
+
+
+void snsd_dump_node(snsd_node *snd, int single)
+{
+	list_for(snd) {
+		printf("\t\t{\n "
+				"\t\trecord = %x:%x:%x:%x\n "
+				"\t\tpubkey = %p\n "
+				"\t\tflags = %d\n "
+				"\t\tweight = %d\n",
+			snd->record[0], snd->record[1], 
+			snd->record[2], snd->record[3], 
+			(char *)snd->pubkey, (int)snd->flags, 
+			(int)snd->weight);
+		if(single)
+			goto finish;
+	}
+finish:
+	printf("\t\t}\n");
+	return;
+}
+
+void snsd_dump_prio(snsd_prio *snp, int single, int level)
+{
+	list_for(snp) {
+		printf("\t{\n \tprio = %d\n", snp->prio);
+		snsd_dump_node(snp->node, level > 2 ? 0 : 1);
+		printf("\t}\n");
+		if(single)
+			goto finish;
+	}
+finish:
+	printf("\t}\n");
+	return;
+}
+
+void snsd_dump_service(snsd_service *sns, int single, int level)
+{
+	list_for(sns) {
+		printf("{\n service = %d\n proto = %d\n",
+				sns->service, sns->proto);
+		snsd_dump_prio(sns->prio, level > 1 ? 0 : 1, level);
+		printf("}\n");
+		if(single)
+			goto finish;
+	}
+finish:
+	printf("}\n");
+	return;
 }

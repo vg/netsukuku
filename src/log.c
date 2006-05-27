@@ -59,6 +59,10 @@ void fatal(const char *fmt,...)
 	print_log(LOG_CRIT, str, args);
 	va_end(args);
 
+	if(log_to_stderr)
+		/* Flush stderr if we want to read something */
+		fflush(stderr);
+
 #ifdef DEBUG
 	/* Useful to catch the error in gdb */
 	kill(getpid(), SIGSEGV);

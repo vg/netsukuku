@@ -2,6 +2,10 @@
 
 New features:
 	
+	* The Scattered Name Service Disgregation (NTK_RFC 0009) has been
+	  implemented.
+	  See http://lab.dyne.org/Ntk_SNSD and the man page of andna(8).
+	  
 	* The `netsukuku_d' binary and its man page have been renamed to `ntkd'
 	  `netsukuku_wifi' and its man page have been renamed to `ntk-wifi'.
 	

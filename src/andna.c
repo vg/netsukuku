@@ -835,7 +835,8 @@ int andna_recv_reg_rq(PACKET rpkt)
 		}
 	}
 
-	/* Finally, let's register/update the hname */
+	/***
+	 * Finally, let's register/update the hname */
 	cur_t=time(0);	
 	ac=andna_cache_addhash(req->hash);
 	acq=ac_queue_add(ac, req->pubkey);
@@ -846,6 +847,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 			ret=pkt_err(pkt, E_ANDNA_QUEUE_FULL, 0);
 		ERROR_FINISH(ret, -1, finish);
 	}
+	/***/
 
 	if(acq != ac->acq) {
 		/* 
@@ -858,6 +860,8 @@ int andna_recv_reg_rq(PACKET rpkt)
 		/* 
 		 * Register the snsd records 
 		 */
+
+		/* unpack the snsd services */
 		snsd_unpacked=snsd_unpack_all_service(snsd_pack, packed_sz, 
 				&unpacked_sz, &snsd_counter);
 		
@@ -870,28 +874,41 @@ int andna_recv_reg_rq(PACKET rpkt)
 		}
 
 		if(req->flags & ANDNA_PKT_SNSD_DEL) {
-			/* Fulfil the deletion request */
+			/*
+			 * Delete, from the andna_cache, all the snsd records
+			 * which are equal to those included in the 
+			 * registration pkt.
+			 */
 			snsd_record_del_selected(&acq->service, &acq->snsd_counter,
 						 snsd_unpacked);
 		} else {
+			/*
+			 * Register the snsd services in our andna_cache 
+			 */
+
+			/* Add the mainip and update its IP */
 			snd=snsd_find_mainip(snsd_unpacked);
 			if(!snd)
 				snd=snsd_add_first_mainip(&snsd_unpacked,
 						&snsd_counter,
 						SNSD_MAX_QUEUE_RECORDS,
 						rfrom.data);
+			inet_copy_ipdata_raw(snd->record, &rfrom);
 
-			/* Set the mainip flag only to the real mainip record,
+			/**
+			 * Set the mainip flag only to the real mainip record,
 			 * in this way we're sure that there is only one. */
 			snsd_unset_all_flags(snsd_unpacked, SNSD_NODE_MAIN_IP);
 			snd->flags|=SNSD_NODE_MAIN_IP;
-			
-			inet_copy_ipdata_raw(snd->record, &rfrom);
+			/**/
+		
+			/* substitute the old snsd records with the new ones */
 			snsd_service_llist_del(&acq->service);
 			acq->service=snsd_unpacked;
 		}
 	}
 
+	/* Check if the counter of number of updates matches with the pkt */
 	if(acq->hname_updates > req->hname_updates) {
 		debug(DBG_SOFT, "Registration rq 0x%x rejected: hname_updates"
 				" mismatch %d > %d", rpkt.hdr.id, 
@@ -902,6 +919,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 	} else
 		acq->hname_updates=req->hname_updates+1;
 
+	/* Has the registration request been sent too early ? */
 	if(cur_t > acq->timestamp && 
 			(cur_t - acq->timestamp) < ANDNA_MIN_UPDATE_TIME) {
 		debug(DBG_SOFT, "Registration rq 0x%x rejected: %s", 
@@ -920,13 +938,14 @@ int andna_recv_reg_rq(PACKET rpkt)
 		ret=forward_pkt(pkt, rfrom);
 	}
 	
-	/* 
+	/**
 	 * Broadcast the request to the entire gnode of level 1 to let the
 	 * other nodes register the hname.
 	 */
 	if(!forwarded_pkt)
 		andna_add_flood_pkt_id(last_reg_pkt_id, rpkt.hdr.id);
 	andna_flood_pkt(&rpkt, 1);
+	/**/
 	
 finish:
 	if(ntop)

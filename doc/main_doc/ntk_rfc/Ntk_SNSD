@@ -99,7 +99,7 @@ The weight number has to be less than 128.
 The registration method of a SNSD record is similar to that described in the
 NTK_RFC 0004.
 
-It is possible to associate up to 16 records to a single hostname.
+It is possible to associate up to 16 records to a single service.
 The maximum number of total records which can be registered is 256.
 
 The registration of the SNSD records is performed by the same register_node.
