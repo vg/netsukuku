@@ -1,16 +1,17 @@
 #!/bin/bash
 # ntk-wifi: sets a wifi card in Ad-Hoc mode and its essid to "netsukuku".
 
-if ( test $(id -u) != 0) then
-	echo "Root privileges needed."
-	echo "Get them in someway and then come back again"
-	exit 1
-fi
-
-if [ -z "$1" ]
+if [ -z "$1" ] || [ "$1" == "help" ]  || [ "$1" == "-h" ] ||\
+	[ "$1" == "--help" ]
 then
 	echo "You must specify your wifi interface."
 	echo "Ex: ntk-wifi wlan0"
+	exit 1
+fi
+
+if ( test $(id -u) != 0) then
+	echo "Root privileges needed."
+	echo "Get them in someway and then come back again"
 	exit 1
 fi
 

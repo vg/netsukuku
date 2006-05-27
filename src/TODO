@@ -11,6 +11,12 @@
 	    *** glibc detected *** free(): invalid next size (fast): 0x080a9210
 	    It seems that pack_andna_cache() has some problems
 
+	- Command line: 
+		is ntkd -abcd   equal to   ntkd -a -b -c -d ?
+
+	- In restricted mode, is necessary the configuration of a tunnel-if
+	  even if we're not going to use an internet conn?
+
 - SNSD
 	- andna.pod (man page)
 	- pubkey: automatic deletion request
