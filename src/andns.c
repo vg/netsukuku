@@ -496,13 +496,15 @@ int dpanswtoapansw(dns_pkt *dp,andns_pkt *ap)
 			break;
 		apd=andns_add_answ(ap);
 		if (qt==T_A) {
-			memcpy(apd->rdata,dpa->rdata,_ip_len_);
 			apd->rdlength=_ip_len_;
+			APD_ALIGN(apd);
+			memcpy(apd->rdata,dpa->rdata,_ip_len_);
 			nan++;
 		} 
 		else if (qt==T_PTR) {
-			strcpy(apd->rdata,dpa->rdata);
 			apd->rdlength=strlen(apd->rdata);
+			APD_ALIGN(apd);
+			strcpy(apd->rdata,dpa->rdata);
 			nan++;
 		}
 		else if (qt==T_MX) {
@@ -756,8 +758,10 @@ int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 	} 
 	else if (qt==AT_PTR) {
 		lcl_cache *lc;
+		int family;
 		
-		res=str_to_inet(ap->qstdata,&ipres);
+		family=ap->qstlength==4?AF_INET:AF_INET6;
+		res=inet_setip_raw(&ipres,(u_int*)ap->qstdata,family);
 		if (res==-1) {
 			rcode=RCODE_EINTRPRT;
 			goto safe_return_rcode;
@@ -778,7 +782,6 @@ int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 	ANDNS_SET_QR(answer);
 	recs=records;
 	ANDNS_SET_ANCOUNT(answer,recs);
-	loginfo("QUESTION PRODUCTS %d answers. %d len.",recs,res+msglen);
 	return res+msglen;
 safe_return_rcode:
 	destroy_andns_pkt(ap);

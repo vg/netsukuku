@@ -189,6 +189,13 @@ void opts_set_question(char *arg)
 	struct in6_addr i6a;
 	int res;
 	
+	res=strlen(arg);
+	if (res>NTKDIG_MAX_OBJ_LEN) {
+		say("Object requested is too long: %s",arg);
+		exit(1);
+	}
+	strcpy(GOP.obj,arg);
+
 	switch(GQT->qtype) {
 		case QTYPE_A:
 			if (GQT->nk==REALM_NTK) {
@@ -234,14 +241,91 @@ void opts_finish(char *arg)
 	opts_set_question(arg);
 }
 
+void print_headers()
+{
+	if (AMISILENT)
+		return;
+	andns_pkt *ap=GQT;
+	say("\n - Headers Section:\n"
+		"\tid ~ %6d\tqr  ~ %4d\tqt ~ %s\n"
+		"\tan ~ %6d\tipv ~ %s\tnk ~ %s\n"
+		"\trCode ~ %s\n",
+		ap->id,ap->qr,QTYPE_STR(ap),
+		ap->ancount,IPV_STR(ap),NK_STR(ap),
+		RCODE_STR(ap));
+}
+void print_question()
+{
+	if (AMISILENT)
+		return;
+	
+	say("\n - Question Section:\n"
+		"\tObj ~ %s\n",GOP.obj);
+}
+
+void ip_bin_to_str(void *data,char *dst)
+{
+	int family;
+	struct in_addr ia;
+	struct in6_addr i6a;
+	const void *via;
+	const char *crow;
+
+	family=GQT->ipv==ANDNS_IPV4?
+		AF_INET:AF_INET6;
+	switch(family) {
+		case AF_INET:
+			memcpy(&(ia.s_addr),data,4);
+			via=(void*)(&ia);
+			break;
+		case AF_INET6:
+			memcpy(&(i6a.in6_u),data,16);
+			via=(void*)(&i6a);
+			break;
+		default:
+			strcpy(dst,"Unprintable Object");
+			return;
+	}
+	crow=inet_ntop(family,via,dst,NTKDIG_MAX_OBJ_LEN);
+	if (!crow) 
+		strcpy(dst,"Unprintable Object");
+}
+
+void answer_data_to_str(andns_pkt_data *apd,char *dst)
+{
+	switch(GQT->qtype) {
+		case AT_PTR:
+			strcpy(dst,apd->rdata);
+			break;
+		case AT_A:
+			ip_bin_to_str(apd->rdata,dst);
+			break;
+		default:
+			strcpy(dst,"Unprintable Object");
+			break;
+	}
+}
+void print_answers()
+{
+	int i;
+	int ancount=GQT->ancount;
+	andns_pkt_data *apd;
+
+	say("\n - Answers Section:\n");
+
+	apd=GQT->pkt_answ;
+	for (i=0;i<ancount;i++) {
+		answer_data_to_str(apd,GOP.obj);
+		say("\t ~ %s\n",GOP.obj);
+	}
+}
+
 
 void do_command(void)
 {
 	char buf[ANDNS_MAX_SZ];
 	char answer[ANDNS_MAX_PK_LEN];
 	size_t res;
-	char *crow;
-	struct in_addr ia;
 
 	res=a_p(GQT,buf);
 	if (res==-1) {
@@ -254,18 +338,14 @@ void do_command(void)
 		say("Communication failed with %s.\n",GOP.nsserver);
 		exit(1);
 	}
-	say("RECV %d\n",res);
 	res=a_u(answer,res,&GQT);
 	if (res<=0) {
 		say("Error interpreting server answer.\n");
 		exit(1);
 	}
-	say("An: %d\n",GQT->ancount);
-	say("RCODE : %s\n",RCODE_STR(GQT));
-	memcpy(&(ia.s_addr),GQT->pkt_answ->rdata,4);
-	crow=inet_ntoa(ia);
-	say("ANSWER is %s .\n",crow);
-	say("Ale\n");
+	print_headers();
+	print_question();
+	print_answers();
 }
 int main(int argc, char **argv)
 {
@@ -273,7 +353,7 @@ int main(int argc, char **argv)
         extern int optind, opterr, optopt;
         extern char *optarg;
 
-	log_init("",5,1);
+	log_init("",0,1);
 	gettimeofday(&time_start,NULL);
 
 	opts_init();

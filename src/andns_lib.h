@@ -50,7 +50,8 @@ struct andns_pkt_data
 };
 typedef struct andns_pkt_data andns_pkt_data;
 #define ANDNS_PKT_DATA_SZ sizeof(andns_pkt_data)
-#define APD_ALIGN(apd)	apd->rdata=(char*)xmalloc(apd->rdlength)
+#define APD_ALIGN(apd)	(apd)->rdata=(char*)xmalloc((apd)->rdlength+1);		\
+				     memset((apd)->rdata,0,(apd)->rdlength+1)
 
 typedef struct andns_pkt
 {

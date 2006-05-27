@@ -17,6 +17,7 @@
 #define LOCALHOST		"localhost"
 
 #define MAX_HOSTNAME_LEN	512
+#define NTKDIG_MAX_OBJ_LEN	512
 
 //#define ANDNS_MAX_SZ    1024
 
@@ -77,6 +78,7 @@ typedef struct ntkdig_opts {
 	char		nsserver[MAX_HOSTNAME_LEN];
 	int16_t		port;
 	int8_t		silent;
+	char		obj[NTKDIG_MAX_OBJ_LEN];
 	andns_pkt	*q;
 } ntkdig_opts;
 
@@ -93,12 +95,12 @@ typedef struct ntkdig_opts {
  		case AT_PTR:					\
 			__c="Ip2Host";				\
 			break;					\
- 		case AT_MX:					\
+/* 		case AT_MX:					\
 			__c="Host2MX";				\
 			break;					\
  		case AT_MXPTR:					\
 			__c="Ip2MX";				\
-			break;					\
+			break;					\*/\
 		default:					\
 			__c="Unknow";				\
  			break;					\
@@ -112,10 +114,10 @@ typedef struct ntkdig_opts {
 			__d="DNS";				\
 			break;					\
 		case NK_NTK:					\
-			__d="ANDNA";				\
+			__d="Ntk";				\
 			break;					\
 		case NK_INET:					\
-			__d="ANDNA";				\
+			__d="Inet";				\
 			break;					\
 		default:					\
 			__d="UNKNOW";				\
@@ -150,12 +152,31 @@ typedef struct ntkdig_opts {
 			break;					\
 	}							\
 	__e;})
+#define IPV_STR(ap)						\
+({								\
+ 	char *__f;						\
+ 	switch((ap)->ipv) {					\
+		case ANDNS_IPV4:				\
+ 			__f="IPv4";				\
+ 			break;					\
+		case ANDNS_IPV6:				\
+ 			__f="IPv6";				\
+ 			break;					\
+		default:					\
+			__f="UNKNOW";				\
+			break;					\
+	}							\
+	__f;})
+#define QST_STR(ap)						\
+({								\
+ 	char *__g;
+ 	
 
 #define GET_OPT_REALM	(globopts.realm==REALM_NTK)?"NTK":"INET"
 
 /* CODE UTILS */
 #define say             printf
-#define bye             if (!AMISILENT) say("\tBye\n");
+#define bye             if (!AMISILENT) say("\tBye!\n");
 
 #define GOP             globopts
 #define AMISILENT       GOP.silent

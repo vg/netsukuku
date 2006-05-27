@@ -136,7 +136,7 @@ size_t a_answ_u(char *buf,andns_pkt *ap,int limitlen)
 			limit+=2;
 			break;
 		case AT_PTR:
-        		memcpy(&alen,buf+2,sizeof(uint16_t));
+        		memcpy(&alen,buf,sizeof(uint16_t));
 		        alen=ntohs(alen);
         		if (alen+2>limitlen)
 		                err_ret(ERR_ANDPLB,-1);
@@ -144,7 +144,6 @@ size_t a_answ_u(char *buf,andns_pkt *ap,int limitlen)
                 		err_ret(ERR_ANDPLB,-1);
 		        apd=andns_add_answ(ap);
         		apd->rdlength=alen;
-			APD_ALIGN(apd);
 			APD_ALIGN(apd);
         		memcpy(apd->rdata,buf+2,alen);
 			limit=alen+2;
