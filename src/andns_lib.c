@@ -79,12 +79,12 @@ size_t a_qst_u(char *buf,andns_pkt *ap,int limitlen)
 			ap->service=ntohs(s);
 			buf+=2;
 			if (ap->nk==NTK_REALM) {
-				ap->qstlength=16;
+				ap->qstlength=ANDNS_HASH_H;
 				if (ap->qstlength>limitlen-2)
                 			err_ret(ERR_ANDPLB,-1);
 				AP_ALIGN(ap);
-				memcpy(ap->qstdata,buf,16);
-				ret=18;
+				memcpy(ap->qstdata,buf,ANDNS_HASH_H);
+				ret=ANDNS_HASH_H+2;
 			} else if (ap->nk==INET_REALM) {
 				memcpy(&s,buf,2);
 				ap->qstlength=ntohs(s);
@@ -100,7 +100,7 @@ size_t a_qst_u(char *buf,andns_pkt *ap,int limitlen)
 			break;
 		case AT_PTR:
 			ap->qstlength=ap->ipv?16:4;
-			if (ap->qstlength>limitlen-1)
+			if (ap->qstlength>limitlen)
 				err_ret(ERR_ANDMAP,-1)
 			AP_ALIGN(ap);
 			memcpy(ap->qstdata,buf,ap->qstlength);
@@ -131,6 +131,7 @@ size_t a_answ_u(char *buf,andns_pkt *ap,int limitlen)
 			apd->wg=(*buf&0x7f);
 			apd->prio=(*(buf+1));
 			apd->rdlength=limit;
+			APD_ALIGN(apd);
 			memcpy(apd->rdata,buf+2,limit);
 			limit+=2;
 			break;
@@ -143,6 +144,7 @@ size_t a_answ_u(char *buf,andns_pkt *ap,int limitlen)
                 		err_ret(ERR_ANDPLB,-1);
 		        apd=andns_add_answ(ap);
         		apd->rdlength=alen;
+			APD_ALIGN(apd);
 			APD_ALIGN(apd);
         		memcpy(apd->rdata,buf+2,alen);
 			limit=alen+2;
@@ -232,15 +234,15 @@ size_t a_qst_p(andns_pkt *ap,char *buf,size_t limitlen)
 
 	switch(ap->qtype){
 		case AT_A:
-			limit=ap->nk==NTK_REALM?18:ap->qstlength+4;
+			limit=ap->nk==NTK_REALM?ANDNS_HASH_H+2:ap->qstlength+4;
 			if (limitlen<limit)
 				err_ret(ERR_ANDMAD,-1);
 			s=htons(ap->service);
 			memcpy(buf,&s,2);
 			buf+=2; /* here INET and NTK REALM change */
 			if (ap->nk==NTK_REALM) {
-				memcpy(buf,ap->qstdata,16);
-				ret=16+2;
+				memcpy(buf,ap->qstdata,ANDNS_HASH_H);
+				ret=ANDNS_HASH_H+2;
 			} else if (ap->nk==INET_REALM) {
 				s=htons(ap->qstlength);
 				memcpy(buf,&s,2);

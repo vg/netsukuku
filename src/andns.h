@@ -58,7 +58,7 @@
 
 #define ANDNS_SET_RCODE(s,c)	*((s)+3)=(((*((s)+3))&0xf0)|c)
 #define ANDNS_SET_QR(s)		(*((s)+2))|=0x80
-#define ANDNS_SET_ANCOUNT(s,n)	*(s)|=(n)>>1;*(s+1)|=((n)<<7);
+#define ANDNS_SET_ANCOUNT(s,n)	*(s+2)|=((n)>>1);*(s+3)|=((n)<<7);
 
 
 	/* FUNCTIONS */

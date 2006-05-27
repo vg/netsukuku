@@ -8,6 +8,8 @@
 #include "ntkdig.h"
 #include "xmalloc.h"
 #include "andns_net.h"
+#include "crypto.h"
+#include "log.h"
 
 static ntkdig_opts globopts;
 static struct timeval time_start,time_stop;
@@ -85,6 +87,7 @@ void opts_init(void)
 	strcpy(GOP.nsserver,LOCALHOST);
 	GOP.port=NTKDIG_PORT;
 	GQT=create_andns_pkt();
+	GQT->nk=REALM_NTK;
 	srand((unsigned int)time(NULL));
 }
 
@@ -136,7 +139,7 @@ void opts_set_realm(char *arg)
 	uint8_t res;
 
 	res=REALMFROMPREF(arg);
-	if (res==2) 
+	if (!res) 
 		realm_usage(arg);
 	GQT->nk=res;
 }
@@ -163,6 +166,22 @@ void opts_set_proto(char *arg)
 		proto_usage(arg);
 	GQT->p=p;
 }
+void hname_hash(char *dst,char *src)
+{
+	u_char hashm5[16];
+	u_char *bp,*be;
+	u_int hval=0;
+	
+	hash_md5(src, strlen(src), hashm5);
+	bp = (u_char *)hashm5; 
+        be = bp + 16;         
+    	while (bp < be) {
+        	hval += (hval<<1) + (hval<<4) + (hval<<7) + (hval<<8) + (hval<<24);
+        	hval ^= (u_long)*bp++;
+    	}
+	hval=htonl(hval);
+	memcpy(dst,&hval,ANDNS_HASH_H);
+}
 
 void opts_set_question(char *arg)
 {
@@ -172,12 +191,23 @@ void opts_set_question(char *arg)
 	
 	switch(GQT->qtype) {
 		case QTYPE_A:
-			G_SETQST_A(arg);
+			if (GQT->nk==REALM_NTK) {
+				G_ALIGN(ANDNS_HASH_H);
+				hname_hash(GQT->qstdata,arg);
+			} else {
+				res=strlen(arg);
+				if (res>255) {
+					say("Hostname %s is too long for DNS standard.",arg);
+					exit(1);
+				}
+				G_ALIGN(res+1);
+				strcpy(GQT->qstdata,arg);
+			}
 			return;
 		case QTYPE_PTR:
 			res=inet_pton(AF_INET,arg,&ia);
 			if (res) {
-				G_ALIGN(4);
+				G_ALIGN(ANDNS_HASH_H);
 				memcpy(GQT->qstdata,&ia.s_addr,4);
 				return;
 			}
@@ -191,7 +221,7 @@ void opts_set_question(char *arg)
 			GQT->ipv=ANDNS_IPV6;
 			return;
 		default:
-			say("?!?\n");
+			say("Unknow Query Type.\n");
 			return;
 	}
 }
@@ -207,9 +237,11 @@ void opts_finish(char *arg)
 
 void do_command(void)
 {
-	char buf[ANDNS_MAX_QUESTION_LEN];
+	char buf[ANDNS_MAX_SZ];
 	char answer[ANDNS_MAX_PK_LEN];
 	size_t res;
+	char *crow;
+	struct in_addr ia;
 
 	res=a_p(GQT,buf);
 	if (res==-1) {
@@ -222,12 +254,18 @@ void do_command(void)
 		say("Communication failed with %s.\n",GOP.nsserver);
 		exit(1);
 	}
+	say("RECV %d\n",res);
 	res=a_u(answer,res,&GQT);
 	if (res<=0) {
 		say("Error interpreting server answer.\n");
 		exit(1);
 	}
-	say("Ale'.\n");
+	say("An: %d\n",GQT->ancount);
+	say("RCODE : %s\n",RCODE_STR(GQT));
+	memcpy(&(ia.s_addr),GQT->pkt_answ->rdata,4);
+	crow=inet_ntoa(ia);
+	say("ANSWER is %s .\n",crow);
+	say("Ale\n");
 }
 int main(int argc, char **argv)
 {

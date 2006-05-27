@@ -37,6 +37,8 @@
 #define ANDNS_MAX_ANSW_IP_LEN	20
 #define ANDNS_MAX_ANSW_H_LEN	516
 
+#define ANDNS_HASH_H		4
+
 struct andns_pkt_data
 {
 	uint8_t			m;
@@ -82,8 +84,8 @@ typedef struct andns_pkt
 #define ANDNS_RCODE_ENIMPL    4       /* Not implemented */
 #define ANDNS_RCODE_ERFSD     5       /* Refused */
 /* REALMS TO SEARCH */
-#define NTK_REALM               0
-#define INET_REALM              1
+#define NTK_REALM               1
+#define INET_REALM              2
 /* IP VERSION */
 #define ANDNS_IPV4		0
 #define ANDNS_IPV6		1

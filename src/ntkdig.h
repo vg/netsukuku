@@ -22,8 +22,8 @@
 
 #define min(x,y)		(x)<(y)?(x):(y)
 
-#define REALM_NTK		0
-#define REALM_INT		1
+#define REALM_NTK		0+1
+#define REALM_INT		1+1
 #define REALM_NTK_STR		"ntk"
 #define REALM_INT_STR		"inet"
 
@@ -56,7 +56,7 @@ int QT_LEN=2;
 	__res; })			
 #define REALMFROMPREF(s)						\
 ({									\
-	uint8_t __res=2;						\
+	uint8_t __res=0;						\
 	if (!strncasecmp(REALM_NTK_STR,s,strlen(s)))			\
 		__res=REALM_NTK;					\
 	else if (!strncasecmp(REALM_INT_STR,s,strlen(s)))		\
@@ -162,15 +162,15 @@ typedef struct ntkdig_opts {
 #define GQT             GOP.q
 
 #define COMPUTE_TIME    diff_time(time_start,time_stop)
-#define time_report     if (!AMISILENT){gettimeofday(&time_stop,NULL);          \
-                        say("\nQuery time: %f seconds.\n"                       \
+#define time_report     if (!AMISILENT){gettimeofday(&time_stop,NULL);      \
+                        say("\nQuery time: %f seconds.\n"                   \
                                         ,COMPUTE_TIME);}
 
-#define G_ALIGN(len)    GQT->qstlength=len;GQT->qstdata=(char*)                   \
-                                xmalloc(len*sizeof(char));                      \
-                                if (!GQT->qstdata){say("Fatal malloc!\n");       \
+#define G_ALIGN(len)    GQT->qstlength=len;GQT->qstdata=(char*)  	    \
+                                xmalloc(len);          		            \
+                                if (!GQT->qstdata){say("Fatal malloc!\n");  \
                                         exit(1);}
-#define G_SETQST_A(s)   G_ALIGN(strlen(s));strcpy(GQT->qstdata,s);               \
+#define G_SETQST_A(s)   G_ALIGN(strlen(s));strcpy(GQT->qstdata,s);          \
                                 GQT->qstlength=strlen(s);
 
 /* FUNCTIONS */

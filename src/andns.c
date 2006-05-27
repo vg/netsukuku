@@ -727,7 +727,6 @@ return_rcode:
 	return msglen;
 }
 	
-/* Rewrite this function for snsd */
 int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 {
 	int qt,res,rcode,records;
@@ -777,8 +776,9 @@ int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 	memcpy(answer,msg,msglen);
 	ANDNS_SET_RCODE(answer,RCODE_NOERR);
 	ANDNS_SET_QR(answer);
-	recs=(uint8_t)records;
+	recs=records;
 	ANDNS_SET_ANCOUNT(answer,recs);
+	loginfo("QUESTION PRODUCTS %d answers. %d len.",recs,res+msglen);
 	return res+msglen;
 safe_return_rcode:
 	destroy_andns_pkt(ap);

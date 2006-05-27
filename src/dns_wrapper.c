@@ -67,7 +67,7 @@ void *dns_exec_pkt(void *passed_argv)
 	memcpy(&buf, argv.rpkt, argv.rpkt_sz);
 	pthread_mutex_unlock(&dns_exec_lock);
 
-	if (argv.rpkt_sz < MIN_DNS_PKT_SZ) {
+	if (argv.rpkt_sz < MIN_PKT_SZ) {
 		debug(DBG_NORMAL, "Received malformed DNS packet");
 		return 0;
 	}
