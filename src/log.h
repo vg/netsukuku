@@ -86,7 +86,7 @@ do {									\
 /* functions declaration */
 void log_init(char *, int, int );
 
-void fatal(const char *, ...);
+void fatal(const char *, ...) __attribute__ ((noreturn));
 void error(const char *, ...);
 void loginfo(const char *, ...);
 void debug(int lvl, const char *, ...);

@@ -189,7 +189,7 @@ snsd_node *snsd_add_first_mainip(snsd_service **head, u_short *counter,
 		!(snp=snsd_add_prio(&sns->prio, 
 					SNSD_DEFAULT_PRIO))  ||
 		!(snd=snsd_add_first_node(&snp->node, counter, 
-					SNSD_MAX_QUEUE_RECORDS, record)))
+					max_records, record)))
 		return 0;
 	snd->flags|=SNSD_NODE_IP | SNSD_NODE_MAIN_IP;
 	snd->weight=SNSD_DEFAULT_WEIGHT;
@@ -762,16 +762,21 @@ finish:
  *   
  */
 
+int snsd_count_nodes(snsd_node *head)
+{
+	return list_count(head);
+}
+
 int snsd_count_prio_nodes(snsd_prio *head)
 {
 	int count=0;
 	
 	list_for(head)
-		count+=list_count(head->node);
+		count+=snsd_count_nodes(head->node);
 	return count;
 }
 
-int snsd_count_nodes(snsd_service *head)
+int snsd_count_service_nodes(snsd_service *head)
 {
 	int count=0;
 	

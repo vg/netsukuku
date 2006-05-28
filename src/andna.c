@@ -704,11 +704,11 @@ int andna_recv_reg_rq(PACKET rpkt)
 	u_int hash_gnode[MAX_IP_INT], *excluded_hgnode[1];
 	inet_prefix rfrom, to;
 	
-	RSA *pubkey;
-	andna_cache_queue *acq;
-	andna_cache *ac;
-	snsd_service *snsd_unpacked;
-	snsd_node *snd;
+	RSA *pubkey=0;
+	andna_cache_queue *acq=0;
+	andna_cache *ac=0;
+	snsd_service *snsd_unpacked=0;
+	snsd_node *snd=0;
 	
 	time_t cur_t;
 	u_short snsd_counter;

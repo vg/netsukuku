@@ -146,7 +146,9 @@ do {									\
  *
  * It adds the `_new' struct at the start of the `_head' llist.
  * The new head of the llist is returned.
- * Example: head=list_add(head, new);
+ * 
+ * Example: 
+ * 		head=list_add(head, new);
  */
 #define list_add(_head, _new)						\
 ({									\
