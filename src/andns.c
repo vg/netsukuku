@@ -450,6 +450,7 @@ int apqsttodpqst(andns_pkt *ap,dns_pkt **dpsrc)
 		strcpy(dpq->qname,ap->qstdata);
 	}
 	else if (qt==T_PTR) {
+		char temp[DNS_MAX_HNAME_LEN];
 		qlen=ap->qstlength;
 		if (qlen==4)
 			family=AF_INET;
@@ -457,7 +458,13 @@ int apqsttodpqst(andns_pkt *ap,dns_pkt **dpsrc)
 			family=AF_INET6;
 		else
 			goto incomp_err;
-		res=swapped_straddr_pref(ap->qstdata,dpq->qname,family);
+		if (!inet_ntop(family,ap->qstdata,temp,
+				DNS_MAX_HNAME_LEN)) {
+			debug(DBG_INSANE,err_str);
+			goto incomp_err;
+		}
+		res=swapped_straddr_pref(temp,
+				dpq->qname,family); 
 		if (res==-1) {
 			debug(DBG_INSANE,err_str);
 			goto incomp_err;
@@ -502,7 +509,7 @@ int dpanswtoapansw(dns_pkt *dp,andns_pkt *ap)
 			nan++;
 		} 
 		else if (qt==T_PTR) {
-			apd->rdlength=strlen(apd->rdata);
+			apd->rdlength=strlen(dpa->rdata);
 			APD_ALIGN(apd);
 			strcpy(apd->rdata,dpa->rdata);
 			nan++;
@@ -808,7 +815,7 @@ int nk_forward(andns_pkt *ap,char *msg,int msglen,char *answer)
 		rcode=RCODE_ESRVFAIL;
 		goto safe_return_rcode;
 	}
-	res=ns_general_send(answer,res,new_answ,ANDNS_MAX_SZ);
+	res=ns_general_send(answer,res,new_answ,DNS_MAX_SZ);
 	if (res==-1) {
 		rcode=RCODE_ESRVFAIL;
 		goto safe_return_rcode;
