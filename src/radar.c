@@ -1203,12 +1203,14 @@ void *radar_qspn_send_t(void *level)
  * radar_scan
  * 
  * It starts the scan of the local area.
+ *
  * It sends MAX_RADAR_SCANS packets in broadcast then it waits MAX_RADAR_WAIT
  * and in the while the echo replies are gathered. After MAX_RADAR_WAIT it 
  * stops to receive echo replies and it does a statistical analysis of the 
  * gathered echo replies, it updates the r_nodes in the map and sends a qspn 
  * round if something is changed in the map and if the `activate_qspn' argument
  * is non zero.
+ *
  * It returns 1 if another radar_scan is in progress, -1 if something went
  * wrong, 0 on success.
  */

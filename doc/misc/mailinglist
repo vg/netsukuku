@@ -1,24 +1,12 @@
-For help and a description of available commands, send a message to:
-   <netsukuku-help@freaknet.org>
-                                                                                                                             
-To subscribe to the list, send a message to:
-   <netsukuku-subscribe@freaknet.org>
-                                                                                                                             
-To remove your address from the list, just send a message to
-the address in the ``List-Unsubscribe'' header of any list
-message. If you haven't changed addresses since subscribing,
-you can also send a message to:
-   <netsukuku-unsubscribe@freaknet.org>
-                                                                                                                             
-For addition or removal of addresses, I'll send a confirmation
-message to that address. When you receive it, simply reply to it
-to complete the transaction.
-                                                                                                                             
-If you need to get in touch with the human owner of this list,
-please send a message to:
-                                                                                                                             
-    <netsukuku-owner@freaknet.org>
-                                                                                                                             
-Please include a FORWARDED list message with ALL HEADERS intact
-to make it easier to help you.
+Subscribe to the netsukuku mailing to get help, be updated on the latest news
+and discuss on its development.
 
+To subscribe to the list, send a message to:
+    netsukuku-subscribe@lists.dyne.org
+
+or use the web interface:
+    http://lists.dyne.org/mailman/listinfo/netsukuku
+   
+You can browse the archive here:
+    http://lists.dyne.org/netsukuku/
+    http://dir.gmane.org/gmane.network.peer-to-peer.netsukuku
