@@ -1,0 +1,102 @@
+			Netsukuku on OpenWRT
+
+	   http://netsukuku.freaknet.org/openwrt
+
+
+This is the package of Netsukuku 0.0.7b compiled for Openwrt.
+
+This is not official release of the .ipkg package, it's just the 
+one we're using to test it on the WRT.
+
+
+How to install it:
+(these steps have been used for a Linksys WRT54GL, but once you've 
+ installed OpenWRT on your AP, they should be same)
+
+#- Install the default OpenWrt firmware:
+
+	http://wiki.openwrt.org/InstallingWrt54gl
+
+#- Activate boot_wait
+
+	ssh root@openwrt
+	nvram boot_wait=on
+	nvram commit
+
+#- Remove useless things
+
+	ssh root@openwrt
+	rm /etc/init.d/S50telnet
+
+#- Optional step: No password, use the ssh keys
+#	(skip this if you don't like it)
+
+	scp .ssh/id_rsa.pub root@router:/tmp
+	ssh root@192.168.1.1
+	
+	cd /etc/dropbear
+	cat /tmp/id_*.pub >> authorized_keys
+	rm /tmp/id_*.pub
+	chmod 0600 authorized_keys
+
+	cd /etc/init.d
+	rm S50dropbear
+	cat /rom/etc/init.d/S50dropbear | grep -v ^/usr/sbin/dropbear > S50dropbear
+	echo /usr/sbin/dropbear -s >> S50dropbear
+	chmod 755 S50dropbear
+
+#- Configure the AP to reach the Internet
+	
+	ssh root@openwrt
+
+	#add a nameserver in /etc/resolv.conf
+		echo nameserver 1.2.3.4 >> /etc/resolv.conf
+
+	#set the ip to the ethernet-if and add a default gw:
+		nvram lan_gateway=192.168.1.1
+		nvram lan_netmask=255.255.255.0
+		nvram lan_dhcp=0
+		nvram lan_dns=151.97.6.1
+		nvram lan_ipaddr=192.168.1.X
+		nvram lan_proto=static
+		nvram commit
+		nvram reboot
+
+	#remember that now the wired IP of the AP is `lan_ipaddr' when you boot it.
+
+#- Install the package
+
+	scp netsukuku_<package_version>.ipk root@openwrt:
+	ssh root@openwrt
+	ipkg install netsukuku_<package_version>.ipk
+
+#- Install additional modules
+	
+	#install the ipip.o module /* TODO */
+	
+	ipkg install ip
+	ipkg install wl
+
+#- Remove the firewall
+	
+	ssh root@openwrt
+	rm /etc/init.d/S45firewall
+	reboot
+
+#- Set the adhoc mode for your wifi cards
+
+	nvram wl0_infra=0
+	nvram wl0_mode=sta
+	nvram wl0_ssid=netsukuku
+	nvram commit
+
+#- Now launch netsukuku
+
+	#give a try with
+	netsukuku_d -i eth1 -ddddd -D -a -R
+
+	#then with
+	netsukuku_d -i eth1 -ddddd -D
+
+	#note that in version 0.0.7b you cannot launch netsukuku in restricted
+	mode unless you have the ipip.o kernel module loaded.

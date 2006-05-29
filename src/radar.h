@@ -20,10 +20,12 @@
 #define RADAR_H
 
 #define MAX_RADAR_SCANS		16
-#define MAX_RADAR_WAIT		5	/*How much we wait to store the received ECHO_REPLY pkts
-					  and then to close the current radar session*/
-#define RTT_DELTA		1000	/*If the change delta of the new rtt is >= RTT_DELTA, 
-					  the qspn_q.send_qspn will be set. (It's in millisec)*/
+#define MAX_RADAR_WAIT		5	/*How much we wait to store the received
+					  ECHO_REPLY pkts and then to close the
+					  current radar session*/
+#define RTT_DELTA		1000	/*If the change delta of the new rtt is
+					  >= RTT_DELTA, the qspn_q.send_qspn 
+					  will be set. (It's in millisec)*/
 
 #ifdef DEBUG		
 #undef MAX_RADAR_WAIT
@@ -31,19 +33,25 @@
 #endif
 
 int max_radar_wait;
-int radar_wait_counter;			/* During the scan, it is incremented every 500 ms */
+int radar_wait_counter;			/* During the scan, it is incremented 
+					   every 500 ms */
 
-int radar_scans[MAX_INTERFACES];	/*How many ECHO_ME pkts we sent on each interface*/
-int total_radar_scans;			/*The sum of all the values of the `radar_scans' array*/
-int radar_scan_mutex;			/*A flag to see if we are already doing a scan*/
+int radar_scans[MAX_INTERFACES];	/* How many ECHO_ME pkts we sent on 
+					   each interface */
+int total_radar_scans;			/* The sum of all the values of the 
+					   `radar_scans' array */
+int radar_scan_mutex;			/* A flag to see if we are already 
+					   doing a scan */
 int my_echo_id;			
-u_char send_qspn_now[MAX_LEVELS];	/*Shall we send the qspn in level? If yes 
-					  send_qspn_now[level] is != 0*/
-int hook_retry;				/*If we've seen, while hooking, a node who was trying 
-					  to hook before us, `hook_retry' is set to 1.*/
-int radar_daemon_ctl;			/*If it is set to 0 the radar_daemon will stop until
-					  it becomes again 1*/
-int total_radars;			/*Stupid statistic*/
+u_char send_qspn_now[MAX_LEVELS];	/* Shall we send the qspn in level? 
+					   If yes send_qspn_now[level] is 
+					   != 0*/
+int hook_retry;				/* If we've seen, while hooking, a 
+					   node who was trying to hook before 
+					   us, `hook_retry' is set to 1.*/
+int radar_daemon_ctl;			/* If it is set to 0 the radar_daemon 
+					   will stop until it becomes again 1*/
+int total_radars;			/* Stupid statistic */
 
 #define RADQ_VOID_RNODE		0
 #define RADQ_EXT_RNODE		1

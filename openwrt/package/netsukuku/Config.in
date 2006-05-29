@@ -1,0 +1,20 @@
+config BR2_PACKAGE_NETSUKUKU
+	prompt "netsukuku - The Netsukuku Routing Daemon"
+	tristate
+	default y if CONFIG_DEVEL
+	depends BR2_PACKAGE_IPTABLES
+	select BR2_PACKAGE_LIBOPENSSL
+	select BR2_PACKAGE_LIBPTHREAD
+	select BR2_PACKAGE_KMOD_TUN
+	depends BR2_PACKAGE_LIBGMP
+	help
+		Netsukuku is a mesh network or a P2P net system that generates and sustains
+		itself autonomously. It is designed to handle an unlimited number of nodes with
+		minimal CPU and memory resources. Thanks to this feature it can be easily
+		used to build a worldwide distributed, anonymous and anarchical network,
+		separated from the Internet, without the support of any servers, ISPs or
+		authority controls.
+
+		http://netsukuku.freaknet.org
+
+		Depends: kmod-tun, libpthread, openssl, libgmp

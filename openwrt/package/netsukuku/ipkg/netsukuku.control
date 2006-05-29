@@ -1,0 +1,12 @@
+Package: netsukuku
+Priority: optional
+Section: net
+Maintainer: AlpT <alpt@freaknet.org>
+Source: http://netsukuku.freaknet.org
+Depends: openssl gmp libpthread
+Description: Netsukuku is a mesh network or a P2P net system that generates and sustains
+	itself autonomously. It is designed to handle an unlimited number of nodes with
+	minimal CPU and memory resources. Thanks to this feature it can be easily
+	used to build a worldwide distributed, anonymous and anarchical network,
+	separated from the Internet, without the support of any servers, ISPs or
+	authority controls.
