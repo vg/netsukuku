@@ -9,7 +9,7 @@
 
 #include "andns_lib.h"
 
-#define VERSION			"0.1"
+#define VERSION			"0.2"
 
 #define NTKDIG_PORT		53
 #define NTKDIG_PORT_STR		"53"
@@ -30,23 +30,38 @@
 
 #define QTYPE_A			0
 #define QTYPE_PTR		1
+<<<<<<< ntkdig.h
+#define QTYPE_A_STR		"a"
+=======
 #define QTYPE_A_STR		"snsd"
+>>>>>>> 1.8
 #define QTYPE_PTR_STR		"ptr"
+<<<<<<< ntkdig.h
+
+#define SNSD_PROTO_TCP		0
+#define SNSD_PROTO_UDP		1
+=======
 
 #define SNSD_PROTO_TCP		0
 #define SNSD_PROTO_UDP		1
 #define SNSD_PROTO_TCP_STR	"tcp"
 #define SNSD_PROTO_UDP_STR	"udp"
+>>>>>>> 1.8
 
 /* NK BIT */
 #define NK_DNS			0
 #define NK_NTK                  1
 #define NK_INET                 2
 
+<<<<<<< ntkdig.h
+char *QTYPE_STR_LIST[]={QTYPE_A_STR,QTYPE_PTR_STR};
+int QT_LEN=2;
+=======
 #define TIME_SCALE		1000000.0
 
 char *QTYPE_STR_LIST[]={QTYPE_A_STR,QTYPE_PTR_STR};
 int QT_LEN=2;
+>>>>>>> 1.8
 
 #define QTFROMPREF(s)							\
 ({									\
@@ -74,12 +89,26 @@ int QT_LEN=2;
 
 		
 			
+typedef struct question {
+	uint8_t		qt;
+	uint16_t	service;
+	uint8_t		proto;
+	uint8_t		realm;
+	char*		qst;
+} question;
 typedef struct ntkdig_opts {
+<<<<<<< ntkdig.h
+	char		nsserver[MAX_HOSTNAME_LEN];
+	int16_t		port;
+	int8_t		silent;
+	question	q;
+=======
 	char		nsserver[MAX_HOSTNAME_LEN];
 	int16_t		port;
 	int8_t		silent;
 	char		obj[NTKDIG_MAX_OBJ_LEN];
 	andns_pkt	*q;
+>>>>>>> 1.8
 } ntkdig_opts;
 
 #define NTKDIG_OPTS_SZ	sizeof(ntkdig_opts)
