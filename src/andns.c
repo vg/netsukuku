@@ -20,6 +20,7 @@
 
 #define _GNU_SOURCE
 #include <string.h>
+#include <netdb.h>
 
 #include "includes.h"
 #include "misc.h"
@@ -512,16 +513,24 @@ int dpanswtoapansw(dns_pkt *dp,andns_pkt *ap)
 			memcpy(apd->rdata,dpa->rdata,_ip_len_);
 			nan++;
 		} 
-		else if (qt==T_PTR) {
+		else if (qt==T_PTR ) {
 			apd->rdlength=strlen(dpa->rdata);
 			APD_ALIGN(apd);
 			strcpy(apd->rdata,dpa->rdata);
 			nan++;
 		}
 		else if (qt==T_MX) {
-			/* TODO */
-			strcpy(apd->rdata,"Ntkrules");
-			apd->rdlength=8;
+			struct hostent *h;
+			h=gethostbyname(dpa->rdata+2);
+			if (!h || !(h->h_length)) {
+				andns_del_answ(ap);
+				debug(DBG_INSANE,"MX Ip Record not found.");
+				continue;
+			}
+			apd->rdlength=h->h_addrtype==AF_INET?4:16;
+			APD_ALIGN(apd);
+			memcpy(apd->rdata,h->h_addr_list[0],apd->rdlength);
+			apd->prio=ntohs((uint16_t)(*(dpa->rdata)));
 			nan++;
 		}
 		else 

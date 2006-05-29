@@ -72,11 +72,12 @@ double diff_time(struct timeval a,struct timeval b)
 {
         double res;
         res=(double)(b.tv_sec-a.tv_sec);
-        if (b.tv_usec<a.tv_usec)
-                res+=(100.0-a.tv_usec+b.tv_usec);
-        else
-                res+=(b.tv_usec-a.tv_usec);
-	res/=TIME_SCALE;
+	if (res<0.9 || b.tv_usec>=a.tv_usec)
+		res+=(b.tv_usec-a.tv_usec)/TIME_SCALE;
+	else {
+		res-=1.0;
+		res+=(TIME_SCALE+b.tv_usec-a.tv_usec)/TIME_SCALE;
+	}
         return res;
 }
 
@@ -307,16 +308,23 @@ void answer_data_to_str(andns_pkt_data *apd,char *dst)
 }
 void print_answers()
 {
-	int i;
+	int i=0;
 	int ancount=GQT->ancount;
 	andns_pkt_data *apd;
 
 	say("\n - Answers Section:\n");
 
 	apd=GQT->pkt_answ;
-	for (i=0;i<ancount;i++) {
+	while (apd) {
+		i++;
+		if (i>ancount) 
+			say("Answer not declared in Headers Packet.\n");
 		answer_data_to_str(apd,GOP.obj);
 		say("\t ~ %s\n",GOP.obj);
+		if (GQT->qtype==AT_A) 
+			say("\t\tPrio ~ %d  Weigth ~ %d\n\n",
+				apd->prio,apd->wg);
+		apd=apd->next;
 	}
 }
 
