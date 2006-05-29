@@ -130,22 +130,22 @@ typedef struct ntkdig_opts {
  	char *__e;						\
 	switch((ap)->rcode) {					\
 		case ANDNS_RCODE_NOERR:				\
-			__e="NOERR";				\
+			__e="No Error";				\
 			break;					\
 		case ANDNS_RCODE_EINTRPRT:			\
-			__e="INTRPRT";				\
+			__e="Interpretation Error";		\
 			break;					\
 		case ANDNS_RCODE_ESRVFAIL:			\
-			__e="SRFFAIL";				\
+			__e="Server Failing";			\
 			break;					\
 		case ANDNS_RCODE_ENSDMN:			\
-			__e="NOXHOST";				\
+			__e="No Such Host";			\
 			break;					\
 		case ANDNS_RCODE_ENIMPL:			\
-			__e="NOTIMPL";				\
+			__e="Not Implemented";			\
 			break;					\
 		case ANDNS_RCODE_ERFSD:				\
-			__e="REFUSED";				\
+			__e="Query Refused";			\
 			break;					\
 		default:					\
 			__e="UNKNOW";				\
