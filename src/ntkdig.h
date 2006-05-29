@@ -9,7 +9,7 @@
 
 #include "andns_lib.h"
 
-#define VERSION			"0.2"
+#define VERSION			"0.3"
 
 #define NTKDIG_PORT		53
 #define NTKDIG_PORT_STR		"53"
@@ -30,8 +30,10 @@
 
 #define QTYPE_A			0
 #define QTYPE_PTR		1
+#define QTYPE_MX		2
 #define QTYPE_A_STR		"snsd"
 #define QTYPE_PTR_STR		"ptr"
+#define QTYPE_MX_STR		"mx"
 
 #define SNSD_PROTO_TCP		0
 #define SNSD_PROTO_UDP		1
@@ -45,8 +47,8 @@
 
 #define TIME_SCALE		1000000.0
 
-char *QTYPE_STR_LIST[]={QTYPE_A_STR,QTYPE_PTR_STR};
-int QT_LEN=2;
+char *QTYPE_STR_LIST[]={QTYPE_A_STR,QTYPE_PTR_STR,QTYPE_MX_STR};
+int QT_LEN=3;
 
 #define QTFROMPREF(s)							\
 ({									\

@@ -32,7 +32,7 @@ void usage(void)
                 " -v --version          print version, then exit.\n"
                 " -n --nameserver=ns    use nameserver `ns' instead of localhost.\n"
                 " -P --port=port        nameserver port, default 53.\n"
-                " -t --query-type=qt    query type (default A).\n"
+                " -t --query-type=qt    query type (default snsd).\n"
                 " -r --realm=realm      inet or netsukuku (default) realm to scan.\n"
                 " -s --service=service  SNSD service.\n"
                 " -p --protocolo=proto  SNSD protocol (udp/tcp).\n"
@@ -42,16 +42,19 @@ void usage(void)
 }
 void qt_usage(char *arg)
 {
-	say("Bad Query Type %s\n"
+	say("Bad Query Type %s\n\n"
 	    "Valid query types are:\n"
             " snsd\thost:port -> ip\n"
             " ptr\tip -> host\n"
-            "(you can also use univoque abbreviation)\n\n",arg);
+            " mx\thostname MX -> ip\n\n"
+            "(you can also use univoque abbreviation)\n"
+	    "Note: mx query is equivalent to --query-type="
+	    "snsd AND --service=25\n\n",arg);
 	exit(1);
 }
 void realm_usage(char *arg)
 {
-	say("Bad Realm %s\n"
+	say("Bad Realm %s\n\n"
 	    "Valid realms are:\n"
             " ntk\tnetsukuku realm\n"
             " inet\tinternet realm\n"
@@ -132,7 +135,11 @@ void opts_set_qt(char *arg)
 	res=QTFROMPREF(arg);
 	if (res==-1) 
 		qt_usage(arg);
-	GQT->qtype=res;
+	GQT->qtype=res!=1?0:1;
+	if (res==QTYPE_MX) {
+		GQT->service=25;
+		GQT->p=SNSD_PROTO_TCP;
+	}
 }
 
 void opts_set_realm(char *arg)

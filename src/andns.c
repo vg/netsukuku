@@ -521,6 +521,7 @@ int dpanswtoapansw(dns_pkt *dp,andns_pkt *ap)
 		}
 		else if (qt==T_MX) {
 			struct hostent *h;
+			uint16_t prio;
 			h=gethostbyname(dpa->rdata+2);
 			if (!h || !(h->h_length)) {
 				andns_del_answ(ap);
@@ -530,7 +531,10 @@ int dpanswtoapansw(dns_pkt *dp,andns_pkt *ap)
 			apd->rdlength=h->h_addrtype==AF_INET?4:16;
 			APD_ALIGN(apd);
 			memcpy(apd->rdata,h->h_addr_list[0],apd->rdlength);
-			apd->prio=ntohs((uint16_t)(*(dpa->rdata)));
+			memcpy(&prio,dpa->rdata,sizeof(uint16_t));
+			apd->prio=prio>>8;
+//				(uint8_t)(ntohs((uint16_t)(*(dpa->rdata))));
+//			memcpy(&(apd->prio),dpa->rdata,sizeof(uint16_t));
 			nan++;
 		}
 		else 
