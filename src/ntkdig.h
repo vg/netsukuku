@@ -209,6 +209,8 @@ void opts_set_realm(char *arg);
 void opts_set_service(char *arg);
 void opts_set_proto(char *arg) ;
 void do_command();
+void ntkdig_exit(int i);
+void ntkdig_safe_exit(int i);
 int main(int argc, char **argv);
 
 #endif /* NTK_DIG_H */

@@ -21,7 +21,7 @@ void version(void)
             "This is free software.  You may redistribute copies of it under the terms of\n"
             "the GNU General Public License <http://www.gnu.org/licenses/gpl.html>.\n"
             "There is NO WARRANTY, to the extent permitted by law.\n\n",VERSION);
-	exit(1);
+	ntkdig_safe_exit(1);
 }
 
 
@@ -38,7 +38,7 @@ void usage(void)
                 " -p --protocolo=proto  SNSD protocol (udp/tcp).\n"
                 " -S --silent           ntk-dig will be not loquacious.\n"
                 " -h --help             display this help, then exit.\n\n");
-	exit(1);
+	ntkdig_safe_exit(1);
 }
 void qt_usage(char *arg)
 {
@@ -50,7 +50,7 @@ void qt_usage(char *arg)
             "(you can also use univoque abbreviation)\n"
 	    "Note: mx query is equivalent to --query-type="
 	    "snsd AND --service=25\n\n",arg);
-	exit(1);
+	ntkdig_safe_exit(1);
 }
 void realm_usage(char *arg)
 {
@@ -59,7 +59,7 @@ void realm_usage(char *arg)
             " ntk\tnetsukuku realm\n"
             " inet\tinternet realm\n"
             "(you can also use univoque abbreviation)\n\n",arg);
-	exit(1);
+	ntkdig_safe_exit(1);
 }
 void proto_usage(char *arg)
 {
@@ -68,7 +68,7 @@ void proto_usage(char *arg)
             " udp\n"
             " tcp\n"
             "(you can also use univoque abbreviation)\n\n",arg);
-	exit(1);
+	ntkdig_safe_exit(1);
 }
 
 double diff_time(struct timeval a,struct timeval b)
@@ -110,7 +110,7 @@ void opts_set_port(char *arg)
 
 	if (port!=res) {
 		say("Bad port %s.",arg);
-		exit(1);
+		ntkdig_safe_exit(1);
 	}
 	GOP.port=port;
 }
@@ -122,7 +122,7 @@ void opts_set_ns(char *arg)
 	slen=strlen(arg);
 	if (slen>=MAX_HOSTNAME_LEN) {
 		say("Server hostname too long.");
-		exit(1);
+		ntkdig_safe_exit(1);
 	}
 	strcpy(GOP.nsserver,arg);
 	GOP.nsserver[slen]=0;
@@ -161,7 +161,7 @@ void opts_set_service(char *arg)
 
 	if (service!=res) {
 		say("Bad service %s.",arg);
-		exit(1);
+		ntkdig_safe_exit(1);
 	}
 	GQT->service=service;
 }
@@ -200,7 +200,7 @@ void opts_set_question(char *arg)
 	res=strlen(arg);
 	if (res>NTKDIG_MAX_OBJ_LEN) {
 		say("Object requested is too long: %s",arg);
-		exit(1);
+		ntkdig_safe_exit(1);
 	}
 	strcpy(GOP.obj,arg);
 
@@ -213,7 +213,7 @@ void opts_set_question(char *arg)
 				res=strlen(arg);
 				if (res>255) {
 					say("Hostname %s is too long for DNS standard.",arg);
-					exit(1);
+					ntkdig_safe_exit(1);
 				}
 				G_ALIGN(res+1);
 				strcpy(GQT->qstdata,arg);
@@ -229,7 +229,7 @@ void opts_set_question(char *arg)
 			res=inet_pton(AF_INET6,arg,&i6a);
 			if (!res) {
 				say("Bad address `%s'\n",arg);
-				exit(1);
+				ntkdig_safe_exit(1);
 			}
 			G_ALIGN(16);
 			memcpy(GQT->qstdata,&i6a.in6_u,16);
@@ -345,22 +345,32 @@ void do_command(void)
 	res=a_p(GQT,buf);
 	if (res==-1) {
 		say("Error building question.\n");
-		exit(1);
+		ntkdig_exit(1);
 	}
 	res=hn_send_recv_close(GOP.nsserver,GOP.port,
 			SOCK_DGRAM,buf,res,answer,ANDNS_MAX_PK_LEN,0);
 	if (res==-1) {
 		say("Communication failed with %s.\n",GOP.nsserver);
-		exit(1);
+		ntkdig_exit(1);
 	}
 	res=a_u(answer,res,&GQT);
 	if (res<=0) {
 		say("Error interpreting server answer.\n");
-		exit(1);
+		ntkdig_exit(1);
 	}
 	print_headers();
 	print_question();
 	print_answers();
+	destroy_andns_pkt(GQT);
+}
+void ntkdig_exit(int i)
+{
+	exit(i);
+}
+void ntkdig_safe_exit(int i)
+{
+	destroy_andns_pkt(GQT);
+	ntkdig_safe_exit(i);
 }
 int main(int argc, char **argv)
 {
