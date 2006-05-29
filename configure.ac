@@ -37,6 +37,9 @@ AC_SUBST(gmp)
 AC_CHECK_HEADERS([pthread.h], ,\
 	[echo "============================ Unable to find pthread.h"; \
 	 echo "Do you have the libpthread library installed?" ])
+AC_CHECK_HEADERS([zlib.h], ,\
+	[echo "============================ Unable to find zlib.h"; \
+	 echo "Do you have the zlib library installed?" ])
 AC_CHECK_HEADERS([openssl/crypto.h], ,\
 	[echo "============================ Unable to find openssl/crypto.h";\
 	 echo "Read README first!!!!!"; \

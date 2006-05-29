@@ -39,6 +39,9 @@
 
 #define ANDNS_HASH_H		4
 
+#define ANDNS_COMPR_LEVEL	9
+#define ANDNS_COMPR_THRESHOLD	1000
+
 struct andns_pkt_data
 {
 	uint8_t			m;
@@ -58,6 +61,7 @@ typedef struct andns_pkt
         uint16_t        id;
         uint8_t         qr;
         uint8_t         p;
+        uint8_t         z;
         uint8_t         qtype;
         uint8_t         ancount;
         uint8_t         ipv;
@@ -73,6 +77,14 @@ typedef struct andns_pkt
 
 #define ANDNS_HDR_SZ	4
 #define ANDNS_MAX_SZ 	ANDNS_HDR_SZ+ANDNS_MAX_QST_LEN+ANDNS_MAX_QST_LEN+4
+
+
+#define ANDNS_SET_RCODE(s,c)    *((s)+3)=(((*((s)+3))&0xf0)|c)
+#define ANDNS_SET_QR(s)         (*((s)+2))|=0x80
+#define ANDNS_SET_ANCOUNT(s,n)  *(s+2)|=((n)>>1);*(s+3)|=((n)<<7);
+#define ANDNS_SET_Z(s)		*(s+3)|=0x20;
+#define ANDNS_UNSET_Z(s)	*(s+3)&=0xdf;
+
 
 /* ANDNS QUERY-TYPE */
 #define AT_A            0 /* h->ip */
@@ -91,6 +103,8 @@ typedef struct andns_pkt
 #define ANDNS_IPV4		0
 #define ANDNS_IPV6		1
 
+int andns_compress(char *src,int srclen);
+char* andns_uncompress(char *src,int srclen,int *dstlen);
 size_t a_hdr_u(char *buf,andns_pkt *ap);
 size_t a_qst_u(char *buf,andns_pkt *ap,int limitlen);
 size_t a_answ_u(char *buf,andns_pkt *ap,int limitlen);

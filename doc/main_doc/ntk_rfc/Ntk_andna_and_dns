@@ -38,7 +38,7 @@
         +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
         |                      ID                       |
         +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-        |QR| P|  QTYPE |  ANCOUNT  |I |   NK|   RCODE   |
+        |QR| P| Z| QT  |  ANCOUNT  |I |   NK|   RCODE   |
         +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
 
   where:
@@ -55,8 +55,11 @@
                    0 for TCP
                    1 for UDP
                    P has to be zero otherwise.
+	
+	Z	= zlib compression. If z=1, the packet contents, 
+		  headers excluded, are zlib-compressed.
 
-        QTYPE   = Query Type. See below.
+        QT      = Query Type. See below.
                   Note: answers must leave this field unchanged.
 
         ANCOUNT = Answer Count. This field is set only if QR=1,

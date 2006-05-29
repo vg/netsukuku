@@ -24,6 +24,40 @@
 #include "xmalloc.h"
 
 #include <arpa/inet.h>
+#include <zlib.h>
+
+int andns_compress(char *src,int srclen)
+{
+	char dst[srclen+12-4];
+	int res;
+	uLongf    space=srclen+12-4;
+
+	res=compress2(dst,&space,src+4,srclen-4,ANDNS_COMPR_LEVEL);
+	if (res!=Z_OK) 
+		err_ret(ERR_ZLIBCP,-1);
+	if (space>=srclen-4)
+		err_ret(ERR_ZLIBNU,-1);
+	memcpy(src+4,dst,space);
+	return (int)space;
+}
+char* andns_uncompress(char *src,int srclen,int *dstlen) 
+{
+	char *dst;
+	uLongf space;
+	int res;
+
+	dst=xmalloc(srclen);
+	space=srclen-4;
+	
+	res=uncompress(dst+4,&space,src+4,srclen-4);
+	if (res!=Z_OK) {
+		xfree(dst);
+		err_ret(ERR_ZLIBUP,NULL);
+	}
+	memcpy(dst,src,4);
+	*dstlen=space+4;
+	return dst;
+}
 
 /*
  * Takes the buffer stream and translate headers to
@@ -47,7 +81,8 @@ size_t a_hdr_u(char *buf,andns_pkt *ap)
         memcpy(&c,buf,sizeof(uint8_t));
         ap->qr=(c>>7)&0x01;
         ap->p=c&0x40?1:0;
-        ap->qtype=(c>>3)&0x07;
+	ap->z=c&0x20?1:0;
+        ap->qtype=(c>>3)&0x03;
         ap->ancount=(c<<1)&0x0e;
 
         buf++;
@@ -184,26 +219,37 @@ size_t a_u(char *buf,size_t pktlen,andns_pkt **app)
 {
         andns_pkt *ap;
         size_t offset,res;
-        int limitlen;
+        int limitlen,u_len;
+	char *u_buf;
 
         if (pktlen<ANDNS_HDR_SZ)
                 err_ret(ERR_ANDPLB,0);
         *app=ap=create_andns_pkt();
         offset=a_hdr_u(buf,ap);
+
+	if (ap->z) {
+		if (!(u_buf=andns_uncompress(buf,pktlen,&u_len))) 
+			goto andmap;
+		destroy_andns_pkt(ap); /* remember u_buf */
+		ANDNS_UNSET_Z(u_buf);
+		res=a_u(u_buf,u_len,app);
+		xfree(u_buf);
+		return res;
+	}
         buf+=offset;
         limitlen=pktlen-offset;
-        if ((res=a_qst_u(buf,ap,limitlen))==-1) {
-                error(err_str);
-                err_ret(ERR_ANDMAP,-1);
-        }
+        if ((res=a_qst_u(buf,ap,limitlen))==-1) 
+		goto andmap;
 	offset+=res;
 	buf+=res;
 	limitlen-=res;
-	if ((res=a_answs_u(buf,ap,limitlen))==-1) {
-		error(err_str);
-		err_ret(ERR_ANDMAP,-1);
-	}
+	if ((res=a_answs_u(buf,ap,limitlen))==-1) 
+		goto andmap;
         return offset+res;
+andmap:
+	destroy_andns_pkt(ap);
+	error(err_str);
+	err_ret(ERR_ANDMAP,-1);
 }
 
 size_t a_hdr_p(andns_pkt *ap,char *buf)
@@ -216,6 +262,8 @@ size_t a_hdr_p(andns_pkt *ap,char *buf)
                 (*buf)|=0x80;
 	if (ap->p)
 		(*buf)|=0x40;
+	if (ap->z)
+		(*buf)|=0x20;
         (*buf)|=( (ap->qtype)<<3);
         (*buf++)|=( (ap->ancount)>>1);
         (*buf)|=( (ap->ancount)<<7);
@@ -332,6 +380,14 @@ size_t a_p(andns_pkt *ap, char *buf)
                 goto server_fail;
         offset+=res;
         destroy_andns_pkt(ap);
+	/* Compression */
+	if (offset>ANDNS_COMPR_THRESHOLD) {
+		res=andns_compress(buf,offset);
+		if (res==-1) 
+			error(err_str);
+		else
+			return res;
+	}
         return offset;
 server_fail:
         destroy_andns_pkt(ap);

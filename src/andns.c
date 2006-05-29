@@ -43,9 +43,7 @@ static struct addrinfo *_andns_ns_[MAXNSSERVERS];
 
 static int _ip_len_;
 
-
-			/* INIT FUNCTIONS */
-
+/* Debugging Functions to isolate andns from andna
 snsd_service* debug_andna_resolve_hname(char *s,int service,u_char proto,int *records)
 {
         char *ciccio="111.222.123.123";
@@ -79,7 +77,13 @@ lcl_cache* debug_andna_reverse_resolve(inet_prefix addr)
 	lc->hostname=xmalloc(12);
 	strcpy(lc->hostname,"Ciao mamma");
 	return lc;
-}
+}*/
+
+
+
+
+			/* INIT FUNCTIONS */
+
 
 /*
  * Saves on `nsbuf' and `ns_count' the ip
@@ -686,7 +690,7 @@ int inet_rslv(dns_pkt *dp,char *msg,int msglen,char *answer)
 		service=(qt==T_A)?0:25;
 		proto=(qt==T_A)?0:1;
 		//ss=andna_resolve_hname(temp,service,proto,&records);
-		ss=debug_andna_resolve_hname(temp,service,proto,&records);
+		ss=andna_resolve_hname(temp,service,proto,&records);
 		if (!ss) {
 			rcode=RCODE_ENSDMN;
 			goto safe_return_rcode;
@@ -708,7 +712,7 @@ int inet_rslv(dns_pkt *dp,char *msg,int msglen,char *answer)
 			rcode=RCODE_ESRVFAIL;
 			goto safe_return_rcode;
 		}
-		lc=debug_andna_reverse_resolve(addr);
+		lc=andna_reverse_resolve(addr);
 		//lc=andna_reverse_resolve(addr);
 		res=lcl_cache_to_dansws(dp,lc); /* destroy lc */
 		if (!res) {
@@ -745,7 +749,7 @@ int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 	qt=ap->qtype;
 	if (qt==AT_A) {
 		snsd_service *ss;
-		ss=debug_andna_resolve_hname(ap->qstdata,
+		ss=andna_resolve_hname(ap->qstdata,
 				ap->service,ap->p,&records);
 		//ss=andna_resolve_hname(ap->qstdata, //USE HASH!
 		//		ap->service,ap->p,&records);
@@ -773,7 +777,7 @@ int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 			rcode=RCODE_EINTRPRT;
 			goto safe_return_rcode;
 		}
-		lc=debug_andna_reverse_resolve(ipres);
+		lc=andna_reverse_resolve(ipres);
 		//lc=andna_reverse_resolve(ipres);
 		if (!lc) {
 			rcode=RCODE_ENSDMN;

@@ -61,6 +61,10 @@ static const char *err_strings[] = {
 /**/	
 	"SNSD main record not found.",		/* ERR_SNDMRF */
 	"SNSD recursion failed.",		/* ERR_SNDRCS */
+/**/	
+	"Zlib Compression Fail.",		/* ERR_ZLIBCP */
+	"Zlib Uncompression Fail.",		/* ERR_ZLIBUP */
+	"Zlib compression is unuseful.",	/* ERR_ZLIBNU */
 };
 
 #define ERR_UFOERR	-1
@@ -97,6 +101,10 @@ static const char *err_strings[] = {
 
 #define ERR_SNDMRF	-29
 #define ERR_SNDRCS	-30
+
+#define ERR_ZLIBCP	-31
+#define ERR_ZLIBUP	-32
+#define ERR_ZLIBNU	-33
 
 #define ERR_OVERFLOW    "Error number does not exist."
 
