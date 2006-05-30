@@ -790,6 +790,7 @@ int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 			rcode=RCODE_EINTRPRT;
 			goto safe_return_rcode;
 		}
+		inet_ntohl(ipres.data,family);
 		lc=andna_reverse_resolve(ipres);
 		//lc=andna_reverse_resolve(ipres);
 		if (!lc) {
