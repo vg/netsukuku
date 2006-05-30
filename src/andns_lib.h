@@ -76,6 +76,7 @@ typedef struct andns_pkt
 #define AP_ALIGN(ap)	(ap)->qstdata=(char*)xmalloc((ap)->qstlength)
 
 #define ANDNS_HDR_SZ	4
+#define ANDNS_HDR_Z	4
 #define ANDNS_MAX_SZ 	ANDNS_HDR_SZ+ANDNS_MAX_QST_LEN+ANDNS_MAX_QST_LEN+4
 
 

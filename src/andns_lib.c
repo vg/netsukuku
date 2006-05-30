@@ -35,14 +35,19 @@ int andns_compress(char *src,int srclen)
 	srclen-=ANDNS_HDR_SZ;
 	space=compressBound(srclen);
 
-	char dst[space];
+	char dst[space+ANDNS_HDR_Z];
 
-	res=compress2(dst, &space, src, srclen, ANDNS_COMPR_LEVEL);
+		/* The first four bytes will store
+		 * the compressed size */
+	res=compress2(dst+ANDNS_HDR_Z, &space, src, srclen, ANDNS_COMPR_LEVEL);
 	if (res!=Z_OK) 
 		err_ret(ERR_ZLIBCP,-1);
-	if (space >= srclen)
+	if (space >= srclen-ANDNS_HDR_Z) /* We have to consider the four 
+				  bytes too */
 		err_ret(ERR_ZLIBNU,-1); /* This is a 
 					silent return */
+	res=htonl(srclen);
+	memcpy(dst,&res,ANDNS_HDR_Z);
 	memcpy(src, dst, space);
 
 	return (int)space;
@@ -52,8 +57,22 @@ char* andns_uncompress(char *src,int srclen,int *dstlen)
 	char *dst;
 	uLongf space;
 	int res;
+	int c_len;
 
-	dst=xmalloc(srclen);
+	memcpy(&c_len,src+ANDNS_HDR_SZ,ANDNS_HDR_Z);
+	c_len=ntohl(c_len);
+	dst=xmalloc(c_len+ANDNS_HDR_SZ); 
+	space=c_len;
+
+	res=uncompress(dst+ANDNS_HDR_SZ,&space,
+		src+ANDNS_HDR_SZ+ANDNS_HDR_Z,c_len);
+	if (res!=Z_OK) {
+		xfree(dst);
+		err_ret(ERR_ZLIBUP,NULL);
+	}
+	memcpy(dst,src,ANDNS_HDR_SZ);
+	*dstlen=c_len+ANDNS_HDR_SZ;
+	return dst;/*
 #warning ********** ** ** ** ** **  ************ 
 #warning ********** ** ** ** ** **  ************ 
 #warning ********** BIG_FAT_WARNING ************ 
@@ -63,7 +82,7 @@ char* andns_uncompress(char *src,int srclen,int *dstlen)
 #warning ********** BIG_FAT_WARNING ************ 
 #warning ********** ** ** ** ** **  ************ 
 #warning ********** ** ** ** ** **  ************ 
-	space=srclen-4 /* <<<<<< FIXME: destlen MUST BE > srclen. From the zlib docs:
+	space=srclen-4  <<<<<< FIXME: destlen MUST BE > srclen. From the zlib docs:
 	   Upon entry, destLen is the total
 	   size of the destination buffer, which must be large enough to hold the
 	   entire uncompressed data. (The size of the uncompressed data must have
@@ -82,16 +101,11 @@ char* andns_uncompress(char *src,int srclen,int *dstlen)
 	     See pkt_uncompress() in pkts.c
 	     Note: I've not tested if zlib support dst=src, we need a small test to
 	     	   verify it. 
-	*/;
+	;
 	
-	res=uncompress(dst+4,&space,src+4,srclen-4);
-	if (res!=Z_OK) {
-		xfree(dst);
-		err_ret(ERR_ZLIBUP,NULL);
-	}
 	memcpy(dst,src,4);
 	*dstlen=space+4;
-	return dst;
+	return dst;*/
 }
 
 /*
@@ -262,7 +276,12 @@ size_t a_u(char *buf,size_t pktlen,andns_pkt **app)
         *app=ap=create_andns_pkt();
         offset=a_hdr_u(buf,ap);
 
-	if (ap->z) {
+	if (ap->z) { /* Controls the space to read 
+			uncompressed size */
+		if (pktlen<ANDNS_HDR_SZ+ANDNS_HDR_Z) {
+			destroy_andns_pkt(ap);
+                	err_ret(ERR_ANDPLB,0);
+		}
 		if (!(u_buf=andns_uncompress(buf,pktlen,&u_len))) 
 			goto andmap;
 		destroy_andns_pkt(ap); /* remember u_buf */
