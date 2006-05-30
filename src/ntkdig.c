@@ -370,7 +370,7 @@ void ntkdig_exit(int i)
 void ntkdig_safe_exit(int i)
 {
 	destroy_andns_pkt(GQT);
-	ntkdig_safe_exit(i);
+	ntkdig_exit(i);
 }
 int main(int argc, char **argv)
 {

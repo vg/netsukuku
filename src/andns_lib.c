@@ -31,8 +31,8 @@ int andns_compress(char *src,int srclen)
 	int res;
 	uLongf space;
 	
-	src+=4;
-	srclen-=4;
+	src+=ANDNS_HDR_SZ;
+	srclen-=ANDNS_HDR_SZ;
 	space=compressBound(srclen);
 
 	char dst[space];
@@ -41,8 +41,8 @@ int andns_compress(char *src,int srclen)
 	if (res!=Z_OK) 
 		err_ret(ERR_ZLIBCP,-1);
 	if (space >= srclen)
-		/* Silently ignore compression */
-		return -srclen;
+		err_ret(ERR_ZLIBNU,-1); /* This is a 
+					silent return */
 	memcpy(src, dst, space);
 
 	return (int)space;
