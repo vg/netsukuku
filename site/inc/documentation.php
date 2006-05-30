@@ -1,5 +1,8 @@
 <?php
 
+	$languages_expr='/' . '\.en$' . '|' . '\.ita$' . '|' . '\.fr$' . '|' . '\.ru$' . '|' . '\.spa$' . '|';
+	$languages_expr.= '\.chi$' . '|' . '\.nl$' . '|' . '\.jp$' . '/';
+
 	define('NTK_DOCROOT', 'http://netsukuku.freaknet.org/2html/documentation/');
 
 	if (empty($_GET['dir'])) {
@@ -21,13 +24,13 @@
 		$line = fgets($foo);
 		if (ereg("/", $line)) { //e` directory
 			$line = ereg_replace("/\n", '', $line);
-			$tpl_page .= '<a href="index.php?pag=documentation&amp;dir='.$_GET['dir'].$line.'">'.$line.'</a>';
+			$tpl_page .= '<a href="index.php?pag=documentation&amp;dir='.$_GET['dir'].$line.'">';
+			$tpl_page .= '[ ' . $line. ' ]' . '</a>';
 			
 			$file_info = @fopen(NTK_DOCROOT.$_GET['dir'].$line.".info", "r");
 				if ($file_info != NULL) {
-					//$file_info = fopen(NTK_DOCROOT.$_GET['dir'].$line.".info", "r");
                                         $info_line = fgets($file_info);
-                                        $tpl_page .= ' --> ' . $info_line;
+                                        $tpl_page .= '<br>' . $info_line . '<br><br>';
                                         $file_info = fclose($file_info);
 				} else {
 					$tpl_page .= "<br />";
@@ -36,15 +39,23 @@
 			continue;
 		else { //e` un file
 			$line = ereg_replace("\n", '', $line);
-			if (ereg(".info", $line))
+			if (ereg(".info", $line)) {
 				continue;
-			else {
+			} else if (preg_match($languages_expr, $line)) {
+				//file.lang
+				continue;
+			} else {
 				$tpl_page .= '<a href="index.php?pag=documentation&amp;file='.$_GET['dir'].$line.'">'.$line.'</a>';
+
 				$file_info = @fopen(NTK_DOCROOT.$_GET['dir'].$line.".info", "r");
 					
 				if ($file_info != NULL) {
+					$parse_cmd = 'cat '. '2html/documentation/' . $_GET['dir'];
+					$parse_cmd.= '.list' . '| ./inc/parse_lang.sh ' . $line . ' ' . $_GET['dir'];
+					$tpl_lang = system($parse_cmd);
+
 					$info_line = fgets($file_info);
-					$tpl_page .= ' --> ' . $info_line;
+					$tpl_page .= ' ' . $tpl_lang . ' --> ' . $info_line;
 					$file_info = fclose($file_info);
 				} else {
 					$tpl_page .= "<br />";

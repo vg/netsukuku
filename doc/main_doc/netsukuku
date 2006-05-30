@@ -169,7 +169,7 @@
   Netsukuku is a mesh network or a p2p net system that generates and sustains
   itself autonomously. It is designed to handle an unlimited number of nodes
   with minimal CPU and memory resources. Thanks to this feature it can be
-  easily used to build a worldwide distributed, anonymous and uncontrolled
+  easily used to build a worldwide distributed, anonymous and not controlled
   network, separated from the Internet, without the support of any servers,
   ISPs or authority controls.
   This net is composed by computers linked physically each other, therefore
@@ -185,7 +185,7 @@
   
   2.1  Gandhi
 
-  Netsukuku is anarchical. It generates itself and can stand alone.
+  Netsukuku is self-managed. It generates itself and can stand alone.
   A node hooks to Netsukuku, the net automatically rewrites itself and all the
   other nodes known which are the fastest and more efficient routes to
   communicate with the new arrived.

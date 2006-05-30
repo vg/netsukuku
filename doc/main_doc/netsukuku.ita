@@ -158,7 +158,7 @@
   Netsukuku e' stato progettato per gestire un numero illimitato di nodi con
   un minimo uso di CPU e memoria. Questa sua caratteristica puo' essere
   sfruttata per costruire, senza il supporto di alcun server o ISP, una rete
-  globale distribuita, anonima e anarchica, separata da Internet.
+  globale distribuita, anonima e non controllata, separata da Internet.
   Questa rete e' formata da computer collegati fisicamente tra loro, quindi
   non e' costruita su alcuna altra rete. Netsukuku si occupa solamente di
   costruire le rotte che collegano tutti i computer della rete.
@@ -172,7 +172,7 @@
 
   2.1  Gandhi
  
-  Netsukuku e' anarchico. Si crea e si gestisce da se'.
+  Netsukuku si crea e si gestisce da se'.
   Un nodo si aggancia a Netsukuku, la rete si auto-riscrive e tutti gli altri 
   nodi conoscono quali sono le strade piu' veloci ed efficienti per comunicare 
   con il nuovo arrivato.
