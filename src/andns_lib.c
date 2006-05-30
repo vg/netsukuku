@@ -54,13 +54,34 @@ char* andns_uncompress(char *src,int srclen,int *dstlen)
 	int res;
 
 	dst=xmalloc(srclen);
-	LOOK_AT_ME_GCC_POINT_THIS_ERROR;
+#warning ********** ** ** ** ** **  ************ 
+#warning ********** ** ** ** ** **  ************ 
+#warning ********** BIG_FAT_WARNING ************ 
+#warning ********** ** ** ** ** **  ************ 
+#warning            LOOK AT ME HERE
+#warning ********** ** ** ** ** **  ************ 
+#warning ********** BIG_FAT_WARNING ************ 
+#warning ********** ** ** ** ** **  ************ 
+#warning ********** ** ** ** ** **  ************ 
 	space=srclen-4 /* <<<<<< FIXME: destlen MUST BE > srclen. From the zlib docs:
-   Upon entry, destLen is the total
-   size of the destination buffer, which must be large enough to hold the
-   entire uncompressed data. (The size of the uncompressed data must have
-   been saved previously by the compressor and transmitted to the decompressor
-   by some mechanism outside the scope of this compression library.)
+	   Upon entry, destLen is the total
+	   size of the destination buffer, which must be large enough to hold the
+	   entire uncompressed data. (The size of the uncompressed data must have
+	   been saved previously by the compressor and transmitted to the decompressor
+	   by some mechanism outside the scope of this compression library.)
+
+   	Thus it's better to save the uncompressed size in the packet.
+   	Be aware that the `uncompress_sz' in the packet can be faked, 
+	so you should do:
+		if(pkt.hdr.uncompress_sz > ANDNS_PKT_MAX_MSG_SZ)
+			return invalid_pkt;
+
+	TIP: Probably the `dst' and `src'  buffers can coincide because zlib 
+	     uses the buffer as streams, thus we can use src=xrealloc(src, uncompressed_sz);
+	     Remember that `src' pointer may change with realloc.
+	     See pkt_uncompress() in pkts.c
+	     Note: I've not tested if zlib support dst=src, we need a small test to
+	     	   verify it. 
 	*/;
 	
 	res=uncompress(dst+4,&space,src+4,srclen-4);

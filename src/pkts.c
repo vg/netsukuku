@@ -22,6 +22,7 @@
  */
 
 #include "includes.h"
+#include <zlib.h>
 
 #include "inet.h"
 #include "request.h"
@@ -93,11 +94,22 @@ void pkt_addport(PACKET *pkt, u_short port)
 
 void pkt_addtimeout(PACKET *pkt, u_int timeout, int recv, int send)
 {
-	pkt->timeout=timeout;
-	if(recv)
-		pkt->pkt_flags|=PKT_RECV_TIMEOUT;
-	if(send)
-		pkt->pkt_flags|=PKT_SEND_TIMEOUT;
+	if((pkt->timeout=timeout)) {
+		if(recv)
+			pkt->pkt_flags|=PKT_RECV_TIMEOUT;
+		if(send)
+			pkt->pkt_flags|=PKT_SEND_TIMEOUT;
+	}
+}
+
+void pkt_addcompress(PACKET *pkt)
+{
+	pkt->pkt_flags|=PKT_COMPRESSED;
+}
+
+void pkt_addlowdelay(PACKET *pkt)
+{
+	pkt->pkt_flags|=PKT_SET_LOWDELAY;
 }
 
 void pkt_addhdr(PACKET *pkt, pkt_hdr *hdr)
@@ -156,26 +168,157 @@ void pkt_free(PACKET *pkt, int close_socket)
 	}
 }
 
+/*
+ * pkt_compress
+ *
+ * It compresses `pkt'->msg and stores the result in `dst'.
+ * `dst_msg' must have at least `newhdr'->sz bytes big.
+ * It is also assumed that `pkt'->msg is not 0.
+ *
+ * The size of the compressed msg is stored in `newhdr'->sz, while
+ * the size of the orignal one is written in `newhdr'->uncompress_sz.
+ * If the compression doesn't fail, `newhdr'->sz will be always less than
+ * `newhdr'->uncompress_sz.
+ *
+ * Nothing in `pkt' is modified.
+ *
+ * If the packet was compressed  0 is returned and the COMPRESSED_PKT flag is
+ * set to `newhdr'->.flags.
+ * On error a negative value is returned.
+ */
+int pkt_compress(PACKET *pkt, pkt_hdr *newhdr, char *dst_msg)
+{
+	uLongf bound_sz;
+	int ret;
+
+	bound_sz=compressBound(pkt->hdr.sz);
+
+	char dst[bound_sz];
+
+	ret=compress2(dst, &bound_sz, pkt->msg, pkt->hdr.sz, 
+			PKT_COMPRESS_LEVEL);
+	if(ret != Z_OK) {
+		error(ERROR_MSG "cannot compress the pkt. "
+				"It will be sent uncompressed.", ERROR_FUNC);
+		return -1;
+	}
+
+	if(bound_sz >= pkt->hdr.sz)
+		/* Disgregard compression, it isn't useful in this case */
+		return -pkt->hdr.sz;
+
+	memcpy(dst_msg, dst, bound_sz);
+	newhdr->uncompress_sz=pkt->hdr.sz;
+	newhdr->sz=bound_sz;
+	newhdr->flags|=COMPRESSED_PKT;
+
+	return 0;
+}
+
+/*
+ * pkt_pack
+ *
+ * It packs the packet with its `pkt'->header in a single buffer.
+ * If PKT_COMPRESSED is set in `pkt'->pkt_flags, `pkt'->msg will be compressed
+ * if its size is > PKT_COMPRESS_THRESHOLD.
+ */
 char *pkt_pack(PACKET *pkt)
 {
-	char *buf;
+	char *buf, *buf_hdr, *buf_body;
 	
 	buf=(char *)xmalloc(PACKET_SZ(pkt->hdr.sz));
-	memcpy(buf, &pkt->hdr, sizeof(pkt_hdr));
+	buf_hdr=buf;
+	buf_body=buf+sizeof(pkt_hdr);
+
+	/***
+	 * Copy the header
+	 */
+	memcpy(buf_hdr, &pkt->hdr, sizeof(pkt_hdr));
 
 	/* host -> network order */
-	ints_host_to_network(buf, pkt_hdr_iinfo);
+	ints_host_to_network(buf_hdr, pkt_hdr_iinfo);
+	/***/
 	
-	if(pkt->hdr.sz)
-		memcpy(buf+sizeof(pkt_hdr), pkt->msg, pkt->hdr.sz);
+	if(pkt->hdr.sz) {
+
+                /*
+		 * compress the packet if necessary 
+		 */
+                if((pkt->pkt_flags & PKT_COMPRESSED && 
+				pkt->hdr.sz >= PKT_COMPRESS_THRESHOLD)) {
+
+			pkt_hdr newhdr=pkt->hdr;
+
+			if(!pkt_compress(pkt, &newhdr, buf_body)) {
+				/* 
+				 * Re-copy the header in `buf', because
+				 * it has been changed during compression. */
+				memcpy(buf_hdr, &newhdr, sizeof(pkt_hdr));
+				ints_host_to_network(buf_hdr, pkt_hdr_iinfo);
+			}
+		} else {
+			/* Just copy the body of the packet */
+			memcpy(buf_body, pkt->msg, pkt->hdr.sz);
+		}
+		/**/
+	}
 	
 	return buf;
+}
+
+/*
+ * pkt_uncompress
+ *
+ * It uncompress the compressed `pkt' and stores the result in `pkt' itself
+ * On error -1 is returned.
+ */
+int pkt_uncompress(PACKET *pkt)
+{
+	uLongf dstlen;
+	int ret=0;
+	char *dst;
+	
+	dstlen=pkt->hdr.uncompress_sz;
+	dst=pkt->msg=xrealloc(pkt->msg, dstlen);
+	
+	ret=uncompress(dst, &dstlen, pkt->msg, pkt->hdr.sz);
+	if(ret != Z_OK)
+		ERROR_FINISH(ret, -1, finish);
+	else
+		ret=0;
+
+	/**
+	 * Restore the uncompressed packet
+	 */
+	pkt->hdr.sz=pkt->hdr.uncompress_sz;
+	pkt->hdr.uncompress_sz=0;
+	pkt->hdr.flags&=~COMPRESSED_PKT;
+	/**/
+
+finish:
+	return ret;
+}
+
+int pkt_unpack(PACKET *pkt)
+{
+	if(pkt->hdr.sz && pkt->msg && 
+			pkt->hdr.flags & COMPRESSED_PKT)
+		if(pkt_uncompress(pkt))
+			return -1;
+
+	return 0;
 }
 
 int pkt_verify_hdr(PACKET pkt)
 {
 	if(strncmp(pkt.hdr.ntk_id, NETSUKUKU_ID, 3) ||
 			pkt.hdr.sz > MAXMSGSZ)
+		return 1;
+
+	if(pkt.hdr.flags & COMPRESSED_PKT && 
+			(pkt.hdr.sz >= pkt.hdr.uncompress_sz ||
+			 pkt.hdr.uncompress_sz > PKT_MAX_MSG_SZ))
+		/* Invalid compression */
 		return 1;
 
 	return 0;
@@ -278,21 +421,21 @@ ssize_t pkt_recv(PACKET *pkt)
 			pkt->msg=xmalloc(pkt->hdr.sz);
 			memcpy(pkt->msg, buf+sizeof(pkt_hdr), pkt->hdr.sz);
 		}
+
+		/* let's finish it */
+		pkt_unpack(pkt);
 	} else if(pkt->sk_type==SKT_TCP) {
-		/*we get the hdr...*/
+		/* we get the hdr... */
 		if(pkt->pkt_flags & PKT_RECV_TIMEOUT)
 			err=inet_recv_timeout(pkt->sk, &pkt->hdr, sizeof(pkt_hdr),
 					pkt->flags, pkt->timeout);
 		else
 			err=inet_recv(pkt->sk, &pkt->hdr, sizeof(pkt_hdr), 
 					pkt->flags);
-		if(err != sizeof(pkt_hdr)) {
-			/*
-			debug(DBG_NOISE, "inet_recv() of the hdr aborted. (connection closed?)");
-			*/
+		if(err != sizeof(pkt_hdr))
 			return -1;
-		}
-		/*...and verify it*/
+
+		/* ...and verify it */
 		ints_network_to_host(&pkt->hdr, pkt_hdr_iinfo);
 		if(pkt_verify_hdr(*pkt)) {
 			debug(DBG_NOISE, "Error while unpacking the PACKET. Malformed header");
@@ -301,7 +444,7 @@ ssize_t pkt_recv(PACKET *pkt)
 
 		pkt->msg=0;
 		if(pkt->hdr.sz) {
-			/*let's get the body*/
+			/* let's get the body */
 			pkt->msg=xmalloc(pkt->hdr.sz);
 			
 			if(pkt->pkt_flags & PKT_RECV_TIMEOUT)
@@ -318,6 +461,9 @@ ssize_t pkt_recv(PACKET *pkt)
 				return -1;
 			}
 		}
+
+		/* let's finish it */
+		pkt_unpack(pkt);
 	} else
 		fatal("Unkown socket_type. Something's very wrong!! Be aware");
 	
@@ -394,24 +540,35 @@ void add_pkt_op(u_char op, char sk_type, u_short port, int (*exec_f)(PACKET pkt)
 
 
 /*
- * send_rq: This functions send a `rq' request, with an id set to `rq_id', to
+ * send_rq
+ *
+ * This functions send a `rq' request, with an id set to `rq_id', to
  * `pkt->to'.
+ *
  * If `pkt->sk' is non zero, it will be used to send the request.
  * If `pkt->sk' is 0, it will create a new socket and connection to `pkt->to',
  * the new socket is stored in `pkt->sk'.
+ *
  * If `pkt->hdr.sz` is > 0 it includes the `pkt->msg' in the packet otherwise
  * it will be NULL. 
+ *
  * If `rpkt' is not null it will receive and store the reply pkt in `rpkt'.
+ *
  * If `check_ack' is set, send_rq checks the reply pkt ACK and its id; if the
  * test fails it gives an appropriate error message.
+ *
  * If `rpkt'  is not null send_rq confronts the OP of the received reply pkt 
  * with `re'; if the test fails it gives an appropriate error message.
+ *
  * If `pkt'->hdr.flags has the ASYNC_REPLY set, the `rpkt' will be received with
  * the pkt_queue, in this case, if `rpkt'->from is set to a valid ip, it will
  * be used to check the sender ip of the reply pkt.
+ *
  * If `pkt'->dev is not null and the PKT_BIND_DEV flag is set in
  * `pkt'->pkt_flags, it will bind the socket of the outgoing/ingoing packet to
  * the device named `pkt'->dev->dev_name.
+ *
+ *
  * On failure -1 is returned, otherwise 0.
  */
 int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int check_ack, PACKET *rpkt)
@@ -511,7 +668,9 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 		pkt_addsk(rpkt, pkt->to.family, pkt->sk, pkt->sk_type);
 		rpkt->flags=MSG_WAITALL;
 		pkt_addtimeout(rpkt, pkt->timeout, pkt->pkt_flags&PKT_RECV_TIMEOUT,
-				pkt->pkt_flags&PKT_SEND_TIMEOUT); 
+				pkt->pkt_flags&PKT_SEND_TIMEOUT);
+		if(pkt->pkt_flags & PKT_COMPRESSED)
+			pkt_addcompress(rpkt);
 		
 		debug(DBG_NOISE, "Receiving reply for the %s request"
 				" (id 0x%x)", rq_str, pkt->hdr.id);
@@ -593,6 +752,10 @@ int pkt_err(PACKET pkt, u_char err, int free_pkt)
 		flags|=ASYNC_REPLIED;
 		pkt.sk=0;
 	}
+
+	/* It's useless to compress this pkt */
+	pkt.pkt_flags&=~PKT_COMPRESSED;
+
 	pkt_fill_hdr(&pkt.hdr, flags, pkt.hdr.id, ACK_NEGATIVE, sizeof(u_char));
 	
 	pkt.msg=msg=xmalloc(sizeof(u_char));

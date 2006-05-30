@@ -179,6 +179,7 @@ int put_free_nodes(PACKET rq_pkt)
 	pkt_addport(&pkt, ntk_tcp_port);
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
 	pkt_add_dev(&pkt, rq_pkt.dev, 1);
+	pkt_addcompress(&pkt);
 
 	/* We search in each level a gnode which is not full. */
 	for(level=1, e=0; level < me.cur_quadg.levels; level++) {
@@ -379,6 +380,7 @@ int put_qspn_round(PACKET rq_pkt)
 	pkt_addport(&pkt, ntk_udp_port);
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
 	pkt_add_dev(&pkt, rq_pkt.dev, 1);
+	pkt_addcompress(&pkt);
 
 	/* We fill the qspn_id and the qspn round time */
 	qr_pkt.max_levels=me.cur_quadg.levels;
@@ -445,6 +447,7 @@ int put_ext_map(PACKET rq_pkt)
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
 	pkt_add_dev(&pkt, rq_pkt.dev, 1);
+	pkt_addcompress(&pkt);
 
 	pkt.msg=pack_extmap(me.ext_map, MAXGROUPNODE, &me.cur_quadg, &pkt_sz);
 	pkt.hdr.sz=pkt_sz;
@@ -518,6 +521,7 @@ int put_int_map(PACKET rq_pkt)
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
 	pkt_add_dev(&pkt, rq_pkt.dev, 1);
+	pkt_addcompress(&pkt);
 
 	pkt.msg=pack_map(map, 0, MAXGROUPNODE, me.cur_node, &pkt_sz);
 	pkt.hdr.sz=pkt_sz;
@@ -593,6 +597,7 @@ int put_bnode_map(PACKET rq_pkt)
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
 	pkt_add_dev(&pkt, rq_pkt.dev, 1);
+	pkt_addcompress(&pkt);
 
 	pkt.msg=pack_all_bmaps(bmaps, me.bmap_nodes, me.ext_map, me.cur_quadg, &pack_sz);
 	pkt.hdr.sz=pack_sz;
@@ -670,6 +675,7 @@ int put_internet_gws(PACKET rq_pkt)
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
 	pkt_add_dev(&pkt, rq_pkt.dev, 1);
+	pkt_addcompress(&pkt);
 
 	pkt.msg=pack_igws(me.igws, me.igws_counter, me.cur_quadg.levels, 
 			&pack_sz);
@@ -733,7 +739,9 @@ finish:
 
 
 /* 
- * set_ip_and_def_gw: Set the same `ip' to all the devices.
+ * set_ip_and_def_gw
+ *
+ * Sets the same `ip' to all the devices.
  */
 void hook_set_all_ips(inet_prefix ip, interface *ifs, int ifs_n)
 {

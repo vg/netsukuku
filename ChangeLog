@@ -16,6 +16,8 @@ New features:
 	  caches.
 
 	* llist.c optimised
+
+	* Compressed pkts /* TODO: explain better */
 	
 Bug fixes:
 

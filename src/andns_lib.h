@@ -39,7 +39,7 @@
 
 #define ANDNS_HASH_H		4
 
-#define ANDNS_COMPR_LEVEL	9
+#define ANDNS_COMPR_LEVEL	Z_BEST_COMPRESSION
 #define ANDNS_COMPR_THRESHOLD	1000
 
 struct andns_pkt_data

@@ -659,6 +659,7 @@ int andna_register_hname(lcl_cache *alcl, snsd_service *snsd_delete)
 	/* Fill the packet and send the request */
 	pkt_sz=ANDNA_REG_PKT_SZ+SNSD_SERVICE_LLIST_PACK_SZ(alcl->service);
 	pkt_addto(&pkt, &to);
+	pkt_addcompress(&pkt);
 	pkt_fill_hdr(&pkt.hdr, ASYNC_REPLY, 0, ANDNA_REGISTER_HNAME, pkt_sz);
 	
 	pkt.msg=buf=xmalloc(pkt_sz);
@@ -1448,8 +1449,9 @@ int andna_recv_resolve_rq(PACKET rpkt)
 	memcpy(&pkt, &rpkt, sizeof(PACKET));
 	inet_copy(&pkt.from, &rfrom);
 	pkt_addsk(&pkt, my_family, 0, SKT_UDP);
-	pkt.pkt_flags|=PKT_SET_LOWDELAY;
-	rpkt.pkt_flags|=PKT_SET_LOWDELAY;
+	pkt_addcompress(&pkt);
+	pkt_addlowdelay(&pkt);
+	pkt_addlowdelay(&rpkt);
 
 	/* network -> host order conversion of the rpkt_local_copy.smg */
 	ints_network_to_host((void *)req, andna_resolve_rq_pkt_iinfo);
@@ -1666,6 +1668,7 @@ int andna_recv_rev_resolve_rq(PACKET rpkt)
 
         pkt_addto(&pkt, &rpkt.from);
 	pkt_addsk(&pkt, my_family, rpkt.sk, rpkt.sk_type);
+	pkt_addcompress(&pkt);
         err=send_rq(&pkt, 0, ANDNA_REV_RESOLVE_REPLY, rpkt.hdr.id, 0, 0, 0);
         if(err==-1)
 		ERROR_FINISH(ret, -1, finish);
@@ -1788,6 +1791,7 @@ int put_single_acache(PACKET rpkt)
 	memcpy(&pkt, &rpkt, sizeof(PACKET));
 	inet_copy(&pkt.from, &rfrom);
 	pkt_addsk(&pkt, my_family, 0, SKT_UDP);
+	pkt_addcompress(&pkt);
 
 	/* network -> host order */
 	ints_network_to_host(req_hdr, single_acache_hdr_iinfo);
@@ -1894,6 +1898,7 @@ int put_single_acache(PACKET rpkt)
 	pkt_addto(&pkt, &rfrom);
 	pkt_addsk(&pkt, my_family, 0, SKT_TCP);
 	pkt_addport(&pkt, rpkt.port);
+	pkt_addcompress(&pkt);
 
 	/* Exctract the `ac' cache from the llist, so we can pack it alone */
 	ac_tmp=xmalloc(sizeof(andna_cache));
@@ -1951,8 +1956,9 @@ int spread_single_acache(u_int hash[MAX_IP_INT])
 }
 
 /*
- * recv_spread_single_acache: receives and execute the ANDNA_SPREAD_SACACHE
- * request.
+ * recv_spread_single_acache
+ * 
+ * It receives and execute the ANDNA_SPREAD_SACACHE request.
  */
 int recv_spread_single_acache(PACKET rpkt)
 {
@@ -2073,6 +2079,7 @@ int put_andna_cache(PACKET rq_pkt)
 	setzero(&pkt, sizeof(PACKET));
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
+	pkt_addcompress(&pkt);
 
 	pkt.msg=pack_andna_cache(andna_c, &pkt_sz, ACACHE_PACK_PKT);
 	pkt.hdr.sz=pkt_sz;
@@ -2144,6 +2151,7 @@ int put_counter_cache(PACKET rq_pkt)
 	memset(&pkt, '\0', sizeof(PACKET));
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
+	pkt_addcompress(&pkt);
 
 	pkt.msg=pack_counter_cache(andna_counter_c, &pkt_sz);
 	pkt.hdr.sz=pkt_sz;

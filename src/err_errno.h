@@ -64,7 +64,7 @@ static const char *err_strings[] = {
 /**/	
 	"Zlib Compression Fail.",		/* ERR_ZLIBCP */
 	"Zlib Uncompression Fail.",		/* ERR_ZLIBUP */
-	"Zlib compression is unuseful.",	/* ERR_ZLIBNU */
+	"Zlib compression is useless.",		/* ERR_ZLIBNU */
 };
 
 #define ERR_UFOERR	-1

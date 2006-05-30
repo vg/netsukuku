@@ -57,8 +57,7 @@
 	  iptables the link and calculate the used bw.
 	- See http://lab.dyne.org/Ntk_bandwidth_measurement
 	  
-- Compressed Netsukuku pkts: modify pkts.c to compress packets which are
-  bigger than X and have the PKT_COMPRESS flag set. Use zlib.
+- Compressed maps: save the files in compressed formats
 
 - Sharing willingness: http://lab.dyne.org/Ntk_IGS
 
@@ -129,6 +128,14 @@
 - small memory: if the system has <= X Mb of free memory, switch on dumb mode.
   In this mode NetsukukuD keeps only the list of rnodes and forwards every
   request to one of them. The lcl_cache is kept too.
+
+- better memory utilisation: see MAXMSGSZ, PKT_MAX_MSG_SZ, pkt_verify_hdr(), 
+			     pkt_uncompress(), andns_uncompress().
+	- The maximum size of an uncompressed or compressed packet must be
+	  proportional to the total free memory reserved to the daemon.
+	- pkt_uncompress() must be able to drop the packet if there's no
+	  free memory available. The same must be done by pkt_recv() and
+	  other similar functions.
 
 - option to disable the modification of the routing table
 

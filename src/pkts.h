@@ -36,13 +36,19 @@
 #define SKT_UDP			2
 #define SKT_BCAST		3
 
-/* Pkt.pkt_flags flags */
+/* 
+ * Pkt.pkt_flags flags 
+ */
 #define PKT_BIND_DEV		1	/* Bind the pkt.sk socket to pkt.dev */
 #define PKT_RECV_TIMEOUT	(1<<1)
 #define PKT_SEND_TIMEOUT	(1<<2)
 #define PKT_SET_LOWDELAY	(1<<3)
+#define PKT_COMPRESSED		(1<<4)	/* If set the packet will be Z 
+					   compressed before being sent */
 
-/* Pkt.hdr flags */
+/* 
+ * Pkt.hdr flags 
+ */
 #define SEND_ACK		1
 #define BCAST_PKT		(1<<1)	/* In this pkt there is encapsulated a 
 					 * broadcast/flood pkt. Woa */
@@ -55,8 +61,12 @@
 #define LOOPBACK_PKT		(1<<5)  /* This is a packet destinated to me */
 #define RESTRICTED_PKT		(1<<6)	/* Packet sent from a node in restricted 
 					   mode */
+#define COMPRESSED_PKT		(1<<7)  /* The whole packet is Z compressed */
 
-/* Broacast ptk's flags */
+
+/*
+ * Broacast ptk's flags
+ */
 #define BCAST_TRACER_PKT	1	/*When a bcast is marked with this, it 
 					  acts as a tracer_pkt ;)*/
 #define BCAST_TRACER_BBLOCK	(1<<1)  /*When set, the tracer pkt carries also
@@ -66,6 +76,13 @@
 #define QSPN_BNODE_CLOSED	(1<<3)	/*The last bnode, who forwarded this 
 					  qspn pkt has all its links closed.*/
 #define QSPN_BNODE_OPENED	(1<<4)
+
+/* General defines */
+#define PKT_MAX_MSG_SZ		1048576	/* bytes */
+#define PKT_COMPRESS_LEVEL	Z_DEFAULT_COMPRESSION
+#define PKT_COMPRESS_THRESHOLD	1024	/* If the flag PKT_COMPRESSED is set 
+					   and hdr.sz > PKT_COMPRESS_THRESHOLD,
+					   then compress the packet */
 
 /*
  * pkt_hdr: the pkt_hdr is always put at the very beginning of any netsukuku
@@ -77,18 +94,21 @@ typedef struct
 	int 		id;
 	u_char		flags; 
 	u_char 		op;
-	size_t 		sz;
+	size_t 		sz;		/* The size of the message */
+	size_t		uncompress_sz;	/* The size of the decompressed packet. */
 }_PACKED_  pkt_hdr;
-
-INT_INFO pkt_hdr_iinfo = { 2, 
-			   { INT_TYPE_32BIT, INT_TYPE_32BIT }, 
-			   { sizeof(char)*3, sizeof(char)*5+sizeof(int) },
-			   { 1, 1 }
+INT_INFO pkt_hdr_iinfo = { 3, 
+			   { INT_TYPE_32BIT, INT_TYPE_32BIT, INT_TYPE_32BIT },
+			   { sizeof(char)*3, sizeof(char)*5+sizeof(int), 
+			     sizeof(char)*5+sizeof(int)+sizeof(size_t) },
+			   { 1, 1, 1 }
 			 };
-#define PACKET_SZ(sz) (sizeof(pkt_hdr)+(sz))		
+#define PACKET_SZ(sz) (sizeof(pkt_hdr)+(sz))
 
 /*
- * PACKET: this struct is used only to represent internally a packet, which
+ * PACKET
+ *
+ * this struct is used only to represent internally a packet, which
  * will be sent or received.
  */
 typedef struct
@@ -202,6 +222,8 @@ void pkt_addsk(PACKET *pkt, int family, int sk, int sk_type);
 void pkt_addport(PACKET *pkt, u_short port);
 void pkt_addflags(PACKET *pkt, int flags);
 void pkt_addtimeout(PACKET *pkt, u_int timeout, int recv, int send);
+void pkt_addcompress(PACKET *pkt);
+void pkt_addlowdelay(PACKET *pkt);
 void pkt_addhdr(PACKET *pkt, pkt_hdr *hdr);
 void pkt_addmsg(PACKET *pkt, char *msg);
 void pkt_copy(PACKET *dst, PACKET *src);
