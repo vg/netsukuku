@@ -327,7 +327,10 @@ void print_answers()
 		if (i>ancount) 
 			say("Answer not declared in Headers Packet.\n");
 		answer_data_to_str(apd,GOP.obj);
-		say("\t ~ %s\n",GOP.obj);
+		say("\t ~ %s",GOP.obj);
+		if (apd->m)
+			say(" * SNSD Primary IP");
+		say("\n");
 		if (GQT->qtype==AT_A) 
 			say("\t\tPrio ~ %d  Weigth ~ %d\n\n",
 				apd->prio,apd->wg);

@@ -4,6 +4,19 @@
 
                         ANDNS PROTOCOL
 
+INDEX:
+
+0 - Introduction
+1 - Notations
+2 - Packet Headers
+3 - Query Type
+4 - Query Realm
+5 - Rcode
+6 - Questions
+7 - Answers
+8 - Compression
+
+
 0. - INTRODUCTION -
 
    This document describes the protocol used to communicate with ANDNA.
@@ -57,7 +70,8 @@
                    P has to be zero otherwise.
 	
 	Z	= zlib compression. If z=1, the packet contents, 
-		  headers excluded, are zlib-compressed.
+		  headers excluded, are zlib-compressed. See
+		  Section 8.
 
         QT      = Query Type. See below.
                   Note: answers must leave this field unchanged.
@@ -296,5 +310,32 @@
 
    RDATA the hostname resolution.
 
+8. - COMPRESSION -
+
+  The format of a compressed packet is:
+
+        +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+        |                      ID                       |
+        +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+        |QR| P| Z| QT  |  ANCOUNT  |I |   NK|   RCODE   |
+        +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+        |                                               |
+        |                     USIZE                     |
+        |                                               |
+        |                                               |
+        +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+        |                                               |
+        /                     DATA                      /
+        /                                               /
+        |                                               |
+        +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+
+  Headers remain uncompressed. The packet contents, question and
+  answers, are compressed with zlib. The buffer obtained with the
+  compression is DATA.
+  USIZE is the original size of packet contents (question and 
+  answers). 
+  If a packet is compressed, then Z=1.
+	
 }}}
 

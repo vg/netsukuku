@@ -38,12 +38,13 @@ int andns_compress(char *src,int srclen)
 	char dst[space+ANDNS_HDR_Z];
 
 		/* The first four bytes will store
-		 * the compressed size */
-	res=compress2(dst+ANDNS_HDR_Z, &space, src, srclen, ANDNS_COMPR_LEVEL);
+		 * the uncompressed size */
+	res=compress2(dst+ANDNS_HDR_Z, &space, src, srclen,
+			ANDNS_COMPR_LEVEL);
 	if (res!=Z_OK) 
 		err_ret(ERR_ZLIBCP,-1);
 	if (space >= srclen-ANDNS_HDR_Z) /* We have to consider the four 
-				  bytes too */
+				  		bytes too */
 		err_ret(ERR_ZLIBNU,-1); /* This is a 
 					silent return */
 	res=htonl(srclen);
@@ -62,6 +63,7 @@ char* andns_uncompress(char *src,int srclen,int *dstlen)
 	memcpy(&c_len,src+ANDNS_HDR_SZ,ANDNS_HDR_Z);
 	c_len=ntohl(c_len);
 	dst=xmalloc(c_len+ANDNS_HDR_SZ); 
+
 	space=c_len;
 
 	res=uncompress(dst+ANDNS_HDR_SZ,&space,
@@ -69,6 +71,10 @@ char* andns_uncompress(char *src,int srclen,int *dstlen)
 	if (res!=Z_OK) {
 		xfree(dst);
 		err_ret(ERR_ZLIBUP,NULL);
+	}
+	if ((int)space!=c_len) {
+		xfree(dst);
+		err_ret(ERR_ANDMAP,NULL);
 	}
 	memcpy(dst,src,ANDNS_HDR_SZ);
 	*dstlen=c_len+ANDNS_HDR_SZ;
