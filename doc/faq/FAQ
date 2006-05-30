@@ -206,7 +206,7 @@ A: Short answer: if you code the port, yes.
 Q: Will Netsukuku be ported to PSP / Nintendo DS / wifi phones / linux PDAs 
    etc...
 A: We are currently working on flashing Netsukuku on Access Points (like
-   Linksys).
+   Linksys). See http://netsukuku.freaknet.org/openwrt/
 
 Q: For using a wifi link do I need of an access point? What to do?
 A: You just need a wifi network card. Put it in ad-hoc mode using "netsukuku"
