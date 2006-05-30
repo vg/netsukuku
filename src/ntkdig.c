@@ -255,8 +255,8 @@ void print_headers()
 		return;
 	andns_pkt *ap=GQT;
 	say("\n - Headers Section:\n"
-		"\tid ~ %6d\tqr  ~ %4d\tqt ~ %s\n"
-		"\tan ~ %6d\tipv ~ %s\tnk ~ %s\n"
+		"\tid ~ %6d\tqr  ~ %4d\tqtype ~ %7s\n"
+		"\tan ~ %6d\tipv ~ %s\trealm ~ %7s\n"
 		"\trCode ~ %s\n",
 		ap->id,ap->qr,QTYPE_STR(ap),
 		ap->ancount,IPV_STR(ap),NK_STR(ap),
