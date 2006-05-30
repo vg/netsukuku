@@ -28,16 +28,23 @@
 
 int andns_compress(char *src,int srclen)
 {
-	char dst[srclen+12-4];
 	int res;
-	uLongf    space=srclen+12-4;
+	uLongf space;
+	
+	src+=4;
+	srclen-=4;
+	space=compressBound(srclen);
 
-	res=compress2(dst,&space,src+4,srclen-4,ANDNS_COMPR_LEVEL);
+	char dst[space];
+
+	res=compress2(dst, &space, src, srclen, ANDNS_COMPR_LEVEL);
 	if (res!=Z_OK) 
 		err_ret(ERR_ZLIBCP,-1);
-	if (space>=srclen-4)
-		err_ret(ERR_ZLIBNU,-1);
-	memcpy(src+4,dst,space);
+	if (space >= srclen)
+		/* Silently ignore compression */
+		return -srclen;
+	memcpy(src, dst, space);
+
 	return (int)space;
 }
 char* andns_uncompress(char *src,int srclen,int *dstlen) 
@@ -383,7 +390,9 @@ size_t a_p(andns_pkt *ap, char *buf)
 	/* Compression */
 	if (offset>ANDNS_COMPR_THRESHOLD) {
 		res=andns_compress(buf,offset);
-		if (res==-1) 
+		if (res==-1)
+			/* TODO: DO NOT FAIL, 
+			 * just do not compress the packet */
 			error(err_str);
 		else
 			return res;
