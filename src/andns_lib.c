@@ -54,7 +54,14 @@ char* andns_uncompress(char *src,int srclen,int *dstlen)
 	int res;
 
 	dst=xmalloc(srclen);
-	space=srclen-4;
+	LOOK_AT_ME_GCC_POINT_THIS_ERROR;
+	space=srclen-4 /* <<<<<< FIXME: destlen MUST BE > srclen. From the zlib docs:
+   Upon entry, destLen is the total
+   size of the destination buffer, which must be large enough to hold the
+   entire uncompressed data. (The size of the uncompressed data must have
+   been saved previously by the compressor and transmitted to the decompressor
+   by some mechanism outside the scope of this compression library.)
+	*/;
 	
 	res=uncompress(dst+4,&space,src+4,srclen-4);
 	if (res!=Z_OK) {
