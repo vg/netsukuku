@@ -6,9 +6,9 @@
 #include <time.h>
 
 #include "ntkdig.h"
-#include "xmalloc.h"
 #include "andns_net.h"
 #include "crypto.h"
+#include "xmalloc.h"
 #include "log.h"
 
 static ntkdig_opts globopts;
