@@ -315,6 +315,9 @@ void print_answers()
 	int ancount=GQT->ancount;
 	andns_pkt_data *apd;
 
+	if (!ancount)
+		return;
+
 	say("\n - Answers Section:\n");
 
 	apd=GQT->pkt_answ;

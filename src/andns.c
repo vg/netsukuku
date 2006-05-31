@@ -726,7 +726,6 @@ int inet_rslv(dns_pkt *dp,char *msg,int msglen,char *answer)
 			goto safe_return_rcode;
 		}
 		lc=andna_reverse_resolve(addr);
-		//lc=andna_reverse_resolve(addr);
 		res=lcl_cache_to_dansws(dp,lc); /* destroy lc */
 		if (!res) {
 			rcode=RCODE_ENSDMN;
