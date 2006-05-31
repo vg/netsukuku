@@ -78,8 +78,7 @@ char* andns_uncompress(char *src,int srclen,int *dstlen)
 	}
 
 	memcpy(dst, src, ANDNS_HDR_SZ);
-	*dstlen=c_len+ANDNS_HDR_SZ; /* <- what's the meaning? the return size 
-				          is always the same */
+	*dstlen=c_len+ANDNS_HDR_SZ; 
 
 	return dst;
 }
