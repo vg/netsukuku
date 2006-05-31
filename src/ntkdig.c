@@ -216,7 +216,7 @@ void opts_set_service_and_proto(char *arg)
 
 void hname_hash(char *dst,char *src)
 {
-	u_char hashm5[16];
+	u_char hashm5[ANDNS_HASH_H];
 	u_char *bp,*be;
 	u_int hval=0;
 	
@@ -226,7 +226,6 @@ void hname_hash(char *dst,char *src)
 	 * TODO:
 	 * why do you use this second hash?
 	 * andna_resolve_hash works only with a full md5 hash
-	 */
 	bp = (u_char *)hashm5; 
         be = bp + 16;         
     	while (bp < be) {
@@ -234,7 +233,8 @@ void hname_hash(char *dst,char *src)
         	hval ^= (u_long)*bp++;
     	}
 	hval=htonl(hval);
-	memcpy(dst,&hval,ANDNS_HASH_H);
+	 */
+	memcpy(dst,hashmt,ANDNS_HASH_H);
 }
 
 void opts_set_question(char *arg)
