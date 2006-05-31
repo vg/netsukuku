@@ -260,7 +260,7 @@ size_t a_u(char *buf,size_t pktlen,andns_pkt **app)
 		}
 		if (!(u_buf=andns_uncompress(buf,pktlen,&u_len))) 
 			goto andmap;
-		destroy_andns_pkt(ap); /* remember u_buf */
+		destroy_andns_pkt(ap); 
 		ANDNS_UNSET_Z(u_buf);
 		res=a_u(u_buf,u_len,app);
 		xfree(u_buf);

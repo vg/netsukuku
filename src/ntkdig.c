@@ -29,8 +29,8 @@ void usage(void)
                 " -v --version          print version, then exit.\n"
                 " -n --nameserver=ns    use nameserver `ns' instead of localhost.\n"
                 " -P --port=port        nameserver port, default 53.\n"
-                " -t --query-type=qt    query type (default snsd).\n"
-                " -r --realm=realm      inet or netsukuku (default) realm to scan.\n"
+                " -t --query-type=qt    query type (`-t help` shows more infos).\n"
+                " -r --realm=realm      realm to scan (`-r help` shows more infos).\n"
                 " -s --service=service[/proto]  SNSD service.\n"
                 " -p --protocolo=proto  SNSD protocol (udp/tcp).\n"
                 " -S --silent           ntk-dig will be not loquacious.\n"
@@ -39,32 +39,44 @@ void usage(void)
 }
 void qt_usage(char *arg)
 {
-	say("Bad Query Type %s\n\n"
+	if (arg)
+		say("Bad Query Type %s\n\n",arg);
+	else
+		say("Query Type Help.\n\n");
+	say(
 	    "Valid query types are:\n"
-            " snsd\thost:port -> ip\n"
-            " ptr\tip -> host\n"
-            " mx\thostname MX -> ip\n\n"
+            " * snsd\thost:port -> ip\n"
+            "   ptr\tip -> host\n"
+            "   mx\thostname MX -> ip\n\n"
             "(you can also use univoque abbreviation)\n"
 	    "Note: mx query is equivalent to --query-type="
-	    "snsd AND --service=25\n\n",arg);
+	    "snsd AND --service=25\n\n");
 	ntkdig_safe_exit(1);
 }
 void realm_usage(char *arg)
 {
-	say("Bad Realm %s\n\n"
+	if (arg)
+		say("Bad Realm %s\n\n",arg);
+	else
+		say("Realm Help.\n\n");
+	say(
 	    "Valid realms are:\n"
-            " ntk\tnetsukuku realm\n"
-            " inet\tinternet realm\n"
-            "(you can also use univoque abbreviation)\n\n",arg);
+            " * ntk\tnetsukuku realm\n"
+            "   inet\tinternet realm\n\n"
+            "(you can also use univoque abbreviation)\n\n");
 	ntkdig_safe_exit(1);
 }
 void proto_usage(char *arg)
 {
-	say("Bad Protocol %s\n"
+	if (arg)
+		say("Bad Protocol %s\n\n",arg);
+	else
+		say("Protocol Help.\n\n");
+	say(
 	    "Valid protocols are:\n"
             " udp\n"
             " tcp\n"
-            "(you can also use univoque abbreviation)\n\n",arg);
+            "(you can also use univoque abbreviation)\n\n");
 	ntkdig_safe_exit(1);
 }
 
@@ -131,6 +143,8 @@ void opts_set_qt(char *arg)
 {
 	int res;
 
+	if (!strcmp(arg,HELP_STR))
+		qt_usage(NULL);
 	res=QTFROMPREF(arg);
 	if (res==-1) 
 		qt_usage(arg);
@@ -145,6 +159,8 @@ void opts_set_realm(char *arg)
 {
 	uint8_t res;
 
+	if (!strcmp(arg,HELP_STR))
+		realm_usage(NULL);
 	res=REALMFROMPREF(arg);
 	if (!res) 
 		realm_usage(arg);
