@@ -9,7 +9,7 @@
 
 #include "andns_lib.h"
 
-#define VERSION			"0.3"
+#define VERSION			"0.3.1"
 
 #define NTKDIG_PORT		53
 #define NTKDIG_PORT_STR		"53"
@@ -200,6 +200,7 @@ void usage(void);
 void qt_usage(char *arg);
 void realm_usage(char *arg);
 void proto_usage(char *arg);
+void service_and_proto_usage(char *arg);
 double diff_time(struct timeval a,struct timeval b);
 void opts_init(void);
 void opts_set_silent();

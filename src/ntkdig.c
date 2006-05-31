@@ -79,6 +79,38 @@ void proto_usage(char *arg)
             "(you can also use univoque abbreviation)\n\n");
 	ntkdig_safe_exit(1);
 }
+void service_and_proto_usage(char *arg)
+{
+	if (arg)
+		say("Bad service/proto %s\n\n"
+			"Use `ntk-dig -s help` for more info on"
+			" service and proto.\n"	,arg);
+	else say(
+		"Service and Proto Help.\n\n"
+		"Ths SNSD resolution protocol lets the user\n"
+		"to specify a service and a protocol for a \n"
+		"query of the type `hostname -> IP`.\n"
+		"You can specify a service as expressed in\n"
+		"/etc/services. It can be expressed  also in\n"
+		"numeric form.\n\n"
+		"As example, if you need to know the IP that\n"
+		"offers web service for hostname `depausceve`\n"
+		"you can use:\n\n"
+		"  ntk-dig -t snsd -s http depausceve\n\n"
+		"It is also possible to specify the protocol:\n\n"
+		"  \"domain\", \"53\", \"53/udp\", \"domain/udp\"\n\n"
+		"are valid service/proto strings.\n\n"
+		"The service is useless if the query realm is\n"
+		"Internet.\n\n"
+		"The default service is 0: ie, the query will\n"
+		"return the IP that registered the hostname.\n"
+		"Default protocol is tcp. Protocol is ignored\n"
+		"when service requested is 0.\n\n"
+		"Note: service and proto are simple ignored if\n"
+		"the query type is `ip->host` (ptr query type).\n\n");
+	ntkdig_safe_exit(1);
+}
+		
 
 double diff_time(struct timeval a,struct timeval b)
 {
@@ -171,13 +203,15 @@ void opts_set_service_and_proto(char *arg)
 {
 	int ret;
 
+	if (!strcmp(arg,HELP_STR))
+		service_and_proto_usage(NULL);
 	ret=str_to_snsd_service(arg, (int *)&GQT->service, &GQT->p);
-	if(ret == -1)
+/*	if(ret == -1)
 		say("Bad service %s.",arg);
 	else if(ret == -2)
-		proto_usage(arg);
+		proto_usage(arg);*/
 	if(ret < 0)
-		ntkdig_safe_exit(1);
+		service_and_proto_usage(arg);
 }
 
 void hname_hash(char *dst,char *src)
