@@ -251,7 +251,9 @@ inline int rand_range(int _min, int _max)
 }
 
 /* 
- * xsrand: It sets the random seed with a pseudo random number 
+ * xsrand
+ *
+ * It sets the random seed with a pseudo random number 
  */
 void xsrand(void)
 {

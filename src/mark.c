@@ -32,6 +32,7 @@
  * Memory dumpers are with you.
  */
 #include "includes.h"
+#include "config.h"
 
 // to delete
 #include <fcntl.h>

@@ -59,6 +59,7 @@ char* andns_uncompress(char *src,int srclen,int *dstlen)
 	uLongf space;
 	int res;
 	int c_len;
+	const int hdrsz=ANDNS_HDR_SZ+ANDNS_HDR_Z;
 
 	memcpy(&c_len,src+ANDNS_HDR_SZ,ANDNS_HDR_Z);
 	c_len=ntohl(c_len);
@@ -66,8 +67,7 @@ char* andns_uncompress(char *src,int srclen,int *dstlen)
 
 	space=c_len;
 
-	res=uncompress(dst+ANDNS_HDR_SZ,&space,
-		src+ANDNS_HDR_SZ+ANDNS_HDR_Z,c_len);
+	res=uncompress(dst+ANDNS_HDR_SZ,&space, src+hdrsz, srclen-hdrsz);
 	if (res!=Z_OK) {
 		xfree(dst);
 		err_ret(ERR_ZLIBUP,NULL);
@@ -76,42 +76,12 @@ char* andns_uncompress(char *src,int srclen,int *dstlen)
 		xfree(dst);
 		err_ret(ERR_ANDMAP,NULL);
 	}
-	memcpy(dst,src,ANDNS_HDR_SZ);
-	*dstlen=c_len+ANDNS_HDR_SZ;
-	return dst;/*
-#warning ********** ** ** ** ** **  ************ 
-#warning ********** ** ** ** ** **  ************ 
-#warning ********** BIG_FAT_WARNING ************ 
-#warning ********** ** ** ** ** **  ************ 
-#warning            LOOK AT ME HERE
-#warning ********** ** ** ** ** **  ************ 
-#warning ********** BIG_FAT_WARNING ************ 
-#warning ********** ** ** ** ** **  ************ 
-#warning ********** ** ** ** ** **  ************ 
-	space=srclen-4  <<<<<< FIXME: destlen MUST BE > srclen. From the zlib docs:
-	   Upon entry, destLen is the total
-	   size of the destination buffer, which must be large enough to hold the
-	   entire uncompressed data. (The size of the uncompressed data must have
-	   been saved previously by the compressor and transmitted to the decompressor
-	   by some mechanism outside the scope of this compression library.)
 
-   	Thus it's better to save the uncompressed size in the packet.
-   	Be aware that the `uncompress_sz' in the packet can be faked, 
-	so you should do:
-		if(pkt.hdr.uncompress_sz > ANDNS_PKT_MAX_MSG_SZ)
-			return invalid_pkt;
+	memcpy(dst, src, ANDNS_HDR_SZ);
+	*dstlen=c_len+ANDNS_HDR_SZ; /* <- what's the meaning? the return size 
+				          is always the same */
 
-	TIP: Probably the `dst' and `src'  buffers can coincide because zlib 
-	     uses the buffer as streams, thus we can use src=xrealloc(src, uncompressed_sz);
-	     Remember that `src' pointer may change with realloc.
-	     See pkt_uncompress() in pkts.c
-	     Note: I've not tested if zlib support dst=src, we need a small test to
-	     	   verify it. 
-	;
-	
-	memcpy(dst,src,4);
-	*dstlen=space+4;
-	return dst;*/
+	return dst;
 }
 
 /*

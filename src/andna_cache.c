@@ -810,10 +810,14 @@ char *pack_lcl_cache(lcl_cache *local_cache, size_t *pack_sz)
 }
 
 /*
- * unpack_lcl_cache: unpacks a packed local cache linked list and returns its head.
+ * unpack_lcl_cache
+ *
+ * Unpacks a packed local cache linked list and returns its head.
  * `counter' is set to the number of struct in the llist.
- * On error 0 is returned.
- * Note `pack' is modified during the unpacking.
+ *
+ * On error 0 is returned and `*counter' is set to -1.
+ *
+ * Note: `pack' is modified during the unpacking.
  */
 lcl_cache *unpack_lcl_cache(char *pack, size_t pack_sz, int *counter)
 {
@@ -828,21 +832,22 @@ lcl_cache *unpack_lcl_cache(char *pack, size_t pack_sz, int *counter)
 	buf+=sizeof(struct lcl_cache_pkt_hdr);
 	unpacked_sz=sizeof(struct lcl_cache_pkt_hdr);
 	ints_network_to_host(hdr, lcl_cache_pkt_hdr_iinfo);
+	*counter=0;
 
 	if(hdr->tot_caches > ANDNA_MAX_HOSTNAMES)
-		return 0;
+		ERROR_FINISH(*counter, -1, finish);
 
 	*counter=0;
 	if(hdr->tot_caches) {
 		for(i=0; i<hdr->tot_caches; i++) {
 			unpacked_sz+=LCL_CACHE_BODY_PACK_SZ(0);
 			if(unpacked_sz > pack_sz)
-				goto finish;
+				ERROR_FINISH(*counter, -1, finish);
 			
 			slen=strlen(buf+sizeof(u_short)+sizeof(time_t))+1;
 			if(slen > ANDNA_MAX_HNAME_LEN || 
 					(unpacked_sz+=slen) > pack_sz)
-				goto finish;
+				ERROR_FINISH(*counter, -1, finish);
 
 			ints_network_to_host(buf, lcl_cache_pkt_body_iinfo);
 		
@@ -1215,10 +1220,14 @@ char *pack_counter_cache(counter_c *countercache, size_t *pack_sz)
 
 
 /*
- * unpack_counter_cache: unpacks a packed counter cache linked list and returns the
- * its head.  `counter' is set to the number of struct in the llist.
- * On error 0 is returned.
- * Note `pack' will be modified during the unpacking.
+ * unpack_counter_cache
+ *
+ * Unpacks a packed counter cache linked list and returns the its head.
+ * `counter' is set to the number of struct in the llist.
+ *
+ * On error 0 is returned and `*counter' is set to -1.
+ *
+ * Note: `pack' will be modified during the unpacking.
  */
 counter_c *unpack_counter_cache(char *pack, size_t pack_sz, int *counter)
 {
@@ -1243,7 +1252,8 @@ counter_c *unpack_counter_cache(char *pack, size_t pack_sz, int *counter)
 		for(i=0; i<hdr->tot_caches; i++) {
 			sz+=COUNTER_CACHE_BODY_PACK_SZ;
 			if(sz > pack_sz)
-				goto finish; /* We don't want to overflow */
+				/* We don't want to overflow */
+				ERROR_FINISH(*counter, -1, finish);
 
 			cc=xmalloc(sizeof(counter_c));
 			setzero(cc, sizeof(counter_c));
@@ -1262,7 +1272,8 @@ counter_c *unpack_counter_cache(char *pack, size_t pack_sz, int *counter)
 
 			sz+=COUNTER_CACHE_HASHES_PACK_SZ * cc->hashes;
 			if(sz > pack_sz)
-				goto finish; /* bleah */
+				/* bleah */
+				ERROR_FINISH(*counter, -1, finish);
 			
 			for(e=0; e < cc->hashes; e++) {
 				cch=xmalloc(sizeof(counter_c_hashes));
@@ -1357,10 +1368,12 @@ char *pack_rh_cache(rh_cache *rhcache, size_t *pack_sz)
 /*
  * unpack_rh_cache
  *
- * unpacks a packed resolved hnames cache linked list and returns its head.
+ * Unpacks a packed resolved hnames cache linked list and returns its head.
  * `counter' is set to the number of struct in the llist.
- * On error 0 is returned.
- * Note `pack' will be modified during the unpacking.
+ *
+ * On error 0 is returned and `*counter' is set to -1.
+ *
+ * Note: `pack' will be modified during the unpacking.
  */
 rh_cache *unpack_rh_cache(char *pack, size_t pack_sz, int *counter)
 {
@@ -1372,9 +1385,10 @@ rh_cache *unpack_rh_cache(char *pack, size_t pack_sz, int *counter)
 		
 	hdr=(struct rh_cache_pkt_hdr *)pack;
 	ints_network_to_host(hdr, rh_cache_pkt_hdr_iinfo);
+	*counter=0;
 
 	if(hdr->tot_caches > ANDNA_MAX_RHC_HNAMES)
-		return 0;
+		ERROR_FINISH(*counter, -1, finish);
 
 	*counter=0;
 	if(hdr->tot_caches) {
@@ -1384,7 +1398,7 @@ rh_cache *unpack_rh_cache(char *pack, size_t pack_sz, int *counter)
 		for(i=0; i<hdr->tot_caches; i++) {
 			unpacked_sz+=RH_CACHE_BODY_PACK_SZ(0);
 			if(unpacked_sz > pack_sz)
-				goto finish;
+				ERROR_FINISH(*counter, -1, finish);
 
 			ints_network_to_host(buf, rh_cache_pkt_body_iinfo);
 			
@@ -1545,9 +1559,9 @@ finish:
 	if(pack)
 		xfree(pack);
 	fclose(fd);
-	if(!lcl)
-		debug(DBG_NORMAL, "Malformed or empty lcl_cache file. "
-				"Aborting load_lcl_cache().");
+	if(!lcl && counter < 0)
+		error("Malformed lcl_cache file (%s)"
+				"Aborting load_lcl_cache().", file);
 	return lcl;
 }
 
@@ -1680,9 +1694,9 @@ finish:
 	if(pack)
 		xfree(pack);
 	fclose(fd);
-	if(!countercache)
-		debug(DBG_NORMAL, "Malformed or empty counter_c file. "
-				"Aborting load_counter_c().");
+	if(!countercache && counter < 0)
+		debug(DBG_NORMAL, "Malformed counter_c file (%s). "
+				"Aborting load_counter_c().", file);
 	return countercache;
 }
 
@@ -1747,9 +1761,9 @@ finish:
 	if(pack)
 		xfree(pack);
 	fclose(fd);
-	if(!rh)
-		debug(DBG_NORMAL, "Malformed or empty rh_cache file. "
-				"Aborting load_rh_cache().");
+	if(!rh && counter < 0)
+		error("Malformed rh_cache file (%s). "
+				"Aborting load_rh_cache().", file);
 	return rh;
 }
 
@@ -1844,7 +1858,7 @@ int load_hostnames(char *file, lcl_cache **old_alcl_head, int *old_alcl_counter)
  * load_snsd
  *
  * It loads the SNSD records to be registered from the given `file'.
- * In the file there shall be one record per line, up to SNSD_MAX_RECORDS#
+ * In the file there shall be one record per line, up to SNSD_MAX_RECORDS-1#
  * records.
  * 
  * Each line has to be written in the following format:
@@ -1864,9 +1878,8 @@ int load_snsd(char *file, lcl_cache *alcl_head)
 	
 	FILE *fd;
 	size_t slen;
-	int line=0, fields, e, service, nodes;
-	struct servent *st;
-	char buf[MAX_SNSD_LINE_SZ+1], **records, *servname, *servproto;
+	int line=0, fields, e, service, nodes, ret;
+	char buf[MAX_SNSD_LINE_SZ+1], **records;
 	u_char proto, abort=0;
 
 	lcl_cache *alcl;
@@ -1888,7 +1901,7 @@ int load_snsd(char *file, lcl_cache *alcl_head)
 	}
 
 	line=1;
-	while(!feof(fd) && line <= SNSD_MAX_RECORDS) {
+	while(!feof(fd) && line <= SNSD_MAX_RECORDS-1) {
 		setzero(buf, MAX_SNSD_LINE_SZ+1);
 		fgets(buf, MAX_SNSD_LINE_SZ, fd);
 		if(feof(fd))
@@ -1949,51 +1962,39 @@ int load_snsd(char *file, lcl_cache *alcl_head)
 						!strcmp(records[2], "0"))
 				snsd_node.flags=SNSD_NODE_MAIN_IP | SNSD_NODE_IP;
 			
-			/*
-			 * service 
+			/***
+			 * Parse service and protocol
 			 */
-
-			/* Get the protocol */
-			servname=records[2];
-			if((servproto=strchr(records[2], '/'))) {
-				*servproto=0;
-				servproto++;
-				if(!(proto=proto_to_8bit(servproto))) {
-					error("%s: error in line %d: \"%s\""
+			ret=str_to_snsd_service(records[2], &service, &proto);
+			if(ret == -1)
+				error("%s: error in line %d: \"%s\""
 						" isn't a valid protocol\n",
-						file, line, servproto);
-					ERROR_FINISH(abort, 1, skip_line);
-				}
-			} else
-				proto=SNSD_DEFAULT_PROTO;
-
-			if(!isdigit(servname[0])) {
-				if(!(st=getservbyname(servname, 0))) {
-					error("%s: error in line %d: \"%s\""
+						file, line, records[2]);
+			else if(ret == -2)
+				error("%s: error in line %d: \"%s\""
 						" isn't a valid service\n",
-						file, line, servname);
-					ERROR_FINISH(abort, 1, skip_line);
-				}
-				service=ntohs(st->s_port);
-			} else
-				service=atoi(servname);
+						file, line, records[2]);
+			if(ret < 0)
+				ERROR_FINISH(abort, 1, skip_line);
+			/**/
 
+			/* Store service and protocol */
 			sns=snsd_add_service(&alcl->service, service, proto);
 			
 			/* priority */
 			snp=snsd_add_prio(&sns->prio, atoi(records[3]));
 			nodes=snsd_count_prio_nodes(sns->prio);
-			if(nodes >= SNSD_MAX_REC_SERV) {
+			if(nodes >= SNSD_MAX_REC_SERV-1) {
 				error("%s: The maximum number of records for"
 				      " the service \"%s\" has been reached.\n"
 				      "  The maximum is %d records per service",
-				      file, servname, SNSD_MAX_REC_SERV);
+				      file, service, SNSD_MAX_REC_SERV);
 				ERROR_FINISH(abort, 1, skip_line);
 			}
 				
 			/* node and weight */
 			snd=snsd_add_node(&snp->node, &alcl->snsd_counter,
-					SNSD_MAX_RECORDS, snsd_node.record);
+					SNSD_MAX_RECORDS-1, snsd_node.record);
 			snd->weight=SNSD_WEIGHT(atoi(records[4]));
 			snd->flags|=snsd_node.flags;
 			

@@ -276,10 +276,10 @@ int pkt_uncompress(PACKET *pkt)
 {
 	uLongf dstlen;
 	int ret=0;
-	char *dst;
+	char *dst=0;
 	
 	dstlen=pkt->hdr.uncompress_sz;
-	dst=pkt->msg=xrealloc(pkt->msg, dstlen);
+	dst=xmalloc(dstlen);
 	
 	ret=uncompress(dst, &dstlen, pkt->msg, pkt->hdr.sz);
 	if(ret != Z_OK)
@@ -290,12 +290,16 @@ int pkt_uncompress(PACKET *pkt)
 	/**
 	 * Restore the uncompressed packet
 	 */
+	xfree(pkt->msg);
+	pkt->msg=dst;
 	pkt->hdr.sz=pkt->hdr.uncompress_sz;
 	pkt->hdr.uncompress_sz=0;
 	pkt->hdr.flags&=~COMPRESSED_PKT;
 	/**/
 
 finish:
+	if(ret && dst)
+		xfree(dst);
 	return ret;
 }
 
@@ -422,8 +426,6 @@ ssize_t pkt_recv(PACKET *pkt)
 			memcpy(pkt->msg, buf+sizeof(pkt_hdr), pkt->hdr.sz);
 		}
 
-		/* let's finish it */
-		pkt_unpack(pkt);
 	} else if(pkt->sk_type==SKT_TCP) {
 		/* we get the hdr... */
 		if(pkt->pkt_flags & PKT_RECV_TIMEOUT)
@@ -461,12 +463,12 @@ ssize_t pkt_recv(PACKET *pkt)
 				return -1;
 			}
 		}
-
-		/* let's finish it */
-		pkt_unpack(pkt);
 	} else
 		fatal("Unkown socket_type. Something's very wrong!! Be aware");
 	
+	/* let's finish it */
+	pkt_unpack(pkt);
+
 	return err;
 }
 

@@ -3,7 +3,7 @@
 #
 # List, one per line, the SNSD records you want register in ANDNA.
 #
-# You can register up to 256 records and you can associate a maximum of 16
+# You can register up to 255 records and you can associate a maximum of 16
 # records to a service.
 #
 # Each line must be in the following format:

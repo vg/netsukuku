@@ -1,3 +1,3 @@
 <?
-include("http://netsukuku.freaknet.org/files");
+include("http://netsukuku.freaknet.org/files/?M=D");
 ?>

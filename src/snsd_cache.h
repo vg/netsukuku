@@ -258,7 +258,11 @@ const static char proto_str[][5] =
  */
 
 void snsd_cache_init(int family);
-u_char proto_to_8bit(char *proto_name);
+u_char str_to_snsd_proto(char *proto_name);
+const char *snsd_proto_to_str(u_char proto);
+int str_to_snsd_service(char *str, int *service, u_char *proto);
+struct servent *snsd_service_to_str(int service, u_char proto, 
+				    char **service_str, char **proto_str);
 
 snsd_service *snsd_find_service(snsd_service *sns, u_short service, u_char proto);
 snsd_service *snsd_add_service(snsd_service **head, u_short service, u_char proto);

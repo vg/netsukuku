@@ -19,8 +19,6 @@
 #ifndef INCLUDES_H
 #define INCLUDES_H
 
-#include "config.h"
-
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>

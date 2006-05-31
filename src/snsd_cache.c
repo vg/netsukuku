@@ -40,14 +40,14 @@ void snsd_cache_init(int family)
 }
 
 /*
- * proto_to_8bit
+ * str_to_snsd_proto
  *
  * It returns the protocol number associated to `proto_name'.
  * (See the `proto_str' static array in snsd.h)
  *
  * If no protocol matched, 0 is returned.
  */
-u_char proto_to_8bit(char *proto_name)
+u_char str_to_snsd_proto(char *proto_name)
 {
 	int i;
 	
@@ -61,6 +61,78 @@ u_char proto_to_8bit(char *proto_name)
 	return 0;
 }
 
+const char *snsd_proto_to_str(u_char proto)
+{
+	return proto_str[proto-1];
+}
+
+/*
+ * str_to_snsd_service
+ *
+ * `str' is a string which specifies the service of a snsd record. It 
+ * is one of the service listed in /etc/services. It can be expressed 
+ * also in numeric form.
+ * It is also possible to specify the protocol, f.e: 
+ * 	"domain", "53", "53/udp", "domain/udp"
+ * are valid service strings.
+ *
+ * This function converts `str' to a service number and a protocol 
+ * number in the str_to_snsd_proto() format.
+ *
+ * On error a negative value is returned.
+ *	 If the service is invalid  -1 is returned.
+ *	 If the protocol is invalid -2 is returned.
+ */
+int str_to_snsd_service(char *str, int *service, u_char *proto)
+{
+	struct servent *st;
+	char *servname, *servproto;
+
+	servname=str;
+	if((servproto=strchr(str, '/'))) {
+		*servproto=0;
+		servproto++;
+		if(!(*proto=str_to_snsd_proto(servproto)))
+			return -1;
+	} else
+		*proto=SNSD_DEFAULT_PROTO;
+
+	if(!isdigit(servname[0])) {
+		if(!(st=getservbyname(servname, 0)))
+			return -2;
+
+		*service=ntohs(st->s_port);
+	} else
+		*service=atoi(servname);
+
+	return 0;
+}
+
+/*
+ * snsd_service_to_str
+ *
+ * Converts the `service' and `proto' numbers to a servent struct, and sets
+ * the pointer `service_str' to the service string while `proto_str' to the
+ * protocol string.
+ * A pointer to the servent structure is returned.
+ *
+ * On error 0 is returned.
+ */
+struct servent *
+snsd_service_to_str(int service, u_char proto, char **service_str, 
+		    char **proto_str)
+{
+	struct servent *st=0;
+
+	if(!(st=getservbyport(service, snsd_proto_to_str(proto))))
+		return 0;
+
+	*service_str=st->s_name;
+	*proto_str=st->s_proto;
+
+	return st;
+}
+
 /*
  *  *  *  SNSD structs functions  *  *  *
  */
@@ -69,7 +141,9 @@ snsd_service *snsd_find_service(snsd_service *sns, u_short service,
 				u_char proto)
 {
 	list_for(sns)
-		if(sns->service == service && sns->proto == proto)
+		if(sns->service == service &&
+				(sns->proto == proto || 
+				 service == SNSD_DEFAULT_SERVICE))
 			return sns;
 	return 0;
 }
@@ -602,7 +676,7 @@ int snsd_pack_service(char *pack, size_t free_sz, snsd_service *service)
 	char *buf=pack;
 	int wsz=0, sz=0;
 
-	if(free_sz < SNSD_SERVICE_PACK_SZ)
+	if(!service || free_sz < SNSD_SERVICE_PACK_SZ)
 		return -1;
 	
 	(*(u_short *)(buf))=htons(service->service);
@@ -902,7 +976,8 @@ snsd_prio *snsd_prio_llist_copy(snsd_prio *snp)
 
 int is_equal_to_serv_proto(snsd_service *sns, u_short service, u_char proto)
 {
-	return sns->service == service && sns->proto == proto;
+	return sns->service == service && 
+		(sns->proto == proto || sns->service == SNSD_DEFAULT_SERVICE);
 }
 
 /*

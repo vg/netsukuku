@@ -1,13 +1,10 @@
-#include <getopt.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <strings.h>
-#include <sys/time.h>
-#include <time.h>
+#include "includes.h"
 
 #include "ntkdig.h"
 #include "andns_net.h"
+#include "snsd_cache.h"
 #include "crypto.h"
+#include "misc.h"
 #include "xmalloc.h"
 #include "log.h"
 
@@ -34,7 +31,7 @@ void usage(void)
                 " -P --port=port        nameserver port, default 53.\n"
                 " -t --query-type=qt    query type (default snsd).\n"
                 " -r --realm=realm      inet or netsukuku (default) realm to scan.\n"
-                " -s --service=service  SNSD service.\n"
+                " -s --service=service[/proto]  SNSD service.\n"
                 " -p --protocolo=proto  SNSD protocol (udp/tcp).\n"
                 " -S --silent           ntk-dig will be not loquacious.\n"
                 " -h --help             display this help, then exit.\n\n");
@@ -92,7 +89,9 @@ void opts_init(void)
 	GOP.port=NTKDIG_PORT;
 	GQT=create_andns_pkt();
 	GQT->nk=REALM_NTK;
-	srand((unsigned int)time(NULL));
+	GQT->p=SNSD_DEFAULT_PROTO;
+	GQT->service=SNSD_DEFAULT_SERVICE;
+	xsrand();
 }
 
 void opts_set_silent(void)
@@ -151,29 +150,20 @@ void opts_set_realm(char *arg)
 		realm_usage(arg);
 	GQT->nk=res;
 }
-void opts_set_service(char *arg)
+
+void opts_set_service_and_proto(char *arg)
 {
-	int res;
-	uint16_t service;
+	int ret;
 
-	res=atoi(arg);
-	service=(uint16_t)res;
-
-	if (service!=res) {
+	ret=str_to_snsd_service(arg, (int *)&GQT->service, &GQT->p);
+	if(ret == -1)
 		say("Bad service %s.",arg);
-		ntkdig_safe_exit(1);
-	}
-	GQT->service=service;
-}
-void opts_set_proto(char *arg) 
-{
-	uint8_t p;
-
-	p=PROTOFROMPREF(arg);
-	if (p==2) 
+	else if(ret == -2)
 		proto_usage(arg);
-	GQT->p=p;
+	if(ret < 0)
+		ntkdig_safe_exit(1);
 }
+
 void hname_hash(char *dst,char *src)
 {
 	u_char hashm5[16];
@@ -181,6 +171,12 @@ void hname_hash(char *dst,char *src)
 	u_int hval=0;
 	
 	hash_md5(src, strlen(src), hashm5);
+
+	/*
+	 * TODO:
+	 * why do you use this second hash?
+	 * andna_resolve_hash works only with a full md5 hash
+	 */
 	bp = (u_char *)hashm5; 
         be = bp + 16;         
     	while (bp < be) {
@@ -420,11 +416,8 @@ int main(int argc, char **argv)
 				opts_set_realm(optarg);
 				break;
 			case 's':
-				opts_set_service(optarg);
+				opts_set_service_and_proto(optarg);
 				break;	
-			case 'p':
-				opts_set_proto(optarg);
-				break;
 			case 'h':
 				usage();
 			case 'S':

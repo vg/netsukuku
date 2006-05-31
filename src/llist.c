@@ -506,7 +506,7 @@ do{									\
 		list_init(*(_head), (_list));				\
 	else {								\
 		_t=(l_list *)list_append(*(_head), _t, (_list));	\
-		if((_tail))						\
+		if(_targv)						\
 			(*_targv)=_t;					\
 	}								\
 	(*(_counter))++;                                                \

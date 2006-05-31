@@ -892,7 +892,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 			if(!snd)
 				snd=snsd_add_first_mainip(&snsd_unpacked,
 						&snsd_counter,
-						SNSD_MAX_QUEUE_RECORDS,
+						SNSD_MAX_RECORDS,
 						rfrom.data);
 			inet_copy_ipdata_raw(snd->record, &rfrom);
 
@@ -2124,9 +2124,9 @@ counter_c *get_counter_cache(inet_prefix to, int *counter)
 	pack_sz=rpkt.hdr.sz;
 	pack=rpkt.msg;
 	ret=ccache=unpack_counter_cache(pack, pack_sz, counter);
-	if(!ccache)
-		error(ERROR_MSG "Malformed or empty counter_cache."
-				" Cannot load it", ERROR_FUNC);
+	if(!ccache && counter < 0)
+		error(ERROR_MSG "Malformed counter_cache. Cannot load it",
+		      ERROR_FUNC);
 	
 finish:
 	pkt_free(&pkt, 0);
@@ -2329,22 +2329,6 @@ void *andna_maintain_hnames_active(void *null)
 		if(updates)
 			save_lcl_cache(andna_lcl, server_opt.lcl_file);
 
-#if 0
-#ifdef ANDNA_DEBUG
-		/* 
-		 * * *  DEBUG ONLY  * * *
-		 */
-		sleep(4);
-		if(andna_lcl && !andna_c) {
-			inet_prefix ip;
-			debug(DBG_INSANE, "Trying to resolve \"netsukuku\"");
-			if(!andna_resolve_hname("netsukuku", &ip))
-				debug(DBG_INSANE, "Resolved! ip: %s", inet_to_str(ip));
-			else
-				debug(DBG_INSANE, "Resolved failure Something went wrong");
-		}
-#endif
-#endif
 		sleep((ANDNA_EXPIRATION_TIME/2) + rand_range(1, 10));
 	}
 

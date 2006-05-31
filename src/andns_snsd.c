@@ -185,7 +185,10 @@ int lcl_cache_to_dansws(dns_pkt *dp,lcl_cache *lc)
 		strcpy(dpa->rdata,lc->hostname);
 		res++;
 	}
-	lcl_cache_free(lc);
+
+	if(lc)
+		lcl_cache_free(lc);
+
 	return res;
 }
 
