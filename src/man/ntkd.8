@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "NetsukukuD 8"
-.TH NetsukukuD 8 "2006-05-28" "NetsukukuD 0.0.8b" ""
+.TH NetsukukuD 8 "2006-05-31" "NetsukukuD 0.0.8b" ""
 .SH "NAME"
 ntkd \- Netsukuku protocol daemon
 .SH "SYNOPSIS"
@@ -171,7 +171,11 @@ experimental.
 .IX Item "-i interface, --iface interface"
 Specifies the network interface the daemon will use to join Netsukuku, i.e.
 wlan0. You can use more than one interface by specifying multiple times the
-\&\fB\-i\fR option. For example: \fBntkd\fR \-i wlan0 \-i eth0 \-i wifi1 \-i eth1
+\&\fB\-i\fR option. For example: 
+.Sp
+.Vb 1
+\&        ntkd -i wlan0 -i eth0 -i wifi1 -i eth1
+.Ve
 .IP "\fB\-a\fR, \fB\-\-no_andna\fR" 4
 .IX Item "-a, --no_andna"
 Forces \fBntkd\fR to don't run the \s-1ANDNA\s0 daemon when started.
@@ -218,13 +222,16 @@ Displays the version of the \fBntkd\fR daemon.
 .IX Header "EXAMPLES"
 Usually you'll just want to use \fBntkd\fR with a wifi device:
 .PP
-ntk-wifi wlan0
-.PP
-ntkd \-i wlan0
+.Vb 2
+\&        ntk-wifi wlan0
+\&        ntkd -i wlan0
+.Ve
 .PP
 If you one to use more than one network interface:
 .PP
-ntkd \-i eth0 \-i wlan0 \-i wifi1 \-i eth2
+.Vb 1
+\&        ntkd -i eth0 -i wlan0 -i wifi1 -i eth2
+.Ve
 .SH "SIGNALS"
 .IX Header "SIGNALS"
 When the \fB\s-1SIGHUP\s0\fR signal is sent to \fIntkd\fR\|(8), the \fIandna_hostnames\fR and

@@ -291,7 +291,7 @@ void free_server_opt(void)
 
 void parse_options(int argc, char **argv)
 {
-	int c;
+	int c, i, saved_argc=argc;
 
 	while (1) {
 		int option_index = 0;
@@ -307,7 +307,7 @@ void parse_options(int argc, char **argv)
 			{"no_daemon", 	0, 0, 'D'},
 			{"no_resolv",   0, 0, 'R'},
 			
-			{"restricted", 	2, 0, 'r'},
+			{"restricted", 	0, 0, 'r'},
 			{"share-inet",	0, 0, 'I'},
 			
 			{"debug", 	0, 0, 'd'},
@@ -315,7 +315,7 @@ void parse_options(int argc, char **argv)
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long (argc, argv,"i:c:hvd64DRr::Ia", long_options, 
+		c = getopt_long (argc, argv,"i:c:hvd64DRrIa", long_options, 
 				&option_index);
 		if (c == -1)
 			break;
@@ -361,8 +361,44 @@ void parse_options(int argc, char **argv)
 				break;
 			case 'r':
 				server_opt.restricted=1;
-				if(optarg)
-					server_opt.restricted_class=atoi(optarg);
+
+				/***
+				 * This is a very dirty hack, but it handles
+				 * the optional argument better than getopt.
+				 *
+				 * The problem is this:
+				 * 	ntkd -abcrdefg
+				 * If 'r' is an element that specifies an 
+				 * optional argument, then the "defg" string
+				 * is taken as its arg, but this is just
+				 * stupid because in this case '-r' is
+				 * specified without its argument.
+				 *
+				 * So, what we do is checking if the argv
+				 * next to the arg of 'r' begins with a '-'
+				 * or not. If not, it is the option of '-r'
+				 * To find the position of the arg of 'r', we
+				 * scan all the argv[] array.
+				 *
+				 * The only thing that won't work is:
+				 * 	ntkd -rOPTION
+				 * it has to be specified in this way:
+				 * 	ntkd -r OPTION
+				 */
+				for(i=1; i<argc; i++) {
+					if(argv[i][0] != '-')
+						continue;
+					if(strchr(argv[i], 'r') || 
+						!strcmp(argv[i], "--restricted"))
+						break;
+				}
+
+				if(argc > i+1 && argv[i+1][0] != '-') {
+					server_opt.restricted_class=atoi(argv[i+1]);
+					saved_argc--;
+				}
+				/**/
+
 				break;
 			case 'I':
 				server_opt.share_internet=1;
@@ -385,7 +421,7 @@ void parse_options(int argc, char **argv)
 		}
 	}
 
-	if (optind < argc) {
+	if (optind < saved_argc) {
 		usage();
 		exit(1);
 	}

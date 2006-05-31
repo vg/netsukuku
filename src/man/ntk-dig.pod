@@ -4,7 +4,7 @@ ntkdig - Andns Lookup Resolver
 
 =head1 SYNOPSIS
 
-ntkdig [-vnPtrspSh] host
+ntkdig [-vnPtrsSh] host
 
 =head1 DESCRIPTION
 
@@ -69,17 +69,17 @@ Specify the realm of the query: Internet or Netsukuku. Default is ntk.
 
 =over
 
-=item	B<-s>	B<--service=n>
+=item	B<-s>	B<--service=n[/proto]>
 
-Specify the SNSD service to search. See /etc/services, Default is 0.
-
-=back
-
-=over
-
-=item	B<-p>	B<--protocol=tcp --protocol=udp>
-
-Specify protocol for SNSD service. Default is tcp.
+Specify the SNSD service and the relative protocol to search. See
+services(5). The service can be specified in alfanumeric or numeric format.
+The default service and protocol are 0 and tcp.
+Examples:
+		
+	ntkdig -s domain/udp host
+	ntkdig -s 53/udp host
+	ntkdig -s ssh/tcp host
+	ntkdig -s http host
 
 =back
 
@@ -113,7 +113,7 @@ specifing univoque abbreviation of argument. So, there is the equivalence:
 SNSD Query Type are hostname resolutions.
 If service is 0, the resolution will show which IP registered the hostname.
 If service is non-0, the resolution will show which IP gives specified service
-for the hostname (considering the protocol too). See /etc/services.
+for the hostname (considering the protocol too). See services(5).
 
 For example, asking for "depausceve" with service 80 and proto tcp, will retrieve
 the IP that publishes HTTP pages for hostname "depausceve".

@@ -58,7 +58,9 @@ experimental.
 
 Specifies the network interface the daemon will use to join Netsukuku, i.e.
 wlan0. You can use more than one interface by specifying multiple times the
-B<-i> option. For example: B<ntkd> -i wlan0 -i eth0 -i wifi1 -i eth1
+B<-i> option. For example: 
+
+	ntkd -i wlan0 -i eth0 -i wifi1 -i eth1
 
 =back
 
@@ -153,13 +155,12 @@ Displays the version of the B<ntkd> daemon.
 
 Usually you'll just want to use B<ntkd> with a wifi device:
 
-ntk-wifi wlan0
-
-ntkd -i wlan0
+	ntk-wifi wlan0
+	ntkd -i wlan0
 
 If you one to use more than one network interface:
 
-ntkd -i eth0 -i wlan0 -i wifi1 -i eth2
+	ntkd -i eth0 -i wlan0 -i wifi1 -i eth2
 
 =head1 SIGNALS
 
