@@ -214,15 +214,13 @@ void opts_set_service_and_proto(char *arg)
 		service_and_proto_usage(arg);
 }
 
-void hname_hash(char *dst,char *src)
+/*void hname_hash(char *dst,char *src)
 {
 	u_char hashm5[ANDNS_HASH_H];
-	u_char *bp,*be;
 	u_int hval=0;
 	
 	hash_md5(src, strlen(src), hashm5);
 
-	/*
 	 * TODO:
 	 * why do you use this second hash?
 	 * andna_resolve_hash works only with a full md5 hash
@@ -233,9 +231,8 @@ void hname_hash(char *dst,char *src)
         	hval ^= (u_long)*bp++;
     	}
 	hval=htonl(hval);
-	 */
-	memcpy(dst,hashmt,ANDNS_HASH_H);
-}
+	memcpy(dst,hashm5,ANDNS_HASH_H);
+}*/
 
 void opts_set_question(char *arg)
 {
@@ -254,7 +251,7 @@ void opts_set_question(char *arg)
 		case QTYPE_A:
 			if (GQT->nk==REALM_NTK) {
 				G_ALIGN(ANDNS_HASH_H);
-				hname_hash(GQT->qstdata,arg);
+				hash_md5(arg,res,GQT->qstdata);
 			} else {
 				res=strlen(arg);
 				if (res>255) {
