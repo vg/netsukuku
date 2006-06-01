@@ -42,7 +42,7 @@ void qt_usage(char *arg)
 	if (arg)
 		say("Bad Query Type %s\n\n",arg);
 	else
-		say("Query Type Help.\n\n");
+		say("ntk-dig Query Type Help.\n\n");
 	say(
 	    "Valid query types are:\n"
             " * snsd\thost:port -> ip\n"
@@ -58,7 +58,7 @@ void realm_usage(char *arg)
 	if (arg)
 		say("Bad Realm %s\n\n",arg);
 	else
-		say("Realm Help.\n\n");
+		say("ntk-dig Realm Help.\n\n");
 	say(
 	    "Valid realms are:\n"
             " * ntk\tnetsukuku realm\n"
@@ -71,11 +71,11 @@ void proto_usage(char *arg)
 	if (arg)
 		say("Bad Protocol %s\n\n",arg);
 	else
-		say("Protocol Help.\n\n");
+		say("ntk-dig Protocol Help.\n\n");
 	say(
 	    "Valid protocols are:\n"
-            " udp\n"
-            " tcp\n"
+            " * tcp\n"
+            "   udp\n"
             "(you can also use univoque abbreviation)\n\n");
 	ntkdig_safe_exit(1);
 }
@@ -86,24 +86,22 @@ void service_and_proto_usage(char *arg)
 			"Use `ntk-dig -s help` for more info on"
 			" service and proto.\n"	,arg);
 	else say(
-		"Service and Proto Help.\n\n"
+		"ntk-dig Service and Proto Help.\n\n"
 		"The form to specify a service and a protocol are:\n"
 		"  ntk-dig -s service/proto\n"
 		"  ntk-dig -s service -p proto\n\n"
 		"Valid protocols are:\n"
 	        " * tcp\n"
-            	"   udp\n"
-        	"(you can also use univoque abbreviation)\n\n"
+            	"   udp\n\n"
 		"Valid services are expressed in /etc/services.\n"
 		"You can use numeric form too.\n\n"
-		"As example, the next commands are equivalent:\n\n"
+		"As example, the next commands are equivalent and\n"
+		"will return the IP of the hostname that offers\n"
+		"webpages for the hostname \"some_hostname\":\n\n"
 		"  ntk-dig -s http -p tcp some_hostname\n"
 		"  ntk-dig -s http/tcp    some_hostname\n"
 		"  ntk-dig -s 80/tcp      some_hostname\n"
-		"  ntk-dig -s 80          some_hostname\n\n"
-		"Default service is 0. A SNSD query with service 0\n"
-		"will return the IP that registered the hostname\n"
-		"requested.\n\n");
+		"  ntk-dig -s 80          some_hostname\n\n");
 	ntkdig_safe_exit(1);
 }
 		
