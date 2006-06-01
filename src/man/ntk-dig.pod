@@ -180,4 +180,4 @@ L<http://netsukuku.freaknet.org/?p=Contacts>
 
 =head1 SEE ALSO
 
-ntkd(8), andna(8)
+ntkd(8), andna(8), services(5)
