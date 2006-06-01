@@ -39,12 +39,13 @@ OPTIONS
     -s --service=n[/proto]
         Specify the SNSD service and the relative protocol to search. See
         services(5). The service can be specified in alfanumeric or numeric
-        format. The default service and protocol are 0 and tcp. Examples:
+        format. The default service and protocol are 0 and tcp. Example:
 
-                ntkdig -s domain/udp host
-                ntkdig -s 53/udp host
-                ntkdig -s ssh/tcp host
-                ntkdig -s http host
+                ntk-dig -s domain/udp host
+                ntk-dig -s 53/udp host
+
+        See the section QUERY TYPE, SERVICES AND PROTOCOL for a better
+        explanation.
 
     -S --silent
         With this option, ntkdig will be very discrete.
@@ -68,17 +69,24 @@ QUERY TYPE, SERVICES AND PROTOCOL
     expressed also in numeric form. It is also possible to specify the
     protocol:
 
-    "domain", "53", "53/udp", "domain/udp"
+            "domain", "53", "53/udp", "domain/udp"
 
-    For example, this command asks for "depausceve" with service 80 and
-    proto tcp:
+    are valid service/proto strings.
 
-    ntk-dig -s http/tcp depausceve
+    For example, the next commands will retrieve the IP(s) that offers
+    web-pages for the hostname "host":
+
+            ntk-dig -s http/tcp host
+            ntk-dig -s 80/tcp   host
+            ntk-dig -s 80       host
+            ntk-dig -s http     host
+
+    To configure the SNSD delegations, see the SNSD HowTo.
 
     If the delegation for a service (say http) is not set, the IP returned
-    is the IP that registered the hostname. So, if you do not want SNSD
-    delegations for specific services, the main hostname IP will be used and
-    you don't need to do nothing.
+    is the IP that registered the hostname. So, if you do not want to set
+    SNSD delegations for specific services, the main hostname IP will be
+    used and you don't need to do nothing.
 
     The hope is that every client will build different queries: browsers
     will make queries with service=80 and proto=tcp, mail-clients will build
