@@ -60,10 +60,12 @@ OPTIONS
     ntkdig -r i = ntkdig -r inet
 
 QUERY TYPE, SERVICES AND PROTOCOL
-    SNSD Query Type are hostname resolutions. If service is 0, the
-    resolution will show which IP registered the hostname. If service is
-    non-0, the resolution will show which IP gives specified service for the
-    hostname (considering the protocol too). See services(5).
+    SNSD Query Type are hostname resolutions. With SNSD (Scattered Name
+    Service Disgregation) ANDNA lets the user to ask for a domain and a
+    service. If service is 0, the resolution will show which IP registered
+    the hostname. If service is non-0, the resolution will show which IP
+    gives specified service for the hostname (considering the protocol too).
+    See services(5).
 
     You can specify a service as expressed in /etc/services. It can be
     expressed also in numeric form. It is also possible to specify the
@@ -129,5 +131,5 @@ AUTHORS
     <http://netsukuku.freaknet.org/?p=Contacts>
 
 SEE ALSO
-    ntkd(8), andna(8)
+    ntkd(8), andna(8), services(5)
 
