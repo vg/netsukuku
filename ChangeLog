@@ -18,6 +18,8 @@ New features:
 	* llist.c optimised
 
 	* Compressed pkts /* TODO: explain better */
+
+	* Pid file
 	
 Bug fixes:
 

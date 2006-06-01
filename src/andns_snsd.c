@@ -120,6 +120,9 @@ int snsd_prio_to_aansws(char *buf,snsd_prio *sp,int iplen)
 	int count=0;
 	snsd_node *sn;
 	
+	if(!sp || !buf)
+		return 0;
+
 	sn=sp->node;
 	list_for(sn) {
 		res=snsd_node_to_aansw(buf,sn,sp->prio,iplen);

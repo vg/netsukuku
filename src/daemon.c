@@ -99,21 +99,25 @@ int prepare_listen_socket(int family, int socktype, u_short port,
 
 
 /*
- * sockets_all_ifs: creates a socket for each interface which is in the `ifs'
- * array. The array has `ifs_n' members.
+ * sockets_all_ifs
+ *
+ * creates a socket for each interface which is in the `ifs' array. 
+ * The array has `ifs_n' members.
  * Each created socket is stored in the `dev_sk' array, which has `ifs_n'#
  * members.
  * The created socket will be bound to the relative interface.
  * In `max_sk_idx' is stored the index of the `dev_sk' array, which has the
  * biggest dev_sk.
+ *
  * On error 0 is returned, otherwise the number of utilised interfaces is
- * returned. 
+ * returned.
+ * If the error is fatal, a negative value is returned.
  */
 int sockets_all_ifs(int family, int socktype, u_short port, 
 			interface *ifs, int ifs_n, 
 			int *dev_sk, int *max_sk_idx)
 {
-	int i, n;
+	int i, n, e=0;
 
 	*max_sk_idx=0;
 
@@ -125,6 +129,7 @@ int sockets_all_ifs(int family, int socktype, u_short port,
 			error("Cannot create a socket on the %s interface! "
 					"Ignoring it", ifs[i].dev_name);
 			dev_sk[i]=0;
+			e++;
 			continue;
 		}
 
@@ -133,6 +138,9 @@ int sockets_all_ifs(int family, int socktype, u_short port,
 		
 		n++;
 	}
+
+	if(e == ifs_n)
+		return -1;
 
 	return n;
 }
@@ -213,6 +221,9 @@ void *udp_daemon(void *passed_argv)
 				me.cur_ifs_n, dev_sk, &max_sk_idx);
 	if(!err)
 		return NULL;
+	else if(err < 0)
+		fatal("Creation of the %s daemon aborted. "
+			"Is there another ntkd running?", "udp");
 	
 	debug(DBG_NORMAL, "Udp daemon on port %d up & running", udp_port);
 	pthread_mutex_unlock(&udp_daemon_lock);
@@ -337,6 +348,9 @@ void *tcp_daemon(void *door)
 				me.cur_ifs_n, dev_sk, &max_sk_idx);
 	if(!err)
 		return NULL;
+	else if(err < 0)
+		fatal("Creation of the %s daemon aborted. "
+			"Is there another ntkd running?", "tcp");
 
 	pthread_mutex_init(&tcp_exec_lock, 0);
 

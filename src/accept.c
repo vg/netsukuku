@@ -105,10 +105,7 @@ void update_accept_tbl(void)
 				
 				if(accept_tbl[i].pid[e]) {
 					k=kill(accept_tbl[i].pid[e], 0);
-					if(k==-1 && errno==ESRCH)
-						pid_exists=0;
-					else
-						pid_exists=1;
+					pid_exists = k==-1 && errno==ESRCH ? 0 : 1;
 				} else
 					pid_exists=0;
 

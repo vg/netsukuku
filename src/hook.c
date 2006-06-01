@@ -1252,10 +1252,13 @@ int hook_choose_new_ip(map_gnode *hook_gnode, int hook_level,
 
 
 /*
- * hook_get_ext_map: gets the external map from the rnodes who sent us the
- * free_nodes list. `rq' points to that rnode.
- * `old_ext_map' is the currently used ext_map; it will be merged with the new
- * received map. 
+ * hook_get_ext_map
+ *
+ * gets the external map from the rnodes who sent us the free_nodes list. 
+ * `rq' points to that rnode.
+ * `old_ext_map' is the currently used ext_map; it will be merged with the
+ * new received map. 
+ *
  * If a new gnode has been created, 1 is returned.
  */
 int hook_get_ext_map(int hook_level, int new_gnode, 

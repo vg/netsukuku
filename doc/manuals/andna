@@ -27,7 +27,7 @@ USAGE
     SIGHUP signal. So if you've added a hostname while ntkd was running,
     just do:
 
-    # kill -SIGHUP <ntkd pid>
+            killall -SIGHUP ntkd
 
     All the hostnames, which are already registered by other nodes, are
     added in the queue, in this way, when the other nodes won't update them,
@@ -61,7 +61,7 @@ USAGE
     It is possible to know the list of hostnames registered by a node. You
     have to simply reverse resolve its ip. For example:
 
-    # dig -x 127.0.0.2
+            dig -x 127.0.0.2
 
     This command shows your currently registered hostnames. You can use it
     to know what hostnames have been already registered. Note the 127.0.0.2
@@ -81,6 +81,12 @@ USAGE
 
    SNSD node deletion
     Not implemented
+
+   SNSD hname resolution
+    The utility ntk-dig(8) can be used to resolve SNSD hostnames. Examples:
+
+            ntkdig -s 53/udp host
+            ntkdig -s http host
 
 SIGNALS
     When the SIGHUP signal is sent to ntkd(8), the andna_hostnames and

@@ -9,6 +9,9 @@
 - bugs
 	- In restricted mode, is necessary the configuration of a tunnel-if
 	  even if we're not going to use an internet conn?
+	- the merging of an old saved ext maps with a new one, makes problems
+	- ac_queue_add (ac=0x80b3780, pubkey=0x80b4370
+			"0\201\211\002\201\201") at andna_cache.c:238
 
 - SNSD
 	- pubkey: automatic deletion request
@@ -16,15 +19,13 @@
 - update the dependencies list: 
 	- depends on iptables
 	- lartc
-	
+
 - Keep an active tcp connection for each rnode. These sockets will be used to
   send the majority of packets.
   The socket shall be saved in the "struct rnode_list" relative to the rnode.
   	- minimize the use of UDP. Use the UDP only for the radar?
 
 - restore the network when NetsukukuD is closed (call /etc/rc.d/rc.inet1 ?)
-
-- check for other active process when starting
 
 - static compilation
 
@@ -103,6 +104,8 @@
 **
 *	
 
+- doc: explain in andna.h the difference between hash_md5() and andna_hash()
+	
 - Interactive shell/console. Some commands that should be implemented:
 	  "stats" gives statistics, 
 	  "rnodes" show the list of rnodes,
@@ -136,6 +139,8 @@
 
 - option (both on command line and in netsukuku.conf) to disable the saving of
   caches. (the keyring will always be saved).
+
+- embed scripts/rc.ntk in ntkd itself
 
 - Change with something else the eliminable fatal() calls in netsukuku_hook()
 

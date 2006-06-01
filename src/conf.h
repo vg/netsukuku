@@ -38,6 +38,7 @@ enum config_options
 	CONF_ANDNA_RHC_FILE,
 	CONF_ANDNA_COUNTER_C_FILE,
 
+	CONF_NTK_PID_FILE,
 	CONF_NTK_MAX_CONNECTIONS,
 	CONF_NTK_MAX_ACCEPTS_PER_HOST,
 	CONF_NTK_MAX_ACCEPTS_PER_HOST_TIME,
@@ -72,6 +73,7 @@ const static char config_str[][30]=
 	{ "andna_rhc_file" },
 	{ "andna_counter_c_file" },
 
+	{ "pid_file" },
 	{ "ntk_max_connections" },
 	{ "ntk_max_accepts_per_host" },
 	{ "max_accepts_per_host_time" },

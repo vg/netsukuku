@@ -187,14 +187,15 @@ void andna_init(void)
 	setzero(last_spread_acache_pkt_id, sizeof(int)*ANDNA_MAX_FLOODS);
 
 	/* Modify /etc/resolv.conf if requested */
-	andna_resolvconf_modify();
+	if(!restricted_mode)
+		andna_resolvconf_modify();
 }
 
 void andna_close(void)
 {
 	andna_save_caches();
 	lcl_destroy_keyring(&lcl_keyring);
-	if(!server_opt.disable_resolvconf)
+	if(!server_opt.disable_resolvconf && !restricted_mode)
 		andna_resolvconf_restore();
 	andns_close();
 }

@@ -21,13 +21,18 @@ AC_HEADER_STDC
 AC_CHECK_HEADERS([unistd.h])
 CONF_DIR="$sysconfdir"
 DT_DIR="/usr/share/netsukuku"
+PID_DIR="/var/run"
 
 AC_DEFINE_UNQUOTED(DATA_DIR, "$DT_DIR", "descr")
 AC_DEFINE_UNQUOTED(CONF_DIR, "$CONF_DIR", "descr")
+AC_DEFINE_UNQUOTED(CONF_DIR, "$PID_DIR", "descr")
 AC_SUBST(CONF_DIR)
 AC_SUBST(DT_DIR)
+AC_SUBST(PID_DIR)
 
-
+AC_ARG_WITH(pid_dir, AS_HELP_STRING([--with-pid-dir], \
+[Specify location of ntkd.pid file (default /var/run)], \
+[pid_dir = "$withval"], [pid_dir="/var/run"]))
 
 AC_ARG_WITH(gmp-include, AS_HELP_STRING([--with-gmp-include], \
 [gmp include dir]), [gmp="$withval"])

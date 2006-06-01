@@ -53,6 +53,8 @@ opts.AddOptions(('CONF_DIR', """Directory where the Netsukuku configuration file
 				'/usr/man'),
 		('BIN_DIR' , 'Directory to install the binaries',
 				'/usr/bin'),
+		('PID_DIR',  'Specify location of ntkd.pid file',
+				'/var/run'),
 		EnumOption('debug', 'build the debug code', 'no', 
 			allowed_values=('yes', 'no', '1', '0'), map={}, ignorecase=0))
 opts.Add('CC', 'The C compiler.')
@@ -128,6 +130,7 @@ def conf_build(target, source, env):
     conf_defines = {
         "CONF_DIR": env["CONF_DIR"],
 	"DATA_DIR": env["DATA_DIR"],
+	"PID_DIR": env["PID_DIR"],
 	"VERSION": NTK_VERSION,
         "debug": debug # this is an int.  1 for true, 0 for false
     }
@@ -185,6 +188,7 @@ SConscript(['man/SConscript', 'scripts/SConscript', 'conf/SConscript'], 'env')
 idir_bin    = '$BIN_DIR'
 idir_data   = '$DATA_DIR'
 idir_conf   = '$CONF_DIR'
+idir_pid    = '$PID_DIR'
 
 env.Install(idir_bin, [ntkd])
 env.Install(idir_bin, [ntkdig])

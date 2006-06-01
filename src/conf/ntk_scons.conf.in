@@ -29,6 +29,7 @@
 #		- ntk_max_accepts_per_host
 #		- max_accepts_per_host_time
 #	## Files
+#		- pid_file
 #		- ntk_ext_map_file
 #		- ntk_int_map_file
 #		- ntk_bnode_map_file
@@ -146,40 +147,45 @@ internet_ping_hosts	= google.com:cisco.com:sourceforge.net:dyne.org
 #### Files
 ##
 
+#
+# ntkd will save its process id in this file
+#
+#pid_file 		= %(PID_DIR)s/ntkd.pid
+
 # 
 # The paths of the Netsukuku maps saved by the daemon
 #
-ntk_ext_map_file	= %(DATA_DIR)s/ext_map_file
-ntk_int_map_file	= %(DATA_DIR)s/int_map_file
-ntk_bnode_map_file	= %(DATA_DIR)s/bnode_map_file
+#ntk_ext_map_file	= %(DATA_DIR)s/ext_map_file
+#ntk_int_map_file	= %(DATA_DIR)s/int_map_file
+#ntk_bnode_map_file	= %(DATA_DIR)s/bnode_map_file
 
 #
 # The hostnames that will be registered in ANDNA are kept, one per line, in
 # this file.
 #
-andna_hnames_file	= %(CONF_DIR)s/andna_hostnames
+#andna_hnames_file	= %(CONF_DIR)s/andna_hostnames
 
 #
 # The snsd_nodes_file keeps the list of the SNSD records which will be
 # register in ANDNA.
 #
-snsd_nodes_file		= %(CONF_DIR)s/snsd_nodes
+#snsd_nodes_file	= %(CONF_DIR)s/snsd_nodes
 
 #
 # Caches used by the ANDNA daemon
 #
-andna_cache_file	= %(DATA_DIR)s/andna_cache
-andna_lclkey_file	= %(DATA_DIR)s/andna_lcl_keyring
-andna_lcl_file		= %(DATA_DIR)s/andna_lcl_cache
-andna_rhc_file		= %(DATA_DIR)s/andna_rh_cache
-andna_counter_c_file	= %(DATA_DIR)s/andna_counter_cache
+#andna_cache_file	= %(DATA_DIR)s/andna_cache
+#andna_lclkey_file	= %(DATA_DIR)s/andna_lcl_keyring
+#andna_lcl_file		= %(DATA_DIR)s/andna_lcl_cache
+#andna_rhc_file		= %(DATA_DIR)s/andna_rh_cache
+#andna_counter_c_file	= %(DATA_DIR)s/andna_counter_cache
 
 #
 # The script launched by NetsukukuD to share the Internet connection
 #
-ip_masquerade_script	= %(CONF_DIR)s/ip_masquerade.sh
+#ip_masquerade_script	= %(CONF_DIR)s/ip_masquerade.sh
 
 #
 # The script launched by NetsukukuD to shape the Internet connection
 #
-tc_shaper_script	= %(CONF_DIR)s/tc_shaper.sh
+#tc_shaper_script	= %(CONF_DIR)s/tc_shaper.sh

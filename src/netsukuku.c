@@ -44,13 +44,54 @@
 #include "xmalloc.h"
 #include "log.h"
 
-	      
 extern int errno;
 extern char *optarg;
 extern int optind, opterr, optopt;
 
 int destroy_netsukuku_mutex;
+int pid_saved;
 
+void save_pid(void)
+{
+	FILE *fd;
+
+	if(!(fd=fopen(server_opt.pid_file, "w")))
+		error("Couldn't create pid file \"%s\": %s",
+				server_opt.pid_file, strerror(errno));
+	fprintf(fd, "ntkd %ld\n", (long) getpid());
+
+	fclose(fd);
+	pid_saved=1;
+}
+
+/*
+ * is_ntkd_already_running
+ *
+ * Returns 1 if there's already a ntkd running
+ */
+int is_ntkd_already_running(void)
+{
+	pid_t oldpid;
+	FILE *fd;
+
+	if(!(fd=fopen(server_opt.pid_file, "r"))) {
+		if(errno != ENOENT)
+			error("Cannot read pid file \"%s\": %s", 
+					server_opt.pid_file, strerror(errno));
+		return 0;
+	}
+
+	fscanf(fd, "ntkd %d\n", &oldpid);
+        if(ferror(fd)) {
+		error("error reading pid file \"%s\": %s\n", 
+				server_opt.pid_file, strerror(errno));
+		fclose(fd);
+		return 0;
+	}
+	fclose(fd);
+
+	return !kill(oldpid, 0) ? 1 : 0;
+}
 
 int ntk_load_maps(void)
 {
@@ -110,7 +151,7 @@ int ntk_free_maps(void)
 void usage(void)
 {
 	printf("Usage:\n"
-		"     ntkd [-hvadrD46] [-i net_interface] [-c conf_file]\n\n"
+		"     ntkd [-hvadrRD46] [-i net_interface] [-c conf_file]\n\n"
 		" -4	ipv4\n"
 		" -6	ipv6\n"
 		" -i	interface\n\n"
@@ -119,7 +160,7 @@ void usage(void)
 		" -D	no daemon mode\n"
 		"\n"
 		" -r	run in restricted mode\n"
-		" -I	share your internet connection\n"
+		" -m	share your internet connection\n"
 		"\n"
 		" -c	configuration file\n"
 		"\n"
@@ -138,6 +179,7 @@ void fill_default_options(void)
 	server_opt.family=AF_INET;
 	
 	server_opt.config_file=NTK_CONFIG_FILE;
+	server_opt.pid_file=NTK_PID_FILE;
 
 	server_opt.int_map_file=INT_MAP_FILE;
 	server_opt.ext_map_file=EXT_MAP_FILE;
@@ -198,6 +240,8 @@ void fill_loaded_cfg_options(void)
 	if((value=getenv(config_str[CONF_ANDNA_COUNTER_C_FILE])))
 		server_opt.counter_c_file=xstrndup(value, NAME_MAX-1);
 
+	if((value=getenv(config_str[CONF_NTK_PID_FILE])))
+		server_opt.pid_file=xstrndup(value, NAME_MAX-1);
 	if((value=getenv(config_str[CONF_NTK_MAX_CONNECTIONS])))
 		server_opt.max_connections=atoi(value);
 	if((value=getenv(config_str[CONF_NTK_MAX_ACCEPTS_PER_HOST])))
@@ -254,6 +298,8 @@ void free_server_opt(void)
 	
 	if(server_opt.config_file != NTK_CONFIG_FILE)
 		xfree(server_opt.config_file);
+	if(server_opt.pid_file != NTK_PID_FILE)
+		xfree(server_opt.pid_file);
 
 	if(server_opt.int_map_file != INT_MAP_FILE)
 		xfree(server_opt.int_map_file);
@@ -291,7 +337,7 @@ void free_server_opt(void)
 
 void parse_options(int argc, char **argv)
 {
-	int c, i, saved_argc=argc;
+	int c, saved_argc=argc;
 
 	while (1) {
 		int option_index = 0;
@@ -366,35 +412,25 @@ void parse_options(int argc, char **argv)
 				 * This is a very dirty hack, but it handles
 				 * the optional argument better than getopt.
 				 *
-				 * The problem is this:
+				 * This is the problem:
 				 * 	ntkd -abcrdefg
 				 * If 'r' is an element that specifies an 
 				 * optional argument, then the "defg" string
-				 * is taken as its arg, but this is just
-				 * stupid because in this case '-r' is
+				 * is taken as its arg, but this is not what
+				 * we want because in this case '-r' is
 				 * specified without its argument.
 				 *
 				 * So, what we do is checking if the argv
 				 * next to the arg of 'r' begins with a '-'
 				 * or not. If not, it is the option of '-r'
-				 * To find the position of the arg of 'r', we
-				 * scan all the argv[] array.
 				 *
 				 * The only thing that won't work is:
 				 * 	ntkd -rOPTION
 				 * it has to be specified in this way:
 				 * 	ntkd -r OPTION
 				 */
-				for(i=1; i<argc; i++) {
-					if(argv[i][0] != '-')
-						continue;
-					if(strchr(argv[i], 'r') || 
-						!strcmp(argv[i], "--restricted"))
-						break;
-				}
-
-				if(argc > i+1 && argv[i+1][0] != '-') {
-					server_opt.restricted_class=atoi(argv[i+1]);
+				if(argc > optind && argv[optind][0] != '-') {
+					server_opt.restricted_class=atoi(argv[optind]);
 					saved_argc--;
 				}
 				/**/
@@ -433,6 +469,9 @@ void check_conflicting_options(void)
 						"option in netsukuku.conf",    \
 							(str));		       \
 	
+	if(!server_opt.pid_file)
+		FATAL_NOT_SPECIFIED("pid_file");
+
 	if(!server_opt.inet_hosts && server_opt.restricted)
 		FATAL_NOT_SPECIFIED("internet_ping_hosts");
 
@@ -489,9 +528,15 @@ void init_netsukuku(char **argv)
         if(geteuid())
 		fatal("Need root privileges");
 	
-	destroy_netsukuku_mutex=0;
+	destroy_netsukuku_mutex=pid_saved=0;
 	sigterm_timestamp=sighup_timestamp=sigalrm_timestamp=0;
 	setzero(&me, sizeof(struct current_globals));
+
+	if(is_ntkd_already_running())
+		fatal("ntkd is already running. If it is not, remove \"%s\"",
+				server_opt.pid_file);
+	else
+		save_pid();
 	
 	my_family=server_opt.family;
 	restricted_mode =server_opt.restricted;
@@ -564,6 +609,8 @@ int destroy_netsukuku(void)
 	if(destroy_netsukuku_mutex)
 		return -1;
 	destroy_netsukuku_mutex=1;
+
+	unlink(server_opt.pid_file);
 	
 	ntk_save_maps();
 	ntk_free_maps();
@@ -647,7 +694,6 @@ void sigalrm_handler(int sig)
 	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
 	pthread_create(&thread, &t_attr, rh_cache_flush_thread, 0);
 }
-
 
 /*
  * The main flow shall never be stopped, and the sand of time will be

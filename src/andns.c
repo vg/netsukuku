@@ -182,7 +182,9 @@ int andns_init(int restricted, char *resolv_conf,int family)
         struct addrinfo *ai;
 
 	memset(&_ns_filter_,0,sizeof(struct addrinfo));
+
 	_ns_filter_.ai_socktype=SOCK_DGRAM;
+	_ip_len_=family==AF_INET?4:16;
 
         _default_realm_=(restricted)?INET_REALM:NTK_REALM;
         _andns_ns_count_=0;
@@ -190,15 +192,21 @@ int andns_init(int restricted, char *resolv_conf,int family)
 
         memset(msg,0,(INET_ADDRSTRLEN+2)*MAXNSSERVERS);
 
-        res=collect_resolv_conf(resolv_conf);
-        if (res <=0) {
-                _dns_forwarding_=0;
-		debug(DBG_NORMAL,err_str);
-                err_ret(ERR_RSLAIE,-1);
-        }
-	_ip_len_=family==AF_INET?4:16;
+	if(_default_realm_ == NTK_REALM) {
+		/* We are in NTK realm, every IP is assigned to Netsukuku,
+		 * therefore dns forwarding is meaningless */
+		_dns_forwarding_=0;
+		return 0;
+	}
 
-        /*
+	res=collect_resolv_conf(resolv_conf);
+	if (res <=0) {
+		_dns_forwarding_=0;
+		debug(DBG_NORMAL,err_str);
+		err_ret(ERR_RSLAIE,-1);
+	}
+
+	/*
          * Debug message
          */
         for (i=0;i<_andns_ns_count_;i++) {
@@ -761,7 +769,7 @@ int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 	qt=ap->qtype;
 	if (qt==AT_A) {
 		snsd_service *ss;
-		ss=andna_resolve_hname(ap->qstdata,
+		ss=andna_resolve_hash((u_int *)ap->qstdata,
 				ap->service,ap->p,&records);
 		//ss=andna_resolve_hname(ap->qstdata, //USE HASH!
 		//		ap->service,ap->p,&records);

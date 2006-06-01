@@ -595,14 +595,14 @@ do_update:
 
 	if(node->flags & MAP_VOID) {
 		/*Ok, let's delete it*/
-#ifdef DEBUG
-	#warning ***The route_del code is disabled***
-#else
+//#ifdef DEBUG
+//	#warning ***The route_del code is disabled***
+//#else
 		if(route_del(RTN_UNICAST, 0, 0, &to, 0, 0, 0))
-			error("WARNING: Cannot delete the route entry for the",
+			error("WARNING: Cannot delete the route entry for the"
 					"%snode %d lvl %d!", !level ? " " : " g",
 					node_pos, level);
-#endif
+//#endif
 	} else if(route_replace(0, route_scope, 0, &to, nh, 0, 0))
 			error("WARNING: Cannot update the route entry for the"
 					"%snode %d lvl %d",!level ? " " : " g",

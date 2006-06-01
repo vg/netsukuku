@@ -37,8 +37,9 @@ OPTIONS
     -i *interface*, --iface *interface*
         Specifies the network interface the daemon will use to join
         Netsukuku, i.e. wlan0. You can use more than one interface by
-        specifying multiple times the -i option. For example: ntkd -i wlan0
-        -i eth0 -i wifi1 -i eth1
+        specifying multiple times the -i option. For example:
+
+                ntkd -i wlan0 -i eth0 -i wifi1 -i eth1
 
     -a, --no_andna
         Forces ntkd to don't run the ANDNA daemon when started.
@@ -87,13 +88,12 @@ OPTIONS
 EXAMPLES
     Usually you'll just want to use ntkd with a wifi device:
 
-    ntk-wifi wlan0
-
-    ntkd -i wlan0
+            ntk-wifi wlan0
+            ntkd -i wlan0
 
     If you one to use more than one network interface:
 
-    ntkd -i eth0 -i wlan0 -i wifi1 -i eth2
+            ntkd -i eth0 -i wlan0 -i wifi1 -i eth2
 
 SIGNALS
     When the SIGHUP signal is sent to ntkd(8), the andna_hostnames and
