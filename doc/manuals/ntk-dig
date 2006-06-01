@@ -58,14 +58,43 @@ QUERY TYPE, SERVICES AND PROTOCOL
     SNSD Query Type are hostname resolutions. If service is 0, the
     resolution will show which IP registered the hostname. If service is
     non-0, the resolution will show which IP gives specified service for the
-    hostname (considering the protocol too). See /etc/services.
+    hostname.
 
-    For example, asking for "depausceve" with service 80 and proto tcp, will
-    retrieve the IP that publishes HTTP pages for hostname "depausceve". The
-    hope is that every client will build different queries: browsers will
-    make queries with service=80 and proto=tcp, mail-clients will build
+    You can specify a service as expressed in /etc/services. It can be 
+    expressed  also in numeric form.
+    It is also possible to specify the protocol:
+
+      "domain", "53", "53/udp", "domain/udp"
+
+    are valid service/proto strings.
+      
+    For example, this command asks for "depausceve" with service 80 and proto 
+    tcp:
+
+    	ntk-dig -s http/tcp depausceve
+	
+    and It will retrieve the IP that publishes HTTP pages for hostname 
+    "depausceve". 
+    To configure the SNSD delegations, see the SNSD HowTo. 
+
+    If the delegation for a service (say http) is not set, the IP returned is
+    the IP that registered the hostname. So, if you do not want SNSD delegations
+    for specific services, the main hostname IP will be used and you don't need to
+    do nothing.
+    
+    The hope is that every client will build different queries: browsers 
+    will make queries with service=80 and proto=tcp, mail-clients will build
     queries with service=25 and proto tcp and so on.
 
+    The service is useless if the query realm is Internet.
+
+    The default service is 0: ie, the query will return the IP that registered 
+    the hostname. Default protocol is tcp. Protocol is ignored when service 
+    requested is 0.
+
+    Note: service and proto are also ignored when the query type is `ip->host` 
+    (ptr query type).
+    
 CONTACTS
     Subcrive to the netsukuku mailing to get help, be updated on the latest
     news and discuss on its development.
