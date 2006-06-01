@@ -29,9 +29,9 @@ void usage(void)
                 " -v --version          print version, then exit.\n"
                 " -n --nameserver=ns    use nameserver `ns' instead of localhost.\n"
                 " -P --port=port        nameserver port, default 53.\n"
-                " -t --query-type=qt    query type (`-t help` shows more info).\n"
-                " -r --realm=realm      realm to scan (`-r help` shows more info).\n"
-                " -s --service=service  SNSD service (`-s help` shows more info).\n"
+                " -t --query-type=qt    query type (`-t help' shows more info).\n"
+                " -r --realm=realm      realm to scan (`-r help' shows more info).\n"
+                " -s --service=service  SNSD service (`-s help' shows more info).\n"
                 " -p --protocolo=proto  SNSD protocol (udp/tcp).\n"
                 " -S --silent           ntk-dig will be not loquacious.\n"
                 " -h --help             display this help, then exit.\n\n");
