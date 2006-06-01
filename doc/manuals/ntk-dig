@@ -2,7 +2,7 @@ NAME
     ntkdig - Andns Lookup Resolver
 
 SYNOPSIS
-    ntkdig [-vnPtrspSh] host
+    ntkdig [-vnPtrsSh] host
 
 DESCRIPTION
     Ntkdig is an interface to ANDNA daemon: it performs andns queries and
@@ -36,11 +36,15 @@ OPTIONS
         Specify the realm of the query: Internet or Netsukuku. Default is
         ntk.
 
-    -s --service=n
-        Specify the SNSD service to search. See /etc/services, Default is 0.
+    -s --service=n[/proto]
+        Specify the SNSD service and the relative protocol to search. See
+        services(5). The service can be specified in alfanumeric or numeric
+        format. The default service and protocol are 0 and tcp. Examples:
 
-    -p --protocol=tcp --protocol=udp
-        Specify protocol for SNSD service. Default is tcp.
+                ntkdig -s domain/udp host
+                ntkdig -s 53/udp host
+                ntkdig -s ssh/tcp host
+                ntkdig -s http host
 
     -S --silent
         With this option, ntkdig will be very discrete.
@@ -58,43 +62,37 @@ QUERY TYPE, SERVICES AND PROTOCOL
     SNSD Query Type are hostname resolutions. If service is 0, the
     resolution will show which IP registered the hostname. If service is
     non-0, the resolution will show which IP gives specified service for the
-    hostname.
+    hostname (considering the protocol too). See services(5).
 
-    You can specify a service as expressed in /etc/services. It can be 
-    expressed  also in numeric form.
-    It is also possible to specify the protocol:
+    You can specify a service as expressed in /etc/services. It can be
+    expressed also in numeric form. It is also possible to specify the
+    protocol:
 
-      "domain", "53", "53/udp", "domain/udp"
+    "domain", "53", "53/udp", "domain/udp"
 
-    are valid service/proto strings.
-      
-    For example, this command asks for "depausceve" with service 80 and proto 
-    tcp:
+    For example, this command asks for "depausceve" with service 80 and
+    proto tcp:
 
-    	ntk-dig -s http/tcp depausceve
-	
-    and It will retrieve the IP that publishes HTTP pages for hostname 
-    "depausceve". 
-    To configure the SNSD delegations, see the SNSD HowTo. 
+    ntk-dig -s http/tcp depausceve
 
-    If the delegation for a service (say http) is not set, the IP returned is
-    the IP that registered the hostname. So, if you do not want SNSD delegations
-    for specific services, the main hostname IP will be used and you don't need to
-    do nothing.
-    
-    The hope is that every client will build different queries: browsers 
+    If the delegation for a service (say http) is not set, the IP returned
+    is the IP that registered the hostname. So, if you do not want SNSD
+    delegations for specific services, the main hostname IP will be used and
+    you don't need to do nothing.
+
+    The hope is that every client will build different queries: browsers
     will make queries with service=80 and proto=tcp, mail-clients will build
     queries with service=25 and proto tcp and so on.
 
     The service is useless if the query realm is Internet.
 
-    The default service is 0: ie, the query will return the IP that registered 
-    the hostname. Default protocol is tcp. Protocol is ignored when service 
-    requested is 0.
+    The default service is 0: ie, the query will return the IP that
+    registered the hostname. Default protocol is tcp. Protocol is ignored
+    when service requested is 0.
 
-    Note: service and proto are also ignored when the query type is `ip->host` 
-    (ptr query type).
-    
+    Note: service and proto are also ignored when the query type is
+    `ip->host` (ptr query type).
+
 CONTACTS
     Subcrive to the netsukuku mailing to get help, be updated on the latest
     news and discuss on its development.
@@ -108,7 +106,7 @@ CONTACTS
 AUTHORS
     Main authors and maintainers:
 
-    Federico Tomassini, efphe, <effetom@gmail.com> wrote ntk-dig and network
+    Federico Tomassini <effetom@gmail.com> wrote ntk-dig and network
     libraries.
 
     Andrea Lo Pumo aka AlpT <alpt@freaknet.org> wrote ANDNA and Netsukuku
