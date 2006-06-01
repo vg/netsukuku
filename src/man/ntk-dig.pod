@@ -111,6 +111,8 @@ specifing univoque abbreviation of argument. So, there is the equivalence:
 =head1 QUERY TYPE, SERVICES AND PROTOCOL
 
 SNSD Query Type are hostname resolutions.
+With SNSD (Scattered Name Service Disgregation) ANDNA lets the user to
+ask for a domain and a service.
 If service is 0, the resolution will show which IP registered the hostname.
 If service is non-0, the resolution will show which IP gives specified service
 for the hostname (considering the protocol too). See services(5).
