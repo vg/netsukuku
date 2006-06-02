@@ -90,12 +90,14 @@ int is_ntkd_already_running(void)
 	}
 	fclose(fd);
 
-	return !kill(oldpid, 0) ? 1 : 0;
+	return !kill(oldpid, 0);
 }
 
 int ntk_load_maps(void)
 {
-	if((me.int_map=load_map(server_opt.int_map_file, &me.cur_node)))
+	if(file_exist(server_opt.int_map_file) && 
+				(me.int_map=load_map(server_opt.int_map_file,
+						     &me.cur_node)))
 		debug(DBG_NORMAL, "Internal map loaded");
 	else
 		me.int_map=init_map(0);
@@ -112,7 +114,9 @@ int ntk_load_maps(void)
 	bmap_counter_init(BMAP_LEVELS(FAMILY_LVLS), &me.bmap_nodes_closed, 
 			&me.bmap_nodes_opened);
 
-	if((me.ext_map=load_extmap(server_opt.ext_map_file, &me.cur_quadg)))
+	if(file_exist(server_opt.ext_map_file) && 
+			(me.ext_map=load_extmap(server_opt.ext_map_file, 
+						&me.cur_quadg)))
 		debug(DBG_NORMAL, "External map loaded");
 	else
 		me.ext_map=init_extmap(FAMILY_LVLS, 0);
@@ -770,9 +774,11 @@ int main(int argc, char **argv)
 	
 	xfree(port);
 	
-	if(restricted_mode) {
-		debug(DBG_SOFT, "Evoking the Internet gateways pinger daemon");
-		pthread_create(&ping_igw_thread, &t_attr, igw_monitor_igws_t, 0);
+	if(restricted_mode && (server_opt.share_internet || 
+				server_opt.use_shared_inet)) {
+		debug(DBG_SOFT, "Evoking the Internet Gateway Pinger daemon");
+		pthread_create(&ping_igw_thread, &t_attr,
+				igw_monitor_igws_t, 0);
 	}
 
 	/* We use this same process for the radar_daemon. */

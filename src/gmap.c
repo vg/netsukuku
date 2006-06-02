@@ -357,17 +357,17 @@ void unpack_quadro_group(quadro_group *qg, char *pack)
 
 int is_map_void_flag_set(map_node *node)
 {
-	return node->flags & MAP_VOID ? 1 : 0;
+	return node->flags & MAP_VOID;
 }
 
 int is_gmap_full_flag_set(map_gnode *gnode)
 {
-	return gnode->flags & GMAP_FULL ? 1 : 0;
+	return gnode->flags & GMAP_FULL;
 }
 
 int is_gmap_void_flag_set(map_gnode *gnode)
 {
-	return gnode->flags & GMAP_VOID ? 1 : 0;
+	return gnode->flags & GMAP_VOID;
 }
 
 int isnot_gmap_void_flag_set(map_gnode *gnode)

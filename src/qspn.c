@@ -17,6 +17,7 @@
  *
  * --
  * qspn.c:
+ *
  * Here there is the code that implements the Quantum Shortest Path Netsukuku
  * meta-algorithm, the heart of Netsukuku.
  */

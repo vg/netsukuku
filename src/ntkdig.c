@@ -174,7 +174,7 @@ void opts_set_qt(char *arg)
 	res=QTFROMPREF(arg);
 	if (res==-1) 
 		qt_usage(arg);
-	GQT->qtype=res!=1?0:1;
+	GQT->qtype=(res==1);
 	if (res==QTYPE_MX) {
 		GQT->service=25;
 		GQT->p=SNSD_PROTO_TCP;

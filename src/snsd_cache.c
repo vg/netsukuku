@@ -1037,7 +1037,7 @@ void snsd_dump_prio(snsd_prio *snp, int single, int level)
 {
 	list_for(snp) {
 		printf("\t{\n \tprio = %d\n", snp->prio);
-		snsd_dump_node(snp->node, level > 2 ? 0 : 1);
+		snsd_dump_node(snp->node, !(level > 2));
 		printf("\t}\n");
 		if(single)
 			goto finish;
@@ -1052,7 +1052,7 @@ void snsd_dump_service(snsd_service *sns, int single, int level)
 	list_for(sns) {
 		printf("{\n service = %d\n proto = %d\n",
 				sns->service, sns->proto);
-		snsd_dump_prio(sns->prio, level > 1 ? 0 : 1, level);
+		snsd_dump_prio(sns->prio, !(level > 1), level);
 		printf("}\n");
 		if(single)
 			goto finish;

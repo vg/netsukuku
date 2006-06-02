@@ -1498,7 +1498,7 @@ void hook_finish(int new_gnode, struct free_nodes_hdr *fn_hdr)
 	/*
 	 * Initialize me.my_igws
 	 */
-	if(server_opt.share_internet) {
+	if(server_opt.share_internet || server_opt.use_shared_inet) {
 		free_my_igws(&me.my_igws);
 		init_my_igws(me.igws, me.igws_counter, &me.my_igws, me.my_bandwidth,
 				me.cur_node, &me.cur_quadg);
@@ -1527,7 +1527,8 @@ void hook_finish(int new_gnode, struct free_nodes_hdr *fn_hdr)
 	loginfo("Filling the kernel routing table");
 
 	rt_full_update(0);
-	if(restricted_mode)
+	if(restricted_mode && (server_opt.use_shared_inet ||
+				server_opt.share_internet))
 		igw_replace_def_igws(me.igws, me.igws_counter, 
 				me.my_igws, me.cur_quadg.levels, my_family);
 	
@@ -1610,7 +1611,8 @@ int netsukuku_hook(map_gnode *hook_gnode, int hook_level)
 	/*
 	 * If we are in restricted mode, get the Internet Gateways
 	 */
-	if(restricted_mode)
+	if(restricted_mode && (server_opt.use_shared_inet ||
+				server_opt.share_internet))
 		hook_get_igw();
 	
 	/*

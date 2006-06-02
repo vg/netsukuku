@@ -54,31 +54,46 @@
  */
 
 /*
- * andna_load_caches: loads all the ANDNA caches
+ * andna_load_caches
+ * 
+ * loads all the ANDNA caches
  */
 int andna_load_caches(void)
 {
 	int ret;
 	
-	if((load_lcl_keyring(&lcl_keyring, server_opt.lclkey_file)))
+	if(file_exist(server_opt.lclkey_file) && 
+			(load_lcl_keyring(&lcl_keyring, 
+					  server_opt.lclkey_file)))
 		debug(DBG_NORMAL, "Andna LCL Keyring loaded");
 	
-	if((andna_lcl=load_lcl_cache(server_opt.lcl_file, &lcl_counter)))
+	if(file_exist(server_opt.lcl_file) && 
+			(andna_lcl=load_lcl_cache(server_opt.lcl_file,
+						  &lcl_counter)))
 		debug(DBG_NORMAL, "Andna Local Cache loaded");
 
-	if((andna_c=load_andna_cache(server_opt.andna_cache_file, &andna_c_counter)))
+	if(file_exist(server_opt.andna_cache_file) && 
+			(andna_c=load_andna_cache(server_opt.andna_cache_file,
+						  &andna_c_counter)))
 		debug(DBG_NORMAL, "Andna cache loaded");
 
-	if((andna_counter_c=load_counter_c(server_opt.counter_c_file, &cc_counter)))
+	if(file_exist(server_opt.counter_c_file) && 
+			(andna_counter_c=load_counter_c(server_opt.counter_c_file,
+							&cc_counter)))
 		debug(DBG_NORMAL, "Counter cache loaded");
 
-	if((andna_rhc=load_rh_cache(server_opt.rhc_file, &rhc_counter)))
+	if(file_exist(server_opt.rhc_file) && 
+			(andna_rhc=load_rh_cache(server_opt.rhc_file,
+						 &rhc_counter)))
 		debug(DBG_NORMAL, "Resolved hostnames cache loaded");
 
-	if(!(load_hostnames(server_opt.andna_hnames_file, &andna_lcl, &lcl_counter)))
+	if(file_exist(server_opt.andna_hnames_file) && 
+			!(load_hostnames(server_opt.andna_hnames_file,
+					 &andna_lcl, &lcl_counter)))
 		debug(DBG_NORMAL, "Hostnames file loaded");
 	
-	if(!(ret=load_snsd(server_opt.snsd_nodes_file, andna_lcl)))
+	if(file_exist(server_opt.snsd_nodes_file) && 
+			!(ret=load_snsd(server_opt.snsd_nodes_file, andna_lcl)))
 		debug(DBG_NORMAL, "SNSD nodes loaded");
 	else if(ret == -2)
 		fatal("Malformed %s file", server_opt.snsd_nodes_file);
@@ -1150,7 +1165,7 @@ int andna_recv_check_counter(PACKET rpkt)
 	}
 
 	old_updates = cch->hname_updates;
-	old_updates-= !just_check ? 0 : 1;
+	old_updates-= !!just_check;
 	if(old_updates > req->hname_updates) {
 		debug(DBG_SOFT, "Request %s (0x%x) rejected: hname_updates"
 			" mismatch %d > %d", rq_to_str(rpkt.hdr.op), rpkt.hdr.id,

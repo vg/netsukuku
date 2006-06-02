@@ -314,8 +314,8 @@ void init_internet_gateway_search(void)
 	loginfo("Configuring the \"" DEFAULT_TUNL_IF "\" tunnel device");
 	if(tunnel_change(0, 0, 0, DEFAULT_TUNL_PREFIX, DEFAULT_TUNL_NUMBER) < 0)
 		fatal("Cannot initialize \"" DEFAULT_TUNL_IF "\". "
-			"Is the \"ipip\" kernel module loaded?"
-			"If you don't care about using the shared internet "
+			"Is the \"ipip\" kernel module loaded?\n"
+			"  If you don't care about using the shared internet "
 			"connections of the ntk nodes\n"
 			"  around you, disable the \"use_shared_inet\" option "
 			"in netsukuku.conf");
@@ -780,7 +780,7 @@ int igw_ping_igw(inet_gw *igw)
 		return -1;
 			
 	strcpy(ntop, ipstr);
-	return pingthost(ntop, IGW_HOST_PING_TIMEOUT) >= 1 ? 1 : 0;
+	return pingthost(ntop, IGW_HOST_PING_TIMEOUT) >= 1;
 }
 
 /*

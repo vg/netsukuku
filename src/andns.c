@@ -708,8 +708,8 @@ int inet_rslv(dns_pkt *dp,char *msg,int msglen,char *answer)
 	rm_realm_prefix(dp->pkt_qst->qname,temp,qt);
 
 	if (qt==T_A || qt==T_MX) { /* snsd tcp resolution service */
-		service=(qt==T_A)?0:25;
-		proto=(qt==T_A)?0:1;
+		service= (qt==T_A)?0:25;
+		proto  = (qt!=T_A);
 		//ss=andna_resolve_hname(temp,service,proto,&records);
 		ss=andna_resolve_hname(temp,service,proto,&records);
 		if (!ss) {

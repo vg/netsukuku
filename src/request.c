@@ -33,22 +33,22 @@ void rq_wait_idx_init(int *rq_wait_idx)
 
 int op_verify(u_char op)
 {
-	return (op >= TOTAL_OPS) ? 1 : 0;
+	return op >= TOTAL_OPS;
 }
 
 int rq_verify(u_char rq)
 {
-	return rq >= TOTAL_REQUESTS ? 1 : 0;
+	return rq >= TOTAL_REQUESTS;
 }
 
 int re_verify(u_char re)
 {
-	return ((op_verify(re)) || (re < TOTAL_REQUESTS)) ? 1 : 0;
+	return ((op_verify(re)) || (re < TOTAL_REQUESTS));
 }
 
 int err_verify(u_char err)
 {
-	return err >= TOTAL_ERRORS ? 1 : 0;
+	return err >= TOTAL_ERRORS;
 }
 
 const u_char *rq_strerror(int err)

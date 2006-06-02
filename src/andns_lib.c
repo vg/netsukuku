@@ -104,8 +104,8 @@ size_t a_hdr_u(char *buf,andns_pkt *ap)
 
         memcpy(&c,buf,sizeof(uint8_t));
         ap->qr=(c>>7)&0x01;
-        ap->p=c&0x40?1:0;
-	ap->z=c&0x20?1:0;
+        ap->p=c&0x40;
+	ap->z=c&0x20;
         ap->qtype=(c>>3)&0x03;
         ap->ancount=(c<<1)&0x0e;
 

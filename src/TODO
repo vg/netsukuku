@@ -7,12 +7,9 @@
 * (generally these TODOs are already being implemented at the moment)
 
 - bugs
-	- In restricted mode, is necessary the configuration of a tunnel-if
-	  even if we're not going to use an internet conn?
 	- the merging of an old saved ext maps with a new one, makes problems
 	- ac_queue_add (ac=0x80b3780, pubkey=0x80b4370
 			"0\201\211\002\201\201") at andna_cache.c:238
-	- continue in load_option
 
 - SNSD
 	- pubkey: automatic deletion request
