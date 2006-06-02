@@ -15,5 +15,6 @@ ntkd_SOURCES = accept.c map.c misc.c pkts.c qspn.c request.c radar.c \
 ntkd_LDADD = -lpthread -lgmp -lcrypto -lresolv -lz
 
 ntk_dig_SOURCES = andns_lib.c ntkdig.c andns_net.c crypto.c 	     \
-		  snsd_cache.c inet.c ll_map.c libnetlink.c
+		  snsd_cache.c inet.c ll_map.c libnetlink.c log.c    \
+		  xmalloc.c endianness.c misc.c
 ntk_dig_LDADD = -lz -lcrypto

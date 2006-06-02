@@ -201,6 +201,8 @@ void fill_default_options(void)
 	server_opt.restricted=0;
 	server_opt.restricted_class=0;
 
+	server_opt.use_shared_inet=1;
+
 	server_opt.ip_masq_script=IPMASQ_SCRIPT_FILE;
 	server_opt.tc_shaper_script=TCSHAPER_SCRIPT_FILE;
 
@@ -210,71 +212,51 @@ void fill_default_options(void)
 }
 
 /*
- * fill_loaded_cfg_options: stores in server_opt the options loaded from the
- * configuration file
+ * fill_loaded_cfg_options
+ *
+ * stores in server_opt the options loaded from the configuration file
  */
 void fill_loaded_cfg_options(void)
 {
 	char *value;
 
-	if((value=getenv(config_str[CONF_NTK_INT_MAP_FILE])))
-		server_opt.int_map_file=xstrndup(value, NAME_MAX-1);
-	if((value=getenv(config_str[CONF_NTK_BNODE_MAP_FILE])))
-		server_opt.bnode_map_file=xstrndup(value, NAME_MAX-1);
-	if((value=getenv(config_str[CONF_NTK_EXT_MAP_FILE])))
-		server_opt.ext_map_file=xstrndup(value, NAME_MAX-1);
-	
-	if((value=getenv(config_str[CONF_ANDNA_HNAMES_FILE])))
-		server_opt.andna_hnames_file=xstrndup(value, NAME_MAX-1);
-	if((value=getenv(config_str[CONF_SNSD_NODES_FILE])))
-		server_opt.snsd_nodes_file=xstrndup(value, NAME_MAX-1);
-	
-	if((value=getenv(config_str[CONF_ANDNA_CACHE_FILE])))
-		server_opt.andna_cache_file=xstrndup(value, NAME_MAX-1);
-	if((value=getenv(config_str[CONF_ANDNA_LCLKEY_FILE])))
-		server_opt.lclkey_file=xstrndup(value, NAME_MAX-1);
-	if((value=getenv(config_str[CONF_ANDNA_LCL_FILE])))
-		server_opt.lcl_file=xstrndup(value, NAME_MAX-1);
-	if((value=getenv(config_str[CONF_ANDNA_RHC_FILE])))
-		server_opt.rhc_file=xstrndup(value, NAME_MAX-1);
-	if((value=getenv(config_str[CONF_ANDNA_COUNTER_C_FILE])))
-		server_opt.counter_c_file=xstrndup(value, NAME_MAX-1);
+	CONF_GET_STRN_VALUE ( CONF_NTK_INT_MAP_FILE, &server_opt.int_map_file, NAME_MAX-1  );
+	CONF_GET_STRN_VALUE ( CONF_NTK_BNODE_MAP_FILE, &server_opt.bnode_map_file, NAME_MAX-1 );
+	CONF_GET_STRN_VALUE ( CONF_NTK_EXT_MAP_FILE, &server_opt.ext_map_file, NAME_MAX-1 );
 
-	if((value=getenv(config_str[CONF_NTK_PID_FILE])))
-		server_opt.pid_file=xstrndup(value, NAME_MAX-1);
-	if((value=getenv(config_str[CONF_NTK_MAX_CONNECTIONS])))
-		server_opt.max_connections=atoi(value);
-	if((value=getenv(config_str[CONF_NTK_MAX_ACCEPTS_PER_HOST])))
-		server_opt.max_accepts_per_host=atoi(value);
-	if((value=getenv(config_str[CONF_NTK_MAX_ACCEPTS_PER_HOST_TIME])))
-		server_opt.max_accepts_per_host_time=atoi(value);
+	CONF_GET_STRN_VALUE ( CONF_ANDNA_HNAMES_FILE, &server_opt.andna_hnames_file, NAME_MAX-1 );
+	CONF_GET_STRN_VALUE ( CONF_SNSD_NODES_FILE, &server_opt.snsd_nodes_file, NAME_MAX-1 );
 
-	if((value=getenv(config_str[CONF_DISABLE_ANDNA])))
-		server_opt.disable_andna=atoi(value);
-	if((value=getenv(config_str[CONF_DISABLE_RESOLVCONF])))
-		server_opt.disable_resolvconf=atoi(value);
-	
-	if((value=getenv(config_str[CONF_NTK_RESTRICTED_MODE])))
-		server_opt.restricted=atoi(value);
-	if((value=getenv(config_str[CONF_NTK_RESTRICTED_CLASS])))
-		server_opt.restricted_class=atoi(value);
+	CONF_GET_STRN_VALUE ( CONF_ANDNA_CACHE_FILE, &server_opt.andna_cache_file, NAME_MAX-1 );
+	CONF_GET_STRN_VALUE ( CONF_ANDNA_LCLKEY_FILE, &server_opt.lclkey_file, NAME_MAX-1 );
+	CONF_GET_STRN_VALUE ( CONF_ANDNA_LCL_FILE, &server_opt.lcl_file, NAME_MAX-1 );
+	CONF_GET_STRN_VALUE ( CONF_ANDNA_RHC_FILE, &server_opt.rhc_file, NAME_MAX-1 );
+	CONF_GET_STRN_VALUE ( CONF_ANDNA_COUNTER_C_FILE, &server_opt.counter_c_file, NAME_MAX-1 );
 
-	if((value=getenv(config_str[CONF_NTK_INTERNET_CONNECTION])))
-		server_opt.inet_connection=atoi(value);
-	if((value=getenv(config_str[CONF_NTK_INTERNET_GW]))) {
+	CONF_GET_STRN_VALUE ( CONF_NTK_PID_FILE, &server_opt.pid_file, NAME_MAX-1 );
+	CONF_GET_INT_VALUE ( CONF_NTK_MAX_CONNECTIONS, server_opt.max_connections );
+	CONF_GET_INT_VALUE ( CONF_NTK_MAX_ACCEPTS_PER_HOST, server_opt.max_accepts_per_host );
+	CONF_GET_INT_VALUE ( CONF_NTK_MAX_ACCEPTS_PER_HOST_TIME, server_opt.max_accepts_per_host_time );
+
+	CONF_GET_INT_VALUE ( CONF_DISABLE_ANDNA, server_opt.disable_andna );
+	CONF_GET_INT_VALUE ( CONF_DISABLE_RESOLVCONF, server_opt.disable_resolvconf );
+	CONF_GET_INT_VALUE ( CONF_NTK_RESTRICTED_MODE, server_opt.restricted );
+	CONF_GET_INT_VALUE ( CONF_NTK_RESTRICTED_CLASS, server_opt.restricted_class );
+
+	CONF_GET_INT_VALUE ( CONF_NTK_INTERNET_CONNECTION, server_opt.inet_connection);
+	if((value=CONF_GET_VALUE(CONF_NTK_INTERNET_GW))) {
 		if(str_to_inet_gw(value, &server_opt.inet_gw, 
 					&server_opt.inet_gw_dev))
 			fatal("Malformed `%s' option: \"%s\". Its syntax is \"IP:dev\"",
 					config_str[CONF_NTK_INTERNET_GW], value);
 	}
-	if((value=getenv(config_str[CONF_NTK_INTERNET_UPLOAD])))
-		server_opt.my_upload_bw=atoi(value);
-	if((value=getenv(config_str[CONF_NTK_INTERNET_DOWNLOAD])))
-		server_opt.my_dnload_bw=atoi(value);	
+	CONF_GET_INT_VALUE ( CONF_NTK_INTERNET_UPLOAD, server_opt.my_upload_bw );
+	CONF_GET_INT_VALUE ( CONF_NTK_INTERNET_DOWNLOAD, server_opt.my_dnload_bw );
 	if(server_opt.my_upload_bw && server_opt.my_dnload_bw)
 		me.my_bandwidth =
 			bandwidth_in_8bit((server_opt.my_upload_bw+server_opt.my_dnload_bw)/2);
-	if((value=getenv(config_str[CONF_NTK_INTERNET_PING_HOSTS]))) {
+
+	if((value=CONF_GET_VALUE(CONF_NTK_INTERNET_PING_HOSTS))) {
 		server_opt.inet_hosts=parse_internet_hosts(value, 
 				&server_opt.inet_hosts_counter);
 		if(!server_opt.inet_hosts)
@@ -282,14 +264,11 @@ void fill_loaded_cfg_options(void)
 				"Its syntax is host1:host2:...",
 				config_str[CONF_NTK_INTERNET_PING_HOSTS], value);
 	}
-	if((value=getenv(config_str[CONF_SHARE_INTERNET])))
-		server_opt.share_internet=atoi(value);
-	if((value=getenv(config_str[CONF_SHAPE_INTERNET])))
-		server_opt.shape_internet=atoi(value);
-	if((value=getenv(config_str[CONF_NTK_IP_MASQ_SCRIPT])))
-		server_opt.ip_masq_script=xstrndup(value, NAME_MAX-1);
-	if((value=getenv(config_str[CONF_NTK_TC_SHAPER_SCRIPT])))
-		server_opt.tc_shaper_script=xstrndup(value, NAME_MAX-1);
+	CONF_GET_INT_VALUE ( CONF_SHARE_INTERNET, server_opt.share_internet );
+	CONF_GET_INT_VALUE ( CONF_SHAPE_INTERNET, server_opt.shape_internet );
+	CONF_GET_INT_VALUE ( CONF_USE_SHARED_INET, server_opt.use_shared_inet );
+	CONF_GET_STRN_VALUE ( CONF_NTK_IP_MASQ_SCRIPT, &server_opt.ip_masq_script, NAME_MAX-1 );
+	CONF_GET_STRN_VALUE ( CONF_NTK_TC_SHAPER_SCRIPT, &server_opt.tc_shaper_script, NAME_MAX-1 );
 }
 
 void free_server_opt(void)

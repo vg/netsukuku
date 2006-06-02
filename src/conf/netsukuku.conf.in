@@ -21,6 +21,7 @@
 #		- internet_ping_hosts
 #		- share_internet
 #		- shape_internet
+#		- use_shared_internet
 #	## ANDNA
 #		- disable_andna
 #		- disable_resolvconf
@@ -87,11 +88,15 @@
 # `internet_ping_hosts' is a list of Internet hosts which will be pinged to
 # verify if the connection is alive, you can use the default hosts.
 #
-# Finally, If you want to share your Internet connection among other Netsukuku
-# nodes, set `share_internet' to 1.
+# If you want to share your Internet connection among other Netsukuku nodes, 
+# set `share_internet' to 1.
 #
-# Ah, and you can set `shape_internet' to 1 if you want to shape your outgoing
+# Set `shape_internet' to 1 if you want to shape your outgoing
 # Internet traffic.
+#
+# `use_shared_internet' specifies if you want to use the Internet connections
+# shared by the Netsukuku nodes. Set it to 0, if you want to rely only on your
+# connection (if any).
 # 
 #internet_connection	= 1
 #internet_gateway	= 192.168.1.1:eth0
@@ -100,6 +105,7 @@ internet_upload_rate	= 30
 internet_ping_hosts	= google.com:cisco.com:sourceforge.net:dyne.org
 #share_internet		= 1
 #shape_internet		= 1
+#use_shared_internet	= 1
 
 
 ##

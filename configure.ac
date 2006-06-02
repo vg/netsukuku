@@ -13,47 +13,34 @@ AC_PROG_CC
 AC_PROG_CPP
 AC_PROG_CXX
 
-sysconfdir=/etc/netsukuku
 prefix=/usr
-
-
-AC_HEADER_STDC
-AC_CHECK_HEADERS([unistd.h])
-CONF_DIR="$sysconfdir"
-DT_DIR="/usr/share/netsukuku"
-PID_DIR="/var/run"
-
-AC_DEFINE_UNQUOTED(DATA_DIR, "$DT_DIR", "descr")
-AC_DEFINE_UNQUOTED(CONF_DIR, "$CONF_DIR", "descr")
-AC_DEFINE_UNQUOTED(CONF_DIR, "$PID_DIR", "descr")
-AC_SUBST(CONF_DIR)
-AC_SUBST(DT_DIR)
-AC_SUBST(PID_DIR)
-
-AC_ARG_WITH(pid_dir, AS_HELP_STRING([--with-pid-dir], \
-[Specify location of ntkd.pid file (default /var/run)], \
-[pid_dir = "$withval"], [pid_dir="/var/run"]))
+datadir=/usr/share/netsukuku
+sysconfdir=/etc/netsukuku
+piddir=/var/run
 
 AC_ARG_WITH(gmp-include, AS_HELP_STRING([--with-gmp-include], \
 [gmp include dir]), [gmp="$withval"])
 AC_SUBST(gmp)
 
 
+AC_HEADER_STDC
+AC_CHECK_HEADERS([unistd.h])
+
 AC_CHECK_HEADERS([pthread.h], ,\
-	[echo "============================ Unable to find pthread.h"; \
-	 echo "Do you have the libpthread library installed?" ])
+        [echo "============================ Unable to find pthread.h"; \
+         echo "Do you have the libpthread library installed?" ])
 AC_CHECK_HEADERS([zlib.h], ,\
-	[echo "============================ Unable to find zlib.h"; \
-	 echo "Do you have the zlib library installed?" ])
+        [echo "============================ Unable to find zlib.h"; \
+         echo "Do you have the zlib library installed?" ])
 AC_CHECK_HEADERS([openssl/crypto.h], ,\
-	[echo "============================ Unable to find openssl/crypto.h";\
-	 echo "Read README first!!!!!"; \
-	 echo "Install the openssl library"])
+        [echo "============================ Unable to find openssl/crypto.h";\
+         echo "Read README first!!!!!"; \
+         echo "Install the openssl library"])
 AC_CHECK_HEADERS([gmp.h], ,\
-	[echo "============================ Unable to find gmp.h"; \
-	 echo "Read README first!!!!!"; \
-	 echo "You need to install the libgmp library."; \
-	 echo "In the debian the package is libgmp3-dev"])
+        [echo "============================ Unable to find gmp.h"; \
+         echo "Read README first!!!!!"; \
+         echo "You need to install the libgmp library."; \
+         echo "In the debian the package is libgmp3-dev"])
 
 AC_MSG_CHECKING(OS)
 case "$host" in
@@ -177,13 +164,20 @@ fi
 AC_SUBST(IF_METHOD)
 
 
-AC_ARG_WITH(conf_dir, AS_HELP_STRING([--with-conf-dir], \
-[Netsukuku conf dir (default /usr/share/netsukuku)],\
-[conf_dir = "$withval"], [conf_dir="/usr/share/netsukuku"]))
 
 AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug], [Enable Netsukuku debug]),\
 [debug_flags="-Wall -DDEBUG"], [debug_flags=""])
 AC_SUBST(debug_flags)
+
+AC_DEFINE_UNQUOTED(DATA_DIR, "$datadir", "Where the Netsukuku data is saved")
+AC_DEFINE_UNQUOTED(CONF_DIR, "$sysconfdir", "Location of configuration files")
+AC_DEFINE_UNQUOTED(PID_DIR, "$piddir", "Location of ntkd.pid file")
+AC_ARG_WITH(pid_dir, 
+	    [  --with-pid-dir=ARG      Specify location of ntkd.pid file (default /var/run)],\
+	    [AC_DEFINE_UNQUOTED(PID_DIR, "$withval", ntkd.pid file location)])
+AC_SUBST(CONF_DIR)
+AC_SUBST(DATA_DIR)
+AC_SUBST(PID_DIR)
 
 AC_CONFIG_FILES([Makefile src/Makefile src/man/Makefile src/scripts/Makefile\
 		  src/conf/Makefile src/conf/netsukuku.conf])

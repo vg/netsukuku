@@ -533,8 +533,9 @@ int route_ip_forward(int family, int enable)
 }
 
 /*
- * route_rp_filter: Modifies the /proc/sys/net/ipv4/conf/INTERFACE/rp_filter
- * config file.
+ * route_rp_filter
+ *
+ * Modifies the /proc/sys/net/ipv4/conf/INTERFACE/rp_filter config file.
  */
 int route_rp_filter(int family, char *dev, int enable)
 {

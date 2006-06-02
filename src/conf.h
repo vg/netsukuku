@@ -21,6 +21,23 @@
 
 #define CONF_MAX_LINES		500	/* Max number of option lines */
 
+#define CONF_GET_VALUE(opt)		(getenv(config_str[(opt)]))
+#define CONF_GET_INT_VALUE(opt, n)					\
+({									\
+	char *_val;							\
+	_val=CONF_GET_VALUE((opt));					\
+	if(_val)							\
+		(n)=atoi(_val);						\
+})
+#define CONF_GET_STRN_VALUE(opt, str, maxbytes)				\
+({									\
+	char *_val;							\
+	_val=CONF_GET_VALUE((opt));					\
+ 	if(_val)							\
+ 		*(str)=xstrndup(_val, (maxbytes));			\
+})
+
+
 /* 
  * The allowed options in the configuration file
  */
@@ -55,6 +72,7 @@ enum config_options
 	CONF_NTK_INTERNET_PING_HOSTS,
 	CONF_SHARE_INTERNET,
 	CONF_SHAPE_INTERNET,
+	CONF_USE_SHARED_INET,
 	CONF_NTK_IP_MASQ_SCRIPT,
 	CONF_NTK_TC_SHAPER_SCRIPT,
 };
@@ -89,6 +107,7 @@ const static char config_str[][30]=
 	{ "internet_ping_hosts" },
 	{ "share_internet" },
 	{ "shape_internet" },
+	{ "use_shared_internet" },
 	{ "ip_masquerade_script" },
 	{ "tc_shaper_script" },
 	{ 0 },

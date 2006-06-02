@@ -292,8 +292,15 @@ void init_internet_gateway_search(void)
 	igw_multi_gw_disabled=0;
 	setzero(multigw_nh, sizeof(igw_nexthop)*MAX_MULTIPATH_ROUTES);
 
-        if(!restricted_mode)
+	/*
+	 * Just return if we aren't in restricted mode or if the user doesn't
+	 * want to use shared internet connections 
+	 */
+        if(!restricted_mode || (!server_opt.use_shared_inet && 
+				!server_opt.share_internet))
 		return;
+	
+	loginfo("Activating the Internet Gateway Search engine");
 	
 	init_igws(&me.igws, &me.igws_counter, GET_LEVELS(my_family));
 	init_tunnels_ifs();
@@ -307,7 +314,11 @@ void init_internet_gateway_search(void)
 	loginfo("Configuring the \"" DEFAULT_TUNL_IF "\" tunnel device");
 	if(tunnel_change(0, 0, 0, DEFAULT_TUNL_PREFIX, DEFAULT_TUNL_NUMBER) < 0)
 		fatal("Cannot initialize \"" DEFAULT_TUNL_IF "\". "
-			"Is the \"ipip\" kernel module loaded?");
+			"Is the \"ipip\" kernel module loaded?"
+			"If you don't care about using the shared internet "
+			"connections of the ntk nodes\n"
+			"  around you, disable the \"use_shared_inet\" option "
+			"in netsukuku.conf");
 	ifs_del_all_name(me.cur_ifs, &me.cur_ifs_n, NTK_TUNL_PREFIX);
 	ifs_del_all_name(me.cur_ifs, &me.cur_ifs_n, DEFAULT_TUNL_PREFIX);
 

@@ -761,7 +761,8 @@ void hook_set_all_ips(inet_prefix ip, interface *ifs, int ifs_n)
 
 	if(set_all_dev_ip(ip, ifs, ifs_n) < 0)
 		fatal("Cannot set the %s ip to all the interfaces", ntop);
-	if(restricted_mode) {
+	if(restricted_mode && (server_opt.use_shared_inet || 
+				server_opt.share_internet)) {
 		set_dev_down(DEFAULT_TUNL_IF);
 		set_dev_up(DEFAULT_TUNL_IF);
 		if(set_dev_ip(ip, DEFAULT_TUNL_IF) < 0)
@@ -966,7 +967,8 @@ int hook_init(void)
 	debug(DBG_NORMAL, "Activating ip_forward and disabling rp_filter");
 	route_ip_forward(my_family, 1);
 	route_rp_filter_all_dev(my_family, me.cur_ifs, me.cur_ifs_n, 0);
-	if(restricted_mode && server_opt.share_internet)
+	if(restricted_mode && (server_opt.share_internet || 
+				server_opt.share_internet))
 		route_rp_filter(my_family, DEFAULT_TUNL_IF, 0);
 
 	

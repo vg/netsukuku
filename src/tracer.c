@@ -908,7 +908,9 @@ int tracer_store_bblock(u_char level, tracer_hdr *trcr_hdr, tracer_chunk *tracer
 				(igws_found < MAX_IGW_PER_QSPN_CHUNK ||
 					trcr_hdr->flags & TRCR_IGW)) {
 
-				igw_store_bblock(bblist_hdr[i], bblist[i][0], level);
+				if(server_opt.use_shared_inet)
+					igw_store_bblock(bblist_hdr[i],
+							 bblist[i][0], level);
 				igws_found++;
 				
 				goto skip_bmap;

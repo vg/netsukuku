@@ -146,6 +146,7 @@ typedef struct
 					   to the Internet */
 	char		share_internet;
 	char		shape_internet;
+	char		use_shared_inet;
 	inet_prefix	inet_gw;
 	char		*inet_gw_dev;
 	char		**inet_hosts;	/* Hosts to be pinged in order to check

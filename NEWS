@@ -20,6 +20,8 @@ New features:
 	* Compressed pkts /* TODO: explain better */
 
 	* Pid file
+
+	* New option: use_shared_internet
 	
 Bug fixes:
 
