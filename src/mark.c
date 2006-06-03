@@ -665,10 +665,8 @@ int mark_close()
 	}
 	load_dump_rules();
 	res=table_init(MANGLE_TABLE,&t);
-	if (res) {
-		error(err_str);
-		err_ret(ERR_NETDEL,-1);
-	}
+	if (res) 
+		goto reset_error;
 	res=0;
 	res+=delete_rule(&rr,&t);
 	res+=delete_rule(&fr,&t);
@@ -676,20 +674,20 @@ int mark_close()
 		debug(DBG_INSANE,"In mark_close: I'm an IGW: deleting death loop rule.");
 		res+=delete_rule(&dr,&t);
 	}
-	if (res) {
-		error(err_str);
-		err_ret(ERR_NETRST,-1);
-	}
+	if (res) 
+		goto reset_error;
 	res=delete_ntk_forward_chain(&t);
-	if (res) {
-		error(err_str);
-		err_ret(ERR_NETRST,-1);
-	}
+	if (res)
+		goto reset_error;
 	res=commit_rules(&t);
-	if (res) {
-		error(err_str);
-		err_ret(ERR_NETRST,-1);
-	}
+	if (res) 
+		goto reset_error;
 	debug(DBG_NORMAL,"Netfilter completely restored.");
 	return 0;
+reset_error:
+	error(err_str);
+	loginfo("Netfilter was not restored. To clean, run:\n"
+		"\tiptables -t mangle -F\n"
+		"\tiptables -t mangle -X %s",NTK_MARK_CHAIN);
+	err_ret(ERR_NETRST,-1);
 }
