@@ -1,0 +1,164 @@
+#!/bin/bash
+# This file is part of Netsukuku
+# (c) Copyright 2006 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+#
+# This source code is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as published
+# by the Free Software Foundation; either version 2 of the License,
+# or (at your option) any later version.
+#
+# This source code is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# Please refer to the GNU Public License for more details.
+#
+# You should have received a copy of the GNU Public License along with
+# this source code; if not, write to:
+# Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
+# -
+# pacca
+#
+# Creates the .tar.bz2 package,
+# converts all the documentation to html and
+# copies all the files on freaknet.org
+#
+
+# The directory where you have the checkout of Ntk
+NTK_REPOSITORY="`echo ~/tmp/netsukuku`"
+
+if [ ! -d $NTK_REPOSITORY ]
+then
+	echo Adjust the '$NTK_REPOSITORY' variable
+	exit 1
+fi
+
+###
+##########  Copy CVS
+###
+
+copy_cvs_entry() {
+	local from=$1
+	local to=$2
+	
+	echo Copying CVS from $from to $to
+	if [ ! -d $to ]
+	then
+		mkdir --verbose -p $to
+	fi
+
+	for i in `cat $from/CVS/Entries |grep -v CVS |  cut -d "/" -f 2`
+	do
+		if [ -d $from/$i ]
+		then
+			copy_cvs_entry $from/$i $to/$i
+		elif [ -f $from/$i ]
+		then
+			cp -v $from/$i $to/
+		fi
+	done
+}
+
+if [ -z "$1" ]
+then
+	echo "pacca what?"
+	echo
+	echo Usage: 
+	echo "       pacca <all | pacca>"
+	exit 1
+fi
+PACCA_ONLY="$1"
+if [ "$PACCA_ONLY" != "all" -a "$PACCA_ONLY" != "pacca" ] 
+then
+	echo all, pacca
+	exit 1
+fi
+
+############# UHM #####
+if [ -f README.ntkd ]; then
+	echo "*********MODIFY README**********"
+	echo  mv README.ntkd README
+	echo "*********MODIFY README**********"
+	exit 1
+fi
+############# UHM #####
+
+cd $NTK_REPOSITORY
+cur_dir=`pwd`
+curdir=`pwd`
+version="`cat version`"
+packdir="netsukuku-$version"
+packtar="netsukuku-$version"".tar.bz2"
+
+if [ -d $packdir ]
+then
+	rm -vr $packdir
+fi
+mkdir $packdir
+
+echo Autostuffing *blink*
+./autostuff
+
+cp -v ChangeLog README 			$packdir
+cp -v AUTHORS COPYING			$packdir
+cp -av Makefile.in Makefile.am configure configure.ac aclocal.m4 install-sh depcomp $packdir/
+cp -av missing INSTALL NEWS config.guess config.sub $packdir/
+
+# doc
+copy_cvs_entry $cur_dir/doc $packdir/doc
+
+# src/ CVS entries
+copy_cvs_entry $cur_dir/src $packdir/src
+cp -v src/Makefile.in $packdir/src/
+
+# Man pages
+cp -v src/man/Makefile.am src/man/Makefile.in $packdir/src/man/
+
+# Scripts
+cp -v src/scripts/Makefile.am src/scripts/Makefile.in  $packdir/src/scripts/
+
+# Conf/
+cp -v src/conf/Makefile.am src/conf/Makefile.in  $packdir/src/conf/
+
+
+###
+##########  Pack
+###
+
+echo Packing
+if [ -f $cur_dir/$packtar ]; then
+	rm -v $cur_dir/$packtar
+fi
+tar cfjv $cur_dir/$packtar $packdir
+#md5sum  $packdir.tar.bz2 >  $packdir.tar.bz2.md5
+
+if [ "$PACCA_ONLY" == "pacca" ]
+then
+	echo PACKING ONLY, COPIA DISABILITATA
+	exit
+fi
+
+
+###
+##########  Site
+###
+
+echo "attiva converti html"
+proto/scripts/converti_html
+echo "attiva converti html"
+
+rsync -auv -P $packdir.tar.bz2  freaknet.org:netsukuku/files/
+#rsync -auv -P $packdir-pre.tar.bz2  freaknet.org:netsukuku/files/
+
+rsync -auv -P ChangeLog doc/faq/FAQ README freaknet.org:netsukuku/files/
+rsync -auv -P doc/main_doc/netsukuku doc/main_doc/netsukuku.ita doc/faq/FAQ freaknet.org:netsukuku/
+rsync -auv -LP -C 'CVS' --exclude '*~' --delete  doc freaknet.org:netsukuku/files/
+
+cd site/
+rsync -auv -P contacts  home  index.php  logo_netsukuku.jpg  style.css freaknet.org:netsukuku/
+cd ../
+
+echo "!!!!!!!!!!!!!!!! Rimuovi netsukuku_d e netsukuku_wifi !!!!!!!!!!!"
+echo "!!!!!!!!!!!!!!!! Rimuovi netsukuku_d e netsukuku_wifi !!!!!!!!!!!"
+echo "!!!!!!!!!!!!!!!! Rimuovi netsukuku_d e netsukuku_wifi !!!!!!!!!!!"
+echo

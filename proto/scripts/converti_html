@@ -1,0 +1,128 @@
+#!/bin/bash
+# This file is part of Netsukuku
+# (c) Copyright 2006 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+#
+# This source code is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as published
+# by the Free Software Foundation; either version 2 of the License,
+# or (at your option) any later version.
+#
+# This source code is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# Please refer to the GNU Public License for more details.
+#
+# You should have received a copy of the GNU Public License along with
+# this source code; if not, write to:
+# Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
+# -
+# converti_html
+#
+# converts all the documentation to html
+#
+
+
+proto_dir="/home/alpt/tmp/netsukuku/proto"
+
+copy_cvs_entry() {
+	local from=$1
+	local to=$2
+	
+	echo Copying CVS from $from to $to
+	if [ ! -d $to ]
+	then
+		mkdir --verbose -p $to
+	fi
+
+	for i in `cat $from/CVS/Entries |grep -v CVS |  cut -d "/" -f 2`
+	do
+		if [ -d $from/$i ]
+		then
+			copy_cvs_entry $from/$i $to/$i
+		elif [ -f $from/$i ]
+		then
+			cp -p -v $from/$i $to/
+		fi
+	done
+}
+
+crea_list()
+{
+	local dir
+
+	dir=$1
+	
+	rm -f $dir/.list
+
+	for i in `ls -1t $dir`
+	do
+		if [ -d "$dir/$i" ]
+		then
+			echo $i/ >> $dir/.list
+		else
+			echo $i >> $dir/.list
+		fi
+	done
+
+	grep '/$' $dir/.list > $dir/.list2
+	grep -v '/$' $dir/.list >> $dir/.list2
+	mv $dir/.list2 $dir/.list
+}
+
+run="run! syntax/2html.vim"
+subs="%s/^<pre>/<pre id=\"filez\">/"
+del="delete"
+
+solo_pre()
+{
+	vim -S $proto_dir/scripts/converti_html.vim $1
+}
+
+old_dir=`pwd`
+
+rm -r proto/2html
+mkdir proto/2html
+
+cp -pLr site/contacts ChangeLog README proto/2html/
+cp -pLr AUTHORS site/home  proto/2html/
+
+copy_cvs_entry doc proto/2html/documentation
+mv proto/2html/documentation/main_doc proto/2html/documentation/main_documentation
+copy_cvs_entry site/documentation proto/2html/documentation
+
+cd proto/2html/
+
+################  Converti html ######
+
+for i in `find ./  -type f | grep -v 'CVS/' | grep -v '\.info$'`; do
+	if echo $i | grep '\.html$';
+	then
+		echo $i already html
+	else
+		solo_pre $i
+		rm $i
+		mv $i.html $i
+	fi
+done
+
+
+################  Crea list ####
+
+for i in `find ./  -type d | grep -v 'CVS/' | grep -v '\.info$'`; do
+	crea_list $i
+done
+
+cd documentation
+cp .list .list_tmp
+echo main_documentation/ > .list
+echo main_documentation.info >> .list
+grep -v main_documentation .list_tmp >> .list; 
+rm .list_tmp 
+cd .. 
+
+##### RSYNC
+
+cd $old_dir
+
+rsync -auv -P --delete proto/2html freaknet.org:netsukuku/
