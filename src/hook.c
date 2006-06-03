@@ -1498,7 +1498,7 @@ void hook_finish(int new_gnode, struct free_nodes_hdr *fn_hdr)
 	/*
 	 * Initialize me.my_igws
 	 */
-	if(server_opt.share_internet || server_opt.use_shared_inet) {
+	if(server_opt.share_internet) {
 		free_my_igws(&me.my_igws);
 		init_my_igws(me.igws, me.igws_counter, &me.my_igws, me.my_bandwidth,
 				me.cur_node, &me.cur_quadg);

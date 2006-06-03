@@ -1917,9 +1917,7 @@ int put_single_acache(PACKET rpkt)
 	pkt_addcompress(&pkt);
 
 	/* Exctract the `ac' cache from the llist, so we can pack it alone */
-	ac_tmp=xmalloc(sizeof(andna_cache));
-	setzero(ac_tmp, sizeof(andna_cache));
-	list_copy(ac_tmp, ac);
+	ac_tmp=list_dup(ac);
 	pkt.msg=pack_andna_cache(ac_tmp, &pkt_sz, ACACHE_PACK_PKT);
 	pkt.hdr.sz=pkt_sz;
 

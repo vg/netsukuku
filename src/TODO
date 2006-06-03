@@ -6,11 +6,6 @@
 
 * (generally these TODOs are already being implemented at the moment)
 
-- bugs
-	- the merging of an old saved ext maps with a new one, makes problems
-	- ac_queue_add (ac=0x80b3780, pubkey=0x80b4370
-			"0\201\211\002\201\201") at andna_cache.c:238
-
 - SNSD
 	- pubkey: automatic deletion request
 
@@ -94,6 +89,8 @@
 		- Ban of gnodes which lost the challenge ?
 		- Challenge between two gnode not contiguous, which have the
 		  same gid.
+
+- turn andns_lib.c into a real shared library
 
 
 *

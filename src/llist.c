@@ -51,14 +51,14 @@ typedef struct linked_list l_list;
 
 #define is_list_zero(list)						\
 ({									\
- 	int _i, _r=1;							\
+ 	int _iz, _rz=1;							\
 	char *_a=(char *)(list);					\
-	for(_i=0; _i<sizeof(typeof(*(list))); _i++, _a++)		\
+	for(_iz=0; _iz<sizeof(typeof(*(list))); _iz++, _a++)		\
 		if(*_a)	{						\
-			_r=0;						\
+			_rz=0;						\
 			break;						\
 		}							\
-	_r;								\
+	_rz;								\
 })
 
 /*
@@ -69,13 +69,24 @@ typedef struct linked_list l_list;
  */
 #define list_copy(list, new)						\
 do{									\
-	l_list _o, *_l=(l_list *)(list);				\
-	_o.prev=_l->prev;						\
-	_o.next=_l->next;						\
-	memcpy((list), (new), sizeof(typeof(*(list))));			\
-	_l->prev=_o.prev;						\
-	_l->next=_o.next;						\
+	l_list _oc, *_lc=(l_list *)(list);				\
+	if((new)) {							\
+		_oc.prev=_lc->prev;					\
+		_oc.next=_lc->next;					\
+		memcpy((list), (new), sizeof(typeof(*(new))));		\
+		_lc->prev=_oc.prev;					\
+		_lc->next=_oc.next;					\
+	}								\
 } while(0)
+
+#define list_dup(list)							\
+({									\
+	l_list *_dd;							\
+	_dd=xmalloc(sizeof(typeof(*(list))));				\
+	memset(_dd, 0, sizeof(typeof(*(list))));			\
+	list_copy(_dd, (list));						\
+	(typeof((list)))_dd;						\
+})
 
 /*
  * list_init
@@ -88,14 +99,14 @@ do{									\
  */
 #define list_init(list, new)						\
 do {									\
-	l_list *_l;							\
+	l_list *_li;							\
 	if((new))							\
 		(list)=(new);						\
 	else								\
 		(list)=(typeof (list))xmalloc(sizeof(typeof(*(list))));	\
-	_l=(l_list *)(list);						\
-	_l->prev=0; 							\
-	_l->next=0;							\
+	_li=(l_list *)(list);						\
+	_li->prev=0; 							\
+	_li->next=0;							\
 	if(!(new))							\
 		memset((list), 0, sizeof(typeof(*(list)))); 		\
 } while (0)
@@ -107,9 +118,21 @@ do {									\
  */
 #define list_last(list)							\
 ({									\
-	 l_list *_i=(l_list *)(list);					\
-	 for(; _i && _i->next; _i=(l_list *)_i->next);			\
- 	 (typeof((list)))_i;						\
+	 l_list *_il=(l_list *)(list);					\
+	 for(; _il && _il->next; _il=(l_list *)_il->next);		\
+ 	 (typeof((list)))_il;						\
+})
+
+/*
+ * list_head
+ *
+ * Returns the head of the linked list.
+ */
+#define list_head(tail)							\
+({									\
+	 l_list *_ih=(l_list *)(list);					\
+	 for(; _ih && _ih->prev; _ih=(l_list *)_ih->prev);		\
+ 	 (typeof((list)))_ih;						\
 })
 
 /*
@@ -129,14 +152,16 @@ do {									\
  */
 #define list_append(_head, _tail, _new)					\
 ({									\
-	l_list *_t, *_n;						\
-	_t=(_tail) ? (_tail) : (l_list *)list_last((_head)); 		\
-	_n=(l_list *)(_new);						\
- 	if(_n != _t) {							\
- 		if(_t)							\
-			_t->next=_n;					\
-		_n->prev=_t; 						\
-		_n->next=0;						\
+	l_list *_tt, *_na;						\
+	_tt=(_tail) ? (l_list *)(_tail) : (l_list *)list_last((_head)); \
+	_na=(l_list *)(_new);						\
+ 	if(_na != _tt) {						\
+ 		if(_tt)							\
+			_tt->next=_na;					\
+ 		if(_na) {						\
+			_na->prev=_tt; 					\
+			_na->next=0;					\
+		}							\
 	}								\
 	_new;								\
 })
@@ -152,16 +177,16 @@ do {									\
  */
 #define list_add(_head, _new)						\
 ({									\
- 	l_list *_h, *_n;						\
- 	_h=(l_list *)(_head);						\
- 	_n=(l_list *)(_new);						\
- 	if(_h != _n) {							\
-		_n->next=_h;						\
-		_n->prev=0;						\
- 		if(_h)							\
-			_h->prev=_n;					\
+ 	l_list *_hd, *_nd;						\
+ 	_hd=(l_list *)(_head);						\
+ 	_nd=(l_list *)(_new);						\
+ 	if(_hd != _nd) {						\
+		_nd->next=_hd;						\
+		_nd->prev=0;						\
+ 		if(_hd)							\
+			_hd->prev=_nd;					\
 	}								\
-	(typeof((_head)))_n;						\
+	(typeof((_head)))_nd;						\
 })
  
 /*
@@ -176,12 +201,12 @@ do {									\
  */
 #define list_join(head, list)						\
 ({									\
-	l_list *_l=(l_list *)(list), *_h=(l_list *)(head), *_ret;	\
-	if(_l->next)							\
-		_l->next->prev=_l->prev;				\
-	if(_l->prev)							\
-		_l->prev->next=_l->next;				\
-	_ret = _l == _h ? _l->next : _h;				\
+	l_list *_lj=(l_list *)(list), *_hj=(l_list *)(head), *_ret;	\
+	if(_lj->next)							\
+		_lj->next->prev=_lj->prev;				\
+	if(_lj->prev)							\
+		_lj->prev->next=_lj->next;				\
+	_ret = _lj == _hj ? _lj->next : _hj;				\
 	(typeof((head)))_ret;						\
 })
 
@@ -200,11 +225,11 @@ do {									\
  */
 #define list_del(head, list)						\
 ({									\
-	l_list *_list=(l_list *)(list), *_head=(l_list *)(head); 	\
+	l_list *_lid=(l_list *)(list), *_hed=(l_list *)(head);	 	\
  									\
- 	_head=(l_list *)list_join((head), _list);			\
-        list_free(_list); 						\
-	(typeof((head)))_head;						\
+ 	_hed=(l_list *)list_join((head), _lid);				\
+        list_free(_lid); 						\
+	(typeof((head)))_hed;						\
 })
 
 /*
@@ -215,12 +240,12 @@ do {									\
  */
 #define list_ins(list, new)						\
 do {									\
-	l_list *_l=(l_list *)(list), *_n=(l_list *)(new);		\
-	if(_l->next)							\
-		_l->next->prev=_n;					\
-	_n->next=_l->next;						\
-	_l->next=_n;							\
-	_n->prev=_l;							\
+	l_list *_lin=(l_list *)(list), *_n=(l_list *)(new);		\
+	if(_lin->next)							\
+		_lin->next->prev=_n;					\
+	_n->next=_lin->next;						\
+	_lin->next=_n;							\
+	_n->prev=_lin;							\
 } while (0)
 	
 /* 
@@ -232,17 +257,17 @@ do {									\
  */
 #define list_substitute(old_list, new_list)				\
 do{									\
-	l_list *_n, *_o;						\
-	_n=(l_list *)(new_list);					\
-	_o=(l_list *)(old_list);					\
-	if(_o->next != _n)						\
-		_n->next=_o->next;					\
-	if(_o->prev != _n)						\
-		_n->prev=_o->prev;					\
-	if(_n->next)							\
-		_n->next->prev=_n;					\
-	if(_n->prev)							\
-		_n->prev->next=_n;					\
+	l_list *_ns, *_os;						\
+	_ns=(l_list *)(new_list);					\
+	_os=(l_list *)(old_list);					\
+	if(_os->next != _ns)						\
+		_ns->next=_os->next;					\
+	if(_os->prev != _ns)						\
+		_ns->prev=_os->prev;					\
+	if(_ns->next)							\
+		_ns->next->prev=_ns;					\
+	if(_ns->prev)							\
+		_ns->prev->next=_ns;					\
 }while(0)
 
 /*
@@ -254,20 +279,20 @@ do{									\
  */
 #define list_swap(a, b)							\
 do{									\
-	l_list _ltmp, *_a, *_b;						\
-	_a=(l_list *)(a);						\
-	_b=(l_list *)(b);						\
-	if(_a->next == _b) {						\
-		list_substitute(_a, _b);				\
-		list_ins(_b, _a);					\
-	} else if(_a->prev == _b) {					\
-		list_substitute(_b, _a);				\
-		list_ins(_a, _b);					\
+	l_list _ltmp, *_aa, *_bb;					\
+	_aa=(l_list *)(a);						\
+	_bb=(l_list *)(b);						\
+	if(_aa->next == _bb) {						\
+		list_substitute(_aa, _bb);				\
+		list_ins(_bb, _aa);					\
+	} else if(_aa->prev == _bb) {					\
+		list_substitute(_bb, _aa);				\
+		list_ins(_aa, _bb);					\
 	} else {							\
-		_ltmp.next=(l_list *)_b->next;				\
-		_ltmp.prev=(l_list *)_b->prev;				\
-		list_substitute(_a, _b);				\
-		list_substitute(&_ltmp, _a);				\
+		_ltmp.next=(l_list *)_bb->next;				\
+		_ltmp.prev=(l_list *)_bb->prev;				\
+		list_substitute(_aa, _bb);				\
+		list_substitute(&_ltmp, _aa);				\
 	}								\
 }while(0)
 
@@ -278,9 +303,9 @@ do{									\
  */
 #define list_moveback(list)						\
 do{									\
-	l_list *_l=(l_list *)(list);					\
-	if(_l->prev)							\
-		list_swap(_l->prev, _l);				\
+	l_list *_lm=(l_list *)(list);					\
+	if(_lm->prev)							\
+		list_swap(_lm->prev, _lm);				\
 }while(0)
 
 /*
@@ -290,9 +315,9 @@ do{									\
  */
 #define list_movefwd(list)						\
 do{									\
-	l_list *_l=(l_list *)(list);					\
-	if(_l->next)							\
-		list_swap(_l->next, _l);				\
+	l_list *_lmf=(l_list *)(list);					\
+	if(_lmf->next)							\
+		list_swap(_lmf->next, _lmf);				\
 }while(0)
  
 /* 
@@ -311,13 +336,13 @@ do{									\
  */
 #define list_moveontop(_head, _list)					\
 ({									\
- 	l_list *_h=(l_list *)(_head), *_l=(l_list *)(_list);		\
+ 	l_list *_hmt=(l_list *)(_head), *_lmt=(l_list *)(_list);	\
  									\
- 	if(_h != _l) {							\
-		_h=(l_list *)list_join((typeof((_head)))_h, _l);	\
-		_h=(l_list *)list_add((typeof((_head)))_h, _l);		\
+ 	if(_hmt != _lmt) {						\
+		_hmt=(l_list *)list_join((typeof((_head)))_hmt, _lmt);	\
+		_hmt=(l_list *)list_add((typeof((_head)))_hmt, _lmt);	\
 	}								\
-	(typeof((_head)))_h;						\
+	(typeof((_head)))_hmt;						\
 })
 
 /*
@@ -348,12 +373,12 @@ do{									\
  */
 #define list_count(_head)						\
 ({									\
-	l_list *_l=(l_list *)(_head);					\
-	int _i=0; 							\
+	l_list *_lc=(l_list *)(_head);					\
+	int _ic=0; 							\
 									\
-	list_for(_l)							\
-		_i++;							\
-	_i;								\
+	list_for(_lc)							\
+		_ic++;							\
+	_ic;								\
 })
 
 
@@ -384,15 +409,15 @@ for((i) ? (next)=(typeof (i))(i)->next : 0; (i); 			\
  */
 #define list_pos(list, pos)						\
 ({									\
-	 int _i=0;							\
- 	 l_list *_x=(l_list *)(list);					\
- 	 list_for(_x) { 						\
- 	 	if(_i==(pos)) 						\
+	 int _ip=0;							\
+ 	 l_list *_xp=(l_list *)(list);					\
+ 	 list_for(_xp) { 						\
+ 	 	if(_ip==(pos)) 						\
  			break;						\
 		else 							\
- 			_i++;						\
+ 			_ip++;						\
  	 } 								\
- 	 (typeof((list)))_x;						\
+ 	 (typeof((list)))_xp;						\
 })
 
 /*
@@ -402,17 +427,17 @@ for((i) ? (next)=(typeof (i))(i)->next : 0; (i); 			\
  */
 #define list_get_pos(head, list)					\
 ({									\
- 	int _i=0, _e=0;							\
-	l_list *_x=(l_list *)(head);					\
+ 	int _igp=0, _egp=0;						\
+	l_list *_xgp=(l_list *)(head);					\
 									\
-	list_for(_x) {							\
-		if(_x == (l_list *)(list)) {				\
-			_e=1;						\
+	list_for(_xgp) {						\
+		if(_xgp == (l_list *)(list)) {				\
+			_egp=1;						\
 			break;						\
 		} else							\
-			_i++;						\
+			_igp++;						\
 	}								\
-	_e ? _i : -1;							\
+	_egp ? _igp : -1;						\
 })
 
 /* 
@@ -423,13 +448,13 @@ for((i) ? (next)=(typeof (i))(i)->next : 0; (i); 			\
  */
 #define list_destroy(list)						\
 do{ 									\
-	l_list *_x=(l_list *)(list), *_i, *_next;			\
-	_i=_x;								\
-	if(_i)								\
-		_next=_i->next;						\
-	for(; _i; _i=_next) {						\
-		_next=_i->next; 					\
-		list_del(_x, _i);					\
+	l_list *_xd=(l_list *)(list), *_id, *nextd;			\
+	_id=_xd;							\
+	if(_id)								\
+		nextd=_id->next;					\
+	for(; _id; _id=nextd) {						\
+		nextd=_id->next; 					\
+		list_del(_xd, _id);					\
 	}								\
 	(list)=0;							\
 }while(0)
@@ -455,20 +480,19 @@ do{ 									\
  */
 #define list_copy_some(list, check_func, func_args...)			\
 ({									\
- 	l_list *_new=0, *_head=0, *_tail=0, *_l=(l_list *)(list);	\
+ 	l_list *_ncs=0, *_hcs=0, *_tcs=0, *_lcs=(l_list *)(list);	\
 									\
-	list_for(_l) {							\
- 		if(!check_func(((typeof((list)))_l), ## func_args ))	\
+	list_for(_lcs) {						\
+ 		if(!check_func(((typeof((list)))_lcs), ## func_args ))	\
  			continue;					\
  									\
-		_new=xmalloc(sizeof(typeof(*(list))));			\
- 		if(!_head) _head=_new;					\
+ 		_ncs=(l_list *)list_dup(((typeof((list)))_lcs));	\
+ 		if(!_hcs) _hcs=_ncs;					\
  									\
-		memcpy(_new, _l, sizeof(typeof(*(list))));		\
-		_tail=list_append(0, _tail, _new);			\
+		_tcs=list_append(0, _tcs, _ncs);			\
 	}								\
  									\
- 	(typeof((list)))_head;						\
+ 	(typeof((list)))_hcs;						\
 })
 
 /*
@@ -498,16 +522,15 @@ do{									\
 
 #define clist_append(_head, _tail, _counter, _list)			\
 do{									\
-									\
-	l_list *_t=0, **_targv=(l_list **)(_tail);			\
-	if(_targv)							\
-		_t=*_targv;						\
+	l_list *_tca=0, **_targv=(l_list **)(_tail);			\
+	if((_tail))							\
+		_tca=*_targv;						\
 	if(!(*(_counter)) || !(*(_head)))				\
 		list_init(*(_head), (_list));				\
 	else {								\
-		_t=(l_list *)list_append(*(_head), _t, (_list));	\
+		_tca=(l_list *)list_append(*(_head), _tca, (_list));	\
 		if(_targv)						\
-			(*_targv)=_t;					\
+			(*_targv)=_tca;					\
 	}								\
 	(*(_counter))++;                                                \
 }while(0)
@@ -581,26 +604,26 @@ do{                  							\
  */
 #define clist_qsort(_head, _counter, _cmp_func)				\
 ({									\
-	l_list *_h=(l_list *)(_head), *_n, *_nhead, *_ntail;		\
-	int _i=0, _c;							\
+	l_list *_hcq=(l_list *)(_head), *_ncq, *_hecq, *_tcq;		\
+	int _icq=0, _ccq;						\
 									\
-	_c = !(_counter) ? list_count(_h) : (_counter);			\
-	l_list *_tmp_list[_c];						\
+	_ccq = !(_counter) ? list_count(_hcq) : (_counter);		\
+	l_list *_tmp_list[_ccq];					\
 									\
-	_n=_h;								\
-	list_for(_n) {							\
-		_tmp_list[_i]=_n;					\
-		_i++;							\
+	_ncq=_hcq;							\
+	list_for(_ncq) {						\
+		_tmp_list[_icq]=_ncq;					\
+		_icq++;							\
 	}								\
 									\
-	qsort(_tmp_list, _c, sizeof(l_list *), (_cmp_func));		\
+	qsort(_tmp_list, _ccq, sizeof(l_list *), (_cmp_func));		\
 									\
-	_ntail=0;							\
-	_nhead=_tmp_list[0];						\
-	for(_i=0; _i<_c; _i++)						\
-		_ntail=(l_list *)list_append(0, _ntail, _tmp_list[i]);	\
+	_tcq=0;								\
+	_hecq=_tmp_list[0];						\
+	for(_icq=0; _icq<_ccq; _icq++)					\
+		_tcq=(l_list *)list_append(0, _tcq, _tmp_list[i]);	\
 									\
-	(typeof((_head)))_nhead;					\
+	(typeof((_head)))_hecq;						\
 })									\
 
 #endif /*LLIST_C*/
