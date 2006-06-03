@@ -34,7 +34,7 @@ sources_netsukuku = Split("""accept.c llist.c ipv6-gmp.c inet.c request.c map.c
 		   ll_map.c libnetlink.c if.c krnl_route.c krnl_rule.c
 		   iptunnel.c route.c conf.c dns_wrapper.c igs.c mark.c 
 		   libiptc/libip4tc.c libping.c netsukuku.c""") + sources_common
-sources_ntkdig    = sources_common + Split("""andns_lib.c ntkdig.c andns_net.c
+sources_ntkresolv = sources_common + Split("""andns_lib.c ntkresolv.c andns_net.c
 					      crypto.c snsd_cache.c inet.c
 					      ll_map.c libnetlink.c""") 
 
@@ -186,9 +186,9 @@ build_config_files(env = env)
 
 ntkd 	= env.Program('ntkd', sources_netsukuku, LIBS = libs, CPPPATH = '.')
 qspn    = env.Program('qspn-empiric', sources_qspn, LIBS = libs, CPPPATH = '.')
-ntkdig  = env.Program('ntk-dig', sources_ntkdig, LIBS = libs, CPPPATH = '.')
+ntkresolv = env.Program('ntk-resolv', sources_ntkresolv, LIBS = libs, CPPPATH = '.')
 
-Default(ntkd, ntkdig)
+Default(ntkd, ntkresolv)
 
 
 #
@@ -204,7 +204,7 @@ idir_conf   = '$destdir' + '$CONF_DIR'
 idir_pid    = '$destdir' + '$PID_DIR'
 
 env.Install(idir_bin, [ntkd])
-env.Install(idir_bin, [ntkdig])
+env.Install(idir_bin, [ntkresolv])
 env.Alias('install', [idir_bin, idir_conf])
 
 #Dirty hack ;( Why GetOption("install") doesn't work?

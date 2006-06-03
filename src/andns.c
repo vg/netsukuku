@@ -221,7 +221,7 @@ int andns_init(int restricted, char *resolv_conf,int family)
 				"converting sockaddr -> %s.",\
 				strerror(errno));
         }
-        debug(DBG_NORMAL,"Andns init: DNS query inet-related "
+        debug(DBG_NORMAL,"Andns init: DNS queries inet-related "
 			"will be forwarded to: %s",msg);
 
         _dns_forwarding_=1;

@@ -1,5 +1,5 @@
-#ifndef NTK_DIG_H
-#define NTK_DIG_H
+#ifndef NTK_RESOLV_H
+#define NTK_RESOLV_H
 
 #include <errno.h>
 #include <netdb.h>
@@ -11,13 +11,13 @@
 
 #define VERSION			"0.3.1"
 
-#define NTKDIG_PORT		53
-#define NTKDIG_PORT_STR		"53"
+#define NTKRESOLV_PORT		53
+#define NTKRESOLV_PORT_STR		"53"
 #define MAX_NS			3
 #define LOCALHOST		"localhost"
 
 #define MAX_HOSTNAME_LEN	512
-#define NTKDIG_MAX_OBJ_LEN	512
+#define NTKRESOLV_MAX_OBJ_LEN	512
 
 //#define ANDNS_MAX_SZ    1024
 
@@ -77,15 +77,15 @@ int QT_LEN=3;
 
 		
 			
-typedef struct ntkdig_opts {
+typedef struct ntkresolv_opts {
 	char		nsserver[MAX_HOSTNAME_LEN];
 	int16_t		port;
 	int8_t		silent;
-	char		obj[NTKDIG_MAX_OBJ_LEN];
+	char		obj[NTKRESOLV_MAX_OBJ_LEN];
 	andns_pkt	*q;
-} ntkdig_opts;
+} ntkresolv_opts;
 
-#define NTKDIG_OPTS_SZ	sizeof(ntkdig_opts)
+#define NTKRESOLV_OPTS_SZ	sizeof(ntkresolv_opts)
 
 #define QR_STR(ap)	((ap)->qr==0)?"QUERY":"ANSWER"
 #define QTYPE_STR(ap)						\
@@ -203,16 +203,22 @@ void proto_usage(char *arg);
 void service_and_proto_usage(char *arg);
 double diff_time(struct timeval a,struct timeval b);
 void opts_init(void);
-void opts_set_silent();
+void opts_set_silent(void);
 void opts_set_port(char *arg);
 void opts_set_ns(char *arg);
 void opts_set_qt(char *arg);
 void opts_set_realm(char *arg);
-void opts_set_service(char *arg);
-void opts_set_proto(char *arg) ;
-void do_command();
-void ntkdig_exit(int i);
-void ntkdig_safe_exit(int i);
+void opts_set_service_and_proto(char *arg);
+void opts_set_question(char *arg);
+void opts_finish(char *arg);
+void print_headers();
+void print_question();
+void ip_bin_to_str(void *data,char *dst);
+void answer_data_to_str(andns_pkt_data *apd,char *dst);
+void print_answers();
+void do_command(void);
+void ntkresolv_exit(int i);
+void ntkresolv_safe_exit(int i);
 int main(int argc, char **argv);
 
-#endif /* NTK_DIG_H */
+#endif /* NTK_RESOLV_H */

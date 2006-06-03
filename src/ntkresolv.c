@@ -1,6 +1,6 @@
 #include "includes.h"
 
-#include "ntkdig.h"
+#include "ntkresolv.h"
 #include "andns_net.h"
 #include "snsd_cache.h"
 #include "crypto.h"
@@ -8,24 +8,24 @@
 #include "xmalloc.h"
 #include "log.h"
 
-static ntkdig_opts globopts;
+static ntkresolv_opts globopts;
 static struct timeval time_start,time_stop;
 
 void version(void)
 {
-        say("ntk-dig version %s (Netsukuku tools)\n\n"
+        say("ntk-resolv version %s (Netsukuku tools)\n\n"
             "Copyright (C) 2006.\n"
             "This is free software.  You may redistribute copies of it under the terms of\n"
             "the GNU General Public License <http://www.gnu.org/licenses/gpl.html>.\n"
             "There is NO WARRANTY, to the extent permitted by law.\n\n",VERSION);
-	ntkdig_safe_exit(1);
+	ntkresolv_safe_exit(1);
 }
 
 
 void usage(void)
 {
         say("Usage:\n"
-                "\tntk-dig [OPTIONS] host\n\n"
+                "\tntk-resolv [OPTIONS] host\n\n"
                 " -v --version          print version, then exit.\n"
                 " -n --nameserver=ns    use nameserver `ns' instead of localhost.\n"
                 " -P --port=port        nameserver port, default 53.\n"
@@ -33,16 +33,16 @@ void usage(void)
                 " -r --realm=realm      realm to scan (`-r help' shows more info).\n"
                 " -s --service=service  SNSD service (`-s help' shows more info).\n"
                 " -p --protocolo=proto  SNSD protocol (udp/tcp).\n"
-                " -S --silent           ntk-dig will be not loquacious.\n"
+                " -S --silent           ntk-resolv will be not loquacious.\n"
                 " -h --help             display this help, then exit.\n\n");
-	ntkdig_safe_exit(1);
+	ntkresolv_safe_exit(1);
 }
 void qt_usage(char *arg)
 {
 	if (arg)
 		say("Bad Query Type %s\n\n",arg);
 	else
-		say("ntk-dig Query Type Help.\n\n");
+		say("ntk-resolv Query Type Help.\n\n");
 	say(
 	    "Valid query types are:\n"
             " * snsd\thost:port -> ip\n"
@@ -51,45 +51,45 @@ void qt_usage(char *arg)
             "(you can also use univoque abbreviation)\n"
 	    "Note: mx query is equivalent to --query-type="
 	    "snsd AND --service=25\n\n");
-	ntkdig_safe_exit(1);
+	ntkresolv_safe_exit(1);
 }
 void realm_usage(char *arg)
 {
 	if (arg)
 		say("Bad Realm %s\n\n",arg);
 	else
-		say("ntk-dig Realm Help.\n\n");
+		say("ntk-resolv Realm Help.\n\n");
 	say(
 	    "Valid realms are:\n"
             " * ntk\tnetsukuku realm\n"
             "   inet\tinternet realm\n\n"
             "(you can also use univoque abbreviation)\n\n");
-	ntkdig_safe_exit(1);
+	ntkresolv_safe_exit(1);
 }
 void proto_usage(char *arg)
 {
 	if (arg)
 		say("Bad Protocol %s\n\n",arg);
 	else
-		say("ntk-dig Protocol Help.\n\n");
+		say("ntk-resolv Protocol Help.\n\n");
 	say(
 	    "Valid protocols are:\n"
             " * tcp\n"
             "   udp\n"
             "(you can also use univoque abbreviation)\n\n");
-	ntkdig_safe_exit(1);
+	ntkresolv_safe_exit(1);
 }
 void service_and_proto_usage(char *arg)
 {
 	if (arg)
 		say("Bad service/proto %s\n\n"
-			"Use `ntk-dig -s help` for more info on"
+			"Use `ntk-resolv -s help` for more info on"
 			" service and proto.\n"	,arg);
 	else say(
-		"ntk-dig Service and Proto Help.\n\n"
+		"ntk-resolv Service and Proto Help.\n\n"
 		"The form to specify a service and a protocol are:\n"
-		"  ntk-dig -s service/proto\n"
-		"  ntk-dig -s service -p proto\n\n"
+		"  ntk-resolv -s service/proto\n"
+		"  ntk-resolv -s service -p proto\n\n"
 		"Valid protocols are:\n"
 	        " * tcp\n"
             	"   udp\n\n"
@@ -98,11 +98,11 @@ void service_and_proto_usage(char *arg)
 		"As example, the next commands are equivalent and\n"
 		"will return the IP of the hostname that offers\n"
 		"webpages for the hostname \"some_hostname\":\n\n"
-		"  ntk-dig -s http -p tcp some_hostname\n"
-		"  ntk-dig -s http/tcp    some_hostname\n"
-		"  ntk-dig -s 80/tcp      some_hostname\n"
-		"  ntk-dig -s 80          some_hostname\n\n");
-	ntkdig_safe_exit(1);
+		"  ntk-resolv -s http -p tcp some_hostname\n"
+		"  ntk-resolv -s http/tcp    some_hostname\n"
+		"  ntk-resolv -s 80/tcp      some_hostname\n"
+		"  ntk-resolv -s 80          some_hostname\n\n");
+	ntkresolv_safe_exit(1);
 }
 		
 
@@ -122,9 +122,9 @@ double diff_time(struct timeval a,struct timeval b)
 
 void opts_init(void)
 {
-	memset(&GOP,0,NTKDIG_OPTS_SZ);
+	memset(&GOP,0,NTKRESOLV_OPTS_SZ);
 	strcpy(GOP.nsserver,LOCALHOST);
-	GOP.port=NTKDIG_PORT;
+	GOP.port=NTKRESOLV_PORT;
 	GQT=create_andns_pkt();
 	GQT->nk=REALM_NTK;
 	GQT->p=SNSD_DEFAULT_PROTO;
@@ -147,7 +147,7 @@ void opts_set_port(char *arg)
 
 	if (port!=res) {
 		say("Bad port %s.",arg);
-		ntkdig_safe_exit(1);
+		ntkresolv_safe_exit(1);
 	}
 	GOP.port=port;
 }
@@ -159,7 +159,7 @@ void opts_set_ns(char *arg)
 	slen=strlen(arg);
 	if (slen>=MAX_HOSTNAME_LEN) {
 		say("Server hostname too long.");
-		ntkdig_safe_exit(1);
+		ntkresolv_safe_exit(1);
 	}
 	strcpy(GOP.nsserver,arg);
 	GOP.nsserver[slen]=0;
@@ -235,9 +235,9 @@ void opts_set_question(char *arg)
 	int res;
 	
 	res=strlen(arg);
-	if (res>NTKDIG_MAX_OBJ_LEN) {
+	if (res>NTKRESOLV_MAX_OBJ_LEN) {
 		say("Object requested is too long: %s",arg);
-		ntkdig_safe_exit(1);
+		ntkresolv_safe_exit(1);
 	}
 	strcpy(GOP.obj,arg);
 
@@ -250,7 +250,7 @@ void opts_set_question(char *arg)
 				res=strlen(arg);
 				if (res>255) {
 					say("Hostname %s is too long for DNS standard.",arg);
-					ntkdig_safe_exit(1);
+					ntkresolv_safe_exit(1);
 				}
 				G_ALIGN(res+1);
 				strcpy(GQT->qstdata,arg);
@@ -266,7 +266,7 @@ void opts_set_question(char *arg)
 			res=inet_pton(AF_INET6,arg,&i6a);
 			if (!res) {
 				say("Bad address `%s'\n",arg);
-				ntkdig_safe_exit(1);
+				ntkresolv_safe_exit(1);
 			}
 			G_ALIGN(16);
 			memcpy(GQT->qstdata,&i6a.in6_u,16);
@@ -331,7 +331,7 @@ void ip_bin_to_str(void *data,char *dst)
 			strcpy(dst,"Unprintable Object");
 			return;
 	}
-	crow=inet_ntop(family,via,dst,NTKDIG_MAX_OBJ_LEN);
+	crow=inet_ntop(family,via,dst,NTKRESOLV_MAX_OBJ_LEN);
 	if (!crow) 
 		strcpy(dst,"Unprintable Object");
 }
@@ -388,32 +388,32 @@ void do_command(void)
 	res=a_p(GQT,buf);
 	if (res==-1) {
 		say("Error building question.\n");
-		ntkdig_exit(1);
+		ntkresolv_exit(1);
 	}
 	res=hn_send_recv_close(GOP.nsserver,GOP.port,
 			SOCK_DGRAM,buf,res,answer,ANDNS_MAX_PK_LEN,0);
 	if (res==-1) {
 		say("Communication failed with %s.\n",GOP.nsserver);
-		ntkdig_exit(1);
+		ntkresolv_exit(1);
 	}
 	res=a_u(answer,res,&GQT);
 	if (res<=0) {
 		say("Error interpreting server answer.\n");
-		ntkdig_exit(1);
+		ntkresolv_exit(1);
 	}
 	print_headers();
 	print_question();
 	print_answers();
 	destroy_andns_pkt(GQT);
 }
-void ntkdig_exit(int i)
+void ntkresolv_exit(int i)
 {
 	exit(i);
 }
-void ntkdig_safe_exit(int i)
+void ntkresolv_safe_exit(int i)
 {
 	destroy_andns_pkt(GQT);
-	ntkdig_exit(i);
+	ntkresolv_exit(i);
 }
 int main(int argc, char **argv)
 {

@@ -1,15 +1,15 @@
 =head1 NAME
 
-ntkdig - Andns Lookup Resolver
+ntk-resolv - Andns Lookup Resolver
 
 =head1 SYNOPSIS
 
-ntkdig [-vnPtrsSh] host
+ntk-resolv [-vnPtrsSh] host
 
 =head1 DESCRIPTION
 
 
-Ntkdig is an interface to ANDNA daemon: it performs andns queries and displays
+Ntk-resolv is an interface to ANDNA daemon: it performs andns queries and displays
 the answers to stdout. It is able to formule questions for objects in Internet 
 and Netsukuku realms.
 It uses the 'andns protocol' to encode his contents, as explained in Netsukuku
@@ -20,7 +20,7 @@ RFC 006.
 
 The simplest example is:
 
-	ntkdig hname
+	ntk-resolv hname
 
 With this comand, it asks ANDNA to tell which IP registerd the hostname 'hname'.
 The default behavior is to perform the query in the Netsukuku realm.
@@ -76,8 +76,8 @@ services(5). The service can be specified in alfanumeric or numeric format.
 The default service and protocol are 0 and tcp.
 Example:
 		
-	ntk-dig -s domain/udp host
-	ntk-dig -s 53/udp host
+	ntk-resolv -s domain/udp host
+	ntk-resolv -s 53/udp host
 
 See the section B<QUERY TYPE, SERVICES AND PROTOCOL> for a better explanation.
 
@@ -87,7 +87,7 @@ See the section B<QUERY TYPE, SERVICES AND PROTOCOL> for a better explanation.
 
 =item 	B<-S>	B<--silent>
 
-With this option, ntkdig will be very discrete.
+With this option, ntk-resolv will be very discrete.
 
 =back
 
@@ -95,7 +95,7 @@ With this option, ntkdig will be very discrete.
 
 =item	B<-h>	B<--help>
 
-Prints to stdout a short explanation of ntkdig.
+Prints to stdout a short explanation of ntk-resolv.
 
 =back
 
@@ -104,7 +104,7 @@ specifing univoque abbreviation of argument. So, there is the equivalence:
 
 =over
 
-=item 	B<ntkdig -r i = ntkdig -r inet>
+=item 	B<ntk-resolv -r i = ntk-resolv -r inet>
 
 =back
 
@@ -128,10 +128,10 @@ are valid service/proto strings.
 For example, the next commands will retrieve the IP(s) that offers web-pages
 for the hostname "host":
 
-	ntk-dig -s http/tcp host
-	ntk-dig -s 80/tcp   host
-	ntk-dig -s 80       host
-	ntk-dig -s http     host
+	ntk-resolv -s http/tcp host
+	ntk-resolv -s 80/tcp   host
+	ntk-resolv -s 80       host
+	ntk-resolv -s http     host
 
 To configure the SNSD delegations, see the SNSD HowTo.
 
@@ -169,7 +169,7 @@ on the FreeNode irc server (irc.freenode.org).
 
 Main authors and maintainers:
 
-Federico Tomassini  <effetom@gmail.com> wrote ntk-dig and network libraries.
+Federico Tomassini  <effetom@gmail.com> wrote ntk-resolv and network libraries.
 
 Andrea Lo Pumo aka AlpT <alpt@freaknet.org> wrote ANDNA and Netsukuku Core.
 
