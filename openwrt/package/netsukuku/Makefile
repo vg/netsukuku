@@ -1,9 +1,9 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=netsukuku
-PKG_VERSION:=0.0.7b
+PKG_VERSION:=0.0.8b
 PKG_RELEASE:=1
-PKG_MD5SUM:=1a61d2efe15f3114818cd9ef02fcb939
+PKG_MD5SUM:=79b92cb9c707d91ee060a7bb4115be36
 
 PKG_SOURCE_URL:=http://netsukuku.freaknet.org/files/
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.bz2
@@ -15,7 +15,6 @@ include $(TOPDIR)/package/rules.mk
 
 $(eval $(call PKG_template,NETSUKUKU,$(PKG_NAME),$(PKG_VERSION)-$(PKG_RELEASE),$(ARCH)))
 
-PKG_DEPEND:="libopenssl, libgmp, kmod-tun, libpthread"
 $(PKG_BUILD_DIR)/.configured: $(PKG_BUILD_DIR)/.prepared
 	(cd $(PKG_BUILD_DIR); \
 		$(TARGET_CONFIGURE_OPTS) \

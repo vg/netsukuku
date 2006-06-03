@@ -3,7 +3,7 @@ Priority: optional
 Section: net
 Maintainer: AlpT <alpt@freaknet.org>
 Source: http://netsukuku.freaknet.org
-Depends: openssl gmp libpthread
+Depends: openssl gmp libpthread zlib
 Description: Netsukuku is a mesh network or a P2P net system that generates and sustains
 	itself autonomously. It is designed to handle an unlimited number of nodes with
 	minimal CPU and memory resources. Thanks to this feature it can be easily

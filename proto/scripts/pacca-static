@@ -40,10 +40,14 @@ cd $NTK_REPOSITORY
 version="`cat version`"
 BASENAME="netsukuku-$version"
 
-#rm -r $STATIC_REP
-#make clean
+rm -r $STATIC_REP
+make clean > /dev/null
 LDFLAGS="-static" ./configure && make && \
-	DESTDIR="$STATIC_REP" make install 
+	DESTDIR="$STATIC_REP" make install  > /dev/null
+
+#
+# Build the packages
+#
 
 rm -r $STATIC_PACKAGES
 mkdir -p $STATIC_PACKAGES

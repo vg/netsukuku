@@ -1,0 +1,44 @@
+#!/bin/bash
+#
+#
+
+OPENWRT_SDK="`echo ~/pkg/openwrt/sdk/OpenWrt-SDK-Linux-i686-1`"
+if [ ! -d $OPENWRT_SDK ]
+then
+	echo "pacca-ipkg: Set the OPENWRT_SDK variable correctly"
+	exit 1
+fi
+
+NTK_REPOSITORY="`echo ~/tmp/netsukuku`"
+NTK_SCRIPTS="$NTK_REPOSITORY/proto/scripts"
+if [ ! -d $NTK_REPOSITORY ]
+then
+	echo Adjust the '$NTK_REPOSITORY' variable
+	exit 1
+fi
+
+cd $NTK_REPOSITORY
+version="`cat version`"
+pack="netsukuku-$version.tar.bz2"
+if [ ! -f $pack ]
+then
+	echo "Create the pack first!"
+	exit 1
+fi
+md5="`md5sum $pack | cut -f 1 -d ' ' `"
+WRT_PACK="$NTK_REPOSITORY/openwrt/package/netsukuku"
+
+cd $WRT_PACK
+cat Makefile | sed -e s/'PKG_VERSION:=.*$'/'PKG_VERSION:='$version/ -e \
+	s/'PKG_MD5SUM:=.*$'/'PKG_MD5SUM:='$md5/ > MTMP
+mv MTMP Makefile
+
+cd $NTK_REPOSITORY
+cp $pack $OPENWRT_SDK/dl/
+cp -r $WRT_PACK $OPENWRT_SDK/package
+
+cd $OPENWRT_SDK/
+make clean && make && make compile
+
+rsync -auvP $OPENWRT_SDK/bin/packages/netsukuku_*.ipk \
+	freaknet.org:netsukuku/openwrt/package/

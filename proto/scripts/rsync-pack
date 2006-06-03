@@ -1,0 +1,7 @@
+#!/bin/bash
+
+cd $NTK_REPOSITORY
+rsync -auv -P $packdir.tar.bz2  freaknet.org:netsukuku/files/
+
+STATIC_PACKAGES="$NTK_REPOSITORY/proto/packages"
+rsync -auPv $STATIC_PACKAGES freaknet.org:netsukuku/files/

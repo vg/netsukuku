@@ -33,32 +33,6 @@ then
 	exit 1
 fi
 
-###
-##########  Copy CVS
-###
-
-copy_cvs_entry() {
-	local from=$1
-	local to=$2
-	
-	echo Copying CVS from $from to $to
-	if [ ! -d $to ]
-	then
-		mkdir --verbose -p $to
-	fi
-
-	for i in `cat $from/CVS/Entries |grep -v CVS |  cut -d "/" -f 2`
-	do
-		if [ -d $from/$i ]
-		then
-			copy_cvs_entry $from/$i $to/$i
-		elif [ -f $from/$i ]
-		then
-			cp -v $from/$i $to/
-		fi
-	done
-}
-
 if [ -z "$1" ]
 then
 	echo "pacca what?"
@@ -73,6 +47,8 @@ then
 	echo all, pacca
 	exit 1
 fi
+
+source $NTK_REPOSITORY/proto/scripts/pacca_functions
 
 ############# UHM #####
 if [ -f README.ntkd ]; then
@@ -132,9 +108,12 @@ fi
 tar cfjv $cur_dir/$packtar $packdir
 #md5sum  $packdir.tar.bz2 >  $packdir.tar.bz2.md5
 
+echo "[*] Creating static packages"
+$NTK_REPOSITORY/proto/scripts/pacca-static
+
 if [ "$PACCA_ONLY" == "pacca" ]
 then
-	echo PACKING ONLY, COPIA DISABILITATA
+	echo PACKING ONLY, DISABLED RSYNC
 	exit
 fi
 
@@ -143,22 +122,16 @@ fi
 ##########  Site
 ###
 
-echo "attiva converti html"
-proto/scripts/converti_html
-echo "attiva converti html"
+echo "[*] Converting docs to html"
+$NTK_REPOSITORY/proto/scripts/converti_html
 
-rsync -auv -P $packdir.tar.bz2  freaknet.org:netsukuku/files/
-#rsync -auv -P $packdir-pre.tar.bz2  freaknet.org:netsukuku/files/
 
-rsync -auv -P ChangeLog doc/faq/FAQ README freaknet.org:netsukuku/files/
-rsync -auv -P doc/main_doc/netsukuku doc/main_doc/netsukuku.ita doc/faq/FAQ freaknet.org:netsukuku/
-rsync -auv -LP -C 'CVS' --exclude '*~' --delete  doc freaknet.org:netsukuku/files/
+###
+########## Rsync
+###
 
-cd site/
-rsync -auv -P contacts  home  index.php  logo_netsukuku.jpg  style.css freaknet.org:netsukuku/
-cd ../
+export packdir
+export NTK_REPOSITORY
 
-echo "!!!!!!!!!!!!!!!! Rimuovi netsukuku_d e netsukuku_wifi !!!!!!!!!!!"
-echo "!!!!!!!!!!!!!!!! Rimuovi netsukuku_d e netsukuku_wifi !!!!!!!!!!!"
-echo "!!!!!!!!!!!!!!!! Rimuovi netsukuku_d e netsukuku_wifi !!!!!!!!!!!"
-echo
+$NTK_REPOSITORY/proto/scripts/rsync-pack
+$NTK_REPOSITORY/proto/scripts/rsync-site
