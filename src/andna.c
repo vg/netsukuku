@@ -202,7 +202,7 @@ void andna_init(void)
 	setzero(last_spread_acache_pkt_id, sizeof(int)*ANDNA_MAX_FLOODS);
 
 	/* Modify /etc/resolv.conf if requested */
-	if(!restricted_mode)
+	if(!server_opt.disable_resolvconf)
 		andna_resolvconf_modify();
 }
 
