@@ -55,8 +55,14 @@ opts.AddOptions(('CONF_DIR', """Directory where the Netsukuku configuration file
 				'/usr/bin'),
 		('PID_DIR',  'Specify location of ntkd.pid file',
 				'/var/run'),
+		('destdir', 'SCons will copy all the files under destdir during installation',
+				'/'),
 		EnumOption('debug', 'build the debug code', 'no', 
-			allowed_values=('yes', 'no', '1', '0'), map={}, ignorecase=0))
+			allowed_values=('yes', 'no', '1', '0'), map={},
+			ignorecase=0),
+		EnumOption('static', 'build statically the binaries', 'no', 
+			allowed_values=('yes', 'no', '1', '0'), map={},
+			ignorecase=0))
 opts.Add('CC', 'The C compiler.')
 opts.Add('CXX', 'The C++ compiler.')
 
@@ -67,7 +73,15 @@ if ("yes" in env['debug']) or ("1" in env['debug']):
 	env.Append(CPPDEFINES={'DEBUG' : '${debug}'}, CCFLAGS = ' -ggdb -Wall', CXXFLAGS = '-g')
 	os.system("echo Cscoping and ctagging...; cscope -b; ctags *")
 else:
-	debug = 0
+	debug  = 0
+if ("yes" in env['static']) or ("1" in env['static']):
+	static = 1
+	env.Append(CCFLAGS = ' -static', CXXFLAGS = '-static')
+else:
+	static = 0
+if (env['destdir'] == "/"):
+	env['destdir']=""
+
 opts.Save('build.conf', env)
 
 if os.path.exists("conf/netsukuku.conf") and env.GetOption('clean'):
@@ -174,8 +188,7 @@ ntkd 	= env.Program('ntkd', sources_netsukuku, LIBS = libs, CPPPATH = '.')
 qspn    = env.Program('qspn-empiric', sources_qspn, LIBS = libs, CPPPATH = '.')
 ntkdig  = env.Program('ntk-dig', sources_ntkdig, LIBS = libs, CPPPATH = '.')
 
-#Default(ntkd)
-Default(ntkd,ntkdig)
+Default(ntkd, ntkdig)
 
 
 #
@@ -185,10 +198,10 @@ Default(ntkd,ntkdig)
 SConscript(['man/SConscript', 'scripts/SConscript', 'conf/SConscript'], 'env')
 
 # Here are our installation paths:
-idir_bin    = '$BIN_DIR'
-idir_data   = '$DATA_DIR'
-idir_conf   = '$CONF_DIR'
-idir_pid    = '$PID_DIR'
+idir_bin    = '$destdir' + '$BIN_DIR'
+idir_data   = '$destdir' + '$DATA_DIR'
+idir_conf   = '$destdir' + '$CONF_DIR'
+idir_pid    = '$destdir' + '$PID_DIR'
 
 env.Install(idir_bin, [ntkd])
 env.Install(idir_bin, [ntkdig])

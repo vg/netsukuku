@@ -6,8 +6,8 @@
 
 * (generally these TODOs are already being implemented at the moment)
 
-- SNSD
-	- pubkey: automatic deletion request
+- bugs 
+	- andna.c:2107
 
 - update the dependencies list: 
 	- depends on iptables
@@ -22,7 +22,11 @@
 
 - static compilation
 
-- Flash NetsukukuD into an AP and test it.
+- Netsukuku WRT firmware:
+	- a configured openwrt release with all the necessary kernel modules
+	  and packages installed
+	- A web interface to configure the /etc/netsukuku/netsukuku.conf file
+	  and to use the rc.ntk script.
 
 
 *
@@ -92,6 +96,8 @@
 
 - turn andns_lib.c into a real shared library
 
+- SNSD
+	- pubkey: automatic deletion request
 
 *
 **
@@ -134,8 +140,6 @@
 
 - option (both on command line and in netsukuku.conf) to disable the saving of
   caches. (the keyring will always be saved).
-
-- embed scripts/rc.ntk in ntkd itself
 
 - Change with something else the eliminable fatal() calls in netsukuku_hook()
 

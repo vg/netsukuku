@@ -1,6 +1,6 @@
 Import('env')
 
-idir_conf   = '$CONF_DIR'
+idir_conf   = '$destdir' + '$CONF_DIR'
 
 env.Install(idir_conf, ['netsukuku.conf', 'andna_hostnames', 'snsd_nodes'])
 env.Alias('install', [idir_conf])
