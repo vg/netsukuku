@@ -142,6 +142,16 @@ FILES
         This script is launched by NetsukukuD, at its start, when it shares
         the Internet connection.
 
+    /etc/netsukuku/tc_shaper.sh
+        This script manages the traffic shaping for the upload bandwidth. It
+        is executed by NetsukukuD at its start if its relative option has
+        been enabled.
+
+    /var/run/ntkd.pid
+        It is the lock file created by ntkd at its start, it is used to
+        check if other instances of ntkd are already running. Only one
+        instance is allowed.
+
 KERNEL DEPENDENCIES
     On Linux be sure to have the following options set in your kernel
     .config. These options are taken from linux-2.6.14.

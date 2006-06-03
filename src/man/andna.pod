@@ -95,10 +95,10 @@ Not implemented
 
 =head3 SNSD hname resolution
 
-The utility ntk-dig(8) can be used to resolve SNSD hostnames. Examples:
+The utility ntk-resolv(8) can be used to resolve SNSD hostnames. Examples:
 	
-	ntkdig -s 53/udp host
-	ntkdig -s http host
+	ntk-resolv -s 53/udp host
+	ntk-resolv -s http host
 
 =head1 SIGNALS
 

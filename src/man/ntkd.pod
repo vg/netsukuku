@@ -252,6 +252,8 @@ connection.
 
 =back
 
+=over 
+
 =item
 F</etc/netsukuku/tc_shaper.sh>
 
@@ -260,6 +262,8 @@ It is executed by NetsukukuD at its start if its relative option has been
 enabled.
 
 =back
+
+=over 
 
 =item
 F</var/run/ntkd.pid>

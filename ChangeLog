@@ -22,6 +22,9 @@ New features:
 	* Pid file
 
 	* New option: use_shared_internet
+
+	* Static binaries + packages
+
 	
 Bug fixes:
 

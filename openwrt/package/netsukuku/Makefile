@@ -15,6 +15,7 @@ include $(TOPDIR)/package/rules.mk
 
 $(eval $(call PKG_template,NETSUKUKU,$(PKG_NAME),$(PKG_VERSION)-$(PKG_RELEASE),$(ARCH)))
 
+PKG_DEPEND:="libopenssl, libgmp, kmod-tun, libpthread, zlib"
 $(PKG_BUILD_DIR)/.configured: $(PKG_BUILD_DIR)/.prepared
 	(cd $(PKG_BUILD_DIR); \
 		$(TARGET_CONFIGURE_OPTS) \
@@ -43,6 +44,8 @@ $(PKG_BUILD_DIR)/.built: $(PKG_BUILD_DIR)/.configured
 $(IPKG_NETSUKUKU):
 	install -d -m0755 $(IDIR_NETSUKUKU)/usr/bin
 	cp -fpR $(PKG_INSTALL_DIR)/usr/bin/netsukuku_* $(IDIR_NETSUKUKU)/usr/bin
+	cp -fpR $(PKG_INSTALL_DIR)/usr/bin/ntk-resolv $(IDIR_NETSUKUKU)/usr/bin
+	cp -fpR $(PKG_INSTALL_DIR)/usr/bin/ntkd $(IDIR_NETSUKUKU)/usr/bin
 	install -d -m0755 $(IDIR_NETSUKUKU)/etc/netsukuku
 	cp -fpR $(PKG_INSTALL_DIR)/etc/netsukuku/* $(IDIR_NETSUKUKU)/etc/netsukuku/
 	$(RSTRIP) $(IDIR_NETSUKUKU)
