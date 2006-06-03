@@ -2,5 +2,5 @@ Import('env')
 
 idir_man   = '$destdir' + '$MAN_DIR/man8'
 
-env.Install(idir_man, ['ntkd.8', 'ntk-wifi.8', 'ntk-dig.8', 'andna.8'])
+env.Install(idir_man, ['ntkd.8', 'ntk-wifi.8', 'ntk-resolv.8', 'andna.8'])
 env.Alias('install', idir_man)

@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "NetsukukuD 8"
-.TH NetsukukuD 8 "2006-05-31" "NetsukukuD 0.0.8b" ""
+.TH NetsukukuD 8 "2006-06-03" "" ""
 .SH "NAME"
 ntkd \- Netsukuku protocol daemon
 .SH "SYNOPSIS"
@@ -289,6 +289,18 @@ changed in \fInetsukuku.conf\fR.
 .IX Item "/etc/netsukuku/ip_masquerade.sh"
 This script is launched by NetsukukuD, at its start, when it shares the Internet
 connection.
+.RE
+.IP "\fI/etc/netsukuku/tc_shaper.sh\fR"
+.IX Item "/etc/netsukuku/tc_shaper.sh"
+This script manages the traffic shaping for the upload bandwidth.
+It is executed by NetsukukuD at its start if its relative option has been
+enabled.
+.RE
+.IP "\fI/var/run/ntkd.pid\fR"
+.IX Item "/var/run/ntkd.pid"
+It is the lock file created by ntkd at its start, it is used to check if other
+instances of ntkd are already running.
+Only one instance is allowed.
 .SH "KERNEL DEPENDENCIES"
 .IX Header "KERNEL DEPENDENCIES"
 On Linux be sure to have the following options set in your kernel .config.
