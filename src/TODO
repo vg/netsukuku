@@ -20,8 +20,6 @@
 
 - restore the network when NetsukukuD is closed (call /etc/rc.d/rc.inet1 ?)
 
-- static compilation
-
 - Netsukuku WRT firmware:
 	- a configured openwrt release with all the necessary kernel modules
 	  and packages installed
