@@ -31,7 +31,7 @@
  *       0  if there's no pointer
  *      <offset from start_pkt> if a pointer is found
  */
-size_t getlblptr(char *buf)
+int getlblptr(char *buf)
 {
         uint16_t dlbl;
         char c[2];
@@ -264,10 +264,10 @@ int swapped_straddr_pref(char *src,char *dst,int family)
  * dns compliant. Writes on dst.
  * -1 on error, number of bytes writed on success
  */
-size_t nametolbl(char *name,char *dst)
+int nametolbl(char *name,char *dst)
 {
         char *crow;
-        size_t offset=0,res;
+        int offset=0,res;
 
 	if (strlen(name)>DNS_MAX_HNAME_LEN) {
 		debug(DBG_INSANE,"Malformed name: %s.",name);
@@ -302,7 +302,7 @@ size_t nametolbl(char *name,char *dst)
  * by recv.-->>
  * Returns the number of bytes readed (always DNS_HDR_SZ).
  */
-size_t d_hdr_u(char *buf,dns_pkt_hdr *dph)
+int d_hdr_u(char *buf,dns_pkt_hdr *dph)
 {
         uint8_t c;
         uint16_t s;
@@ -350,9 +350,9 @@ size_t d_hdr_u(char *buf,dns_pkt_hdr *dph)
  * The new dns_pkt_qst is also added to the principal dp-struct
  * Returns bytes readed if OK. -1 otherwise.
  */
-size_t d_qst_u(char *start_buf,char *buf,dns_pkt *dp,int limit_len)
+int d_qst_u(char *start_buf,char *buf,dns_pkt *dp,int limit_len)
 {
-        size_t count;
+        int count;
         uint16_t s;
         dns_pkt_qst *dpq;
 
@@ -387,9 +387,9 @@ size_t d_qst_u(char *start_buf,char *buf,dns_pkt *dp,int limit_len)
  * -1 on error. Number of bytes readed on success.
  *  If -1 is returned, rcode ha sto be set to E_INTRPRT
  */
-size_t d_qsts_u(char *start_buf,char *buf,dns_pkt *dp,int limit_len)
+int d_qsts_u(char *start_buf,char *buf,dns_pkt *dp,int limit_len)
 {
-        size_t offset=0,res;
+        int offset=0,res;
         int i,count;
 
         if (!(count=DP_QDCOUNT(dp)))
@@ -408,9 +408,9 @@ size_t d_qsts_u(char *start_buf,char *buf,dns_pkt *dp,int limit_len)
  * The behavior of this function is in all similar to dpkttoqst.
  * Returns -1 on error. Bytes readed otherwise.
  */
-size_t d_a_u(char *start_buf,char *buf,dns_pkt_a **dpa_orig,int limit_len)
+int d_a_u(char *start_buf,char *buf,dns_pkt_a **dpa_orig,int limit_len)
 {
-        size_t count,rdlen;
+        int count,rdlen;
         dns_pkt_a *dpa;
         uint16_t s;
         uint32_t ui;
@@ -485,9 +485,9 @@ size_t d_a_u(char *start_buf,char *buf,dns_pkt_a **dpa_orig,int limit_len)
  * like d_qs_u. count is the number of section to read.
  * -1 on error.  Bytes readed otherwise.
  */
-size_t d_as_u(char *start_buf,char *buf,dns_pkt_a **dpa,int limit_len,int count)
+int d_as_u(char *start_buf,char *buf,dns_pkt_a **dpa,int limit_len,int count)
 {
-        size_t offset=0,res;
+        int offset=0,res;
         int i;
 
         if (!count) return 0;
@@ -510,10 +510,10 @@ size_t d_as_u(char *start_buf,char *buf,dns_pkt_a **dpa,int limit_len,int count)
  *  0 if pkt must be discarded.
  *  Number of bytes readed otherwise
  */
-size_t d_u(char *buf,size_t pktlen,dns_pkt **dpp)
+int d_u(char *buf,int pktlen,dns_pkt **dpp)
 {
         dns_pkt *dp;
-        size_t offset=0,res;
+        int offset=0,res;
         char *crow;
 
         crow=buf;
@@ -561,7 +561,7 @@ size_t d_u(char *buf,size_t pktlen,dns_pkt **dpp)
  * header pkt-buffer
  * Returns the number of bytes writed.
  */
-size_t d_hdr_p(dns_pkt *dp,char *buf)
+int d_hdr_p(dns_pkt *dp,char *buf)
 {
         char *crow=buf;
         uint16_t u;
@@ -597,7 +597,7 @@ size_t d_hdr_p(dns_pkt *dp,char *buf)
         u=htons(dph->arcount);
         memcpy(buf,&u,2);
         buf+=2;
-        return (size_t)(buf-crow);
+        return (int)(buf-crow);
 }
 /*
  * Translate a struct dns_pkt_qst in the dns-buffer buf.
@@ -605,9 +605,9 @@ size_t d_hdr_p(dns_pkt *dp,char *buf)
  *      -1 On error
  *      Bytes writed otherwise.
  */
-size_t d_qst_p(dns_pkt_qst *dpq,char *buf, int limitlen)
+int d_qst_p(dns_pkt_qst *dpq,char *buf, int limitlen)
 {
-        size_t offset;
+        int offset;
         uint16_t u;
 
         if((offset=nametolbl(dpq->qname,buf))==-1) {
@@ -632,9 +632,9 @@ size_t d_qst_p(dns_pkt_qst *dpq,char *buf, int limitlen)
  *      -1 on error.
  *      Number of bytes writed otherwise,
  */
-size_t d_qsts_p(dns_pkt *dp,char *buf,int limitlen)
+int d_qsts_p(dns_pkt *dp,char *buf,int limitlen)
 {
-        size_t offset=0,res;
+        int offset=0,res;
         int i;
         dns_pkt_qst *dpq;
         dpq=dp->pkt_qst;
@@ -649,9 +649,9 @@ size_t d_qsts_p(dns_pkt *dp,char *buf,int limitlen)
         }
         return offset;
 }
-size_t d_a_p(dns_pkt_a *dpa,char *buf,int limitlen)
+int d_a_p(dns_pkt_a *dpa,char *buf,int limitlen)
 {
-        size_t offset,rdlen;
+        int offset,rdlen;
         uint16_t u;
         int i;
 
@@ -701,9 +701,9 @@ size_t d_a_p(dns_pkt_a *dpa,char *buf,int limitlen)
         offset+=2;
         return offset;
 }
-size_t d_as_p(dns_pkt_a *dpa,char *buf,int limitlen,int count)
+int d_as_p(dns_pkt_a *dpa,char *buf,int limitlen,int count)
 {
-        size_t offset=0,res;
+        int offset=0,res;
         int i;
         for (i=0;dpa && i<count;i++) {
                 if ((res=d_a_p(dpa,buf+offset,limitlen-offset))==-1) {
@@ -727,9 +727,9 @@ size_t d_as_p(dns_pkt_a *dpa,char *buf,int limitlen,int count)
  *
  * DANGER: This function realeses *ALWAYS* the dns_pkt *dp!!!!
  */
-size_t d_p(dns_pkt *dp,char *buf)
+int d_p(dns_pkt *dp,char *buf)
 {
-        size_t offset,res;
+        int offset,res;
 
         memset(buf,0,DNS_MAX_SZ);
 

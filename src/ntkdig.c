@@ -383,7 +383,7 @@ void do_command(void)
 {
 	char buf[ANDNS_MAX_SZ];
 	char answer[ANDNS_MAX_PK_LEN];
-	size_t res;
+	int res;
 
 	res=a_p(GQT,buf);
 	if (res==-1) {

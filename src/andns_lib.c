@@ -89,7 +89,7 @@ char* andns_uncompress(char *src,int srclen,int *dstlen)
  * Returns ALWAYS 4. The pkt_len has to be controlled
  * elsewhere.
  */
-size_t a_hdr_u(char *buf,andns_pkt *ap)
+int a_hdr_u(char *buf,andns_pkt *ap)
 {
         uint8_t c;
         uint16_t s;
@@ -124,9 +124,9 @@ size_t a_hdr_u(char *buf,andns_pkt *ap)
  *  NOTE: The qst-data size is controlled: apkt won't need
  *  this control.
  */
-size_t a_qst_u(char *buf,andns_pkt *ap,int limitlen)
+int a_qst_u(char *buf,andns_pkt *ap,int limitlen)
 {
-	size_t ret;
+	int ret;
 	uint16_t s;
 
 	if (limitlen<3)
@@ -171,7 +171,7 @@ size_t a_qst_u(char *buf,andns_pkt *ap,int limitlen)
 	}
 	return ret;
 }
-size_t a_answ_u(char *buf,andns_pkt *ap,int limitlen)
+int a_answ_u(char *buf,andns_pkt *ap,int limitlen)
 {
         uint16_t alen;
         andns_pkt_data *apd;
@@ -212,10 +212,10 @@ size_t a_answ_u(char *buf,andns_pkt *ap,int limitlen)
 	}
         return limit;
 }
-size_t a_answs_u(char *buf,andns_pkt *ap,int limitlen)
+int a_answs_u(char *buf,andns_pkt *ap,int limitlen)
 {
         int ancount,i;
-        size_t offset=0,res;
+        int offset=0,res;
 
         ancount=ap->ancount;
         for (i=0;i<ancount;i++) {
@@ -239,10 +239,10 @@ size_t a_answs_u(char *buf,andns_pkt *ap,int limitlen)
  *  0 if pkt must be discarded.
  *  Number of bytes readed otherwise
  */
-size_t a_u(char *buf,size_t pktlen,andns_pkt **app)
+int a_u(char *buf,int pktlen,andns_pkt **app)
 {
         andns_pkt *ap;
-        size_t offset,res;
+        int offset,res;
         int limitlen,u_len;
 	char *u_buf;
 
@@ -281,7 +281,7 @@ andmap:
 	err_ret(ERR_ANDMAP,-1);
 }
 
-size_t a_hdr_p(andns_pkt *ap,char *buf)
+int a_hdr_p(andns_pkt *ap,char *buf)
 {
         uint16_t s;
         s=htons(ap->id);
@@ -302,9 +302,9 @@ size_t a_hdr_p(andns_pkt *ap,char *buf)
         (*buf)|=(  ap->rcode);
         return ANDNS_HDR_SZ;
 }
-size_t a_qst_p(andns_pkt *ap,char *buf,size_t limitlen)
+int a_qst_p(andns_pkt *ap,char *buf,int limitlen)
 {
-	size_t ret=0;
+	int ret=0;
         uint16_t s;
 	int limit;
 
@@ -342,11 +342,11 @@ size_t a_qst_p(andns_pkt *ap,char *buf,size_t limitlen)
 	}
 	return ret;
 }
-size_t a_answ_p(andns_pkt *ap,andns_pkt_data *apd,char *buf,size_t limitlen)
+int a_answ_p(andns_pkt *ap,andns_pkt_data *apd,char *buf,int limitlen)
 {
         uint16_t s;
 	int limit;
-	size_t ret;
+	int ret;
 	
 	switch(ap->qtype) {
 		case AT_A:
@@ -376,11 +376,11 @@ size_t a_answ_p(andns_pkt *ap,andns_pkt_data *apd,char *buf,size_t limitlen)
 	}
 	return ret;
 }
-size_t a_answs_p(andns_pkt *ap,char *buf, size_t limitlen)
+int a_answs_p(andns_pkt *ap,char *buf, int limitlen)
 {
         andns_pkt_data *apd;
         int i;
-        size_t offset=0,res;
+        int offset=0,res;
 
         apd=ap->pkt_answ;
         for (i=0;i<ap->ancount && apd;i++) {
@@ -393,9 +393,9 @@ size_t a_answs_p(andns_pkt *ap,char *buf, size_t limitlen)
         }
         return offset;
 }
-size_t a_p(andns_pkt *ap, char *buf)
+int a_p(andns_pkt *ap, char *buf)
 {
-        size_t offset,res;
+        int offset,res;
 
         memset(buf,0,ANDNS_MAX_SZ);
 

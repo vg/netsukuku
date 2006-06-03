@@ -151,7 +151,9 @@ typedef struct dns_pkt
 #define DP_ADD_AUTH(dp)         dns_add_a(&((dp)->pkt_auth));DP_NSCOUNT(dp)+=1;	
 #define DP_ADD_ADD(dp)          dns_add_a(&((dp)->pkt_add));DP_ARCOUNT(dp)+=1;	
 
-size_t getlblptr(char *buf);
+
+	/* Functions */
+int getlblptr(char *buf);
 int read_label_octet(const char *src,char *dst,int limit);
 int lbltoname(char *buf,char *start_pkt,char *dst,int limit);
 int swap_straddr(char *src,char *dst);
@@ -160,19 +162,19 @@ int rm_inv_prefix(char *src,char *dst) ;
 int add_inv_prefix(char *s,int family);
 int swapped_straddr(char *src,char *dst) ;
 int swapped_straddr_pref(char *src,char *dst,int family);
-size_t nametolbl(char *name,char *dst);
-size_t d_hdr_u(char *buf,dns_pkt_hdr *dph);
-size_t d_qst_u(char *start_buf,char *buf,dns_pkt *dp,int limit_len);
-size_t d_qsts_u(char *start_buf,char *buf,dns_pkt *dp,int limit_len);
-size_t d_a_u(char *start_buf,char *buf,dns_pkt_a **dpa_orig,int limit_len);
-size_t d_as_u(char *start_buf,char *buf,dns_pkt_a **dpa,int limit_len,int count);
-size_t d_u(char *buf,size_t pktlen,dns_pkt **dpp);
-size_t d_hdr_p(dns_pkt *dp,char *buf);
-size_t d_qst_p(dns_pkt_qst *dpq,char *buf, int limitlen);
-size_t d_qsts_p(dns_pkt *dp,char *buf,int limitlen);
-size_t d_a_p(dns_pkt_a *dpa,char *buf,int limitlen);
-size_t d_as_p(dns_pkt_a *dpa,char *buf,int limitlen,int count);
-size_t d_p(dns_pkt *dp,char *buf);
+int nametolbl(char *name,char *dst);
+int d_hdr_u(char *buf,dns_pkt_hdr *dph);
+int d_qst_u(char *start_buf,char *buf,dns_pkt *dp,int limit_len);
+int d_qsts_u(char *start_buf,char *buf,dns_pkt *dp,int limit_len);
+int d_a_u(char *start_buf,char *buf,dns_pkt_a **dpa_orig,int limit_len);
+int d_as_u(char *start_buf,char *buf,dns_pkt_a **dpa,int limit_len,int count);
+int d_u(char *buf,int pktlen,dns_pkt **dpp);
+int d_hdr_p(dns_pkt *dp,char *buf);
+int d_qst_p(dns_pkt_qst *dpq,char *buf, int limitlen);
+int d_qsts_p(dns_pkt *dp,char *buf,int limitlen);
+int d_a_p(dns_pkt_a *dpa,char *buf,int limitlen);
+int d_as_p(dns_pkt_a *dpa,char *buf,int limitlen,int count);
+int d_p(dns_pkt *dp,char *buf);
 dns_pkt* create_dns_pkt(void);
 dns_pkt_qst* create_dns_pkt_qst(void);
 dns_pkt_a* create_dns_pkt_a(void);
@@ -181,6 +183,7 @@ void dns_del_last_qst(dns_pkt *dp);
 dns_pkt_a* dns_add_a(dns_pkt_a **dpa);
 void dns_a_default_fill(dns_pkt *dp,dns_pkt_a *dpa);
 void destroy_dns_pkt(dns_pkt *dp);
+
 
 #endif /* DNSLIB_H */
 

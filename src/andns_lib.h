@@ -105,17 +105,17 @@ typedef struct andns_pkt
 #define ANDNS_IPV6		1
 
 int andns_compress(char *src,int srclen);
-char* andns_uncompress(char *src,int srclen,int *dstlen);
-size_t a_hdr_u(char *buf,andns_pkt *ap);
-size_t a_qst_u(char *buf,andns_pkt *ap,int limitlen);
-size_t a_answ_u(char *buf,andns_pkt *ap,int limitlen);
-size_t a_answs_u(char *buf,andns_pkt *ap,int limitlen);
-size_t a_u(char *buf,size_t pktlen,andns_pkt **app);
-size_t a_hdr_p(andns_pkt *ap,char *buf);
-size_t a_qst_p(andns_pkt *ap,char *buf,size_t limitlen);
-size_t a_answ_p(andns_pkt *ap,andns_pkt_data *apd,char *buf,size_t limitlen);
-size_t a_answs_p(andns_pkt *ap,char *buf, size_t limitlen);
-size_t a_p(andns_pkt *ap, char *buf);
+char* andns_uncompress(char *src,int srclen,int *dstlen) ;
+int a_hdr_u(char *buf,andns_pkt *ap);
+int a_qst_u(char *buf,andns_pkt *ap,int limitlen);
+int a_answ_u(char *buf,andns_pkt *ap,int limitlen);
+int a_answs_u(char *buf,andns_pkt *ap,int limitlen);
+int a_u(char *buf,int pktlen,andns_pkt **app);
+int a_hdr_p(andns_pkt *ap,char *buf);
+int a_qst_p(andns_pkt *ap,char *buf,int limitlen);
+int a_answ_p(andns_pkt *ap,andns_pkt_data *apd,char *buf,int limitlen);
+int a_answs_p(andns_pkt *ap,char *buf, int limitlen);
+int a_p(andns_pkt *ap, char *buf);
 andns_pkt* create_andns_pkt(void);
 andns_pkt_data* create_andns_pkt_data(void);
 andns_pkt_data* andns_add_answ(andns_pkt *ap);
