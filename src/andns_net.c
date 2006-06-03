@@ -71,10 +71,8 @@ int w_connect(struct addrinfo *ai,int die)
 	int sk,res;
 	sk=w_socket(ai->ai_family,ai->ai_socktype,ai->ai_protocol,die);
 	res=connect(sk,ai->ai_addr,ai->ai_addrlen);
-	if (!res) {
-		debug(DBG_INSANE,"Connection established.");
+	if (!res) 
 		return sk;
-	}
 	if (die)
 		fatal("Unable to connect: %s.", strerror(errno));
 	debug(DBG_NORMAL,"w_connect: %s.",strerror(errno));
