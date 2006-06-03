@@ -26,6 +26,8 @@
 	- A web interface to configure the /etc/netsukuku/netsukuku.conf file
 	  and to use the rc.ntk script.
 
+- Gcc4. Develop compatible code
+
 
 *
 **
