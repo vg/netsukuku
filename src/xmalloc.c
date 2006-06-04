@@ -34,6 +34,7 @@
 #include "xmalloc.h"
 #include "log.h"
 
+#ifndef USE_DMALLOC
 
 void *xmalloc(size_t size)
 {
@@ -100,3 +101,5 @@ char *xstrdup(const char *str)
 {
 	return xstrndup(str, 0);
 }
+
+#endif /*USE_DMALLOC*/

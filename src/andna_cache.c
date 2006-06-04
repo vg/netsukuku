@@ -2152,7 +2152,9 @@ finish:
 }
 
 /*
- * del_resolv_conf: restores the old `file' modified by add_resolv_conf() by 
+ * del_resolv_conf
+ * 
+ * restores the old `file' modified by add_resolv_conf() by 
  * copying `file'.bak over `file'. If the `hname' string is present in
  * `file'.bak it won't be written in `file'.
  * On error it returns -1.
@@ -2188,7 +2190,7 @@ int del_resolv_conf(char *hname, char *file)
 	}
 	
 	buf=xmalloc(buf_sz);
-	*buf=0;
+	setzero(buf, buf_sz);
 	while(fgets(tmp_buf, 128, fin)) {
 		/* Skip the line which is equal to `hname' */
 		if(!strncmp(tmp_buf, hname, strlen(hname)))

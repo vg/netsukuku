@@ -1398,7 +1398,7 @@ snsd_service *andna_resolve_hash(u_int hname_hash[MAX_IP_INT], int service,
 	if(rhc->service)
 		snsd_service_llist_del(&rhc->service);
 	rhc->snsd_counter=snsd_counter;
-	rhc->service=snsd_unpacked;
+	rhc->service=list_copy_all(snsd_unpacked);
 	
 finish:
 	pkt_free(&pkt, 1);

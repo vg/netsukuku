@@ -71,6 +71,8 @@ env = Environment(options = opts, ENV = os.environ, CCFLAGS = ' -Wall')
 if ("yes" in env['debug']) or ("1" in env['debug']):
 	debug = 1
 	env.Append(CPPDEFINES={'DEBUG' : '${debug}'}, CCFLAGS = ' -ggdb -Wall', CXXFLAGS = '-g')
+#CCFLAGS = ' -ggdb -Wall -DDMALLOC_FUNC_CHECK'
+#	libs+=['dmalloc', 'dmallocth']
 	os.system("echo Cscoping and ctagging...; cscope -b; ctags *")
 else:
 	debug  = 0

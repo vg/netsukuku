@@ -394,14 +394,19 @@ do{									\
  * list_for_del is the same as list_for but it takes a second parameter, which
  * is a list pointer. This pointer will be used to store, before executing the
  * code inside the for, the list->next pointer.
- * So this is a safe for.
+ * So this is a safe for. Example:
+ *
+ * 	l_list *ptr;
+ * 	list_safe_for(list, ptr) {
+ * 		... do stuff ...
+ * 	}
  *
  * WARNING: do not use expressions in the arguments, (see the warning above
  * for the normal list_for)
  */
-#define list_safe_for(i, next)						\
-for((i) ? (next)=(typeof (i))(i)->next : 0; (i); 			\
-		(i)=(next), (i) ? (next)=(typeof (i))(i)->next : 0)
+#define list_safe_for(_ii, _next_ptr)					\
+for((_ii) ? (_next_ptr)=(typeof (_ii))(_ii)->next : 0; (_ii);		\
+    (_ii)=(_next_ptr), (_ii) ? (_next_ptr)=(typeof (_ii))(_ii)->next : 0)
 
 
 /* 
@@ -448,14 +453,10 @@ for((i) ? (next)=(typeof (i))(i)->next : 0; (i); 			\
  */
 #define list_destroy(list)						\
 do{ 									\
-	l_list *_xd=(l_list *)(list), *_id, *nextd;			\
+	l_list *_xd=(l_list *)(list), *_id, *_nextd;			\
 	_id=_xd;							\
-	if(_id)								\
-		nextd=_id->next;					\
-	for(; _id; _id=nextd) {						\
-		nextd=_id->next; 					\
-		list_del(_xd, _id);					\
-	}								\
+	list_safe_for(_id, _nextd)					\
+		_xd=list_del(_xd, _id);					\
 	(list)=0;							\
 }while(0)
 

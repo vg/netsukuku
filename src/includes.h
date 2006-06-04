@@ -68,6 +68,7 @@
 #warning the DEBUG code is being built!
 #include <execinfo.h>
 #define ANDNA_DEBUG
+#undef USE_DMALLOC
 #endif
 
 #endif /*INCLUDES_H*/

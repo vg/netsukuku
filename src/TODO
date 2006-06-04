@@ -7,7 +7,12 @@
 * (generally these TODOs are already being implemented at the moment)
 
 - bugs 
-	- andna.c:2107
+	- andna.c:2107, andna.c:1548
+	  pc1 registers hostnames in pc2, resolve one snsd service
+	  pc2 crashes, at andna.c:1548, restart pc2, pc1 crashes at 2107. 
+
+	- andna.c:1399
+	  resolve twice an hostname
 
 - update the dependencies list: 
 	- depends on iptables

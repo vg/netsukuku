@@ -16,6 +16,15 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#ifndef XMALLOC_H
+#define XMALLOC_H
+
+#ifdef USE_DMALLOC
+
+#include "dmalloc.h"
+
+#else
+
 /* xmalloc.h: Shamelessly ripped from openssh:
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -32,3 +41,7 @@ void 	*xcalloc(size_t nmemb, size_t size);
 void     xfree(void *);
 char 	*xstrndup(const char *str, size_t n);
 char	*xstrdup(const char *);
+
+#endif
+
+#endif /*XMALLOC_H*/
