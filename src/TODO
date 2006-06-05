@@ -44,7 +44,9 @@
   the kernel.
 
 - bandwidth measurement
-	- do not delete an inet-gw if there still bw passing on it.
+	- do not delete an inet-gw if there's still bw passing on it.
+
+- Viphilama: http://lab.dyne.org/Ntk_viphilama
 
 - Bandwidth weight for each entry of the qspn (not just rtt and latency):
 	- what to use to get the bandwidth of a network interface?
@@ -52,25 +54,8 @@
 	  iptables the link and calculate the used bw.
 	- See http://lab.dyne.org/Ntk_bandwidth_measurement
 	  
-- Compressed maps: save the files in compressed formats
-
 - Sharing willingness: http://lab.dyne.org/Ntk_IGS
 
-- Viphilama: http://lab.dyne.org/Ntk_viphilama
-
-- Port the kernel route code for *BSD: take a look at rt_ioctl.c and
-  rt_socket.c of quagga.
-
-- API for the syncronization of the maps the daemon. A third party program,
-  might want to have always the latest maps. 
-
-- Write the documentation for the code that can be used by other
-  programs. (By the way it is already commented.)
-
-- xmalloc.c: Implement a "wrapper heap". We do a big malloc() at the start and
-	     then we manage personally it, in this way we avoid the huge
-	     overhead of malloc.
-	     
 - pkts.c: input_buffer, output_buffer for all the connections: we use them as
 	  queue for the incoming and outcoming packets.
 	  
@@ -103,6 +88,31 @@
 
 - SNSD
 	- pubkey: automatic deletion request
+
+- A firewall script to turn a ntk node into a routing only node.
+
+
+	              other ntk nodes
+		             |
+			     |
+			     |
+			 _________
+			|    N    |
+    Internet ---------- | WRT ntk | - - w i f i - - - Ntk node A
+			|_________|             \
+			     |                   \
+			     |                    \ Ntk node B
+			   L A N
+			    
+  If N is set to a routing only node, then the nodes A and B will always be
+  able to reach the Internet and the "other ntk nodes" through it, but they 
+  will not be able to reach the LAN connected to the node N.
+  Optionally the node N can leave some "backdoor" ports opened, f.e. it might
+  want to leave a ssh login which accepts keys authentication only.
+
+  The port used by Netsukuku will be leaved open too, in this way the nodes
+  can still communicate between them.
+
 
 *
 **
@@ -153,4 +163,19 @@
 
 - Test request.c
 
+- Port the kernel route code for *BSD: take a look at rt_ioctl.c and
+  rt_socket.c of quagga.
+
 - use PREFIX in the man pages
+
+- xmalloc.c: Implement a "wrapper heap". We do a big malloc() at the start and
+	     then we manage personally it, in this way we avoid the huge
+	     overhead of malloc.
+
+- Compressed maps: save the files in compressed formats
+
+- API for the syncronization of the maps the daemon. A third party program,
+  might want to have always the latest maps. 
+
+- Write the documentation for the code that can be used by other
+  programs. (By the way it is already commented.)
