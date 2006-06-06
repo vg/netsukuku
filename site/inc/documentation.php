@@ -52,7 +52,8 @@
 				if ($file_info != NULL) {
 					$parse_cmd = 'cat '. '2html/documentation/' . $_GET['dir'];
 					$parse_cmd.= '.list' . '| ./inc/parse_lang.sh ' . $line . ' ' . $_GET['dir'];
-					$tpl_lang = system($parse_cmd);
+					//$tpl_lang = system($parse_cmd);
+					$tpl_lang = exec($parse_cmd);
 
 					$info_line = fgets($file_info);
 					$tpl_page .= ' ' . $tpl_lang . ' --> ' . $info_line;
