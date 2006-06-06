@@ -503,7 +503,7 @@ do{ 									\
  * It returns the head to the replicated llist.
  * The `list' llist is not modified.
  */
-#define list_copy_all_yes(_p)	(1)
+#define list_copy_all_yes(_nil)	(1)
 #define list_copy_all(list)	list_copy_some((list), list_copy_all_yes)
  
 /*

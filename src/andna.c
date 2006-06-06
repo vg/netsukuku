@@ -860,7 +860,8 @@ int andna_recv_reg_rq(PACKET rpkt)
 	}
 
 	/***
-	 * Finally, let's register/update the hname */
+	 * Finally, let's register/update the hname 
+	 */
 	cur_t=time(0);	
 	ac=andna_cache_addhash(req->hash);
 	acq=ac_queue_add(ac, req->pubkey);
@@ -872,6 +873,35 @@ int andna_recv_reg_rq(PACKET rpkt)
 		ERROR_FINISH(ret, -1, finish);
 	}
 	/***/
+
+	/**
+	 * Check if the counter of number of updates matches with the pkt */
+	if(acq->hname_updates > req->hname_updates) {
+		debug(DBG_SOFT, "Registration rq 0x%x rejected: hname_updates"
+				" mismatch %d > %d", rpkt.hdr.id, 
+				acq->hname_updates, req->hname_updates);
+		if(!forwarded_pkt)
+			ret=pkt_err(pkt, E_INVALID_REQUEST, 0);
+		ERROR_FINISH(ret, -1, finish);
+	}
+	/**/
+
+	/**
+	 * Has the registration request been sent too early ? */
+	if(cur_t > acq->timestamp && 
+			(cur_t - acq->timestamp) < ANDNA_MIN_UPDATE_TIME) {
+		debug(DBG_SOFT, "Registration rq 0x%x rejected: %s", 
+			rpkt.hdr.id, rq_strerror(E_ANDNA_UPDATE_TOO_EARLY));
+		if(!forwarded_pkt)
+			ret=pkt_err(pkt, E_ANDNA_UPDATE_TOO_EARLY, 0);
+		ERROR_FINISH(ret, -1, finish);
+	}
+	/**/
+
+
+	/*
+	 * SNSD services registration
+	 */
 
 	if(acq != ac->acq) {
 		/* 
@@ -924,36 +954,22 @@ int andna_recv_reg_rq(PACKET rpkt)
 			snd->flags|=SNSD_NODE_MAIN_IP;
 			/**/
 		
-			/* substitute the old snsd records with the new ones */
-			snsd_service_llist_del(&acq->service);
-			acq->service=snsd_unpacked;
 		}
 	}
 
-	/* Check if the counter of number of updates matches with the pkt */
-	if(acq->hname_updates > req->hname_updates) {
-		debug(DBG_SOFT, "Registration rq 0x%x rejected: hname_updates"
-				" mismatch %d > %d", rpkt.hdr.id, 
-				acq->hname_updates, req->hname_updates);
-		if(!forwarded_pkt)
-			ret=pkt_err(pkt, E_INVALID_REQUEST, 0);
-		ERROR_FINISH(ret, -1, finish);
-	} else {
-		acq->hname_updates=req->hname_updates+1;
-		acq->timestamp=cur_t;
-	}
+	/*
+	 * substitute the old snsd records with the new ones 
+	 */
+	snsd_service_llist_del(&acq->service);
+	acq->service=snsd_unpacked;
+	acq->snsd_counter=snsd_counter;
 
-	/* Has the registration request been sent too early ? */
-	if(cur_t > acq->timestamp && 
-			(cur_t - acq->timestamp) < ANDNA_MIN_UPDATE_TIME) {
-		debug(DBG_SOFT, "Registration rq 0x%x rejected: %s", 
-			rpkt.hdr.id, rq_strerror(E_ANDNA_UPDATE_TOO_EARLY));
-		if(!forwarded_pkt)
-			ret=pkt_err(pkt, E_ANDNA_UPDATE_TOO_EARLY, 0);
-		ERROR_FINISH(ret, -1, finish);
-	}
+	/* 
+	 * Final registration step: touch the hname timestamp
+	 */
+	acq->hname_updates=req->hname_updates+1;
+	acq->timestamp=cur_t;
 
-	
 	/* Reply to the requester: <<Yes, don't worry, it worked.>> */
 	if(!forwarded_pkt) {
 		debug(DBG_SOFT, "Registration rq 0x%x accepted.", rpkt.hdr.id);
@@ -1320,7 +1336,7 @@ snsd_service *andna_resolve_hash(u_int hname_hash[MAX_IP_INT], int service,
 
 	const char *ntop;
 	char *snsd_packed;
-	u_short snsd_counter;
+	u_short snsd_counter=0;
 	size_t packed_sz, unpacked_sz;
 	ssize_t err;
 

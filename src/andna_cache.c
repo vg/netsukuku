@@ -1060,9 +1060,9 @@ unpack_acq_llist(char *pack, size_t pack_sz, size_t *unpacked_sz,
 							&snsd_counter);
 		if(acq->snsd_counter != snsd_counter) {
 			debug(DBG_SOFT, ERROR_MSG "unpack_acq:" 
-					"snsd_counter (%d) != snsd_counter (%d)",
-					acq->snsd_counter, snsd_counter,
-					ERROR_POS);
+					"snsd_counter (%h) != snsd_counter (%h)",
+					ERROR_POS, acq->snsd_counter, 
+					snsd_counter);
 			xfree(acq);
 			list_destroy(ac->acq);
 			return 0;
