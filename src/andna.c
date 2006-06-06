@@ -711,7 +711,9 @@ finish:
 }
 
 /* 
- * andna_recv_reg_rq: It takes care of a registration request. If we aren't
+ * andna_recv_reg_rq
+ *
+ * It takes care of a registration request. If we aren't
  * the rightful hash_gnode, we forward the request (again), otherwise the
  * request is examined. If it is valid the hostname is registered or updated
  * in the andna_cache.
@@ -740,7 +742,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 	pkt_copy(&rpkt_local_copy, &rpkt);
 
 	req=(struct andna_reg_pkt *)rpkt_local_copy.msg;
-	if(rpkt.hdr.sz <= ANDNA_REG_PKT_SZ || 
+	if(rpkt.hdr.sz < ANDNA_REG_PKT_SZ || 
 			rpkt.hdr.sz > SNSD_SERVICE_MAX_LLIST_PACK_SZ)
 		ERROR_FINISH(ret, -1, finish);
 	
@@ -884,7 +886,9 @@ int andna_recv_reg_rq(PACKET rpkt)
 		snsd_unpacked=snsd_unpack_all_service(snsd_pack, packed_sz, 
 				&unpacked_sz, &snsd_counter);
 		
-		if(!snsd_unpacked || snsd_counter > SNSD_MAX_RECORDS) {
+		if((!snsd_unpacked && req->flags & ANDNA_PKT_SNSD_DEL) ||
+			(snsd_counter > SNSD_MAX_RECORDS-1)) {
+
 			debug(DBG_SOFT, "Registration rq 0x%x rejected: couldn't unpack"
 					" the snsd llist", rpkt.hdr.id);
 			if(!forwarded_pkt)
@@ -931,8 +935,10 @@ int andna_recv_reg_rq(PACKET rpkt)
 		if(!forwarded_pkt)
 			ret=pkt_err(pkt, E_INVALID_REQUEST, 0);
 		ERROR_FINISH(ret, -1, finish);
-	} else
+	} else {
 		acq->hname_updates=req->hname_updates+1;
+		acq->timestamp=cur_t;
+	}
 
 	/* Has the registration request been sent too early ? */
 	if(cur_t > acq->timestamp && 
@@ -1171,8 +1177,11 @@ int andna_recv_check_counter(PACKET rpkt)
 		if(!forwarded_pkt)
 			ret=pkt_err(pkt, E_INVALID_REQUEST, 0);
 		ERROR_FINISH(ret, -1, finish);
-	} else if(!just_check)
+	} else if(!just_check) {
+		/* Touch the hname */
 		cch->hname_updates=req->hname_updates+1;
+		cch->timestamp=time(0);
+	}
 		
 	/* Report the successful result to rfrom */
 	if(!forwarded_pkt || just_check) {
@@ -1230,7 +1239,9 @@ snsd_service *andna_resolve_hash_locally(u_int hname_hash[MAX_IP_INT], int servi
 	setzero(&req, sizeof(req));
 	
 	hash = fnv_32_buf(hname_hash, ANDNA_HASH_SZ, FNV1_32_INIT);
-	
+
+#ifndef ANDNA_DEBUG
+
 	/*
 	 * Search the hostname in the local cache first. Maybe we are so
 	 * dumb that we are trying to resolve the same ip we registered.
@@ -1249,6 +1260,8 @@ snsd_service *andna_resolve_hash_locally(u_int hname_hash[MAX_IP_INT], int servi
 		return ret;
 	}
 	
+#endif
+
 	/*
 	 * Last try before asking to ANDNA: let's see if we have it in
 	 * the resolved_hnames cache

@@ -211,16 +211,15 @@ andna_cache_queue *ac_queue_findpubk(andna_cache *ac, char *pubk)
  * The elements in the new `ac'->acq are updated.
  * If an `ac'->acq struct with an `ac'->acq->pubkey equal to `pubkey' already
  * exists, then only the timestamp and the IP will be updated.
+ *
  * It returns the pointer to the acq struct. If it isn't possible to add a new
  * entry in the queue, 0 will be returned.
+ *
+ * Remember to update the acq->timestamp value after this call.
  */
 andna_cache_queue *ac_queue_add(andna_cache *ac, char *pubkey)
 {
 	andna_cache_queue *acq;
-	time_t cur_t;
-	int update=0;
-	
-	cur_t=time(0);
 
 	/* 
 	 * This call is not necessary because it's already done by
@@ -237,22 +236,11 @@ andna_cache_queue *ac_queue_add(andna_cache *ac, char *pubkey)
 		
 		memcpy(acq->pubkey, pubkey, ANDNA_PKEY_LEN);
 		clist_append(&ac->acq, 0, &ac->queue_counter, acq);
-	} else
-		update=1;
+	} 
 
 	
 	if(ac->queue_counter >= ANDNA_MAX_QUEUE)
 		ac->flags|=ANDNA_FULL;
-
-	if(update && cur_t > acq->timestamp && 
-			(cur_t - acq->timestamp) < ANDNA_MIN_UPDATE_TIME) {
-		/* 
-		 * The request to update the hname was sent too early. 
-		 * Ignore it.
-		 */
-		do_nothing();
-	} else
-		acq->timestamp=cur_t;
 
 	return acq;
 }
@@ -402,6 +390,9 @@ void andna_cache_destroy(void)
  *  
  */
 
+/*
+ * Remeber to update the cch->timestamp value after this call.
+ */
 counter_c_hashes *cc_hashes_add(counter_c *cc, int hash[MAX_IP_INT])
 {
 	counter_c_hashes *cch;
@@ -421,8 +412,6 @@ counter_c_hashes *cc_hashes_add(counter_c *cc, int hash[MAX_IP_INT])
 
 		clist_add(&cc->cch, &cc->hashes, cch);
 	}
-	
-	cch->timestamp=time(0);
 	
 	if(cc->hashes >= ANDNA_MAX_HOSTNAMES)
 		cc->flags|=ANDNA_FULL;
