@@ -368,7 +368,9 @@ void andna_cache_del_expired(void)
 }
 
 /*
- * andna_cache_destroy: destroys the andna_c llist 
+ * andna_cache_destroy
+ *
+ * destroys the andna_c llist 
  */
 void andna_cache_destroy(void)
 {

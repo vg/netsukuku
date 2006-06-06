@@ -474,6 +474,8 @@ void init_internet_gateway_search(void)
 
 void close_internet_gateway_search(void)
 {
+	int i;
+
         if(!restricted_mode || (!server_opt.use_shared_inet && 
 				!server_opt.share_internet))
 		return;
@@ -490,9 +492,7 @@ void close_internet_gateway_search(void)
 	/* Delete all the added rules */
 	reset_igw_rules();
 
-	/*
-	 * Destroy the netfilter rules
-	 */
+	/* Destroy the netfilter rules */
 	mark_close();
 
 	/* Delete all the tunnels */
@@ -500,6 +500,14 @@ void close_internet_gateway_search(void)
 
 	free_igws(me.igws, me.igws_counter, me.cur_quadg.levels);
 	free_my_igws(&me.my_igws);
+
+	/* Free what has been malloced */
+	if(server_opt.inet_hosts) {
+		for(i=0; server_opt.inet_hosts[i] && 
+				i < server_opt.inet_hosts_counter; i++)
+			xfree(server_opt.inet_hosts[i]);
+		xfree(server_opt.inet_hosts);
+	}
 }
 
 /*

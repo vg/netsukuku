@@ -33,6 +33,10 @@ stop() {
   	kill $pids
 }
 
+clean_cache_files() {
+	rm -fv /usr/share/netsukuku/{*cache*,*map*}
+}
+
 case "$1" in
   start)
   	shift
@@ -55,6 +59,10 @@ case "$1" in
   	echo Reloading '"'andna_hostnames'"' and trying to register the new hostnames
 	killall -SIGHUP ntkd
     ;;
+  cclean)
+	echo "Cleaning the cache and map files from /usr/share/netsukuku"
+  	clean_cache_files
+    ;;
   help)
     cat <<HELP
   start -- starts the ntkd daemon with the options specified on the
@@ -64,6 +72,8 @@ restart -- stops the daemon and then starts it with the options specified on
 	   the command line
   flush -- flushes the cache of resolved hostnames
  reload -- sends ntkd HUP making it reread the "andna_hostnames" file
+ cclean -- clean cache and map files from /usr/share/netsukuku.
+ 	   It is equivalent to:	rm -fv /usr/share/netsukuku/{*cache*,*map*}
 HELP
     ;;
   *)

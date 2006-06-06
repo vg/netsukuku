@@ -4,7 +4,7 @@ ntkd - Netsukuku protocol daemon
 
 =head1 SYNOPSIS
 
-ntkd [-hvadrD46] [-i net_interface] [-c conf_file]
+ntkd [-hvaldrD46] [-i net_interface] [-c conf_file] [-l logfile]
 
 =head1 DESCRIPTION
 
@@ -122,6 +122,15 @@ daemonizing itself. The daemon will run on foreground instead.
 Specifies the name of the configuration file. The
 default is /etc/netsukuku/netsukuku.conf. B<ntkd> will not start
 without a configuration file.
+
+=back
+
+=over
+
+=item B<-l> I<logfile>, B<--logfile> I<logfile>
+
+Specifies that B<ntkd> should send all of its messages to the specified file.
+The I<logfile> will be overwritten.
 
 =back
 

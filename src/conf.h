@@ -113,6 +113,7 @@ const static char config_str[][30]=
 	{ 0 },
 };
 
+void clear_config_env(void);
 int load_config_file(char *file);
 
 #endif /*CONF_H*/

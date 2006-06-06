@@ -85,6 +85,8 @@ do {									\
 
 /* functions declaration */
 void log_init(char *, int, int );
+int log_to_file(char *filename);
+void close_log_file(void);
 
 void fatal(const char *, ...) __attribute__ ((noreturn));
 void error(const char *, ...);

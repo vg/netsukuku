@@ -25,10 +25,16 @@ New features:
 
 	* Static binaries + packages
 
+	* -l logfile
+
 	
 Bug fixes:
 
 	* The outgoing traffic to a node of the LAN is not shaped anymore.
+
+	* hname_updates mismatch 
+
+	* memory leaks
 
 ==== 0.0.7b ====
 

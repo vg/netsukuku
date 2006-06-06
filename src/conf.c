@@ -18,7 +18,7 @@
  * --
  * conf.c:
  * Configuration file loader and parser. All the accepted option. which are
- * listed in conf.h, are put in the enviroment for later retrievement.
+ * listed in conf.h, are put in the environment for later retrievement.
  */
 
 #include "includes.h"
@@ -28,11 +28,24 @@
 #include "xmalloc.h"
 #include "conf.h"
 
+/*
+ * clear_config_env
+ *
+ * do not make the environment dirty
+ */
+void clear_config_env(void)
+{
+	int i;
+
+	for(i=0; config_str[i][0]; i++)
+		if(getenv(config_str[i]))
+			unsetenv(config_str[i]);
+}
 
 /*
  * parse_config_line: it reads the `line' string and sees if it has a valid
- * option assignement that is in the form of "option = value".
- * On success it stores the option name with its value in the enviroment.
+ * option assignment that is in the form of "option = value".
+ * On success it stores the option name with its value in the environment.
  * On failure fatal() is called, so it will never return ;)
  * `file' and `pos' are used by fatal() to tell where the corrupted `line' was.
  */
@@ -66,7 +79,7 @@ void parse_config_line(char *file, int pos, char *line)
 
 /*
  * load_config_file: loads from `file' all the options that are written in it
- * and stores them in the enviroment. See parse_config_line() above.
+ * and stores them in the environment. See parse_config_line() above.
  * If `file' cannot be opened -1 is returned, but if it is read and
  * parse_config_line() detects a corrupted line, fatal() is directly called.
  * On success 0 is returned.
@@ -117,6 +130,8 @@ int load_config_file(char *file)
 			i++;
 		}
 	}
+
+	fclose(fd);
 
 	return 0;
 }

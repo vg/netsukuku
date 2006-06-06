@@ -72,7 +72,13 @@ How to install it:
 
 #- Install additional modules
 	
-	#install the ipip.o module /* TODO */
+	#install the ipip module
+	wget http://www.linuxops.net/ipkg/kmod-ipip_2.4.20_mipsel.ipk
+	ipkg install kmod-ipip_2.4.20_mipsel.ipk
+	mv /lib/modules/2.4.20/kernel/net/ipv4/ipip.o  /lib/modules/2.4.30/
+	echo ipip > /etc/modules.d/20-ipip
+	rm kmod-ipip_2.4.20_mipsel.ipk
+	insmod ipip
 	
 	ipkg install ip
 	ipkg install wl

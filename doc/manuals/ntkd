@@ -2,7 +2,7 @@ NAME
     ntkd - Netsukuku protocol daemon
 
 SYNOPSIS
-    ntkd [-hvadrD46] [-i net_interface] [-c conf_file]
+    ntkd [-hvaldrD46] [-i net_interface] [-c conf_file] [-l logfile]
 
 DESCRIPTION
     Netsukuku is a mesh network or a P2P net system that generates and
@@ -72,6 +72,10 @@ OPTIONS
         Specifies the name of the configuration file. The default is
         /etc/netsukuku/netsukuku.conf. ntkd will not start without a
         configuration file.
+
+    -l *logfile*, --logfile *logfile*
+        Specifies that ntkd should send all of its messages to the specified
+        file. The *logfile* will be overwritten.
 
     -d, --debug
         With this option the daemon will run with displaying its debug
@@ -169,18 +173,25 @@ KERNEL DEPENDENCIES
             CONFIG_NET_IPIP=y
             CONFIG_NETFILTER=y
 
+    and these from linux-2.6.16.19.
+
+            #
+            # Core Netfilter Configuration
+            #
+
+            CONFIG_NETFILTER_XT_MATCH_CONNTRACK=y
+            NETFILTER_XT_TARGET_CONNMARK=y
+
             #
             # IP: Netfilter Configuration
             #
-            CONFIG_IP_NF_CONNTRACK=y
-            CONFIG_IP_NF_FTP=y
+
             CONFIG_IP_NF_IPTABLES=y
             CONFIG_IP_NF_FILTER=y
             CONFIG_IP_NF_TARGET_REJECT=y
             CONFIG_IP_NF_NAT=y
             CONFIG_IP_NF_NAT_NEEDED=y
             CONFIG_IP_NF_TARGET_MASQUERADE=y
-            CONFIG_IP_NF_NAT_FTP=y
 
     If you are using modules you have to load them before launching the
     daemon.

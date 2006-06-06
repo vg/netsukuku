@@ -211,10 +211,13 @@ void andna_init(void)
 void andna_close(void)
 {
 	andna_save_caches();
-	lcl_destroy_keyring(&lcl_keyring);
 	if(!server_opt.disable_resolvconf)
 		andna_resolvconf_restore();
 	andns_close();
+	lcl_destroy_keyring(&lcl_keyring);
+	andna_cache_destroy();
+	counter_c_destroy();
+	rh_cache_flush();
 }
 
 

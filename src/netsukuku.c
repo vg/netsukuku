@@ -155,7 +155,7 @@ int ntk_free_maps(void)
 void usage(void)
 {
 	printf("Usage:\n"
-		"     ntkd [-hvadrRD46] [-i net_interface] [-c conf_file]\n\n"
+		"     ntkd [-hvaldrRD46] [-i net_interface] [-c conf_file] [-l logfile]\n\n"
 		" -4	ipv4\n"
 		" -6	ipv6\n"
 		" -i	interface\n\n"
@@ -167,6 +167,7 @@ void usage(void)
 		" -m	share your internet connection\n"
 		"\n"
 		" -c	configuration file\n"
+		" -l	log to file\n"
 		"\n"
 		" -d	debug (more d, more info)\n"
 		" -h	this help\n"
@@ -273,6 +274,9 @@ void fill_loaded_cfg_options(void)
 	CONF_GET_INT_VALUE ( CONF_USE_SHARED_INET, server_opt.use_shared_inet );
 	CONF_GET_STRN_VALUE ( CONF_NTK_IP_MASQ_SCRIPT, &server_opt.ip_masq_script, NAME_MAX-1 );
 	CONF_GET_STRN_VALUE ( CONF_NTK_TC_SHAPER_SCRIPT, &server_opt.tc_shaper_script, NAME_MAX-1 );
+
+	/* Clean the enviroment */
+	clear_config_env();
 }
 
 void free_server_opt(void)
@@ -331,6 +335,7 @@ void parse_options(int argc, char **argv)
 			{"ipv4", 	0, 0, '4'},
 
 			{"conf", 	1, 0, 'c'},
+			{"logfile",	1, 0, 'l'},
 
 			{"no_andna",	0, 0, 'a'},
 			{"no_daemon", 	0, 0, 'D'},
@@ -344,7 +349,7 @@ void parse_options(int argc, char **argv)
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long (argc, argv,"i:c:hvd64DRrIa", long_options, 
+		c = getopt_long (argc, argv,"i:c:l:hvd64DRrIa", long_options, 
 				&option_index);
 		if (c == -1)
 			break;
@@ -372,6 +377,10 @@ void parse_options(int argc, char **argv)
 				break;
 			case 'c': 
 				server_opt.config_file=xstrndup(optarg, NAME_MAX-1);
+				break;
+			case 'l':
+				if(log_to_file(optarg) < 0)
+					fatal(0);
 				break;
 			case 'i': 
 				if(server_opt.ifs_n+1 >= MAX_INTERFACES)
@@ -698,6 +707,7 @@ int main(int argc, char **argv)
 
 	/* reinit the logs using the new `dbg_lvl' value */
 	log_init(argv[0], server_opt.dbg_lvl, 1);
+	log_to_file(0);
 
 	/* Load the option from the config file */
 	load_config_file(server_opt.config_file);

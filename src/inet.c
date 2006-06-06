@@ -893,7 +893,9 @@ ssize_t inet_recv(int s, void *buf, size_t len, int flags)
 				break;
 
 			default:
-				error("inet_recv: Cannot recv(): %s", strerror(errno));
+				/* Probably connection was closed */
+				debug(DBG_NORMAL, "inet_recv: Cannot recv(): %s",
+						strerror(errno));
 				return err;
 				break;
 		}

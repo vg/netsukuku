@@ -713,9 +713,6 @@ snsd_service *snsd_unpack_service(char *pack, size_t pack_sz,
 	snsd_service *sns;
 	u_short tmp_counter=0, counter=0;
 
-	if(!pack)
-		return 0;
-
 	*nodes_counter=counter;
 	sns=xmalloc(sizeof(snsd_service));
 	setzero(sns, sizeof(snsd_service));

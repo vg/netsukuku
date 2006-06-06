@@ -709,7 +709,7 @@ int inet_rslv(dns_pkt *dp,char *msg,int msglen,char *answer)
 
 	if (qt==T_A || qt==T_MX) { /* snsd tcp resolution service */
 		service= (qt==T_A)?0:25;
-		proto  = SNSD_DEFAULT_PROTO;
+		proto  = (qt!=T_A);
 		//ss=andna_resolve_hname(temp,service,proto,&records);
 		ss=andna_resolve_hname(temp,service,proto,&records);
 		if (!ss) {

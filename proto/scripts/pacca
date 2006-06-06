@@ -82,6 +82,7 @@ cp -av missing INSTALL NEWS config.guess config.sub $packdir/
 
 # doc
 copy_cvs_entry $cur_dir/doc $packdir/doc
+cp -av $cur_dir/doc/README $packdir/doc/
 
 # src/ CVS entries
 copy_cvs_entry $cur_dir/src $packdir/src

@@ -129,12 +129,12 @@
 .\" ========================================================================
 .\"
 .IX Title "NetsukukuD 8"
-.TH NetsukukuD 8 "2006-06-03" "NetsukukuD 0.0.8b" ""
+.TH NetsukukuD 8 "2006-06-06" "NetsukukuD 0.0.8b" ""
 .SH "NAME"
 ntkd \- Netsukuku protocol daemon
 .SH "SYNOPSIS"
 .IX Header "SYNOPSIS"
-ntkd [\-hvadrD46] [\-i net_interface] [\-c conf_file]
+ntkd [\-hvaldrD46] [\-i net_interface] [\-c conf_file] [\-l logfile]
 .SH "DESCRIPTION"
 .IX Header "DESCRIPTION"
 Netsukuku is a mesh network or a P2P net system that generates and sustains
@@ -207,6 +207,10 @@ daemonizing itself. The daemon will run on foreground instead.
 Specifies the name of the configuration file. The
 default is /etc/netsukuku/netsukuku.conf. \fBntkd\fR will not start
 without a configuration file.
+.IP "\fB\-l\fR \fIlogfile\fR, \fB\-\-logfile\fR \fIlogfile\fR" 4
+.IX Item "-l logfile, --logfile logfile"
+Specifies that \fBntkd\fR should send all of its messages to the specified file.
+The \fIlogfile\fR will be overwritten.
 .IP "\fB\-d\fR, \fB\-\-debug\fR" 4
 .IX Item "-d, --debug"
 With this option the daemon will run with displaying its debug messages.
@@ -319,19 +323,32 @@ These options are taken from linux\-2.6.14.
 \&        CONFIG_NETFILTER=y
 .Ve
 .PP
-.Vb 12
+and these from linux\-2.6.16.19.
+.PP
+.Vb 3
+\&        #
+\&        # Core Netfilter Configuration
+\&        #
+.Ve
+.PP
+.Vb 2
+\&        CONFIG_NETFILTER_XT_MATCH_CONNTRACK=y
+\&        NETFILTER_XT_TARGET_CONNMARK=y
+.Ve
+.PP
+.Vb 3
 \&        #
 \&        # IP: Netfilter Configuration
 \&        #
-\&        CONFIG_IP_NF_CONNTRACK=y
-\&        CONFIG_IP_NF_FTP=y
+.Ve
+.PP
+.Vb 6
 \&        CONFIG_IP_NF_IPTABLES=y
 \&        CONFIG_IP_NF_FILTER=y
 \&        CONFIG_IP_NF_TARGET_REJECT=y
 \&        CONFIG_IP_NF_NAT=y
 \&        CONFIG_IP_NF_NAT_NEEDED=y
 \&        CONFIG_IP_NF_TARGET_MASQUERADE=y
-\&        CONFIG_IP_NF_NAT_FTP=y
 .Ve
 .PP
 If you are using modules you have to load them before launching the daemon.
