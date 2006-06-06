@@ -474,6 +474,10 @@ void init_internet_gateway_search(void)
 
 void close_internet_gateway_search(void)
 {
+        if(!restricted_mode || (!server_opt.use_shared_inet && 
+				!server_opt.share_internet))
+		return;
+
 	/* Flush the MASQUERADE rules */
 	if(server_opt.share_internet)
 		igw_exec_masquerade_sh(server_opt.ip_masq_script, 1);

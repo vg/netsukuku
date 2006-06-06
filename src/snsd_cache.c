@@ -251,7 +251,7 @@ snsd_node *snsd_add_first_node(snsd_node **head, u_short *counter,
 /*
  * just a wrapper
  */
-snsd_node *snsd_add_first_mainip(snsd_service **head, u_short *counter,
+snsd_node *snsd_add_mainip(snsd_service **head, u_short *counter,
 				u_short max_records, u_int record[MAX_IP_INT])
 {
 	snsd_service *sns;
@@ -262,7 +262,7 @@ snsd_node *snsd_add_first_mainip(snsd_service **head, u_short *counter,
 					SNSD_DEFAULT_PROTO)) ||
 		!(snp=snsd_add_prio(&sns->prio, 
 					SNSD_DEFAULT_PRIO))  ||
-		!(snd=snsd_add_first_node(&snp->node, counter, 
+		!(snd=snsd_add_node(&snp->node, counter, 
 					max_records, record)))
 		return 0;
 	snd->flags|=SNSD_NODE_IP | SNSD_NODE_MAIN_IP;
@@ -712,6 +712,9 @@ snsd_service *snsd_unpack_service(char *pack, size_t pack_sz,
 {
 	snsd_service *sns;
 	u_short tmp_counter=0, counter=0;
+
+	if(!pack)
+		return 0;
 
 	*nodes_counter=counter;
 	sns=xmalloc(sizeof(snsd_service));

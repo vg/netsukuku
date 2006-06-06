@@ -462,7 +462,7 @@ struct nexthop *rt_build_nexthop_voidgw(void *void_gw, interface **oifs)
 				me.cur_quadg.ipstart[1], &nh[0].gw);
 	inet_htonl(nh[0].gw.data, nh[0].gw.family);
 
-	for(i=0; i<dev_n; i++) {
+	for(i=1; i<dev_n; i++) {
 		memcpy(&nh[i], &nh[0], sizeof(struct nexthop));
 		nh[i].dev=oifs[i]->dev_name;
 		nh[i].hops=1;
@@ -473,7 +473,9 @@ struct nexthop *rt_build_nexthop_voidgw(void *void_gw, interface **oifs)
 }
 
 /* 
- * rt_update_node: It adds/replaces or removes a route from the kernel's
+ * rt_update_node
+ *
+ * It adds/replaces or removes a route from the kernel's
  * table, if the node's flag is found, respectively, to be set to 
  * MAP_UPDATE or set to MAP_VOID. When a route is deleted only the destination
  * arguments are required (i.e `void_gw', `oif' are not needed).

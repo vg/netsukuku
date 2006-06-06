@@ -60,10 +60,10 @@
  */
 int andna_load_caches(void)
 {
-	int ret;
+	int ret=0;
 	
 	if(file_exist(server_opt.lclkey_file) && 
-			(load_lcl_keyring(&lcl_keyring, 
+			(!load_lcl_keyring(&lcl_keyring, 
 					  server_opt.lclkey_file)))
 		debug(DBG_NORMAL, "Andna LCL Keyring loaded");
 	
@@ -172,19 +172,21 @@ void andna_init(void)
 	add_pkt_op(ANDNA_GET_SINGLE_ACACHE,SKT_UDP, andna_udp_port, put_single_acache);
 	add_pkt_op(ANDNA_SPREAD_SACACHE, SKT_UDP, andna_udp_port, recv_spread_single_acache);
 
+
 	if(!server_opt.disable_resolvconf)
 		/* Restore resolv.conf if our backup is still there */
 		andna_resolvconf_restore();
 
 	pkt_queue_init();
 	
+	setzero(&lcl_keyring, sizeof(lcl_keyring));
 	andna_caches_init(my_family);
 	snsd_cache_init(my_family);
 
 	/* Load the good old caches */
 	andna_load_caches();
 	
-	if(lcl_new_keyring(&lcl_keyring)) {
+	if(!lcl_keyring.priv_rsa && lcl_new_keyring(&lcl_keyring)) {
 		debug(DBG_NORMAL, "Saving the new andna local keyring");
 		save_lcl_keyring(&lcl_keyring, server_opt.lclkey_file);
 	}
@@ -210,7 +212,7 @@ void andna_close(void)
 {
 	andna_save_caches();
 	lcl_destroy_keyring(&lcl_keyring);
-	if(!server_opt.disable_resolvconf && !restricted_mode)
+	if(!server_opt.disable_resolvconf)
 		andna_resolvconf_restore();
 	andns_close();
 }
@@ -871,7 +873,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 		 * This request has been queued in the acq. We store the main
 		 * ip and discard the rest of the snsd records 
 		 */
-		snsd_add_first_mainip(&snsd_unpacked, &snsd_counter,
+		snsd_add_mainip(&snsd_unpacked, &snsd_counter,
 					SNSD_MAX_QUEUE_RECORDS, rfrom.data);
 	} else {
 		/* 
@@ -904,12 +906,8 @@ int andna_recv_reg_rq(PACKET rpkt)
 			 */
 
 			/* Add the mainip and update its IP */
-			snd=snsd_find_mainip(snsd_unpacked);
-			if(!snd)
-				snd=snsd_add_first_mainip(&snsd_unpacked,
-						&snsd_counter,
-						SNSD_MAX_RECORDS,
-						rfrom.data);
+			snd=snsd_add_mainip(&snsd_unpacked, &snsd_counter,
+						  SNSD_MAX_RECORDS, rfrom.data);
 			inet_copy_ipdata_raw(snd->record, &rfrom);
 
 			/**
@@ -1238,8 +1236,17 @@ snsd_service *andna_resolve_hash_locally(u_int hname_hash[MAX_IP_INT], int servi
 	 * dumb that we are trying to resolve the same ip we registered.
 	 */
 	if((lcl=lcl_cache_find_hash(andna_lcl, hash))) {
+		snsd_service *ret;
+		u_short fake_counter=0;
+
 		*records=lcl->snsd_counter;
-		return snsd_service_llist_copy(lcl->service, service, proto);
+		ret=snsd_service_llist_copy(lcl->service, service, proto);
+
+		/* Add our current main ip */
+		if(service == -1 || service == SNSD_DEFAULT_SERVICE)
+			snsd_add_mainip(&ret, &fake_counter,
+					SNSD_MAX_RECORDS, me.cur_ip.data);
+		return ret;
 	}
 	
 	/*

@@ -67,6 +67,7 @@ u_int andna_32bit_hash(char *hname)
  * lcl_new_keyring
  *
  * If the keyring of the local cache is null, it generates a new one.
+ *
  * It returns 1 if a new keyring has been generated.
  */
 int lcl_new_keyring(lcl_cache_keyring *keyring)
@@ -983,11 +984,12 @@ char *pack_andna_cache(andna_cache *acache, size_t *pack_sz, int pack_type)
 	sz=sizeof(struct andna_cache_pkt_hdr);
 	list_for(ac) {
 		acq=ac->acq;
+		acq_sz=0;
 		list_for(acq) {
 			service_sz = SNSD_SERVICE_LLIST_PACK_SZ(acq->service);
 			acq_sz	   = ACQ_PACK_SZ(service_sz);
-			sz+=ACACHE_PACK_SZ(acq_sz);
 		}
+		sz+=ACACHE_PACK_SZ(acq_sz);
 		hdr.tot_caches++;
 	}
 	
@@ -1067,7 +1069,8 @@ unpack_acq_llist(char *pack, size_t pack_sz, size_t *unpacked_sz,
 							&snsd_counter);
 		if(acq->snsd_counter != snsd_counter) {
 			debug(DBG_SOFT, ERROR_MSG "unpack_acq:" 
-					"snsd_counter != snsd_counter", 
+					"snsd_counter (%d) != snsd_counter (%d)",
+					acq->snsd_counter, snsd_counter,
 					ERROR_POS);
 			xfree(acq);
 			list_destroy(ac->acq);
@@ -1236,7 +1239,7 @@ counter_c *unpack_counter_cache(char *pack, size_t pack_sz, int *counter)
 	counter_c_hashes *cch;
 	char *buf;
 	size_t sz;
-	int i, e, fake_int;
+	int i, e, fake_int=0;
 	time_t cur_t;
 
 	hdr=(struct counter_c_pkt_hdr *)pack;
@@ -1461,8 +1464,10 @@ int save_lcl_keyring(lcl_cache_keyring *keyring, char *file)
 }
 
 /*
- * load_lcl_keyring: loads from `file' a local cache keyring and restores in
- * it the RSA keys.
+ * load_lcl_keyring
+ *
+ * loads from `file' a local cache keyring and restores in it the RSA keys.
+ *
  * On error -1 is returned.
  */
 int load_lcl_keyring(lcl_cache_keyring *keyring, char *file)

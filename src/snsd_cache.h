@@ -271,7 +271,7 @@ snsd_prio *snsd_add_prio(snsd_prio **head, u_char prio);
 snsd_node *snsd_find_node_by_record(snsd_node *snd, u_int record[MAX_IP_INT]);
 snsd_node *snsd_add_node(snsd_node **head, u_short *counter, 
 			 u_short max_records, u_int record[MAX_IP_INT]);
-snsd_node *snsd_add_first_mainip(snsd_service **head, u_short *counter,
+snsd_node *snsd_add_mainip(snsd_service **head, u_short *counter,
 				u_short max_records, u_int record[MAX_IP_INT]);
 void snsd_service_llist_del(snsd_service **head);
 void snsd_record_del_selected(snsd_service **head, u_short *snd_counter, 

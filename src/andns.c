@@ -709,7 +709,7 @@ int inet_rslv(dns_pkt *dp,char *msg,int msglen,char *answer)
 
 	if (qt==T_A || qt==T_MX) { /* snsd tcp resolution service */
 		service= (qt==T_A)?0:25;
-		proto  = (qt!=T_A);
+		proto  = SNSD_DEFAULT_PROTO;
 		//ss=andna_resolve_hname(temp,service,proto,&records);
 		ss=andna_resolve_hname(temp,service,proto,&records);
 		if (!ss) {
@@ -892,7 +892,7 @@ char *andns_rslv(char *msg, int msglen,char *answer, int *answ_len)
 	proto=GET_NK_BIT(msg);
         if (proto==NK_DNS) 
 		res=d_u(msg,msglen,&dp);
-	else if (proto==NK_INET || proto ==NK_NTK)
+	else if (proto==NK_INET || proto==NK_NTK)
 		res=a_u(msg,msglen,&ap);
 	else {
 		debug(DBG_INSANE,"andns_rslv(): "
