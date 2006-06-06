@@ -179,3 +179,15 @@
 
 - Write the documentation for the code that can be used by other
   programs. (By the way it is already commented.)
+
+- krnl_conf.c: it reads /proc/kallsyms and verifies that there are the symbols
+	       used by the modules/builtins kernel code netsukuku is dependent
+	       on. kernel_conf.h will have an array like pkt_op_table (pkts.h).
+	       Each symbol will be checked by the init functions. There will be
+	       also associated an help function that tells what to do when the
+	       symbol is missing in /proc/kallsyms. For example,
+	       mark_rule_init() will do:
+	     		if(krnl_conf_check("netfilter") <0) {
+				krnl_netfilter_usage();
+				return -1
+			}
