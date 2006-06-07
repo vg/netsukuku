@@ -30,12 +30,12 @@
 
 #define QTYPE_A			0
 #define QTYPE_PTR		1
-#define QTYPE_MX		2
-#define QTYPE_G			3
+#define QTYPE_G			2
+#define QTYPE_MX		3
 #define QTYPE_A_STR		"snsd"
 #define QTYPE_PTR_STR		"ptr"
-#define QTYPE_MX_STR		"mx"
 #define QTYPE_G_STR		"global"
+#define QTYPE_MX_STR		"mx"
 
 #define SNSD_PROTO_TCP		0
 #define SNSD_PROTO_UDP		1

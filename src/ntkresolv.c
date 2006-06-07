@@ -177,7 +177,7 @@ void opts_set_qt(char *arg)
 		qt_usage(arg);
 	GQT->qtype=res;
 	if (res==QTYPE_MX) {
-		GQT->qtype=1;
+		GQT->qtype=QTYPE_A;
 		GQT->service=25;
 		GQT->p=SNSD_PROTO_TCP;
 	}
@@ -274,6 +274,14 @@ void opts_set_question(char *arg)
 			memcpy(GQT->qstdata,&i6a.in6_u,16);
 			GQT->ipv=ANDNS_IPV6;
 			return;
+		case QTYPE_G:
+			if (GQT->nk!=REALM_NTK) {
+				say("Global query type is valid only for the Ntk realm.");
+				ntkresolv_safe_exit(1);
+			}
+			G_ALIGN(ANDNS_HASH_H);
+			hash_md5(arg,res,GQT->qstdata);
+			return;	
 		default:
 			say("Unknow Query Type.\n");
 			return;
