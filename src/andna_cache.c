@@ -53,9 +53,9 @@ void andna_caches_init(int family)
  */
 void lcl_new_keyring(lcl_cache_keyring *keyring)
 {
-	memset(keyring, 0, sizeof(lcl_cache_keyring));
-	
 	if(!keyring->priv_rsa) {
+		memset(keyring, 0, sizeof(lcl_cache_keyring));
+
 		loginfo("Generating a new keyring for the future ANDNA requests.\n"
 				"  The keyring will be saved in the lcl file");
 		/* Generate the new key pair for the first time */
