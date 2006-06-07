@@ -48,6 +48,7 @@ struct andns_pkt_data
 	uint8_t			wg;
 	uint8_t			prio;
         uint16_t                rdlength;
+        uint16_t                service;
         char                    *rdata;
         struct andns_pkt_data   *next;
 };
@@ -55,6 +56,8 @@ typedef struct andns_pkt_data andns_pkt_data;
 #define ANDNS_PKT_DATA_SZ sizeof(andns_pkt_data)
 #define APD_ALIGN(apd)	(apd)->rdata=(char*)xmalloc((apd)->rdlength+1);		\
 				     memset((apd)->rdata,0,(apd)->rdlength+1)
+#define APD_MAIN_IP	1<<0
+#define APD_IP		1<<1
 
 typedef struct andns_pkt
 {
@@ -90,6 +93,7 @@ typedef struct andns_pkt
 /* ANDNS QUERY-TYPE */
 #define AT_A            0 /* h->ip */
 #define AT_PTR          1 /* ip->h */
+#define AT_G          	2 /* global */
 /* RCODES: The rcodes are portable between ANDNS and DNS */
 #define ANDNS_RCODE_NOERR     0       /* No error */
 #define ANDNS_RCODE_EINTRPRT  1       /* Intepret error */

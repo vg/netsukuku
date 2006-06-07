@@ -19,6 +19,7 @@
 ************************************************************************/
 
 #include "andns_lib.h"
+#include "andns_net.h"
 #include "log.h"
 #include "err_errno.h"
 #include "xmalloc.h"
@@ -165,6 +166,16 @@ int a_qst_u(char *buf,andns_pkt *ap,int limitlen)
 			memcpy(ap->qstdata,buf,ap->qstlength);
 			ret=ap->qstlength;
 			break;
+		case AT_G:
+			if (ap->nk!=NTK_REALM)
+				err_ret(ERR_ANDMAP,-1);
+			ap->qstlength=ANDNS_HASH_H;
+			if (ap->qstlength>limitlen)
+                		err_ret(ERR_ANDPLB,-1);
+			AP_ALIGN(ap);
+			memcpy(ap->qstdata,buf,ANDNS_HASH_H);
+			ret=ap->qstlength;
+			break;
 		default:
 			debug(DBG_INSANE,"In a_qst_u: unknow query type.");
 			err_ret(ERR_ANDMAP,-1)
@@ -176,6 +187,9 @@ int a_answ_u(char *buf,andns_pkt *ap,int limitlen)
         uint16_t alen;
         andns_pkt_data *apd;
 	int limit;
+	char t;
+	char a[INET6_ADDRSTRLEN];
+	int res;
 
 	if (limitlen<3)
 		err_ret(ERR_ANDMAP,-1);
@@ -207,6 +221,42 @@ int a_answ_u(char *buf,andns_pkt *ap,int limitlen)
         		memcpy(apd->rdata,buf+2,alen);
 			limit=alen+2;
 			break;
+		case AT_G:
+			if (limitlen<6)
+				err_ret(ERR_ANDMAP,-1);
+			apd=andns_add_answ(ap);
+			if (*buf&0x80)
+				apd->m=1;
+			t=*buf&0x40;
+			apd->wg=(*buf&0x3f);
+			apd->prio=(*(buf+1));
+			buf+=2;
+			memcpy(&alen,buf,sizeof(uint16_t));
+			apd->service=ntohs(alen);
+			buf+=2;
+			if (t) { /* Here we can gain some byte */
+				apd->rdlength=INET6_ADDRSTRLEN;
+				limit=4+(ap->ipv?16:4);
+			} else {
+				memcpy(&alen,buf,sizeof(uint16_t));
+				apd->rdlength=ntohs(alen);
+				limit=6+apd->rdlength;
+			}
+			if (limitlen<limit)
+				err_ret(ERR_ANDPLB,-1);
+			if (t) {
+				res=idp_inet_ntop(ap->ipv?AF_INET6:AF_INET,
+						(struct sockaddr*)buf,
+						a,INET6_ADDRSTRLEN);
+				if (res<0)
+					err_ret(ERR_ANDMAP,-1);
+				APD_ALIGN(apd);
+				memcpy(apd->rdata,a,apd->rdlength);
+			} else  {
+				APD_ALIGN(apd);
+        			memcpy(apd->rdata,buf+2,alen);
+			}
+			break;
 		default:
 			err_ret(ERR_ANDMAP,-1);
 	}
@@ -216,8 +266,14 @@ int a_answs_u(char *buf,andns_pkt *ap,int limitlen)
 {
         int ancount,i;
         int offset=0,res;
+	uint16_t alen;
 
-        ancount=ap->ancount;
+	if (ap->qtype==AT_G) {
+		memcpy(&alen,buf,sizeof(uint16_t));
+		ancount=ntohs(alen);
+		limitlen-=2;
+	} else		
+	        ancount=ap->ancount;
         for (i=0;i<ancount;i++) {
                 res=a_answ_u(buf+offset,ap,limitlen-offset);
                 if (res==-1) {
@@ -335,6 +391,13 @@ int a_qst_p(andns_pkt *ap,char *buf,int limitlen)
 			memcpy(buf,ap->qstdata,limit);
 			ret=limit;
 			break;
+		case AT_G:
+			limit=ANDNS_HASH_H;
+			if (limitlen<limit)
+				err_ret(ERR_ANDMAD,-1);
+			memcpy(buf,ap->qstdata,ANDNS_HASH_H);
+			ret=ANDNS_HASH_H;
+			break;
 		default:
 			debug(DBG_INSANE,"In a_qst_p: unknow query type.");
 			err_ret(ERR_ANDMAD,-1);
@@ -369,6 +432,34 @@ int a_answ_p(andns_pkt *ap,andns_pkt_data *apd,char *buf,int limitlen)
         		memcpy(buf,apd->rdata,apd->rdlength);
 			ret=apd->rdlength+2;
 			break;
+		case AT_G:
+			if (limitlen<4)
+                		err_ret(ERR_ANDPLB,-1);
+			if (apd->m==1)
+				(*buf)|=0xc0;
+			else if (apd->m)
+				(*buf)|=0x40;
+			*buf++|= (apd->wg&0x3f);
+			*buf++|=apd->prio;
+			s=htons(apd->service);
+			memcpy(buf,&s,2);
+			if (apd->m) {
+				limit=ap->ipv?16:4;
+				if (limitlen<limit+4)
+                			err_ret(ERR_ANDPLB,-1);
+				memcpy(buf,apd->rdata,limit);
+				ret=limit+4;
+			} else {
+				limit=strlen(apd->rdata);
+				if (limitlen<limit+6)
+                			err_ret(ERR_ANDPLB,-1);
+				s=htons(limit);
+				memcpy(buf,&s,2);
+				buf+=2;
+				memcpy(buf,apd->rdata,limit);
+				ret=limit+6;
+			}
+			break;
 		default:
 			debug(DBG_INSANE,"In a_answ_p(): unknow query type.");
 			err_ret(ERR_ANDMAD,-1);
@@ -381,7 +472,16 @@ int a_answs_p(andns_pkt *ap,char *buf, int limitlen)
         andns_pkt_data *apd;
         int i;
         int offset=0,res;
+	uint16_t s;
 
+	if (ap->qtype==AT_G) {
+		s=htons(ap->ancount);
+		if (limitlen<2)
+			err_ret(ERR_ANDPLB,-1);
+		memcpy(buf,&s,2);
+		buf+=2;
+		limitlen-=2;
+	} 
         apd=ap->pkt_answ;
         for (i=0;i<ap->ancount && apd;i++) {
                 if((res=a_answ_p(ap,apd,buf+offset,limitlen-offset))==-1) {

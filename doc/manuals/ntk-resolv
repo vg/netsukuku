@@ -29,8 +29,9 @@ OPTIONS
     -P --port=n
         Uses the port <n> of nameserver. Default is 53.
 
-    -t --type=snsd --type=ptr
-        Specify the query type . Default is snsd.
+    -t --query-type=snsd --query-type=ptr --qury-type=global --query-type=mx
+        Specify the query type . Default is snsd. See the section QUERY
+        TYPE.
 
     -r --realm=inet --realm=ntk
         Specify the realm of the query: Internet or Netsukuku. Default is
@@ -59,8 +60,28 @@ OPTIONS
 
     ntk-resolv -r i = ntk-resolv -r inet
 
-QUERY TYPE, SERVICES AND PROTOCOL
-    SNSD Query Type are hostname resolutions. With SNSD (Scattered Name
+QUERY TYPE
+    You can formule different kind of queries.
+
+    With a `ptr' query, you specify an IP, and you will have, if exists, the
+    hostname that registered that name.
+
+    With a `snsd' query, you specify a hostname, a service and a protocol.
+    If service and protocol are not specified, they are set to 0, and you
+    will have the IP assigned to the hostname at this moment. If you specify
+    a service and a protocol, the answer will contain the IP that gives the
+    specified service/protocl for the hostname. See the section SNSD,
+    SERVICES AND PROTOCOL to understand better the SNSD behavior.
+
+    A global query will return the complete SNSD configuration for a
+    hostname. Ie, you will have an answer for each service that hostname
+    registered.
+
+    The `mx' query is equivalent to a snsd query with service 25 and proto
+    TCP.
+
+SNSD, SERVICES AND PROTOCOL
+    SNSD Query Type gives a hostname resolution. With SNSD (Scattered Name
     Service Disgregation) ANDNA lets the user to ask for a domain and a
     service. If service is 0, the resolution will show which IP registered
     the hostname. If service is non-0, the resolution will show which IP

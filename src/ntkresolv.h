@@ -31,9 +31,11 @@
 #define QTYPE_A			0
 #define QTYPE_PTR		1
 #define QTYPE_MX		2
+#define QTYPE_G			3
 #define QTYPE_A_STR		"snsd"
 #define QTYPE_PTR_STR		"ptr"
 #define QTYPE_MX_STR		"mx"
+#define QTYPE_G_STR		"global"
 
 #define SNSD_PROTO_TCP		0
 #define SNSD_PROTO_UDP		1
@@ -48,8 +50,8 @@
 #define TIME_SCALE		1000000.0
 #define HELP_STR		"help"
 
-char *QTYPE_STR_LIST[]={QTYPE_A_STR,QTYPE_PTR_STR,QTYPE_MX_STR};
-int QT_LEN=3;
+char *QTYPE_STR_LIST[]={QTYPE_A_STR,QTYPE_PTR_STR,QTYPE_MX_STR,QTYPE_G_STR};
+int QT_LEN=4;
 
 #define QTFROMPREF(s)							\
 ({									\

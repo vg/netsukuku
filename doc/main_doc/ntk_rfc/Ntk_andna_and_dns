@@ -134,6 +134,11 @@ INDEX:
   QTYPE = 1
         This is a reverse resolution: `ip -> host`.
 
+  QTYPE =2
+  	This is a global query: all services for the
+	hostname will be answered.
+	The query realm has to be Ntk.
+
 4. - QUERY REALMS -
 
   A query can be formulated to find some object in the
@@ -150,7 +155,7 @@ INDEX:
   If you ask for `google.it.ntk` (or `google.it.NTK)
   the question is made in netsukuku.
   If you don't specify any suffix, the default realm
-  is ****************************
+  is Netsukuku Realm
 
   The dns_wrapper first search for a suffix, understanding
   the correct realm.
@@ -198,7 +203,6 @@ INDEX:
 
 6. - QUESTIONS -
 
-  There are three types of questions.
   We have to switch the value QTYPE against realm.
 
   - Case QTYPE = 0 (h2ip) AND Realm=NTK
@@ -266,6 +270,23 @@ INDEX:
      The length of the field - ie the family address (4 or 6) -
      depends on the bit `I' in the headers section. 
    
+  - Case QTYPE = 2 (global query).
+    The format of the question is:
+
+        +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+        |                                               |       
+        |                                               |       
+        |                                               |
+        |                   HOSTNAME                    |
+        |                     HASH                      |
+        |                     (HH)                      |
+        |                                               |
+        |                                               |
+        +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+
+    where:
+
+     HH is the 16-bytes hostname hash.
 
 7. - ANSWERS -
 
@@ -310,6 +331,67 @@ INDEX:
 
    RDATA the hostname resolution.
 
+  CASE QTYPE=2   (global query)
+
+   If QTYPE=2, there is a extra header field before answers:
+
+        +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+        |                    ANCOUNT                    |
+        +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+
+   The two bytes are the number of answers that the query
+   produced. After the two bytes.
+
+   Note: the ANCOUNT field on main headers has to be 1 if
+   RCODE=0, 0 otherwise.
+   The two extra bytes are the real number of answers in the
+   case of QTYPE=2.
+
+   After the two bytes, this is the format for each answer:
+	
+        +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+        | M| T|     WG          |       PRIO            |
+        +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+        |                    SERVICE                    |
+        +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+        |                                               |
+        /                     DATA                      /
+        /                                               /
+        |                                               |
+        +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+
+   where T is the type of the DATA.
+   T is:
+   	T = 0	Hostname
+	T = 1 	Ip
+   
+   If T=1, the ip version is specified in main headers, in the
+   field I.
+   If T=0, the format of data is:
+
+        +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+        |                   RDLENGTH                    |
+        +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+        |                                               |
+        /                   HOSTNAME                    /
+        /                                               /
+        |                                               |
+        +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+
+   where RDLENGTH is strlen(HOSTNAME).
+   If T=1, the format of data is:
+
+        +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+        |                                               |
+        /                    RDATA                      /
+        /                                               /
+        |                                               |
+        +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+
+   where RDATA is the binary IP and the length of his contents
+   depends on the field I of main headers (4 in IPv4, 16 in IPv6).
+
+   
 8. - COMPRESSION -
 
   The format of a compressed packet is:

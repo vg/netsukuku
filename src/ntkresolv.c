@@ -47,6 +47,7 @@ void qt_usage(char *arg)
 	    "Valid query types are:\n"
             " * snsd\thost:port -> ip\n"
             "   ptr\tip -> host\n"
+            "   global\thostname -> all services ip\n"
             "   mx\thostname MX -> ip\n\n"
             "(you can also use univoque abbreviation)\n"
 	    "Note: mx query is equivalent to --query-type="
@@ -174,8 +175,9 @@ void opts_set_qt(char *arg)
 	res=QTFROMPREF(arg);
 	if (res==-1) 
 		qt_usage(arg);
-	GQT->qtype=(res==1);
+	GQT->qtype=res;
 	if (res==QTYPE_MX) {
+		GQT->qtype=1;
 		GQT->service=25;
 		GQT->p=SNSD_PROTO_TCP;
 	}
@@ -339,7 +341,7 @@ void ip_bin_to_str(void *data,char *dst)
 void answer_data_to_str(andns_pkt_data *apd,char *dst)
 {
 	switch(GQT->qtype) {
-		case AT_PTR:
+		case AT_PTR || AT_G:
 			strcpy(dst,apd->rdata);
 			break;
 		case AT_A:

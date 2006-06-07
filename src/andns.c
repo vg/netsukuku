@@ -765,6 +765,7 @@ int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 	int qt,res,rcode,records;
 	inet_prefix ipres;
 	uint8_t recs;
+	uint16_t s;
 	
 	qt=ap->qtype;
 	if (qt==AT_A) {
@@ -805,6 +806,22 @@ int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 			goto safe_return_rcode;
 		}
 		res=lcl_cache_to_aansws(answer+msglen,lc,&records); /* destroys lc */
+	} 
+	else if (qt==AT_G) {
+		snsd_service *ss;
+		ss=andna_resolve_hash((u_int *)ap->qstdata,
+				-1,0,&records);
+		if (!ss) {
+			rcode=RCODE_ENSDMN;
+			goto safe_return_rcode;
+		}
+		res=snsd_service_to_aansws(answer+msglen+2,ss,
+				_ip_len_,&records);
+		if (!res) {
+			rcode=RCODE_ENSDMN;
+			goto safe_return_rcode;
+		}
+		snsd_service_llist_del(&ss);
 	} else {
 		rcode=RCODE_EINTRPRT;
 		goto safe_return_rcode;
@@ -813,12 +830,18 @@ int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 	ANDNS_SET_RCODE(answer,RCODE_NOERR);
 	ANDNS_SET_QR(answer);
 	recs=records;
-	ANDNS_SET_ANCOUNT(answer,recs);
+	if (qt==AT_G) {
+		ANDNS_SET_ANCOUNT(answer,1);
+		s=htons(recs);
+		memcpy(answer+msglen,&s,2);
+	}
+	else
+		ANDNS_SET_ANCOUNT(answer,recs);
 	return res+msglen;
 safe_return_rcode:
 	destroy_andns_pkt(ap);
-	goto return_rcode;
-return_rcode:
+/*	goto return_rcode;
+return_rcode:*/
 	memcpy(answer,msg,msglen);
 	ANDNS_SET_RCODE(answer,rcode);
 	ANDNS_SET_QR(answer);

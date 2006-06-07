@@ -134,6 +134,61 @@ int snsd_prio_to_aansws(char *buf,snsd_prio *sp,int iplen)
 	return count;
 }
 
+int snsd_service_to_aansws(char *buf,snsd_service *ss,int iplen,int *count)
+{
+	int res,family,c=0;
+	uint16_t service;
+	uint8_t prio;
+	snsd_prio *sp;
+	snsd_node *sn,snt;
+	char *rem;
+
+	if (!sp || !buf)
+		return 0;
+	rem=buf;
+	
+	list_for(ss) {
+		service=htons(ss->service);
+		sp=ss->prio;
+		list_for(sp) {
+			prio=sp->prio;
+			sn=sp->node;
+			list_for(sn) {
+				if (sn->flags & SNSD_NODE_MAIN_IP)
+					(*buf)|=0xc0;
+				else if (sn->flags & SNSD_NODE_IP)
+					(*buf)|=0x40;
+				*buf++|=(sn->weight&0x3f);
+				*buf++|=prio;
+				memcpy(buf,&service,2);
+				buf+=2;
+				if (sn->flags & SNSD_NODE_MAIN_IP ||
+				    sn->flags & SNSD_NODE_IP ) {
+                			memcpy(buf,sn->record,iplen); 
+					family=(iplen==4)?AF_INET:AF_INET6;
+					inet_htonl((u_int*)buf,family);
+					buf+=iplen;
+				} else {
+					res=snsd_main_ip(sn->record,&snt);
+					if (res) {
+						buf-=4;
+						continue;
+					}
+					memcpy(buf,snt.record,iplen);
+					family=(iplen==4)?AF_INET:AF_INET6;
+					inet_htonl((u_int*)buf,family);
+					buf+=iplen;
+				}
+				c++;
+			}
+		}
+	}
+	*count=c;
+	return (int)(buf-rem);
+}
+					
+				
+				
 /*
  * Given a dns_packet, this function add an answer to it
  * and returns 0;

@@ -53,9 +53,9 @@ Uses the port <n> of nameserver. Default is 53.
 
 =over
 
-=item   B<-t>	B<--type=snsd --type=ptr>
+=item   B<-t>	B<--query-type=snsd --query-type=ptr --qury-type=global --query-type=mx>
 
-Specify the query type . Default is snsd.
+Specify the query type . Default is snsd. See the section B<QUERY TYPE>.
 
 =back
 
@@ -108,9 +108,28 @@ specifing univoque abbreviation of argument. So, there is the equivalence:
 
 =back
 
-=head1 QUERY TYPE, SERVICES AND PROTOCOL
+=head1 QUERY TYPE
 
-SNSD Query Type are hostname resolutions.
+You can formule different kind of queries.
+
+With a `ptr' query, you specify an IP, and you will have, if exists, the hostname
+that registered that IP.
+
+With a `snsd' query, you specify a hostname, a service and a protocol. If service and
+protocol are not specified, they are set to 0, and you will have the IP assigned
+to the hostname at this moment.
+If you specify a service and a protocol, the answer will contain the IP that gives
+the specified service/protocl for the hostname.
+See the section B<SNSD, SERVICES AND PROTOCOL> to understand better the SNSD behavior.
+
+A global query will return the complete SNSD configuration for a hostname.
+Ie, you will have an answer for each service that hostname registered.
+
+The `mx' query is equivalent to a snsd query with service 25 and proto TCP. 
+
+=head1 SNSD, SERVICES AND PROTOCOL
+
+SNSD Query Type gives a hostname resolution.
 With SNSD (Scattered Name Service Disgregation) ANDNA lets the user to
 ask for a domain and a service.
 If service is 0, the resolution will show which IP registered the hostname.
