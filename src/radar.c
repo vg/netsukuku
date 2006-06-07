@@ -559,6 +559,12 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 				void_map=me.ext_map;
 				gnode=e_rnode->quadg.gnode[_EL(level)];
 				
+				/** delete the direct route to the ext_node */
+				if(level == 1)
+				  rt_update_node(&e_rnode->quadg.ipstart[0], 
+						  e_rnode, 0, 0, 0, /*level=0*/ 0);
+				/**/
+
 				void_gnode=(void *)gnode;
 				if(!void_gnode)
 					continue;
@@ -603,9 +609,6 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 				}
 
 				/* Delete the entries from the routing table */
-				if(level == 1)
-				  rt_update_node(&e_rnode->quadg.ipstart[0], 
-						  e_rnode, 0, 0, 0, /*level=0*/ 0);
 				rt_update_node(0, 0, &e_rnode->quadg, 0, 0, level);
 			 	
 				send_qspn_now[level]=1;
@@ -1254,7 +1257,7 @@ int radar_scan(int activate_qspn)
 	/* Loop through the me.cur_ifs array, sending the bouquet using all the
 	 * interfaces we have */
 	for(d=0; d < me.cur_ifs_n; d++) {
-		
+
 		pkt_add_dev(&pkt, &me.cur_ifs[d], 1);
 		pkt.sk=0; /* Create a new socket */
 	
@@ -1266,9 +1269,20 @@ int radar_scan(int activate_qspn)
 
 			err=send_rq(&pkt, 0, ECHO_ME, my_echo_id, 0, 0, 0);
 			if(err==-1) {
-				error("radar_scan(): Error while sending the scan 0x%x"
-						"... skipping", my_echo_id);
-				continue;
+				if(errno == ENODEV) {
+					/* 
+					 * The me.cur_ifs[d] device doesn't
+					 * exist anymore. Delete it.
+					 */
+					fatal("The device \"%s\" has been removed",
+							me.cur_ifs[d].dev_name);
+					ifs_del(me.cur_ifs, &me.cur_ifs_n, d);
+					d--;
+				} else
+					error(ERROR_MSG "Error while sending the"
+						" scan 0x%x... skipping", 
+						ERROR_FUNC, my_echo_id);
+				break;
 			}
 			radar_scans[d]++;
 			total_radar_scans++;
@@ -1286,7 +1300,7 @@ int radar_scan(int activate_qspn)
 	pkt_free(&pkt, 1);
 	
 	if(!total_radar_scans) {
-		error("radar_scan(): The scan 0x%x failed. It wasn't possible" 
+		error("radar_scan(): The scan 0x%x failed. It wasn't possible "
 				"to send a single scan", my_echo_id);
 		return -1;
 	}

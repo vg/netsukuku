@@ -637,7 +637,7 @@ int set_reuseaddr_sk(int socket)
 int set_bindtodevice_sk(int socket, char *dev)
 {
 	struct ifreq ifr;
-	int ret;
+	int ret=0;
 	
 	setzero(&ifr, sizeof(ifr));
 	strncpy(ifr.ifr_name, dev, IFNAMSIZ-1);
@@ -773,22 +773,19 @@ int new_tcp_conn(inet_prefix *host, short port, char *dev)
 	
 	if(inet_to_sockaddr(host, port, sa, &sa_len)) {
 		error("Cannot new_tcp_connect(): %d Family not supported", host->family);
-		sk=-1;
-		goto finish;
+		ERROR_FINISH(sk, -1, finish);
 	}
 	
-	if((sk = new_socket(host->family)) == -1) {
-		sk=-1;
-		goto finish;
-	}
+	if((sk = new_socket(host->family)) == -1)
+		ERROR_FINISH(sk, -1, finish);
 
 	if(dev) /* if `dev' is not null bind the socket to it */
-		set_bindtodevice_sk(sk, dev);
+		if(set_bindtodevice_sk(sk, dev) < 0)
+			ERROR_FINISH(sk, -1, finish);
 	
 	if (connect(sk, sa, sa_len) == -1) {
 		error("Cannot tcp_connect() to %s: %s", ntop, strerror(errno));
-		sk=-1;
-		goto finish;
+		ERROR_FINISH(sk, -1, finish);
 	}
 finish:
 	return sk;
@@ -805,22 +802,19 @@ int new_udp_conn(inet_prefix *host, short port, char *dev)
 
 	if(inet_to_sockaddr(host, port, sa, &sa_len)) {
 		error("Cannot new_udp_connect(): %d Family not supported", host->family);
-		sk=-1;
-		goto finish;
+		ERROR_FINISH(sk, -1, finish);
 	}
 
-	if((sk = new_dgram_socket(host->family)) == -1) {
-		sk=-1;
-		goto finish;
-	}
+	if((sk = new_dgram_socket(host->family)) == -1) 
+		ERROR_FINISH(sk, -1, finish);
 	
 	if(dev) /* if `dev' is not null bind the socket to it */
-		set_bindtodevice_sk(sk, dev);
+		if(set_bindtodevice_sk(sk, dev) < 0)
+			ERROR_FINISH(sk, -1, finish);
 
 	if (connect(sk, sa, sa_len) == -1) {
 		error("Cannot connect to %s: %s", ntop, strerror(errno));
-		sk=-1;
-		goto finish;
+		ERROR_FINISH(sk, -1, finish);
 	}
 	
 finish:
@@ -852,7 +846,8 @@ int new_bcast_conn(inet_prefix *host, short port, int dev_idx)
 		sin6->sin6_scope_id = dev_idx;
 	}
 	
-	set_bindtodevice_sk(sk, (char *)ll_index_to_name(dev_idx));
+	if(set_bindtodevice_sk(sk, (char *)ll_index_to_name(dev_idx)) < 0)
+		return -1;
 	
 	if(connect(sk, sa, alen) == -1) {
 		ntop=inet_to_str(*host);

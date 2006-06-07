@@ -233,6 +233,13 @@ void *udp_daemon(void *passed_argv)
 	for(;;) {
 		FD_ZERO(&fdset);
 
+		if(!me.cur_ifs_n) {
+			/* All the devices have been removed while ntkd was
+			 * running, sleep well */
+			sleep(1);
+			continue;
+		}
+
 		for(i=0; i < me.cur_ifs_n; i++)
 			if(dev_sk[i])
 				FD_SET(dev_sk[i], &fdset);
@@ -376,6 +383,13 @@ void *tcp_daemon(void *door)
 	pthread_mutex_unlock(&tcp_daemon_lock);
 	for(;;) {
 		FD_ZERO(&fdset);
+
+		if(!me.cur_ifs_n) {
+			/* All the devices have been removed while ntkd was
+			 * running, sleep well */
+			sleep(1);
+			continue;
+		}
 
 		for(i=0; i < me.cur_ifs_n; i++)
 			if(dev_sk[i])
