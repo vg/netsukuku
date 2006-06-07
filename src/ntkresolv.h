@@ -28,9 +28,9 @@
 #define REALM_NTK_STR		"ntk"
 #define REALM_INT_STR		"inet"
 
-#define QTYPE_A			0
-#define QTYPE_PTR		1
-#define QTYPE_G			2
+#define QTYPE_A			AT_A
+#define QTYPE_PTR		AT_PTR
+#define QTYPE_G			AT_G
 #define QTYPE_MX		3
 #define QTYPE_A_STR		"snsd"
 #define QTYPE_PTR_STR		"ptr"
