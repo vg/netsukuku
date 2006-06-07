@@ -45,7 +45,6 @@
 #include "log.h"
 #include "err_errno.h"
 
-
 int igw_multi_gw_disabled;
 
 /*

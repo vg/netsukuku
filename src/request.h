@@ -28,7 +28,9 @@
 #define REQUEST_TIMEOUT		20
 #endif
 
-/*In this enum there are all the requests/replies op used by netsukuku in the pkts*/
+/*
+ * In this enum there are all the requests/replies op used by netsukuku 
+ */
 enum pkt_op
 {
 	ECHO_ME,			/*The node requests to be echoed by the dst_node*/
@@ -101,30 +103,6 @@ enum pkt_op
 #define TOTAL_REQUESTS          (ANDNA_GET_COUNT_CACHE+1)
 #define TOTAL_REPLIES		(TOTAL_OPS-TOTAL_REQUESTS)
 
-const static char 	unknown_reply[]="Unknow reply";
-const static u_char	
-reply_str[][30]=
-{
-	{ "PUT_FREE_NODES" },
-	{ "PUT_QSPN_ROUND" },
-	{ "PUT_INTERNET_GWS" },
-	{ "PUT_DNODEIP"	   },
-	{ "EMPTY_REPLY_SLOT" },
-	{ "EMPTY_REPLY_SLOT1" },
-	{ "PUT_INT_MAP"	   },
-	{ "PUT_EXT_MAP"     },
-	{ "PUT_BNODE_MAP" },
-	{ "ANDNA_RESOLVE_REPLY"   },
-	{ "ANDNA_REV_RESOLVE_REPLY"   },
-	{ "ANDNA_MX_RESOLVE_REPLY"   },
-	{ "ANDNA_PUT_COUNT_CACHE" },
-	{ "ANDNA_PUT_ANDNA_CACHE" },
-
-	{ "ACK_AFFERMATIVE"},
-	{ "ACK_NEGATIVE"   }
-};
-
-
 enum errors
 {
 	/*Request errors*/
@@ -147,190 +125,6 @@ enum errors
 };
 #define TOTAL_ERRORS		(E_TOO_MANY_CONN+1)
 
-const static u_char unknown_error[]="Unknow error";
-const static u_char error_str[][40]=
-{	
-	{ "Invalid request" },
-	{ "Accept table full" },
-	{ "Request table full" },
-	{ "Quadro Group full" },
-	{ "Netsukuku is full" },
-	{ "Invalid signature" },
-	{ "Cannot forward the pkt" },
-	{ "Invalid hash_gnode" },
-	{ "ANDNA cache queue full" },
-	{ "Hostname update too early" },
-	{ "Too many hostname registered" },
-	{ "Inexistent host name" },
-	{ "Counter check failed" },
-	{ "Too many connection" },
-};
-
-/*Wait time*/
-#define ECHO_ME_WAIT			5		/*(in seconds)*/
-#define ECHO_REPLY_WAIT			5
-#define GET_FREE_NODES_WAIT		10
-#define GET_QSPN_ROUND_WAIT		10
-
-#define GET_INTERNET_GWS_WAIT		5
-#define SET_FOREIGN_ROUTE_WAIT		5
-#define DEL_FOREIGN_ROUTE_WAIT		5
-#define NEW_BACKROUTE_WAIT		10
-#define DELAYED_BROADCAST_WAIT		5
-#define SPLIT_ROUTE_WAIT		20
-#define SET_NO_IDENTITY_WAIT		20
-
-#define QSPN_CLOSE_WAIT			0
-#define QSPN_OPEN_WAIT			0
-#define QSPN_RFR_WAIT			5
-#define GET_DNODEBLOCK_WAIT		20
-#define GET_DNODEIP_WAIT	     	5
-#define TRACER_PKT_WAIT			10
-#define TRACER_PKT_CONNECT_WAIT		10
-
-#define DEL_SNODE_WAIT			10
-#define DEL_GNODE_WAIT			10
-
-#define GET_INT_MAP_WAIT		10
-#define GET_EXT_MAP_WAIT		10
-#define GET_BNODE_MAP_WAIT		10
-
-#define ANDNA_REGISTER_HNAME_WAIT	5
-#define ANDNA_CHECK_COUNTER_WAIT	5
-#define ANDNA_RESOLVE_HNAME_WAIT	2
-#define ANDNA_RESOLVE_IP_WAIT		5
-#define ANDNA_RESOLVE_MX_WAIT		5
-#define ANDNA_GET_ANDNA_CACHE_WAIT	10
-#define ANDNA_GET_SINGLE_ACACHE_WAIT	10
-#define ANDNA_SPREAD_SACACHE_WAIT	10
-#define	ANDNA_GET_COUNT_CACHE_WAIT	10
-
-
-/*Max simultaneous requests*/ 
-#define ECHO_ME_MAXRQ			0	/*NO LIMITS*/
-#define ECHO_REPLY_MAXRQ		20
-#define GET_FREE_NODES_MAXRQ		5
-#define GET_QSPN_ROUND_MAXRQ		5
-
-#define GET_INTERNET_GWS_MAXRQ		5
-#define SET_FOREIGN_ROUTE_MAXRQ		30
-#define DEL_FOREIGN_ROUTE_MAXRQ		30
-#define NEW_BACKROUTE_MAXRQ		10
-#define DELAYED_BROADCAST_MAXRQ		5
-#define SPLIT_ROUTE_MAXRQ		1
-#define SET_NO_IDENTITY_MAXRQ		1
-
-#define QSPN_CLOSE_MAXRQ		0	/*NO LIMITS*/
-#define QSPN_OPEN_MAXRQ			0	/*NO LIMITS*/
-#define QSPN_RFR_MAXRQ			10
-#define GET_DNODEBLOCK_MAXRQ		1
-#define GET_DNODEIP_MAXRQ		10
-#define TRACER_PKT_MAXRQ		20
-#define TRACER_PKT_CONNECT_MAXRQ	10
-
-#define DEL_SNODE_MAXRQ			20
-#define DEL_GNODE_MAXRQ			5
-
-#define GET_INT_MAP_MAXRQ		2
-#define GET_EXT_MAP_MAXRQ		2
-#define GET_BNODE_MAP_MAXRQ		2
-
-#define ANDNA_REGISTER_HNAME_MAXRQ	30
-#define ANDNA_CHECK_COUNTER_MAXRQ	0	/*NO LIMITS*/
-#define ANDNA_RESOLVE_HNAME_MAXRQ	80
-#define ANDNA_RESOLVE_IP_MAXRQ		40
-#define ANDNA_RESOLVE_MX_MAXRQ		40
-#define ANDNA_GET_ANDNA_CACHE_MAXRQ	5
-#define ANDNA_GET_SINGLE_ACACHE_MAXRQ	10
-#define ANDNA_SPREAD_SACACHE_MAXRQ	10
-#define	ANDNA_GET_COUNT_CACHE_MAXRQ	5
-
-
-const static u_char unknown_request[]="Unknow request";
-const static u_char request_array[][2]=
-{ 
-	{ ECHO_ME_WAIT,        ECHO_ME_MAXRQ	    },
-	{ ECHO_REPLY_WAIT,     ECHO_REPLY_MAXRQ	    },
-	{ GET_FREE_NODES_WAIT, GET_FREE_NODES_MAXRQ },
-	{ GET_QSPN_ROUND_WAIT, GET_QSPN_ROUND_MAXRQ },
-	
-	{ GET_INTERNET_GWS_WAIT,  GET_INTERNET_GWS_MAXRQ  },
-	{ SET_FOREIGN_ROUTE_WAIT, SET_FOREIGN_ROUTE_MAXRQ },
-	{ DEL_FOREIGN_ROUTE_WAIT, DEL_FOREIGN_ROUTE_MAXRQ },
-	{ NEW_BACKROUTE_WAIT,     NEW_BACKROUTE_MAXRQ 	  },
-	{ DELAYED_BROADCAST_WAIT, DELAYED_BROADCAST_MAXRQ },
-	{ SPLIT_ROUTE_WAIT,       SPLIT_ROUTE_MAXRQ       },
-	{ SET_NO_IDENTITY_WAIT,   SET_NO_IDENTITY_MAXRQ   },
-	{ QSPN_CLOSE_WAIT,        QSPN_CLOSE_MAXRQ        },
-	{ QSPN_OPEN_WAIT,         QSPN_OPEN_MAXRQ         },
-	{ QSPN_RFR_WAIT,	  QSPN_RFR_MAXRQ	  },
-	{ GET_DNODEBLOCK_WAIT,    GET_DNODEBLOCK_MAXRQ    },
-	{ GET_DNODEIP_WAIT,       GET_DNODEIP_MAXRQ       },
-	{ TRACER_PKT_WAIT,	  TRACER_PKT_MAXRQ	  },
-	{ TRACER_PKT_CONNECT_WAIT,TRACER_PKT_CONNECT_MAXRQ},
-	{ DEL_SNODE_WAIT,         DEL_SNODE_MAXRQ         },
-	{ DEL_GNODE_WAIT,         DEL_GNODE_MAXRQ         },
-	{ GET_INT_MAP_WAIT,	  GET_INT_MAP_MAXRQ	  },
-	{ GET_EXT_MAP_WAIT,	  GET_EXT_MAP_MAXRQ	  },
-	{ GET_BNODE_MAP_WAIT,	  GET_BNODE_MAP_MAXRQ	  },
-
-	{ ANDNA_REGISTER_HNAME_WAIT,   ANDNA_REGISTER_HNAME_MAXRQ   },
-	{ ANDNA_CHECK_COUNTER_WAIT,    ANDNA_CHECK_COUNTER_MAXRQ    },
-	{ ANDNA_RESOLVE_HNAME_WAIT,    ANDNA_RESOLVE_HNAME_MAXRQ    },
-	{ ANDNA_RESOLVE_IP_WAIT,       ANDNA_RESOLVE_IP_MAXRQ	    },
-	{ ANDNA_RESOLVE_MX_WAIT,       ANDNA_RESOLVE_MX_MAXRQ	    },
-	{ ANDNA_GET_ANDNA_CACHE_WAIT,  ANDNA_GET_ANDNA_CACHE_MAXRQ  },
-	{ ANDNA_GET_SINGLE_ACACHE_WAIT,ANDNA_GET_SINGLE_ACACHE_MAXRQ},
-	{ ANDNA_SPREAD_SACACHE_WAIT,   ANDNA_SPREAD_SACACHE_MAXRQ   },
-	{ ANDNA_GET_COUNT_CACHE_WAIT,  ANDNA_GET_COUNT_CACHE_MAXRQ  }
-};
-
-const static u_char request_str[][30]=
-{ 
-	{ "ECHO_ME" },
-	{ "ECHO_REPLY" },
-	{ "GET_FREE_NODES" },
-	{ "GET_QSPN_ROUND" },
-
-	{ "GET_INTERNET_GWS" },
-	{ "SET_FOREIGN_ROUTE" },
-	{ "DEL_FOREIGN_ROUTE"},
-	{ "NEW_BACKROUTE"},
-	{ "DELAYED_BROADCAST" },
-	{ "SPLIT_ROUTE" },
-	{ "SET_NO_IDENTITY" },
-	{ "QSPN_CLOSE"},
-	{ "QSPN_OPEN"},
-	{ "QSPN_RFR"},
-	{ "GET_DNODE_BLOCK" },
-	{ "GET_DNODE_IP"},
-	{ "TRACER_PKT" },
-	{ "TRACER_PKT_CONNECT" },
-	{ "DEL_SNODE" },
-	{ "DEL_GNODE" },
-	{ "GET_INT_MAP" },
-	{ "GET_EXT_MAP" },
-	{ "GET_BNODE_MAP" },
-
-	{ "ANDNA_REGISTER_HNAME" },
-	{ "ANDNA_CHECK_COUNTER"},
-	{ "ANDNA_RESOLVE_HNAME"},
-	{ "ANDNA_RESOLVE_IP"},
-	{ "ANDNA_RESOLVE_MX"},
-	{ "ANDNA_GET_ANDNA_CACHE" },
-	{ "ANDNA_GET_SINGLE_ACACHE" },
-	{ "ANDNA_SPREAD_SACACHE" },
-	{ "ANDNA_GET_COUNT_CACHE"}
-
-};
-/*Request_array indexes defines:
- * ex: request_array[SET_FOREIGN_ROUTE][RQ_WAIT]
- */
-#define RQ_WAIT 	0
-#define RQ_MAXRQ	1
-
-#define TOTAL_MAXRQ	31
-
 /* 
  * Request_table: It prevents requests flood and it is used in each connection.
  * Each element of the "rq" array corresponds to a request; it (the element)
@@ -346,6 +140,7 @@ const static u_char request_str[][30]=
  * available and the corresponding request counter in "rq" is decremented. 
  */
 
+#define TOTAL_MAXRQ	31
 struct request_tbl
 {
 	u_char 	rq[TOTAL_REQUESTS];

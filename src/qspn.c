@@ -1063,7 +1063,7 @@ int qspn_close(PACKET rpkt)
 		/* We send a normal tracer_pkt limited to the qspn_starter nodes */
 		pkt.hdr.op=TRACER_PKT;
 		pkt.hdr.id=++root_node->brdcast;
-		debug(DBG_INSANE, "Fwd %s(0x%x) lvl %d to the qspn starters	<<<<", 
+		debug(DBG_INSANE, "Fwd %s(0x%x) lvl %d to the qspn starters", 
 				rq_to_str(pkt.hdr.op),  pkt.hdr.id, level);
 		
 		flood_pkt_send(exclude_from_and_glevel, upper_level, -1,
