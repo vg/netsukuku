@@ -418,7 +418,7 @@ INT_INFO rh_cache_pkt_body_iinfo = { 3,
 
 void andna_caches_init(int family);
 
-int lcl_new_keyring(lcl_cache_keyring *keyring);
+void lcl_new_keyring(lcl_cache_keyring *keyring);
 void lcl_destroy_keyring(lcl_cache_keyring *keyring);
 lcl_cache *lcl_cache_new(char *hname);
 void lcl_cache_free(lcl_cache *alcl);

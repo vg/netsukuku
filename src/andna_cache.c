@@ -36,7 +36,7 @@ void andna_caches_init(int family)
 {
 	net_family = family;
 
-	setzero(&lcl_keyring, sizeof(lcl_cache_keyring));
+	setzero(&lcl_keyring, sizeof(lcl_keyring));
 
 	andna_lcl=(lcl_cache *)clist_init(&lcl_counter);
 	andna_c=(andna_cache *)clist_init(&andna_c_counter);
@@ -66,23 +66,16 @@ u_int andna_32bit_hash(char *hname)
 /*
  * lcl_new_keyring
  *
- * If the keyring of the local cache is null, it generates a new one.
- *
- * It returns 1 if a new keyring has been generated.
+ * It generates a new keyring.
  */
-int lcl_new_keyring(lcl_cache_keyring *keyring)
+void lcl_new_keyring(lcl_cache_keyring *keyring)
 {
 	setzero(keyring, sizeof(lcl_cache_keyring));
-	
-	if(!keyring->priv_rsa) {
-		loginfo("Generating a new keyring for the future ANDNA requests.");
-		/* Generate the new key pair for the first time */
-		keyring->priv_rsa = genrsa(ANDNA_PRIVKEY_BITS, &keyring->pubkey, 
-				&keyring->pkey_len, &keyring->privkey, &keyring->skey_len);
-		return 1;
-	}
-	
-	return 0;
+	loginfo("Generating a new ANDNA keyring");
+
+	/* Generate the new key pair for the first time */
+	keyring->priv_rsa = genrsa(ANDNA_PRIVKEY_BITS, &keyring->pubkey, 
+			&keyring->pkey_len, &keyring->privkey, &keyring->skey_len);
 }
 
 /*

@@ -605,7 +605,7 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 				/* Delete the entries from the routing table */
 				if(level == 1)
 				  rt_update_node(&e_rnode->quadg.ipstart[0], 
-						  0, 0, 0, 0, 0);
+						  e_rnode, 0, 0, 0, /*level=0*/ 0);
 				rt_update_node(0, 0, &e_rnode->quadg, 0, 0, level);
 			 	
 				send_qspn_now[level]=1;

@@ -559,7 +559,7 @@ void rt_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg
 	if(node->flags & MAP_RNODE && !level && !void_gw)
 		goto finish;
 	
-	/* Dumb you, we don't need the route to reach myself */
+	/* Dumb you, we don't need the route to reach ourself */
 	if(node->flags & MAP_ME)
 		goto finish;
 
@@ -596,15 +596,11 @@ do_update:
 		route_scope = RT_SCOPE_LINK;
 
 	if(node->flags & MAP_VOID) {
-		/*Ok, let's delete it*/
-//#ifdef DEBUG
-//	#warning ***The route_del code is disabled***
-//#else
+		/* Ok, let's delete it */
 		if(route_del(RTN_UNICAST, 0, 0, &to, 0, 0, 0))
 			error("WARNING: Cannot delete the route entry for the"
 					"%snode %d lvl %d!", !level ? " " : " g",
 					node_pos, level);
-//#endif
 	} else if(route_replace(0, route_scope, 0, &to, nh, 0, 0))
 			error("WARNING: Cannot update the route entry for the"
 					"%snode %d lvl %d",!level ? " " : " g",

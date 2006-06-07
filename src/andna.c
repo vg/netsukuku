@@ -179,16 +179,21 @@ void andna_init(void)
 
 	pkt_queue_init();
 	
-	setzero(&lcl_keyring, sizeof(lcl_keyring));
 	andna_caches_init(my_family);
 	snsd_cache_init(my_family);
 
 	/* Load the good old caches */
 	andna_load_caches();
-	
-	if(!lcl_keyring.priv_rsa && lcl_new_keyring(&lcl_keyring)) {
+
+	if(!lcl_keyring.priv_rsa) {
+		/*
+		 * No keyring was loaded, generate a new one save it 
+		 */
+		lcl_new_keyring(&lcl_keyring);
+
 		debug(DBG_NORMAL, "Saving the new andna local keyring");
 		save_lcl_keyring(&lcl_keyring, server_opt.lclkey_file);
+		/**/
 	}
 
 	/* Init ANDNS */
