@@ -251,11 +251,22 @@ inline int rand_range(int _min, int _max)
 }
 
 /* 
- * xsrand: It sets the random seed with a pseudo random number 
+ * xsrand
+ *
+ * It sets the random seed with a pseudo random number 
  */
 void xsrand(void)
 {
-	srand(getpid() ^ time(0) ^ clock());
+	FILE *fd;
+	int seed;
+
+	if((fd=fopen("/dev/urandom", "r"))) {
+		fread(&seed, 4,1,fd);
+		fclose(fd);
+	} else
+		seed=getpid() ^ time(0) ^ clock();
+
+	srand(seed); 
 }
 
 
@@ -293,7 +304,7 @@ void strip_char(char *string, char char_to_strip)
  */
 
 /*
- * split_string: splits the `str' strings in at maximum `max_substrings'#
+ * split_string: splits the `str' strings at maximum in `max_substrings'#
  * substrings using as divisor the `div_str' string.
  * Each substring can be at maximum of `max_substring_sz' bytes.
  * The array of malloced substrings is returned and in `substrings' the number
@@ -306,6 +317,8 @@ char **split_string(char *str, const char *div_str, int *substrings,
 	int i=0, strings=0, str_len=0, buf_len;
 	char *buf, **splitted=0, *p;
 
+	*substrings=0;
+	
 	str_len=strlen(str);
 
 	buf=str-1;
@@ -464,15 +477,18 @@ int check_and_create_dir(char *dir)
 }
 
 /* 
- * file_exist: returns 1 if `filename' is a valid existing file.
+ * file_exist
+ *
+ * returns 1 if `filename' is a valid existing file.
  */
 int file_exist(char *filename)
 {
 	FILE *fd;
 
 	if(!(fd=fopen(filename, "r")))
-		return 0;
+		return !(errno == ENOENT);
 	fclose(fd);
+
 	return 1;
 }
 
