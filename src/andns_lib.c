@@ -332,7 +332,10 @@ int a_u(char *buf,int pktlen,andns_pkt **app)
 	limitlen-=res;
 	if ((res=a_answs_u(buf,ap,limitlen))==-1) 
 		goto andmap;
-        return offset+res;
+	offset+=res;
+	if (offset!=pktlen)
+		error("In a_u(): pktlen differs from readed contents: ID query %d.",ap->id);
+        return offset;
 andmap:
 	destroy_andns_pkt(ap);
 	error(err_str);
