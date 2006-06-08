@@ -15,6 +15,9 @@
 	- andna.c:1399
 	  resolve twice an hostname: the rhc_cache is fucked.
 
+	- comments in resol.conf are not conidered: 
+		NOTE: Do not resolv this BUG: Now It's useful
+
 - update the dependencies list: 
 	- depends on iptables
 	- lartc
