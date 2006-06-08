@@ -32,7 +32,7 @@ void usage(void)
                 " -t --query-type=qt    query type (`-t help' shows more info).\n"
                 " -r --realm=realm      realm to scan (`-r help' shows more info).\n"
                 " -s --service=service  SNSD service (`-s help' shows more info).\n"
-                " -p --protocolo=proto  SNSD protocol (udp/tcp).\n"
+                " -p --protocolo=proto  SNSD protocol (`-p help' shows more info).\n"
                 " -S --silent           ntk-resolv will be not loquacious.\n"
                 " -h --help             display this help, then exit.\n\n");
 	ntkresolv_safe_exit(1);
@@ -77,7 +77,10 @@ void proto_usage(char *arg)
 	    "Valid protocols are:\n"
             " * tcp\n"
             "   udp\n"
-            "(you can also use univoque abbreviation)\n\n");
+            "(you can also use univoque abbreviation)\n"
+	    "Note: you can also specify the protocol with option `-s'.\n" 
+	    "To know more, type:\n"
+	    "\tntk-resolv -s help\n\n");
 	ntkresolv_safe_exit(1);
 }
 void service_and_proto_usage(char *arg)
@@ -175,12 +178,12 @@ void opts_set_qt(char *arg)
 	res=QTFROMPREF(arg);
 	if (res==-1) 
 		qt_usage(arg);
-	GQT->qtype=res;
 	if (res==QTYPE_MX) {
 		GQT->qtype=QTYPE_A;
 		GQT->service=25;
 		GQT->p=SNSD_PROTO_TCP;
-	}
+	} else
+		GQT->qtype=res;
 }
 
 void opts_set_realm(char *arg)
@@ -208,6 +211,17 @@ void opts_set_service_and_proto(char *arg)
 		proto_usage(arg);*/
 	if(ret < 0)
 		service_and_proto_usage(arg);
+}
+void opts_set_proto(char *arg) 
+{
+	int ret;
+
+	if (!strcmp(arg,HELP_STR))
+		proto_usage(NULL);
+	ret=PROTOFROMPREF(arg);
+	if (ret<0)
+		proto_usage(arg);
+	GQT->p=ret;
 }
 
 /*void hname_hash(char *dst,char *src)
@@ -395,6 +409,7 @@ void do_command(void)
 	char answer[ANDNS_MAX_PK_LEN];
 	int res;
 
+	memset(buf,0,ANDNS_MAX_SZ);
 	res=a_p(GQT,buf);
 	if (res==-1) {
 		say("Error building question.\n");
@@ -471,6 +486,9 @@ int main(int argc, char **argv)
 				break;
 			case 's':
 				opts_set_service_and_proto(optarg);
+				break;	
+			case 'p':
+				opts_set_proto(optarg);
 				break;	
 			case 'h':
 				usage();

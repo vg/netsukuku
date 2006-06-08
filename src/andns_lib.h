@@ -89,7 +89,9 @@ typedef struct andns_pkt
 #define ANDNS_SET_Z(s)		*(s+3)|=0x20;
 #define ANDNS_UNSET_Z(s)	*(s+3)&=0xdf;
 
-
+/* ANDNS PROTO-TYPE */
+#define ANDNS_PROTO_TCP	0
+#define ANDNS_PROTO_UDP	1
 /* ANDNS QUERY-TYPE */
 #define AT_A            0 /* h->ip */
 #define AT_PTR          1 /* ip->h */

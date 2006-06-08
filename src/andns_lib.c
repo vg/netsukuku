@@ -105,7 +105,7 @@ int a_hdr_u(char *buf,andns_pkt *ap)
 
         memcpy(&c,buf,sizeof(uint8_t));
         ap->qr=(c>>7)&0x01;
-        ap->p=c&0x40;
+        ap->p=c&0x40?ANDNS_PROTO_UDP:ANDNS_PROTO_TCP;
 	ap->z=c&0x20;
         ap->qtype=(c>>3)&0x03;
         ap->ancount=(c<<1)&0x0e;
@@ -326,6 +326,8 @@ int a_u(char *buf,int pktlen,andns_pkt **app)
         if ((res=a_qst_u(buf,ap,limitlen))==-1) 
 		goto andmap;
 	offset+=res;
+	if (!ap->ancount) /*No answers */
+		return offset;
 	buf+=res;
 	limitlen-=res;
 	if ((res=a_answs_u(buf,ap,limitlen))==-1) 

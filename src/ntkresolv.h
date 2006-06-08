@@ -9,7 +9,7 @@
 
 #include "andns_lib.h"
 
-#define VERSION			"0.3.1"
+#define VERSION			"0.3.2"
 
 #define NTKRESOLV_PORT		53
 #define NTKRESOLV_PORT_STR		"53"
@@ -50,7 +50,7 @@
 #define TIME_SCALE		1000000.0
 #define HELP_STR		"help"
 
-char *QTYPE_STR_LIST[]={QTYPE_A_STR,QTYPE_PTR_STR,QTYPE_MX_STR,QTYPE_G_STR};
+char *QTYPE_STR_LIST[]={QTYPE_A_STR,QTYPE_PTR_STR,QTYPE_G_STR,QTYPE_MX_STR};
 int QT_LEN=4;
 
 #define QTFROMPREF(s)							\
@@ -70,7 +70,7 @@ int QT_LEN=4;
 		__res; })	
 #define PROTOFROMPREF(s)						\
 ({									\
- 	uint8_t __res=2;						\
+ 	uint8_t __res=-1;						\
 	if (!strncasecmp(SNSD_PROTO_UDP_STR,s,strlen(s)))		\
 		__res=SNSD_PROTO_UDP;					\
 	else if (!strncasecmp(SNSD_PROTO_TCP_STR,s,strlen(s)))		\
@@ -211,6 +211,7 @@ void opts_set_ns(char *arg);
 void opts_set_qt(char *arg);
 void opts_set_realm(char *arg);
 void opts_set_service_and_proto(char *arg);
+void opts_set_proto(char *arg);
 void opts_set_question(char *arg);
 void opts_finish(char *arg);
 void print_headers();
