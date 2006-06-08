@@ -680,14 +680,11 @@ char *pack_lcl_keyring(lcl_cache_keyring *keyring, size_t *pack_sz)
 	sz=LCL_KEYRING_HDR_PACK_SZ(&key_hdr);
 	
 	pack=buf=xmalloc(sz);
-	memcpy(pack, &key_hdr, sizeof(struct lcl_keyring_pkt_hdr));
+	bufput(&key_hdr, sizeof(struct lcl_keyring_pkt_hdr));
 	ints_host_to_network(pack, lcl_keyring_pkt_hdr_iinfo);
-	buf+=sizeof(struct lcl_keyring_pkt_hdr);
 
-	memcpy(buf, keyring->privkey, keyring->skey_len);
-	buf+=keyring->skey_len;
-	memcpy(buf, keyring->pubkey, keyring->pkey_len);
-	buf+=keyring->pkey_len;
+	bufput(keyring->privkey, keyring->skey_len);
+	bufput(keyring->pubkey, keyring->pkey_len);
 	
 	*pack_sz=sz;
 	return pack;
@@ -722,12 +719,10 @@ int unpack_lcl_keyring(lcl_cache_keyring *keyring, char *pack, size_t pack_sz)
 
 	/* extract the private key */
 	buf=pack+sizeof(struct lcl_keyring_pkt_hdr);
-	memcpy(keyring->privkey, buf, hdr->skey_len);
-	buf+=hdr->skey_len;
+	bufget(keyring->privkey, hdr->skey_len);
 
 	/* public key */
-	memcpy(keyring->pubkey, buf, hdr->pkey_len);
-	buf+=hdr->pkey_len;
+	bufget(keyring->pubkey, hdr->pkey_len);
 	
 	pk=keyring->privkey;
 	if(!(keyring->priv_rsa=get_rsa_priv((const u_char **)&pk,
@@ -765,9 +760,8 @@ char *pack_lcl_cache(lcl_cache *local_cache, size_t *pack_sz)
 	}
 
 	pack=buf=xmalloc(sz);
-	memcpy(pack, &lcl_hdr, sizeof(struct lcl_cache_pkt_hdr));
+	bufput(&lcl_hdr, sizeof(struct lcl_cache_pkt_hdr));
 	ints_host_to_network(pack, lcl_cache_pkt_hdr_iinfo);
-	buf+=sizeof(struct lcl_cache_pkt_hdr);
 		
 	*pack_sz=0;
 	if(lcl_hdr.tot_caches) {
@@ -776,15 +770,11 @@ char *pack_lcl_cache(lcl_cache *local_cache, size_t *pack_sz)
 		list_for(alcl) {
 			body=buf;
 			
-			memcpy(buf, &alcl->hname_updates, sizeof(u_short));
-			buf+=sizeof(u_short);
-	
-			memcpy(buf, &alcl->timestamp, sizeof(time_t));
-			buf+=sizeof(time_t);
+			bufput(&alcl->hname_updates, sizeof(u_short));
+			bufput(&alcl->timestamp, sizeof(time_t));
 
 			slen=strlen(alcl->hostname)+1;
-			memcpy(buf, alcl->hostname, slen);
-			buf+=slen;
+			bufput(alcl->hostname, slen);
 			
 			ints_host_to_network(body, lcl_cache_pkt_body_iinfo);
 		}
@@ -812,9 +802,8 @@ lcl_cache *unpack_lcl_cache(char *pack, size_t pack_sz, int *counter)
 	size_t slen, unpacked_sz;
 	int i=0;
 		
-	buf=pack;
-	hdr=(struct lcl_cache_pkt_hdr *)buf;
-	buf+=sizeof(struct lcl_cache_pkt_hdr);
+	hdr=(struct lcl_cache_pkt_hdr *)pack;
+	buf=pack+sizeof(struct lcl_cache_pkt_hdr);
 	unpacked_sz=sizeof(struct lcl_cache_pkt_hdr);
 	ints_network_to_host(hdr, lcl_cache_pkt_hdr_iinfo);
 	*counter=0;
@@ -839,11 +828,8 @@ lcl_cache *unpack_lcl_cache(char *pack, size_t pack_sz, int *counter)
 			alcl=xmalloc(sizeof(lcl_cache));
 			setzero(alcl, sizeof(lcl_cache));
 			
-			memcpy(&alcl->hname_updates, buf,  sizeof(u_short));
-			buf+=sizeof(u_short);
-
-			memcpy(&alcl->timestamp, buf, sizeof(time_t));
-			buf+=sizeof(time_t);
+			bufget(&alcl->hname_updates,  sizeof(u_short));
+			bufget(&alcl->timestamp, sizeof(time_t));
 			
 			alcl->hostname=xstrdup(buf);
 			alcl->hash=andna_32bit_hash(alcl->hostname);
@@ -880,17 +866,10 @@ int pack_andna_cache_queue(char *pack, size_t tot_pack_sz,
 	else 
 		t = acq->timestamp;
 	
-	memcpy(buf, &t, sizeof(uint32_t));
-	buf+=sizeof(uint32_t);
-
-	memcpy(buf, &acq->hname_updates, sizeof(u_short));
-	buf+=sizeof(u_short);
-
-	memcpy(buf, &acq->pubkey, ANDNA_PKEY_LEN);
-	buf+=ANDNA_PKEY_LEN;
-
-	memcpy(buf, &acq->snsd_counter, sizeof(u_short));
-	buf+=sizeof(u_short);
+	bufput(&t, sizeof(uint32_t));
+	bufput(&acq->hname_updates, sizeof(u_short));
+	bufput(&acq->pubkey, ANDNA_PKEY_LEN);
+	bufput(&acq->snsd_counter, sizeof(u_short));
 
 	pack_sz+=ACQ_BODY_PACK_SZ;
 	ints_host_to_network(pack, acq_body_iinfo);
@@ -919,14 +898,9 @@ int pack_single_andna_cache(char *pack, size_t tot_pack_sz,
 	int pack_sz=0;
 	size_t psz;
 
-	memcpy(buf, ac->hash, ANDNA_HASH_SZ);
-	buf+=ANDNA_HASH_SZ;
-
-	memcpy(buf, &ac->flags, sizeof(char));
-	buf+=sizeof(char);
-
-	memcpy(buf, &ac->queue_counter, sizeof(u_short));
-	buf+=sizeof(u_short);
+	bufput(ac->hash, ANDNA_HASH_SZ);
+	bufput(&ac->flags, sizeof(char));
+	bufput(&ac->queue_counter, sizeof(u_short));
 	
 	pack_sz+=ACACHE_BODY_PACK_SZ;
 	ints_host_to_network(pack, andna_cache_body_iinfo);
@@ -982,8 +956,7 @@ char *pack_andna_cache(andna_cache *acache, size_t *pack_sz, int pack_type)
 	buf=pack=xmalloc(sz);
 	
 	/* Write the header of the package */
-	memcpy(buf, &hdr, sizeof(struct andna_cache_pkt_hdr));
-	buf+=sizeof(struct andna_cache_pkt_hdr);
+	bufput(&hdr, sizeof(struct andna_cache_pkt_hdr));
 	free_sz-=sizeof(struct andna_cache_pkt_hdr);
 
 	ints_host_to_network(pack, andna_cache_pkt_hdr_iinfo);
@@ -1033,19 +1006,13 @@ unpack_acq_llist(char *pack, size_t pack_sz, size_t *unpacked_sz,
 
 		ints_network_to_host(buf, acq_body_iinfo);
 
-		acq->timestamp=(*(uint32_t *)buf);
+		bufget(&acq->timestamp, sizeof(uint32_t));
 		if(pack_type == ACACHE_PACK_PKT)
 			acq->timestamp = cur_t - acq->timestamp;
-		buf+=sizeof(uint32_t);
 
-		memcpy(&acq->hname_updates, buf, sizeof(u_short));
-		buf+=sizeof(u_short);
-
-		memcpy(&acq->pubkey, buf, ANDNA_PKEY_LEN);
-		buf+=ANDNA_PKEY_LEN;
-
-		memcpy(&acq->snsd_counter, buf, sizeof(u_short));
-		buf+=sizeof(u_short);
+		bufget(&acq->hname_updates, sizeof(u_short));
+		bufget(&acq->pubkey, ANDNA_PKEY_LEN);
+		bufget(&acq->snsd_counter, sizeof(u_short));
 
 		pack_sz-=ACACHE_BODY_PACK_SZ;
 		(*unpacked_sz)+=ACACHE_BODY_PACK_SZ;
@@ -1109,14 +1076,9 @@ andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter,
 
 		ints_network_to_host(buf, andna_cache_body_iinfo);
 
-		memcpy(ac->hash, buf, ANDNA_HASH_SZ);
-		buf+=ANDNA_HASH_SZ;
-
-		memcpy(&ac->flags, buf, sizeof(char));
-		buf+=sizeof(char);
-
-		memcpy(&ac->queue_counter, buf, sizeof(u_short));
-		buf+=sizeof(u_short);
+		bufget(ac->hash, ANDNA_HASH_SZ);
+		bufget(&ac->flags, sizeof(char));
+		bufget(&ac->queue_counter, sizeof(u_short));
 
 		sz+=ACQ_PACK_SZ(0)*ac->queue_counter;
 		if(sz > pack_sz)
@@ -1171,14 +1133,9 @@ char *pack_counter_cache(counter_c *countercache, size_t *pack_sz)
 		list_for(cc) {
 			p=buf;
 		
-			memcpy(buf, cc->pubkey, ANDNA_PKEY_LEN);
-			buf+=ANDNA_PKEY_LEN;
-
-			memcpy(buf, &cc->flags, sizeof(char));
-			buf+=sizeof(char);
-
-			memcpy(buf, &cc->hashes, sizeof(u_short));
-			buf+=sizeof(u_short);
+			bufput(cc->pubkey, ANDNA_PKEY_LEN);
+			bufput(&cc->flags, sizeof(char));
+			bufput(&cc->hashes, sizeof(u_short));
 
 			ints_host_to_network(p, counter_c_body_iinfo);
 			
@@ -1187,14 +1144,10 @@ char *pack_counter_cache(counter_c *countercache, size_t *pack_sz)
 				p=buf;
 				
 				t = cur_t - cch->timestamp;
-				memcpy(buf, &t, sizeof(uint32_t));
-				buf+=sizeof(uint32_t);
+				bufput(&t, sizeof(uint32_t));
 
-				memcpy(buf, &cch->hname_updates, sizeof(u_short));
-				buf+=sizeof(u_short);
-
-				memcpy(buf, cch->hash, ANDNA_HASH_SZ);
-				buf+=ANDNA_HASH_SZ;
+				bufput(&cch->hname_updates, sizeof(u_short));
+				bufput(cch->hash, ANDNA_HASH_SZ);
 
 				ints_host_to_network(p, counter_c_hashes_body_iinfo);
 			}
@@ -1247,14 +1200,9 @@ counter_c *unpack_counter_cache(char *pack, size_t pack_sz, int *counter)
 			
 			ints_network_to_host(buf, counter_c_body_iinfo);
 			
-			memcpy(cc->pubkey, buf, ANDNA_PKEY_LEN);
-			buf+=ANDNA_PKEY_LEN;
-
-			memcpy(&cc->flags, buf, sizeof(char));
-			buf+=sizeof(char);
-
-			memcpy(&cc->hashes, buf, sizeof(u_short));
-			buf+=sizeof(u_short);
+			bufget(cc->pubkey, ANDNA_PKEY_LEN);
+			bufget(&cc->flags, sizeof(char));
+			bufget(&cc->hashes, sizeof(u_short));
 
 
 			sz+=COUNTER_CACHE_HASHES_PACK_SZ * cc->hashes;
@@ -1269,15 +1217,11 @@ counter_c *unpack_counter_cache(char *pack, size_t pack_sz, int *counter)
 				ints_network_to_host(buf, counter_c_hashes_body_iinfo);
 
 				cch->timestamp=0;
-				cch->timestamp+=*(uint32_t *)buf;
+				bufget(&cch->timestamp, sizeof(uint32_t));
 				cch->timestamp = cur_t - cch->timestamp;
-				buf+=sizeof(uint32_t);
 
-				memcpy(&cch->hname_updates, buf, sizeof(u_short));
-				buf+=sizeof(u_short);
-
-				memcpy(cch->hash, buf, ANDNA_HASH_SZ);
-				buf+=ANDNA_HASH_SZ;
+				bufget(&cch->hname_updates, sizeof(u_short));
+				bufget(cch->hash, ANDNA_HASH_SZ);
 
 				clist_add(&cc->cch, &fake_int, cch);
 			}
@@ -1317,9 +1261,7 @@ char *pack_rh_cache(rh_cache *rhcache, size_t *pack_sz)
 	*pack_sz=tot_pack_sz;
 
 	buf=pack=xmalloc(tot_pack_sz);
-	
-	memcpy(pack, &rh_hdr, sizeof(struct rh_cache_pkt_hdr));
-	buf+=sizeof(struct rh_cache_pkt_hdr);
+	bufput(&rh_hdr, sizeof(struct rh_cache_pkt_hdr));
 	tot_pack_sz-=sizeof(struct rh_cache_pkt_hdr);
 	
 	ints_host_to_network(pack, rh_cache_pkt_hdr_iinfo);
@@ -1330,14 +1272,9 @@ char *pack_rh_cache(rh_cache *rhcache, size_t *pack_sz)
 		list_for(rhc) {
 			body=buf;
 
-			memcpy(buf, &rhc->hash, sizeof(u_int));
-			buf+=sizeof(u_int);
-
-			memcpy(buf, &rhc->flags, sizeof(char));
-			buf+=sizeof(char);
-			
-			memcpy(buf, &rhc->timestamp, sizeof(time_t));
-			buf+=sizeof(time_t);
+			bufput(&rhc->hash, sizeof(u_int));
+			bufput(&rhc->flags, sizeof(char));
+			bufput(&rhc->timestamp, sizeof(time_t));
 			
 			tot_pack_sz-=RH_CACHE_BODY_PACK_SZ(0);
 
@@ -1392,14 +1329,9 @@ rh_cache *unpack_rh_cache(char *pack, size_t pack_sz, int *counter)
 			rhc=xmalloc(sizeof(rh_cache));
 			setzero(rhc, sizeof(rh_cache));
 			
-			memcpy(&rhc->hash, buf, sizeof(u_int));
-			buf+=sizeof(u_int);
-			
-			memcpy(&rhc->flags, buf, sizeof(char));
-			buf+=sizeof(char);
-			
-			memcpy(&rhc->timestamp, buf, sizeof(time_t));
-			buf+=sizeof(time_t);
+			bufget(&rhc->hash, sizeof(u_int));
+			bufget(&rhc->flags, sizeof(char));
+			bufget(&rhc->timestamp, sizeof(time_t));
 
 			rhc->service=snsd_unpack_all_service(buf, pack_sz,
 					&unpacked_sz, 0);

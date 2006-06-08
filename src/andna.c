@@ -886,7 +886,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 				" mismatch %d > %d", rpkt.hdr.id, 
 				acq->hname_updates, req->hname_updates);
 		if(!forwarded_pkt)
-			ret=pkt_err(pkt, E_INVALID_REQUEST, 0);
+			ret=pkt_err(pkt, E_ANDNA_HUPDATE_MISMATCH, 0);
 		ERROR_FINISH(ret, -1, finish);
 	}
 	/**/
@@ -1199,7 +1199,7 @@ int andna_recv_check_counter(PACKET rpkt)
 			" mismatch %d > %d", rq_to_str(rpkt.hdr.op), rpkt.hdr.id,
 				old_updates, req->hname_updates);
 		if(!forwarded_pkt)
-			ret=pkt_err(pkt, E_INVALID_REQUEST, 0);
+			ret=pkt_err(pkt, E_ANDNA_HUPDATE_MISMATCH, 0);
 		ERROR_FINISH(ret, -1, finish);
 	} else if(!just_check) {
 		/* Touch the hname */

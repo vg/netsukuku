@@ -96,6 +96,7 @@ const static u_char error_str[][40]=
 	{ "ANDNA cache queue full" },
 	{ "Hostname update too early" },
 	{ "Too many hostname registered" },
+	{ "Hname updates counter mismatch" },
 	{ "Inexistent host name" },
 	{ "Counter check failed" },
 	{ "Too many connection" },

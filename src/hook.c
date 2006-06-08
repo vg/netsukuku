@@ -290,8 +290,6 @@ int get_qspn_round(inet_prefix to, interface *dev, struct timeval to_rtt,
 	const char *ntop;
 	char *buf=0;
 	u_char max_levels;
-	u_int *gcount;
-
 	int_info qr_pkt_iinfo;
 	
 	memset(&pkt, '\0', sizeof(PACKET));
@@ -307,8 +305,9 @@ int get_qspn_round(inet_prefix to, interface *dev, struct timeval to_rtt,
 	err=send_rq(&pkt, 0, GET_QSPN_ROUND, 0, PUT_QSPN_ROUND, 1, &rpkt);
 	if(err==-1)
 		ERROR_FINISH(ret, -1, finish);
-	
-	memcpy(&max_levels, rpkt.msg, sizeof(u_char));
+
+	buf=rpkt.msg;
+	bufget(&max_levels, sizeof(u_char));
 	if(QSPN_ROUND_PKT_SZ(max_levels) != rpkt.hdr.sz ||
 			max_levels > FAMILY_LVLS) {
 		error("Malformed PUT_QSPN_ROUND request hdr from %s.", ntop);
@@ -324,28 +323,17 @@ int get_qspn_round(inet_prefix to, interface *dev, struct timeval to_rtt,
 	ints_network_to_host(rpkt.msg, qr_pkt_iinfo);
 
 	/* Restoring the qspn_id and the qspn_round time */
-	buf=rpkt.msg+sizeof(u_char);
-	memcpy(qspn_id, buf, max_levels * sizeof(int));
-	
-	buf+=max_levels * sizeof(int);
-	memcpy(qtime, buf, max_levels * sizeof(struct timeval));
+	bufget(qspn_id, max_levels*sizeof(int));
+	bufget(qtime, max_levels*sizeof(struct timeval));
 	
 	gettimeofday(&cur_t, 0);
 	for(level=0; level < max_levels; level++) {
 		timeradd(&to_rtt, &qtime[level], &qtime[level]);
-#if 0
-		debug(DBG_INSANE, "qspn_id: %d qtime[%d] set to %d, to_rtt: %d", 
-				qspn_id[level], level, 
-				MILLISEC(qtime[level]), MILLISEC(to_rtt));
-#endif
 		timersub(&cur_t, &qtime[level], &qtime[level]);
 	}
 
 	/* Extracting the qspn_gnode_count */
-	buf+=max_levels * sizeof(struct timeval);
-	gcount=(u_int *)buf;
-	for(level=0; level < GCOUNT_LEVELS; level++)
-		qspn_gcount[level]=gcount[level];
+	bufget(qspn_gcount, sizeof(u_int)*GCOUNT_LEVELS);
 
 finish:
 	pkt_free(&pkt, 0);
@@ -357,20 +345,31 @@ finish:
  */
 int put_qspn_round(PACKET rq_pkt)
 {	
-	struct qspn_round_pkt {
-		u_char		max_levels;
-		int32_t		qspn_id[me.cur_quadg.levels];
-		struct timeval  qtime[me.cur_quadg.levels];
-		u_int		gcount[GCOUNT_LEVELS];
-	}_PACKED_ qr_pkt;
+        /*
+	 * We cannot use this elegant struct because gcc is bugged, -_.
+	 * http://gcc.gnu.org/bugzilla/show_bug.cgi?id=27945
+	 *
+	 * We have to wait some years, then when gcc4 will be obsolete (and
+	 * the bug will be solved), we'll activate it.
+	 *
+         * struct qspn_round_pkt {
+         *         u_char          max_levels;
+         *         int32_t         qspn_id[me.cur_quadg.levels];
+         *         struct timeval _PACKED_ qtime[me.cur_quadg.levels];
+         *         u_int           gcount[GCOUNT_LEVELS];
+         * }_PACKED_ qr_pkt;
+         */
+	char qr_pkt[QSPN_ROUND_PKT_SZ(me.cur_quadg.levels)];
 	int_info qr_pkt_iinfo;
 
 	PACKET pkt;
-	struct timeval cur_t;
+	struct timeval cur_t, *tptr;
 	int ret=0;
 	ssize_t err, pkt_sz;
 	u_char level;
 	const char *ntop;
+	u_char max_levels;
+	char *buf=0;
 
 	ntop=inet_to_str(rq_pkt.from);
 	debug(DBG_NORMAL, "Sending the PUT_QSPN_ROUND reply to %s", ntop);
@@ -383,37 +382,36 @@ int put_qspn_round(PACKET rq_pkt)
 	pkt_addcompress(&pkt);
 
 	/* We fill the qspn_id and the qspn round time */
-	qr_pkt.max_levels=me.cur_quadg.levels;
-	memcpy(qr_pkt.qspn_id, me.cur_qspn_id, sizeof(int) * qr_pkt.max_levels);
+	buf=qr_pkt;
+	max_levels=me.cur_quadg.levels;
+	bufput(&max_levels, sizeof(u_char));
+	bufput(me.cur_qspn_id, sizeof(int)*max_levels);
 	
 	gettimeofday(&cur_t, 0);
-	for(level=0; level < qr_pkt.max_levels; level++) {
+	for(level=0; level < max_levels; level++) {
 		update_qspn_time(level, 0);
-		timersub(&cur_t, &me.cur_qspn_time[level], &qr_pkt.qtime[level]);
-#if 0
-		debug(DBG_INSANE, "qspn_id: %d, qr_pkt.qtime[%d]: %d", 
-				qr_pkt.qspn_id[level], level,
-				MILLISEC(qr_pkt.qtime[level]));
-#endif
+		tptr=(struct timeval *)buf;
+		timersub(&cur_t, &me.cur_qspn_time[level], tptr);
+		buf+=sizeof(struct timeval);
 	}
 
 	/* copy in the pkt the qspn_gnode_count */
-	memcpy(qr_pkt.gcount, qspn_gnode_count, sizeof(qspn_gnode_count));
+	bufput(qspn_gnode_count, sizeof(qspn_gnode_count));
 
-	/* fill the PKT header */
-	pkt_sz=sizeof(qr_pkt);
-	pkt_fill_hdr(&pkt.hdr, HOOK_PKT, rq_pkt.hdr.id, PUT_QSPN_ROUND, pkt_sz);
-	pkt.msg=xmalloc(pkt_sz);
-	setzero(pkt.msg, pkt_sz);
-	
 	/* Convert the pkt from host to network order */
 	int_info_copy(&qr_pkt_iinfo, &qspn_round_pkt_iinfo);
 	qr_pkt_iinfo.int_offset[1] = me.cur_quadg.levels*sizeof(int)+sizeof(char);
 	qr_pkt_iinfo.int_offset[2] = qr_pkt_iinfo.int_offset[1] + 
-						sizeof(struct timeval)*qr_pkt.max_levels;
+						sizeof(struct timeval)*max_levels;
 	qr_pkt_iinfo.int_nmemb[0]  = me.cur_quadg.levels;
 	qr_pkt_iinfo.int_nmemb[1]  = me.cur_quadg.levels*2;
-	ints_host_to_network(&qr_pkt, qr_pkt_iinfo);
+	ints_host_to_network(qr_pkt, qr_pkt_iinfo);
+	
+	/* fill the pkt header */
+	pkt_sz=sizeof(qr_pkt);
+	pkt_fill_hdr(&pkt.hdr, HOOK_PKT, rq_pkt.hdr.id, PUT_QSPN_ROUND, pkt_sz);
+	pkt.msg=xmalloc(pkt_sz);
+	setzero(pkt.msg, pkt_sz);
 	
 	/* Go pkt, go! Follow your instinct */
 	memcpy(pkt.msg, &qr_pkt, sizeof(qr_pkt));

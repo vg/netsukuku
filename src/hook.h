@@ -94,7 +94,7 @@ INT_INFO free_nodes_hdr_iinfo = { 1, { INT_TYPE_32BIT },
  */
 
 /* 
- * the qspn_round pkt it:
+ * the qspn_round pkt is:
  * 	u_char 		max_levels;
  *	int		qspn_id[max_levels];	   the qspn_id of the last qspn_round for each 
  *						   fn_hdr.max_levels level

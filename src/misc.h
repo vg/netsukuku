@@ -31,7 +31,46 @@
  * <<4.3BSD.  This function [bzero] is deprecated -- use memset in new 
  *   programs.>>
  */
-#define setzero(p, sz)		memset((p), 0, (sz))
+#define setzero(_p, _sz)	memset((_p), 0, (_sz))
+
+/*
+ * memput
+ *
+ * It copies `__sz' bytes from `__src' to `__dst' and then increments the `__dst'
+ * pointer of `__sz' bytes.
+ *
+ * *WARNING* 
+ * Do NOT put expression in `__dst', and `__sz', f.e.
+ * 	*WRONG CODE*
+ * 	memput(buf++, src, (size+=sizeof(src));
+ *
+ * 	*CORRECT CODE*
+ * 	buf++; size+=sizeof(src);
+ * 	memput(buf, src, size);
+ * *WARNING*
+ */
+#define memput(__dst, __src, __sz)					\
+({ 									\
+	void *_bufret=memcpy((__dst), (__src), (__sz));			\
+	(__dst)+=(__sz);						\
+	_bufret;							\
+})
+
+/*
+ * memget
+ *
+ * the same of memput(), but it increments `__src' instead.
+ */
+#define memget(__dst, __src, __sz)					\
+({ 									\
+	void *_bufret=memcpy((__dst), (__src), (__sz));			\
+	(__src)+=(__sz);						\
+	_bufret;							\
+})
+
+/* use of hardcoded `_src' and `_dst' variable names */
+#define bufput(_src, _sz)	(memput(buf, (_src), (_sz)))
+#define bufget(_dst, _sz)	(memget((_dst), buf, (_sz)))
 
 /* 
  * MILLISEC: converts a timeval struct to a int. The time will be returned in
