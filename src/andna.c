@@ -997,6 +997,8 @@ finish:
 		xfree(ntop);
 	if(rfrom_ntop)
 		xfree(rfrom_ntop);
+	if(pubkey)
+		RSA_free(pubkey);
 	pkt_free(&rpkt_local_copy, 0);
 	
 	return ret;
@@ -1077,7 +1079,7 @@ int andna_recv_check_counter(PACKET rpkt)
 	PACKET pkt, rpkt_local_copy;
 	struct andna_reg_pkt *req;
 	inet_prefix rfrom, to;
-	RSA *pubkey;
+	RSA *pubkey=0;
 	counter_c *cc;
 	counter_c_hashes *cch;
 	u_int rip_hash[MAX_IP_INT], hash_gnode[MAX_IP_INT], *excluded_hgnode[1];
@@ -1129,8 +1131,8 @@ int andna_recv_check_counter(PACKET rpkt)
 	/* Verify the signature */
 	pk=req->pubkey;
 	pubkey=get_rsa_pub(&pk, ANDNA_PKEY_LEN);
-	if(!verify_sign((u_char *)req, ANDNA_REG_SIGNED_BLOCK_SZ, req->sign, 
-				ANDNA_SIGNATURE_LEN, pubkey)) {
+	if(!pubkey || !verify_sign((u_char *)req, ANDNA_REG_SIGNED_BLOCK_SZ, 
+				req->sign, ANDNA_SIGNATURE_LEN, pubkey)) {
 		/* Bad signature */
 		debug(DBG_SOFT, "Invalid signature of the 0x%x check "
 				"counter request", rpkt.hdr.id);
@@ -1232,6 +1234,8 @@ finish:
 		xfree(ntop);
 	if(rfrom_ntop)
 		xfree(rfrom_ntop);
+	if(pubkey)
+		RSA_free(pubkey);
 	pkt_free(&rpkt_local_copy, 0);
 	
 	return ret;
@@ -1258,6 +1262,7 @@ snsd_service *andna_resolve_hash_locally(u_int hname_hash[MAX_IP_INT], int servi
 	lcl_cache *lcl;
 	rh_cache *rhc;
 	andna_cache *ac;
+	snsd_service *ret;
 	u_int hash;
 
 	setzero(&req, sizeof(req));
@@ -1271,37 +1276,57 @@ snsd_service *andna_resolve_hash_locally(u_int hname_hash[MAX_IP_INT], int servi
 	 * dumb that we are trying to resolve the same ip we registered.
 	 */
 	if((lcl=lcl_cache_find_hash(andna_lcl, hash))) {
-		snsd_service *ret;
 		u_short fake_counter=0;
 
 		*records=lcl->snsd_counter;
 		ret=snsd_service_llist_copy(lcl->service, service, proto);
 
 		/* Add our current main ip */
-		if(service == -1 || service == SNSD_DEFAULT_SERVICE)
+		if(service == SNSD_ALL_SERVICE || 
+				service == SNSD_DEFAULT_SERVICE || !ret)
 			snsd_add_mainip(&ret, &fake_counter,
 					SNSD_MAX_RECORDS, me.cur_ip.data);
 		return ret;
 	}
 	
-#endif
-
 	/*
 	 * Last try before asking to ANDNA: let's see if we have it in
 	 * the resolved_hnames cache
 	 */
 	if((rhc=rh_cache_find_hash(hash))) {
 		*records=rhc->snsd_counter;
-		return snsd_service_llist_copy(rhc->service, service, proto);
+		ret=snsd_service_llist_copy(rhc->service, service, proto);
+
+		if(!ret && (service != SNSD_ALL_SERVICE) && 
+				(service != SNSD_DEFAULT_SERVICE))
+			/* The specific service hasn't been found, fallback to
+			 * SNSD_DEFAULT_SERVICE */
+			ret=snsd_service_llist_copy(rhc->service, 
+						    SNSD_DEFAULT_SERVICE, 
+						    0);
+		if(ret)
+			return ret;
 	}
 	
+#endif
+
 	/*
 	 * If we manage an andna_cache, it's better to peek at it.
 	 */
 	if((ac=andna_cache_gethash(hname_hash))) {
 		*records=ac->acq->snsd_counter;
-		return snsd_service_llist_copy(ac->acq->service, service, 
-						proto);
+		
+		ret=snsd_service_llist_copy(ac->acq->service, service, proto);
+
+		if(!ret && (service != SNSD_ALL_SERVICE) && 
+				(service != SNSD_DEFAULT_SERVICE))
+			/* The specific service hasn't been found, fallback to
+			 * SNSD_DEFAULT_SERVICE */
+			ret=snsd_service_llist_copy(ac->acq->service, 
+						    SNSD_DEFAULT_SERVICE, 
+						    0);
+		if(ret)
+			return ret;
 	}
 
 	return 0;
@@ -1442,7 +1467,8 @@ snsd_service *andna_resolve_hash(u_int hname_hash[MAX_IP_INT], int service,
 	if(rhc->service)
 		snsd_service_llist_del(&rhc->service);
 	rhc->snsd_counter=snsd_counter;
-	rhc->service=snsd_service_llist_copy(snsd_unpacked, -1, 0);
+	rhc->service=snsd_service_llist_copy(snsd_unpacked,
+						SNSD_ALL_SERVICE, 0);
 	
 finish:
 	pkt_free(&pkt, 1);
@@ -1587,7 +1613,7 @@ reply_resolve_rq:
 	ints_host_to_network((void *)&reply, andna_resolve_reply_pkt_iinfo);
 
 	pack_sz=sizeof(reply);
-	pack_sz+=req->service == -1 ?
+	pack_sz+=req->service == SNSD_ALL_SERVICE ?
 		  SNSD_SERVICE_LLIST_PACK_SZ(ac->acq->service) : 
 			  SNSD_SERVICE_SINGLE_PACK_SZ(ac->acq->service);
 	pkt_fill_hdr(&pkt.hdr, ASYNC_REPLIED, rpkt.hdr.id, ANDNA_RESOLVE_REPLY,
@@ -1598,13 +1624,24 @@ reply_resolve_rq:
 	buf+=sizeof(reply);
 	pack_sz-=sizeof(reply);
 	
-	if(req->service == -1)
+	if(req->service == SNSD_ALL_SERVICE)
 		/* Pack all the registered snsd records */
 		ret=snsd_pack_all_services(buf, pack_sz, ac->acq->service);
 	else {
 		/* Pack the snsd records of the specified service number */
 		service=(u_short)req->service;
 		sns=snsd_find_service(ac->acq->service, service, req->proto);
+
+		if(!sns && service != SNSD_DEFAULT_SERVICE) {
+			/*
+			 * The specified service and proto record hasn't been
+			 * found, fallback to SNSD_DEFAULT_SERVICE 
+			 */
+			sns=snsd_find_service(ac->acq->service, 
+						SNSD_DEFAULT_SERVICE, 0);
+		}
+
+		/* pack what we found */
 		ret=snsd_pack_service(buf, pack_sz, sns);
 	}
 	if(ret < 0) {

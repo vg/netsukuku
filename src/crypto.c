@@ -99,14 +99,22 @@ error:
 }
 
 /*
- * get_rsa_pub: Converts a dump of a rsa pub key to a RSA structure, which is
- * returned.
+ * get_rsa_pub
+ *
+ * Converts a dump of a rsa pub key to a RSA structure, which is returned.
+ * Remeber to RSA_free() the returned key.
  */
 RSA *get_rsa_pub(const u_char **pub_key, long length)
 {
 	 return d2i_RSAPublicKey(NULL, pub_key, length);
 }
 
+/*
+ * get_rsa_priv
+ *
+ * Converts a dump of a rsa priv key to a RSA structure, which is returned.
+ * Remeber to RSA_free() the returned key.
+ */
 RSA *get_rsa_priv(const u_char **priv_key, long length)
 {
 	 return d2i_RSAPrivateKey(NULL, priv_key, length);

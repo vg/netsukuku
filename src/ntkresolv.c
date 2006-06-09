@@ -45,10 +45,10 @@ void qt_usage(char *arg)
 		say("ntk-resolv Query Type Help.\n\n");
 	say(
 	    "Valid query types are:\n"
-            " * snsd\thost:port -> ip\n"
-            "   ptr\tip -> host\n"
+            " * snsd\t\thost:port -> ip\n"
+            "   ptr\t\tip -> host\n"
             "   global\thostname -> all services ip\n"
-            "   mx\thostname MX -> ip\n\n"
+            "   mx\t\thostname MX -> ip\n\n"
             "(you can also use univoque abbreviation)\n"
 	    "Note: mx query is equivalent to --query-type="
 	    "snsd AND --service=25\n\n");
