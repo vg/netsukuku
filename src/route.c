@@ -461,6 +461,8 @@ struct nexthop *rt_build_nexthop_voidgw(void *void_gw, interface **oifs)
 		maptoip((u_int)me.int_map, (u_int)gw_node, 
 				me.cur_quadg.ipstart[1], &nh[0].gw);
 	inet_htonl(nh[0].gw.data, nh[0].gw.family);
+	nh[0].dev=oifs[0]->dev_name;
+	nh[0].hops=1;
 
 	for(i=1; i<dev_n; i++) {
 		memcpy(&nh[i], &nh[0], sizeof(struct nexthop));
@@ -579,15 +581,18 @@ void rt_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg
 
 do_update:
 #ifdef DEBUG
+	strcpy(gw_ip, "via ");
 	for(n=0; nh && nh[n].dev; n++){ 
 		strcat(gw_ip, inet_to_str(nh[n].gw));
-		strcat(gw_ip, "|");
-		strcat(gw_ip, nh[n].dev);
 		strcat(gw_ip, ":");
+		strcat(gw_ip, nh[n].dev);
+		if(nh[n+1].dev)
+			strcat(gw_ip, ",");
 	}
 	if(node->flags & MAP_VOID)
 		strcpy(gw_ip, "deleted");
-	debug(DBG_INSANE, "rt_update_node: to %s/%d via %s", to_ip, to.bits, gw_ip);
+	debug(DBG_INSANE, "rt_update_node: to "BLUE("%s/%d") " " RED("%s"),
+			to_ip, to.bits, gw_ip);
 		
 	xfree(to_ip);
 #endif

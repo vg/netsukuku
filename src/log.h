@@ -65,22 +65,22 @@ do {									\
 #ifdef DEBUG
 /* Colors used to highlights things while debugging ;) */
 #define DEFCOL		"\033[0m"
-#define BLACK(x)	("\033[0;30m" x DEFCOL)
-#define RED(x)		("\033[0;31m" x DEFCOL)
-#define GREEN(x)	("\033[0;32m" x DEFCOL)
-#define BROWN(x)	("\033[0;33m" x DEFCOL)
-#define BLUE(x)		("\033[0;34m" x DEFCOL)
-#define PURPLE(x)	("\033[0;35m" x DEFCOL)
-#define CYAN(x)		("\033[0;36m" x DEFCOL)
-#define LIGHTGRAY(x)	("\033[0;37m" x DEFCOL)
-#define DARKGRAY(x)	("\033[1;30m" x DEFCOL)
-#define LIGHTRED(x)	("\033[1;31m" x DEFCOL)
-#define LIGHTGREEN(x)	("\033[1;32m" x DEFCOL)
-#define YELLOW(x)	("\033[1;33m" x DEFCOL)
-#define LIGHTBLUE(x)	("\033[1;34m" x DEFCOL)
-#define MAGENTA(x)	("\033[1;35m" x DEFCOL)
-#define LIGHTCYAN(x)	("\033[1;36m" x DEFCOL)
-#define WHITE(x)	("\033[1;37m" x DEFCOL)
+#define BLACK(x)	"\033[0;30m" x DEFCOL
+#define RED(x)		"\033[0;31m" x DEFCOL
+#define GREEN(x)	"\033[0;32m" x DEFCOL
+#define BROWN(x)	"\033[0;33m" x DEFCOL
+#define BLUE(x)		"\033[0;34m" x DEFCOL
+#define PURPLE(x)	"\033[0;35m" x DEFCOL
+#define CYAN(x)		"\033[0;36m" x DEFCOL
+#define LIGHTGRAY(x)	"\033[0;37m" x DEFCOL
+#define DARKGRAY(x)	"\033[1;30m" x DEFCOL
+#define LIGHTRED(x)	"\033[1;31m" x DEFCOL
+#define LIGHTGREEN(x)	"\033[1;32m" x DEFCOL
+#define YELLOW(x)	"\033[1;33m" x DEFCOL
+#define LIGHTBLUE(x)	"\033[1;34m" x DEFCOL
+#define MAGENTA(x)	"\033[1;35m" x DEFCOL
+#define LIGHTCYAN(x)	"\033[1;36m" x DEFCOL
+#define WHITE(x)	"\033[1;37m" x DEFCOL
 #endif
 
 /* functions declaration */
