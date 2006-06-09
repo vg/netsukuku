@@ -40,7 +40,7 @@ int cur_ifs_n;
  * Initialize the vital organs of the pkts.c's functions.
  * `ifs' is the array which keeps all the the `ifs_n'# network 
  * interface that will be used.
- * If `pkt_queue_init' is not 0, the pkt_queue is initialized too.
+ * If `queue_init' is not 0, the pkt_queue is initialized too.
  */
 void pkts_init(interface *ifs, int ifs_n, int queue_init)
 {
@@ -846,8 +846,7 @@ int pkt_exec(PACKET pkt, int acpt_idx)
 pthread_attr_t wait_and_unlock_attr;
 void pkt_queue_init(void)
 {
-	pkt_q_counter=0;
-	list_init(pkt_q, 0);
+	pkt_q=(pkt_queue *)clist_init(&pkt_q_counter);
 
 	pthread_attr_init(&wait_and_unlock_attr);
         pthread_attr_setdetachstate(&wait_and_unlock_attr, PTHREAD_CREATE_DETACHED);
@@ -900,7 +899,9 @@ finish:
 }
 
 /*
- * pkt_q_wait_recv: adds a new struct in pkt_q and waits REQUEST_TIMEOUT
+ * pkt_q_wait_recv
+ *
+ * adds a new struct in pkt_q and waits REQUEST_TIMEOUT
  * seconds until a reply with an id equal to `id' is received.
  * If `from' is not null, the sender ip of the reply is considered too.
  * The received reply pkt is copied in `rpkt' (if `rpkt' isn't null).

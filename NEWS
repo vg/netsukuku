@@ -23,7 +23,7 @@ New features:
 
 	* New option: use_shared_internet
 
-	* Static binaries + packages
+	* Static binaries + packages (maemo, tgz)
 
 	* -l logfile
 
@@ -34,7 +34,13 @@ Bug fixes:
 
 	* hname_updates mismatch 
 
+	* dynamic detection of removed devices
+
+	* gcc bugfix
+	
 	* memory leaks
+
+	* code optimized (SETBIT radar.c)
 
 ==== 0.0.7b ====
 

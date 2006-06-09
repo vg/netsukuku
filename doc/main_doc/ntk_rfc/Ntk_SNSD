@@ -41,6 +41,8 @@ the `http' service, therefore the resolution will return "depausceve".
 The browser will resolve "depausceve" and will finally contact the server.
 When the ftp client of Y will try to resolve "angelica", it will get the
 "11.22.33.44" IP.
+If Y tries to resolve a service which hasn't been associated to anything, it
+will get the mainip 1.2.3.4.
 
 The node associated to a SNSD record is called "SNSD node". In this example
 "depausceve" and 11.22.33.44 are SNSD nodes.

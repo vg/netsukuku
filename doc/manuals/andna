@@ -122,9 +122,12 @@ FILES
 BUGS
     { Don't panic! }
 
-    If you encounter any bug, please report it to netsukuku@freaknet.org or
-    contacts any author explaining what the problem is and if possible a way
-    to reproduce it.
+    If you encounter any bug, please report it. Use the online bug track
+    system: <http://bugs.dyne.org/>
+
+    or the mailing list: <http://lists.dyne.org/netsukuku/>
+
+    and explain what the problem is and if possible a way to reproduce it.
 
 CONTACTS
     Subcrive to the netsukuku mailing to get help, be updated on the latest

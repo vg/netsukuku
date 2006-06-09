@@ -473,8 +473,6 @@ void init_internet_gateway_search(void)
 
 void close_internet_gateway_search(void)
 {
-	int i;
-
         if(!restricted_mode || (!server_opt.use_shared_inet && 
 				!server_opt.share_internet))
 		return;
@@ -501,12 +499,8 @@ void close_internet_gateway_search(void)
 	free_my_igws(&me.my_igws);
 
 	/* Free what has been malloced */
-	if(server_opt.inet_hosts) {
-		for(i=0; server_opt.inet_hosts[i] && 
-				i < server_opt.inet_hosts_counter; i++)
-			xfree(server_opt.inet_hosts[i]);
-		xfree(server_opt.inet_hosts);
-	}
+	free_internet_hosts(server_opt.inet_hosts, 
+			    server_opt.inet_hosts_counter);
 }
 
 /*

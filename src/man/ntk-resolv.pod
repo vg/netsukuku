@@ -172,6 +172,19 @@ requested is 0.
 Note: service and proto are also ignored when the query type is `ip->host`
 (ptr query type).
 
+=head1 BUGS
+
+{ Don't panic! }
+
+If you encounter any bug, please report it.
+Use the online bug track system: 
+    L<http://bugs.dyne.org/> 
+
+or the mailing list:
+    L<http://lists.dyne.org/netsukuku/>
+
+and explain what the problem is and if possible a way to reproduce it.
+
 =head1 CONTACTS
 
 Subcrive to the netsukuku mailing to get help, be updated on the latest news
@@ -197,7 +210,7 @@ Main contributors:
 Andrea Leofreddi <andrea.leofreddi@gmail.com>, Katolaz <katolaz@freaknet.org>,
 
 For a complete list read the AUTHORS file or visit:
-L<http://netsukuku.freaknet.org/?p=Contacts>
+    L<http://netsukuku.freaknet.org/?p=Contacts>
 
 =head1 SEE ALSO
 

@@ -223,6 +223,7 @@ void andna_close(void)
 	andna_cache_destroy();
 	counter_c_destroy();
 	rh_cache_flush();
+	pkt_queue_close();
 }
 
 

@@ -71,8 +71,7 @@ void init_radar(void)
 	setzero(radar_scans, sizeof(radar_scans));
 	radar_scan_mutex=0;
 	
-	list_init(radar_q, 0);
-	radar_q_counter=0;
+	radar_q=(struct radar_queue *)clist_init(&radar_q_counter);
 	
 	setzero(send_qspn_now, sizeof(u_char)*MAX_LEVELS);
 }
