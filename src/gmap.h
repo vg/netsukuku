@@ -216,6 +216,7 @@ void gidtoipstart(int *gid, u_char total_levels, u_char levels, int family,
 		inet_prefix *ip);
 void iptoquadg(inet_prefix ip, map_gnode **ext_map, quadro_group *qg, char flags);
 
+void quadg_setflags(quadro_group *qg, char flags);
 void quadg_free(quadro_group *qg);
 void quadg_destroy(quadro_group *qg);
 void gnode_inc_seeds(quadro_group *qg, int level);

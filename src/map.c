@@ -191,7 +191,11 @@ void rnode_del(map_node *node, size_t pos)
 		node->r_node=xrealloc(node->r_node, node->links*sizeof(map_rnode));
 }
 
-/* rnode_destroy: Wipe out all the rnodes YEAHAHA ^_- */
+/* 
+ * rnode_destroy
+ *
+ * Wipe out all the rnodes YEAHAHA ^_- 
+ */
 void rnode_destroy(map_node *node)
 {
 	if(node->r_node && node->links)
@@ -200,9 +204,13 @@ void rnode_destroy(map_node *node)
 	node->links=0;
 }
 
-/* rnode_find: It searches in the `node' a rnode which points to the node `n'.
+/*
+ * rnode_find
+ *
+ * It searches in the `node' a rnode which points to the node `n'.
  * It then returns the position of that rnode.
- * If the rnode is not found it returns -1;*/
+ * If the rnode is not found it returns -1;
+ */
 int rnode_find(map_node *node, void *n)
 {
 	int e;
@@ -250,7 +258,10 @@ int rnode_trtt_compar(const void *a, const void *b)
 		return -1;
 }
 
-/* rnode_trtt_order: It qsort the rnodes of a map_node comparing their trtt.
+/* 
+ * rnode_trtt_order
+ *
+ * It qsorts the rnodes of a map_node comparing their trtt. 
  * It is used by map_routes_order.
  */
 void rnode_trtt_order(map_node *node)
@@ -259,7 +270,9 @@ void rnode_trtt_order(map_node *node)
 }
 
 /* 
- * map_routes_order: It order all the r_node of each node using their trtt.
+ * map_routes_order
+ *
+ * It orders all the r_node of each node using their trtt.
  */
 void map_routes_order(map_node *map)
 {
@@ -269,8 +282,10 @@ void map_routes_order(map_node *map)
 }
 
 /* 
- * get_route_trtt: It returns the total round trip time (trtt) of `node' (in
- * millisec) for the `route'th route.
+ * get_route_trtt
+ *
+ * It returns the total round trip time (trtt) of `node' (in millisec) for the
+ * `route'th route.
  */
 u_int get_route_trtt(map_node *node, u_short route)
 {
@@ -285,6 +300,7 @@ u_int get_route_trtt(map_node *node, u_short route)
 
 /*
  * merge_maps: 
+ *
  * Given two maps it merges them selecting only the best routes.
  * In `base' map there will be the resulting map. The `new' map is the
  * second map. `base_root' points to the root_node present in the `base' map.
@@ -399,7 +415,9 @@ int merge_maps(map_node *base, map_node *new, map_node *base_root, map_node *new
 }
 
 /* 
- * mod_rnode_addr: Modify_rnode_address 
+ * mod_rnode_addr
+ *
+ * Modify_rnode_address
  */
 int mod_rnode_addr(map_rnode *rnode, int *map_start, int *new_start)
 {
@@ -408,9 +426,11 @@ int mod_rnode_addr(map_rnode *rnode, int *map_start, int *new_start)
 }
 
 /* 
- * get_rnode_block: It packs all the rnode structs of a node. The node->r_node
- * pointer of the map_rnode struct is changed to point to the position of the 
- * node in the map, instead of the address. get_rnode_block returns the number 
+ * get_rnode_block
+ *
+ * It packs all the rnode structs of a node. The node->r_node pointer of the
+ * map_rnode struct is changed to point to the position of the node in the map,
+ * instead of the address. get_rnode_block returns the number 
  * of rnode structs packed.
  * Note that the packed structs will be in network order.
  */
@@ -437,7 +457,9 @@ int get_rnode_block(int *map, map_node *node, map_rnode *rblock, int rstart)
 }
 
 /* 
- * map_get_rblock: It uses get_rnode_block to pack all the int_map's rnode.
+ * map_get_rblock
+ *
+ * It uses get_rnode_block to pack all the int_map's rnode.
  * `maxgroupnode' is the number of nodes present in the map.
  * `map' is the actual int_map, while `addr_map' is the address used by get_rnode_block
  * to change the rnodes' pointers (read get_rnode_block).

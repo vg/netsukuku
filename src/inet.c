@@ -389,7 +389,7 @@ int inet_validate_ip(inet_prefix ip)
 			return -EINVAL;
 	}
 
-	if(!is_bufzero((char *)ip.data, MAX_IP_SZ))
+	if(is_bufzero((char *)ip.data, MAX_IP_SZ))
 		return -EINVAL;
 
 	return 0;

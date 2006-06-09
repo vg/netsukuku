@@ -492,7 +492,7 @@ void final_radar_queue(void)
  * It removes all the old rnodes ^_- It store in rnode_delete[level] the number
  * of deleted rnodes. This function is used by radar_update_map
  */
-int radar_remove_old_rnodes(int *rnode_deleted) 
+int radar_remove_old_rnodes(char *rnode_deleted) 
 {
 	map_node *node, *root_node, *broot_node;
 	map_gnode *gnode;
@@ -521,6 +521,7 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 			external_node=1;
 			total_levels=e_rnode->quadg.levels;
 			first_level=1;
+			quadg_setflags(&e_rnode->quadg, MAP_VOID);
 		} else {
 			external_node=0;
 			total_levels=1;
@@ -631,7 +632,7 @@ int radar_remove_old_rnodes(int *rnode_deleted)
 					qspn_b[level]=list_del(qspn_b[level], qb);
 			}
 			
-			rnode_deleted[level]++;
+			SET_BIT(rnode_deleted, level);
 		}
 		
 		/* 
@@ -727,36 +728,26 @@ void radar_update_map(void)
 	map_rnode rnn, *new_root_rnode;
 	ext_rnode *e_rnode;
 	
-	int i, e, diff;
-	int rnode_added[MAX_LEVELS], rnode_deleted[MAX_LEVELS], rnode_pos;
+	int i, diff, rnode_pos;
+	u_char rnode_added[MAX_LEVELS/8], rnode_deleted[MAX_LEVELS/8];
 	int level, external_node, total_levels, root_node_pos, node_update;
 	void *void_map;
 	const char *ntop;
 	char updated_rnodes, routes_update, devs_update;
 
 	updated_rnodes=routes_update=devs_update=0;
-	setzero(rnode_added, sizeof(int)*MAX_LEVELS);
-	setzero(rnode_deleted, sizeof(int)*MAX_LEVELS);
+	setzero(rnode_added, sizeof(rnode_added));
+	setzero(rnode_deleted, sizeof(rnode_deleted));
 	
-	/*
+	/**
 	 * Let's consider all our rnodes void, in this way we'll know what
 	 * rnodes will remain void after the update.
 	 */
 	for(i=0; i<me.cur_node->links; i++) {
 		node=(map_node *)me.cur_node->r_node[i].r_node;
 		node->flags|=MAP_VOID | MAP_UPDATE;
-		
-		if(node->flags & MAP_GNODE || node->flags & MAP_ERNODE) {
-			e_rnode=(ext_rnode *)node;
-			
-			for(e=1; e<e_rnode->quadg.levels; e++) {
-				gnode=e_rnode->quadg.gnode[_EL(e)];
-				if(!gnode)
-					continue;
-				gnode->g.flags|=MAP_VOID | MAP_UPDATE;
-			}
-		}
 	}
+	/**/
 
 	rq=radar_q;
 	list_for(rq) {
@@ -901,10 +892,11 @@ void radar_update_map(void)
 					   qspn_inc_gcount(qspn_gnode_count, level+1, 1);
 				   }
 
-				   rnode_added[level]++;
+				   SET_BIT(rnode_added, level);
 			   } else {
 				   /* 
-				    * Nah, We have the node in the map. Let's if its rtt is changed
+				    * Nah, We have the node in the map. Let's see if 
+				    * its rtt is changed
 				    */
 
 				   if(!send_qspn_now[level] && node->links) {
@@ -976,19 +968,25 @@ void radar_update_map(void)
 		radar_remove_old_rnodes(rnode_deleted);
 
 	/* <<keep your room tidy... order, ORDER>> */
-	if(is_bufzero((char *)rnode_added, sizeof(int)*MAX_LEVELS) || 
-			is_bufzero((char *)rnode_deleted, sizeof(int)*MAX_LEVELS)) {
+	if(!is_bufzero(rnode_added, sizeof(rnode_added)) || 
+			!is_bufzero(rnode_deleted, sizeof(rnode_deleted))) {
+
+		/*** 
+		 * qsort the rnodes of me.cur_node and me.cur_quadg comparing 
+		 * their trtt */
 		rnode_trtt_order(me.cur_node);
+
 		for(i=1; i<me.cur_quadg.levels; i++)
-			if(rnode_added[i] || rnode_deleted[i])
+			if(TEST_BIT(rnode_added, i) || TEST_BIT(rnode_deleted, i))
 				rnode_trtt_order(&me.cur_quadg.gnode[_EL(i)]->g);
+		/**/
 
 		/* adjust the rnode_pos variables in the ext_rnode_cache list */
 		erc_reorder_rnodepos(&me.cur_erc, &me.cur_erc_counter, me.cur_node);
 	}
 
 	/* Give a refresh to the kernel */
-	if((is_bufzero((char *)rnode_added, sizeof(int)*MAX_LEVELS) ||
+	if((!is_bufzero(rnode_added, sizeof(rnode_added)) ||
 		routes_update) && !(me.cur_node->flags & MAP_HNODE))
 		rt_rnodes_update(1);
 }

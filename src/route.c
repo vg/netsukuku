@@ -514,9 +514,9 @@ void rt_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg
 #ifdef DEBUG		
 #define MAX_GW_IP_STR_SIZE (MAX_MULTIPATH_ROUTES*((INET6_ADDRSTRLEN+1)+IFNAMSIZ)+1)
 	int n;
-	char *to_ip, gw_ip[MAX_GW_IP_STR_SIZE]="";
+	char *to_ip=0, gw_ip[MAX_GW_IP_STR_SIZE]="";
 #else
-	const char *to_ip;
+	const char *to_ip=0;
 #endif
 
 	node=(map_node *)dst_node;
@@ -611,7 +611,9 @@ finish:
 }
 
 /* 
- * rt_rnodes_update: It updates all the node which are rnodes of the root_node
+ * rt_rnodes_update
+ * 
+ * It updates all the node which are rnodes of the root_node
  * of all the maps. If `check_update_flag' is non zero, the rnode will be
  * updated only if it has the MAP_UPDATE flag set.
  */
@@ -629,42 +631,44 @@ void rt_rnodes_update(int check_update_flag)
 		rnode=(map_node *)root_node->r_node[i].r_node;
 		out_devs=rnl_get_dev(rlist, rnode);
 
+		if(check_update_flag && !(rnode->flags & MAP_UPDATE))
+			/* nothing to do for this rnode */
+			continue;
+
 		if(rnode->flags & MAP_ERNODE) {
-			level=0;
 			e_rnode=(ext_rnode *)rnode;
 			
-			if(!check_update_flag || rnode->flags & MAP_UPDATE) {
-				rt_update_node(&e_rnode->quadg.ipstart[0], rnode, 0,
-						me.cur_node, out_devs, level);
-				rnode->flags&=~MAP_UPDATE;
-			}
+			rt_update_node(&e_rnode->quadg.ipstart[0], rnode, 0,
+					me.cur_node, out_devs, /*level*/0);
+			rnode->flags&=~MAP_UPDATE;
 
 			for(level=1; level < e_rnode->quadg.levels; level++) {
-				gnode = e_rnode->quadg.gnode[_EL(level)];
-				if(!gnode)
+				if(!(gnode = e_rnode->quadg.gnode[_EL(level)]))
 					continue;
 
 				node = &gnode->g;
-				if(!check_update_flag || node->flags & MAP_UPDATE) {
-					rt_update_node(0, 0, &e_rnode->quadg,
-							rnode, out_devs, level);
-					node->flags&=~MAP_UPDATE;
-				}
+				rt_update_node(0, 0, &e_rnode->quadg,
+						rnode, out_devs, level);
+				node->flags&=~MAP_UPDATE;
 			}
 		} else {
-			level=0;
-			if(!check_update_flag || rnode->flags & MAP_UPDATE) {
-				rt_update_node(0, rnode, 0, me.cur_node, out_devs, level); 
-				rnode->flags&=~MAP_UPDATE;
-			}
+			rt_update_node(0, rnode, 0, me.cur_node, out_devs, /*level*/0); 
+			rnode->flags&=~MAP_UPDATE;
 		}
 	}
+
+	/*
+	 * Shall we activate it?
+	 * route_flush_cache(my_family); 
+	 */
 }
 
 /* 
- * rt_full_update: It updates _ALL_ the possible routes it can get from _ALL_
- * the maps. If `check_update_flag' is not 0, it will update only the routes of
- * the nodes with the MAP_UPDATE flag set. Note that the MAP_VOID nodes aren't
+ * rt_full_update
+ * 
+ * It updates _ALL_ the possible routes it can get from _ALL_ the maps. 
+ * If `check_update_flag' is not 0, it will update only the routes of the 
+ * nodes with the MAP_UPDATE flag set. Note that the MAP_VOID nodes aren't
  * considered.
  */
 void rt_full_update(int check_update_flag)
@@ -703,9 +707,11 @@ void rt_full_update(int check_update_flag)
 }
 
 /*
- * rt_get_default_gw: stores in `gw' the IP address of the current default gw,
- * and in `dev_name' its utilised net interface. If the default gw doesn't
- * exist `gw' and `dev_name' are set to 0.
+ * rt_get_default_gw
+ * 
+ * It stores in `gw' the IP address of the current default gw, and in 
+ * `dev_name' its utilised net interface. If the default gw doesn't exist
+ * `gw' and `dev_name' are set to 0.
  * If an error occurred a number < 0 is returned.
  * `dev_name' must be of IFNAMSIZ# bytes.
  */

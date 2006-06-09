@@ -377,15 +377,20 @@ int find_int(int x, int *ia, int nmemb)
 	return 0;
 }
 
-/* Is the buffer `a' filled with `sz'# of zeros?
- * If yes return 0. */
-int is_bufzero(char *a, int sz)
+/*
+ * is_bufzero
+ *
+ * Is the buffer `a' filled with `sz'# of zeros?
+ * If yes return 1. 
+ */
+int is_bufzero(const void *a, int sz)
 {
+	const char *p=a;
 	int i;
-	for(i=0; i<sz; i++, a++)
-		if(*a)
-			return 1;
-	return 0;
+	for(i=0; i<sz; i++, p++)
+		if(*p)
+			return 0;
+	return 1;
 }
 
 

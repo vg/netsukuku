@@ -138,7 +138,7 @@ char **split_string(char *str, const char *div_str, int *substrings,
 
 		
 int find_int(int x, int *ia, int nmemb);
-int is_bufzero(char *a, int sz);
+int is_bufzero(const void *a, int sz);
 
 void xtimer(u_int secs, u_int steps, int *counter);
 

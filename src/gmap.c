@@ -254,6 +254,16 @@ void iptoquadg(inet_prefix ip, map_gnode **ext_map, quadro_group *qg, char flags
 	}
 }
 
+void quadg_setflags(quadro_group *qg, char flags)
+{
+	map_gnode *gnode;
+	int i;
+
+	for(i=1; i < qg->levels; i++)
+		if((gnode=qg->gnode[_EL(i)]))
+			gnode->g.flags|=flags;
+}
+
 void quadg_free(quadro_group *qg)
 {
 	setzero(qg, sizeof(quadro_group));
