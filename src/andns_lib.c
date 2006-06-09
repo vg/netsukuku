@@ -486,6 +486,7 @@ int a_answs_p(andns_pkt *ap,char *buf, int limitlen)
 		memcpy(buf,&s,2);
 		buf+=2;
 		limitlen-=2;
+		offset+=2;
 	} 
         apd=ap->pkt_answ;
         for (i=0;i<ap->ancount && apd;i++) {
