@@ -12,9 +12,6 @@
 	  pc1 registers hostnames in pc2, resolve one snsd service
 	  pc2 crashes, at andna.c:1548, restart pc2, pc1 crashes at 2107. 
 
-	- andna.c:1399
-	  resolve twice an hostname: the rhc_cache is fucked.
-
 	- comments in resol.conf are not conidered: 
 		NOTE: Do not resolv this BUG: Now It's useful
 

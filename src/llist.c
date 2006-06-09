@@ -79,6 +79,11 @@ do{									\
 	}								\
 } while(0)
 
+/*
+ * list_dup
+ *
+ * the strdup equivalent of a single llist
+ */
 #define list_dup(list)							\
 ({									\
 	l_list *_dd;							\

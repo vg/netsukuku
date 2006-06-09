@@ -581,7 +581,6 @@ void rt_update_node(inet_prefix *dst_ip, void *dst_node, quadro_group *dst_quadg
 
 do_update:
 #ifdef DEBUG
-	strcpy(gw_ip, "via ");
 	for(n=0; nh && nh[n].dev; n++){ 
 		strcat(gw_ip, inet_to_str(nh[n].gw));
 		strcat(gw_ip, ":");
@@ -591,7 +590,7 @@ do_update:
 	}
 	if(node->flags & MAP_VOID)
 		strcpy(gw_ip, "deleted");
-	debug(DBG_INSANE, "rt_update_node: to "BLUE("%s/%d") " " RED("%s"),
+	debug(DBG_INSANE, "rt_update_node: to "PURPLE("%s/%d") " via " RED("%s"),
 			to_ip, to.bits, gw_ip);
 		
 	xfree(to_ip);
