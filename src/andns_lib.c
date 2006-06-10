@@ -187,9 +187,6 @@ int a_answ_u(char *buf,andns_pkt *ap,int limitlen)
         uint16_t alen;
         andns_pkt_data *apd;
 	int limit;
-	char t;
-	char a[INET6_ADDRSTRLEN];
-	int res;
 
 	if (limitlen<3)
 		err_ret(ERR_ANDMAP,-1);
@@ -209,7 +206,7 @@ int a_answ_u(char *buf,andns_pkt *ap,int limitlen)
 			limit+=2;
 			break;
 		case AT_PTR:
-        		memcpy(&alen,buf,sizeof(uint16_t));
+        		memcpy(&alen,buf,2);
 		        alen=ntohs(alen);
         		if (alen+2>limitlen)
 		                err_ret(ERR_ANDPLB,-1);
@@ -227,24 +224,33 @@ int a_answ_u(char *buf,andns_pkt *ap,int limitlen)
 			apd=andns_add_answ(ap);
 			if (*buf&0x80)
 				apd->m|=APD_MAIN_IP;
+			if (*buf&0x40)
+				apd->m|=APD_IP;
 			if (*buf&0x20)
 				apd->m|=APD_UDP;
-			t=*buf&0x40;
 			apd->wg=(*buf&0x1f);
 			apd->prio=(*(buf+1));
 			buf+=2;
-			memcpy(&alen,buf,sizeof(uint16_t));
+			memcpy(&alen,buf,2);
 			apd->service=ntohs(alen);
 			buf+=2;
-			if (t) { /* Here we can gain some byte */
-				apd->rdlength=INET6_ADDRSTRLEN;
-				limit=4+(ap->ipv?16:4);
+			if (apd->m&APD_IP) {
+				apd->rdlength=(ap->ipv?16:4);
+				limit=4+apd->rdlength;
+				if (limitlen<limit)
+					err_ret(ERR_ANDPLB,-1);
+				APD_ALIGN(apd);
+				memcpy(apd->rdata,buf,apd->rdlength);
 			} else {
-				memcpy(&alen,buf,sizeof(uint16_t));
+				memcpy(&alen,buf,2);
 				apd->rdlength=ntohs(alen);
 				limit=6+apd->rdlength;
+				if (limitlen<limit)
+					err_ret(ERR_ANDPLB,-1);
+				APD_ALIGN(apd);
+        			memcpy(apd->rdata,buf+2,alen);
 			}
-			if (limitlen<limit)
+/*			if (limitlen<limit)
 				err_ret(ERR_ANDPLB,-1);
 			if (t) {
 				res=idp_inet_ntop(ap->ipv?AF_INET6:AF_INET,
@@ -255,11 +261,11 @@ int a_answ_u(char *buf,andns_pkt *ap,int limitlen)
 				APD_ALIGN(apd);
 				memcpy(apd->rdata,a,apd->rdlength);
 				if (!apd->m)
-					apd->m=APD_IP;
+					apd->m|=APD_IP;
 			} else  {
 				APD_ALIGN(apd);
         			memcpy(apd->rdata,buf+2,alen);
-			}
+			}*/
 			break;
 		default:
 			err_ret(ERR_ANDMAP,-1);
