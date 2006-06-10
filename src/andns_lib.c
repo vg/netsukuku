@@ -270,10 +270,12 @@ int a_answs_u(char *buf,andns_pkt *ap,int limitlen)
 
 	if (ap->qtype==AT_G) {
 		memcpy(&alen,buf,sizeof(uint16_t));
-		ancount=ntohs(alen);
+		ap->ancount=ntohs(alen);
 		limitlen-=2;
-	} else		
-	        ancount=ap->ancount;
+		buf+=2;
+		offset+=2;
+	} 		
+	ancount=ap->ancount;
         for (i=0;i<ancount;i++) {
                 res=a_answ_u(buf+offset,ap,limitlen-offset);
                 if (res==-1) {

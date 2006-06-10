@@ -100,6 +100,9 @@ typedef struct ntkresolv_opts {
  		case AT_PTR:					\
 			__c="Ip2Host";				\
 			break;					\
+		case AT_G:					\
+ 			__c=" Global";				\
+ 			break;					\
 /* 		case AT_MX:					\
 			__c="Host2MX";				\
 			break;					\
