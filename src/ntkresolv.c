@@ -402,8 +402,13 @@ void print_answers()
 			say(" * SNSD Primary IP");
 		say("\n");
 		if (GQT->qtype==AT_A || GQT->qtype==AT_G) 
-			say("\t\tPrio ~ %d  Weigth ~ %d\n\n",
+			say("\t\tPrio ~ %d  Weigth ~ %d\n",
 				apd->prio,apd->wg);
+		if (GQT->qtype==AT_G)
+			say("\t\tService ~ %d  Proto ~ %s\n",
+				apd->service,apd->m&APD_UDP?
+				"udp":"tcp");
+		say("\n");
 		apd=apd->next;
 	}
 }

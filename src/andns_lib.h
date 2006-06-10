@@ -58,6 +58,8 @@ typedef struct andns_pkt_data andns_pkt_data;
 				     memset((apd)->rdata,0,(apd)->rdlength+1)
 #define APD_MAIN_IP	1<<0
 #define APD_IP		1<<1
+#define APD_TCP		1<<2
+#define APD_UDP		1<<3
 
 typedef struct andns_pkt
 {

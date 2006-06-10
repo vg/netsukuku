@@ -138,7 +138,7 @@ int snsd_service_to_aansws(char *buf,snsd_service *ss,int iplen,int *count)
 {
 	int family,c=0;
 	uint16_t service,temp;
-	uint8_t prio;
+	uint8_t prio,proto;
 	snsd_prio *sp;
 	snsd_node *sn;
 	char *rem;
@@ -149,6 +149,7 @@ int snsd_service_to_aansws(char *buf,snsd_service *ss,int iplen,int *count)
 	
 	list_for(ss) {
 		service=htons(ss->service);
+		proto=ss->proto;
 		sp=ss->prio;
 		list_for(sp) {
 			prio=sp->prio;
@@ -158,7 +159,9 @@ int snsd_service_to_aansws(char *buf,snsd_service *ss,int iplen,int *count)
 					(*buf)|=0xc0;
 				else if (sn->flags & SNSD_NODE_IP)
 					(*buf)|=0x40;
-				*buf++|=(sn->weight&0x3f);
+				if (proto==ANDNS_SNSD_PROTO_UDP)
+					(*buf)|=0x20;
+				*buf++|=(sn->weight&0x1f);
 				*buf++|=prio;
 				memcpy(buf,&service,2);
 				buf+=2;

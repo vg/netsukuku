@@ -5,6 +5,9 @@
 #include "andns_lib.h"
 #include "andna_cache.h"
 
+#define ANDNS_SNSD_PROTO_TCP	1
+#define ANDNS_SNSD_PROTO_UDP	2
+
 int snsd_main_ip(u_int *hname_hash,snsd_node *dst);
 size_t snsd_node_to_aansw(char *buf,snsd_node *sn,u_char prio,int iplen);
 int snsd_node_to_data(char *buf,snsd_node *sn,int iplen);

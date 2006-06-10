@@ -226,9 +226,11 @@ int a_answ_u(char *buf,andns_pkt *ap,int limitlen)
 				err_ret(ERR_ANDMAP,-1);
 			apd=andns_add_answ(ap);
 			if (*buf&0x80)
-				apd->m=APD_MAIN_IP;
+				apd->m|=APD_MAIN_IP;
+			if (*buf&0x20)
+				apd->m|=APD_UDP;
 			t=*buf&0x40;
-			apd->wg=(*buf&0x3f);
+			apd->wg=(*buf&0x1f);
 			apd->prio=(*(buf+1));
 			buf+=2;
 			memcpy(&alen,buf,sizeof(uint16_t));
