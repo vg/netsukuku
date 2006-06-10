@@ -66,7 +66,7 @@ typedef struct andns_pkt
         uint8_t         p;
         uint8_t         z;
         uint8_t         qtype;
-        uint8_t         ancount;
+        uint16_t         ancount;
         uint8_t         ipv;
         uint8_t         nk;
         uint8_t         rcode;

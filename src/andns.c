@@ -821,6 +821,10 @@ int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 			rcode=RCODE_ENSDMN;
 			goto safe_return_rcode;
 		}
+		if (!records) {
+			rcode=RCODE_ESRVFAIL;
+			goto safe_return_rcode;
+		}
 		snsd_service_llist_del(&ss);
 	} else {
 		rcode=RCODE_EINTRPRT;
@@ -834,6 +838,7 @@ int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 		ANDNS_SET_ANCOUNT(answer,1);
 		s=htons(recs);
 		memcpy(answer+msglen,&s,2);
+		res+=2;
 	}
 	else
 		ANDNS_SET_ANCOUNT(answer,recs);

@@ -363,11 +363,17 @@ void ip_bin_to_str(void *data,char *dst)
 void answer_data_to_str(andns_pkt_data *apd,char *dst)
 {
 	switch(GQT->qtype) {
-		case AT_PTR || AT_G:
+		case AT_PTR:
 			strcpy(dst,apd->rdata);
 			break;
 		case AT_A:
 			ip_bin_to_str(apd->rdata,dst);
+			break;
+		case AT_G:
+			if (apd->m)
+				ip_bin_to_str(apd->rdata,dst);
+			else
+				strcpy(dst,apd->rdata);
 			break;
 		default:
 			strcpy(dst,"Unprintable Object");
@@ -392,10 +398,10 @@ void print_answers()
 			say("Answer not declared in Headers Packet.\n");
 		answer_data_to_str(apd,GOP.obj);
 		say("\t ~ %s",GOP.obj);
-		if (apd->m)
+		if (apd->m==APD_MAIN_IP)
 			say(" * SNSD Primary IP");
 		say("\n");
-		if (GQT->qtype==AT_A) 
+		if (GQT->qtype==AT_A || GQT->qtype==AT_G) 
 			say("\t\tPrio ~ %d  Weigth ~ %d\n\n",
 				apd->prio,apd->wg);
 		apd=apd->next;
@@ -406,7 +412,8 @@ void print_answers()
 void do_command(void)
 {
 	char buf[ANDNS_MAX_SZ];
-	char answer[ANDNS_MAX_PK_LEN];
+	char answer[1000];
+	//char answer[ANDNS_MAX_PK_LEN];
 	int res;
 
 	memset(buf,0,ANDNS_MAX_SZ);

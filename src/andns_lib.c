@@ -226,7 +226,7 @@ int a_answ_u(char *buf,andns_pkt *ap,int limitlen)
 				err_ret(ERR_ANDMAP,-1);
 			apd=andns_add_answ(ap);
 			if (*buf&0x80)
-				apd->m=1;
+				apd->m=APD_MAIN_IP;
 			t=*buf&0x40;
 			apd->wg=(*buf&0x3f);
 			apd->prio=(*(buf+1));
@@ -252,6 +252,8 @@ int a_answ_u(char *buf,andns_pkt *ap,int limitlen)
 					err_ret(ERR_ANDMAP,-1);
 				APD_ALIGN(apd);
 				memcpy(apd->rdata,a,apd->rdlength);
+				if (!apd->m)
+					apd->m=APD_IP;
 			} else  {
 				APD_ALIGN(apd);
         			memcpy(apd->rdata,buf+2,alen);
@@ -271,8 +273,6 @@ int a_answs_u(char *buf,andns_pkt *ap,int limitlen)
 	if (ap->qtype==AT_G) {
 		memcpy(&alen,buf,sizeof(uint16_t));
 		ap->ancount=ntohs(alen);
-		limitlen-=2;
-		buf+=2;
 		offset+=2;
 	} 		
 	ancount=ap->ancount;
@@ -347,6 +347,8 @@ andmap:
 int a_hdr_p(andns_pkt *ap,char *buf)
 {
         uint16_t s;
+	uint8_t an;
+	
         s=htons(ap->id);
         memcpy(buf,&s,sizeof(uint16_t));
         buf+=2;
@@ -357,7 +359,8 @@ int a_hdr_p(andns_pkt *ap,char *buf)
 	if (ap->z)
 		(*buf)|=0x20;
         (*buf)|=( (ap->qtype)<<3);
-        (*buf++)|=( (ap->ancount)>>1);
+	an=ap->ancount;
+        (*buf++)|=( (an)>>1);
         (*buf)|=( (ap->ancount)<<7);
 	if (ap->ipv)
 		*buf|=0x40;
@@ -482,12 +485,10 @@ int a_answs_p(andns_pkt *ap,char *buf, int limitlen)
 	uint16_t s;
 
 	if (ap->qtype==AT_G) {
-		s=htons(ap->ancount);
 		if (limitlen<2)
 			err_ret(ERR_ANDPLB,-1);
+		s=htons(ap->ancount);
 		memcpy(buf,&s,2);
-		buf+=2;
-		limitlen-=2;
 		offset+=2;
 	} 
         apd=ap->pkt_answ;
@@ -513,9 +514,11 @@ int a_p(andns_pkt *ap, char *buf)
                 goto server_fail;
         offset+=res;
         buf+=res;
-        if ((res=a_answs_p(ap,buf,ANDNS_MAX_SZ-offset))==-1)
-                goto server_fail;
-        offset+=res;
+	if (ap->ancount) {
+	        if ((res=a_answs_p(ap,buf,ANDNS_MAX_SZ-offset))==-1)
+        	        goto server_fail;
+	        offset+=res;
+	}
         destroy_andns_pkt(ap);
 	/* Compression */
 	if (offset>ANDNS_COMPR_THRESHOLD) {
@@ -565,7 +568,7 @@ andns_pkt_data* andns_add_answ(andns_pkt *ap)
         }
         while (a->next) a=a->next;
         a->next=apd;
-        return apd;;
+        return apd;
 }
 	/* Death functions */
 void destroy_andns_pkt_data(andns_pkt_data *apd)

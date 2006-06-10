@@ -137,7 +137,7 @@ int snsd_prio_to_aansws(char *buf,snsd_prio *sp,int iplen)
 int snsd_service_to_aansws(char *buf,snsd_service *ss,int iplen,int *count)
 {
 	int res,family,c=0;
-	uint16_t service;
+	uint16_t service,temp;
 	uint8_t prio;
 	snsd_prio *sp;
 	snsd_node *sn,snt;
@@ -169,6 +169,12 @@ int snsd_service_to_aansws(char *buf,snsd_service *ss,int iplen,int *count)
 					inet_htonl((u_int*)buf,family);
 					buf+=iplen;
 				} else {
+					service=strlen(sn->record);
+					temp=htons(service);
+					memcpy(buf,&temp,2);
+					memcpy(buf+2,sn->record,service);
+					buf+=service+2;
+					/*
 					res=snsd_main_ip(sn->record,&snt);
 					if (res) {
 						buf-=4;
@@ -177,7 +183,7 @@ int snsd_service_to_aansws(char *buf,snsd_service *ss,int iplen,int *count)
 					memcpy(buf,snt.record,iplen);
 					family=(iplen==4)?AF_INET:AF_INET6;
 					inet_htonl((u_int*)buf,family);
-					buf+=iplen;
+					buf+=iplen; */
 				}
 				c++;
 			}
