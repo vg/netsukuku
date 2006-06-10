@@ -33,12 +33,31 @@
  *
  * Versions of malloc and friends that check their results, and never return
  * failure (they call fatal if they encounter an error).
+ *
+ * --
+ *  
+ * xfree() macro wrapper added. AlpT
  */
 
+/*
+ * xfree
+ *
+ * It calls _xfree(__pptr) and then sets `__pptr' to 0.
+ * It is safe, you can use it also with expressions:
+ * 	xfree(a++);
+ */
+#define xfree(__pptr)							\
+do{									\
+	char **_p=(char **)&(__pptr); 					\
+	_xfree(*_p);							\
+	*_p=0;								\
+}while(0)
+
+/* Functions declaration */
 void	*xmalloc(size_t);
 void	*xrealloc(void *, size_t);
 void 	*xcalloc(size_t nmemb, size_t size);
-void     xfree(void *);
+void    _xfree(void *);
 char 	*xstrndup(const char *str, size_t n);
 char	*xstrdup(const char *);
 

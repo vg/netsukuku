@@ -26,6 +26,7 @@
  * Changes:
  *
  * xstrndup() added. AlpT
+ * xfree() modified to _xfree(). AlpT
  */
 
 #include <stdlib.h>
@@ -77,7 +78,7 @@ void *xrealloc(void *ptr, size_t new_size)
 	return new_ptr;
 }
 
-void xfree(void *ptr)
+void _xfree(void *ptr)
 {
 	if (!ptr)
 		fatal("xfree: NULL pointer given as argument");
