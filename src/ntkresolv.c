@@ -412,8 +412,7 @@ void print_answers()
 void do_command(void)
 {
 	char buf[ANDNS_MAX_SZ];
-	char answer[1000];
-	//char answer[ANDNS_MAX_PK_LEN];
+	char answer[ANDNS_MAX_PK_LEN];
 	int res;
 
 	memset(buf,0,ANDNS_MAX_SZ);
