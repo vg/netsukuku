@@ -27,6 +27,7 @@
  *
  * xstrndup() added. AlpT
  * xfree() modified to _xfree(). AlpT
+ * xzalloc(size_t size) added.
  */
 
 #include <stdlib.h>
@@ -46,6 +47,20 @@ void *xmalloc(size_t size)
 	ptr = malloc(size);
 	if (!ptr)
 		fatal("xmalloc: out of memory (allocating %lu bytes)", (u_long) size);
+	return ptr;
+}
+
+/*
+ * xzalloc
+ *
+ * Mallocs `size' bytes and sets them to zero
+ */
+void *xzalloc(size_t size)
+{              
+	void *ptr;
+
+	ptr=xmalloc(size);
+	memset(ptr, 0, size);
 	return ptr;
 }
 

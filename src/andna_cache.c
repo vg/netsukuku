@@ -1628,7 +1628,7 @@ finish:
  */
 int save_rh_cache(rh_cache *rh, char *file)
 {
-	FILE *fd;
+	FILE *fd=0;
 	size_t pack_sz;
 	char *pack;
 
@@ -1637,8 +1637,9 @@ int save_rh_cache(rh_cache *rh, char *file)
 	if(!pack_sz || !pack)
 		return 0;
 	
-	if((fd=fopen(file, "w"))==NULL) {
-		error("Cannot save the rh_cache in %s: %s", file, strerror(errno));
+	if(!(fd=fopen(file, "w"))) {
+		error("Cannot save the rh_cache in %s: %s",
+				file, strerror(errno));
 		return -1;
 	}
 
@@ -1772,6 +1773,7 @@ int load_hostnames(char *file, lcl_cache **old_alcl_head, int *old_alcl_counter)
 	*old_alcl_head=new_alcl_head;
 	*old_alcl_counter=new_alcl_counter;
 
+	fclose(fd);
 	return 0;
 }
 
@@ -1799,7 +1801,7 @@ int load_snsd(char *file, lcl_cache *alcl_head)
 	
 	FILE *fd;
 	size_t slen;
-	int line=0, fields, e, service, nodes, ret;
+	int line=0, fields, e, service, nodes, ret=0, err;
 	char buf[MAX_SNSD_LINE_SZ+1], **records;
 	u_char proto, abort=0;
 
@@ -1886,16 +1888,16 @@ int load_snsd(char *file, lcl_cache *alcl_head)
 			/***
 			 * Parse service and protocol
 			 */
-			ret=str_to_snsd_service(records[2], &service, &proto);
-			if(ret == -1)
+			err=str_to_snsd_service(records[2], &service, &proto);
+			if(err == -1)
 				error("%s: error in line %d: \"%s\""
 						" isn't a valid protocol\n",
 						file, line, records[2]);
-			else if(ret == -2)
+			else if(err == -2)
 				error("%s: error in line %d: \"%s\""
 						" isn't a valid service\n",
 						file, line, records[2]);
-			if(ret < 0)
+			if(err < 0)
 				ERROR_FINISH(abort, 1, skip_line);
 			/**/
 
@@ -1930,12 +1932,14 @@ skip_line:
 			for(e=0; e<fields; e++)
 				xfree(records[e]);
 			if(abort)
-				return -2;
+				ERROR_FINISH(ret, -2, finish);
 		}
 		line++;
 	}
 
-	return 0;
+finish:
+	fclose(fd);
+	return ret;
 }
 
 

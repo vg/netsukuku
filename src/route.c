@@ -593,7 +593,6 @@ do_update:
 	debug(DBG_INSANE, "rt_update_node: to "PURPLE("%s/%d") " via " RED("%s"),
 			to_ip, to.bits, gw_ip);
 		
-	xfree(to_ip);
 #endif
 	if(node->flags & MAP_RNODE && !level)
 		/* The dst node is a node directly linked to us */
@@ -610,6 +609,10 @@ do_update:
 					"%snode %d lvl %d",!level ? " " : " g",
 					node_pos, level);
 finish:
+#ifdef DEBUG
+	if(to_ip)
+		xfree(to_ip);
+#endif
 	if(nh)
 		xfree(nh);
 }

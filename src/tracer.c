@@ -593,8 +593,7 @@ char *tracer_pack_pkt(brdcast_hdr *bcast_hdr, tracer_hdr *trcr_hdr, tracer_chunk
 
 	pkt_sz=BRDCAST_SZ(TRACERPKT_SZ(trcr_hdr->hops) + bblocks_sz);
 	
-	buf=msg=xmalloc(pkt_sz);
-	setzero(msg, pkt_sz);
+	buf=msg=xzalloc(pkt_sz);
 
 	/* add broadcast header */
 	memcpy(buf, bcast_hdr, sizeof(brdcast_hdr));

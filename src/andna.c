@@ -220,6 +220,7 @@ void andna_close(void)
 		andna_resolvconf_restore();
 	andns_close();
 	lcl_destroy_keyring(&lcl_keyring);
+	lcl_cache_destroy(andna_lcl, &lcl_counter);
 	andna_cache_destroy();
 	counter_c_destroy();
 	rh_cache_flush();

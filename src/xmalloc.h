@@ -55,6 +55,7 @@ do{									\
 
 /* Functions declaration */
 void	*xmalloc(size_t);
+void    *xzalloc(size_t size);
 void	*xrealloc(void *, size_t);
 void 	*xcalloc(size_t nmemb, size_t size);
 void    _xfree(void *);

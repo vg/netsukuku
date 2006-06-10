@@ -986,14 +986,13 @@ int pkt_q_add_pkt(PACKET pkt)
 			if(!(pkt.hdr.flags & ASYNC_REPLIED))
 				continue;
 
-			debug(DBG_INSANE, "pkt_q_add_pkt: copy");
 			pkt_copy(&pq->pkt, &pkt);
 			
 			/* Now it's possible to read the reply,
 			 * pkt_q_wait_recv() is now hot again */
 			while(pthread_mutex_trylock(&pq->mtx) != EBUSY)
 				usleep(5000);
-			debug(DBG_INSANE, "Unlocking 0x%X ", &pq->mtx);
+			debug(DBG_INSANE, "pkt_q_add_pkt: Unlocking 0x%X ", &pq->mtx);
 			pq->flags&=~PKT_Q_MTX_LOCKED & ~PKT_Q_TIMEOUT;
 			pq->flags|=PKT_Q_PKT_RECEIVED;
 			pthread_mutex_unlock(&pq->mtx);
