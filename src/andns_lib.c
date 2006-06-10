@@ -524,12 +524,11 @@ int a_p(andns_pkt *ap, char *buf)
 	if (offset>ANDNS_COMPR_THRESHOLD) {
 		res=andns_compress(buf,offset);
 		if (res==-1)
-			/* TODO: DO NOT FAIL, 
-			 * just do not compress the packet */
 			error(err_str);
 		else
 			return res;
 	}
+	/* end compression */
         return offset;
 server_fail:
         destroy_andns_pkt(ap);

@@ -12,7 +12,7 @@
 #define VERSION			"0.3.2"
 
 #define NTKRESOLV_PORT		53
-#define NTKRESOLV_PORT_STR		"53"
+#define NTKRESOLV_PORT_STR	"53"
 #define MAX_NS			3
 #define LOCALHOST		"localhost"
 
@@ -103,12 +103,6 @@ typedef struct ntkresolv_opts {
 		case AT_G:					\
  			__c=" Global";				\
  			break;					\
-/* 		case AT_MX:					\
-			__c="Host2MX";				\
-			break;					\
- 		case AT_MXPTR:					\
-			__c="Ip2MX";				\
-			break;					\*/\
 		default:					\
 			__c="Unknow";				\
  			break;					\
@@ -183,9 +177,9 @@ typedef struct ntkresolv_opts {
 #define say             printf
 #define bye             if (!AMISILENT) say("\tBye!\n");
 
-#define GOP             globopts
-#define AMISILENT       GOP.silent
-#define GQT             GOP.q
+#define GOP             (globopts)
+#define AMISILENT       (GOP.silent)
+#define GQT             (GOP.q)
 
 #define COMPUTE_TIME    diff_time(time_start,time_stop)
 #define time_report     if (!AMISILENT){gettimeofday(&time_stop,NULL);      \
@@ -193,10 +187,10 @@ typedef struct ntkresolv_opts {
                                         ,COMPUTE_TIME);}
 
 #define G_ALIGN(len)    GQT->qstlength=len;GQT->qstdata=(char*)  	    \
-                                xmalloc(len);          		            \
+                                xmalloc(len+1);       		            \
                                 if (!GQT->qstdata){say("Fatal malloc!\n");  \
                                         exit(1);}
-#define G_SETQST_A(s)   G_ALIGN(strlen(s));strcpy(GQT->qstdata,s);          \
+#define G_SETQST_A(s)   G_ALIGN(strlen(s)+1);strcpy(GQT->qstdata,s);        \
                                 GQT->qstlength=strlen(s);
 
 /* FUNCTIONS */

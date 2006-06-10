@@ -268,7 +268,7 @@ void opts_set_question(char *arg)
 					say("Hostname %s is too long for DNS standard.",arg);
 					ntkresolv_safe_exit(1);
 				}
-				G_ALIGN(res+1);
+				G_ALIGN(res);
 				strcpy(GQT->qstdata,arg);
 			}
 			return;
