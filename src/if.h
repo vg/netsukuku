@@ -51,6 +51,7 @@ int set_dev_down(char *dev);
 int set_flags(char *dev, u_int flags, u_int mask);
 int set_all_ifs(interface *ifs, int ifs_n, int (*set_func)(char *dev));
 int if_init_all(char *ifs_name[MAX_INTERFACES], int ifs_n, interface *new_ifs, int *new_ifs_n);
+void if_close_all(void);
 int set_all_dev_ip(inet_prefix ip, interface *ifs, int ifs_n);
 int set_dev_ip(inet_prefix ip, char *dev);
 int get_dev_ip(inet_prefix *ip, int family, char *dev);

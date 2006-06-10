@@ -1024,10 +1024,10 @@ int andna_check_counter(PACKET pkt)
 
 	setzero(&rpkt, sizeof(PACKET));
 	req=(struct andna_reg_pkt *)pkt.msg;
+	pkt.msg=0;
 
 	if(pkt.hdr.flags & BCAST_PKT)
 		forwarded_pkt=1;
-
 	
 	/* Calculate the hash of the IP of the sender node. This hash will
 	 * be used to reach its counter node. */
@@ -1035,6 +1035,7 @@ int andna_check_counter(PACKET pkt)
 	
 	/* Find a hash_gnode for the rip_hash */
 	req->flags&=~ANDNA_PKT_FORWARD;
+
 	if((err=find_hash_gnode(hash_gnode, &pkt.to, 0, 0, 1)) < 0) {
 		debug(DBG_INSANE, "andna_check_counter: Couldn't find a decent"
 				" counter_gnode");

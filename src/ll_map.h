@@ -1,6 +1,7 @@
 #ifndef LL_MAP_H
 #define LL_MAP_H
 
+void ll_free_index(void);
 int ll_remember_index(struct sockaddr_nl *who, struct nlmsghdr *n, void *arg);
 int ll_init_map(struct rtnl_handle *rth);
 int ll_name_to_index(const char *name);

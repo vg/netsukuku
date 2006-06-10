@@ -63,6 +63,12 @@ void first_init_radar(void)
 	init_radar();
 }
 
+void last_close_radar(void)
+{
+	close_radar();
+	rnl_reset(&rlist, &rlist_counter);
+}
+
 void init_radar(void)
 {
 	hook_retry=0;
@@ -79,13 +85,8 @@ void init_radar(void)
 
 void close_radar(void)
 {
-	struct radar_queue *rq;
-	rq=radar_q;
-
 	if(radar_q_counter)
-		list_destroy(radar_q);
-	radar_q_counter=0;
-	radar_q=0;
+		clist_destroy(&radar_q, &radar_q_counter);
 }
 
 void reset_radar(void)
@@ -1062,9 +1063,8 @@ radar_queue *add_radar_q(PACKET pkt)
 		memcpy(&rq->quadg, &quadg, sizeof(quadro_group));
 		rq->dev[0] = pkt.dev;
 		rq->dev_n++;
-		
-		radar_q=list_add(radar_q, rq);
-		radar_q_counter++;
+	
+		clist_add(&radar_q, &radar_q_counter, rq);
 	} else {
 		/*
 		 * Check if the input device is in the rq->dev array,
@@ -1147,7 +1147,7 @@ int radar_exec_reply(PACKET pkt)
  */
 int radar_recv_reply(PACKET pkt)
 {
-	if(!my_echo_id || !radar_scan_mutex || !total_radar_scans || !radar_q)
+	if(!my_echo_id || !radar_scan_mutex || !total_radar_scans)
 		return -1;
 	
 	if(pkt.hdr.id != my_echo_id) {

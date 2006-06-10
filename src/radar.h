@@ -133,6 +133,7 @@ int alwd_rnodes_counter;
 
 /* * * Functions declaration * * */
 void first_init_radar(void);
+void last_close_radar(void);
 void init_radar(void);
 void close_radar(void);
 void reset_radar(void);

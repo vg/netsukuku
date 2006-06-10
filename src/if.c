@@ -314,6 +314,11 @@ int if_init_all(char *ifs_name[MAX_INTERFACES], int ifs_n,
 	return ret;
 }
 
+void if_close_all(void)
+{
+	ll_free_index();
+}
+
 /*
  * set_dev_ip: Assign the given `ip' to the interface named `dev'
  * On success 0 is returned, -1 otherwise.

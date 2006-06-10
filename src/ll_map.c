@@ -32,6 +32,17 @@ struct idxmap
 
 static struct idxmap *idxmap[16];
 
+void ll_free_index(void)
+{
+	struct idxmap *im, **imp;
+	int i;
+	for(i=0; i<16; i++)
+		for (imp=&idxmap[i]; (im=*imp)!=NULL; ) {
+			imp = &im->next;
+			xfree(im);
+		}
+}
+
 int ll_remember_index(struct sockaddr_nl *who, struct nlmsghdr *n, void *arg)
 {
 	int h;

@@ -122,10 +122,14 @@ void qspn_init(u_char levels)
 
 void qspn_free(void)
 {
-	xfree(qspn_b);
-	xfree(qspn_send_mutex);
-	xfree(me.cur_qspn_id);
-	xfree(me.cur_qspn_time);
+	if(qspn_b)
+		xfree(qspn_b);
+	if(qspn_send_mutex)
+		xfree(qspn_send_mutex);
+	if(me.cur_qspn_id)
+		xfree(me.cur_qspn_id);
+	if(me.cur_qspn_time)
+		xfree(me.cur_qspn_time);
 }
 
 void qspn_b_clean(u_char level)

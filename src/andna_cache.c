@@ -992,8 +992,8 @@ andna_cache_queue *
 unpack_acq_llist(char *pack, size_t pack_sz, size_t *unpacked_sz, 
 			andna_cache *ac, int pack_type)
 {
-	andna_cache_queue *acq;
-	int e, tmp_counter;
+	andna_cache_queue *acq=0;
+	int e, tmp_counter=0;
 	u_short snsd_counter;
 	time_t cur_t;
 	char *buf;

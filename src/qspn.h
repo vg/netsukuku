@@ -85,6 +85,7 @@ void qspn_time_reset(int start_level, int end_level, int levels);
 void qspn_reset_counters(u_char levels);
 void qspn_reset(u_char levels);
 void qspn_init(u_char levels);
+void qspn_free(void);
 void qspn_set_map_vars(u_char level, map_node **map, map_node **root_node, 
 		int *root_node_pos, map_gnode **gmap);
 

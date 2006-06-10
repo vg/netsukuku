@@ -610,9 +610,11 @@ int destroy_netsukuku(void)
 		andna_close();
 
 	close_internet_gateway_search();
-	close_radar();
+	last_close_radar();
 	e_rnode_free(&me.cur_erc, &me.cur_erc_counter);
 	destroy_accept_tbl();
+	if_close_all();
+	qspn_free();
 	free_server_opt();
 
 	return 0;
