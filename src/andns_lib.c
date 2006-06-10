@@ -243,12 +243,13 @@ int a_answ_u(char *buf,andns_pkt *ap,int limitlen)
 				memcpy(apd->rdata,buf,apd->rdlength);
 			} else {
 				memcpy(&alen,buf,2);
-				apd->rdlength=ntohs(alen);
+				//apd->rdlength=ntohs(alen);
+				apd->rdlength=ANDNS_HASH_H;
 				limit=6+apd->rdlength;
 				if (limitlen<limit)
 					err_ret(ERR_ANDPLB,-1);
 				APD_ALIGN(apd);
-        			memcpy(apd->rdata,buf+2,alen);
+        			memcpy(apd->rdata,buf+2,apd->rdlength);
 			}
 /*			if (limitlen<limit)
 				err_ret(ERR_ANDPLB,-1);

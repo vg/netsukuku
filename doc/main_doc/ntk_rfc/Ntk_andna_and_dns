@@ -350,7 +350,7 @@ INDEX:
    After the two bytes, this is the format for each answer:
 	
         +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-        | M| T|     WG          |       PRIO            |
+        | M| T| P|  WG          |       PRIO            |
         +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
         |                    SERVICE                    |
         +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
@@ -364,6 +364,8 @@ INDEX:
    T is:
    	T = 0	Hostname
 	T = 1 	Ip
+
+   P is The protocol: Tcp if 0, UDP if 1.
    
    If T=1, the ip version is specified in main headers, in the
    field I.
