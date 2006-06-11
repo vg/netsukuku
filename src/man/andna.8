@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "ANDNA 8"
-.TH ANDNA 8 "2006-06-09" "NetsukukuD 0.0.8b (debug)" ""
+.TH ANDNA 8 "2006-06-11" "NetsukukuD 0.0.8b (debug)" ""
 .SH "NAME"
 ANDNA \- Abnormal Netsukuku Domain Name Anarchy
 .SH "DESCRIPTION"
@@ -203,15 +203,15 @@ simply reverse resolve its ip. For example:
 This command shows your currently registered hostnames. You can use it to know
 what hostnames have been already registered. Note the 127.0.0.2 ip. If you use
 127.0.0.1 you get only the local hostname written in /etc/hosts.
-.Sh "Scattered Name Service Disgregation"
-.IX Subsection "Scattered Name Service Disgregation"
+.Sh "\s-1SCATTERED\s0 \s-1NAME\s0 \s-1SERVICE\s0 \s-1DISGREGATION\s0"
+.IX Subsection "SCATTERED NAME SERVICE DISGREGATION"
 The Scattered Name Service Disgregation is the \s-1ANDNA\s0 equivalent of the
 \&\s-1SRV\s0 Record of the Internet Domain Name System.
 For a complete description of the \s-1SNSD\s0 read the \s-1NTK_RFC\s0 0009:
 <http://lab.dyne.org/Ntk_SNSD>
 .PP
-\fI\s-1SNSD\s0 node registration\fR
-.IX Subsection "SNSD node registration"
+\fI\s-1SNSD\s0 \s-1NODE\s0 \s-1REGISTRATION\s0\fR
+.IX Subsection "SNSD NODE REGISTRATION"
 .PP
 .Vb 3
 \& * Modify the F</etc/netsukuku/snsd_nodes> file.
@@ -219,13 +219,13 @@ For a complete description of the \s-1SNSD\s0 read the \s-1NTK_RFC\s0 0009:
 \& * Send a SIGHUP to the NetsukukuD of the register node:
 .Ve
 .PP
-\fI\s-1SNSD\s0 node deletion\fR
-.IX Subsection "SNSD node deletion"
+\fI\s-1SNSD\s0 \s-1NODE\s0 \s-1DELETION\s0\fR
+.IX Subsection "SNSD NODE DELETION"
 .PP
 Not implemented
 .PP
-\fI\s-1SNSD\s0 hname resolution\fR
-.IX Subsection "SNSD hname resolution"
+\fI\s-1SNSD\s0 \s-1HNAME\s0 \s-1RESOLUTION\s0\fR
+.IX Subsection "SNSD HNAME RESOLUTION"
 .PP
 The utility \fIntk\-resolv\fR\|(8) can be used to resolve \s-1SNSD\s0 hostnames. Examples:
 .PP

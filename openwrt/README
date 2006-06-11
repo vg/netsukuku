@@ -106,3 +106,9 @@ How to install it:
 
 	#note that in version 0.0.7b you cannot launch netsukuku in restricted
 	mode unless you have the ipip.o kernel module loaded.
+
+/*
+ * TODO:
+ *  - remote syslog
+ *  http://wiki.openwrt.org/MiniHowtos#head-2f41030163df5954cafe1d1ec8001dc27c4cbba7
+ */

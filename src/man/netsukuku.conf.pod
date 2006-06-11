@@ -8,7 +8,7 @@ netsukuku.conf - Netsukuku daemon configuration file
 
 =head1 DESCRIPTION
 
-ntkd(8) loads its options from the command line and from B<netsukuku.conf>.
+B<ntkd> loads its options from the command line and from B<netsukuku.conf>.
 The options that are changed infrequently resides in the configuration file.
 The B<netsukuku.conf> file is typically installed at /etc/netsukuku/netsukuku.conf.
 
@@ -31,17 +31,101 @@ When set to 1, NetsukukuD will be started in restricted mode to be compatible
 with Internet. In the restricted mode, only IPs of the largest private subnet,
 i.e. 10.x.x.x are chosen.
 
-=back
+Default: 0
 
 =item B<ntk_restricted_class> = I<bool>
 
 When set to 1 the IPs will be chosen from the 172.16.0.0-172.31.255.255 range
 (use this option only if you can't use the 10.x.x.x class).
 
+Default: 0
+
 =back
 
 =head2 INTERNET CONNECTION
 
+All these Internet options requires B<ntk_restricted_mode> set to 1.
+
+=over
+
+=item B<internet_connection> = I<bool>
+
+When set to 1, it specifies that this computer has an active Internet
+connection. Note that B<ntkd> will overwrite any default route if this
+option is set to 0 and the shared Internet connections of other nodes are
+used.
+
+Default: 0
+
+=item B<internet_gateway> = I<IP:interface>
+
+It specifies the default gateway used by I<localhost> to reach the Internet.
+This option is necessary only if you don't have the default route set when you
+run NetsukukuD (i.e. you haven't connected yet).
+If this option isn't specified, B<ntkd> will automatically retrieve the
+default Internet gateway from the routing table.
+Example: 
+	internet_gateway = 192.168.1.1:eth0
+
+Default: (null)
+
+=item B<internet_download_rate> = I<Kb>
+
+This option is required if the B<internet_connection> option has been set to
+1. It must be set to the download rate of the Internet connection in
+KiloBytes. Example:
+
+	internet_download_rate = 640
+
+Default: (null)
+
+=item B<internet_upload_rate> = I<Kb>
+
+This option is required if the B<internet_connection> option has been set to
+1. It must be set to the upload rate of the Internet connection in
+KiloBytes. Example:
+
+	internet_upload_rate = 30
+
+Default: (null)
+
+=item B<internet_ping_hosts> = I<host1:host2:host3:...>
+
+Specifies a list of Internet hostnames which B<ntkd> will ping periodically to
+verify the status of the Internet connection. If all the hosts specified
+aren't reachable, it will assume that the Internet connection isn't available
+anymore. When one them becoms pingable, B<ntkd> will enable again the
+Internet Gateway Search. Example:
+
+	internet_ping_hosts = google.com:cisco.com:sourceforge.net:dyne.org
+
+This option hasn't a default value, it must be specified in the
+B<netsukuku.conf> file.
+
+=item B<share_internet> = I<bool>
+
+When set to 1, B<ntkd> shares the Internet connection among all the other
+Netsukuku nodes.
+
+Default: 1
+
+=item B<shape_internet> = I<bool>
+
+Specifies if B<ntkd> will execute the F</etc/netsukuku/tc_shaper.sh> script to
+activate the traffic shaping of the Internet connection.
+
+Default: 0
+
+=item B<use_shared_internet> = I<bool>
+
+Specifies if B<ntkd> will load balance the Internet traffic of this host using
+the Inet connections shared by the Netsukuku nodes.
+When set to 0, localhost (this machine) uses only its local Internet
+connection (if any).
+
+Default: 1
+
+=back
 
 =head1 EXAMPLES
 
@@ -78,51 +162,6 @@ For more information about Netsukuku visit:
     L<http://netsukuku.freaknet.org>
 
 ntkd(8), ntk-wifi(8), andna(8), iproute2(8), route(8)
-
-#
-### Internet connection
-#
-
-
- * * If you have an Internet connection please fill this options. * *
-
- We are assuming that you are running in restricted mode since you want to
- be both in Netsukuku and Internet. So, if you have an internet connection
- set `internet_connection' to 1.
-
- Set the `internet_gateway' option to the IP of the gateway you use to reach 
- the Internet and specify the network interface too, for example:
- "internet_gateway = 192.168.1.1:eth0". This option is necessary only if you
- don't have the default route set when you run NetsukukuD (i.e. you haven't
- connected yet), otherwise, leave it commented.
-
- You have also to set your upload and download bandwidth in 
- `internet_upload_rate' and `internet_download_rate'. It is expressed in Kb/s,
- so if you have a line which maximum can do: 640 Kb/s in dwload and 30 Kb/s in 
- upload, set them to 640 and 30.
-
- `internet_ping_hosts' is a list of Internet hosts which will be pinged to
- verify if the connection is alive, you can use the default hosts.
-
- If you want to share your Internet connection among other Netsukuku nodes, 
- set `share_internet' to 1.
-
- Set `shape_internet' to 1 if you want to shape your outgoing
- Internet traffic.
-
- `use_shared_internet' specifies if you want to use the Internet connections
- shared by the Netsukuku nodes. Set it to 0, if you want to rely only on your
- connection (if any).
- 
-internet_connection	= 1
-internet_gateway	= 192.168.1.1:eth0
-internet_download_rate  = 640
-internet_upload_rate	= 30
-internet_ping_hosts	= google.com:cisco.com:sourceforge.net:dyne.org
-share_internet		= 1
-shape_internet		= 1
-use_shared_internet	= 1
-
 
 #
 ### ANDNA

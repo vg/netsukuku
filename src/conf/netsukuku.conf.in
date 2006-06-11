@@ -72,7 +72,9 @@
 #
 # We are assuming that you are running in restricted mode since you want to
 # be both in Netsukuku and Internet. So, if you have an internet connection
-# set `internet_connection' to 1.
+# set `internet_connection' to 1. Note that ntkd will overwrite any default
+# route if this option is set to 0 and the shared Internet connections of 
+# other nodes are used.
 #
 # Set the `internet_gateway' option to the IP of the gateway you use to reach 
 # the Internet and specify the network interface too, for example:

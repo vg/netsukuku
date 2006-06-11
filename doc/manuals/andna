@@ -68,21 +68,21 @@ USAGE
     ip. If you use 127.0.0.1 you get only the local hostname written in
     /etc/hosts.
 
-  Scattered Name Service Disgregation
+  SCATTERED NAME SERVICE DISGREGATION
     The Scattered Name Service Disgregation is the ANDNA equivalent of the
     SRV Record of the Internet Domain Name System. For a complete
     description of the SNSD read the NTK_RFC 0009:
     <http://lab.dyne.org/Ntk_SNSD>
 
-   SNSD node registration
+   SNSD NODE REGISTRATION
      * Modify the F</etc/netsukuku/snsd_nodes> file.
      * Copy the needed public keys
      * Send a SIGHUP to the NetsukukuD of the register node:
 
-   SNSD node deletion
+   SNSD NODE DELETION
     Not implemented
 
-   SNSD hname resolution
+   SNSD HNAME RESOLUTION
     The utility ntk-resolv(8) can be used to resolve SNSD hostnames.
     Examples:
 

@@ -54,9 +54,9 @@ OPTIONS
     -h --help
         Prints to stdout a short explanation of ntk-resolv.
 
-    Options that take arguments could be expressed in a shorter way, by
-    specifing univoque abbreviation of argument. So, there is the
-    equivalence:
+        Options that take arguments could be expressed in a shorter way, by
+        specifing univoque abbreviation of argument. So, there is the
+        equivalence:
 
     ntk-resolv -r i = ntk-resolv -r inet
 

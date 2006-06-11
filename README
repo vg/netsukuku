@@ -39,7 +39,7 @@ authority controls.
 This net is composed by computers linked physically each other, therefore it
 isn't build upon any existing network. Netsukuku builds only the routes which
 connects all the computers of the net.
-In other words, Netsukuku replaces the level 3 of the model iso/osi with
+In other words, Netsukuku replaces the level 3 of the model iso/si with
 another routing protocol.
 The Domain Name System is also replaced by a decentralised and distributed
 system: the Abnormal Netsukuku Domain Name Anarchy.
@@ -49,7 +49,7 @@ http://netsukuku.freaknet.org/files/doc/misc/Ntk_features_list
 
 
 In order to join to Netsukuku you have to use NetsukukuD, which is the daemon
-implenting the Npv7 protocol.
+implementing the Npv7 protocol.
 
 Before doing anything, please read the documentation in doc/ or in
 http://netsukuku.freaknet.org
