@@ -121,8 +121,12 @@ FILES
 
     /etc/netsukuku/andna_hostnames
         It is the file where the hostnames to be registerd in ANDNA are kept
-        one per line. It's location can be changed by modifying its option
-        in the netsukuku.conf file.
+        one per line. It's location can be changed by modifying the relative
+        option in the netsukuku.conf file.
+
+    /etc/netsukuku/snsd_nodes
+        The snsd_nodes_file keeps the list of the SNSD records which will be
+        register in ANDNA.
 
     /usr/share/netsukuku/ext_map_file
     /usr/share/netsukuku/int_map_file
@@ -144,12 +148,14 @@ FILES
 
     /etc/netsukuku/ip_masquerade.sh
         This script is launched by NetsukukuD, at its start, when it shares
-        the Internet connection.
+        the Internet connection. The script will activate the IP
+        masquerading. The script is also used to disable the IP masquerading
+        when ntkd is closed.
 
     /etc/netsukuku/tc_shaper.sh
         This script manages the traffic shaping for the upload bandwidth. It
-        is executed by NetsukukuD at its start if its relative option has
-        been enabled.
+        is executed by ntkd at its start if its relative option has been
+        enabled.
 
     /var/run/ntkd.pid
         It is the lock file created by ntkd at its start, it is used to
@@ -233,5 +239,5 @@ SEE ALSO
     For more information about Netsukuku visit:
     <http://netsukuku.freaknet.org>
 
-    ntk-wifi(8), andna(8), iproute2(8), route(8)
+    netsukuku.conf(5), ntk-wifi(8), andna(8), iproute2(8), route(8)
 

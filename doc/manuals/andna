@@ -104,7 +104,7 @@ FILES
         in the netsukuku.conf file.
 
     /etc/netsukuku/snsd_nodes
-        The snsd_nodes_file keeps the list of the SNSD records which will be
+        The snsd_nodes file keeps the list of the SNSD records which will be
         register in ANDNA.
 
     /usr/share/netsukuku/andna_lcl_keyring

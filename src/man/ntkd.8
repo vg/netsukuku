@@ -260,8 +260,12 @@ possible to choose another file using the \fB\-c\fR option.
 .IP "\fI/etc/netsukuku/andna_hostnames\fR" 4
 .IX Item "/etc/netsukuku/andna_hostnames"
 It is the file where the hostnames to be registerd in \s-1ANDNA\s0 are kept one per
-line. It's location can be changed by modifying its option in the
+line. It's location can be changed by modifying the relative option in the
 \&\fInetsukuku.conf\fR file.
+.IP "\fI/etc/netsukuku/snsd_nodes\fR" 4
+.IX Item "/etc/netsukuku/snsd_nodes"
+The snsd_nodes_file keeps the list of the \s-1SNSD\s0 records which will be register
+in \s-1ANDNA\s0. 
 .IP "\fI/usr/share/netsukuku/ext_map_file\fR" 4
 .IX Item "/usr/share/netsukuku/ext_map_file"
 .PD 0
@@ -287,16 +291,17 @@ you'll definitely lose them.
 .IP "\fI/usr/share/netsukuku/andna_counter_cache\fR" 4
 .IX Item "/usr/share/netsukuku/andna_counter_cache"
 .PD
-They are the saved \s-1ANDNA\s0 caches.  Their locations can be 
-changed in \fInetsukuku.conf\fR.
+They are the saved \s-1ANDNA\s0 caches. Their locations can be changed in
+\&\fInetsukuku.conf\fR.
 .IP "\fI/etc/netsukuku/ip_masquerade.sh\fR" 4
 .IX Item "/etc/netsukuku/ip_masquerade.sh"
 This script is launched by NetsukukuD, at its start, when it shares the Internet
-connection.
+connection. The script will activate the \s-1IP\s0 masquerading.
+The script is also used to disable the \s-1IP\s0 masquerading when \fBntkd\fR is closed.
 .IP "\fI/etc/netsukuku/tc_shaper.sh\fR" 4
 .IX Item "/etc/netsukuku/tc_shaper.sh"
 This script manages the traffic shaping for the upload bandwidth.
-It is executed by NetsukukuD at its start if its relative option has been
+It is executed by \fBntkd\fR at its start if its relative option has been
 enabled.
 .IP "\fI/var/run/ntkd.pid\fR" 4
 .IX Item "/var/run/ntkd.pid"
@@ -393,4 +398,4 @@ For a complete list read the \s-1AUTHORS\s0 file or visit:
 For more information about Netsukuku visit:
     <http://netsukuku.freaknet.org>
 .PP
-\&\fIntk\-wifi\fR\|(8), \fIandna\fR\|(8), \fIiproute2\fR\|(8), \fIroute\fR\|(8)
+\&\fInetsukuku.conf\fR\|(5), \fIntk\-wifi\fR\|(8), \fIandna\fR\|(8), \fIiproute2\fR\|(8), \fIroute\fR\|(8)

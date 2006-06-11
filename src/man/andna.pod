@@ -125,8 +125,8 @@ F<netsukuku.conf> file.
 
 =item F</etc/netsukuku/snsd_nodes>
 
-The snsd_nodes_file keeps the list of the SNSD records which will be
-register in ANDNA.
+The snsd_nodes file keeps the list of the SNSD records which will be register
+in ANDNA.
 
 =back
 

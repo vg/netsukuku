@@ -152,58 +152,53 @@ possible to choose another file using the B<-c> option.
 =item F</etc/netsukuku/andna_hostnames>
 
 It is the file where the hostnames to be registerd in ANDNA are kept one per
-line. It's location can be changed by modifying its option in the
+line. It's location can be changed by modifying the relative option in the
 F<netsukuku.conf> file.
 
-=item
-F</usr/share/netsukuku/ext_map_file>
+=item F</etc/netsukuku/snsd_nodes>
 
-=item
-F</usr/share/netsukuku/int_map_file>
+The snsd_nodes_file keeps the list of the SNSD records which will be register
+in ANDNA. 
 
-=item
-F</usr/share/netsukuku/bnode_map_file>
+=item F</usr/share/netsukuku/ext_map_file>
+
+=item F</usr/share/netsukuku/int_map_file>
+
+=item F</usr/share/netsukuku/bnode_map_file>
 
 They are the Netsukuku maps saved by the daemon. Their locations can be
 changed in F<netsukuku.conf>.
 
-=item
-F</usr/share/netsukuku/andna_lcl_keyring>
+=item F</usr/share/netsukuku/andna_lcl_keyring>
 
 In this keyring your ANDNA public and secret keys are saved. Handle this file
 with care: without it, you won't be able to update your hostnames, thus 
 you'll definitely lose them.
 
-=item
-F</usr/share/netsukuku/andna_cache>
+=item F</usr/share/netsukuku/andna_cache>
 
-=item
-F</usr/share/netsukuku/andna_lcl_cache>
+=item F</usr/share/netsukuku/andna_lcl_cache>
 
-=item
-F</usr/share/netsukuku/andna_rh_cache>
+=item F</usr/share/netsukuku/andna_rh_cache>
 
-=item
-F</usr/share/netsukuku/andna_counter_cache>
+=item F</usr/share/netsukuku/andna_counter_cache>
 
-They are the saved ANDNA caches.  Their locations can be 
-changed in F<netsukuku.conf>.
+They are the saved ANDNA caches. Their locations can be changed in
+F<netsukuku.conf>.
 
-=item
-F</etc/netsukuku/ip_masquerade.sh>
+=item F</etc/netsukuku/ip_masquerade.sh>
 
 This script is launched by NetsukukuD, at its start, when it shares the Internet
-connection.
+connection. The script will activate the IP masquerading.
+The script is also used to disable the IP masquerading when B<ntkd> is closed.
 
-=item
-F</etc/netsukuku/tc_shaper.sh>
+=item F</etc/netsukuku/tc_shaper.sh>
 
 This script manages the traffic shaping for the upload bandwidth.
-It is executed by NetsukukuD at its start if its relative option has been
+It is executed by B<ntkd> at its start if its relative option has been
 enabled.
 
-=item
-F</var/run/ntkd.pid>
+=item F</var/run/ntkd.pid>
 
 It is the lock file created by ntkd at its start, it is used to check if other
 instances of ntkd are already running.
@@ -296,4 +291,4 @@ For a complete list read the AUTHORS file or visit:
 For more information about Netsukuku visit:
     L<http://netsukuku.freaknet.org>
 
-ntk-wifi(8), andna(8), iproute2(8), route(8)
+netsukuku.conf(5), ntk-wifi(8), andna(8), iproute2(8), route(8)

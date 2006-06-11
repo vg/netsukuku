@@ -42,6 +42,10 @@ Bug fixes:
 
 	* code optimized (SETBIT radar.c)
 
+Extra:
+
+	* man netsukuku.conf
+
 ==== 0.0.7b ====
 
 New features:
