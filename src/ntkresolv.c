@@ -34,7 +34,7 @@ void usage(void)
                 " -s --service=service  SNSD service (`-s help' shows more info).\n"
                 " -p --protocolo=proto  SNSD protocol (`-p help' shows more info).\n"
                 " -S --silent           ntk-resolv will be not loquacious.\n"
-                " -R --recursion        set recursion ON for snsd services.\n"
+                " -R --no-recursion     set recursion OFF.\n"
                 " -h --help             display this help, then exit.\n\n");
 	ntkresolv_safe_exit(1);
 }
@@ -134,6 +134,7 @@ void opts_init(void)
 	GQT->nk=REALM_NTK;
 	GQT->p=SNSD_PROTO_DEFAULT;
 	GQT->service=SNSD_SERVICE_DEFAULT;
+	GQT->r=1;
 	xsrand();
 }
 
@@ -225,9 +226,10 @@ void opts_set_proto(char *arg)
 		proto_usage(arg);
 	GQT->p=ret;
 }
+/* This is a complex function. */
 void opts_set_recursion(void)
 {
-	GQT->r=1;
+	GQT->r=0;
 }
 
 /*void hname_hash(char *dst,char *src)
