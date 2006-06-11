@@ -42,6 +42,9 @@
 #define SNSD_PROTO_TCP_STR	"tcp"
 #define SNSD_PROTO_UDP_STR	"udp"
 
+#define SNSD_PROTO_DEFAULT	SNSD_PROTO_TCP
+#define SNSD_SERVICE_DEFAULT	0
+
 /* NK BIT */
 #define NK_DNS			0
 #define NK_NTK                  1
@@ -132,22 +135,22 @@ typedef struct ntkresolv_opts {
  	char *__e;						\
 	switch((ap)->rcode) {					\
 		case ANDNS_RCODE_NOERR:				\
-			__e="No Error";				\
+			__e="NoError";				\
 			break;					\
 		case ANDNS_RCODE_EINTRPRT:			\
-			__e="Interpretation Error";		\
+			__e="InError";				\
 			break;					\
 		case ANDNS_RCODE_ESRVFAIL:			\
-			__e="Server Failing";			\
+			__e="SrvFail";				\
 			break;					\
 		case ANDNS_RCODE_ENSDMN:			\
-			__e="No Such Host";			\
+			__e="NoXHost";				\
 			break;					\
 		case ANDNS_RCODE_ENIMPL:			\
-			__e="Not Implemented";			\
+			__e="NotImpl";				\
 			break;					\
 		case ANDNS_RCODE_ERFSD:				\
-			__e="Query Refused";			\
+			__e="Refused";				\
 			break;					\
 		default:					\
 			__e="UNKNOW";				\
@@ -169,6 +172,51 @@ typedef struct ntkresolv_opts {
 			break;					\
 	}							\
 	__f;})
+#define MAX_INT_STR	10
+#define SERVICE_STR(ap)						\
+({								\
+ 	char *__g;						\
+ 	char __t[MAX_INT_STR];					\
+ 	switch((ap)->qtype) {					\
+		case AT_G:					\
+ 			__g="*";				\
+ 			break;					\
+		case AT_PTR:					\
+ 			__g="None";				\
+ 			break;					\
+		case AT_A:					\
+ 			snprintf(__t,MAX_INT_STR,"%d",		\
+				ap->service);			\
+ 			__g=__t;				\
+ 			break;					\
+		default:					\
+			__g="UNKNOW";				\
+			break;					\
+	}							\
+	__g;})
+#define PROTO_STR(ap)						\
+({								\
+ 	char *__h;						\
+ 	switch((ap)->qtype) {					\
+		case AT_G:					\
+ 			__h="*";				\
+ 			break;					\
+		case AT_PTR:					\
+ 			__h="None";				\
+ 			break;					\
+		case AT_A:					\
+ 			if (!ap->service)			\
+ 				__h="None";			\
+ 			else					\
+	 			__h=ap->p==SNSD_PROTO_TCP?	\
+ 				SNSD_PROTO_TCP_STR:		\
+ 				SNSD_PROTO_UDP_STR;		\
+ 			break;					\
+		default:					\
+			__h="UNKNOW";				\
+			break;					\
+	}							\
+	__h;})
  	
 
 #define GET_OPT_REALM	(globopts.realm==REALM_NTK)?"NTK":"INET"

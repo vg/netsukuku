@@ -131,8 +131,8 @@ void opts_init(void)
 	GOP.port=NTKRESOLV_PORT;
 	GQT=create_andns_pkt();
 	GQT->nk=REALM_NTK;
-	GQT->p=SNSD_DEFAULT_PROTO;
-	GQT->service=SNSD_DEFAULT_SERVICE;
+	GQT->p=SNSD_PROTO_DEFAULT;
+	GQT->service=SNSD_SERVICE_DEFAULT;
 	xsrand();
 }
 
@@ -211,6 +211,7 @@ void opts_set_service_and_proto(char *arg)
 		proto_usage(arg);*/
 	if(ret < 0)
 		service_and_proto_usage(arg);
+	GQT->p-=1;
 }
 void opts_set_proto(char *arg) 
 {
@@ -318,9 +319,10 @@ void print_headers()
 	say("\n - Headers Section:\n"
 		"\tid ~ %6d\tqr  ~ %4d\tqtype ~ %7s\n"
 		"\tan ~ %6d\tipv ~ %s\trealm ~ %7s\n"
-		"\trCode ~ %s\n",
+		"\tsv ~ %6s\tprt ~ %4s\trCode ~ %s\n",
 		ap->id,ap->qr,QTYPE_STR(ap),
 		ap->ancount,IPV_STR(ap),NK_STR(ap),
+		SERVICE_STR(ap),PROTO_STR(ap),
 		RCODE_STR(ap));
 }
 void print_question()
@@ -400,8 +402,8 @@ void print_answers()
 			say("Answer not declared in Headers Packet.\n");
 		answer_data_to_str(apd,GOP.obj);
 		say("\t ~ %s",GOP.obj);
-		if (apd->m==APD_MAIN_IP)
-			say(" * SNSD Primary IP");
+		if (apd->m&APD_MAIN_IP)
+			say("\t * Snsd Main IP");
 		say("\n");
 		if (GQT->qtype==AT_A || GQT->qtype==AT_G) 
 			say("\t\tPrio ~ %d  Weigth ~ %d\n",
