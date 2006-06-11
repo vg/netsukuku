@@ -372,15 +372,18 @@ INDEX:
    If T=0, the format of data is:
 
         +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-        |                   RDLENGTH                    |
-        +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+        |                                               |       
+        |                                               |       
         |                                               |
-        /                   HOSTNAME                    /
-        /                                               /
+        |                   HOSTNAME                    |
+        |                     HASH                      |
+        |                     (HH)                      |
+        |                                               |
         |                                               |
         +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
 
-   where RDLENGTH is strlen(HOSTNAME).
+   where HH is the 16 bytes hash of SNSD hostname.
+
    If T=1, the format of data is:
 
         +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+

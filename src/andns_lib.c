@@ -219,29 +219,35 @@ int a_answ_u(char *buf,andns_pkt *ap,int limitlen)
 			limit=alen+2;
 			break;
 		case AT_G:
-			if (limitlen<6)
+			if (limitlen<8)
 				err_ret(ERR_ANDMAP,-1);
 			apd=andns_add_answ(ap);
 			if (*buf&0x80)
 				apd->m|=APD_MAIN_IP;
 			if (*buf&0x40)
 				apd->m|=APD_IP;
-			if (*buf&0x20)
+			apd->m|=*buf&0x20?APD_UDP:
+				APD_TCP;
+/*			if (*buf&0x20)
 				apd->m|=APD_UDP;
+			else
+				apd->m|=APD_TCP;*/
 			apd->wg=(*buf&0x1f);
 			apd->prio=(*(buf+1));
 			buf+=2;
 			memcpy(&alen,buf,2);
 			apd->service=ntohs(alen);
 			buf+=2;
-			if (apd->m&APD_IP) {
+			if (apd->m&APD_IP) 
 				apd->rdlength=(ap->ipv?16:4);
-				limit=4+apd->rdlength;
-				if (limitlen<limit)
-					err_ret(ERR_ANDPLB,-1);
-				APD_ALIGN(apd);
-				memcpy(apd->rdata,buf,apd->rdlength);
-			} else {
+			else
+				apd->rdlength=ANDNS_HASH_H;
+			limit=4+apd->rdlength;
+			if (limitlen<limit)
+				err_ret(ERR_ANDPLB,-1);
+			APD_ALIGN(apd);
+			memcpy(apd->rdata,buf,apd->rdlength);
+	/*		} else {
 				memcpy(&alen,buf,2);
 				//apd->rdlength=ntohs(alen);
 				apd->rdlength=ANDNS_HASH_H;
@@ -250,7 +256,7 @@ int a_answ_u(char *buf,andns_pkt *ap,int limitlen)
 					err_ret(ERR_ANDPLB,-1);
 				APD_ALIGN(apd);
         			memcpy(apd->rdata,buf+2,apd->rdlength);
-			}
+			}*/
 /*			if (limitlen<limit)
 				err_ret(ERR_ANDPLB,-1);
 			if (t) {
@@ -451,7 +457,7 @@ int a_answ_p(andns_pkt *ap,andns_pkt_data *apd,char *buf,int limitlen)
         		memcpy(buf,apd->rdata,apd->rdlength);
 			ret=apd->rdlength+2;
 			break;
-		case AT_G:
+		case AT_G: /* TODO */
 			if (limitlen<4)
                 		err_ret(ERR_ANDPLB,-1);
 			if (apd->m==1)

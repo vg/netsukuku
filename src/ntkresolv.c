@@ -370,7 +370,7 @@ void answer_data_to_str(andns_pkt_data *apd,char *dst)
 			ip_bin_to_str(apd->rdata,dst);
 			break;
 		case AT_G:
-			if (apd->m)
+			if (apd->m&APD_IP)
 				ip_bin_to_str(apd->rdata,dst);
 			else {
 				memcpy(dst,apd->rdata,ANDNS_HASH_H);
