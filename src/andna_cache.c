@@ -176,7 +176,16 @@ int is_lcl_hname_registered(lcl_cache *alcl)
  */
 lcl_cache *lcl_get_registered_hnames(lcl_cache *alcl)
 {
-	return list_copy_some(alcl, is_lcl_hname_registered);
+	lcl_cache *lcl;
+
+	lcl=list_copy_some(alcl, is_lcl_hname_registered);
+	list_for(lcl) {
+		lcl->hostname=xstrdup(lcl->hostname);
+		lcl->service=snsd_service_llist_copy(lcl->service, 
+						     SNSD_ALL_SERVICE, 0);
+	}
+
+	return lcl;
 }
 
 /*

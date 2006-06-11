@@ -71,13 +71,14 @@ case "$1" in
 restart -- stops the daemon and then starts it with the options specified on
 	   the command line
   flush -- flushes the cache of resolved hostnames
- reload -- sends ntkd HUP making it reread the "andna_hostnames" file
  cclean -- clean cache and map files from /usr/share/netsukuku.
  	   It is equivalent to:	rm -fv /usr/share/netsukuku/{*cache*,*map*}
+ reload -- sends ntkd HUP making it reread the "andna_hostnames" and
+           "snsd_nodes" files
 HELP
     ;;
   *)
-    echo "Usage: $0 {start|stop|flush|reload|help}"
+    echo "Usage: $0 {start|stop|flush|cclean|reload|help}"
     exit 1
     ;;
 esac
