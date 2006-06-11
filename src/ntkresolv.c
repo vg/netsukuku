@@ -372,8 +372,10 @@ void answer_data_to_str(andns_pkt_data *apd,char *dst)
 		case AT_G:
 			if (apd->m)
 				ip_bin_to_str(apd->rdata,dst);
-			else
-				strcpy(dst,apd->rdata);
+			else {
+				memcpy(dst,apd->rdata,ANDNS_HASH_H);
+				dst[ANDNS_HASH_H]=0;
+			}
 			break;
 		default:
 			strcpy(dst,"Unprintable Object");
