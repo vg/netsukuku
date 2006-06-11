@@ -1362,6 +1362,7 @@ snsd_service *andna_resolve_hash(u_int hname_hash[MAX_IP_INT], int service,
 	struct andna_resolve_rq_pkt req;
 	struct andna_resolve_reply_pkt *reply;
 	rh_cache *rhc;
+	snsd_service *sns_dup;
 	u_int hash_gnode[MAX_IP_INT], hash32;
 	inet_prefix to;
 
@@ -1453,7 +1454,10 @@ snsd_service *andna_resolve_hash(u_int hname_hash[MAX_IP_INT], int service,
 							&unpacked_sz,
 							&snsd_counter);
 		
-	if(!snsd_unpacked || !snsd_find_mainip(snsd_unpacked)) {
+	if(!snsd_unpacked ||
+		((service == SNSD_ALL_SERVICE || 
+		  service == SNSD_DEFAULT_SERVICE) &&
+		 !snsd_find_mainip(snsd_unpacked))) {
 		debug(DBG_SOFT, ERROR_MSG "Malformed resolution reply (0x%x)",
 				ERROR_FUNC, rpkt.hdr.id);
 		ERROR_FINISH(ret, 0, finish);
@@ -1463,15 +1467,12 @@ snsd_service *andna_resolve_hash(u_int hname_hash[MAX_IP_INT], int service,
 	
 	/* 
 	 * Add the hostname in the resolved_hnames cache since it was
-	 * successful resolved it ;)
+	 * successful resolved ;)
 	 */
 	reply->timestamp = time(0) - reply->timestamp;
 	rhc=rh_cache_add_hash(hash32, reply->timestamp);
-	if(rhc->service)
-		snsd_service_llist_del(&rhc->service);
-	rhc->snsd_counter=snsd_counter;
-	rhc->service=snsd_service_llist_copy(snsd_unpacked,
-						SNSD_ALL_SERVICE, 0);
+	sns_dup=snsd_service_llist_copy(snsd_unpacked, SNSD_ALL_SERVICE, 0);
+	snsd_service_llist_merge(&rhc->service, &rhc->snsd_counter, sns_dup);
 	
 finish:
 	pkt_free(&pkt, 1);

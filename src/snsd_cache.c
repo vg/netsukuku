@@ -17,12 +17,12 @@
  *
  * --  
  * snsd.c
+ *
  * Scattered Name Service Digregation
  *
- * Here there are the main functions used to add/modify/delete new records in
- * the SNSD linked lists.
- * The functions which handle SNSD requests/replies are here too.
- * This code is also used by andna.c
+ * Here there are the main functions used to add/modify/delete/pack/unpack 
+ * the records in the SNSD linked lists.
+ * The functions which handle SNSD requests/replies are in andna.c.
  */
 
 #include "includes.h"
@@ -133,9 +133,12 @@ snsd_service_to_str(int service, u_char proto, char **service_str,
 	return st;
 }
 
-/*
+
+/*\
+ *
  *  *  *  SNSD structs functions  *  *  *
- */
+ *
+\*/
 
 snsd_service *snsd_find_service(snsd_service *sns, u_short service, 
 				u_char proto)
@@ -272,11 +275,11 @@ snsd_node *snsd_add_mainip(snsd_service **head, u_short *counter,
 }
 
 
-/*
+/*\
  * 
  *  *  *  *  Destroyer functions  *  *  *
  *
- */
+\*/
 
 void snsd_node_llist_del(snsd_node **head, u_short *counter)
 {
@@ -359,11 +362,11 @@ void snsd_record_del_selected(snsd_service **head, u_short *snd_counter,
 }
 
 
-/*
+/*\
  *
  *  *  *  *  Pack/Unpack functions  *  *  *
  *
- */
+\*/
 
 /*
  * snsd_pack_node
@@ -830,11 +833,11 @@ finish:
 	return sns_head;
 }
 
-/*
+/*\
  *
  *   *  *  *  Misc functions  *  *  *
  *   
- */
+\*/
 
 int snsd_count_nodes(snsd_node *head)
 {
@@ -956,6 +959,32 @@ void snsd_unset_all_flags(snsd_service *sns, u_char flag)
 }
 
 
+/*\
+ *
+ *  *  *  *   Linked list copy functions   *  *  *
+ *
+\*/
+
+
+/*
+ * snsd_node_llist_copy
+ * 
+ * It duplicates an entire snsd_node llist in a new mallocated space.
+ * The other sub-llist are duplicated too.
+ * The head of the new llist is returned.
+ */
+snsd_node *snsd_node_llist_copy(snsd_node *snd)
+{
+	snsd_node *new_snd=0;
+
+	snd=new_snd=list_copy_all(snd);
+	list_for(snd)
+		if(snd->pubkey)
+			snd->pubkey=RSAPublicKey_dup(snd->pubkey);
+
+	return new_snd;
+}
+
 /*
  * snsd_prio_llist_copy
  * 
@@ -969,7 +998,7 @@ snsd_prio *snsd_prio_llist_copy(snsd_prio *snp)
 	
 	snp=new_snp=list_copy_all(snp);
 	list_for(snp)
-		snp->node=list_copy_all(snp->node);
+		snp->node=snsd_node_llist_copy(snp->node);
 	
 	return new_snp;
 }
@@ -1012,6 +1041,90 @@ snsd_service *snsd_service_llist_copy(snsd_service *sns, int service,
 	return new_sns;
 }
 
+
+/*\
+ *
+ *  *  *  *   Linked list merging functions   *  *  *
+ *
+ * For an explanation of these things, 
+ * read snsd_service_llist_merge()
+\*/
+
+void snsd_merge_node(snsd_node **head, u_short *snsd_counter, snsd_node *new)
+{
+	snsd_node *snd;
+
+	if(!(snd=snsd_find_node_by_record(*head, new->record))) {
+		clist_add(head, snsd_counter, new);
+		return;
+	}
+
+	list_copy(snd, new);
+}
+
+void snsd_node_llist_merge(snsd_node **dst, u_short *snsd_counter, snsd_node *src)
+{
+	list_for(src)
+		snsd_merge_node(dst, snsd_counter, src);
+}
+
+void snsd_merge_prio(snsd_prio **head, u_short *snsd_counter, snsd_prio *new)
+{
+	snsd_prio *snp;
+
+	if(!(snp=snsd_find_prio(*head, new->prio))) {
+		*head=list_add(*head, new);
+		return;
+	}
+
+	snsd_node_llist_merge(&snp->node, snsd_counter, new->node);
+}
+
+void snsd_prio_llist_merge(snsd_prio **dst, u_short *snsd_counter, snsd_prio *src)
+{
+	list_for(src)
+		snsd_merge_prio(dst, snsd_counter, src);
+}
+
+void snsd_merge_service(snsd_service **head, u_short *snsd_counter, 
+			snsd_service *new)
+{
+	snsd_service *sns;
+
+	if(!(sns=snsd_find_service(*head, new->service, new->proto))) {
+		/* `new' doesn't exists in `head'. Add it. */
+		*head=list_add(*head, new);
+		return;
+	}
+
+	snsd_prio_llist_merge(&sns->prio, snsd_counter, new->prio);
+}
+
+/*
+ * snsd_service_llist_merge
+ *
+ * It merges the `*dst' and `src' linked lists into a unique list, which
+ * contains all the common elements between `*dst' and `src'.
+ * In other words it is the result of the AND of the `*dst' and `src' sets.
+ *
+ * The result is written in the `*dst' llist itself and no memory is
+ * allocated, thus if you don't want to modify `*dst', you have to do a copy
+ * first using snsd_service_llist_copy().
+ */
+void snsd_service_llist_merge(snsd_service **dst, u_short *snsd_counter,
+			      snsd_service *src)
+{
+	list_for(src)
+		snsd_merge_service(dst, snsd_counter, src);
+}
+
+
+
+/*\
+ *
+ *  *  *  *   Dump functions   *  *  *
+ *          (that don't stink)
+\*/
 
 void snsd_dump_node(snsd_node *snd, int single)
 {

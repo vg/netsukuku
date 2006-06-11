@@ -290,6 +290,16 @@ snsd_node *snsd_find_mainip(snsd_service *sns);
 void snsd_unset_all_flags(snsd_service *sns, u_char flag);
 snsd_service *snsd_service_llist_copy(snsd_service *sns, int service, 
 					u_char proto);
+
+void snsd_merge_node(snsd_node **head, u_short *snsd_counter, snsd_node *new);
+void snsd_node_llist_merge(snsd_node **dst, u_short *snsd_counter, snsd_node *src);
+void snsd_merge_prio(snsd_prio **head, u_short *snsd_counter, snsd_prio *new);
+void snsd_prio_llist_merge(snsd_prio **dst, u_short *snsd_counter, snsd_prio *src);
+void snsd_merge_service(snsd_service **head, u_short *snsd_counter, 
+			snsd_service *new);
+void snsd_service_llist_merge(snsd_service **dst, u_short *snsd_counter,
+			      snsd_service *src);
+
 int snsd_count_nodes(snsd_node *head);
 int snsd_count_prio_nodes(snsd_prio *head);
 int snsd_count_service_nodes(snsd_service *head);
