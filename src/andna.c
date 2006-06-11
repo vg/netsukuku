@@ -2412,10 +2412,21 @@ void *andna_maintain_hnames_active(void *null)
 	lcl_cache *alcl;
 	int ret, updates;
 
+	/* Wait a bit before trying to register the hname. The first QSPN must
+	 * be already sent */
+	while(time(0)-me.uptime < QSPN_WAIT_ROUND/2)
+		sleep(1);
+
 	for(;;) {
 		updates=0;
 		alcl=andna_lcl;
-		
+
+		/** If we don't have rnodes, it's useless to try
+		 * anything */
+		while(!me.cur_node->links)
+			sleep(2);
+		/**/
+
 		list_for(alcl) {
 			ret=andna_register_hname(alcl, 0);
 			if(!ret) {
@@ -2475,7 +2486,7 @@ void *andna_main(void *null)
 	 */
 	debug(DBG_SOFT, "Evocating the DNS wrapper daemon.");
 	pthread_create(&thread, &t_attr, dns_wrapper_thread, 0);
-	
+
 	/* 
 	 * Start the hostnames updater and register 
 	 */
