@@ -134,7 +134,7 @@ int snsd_prio_to_aansws(char *buf,snsd_prio *sp,int iplen)
 	return count;
 }
 
-int snsd_service_to_aansws(char *buf,snsd_service *ss,int iplen,int *count)
+int snsd_service_to_aansws(char *buf,snsd_service *ss,int iplen,int *count,int recursion)
 {
 	int family,c=0;
 	uint16_t service,temp;
@@ -142,6 +142,7 @@ int snsd_service_to_aansws(char *buf,snsd_service *ss,int iplen,int *count)
 	snsd_prio *sp;
 	snsd_node *sn;
 	char *rem;
+	snsd_node snt;
 
 	if (!sp || !buf)
 		return 0;
@@ -171,14 +172,22 @@ int snsd_service_to_aansws(char *buf,snsd_service *ss,int iplen,int *count)
 					family=(iplen==4)?AF_INET:AF_INET6;
 					inet_htonl((u_int*)buf,family);
 					buf+=iplen;
-				} else { /* TODO: recursion */
-					memcpy(buf,sn->record, ANDNS_HASH_H);
+				} else { 
+					if (recursion && !snsd_main_ip(sn->record,&snt)) {
+						memcpy(buf,snt.record,iplen);
+						*(buf-4)|=0x40;
+						family=(iplen==4)?AF_INET:AF_INET6;
+						inet_htonl((u_int*)buf,family);
+						buf+=iplen;
+					} else {
+						memcpy(buf,sn->record, ANDNS_HASH_H);
+						buf+=ANDNS_HASH_H;
+					}
 /*					service=strlen((char*)sn->record);
 					temp=htons(service);
 					memcpy(buf,&temp,2);
-					memcpy(buf+2,sn->record,service);*/
+					memcpy(buf+2,sn->record,service);
 					buf+=ANDNS_HASH_H;
-					/*
 					res=snsd_main_ip(sn->record,&snt);
 					if (res) {
 						buf-=4;

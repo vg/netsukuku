@@ -98,12 +98,13 @@ int a_hdr_u(char *buf,andns_pkt *ap)
 
         start_buf=buf;
 
-                // ROW 1
-        memcpy(&s,buf,sizeof(uint16_t));
+	ap->r=*(buf+1)&0x01;
+        memcpy(&s,buf,2);
         ap->id=ntohs(s);
+	ap->id>>=1;
         buf+=2;
 
-        memcpy(&c,buf,sizeof(uint8_t));
+        memcpy(&c,buf,2);
         ap->qr=(c>>7)&0x01;
         ap->p=c&0x40?ANDNS_PROTO_UDP:ANDNS_PROTO_TCP;
 	ap->z=c&0x20;
@@ -364,8 +365,13 @@ int a_hdr_p(andns_pkt *ap,char *buf)
         uint16_t s;
 	uint8_t an;
 	
+	ap->id<<=1;
         s=htons(ap->id);
         memcpy(buf,&s,sizeof(uint16_t));
+	if (ap->r)
+		*(buf+1)|=0x01;
+	else	
+		*(buf+1)&=0xfe;
         buf+=2;
         if (ap->qr)
                 (*buf)|=0x80;

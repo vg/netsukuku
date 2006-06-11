@@ -816,7 +816,7 @@ int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 			goto safe_return_rcode;
 		}
 		res=snsd_service_to_aansws(answer+msglen+2,ss,
-				_ip_len_,&records);
+				_ip_len_,&records,ap->r);
 		if (!res) {
 			rcode=RCODE_ENSDMN;
 			goto safe_return_rcode;

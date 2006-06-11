@@ -64,6 +64,7 @@ typedef struct andns_pkt_data andns_pkt_data;
 typedef struct andns_pkt
 {
         uint16_t        id;
+        uint8_t         r;
         uint8_t         qr;
         uint8_t         p;
         uint8_t         z;

@@ -49,7 +49,7 @@ INDEX:
   Headers are 4-byte long, and the format is:
 
         +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-        |                      ID                       |
+        |                      ID                    | R|
         +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
         |QR| P| Z| QT  |  ANCOUNT  |I |   NK|   RCODE   |
         +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
@@ -59,6 +59,10 @@ INDEX:
         ID      =  It's a 2-byte value which identifies the query.
                    ID is choosed in a random way and the future
                    answers must have the same ID.
+	
+	R	=  Recursion bit. If set, SNSD queries that have
+		   a hostname as resolution will be resolved (if
+		   possible).
 
         QR      =  0 implies that this packet contains a question
                    1 if the packets contains answers
@@ -402,7 +406,7 @@ INDEX:
   The format of a compressed packet is:
 
         +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-        |                      ID                       |
+        |                      ID                    | R|
         +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
         |QR| P| Z| QT  |  ANCOUNT  |I |   NK|   RCODE   |
         +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+

@@ -87,6 +87,7 @@ typedef struct ntkresolv_opts {
 	int16_t		port;
 	int8_t		silent;
 	char		obj[NTKRESOLV_MAX_OBJ_LEN];
+	uint16_t	id;
 	andns_pkt	*q;
 } ntkresolv_opts;
 
@@ -258,6 +259,7 @@ void opts_set_realm(char *arg);
 void opts_set_service_and_proto(char *arg);
 void opts_set_proto(char *arg);
 void opts_set_question(char *arg);
+void opts_set_recursion(void);
 void opts_finish(char *arg);
 void print_headers();
 void print_question();

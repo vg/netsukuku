@@ -34,6 +34,7 @@ void usage(void)
                 " -s --service=service  SNSD service (`-s help' shows more info).\n"
                 " -p --protocolo=proto  SNSD protocol (`-p help' shows more info).\n"
                 " -S --silent           ntk-resolv will be not loquacious.\n"
+                " -R --recursion        set recursion ON for snsd services.\n"
                 " -h --help             display this help, then exit.\n\n");
 	ntkresolv_safe_exit(1);
 }
@@ -224,6 +225,10 @@ void opts_set_proto(char *arg)
 		proto_usage(arg);
 	GQT->p=ret;
 }
+void opts_set_recursion(void)
+{
+	GQT->r=1;
+}
 
 /*void hname_hash(char *dst,char *src)
 {
@@ -319,11 +324,12 @@ void print_headers()
 	say("\n - Headers Section:\n"
 		"\tid ~ %6d\tqr  ~ %4d\tqtype ~ %7s\n"
 		"\tan ~ %6d\tipv ~ %s\trealm ~ %7s\n"
-		"\tsv ~ %6s\tprt ~ %4s\trCode ~ %s\n",
+		"\tsv ~ %6s\tprt ~ %4s\trCode ~ %s\n"
+		"\trc ~ %6d\n",
 		ap->id,ap->qr,QTYPE_STR(ap),
 		ap->ancount,IPV_STR(ap),NK_STR(ap),
 		SERVICE_STR(ap),PROTO_STR(ap),
-		RCODE_STR(ap));
+		RCODE_STR(ap),ap->r);
 }
 void print_question()
 {
@@ -404,6 +410,8 @@ void print_answers()
 		say("\t ~ %s",GOP.obj);
 		if (apd->m&APD_MAIN_IP)
 			say("\t * Snsd Main IP");
+		else if (GQT->qtype==AT_G && !(apd->m&APD_IP) && GQT->r)
+			say("\t + Recursion Failed");
 		say("\n");
 		if (GQT->qtype==AT_A || GQT->qtype==AT_G) 
 			say("\t\tPrio ~ %d  Weigth ~ %d\n",
@@ -425,6 +433,7 @@ void do_command(void)
 	int res;
 
 	memset(buf,0,ANDNS_MAX_SZ);
+	GOP.id=GQT->id;
 	res=a_p(GQT,buf);
 	if (res==-1) {
 		say("Error building question.\n");
@@ -441,6 +450,8 @@ void do_command(void)
 		say("Error interpreting server answer.\n");
 		ntkresolv_exit(1);
 	}
+	if (GQT->id!=GOP.id) 
+		say("Warning: ID query (%d) is mismatching ID answer (%d)!\n",GOP.id,GQT->id);
 	print_headers();
 	print_question();
 	print_answers();
@@ -474,6 +485,7 @@ int main(int argc, char **argv)
                 {"service",1,0,'s'},
                 {"proto",1,0,'p'},
                 {"silent",0,0,'S'},
+                {"recursion",0,0,'R'},
                 {"help",0,0,'h'},
                 {0,0,0,0}
         };
@@ -481,7 +493,7 @@ int main(int argc, char **argv)
 	while(1) {
 		int oindex=0;
 		c=getopt_long(argc, argv, 
-			"vn:P:t:r:s:p:Sh", longopts, &oindex);
+			"vn:P:t:r:s:p:ShR", longopts, &oindex);
 		if (c==-1)
 			break;
 		switch(c) {
@@ -509,6 +521,9 @@ int main(int argc, char **argv)
 				usage();
 			case 'S':
 				opts_set_silent();
+				break;
+			case 'R':
+				opts_set_recursion();
 				break;
 			default:
 				usage();
