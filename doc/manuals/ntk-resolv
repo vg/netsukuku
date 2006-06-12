@@ -51,6 +51,18 @@ OPTIONS
     -S --silent
         With this option, ntk-resolv will be very discrete.
 
+    -b --block-recursion
+        Set recursion OFF. If recursion is ON (default), when a SNSD service
+        is requested, and the service is specified with a hostname instead
+        of an IP, the IP of that hostname will be searched. In the case of a
+        success research, the answer will contain the IP of the hostname,
+        and NOT the hostname HASH.
+
+    -m --md5-hash
+        If this option is set, the hostname specified is interpreted as a
+        MD5 hash. This is useful when you want to know a hostname IP, but
+        you know only the hash of his name.
+
     -h --help
         Prints to stdout a short explanation of ntk-resolv.
 
