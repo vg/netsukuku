@@ -10,12 +10,8 @@
 	- comments in resol.conf are not conidered: 
 		NOTE: Do not resolv this BUG: Now It's useful
 
-- update the dependencies list: 
-	- depends on iptables
-	- lartc
-
 - Keep an active tcp connection for each rnode. These sockets will be used to
-  send the majority of packets.
+  send the majority of packets. (use keepalive)
   The socket shall be saved in the "struct rnode_list" relative to the rnode.
   	- minimize the use of UDP. Use the UDP only for the radar?
 
@@ -26,8 +22,6 @@
 	  and packages installed
 	- A web interface to configure the /etc/netsukuku/netsukuku.conf file
 	  and to use the rc.ntk script.
-
-- netsukuku.conf.pod
 
 *
 **
@@ -115,8 +109,6 @@
 **
 *	
 
-- doc: explain in andna.h the difference between hash_md5() and andna_hash()
-	
 - Interactive shell/console. Some commands that should be implemented:
 	  "stats" gives statistics, 
 	  "rnodes" show the list of rnodes,
@@ -128,6 +120,10 @@
   node. The user puts his node info in /etc/netsukuku/finger.
   $ ntk-finger remote_node_ip
   will print out its /etc/netsukuku/finger.
+  	- why don't we just use fingerd?
+		- too bugged?
+	- and what about a stupid shell script like this: 
+	  while [ 0 ]; do cat /etc/netsukuku/finger | nc -l -p 79; done
   
 - renice the NetsukukuD process?
 

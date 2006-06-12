@@ -256,7 +256,7 @@ void andna_hash_by_family(int family, void *msg, u_int hash[MAX_IP_INT])
 /*
  * andna_hash
  *
- * This functions makes a digest of `msg' which is `len' bytes big and 
+ * This function makes a digest of `msg' which is `len' bytes big and 
  * stores it in `hash'. 
  * If `family'is equal to AF_INET, in `ip_hash' it stores the 32bit hash
  * of the `hash', otherwise it just copies `hash' to `ip_hash'.
@@ -1342,7 +1342,7 @@ snsd_service *andna_resolve_hash_locally(u_int hname_hash[MAX_IP_INT], int servi
  * records of the resolved hostname. Among them there's at least the mainip
  * record which can be found using snsd_find_mainip().
  *
- * `hname_hash' is the md5 hash of the hostname we want to resolve.
+ * `hname_hash' is the full MD5 hash of the hostname we want to resolve.
  *
  * `service' specifies the service number of the resolution. If it is equal to
  * -1 the resolution will return all the registered snds records.

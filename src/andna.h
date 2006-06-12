@@ -43,10 +43,35 @@ int last_reg_pkt_id[ANDNA_MAX_FLOODS];
 int last_counter_pkt_id[ANDNA_MAX_FLOODS];
 int last_spread_acache_pkt_id[ANDNA_MAX_FLOODS];
 
+/*\
+ *			   *** ANDNA hash notes ***
+ * 
+ * In ANDNA there are three type of hashes: MD5, 32bit, 32bit hash of a MD5
+ * hash. These hashes are generally applied on hostnames.
+ *
+ * The andna_hash() function, defined in andna.c, is used to calculate 
+ * the IP of a hash_node/hash_gnode/counter_node. It makes a MD5 digest of the
+ * input data. If we are working on ipv4, then a 32bit hash is applied to the
+ * previously calculated MD5 digest. The result is the IP of the hash_gnode.
+ * If we are in ipv6, we'll use directly the MD5 digest as the hash_gnode IP.
+ *
+ * In all the other cases we'll use directly the MD5 hash of the hostname,
+ * f.e. the hname hash of the registration and resolution packets is a MD5.
+ * The only exceptions are the lcl_cache and the rh_cache, which use
+ * internally a 32bit hash to speed up the hname lookups.
+ * 
+ * The general guideline for new implementation is to always use big hashes
+ * (i.e. MD5) where we might get collisions (f.e in an andna_cache), and to
+ * use small hashes where we are safe (f.e. in the rhc_cache).
+ *
+\*/
 
-/*
- * * * ANDNA requests/replies pkt stuff * * * 
- */
+
+/*\
+ *
+ *  * * *  ANDNA requests/replies pkt stuff  * * * 
+ *
+\*/
 
 #define ANDNA_REV_RESOLVE_RQ_TIMEOUT		60
 
@@ -149,6 +174,8 @@ INT_INFO andna_resolve_reply_pkt_iinfo = { 1, /* `ip' is ignored */
 
 
 /* 
+ * single_acache
+ *
  * The single_acache pkt is used to get from an old hash_gnode a single
  * andna_cache, which has the wanted `hash'. Its propagation method is similar
  * to that of andna_resolve_rq_pkt, but each new hash_gnode, which receives
@@ -201,9 +228,11 @@ INT_INFO spread_acache_pkt_info = { 0, { 0 }, { 0 }, { 0 } };
 
 
 
-/*
+/*\
+ *
  *  *  *  *  Function declaration  *  *  *
- */
+ *
+\*/
 
 int andna_load_caches(void);
 int andna_save_caches(void);

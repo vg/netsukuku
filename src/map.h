@@ -56,7 +56,9 @@
 #define MAP_IGW		(1<<13)		/*This node is an Internet gateway*/
 
 
-/* 			    *** Map notes ***
+/*\ 			    
+ * 			    *** Map notes ***
+ *
  * The map is an array of MAXGROUPNODE map_node structs. It is a generic map 
  * and it is used to keep the qspn_map, the internal map and the external map.
  * The position in the map of each struct corresponds to its relative ip.
@@ -65,7 +67,8 @@
  * 192.168.1.50 and so on.
  * Note: because MAXGROUPNODE is 256, we can use an u_char for the index of the
  * array.
- */
+ *
+\*/
 
 /* map_rnode is what map_node.r_node points to. (read struct map_node below) */
 typedef struct

@@ -172,10 +172,6 @@ typedef struct
 	int 		max_accepts_per_host_time;
 	
 	char 		dbg_lvl;
-
-#ifdef ANDNA_DEBUG
-	int		debug_ip;
-#endif
 }ServOpt;
 ServOpt server_opt;
 
