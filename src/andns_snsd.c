@@ -137,7 +137,7 @@ int snsd_prio_to_aansws(char *buf,snsd_prio *sp,int iplen)
 int snsd_service_to_aansws(char *buf,snsd_service *ss,int iplen,int *count,int recursion)
 {
 	int family,c=0;
-	uint16_t service,temp;
+	uint16_t service;
 	uint8_t prio,proto;
 	snsd_prio *sp;
 	snsd_node *sn;

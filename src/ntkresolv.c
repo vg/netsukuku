@@ -383,7 +383,7 @@ void answer_data_to_str(andns_pkt_data *apd,char *dst)
 			if (apd->m&APD_IP)
 				ip_bin_to_str(apd->rdata,dst);
 			else 
-				NTK_RESOLV_HASH_STR(apd->rdata,dst);
+				NTK_RESOLV_PUT_HASH(apd->rdata,dst);
 			break;
 		default:
 			strcpy(dst,"Unprintable Object");
