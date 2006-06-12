@@ -242,6 +242,13 @@ typedef struct ntkresolv_opts {
 #define G_SETQST_A(s)   G_ALIGN(strlen(s)+1);strcpy(GQT->qstdata,s);        \
                                 GQT->qstlength=strlen(s);
 
+#define NTK_RESOLV_HASH_STR(s,d)			        	    \
+({									    \
+ 	int __i;							    \
+ 	for (__i=0;__i<ANDNS_HASH_H;__i++) 				    \
+ 		sprintf(d+2*__i,"%02x",((unsigned char*)(s))[__i]);	    \
+	d[2*ANDNS_HASH_H]=0;})
+
 /* FUNCTIONS */
 void version(void);
 void usage(void);

@@ -382,10 +382,8 @@ void answer_data_to_str(andns_pkt_data *apd,char *dst)
 		case AT_G:
 			if (apd->m&APD_IP)
 				ip_bin_to_str(apd->rdata,dst);
-			else {
-				memcpy(dst,apd->rdata,ANDNS_HASH_H);
-				dst[ANDNS_HASH_H]=0;
-			}
+			else 
+				NTK_RESOLV_HASH_STR(apd->rdata,dst);
 			break;
 		default:
 			strcpy(dst,"Unprintable Object");
@@ -411,7 +409,7 @@ void print_answers()
 		answer_data_to_str(apd,GOP.obj);
 		say("\t ~ %s",GOP.obj);
 		if (apd->m&APD_MAIN_IP)
-			say("\t * Snsd Main IP");
+			say(" *");
 		else if (GQT->qtype==AT_G && !(apd->m&APD_IP) && GQT->r)
 			say("\t + Recursion Failed");
 		say("\n");
