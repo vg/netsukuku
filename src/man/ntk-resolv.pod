@@ -65,7 +65,7 @@ See the section B<QUERY TYPE, SERVICES AND PROTOCOL> for a better explanation.
 
 With this option, ntk-resolv will be very discrete.
 
-=item 	B<-R>	B<--no-recursion>
+=item 	B<-b>	B<--block-recursion>
 
 Set recursion OFF. If recursion is ON (default), when a SNSD service is requested, 
 and the service is specified with a hostname instead of an IP, the IP of that 

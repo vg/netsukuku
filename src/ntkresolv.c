@@ -34,7 +34,7 @@ void usage(void)
                 " -s --service=service  SNSD service (`-s help' shows more info).\n"
                 " -p --protocolo=proto  SNSD protocol (`-p help' shows more info).\n"
                 " -S --silent           ntk-resolv will be not loquacious.\n"
-                " -R --no-recursion     set recursion OFF.\n"
+                " -b --block-recursion  set recursion OFF.\n"
                 " -h --help             display this help, then exit.\n\n");
 	ntkresolv_safe_exit(1);
 }
@@ -487,7 +487,7 @@ int main(int argc, char **argv)
                 {"service",1,0,'s'},
                 {"proto",1,0,'p'},
                 {"silent",0,0,'S'},
-                {"recursion",0,0,'R'},
+                {"block-recursion",0,0,'b'},
                 {"help",0,0,'h'},
                 {0,0,0,0}
         };
@@ -495,7 +495,7 @@ int main(int argc, char **argv)
 	while(1) {
 		int oindex=0;
 		c=getopt_long(argc, argv, 
-			"vn:P:t:r:s:p:ShR", longopts, &oindex);
+			"vn:P:t:r:s:p:Shb", longopts, &oindex);
 		if (c==-1)
 			break;
 		switch(c) {
@@ -524,7 +524,7 @@ int main(int argc, char **argv)
 			case 'S':
 				opts_set_silent();
 				break;
-			case 'R':
+			case 'b':
 				opts_set_recursion();
 				break;
 			default:
