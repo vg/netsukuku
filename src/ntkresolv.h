@@ -88,6 +88,7 @@ typedef struct ntkresolv_opts {
 	int8_t		silent;
 	char		obj[NTKRESOLV_MAX_OBJ_LEN];
 	uint16_t	id;
+	uint8_t		hash;
 	andns_pkt	*q;
 } ntkresolv_opts;
 
@@ -242,18 +243,19 @@ typedef struct ntkresolv_opts {
 #define G_SETQST_A(s)   G_ALIGN(strlen(s)+1);strcpy(GQT->qstdata,s);        \
                                 GQT->qstlength=strlen(s);
 
-#define NTK_RESOLV_PUT_HASH(s,d)			        	    \
+#define NTK_RESOLV_HASH_STR(s,d)			        	    \
 ({									    \
  	int __i;							    \
  	for (__i=0;__i<ANDNS_HASH_H;__i++) 				    \
  		sprintf(d+2*__i,"%02x",((unsigned char*)(s))[__i]);	    \
 	d[2*ANDNS_HASH_H]=0;})
 
-#define NTK_RESOLV_GET_HASH(s,d)			        	    \
+#define NTK_RESOLV_STR_HASH(s,d)			        	    \
 ({									    \
- 	int __i;							    \
- 	for (__i=0;__i<ANDNS_HASH_H;__i++) 				    \
- 		sscanf(s+2*__i,"%02x",(unsigned char*)(d+__i);})	    	    
+ 	int __i,__t;							    \
+ 	for (__i=0;__i<ANDNS_HASH_H;__i++) { 				    \
+ 		sscanf(s+2*__i,"%02x",&__t);				    \
+		d[__i]=(unsigned char)(__t);}})
 
 /* FUNCTIONS */
 void version(void);

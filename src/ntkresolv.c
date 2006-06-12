@@ -35,6 +35,7 @@ void usage(void)
                 " -p --protocolo=proto  SNSD protocol (`-p help' shows more info).\n"
                 " -S --silent           ntk-resolv will be not loquacious.\n"
                 " -b --block-recursion  set recursion OFF.\n"
+                " -m --md5-hash         hostname specified is hash-ed.\n"
                 " -h --help             display this help, then exit.\n\n");
 	ntkresolv_safe_exit(1);
 }
@@ -251,7 +252,10 @@ void opts_set_recursion(void)
 	hval=htonl(hval);
 	memcpy(dst,hashm5,ANDNS_HASH_H);
 }*/
-
+void opts_set_hash(void) 
+{
+	GOP.hash=1;
+}
 void opts_set_question(char *arg)
 {
 	struct in_addr ia;
@@ -269,7 +273,16 @@ void opts_set_question(char *arg)
 		case QTYPE_A:
 			if (GQT->nk==REALM_NTK) {
 				G_ALIGN(ANDNS_HASH_H);
-				hash_md5(arg,res,GQT->qstdata);
+				if (GOP.hash) {
+					res=strlen(arg);
+					if (res!=2*ANDNS_HASH_H) {
+						say("Malformed Hostname hash `%s'.\n",arg);
+						ntkresolv_safe_exit(1);
+					}
+					NTK_RESOLV_STR_HASH(arg,GQT->qstdata);
+				}
+				else
+					hash_md5(arg,res,GQT->qstdata);
 			} else {
 				res=strlen(arg);
 				if (res>255) {
@@ -302,7 +315,10 @@ void opts_set_question(char *arg)
 				ntkresolv_safe_exit(1);
 			}
 			G_ALIGN(ANDNS_HASH_H);
-			hash_md5(arg,res,GQT->qstdata);
+			if (GOP.hash)
+				NTK_RESOLV_STR_HASH(arg,GQT->qstdata);
+			else
+				hash_md5(arg,res,GQT->qstdata);
 			return;	
 		default:
 			say("Unknow Query Type.\n");
@@ -313,6 +329,10 @@ void opts_finish(char *arg)
 {
 	int r;
 
+	if (GOP.hash && GQT->qtype==AT_PTR) {
+		say("Option `-m' is not usable with inverse queries.\n");
+		ntkresolv_safe_exit(1);
+	}
 	r=rand();
 	GQT->id=r>>16;
 	opts_set_question(arg);
@@ -383,7 +403,7 @@ void answer_data_to_str(andns_pkt_data *apd,char *dst)
 			if (apd->m&APD_IP)
 				ip_bin_to_str(apd->rdata,dst);
 			else 
-				NTK_RESOLV_PUT_HASH(apd->rdata,dst);
+				NTK_RESOLV_HASH_STR(apd->rdata,dst);
 			break;
 		default:
 			strcpy(dst,"Unprintable Object");
@@ -486,6 +506,7 @@ int main(int argc, char **argv)
                 {"proto",1,0,'p'},
                 {"silent",0,0,'S'},
                 {"block-recursion",0,0,'b'},
+                {"md5-hash",0,0,'m'},
                 {"help",0,0,'h'},
                 {0,0,0,0}
         };
@@ -493,7 +514,7 @@ int main(int argc, char **argv)
 	while(1) {
 		int oindex=0;
 		c=getopt_long(argc, argv, 
-			"vn:P:t:r:s:p:Shb", longopts, &oindex);
+			"vn:P:t:r:s:p:Shbm", longopts, &oindex);
 		if (c==-1)
 			break;
 		switch(c) {
@@ -524,6 +545,9 @@ int main(int argc, char **argv)
 				break;
 			case 'b':
 				opts_set_recursion();
+				break;
+			case 'm':
+				opts_set_hash();
 				break;
 			default:
 				usage();
