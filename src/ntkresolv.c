@@ -10,6 +10,7 @@
 
 static ntkresolv_opts globopts;
 static struct timeval time_start,time_stop;
+uint8_t mode_compute_hash=0;
 
 void version(void)
 {
@@ -25,7 +26,8 @@ void version(void)
 void usage(void)
 {
         say("Usage:\n"
-                "\tntk-resolv [OPTIONS] host\n\n"
+                "\tntk-resolv [OPTIONS] host\n"
+                "\tntk-resolv -H host\n\n"
                 " -v --version          print version, then exit.\n"
                 " -n --nameserver=ns    use nameserver `ns' instead of localhost.\n"
                 " -P --port=port        nameserver port, default 53.\n"
@@ -36,6 +38,7 @@ void usage(void)
                 " -S --silent           ntk-resolv will be not loquacious.\n"
                 " -b --block-recursion  set recursion OFF.\n"
                 " -m --md5-hash         hostname specified is hash-ed.\n"
+                " -H --compute-hash     print the hash'ed hostname.\n"
                 " -h --help             display this help, then exit.\n\n");
 	ntkresolv_safe_exit(1);
 }
@@ -227,34 +230,18 @@ void opts_set_proto(char *arg)
 		proto_usage(arg);
 	GQT->p=ret;
 }
-/* This is a complex function. */
+/* This is a complex set of function. */
 void opts_set_recursion(void)
 {
 	GQT->r=0;
 }
-
-/*void hname_hash(char *dst,char *src)
-{
-	u_char hashm5[ANDNS_HASH_H];
-	u_int hval=0;
-	
-	hash_md5(src, strlen(src), hashm5);
-
-	 * TODO:
-	 * why do you use this second hash?
-	 * andna_resolve_hash works only with a full md5 hash
-	bp = (u_char *)hashm5; 
-        be = bp + 16;         
-    	while (bp < be) {
-        	hval += (hval<<1) + (hval<<4) + (hval<<7) + (hval<<8) + (hval<<24);
-        	hval ^= (u_long)*bp++;
-    	}
-	hval=htonl(hval);
-	memcpy(dst,hashm5,ANDNS_HASH_H);
-}*/
 void opts_set_hash(void) 
 {
 	GOP.hash=1;
+}
+void opts_set_compute_hash(void)
+{
+	mode_compute_hash=1;
 }
 void opts_set_question(char *arg)
 {
@@ -262,19 +249,14 @@ void opts_set_question(char *arg)
 	struct in6_addr i6a;
 	int res;
 	
-	res=strlen(arg);
-	if (res>NTKRESOLV_MAX_OBJ_LEN) {
-		say("Object requested is too long: %s",arg);
-		ntkresolv_safe_exit(1);
-	}
 	strcpy(GOP.obj,arg);
-
+	res=strlen(arg);
+	
 	switch(GQT->qtype) {
 		case QTYPE_A:
 			if (GQT->nk==REALM_NTK) {
 				G_ALIGN(ANDNS_HASH_H);
 				if (GOP.hash) {
-					res=strlen(arg);
 					if (res!=2*ANDNS_HASH_H) {
 						say("Malformed Hostname hash `%s'.\n",arg);
 						ntkresolv_safe_exit(1);
@@ -284,7 +266,6 @@ void opts_set_question(char *arg)
 				else
 					hash_md5(arg,res,GQT->qstdata);
 			} else {
-				res=strlen(arg);
 				if (res>255) {
 					say("Hostname %s is too long for DNS standard.",arg);
 					ntkresolv_safe_exit(1);
@@ -329,6 +310,19 @@ void opts_finish(char *arg)
 {
 	int r;
 
+	r=strlen(arg);
+	if (r>NTKRESOLV_MAX_OBJ_LEN) {
+		say("Object requested is too long: %s",arg);
+		ntkresolv_safe_exit(1);
+	}
+
+	if (mode_compute_hash) { /* Do command here and exit */
+		G_ALIGN(ANDNS_HASH_H);
+		hash_md5(arg,r,GQT->qstdata);
+		NTK_RESOLV_HASH_STR(GQT->qstdata,GOP.obj);
+		say("%s\n",GOP.obj);
+		ntkresolv_safe_exit(0);
+	}
 	if (GOP.hash && GQT->qtype==AT_PTR) {
 		say("Option `-m' is not usable with inverse queries.\n");
 		ntkresolv_safe_exit(1);
@@ -507,6 +501,7 @@ int main(int argc, char **argv)
                 {"silent",0,0,'S'},
                 {"block-recursion",0,0,'b'},
                 {"md5-hash",0,0,'m'},
+                {"compute-hash",0,0,'H'},
                 {"help",0,0,'h'},
                 {0,0,0,0}
         };
@@ -514,7 +509,7 @@ int main(int argc, char **argv)
 	while(1) {
 		int oindex=0;
 		c=getopt_long(argc, argv, 
-			"vn:P:t:r:s:p:Shbm", longopts, &oindex);
+			"vn:P:t:r:s:p:ShbmH", longopts, &oindex);
 		if (c==-1)
 			break;
 		switch(c) {
@@ -548,6 +543,9 @@ int main(int argc, char **argv)
 				break;
 			case 'm':
 				opts_set_hash();
+				break;
+			case 'H':
+				opts_set_compute_hash();
 				break;
 			default:
 				usage();

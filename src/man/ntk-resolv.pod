@@ -4,7 +4,8 @@ ntk-resolv - Andns Lookup Resolver
 
 =head1 SYNOPSIS
 
-ntk-resolv [-vnPtrsSh] host
+ntk-resolv [-vnPtrspShbm] host
+ntk-resolv -H host
 
 =head1 DESCRIPTION
 
@@ -24,6 +25,15 @@ The simplest example is:
 
 With this comand, it asks ANDNA to tell which IP registerd the hostname 'hname'.
 The default behavior is to perform the query in the Netsukuku realm.
+
+You can use ntk-resolv to make string hashing:
+
+	ntk-resolv -H hname
+
+will print the md5 hash of `hname'. This is useful to debug SNSD configurations.
+In fact, if a query is not recursive, the results are hash'ed hostnames: so, it's
+possible to verify if the ANDNA cache is storing the correct hash-value for your
+SNSD hostnames.
 
 =head1 OPTIONS
 
@@ -77,6 +87,10 @@ contain the IP of the hostname, and NOT the hostname HASH.
 If this option is set, the hostname specified is interpreted as a MD5 hash.
 This is useful when you want to know a hostname IP, but you know only the hash
 of his name.
+
+=item 	B<-H>	B<--compute-hash>
+
+Compute the hash of specified hostname and print it to stdout.
 
 =item	B<-h>	B<--help>
 
