@@ -27,6 +27,8 @@ New features:
 
 	* -l logfile
 
+	* the scripts aren't dependent on bash anymore
+
 	
 Bug fixes:
 

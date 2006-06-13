@@ -1,39 +1,42 @@
 #!/bin/sh
 
-PATH=/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin:/usr/local/sbin/
-export PATH
+PATH="/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin:/usr/local/sbin/"
+pids="`pidof ntkd`"
 
-pids=`pidof ntkd`
-
-not_running() {
-	if [ -z "$pids" ]
+not_running()
+{
+	if test -z "$pids"
 	then
 		echo "ntkd is not running"
 		exit 1
 	fi
 }
 
-already_running() {
-	if [ ! -z "$pids" ]
+already_running()
+{
+	if ! test -z "$pids"
 	then
 		echo "ntkd is already running"
 		exit 1
 	fi
 }
 
-start() {
+start()
+{
 	already_running
 	echo Launching '"'ntkd $@'"'
 	ntkd $@
 }
 
-stop() {
+stop()
+{
 	not_running
   	echo "Killing ntkd"
   	kill $pids
 }
 
-clean_cache_files() {
+clean_cache_files()
+{
 	rm -fv /usr/share/netsukuku/{*cache*,*map*}
 }
 

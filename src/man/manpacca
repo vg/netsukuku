@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #Converts the *.pod files in the man format
 
 NTK_REPOSITORY="../../"

@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/sh
 #
 # tc_shaper.sh: shapes the upload Internet traffic. This script is an
 # adaptation of the Wonder Shaper script, see http://lartc.org/wondershaper
@@ -8,8 +8,7 @@
 # is 0
 #
 
-PATH=/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin:/usr/local/sbin/
-export PATH
+PATH="/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin:/usr/local/sbin/"
 
 #########################################################
 # Modify these values to your needs	
@@ -36,10 +35,10 @@ NOPRIOPORTSRC=
 NOPRIOPORTDST=
 #########################################################
 
-if [ -z "$1" -o "$1" == "help" ]
+if test -z "$1" -o "$1" = "help"
 then
-	echo Usage: $0 device upload_bw download_bw
-	echo	    $0 stop device
+	echo "Usage: $0 device upload_bw download_bw"
+	echo "       $0 stop device"
 	exit 1
 fi
 
@@ -50,22 +49,22 @@ fi
 # `$3' is the download Inet bandwidth in Kilobytes/seconds
 #
 DEV=$1
-if [ "$1" == "stop" ]; then
-	if [ -z "$2" ]; then
+if test "$1" = "stop"; then
+	if test -z "$2"; then
 		echo specify the device to stop
 		exit 1
 	fi
 	DEV="$2"
 else
-	UPLINK=$(($2*8))
-	DOWNLINK=$(($3*8))
+	UPLINK=`expr 2 '*' 8`
+	DOWNLINK=`expr $3 '*' 8`
 fi
 
 # clean existing down and uplink qdiscs, hide errors
 tc qdisc del dev $DEV root    2> /dev/null > /dev/null
 tc qdisc del dev $DEV ingress 2> /dev/null > /dev/null
 
-if [ "$1" == "stop" ] 
+if test "$1" = "stop"
 then 
 	exit 0
 fi
@@ -111,7 +110,7 @@ tc qdisc add dev $DEV parent 1:20 handle 20: sfq perturb 10
 tc qdisc add dev $DEV parent 1:30 handle 30: sfq perturb 10
 
 # Give priority to traffic going to the LAN
-if [ ! -z "$LOCAL_SUBNET" ]
+if test ! -z "$LOCAL_SUBNET"
 then
 	tc filter add dev $DEV parent 1:0 prio 1 protocol ip u32 match  \
 	ip dst "$LOCAL_SUBNET" flowid 1:1
@@ -173,7 +172,7 @@ tc filter add dev $DEV parent 1: protocol ip prio 18 u32 \
    match ip dst 0.0.0.0/0 flowid 1:20
 
 
-if [ ! -z "$SHAPE_DOWNLINK" ]
+if test ! -z "$SHAPE_DOWNLINK"
 then
 	########## downlink #############
 	# slow downloads down to somewhat less than the real speed  to prevent 

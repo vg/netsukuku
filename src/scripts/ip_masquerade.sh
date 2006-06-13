@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 # ip_masquerade.sh: sets IP masquerading.
 # This script is executed by NetsukukuD at its start (if in restricted mode).
@@ -9,12 +9,10 @@
 #EXTIF="$1"
 
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin:/usr/local/sbin/
-export PATH
-
 OS=`uname`
 
 masq_start() {
-	if [ $OS == "Linux" ]
+	if test $OS = "Linux"
 	then
 		# Flush all the NAT rules
 		iptables -F POSTROUTING -t nat  
@@ -42,7 +40,7 @@ masq_start() {
 }
 
 masq_stop() {
-	if [ $OS == "Linux" ]
+	if test $OS = "Linux"
 	then
 		# Flush all the NAT rules
 		iptables -F POSTROUTING -t nat
@@ -56,6 +54,10 @@ case "$1" in
   ;;
 'stop')
   masq_stop
+  ;;
+'help')
+    echo "Usage: $0 {start|stop|help}"
+    exit 1
   ;;
 *)
   masq_start

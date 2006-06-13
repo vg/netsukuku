@@ -5,7 +5,7 @@ SYNOPSIS
     ntk-wifi *wifi_interface*
 
 DESCRIPTION
-    Netsukuku_wifi is a bash script, which takes as its first argument the
+    Netsukuku_wifi is a shell script, which takes as its first argument the
     name of the wifi network interface to be used in order to join in
     Netsukuku. Then it sets the wifi interface in Ad-Hoc mode and its essid
     to "netsukuku". At this point the ntkd daemon is ready to be launched,
