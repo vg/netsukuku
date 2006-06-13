@@ -4,7 +4,7 @@ NAME
 DESCRIPTION
     ANDNA is the distributed, non hierarchical and decentralised system of
     hostname management in Netsukuku. It substitutes the DNS. The ANDNA
-    database is scattered inside all the Netsukuku and in the worst case
+    database is scattered inside all the Netsukuku net and in the worst case
     every node will have to use about some hundreds Kb of memory.
 
     In order to join ANDNA it is necessary to be hooked at Netsukuku with
@@ -130,7 +130,7 @@ BUGS
     and explain what the problem is and if possible a way to reproduce it.
 
 CONTACTS
-    Subcrive to the netsukuku mailing to get help, be updated on the latest
+    Subscribe to the netsukuku mailing to get help, be updated on the latest
     news and discuss on its development.
 
     To subscribe to the list, send a message to:

@@ -268,7 +268,7 @@ Default: I</etc/netsukuku/tc_shaper.sh>
 
 =head1 CONTACTS
 
-Subcrive to the netsukuku mailing to get help, be updated on the latest news
+Subscribe to the netsukuku mailing to get help, be updated on the latest news
 and discuss on its development.
 
 To subscribe to the list, send a message to:

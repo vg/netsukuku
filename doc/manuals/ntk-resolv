@@ -2,7 +2,7 @@ NAME
     ntk-resolv - Andns Lookup Resolver
 
 SYNOPSIS
-    ntk-resolv [-vnPtrsSh] host
+    ntk-resolv [-vnPtrspShbm] host ntk-resolv -H host
 
 DESCRIPTION
     Ntk-resolv is an interface to ANDNA daemon: it performs andns queries
@@ -15,7 +15,7 @@ USAGE
 
             ntk-resolv hname
 
-    With this comand, it asks ANDNA to tell which IP registerd the hostname
+    With this comand, it asks ANDNA which IP registered the hostname
     'hname'. The default behavior is to perform the query in the Netsukuku
     realm.
 
@@ -62,6 +62,17 @@ OPTIONS
         If this option is set, the hostname specified is interpreted as a
         MD5 hash. This is useful when you want to know a hostname IP, but
         you know only the hash of his name.
+
+    -H --compute-hash
+        Compute the hash of specified hostname and print it to stdout.
+        Example:
+
+                ntk-resolv -H hname
+
+        It will print the md5 hash of `hname'. This is useful to debug SNSD
+        configurations. In fact, if a query is not recursive, the results
+        are hash'ed hostnames: so, it's possible to verify if the ANDNA
+        cache is storing the correct hash-value for your SNSD hostnames.
 
     -h --help
         Prints to stdout a short explanation of ntk-resolv.
@@ -147,7 +158,7 @@ BUGS
     and explain what the problem is and if possible a way to reproduce it.
 
 CONTACTS
-    Subcrive to the netsukuku mailing to get help, be updated on the latest
+    Subscribe to the netsukuku mailing to get help, be updated on the latest
     news and discuss on its development.
 
     To subscribe to the list, send a message to:

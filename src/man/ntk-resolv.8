@@ -129,12 +129,13 @@
 .\" ========================================================================
 .\"
 .IX Title "ntk-resolv 8"
-.TH ntk-resolv 8 "2006-06-13" "perl v5.8.6" ""
+.TH ntk-resolv 8 "2006-06-14" "perl v5.8.6" ""
 .SH "NAME"
 ntk\-resolv \- Andns Lookup Resolver
 .SH "SYNOPSIS"
 .IX Header "SYNOPSIS"
-ntk-resolv [\-vnPtrsSh] host
+ntk-resolv [\-vnPtrspShbm] host
+ntk-resolv \-H host
 .SH "DESCRIPTION"
 .IX Header "DESCRIPTION"
 Ntk-resolv is an interface to \s-1ANDNA\s0 daemon: it performs andns queries and displays
@@ -150,7 +151,7 @@ The simplest example is:
 \&        ntk-resolv hname
 .Ve
 .PP
-With this comand, it asks \s-1ANDNA\s0 to tell which \s-1IP\s0 registerd the hostname 'hname'.
+With this comand, it asks \s-1ANDNA\s0 which \s-1IP\s0 registered the hostname 'hname'.
 The default behavior is to perform the query in the Netsukuku realm.
 .SH "OPTIONS"
 .IX Header "OPTIONS"
@@ -196,6 +197,19 @@ contain the \s-1IP\s0 of the hostname, and \s-1NOT\s0 the hostname \s-1HASH\s0.
 If this option is set, the hostname specified is interpreted as a \s-1MD5\s0 hash.
 This is useful when you want to know a hostname \s-1IP\s0, but you know only the hash
 of his name.
+.IP "\fB\-H\fR	\fB\-\-compute\-hash\fR" 4
+.IX Item "-H	--compute-hash"
+Compute the hash of specified hostname and print it to stdout.
+Example:
+.Sp
+.Vb 1
+\&        ntk-resolv -H hname
+.Ve
+.Sp
+It will print the md5 hash of `hname'. This is useful to debug \s-1SNSD\s0
+configurations. In fact, if a query is not recursive, the results are hash'ed
+hostnames: so, it's possible to verify if the \s-1ANDNA\s0 cache is storing the
+correct hash-value for your \s-1SNSD\s0 hostnames.
 .IP "\fB\-h\fR	\fB\-\-help\fR" 4
 .IX Item "-h	--help"
 Prints to stdout a short explanation of ntk\-resolv.
@@ -284,7 +298,7 @@ or the mailing list:
 and explain what the problem is and if possible a way to reproduce it.
 .SH "CONTACTS"
 .IX Header "CONTACTS"
-Subcrive to the netsukuku mailing to get help, be updated on the latest news
+Subscribe to the netsukuku mailing to get help, be updated on the latest news
 and discuss on its development.
 .PP
 To subscribe to the list, send a message to:

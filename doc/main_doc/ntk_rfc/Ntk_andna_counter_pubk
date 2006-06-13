@@ -21,7 +21,7 @@ and update its hnames, therefore there should be only one key pair for each
 node.
 
 However, nothing prevents the register node to create multiple key pairs,
-modify the netsukuku_d code and use them at the same time. 
+modify the ntkd code and use them at the same time. 
 With this technique, the register node can have a new counter_gnode for each
 new generated key pair, avoiding in this way the registration limit.
 

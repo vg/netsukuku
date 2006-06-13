@@ -14,7 +14,7 @@ src/man/Makefile.am).
 
 Federico Tomassini (Efphe) <efphe@netsukuku.org> wrote andns, which provides
 DNS compatibility for the ANDNA system. He also wrote the interface to the
-libiptc. (andns* dnslib.[ch] mark.[ch] libiptc/*)
+libiptc. (andns* ntkresolv.* dnslib.[ch] mark.[ch] libiptc/*)
 
 
 Website developers and maintainers:

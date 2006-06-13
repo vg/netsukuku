@@ -39,7 +39,7 @@ authority controls.
 This net is composed by computers linked physically each other, therefore it
 isn't build upon any existing network. Netsukuku builds only the routes which
 connects all the computers of the net.
-In other words, Netsukuku replaces the level 3 of the model iso/si with
+In other words, Netsukuku replaces the level 3 of the model iso/osi with
 another routing protocol.
 The Domain Name System is also replaced by a decentralised and distributed
 system: the Abnormal Netsukuku Domain Name Anarchy.
@@ -177,13 +177,13 @@ If you are using modules you have to load them before launching the daemon.
 
 Before doing anything do:
 
-$ man netsukuku_d
+$ man ntkd
 $ man andna
 
 when you feel confortable and you are ready to dare type with root
 priviledges:
 
-# netsukuku_d
+# ntkd
 
 then just wait... ^_-
 

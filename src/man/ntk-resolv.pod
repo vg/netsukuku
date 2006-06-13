@@ -23,17 +23,9 @@ The simplest example is:
 
 	ntk-resolv hname
 
-With this comand, it asks ANDNA to tell which IP registerd the hostname 'hname'.
+With this comand, it asks ANDNA which IP registered the hostname 'hname'.
 The default behavior is to perform the query in the Netsukuku realm.
 
-You can use ntk-resolv to make string hashing:
-
-	ntk-resolv -H hname
-
-will print the md5 hash of `hname'. This is useful to debug SNSD configurations.
-In fact, if a query is not recursive, the results are hash'ed hostnames: so, it's
-possible to verify if the ANDNA cache is storing the correct hash-value for your
-SNSD hostnames.
 
 =head1 OPTIONS
 
@@ -91,6 +83,14 @@ of his name.
 =item 	B<-H>	B<--compute-hash>
 
 Compute the hash of specified hostname and print it to stdout.
+Example:
+
+	ntk-resolv -H hname
+
+It will print the md5 hash of `hname'. This is useful to debug SNSD
+configurations. In fact, if a query is not recursive, the results are hash'ed
+hostnames: so, it's possible to verify if the ANDNA cache is storing the
+correct hash-value for your SNSD hostnames.
 
 =item	B<-h>	B<--help>
 
@@ -182,7 +182,7 @@ and explain what the problem is and if possible a way to reproduce it.
 
 =head1 CONTACTS
 
-Subcrive to the netsukuku mailing to get help, be updated on the latest news
+Subscribe to the netsukuku mailing to get help, be updated on the latest news
 and discuss on its development.
 
 To subscribe to the list, send a message to:
