@@ -21,7 +21,7 @@
 
 #include "qspn.h"
 
-#define MAX_FIRST_RADAR_SCANS	3  /* How many time we have to retry 
+#define MAX_FIRST_RADAR_SCANS	1  /* How many time we have to retry 
 				      the first radar_scan if we
 				      didn't found anything */
 #ifdef DEBUG

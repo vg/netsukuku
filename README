@@ -129,6 +129,16 @@ may want to reinstall it with another MANDIR path), you have to run:
 $ scons --clean
 
 **
+****  Static Binaries and Packages
+**
+
+If you prefer to just install Netsukuku, without compiling it, you can
+download the static binaries suitable to your platform. They come packed in
+various formats (.tgz, .deb, .ipk).
+The packages repository is at:
+    http://netsukuku.freaknet.org/packages/
+
+**
 ****  Kernel dependencies
 **
 

@@ -1165,7 +1165,7 @@
   }}}
    * Send a SIGHUP to the NetsukukuD of the register node:
   {{{
-  register_node# killall -SIGHUP ntkd
+  register_node# killall -HUP ntkd
   # or, alternatively
   register_node# rc.ntk reload
   }}}

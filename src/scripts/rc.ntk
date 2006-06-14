@@ -55,12 +55,12 @@ case "$1" in
   flush)
   	not_running
   	echo "Flushing the cache of resolved hostnames" 
-	killall -SIGALRM ntkd
+	kill -ALRM $pids
     ;;
   reload)
   	not_running
   	echo Reloading '"'andna_hostnames'"' and trying to register the new hostnames
-	killall -SIGHUP ntkd
+	kill -HUP $pids
     ;;
   cclean)
 	echo "Cleaning the cache and map files from /usr/share/netsukuku"

@@ -46,7 +46,7 @@ register_node# scp /usr/share/netsukuku/andna_lcl_keyring mx_node:/etc/netsukuku
 }}}
  * Send a SIGHUP to the MX NetsukukuD:
 {{{
-register_node# ssh mx_node "killall -SIGHUP ntkd"
+register_node# ssh mx_node "killall -HUP ntkd"
 }}}
 
 

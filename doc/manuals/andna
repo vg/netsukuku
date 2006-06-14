@@ -27,7 +27,7 @@ USAGE
     SIGHUP signal. So if you've added a hostname while ntkd was running,
     just do:
 
-            killall -SIGHUP ntkd
+            killall -HUP ntkd
 
     All the hostnames, which are already registered by other nodes, are
     added in the queue, in this way, when the other nodes won't update them,

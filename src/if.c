@@ -316,7 +316,10 @@ int if_init_all(char *ifs_name[MAX_INTERFACES], int ifs_n,
 
 void if_close_all(void)
 {
+#if 0
+	/* XXX: disabled for now, it is buggy */
 	ll_free_index();
+#endif
 }
 
 /*
