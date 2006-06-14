@@ -189,3 +189,5 @@
   DEAD_RNODE.
 
 - Use bireloc from autopackage
+
+- Use qemu to make Netsukuku run on windows?!?

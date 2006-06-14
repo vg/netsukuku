@@ -2414,7 +2414,7 @@ void *andna_maintain_hnames_active(void *null)
 
 	/* Wait a bit before trying to register the hname. The first QSPN must
 	 * be already sent */
-	while(time(0)-me.uptime < 4)
+	while(time(0)-me.uptime < QSPN_WAIT_ROUND/2)
 		sleep(1);
 
 	for(;;) {
