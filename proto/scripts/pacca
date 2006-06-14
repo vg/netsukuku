@@ -50,15 +50,6 @@ fi
 
 source $NTK_REPOSITORY/proto/scripts/pacca_functions
 
-############# UHM #####
-if [ -f README.ntkd ]; then
-	echo "*********MODIFY README**********"
-	echo  mv README.ntkd README
-	echo "*********MODIFY README**********"
-	exit 1
-fi
-############# UHM #####
-
 cd $NTK_REPOSITORY
 cur_dir=`pwd`
 curdir=`pwd`

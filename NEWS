@@ -5,48 +5,67 @@ New features:
 	* The Scattered Name Service Disgregation (NTK_RFC 0009) has been
 	  implemented.
 	  See http://lab.dyne.org/Ntk_SNSD and the man page of andna(8).
+
+	* ntk-resolve has been updated to support SNSD queries.
 	  
 	* The `netsukuku_d' binary and its man page have been renamed to `ntkd'
 	  `netsukuku_wifi' and its man page have been renamed to `ntk-wifi'.
 	
+	* Static binaries and packages are now available.
+	  http://netsukuku.freaknet.org/packages/
+
+	* NetsukukuD compresses automatically packets > 1024 bytes using the
+	  zlib.
+
+	* A pid file is written on /var/run/ntkd.pid. It is used to check if
+	  other instances of ntkd are already running.
+
+	* The new option `use_shared_internet' has been added. It specifies if
+	  ntkd will load balance the Internet traffic of this host using the 
+	  Inet connections shared by the Netsukuku nodes.
+
+	* The new command line option `-l' specifies that ntkd should send all
+	  of its messages to the specified file.
+
+	* The scripts ip_masquerade.sh, tc_shaper.sh, rc.ntk, ntk-wifi, are
+	  not dependent on bash anymore.
+
 	* The ANDNA keyring is now saved separately from the lcl_cache. It is
 	  saved in andna_lcl_keyring.
 
 	* The `andna_' prefix is now used for the filename of the andna
 	  caches.
 
-	* llist.c optimised
-
-	* Compressed pkts /* TODO: explain better */
-
-	* Pid file
-
-	* New option: use_shared_internet
-
-	* Static binaries + packages (maemo, tgz)
-
-	* -l logfile
-
-	* the scripts aren't dependent on bash anymore
-
-	
 Bug fixes:
 
+	* A workaround to the gcc 27945 bug
+	  ( http://gcc.gnu.org/bugzilla/show_bug.cgi?id=27945 ) has been
+	  implemented. The nodes affected with bug receive malformed packets
+	  during the hook.
+	
 	* The outgoing traffic to a node of the LAN is not shaped anymore.
 
-	* hname_updates mismatch 
+	* There was a bug that incremented the `hname_updates' counter, in the
+	  andna_cache of a hostname, even if the registration/update was
+	  rejected. Having wrong `hname_updates' counter, led to some
+	  syncronization problems.
 
-	* dynamic detection of removed devices
+	* Ntkd is now able to detect, while running, the remotion of a network
+	  device it was using.
 
-	* gcc bugfix
-	
-	* memory leaks
+	* Various memory leaks have been fixed.
 
-	* code optimized (SETBIT radar.c)
+	* A workaround for the way getopt handles the optional arguments (i.e.
+	  -r in ntkd) has been written. It is now possible to write 
+	  ntkd -drdddD without expecting strange behaviours. See
+	  http://www.freaknet.org/alpt/src/patches/getopt-opt-arg/readme
+
+	* The code has been optimized and cleaned.
 
 Extra:
 
-	* man netsukuku.conf
+	* The man page for netsukuku.conf has been written.
+	  netsukuku.conf(5).
 
 ==== 0.0.7b ====
 
