@@ -2,6 +2,22 @@
 #
 #
 
+if [ -z "$1" ]
+then
+	echo "pacca what?"
+	echo
+	echo Usage: 
+	echo "       pacca <all | pacca>"
+	exit 1
+fi
+
+PACCA_ONLY="$1"
+if [ "$PACCA_ONLY" != "all" -a "$PACCA_ONLY" != "pacca" ] 
+then
+	echo all, pacca
+	exit 1
+fi
+
 OPENWRT_SDK="`echo ~/pkg/openwrt/sdk/OpenWrt-SDK-Linux-i686-1`"
 if [ ! -d $OPENWRT_SDK ]
 then
@@ -39,6 +55,12 @@ cp -r $WRT_PACK $OPENWRT_SDK/package
 
 cd $OPENWRT_SDK/
 make clean && make && make compile
+
+if [ "$PACCA_ONLY" == "pacca" ]
+then
+	echo PACKING ONLY, DISABLED RSYNC
+	exit
+fi
 
 rsync -auvP $OPENWRT_SDK/bin/packages/netsukuku_*.ipk \
 	freaknet.org:netsukuku/openwrt/package/

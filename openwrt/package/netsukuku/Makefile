@@ -3,7 +3,7 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=netsukuku
 PKG_VERSION:=0.0.8b
 PKG_RELEASE:=1
-PKG_MD5SUM:=79b92cb9c707d91ee060a7bb4115be36
+PKG_MD5SUM:=c038878002999c1148133291ba088988
 
 PKG_SOURCE_URL:=http://netsukuku.freaknet.org/files/
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.bz2
@@ -43,7 +43,6 @@ $(PKG_BUILD_DIR)/.built: $(PKG_BUILD_DIR)/.configured
 
 $(IPKG_NETSUKUKU):
 	install -d -m0755 $(IDIR_NETSUKUKU)/usr/bin
-	cp -fpR $(PKG_INSTALL_DIR)/usr/bin/netsukuku_* $(IDIR_NETSUKUKU)/usr/bin
 	cp -fpR $(PKG_INSTALL_DIR)/usr/bin/ntk-resolv $(IDIR_NETSUKUKU)/usr/bin
 	cp -fpR $(PKG_INSTALL_DIR)/usr/bin/ntkd $(IDIR_NETSUKUKU)/usr/bin
 	install -d -m0755 $(IDIR_NETSUKUKU)/etc/netsukuku

@@ -101,7 +101,10 @@ tar cfjv $cur_dir/$packtar $packdir
 #md5sum  $packdir.tar.bz2 >  $packdir.tar.bz2.md5
 
 echo "[*] Creating static packages"
-$NTK_REPOSITORY/proto/scripts/pacca-static
+$NTK_REPOSITORY/proto/scripts/pacca-static $PACCA_ONLY
+
+echo "[*] Launching pacca-openwrt"
+$NTK_REPOSITORY/proto/scripts/pacca-openwrt $PACCA_ONLY
 
 if [ "$PACCA_ONLY" == "pacca" ]
 then
