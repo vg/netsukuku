@@ -75,7 +75,7 @@ USAGE
     <http://lab.dyne.org/Ntk_SNSD>
 
    SNSD NODE REGISTRATION
-     * Modify the F</etc/netsukuku/snsd_nodes> file.
+     * Modify the /etc/netsukuku/snsd_nodes file.
      * Copy the needed public keys
      * Send a SIGHUP to the NetsukukuD of the register node:
 

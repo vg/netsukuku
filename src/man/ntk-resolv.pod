@@ -4,7 +4,7 @@ ntk-resolv - Andns Lookup Resolver
 
 =head1 SYNOPSIS
 
-ntk-resolv [-vnPtrspShbm] host
+ntk-resolv [-vnPtrspShbml] host
 ntk-resolv -H host
 
 =head1 DESCRIPTION
@@ -92,16 +92,32 @@ configurations. In fact, if a query is not recursive, the results are hash'ed
 hostnames: so, it's possible to verify if the ANDNA cache is storing the
 correct hash-value for your SNSD hostnames.
 
+=item 	B<-l>	B<--parsable-output>
+
+Print answers in a synthetic way. The format of output is:
+
+	~ IP				   (SNSD s=0)
+	- hname				   (Inverse)
+	- hname prio weight		   (SNSD s!=0)
+	~ ip prio weight		   (SNSD s!=0)	
+	~ ip service proto prio weight	   (Global)
+	- hname service proto prio weight  (Global)
+
+Note that when an answer contains an IP, the first character is `~'; if the
+answer contains a hostname (hash'ed or not) the line begins with `-'.
+
 =item	B<-h>	B<--help>
 
 Prints to stdout a short explanation of ntk-resolv.
 
-Options that take arguments could be expressed in a shorter way, by
-specifing univoque abbreviation of argument. So, there is the equivalence:
+=item	B<Final note:>
 
-=item 	B<ntk-resolv -r i = ntk-resolv -r inet>
+All options that take string arguments could be expressed in a shorter 
+way, by specifing univoque abbreviation of argument. So, there is the equivalence:
 
-=back
+	ntk-resolv -r i = ntk-resolv -r inet
+
+with the exception of option -s, wich requires a valid service.
 
 =head1 QUERY TYPE
 

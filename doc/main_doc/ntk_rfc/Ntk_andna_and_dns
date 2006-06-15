@@ -299,7 +299,7 @@ INDEX:
   CASE QTYPE=0    (h2ip)   
 
         +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-        | M|        WG          |       PRIO            |
+        |  | T|     WG          |       PRIO            |
         +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
         |                                               |
         /                     RDATA                     /
@@ -309,14 +309,15 @@ INDEX:
 
    where:
     
-   M is set for the main IP of the resoliton (See `NTK_RFC 0009`)
+   T is set if this answer carries an IP.
+   T is 0 if the answer carries a hostname hash.
      
    WG is the weigth of an answer (see `NTK_RFC 0009`)
 
    PRIO the priority (see `NTK_RFC 0009`)
 
-   RDATA is a binary ip address, His family (and his length) is specified
-         in the headers bit `I'.
+   RDATA is a binary ip address (His family (and his length) is specified
+         in the headers bit `I') or a hostname hash).
 
   CASE QTYPE=1   (ip2h)
 
@@ -368,6 +369,9 @@ INDEX:
    T is:
    	T = 0	Hostname
 	T = 1 	Ip
+
+   M is set if T is set, and specifies that this is the MAIN_IP
+   of the hostname.
 
    P is The protocol: Tcp if 0, UDP if 1.
    

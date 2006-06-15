@@ -19,6 +19,7 @@
 #define MAX_HOSTNAME_LEN	512
 #define NTKRESOLV_MAX_OBJ_LEN	512
 
+
 //#define ANDNS_MAX_SZ    1024
 
 #define min(x,y)		(x)<(y)?(x):(y)
@@ -52,6 +53,8 @@
 
 #define TIME_SCALE		1000000.0
 #define HELP_STR		"help"
+
+
 
 char *QTYPE_STR_LIST[]={QTYPE_A_STR,QTYPE_PTR_STR,QTYPE_G_STR,QTYPE_MX_STR};
 int QT_LEN=4;
@@ -224,16 +227,16 @@ typedef struct ntkresolv_opts {
 #define GET_OPT_REALM	(globopts.realm==REALM_NTK)?"NTK":"INET"
 
 /* CODE UTILS */
-#define say             printf
-#define bye             if (!AMISILENT) say("\tBye!\n");
-
 #define GOP             (globopts)
 #define AMISILENT       (GOP.silent)
 #define GQT             (GOP.q)
 
+#define say             printf
+#define bye             if (!AMISILENT) say("\tBye!\n");
+
 #define COMPUTE_TIME    diff_time(time_start,time_stop)
 #define time_report     if (!AMISILENT){gettimeofday(&time_stop,NULL);      \
-                        say("\nQuery time: %f seconds.\n"                   \
+                        say("Query time: %f seconds.\n"                     \
                                         ,COMPUTE_TIME);}
 
 #define G_ALIGN(len)    GQT->qstlength=len;GQT->qstdata=(char*)  	    \
@@ -257,7 +260,13 @@ typedef struct ntkresolv_opts {
  		sscanf(s+2*__i,"%02x",&__t);				    \
 		d[__i]=(unsigned char)(__t);}})
 
+#define NTK_RESOLV_IP_SYMBOL	"~"
+#define NTK_RESOLV_HNAME_SYMBOL	"-"
+#define NTK_RESOLV_SYMBOL(apd)	(apd)->m&APD_IP?NTK_RESOLV_IP_SYMBOL:	\
+					NTK_RESOLV_HNAME_SYMBOL
+
 /* FUNCTIONS */
+
 void version(void);
 void usage(void);
 void qt_usage(char *arg);
@@ -276,6 +285,7 @@ void opts_set_proto(char *arg) ;
 void opts_set_recursion(void);
 void opts_set_hash(void) ;
 void opts_set_compute_hash(void);
+void opts_set_parsable_output(void);
 void opts_set_question(char *arg);
 void opts_finish(char *arg);
 void print_headers();
@@ -283,8 +293,11 @@ void print_question();
 void ip_bin_to_str(void *data,char *dst);
 void answer_data_to_str(andns_pkt_data *apd,char *dst);
 void print_answers();
+void print_parsable_answers(void);
+void print_results(void);
 void do_command(void);
 void ntkresolv_exit(int i);
 void ntkresolv_safe_exit(int i);
 int main(int argc, char **argv);
+
 #endif /* NTK_RESOLV_H */

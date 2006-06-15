@@ -2,7 +2,7 @@ NAME
     ntk-resolv - Andns Lookup Resolver
 
 SYNOPSIS
-    ntk-resolv [-vnPtrspShbm] host ntk-resolv -H host
+    ntk-resolv [-vnPtrspShbml] host ntk-resolv -H host
 
 DESCRIPTION
     Ntk-resolv is an interface to ANDNA daemon: it performs andns queries
@@ -74,116 +74,135 @@ OPTIONS
         are hash'ed hostnames: so, it's possible to verify if the ANDNA
         cache is storing the correct hash-value for your SNSD hostnames.
 
+    -l --parsable-output
+        Print answers in a synthetic way. The format of output is:
+
+                ~ IP                               (SNSD s=0)
+                - hname                            (Inverse)
+                - hname prio weight                (SNSD s!=0)
+                ~ ip prio weight                   (SNSD s!=0)  
+                ~ ip service proto prio weight     (Global)
+                - hname service proto prio weight  (Global)
+
+        Note that when an answer contains an IP, the first character is `~';
+        if the answer contains a hostname (hash'ed or not) the line begins
+        with `-'.
+
     -h --help
         Prints to stdout a short explanation of ntk-resolv.
 
-        Options that take arguments could be expressed in a shorter way, by
-        specifing univoque abbreviation of argument. So, there is the
-        equivalence:
+    Final note:
+        All options that take string arguments could be expressed in a
+        shorter way, by specifing univoque abbreviation of argument. So,
+        there is the equivalence:
 
-    ntk-resolv -r i = ntk-resolv -r inet
+                ntk-resolv -r i = ntk-resolv -r inet
+
+        with the exception of option -s, wich requires a valid service.
 
 QUERY TYPE
-    You can formule different kind of queries.
+        You can formule different kind of queries.
 
-    With a `ptr' query, you specify an IP, and you will have, if exists, the
-    hostname that registered that IP.
+        With a `ptr' query, you specify an IP, and you will have, if exists,
+        the hostname that registered that IP.
 
-    With a `snsd' query, you specify a hostname, a service and a protocol.
-    If service and protocol are not specified, they are set to 0, and you
-    will have the IP assigned to the hostname at this moment. If you specify
-    a service and a protocol, the answer will contain the IP that gives the
-    specified service/protocl for the hostname. See the section SNSD,
-    SERVICES AND PROTOCOL to understand better the SNSD behavior.
+        With a `snsd' query, you specify a hostname, a service and a
+        protocol. If service and protocol are not specified, they are set to
+        0, and you will have the IP assigned to the hostname at this moment.
+        If you specify a service and a protocol, the answer will contain the
+        IP that gives the specified service/protocl for the hostname. See
+        the section SNSD, SERVICES AND PROTOCOL to understand better the
+        SNSD behavior.
 
-    A global query will return the complete SNSD configuration for a
-    hostname. Ie, you will have an answer for each service that hostname
-    registered.
+        A global query will return the complete SNSD configuration for a
+        hostname. Ie, you will have an answer for each service that hostname
+        registered.
 
-    The `mx' query is equivalent to a snsd query with service 25 and proto
-    TCP.
+        The `mx' query is equivalent to a snsd query with service 25 and
+        proto TCP.
 
 SNSD, SERVICES AND PROTOCOL
-    SNSD Query Type gives a hostname resolution. With SNSD (Scattered Name
-    Service Disgregation) ANDNA lets the user to ask for a domain and a
-    service. If service is 0, the resolution will show which IP registered
-    the hostname. If service is non-0, the resolution will show which IP
-    gives specified service for the hostname (considering the protocol too).
-    See services(5).
+        SNSD Query Type gives a hostname resolution. With SNSD (Scattered
+        Name Service Disgregation) ANDNA lets the user to ask for a domain
+        and a service. If service is 0, the resolution will show which IP
+        registered the hostname. If service is non-0, the resolution will
+        show which IP gives specified service for the hostname (considering
+        the protocol too). See services(5).
 
-    You can specify a service as expressed in /etc/services. It can be
-    expressed also in numeric form. It is also possible to specify the
-    protocol:
+        You can specify a service as expressed in /etc/services. It can be
+        expressed also in numeric form. It is also possible to specify the
+        protocol:
 
-            "domain", "53", "53/udp", "domain/udp"
+                "domain", "53", "53/udp", "domain/udp"
 
-    are valid service/proto strings.
+        are valid service/proto strings.
 
-    For example, the next commands will retrieve the IP(s) that offers
-    web-pages for the hostname "host":
+        For example, the next commands will retrieve the IP(s) that offers
+        web-pages for the hostname "host":
 
-            ntk-resolv -s http/tcp host
-            ntk-resolv -s 80/tcp   host
-            ntk-resolv -s 80       host
-            ntk-resolv -s http     host
+                ntk-resolv -s http/tcp host
+                ntk-resolv -s 80/tcp   host
+                ntk-resolv -s 80       host
+                ntk-resolv -s http     host
 
-    To configure the SNSD delegations, see the SNSD HowTo.
+        To configure the SNSD delegations, see the SNSD HowTo.
 
-    If the delegation for a service (say http) is not set, the IP returned
-    is the IP that registered the hostname. So, if you do not want to set
-    SNSD delegations for specific services, the main hostname IP will be
-    used and you don't need to do nothing.
+        If the delegation for a service (say http) is not set, the IP
+        returned is the IP that registered the hostname. So, if you do not
+        want to set SNSD delegations for specific services, the main
+        hostname IP will be used and you don't need to do nothing.
 
-    The hope is that every client will build different queries: browsers
-    will make queries with service=80 and proto=tcp, mail-clients will build
-    queries with service=25 and proto tcp and so on.
+        The hope is that every client will build different queries: browsers
+        will make queries with service=80 and proto=tcp, mail-clients will
+        build queries with service=25 and proto tcp and so on.
 
-    The service is useless if the query realm is Internet.
+        The service is useless if the query realm is Internet.
 
-    The default service is 0: ie, the query will return the IP that
-    registered the hostname. Default protocol is tcp. Protocol is ignored
-    when service requested is 0.
+        The default service is 0: ie, the query will return the IP that
+        registered the hostname. Default protocol is tcp. Protocol is
+        ignored when service requested is 0.
 
-    Note: service and proto are also ignored when the query type is
-    `ip->host` (ptr query type).
+        Note: service and proto are also ignored when the query type is
+        `ip->host` (ptr query type).
 
 BUGS
-    { Don't panic! }
+        { Don't panic! }
 
-    If you encounter any bug, please report it. Use the online bug track
-    system: <http://bugs.dyne.org/>
+        If you encounter any bug, please report it. Use the online bug track
+        system: <http://bugs.dyne.org/>
 
-    or the mailing list: <http://lists.dyne.org/netsukuku/>
+        or the mailing list: <http://lists.dyne.org/netsukuku/>
 
-    and explain what the problem is and if possible a way to reproduce it.
+        and explain what the problem is and if possible a way to reproduce
+        it.
 
 CONTACTS
-    Subscribe to the netsukuku mailing to get help, be updated on the latest
-    news and discuss on its development.
+        Subscribe to the netsukuku mailing to get help, be updated on the
+        latest news and discuss on its development.
 
-    To subscribe to the list, send a message to:
-    netsukuku-subscribe@lists.dyne.org
+        To subscribe to the list, send a message to:
+        netsukuku-subscribe@lists.dyne.org
 
-    We live night and day in IRC, come to see us in: #netsukuku on the
-    FreeNode irc server (irc.freenode.org).
+        We live night and day in IRC, come to see us in: #netsukuku on the
+        FreeNode irc server (irc.freenode.org).
 
 AUTHORS
-    Main authors and maintainers:
+        Main authors and maintainers:
 
-    Federico Tomassini <effetom@gmail.com> wrote ntk-resolv and network
-    libraries.
+        Federico Tomassini <effetom@gmail.com> wrote ntk-resolv and network
+        libraries.
 
-    Andrea Lo Pumo aka AlpT <alpt@freaknet.org> wrote ANDNA and Netsukuku
-    Core.
+        Andrea Lo Pumo aka AlpT <alpt@freaknet.org> wrote ANDNA and
+        Netsukuku Core.
 
-    Main contributors:
+        Main contributors:
 
-    Andrea Leofreddi <andrea.leofreddi@gmail.com>, Katolaz
-    <katolaz@freaknet.org>,
+        Andrea Leofreddi <andrea.leofreddi@gmail.com>, Katolaz
+        <katolaz@freaknet.org>,
 
-    For a complete list read the AUTHORS file or visit:
-    <http://netsukuku.freaknet.org/?p=Contacts>
+        For a complete list read the AUTHORS file or visit:
+        <http://netsukuku.freaknet.org/?p=Contacts>
 
 SEE ALSO
-    ntkd(8), andna(8), services(5)
+        ntkd(8), andna(8), services(5)
 

@@ -11,6 +11,7 @@
 static ntkresolv_opts globopts;
 static struct timeval time_start,time_stop;
 uint8_t mode_compute_hash=0;
+uint8_t mode_parsable_output=0;
 
 void version(void)
 {
@@ -39,6 +40,7 @@ void usage(void)
                 " -b --block-recursion  set recursion OFF.\n"
                 " -m --md5-hash         hostname specified is hash-ed.\n"
                 " -H --compute-hash     print the hash'ed hostname.\n"
+                " -l --parsable-output  print answers in a synthetic way.\n"
                 " -h --help             display this help, then exit.\n\n");
 	ntkresolv_safe_exit(1);
 }
@@ -243,6 +245,11 @@ void opts_set_compute_hash(void)
 {
 	mode_compute_hash=1;
 }
+void opts_set_parsable_output(void)
+{
+	mode_parsable_output=1;
+	AMISILENT=1;
+}
 void opts_set_question(char *arg)
 {
 	struct in_addr ia;
@@ -334,8 +341,6 @@ void opts_finish(char *arg)
 
 void print_headers()
 {
-	if (AMISILENT)
-		return;
 	andns_pkt *ap=GQT;
 	say("\n - Headers Section:\n"
 		"\tid ~ %6d\tqr  ~ %4d\tqtype ~ %7s\n"
@@ -349,9 +354,6 @@ void print_headers()
 }
 void print_question()
 {
-	if (AMISILENT)
-		return;
-	
 	say("\n - Question Section:\n"
 		"\tObj ~ %s\n",GOP.obj);
 }
@@ -432,6 +434,47 @@ void print_answers()
 	}
 }
 
+void print_parsable_answers(void)
+{
+	int i=0;
+	int ancount=GQT->ancount;
+	andns_pkt_data *apd;
+
+	if (!ancount)
+		return;
+
+	apd=GQT->pkt_answ;
+	while(apd) {
+		i++;
+		if (i>ancount) 
+			say("Answer not declared in Headers Packet.\n");
+		answer_data_to_str(apd,GOP.obj);
+		if (GQT->qtype==AT_PTR || 
+		   (GQT->qtype==AT_A && !GQT->service)) 
+			say("%s %s\n",NTK_RESOLV_SYMBOL(apd),GOP.obj);
+		else if (GQT->qtype==AT_A) 
+			say("%s %s %d %d\n",NTK_RESOLV_SYMBOL(apd),
+				GOP.obj,apd->prio,apd->wg);
+		else 
+			say("%s %s %d %s %d %d\n",NTK_RESOLV_SYMBOL(apd),
+				GOP.obj,apd->service,
+				apd->m&APD_UDP?"udp":"tcp",
+				apd->prio,apd->wg);
+		apd=apd->next;
+	}
+}
+
+void print_results(void) 
+{
+	if (!AMISILENT) {
+		print_headers();
+		print_question();
+	}
+	if (mode_parsable_output)
+		print_parsable_answers();
+	else
+		print_answers();
+}
 
 void do_command(void)
 {
@@ -459,9 +502,8 @@ void do_command(void)
 	}
 	if (GQT->id!=GOP.id) 
 		say("Warning: ID query (%d) is mismatching ID answer (%d)!\n",GOP.id,GQT->id);
-	print_headers();
-	print_question();
-	print_answers();
+
+	print_results();
 	destroy_andns_pkt(GQT);
 }
 void ntkresolv_exit(int i)
@@ -495,6 +537,7 @@ int main(int argc, char **argv)
                 {"block-recursion",0,0,'b'},
                 {"md5-hash",0,0,'m'},
                 {"compute-hash",0,0,'H'},
+                {"parsable-output",0,0,'l'},
                 {"help",0,0,'h'},
                 {0,0,0,0}
         };
@@ -502,7 +545,7 @@ int main(int argc, char **argv)
 	while(1) {
 		int oindex=0;
 		c=getopt_long(argc, argv, 
-			"vn:P:t:r:s:p:ShbmH", longopts, &oindex);
+			"vn:P:t:r:s:p:ShbmHl", longopts, &oindex);
 		if (c==-1)
 			break;
 		switch(c) {
@@ -539,6 +582,9 @@ int main(int argc, char **argv)
 				break;
 			case 'H':
 				opts_set_compute_hash();
+				break;
+			case 'l':
+				opts_set_parsable_output();
 				break;
 			default:
 				usage();
