@@ -771,7 +771,7 @@ int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 	if (qt==AT_A) {
 		snsd_service *ss;
 		ss=andna_resolve_hash((u_int *)ap->qstdata,
-				ap->service,ap->p,&records);
+				ap->service,ap->p+1,&records);
 		//ss=andna_resolve_hname(ap->qstdata, //USE HASH!
 		//		ap->service,ap->p,&records);
 		if (!ss) {
