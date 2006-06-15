@@ -30,7 +30,6 @@
 #include "includes.h"
 
 #include "inet.h"
-#include <linux/byteorder/little_endian.h>
 #include <linux/ip.h>
 #include <linux/if_tunnel.h>
 
