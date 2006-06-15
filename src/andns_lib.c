@@ -193,13 +193,20 @@ int a_answ_u(char *buf,andns_pkt *ap,int limitlen)
 		err_ret(ERR_ANDMAP,-1);
 	switch (ap->qtype) {
 		case AT_A:
-			limit=ap->ipv?16:4;
-			if (limitlen<limit+2)
+			limit=2;
+			if (limitlen<limit)
 				err_ret(ERR_ANDMAP,-1);
 			apd=andns_add_answ(ap);
-			if (*buf&0x80)
-				apd->m=1;
-			apd->wg=(*buf&0x7f);
+			if (*buf&0x40) {
+				apd->m|=APD_IP;
+				if (*buf&0x80)
+					apd->m|=APD_MAIN_IP;
+				limit=ap->ipv?16:4;
+			} else
+				limit=ANDNS_HASH_H;
+			if (limitlen<limit+2)
+				err_ret(ERR_ANDMAP,-1);
+			apd->wg=(*buf&0x3f);
 			apd->prio=(*(buf+1));
 			apd->rdlength=limit;
 			APD_ALIGN(apd);
@@ -223,16 +230,13 @@ int a_answ_u(char *buf,andns_pkt *ap,int limitlen)
 			if (limitlen<8)
 				err_ret(ERR_ANDMAP,-1);
 			apd=andns_add_answ(ap);
-			if (*buf&0x80)
-				apd->m|=APD_MAIN_IP;
-			if (*buf&0x40)
+			if (*buf&0x40) {
 				apd->m|=APD_IP;
+				if (*buf&0x80)
+					apd->m|=APD_MAIN_IP;
+			}
 			apd->m|=*buf&0x20?APD_UDP:
 				APD_TCP;
-/*			if (*buf&0x20)
-				apd->m|=APD_UDP;
-			else
-				apd->m|=APD_TCP;*/
 			apd->wg=(*buf&0x1f);
 			apd->prio=(*(buf+1));
 			buf+=2;
@@ -248,32 +252,6 @@ int a_answ_u(char *buf,andns_pkt *ap,int limitlen)
 				err_ret(ERR_ANDPLB,-1);
 			APD_ALIGN(apd);
 			memcpy(apd->rdata,buf,apd->rdlength);
-	/*		} else {
-				memcpy(&alen,buf,2);
-				//apd->rdlength=ntohs(alen);
-				apd->rdlength=ANDNS_HASH_H;
-				limit=6+apd->rdlength;
-				if (limitlen<limit)
-					err_ret(ERR_ANDPLB,-1);
-				APD_ALIGN(apd);
-        			memcpy(apd->rdata,buf+2,apd->rdlength);
-			}*/
-/*			if (limitlen<limit)
-				err_ret(ERR_ANDPLB,-1);
-			if (t) {
-				res=idp_inet_ntop(ap->ipv?AF_INET6:AF_INET,
-						(struct sockaddr*)buf,
-						a,INET6_ADDRSTRLEN);
-				if (res<0)
-					err_ret(ERR_ANDMAP,-1);
-				APD_ALIGN(apd);
-				memcpy(apd->rdata,a,apd->rdlength);
-				if (!apd->m)
-					apd->m|=APD_IP;
-			} else  {
-				APD_ALIGN(apd);
-        			memcpy(apd->rdata,buf+2,alen);
-			}*/
 			break;
 		default:
 			err_ret(ERR_ANDMAP,-1);

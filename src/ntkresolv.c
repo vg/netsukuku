@@ -424,7 +424,7 @@ void print_answers()
 		say("\t ~ %s",GOP.obj);
 		if (apd->m&APD_MAIN_IP)
 			say(" *");
-		else if (GQT->qtype==AT_G && !(apd->m&APD_IP) && GQT->r)
+		else if (GQT->qtype!=AT_PTR && !(apd->m&APD_IP) && GQT->r)
 			say("\t + Recursion Failed");
 		say("\n");
 		if (GQT->qtype==AT_A || GQT->qtype==AT_G) 

@@ -272,9 +272,11 @@ void opts_set_ns(char *arg);
 void opts_set_qt(char *arg);
 void opts_set_realm(char *arg);
 void opts_set_service_and_proto(char *arg);
-void opts_set_proto(char *arg);
-void opts_set_question(char *arg);
+void opts_set_proto(char *arg) ;
 void opts_set_recursion(void);
+void opts_set_hash(void) ;
+void opts_set_compute_hash(void);
+void opts_set_question(char *arg);
 void opts_finish(char *arg);
 void print_headers();
 void print_question();
@@ -285,5 +287,4 @@ void do_command(void);
 void ntkresolv_exit(int i);
 void ntkresolv_safe_exit(int i);
 int main(int argc, char **argv);
-
 #endif /* NTK_RESOLV_H */

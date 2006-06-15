@@ -53,29 +53,37 @@ destroy_return:
  * calls another resolution with service=0.
  *
  * Returns:
- * 	0
- * 	-1
+ * 	bytes writed
+ * 	
  */
-int snsd_node_to_data(char *buf,snsd_node *sn,int iplen)
+int snsd_node_to_data(char *buf,snsd_node *sn,u_char prio,int iplen,int recursion)
 {
 	int res;
 	int family;
-        if (sn->flags & SNSD_NODE_IP ||
-            sn->flags & SNSD_NODE_MAIN_IP) {
-                memcpy(buf,sn->record,iplen); 
+
+	if (recursion!=-1) {
+		*buf|=sn->weight&0x3f;
+		*(buf+1)|=prio;
+	}
+
+        if (! (sn->flags & SNSD_NODE_HNAME)) {
+		*buf|=0x40;
+		if (sn->flags & SNSD_NODE_MAIN_IP )
+			*buf|=0x80;
+                memcpy(buf+2,sn->record,iplen); 
 		family=(iplen==4)?AF_INET:AF_INET6;
-		inet_htonl((u_int*)buf,family);
-        } else {
+		inet_htonl((u_int*)(buf+2),family);
+		return iplen;
+        } else if (recursion) {
                 snsd_node snt;
                 res=snsd_main_ip(sn->record,&snt);
-                if (res) {
-                        error(err_str);
-                        err_ret(ERR_SNDRCS,-1);
-                }
-                res=snsd_node_to_data(buf,&snt,iplen); /* this is now a safe call */
-		return res;
-        }
-        return 0;
+		if (!res) { /* I love recursion */
+                	res=snsd_node_to_data(buf,&snt,prio,iplen,-1);
+			return res;
+		}
+	}
+	memcpy(buf+2,sn->record,ANDNS_HASH_H);
+	return ANDNS_HASH_H;
 }
 
 /*
@@ -85,7 +93,7 @@ int snsd_node_to_data(char *buf,snsd_node *sn,int iplen)
  *
  * returns -1 on error, answer len otherwise.
  *
- */
+ *  O B S O L E T E
 
 size_t snsd_node_to_aansw(char *buf,snsd_node *sn,u_char prio,int iplen)
 {
@@ -100,8 +108,11 @@ size_t snsd_node_to_aansw(char *buf,snsd_node *sn,u_char prio,int iplen)
 		*buf|=0x80;
 	*buf++=sn->weight;
 	*buf=prio;
-	return 0; /* TODO */
+	return 0; 
 }
+*/
+
+
 /*
  * Converts a snsd_prio list to andns data.
  * data means a set of contiguous answers ready 
@@ -114,7 +125,7 @@ size_t snsd_node_to_aansw(char *buf,snsd_node *sn,u_char prio,int iplen)
  * in prio list and take ANDNS_MAX_ANSW_IP_LEN * n space.
  *
  */
-int snsd_prio_to_aansws(char *buf,snsd_prio *sp,int iplen)
+int snsd_prio_to_aansws(char *buf,snsd_prio *sp,int iplen,int recursion)
 {
 	int res;
 	int count=0;
@@ -125,11 +136,10 @@ int snsd_prio_to_aansws(char *buf,snsd_prio *sp,int iplen)
 
 	sn=sp->node;
 	list_for(sn) {
-		res=snsd_node_to_aansw(buf,sn,sp->prio,iplen);
-		if (res==-1) 
-			continue;
+		res=snsd_node_to_data(buf,sn,sp->prio,
+			iplen,recursion);
 		count++;
-		buf+=2+iplen; 
+		buf+=res;
 	}
 	return count;
 }
@@ -215,11 +225,22 @@ int snsd_service_to_aansws(char *buf,snsd_service *ss,int iplen,int *count,int r
  */
 int snsd_node_to_dansw(dns_pkt *dp,snsd_node *sn,int iplen)
 {
-	char temp[16];
+	char temp[18];
 	dns_pkt_a *dpa;
+	snsd_node snt,*s;
+	int res;
 
-	if (snsd_node_to_data(temp,sn,iplen))
-		return -1;
+	if (!(sn->flags & SNSD_NODE_HNAME)) {
+		if (!(res=snsd_main_ip(sn->record,&snt)))
+			return -1;
+		s=&snt;
+	} else 
+		s=sn;
+
+        memcpy(temp,sn->record,iplen);
+        inet_htonl((u_int*)(temp),
+		(iplen==4)?AF_INET:AF_INET6);
+			
 	dpa=DP_ADD_ANSWER(dp);
 	dns_a_default_fill(dp,dpa);
 	dpa->rdlength=iplen;
