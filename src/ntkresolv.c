@@ -490,9 +490,18 @@ void do_command(void)
 		ntkresolv_exit(1);
 	}
 	res=hn_send_recv_close(GOP.nsserver,GOP.port,
-			SOCK_DGRAM,buf,res,answer,ANDNS_MAX_PK_LEN,0);
+			SOCK_DGRAM,buf,res,answer,
+			ANDNS_MAX_PK_LEN,0,NTK_RESOLV_TIMEOUT);
 	if (res==-1) {
 		say("Communication failed with %s.\n",GOP.nsserver);
+		ntkresolv_exit(1);
+	}
+	if (res==-2) {
+		say("Unable to send() to %s.\n",GOP.nsserver);
+		ntkresolv_exit(1);
+	}
+	if (res==-3) {
+		say("Unable to recv() from %s.\n",GOP.nsserver);
 		ntkresolv_exit(1);
 	}
 	res=a_u(answer,res,&GQT);

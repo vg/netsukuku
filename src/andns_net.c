@@ -164,11 +164,75 @@ ssize_t w_recv(int sk,void *buf,size_t len,int die)
 	return ret;
 }
 
+
+/* 
+ * These two functions and the MACRO are
+ * almost VERBATIM copied from inet.c and inet.h.
+ * Functions by AlpT, Andrea Lo Pumo.
+ */
+
+#define MILLISEC_TO_TV(x,t)                                             \
+do{                                                                     \
+        (t).tv_sec=(x)/1000;                                            \
+        (t).tv_usec=((x) - ((x)/1000)*1000)*1000;                       \
+}while(0)
+
+ssize_t w_send_timeout(int s,const void *buf,size_t len,int die,int timeout)
+{
+        struct timeval timeout_t;
+        fd_set fdset;
+        int ret;
+
+        MILLISEC_TO_TV(timeout*1000, timeout_t);
+
+        FD_ZERO(&fdset);
+        FD_SET(s, &fdset);
+
+        ret = select(s+1, &fdset, NULL, NULL, &timeout_t);
+        if (ret == -1) {
+		if (die)
+			fatal("send(): select error.");
+		debug(DBG_NORMAL,"send(): select error.");
+		return ret;
+        }
+
+        if(FD_ISSET(s, &fdset))
+                return w_send(s, buf, len, die);
+        return -1;
+}
+
+ssize_t w_recv_timeout(int s,void *buf,size_t len,int die,int timeout)
+{
+        struct timeval timeout_t;
+        fd_set fdset;
+        int ret;
+
+        MILLISEC_TO_TV(timeout*1000, timeout_t);
+
+        FD_ZERO(&fdset);
+        FD_SET(s, &fdset);
+
+        ret = select(s+1, NULL, &fdset, NULL, &timeout_t);
+
+        if (ret == -1) {
+		if (die)
+			fatal("recv(): select error.");
+		debug(DBG_NORMAL,"recv(): select error.");
+		return ret;
+        }
+
+        if(FD_ISSET(s, &fdset))
+                return w_recv(s, buf, len, die);
+        return -1;
+}
+
+
+	
 /* Dialog Layer */
 
 /* "Botta e risposta" */
 ssize_t hn_send_recv_close(const char *host,uint16_t port,int type,void *buf,
-		size_t buflen,void *anbuf,size_t anlen,int die)
+		size_t buflen,void *anbuf,size_t anlen,int die,int timeout)
 {
 	ssize_t ret;
 	int res;
@@ -176,16 +240,24 @@ ssize_t hn_send_recv_close(const char *host,uint16_t port,int type,void *buf,
 	res=host_connect(host,port,type,die);
 	if (res==-1) 
 		return -1;
-	ret=w_send(res,buf,buflen,die);
+	if (timeout)
+		ret=w_send_timeout(res,buf,buflen,die,timeout);
+	else
+		ret=w_send(res,buf,buflen,die);
 	if (ret==-1) 
-		return -1;
-	ret=w_recv(res,anbuf,anlen,die);
+		return -2;
+	if (timeout)
+		ret=w_recv_timeout(res,anbuf,anlen,die,timeout);
+	else
+		ret=w_recv(res,anbuf,anlen,die);
+	if (ret==-1)
+		return -3;
 	close(res);
 	return ret;
 }
 /* "Botta e risposta" */
 ssize_t ai_send_recv_close(struct addrinfo *ai,void *buf,size_t buflen,
-		void *anbuf,size_t anlen,int die,int free_ai)
+		void *anbuf,size_t anlen,int die,int free_ai,int timeout)
 {
 	ssize_t ret;
 	int res;
@@ -193,10 +265,18 @@ ssize_t ai_send_recv_close(struct addrinfo *ai,void *buf,size_t buflen,
 	res=ai_connect(ai,die,free_ai);
 	if (res==-1) 
 		return -1;
-	ret=w_send(res,buf,buflen,die);
+	if (timeout)
+		ret=w_send_timeout(res,buf,buflen,die,timeout);
+	else
+		ret=w_send(res,buf,buflen,die);
 	if (ret==-1) 
-		return -1;
-	ret=w_recv(res,anbuf,anlen,die);
+		return -2;
+	if (timeout)
+		ret=w_recv_timeout(res,anbuf,anlen,die,timeout);
+	else
+		ret=w_recv(res,anbuf,anlen,die);
+	if (ret==-1) 
+		return -3;
 	close(res);
 	return ret;
 }

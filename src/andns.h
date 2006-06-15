@@ -27,7 +27,9 @@
 #include "andns_lib.h"
 #include "inet.h"
 
-#define MAXNSSERVERS 3
+#define ANDNS_TIMEOUT		0
+
+#define MAXNSSERVERS 		3
 #define DNS_REPLY_TIMEOUT       10      /* seconds */
 
 #define DNS_PORT		53

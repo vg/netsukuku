@@ -221,8 +221,7 @@ int andns_init(int restricted, char *resolv_conf,int family)
 				"converting sockaddr -> %s.",\
 				strerror(errno));
         }
-        debug(DBG_NORMAL,"Andns init: DNS queries inet-related "
-			"will be forwarded to: %s",msg);
+	loginfo("Inet DNS queries will be forwarded to: %s",msg);
 
         _dns_forwarding_=1;
         return 0;
@@ -241,7 +240,8 @@ int ns_general_send(char *msg,int msglen,char *answer,int anslen)
         int res,i;
 
         for (i=0; i<_andns_ns_count_;i++) {
-		res=ai_send_recv_close(_andns_ns_[i],msg,msglen,answer,anslen,0,0);
+		res=ai_send_recv_close(_andns_ns_[i],msg,msglen,
+				answer,anslen,0,0,ANDNS_TIMEOUT);
                 if(res != -1) {
                         return res;
 		}

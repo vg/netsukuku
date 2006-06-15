@@ -16,6 +16,8 @@
 #define MAX_NS			3
 #define LOCALHOST		"localhost"
 
+#define NTK_RESOLV_TIMEOUT	15
+
 #define MAX_HOSTNAME_LEN	512
 #define NTKRESOLV_MAX_OBJ_LEN	512
 

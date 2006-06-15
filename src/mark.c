@@ -474,7 +474,7 @@ int mark_init(int igw)
 	if (igw)
 		debug(DBG_NORMAL,"Netfilter death loop igw rule created.");
 	debug(DBG_NORMAL,"mark_init(), netfilter mangle table initialized.");
-	debug(DBG_NORMAL,"-*- Don't touch netsukuku netfilter rules! -*-");
+	loginfo("Netfilter mangle table modified.");
 	return 0;
 cannot_init:
 	err_ret(ERR_MRKINI,-1);
