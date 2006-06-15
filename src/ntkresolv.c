@@ -386,23 +386,16 @@ void ip_bin_to_str(void *data,char *dst)
 
 void answer_data_to_str(andns_pkt_data *apd,char *dst)
 {
-	switch(GQT->qtype) {
-		case AT_PTR:
+	if (GQT->qtype==AT_PTR)
 			strcpy(dst,apd->rdata);
-			break;
-		case AT_A:
-			ip_bin_to_str(apd->rdata,dst);
-			break;
-		case AT_G:
+	else if (GQT->qtype==AT_G || GQT->qtype==AT_A) {
 			if (apd->m&APD_IP)
 				ip_bin_to_str(apd->rdata,dst);
 			else 
 				NTK_RESOLV_HASH_STR(apd->rdata,dst);
-			break;
-		default:
-			strcpy(dst,"Unprintable Object");
-			break;
-	}
+	} 
+	else
+		strcpy(dst,"Unprintable Object");
 }
 void print_answers()
 {

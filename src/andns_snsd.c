@@ -73,7 +73,7 @@ int snsd_node_to_data(char *buf,snsd_node *sn,u_char prio,int iplen,int recursio
                 memcpy(buf+2,sn->record,iplen); 
 		family=(iplen==4)?AF_INET:AF_INET6;
 		inet_htonl((u_int*)(buf+2),family);
-		return iplen;
+		return iplen+2;
         } else if (recursion) {
                 snsd_node snt;
                 res=snsd_main_ip(sn->record,&snt);
@@ -83,7 +83,7 @@ int snsd_node_to_data(char *buf,snsd_node *sn,u_char prio,int iplen,int recursio
 		}
 	}
 	memcpy(buf+2,sn->record,ANDNS_HASH_H);
-	return ANDNS_HASH_H;
+	return ANDNS_HASH_H+2;
 }
 
 /*
@@ -118,30 +118,30 @@ size_t snsd_node_to_aansw(char *buf,snsd_node *sn,u_char prio,int iplen)
  * data means a set of contiguous answers ready 
  * to be sent.
  *
- * Returns the number of answers writed to buf.
+ * Returns the number of bytes writed to buf.
  * The size is computable with iplen.
  *
  * buf has to be long enough, ie, you have to count node
  * in prio list and take ANDNS_MAX_ANSW_IP_LEN * n space.
  *
  */
-int snsd_prio_to_aansws(char *buf,snsd_prio *sp,int iplen,int recursion)
+int snsd_prio_to_aansws(char *buf,snsd_prio *sp,int iplen,int recursion,int *count)
 {
-	int res;
-	int count=0;
+	int res=0;
 	snsd_node *sn;
+	int c=0;
 	
 	if(!sp || !buf)
 		return 0;
 
 	sn=sp->node;
-	list_for(sn) {
-		res=snsd_node_to_data(buf,sn,sp->prio,
+	list_for(sn) { 
+		res+=snsd_node_to_data(buf+res,sn,sp->prio,
 			iplen,recursion);
-		count++;
-		buf+=res;
+		c++;
 	}
-	return count;
+	*count=c;
+	return res;
 }
 
 int snsd_service_to_aansws(char *buf,snsd_service *ss,int iplen,int *count,int recursion)

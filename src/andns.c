@@ -779,14 +779,12 @@ int nk_rslv(andns_pkt *ap,char *msg,int msglen,char *answer)
 			goto safe_return_rcode;
 		}
 		res=snsd_prio_to_aansws(answer+msglen,
-				ss->prio,_ip_len_,ap->r);
-		if (!res) {
+				ss->prio,_ip_len_,ap->r,&records);
+		if (!records) {
 			rcode=RCODE_ENSDMN;
 			goto safe_return_rcode;
 		}
 		snsd_service_llist_del(&ss);
-		records=res;
-		res*=(_ip_len_+2);
 	} 
 	else if (qt==AT_PTR) {
 		lcl_cache *lc;

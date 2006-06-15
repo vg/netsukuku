@@ -195,7 +195,7 @@ int a_answ_u(char *buf,andns_pkt *ap,int limitlen)
 		case AT_A:
 			limit=2;
 			if (limitlen<limit)
-				err_ret(ERR_ANDMAP,-1);
+				err_ret(ERR_ANDPLB,-1);
 			apd=andns_add_answ(ap);
 			if (*buf&0x40) {
 				apd->m|=APD_IP;
@@ -205,7 +205,7 @@ int a_answ_u(char *buf,andns_pkt *ap,int limitlen)
 			} else
 				limit=ANDNS_HASH_H;
 			if (limitlen<limit+2)
-				err_ret(ERR_ANDMAP,-1);
+				err_ret(ERR_ANDPLB,-1);
 			apd->wg=(*buf&0x3f);
 			apd->prio=(*(buf+1));
 			apd->rdlength=limit;
