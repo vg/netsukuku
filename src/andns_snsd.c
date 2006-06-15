@@ -144,7 +144,7 @@ int snsd_service_to_aansws(char *buf,snsd_service *ss,int iplen,int *count,int r
 	char *rem;
 	snsd_node snt;
 
-	if (!sp || !buf)
+	if (!ss || !buf)
 		return 0;
 	rem=buf;
 	
