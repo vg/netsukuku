@@ -11,8 +11,3 @@ rsync -auv -LP -C 'CVS' --exclude '*~' --delete  doc freaknet.org:netsukuku/file
 cd site/
 rsync -auv -P contacts  home  index.php  logo_netsukuku.jpg  style.css freaknet.org:netsukuku/
 cd ../
-
-echo "!!!!!!!!!!!!!!!! Rimuovi netsukuku_d e netsukuku_wifi !!!!!!!!!!!"
-echo "!!!!!!!!!!!!!!!! Rimuovi netsukuku_d e netsukuku_wifi !!!!!!!!!!!"
-echo "!!!!!!!!!!!!!!!! Rimuovi netsukuku_d e netsukuku_wifi !!!!!!!!!!!"
-echo

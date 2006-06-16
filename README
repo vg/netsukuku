@@ -5,29 +5,31 @@
 
 --
 
-  *  What is this?
+  1.  What is this?
   
-  *  Get the code!
+  2.  Get the code!
   
-  *  Build and install
+  3.  Build and install
+ 
+  	3.1  Static Binaries and Packages
   
-  *  Kernel dependencies
+  4.  Kernel dependencies
   
-  *  How to use it
+  5.  How to use it
   
-  *  Where to get in touch with us
+  6.  Where to get in touch with us
   
-  *  Bug report
+  7.  Bug report
   
-  *  Hack the code
+  8.  Hack the code
   
-  *  License and that kind of stuff...
+  9.  License and that kind of stuff...
   
 --
 
 
 **
-****  What is this?
+****  1. What is this?
 **
 
 Netsukuku is a mesh network or a p2p net system that generates and sustains
@@ -56,7 +58,7 @@ http://netsukuku.freaknet.org
 
 
 **
-****  Get the code!
+****  2.  Get the code!
 **
 
 Get the tarball of the latest stable version from:
@@ -87,7 +89,7 @@ greatest by running the command:
 
 
 **
-****  Build and install
+****  3.  Build and install
 **
 
 To compile the code you can use scons or just go with the old school way:
@@ -128,8 +130,9 @@ If you want to change some scons option to do another installation, (i.e. you
 may want to reinstall it with another MANDIR path), you have to run:
 $ scons --clean
 
+
 **
-****  Static Binaries and Packages
+****  3.1  Static Binaries and Packages
 **
 
 If you prefer to just install Netsukuku, without compiling it, you can
@@ -138,8 +141,9 @@ various formats (.tgz, .deb, .ipk).
 The packages repository is at:
     http://netsukuku.freaknet.org/packages/
 
+
 **
-****  Kernel dependencies
+****  4.  Kernel dependencies
 **
 
 On Linux be sure to have the following options set in your kernel .config.
@@ -182,7 +186,7 @@ If you are using modules you have to load them before launching the daemon.
 
 
 **
-****  How to use it
+****  5.  How to use it
 **
 
 Before doing anything do:
@@ -207,7 +211,7 @@ option.
 
 
 **
-****  Where to get in touch with us
+****  6.  Where to get in touch with us
 **
 
 > Mailing list
@@ -233,7 +237,7 @@ on the FreeNode irc server (irc.freenode.org).
 
 
 **
-****  Bug report
+****  7.  Bug report
 **
 
 { Don't panic! }
@@ -247,7 +251,7 @@ and explain what the problem is and if possible a way to reproduce it.
 
 
 **
-****  Hack the code
+****  8.  Hack the code
 **
 
 Feel free to debug, patch, modify and eat the code. Then submit your results
@@ -259,7 +263,7 @@ at the src/TODO file.
 
 
 **
-****  License and that kind of stuff...
+****  9.  License and that kind of stuff...
 **
 
 All the Netsukuku code is released under the GPL-2, please see the COPYING

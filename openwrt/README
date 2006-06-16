@@ -3,7 +3,7 @@
 	   http://netsukuku.freaknet.org/openwrt
 
 
-This is the package of Netsukuku 0.0.7b compiled for Openwrt.
+This is the package of Netsukuku compiled for Openwrt.
 
 This is not official release of the .ipkg package, it's just the 
 one we're using to test it on the WRT.
@@ -103,9 +103,6 @@ How to install it:
 
 	#then with
 	netsukuku_d -i eth1 -ddddd -D
-
-	#note that in version 0.0.7b you cannot launch netsukuku in restricted
-	mode unless you have the ipip.o kernel module loaded.
 
 /*
  * TODO:
