@@ -19,7 +19,8 @@ void version(void)
             "Copyright (C) 2006.\n"
             "This is free software.  You may redistribute copies of it under the terms of\n"
             "the GNU General Public License <http://www.gnu.org/licenses/gpl.html>.\n"
-            "There is NO WARRANTY, to the extent permitted by law.\n\n",VERSION);
+            "There is NO WARRANTY, to the extent permitted by law.\n\n"
+	    "Report bugs and ideas to <%s>.\n",VERSION,NTK_RESOLV_MAIL_BUGS);
 	ntkresolv_safe_exit(1);
 }
 
@@ -41,7 +42,8 @@ void usage(void)
                 " -m --md5-hash         hostname specified is hash-ed.\n"
                 " -H --compute-hash     print the hash'ed hostname.\n"
                 " -l --parsable-output  print answers in a synthetic way.\n"
-                " -h --help             display this help, then exit.\n\n");
+                " -h --help             display this help, then exit.\n\n"
+		"Report bugs and ideas to <%s>.\n",NTK_RESOLV_MAIL_BUGS);
 	ntkresolv_safe_exit(1);
 }
 void qt_usage(char *arg)

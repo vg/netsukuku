@@ -10,6 +10,7 @@
 #include "andns_lib.h"
 
 #define VERSION			"0.3.3"
+#define NTK_RESOLV_MAIL_BUGS	"ntk-resolv@netsukuku.org"
 
 #define NTKRESOLV_PORT		53
 #define NTKRESOLV_PORT_STR	"53"
