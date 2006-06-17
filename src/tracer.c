@@ -180,8 +180,7 @@ tracer_add_entry(void *void_map, void *void_node, tracer_chunk *tracer,
 	(*hops)++;
 	nhops=*hops;
 	new_entry_pos=nhops-1;
-	t=xmalloc(sizeof(tracer_chunk) * nhops);
-	setzero(t, sizeof(tracer_chunk) * nhops);
+	t=xzalloc(sizeof(tracer_chunk) * nhops);
 	
 	if(tracer || nhops > 1) {
 		/* 
@@ -355,8 +354,7 @@ bnode_hdr *tracer_build_bentry(void *void_map, void *void_node,
 		goto error;
 
 	bblock_sz = BNODEBLOCK_SZ(level+1, me.bnode_map[level][bm].links);
-	bblock=xmalloc(bblock_sz);
-	setzero(bblock, bblock_sz);
+	bblock=xzalloc(bblock_sz);
 
 	bhdr=(bnode_hdr *)bblock;
 	bhdr->bnode_levels=level+1;
@@ -1282,7 +1280,7 @@ int flood_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), u_char level
 	inet_prefix to;
 	ext_rnode *e_rnode;
 	map_node *dst_node, *node;
-	interface **devs;
+	interface *dev;
 
 	ssize_t err;
 	const char *ntop;
@@ -1317,16 +1315,17 @@ int flood_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), u_char level
 
 		/*Let's send the pkt*/
 		pkt.sk=0;
-		devs=rnl_get_dev(rlist, node);
-		if(!devs || !devs[0])
+		dev=rnl_get_rand_dev(rlist, node);
+		if(!dev)
 			err=-1;
 		else {
-			pkt_add_dev(&pkt, devs[0], 1);
+			pkt_add_dev(&pkt, dev, 1);
 			err=send_rq(&pkt, 0, pkt.hdr.op, pkt.hdr.id, 0, 0, 0);
 		}
+
 		if(err==-1) {
 			ntop=inet_to_str(pkt.to);
-			dev_name = !devs ? "NULL" : devs[0]->dev_name;
+			dev_name = !dev ? "NULL" : dev->dev_name;
 				
 			error("flood_pkt_send(): Cannot send the %s request"
 					" with id: %d to %s dev %s.", rq_to_str(pkt.hdr.op),

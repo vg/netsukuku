@@ -145,6 +145,7 @@ int count_hooking_nodes(void);
 
 void rnl_reset(struct rnode_list **rnlist, int *rnlist_counter);
 interface **rnl_get_dev(struct rnode_list *rnlist, map_node *node);
+interface *rnl_get_rand_dev(struct rnode_list *rnlist, map_node *node);
 
 void new_rnode_allowed(struct allowed_rnode **alr, int *alr_counter,
 		int *gid, int min_lvl, int max_lvl);

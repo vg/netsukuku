@@ -103,8 +103,7 @@ lcl_cache *lcl_cache_new(char *hname)
 {
 	lcl_cache *alcl;
 	
-	alcl=(lcl_cache *)xmalloc(sizeof(lcl_cache));
-	setzero(alcl, sizeof(lcl_cache));
+	alcl=(lcl_cache *)xzalloc(sizeof(lcl_cache));
 
 	alcl->hostname = xstrdup(hname);
 	alcl->hash = andna_32bit_hash(hname);
@@ -233,9 +232,7 @@ andna_cache_queue *ac_queue_add(andna_cache *ac, char *pubkey)
 		if(ac->queue_counter >= ANDNA_MAX_QUEUE || ac->flags & ANDNA_FULL)
 			return 0;
 
-		acq=xmalloc(sizeof(andna_cache_queue));
-		setzero(acq, sizeof(andna_cache_queue));
-		
+		acq=xzalloc(sizeof(andna_cache_queue));
 		memcpy(acq->pubkey, pubkey, ANDNA_PKEY_LEN);
 		clist_append(&ac->acq, 0, &ac->queue_counter, acq);
 	} 
@@ -331,8 +328,7 @@ andna_cache *andna_cache_addhash(int hash[MAX_IP_INT])
 	andna_cache_del_expired();
 	
 	if(!(ac=andna_cache_findhash(hash))) {
-		ac=xmalloc(sizeof(andna_cache));
-		setzero(ac, sizeof(andna_cache));
+		ac=xzalloc(sizeof(andna_cache));
 		memcpy(ac->hash, hash, ANDNA_HASH_SZ);
 
 		clist_add(&andna_c, &andna_c_counter, ac);
@@ -410,8 +406,7 @@ counter_c_hashes *cc_hashes_add(counter_c *cc, int hash[MAX_IP_INT])
 		if(cc->hashes >= ANDNA_MAX_HOSTNAMES || cc->flags & ANDNA_FULL)
 			return 0;
 		
-		cch=xmalloc(sizeof(counter_c_hashes));
-		setzero(cch, sizeof(counter_c_hashes));
+		cch=xzalloc(sizeof(counter_c_hashes));
 		memcpy(cch->hash, hash, ANDNA_HASH_SZ);
 
 		clist_add(&cc->cch, &cc->hashes, cch);
@@ -490,8 +485,7 @@ counter_c *counter_c_add(inet_prefix *rip, char *pubkey)
 	counter_c_del_expired();
 
 	if(!(cc=counter_c_findpubk(pubkey))) {
-		cc=xmalloc(sizeof(counter_c));
-		setzero(cc, sizeof(counter_c));
+		cc=xzalloc(sizeof(counter_c));
 
 		memcpy(cc->pubkey, pubkey, ANDNA_PKEY_LEN);
 		clist_add(&andna_counter_c, &cc_counter, cc);
@@ -542,9 +536,7 @@ rh_cache *rh_cache_new_hash(u_int hash, time_t timestamp)
 {
 	rh_cache *rhc;
 	
-	rhc=xmalloc(sizeof(rh_cache));
-	setzero(rhc, sizeof(rh_cache));
-	
+	rhc=xzalloc(sizeof(rh_cache));
 	rhc->hash=hash;
 	rhc->timestamp=timestamp;
 
@@ -834,8 +826,7 @@ lcl_cache *unpack_lcl_cache(char *pack, size_t pack_sz, int *counter)
 
 			ints_network_to_host(buf, lcl_cache_pkt_body_iinfo);
 		
-			alcl=xmalloc(sizeof(lcl_cache));
-			setzero(alcl, sizeof(lcl_cache));
+			alcl=xzalloc(sizeof(lcl_cache));
 			
 			bufget(&alcl->hname_updates,  sizeof(u_short));
 			bufget(&alcl->timestamp, sizeof(time_t));
@@ -1010,8 +1001,7 @@ unpack_acq_llist(char *pack, size_t pack_sz, size_t *unpacked_sz,
 	cur_t=time(0);
 	buf=pack;
 	for(e=0; e < ac->queue_counter; e++) {
-		acq=xmalloc(sizeof(andna_cache_queue));
-		setzero(acq, sizeof(andna_cache_queue));
+		acq=xzalloc(sizeof(andna_cache_queue));
 
 		ints_network_to_host(buf, acq_body_iinfo);
 
@@ -1080,8 +1070,7 @@ andna_cache *unpack_andna_cache(char *pack, size_t pack_sz, int *counter,
 		if(sz > pack_sz)
 			ERROR_FINISH(err, 1, finish); /* overflow */
 
-		ac=xmalloc(sizeof(andna_cache));
-		setzero(ac, sizeof(andna_cache));
+		ac=xzalloc(sizeof(andna_cache));
 
 		ints_network_to_host(buf, andna_cache_body_iinfo);
 
@@ -1204,8 +1193,7 @@ counter_c *unpack_counter_cache(char *pack, size_t pack_sz, int *counter)
 				/* We don't want to overflow */
 				ERROR_FINISH(*counter, -1, finish);
 
-			cc=xmalloc(sizeof(counter_c));
-			setzero(cc, sizeof(counter_c));
+			cc=xzalloc(sizeof(counter_c));
 			
 			ints_network_to_host(buf, counter_c_body_iinfo);
 			
@@ -1220,8 +1208,7 @@ counter_c *unpack_counter_cache(char *pack, size_t pack_sz, int *counter)
 				ERROR_FINISH(*counter, -1, finish);
 			
 			for(e=0; e < cc->hashes; e++) {
-				cch=xmalloc(sizeof(counter_c_hashes));
-				setzero(cch, sizeof(counter_c_hashes));
+				cch=xzalloc(sizeof(counter_c_hashes));
 				
 				ints_network_to_host(buf, counter_c_hashes_body_iinfo);
 
@@ -1335,8 +1322,7 @@ rh_cache *unpack_rh_cache(char *pack, size_t pack_sz, int *counter)
 
 			ints_network_to_host(buf, rh_cache_pkt_body_iinfo);
 			
-			rhc=xmalloc(sizeof(rh_cache));
-			setzero(rhc, sizeof(rh_cache));
+			rhc=xzalloc(sizeof(rh_cache));
 			
 			bufget(&rhc->hash, sizeof(u_int));
 			bufget(&rhc->flags, sizeof(char));
@@ -2123,8 +2109,7 @@ int del_resolv_conf(char *hname, char *file)
 		ERROR_FINISH(ret, -1, finish);
 	}
 	
-	buf=xmalloc(buf_sz);
-	setzero(buf, buf_sz);
+	buf=xzalloc(buf_sz);
 	while(fgets(tmp_buf, 128, fin)) {
 		/* Skip the line which is equal to `hname' */
 		if(!strncmp(tmp_buf, hname, strlen(hname)))

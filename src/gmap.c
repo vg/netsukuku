@@ -739,9 +739,7 @@ void e_rnode_add(ext_rnode_cache **erc, ext_rnode *e_rnode, int rnode_pos, u_int
 {
 	ext_rnode_cache *p;
 
-	p=xmalloc(sizeof(ext_rnode_cache));
-	setzero(p, sizeof(ext_rnode_cache));
-	
+	p=xzalloc(sizeof(ext_rnode_cache));
 	p->e=e_rnode;
 	p->rnode_pos=rnode_pos;
 

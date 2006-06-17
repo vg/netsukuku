@@ -916,9 +916,7 @@ int pkt_q_wait_recv(int id, inet_prefix *from, PACKET *rpkt, pkt_queue **ret_pq)
 	pkt_queue *pq, **pq_ptr;
 
 	
-	pq=xmalloc(sizeof(pkt_queue));
-	setzero(pq, sizeof(pkt_queue));
-
+	pq=xzalloc(sizeof(pkt_queue));
 	pq_ptr=xmalloc(sizeof(pkt_queue *));
 	*pq_ptr=pq;
 	

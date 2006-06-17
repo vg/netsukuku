@@ -253,8 +253,7 @@ int put_free_nodes(PACKET rq_pkt)
 	/* Go pkt, go! Follow your instinct */
 	pkt_sz=FREE_NODES_SZ((fn_pkt.fn_hdr.nodes+1));
 	pkt_fill_hdr(&pkt.hdr, HOOK_PKT, rq_pkt.hdr.id, PUT_FREE_NODES, pkt_sz);
-	pkt.msg=xmalloc(pkt_sz);
-	setzero(pkt.msg, pkt_sz);
+	pkt.msg=xzalloc(pkt_sz);
 	
 	p=pkt.msg;
 	memcpy(p, &fn_pkt, sizeof(fn_pkt));
@@ -410,8 +409,7 @@ int put_qspn_round(PACKET rq_pkt)
 	/* fill the pkt header */
 	pkt_sz=sizeof(qr_pkt);
 	pkt_fill_hdr(&pkt.hdr, HOOK_PKT, rq_pkt.hdr.id, PUT_QSPN_ROUND, pkt_sz);
-	pkt.msg=xmalloc(pkt_sz);
-	setzero(pkt.msg, pkt_sz);
+	pkt.msg=xzalloc(pkt_sz);
 	
 	/* Go pkt, go! Follow your instinct */
 	memcpy(pkt.msg, &qr_pkt, sizeof(qr_pkt));
@@ -985,8 +983,7 @@ void hook_reset(void)
 	if(free_the_tmp_cur_node)
 		xfree(me.cur_node);
 	free_the_tmp_cur_node=1;
-	me.cur_node=xmalloc(sizeof(map_node));
-	setzero(me.cur_node, sizeof(map_node));
+	me.cur_node=xzalloc(sizeof(map_node));
 	me.cur_node->flags|=MAP_HNODE;
 
 	rnodes_rehooked=hook_join_rate=0;
@@ -1347,8 +1344,7 @@ void hook_get_int_map(void)
 	 */
 	imaps=0;
 	rq=radar_q;
-	merg_map=xmalloc(me.cur_node->links*sizeof(map_node *));
-	setzero(merg_map, me.cur_node->links*sizeof(map_node *));
+	merg_map=xzalloc(me.cur_node->links*sizeof(map_node *));
 
 	for(i=0; i<me.cur_node->links; i++) {
 		rq=find_node_radar_q((map_node *)me.cur_node->r_node[i].r_node);

@@ -159,8 +159,7 @@ snsd_service *snsd_add_service(snsd_service **head, u_short service,
 	if((sns=snsd_find_service(*head, service, proto)))
 		return sns;
 
-	new=xmalloc(sizeof(snsd_service));
-	setzero(new, sizeof(snsd_service));
+	new=xzalloc(sizeof(snsd_service));
 	new->service=service;
 	new->proto=proto;
 	
@@ -184,8 +183,7 @@ snsd_prio *snsd_add_prio(snsd_prio **head, u_char prio)
 	if((snp=snsd_find_prio(*head, prio)))
 		return snp;
 
-	new=xmalloc(sizeof(snsd_prio));
-	setzero(new, sizeof(snsd_prio));
+	new=xzalloc(sizeof(snsd_prio));
 	new->prio=prio;
 	
 	*head=list_add(*head, new);
@@ -224,8 +222,7 @@ snsd_node *snsd_add_node(snsd_node **head, u_short *counter,
 		/* The llist is full */
 		return 0;
 
-	snd=xmalloc(sizeof(snsd_node));
-	setzero(snd, sizeof(snsd_node));
+	snd=xzalloc(sizeof(snsd_node));
 
 	if(record)
 		memcpy(snd->record, record, MAX_IP_SZ);
@@ -410,8 +407,7 @@ snsd_node *snsd_unpack_node(char *pack)
 	snsd_node *snd;
 	char *buf;
 	
-	snd=xmalloc(sizeof(snsd_node));
-	setzero(snd, sizeof(snsd_node));
+	snd=xzalloc(sizeof(snsd_node));
 
 	buf=pack;
 	memcpy(snd->record, buf, MAX_IP_SZ);
@@ -557,8 +553,7 @@ snsd_prio *snsd_unpack_prio(char *pack, size_t pack_sz, size_t *unpacked_sz,
 	u_short counter=0;
 
 	*nodes_counter=counter;
-	snp=xmalloc(sizeof(snsd_prio));
-	setzero(snp, sizeof(snsd_prio));
+	snp=xzalloc(sizeof(snsd_prio));
 	
 	snp->prio=*pack;
 	pack+=sizeof(char);
@@ -717,8 +712,7 @@ snsd_service *snsd_unpack_service(char *pack, size_t pack_sz,
 	u_short tmp_counter=0, counter=0;
 
 	*nodes_counter=counter;
-	sns=xmalloc(sizeof(snsd_service));
-	setzero(sns, sizeof(snsd_service));
+	sns=xzalloc(sizeof(snsd_service));
 	
 	sns->service=ntohs((*(u_short *)pack));
 	pack+=sizeof(short);

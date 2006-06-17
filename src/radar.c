@@ -163,9 +163,7 @@ struct rnode_list *rnl_add(struct rnode_list **rnlist, int *rnlist_counter,
 {
 	struct rnode_list *rnl;
 
-	rnl	       = xmalloc(sizeof(struct rnode_list));
-	setzero(rnl, sizeof(struct rnode_list));
-	
+	rnl	       = xzalloc(sizeof(struct rnode_list));
 	rnl->node      = (map_node *)rnode;
 	rnl->dev[0]    = dev;
 	rnl->dev_n++;
@@ -313,8 +311,7 @@ int rnl_del_dev(struct rnode_list **rnlist, int *rnlist_counter,
 /*
  * rnl_update_devs
  * 
- * it updates the device array present in the rnode_list
- * struct of `node'.
+ * it updates the device array present in the rnode_list struct of `node'.
  * It searches in rnlist a struct which have rnlist->node == `node',
  * then it substitutes rnlist->dev with `devs' and rnlist->dev_n with `dev_n'.
  * If there is a difference between the new `devs' array and the old one, 1 is
@@ -367,6 +364,14 @@ interface **rnl_get_dev(struct rnode_list *rnlist, map_node *node)
 
 	rnl=rnl_find_node(rnlist, node);
 	return !rnl ? 0 : rnl->dev;
+}
+
+interface *rnl_get_rand_dev(struct rnode_list *rnlist, map_node *node)
+{
+	struct rnode_list *rnl;
+
+	return !(rnl=rnl_find_node(rnlist, node)) ? 
+			0 : rnl->dev[rand_range(0, rnl->dev_n-1)];
 }
 
 /*
@@ -828,8 +833,7 @@ void radar_update_map(void)
 					    */
 
 					   memset(&rnn, '\0', sizeof(map_rnode));
-					   e_rnode=xmalloc(sizeof(ext_rnode));
-					   setzero(e_rnode, sizeof(ext_rnode));
+					   e_rnode=xzalloc(sizeof(ext_rnode));
 
 					   memcpy(&e_rnode->quadg, &rq->quadg, sizeof(quadro_group));
 					   e_rnode->node.flags=MAP_BNODE | MAP_GNODE |  MAP_RNODE | 
@@ -876,8 +880,7 @@ void radar_update_map(void)
 
 				   /* Update the qspn_buffer */
 				   if(!external_node || level) {
-					   qb=xmalloc(sizeof(struct qspn_buffer));
-					   setzero(qb, sizeof(struct qspn_buffer));
+					   qb=xzalloc(sizeof(struct qspn_buffer));
 					   qb->rnode=node;
 					   qspn_b[level]=list_add(qspn_b[level], qb);
 
@@ -1040,8 +1043,7 @@ radar_queue *add_radar_q(PACKET pkt)
 	
 	/* If pkt.from isn't already in the queue, add it. */
 	if(!rq) { 
-		rq=xmalloc(sizeof(struct radar_queue));
-		setzero(rq, sizeof(struct radar_queue));
+		rq=xzalloc(sizeof(struct radar_queue));
 		
 		if(ret)
 			rq->node=(map_node *)RADQ_EXT_RNODE;

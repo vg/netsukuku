@@ -552,8 +552,7 @@ int route_rp_filter(int family, char *dev, int enable)
 	buf[1]=0;
 #define RP_FILTER_PATH_SZ (strlen(RP_FILTER_SYSCTL_1)+		   \
 			   strlen(RP_FILTER_SYSCTL_2)+IF_NAMESIZE+1)
-	final_path=xmalloc(RP_FILTER_PATH_SZ);
-	setzero(final_path, RP_FILTER_PATH_SZ);
+	final_path=xzalloc(RP_FILTER_PATH_SZ);
 
 	len = strlen(buf);
 	if(family==AF_INET) {

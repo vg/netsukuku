@@ -16,7 +16,10 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-/* xmalloc.c: Shamelessly ripped from openssh and xcalloc added
+/*\
+ * xmalloc.c
+ *
+ * Shamelessly ripped from openssh and xcalloc added
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
  *                    All rights reserved
@@ -28,7 +31,7 @@
  * xstrndup() added. AlpT
  * xfree() modified to _xfree(). AlpT
  * xzalloc(size_t size) added.
- */
+\*/
 
 #include <stdlib.h>
 #include <string.h>

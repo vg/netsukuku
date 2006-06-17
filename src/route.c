@@ -226,8 +226,7 @@ void **get_gw_gnode(map_node *int_map, map_gnode **ext_map,
 	if(!gnode_level || gw_level > gnode_level)
 		goto error;
 
-	gateways=xmalloc(sizeof(void *) * MAX_MULTIPATH_ROUTES+1);
-	setzero(gateways, sizeof(void *)*(MAX_MULTIPATH_ROUTES+1));
+	gateways=xzalloc(sizeof(void *) * MAX_MULTIPATH_ROUTES+1);
 
 	/* 
 	 * In order to find the gateway at level `gw_level', which will be
@@ -349,10 +348,12 @@ int get_gw_ips(map_node *int_map, map_gnode **ext_map,
 }
 
 /*
- * find_rnode_dev_and_retry: Searches with rnl_get_dev() the rnode_list
- * which points to `node'. If it is not found it waits the next radar_scan. If
- * it is not found again NULL is returned, otherwise the devices list of the
- * related rnode_list struct is returned.
+ * find_rnode_dev_and_retry
+ *
+ * Searches with rnl_get_dev() the rnode_list which points to `node'. 
+ * If it is not found it waits the next radar_scan. If it is not found again 
+ * NULL is returned, otherwise the devices list of the related rnode_list 
+ * struct is returned.
  */
 interface **find_rnode_dev_and_retry(map_node *node)
 {

@@ -6,10 +6,11 @@
 
 * (generally these TODOs are already being implemented at the moment)
 
-- bugs 
-	- comments in resol.conf are not conidered: 
-		NOTE: Do not resolv this BUG: Now It's useful
+- Sharing willingness: http://lab.dyne.org/Ntk_IGS
 
+- pkts.c: input_buffer, output_buffer for all the connections: we use them as
+	  queue for the incoming and outcoming packets.
+	  
 - Keep an active tcp connection for each rnode. These sockets will be used to
   send the majority of packets. (use keepalive)
   The socket shall be saved in the "struct rnode_list" relative to the rnode.
@@ -22,6 +23,10 @@
 	  and packages installed
 	- A web interface to configure the /etc/netsukuku/netsukuku.conf file
 	  and to use the rc.ntk script.
+
+- bugs 
+	- comments in resol.conf are not conidered: 
+		NOTE: Do not resolv this BUG: Now It's useful
 
 *
 **
@@ -42,11 +47,6 @@
 	  Use `iperf' to measure once the max link bw, then monitor with
 	  iptables the link and calculate the used bw.
 	- See http://lab.dyne.org/Ntk_bandwidth_measurement
-	  
-- Sharing willingness: http://lab.dyne.org/Ntk_IGS
-
-- pkts.c: input_buffer, output_buffer for all the connections: we use them as
-	  queue for the incoming and outcoming packets.
 	  
 - Gnodes contiguity
 	- gnode re-hook
@@ -102,8 +102,6 @@
   The port used by Netsukuku will be leaved open too, in this way the nodes
   can still communicate between them.
 
-- sometime happens that two nodes, which try to hook at the same time, will
-  wait for the other reciprocally, ending up in an infinite loop.
 
 *
 **
@@ -191,3 +189,5 @@
 - Use bireloc from autopackage
 
 - Use qemu to make Netsukuku run on windows?!?
+
+- /*\ \*/

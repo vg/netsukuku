@@ -1,3 +1,15 @@
+==== 0.0.9b ====
+
+New features:
+
+	* When we have multiple interfaces to reach the same rnode, send the
+	  QSPN packets from a random device, each time.
+
+Bug fixes:
+	
+	* SNSD recursion works in ntk-resolv
+
+
 ==== 0.0.8b ====
 
 New features:

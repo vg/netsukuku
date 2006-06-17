@@ -188,13 +188,10 @@ void internet_hosts_to_ip(void)
 
 void init_igws(inet_gw ***igws, int **igws_counter, int levels)
 {
-	*igws=xmalloc(sizeof(inet_gw *) * levels);
-	setzero(*igws, sizeof(inet_gw *) * levels);
+	*igws=xzalloc(sizeof(inet_gw *) * levels);
 
-	if(igws_counter) {
-		*igws_counter=(int *)xmalloc(sizeof(int)*levels);
-		setzero(*igws_counter, sizeof(int)*levels);
-	}
+	if(igws_counter)
+		*igws_counter=(int *)xzalloc(sizeof(int)*levels);
 }
 
 void reset_igws(inet_gw **igws, int *igws_counter, int levels)
@@ -514,9 +511,7 @@ inet_gw *igw_add_node(inet_gw **igws, int *igws_counter,  int level,
 
 	node->flags|=MAP_IGW;
 
-	igw=xmalloc(sizeof(inet_gw));
-	setzero(igw, sizeof(inet_gw));
-
+	igw=xzalloc(sizeof(inet_gw));
 	memcpy(igw->ip, ip, MAX_IP_SZ);
 	igw->node=node;
 	igw->gid=gid;
@@ -988,8 +983,7 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 	inet_setip_anyaddr(&to, family);
 	to.len=to.bits=0;
 
-	nh=xmalloc(sizeof(struct nexthop)*MAX_MULTIPATH_ROUTES);
-	setzero(nh, sizeof(struct nexthop)*MAX_MULTIPATH_ROUTES);
+	nh=xzalloc(sizeof(struct nexthop)*MAX_MULTIPATH_ROUTES);
 	ni=0; /* nexthop index */
 
 	/* 
@@ -1227,8 +1221,7 @@ char *igw_build_bentry(u_char level, size_t *pack_sz, int *new_bblocks)
 	 */
 	bblock_sz = BNODEBLOCK_SZ(level+1, 1);
 	total_bblocks_sz = bblock_sz * found_gws;
-	bblock=xmalloc(total_bblocks_sz);
-	setzero(bblock, total_bblocks_sz);
+	bblock=xzalloc(total_bblocks_sz);
 
 	/* 
 	 * Write each IGW in the bblock
@@ -1406,8 +1399,7 @@ char *pack_igws(inet_gw **igws, int *igws_counter, int levels, int *pack_sz)
 		(*pack_sz)+=hdr.gws[lvl]*INET_GW_PACK_SZ;
 	}
 
-	buf=pack=xmalloc(*pack_sz);
-	setzero(pack, *pack_sz);
+	buf=pack=xzalloc(*pack_sz);
 
 	memcpy(buf, &hdr, sizeof(struct inet_gw_pack_hdr));
 	ints_host_to_network(buf, inet_gw_pack_hdr_iinfo);
@@ -1459,8 +1451,7 @@ int unpack_igws(char *pack, size_t pack_sz,
 	buf=pack+sizeof(struct inet_gw_pack_hdr);
 	for(lvl=0; lvl<hdr->levels; lvl++) {
 		for(i=0; i<hdr->gws[lvl]; i++) {
-			igw=xmalloc(sizeof(inet_gw));
-			setzero(igw, sizeof(inet_gw));
+			igw=xzalloc(sizeof(inet_gw));
 
 			unpack_inet_gw(buf, igw);
 			igw->node = node_from_pos(igw->gid, int_map);
