@@ -2,11 +2,15 @@
 
 New features:
 
+	* ntk-resolv has the new option "-l"
+
 	* When we have multiple interfaces to reach the same rnode, send the
 	  QSPN packets from a random device, each time.
 
 Bug fixes:
 	
+	* gcc-4 compilation warnings fixed.
+
 	* SNSD recursion works in ntk-resolv
 
 
