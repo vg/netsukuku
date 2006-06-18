@@ -257,7 +257,7 @@ void init_my_igws(inet_gw **igws, int *igws_counter,
 		}
 		
 		igw=igw_add_node(igws, igws_counter, i, qg->gid[i],
-				node, qg->ipstart[0].data, (u_char)bw_mean);
+				node, (int*)qg->ipstart[0].data, (u_char)bw_mean);
 		my_igws[i]=igw;
 	}
 	
@@ -826,7 +826,7 @@ void *igw_monitor_igws_t(void *null)
 					for(l=i, old_igw=igw; l<me.cur_quadg.levels; l++) {
 						igw_del(me.igws, me.igws_counter, old_igw, l);
 						if(l+1 < me.cur_quadg.levels)
-							old_igw=igw_find_ip(me.igws, l+1, ip);
+							old_igw=igw_find_ip(me.igws, l+1,(u_int*) ip);
 					}
 
 					igw_replace_def_igws(me.igws, me.igws_counter,
@@ -1316,7 +1316,7 @@ int igw_store_bblock(bnode_hdr *bblock_hdr, bnode_chunk *bchunk, u_char level)
 			}
 		} else {
 			igw_add_node(me.igws, me.igws_counter, i, gids[i], node, 
-					gw_ip.data, bchunk->rtt);
+					(int*)gw_ip.data, bchunk->rtt);
 			update=1;
 		}
 	}

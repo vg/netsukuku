@@ -53,7 +53,7 @@ u_int andna_32bit_hash(char *hname)
 {
 	u_char hashm5[ANDNA_HASH_SZ];
 	
-	hash_md5(hname, strlen(hname), hashm5);
+	hash_md5((u_char*)hname, strlen(hname), hashm5);
 	return fnv_32_buf(hashm5, ANDNA_HASH_SZ, FNV1_32_INIT);
 }
 
@@ -1870,7 +1870,7 @@ int load_snsd(char *file, lcl_cache *alcl_head)
 				inet_copy_ipdata_raw(snsd_node.record, &ip);
 				snsd_node.flags=SNSD_NODE_IP;
 			} else {
-				hash_md5(records[1], strlen(records[1]), 
+				hash_md5((u_char*)records[1], strlen(records[1]), 
 						(u_char *)snsd_node.record);
 				snsd_node.flags=SNSD_NODE_HNAME;
 			}

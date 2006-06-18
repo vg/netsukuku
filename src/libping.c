@@ -281,7 +281,7 @@ recv_ping( struct sockaddr_in *taddr, struct ping_priv * datum )
 	len = HDRLEN + DATALEN;
 	from = sizeof( faddr ); 
 
-	cc = recvfrom( datum->sock, buf, len, 0, (struct sockaddr*)&faddr, &from );
+	cc = recvfrom( datum->sock, buf, len, 0, (struct sockaddr*)&faddr,(socklen_t*)&from );
 	if( cc < 0 ){
 		datum->rrt = -4;
 #ifdef  DEBUG

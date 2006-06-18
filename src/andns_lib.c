@@ -36,11 +36,11 @@ int andns_compress(char *src,int srclen)
 	srclen-=ANDNS_HDR_SZ;
 	space=compressBound(srclen);
 
-	char dst[space+ANDNS_HDR_Z];
+	unsigned char dst[space+ANDNS_HDR_Z];
 
 		/* The first four bytes will store
 		 * the uncompressed size */
-	res=compress2(dst+ANDNS_HDR_Z, &space, src, srclen,
+	res=compress2(dst+ANDNS_HDR_Z, &space,(u_char *) src, srclen,
 			ANDNS_COMPR_LEVEL);
 	if (res!=Z_OK) 
 		err_ret(ERR_ZLIBCP,-1);
@@ -56,7 +56,7 @@ int andns_compress(char *src,int srclen)
 }
 char* andns_uncompress(char *src,int srclen,int *dstlen) 
 {
-	char *dst;
+	unsigned char *dst;
 	uLongf space;
 	int res;
 	int c_len;
@@ -68,7 +68,7 @@ char* andns_uncompress(char *src,int srclen,int *dstlen)
 
 	space=c_len;
 
-	res=uncompress(dst+ANDNS_HDR_SZ,&space, src+hdrsz, srclen-hdrsz);
+	res=uncompress(dst+ANDNS_HDR_SZ,&space,(u_char*) src+hdrsz, srclen-hdrsz);
 	if (res!=Z_OK) {
 		xfree(dst);
 		err_ret(ERR_ZLIBUP,NULL);
@@ -81,7 +81,7 @@ char* andns_uncompress(char *src,int srclen,int *dstlen)
 	memcpy(dst, src, ANDNS_HDR_SZ);
 	*dstlen=c_len+ANDNS_HDR_SZ; 
 
-	return dst;
+	return (char*)dst;
 }
 
 /*

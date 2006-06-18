@@ -674,7 +674,7 @@ int put_internet_gws(PACKET rq_pkt)
 	pkt_addcompress(&pkt);
 
 	pkt.msg=pack_igws(me.igws, me.igws_counter, me.cur_quadg.levels, 
-			&pack_sz);
+			(int*)&pack_sz);
 	pkt.hdr.sz=pack_sz;
 
 	debug(DBG_INSANE, "Reply %s to %s", re_to_str(PUT_INTERNET_GWS), ntop);
@@ -1175,7 +1175,7 @@ int hook_get_free_nodes(int hook_level, struct free_nodes_hdr *fn_hdr,
 		if(!get_qspn_round(rq->ip, rq->dev[0], rq->final_rtt,
 					me.cur_qspn_time,
 					me.cur_qspn_id,
-					new_gcount)) {
+					(int*)new_gcount)) {
 			e=1;
 			break;
 		}
@@ -1280,7 +1280,7 @@ int hook_get_ext_map(int hook_level, int new_gnode,
 		 * old ext_map and the one we receive.
 		 */
 		gcount = new_ext_map[_EL(hook_level)][old_quadg->gid[hook_level]].gcount;
-		qspn_dec_gcount(qspn_gnode_count, hook_level+1, gcount);
+		qspn_dec_gcount((int*)qspn_gnode_count, hook_level+1, gcount);
 
 		old_gid=old_quadg->gid[hook_level];
 		new_ext_map[_EL(hook_level)][old_gid].gcount=0;
@@ -1572,7 +1572,7 @@ int netsukuku_hook(map_gnode *hook_gnode, int hook_level)
 	/* 
 	 * Get the free nodes list
 	 */
-	qspn_backup_gcount(qspn_old_gcount, qspn_gnode_count);
+	qspn_backup_gcount(qspn_old_gcount, (int*)qspn_gnode_count);
 	new_gnode=hook_get_free_nodes(hook_level, &fn_hdr, fnodes, 
 			&gnode_ipstart, qspn_gnode_count, &rq);
 	if(new_gnode)

@@ -217,7 +217,7 @@ int map_del_bnode_rnode(map_bnode **bmap, int *bmap_nodes, void *n)
 			rnode_del(&bm[e], p);
 
 			if(!bm[e].links) {
-				*bmap=map_bnode_del(*bmap, bmap_nodes, &bm[e]);
+				*bmap=map_bnode_del(*bmap,(u_int*)bmap_nodes, &bm[e]);
 				bm=*bmap;
 			}
 			ret++;

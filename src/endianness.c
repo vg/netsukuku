@@ -120,9 +120,9 @@ void ints_network_to_host(void *s, int_info iinfo)
 		if(iinfo.int_type[i] & INT_TYPE_WORDS) {
 			
 			if(iinfo.int_type[i] & INT_TYPE_32BIT)
-				swap_ints(iinfo.int_nmemb[i], (int *)p, (int *)p);
+				swap_ints(iinfo.int_nmemb[i], (u_int *)p, (u_int *)p);
 			else
-				swap_shorts(iinfo.int_nmemb[i], (short *)p, (short *)p);
+				swap_shorts(iinfo.int_nmemb[i], (u_short *)p, (u_short *)p);
 		}
 		
 		if(iinfo.int_type[i] & INT_TYPE_32BIT)
@@ -164,9 +164,9 @@ void ints_host_to_network(void *s, int_info iinfo)
 		if(iinfo.int_type[i] & INT_TYPE_WORDS) {
 			
 			if(iinfo.int_type[i] & INT_TYPE_32BIT)
-				swap_ints(iinfo.int_nmemb[i], (int *)p, (int *)p);
+				swap_ints(iinfo.int_nmemb[i], (u_int *)p, (u_int *)p);
 			else
-				swap_shorts(iinfo.int_nmemb[i], (short *)p, (short *)p);
+				swap_shorts(iinfo.int_nmemb[i], (u_short *)p, (u_short *)p);
 		}
 
 		if(iinfo.int_type[i] & INT_TYPE_32BIT)

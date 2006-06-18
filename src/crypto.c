@@ -146,7 +146,7 @@ u_char *rsa_sign(u_char *msg, u_int m_len, RSA *priv, u_int *siglen)
 
 	signature=(u_char *)xmalloc(ret);
 	ret=RSA_sign(NID_sha1, hash_sha1(msg, m_len, 0), SHA_DIGEST_LENGTH,
-			signature, &len, priv);
+			signature,(u_int*) &len, priv);
 	if(siglen)
 		*siglen=len;
 

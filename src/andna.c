@@ -664,7 +664,7 @@ int andna_register_hname(lcl_cache *alcl, snsd_service *snsd_delete)
 	ints_host_to_network((void *)&req, andna_reg_pkt_iinfo);
 	
 	/* Sign the packet */
-	sign=rsa_sign((u_char *)&req, ANDNA_REG_SIGNED_BLOCK_SZ, 
+	sign=(char*)rsa_sign((u_char *)&req, ANDNA_REG_SIGNED_BLOCK_SZ, 
 			lcl_keyring.priv_rsa, 0);
 	memcpy(req.sign, sign, ANDNA_SIGNATURE_LEN);
 	
@@ -786,10 +786,10 @@ int andna_recv_reg_rq(PACKET rpkt)
 	pkt_addsk(&pkt, my_family, 0, SKT_UDP);
 	
 	/* Verify the signature */
-	pk=req->pubkey;
+	pk=(const u_char*)req->pubkey;
 	pubkey=get_rsa_pub(&pk, ANDNA_PKEY_LEN);
 	if(!pubkey || !verify_sign((u_char *)req, ANDNA_REG_SIGNED_BLOCK_SZ,
-				req->sign, ANDNA_SIGNATURE_LEN, pubkey)) {
+				(u_char*)req->sign, ANDNA_SIGNATURE_LEN, pubkey)) {
 		/* Bad, bad signature */
 		debug(DBG_SOFT, "Invalid signature of the 0x%x reg request", 
 				rpkt.hdr.id);
@@ -836,7 +836,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 
 	/* Are we a new hash_gnode ? */
 	if(time(0)-me.uptime < (ANDNA_EXPIRATION_TIME/3) && 
-			!(ac=andna_cache_findhash(req->hash))) {
+			!(ac=andna_cache_findhash((int*)req->hash))) {
 		/*
 		 * We are a new hash_gnode and we haven't this hostname in our
 		 * andna_cache, so we have to check if there is an
@@ -870,7 +870,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 	 * Finally, let's register/update the hname 
 	 */
 	cur_t=time(0);	
-	ac=andna_cache_addhash(req->hash);
+	ac=andna_cache_addhash((int*)req->hash);
 	acq=ac_queue_add(ac, req->pubkey);
 	if(!acq) {
 		debug(DBG_SOFT, "Registration rq 0x%x rejected: %s", 
@@ -1132,10 +1132,10 @@ int andna_recv_check_counter(PACKET rpkt)
 	pkt_addsk(&pkt, my_family, 0, SKT_UDP);
 	
 	/* Verify the signature */
-	pk=req->pubkey;
+	pk=(const u_char*)req->pubkey;
 	pubkey=get_rsa_pub(&pk, ANDNA_PKEY_LEN);
 	if(!pubkey || !verify_sign((u_char *)req, ANDNA_REG_SIGNED_BLOCK_SZ, 
-				req->sign, ANDNA_SIGNATURE_LEN, pubkey)) {
+				(u_char*)req->sign, ANDNA_SIGNATURE_LEN, pubkey)) {
 		/* Bad signature */
 		debug(DBG_SOFT, "Invalid signature of the 0x%x check "
 				"counter request", rpkt.hdr.id);
@@ -1185,9 +1185,9 @@ int andna_recv_check_counter(PACKET rpkt)
 	/* Finally, let's register/update the hname */
 	cc=counter_c_add(&rfrom, req->pubkey);
 	if(!just_check)
-		cch=cc_hashes_add(cc, req->hash);
+		cch=cc_hashes_add(cc,(int*) req->hash);
 	else
-		cch=cc_findhash(cc, req->hash);
+		cch=cc_findhash(cc, (int*)req->hash);
 	if(!cch) {
 		debug(DBG_SOFT, "Request %s (0x%x) rejected: %s", 
 				rq_to_str(rpkt.hdr.op), rpkt.hdr.id, 
@@ -1316,7 +1316,7 @@ snsd_service *andna_resolve_hash_locally(u_int hname_hash[MAX_IP_INT], int servi
 	/*
 	 * If we manage an andna_cache, it's better to peek at it.
 	 */
-	if((ac=andna_cache_gethash(hname_hash))) {
+	if((ac=andna_cache_gethash((int*)hname_hash))) {
 		*records=ac->acq->snsd_counter;
 		
 		ret=snsd_service_llist_copy(ac->acq->service, service, proto);
@@ -1493,7 +1493,7 @@ snsd_service *andna_resolve_hname(char *hname, int service, u_char proto,
 {
 	u_int hname_hash[MAX_IP_INT];
 
-	hash_md5(hname, strlen(hname), (u_char *)hname_hash);
+	hash_md5((u_char*)hname, strlen(hname), (u_char *)hname_hash);
 
 	return andna_resolve_hash(hname_hash, service, proto, records);
 }
@@ -1572,7 +1572,7 @@ int andna_recv_resolve_rq(PACKET rpkt)
 	/* 
 	 * Search the hostname to resolve in the andna_cache 
 	 */
-	if(!(ac=andna_cache_gethash(req->hash))) {
+	if(!(ac=andna_cache_gethash((int*)req->hash))) {
 
 		/* We don't have that hname in our andna_cache */
 	
@@ -1941,7 +1941,7 @@ int put_single_acache(PACKET rpkt)
 	/*
 	 * Search in our andna_cache if we have what `rfrom' wants.
 	 */
-	if(!(ac=andna_cache_gethash(req_hdr->hash))) {
+	if(!(ac=andna_cache_gethash((int*)req_hdr->hash))) {
 
 		/*
 		 * Nothing found! Maybe it's because we have an uptime less than
@@ -2084,7 +2084,7 @@ int recv_spread_single_acache(PACKET rpkt)
 	}
 
 	if(time(0)-me.uptime > (ANDNA_EXPIRATION_TIME/2) ||
-			(ac=andna_cache_findhash(req->hash))) {
+			(ac=andna_cache_findhash((int*)req->hash))) {
 		/* We don't need to get the andna_cache from an old
 		 * hash_gnode, since we currently are one of them! */
 		debug(DBG_NOISE, "recv_spread_single_acache: We are an old "

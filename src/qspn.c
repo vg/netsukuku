@@ -415,7 +415,7 @@ void qspn_remove_deads(u_char level)
 					for(l=i; l<me.cur_quadg.levels && igw; l++) {
 						igw_del(me.igws, me.igws_counter, igw, l);
 						if(l+1 < me.cur_quadg.levels)
-							igw=igw_find_ip(me.igws, l+1, ip);
+							igw=igw_find_ip(me.igws, l+1, (u_int*)ip);
 					}
 
 					igw_replace_def_igws(me.igws, me.igws_counter,
@@ -443,18 +443,18 @@ void qspn_remove_deads(u_char level)
 				 * point to `node'.
 				 */
 				l=GET_BMAP_LEVELS(my_family);
-				bmaps_del_bnode_rnode(me.bnode_map, me.bmap_nodes, l,
+				bmaps_del_bnode_rnode(me.bnode_map,(int*) me.bmap_nodes, l,
 						node);
 			}
 
 			if(!level) {
 				debug(DBG_NORMAL, "qspn: The node %d is dead", i);
 				map_node_del(node);
-				qspn_dec_gcount(qspn_gnode_count, level+1, 1);
+				qspn_dec_gcount((int*)qspn_gnode_count, level+1, 1);
 			} else {
 				debug(DBG_NORMAL,"The groupnode %d of level %d"
 						" is dead", i, level);
-				qspn_dec_gcount(qspn_gnode_count, level+1,
+				qspn_dec_gcount((int*)qspn_gnode_count, level+1,
 						gnode->gcount);
 				gmap_node_del(gnode);
 			}
@@ -502,7 +502,7 @@ void qspn_new_round(u_char level, int new_qspn_id, u_int new_qspn_time)
 			me.bmap_nodes_opened);
 
 	/* Copy the current gnode_count in old_gcount */
-	qspn_backup_gcount(qspn_old_gcount, qspn_gnode_count);
+	qspn_backup_gcount(qspn_old_gcount,(int*) qspn_gnode_count);
 	
 	/* Clear the flags set during the previous qspn */
 	root_node->flags&=~QSPN_STARTER & ~QSPN_CLOSED & ~QSPN_OPENED;
@@ -515,7 +515,7 @@ void qspn_new_round(u_char level, int new_qspn_id, u_int new_qspn_time)
 	/* Mark all bnodes with the BMAP_UPDATE flag, in this way
 	 * tracer_store_pkt will know what bnodes weren't updated during this
 	 * new round */
-	bmaps_set_bnode_flag(me.bnode_map, me.bmap_nodes, 
+	bmaps_set_bnode_flag(me.bnode_map,(int*) me.bmap_nodes, 
 			GET_BMAP_LEVELS(my_family), BMAP_UPDATE);
 	
 	/* remove the dead nodes */

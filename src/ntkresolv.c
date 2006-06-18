@@ -273,7 +273,8 @@ void opts_set_question(char *arg)
 					NTK_RESOLV_STR_HASH(arg,GQT->qstdata);
 				}
 				else
-					hash_md5(arg,res,GQT->qstdata);
+					hash_md5((unsigned char*)arg,res,
+						(unsigned char*)GQT->qstdata);
 			} else {
 				if (res>255) {
 					say("Hostname %s is too long for DNS standard.",arg);
@@ -308,7 +309,8 @@ void opts_set_question(char *arg)
 			if (GOP.hash)
 				NTK_RESOLV_STR_HASH(arg,GQT->qstdata);
 			else
-				hash_md5(arg,res,GQT->qstdata);
+				hash_md5((unsigned char*)arg,res,
+					(unsigned char*)GQT->qstdata);
 			return;	
 		default:
 			say("Unknow Query Type.\n");
@@ -327,7 +329,8 @@ void opts_finish(char *arg)
 
 	if (mode_compute_hash) { /* Do command here and exit */
 		G_ALIGN(ANDNS_HASH_H);
-		hash_md5(arg,r,GQT->qstdata);
+		hash_md5((unsigned char*)arg,r,
+			(unsigned char*)GQT->qstdata);
 		NTK_RESOLV_HASH_STR(GQT->qstdata,GOP.obj);
 		say("%s\n",GOP.obj);
 		ntkresolv_safe_exit(0);

@@ -274,7 +274,7 @@ const u_char *rq_to_str(u_char rq)
 const u_char *re_to_str(u_char re)
 {
 	if(re_verify(re))
-		return unknown_reply;
+		return (const u_char*)unknown_reply;
 	return reply_str[re-TOTAL_REQUESTS];
 }
 

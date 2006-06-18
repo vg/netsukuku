@@ -193,9 +193,9 @@ int pkt_compress(PACKET *pkt, pkt_hdr *newhdr, char *dst_msg)
 
 	bound_sz=compressBound(pkt->hdr.sz);
 
-	char dst[bound_sz];
+	unsigned char dst[bound_sz];
 
-	ret=compress2(dst, &bound_sz, pkt->msg, pkt->hdr.sz, 
+	ret=compress2(dst, &bound_sz, (u_char*)pkt->msg, pkt->hdr.sz, 
 			PKT_COMPRESS_LEVEL);
 	if(ret != Z_OK) {
 		error(ERROR_MSG "cannot compress the pkt. "
@@ -276,12 +276,12 @@ int pkt_uncompress(PACKET *pkt)
 {
 	uLongf dstlen;
 	int ret=0;
-	char *dst=0;
+	unsigned char *dst=0;
 	
 	dstlen=pkt->hdr.uncompress_sz;
 	dst=xmalloc(dstlen);
 	
-	ret=uncompress(dst, &dstlen, pkt->msg, pkt->hdr.sz);
+	ret=uncompress(dst, &dstlen, (u_char*) pkt->msg, pkt->hdr.sz);
 	if(ret != Z_OK)
 		ERROR_FINISH(ret, -1, finish);
 	else
@@ -291,7 +291,7 @@ int pkt_uncompress(PACKET *pkt)
 	 * Restore the uncompressed packet
 	 */
 	xfree(pkt->msg);
-	pkt->msg=dst;
+	pkt->msg=(char*)dst;
 	pkt->hdr.sz=pkt->hdr.uncompress_sz;
 	pkt->hdr.uncompress_sz=0;
 	pkt->hdr.flags&=~COMPRESSED_PKT;

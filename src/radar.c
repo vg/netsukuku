@@ -555,7 +555,7 @@ int radar_remove_old_rnodes(char *rnode_deleted)
 
 				/* delete it from the int_map and update the gcount */
 				map_node_del(node);
-				qspn_dec_gcount(qspn_gnode_count, level+1, 1); 
+				qspn_dec_gcount((int*)qspn_gnode_count, level+1, 1); 
 				
 				/* delete the route */
 				rt_update_node(0, node, 0,0,0, level); 
@@ -609,7 +609,7 @@ int radar_remove_old_rnodes(char *rnode_deleted)
 				 * `gnode', delete it from the map */
 				if(map_find_bnode_rnode(me.bnode_map[level-1], me.bmap_nodes[level-1],
 							gnode) == -1) {
-					qspn_dec_gcount(qspn_gnode_count, level+1, gnode->gcount);
+					qspn_dec_gcount((int*)qspn_gnode_count, level+1, gnode->gcount);
 					gmap_node_del(gnode);
 					gnode_dec_seeds(&me.cur_quadg, level); /* update the seeds */
 				}
@@ -968,7 +968,7 @@ void radar_update_map(void)
 
 	/* Burn the deads */
 	if(updated_rnodes < me.cur_node->links)
-		radar_remove_old_rnodes(rnode_deleted);
+		radar_remove_old_rnodes((char*)rnode_deleted);
 
 	/* <<keep your room tidy... order, ORDER>> */
 	if(!is_bufzero(rnode_added, sizeof(rnode_added)) || 

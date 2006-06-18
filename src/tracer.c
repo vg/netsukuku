@@ -299,7 +299,7 @@ void tracer_update_gcount(tracer_hdr *trcr_hdr, tracer_chunk *tracer,
 	for(i=first_hop; i>=0; i--) {
 		if(level) {
 			gnode=gnode_from_pos(tracer[i].node, ext_map[_EL(level)]);
-			qspn_dec_gcount(gcount_counter, level+1, gnode->gcount);
+			qspn_dec_gcount((int*)gcount_counter, level+1, gnode->gcount);
 			gnode->gcount=tracer[i].gcount;
 		} else
 			node = node_from_pos(tracer[i].node, int_map);

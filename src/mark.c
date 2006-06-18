@@ -122,7 +122,7 @@ int commit_rules(iptc_handle_t *t)
  *  
  * -rule- has to be RESTORE_OUTPUT_RULE_SZ-sized
  */
-void restore_output_rule_init(unsigned char *rule)
+void restore_output_rule_init(char *rule)
 {
 	struct ipt_entry *ee;
 	struct ipt_entry_match *em;
@@ -167,7 +167,7 @@ void restore_output_rule_init(unsigned char *rule)
  *  
  * -rule- has to be NTK_FORWARD_RULE_SZ-sized
  */
-void ntk_forward_rule_init(unsigned char *rule)
+void ntk_forward_rule_init(char *rule)
 {
 	struct ipt_entry *ee;
 	struct ipt_entry_match *em;
@@ -206,7 +206,7 @@ void ntk_forward_rule_init(unsigned char *rule)
  *  
  * -rule- has to be MARK_RULE_SZ-sized
  */
-void mark_rule_init(unsigned char *rule,char *outiface,int outiface_num)
+void mark_rule_init(char *rule,char *outiface,int outiface_num)
 {
 	struct ipt_entry *ee;
 	struct ipt_entry_target *et;
