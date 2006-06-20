@@ -83,27 +83,30 @@ int verify_free_nodes_hdr(inet_prefix *to, struct free_nodes_hdr *fn_hdr)
 	return 0;
 }
 
-/*  
- *  *  *  put/get free_nodes  *  *  *
- */
+/*\
+ *   *  *  put/get free_nodes  *  *
+\*/
 
 /* 
- * get_free_nodes: It send the GET_FREE_NODES request, used to retrieve the free_nodes
- * pkt (see hook.h).
+ * get_free_nodes
+ *
+ * It send the GET_FREE_NODES request, used to retrieve the free_nodes pkt 
+ * (see hook.h), to rnode `dst_rnode'.
  * `fn_hdr' is the header of the received free_nodes packet.
  * `nodes' must be an u_char array with at least MAXGROUPNODES members. All the
  * members that go from `free_nodes[0]' to `free_nodes[fn_hdr.nodes]' will be
  * filled with the gids of the received free nodes.
  * -1 is returned if `to' said its quadro_group is full or if a generic error
- * occurred. In this case it is advised to ask to get the free_nodes list from another
- * rnode.
+ * occurred. In this case it is advised to ask to get the free_nodes list from
+ * another rnode.
  * If -2 is returned, the whole Netsukuku net is full, so desist to retry, or
  * drop down your neighbors.
  */
-int get_free_nodes(inet_prefix to, interface *dev, 
-		struct free_nodes_hdr *fn_hdr, u_char *nodes)
+int get_free_nodes(map_node *dst_rnode, 
+		   struct free_nodes_hdr *fn_hdr, u_char *nodes)
 {
 	PACKET pkt, rpkt;
+	inet_prefix to;
 	ssize_t err;
 	int ret=0, e, i;
 	const char *ntop;
@@ -112,15 +115,20 @@ int get_free_nodes(inet_prefix to, interface *dev,
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
 	
+	if((pkt.sk=rnl_get_sk(rlist, dst_rnode)) <= 0) {
+		error(ERROR_MSG "Couldn't get the socket associated "
+				"to dst_rnode", ERROR_FUNC);
+		ERROR_FINISH(ret, -1, finish);
+	}
+	inet_getpeername(pkt.sk, &to, 0);
+	pkt_addto(&pkt, &to);
+	pkt_addtimeout(&pkt, HOOK_RQ_TIMEOUT, 1, 0);
 	ntop=inet_to_str(to);
 	
-	pkt_addto(&pkt, &to);
-	pkt_add_dev(&pkt, dev, 1);
-	pkt_addtimeout(&pkt, HOOK_RQ_TIMEOUT, 1, 0);
-	
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_FREE_NODES), ntop);
-	err=send_rq(&pkt, 0, GET_FREE_NODES, 0, PUT_FREE_NODES, 1, &rpkt);
-	if(err==-1) {
+	err=rnl_send_rq(dst_rnode, &pkt, 0, GET_FREE_NODES, 0, PUT_FREE_NODES,
+			1, &rpkt);
+	if(err < 0) {
 		if(rpkt.hdr.sz && (u_char)(*rpkt.msg) == E_NTK_FULL)
 			ERROR_FINISH(ret, -2, finish);
 		ERROR_FINISH(ret, -1, finish);
@@ -262,7 +270,7 @@ int put_free_nodes(PACKET rq_pkt)
 	err=pkt_send(&pkt);
 	
 finish:	
-	if(err==-1) {
+	if(err < 0) {
 		error("put_free_nodes(): Cannot send the PUT_FREE_NODES reply to %s.", ntop);
 		ret=-1;
 	}
@@ -271,15 +279,15 @@ finish:
 }
 
 
-/*
- *  *  * put/get qspn_round *  *  *
- */
+/*\
+ *   *  * put/get qspn_round *  *
+\*/
 
 /* 
  * get_qspn_round: It send the GET_QSPN_ROUND request, used to retrieve the 
  * qspn ids and and qspn times. (see hook.h).
  */
-int get_qspn_round(inet_prefix to, interface *dev, struct timeval to_rtt, 
+int get_qspn_round(map_node *dst_rnode, struct timeval to_rtt, 
 		struct timeval *qtime, int *qspn_id, int *qspn_gcount)
 {
 	PACKET pkt, rpkt;
@@ -294,15 +302,19 @@ int get_qspn_round(inet_prefix to, interface *dev, struct timeval to_rtt,
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
 	
-	ntop=inet_to_str(to);
-	
-	pkt_addto(&pkt, &to);
+	if((pkt.sk=rnl_get_sk(rlist, dst_rnode)) <= 0) {
+		error(ERROR_MSG "couldn't get the socket associated "
+				"to dst_rnode", ERROR_FUNC);
+		ERROR_FINISH(ret, -1, finish);
+	}
+	inet_getpeername(pkt.sk, &pkt.to, 0);
 	pkt_addtimeout(&pkt, HOOK_RQ_TIMEOUT, 1, 0);
+	ntop=inet_to_str(pkt.to);
 	
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_QSPN_ROUND), ntop);
-	pkt_add_dev(&pkt, dev, 1);
-	err=send_rq(&pkt, 0, GET_QSPN_ROUND, 0, PUT_QSPN_ROUND, 1, &rpkt);
-	if(err==-1)
+	err=rnl_send_rq(dst_rnode, &pkt, 0, GET_QSPN_ROUND, 0, PUT_QSPN_ROUND, 
+			1, &rpkt);
+	if(err < 0)
 		ERROR_FINISH(ret, -1, finish);
 
 	buf=rpkt.msg;
@@ -375,7 +387,7 @@ int put_qspn_round(PACKET rq_pkt)
 	
 	setzero(&pkt, sizeof(PACKET));
 	pkt_addto(&pkt, &rq_pkt.from);
-	pkt_addport(&pkt, ntk_udp_port);
+	pkt_addport(&pkt, ntk_tcp_port);
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
 	pkt_add_dev(&pkt, rq_pkt.dev, 1);
 	pkt_addcompress(&pkt);
@@ -415,7 +427,7 @@ int put_qspn_round(PACKET rq_pkt)
 	memcpy(pkt.msg, &qr_pkt, sizeof(qr_pkt));
 	err=pkt_send(&pkt);
 	
-	if(err==-1) {
+	if(err < 0) {
 		error("put_qspn_round(): Cannot send the PUT_QSPN_ROUND reply to %s.", ntop);
 		ret=-1;
 	}
@@ -424,9 +436,9 @@ int put_qspn_round(PACKET rq_pkt)
 }
 
 
-/*  
- *  *  *  put/get ext_map  *  *  *
- */
+/*\ 
+ *   *  *  put/get ext_map  *  *
+\*/
 
 int put_ext_map(PACKET rq_pkt)
 {
@@ -449,7 +461,7 @@ int put_ext_map(PACKET rq_pkt)
 	pkt.hdr.sz=pkt_sz;
 	debug(DBG_INSANE, "Reply %s to %s", re_to_str(PUT_EXT_MAP), ntop);
 	err=send_rq(&pkt, 0, PUT_EXT_MAP, rq_pkt.hdr.id, 0, 0, 0);
-	if(err==-1) {
+	if(err < 0) {
 		error("put_ext_maps(): Cannot send the PUT_EXT_MAP reply to %s.", ntop);
 		ERROR_FINISH(ret, -1, finish);
 	}
@@ -463,7 +475,7 @@ finish:
  * get_ext_map: It sends the GET_EXT_MAP request to retrieve the
  * dst_node's ext_map.
  */
-map_gnode **get_ext_map(inet_prefix to, interface *dev, quadro_group *new_quadg)
+map_gnode **get_ext_map(map_node *dst_rnode, quadro_group *new_quadg)
 {
 	PACKET pkt, rpkt;
 	const char *ntop;
@@ -473,16 +485,20 @@ map_gnode **get_ext_map(inet_prefix to, interface *dev, quadro_group *new_quadg)
 
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
-	
-	ntop=inet_to_str(to);
-	
-	pkt_addto(&pkt, &to);
-	pkt_add_dev(&pkt, dev, 1);
+
+	if((pkt.sk=rnl_get_sk(rlist, dst_rnode)) <= 0) {
+		error(ERROR_MSG "Couldn't get the socket associated "
+				"to dst_rnode", ERROR_FUNC);
+		ERROR_FINISH(ret, 0, finish);
+	}
+	inet_getpeername(pkt.sk, &pkt.to, 0);
 	pkt_addtimeout(&pkt, HOOK_RQ_TIMEOUT, 1, 0);
+	ntop=inet_to_str(pkt.to);
+
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_EXT_MAP), ntop);
-	
-	err=send_rq(&pkt, 0, GET_EXT_MAP, 0, PUT_EXT_MAP, 1, &rpkt);
-	if(err==-1) {
+	err=rnl_send_rq(dst_rnode, &pkt, 0, GET_EXT_MAP, 0, PUT_EXT_MAP, 1,
+			&rpkt);
+	if(err < 0) {
 		ret=0;
 		goto finish;
 	}
@@ -497,9 +513,9 @@ finish:
 	return ret;
 }
 
-/*  
- *  *  *  put/get int_map  *  *  *
- */
+/*\
+ *   *  *  put/get int_map  *  *
+\*/
 
 int put_int_map(PACKET rq_pkt)
 {
@@ -523,7 +539,7 @@ int put_int_map(PACKET rq_pkt)
 	pkt.hdr.sz=pkt_sz;
 	debug(DBG_INSANE, "Reply %s to %s", re_to_str(PUT_INT_MAP), ntop);
 	err=send_rq(&pkt, 0, PUT_INT_MAP, rq_pkt.hdr.id, 0, 0, 0);
-	if(err==-1) {
+	if(err < 0) {
 		error("put_int_map(): Cannot send the PUT_INT_MAP reply to %s.", ntop);
 		ERROR_FINISH(ret, -1, finish);
 	}
@@ -536,7 +552,7 @@ finish:
  * get_int_map: It sends the GET_INT_MAP request to retrieve the 
  * dst_node's int_map. 
  */
-map_node *get_int_map(inet_prefix to, interface *dev, map_node **new_root)
+map_node *get_int_map(map_node *dst_rnode, map_node **new_root)
 {
 	PACKET pkt, rpkt;
 	map_node *int_map, *ret=0;
@@ -547,15 +563,19 @@ map_node *get_int_map(inet_prefix to, interface *dev, map_node **new_root)
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
 	
-	ntop=inet_to_str(to);
-	
-	pkt_addto(&pkt, &to);
-	pkt_add_dev(&pkt, dev, 1);
+	if((pkt.sk=rnl_get_sk(rlist, dst_rnode)) <= 0) {
+		error(ERROR_MSG "Couldn't get the socket associated "
+				"to dst_rnode", ERROR_FUNC);
+		ERROR_FINISH(ret, 0, finish);
+	}
+	inet_getpeername(pkt.sk, &pkt.to, 0);
 	pkt_addtimeout(&pkt, HOOK_RQ_TIMEOUT, 1, 0);
+	ntop=inet_to_str(pkt.to);
 
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_INT_MAP), ntop);
-	err=send_rq(&pkt, 0, GET_INT_MAP, 0, PUT_INT_MAP, 1, &rpkt);
-	if(err==-1) {
+	err=rnl_send_rq(dst_rnode, &pkt, 0, GET_INT_MAP, 0, PUT_INT_MAP, 1, 
+			&rpkt);
+	if(err < 0) {
 		ret=0;
 		goto finish;
 	}
@@ -573,9 +593,9 @@ finish:
 	return ret;
 }
 
-/*  
- *  *  *  put/get bnode_map  *  *  *
- */
+/*\
+ *   *  *  put/get bnode_map  *  *
+\*/
 
 int put_bnode_map(PACKET rq_pkt)
 {
@@ -600,7 +620,7 @@ int put_bnode_map(PACKET rq_pkt)
 
 	debug(DBG_INSANE, "Reply %s to %s", re_to_str(PUT_BNODE_MAP), ntop);
 	err=send_rq(&pkt, 0, PUT_BNODE_MAP, rq_pkt.hdr.id, 0, 0, 0);
-	if(err==-1) {
+	if(err < 0) {
 		error("put_bnode_maps(): Cannot send the PUT_BNODE_MAP reply to %s.", ntop);
 		ERROR_FINISH(ret, -1, finish);
 	}
@@ -614,7 +634,7 @@ finish:
  * get_bnode_map: It sends the GET_BNODE_MAP request to retrieve the 
  * dst_node's bnode_map. 
  */
-map_bnode **get_bnode_map(inet_prefix to, interface *dev, u_int **bmap_nodes)
+map_bnode **get_bnode_map(map_node *dst_rnode, u_int **bmap_nodes)
 {
 	PACKET pkt, rpkt;
 	int err;
@@ -625,15 +645,19 @@ map_bnode **get_bnode_map(inet_prefix to, interface *dev, u_int **bmap_nodes)
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
 	
-	ntop=inet_to_str(to);
-	
-	pkt_addto(&pkt, &to);
-	pkt_add_dev(&pkt, dev, 1);
+	if((pkt.sk=rnl_get_sk(rlist, dst_rnode)) <= 0) {
+		error(ERROR_MSG "Couldn't get the socket associated "
+				"to dst_rnode", ERROR_FUNC);
+		ERROR_FINISH(ret, 0, finish);
+	}
+	inet_getpeername(pkt.sk, &pkt.to, 0);
 	pkt_addtimeout(&pkt, HOOK_RQ_TIMEOUT, 1, 0);
+	ntop=inet_to_str(pkt.to);
 
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_BNODE_MAP), ntop);
-	err=send_rq(&pkt, 0, GET_BNODE_MAP, 0, PUT_BNODE_MAP, 1, &rpkt);
-	if(err==-1) {
+	err=rnl_send_rq(dst_rnode, &pkt, 0, GET_BNODE_MAP, 0, PUT_BNODE_MAP, 
+			1, &rpkt);
+	if(err < 0) {
 		ret=0;
 		goto finish;
 	}
@@ -652,9 +676,9 @@ finish:
 }
 
 
-/*  
- *  *  *  put/get internet gateways list  *  *  *
- */
+/*\
+ *   *  *  put/get internet gateways list  *  *
+\*/
 
 int put_internet_gws(PACKET rq_pkt)
 {
@@ -679,7 +703,7 @@ int put_internet_gws(PACKET rq_pkt)
 
 	debug(DBG_INSANE, "Reply %s to %s", re_to_str(PUT_INTERNET_GWS), ntop);
 	err=send_rq(&pkt, 0, PUT_INTERNET_GWS, rq_pkt.hdr.id, 0, 0, 0);
-	if(err==-1) {
+	if(err < 0) {
 		error("put_internet_gws(): Cannot send the PUT_INTERNET_GWS "
 				"reply to %s.", ntop);
 		ERROR_FINISH(ret, -1, finish);
@@ -694,7 +718,7 @@ finish:
  * get_internet_gws: It sends the GET_INTERNET_GWS request to retrieve the 
  * Internet Gateways list from `to'.
  */
-inet_gw **get_internet_gws(inet_prefix to, interface *dev, int **igws_counter)
+inet_gw **get_internet_gws(map_node *dst_rnode, int **igws_counter)
 {
 	PACKET pkt, rpkt;
 	int err, ret=0;
@@ -704,16 +728,20 @@ inet_gw **get_internet_gws(inet_prefix to, interface *dev, int **igws_counter)
 	
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
-	
-	ntop=inet_to_str(to);
-	
-	pkt_addto(&pkt, &to);
-	pkt_add_dev(&pkt, dev, 1);
+
+	if((pkt.sk=rnl_get_sk(rlist, dst_rnode)) <= 0) {
+		error(ERROR_MSG "Couldn't get the socket associated "
+				"to dst_rnode", ERROR_FUNC);
+		ERROR_FINISH(ret, -1, finish);
+	}
+	inet_getpeername(pkt.sk, &pkt.to, 0);
 	pkt_addtimeout(&pkt, HOOK_RQ_TIMEOUT, 1, 0);
+	ntop=inet_to_str(pkt.to);
 
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_INTERNET_GWS), ntop);
-	err=send_rq(&pkt, 0, GET_INTERNET_GWS, 0, PUT_INTERNET_GWS, 1, &rpkt);
-	if(err==-1) {
+	err=rnl_send_rq(dst_rnode, &pkt, 0, GET_INTERNET_GWS, 0, 
+			PUT_INTERNET_GWS, 1, &rpkt);
+	if(err < 0) {
 		ret=0;
 		goto finish;
 	}
@@ -1145,24 +1173,21 @@ hook_retry_scan:
  */
 int hook_get_free_nodes(int hook_level, struct free_nodes_hdr *fn_hdr, 
 		u_char *fnodes, inet_prefix *gnode_ipstart, u_int *new_gcount,
-		struct radar_queue **ret_rq)
+		struct rnode_list **ret_rnl)
 {
-	struct radar_queue *rq=radar_q;
-	int i, e, err;
+	struct radar_queue *rq=0;
+	struct rnode_list *rnl=rlist;
+	int e=0, err;
 	
 	/* 
 	 * Now we choose the nearest rnode we found and we send it the 
 	 * GET_FREE_NODES request.
 	 */
-	for(i=0, e=0; i < me.cur_node->links; i++) {
-		if(!(rq=find_node_radar_q((map_node *)me.cur_node->r_node[i].r_node))) 
-			fatal("%s:%d: This ultra fatal error goes against the "
-					"laws of the universe. It's not "
-					"possible!! Pray", ERROR_POS);
-		if(rq->node->flags & MAP_HNODE)
+	list_for(rnl) {
+		if(rnl->node->flags & MAP_HNODE)
 			continue;
 
-		err=get_free_nodes(rq->ip, rq->dev[0], fn_hdr, fnodes);
+		err=get_free_nodes(rnl->node, fn_hdr, fnodes);
 		if(err == -2)
 			fatal("Netsukuku is full! Bring down some nodes and retry");
 		else if(err == -1)
@@ -1172,8 +1197,8 @@ int hook_get_free_nodes(int hook_level, struct free_nodes_hdr *fn_hdr,
 		inet_setip(gnode_ipstart, (u_int *)fn_hdr->ipstart, my_family);
 
 		/* Get the qspn round info */
-		if(!get_qspn_round(rq->ip, rq->dev[0], rq->final_rtt,
-					me.cur_qspn_time,
+		rq=find_node_radar_q(rnl->node);
+		if(!get_qspn_round(rnl->node, rq->final_rtt, me.cur_qspn_time,
 					me.cur_qspn_id,
 					(int*)new_gcount)) {
 			e=1;
@@ -1181,14 +1206,15 @@ int hook_get_free_nodes(int hook_level, struct free_nodes_hdr *fn_hdr,
 		}
 	}	
 	if(!e) {
-		loginfo("It seems all the quadro_groups in this area are full or are not cooperating.");
-		loginfo("We are going to create a new gnode");
+		loginfo("It seems all the quadro_groups in this area are full "
+				"or are not cooperating.\n  "
+				"We are going to create a new gnode");
 		
 		create_new_qgroup(hook_level);
 		return 1;
 	}
 	
-	*ret_rq=rq;
+	*ret_rnl=rnl;
 
 	return 0;
 }
@@ -1259,7 +1285,7 @@ int hook_choose_new_ip(map_gnode *hook_gnode, int hook_level,
  * If a new gnode has been created, 1 is returned.
  */
 int hook_get_ext_map(int hook_level, int new_gnode, 
-		struct radar_queue *rq, struct free_nodes_hdr *fn_hdr, 
+		struct rnode_list *rnl, struct free_nodes_hdr *fn_hdr, 
 		map_gnode **old_ext_map, quadro_group *old_quadg)
 {
 	map_gnode **new_ext_map;
@@ -1267,7 +1293,7 @@ int hook_get_ext_map(int hook_level, int new_gnode,
 	/* 
 	 * Fetch the ext_map from the node who gave us the free nodes list. 
 	 */
-	if(!(new_ext_map=get_ext_map(rq->ip, rq->dev[0], &me.cur_quadg))) 
+	if(!(new_ext_map=get_ext_map(rnl->node, &me.cur_quadg))) 
 		fatal("None of the rnodes in this area gave me the extern map");
 	me.ext_map=new_ext_map;
 
@@ -1355,7 +1381,7 @@ void hook_get_int_map(void)
 			/* This node isn't part of our gnode, let's skip it */
 			continue; 
 
-		if((merg_map[imaps]=get_int_map(rq->ip, rq->dev[0], &new_root))) {
+		if((merg_map[imaps]=get_int_map(rq->node, &new_root))) {
 			merge_maps(me.int_map, merg_map[imaps], me.cur_node, new_root);
 			imaps++;
 		}
@@ -1390,7 +1416,7 @@ void hook_get_bnode_map(void)
 			continue; 
 		old_bnode_map=me.bnode_map;	
 		old_bnodes=me.bmap_nodes;
-		me.bnode_map=get_bnode_map(rq->ip, rq->dev[0], &me.bmap_nodes);
+		me.bnode_map=get_bnode_map(rq->node, &me.bmap_nodes);
 		if(me.bnode_map) {
 			bmap_levels_free(old_bnode_map, old_bnodes);
 			e=1;
@@ -1428,7 +1454,7 @@ void hook_get_igw(void)
 		
 		old_igws=me.igws;
 		old_igws_counter=me.igws_counter;
-		me.igws=get_internet_gws(rq->ip, rq->dev[0], &me.igws_counter);
+		me.igws=get_internet_gws(rq->node, &me.igws_counter);
 		if(me.igws) {
 			free_igws(old_igws, old_igws_counter, FAMILY_LVLS);
 			e=1;
@@ -1540,7 +1566,7 @@ void hook_finish(int new_gnode, struct free_nodes_hdr *fn_hdr)
  */
 int netsukuku_hook(map_gnode *hook_gnode, int hook_level)
 {	
-	struct radar_queue *rq=radar_q;
+	struct rnode_list *rnl=rlist;
 	struct free_nodes_hdr fn_hdr;
 	
 	inet_prefix gnode_ipstart, old_ip;
@@ -1574,7 +1600,7 @@ int netsukuku_hook(map_gnode *hook_gnode, int hook_level)
 	 */
 	qspn_backup_gcount(qspn_old_gcount, (int*)qspn_gnode_count);
 	new_gnode=hook_get_free_nodes(hook_level, &fn_hdr, fnodes, 
-			&gnode_ipstart, qspn_gnode_count, &rq);
+			&gnode_ipstart, qspn_gnode_count, &rnl);
 	if(new_gnode)
 		goto finish;
 
@@ -1587,7 +1613,7 @@ int netsukuku_hook(map_gnode *hook_gnode, int hook_level)
 	/*
 	 * Get the external map 
 	 */
-	new_gnode=hook_get_ext_map(hook_level, new_gnode, rq, &fn_hdr, 
+	new_gnode=hook_get_ext_map(hook_level, new_gnode, rnl, &fn_hdr, 
 			me.ext_map, &old_quadg);
 	if(new_gnode)
 		goto finish;

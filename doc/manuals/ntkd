@@ -20,8 +20,8 @@ DESCRIPTION
     all the network interfaces which are currently UP and it uses all of
     them to send and receive packets. If you want to force the daemon to use
     specific interfaces you should use the -i option. The ports it listens
-    to are: 269-udp, 269-tcp, 271-udp, 277-udp, 277-tcp. So be sure to open
-    them in the firewall.
+    to are: 269-udp, 269-tcp, 277-udp, 277-tcp. So be sure to open them in
+    the firewall.
 
     For more information about Netsukuku visit:
     <http://netsukuku.freaknet.org>

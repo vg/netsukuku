@@ -702,7 +702,7 @@ int andna_register_hname(lcl_cache *alcl, snsd_service *snsd_delete)
 	}
 	
 	err=send_rq(&pkt, 0, ANDNA_REGISTER_HNAME, 0, ACK_AFFERMATIVE, 1, &rpkt);
-	if(err==-1) {
+	if(err < 0) {
 		error("andna_register_hname(): Registration of \"%s\" to %s "
 				"failed.", alcl->hostname, ntop);
 		ERROR_FINISH(ret, -1, finish);
@@ -794,7 +794,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 		debug(DBG_SOFT, "Invalid signature of the 0x%x reg request", 
 				rpkt.hdr.id);
 		if(!forwarded_pkt)
-			ret=pkt_err(pkt, E_INVALID_SIGNATURE, 0);
+			pkt_err(pkt, E_INVALID_SIGNATURE, 0);
 		ERROR_FINISH(ret, -1, finish);
 	}
 
@@ -818,12 +818,12 @@ int andna_recv_reg_rq(PACKET rpkt)
 		debug(DBG_SOFT, "We are not the right (rounded)hash_gnode. "
 				"Rejecting the 0x%x reg request", rpkt.hdr.id);
 		if(!forwarded_pkt)
-			ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
+			pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
 		ERROR_FINISH(ret, -1, finish);
 	} else if(err == 1) {
 		if(!(req->flags & ANDNA_PKT_FORWARD)) {
 			if(!forwarded_pkt)
-				ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
+				pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
 			ERROR_FINISH(ret, -1, finish);
 		}
 
@@ -861,7 +861,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 					rpkt.hdr.id,
 					rq_strerror(E_ANDNA_CHECK_COUNTER));
 			if(!forwarded_pkt)
-				ret=pkt_err(pkt, E_ANDNA_CHECK_COUNTER, 0);
+				pkt_err(pkt, E_ANDNA_CHECK_COUNTER, 0);
 			ERROR_FINISH(ret, -1, finish);
 		}
 	}
@@ -876,7 +876,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 		debug(DBG_SOFT, "Registration rq 0x%x rejected: %s", 
 				rpkt.hdr.id, rq_strerror(E_ANDNA_QUEUE_FULL));
 		if(!forwarded_pkt)
-			ret=pkt_err(pkt, E_ANDNA_QUEUE_FULL, 0);
+			pkt_err(pkt, E_ANDNA_QUEUE_FULL, 0);
 		ERROR_FINISH(ret, -1, finish);
 	}
 	/***/
@@ -888,7 +888,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 				" mismatch %d > %d", rpkt.hdr.id, 
 				acq->hname_updates, req->hname_updates);
 		if(!forwarded_pkt)
-			ret=pkt_err(pkt, E_ANDNA_HUPDATE_MISMATCH, 0);
+			pkt_err(pkt, E_ANDNA_HUPDATE_MISMATCH, 0);
 		ERROR_FINISH(ret, -1, finish);
 	}
 	/**/
@@ -900,7 +900,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 		debug(DBG_SOFT, "Registration rq 0x%x rejected: %s", 
 			rpkt.hdr.id, rq_strerror(E_ANDNA_UPDATE_TOO_EARLY));
 		if(!forwarded_pkt)
-			ret=pkt_err(pkt, E_ANDNA_UPDATE_TOO_EARLY, 0);
+			pkt_err(pkt, E_ANDNA_UPDATE_TOO_EARLY, 0);
 		ERROR_FINISH(ret, -1, finish);
 	}
 	/**/
@@ -932,7 +932,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 			debug(DBG_SOFT, "Registration rq 0x%x rejected: couldn't unpack"
 					" the snsd llist", rpkt.hdr.id);
 			if(!forwarded_pkt)
-				ret=pkt_err(pkt, E_INVALID_REQUEST, 0);
+				pkt_err(pkt, E_INVALID_REQUEST, 0);
 			ERROR_FINISH(ret, -1, finish);
 		}
 
@@ -1070,6 +1070,7 @@ int andna_check_counter(PACKET pkt)
 	/* Throw it */
 	pkt.sk=0;  /* Create a new connection */
 	ret=send_rq(&pkt, 0, ANDNA_CHECK_COUNTER, 0, ACK_AFFERMATIVE, 1, &rpkt);
+	ret=(ret < 0) ? -1 : ret;
 
 finish:
 	pkt_free(&pkt, 1);
@@ -1140,7 +1141,7 @@ int andna_recv_check_counter(PACKET rpkt)
 		debug(DBG_SOFT, "Invalid signature of the 0x%x check "
 				"counter request", rpkt.hdr.id);
 		if(!forwarded_pkt)
-			ret=pkt_err(pkt, E_INVALID_SIGNATURE, 0);
+			pkt_err(pkt, E_INVALID_SIGNATURE, 0);
 		ERROR_FINISH(ret, -1, finish);
 	}
 
@@ -1166,12 +1167,12 @@ int andna_recv_check_counter(PACKET rpkt)
 				"Rejecting the 0x%x check_counter request",
 				rpkt.hdr.id);
 		if(!forwarded_pkt)
-			ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
+			pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
 		ERROR_FINISH(ret, -1, finish);
 	} else if(err == 1) {
 		if(!(req->flags & ANDNA_PKT_FORWARD)) {
 			if(!forwarded_pkt)
-				ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
+				pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
 			ERROR_FINISH(ret, -1, finish);
 		}
 
@@ -1193,7 +1194,7 @@ int andna_recv_check_counter(PACKET rpkt)
 				rq_to_str(rpkt.hdr.op), rpkt.hdr.id, 
 				rq_strerror(E_ANDNA_TOO_MANY_HNAME));
 		if(!forwarded_pkt)
-			ret=pkt_err(pkt, E_ANDNA_TOO_MANY_HNAME, 0);
+			pkt_err(pkt, E_ANDNA_TOO_MANY_HNAME, 0);
 		ERROR_FINISH(ret, -1, finish);
 	}
 
@@ -1204,7 +1205,7 @@ int andna_recv_check_counter(PACKET rpkt)
 			" mismatch %d > %d", rq_to_str(rpkt.hdr.op), rpkt.hdr.id,
 				old_updates, req->hname_updates);
 		if(!forwarded_pkt)
-			ret=pkt_err(pkt, E_ANDNA_HUPDATE_MISMATCH, 0);
+			pkt_err(pkt, E_ANDNA_HUPDATE_MISMATCH, 0);
 		ERROR_FINISH(ret, -1, finish);
 	} else if(!just_check) {
 		/* Touch the hname */
@@ -1424,14 +1425,15 @@ snsd_service *andna_resolve_hash(u_int hname_hash[MAX_IP_INT], int service,
 	
 	setzero(&rpkt, sizeof(PACKET));
 	err=send_rq(&pkt, 0, ANDNA_RESOLVE_HNAME, 0, ANDNA_RESOLVE_REPLY, 1, &rpkt);
-	if(err==-1) {
+	if(err < 0) {
 		debug(DBG_NORMAL, ERROR_MSG "Resolution of 0x%x failed.",
 				  ERROR_FUNC, pkt.hdr.id);
 		ERROR_FINISH(ret, 0, finish);
 	}
 
 	if(rpkt.hdr.sz <= ANDNA_RESOLVE_REPLY_PKT_SZ || 
-			rpkt.hdr.sz > SNSD_SERVICE_MAX_PACK_SZ)
+			rpkt.hdr.sz > (SNSD_SERVICE_MAX_PACK_SZ +
+					ANDNA_RESOLVE_REPLY_PKT_SZ))
 		ERROR_FINISH(ret, 0, finish);
 
 	/* 
@@ -1554,12 +1556,12 @@ int andna_recv_resolve_rq(PACKET rpkt)
 		debug(DBG_SOFT, "We are not the real (rounded)hash_gnode. "
 				"Rejecting the 0x%x resolve_hname request",
 				rpkt.hdr.id);
-		ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
-		goto finish;
+		pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
+		ERROR_FINISH(ret, -1, finish);
 	} else if(err == 1) {
 		if(!(req->flags & ANDNA_PKT_FORWARD)) {
-			ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
-			goto finish;
+			pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
+			ERROR_FINISH(ret, -1, finish);
 		}
 
 		/* Continue to forward the received pkt */
@@ -1599,8 +1601,8 @@ int andna_recv_resolve_rq(PACKET rpkt)
 		debug(DBG_SOFT, "Request %s (0x%x) rejected: %s", 
 				rq_to_str(rpkt.hdr.op), rpkt.hdr.id, 
 				rq_strerror(E_ANDNA_NO_HNAME));
-		ret=pkt_err(pkt, E_ANDNA_NO_HNAME, 0);
-		goto finish;
+		pkt_err(pkt, E_ANDNA_NO_HNAME, 0);
+		ERROR_FINISH(ret, -1, finish);
 	}
 	
 reply_resolve_rq:
@@ -1711,7 +1713,7 @@ lcl_cache *andna_reverse_resolve(inet_prefix ip)
 	pkt_addtimeout(&pkt, ANDNA_REV_RESOLVE_RQ_TIMEOUT, 1, 1);
 	
 	err=send_rq(&pkt, 0, ANDNA_RESOLVE_IP, 0, ANDNA_REV_RESOLVE_REPLY, 1, &rpkt);
-	if(err==-1) {
+	if(err < 0) {
 		error(ERROR_MSG "Reverse resolution of the %s "
 				"ip failed.", ERROR_FUNC, inet_to_str(to));
 		ERROR_FINISH(ret, 0, finish);
@@ -1757,8 +1759,8 @@ int andna_recv_rev_resolve_rq(PACKET rpkt)
 
 	/* Build the list of registered hnames */
 	if(!(pkt.msg=pack_lcl_cache(alcl, &pkt.hdr.sz))) {
-		ret=pkt_err(rpkt, E_ANDNA_NO_HNAME, 0);
-		goto finish;
+		pkt_err(rpkt, E_ANDNA_NO_HNAME, 0);
+		ERROR_FINISH(ret, -1, finish);
 	}
 
 	debug(DBG_INSANE, "Reverse resolve request 0x%x accepted", rpkt.hdr.id);
@@ -1771,7 +1773,7 @@ int andna_recv_rev_resolve_rq(PACKET rpkt)
 	pkt_addsk(&pkt, my_family, rpkt.sk, rpkt.sk_type);
 	pkt_addcompress(&pkt);
         err=send_rq(&pkt, 0, ANDNA_REV_RESOLVE_REPLY, rpkt.hdr.id, 0, 0, 0);
-        if(err==-1)
+        if(err < 0)
 		ERROR_FINISH(ret, -1, finish);
 finish:
 	pkt_free(&pkt, 0);
@@ -1839,7 +1841,7 @@ andna_cache *get_single_andna_c(u_int hash[MAX_IP_INT],
 	ntop=inet_to_str(pkt.to);
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(ANDNA_GET_SINGLE_ACACHE), ntop);
 	err=send_rq(&pkt, 0, ANDNA_GET_SINGLE_ACACHE, 0, ACK_AFFERMATIVE, 1, &rpkt);
-	if(err==-1)
+	if(err < 0)
 		ERROR_FINISH(ret, 0, finish);
 
 	/* Unpack the waited reply */
@@ -1903,8 +1905,8 @@ int put_single_acache(PACKET rpkt)
 		debug(DBG_NOISE, "Malformed GET_SINGLE_ACACHE pkt: %d, %d, %d",
 			rpkt.hdr.sz, SINGLE_ACACHE_PKT_SZ(req_hdr->hgnodes),
 			req_hdr->hgnodes);
-		ret=pkt_err(pkt, E_INVALID_REQUEST, 0);
-		goto finish;
+		pkt_err(pkt, E_INVALID_REQUEST, 0);
+		ERROR_FINISH(ret, -1, finish);
 	}
 
 	/* Unpack the hash_gnodes to exclude */
@@ -1927,8 +1929,8 @@ int put_single_acache(PACKET rpkt)
 		debug(DBG_SOFT, "We are not the real (rounded)hash_gnode. "
 				"Rejecting the 0x%x get_single_acache request",
 				rpkt.hdr.id);
-		ret=pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
-		goto finish;
+		pkt_err(pkt, E_ANDNA_WRONG_HASH_GNODE, 0);
+		ERROR_FINISH(ret, -1, finish);
 	} else if(err == 1) {
 		/* Continue to forward the received pkt */
 		debug(DBG_SOFT, "The 0x%x rq pkt will be forwarded "
@@ -1985,8 +1987,8 @@ int put_single_acache(PACKET rpkt)
 		debug(DBG_SOFT, "Request %s (0x%x) rejected: %s", 
 				rq_to_str(rpkt.hdr.op), rpkt.hdr.id, 
 				rq_strerror(E_ANDNA_NO_HNAME));
-		ret=pkt_err(pkt, E_ANDNA_NO_HNAME, 0);
-		goto finish;
+		pkt_err(pkt, E_ANDNA_NO_HNAME, 0);
+		ERROR_FINISH(ret, -1, finish);
 	}
 	
 	/*
@@ -2009,7 +2011,7 @@ int put_single_acache(PACKET rpkt)
 	debug(DBG_INSANE, "Reply put_single_acache to %s", ntop);
 	err=send_rq(&pkt, 0, ACK_AFFERMATIVE, rpkt.hdr.id, 0, 0, 0);
 	pkt_free(&pkt, 0);
-	if(err==-1) {
+	if(err < 0) {
 		error("put_andna_cache(): Cannot send the put_single_acache "
 				"reply to %s.", ntop);
 		ERROR_FINISH(ret, -1, finish);
@@ -2120,12 +2122,13 @@ finish:
 /*
  * get_andna_cache
  *
- * sends the ANDNA_GET_ANDNA_CACHE request to `to' to retrieve the
- * andna_cache from `to'.
+ * sends the ANDNA_GET_ANDNA_CACHE request to rnode `dst_rnode' to retrieve its
+ * andna_cache.
  */
-andna_cache *get_andna_cache(inet_prefix to, int *counter)
+andna_cache *get_andna_cache(map_node *dst_rnode, int *counter)
 {
 	PACKET pkt, rpkt;
+	inet_prefix to;
 	andna_cache *andna_cache, *ret=0;
 	size_t pack_sz;
 	int err;
@@ -2134,13 +2137,20 @@ andna_cache *get_andna_cache(inet_prefix to, int *counter)
 	
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
-	
-	ntop=inet_to_str(to);
-	
+
+	if((pkt.sk=rnl_get_sk(rlist, dst_rnode)) <= 0) {
+		error(ERROR_MSG "Couldn't get the socket associated "
+				"to dst_rnode", ERROR_FUNC);
+		ERROR_FINISH(ret, 0, finish);
+	}
+	inet_getpeername(pkt.sk, &to, 0);
 	pkt_addto(&pkt, &to);
+	ntop=inet_to_str(to);
+
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(ANDNA_GET_ANDNA_CACHE), ntop);
-	err=send_rq(&pkt, 0, ANDNA_GET_ANDNA_CACHE, 0, ANDNA_PUT_ANDNA_CACHE, 1, &rpkt);
-	if(err==-1) {
+	err=rnl_send_rq(dst_rnode, &pkt, 0, ANDNA_GET_ANDNA_CACHE, 0, 
+			ANDNA_PUT_ANDNA_CACHE, 1, &rpkt);
+	if(err < 0) {
 		ret=0;
 		goto finish;
 	}
@@ -2184,7 +2194,7 @@ int put_andna_cache(PACKET rq_pkt)
 	pkt.hdr.sz=pkt_sz;
 	debug(DBG_INSANE, "Reply %s to %s", re_to_str(ANDNA_PUT_ANDNA_CACHE), ntop);
 	err=send_rq(&pkt, 0, ANDNA_PUT_ANDNA_CACHE, rq_pkt.hdr.id, 0, 0, 0);
-	if(err==-1) {
+	if(err < 0) {
 		error("put_andna_cache(): Cannot send the ANDNA_PUT_ANDNA_CACHE reply to %s.", ntop);
 		ERROR_FINISH(ret, -1, finish);
 	}
@@ -2195,12 +2205,15 @@ finish:
 
 
 /*
- * get_counter_cache: sends the ANDNA_GET_COUNT_CACHE request to `to' to retrieve the
- * counter_cache from `to'.
+ * get_counter_cache
+ * 
+ * sends the ANDNA_GET_COUNT_CACHE request to rnode `dst_rnode' to retrieve its
+ * counter_cache.
  */
-counter_c *get_counter_cache(inet_prefix to, int *counter)
+counter_c *get_counter_cache(map_node *dst_rnode, int *counter)
 {
 	PACKET pkt, rpkt;
+	inet_prefix to;
 	counter_c *ccache, *ret=0;
 	size_t pack_sz;
 	int err;
@@ -2210,12 +2223,19 @@ counter_c *get_counter_cache(inet_prefix to, int *counter)
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
 	
-	ntop=inet_to_str(to);
-	
+	if((pkt.sk=rnl_get_sk(rlist, dst_rnode)) <= 0) {
+		error(ERROR_MSG "couldn't get the socket associated "
+				"to dst_rnode", ERROR_FUNC);
+		ERROR_FINISH(ret, 0, finish);
+	}
+	inet_getpeername(pkt.sk, &to, 0);
 	pkt_addto(&pkt, &to);
+	ntop=inet_to_str(to);
+
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(ANDNA_GET_COUNT_CACHE), ntop);
-	err=send_rq(&pkt, 0, ANDNA_GET_COUNT_CACHE, 0, ANDNA_PUT_COUNT_CACHE, 1, &rpkt);
-	if(err==-1) {
+	err=rnl_send_rq(dst_rnode, &pkt, 0, ANDNA_GET_COUNT_CACHE, 0,
+			ANDNA_PUT_COUNT_CACHE, 1, &rpkt);
+	if(err < 0) {
 		ret=0;
 		goto finish;
 	}
@@ -2256,7 +2276,7 @@ int put_counter_cache(PACKET rq_pkt)
 	pkt.hdr.sz=pkt_sz;
 	debug(DBG_INSANE, "Reply %s to %s", re_to_str(ANDNA_PUT_COUNT_CACHE), ntop);
 	err=send_rq(&pkt, 0, ANDNA_PUT_COUNT_CACHE, rq_pkt.hdr.id, 0, 0, 0);
-	if(err==-1) {
+	if(err < 0) {
 		error("put_counter_cache(): Cannot send the ANDNA_PUT_COUNT_CACHE reply to %s.", ntop);
 		ERROR_FINISH(ret, -1, finish);
 	}
@@ -2304,11 +2324,7 @@ void *andna_hook(void *null)
 		if(!node || node->flags & MAP_ERNODE)
 			continue;
 
-		/* We need the ip of the rnode ;^ */
-		rnodetoip((u_int)me.int_map, (u_int)node, 
-				me.cur_quadg.ipstart[1], &to);
-		
-		andna_c=get_andna_cache(to, &andna_c_counter);
+		andna_c=get_andna_cache(node, &andna_c_counter);
 		if(andna_c) {
 			e=1;
 			break;
@@ -2326,11 +2342,7 @@ void *andna_hook(void *null)
 		if(!node || node->flags & MAP_ERNODE)
 			continue;
 		
-		/* We need the ip of the rnode ;^ */
-		rnodetoip((u_int)me.int_map, (u_int)node, 
-				me.cur_quadg.ipstart[1], &to);
-		
-		andna_counter_c=get_counter_cache(to, &cc_counter);
+		andna_counter_c=get_counter_cache(node, &cc_counter);
 		if(andna_counter_c) {
 			e=1;
 			break;

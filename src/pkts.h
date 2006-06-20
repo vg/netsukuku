@@ -26,10 +26,12 @@
 #define NETSUKUKU_ID		"ntk"
 #define MAXMSGSZ		65536
 
-/* 
- * Pkt's op definitions:
- * The requests and replies are in request.h
- */
+/*\
+ *
+ * Pkt's op definitions
+ * (The requests and replies are in request.h)
+ *
+\*/
 
 /* Pkt.sk_type */
 #define SKT_TCP 		1
@@ -45,6 +47,7 @@
 #define PKT_SET_LOWDELAY	(1<<3)
 #define PKT_COMPRESSED		(1<<4)	/* If set the packet will be Z 
 					   compressed before being sent */
+#define PKT_KEEPALIVE		(1<<5)  /* Let the pkt.sk socket be alive */
 
 /* 
  * Pkt.hdr flags 
@@ -239,7 +242,20 @@ int pkt_tcp_connect(inet_prefix *host, short port, interface *dev);
 
 void pkt_fill_hdr(pkt_hdr *hdr, u_char flags, int id, u_char op, size_t sz);
 
-int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int check_ack, PACKET *rpkt);
+#define SEND_RQ_ERR		-1
+#define SEND_RQ_ERR_RQ		-2
+#define SEND_RQ_ERR_RE		-3
+#define SEND_RQ_ERR_PORT	-4
+#define SEND_RQ_ERR_TO		-5
+#define SEND_RQ_ERR_CONNECT	-6
+#define SEND_RQ_ERR_SEND	-7
+#define SEND_RQ_ERR_RECV	-8
+#define SEND_RQ_ERR_RECVOP	-9
+#define SEND_RQ_ERR_RECVID	-10
+#define SEND_RQ_ERR_REPLY	-11
+int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, 
+		int check_ack, PACKET *rpkt);
+
 int forward_pkt(PACKET rpkt, inet_prefix to);
 int pkt_err(PACKET pkt, u_char err, int free_pkt);
 

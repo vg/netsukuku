@@ -7,14 +7,17 @@
 * (generally these TODOs are already being implemented at the moment)
 
 - Sharing willingness: http://lab.dyne.org/Ntk_IGS
+	- active sharing if:
+		- there's another which is sharing
+		- there's another which is willingly to share (and wait some
+		  time in this case)
+	- disable if:
+		- there are no more sharer
 
 - pkts.c: input_buffer, output_buffer for all the connections: we use them as
 	  queue for the incoming and outcoming packets.
 	  
-- Keep an active tcp connection for each rnode. These sockets will be used to
-  send the majority of packets. (use keepalive)
-  The socket shall be saved in the "struct rnode_list" relative to the rnode.
-  	- minimize the use of UDP. Use the UDP only for the radar?
+- minimize the use of UDP. Use the UDP only for the radar?
 
 - restore the network when NetsukukuD is closed (call /etc/rc.d/rc.inet1 ?)
 

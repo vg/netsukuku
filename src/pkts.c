@@ -482,7 +482,7 @@ int pkt_tcp_connect(inet_prefix *host, short port, interface *dev)
 	ntop=inet_to_str(*host);
 	memset(&pkt, '\0', sizeof(PACKET));
 	
-	if((sk=new_tcp_conn(host, port, dev->dev_name))==-1)
+	if((sk=new_tcp_conn(host, port, dev?dev->dev_name:0))==-1)
 		goto finish;
 	
 	/*
@@ -501,11 +501,12 @@ int pkt_tcp_connect(inet_prefix *host, short port, interface *dev)
 	}
 	
 	/* ...Last famous words */
-	if(pkt.hdr.op==ACK_NEGATIVE) {
+	if(pkt.hdr.op != ACK_AFFERMATIVE) {
 		u_char err;
 		
 		memcpy(&err, pkt.msg, pkt.hdr.sz);
-		error("Cannot connect to %s:%d: %s", ntop, port, rq_strerror(err));
+		error("Cannot connect to %s:%d: %s", 
+				ntop, port, rq_strerror(err));
 		sk=-1;
 		goto finish;
 	}
@@ -571,9 +572,11 @@ void add_pkt_op(u_char op, char sk_type, u_short port, int (*exec_f)(PACKET pkt)
  * the device named `pkt'->dev->dev_name.
  *
  *
- * On failure -1 is returned, otherwise 0.
+ * On failure a negative value is returned, otherwise 0.
+ * The error values are defined in pkts.h.
  */
-int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int check_ack, PACKET *rpkt)
+int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, 
+		int check_ack, PACKET *rpkt)
 {
 	ssize_t err;
 	int ret=0;
@@ -584,7 +587,7 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 
 	if(op_verify(rq)) {
 		error("\"%s\" request/reply is not valid!", rq_str);
-		return -1;
+		return SEND_RQ_ERR_RQ;
 	}
 
 	if(!re_verify(rq))
@@ -594,7 +597,7 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 
 	if(re && re_verify(re)) {
 		error("\"%s\" reply is not valid!", re_str);
-		return -1;
+		return SEND_RQ_ERR_RE;
 	}
 
 
@@ -612,7 +615,7 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 		if(!pkt_op_tbl[rq].port && !pkt->sk) {
 			error("send_rq: The rq %s doesn't have an associated "
 					"port.", rq_str);
-			ERROR_FINISH(ret, -1, finish);
+			ERROR_FINISH(ret, SEND_RQ_ERR_PORT, finish);
 		}
 		pkt_addport(pkt, pkt_op_tbl[rq].port);
 	}
@@ -626,7 +629,7 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 
 		if(!pkt->to.family || !pkt->to.len) {
 			error("pkt->to isn't set. I can't create the new connection");
-			ERROR_FINISH(ret, -1, finish);
+			ERROR_FINISH(ret, SEND_RQ_ERR_TO, finish);
 		}
 		
 		if(pkt->sk_type==SKT_TCP)
@@ -643,7 +646,7 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 
 		if(pkt->sk==-1) {
 			error("Couldn't connect to %s to launch the %s request", ntop, rq_str);
-			ERROR_FINISH(ret, -1, finish);
+			ERROR_FINISH(ret, SEND_RQ_ERR_CONNECT, finish);
 		}
 	}
 
@@ -655,7 +658,7 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 	err=pkt_send(pkt);
 	if(err==-1) {
 		error("Cannot send the %s request to %s:%d.", rq_str, ntop, pkt->port);
-		ERROR_FINISH(ret, -1, finish);
+		ERROR_FINISH(ret, SEND_RQ_ERR_SEND, finish);
 	}
 
 	/* * * the reply * * */
@@ -695,7 +698,7 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 		if(err==-1) {
 			error("Error while receving the reply for the %s request"
 					" from %s.", rq_str, ntop);
-			ERROR_FINISH(ret, -1, finish);
+			ERROR_FINISH(ret, SEND_RQ_ERR_RECV, finish);
 		}
 
 		if((rpkt->hdr.op == ACK_NEGATIVE) && check_ack) {
@@ -703,18 +706,18 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, int che
 			memcpy(&err_ack, rpkt->msg, sizeof(u_char));
 			error("%s failed. The node %s replied: %s", rq_str, ntop, 
 					rq_strerror(err_ack));
-			ERROR_FINISH(ret, -1, finish);
+			ERROR_FINISH(ret, SEND_RQ_ERR_REPLY, finish);
 		} else if(rpkt->hdr.op != re && check_ack) {
 			error("The node %s replied %s but we asked %s!", ntop, 
 					re_to_str(rpkt->hdr.op), re_str);
-			ERROR_FINISH(ret, -1, finish);
+			ERROR_FINISH(ret, SEND_RQ_ERR_RECVOP, finish);
 		}
 
 		if(check_ack && rpkt->hdr.id != pkt->hdr.id) {
 			error("The id (0x%x) of the reply (%s) doesn't match the"
 					" id of our request (0x%x)", rpkt->hdr.id,
 					re_str, pkt->hdr.id);
-			ERROR_FINISH(ret, -1, finish);
+			ERROR_FINISH(ret, SEND_RQ_ERR_RECVID, finish);
 		}
 	}
 

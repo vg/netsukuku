@@ -120,25 +120,6 @@ iproute2 userspace utility.
 When the daemon is closed the traffic shaping will be disabled with
 "/etc/netsukuku/tc_shaper.sh close".
 
-=== Sharing willingness ===
-
-If your ISP isn't very kind, it might decide to ban you because your sharing
-your Internet connection.
-It's a pity, but it is for your ISP, not for you, that's because probably
-someone is also sharing its Inet connection and you can use it too.
-
-What if you want to be completely sure that you'll have a backup connection?
-An idea would be to share your Inet connection only when you're sure that you
-can reach someone which is doing the same. In this way you won't share it
-when you are still alone in your area and you can't contact other Netsukuku
-nodes. This is a good compromise: until another node doesn't guarantees you a
-backup connection, you won't share your.
-
-This can be done automatically by activating the `share_on_backup' option in
-netsukuku.conf. NetsukukuD will start to share your Internet connection _only_
-when it will be in contact with another node which is sharing, or it is willingly
-to share, its own connection.
-
 === See also ===
 
 For more information on the necessity of using ipip tunnels in an adhoc

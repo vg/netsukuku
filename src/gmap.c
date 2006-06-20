@@ -143,6 +143,15 @@ void rnodetoip(u_int mapstart, u_int maprnode, inet_prefix ipstart,
 		maptoip(mapstart, maprnode, ipstart, ret);
 }
 
+const char *rnode_to_ipstr(u_int mapstart, u_int maprnode, inet_prefix ipstart)
+{
+	inet_prefix ip;
+	
+	rnodetoip(mapstart, maprnode, ipstart, &ip);
+
+	return inet_to_str(ip);
+}
+
 /* 
  * iptogid
  * 

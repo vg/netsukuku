@@ -259,14 +259,9 @@ int andna_recv_rev_resolve_rq(PACKET rpkt);
 
 int spread_single_acache(u_int hash[MAX_IP_INT]);
 int recv_spread_single_acache(PACKET rpkt);
-
-andna_cache *get_single_andna_c(u_int hash[MAX_IP_INT],	u_int hash_gnode[MAX_IP_INT]);
+andna_cache *get_single_andna_c(u_int hash[MAX_IP_INT], u_int hash_gnode[MAX_IP_INT]);
 int put_single_acache(PACKET rpkt);
-
-andna_cache *get_andna_cache(inet_prefix to, int *counter);
 int put_andna_cache(PACKET rq_pkt);
-
-counter_c *get_counter_cache(inet_prefix to, int *counter);
 int put_counter_cache(PACKET rq_pkt);
 
 void *andna_hook(void *);

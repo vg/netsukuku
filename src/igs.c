@@ -257,7 +257,8 @@ void init_my_igws(inet_gw **igws, int *igws_counter,
 		}
 		
 		igw=igw_add_node(igws, igws_counter, i, qg->gid[i],
-				node, (int*)qg->ipstart[0].data, (u_char)bw_mean);
+				node, (int*)qg->ipstart[0].data, 
+				(u_char)bw_mean);
 		my_igws[i]=igw;
 	}
 	
@@ -580,7 +581,7 @@ int igw_del_node(inet_gw **igws, int *igws_counter,  int level,
  * igw_update_gnode_bw: 
  * call this function _after_ adding and _before_ deleting the `igw->node' node
  * from the me.igws llist. This fuctions will update the `bandwidth' value of
- * the inet_gw which points to out (g)nodes.
+ * the inet_gw which points to our (g)nodes.
  * Use `new'=1 if you are adding the node, otherwise use 0.
  */
 void igw_update_gnode_bw(int *igws_counter, inet_gw **my_igws, inet_gw *igw,
@@ -826,7 +827,7 @@ void *igw_monitor_igws_t(void *null)
 					for(l=i, old_igw=igw; l<me.cur_quadg.levels; l++) {
 						igw_del(me.igws, me.igws_counter, old_igw, l);
 						if(l+1 < me.cur_quadg.levels)
-							old_igw=igw_find_ip(me.igws, l+1,(u_int*) ip);
+							old_igw=igw_find_ip(me.igws, l+1, (u_int *)ip);
 					}
 
 					igw_replace_def_igws(me.igws, me.igws_counter,
@@ -1259,8 +1260,10 @@ char *igw_build_bentry(u_char level, size_t *pack_sz, int *new_bblocks)
 }
 
 /*
- * igw_store_bblock: it creates an inet_gw struct in me.igws using the bblock
- * contained in `bchunk'. The hdr of the bblock is `bblock_hdr'.
+ * igw_store_bblock
+ * 
+ * It creates an inet_gw struct in me.igws using the bblock contained in 
+ * `bchunk'. The hdr of the bblock is `bblock_hdr'.
  * The bblock has been packed using igw_build_bentry().
  * `level' is the level where the qspn_pkt which carries the bblock is being
  * spread. 

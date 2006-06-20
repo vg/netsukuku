@@ -375,6 +375,93 @@ interface *rnl_get_rand_dev(struct rnode_list *rnlist, map_node *node)
 }
 
 /*
+ * rnl_get_sk
+ *
+ * It returns the tcp socket associated to rnode `node'.
+ * If the socket is set to zero, it tries to create a tcp connection to 
+ * `node' to the `ntk_tcp_port' port.
+ *
+ * On error -1 is returned.
+ */
+int rnl_get_sk(struct rnode_list *rnlist, map_node *node)
+{
+	struct rnode_list *rnl;
+
+	if(!(rnl=rnl_find_node(rnlist, node)))
+		return -1;
+
+	if(!rnl->tcp_sk) {
+		inet_prefix to;
+		int i;
+
+		rnodetoip((u_int)me.int_map, (u_int)node,
+				me.cur_quadg.ipstart[1], &to);
+
+		/* Try to connect using the `i'th device. If it fails, try
+		 * another device */
+		for(i=0; i < rnl->dev_n && rnl->tcp_sk <= 0; i++)
+			rnl->tcp_sk=pkt_tcp_connect(&to, ntk_tcp_port,
+					rnl->dev[i]);
+
+		/* If the socket is connected, set it to keepalive */
+		if((rnl->tcp_sk = (rnl->tcp_sk <= 0) ? 0 : rnl->tcp_sk))
+			set_keepalive_sk(rnl->tcp_sk);
+		
+	}
+	
+	return rnl->tcp_sk > 0 ? rnl->tcp_sk : -1;
+}
+
+/*
+ * rnl_set_sk
+ *
+ * It sets the socket associated to rnode `node' to `sk'
+ */
+void rnl_set_sk(struct rnode_list *rnlist, map_node *node, int sk)
+{
+	struct rnode_list *rnl;
+
+	if(!(rnl=rnl_find_node(rnlist, node)))
+		return;
+
+	rnl->tcp_sk=sk;
+}
+
+/*
+ * rnl_send_rq
+ *
+ * It is a wrapper to send_rq. It is used to send or receive a packet to/from
+ * the specified `rnode'.
+ *
+ * On error -1 is returned.
+ */
+int rnl_send_rq(map_node *rnode, 
+		PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, 
+		int check_ack, PACKET *rpkt)
+{
+	int ret, tries=0;
+
+retry:
+	if((pkt->sk=rnl_get_sk(rlist, rnode)) < 0)
+		return -1;
+
+	ret=send_rq(pkt, pkt_flags, rq, rq_id, re, check_ack, rpkt);
+	if((ret == SEND_RQ_ERR_CONNECT || ret == SEND_RQ_ERR_SEND || 
+		ret == SEND_RQ_ERR_RECV)) {
+
+		/* The socket has been corrupted, set it to 0 and try again */
+		close(pkt->sk);
+		rnl_set_sk(rlist, rnode, 0);
+		
+		tries++;
+		if(tries < 2)
+			goto retry;
+	}
+
+	return ret;
+}
+
+/*
  * is_rnode_allowed
  * 
  * it verifies if the rnode described by the `rip' IP is 
@@ -1041,21 +1128,21 @@ radar_queue *add_radar_q(PACKET pkt)
 	else
 		rq=find_ip_radar_q(&pkt.from);
 	
-	/* If pkt.from isn't already in the queue, add it. */
 	if(!rq) { 
+		/* 
+		 * If pkt.from isn't already in the queue, add it. 
+		 */
+
 		rq=xzalloc(sizeof(struct radar_queue));
 		
 		if(ret)
 			rq->node=(map_node *)RADQ_EXT_RNODE;
 		else {
 			rq->node=rnode;
-			/* 
-			 * This pkt has been sent from another hooking
-			 * node, let's remember this.
-			 */
+			/* This pkt has been sent from another hooking
+			 * node, let's remember this. */
 			if(pkt.hdr.flags & HOOK_PKT)
 				rq->node->flags|=MAP_HNODE;
-
 		}
 
 		if(pkt.hdr.flags & HOOK_PKT)
@@ -1267,7 +1354,7 @@ int radar_scan(int activate_qspn)
 				memcpy(pkt.msg, &echo_scan, sizeof(u_char));
 
 			err=send_rq(&pkt, 0, ECHO_ME, my_echo_id, 0, 0, 0);
-			if(err==-1) {
+			if(err < 0) {
 				if(errno == ENODEV) {
 					/* 
 					 * The me.cur_ifs[d] device doesn't
@@ -1414,7 +1501,7 @@ int radard(PACKET rpkt)
 	/* We send it */
 	err=send_rq(&pkt, 0, ECHO_REPLY, rpkt.hdr.id, 0, 0, 0);
 	pkt_free(&pkt, 0);
-	if(err==-1) {
+	if(err < 0) {
 		error("radard(): Cannot send back the ECHO_REPLY to %s.", ntop);
 		return -1;
 	}

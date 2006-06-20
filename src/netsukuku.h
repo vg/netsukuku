@@ -36,44 +36,59 @@
  */
 struct current_globals
 {
-	/* int map */
+	/* 
+	 * Internal map 
+	 */
 	map_node	*int_map;	/*Internal Map*/
 	
-	/* ext map */
+	/* 
+	 * External map 
+	 */
 	map_gnode	**ext_map;	/*External Map. */
 	quadro_group	cur_quadg;
 	
-	/* border nodes maps.(bmap.h) */
+	/* 
+	 * Border nodes maps.(bmap.h) 
+	 */
 	map_bnode	**bnode_map;
 	u_int 		*bmap_nodes;		/* bnode counter for each map*/
 	u_int		*bmap_nodes_closed;	/* number of closed bnodes   */
 	u_int		*bmap_nodes_opened;	/*   "     " opened   "      */
 	
-	/* Me ^_- */
+	/* 
+	 * Myself
+	 */
 	inet_prefix	cur_ip;
 	map_node	*cur_node;
 
-	/* external rnode cache list. (see gmap.h) */
+	/* 
+	 * external rnode cache list. (see gmap.h) 
+	 */
 	ext_rnode_cache	*cur_erc;
 	u_int		cur_erc_counter;
 
-	/* Current Qspn id and qspn time */
+	/* 
+	 * Current Qspn id and qspn time 
+	 */
 	int		*cur_qspn_id;	/*The current qspn_id we are processing. 
 					  It is cur_qspn_id[levels] big*/
 	struct timeval	*cur_qspn_time; /*When the last qspn round was received/sent 
 					  (gettimeofday format)*/
-
-	/* Internet gateways */
+	/*
+	 * Internet gateways 
+	 */
 	inet_gw		**igws;
 	int		*igws_counter;
-	inet_gw		**my_igws;	/* my_igws[level] points to our inet gateway 
+	inet_gw		**my_igws;	/* my_igws[level] points to our inet gateway
 					   present at igws[level]. It's the same of using
 					   igw_find_node(igws, me.cur_quadg.gnode[_EL(level)]); */
 	u_char		my_bandwidth;	/* The bandwidth of the Internet connection 
 					   we are sharing*/
 	u_char		inet_connected; /* If it is 1, we are connected to the Internet */
 	
-	/* Network interfaces */
+	/* 
+	 * Network interfaces 
+	 */
 	interface	cur_ifs[MAX_INTERFACES];
 	int		cur_ifs_n;	/* number of interfaces present
 					   in `cur_ifs' */
@@ -83,15 +98,13 @@ struct current_globals
 					  time(0)-me.uptime*/
 }me;
 
-#define NTK_UDP_PORT 	   	269
 #define NTK_TCP_PORT		269
-#define NTK_UDP_RADAR_PORT	271
+#define NTK_UDP_RADAR_PORT	269
 
 #define ANDNA_UDP_PORT 	   	277
 #define ANDNA_TCP_PORT		277
 
-const static u_short ntk_udp_port 	= NTK_UDP_PORT, 
-		     ntk_udp_radar_port	= NTK_UDP_RADAR_PORT,
+const static u_short ntk_udp_radar_port	= NTK_UDP_RADAR_PORT,
 		     ntk_tcp_port	= NTK_TCP_PORT;
 const static u_short andna_udp_port	= ANDNA_UDP_PORT,
 		     andna_tcp_port	= ANDNA_TCP_PORT;

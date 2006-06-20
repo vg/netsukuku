@@ -753,13 +753,6 @@ int main(int argc, char **argv)
 	pthread_mutex_init(&udp_daemon_lock, 0);
 	pthread_mutex_init(&tcp_daemon_lock, 0);
 
-	debug(DBG_SOFT,   "Evoking the netsukuku udp daemon.");
-	ud_argv.port=ntk_udp_port;
-	pthread_mutex_lock(&udp_daemon_lock);
-	pthread_create(&daemon_udp_thread, &t_attr, udp_daemon, (void *)&ud_argv);
-	pthread_mutex_lock(&udp_daemon_lock);
-	pthread_mutex_unlock(&udp_daemon_lock);
-
 	debug(DBG_SOFT,   "Evoking the netsukuku udp radar daemon.");
 	ud_argv.port=ntk_udp_radar_port;
 	pthread_mutex_lock(&udp_daemon_lock);

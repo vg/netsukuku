@@ -30,7 +30,7 @@
 #define IGS_MULTI_GW
 #endif
 
-/*
+/*\
  *		 	* Bandwidth notes *
  *
  * When we talk of `bandwidth' we mean the average of the download and 
@@ -40,7 +40,7 @@
  * 
  * Internally we save the `bandwidth' as a u_char variable using the
  * `bandwidth_in_8bit' function (see igs.c)
- */
+\*/
 
 /* Minum bandwidth necessary to share an internet connection */
 #define MIN_CONN_BANDWIDTH	3		/* 16 Kb/s */
@@ -79,8 +79,10 @@
 						   present */
 
 /*
- * internet_gateway: this struct points to a particular (g)node which is
- * sharing its Internet connection
+ * internet_gateway
+ * 
+ * This struct points to a particular (g)node which is sharing its Internet 
+ * connection
  */
 struct internet_gateway
 {
@@ -124,13 +126,17 @@ INT_INFO inet_gw_pack_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { MAX_LEVELS }
 						INET_GW_PACK_SZ*MAXIGWS*(levels))
 
 
-/*
+/*\
+ *
  *  *  *  Multi Internet Gateways  *  *  *
- */
+ *
+\*/
 
 /*
- * igw_nexthop: the multigw allows the simultaneus use of multiple internet
- * gateways. The multigw requires one routing table and one tunnel for each
+ * igw_nexthop
+ * 
+ * The multigw allows the simultaneus use of multiple internet gateways.
+ * The multigw requires one routing table and one tunnel for each
  * nexthop in the default multipath route. With an array of `igw_nexthop' we
  * keep track of them.
  */
@@ -148,7 +154,7 @@ struct default_inet_gw_nexthop {
 typedef struct default_inet_gw_nexthop igw_nexthop;
 
 
-/*
+/*\
  * 		Notes on the IGW packed in a qspn pkt
  *
  * The simplest way to tell the other nodes that we are sharing our Internet
@@ -156,25 +162,32 @@ typedef struct default_inet_gw_nexthop igw_nexthop;
  * bnode block included in the qspn packets.
  * We consider an Internet gw as a bnode connected to a virtual gnode (the
  * Internet), therefore in the relative bnode_chunk we set:
- * 	bchunk.gnode	= 0;	This value, in this case doesn't matter at all
+ * 	bchunk.gnode	= 0; this value has no meaning
  *	bchunk.level	= GET_LEVELS(my_family) + 1;
  *	bchunk.rtt	= the bandwidth of the internet connection of the gw.
  *			  It is in the bandwidth_in_8bit() format.
- */
+\*/
 
-#define MAX_IGW_PER_QSPN_CHUNK		16
+#define MAX_IGW_PER_QSPN_CHUNK		16	/* Maximum number of IGWs 
+						   contained in a single 
+						   QSPN chunk */
 
 
-/*
+/*\
+ *
  * * *  Globals  * * *
- */
+ *
+\*/
 
 int active_gws;
 igw_nexthop multigw_nh[MAX_MULTIPATH_ROUTES];
 
-/*
+
+/*\
+ *
  * * *  Functions declaration  * * 
- */
+ *
+\*/
 
 u_char bandwidth_in_8bit(u_int x);
 int str_to_inet_gw(char *str, inet_prefix *gw, char **dev);

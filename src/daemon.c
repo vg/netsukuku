@@ -440,9 +440,6 @@ void *tcp_daemon(void *door)
 				close(fd);
 				continue;
 			} else {
-				/*
-				 * debug(DBG_NORMAL, "ACPT: Accept_tbl ok! accept_idx: %d "
-						"from %s", accept_idx, ntop); */
 				/* 
 				 * Ok, the connection is good, send back the
 				 * ACK_AFFERMATIVE.

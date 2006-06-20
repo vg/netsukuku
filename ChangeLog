@@ -7,6 +7,16 @@ New features:
 	* When we have multiple interfaces to reach the same rnode, send the
 	  QSPN packets from a random device, each time.
 
+	* An active tcp socket is kept for each rnode, in this way, it is
+	  possible to send them tcp packets without the need of estabilishing
+	  a new tcp connection each time.
+	
+	* The qspn packets are now sent using the tcp sockets described above.
+
+	* Since the UDP isn't used anymore for ntk packets, the udp daemon has
+	  been removed. The udp port of the radar daemon is now 269/udp.
+	  The 271/udp port has been deprecated.
+
 Bug fixes:
 	
 	* gcc-4 compilation warnings fixed.

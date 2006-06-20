@@ -395,9 +395,12 @@ int inet_validate_ip(inet_prefix ip)
 	return 0;
 }
 
-/*
- * * *  Conversion functions...  * * *
- */
+
+/*\
+ *
+ *  *  *  Conversion functions...  *  * 
+ * 
+\*/
 
 /*
  * ipraw_to_str: It returns the string which represents the given ip in host
@@ -537,6 +540,11 @@ int sockaddr_to_inet(struct sockaddr *ip, inet_prefix *dst, u_short *port)
 	return 0;
 }
 
+/*\
+ *
+ *   *  *  Socket operations  *  *
+ *
+\*/
 
 int new_socket(int sock_type)
 {
@@ -560,6 +568,21 @@ int new_dgram_socket(int sock_type)
 	return sockfd;
 }
 
+int inet_getpeername(int sk, inet_prefix *ip, short *port)
+{
+	struct sockaddr_storage saddr_sto;
+	struct sockaddr	*sa=(struct sockaddr *)&saddr_sto;
+	socklen_t alen;
+
+	alen = sizeof(saddr_sto);
+	setzero(sa, alen);
+	if(getpeername(sk, sa, &alen) == -1) {
+		error("Cannot getpeername: %s", strerror(errno));
+		return -1;
+	}
+
+	return sockaddr_to_inet(sa, ip, port);
+}
 
 /* 
  * join_ipv6_multicast: It adds the membership to the IPV6_ADDR_BROADCAST
@@ -691,7 +714,7 @@ int set_broadcast_sk(int socket, int family, inet_prefix *host, short port,
 	} else
 		fatal(ERROR_MSG "family not supported", ERROR_POS);
 	
-	/* Let's bind it! */
+	/* What's my name ? */
 	alen = sizeof(saddr_sto);
 	setzero(sa, alen);
 	if (getsockname(socket, sa, &alen) == -1) {
@@ -700,6 +723,7 @@ int set_broadcast_sk(int socket, int family, inet_prefix *host, short port,
 		return -1;
 	}
 	
+	/* Let's bind it! */
 	if(bind(socket, sa, alen) < 0) {
 		error("Cannot bind the broadcast socket: %s", strerror(errno));
 		close(socket);
@@ -758,9 +782,11 @@ int set_tos_sk(int socket, int lowdelay)
 	return 0;
 }
 
-/* 
- *  *  *  Connection functions  *  *  *
- */
+/*\
+ *
+ *   *  *  Connection functions  *  * 
+ *
+\*/
 
 int new_tcp_conn(inet_prefix *host, short port, char *dev)
 {
@@ -860,9 +886,11 @@ int new_bcast_conn(inet_prefix *host, short port, int dev_idx)
 }
 
 
-/* 
- *  *  *  Recv/Send functions  *  *  *
- */
+/*\
+ *
+ *   *  *  Recv/Send functions  *  *
+ *
+\*/
 
 ssize_t inet_recv(int s, void *buf, size_t len, int flags)
 {
@@ -1053,7 +1081,8 @@ ssize_t inet_send_timeout(int s, const void *msg, size_t len, int flags, u_int t
 
 
 
-ssize_t inet_sendto(int s, const void *msg, size_t len, int flags, const struct sockaddr *to, socklen_t tolen)
+ssize_t inet_sendto(int s, const void *msg, size_t len, int flags, 
+		const struct sockaddr *to, socklen_t tolen)
 {
 	ssize_t err;
 	fd_set fdset;

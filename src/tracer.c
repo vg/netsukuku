@@ -299,7 +299,7 @@ void tracer_update_gcount(tracer_hdr *trcr_hdr, tracer_chunk *tracer,
 	for(i=first_hop; i>=0; i--) {
 		if(level) {
 			gnode=gnode_from_pos(tracer[i].node, ext_map[_EL(level)]);
-			qspn_dec_gcount((int*)gcount_counter, level+1, gnode->gcount);
+			qspn_dec_gcount(gcount_counter, level+1, gnode->gcount);
 			gnode->gcount=tracer[i].gcount;
 		} else
 			node = node_from_pos(tracer[i].node, int_map);
@@ -902,7 +902,7 @@ int tracer_store_bblock(u_char level, tracer_hdr *trcr_hdr, tracer_chunk *tracer
 		 */
 		if(bblist[i][0]->level >= FAMILY_LVLS+1) {
 			if(restricted_mode && 
-				(igws_found < MAX_IGW_PER_QSPN_CHUNK ||
+				(igws_found < MAX_IGW_PER_QSPN_CHUNK &&
 					trcr_hdr->flags & TRCR_IGW)) {
 
 				if(server_opt.use_shared_inet)
@@ -1277,17 +1277,16 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 int flood_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), u_char level,
 		int sub_id, int from_rpos, PACKET pkt)
 {
-	inet_prefix to;
 	ext_rnode *e_rnode;
 	map_node *dst_node, *node;
-	interface *dev;
 
 	ssize_t err;
 	const char *ntop;
-	char *dev_name;
 	int i, e=0;
 
-	/*Forward the pkt to all our r_nodes (excluding the excluded;)*/
+	/*
+	 * Forward the pkt to all our r_nodes (excluding the excluded;)
+	 */
 	for(i=0; i < me.cur_node->links; i++) {
 		node=(map_node *)me.cur_node->r_node[i].r_node;
 		if(node->flags & MAP_ERNODE) {
@@ -1303,33 +1302,28 @@ int flood_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), u_char level
 		if(is_node_excluded(e_rnode, dst_node, from_rpos, i, level, sub_id))
 			continue;
 
-		/* We need the ip of the rnode ;^ */
-		rnodetoip((u_int)me.int_map, (u_int)node, 
-				me.cur_quadg.ipstart[1], &to);
-		
-		debug(DBG_INSANE, "flood_pkt_send(0x%x): %s to %s lvl %d", 
-				pkt.hdr.id, rq_to_str(pkt.hdr.op),
-				inet_to_str(to), level-1);
-				
-		pkt_addto(&pkt, &to);
-
-		/*Let's send the pkt*/
-		pkt.sk=0;
-		dev=rnl_get_rand_dev(rlist, node);
-		if(!dev)
-			err=-1;
-		else {
-			pkt_add_dev(&pkt, dev, 1);
-			err=send_rq(&pkt, 0, pkt.hdr.op, pkt.hdr.id, 0, 0, 0);
+		/* Get the socket associated to the rnode  */
+		if((pkt.sk=rnl_get_sk(rlist, node)) <= 0) {
+			error(ERROR_MSG "couldn't get the socket associated "
+					"to dst_rnode", ERROR_FUNC);
+			continue;
 		}
-
+		inet_getpeername(pkt.sk, &pkt.to, 0);
+		if(server_opt.dbg_lvl)
+			debug(DBG_INSANE, "flood_pkt_send(0x%x): %s to %s"
+					" lvl %d", pkt.hdr.id, 
+					rq_to_str(pkt.hdr.op),
+					inet_to_str(pkt.to), level-1);
+				
+		/* Let's send the pkt */
+		err=rnl_send_rq(node, &pkt, 0, pkt.hdr.op, pkt.hdr.id, 
+				0, 0, 0);
 		if(err==-1) {
 			ntop=inet_to_str(pkt.to);
-			dev_name = !dev ? "NULL" : dev->dev_name;
-				
-			error("flood_pkt_send(): Cannot send the %s request"
-					" with id: %d to %s dev %s.", rq_to_str(pkt.hdr.op),
-					pkt.hdr.id, ntop, dev_name);
+			error(ERROR_MSG "Cannot send the %s request"
+					" with id: %d to %s", 
+			      ERROR_FUNC, rq_to_str(pkt.hdr.op),
+					  pkt.hdr.id, ntop);
 		} else
 			e++;
 	}

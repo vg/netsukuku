@@ -210,6 +210,7 @@ int is_group_invalid(int *gids, int gid, int lvl, int family);
 int  pos_from_gnode(map_gnode *gnode, map_gnode *map);
 map_gnode * gnode_from_pos(int pos, map_gnode *map);
 void rnodetoip(u_int mapstart, u_int maprnode, inet_prefix ipstart, inet_prefix *ret);
+const char *rnode_to_ipstr(u_int mapstart, u_int maprnode, inet_prefix ipstart);
 int iptogid(inet_prefix *ip, int level);
 void iptogids(inet_prefix *ip, int *gid, int levels);
 void gidtoipstart(int *gid, u_char total_levels, u_char levels, int family, 

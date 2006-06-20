@@ -100,7 +100,7 @@ int  qspn_round_left(u_char level);
 void update_qspn_time(u_char level, u_int new_qspn_time);
 
 void qspn_inc_gcount(u_int *gcount, int level, int inc);
-void qspn_dec_gcount(int *gcount, int level, int dec);
+void qspn_dec_gcount(u_int *gcount, int level, int dec);
 void qspn_reset_gcount(u_int *gcount, int level, int value);
 void qspn_backup_gcount(u_int *old_gcount, int *gcount);
 

@@ -169,6 +169,7 @@ int sockaddr_to_inet(struct sockaddr *ip, inet_prefix *dst, u_short *port);
 
 int new_socket(int sock_type);
 int new_dgram_socket(int sock_type);
+int inet_getpeername(int sk, inet_prefix *ip, short *port);
 int join_ipv6_multicast(int socket, int idx);
 
 int set_keepalive_sk(int socket);

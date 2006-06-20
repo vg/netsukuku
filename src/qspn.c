@@ -103,10 +103,10 @@ void qspn_reset(u_char levels)
 void qspn_init(u_char levels)
 {
 	/* register the qspn/tracer's ops in the pkt_op_table */
-	add_pkt_op(TRACER_PKT, 	       SKT_UDP, ntk_udp_port, tracer_pkt_recv);
-	add_pkt_op(TRACER_PKT_CONNECT, SKT_UDP, ntk_udp_port, tracer_pkt_recv);
-	add_pkt_op(QSPN_CLOSE, SKT_UDP, ntk_udp_port, qspn_close);
-	add_pkt_op(QSPN_OPEN,  SKT_UDP, ntk_udp_port, qspn_open);
+	add_pkt_op(TRACER_PKT, 	       SKT_TCP, ntk_tcp_port, tracer_pkt_recv);
+	add_pkt_op(TRACER_PKT_CONNECT, SKT_TCP, ntk_tcp_port, tracer_pkt_recv);
+	add_pkt_op(QSPN_CLOSE, SKT_TCP, ntk_tcp_port, qspn_close);
+	add_pkt_op(QSPN_OPEN,  SKT_TCP, ntk_tcp_port, qspn_open);
 
 	/* 
 	 * Alloc the qspn stuff 
@@ -326,7 +326,7 @@ void qspn_inc_gcount(u_int *gcount, int level, int inc)
  * qspn_dec_gcount: the same of qspn_inc_gcount(), but instead it decrements 
  * `gcount'.
  */
-void qspn_dec_gcount(int *gcount, int level, int dec)
+void qspn_dec_gcount(u_int *gcount, int level, int dec)
 {
 	int i;
 

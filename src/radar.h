@@ -96,6 +96,9 @@ struct rnode_list
 						   (in me.cur_ifs), which cointains the
 						   devices which links ourself with this rnode. */
 	int		dev_n;
+
+	int		tcp_sk;			/* The direct tcp connection to this rnode uses
+						   this socket. */
 };
 struct rnode_list *rlist;
 int rlist_counter;
@@ -146,6 +149,10 @@ int count_hooking_nodes(void);
 void rnl_reset(struct rnode_list **rnlist, int *rnlist_counter);
 interface **rnl_get_dev(struct rnode_list *rnlist, map_node *node);
 interface *rnl_get_rand_dev(struct rnode_list *rnlist, map_node *node);
+int rnl_get_sk(struct rnode_list *rnlist, map_node *node);
+int rnl_send_rq(map_node *rnode, 
+		PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, 
+		int check_ack, PACKET *rpkt);
 
 void new_rnode_allowed(struct allowed_rnode **alr, int *alr_counter,
 		int *gid, int min_lvl, int max_lvl);
