@@ -6,19 +6,11 @@
 
 * (generally these TODOs are already being implemented at the moment)
 
-- Sharing willingness: http://lab.dyne.org/Ntk_IGS
-	- active sharing if:
-		- there's another which is sharing
-		- there's another which is willingly to share (and wait some
-		  time in this case)
-	- disable if:
-		- there are no more sharer
+- TEST the new code
 
 - pkts.c: input_buffer, output_buffer for all the connections: we use them as
 	  queue for the incoming and outcoming packets.
 	  
-- minimize the use of UDP. Use the UDP only for the radar?
-
 - restore the network when NetsukukuD is closed (call /etc/rc.d/rc.inet1 ?)
 
 - Netsukuku WRT firmware:
