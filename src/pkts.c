@@ -623,10 +623,10 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re,
 	/* If the PKT_BIND_DEV flag is set we can use pkt->dev */
 	pkt->dev = (pkt->pkt_flags & PKT_BIND_DEV) ? pkt->dev : 0;
 
-	if(!pkt->sk) {
-		if(!pkt->sk_type)
-			pkt->sk_type=pkt_op_tbl[rq].sk_type;
+	if(!pkt->sk_type)
+		pkt->sk_type=pkt_op_tbl[rq].sk_type;
 
+	if(!pkt->sk) {
 		if(!pkt->to.family || !pkt->to.len) {
 			error("pkt->to isn't set. I can't create the new connection");
 			ERROR_FINISH(ret, SEND_RQ_ERR_TO, finish);

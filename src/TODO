@@ -8,9 +8,6 @@
 
 - TEST the new code
 
-- pkts.c: input_buffer, output_buffer for all the connections: we use them as
-	  queue for the incoming and outcoming packets.
-	  
 - restore the network when NetsukukuD is closed (call /etc/rc.d/rc.inet1 ?)
 
 - Netsukuku WRT firmware:
@@ -97,6 +94,8 @@
   The port used by Netsukuku will be leaved open too, in this way the nodes
   can still communicate between them.
 
+- Can multiple qspn packets be processed concurrently? Or do we need mutexes
+  for them? Only the tests will give answer.
 
 *
 **
