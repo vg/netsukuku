@@ -29,9 +29,7 @@
 #include "krnl_route.h"
 #include "libnetlink.h"
 #include "ll_map.h"
-#include "misc.h"
-#include "xmalloc.h"
-#include "log.h"
+#include "common.h"
 
 #ifdef LINUX_2_6_14
 #include <linux/ip_mp_alg.h>

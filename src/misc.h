@@ -14,8 +14,6 @@
  * You should have received a copy of the GNU Public License along with
  * this source code; if not, write to:
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- *
- * misc.c: Miscellaneous functions, nothing else.
  */
 
 #ifndef MISC_H
@@ -25,52 +23,6 @@
  * NMEMB: returns the number of members of the `x' array
  */
 #define NMEMB(x)        	(sizeof((x))/sizeof(typeof((x)[0])))
-
-/*
- * In bzero(3):
- * <<4.3BSD.  This function [bzero] is deprecated -- use memset in new 
- *   programs.>>
- */
-#define setzero(_p, _sz)	memset((_p), 0, (_sz))
-
-/*
- * memput
- *
- * It copies `__sz' bytes from `__src' to `__dst' and then increments the `__dst'
- * pointer of `__sz' bytes.
- *
- * *WARNING* 
- * Do NOT put expression in `__dst', and `__sz', f.e.
- * 	*WRONG CODE*
- * 	memput(buf++, src, (size+=sizeof(src));
- *
- * 	*CORRECT CODE*
- * 	buf++; size+=sizeof(src);
- * 	memput(buf, src, size);
- * *WARNING*
- */
-#define memput(__dst, __src, __sz)					\
-({ 									\
-	void *_bufret=memcpy((__dst), (__src), (__sz));			\
-	(__dst)+=(__sz);						\
-	_bufret;							\
-})
-
-/*
- * memget
- *
- * the same of memput(), but it increments `__src' instead.
- */
-#define memget(__dst, __src, __sz)					\
-({ 									\
-	void *_bufret=memcpy((__dst), (__src), (__sz));			\
-	(__src)+=(__sz);						\
-	_bufret;							\
-})
-
-/* use of hardcoded `_src' and `_dst' variable names */
-#define bufput(_src, _sz)	(memput(buf, (_src), (_sz)))
-#define bufget(_dst, _sz)	(memget((_dst), buf, (_sz)))
 
 /* 
  * MILLISEC: converts a timeval struct to a int. The time will be returned in
@@ -87,9 +39,6 @@ do{									\
 	(t).tv_usec=((x) - ((x)/1000)*1000)*1000; 			\
 }while(0)
 
-#define FNV_32_PRIME ((u_long)0x01000193)
-#define FNV1_32_INIT ((u_long)0x811c9dc5)
-
 /* 
  * Bit map related macros.  
  */
@@ -98,7 +47,8 @@ do{									\
 #define TEST_BIT(a,i)    (((a)[(i)/CHAR_BIT] & (1<<((i)%CHAR_BIT))) ? 1 : 0)
 
 /*
- * FIND_PTR:
+ * FIND_PTR
+ *
  * Given an array of pointers `a' of `n' members, it searches for a member
  * equal to the pointer `p'. If it is found its position is returned,
  * otherwise -1 is the value returned.
@@ -115,14 +65,21 @@ do{									\
 	_ret;								\
 })
 
-/* 
- *  *  Functions declaration  *  *
+/*
+ * _return
+ *
+ * It is used in this case:
+ * 	condition && _return (ret);
+ * Since it is not possible to use the standard return in that case, we trick
+ * gcc.
  */
-u_long fnv_32_buf(void *buf, size_t len, u_long hval);
-unsigned int inthash(unsigned int key);
-inline unsigned int dl_elf_hash (const unsigned char *name);
+#define _return(x)	({return (x); (x);})
+
+
+/*\
+ *   * *  Functions declaration  * *
+\*/
 char xor_int(int i);
-int hash_time(int *h_sec, int *h_usec);
 
 void swap_array(int nmemb, size_t nmemb_sz, void *src, void *dst);
 void swap_ints(int nmemb, unsigned int *x, unsigned int *y) ;
@@ -138,7 +95,6 @@ char **split_string(char *str, const char *div_str, int *substrings,
 
 		
 int find_int(int x, int *ia, int nmemb);
-int is_bufzero(const void *a, int sz);
 
 void xtimer(u_int secs, u_int steps, int *counter);
 

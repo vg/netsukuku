@@ -40,12 +40,10 @@
 
 #include "includes.h"
 
-#include "misc.h"
+#include "common.h"
 #include "inet.h"
 #include "endianness.h"
 #include "qspn-empiric.h"
-#include "xmalloc.h"
-#include "log.h"
 
 
 /*

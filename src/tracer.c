@@ -18,7 +18,7 @@
 
 #include "includes.h"
 
-#include "misc.h"
+#include "common.h"
 #include "request.h"
 #include "pkts.h"
 #include "bmap.h"
@@ -30,8 +30,6 @@
 #include "qspn.h"
 #include "igs.h"
 #include "netsukuku.h"
-#include "xmalloc.h"
-#include "log.h"
 
 char *tracer_pack_pkt(brdcast_hdr *bcast_hdr, tracer_hdr *trcr_hdr, tracer_chunk *tracer, 
 		      char *bblocks, size_t bblocks_sz, int new_bblocks);
@@ -1303,12 +1301,8 @@ int flood_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), u_char level
 			continue;
 
 		/* Get the socket associated to the rnode  */
-		if((pkt.sk=rnl_get_sk(rlist, node)) <= 0) {
-			error(ERROR_MSG "couldn't get the socket associated "
-					"to dst_rnode", ERROR_FUNC);
+		if(rnl_fill_rq(node, &pkt) < 0)
 			continue;
-		}
-		inet_getpeername(pkt.sk, &pkt.to, 0);
 		if(server_opt.dbg_lvl)
 			debug(DBG_INSANE, "flood_pkt_send(0x%x): %s to %s"
 					" lvl %d", pkt.hdr.id, 
@@ -1328,7 +1322,7 @@ int flood_pkt_send(int(*is_node_excluded)(TRACER_PKT_EXCLUDE_VARS), u_char level
 			e++;
 	}
 		
-	pkt_free(&pkt, 1);
+	pkt_free(&pkt, 0);
 	return e;
 }
 

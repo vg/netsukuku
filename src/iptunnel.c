@@ -39,9 +39,7 @@
 #include "krnl_route.h"
 #include "route.h"
 #include "iptunnel.h"
-#include "misc.h"
-#include "xmalloc.h"
-#include "log.h"
+#include "common.h"
 
 static int do_add(int cmd, inet_prefix *remote, inet_prefix *local, char *dev,
 		char *tunl_prefix, int tunl_number);

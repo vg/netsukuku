@@ -29,8 +29,7 @@
 #include "endianness.h"
 #include "pkts.h"
 #include "accept.h"
-#include "xmalloc.h"
-#include "log.h"
+#include "common.h"
 
 interface cur_ifs[MAX_INTERFACES];
 int cur_ifs_n;

@@ -22,7 +22,7 @@
 
 #include "includes.h"
 
-#include "misc.h"
+#include "common.h"
 #include "conf.h"
 #include "libnetlink.h"
 #include "ll_map.h"
@@ -41,8 +41,6 @@
 #include "hook.h"
 #include "rehook.h"
 
-#include "xmalloc.h"
-#include "log.h"
 
 extern int errno;
 extern char *optarg;

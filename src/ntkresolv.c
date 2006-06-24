@@ -4,9 +4,7 @@
 #include "andns_net.h"
 #include "snsd_cache.h"
 #include "crypto.h"
-#include "misc.h"
-#include "xmalloc.h"
-#include "log.h"
+#include "common.h"
 
 static ntkresolv_opts globopts;
 static struct timeval time_start,time_stop;

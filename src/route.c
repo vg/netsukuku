@@ -22,7 +22,7 @@
 
 #include "includes.h"
 
-#include "misc.h"
+#include "common.h"
 #include "libnetlink.h"
 #include "inet.h"
 #include "krnl_route.h"
@@ -34,8 +34,6 @@
 #include "radar.h"
 #include "netsukuku.h"
 #include "route.h"
-#include "xmalloc.h"
-#include "log.h"
 
 int get_gw_gnode_recurse(map_node *, map_gnode **, map_bnode **, u_int *,
 		map_gnode *, map_gnode *, map_node *, u_char, u_char, 

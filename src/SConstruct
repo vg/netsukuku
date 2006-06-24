@@ -24,11 +24,11 @@ NTK_VERSION="0.0.8b"
 #	Sources and libs
 #
 
-sources_common    = Split('xmalloc.c log.c misc.c endianness.c')
+sources_common    = Split('xmalloc.c log.c misc.c buffer.c endianness.c')
 sources_qspn      = Split('qspn-empiric.c') + sources_common
 sources_netsukuku = Split("""accept.c llist.c ipv6-gmp.c inet.c request.c map.c
 		   gmap.c bmap.c pkts.c radar.c hook.c rehook.c tracer.c qspn.c 
-		   daemon.c crypto.c snsd_cache.c
+		   hash.c daemon.c crypto.c snsd_cache.c
 		   andna_cache.c andna.c andns_lib.c err_errno.c
 		   dnslib.c andns.c andns_net.c andns_snsd.c
 		   ll_map.c libnetlink.c if.c krnl_route.c krnl_rule.c

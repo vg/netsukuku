@@ -18,14 +18,12 @@
 
 #include "includes.h"
 
-#include "misc.h"
+#include "common.h"
 #include "ipv6-gmp.h"
 #include "libnetlink.h"
 #include "ll_map.h"
 #include "inet.h"
 #include "endianness.h"
-#include "log.h"
-#include "xmalloc.h"
 
 
 /* 

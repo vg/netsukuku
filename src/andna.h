@@ -230,7 +230,7 @@ INT_INFO spread_acache_pkt_info = { 0, { 0 }, { 0 }, { 0 } };
 
 /*\
  *
- *  *  *  *  Function declaration  *  *  *
+ *   * * *  Function declaration  * * *
  *
 \*/
 

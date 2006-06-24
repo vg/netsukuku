@@ -22,7 +22,7 @@
 
 #include "includes.h"
 
-#include "misc.h"
+#include "common.h"
 #include "log.h"
 #include "endianness.h"
 

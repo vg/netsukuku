@@ -22,14 +22,12 @@
 
 #include "includes.h"
 
-#include "misc.h"
+#include "common.h"
 #include "inet.h"
 #include "endianness.h"
 #include "map.h"
 #include "gmap.h"
 #include "bmap.h"
-#include "xmalloc.h"
-#include "log.h"
 
 void bmap_levels_init(u_char levels, map_bnode ***bmap, u_int **bmap_nodes)
 {

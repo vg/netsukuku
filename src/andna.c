@@ -42,9 +42,8 @@
 #include "andna.h"
 #include "andns.h"
 #include "dns_wrapper.h"
-#include "misc.h"
-#include "xmalloc.h"
-#include "log.h"
+#include "hash.h"
+#include "common.h"
 
 
 /*
@@ -2128,26 +2127,23 @@ finish:
 andna_cache *get_andna_cache(map_node *dst_rnode, int *counter)
 {
 	PACKET pkt, rpkt;
-	inet_prefix to;
 	andna_cache *andna_cache, *ret=0;
 	size_t pack_sz;
 	int err;
-	const char *ntop;
 	char *pack;
 	
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
 
-	if((pkt.sk=rnl_get_sk(rlist, dst_rnode)) <= 0) {
-		error(ERROR_MSG "Couldn't get the socket associated "
-				"to dst_rnode", ERROR_FUNC);
+	if(rnl_fill_rq(dst_rnode, &pkt) < 0)
 		ERROR_FINISH(ret, 0, finish);
+	if(server_opt.dbg_lvl) {
+		const char *ntop;
+		ntop=inet_to_str(pkt.to);
+		debug(DBG_INSANE, "Quest %s to %s", 
+				rq_to_str(ANDNA_GET_ANDNA_CACHE), ntop);
 	}
-	inet_getpeername(pkt.sk, &to, 0);
-	pkt_addto(&pkt, &to);
-	ntop=inet_to_str(to);
 
-	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(ANDNA_GET_ANDNA_CACHE), ntop);
 	err=rnl_send_rq(dst_rnode, &pkt, 0, ANDNA_GET_ANDNA_CACHE, 0, 
 			ANDNA_PUT_ANDNA_CACHE, 1, &rpkt);
 	if(err < 0) {
@@ -2165,7 +2161,7 @@ andna_cache *get_andna_cache(map_node *dst_rnode, int *counter)
 	
 finish:
 	pkt_free(&pkt, 0);
-	pkt_free(&rpkt, 1);
+	pkt_free(&rpkt, 0);
 	return ret;
 }
 
@@ -2213,26 +2209,23 @@ finish:
 counter_c *get_counter_cache(map_node *dst_rnode, int *counter)
 {
 	PACKET pkt, rpkt;
-	inet_prefix to;
 	counter_c *ccache, *ret=0;
 	size_t pack_sz;
 	int err;
-	const char *ntop;
 	char *pack;
 	
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
 	
-	if((pkt.sk=rnl_get_sk(rlist, dst_rnode)) <= 0) {
-		error(ERROR_MSG "couldn't get the socket associated "
-				"to dst_rnode", ERROR_FUNC);
+	if(rnl_fill_rq(dst_rnode, &pkt) < 0)
 		ERROR_FINISH(ret, 0, finish);
+	if(server_opt.dbg_lvl) {
+		const char *ntop;
+		ntop=inet_to_str(pkt.to);
+		debug(DBG_INSANE, "Quest %s to %s", 
+				rq_to_str(ANDNA_GET_COUNT_CACHE), ntop);
 	}
-	inet_getpeername(pkt.sk, &to, 0);
-	pkt_addto(&pkt, &to);
-	ntop=inet_to_str(to);
 
-	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(ANDNA_GET_COUNT_CACHE), ntop);
 	err=rnl_send_rq(dst_rnode, &pkt, 0, ANDNA_GET_COUNT_CACHE, 0,
 			ANDNA_PUT_COUNT_CACHE, 1, &rpkt);
 	if(err < 0) {
@@ -2249,12 +2242,14 @@ counter_c *get_counter_cache(map_node *dst_rnode, int *counter)
 	
 finish:
 	pkt_free(&pkt, 0);
-	pkt_free(&rpkt, 1);
+	pkt_free(&rpkt, 0);
 	return ret;
 }
 
 /*
- * put_counter_cache: replies to a ANDNA_GET_COUNT_CACHE request, sending back the
+ * put_counter_cache
+ * 
+ * replies to a ANDNA_GET_COUNT_CACHE request, sending back the
  * complete andna cache.
  */
 int put_counter_cache(PACKET rq_pkt)

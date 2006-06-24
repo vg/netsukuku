@@ -24,7 +24,7 @@
 
 #include "includes.h"
 
-#include "misc.h"
+#include "common.h"
 #include "libnetlink.h"
 #include "ll_map.h"
 #include "inet.h"
@@ -42,15 +42,31 @@
 #include "rehook.h"
 #include "radar.h"
 #include "netsukuku.h"
-#include "xmalloc.h"
-#include "log.h"
-#include "misc.h"
+#include "common.h"
 
 int free_the_tmp_cur_node;
 int we_are_rehooking; 		/* 1 if it is true */
 
 void hook_reset(void);
 
+/*
+ * hook_fill_rq
+ *
+ * It's just a wrapper to rnl_fill_rq().
+ */
+int hook_fill_rq(map_node *dst_rnode, PACKET *pkt, u_char rq)
+{
+	if(rnl_fill_rq(dst_rnode, pkt) < 0)
+		return -1;
+
+	if(server_opt.dbg_lvl) {
+		const char *ntop;
+		ntop=inet_to_str(pkt->to);
+		debug(DBG_INSANE, "Quest %s to %s", rq_to_str(rq), ntop);
+	}
+
+	return 0;
+}
 
 
 /*
@@ -106,26 +122,16 @@ int get_free_nodes(map_node *dst_rnode,
 		   struct free_nodes_hdr *fn_hdr, u_char *nodes)
 {
 	PACKET pkt, rpkt;
-	inet_prefix to;
 	ssize_t err;
 	int ret=0, e, i;
-	const char *ntop;
 	char *buf=0;
 	
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
 	
-	if((pkt.sk=rnl_get_sk(rlist, dst_rnode)) <= 0) {
-		error(ERROR_MSG "Couldn't get the socket associated "
-				"to dst_rnode", ERROR_FUNC);
-		ERROR_FINISH(ret, -1, finish);
-	}
-	inet_getpeername(pkt.sk, &to, 0);
-	pkt_addto(&pkt, &to);
+	hook_fill_rq(dst_rnode, &pkt, GET_FREE_NODES) < 0 && _return (-1);
 	pkt_addtimeout(&pkt, HOOK_RQ_TIMEOUT, 1, 0);
-	ntop=inet_to_str(to);
 	
-	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_FREE_NODES), ntop);
 	err=rnl_send_rq(dst_rnode, &pkt, 0, GET_FREE_NODES, 0, PUT_FREE_NODES,
 			1, &rpkt);
 	if(err < 0) {
@@ -137,8 +143,9 @@ int get_free_nodes(map_node *dst_rnode,
 	ints_network_to_host(rpkt.msg, free_nodes_hdr_iinfo);
 	memcpy(fn_hdr, rpkt.msg, sizeof(struct free_nodes_hdr));
 
-	if(verify_free_nodes_hdr(&to, fn_hdr)) {
-		error("Malformed PUT_FREE_NODES request hdr from %s.", ntop);
+	if(verify_free_nodes_hdr(&pkt.to, fn_hdr)) {
+		error("Malformed PUT_FREE_NODES request hdr from %s", 
+				inet_to_str(pkt.to));
 		ERROR_FINISH(ret, -1, finish);
 	}
 	
@@ -157,7 +164,7 @@ int get_free_nodes(map_node *dst_rnode,
 			fn_hdr->level == 1 ? "nodes" : "gnodes");
 finish:
 	pkt_free(&pkt, 0);
-	pkt_free(&rpkt,1);
+	pkt_free(&rpkt,0);
 	return ret;
 }
 
@@ -180,7 +187,6 @@ int put_free_nodes(PACKET rq_pkt)
 	char *p=0; 
 	
 	ntop=inet_to_str(rq_pkt.from);
-	debug(DBG_NORMAL, "Sending the PUT_FREE_NODES reply to %s", ntop);
 	
 	setzero(&pkt, sizeof(PACKET));
 	pkt_addto(&pkt, &rq_pkt.from);
@@ -267,6 +273,7 @@ int put_free_nodes(PACKET rq_pkt)
 	memcpy(p, &fn_pkt, sizeof(fn_pkt));
 	ints_host_to_network(p, free_nodes_hdr_iinfo);
 	
+	debug(DBG_INSANE, "Reply %s to %s", re_to_str(pkt.hdr.op), ntop);
 	err=pkt_send(&pkt);
 	
 finish:	
@@ -294,7 +301,6 @@ int get_qspn_round(map_node *dst_rnode, struct timeval to_rtt,
 	struct timeval cur_t;
 	ssize_t err;
 	int ret=0, level;
-	const char *ntop;
 	char *buf=0;
 	u_char max_levels;
 	int_info qr_pkt_iinfo;
@@ -302,16 +308,9 @@ int get_qspn_round(map_node *dst_rnode, struct timeval to_rtt,
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
 	
-	if((pkt.sk=rnl_get_sk(rlist, dst_rnode)) <= 0) {
-		error(ERROR_MSG "couldn't get the socket associated "
-				"to dst_rnode", ERROR_FUNC);
-		ERROR_FINISH(ret, -1, finish);
-	}
-	inet_getpeername(pkt.sk, &pkt.to, 0);
+	hook_fill_rq(dst_rnode, &pkt, GET_QSPN_ROUND) < 0 && _return (-1);
 	pkt_addtimeout(&pkt, HOOK_RQ_TIMEOUT, 1, 0);
-	ntop=inet_to_str(pkt.to);
-	
-	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_QSPN_ROUND), ntop);
+
 	err=rnl_send_rq(dst_rnode, &pkt, 0, GET_QSPN_ROUND, 0, PUT_QSPN_ROUND, 
 			1, &rpkt);
 	if(err < 0)
@@ -321,7 +320,8 @@ int get_qspn_round(map_node *dst_rnode, struct timeval to_rtt,
 	bufget(&max_levels, sizeof(u_char));
 	if(QSPN_ROUND_PKT_SZ(max_levels) != rpkt.hdr.sz ||
 			max_levels > FAMILY_LVLS) {
-		error("Malformed PUT_QSPN_ROUND request hdr from %s.", ntop);
+		error("Malformed PUT_QSPN_ROUND request hdr from %s",
+				inet_to_str(pkt.to));
 		ERROR_FINISH(ret, -1, finish);
 	}
 	
@@ -348,7 +348,7 @@ int get_qspn_round(map_node *dst_rnode, struct timeval to_rtt,
 
 finish:
 	pkt_free(&pkt, 0);
-	pkt_free(&rpkt,1);
+	pkt_free(&rpkt,0);
 	return ret;
 }
 /* 
@@ -383,7 +383,6 @@ int put_qspn_round(PACKET rq_pkt)
 	char *buf=0;
 
 	ntop=inet_to_str(rq_pkt.from);
-	debug(DBG_NORMAL, "Sending the PUT_QSPN_ROUND reply to %s", ntop);
 	
 	setzero(&pkt, sizeof(PACKET));
 	pkt_addto(&pkt, &rq_pkt.from);
@@ -424,6 +423,7 @@ int put_qspn_round(PACKET rq_pkt)
 	pkt.msg=xzalloc(pkt_sz);
 	
 	/* Go pkt, go! Follow your instinct */
+	debug(DBG_INSANE, "Reply %s to %s", re_to_str(pkt.hdr.op), ntop);
 	memcpy(pkt.msg, &qr_pkt, sizeof(qr_pkt));
 	err=pkt_send(&pkt);
 	
@@ -449,7 +449,6 @@ int put_ext_map(PACKET rq_pkt)
 	size_t pkt_sz=0;
 	
 	ntop=inet_to_str(rq_pkt.from);
-	debug(DBG_NORMAL, "Sending the PUT_EXT_MAP reply to %s", ntop);
 	
 	memset(&pkt, '\0', sizeof(PACKET));
 	pkt_addto(&pkt, &rq_pkt.from);
@@ -467,7 +466,7 @@ int put_ext_map(PACKET rq_pkt)
 	}
 
 finish:
-	pkt_free(&pkt, 1);
+	pkt_free(&pkt, 0);
 	return ret;
 }
 
@@ -478,7 +477,6 @@ finish:
 map_gnode **get_ext_map(map_node *dst_rnode, quadro_group *new_quadg)
 {
 	PACKET pkt, rpkt;
-	const char *ntop;
 	char *pack;
 	int err;
 	map_gnode **ext_map=0, **ret=0;
@@ -486,16 +484,9 @@ map_gnode **get_ext_map(map_node *dst_rnode, quadro_group *new_quadg)
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
 
-	if((pkt.sk=rnl_get_sk(rlist, dst_rnode)) <= 0) {
-		error(ERROR_MSG "Couldn't get the socket associated "
-				"to dst_rnode", ERROR_FUNC);
-		ERROR_FINISH(ret, 0, finish);
-	}
-	inet_getpeername(pkt.sk, &pkt.to, 0);
+	hook_fill_rq(dst_rnode, &pkt, GET_EXT_MAP) < 0 && _return (0);
 	pkt_addtimeout(&pkt, HOOK_RQ_TIMEOUT, 1, 0);
-	ntop=inet_to_str(pkt.to);
 
-	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_EXT_MAP), ntop);
 	err=rnl_send_rq(dst_rnode, &pkt, 0, GET_EXT_MAP, 0, PUT_EXT_MAP, 1,
 			&rpkt);
 	if(err < 0) {
@@ -509,7 +500,7 @@ map_gnode **get_ext_map(map_node *dst_rnode, quadro_group *new_quadg)
 		error("get_ext_map: Malformed ext_map. Cannot unpack the ext_map.");
 finish:
 	pkt_free(&pkt, 0);
-	pkt_free(&rpkt, 1);
+	pkt_free(&rpkt, 0);
 	return ret;
 }
 
@@ -527,7 +518,6 @@ int put_int_map(PACKET rq_pkt)
 	size_t pkt_sz=0;
 	
 	ntop=inet_to_str(rq_pkt.from);
-	debug(DBG_NORMAL, "Sending the PUT_INT_MAP reply to %s", ntop);
 	
 	memset(&pkt, '\0', sizeof(PACKET));
 	pkt_addto(&pkt, &rq_pkt.from);
@@ -557,22 +547,14 @@ map_node *get_int_map(map_node *dst_rnode, map_node **new_root)
 	PACKET pkt, rpkt;
 	map_node *int_map, *ret=0;
 	int err;
-	const char *ntop;
 	char *pack;
 	
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
 	
-	if((pkt.sk=rnl_get_sk(rlist, dst_rnode)) <= 0) {
-		error(ERROR_MSG "Couldn't get the socket associated "
-				"to dst_rnode", ERROR_FUNC);
-		ERROR_FINISH(ret, 0, finish);
-	}
-	inet_getpeername(pkt.sk, &pkt.to, 0);
+	hook_fill_rq(dst_rnode, &pkt, GET_INT_MAP) < 0 && _return (0);
 	pkt_addtimeout(&pkt, HOOK_RQ_TIMEOUT, 1, 0);
-	ntop=inet_to_str(pkt.to);
 
-	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_INT_MAP), ntop);
 	err=rnl_send_rq(dst_rnode, &pkt, 0, GET_INT_MAP, 0, PUT_INT_MAP, 1, 
 			&rpkt);
 	if(err < 0) {
@@ -589,7 +571,7 @@ map_node *get_int_map(map_node *dst_rnode, map_node **new_root)
 	/*Finished, yeah*/
 finish:
 	pkt_free(&pkt, 0);
-	pkt_free(&rpkt, 1);
+	pkt_free(&rpkt, 0);
 	return ret;
 }
 
@@ -607,7 +589,6 @@ int put_bnode_map(PACKET rq_pkt)
 	size_t pack_sz=0;
 	
 	ntop=inet_to_str(rq_pkt.from);
-	debug(DBG_NORMAL, "Sending the PUT_BNODE_MAP reply to %s", ntop);
 
 	memset(&pkt, '\0', sizeof(PACKET));
 	pkt_addto(&pkt, &rq_pkt.from);
@@ -639,22 +620,14 @@ map_bnode **get_bnode_map(map_node *dst_rnode, u_int **bmap_nodes)
 	PACKET pkt, rpkt;
 	int err;
 	map_bnode **bnode_map, **ret=0;
-	const char *ntop;
 	char *pack;
 	
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
 	
-	if((pkt.sk=rnl_get_sk(rlist, dst_rnode)) <= 0) {
-		error(ERROR_MSG "Couldn't get the socket associated "
-				"to dst_rnode", ERROR_FUNC);
-		ERROR_FINISH(ret, 0, finish);
-	}
-	inet_getpeername(pkt.sk, &pkt.to, 0);
+	hook_fill_rq(dst_rnode, &pkt, GET_BNODE_MAP) < 0 && _return (0);
 	pkt_addtimeout(&pkt, HOOK_RQ_TIMEOUT, 1, 0);
-	ntop=inet_to_str(pkt.to);
 
-	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_BNODE_MAP), ntop);
 	err=rnl_send_rq(dst_rnode, &pkt, 0, GET_BNODE_MAP, 0, PUT_BNODE_MAP, 
 			1, &rpkt);
 	if(err < 0) {
@@ -671,7 +644,7 @@ map_bnode **get_bnode_map(map_node *dst_rnode, u_int **bmap_nodes)
 
 finish:
 	pkt_free(&pkt, 0);
-	pkt_free(&rpkt, 1);
+	pkt_free(&rpkt, 0);
 	return ret;
 }
 
@@ -689,7 +662,6 @@ int put_internet_gws(PACKET rq_pkt)
 	size_t pack_sz=0;
 	
 	ntop=inet_to_str(rq_pkt.from);
-	debug(DBG_NORMAL, "Sending the PUT_INTERNET_GWS reply to %s", ntop);
 
 	memset(&pkt, '\0', sizeof(PACKET));
 	pkt_addto(&pkt, &rq_pkt.from);
@@ -723,28 +695,18 @@ inet_gw **get_internet_gws(map_node *dst_rnode, int **igws_counter)
 	PACKET pkt, rpkt;
 	int err, ret=0;
 	inet_gw **igws=0;
-	const char *ntop;
 	char *pack;
 	
 	memset(&pkt, '\0', sizeof(PACKET));
 	memset(&rpkt, '\0', sizeof(PACKET));
 
-	if((pkt.sk=rnl_get_sk(rlist, dst_rnode)) <= 0) {
-		error(ERROR_MSG "Couldn't get the socket associated "
-				"to dst_rnode", ERROR_FUNC);
-		ERROR_FINISH(ret, -1, finish);
-	}
-	inet_getpeername(pkt.sk, &pkt.to, 0);
+	hook_fill_rq(dst_rnode, &pkt, GET_INTERNET_GWS) < 0 && _return (0);
 	pkt_addtimeout(&pkt, HOOK_RQ_TIMEOUT, 1, 0);
-	ntop=inet_to_str(pkt.to);
 
-	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(GET_INTERNET_GWS), ntop);
 	err=rnl_send_rq(dst_rnode, &pkt, 0, GET_INTERNET_GWS, 0, 
 			PUT_INTERNET_GWS, 1, &rpkt);
-	if(err < 0) {
-		ret=0;
-		goto finish;
-	}
+	if(err < 0)
+		ERROR_FINISH(ret, 0, finish);
 	
 	/* Extracting the list... */
 	pack=rpkt.msg;
@@ -757,7 +719,7 @@ inet_gw **get_internet_gws(map_node *dst_rnode, int **igws_counter)
 
 finish:
 	pkt_free(&pkt, 0);
-	pkt_free(&rpkt, 1);
+	pkt_free(&rpkt, 0);
 	return igws;
 }
 

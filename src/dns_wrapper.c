@@ -45,9 +45,7 @@
 #include "andna.h"
 #include "andns.h"
 #include "dns_wrapper.h"
-#include "misc.h"
-#include "xmalloc.h"
-#include "log.h"
+#include "common.h"
 
 /*
  * dns_exec_pkt: resolve the hostname contained in the DNS query and sends

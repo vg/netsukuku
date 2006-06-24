@@ -18,7 +18,7 @@
 
 #include "includes.h"
 
-#include "misc.h"
+#include "common.h"
 #include "inet.h"
 #include "request.h"
 #include "if.h"
@@ -27,8 +27,6 @@
 #include "daemon.h"
 #include "netsukuku.h"
 #include "accept.h"
-#include "xmalloc.h"
-#include "log.h"
 
 extern int errno;
 

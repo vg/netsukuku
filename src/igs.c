@@ -22,7 +22,7 @@
 
 #include "includes.h"
 
-#include "misc.h"
+#include "common.h"
 #include "libnetlink.h"
 #include "inet.h"
 #include "krnl_route.h"
@@ -41,8 +41,6 @@
 #include "libiptc/libiptc.h"
 #include "mark.h"
 #include "igs.h"
-#include "xmalloc.h"
-#include "log.h"
 #include "err_errno.h"
 
 int igw_multi_gw_disabled;

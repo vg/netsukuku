@@ -23,7 +23,8 @@
 
 #include "includes.h"
 
-#include "misc.h"
+#include "common.h"
+#include "hash.h"
 #include "llist.c"
 #include "libnetlink.h"
 #include "ll_map.h"
@@ -43,9 +44,7 @@
 #include "rehook.h"
 #include "radar.h"
 #include "netsukuku.h"
-#include "xmalloc.h"
-#include "log.h"
-#include "misc.h"
+#include "common.h"
 
 /*
  * rehook_argv: argv for the new_rehook_thread thread

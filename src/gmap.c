@@ -23,9 +23,7 @@
 #include "map.h"
 #include "gmap.h"
 #include "bmap.h"
-#include "misc.h"
-#include "xmalloc.h"
-#include "log.h"
+#include "common.h"
 
 
 /* 

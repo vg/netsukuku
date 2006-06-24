@@ -49,6 +49,9 @@
  *	if(error_condition)
  *		ERROR_FINISH(ret, -1, finish);
  *
+ *	error_condition &&
+ *		ERROR_FINISH(ret, -1, finish);
+ *
  * 	,,,BLA BLA...
  * 	
  *	finish:
@@ -56,11 +59,14 @@
  * }
  */
 #define ERROR_FINISH(ret, err, label_finish)				\
-do {									\
+({									\
 	void *_label_finish=&&label_finish;				\
 	(ret)=(err); 							\
 	goto *_label_finish;						\
-} while(0)
+									\
+ 	(ret); /* in this way gcc thinks this macro returns
+		  an integer */						\
+})
 
 #ifdef DEBUG
 /* Colors used to highlights things while debugging ;) */

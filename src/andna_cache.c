@@ -25,9 +25,8 @@
 #include "crypto.h"
 #include "andna_cache.h"
 #include "snsd_cache.h"
-#include "misc.h"
-#include "xmalloc.h"
-#include "log.h"
+#include "common.h"
+#include "hash.h"
 
 
 int net_family;

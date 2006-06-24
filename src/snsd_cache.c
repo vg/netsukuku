@@ -28,9 +28,7 @@
 #include "includes.h"
 
 #include "snsd_cache.h"
-#include "misc.h"
-#include "xmalloc.h"
-#include "log.h"
+#include "common.h"
 
 int net_family;
 

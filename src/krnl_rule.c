@@ -26,9 +26,7 @@
 #include "inet.h"
 #include "krnl_route.h"
 #include "krnl_rule.h"
-#include "misc.h"
-#include "xmalloc.h"
-#include "log.h"
+#include "common.h"
 
 int rule_exec(int rtm_cmd, inet_prefix *from, inet_prefix *to, char *dev, 
 		int prio, u_int fwmark, u_char table);

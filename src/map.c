@@ -23,9 +23,7 @@
 
 #include "ipv6-gmp.h"
 #include "map.h"
-#include "misc.h"
-#include "xmalloc.h"
-#include "log.h"
+#include "common.h"
 
 extern int errno;
 

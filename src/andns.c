@@ -23,11 +23,9 @@
 #include <netdb.h>
 
 #include "includes.h"
-#include "misc.h"
+#include "common.h"
 #include "andns.h"
-#include "log.h"
 #include "err_errno.h"
-#include "xmalloc.h"
 #include "andna.h"
 #include "andns_lib.h"
 #include "andns_net.h"

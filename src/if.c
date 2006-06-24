@@ -20,13 +20,11 @@
 #include "includes.h"
 #include <fnmatch.h>
 
-#include "misc.h"
+#include "common.h"
 #include "inet.h"
 #include "if.h"
 #include "libnetlink.h"
 #include "ll_map.h"
-#include "xmalloc.h"
-#include "log.h"
 
 extern int errno;
 

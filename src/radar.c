@@ -39,9 +39,7 @@
 #include "qspn.h"
 #include "radar.h"
 #include "netsukuku.h"
-#include "xmalloc.h"
-#include "log.h"
-#include "misc.h"
+#include "common.h"
 
 pthread_attr_t radar_qspn_send_t_attr;
 
@@ -177,12 +175,16 @@ struct rnode_list *rnl_add(struct rnode_list **rnlist, int *rnlist_counter,
  * rnl_del
  * 
  * deletes the `rnl' struct from the `rnlist' rnode_list.
+ * If `close_socket' is not zero, `rnl'->tcp_sk will be closed.
  */
 void rnl_del(struct rnode_list **rnlist, int *rnlist_counter, 
-		struct rnode_list *rnl)
+		struct rnode_list *rnl, int close_socket)
 {
-	if(rnl)
+	if(rnl) {
+		if(close_socket && rnl->tcp_sk)
+			close(rnl->tcp_sk);
 		clist_del(rnlist, rnlist_counter, rnl);
+	}
 	if(!(*rnlist_counter))
 		*rnlist=0;
 }
@@ -214,7 +216,7 @@ int rnl_del_dead_rnode(struct rnode_list **rnlist, int *rnlist_counter,
 	
 	list_safe_for(rnl, next)
 		if(rnode_find(root_node, rnl->node) < 0) {
-			rnl_del(rnlist, rnlist_counter, rnl);
+			rnl_del(rnlist, rnlist_counter, rnl, 1);
 			i++;
 		}
 
@@ -303,7 +305,7 @@ int rnl_del_dev(struct rnode_list **rnlist, int *rnlist_counter,
 	}
 
 	if(!rnl->dev_n)
-		rnl_del(rnlist, rnlist_counter, rnl);
+		rnl_del(rnlist, rnlist_counter, rnl, 1);
 	
 	return 0;
 }
@@ -329,7 +331,7 @@ int rnl_update_devs(struct rnode_list **rnlist, int *rnlist_counter,
 		/*
 		 * The new `devs' array is empty, therefore delete old_rnl
 		 */
-		rnl_del(rnlist, rnlist_counter, old_rnl);
+		rnl_del(rnlist, rnlist_counter, old_rnl, 1);
 		return 0;
 	}
 
@@ -352,7 +354,8 @@ int rnl_update_devs(struct rnode_list **rnlist, int *rnlist_counter,
 		for(i=1; i < dev_n; i++)
 			rnl_add_dev(rnlist, rnlist_counter, new_rnl, node, devs[i]);
 
-		rnl_del(rnlist, rnlist_counter, old_rnl);
+		new_rnl->tcp_sk = (old_rnl) ? old_rnl->tcp_sk : 0;
+		rnl_del(rnlist, rnlist_counter, old_rnl, 0);
 	}
 
 	return update;
@@ -394,8 +397,19 @@ int rnl_get_sk(struct rnode_list *rnlist, map_node *node)
 		inet_prefix to;
 		int i;
 
-		rnodetoip((u_int)me.int_map, (u_int)node,
-				me.cur_quadg.ipstart[1], &to);
+		if(me.cur_node->flags & MAP_HNODE) {
+			struct radar_queue *rq;
+
+			/* If we are hooking, get the IP from the radar
+			 * queue */
+			if(!(rq=find_node_radar_q(rnl->node)))
+				return -1;
+			inet_copy(&to, &rq->ip);
+
+		} else {
+			rnodetoip((u_int)me.int_map, (u_int)node,
+					me.cur_quadg.ipstart[1], &to);
+		}
 
 		/* Try to connect using the `i'th device. If it fails, try
 		 * another device */
@@ -428,12 +442,34 @@ void rnl_set_sk(struct rnode_list *rnlist, map_node *node, int sk)
 }
 
 /*
+ * rnl_fill_rq
+ *
+ * It sets the `pkt'->sk and `pkt'->to variables.
+ * The `pkt'->sk is retrieved using rnl_get_sk()
+ *
+ * On error -1 is returned.
+ */
+int rnl_fill_rq(map_node *rnode, PACKET *pkt)
+{
+	if(!pkt->sk && (pkt->sk=rnl_get_sk(rlist, rnode)) <= 0) {
+		error(ERROR_MSG "Couldn't get the socket associated "
+				"to dst_rnode", ERROR_FUNC);
+		return -1;
+	}
+
+	inet_getpeername(pkt->sk, &pkt->to, 0);
+	return 0;
+}
+
+/*
  * rnl_send_rq
  *
  * It is a wrapper to send_rq. It is used to send or receive a packet to/from
  * the specified `rnode'.
  *
  * On error -1 is returned.
+ *
+ * Note: the pkt->sk must not be closed.
  */
 int rnl_send_rq(map_node *rnode, 
 		PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, 
@@ -442,7 +478,7 @@ int rnl_send_rq(map_node *rnode,
 	int ret, tries=0;
 
 retry:
-	if((pkt->sk=rnl_get_sk(rlist, rnode)) < 0)
+	if(!pkt->sk && rnl_fill_rq(rnode, pkt) < 0)
 		return -1;
 
 	ret=send_rq(pkt, pkt_flags, rq, rq_id, re, check_ack, rpkt);
@@ -626,7 +662,7 @@ int radar_remove_old_rnodes(char *rnode_deleted)
 
 			/* delete the rnode from the rnode_list */
 			rnl=rnl_find_node(rlist, node);
-			rnl_del(&rlist, &rlist_counter, rnl);
+			rnl_del(&rlist, &rlist_counter, rnl, 1);
 
 			/*
 			 * Just delete it from all the maps.
