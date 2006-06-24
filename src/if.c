@@ -84,10 +84,10 @@ int ifs_find_devname(interface *ifs, int ifs_n, char *dev_name)
 void ifs_del(interface *ifs, int *ifs_n, int if_pos)
 {
 	if(if_pos == (*ifs_n)-1)
-		memset(&ifs[if_pos], 0, sizeof(interface));
+		setzero(&ifs[if_pos], sizeof(interface));
 	else {
 		memcpy(&ifs[if_pos], &ifs[(*ifs_n)-1], sizeof(interface));
-		memset(&ifs[(*ifs_n)-1], 0, sizeof(interface));
+		setzero(&ifs[(*ifs_n)-1], sizeof(interface));
 	}
 
 	(*ifs_n)--;
@@ -396,7 +396,7 @@ int get_dev_ip(inet_prefix *ip, int family, char *dev)
 	int s=-1;
 	int ret=0;
 
-	memset(ip, 0, sizeof(inet_prefix));
+	setzero(ip, sizeof(inet_prefix));
 
 	if((s=new_socket(family)) < 0) {
 		error("Error while setting \"%s\" ip: Cannot open socket", dev);
@@ -496,7 +496,7 @@ int print_addrinfo(const struct sockaddr_nl *who, struct nlmsghdr *n,
 	if (filter.pfx.family) {
 		if (rta_tb[IFA_LOCAL]) {
 			inet_prefix dst;
-			memset(&dst, 0, sizeof(dst));
+			setzero(&dst, sizeof(dst));
 			dst.family = ifa->ifa_family;
 			memcpy(&dst.data, RTA_DATA(rta_tb[IFA_LOCAL]), 
 					RTA_PAYLOAD(rta_tb[IFA_LOCAL]));
@@ -556,7 +556,7 @@ int ip_addr_flush(int family, char *dev, int scope)
 	struct rtnl_handle rth;
 	char *filter_dev = NULL;
 
-	memset(&filter, 0, sizeof(filter));
+	setzero(&filter, sizeof(filter));
 	filter.showqueue = 1;
 
 	filter.family = family;

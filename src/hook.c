@@ -126,8 +126,8 @@ int get_free_nodes(map_node *dst_rnode,
 	int ret=0, e, i;
 	char *buf=0;
 	
-	memset(&pkt, '\0', sizeof(PACKET));
-	memset(&rpkt, '\0', sizeof(PACKET));
+	setzero(&pkt, sizeof(PACKET));
+	setzero(&rpkt, sizeof(PACKET));
 	
 	hook_fill_rq(dst_rnode, &pkt, GET_FREE_NODES) < 0 && _return (-1);
 	pkt_addtimeout(&pkt, HOOK_RQ_TIMEOUT, 1, 0);
@@ -305,8 +305,8 @@ int get_qspn_round(map_node *dst_rnode, struct timeval to_rtt,
 	u_char max_levels;
 	int_info qr_pkt_iinfo;
 	
-	memset(&pkt, '\0', sizeof(PACKET));
-	memset(&rpkt, '\0', sizeof(PACKET));
+	setzero(&pkt, sizeof(PACKET));
+	setzero(&rpkt, sizeof(PACKET));
 	
 	hook_fill_rq(dst_rnode, &pkt, GET_QSPN_ROUND) < 0 && _return (-1);
 	pkt_addtimeout(&pkt, HOOK_RQ_TIMEOUT, 1, 0);
@@ -450,10 +450,8 @@ int put_ext_map(PACKET rq_pkt)
 	
 	ntop=inet_to_str(rq_pkt.from);
 	
-	memset(&pkt, '\0', sizeof(PACKET));
-	pkt_addto(&pkt, &rq_pkt.from);
+	setzero(&pkt, sizeof(PACKET));
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
-	pkt_add_dev(&pkt, rq_pkt.dev, 1);
 	pkt_addcompress(&pkt);
 
 	pkt.msg=pack_extmap(me.ext_map, MAXGROUPNODE, &me.cur_quadg, &pkt_sz);
@@ -481,8 +479,8 @@ map_gnode **get_ext_map(map_node *dst_rnode, quadro_group *new_quadg)
 	int err;
 	map_gnode **ext_map=0, **ret=0;
 
-	memset(&pkt, '\0', sizeof(PACKET));
-	memset(&rpkt, '\0', sizeof(PACKET));
+	setzero(&pkt, sizeof(PACKET));
+	setzero(&rpkt, sizeof(PACKET));
 
 	hook_fill_rq(dst_rnode, &pkt, GET_EXT_MAP) < 0 && _return (0);
 	pkt_addtimeout(&pkt, HOOK_RQ_TIMEOUT, 1, 0);
@@ -519,7 +517,7 @@ int put_int_map(PACKET rq_pkt)
 	
 	ntop=inet_to_str(rq_pkt.from);
 	
-	memset(&pkt, '\0', sizeof(PACKET));
+	setzero(&pkt, sizeof(PACKET));
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
 	pkt_add_dev(&pkt, rq_pkt.dev, 1);
@@ -549,8 +547,8 @@ map_node *get_int_map(map_node *dst_rnode, map_node **new_root)
 	int err;
 	char *pack;
 	
-	memset(&pkt, '\0', sizeof(PACKET));
-	memset(&rpkt, '\0', sizeof(PACKET));
+	setzero(&pkt, sizeof(PACKET));
+	setzero(&rpkt, sizeof(PACKET));
 	
 	hook_fill_rq(dst_rnode, &pkt, GET_INT_MAP) < 0 && _return (0);
 	pkt_addtimeout(&pkt, HOOK_RQ_TIMEOUT, 1, 0);
@@ -590,7 +588,7 @@ int put_bnode_map(PACKET rq_pkt)
 	
 	ntop=inet_to_str(rq_pkt.from);
 
-	memset(&pkt, '\0', sizeof(PACKET));
+	setzero(&pkt, sizeof(PACKET));
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
 	pkt_add_dev(&pkt, rq_pkt.dev, 1);
@@ -622,8 +620,8 @@ map_bnode **get_bnode_map(map_node *dst_rnode, u_int **bmap_nodes)
 	map_bnode **bnode_map, **ret=0;
 	char *pack;
 	
-	memset(&pkt, '\0', sizeof(PACKET));
-	memset(&rpkt, '\0', sizeof(PACKET));
+	setzero(&pkt, sizeof(PACKET));
+	setzero(&rpkt, sizeof(PACKET));
 	
 	hook_fill_rq(dst_rnode, &pkt, GET_BNODE_MAP) < 0 && _return (0);
 	pkt_addtimeout(&pkt, HOOK_RQ_TIMEOUT, 1, 0);
@@ -663,7 +661,7 @@ int put_internet_gws(PACKET rq_pkt)
 	
 	ntop=inet_to_str(rq_pkt.from);
 
-	memset(&pkt, '\0', sizeof(PACKET));
+	setzero(&pkt, sizeof(PACKET));
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
 	pkt_add_dev(&pkt, rq_pkt.dev, 1);
@@ -697,8 +695,8 @@ inet_gw **get_internet_gws(map_node *dst_rnode, int **igws_counter)
 	inet_gw **igws=0;
 	char *pack;
 	
-	memset(&pkt, '\0', sizeof(PACKET));
-	memset(&rpkt, '\0', sizeof(PACKET));
+	setzero(&pkt, sizeof(PACKET));
+	setzero(&rpkt, sizeof(PACKET));
 
 	hook_fill_rq(dst_rnode, &pkt, GET_INTERNET_GWS) < 0 && _return (0);
 	pkt_addtimeout(&pkt, HOOK_RQ_TIMEOUT, 1, 0);

@@ -380,7 +380,7 @@ struct nexthop *rt_build_nexthop_gw(map_node *node, map_gnode *gnode, int level,
 	
 	if(!level) {
 		nh=xmalloc(sizeof(struct nexthop)*(node->links+1));
-		memset(nh, '\0', sizeof(struct nexthop)*(node->links+1));
+		setzero(nh, sizeof(struct nexthop)*(node->links+1));
 
 		for(i=0, n=0; i<node->links; i++) {
 			tmp_node=(map_node *)node->r_node[i].r_node;
@@ -411,7 +411,7 @@ struct nexthop *rt_build_nexthop_gw(map_node *node, map_gnode *gnode, int level,
 			goto finish;
 
 		nh=xmalloc(sizeof(struct nexthop)*(routes+1));
-		memset(nh, '\0', sizeof(struct nexthop)*(routes+1));
+		setzero(nh, sizeof(struct nexthop)*(routes+1));
 
 		for(ips=0, n=0; ips < routes; ips++) {
 			inet_copy(&nh[n].gw, &gnode_gws[ips]);
@@ -451,7 +451,7 @@ struct nexthop *rt_build_nexthop_voidgw(void *void_gw, interface **oifs)
 	for(dev_n=0; oifs[dev_n]; dev_n++);
 	
 	nh=xmalloc(sizeof(struct nexthop)*(dev_n+1));
-	memset(nh, '\0', sizeof(struct nexthop)*(dev_n+1));
+	setzero(nh, sizeof(struct nexthop)*(dev_n+1));
 
 	if(gw_node->flags & MAP_ERNODE) {
 		e_rnode=(ext_rnode *)gw_node;
@@ -739,7 +739,7 @@ int rt_exec_gw(char *dev, inet_prefix to, inet_prefix gw,
 		inet_htonl(to.data, to.family);
 
 	if(gw.len) {
-		memset(nh, '\0', sizeof(struct nexthop)*2);	
+		setzero(nh, sizeof(struct nexthop)*2);	
 		inet_copy(&nh[0].gw, &gw);
 		inet_htonl(nh[0].gw.data, nh[0].gw.family);
 		nh[0].dev=dev;

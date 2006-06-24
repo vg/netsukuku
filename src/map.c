@@ -109,7 +109,7 @@ map_node *init_map(size_t len)
 		len=sizeof(map_node)*MAXGROUPNODE;
 	
 	map=(map_node *)xmalloc(len);
-	memset(map, '\0', len);
+	setzero(map, len);
 	for(i=0; i<MAXGROUPNODE; i++)
 		map[i].flags|=MAP_VOID;
 	
@@ -131,7 +131,7 @@ void free_map(map_node *map, size_t count)
 		}
 	}
 	
-	memset(map, '\0', len);
+	setzero(map, len);
 	xfree(map);
 }
 

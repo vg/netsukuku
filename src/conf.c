@@ -24,8 +24,7 @@
 #include "includes.h"
 #include <ctype.h>
 
-#include "log.h"
-#include "xmalloc.h"
+#include "common.h"
 #include "conf.h"
 
 /*
@@ -99,7 +98,7 @@ int load_config_file(char *file)
 	}
 
 	while(!feof(fd) && i < CONF_MAX_LINES) {
-		memset(buf, 0, PATH_MAX+1);
+		setzero(buf, PATH_MAX+1);
 		fgets(buf, PATH_MAX, fd);
 		e++;
 

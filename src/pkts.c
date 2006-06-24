@@ -479,7 +479,7 @@ int pkt_tcp_connect(inet_prefix *host, short port, interface *dev)
 	ssize_t err;
 
 	ntop=inet_to_str(*host);
-	memset(&pkt, '\0', sizeof(PACKET));
+	setzero(&pkt, sizeof(PACKET));
 	
 	if((sk=new_tcp_conn(host, port, dev?dev->dev_name:0))==-1)
 		goto finish;
@@ -588,17 +588,11 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re,
 		error("\"%s\" request/reply is not valid!", rq_str);
 		return SEND_RQ_ERR_RQ;
 	}
-
-	if(!re_verify(rq))
-		rq_str=re_to_str(rq);
-	else
-		rq_str=rq_to_str(rq);
-
+	rq_str = !re_verify(rq) ? re_to_str(rq) : rq_to_str(rq);
 	if(re && re_verify(re)) {
 		error("\"%s\" reply is not valid!", re_str);
 		return SEND_RQ_ERR_RE;
 	}
-
 
 	ntop=inet_to_str(pkt->to);
 
@@ -660,14 +654,16 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re,
 		ERROR_FINISH(ret, SEND_RQ_ERR_SEND, finish);
 	}
 
-	/* * * the reply * * */
+	/*
+	 *  * * the reply * * 
+	 */
 	if(rpkt) {
 		if(rpkt->from.data[0] && rpkt->from.len) {
 			wanted_from=&rpkt->from;
 			ntop=inet_to_str(rpkt->from);
 		}
 
-		memset(rpkt, '\0', sizeof(PACKET));
+		setzero(rpkt, sizeof(PACKET));
 		pkt_addport(rpkt, pkt->port);
 		pkt_addsk(rpkt, pkt->to.family, pkt->sk, pkt->sk_type);
 		rpkt->flags=MSG_WAITALL;
@@ -776,8 +772,11 @@ int pkt_err(PACKET pkt, u_char err, int free_pkt)
 
 
 /*
- * pkt_exec: It "executes" the received `pkt' passing it to the function which
- * associated to `pkt'.hdr.op.
+ * pkt_exec
+ *
+ * It "executes" the received `pkt' passing it to the function which associated 
+ * to `pkt'.hdr.op.
+ *
  * `acpt_idx' is the accept table index of the connection where the pkt was
  * received.
  */

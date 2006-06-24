@@ -1804,9 +1804,9 @@ andna_cache *get_single_andna_c(u_int hash[MAX_IP_INT],
 	const char *ntop;
 	char *pack;
 	
-	memset(&pkt, '\0', sizeof(PACKET));
-	memset(&rpkt, '\0', sizeof(PACKET));
-	memset(&req_hdr, '\0', sizeof(struct single_acache_hdr));
+	setzero(&pkt, sizeof(PACKET));
+	setzero(&rpkt, sizeof(PACKET));
+	setzero(&req_hdr, sizeof(struct single_acache_hdr));
 	
 	/*
 	 * Find the old hash_gnode that corresponds to the hash `hash_gnode',
@@ -1995,7 +1995,7 @@ int put_single_acache(PACKET rpkt)
 	 * Pack the `ac' andna_cache and send it to `rfrom' 
 	 */
 	
-	memset(&pkt, '\0', sizeof(PACKET));
+	setzero(&pkt, sizeof(PACKET));
 	pkt_fill_hdr(&pkt.hdr, ASYNC_REPLIED, rpkt.hdr.id, ACK_AFFERMATIVE, 0);
 	pkt_addto(&pkt, &rfrom);
 	pkt_addsk(&pkt, my_family, 0, SKT_TCP);
@@ -2132,8 +2132,8 @@ andna_cache *get_andna_cache(map_node *dst_rnode, int *counter)
 	int err;
 	char *pack;
 	
-	memset(&pkt, '\0', sizeof(PACKET));
-	memset(&rpkt, '\0', sizeof(PACKET));
+	setzero(&pkt, sizeof(PACKET));
+	setzero(&rpkt, sizeof(PACKET));
 
 	if(rnl_fill_rq(dst_rnode, &pkt) < 0)
 		ERROR_FINISH(ret, 0, finish);
@@ -2214,8 +2214,8 @@ counter_c *get_counter_cache(map_node *dst_rnode, int *counter)
 	int err;
 	char *pack;
 	
-	memset(&pkt, '\0', sizeof(PACKET));
-	memset(&rpkt, '\0', sizeof(PACKET));
+	setzero(&pkt, sizeof(PACKET));
+	setzero(&rpkt, sizeof(PACKET));
 	
 	if(rnl_fill_rq(dst_rnode, &pkt) < 0)
 		ERROR_FINISH(ret, 0, finish);
@@ -2262,7 +2262,7 @@ int put_counter_cache(PACKET rq_pkt)
 	
 	ntop=inet_to_str(rq_pkt.from);
 	
-	memset(&pkt, '\0', sizeof(PACKET));
+	setzero(&pkt, sizeof(PACKET));
 	pkt_addto(&pkt, &rq_pkt.from);
 	pkt_addsk(&pkt, my_family, rq_pkt.sk, rq_pkt.sk_type);
 	pkt_addcompress(&pkt);

@@ -206,7 +206,7 @@ void gidtoipstart(int *gid, u_char total_levels, u_char levels, int family,
 	int i, h_ip[MAX_IP_INT];
 	u_char *ipstart;
 
-	memset(h_ip, '\0', MAX_IP_SZ);
+	setzero(h_ip, MAX_IP_SZ);
 	ipstart=(u_char *)h_ip;
 
 	for(i=total_levels-ZERO_LEVEL; i >= total_levels-levels; i--) {
@@ -916,7 +916,7 @@ map_gnode *init_gmap(int groups)
 		groups=MAXGROUPNODE;
 	len=sizeof(map_gnode) * groups;
 	gmap=(map_gnode *)xmalloc(len);
-	memset(gmap, '\0', len);
+	setzero(gmap, len);
 
 	reset_gmap(gmap, groups);
 	

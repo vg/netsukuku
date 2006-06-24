@@ -1143,7 +1143,7 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 				 * Add an rnode in the root_node which point to
 				 * `gfrom', because it is our new (g)rnode.
 				 */
-				memset(&rnn, '\0', sizeof(map_rnode));
+				setzero(&rnn, sizeof(map_rnode));
 				rnn.r_node=(int *)gfrom;
 				rnode_add(root_node, &rnn);
 			}
@@ -1225,7 +1225,7 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 		}
 		if(!f) { 
 			/*If the `node' doesn't have `from' in his r_nodes... let's add it*/
-			memset(&rnn, '\0', sizeof(map_rnode));
+			setzero(&rnn, sizeof(map_rnode));
 
 			rnn.r_node=(int *)from;
 			rnn.trtt=trtt_ms;

@@ -70,7 +70,7 @@ void inet_htonl(u_int *data, int family)
 int inet_setip_raw(inet_prefix *ip, u_int *data, int family)
 {
 	ip->family=family;
-	memset(ip->data, '\0', sizeof(ip->data));
+	setzero(ip->data, sizeof(ip->data));
 	
 	if(family==AF_INET) {
 		ip->data[0]=data[0];
@@ -481,7 +481,7 @@ int inet_to_sockaddr(inet_prefix *ip, u_short port, struct sockaddr *dst,
 	
 	if(ip->family==AF_INET) {
 		struct sockaddr_in sin;
-		memset(&sin, '\0',  sizeof(struct sockaddr_in));
+		setzero(&sin,  sizeof(struct sockaddr_in));
 		
 		sin.sin_family = ip->family;
 		sin.sin_port = port;
@@ -493,7 +493,7 @@ int inet_to_sockaddr(inet_prefix *ip, u_short port, struct sockaddr *dst,
 
 	} else if(ip->family==AF_INET6) {
 		struct sockaddr_in6 sin6;
-		memset(&sin6, '\0',  sizeof(struct sockaddr_in6));
+		setzero(&sin6,  sizeof(struct sockaddr_in6));
 		
 		sin6.sin6_family = ip->family;
 		sin6.sin6_port = port;
@@ -517,7 +517,7 @@ int sockaddr_to_inet(struct sockaddr *ip, inet_prefix *dst, u_short *port)
 	u_short po;
 	char *p;
 	
-	memset(dst, '\0',  sizeof(inet_prefix));
+	setzero(dst,  sizeof(inet_prefix));
 	
 	dst->family=ip->sa_family;
 	memcpy(&po, &ip->sa_data, sizeof(u_short));

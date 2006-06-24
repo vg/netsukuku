@@ -592,7 +592,7 @@ void final_radar_queue(void)
 	struct timeval sum;
 	u_int f_rtt;
 
-	memset(&sum, '\0', sizeof(struct timeval));
+	setzero(&sum, sizeof(struct timeval));
 
 	rq=radar_q;
 	list_for(rq) {
@@ -955,7 +955,7 @@ void radar_update_map(void)
 					    * to a ext_rnode struct.
 					    */
 
-					   memset(&rnn, '\0', sizeof(map_rnode));
+					   setzero(&rnn, sizeof(map_rnode));
 					   e_rnode=xzalloc(sizeof(ext_rnode));
 
 					   memcpy(&e_rnode->quadg, &rq->quadg, sizeof(quadro_group));
@@ -976,7 +976,7 @@ void radar_update_map(void)
 					    * This node has only one rnode, 
 					    * and that is the root_node.
 					    */
-					   memset(&rnn, '\0', sizeof(map_rnode));
+					   setzero(&rnn, sizeof(map_rnode));
 					   rnn.r_node=(int *)root_node;
 					   rnode_add(node, &rnn);
 
@@ -989,7 +989,7 @@ void radar_update_map(void)
 					    * Fill the rnode to be added in the
 					    * root_node.
 					    */
-					   memset(&rnn, '\0', sizeof(map_rnode));
+					   setzero(&rnn, sizeof(map_rnode));
 					   rnn.r_node=(int *)node; 
 					   new_root_rnode=&rnn;
 				   }
@@ -1143,8 +1143,8 @@ radar_queue *add_radar_q(PACKET pkt)
 			map_rnode rnn;
 
 			rnode=xmalloc(sizeof(map_node));
-			memset(rnode, '\0', sizeof(map_node));
-			memset(&rnn, '\0', sizeof(map_rnode));
+			setzero(rnode, sizeof(map_node));
+			setzero(&rnn, sizeof(map_rnode));
 
 			rnn.r_node=(int *)me.cur_node;
 			rnode_add(rnode, &rnn);
@@ -1355,7 +1355,7 @@ int radar_scan(int activate_qspn)
 	/*
 	 * We create the PACKET 
 	 */
-	memset(&pkt, '\0', sizeof(PACKET));
+	setzero(&pkt, sizeof(PACKET));
 	inet_setip_bcast(&pkt.to, my_family);
 	my_echo_id=rand();
 
@@ -1504,7 +1504,7 @@ int radard(PACKET rpkt)
 	}
 
 	/* We create the ECHO_REPLY pkt */
-	memset(&pkt, '\0', sizeof(PACKET));
+	setzero(&pkt, sizeof(PACKET));
 	pkt_addto(&pkt, &rpkt.from);
 	pkt_addsk(&pkt, rpkt.from.family, rpkt.sk, SKT_UDP);
 

@@ -67,7 +67,7 @@ map_node *init_map(size_t len)
 		len=sizeof(map_node)*MAXGROUPNODE;
 	
 	map=(map_node *)xmalloc(len);
-	memset(map, '\0', len);
+	setzero(map, len);
 	for(i=0; i<MAXGROUPNODE; i++)
 		map[i].flags|=MAP_VOID;
 	
@@ -89,7 +89,7 @@ void free_map(map_node *map, size_t count)
 		}
 	}
 	
-	memset(map, '\0', len);
+	setzero(map, len);
 	xfree(map);
 }
 
@@ -568,7 +568,7 @@ void gen_rnd_map(int start_node, int back_link, int back_link_rtt)
 	int_map[i].flags&=~MAP_VOID;
 	if(b) {
 		r++;
-		memset(&rtmp, '\0', sizeof(map_rnode));
+		setzero(&rtmp, sizeof(map_rnode));
 		rtmp.r_node=(u_int *)&int_map[back_link];
 		rtmp.rtt.tv_usec=back_link_rtt;
 		//printf("Node %d -> Adding rnode %d (back link)\n", i, back_link);
@@ -577,7 +577,7 @@ void gen_rnd_map(int start_node, int back_link, int back_link_rtt)
 	}
 	/*printf("Creating %d links for the node %d\n",  r, i);*/
 	for(e=0; e<r; e++) { /*It's e<r and not e<=r because we've already added the back_link rnode at r position*/
-		memset(&rtmp, '\0', sizeof(map_rnode));
+		setzero(&rtmp, sizeof(map_rnode));
 random_node:
 		/*Are we adding ourself or an already addded node in our rnodes?*/
 		while((rnode_rnd=(rand_range(0, MAXGROUPNODE-1)))== i);
@@ -608,7 +608,7 @@ random_node:
 				}
 			if(!c) {
 				/*We create the back link from rnode_rnd to me (i)*/
-				memset(&rtmp, '\0', sizeof(map_rnode));
+				setzero(&rtmp, sizeof(map_rnode));
 				rtmp.r_node=(u_int *)&int_map[i];
 				rtmp.rtt.tv_usec=ms_rnd*1000;
 				//printf("Node %d -> Adding rnode %d (front link)\n", rnode_rnd,i);
