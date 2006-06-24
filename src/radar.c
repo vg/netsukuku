@@ -89,8 +89,10 @@ void close_radar(void)
 
 void reset_radar(void)
 {
-	if(me.cur_node->flags & MAP_HNODE)
+	if(me.cur_node->flags & MAP_HNODE) {
 		free_new_node();
+		rnl_reset(&rlist, &rlist_counter);
+	}
 	
 	close_radar();
 	init_radar();
@@ -182,7 +184,7 @@ void rnl_del(struct rnode_list **rnlist, int *rnlist_counter,
 {
 	if(rnl) {
 		if(close_socket && rnl->tcp_sk)
-			close(rnl->tcp_sk);
+			inet_close(&rnl->tcp_sk);
 		clist_del(rnlist, rnlist_counter, rnl);
 	}
 	if(!(*rnlist_counter))
@@ -196,7 +198,10 @@ void rnl_del(struct rnode_list **rnlist, int *rnlist_counter,
  */
 void rnl_reset(struct rnode_list **rnlist, int *rnlist_counter)
 {
-	list_destroy(*rnlist);
+	struct rnode_list *rnl=*rnlist, *next;
+
+	list_safe_for(rnl, next)
+		rnl_del(rnlist, rnlist_counter, rnl, 1);
 	*rnlist=(struct rnode_list *)clist_init(rnlist_counter);
 }
 
@@ -442,6 +447,20 @@ void rnl_set_sk(struct rnode_list *rnlist, map_node *node, int sk)
 }
 
 /*
+ * rnl_close_all_sk
+ *
+ * It closes all the opened tcp_sk of the `rnlist' llist
+ */
+void rnl_close_all_sk(struct rnode_list *rnlist, map_node *node)
+{
+	struct rnode_list *rnl=rnlist;
+
+	list_for(rnl)
+		if(rnl->tcp_sk)
+			inet_close(&rnl->tcp_sk);
+}
+
+/*
  * rnl_fill_rq
  *
  * It sets the `pkt'->sk and `pkt'->to variables.
@@ -451,13 +470,22 @@ void rnl_set_sk(struct rnode_list *rnlist, map_node *node, int sk)
  */
 int rnl_fill_rq(map_node *rnode, PACKET *pkt)
 {
+	int tries=0;
+
+retry:
 	if(!pkt->sk && (pkt->sk=rnl_get_sk(rlist, rnode)) <= 0) {
 		error(ERROR_MSG "Couldn't get the socket associated "
 				"to dst_rnode", ERROR_FUNC);
 		return -1;
 	}
 
-	inet_getpeername(pkt->sk, &pkt->to, 0);
+	if(inet_getpeername(pkt->sk, &pkt->to, 0) < 0) {
+		tries++;
+		if(tries < 2)
+			goto retry;
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -486,7 +514,7 @@ retry:
 		ret == SEND_RQ_ERR_RECV)) {
 
 		/* The socket has been corrupted, set it to 0 and try again */
-		close(pkt->sk);
+		inet_close(&pkt->sk);
 		rnl_set_sk(rlist, rnode, 0);
 		
 		tries++;
@@ -1416,7 +1444,7 @@ int radar_scan(int activate_qspn)
 				pkt.dev->dev_name);
 	
 		if(pkt.sk > 0)
-			close(pkt.sk);
+			inet_close(&pkt.sk);
 	}
 	
 	pkt_free(&pkt, 1);

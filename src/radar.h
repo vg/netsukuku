@@ -150,6 +150,7 @@ void rnl_reset(struct rnode_list **rnlist, int *rnlist_counter);
 interface **rnl_get_dev(struct rnode_list *rnlist, map_node *node);
 interface *rnl_get_rand_dev(struct rnode_list *rnlist, map_node *node);
 int rnl_get_sk(struct rnode_list *rnlist, map_node *node);
+void rnl_close_all_sk(struct rnode_list *rnlist, map_node *node);
 int rnl_fill_rq(map_node *rnode, PACKET *pkt);
 int rnl_send_rq(map_node *rnode, 
 		PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, 

@@ -26,7 +26,9 @@
 #include "common.h"
 
 /*
- * xor_int: XORs all the bytes of the `i' integer by merging them in a single
+ * xor_int
+ * 
+ * XORs all the bytes of the `i' integer by merging them in a single
  * byte. It returns the merged byte.
  */
 char xor_int(int i)
@@ -39,9 +41,11 @@ char xor_int(int i)
 }
 
 
-/*
- * * * *  Swap functions  * * * *
- */
+/*\
+ *
+ *  * * *  Swap functions  * * * *
+ *
+\*/
 
 
 /*

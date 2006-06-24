@@ -156,10 +156,8 @@ void pkt_copy(PACKET *dst, PACKET *src)
 
 void pkt_free(PACKET *pkt, int close_socket)
 {
-	if(close_socket && pkt->sk) {
-		close(pkt->sk);
-		pkt->sk=0;
-	}
+	if(close_socket && pkt->sk)
+		inet_close(&pkt->sk);
 	
 	if(pkt->msg) {
 		xfree(pkt->msg);
@@ -369,102 +367,125 @@ finish:
 	return ret;
 }
 
-ssize_t pkt_recv(PACKET *pkt)
+ssize_t pkt_recv_udp(PACKET *pkt)
 {
 	ssize_t err=-1;
 	struct sockaddr from;
 	socklen_t fromlen;
 	char buf[MAXMSGSZ];
 
-	if(pkt->sk_type==SKT_UDP || pkt->sk_type==SKT_BCAST) {
-		setzero(buf, MAXMSGSZ);
-		setzero(&from, sizeof(struct sockaddr));
-		
-		if(pkt->family == AF_INET)
-			fromlen=sizeof(struct sockaddr_in);
-		else if(pkt->family == AF_INET6)
-			fromlen=sizeof(struct sockaddr_in6);
-		else {
-			error("pkt_recv udp: family not set");
-			return -1;
-		}
+	setzero(buf, MAXMSGSZ);
+	setzero(&from, sizeof(struct sockaddr));
 
-		/* we get the whole pkt, */
-		if(pkt->pkt_flags & PKT_RECV_TIMEOUT)
-		    err=inet_recvfrom_timeout(pkt->sk, buf, PACKET_SZ(MAXMSGSZ),
-				    pkt->flags, &from, &fromlen, pkt->timeout);
-		else
-		    err=inet_recvfrom(pkt->sk, buf, PACKET_SZ(MAXMSGSZ), 
-				    pkt->flags, &from, &fromlen);
+	if(pkt->family == AF_INET)
+		fromlen=sizeof(struct sockaddr_in);
+	else if(pkt->family == AF_INET6)
+		fromlen=sizeof(struct sockaddr_in6);
+	else {
+		error("pkt_recv udp: family not set");
+		return -1;
+	}
 
-		if(err < sizeof(pkt_hdr)) {
-			debug(DBG_NOISE, "inet_recvfrom() of the hdr aborted!");
-			return -1;
-		}
+	/* we get the whole pkt, */
+	if(pkt->pkt_flags & PKT_RECV_TIMEOUT)
+		err=inet_recvfrom_timeout(pkt->sk, buf, PACKET_SZ(MAXMSGSZ),
+				pkt->flags, &from, &fromlen, pkt->timeout);
+	else
+		err=inet_recvfrom(pkt->sk, buf, PACKET_SZ(MAXMSGSZ), 
+				pkt->flags, &from, &fromlen);
+
+	if(err < sizeof(pkt_hdr)) {
+		debug(DBG_NOISE, "inet_recvfrom() of the hdr aborted!");
+		return -1;
+	}
+
+	/* then we extract the hdr... and verify it */
+	memcpy(&pkt->hdr, buf, sizeof(pkt_hdr));
+	/* network -> host order */
+	ints_network_to_host(&pkt->hdr, pkt_hdr_iinfo);
+	if(pkt_verify_hdr(*pkt) || pkt->hdr.sz+sizeof(pkt_hdr) > err) {
+		debug(DBG_NOISE, ERROR_MSG "Malformed header", ERROR_POS);
+		return -1;
+	}
+
+	if(sockaddr_to_inet(&from, &pkt->from, 0) < 0) {
+		debug(DBG_NOISE, "Cannot pkt_recv(): %d"
+				" Family not supported", from.sa_family);
+		return -1;
+	}
+
+	pkt->msg=0;
+	if(pkt->hdr.sz) {
+		/*let's get the body*/
+		pkt->msg=xmalloc(pkt->hdr.sz);
+		memcpy(pkt->msg, buf+sizeof(pkt_hdr), pkt->hdr.sz);
+	}
 	
-		/* then we extract the hdr... and verify it */
-		memcpy(&pkt->hdr, buf, sizeof(pkt_hdr));
-		/* network -> host order */
-		ints_network_to_host(&pkt->hdr, pkt_hdr_iinfo);
-		if(pkt_verify_hdr(*pkt) || pkt->hdr.sz+sizeof(pkt_hdr) > err) {
-			debug(DBG_NOISE, "Error while unpacking the PACKET."
-					" Malformed header");
-			return -1;
-		}
+	return err;
+}
 
-		if(sockaddr_to_inet(&from, &pkt->from, 0) < 0) {
-			debug(DBG_NOISE, "Cannot pkt_recv(): %d"
-					" Family not supported", from.sa_family);
-			return -1;
-		}
-		
-		pkt->msg=0;
-		if(pkt->hdr.sz) {
-			/*let's get the body*/
-			pkt->msg=xmalloc(pkt->hdr.sz);
-			memcpy(pkt->msg, buf+sizeof(pkt_hdr), pkt->hdr.sz);
-		}
+ssize_t pkt_recv_tcp(PACKET *pkt)
+{
+	ssize_t err=-1;
 
-	} else if(pkt->sk_type==SKT_TCP) {
-		/* we get the hdr... */
+	/* we get the hdr... */
+	if(pkt->pkt_flags & PKT_RECV_TIMEOUT)
+		err=inet_recv_timeout(pkt->sk, &pkt->hdr, sizeof(pkt_hdr),
+				pkt->flags, pkt->timeout);
+	else
+		err=inet_recv(pkt->sk, &pkt->hdr, sizeof(pkt_hdr), 
+				pkt->flags);
+	if(err != sizeof(pkt_hdr))
+		return -1;
+
+	/* ...and verify it */
+	ints_network_to_host(&pkt->hdr, pkt_hdr_iinfo);
+	if(pkt_verify_hdr(*pkt)) {
+		debug(DBG_NOISE, ERROR_MSG "Malformed header", ERROR_POS);
+		return -1;
+	}
+
+	pkt->msg=0;
+	if(pkt->hdr.sz) {
+		/* let's get the body */
+		pkt->msg=xmalloc(pkt->hdr.sz);
+
 		if(pkt->pkt_flags & PKT_RECV_TIMEOUT)
-			err=inet_recv_timeout(pkt->sk, &pkt->hdr, sizeof(pkt_hdr),
+			err=inet_recv_timeout(pkt->sk, pkt->msg, pkt->hdr.sz, 
 					pkt->flags, pkt->timeout);
 		else
-			err=inet_recv(pkt->sk, &pkt->hdr, sizeof(pkt_hdr), 
+			err=inet_recv(pkt->sk, pkt->msg, pkt->hdr.sz, 
 					pkt->flags);
-		if(err != sizeof(pkt_hdr))
-			return -1;
 
-		/* ...and verify it */
-		ints_network_to_host(&pkt->hdr, pkt_hdr_iinfo);
-		if(pkt_verify_hdr(*pkt)) {
-			debug(DBG_NOISE, "Error while unpacking the PACKET. Malformed header");
+		if(err != pkt->hdr.sz) {
+			debug(DBG_NOISE, ERROR_MSG "Cannot recv the "
+					"pkt's body", ERROR_FUNC);
 			return -1;
 		}
+	}
 
-		pkt->msg=0;
-		if(pkt->hdr.sz) {
-			/* let's get the body */
-			pkt->msg=xmalloc(pkt->hdr.sz);
-			
-			if(pkt->pkt_flags & PKT_RECV_TIMEOUT)
-				err=inet_recv_timeout(pkt->sk, pkt->msg, 
-						pkt->hdr.sz, pkt->flags,
-						pkt->timeout);
-			else
-				err=inet_recv(pkt->sk, pkt->msg, pkt->hdr.sz, 
-						pkt->flags);
+	return err;
+}
 
-			if(err != pkt->hdr.sz) {
-				debug(DBG_NOISE, ERROR_MSG "Cannot recv the "
-						"pkt's body", ERROR_FUNC);
-				return -1;
-			}
-		}
-	} else
-		fatal("Unkown socket_type. Something's very wrong!! Be aware");
-	
+ssize_t pkt_recv(PACKET *pkt)
+{
+	ssize_t err=-1;
+
+	switch(pkt->sk_type) {
+		case SKT_UDP:
+		case SKT_BCAST:
+			err=pkt_recv_udp(pkt);
+			break;
+
+		case SKT_TCP:
+			err=pkt_recv_tcp(pkt);
+			break;
+
+		default:
+			fatal("Unkown socket_type. Something's very wrong!! Be aware");
+			break;
+	}
+
 	/* let's finish it */
 	pkt_unpack(pkt);
 
@@ -485,7 +506,8 @@ int pkt_tcp_connect(inet_prefix *host, short port, interface *dev)
 		goto finish;
 	
 	/*
-	 * Now we receive the first pkt from the srv. It is an ack. 
+	 * Now we receive the first pkt from the server. 
+	 * It is an ack. 
 	 * Let's hope it isn't NEGATIVE (-_+)
 	 */
 	pkt_addsk(&pkt, host->family, sk, SKT_TCP);
@@ -495,8 +517,7 @@ int pkt_tcp_connect(inet_prefix *host, short port, interface *dev)
 	if((err=pkt_recv(&pkt)) < 0) {
 		error("Connection to %s failed: it wasn't possible to receive "
 				"the ACK", ntop);
-		sk=-1;
-		goto finish;
+		ERROR_FINISH(sk, -1, finish);
 	}
 	
 	/* ...Last famous words */
@@ -506,8 +527,7 @@ int pkt_tcp_connect(inet_prefix *host, short port, interface *dev)
 		memcpy(&err, pkt.msg, pkt.hdr.sz);
 		error("Cannot connect to %s:%d: %s", 
 				ntop, port, rq_strerror(err));
-		sk=-1;
-		goto finish;
+		ERROR_FINISH(sk, -1, finish);
 	}
 	
 finish:
@@ -732,7 +752,7 @@ int forward_pkt(PACKET rpkt, inet_prefix to)
 	
 	err=send_rq(&rpkt, 0, rpkt.hdr.op, rpkt.hdr.id, 0, 0, 0);
 	if(!err)
-		close(rpkt.sk);
+		inet_close(&rpkt.sk);
 
 	return err;
 }
@@ -863,7 +883,9 @@ void pkt_queue_close(void)
 }
 
 /* 
- * wait_and_unlock: It waits REQUEST_TIMEOUT seconds, then it unlocks `pq'->mtx.
+ * wait_and_unlock
+ * 
+ * It waits REQUEST_TIMEOUT seconds, then it unlocks `pq'->mtx.
  * This prevents the dead lock in pkt_q_wait_recv()
  */
 void *wait_and_unlock(void *m)

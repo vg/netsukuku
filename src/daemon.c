@@ -70,12 +70,12 @@ int prepare_listen_socket(int family, int socktype, u_short port,
 
 		/* Bind the created socket to the device named dev->dev_name */
 		if(dev && (set_bindtodevice_sk(s, dev->dev_name) < 0)) {
-			close(s);
+			inet_close(&s);
 			continue;
 		}
 
 		if(set_reuseaddr_sk(s) < 0) {
-			close(s);
+			inet_close(&s);
 			continue;
 		}
 
@@ -83,7 +83,7 @@ int prepare_listen_socket(int family, int socktype, u_short port,
 		if(bind(s, ai->ai_addr, ai->ai_addrlen) < 0) {
 			error("Cannot bind the port %d: %s. Trying another "
 					"socket...", port, strerror(errno));
-			close(s);
+			inet_close(&s);
 			continue;
 		}
 		freeaddrinfo(aitop);
@@ -371,8 +371,7 @@ void *tcp_daemon(void *door)
 
 		/* Shhh, it's listening... */
 		if(listen(dev_sk[i], 5) == -1) {
-			close(dev_sk[i]);
-			dev_sk[i]=0;
+			inet_close(&dev_sk[i]);
 			return NULL;
 		}
 	}
@@ -435,7 +434,7 @@ void *tcp_daemon(void *door)
 
 				/* Omg, we cannot take it anymore, go away: ACK_NEGATIVE */
 				pkt_err(rpkt, ret, 1);
-				close(fd);
+				inet_close(&fd);
 				continue;
 			} else {
 				/* 

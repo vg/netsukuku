@@ -2468,7 +2468,7 @@ void *andna_main(void *null)
 	pthread_mutex_init(&udp_daemon_lock, 0);
 	pthread_mutex_init(&tcp_daemon_lock, 0);
 
-	debug(DBG_SOFT,   "Evocating the andna udp daemon.");
+	debug(DBG_SOFT,   "Evoking the andna udp daemon.");
 	ud_argv.port=andna_udp_port;
 	ud_argv.flags|=UDP_THREAD_FOR_EACH_PKT;
 	pthread_mutex_lock(&udp_daemon_lock);
@@ -2476,7 +2476,7 @@ void *andna_main(void *null)
 	pthread_mutex_lock(&udp_daemon_lock);
 	pthread_mutex_unlock(&udp_daemon_lock);
 
-	debug(DBG_SOFT,   "Evocating the andna tcp daemon.");
+	debug(DBG_SOFT,   "Evoking the andna tcp daemon.");
 	*port=andna_tcp_port;
 	pthread_mutex_lock(&tcp_daemon_lock);
 	pthread_create(&thread, &t_attr, tcp_daemon, (void *)port);
@@ -2491,7 +2491,7 @@ void *andna_main(void *null)
 	/*
 	 * DNS wrapper
 	 */
-	debug(DBG_SOFT, "Evocating the DNS wrapper daemon.");
+	debug(DBG_SOFT, "Evoking the DNS wrapper daemon.");
 	pthread_create(&thread, &t_attr, dns_wrapper_thread, 0);
 
 	/* 

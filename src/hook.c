@@ -723,7 +723,7 @@ finish:
 
 
 /* 
- * set_ip_and_def_gw
+ * hook_set_all_ips
  *
  * Sets the same `ip' to all the devices.
  */
@@ -794,7 +794,8 @@ int create_gnodes(inet_prefix *ip, int final_level)
 	me.cur_quadg.levels=FAMILY_LVLS;
 	reset_extmap(me.ext_map, me.cur_quadg.levels, 0);
 	iptoquadg(me.cur_ip, me.ext_map, &me.cur_quadg, QUADG_GID|QUADG_GNODE|QUADG_IPSTART);
-	
+
+	/* Set the new flags */
 	for(i=1; i<final_level; i++) {
 		me.cur_quadg.gnode[_EL(i)]->flags &= ~GMAP_VOID;
 		me.cur_quadg.gnode[_EL(i)]->flags |=  GMAP_ME;
@@ -822,8 +823,10 @@ int create_gnodes(inet_prefix *ip, int final_level)
 }
 
 /*
- * create_new_qgroup: this is just a wrapper to create_gnodes(). It creates
- * completely random gnodes in all the levels.
+ * create_new_qgroup
+ * 
+ * this is just a wrapper to create_gnodes(). It creates completely
+ * random gnodes in all the levels.
  */
 void create_new_qgroup(int hook_level)
 {
@@ -842,9 +845,11 @@ void create_new_qgroup(int hook_level)
 }
 
 /*
- * update_join_rate: it updates the `hook_join_rate' according to
- * `gnode_count', which has the gnode count of `hook_gnode' and to `fn_hdr',
- * which is the free_nodes_hdr received from `hook_gnode'.
+ * update_join_rate
+ * 
+ * it updates the `hook_join_rate' according to `gnode_count', which has the
+ * gnode count of `hook_gnode' and to `fn_hdr', which is the free_nodes_hdr 
+ * received from `hook_gnode'.
  * `old_gcount' is the gnode_count we had before the start of the rehook.
  * If a new_gnode has to be created 1 is returned, (and hook_join_rate will be
  * 0), otherwise 0 is the returned value.
@@ -1125,8 +1130,9 @@ hook_retry_scan:
 
 
 /*
- * hook_get_free_nodes: gets the free_nodes list and the qson_round info from
- * our nearest rnode.
+ * hook_get_free_nodes
+ * 
+ * gets the free_nodes list and the qson_round info from our nearest rnode.
  * In `fn_hdr', `fnodes', `gnode_ipstart' and `new_gcount' there will be stored the relative
  * value.
  * If a new gnode has to be created 1 is returned.
@@ -1164,7 +1170,12 @@ int hook_get_free_nodes(int hook_level, struct free_nodes_hdr *fn_hdr,
 			e=1;
 			break;
 		}
-	}	
+	}
+
+	/* Close the rnl->tcp_sk socket */
+	inet_close(&rnl->tcp_sk);
+	*ret_rnl=rnl;
+
 	if(!e) {
 		loginfo("It seems all the quadro_groups in this area are full "
 				"or are not cooperating.\n  "
@@ -1174,14 +1185,14 @@ int hook_get_free_nodes(int hook_level, struct free_nodes_hdr *fn_hdr,
 		return 1;
 	}
 	
-	*ret_rnl=rnl;
-
 	return 0;
 }
 
 /*
- * hook_choose_new_ip: after reading the received `fn_hdr', it decides our new 
- * IP and if we have to create a new gnode it returns 1.
+ * hook_choose_new_ip
+ * 
+ * after reading the received `fn_hdr', it decides our new IP and if we have to
+ * create a new gnode it returns 1.
  */
 int hook_choose_new_ip(map_gnode *hook_gnode, int hook_level, 
 		struct free_nodes_hdr *fn_hdr, u_char *fnodes, 
@@ -1302,8 +1313,9 @@ int hook_get_ext_map(int hook_level, int new_gnode,
 }
 
 /* 
- * hook_get_int_map: fetch the internal map from a rnode which belongs to our
- * same gnode.
+ * hook_get_int_map
+ * 
+ * fetch the internal map from a rnode which belongs to our same gnode.
  */
 void hook_get_int_map(void)
 {

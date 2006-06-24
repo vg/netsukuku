@@ -566,6 +566,18 @@ int new_dgram_socket(int sock_type)
 	return sockfd;
 }
 
+/* 
+ * inet_close
+ *
+ * It closes the `*sk' socket and sets it to zero.
+ * It always returns 0;
+ */
+int inet_close(int *sk)
+{
+	close(*sk);
+	return (*sk=0);
+}
+
 int inet_getpeername(int sk, inet_prefix *ip, short *port)
 {
 	struct sockaddr_storage saddr_sto;
@@ -925,8 +937,10 @@ ssize_t inet_recv(int s, void *buf, size_t len, int flags)
 }
 
 /* 
- * inet_recv_timeout: is the same as inet_recv() but if no reply is received
- * for `timeout' seconds it returns -1.
+ * inet_recv_timeout
+ * 
+ * is the same as inet_recv() but if no reply is received for `timeout'
+ * seconds it returns -1.
  */
 ssize_t inet_recv_timeout(int s, void *buf, size_t len, int flags, u_int timeout)
 {
@@ -945,9 +959,7 @@ ssize_t inet_recv_timeout(int s, void *buf, size_t len, int flags, u_int timeout
 		return ret;
 	}
 
-	if(FD_ISSET(s, &fdset))
-		return inet_recv(s, buf, len, flags);
-	return -1;
+	return FD_ISSET(s, &fdset) ? inet_recv(s, buf, len, flags) : -1;
 }
 
 ssize_t inet_recvfrom(int s, void *buf, size_t len, int flags, struct sockaddr *from, socklen_t *fromlen)
