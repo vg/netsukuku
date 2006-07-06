@@ -48,6 +48,7 @@
 #define PKT_COMPRESSED		(1<<4)	/* If set the packet will be Z 
 					   compressed before being sent */
 #define PKT_KEEPALIVE		(1<<5)  /* Let the pkt.sk socket be alive */
+#define PKT_NONBLOCK		(1<<6)	/* Socket must not block */
 
 /* 
  * Pkt.hdr flags 
@@ -227,6 +228,7 @@ void pkt_addflags(PACKET *pkt, int flags);
 void pkt_addtimeout(PACKET *pkt, u_int timeout, int recv, int send);
 void pkt_addcompress(PACKET *pkt);
 void pkt_addlowdelay(PACKET *pkt);
+void pkt_addnonblock(PACKET *pkt);
 void pkt_addhdr(PACKET *pkt, pkt_hdr *hdr);
 void pkt_addmsg(PACKET *pkt, char *msg);
 void pkt_copy(PACKET *dst, PACKET *src);

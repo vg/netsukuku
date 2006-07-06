@@ -560,6 +560,8 @@ int tracer_pkt_build(u_char rq,   	     int rq_id, 	     int bcast_sub_id,
 	bcast_hdr->sz=TRACERPKT_SZ(hops)+new_bblock_sz;
 	pkt->hdr.sz=BRDCAST_SZ(bcast_hdr->sz);
 	pkt_addcompress(pkt);
+	pkt_addtimeout(pkt, TRACER_RQ_TIMEOUT, 0, 1);
+	pkt_addnonblock(pkt);
 	
 	pkt->msg=tracer_pack_pkt(bcast_hdr, trcr_hdr, new_tracer,
 			(char *)new_bhdr, new_bblock_sz, tot_bblocks);

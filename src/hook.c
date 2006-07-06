@@ -1267,6 +1267,9 @@ int hook_get_ext_map(int hook_level, int new_gnode,
 	if(!(new_ext_map=get_ext_map(rnl->node, &me.cur_quadg))) 
 		fatal("None of the rnodes in this area gave me the extern map");
 	me.ext_map=new_ext_map;
+	
+	/* Close the rnl->tcp_sk socket */
+	inet_close(&rnl->tcp_sk);
 
 	if(we_are_rehooking && hook_level) {
 		int gcount, old_gid;

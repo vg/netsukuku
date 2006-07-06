@@ -111,6 +111,11 @@ void pkt_addlowdelay(PACKET *pkt)
 	pkt->pkt_flags|=PKT_SET_LOWDELAY;
 }
 
+void pkt_addnonblock(PACKET *pkt)
+{
+	pkt->pkt_flags|=PKT_NONBLOCK;
+}
+
 void pkt_addhdr(PACKET *pkt, pkt_hdr *hdr)
 {
 	if(!hdr)
@@ -195,7 +200,7 @@ int pkt_compress(PACKET *pkt, pkt_hdr *newhdr, char *dst_msg)
 	ret=compress2(dst, &bound_sz, (u_char*)pkt->msg, pkt->hdr.sz, 
 			PKT_COMPRESS_LEVEL);
 	if(ret != Z_OK) {
-		error(ERROR_MSG "cannot compress the pkt. "
+		error(RED(ERROR_MSG) "cannot compress the pkt. "
 				"It will be sent uncompressed.", ERROR_FUNC);
 		return -1;
 	}
@@ -404,7 +409,7 @@ ssize_t pkt_recv_udp(PACKET *pkt)
 	/* network -> host order */
 	ints_network_to_host(&pkt->hdr, pkt_hdr_iinfo);
 	if(pkt_verify_hdr(*pkt) || pkt->hdr.sz+sizeof(pkt_hdr) > err) {
-		debug(DBG_NOISE, ERROR_MSG "Malformed header", ERROR_POS);
+		debug(DBG_NOISE, RED(ERROR_MSG) "Malformed header", ERROR_POS);
 		return -1;
 	}
 
@@ -441,7 +446,7 @@ ssize_t pkt_recv_tcp(PACKET *pkt)
 	/* ...and verify it */
 	ints_network_to_host(&pkt->hdr, pkt_hdr_iinfo);
 	if(pkt_verify_hdr(*pkt)) {
-		debug(DBG_NOISE, ERROR_MSG "Malformed header", ERROR_POS);
+		debug(DBG_NOISE, RED(ERROR_MSG) "Malformed header", ERROR_POS);
 		return -1;
 	}
 
@@ -458,7 +463,7 @@ ssize_t pkt_recv_tcp(PACKET *pkt)
 					pkt->flags);
 
 		if(err != pkt->hdr.sz) {
-			debug(DBG_NOISE, ERROR_MSG "Cannot recv the "
+			debug(DBG_NOISE, RED(ERROR_MSG) "Cannot recv the "
 					"pkt's body", ERROR_FUNC);
 			return -1;
 		}
@@ -651,7 +656,7 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re,
 			pkt->sk=new_udp_conn(&pkt->to, pkt->port, pkt->dev->dev_name);
 		else if(pkt->sk_type==SKT_BCAST) {
 			if(!pkt->dev)
-				fatal(ERROR_MSG "cannot broadcast the packet: "
+				fatal(RED(ERROR_MSG) "cannot broadcast the packet: "
 						"device not specified", ERROR_FUNC);
 			pkt->sk=new_bcast_conn(&pkt->to, pkt->port, pkt->dev->dev_idx);
 		} else
@@ -666,6 +671,9 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re,
 	/* Set the LOWDELAY TOS if necessary */
 	if(pkt->pkt_flags & PKT_SET_LOWDELAY)
 		set_tos_sk(pkt->sk, 1);
+
+	if(pkt->pkt_flags & PKT_NONBLOCK)
+		set_nonblock_sk(pkt->sk);
 
 	/*Let's send the request*/
 	err=pkt_send(pkt);

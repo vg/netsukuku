@@ -8,6 +8,8 @@
 
 - TEST the new code
 
+- getopt -r 1
+
 - restore the network when NetsukukuD is closed (call /etc/rc.d/rc.inet1 ?)
 
 - Netsukuku WRT firmware:

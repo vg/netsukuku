@@ -22,6 +22,9 @@
 #include "pkts.h"
 #include "bmap.h"
 
+
+#define TRACER_RQ_TIMEOUT	16	/* seconds */
+
 /*
  * Tracer_hdr flags
  */

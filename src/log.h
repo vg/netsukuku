@@ -87,6 +87,23 @@
 #define MAGENTA(x)	"\033[1;35m" x DEFCOL
 #define LIGHTCYAN(x)	"\033[1;36m" x DEFCOL
 #define WHITE(x)	"\033[1;37m" x DEFCOL
+#else
+#define BLACK(x)	x
+#define RED(x)		x
+#define GREEN(x)	x
+#define BROWN(x)	x
+#define BLUE(x)		x
+#define PURPLE(x)	x
+#define CYAN(x)		x
+#define LIGHTGRAY(x)	x
+#define DARKGRAY(x)	x
+#define LIGHTRED(x)	x
+#define LIGHTGREEN(x)	x
+#define YELLOW(x)	x
+#define LIGHTBLUE(x)	x
+#define MAGENTA(x)	x
+#define LIGHTCYAN(x)	x
+#define WHITE(x)	x
 #endif
 
 /* functions declaration */

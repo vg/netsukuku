@@ -911,20 +911,6 @@ ssize_t inet_recv(int s, void *buf, size_t len, int flags)
 	if((err=recv(s, buf, len, flags))==-1) {
 		switch(errno) 
 		{
-			case EAGAIN:
-				FD_ZERO(&fdset);
-				FD_SET(s, &fdset);
-
-				ret = select(s+1, &fdset, NULL, NULL, NULL);
-				if (ret == -1) {
-					error("inet_recv: select error: %s", strerror(errno));
-					return err;
-				}
-
-				if(FD_ISSET(s, &fdset))
-					err=inet_recv(s, buf, len, flags);
-				break;
-
 			default:
 				/* Probably connection was closed */
 				debug(DBG_NORMAL, "inet_recv: Cannot recv(): %s",
@@ -971,21 +957,6 @@ ssize_t inet_recvfrom(int s, void *buf, size_t len, int flags, struct sockaddr *
 	if((err=recvfrom(s, buf, len, flags, from, fromlen)) < 0) {
 		switch(errno) 
 		{
-			case EAGAIN:
-				FD_ZERO(&fdset);
-				FD_SET(s, &fdset);
-
-				ret = select(s+1, &fdset, NULL, NULL, NULL);
-
-				if (ret == -1) {
-					error("inet_recvfrom: select error: %s", strerror(errno));
-					return err;
-				}
-
-				if(FD_ISSET(s, &fdset))
-					err=inet_recvfrom(s, buf, len, flags, from, fromlen);
-				break;
-
 			default:
 				error("inet_recvfrom: Cannot recv(): %s", strerror(errno));
 				return err;
@@ -1036,21 +1007,6 @@ ssize_t inet_send(int s, const void *msg, size_t len, int flags)
 				inet_send(s, msg, len/2, flags);
 				err=inet_send(s, (const char *)msg+(len/2), 
 						len-(len/2), flags);
-				break;
-
-			case EAGAIN:
-				FD_ZERO(&fdset);
-				FD_SET(s, &fdset);
-
-				ret = select(s+1, NULL, &fdset, NULL, NULL);
-
-				if (ret == -1) {
-					error("inet_send: select error: %s", strerror(errno));
-					return err;
-				}
-
-				if(FD_ISSET(s, &fdset))
-					err=inet_send(s, msg, len, flags);
 				break;
 
 			default:
@@ -1107,20 +1063,6 @@ ssize_t inet_sendto(int s, const void *msg, size_t len, int flags,
 						len-(len/2), flags, to, tolen);
 				break;
 
-			case EAGAIN:
-				FD_ZERO(&fdset);
-				FD_SET(s, &fdset);
-
-				ret = select(s+1, NULL, &fdset, NULL, NULL);
-				if (ret == -1) {
-					error("inet_sendto: select error: %s", strerror(errno));
-					return err;
-				}
-
-				if(FD_ISSET(s, &fdset))
-					err=inet_sendto(s, msg, len, flags, to, tolen);
-				break;
-
 			default:
 				error("inet_sendto: Cannot send(): %s", strerror(errno));
 				return err;
@@ -1165,26 +1107,7 @@ ssize_t inet_sendfile(int out_fd, int in_fd, off_t *offset, size_t count)
 	fd_set fdset;
 	int ret;
 
-	if((err=sendfile(out_fd, in_fd, offset, count))==-1) {
-		if(errno==EAGAIN) {
-			FD_ZERO(&fdset);
-			FD_SET(out_fd, &fdset);
-
-			ret = select(out_fd+1, NULL, &fdset, NULL, NULL);
-
-			if (ret == -1) {
-				error("inet_sendfile: select error: %s", strerror(errno));
-				return err;
-			}
-
-			if(FD_ISSET(out_fd, &fdset))
-				inet_sendfile(out_fd, in_fd, offset, count);
-		}
-		else {
-			error("inet_sendfile: Cannot sendfile(): %s", strerror(errno));
-			return err;
-
-		}
-	}
-		return err;
+	if((err=sendfile(out_fd, in_fd, offset, count))==-1)
+		error("inet_sendfile: Cannot sendfile(): %s", strerror(errno));
+	return err;
 }
