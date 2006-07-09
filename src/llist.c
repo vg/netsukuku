@@ -627,7 +627,7 @@ do{                  							\
 	_tcq=0;								\
 	_hecq=_tmp_list[0];						\
 	for(_icq=0; _icq<_ccq; _icq++)					\
-		_tcq=(l_list *)list_append(0, _tcq, _tmp_list[i]);	\
+		_tcq=(l_list *)list_append(0, _tcq, _tmp_list[_icq]);	\
 									\
 	(typeof((_head)))_hecq;						\
 })									\

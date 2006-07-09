@@ -449,9 +449,9 @@ void init_internet_gateway_search(void)
 				      "  Internet connection");
 		}
 
+	loginfo("Launching the first ping to the Internet hosts");
 	if(!server_opt.disable_andna)
 		internet_hosts_to_ip();
-	loginfo("Launching the first ping to the Internet hosts");
 	me.inet_connected=igw_check_inet_conn();
 	if(me.inet_connected)
 		loginfo("The Internet connection is up & running");
@@ -703,8 +703,10 @@ int igw_check_inet_conn(void)
 }
 
 /*
- * igw_check_inet_conn_t: checks if we are connected to the internet, then
- * waits, then checks if we are connected, then ...
+ * igw_check_inet_conn_t
+ * 
+ * checks if we are connected to the internet, then waits, then checks 
+ * if we are connected, then ...
  */
 void *igw_check_inet_conn_t(void *null)
 {
