@@ -8,10 +8,6 @@
 
 - TEST the new code
 
-- getopt -r 1
-
-- igs.c:661 segfaults: ntkd -dddD -r -R -i dummy0 -I
-
 - restore the network when NetsukukuD is closed (call /etc/rc.d/rc.inet1 ?)
 
 - Netsukuku WRT firmware:

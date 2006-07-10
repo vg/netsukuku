@@ -49,6 +49,8 @@ extern int optind, opterr, optopt;
 int destroy_netsukuku_mutex;
 int pid_saved;
 
+int options_parsed=0; /* How many times parse_options() has been called */
+
 void save_pid(void)
 {
 	FILE *fd;
@@ -323,6 +325,7 @@ void free_server_opt(void)
 void parse_options(int argc, char **argv)
 {
 	int c, saved_argc=argc;
+	optind=0;
 
 	while (1) {
 		int option_index = 0;
@@ -447,10 +450,12 @@ void parse_options(int argc, char **argv)
 		}
 	}
 
-	if (optind < saved_argc) {
+	if (optind < saved_argc && !options_parsed) {
 		usage();
 		exit(1);
 	}
+
+	options_parsed++;
 }
 
 void check_conflicting_options(void)
