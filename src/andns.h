@@ -27,7 +27,7 @@
 #include "andns_lib.h"
 #include "inet.h"
 
-#define ANDNS_TIMEOUT		0
+#define ANDNS_TIMEOUT		15
 
 #define MAXNSSERVERS 		3
 #define DNS_REPLY_TIMEOUT       10      /* seconds */
