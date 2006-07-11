@@ -17,5 +17,5 @@ ntkd_LDADD = -lpthread -lgmp -lcrypto -lresolv -lz
 
 ntk_resolv_SOURCES = andns_lib.c ntkresolv.c andns_net.c crypto.c    \
 		  snsd_cache.c inet.c ll_map.c libnetlink.c log.c    \
-		  xmalloc.c endianness.c misc.c err_errno.c
+		  xmalloc.c endianness.c misc.c err_errno.c buffer.c
 ntk_resolv_LDADD = -lz -lcrypto

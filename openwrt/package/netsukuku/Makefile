@@ -3,7 +3,7 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=netsukuku
 PKG_VERSION:=0.0.9b
 PKG_RELEASE:=1
-PKG_MD5SUM:=33989e8d590b484e6f7417987b047a99
+PKG_MD5SUM:=a4722cd5d25c46786b91b705c73833b0
 
 PKG_SOURCE_URL:=http://netsukuku.freaknet.org/files/
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.bz2

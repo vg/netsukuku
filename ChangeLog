@@ -17,6 +17,7 @@ New features:
 	* When we have multiple interfaces to reach the same rnode, send the
 	  QSPN packets from a random device, each time.
 
+	* Code cleaned
 
 Bug fixes:
 	

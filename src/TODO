@@ -6,8 +6,6 @@
 
 * (generally these TODOs are already being implemented at the moment)
 
-- TEST the new code
-
 - restore the network when NetsukukuD is closed (call /etc/rc.d/rc.inet1 ?)
 
 - Netsukuku WRT firmware:
@@ -17,7 +15,7 @@
 	  and to use the rc.ntk script.
 
 - bugs 
-	- comments in resol.conf are not conidered: 
+	- comments in resolv.conf are not considered: 
 		NOTE: Do not resolv this BUG: Now It's useful
 
 *
