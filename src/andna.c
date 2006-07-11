@@ -2142,8 +2142,9 @@ andna_cache *get_andna_cache(map_node *dst_rnode, int *counter)
 		debug(DBG_INSANE, "Quest %s to %s", 
 				rq_to_str(ANDNA_GET_ANDNA_CACHE), ntop);
 	}
+	pkt_addtimeout(&pkt, ANDNA_HOOK_TIMEOUT, 1, 1);
 
-	err=rnl_send_rq(dst_rnode, &pkt, 0, ANDNA_GET_ANDNA_CACHE, 0, 
+	err=send_rq(&pkt, 0, ANDNA_GET_ANDNA_CACHE, 0, 
 			ANDNA_PUT_ANDNA_CACHE, 1, &rpkt);
 	if(err < 0) {
 		ret=0;
@@ -2215,7 +2216,7 @@ counter_c *get_counter_cache(map_node *dst_rnode, int *counter)
 	
 	setzero(&pkt, sizeof(PACKET));
 	setzero(&rpkt, sizeof(PACKET));
-	
+
 	if(rnl_fill_rq(dst_rnode, &pkt) < 0)
 		ERROR_FINISH(ret, 0, finish);
 	if(server_opt.dbg_lvl) {
@@ -2224,8 +2225,9 @@ counter_c *get_counter_cache(map_node *dst_rnode, int *counter)
 		debug(DBG_INSANE, "Quest %s to %s", 
 				rq_to_str(ANDNA_GET_COUNT_CACHE), ntop);
 	}
+	pkt_addtimeout(&pkt, ANDNA_HOOK_TIMEOUT, 1, 1);
 
-	err=rnl_send_rq(dst_rnode, &pkt, 0, ANDNA_GET_COUNT_CACHE, 0,
+	err=send_rq(&pkt, 0, ANDNA_GET_COUNT_CACHE, 0,
 			ANDNA_PUT_COUNT_CACHE, 1, &rpkt);
 	if(err < 0) {
 		ret=0;
@@ -2287,8 +2289,10 @@ finish:
  */
 
 /*
- * andna_hook: The andna_hook gets the andna_cache and the counter_node cache
- * from the nearest rnodes.
+ * andna_hook
+ * 
+ * The andna_hook gets the andna_cache and the counter_node cache from
+ * the nearest rnodes.
  */
 void *andna_hook(void *null)
 {

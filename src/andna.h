@@ -73,7 +73,8 @@ int last_spread_acache_pkt_id[ANDNA_MAX_FLOODS];
  *
 \*/
 
-#define ANDNA_REV_RESOLVE_RQ_TIMEOUT		60
+#define ANDNA_HOOK_TIMEOUT		8	/* seconds */
+#define ANDNA_REV_RESOLVE_RQ_TIMEOUT	60
 
 /* * * andna pkt flags * * */
 #define ANDNA_PKT_UPDATE	1		/* Update the hostname */

@@ -351,8 +351,11 @@ finish:
 	pkt_free(&rpkt,0);
 	return ret;
 }
+
 /* 
- * put_qspn_round: It sends the current qspn times and ids to rq_pkt.from. 
+ * put_qspn_round
+ *
+ * It sends the current qspn times and ids to rq_pkt.from. 
  */
 int put_qspn_round(PACKET rq_pkt)
 {	
@@ -755,9 +758,10 @@ void hook_set_all_ips(inet_prefix ip, interface *ifs, int ifs_n)
 }
 
 /*
- * create_gnodes: This function is used to create a new gnode (or more) when
- * we are the first node in the area or when all the other gnodes are
- * full. 
+ * create_gnodes
+ *
+ * This function is used to create a new gnode (or more) when we are the first
+ * node in the area or when all the other gnodes are full. 
  * Our ip will be set to `ip'. If `ip' is NULL, a random ip is chosen. 
  * create_gnodes() sets also all the vital variables for the new gnode/gnodes
  * like me.cur_quadg, me.cur_ip, etc...
@@ -928,8 +932,10 @@ finish:
 }
 
 /* 
- * hook_init: inits the hook.c code. Call this function only once, at the
- * start of the daemon. 
+ * hook_init
+ *
+ * inits the hook.c code. Call this function only once, at the start of the
+ * daemon.
  */
 int hook_init(void)
 {
@@ -1172,8 +1178,6 @@ int hook_get_free_nodes(int hook_level, struct free_nodes_hdr *fn_hdr,
 		}
 	}
 
-	/* Close the rnl->tcp_sk socket */
-	inet_close(&rnl->tcp_sk);
 	*ret_rnl=rnl;
 
 	if(!e) {
@@ -1241,6 +1245,12 @@ int hook_choose_new_ip(map_gnode *hook_gnode, int hook_level,
 		inet_setip_localaddr(&me.cur_ip, my_family, restricted_class);
 	hook_set_all_ips(me.cur_ip, me.cur_ifs, me.cur_ifs_n);
 
+	/*
+	 * Close all the rnl->tcp_sk sockets, 'cause we've changed IP and they
+	 * aren't valid anymore 
+	 */
+	rnl_close_all_sk(rlist);
+
 	return new_gnode;
 }
 
@@ -1268,9 +1278,6 @@ int hook_get_ext_map(int hook_level, int new_gnode,
 		fatal("None of the rnodes in this area gave me the extern map");
 	me.ext_map=new_ext_map;
 	
-	/* Close the rnl->tcp_sk socket */
-	inet_close(&rnl->tcp_sk);
-
 	if(we_are_rehooking && hook_level) {
 		int gcount, old_gid;
 

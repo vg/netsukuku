@@ -451,7 +451,7 @@ void rnl_set_sk(struct rnode_list *rnlist, map_node *node, int sk)
  *
  * It closes all the opened tcp_sk of the `rnlist' llist
  */
-void rnl_close_all_sk(struct rnode_list *rnlist, map_node *node)
+void rnl_close_all_sk(struct rnode_list *rnlist)
 {
 	struct rnode_list *rnl=rnlist;
 

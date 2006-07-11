@@ -248,20 +248,17 @@ char *pkt_pack(PACKET *pkt)
 		 */
                 if((pkt->pkt_flags & PKT_COMPRESSED && 
 				pkt->hdr.sz >= PKT_COMPRESS_THRESHOLD)) {
-
-			pkt_hdr newhdr=pkt->hdr;
-
-			if(!pkt_compress(pkt, &newhdr, buf_body)) {
+			
+			if(!pkt_compress(pkt, &pkt->hdr, buf_body)) {
 				/* 
 				 * Re-copy the header in `buf', because
 				 * it has been changed during compression. */
-				memcpy(buf_hdr, &newhdr, sizeof(pkt_hdr));
+				memcpy(buf_hdr, &pkt->hdr, sizeof(pkt_hdr));
 				ints_host_to_network(buf_hdr, pkt_hdr_iinfo);
 			}
-		} else {
+		} else
 			/* Just copy the body of the packet */
 			memcpy(buf_body, pkt->msg, pkt->hdr.sz);
-		}
 		/**/
 	}
 	
@@ -305,6 +302,11 @@ finish:
 	return ret;
 }
 
+/*
+ * pkt_unpack
+ *
+ * `pkt' must be already in host order
+ */
 int pkt_unpack(PACKET *pkt)
 {
 	if(pkt->hdr.sz && pkt->msg && 
