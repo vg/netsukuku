@@ -1,7 +1,7 @@
 AC_PREREQ(2.59)
-AC_INIT(netsukuku, 0.0.8b)
-AM_INIT_AUTOMAKE(netsukuku, 0.0.8b)
-AC_DEFINE(VERSION, 0.0.8b)
+AC_INIT(netsukuku, 0.0.9b)
+AM_INIT_AUTOMAKE(netsukuku, 0.0.9b)
+AC_DEFINE(VERSION, 0.0.9b)
 AM_CONFIG_HEADER(src/config.h) 
 
 dnl -----------------------------------
