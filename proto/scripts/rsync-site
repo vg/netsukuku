@@ -1,5 +1,12 @@
 #!/bin/bash
 
+NTK_REPOSITORY="`echo ~/tmp/netsukuku`"
+
+if [ ! -d $NTK_REPOSITORY ]
+then
+	echo Adjust the '$NTK_REPOSITORY' variable
+	exit 1
+fi
 cd $NTK_REPOSITORY
 
 rsync -auv -P --delete proto/2html freaknet.org:netsukuku/

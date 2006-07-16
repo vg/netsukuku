@@ -1,0 +1,178 @@
+== NTK_RFC 0011 ==
+
+Subject: Carciofo - The vegetable sister of Tor in the Netsukuku realm
+
+----
+This text describes a possible expansion of the current Npv7 protocol.
+It will be included in the final documentation, so feel free to correct it.
+But if you want to change the system here described, please contact us first.
+----
+
+
+== Carciofo ==
+
+Carciofo means artichoke in Italian.
+
+Carciofo is a system which enables full anonymity in Netsukuku. 
+It hides the source and destination of packets and encrypts them, in this way
+it is impossible (too difficult) to know who sent the packets, where they are
+going and what they are carrying.
+
+The theory of Carciofo isn't complete yet. This document, right now, is just
+a description of what it would be.
+
+=== Features ===
+
+Carciofo supports hidden servers and clients and it is, in fact, very similar
+to Tor, but it has some peculiar differences:
+
+ * Carciofo is optimised for Netsukuku
+
+ * Since it built upon Netsukuku, it is distributed and scalable
+
+ * It works with IP tunnels, thus it supports any higher protocol like TCP and UDP
+
+
+Carciofo will also work on the Internet with the advent of Viphilama 
+( http://lab.dyne.org/Ntk_viphilama ), but it isn't certain if it will be able
+to reach the same performances.
+
+Since Carciofo is an expansion of the Npv7, it can be implemented as a total
+separated application from ntkd. The Carciofo daemon will communicate with
+ntkd using its API.
+
+Carciofo can be also seen as an extension of Tor, in fact, a good idea would
+be to modify the Tor code and starting from there. Is it feasible?
+
+
+== Hidden connection ==
+
+{{{
+
+	Dest  <--> ... <-->  X  <--> ... <-->  Y  <--> ... <-->  Source
+	      MASQ     MASQ  |	MASQ	 MASQ	  MASQ	   MASQ    |
+	                     |					   |
+			     |					   |
+			     |					   |
+			     |______ IPIP encrypted tunnel ________|
+
+`...'  indicates an indefinite number of ntk nodes linked toghether
+}}}
+
+The node S (Source) wants to communicate with D (Dest), but it doesn't want
+that any other node knows of this communication. (a secret love affair?)
+
+S creates a circuit which can be then utilised to reach more than one
+destination, moreover a circuit can be shared among other nodes of its same
+gnode.
+
+The procedure to create a circuit is divided in various steps:
+
+ * S contacts anonymously a node X chosen (almost) casually.
+
+ * S creates an encrypted IPIP tunnel with X
+
+ * X repeats the same procedure with another random node X_n
+
+ * the procedure is iterated n times. (the user can modify this value. An higher value means higher protection but less performance. n=3 should be a good value.)
+
+ * X_n finally contacts anonymously D
+
+Let's go into details.
+
+
+==== Step one: Masquerading ====
+
+S chooses randomly its first relay node X. 
+S can also use the routing tables to choose an node with a low delay or a node
+with a big bandwidth.
+(This method needs to be defined further, but it is very simple).
+
+S wants to create an encrypted link to the relay node X.
+X, to relay the packets of S, needs the IP of D (the destination node), but it
+hasn't to know the IP of S, because it would clearly see that S is attempting
+to contact D (and it will spread the rumor of the S-D love affair all over the
+net).
+
+For this reason, S contacts X through a series of masqueraded connections:
+
+ * S sets the MASQUERADE flag in all its packet, which are outgoing to X
+ 
+ * The nodes between S and X, will MASQUERADE the packets of S:
+{{{
+	X  <--   A  <--   B  <--   C  <--  S
+	   MASQ     MASQ     MASQ     MASQ
+}}}
+In this way, C masquerades S, B masquerades C, and so on. The final packet
+received by X is A(B(C(S))).
+
+Note that this happens at IP level (probably we'll use netfilter).
+
+==== Step two: Encrypted tunnel ====
+
+At this point, S can create an encrypted (IPIP) tunnel with X.
+(What is the best tunnel method to choose here? GRE, IPIP? And what
+encryption?)
+
+S will then set X, as its gateway to reach the node D, in this way all the
+packets it sends to D, will go through the encrypted tunnel.
+
+
+==== Step three: Iteration ====
+
+S can tell X to iterate the first two steps `n' times:
+	
+	* X will create an (anonymous) encrypted tunnel with X_1
+
+	* X_1 creates the tunnel with X_2
+
+	* ...
+
+	* X_(n-1) creates the tunnel with X_n
+
+
+==== Step four: Connection established ====
+
+X_n can now create an (anonymous) connection to D with the method seen in
+the first step.
+
+The use of the X_n<-->D masqueraded connection isn't really necessary. It
+should be used preferably when `n' is set to a small value.
+
+S and D can now communicate.
+
+
+== Hidden server ==
+
+{{{
+				     /            \
+	   Srv <---- enc tunnel --->   Hub nodes    <--- enc tunnel ---- Client
+      netsukuku.org		     \            /
+}}}
+
+The hidden server method allows to hide the real IP of a node which needs to
+be contacted by other nodes. This method is based on ANDNA.
+
+==== Server ====
+
+Srv contacts, with circuit, ANDNA and register a hostname. Let's say
+"netsukuku.org". It specifies that the registration its anonymous, in this
+way ANDNA doesn't consider the src ip of the register node.
+
+The hname netsukuku.org is then associated, with the use of SNSD and the
+service 0, to various random nodes chosen by Srv. These nodes are called "Hub
+nodes"
+
+Srv creates an anonymous encrypted tunnel to each Hub node.
+The hub nodes set the encrypted tunnel as the default gateway for all the
+packets directed to Srv.
+
+It would be good to change the hub nodes every X (60?) minutes.
+
+==== Client ====
+
+Client resolves "netsukuku.org" and gets the IPs of the hub nodes.
+It then creates an anonymous encrypted tunnel to one random hub node and set
+it as the default gw to reach Srv.
+
+At this point the link is set and Client can communicate happily with Srv.

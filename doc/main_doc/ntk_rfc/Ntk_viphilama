@@ -46,6 +46,12 @@ In the internal map there are the coordinates of each single node.
 In the external maps, the coordinates which locate a gnode are set to its
 barycenter: it is the average of the coordinates of all its internal nodes.
 
+The coordinates don't affect the anonymity of the user worse than the
+Internet does, in fact, it is possible to make a guess about the geo location
+of an IP (see xtraceroute).
+If the user doesn't specify its accurate location, then the xtraceroute method
+will be used to retrieve an approximated location.
+
 ==== Gate node ====
 
 The two layers are joined by the gate nodes. They are nodes which belong to
@@ -183,10 +189,41 @@ connected to.
 When a gate-node can reach one of it vrnodes using both a virtual and a
 physical link, it will delete the virtual one.
 
+== Ideas ==
+
+* Using Tor to build the virtual links. This would be really great but the performance will slow down too much. Isn't there a way to make Tor scalable?
+
 == TODO ==
 
  * Is it possible to avoid using the coordinates?
+ ** Yes, it is, but it would be less efficient.
+
  * What does happen when a (v)node dies?
+ 
+ * Use maps.netsukuku.org to choose a near vnode, which will be used to hook
+
+=== Gate -- Gate ===
+
+When two gate nodes are linked physically, shall one of them drop its virtual links? 
+If this happens, then a lot of nodes will reach all the other virtual nodes
+only through one gate node.
+This isn't good at all, in fact, 
+In the physical world, it would be just fine, but since "Gate node" has a
+limited Inet bandwidth, all the other nodes would reach the Virtual node
+through this bottleneck.
+
+{{{
+
+		Gate node
+		    |
+		    |
+ 	 Node_______|________Node
+                    |
+		    |\ 
+		    | \ Node
+		    |
+		   Node
+}}}
 
 ---- 
 
