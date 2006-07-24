@@ -32,10 +32,7 @@ to Tor, but it has some peculiar differences:
 
  * It works with IP tunnels, thus it supports any higher protocol like TCP and UDP
 
-
-Carciofo will also work on the Internet with the advent of Viphilama 
-( http://lab.dyne.org/Ntk_viphilama ), but it isn't certain if it will be able
-to reach the same performances.
+ * Carciofo will also work on the Internet with the advent of Viphilama ( http://lab.dyne.org/Ntk_viphilama ).
 
 Since Carciofo is an expansion of the Npv7, it can be implemented as a total
 separated application from ntkd. The Carciofo daemon will communicate with
@@ -47,8 +44,8 @@ be to modify the Tor code and starting from there. Is it feasible?
 
 == Hidden connection ==
 
-{{{
 
+{{{
 	Dest  <--> ... <-->  X  <--> ... <-->  Y  <--> ... <-->  Source
 	      MASQ     MASQ  |	MASQ	 MASQ	  MASQ	   MASQ    |
 	                     |					   |
@@ -60,7 +57,7 @@ be to modify the Tor code and starting from there. Is it feasible?
 }}}
 
 The node S (Source) wants to communicate with D (Dest), but it doesn't want
-that any other node knows of this communication. (a secret love affair?)
+any other node know of this communication. (a secret love affair?)
 
 S creates a circuit which can be then utilised to reach more than one
 destination, moreover a circuit can be shared among other nodes of its same
@@ -72,7 +69,7 @@ The procedure to create a circuit is divided in various steps:
 
  * S creates an encrypted IPIP tunnel with X
 
- * X repeats the same procedure with another random node X_n
+ * X repeats the same procedure with another random node X_1
 
  * the procedure is iterated n times. (the user can modify this value. An higher value means higher protection but less performance. n=3 should be a good value.)
 
@@ -84,9 +81,8 @@ Let's go into details.
 ==== Step one: Masquerading ====
 
 S chooses randomly its first relay node X. 
-S can also use the routing tables to choose an node with a low delay or a node
-with a big bandwidth.
-(This method needs to be defined further, but it is very simple).
+S can also lookup the routing tables to choose a node with a low delay or a node
+with a big bandwidth. (See NTK_RFC 002 - http://lab.dyne.org/Ntk_bandwidth_measurement )
 
 S wants to create an encrypted link to the relay node X.
 X, to relay the packets of S, needs the IP of D (the destination node), but it
@@ -110,7 +106,7 @@ Note that this happens at IP level (probably we'll use netfilter).
 
 ==== Step two: Encrypted tunnel ====
 
-At this point, S can create an encrypted (IPIP) tunnel with X.
+At this point, S creates an encrypted (IPIP) tunnel with X.
 (What is the best tunnel method to choose here? GRE, IPIP? And what
 encryption?)
 
@@ -144,8 +140,8 @@ S and D can now communicate.
 
 == Hidden server ==
 
-{{{
-				     /            \
+
+{{{				     /            \
 	   Srv <---- enc tunnel --->   Hub nodes    <--- enc tunnel ---- Client
       netsukuku.org		     \            /
 }}}
@@ -156,7 +152,7 @@ be contacted by other nodes. This method is based on ANDNA.
 ==== Server ====
 
 Srv contacts, with circuit, ANDNA and register a hostname. Let's say
-"netsukuku.org". It specifies that the registration its anonymous, in this
+"netsukuku.org". It specifies that the registration it's anonymous, in this
 way ANDNA doesn't consider the src ip of the register node.
 
 The hname netsukuku.org is then associated, with the use of SNSD and the
@@ -172,7 +168,7 @@ It would be good to change the hub nodes every X (60?) minutes.
 ==== Client ====
 
 Client resolves "netsukuku.org" and gets the IPs of the hub nodes.
-It then creates an anonymous encrypted tunnel to one random hub node and set
+It then creates an anonymous encrypted tunnel to one random hub node and sets
 it as the default gw to reach Srv.
 
 At this point the link is set and Client can communicate happily with Srv.

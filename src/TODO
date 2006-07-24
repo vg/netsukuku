@@ -95,6 +95,9 @@
 - Can multiple qspn packets be processed concurrently? Or do we need mutexes
   for them? Only the tests will give answer.
 
+- Write packagizing scripts for .deb, .rpm, ....
+  http://lists.dyne.org/netsukuku/msg00610.php
+
 *
 **
 ***		LOW PRIORITY

@@ -12,10 +12,74 @@ But if you want to change the system here described, please contact us first.
 === Viphilama ===
 
 Viphilama will permit to Netsukuku to expand itself over the Internet and then
-switching automatically to the physical layer without interfering with the
+switch automatically to the physical layer without interfering with the
 stability of the Net.
-The theory of Viphilama isn't complete yet. This document, right now, is just
-a description of what it would be.
+
+==== Applications ====
+
+Viphilama transforms Netsukuku into a hybrid overlay network which expands the
+original structure of the Internet. Its main advantages are:
+
+	* the faster diffusion of Netsukuku: every user with an Internet
+	  connection can join Netsukuku
+
+	* the creation of a scalable network which is built upon the Internet
+	  but is completely separated from it.
+
+	* the automatic switch from the Netsukuku overlay network to the physical one
+
+	* the freely registration of domain names (see ANDNA).
+
+	* the usage of Carciofo ( http://lab.dyne.org/Ntk_carciofo ) over the Internet.
+
+	* the workaround of NAT restrictions: even with only one Internet
+	  connection it is possible to connect an entire LAN to Viphilama. 
+	  Inside Viphilama, every node of the LAN will get a unique IP,
+	  therefore the NAT restriction imposed by the ISP (if you want more
+	  IPs you have to pay) is ignored.
+
+	* other ...?
+
+==== Basic idea ====
+
+The basic idea of Viphilama is to connect, with Internet tunnels, nodes which
+aren't physically linked.
+Then whenever, Viphilama finds that a virtual link can be replaced by a
+physical one, it removes the virtual link.
+
+Assume this scenario:
+{{{
+	Tokyo      Moscow          Rome      London
+	  |	     |               |	       |
+	  |	     |               |	       |
+	  |__________|Internet tunnel|_________|
+
+}}}
+All the cities are linked with Internet tunnels.
+
+When Tokyo and Moscow will be linked by a series of physical nodes, Viphilama
+will change the net in this way:
+{{{
+	Tokyo<--ntk nodes-->Moscow     Rome          London
+	                     |		|		|
+		   	     |______ Internet tunnel ___|
+}}}
+
+When even Moscow and Rome will be linked by physical nodes:
+{{{
+	Tokyo<--ntk nodes-->Moscow<--ntk nodes-->Rome          London
+	                                   	  |		   |
+		   	                          |__ Inet tunnel _|
+}}}
+
+And finally:
+{{{
+	Tokyo<--ntk nodes-->Moscow<--ntk nodes-->Rome<--ntk nodes-->London
+}}}
+
+This is only the general description of the Viphilama idea, actually, the
+implementation is a bit more complex ;)
+
 
 === Layer ===
 
@@ -23,14 +87,16 @@ Netsukuku will be split in two layer: the virtual layer and the physical one.
 
 ==== The physical layer ====
 
-This is the original Netsukuku layer: every node is linked to other nodes by
-physical links (wifi, cables, ...).
+The physical layer is the original Netsukuku layer: every node is linked to
+other nodes by physical links (wifi, cables, ...).
 The physical layer is prioritised over the virtual one.
 
 ==== The virtual layer ====
 
 The virtual layer is built upon the Internet or any other existing network.
 The Netsukuku nodes, in this layer, are linked each other by tunnels.
+
+===== Coordinates =====
 
 A node, in order to join in the virtual layer, has to know its physical
 coordinates. 
@@ -52,179 +118,218 @@ of an IP (see xtraceroute).
 If the user doesn't specify its accurate location, then the xtraceroute method
 will be used to retrieve an approximated location.
 
+Two nodes may share the same coordinates. This happen when they use inaccurate
+coordinates, i.e. xtraceroute associates the same location to two IPs of the
+same city. In this case, the difference of their IPs will be used as an
+(inaccurate) measure of the distance.
+Or in other words:
+
+	Let d(X, Y) be the physical distance between the node X and Y.
+	If d(X,Y) is zero then d(X,Y) is equal to the difference of the IP of
+	X and Y.
+
+===== Terminology =====
+
+The virtual layer is composed by the same elements of the physical layer, for
+this reason they have the same names but the are prefixed with 'v'.
+
+ node   ->  vnode
+
+ rnode  ->  vrnode
+
+ gnode  ->  vgnode
+
+ ...
+
 ==== Gate node ====
 
 The two layers are joined by the gate nodes. They are nodes which belong to
 both layers.
 This means that the two layer form a unique network.
 
+The short name of a gate node is simply "gate", in this way it isn't confused
+with gnode (group node).
 
 === Virtual to Physical mapper ===
 
-The mapper does a basic job: whenever it finds that a virtual link can be
-replaced by a physical one, it removes the virtual link.
+Viphilama is the supervisor of the topology of the entire net, it shapes the
+virtual layer and merges it with the physical one trying to achieve the best
+balance.
 
-Assume this scenario:
+It follows simple rules:
+ 
+ * Viphilama just optimises the topology of the network.
 
-{{{
-	Tokyo      Moscow          Rome      London
-	  |	     |               |	       |
-	  |	     |               |	       |
-	  |__________|Internet tunnel|_________|
-}}}
+ * The physical layer is prioritised
 
-Only one link exists, and it is a virtual one.
-Only Tokyo and London are linked, all the other cities are alone.
+ * The virtual layer, from the point of view of Netsukuku, has to be the same
+   of the physical layer, therefore it is not allowed to use specialized
+   network like Kademlia to shape its topology. This leads to a loss of
+   performance, because the virtual layer isn't optimised for the lower network
+   (the Internet), but it ensures consistency in the Netsukuku network.
 
-When Tokyo and Moscow will be linked by a series of physical nodes, the mapper
-will change the net in this way:
+ * Each node has to be connected, with physic or virtual links, to its nearest
+   nodes.
 
-{{{
-	Tokyo<--ntk nodes-->Moscow     Rome          London
-	                     |		|		|
-		   	     |______ Internet tunnel ___|
-}}}
-
-
-When even Moscow and Rome will be linked by physical nodes:
-
-{{{
-	Tokyo<--ntk nodes-->Moscow<--ntk nodes-->Rome          London
-	                                   	  |		   |
-		   	                          |__ Inet tunnel _|
-}}}
-
-And so on.
-
-Basically when there are two nodes linked physically, one of them can cut
-its virtual link which connects it to the virtual layer.
+ * If the node A is linked physically to B, then A is one of the nearest node
+   to B and vice versa.
 
 Let's go into the details.
 
 ==== Virtual hooking ====
 
 A node, which hasn't any physical neighbours, resides in a black zone and, for
-this reason, it can't hook to the physical layer. It will hook directly to
-a vnode (virtual node), joining the virtual layer.
-Let this hooking node be X.
+this reason, it can't hook to the physical layer. If it has access to another
+network, i.e. the Internet, it will hook directly to a vnode, joining the
+virtual layer.
+Let this hooking node be H.
 
-The first part of the Virtual Hooking is the creation of the virtual links
-(ip tunnels).
+===== Searching for the nearest vrnode =====
 
-X chooses, at first, a random vnode which can be located anywhere in the
-globe. If it is its first hook to the virtual layer, it will get the IP of
-the vnode from a small public list available on the Internet, otherwise it
-will consult its saved virtual maps.
-Let the chosen vnode be Y.
+The first part of the Virtual Hooking is the creation of virtual links
+(ip tunnels) to the first vrnode it founds.
 
-X sends to Y a packet containing its coordinates. This pkt will be forwarded
-with a greedy technique: 
-Y looks up its maps and forwards the pkt to the vnode which is the nearest to X.
-If this latter vnode knows another vnode which is nearer to X, it forwards
-again the packet. Finally, the pkt will arrive to the node Z, which is a node
-very near to X.
+H chooses, at first, a random vnode which can be located anywhere in the
+globe. 
+If it is its first hook to the virtual layer, it will get the IP of the vnode
+from a small public list available on the Internet, otherwise it will consult
+its saved virtual maps. Each IP on the public list and in the virtual maps is
+associated to its own geographic coordinates. H will choose the nearest vnode
+to itself.
+Let the chosen vnode be V.
 
-Let d(A, B) be the physical distance between the node A and B.
+H sends to V a packet containing its coordinates and a random ID.
+V consults its external map and forwards the received packet to the gnode G,
+which is the nearest to H.
+The packet will be forwarded until it gets to I, the nearest node to H, which
+belongs to the gnode G.
+At this point, I sends an ACK packet to H and includes in it the ID. 
+In this way it certifies that it has truly received the original packet, sent
+by H.
 
-The node Z appends its Internet IP to the received packet and forwards it
-again to a node T, so that d(X,T) ~= d(X,Z).
+I is the first vrnode of H.
+
+===== Linking to other vrnodes =====
+
+Since only one vrnode per vnode is not sufficient to balance the network, H
+will link to other `vlinks_max' vnodes. These vnodes are the nearest to H.
+`vlinks_max' is a value proportional to the bandwidth of H.
+
+The node I appends its Internet IP to the received packet and forwards it
+again to a node T, so that d(H,T) ~= d(H,I).
 The node T will do the same (adds its IP and forwards the pkt).
-When the packet will be forwarded for the 16th time or when it can't be
-forwarded anymore, it is sent back to the node X.
+When the packet will be forwarded for the `vlinks_max'-th time or when it can't be
+forwarded anymore, it is sent back to the node H.
 
-The node X collects this last packet and creates a virtual link (tunnel) to
+The node H collects this last packet and creates a virtual link (tunnel) to
 each Internet IP which has been stored in the packet itself. 
-These linked nodes are the new rnodes of the node X.
+These linked nodes are the new vrnodes of the node H.
 
+===== Reordering the virtual layer =====
 
-At this point the node X will hook to each linked node. This procedure is
-called v-linking:
+At this point the node H will hook to each linked node. This procedure is
+called vlinking:
 
-Let "L" be the generic linked node.
+Let L be the generic vrnode of H.
 
-X sends the I_AM_VHOOKING request to L.
-
-L analyses its virtual rnodes and compares d(L,vR) to d(X,vR), where vR is a
-vrnode. If d(X,vR) < d(L,vR), L adds the Internet IP of the vR in the reply
-packet. This means that if L finds out that X is nearer to one of its
-vrnodes, it tells X to create a link to it and deletes its link to the vrnode.
-
-X receives the reply packet of L and tries to create a virtual link to each
-vR listed in the same packet.
-X writes the list of all the vR nodes which has been successfully linked to X
-itself. This list is sent back to L.
-
-L reads this latter list and delete all its links to the vR nodes, which has
-been successfully linked to X.
-
-X repeats this same hooking procedure for each L.
-
-In the end, X chooses one of its vrnodes and hooks with the classical method
-to it.
-
-==== Gate hooking ====
-
-A node can hook to the physical layer as a normal node or as gate node.
-
-A normal node is the old plain node of Netsukuku, it doesn't have to specify
-its coordinates and doesn't need any other prerequisites.
-
-The gate-node has an Internet connection that it uses to connect to
-the virtual layer, it is also connected to physical nodes.
-
-There are two cases:
-
- * When the node is from the start a gate node
- * When it is first a vnode and then becomes a gate node
-
-In the first case it hooks directly to a physical node. If one of its rnodes
-is a gate node too, it will start the v-linking procedure with it. 
-In this way, the new gate-node will be linked to its nearer vrnodes.
-The old gate-node will delete all the links to the vrnodes which have been
-linked by the new gate-node.
-
-In the second case, the node directly v-links to the new gate node which is
-connected to.
-
-When a gate-node can reach one of it vrnodes using both a virtual and a
-physical link, it will delete the virtual one.
-
-== Ideas ==
-
-* Using Tor to build the virtual links. This would be really great but the performance will slow down too much. Isn't there a way to make Tor scalable?
-
-== TODO ==
-
- * Is it possible to avoid using the coordinates?
- ** Yes, it is, but it would be less efficient.
-
- * What does happen when a (v)node dies?
- 
- * Use maps.netsukuku.org to choose a near vnode, which will be used to hook
-
-=== Gate -- Gate ===
-
-When two gate nodes are linked physically, shall one of them drop its virtual links? 
-If this happens, then a lot of nodes will reach all the other virtual nodes
-only through one gate node.
-This isn't good at all, in fact, 
-In the physical world, it would be just fine, but since "Gate node" has a
-limited Inet bandwidth, all the other nodes would reach the Virtual node
-through this bottleneck.
+It is possible that some vrnodes of L are nearer to H, in this case they
+should be linked to H instead of L. For example:
 
 {{{
+1. Initial configuration
 
-		Gate node
-		    |
-		    |
- 	 Node_______|________Node
-                    |
-		    |\ 
-		    | \ Node
-		    |
-		   Node
+	Tokyo		           London
+	  |			     |
+	  |______ Internet tunnel ___|
+
+2. Rome vhooks to London.
+
+	Tokyo -------- London ----- Rome
+
+3. Since Rome is nearer to Tokyo than London, the links are reordered in their
+   final configuration:
+	
+	Tokyo -------- Rome -------- London
+
 }}}
+
+The reordering of the links works in this way:
+
+H sends the I_AM_VHOOKING request to L.
+
+L analyses its virtual rnodes and compares d(L,vR) to d(H,vR), where vR is a
+vrnode. If d(H,vR) < d(L,vR), L adds the Internet IP of vR in the reply
+packet.
+
+H receives the reply packet of L and tries to create a virtual link to each
+vR listed in the same packet.
+H writes the list of all the vR nodes which has been successfully linked to H
+itself. This list is sent back to L.
+
+L reads this latter list and deletes all its links to the vR nodes, which has
+been successfully linked to H.
+
+This same procedure is repeated for each vrnode of H.
+
+In the end, H chooses one of its vrnodes and hooks with the classical method
+to it.
+
+===== Gate hooking =====
+
+When a gate node is linked physically to another gate node, they use the
+v-linking procedure to reorder their links.
+
+==== Virtual topology  ====
+
+The node H will remain virtually linked to a generic node L if and only if
+there isn't a physical route which connects H to L.
+
+When H notices (analysing the QSPN pkts) that L can be reached through a
+physical route, it deletes the virtual link.
+
+==== Load balancing ====
+
+All the nodes, which have an Internet connection, should be gate nodes. 
+In this way, the traffic passing on the virtual layer will be well balanced.
+For example, two separated physical gnodes will be linked with the maximum
+number of virtual links.
+
+{{{
+	           virtual links
+		   ___ ... ____
+                  /___ ... ____\
+		 /____ ... _____\
+		/                \
+	Gnode A ------ ... ------- Gnode B
+		\_____ ... ______/
+		 \____ ... _____/
+		  \___ ... ____/
+		   virtual links
+}}}
+
+==== Vlinks threshold ====
+
+`vlinks_max' is the maximum number of vrnodes which H can have and it is a value
+proportional to the bandwidth of H itself.
+
+`vlinks_min' is the minimum number of vrnodes and is always proportional to
+the bandwidth.
+
+When the number of vrnodes becomes greater than `vlinks_max', H drops its
+farest vrnodes, keeping all the others.
+
+Instead, if the number becomes smaller than `vlinks_min', H vhooks again in
+the virtual layer using the same procedure described before.
+
+==== The end of Viphilama ====
+
+When all the nodes will be linked with physical links, Viphilama will
+automatically cease to operate. In fact, there will be always a physical route
+which connects any other node and therefore all the virtual links will be
+deleted.
 
 ---- 
 
 Feel free to help the development of Viphilama.
+
+Related: ["Netsukuku_RFC"]
