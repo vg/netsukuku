@@ -3,9 +3,9 @@
 Subject: Private IP classes in restricted mode
 
 ----
-This text describes a change to the Npv7.
-It will be included in the final documentation, so feel free to correct it.
-But if you want to change the system here described, please contact us first.
+		    * WARNING *
+This RFC has been deprecated by the NTK_RFC 0012
+		    * WARNING *
 ----
 
 The user can decide to use, in restricted mode, a different private IP

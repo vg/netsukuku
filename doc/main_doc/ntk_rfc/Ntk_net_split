@@ -1,0 +1,103 @@
+== NTK_RFC 0012 ==
+
+Subject: Net Split - Overcoming the limits of the restricted mode
+
+----
+This text describes a possible expansion of the current Npv7 protocol.
+It will be included in the final documentation, so feel free to correct it.
+But if you want to change the system here described, please contact us first.
+----
+
+
+== Net Split ==
+
+Net Split is a method which gives Netsukuku the ability to use all the IP
+addresses available for a specific Internet Protocol while being compatible
+with it. 
+
+In other words, Netsukuku can use all the ipv4 addresses while avoiding any IP
+conflict with the Internet.
+
+With the implementation of Net Split, the restricted mode and the NTK_RFC 008
+( http://lab.dyne.org/Ntk_restricted_ip_classes ) become obsolete.
+
+== Inet and Ntk mode ==
+
+The Ntkd daemon can be executed in Inet or in Ntk mode.
+The modality specifies which IPs will have the highest priority.
+
+In Inet mode, an IP or a hostname will always point to Internet addresses,
+while in Ntk mode they will point to Netsukuku nodes.
+
+The .NTK and .INT suffixes can be used, in any modality, to specify the scope
+of an IP or hostname. The suffixes are case insensitive.
+
+Every IP or hostname with a .NTK suffix will always point to Netsukuku nodes,
+while the .INT will point to Internet addresses.
+
+== Routing tables and rules ==
+
+All the routes created by Netsukuku are stored in the NTK routing table.
+The Internet routes are kept in the INET routing table.
+
+In Inet mode the `main' routing table corresponds to INET while in Ntk mode to
+NTK.
+
+A rule in the routing policy database selects the non-`main' routing table for
+all the packets marked by netfilter with NETSPLIT_MARK.
+{{{
+NETSPLIT_MARK="0x27"
+
+  In Inet mode:
+	# ip rule add fwmark $NETSPLIT_MARK table INET
+  
+  In Ntk mode:
+	# ip rule add fwmark $NETSPLIT_MARK table NTK
+}}}
+
+== ANDNS the splitter ==
+
+ANDNS is the ANDNA wrapper which receives and resolves any hostname resolution
+query.
+
+Since an IP or a hostname with a suffix is just another hostname, ANDNA will
+receive all their resolution query, but instead of returning their real IP, it
+will return a random IP chosen from the 127.0.0.0/8 class.
+Afterwards, ANDNS will set up a netfilter rule which converts the 127.x.x.x IP
+in the original one. 
+In this way, the packets are redirected to the desired routing table.
+
+Let's examine step by step the process.
+
+Assume to be in Ntk mode.
+
+ * A client wants to estabilish a connection to google.com.int (or to 64.233.187.99.int).
+
+ * ANDNS receives the resolution query of 64.233.187.99.int.
+
+ * It chooses the 127.1.2.3 random ip and adds "64.233.187.99 -> 127.1.2.3" in
+   its association table
+ 
+ * It then instructs netfilter to set to 64.233.187.99 the destination of all
+   the packets which have been sent to 127.1.2.3 and to mark them with
+   NETSPLIT_MARK.
+   Moreover, netfilter has to change the source address of all the packets
+   sent by 64.233.187.99 to 127.1.2.3.
+
+ * At this point ANDNS returns the 127.1.2.3 ip to the client.
+
+ * The client creates a connection to 127.1.2.3, but actually this ip
+   corresponds to 64.233.187.99.
+
+ * When the connection is closed, ANDNS waits 300 seconds and then deletes the
+   127.1.2.3 ip from the association table and from the netfilter rules set.
+
+== Netsukuku private classes ==
+
+The private classes reserved inside Netsukuku are 192.168.0.0/16 and
+"172.16.0.0 - 172.31.255.255".
+
+The 10.0.0.0/8 class IS NOT private since it is too big. Using it as a private
+class would be just a waste of IP addresses.
+
+The routes of the private classes are stored in the `main' routing table.
