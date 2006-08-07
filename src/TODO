@@ -6,7 +6,9 @@
 
 * (generally these TODOs are already being implemented at the moment)
 
-- restore the network when NetsukukuD is closed (call /etc/rc.d/rc.inet1 ?)
+- General API
+
+- Viphilama: http://lab.dyne.org/Ntk_viphilama
 
 - Netsukuku WRT firmware:
 	- a configured openwrt release with all the necessary kernel modules
@@ -29,8 +31,6 @@
 
 - bandwidth measurement
 	- do not delete an inet-gw if there's still bw passing on it.
-
-- Viphilama: http://lab.dyne.org/Ntk_viphilama
 
 - Bandwidth weight for each entry of the qspn (not just rtt and latency):
 	- what to use to get the bandwidth of a network interface?
@@ -160,9 +160,6 @@
 
 - Compressed maps: save the files in compressed formats
 
-- API for the syncronization of the maps the daemon. A third party program,
-  might want to have always the latest maps. 
-
 - Write the documentation for the code that can be used by other
   programs. (By the way it is already commented.)
 
@@ -180,6 +177,8 @@
 
 - Launch a trigger script. Possible events: INET_UP, INET_DOWN, NEW_RNODE,
   DEAD_RNODE.
+
+- restore the network when NetsukukuD is closed (call /etc/rc.d/rc.inet1 ?)
 
 - Use binreloc from autopackage (  http://autopackage.org/docs/binreloc/ )
 

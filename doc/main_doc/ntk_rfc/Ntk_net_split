@@ -60,11 +60,11 @@ NETSPLIT_MARK="0x27"
 ANDNS is the ANDNA wrapper which receives and resolves any hostname resolution
 query.
 
-Since an IP or a hostname with a suffix is just another hostname, ANDNA will
+Since an IP or a hostname with a suffix is just another hostname, ANDNS will
 receive all their resolution query, but instead of returning their real IP, it
 will return a random IP chosen from the 127.0.0.0/8 class.
 Afterwards, ANDNS will set up a netfilter rule which converts the 127.x.x.x IP
-in the original one. 
+to the original one. 
 In this way, the packets are redirected to the desired routing table.
 
 Let's examine step by step the process.
