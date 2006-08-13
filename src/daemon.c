@@ -14,6 +14,12 @@
  * You should have received a copy of the GNU Public License along with
  * this source code; if not, write to:
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * --
+ * daemon.c
+ *
+ * In this source there's the code, which listens and accepts UDP and TCP
+ * connections and forwards the packets to pkts.c.
  */
 
 #include "includes.h"

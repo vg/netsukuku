@@ -1164,7 +1164,9 @@ int igw_replace_def_igws(inet_gw **igws, int *igws_counter,
 }
 
 /* 
- * igw_build_bentry: It builds the Internet gateway bnode blocks to be added
+ * igw_build_bentry
+ * 
+ * It builds the Internet gateway bnode blocks to be added
  * in the bnode's entry in the tracer pkt. For the specification of this type
  * of bnode block read igs.h
  * 

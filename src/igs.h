@@ -128,7 +128,7 @@ INT_INFO inet_gw_pack_hdr_iinfo = { 1, { INT_TYPE_16BIT }, { 0 }, { MAX_LEVELS }
 
 /*\
  *
- *  *  *  Multi Internet Gateways  *  *  *
+ *   *  *  *  Multi Internet Gateways  *  *  *
  *
 \*/
 
@@ -175,7 +175,7 @@ typedef struct default_inet_gw_nexthop igw_nexthop;
 
 /*\
  *
- * * *  Globals  * * *
+ *  * * *  Globals  * * *
  *
 \*/
 

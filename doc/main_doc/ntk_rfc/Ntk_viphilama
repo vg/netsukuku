@@ -512,7 +512,7 @@ update pkt to their trusted ESs, and so on.
 
 {{{
 		ES1 <--> ES2 <--> ES3 <--> ES4 --> MES1 --> MES2 --> MES3
-]}}
+}}}
 
 There are also the Mirror Entry Server. They have read-only privileges, i.e.
 they can only receive an update from an ES or another MES, but they can't send

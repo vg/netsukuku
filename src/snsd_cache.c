@@ -134,7 +134,7 @@ snsd_service_to_str(int service, u_char proto, char **service_str,
 
 /*\
  *
- *  *  *  SNSD structs functions  *  *  *
+ *   *  *  *  SNSD structs functions  *  *  *
  *
 \*/
 
@@ -272,7 +272,7 @@ snsd_node *snsd_add_mainip(snsd_service **head, u_short *counter,
 
 /*\
  * 
- *  *  *  *  Destroyer functions  *  *  *
+ *   *  *  *  Destroyer functions  *  *  *
  *
 \*/
 
@@ -359,7 +359,7 @@ void snsd_record_del_selected(snsd_service **head, u_short *snd_counter,
 
 /*\
  *
- *  *  *  *  Pack/Unpack functions  *  *  *
+ *   *  *  *  Pack/Unpack functions  *  *  *
  *
 \*/
 
@@ -953,7 +953,7 @@ void snsd_unset_all_flags(snsd_service *sns, u_char flag)
 
 /*\
  *
- *  *  *  *   Linked list copy functions   *  *  *
+ *   *  *  *   Linked list copy functions   *  *  *
  *
 \*/
 
@@ -1036,7 +1036,7 @@ snsd_service *snsd_service_llist_copy(snsd_service *sns, int service,
 
 /*\
  *
- *  *  *  *   Linked list merging functions   *  *  *
+ *   *  *  *   Linked list merging functions   *  *  *
  *
  * For an explanation of these things, 
  * read snsd_service_llist_merge()

@@ -1052,8 +1052,9 @@ int tracer_check_node_collision(tracer_hdr *trcr, int hop, map_node *node,
 }
 
 /* 
- * tracer_store_pkt: This is the main function used to keep the int/ext_map's
- * karma in peace.
+ * tracer_store_pkt
+ *
+ * This is the main function used to keep the int/ext_map's karma in peace.
  * It updates the internal or external map with the given tracer pkt.
  *
  * `rip' is the rnode ip. It is the last node who forwarded the tracer pkt to

@@ -7,6 +7,44 @@
 * (generally these TODOs are already being implemented at the moment)
 
 - General API
+	- tracer_pkt_add_build() // tracer_pkt_add_unpack()
+		 _______________________
+		|	TRACER PKT      |
+		|			|
+		| int size;		|
+		|_______________________|
+		||    CHUNK 1 ( QSPN ) ||
+		||		       ||
+		|| int chunk_size;     ||
+		||		       ||
+		|| QSPN PKT;           ||
+		||_____________________||
+		|_______________________|
+		||    CHUNK 2 ( IGS )  ||
+		||		       ||
+		|| int chunk_size;     ||
+		||		       ||
+		|| IGS PKT;            ||
+		||_____________________||
+		|_______________________|
+		||    CHUNK 3 ( BW )   ||
+		||		       ||
+		|| int chunk_size;     ||
+		||		       ||
+		|| BANDWIDTH PKT;      ||
+		||_____________________||
+		|_______________________|
+		||    CHUNK N ( ...  ) ||
+		||		       ||
+		|| int chunk_size;     ||
+		||		       ||
+		|| ...  PKT;           ||
+		||_____________________||
+		||_____________________||
+
+	- add_pkt_op() && delete_pkt_op() == dynamic requests.h
+	- add_new_dev()
+	- use the CFLAGS -rdynamic when compiling the ntkd executable
 
 - Viphilama: http://lab.dyne.org/Ntk_viphilama
 
