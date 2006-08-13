@@ -720,6 +720,18 @@ int main(int argc, char **argv)
 	
 	/* If a same option was specified in the config file and in the
 	 * command line, give priority to the latter */
+#warning ########################################
+#warning ########################################
+#warning ### If you call twice parse_options(), 
+#warning ### and If You specify `-i dev`, the   
+#warning ### device is added twice in me.ifs.   
+#warning ### This causes a hang when tcp sockets 
+#warning ### are invoked.                       
+#warning ### So, this is a Double BUG: you need 
+#warning ### also some controls creating tcp    
+#warning ### socket.                            
+#warning ########################################
+#warning ########################################
 	parse_options(argc, argv);
 
 	check_conflicting_options();
