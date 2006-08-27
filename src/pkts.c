@@ -548,7 +548,7 @@ void pkt_fill_hdr(pkt_hdr *hdr, u_char flags, int id, u_char op, size_t sz)
 	hdr->ntk_id[1]='t';
 	hdr->ntk_id[2]='k';
 
-	hdr->id	   = !id ? rand() : id;
+	hdr->id	   = !id ? xrand_fast() : id;
 	hdr->flags = flags;
 	hdr->op	   = op;
 	hdr->sz	   = sz;

@@ -320,8 +320,10 @@ int is_hgnodeip_excluded(inet_prefix *hgnodeip, u_int **excluded_hgnode,
 }
 
 /*
- * random_gid_level_0: chooses a random gid of level 0, which is up, and
- * stores it in `qg'->gid[0], then convert it to an ip and stores it in `to'.
+ * random_gid_level_0
+ *
+ * chooses a random gid of level 0, which is up, and * stores it in 
+ * `qg'->gid[0], then convert it to an ip and stores it in `to'.
  * If `exclude_me' isn't zero, it won't choose ourself as the gid of level 0.
  * If the gid is found 0 is returned otherwise -1 is the return value.
  * If the gid found is also a MAP_ME node, 2 is returned.
@@ -337,7 +339,7 @@ int random_gid_level_0(quadro_group *qg, inet_prefix *to, int exclude_me)
 	 * found return -1. 
 	 */
 
-	for(x=0, e=i=rand_range(0, MAXGROUPNODE-1); e<MAXGROUPNODE; e++) {
+	for(x=0, e=i=rand_range_fast(0, MAXGROUPNODE-1); e<MAXGROUPNODE; e++) {
 		if(!(me.int_map[e].flags & MAP_VOID)) {
 			if(exclude_me && (me.int_map[e].flags & MAP_ME))
 				continue;
@@ -2449,7 +2451,7 @@ void *andna_maintain_hnames_active(void *null)
 		if(updates)
 			save_lcl_cache(andna_lcl, server_opt.lcl_file);
 
-		sleep((ANDNA_EXPIRATION_TIME/2) + rand_range(1, 10));
+		sleep((ANDNA_EXPIRATION_TIME/2) + rand_range_fast(1, 10));
 	}
 
 	return 0;

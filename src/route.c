@@ -106,8 +106,9 @@ int get_gw_bnode_recurse(map_node *int_map, map_gnode **ext_map,
 
 
 /*
- * get_gw_gnode_recurse: recursive part of the get_gw_gnode function (see
- * below).
+ * get_gw_gnode_recurse
+ * 
+ * recursive part of the get_gw_gnode function (see below).
  * `gateways' is the array of pointers. which point to the found gateway
  * nodes.
  * `gateways_nmembs' is the number of members of the `gateways' array.
@@ -172,7 +173,8 @@ int get_gw_gnode_recurse(map_node *int_map, map_gnode **ext_map,
 		for(e=0; e < routes; e++) {
 			
 			/* Choose a random link, which was not chosen before */
-			while(find_int((pos=rand_range(0, node->links-1)), old_pos, routes));
+			while(find_int((pos=rand_range_fast(0, node->links-1)),
+								old_pos, routes));
 			old_pos[e]=pos;
 			
 			if(!i) {

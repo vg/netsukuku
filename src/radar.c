@@ -379,7 +379,7 @@ interface *rnl_get_rand_dev(struct rnode_list *rnlist, map_node *node)
 	struct rnode_list *rnl;
 
 	return !(rnl=rnl_find_node(rnlist, node)) ? 
-			0 : rnl->dev[rand_range(0, rnl->dev_n-1)];
+			0 : rnl->dev[rand_range_fast(0, rnl->dev_n-1)];
 }
 
 /*
@@ -1385,7 +1385,7 @@ int radar_scan(int activate_qspn)
 	 */
 	setzero(&pkt, sizeof(PACKET));
 	inet_setip_bcast(&pkt.to, my_family);
-	my_echo_id=rand();
+	my_echo_id=xrand_fast();
 
 	gettimeofday(&scan_start, 0);
 	

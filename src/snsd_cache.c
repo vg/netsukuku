@@ -872,9 +872,9 @@ snsd_node *snsd_choose_wrand(snsd_node *head)
 		tot_w+=snd->weight;
 
 	if(!tot_w)
-		return list_pos(snd, rand_range(0, nmemb-1));
+		return list_pos(snd, rand_range_fast(0, nmemb-1));
 		
-	r=rand_range(1, tot_w);
+	r=rand_range_fast(1, tot_w);
 
 	tot_w=0; snd=head;
 	list_for(snd) {

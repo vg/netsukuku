@@ -547,11 +547,9 @@ int random_ip(inet_prefix *ipstart, int final_level, int final_gid,
 			 */
 			levels=total_levels;
 			if(my_family == AF_INET)
-				idata[0]=rand();
-			else {
-				idata[0]=rand();	idata[1]=rand();
-				idata[2]=rand();	idata[3]=rand();
-			}
+				idata[0]=xrand();
+			else
+				get_rand_bytes(idata, sizeof(idata));
 
 			inet_setip(new_ip, idata, my_family);
 

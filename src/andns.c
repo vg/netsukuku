@@ -579,7 +579,7 @@ int andns_gethostbyname(char *hname, inet_prefix *ip)
         dp=create_dns_pkt();
         dph=&(dp->pkt_hdr);
 
-        dph->id=(rand() >> 16) ^ (rand() >> 16);
+        dph->id=(xrand_fast() >> 16) ^ (xrand_fast() >> 16);
         dph->rd=1;
 
         dpq=dns_add_qst(dp);

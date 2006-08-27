@@ -90,40 +90,6 @@ void swap_shorts(int nmemb, unsigned short *x, unsigned short *y)
 	swap_array(nmemb, sizeof(short), x, y);
 }
 
-
-
-/*
- * * * *  Random related functions  * * * *
- */
-
-/* 
- * rand_range: It returns a random number x which is _min <= x <= _max
- */ 
-inline int rand_range(int _min, int _max)
-{
-	return (rand()%(_max - _min + 1)) + _min;
-}
-
-/* 
- * xsrand
- *
- * It sets the random seed with a pseudo random number 
- */
-void xsrand(void)
-{
-	FILE *fd;
-	int seed;
-
-	if((fd=fopen("/dev/urandom", "r"))) {
-		fread(&seed, 4,1,fd);
-		fclose(fd);
-	} else
-		seed=getpid() ^ time(0) ^ clock();
-
-	srand(seed); 
-}
-
-
 /*
  * * * *  String functions  * * * *
  */

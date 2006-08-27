@@ -546,7 +546,7 @@ void check_conflicting_options(void)
 
 void init_netsukuku(char **argv)
 {
-	xsrand();
+	init_rand();
 	
         if(geteuid())
 		fatal("Need root privileges");
@@ -658,6 +658,7 @@ int destroy_netsukuku(void)
 	qspn_free();
 	free_server_opt();
 	opt_close(&ntkd_options);
+	close_rand();
 
 	return 0;
 }

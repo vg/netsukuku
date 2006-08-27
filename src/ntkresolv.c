@@ -337,7 +337,7 @@ void opts_finish(char *arg)
 		say("Option `-m' is not usable with inverse queries.\n");
 		ntkresolv_safe_exit(1);
 	}
-	r=rand();
+	r=xrand();
 	GQT->id=r>>16;
 	opts_set_question(arg);
 }

@@ -21,6 +21,9 @@
 
 #include <sys/types.h>
 
+/* Include here the RNG functions */
+#include "rand.h"
+
 /*
  * NMEMB: returns the number of members of the `x' array
  */
@@ -86,9 +89,6 @@ char xor_int(int i);
 void swap_array(int nmemb, size_t nmemb_sz, void *src, void *dst);
 void swap_ints(int nmemb, unsigned int *x, unsigned int *y) ;
 void swap_shorts(int nmemb, unsigned short *x, unsigned short *y);
-
-inline int rand_range(int _min, int _max);
-void xsrand(void);
 
 char *last_token(char *string, char tok);
 void strip_char(char *string, char char_to_strip);

@@ -1114,7 +1114,8 @@ int hook_first_radar_scan(map_gnode *hook_gnode, int hook_level, quadro_group *o
 					"  We wait, then we'll restart the hook.", 
 					total_hooking_nodes);
 
-			usleep(rand_range(0, 1024)); /* ++entropy, thx to katolaz :) */
+			usleep(rand_range_fast(0, 1024)); /* ++entropy, thx 
+							     to katolaz :) */
 			sleep(MAX_RADAR_WAIT);
 			i--;
 		} else 
@@ -1519,7 +1520,7 @@ void hook_finish(int new_gnode, struct free_nodes_hdr *fn_hdr)
 	 * Note that this is done only at the first time we hook.
 	 */
 	if(!we_are_rehooking) {
-		usleep(rand_range(0, 999999));
+		usleep(rand_range_fast(0, 999999));
 		tracer_pkt_start_mutex=0;
 		for(i=1; i<tracer_levels; i++)
 			tracer_pkt_start(i-1);
