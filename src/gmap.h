@@ -127,7 +127,7 @@ INT_INFO map_gnode_iinfo = { 1,
 typedef struct {
 	u_char      levels;		 /*How many levels we have*/
 	int         gid[MAX_LEVELS];	 /*Group ids. Each element is the gid of the quadrogroup in the 
-					   relative level. (ex: gid[n] is the gid of the quadropgroup a 
+					   relative level. (ex: gid[n] is the gid of the quadro_group a 
 					   the n-th level)*/
 	map_gnode  *gnode[MAX_LEVELS-ZERO_LEVEL]; /*Each element is a pointer to the relative
 						    gnode in the ext_map.*/

@@ -142,6 +142,9 @@ typedef struct
 
 	char		*ifs[MAX_INTERFACES];
 	int		ifs_n;	/* number of interfaces present in `ifs' */
+
+	char		*load_module;	/* Modules to load */
+	size_t		load_module_sz;
 	
 	char 		*int_map_file;
 	char 		*ext_map_file;

@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "NetsukukuD 8"
-.TH NetsukukuD 8 "2006-06-20" "NetsukukuD 0.0.9b (debug)" ""
+.TH NetsukukuD 8 "2006-08-25" "NetsukukuD 0.0.9b (debug)" ""
 .SH "NAME"
 ntkd \- Netsukuku protocol daemon
 .SH "SYNOPSIS"
@@ -211,6 +211,15 @@ without a configuration file.
 .IX Item "-l logfile, --logfile logfile"
 Specifies that \fBntkd\fR should send all of its messages to the specified file.
 The \fIlogfile\fR will be overwritten.
+.IP "\fB\-m\fR, \fB\-\-module\fR \fImod_name [arg1[=value], arg2[=value], ...]\fR" 4
+.IX Item "-m, --module mod_name [arg1[=value], arg2[=value], ...]"
+Forces \fBntkd\fR to load the specified module. The format of the \fImodule\fR
+argument is: \fBmodule_name [arg1[=value], arg2[=value], ...]\fR.
+It is possible to specify multiple times this option. For example:
+.Sp
+.Vb 1
+\&        ntkd -m module1 -m "mod2 arg1, arg2=value, arg3" -m "mod3 arg1"
+.Ve
 .IP "\fB\-d\fR, \fB\-\-debug\fR" 4
 .IX Item "-d, --debug"
 With this option the daemon will run with displaying its debug messages.

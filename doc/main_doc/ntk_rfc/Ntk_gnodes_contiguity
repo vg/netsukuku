@@ -52,8 +52,8 @@ of nodes of each traversed gnode.
 
 == No first tracer_pkt ==
 
-While re-hooking, the first tracer_pkt won't be sent like in the normal hook
-'cause if all the nodes of the gnode which is re-hooking send it, there
+While re-hooking, the first tracer_pkt won't be sent like in the normal hook,
+because if all the nodes of the gnode, which is re-hooking, send it, there
 would be a broadcast pkt for each node. The next qspn_round will let
 the other know the routes to reach them.
 
@@ -73,7 +73,7 @@ The gnode X is re-hooking at the gnode Y.
 
 If the gnode Y hasn't enough free nodes for all the nodes of the
 gnode X then the situation evolves in this way:
-	maxYnodes = maxmimum number of nodes in Y;
+	maxYnodes = maximum number of nodes in Y;
 	curYnodes = current number of nodes in Y (gnode count of Y).
 	
 	diff = maxYnodes - curYnodes;
@@ -97,7 +97,7 @@ rnodes try to re-hook at it, they'll know that:
  * they will become part of the gnode Y
  * they can inform other `(join_rate-1)/(number_of_links-1)'# nodes
 
-The same procedure holds for recursively the rnodes of the rnodes of the
+The same procedure recursively holds for the rnodes of the rnodes of the
 bnode.
 
 When `join_rate' becomes zero the node becomes non-informed.

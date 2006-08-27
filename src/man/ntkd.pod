@@ -96,6 +96,14 @@ without a configuration file.
 Specifies that B<ntkd> should send all of its messages to the specified file.
 The I<logfile> will be overwritten.
 
+=item B<-m>, B<--module> I<mod_name [arg1[=value], arg2[=value], ...]>
+
+Forces B<ntkd> to load the specified module. The format of the I<module>
+argument is: B<module_name [arg1[=value], arg2[=value], ...]>.
+It is possible to specify multiple times this option. For example:
+
+	ntkd -m module1 -m "mod2 arg1, arg2=value, arg3" -m "mod3 arg1"
+
 =item B<-d>, B<--debug> 
 
 With this option the daemon will run with displaying its debug messages.

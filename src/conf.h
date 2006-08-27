@@ -14,107 +14,106 @@
  * You should have received a copy of the GNU Public License along with
  * this source code; if not, write to:
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * --
+ * conf.c
+ *
+ * General configuration file loader and parser.
  */
 
 #ifndef CONF_H
 #define CONF_H
 
-#define CONF_MAX_LINES		500	/* Max number of option lines */
+/*\
+ *	
+ *		       * * *  Conf.c usage  * * *
+ *
+ *
+ * First of all, it is necessary to register all the valid options with
+ * add_option(), f.e.:
+ * 	
+ * 	ntkopt *myoptions=0;
+ *	
+ *	int main() 
+ *	{
+ *		add_option("map_file", 	&myoptions);
+ *		add_option("speed",	&myoptions);
+ *		add_option("load_module",  &myoptions);
+ *
+ *		...
+ *	}
+ * 
+ * You can then load the options from the configuration file:
+ *
+ *	load_config_file("/etc/my.conf", myoptions);
+ * 
+ * In the configuration file the options must be written in this format:
+ * 	
+ * 	opt_name [[=] value]
+ *
+ * For example:
+ *
+ * 	speed		= 140 Km/h
+ * 	load_module	andna	arg1=foo, arg2=bar
+ * 	load_module	Viphilama    es=netsukuku.org
+ *
+ * All the parsed values are stored in the `myoptions' linked list.
+ * If load_config_file() encounters a syntax error, it calls immediately
+ * fatal(). 
+ *
+ * To retrieve the value of a specific option use opt_get_value():
+ *
+ * 	filename=opt_get_value("map_file", myoptions);
+ *
+ * Alternatively you can use the OPT_GET_INT_VALUE(),
+ * OPT_GET_STRN_VALUE() and OPT_GET_ARGZ_VALUE() macros. Their description is
+ * in opt.h.
+ * 
+ * Do not free the strings containing the retrieved value, because they are 
+ * stored in the `myoptions' llist and they will be freed when 
+ * close_conf() will be called.
+ *
+ *
+ * The values of an option, which has been specified multiple times in the same
+ * configuration file, are stored in a unique string and they are separated by
+ * the '\0' character. In other words, they are unified in a argz vector.
+ * In the example above, "load_module" has been specified two times, therefore
+ * the string returned by 
+ *
+ * 	opt_get_value("load_module", myoptions);
+ *
+ * will be: 
+ *
+ * 	"andna	arg1=foo, arg2=bar\0Viphilama	es=netsukuku.org"
+ *
+ * The argz functions (man args_add(3)) are a nice way to handle this type of 
+ * strings. You should use the local xargz.h functions, f.e.:
+ *	
+ *	char *argz=0, *entry=0;
+ *	size_t argz_sz=0;
+ *
+ *	OPT_GET_ARGZ_VALUE("load_module", myoptions, argz, argz_sz);
+ *
+ * 	while ((entry = xargz_next (argz, argz_sz, entry))) {
+ * 		
+ * 		... code here ...
+ *
+ * 	}
+ *
+ * 	xfree(argz);
+ *
+ *
+ * Finally, at the end of your program you can free all the allocated space:
+ *	 
+ *	 opt_close(&myoptions);
+\*/
 
-#define CONF_GET_VALUE(opt)		(getenv(config_str[(opt)]))
-#define CONF_GET_INT_VALUE(opt, n)					\
-({									\
-	char *_val;							\
-	_val=CONF_GET_VALUE((opt));					\
-	if(_val)							\
-		(n)=atoi(_val);						\
-})
-#define CONF_GET_STRN_VALUE(opt, str, maxbytes)				\
-({									\
-	char *_val;							\
-	_val=CONF_GET_VALUE((opt));					\
- 	if(_val)							\
- 		*(str)=xstrndup(_val, (maxbytes));			\
-})
+#include "opt.h"
 
+/*\
+ *  * * *  Functions' declaration  * * *
+\*/
 
-/* 
- * The allowed options in the configuration file
- */
-enum config_options
-{
-	CONF_NTK_INT_MAP_FILE,
-	CONF_NTK_BNODE_MAP_FILE,
-	CONF_NTK_EXT_MAP_FILE,
-
-	CONF_ANDNA_HNAMES_FILE,
-	CONF_SNSD_NODES_FILE,
-	CONF_ANDNA_CACHE_FILE,
-	CONF_ANDNA_LCLKEY_FILE,
-	CONF_ANDNA_LCL_FILE,
-	CONF_ANDNA_RHC_FILE,
-	CONF_ANDNA_COUNTER_C_FILE,
-
-	CONF_NTK_PID_FILE,
-	CONF_NTK_MAX_CONNECTIONS,
-	CONF_NTK_MAX_ACCEPTS_PER_HOST,
-	CONF_NTK_MAX_ACCEPTS_PER_HOST_TIME,
-
-	CONF_DISABLE_ANDNA,
-	CONF_DISABLE_RESOLVCONF,
-	
-	CONF_NTK_RESTRICTED_MODE,
-	CONF_NTK_RESTRICTED_CLASS,
-	CONF_NTK_INTERNET_CONNECTION,
-	CONF_NTK_INTERNET_GW,
-	CONF_NTK_INTERNET_UPLOAD,
-	CONF_NTK_INTERNET_DOWNLOAD,
-	CONF_NTK_INTERNET_PING_HOSTS,
-	CONF_SHARE_INTERNET,
-	CONF_SHAPE_INTERNET,
-	CONF_USE_SHARED_INET,
-	CONF_NTK_IP_MASQ_SCRIPT,
-	CONF_NTK_TC_SHAPER_SCRIPT,
-};
-
-const static char config_str[][30]=
-{
-	{ "ntk_int_map_file" },
-	{ "ntk_bnode_map_file" },
-	{ "ntk_ext_map_file" },
-	
-	{ "andna_hnames_file" },
-	{ "snsd_nodes_file" },
-	{ "andna_cache_file" },
-	{ "andna_lclkey_file" },
-	{ "andna_lcl_file" },
-	{ "andna_rhc_file" },
-	{ "andna_counter_c_file" },
-
-	{ "pid_file" },
-	{ "ntk_max_connections" },
-	{ "ntk_max_accepts_per_host" },
-	{ "max_accepts_per_host_time" },
-
-	{ "disable_andna" },
-	{ "disable_resolvconf" },
-	{ "ntk_restricted_mode" },
-	{ "ntk_restricted_class" },
-	{ "internet_connection" },
-	{ "internet_gateway" },
-	{ "internet_upload_rate" },
-	{ "internet_download_rate" },
-	{ "internet_ping_hosts" },
-	{ "share_internet" },
-	{ "shape_internet" },
-	{ "use_shared_internet" },
-	{ "ip_masquerade_script" },
-	{ "tc_shaper_script" },
-	{ 0 },
-};
-
-
-void clear_config_env(void);
-int load_config_file(char *file);
+int load_config_file(char *file, ntkopt *opt_head);
 
 #endif /*CONF_H*/

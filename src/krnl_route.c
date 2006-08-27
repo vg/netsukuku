@@ -440,13 +440,13 @@ int route_get_exact_prefix_dst(inet_prefix prefix, inet_prefix *dst,
 	ll_init_map(&rth);
 
 	if (rtnl_wilddump_request(&rth, do_ipv6, RTM_GETROUTE) < 0) {
-		error(ERROR_MSG"Cannot send dump request"ERROR_POS);
+		error(ERROR_MSG "Cannot send dump request", ERROR_POS);
 		return -1;
 	}
 
 	setzero(dst_data, sizeof(dst_data));
 	if (rtnl_dump_filter(&rth, route_get_gw, dst_data, NULL, NULL) < 0) {
-		debug(DBG_NORMAL, ERROR_MSG "Dump terminated" ERROR_POS);
+		debug(DBG_NORMAL, ERROR_MSG "Dump terminated", ERROR_POS);
 		return -1;
 	}
 	inet_copy(dst, (inet_prefix *)dst_data);

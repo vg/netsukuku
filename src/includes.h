@@ -19,6 +19,7 @@
 #ifndef INCLUDES_H
 #define INCLUDES_H
 
+#define _GNU_SOURCE
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -68,6 +69,8 @@
 #warning the DEBUG code is being built!
 #include <execinfo.h>
 #define ANDNA_DEBUG
+#define MOD_DEBUG
+#define MODULES
 #undef USE_DMALLOC
 #endif
 

@@ -921,7 +921,8 @@ void *wait_and_unlock(void *m)
 			pthread_mutex_trylock(&pq->mtx) != EBUSY)
 		goto finish;
 
-	debug(DBG_INSANE, "pq->pkt.hdr.id: 0x%x Timeoutted. mtx: 0x%X", pq->pkt.hdr.id, &pq->mtx);
+	debug(DBG_INSANE, "pq->pkt.hdr.id: 0x%x Timeoutted. mtx: 0x%X", 
+			pq->pkt.hdr.id, (int)&pq->mtx);
 	pthread_mutex_unlock(&pq->mtx);
 	pq->flags|=PKT_Q_TIMEOUT;
 	
@@ -975,7 +976,7 @@ int pkt_q_wait_recv(int id, inet_prefix *from, PACKET *rpkt, pkt_queue **ret_pq)
 			(void *)pq_ptr);
 
 	if(pq->flags & PKT_Q_MTX_LOCKED) {
-		debug(DBG_INSANE, "pkt_q_wait_recv: Locking 0x%x!", &pq->mtx);
+		debug(DBG_INSANE, "pkt_q_wait_recv: Locking 0x%x!", (int)&pq->mtx);
 
 		/* Freeze! */
 		pthread_mutex_lock(&pq->mtx);
@@ -1023,7 +1024,7 @@ int pkt_q_add_pkt(PACKET pkt)
 			 * pkt_q_wait_recv() is now hot again */
 			while(pthread_mutex_trylock(&pq->mtx) != EBUSY)
 				usleep(5000);
-			debug(DBG_INSANE, "pkt_q_add_pkt: Unlocking 0x%X ", &pq->mtx);
+			debug(DBG_INSANE, "pkt_q_add_pkt: Unlocking 0x%X ", (int)&pq->mtx);
 			pq->flags&=~PKT_Q_MTX_LOCKED & ~PKT_Q_TIMEOUT;
 			pq->flags|=PKT_Q_PKT_RECEIVED;
 			pthread_mutex_unlock(&pq->mtx);

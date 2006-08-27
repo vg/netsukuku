@@ -17,87 +17,108 @@
  *
  * --
  * conf.c:
- * Configuration file loader and parser. All the accepted option. which are
- * listed in conf.h, are put in the environment for later retrievement.
+ *
+ * General configuration file loader and parser. To understand how to use it, 
+ * see conf.h.
  */
 
 #include "includes.h"
 #include <ctype.h>
 
-#include "common.h"
 #include "conf.h"
+#include "common.h"
 
 /*
- * clear_config_env
+ * parse_config_line
  *
- * do not make the environment dirty
- */
-void clear_config_env(void)
-{
-	int i;
-
-	for(i=0; config_str[i][0]; i++)
-		if(getenv(config_str[i]))
-			unsetenv(config_str[i]);
-}
-
-/*
- * parse_config_line: it reads the `line' string and sees if it has a valid
- * option assignment that is in the form of "option = value".
+ * it reads the `line' string and sees if it has a valid option assignment 
+ * that is in the form of "option = value".
  * On success it stores the option name with its value in the environment.
  * On failure fatal() is called, so it will never return ;)
  * `file' and `pos' are used by fatal() to tell where the corrupted `line' was.
+ *
+ * `opt_head' is the head of the llist which keeps all the valid options.
  */
-void parse_config_line(char *file, int pos, char *line)
+void parse_config_line(char *file, int pos, char *line, ntkopt *opt_head)
 {
-	int i, e=0;
+	ntkopt *opt=opt_head;
+	size_t optlen;
+	int e=0;
 	char *value;
 	
-	if(!(value=strchr(line, '=')))
-		fatal("The line %s:%d is invalid, it does not contain the '=' "
-				"character. Aborting.", file, pos);
+	while(isspace(*line)) 
+		if(!*(++line))
+			/* It's just an empty line */
+			return;
 
-	for(i=0; config_str[i][0]; i++)
-		if(strstr(line, config_str[i])) {
+	/* Check if `line' contains a valid option */
+	list_for(opt) {
+		optlen=strlen(opt->opt);
+		if(!memcmp(line, opt->opt, optlen)) {
 			e=1;
 			break;
 		}
+	}
 	if(!e)
  	    fatal("The line %s:%d does not contain a valid option. Aborting.",
 				file, pos);
 
-	value++;
+	/* Eat the remaining spaces */
+	value=line+optlen+1;
 	while(isspace(*value)) 
 		value++;
-	
-	if(setenv(config_str[i], value, 1))
-		fatal("Error in line %s:%d: %s. Aborting.", file, pos, 
-				strerror(errno));
+
+	if(!*value) {
+		/* 
+		 * Consider this option as boolean and set it to "1" 
+		 */
+		opt_add_value(opt->opt, "1", opt);
+		return;
+	} else if(*value == '=')
+		value++;
+
+	while(isspace(*value)) 
+		value++;
+	if(!*value) {
+		/*
+		 * We are in this case:
+		 * 	opt =
+		 * missing value after the '='
+		 */
+		fatal("%s:%d: syntax error: no value has been assigned "
+				"to the \"%s\" option", 
+				file, pos, opt->opt);
+	}
+
+	opt_add_value(opt->opt, value, opt);
 }
 
-
 /*
- * load_config_file: loads from `file' all the options that are written in it
- * and stores them in the environment. See parse_config_line() above.
+ * load_config_file
+ *
+ * loads from `file' all the options that are written in it and stores them
+ * in the environment. See parse_config_line() above.
  * If `file' cannot be opened -1 is returned, but if it is read and
  * parse_config_line() detects a corrupted line, fatal() is directly called.
+ *
+ * `opt_head' is the head of the llist which keeps all the valid options.
+ *
  * On success 0 is returned.
  */
-int load_config_file(char *file)
+int load_config_file(char *file, ntkopt *opt_head)
 {
 	FILE *fd;
 	char buf[PATH_MAX+1], *p, *str;
 	size_t slen;
-	int i=0, e=0;
+	int e=0;
 
 	if(!(fd=fopen(file, "r"))) {
-		fatal("Cannot load the configuration file from %s: %s\n"
-			"  Maybe you want to use the -c option ?",
+		fatal("Cannot load the configuration file from %s: %s",
 			file, strerror(errno));
 		return -1;
 	}
 
-	while(!feof(fd) && i < CONF_MAX_LINES) {
+	while(!feof(fd)) {
 		setzero(buf, PATH_MAX+1);
 		fgets(buf, PATH_MAX, fd);
 		e++;
@@ -118,15 +139,14 @@ int load_config_file(char *file)
 			if((p=strrchr(str, '#')))
 				*p='\0';
 			
-			/* Don't include the newline and spaces of the end of 
+			/* Don't include the newline and spaces at the end of 
 			 * the string */
 			slen=strlen(str);
 			for(p=&str[slen-1]; isspace(*p); p--)
 				*p='\0';
 			
 
-			parse_config_line(file, e, str);
-			i++;
+			parse_config_line(file, e, str, opt_head);
 		}
 	}
 

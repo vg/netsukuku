@@ -21,6 +21,7 @@
  */
 
 #include "includes.h"
+#include <string.h>
 
 #include "crypto.h"
 #include "andna_cache.h"
@@ -1018,7 +1019,7 @@ unpack_acq_llist(char *pack, size_t pack_sz, size_t *unpacked_sz,
 							&snsd_counter);
 		if(acq->snsd_counter != snsd_counter) {
 			debug(DBG_SOFT, ERROR_MSG "unpack_acq:" 
-					"snsd_counter (%h) != snsd_counter (%h)",
+					"snsd_counter (%d) != snsd_counter (%d)",
 					ERROR_POS, acq->snsd_counter, 
 					snsd_counter);
 			xfree(acq);
@@ -1903,7 +1904,7 @@ int load_snsd(char *file, lcl_cache *alcl_head)
 			nodes=snsd_count_prio_nodes(sns->prio);
 			if(nodes >= SNSD_MAX_REC_SERV-1) {
 				error("%s: The maximum number of records for"
-				      " the service \"%s\" has been reached.\n"
+				      " the service \"%d\" has been reached.\n"
 				      "  The maximum is %d records per service",
 				      file, service, SNSD_MAX_REC_SERV);
 				ERROR_FINISH(abort, 1, skip_line);
@@ -1974,8 +1975,7 @@ int add_resolv_conf(char *hname, char *file)
 	/* Prepare the name of the backup file */
 	file_bk=xmalloc(strlen(file) + strlen(".bak") + 1);
 	*file_bk=0;
-	strcpy(file_bk, file);
-	strcat(file_bk, ".bak");
+	strcpy(stpcpy(file_bk, file), ".bak");
 	
 reread_fin:
 	fseek(fin, 0, SEEK_END);
@@ -2082,7 +2082,7 @@ int del_resolv_conf(char *hname, char *file)
 {
 	FILE *fin=0, *fout=0;
 	     
-	char *buf=0, *file_bk=0, tmp_buf[128+1];
+	char *buf=0, *p, *file_bk=0, tmp_buf[128+1];
 	size_t buf_sz;
 	int ret=0;
 
@@ -2091,8 +2091,7 @@ int del_resolv_conf(char *hname, char *file)
 	 */
 	file_bk=xmalloc(strlen(file) + strlen(".bak") + 1);
 	*file_bk=0;
-	strcpy(file_bk, file);
-	strcat(file_bk, ".bak");
+	strcpy(stpcpy(file_bk, file), ".bak");
 	if(!(fin=fopen(file_bk, "r"))) {
 		/*error("del_resolv_conf: cannot load %s: %s", file_bk, strerror(errno));*/
 		ERROR_FINISH(ret, -1, finish);
@@ -2108,12 +2107,12 @@ int del_resolv_conf(char *hname, char *file)
 		ERROR_FINISH(ret, -1, finish);
 	}
 	
-	buf=xzalloc(buf_sz);
+	buf=p=xzalloc(buf_sz);
 	while(fgets(tmp_buf, 128, fin)) {
 		/* Skip the line which is equal to `hname' */
 		if(!strncmp(tmp_buf, hname, strlen(hname)))
 			continue;
-		strcat(buf, tmp_buf);
+		memput(p, tmp_buf, strlen(tmp_buf));
 	}
 	
 	/*

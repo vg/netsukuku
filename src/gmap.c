@@ -825,7 +825,7 @@ void erc_reorder_rnodepos(ext_rnode_cache **erc, u_int *erc_counter, map_node *r
 			
 			if(p->rnode_pos < 0) {
 				debug(DBG_NOISE, "erc_reorder_rnodepos: Warning erc 0x%x delete. "
-						"Something strange is happening", p);
+						"Something strange is happening", (int)p);
 				e_rnode_del(erc, erc_counter, p);
 			}
 		}

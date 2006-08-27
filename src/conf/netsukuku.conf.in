@@ -10,9 +10,11 @@
 #
 # Options index:
 # 
+# 	## Modules
+# 		- load_module
 # 	## Restricted mode
-#		- ntk_restricted_mode
-#		- ntk_restricted_class
+#		- restricted_mode
+#		- restricted_class
 #	## Internet connection
 #		- internet_connection
 #		- internet_gateway
@@ -26,14 +28,14 @@
 #		- disable_andna
 #		- disable_resolvconf
 #	## Limits
-#		- ntk_max_connections
-#		- ntk_max_accepts_per_host
+#		- max_connections
+#		- max_accepts_per_host
 #		- max_accepts_per_host_time
 #	## Files
 #		- pid_file
-#		- ntk_ext_map_file
-#		- ntk_int_map_file
-#		- ntk_bnode_map_file
+#		- ext_map_file
+#		- int_map_file
+#		- bnode_map_file
 #		- andna_hnames_file
 #		- snsd_nodes_file
 #		- andna_cache_file
@@ -45,22 +47,35 @@
 #		- tc_shaper_script
 #
 
+##
+#### Modules
+##
+
+# 
+# `load_module' specifies the module that will be loaded by ntkd.
+# It is possible to use this option multiple times
+#
+#
+#load_module	andna
+#load_module	foo speed=4035, lang=russian, goto=Sun
+#load_module	bar
+
 
 ##
 #### Restricted mode
 ##
 
 #
-# If the `ntk_restricted_mode' option is set to 1, NetsukukuD will be started
+# If the `restricted_mode' option is set to 1, NetsukukuD will be started
 # in restricted mode to be compatible with Internet. In the restricted mode, 
 # only IPs of the largest private subnet (i.e. 10.x.x.x) are chosen.
 #
-# If `ntk_restricted_class' is set to 1 the IPs will be chosen from the
+# If `restricted_class' is set to 1 the IPs will be chosen from the
 # 172.16.0.0-172.31.255.255 range (use this option only if you can't use the 
 # 10.x.x.x class).
 #
-#ntk_restricted_mode	= 0
-#ntk_restricted_class	= 0
+#restricted_mode	= 0
+#restricted_class	= 0
 
 
 ##
@@ -139,14 +154,14 @@ internet_ping_hosts	= google.com:cisco.com:sourceforge.net:dyne.org
 #
 # How many connection the netsukuku daemons can simultaneusly handle.
 #
-#ntk_max_connections		= 512
+#max_connections		= 512
 
 # How many simultaneusly connections to the daemons from a single host are
 # allowed.
-#ntk_max_accepts_per_host	= 16
+#max_accepts_per_host		= 16
 
 # The wait time necessary for a host to reconnect to the daemons after all the
-# ntk_max_accepts_per_host were used.
+# max_accepts_per_host were used.
 #
 #max_accepts_per_host_time	= 4	#in seconds
 
@@ -163,9 +178,9 @@ internet_ping_hosts	= google.com:cisco.com:sourceforge.net:dyne.org
 # 
 # The paths of the Netsukuku maps saved by the daemon
 #
-#ntk_ext_map_file	= @DT_DIR@/ext_map_file
-#ntk_int_map_file	= @DT_DIR@/int_map_file
-#ntk_bnode_map_file	= @DT_DIR@/bnode_map_file
+#ext_map_file		= @DT_DIR@/ext_map_file
+#int_map_file		= @DT_DIR@/int_map_file
+#bnode_map_file		= @DT_DIR@/bnode_map_file
 
 #
 # The hostnames that will be registered in ANDNA are kept, one per line, in

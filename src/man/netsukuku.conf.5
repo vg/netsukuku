@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "netsukuku.conf 8"
-.TH netsukuku.conf 8 "2006-06-14" "NetsukukuD 0.0.9b (debug)" ""
+.TH netsukuku.conf 8 "2006-08-25" "NetsukukuD 0.0.9b (debug)" ""
 .SH "NAME"
 netsukuku.conf \- Netsukuku daemon configuration file
 .SH "SYNOPSIS"
@@ -149,6 +149,22 @@ The character '=' is used to assign a value to an option.
 All the options will be overridden by their command line equivalent.
 .SH "OPTIONS"
 .IX Header "OPTIONS"
+.Sh "\s-1MODULES\s0"
+.IX Subsection "MODULES"
+.IP "\fBload_module\fR [=] \fImodule_name [arg1[=value], arg2[=value, ...]\fR" 4
+.IX Item "load_module [=] module_name [arg1[=value], arg2[=value, ...]"
+Specifies the module that will be loaded by \fBntkd\fR.
+After the module name it is possible to specify its arguments line.
+\&\fBload_module\fR can be used multiple times.
+Example:
+.Sp
+.Vb 3
+\&        load_module     andna
+\&        load_module     foo speed=4035, lang=russian, goto=Sun
+\&        load_module     bar
+.Ve
+.Sp
+Default: \fI(None)\fR
 .Sh "\s-1RESTRICTED\s0 \s-1MODE\s0"
 .IX Subsection "RESTRICTED MODE"
 .IP "\fBntk_restricted_mode\fR = \fIbool\fR" 4

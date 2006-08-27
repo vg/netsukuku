@@ -17,6 +17,8 @@
  */
 
 #include "includes.h"
+
+#include "hash.h"
 #include "request.h"
 #include "xmalloc.h"
 #include "log.h"
@@ -227,6 +229,37 @@ const static u_char request_array[][2]=
 #define RQ_WAIT 	0
 #define RQ_MAXRQ	1
 
+#if 0
+int rq_hash_name(const char *rq_name)
+{
+	int hash;
+
+	hash=fnv_32_buf((u_char *)msg, ANDNA_HASH_SZ, FNV1_32_INIT);
+
+	return !hash ? hash+1 : hash;
+}
+
+void rq_find_hash(int rq_hash)
+{
+	int i;
+
+	for(i=0; i<rq_total_requests; i++)
+		if(rq[i].request == rq_hash)
+/* TODO: Continue here */
+}
+
+void rq_find_name(const char *rq_name)
+{
+}
+
+void rq_add_request(const char *rq_name)
+{
+	int hash;
+
+	hash=rq_hash_name(rq_name);
+	rq
+}
+#endif
 void rq_wait_idx_init(int *rq_wait_idx)
 {
 	int e, idx;

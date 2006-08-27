@@ -505,7 +505,7 @@ do{ 									\
  * list_copy_all
  *
  * It copies the entire `list' llist in a new allocated one.
- * It returns the head to the replicated llist.
+ * It returns the head to the duplicated llist.
  * The `list' llist is not modified.
  */
 #define list_copy_all_yes(_nil)	(1)

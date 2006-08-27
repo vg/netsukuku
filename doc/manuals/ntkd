@@ -77,6 +77,13 @@ OPTIONS
         Specifies that ntkd should send all of its messages to the specified
         file. The *logfile* will be overwritten.
 
+    -m, --module *mod_name [arg1[=value], arg2[=value], ...]*
+        Forces ntkd to load the specified module. The format of the *module*
+        argument is: module_name [arg1[=value], arg2[=value], ...]. It is
+        possible to specify multiple times this option. For example:
+
+                ntkd -m module1 -m "mod2 arg1, arg2=value, arg3" -m "mod3 arg1"
+
     -d, --debug
         With this option the daemon will run with displaying its debug
         messages. The more -d you specify the more debug messages you'll

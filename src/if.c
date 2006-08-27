@@ -598,7 +598,7 @@ int ip_addr_flush(int family, char *dev, int scope)
 		}
 		filter.flushed = 0;
 		if (rtnl_dump_filter(&rth, print_addrinfo, stdout, NULL, NULL) < 0) {
-			error("Flush terminated: %s", errno);
+			error("Flush terminated: %s", strerror(errno));
 			return -1;
 		}
 		if (filter.flushed == 0)

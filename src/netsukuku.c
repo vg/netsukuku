@@ -40,6 +40,7 @@
 #include "radar.h"
 #include "hook.h"
 #include "rehook.h"
+#include "module.h"
 
 
 extern int errno;
@@ -49,7 +50,9 @@ extern int optind, opterr, optopt;
 int destroy_netsukuku_mutex;
 int pid_saved;
 
+ntkopt *ntkd_options;
 int options_parsed=0; /* How many times parse_options() has been called */
+
 
 void save_pid(void)
 {
@@ -155,23 +158,65 @@ int ntk_free_maps(void)
 void usage(void)
 {
 	printf("Usage:\n"
-		"     ntkd [-hvaldrRD46] [-i net_interface] [-c conf_file] [-l logfile]\n\n"
+		"     ntkd [-hvaldrIRD46] [-i iface] [-c config] [-l logfile] [-m module]\n"
+		"\n"
 		" -4	ipv4\n"
 		" -6	ipv6\n"
-		" -i	interface\n\n"
+		" -i	interface\n"
+		"\n"
 		" -a	do not run the ANDNA daemon\n"
 		" -R	do not edit /etc/resolv.conf\n"
 		" -D	no daemon mode\n"
 		"\n"
 		" -r	run in restricted mode\n"
-		" -m	share your internet connection\n"
+		" -I	share your internet connection\n"
 		"\n"
 		" -c	configuration file\n"
 		" -l	log to file\n"
+		" -m	load modules\n"
 		"\n"
 		" -d	debug (more d, more info)\n"
 		" -h	this help\n"
 		" -v	version\n");
+}
+
+void add_ntkd_options(void)
+{
+	ntkd_options=0;
+
+	opt_add_option("int_map_file", 	 0, &ntkd_options);
+	opt_add_option("bnode_map_file", 0, &ntkd_options);
+	opt_add_option("ext_map_file", 	 0, &ntkd_options);
+
+	opt_add_option("andna_hnames_file", 0, &ntkd_options);
+	opt_add_option("snsd_nodes_file",   0, &ntkd_options);
+	opt_add_option("andna_cache_file",  0, &ntkd_options);
+	opt_add_option("andna_lclkey_file", 0, &ntkd_options);
+	opt_add_option("andna_lcl_file",    0, &ntkd_options);
+	opt_add_option("andna_rhc_file",    0, &ntkd_options);
+	opt_add_option("andna_counter_c_file", 0, &ntkd_options);
+
+	opt_add_option("pid_file", 		    0, &ntkd_options);
+	opt_add_option("max_connections", 	    0, &ntkd_options);
+	opt_add_option("max_accepts_per_host", 	    0, &ntkd_options);
+	opt_add_option("max_accepts_per_host_time", 0, &ntkd_options);
+
+	opt_add_option("disable_andna", 	 0, &ntkd_options);
+	opt_add_option("disable_resolvconf", 	 0, &ntkd_options);
+	opt_add_option("restricted_mode", 	 0, &ntkd_options);
+	opt_add_option("restricted_class", 	 0, &ntkd_options);
+	opt_add_option("internet_connection", 	 0, &ntkd_options);
+	opt_add_option("internet_gateway", 	 0, &ntkd_options);
+	opt_add_option("internet_upload_rate", 	 0, &ntkd_options);
+	opt_add_option("internet_download_rate", 0, &ntkd_options);
+	opt_add_option("internet_ping_hosts",	 0, &ntkd_options);
+	opt_add_option("share_internet",	 0, &ntkd_options);
+	opt_add_option("shape_internet", 	 0, &ntkd_options);
+	opt_add_option("use_shared_internet", 	 0, &ntkd_options);
+	opt_add_option("ip_masquerade_script", 	 0, &ntkd_options);
+	opt_add_option("tc_shaper_script", 	 0, &ntkd_options);
+
+	opt_add_option("load_module", 0, &ntkd_options);
 }
 
 /*
@@ -223,60 +268,66 @@ void fill_default_options(void)
  */
 void fill_loaded_cfg_options(void)
 {
+	ntkopt *co=ntkd_options;
 	char *value;
 
-	CONF_GET_STRN_VALUE ( CONF_NTK_INT_MAP_FILE, &server_opt.int_map_file, NAME_MAX-1  );
-	CONF_GET_STRN_VALUE ( CONF_NTK_BNODE_MAP_FILE, &server_opt.bnode_map_file, NAME_MAX-1 );
-	CONF_GET_STRN_VALUE ( CONF_NTK_EXT_MAP_FILE, &server_opt.ext_map_file, NAME_MAX-1 );
+	OPT_GET_STRN_VALUE ( "int_map_file", co, server_opt.int_map_file, PATH_MAX  );
+	OPT_GET_STRN_VALUE ( "bnode_map_file", co, server_opt.bnode_map_file, PATH_MAX );
+	OPT_GET_STRN_VALUE ( "ext_map_file", co, server_opt.ext_map_file, PATH_MAX );
 
-	CONF_GET_STRN_VALUE ( CONF_ANDNA_HNAMES_FILE, &server_opt.andna_hnames_file, NAME_MAX-1 );
-	CONF_GET_STRN_VALUE ( CONF_SNSD_NODES_FILE, &server_opt.snsd_nodes_file, NAME_MAX-1 );
+	OPT_GET_STRN_VALUE ( "andna_hnames_file", co, server_opt.andna_hnames_file, PATH_MAX );
+	OPT_GET_STRN_VALUE ( "snsd_nodes_file", co, server_opt.snsd_nodes_file, PATH_MAX );
 
-	CONF_GET_STRN_VALUE ( CONF_ANDNA_CACHE_FILE, &server_opt.andna_cache_file, NAME_MAX-1 );
-	CONF_GET_STRN_VALUE ( CONF_ANDNA_LCLKEY_FILE, &server_opt.lclkey_file, NAME_MAX-1 );
-	CONF_GET_STRN_VALUE ( CONF_ANDNA_LCL_FILE, &server_opt.lcl_file, NAME_MAX-1 );
-	CONF_GET_STRN_VALUE ( CONF_ANDNA_RHC_FILE, &server_opt.rhc_file, NAME_MAX-1 );
-	CONF_GET_STRN_VALUE ( CONF_ANDNA_COUNTER_C_FILE, &server_opt.counter_c_file, NAME_MAX-1 );
+	OPT_GET_STRN_VALUE ( "andna_cache_file", co, server_opt.andna_cache_file, PATH_MAX );
+	OPT_GET_STRN_VALUE ( "andna_lclkey_file", co, server_opt.lclkey_file, PATH_MAX );
+	OPT_GET_STRN_VALUE ( "andna_lcl_file", co, server_opt.lcl_file, PATH_MAX );
+	OPT_GET_STRN_VALUE ( "andna_rhc_file", co, server_opt.rhc_file, PATH_MAX );
+	OPT_GET_STRN_VALUE ( "andna_counter_c_file", co, server_opt.counter_c_file, PATH_MAX );
 
-	CONF_GET_STRN_VALUE ( CONF_NTK_PID_FILE, &server_opt.pid_file, NAME_MAX-1 );
-	CONF_GET_INT_VALUE ( CONF_NTK_MAX_CONNECTIONS, server_opt.max_connections );
-	CONF_GET_INT_VALUE ( CONF_NTK_MAX_ACCEPTS_PER_HOST, server_opt.max_accepts_per_host );
-	CONF_GET_INT_VALUE ( CONF_NTK_MAX_ACCEPTS_PER_HOST_TIME, server_opt.max_accepts_per_host_time );
+	OPT_GET_STRN_VALUE ( "pid_file", co, server_opt.pid_file, PATH_MAX );
+	OPT_GET_INT_VALUE ( "max_connections", co, server_opt.max_connections );
+	OPT_GET_INT_VALUE ( "max_accepts_per_host", co, server_opt.max_accepts_per_host );
+	OPT_GET_INT_VALUE ( "max_accepts_per_host_time", co, server_opt.max_accepts_per_host_time );
 
-	CONF_GET_INT_VALUE ( CONF_DISABLE_ANDNA, server_opt.disable_andna );
-	CONF_GET_INT_VALUE ( CONF_DISABLE_RESOLVCONF, server_opt.disable_resolvconf );
-	CONF_GET_INT_VALUE ( CONF_NTK_RESTRICTED_MODE, server_opt.restricted );
-	CONF_GET_INT_VALUE ( CONF_NTK_RESTRICTED_CLASS, server_opt.restricted_class );
+	if(!server_opt.disable_andna)
+		OPT_GET_INT_VALUE ( "disable_andna", co, server_opt.disable_andna );
+	if(!server_opt.disable_resolvconf)
+		OPT_GET_INT_VALUE ( "disable_resolvconf", co, server_opt.disable_resolvconf );
+	if(!server_opt.restricted)
+		OPT_GET_INT_VALUE ( "restricted_mode", co, server_opt.restricted );
+	if(!server_opt.restricted_class)
+		OPT_GET_INT_VALUE ( "restricted_class", co, server_opt.restricted_class );
 
-	CONF_GET_INT_VALUE ( CONF_NTK_INTERNET_CONNECTION, server_opt.inet_connection);
-	if((value=CONF_GET_VALUE(CONF_NTK_INTERNET_GW))) {
+	if(!server_opt.inet_connection)
+		OPT_GET_INT_VALUE ( "internet_connection", co, server_opt.inet_connection);
+	if((value=opt_get_value("internet_gw", co))) {
 		if(str_to_inet_gw(value, &server_opt.inet_gw, 
 					&server_opt.inet_gw_dev))
 			fatal("Malformed `%s' option: \"%s\". Its syntax is \"IP:dev\"",
-					config_str[CONF_NTK_INTERNET_GW], value);
+					"internet_gw", value);
 	}
-	CONF_GET_INT_VALUE ( CONF_NTK_INTERNET_UPLOAD, server_opt.my_upload_bw );
-	CONF_GET_INT_VALUE ( CONF_NTK_INTERNET_DOWNLOAD, server_opt.my_dnload_bw );
+	OPT_GET_INT_VALUE ( "internet_upload", co, server_opt.my_upload_bw );
+	OPT_GET_INT_VALUE ( "internet_download", co, server_opt.my_dnload_bw );
 	if(server_opt.my_upload_bw && server_opt.my_dnload_bw)
 		me.my_bandwidth =
 			bandwidth_in_8bit((server_opt.my_upload_bw+server_opt.my_dnload_bw)/2);
 
-	if((value=CONF_GET_VALUE(CONF_NTK_INTERNET_PING_HOSTS))) {
+	if((value=opt_get_value("internet_ping_hosts", co))) {
 		server_opt.inet_hosts=parse_internet_hosts(value, 
-				&server_opt.inet_hosts_counter);
+						&server_opt.inet_hosts_counter);
 		if(!server_opt.inet_hosts)
 			fatal("Malformed `%s' option: \"%s\". "
 				"Its syntax is host1:host2:...",
-				config_str[CONF_NTK_INTERNET_PING_HOSTS], value);
+				"internet_ping_hosts", value);
 	}
-	CONF_GET_INT_VALUE ( CONF_SHARE_INTERNET, server_opt.share_internet );
-	CONF_GET_INT_VALUE ( CONF_SHAPE_INTERNET, server_opt.shape_internet );
-	CONF_GET_INT_VALUE ( CONF_USE_SHARED_INET, server_opt.use_shared_inet );
-	CONF_GET_STRN_VALUE ( CONF_NTK_IP_MASQ_SCRIPT, &server_opt.ip_masq_script, NAME_MAX-1 );
-	CONF_GET_STRN_VALUE ( CONF_NTK_TC_SHAPER_SCRIPT, &server_opt.tc_shaper_script, NAME_MAX-1 );
+	if(!server_opt.share_internet)
+		OPT_GET_INT_VALUE ( "share_internet", co, server_opt.share_internet );
+	OPT_GET_INT_VALUE ( "shape_internet", co, server_opt.shape_internet );
+	OPT_GET_INT_VALUE ( "use_shared_inet", co, server_opt.use_shared_inet );
+	OPT_GET_STRN_VALUE ( "ip_masquerade_script", co, server_opt.ip_masq_script, PATH_MAX );
+	OPT_GET_STRN_VALUE ( "tc_shaper_script", co, server_opt.tc_shaper_script, PATH_MAX );
 
-	/* Clean the enviroment */
-	clear_config_env();
+	OPT_GET_ARGZ_VALUE ( "load_module", co, server_opt.load_module, server_opt.load_module_sz );
 }
 
 void free_server_opt(void)
@@ -285,35 +336,6 @@ void free_server_opt(void)
 	
 	if(server_opt.config_file != NTK_CONFIG_FILE)
 		xfree(server_opt.config_file);
-	if(server_opt.pid_file != NTK_PID_FILE)
-		xfree(server_opt.pid_file);
-
-	if(server_opt.int_map_file != INT_MAP_FILE)
-		xfree(server_opt.int_map_file);
-	if(server_opt.ext_map_file != EXT_MAP_FILE)
-		xfree(server_opt.ext_map_file);
-	if(server_opt.bnode_map_file != BNODE_MAP_FILE)
-		xfree(server_opt.bnode_map_file);
-
-	if(server_opt.andna_hnames_file != ANDNA_HNAMES_FILE)
-		xfree(server_opt.andna_hnames_file);
-	if(server_opt.snsd_nodes_file != SNSD_NODES_FILE)
-		xfree(server_opt.snsd_nodes_file);
-	if(server_opt.andna_cache_file != ANDNA_CACHE_FILE)
-		xfree(server_opt.andna_cache_file);
-	if(server_opt.lclkey_file != LCLKEY_FILE)
-		xfree(server_opt.lclkey_file);
-	if(server_opt.lcl_file != LCL_FILE)
-		xfree(server_opt.lcl_file);
-	if(server_opt.rhc_file != RHC_FILE)
-		xfree(server_opt.rhc_file);
-	if(server_opt.counter_c_file != COUNTER_C_FILE)
-		xfree(server_opt.counter_c_file);
-
-	if(server_opt.ip_masq_script != IPMASQ_SCRIPT_FILE)
-		xfree(server_opt.ip_masq_script);
-	if(server_opt.tc_shaper_script != TCSHAPER_SCRIPT_FILE)
-		xfree(server_opt.tc_shaper_script);
 
 	if(server_opt.inet_gw_dev)
 		xfree(server_opt.inet_gw_dev);
@@ -338,6 +360,8 @@ void parse_options(int argc, char **argv)
 			{"conf", 	1, 0, 'c'},
 			{"logfile",	1, 0, 'l'},
 
+			{"module",	1, 0, 'm'},
+
 			{"no_andna",	0, 0, 'a'},
 			{"no_daemon", 	0, 0, 'D'},
 			{"no_resolv",   0, 0, 'R'},
@@ -350,7 +374,7 @@ void parse_options(int argc, char **argv)
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long (argc, argv,"i:c:l:hvd64DRrIa", long_options, 
+		c = getopt_long (argc, argv,"i:c:l:m:hvd64DRrIa", long_options, 
 				&option_index);
 		if (c == -1)
 			break;
@@ -377,7 +401,7 @@ void parse_options(int argc, char **argv)
 				server_opt.family=AF_INET6;
 				break;
 			case 'c': 
-				server_opt.config_file=xstrndup(optarg, NAME_MAX-1);
+				server_opt.config_file=xstrndup(optarg, PATH_MAX);
 				break;
 			case 'l':
 				if(log_to_file(optarg) < 0)
@@ -387,7 +411,7 @@ void parse_options(int argc, char **argv)
 				if(server_opt.ifs_n+1 >= MAX_INTERFACES)
 					fatal("The maximum number of interfaces is %d",
 							MAX_INTERFACES);
-				server_opt.ifs[server_opt.ifs_n++]=xstrndup(optarg, IFNAMSIZ-1);
+				server_opt.ifs[server_opt.ifs_n++]=xstrndup(optarg, IFNAMSIZ);
 				break;
 			case 'D':
 				server_opt.daemon=0;
@@ -442,6 +466,10 @@ void parse_options(int argc, char **argv)
 				break;
 			case 'd':
 				server_opt.dbg_lvl++;
+				break;
+			case 'm':
+				xargz_add(&server_opt.load_module,
+						&server_opt.load_module_sz, optarg);
 				break;
 			default:
 				usage();
@@ -596,6 +624,15 @@ void init_netsukuku(char **argv)
 	hook_init();
 	rehook_init();
 
+#ifdef MODULES
+	/*
+	 * Load all modules
+	 */
+	if(server_opt.load_module)
+		load_all_modules(server_opt.load_module, 
+				 server_opt.load_module_sz, MOD_DIR);
+#endif
+
 	me.uptime=time(0);
 }
 
@@ -612,6 +649,7 @@ int destroy_netsukuku(void)
 	if(!server_opt.disable_andna)
 		andna_close();
 
+	module_close_all();
 	close_internet_gateway_search();
 	last_close_radar();
 	e_rnode_free(&me.cur_erc, &me.cur_erc_counter);
@@ -619,6 +657,7 @@ int destroy_netsukuku(void)
 	if_close_all();
 	qspn_free();
 	free_server_opt();
+	opt_close(&ntkd_options);
 
 	return 0;
 }
@@ -707,6 +746,7 @@ int main(int argc, char **argv)
 	log_init(argv[0], 0, 1);
 	
 	/* Options loading... */
+	add_ntkd_options();
 	fill_default_options();
 	parse_options(argc, argv);
 
@@ -715,25 +755,9 @@ int main(int argc, char **argv)
 	log_to_file(0);
 
 	/* Load the option from the config file */
-	load_config_file(server_opt.config_file);
+	load_config_file(server_opt.config_file, ntkd_options);
 	fill_loaded_cfg_options();
 	
-	/* If a same option was specified in the config file and in the
-	 * command line, give priority to the latter */
-#warning ########################################
-#warning ########################################
-#warning ### If you call twice parse_options(), 
-#warning ### and If You specify `-i dev`, the   
-#warning ### device is added twice in me.ifs.   
-#warning ### This causes a hang when tcp sockets 
-#warning ### are invoked.                       
-#warning ### So, this is a Double BUG: you need 
-#warning ### also some controls creating tcp    
-#warning ### socket.                            
-#warning ########################################
-#warning ########################################
-	parse_options(argc, argv);
-
 	check_conflicting_options();
 	
 	/* Initialize the whole netsukuku source code */

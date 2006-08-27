@@ -25,7 +25,9 @@
 
 #else
 
-/* xmalloc.h: Shamelessly ripped from openssh:
+/* 
+ * xmalloc.h: Derived from openssh
+ *
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
  *                    All rights reserved
@@ -47,11 +49,11 @@
  * 	xfree(a++);
  */
 #define xfree(__pptr)							\
-do{									\
+({									\
 	char **_p=(char **)&(__pptr); 					\
 	_xfree(*_p);							\
 	*_p=0;								\
-}while(0)
+})
 
 /* Functions declaration */
 void	*xmalloc(size_t);
@@ -62,6 +64,30 @@ void    _xfree(void *);
 char 	*xstrndup(const char *str, size_t n);
 char	*xstrdup(const char *);
 
-#endif
+#ifndef _USE_GLIBC_MALLOC
+
+/* Just to be sure that all the Netsukuku code uses xmalloc */
+
+#undef 	malloc
+#define	malloc	xmalloc
+
+#undef 	free
+#define free	xfree
+
+#undef 	realloc
+#define realloc	xrealloc
+
+#undef 	calloc
+#define calloc	xcalloc
+
+#undef 	strdup
+#define strdup	xstrdup
+
+#undef 	strndup
+#define strndup	xstrndup
+
+#endif /* _USE_GLIBC_MALLOC */
+
+#endif /* USE_DMALLOC */
 
 #endif /*XMALLOC_H*/

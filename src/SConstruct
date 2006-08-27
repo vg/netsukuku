@@ -26,8 +26,9 @@ NTK_VERSION="0.0.9b"
 
 sources_common    = Split('xmalloc.c log.c misc.c buffer.c endianness.c')
 sources_qspn      = Split('qspn-empiric.c') + sources_common
-sources_netsukuku = Split("""accept.c llist.c ipv6-gmp.c inet.c request.c map.c
-		   gmap.c bmap.c pkts.c radar.c hook.c rehook.c tracer.c qspn.c 
+sources_netsukuku = Split("""accept.c llist.c xargz.c ipv6-gmp.c inet.c request.c
+		   map.c gmap.c bmap.c pkts.c radar.c hook.c rehook.c tracer.c 
+		   qspn.c module.c opt.c
 		   hash.c daemon.c crypto.c snsd_cache.c
 		   andna_cache.c andna.c andns_lib.c err_errno.c
 		   dnslib.c andns.c andns_net.c andns_snsd.c
@@ -54,6 +55,8 @@ opts.AddOptions(('CONF_DIR', """Directory where the Netsukuku configuration file
 				'/usr/man'),
 		('BIN_DIR' , 'Directory to install the binaries',
 				'/usr/bin'),
+		('MOD_DIR' , 'Directory to install the modules',
+				'/usr/lib/netsukuku'),
 		('PID_DIR',  'Specify location of ntkd.pid file',
 				'/var/run'),
 		('destdir', 'SCons will copy all the files under destdir during installation',
@@ -67,11 +70,12 @@ opts.AddOptions(('CONF_DIR', """Directory where the Netsukuku configuration file
 opts.Add('CC', 'The C compiler.')
 opts.Add('CXX', 'The C++ compiler.')
 
-env = Environment(options = opts, ENV = os.environ, CCFLAGS = ' -Wall')
+env = Environment(options = opts, ENV = os.environ, CCFLAGS = ' -Wall',
+		LINKFLAGS = ' -rdynamic')
 
 if ("yes" in env['debug']) or ("1" in env['debug']):
 	debug = 1
-	env.Append(CPPDEFINES={'DEBUG' : '${debug}'}, CCFLAGS = ' -ggdb -Wall', CXXFLAGS = '-g')
+	env.Append(CPPDEFINES={'DEBUG' : '${debug}'}, CCFLAGS = ' -ggdb', CXXFLAGS = '-g')
 #CCFLAGS = ' -ggdb -Wall -DDMALLOC_FUNC_CHECK'
 #	libs+=['dmalloc', 'dmallocth']
 	os.system("echo Cscoping and ctagging...; cscope -b; ctags *")
@@ -147,6 +151,7 @@ def conf_build(target, source, env):
     conf_defines = {
         "CONF_DIR": env["CONF_DIR"],
 	"DATA_DIR": env["DATA_DIR"],
+	"MOD_DIR": env["MOD_DIR"],
 	"PID_DIR": env["PID_DIR"],
 	"VERSION": NTK_VERSION,
         "debug": debug # this is an int.  1 for true, 0 for false
@@ -187,9 +192,9 @@ build_config_files(env = env)
 #	Build
 #
 
-ntkd 	= env.Program('ntkd', sources_netsukuku, LIBS = libs, CPPPATH = '.')
-qspn    = env.Program('qspn-empiric', sources_qspn, LIBS = libs, CPPPATH = '.')
-ntkresolv = env.Program('ntk-resolv', sources_ntkresolv, LIBS = libs, CPPPATH = '.')
+ntkd 	= env.Program('ntkd', sources_netsukuku, LIBS = libs)
+qspn    = env.Program('qspn-empiric', sources_qspn, LIBS = libs)
+ntkresolv = env.Program('ntk-resolv', sources_ntkresolv, LIBS = libs)
 
 Default(ntkd, ntkresolv)
 
@@ -198,11 +203,15 @@ Default(ntkd, ntkresolv)
 #	Install 
 #
 
-SConscript(['man/SConscript', 'scripts/SConscript', 'conf/SConscript'], 'env')
+Export("env", "debug", "static")
+subdirs = Split("""man/SConscript scripts/SConscript conf/SConscript
+		   modules/SConscript""")
+SConscript(subdirs, 'env')
 
 # Here are our installation paths:
 idir_bin    = '$destdir' + '$BIN_DIR'
 idir_data   = '$destdir' + '$DATA_DIR'
+idir_pid    = '$destdir' + '$MOD_DIR'
 idir_conf   = '$destdir' + '$CONF_DIR'
 idir_pid    = '$destdir' + '$PID_DIR'
 

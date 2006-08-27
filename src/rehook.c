@@ -69,8 +69,10 @@ void rehook_init(void)
 }
 
 /*
- * rehook_compute_new_gnode: computes the IP which shall be used to create a
- * new gnode if the we cannot rehook to any gnode.
+ * rehook_compute_new_gnode
+ *
+ * computes the IP which shall be used to create a new gnode if 
+ * the we cannot rehook to any gnode.
  * The computed ip is stored in `new_ip'.
  * `old_ip' is the IP we used before the rehook was launched.
  */
@@ -78,16 +80,19 @@ void rehook_compute_new_gnode(inet_prefix *old_ip, inet_prefix *new_ip,
 		int hook_level)
 {
 	quadro_group qg;
-	int hash_gid;
+	u_char old_gids[MAX_LEVELS];
+	int hash_gid, i;
 
 	iptoquadg(*old_ip, me.ext_map, &qg, QUADG_GID);
+	for(i=0; i<MAX_LEVELS; i++)
+		old_gids[i]=(u_char)qg.gid[i];
 
 	/* 
-	 * Hash our gids starting from the `hook_level' level,
+	 * Hash our old gids starting from the `hook_level' level,
 	 * then xor the bytes of the hash merging them in a single byte.
 	 */
-	hash_gid=fnv_32_buf(&qg.gid[hook_level], 
-			(FAMILY_LVLS-hook_level),
+	hash_gid=fnv_32_buf(&old_gids[hook_level], 
+			(FAMILY_LVLS-hook_level)*sizeof(char),
 			FNV1_32_INIT);
 	qg.gid[hook_level]=xor_int(hash_gid);
 

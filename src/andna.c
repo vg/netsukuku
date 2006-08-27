@@ -1152,7 +1152,7 @@ int andna_recv_check_counter(PACKET rpkt)
 	 * of that gnode.
 	 */
 	excluded_hgnode[0] = ip_gids_cmp(rfrom, me.cur_ip, 1) ? rfrom.data : 0;
-	debug(DBG_INSANE, "excluded_hgnode: %x ", excluded_hgnode[0]);
+	debug(DBG_INSANE, "excluded_hgnode: %x ", (int)excluded_hgnode[0]);
 
 	/* 
 	 * Check if we are the real counter node or if we have to continue to 

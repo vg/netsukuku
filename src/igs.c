@@ -857,7 +857,7 @@ int igw_exec_masquerade_sh(char *script, int stop)
 	ret=exec_root_script(script, argv);
 	if(ret == -1)
 		fatal("%s wasn't executed. We cannot share the Inet "
-				"connection, aborting.");
+				"connection, aborting.", script);
 	return 0;
 }
 
@@ -882,7 +882,7 @@ int igw_exec_tcshaper_sh(char *script, int stop,
 	if(ret == -1) {
 		if(!stop)
 			error("%s wasn't executed. The traffic shaping will be "
-					"disabled.");
+					"disabled.", script);
 		else
 			error("The traffic shaping is still enabled!");
 	}

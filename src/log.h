@@ -27,8 +27,8 @@
  * 	printf(ERROR_MSG "damn! damn! damn!", ERROR_FUNC);
  */
 #define ERROR_MSG  "%s:%d: "
-#define ERROR_POS  __FILE__, __LINE__
-#define ERROR_FUNC __FUNCTION__, __LINE__
+#define ERROR_POS  __FILE__, (__LINE__)
+#define ERROR_FUNC __FUNCTION__, (__LINE__)
 
 /*Debug levels*/
 #define DBG_NORMAL	1
@@ -111,10 +111,10 @@ void log_init(char *, int, int );
 int log_to_file(char *filename);
 void close_log_file(void);
 
-void fatal(const char *, ...) __attribute__ ((noreturn));
-void error(const char *, ...);
-void loginfo(const char *, ...);
-void debug(int lvl, const char *, ...);
+void fatal(const char *, ...) __attribute__ ((noreturn, format (printf, 1, 2)));
+void error(const char *, ...) __attribute__ ((format (printf, 1, 2)));
+void loginfo(const char *, ...) __attribute__ ((format (printf, 1, 2)));
+void debug(int lvl, const char *, ...) __attribute__ ((format (printf, 2, 3)));
 
 void print_log(int level, const char *fmt, va_list args);
 

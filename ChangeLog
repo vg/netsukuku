@@ -1,3 +1,13 @@
+==== 0.1.0b ====
+
+New features:
+
+	* module.c - NTK module API
+
+	* conf.c rewritten
+
+	
+
 ==== 0.0.9b ====
 
 New features:

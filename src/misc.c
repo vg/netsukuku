@@ -20,6 +20,7 @@
  */
 
 #include "includes.h"
+#include <string.h>
 #include <dirent.h>
 #include <sys/wait.h>
 
@@ -150,7 +151,30 @@ void strip_char(char *string, char char_to_strip)
 	}
 }
 
+/*
+ * strshrink
+ *
+ * It "shrinks" the `str' string to `n' bytes:
+ *
+ * 	- the byte `n' of `str' is set to 0
+ * 	- the `str' is realloced to `n'+1 bytes
+ *
+ * The reallocated string is returned.
+ *
+ * If `n' is greater than the original size of `str', nothing is done, and
+ * `str' is returned.
+ */
+char *strshrink(char *str, size_t n)
+{
+	size_t sz;
 
+	sz=strlen(str)+1;
+	if(n+1 >= sz)
+		return str;
+
+	str[n]=0;
+	return xrealloc(str, n+1);
+}
 
 /*
  * * * *  Search functions  * * * *
@@ -303,7 +327,7 @@ int check_and_create_dir(char *dir)
 		if(errno == ENOENT) {
 			/* The directory doesn't exist, try to create it */
 			if(mkdir(dir, S_IRUSR|S_IWUSR|S_IXUSR) < 0) {
-				error("Cannot create the %d directory: %s", dir,
+				error("Cannot create the %s directory: %s", dir,
 						strerror(errno));
 				return -1;
 			}
@@ -350,7 +374,7 @@ int exec_root_script(char *script, char *argv)
 	char command[strlen(script)+strlen(argv)+2];
 	
 	if(stat(script, &sh_stat)) {
-		error("Couldn't stat %s: %s", strerror(errno));
+		error("Couldn't stat %s: %s", script, strerror(errno));
 		return -1;
 	}
 

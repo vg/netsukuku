@@ -19,6 +19,8 @@
 #ifndef MISC_H
 #define MISC_H
 
+#include <sys/types.h>
+
 /*
  * NMEMB: returns the number of members of the `x' array
  */
@@ -90,6 +92,7 @@ void xsrand(void);
 
 char *last_token(char *string, char tok);
 void strip_char(char *string, char char_to_strip);
+char *strshrink(char *str, size_t n);
 char **split_string(char *str, const char *div_str, int *substrings,
 		int max_substrings, int max_substring_sz);
 

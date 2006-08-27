@@ -12,11 +12,13 @@ AC_CANONICAL_HOST
 AC_PROG_CC
 AC_PROG_CPP
 AC_PROG_CXX
+AC_PROG_LIBTOOL
 
 prefix=/usr
 datadir=/usr/share/netsukuku
 sysconfdir=/etc/netsukuku
 piddir=/var/run
+moddir=/usr/lib/netsukuku
 
 AC_ARG_WITH(gmp-include, AS_HELP_STRING([--with-gmp-include], \
 [gmp include dir]), [gmp="$withval"])
@@ -24,7 +26,8 @@ AC_SUBST(gmp)
 
 
 AC_HEADER_STDC
-AC_CHECK_HEADERS([unistd.h])
+AC_HEADER_SYS_WAIT
+AC_CHECK_HEADERS([argz.h arpa/inet.h fcntl.h inttypes.h libintl.h limits.h locale.h malloc.h netdb.h netinet/in.h paths.h stddef.h stdint.h stdlib.h string.h strings.h sys/file.h sys/ioctl.h sys/param.h sys/socket.h sys/time.h sys/timeb.h syslog.h termios.h unistd.h utime.h wchar.h wctype.h])
 
 AC_CHECK_HEADERS([pthread.h], ,\
         [echo "============================ Unable to find pthread.h"; \
@@ -167,9 +170,11 @@ AC_SUBST(IF_METHOD)
 
 AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug], [Enable Netsukuku debug]),\
 [debug_flags="-Wall -DDEBUG"], [debug_flags=""])
+AM_CONDITIONAL(DEBUG, test x$debug = xtrue)
 AC_SUBST(debug_flags)
 
 AC_DEFINE_UNQUOTED(DATA_DIR, "$datadir", "Where the Netsukuku data is saved")
+AC_DEFINE_UNQUOTED(MOD_DIR, "$moddir", "Location of Netsukuku modules")
 AC_DEFINE_UNQUOTED(CONF_DIR, "$sysconfdir", "Location of configuration files")
 AC_DEFINE_UNQUOTED(PID_DIR, "$piddir", "Location of ntkd.pid file")
 AC_ARG_WITH(pid_dir, 
@@ -177,8 +182,9 @@ AC_ARG_WITH(pid_dir,
 	    [AC_DEFINE_UNQUOTED(PID_DIR, "$withval", ntkd.pid file location)])
 AC_SUBST(CONF_DIR)
 AC_SUBST(DATA_DIR)
+AC_SUBST(MOD_DIR)
 AC_SUBST(PID_DIR)
 
 AC_CONFIG_FILES([Makefile src/Makefile src/man/Makefile src/scripts/Makefile\
-		  src/conf/Makefile src/conf/netsukuku.conf])
+		  src/conf/Makefile src/modules/Makefile src/conf/netsukuku.conf])
 AC_OUTPUT

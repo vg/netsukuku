@@ -167,9 +167,10 @@ INT_INFO int_map_hdr_iinfo = { 2,
 #define INT_MAP_BLOCK_SZ(int_map_sz, rblock_sz) (sizeof(struct int_map_hdr)+(int_map_sz)+(rblock_sz))
 
 
-/* 
- * * * Functions' declaration * * *
- */
+/*\
+ *
+ * 	* * *  Functions' declaration  * * *
+\*/
 
 /*conversion functions*/
 int pos_from_node(map_node *node, map_node *map);

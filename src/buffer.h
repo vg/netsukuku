@@ -35,33 +35,38 @@
  * It copies `__sz' bytes from `__src' to `__dst' and then increments the `__dst'
  * pointer of `__sz' bytes.
  *
- * *WARNING* 
- * Do NOT put expression in `__dst', and `__sz', f.e.
- * 	*WRONG CODE*
- * 	memput(buf++, src, (size+=sizeof(src));
+ * It incremented `__dst' pointer is returned.
  *
- * 	*CORRECT CODE*
- * 	buf++; size+=sizeof(src);
- * 	memput(buf, src, size);
- * *WARNING*
+ * Note: you can also use side expression, f.e.	
+ * 	 memput(buf++, src, (size+=sizeof(src));
  */
 #define memput(__dst, __src, __sz)					\
 ({ 									\
-	void *_bufret=memcpy((__dst), (__src), (__sz));			\
-	(__dst)+=(__sz);						\
-	_bufret;							\
+ 	void **_mp_pdst=(void **)&(__dst);				\
+ 	void *_mp_dst=*_mp_pdst, *_mp_src=(__src);			\
+ 	size_t _mp_sz=(size_t)(__sz);					\
+ 									\
+	memcpy(_mp_dst, _mp_src, _mp_sz);				\
+	(*_mp_pdst)+=(_mp_sz);						\
+	_mp_dst;							\
 })
 
 /*
  * memget
  *
  * the same of memput(), but it increments `__src' instead.
+ *
+ * It incremented `__src' pointer is returned.
  */
 #define memget(__dst, __src, __sz)					\
 ({ 									\
-	void *_bufret=memcpy((__dst), (__src), (__sz));			\
-	(__src)+=(__sz);						\
-	_bufret;							\
+ 	void **_mp_psrc=(void **)&(__src);				\
+ 	void *_mp_dst=(__dst), *_mp_src=*_mp_psrc;			\
+ 	size_t _mp_sz=(size_t)(__sz);					\
+ 									\
+	memcpy(_mp_dst, _mp_src, _mp_sz);				\
+	(*_mp_psrc)+=(_mp_sz);						\
+	_mp_src;							\
 })
 
 /* use of hardcoded `_src' and `_dst' variable names */

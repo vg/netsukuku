@@ -7,6 +7,13 @@
 * (generally these TODOs are already being implemented at the moment)
 
 - General API
+	- Check the rehook procedure: what happens when two gnodes of level 3
+	  rehooks?
+	- aaaaaaahhh do the automake ritual for modules/
+	- add_pkt_op() && delete_pkt_op() == dynamic requests.h
+		- use a hash table. The op id is just the 32bit hash of the
+		  OP name.
+	- add_new_dev()
 	- tracer_pkt_add_build() // tracer_pkt_add_unpack()
 		 _______________________
 		|	TRACER PKT      |
@@ -42,9 +49,6 @@
 		||_____________________||
 		||_____________________||
 
-	- add_pkt_op() && delete_pkt_op() == dynamic requests.h
-	- add_new_dev()
-	- use the CFLAGS -rdynamic when compiling the ntkd executable
 
 - Viphilama: http://lab.dyne.org/Ntk_viphilama
 

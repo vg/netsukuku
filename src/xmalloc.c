@@ -19,23 +19,19 @@
 /*\
  * xmalloc.c
  *
- * Shamelessly ripped from openssh and xcalloc added
+ * Derived from openssh
+ *
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
  *                    All rights reserved
  * Versions of malloc and friends that check their results, and never return
  * failure (they call fatal if they encounter an error).
- *
- * Changes:
- *
- * xstrndup() added. AlpT
- * xfree() modified to _xfree(). AlpT
- * xzalloc(size_t size) added.
 \*/
 
 #include <stdlib.h>
 #include <string.h>
 
+#define _USE_GLIBC_MALLOC
 #include "xmalloc.h"
 #include "log.h"
 
@@ -108,11 +104,14 @@ char *xstrndup(const char *str, size_t n)
 	size_t len;
 	char *cp;
 
-	len=strlen(str) + 1;
+	len=strlen(str);
 	if(len > n && n > 0)
 		len=n;
-	cp=xmalloc(len);
+	
+	cp=xmalloc(len+1);
 	strncpy(cp, str, len);
+	cp[len]=0;
+
 	return cp;
 }
 

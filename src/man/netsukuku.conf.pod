@@ -21,6 +21,25 @@ All the options will be overridden by their command line equivalent.
 
 =head1 OPTIONS
 
+=head2 MODULES
+
+=over
+
+=item B<load_module> [=] I<module_name [arg1[=value], arg2[=value, ...]>
+
+Specifies the module that will be loaded by B<ntkd>.
+After the module name it is possible to specify its arguments line.
+B<load_module> can be used multiple times.
+Example:
+	
+	load_module	andna
+	load_module	foo speed=4035, lang=russian, goto=Sun
+	load_module	bar
+
+Default: I<(None)>
+
+=back
+
 =head2 RESTRICTED MODE
 
 =over
