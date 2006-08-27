@@ -1,0 +1,4 @@
+Import(['debug', 'env'])
+
+if debug:
+	SConscript(['foo/SConscript'])
