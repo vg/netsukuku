@@ -27,8 +27,7 @@
 
 #include "includes.h"
 
-#include "hash.h"
-#include "misc.h"
+#include "rand.h"
 
 #define URANDOM_DEVICE			"/dev/urandom"
 
@@ -73,6 +72,9 @@ void close_rand(void)
  * requires a lot of computation.
  * The correct use of this function is to set the random seed using srand(),
  * seed48(), _only if_ /dev/urandom is not present in the OS.
+ *
+ * Thanks to /dev/random for the inspiration (it measures the interval between
+ * interrupts, etc...)
  */
 int get_rand_interval(void)
 {
