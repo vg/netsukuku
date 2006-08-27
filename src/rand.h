@@ -28,7 +28,7 @@
 
 void init_rand(void);
 void close_rand(void);
-int get_rand_interval(void);
+int get_time_xorred(void);
 void xsrand(void);
 inline long int xrand_fast(void);
 long int xrand(void);
