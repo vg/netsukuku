@@ -93,7 +93,6 @@ void _xsrand48(void)
 	if(_rnd_urandom_fd)
 		fread(_rnd_rng_state, sizeof(_rnd_rng_state), 1, _rnd_urandom_fd);
 	else {
-		struct timeval cur_t;
 		long sc=0;
 
 #ifdef _SC_AVPHYS_PAGES

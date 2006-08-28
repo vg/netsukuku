@@ -82,3 +82,28 @@ error_t xargz_replace(char **argz, size_t *argz_len, const char *str,
 
 	return 0;
 }
+
+inline size_t xargz_count(const char *argz, size_t argz_len)
+{
+	return argz_count(argz, argz_len);
+}
+
+inline void xargz_extract(char *argz, size_t argz_len, char  **argv)
+{
+	return argz_extract(argz, argz_len, argv);
+}
+
+inline char * xargz_next(char *argz, size_t argz_len, const char *entry)
+{
+	return argz_next(argz, argz_len, entry);
+}
+
+inline void xargz_stringify(char *argz, size_t len, int sep)
+{
+	return argz_stringify(argz, len, sep);
+}
+
+inline void xargz_delete(char **argz, size_t *argz_len, char *entry)
+{
+	return argz_delete(argz, argz_len, entry);
+}

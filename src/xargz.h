@@ -29,21 +29,13 @@ error_t xargz_add_sep(char **argz, size_t *argz_len, const char *str, int delim)
 error_t xargz_append(char **argz, size_t *argz_len, const char *buf, size_t buf_len);
 error_t xargz_create(char * const argv[], char **argz, size_t *argz_len);
 error_t xargz_create_sep(const char *str, int sep, char **argz, size_t *argz_len);
-error_t xargz_delete(char **argz, size_t *argz_len, char *entry);
 error_t xargz_insert (char **argz, size_t *argz_len, char *before, const char *entry);
 error_t xargz_replace(char **argz, size_t *argz_len, const char *str, 
 			const char *with, unsigned int *replace_count);
-
-size_t xargz_count(const char *argz, size_t argz_len)
-		__attribute__ ((weak, alias ("argz_count")));
-
-void xargz_extract(char *argz, size_t argz_len, char  **argv)
-		__attribute__ ((weak, alias ("argz_extract")));
-
-char * xargz_next(char *argz, size_t argz_len, const char *entry)
-		__attribute__ ((weak, alias ("argz_next")));
-
-void xargz_stringify(char *argz, size_t len, int sep)
-		__attribute__ ((weak, alias ("argz_stringify")));
+inline size_t xargz_count(const char *argz, size_t argz_len);
+inline void xargz_extract(char *argz, size_t argz_len, char  **argv);
+inline char * xargz_next(char *argz, size_t argz_len, const char *entry);
+inline void xargz_stringify(char *argz, size_t len, int sep);
+inline void xargz_delete(char **argz, size_t *argz_len, char *entry);
 
 #endif /*XARGZ_H*/
