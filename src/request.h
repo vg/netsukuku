@@ -132,7 +132,10 @@ enum errors
 #define RQ_REPLY	1		/* This request is used as a 
 				   	   reply to another request */
 #define RQ_DROP		(1<<1)		/* If set, all the received requests of
-					   the same type will be dropped */
+					   the this same type will be dropped */
+
+#define OP_FILTER_DROP		1
+#define OP_FILTER_ALLOW		0
 
 /*
  * request
@@ -191,52 +194,35 @@ int rq_wait_idx[TOTAL_REQUESTS];
 
 int update_rq_tbl_mutex;
 
-/* 
- * Each bit of this array corresponds to a request or a reply. If the bit is 
- * set, the request or reply will be dropped, otherwise it will be executed by
- * pkts.c/pkt_exec().
- */
-char filtered_op[TOTAL_OPS>>3];
-#define OP_FILTER_DROP		1
-#define OP_FILTER_ALLOW		0
-#define op_filter_set(op)	SET_BIT(filtered_op, (op))
-#define op_filter_clr(op)	CLR_BIT(filtered_op, (op))
-#define op_filter_test(op)	TEST_BIT(filtered_op, (op))
-#define op_filter_reset(bit)	memset(filtered_op, (bit), sizeof(filtered_op))
-
 
 /* 
  * Functions declaration starts here
  */
 
-int rq_hash_name(const char *rq_name);
-int hash_cmp(const void *a, const void *b);
-int rq_find_hash(const int rq_hash);
-int rq_find_name(const char *rq_name);
-int rq_bsearch_hash(const int rq_hash);
 void rq_sort_requests(void);
 int rq_add_request(const char *rq_name, u_char flags);
-int rqerr_hash_name(const char *rq_name);
-int rqerr_find_hash(const int err_hash);
-int rqerr_find_name(const char *err_name);
-int rqerr_bsearch_hash(const int err_hash);
-void rqerr_sort_requests(void);
+void rqerr_sort_errors(void);
 int rqerr_add_error(const char *err_name, const char *err_desc);
 
 void rq_wait_idx_init(int *rq_wait_idx);
-const u_char *rq_strerror(int err);
-#define re_strerror(err) (rq_strerror((err)))
-const u_char *re_to_str(u_char re);
-const u_char *rq_to_str(u_char rq);
-int op_verify(u_char );
-int rq_verify(u_char );
-int re_verify(u_char );
+
+const u_char *rq_strerror(int err_hash);
+const u_char *rq_to_str(int rq_hash);
+const u_char *re_to_str(int rq_hash);
+const u_char *re_strerror(int err_hash);
+
 void update_rq_tbl(rq_tbl *);
 int is_rq_full(u_char , rq_tbl *);
 int find_free_rq_wait(u_char , rq_tbl *);
 int add_rq(u_char , rq_tbl *);
 
+int op_verify(u_char op);
+int op_filter_set(int rq_hash);
+int op_filter_clr(int rq_hash);
+int op_filter_test(int rq_hash);
 void op_filter_reset_re(int bit);
 void op_filter_reset_rq(int bit);
+void op_filter_reset(int bit);
 
 #endif /*REQUEST_H*/
+

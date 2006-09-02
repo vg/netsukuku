@@ -84,7 +84,6 @@ const static u_char	reply_str[][30]=
 	{ "ACK_NEGATIVE"   }
 };
 
-const static u_char unknown_error[]="Unknow error";
 const static u_char error_str[][40]=
 {	
 	{ "Invalid request" },
@@ -183,7 +182,6 @@ const static u_char error_str[][40]=
 #define ANDNA_SPREAD_SACACHE_MAXRQ	10
 #define	ANDNA_GET_COUNT_CACHE_MAXRQ	5
 
-const static u_char unknown_request[]="Unknow request";
 const static u_char request_array[][2]=
 { 
 	{ ECHO_ME_WAIT,        ECHO_ME_MAXRQ	    },
@@ -229,6 +227,9 @@ const static u_char request_array[][2]=
 #define RQ_WAIT 	0
 #define RQ_MAXRQ	1
 
+const static u_char unknown_request[]="Unknow request";
+const static u_char unknown_error[]="Unknow error";
+
 request *ntk_request=0;
 request_err *ntk_request_err=0;
 int ntk_rq_counter=0, ntk_err_counter=0;
@@ -272,6 +273,25 @@ int rq_find_hash(const int rq_hash)
 		if(ntk_request[i].hash == rq_hash)
 			return i;
 
+	return -1;
+}
+
+/*
+ * re_find_hash
+ *
+ * The same of rq_find_hash(), but searches only for replies.
+ *
+ * If the reply is found, its index number is returned.
+ * If the reply was not found, -1 is returned.
+ */
+int re_find_hash(const int re_hash)
+{
+	int i;
+
+	for(i=0; i<ntk_rq_counter; i++)
+		if(ntk_request[i].flags & RQ_REPLY && 
+				ntk_request[i].hash == re_hash)
+			return i;
 	return -1;
 }
 
@@ -341,6 +361,9 @@ void rq_sort_requests(void)
  * If an error occurred fatal() is called, because this is a function which
  * must never fail.
  *
+ * Warning: Remember to call rq_sort_requests() after all the requests have
+ * 	    been registered.
+ *
  * Example:
  * 	
  * 	In foo.h:
@@ -352,6 +375,9 @@ void rq_sort_requests(void)
  * 		void init_foo(void)
  * 		{
  * 			GET_NEW_MAP=rq_add_request("GET_NEW_MAP");
+ * 			GET_NEW_MAP=rq_add_request("GET_NEW_FOO");
+ * 			GET_NEW_MAP=rq_add_request("GET_NEW_BAR");
+ * 			rq_sort_requests();
  *	 	}
  *	
  *	In bar.c
@@ -430,7 +456,15 @@ int rqerr_bsearch_hash(const int err_hash)
 	return -1;
 }
 
-void rqerr_sort_requests(void)
+/*
+ * rqerr_sort_errors
+ *
+ * The equivalent of rq_sort_requests() for requests errors.
+ *
+ * Warning: Remember to call rqerr_sort_errors() after all the requests have 
+ * 	    been registered.
+ */
+void rqerr_sort_errors(void)
 {
 	qsort(ntk_request_err, ntk_err_counter, sizeof(request_err), hash_cmp);
 }
@@ -478,45 +512,51 @@ void rq_wait_idx_init(int *rq_wait_idx)
 	}
 }
 
-int op_verify(u_char op)
+/*
+ * rq_strerror
+ *
+ * Returns the description of the error `err_hash'.
+ */
+const u_char *rq_strerror(int err_hash)
 {
-	return op >= TOTAL_OPS;
-}
+	int i=rqerr_find_hash(err_hash);
 
-int rq_verify(u_char rq)
-{
-	return rq >= TOTAL_REQUESTS;
-}
-
-int re_verify(u_char re)
-{
-	return ((op_verify(re)) || (re < TOTAL_REQUESTS));
-}
-
-int err_verify(u_char err)
-{
-	return err >= TOTAL_ERRORS;
-}
-
-const u_char *rq_strerror(int err)
-{
-	if(err_verify(err))
+	if(i < 0)
 		return unknown_error;
-	return error_str[err];
+	return ntk_request_err[i].desc;
 }
 
-const u_char *rq_to_str(u_char rq)
+const u_char *re_strerror(int err_hash)
 {
-	if(rq_verify(rq))
+	return rq_strerror(err_hash);
+}
+
+/*
+ * rq_to_str
+ *
+ * Returns the string of the name of the `rq_hash' request.
+ */
+const u_char *rq_to_str(int rq_hash)
+{
+	int i=rq_find_hash(rq_hash);
+
+	if(i < 0)
 		return unknown_request;
-	return request_str[rq];
+	return ntk_request[i].name;
 }
 
-const u_char *re_to_str(u_char re)
+/*
+ * re_to_str
+ *
+ * Returns the string of the name of the `rq_hash' reply.
+ */
+const u_char *re_to_str(int rq_hash)
 {
-	if(re_verify(re))
+	int i=rq_find_hash(rq_hash);
+
+	if(i < 0 || !(ntk_request[i].flags & RQ_REPLY))
 		return (const u_char*)unknown_reply;
-	return reply_str[re-TOTAL_REQUESTS];
+	return ntk_request[i].name;
 }
 
 void update_rq_tbl(rq_tbl *tbl)
@@ -546,7 +586,7 @@ void update_rq_tbl(rq_tbl *tbl)
 	
 int is_rq_full(u_char rq, rq_tbl *tbl)
 {
-	if(rq_verify(rq))
+	if(rq_find_hash(rq))
 		return E_INVALID_REQUEST;
 	
 	update_rq_tbl(tbl);
@@ -596,27 +636,129 @@ int add_rq(u_char rq, rq_tbl *tbl)
 }
 
 /*
- * op_filter_reset_re: resets all the replies
+ * op_filter_set
+ *
+ * Sets the RQ_DROP flags to the request or reply `rq_hash', f.e.:
+ *
+ * 	op_filter_set(GET_NEW_MAP);
+ *
+ * If no request nor reply was found, -1 is returned.
+ */
+int op_filter_set(int rq_hash)
+{
+	int i;
+
+	if((i=rq_find_hash(rq_hash)) >= 0)
+		ntk_request[i].flags|=RQ_DROP;
+	else if((i=rqerr_find_hash(rq_hash)) >= 0)
+		ntk_request_err[i].flags|=RQ_DROP;
+	else
+			return -1;
+
+	return 0;
+}
+
+/*
+ * op_filter_clr
+ *
+ * Remove the RQ_DROP flags from the request or reply `rq_hash', f.e.:
+ *
+ * 	op_filter_clr(GET_NEW_MAP);
+ *
+ * If no request nor reply was found, -1 is returned.
+ */
+int op_filter_clr(int rq_hash)
+{
+	int i;
+
+	if((i=rq_find_hash(rq_hash)) >= 0)
+		ntk_request[i].flags&=~RQ_DROP;
+	else if((i=rqerr_find_hash(rq_hash)) >= 0)
+		ntk_request_err[i].flags&=~RQ_DROP;
+	else
+			return -1;
+
+	return 0;
+}
+
+/*
+ * op_filter_test
+ *
+ * Tests is the RQ_DROP flag is set for the request or reply `rq_hash', f.e.:
+ *
+ * 	op_filter_test(GET_NEW_MAP);
+ *
+ * If the flag is set 1 is returned, otherwise 0.
+ * If no request nor reply was found, -1 is returned.
+ *
+ * Warning: it's not adviced to use this function as if(op_filter_test(...)), 
+ *          because, in this way, you'll miss the eventual returned -1 value.
+ */
+int op_filter_test(int rq_hash)
+{
+	int i;
+
+	if((i=rq_find_hash(rq_hash)) >= 0)
+		return ntk_request[i].flags & RQ_DROP;
+	else if((i=rqerr_find_hash(rq_hash)) >= 0)
+		return ntk_request_err[i].flags & RQ_DROP;
+	else
+		return -1;
+
+	return 0;
+}
+
+
+/*
+ * op_filter_reset_re
+ *
+ * If `bit' is equal to OP_FILTER_ALLOW it removes the RQ_DROP flag from all
+ * the error requests, 
+ * if instead `bit' is equal to OP_FILTER_DROP, it sets the RQ_DROP to all the
+ * error requests.
  */
 void op_filter_reset_re(int bit)
 {
 	int i;
-	for(i=TOTAL_REQUESTS; i<TOTAL_OPS; i++)
-		if(bit)
-			op_filter_set(i);
-		else
-			op_filter_clr(i);
+
+	if(bit == OP_FILTER_DROP)
+		for(i=0; i<ntk_err_counter; i++)
+			ntk_request_err[i].flags|=RQ_DROP;
+	else
+		for(i=0; i<ntk_err_counter; i++)
+			ntk_request_err[i].flags&=~RQ_DROP;
 }
 
 /*
- * op_filter_reset_rq: resets all the requests
+ * op_filter_reset_rq
+ *
+ * If `bit' is equal to OP_FILTER_ALLOW it removes the RQ_DROP flag from all
+ * the requests, 
+ * if instead `bit' is equal to OP_FILTER_DROP, it sets the RQ_DROP to all the
+ * requests.
  */
 void op_filter_reset_rq(int bit)
 {
 	int i;
-	for(i=0; i<TOTAL_REQUESTS; i++)
-		if(bit)
-			op_filter_set(i);
-		else
-			op_filter_clr(i);
+
+	if(bit == OP_FILTER_DROP)
+		for(i=0; i<ntk_rq_counter; i++)
+			ntk_request[i].flags|=RQ_DROP;
+	else
+		for(i=0; i<ntk_rq_counter; i++)
+			ntk_request[i].flags&=~RQ_DROP;
+}
+
+/*
+ * op_filter_reset
+ *
+ * If `bit' is equal to OP_FILTER_ALLOW it removes the RQ_DROP flag from all
+ * the requests and error requests, 
+ * if instead `bit' is equal to OP_FILTER_DROP, it sets the RQ_DROP to all the
+ * requests and error requests.
+ */
+void op_filter_reset(int bit)
+{
+	op_filter_reset_re(bit);
+	op_filter_reset_rq(bit);
 }
