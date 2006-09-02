@@ -126,6 +126,44 @@ enum errors
 };
 #define TOTAL_ERRORS		(E_TOO_MANY_CONN+1)
 
+/*
+ * request.flags
+ */
+#define RQ_REPLY	1		/* This request is used as a 
+				   	   reply to another request */
+#define RQ_DROP		(1<<1)		/* If set, all the received requests of
+					   the same type will be dropped */
+
+/*
+ * request
+ *
+ * A request or a reply.
+ */
+typedef struct
+{
+	int		hash;		/* Hash of the request name */
+
+	const char	*name;		/* Name of the request */
+
+	const char	*desc;		/* Description */
+
+	u_char		flags;
+
+} request;
+
+/*
+ * request_err
+ *
+ * Error replied to a request that couldn't be fulfilled.
+ * The error reply is generally sent with the pkts.c/pkt_err() function.
+ *
+ * The structure is the same of `request', but, in this case, the .name 
+ * member is the string describing, in a form comprehensible to humans, the
+ * error.
+ */
+typedef request request_err;
+
+
 /* 
  * Request_table: It prevents requests flood and it is used in each connection.
  * Each element of the "rq" array corresponds to a request; it (the element)
@@ -170,6 +208,21 @@ char filtered_op[TOTAL_OPS>>3];
 /* 
  * Functions declaration starts here
  */
+
+int rq_hash_name(const char *rq_name);
+int hash_cmp(const void *a, const void *b);
+int rq_find_hash(const int rq_hash);
+int rq_find_name(const char *rq_name);
+int rq_bsearch_hash(const int rq_hash);
+void rq_sort_requests(void);
+int rq_add_request(const char *rq_name, u_char flags);
+int rqerr_hash_name(const char *rq_name);
+int rqerr_find_hash(const int err_hash);
+int rqerr_find_name(const char *err_name);
+int rqerr_bsearch_hash(const int err_hash);
+void rqerr_sort_requests(void);
+int rqerr_add_error(const char *err_name, const char *err_desc);
+
 void rq_wait_idx_init(int *rq_wait_idx);
 const u_char *rq_strerror(int err);
 #define re_strerror(err) (rq_strerror((err)))

@@ -619,8 +619,10 @@ void igw_update_gnode_bw(int *igws_counter, inet_gw **my_igws, inet_gw *igw,
 
 
 /*
- * igw_cmp: compares two inet_gw structs calculating their connection quality: 
- * bandwith - rtt/1000;
+ * igw_cmp
+ *
+ * Compares two inet_gw structs calculating their connection
+ * quality: bandwith - rtt/1000
  */
 int igw_cmp(const void *a, const void *b)
 {
@@ -635,12 +637,7 @@ int igw_cmp(const void *a, const void *b)
 	trtt = gw_b->node->links ? gw_b->node->r_node[0].trtt/1000 : 0;
 	cq_b = bandwidth_to_32bit(gw_b->bandwidth) - trtt;
 	
-	if(cq_a > cq_b)
-		return 1;
-	else if(cq_a == cq_b)
-		return 0;
-	else
-		return -1;
+	return (cq_a > cq_b) - (cq_a < cq_b);
 }
 
 /*

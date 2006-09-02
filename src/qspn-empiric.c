@@ -125,12 +125,8 @@ int rnode_rtt_compar(const void *a, const void *b)
 {
 	map_rnode *rnode_a=(map_rnode *)a, *rnode_b=(map_rnode *)b;
 
-	if(MILLISEC(rnode_a->rtt) > MILLISEC(rnode_b->rtt))
-		return 1;
-	else if(MILLISEC(rnode_a->rtt) == MILLISEC(rnode_b->rtt))
-		return 0;
-	else
-		return -1;
+	return (MILLISEC(rnode_a->rtt) > MILLISEC(rnode_b->rtt)) -
+			(MILLISEC(rnode_a->rtt) < MILLISEC(rnode_b->rtt));
 }
 
 /*rnode_rtt_order: It qsort the rnodes of a map_node comparing their rtt

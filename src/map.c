@@ -247,13 +247,8 @@ void reset_int_map(map_node *map, int maxgroupnode)
 int rnode_trtt_compar(const void *a, const void *b) 
 {
 	map_rnode *rnode_a=(map_rnode *)a, *rnode_b=(map_rnode *)b;
-	
-	if (rnode_a->trtt > rnode_b->trtt)
-		return 1;
-	else if(rnode_a->trtt == rnode_b->trtt)
-		return 0;
-	else 
-		return -1;
+
+	return (rnode_a->trtt > rnode_b->trtt) - (rnode_a->trtt < rnode_b->trtt);
 }
 
 /* 

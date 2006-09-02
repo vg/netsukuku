@@ -29,11 +29,14 @@
 					  this gnode */
 #define GMAP_FULL	(1<<3)		/*The gnode is full!! aaahh, run away!*/
 
-/* This is the holy external_map. Each struct corresponds to a groupnode. 
+/*
+ * map_gnode
+ *
+ * This is the holy external_map. Each struct corresponds to a groupnode. 
  * This groupnode cointains MAXGROUPNODE nodes if we are at level 1 or 
  * MAXGROUPNODE groups. The map is equal to the int_map, in fact, a map_node
  * is embedded in a map_gnode. 
- * This int_map uses the QSPN_MAP_STYLEII (see qspn.h). */
+ */
 typedef struct
 {
 	/* 

@@ -229,37 +229,245 @@ const static u_char request_array[][2]=
 #define RQ_WAIT 	0
 #define RQ_MAXRQ	1
 
-#if 0
+request *ntk_request=0;
+request_err *ntk_request_err=0;
+int ntk_rq_counter=0, ntk_err_counter=0;
+
+
+/*
+ * rq_hash_name
+ *
+ * It return the 32bit hash of `rq_name'.
+ * The returned hash is always != 0.
+ */
 int rq_hash_name(const char *rq_name)
 {
 	int hash;
 
-	hash=fnv_32_buf((u_char *)msg, ANDNA_HASH_SZ, FNV1_32_INIT);
+	hash=fnv_32_buf((u_char *)rq_name, strlen(rq_name), FNV1_32_INIT);
 
 	return !hash ? hash+1 : hash;
 }
 
-void rq_find_hash(int rq_hash)
+int hash_cmp(const void *a, const void *b)
+{
+	int *ai=(int *)a, *bi=(int *)b;
+
+	return (*ai > *bi) - (*ai < *bi);
+}
+
+/*
+ * rq_find_hash
+ *
+ * Returns the index number of the struct. contained in the `ntk_request'
+ * array, which has the same `rq_hash'.
+ *
+ * If nothing was found, -1 is returned.
+ */
+int rq_find_hash(const int rq_hash)
 {
 	int i;
 
-	for(i=0; i<rq_total_requests; i++)
-		if(rq[i].request == rq_hash)
-/* TODO: Continue here */
+	for(i=0; i<ntk_rq_counter; i++)
+		if(ntk_request[i].hash == rq_hash)
+			return i;
+
+	return -1;
 }
 
-void rq_find_name(const char *rq_name)
+/*
+ * rq_find_hash
+ *
+ * Returns the index number of the struct. contained in the `ntk_request'
+ * array, which has its hash equivalent to the 32bit hash of `rq_name'.
+ *
+ * If nothing was found, -1 is returned.
+ */
+int rq_find_name(const char *rq_name)
 {
+	return rq_find_hash(rq_hash_name(rq_name));
 }
 
-void rq_add_request(const char *rq_name)
+/*
+ * rq_find_hash
+ *
+ * Performs a bsearch(3) on the `ntk_request' array searching for a structure
+ * which has the same hash of `rq_hash'.
+ *
+ * If the struct is found its index number is returned,
+ * otherwise -1 is returned.
+ */
+int rq_bsearch_hash(const int rq_hash)
+{
+	request *rq;
+
+	if((rq=bsearch(&rq_hash, ntk_request, ntk_rq_counter, 
+			sizeof(request), hash_cmp)))
+		return ((char *)rq-(char *)ntk_request)/sizeof(request);
+
+	return -1;
+}
+
+/*
+ * rq_sort_requests
+ *
+ * Sorts the `ntk_request' array using the 32bit hashes.
+ *
+ * Once the array has been sorted, it would be possible to use the
+ * rq_bsearch_hash() function, which is far more efficient than
+ * rq_find_hash().
+ *
+ * This function should be called after all the requests have been added to
+ * the array with rq_add_request().
+ */
+void rq_sort_requests(void)
+{
+	qsort(ntk_request, ntk_rq_counter, sizeof(request), hash_cmp);
+}
+
+/*
+ * rq_add_request
+ *
+ * Registers the request named `rq_name'. The name should be all in upper case.
+ *
+ * The hash of `rq_name' is returned.
+ *
+ * The hash must be saved for future use, because all the functions, which
+ * deals with requests, will need it as argument.
+ * The best way is to save it in a global variable, with the name all in
+ * upper case, which has been declared in the header file (.h). In this way,
+ * even the other source codes will be able to use it.
+ *
+ * If an error occurred fatal() is called, because this is a function which
+ * must never fail.
+ *
+ * Example:
+ * 	
+ * 	In foo.h:
+ *
+ * 		int GET_NEW_MAP;
+ *
+ * 	In foo.c:
+ *
+ * 		void init_foo(void)
+ * 		{
+ * 			GET_NEW_MAP=rq_add_request("GET_NEW_MAP");
+ *	 	}
+ *	
+ *	In bar.c
+ *
+ *		#include "foo.h"
+ *	
+ *		int func()
+ *		{
+ *			send_rq(pkt, 0, GET_NEW_MAP, 0, 0, 0);
+ *		}
+ *
+ *	Note that init_foo() must be called only once.
+ */
+int rq_add_request(const char *rq_name, u_char flags)
 {
 	int hash;
 
 	hash=rq_hash_name(rq_name);
-	rq
+
+	if(rq_find_hash(hash))
+		fatal("The \"%s\" request has been already added or its hash "
+		      "it's collinding with another request. "
+		      "In the former case, avoid to register this request,"
+		      "in the latter, change the name of the request",
+		      rq_name);
+
+	ntk_request=xrealloc(ntk_request, (ntk_rq_counter+1)*sizeof(request));
+
+	ntk_request[ntk_rq_counter].hash=hash;
+	ntk_request[ntk_rq_counter].name=rq_name;
+	ntk_request[ntk_rq_counter].desc=0;
+	ntk_request[ntk_rq_counter].flags=flags;
+	
+	ntk_rq_counter++;
+
+	return hash;
 }
-#endif
+
+/*\
+ *
+ * 	Request error functions
+ *
+ * They are the same of the above functions, but the are used for the request
+ * errors.
+\*/
+
+int rqerr_hash_name(const char *rq_name)
+{
+	return rq_hash_name(rq_name);
+}
+
+int rqerr_find_hash(const int err_hash)
+{
+	int i;
+
+	for(i=0; i<ntk_err_counter; i++)
+		if(ntk_request_err[i].hash == err_hash)
+			return i;
+
+	return -1;
+}
+
+int rqerr_find_name(const char *err_name)
+{
+	return rqerr_find_hash(rqerr_hash_name(err_name));
+}
+
+int rqerr_bsearch_hash(const int err_hash)
+{
+	request_err *err;
+
+	if((err=bsearch(&err_hash, ntk_request_err, ntk_err_counter, 
+			sizeof(request_err), hash_cmp)))
+		return ((char *)err-(char *)ntk_request_err)/sizeof(request_err);
+
+	return -1;
+}
+
+void rqerr_sort_requests(void)
+{
+	qsort(ntk_request_err, ntk_err_counter, sizeof(request_err), hash_cmp);
+}
+
+/*
+ * rqerr_add_error
+ *
+ * The same of rq_add_request(), the only difference is `err_desc', which is
+ * the short description, in a form comprehensible to humans, of the error.
+ */
+int rqerr_add_error(const char *err_name, const char *err_desc)
+{
+	int hash;
+
+	hash=rqerr_hash_name(err_name);
+
+	if(rqerr_find_hash(hash))
+		fatal("The \"%s\" error has been already added or its hash "
+		      "it's collinding with another error. "
+		      "In the former case, avoid to register this error,"
+		      "in the latter, change the name of the error",
+		      err_name);
+
+	ntk_request_err=xrealloc(ntk_request_err, 
+					(ntk_err_counter+1)*sizeof(request));
+
+	ntk_request_err[ntk_err_counter].hash=hash;
+	ntk_request_err[ntk_err_counter].name=err_name;
+	ntk_request_err[ntk_err_counter].desc=err_desc;
+	ntk_request_err[ntk_err_counter].flags=0;
+	
+	ntk_err_counter++;
+
+	return hash;
+}
+
+
 void rq_wait_idx_init(int *rq_wait_idx)
 {
 	int e, idx;
