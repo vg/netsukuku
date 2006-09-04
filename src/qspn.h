@@ -62,6 +62,12 @@ struct qspn_buffer
  *  *  *  Global vars  *  *  *
  */
 
+/* QSPN requests */
+int QSPN_CLOSE,				/* The qspn_pkt used to trace the entire gnode. */
+    QSPN_OPEN,				/* The qspn_pkt sent by the extreme nodes. */
+    TRACER_PKT,				/* A tracer pkt. */
+    TRACER_PKT_CONNECT;
+
 struct qspn_buffer **qspn_b; /*It is sizeof(struct qspn_buffer *)*levels big*/
 
 int *qspn_send_mutex;	     /*It is sizeof(int)*levels big.*/

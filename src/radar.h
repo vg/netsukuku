@@ -124,6 +124,13 @@ struct allowed_rnode *alwd_rnodes;
 int alwd_rnodes_counter;
 
 /* 
+ * Radar requests
+ */	
+int ECHO_ME, 			/* The node requests to be echoed by 
+				   the dst_node */
+    ECHO_REPLY;
+
+/* 
  * The ECHO_ME pkt:
  * It is just a normal pkt which contains in the body (pkt.msg) one 
  * u_char echo_scans_count, var. This is the number of scans sent.

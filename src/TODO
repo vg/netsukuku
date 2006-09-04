@@ -7,8 +7,6 @@
 * (generally these TODOs are already being implemented at the moment)
 
 - General API
-	- Check the rehook procedure: what happens when two gnodes of level 3
-	  rehooks?
 	- aaaaaaahhh do the automake ritual for modules/
 	- add_pkt_op() && delete_pkt_op() == dynamic requests.h
 		- use a hash table. The op id is just the 32bit hash of the
@@ -51,6 +49,17 @@
 
 
 - Viphilama: http://lab.dyne.org/Ntk_viphilama
+
+- Rehook
+	- if we are changing gid because of a collision, we must not mark all
+          the (g)rnodes of our gnode as GMAP_HGNODE, in fact, we've hooked 
+	  only to our new gnode.
+	
+	- When the rehook completes, wait a bit before considering other
+	  rehooks.
+
+	- The GMAP_HGNODE flag must be removed too! Right now it is just set
+	  and never removed.
 
 - Netsukuku WRT firmware:
 	- a configured openwrt release with all the necessary kernel modules

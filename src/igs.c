@@ -271,7 +271,8 @@ void free_my_igws(inet_gw ***my_igs)
 }
 
 /*
- * init_internet_gateway_search: 
+ * init_internet_gateway_search
+ *
  * Initialization of the igs.c code.
  */
 void init_internet_gateway_search(void)
@@ -282,6 +283,10 @@ void init_internet_gateway_search(void)
 	pthread_t ping_thread;
 	pthread_attr_t t_attr;
 	int i, ret,res,e;
+
+	/* Register the igs requests and replies */
+	GET_INTERNET_GWS = rq_add_request("GET_INTERNET_GWS", 0);
+	PUT_INTERNET_GWS = rq_add_request("PUT_INTERNET_GWS", RQ_REPLY);
 
 	active_gws=0;
 	igw_multi_gw_disabled=0;

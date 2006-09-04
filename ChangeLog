@@ -6,6 +6,10 @@ New features:
 
 	* conf.c rewritten
 
+	* rand.c
+
+	* opt.c
+
 	
 
 ==== 0.0.9b ====

@@ -100,6 +100,12 @@ void qspn_reset(u_char levels)
 
 void qspn_init(u_char levels)
 {
+	/* register the QSPN requests and replies */
+	QSPN_CLOSE = rq_add_request("QSPN_CLOSE", 0);
+	QSPN_OPEN  = rq_add_request("QSPN_OPEN", 0);
+	TRACER_PKT = rq_add_request("TRACER_PKT", 0);
+	TRACER_PKT_CONNECT = rq_add_request("TRACER_PKT_CONNECT", 0);
+
 	/* register the qspn/tracer's ops in the pkt_op_table */
 	add_pkt_op(TRACER_PKT, 	       SKT_TCP, ntk_tcp_port, tracer_pkt_recv);
 	add_pkt_op(TRACER_PKT_CONNECT, SKT_TCP, ntk_tcp_port, tracer_pkt_recv);

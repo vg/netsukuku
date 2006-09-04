@@ -50,6 +50,10 @@ void first_init_radar(void)
 	pthread_attr_init(&radar_qspn_send_t_attr);
 	pthread_attr_setdetachstate(&radar_qspn_send_t_attr, PTHREAD_CREATE_DETACHED);	 
 	
+	/* Register the radar's ops */
+	ECHO_ME    = rq_add_request("ECHO_ME",    0);
+	ECHO_REPLY = rq_add_request("ECHO_REPLY", 0);
+
 	/* register the radar's ops in the pkt_op_table */
 	add_pkt_op(ECHO_ME, SKT_BCAST, ntk_udp_radar_port, radard);
 	add_pkt_op(ECHO_REPLY, SKT_UDP, ntk_udp_radar_port, radar_recv_reply);

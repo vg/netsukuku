@@ -35,14 +35,22 @@ interface cur_ifs[MAX_INTERFACES];
 int cur_ifs_n;
 
 /*
- * pkts_init:
+ * pkts_init
+ *
+ *
  * Initialize the vital organs of the pkts.c's functions.
+ *
  * `ifs' is the array which keeps all the the `ifs_n'# network 
  * interface that will be used.
+ *
  * If `queue_init' is not 0, the pkt_queue is initialized too.
  */
 void pkts_init(interface *ifs, int ifs_n, int queue_init)
 {
+	/* register the ACK replies */
+	ACK_AFFERMATIVE = rq_add_request("ACK_AFFERMATIVE", RQ_REPLY);
+	ACK_NEGATIVE 	= rq_add_request("ACK_NEGATIVE",    RQ_REPLY);
+
 	cur_ifs_n = ifs_n > MAX_INTERFACES ? ifs_n : MAX_INTERFACES;
 	memcpy(cur_ifs, ifs, sizeof(interface)*cur_ifs_n);
 	

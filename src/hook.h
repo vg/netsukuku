@@ -36,6 +36,22 @@
 
 #define HOOK_RQ_TIMEOUT		8  /* seconds */
 
+/* Hook requests */
+int GET_FREE_NODES,		/* <<Give me the list of free ips in your
+				     gnode, plz>> */
+    GET_QSPN_ROUND,		/* <<Yo, Gimme the qspn ids and times>> */
+    GET_INT_MAP,		
+    GET_EXT_MAP,
+    GET_BNODE_MAP;
+
+/* Hook replies */
+int PUT_FREE_NODES,		/* <<Here it is the list of free ips in your
+				   gnode, cya>> */
+    PUT_QSPN_ROUND,
+    PUT_INT_MAP,
+    PUT_EXT_MAP,
+    PUT_BNODE_MAP;
+
 /*
  * * *  Global vars  * * *
  */

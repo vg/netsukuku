@@ -44,7 +44,8 @@ int last_counter_pkt_id[ANDNA_MAX_FLOODS];
 int last_spread_acache_pkt_id[ANDNA_MAX_FLOODS];
 
 /*\
- *			   *** ANDNA hash notes ***
+ *
+ *		       *** ANDNA hash notes ***
  * 
  * In ANDNA there are three type of hashes: MD5, 32bit, 32bit hash of a MD5
  * hash. These hashes are generally applied on hostnames.
@@ -72,6 +73,37 @@ int last_spread_acache_pkt_id[ANDNA_MAX_FLOODS];
  *  * * *  ANDNA requests/replies pkt stuff  * * * 
  *
 \*/
+
+/* 
+ * The ANDNA requests and replies 
+ */
+
+/* requests */
+int ANDNA_REGISTER_HNAME,
+    ANDNA_CHECK_COUNTER,
+    ANDNA_RESOLVE_HNAME,
+    ANDNA_RESOLVE_IP,
+    ANDNA_RESOLVE_MX,
+    ANDNA_GET_ANDNA_CACHE,
+    ANDNA_GET_SINGLE_ACACHE,		/* Check request for the counter node */
+    ANDNA_SPREAD_SACACHE,		/* Spread the single andna_cache */
+    ANDNA_GET_COUNT_CACHE;
+
+/* replies */
+int ANDNA_RESOLVE_REPLY,
+    ANDNA_REV_RESOLVE_REPLY,
+    ANDNA_MX_RESOLVE_REPLY,
+    ANDNA_PUT_COUNT_CACHE,
+    ANDNA_PUT_ANDNA_CACHE;
+
+/* request errors */
+int E_ANDNA_WRONG_HASH_GNODE,
+    E_ANDNA_QUEUE_FULL,
+    E_ANDNA_UPDATE_TOO_EARLY,
+    E_ANDNA_TOO_MANY_HNAME,
+    E_ANDNA_HUPDATE_MISMATCH,
+    E_ANDNA_NO_HNAME,
+    E_ANDNA_CHECK_COUNTER;
 
 #define ANDNA_HOOK_TIMEOUT		8	/* seconds */
 #define ANDNA_REV_RESOLVE_RQ_TIMEOUT	60

@@ -100,6 +100,12 @@ typedef struct internet_gateway inet_gw;
 /* We pack only `gid' and `bandwidth' */
 #define INET_GW_PACK_SZ		(sizeof(u_char)*2 + MAX_IP_SZ)
 
+/* Igs request */
+int GET_INTERNET_GWS;
+
+/* Igs reply */
+int PUT_INTERNET_GWS;			/* Get Internet Gateways */
+
 struct inet_gw_pack_hdr
 {
 	int16_t		gws[MAX_LEVELS];/* Number of inet_gws there are in the

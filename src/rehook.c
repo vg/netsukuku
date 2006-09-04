@@ -112,9 +112,12 @@ int send_challenge(int gnode, int level, int gnode_count)
 
 
 /*
- * update_rehook_time: updates the rehook_time counter. If the limits are
- * reached -1 is returned and nothing is changed, otherwise 0 is the returned
- * value. (See rehook.h for more info on the limits).
+ * update_rehook_time
+ * 
+ * Updates the rehook_time counter. 
+ * If the limits are reached -1 is returned and nothing is changed,
+ * otherwise 0 is the returned value.
+ * (See rehook.h for more info on the limits).
  */
 int update_rehook_time(int level)
 {
@@ -235,6 +238,10 @@ void *new_rehook_thread(void *r)
 	 * Rehook now
 	 */
 	rehook(rargv->gnode, rargv->level);
+
+	/*
+	 * From now on, we are a new node, have a different IP.
+	 */
 
 	if(rargv->level) {
 		/* Mark all the gnodes we border on as HOOKED, in this way

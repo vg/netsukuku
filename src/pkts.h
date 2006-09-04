@@ -26,6 +26,11 @@
 #define NETSUKUKU_ID		"ntk"
 #define MAXMSGSZ		65536
 
+/* ACK replies */
+int ACK_AFFERMATIVE,			/* Ack affermative. Everything is fine. */
+    ACK_NEGATIVE;			/* The request has been rejected. 
+					   The error is in the pkt's body */
+
 /*\
  *
  * Pkt's op definitions
