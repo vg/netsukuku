@@ -64,7 +64,8 @@ INT_INFO map_gnode_iinfo = { 1,
 
 
 /*
- * 			* * * Levels notes * * *
+ * 			      Levels notes
+ * 			    ================
  * 			
  * These are the levels of the external_map. Note that the 0 level is never used 
  * for the ext_map because it corresponds to the internal map. Btw the 0 level is 

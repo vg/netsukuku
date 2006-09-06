@@ -23,7 +23,9 @@
 #include "llist.c"
 
 /*\
- *			***  Module API  ***
+ *
+ * 			Module API
+ * 		      ==============
  *
  * The basic structure of a NTK module is:
  * 	
@@ -307,6 +309,7 @@ void module_close_all(void);
 
 int mod_load_config_file(module *mod);
 module *mod_find_name(const char *name);
+int mod_is_loaded(const char *name);
 
 module *load_module(const char *name, const char *path, const char *args);
 int load_all_modules(char *argz, size_t argz_sz, const char *path);

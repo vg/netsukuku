@@ -45,7 +45,8 @@ int last_spread_acache_pkt_id[ANDNA_MAX_FLOODS];
 
 /*\
  *
- *		       *** ANDNA hash notes ***
+ *		           ANDNA hash notes
+ *		         ====================
  * 
  * In ANDNA there are three type of hashes: MD5, 32bit, 32bit hash of a MD5
  * hash. These hashes are generally applied on hostnames.
@@ -103,7 +104,8 @@ int E_ANDNA_WRONG_HASH_GNODE,
     E_ANDNA_TOO_MANY_HNAME,
     E_ANDNA_HUPDATE_MISMATCH,
     E_ANDNA_NO_HNAME,
-    E_ANDNA_CHECK_COUNTER;
+    E_ANDNA_CHECK_COUNTER,
+    E_ANDNA_INVALID_SIGNATURE;
 
 #define ANDNA_HOOK_TIMEOUT		8	/* seconds */
 #define ANDNA_REV_RESOLVE_RQ_TIMEOUT	60

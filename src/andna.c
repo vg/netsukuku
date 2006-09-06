@@ -159,7 +159,7 @@ void andna_init(void)
 {
 	/***
 	 *
-	 * Register the andna requests and replies
+	 * Register the andna requests, replies and errors
 	 */
 	/* requests */
 	ANDNA_REGISTER_HNAME = rq_add_request("ANDNA_REGISTER_HNAME", 0);,
@@ -178,6 +178,24 @@ void andna_init(void)
 	ANDNA_MX_RESOLVE_REPLY 	= rq_add_request("ANDNA_MX_RESOLVE_REPLY",  RQ_REPLY);
 	ANDNA_PUT_COUNT_CACHE 	= rq_add_request("ANDNA_PUT_COUNT_CACHE",   RQ_REPLY);
 	ANDNA_PUT_ANDNA_CACHE 	= rq_add_request("ANDNA_PUT_ANDNA_CACHE",   RQ_REPLY);
+
+	/* errors */
+	E_ANDNA_WRONG_HASH_GNODE = rqerr_add_error("E_ANDNA_WRONG_HASH_GNODE", 
+							"Invalid hash_gnode");
+	E_ANDNA_QUEUE_FULL 	 = rqerr_add_error("E_ANDNA_QUEUE_FULL", 
+							"ANDNA cache queue full");
+	E_ANDNA_UPDATE_TOO_EARLY = rqerr_add_error("E_ANDNA_UPDATE_TOO_EARLY", 
+							"Hostname update too early");
+	E_ANDNA_TOO_MANY_HNAME   = rqerr_add_error("E_ANDNA_TOO_MANY_HNAME",
+							"Too many hostname registered");
+	E_ANDNA_HUPDATE_MISMATCH = rqerr_add_error("E_ANDNA_HUPDATE_MISMATCH",
+							"Hname updates counter mismatch");
+	E_ANDNA_NO_HNAME	 = rqerr_add_error("E_ANDNA_NO_HNAME",
+							"Inexistent host name");
+	E_ANDNA_CHECK_COUNTER 	 = rqerr_add_error("E_ANDNA_CHECK_COUNTER",
+							"Counter check failed");
+	E_ANDNA_INVALID_SIGNATURE= rqerr_add_error("E_ANDNA_INVALID_SIGNATURE", 
+							"Invalid signature");
 	/***/
 
 	/* register the andna's ops in the pkt_op_table */
@@ -193,24 +211,6 @@ void andna_init(void)
 	add_pkt_op(ANDNA_PUT_COUNT_CACHE,SKT_TCP, andna_tcp_port, 0);
 	add_pkt_op(ANDNA_GET_SINGLE_ACACHE,SKT_UDP, andna_udp_port, put_single_acache);
 	add_pkt_op(ANDNA_SPREAD_SACACHE, SKT_UDP, andna_udp_port, recv_spread_single_acache);
-
-	/*
-	 * Register the request errors
-	 */
-	E_ANDNA_WRONG_HASH_GNODE = rqerr_add_error("E_ANDNA_WRONG_HASH_GNODE", 
-							"Invalid hash_gnode");
-	E_ANDNA_QUEUE_FULL 	 = rqerr_add_error("E_ANDNA_QUEUE_FULL", 
-							"ANDNA cache queue full");
-	E_ANDNA_UPDATE_TOO_EARLY = rqerr_add_error("E_ANDNA_UPDATE_TOO_EARLY", 
-							"Hostname update too early");
-	E_ANDNA_TOO_MANY_HNAME   = rqerr_add_error("E_ANDNA_TOO_MANY_HNAME",
-							"Too many hostname registered");
-	E_ANDNA_HUPDATE_MISMATCH = rqerr_add_error("E_ANDNA_HUPDATE_MISMATCH",
-							"Hname updates counter mismatch");
-	E_ANDNA_NO_HNAME	 = rqerr_add_error("E_ANDNA_NO_HNAME",
-							"Inexistent host name");
-	E_ANDNA_CHECK_COUNTER 	 = rqerr_add_error("E_ANDNA_CHECK_COUNTER",
-							"Counter check failed");
 
 	if(!server_opt.disable_resolvconf)
 		/* Restore resolv.conf if our backup is still there */
@@ -834,7 +834,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 		debug(DBG_SOFT, "Invalid signature of the 0x%x reg request", 
 				rpkt.hdr.id);
 		if(!forwarded_pkt)
-			pkt_err(pkt, E_INVALID_SIGNATURE, 0);
+			pkt_err(pkt, E_ANDNA_INVALID_SIGNATURE, 0);
 		ERROR_FINISH(ret, -1, finish);
 	}
 
@@ -972,7 +972,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 			debug(DBG_SOFT, "Registration rq 0x%x rejected: couldn't unpack"
 					" the snsd llist", rpkt.hdr.id);
 			if(!forwarded_pkt)
-				pkt_err(pkt, E_INVALID_REQUEST, 0);
+				pkt_err(pkt, E_INVALID_PKT, 0);
 			ERROR_FINISH(ret, -1, finish);
 		}
 
@@ -1181,7 +1181,7 @@ int andna_recv_check_counter(PACKET rpkt)
 		debug(DBG_SOFT, "Invalid signature of the 0x%x check "
 				"counter request", rpkt.hdr.id);
 		if(!forwarded_pkt)
-			pkt_err(pkt, E_INVALID_SIGNATURE, 0);
+			pkt_err(pkt, E_ANDNA_INVALID_SIGNATURE, 0);
 		ERROR_FINISH(ret, -1, finish);
 	}
 
@@ -1945,7 +1945,7 @@ int put_single_acache(PACKET rpkt)
 		debug(DBG_NOISE, "Malformed GET_SINGLE_ACACHE pkt: %d, %d, %d",
 			rpkt.hdr.sz, SINGLE_ACACHE_PKT_SZ(req_hdr->hgnodes),
 			req_hdr->hgnodes);
-		pkt_err(pkt, E_INVALID_REQUEST, 0);
+		pkt_err(pkt, E_INVALID_PKT, 0);
 		ERROR_FINISH(ret, -1, finish);
 	}
 

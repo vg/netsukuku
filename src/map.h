@@ -57,7 +57,8 @@
 
 
 /*\ 			    
- * 			    *** Map notes ***
+ * 			        Map notes
+ * 			      =============
  *
  * The map is an array of MAXGROUPNODE map_node structs. It is a generic map 
  * and it is used to keep the qspn_map, the internal map and the external map.
@@ -102,7 +103,8 @@ INT_INFO map_rnode_iinfo  = { 2,
 #define MAP_RNODE_PACK_SZ	(sizeof(int *)+sizeof(u_int))
 
 /*
- * 		****) The qspn int_map (****
+ * 		      The QSPN internal map
+ * 		    =========================
  *
  * - map_node.r_node points to the r_node of the root_node to be used as 
  *   gateway to reach map_node. So map_node.r_node stores only the gateway 
@@ -187,7 +189,6 @@ void reset_int_map(map_node *map, int maxgroupnode);
 map_rnode *rnode_insert(map_rnode *buf, size_t pos, map_rnode *new);
 map_rnode *map_rnode_insert(map_node *node, size_t pos, map_rnode *new);
 map_rnode *rnode_add(map_node *node, map_rnode *new);
-void rnode_swap(map_rnode *one, map_rnode *two);
 void rnode_del(map_node *node, size_t pos);
 void rnode_destroy(map_node *node);
 int rnode_find(map_node *node, void *n);

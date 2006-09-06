@@ -76,27 +76,43 @@ void *xcalloc(size_t nmemb, size_t size)
 	return ptr;
 }
 
-void *xrealloc(void *ptr, size_t new_size)
-{
-	void *new_ptr;
-
-	if (!new_size)
-		fatal("xrealloc: zero size");
-	if (!ptr)
-		new_ptr = malloc(new_size);
-	else
-		new_ptr = realloc(ptr, new_size);
-	
-	if (!new_ptr)
-		fatal("xrealloc: out of memory (new_size %lu bytes)", (u_long) new_size);
-	return new_ptr;
-}
-
 void _xfree(void *ptr)
 {
 	if (!ptr)
 		fatal("xfree: NULL pointer given as argument");
 	free(ptr);
+}
+
+void __xrealloc(void *ptr, size_t new_size)
+{
+	void *new_ptr;
+
+	if (!(new_ptr=realloc(ptr, new_size)))
+		fatal("xrealloc: out of memory "
+			"(new_size %lu bytes)", (u_long) new_size);
+	return new_ptr;
+}
+
+/*
+ * xrealloc
+ *
+ * acts as the glibc realloc(3) function
+ */
+void *xrealloc(void *ptr, size_t new_size)
+{
+	void *new_ptr;
+
+	if (!new_size && !ptr)
+		fatal("xrealloc: NULL ptr and zero size");
+
+	if (!ptr)
+		new_ptr = xmalloc(new_size);
+	else if(!new_size)
+		new_ptr = xfree(ptr);
+	else
+		new_ptr = __xrealloc(ptr, new_size);
+	
+	return new_ptr;
 }
 
 char *xstrndup(const char *str, size_t n)

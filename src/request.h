@@ -19,6 +19,88 @@
 #ifndef REQUEST_H
 #define REQUEST_H
 
+/*\
+ *
+ *			Request API
+ *		      ===============
+ *
+ * Defines
+ * -------
+ *
+ * A `request' is a packet sent to a remote host. The packet asks to the host
+ * some information or tells it to do something.
+ *
+ * A `reply' is the request sent back by the remote host as an answer to a
+ * request. Generally for each reply exists the relative request.
+ *
+ * A `request error' is a reply which contains just an error code.
+ *
+ *
+ * Registering a new request/reply/error
+ * -------------------------------------
+ *
+ * The name of the request/reply/error has to be in this format:
+ *
+ * 		ID_REQUESTNAME
+ *
+ * where ID is the short name of your module (in upper case), and
+ * REQUESTNAME is the name of the request (always in upper case). 
+ * F.e:
+ * 		FOO_GET_NEW_MAP
+ *
+ * The rq_add_request() and rqerr_add_error() are used to register
+ * respectively a new request/reply or a request error. 
+ * Their returned value is the numeric id assigned to the request/reply/error.
+ * It must be saved in a global variable (non static), in this way, even other
+ * modules we'll be able to use it.
+ * The variable name is the same of the request name (always in upper case).
+ * All the other functions of the NTK code which deals with requests, will
+ * take as arguments this numeric id.
+ * See request.c for the complete description rq_add_request().
+ *
+ * They must be called only once per request, therefore the best strategy is
+ * to put them inside initialization functions.
+ * 
+ * If you are implementing a module, you should use the rq_del_request() and
+ * rqerr_del_error() functions in the de-initialization function, otherwise if
+ * the module will be closed and then loaded a second time, fatal() will be
+ * called, because request.c would think that a name collision happened.
+ *
+ * Example:
+ *
+ * 	In foo.h:
+ *
+ * 		int FOO_GET_NEW_MAP;
+ *
+ * 	In foo.c:
+ *
+ * 		void init_foo(void)
+ * 		{
+ * 			FOO_GET_NEW_MAP=rq_add_request("FOO_GET_NEW_MAP");
+ * 			FOO_GET_NEW_MAP=rq_add_request("FOO_PUT_NEW_MAP", RQ_REPLY);
+ * 			FOO_GET_NEW_MAP=rq_add_request("FOO_GET_PASS");
+ *	 	}
+ *
+ *	 	void close_foo(void)
+ *	 	{
+ *	 		rq_del_request(FOO_GET_NEW_MAP);
+ *	 		rq_del_request(FOO_PUT_NEW_MAP);
+ *	 		rq_del_request(FOO_GET_PASS);
+ *	 	}
+ *	
+ *	In bar.c
+ *
+ *		#include "foo.h"
+ *	
+ *		int func()
+ *		{
+ *			send_rq(pkt, 0, FOO_GET_NEW_MAP, 0, 0, 0);
+ *		}
+ *
+ *  Note that init_foo() must be called only once.
+ *
+\*/
+
 #include "misc.h"
 
 #define REQUEST_TIMEOUT		300	/* The timeout in seconds for all the 
@@ -26,28 +108,6 @@
 #ifdef DEBUG
 #undef REQUEST_TIMEOUT
 #define REQUEST_TIMEOUT		20
-#endif
-
-#if CONTINUE_HERE
-/* TODO: CONTINUE HERE 
- *
- * SORT SORT SORT SORT SORT
- * SORT SORT SORT
- * SLRT */
-enum errors
-{
-	/*Request errors*/
-	E_INVALID_REQUEST = rqerr_add_error("E_INVALID_REQUEST", "Invalid request");
-	E_ACCEPT_TBL_FULL = rqerr_add_error("E_ACCEPT_TBL_FULL", "Accept table full");
-
-	E_QGROUP_FULL = rqerr_add_error("E_QGROUP_FULL", "Quadro Group full");
-	E_NTK_FULL = rqerr_add_error("E_NTK_FULL", "No more cyberspace left");
-
-	E_INVALID_SIGNATURE = rqerr_add_error("E_INVALID_SIGNATURE", "Invalid signature");
-	E_CANNOT_FORWARD = rqerr_add_error("E_CANNOT_FORWARD", "Cannot forward the pkt");
-	
-	E_TOO_MANY_CONN = rqerr_add_error("E_TOO_MANY_CONN", "Too many connection");
-};
 #endif
 
 /*
@@ -90,42 +150,19 @@ typedef struct
 typedef request request_err;
 
 
-/* 
- * Request_table: It prevents requests flood and it is used in each connection.
- * Each element of the "rq" array corresponds to a request; it (the element)
- * keeps the number of requests served. If this number is equal
- * to [REQUEST]_MAXRQ, the maximum of simultaneous requests is reached.
- * 
- * Each element in rq_wait corresponds to a single request so it is formed by:
- * { [REQUEST 0]_MAXRQ elements | [REQUEST 1]_MAXRQ elements | ... };
- * rq_wait_idx keeps track of this but it must be initialized once with
- * rq_wait_idx_init().
- * Each element of rq_wait keeps the time when that request arrived. 
- * When the current time is >= [REQUEST]_WAIT+rq_wait, a new request is 
- * available and the corresponding request counter in "rq" is decremented. 
- */
 
-#define TOTAL_MAXRQ	31
-struct request_tbl
-{
-	u_char 	rq[TOTAL_REQUESTS];
-	time_t	rq_wait[TOTAL_MAXRQ];
-};
-typedef struct request_tbl rq_tbl;
-
-int rq_wait_idx[TOTAL_REQUESTS];
-
-int update_rq_tbl_mutex;
-
-
-/* 
+/*\
+ *
  * Functions declaration starts here
- */
+ *
+\*/
 
 void rq_sort_requests(void);
 int rq_add_request(const char *rq_name, u_char flags);
+void rq_del_request(int rq_hash);
 void rqerr_sort_errors(void);
 int rqerr_add_error(const char *err_name, const char *err_desc);
+void rqerr_del_error(int rq_hash);
 request *rq_get_rqstruct(int rq_hash);
 request_err *rqerr_get_rqstruct(int err_hash);
 

@@ -163,30 +163,21 @@ map_rnode *rnode_add(map_node *node, map_rnode *new)
 	return map_rnode_insert(node, node->links-1, new);
 }
 
-void rnode_swap(map_rnode *one, map_rnode *two)
-{
-	map_rnode tmp;
-	
-	memcpy(&tmp, one, sizeof(map_rnode));
-	memcpy(one, two, sizeof(map_rnode));
-	memcpy(two, &tmp, sizeof(map_rnode));
-}
-
 void rnode_del(map_node *node, size_t pos)
 {
 	if(pos >= node->links || node->links <= 0)
 		fatal("Error in %s: %d: Cannot delete Map_rnode in %u position."
 				" It goes beyond the buffer\n",ERROR_POS, pos);
-	if(pos!=node->links-1)
-		rnode_swap((map_rnode *)&node->r_node[pos], 
-				(map_rnode *)&node->r_node[(node->links-1)]);
-					
+	
 	node->links--;
-	if(!node->links) {
-		xfree(node->r_node);
-		node->r_node=0;
-	} else
-		node->r_node=xrealloc(node->r_node, node->links*sizeof(map_rnode));
+	if(pos < node->links)
+		/* copy the last element in `pos' */
+		memcpy(&node->r_node[pos], &node->r_node[node->links],
+	               sizeof(map_rnode));
+
+	/* destroy the last element while reducing the array of exactly one
+	 * element */
+	node->r_node=xrealloc(node->r_node, node->links*sizeof(map_rnode));
 }
 
 /* 

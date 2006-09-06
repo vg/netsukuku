@@ -30,11 +30,13 @@
 int ACK_AFFERMATIVE,			/* Ack affermative. Everything is fine. */
     ACK_NEGATIVE;			/* The request has been rejected. 
 					   The error is in the pkt's body */
+/* request error */
+int E_INVALID_PKT;
+
 
 /*\
  *
  * Pkt's op definitions
- * (The requests and replies are in request.h)
  *
 \*/
 

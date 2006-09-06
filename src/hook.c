@@ -941,7 +941,7 @@ int hook_init(void)
 {
 	/***
 	 *
-	 * Register the hook requests and replies 
+	 * Register the hook requests, replies and errors
 	 */
 
 	/* requests */
@@ -957,6 +957,10 @@ int hook_init(void)
 	PUT_INT_MAP 	 = rq_add_request("PUT_INT_MAP",      RQ_REPLY);
 	PUT_EXT_MAP 	 = rq_add_request("PUT_EXT_MAP",      RQ_REPLY);
 	PUT_BNODE_MAP 	 = rq_add_request("PUT_BNODE_MAP",    RQ_REPLY);
+
+	/* errors */
+	E_QGROUP_FULL = rqerr_add_error("E_QGROUP_FULL", "Quadro Group full");
+	E_NTK_FULL = rqerr_add_error("E_NTK_FULL", "No more cyberspace left");
 	/**/
 
 	/* register the hook's ops in the pkt_op_table */

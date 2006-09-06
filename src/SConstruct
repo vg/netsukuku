@@ -26,7 +26,7 @@ NTK_VERSION="0.0.9b"
 
 sources_common    = Split('xmalloc.c log.c misc.c rand.c buffer.c endianness.c')
 sources_qspn      = Split('qspn-empiric.c') + sources_common
-sources_netsukuku = Split("""accept.c llist.c xargz.c ipv6-gmp.c inet.c request.c
+sources_netsukuku = Split("""llist.c xargz.c ipv6-gmp.c inet.c request.c
 		   map.c gmap.c bmap.c pkts.c radar.c hook.c rehook.c tracer.c 
 		   qspn.c module.c opt.c
 		   hash.c daemon.c crypto.c snsd_cache.c

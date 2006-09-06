@@ -70,6 +70,16 @@ module *mod_find_name(const char *name)
 }
 
 /*
+ * mod_is_loaded
+ *
+ * Returns 1 is the module named `name' is currently loaded, otherwise 0.
+ */
+int mod_is_loaded(const char *name)
+{
+	return !!mod_find_name(name);
+}
+
+/*
  * mod_load_config_file
  *
  * It loads all the options defined in `mod'->mod_opt from the
@@ -276,7 +286,7 @@ module *load_module(const char *name, const char *path, const char *args)
 		goto _err;
 
 	/* Check if the module has been already loaded */
-	if(mod_find_name(name)) {
+	if(mod_is_loaded(name)) {
 		error("The \"%s\" module has been already loaded", name);
 		goto _err;
 	}

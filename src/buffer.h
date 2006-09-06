@@ -16,7 +16,9 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * --
- * buffer.c: various functions to manipulate buffers
+ * buffer.c
+ *
+ * Various functions to manipulate buffers
  */
 
 #ifndef BUFFER_H

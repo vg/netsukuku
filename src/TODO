@@ -7,10 +7,8 @@
 * (generally these TODOs are already being implemented at the moment)
 
 - General API
-	- aaaaaaahhh do the automake ritual for modules/
-	- add_pkt_op() && delete_pkt_op() == dynamic requests.h
-		- use a hash table. The op id is just the 32bit hash of the
-		  OP name.
+	- convert pkts.c to the new Request API
+
 	- add_new_dev()
 	- tracer_pkt_add_build() // tracer_pkt_add_unpack()
 		 _______________________

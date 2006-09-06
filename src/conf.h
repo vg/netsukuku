@@ -26,7 +26,8 @@
 
 /*\
  *	
- *		       * * *  Conf.c usage  * * *
+ *		              Conf.c usage
+ *		            ================
  *
  *
  * First of all, it is necessary to register all the valid options with

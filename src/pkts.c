@@ -51,6 +51,9 @@ void pkts_init(interface *ifs, int ifs_n, int queue_init)
 	ACK_AFFERMATIVE = rq_add_request("ACK_AFFERMATIVE", RQ_REPLY);
 	ACK_NEGATIVE 	= rq_add_request("ACK_NEGATIVE",    RQ_REPLY);
 
+	/* request errors */
+	E_INVALID_PKT = rqerr_add_error("E_INVALID_PKT", "Invalid packet");
+
 	cur_ifs_n = ifs_n > MAX_INTERFACES ? ifs_n : MAX_INTERFACES;
 	memcpy(cur_ifs, ifs, sizeof(interface)*cur_ifs_n);
 	

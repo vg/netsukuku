@@ -14,6 +14,18 @@
  * You should have received a copy of the GNU Public License along with
  * this source code; if not, write to:
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ * 
+ * --
+ * request.c
+ *
+ * The code that flowa from this source preserves the database of the
+ * Netsukuku requests, replies and errors.
+ *
+ * It's structure is completely modular: it's possible to register at any
+ * moment a new request, therefore if a module registers its own requests,
+ * they will be accessible by all the other modules and sources of NTK.
+ * 
+ * The API is described in request.h
  */
 
 #include "includes.h"
@@ -30,7 +42,7 @@ const static u_char unknown_error[]="Unknow error";
 request *ntk_request=0;
 request_err *ntk_request_err=0;
 int ntk_rq_counter=0, ntk_err_counter=0;
-
+u_char ntk_request_sorted=0, ntk_request_err_sorted=0;
 
 /*
  * rq_hash_name
@@ -118,6 +130,9 @@ int rq_bsearch_hash(const int rq_hash)
 {
 	request *rq;
 
+	if(!ntk_request_sorted)
+		rq_sort_requests();
+
 	if((rq=bsearch(&rq_hash, ntk_request, ntk_rq_counter, 
 			sizeof(request), hash_cmp)))
 		return ((char *)rq-(char *)ntk_request)/sizeof(request);
@@ -130,7 +145,7 @@ int rq_bsearch_hash(const int rq_hash)
  *
  * Sorts the `ntk_request' array using the 32bit hashes.
  *
- * Once the array has been sorted, it would be possible to use the
+ * Once the array has been sorted, it is possible to use the
  * rq_bsearch_hash() function, which is far more efficient than
  * rq_find_hash().
  *
@@ -140,6 +155,7 @@ int rq_bsearch_hash(const int rq_hash)
 void rq_sort_requests(void)
 {
 	qsort(ntk_request, ntk_rq_counter, sizeof(request), hash_cmp);
+	ntk_request_sorted=1;
 }
 
 /*
@@ -154,39 +170,19 @@ void rq_sort_requests(void)
  * The best way is to save it in a global variable, with the name all in
  * upper case, which has been declared in the header file (.h). In this way,
  * even the other source codes will be able to use it.
+ * To avoid conflicts, the name of the variable and of the request must be
+ * prefixed with a unique identifier.
+ * It's adviced to use the name of the relative source code.
  *
  * If an error occurred fatal() is called, because this is a function which
  * must never fail.
  *
- * Warning: Remember to call rq_sort_requests() after all the requests have
- * 	    been registered.
+ *  :Warning: 
+ * 	 
+ * 	 * Use rq_del_request() when the request won't be used anymore
  *
- * Example:
- * 	
- * 	In foo.h:
+ *  :Warning:
  *
- * 		int GET_NEW_MAP;
- *
- * 	In foo.c:
- *
- * 		void init_foo(void)
- * 		{
- * 			GET_NEW_MAP=rq_add_request("GET_NEW_MAP");
- * 			GET_NEW_MAP=rq_add_request("GET_NEW_FOO");
- * 			GET_NEW_MAP=rq_add_request("GET_NEW_BAR");
- * 			rq_sort_requests();
- *	 	}
- *	
- *	In bar.c
- *
- *		#include "foo.h"
- *	
- *		int func()
- *		{
- *			send_rq(pkt, 0, GET_NEW_MAP, 0, 0, 0);
- *		}
- *
- *	Note that init_foo() must be called only once.
  */
 int rq_add_request(const char *rq_name, u_char flags)
 {
@@ -209,8 +205,31 @@ int rq_add_request(const char *rq_name, u_char flags)
 	ntk_request[ntk_rq_counter].flags=flags;
 	
 	ntk_rq_counter++;
+	ntk_request_sorted=0;
 
 	return hash;
+}
+
+/*
+ * rq_del_request
+ *
+ * Removes the `rq_hash' request (or reply) from the ntk_request array
+ */
+void rq_del_request(int rq_hash)
+{
+	int idx;
+
+	if((idx=rq_find_hash(rq_hash)) < 0)
+		return;
+
+	if(idx < ntk_rq_counter-1)
+		/* Shifts all the succesive elements of `idx', in this way,
+		 * the order of the array isn't changed */
+		memmove(&ntk_request[idx], 
+			  &ntk_request[idx+1],
+				sizeof(request)*(ntk_rq_counter-idx-1));
+	ntk_rq_counter--;
+	ntk_request=xrealloc(ntk_request, ntk_rq_counter*sizeof(request));
 }
 
 /*
@@ -232,6 +251,7 @@ request *rq_get_rqstruct(int rq_hash)
  *
  * They are the same of the above functions, but the are used for the request
  * errors.
+ *
 \*/
 
 int rqerr_hash_name(const char *rq_name)
@@ -259,6 +279,9 @@ int rqerr_bsearch_hash(const int err_hash)
 {
 	request_err *err;
 
+	if(!ntk_request_err_sorted)
+		rqerr_sort_errors();
+
 	if((err=bsearch(&err_hash, ntk_request_err, ntk_err_counter, 
 			sizeof(request_err), hash_cmp)))
 		return ((char *)err-(char *)ntk_request_err)/sizeof(request_err);
@@ -270,13 +293,11 @@ int rqerr_bsearch_hash(const int err_hash)
  * rqerr_sort_errors
  *
  * The equivalent of rq_sort_requests() for requests errors.
- *
- * Warning: Remember to call rqerr_sort_errors() after all the requests have 
- * 	    been registered.
  */
 void rqerr_sort_errors(void)
 {
 	qsort(ntk_request_err, ntk_err_counter, sizeof(request_err), hash_cmp);
+	ntk_request_err_sorted=1;
 }
 
 /*
@@ -284,6 +305,14 @@ void rqerr_sort_errors(void)
  *
  * The same of rq_add_request(), the only difference is `err_desc', which is
  * the short description, in a form comprehensible to humans, of the error.
+ *
+ *  :Warning: 
+ * 	    
+ * 	    * Use rqerr_del_error() when the request error won't be used
+ * 	      anymore.
+ *
+ *  :Warning:
+ *
  */
 int rqerr_add_error(const char *err_name, const char *err_desc)
 {
@@ -307,9 +336,33 @@ int rqerr_add_error(const char *err_name, const char *err_desc)
 	ntk_request_err[ntk_err_counter].flags=0;
 	
 	ntk_err_counter++;
+	ntk_request_err_sorted=0;
 
 	return hash;
 }
+
+/*
+ * rqerr_del_error
+ *
+ * Removes the `rqerr_hash' request error from the ntk_request_err array
+ */
+void rqerr_del_error(int rqerr_hash)
+{
+	int idx;
+
+	if((idx=rqerr_find_hash(rqerr_hash)) < 0)
+		return;
+
+	if(idx < ntk_err_counter-1)
+		/* Shifts all the succesive elements of `idx', in this way,
+		 * the order of the array isn't changed */
+		memmove(&ntk_request_err[idx], 
+			  &ntk_request_err[idx+1],
+				sizeof(request_err)*(ntk_err_counter-idx-1));
+	ntk_err_counter--;
+	ntk_request_err=xrealloc(ntk_request_err, ntk_err_counter*sizeof(request_err));
+}
+
 
 /*
  * rqerr_get_rqstruct

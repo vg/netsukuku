@@ -52,6 +52,10 @@ int PUT_FREE_NODES,		/* <<Here it is the list of free ips in your
     PUT_EXT_MAP,
     PUT_BNODE_MAP;
 
+/* Hook errors */
+int E_QGROUP_FULL,
+    E_NTK_FULL;
+
 /*
  * * *  Global vars  * * *
  */
