@@ -251,9 +251,42 @@ void andna_init(void)
 	andna_resolvconf_modify();
 }
 
+void andna_del_requests(void)
+{
+	rq_del_request(ANDNA_REGISTER_HNAME);
+	rq_del_request(ANDNA_CHECK_COUNTER);
+	rq_del_request(ANDNA_RESOLVE_HNAME);
+	rq_del_request(ANDNA_RESOLVE_IP);
+	rq_del_request(ANDNA_RESOLVE_MX);
+	rq_del_request(ANDNA_GET_ANDNA_CACHE);
+	rq_del_request(ANDNA_GET_SINGLE_ACACHE);
+	rq_del_request(ANDNA_SPREAD_SACACHE);
+	rq_del_request(ANDNA_GET_COUNT_CACHE);
+
+	rq_del_request(ANDNA_RESOLVE_REPLY);
+	rq_del_request(ANDNA_REV_RESOLVE_REPLY);
+	rq_del_request(ANDNA_MX_RESOLVE_REPLY);
+	rq_del_request(ANDNA_PUT_COUNT_CACHE);
+	rq_del_request(ANDNA_PUT_ANDNA_CACHE);
+}
+
+void andna_del_errors(void)
+{
+	rqerr_del_error(E_ANDNA_WRONG_HASH_GNODE);
+	rqerr_del_error(E_ANDNA_QUEUE_FULL);
+	rqerr_del_error(E_ANDNA_UPDATE_TOO_EARLY);
+	rqerr_del_error(E_ANDNA_TOO_MANY_HNAME);
+	rqerr_del_error(E_ANDNA_HUPDATE_MISMATCH);
+	rqerr_del_error(E_ANDNA_NO_HNAME);
+	rqerr_del_error(E_ANDNA_CHECK_COUNTER);
+	rqerr_del_error(E_ANDNA_INVALID_SIGNATURE);
+}
+
 void andna_close(void)
 {
 	andna_save_caches();
+	andna_del_requests();
+	andna_del_errors();
 	if(!server_opt.disable_resolvconf)
 		andna_resolvconf_restore();
 	andns_close();
