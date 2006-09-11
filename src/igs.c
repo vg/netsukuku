@@ -285,8 +285,8 @@ void init_internet_gateway_search(void)
 	int i, ret,res,e;
 
 	/* Register the igs requests and replies */
-	GET_INTERNET_GWS = rq_add_request("GET_INTERNET_GWS", 0);
-	PUT_INTERNET_GWS = rq_add_request("PUT_INTERNET_GWS", RQ_REPLY);
+	RQ_ADD_REQUEST(GET_INTERNET_GWS, 0);
+	RQ_ADD_REQUEST(PUT_INTERNET_GWS, RQ_REPLY);
 
 	active_gws=0;
 	igw_multi_gw_disabled=0;

@@ -20,6 +20,7 @@
 #define IGS_H
 
 #include "route.h"
+#include "request.h"
 
 
 /*
@@ -101,10 +102,10 @@ typedef struct internet_gateway inet_gw;
 #define INET_GW_PACK_SZ		(sizeof(u_char)*2 + MAX_IP_SZ)
 
 /* Igs request */
-int GET_INTERNET_GWS;
+rq_t GET_INTERNET_GWS;
 
 /* Igs reply */
-int PUT_INTERNET_GWS;			/* Get Internet Gateways */
+re_t PUT_INTERNET_GWS;			/* Get Internet Gateways */
 
 struct inet_gw_pack_hdr
 {

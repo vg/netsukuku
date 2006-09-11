@@ -83,7 +83,7 @@ void _xfree(void *ptr)
 	free(ptr);
 }
 
-void __xrealloc(void *ptr, size_t new_size)
+void *__xrealloc(void *ptr, size_t new_size)
 {
 	void *new_ptr;
 

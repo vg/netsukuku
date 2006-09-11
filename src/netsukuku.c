@@ -32,7 +32,6 @@
 #include "bmap.h"
 #include "netsukuku.h"
 #include "qspn.h"
-#include "accept.h"
 #include "daemon.h"
 #include "crypto.h"
 #include "andna_cache.h"
@@ -256,9 +255,11 @@ void fill_default_options(void)
 	server_opt.ip_masq_script=IPMASQ_SCRIPT_FILE;
 	server_opt.tc_shaper_script=TCSHAPER_SCRIPT_FILE;
 
+#if 0
 	server_opt.max_connections=MAX_CONNECTIONS;
 	server_opt.max_accepts_per_host=MAX_ACCEPTS;
 	server_opt.max_accepts_per_host_time=FREE_ACCEPT_TIME;
+#endif
 }
 
 /*
@@ -596,26 +597,11 @@ void init_netsukuku(char **argv)
 	me.cur_erc=e_rnode_init(&me.cur_erc_counter);
 
 	/* Radar init */
-	rq_wait_idx_init(rq_wait_idx);
 	first_init_radar();
 	total_radars=0;
 
 	ntk_load_maps();
 
-#if 0
-	/* TODO: activate and test it !! */
-	debug(DBG_NORMAL, "ACPT: Initializing the accept_tbl: \n"
-			"	max_connections: %d,\n"
-			"	max_accepts_per_host: %d,\n"
-			"	max_accept_per_host_time: %d", 
-			server_opt.max_connections, 
-			server_opt.max_accepts_per_host, 
-			server_opt.max_accepts_per_host_time);
-	init_accept_tbl(server_opt.max_connections, 
-			server_opt.max_accepts_per_host, 
-			server_opt.max_accepts_per_host_time);
-#endif
-	
 	if(restricted_mode)
 		loginfo("NetsukukuD is in restricted mode. "
 			"Restricted class: %s",	
@@ -653,7 +639,6 @@ int destroy_netsukuku(void)
 	close_internet_gateway_search();
 	last_close_radar();
 	e_rnode_free(&me.cur_erc, &me.cur_erc_counter);
-	destroy_accept_tbl();
 	if_close_all();
 	qspn_free();
 	free_server_opt();

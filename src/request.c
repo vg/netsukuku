@@ -50,31 +50,33 @@ u_char ntk_request_sorted=0, ntk_request_err_sorted=0;
  * It return the 32bit hash of `rq_name'.
  * The returned hash is always != 0.
  */
-int rq_hash_name(const char *rq_name)
+rq_t rq_hash_name(const char *rq_name)
 {
-	int hash;
+	rq_t hash;
 
-	hash=fnv_32_buf((u_char *)rq_name, strlen(rq_name), FNV1_32_INIT);
+	hash=(rq_t)fnv_32_buf((u_char *)rq_name, 
+			       strlen(rq_name),
+			       FNV1_32_INIT);
 
 	return !hash ? hash+1 : hash;
 }
 
-int hash_cmp(const void *a, const void *b)
+int rq_hash_cmp(const void *a, const void *b)
 {
-	int *ai=(int *)a, *bi=(int *)b;
+	request *ai=(request *)a, *bi=(request *)b;
 
-	return (*ai > *bi) - (*ai < *bi);
+	return (ai->hash > bi->hash) - (ai->hash < bi->hash);
 }
 
 /*
- * rq_find_hash
+ * rq_lsearch_hash
  *
  * Returns the index number of the struct. contained in the `ntk_request'
  * array, which has the same `rq_hash'.
  *
  * If nothing was found, -1 is returned.
  */
-int rq_find_hash(const int rq_hash)
+int rq_lsearch_hash(const rq_t rq_hash)
 {
 	int i;
 
@@ -86,14 +88,14 @@ int rq_find_hash(const int rq_hash)
 }
 
 /*
- * re_find_hash
+ * re_lsearch_hash
  *
- * The same of rq_find_hash(), but searches only for replies.
+ * The same of rq_lsearch_hash(), but searches only for replies.
  *
  * If the reply is found, its index number is returned.
  * If the reply was not found, -1 is returned.
  */
-int re_find_hash(const int re_hash)
+int re_lsearch_hash(const re_t re_hash)
 {
 	int i;
 
@@ -105,20 +107,7 @@ int re_find_hash(const int re_hash)
 }
 
 /*
- * rq_find_hash
- *
- * Returns the index number of the struct. contained in the `ntk_request'
- * array, which has its hash equivalent to the 32bit hash of `rq_name'.
- *
- * If nothing was found, -1 is returned.
- */
-int rq_find_name(const char *rq_name)
-{
-	return rq_find_hash(rq_hash_name(rq_name));
-}
-
-/*
- * rq_find_hash
+ * rq_bsearch_hash
  *
  * Performs a bsearch(3) on the `ntk_request' array searching for a structure
  * which has the same hash of `rq_hash'.
@@ -126,15 +115,16 @@ int rq_find_name(const char *rq_name)
  * If the struct is found its index number is returned,
  * otherwise -1 is returned.
  */
-int rq_bsearch_hash(const int rq_hash)
+int rq_bsearch_hash(const rq_t rq_hash)
 {
 	request *rq;
+	request rq_tmp={.hash = rq_hash};
 
 	if(!ntk_request_sorted)
 		rq_sort_requests();
 
-	if((rq=bsearch(&rq_hash, ntk_request, ntk_rq_counter, 
-			sizeof(request), hash_cmp)))
+	if((rq=bsearch(&rq_tmp, ntk_request, ntk_rq_counter, 
+			sizeof(request), rq_hash_cmp)))
 		return ((char *)rq-(char *)ntk_request)/sizeof(request);
 
 	return -1;
@@ -147,14 +137,15 @@ int rq_bsearch_hash(const int rq_hash)
  *
  * Once the array has been sorted, it is possible to use the
  * rq_bsearch_hash() function, which is far more efficient than
- * rq_find_hash().
+ * rq_lsearch_hash().
  *
  * This function should be called after all the requests have been added to
  * the array with rq_add_request().
  */
 void rq_sort_requests(void)
 {
-	qsort(ntk_request, ntk_rq_counter, sizeof(request), hash_cmp);
+	qsort(ntk_request, ntk_rq_counter,
+			sizeof(request), rq_hash_cmp);
 	ntk_request_sorted=1;
 }
 
@@ -163,7 +154,7 @@ void rq_sort_requests(void)
  *
  * Registers the request named `rq_name'. The name should be all in upper case.
  *
- * The hash of `rq_name' is returned.
+ * The hash of `rq_name' is returned. It is a 32bit integer of type `rq_t'.
  *
  * The hash must be saved for future use, because all the functions, which
  * deals with requests, will need it as argument.
@@ -186,16 +177,17 @@ void rq_sort_requests(void)
  */
 int rq_add_request(const char *rq_name, u_char flags)
 {
-	int hash;
+	rq_t hash;
 
 	hash=rq_hash_name(rq_name);
 
-	if(rq_find_hash(hash))
-		fatal("The \"%s\" request has been already added or its hash "
+	if(rq_lsearch_hash(hash))
+		fatal(ERROR_MSG 
+		      "The \"%s\" request has been already added or its hash "
 		      "it's collinding with another request. "
 		      "In the former case, avoid to register this request,"
 		      "in the latter, change the name of the request",
-		      rq_name);
+		      ERROR_POS, rq_name);
 
 	ntk_request=xrealloc(ntk_request, (ntk_rq_counter+1)*sizeof(request));
 
@@ -215,11 +207,11 @@ int rq_add_request(const char *rq_name, u_char flags)
  *
  * Removes the `rq_hash' request (or reply) from the ntk_request array
  */
-void rq_del_request(int rq_hash)
+void rq_del_request(rq_t rq_hash)
 {
 	int idx;
 
-	if((idx=rq_find_hash(rq_hash)) < 0)
+	if((idx=rq_bsearch_hash(rq_hash)) < 0)
 		return;
 
 	if(idx < ntk_rq_counter-1)
@@ -238,9 +230,9 @@ void rq_del_request(int rq_hash)
  * Returns the pointer to the request structure which contains `rq_hash'.
  * If no structure is found, 0 is returned.
  */
-request *rq_get_rqstruct(int rq_hash)
+request *rq_get_rqstruct(rq_t rq_hash)
 {
-	int i=rq_find_hash(rq_hash);
+	int i=rq_bsearch_hash(rq_hash);
 	return i < 0 ? 0 : &ntk_request[i];
 }
 
@@ -254,12 +246,12 @@ request *rq_get_rqstruct(int rq_hash)
  *
 \*/
 
-int rqerr_hash_name(const char *rq_name)
+rqerr_t rqerr_hash_name(const char *rq_name)
 {
-	return rq_hash_name(rq_name);
+	return (rqerr_t) rq_hash_name(rq_name);
 }
 
-int rqerr_find_hash(const int err_hash)
+int rqerr_lsearch_hash(const rqerr_t err_hash)
 {
 	int i;
 
@@ -270,20 +262,16 @@ int rqerr_find_hash(const int err_hash)
 	return -1;
 }
 
-int rqerr_find_name(const char *err_name)
-{
-	return rqerr_find_hash(rqerr_hash_name(err_name));
-}
-
-int rqerr_bsearch_hash(const int err_hash)
+int rqerr_bsearch_hash(const rqerr_t err_hash)
 {
 	request_err *err;
+	request_err err_tmp={.hash = err_hash};
 
 	if(!ntk_request_err_sorted)
 		rqerr_sort_errors();
 
-	if((err=bsearch(&err_hash, ntk_request_err, ntk_err_counter, 
-			sizeof(request_err), hash_cmp)))
+	if((err=bsearch(&err_tmp, ntk_request_err, ntk_err_counter, 
+			sizeof(request_err), rq_hash_cmp)))
 		return ((char *)err-(char *)ntk_request_err)/sizeof(request_err);
 
 	return -1;
@@ -296,7 +284,8 @@ int rqerr_bsearch_hash(const int err_hash)
  */
 void rqerr_sort_errors(void)
 {
-	qsort(ntk_request_err, ntk_err_counter, sizeof(request_err), hash_cmp);
+	qsort(ntk_request_err, ntk_err_counter, 
+		sizeof(request_err), rq_hash_cmp);
 	ntk_request_err_sorted=1;
 }
 
@@ -316,16 +305,17 @@ void rqerr_sort_errors(void)
  */
 int rqerr_add_error(const char *err_name, const char *err_desc)
 {
-	int hash;
+	rqerr_t hash;
 
 	hash=rqerr_hash_name(err_name);
 
-	if(rqerr_find_hash(hash))
-		fatal("The \"%s\" error has been already added or its hash "
+	if(rqerr_lsearch_hash(hash))
+		fatal(ERROR_MSG
+		      "The \"%s\" error has been already added or its hash "
 		      "it's collinding with another error. "
 		      "In the former case, avoid to register this error,"
 		      "in the latter, change the name of the error",
-		      err_name);
+		      ERROR_POS, err_name);
 
 	ntk_request_err=xrealloc(ntk_request_err, 
 					(ntk_err_counter+1)*sizeof(request));
@@ -346,11 +336,11 @@ int rqerr_add_error(const char *err_name, const char *err_desc)
  *
  * Removes the `rqerr_hash' request error from the ntk_request_err array
  */
-void rqerr_del_error(int rqerr_hash)
+void rqerr_del_error(rqerr_t rqerr_hash)
 {
 	int idx;
 
-	if((idx=rqerr_find_hash(rqerr_hash)) < 0)
+	if((idx=rqerr_bsearch_hash(rqerr_hash)) < 0)
 		return;
 
 	if(idx < ntk_err_counter-1)
@@ -370,9 +360,9 @@ void rqerr_del_error(int rqerr_hash)
  * Returns the pointer to the request_err structure which contains `err_hash'.
  * If no structure is found, 0 is returned.
  */
-request_err *rqerr_get_rqstruct(int err_hash)
+request_err *rqerr_get_rqstruct(rqerr_t err_hash)
 {
-	int i=rqerr_find_hash(err_hash);
+	int i=rqerr_bsearch_hash(err_hash);
 	return i < 0 ? 0 : &ntk_request_err[i];
 }
 
@@ -387,16 +377,16 @@ request_err *rqerr_get_rqstruct(int err_hash)
  *
  * Returns the description of the error `err_hash'.
  */
-const u_char *rq_strerror(int err_hash)
+const u_char *rq_strerror(rqerr_t err_hash)
 {
-	int i=rqerr_find_hash(err_hash);
+	int i=rqerr_bsearch_hash(err_hash);
 
 	if(i < 0)
 		return unknown_error;
 	return ntk_request_err[i].desc;
 }
 
-const u_char *re_strerror(int err_hash)
+const u_char *re_strerror(rqerr_t err_hash)
 {
 	return rq_strerror(err_hash);
 }
@@ -406,9 +396,9 @@ const u_char *re_strerror(int err_hash)
  *
  * Returns the string of the name of the `rq_hash' request.
  */
-const u_char *rq_to_str(int rq_hash)
+const u_char *rq_to_str(rq_t rq_hash)
 {
-	int i=rq_find_hash(rq_hash);
+	int i=rq_bsearch_hash(rq_hash);
 
 	if(i < 0)
 		return unknown_request;
@@ -420,13 +410,43 @@ const u_char *rq_to_str(int rq_hash)
  *
  * Returns the string of the name of the `rq_hash' reply.
  */
-const u_char *re_to_str(int rq_hash)
+const u_char *re_to_str(rq_t rq_hash)
 {
-	int i=rq_find_hash(rq_hash);
+	int i=rq_bsearch_hash(rq_hash);
 
 	if(i < 0 || !(ntk_request[i].flags & RQ_REPLY))
 		return (const u_char*)unknown_reply;
 	return ntk_request[i].name;
+}
+
+/*
+ * rqerr_to_str
+ *
+ * Returns the string of the name of the `err_hash' request error.
+ */
+const u_char *rqerr_to_str(rqerr_t err_hash)
+{
+	int i=rqerr_bsearch_hash(err_hash);
+
+	if(i < 0)
+		return unknown_error;
+	return ntk_request_err[i].name;
+}
+
+/*
+ * rq_rqerr_to_str
+ *
+ * It's a mix between rq_to_str() and rqerr_to_str(): it the former fails, the
+ * return value of the latter is returned
+ */
+const u_char *rq_rqerr_to_str(rq_t rq_hash)
+{
+	const u_char *str=0;
+
+	if((str=rq_to_str(rq_hash)) == unknown_request)
+		str = rqerr_to_str((rqerr_t) rq_hash);
+
+	return str;
 }
 
 /*\
@@ -448,13 +468,13 @@ const u_char *re_to_str(int rq_hash)
  *
  * If no request nor reply was found, -1 is returned.
  */
-int op_filter_set(int rq_hash)
+int op_filter_set(rq_t rq_hash)
 {
 	int i;
 
-	if((i=rq_find_hash(rq_hash)) >= 0)
+	if((i=rq_bsearch_hash(rq_hash)) >= 0)
 		ntk_request[i].flags|=RQ_DROP;
-	else if((i=rqerr_find_hash(rq_hash)) >= 0)
+	else if((i=rqerr_bsearch_hash(rq_hash)) >= 0)
 		ntk_request_err[i].flags|=RQ_DROP;
 	else
 			return -1;
@@ -471,13 +491,13 @@ int op_filter_set(int rq_hash)
  *
  * If no request nor reply was found, -1 is returned.
  */
-int op_filter_clr(int rq_hash)
+int op_filter_clr(rq_t rq_hash)
 {
 	int i;
 
-	if((i=rq_find_hash(rq_hash)) >= 0)
+	if((i=rq_bsearch_hash(rq_hash)) >= 0)
 		ntk_request[i].flags&=~RQ_DROP;
-	else if((i=rqerr_find_hash(rq_hash)) >= 0)
+	else if((i=rqerr_bsearch_hash(rq_hash)) >= 0)
 		ntk_request_err[i].flags&=~RQ_DROP;
 	else
 			return -1;
@@ -498,13 +518,13 @@ int op_filter_clr(int rq_hash)
  * Warning: it's not adviced to use this function as if(op_filter_test(...)), 
  *          because, in this way, you'll miss the eventual returned -1 value.
  */
-int op_filter_test(int rq_hash)
+int op_filter_test(rq_t rq_hash)
 {
 	int i;
 
-	if((i=rq_find_hash(rq_hash)) >= 0)
+	if((i=rq_bsearch_hash(rq_hash)) >= 0)
 		return ntk_request[i].flags & RQ_DROP;
-	else if((i=rqerr_find_hash(rq_hash)) >= 0)
+	else if((i=rqerr_bsearch_hash(rq_hash)) >= 0)
 		return ntk_request_err[i].flags & RQ_DROP;
 	else
 		return -1;

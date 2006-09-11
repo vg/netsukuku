@@ -19,6 +19,8 @@
 #ifndef RADAR_H
 #define RADAR_H
 
+#include "request.h"
+
 #define MAX_RADAR_SCANS		16
 #define MAX_RADAR_WAIT		5	/*How much we wait to store the received
 					  ECHO_REPLY pkts and then to close the
@@ -126,9 +128,9 @@ int alwd_rnodes_counter;
 /* 
  * Radar requests
  */	
-int ECHO_ME, 			/* The node requests to be echoed by 
+rq_t ECHO_ME, 			/* The node requests to be echoed by 
 				   the dst_node */
-    ECHO_REPLY;
+     ECHO_REPLY;
 
 /* 
  * The ECHO_ME pkt:

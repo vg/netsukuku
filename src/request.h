@@ -52,7 +52,8 @@
  * respectively a new request/reply or a request error. 
  * Their returned value is the numeric id assigned to the request/reply/error.
  * It must be saved in a global variable (non static), in this way, even other
- * modules we'll be able to use it.
+ * modules we'll be able to use it. Use the RQ_ADD_REQUEST() and
+ * RQERR_ADD_ERROR() macros to facilitate this assignment.
  * The variable name is the same of the request name (always in upper case).
  * All the other functions of the NTK code which deals with requests, will
  * take as arguments this numeric id.
@@ -70,15 +71,21 @@
  *
  * 	In foo.h:
  *
- * 		int FOO_GET_NEW_MAP;
+ * 		rq_t 	FOO_GET_NEW_MAP,
+ * 			FOO_PUT_NEW_MAP,
+ * 			FOO_GET_PASS;
+ *
+ * 		rqerr_t E_INVALID_UNIVERSE;
  *
  * 	In foo.c:
  *
  * 		void init_foo(void)
  * 		{
- * 			FOO_GET_NEW_MAP=rq_add_request("FOO_GET_NEW_MAP");
- * 			FOO_GET_NEW_MAP=rq_add_request("FOO_PUT_NEW_MAP", RQ_REPLY);
- * 			FOO_GET_NEW_MAP=rq_add_request("FOO_GET_PASS");
+ * 			RQ_ADD_REQUEST( FOO_GET_NEW_MAP, 0 );
+ * 			RQ_ADD_REQUEST( FOO_PUT_NEW_MAP, RQ_REPLY );
+ * 			RQ_ADD_REQUEST( FOO_GET_PASS, 0 );
+ *
+ * 			RQERR_ADD_ERROR( E_INVALID_UNIVERSE, 0 );
  *	 	}
  *
  *	 	void close_foo(void)
@@ -86,6 +93,7 @@
  *	 		rq_del_request(FOO_GET_NEW_MAP);
  *	 		rq_del_request(FOO_PUT_NEW_MAP);
  *	 		rq_del_request(FOO_GET_PASS);
+ *	 		rqerr_del_error(E_INVALID_UNIVERSE);
  *	 	}
  *	
  *	In bar.c
@@ -120,6 +128,11 @@
 #define OP_FILTER_DROP	1
 #define OP_FILTER_ALLOW	0
 
+
+typedef int32_t rq_t;
+#define re_t	rq_t
+typedef int32_t rqerr_t;
+
 /*
  * request
  *
@@ -127,7 +140,7 @@
  */
 typedef struct
 {
-	int		hash;		/* Hash of the request name */
+	rq_t		hash;		/* Hash of the request name */
 
 	const char	*name;		/* Name of the request */
 
@@ -150,28 +163,35 @@ typedef struct
 typedef request request_err;
 
 
-
 /*\
  *
  * Functions declaration starts here
  *
 \*/
 
+rq_t rq_hash_name(const char *rq_name);
 void rq_sort_requests(void);
+
+rqerr_t rqerr_hash_name(const char *rq_name);
+void rqerr_sort_errors(void);
+
+#define RQ_ADD_REQUEST(_rq, _flags)	_rq = rq_add_request(#_rq , (_flags))
 int rq_add_request(const char *rq_name, u_char flags);
 void rq_del_request(int rq_hash);
-void rqerr_sort_errors(void);
+request *rq_get_rqstruct(int rq_hash);
+
+#define RQERR_ADD_ERROR(_err, _flags)	_err = rqerr_add_error(#_err , (_flags))
 int rqerr_add_error(const char *err_name, const char *err_desc);
 void rqerr_del_error(int rq_hash);
-request *rq_get_rqstruct(int rq_hash);
 request_err *rqerr_get_rqstruct(int err_hash);
 
 const u_char *rq_strerror(int err_hash);
+const u_char *re_strerror(int err_hash);
 const u_char *rq_to_str(int rq_hash);
 const u_char *re_to_str(int rq_hash);
-const u_char *re_strerror(int err_hash);
+const u_char *rqerr_to_str(rqerr_t err_hash);
+const u_char *rq_rqerr_to_str(rq_t rq_hash);
 
-int op_verify(u_char op);
 int op_filter_set(int rq_hash);
 int op_filter_clr(int rq_hash);
 int op_filter_test(int rq_hash);
@@ -180,4 +200,3 @@ void op_filter_reset_rq(int bit);
 void op_filter_reset(int bit);
 
 #endif /*REQUEST_H*/
-

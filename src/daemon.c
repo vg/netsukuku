@@ -32,7 +32,6 @@
 #include "bmap.h"
 #include "daemon.h"
 #include "netsukuku.h"
-#include "accept.h"
 
 extern int errno;
 
@@ -172,14 +171,7 @@ void *udp_exec_pkt(void *passed_argv)
 		return 0;
 	}
 
-	if(add_accept(rpkt.from, 1)) {
-		ntop=inet_to_str(rpkt.from);
-		debug(DBG_NORMAL, "ACPT: dropped UDP pkt from %s: "
-				"Accept table full.", ntop);
-		return 0;
-	} 
-
-	pkt_exec(rpkt, argv.acpt_idx);
+	pkt_exec(rpkt);
 	pkt_free(&rpkt, 0);
 	
 	return 0;
@@ -281,9 +273,6 @@ void *udp_daemon(void *passed_argv)
 				continue;
 			}
 
-			exec_pkt_argv.acpt_idx=accept_idx;
-			exec_pkt_argv.acpt_sidx=accept_sidx;
-
 			if(argv.flags & UDP_THREAD_FOR_EACH_PKT) {
 				exec_pkt_argv.recv_pkt=&rpkt;
 				pthread_mutex_lock(&udp_exec_lock);
@@ -298,26 +287,18 @@ void *udp_daemon(void *passed_argv)
 		}
 	}
 
-	destroy_accept_tbl();
 	return NULL;
 }
 
 void *tcp_recv_loop(void *recv_pkt)
 {
 	PACKET rpkt;
-	int acpt_idx, acpt_sidx;
 
-	acpt_idx=accept_idx;
-	acpt_sidx=accept_sidx;
 	memcpy(&rpkt, recv_pkt, sizeof(PACKET));
 	pthread_mutex_unlock(&tcp_exec_lock);
 
-#if 0
-	add_accept_pid(getpid(), acpt_idx, acpt_sidx);
-#endif
-
 	while( pkt_recv(&rpkt) != -1 ) {
-		if(pkt_exec(rpkt, acpt_idx) < 0) {
+		if(pkt_exec(rpkt) < 0) {
 			goto close;
 			break;
 		} else
@@ -326,7 +307,6 @@ void *tcp_recv_loop(void *recv_pkt)
 
 close:
 	pkt_free(&rpkt, 1);
-	close_accept(acpt_idx, acpt_sidx);
 
 	return NULL;
 }
@@ -434,22 +414,12 @@ void *tcp_daemon(void *door)
 			if(server_opt.dbg_lvl)
 				ntop=inet_to_str(ip);
 
-			if((ret=add_accept(ip, 0))) {
-				debug(DBG_NORMAL, "ACPT: drop connection with %s: "
-						"Accept table full.", ntop);
-
-				/* Omg, we cannot take it anymore, go away: ACK_NEGATIVE */
-				pkt_err(rpkt, ret, 1);
-				inet_close(&fd);
-				continue;
-			} else {
-				/* 
-				 * Ok, the connection is good, send back the
-				 * ACK_AFFERMATIVE.
-				 */
-				pkt_addto(&rpkt, &rpkt.from);
-				send_rq(&rpkt, 0, ACK_AFFERMATIVE, 0, 0, 0, 0);
-			}
+			/* 
+			 * Ok, the connection is good, send back the
+			 * ACK_AFFERMATIVE.
+			 */
+			pkt_addto(&rpkt, &rpkt.from);
+			send_rq(&rpkt, 0, ACK_AFFERMATIVE, 0, 0, 0, 0);
 
 			if(unset_nonblock_sk(fd))
 				continue;

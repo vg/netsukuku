@@ -945,37 +945,37 @@ int hook_init(void)
 	 */
 
 	/* requests */
-	GET_FREE_NODES = rq_add_request("GET_FREE_NODES", 0);
-	GET_QSPN_ROUND = rq_add_request("GET_QSPN_ROUND", 0);
-	GET_INT_MAP    = rq_add_request("GET_INT_MAP",    0);
-	GET_EXT_MAP    = rq_add_request("GET_EXT_MAP",    0);
-	GET_BNODE_MAP  = rq_add_request("GET_BNODE_MAP",  0);
+	RQ_ADD_REQUEST( GET_FREE_NODES, 0 );
+	RQ_ADD_REQUEST( GET_QSPN_ROUND, 0 );
+	RQ_ADD_REQUEST( GET_INT_MAP,    0 );
+	RQ_ADD_REQUEST( GET_EXT_MAP,    0 );
+	RQ_ADD_REQUEST( GET_BNODE_MAP,  0 );
 
 	/* replies */
-	PUT_FREE_NODES 	 = rq_add_request("PUT_FREE_NODES",   RQ_REPLY);
-	PUT_QSPN_ROUND 	 = rq_add_request("PUT_QSPN_ROUND",   RQ_REPLY);
-	PUT_INT_MAP 	 = rq_add_request("PUT_INT_MAP",      RQ_REPLY);
-	PUT_EXT_MAP 	 = rq_add_request("PUT_EXT_MAP",      RQ_REPLY);
-	PUT_BNODE_MAP 	 = rq_add_request("PUT_BNODE_MAP",    RQ_REPLY);
+	RQ_ADD_REQUEST( PUT_FREE_NODES,   RQ_REPLY );
+	RQ_ADD_REQUEST( PUT_QSPN_ROUND,   RQ_REPLY );
+	RQ_ADD_REQUEST( PUT_INT_MAP,      RQ_REPLY );
+	RQ_ADD_REQUEST( PUT_EXT_MAP,      RQ_REPLY );
+	RQ_ADD_REQUEST( PUT_BNODE_MAP,    RQ_REPLY );
 
 	/* errors */
-	E_QGROUP_FULL = rqerr_add_error("E_QGROUP_FULL", "Quadro Group full");
-	E_NTK_FULL = rqerr_add_error("E_NTK_FULL", "No more cyberspace left");
+	RQERR_ADD_ERROR ( E_QGROUP_FULL, "Quadro Group full");
+	RQERR_ADD_ERROR ( E_NTK_FULL,    "No more cyberspace left");
 	/**/
 
 	/* register the hook's ops in the pkt_op_table */
-	add_pkt_op(GET_FREE_NODES, SKT_TCP, ntk_tcp_port, put_free_nodes);
-	add_pkt_op(PUT_FREE_NODES, SKT_TCP, ntk_tcp_port, 0);
-	add_pkt_op(GET_QSPN_ROUND, SKT_TCP, ntk_tcp_port, put_qspn_round);
-	add_pkt_op(PUT_QSPN_ROUND, SKT_TCP, ntk_tcp_port, 0);
-	add_pkt_op(GET_INT_MAP, SKT_TCP, ntk_tcp_port, put_int_map);
-	add_pkt_op(PUT_INT_MAP, SKT_TCP, ntk_tcp_port, 0);
-	add_pkt_op(GET_EXT_MAP, SKT_TCP, ntk_tcp_port, put_ext_map);
-	add_pkt_op(PUT_EXT_MAP, SKT_TCP, ntk_tcp_port, 0);
-	add_pkt_op(GET_BNODE_MAP, SKT_TCP, ntk_tcp_port, put_bnode_map);
-	add_pkt_op(PUT_BNODE_MAP, SKT_TCP, ntk_tcp_port, 0);
-	add_pkt_op(GET_INTERNET_GWS, SKT_TCP, ntk_tcp_port, put_internet_gws);
-	add_pkt_op(PUT_INTERNET_GWS, SKT_TCP, ntk_tcp_port, 0);
+	pktop_add_op(GET_FREE_NODES, SKT_TCP, ntk_tcp_port, put_free_nodes);
+	pktop_add_op(PUT_FREE_NODES, SKT_TCP, ntk_tcp_port, 0);
+	pktop_add_op(GET_QSPN_ROUND, SKT_TCP, ntk_tcp_port, put_qspn_round);
+	pktop_add_op(PUT_QSPN_ROUND, SKT_TCP, ntk_tcp_port, 0);
+	pktop_add_op(GET_INT_MAP, SKT_TCP, ntk_tcp_port, put_int_map);
+	pktop_add_op(PUT_INT_MAP, SKT_TCP, ntk_tcp_port, 0);
+	pktop_add_op(GET_EXT_MAP, SKT_TCP, ntk_tcp_port, put_ext_map);
+	pktop_add_op(PUT_EXT_MAP, SKT_TCP, ntk_tcp_port, 0);
+	pktop_add_op(GET_BNODE_MAP, SKT_TCP, ntk_tcp_port, put_bnode_map);
+	pktop_add_op(PUT_BNODE_MAP, SKT_TCP, ntk_tcp_port, 0);
+	pktop_add_op(GET_INTERNET_GWS, SKT_TCP, ntk_tcp_port, put_internet_gws);
+	pktop_add_op(PUT_INTERNET_GWS, SKT_TCP, ntk_tcp_port, 0);
 
 	total_hooks=0;
 	we_are_rehooking=0;

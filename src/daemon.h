@@ -33,8 +33,6 @@ pthread_mutex_t tcp_daemon_lock;
 /* Argv passed to udp_exec_pkt() */
 struct udp_exec_pkt_argv {
 	PACKET 		*recv_pkt;
-	int		acpt_idx;
-	int		acpt_sidx;
 	u_char		flags;
 };
 

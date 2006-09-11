@@ -162,55 +162,47 @@ void andna_init(void)
 	 * Register the andna requests, replies and errors
 	 */
 	/* requests */
-	ANDNA_REGISTER_HNAME = rq_add_request("ANDNA_REGISTER_HNAME", 0);,
-	ANDNA_CHECK_COUNTER = rq_add_request("ANDNA_CHECK_COUNTER", 0);,
-	ANDNA_RESOLVE_HNAME = rq_add_request("ANDNA_RESOLVE_HNAME", 0);,
-	ANDNA_RESOLVE_IP = rq_add_request("ANDNA_RESOLVE_IP", 0);,
-	ANDNA_RESOLVE_MX = rq_add_request("ANDNA_RESOLVE_MX", 0);,
-	ANDNA_GET_ANDNA_CACHE = rq_add_request("ANDNA_GET_ANDNA_CACHE", 0);,
-	ANDNA_GET_SINGLE_ACACHE = rq_add_request("ANDNA_GET_SINGLE_ACACHE", 0);,
-	ANDNA_SPREAD_SACACHE = rq_add_request("ANDNA_SPREAD_SACACHE", 0);,
-	ANDNA_GET_COUNT_CACHE = rq_add_request("ANDNA_GET_COUNT_CACHE", 0);
+	RQ_ADD_REQUEST ( ANDNA_REGISTER_HNAME, 	0 );
+	RQ_ADD_REQUEST ( ANDNA_CHECK_COUNTER, 	0 );
+	RQ_ADD_REQUEST ( ANDNA_RESOLVE_HNAME, 	0 );
+	RQ_ADD_REQUEST ( ANDNA_RESOLVE_IP, 	0 );
+	RQ_ADD_REQUEST ( ANDNA_RESOLVE_MX, 	0 );
+	RQ_ADD_REQUEST ( ANDNA_GET_ANDNA_CACHE, 0 );
+	RQ_ADD_REQUEST ( ANDNA_GET_SINGLE_ACACHE, 0 );
+	RQ_ADD_REQUEST ( ANDNA_SPREAD_SACACHE, 	0 );
+	RQ_ADD_REQUEST ( ANDNA_GET_COUNT_CACHE, 0 );
 
 	/* replies */
-	ANDNA_RESOLVE_REPLY 	= rq_add_request("ANDNA_RESOLVE_REPLY",     RQ_REPLY);
-	ANDNA_REV_RESOLVE_REPLY = rq_add_request("ANDNA_REV_RESOLVE_REPLY", RQ_REPLY);
-	ANDNA_MX_RESOLVE_REPLY 	= rq_add_request("ANDNA_MX_RESOLVE_REPLY",  RQ_REPLY);
-	ANDNA_PUT_COUNT_CACHE 	= rq_add_request("ANDNA_PUT_COUNT_CACHE",   RQ_REPLY);
-	ANDNA_PUT_ANDNA_CACHE 	= rq_add_request("ANDNA_PUT_ANDNA_CACHE",   RQ_REPLY);
+	RQ_ADD_REQUEST ( ANDNA_RESOLVE_REPLY,     RQ_REPLY );
+	RQ_ADD_REQUEST ( ANDNA_REV_RESOLVE_REPLY, RQ_REPLY );
+	RQ_ADD_REQUEST ( ANDNA_MX_RESOLVE_REPLY,  RQ_REPLY );
+	RQ_ADD_REQUEST ( ANDNA_PUT_COUNT_CACHE,   RQ_REPLY );
+	RQ_ADD_REQUEST ( ANDNA_PUT_ANDNA_CACHE,   RQ_REPLY );
 
 	/* errors */
-	E_ANDNA_WRONG_HASH_GNODE = rqerr_add_error("E_ANDNA_WRONG_HASH_GNODE", 
-							"Invalid hash_gnode");
-	E_ANDNA_QUEUE_FULL 	 = rqerr_add_error("E_ANDNA_QUEUE_FULL", 
-							"ANDNA cache queue full");
-	E_ANDNA_UPDATE_TOO_EARLY = rqerr_add_error("E_ANDNA_UPDATE_TOO_EARLY", 
-							"Hostname update too early");
-	E_ANDNA_TOO_MANY_HNAME   = rqerr_add_error("E_ANDNA_TOO_MANY_HNAME",
-							"Too many hostname registered");
-	E_ANDNA_HUPDATE_MISMATCH = rqerr_add_error("E_ANDNA_HUPDATE_MISMATCH",
-							"Hname updates counter mismatch");
-	E_ANDNA_NO_HNAME	 = rqerr_add_error("E_ANDNA_NO_HNAME",
-							"Inexistent host name");
-	E_ANDNA_CHECK_COUNTER 	 = rqerr_add_error("E_ANDNA_CHECK_COUNTER",
-							"Counter check failed");
-	E_ANDNA_INVALID_SIGNATURE= rqerr_add_error("E_ANDNA_INVALID_SIGNATURE", 
-							"Invalid signature");
+	RQERR_ADD_ERROR ( E_ANDNA_WRONG_HASH_GNODE, "Invalid hash_gnode");
+	RQERR_ADD_ERROR ( E_ANDNA_QUEUE_FULL, 	    "ANDNA cache queue full");
+	RQERR_ADD_ERROR ( E_ANDNA_UPDATE_TOO_EARLY, "Hostname update too early");
+	RQERR_ADD_ERROR ( E_ANDNA_TOO_MANY_HNAME,   "Too many hostname registered");
+	RQERR_ADD_ERROR ( E_ANDNA_HUPDATE_MISMATCH, "Hname updates counter mismatch");
+	RQERR_ADD_ERROR ( E_ANDNA_NO_HNAME,   	    "Inexistent host name");
+	RQERR_ADD_ERROR ( E_ANDNA_CHECK_COUNTER,    "Counter check failed");
+	RQERR_ADD_ERROR ( E_ANDNA_INVALID_SIGNATURE,"Invalid signature");
 	/***/
 
 	/* register the andna's ops in the pkt_op_table */
-	add_pkt_op(ANDNA_REGISTER_HNAME, SKT_TCP, andna_tcp_port, andna_recv_reg_rq);
-	add_pkt_op(ANDNA_CHECK_COUNTER,  SKT_TCP, andna_tcp_port, andna_recv_check_counter);
-	add_pkt_op(ANDNA_RESOLVE_HNAME,  SKT_UDP, andna_udp_port, andna_recv_resolve_rq);
-	add_pkt_op(ANDNA_RESOLVE_REPLY,  SKT_UDP, andna_udp_port, 0);
-	add_pkt_op(ANDNA_RESOLVE_IP,     SKT_TCP, andna_tcp_port, andna_recv_rev_resolve_rq);
-	add_pkt_op(ANDNA_REV_RESOLVE_REPLY,  SKT_TCP, andna_tcp_port, 0);
-	add_pkt_op(ANDNA_GET_ANDNA_CACHE,SKT_TCP, andna_tcp_port, put_andna_cache);
-	add_pkt_op(ANDNA_PUT_ANDNA_CACHE,SKT_TCP, andna_tcp_port, 0);
-	add_pkt_op(ANDNA_GET_COUNT_CACHE,SKT_TCP, andna_tcp_port, put_counter_cache);
-	add_pkt_op(ANDNA_PUT_COUNT_CACHE,SKT_TCP, andna_tcp_port, 0);
-	add_pkt_op(ANDNA_GET_SINGLE_ACACHE,SKT_UDP, andna_udp_port, put_single_acache);
-	add_pkt_op(ANDNA_SPREAD_SACACHE, SKT_UDP, andna_udp_port, recv_spread_single_acache);
+	pktop_add_op(ANDNA_REGISTER_HNAME, SKT_TCP, andna_tcp_port, andna_recv_reg_rq);
+	pktop_add_op(ANDNA_CHECK_COUNTER,  SKT_TCP, andna_tcp_port, andna_recv_check_counter);
+	pktop_add_op(ANDNA_RESOLVE_HNAME,  SKT_UDP, andna_udp_port, andna_recv_resolve_rq);
+	pktop_add_op(ANDNA_RESOLVE_REPLY,  SKT_UDP, andna_udp_port, 0);
+	pktop_add_op(ANDNA_RESOLVE_IP,     SKT_TCP, andna_tcp_port, andna_recv_rev_resolve_rq);
+	pktop_add_op(ANDNA_REV_RESOLVE_REPLY,  SKT_TCP, andna_tcp_port, 0);
+	pktop_add_op(ANDNA_GET_ANDNA_CACHE,SKT_TCP, andna_tcp_port, put_andna_cache);
+	pktop_add_op(ANDNA_PUT_ANDNA_CACHE,SKT_TCP, andna_tcp_port, 0);
+	pktop_add_op(ANDNA_GET_COUNT_CACHE,SKT_TCP, andna_tcp_port, put_counter_cache);
+	pktop_add_op(ANDNA_PUT_COUNT_CACHE,SKT_TCP, andna_tcp_port, 0);
+	pktop_add_op(ANDNA_GET_SINGLE_ACACHE,SKT_UDP, andna_udp_port, put_single_acache);
+	pktop_add_op(ANDNA_SPREAD_SACACHE, SKT_UDP, andna_udp_port, recv_spread_single_acache);
 
 	if(!server_opt.disable_resolvconf)
 		/* Restore resolv.conf if our backup is still there */
@@ -282,11 +274,28 @@ void andna_del_errors(void)
 	rqerr_del_error(E_ANDNA_INVALID_SIGNATURE);
 }
 
+void andna_del_pktop(void)
+{
+	pktop_del_op(ANDNA_REGISTER_HNAME);
+	pktop_del_op(ANDNA_CHECK_COUNTER);
+	pktop_del_op(ANDNA_RESOLVE_HNAME);
+	pktop_del_op(ANDNA_RESOLVE_REPLY);
+	pktop_del_op(ANDNA_RESOLVE_IP);
+	pktop_del_op(ANDNA_REV_RESOLVE_REPLY);
+	pktop_del_op(ANDNA_GET_ANDNA_CACHE);
+	pktop_del_op(ANDNA_PUT_ANDNA_CACHE);
+	pktop_del_op(ANDNA_GET_COUNT_CACHE);
+	pktop_del_op(ANDNA_PUT_COUNT_CACHE);
+	pktop_del_op(ANDNA_GET_SINGLE_ACACHE);
+	pktop_del_op(ANDNA_SPREAD_SACACHE);
+}
+
 void andna_close(void)
 {
 	andna_save_caches();
 	andna_del_requests();
 	andna_del_errors();
+	andna_del_pktop();
 	if(!server_opt.disable_resolvconf)
 		andna_resolvconf_restore();
 	andns_close();

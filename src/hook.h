@@ -20,6 +20,7 @@
 #define HOOK_H
 
 #include "qspn.h"
+#include "request.h"
 
 #define MAX_FIRST_RADAR_SCANS	1  /* How many time we have to retry 
 				      the first radar_scan if we
@@ -37,24 +38,24 @@
 #define HOOK_RQ_TIMEOUT		8  /* seconds */
 
 /* Hook requests */
-int GET_FREE_NODES,		/* <<Give me the list of free ips in your
+rq_t GET_FREE_NODES,		/* <<Give me the list of free ips in your
 				     gnode, plz>> */
-    GET_QSPN_ROUND,		/* <<Yo, Gimme the qspn ids and times>> */
-    GET_INT_MAP,		
-    GET_EXT_MAP,
-    GET_BNODE_MAP;
+     GET_QSPN_ROUND,		/* <<Yo, Gimme the qspn ids and times>> */
+     GET_INT_MAP,		
+     GET_EXT_MAP,
+     GET_BNODE_MAP;
 
 /* Hook replies */
-int PUT_FREE_NODES,		/* <<Here it is the list of free ips in your
+re_t PUT_FREE_NODES,		/* <<Here it is the list of free ips in your
 				   gnode, cya>> */
-    PUT_QSPN_ROUND,
-    PUT_INT_MAP,
-    PUT_EXT_MAP,
-    PUT_BNODE_MAP;
+     PUT_QSPN_ROUND,
+     PUT_INT_MAP,
+     PUT_EXT_MAP,
+     PUT_BNODE_MAP;
 
 /* Hook errors */
-int E_QGROUP_FULL,
-    E_NTK_FULL;
+rqerr_t E_QGROUP_FULL,
+    	E_NTK_FULL;
 
 /*
  * * *  Global vars  * * *

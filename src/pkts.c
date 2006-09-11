@@ -28,8 +28,11 @@
 #include "request.h"
 #include "endianness.h"
 #include "pkts.h"
-#include "accept.h"
 #include "common.h"
+
+struct pkt_op_table *pkt_op_tbl=0;
+int    pkt_op_tbl_counter=0;
+u_char pkt_op_tbl_sorted=0;
 
 interface cur_ifs[MAX_INTERFACES];
 int cur_ifs_n;
@@ -48,11 +51,11 @@ int cur_ifs_n;
 void pkts_init(interface *ifs, int ifs_n, int queue_init)
 {
 	/* register the ACK replies */
-	ACK_AFFERMATIVE = rq_add_request("ACK_AFFERMATIVE", RQ_REPLY);
-	ACK_NEGATIVE 	= rq_add_request("ACK_NEGATIVE",    RQ_REPLY);
+	RQ_ADD_REQUEST(ACK_AFFERMATIVE, RQ_REPLY);
+	RQ_ADD_REQUEST(ACK_NEGATIVE,    RQ_REPLY);
 
 	/* request errors */
-	E_INVALID_PKT = rqerr_add_error("E_INVALID_PKT", "Invalid packet");
+	RQERR_ADD_ERROR(E_INVALID_PKT, "Invalid packet");
 
 	cur_ifs_n = ifs_n > MAX_INTERFACES ? ifs_n : MAX_INTERFACES;
 	memcpy(cur_ifs, ifs, sizeof(interface)*cur_ifs_n);
@@ -553,7 +556,7 @@ finish:
 	return sk;
 }
 
-void pkt_fill_hdr(pkt_hdr *hdr, u_char flags, int id, u_char op, size_t sz)
+void pkt_fill_hdr(pkt_hdr *hdr, u_char flags, int id, rq_t op, size_t sz)
 {
 	hdr->ntk_id[0]='n';
 	hdr->ntk_id[1]='t';
@@ -565,24 +568,137 @@ void pkt_fill_hdr(pkt_hdr *hdr, u_char flags, int id, u_char op, size_t sz)
 	hdr->sz	   = sz;
 }
 
-	
-/* 
- * add_pkt_op: Add the `exec_f' in the pkt_exec_functions array.
- * `op' must be add int the pkt_op_tbl if it is a request that will be
- * received or if it is an op that will be sent with send_rq().
+
+
+/*\
+ *
+ *	* * *  Pkt_op_table functions  * * *
+ *
+ * Functions used to manipulate the `pkt_op_table'. 
+ * See pkts.h for more info.
+ *
+\*/
+
+/*
+ * pktop_hash_cmp
  */
-void add_pkt_op(u_char op, char sk_type, u_short port, int (*exec_f)(PACKET pkt))
+int pktop_hash_cmp(const void *a, const void *b)
 {
-	pkt_op_tbl[op].sk_type   = sk_type;
-	pkt_op_tbl[op].port	 = port;
-	pkt_op_tbl[op].exec_func = exec_f;
+	struct pkt_op_table *ai=(struct pkt_op_table *)a, 
+			    *bi=(struct pkt_op_table *)b;
+
+	return (ai->rq_hash > bi->rq_hash) - (ai->rq_hash < bi->rq_hash);
 }
 
+/*
+ * pktop_sort_table
+ *
+ * Sorts the `pkt_op_tbl' table in ascending order, comparing the
+ * pkt_op_tbl->rq_hash values.
+ */
+void pktop_sort_table(void)
+{
+	qsort(pkt_op_tbl, pkt_op_tbl_counter,
+			sizeof(struct pkt_op_table), pktop_hash_cmp);
+	pkt_op_tbl_sorted=1;
+}
+
+/*
+ * pktop_bsearch_rq
+ *
+ * Performs a bsearch() on `pkt_op_tbl' searching for the matching `rq_hash'.
+ * If the search has a positive result, a pointer to the found struct is
+ * returned, otherwise 0 will be the return value.
+ */
+struct pkt_op_table *
+pktop_bsearch_rq(rq_t rq_hash)
+{
+	struct pkt_op_table pot_tmp = { .rq_hash = rq_hash };
+
+	if(!pkt_op_tbl_sorted)
+		pktop_sort_table();
+
+	return (struct pkt_op_table *)
+		bsearch(&pot_tmp, pkt_op_tbl, pkt_op_tbl_counter,
+			sizeof(struct pkt_op_table), pktop_hash_cmp);
+}
+
+/* 
+ * pktop_add_op
+ *
+ * Add the `exec_f' in the pkt_exec_functions array.
+ * `op' is the request/reply hash.
+ * WARNING: no check is made if `op' corresponds to a valid registered 
+ * request or reply.
+ *
+ * If `rq_hash' has been already registered or if a hash collision occurs,
+ * fatal() is immediately called.
+ *
+ * See the description of the pkt_op_table in pkts.h for more infos.
+ */
+void pktop_add_op(rq_t rq_hash, char sk_type, u_short port, 
+		int (*exec_f)(PACKET pkt))
+{
+	int i;
+
+	pkt_op_tbl=xrealloc(pkt_op_tbl, 
+			    (pkt_op_tbl_counter+1)*sizeof(struct pkt_op_table));
+
+	for(i=0; i<pkt_op_tbl_counter; i++)
+		if(pkt_op_tbl[i].rq_hash == rq_hash)
+			fatal(ERROR_MSG 
+				"The \"%s\" request/reply has been already"
+				"registered with pkt_add_op()."
+				"If it hasn't, then its hash is colliding with"
+				"another request/reply (VERY unlikely)",
+			      ERROR_POS, rq_rqerr_to_str(rq_hash));
+
+	pkt_op_tbl[pkt_op_tbl_counter].rq_hash   = rq_hash;
+	pkt_op_tbl[pkt_op_tbl_counter].sk_type   = sk_type;
+	pkt_op_tbl[pkt_op_tbl_counter].port	 = port;
+	pkt_op_tbl[pkt_op_tbl_counter].exec_func = exec_f;
+
+	pkt_op_tbl_counter++;
+	pkt_op_tbl_sorted=0;
+}
+
+/*
+ * pktop_del_op
+ *
+ * Removes the `rq_hash' request (or reply) from the pkt_op_tbl table.
+ */
+void pktop_del_op(rq_t rq_hash)
+{
+	struct pkt_op_table *pot=0;
+	int idx;
+
+	if(!(pot=pktop_bsearch_rq(rq_hash)))
+		return;
+
+	idx=((char *)pot-(char *)pkt_op_tbl)/sizeof(struct pkt_op_table);
+	if(idx < pkt_op_tbl_counter-1)
+		/* Shifts all the succesive elements of `idx', in this way,
+		 * the order of the array isn't changed */
+		memmove(&pkt_op_tbl[idx], 
+			&pkt_op_tbl[idx+1],
+			sizeof(struct pkt_op_table)*(pkt_op_tbl_counter-idx-2));
+	pkt_op_tbl_counter--;
+	pkt_op_tbl=xrealloc(pkt_op_tbl, pkt_op_tbl_counter*sizeof(struct pkt_op_table));
+}
+
+
+/*\
+ *
+ * 	* * *  Send_rq, forward_pkt, pkt_err, pkt_exec  * * *
+ *
+ * Functions to send, forward and exec a packet.
+ *
+\*/
 
 /*
  * send_rq
  *
- * This functions send a `rq' request, with an id set to `rq_id', to
+ * This functions send the `rq_hash' request, with the id set to `rq_id', to
  * `pkt->to'.
  *
  * If `pkt->sk' is non zero, it will be used to send the request.
@@ -598,7 +714,7 @@ void add_pkt_op(u_char op, char sk_type, u_short port, int (*exec_f)(PACKET pkt)
  * test fails it gives an appropriate error message.
  *
  * If `rpkt'  is not null send_rq confronts the OP of the received reply pkt 
- * with `re'; if the test fails it gives an appropriate error message.
+ * with `re_hash'; if the test fails it gives an appropriate error message.
  *
  * If `pkt'->hdr.flags has the ASYNC_REPLY set, the `rpkt' will be received with
  * the pkt_queue, in this case, if `rpkt'->from is set to a valid ip, it will
@@ -612,9 +728,12 @@ void add_pkt_op(u_char op, char sk_type, u_short port, int (*exec_f)(PACKET pkt)
  * On failure a negative value is returned, otherwise 0.
  * The error values are defined in pkts.h.
  */
-int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, 
+int send_rq(PACKET *pkt, int pkt_flags, rq_t rq_hash, int rq_id, re_t re_hash,
 		int check_ack, PACKET *rpkt)
 {
+	struct pkt_op_table *pot=0;
+	request *rq_h;
+
 	ssize_t err;
 	int ret=0;
 	const char *ntop=0;
@@ -622,15 +741,13 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re,
 	inet_prefix *wanted_from=0;
 
 
-	if(op_verify(rq)) {
-		error("\"%s\" request/reply is not valid!", rq_str);
+	if(!(rq_h=rq_get_rqstruct(rq_hash))) {
+		error(ERROR_MSG "\"0x%x\" request/reply is not valid!", 
+				ERROR_POS, rq_hash);
 		return SEND_RQ_ERR_RQ;
 	}
-	rq_str = !re_verify(rq) ? re_to_str(rq) : rq_to_str(rq);
-	if(re && re_verify(re)) {
-		error("\"%s\" reply is not valid!", re_str);
-		return SEND_RQ_ERR_RE;
-	}
+	rq_str = rq_h->name;
+	pot = pktop_bsearch_rq(rq_hash);
 
 	ntop=inet_to_str(pkt->to);
 
@@ -638,24 +755,24 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re,
 	if(check_ack)
 		pkt->hdr.flags|=SEND_ACK;
 	
-	pkt_fill_hdr(&pkt->hdr, pkt->hdr.flags, rq_id, rq, pkt->hdr.sz);
+	pkt_fill_hdr(&pkt->hdr, pkt->hdr.flags, rq_id, rq_hash, pkt->hdr.sz);
 	if(!pkt->hdr.sz)
 		pkt->msg=0;
 
 	if(!pkt->port) {
-		if(!pkt_op_tbl[rq].port && !pkt->sk) {
+		if(pot && !pot->port && !pkt->sk) {
 			error("send_rq: The rq %s doesn't have an associated "
 					"port.", rq_str);
 			ERROR_FINISH(ret, SEND_RQ_ERR_PORT, finish);
 		}
-		pkt_addport(pkt, pkt_op_tbl[rq].port);
+		pkt_addport(pkt, pot->port);
 	}
 
 	/* If the PKT_BIND_DEV flag is set we can use pkt->dev */
 	pkt->dev = (pkt->pkt_flags & PKT_BIND_DEV) ? pkt->dev : 0;
 
 	if(!pkt->sk_type)
-		pkt->sk_type=pkt_op_tbl[rq].sk_type;
+		pkt->sk_type=pot->sk_type;
 
 	if(!pkt->sk) {
 		if(!pkt->to.family || !pkt->to.len) {
@@ -738,12 +855,16 @@ int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re,
 		}
 
 		if((rpkt->hdr.op == ACK_NEGATIVE) && check_ack) {
-			u_char err_ack;
-			memcpy(&err_ack, rpkt->msg, sizeof(u_char));
+			rqerr_t err_ack;
+
+			memcpy(&err_ack, rpkt->msg, sizeof(rqerr_t));
+
 			error("%s failed. The node %s replied: %s", rq_str, ntop, 
 					rq_strerror(err_ack));
 			ERROR_FINISH(ret, SEND_RQ_ERR_REPLY, finish);
-		} else if(rpkt->hdr.op != re && check_ack) {
+
+		} else if(rpkt->hdr.op != re_hash && check_ack) {
+
 			error("The node %s replied %s but we asked %s!", ntop, 
 					re_to_str(rpkt->hdr.op), re_str);
 			ERROR_FINISH(ret, SEND_RQ_ERR_RECVOP, finish);
@@ -783,7 +904,7 @@ int forward_pkt(PACKET rpkt, inet_prefix to)
  * containing the "err" code.
  * If `free_pkt' is not 0, `pkt' will be freed.
  */
-int pkt_err(PACKET pkt, u_char err, int free_pkt)
+int pkt_err(PACKET pkt, rqerr_t err, int free_pkt)
 {
 	char *msg;
 	u_char flags=0;
@@ -797,10 +918,10 @@ int pkt_err(PACKET pkt, u_char err, int free_pkt)
 	/* It's useless to compress this pkt */
 	pkt.pkt_flags&=~PKT_COMPRESSED;
 
-	pkt_fill_hdr(&pkt.hdr, flags, pkt.hdr.id, ACK_NEGATIVE, sizeof(u_char));
+	pkt_fill_hdr(&pkt.hdr, flags, pkt.hdr.id, ACK_NEGATIVE, sizeof(rqerr_t));
 	
-	pkt.msg=msg=xmalloc(sizeof(u_char));
-	memcpy(msg, &err, sizeof(u_char));
+	pkt.msg=msg=xmalloc(sizeof(rqerr_t));
+	memcpy(msg, &err, sizeof(rqerr_t));
 		
 	err=send_rq(&pkt, 0, ACK_NEGATIVE, pkt.hdr.id, 0, 0, 0);
 
@@ -817,34 +938,24 @@ int pkt_err(PACKET pkt, u_char err, int free_pkt)
  *
  * It "executes" the received `pkt' passing it to the function which associated 
  * to `pkt'.hdr.op.
- *
- * `acpt_idx' is the accept table index of the connection where the pkt was
- * received.
  */
-int pkt_exec(PACKET pkt, int acpt_idx)
+int pkt_exec(PACKET pkt)
 {
+	struct pkt_op_table *pot=0;
+	request *rq=0;
+
 	const char *ntop;
 	const u_char *op_str;
-	int (*exec_f)(PACKET pkt);
+	int (*exec_f)(PACKET pkt)=0;
 	int err=0;
 
-	if(!re_verify(pkt.hdr.op))
-		op_str=re_to_str(pkt.hdr.op);
-	else if(!rq_verify(pkt.hdr.op))
-		op_str=rq_to_str(pkt.hdr.op);
-	else {
+
+	if(!(rq=rq_get_rqstruct(pkt.hdr.op))) {
 		debug(DBG_SOFT, "Dropped pkt from %s: bad op value", 
 				inet_to_str(pkt.from));
 		return -1;	/* bad op */
-	}
-
-	if((err=add_rq(pkt.hdr.op, &accept_tbl[acpt_idx].rqtbl))) {
-		ntop=inet_to_str(pkt.from);
-		error("From %s: Cannot process the %s request: %s", ntop, 
-				op_str, rq_strerror(err));
-		pkt_err(pkt, err, 1);
-		return -1;
-	}
+	} else
+		op_str=rq->name;
 
 	if(op_filter_test(pkt.hdr.op)) {
 		/* Drop the pkt, `pkt.hdr.op' has been filtered */ 
@@ -857,9 +968,11 @@ int pkt_exec(PACKET pkt, int acpt_idx)
 	}
 		
 	/* Call the function associated to `pkt.hdr.op' */
-	exec_f = pkt_op_tbl[pkt.hdr.op].exec_func;
+	if((pot = pktop_bsearch_rq(pkt.hdr.op)))
+			exec_f = pot->exec_func;
 #ifdef DEBUG
-	if(pkt.hdr.op != ECHO_ME && pkt.hdr.op != ECHO_REPLY) {
+	if(pkt.hdr.op != rq_hash_name("ECHO_ME") && 
+			pkt.hdr.op != rq_hash_name("ECHO_REPLY")) {
 		ntop=inet_to_str(pkt.from);
 		debug(DBG_INSANE, "Received %s from %s, id 0x%x", op_str, ntop,
 				pkt.hdr.id);
@@ -881,9 +994,12 @@ int pkt_exec(PACKET pkt, int acpt_idx)
 	return err;
 }
 
-/*
- * * * Pkt queue functions * * *
- */
+
+/*\
+ *
+ * 	* * *  Pkt queue functions  * * *
+ *
+\*/
 
 pthread_attr_t wait_and_unlock_attr;
 void pkt_queue_init(void)

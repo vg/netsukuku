@@ -27,11 +27,11 @@
 #define MAXMSGSZ		65536
 
 /* ACK replies */
-int ACK_AFFERMATIVE,			/* Ack affermative. Everything is fine. */
-    ACK_NEGATIVE;			/* The request has been rejected. 
+rq_t ACK_AFFERMATIVE,			/* Ack affermative. Everything is fine. */
+     ACK_NEGATIVE;			/* The request has been rejected. 
 					   The error is in the pkt's body */
 /* request error */
-int E_INVALID_PKT;
+re_t E_INVALID_PKT;
 
 
 /*\
@@ -96,23 +96,26 @@ int E_INVALID_PKT;
 					   then compress the packet */
 
 /*
- * pkt_hdr: the pkt_hdr is always put at the very beginning of any netsukuku
- * packets
+ * pkt_hdr
+ *
+ * The pkt_hdr is always put at the very beginning of any netsukuku packets
  */
 typedef struct
 {
 	char		ntk_id[3];
 	int 		id;
 	u_char		flags; 
-	u_char 		op;
+	rq_t		op;
 	size_t 		sz;		/* The size of the message */
 	size_t		uncompress_sz;	/* The size of the decompressed packet. */
 }_PACKED_  pkt_hdr;
-INT_INFO pkt_hdr_iinfo = { 3, 
-			   { INT_TYPE_32BIT, INT_TYPE_32BIT, INT_TYPE_32BIT },
-			   { sizeof(char)*3, sizeof(char)*5+sizeof(int), 
-			     sizeof(char)*5+sizeof(int)+sizeof(size_t) },
-			   { 1, 1, 1 }
+INT_INFO pkt_hdr_iinfo = { 4, 
+			   { INT_TYPE_32BIT, INT_TYPE_32BIT, INT_TYPE_32BIT,
+			     INT_TYPE_32BIT },
+			   { sizeof(char)*3, sizeof(char)*4+sizeof(int),
+			     sizeof(char)*4+sizeof(int)*2,
+			     sizeof(char)*4+sizeof(int)*2+sizeof(size_t) },
+			   { 1, 1, 1, 1 }
 			 };
 #define PACKET_SZ(sz) (sizeof(pkt_hdr)+(sz))
 
@@ -175,19 +178,27 @@ INT_INFO brdcast_hdr_iinfo = { 1, { INT_TYPE_32BIT }, { sizeof(char)*4 }, { 1 } 
 
 
 /* 
- * In this stable, each op (request or reply) is associated with a
- * `pkt_exec_func', which pkt_exec() will use to handle the incoming packets of
- * the same op.
- * Each op is also associated with its specific socket type (udp, tcp, bcast)
- * with `sk_type', and the `port' where the pkt will be sent or received.
- * Each element in the table is equivalent to a request or reply, ie the
- * function to handle the x request is at pkt_op_table[x].exec_func;
+ * pkt_op_table
+ *
+ * In this table, each request or reply is associated with a `pkt_exec_func'.
+ * When pkt_exec() will receive a pkt which has the same request/reply id, it
+ * will call the `pkt_exec_func()' function, passing to it the received pkt.
+ *
+ * Each request is also associated with its specific socket type (udp, tcp, 
+ * bcast) in `sk_type', and with the `port' where the pkt will be sent or
+ * received.
+ *
+ * The table is kept ordered with qsort(), in this way it is possible to do a
+ * fast bsearch() on it.
  */
 struct pkt_op_table {
+	rq_t		rq_hash;
+
 	char 		sk_type;
 	u_short 	port;
+
 	void 		*exec_func;
-} pkt_op_tbl[TOTAL_OPS];
+};
 
 /* pkt_queue's flags */
 #define PKT_Q_MTX_LOCKED	1		/* We are waiting the reply */
@@ -197,20 +208,41 @@ struct pkt_op_table {
 						   receiving the async pkt */
 
 /*
+ * pkt_queue
+ *
  * The pkt_queue is used when a reply will be received with a completely new 
- * connection. This is how it works:
- * The pkt.hdr.flags is ORed with ASYNC_REPLY, a new struct is added in the
- * pkt_q linked list, pkt_q->pkt.hdr.id is set to the id of the outgoing pkt
- * and pkt_q->pkt.hdr.op is set to the waited reply op.
- * The function x() it's started as a new thread and the request is sent; to 
- * receive the reply, x() locks twice `mtx'. The thread is now freezed.
- * The reply is received by pkt_exec() which passes the pkt to the function
- * y(). y() searches in the pkt_q a struct which has the same pkt.hdr.id of
- * the received pkt. The reply pkt is copied in the found struct and `mtx' is
- * unlocked. x() can now continue to read the reply and unlocks `mtx'.
- * Note that the reply pkt must have the ASYNC_REPLIED flag set in pkt.hdr.flags.
+ * connection. 
+ * This is what happens when we want to send out the packet `pkt' and we hope
+ * to receive an ASYNC reply:
+ * 	
+ * 	* The pkt.hdr.flags is ORed with ASYNC_REPLY
+ *
+ * 	* A new struct is added in the pkt_q linked list:
+ * 		* pkt_q->pkt.hdr.id is set to the id of the outgoing pkt
+ * 		* pkt_q->pkt.hdr.op is set to the waited reply op.
+ *
+ * 	* The function wait_and_unlock() it's started as a new thread and 
+ * 	  the request is sent
+ *
+ * 	* to receive the reply, wait_and_unlock() locks twice pkt_q->`mtx'.
+ * 	  The thread is now freezed.
+ *
+ * 	* The reply is received by pkt_exec() which passes the pkt to the 
+ * 	  function pkt_q_add_pkt().
+ * 	  	* pkt_q_add_pkt() searches in the pkt_q llist a struct 
+ * 	  	  which has the same pkt.hdr.id of the received pkt. 
+ *
+ * 	  	* The reply pkt is copied in the found struct
+ *
+ * 	  	* pkt_q->`mtx' is unlocked.
+ *
+ * 	* wait_and_unlock() can now continue to read the reply and 
+ * 	  unlocks `mtx'.
+ *
+ * Note that the reply pkt must have the ASYNC_REPLIED flag set 
+ * in pkt.hdr.flags.
  */
-struct pkt_queue{
+struct pkt_queue {
 	LLIST_HDR	(struct pkt_queue);
 
 	PACKET 		pkt;
@@ -249,7 +281,7 @@ ssize_t pkt_send(PACKET *pkt);
 ssize_t pkt_recv(PACKET *pkt);
 int pkt_tcp_connect(inet_prefix *host, short port, interface *dev);
 
-void pkt_fill_hdr(pkt_hdr *hdr, u_char flags, int id, u_char op, size_t sz);
+void pkt_fill_hdr(pkt_hdr *hdr, u_char flags, int id, rq_t op, size_t sz);
 
 #define SEND_RQ_ERR		-1
 #define SEND_RQ_ERR_RQ		-2
@@ -262,14 +294,16 @@ void pkt_fill_hdr(pkt_hdr *hdr, u_char flags, int id, u_char op, size_t sz);
 #define SEND_RQ_ERR_RECVOP	-9
 #define SEND_RQ_ERR_RECVID	-10
 #define SEND_RQ_ERR_REPLY	-11
-int send_rq(PACKET *pkt, int pkt_flags, u_char rq, int rq_id, u_char re, 
+int send_rq(PACKET *pkt, int pkt_flags, rq_t rq_hash, int rq_id, re_t re_hash,
 		int check_ack, PACKET *rpkt);
 
 int forward_pkt(PACKET rpkt, inet_prefix to);
-int pkt_err(PACKET pkt, u_char err, int free_pkt);
+int pkt_err(PACKET pkt, rqerr_t err, int free_pkt);
 
-void add_pkt_op(u_char op, char sk_type, u_short port, int (*exec_f)(PACKET pkt));
-int pkt_exec(PACKET pkt, int acpt_idx);
+void pktop_add_op(rq_t rq_hash, char sk_type, u_short port, 
+		int (*exec_f)(PACKET pkt));
+void pktop_del_op(rq_t rq_hash);
+int pkt_exec(PACKET pkt);
 
 void pkt_queue_init(void);
 void pkt_queue_close(void);
