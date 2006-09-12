@@ -117,25 +117,26 @@
   organizations supported by governments. Each bit of Internet traffic passes
   through proprietary backbones and routers.
   The Internet Service Providers give the connectivity to all the users, who
-  are in the lowest rank of this hierarchic pyramid. There is no way to share
-  the ownership of Internet and people can join the Net only in accordance
-  with conditions and terms imposed by the Majors.
+  are in the lowest rank of this hierarchic pyramid. For this reason, the 
+  Internet is not a global network created by the users and shared between
+  them. The people can join the Net only in accordance with the restrictive
+  conditions and terms imposed by the Majors.
+
   The Internet represents, today, the means to access information, knowledge
   and communication. About 1 billion of people can connect to this great
   proprietary network, but the remaining 5 billion of people, which don't have
   enough economic resource, are still waiting the multinationals to supply a
-  service with in their reach.
+  service within their reach.
   
   The Internet was born with the intent of warranting a secure and
   unattackable communication between the various nodes of the network, but
-  now, paradoxally, when an ISP decide to stop to provide its service, entire
-  nations are immediately cut out of the Internet.
+  now, paradoxally, an ISP has the power to cut out of the Internet entire
+  nations by simply stopping to give its services.
   
-  Beside that, Internet is not anonymous: the ISP and the multinationals can
-  trace back and analyse the traffic of data going through their servers,
-  without any limits.
+  Beside that, Internet is not anonymous: the ISP can trace back and analyse
+  the traffic of data going through their servers, without any limits.
  
-  The centralised and hierarchical structure of Internet creates, as a
+  The centralised and hierarchical structure of the Internet creates, as a
   consequence, other identical systems, based on it, i.e. the DNS.  
   The servers of the Domain Name System are managed by different ISPs, as well
   and the domains are literally sold through a similar centralised system.
@@ -146,16 +147,16 @@
   In China, the whole net is constantly watched by several computers filtering
   the Internet traffic: a Chinese will never be able to see or came to know
   about a site containing some keywords, such as "democracy", censored by
-  the government. Beside that, he'll never be able to express his own ideas on
-  the net, e.g. about his government's policy, without risking till the death
+  the government. He'll never be able to express his own ideas on the net,
+  e.g. about his government's policy, without risking till the death
   penalty.
 
   Internet was born to satisfy the military needs of security for the
   administration of the American defence, not to ensure freedom of
-  communication and information: in order to communicate each other the
-  Internet users are obliged to submit themselves to the control and to the
-  support of big multinationals, whose only aim is to expand their own
-  hegemony.  
+  communication and information: in order to communicate between each other
+  the Internet users are obliged to submit themselves to the control and to
+  the support of big multinationals, whose only aim is to expand their own
+  hegemony. 
   As long as all the efforts to bring more freedom, privacy and accessibility
   in the Internet face aversions, fears, contrary interests of governments and
   private companies, the very alternative solution to this problem is to let
@@ -237,10 +238,10 @@
   nodes, it makes use of a particular algorithm called
   Quantum Shortest Path Netsukuku (QSPN).
   A fractal is a mathematical structure which can be compressed up to the
-  infinite, because inside it, every part itself is composed by the same
+  infinite, because inside it, every part of itself is composed by the same
   fractal. Thus there is a high compression of a structure which can be
-  infinitely expanded. This means that we need just a few Kb to keep the whole
-  Netsukuku map.
+  infinitely expanded. This means that we need just few Kilobytes to keep the
+  whole Netsukuku map.
   The map structure of Netsukuku can be also defined more precisely by
   calling it a highly clusterised graph of nodes.
   
@@ -249,7 +250,7 @@
   chance and the chaos, which both don't need any heavy computation.
   The QSPN has to be executed on a real (or simulated) network. The nodes have
   to send the QSPN packets in order to "execute" it.
-  For this reason it is not always true that a determinated pkt will be sent
+  For this reason it is not always true that a specific pkt will be sent
   before another one. 
   
   2.4  Other implementations
@@ -284,7 +285,7 @@
   decentralised and totally free net. Those people were really happy after the
   first draft of the RFC.
   One year later, the project was lost in the infinite forks of time, but after
-  some time, the dust was shaked off the great Ipv7 book.
+  some time, the dust was shaken off the great Ipv7 book.
   We started to delineate the idea of the implementation of a pure net. Month
   by month the net became more and more refined, and the project became
   something concrete.
@@ -385,7 +386,6 @@
 
   5.   Npv7 Hybrid Theory: the final way
 
-  From the union of the Npv7 and Npv7_II 
   Npv7 Hybrid Theory was born from the union of the Npv7 and Npv7_II.
   This new version, exploits the advantages of both the internal map and the
   laser broadcast and in this way it can overpass their limits.
@@ -403,7 +403,7 @@
 
 
   In Netsukuku, as well as in Nature, there is no any need of using
-  mathematical schemes. Does a stream calculate the best route to reach the
+  mathematical models. Does a stream calculate the best route to reach the
   sea when it is still at the top of the mountain?
   The stream simply flows and its flux will always find its ideal route.
   
@@ -413,27 +413,27 @@
   net itself.
   
   The use of a map, for a protocol of dynamic nets, creates a lot of
-  troubles, since it has to be continuously updated. The solution is simple: to
-  avoid totally the use of maps and make every broadcasted request a
-  tracer_pkt (See 6.1 Tracer pkt).
-  In this way every node, which will receive the pkt, will known the best
-  route to reach the src_node and all the nodes which are at the middle of the
-  route itself, it will record these informations inside its internal map, it
-  will add its own entry inside the tracer_pkt and will continue to broadcast
-  the pkt.
-  The left problem is: in order to obtain all the routes for all the nodes
-  it's necessary that all the nodes broadcast a tracer_pkt. Currently this
-  problem doesn't exist at all. In fact, with the tracer_pkt we can obtain
-  also the routes for the middle-nodes: that means we need a smaller number
-  of n packets, where n is the number of nodes.
+  troubles, since it has to be continuously updated. 
+  The solution is simple: to totally avoid the use of maps and make every 
+  broadcasted request be a tracer_pkt (See 6.1 Tracer pkt).
+  In this way every node will:
+  	* receive the tracer pkt
+	* known the best route to reach the src_node, which sent the tracer
+	  pkt, and all the intermediate nodes which are in the middle of the
+	  route itself
+	* record these informations inside its internal map
+	* add its own entry inside the tracer_pkt
+	* forward the tracer_pkt
 
-  If every time a node receives a tracer_pkt, it sends it back to the
-  src_node, in this way we are sure that all the nodes can receive all the
-  possible routes. By using this system we obtain the same result achieved by
-  making every node send a tracer_pkt.
+  In order to obtain all the routes for all the nodes it would be sufficient
+  to let every node broadcast a new tracer_pkt, but doing so will waste a lot
+  of resources, in fact, the tracer_pkt can also obtain the routes for the
+  middle-nodes. Knowing this, it's possible to greatly optimize the discovery
+  of the network using at least less than `n' tracer packets, where n is the
+  number of nodes of the network.
 
   Those who already know the physic of waves, can easily understand how the
-  qspn works. If we throw a pebble at a mirror of water, contained in a
+  QSPN works. If we throw a pebble at a mirror of water, contained in a
   basin, circular waves begin to propagate themself from the point of impact.
   Each wave generates a child wave that continues to spread and to generate
   child waves, as well, which generate children, and so on...
@@ -449,25 +449,29 @@
   qspn_starter.
   A qspn_pkt is a normal tracer_pkt, but its broadcasting method is lightly
   different from the normal one.
-  Each node, which receives a qspn_close "closes" the link the pkt was
-  received and sends the pkt to all its other links. All the following
-  qspn_close pkts, which will arrive to the node, will be sent to all the
-  links, which have not been already closed.
+  
+  Each node, which receives a qspn_close "closes" the link where the pkt has
+  been received and sends the pkt to all its other links.
+  All the following qspn_close pkts, which will arrive to the node, will be
+  sent to all the links, which have not been already closed.
+
   When the qspn_close is totally diffused, some nodes will have all their
-  links closed. These nodes will be the extreme_nodes, which will send another
-  qspn_pkt (called qspn_open) in order to reply. The qspn_open contains all
-  the information already stored in the last qspn_close receveid. The
-  extreme_nodes will send the qspn_open to all their links, except the one
+  links closed. These nodes will be the extreme_nodes.
+  The extreme_nodes, to reply, send another qspn_pkt, called qspn_open.
+  The qspn_open contains all the information already stored in the last 
+  qspn_close received.
+  The extreme_nodes will send the qspn_open to all their links, except the one
   from which they have received the last qspn_close and to which they'll send
   an empty qspn_open.
+
   The qspn_open is a normal qspn_pkt, so it "opens" all the links in the same
   way of the qpsn_close. The nodes, which will have all their links opened
   will do absolutely nothing, in this way the end of the qspn_close is
   warranted.
   A qspn_open pkt has also a sub_id, a number that identifies, in the internal
-  map, the extreme node, which has generated the qspn_open pkt itself. The
-  sub_id, which remains unmodified in all the child qspn_open pkts, generated
-  from the first packet, is used to manage simultaneusly more qspn_pkts, since
+  map, the extreme node, which has generated the qspn_open pkt itself.
+  The sub_id, which remains unmodified in all the child qspn_open pkts, generated
+  from the first packet, is used to manage simultaneously more qspn_pkts, since
   each extreme_node generates one qspn_open and each of them has to be
   independent from the others.
   Indeed all the nodes, which have only one link, are surely e_nodes (extreme
@@ -478,8 +482,8 @@
   The qspn_starter, the node which has triggered the qspn, acts as a normal
   node but will not send qspn_opens, since it already sent the very first
   qspn_close. Moreover, in order to update its own map, it will use all the
-  qspn_closes which are going to be received, excepting those which have been
-  already sent by the qspn_starter and those which already crossed more than
+  qspn_closes which it will receive, excluding those which have been
+  already sent by other qspn_starter and those which already crossed more than
   one hop. In this way, even if there is more than one qspn_starter, the
   stability is maintained. 
   The in-depth description of the qspn_starter is in the following paragraph
@@ -490,17 +494,17 @@
   non-cyclic segment.
 
   Every time a tracer_pkt goes trough the net, the information about the
-  crossed routes, which it carries, are stored by all the nodes which receive
-  the tracer_pkt.
+  crossed routes, which it carries, are stored by all the nodes which have
+  received the tracer_pkt.
   A node will probably receive different routes to reach the same node, but it
   will memorize only the best MAXROUTES (10) routes. 
   
   The qspn_pkt id, which is stored in the pkt itself, is at the beginning set
-  as 1 and is incremented by 1 every time a new qspn_pkt is sent by any nodes.
+  to 1 and is incremented by 1 every time a new qspn_pkt is sent by any nodes.
   Because of that, all the nodes know the current qspn_pkt id. Each time a
   node desires to globally update the internal or external map, it sends a
   qspn_close, but only if it hasn't received, in the previous QSPN_WAIT
-  seconds, another qspn_close yet.
+  seconds, another qspn_close.
   If two nodes send, at the same time, a qspn_close, they will use the same
   pkt id 'cause they don't know that another qspn_close, with the same id, was
   already sent; in this case the way of working of the qspn doesn't change, in
