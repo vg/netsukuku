@@ -7,9 +7,6 @@
 * (generally these TODOs are already being implemented at the moment)
 
 - General API
-	- Write the API documentation of pkts.c
-	- Uodate the *.c to use the new API of pkts.c
-
 	- add_new_dev()
 	- tracer_pkt_add_build() // tracer_pkt_add_unpack()
 		 _______________________

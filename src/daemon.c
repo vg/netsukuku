@@ -157,7 +157,6 @@ void *udp_exec_pkt(void *passed_argv)
 	struct udp_exec_pkt_argv argv;
 	
 	PACKET rpkt;
-	const char *ntop;
 
 	memcpy(&argv, passed_argv, sizeof(struct udp_exec_pkt_argv));
 	memcpy(&rpkt, argv.recv_pkt, sizeof(PACKET));
@@ -419,7 +418,7 @@ void *tcp_daemon(void *door)
 			 * ACK_AFFERMATIVE.
 			 */
 			pkt_addto(&rpkt, &rpkt.from);
-			send_rq(&rpkt, 0, ACK_AFFERMATIVE, 0, 0, 0, 0);
+			pkt_send_rq(&rpkt, 0, ACK_AFFERMATIVE, 0, 0, 0, 0);
 
 			if(unset_nonblock_sk(fd))
 				continue;

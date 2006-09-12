@@ -23,6 +23,103 @@
 #include "request.h"
 #include "llist.c"
 
+/*\
+ *
+ *			Packet API
+ *		      ==============
+ *
+ * Sending and receiving a packet
+ * ------------------------------
+ *
+ * It's simple just use pkt_send_rq(). See its description in pkts.c.
+ * Here it is an example:
+ * 		
+ * 		PACKET pkt, rpkt;
+ *
+ * 		setzero(&pkt, sizeof(PACKET));
+ * 		setzero(&rpkt, sizeof(PACKET));
+ *
+ * 		(* Fill the header of the packet *)
+ *        	pkt_fill_hdr(&pkt.hdr, 0, 0, FOO_GET_NEW_MAP, 512);
+ *       	 	pkt_addto(&pkt, &rfrom);
+ *        	pkt_addsk(&pkt, my_family, 0, SKT_TCP);
+ *        	pkt_addport(&pkt, ntk_tcp_port);
+ *
+ *	        (* Compress the packet *)
+ *        	pkt_addcompress(&pkt);  
+ *
+ *		(* Put in pkt.msg the body of the packet *)
+ *		pkt.msg=xmalloc(512);
+ *		get_rand_bytes(pkt.msg, 512);
+ *
+ *		(* Send it and expect to receive the FOO_PUT_NEW_MAP reply *)
+ *		err=pkt_send_rq(&pkt, 0, FOO_GET_NEW_MAP, 0,
+ *		                        FOO_PUT_NEW_MAP, 1, &rpkt);
+ *		if(err < 0)
+ *			... something went bad ...
+ *
+ *		... do something with `rpkt' ...
+ *
+ *		pkt_free(&pkt, 0);
+ *		pkt_free(&rpkt, 0);
+ *
+ * To know all the various modifier of the packet, just see the exported
+ * functions which are listed at the end of this file.
+ *
+ * Note: if you just need to forward a received pkt use pkt_forward().
+ * 
+ * Sending an Error Reply
+ * ----------------------
+ * 
+ * Let's suppose you've received a packet with pkt_send_rq() (see above).
+ * The best way to send back an error as a reply is using the pkt_err()
+ * function. Its format is 
+ * 
+ * 	int pkt_err(PACKET pkt, rqerr_t err, int free_pkt)
+ *
+ * where `pkt' is the received pkt, and error is a Request Error which has
+ * been previously registered with rqerr_add_error() (see request.h).
+ * pkt_err() will send to `pkt'.from the specified `err' request error.
+ *
+ *
+ * Receiving a request
+ * -------------------
+ *
+ * Suppose the module Foo, has registered the FOO_GET_NEW_MAP request with
+ * rq_add_request() (see request.h).
+ *
+ * In order to be able to receive directly the FOO_GET_NEW_MAP requests which
+ * have been received by the local host, Foo has to add FOO_GET_NEW_MAP in the
+ * `pkt_op_tbl'. This is accomplished using the pktop_add_op() function.
+ *
+ * When the module Foo will be de-initialized, it will call pktop_del_op().
+ * 
+ * Example:
+ * 		int rcv_get_new_map(PACKET pkt)
+ * 		{
+ * 			... do something with pkt ...
+ *
+ * 			pkt_send_rq(... send the reply ...);
+ * 		}
+ *
+ * 		void init_foo(void)
+ * 		{
+ * 			...
+ * 			RQ_ADD_REQUEST( FOO_GET_NEW_MAP, 0 );
+ * 			...
+ * 			pktop_add_op(FOO_GET_NEW_MAP, SKT_TCP, 
+ * 					ntk_tcp_port, rcv_get_new_map);
+ *	 	}
+ *
+ *	 	void close_foo(void)
+ *	 	{
+ *	 		...
+ *	 		rq_del_request(FOO_GET_NEW_MAP);
+ *			...
+ *	 		pktop_del_op(FOO_GET_NEW_MAP)
+ *	 	}
+ */
+ 
 #define NETSUKUKU_ID		"ntk"
 #define MAXMSGSZ		65536
 
@@ -43,7 +140,7 @@ re_t E_INVALID_PKT;
 /* Pkt.sk_type */
 #define SKT_TCP 		1
 #define SKT_UDP			2
-#define SKT_BCAST		3
+#define SKT_BCAST		3	/* UDP sent in broadcast */
 
 /* 
  * Pkt.pkt_flags flags 
@@ -97,8 +194,9 @@ re_t E_INVALID_PKT;
 
 /*
  * pkt_hdr
+ * -------
  *
- * The pkt_hdr is always put at the very beginning of any netsukuku packets
+ * The pkt_hdr is always put at the very beginning of any packets
  */
 typedef struct
 {
@@ -121,6 +219,7 @@ INT_INFO pkt_hdr_iinfo = { 4,
 
 /*
  * PACKET
+ * ------
  *
  * this struct is used only to represent internally a packet, which
  * will be sent or received.
@@ -179,14 +278,16 @@ INT_INFO brdcast_hdr_iinfo = { 1, { INT_TYPE_32BIT }, { sizeof(char)*4 }, { 1 } 
 
 /* 
  * pkt_op_table
+ * ------------
  *
- * In this table, each request or reply is associated with a `pkt_exec_func'.
+ * In this table, each request or reply is associated with an `exec_func'.
  * When pkt_exec() will receive a pkt which has the same request/reply id, it
- * will call the `pkt_exec_func()' function, passing to it the received pkt.
+ * will call the `exec_func()' function, passing to it the received pkt.
  *
  * Each request is also associated with its specific socket type (udp, tcp, 
  * bcast) in `sk_type', and with the `port' where the pkt will be sent or
  * received.
+ * `sk_type' can be SKT_TCP, SKT_UDP or SKT_BCAST.
  *
  * The table is kept ordered with qsort(), in this way it is possible to do a
  * fast bsearch() on it.
@@ -209,6 +310,7 @@ struct pkt_op_table {
 
 /*
  * pkt_queue
+ * ---------
  *
  * The pkt_queue is used when a reply will be received with a completely new 
  * connection. 
@@ -294,10 +396,10 @@ void pkt_fill_hdr(pkt_hdr *hdr, u_char flags, int id, rq_t op, size_t sz);
 #define SEND_RQ_ERR_RECVOP	-9
 #define SEND_RQ_ERR_RECVID	-10
 #define SEND_RQ_ERR_REPLY	-11
-int send_rq(PACKET *pkt, int pkt_flags, rq_t rq_hash, int rq_id, re_t re_hash,
+int pkt_send_rq(PACKET *pkt, int pkt_flags, rq_t rq_hash, int rq_id, re_t re_hash,
 		int check_ack, PACKET *rpkt);
 
-int forward_pkt(PACKET rpkt, inet_prefix to);
+int pkt_forward(PACKET rpkt, inet_prefix to);
 int pkt_err(PACKET pkt, rqerr_t err, int free_pkt);
 
 void pktop_add_op(rq_t rq_hash, char sk_type, u_short port, 

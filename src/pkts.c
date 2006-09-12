@@ -16,9 +16,10 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * --
- * pkts.c:
+ * pkts.c
+ *
  * General functions to forge, pack, send, receive, forward and unpack
- * packets. 
+ * packets. See pkts.h for the API description.
  */
 
 #include "includes.h"
@@ -67,9 +68,13 @@ void pkts_init(interface *ifs, int ifs_n, int queue_init)
 	op_filter_reset(OP_FILTER_ALLOW);
 }
 
-/* 
- * * * Handy functions to build the PACKET * * 
- */
+
+/*\
+ *
+ * 	* * *  Handy functions to build the PACKET  * * * 
+ *
+\*/
+
 void pkt_addfrom(PACKET *pkt, inet_prefix *from)
 {
 	if(!from)
@@ -626,13 +631,20 @@ pktop_bsearch_rq(rq_t rq_hash)
 /* 
  * pktop_add_op
  *
- * Add the `exec_f' in the pkt_exec_functions array.
- * `op' is the request/reply hash.
- * WARNING: no check is made if `op' corresponds to a valid registered 
- * request or reply.
+ * Associate the `exec_f' function to the `rq_hash' request, in this way, when
+ * pkt_exec() will execute `exec_f' when it receive a request equal to `rq_hash'.
+ * The argument given to `exec_f' is a PACKET struct which contains the
+ * received packet.
  *
- * If `rq_hash' has been already registered or if a hash collision occurs,
- * fatal() is immediately called.
+ * `rq_hash' is the request/reply hash. WARNING: no check is made if `rq_hash'
+ * corresponds to a valid registered request or reply. Only if `rq_hash' has 
+ * been already registered or if a hash collision occurs, fatal() is immediately
+ * called.
+ *
+ * `sk_type' specifies the type of the socket and can be any of SKT_TCP,
+ * SKT_UDP, SKT_BCAST.
+ * 
+ * `port' is just the port where the request will be received/sent.
  *
  * See the description of the pkt_op_table in pkts.h for more infos.
  */
@@ -689,46 +701,68 @@ void pktop_del_op(rq_t rq_hash)
 
 /*\
  *
- * 	* * *  Send_rq, forward_pkt, pkt_err, pkt_exec  * * *
+ * 	* * *  Send_rq, pkt_forward, pkt_err, pkt_exec  * * *
  *
  * Functions to send, forward and exec a packet.
  *
 \*/
 
+
 /*
- * send_rq
+ * 		            pkt_send_rq
+ *		          ===============
  *
- * This functions send the `rq_hash' request, with the id set to `rq_id', to
- * `pkt->to'.
+ * This functions sends the `rq_hash' request, with the id set 
+ * to `rq_id', to `pkt->to'.
+ * If `rq_id' is zero, a random id will be chosen.
+ *
+ *
+ * Outgoing packet (`pkt')
+ * -----------------------
  *
  * If `pkt->sk' is non zero, it will be used to send the request.
- * If `pkt->sk' is 0, it will create a new socket and connection to `pkt->to',
- * the new socket is stored in `pkt->sk'.
+ * If `pkt->sk' is 0, a new socket will be created and connected to `pkt->to'.
+ * The new socket will be stored in `pkt->sk'.
  *
- * If `pkt->hdr.sz` is > 0 it includes the `pkt->msg' in the packet otherwise
- * it will be NULL. 
- *
- * If `rpkt' is not null it will receive and store the reply pkt in `rpkt'.
- *
- * If `check_ack' is set, send_rq checks the reply pkt ACK and its id; if the
- * test fails it gives an appropriate error message.
- *
- * If `rpkt'  is not null send_rq confronts the OP of the received reply pkt 
- * with `re_hash'; if the test fails it gives an appropriate error message.
- *
- * If `pkt'->hdr.flags has the ASYNC_REPLY set, the `rpkt' will be received with
- * the pkt_queue, in this case, if `rpkt'->from is set to a valid ip, it will
- * be used to check the sender ip of the reply pkt.
+ * If `pkt->hdr.sz` is > 0, the message contained in `pkt->msg' will be
+ * included in the outgoing packet, otherwise `pkt->msg' will be set to 0.
+ * It is possible to specify how the message will be included in the pkt:
+ *	 If PKT_COMPRESSED is set in `pkt'->pkt_flags, `pkt'->msg 
+ *	 will be compressed only if its size is > PKT_COMPRESS_THRESHOLD.
  *
  * If `pkt'->dev is not null and the PKT_BIND_DEV flag is set in
- * `pkt'->pkt_flags, it will bind the socket of the outgoing/ingoing packet to
+ * `pkt'->pkt_flags, the socket will be bound to the outgoing/ingoing packet to
  * the device named `pkt'->dev->dev_name.
  *
  *
- * On failure a negative value is returned, otherwise 0.
+ * Reply packet (`rpkt')
+ * ---------------------
+ *
+ * The reply sent by the remote host to the request which has been sent in the
+ * `Outgoing packet' is the `Reply packet'.
+ *
+ * If `rpkt' is not null, the reply packet will be received and stored 
+ * in `rpkt'.
+ *
+ * If `check_ack' is set, pkt_send_rq() checks if the reply pkt contains an 
+ * ACK_NEGATIVE error code and checks also if its the reply id matches the id
+ * and the rq_hash of the `Outgoing pkt'; if the test fails it gives an 
+ * appropriate error and returns.
+ * Instead, if `check_ack' is zero, no check is made on the received packet.
+ *
+ * If `pkt'->hdr.flags has the ASYNC_REPLY set, the `rpkt' will be received with
+ * the pkt_queue method, in this case, if `rpkt'->from is set to a valid ip, it 
+ * will be used to check the sender ip of the reply pkt.
+ *
+ *
+ * Returned value
+ * --------------
+ *
+ * On failure a negative value is returned, otherwise 0 will be the returned
+ * value.
  * The error values are defined in pkts.h.
  */
-int send_rq(PACKET *pkt, int pkt_flags, rq_t rq_hash, int rq_id, re_t re_hash,
+int pkt_send_rq(PACKET *pkt, int pkt_flags, rq_t rq_hash, int rq_id, re_t re_hash,
 		int check_ack, PACKET *rpkt)
 {
 	struct pkt_op_table *pot=0;
@@ -761,7 +795,7 @@ int send_rq(PACKET *pkt, int pkt_flags, rq_t rq_hash, int rq_id, re_t re_hash,
 
 	if(!pkt->port) {
 		if(pot && !pot->port && !pkt->sk) {
-			error("send_rq: The rq %s doesn't have an associated "
+			error("pkt_send_rq: The rq %s doesn't have an associated "
 					"port.", rq_str);
 			ERROR_FINISH(ret, SEND_RQ_ERR_PORT, finish);
 		}
@@ -883,16 +917,18 @@ finish:
 }
 
 /*
- * forward_pkt: forwards the received packet `rpkt' to `to'.
+ * pkt_forward
+ *
+ * forwards the received packet `rpkt' to `to'.
  */
-int forward_pkt(PACKET rpkt, inet_prefix to)
+int pkt_forward(PACKET rpkt, inet_prefix to)
 {
 	int err;
 
 	rpkt.sk=0; /* create a new connection */
 	pkt_addto(&rpkt, &to);
 	
-	err=send_rq(&rpkt, 0, rpkt.hdr.op, rpkt.hdr.id, 0, 0, 0);
+	err=pkt_send_rq(&rpkt, 0, rpkt.hdr.op, rpkt.hdr.id, 0, 0, 0);
 	if(!err)
 		inet_close(&rpkt.sk);
 
@@ -900,9 +936,14 @@ int forward_pkt(PACKET rpkt, inet_prefix to)
 }
 
 /* 
- * pkt_err: Sends back to "pkt.from" an error pkt, with ACK_NEGATIVE, 
- * containing the "err" code.
+ * pkt_err
+ *
+ * Sends back to `pkt.from' an error pkt, with ACK_NEGATIVE, 
+ * containing the given `err' error code.
+ *
  * If `free_pkt' is not 0, `pkt' will be freed.
+ *
+ * On error a negative value is returned.
  */
 int pkt_err(PACKET pkt, rqerr_t err, int free_pkt)
 {
@@ -923,7 +964,7 @@ int pkt_err(PACKET pkt, rqerr_t err, int free_pkt)
 	pkt.msg=msg=xmalloc(sizeof(rqerr_t));
 	memcpy(msg, &err, sizeof(rqerr_t));
 		
-	err=send_rq(&pkt, 0, ACK_NEGATIVE, pkt.hdr.id, 0, 0, 0);
+	err=pkt_send_rq(&pkt, 0, ACK_NEGATIVE, pkt.hdr.id, 0, 0, 0);
 
 	if(pkt.hdr.flags & ASYNC_REPLY)
 		pkt_free(&pkt, 1);
@@ -936,8 +977,8 @@ int pkt_err(PACKET pkt, rqerr_t err, int free_pkt)
 /*
  * pkt_exec
  *
- * It "executes" the received `pkt' passing it to the function which associated 
- * to `pkt'.hdr.op.
+ * It "executes" the received `pkt' passing it to the function which has been
+ * associated to the `pkt'.hdr.op request.
  */
 int pkt_exec(PACKET pkt)
 {

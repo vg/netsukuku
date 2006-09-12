@@ -460,7 +460,7 @@ int put_ext_map(PACKET rq_pkt)
 	pkt.msg=pack_extmap(me.ext_map, MAXGROUPNODE, &me.cur_quadg, &pkt_sz);
 	pkt.hdr.sz=pkt_sz;
 	debug(DBG_INSANE, "Reply %s to %s", re_to_str(PUT_EXT_MAP), ntop);
-	err=send_rq(&pkt, 0, PUT_EXT_MAP, rq_pkt.hdr.id, 0, 0, 0);
+	err=pkt_send_rq(&pkt, 0, PUT_EXT_MAP, rq_pkt.hdr.id, 0, 0, 0);
 	if(err < 0) {
 		error("put_ext_maps(): Cannot send the PUT_EXT_MAP reply to %s.", ntop);
 		ERROR_FINISH(ret, -1, finish);
@@ -529,7 +529,7 @@ int put_int_map(PACKET rq_pkt)
 	pkt.msg=pack_map(map, 0, MAXGROUPNODE, me.cur_node, &pkt_sz);
 	pkt.hdr.sz=pkt_sz;
 	debug(DBG_INSANE, "Reply %s to %s", re_to_str(PUT_INT_MAP), ntop);
-	err=send_rq(&pkt, 0, PUT_INT_MAP, rq_pkt.hdr.id, 0, 0, 0);
+	err=pkt_send_rq(&pkt, 0, PUT_INT_MAP, rq_pkt.hdr.id, 0, 0, 0);
 	if(err < 0) {
 		error("put_int_map(): Cannot send the PUT_INT_MAP reply to %s.", ntop);
 		ERROR_FINISH(ret, -1, finish);
@@ -601,7 +601,7 @@ int put_bnode_map(PACKET rq_pkt)
 	pkt.hdr.sz=pack_sz;
 
 	debug(DBG_INSANE, "Reply %s to %s", re_to_str(PUT_BNODE_MAP), ntop);
-	err=send_rq(&pkt, 0, PUT_BNODE_MAP, rq_pkt.hdr.id, 0, 0, 0);
+	err=pkt_send_rq(&pkt, 0, PUT_BNODE_MAP, rq_pkt.hdr.id, 0, 0, 0);
 	if(err < 0) {
 		error("put_bnode_maps(): Cannot send the PUT_BNODE_MAP reply to %s.", ntop);
 		ERROR_FINISH(ret, -1, finish);
@@ -675,7 +675,7 @@ int put_internet_gws(PACKET rq_pkt)
 	pkt.hdr.sz=pack_sz;
 
 	debug(DBG_INSANE, "Reply %s to %s", re_to_str(PUT_INTERNET_GWS), ntop);
-	err=send_rq(&pkt, 0, PUT_INTERNET_GWS, rq_pkt.hdr.id, 0, 0, 0);
+	err=pkt_send_rq(&pkt, 0, PUT_INTERNET_GWS, rq_pkt.hdr.id, 0, 0, 0);
 	if(err < 0) {
 		error("put_internet_gws(): Cannot send the PUT_INTERNET_GWS "
 				"reply to %s.", ntop);

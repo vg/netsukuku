@@ -496,8 +496,8 @@ retry:
 /*
  * rnl_send_rq
  *
- * It is a wrapper to send_rq. It is used to send or receive a packet to/from
- * the specified `rnode'.
+ * It is a wrapper to pkt_send_rq. It is used to send or receive a packet
+ * to/from the specified `rnode'.
  *
  * On error -1 is returned.
  *
@@ -513,7 +513,7 @@ retry:
 	if(!pkt->sk && rnl_fill_rq(rnode, pkt) < 0)
 		return -1;
 
-	ret=send_rq(pkt, pkt_flags, rq, rq_id, re, check_ack, rpkt);
+	ret=pkt_send_rq(pkt, pkt_flags, rq, rq_id, re, check_ack, rpkt);
 	if((ret == SEND_RQ_ERR_CONNECT || ret == SEND_RQ_ERR_SEND || 
 		ret == SEND_RQ_ERR_RECV)) {
 
@@ -1421,7 +1421,7 @@ int radar_scan(int activate_qspn)
 			if(me.cur_node->flags & MAP_HNODE)
 				memcpy(pkt.msg, &echo_scan, sizeof(u_char));
 
-			err=send_rq(&pkt, 0, ECHO_ME, my_echo_id, 0, 0, 0);
+			err=pkt_send_rq(&pkt, 0, ECHO_ME, my_echo_id, 0, 0, 0);
 			if(err < 0) {
 				if(errno == ENODEV) {
 					/* 
@@ -1567,7 +1567,7 @@ int radard(PACKET rpkt)
 		pkt.hdr.flags|=RESTRICTED_PKT;
 
 	/* We send it */
-	err=send_rq(&pkt, 0, ECHO_REPLY, rpkt.hdr.id, 0, 0, 0);
+	err=pkt_send_rq(&pkt, 0, ECHO_REPLY, rpkt.hdr.id, 0, 0, 0);
 	pkt_free(&pkt, 0);
 	if(err < 0) {
 		error("radard(): Cannot send back the ECHO_REPLY to %s.", ntop);

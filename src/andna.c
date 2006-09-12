@@ -783,7 +783,8 @@ int andna_register_hname(lcl_cache *alcl, snsd_service *snsd_delete)
 		ERROR_FINISH(ret, -1, finish);
 	}
 	
-	err=send_rq(&pkt, 0, ANDNA_REGISTER_HNAME, 0, ACK_AFFERMATIVE, 1, &rpkt);
+	err=pkt_send_rq(&pkt, 0, ANDNA_REGISTER_HNAME, 0, 
+			ACK_AFFERMATIVE, 1, &rpkt);
 	if(err < 0) {
 		error("andna_register_hname(): Registration of \"%s\" to %s "
 				"failed.", alcl->hostname, ntop);
@@ -912,7 +913,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 		/* Continue to forward the received pkt */
 		debug(DBG_SOFT, "The reg request pkt will be forwarded to: %s",
 				inet_to_str(to));
-		ret=forward_pkt(rpkt, to);
+		ret=pkt_forward(rpkt, to);
 		goto finish;
 	}
 
@@ -1064,7 +1065,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 		debug(DBG_SOFT, "Registration rq 0x%x accepted.", rpkt.hdr.id);
 		pkt.msg=0;
 		pkt_fill_hdr(&pkt.hdr, ASYNC_REPLIED, rpkt.hdr.id, ACK_AFFERMATIVE, 0);
-		ret=forward_pkt(pkt, rfrom);
+		ret=pkt_forward(pkt, rfrom);
 	}
 	
 	/**
@@ -1151,7 +1152,8 @@ int andna_check_counter(PACKET pkt)
 
 	/* Throw it */
 	pkt.sk=0;  /* Create a new connection */
-	ret=send_rq(&pkt, 0, ANDNA_CHECK_COUNTER, 0, ACK_AFFERMATIVE, 1, &rpkt);
+	ret=pkt_send_rq(&pkt, 0, ANDNA_CHECK_COUNTER, 0, 
+			ACK_AFFERMATIVE, 1, &rpkt);
 	ret=(ret < 0) ? -1 : ret;
 
 finish:
@@ -1261,7 +1263,7 @@ int andna_recv_check_counter(PACKET rpkt)
 		/* Continue to forward the received pkt */
 		debug(DBG_SOFT, "The check_counter rq pkt will be forwarded "
 				"to: %s", inet_to_str(to));
-		ret=forward_pkt(rpkt, to);
+		ret=pkt_forward(rpkt, to);
 		goto finish;
 	}
 
@@ -1302,7 +1304,7 @@ int andna_recv_check_counter(PACKET rpkt)
 		pkt_fill_hdr(&pkt.hdr, ASYNC_REPLIED, rpkt.hdr.id,
 				ACK_AFFERMATIVE, 0);
 		pkt.msg=0;
-		ret=forward_pkt(pkt, rfrom);
+		ret=pkt_forward(pkt, rfrom);
 	}
 
 	/* 
@@ -1506,7 +1508,8 @@ snsd_service *andna_resolve_hash(u_int hname_hash[MAX_IP_INT], int service,
 	memcpy(pkt.msg, &req, pkt.hdr.sz);
 	
 	setzero(&rpkt, sizeof(PACKET));
-	err=send_rq(&pkt, 0, ANDNA_RESOLVE_HNAME, 0, ANDNA_RESOLVE_REPLY, 1, &rpkt);
+	err=pkt_send_rq(&pkt, 0, ANDNA_RESOLVE_HNAME, 0,
+			ANDNA_RESOLVE_REPLY, 1, &rpkt);
 	if(err < 0) {
 		debug(DBG_NORMAL, ERROR_MSG "Resolution of 0x%x failed.",
 				  ERROR_FUNC, pkt.hdr.id);
@@ -1649,7 +1652,7 @@ int andna_recv_resolve_rq(PACKET rpkt)
 		/* Continue to forward the received pkt */
 		debug(DBG_SOFT, "The resolve_hame rq pkt will be forwarded "
 				"to: %s", inet_to_str(to));
-		ret=forward_pkt(rpkt, to);
+		ret=pkt_forward(rpkt, to);
 		goto finish;
 	}
 
@@ -1739,7 +1742,7 @@ reply_resolve_rq:
 	}
 
 	/* Forward it */
-	ret=forward_pkt(pkt, rfrom);
+	ret=pkt_forward(pkt, rfrom);
 	pkt_free(&pkt, 0);
 
 	if(spread_the_acache) {
@@ -1794,7 +1797,8 @@ lcl_cache *andna_reverse_resolve(inet_prefix ip)
 	pkt_addfrom(&rpkt, &to);
 	pkt_addtimeout(&pkt, ANDNA_REV_RESOLVE_RQ_TIMEOUT, 1, 1);
 	
-	err=send_rq(&pkt, 0, ANDNA_RESOLVE_IP, 0, ANDNA_REV_RESOLVE_REPLY, 1, &rpkt);
+	err=pkt_send_rq(&pkt, 0, ANDNA_RESOLVE_IP, 0,
+			ANDNA_REV_RESOLVE_REPLY, 1, &rpkt);
 	if(err < 0) {
 		error(ERROR_MSG "Reverse resolution of the %s "
 				"ip failed.", ERROR_FUNC, inet_to_str(to));
@@ -1854,7 +1858,7 @@ int andna_recv_rev_resolve_rq(PACKET rpkt)
         pkt_addto(&pkt, &rpkt.from);
 	pkt_addsk(&pkt, my_family, rpkt.sk, rpkt.sk_type);
 	pkt_addcompress(&pkt);
-        err=send_rq(&pkt, 0, ANDNA_REV_RESOLVE_REPLY, rpkt.hdr.id, 0, 0, 0);
+        err=pkt_send_rq(&pkt, 0, ANDNA_REV_RESOLVE_REPLY, rpkt.hdr.id, 0, 0, 0);
         if(err < 0)
 		ERROR_FINISH(ret, -1, finish);
 finish:
@@ -1922,7 +1926,8 @@ andna_cache *get_single_andna_c(u_int hash[MAX_IP_INT],
 	
 	ntop=inet_to_str(pkt.to);
 	debug(DBG_INSANE, "Quest %s to %s", rq_to_str(ANDNA_GET_SINGLE_ACACHE), ntop);
-	err=send_rq(&pkt, 0, ANDNA_GET_SINGLE_ACACHE, 0, ACK_AFFERMATIVE, 1, &rpkt);
+	err=pkt_send_rq(&pkt, 0, ANDNA_GET_SINGLE_ACACHE, 0,
+			ACK_AFFERMATIVE, 1, &rpkt);
 	if(err < 0)
 		ERROR_FINISH(ret, 0, finish);
 
@@ -2017,7 +2022,7 @@ int put_single_acache(PACKET rpkt)
 		/* Continue to forward the received pkt */
 		debug(DBG_SOFT, "The 0x%x rq pkt will be forwarded "
 				"to: %s", rpkt.hdr.id, inet_to_str(to));
-		ret=forward_pkt(rpkt, to);
+		ret=pkt_forward(rpkt, to);
 		goto finish;
 	}
 
@@ -2055,7 +2060,7 @@ int put_single_acache(PACKET rpkt)
 			debug(DBG_SOFT, "The 0x%x rq pkt will be forwarded "
 					"to an older hgnode: %s", rpkt.hdr.id,
 					inet_to_str(to));
-			ret=forward_pkt(pkt, to);
+			ret=pkt_forward(pkt, to);
 			pkt_free(&pkt, 1);
 			goto finish;
 		}
@@ -2091,7 +2096,7 @@ int put_single_acache(PACKET rpkt)
 	pkt.hdr.sz=pkt_sz;
 
 	debug(DBG_INSANE, "Reply put_single_acache to %s", ntop);
-	err=send_rq(&pkt, 0, ACK_AFFERMATIVE, rpkt.hdr.id, 0, 0, 0);
+	err=pkt_send_rq(&pkt, 0, ACK_AFFERMATIVE, rpkt.hdr.id, 0, 0, 0);
 	pkt_free(&pkt, 0);
 	if(err < 0) {
 		error("put_andna_cache(): Cannot send the put_single_acache "
@@ -2228,7 +2233,7 @@ andna_cache *get_andna_cache(map_node *dst_rnode, int *counter)
 	}
 	pkt_addtimeout(&pkt, ANDNA_HOOK_TIMEOUT, 1, 1);
 
-	err=send_rq(&pkt, 0, ANDNA_GET_ANDNA_CACHE, 0, 
+	err=pkt_send_rq(&pkt, 0, ANDNA_GET_ANDNA_CACHE, 0, 
 			ANDNA_PUT_ANDNA_CACHE, 1, &rpkt);
 	if(err < 0) {
 		ret=0;
@@ -2273,7 +2278,7 @@ int put_andna_cache(PACKET rq_pkt)
 	pkt.msg=pack_andna_cache(andna_c, &pkt_sz, ACACHE_PACK_PKT);
 	pkt.hdr.sz=pkt_sz;
 	debug(DBG_INSANE, "Reply %s to %s", re_to_str(ANDNA_PUT_ANDNA_CACHE), ntop);
-	err=send_rq(&pkt, 0, ANDNA_PUT_ANDNA_CACHE, rq_pkt.hdr.id, 0, 0, 0);
+	err=pkt_send_rq(&pkt, 0, ANDNA_PUT_ANDNA_CACHE, rq_pkt.hdr.id, 0, 0, 0);
 	if(err < 0) {
 		error("put_andna_cache(): Cannot send the ANDNA_PUT_ANDNA_CACHE reply to %s.", ntop);
 		ERROR_FINISH(ret, -1, finish);
@@ -2311,7 +2316,7 @@ counter_c *get_counter_cache(map_node *dst_rnode, int *counter)
 	}
 	pkt_addtimeout(&pkt, ANDNA_HOOK_TIMEOUT, 1, 1);
 
-	err=send_rq(&pkt, 0, ANDNA_GET_COUNT_CACHE, 0,
+	err=pkt_send_rq(&pkt, 0, ANDNA_GET_COUNT_CACHE, 0,
 			ANDNA_PUT_COUNT_CACHE, 1, &rpkt);
 	if(err < 0) {
 		ret=0;
@@ -2355,7 +2360,7 @@ int put_counter_cache(PACKET rq_pkt)
 	pkt.msg=pack_counter_cache(andna_counter_c, &pkt_sz);
 	pkt.hdr.sz=pkt_sz;
 	debug(DBG_INSANE, "Reply %s to %s", re_to_str(ANDNA_PUT_COUNT_CACHE), ntop);
-	err=send_rq(&pkt, 0, ANDNA_PUT_COUNT_CACHE, rq_pkt.hdr.id, 0, 0, 0);
+	err=pkt_send_rq(&pkt, 0, ANDNA_PUT_COUNT_CACHE, rq_pkt.hdr.id, 0, 0, 0);
 	if(err < 0) {
 		error("put_counter_cache(): Cannot send the ANDNA_PUT_COUNT_CACHE reply to %s.", ntop);
 		ERROR_FINISH(ret, -1, finish);

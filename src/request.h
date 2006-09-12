@@ -105,8 +105,11 @@
  *			send_rq(pkt, 0, FOO_GET_NEW_MAP, 0, 0, 0);
  *		}
  *
- *  Note that init_foo() must be called only once.
- *
+ *  Note 1: init_foo() must be called only once.
+ * 
+ *  Note 2: If you want to do something useful with your registered request,
+ *          you should at least add it in the `pkt_op_tbl'. See pktop_add_op()
+ *          in pkts.h.
 \*/
 
 #include "misc.h"
