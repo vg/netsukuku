@@ -508,7 +508,7 @@ void check_conflicting_options(void)
 	if(server_opt.shape_internet && 
 			!file_exist(server_opt.tc_shaper_script))
 		fatal("tc_shaper_script \"%s\" is inexistent",
-				server_opt.ip_masq_script);
+				server_opt.tc_shaper_script);
 
 	if(!server_opt.restricted && server_opt.inet_connection)
 		fatal("inet_connection=1 but ntk_restricted_mode=0. If you "

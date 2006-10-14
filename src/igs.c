@@ -502,6 +502,9 @@ void close_internet_gateway_search(void)
 	/* Free what has been malloced */
 	free_internet_hosts(server_opt.inet_hosts, 
 			    server_opt.inet_hosts_counter);
+
+	rq_del_request(GET_INTERNET_GWS);
+	rq_del_request(PUT_INTERNET_GWS);
 }
 
 /*

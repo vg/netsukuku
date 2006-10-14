@@ -667,15 +667,22 @@ finish:
 }
 
 /*
- * qspn_open_start: sends a new qspn_open when all the links are closed.
+ * qspn_open_start
+ * ---------------
+ *
+ * Sends a new qspn_open when all the links are closed.
+ *
  * `from' is the node who sent the last qspn_close which closed the last 
  * not-closed link. 
- * `pkt_to_all' is the the last qspn_close pkt sent by from, which is an rnode
+ *
+ * `pkt_to_all' is the the last qspn_close pkt sent by `from', which is a rnode
  * at the `from_rpos' position in the me.cur_node rnodes. `pkt_to_all' must 
  * be passed with the new tracer_pkt entry already added because it is 
  * sent as is.
+ *
  * `qspn_id', `root_node_pos', `gid' and `level' are the same parameters passed
  * to tracer_pkt_build to build the `pkt_to_all' pkt.
+ *
  * This functions is called only by qspn_close().
  */
 int qspn_open_start(int from_rpos, PACKET pkt_to_all, int qspn_id, 

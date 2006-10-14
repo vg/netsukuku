@@ -1,0 +1,181 @@
+%        File: qspn.tex
+%     Created: Fri Oct 13 09:00 PM 2006 C
+% Last Change: Fri Oct 13 09:00 PM 2006 C
+%
+\documentclass[a4paper]{article}
+\usepackage{color,graphicx}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\RequirePackage{ifpdf} % running on pdfTeX?
+\ifpdf
+\usepackage[pdftex]{hyperref}
+\else
+\newcommand{\href}[2]{ #1 }
+\fi
+\title{Quantum Shortest Path Netsukuku}
+\author{AlpT (@freaknet.org)}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+	This document describes the QSPN, the routing discovery algorithm used
+	by Netsukuku.
+	Through a deductive analysis the main proprieties of the QSPN are
+	shown. Moreover, a second version of the algorithm, is presented.
+\end{abstract}
+
+\section{Preface}
+\label{sec:preface}
+
+The first part of the document describes the reasoning which led us to the
+construction of the current form of the QSPN v2.
+If you are just interested in the description of the QSPN v1 and v2, you can
+directly skip to section \ref{sec:TPC}.
+
+\section{The general idea}
+\label{sec:general_idea}
+
+The aim of Netsukuku is to be a (physical) scalable mesh network, completely
+distributed and decentralised, anonymous and autonomous.
+
+The software, which must be executed by every node of the net, has to be
+unobtrusive. It has to use very few CPU and memory resources, in this way it
+will be possible to run it inside low-performance computers, like Access Points,
+embedded devices and old computers.
+
+If this requirements are met, Netsukuku can be easily used to build a worldwide
+distributed, anonymous and not controlled network, separated from the
+Internet, without the support of any servers, ISPs or authority controls.
+
+\subsection{The network model}
+\label{sec:net_model}
+
+Netsukuku prioritises the stability and the scalability of net: the network
+has to be able to grow to even $2^{2^7}$ nodes.
+For this reason, it's supposed that a node won't change its physical location
+quickly nor often.
+
+Some consequences of this assumption are: 
+\begin{enumerate}
+	\item	Mobiles node aren't supported by Netsukuku algorithms.
+		\footnote{It is possible to use other mesh network protocols
+		designed for mobility in conjunction with Netsukuku (f.e. see
+		\href{http://olsrd.org}{olsrd}), in the same way they are used in conjunction
+		with the Internet.}
+	\item   The network isn't updated quickly: several minutes may be
+		required before all the nodes become aware of a change of the
+		network (new nodes have joined, more efficient routes have
+		become available, \dots). However, when a node joins
+		the network, it can reach all the other nodes from the first
+		instant, using the routes of its neighbours.
+\end{enumerate}
+
+
+\subsection{The routing algorithm}
+One of the most important part of Netsukuku, is the routing discovery
+algorithm, which is responsible to find all the most efficient routes of the
+network. These routes will permit to each node to reach any other node.
+
+The routing algorithm must be capable to find the routes without overloading
+the network or the nodes' CPU and memory resources.
+
+\subsection{The QSPN}
+
+Netsukuku implements its own algorithm, the \emph{QSPN} (\textbf{Q}uantum
+\textbf{S}hortest \textbf{P}ath \textbf{N}etsukuku). The name derives from the
+way of working of its principal component: the \emph{TP} (Tracer Packet), a
+packet which gains a ``quantum'' of information at each hop.
+
+The QSPN is based on the assumptions made in section \ref{sec:net_model}.
+
+\section{Network topology}
+\label{sec:net_topology}
+
+The QSPN alone wouldn't be capable of handling the whole network, because it
+would still require too much memory. For example, even if we store just one
+route to reach one node and even if this route costs one byte, we would need
+1Gb of memory for a network composed by $10^9$ nodes (the current Internet).
+
+For this reason, it's necessary to structure the network in a convenient
+topology.
+
+\subsection{Fractal topology}
+Netsukuku, adopts a fractal like structure:
+256 nodes are grouped inside a \emph{group node} (gnode), 256 group nodes are grouped
+in a single \emph{group of group nodes} (ggnode), 256 group of group nodes are
+grouped in a gggnode, and so on.
+(We won't analyse the topology of Netsukuku. You can find more informations
+about it in the main documentation: \cite{ntksite}).
+\newline
+Since each gnode acts as a single real node,
+the QSPN is able to operate independently on each level of the fractal.
+
+Because in each level there are a maximum of 256 (g)nodes, the QSPN will
+always operate on a maximum of 256 (g)nodes, therefore we would need just to
+be sure that it works as aspected on every cases of a graph composed by $\le
+256$ nodes. By the way, we'll directly analyse the general case.
+
+For the sake of simplicity, in this paper, we will assume to operate on level
+0 (the level formed by 256 single nodes).
+
+\section{Tracer packet}
+\label{sec:TP}
+
+A \emph{TP} (Tracer Packet) is the fundamental concept on which the QSPN is
+based: 
+it is a packet which stores in its body the IDs of the traversed hops.
+
+\subsection{Tracer packet flood}
+
+A TP isn't sent to a specific destination but instead, it is used to flood the
+network. By saying ``the node A sends a TP'' we mean that ``the node A is
+starting a TP flood''.
+
+% TODO: continue here
+
+\subsection{Proprieties of the tracer packet}
+\begin{enumerate}
+	\item A node $D$ which received a TP, can know the exact route covered
+		by the TP. Therefore, $D$ can know the route to reach the
+		source node $S$, which sent the TP, and the routes to reach
+		the nodes standing in the middle of the route.
+		
+		For example, suppose that the TP received by $D$ is: $\left\{
+		S, A, B, C, D \right\}$. By looking at the packet $D$ will
+		know that the route to reach $B$ is $C\rightarrow B$, to reach $A$ is
+		$C\rightarrow B\rightarrow A$, and finally to reach $S$ is
+		$C\rightarrow B\rightarrow A\rightarrow S$.
+		The same also applies for all the other nodes which received
+		the TP, f.e, $B$ knows that its route to reach $S$ is
+		$A\rightarrow S$.
+\end{enumerate}
+
+
+\subsection{Example}
+\begin{figure}[h]
+	\begin{center}
+		\includegraphics[scale=0.4]{fig/segABCDEF}
+	\end{center}
+	\caption{A simple graph}
+\end{figure}
+
+Suppose that $D$ sends a TP:
+
+
+
+\section{Raw flood}
+Ogni nodo manda un TP
+
+\section{Routes simplification}
+
+\section{Cyclic tracer packet}
+\label{sec:TPC}
+
+\begin{thebibliography}{99}
+	\bibitem{ntksite} Netsukuku website:
+		\href{http://netsukuku.freaknet.org/}{http://netsukuku.freaknet.org/}.
+\end{thebibliography}
+
+\end{document}

@@ -30,7 +30,8 @@
 #include "common.h"
 
 /*
- * add_option
+ * opt_add_option
+ * --------------
  *
  * registers the new option `opt', 
  * f.e. add_option("debug", "d");
@@ -69,6 +70,7 @@ void opt_add_option(const char *opt, const char *desc, ntkopt **opt_head)
 
 /*
  * opt_find_opt
+ * ------------
  *
  * It returns the pointer to the structure of the option named `opt_name'.
  *
@@ -90,6 +92,7 @@ ntkopt *opt_find_opt(const char *opt_name, ntkopt *opt_head)
 
 /*
  * opt_get_value
+ * -------------
  *
  * It returns the value assigned to the option named `opt_name'.
  *
@@ -109,6 +112,7 @@ char *opt_get_value(const char *opt_name, ntkopt *opt_head)
 
 /*
  * opt_add_value
+ * -------------
  *
  * It searches, in `opt_head', an option whose name is `opt_name',
  * if it is found, the string `value' is added to the opt->value argz vector.
@@ -129,6 +133,7 @@ int opt_add_value(const char *opt_name, char *value, ntkopt *opt_head)
 
 /*
  * opt_append_argz_value
+ * ---------------------
  *
  * It searches, in `opt_head', an option whose name is `opt_name',
  * if it is found, the argz vector `value' is appended to the opt->value
@@ -151,6 +156,7 @@ int opt_append_argz_value(const char *opt_name, char *value, size_t valsz,
 
 /*
  * opt_replace_value
+ * -----------------
  *
  * It searches, in `opt_head', an option whose name is `opt_name',
  * if it is found, the opt->value string is replaced by the duplicate of 
@@ -179,6 +185,7 @@ void opt_free_value(ntkopt *opt)
 
 /*
  * opt_clear_values
+ * ----------------
  *
  * It cleans all the allocated values inside the `opt_head' llist.
  */
@@ -192,6 +199,7 @@ void opt_clear_values(ntkopt *opt_head)
 
 /*
  * opt_zero_values
+ * ---------------
  *
  * Set to zero all the `value' and `valsz' variables contained in the
  * `opt_head' llist.
@@ -208,6 +216,7 @@ void opt_zero_values(ntkopt *opt_head)
 
 /*
  * opt_close
+ * ---------
  *
  * It destroys the `*opt_head' llist
  */
