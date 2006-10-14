@@ -61,9 +61,9 @@ Some consequences of this assumption are:
 \begin{enumerate}
 	\item	Mobiles node aren't supported by Netsukuku algorithms.
 		\footnote{It is possible to use other mesh network protocols
-		designed for mobility in conjunction with Netsukuku (f.e. see
-		\href{http://olsrd.org}{olsrd}), in the same way they are used in conjunction
-		with the Internet.}
+		designed for mobility in conjunction with Netsukuku, in the
+		same way they are used in conjunction
+		with the Internet (f.e. see \href{http://olsrd.org}{olsrd}). }
 	\item   The network isn't updated quickly: several minutes may be
 		required before all the nodes become aware of a change of the
 		network (new nodes have joined, more efficient routes have
@@ -120,20 +120,24 @@ be sure that it works as aspected on every cases of a graph composed by $\le
 For the sake of simplicity, in this paper, we will assume to operate on level
 0 (the level formed by 256 single nodes).
 
-\section{Tracer packet}
+\section{Tracer Packet}
 \label{sec:TP}
 
 A \emph{TP} (Tracer Packet) is the fundamental concept on which the QSPN is
 based: 
 it is a packet which stores in its body the IDs of the traversed hops.
 
-\subsection{Tracer packet flood}
+\subsection{Tracer Packet flood}
+\label{sec:TP_flood}
 
 A TP isn't sent to a specific destination but instead, it is used to flood the
 network. By saying ``the node A sends a TP'' we mean that ``the node A is
 starting a TP flood''.
 
-% TODO: continue here
+A TP flood passes only once through each node of the net: a node which
+receives a TP will forward it to all its neighbours, except the one from which
+it received the TP. Once a node has forwarded a TP, it will not forward any
+other TPs of the same flood.
 
 \subsection{Proprieties of the tracer packet}
 \begin{enumerate}
@@ -150,10 +154,15 @@ starting a TP flood''.
 		The same also applies for all the other nodes which received
 		the TP, f.e, $B$ knows that its route to reach $S$ is
 		$A\rightarrow S$.
+	\item Suppose that $S$ sends a TP. The first TP of this flood received
+		by a generic node $D$, will be the TP which covered the
+		fastest route which connects $S$ to $D$.
+		The fastest $S \rightarrow D$ route is the route with the
+		minimum \emph{rtt} (Round-Trip Time) between $S$ and $D$.
 \end{enumerate}
 
 
-\subsection{Example}
+\subsubsection{Example}
 \begin{figure}[h]
 	\begin{center}
 		\includegraphics[scale=0.4]{fig/segABCDEF}
@@ -161,21 +170,153 @@ starting a TP flood''.
 	\caption{A simple graph}
 \end{figure}
 
-Suppose that $D$ sends a TP:
+Suppose that $D$ sends a TP. The TP will cover this routes:
+$D \rightarrow E \rightarrow F$ and $D \rightarrow C \rightarrow B \rightarrow A$.
+When the TP reaches the node $F$ and the node $A$, the flood will stop,
+because either $A$ and $F$ won't be able to forward the TP to any other node.
 
+At the end, $A$ will know the route $A \rightarrow B \rightarrow C \rightarrow D$ and $F$ will know the
+route $F \rightarrow E \rightarrow D$.
 
+\section{Routes of a graph}
+\label{sec:gen_routes}
 
-\section{Raw flood}
-Ogni nodo manda un TP
+Given a graph $\mathbf{G}$ we want to find all the existing routes between a node and
+all the other nodes.
+
+Let $N$ be a generic node. Starting from $N$ we explore the entire graph
+until we re-enter in a cycle already visited or we cannot procede any further.
+This approach is similar to the Depth-First Search\cite{DFS} algorithm, but instead of
+searching for a specific goal, we just traverse the entire graph.
+Note that a cycle is traversed only once, because we need non redundant
+routes. In other words, if we already know the $S \rightarrow A \rightarrow B
+\rightarrow C \rightarrow D$ route,
+it's useless to known that we can reach $D$ with the $S \rightarrow A
+\rightarrow B \rightarrow C \rightarrow A \rightarrow B \rightarrow C
+\rightarrow D$ route.
+
+This is the pseudo code of the algorithm:
+
+\begin{verbatim}
+        generate_routes(G) {
+                forall node in G
+                        /* Starts the exploration of the graph from the
+                           ``node'' of the graph ``G'' and print all its
+                           routes */
+                        walk(node, node)
+        }
+
+        /* Print all the routes which start from the node `N' */
+        walk(N, branch) {
+                deepened=0
+
+                forall L in N.links
+                        /* L is a neighbour of N */
+
+                        if(L in branch)
+                                /* If ``L'' is already contained in the
+                                   explored branch, we've found a cycle.
+                                   Since we just need to traverse only once a
+                                   cycle, we skip this ``L'' node and continue
+                                   to consider the other neighbours of N */
+                                continue;
+
+                        newbranch=branch + L    /* Append in the explored
+                                                   branch the ``L'' node. */
+
+                        walk(L, newbranch)      /* Recursively  explore the
+                                                   new branch */
+                        
+                        /* Indicate that we've deepened in the graph at least
+                           once */
+                        deepened=1
+
+                if(!deepened)
+                        /* We haven't deepened in the above for, this means
+                           that the current branch can't be explored anymore,
+                           therefore it is a valid route. Print it */
+                        print branch
+        }
+\end{verbatim}
+
+A proof of concept of the above algorithm as been implemented in Awk
+\cite{genrouteawk}.
+
+\subsection{Example}
+Consider this graph:
+
+\begin{figure}[h]
+	\begin{center}
+		\includegraphics[scale=0.4]{fig/cycleABCD_E}
+	\end{center}
+	\caption{A simple ciclic graph}
+	\label{fig:gen_route_sample}
+\end{figure}
+
+Given this graph as input the algorithm will output:
+\begin{align*}
+& A \rightarrow B \rightarrow D \rightarrow C\\
+& A \rightarrow B \rightarrow D \rightarrow E\\
+& A \rightarrow C \rightarrow D \rightarrow B\\
+& A \rightarrow C \rightarrow D \rightarrow E\\
+& B \rightarrow A \rightarrow C \rightarrow D \rightarrow E\\
+& B \rightarrow D \rightarrow C \rightarrow A\\
+& B \rightarrow D \rightarrow E\\
+& C \rightarrow A \rightarrow B \rightarrow D \rightarrow E\\
+& C \rightarrow D \rightarrow B \rightarrow A\\
+& C \rightarrow D \rightarrow E\\
+& D \rightarrow B \rightarrow A \rightarrow C\\
+& D \rightarrow C \rightarrow A \rightarrow B\\
+& D \rightarrow E
+\end{align*}
+
+\section{Raw Tracer Packet flood}
+\label{sec:raw_TP_flood}
+
+We can consider each route given by the output of the above algorithm as a
+single Tracer Packet.
+In fact, it is possible to implement the same algorithm using a slightly
+modified version of the TP flood, called the Raw TP flood (the name explains
+why it isn't used by the QSPN):
+
+The flood is not restricted like in a normal TP flood: one or more Raw TP can
+pass from the same node. The end of the flood is given by this rule: a node
+will not forward to any of its neighbours the RTP if its ID is already present
+in the route contained in the body of the packet.
+Finally, like in the normal TP, a node doesn't forward the RTP to the
+neighbour from which it has received the packet itself.
+
+If every node of the network sends a Raw TP flood, then every node will get
+all the possible routes to reach any other node.
+\newline
+As you can see, the RTP flood performs a ``live'' version of the algorithm
+described in section \ref{sec:gen_routes}.
+Obviously this is far from an efficient routing discovery algorithm, but it
+represents a good start.
 
 \section{Routes simplification}
 
 \section{Cyclic tracer packet}
 \label{sec:TPC}
 
+Estensione flood TP.
+Rimbalzo segmento.
+
+\section{QSPN v2}
+%TODO Il primo TP ricevuto ha percorso la rotta migliore
+TODO: Il primo TP ricevuto ha percorso la rotta migliore
+Il formato della mappa interna cambia!
+
+%%%%%%%%%%%%%%%%
+% Bibliography %
+%%%%%%%%%%%%%%%%
+
 \begin{thebibliography}{99}
 	\bibitem{ntksite} Netsukuku website:
 		\href{http://netsukuku.freaknet.org/}{http://netsukuku.freaknet.org/}.
+	\bibitem{DFS} Depth-First Search:
+		\href{http://en.wikipedia.org/wiki/Depth-first\_search}{http://en.wikipedia.org/wiki/Depth-first\_search}.
+	\bibitem{genrouteawk} Generate Routes in Awk: \href{http://cvs.hinezumi.org/viewcvs/netsukuku/proto/qspn/generate\_routes.awk}{generate\_routes.awk}.
 \end{thebibliography}
 
 \end{document}

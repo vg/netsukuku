@@ -3,4 +3,5 @@ node [shape=circle]
 
 D -- C -- A -- B -- D
 
+D -- E
 }
