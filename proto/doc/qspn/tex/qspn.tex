@@ -31,8 +31,9 @@
 
 The first part of the document describes the reasoning which led us to the
 construction of the current form of the QSPN v2.
-If you are just interested in the description of the QSPN v1 and v2, you can
-directly skip to section \ref{sec:TPC}.
+If you are just interested in the description of the QSPN v1 and v2 and you
+already know the concept of the Tracer Packet, you can directly skip to
+section \ref{sec:QSPNv2}.
 
 \section{The general idea}
 \label{sec:general_idea}
@@ -47,17 +48,25 @@ embedded devices and old computers.
 
 If this requirements are met, Netsukuku can be easily used to build a worldwide
 distributed, anonymous and not controlled network, separated from the
-Internet, without the support of any servers, ISPs or authority controls.
+Internet, without the support of any servers, ISPs or control authorities.
 
 \subsection{The network model}
 \label{sec:net_model}
 
 Netsukuku prioritises the stability and the scalability of net: the network
 has to be able to grow to even $2^{2^7}$ nodes.
-For this reason, it's supposed that a node won't change its physical location
-quickly nor often.
 
-Some consequences of this assumption are: 
+A completely dynamic network would requires rapid and frequent updates
+of the routes and this is in contrast with the stability and the scalability
+requirements of Netsukuku.
+For this reason, we restrict Netsukuku to the case where a node won't change
+its physical location quickly nor often.
+
+This assumption is licit, because the location of a wifi node mounted on
+top of a building won't change and its only dynamic actions would be the
+joining and the disconnection to and from the network and the changes of the
+quality of its wifi links.
+However, there are some consequences of this assumption:
 \begin{enumerate}
 	\item	Mobiles node aren't supported by Netsukuku algorithms.
 		\footnote{It is possible to use other mesh network protocols
@@ -88,7 +97,7 @@ Netsukuku implements its own algorithm, the \emph{QSPN} (\textbf{Q}uantum
 way of working of its principal component: the \emph{TP} (Tracer Packet), a
 packet which gains a ``quantum'' of information at each hop.
 
-The QSPN is based on the assumptions made in section \ref{sec:net_model}.
+The QSPN is based on the assumptions described in section \ref{sec:net_model}.
 
 \section{Network topology}
 \label{sec:net_topology}
@@ -106,7 +115,7 @@ Netsukuku, adopts a fractal like structure:
 256 nodes are grouped inside a \emph{group node} (gnode), 256 group nodes are grouped
 in a single \emph{group of group nodes} (ggnode), 256 group of group nodes are
 grouped in a gggnode, and so on.
-(We won't analyse the topology of Netsukuku. You can find more informations
+(We won't analyse the topology of Netsukuku. You can find more information
 about it in the main documentation: \cite{ntksite}).
 \newline
 Since each gnode acts as a single real node,
@@ -114,7 +123,7 @@ the QSPN is able to operate independently on each level of the fractal.
 
 Because in each level there are a maximum of 256 (g)nodes, the QSPN will
 always operate on a maximum of 256 (g)nodes, therefore we would need just to
-be sure that it works as aspected on every cases of a graph composed by $\le
+be sure that it works as expected on every cases of a graph composed by $\le
 256$ nodes. By the way, we'll directly analyse the general case.
 
 For the sake of simplicity, in this paper, we will assume to operate on level
@@ -185,7 +194,7 @@ Given a graph $\mathbf{G}$ we want to find all the existing routes between a nod
 all the other nodes.
 
 Let $N$ be a generic node. Starting from $N$ we explore the entire graph
-until we re-enter in a cycle already visited or we cannot procede any further.
+until we re-enter in a cycle already visited or we cannot proceed any further.
 This approach is similar to the Depth-First Search\cite{DFS} algorithm, but instead of
 searching for a specific goal, we just traverse the entire graph.
 Note that a cycle is traversed only once, because we need non redundant
@@ -198,48 +207,46 @@ it's useless to known that we can reach $D$ with the $S \rightarrow A
 This is the pseudo code of the algorithm:
 
 \begin{verbatim}
-        generate_routes(G) {
-                forall node in G
-                        /* Starts the exploration of the graph from the
-                           ``node'' of the graph ``G'' and print all its
-                           routes */
-                        walk(node, node)
-        }
+generate_routes(G) {
+        forall node in G
+                /* Starts the exploration of the graph from the ``node'' of the
+                   graph ``G'' and print all its routes */
+                walk(node, node)
+}
 
-        /* Print all the routes which start from the node `N' */
-        walk(N, branch) {
-                deepened=0
+/* Print all the routes which start from the node `N' */
+walk(N, branch) {
+        deepened=0
 
-                forall L in N.links
-                        /* L is a neighbour of N */
+        forall L in N.links
+                /* L is a neighbour of N */
 
-                        if(L in branch)
-                                /* If ``L'' is already contained in the
-                                   explored branch, we've found a cycle.
-                                   Since we just need to traverse only once a
-                                   cycle, we skip this ``L'' node and continue
-                                   to consider the other neighbours of N */
-                                continue;
+                if(L in branch)
+                        /* If ``L'' is already contained in the explored
+                           branch, we've found a cycle. Since we just need to
+                           traverse only once a cycle, we skip this ``L'' node
+                           and continue to consider the other neighbours
+                           of N */
+                        continue;
 
-                        newbranch=branch + L    /* Append in the explored
-                                                   branch the ``L'' node. */
+                newbranch=branch + L    /* Append in the explored branch the
+                                           ``L'' node. */
 
-                        walk(L, newbranch)      /* Recursively  explore the
-                                                   new branch */
-                        
-                        /* Indicate that we've deepened in the graph at least
-                           once */
-                        deepened=1
+                walk(L, newbranch)      /* Recursively  explore the new
+                                           branch */
+                
+                /* Indicate that we've deepened in the graph at least once */
+                deepened=1
 
-                if(!deepened)
-                        /* We haven't deepened in the above for, this means
-                           that the current branch can't be explored anymore,
-                           therefore it is a valid route. Print it */
-                        print branch
-        }
+        if(!deepened)
+                /* We haven't deepened in the above for, this means that the
+                   current branch can't be explored anymore, therefore it is a
+                   valid route. Print it */
+                print branch
+}
 \end{verbatim}
 
-A proof of concept of the above algorithm as been implemented in Awk
+A proof of concept of the above algorithm has been implemented in Awk
 \cite{genrouteawk}.
 
 \subsection{Example}
@@ -249,11 +256,12 @@ Consider this graph:
 	\begin{center}
 		\includegraphics[scale=0.4]{fig/cycleABCD_E}
 	\end{center}
-	\caption{A simple ciclic graph}
+	\caption{A simple graph with one segment and one cycle}
 	\label{fig:gen_route_sample}
 \end{figure}
 
 Given this graph as input the algorithm will output:
+\label{sec:genroute_output}
 \begin{align*}
 & A \rightarrow B \rightarrow D \rightarrow C\\
 & A \rightarrow B \rightarrow D \rightarrow E\\
@@ -295,14 +303,175 @@ Obviously this is far from an efficient routing discovery algorithm, but it
 represents a good start.
 
 \section{Routes simplification}
+\label{sec:simplify_routes}
 
-\section{Cyclic tracer packet}
-\label{sec:TPC}
+Looking carefully at the example output (\ref{sec:genroute_output}) of the
+Generate Route algorithm, we can notice that many routes are higly redundant,
+in other words, some routes are almost the same.
+Consider for example the following four routes:
+\begin{align}
+	& A \rightarrow B \rightarrow D \rightarrow E \label{eq:e1}\\
+	& D \rightarrow E \label{eq:e2} \\
+	& A \rightarrow B \rightarrow D \rightarrow C \label{eq:e3}\\
+	& D \rightarrow C \rightarrow A \rightarrow B \label{eq:e4}
+\end{align}
 
-Estensione flood TP.
-Rimbalzo segmento.
+As we've seen in the previous section \ref{sec:raw_TP_flood}, we can consider
+these routes as effective Tracer Packets.
+In this example, the TP \eqref{eq:e1} cover the same route of the TP
+\eqref{eq:e2}. Therefore we can save one TP by just sending the TP
+\eqref{eq:e1}, which will traverse the route \eqref{eq:e2} too.
+
+The TP \eqref{eq:e3} covers part of the TP \eqref{eq:e4}, thus we can simplify
+the two of them by just sending a TP which cover this route: $A \rightarrow B
+\rightarrow D \rightarrow C \rightarrow A \rightarrow B$.
+
+Continuing in this process we can further simplify the two TP:
+\[ ABDCAB + ABDE \Rightarrow  ABDCABDE \]
+
+Thus, from the initial four TPs we've found a unique TP which gives the same
+routes of the original ones.
+
+\subsection{Simplification rules}
+\label{sec:simplification_rules}
+
+We can derive some rules to simplify routes.
+
+Since we can represent a route as a string where each symbol is a node, we can
+also describe the routes simplification as a series of operations on strings.
+
+In the following rules, each letter found in an expression represents a generic string,
+which may be also the NULL string, f.e. the ``$XX$'' string can be anything like
+$foofoo$ or $1234512345$.
+\\
+The $c\dots c$ expression represents a cycle, where the $c$ character refers
+to just one node, and not to an entire string.
+\begin{description}
+	\item[XY+YZ $\Rightarrow$ XYZ]
+		If two routes share respectively the ending and the starting
+		part, they can be merged into a unique route. Example:
+		\[ABCDE + CDEKRE \Rightarrow ABCDEKRE \]
+	\item[YXZ + X $\Rightarrow$ YXZ]
+		Example:
+		\[123ABCXYZ + ABC \Rightarrow 123ABCXYZ\]
+	\item[Xc\dots c + XcY $\Rightarrow$ Xc\dots cY]
+		Example:
+		\[123ABCDA + 123A987 \Rightarrow 123ABCDA987\]
+	\item[c\dots cZ + YcZ $\Rightarrow$ Yc\dots cZ]
+		Example:
+		\[ABCDA123 + 987A123 \Rightarrow 987ABCDA123\]
+	\item[c\dots c + YcZ $\Rightarrow$ Yc\dots cZ]
+		Example:
+		\[ABCDA + 987A123 \Rightarrow 987ABCDA123\]
+	\item[Invalid route]
+		A route must not be in the form of:
+		\[ XacaY \]
+		where $a$ and $c$ are two nodes.
+		A simplification, which gives a route of this form, is
+		not considered valid. This is because a TP must not change its
+		verse while traversing a network.
+\end{description}
+
+All these rules can be applied recursively to the routes of a graph, until
+they cannot be simplified anymore.
+
+A proof of concept of the above algorithm has been implemented in Awk \cite{simrouteawk}.
+
+\subsection{Example}
+Simplifying all the routes of the example \ref{sec:genroute_output}, we obtain
+just these two TPs:
+\begin{align}
+ &A \rightarrow B \rightarrow D \rightarrow C \rightarrow A \rightarrow B
+ \rightarrow D \rightarrow E\\
+ &A \rightarrow C \rightarrow D \rightarrow B \rightarrow A \rightarrow C \rightarrow D \rightarrow E
+\end{align}
+
+You can verify that all the routes listed in \ref{sec:genroute_output} are
+contained in these two simplified TPs.
+
+\subsection{General results}
+By looking at many different simplification, we can recognize some general
+rules:
+\begin{enumerate}
+	\item For each TP there has to be its inverse. For example, if there's
+		a TP which covered the $12345$ route, then there has to be at
+		least the TP which covers the inverse route $54321$.
+	\item In a segment, to give all the routes to all the nodes, it is
+		sufficient that the two extremes sends a TP. Example:
+		\begin{figure}[h]
+			\begin{center}
+				\includegraphics[scale=0.4]{fig/segABCDEF}
+			\end{center}
+			\caption{A segment}
+		\end{figure}
+		in this case, if $A$ and $F$ send a TP, all the routes will be
+		generated, since the two TP would be: $ABCDEF$ and $FEDCBA$.
+		You can verify that in these two TP, there are contained all
+		the routes of the segment.
+	\item In a cycle, just two TP are needed, and one is the reverse of
+		the other. The first can be constructed in this way: 
+		\begin{itemize}
+			\item Choose a node of the cycle, this will be the
+				pivot node.
+			\item Start from one neighbour of the pivot and write
+				sequencially all the other nodes until you
+				return to the pivot (but do not include it).
+				Call this string $C$.
+			\item The TP will be:
+				\[CpC\]
+				where $p$ is the pivot node.
+		\end{itemize}
+		Example:
+		\begin{figure}[h]
+			\begin{center}
+				\includegraphics[scale=0.4]{fig/cycleABCDEF}
+			\end{center}
+			\caption{A cycle}
+		\end{figure}
+		if we choose the node $D$ as the pivot, we can write the TP
+		as:
+		\[ EFABCDEFABC \]
+		and its reverse:
+		\[ CBAFEDCBAFE \]
+		These two TPs will give all the routes to all the nodes of the
+		cycle.
+\end{enumerate}
+
+
+\section{Continuous Tracer Packet}
+\label{sec:CTP}
+
+A Continuous Tracer Packet (CTP) is an extension of the TP flood: a node will
+always forward a TP to all its neighbours, excepting the one from which it has
+received the TP.
+If a node is an extreme of a segment, i.e. a node with just one link, it will
+erase the route stored in the body of the TP and will forward back the TP.
+
+In short, a CTP is a TP flood which will never end, thus it will continue to
+explore all the infinite combination of routes. For example:
+\begin{figure}[h]
+	\begin{center}
+		\includegraphics[scale=0.4]{fig/cycleABC}
+	\end{center}
+	\caption{The simplest cyclic graph}
+	\label{fig:cycleABC}
+\end{figure}
+If $A$ sends a CTP flood, there will be two CTPs that will explore
+respectively these routes:
+\[
+	 A \rightarrow B \rightarrow C \rightarrow A \rightarrow B \rightarrow
+	 C \rightarrow A \rightarrow B \rightarrow C \rightarrow A \rightarrow
+	 B \rightarrow C \rightarrow \dots
+\]
+\[
+	 A \rightarrow C \rightarrow B \rightarrow A \rightarrow C \rightarrow
+	 B \rightarrow A \rightarrow C \rightarrow B \rightarrow A \rightarrow
+	 C \rightarrow B \rightarrow \dots
+\]
 
 \section{QSPN v2}
+\label{sec:QSPNv2}
+
 %TODO Il primo TP ricevuto ha percorso la rotta migliore
 TODO: Il primo TP ricevuto ha percorso la rotta migliore
 Il formato della mappa interna cambia!
@@ -317,6 +486,7 @@ Il formato della mappa interna cambia!
 	\bibitem{DFS} Depth-First Search:
 		\href{http://en.wikipedia.org/wiki/Depth-first\_search}{http://en.wikipedia.org/wiki/Depth-first\_search}.
 	\bibitem{genrouteawk} Generate Routes in Awk: \href{http://cvs.hinezumi.org/viewcvs/netsukuku/proto/qspn/generate\_routes.awk}{generate\_routes.awk}.
+	\bibitem{simrouteawk} Simplify Routes in Awk: \href{http://cvs.hinezumi.org/viewcvs/netsukuku/proto/qspn/simplify\_routes.awk}{simplify\_routes.awk}.
 \end{thebibliography}
 
 \end{document}
