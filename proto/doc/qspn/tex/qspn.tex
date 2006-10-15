@@ -33,7 +33,7 @@ The first part of the document describes the reasoning which led us to the
 construction of the current form of the QSPN v2.
 If you are just interested in the description of the QSPN v1 and v2 and you
 already know the concept of the Tracer Packet, you can directly skip to
-section \ref{sec:QSPNv2}.
+section \ref{sec:CTP}.
 
 \section{The general idea}
 \label{sec:general_idea}
@@ -171,7 +171,7 @@ other TPs of the same flood.
 \end{enumerate}
 
 
-\subsubsection{Example}
+\subsubsection*{Example}
 \begin{figure}[h]
 	\begin{center}
 		\includegraphics[scale=0.4]{fig/segABCDEF}
@@ -249,7 +249,7 @@ walk(N, branch) {
 A proof of concept of the above algorithm has been implemented in Awk
 \cite{genrouteawk}.
 
-\subsection{Example}
+\subsection*{Example}
 Consider this graph:
 
 \begin{figure}[h]
@@ -377,7 +377,7 @@ they cannot be simplified anymore.
 
 A proof of concept of the above algorithm has been implemented in Awk \cite{simrouteawk}.
 
-\subsection{Example}
+\subsection*{Example}
 Simplifying all the routes of the example \ref{sec:genroute_output}, we obtain
 just these two TPs:
 \begin{align}
@@ -390,11 +390,11 @@ You can verify that all the routes listed in \ref{sec:genroute_output} are
 contained in these two simplified TPs.
 
 \subsection{General results}
-By looking at many different simplification, we can recognize some general
+By looking at many different simplifications, we can recognize some general
 rules:
 \begin{enumerate}
 	\item For each TP there has to be its inverse. For example, if there's
-		a TP which covered the $12345$ route, then there has to be at
+		a TP which covered the route $12345$, then there has to be at
 		least the TP which covers the inverse route $54321$.
 	\item In a segment, to give all the routes to all the nodes, it is
 		sufficient that the two extremes sends a TP. Example:
@@ -437,7 +437,13 @@ rules:
 		cycle.
 \end{enumerate}
 
+\subsection{The question}
 
+Can we implement a ``live'' version of the Simplify Route algorithm like we
+did with the Generate Route one?\\
+The reply is ahead ;).
+
+\newpage
 \section{Continuous Tracer Packet}
 \label{sec:CTP}
 
@@ -448,7 +454,10 @@ If a node is an extreme of a segment, i.e. a node with just one link, it will
 erase the route stored in the body of the TP and will forward back the TP.
 
 In short, a CTP is a TP flood which will never end, thus it will continue to
-explore all the infinite combination of routes. For example:
+explore all the infinite combination of routes. 
+
+\subsection*{Example}
+Consider this graph.
 \begin{figure}[h]
 	\begin{center}
 		\includegraphics[scale=0.4]{fig/cycleABC}
@@ -469,12 +478,164 @@ respectively these routes:
 	 C \rightarrow B \rightarrow \dots
 \]
 
+\subsection{Reflected CTP}
+Suppose that the node $N$ has just one link.
+$N$, before back forwarding the received CTP, erases the route contained in
+the body, because the nodes which precede it already know this same route.
+\\
+For example, consider this segment:
+\[ \cdots -- A -- B -- C -- N \]
+If $N$ sent the 
+receives the following TP
+
 \section{QSPN v2}
 \label{sec:QSPNv2}
+The second version of the QSPN\footnote{The short name of the QSPN v2 is
+\emph{Qv2}} can be described in a single phrase:
 
-%TODO Il primo TP ricevuto ha percorso la rotta migliore
+\emph{A Continuous Tracer Packet will continue to roam inside}
+
+\emph{the network until it carries interesting information.}
+
+\subsection{Interesting information}
+A node considers a received CTP interesting when its body contains at least a
+new route, i.e. a route that the node didn't previously know.
+In other words, if a CTP contains routes already known by the node, it is
+considered uninteresting.
+
+When a node receives an interesting CTP, it forwards the packet to all its
+neighbours, excepting the one from which it has received the CTP.
+If, instead, the CTP is uninteresting, it will drop the packet.
+
+Note that if a CTP is uninteresting for the node $N$, then it is also
+uninteresting for all the other nodes. This is because an uninteresting CTP
+contains routes which has been previously received, memorized and forwarded
+by the node $N$, therefore all the other nodes already know the same
+routes too.
+
+\subsubsection*{Example}
+\label{sec:cycle_qv2_example}
+
+Consider this graph.
+\begin{figure}[h]
+	\begin{center}
+		\includegraphics[scale=0.4]{fig/cycleABC}
+	\end{center}
+	\caption{The A-B-C-A cycle}
+	\label{fig:A-B-C-A}
+\end{figure}
+Suppose that $A$ sends a CTP. 
+The two CTPs, after having covered the following two paths will stop:
+\[
+A \rightarrow B \rightarrow C \rightarrow A \rightarrow B \rightarrow C
+\]
+\[
+A \rightarrow C \rightarrow B\rightarrow A \rightarrow C \rightarrow B
+\]
+Let's analyze the first CTP step by step, considering that before $A$ sent the
+CTP, none knew any route.
+\begin{description}
+	\item[A $\rightarrow$ B] At this point $B$ doesn't know any route to
+		reach $A$, therefore it considers this CTP as interesting and
+		forwards it to $C$.
+	\item[A $\rightarrow$ B $\rightarrow$ C] By looking at this packet $C$
+		learns a route to reach $B$ and $A$.
+	\item[A $\rightarrow$ B $\rightarrow$ C $\rightarrow$ A] The node $A$
+		learns a route to reach $C$.
+	\item[A $\rightarrow$ B $\rightarrow$ C $\rightarrow$ A $\rightarrow$
+		B] The node $B$ learns a route to reach $C$.
+	\item[A $\rightarrow$ B $\rightarrow$ C $\rightarrow$ A $\rightarrow$
+		B $\rightarrow$ C] Finally, $C$ drops the packet, because it
+		already knows all the routes contained in it.
+\end{description}
+
+From this example we can derive a general result: a CTP will always terminate
+in a cycle.
+
+\subsection{Live routes simplification}
+The QSPN v2 is the ``live'' version of the Simplify Route algorithm (section
+\ref{sec:simplify_routes}).
+
+The CTP flood of the QSPN v2 explores the entire graph, but unlike the RTP
+(section \ref{sec:raw_TP_flood}), it drops the TPs which contains
+redundant routes, thus only the simplified, non redundant routes survives and
+continue to explore the graph.
+
+\newpage
+\subsection{Cyclicity}
+\label{sec:CTP_ciclicity}
+When a CTP reaches the extremity of a segment, it is forwarded back, thus it's
+like the extreme nodes had a link with themself.
+
+\begin{figure}[h]
+	\begin{center}
+		\includegraphics[scale=0.4]{fig/cycleselfABC}
+	\end{center}
+	\caption{A segment as viewed from a CTP}
+	\label{fig:CTP_segment}
+\end{figure}
+
+From the point of view of a CTP, even a segment is a cycle, therefore, for a
+CTP, any connected graph is formed just by cycles.
+
+For this reason, a CTP will explore any combination of cycles of the graph.
+
+\subsubsection{Subcycles examples}
+These examples highlights some subcycles of a simple graph.
+
+\begin{figure}[h]
+	\begin{center}
+		\includegraphics[scale=0.4]{fig/cycleABCD_BC_123}
+	\end{center}
+\end{figure}
+
+
+%%%%%%%% TODO: ABCBABCBABCBA
+
+\subsection{Finiteness}
+The Qv2 will finish the exploration of the graph in an finite amount of time,
+i.e. the flood will terminate.
+
+As you've seen in the example \ref{sec:cycle_qv2_example}, a CTP will always
+terminate in a cycle. 
+Since every connected graph is a composition of cycles
+%% TODO: CONTINUE HERE
+
+\subsection{Routes limit}
+%%%%%%%%%%%%%%%%%%%% TODO %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\subsection{Scalability}
+%%%%%%%%%%%%%%%%%%%% TODO %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 TODO: Il primo TP ricevuto ha percorso la rotta migliore
 Il formato della mappa interna cambia!
+
+
+\section{QSPN v1}
+\label{sec:QSPNv1}
+%%%%%%%%%%%%%%%%%%%% TODO %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+La prima fase (qclose) equivale a un CTP normale.
+Appena 
+Un TP normale non genera mai rotte ridondanti.
+
+Il v1 usa meno memoria del v2.
+
+\subsection{Rtt and bandwidth}
+%%%%%%%%%%%%%%%%%%%% TODO %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Questo discorso vale sia per il v1 che per il v2.
+Vedi (Ntk\_rfc\_bandwidth) sulla tecnica del misuramento dei link.
+Bisogna necessariamente ritardare il forwarding, altrimenti potrebbero essere
+non considerate alcune rotte.
+Il ritardo prende le rotte medie di bw e rtt. Il difetto e' che vengono
+scartate le rotte estreme.
+
+\section{Asymmetric bandwidth}
+Bla. Bla.
+Vedi --> Ntk\_rfc\_bandwidth.
+%%%% Mandare in lista la risposta al tizio che aveva chiesto sulla questione
+%%%% }dell'asimmetria
+
 
 %%%%%%%%%%%%%%%%
 % Bibliography %
@@ -485,8 +646,10 @@ Il formato della mappa interna cambia!
 		\href{http://netsukuku.freaknet.org/}{http://netsukuku.freaknet.org/}.
 	\bibitem{DFS} Depth-First Search:
 		\href{http://en.wikipedia.org/wiki/Depth-first\_search}{http://en.wikipedia.org/wiki/Depth-first\_search}.
-	\bibitem{genrouteawk} Generate Routes in Awk: \href{http://cvs.hinezumi.org/viewcvs/netsukuku/proto/qspn/generate\_routes.awk}{generate\_routes.awk}.
-	\bibitem{simrouteawk} Simplify Routes in Awk: \href{http://cvs.hinezumi.org/viewcvs/netsukuku/proto/qspn/simplify\_routes.awk}{simplify\_routes.awk}.
+	\bibitem{genrouteawk} Generate Routes in Awk:\\
+		\href{http://cvs.hinezumi.org/viewcvs/netsukuku/proto/qspn/generate\_routes.awk}{generate\_routes.awk}.
+	\bibitem{simrouteawk} Simplify Routes in Awk:\\
+		\href{http://cvs.hinezumi.org/viewcvs/netsukuku/proto/qspn/simplify\_routes.awk}{simplify\_routes.awk}.
 \end{thebibliography}
 
 \end{document}

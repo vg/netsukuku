@@ -1,5 +1,9 @@
-pdflatex --interaction nonstopmode qspn.tex
-pdflatex --interaction nonstopmode qspn.tex
+rm -v qspn.{pdf,dvi}
 
-latex  --interaction nonstopmode qspn.tex
-latex  --interaction nonstopmode qspn.tex
+pdflatex --interaction nonstopmode qspn.tex &> /dev/null
+pdflatex --interaction nonstopmode qspn.tex &> /dev/null &&\
+echo PDF compiled
+
+latex  --interaction nonstopmode qspn.tex &> /dev/null
+latex  --interaction nonstopmode qspn.tex &> /dev/null && \
+echo DVI compiled
