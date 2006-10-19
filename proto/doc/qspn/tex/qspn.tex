@@ -149,6 +149,8 @@ it received the TP. Once a node has forwarded a TP, it will not forward any
 other TPs of the same flood.
 
 \subsection{Proprieties of the tracer packet}
+\label{sec:proprieties_TP}
+
 \begin{enumerate}
 	\item A node $D$ which received a TP, can know the exact route covered
 		by the TP. Therefore, $D$ can know the route to reach the
@@ -163,11 +165,16 @@ other TPs of the same flood.
 		The same also applies for all the other nodes which received
 		the TP, f.e, $B$ knows that its route to reach $S$ is
 		$A\rightarrow S$.
-	\item Suppose that $S$ sends a TP. The first TP of this flood received
-		by a generic node $D$, will be the TP which covered the
-		fastest route which connects $S$ to $D$.
+	\item The \emph{bouquet of $S$} is the set of all the TPs which will
+		be forwarded or sent by the node $S$ during the flood.
+		The first TP of this bouquet received by a generic node $D$,
+		will be the TP which covered the fastest route which connects
+		$S$ to $D$.
 		The fastest $S \rightarrow D$ route is the route with the
 		minimum \emph{rtt} (Round-Trip Time) between $S$ and $D$.
+		This property is also valid if $S$ is the node which started
+		the TP flood, i.e. the first node which sent the first bouquet
+		of the TP flood.
 \end{enumerate}
 
 
@@ -318,11 +325,11 @@ Consider for example the following four routes:
 
 As we've seen in the previous section \ref{sec:raw_TP_flood}, we can consider
 these routes as effective Tracer Packets.
-In this example, the TP \eqref{eq:e1} cover the same route of the TP
-\eqref{eq:e2}. Therefore we can save one TP by just sending the TP
-\eqref{eq:e1}, which will traverse the route \eqref{eq:e2} too.
+In this example, the TP (1) cover the same route of the TP
+(2). Therefore we can save one TP by just sending the TP
+(1), which will traverse the route (2) too.
 
-The TP \eqref{eq:e3} covers part of the TP \eqref{eq:e4}, thus we can simplify
+The TP (3) covers part of the TP (4), thus we can simplify
 the two of them by just sending a TP which cover this route: $A \rightarrow B
 \rightarrow D \rightarrow C \rightarrow A \rightarrow B$.
 
@@ -364,6 +371,7 @@ to just one node, and not to an entire string.
 		Example:
 		\[ABCDA + 987A123 \Rightarrow 987ABCDA123\]
 	\item[Invalid route]
+		\label{sec:simroute_invalid}
 		A route must not be in the form of:
 		\[ XacaY \]
 		where $a$ and $c$ are two nodes.
@@ -479,14 +487,25 @@ respectively these routes:
 \]
 
 \subsection{Reflected CTP}
+\label{sec:reflected_CTP}
+
 Suppose that the node $N$ has just one link.
 $N$, before back forwarding the received CTP, erases the route contained in
-the body, because the nodes which precede it already know this same route.
+the body, because the nodes preceding it, already know this same route.
 \\
 For example, consider this segment:
-\[ \cdots -- A -- B -- C -- N \]
-If $N$ sent the 
-receives the following TP
+\[ \cdots \leftrightarrow A \leftrightarrow B \leftrightarrow C \leftrightarrow N \]
+If $N$ hadn't erased the route received in the CTP, $A$ would have received
+the following CTP:
+\[
+\cdots \rightarrow A \rightarrow B \rightarrow C \rightarrow N \rightarrow C \rightarrow B \rightarrow A
+\]
+This packet contains the route $C \rightarrow N \rightarrow C$, which is
+invalid, as explained in section \ref{sec:simroute_invalid}.
+The valid parts of the packet are: $\cdots \rightarrow A \rightarrow B
+\rightarrow C \rightarrow N$ and $N \rightarrow C \rightarrow B \rightarrow
+A$. For this reason, when $N$ receives the first part, it will send a new,
+empty CTP.
 
 \section{QSPN v2}
 \label{sec:QSPNv2}
@@ -564,8 +583,8 @@ continue to explore the graph.
 \newpage
 \subsection{Cyclicity}
 \label{sec:CTP_ciclicity}
-When a CTP reaches the extremity of a segment, it is forwarded back, thus it's
-like the extreme nodes had a link with themself.
+When a CTP reaches the extremity of a segment, it is back forwarded, thus it's
+as if the extreme nodes had a link with themselves.
 
 \begin{figure}[h]
 	\begin{center}
@@ -588,27 +607,80 @@ These examples highlights some subcycles of a simple graph.
 		\includegraphics[scale=0.4]{fig/cycleABCD_BC_123}
 	\end{center}
 \end{figure}
-
-
-%%%%%%%% TODO: ABCBABCBABCBA
+A CTP would explore all these cycles.
 
 \subsection{Finiteness}
-The Qv2 will finish the exploration of the graph in an finite amount of time,
+The Qv2 will finish the exploration of the graph in a finite amount of time,
 i.e. the flood will terminate.
 
-As you've seen in the example \ref{sec:cycle_qv2_example}, a CTP will always
-terminate in a cycle. 
-Since every connected graph is a composition of cycles
-%% TODO: CONTINUE HERE
+As we've seen in the example \ref{sec:cycle_qv2_example}, a CTP flood of a
+cycle will always terminate. Moreover in section \ref{sec:CTP_ciclicity} we've
+noticed that, from the point of view of a CTP, any connected graph is formed
+by a combination of cycles. Therefore, a CTP flood of a graph will always
+terminate in a finite amount of time.
 
 \subsection{Routes limit}
-%%%%%%%%%%%%%%%%%%%% TODO %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Even if the Qv2 is finite, it still generates too many routes and packets.
+Therefore we need to limit the exploration of the graph.\\
+An efficient and elegant solution is to further define what the ``interesting
+information'' is:
+
+Let each node of the network keep a maximum of \emph{MaxRoutes} routes in
+its memory. A node considers a received CTP interesting when its body contains
+at least a route which is more efficient than the previously memorised routes.
+The efficiency of a route can be quantified with a convenient parameter, f.e.
+the rtt or the bandwidth capacity.
+If the node has reached the \emph{MaxRoutes} limit, it will substitute the old
+route with the more efficient one.
+
+Note that this definition is more general than the previous. Indeed, if the
+node $S$ doesn't know the route to reach $D$, the efficiency of the route $S
+\rightarrow D$ is equal to $0$.
+
+A node can also keep in memory more than \emph{MaxRoutes} routes, because this
+limit applies only to the number of routes which will be used to evaluate the
+received CTP.
+
+\subsubsection{Scalability}
+Suppose that in our network every link has the same bandwidth capacity.
+We will now exploit the bouquet property of the Tracer Packets, which has
+been described in section \ref{sec:proprieties_TP}.
+
+Suppose also that the generic node $D$ doesn't know any route to reach the
+node $T$.
+If a TP, received by the node $D$, contains a new route $t$ that
+connects $D \rightarrow T$, then we can deduce, by the bouquet property, that
+$t$ is the fastest route between $D$ and $T$.
+
+The immediate consequence is that $D$ will receive all the other $D
+\rightarrow T$ routes in order of efficiency: the first is, as we've seen,
+the best route, the second one will be less fast than the first but surely
+better than any other, and so on.
+
+Therefore, if the node $D$ has the \emph{MaxRoutes} limit set, it will
+memorise only the first \emph{MaxRoutes} received routes for each node of the
+network, while the rest will be disregarded. 
+%TODO CONTINUE HERE!!!!!!!!!!
 
 
-\subsection{Scalability}
-%%%%%%%%%%%%%%%%%%%% TODO %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-TODO: Il primo TP ricevuto ha percorso la rotta migliore
-Il formato della mappa interna cambia!
+
+%%% TODO: Questo perche' abbiamo supposto \forall link = 100Mbs, ma il
+%%% discorso vale anche in generale, basta fakare l'rtt.
+
+\subsection{Worst case}
+The graph, formed by $n$ nodes, which has the maximum number of cycles is the
+worst case for the Qv2, because it will have to explore any combination of
+cycles.
+
+Such graph is the \emph{complete graph}\cite{completegraph}, and the total
+number of its subcycles is:
+\[
+\sum_{k=3}^n\,\frac{1}{2}\binom{n}{k}(k-1)!
+\]
+
+\subsection{High levels}
+%%% Un CTP, nei liveeli alti, si propaga come un normale TP all'interno dei
+%%% gnode. I bnode si preoccupano di salvarsi in cache le rotte.
 
 
 \section{QSPN v1}
@@ -622,18 +694,22 @@ Il v1 usa meno memoria del v2.
 
 \subsection{Rtt and bandwidth}
 %%%%%%%%%%%%%%%%%%%% TODO %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-Questo discorso vale sia per il v1 che per il v2.
-Vedi (Ntk\_rfc\_bandwidth) sulla tecnica del misuramento dei link.
-Bisogna necessariamente ritardare il forwarding, altrimenti potrebbero essere
-non considerate alcune rotte.
-Il ritardo prende le rotte medie di bw e rtt. Il difetto e' che vengono
-scartate le rotte estreme.
+%
+%Questo discorso vale sia per il v1 che per il v2.
+%Vedi (Ntk\_rfc\_bandwidth) sulla tecnica del misuramento dei link.
+%Bisogna necessariamente ritardare il forwarding, altrimenti potrebbero essere
+%non considerate alcune rotte.  La sua utilita' e'
+%quella di far arrivare prima le rotte che hanno la media migliore tra rtt e
+%bw. Il suo difetto e' che vengono esclusi i casi estremi.
+%
+%Il ritardo prende le rotte medie di bw e rtt. Il difetto e' che vengono
+%scartate le rotte estreme.
+%
 
 \section{Asymmetric bandwidth}
 Bla. Bla.
 Vedi --> Ntk\_rfc\_bandwidth.
-%%%% Mandare in lista la risposta al tizio che aveva chiesto sulla questione
+%%%% TODO: Mandare in lista la risposta al tizio che aveva chiesto sulla questione
 %%%% }dell'asimmetria
 
 
@@ -643,13 +719,18 @@ Vedi --> Ntk\_rfc\_bandwidth.
 
 \begin{thebibliography}{99}
 	\bibitem{ntksite} Netsukuku website:
-		\href{http://netsukuku.freaknet.org/}{http://netsukuku.freaknet.org/}.
+		\href{http://netsukuku.freaknet.org/}{http://netsukuku.freaknet.org/}
 	\bibitem{DFS} Depth-First Search:
-		\href{http://en.wikipedia.org/wiki/Depth-first\_search}{http://en.wikipedia.org/wiki/Depth-first\_search}.
-	\bibitem{genrouteawk} Generate Routes in Awk:\\
-		\href{http://cvs.hinezumi.org/viewcvs/netsukuku/proto/qspn/generate\_routes.awk}{generate\_routes.awk}.
-	\bibitem{simrouteawk} Simplify Routes in Awk:\\
-		\href{http://cvs.hinezumi.org/viewcvs/netsukuku/proto/qspn/simplify\_routes.awk}{simplify\_routes.awk}.
+		\href{http://en.wikipedia.org/wiki/Depth-first\_search}{http://en.wikipedia.org/wiki/Depth-first\_search}
+	\bibitem{genrouteawk} Generate Routes in Awk:
+		\ifpdf \else \\ \fi
+		\href{http://cvs.hinezumi.org/viewcvs/netsukuku/proto/qspn/generate\_routes.awk}{generate\_routes.awk}
+	\bibitem{simrouteawk} Simplify Routes in Awk:
+		\ifpdf \else \\ \fi
+		\href{http://cvs.hinezumi.org/viewcvs/netsukuku/proto/qspn/simplify\_routes.awk}{simplify\_routes.awk}
+	\bibitem{completegraph} Complete graph:
+		\ifpdf \else \\ \fi
+		\href{http://mathworld.wolfram.com/CompleteGraph.html}{http://mathworld.wolfram.com/}
 \end{thebibliography}
 
 \end{document}
