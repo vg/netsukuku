@@ -641,10 +641,13 @@ A node can also keep in memory more than \emph{MaxRoutes} routes, because this
 limit applies only to the number of routes which will be used to evaluate the
 received CTP.
 
-\subsubsection{Scalability}
+\subsection{Scalability}
 Suppose that in our network every link has the same bandwidth capacity.
 We will now exploit the bouquet property of the Tracer Packets, which has
 been described in section \ref{sec:proprieties_TP}.
+%TODO CONTINUE HERE!!!!!!!!!!
+%E' necessario usare questa proprieta'? E' ottimale ricevere i CTP in ordine
+%di efficienza?
 
 Suppose also that the generic node $D$ doesn't know any route to reach the
 node $T$.
@@ -652,18 +655,64 @@ If a TP, received by the node $D$, contains a new route $t$ that
 connects $D \rightarrow T$, then we can deduce, by the bouquet property, that
 $t$ is the fastest route between $D$ and $T$.
 
+\subsubsection{TP Classes}
 The immediate consequence is that $D$ will receive all the other $D
 \rightarrow T$ routes in order of efficiency: the first is, as we've seen,
 the best route, the second one will be less fast than the first but surely
 better than any other, and so on.
 
-Therefore, if the node $D$ has the \emph{MaxRoutes} limit set, it will
-memorise only the first \emph{MaxRoutes} received routes for each node of the
-network, while the rest will be disregarded. 
+Two different routes can be very similar, because they can differ only in a
+small part. Two routes which differs of just one hop, are almost identical.
+For this reason, other than the best $D \rightarrow  T$ route, the CTP will
+also explore all the other routes which are almost identical to it.
+
+We can thus order all the TPs which $D$ will receive into classes. The first
+class, denoted with $[1]$, contains the TP which have covered the best
+route and all the others similar to it, i.e. all the other routes with the same
+number of hop and a similar trtt (total round trip time).
+The second class $[2]$, contains the TP which have covered routes which are
+less efficient than those contained in $[1]$ but are more efficient than those
+of class $[3]$.
+More generally we can say that the $[n\textrm{-th}]$ class contains the routes that,
+if included in a list of all the routes of the graph, ordered in decrescent
+order of efficiency, will be listed starting from the position $(n-1)c+1$. Where
+$c$ is the numbers of routes contained in each class.
+
+In the classes we are including \emph{routes} and not \emph{tracer packets},
+because a TP may more than one route.
+
+\subsubsection{Subcycle filter}
+Each node of the graph acts as a filter for all the subcycles containing it.
+
+Suppose the node $D$ is contained in the subcycle $\sigma$ and that a CTP $t$
+enters in it (through another node).
+If the node $D$ has the \emph{MaxRoutes} limit set, it will memorise only the
+first \emph{MaxRoutes} received routes for each node of the network, while the
+rest will be disregarded, and \textbf{not} forwarded. \\
+The CTP $t$ won't be forwarded by the node $D$, if it contains routes which
+exceed the \emph{MaxRoutes} limit, but this is true for all the nodes of
+$\sigma$, therefore $t$ won't even be able to escape from the subcycle
+$\sigma$. However, this also means that all the CTPs, which are in a higher
+class than that of $t$, won't be allowed to pass from $\sigma$.
+
+Since this happens for all the subcycles of the graph, we can conclude that at
+woest, the number of CTPs increases in polynomial time with the increase of
+subcycles.
+
+\subsubsection{Example}
+\begin{figure}[h]
+	\begin{center}
+		\includegraphics[scale=0.4]{fig/neato_3cycles}
+	\end{center}
+	\caption{Sequential composition of cycles}
+	\label{fig:q2_scalability_example}
+\end{figure}
+
 %TODO CONTINUE HERE!!!!!!!!!!
 
-
-
+%%% Poiche' stiamo considerando il ritardo dell'rtt, dire che possiamo
+%%% semplicemente ricevere le prime MaxRoutes rotte e poi scartare tutto il
+%%% resto
 %%% TODO: Questo perche' abbiamo supposto \forall link = 100Mbs, ma il
 %%% discorso vale anche in generale, basta fakare l'rtt.
 
@@ -692,18 +741,35 @@ Un TP normale non genera mai rotte ridondanti.
 
 Il v1 usa meno memoria del v2.
 
+\subsection{1 VS 2}
+%The QSPN v2 doesn't need synchronization, doesn't need an id for the CTP,
+%because it is just continous, it uses less operations than Q1.
+%The QSPN v1 generates less routes, it requires less memory.
+
+%If the simulations of the Q2 gives good resul, it is convenient, to use the
+%Q2, even if it is slightly less efficient of the Q1. The Q2 is cleaner, it
+%generates less bug in the implementation.
+
+
 \subsection{Rtt and bandwidth}
 %%%%%%%%%%%%%%%%%%%% TODO %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %Questo discorso vale sia per il v1 che per il v2.
 %Vedi (Ntk\_rfc\_bandwidth) sulla tecnica del misuramento dei link.
 %Bisogna necessariamente ritardare il forwarding, altrimenti potrebbero essere
-%non considerate alcune rotte.  La sua utilita' e'
-%quella di far arrivare prima le rotte che hanno la media migliore tra rtt e
-%bw. Il suo difetto e' che vengono esclusi i casi estremi.
+%non considerate alcune rotte. 
+%La sua utilita' e' quella di far arrivare prima le rotte che hanno la media
+%migliore tra rtt e bw. Quindi, le rotte verranno ricevute in ordine di
+%efficienza e si potranno droppare tutti i successivi TP senza timore. Se
+%invece il ritardo non fosse utilizzato, nel Q2 alcuni nodi farebbero passare
+%CTP che in seguito, dopo aver ricevuto altri cTP, avrebbero considerato meno
+%efficienti e quindi l'avrebbero scartato.
+%Il suo difetto e' che vengono esclusi i casi estremi.
 %
 %Il ritardo prende le rotte medie di bw e rtt. Il difetto e' che vengono
 %scartate le rotte estreme.
+%Pero' e' anche vero che nelle situazioni reali bw e rtt sono quasi sempre
+%correlate, quindi e' giusto considerare di piu' la situazione media.
 %
 
 \section{Asymmetric bandwidth}
@@ -711,6 +777,21 @@ Bla. Bla.
 Vedi --> Ntk\_rfc\_bandwidth.
 %%%% TODO: Mandare in lista la risposta al tizio che aveva chiesto sulla questione
 %%%% }dell'asimmetria
+
+
+\section{Open questions}
+\begin{enumerate}
+	\item 
+The number of TPs and routes (of the QSPN v1, v2) is proportional to the number
+of the graph subcycles. It would be interesting to find an analytic relation
+between these two quantities.
+	\item Does a more efficient algorithm than the QSPN v1, v2 exist?
+\end{enumerate}
+
+
+\section{TODO}
+We need to write a ns-2\cite{ns2} simulator to confront the efficiency of the
+QSPN v1 with that of the v2.
 
 
 %%%%%%%%%%%%%%%%
@@ -731,6 +812,9 @@ Vedi --> Ntk\_rfc\_bandwidth.
 	\bibitem{completegraph} Complete graph:
 		\ifpdf \else \\ \fi
 		\href{http://mathworld.wolfram.com/CompleteGraph.html}{http://mathworld.wolfram.com/}
+	\bibitem[ns2] Network simulator:
+		\ifpdf \else \\ \fi
+		\href{http://www-mash.cs.berkeley.edu/ns/}{http://www-mash.cs.berkeley.edu/ns/}
 \end{thebibliography}
 
 \end{document}

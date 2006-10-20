@@ -5,6 +5,13 @@ do
 	circo $i -Tps $i > `basename $i .dot`.ps
 done
 
+
+for i in neato*.dot;
+do
+	neato $i -Tps $i > `basename $i .dot`.ps
+done
+
+
 for i in *.png;
 do
 	convert $i $(basename $i .png).ps
