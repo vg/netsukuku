@@ -172,7 +172,7 @@
   with minimal CPU and memory resources. Thanks to this feature it can be
   easily used to build a worldwide distributed, anonymous and not controlled
   network, separated from the Internet, without the support of any servers,
-  ISPs or authority controls.
+  ISPs or control authorities.
   This net is composed by computers linked physically each other, therefore
   it isn't build upon any existing network. Netsukuku builds only the routes
   which connects all the computers of the net.
@@ -1535,9 +1535,9 @@
   automake and the others, but it's just needed the handy scons
   (http://www.scons.org).
 
-  The latest version of the code is always available on the hinezumilabs cvs:
+  The latest version of the code is always available on the hinezumi cvs:
 
-  cvs -d :pserver:anoncvs@hinezumilabs.org:/home/cvsroot login
+  cvs -d :pserver:anoncvs@hinezumi.org:/home/cvsroot login
   
   or give a look on the online web cvs:
   

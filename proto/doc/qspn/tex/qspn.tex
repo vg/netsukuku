@@ -111,6 +111,7 @@ For this reason, it's necessary to structure the network in a convenient
 topology.
 
 \subsection{Fractal topology}
+\label{sec:fractal_topology}
 Netsukuku, adopts a fractal like structure:
 256 nodes are grouped inside a \emph{group node} (gnode), 256 group nodes are grouped
 in a single \emph{group of group nodes} (ggnode), 256 group of group nodes are
@@ -642,25 +643,25 @@ limit applies only to the number of routes which will be used to evaluate the
 received CTP.
 
 \subsection{Scalability}
-Suppose that in our network every link has the same bandwidth capacity.
+\label{sec:Scalability}
 We will now exploit the bouquet property of the Tracer Packets, which has
 been described in section \ref{sec:proprieties_TP}.
-%TODO CONTINUE HERE!!!!!!!!!!
-%E' necessario usare questa proprieta'? E' ottimale ricevere i CTP in ordine
-%di efficienza?
 
-Suppose also that the generic node $D$ doesn't know any route to reach the
+Suppose that in our network every link has the same bandwidth capacity and
+that the generic node $D$ doesn't know any route to reach the
 node $T$.
 If a TP, received by the node $D$, contains a new route $t$ that
 connects $D \rightarrow T$, then we can deduce, by the bouquet property, that
 $t$ is the fastest route between $D$ and $T$.
 
-\subsubsection{TP Classes}
 The immediate consequence is that $D$ will receive all the other $D
 \rightarrow T$ routes in order of efficiency: the first is, as we've seen,
-the best route, the second one will be less fast than the first but surely
+the best route, the second one will be slower than the first but surely
 better than any other, and so on.
 
+
+\subsubsection{TP Classes}
+\label{sec:tp_classes}
 Two different routes can be very similar, because they can differ only in a
 small part. Two routes which differs of just one hop, are almost identical.
 For this reason, other than the best $D \rightarrow  T$ route, the CTP will
@@ -686,40 +687,101 @@ Each node of the graph acts as a filter for all the subcycles containing it.
 
 Suppose the node $D$ is contained in the subcycle $\sigma$ and that a CTP $t$
 enters in it (through another node).
-If the node $D$ has the \emph{MaxRoutes} limit set, it will memorise only the
-first \emph{MaxRoutes} received routes for each node of the network, while the
+If the node $D$ has the \emph{MaxRoutes} limit set, it will memorise, for each
+node of the network, only the first \emph{MaxRoutes} received routes, while the
 rest will be disregarded, and \textbf{not} forwarded. \\
 The CTP $t$ won't be forwarded by the node $D$, if it contains routes which
 exceed the \emph{MaxRoutes} limit, but this is true for all the nodes of
 $\sigma$, therefore $t$ won't even be able to escape from the subcycle
 $\sigma$. However, this also means that all the CTPs, which are in a higher
-class than that of $t$, won't be allowed to pass from $\sigma$.
+class than that of $t$, won't be allowed to pass from $\sigma$.\\
 
 Since this happens for all the subcycles of the graph, we can conclude that at
-woest, the number of CTPs increases in polynomial time with the increase of
+worst, the number of CTPs increases in polynomial time with the increase of
 subcycles.
 
-\subsubsection{Example}
+\subsubsection*{Example}
+Consider this graph.
 \begin{figure}[h]
 	\begin{center}
-		\includegraphics[scale=0.4]{fig/neato_3cycles}
+		\includegraphics[scale=0.5]{fig/neato_3cycles}
 	\end{center}
 	\caption{Sequential composition of cycles}
 	\label{fig:q2_scalability_example}
 \end{figure}
+Let's analyse the difference between a CTP without limits and the same CTP
+with \emph{MaxRoutes} set.
+\begin{description}
+	\item[Unlimited CTP] $A$ sends a CTP. Suppose for simplicity that
+		this CTP won't loop inside a cycle.\\
+		$D$ receives $2$ packets from $A$, $G$ $2*2$ from $D$ and
+		finally $L$ $2*2*2$ from $D$.\\
+		$L$ sends back all the received CTPs, thus $G$ gets $2^4$ CTPs
+		from $L$, $D$ gets $2^5$ and finally $A$ receives $2^6=64$
+		packets.
+		Obviously this is too much for this simple graph.
+	\item[Limited CTP] Let's use $\textrm{\emph{MaxRoutes}}=1$ and suppose
+		that the CTP won't loop inside a cycle. We'll write
+		$D_A(n,z)$ to indicate that $D$ received $n$ CTPs from the node
+		$A$ but has kept and forwarded only $z$ packets.\\
+		$A$ sends a CTP.\\
+		\begin{align*}
+			&A_{\emptyset}(0,2) \rightarrow	D_A(2,2)\rightarrow
+			G_D(4,3) \rightarrow L_G(6,4) \rightarrow \\
+			& \qquad G_L(8,5) \rightarrow D_G(10, 6) \rightarrow
+			A_D(12, 0)
+		\end{align*}
+		At the end, A gets $12$ packets.\\
+		Each node forwards $p/2+1$ packets, where $p$ is the number of
+		received CTPs. This is because the first two packets give to
+		the node a new route, while the other two, and the successive
+		ones, cover a superflous route. For example, consider
+		\begin{align}	
+			&\underline{A \rightarrow  C \rightarrow D \rightarrow
+			E \rightarrow  G} \label{eq:d1}\\
+			&A \rightarrow  C \rightarrow D \rightarrow
+			\underline{F \rightarrow  G} \label{eq:d2}\\
+			&A \rightarrow  \underline{B \rightarrow D} \rightarrow
+			E \rightarrow  G \label{eq:d3}\\
+			&A \rightarrow B \rightarrow D \rightarrow F
+			\rightarrow  G \mathbb{!}\label{eq:d4}
+		\end{align}
+		The underlined routes are the new route for $G$. As you can
+		see, in the CTP (10) G doesn't find any new route, so
+		it drops the packet and doesn't forward it.
+	\end{description}
 
-%TODO CONTINUE HERE!!!!!!!!!!
+\subsubsection{Efficiency order}
+We've noted in section \ref{sec:Scalability} that any node will receive the
+CTPs in order of efficiency, thus we are sure that only the first
+\emph{MaxRoutes} received routes (which point to a specific node) are
+meaningfull, while all the successive ones are uninteresting and should be
+dropped. This is important, because each
+node will first receive \emph{MaxRoutes} interesting routes and
+\textbf{then} the uninteresting ones, that will be dropped. 
+Doing so, an uninteresting route won't be forwarded before its interesting
+correspondent, and as soon it is recognised it will be dropped.
 
-%%% Poiche' stiamo considerando il ritardo dell'rtt, dire che possiamo
-%%% semplicemente ricevere le prime MaxRoutes rotte e poi scartare tutto il
-%%% resto
-%%% TODO: Questo perche' abbiamo supposto \forall link = 100Mbs, ma il
-%%% discorso vale anche in generale, basta fakare l'rtt.
+To clarify this concept suppose that the routes aren't received in order of
+efficiency and that $\textrm{\emph{MaxRoutes}}=2$. Then suppose that node $D$ doesn't
+have any route yet and receives a CTP of class $[7]$. $D$ will consider this
+CTP as interesting and forward it, because it's the first one it receives.\\
+In conclusion, the CTP of class $[7]$ would be allowed to be propagated among
+the network even if the \emph{MaxRoutes} has been set to $2$ routes.
+Instead, if $D$ receives the packet in an ordered
+manner, it will first get the CTPs of class $[1]$, then those of class $[2]$
+and so on. For this reason the CTP of class $[7]$. and all the other which
+exceed the \emph{MaxRoutes} limit, won't be allowed to pass from $D$.
+
+\subsection{Bandwidth issues}
+Until now we've supposed that every link of the network has the same bandwidth
+capacity. However, we'll see in section \ref{sec:bandwidth_q1q2} that the QSPN
+can be used in the general case.
 
 \subsection{Worst case}
 The graph, formed by $n$ nodes, which has the maximum number of cycles is the
-worst case for the Qv2, because it will have to explore any combination of
-cycles.
+worst case for the Qv2, because, if not limited, it will have to explore any
+combination of cycles.
 
 Such graph is the \emph{complete graph}\cite{completegraph}, and the total
 number of its subcycles is:
@@ -728,9 +790,34 @@ number of its subcycles is:
 \]
 
 \subsection{High levels}
-%%% Un CTP, nei liveeli alti, si propaga come un normale TP all'interno dei
-%%% gnode. I bnode si preoccupano di salvarsi in cache le rotte.
+The Q2 can explore independently any level of the topology\footnote{We've
+talked about the network topology in section \ref{sec:fractal_topology}}.
 
+Suppose that the Q2 is exploring the level $n$. The gnode $g$, which belongs
+to the level $n$, acts as a single node:
+\begin{enumerate}
+	\item The bnodes\footnote{A border\_node is a node which is on the
+		border between two or more gnodes, i.e. it belongs to the all
+		its bordering gnodes} of level $n-1$ will receive all the CTPs.
+		They will append the ID of $g$ in the body of the CTP and then
+		forward it inside the same gnode $g$ as a normal TP.
+		All the (g)nodes of $g$ (including the bnodes) which will
+		receive the TP, will memorise in their caches the routes
+		contained in it.
+	\item When a bnode $b_2$ receives the TP forwarded by another bnode
+		$b_1$ of the same gnode, it will reconvert the TP in a CTP and
+		forward it to its bordering gnodes (except the one which
+		originally sent the CTP to $b_1$).
+	\item The bnodes will respect the rules of the Q2, thus if a CTP will
+		exceed the \emph{MaxRoutes} limit it will be dropped. 
+\end{enumerate}
+You can apply this procedure to any level $n$, considering that:
+\begin{enumerate}
+	\item A bnode can be an entire gnode too.
+	\item A gnode of level $-1$ is a single node.
+	\item A bnode of the gnode of level $-1$ is the gnode itself, i.e. it
+		is the same single node.
+\end{enumerate}
 
 \section{QSPN v1}
 \label{sec:QSPNv1}
@@ -752,6 +839,8 @@ Il v1 usa meno memoria del v2.
 
 
 \subsection{Rtt and bandwidth}
+\label{sec:bandwidth_q1q2}
+
 %%%%%%%%%%%%%%%%%%%% TODO %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %Questo discorso vale sia per il v1 che per il v2.
@@ -771,7 +860,7 @@ Il v1 usa meno memoria del v2.
 %Pero' e' anche vero che nelle situazioni reali bw e rtt sono quasi sempre
 %correlate, quindi e' giusto considerare di piu' la situazione media.
 %
-
+blabla
 \section{Asymmetric bandwidth}
 Bla. Bla.
 Vedi --> Ntk\_rfc\_bandwidth.

@@ -14,7 +14,7 @@ itself autonomously. It is designed to handle an unlimited number of nodes with
 minimal CPU and memory resources. Thanks to this feature it can be easily
 used to build a worldwide distributed, anonymous and anarchical network,
 separated from the Internet, without the support of any servers, ISPs or
-authority controls.
+control authorities.
 
 The complete features list of Netsukuku is here:
 L<http://netsukuku.freaknet.org/files/doc/misc/Ntk_features_list>

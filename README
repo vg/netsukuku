@@ -69,14 +69,14 @@ If you want to download the development code you have to checkout it from the
 cvs repository:
 (Warning: It is highly probable the development code will not work!)
 
-$ cvs -d :pserver:anoncvs@hinezumilabs.org:/home/cvsroot login
+$ cvs -d :pserver:anoncvs@hinezumi.org:/home/cvsroot login
 or
-$ export CVSROOT=":pserver:anoncvs@hinezumilabs.org:/home/cvsroot"
+$ export CVSROOT=":pserver:anoncvs@hinezumi.org:/home/cvsroot"
 $ cvs login
 
 then check it out:
 
-$ cvs -z3 -d :pserver:anoncvs@hinezumilabs.org:/home/cvsroot co netsukuku
+$ cvs -z3 -d :pserver:anoncvs@hinezumi.org:/home/cvsroot co netsukuku
 or
 $ cvs -z3 co netsukuku
 (providing the CVSROOT variable was set in the previous step)

@@ -1142,13 +1142,13 @@
   automake e famiglia, ma basta usare il comodo scons (http://www.scons.org).
 
   L'ultima versione del codice e' sempre disponibile sul cvs degli
-  hinezumilabs: 
+  hinezumi: 
 
-  cvs -d :pserver:anoncvs@hinezumilabs.org:/home/cvsroot login
+  cvs -d :pserver:anoncvs@hinezumi.org:/home/cvsroot login
   
   oppure date un'occhiata da qui:
   
-  http://hinezumilabs.org/cgi-bin/viewcvs.cgi/netsukuku/
+  http://hinezumi.org/cgi-bin/viewcvs.cgi/netsukuku/
   
 
   13.  What to do

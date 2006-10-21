@@ -1,5 +1,35 @@
 #!/bin/awk -f
 #
+# generate_routes.awk
+# --
+# 
+# Given a graph on standard input it prints all the routes of each node.
+#
+# The format of input is very restricted: each node is rapresented by a
+# alphanumeric character (case sensitive). On each line there has to be a
+# description of a link. If the node A is linked to the node B, you've also to
+# specify that B is linked to A.
+# Example:
+#
+# printf "AB\nBA\nAC\nCA\nBD\nDB\nCD\nDC" | generate_routes.awk
+#
+#  The above string rapresents this graph:
+#
+#	  B
+#  	 / \
+#  	A   D
+# 	 \ /
+# 	  C
+# The output of generate_routes.awk is:
+#	ABDC
+#	ACDB
+#	BACD
+#	BDCA
+#	CABD
+#	CDBA
+#	DBAC
+#	DCAB
+#
 # AlpT (@freaknet.org)
 #
 

@@ -47,7 +47,7 @@ A: Netsukuku is a mesh network or a p2p net system that generates and sustains
    with minimal CPU and memory resources. Thanks to this feature it can be
    easily used to build a worldwide distributed, anonymous and anarchical
    network, separated from the Internet, without the support of any servers,
-   ISPs or authority controls.
+   ISPs or control authorities.
    This net is composed by computers linked physically each other, therefore it
    isn't build upon any existing network. Netsukuku builds only the routes which
    connects all the computers of the net.
