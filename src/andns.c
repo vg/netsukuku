@@ -235,17 +235,24 @@ void andns_close(void)
 
 int ns_general_send(char *msg,int msglen,char *answer,int anslen)
 {
-        int res,i;
+	int res,i;
 
-        for (i=0; i<_andns_ns_count_;i++) {
+	for (i=0; i<_andns_ns_count_;i++) {
 		res=ai_send_recv_close(_andns_ns_[i],msg,msglen,
 				answer,anslen,0,0,ANDNS_TIMEOUT);
-                if(res != -1) {
-                        return res;
+		if (res<0) {
+			if (res==-1) {
+				err_ret(ERR_SKTCON,-1);}
+			else if (res==-2) {
+				err_ret(ERR_SKTSEN,-1);}
+			else if (res==-3) {
+				err_ret(ERR_SKTREC,-1);}
 		}
-        }
+		else
+			return res;
 
-        err_ret(ERR_RSLFDQ,-1);
+	}
+	return 0;
 }
 
 			/* UTILS FUNCTIONS */

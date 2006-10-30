@@ -84,7 +84,7 @@ cd proto/2html/
 
 ################  Converti html ######
 
-for i in `find ./  -type f | grep -v 'CVS/' | grep -v '\.info$'`; do
+for i in `find ./  -type f | egrep -v 'CVS/|\.info$|\.pdf$'`; do
 	if echo $i | grep '\.html$';
 	then
 		echo $i already html

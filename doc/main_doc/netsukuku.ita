@@ -33,8 +33,7 @@
   	5.1  QSPN: Quantum Shortest Path Netsukuku
   		5.1.1  QSPN screenshot
 	  	5.1.2  Continual qspn starters
-		5.1.3  The Qspn sickness: RequestForRoute
-		5.1.4  Qspn round
+		5.1.3  Qspn round
 		
 	5.2  Npv7_HT Hook & Unhook
 		5.2.1  Qspn Hook & Unhook
@@ -217,7 +216,7 @@
   router, perche' la mappa di tutte le rotte richiederebbe uno spazio, su
   ciascun pc connesso alla rete, di circa dieci Gb.
   
-  L'Npv7 struttura l'intera rete come un frattale, ed usa un particolare
+  L'Npv7 struttura l'intera rete come un frattale, e usa un particolare
   algoritmo chiamato Quantum Shortest Path Netsukuku (QSPN) per calcolare
   tutte le rotte necessarie a collegare un nodo ad ogni altro nodo. 
   Un frattale e' una struttura matematica che si puo' comprimere all'infinito,
@@ -228,13 +227,9 @@
   La struttura della mappa puo' anche essere definita in modo piu' preciso
   come un grafo altamente clusterizzato.
   
-  Il QSPN, invece, e' un meta-algoritmo perche' non esegue una sequenza di
-  istruzioni matematiche definite ma sfrutta il caso e il caos, che non
-  richiedono nessun calcolo pesante. 
-  Il QSPN deve essere eseguito su una rete reale (o simulata). I nodi devono
-  mandare i pacchetti QSPN per "eseguire" l'algoritmo, e per questo motivo
-  non e' sempre vero che un determinato pacchetto sara' mandato prima di un
-  altro.
+  Il QSPN, invece, e' un algoritmo che deve essere eseguito dalla rete stessa:
+  i nodi devono solamente mandare e ricevere i Tracer Packet, evitando cosi'
+  di usare elevate risorse computazionali.
   
   2.4  Other implementations
 
@@ -383,16 +378,22 @@
   
   5.1   QSPN: Quantum Shortest Path Netsukuku
 
-  In Netsukuku, come in natura, non vi e' alcun bisogno di usare schemi
-  matematici. Un ruscello, per raggiungere il mare, calcolera' mai la strada
-  che dovra' percorrere quando ancora si trova in cima alla montagna? Il
-  ruscello scorrera' semplicemente, trasportato dal suo stesso flusso,
-  trovando cosi', prima o poi, la sua rotta ideale.
+  ==============================================================
+  Una nuova versione del QSPN e' stata sviluppata.
+  Puoi trovare dettagliate informazioni qui:
+  __Q2LINK__
+  Questo documento si riferisce solamente al QSPN v1.
+  E' altamente probabile che il QSPN v2 sostituira' la prima
+  versione.
+  ==============================================================
+
+  Un ruscello calcolera' mai la strada che dovra' percorrere per raggiungere
+  il mare, quando ancora si trova in cima alla montagna?
+  Il ruscello scorrera' semplicemente trasportato dal suo stesso flusso,
+  trovando la sua rotta ideale.
   
-  Netsukuku sfrutta lo stesso principio caotico. Il risultato finale
-  restituito dall'algoritmo che esplora la rete puo' essere constituito da
-  risultati intermedi ogni volta differenti, poiche' quest'algoritmo viene
-  "eseguito" dalla rete stessa.
+  Netsukuku sfrutta lo stesso principio. L'algoritmo che esplora le rotte
+  viene "eseguito" dalla rete stessa.
   
   L'uso di una mappa, in un protocollo di reti dinamiche, crea troppi
   problemi, dovendo tenerla sempre aggiornata. La soluzione e' semplice: non
@@ -548,30 +549,7 @@
   nodi, ogni singolo nodi manda un tracer_pkt, quindi, i qspn_pkt vengono
   declassati a normali tracer_pkt.
      
-  5.1.3  The Qspn sickness: RequestForRoute
-  
-  /* Da codare, e non realmente necessario */
-  L'unico grande difetto di qspn e' l'impossibilita' di avere molte piu' rotte
-  per raggiungere uno stesso nodo. Con il qspn si e' sicuri di avere solamente
-  le rotte migliori, e basta. In realta' il qspn puo' anche generare infinite
-  rotte, basta che si lasci circolare il broadcast all'infinito (^_-).
-  Ovviamente e' impensabile aspettare un'intera eternita' o due, quindi si usa
-  il RequestForRoute! Il RFR verra' usato ogni volta che un nodo si connette
-  ad un altro.
-  Ecco cosa succede:
-  il nodo manda a tutti i suoi rnode una richiesta RFR per una determinata
-  rotta, questa richiesta contiene anche il numero di sub richieste
-  (total_routes) che gli rnode devono mandare ai loro rnode. In pratica il
-  nodo decide quante rotte ricevere e si calcola il numero di sub richieste
-  che dovranno mandare i suoi rnode:
-  subrfr = (total_routes - r_node.links) / r_node.links
-  Dopo invia il RFR.
-  I suoi rnode, dopo avergli mandato la rotta che loro usano per raggiungere il
-  dst_node specificato nel rfr_pkt, mandano allo stesso modo un RFR che pero'
-  ha total_routes pari a subrfr. Gli rnode degli rnode eseguiranno la stessa
-  procedura e risponderanno direttamente al nodo interessato.
-
-  5.1.4  Qspn round
+  5.1.3  Qspn round
 
   Se un nodo riscontra un cambiamento attorno a se', ad esempio un suo
   rnode e' morto oppure l'rtt che lo distanzia dal suo rnode e' cambiato
@@ -921,7 +899,7 @@
   3 giorni dal momento della loro registrazione od aggiornamento.
   Il tempo di decadimento e' volutamente molto alto per mantenere i domini 
   stabili. In questo modo, anche se qualcuno attacca un nodo per appropriarsi
-  del suo dominio, dovra' aspettare 3 giorni.
+  del suo dominio, dovra' aspettare 30 giorni.
   Quando il tempo di ibernazione si e' esaurito allora tutti gli hostname
   scaduti vengono cancellati e vengono sostituiti dagli altri hostname in
   coda.

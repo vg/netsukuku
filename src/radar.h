@@ -25,13 +25,15 @@
 #define MAX_RADAR_WAIT		5	/*How much we wait to store the received
 					  ECHO_REPLY pkts and then to close the
 					  current radar session*/
-#define RTT_DELTA		1000	/*If the change delta of the new rtt is
+#define RTT_DELTA		258	/*If the change delta of the new rtt is
 					  >= RTT_DELTA, the qspn_q.send_qspn 
 					  will be set. (It's in millisec)*/
 
 #ifdef DEBUG		
 #undef MAX_RADAR_WAIT
 #define MAX_RADAR_WAIT          3
+#undef RTT_DELTA
+#define RTT_DELTA		1000
 #endif
 
 int max_radar_wait;

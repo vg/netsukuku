@@ -188,7 +188,7 @@ ssize_t w_send_timeout(int s,const void *buf,size_t len,int die,int timeout)
         FD_ZERO(&fdset);
         FD_SET(s, &fdset);
 
-        ret = select(s+1, &fdset, NULL, NULL, &timeout_t);
+        ret = select(s+1, NULL, &fdset, NULL, &timeout_t);
         if (ret == -1) {
 		if (die)
 			fatal("send(): select error.");
@@ -212,8 +212,7 @@ ssize_t w_recv_timeout(int s,void *buf,size_t len,int die,int timeout)
         FD_ZERO(&fdset);
         FD_SET(s, &fdset);
 
-        ret = select(s+1, NULL, &fdset, NULL, &timeout_t);
-
+        ret = select(s+1, &fdset, NULL, NULL, &timeout_t);
         if (ret == -1) {
 		if (die)
 			fatal("recv(): select error.");

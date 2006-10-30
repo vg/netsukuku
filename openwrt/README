@@ -60,7 +60,7 @@ How to install it:
 		nvram lan_ipaddr=192.168.1.X
 		nvram lan_proto=static
 		nvram commit
-		nvram reboot
+		reboot
 
 	#remember that now the wired IP of the AP is `lan_ipaddr' when you boot it.
 

@@ -119,8 +119,7 @@ A: http://lab.dyne.org/Ntk_Grow_Netsukuku
 \		 /
 
 Q: Does it scale in a network with A LOT of nodes?
-A: Simple and not accurate reasons for the scalability of Netsukuku (until there
-   is the technical documentation with math background that is being written):
+A: Simple and not accurate reasons for the scalability of Netsukuku:
    1) the size of the maps is fixed: about 4Kb for the int_map and 16Kb for
       the ext_map.
    2) Not all the nodes sends a broadcast discovery.
@@ -129,6 +128,8 @@ A: Simple and not accurate reasons for the scalability of Netsukuku (until there
       calculating anything.
    5) A flood is synchronized: the same flood starts at the same time for all
       the nodes.
+
+   You can read the detailed analysis of the QSPN v2 here: __Q2LINK__
 
    A first draft of the explanation of the Netsukuku scalability is available
    here: http://lab.dyne.org/Netsukuku_scalability

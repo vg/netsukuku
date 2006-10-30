@@ -31,8 +31,7 @@
   	5.1  QSPN: Quantum Shortest Path Netsukuku
   		5.1.1  QSPN screenshot
 	  	5.1.2  Continual qspn starters
-		5.1.3  The Qspn sickness: RequestForRoute
-		5.1.4  Qspn round
+		5.1.3  Qspn round
 		
 	5.2  Npv7_HT Hook & Unhook
 		5.2.1  Qspn Hook & Unhook
@@ -245,13 +244,9 @@
   The map structure of Netsukuku can be also defined more precisely by
   calling it a highly clusterised graph of nodes.
   
-  On the other hand, the QSPN is a meta-algorithm in the sense that it
-  doesn't follow any predefined mathematical instructions but exploits the
-  chance and the chaos, which both don't need any heavy computation.
-  The QSPN has to be executed on a real (or simulated) network. The nodes have
-  to send the QSPN packets in order to "execute" it.
-  For this reason it is not always true that a specific pkt will be sent
-  before another one. 
+  On the other hand, the QSPN is an algorithm that has to be executed by the
+  network itself. The nodes, in order to execute it, have just to send and
+  receive the Tracer Packets, without using heavy computational resources.
   
   2.4  Other implementations
 
@@ -401,16 +396,21 @@
   
   5.1   QSPN: Quantum Shortest Path Netsukuku
 
+  ==============================================================
+  A new version of the QSPN algorithm has been developed.
+  You can find detailed information here:
+  __Q2LINK__
+  This document describes the QSPN v1 only.
+  It is highly probable that the QSPN v2 will substitute the
+  first version.
+  ==============================================================
 
-  In Netsukuku, as well as in Nature, there is no any need of using
-  mathematical models. Does a stream calculate the best route to reach the
-  sea when it is still at the top of the mountain?
+  Does a stream calculate the best route to reach the sea when it is still at
+  the top of the mountain?
   The stream simply flows and its flux will always find its ideal route.
   
-  Netsukuku exploits the same chaotic principle. The result of its net
-  discovery algorithm can be different each time, even if the net hasn't
-  changed at all. This is because the discovery algorithm is "executed" by the
-  net itself.
+  Netsukuku exploits the same principle. The routes discovery algorithm is
+  "executed" by the net itself.
   
   The use of a map, for a protocol of dynamic nets, creates a lot of
   troubles, since it has to be continuously updated. 
@@ -434,7 +434,7 @@
 
   Those who already know the physic of waves, can easily understand how the
   QSPN works. If we throw a pebble at a mirror of water, contained in a
-  basin, circular waves begin to propagate themself from the point of impact.
+  basin, circular waves begin to propagate themselves from the point of impact.
   Each wave generates a child wave that continues to spread and to generate
   child waves, as well, which generate children, and so on...
   When a wave hits the borders of the basin, it is reflected and goes back to
@@ -555,9 +555,9 @@
   The qspn_open ends.
   Each node has the routes to reach all the other nodes.
 
-  In general, the basic topology of a map for the qspn is a rhomb with the
+  In general, the basic topology of a map for the QSPN is a rhomb with the
   nodes at the vertexes, then, to have a more complex topology it's possible
-  to add other rhombs united each other from the vertexes.
+  to add other rhombuses united each other from the vertexes.
 
   5.1.2  Continual qspn starters
 
@@ -576,29 +576,7 @@
   every single node send a tracer_pkt, therefore, the qspn_pkts are
   declassified as normal tracer_pkts.
 
-  5.1.3  The Qspn sickness: RequestForRoute
-  
-  /* To code, and maybe not really necessary */
-  The only big hole in the qspn is the impossibility of having a vast number
-  of routes in order to reach the same node. With the qspn we are sure to
-  obtain just the best routes, but currently qspn can also generate uncountable
-  routes, all what we need is to let the broadcast working forever, without
-  interruption. Surely, it's unthinkable to wait for the eternity, that's why
-  we use the RequestForRoute! The RFR will be used all the time a node gets
-  connected to another node.
-  This is what happens:
-  the node sends to all its rnodes a RFR request for a specific route. This
-  request contains also the number of sub-requests (total_routes), which the
-  rnodes have to send to their rnodes. Practically, the node decides how many
-  routes wants to receive and calculates the number of sub-requests, which its
-  rnode will send: subrfr=(total_routes-r_node.links)/r_node.links.
-  After that it sends the rfr request. After having sent the route, used to
-  reach the dst_node specified inside the rfr_pkt, its rnodes sends, in the
-  same way, an rfr with the number of total_routes equal to the number of
-  subrfr. The rnodes of the rnodes will execute the same procedure and will
-  directly answer to the requester node.
-  
-  5.1.4  Qspn round
+  5.1.3  Qspn round
 
   If a node finds a change around itself, e.g. one of its rnodes is dead, or
   the rtt, between it and its rnode, has considerably changed, then it will
@@ -923,10 +901,10 @@
   
   7.1.5  Endless rest and rebirth
 
-  The hash_gnode keeps the hostname in an hibernated state for about 3 days
+  The hash_gnode keeps the hostname in an hibernated state for about 30 days
   since the moment of their registration or update.
   The expiration time is very long to stabilise the domains. In this way, even
-  if someone attacks a node to steal its domain, it will have to wait 3 days
+  if someone attacks a node to steal its domain, it will have to wait 30 days
   to fully have it.
   When the expiration time runs out, all the expired hostnames are deleted and
   substituted with the other in queue.

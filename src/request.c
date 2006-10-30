@@ -181,7 +181,7 @@ int rq_add_request(const char *rq_name, u_char flags)
 
 	hash=rq_hash_name(rq_name);
 
-	if(rq_lsearch_hash(hash))
+	if(rq_lsearch_hash(hash) != -1)
 		fatal(ERROR_MSG 
 		      "The \"%s\" request has been already added or its hash "
 		      "it's collinding with another request. "
@@ -309,7 +309,7 @@ int rqerr_add_error(const char *err_name, const char *err_desc)
 
 	hash=rqerr_hash_name(err_name);
 
-	if(rqerr_lsearch_hash(hash))
+	if(rqerr_lsearch_hash(hash) != -1)
 		fatal(ERROR_MSG
 		      "The \"%s\" error has been already added or its hash "
 		      "it's collinding with another error. "

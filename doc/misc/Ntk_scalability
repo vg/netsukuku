@@ -1,3 +1,10 @@
+----
+This article regards the QSPN v1 only.
+You can find the detailed analysis of the QSPN v2 here:
+__Q2LINK__
+----
+
+
 -   QSPN scalability
 
 The QSPN is an optimised way of "sending a tracer_pkt from each extreme node".

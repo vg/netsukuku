@@ -64,9 +64,9 @@ It's working way is simple: each inet-gw has a netfilter rule which marks
 all the packets coming from the outside and directed to the Internet. These
 packets are then routed directly to the Internet without being sent, again, to
 an inet-gw. In the example:
-A wants to send a packet to the Internet and its looks in its routing cache.
-It decide to forward the packet to B. B receives the packet, recognizes it is
-an extern packet directed to the Internet and shoots it on its modem.
+A wants to send a packet to the Internet and it looks in its routing cache.
+It decides to forward the packet to B. B receives the packet, recognizes it is
+an external packet directed to the Internet and shoots it on its modem.
 
 === Load sharing ===
 

@@ -918,7 +918,7 @@ int andna_recv_reg_rq(PACKET rpkt)
 	}
 
 	/* Are we a new hash_gnode ? */
-	if(time(0)-me.uptime < (ANDNA_EXPIRATION_TIME/3) && 
+	if(time(0)-me.uptime < (ANDNA_UPDATE_TIME) && 
 			!(ac=andna_cache_findhash((int*)req->hash))) {
 		/*
 		 * We are a new hash_gnode and we haven't this hostname in our
@@ -1663,7 +1663,7 @@ int andna_recv_resolve_rq(PACKET rpkt)
 
 		/* We don't have that hname in our andna_cache */
 	
-		if(time(0)-me.uptime < (ANDNA_EXPIRATION_TIME/2)) {
+		if(time(0)-me.uptime < ANDNA_UPDATE_TIME) {
 			/*
 			 * We are a new hash_gnode, let's see if there is
 			 * an old hash_gnode which has this hostname.
@@ -2034,10 +2034,10 @@ int put_single_acache(PACKET rpkt)
 
 		/*
 		 * Nothing found! Maybe it's because we have an uptime less than
-		 * (ANDNA_EXPIRATION_TIME/2) and so we are a new hash_gnode, 
+		 * ANDNA_UPDATE_TIME and so we are a new hash_gnode, 
 		 * therefore we have to forward the pkt to an older hash_gnode.
 		 */ 
-		if(time(0)-me.uptime < (ANDNA_EXPIRATION_TIME/2)) {
+		if(time(0)-me.uptime < ANDNA_UPDATE_TIME) {
 			new_hgnodes[req_hdr->hgnodes]=me.cur_ip.data;
 			if((err=find_hash_gnode(hash_gnode, &to, new_hgnodes, 
 							req_hdr->hgnodes+1, 1)) < 0) {
@@ -2172,7 +2172,7 @@ int recv_spread_single_acache(PACKET rpkt)
 		ERROR_FINISH(ret, 0, finish);
 	}
 
-	if(time(0)-me.uptime > (ANDNA_EXPIRATION_TIME/2) ||
+	if(time(0)-me.uptime > ANDNA_UPDATE_TIME ||
 			(ac=andna_cache_findhash((int*)req->hash))) {
 		/* We don't need to get the andna_cache from an old
 		 * hash_gnode, since we currently are one of them! */
@@ -2538,7 +2538,7 @@ void *andna_maintain_hnames_active(void *null)
 		if(updates)
 			save_lcl_cache(andna_lcl, server_opt.lcl_file);
 
-		sleep((ANDNA_EXPIRATION_TIME/2) + rand_range_fast(1, 10));
+		sleep(ANDNA_UPDATE_TIME + rand_range_fast(1, 10));
 	}
 
 	return 0;

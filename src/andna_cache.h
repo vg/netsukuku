@@ -35,7 +35,8 @@
 #define ANDNA_MAX_HOSTNAMES		256	/* Max number of hnames per node */
 #define ANDNA_MAX_RHC_HNAMES		512	/* Max number of hnames kept in
 						   the resolved_hnames cache* */
-#define ANDNA_EXPIRATION_TIME		259200	/* 3 days (in seconds)*/
+#define ANDNA_EXPIRATION_TIME		2592000	/* 30 days (in seconds)*/
+#define ANDNA_UPDATE_TIME		129600  /* 1.5 days */
 #define ANDNA_MIN_UPDATE_TIME		3600	/* The minum amount of time to
 						   be waited before sending an 
 						   update of the hname. */
@@ -53,6 +54,8 @@
 #ifdef DEBUG
 	#undef ANDNA_EXPIRATION_TIME
 	#define ANDNA_EXPIRATION_TIME 100
+	#undef ANDNA_UPDATE_TIME
+	#define ANDNA_UPDATE_TIME 30
 	#undef ANDNA_MIN_UPDATE_TIME
 	#define ANDNA_MIN_UPDATE_TIME 2
 #endif 

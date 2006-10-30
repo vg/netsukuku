@@ -65,7 +65,11 @@
 #define ERR_ZLIBUP	-32
 #define ERR_ZLIBNU	-33
 
-#define ERR_TOTAL_ERRS	(-(ERR_ZLIBNU))
+#define ERR_SKTSEN	-34
+#define ERR_SKTREC	-35
+#define ERR_SKTCON	-36
+
+#define ERR_TOTAL_ERRS  (-(ERR_SKTCON))
 #define ERR_OVERFLOW    "Error number does not exist."
 
         /* END OF DEFS */

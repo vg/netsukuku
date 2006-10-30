@@ -60,7 +60,7 @@ A completely dynamic network would requires rapid and frequent updates
 of the routes and this is in contrast with the stability and the scalability
 requirements of Netsukuku.
 For this reason, we restrict Netsukuku to the case where a node won't change
-its physical location quickly nor often.
+its physical location quickly or often.
 
 This assumption is licit, because the location of a wifi node mounted on
 top of a building won't change and its only dynamic actions would be the
@@ -83,7 +83,7 @@ However, there are some consequences of this assumption:
 
 
 \subsection{The routing algorithm}
-One of the most important part of Netsukuku, is the routing discovery
+One of the most important parts of Netsukuku, is the routing discovery
 algorithm, which is responsible to find all the most efficient routes of the
 network. These routes will permit to each node to reach any other node.
 
@@ -122,7 +122,7 @@ about it in the main documentation: \cite{ntksite}).
 Since each gnode acts as a single real node,
 the QSPN is able to operate independently on each level of the fractal.
 
-Because in each level there are a maximum of 256 (g)nodes, the QSPN will
+Since in each level there are a maximum of 256 (g)nodes, the QSPN will
 always operate on a maximum of 256 (g)nodes, therefore we would need just to
 be sure that it works as expected on every cases of a graph composed by $\le
 256$ nodes. By the way, we'll directly analyse the general case.
@@ -450,7 +450,7 @@ rules:
 
 Can we implement a ``live'' version of the Simplify Route algorithm like we
 did with the Generate Route one?\\
-The reply is ahead ;).
+The reply is ahead.
 
 \newpage
 \section{Continuous Tracer Packet}
@@ -518,6 +518,8 @@ The second version of the QSPN\footnote{The short name of the QSPN v2 is
 \emph{the network until it carries interesting information.}
 
 \subsection{Interesting information}
+\label{sec:interesting_info}
+
 A node considers a received CTP interesting when its body contains at least a
 new route, i.e. a route that the node didn't previously know.
 In other words, if a CTP contains routes already known by the node, it is
@@ -530,7 +532,7 @@ If, instead, the CTP is uninteresting, it will drop the packet.
 Note that if a CTP is uninteresting for the node $N$, then it is also
 uninteresting for all the other nodes. This is because an uninteresting CTP
 contains routes which has been previously received, memorized and forwarded
-by the node $N$, therefore all the other nodes already know the same
+by the node $N$. Therefore all the other nodes already know the same
 routes too.
 
 \subsubsection*{Example}
@@ -752,6 +754,8 @@ with \emph{MaxRoutes} set.
 	\end{description}
 
 \subsubsection{Efficiency order}
+\label{sec:eff_order}
+
 We've noted in section \ref{sec:Scalability} that any node will receive the
 CTPs in order of efficiency, thus we are sure that only the first
 \emph{MaxRoutes} received routes (which point to a specific node) are
@@ -783,7 +787,7 @@ The graph, formed by $n$ nodes, which has the maximum number of cycles is the
 worst case for the Qv2, because, if not limited, it will have to explore any
 combination of cycles.
 
-Such graph is the \emph{complete graph}\cite{completegraph}, and the total
+Such graph is the \emph{complete graph} \cite{completegraph}, and the total
 number of its subcycles is:
 \[
 \sum_{k=3}^n\,\frac{1}{2}\binom{n}{k}(k-1)!
@@ -821,67 +825,140 @@ You can apply this procedure to any level $n$, considering that:
 
 \section{QSPN v1}
 \label{sec:QSPNv1}
-%%%%%%%%%%%%%%%%%%%% TODO %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-La prima fase (qclose) equivale a un CTP normale.
-Appena 
-Un TP normale non genera mai rotte ridondanti.
+The QSPN v1 is a restricted case of the Q2.
+It is divided in two phases. The first one is called qspn\_close and is equivalent
+to a CTP which explores the graph. However when two CTPs collide, they will be
+converted to two normal TPs. The second phase, called qspn\_open is the
+propagation of the normal TPs.
 
-Il v1 usa meno memoria del v2.
+The CTP $c_1$ collides with the CTP $c_2$ when it enters in a segment, which
+has been already covered, in the opposite verse by $c_2$. The CTP $c_1$ is
+then converted to a normal TP, because it doesn't have to be reflected back to
+explore the same path which $c_2$ had already covered.
 
-\subsection{1 VS 2}
-%The QSPN v2 doesn't need synchronization, doesn't need an id for the CTP,
-%because it is just continous, it uses less operations than Q1.
-%The QSPN v1 generates less routes, it requires less memory.
+The QSPN has been already implemented in Netsukuku \cite{ntksite}.
 
-%If the simulations of the Q2 gives good resul, it is convenient, to use the
-%Q2, even if it is slightly less efficient of the Q1. The Q2 is cleaner, it
-%generates less bug in the implementation.
+\subsection{Q1 vs Q2}
+These are the substantial differences between the Q1 and the Q2:
+\begin{enumerate}
+	\item The Q1 generates less packets than the Q2, because in the qopen
+		phase it uses normal TPs which expires quickly. The side
+		effect of this behaviour is that the Q1 may not discover all
+		the best routes. However the Q1 gives at least one route to
+		reach each node of the graph.
 
+	\item The Q1 uses less memory than the Q2, because it keeps a
+		forwarding table, instead, the Q2 needs to memorize 
+		$\emph{MaxRoutes}$ complete routes to evaluate the successive
+		CTPs. By the way, this difference is minimal.
+
+	\item The Q2 doesn't need synchronization. the CTPs doesn't need to
+		have an ID, thus many nodes can send simultaneously or
+		asynchronously a CTP without creating any problem.\\
+		This isn't the same in the Q1, which requires a strict
+		synchronization between the nodes: two nodes can send 
+		a qclose only at the same time.
+
+	\item The Q2 is easier and simpler than the Q1 to be implemented. In
+		general this means that the code of the Q2 will have less
+		bugs.
+
+	\item 
+\end{enumerate}
+
+From this comparison we can conclude that the Q2 is preferable over the Q1,
+even if its is slightly less efficient.
+However the tests in the network simulator ns2 \cite{ns2}, will give the final
+words.
 
 \subsection{Rtt and bandwidth}
 \label{sec:bandwidth_q1q2}
 
-%%%%%%%%%%%%%%%%%%%% TODO %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-%Questo discorso vale sia per il v1 che per il v2.
-%Vedi (Ntk\_rfc\_bandwidth) sulla tecnica del misuramento dei link.
-%Bisogna necessariamente ritardare il forwarding, altrimenti potrebbero essere
-%non considerate alcune rotte. 
-%La sua utilita' e' quella di far arrivare prima le rotte che hanno la media
-%migliore tra rtt e bw. Quindi, le rotte verranno ricevute in ordine di
-%efficienza e si potranno droppare tutti i successivi TP senza timore. Se
-%invece il ritardo non fosse utilizzato, nel Q2 alcuni nodi farebbero passare
-%CTP che in seguito, dopo aver ricevuto altri cTP, avrebbero considerato meno
-%efficienti e quindi l'avrebbero scartato.
-%Il suo difetto e' che vengono esclusi i casi estremi.
-%
-%Il ritardo prende le rotte medie di bw e rtt. Il difetto e' che vengono
-%scartate le rotte estreme.
-%Pero' e' anche vero che nelle situazioni reali bw e rtt sono quasi sempre
-%correlate, quindi e' giusto considerare di piu' la situazione media.
-%
-blabla
-\section{Asymmetric bandwidth}
-Bla. Bla.
-Vedi --> Ntk\_rfc\_bandwidth.
-%%%% TODO: Mandare in lista la risposta al tizio che aveva chiesto sulla questione
-%%%% }dell'asimmetria
+The bandwith capacity of a route can be used as a parameter of its
+efficiency. In this section we'll analyse the implications for the QSPN.
+For more information about the bandwidth management in Netsukuku you can read
+the NTK\_RFC 002 \cite{ntkrfc0002}.
+
+\subsubsection{Rtt delay}
+\label{sec:rtt_delay}
+
+Each node of the network will delay the forwarding of a received CTP by a time
+inversely proportional to its upload bandwidth. In this way the CTPs will
+continue to be received in order of efficiency (see section
+\ref{sec:eff_order}).
+The side effect of this rule is that the extreme cases will be ignored, i.e. a
+route with a very low rtt but with a very poor bw, or a route with an optimal
+bw but with a very high rtt. However, in the ``real world'' these extreme
+cases are rare, because the rtt and the bw are often related.
+
+\subsubsection{Asymmetry in Q2}
+The QSPN v2 is a very flexible algorithm that can be adapted to a large range
+of cases. Indeed, with a minimal added overhead, it is possible to achieve
+asymmetric routing discovery, i.e. a discovery that discerns the upload
+bandwidth of a route from its download one.\\
+We call this extension the \emph{asymmetric QSPN v2}, while we refer to the
+old one as \emph{symmetric Q2}.
+
+\begin{enumerate}
+	\item	First of all, it is necessary to define further the ``interesting
+		information''. A CTP will be considered interesting, not only when it contains
+		interesting (see \ref{sec:interesting_info}) download routes, but also upload
+		ones. In other words, we consider the upload sense of a route too. 
+
+		For example, suppose that the node $A$ received the CTP $ABCDAERTA$. In this
+		case $A$ will know two dinstinct upload routes: $A\rightarrow B\rightarrow
+		C\rightarrow D$ and $A\rightarrow E\rightarrow R\rightarrow T$. Instead, in
+		the classic CTP, $A$ would have known only $A\rightarrow T\rightarrow
+		R\rightarrow E$ and $A\rightarrow D\rightarrow C\rightarrow B$.
+	\item Secondly, since we are considering the reverse (upload) routes
+		too, we have to remove the restriction imposed on the CTP,
+		which has been described in section \ref{sec:reflected_CTP}.
+                The body of the CTP reflected from the extreme of a segment
+                won't be erased, thus it will contain the old routes too.
+		This is because the old routes can contain interesting
+		information about upload routes.
+		For example, consider this segment:
+		\[ \cdots \leftrightarrow A \leftrightarrow B \leftrightarrow C \leftrightarrow N \]
+		If $N$ doesn't erase the route received in the CTP, $A$ will
+		receive the following CTP:
+		\[
+		\cdots \rightarrow A \rightarrow B \rightarrow C \rightarrow N \rightarrow C \rightarrow B \rightarrow A
+		\]
+		In this case $A$ will know the following upload route:
+		\[
+			A \rightarrow B \rightarrow C \rightarrow N
+		\]
+		When parsing a CTP, a node will recognize the part of the
+		routes which are in the form of $XacaY$, where $a$, $c$ are
+		two nodes and $X$ and $Y$ are two generic routes. The packet
+		will then be split in $Xac$ and $caY$.
+\end{enumerate}
+At this point we've finished. In fact, we are sure to receive at least one
+upload route per node because a CTP traverses each path first in one sense
+and then in the opposite. The CTP information filter, will allow us
+to receive only the best routes. However, since the Rtt Delay
+(\ref{sec:rtt_delay}) is tuned for download routes only, it is possible that
+some upload paths will be ignored.\\
+It is interesting to note that in the majority of cases, the number of
+CTPs will remain equal to that of the symmetric Q2.
 
 
 \section{Open questions}
 \begin{enumerate}
-	\item 
-The number of TPs and routes (of the QSPN v1, v2) is proportional to the number
-of the graph subcycles. It would be interesting to find an analytic relation
-between these two quantities.
-	\item Does a more efficient algorithm than the QSPN v1, v2 exist?
+	\item The number of TPs and routes (of the QSPN v1, v2) is
+		proportional to the number of the graph subcycles. It would be
+		interesting to find an analytic relation between these two
+		quantities.
+	\item Does an algorithm more efficient than the QSPN v1, v2 exist?
 \end{enumerate}
 
-
 \section{TODO}
-We need to write a ns-2\cite{ns2} simulator to confront the efficiency of the
-QSPN v1 with that of the v2.
-
+\begin{enumerate}
+	\item We need to write a ns2 \cite{ns2} simulator to confront the efficiency of the
+		QSPN v1 with that of the v2.
+	\item If the Q2 is chosen over the Q1, it must be implemented for the
+		ntkd daemon.
+\end{enumerate}
 
 %%%%%%%%%%%%%%%%
 % Bibliography %
@@ -901,9 +978,17 @@ QSPN v1 with that of the v2.
 	\bibitem{completegraph} Complete graph:
 		\ifpdf \else \\ \fi
 		\href{http://mathworld.wolfram.com/CompleteGraph.html}{http://mathworld.wolfram.com/}
-	\bibitem[ns2] Network simulator:
+	\bibitem{ns2} Network simulator:
 		\ifpdf \else \\ \fi
 		\href{http://www-mash.cs.berkeley.edu/ns/}{http://www-mash.cs.berkeley.edu/ns/}
+	\bibitem{ntkrfc0002} NTK\_RFC 002:
+		\href{http://lab.dyne.org/Ntk\_bandwidth\_measurement}{Bandwidth
+		measurement}
 \end{thebibliography}
+\newpage
+
+\begin{center}
+\verb|^_^|
+\end{center}
 
 \end{document}

@@ -59,6 +59,11 @@ static const char *err_strings[] = {
 	"Zlib Compression Fail.",		/* ERR_ZLIBCP */
 	"Zlib Uncompression Fail.",		/* ERR_ZLIBUP */
 	"Zlib compression is useless.",		/* ERR_ZLIBNU */
+
+	/**/
+	"Error sending pkt.",			/* ERR_SKTSEN */
+	"Error receiving pkt.",			/* ERR_SKTREC */
+	"Connection error."			/* ERR_SKTCON */   
 };
 
 const char *__err_strerror(int n)

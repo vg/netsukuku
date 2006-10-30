@@ -10,33 +10,38 @@ But if you want to change the system here described, please contact us first.
 
 == Link measurement issues ==
 
-In the current version of the Npv7 the link quality is measured only with the
-rtt and packets loss, so only the lantecy is actually considered, this isn't
-optimal since also a link with a bandwidth of 20000 bps can have a good
-lantecy.
-It isn't a critical problem since more than one route is used to reach a
-single dst_node, so when a route is satured the kernel will use another one
-looking in the nexthop table of that route.
+In the current version of the Npv7, the Radar measures the link quality using
+only the rtt (round-trip time) and packets losses.
+This isn't optimal, because the bandwidth capacity is ignored, thus a link
+having a poor bandwidth, f.e 20Kbps, but a good latency, will be preferred
+over a link with a big bandwidth but a medium latency.
 
 == Improvement ==
 
-In order to improve the link measurement a node must include in the tracer
-pkts the available bandwidth of its traversed link.
+A node must include in the Tracer Packets, not only the rtt of the traversed
+link, but also the current bandwidth capacity.
 In this way it will be possible to have a traffic shaping based also on the
 real bandwidth of the links.
 
 == Bandwidth measurement ==
 
-There are two phases of measurement: in the first the total bandwidth of the
+There are two phases of measurement. In the first the total bandwidth of the
 new links is measured by the hooking node and the destination nodes, in the
 second the bandwidth of the links is constantly monitored.
 
 The utilised bandwidth will be monitored with the libpcap library.
 
-We also need to know the total bandwidth which can handle the network
-interface. What is a good method to do this?
+/* TODO TODO  */
+/* TODO TODO  */
+/* TODO TODO  */
+Usiamo Packet Pair e Packet Train per determinare la bw del link:
+http://perform.wpi.edu/downloads/wbest/README
 
-=== Total available bandwidth ===
+# We also need to know the total bandwidth which can handle the network
+# interface. What is a good method to do this?
+#
+
+==== Total available bandwidth ====
 
 {{{
 	A  <->  B  <->  C
@@ -48,10 +53,10 @@ It sends an indefinite amount of random packets, for some seconds, to the
 destination of the link. The link is monitored with libpcap and the maximum
 rate of bytes per second is registered as the maximum available upload
 bandwidth for that specific link. These steps are repeated for each rnode.
-Since the link might be asymettric the measurement is also repeated by A and
+Since the link might be asymmetric the measurement is also repeated by A and
 C. In the end we have the measurement of: A->B, B->A, C->B, B->C.
 
-=== Realtime bandwidth monitoring ===
+==== Realtime bandwidth monitoring ====
 
 With the use of the libpcap library, B can monitor the bandwidth usage of its
 links.
@@ -83,6 +88,67 @@ You can find the definition of bandwidth_in_8bit() here:
 http://hinezumi.org/cgi-bin/viewcvs.cgi/netsukuku/src/igs.c?rev=HEAD&content-type=text/vnd.viewcvs-markup
 }}}
 
+==== Rtt delay ====
+
+Each node of the network will delay the forwarding of a received Tracer Packet
+by a time inversely proportional to its upload bandwidth. In this way the TPs will
+continue to be received in order of efficiency.
+The side effect of this rule is that the extreme cases will be ignored, i.e. a
+route with a very low rtt but with a very poor bw, or a route with an optimal
+bw but with a very high rtt. However, in the ``real world'' these extreme
+cases are rare, because the rtt and the bw are often related.
+
+For more information about the order of efficiency of the Tracer Packets you
+can read the document on the QSPN v2: __Q2LINK__
+
+==== Route bandwidth ====
+
+The bandwidth capacity of the route S -> D is denoted with bw(S -> D) and is
+equal to the bandwidth of the worst link in the route.
+For example:
+{{{
+S --64Mb/s--> R --64Mb/s--> T --32Mb/s--> O --100Mb/s--> I --100Mb/s--> D
+}}}
+the route bandwidth of this segment is bw(S -> D)=32Mb/s.
+
+A TP needs to memorized only _one_ bw capacity value, and that
+is the bw() of the traversed current route.
+For example, is S sends a TP, when it will arrive on T, the bw capacity will
+be bw(S->R->T)=64, but when it will reach O, it will change to
+bw(S->R->T->O)=32.
+
+== Asymmetric routes ==
+
+The QSPN gives to each node the best download route to reach all the other
+node. 
+
+Let's consider the node S and D:
+{{{
+       1:   ,--<-<-<---.
+           /            \
+         S                D
+           \            / 
+       2:   `-->->->---'
+}}}
+The routes of type 1 are the best upload routes from D to S,
+while the routes of type 2 are the opposite.
+
+The QSPN gives to S only the routes of type 1, while D knows only the
+route of type 2.
+
+If the routes aren't symmetric, when S will upload something to D, it will
+use a route of type 1, which will give poor performance.
+
+The solution is very simple: S, when uploading a large chunk of data, will
+request to D its D->S routes, which are the routes of type 2, i.e. the best
+upload routes from S to D.
+
+The Netsukuku daemon, using libpcap, will monitor the packets outgoing from
+localhost. If the packets are being sent for more than 16 seconds, it will
+request to the destination node the best uploads routes and add them in the
+routing table. In this way, the upload routes will be requested only when
+necessary.
+
 == Latency VS bandwidth ==
 
 It may also happens that a link has a good bandwidth but a high latency.
@@ -95,18 +161,34 @@ The Netsukuku should create three different routing tables:
  * the second shall include the "best latency" routes
  * the routes in the third table shall be an average of the first and the second tables
 
-If the protocol of the application uses the "tos" value in its IP packets, it
+If the protocol of the application uses the TOS value in its IP packets, it
 is possible to add a routing rule and choose the right table for that
 protocol: the ssh protocol will be routed by the second table.
 
+Alternatively it is possible to keep in the kernel only the average table,
+because this is the most used. The specific "best latency" and "best
+bandwidth" routes can be added in the kernel only at the moment of their
+utilization. For example, when bittorrent will start the download from the
+nodes A,B,C, the ntkd monitor will add in the kernel the "best bandwidth"
+routes for A,B,C.
+
 == IGS ==
 
-The inet-gw which share their internet connection measure also the utilzed
+The inet-gw which share their Internet connection measure also the utilzed
 bandwidth of the Internet connection. 
 The maximum download and upload bandwidth is known since it must be specified
 by the user in the netsukuku.conf config file. In this way, monitoring the
 device used by the Internet default route, it's trivial to known the
 available bandwidth.
 
+== Load balancing ==
+
+The load balancing will be always used, because the routes are added in the
+kernel using the multipath option. The packets sent to a node will use
+different routes
+
+The load balancing inside Netsukuku doesn't suffer the problems of the IGS
+load balancing. Indeed, the ntk nodes are consistent between themself, i.e.
+a ntk node doesn't use NAT to reach another ntk node.
 ----
 related: [Netsukuku_RFC]

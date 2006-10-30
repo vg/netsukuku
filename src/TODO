@@ -43,7 +43,7 @@
 		||_____________________||
 		||_____________________||
 
-
+- Segfault:  ./ntkd -ddddd -D -r
 - Viphilama: http://lab.dyne.org/Ntk_viphilama
 
 - Rehook
@@ -72,6 +72,9 @@
 ***		MEDIUM PRIORITY
 **
 *	
+
+- Implement a test suite, which performs several automatic tests on ntkd.
+  UserModeLinux should be used in conjunction with a lot of scripts.
 
 - Equalize multipath routes. The `equalize' module is still experimental in
   the kernel.

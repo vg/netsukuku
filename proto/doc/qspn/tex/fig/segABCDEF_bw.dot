@@ -1,0 +1,9 @@
+digraph G {
+node [shape=circle]
+A->B [ label="64Mb/s" ];
+B -> C [ label="64Mb/s" ];
+C -> D [ label="32Mb/s" ];
+D -> E [ label="100Mb/s"];
+E -> F [ label="100Mb/s"];
+
+}
