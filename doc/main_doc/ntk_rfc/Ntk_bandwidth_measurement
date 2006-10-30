@@ -34,7 +34,8 @@ The utilised bandwidth will be monitored with the libpcap library.
 /* TODO TODO  */
 /* TODO TODO  */
 /* TODO TODO  */
-Usiamo Packet Pair e Packet Train per determinare la bw del link:
+/* TODO: Let's use the Packet Pair and Packet Train to measure the bw of the
+ * links */
 http://perform.wpi.edu/downloads/wbest/README
 
 # We also need to know the total bandwidth which can handle the network
@@ -99,7 +100,7 @@ bw but with a very high rtt. However, in the ``real world'' these extreme
 cases are rare, because the rtt and the bw are often related.
 
 For more information about the order of efficiency of the Tracer Packets you
-can read the document on the QSPN v2: __Q2LINK__
+can read the document on the QSPN v2: http://netsukuku.freaknet.org/doc/main_doc/qspn.pdf
 
 ==== Route bandwidth ====
 

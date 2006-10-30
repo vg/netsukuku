@@ -129,7 +129,8 @@ A: Simple and not accurate reasons for the scalability of Netsukuku:
    5) A flood is synchronized: the same flood starts at the same time for all
       the nodes.
 
-   You can read the detailed analysis of the QSPN v2 here: __Q2LINK__
+   You can read the detailed analysis of the QSPN v2 here:
+   http://netsukuku.freaknet.org/doc/main_doc/qspn.pdf
 
    A first draft of the explanation of the Netsukuku scalability is available
    here: http://lab.dyne.org/Netsukuku_scalability
