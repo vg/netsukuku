@@ -9,12 +9,20 @@ then
 fi
 cd $NTK_REPOSITORY
 
-rsync -auv -P --delete proto/2html freaknet.org:netsukuku/
+rsynca()
+{
+	local url
 
-rsync -auv -P ChangeLog doc/faq/FAQ README freaknet.org:netsukuku/files/
-rsync -auv -P doc/main_doc/netsukuku doc/main_doc/netsukuku.ita doc/faq/FAQ freaknet.org:netsukuku/
-rsync -auv -LP -C 'CVS' --exclude '*~' --delete  doc freaknet.org:netsukuku/files/
+	url="$1"
 
-cd site/
-rsync -auv -P contacts  home  index.php  logo_netsukuku.jpg  style.css freaknet.org:netsukuku/
-cd ../
+	rsync -auv -P --delete proto/2html $url/
+	rsync -auv -P ChangeLog doc/faq/FAQ README $url/files/
+	rsync -auv -P doc/main_doc/netsukuku doc/main_doc/netsukuku.ita doc/faq/FAQ $url/
+	rsync -auv -LP -C 'CVS' --exclude '*~' --delete  doc $url/files/
+	cd site/
+	rsync -auv -P contacts  home  index.php  logo_netsukuku.jpg  style.css $url/
+	cd ../
+}
+
+#rsynca freaknet.org:netsukuku/
+rsynca hinezumi.org:/usr/local/apache2/htdocs/net/

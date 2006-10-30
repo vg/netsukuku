@@ -45,7 +45,11 @@
 				//file.lang
 				continue;
 			} else {
-				$tpl_page .= '<a href="index.php?pag=documentation&amp;file='.$_GET['dir'].$line.'">'.$line.'</a>';
+				if(preg_match('/.pdf$/', $line)) {
+					$tpl_page .= '<p><a href="'.NTK_DOCROOT.$_GET['dir'].$line.'">'.$line.'</a>';
+				} else {
+					$tpl_page .= '<a href="index.php?pag=documentation&amp;file='.$_GET['dir'].$line.'">'.$line.'</a>';
+				}
 
 				$file_info = @fopen(NTK_DOCROOT.$_GET['dir'].$line.".info", "r");
 					
