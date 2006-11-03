@@ -25,37 +25,39 @@ real bandwidth of the links.
 
 == Bandwidth measurement ==
 
-There are two phases of measurement. In the first the total bandwidth of the
-new links is measured by the hooking node and the destination nodes, in the
-second the bandwidth of the links is constantly monitored.
+There are two phases of measurement. In the first the total bandwidth capacity
+of the new links is measured by the hooking node and the destination nodes, in
+the second the bandwidth of the links is constantly monitored.
 
 The utilised bandwidth will be monitored with the libpcap library.
-
-/* TODO TODO  */
-/* TODO TODO  */
-/* TODO TODO  */
-/* TODO: Let's use the Packet Pair and Packet Train to measure the bw of the
- * links */
-http://perform.wpi.edu/downloads/wbest/README
-
-# We also need to know the total bandwidth which can handle the network
-# interface. What is a good method to do this?
-#
 
 ==== Total available bandwidth ====
 
 {{{
-	A  <->  B  <->  C
+	A <--> B <--> C
 }}}
 
 The node B is hooking to A and C. At the end of the hook, B measures the
-total available bandwidth of the links B<->C and B<->A.
-It sends an indefinite amount of random packets, for some seconds, to the
-destination of the link. The link is monitored with libpcap and the maximum
-rate of bytes per second is registered as the maximum available upload
-bandwidth for that specific link. These steps are repeated for each rnode.
-Since the link might be asymmetric the measurement is also repeated by A and
-C. In the end we have the measurement of: A->B, B->A, C->B, B->C.
+total available bandwidth of the links B-->C and B-->A.
+
+There are different methods to measure the bandwidth of a link.
+
+The first and the simplest one is to send an indefinite amount of random
+packets, for some seconds, to the destination of the link. The transmission
+rate is then monitored with libpcap and the maximum rate of bytes per second
+is registered as the maximum available upload bandwidth for that specific link.
+This method is very effective, indeed the measured bw is the real one and is
+not approximated. Its side effect is that it requires the complete saturation
+of the link, for some seconds.
+
+The second technique is more refined. It consists in the Packet Pair and Packet
+Train techniques, see http://perform.wpi.edu/downloads/wbest/README and
+http://www-static.cc.gatech.edu/fac/Constantinos.Dovrolis/bw.html
+
+Since the link might be asymmetric the measurement is also repeated for A-->B
+and C-->B. 
+
+In the end, we have the measurement of: A->B, B->A, C->B, B->C.
 
 ==== Realtime bandwidth monitoring ====
 
@@ -64,35 +66,28 @@ links.
 
 {{{
 Max_link_bw	= Total available bandwidth of the link
-free_link_bw 	= available/not used bandwidth of the link
-cur_used_link_bw= amount of bandwidth currently used
 
-Max_NIC_bw	= maximum bandwidth of the network interface
-cur_used_NIC_bw = amount of the total bandwidth currently used of the network
-		  interface
+nflows		= number of current flows on the link.
+		  A flow is the stream of packets associated to a specific
+		  connection.
 }}}
 
-To calculate the `free_link_bw':
+The current available bandwidth of the link is approximated as:
 {{{
-free_link_bw = Max_link_bw - cur_used_link_bw
-if(free_link_bw > Max_NIC_bw - cur_used_NIC_bw)
-	free_link_bw = (Max_NIC_bw - cur_used_NIC_bw);
+link_avail_bw   = Max_link_bw/(nflows+1)
 }}}
-The `free_link_bw' value will be used to modify the `rtt' used to sort the
-routes in the routing table.
-{{{
-modified_rtt(free_link_bw, real_rtt) = 27<<27 + real_rtt - bandwidth_in_8bit(free_link_bw)
 
-real_rtt must be <= 2^32-27<<27-1 (about 8 days)
+We choose this approximation because the TCP traffic allocation method is
+similar to a max-min allocation algorithm, thus when there are many flows
+`link_avail_bw' becomes a good approximated value.
 
-You can find the definition of bandwidth_in_8bit() here:
-http://hinezumi.org/cgi-bin/viewcvs.cgi/netsukuku/src/igs.c?rev=HEAD&content-type=text/vnd.viewcvs-markup
-}}}
+If the radar will notice a big variation of the link's current available
+bandwidth, it will send a new QSPN.
 
 ==== Rtt delay ====
 
 Each node of the network will delay the forwarding of a received Tracer Packet
-by a time inversely proportional to its upload bandwidth. In this way the TPs will
+by a time inversely proportional to `link_avail_bw'. In this way, the TPs will
 continue to be received in order of efficiency.
 The side effect of this rule is that the extreme cases will be ignored, i.e. a
 route with a very low rtt but with a very poor bw, or a route with an optimal
@@ -100,7 +95,8 @@ bw but with a very high rtt. However, in the ``real world'' these extreme
 cases are rare, because the rtt and the bw are often related.
 
 For more information about the order of efficiency of the Tracer Packets you
-can read the document on the QSPN v2: http://netsukuku.freaknet.org/doc/main_doc/qspn.pdf
+can read the document on the QSPN v2:
+http://netsukuku.freaknet.org/doc/main_doc/qspn.pdf
 
 ==== Route bandwidth ====
 
@@ -114,13 +110,18 @@ the route bandwidth of this segment is bw(S -> D)=32Mb/s.
 
 A TP needs to memorized only _one_ bw capacity value, and that
 is the bw() of the traversed current route.
-For example, is S sends a TP, when it will arrive on T, the bw capacity will
-be bw(S->R->T)=64, but when it will reach O, it will change to
-bw(S->R->T->O)=32.
+For example, if S sends a TP, when it will arrive on T, the bw capacity
+memorised in the packet will be bw(S->R->T)=64, but when it will reach O, it
+will change to bw(S->R->T->O)=32.
+
+Note that each bw capacity value corresponds to the approximated available
+bandwidth of the relative link (`link_avail_bw'). 
+For example, by writing ``S --64Mb/s--> R'' we indicate that the current
+approximated bw capacity of the S-->R link is 64Mb/s.
 
 == Asymmetric routes ==
 
-The QSPN gives to each node the best download route to reach all the other
+The QSPN v1 gives to each node the best download route to reach all the other
 node. 
 
 Let's consider the node S and D:
@@ -150,6 +151,9 @@ request to the destination node the best uploads routes and add them in the
 routing table. In this way, the upload routes will be requested only when
 necessary.
 
+Note that in the QSPN v2 there's a builtin support for the asymmetric routing.
+See http://netsukuku.freaknet.org/doc/main_doc/qspn.pdf
+
 == Latency VS bandwidth ==
 
 It may also happens that a link has a good bandwidth but a high latency.
@@ -175,8 +179,8 @@ routes for A,B,C.
 
 == IGS ==
 
-The inet-gw which share their Internet connection measure also the utilzed
-bandwidth of the Internet connection. 
+The inet-gw which share their Internet connection measure also the utilised
+bandwidth of the Internet connection.
 The maximum download and upload bandwidth is known since it must be specified
 by the user in the netsukuku.conf config file. In this way, monitoring the
 device used by the Internet default route, it's trivial to known the
@@ -189,7 +193,8 @@ kernel using the multipath option. The packets sent to a node will use
 different routes
 
 The load balancing inside Netsukuku doesn't suffer the problems of the IGS
-load balancing. Indeed, the ntk nodes are consistent between themself, i.e.
+load balancing. Indeed, the ntk nodes are consistent between themselves, i.e.
 a ntk node doesn't use NAT to reach another ntk node.
+
 ----
 related: [Netsukuku_RFC]

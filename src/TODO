@@ -154,6 +154,8 @@
 **
 *	
 
+- ANDNA: Hostname cancellation request
+
 - Interactive shell/console. Some commands that should be implemented:
 	  "stats" gives statistics, 
 	  "rnodes" show the list of rnodes,
