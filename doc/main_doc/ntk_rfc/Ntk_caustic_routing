@@ -1,0 +1,338 @@
+== NTK_RFC 0013 ==
+
+Subject: Caustic Routing - A multipath generalization
+
+----
+This text describes a possible expansion of the current Npv7 protocol.
+It will be included in the final documentation, so feel free to correct it.
+But if you want to change the system here described, please contact us first.
+----
+
+== Caustic routing ==
+
+Multipath routing is method which send packets of a same connection through
+different path,
+Caustic Routing is a multipath generalization which aims to redistribute in an
+efficient way the bandwidth load imposed on path.
+
+Note that this RFC is not complete. If you want to contribute to its
+development, DO IT! ;)
+
+== Basic idea ==
+
+The basic idea of the Caustic Routing (CR) is to apply recursively the
+multipath routing: the source node S chooses one or more neighbours R as
+gateways to reach the destination D. Each neighbour r_i of R chooses one or
+more gateways R'(r_i) to reach the destination D. Each neighbour r'_i of
+R'(r_i) chooses one or more gateways to reach the destination D. And so on,
+recursively.
+You can imagine a tree which grows from S and then converges to D. 
+We call the set of all the routes established from S to D, the Caustic
+Routing Tree (CRT).
+
+==== Features ====
+
+The Caustic Routing is specifically designed to load balance the traffic among
+the greatest possible number of nodes, without affecting the overall
+performance of the network. Indeed, since the connection flow will be split
+recursively, each node will receive only a small part of the total traffic,
+thus its link won't be saturated.
+
+The general result is that a single connection won't be ever capable of
+saturating an entire path.
+
+== General rules ==
+
+The recursion of the CR has to be regulated to avoid the creation of
+infinite loops, the saturation of links and the dispersion of packets, thus it
+will follow these principles:
+
+ * Infinite loops must not be created.
+
+ * The Routing Tree has to be maximally disjoint, i.e. two generic routes of
+   the same RT have to share the least number of subpaths.
+   For more information on this topic see:
+   http://www.hpl.hp.com/personal/Sung-Ju_Lee/abstracts/papers/icc2001b.pdf
+
+ * Path with saturated bandwidth should be avoided.
+
+ * The Routing Tree must not be expanded infinitely, i.e. it must not be too
+   large.
+
+ * Two nodes will use the CR to communicate only in particular situations:
+   when they need to send a large quantity of data or when they need a really
+   low trtt (total round-trip time) for real time applications. In all the
+   other average cases, the unicast best route will be sufficient.
+
+ * A CT connection isn't necessarily symmetric: the best CRT from S to D may
+   not coincide with that from D to S. 
+   Hence, if also D needs to replies to S large chunks of data it will need to
+   create a new CRT, otherwise it will just use the inverse of the S->D CRT.
+
+== Caustic Routing Tree discovery ==
+
+Let's suppose that the node S wants to send a large quantity of data to D.
+The source node S, before contacting D, will set up a Caustic Routing Tree
+that reaches D from S.
+The discovery of the S->D CRT will be done in the following way:
+{{{
+
+	Let  D  be the destination node.
+
+	Let  r(N)  be the set of rnodes (neighbours) of the node N, which can be
+	     utilised as gateway to reach D.
+	Let  r(N,i)  be the i-th of such rnodes.
+
+	Let  bw(N -> D, i) = bw( r(N,i) -> D )  be the current available
+	     bandwidth capacity of the route N -> i -> D.
+	Let  best_bw  be the current available bandwidth capacity of the best
+	     route N -> D.
+
+	Let  trtt(N -> D, i) = trtt( r(N,i) -> D )  be the current total round
+	     trip time of the route N -> i -> D.
+	Let  best_trtt  be the current trtt of the best route N -> D.
+
+	Let  flowrate(I -> N)  be the throughput of packets of the connection
+ 	     S -> D which N receives from I.
+
+	/* The max_trtt imposes the limit on the growth of the Routing Tree */
+	int  max_trtt(S -> D) {
+
+		if (S wants to create CRT to D to send a large amount of data)
+			/* In this case we don't care to have a big delay,
+			 * because we just want to send the biggest possible
+			 * amount of data to D. Thus we use a max_trtt
+			 * proportional to the total amount of data we want to
+			 * send. For example, if we want to send 7Gb, we don't
+			 * care to have a complessive delay of 10seconds if we
+			 * reach a throughput of 4Gb/s */
+			
+			return  (A directly proportional value to D);
+
+		else if (S wants to create a fast, low delay, connection to D)
+			/* In this case if we set  max_trtt=best_trtt  then in
+			 * the CRT there will be only routes which don't
+			 * increase the overall delay of the connection. */
+			return  best_trtt;
+	}
+
+	/* The first call */
+	crt_discovery(S,  D,  best_bw,  max_trtt(S -> D),  NULL);
+
+	crt_discovery(S (source node), 
+			D (destination node), 
+			min_bw (minimum avail bw required for each route),
+			trtt_limit (maximum trtt allowed),
+			dpkt (discovery packet))
+	{
+
+		/* 
+		 * Note that calling crt_discovery() is equivalent to send a
+		 * `dpkt' to  `S'  with the min_bw and trtt_limit values
+		 * included in the pkt itself.
+		 * Reading the return value from a call to crt_discovery() is
+		 * equivalent to receive a reply packet from `S'.
+		 */
+	
+		int deepened=0;
+		
+		if(S  in  dpkt)
+			/* We're present in the dpkt, and this is the
+			 * second time we received it, thus a cycle
+			 * has been formed. Return ACK_NEGATIVE and
+			 * destroy it. */
+			return  ACK_NEGATIVE;
+
+		/* Append  S  in  dpkt.
+		 * This is the same operation used in Tracer Packets. */
+		dpkt.append(S);
+
+		if(S.route_D_set == 1  AND  dpkt.flag!=ACK_FORCED)
+			/* 
+			 * We've already received a dpkt and set a route to D,
+			 * moreover the caller isn't forcing us to use this
+			 * path,  thus we advice it to use another one.
+			 */
+			 return ACK_CHANGEPATH;
+
+		foreach  i  in  r(S) 
+		{ 
+
+			if (i  in  last_node(dpkt))
+				/* Don't consider the node from which we
+				 * received the `dpkt' */
+				continue;
+
+			if (trtt(S -> D, i) > trtt_limit  OR 
+				bw(S -> D, i) < min_bw)
+				/* Don't use `i' as gw, since it doesn't meet
+				 * the minimum requirements */
+				continue;
+
+			/*
+			 * Set two temporary routes in the krnl routing table:
+			 * These two routes, if not utilised, will expire after
+			 * 300 seconds. 
+			 */
+			add_tmp  S -> D, gw i;
+			add_tmp  D -> S, gw i;
+
+			/* 
+			 * Recurse.
+			 * The  min_bw  for  `i'  will be the throughput of 
+			 * packets of the connection  S -> D  which S receives
+			 * from I.
+			 */
+			ack = crt_discovery(i,  D,  
+					    flowbrate(last_node(dpkt) -> S),
+					    trtt_limit, dpkt);
+			if (ack == ACK_NEGATIVE)
+				/* 
+				 * We cannot use  `i'  as gw to reach  D.
+				 * Remove the temporary routes previously set in
+				 * the routing table
+				 */
+				del  S -> D, gw i;
+				del  D -> S, gw i;
+				continue;
+
+			else if (ack == ACK_CHANGEPATH)
+				/* `i' is advising us to use another path 
+				 * append  `i'  to the set  JointGW */
+				 JointGW.append(i);
+
+
+			/* If we've got this far, set deepened to 1 */
+			deepened=1;
+		}
+
+		if (deepened == 1)
+			return;
+
+		else if (JointGW is not NULL) {
+			/* 
+			 * Since we didn't find any good gw to reach D, let's
+			 * try to use those added in the JointGW set 
+			 */
+			for  i  in  JointGW {
+				ack = crt_discovery(i,  D,  
+						flowbrate(last_node(dpkt) -> S),
+						trtt_limit, dpkt);
+				if (ack == ACK_NEGATIVE || ack == ACK_CHANGEPATH)
+					/* 
+					 * This time, we know that `i'
+					 * definitely cannoy be used.
+					 */
+					del  S -> D, gw i;
+					del  D -> S, gw i;
+					continue;
+
+				/* If we've got this far, set deepened to 1 */
+				deepened=1;
+			}
+		} 
+		
+		if(deepened == 0)
+			/* We didn't find any good gateway to reach D. */
+			return  ACK_NEGATIVE;
+	}
+}}}
+
+Here it is the same pseudo code without comments:
+{{{
+
+	int  max_trtt(S -> D) {
+
+		if (S wants to create CRT to D to send a large amount of data)
+			return  (A directly proportional value to D);
+
+		else if (S wants to create a fast, low delay, connection to D)
+			return  best_trtt;
+	}
+
+	crt_discovery(S,  D,  best_bw,  max_trtt(S -> D),  NULL);
+
+	crt_discovery(S (source node), 
+			D (destination node), 
+			min_bw (minimum avail bw required for each route),
+			trtt_limit (maximum trtt allowed),
+			dpkt (discovery packet)) 
+	{
+
+		int deepened=0;
+		
+		if(S  in  dpkt)
+			return  ACK_NEGATIVE;
+
+		dpkt.append(S);
+
+		if(S.route_D_set == 1  AND  dpkt.flag!=ACK_FORCED)
+			 return ACK_CHANGEPATH;
+
+		foreach  i  in  r(S) 
+		{ 
+
+			if (i  in  last_node(dpkt))
+				continue;
+
+			if (trtt(S -> D, i) > trtt_limit  OR 
+				bw(S -> D, i) < min_bw)
+				continue;
+
+			add_tmp  S -> D, gw i;
+			add_tmp  D -> S, gw i;
+
+			ack = crt_discovery(i,  D,  
+					    flowbrate(last_node(dpkt) -> S),
+					    trtt_limit, dpkt);
+			if (ack == ACK_NEGATIVE)
+				del  S -> D, gw i;
+				del  D -> S, gw i;
+				continue;
+
+			else if (ack == ACK_CHANGEPATH)
+				 JointGW.append(i);
+
+			deepened=1;
+		}
+
+		if (deepened == 1)
+			return;
+
+		else if (JointGW is not NULL) {
+			for  i  in  JointGW {
+				ack = crt_discovery(i,  D,  
+						flowbrate(last_node(dpkt) -> S),
+						trtt_limit, dpkt);
+				if (ack == ACK_NEGATIVE || ack == ACK_CHANGEPATH)
+					del  S -> D, gw i;
+					del  D -> S, gw i;
+					continue;
+				deepened=1;
+			}
+		} 
+		
+		if(deepened == 0)
+			return  ACK_NEGATIVE;
+	}
+}}}
+
+== TODO ==
+
+==== Caustic Routing Tree update ====
+
+We need a light mechanism to ensure that a CRT will be always up to date.
+
+==== Caustic Routing congestion control ====
+
+We need a mechanism to ensure a congestion control of the overall traffic
+passing over a CRT.
+This paper can be used as a starting point:
+http://www.cs.pitt.edu/%7Eelhaddad/aequitas/
+http://www.cs.pitt.edu/%7Eelhaddad/aequitas/elhaddad.pdf
+
+==== Packet reordering ====
+
+The TCP Packet reordering problem can make useless the use of Caustic or
+Multipath routing if not handled correctly.
+See the RFC 2991: http://tools.ietf.org/html/rfc2991

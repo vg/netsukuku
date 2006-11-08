@@ -360,7 +360,7 @@
   Npv7_II is the second version of the Npv7.
   Netsukuku is divided into many smaller groupnodes, which contains up to six
   hundred nodes each and every node will solely have an external map.
-  All the groupnodes are grouped into multi-groupnodes, calle quadro
+  All the groupnodes are grouped into multi-groupnodes, called quadro
   groupnodes.
   In order to create a new route and connect to a given dst_node, the
   src_node, using the external map, firstly tries to find out the best path to
@@ -781,7 +781,7 @@
 
   ANDNA is the distributed, non hierarchical and decentralised system of
   hostname management in Netsukuku. It substitutes the DNS.
-  The ANDNA database is scattered inside all the Netsukuku and the worst of
+  The ANDNA database is scattered inside all the Netsukuku and in the worst of
   cases every node will have to use about 355 Kb of memory.
   
   ANDNA works basically in the following way:
@@ -811,7 +811,7 @@
   
   It is very probable that the hash_node doesn't exist at all in the net,
   'cause it can be one ip among the available 2^32 ips, and even if it is up,
-  it can also die soon and exist from the net. The adopted solution to this
+  it can also die soon and exit from the net. The adopted solution to this
   ugly problem is to let the hostnames be kept by whole gnodes, in this way
   the working of the ANDNA and a minum of hostnames backup is warranted.
   The gnodes related to the hash of the hostname is the hash_gnode. Inside the
@@ -839,14 +839,14 @@
   it will also wonder about hooking to ANDNA through the andna_hook.
   With the andna_hook it will get from its rnodes all the caches and
   databases, which are  already inside the nodes of that gnode.
-  Obviously it is first necesarry the hooking of the node to Netsukuku.
+  Obviously it is first necesary the hooking of the node to Netsukuku.
 
   7.1.2  Don't rob my hostname!
   
   Before making a request to ANDNA, a node generates a couple of RSA keys,
   i.e. a public one (pub_key) and a private (priv_key). The size of the
-  pub_key will be limitated due to reasons of space.
-  The request of a ostname made to ANDNA will be signed with the private key
+  pub_key will be limited due to reasons of space.
+  The request of a hostname made to ANDNA will be signed with the private key
   and in the same request the public key will be attached.
   In this way, the node will be able to certify the true identity of its
   future requests.
@@ -872,7 +872,7 @@
   A counter_node is activated by the check request the hash_gnode sends. The
   register_node has to keep the counter_node active following the same rules
   of the hibernation (see the chapter below). Practically, if the counter_node
-  receives no more chech requests, it will deactivate itself, and all the
+  receives no more check requests, it will deactivate itself, and all the
   registered hostnames become invalid and cannot be updated anymore.
   The same hack of the hash_gnode is used for the counter_node: there will be
   a whole gnode of counter_nodes, which is called, indeed, counter_gnode.
@@ -891,7 +891,7 @@
   checked. The node y contacts the counter_gnode and sends to it the ip, the
   hostname to be registered and a copy of the registration request itself.
   The counter_gnode checks the data and gives its ok.
-  The node y, after the affermative reply, accepts the registration request
+  The node y, after the affirmative reply, accepts the registration request
   and adds the entry in its database, storing the date of registration.
   Finally it forwards in broadcast, inside the its gnode, the request.
   The other nodes of the hash_gnode, which receive the forwarded request, will
@@ -964,7 +964,7 @@
 
   A node which wants to resolve the hostname can also request the list of the
   nodes stored in the andna_queue. In this way, if the first node is
-  unreacheble, it will try to contact the other ones.
+  unreachable, it will try to contact the other ones.
   
   7.8	Hostname resolution
 
@@ -982,9 +982,9 @@
   expires exactly when that hostname is not valid anymore in ANDNA and has to
   be updated.
   The resolved_hnames cache is readable by any node.
-  A node X, exploiting this feature, can ask to any bnode Y randomly choosen
-  insied its same gnode to resolve for itself the given hostname.
-  The bnode Y, will search in its resoved cache the hostname and on negative
+  A node X, exploiting this feature, can ask to any bnode Y randomly chosen
+  inside its same gnode to resolve for itself the given hostname.
+  The bnode Y, will search in its resolved cache the hostname and on negative
   result the bnode will resolve it in the standard way, sending the result to
   the node X.
   These tricks avoid the overload of the hash_gnodes, which keep very famous
@@ -993,7 +993,7 @@
   7.8.2  noituloser emantsoh esreveR
 
   If a node wants to know all the related hostnames associated to an ip, it
-  will directly contact the node which possides that ip.
+  will directly contact the node which possesses that ip.
 
   7.9  dns wrapper
 
