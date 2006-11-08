@@ -10,10 +10,12 @@ But if you want to change the system here described, please contact us first.
 
 == Caustic routing ==
 
-Multipath routing is method which send packets of a same connection through
-different path,
-Caustic Routing is a multipath generalization which aims to redistribute in an
-efficient way the bandwidth load imposed on path.
+Multipath routing is method which sends packets of a same connection through
+different paths.
+
+Caustic Routing is a multipath generalization which aims to redistribute the
+network traffic in an efficient way, imposing a small load on the interested
+nodes.
 
 Note that this RFC is not complete. If you want to contribute to its
 development, DO IT! ;)
