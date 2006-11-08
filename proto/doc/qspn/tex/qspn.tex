@@ -531,7 +531,7 @@ If, instead, the CTP is uninteresting, it will drop the packet.
 
 Note that if a CTP is uninteresting for the node $N$, then it is also
 uninteresting for all the other nodes. This is because an uninteresting CTP
-contains routes which has been previously received, memorized and forwarded
+contains routes which has been previously received, memorised and forwarded
 by the node $N$. Therefore all the other nodes already know the same
 routes too.
 
@@ -623,6 +623,8 @@ by a combination of cycles. Therefore, a CTP flood of a graph will always
 terminate in a finite amount of time.
 
 \subsection{Routes limit}
+\label{sec:routes_limit}
+
 Even if the Qv2 is finite, it still generates too many routes and packets.
 Therefore we need to limit the exploration of the graph.\\
 An efficient and elegant solution is to further define what the ``interesting
@@ -871,6 +873,7 @@ even if its is slightly less efficient.
 However the tests in the network simulator ns2 \cite{ns2}, will give the final
 words.
 
+\section{QSPN optimisations}
 \subsection{Rtt and bandwidth}
 \label{sec:bandwidth_q1q2}
 
@@ -942,6 +945,47 @@ some upload paths will be ignored.\\
 It is interesting to note that in the majority of cases, the number of
 CTPs will remain equal to that of the symmetric Q2.
 
+\subsection{Disjoint routes}
+The routing table of each node should be differentiated, i.e. it should not
+contain redundant routes.
+
+For example, consider these $S \rightarrow D$ routes:
+\begin{align}
+	& SBCFG_1G_2G_3G_4G_5G_6G_7 \dots G_{19} D	\\
+	& SRTEG_1G_2G_3G_4G_5G_6G_7 \dots G_{19} D	\\
+	& SZXMNO_1O_2O_3O_4O_5D				\\
+	& SQPVY_1Y_2Y_3Y_4D
+\end{align}
+The first two are almost identical, indeed they differ only in the first three
+hops. The last two are, instead, totally different from all the others.\\
+Since the first two routes are redundant, the node $S$ should keep in memory only
+one of them, saving up space for the others non-redundant routes.
+\newline
+
+Keeping redundant routes in the routing table isn't optimal, because if one of the
+routes fails, then there's a high probability that all the other redundant
+routes will fail too. Moreover when implementing the multipath routing to load
+balance the traffic there won't be any significative improvements.
+\newline
+
+The Q2 itself should avoid to spread redundant routes. In order to achieve
+this result, we refine the efficiency value associated to a route. Suppose we
+want to affect the efficiency value $R_e$ assigned to the route $R$:
+\begin{enumerate}
+	\item let $0\le s(R,S)\le 1$ be the similarity level of the route $R$
+		with $S$.
+	\item for each memorised route $S$ we compute $s(R,S)$ and if we find
+		a route $S$ such that $s(R,S) > 0.5$ we go to step 3.
+	\item we set \[R_e = R_e\frac{1-s(R,S)}{k}\] where $k$ is an appropriate
+		coefficient.
+\end{enumerate}
+As explained in section \ref{sec:routes_limit} the efficiency of a route is
+used as a parameter to evaluate its interest, therefore the more a route is
+similar to a memorised route the more its efficiency will decrease. Hence it
+will be considered less interesting.\\
+Note that this is a generalization of concept of interesting route defined in
+section \ref{sec:routes_limit}, in fact, when $R$ and $S$ are equal,
+$s(R,S)=1$ and the $R_e$ value will be equal to $0$.
 
 \section{Open questions}
 \begin{enumerate}
