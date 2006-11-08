@@ -14,7 +14,7 @@ its uptime, for example if the node X has an uptime of 30 seconds and the node Y
 up.
 
 For this reason we give higher credits to older nodes/gnodes, this means that
-in a multipath route we prefer to don't use very young nodes as main gateways.
+we prefer to avoid routes which contain very young nodes.
 
 {{{
 		A
@@ -29,18 +29,8 @@ The node N, to reach A, will prefer the node K.
 
 === Implementation ===
 
-In order to implement this we penalize the new nodes/gnodes by increasing
-their rtt, in this way they will be considered as slow links.
-
-We can do this only for new nodes/gnodes 'cause we cannot trust the uptime
-value given by a node, but we can know for sure if that node is completely
-new.
-
-When the next qspn_round updates the routes the penality is removed.
-
-Another system would be counting the number of qspn_rounds the nodes took part
-in.
-If it has only partecipated in < 3 rounds it is considered young.
+In the TP we record the uptime of each traversed node. In this way, the node
+receiving the TP will be able to discriminate young routes from stable ones.
 
 ----
 related: [Netsukuku_RFC]

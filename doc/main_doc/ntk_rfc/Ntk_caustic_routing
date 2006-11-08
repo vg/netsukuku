@@ -338,3 +338,8 @@ http://www.cs.pitt.edu/%7Eelhaddad/aequitas/elhaddad.pdf
 The TCP Packet reordering problem can make useless the use of Caustic or
 Multipath routing if not handled correctly.
 See the RFC 2991: http://tools.ietf.org/html/rfc2991
+
+==== Life probability ====
+
+Take in consideration the NTK_RFC 0005:
+http://lab.dyne.org/Ntk_life_probability

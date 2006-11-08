@@ -860,12 +860,16 @@ These are the substantial differences between the Q1 and the Q2:
 		This isn't the same in the Q1, which requires a strict
 		synchronization between the nodes: two nodes can send 
 		a qclose only at the same time.
+	
+	\item This is a consequence of the propriety described above: every
+		time a node joins the net or dies or its rtt/bw capacity
+		changes, it is possible to immediately send a CTP. Indeed, if
+		the changes in the local gnode regard that node only, the CTP
+		will be like a normal Tracer Packet (see \ref{sec:TP_flood}).
 
 	\item The Q2 is easier and simpler than the Q1 to be implemented. In
 		general this means that the code of the Q2 will have less
 		bugs.
-
-	\item 
 \end{enumerate}
 
 From this comparison we can conclude that the Q2 is preferable over the Q1,
