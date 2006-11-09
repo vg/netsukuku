@@ -1,0 +1,186 @@
+%        File: topology.tex
+%     Created: Thu Nov 09 01:00 PM 2006 C
+% Last Change: Thu Nov 09 01:00 PM 2006 C
+%
+\documentclass[a4paper]{article}
+\usepackage{color,graphicx}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\RequirePackage{ifpdf} % running on pdfTeX?
+\ifpdf
+\usepackage[pdftex]{hyperref}
+\else
+\newcommand{\href}[2]{ #1 }
+\fi
+\title{Netsukuku topology}
+\author{http://netsukuku.freaknet.org/}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+	This document describes the structure of the network topology of
+	Netsukuku and its practical implementation.
+	%%% TODO: aggiungi qualcosa in piu'
+\end{abstract}
+
+\section{Preface}
+\label{sec:preface}
+
+We're assuming that you already know the basics of the QSPN. If not, read the
+QSPN document first: \cite{qspndoc}.
+
+\section{The general idea}
+\label{sec:general_idea}
+
+The aim of Netsukuku is to be a (physical) scalable mesh network, completely
+distributed and decentralised, anonymous and autonomous.
+
+The software, which must be executed by every node of the net, has to be
+unobtrusive. It has to use very few CPU and memory resources, in this way it
+will be possible to run it inside low-performance computers, like Access Points,
+embedded devices and old computers.
+
+If this requirements are met, Netsukuku can be easily used to build a worldwide
+distributed, anonymous and not controlled network, separated from the
+Internet, without the support of any servers, ISPs or control authorities.
+
+\section{Basic definitions}
+
+\begin{description}
+	\item[Node] We call \emph{node} any computer that is hooked up to the
+		Netsukuku network.
+	\item[Rnode] stands for remote node: given a node X, it is any other
+		node directly linked to X, i.e. it's a neighbour of X.
+	\item[Map] A map is a file, keeped by each node, whichs contains all the
+		necessary information about the network, f.e. routes and nodes
+		status.
+\end{description}
+Example:\\
+\begin{figure}[h]
+	\begin{center}
+		\includegraphics[scale=0.5]{fig/segABC}
+	\end{center}
+	\caption{The nodes A,B and C}
+\end{figure}
+A is the rnode of B.\\
+B is the rnode of A and C.\\
+C is the rnode of B.
+
+\section{Network topology}
+\label{sec:net_topology}
+
+A simple topology, which doesn't impose any structure on the network, can be
+memorised with a simple map. In this map, all the information regarding the
+nodes of the network have to be memorized. Surely, this kind of map cannot be
+utilised by Netsukuku, because it would require too much memory.
+For example, even if we store just one route to reach one node and even if
+this route costs one byte, we would need 1Gb of memory for a network composed
+by $10^9$ nodes (the current Internet).
+
+For this reason, it's necessary to structure the network in a convenient
+topology.
+
+\subsection{Fractal topology}
+\label{sec:fractal_topology}
+\subsubsection{Level 1}
+First of all we'll subdivide the network in groups of 256 nodes and we'll use
+the following definitions:
+\begin{description}
+	\item[Gnode] means group node. It is a group of nodes, i.e. a set of
+		nodes. Each node of the network belongs to just one gnode.\\
+		A gnode contains a maximum of 256 nodes.
+	\item[Bnode] stands for border node. It is a node which belongs to a
+		gnode G, but that is also diretcly linked to at least one node
+		of another gnode, i.e. some of its rnodes belongs to different
+		gnodes than its.
+\end{description}
+
+Example:\\
+\begin{figure}[h]
+	\begin{center}
+		\includegraphics[scale=0.5]{fig/bnode}
+	\end{center}
+	\caption{The bnode A and B, belonging respectively to the gnode G and
+	$G'$}
+\end{figure}
+A is a node belonging to the gnode G, its rnode is B.\\
+B is a node belonging to the gnode $G'$, its rnode is A.\\
+A is a bnode of G, while B is a bnode of $G'$.
+
+\subsubsection{Level n}
+We further subdivide the network topology in \emph{groups of 256 groups of nodes}
+and we continue to name them as gnode.\\
+At this point, we repeat recursively this subdivision process until
+we can group all the nodes of the network into a single gnode.
+
+Doing so, we've structured the network in $n$ levels (from $0$ to $n-1$).\\
+In the base level (level 0), there are 256 single nodes.\\
+In the first level (level 1), there are 256 normal gnodes. Each of them
+contains 256 single nodes.\\
+In the second (level 2), 256 gnodes of level 1 forms a single \emph{group of
+groups of nodes}.\\
+In the third (level 3), there are 256 groups of 256 groups of 256 groups of
+256 nodes.\\
+Continuing in this way, we arrive at the last level (level $n-1$), where there
+is a single group which contains the whole network.\\
+
+The QSPN algorithm is able to operate independently on any level,
+considering each gnode as a single node of level 0.
+Hence, we've achieved a fractal topology.
+
+\subsubsection*{Example}
+
+Figure \ref{fig:fract_circle}\footnote{this figure has been taken from:
+\href{http://www.ian.org/FX/Plugins.html}{http://www.ian.org/FX/Plugins.html}}
+is an example of the fractal topology of Netsukuku.
+
+\begin{figure}[h]
+	\begin{center}
+		\includegraphics[scale=0.5]{fig/fractal_circle}
+	\end{center}
+	\caption{An example of the netsukuku topology structure}
+	\label{fig:fract_circle}
+\end{figure}
+
+In this topology, each gnode contains four nodes, i.e. each group contains
+four elements. The network is structured in 5 levels. The red elements, are single
+nodes. The bright green circle are groups of nodes. The dark green circles are
+groups of groups of nodes. The dark blue circle are groups of groups of groups of
+nodes. Finally, the bright blue circle is the gnode which contains the whole
+network.
+
+
+%%%% TODO: organizzazione della mappa, a ogni gnode viene assegnato un ID,
+%%%%       un nodo non puo' vedere la mappa interna dei gnode a cui non
+%%%%      appartiene.
+
+
+%%%%%%%%%%%%%%%%%%%%%% TODO %%%%%%%%%%%%%%%%%%%%%
+%TODO: CIDR routing
+
+%bnode map
+%	Size
+%ext map  (sizeof)
+%int map	(sizeof)
+%IP addresses
+%QSPN per livelli alti: chi manda chi e cosa
+
+
+%%%%%%%%%%%%%%%%
+% Bibliography %
+%%%%%%%%%%%%%%%%
+
+\begin{thebibliography}{99}
+	\bibitem{qspndoc} QSPN document:
+		\href{http://netsukuku.freaknet.org/doc/main\_doc/qspn.pdf}{qspn.pdf}
+	\bibitem{ntksite} Netsukuku website:
+		\href{http://netsukuku.freaknet.org/}{http://netsukuku.freaknet.org/}
+\end{thebibliography}
+\newpage
+
+\begin{center}
+\verb|^_^|
+\end{center}
+\end{document}
