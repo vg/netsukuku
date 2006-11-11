@@ -1,13 +1,13 @@
-rm -v qspn.{pdf,dvi}
+rm -v topology.{pdf,dvi}
 
-latex  --interaction nonstopmode qspn.tex &> /dev/null
-latex  --interaction nonstopmode qspn.tex &> /dev/null && \
+latex  --interaction nonstopmode topology.tex &> /dev/null
+latex  --interaction nonstopmode topology.tex &> /dev/null && \
 echo DVI compiled
 
-pdflatex --interaction nonstopmode qspn.tex &> /dev/null
-pdflatex --interaction nonstopmode qspn.tex &> /dev/null &&\
-pdflatex qspn.tex &> /dev/null &&\
+pdflatex --interaction nonstopmode topology.tex &> /dev/null
+pdflatex --interaction nonstopmode topology.tex &> /dev/null &&\
+pdflatex topology.tex &> /dev/null &&\
 echo PDF compiled
 
-#latex2html -split 0 -dir html -mkdir qspn.tex &> /dev/null &&\
+#latex2html -split 0 -dir html -mkdir topology.tex &> /dev/null &&\
 #echo HTML compiled

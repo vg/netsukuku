@@ -16,7 +16,7 @@
   
 	2.1  Gandhi
   	2.2  No name, no identity
-	2.3  So, WTF is it?
+	2.3  So, what is it?
 	2.4  Other implementations
   	2.5  The born
 
@@ -215,7 +215,7 @@
   Since there isn't any contract with any organisations, the speed of the data
   transfer is uniquely limited by the actual tecnology of the network cards.
 
-  2.3  So, WTF is it?
+  2.3  So, what is it?
   
   Netsukuku is a mesh network or a p2p net composed by a net protocol for
   dynamic routing called Npv7_HT.

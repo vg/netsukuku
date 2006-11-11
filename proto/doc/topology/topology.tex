@@ -20,8 +20,8 @@
 \maketitle
 
 \begin{abstract}
-	This document describes the structure of the network topology of
-	Netsukuku and its practical implementation.
+	This document describes the fractal structure of the network topology
+	of Netsukuku and its practical implementation.
 	%%% TODO: aggiungi qualcosa in piu'
 \end{abstract}
 
@@ -259,6 +259,19 @@ add a CIDR\cite{CIDR} route in the routing table of the kernel:\\
 255$ will be forwarded to the gateway $X$}.\\
 
 We'll see later how the gateway $X$ is choosen.
+
+\subsection{QSPN in high levels}
+In the QSPN document \cite{qspndoc}, we've seen how the QSPN works in a
+network composed by single nodes, i.e. a gnode of level 0. \\
+We'll now study its way of working on higher levels.
+
+\begin{figure}[h]
+	\begin{center}
+		\includegraphics[scale=0.3]{fig/qspn_g3}
+	\end{center}
+	\caption{The gnodes G1, G2 and G3}
+	\label{fig:qspn_g3}
+\end{figure}
 
 
 %bnode map

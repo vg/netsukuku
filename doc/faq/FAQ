@@ -160,7 +160,7 @@ A: The situation in Ntk isn't much different from the current Internet:
 	  traffic.
 	
 	- in Netsukuku, only the nodes belonging to the temporary route, which
-	  you are using for your connection, will be able to do sniff, alter
+	  you are using for your connection, will be able to sniff, alter
 	  and destroy your traffic. However  consider that:
 	  	
 		1) with the use of multipath your traffic is split among
