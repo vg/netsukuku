@@ -492,26 +492,28 @@ void do_command(void)
 		say("Error building question.\n");
 		ntkresolv_exit(1);
 	}
+
 	res=hn_send_recv_close(GOP.nsserver,GOP.port,
 			SOCK_DGRAM,buf,res,answer,
 			ANDNS_MAX_PK_LEN,0,NTK_RESOLV_TIMEOUT);
-	if (res==-1) {
-		say("Communication failed with %s.\n",GOP.nsserver);
-		ntkresolv_exit(1);
+    if (res<0) {
+        switch (res) {
+            case -1:
+		        say("Communication failed with %s.\n",GOP.nsserver);
+	        case -2:
+		        say("Unable to send() to %s.\n",GOP.nsserver);
+            case -3:
+		        say("Unable to recv() from %s.\n",GOP.nsserver);
+                }
+	    ntkresolv_exit(1);
 	}
-	if (res==-2) {
-		say("Unable to send() to %s.\n",GOP.nsserver);
-		ntkresolv_exit(1);
-	}
-	if (res==-3) {
-		say("Unable to recv() from %s.\n",GOP.nsserver);
-		ntkresolv_exit(1);
-	}
+
 	res=a_u(answer,res,&GQT);
 	if (res<=0) {
 		say("Error interpreting server answer.\n");
 		ntkresolv_exit(1);
 	}
+
 	if (GQT->id!=GOP.id) 
 		say("Warning: ID query (%d) is mismatching ID answer (%d)!\n",GOP.id,GQT->id);
 
