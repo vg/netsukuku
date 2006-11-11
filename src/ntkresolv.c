@@ -358,7 +358,7 @@ void print_headers()
 void print_question()
 {
 	say("\n - Question Section:\n"
-		"\tObj ~ %s\n",GOP.obj);
+		"\tObj ~ %s\n\n",GOP.obj);
 }
 
 void ip_bin_to_str(void *data,char *dst)
@@ -411,7 +411,7 @@ void print_answers()
 	if (!ancount)
 		return;
 
-	say("\n - Answers Section:\n");
+	say(" - Answers Section:\n");
 
 	apd=GQT->pkt_answ;
 	while (apd) {

@@ -211,7 +211,7 @@ SConscript(subdirs, 'env')
 # Here are our installation paths:
 idir_bin    = '$destdir' + '$BIN_DIR'
 idir_data   = '$destdir' + '$DATA_DIR'
-idir_pid    = '$destdir' + '$MOD_DIR'
+idir_mod    = '$destdir' + '$MOD_DIR'
 idir_conf   = '$destdir' + '$CONF_DIR'
 idir_pid    = '$destdir' + '$PID_DIR'
 
