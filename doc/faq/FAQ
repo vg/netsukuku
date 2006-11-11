@@ -12,9 +12,10 @@
 
   1. Technical
 	Q: Does it scale in a network with A LOT of nodes?
-	Q: What do you intend to do to solve the IP unicity problem?
 	Q: Does it really works?
 	Q: Netsukuku is separated from Internet. How?
+	Q: What about the security of my packets? Everyone will be able to
+	   sniff them!
 	Q: How can I join in Netsukuku?
 	Q: And how does a new node begin to locate any of the other nodes in
 	   the network?
@@ -135,9 +136,6 @@ A: Simple and not accurate reasons for the scalability of Netsukuku:
    A first draft of the explanation of the Netsukuku scalability is available
    here: http://lab.dyne.org/Netsukuku_scalability
 
-Q: What do you intend to do to solve the IP unicity problem?
-A: It is already solved: http://lab.dyne.org/Ntk_gnodes_contiguity
-
 Q: Does it really works?
 A: ^_^
 
@@ -152,7 +150,30 @@ A: Not at all, there is no need to pay. The best way to physical link two
 Q: How can I join in Netsukuku?
 A: Take out your wifi antenna, and start the Netsukuku daemon on the relative
    network interface, then wait and tell to do the same thing to all your
-   friends ^_-
+   friends.
+
+Q: What about the security of my packets? Everyone will be able to sniff them!
+A: The situation in Ntk isn't much different from the current Internet:
+	
+	- in the Internet, only those few who have access to the ISPs, the
+	  routers and the backbones can sniff, alter and destroy your
+	  traffic.
+	
+	- in Netsukuku, only the nodes belonging to the temporary route, which
+	  you are using for your connection, will be able to do sniff, alter
+	  and destroy your traffic. However  consider that:
+	  	
+		1) with the use of multipath your traffic is split among
+		   different routes, thus each route will be able to read only
+		   a partial part of your traffic.
+
+		2) for each connection you have a potential different route
+
+   The solution to avoid these problems are alike: use secure protocols https,
+   SSH, SSL, and so on.
+
+   Moreover in Netsukuku, there will be a complete cryptographic layer, see
+   http://lab.dyne.org/Ntk_carciofo
 
 Q: And how does a new node begin to locate any of the other nodes in the
    network?

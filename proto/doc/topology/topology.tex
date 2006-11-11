@@ -115,7 +115,7 @@ and we continue to name them as gnode.\\
 At this point, we repeat recursively this subdivision process until
 we can group all the nodes of the network into a single gnode.
 
-Doing so, we've structured the network in $n$ levels (from $0$ to $n-1$).\\
+Doing so, we've structured the network in $n+1$ levels (from $0$ to $n$).\\
 In the base level (level 0), there are 256 single nodes.\\
 In the first level (level 1), there are 256 normal gnodes. Each of them
 contains 256 single nodes.\\
@@ -123,12 +123,13 @@ In the second (level 2), 256 gnodes of level 1 forms a single \emph{group of
 groups of nodes}.\\
 In the third (level 3), there are 256 groups of 256 groups of 256 groups of
 256 nodes.\\
-Continuing in this way, we arrive at the last level (level $n-1$), where there
+Continuing in this way, we arrive at the last level (level $n$), where there
 is a single group which contains the whole network.\\
 
 The QSPN algorithm is able to operate independently on any level,
 considering each gnode as a single node of level 0.
-Hence, we've achieved a fractal topology.
+For this reason, we can view the Netsukuku topology as a fractal, where each
+level is composed by single nodes.
 
 \subsubsection*{Example}
 
@@ -151,14 +152,114 @@ groups of groups of nodes. The dark blue circle are groups of groups of groups o
 nodes. Finally, the bright blue circle is the gnode which contains the whole
 network.
 
+\subsubsection{Membership}
+Let's assign a numeric ID to each (g)gnode, starting from the last level:
+\begin{enumerate}
+	\item in the last level ($n$) there's only one giant gnode, thus we assign
+		to it the ID ``0''. Our global ID will be:
+		\[
+		0
+		\]
+	\item in $n-1$ there are 256 gnodes, which belongs to the gnode 0 of
+		level $n$, thus we assign them the IDs from $0$ to $255$.
+		The global ID becomes:
+		\[
+		0\cdot i\quad 0\le  i\le 255
+		\]
+	\item we repeat the step 2 recursively gaining an ID of this form:
+		\[
+		0\cdot i_{n-1}\cdot i_{n-2}\cdot \dots \cdot i_0 \quad 0\le i_j\le 255,\;0\le j\le n-1
+		\]
+	\item since the last level is always $0$, we'll omit it and we'll
+		consider only the first $n$ levels.
+\end{enumerate}
+In a network with a maximum of $2^32$ nodes (the maximum allowed by the ipv4),
+there would be five levels ($n=4$), where each gnode will be composed by 256 nodes.
+Therefore, the ID will be in the usual IP form:
+\[
+0\dots255\cdot 0\dots255\cdot 0\dots255\cdot 0\dots255
+\]
+For example, a single node of level 0 of the network is:
+\[
+3\cdot 41\cdot 5\cdot 12
+\]
+That said, each gnode of the network belongs to only one combination of gnodes
+of the various levels. In our previous example we have:
+\begin{align*}
+	&g_3=3\\
+	&g_2=41\\
+	&g_1=5\\
+	&g_0=12
+\end{align*}
+where each $g_i$ corresponds to the gnode ID of the level $i$. Note that $g_0$
+is the ID attributed to the single node, at level 0.
 
-%%%% TODO: organizzazione della mappa, a ogni gnode viene assegnato un ID,
-%%%%       un nodo non puo' vedere la mappa interna dei gnode a cui non
-%%%%      appartiene.
+\subsection{Fractal map}
+The advantages of using a fractal topology are clear.\\
+The node $N$, instead of memorising information about each node of the whole
+network, will keep only that regarding the gnodes where it belongs to.
+Suppose the node $N$ had this ID:
+\[
+g_3\cdot g_2\cdot g_1\cdot g_0
+\]
+It will store in memory information regarding:
+\begin{enumerate}
+	\item the 256 single nodes which belongs to its same gnode of level 1,
+		or in other words, the 256 nodes of the gnode $g_1$,
+	\item the 256 gnodes gnodes which belongs to its same gnode of level
+		2, of in other words, the 256 gnodes of the gnode $g_2$,
+	\item finally, the 256 gnodes which belongs to the gnode $g_3$.
+\end{enumerate}
+Note that doing so, the node $N$ will be blind to all the other gnodes. For
+example, it won't know any information regarding the single nodes which belong
+to all the other gnodes of level 1 different from $g_1$.\\
 
+Even with this lack of knowledge, as we'll see later, the node $N$ is still
+able to reach all the other nodes of the network.
+In conclusion, $N$ only needs $256n$ entries in its map, instead of $2^{32}$. 
+To clarify the ideas suppose that each entry costs one byte. In the plain
+topology we needed $4Gb$, while in the fractal one we just need $256\cdot 4\;
+b= 1Kb$.
 
-%%%%%%%%%%%%%%%%%%%%%% TODO %%%%%%%%%%%%%%%%%%%%%
-%TODO: CIDR routing
+\subsubsection{Ip v4 and v6}
+Netsukuku is both compatible with ipv4 and ipv6.\\
+
+In ipv4 there are a maximum of $2^{32}$ IPs, thus we have five levels $n=4$.\\
+In ipv6 there are a maximum of $2^{128}$ IPs, thus $n=16$.
+
+\subsubsection{Internal and external map}
+For simplicity we divide the map of the node $N$, in the \emph{internal map} and in
+the \emph{external} one.  The internal map contains information regarding the
+nodes belonging to $g_1$. The external map describes all the other levels of
+the topology.
+
+\subsubsection{Bnode map}
+The bnode map of the node $N$  contains the information regarding the bnodes
+of each level where $N$ belongs.
+Some examples to clarify the ideas:\\
+
+suppose that $N = g_3\cdot g_2\cdot g_1 \cdot g_0$
+\begin{itemize}
+	\item a bnode of level 0 is a single node linked with two nodes of two
+		different gnodes of level 1, f.e. $15, 63$.
+	\item the bnodes of level 0, known by $N$, are only that which belong
+		to the gnode $g_0$. Thus are all the nodes of $g_0$ which are
+		linked to at least a gnode different from $g_1$.
+\end{itemize}
+
+\subsection{CIDR routing}
+The QSPN, for each level, will build the routes necessary to connect each
+(g)node to all the other (g)nodes of the same level. The routes will be saved
+in the maps of each node.\\
+
+If the node $N=g_3\cdot g_2\cdot g_1 \cdot g_0$ wants to reach a node $M$ which
+belongs to different gnodes, f.e. $M=g_3\cdot g_2\cdot h_1 \cdot h_0$, it will
+add a CIDR\cite{CIDR} route in the routing table of the kernel:\\
+\emph{all the packets whose destination is $g_3\cdot g_2\cdot h_1 \cdot 0\dots
+255$ will be forwarded to the gateway $X$}.\\
+
+We'll see later how the gateway $X$ is choosen.
+
 
 %bnode map
 %	Size
@@ -166,6 +267,8 @@ network.
 %int map	(sizeof)
 %IP addresses
 %QSPN per livelli alti: chi manda chi e cosa
+%			dire che all'interno del sotto gnode si diffonde come
+%			un normale TP (non continuo)
 
 
 %%%%%%%%%%%%%%%%
@@ -177,6 +280,8 @@ network.
 		\href{http://netsukuku.freaknet.org/doc/main\_doc/qspn.pdf}{qspn.pdf}
 	\bibitem{ntksite} Netsukuku website:
 		\href{http://netsukuku.freaknet.org/}{http://netsukuku.freaknet.org/}
+	\bibitem{CIDR} CIDR routing:
+		\href{http://en.wikipedia.org/wiki/Classless\_Inter-Domain\_Routing}{Classless\_Inter-Domain\_Routing in Wikipedia}
 \end{thebibliography}
 \newpage
 

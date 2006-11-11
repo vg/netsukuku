@@ -319,6 +319,12 @@ Here it is the same pseudo code without comments:
 	}
 }}}
 
+===== Bnodes diversification =====
+
+When a CRT exits from a gnode, it should try to use the maximum number of
+bnodes, instead of just one. This is easily achieved by letting each node
+select gateways which point to different bnodes.
+
 == TODO ==
 
 ==== Caustic Routing Tree update ====
