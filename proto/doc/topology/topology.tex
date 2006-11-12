@@ -53,7 +53,7 @@ Internet, without the support of any servers, ISPs or control authorities.
 		Netsukuku network.
 	\item[Rnode] stands for remote node: given a node X, it is any other
 		node directly linked to X, i.e. it's a neighbour of X.
-	\item[Map] A map is a file, keeped by each node, whichs contains all the
+	\item[Map] A map is a file, kept by each node, which contains all the
 		necessary information about the network, f.e. routes and nodes
 		status.
 \end{description}
@@ -73,7 +73,7 @@ C is the rnode of B.
 
 A simple topology, which doesn't impose any structure on the network, can be
 memorised with a simple map. In this map, all the information regarding the
-nodes of the network have to be memorized. Surely, this kind of map cannot be
+nodes of the network have to be memorised. Surely, this kind of map cannot be
 utilised by Netsukuku, because it would require too much memory.
 For example, even if we store just one route to reach one node and even if
 this route costs one byte, we would need 1Gb of memory for a network composed
@@ -92,7 +92,7 @@ the following definitions:
 		nodes. Each node of the network belongs to just one gnode.\\
 		A gnode contains a maximum of 256 nodes.
 	\item[Bnode] stands for border node. It is a node which belongs to a
-		gnode G, but that is also diretcly linked to at least one node
+		gnode G, but that is also directly linked to at least one node
 		of another gnode, i.e. some of its rnodes belongs to different
 		gnodes than its.
 \end{description}
@@ -173,7 +173,7 @@ Let's assign a numeric ID to each (g)gnode, starting from the last level:
 	\item since the last level is always $0$, we'll omit it and we'll
 		consider only the first $n$ levels.
 \end{enumerate}
-In a network with a maximum of $2^32$ nodes (the maximum allowed by the ipv4),
+In a network with a maximum of $2^{32}$ nodes (the maximum allowed by the ipv4),
 there would be five levels ($n=4$), where each gnode will be composed by 256 nodes.
 Therefore, the ID will be in the usual IP form:
 \[
@@ -221,7 +221,7 @@ To clarify the ideas suppose that each entry costs one byte. In the plain
 topology we needed $4Gb$, while in the fractal one we just need $256\cdot 4\;
 b= 1Kb$.
 
-\subsubsection{Ip v4 and v6}
+\subsubsection{IP v4 and v6}
 Netsukuku is both compatible with ipv4 and ipv6.\\
 
 In ipv4 there are a maximum of $2^{32}$ IPs, thus we have five levels $n=4$.\\
@@ -241,7 +241,7 @@ Some examples to clarify the ideas:\\
 suppose that $N = g_3\cdot g_2\cdot g_1 \cdot g_0$
 \begin{itemize}
 	\item a bnode of level 0 is a single node linked with two nodes of two
-		different gnodes of level 1, f.e. $15, 63$.
+		different gnodes of level 1.
 	\item the bnodes of level 0, known by $N$, are only that which belong
 		to the gnode $g_0$. Thus are all the nodes of $g_0$ which are
 		linked to at least a gnode different from $g_1$.
@@ -258,10 +258,10 @@ add a CIDR\cite{CIDR} route in the routing table of the kernel:\\
 \emph{all the packets whose destination is $g_3\cdot g_2\cdot h_1 \cdot 0\dots
 255$ will be forwarded to the gateway $X$}.\\
 
-We'll see later how the gateway $X$ is choosen.
+We'll see later how the gateway $X$ is chosen.
 
-\subsection{QSPN in high levels}
-In the QSPN document \cite{qspndoc}, we've seen how the QSPN works in a
+\subsection{Tracer Packets in high levels}
+In the QSPN document \cite{qspndoc}, we've seen how a Tracer Packet works in a
 network composed by single nodes, i.e. a gnode of level 0. \\
 We'll now study its way of working on higher levels.
 
@@ -277,8 +277,8 @@ Thus any other entity which performs the same operations can be thought as a
 single node.\\
 A gnode $G$ can act as a single node too.
 \begin{enumerate}
-	\item A bnode of $G$ receives input from its links. Let's call
-		it $I$.
+	\item A bnode $I$, which belongs to $G$, receives an input from its
+		links. We call $I$ the ingress (b)node.
 	\item this input is flooded to all the nodes, of any level, of the
 		gnode. The nodes will memorize the information contained in
 		the input.\\
@@ -286,26 +286,105 @@ A gnode $G$ can act as a single node too.
 		received only once by each node.
 	\item A bnode $O$, of the same gnode, which is different from $I$,
 		receives the flooded input and computes it.
-	\item The bnode $O$ sends the output of the computations to its
+		We call $O$ the egress (b)node.
+	\item The bnode $O$ sends the output of its computation to its
 		external links, i.e. avoiding those links which connect it to
-		nodes of $G$.
+		nodes of $G$ or to the same gnode which sent the input to $I$.
 \end{enumerate}
 
-
+\subsubsection{Example of a wandering TP}
+Consider the network in figure \ref{fig:qspn_g3}.\\
 \begin{figure}[h]
 	\begin{center}
-		\includegraphics[scale=0.3]{fig/qspn_g3}
+		\includegraphics[scale=0.5]{fig/qspn_g3}
 	\end{center}
-	\caption{The gnodes G1, G2 and G3}
+	\caption{The gnodes $G_1$, $G_2$ and $G_3$}
 	\label{fig:qspn_g3}
 \end{figure}
+$G_1$, $G_2$, $G_3$ are gnodes of level 1. $A_1$ and $A_2$ belong to $G_1$. $B_1$ and $B_2$ belong to
+$G_2$. $C_1$ belongs to $G_3$.\\
 
+Suppose the node $A_1$ sends a Tracer Packet in level 1 
+\footnote{Note that any node can send a TP in any level. In this case, we are
+considering $A_1$, which is a bnode, to simplify the example}. 
+The following will happen:
+\begin{enumerate}
+	\item The TP is flooded in $G_1$.
+	\item $A_2$ receives the TP and appends in it the ID of the gnode
+		$G_1$.
+	\item $A_2$ sends the TP to $B_1$.
+	\item $B_1$ receives it, updates its maps and floods it in $G_2$.
+	\item All the node belonging to $G_2$ will receive the TP, updating their
+		maps.
+	\item This same procedure is reiterated from step 2, i.e. $B_2$ receives
+		the TP, appends the ID of $G_2$ and so on until $C_1$ receives
+		it.
+	\item $C_1$, noticing that its gnode hasn't any links to other gnodes
+		than $G_2$, will bounce back the TP to $B_2$ and at the same
+		time will flood $G_3$.
+	\item The TP, with the same procedure, will return back to $A_1$,
+		completing the TP cycle.
+\end{enumerate}
+
+\subsection{QSPN v2 in high levels}
+In order to use the $Q^2$ (QSPN v2) in high levels, we need to be sure that a TP,
+flooded inside a lower gnode, will reach once and only once all the nodes of
+the same gnode. Moreover, a good metric needs to be defined for the high
+levels: what is the rtt (Round-Trip Time) and bandwidth capacity of the link
+between the two gnodes $G_1$ and $G_2$?
+
+\subsubsection{Unique flood}
+The first requirement is easily solvable.\\
+
+Suppose that a TP has been flooded inside the gnode $G$.
+Suppose also that the node $N$ of $G$ receives two duplicate packets.\\
+The $Q^2$ instructs the node $N$ to keep forwarding only the interesting packets.
+A packet, which is a perfect copy of a packet already received, is always
+uninteresting. Therefore, the node $N$ will drop the second copy of the
+received TP.\\
+
+Whenever two or more copies of a same TP are received by a node
+of $G$, only one of them will be forwarded. Hence, the successive nodes will
+receive only one copy of the same packet.
+
+\subsubsection{Endless loops}
+Consider the situation in figure \ref{fig:3bnodes}.
+\begin{figure}[h]
+	\begin{center}
+		\includegraphics[scale=0.6]{fig/3bnodes}
+	\end{center}
+	\caption{Three bnodes, forming a cycle}
+	\label{fig:3bnodes}
+\end{figure}
+A and B are bnodes of the node $G_1$, while $C$ is a bnode of the gnode $G_2$.
+Suppose C sends a TP to B. B floods it inside $G_1$, thus $A$ receives it. At
+this point, $A$ sends the packet to all its external links, and thus to $C$.
+$C$ will send the packet again to $B$ and the cycle will continue.\\
+
+This situation can be avoided if an ingress bnode, before forwarding a packet to a an
+external gnode $F$, checks if the packet has already traversed $F$ itself. If
+it has, the bnode won't forward it to $F$.
+
+\subsubsection{Gnode metric}
+We will refer to REM (Route Efficiency Measure), as a value characterising the
+quality of a route. REM can be calculated in various ways, f.e. by taking in
+account the total rtt and the bw capacity of the route. We will however
+consider REM in general case.\\
+
+Each link contained in a TP contains its relative REM value.
+
+%%%%%%%%% TODO: continue here 
+
+
+%%%%%%%%%%%%%%%%%%%%  TODO %%%%%%%%%%%%%%%%%%%%%
+
+%%%% Q^2 pseudocode for high levels:
+%%%%  bnode_receive(),  node_receive()
 
 %bnode map
 %	Size
 %ext map  (sizeof)
 %int map	(sizeof)
-%IP addresses
 %QSPN per livelli alti: chi manda chi e cosa
 %			dire che all'interno del sotto gnode si diffonde come
 %			un normale TP (non continuo)

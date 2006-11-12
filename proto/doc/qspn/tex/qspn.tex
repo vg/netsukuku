@@ -511,7 +511,7 @@ empty CTP.
 \section{QSPN v2}
 \label{sec:QSPNv2}
 The second version of the QSPN\footnote{The short name of the QSPN v2 is
-\emph{Qv2}} can be described in a single phrase:
+$Q^2$} can be described in a single phrase:
 
 \emph{A Continuous Tracer Packet will continue to roam inside}
 
@@ -613,7 +613,7 @@ These examples highlights some subcycles of a simple graph.
 A CTP would explore all these cycles.
 
 \subsection{Finiteness}
-The Qv2 will finish the exploration of the graph in a finite amount of time,
+$Q^2$ will finish the exploration of the graph in a finite amount of time,
 i.e. the flood will terminate.
 
 As we've seen in the example \ref{sec:cycle_qv2_example}, a CTP flood of a
@@ -625,7 +625,7 @@ terminate in a finite amount of time.
 \subsection{Routes limit}
 \label{sec:routes_limit}
 
-Even if the Qv2 is finite, it still generates too many routes and packets.
+Even if $Q^2$ is finite, it still generates too many routes and packets.
 Therefore we need to limit the exploration of the graph.\\
 An efficient and elegant solution is to further define what the ``interesting
 information'' is:
@@ -786,7 +786,7 @@ can be used in the general case.
 
 \subsection{Worst case}
 The graph, formed by $n$ nodes, which has the maximum number of cycles is the
-worst case for the Qv2, because, if not limited, it will have to explore any
+worst case for $Q^2$, because, if not limited, it will have to explore any
 combination of cycles.
 
 Such graph is the \emph{complete graph} \cite{completegraph}, and the total
@@ -796,10 +796,10 @@ number of its subcycles is:
 \]
 
 \subsection{High levels}
-The Q2 can explore independently any level of the topology\footnote{We've
+$Q^2$ can explore independently any level of the topology\footnote{We've
 talked about the network topology in section \ref{sec:fractal_topology}}.
 
-Suppose that the Q2 is exploring the level $n$. The gnode $g$, which belongs
+Suppose that $Q^2$ is exploring the level $n$. The gnode $g$, which belongs
 to the level $n$, acts as a single node:
 \begin{enumerate}
 	\item The bnodes\footnote{A border\_node is a node which is on the
@@ -814,7 +814,7 @@ to the level $n$, acts as a single node:
 		$b_1$ of the same gnode, it will reconvert the TP in a CTP and
 		forward it to its bordering gnodes (except the one which
 		originally sent the CTP to $b_1$).
-	\item The bnodes will respect the rules of the Q2, thus if a CTP will
+	\item The bnodes will respect the rules of $Q^2$, thus if a CTP will
 		exceed the \emph{MaxRoutes} limit it will be dropped. 
 \end{enumerate}
 You can apply this procedure to any level $n$, considering that:
@@ -827,7 +827,7 @@ You can apply this procedure to any level $n$, considering that:
 
 \section{QSPN v1}
 \label{sec:QSPNv1}
-The QSPN v1 is a restricted case of the Q2.
+The QSPN v1 is a restricted case of $Q^2$.
 It is divided in two phases. The first one is called qspn\_close and is equivalent
 to a CTP which explores the graph. However when two CTPs collide, they will be
 converted to two normal TPs. The second phase, called qspn\_open is the
@@ -840,24 +840,24 @@ explore the same path which $c_2$ had already covered.
 
 The QSPN has been already implemented in Netsukuku \cite{ntksite}.
 
-\subsection{Q1 vs Q2}
-These are the substantial differences between the Q1 and the Q2:
+\subsection{$\mathbf{Q}$ vs $\mathbf{Q^2}$}
+These are the substantial differences between Q (QSPN v1) and $Q^2$ (QSPN v2):
 \begin{enumerate}
-	\item The Q1 generates less packets than the Q2, because in the qopen
+	\item Q generates less packets than $Q^2$, because in the qopen
 		phase it uses normal TPs which expires quickly. The side
-		effect of this behaviour is that the Q1 may not discover all
-		the best routes. However the Q1 gives at least one route to
+		effect of this behaviour is that Q may not discover all
+		the best routes. However Q gives at least one route to
 		reach each node of the graph.
 
-	\item The Q1 uses less memory than the Q2, because it keeps a
-		forwarding table, instead, the Q2 needs to memorize 
+	\item Q uses less memory than $Q^2$, because it keeps a
+		forwarding table, instead, $Q^2$ needs to memorize 
 		$\emph{MaxRoutes}$ complete routes to evaluate the successive
 		CTPs. By the way, this difference is minimal.
 
-	\item The Q2 doesn't need synchronization. the CTPs doesn't need to
+	\item $Q^2$ doesn't need synchronization. the CTPs doesn't need to
 		have an ID, thus many nodes can send simultaneously or
 		asynchronously a CTP without creating any problem.\\
-		This isn't the same in the Q1, which requires a strict
+		This isn't the same in Q, which requires a strict
 		synchronization between the nodes: two nodes can send 
 		a qclose only at the same time.
 	
@@ -867,12 +867,12 @@ These are the substantial differences between the Q1 and the Q2:
 		the changes in the local gnode regard that node only, the CTP
 		will be like a normal Tracer Packet (see \ref{sec:TP_flood}).
 
-	\item The Q2 is easier and simpler than the Q1 to be implemented. In
-		general this means that the code of the Q2 will have less
+	\item $Q^2$ is easier and simpler than Q to be implemented. In
+		general this means that the code of $Q^2$ will have less
 		bugs.
 \end{enumerate}
 
-From this comparison we can conclude that the Q2 is preferable over the Q1,
+From this comparison we can conclude that $Q^2$ is preferable over Q,
 even if its is slightly less efficient.
 However the tests in the network simulator ns2 \cite{ns2}, will give the final
 words.
@@ -898,13 +898,13 @@ route with a very low rtt but with a very poor bw, or a route with an optimal
 bw but with a very high rtt. However, in the ``real world'' these extreme
 cases are rare, because the rtt and the bw are often related.
 
-\subsubsection{Asymmetry in Q2}
+\subsubsection{Asymmetry in $Q^2$}
 The QSPN v2 is a very flexible algorithm that can be adapted to a large range
 of cases. Indeed, with a minimal added overhead, it is possible to achieve
 asymmetric routing discovery, i.e. a discovery that discerns the upload
 bandwidth of a route from its download one.\\
 We call this extension the \emph{asymmetric QSPN v2}, while we refer to the
-old one as \emph{symmetric Q2}.
+old one as \emph{symmetric $Q^2$}.
 
 \begin{enumerate}
 	\item	First of all, it is necessary to define further the ``interesting
@@ -947,7 +947,7 @@ to receive only the best routes. However, since the Rtt Delay
 (\ref{sec:rtt_delay}) is tuned for download routes only, it is possible that
 some upload paths will be ignored.\\
 It is interesting to note that in the majority of cases, the number of
-CTPs will remain equal to that of the symmetric Q2.
+CTPs will remain equal to that of the symmetric $Q^2$.
 
 \subsection{Disjoint routes}
 The routing table of each node should be differentiated, i.e. it should not
@@ -972,7 +972,7 @@ routes will fail too. Moreover when implementing the multipath routing to load
 balance the traffic there won't be any significative improvements.
 \newline
 
-The Q2 itself should avoid to spread redundant routes. In order to achieve
+$Q^2$ itself should avoid to spread redundant routes. In order to achieve
 this result, we refine the efficiency value associated to a route. Suppose we
 want to affect the efficiency value $R_e$ assigned to the route $R$:
 \begin{enumerate}
@@ -1004,7 +1004,7 @@ $s(R,S)=1$ and the $R_e$ value will be equal to $0$.
 \begin{enumerate}
 	\item We need to write a ns2 \cite{ns2} simulator to confront the efficiency of the
 		QSPN v1 with that of the v2.
-	\item If the Q2 is chosen over the Q1, it must be implemented for the
+	\item If $Q^2$ is chosen over Q, it must be implemented for the
 		ntkd daemon.
 \end{enumerate}
 
