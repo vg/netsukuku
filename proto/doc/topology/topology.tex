@@ -265,6 +265,33 @@ In the QSPN document \cite{qspndoc}, we've seen how the QSPN works in a
 network composed by single nodes, i.e. a gnode of level 0. \\
 We'll now study its way of working on higher levels.
 
+\subsubsection{A gnode is a node}
+In the abstract sense a single node is an entity which:
+\begin{enumerate}
+	\item receives input from its links
+	\item stores it in its memory
+	\item computes it
+	\item and sends the output of the computation over some of its links
+\end{enumerate}
+Thus any other entity which performs the same operations can be thought as a
+single node.\\
+A gnode $G$ can act as a single node too.
+\begin{enumerate}
+	\item A bnode of $G$ receives input from its links. Let's call
+		it $I$.
+	\item this input is flooded to all the nodes, of any level, of the
+		gnode. The nodes will memorize the information contained in
+		the input.\\
+		Note that the flood is not a TP. The flooded pkt will be
+		received only once by each node.
+	\item A bnode $O$, of the same gnode, which is different from $I$,
+		receives the flooded input and computes it.
+	\item The bnode $O$ sends the output of the computations to its
+		external links, i.e. avoiding those links which connect it to
+		nodes of $G$.
+\end{enumerate}
+
+
 \begin{figure}[h]
 	\begin{center}
 		\includegraphics[scale=0.3]{fig/qspn_g3}
