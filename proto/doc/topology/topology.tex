@@ -90,11 +90,15 @@ the following definitions:
 \begin{description}
 	\item[Gnode] means group node. It is a group of nodes, i.e. a set of
 		nodes. Each node of the network belongs to just one gnode.\\
-		A gnode contains a maximum of 256 nodes.
+		A gnode contains a maximum of 256 nodes.\\
+		By writing $n \in G$ we mean that the node $n$ belongs to the
+		gnode $G$.
 	\item[Bnode] stands for border node. It is a node which belongs to a
 		gnode G, but that is also directly linked to at least one node
 		of another gnode, i.e. some of its rnodes belongs to different
-		gnodes than its.
+		gnodes than its.\\
+		By writing $b \in G$ we mean that the bnode $b$ belongs to the
+		gnode $G$.
 \end{description}
 
 Example:\\
@@ -105,8 +109,8 @@ Example:\\
 	\caption{The bnode A and B, belonging respectively to the gnode G and
 	$G'$}
 \end{figure}
-A is a node belonging to the gnode G, its rnode is B.\\
-B is a node belonging to the gnode $G'$, its rnode is A.\\
+$A \in G $, A is a node belonging to the gnode G, its rnode is B.\\
+$B \in G'$, B is a node belonging to the gnode $G'$, its rnode is A.\\
 A is a bnode of G, while B is a bnode of $G'$.
 
 \subsubsection{Level n}
@@ -368,27 +372,95 @@ it has, the bnode won't forward it to $F$.
 \subsubsection{Gnode metric}
 We will refer to REM (Route Efficiency Measure), as a value characterising the
 quality of a route. REM can be calculated in various ways, f.e. by taking in
-account the total rtt and the bw capacity of the route. We will however
-consider REM in general case.\\
+account the total rtt and the bw capacity of the route. We suppose that
+the REM value of a normal route/link has been already defined. The REM value
+of a route, whose hops are gnodes and single nodes is defined as follow.
+\begin{enumerate}
+	\item The REM value of the route $x\rightarrow y$ is $E(x\rightarrow
+		y)$.
+	\item Let $G$ be a gnode, $x$ one of its nodes and $x \rightarrow G$ the
+		link between the node and the gnode. $x \rightarrow G$ can be
+		thought as the set of all the routes, which connect $x$ to
+		each node of $G$. The REM value of $x \rightarrow G$, should
+		tell the ability of the node $x$ to reach a generic node of
+		$G$. For this reason, we define $E(x \rightarrow G)$ as the
+		aritmetic mean of the REM value of all the routes, connecting
+		$x$ to every node of $G$. In symbols:
+		\[
+		\begin{matrix}
+			n=|G|,\quad g_i\in G\\
+		E(x\rightarrow G)=\frac{\sum_{i=1}^n E(x \rightarrow g_i)}{n}
+		\end{matrix}
+		\]
+		where $g_i$ is a node of $G$, and $n$ is the number of nodes
+		of $G$.
+	\item Let $G$ be a gnode, $g_i' \in G$ its $i$-th bnode. Let $H$ be a
+		gnode bordering with $G$, $x \in H$ one of its nodes, and
+		$h_j' \in H$ its $j$-th bnode. Finally let
+		$\{g_1',\dots,g_j'\}$ be the set of the bnodes of $G$ which
+		are connected respectively with $h_1', h_2', \dots$.\\
+		The REM value of the link $x\rightarrow G$ is calculated as
+		follow:
+		\begin{eqnarray*}
+		E(x \rightarrow \{g_1',\dots,g_j'\})&=&\frac{\sum_{i=1}^j
+		E(x \rightarrow h_i' \rightarrow g_i')}{j}\\
+		E(\{h_1',\dots,h_j'\}\rightarrow G)&=&\frac{\sum_{i=1}^j
+		E(h_i'\rightarrow G)}{j}\\
+		E(x\rightarrow G)&=&\frac{E(x \rightarrow
+		\{g_1',\dots,g_j'\})+E(\{h_1',\dots,h_j'\}\rightarrow G)}{2}
+		\end{eqnarray*}
+\end{enumerate}
 
-Each link contained in a TP contains its relative REM value.
+
+Each link contained in a TP contains its relative REM value. For example, in
+the TP $I \rightarrow B \rightarrow  C$, there will be the REM values for $I
+\rightarrow B$ and $B\rightarrow C$. In the following example, we'll show how
+the REM values are computed and inserted in the TP.\\
+
+Consider the network in figure \ref{fig:gmetric}.
+%%%%%%%% TODO G_3 \rightarrow  G_2
+Suppose that $G_3$ sent a TP.\\
+When the ingress bnode $B_i \in G_2, \;i=1,2,3$ receives the TP it will
+calculate the following REM value, appending it in the packet:
+\[
+REM(G_3\rightarrow G_2) = 
+\]
+of $B_i \rightarrow  C_i$
+Suppose that the egress bnode $A_2$ of the gnode $G_2$ received the TP $G_3
+\rightarrow  G_2$\\
+The bnode $A_2$ calculates the REM value of the last link appended ($G_3
+\rightarrow  G_2$) in the packet and adds it in the packet itself.
+The REM value is calculated as follow:
+\[
+REM(G_3\rightarrow G_2) = 
+\]
 
 %%%%%%%%% TODO: continue here 
-
+\begin{figure}[h]
+	\begin{center}
+		\includegraphics[scale=0.4]{fig/gmetric}
+	\end{center}
+	\caption{Gnodes metric example}
+	\label{fig:gmetric}
+\end{figure}
 
 %%%%%%%%%%%%%%%%%%%%  TODO %%%%%%%%%%%%%%%%%%%%%
 
 %%%% Q^2 pseudocode for high levels:
 %%%%  bnode_receive(),  node_receive()
-
+%
+% Per droppare i DUP non bisogna considerare il REM ma solo gli hop the TP!!!!
+%
 %bnode map
 %	Size
 %ext map  (sizeof)
 %int map	(sizeof)
 %QSPN per livelli alti: chi manda chi e cosa
-%			dire che all'interno del sotto gnode si diffonde come
-%			un normale TP (non continuo)
-
+%			specificare i casi in cui viene mandato un Q nei
+%			livelli alti
+%
+%Radar: quand'e' che viene mandata un Q2.
+% 	Delay di attesa prima di mandare il Q2.
 
 %%%%%%%%%%%%%%%%
 % Bibliography %
