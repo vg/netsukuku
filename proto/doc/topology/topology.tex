@@ -377,7 +377,12 @@ the REM value of a normal route/link has been already defined. The REM value
 of a route, whose hops are gnodes and single nodes is defined as follow.
 \begin{enumerate}
 	\item The REM value of the route $x\rightarrow y$ is $E(x\rightarrow
-		y)$.
+		y)$. The REM of a route has to be associative, i.e. this
+		propriety must hold:
+		\[
+		REM(x\rightarrow y\rightarrow z)=REM(x\rightarrow
+		y)+REM(y\rightarrow z)
+		\]
 	\item Let $G$ be a gnode, $x$ one of its nodes and $x \rightarrow G$ the
 		link between the node and the gnode. $x \rightarrow G$ can be
 		thought as the set of all the routes, which connect $x$ to
@@ -397,18 +402,92 @@ of a route, whose hops are gnodes and single nodes is defined as follow.
 	\item Let $G$ be a gnode, $g_i' \in G$ its $i$-th bnode. Let $H$ be a
 		gnode bordering with $G$, $x \in H$ one of its nodes, and
 		$h_j' \in H$ its $j$-th bnode. Finally let
-		$\{g_1',\dots,g_j'\}$ be the set of the bnodes of $G$ which
-		are connected respectively with $h_1', h_2', \dots$.\\
+		$B_G=\{g_1',\dots,g_j'\}$ be the set of the bnodes of $G$ which
+		are connected respectively with $B_H=\{h_1', h_2',
+		\dots,h_j'\}$, the bnodes of H.\\
+		As we've done above, we define the REM value $x\rightarrow G$
+		as the arithmetic mean of the REM value of all the routes, connecting
+		$x$ to every node of $G$, such that only one bnode $h_i'$ and
+		$g_i'$ is contained in each route.\\
+		Instead of the whole aritmetic mean in a single step, we can
+		calculate two differente REM values and then combine them.
+		This is convenient, because the node $x$, being external to
+		$G$,  doesn't know the information regarding the nodes of
+		$G$.\\
 		The REM value of the link $x\rightarrow G$ is calculated as
-		follow:
+		follow:\\
+		Let $G'$ be the set of all the nodes of $G$ excepting its
+		bnodes,
 		\begin{eqnarray*}
-		E(x \rightarrow \{g_1',\dots,g_j'\})&=&\frac{\sum_{i=1}^j
-		E(x \rightarrow h_i' \rightarrow g_i')}{j}\\
-		E(\{h_1',\dots,h_j'\}\rightarrow G)&=&\frac{\sum_{i=1}^j
-		E(h_i'\rightarrow G)}{j}\\
-		E(x\rightarrow G)&=&\frac{E(x \rightarrow
-		\{g_1',\dots,g_j'\})+E(\{h_1',\dots,h_j'\}\rightarrow G)}{2}
+		G'=\{g_1,\dots,g_n\},\;\;\;B_G \nsubseteq G\\
+		E(x \rightarrow \{g_1',\dots,g_j'\})&=&
+				\frac{\sum_{i=1}^j E(x \rightarrow h_i' \rightarrow g_i')}
+						{j}\\
+				&=&
+				\frac{\sum_{i=1}^j E(x \rightarrow
+				h_i')+E(h_i' \rightarrow g_i')}{j}\\
+		E(\{g_1',\dots,g_j'\}\rightarrow G')&=&
+				\frac{\sum_{i=1}^j E(g_i'\rightarrow G')}{j}\\
+		E(x\rightarrow G)&=&
+			E(x \rightarrow \{g_1',\dots,g_j'\}) + E(\{g_1',\dots,g_j'\}\rightarrow G')
 		\end{eqnarray*}
+		The last equation corresponds to the arithmetic mean described
+		above.
+		\begin{proof}
+			For simplicity, by writing $\overline{xy}$ we will indicate the route $x
+			\rightarrow y$.\\
+			All the routes from $x$ to $G'$ are:
+			\begin{align*}
+				&\overline{x h_1  g_1'  g_1},\;\; \overline{x
+				h_1  g_1'g_2},\;\;\dots,\;\; \overline{x h_1
+				g_1'  g_n}\\
+				&\overline{x h_2  g_2'  g_1},\;\; \overline{x
+				h_2  g_2'g_2},\;\;\dots,\;\; \overline{x h_2
+				g_2'  g_n}\\
+				&\qquad \vdots\\
+				&\overline{x h_j  g_j'  g_1},\;\; \overline{x
+				h_j  g_j'g_2},\;\;\dots,\;\; \overline{x h_j
+				g_j'  g_n}
+			\end{align*}
+			As we can see, there are $n$ routes which passes from
+			a single bnode $h_i'$ and $g_i'$. Since there are a
+			of $j$ bnodes, the total number of routes is $jn$.
+
+			The arithmetic mean of their REM is:
+			\[
+			\frac{\sum_{k=1}^n \sum_{i=1}^j
+			E(\overline{xh_i'g_i'g_k})}{jn}
+			\]
+			By the associative property of REM we can write:
+			\[
+			\frac{\sum_{k=1}^n \sum_{i=1}^j
+			E(\overline{xh_i'g_i'})+E(\overline{g_i'g_k})}{jn}
+			\]
+			that is the same of:
+			\begin{align*}
+			\frac{n\sum_{i=1}^j E(\overline{xh_i'g_i'})+\sum_{k=1}^n \sum_{i=1}^j
+			E(\overline{g_i'g_k})}{jn}=\\
+			\frac{n\sum_{i=1}^j E(\overline{xh_i'g_i'})}{jn}+\frac{\sum_{k=1}^n \sum_{i=1}^j
+                        E(\overline{g_i'g_k})}{jn}=\\
+			\frac{\sum_{i=1}^j E(\overline{xh_i'g_i'})}{j}+\frac{\sum_{k=1}^n \sum_{i=1}^j
+                        E(\overline{g_i'g_k})}{jn}
+			\end{align*}
+			The last identity is exactly what we were looking for:
+			\begin{align*}
+			E(x \rightarrow
+			\{g_1',\dots,g_j'\})&=\frac{\sum_{i=1}^j
+			E(\overline{xh_i'g_i'})}{j}\\
+			E(\{g_1',\dots,g_j'\}\rightarrow
+			G')&=\frac{\sum_{k=1}^n
+			\sum_{i=1}^jE(\overline{g_i'g_k})}{jn}\\
+			E(x\rightarrow G)&=
+			E(x \rightarrow \{g_1',\dots,g_j'\}) +
+			E(\{g_1',\dots,g_j'\}\rightarrow G')\\
+			&= \frac{\sum_{i=1}^j
+			E(\overline{xh_i'g_i'})}{j}+\frac{\sum_{k=1}^n
+			\sum_{i=1}^jE(\overline{g_i'g_k})}{jn}
+		\end{align*}
+		\end{proof}
 \end{enumerate}
 
 
