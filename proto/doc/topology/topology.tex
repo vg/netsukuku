@@ -20,9 +20,8 @@
 \maketitle
 
 \begin{abstract}
-	This document describes the fractal structure of the network topology
-	of Netsukuku and its practical implementation.
-	%%% TODO: aggiungi qualcosa in piu'
+	This document describes the fractal structure of the Netsukuku topology
+	and the way of working of the QSPN v2 in high levels.
 \end{abstract}
 
 \section{Preface}
@@ -264,12 +263,12 @@ add a CIDR\cite{CIDR} route in the routing table of the kernel:\\
 
 We'll see later how the gateway $X$ is chosen.
 
-\subsection{Tracer Packets in high levels}
+\section{Tracer Packets in high levels}
 In the QSPN document \cite{qspndoc}, we've seen how a Tracer Packet works in a
 network composed by single nodes, i.e. a gnode of level 0. \\
 We'll now study its way of working on higher levels.
 
-\subsubsection{A gnode is a node}
+\subsection{A gnode is a node}
 In the abstract sense a single node is an entity which:
 \begin{enumerate}
 	\item receives input from its links
@@ -330,28 +329,14 @@ The following will happen:
 		completing the TP cycle.
 \end{enumerate}
 
-\subsection{QSPN v2 in high levels}
+\section{QSPN v2 in high levels}
 In order to use the $Q^2$ (QSPN v2) in high levels, we need to be sure that a TP,
 flooded inside a lower gnode, will reach once and only once all the nodes of
 the same gnode. Moreover, a good metric needs to be defined for the high
 levels: what is the rtt (Round-Trip Time) and bandwidth capacity of the link
 between the two gnodes $G_1$ and $G_2$?
 
-\subsubsection{Unique flood}
-The first requirement is easily solvable.\\
-
-Suppose that a TP has been flooded inside the gnode $G$.
-Suppose also that the node $N$ of $G$ receives two duplicate packets.\\
-The $Q^2$ instructs the node $N$ to keep forwarding only the interesting packets.
-A packet, which is a perfect copy of a packet already received, is always
-uninteresting. Therefore, the node $N$ will drop the second copy of the
-received TP.\\
-
-Whenever two or more copies of a same TP are received by a node
-of $G$, only one of them will be forwarded. Hence, the successive nodes will
-receive only one copy of the same packet.
-
-\subsubsection{Endless loops}
+\subsection{Endless loops}
 Consider the situation in figure \ref{fig:3bnodes}.
 \begin{figure}[h]
 	\begin{center}
@@ -369,12 +354,15 @@ This situation can be avoided if an ingress bnode, before forwarding a packet to
 external gnode $F$, checks if the packet has already traversed $F$ itself. If
 it has, the bnode won't forward it to $F$.
 
-\subsubsection{Gnode metric}
+\subsection{Route Efficiency Measure}
 We will refer to REM (Route Efficiency Measure), as a value characterising the
 quality of a route. REM can be calculated in various ways, f.e. by taking in
 account the total rtt and the bw capacity of the route. We suppose that
-the REM value of a normal route/link has been already defined. The REM value
-of a route, whose hops are gnodes and single nodes is defined as follow.
+the REM value of a normal route/link has been already defined. 
+
+\subsubsection{Gnode metric}
+The REM value of a route, whose hops are gnodes and single nodes is defined as
+follow.
 \begin{enumerate}
 	\item The REM value of the route $x\rightarrow y$ is $E(x\rightarrow
 		y)$. The REM of a route has to be associative, i.e. this
@@ -389,16 +377,25 @@ of a route, whose hops are gnodes and single nodes is defined as follow.
 		each node of $G$. The REM value of $x \rightarrow G$, should
 		tell the ability of the node $x$ to reach a generic node of
 		$G$. For this reason, we define $E(x \rightarrow G)$ as the
-		aritmetic mean of the REM value of all the routes, connecting
+		arithmetic mean of the REM value of all the routes, connecting
 		$x$ to every node of $G$. In symbols:
-		\[
-		\begin{matrix}
-			n=|G|,\quad g_i\in G\\
-		E(x\rightarrow G)=\frac{\sum_{i=1}^n E(x \rightarrow g_i)}{n}
-		\end{matrix}
-		\]
+		\begin{align*}
+		&n=|G|,\quad g_i\in G\\
+		&E(x\rightarrow G)=\frac{\sum_{i=1}^n E(x \rightarrow g_i)}{n}
+		\end{align*}
 		where $g_i$ is a node of $G$, and $n$ is the number of nodes
 		of $G$.
+	\item Let $A=\{a_1, \dots,a_j\}$ and $B=\{b_1,\dots,b_k\}$ be two sets 
+		of nodes (gnodes), then:
+		\begin{align*}
+		E(A \rightarrow  B)&=
+		\frac{\sum_{i=1}^j\sum_{e=1}^k E(a_i \rightarrow b_e)}{jk}\\
+		&=
+		\frac{\sum_{i=1}^j {\sum_{e=1}^k E(a_i \rightarrow b_e) \over
+		k}}{j}\\
+		&=
+		\frac{\sum_{i=1}^j E(a_i \rightarrow B)}{j}
+		\end{align*}
 	\item Let $G$ be a gnode, $g_i' \in G$ its $i$-th bnode. Let $H$ be a
 		gnode bordering with $G$, $x \in H$ one of its nodes, and
 		$h_j' \in H$ its $j$-th bnode. Finally let
@@ -409,15 +406,15 @@ of a route, whose hops are gnodes and single nodes is defined as follow.
 		as the arithmetic mean of the REM value of all the routes, connecting
 		$x$ to every node of $G$, such that only one bnode $h_i'$ and
 		$g_i'$ is contained in each route.\\
-		Instead of the whole aritmetic mean in a single step, we can
-		calculate two differente REM values and then combine them.
+		Instead of the whole arithmetic mean in a single step, we can
+		calculate two different REM values and then combine them.
 		This is convenient, because the node $x$, being external to
 		$G$,  doesn't know the information regarding the nodes of
 		$G$.\\
 		The REM value of the link $x\rightarrow G$ is calculated as
 		follow:\\
 		Let $G'$ be the set of all the nodes of $G$ excepting its
-		bnodes,
+		bnodes belonging to $B_G$,
 		\begin{eqnarray*}
 		G'=\{g_1,\dots,g_n\},\;\;\;B_G \nsubseteq G\\
 		E(x \rightarrow \{g_1',\dots,g_j'\})&=&
@@ -450,8 +447,8 @@ of a route, whose hops are gnodes and single nodes is defined as follow.
 				g_j'  g_n}
 			\end{align*}
 			As we can see, there are $n$ routes which passes from
-			a single bnode $h_i'$ and $g_i'$. Since there are a
-			of $j$ bnodes, the total number of routes is $jn$.
+			a single bnode $h_i'$ and $g_i'$. Since there are $j$
+			bnodes, the total number of routes is $jn$.
 
 			The arithmetic mean of their REM is:
 			\[
@@ -486,35 +483,58 @@ of a route, whose hops are gnodes and single nodes is defined as follow.
 			&= \frac{\sum_{i=1}^j
 			E(\overline{xh_i'g_i'})}{j}+\frac{\sum_{k=1}^n
 			\sum_{i=1}^jE(\overline{g_i'g_k})}{jn}
-		\end{align*}
+			\end{align*}
 		\end{proof}
 \end{enumerate}
 
+\subsubsection{REM in a Tracer Packet}
+Each link contained in a TP contains its relative REM value. Consider the TP
+$D \leftarrow  C \leftarrow   B \leftarrow   A$, where each hop is a gnode.
+The REM value saved in the packet are computed and appended hop by hop:
+\begin{description}
+	\item[1. $a'\leftarrow A\;$] The egress bnode $a'$ of $A$, having received the
+		TP, computes\\ $E(A)=E(\{a_1',\dots,a_j'\}\rightarrow A')$ as
+		described above. $\{a_1',\dots,a_j'\}$ are all the egress bnodes of
+		$A$ bordering on $B$. The computed value $E(A)$ is saved in the
+		packet. The TP is then forwarded to $B$.
+	\item[2. $b_i\leftarrow b'\leftarrow a' \leftarrow A\;$] The generic node
+		$b_i \in B$ receives the TP. Utilising the saved $E(A)$ value,
+		it computes $E(b_i\rightarrow A)$ as explained before, but doesn't modify the
+		packet. $b_i$ will use the $E(b_i\rightarrow A)$ value to
+		update and order its routes.\\
+		The packet continues to be forwarded.
+	\item[3. $b'' \leftarrow b_i \leftarrow b' \leftarrow a' \leftarrow
+		A\;\;$] The egress bnode $b'' \in B$ receives the TP. $b''$, as
+		the other nodes of $B$, computes and saves for itself the
+		$E(b''\rightarrow A)$ value. Moreover, $b$ does the following:
+		\begin{itemize}
+			\item it computes $E(\{b_1',\dots,b_j'\}\rightarrow B')$
+				and appends it in the packet as the value
+				$E(B)$,
+			\item it computes \[
+				E(\{b_1'',\dots,b_k''\}\rightarrow
+				\{b_1',\dots,b_j'\} \rightarrow A)+E(A)
+				\]
+				and saves this value in the packet overwriting
+				$E(A)$
+		\end{itemize}
+		The packet continues to be forwarded.
+	\item[4. $c_i\leftarrow b''\leftarrow \dots\;$] The generic node $c_i \in
+		C$ receives the packet. It computes \\$E(c_i \rightarrow B)$
+		using the saved $E(B)$ value, without modifying the packet.
+	\item[5. $c''\leftarrow c_i \leftarrow b''\leftarrow \dots\;$] The egress
+		bnode $c'' \in C$ receives the packet and computes for itself
+		$E(c''\rightarrow B)$. It computes also $E(C)$ saving it in
+		the packet.\\
+		Finally, it finally overwrites $E(B)$ with
+		$E(\{c_1'',\dots,c_k''\}\rightarrow B)$.
+		The packet continues to be forwarded.
+	\item[6. $\dots\leftarrow \dots\;$] This same procedure is re-iterated
+		from step 4 until the TP arrives at the last gnode $D$.
+\end{description}
 
-Each link contained in a TP contains its relative REM value. For example, in
-the TP $I \rightarrow B \rightarrow  C$, there will be the REM values for $I
-\rightarrow B$ and $B\rightarrow C$. In the following example, we'll show how
-the REM values are computed and inserted in the TP.\\
-
-Consider the network in figure \ref{fig:gmetric}.
-%%%%%%%% TODO G_3 \rightarrow  G_2
-Suppose that $G_3$ sent a TP.\\
-When the ingress bnode $B_i \in G_2, \;i=1,2,3$ receives the TP it will
-calculate the following REM value, appending it in the packet:
-\[
-REM(G_3\rightarrow G_2) = 
-\]
-of $B_i \rightarrow  C_i$
-Suppose that the egress bnode $A_2$ of the gnode $G_2$ received the TP $G_3
-\rightarrow  G_2$\\
-The bnode $A_2$ calculates the REM value of the last link appended ($G_3
-\rightarrow  G_2$) in the packet and adds it in the packet itself.
-The REM value is calculated as follow:
-\[
-REM(G_3\rightarrow G_2) = 
-\]
-
-%%%%%%%%% TODO: continue here 
+\subsubsection*{Example of REM in a TP}
+See figure \ref{fig:gmetric}.
 \begin{figure}[h]
 	\begin{center}
 		\includegraphics[scale=0.4]{fig/gmetric}
@@ -522,6 +542,41 @@ REM(G_3\rightarrow G_2) =
 	\caption{Gnodes metric example}
 	\label{fig:gmetric}
 \end{figure}
+
+These will be the respective REM values saved in a TP which has traversed the
+whole net:
+\begin{align*}
+	E(\mathbf{G}_3)&=\frac{E(\overline{C_1 \mathbf{G}_3})+E(\overline{C_2 \mathbf{G}_3})
+	+E(\overline{C_3 \mathbf{G}_3})}{3} \\ 
+	E(\overline{\mathbf{G}_2\mathbf{G}_3})&=
+	\frac{
+		E(\overline{A_2 \mathbf{\mathbf{G}}_2  B_1 C_1})+
+		E(\overline{A_2 \mathbf{\mathbf{G}}_2  B_2 C_2})+
+		E(\overline{A_2 \mathbf{\mathbf{G}}_2  B_3 C_3})
+	     }{3} + 
+	     E(\mathbf{\mathbf{G}}_3)\\
+	E(\mathbf{G}_1\mathbf{G}_2\mathbf{G}_3)&= 
+		E(\overline{\mathbf{\mathbf{G}}_1 A_1 A_2})+
+		E(\mathbf{G}_2\mathbf{G}_3)
+\end{align*}
+
+\subsection{Unique flood}
+Suppose that a TP has been flooded inside the gnode $G$.
+Suppose also that the node $n \in G$ receives two duplicate packets.\\
+The $Q^2$ instructs the node $n$ to keep forwarding only the interesting packets.
+A packet, which is a perfect copy of a packet already received, is always
+uninteresting. Therefore, the node $n$ will drop the second copy of the
+received TP. 
+
+However, in this case the node $n$ should not consider the REM
+values saved in the TP, because two TPs, which have crossed the same
+gnodes in the same order, might have different REM values.
+\\
+
+In conclusion, whenever two or more TPs, which have crossed the same high level
+route, are received by a node of $G$, only one of them will be forwarded. In
+this way, the successive nodes will receive only one copy of the same packet.
+
 
 %%%%%%%%%%%%%%%%%%%%  TODO %%%%%%%%%%%%%%%%%%%%%
 
