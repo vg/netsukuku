@@ -76,7 +76,7 @@ The client will contact first the SNSD nodes which have the higher priority,
 and only if they are unreachable, it will try to contact the other nodes
 which have a lower priority.
 
-==== Weight ===
+==== Weight ====
 
 The weight number, associated to each SNSD record, is used when there are
 more than one records which have the same priority number.
