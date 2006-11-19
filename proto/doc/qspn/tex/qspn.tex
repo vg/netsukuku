@@ -117,7 +117,7 @@ Netsukuku, adopts a fractal like structure:
 in a single \emph{group of group nodes} (ggnode), 256 group of group nodes are
 grouped in a gggnode, and so on.
 (We won't analyse the topology of Netsukuku. You can find more information
-about it in the main documentation: \cite{ntksite}).
+about it in the proper document: \cite{ntktopology}).
 \newline
 Since each gnode acts as a single real node,
 the QSPN is able to operate independently on each level of the fractal.
@@ -878,6 +878,32 @@ However the tests in the network simulator ns2 \cite{ns2}, will give the final
 words.
 
 \section{QSPN optimisations}
+\subsection{Death of a node}
+When a node $N$ dies the network must be updated. For this reason, each of its former
+rnode $R$ will send a CTP.\\
+The first part of the CTP will contain the route $N \stackrel{-\infty}{\longrightarrow } R$. The efficiency
+of this route is set to $-\infty$.\\
+
+The value $-\infty$ has the higher priority on any other efficiency value.
+However a node will consider the route $N \stackrel{-\infty}{\longrightarrow }
+R$ interesting only if it has in memory the same route.
+Indeed, if the node didn't know (or didn't care) about the route $N
+\rightarrow R$, then it doesn't need to know that the link $N\rightarrow R$
+doesn't exist anymore.
+
+When an interested node receives the CTP, it updates its memorized routes. For
+example, the two routes
+\begin{align*}
+&L\rightarrow M\rightarrow N \rightarrow R\rightarrow S\\
+&I\rightarrow N\rightarrow R\rightarrow H
+\end{align*}
+will be transformed in:
+\begin{align*}
+	&L\rightarrow M\rightarrow N\\
+	&I\rightarrow N\\
+\end{align*}
+
+
 \subsection{Rtt and bandwidth}
 \label{sec:bandwidth_q1q2}
 
@@ -1015,6 +1041,8 @@ $s(R,S)=1$ and the $R_e$ value will be equal to $0$.
 \begin{thebibliography}{99}
 	\bibitem{ntksite} Netsukuku website:
 		\href{http://netsukuku.freaknet.org/}{http://netsukuku.freaknet.org/}
+	\bibitem{ntktopology} Netsukuku topology document:
+		\href{http://netsukuku.freaknet.org/doc/main\_doc/topology.pdf}{topology.pdf}
 	\bibitem{DFS} Depth-First Search:
 		\href{http://en.wikipedia.org/wiki/Depth-first\_search}{http://en.wikipedia.org/wiki/Depth-first\_search}
 	\bibitem{genrouteawk} Generate Routes in Awk:
