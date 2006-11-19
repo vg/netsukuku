@@ -20,8 +20,9 @@
 \maketitle
 
 \begin{abstract}
-	This document describes the fractal structure of the Netsukuku topology
-	and the way of working of the QSPN v2 in high levels.
+	In this document, we describe the fractal structure of the Netsukuku
+	topology. Moreover, we show how it is possible to use the QSPN v2 on
+	the high levels of the fractal.
 \end{abstract}
 
 \section{Preface}
@@ -149,11 +150,16 @@ is an example of the fractal topology of Netsukuku.
 \end{figure}
 
 In this topology, each gnode contains four nodes, i.e. each group contains
-four elements. The network is structured in 5 levels. The red elements, are single
-nodes. The bright green circle are groups of nodes. The dark green circles are
-groups of groups of nodes. The dark blue circle are groups of groups of groups of
-nodes. Finally, the bright blue circle is the gnode which contains the whole
-network.
+four elements. The network is structured in 6 levels.\\
+The red elements, are single nodes (level 0).\\
+Four nodes forms a single group of nodes (level 1).\\
+A single bright green circle is a 
+				  group of groups of nodes (level 2).\\
+The dark green circles are        groups of groups of groups of nodes (level 3).\\
+The dark blue circle are          groups of groups of groups of groups of
+nodes (level 4). \\
+Finally, the bright blue circle is the gnode which contains the whole network
+(level 5).
 
 \subsubsection{Membership}
 Let's assign a numeric ID to each (g)gnode, starting from the last level:
@@ -577,24 +583,61 @@ In conclusion, whenever two or more TPs, which have crossed the same high level
 route, are received by a node of $G$, only one of them will be forwarded. In
 this way, the successive nodes will receive only one copy of the same packet.
 
+\section{Network dynamics}
+When a part of the network changes considerably, the maps of the involved
+levels must be updated.
+
+\subsection{Radar}
+Every node has its own radar, which periodically sends a broadcast request to
+all its (physical) near nodes. By collecting the replies, the radar is able to
+determine the active rnodes of the node and the quality of its links.
+
+\subsection{Level 0}
+In level 0, a QSPN is sent every time a node joins the network, dies or every
+time the change of the quality of a link exceeds a predefined delta value.
+The QSPN is sent by the nodes noticing the changes, i.e. by the rnodes of the
+mutated node. In this case the QSPN is restricted to level 0, and thus it cannot
+escape from the gnode where it has been originated.
+
+In order to prevent false positives, the rnodes of the mutated node won't
+immediately send the QSPN, but will wait a small amount of time. If the change
+persists, they will send the QSPN.
+
+\subsection{Level n}
+In high levels the bnodes are responsible to start the new QSPN.
+The bnode $b \in G$ will send a QSPN in the level of $G$, every time the value
+$E(G)$ or\\$E(B_G\rightarrow B_R)$ changes substantially.
+
+The bnode can notice the change of $E(G)$ by inspecting the QSPN of lower
+levels, which are sent inside $G$.
+When the quality of the routes to reach the internal nodes of G varies, the $E(G)$
+value will change too. If the variation exceeds a predefined delta, the bnode
+will send a QSPN in the level of $G$, to inform the other gnodes that the links
+passing through $G$ have now a different efficiency.
+
+The bnode, instead of sending immediately the QSPN, will wait for a small
+time, using a timer. During this wait, if it receives any other information about a
+new variation of $E(G)$, it will resets the timer, waiting for a second time,
+and it will increment the variation counter.\\
+If the variation counter reaches the threshold value or if no more information
+regarding $E(G)$ are received, then the bnode will send the QSPN.
+
+This strategy is adopted to avoid false positives and to normalize the case
+when $E(G)$ varies frequently. Thus if $E(G)$ varies four times in a minute,
+only one QSPN will be sent, not four.
+
+The same applies for the variation of $E(B_G\rightarrow B_R)$, where $B_G$ are
+the bnodes of $G$ linked to the bnodes $B_R$ of the gnode $R$, which is any
+bordering gnode of $G$. Only significant variations of $E(G\rightarrow R)$ are
+considered. For examples, if $G$ and $R$ are connected by $20$ bnodes, when
+only one of the bnode dies, the $E(G\rightarrow R)$ will (generally) vary lightly.
 
 %%%%%%%%%%%%%%%%%%%%  TODO %%%%%%%%%%%%%%%%%%%%%
 
-%%%% Q^2 pseudocode for high levels:
-%%%%  bnode_receive(),  node_receive()
-%
-% Per droppare i DUP non bisogna considerare il REM ma solo gli hop the TP!!!!
-%
 %bnode map
-%	Size
 %ext map  (sizeof)
-%int map	(sizeof)
-%QSPN per livelli alti: chi manda chi e cosa
-%			specificare i casi in cui viene mandato un Q nei
-%			livelli alti
+%int map  (sizeof)
 %
-%Radar: quand'e' che viene mandata un Q2.
-% 	Delay di attesa prima di mandare il Q2.
 
 %%%%%%%%%%%%%%%%
 % Bibliography %
