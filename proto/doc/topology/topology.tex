@@ -632,6 +632,49 @@ bordering gnode of $G$. Only significant variations of $E(G\rightarrow R)$ are
 considered. For examples, if $G$ and $R$ are connected by $20$ bnodes, when
 only one of the bnode dies, the $E(G\rightarrow R)$ will (generally) vary lightly.
 
+\subsection{Hooking phase}
+A new node joins the network when it has been able to create at least one
+physical link to an active Netsukuku node and when it has correctly executed
+the hooking procedure. In this paragraph, we describe loosely the hooking
+phase of a new node.
+
+Suppose that the node $n$ has established a physical link to at least one Netsukuku
+node. In order to become an active Netsukuku node, $n$ has to \emph{hook} to
+its rnodes.
+
+During the hook, $n$ will exchange vital information with its rnodes,
+it will choose its new IP and it will finally become part of a gnode.
+
+The hook procedure is formed by these general steps:
+\begin{enumerate}
+	\item The node $n$ chooses an IP in the range of $10.0.0.1 \le IP \le
+		10.0.0.255$.
+	\item It launches the first radar to see what its rnodes are. If not a
+		single node is found, it creates a new gnode and ends hooking
+		phase.
+	\item At this point, $n$ asks to its nearer rnode the list of all the
+		available free nodes presents inside the gnode of the rnode.\\
+		If the rnode rejects the request (the gnode might be full),
+		the node $n$ contacts another rnode.
+	\item $n$ chooses an IP from the received list of free nodes and sets
+		it on its network interface.
+	\item $n$ will then download the external map from the same rnode.
+		Looking at the external map, it will be able to determine if
+		it has to create a new gnode. If it has, it creates it and
+		ends the hooking.
+	\item $n$ gets the internal and the bnode map from the same rnode.
+	\item $n$ launches a second radar and updates its routing table.
+\end{enumerate}
+
+
+\subsection{Gnode hook}
+When a node creates a new gnode, it will choose a random gnode ID, and thus
+a random ip.\\
+Suppose that two isolated gnodes get the same gnode ID. When they will be
+linked, they'll enter in conflict.\\
+The solution to this problem is to let each new gnode hook as a normal node
+would. You can find more information about this in the NTK\_RFC 001\cite{gnodecontiguity}.
+
 %%%%%%%%%%%%%%%%%%%%  TODO %%%%%%%%%%%%%%%%%%%%%
 
 %bnode map
@@ -650,6 +693,8 @@ only one of the bnode dies, the $E(G\rightarrow R)$ will (generally) vary lightl
 		\href{http://netsukuku.freaknet.org/}{http://netsukuku.freaknet.org/}
 	\bibitem{CIDR} CIDR routing:
 		\href{http://en.wikipedia.org/wiki/Classless\_Inter-Domain\_Routing}{Classless\_Inter-Domain\_Routing in Wikipedia}
+	\bibitem{gnodecontiguity} NTK\_RFC 001:
+		\href{http://lab.dyne.org/Ntk\_gnodes\_contiguity}{Gnode contiguity}
 \end{thebibliography}
 \newpage
 

@@ -181,9 +181,8 @@ A: The Netsukuku radar sends echo packets about every 10 seconds, if someone
    replies it communicates with it.
 
 Q: Will you provide "Internet to Netsukuku" tunnels?
-A: Yes, they will be used to link close cities. Please read this for more
-   information:
-   http://lab.dyne.org/Ntk_Internet_tunnels
+A: Yes, Viphilama will provide an automatic tunnelling system:
+   http://lab.dyne.org/Ntk_viphilama
 
 Q: Aside from what I hack myself I was wondering what can be done on the
    Netsukuku network?
