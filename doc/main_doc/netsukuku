@@ -10,348 +10,203 @@
 
   0. Preface
 
-  1. The old wired
+  1. Netsukuku
 
-  2. The Netsukuku wired
+  2. The Netsukuku protocol
   
-	2.1  Gandhi
-  	2.2  No name, no identity
-	2.3  So, what is it?
-	2.4  Other implementations
-  	2.5  The born
+	2.1  QSPN  - Quantum Shortest Path Netsukuku
 
-  3. Netukuku Protocol v7: the seventh son of Ipv7
+  	2.2  Netsukuku topology
 
-	3.1  #define Npv7
+	2.3  ANDNA - Abnormal Netsukuku Domain Name Anarchy
+
+	2.4  Internet and Netsukuku
+
+  3. Netsukuku RFCs
 	
-  4. Npv7_II: Laser Broadcast
+  4. FAQ
   
-  5. Npv7 Hybrid Theory: the final way
+  5. HOWTOs
   
-  	5.1  QSPN: Quantum Shortest Path Netsukuku
-  		5.1.1  QSPN screenshot
-	  	5.1.2  Continual qspn starters
-		5.1.3  Qspn round
-		
-	5.2  Npv7_HT Hook & Unhook
-		5.2.1  Qspn Hook & Unhook
-		
-	5.3  The truly Gnode^n for n<=INFINITE
-		5.3.1  Groupnode: one entity
-		5.3.2  Gnode fusion
-	
-  6. Broadcast: There can be only one!
-  
-	6.1  Tracer pkt: one flood, one route
-	
-  7. ANDNA: Abnormal Netsukuku Domain Name Anarchy
- 
- 	7.1  ANDNA Metalloid elements: registration recipe
-  		7.1.1  ANDNA hook
-		7.1.2  Don't rob my hostname!
-		7.1.3  Count again
-		7.1.4  Registration step by step
-		7.1.5  Endless rest and rebirth
-		7.1.6  Hash_gnodes mutation
-		7.1.7  Yaq: Yet another queue
-		
-  	7.8  Hostname resolution
-		7.8.1  Distributed cache for hostname resolution
-		7.8.2  noituloser emantsoh esreveR
-		
-	7.9  dns wrapper
-
-	7.10  Scattered Name Service Disgregation
-		7.10.1 Service, priority and weight number
-  			7.10.1.1 Service number 
-	  		7.10.1.2 Priority
-  			7.10.1.3 Weight
-
-  		7.10.2 SNSD Registration
-  			7.10.2.1 Zero SNSD IP
-	  		7.10.2.2 SNSD chain
-	  
-  8. Heavy Load: flood your ass!
-  
-  9. Spoof the Wired: happy kiddies
-  
-  10. /dev/Accessibility
-  
-  11. Internet compatibility
-  
-	11.1  Private IP classes in restricted mode
-  		11.1.1 Netsukuku private classes
-  		11.1.2 Notes on the restricted mode
-  
-  	11.2  Internet Gateway Search
-  		11.2.1 Multi-gateways
-	  		11.2.1.1 Anti loop multi-inet_gw shield
-		11.2.2 Load sharing
-		11.2.3 The bad
-		11.2.4 MASQUERADING
-		11.2.5 Traffic shaping
-		11.2.6 Sharing willingness
-		11.2.7 See also
-
-  12. Implementation: let's code
-  
-  13. What to do
-  
-  14. The smoked ones who made Netsukuku
+  6. Contacts and Credits
   
 --
 
-  8.   Heavy Load: flood your ass!
+  0.  Preface
 
-  The routes set by Netsukuku are created with the nexthop support, which
-  allows a node to reach another node using more than one route simultaneusly
-  (multipath), warranting a balanced sorting of the pkts traffic.
-  The anti-flood shield is a consequence of this multipath routes system, in
-  fact, also when a node is bombed by a continuous and consistent flux of
-  data, it receives that flux subdivided into different routes and links,
-  therefore it is always be able to communicate with other nodes.
-  
-  11.  Internet compatibility
+  This text is the index of the Netsukuku documentation.
 
-  Netsukuku cannot instantaneusly spread and it's impossibile to imagine to
-  move from the Internet to Netsukuku immediately.
-  Currently, during its early phase of diffusion, we need to make it compatible
-  with the old Internet and the only way is to temporarily limitate the
-  growing of Netsukuku.
+  The main papers describing the protocol and the algorithms are in pdf
+  format, the rest are text files.
 
-  A node which uses Netsukuku cannot enter inside the Internet because when
-  ntkd is launched, it can take any random ip and there's an high probability
-  of a collision with an IP address of the Internet. For example it can take
-  the IP 195.169.149.142, but that, in the Internet, is the IP of
-  195.169.149.142.
+  The Netsukuku website is:
   
-  In order to keep the compatibility with the Internet, Netsukuku has to be
-  restricted to a subclass of ip, so that it doesn't interfere with the
-  normal default classes of the Internet. 
-  We use the private A class of ip for the ipv4 and the Site-Local class for
-  the ipv6.
-  
-  The passage from the restricted Netsukuku to the complete one is easy:
-  at the same moment the user decides to abandon the Internet, he will
-  restart NetsukukuD without any options of restriction.
-  
-  Obviously all the other private classes are not influenced, to let the user
-  create a LAN with just one gw/node Netsukuku.
+  http://netsukuku.freaknet.org
 
-  11.1  Private IP classes in restricted mode
 
-  --
-  The updated "Restricted IP classes" can be found here:
-  http://lab.dyne.org/Ntk_restricted_ip_classes
-  --
-  
-  The user can decide to use, in restricted mode, a different private IP
-  class from the default one ( 10.x.x.x ). This is useful if the 10.x.x.x class
-  cannot be used, for example in Russia, it is very popular to provide Internet
-  access through big LANs which use the 10.x.x.x class.
+  1.  Netsukuku
+ 
+  Netsukuku general document:
 
-  The other available classes are:
-  
-  172.16.0.0  - 172.31.255.255    = 16*2^16 = 1048576 IPs
-  192.168.0.0 - 192.168.255.255   =    2^16 = 65536   IPs
-  
-  The 192.168.x.x class cannot be used as an alternate restricted mode IP class
-  because it is the default Netsukuku private class, thus the only alternative
-  to 10.x.x.x is the "172.16.0.0 - 172.31.255.255" IP class.
-  However it is adviced to always use the default class.
-  
-  11.1.1 Netsukuku private classes
-  
-  It necessary to provide at least one private IP class inside Netsukuku to
-  allow the creation of private LANs which are connected to Netsukuku with just
-  one node.
-  
-  The default Netsukuku private class is 192.168.x.x.
-  The random IPs choosen by the nodes will be never one of that class.
-  The default private class is valid both in normal and restricted mode.
-  
-  Only in normal mode the "172.16.0.0 - 172.31.255.255" class becomes private.
-  This class is assigned to very large private networks.
+  http://netsukuku.freaknet.org/doc/main_doc/netsukuku.pdf
 
-  The 10.x.x.x class IS NOT private since it is too big and it would be just a
-  waste of IP addresses to use it as a private class.
-  Note also that for each Netsukuku node you can have a private network,
-  therefore with just 16 Netsukuku nodes you can form a private network of
-  16777216 nodes, which is equivalent to a 10.x.x.x class.
+  Netsukuku is a P2P network system designed to handle a large number of nodes
+  with minimal CPU and memory resources. It can be easily used to build a
+  worldwide distributed, anonymous and not controlled network, separated from
+  the Internet, without the support of any servers, ISPs or authority
+  controls.
+  In this document, we give a generic and non technical description of the
+  Netsukuku network, emphasizing its main ideas and features.
+
   
-  11.1.2 Notes on the restricted mode
-  
-  A node which runs in restricted mode cannot be compatible with normal mode
-  nodes, for this reason a restricted node will drop any packets coming from a
-  normal node.
-  
-  While in restricted mode the "172.16.0.0 - 172.31.255.255" class IS NOT
-  private.
-  
-  In restricted mode, when two different networks which use different
-  private classes (say 10.x.x.x and 192.168.x.x) are linked, nothing happens
-  and they will not rehook, this is necessary because it's assumed that the
-  specified private class is the only choice the user can utilize.
-  This leds to some problems, consider this scenario:
+  2.  The Netsukuku protocol
+
+  The following are technical documents describing, in details, the design and
+  the mechanisms of Netsukuku.
+  They are a must for anyone who wants to understand how Netsukuku works.
+
+
+  2.1  QSPN  - Quantum Shortest Path Netsukuku
+
+  The QSPN algorithm:
+
+  http://netsukuku.freaknet.org/doc/main_doc/qspn.pdf
+
+  This document describes the QSPN, the routing discovery algorithm used
+  by Netsukuku.
+  Through a deductive analysis the main proprieties of the QSPN are
+  shown. Moreover, a second version of the algorithm, is presented.
+
+
+  2.2  Netsukuku topology
+
+  Network topology document:
+
+  http://netsukuku.freaknet.org/doc/main_doc/topology.pdf
+
+  In this document, we describe the fractal structure of the Netsukuku
+  topology. Moreover, we show how it is possible to use the QSPN v2 on
+  the high levels of the fractal.
+
+
+  2.3  ANDNA - Abnormal Netsukuku Domain Name Anarchy
+
+  The Domain Name system of Netsukuku:
 		
-		10.0.0.0 <-> 172.16.0.0
-  
-  In this case the rehook isn't launched, so it is possible that there will be
-  a lot of collision.
+  http://netsukuku.freaknet.org/doc/main_doc/andna.pdf
 
-
-  11.2  Internet Gateway Search
-  
-  --
-  The updated "Internet Gateway Search" can be found here:
-  http://lab.dyne.org/Ntk_IGS
-  --
-  
-  If the nodes are in restricted mode (compatibility with the Internet), they
-  should share their Internet connection. This can be easily done, in fact, if
-  a node X, connected to the Internet, activates the masquerading, it is
-  possible for the other nodes to connect by setting as the default gateway
-  their rnode which lead to the node X.
-  
-  This can be automated by Netsukuku itself and it requires small changes in the
-  code: it is just necessary that the nodes connected to the Internet set a flag
-  in the qspn_pkt, in this way the other nodes will know the routes to reach the
-  Internet.
-  
-  11.2.1 Multi-gateways
-  
-  The situation becomes a little complex when there is more than one node which
-  shares its internet connection. Let's consider this scenario:
-  
-  		   A(gw)      B(gw)
-  		    \	       /
-  		     \___  ___/
-  		         \/
-  		      Ntk nodes (10.x.x.x)
-  
-  A and B are nodes which shares their internet connection, we call them
-  gateways. Let's call X the node which wants to connect to an Internet host.
-  In this case, the nodes near A, might find useful to use A itself to
-  reach the Internet, the same happens for the nodes near B.
-  Instead, the nodes in the middle don't know what is the best choice and they
-  might continuosly change their gw. This means that a tcp connection
-  (to an inet host), which was established trough A, when is then routed trough
-  B dies because A and B have different public IPs on the Internet.
-  
-  The node X has to create an IPIP tunnel to the gateway it wants to use, and
-  set as default gw the tunnel. In this way, the node X is sure to always use
-  the same gateway while the routing of the packets between it and the gw is
-  made transparently by the other Netsukuku nodes.
-  
-  11.2.1.1 Anti loop multi-inet_gw shield
-  
-  An inet-gw is a normal node like all the other, therefore it can use the
-  Internet connections of the other inet-gws in conjunction with its own one.
-  
-  Consider the previous scenario, A and B are two inet-gw. 
-  A sets in his internet default route the adsl modem and B.
-  B does the same, but sets A as the second default route.
-  
-  What would happen if the default route, written in the routing cache of A, is
-  B and, at the same time, the default route set in the routing cache of B is A?
-  The packets would jump endlessy in a infinite loop loosing themself forever.
-  
-  That's why we need the "anti loop multi-inet_gw shield".
-  It's working way is simple: each inet-gw has a netfilter rule which marks
-  all the packets coming from the outside and directed to the Internet. These
-  packets are then routed directly to the Internet without being sent, again, to
-  an inet-gw. In the example:
-  A wants to send a packet to the Internet and its looks in its routing cache.
-  It decide to forward the packet to B. B receives the packet, recognizes it is
-  an extern packet directed to the Internet and shoots it on its modem.
-  
-  11.2.2 Load sharing
-  
-  Let's consider the previous scenario.
-  
-  The node X can also decide to use both A and B to reach the Internet, using
-  at the same time their connections! Even the gw A can use at the same time
-  its own line and the connection of the gw B.
-  
-  The procedure to implement this is what follows:
-  
-   * X creates a tunnel to A and another one to B
-   
-   * X adds in the routing table the default route using A and B as multipath
-     gateways. The gateway for the connections is chosen randomly.
-  
-   * X adds a rule in the routing table to route all the packets of established
-     connections trough the same gateway used to create the same connection.
-     The rule is linked to some netfilter rules which track and mark each
-     connection. The method is described in details here:
-     https://lists.netfilter.org/pipermail/netfilter/2006-March/065005.html
-  
-  11.2.3 The bad
-  
-  The implementation of the Load sharing is very Linux specific, so it will be
-  very difficult to port it to other kernels, therefore this feature will be
-  available only to nodes which run Linux (ehi, one more reason to use Linux ;).
-  
-  11.2.4 MASQUERADING
-  
-  Each node sharing the Internet connection (inet-gw) has to masquerade its
-  interfaces, so iptables must be used.
-  In order to keep the daemon portable, NetsukukuD will launch the script found
-  at /etc/netsukuku/masquerade.sh, which in Linux will be a simple script that
-  executes "iptables -A POSTROUTING -t nat -j MASQUERADE".
-  When NetsukukuD is closed the added firewall rules are flushed with 
-  "/etc/netsukuku/masquerade.sh close"
-  
-  11.2.5 Traffic shaping
-  
-  The inet-gw can also shape its internet connection in order to prioritize its
-  local outgoing traffic (the traffic coming from its 192.168.x.x LAN). 
-  In this way, even if it shares its Internet connection, it won't notice any
-  difference 'cause it will have the first priority. Moreover with the traffic
-  shaper, the inet-gw can also prioritize some protocol, i.e. SSH.
-  
-  The traffic shaper will activated at the start of NetsukukuD. The daemon will
-  run the /etc/netsukuku/tc_shaper.sh script, which in Linux utilizes the
-  iproute2 userspace utility.
-  When the daemon is closed the traffic shaping will be disabled with
-  "/etc/netsukuku/tc_shaper.sh close".
-  
-  11.2.6 Sharing willingness
-  
-  If your ISP isn't very kind, it might decide to ban you because your sharing
-  your Internet connection.
-  It's a pity, but it is for your ISP, not for you, that's because probably
-  someone is also sharing its Inet connection and you can use it too.
-  
-  What if you want to be completely sure that you'll have a backup connection?
-  An idea would be to share your Inet connection only when you're sure that you
-  can reach someone which is doing the same. In this way you won't share it
-  when you are still alone in your area and you can't contact other Netsukuku
-  nodes. This is a good compromise: until another node doesn't guarantees you a
-  backup connection, you won't share your.
-  
-  This can be done automatically by activating the `share_on_backup' option in
-  netsukuku.conf. NetsukukuD will start to share your Internet connection _only_
-  when it will be in contact with another node which is sharing, or it is willingly
-  to share, its own connection.
-  
-  11.2.7 See also
-  
-  For more information on the necessity of using ipip tunnels in an adhoc
-  network used to share internet connections, you can read this paper:
-  http://www.olsr.org/docs/XA-OLSR-paper-for-ICC04.pdf
-  
-  13.  What to do
-
-  - Testing on large Netsukuku and ANDNA.
-  - Complete what is in src/TODO.
-  - Code, code and code.
-  - Something else is always necessary.
-
-  If you wants to get on board, just blow a whistle.
+  In this document, we present the Abnormal Netsukuku Domain Name
+  Anarchy system. ANDNA is the distributed, non hierarchical and
+  decentralised system of hostname management used in the Netsukuku
+  network.
 
   
-  14.  The smoked ones who made Netsukuku
+  2.4  Internet and Netsukuku
+
+  Issues regarding the Netsukuku compatibility with the Internet:
+
+  http://netsukuku.freaknet.org/doc/main_doc/inetntk.pdf
+
+  Netsukuku is completely independent from the Internet. However, a good
+  level of integration between the two networks must be preserved.
+  In this document, we present the techniques that allow Netsukuku to be
+  compatible with the standard Internet. Moreover, we show how it is
+  possible to use virtual Internet tunnels to temporarily replace missing
+  physical links.
+
+  
+  
+  3.   Netsukuku RFCs
+
+  The Netsukuku RFCs (NTK_RFC) are work in progress documents that expands,
+  improve or corrects the Netsukuku protocol.
+
+  You can find their up to date version in the Netsukuku wiki:
+
+  http://lab.dyne.org/Netsukuku_RFC
+
+  Their static version can be found here:
+
+  http://netsukuku.freaknet.org/index.php?pag=documentation&dir=main_documentation/ntk_rfc
+
+  and here:
+
+  http://netsukuku.freaknet.org/doc/main_doc/ntk_rfc
+
+
+  4.   FAQ
+
+  Frequently Asked Questions:
+
+  http://www.netsukuku.org/index.php?pag=faq
+
+  http://netsukuku.freaknet.org/doc/faq/
+
+
+  5.   HOWTOs
+
+  Various HOWTOs:
+
+  http://netsukuku.freaknet.org/index.php?pag=documentation&dir=howto
+
+  http://netsukuku.freaknet.org/doc/howto/
+
+
+  6.   Contacts and Credits
+  
+  **
+  ***  General contacts
+  **
+
+  > Mailing list
+
+  Subscribe to the netsukuku mailing to get help, be updated on the latest news
+  and discuss on its development.
+
+  To subscribe to the list, send a message to:
+  netsukuku-subscribe@lists.dyne.org
+  or use the web interface:
+  http://lists.dyne.org/mailman/listinfo/netsukuku
+
+  You can browse the archive here:
+  http://lists.dyne.org/netsukuku/
+  http://dir.gmane.org/gmane.network.peer-to-peer.netsukuku
+
+  > IRC
+
+  We live night and day in IRC, come to see us on channel
+  #netsukuku on the FreeNode irc server (irc.freenode.org).
+
+
+  **
+  ***  Authors
+  **
+
+  Main authors and maintainers:
+
+  Andrea Lo Pumo aka AlpT <alpt@netsukuku.org>
+
+
+  Contributors (in chronological order of initial contribution):
+
+  Andrea Leofreddi <andrea.leofreddi@gmail.com> wrote the DNS wrapper code
+  (dns_pkt.cpp, dns_rendian.h, dns_utils.h).  
+
+  Enzo Nicosia (Katolaz) <katolaz@netsukuku.org> wrote the files needed to use
+  Automake/Autoconf. (Makefile.am configure.ac, src/Makefile.am,
+  src/man/Makefile.am).
+
+  Federico Tomassini (Efphe) <efphe@netsukuku.org> wrote andns, which provides
+  DNS compatibility for the ANDNA system. He also wrote the interface to the
+  libiptc. (andns* dnslib.[ch] mark.[ch] libiptc/*)
+
+
+  Website developers and maintainers:
+
+  Crash 		<crash@netsukuku.org>,
+  Entropika		<e@entropika.net>,
+  Black			<black@netsukuku.org>
+
 
   Main theory and documentation:
   
@@ -408,10 +263,18 @@
   About the translator of this document, you have to thank this great guy:
   
   Salahuddin, the hurd-nipponese old british one, which is always joyful.
+
+
+  **
+  *** Related links
+  **
   
---
-This file is part of Netsukuku.
-This text is free documentation; you can redistribute it and/or modify it
-under the terms of the GNU General Public License as published by the Free
-Software Foundation; either version 2 of the License, or (at your option) any
-later version. For more information read the COPYING file.
+  - Wiki       : http://lab.dyne.org/Netsukuku
+  - Cvs online : http://www.hinezumi.org/viewcvs/netsukuku/
+  - Cvs commits: http://cia.navi.cx/stats/project/netsukuku
+  - Bug tracker: http://bugs.dyne.org/
+
+  - http://www.freaknet.org
+  - http://www.dyne.org
+  - http://www.hinezumi.org
+  - http://poetry.freaknet.org
