@@ -377,9 +377,9 @@ In the map, the multi-barycenter is associated to each (g)node.
 In the ideal case, a gnode would be compact and dense and its barycenter would
 be exactly in its centre. 
 In this case it is possible to consider the gnode as a single point, thus, in 
-the higher level, it woald be sufficient to known only its barycenter instead
+the higher level, it would be sufficient to known only its barycenter instead
 of all the coordinates of its nodes.
-However, this isn't always true, foe example, consider this group node:
+However, this isn't always true, for example, consider this group node:
 {{{
           .  .
 	.  . .                               .

@@ -99,10 +99,10 @@ How to install it:
 #- Now launch netsukuku
 
 	#give a try with
-	netsukuku_d -i eth1 -ddddd -D -a -R
+	ntkd -i eth1 -ddddd -D -a -R
 
 	#then with
-	netsukuku_d -i eth1 -ddddd -D
+	ntkd -i eth1 -ddddd -D
 
 /*
  * TODO:
