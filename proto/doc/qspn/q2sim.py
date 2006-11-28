@@ -1,4 +1,35 @@
 #!/usr/bin/python
+#
+#  This file is part of Netsukuku
+#  (c) Copyright 2005 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+# 
+#  This source code is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License as published 
+#  by the Free Software Foundation; either version 2 of the License,
+#  or (at your option) any later version.
+# 
+#  This source code is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#  Please refer to the GNU Public License for more details.
+# 
+#  You should have received a copy of the GNU Public License along with
+#  this source code; if not, write to:
+#  Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+# 
+# --
+#
+# QSPN v2 simulator
+# =================
+# 
+# This is an event-oriented Discrete Event Simulator.
+# 
+# Each (event,time) pair is pushed in the `events' priority queue.
+# The main loop of the program will retrieve from the queue the event having the
+# lowest `time' value. This "popped" event will be executed.
+#
+#
+
 
 from heapq import *
 import random
@@ -306,6 +337,7 @@ class graph:
 			mean+=len(node.tracer)
 			n+=1
 		mean=mean/n
+		print "Total nodes:\t", len(graph.graph)
 		print "Total packets:\t", packet.total_pkts
 		print "Individual TPs:\t", packet.total_tpkts
 		print "Mean TPs flux:\t", mean
@@ -320,8 +352,10 @@ def error(str):
 random.seed(12)
 
 g=graph()
-if len(sys.argv) > 1:
+if len(sys.argv) == 2:
 	g.load_graph(sys.argv[1])
+elif len(sys.argv) == 3:
+	g.gen_complete_graph(int(sys.argv[1]))
 else:
 	g.gen_complete_graph(4)
 g.print_dot("test.dot")
@@ -332,8 +366,10 @@ first_packet=packet(startnode, startnode)
 
 idx=0
 while events:
-	if idx==1000:
-		print "[[[[ ===== --- HELL --- ===== ]]]]"
+	if idx==10000:
+		print "-----------[[[[ ===== ---       --- ===== ]]]]----------------"
+		print "-----------[[[[ ===== --- BREAK --- ===== ]]]]----------------"
+		print "-----------[[[[ ===== ---       --- ===== ]]]]----------------"
 		break
 	p=heappop(events)
 	curtime=p.time
