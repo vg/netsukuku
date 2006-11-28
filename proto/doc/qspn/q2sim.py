@@ -38,8 +38,19 @@ from sys import stdout, stderr
 from string import join
 from copy import *
 
-default_rtt=100
-delta_rtt=default_rtt/10
+#
+# Defines
+#
+DEFAULT_RTT	=100
+DELTA_RTT	=DEFAULT_RTT/10
+
+MAX_ROUTES	= 1
+
+EVENTS_LIMIT	= 10000
+
+#
+# Globals
+#
 curtime=0
 events=[]
 
@@ -148,17 +159,11 @@ class packet:
 			tr_old=tr
 			tr.append(i)
 
-			iroutes=self.me.get_routes(i.id)
-
 			# Save the route if it is interesting
-			if (tr not in iroutes):
-				#TODO: or (tr < iroutes[iroutes.index(tr)]):
-					if i.id not in self.me.route:
-						self.me.route[i.id]=[tr]
-					else:
-						self.me.route[i.id].append(tr)
-					packet_interesting=1
-		if packet_interesting == 0:
+			if self.me.add_route(tr):
+				packet_interesting=1
+
+		if not packet_interesting:
 			print "dropped"
 		else:
 			print ""
@@ -195,7 +200,7 @@ class packet:
 			for i in self.splitted_tracer:
 				packet_interesting+=self.evaluate_tracer_packet(i)
 
-			if packet_interesting == 0:
+			if not packet_interesting:
 				print "completely dropped"
 				return
 
@@ -206,6 +211,24 @@ class packet:
 
 class route:
 	def __cmp__(self, other):
+		"""Compare two routes.
+		   A == B  iif  A has the same hops number of B, the same hops
+		                (in order), and the difference of their total rtt is <
+		                DELTA_RTT.
+
+		   A < B   iif  A has the same hops number of B, the same hops
+		   		(in order), and the A.trtt < B.trtt
+
+		   A > B or A != B
+		   	   iif  The hops of A differs from those of B or
+			        B.trtt > A.trtt
+		   
+		   Note that "A < B" is returned only in one case
+		   (A.trtt < B.trtt). Instead, "A > B or A != B" is ambigous, they 
+		   collides with three cases, thus DON'T use A > B. Use A < B
+		   instead.
+		"""
+
 		if len(self.route) != len(other.route):
 			return -1
 
@@ -213,10 +236,16 @@ class route:
 			if i != k:
 				return -1
 
-		if abs(self.trtt-other.trtt) <= delta_rtt:
+		if abs(self.trtt-other.trtt) <= DELTA_RTT:
 			return 0
 		else:
 			return self.trtt-other.trtt
+
+	def __str__(self):
+		return self.route_to_str()
+
+	def __repr__(self):
+		return str(self.route)
 
 	def compute_trtt(self):
 		self.trtt=0
@@ -227,6 +256,11 @@ class route:
 		self.dst=dst
 		self.route=route
 		self.compute_trtt()
+
+	def init_from_routec(self, routec):
+		self.dst=routec.dst
+		self.route=routec.route[:]
+		self.trtt=routec.trtt
 
 	def append(self, node):
 		self.dst=node
@@ -241,11 +275,6 @@ class route:
 		self.dst=dst
 		self.route.extend(route)
 		self.compute_trtt()
-
-	def init_from_routec(self, routec):
-		self.dst=routec.dst
-		self.route=routec.route[:]
-		self.trtt=routec.trtt
 
 	def route_to_str(self):
 		return join([i.id for i in self.route], '->')
@@ -263,10 +292,10 @@ class node:
 		self.id=id
 		self.rcv_pkt=[]
 		self.tracer=[]
+		self.worst_route={}
 
 		for (node, rtt) in rnodes:
 			self.rtt[node]=rtt
-			self.route[node]=[]
 			self.rnode_id.append(node)
 
 	def tracer_to_str(self):
@@ -278,6 +307,48 @@ class node:
 			return []
 		else:
 			return self.route[dst]
+
+	def add_route(self, route):
+		interesting=True
+		dst=route.dst.id
+
+		if dst not in self.route:
+			self.route[dst]=[route]
+			self.worst_route[dst]=0
+		else:
+			if route in self.route[dst]:
+				# The route has been already added
+				return not interesting
+			else:
+				# Add the route
+				self.route[dst].append(route)
+
+		if self.route[dst][self.worst_route[dst]] < route:
+			# The added route is the worst
+			self.worst_route[dst]=self.route[dst].index(route)
+
+			if len(self.route[dst]) > MAX_ROUTES:
+				# The maximum number of stored routes has been
+				# reached. Drop the worst route.
+				self.purge_worst_route(dst)
+				return not interesting
+
+		# Clean the house
+		if len(self.route[dst]) > MAX_ROUTES:
+			self.purge_worst_route(dst)
+
+		# The added route is not the worst, it's interesting
+		return interesting
+
+	def purge_worst_route(self, dst):
+		del self.route[dst][self.worst_route[dst]]
+
+		# update the worst route
+		worst=self.route[dst][0]
+		for i in self.route[dst]:
+			if worst < i:
+				worst=i
+		self.worst_route[dst]=self.route[dst].index(worst)
 
 class graph:
 	graph={}
@@ -296,7 +367,7 @@ class graph:
 		for l in f:
 			w=l.strip().split('--')
 			if len(w) < 3:
-				weight=default_rtt
+				weight=DEFAULT_RTT
 			else:
 				weight=w[2]
 			if w[0] not in nodes:
@@ -312,7 +383,7 @@ class graph:
 	def gen_complete_graph(self, k):
 		k+=1
 		for i in range(1,k):
-			n=node('n%d'%i, [('n%d'%o, default_rtt) for o in range(1, k) if o != i])
+			n=node('n%d'%i, [('n%d'%o, DEFAULT_RTT) for o in range(1, k) if o != i])
 			graph.graph['n%d'%i]=n
 	
 	def print_dot(self, file):
@@ -366,7 +437,7 @@ first_packet=packet(startnode, startnode)
 
 idx=0
 while events:
-	if idx==10000:
+	if idx==EVENTS_LIMIT:
 		print "-----------[[[[ ===== ---       --- ===== ]]]]----------------"
 		print "-----------[[[[ ===== --- BREAK --- ===== ]]]]----------------"
 		print "-----------[[[[ ===== ---       --- ===== ]]]]----------------"
@@ -378,3 +449,7 @@ while events:
 
 g.dump_tracer_packets()
 g.dump_stats()
+if idx==EVENTS_LIMIT:
+	print "-----------[[[[ ===== ---       --- ===== ]]]]----------------"
+	print "-----------[[[[ ===== --- BREAK --- ===== ]]]]----------------"
+	print "-----------[[[[ ===== ---       --- ===== ]]]]----------------"
