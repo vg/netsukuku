@@ -30,6 +30,15 @@
 #
 #
 
+# TODO: Various tests:
+# 	
+# 	- See what happens if more than one CTPs are sent at the same time
+# 	  (from different nodes)
+# 
+#	- Random graphs
+#
+#	- Random rtt
+#
 
 from heapq import *
 import random
@@ -46,7 +55,7 @@ DELTA_RTT	=DEFAULT_RTT/10
 
 MAX_ROUTES	= 1
 
-EVENTS_LIMIT	= 10000
+EVENTS_LIMIT	= 100000
 
 #
 # Globals
@@ -151,22 +160,28 @@ class packet:
 	def evaluate_tracer_packet(self, tp):
 		packet_interesting=0
 		tr_old=None
-		print "Evaluating TP: ", [i.id for i in tp],
+		tr_old_added=False
+#		print "Evaluating TP: ", [i.id for i in tp],
 		for i in reversed(tp[:-1]):
 			tr=route()
 			if tr_old:
 				tr.init_from_routec(tr_old)
+				if not tr_old_added:
+					del tr_old
 			tr_old=tr
 			tr.append(i)
 
 			# Save the route if it is interesting
 			if self.me.add_route(tr):
 				packet_interesting=1
+				tr_old_added=True
+			else:
+				tr_old_added=False
 
-		if not packet_interesting:
-			print "dropped"
-		else:
-			print ""
+# 		if not packet_interesting:
+# 			print "dropped"
+# 		else:
+# 			print ""
 		return packet_interesting
 
 	def forward_pkt(self):
@@ -184,13 +199,15 @@ class packet:
 			nc=graph.graph[node]
 			if nc == self.src and rlen > 1:
 				continue
+			if nc == self.me:
+				EHM_SOMETHING_IS_WRONG
 			str.append(node)
 			p=packet(self.me, nc, tp[:])
-		print "%s -> {%s}"%(self.me.id, join(str, ","))
+#		print "%s -> {%s}"%(self.me.id, join(str, ","))
 
 	def exec_pkt(self):
-		error("src: %s, dst: %s"%(self.src.id, self.dst.id))
-		error("\t TP: "+self.tracer_to_str())
+		# DEBUG
+		print self.tracer_to_str(),
 		if not self.first_pkt:
 			#
 			# Evaluate the tracer packet, if it isn't interesting, drop
@@ -201,14 +218,16 @@ class packet:
 				packet_interesting+=self.evaluate_tracer_packet(i)
 
 			if not packet_interesting:
-				print "completely dropped"
-				return
+				print "  completely dropped"
+				return 1
+		print ""
 
 		# book keeping
-		self.me.tracer.append(self.tracer)
+		self.me.tracer_forwarded+=1
+		#self.me.tracer.append(self.tracer)
 
 		self.forward_pkt()
-
+		return 0
 class route:
 	def __cmp__(self, other):
 		"""Compare two routes.
@@ -290,8 +309,8 @@ class node:
 		self.route={}
 		self.rnode_id=[]
 		self.id=id
-		self.rcv_pkt=[]
 		self.tracer=[]
+		self.tracer_forwarded=0
 		self.worst_route={}
 
 		for (node, rtt) in rnodes:
@@ -323,6 +342,7 @@ class node:
 				# Add the route
 				self.route[dst].append(route)
 
+#		print "%s -> %s: %d"%(self.id, dst, route.trtt)
 		if self.route[dst][self.worst_route[dst]] < route:
 			# The added route is the worst
 			self.worst_route[dst]=self.route[dst].index(route)
@@ -405,7 +425,7 @@ class graph:
 		# compute the Mean Flux of TPs
 		mean=n=0.0
 		for id, node in graph.graph.iteritems():
-			mean+=len(node.tracer)
+			mean+=node.tracer_forwarded
 			n+=1
 		mean=mean/n
 		print "Total nodes:\t", len(graph.graph)
@@ -421,6 +441,10 @@ def error(str):
 #
 
 random.seed(12)
+
+import psyco
+psyco.full()
+ 
 
 g=graph()
 if len(sys.argv) == 2:
@@ -444,11 +468,15 @@ while events:
 		break
 	p=heappop(events)
 	curtime=p.time
-	p.exec_pkt()
+	if p.exec_pkt():
+		# The packet has been dropped
+		del p
 	idx+=1
 
-g.dump_tracer_packets()
+#g.dump_tracer_packets()
+print "\n---- Statistics ----"
 g.dump_stats()
+
 if idx==EVENTS_LIMIT:
 	print "-----------[[[[ ===== ---       --- ===== ]]]]----------------"
 	print "-----------[[[[ ===== --- BREAK --- ===== ]]]]----------------"
