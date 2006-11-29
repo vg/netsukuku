@@ -24,20 +24,25 @@
 # 
 # This is an event-oriented Discrete Event Simulator.
 # 
-# Each (event,time) pair is pushed in the `events' priority queue.
+# Each (event,time) pair is pushed in the `G.events' priority queue.
 # The main loop of the program will retrieve from the queue the event having the
 # lowest `time' value. This "popped" event will be executed.
 #
 #
-
+#
 # TODO: Various tests:
 # 	
+#	- Complete graph
+#	
+#	- Mesh graph
+# 
+#	- Random graphs (or random rtt)
+#
+# 	- After the first exploration has been completed, change a little the
+# 	  graph and explore again. See what happens.
+#	
 # 	- See what happens if more than one CTPs are sent at the same time
 # 	  (from different nodes)
-# 
-#	- Random graphs
-#
-#	- Random rtt
 #
 
 from heapq import *
@@ -46,22 +51,27 @@ import sys
 from sys import stdout, stderr
 from string import join
 from copy import *
+import re
+import getopt
 
-#
-# Defines
-#
-DEFAULT_RTT	=100
-DELTA_RTT	=DEFAULT_RTT/10
+class G:
+	#
+	# Defines
+	#
+	DEFAULT_RTT	= 100		   # in millisec
+	DELTA_RTT	= DEFAULT_RTT/10
 
-MAX_ROUTES	= 1
+	MAX_ROUTES	= 1
 
-EVENTS_LIMIT	= 100000
+	STARTER_NODES	= 1
+	EVENTS_LIMIT	= 100000
 
-#
-# Globals
-#
-curtime=0
-events=[]
+
+	#
+	# Globals
+	#
+	curtime=0
+	events=[]
 
 class packet:
 	total_pkts=0
@@ -71,7 +81,6 @@ class packet:
 		return self.time-other.time
 
 	def __init__(self, src, dst, tracer=[]):
-		global curtime
 
 		packet.total_pkts+=1
 
@@ -90,13 +99,13 @@ class packet:
 			delay=self.src.rtt[dst.id]
 		else:
 			delay=0
-		self.time=curtime+delay
+		self.time=G.curtime+delay
 
 		self.tracer.append(self.me)
 		self.split_tracer()
 
 		# put this packet in the event queue
-		heappush(events, self)
+		heappush(G.events, self)
 
 	def tracer_to_str(self):
 		return join([i.id for i in self.tracer], '->')
@@ -233,7 +242,7 @@ class route:
 		"""Compare two routes.
 		   A == B  iif  A has the same hops number of B, the same hops
 		                (in order), and the difference of their total rtt is <
-		                DELTA_RTT.
+		                G.DELTA_RTT.
 
 		   A < B   iif  A has the same hops number of B, the same hops
 		   		(in order), and the A.trtt < B.trtt
@@ -255,7 +264,7 @@ class route:
 			if i != k:
 				return -1
 
-		if abs(self.trtt-other.trtt) <= DELTA_RTT:
+		if abs(self.trtt-other.trtt) <= G.DELTA_RTT:
 			return 0
 		else:
 			return self.trtt-other.trtt
@@ -347,14 +356,14 @@ class node:
 			# The added route is the worst
 			self.worst_route[dst]=self.route[dst].index(route)
 
-			if len(self.route[dst]) > MAX_ROUTES:
+			if len(self.route[dst]) > G.MAX_ROUTES:
 				# The maximum number of stored routes has been
 				# reached. Drop the worst route.
 				self.purge_worst_route(dst)
 				return not interesting
 
 		# Clean the house
-		if len(self.route[dst]) > MAX_ROUTES:
+		if len(self.route[dst]) > G.MAX_ROUTES:
 			self.purge_worst_route(dst)
 
 		# The added route is not the worst, it's interesting
@@ -372,40 +381,124 @@ class node:
 
 class graph:
 	graph={}
+	graph_len=0
 
 	def load_graph(self, file):
 		"""The format of the file must be:
 			
-			nodeX--nodeY--weight1
-			nodeX--nodeZ--weight2
+			nodeX -- nodeY -- weightXY -- weightYX
+			nodeX -- nodeZ -- weightXZ -- weightZX
 			...
-		   The "--weight1" part is optional.
+		   The "-- weightXY -- weightYX" part is optional.
+		   All the lines of the file which aren't in this form are
+		   ignored. In other words, you can use Graphviz (.dot) file.
 		"""
 		nodes={}
 		
 		f=open(file)
 		for l in f:
-			w=l.strip().split('--')
+			w=re.split(' *-- *', l.strip())
+			if len(w) == 1:
+				continue
+
 			if len(w) < 3:
-				weight=DEFAULT_RTT
+				weightXY=G.DEFAULT_RTT
 			else:
-				weight=w[2]
+				weightXY=w[2]
+			if len(w) < 4:
+				weightYX=weightXY
+			else:
+				weightYX=w[3]
+
 			if w[0] not in nodes:
 				nodes[w[0]]=[]
 			if w[1] not in nodes:
 				nodes[w[1]]=[]
-			nodes[w[0]].append((w[1], weight))
-			nodes[w[1]].append((w[0], weight))
+			nodes[w[0]].append((w[1], weightXY))
+			nodes[w[1]].append((w[0], weightYX))
 
 		for id,rnodes in nodes.iteritems():
 			graph.graph[id]=node(id, rnodes)
+		graph.graph_len=len(graph.graph)
 
 	def gen_complete_graph(self, k):
 		k+=1
-		for i in range(1,k):
-			n=node('n%d'%i, [('n%d'%o, DEFAULT_RTT) for o in range(1, k) if o != i])
-			graph.graph['n%d'%i]=n
-	
+		for i in xrange(1,k):
+			nstr='n%d'%i
+			rnodes=[('n%d'%o, G.DEFAULT_RTT) for o in xrange(1, k) if o != i]
+			n=node(nstr, rnodes)
+			graph.graph[nstr]=n
+
+		graph.graph_len=len(graph.graph)
+
+	def gen_mesh_graph(self, k):
+		for x in xrange(k):
+			for y in xrange(k):
+				nstr='n%d'%(x*k+y)
+				rnodes=[]
+
+				if x > 0:
+					#left
+					rnodes.append(('n%d'%((x-1)*k+y), G.DEFAULT_RTT))
+				if x < k-1:
+					#right
+					rnodes.append(('n%d'%((x+1)*k+y), G.DEFAULT_RTT))
+				if y > 0:
+					#down
+					rnodes.append(('n%d'%(x*k+(y-1)), G.DEFAULT_RTT))
+				if y < k-1:
+					#up
+					rnodes.append(('n%d'%(x*k+(y+1)), G.DEFAULT_RTT))
+
+				n=node(nstr, rnodes)
+				graph.graph[nstr]=n
+
+		graph.graph_len=len(graph.graph)
+
+	def gen_rand_graph(self, k):
+		nodes={}
+		rtt={}
+		if k < 2:
+			print "The number of nodes for the random graph must be >= 2"
+			sys.exit(2)
+
+		for i in xrange(k):
+			if i not in nodes:
+				nodes[i]=[]
+				rtt[i]=[]
+			r=random.randint(1, max(k/4, 1))
+			for xx in xrange(r):
+				ms=random.randint(G.DELTA_RTT, G.DEFAULT_RTT*2)
+
+				# Choose a random rnode which is not  i  and
+				# which hasn't been already choosen
+				rn=range(k)
+				random.shuffle(rn)
+				while rn[0] == i or rn[0] in nodes[i]:
+					if len(rn) == 1:
+						break
+					else:
+						del rn[0]
+				if rn[0] == i or rn[0] in nodes[i]:
+					continue
+				rn=rn[0]
+
+				if rn not in nodes:
+					nodes[rn]=[]
+					rtt[rn]=[]
+
+				nodes[i].append(rn)
+				rtt[i].append(ms)
+				nodes[rn].append(i)
+				rtt[rn].append(ms)
+
+		for nid, rnodes in nodes.iteritems():
+			n=node('n%d'%nid, zip(['n%d'%o for o in rnodes], rtt[nid]))
+			graph.graph['n%d'%nid]=n
+
+		graph.graph_len=len(graph.graph)
+
+
 	def print_dot(self, file):
 		f=open(file, 'w')
 		f.write("graph G {\n")
@@ -418,8 +511,8 @@ class graph:
 	
 	def dump_tracer_packets(self):
 		for id, node in graph.graph.iteritems():
-			error("Node "+id)
-			error("\t"+node.tracer_to_str())
+			print "Node "+id
+			print "\t"+node.tracer_to_str()
 
 	def dump_stats(self):
 		# compute the Mean Flux of TPs
@@ -432,52 +525,135 @@ class graph:
 		print "Total packets:\t", packet.total_pkts
 		print "Individual TPs:\t", packet.total_tpkts
 		print "Mean TPs flux:\t", mean
+		print "Total time:\t", G.curtime/1000.0, "sec"
 
-def error(str):
-	stderr.write(str+"\n")
+def usage():
+	print "Usage:"
+	print "\tq2sim.py [-pvh] [-g graph.dot] [-o out.dot]"
+	print ""
+	print "\t-h\t\tthis help"
+	print "\t-v\t\tverbose"
+	print "\t-p\t\tenable psyco optimization (see http://psyco.sourceforge.net/)"
+	print ""
+	print "\t-k [n]\t\tuse a complete graph of n nodes (default n=8)"
+	print "\t-m [n]\t\tuse a mesh graph of n*n nodes (default n=4)"
+	print "\t-r [n]\t\tuse a random graph of n nodes (default n=8)"
+	print "\t-g file\t\tload the graph from file"
+	print "\t-o file\t\tspecify the output graph file (default is outgraph.dot)"
+	print ""
+	print "\t-l n\t\tSet the maximum number of events to n (defaul n=%d)"%G.EVENTS_LIMIT
+	print "\t-R n\t\tMaximum number of routes kept in the QSPN cache (defaul n=%d)"%G.MAX_ROUTES
+	print "\t-s n\t\tSet to n the number of starter nodes (default n=%d"%G.STARTER_NODES
 
+	
 #
 # main()
 #
 
-random.seed(12)
+def main():
 
-import psyco
-psyco.full()
- 
+	# TODO: remove this
+	random.seed(12)
+	
+	shortopt="hpo:g:l:k::m::r::s:R:"
 
-g=graph()
-if len(sys.argv) == 2:
-	g.load_graph(sys.argv[1])
-elif len(sys.argv) == 3:
-	g.gen_complete_graph(int(sys.argv[1]))
-else:
-	g.gen_complete_graph(4)
-g.print_dot("test.dot")
-#sys.exit(0)
+	try:
+		opts, args = getopt.gnu_getopt(sys.argv[1:], shortopt, ["help"])
+	except getopt.GetoptError:
+		usage()
+		sys.exit(2)
 
-startnode=graph.graph[random.choice(graph.graph.keys())]
-first_packet=packet(startnode, startnode)
+	Verbose = False
+	outgraph="outgraph.dot"
+	kgraph=rgraph=8
+	mgraph=4
+	ingraph=""
 
-idx=0
-while events:
-	if idx==EVENTS_LIMIT:
+	for o, a in opts:
+		if o == "-v":
+			Verbose = True
+		if o in ("-h", "--help"):
+			usage()
+			sys.exit()
+		if o == "-p":
+			print "Enabling psyco optimization"
+			import psyco
+			psyco.full()
+		if o == "-o":
+			outgraph = a
+		if o == "-g":
+			ingraph = a
+		if o == "-k":
+			kgraph = int(a)
+			if kgraph == 0:
+				kgraph = 8
+			mgraph=rgraph=0
+		if o == "-m":
+			mgraph = int(a)
+			if mgraph == 0:
+				mgraph = 8
+			kgraph=rgraph=0
+		if o == "-r":
+			rgraph=int(a)
+			if rgraph == 0:
+				rgraph = 8
+			kgraph=mgraph=0
+		if o == "-l":
+			G.EVENTS_LIMIT=int(a)
+		if o == "-s":
+			G.STARTER_NODES=int(a)
+		if o == "-R":
+			G.MAX_ROUTES=int(a)
+
+	g=graph()
+
+	if ingraph:
+		print "Loading graph from "+ingraph
+		g.load_graph(ingraph)
+	elif mgraph > 0:
+		print "Generating a mesh graph of %d node"%mgraph
+		g.gen_mesh_graph(mgraph)
+	elif kgraph > 0:
+		print "Generating a complete graph of %d node"%kgraph
+		g.gen_complete_graph(kgraph)
+	elif rgraph > 0:
+		print "Generating a random graph of %d node"%rgraph
+		g.gen_rand_graph(rgraph)
+
+	print "Saving the graph to "+outgraph
+	g.print_dot(outgraph)
+
+	if G.STARTER_NODES <= 0 or G.STARTER_NODES > graph.graph_len:
+		print "The number of starter nodes must be in ]0,g],"
+		print " where g is the number of nodes of the graph."
+		sys.exit(2)
+	for k in xrange(G.STARTER_NODES):
+		startnode=graph.graph[random.choice(graph.graph.keys())]
+		first_packet=packet(startnode, startnode)
+		print "Starting node %s"%startnode.id
+
+	idx=1
+	while G.events:
+		if idx==G.EVENTS_LIMIT:
+			print "-----------[[[[ ===== ---       --- ===== ]]]]----------------"
+			print "-----------[[[[ ===== --- BREAK --- ===== ]]]]----------------"
+			print "-----------[[[[ ===== ---       --- ===== ]]]]----------------"
+			break
+		p=heappop(G.events)
+		G.curtime=p.time
+		if p.exec_pkt():
+			# The packet has been dropped
+			del p
+		idx+=1
+
+	#g.dump_tracer_packets()
+	print "\n---- Statistics ----"
+	g.dump_stats()
+
+	if idx==G.EVENTS_LIMIT:
 		print "-----------[[[[ ===== ---       --- ===== ]]]]----------------"
 		print "-----------[[[[ ===== --- BREAK --- ===== ]]]]----------------"
 		print "-----------[[[[ ===== ---       --- ===== ]]]]----------------"
-		break
-	p=heappop(events)
-	curtime=p.time
-	if p.exec_pkt():
-		# The packet has been dropped
-		del p
-	idx+=1
 
-#g.dump_tracer_packets()
-print "\n---- Statistics ----"
-g.dump_stats()
-
-if idx==EVENTS_LIMIT:
-	print "-----------[[[[ ===== ---       --- ===== ]]]]----------------"
-	print "-----------[[[[ ===== --- BREAK --- ===== ]]]]----------------"
-	print "-----------[[[[ ===== ---       --- ===== ]]]]----------------"
+if __name__ == "__main__":
+    main()
