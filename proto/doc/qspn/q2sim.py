@@ -43,6 +43,8 @@
 #	
 # 	- See what happens if more than one CTPs are sent at the same time
 # 	  (from different nodes)
+#	
+#	- Test with different MAX_ROUTES values
 #
 
 from heapq import *
@@ -73,6 +75,13 @@ class G:
 	curtime=0
 	events=[]
 
+	#
+	# Flags
+	#
+	rnode_routes=False
+	verbose=False
+
+
 class packet:
 	total_pkts=0
 	total_tpkts=0
@@ -80,16 +89,16 @@ class packet:
 	def __cmp__(self, other):
 		return self.time-other.time
 
-	def __init__(self, src, dst, tracer=[]):
+	def __init__(self, src, dst, trcr=[]):
 
 		packet.total_pkts+=1
 
 		self.src=src
 		self.dst=dst
 		self.me=dst
-		self.tracer=tracer
+		self.tracer=trcr
 		self.splitted_tracer=[]
-		if not tracer:
+		if not trcr:
 			self.first_pkt=1
 			packet.total_tpkts+=1
 		else:
@@ -167,22 +176,31 @@ class packet:
 			self.splitted_tracer.append(tp)
 
 	def evaluate_tracer_packet(self, tp):
-		packet_interesting=0
+		packet_interesting=False
 		tr_old=None
 		tr_old_added=False
 #		print "Evaluating TP: ", [i.id for i in tp],
-		for i in reversed(tp[:-1]):
-			tr=route()
+		if G.rnode_routes:
+			skip_hops=-2	# skip myself and the rnode too
+			if len(tp) == 2:
+				packet_interesting=True
+		else:
+			skip_hops=-1	# skip just myself
+			if len(tp) == 1:
+				packet_interesting=True
+
+		for i in reversed(tp[:skip_hops]):
+			tr=route(self.me, i, [i])
 			if tr_old:
 				tr.init_from_routec(tr_old)
+				tr.append(i)
 				if not tr_old_added:
 					del tr_old
 			tr_old=tr
-			tr.append(i)
 
 			# Save the route if it is interesting
 			if self.me.add_route(tr):
-				packet_interesting=1
+				packet_interesting=True
 				tr_old_added=True
 			else:
 				tr_old_added=False
@@ -215,8 +233,9 @@ class packet:
 #		print "%s -> {%s}"%(self.me.id, join(str, ","))
 
 	def exec_pkt(self):
-		# DEBUG
-		print self.tracer_to_str(),
+		if G.verbose:
+			print self.tracer_to_str(),
+
 		if not self.first_pkt:
 			#
 			# Evaluate the tracer packet, if it isn't interesting, drop
@@ -227,9 +246,11 @@ class packet:
 				packet_interesting+=self.evaluate_tracer_packet(i)
 
 			if not packet_interesting:
-				print "  completely dropped"
+				if G.verbose:
+					print "  completely dropped"
 				return 1
-		print ""
+		if G.verbose:
+			print ""
 
 		# book keeping
 		self.me.tracer_forwarded+=1
@@ -276,11 +297,15 @@ class route:
 		return str(self.route)
 
 	def compute_trtt(self):
-		self.trtt=0
+		if self.route[0].id in self.src.rtt:
+			self.trtt=self.src.rtt[self.route[0].id]
+		else:
+			self.trtt=0
 		for i,r in enumerate(self.route[:-1]):
 			self.trtt+=r.rtt[self.route[i+1].id]
 
-	def __init__(self, dst=None, route=[]):
+	def __init__(self, src, dst, route):
+		self.src=src
 		self.dst=dst
 		self.route=route
 		self.compute_trtt()
@@ -294,7 +319,7 @@ class route:
 		self.dst=node
 		if not self.route:
 			self.route=[node]
-			self.trtt=0
+			self.compute_trtt()
 		else:
 			self.route.append(node)
 			self.trtt+=self.route[-2].rtt[node.id]
@@ -325,6 +350,7 @@ class node:
 		for (node, rtt) in rnodes:
 			self.rtt[node]=rtt
 			self.rnode_id.append(node)
+
 
 	def tracer_to_str(self):
 		ttp=[join([o.id for o in i], '->') for i in self.tracer]
@@ -378,6 +404,16 @@ class node:
 			if worst < i:
 				worst=i
 		self.worst_route[dst]=self.route[dst].index(worst)
+
+	def add_rnodes_routes(self):
+		"""Add the routes to reach our own rnodes.
+		   This is the real-world situation, because the radar will
+		   provide these routes to each ntk node.
+		"""
+		for i in self.rnode_id:
+			rt=route(self, graph.graph[i], [graph.graph[i]])
+			self.add_route(rt)
+
 
 class graph:
 	graph={}
@@ -498,6 +534,9 @@ class graph:
 
 		graph.graph_len=len(graph.graph)
 
+	def add_rnodes_routes(self):
+		for id, node in graph.graph.iteritems():
+			node.add_rnodes_routes()
 
 	def print_dot(self, file):
 		f=open(file, 'w')
@@ -535,6 +574,9 @@ def usage():
 	print "\t-v\t\tverbose"
 	print "\t-p\t\tenable psyco optimization (see http://psyco.sourceforge.net/)"
 	print ""
+	print "\t-n\t\tenable the radar for each node, i.e. each node will"
+	print "\t  \t\thave, from the start, the routes to reach its rnodes."
+	print ""
 	print "\t-k [n]\t\tuse a complete graph of n nodes (default n=8)"
 	print "\t-m [n]\t\tuse a mesh graph of n*n nodes (default n=4)"
 	print "\t-r [n]\t\tuse a random graph of n nodes (default n=8)"
@@ -555,7 +597,7 @@ def main():
 	# TODO: remove this
 	random.seed(12)
 	
-	shortopt="hpo:g:l:k::m::r::s:R:"
+	shortopt="hpvno:g:l:k::m::r::s:R:"
 
 	try:
 		opts, args = getopt.gnu_getopt(sys.argv[1:], shortopt, ["help"])
@@ -563,7 +605,6 @@ def main():
 		usage()
 		sys.exit(2)
 
-	Verbose = False
 	outgraph="outgraph.dot"
 	kgraph=rgraph=8
 	mgraph=4
@@ -571,7 +612,7 @@ def main():
 
 	for o, a in opts:
 		if o == "-v":
-			Verbose = True
+			G.verbose = True
 		if o in ("-h", "--help"):
 			usage()
 			sys.exit()
@@ -604,6 +645,8 @@ def main():
 			G.STARTER_NODES=int(a)
 		if o == "-R":
 			G.MAX_ROUTES=int(a)
+		if o == "-n":
+			G.rnode_routes=True
 
 	g=graph()
 
@@ -611,7 +654,7 @@ def main():
 		print "Loading graph from "+ingraph
 		g.load_graph(ingraph)
 	elif mgraph > 0:
-		print "Generating a mesh graph of %d node"%mgraph
+		print "Generating a mesh graph of %d*%d=%d node"%(mgraph,mgraph, mgraph*mgraph)
 		g.gen_mesh_graph(mgraph)
 	elif kgraph > 0:
 		print "Generating a complete graph of %d node"%kgraph
@@ -622,6 +665,10 @@ def main():
 
 	print "Saving the graph to "+outgraph
 	g.print_dot(outgraph)
+
+	if G.rnode_routes:
+		print "Adding the rnodes routes"
+		g.add_rnodes_routes()
 
 	if G.STARTER_NODES <= 0 or G.STARTER_NODES > graph.graph_len:
 		print "The number of starter nodes must be in ]0,g],"
