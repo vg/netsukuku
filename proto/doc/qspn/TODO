@@ -1,0 +1,20 @@
+- Q^2 core
+	
+	- API
+
+	- Continuos Tracer Packet
+	
+		- The cache must be cleaned at each rehook
+
+	- Interesting TP (by rtt)
+
+	- MAX_ROUTE limit in the Q^2 cache
+
+- Q^2 bandwidth
+
+	- download
+
+	- upload
+
+- Q^2 route diversification 
+

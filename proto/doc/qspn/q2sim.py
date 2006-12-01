@@ -79,7 +79,9 @@ class G:
 	# Flags
 	#
 	rnode_routes=False
+	change_graph=False
 	verbose=False
+	events_limit_reached=False
 
 
 class packet:
@@ -89,7 +91,7 @@ class packet:
 	def __cmp__(self, other):
 		return self.time-other.time
 
-	def __init__(self, src, dst, trcr=[]):
+	def __init__(self, src, dst, trcr):
 
 		packet.total_pkts+=1
 
@@ -371,8 +373,27 @@ class node:
 			self.worst_route[dst]=0
 		else:
 			if route in self.route[dst]:
-				# The route has been already added
-				return not interesting
+				ridx=self.route[dst].index(route)
+				if route < self.route[dst][ridx]:
+					#TODO: or not a new route
+					#TODO: CONTINUE HERE
+
+					############################
+					############################
+					####### HERE ###############
+					############ CONTINUE ######
+					#################### HERE ##
+					############################
+
+					ptr=self.route[dst][ridx]
+					self.route[dst][ridx]=route
+					del ptr
+					if ridx == self.worst_route[dst]:
+						self.compute_worst_route(dst)
+				else:
+					# This route has been already added
+					# and it's not interesting
+					return not interesting
 			else:
 				# Add the route
 				self.route[dst].append(route)
@@ -397,7 +418,9 @@ class node:
 
 	def purge_worst_route(self, dst):
 		del self.route[dst][self.worst_route[dst]]
+		self.compute_worst_route(dst)
 
+	def compute_worst_route(self, dst):
 		# update the worst route
 		worst=self.route[dst][0]
 		for i in self.route[dst]:
@@ -566,6 +589,68 @@ class graph:
 		print "Mean TPs flux:\t", mean
 		print "Total time:\t", G.curtime/1000.0, "sec"
 
+	def reset_stats(self):
+		for id, node in graph.graph.iteritems():
+			node.tracer_forwarded=0
+
+		packet.total_pkts=packet.total_tpkts=0
+		G.curtime=0
+
+def change_graph(nlinks):
+	for i in xrange(nlinks):
+		n=graph.graph[random.choice(graph.graph.keys())]
+		l=random.choice(n.rnode_id)
+
+		# rtt(n --> rn) = rtt(rn --> n) = rand
+		n.rtt[l]=random.randint(G.DELTA_RTT, G.DEFAULT_RTT*2)
+		rn=graph.graph[l]
+		rn.rtt[n.id]=n.rtt[l]
+
+		# TP(n --> rn)
+		packet(n, rn, [n])
+		# TP(rn --> n)
+		packet(rn, n, [rn])
+
+		packet.total_tpkts+=2
+
+#
+# Main loop
+# 
+
+def main_loop():
+	idx=1
+	while G.events:
+		if idx==G.EVENTS_LIMIT:
+			print "-----------[[[[ ===== ---       --- ===== ]]]]----------------"
+			print "-----------[[[[ ===== --- BREAK --- ===== ]]]]----------------"
+			print "-----------[[[[ ===== ---       --- ===== ]]]]----------------"
+			G.events_limit_reached=True
+			break
+		p=heappop(G.events)
+		G.curtime=p.time
+		if p.exec_pkt():
+			# The packet has been dropped
+			del p
+		idx+=1
+
+
+def start_exploration(starters=[]):
+	if not starters:
+		# Randomly chosen starters
+		if G.STARTER_NODES <= 0:
+			print "The number of starter nodes must be > 0,"
+			print " where g is the number of nodes of the graph."
+			sys.exit(2)
+
+		for k in xrange(G.STARTER_NODES):
+			startnode=graph.graph[random.choice(graph.graph.keys())]
+			starters.append(startnode)
+	
+	for i in starters:
+		packet(i, i, [])
+		print "Starting node %s"%i.id
+
+
 def usage():
 	print "Usage:"
 	print "\tq2sim.py [-pvh] [-g graph.dot] [-o out.dot]"
@@ -586,8 +671,11 @@ def usage():
 	print "\t-l n\t\tSet the maximum number of events to n (defaul n=%d)"%G.EVENTS_LIMIT
 	print "\t-R n\t\tMaximum number of routes kept in the QSPN cache (defaul n=%d)"%G.MAX_ROUTES
 	print "\t-s n\t\tSet to n the number of starter nodes (default n=%d"%G.STARTER_NODES
+	print "\t-c n\t\tWhen the graph exploration terminates, modifies n links"
+	print "\t    \t\tand let the interestered nodes send a CTP. By default"
+	print "\t    \t\tthis is disabled "
 
-	
+
 #
 # main()
 #
@@ -597,7 +685,7 @@ def main():
 	# TODO: remove this
 	random.seed(12)
 	
-	shortopt="hpvno:g:l:k::m::r::s:R:"
+	shortopt="hpvno:g:l:k::m::r::s:R:c:"
 
 	try:
 		opts, args = getopt.gnu_getopt(sys.argv[1:], shortopt, ["help"])
@@ -647,6 +735,8 @@ def main():
 			G.MAX_ROUTES=int(a)
 		if o == "-n":
 			G.rnode_routes=True
+		if o == "-c":
+			G.change_graph=int(a)
 
 	g=graph()
 
@@ -670,37 +760,26 @@ def main():
 		print "Adding the rnodes routes"
 		g.add_rnodes_routes()
 
-	if G.STARTER_NODES <= 0 or G.STARTER_NODES > graph.graph_len:
-		print "The number of starter nodes must be in ]0,g],"
-		print " where g is the number of nodes of the graph."
-		sys.exit(2)
-	for k in xrange(G.STARTER_NODES):
-		startnode=graph.graph[random.choice(graph.graph.keys())]
-		first_packet=packet(startnode, startnode)
-		print "Starting node %s"%startnode.id
+	# The main loop begins
+	start_exploration()
+	main_loop()
 
-	idx=1
-	while G.events:
-		if idx==G.EVENTS_LIMIT:
-			print "-----------[[[[ ===== ---       --- ===== ]]]]----------------"
-			print "-----------[[[[ ===== --- BREAK --- ===== ]]]]----------------"
-			print "-----------[[[[ ===== ---       --- ===== ]]]]----------------"
-			break
-		p=heappop(G.events)
-		G.curtime=p.time
-		if p.exec_pkt():
-			# The packet has been dropped
-			del p
-		idx+=1
+	if G.change_graph:
+		print "Resetting the statistics"
+		g.reset_stats()
+		print "Modifying %d links of the graph"%G.change_graph
+		change_graph(G.change_graph)
+		print "Starting the new exploration"
+		main_loop()
 
-	#g.dump_tracer_packets()
+
+	if G.events_limit_reached:
+		print "Warning: The simulation has been aborted, because the"
+		print "          events limit (%d) has been reached"%G.EVENTS_LIMIT
+
 	print "\n---- Statistics ----"
 	g.dump_stats()
 
-	if idx==G.EVENTS_LIMIT:
-		print "-----------[[[[ ===== ---       --- ===== ]]]]----------------"
-		print "-----------[[[[ ===== --- BREAK --- ===== ]]]]----------------"
-		print "-----------[[[[ ===== ---       --- ===== ]]]]----------------"
-
+	
 if __name__ == "__main__":
     main()
