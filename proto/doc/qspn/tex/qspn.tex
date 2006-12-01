@@ -879,9 +879,39 @@ However the tests in the network simulator ns2 \cite{ns2}, will give the final
 words.
 
 \section{QSPN optimisations}
+\subsection{Worsening link}
+Suppose that the whole graph has been already explored, and thus every node
+has at least one route to reach all the other nodes. Consider the case when
+the efficiency of a link, f.e. $N \leftrightarrow P$, worsens.
+$N$, in order to update the maps of the other nodes, sends a CTP to its
+neighbour $P$, and $P$ forwards it to its neighbours. However this CTP will be
+immediately dropped! Indeed, the nodes will consider this CTP not interesting,
+because the contained $\dots\rightarrow P \rightarrow N$ route is less
+efficient than the old one, which has been saved during the last graph
+exploration.\\
+The solution to this inconvenient is to associate a numeric ID to each link of
+the graph. 
+When a node $n$ forwards a CTP to its neighbour $p$, it includes the ID of the link
+$n \rightarrow p$ in the same CTP. The nodes receiving the packet will
+memorize the link's ID.
+Each time the node $n$ notices that one of its links has worsened, it
+increments its associated ID. \\
+In this way, we can modify the rule of the $Q^2$ as follow: let $l$ be a link
+contained in a CTP,  $\textrm{ ID}(l)$ the ID associated to the link $l$ 
+and ${\textrm{ID} }_x(l)$ the associated ID saved by the node $x$.
+The node $x$ will consider the CTP interesting if \[\textrm{ID}(l) >
+{\textrm{ID} }_x(l)\]
+If  $\textrm{ID}(l) = {\textrm{ID} }_x(l)$, then we fall back to the normal
+CTP evaluation. If, instead, $\textrm{ID}(l) < {\textrm{ID} }_x(l)$, then the
+CTP will be considered invalid: given two CTPs $c_1$
+and $c_2$ such that $\textrm{ID}_{c_1}(l) < \textrm{ID}_{c_2}(l)$, it is impossible to
+receive firstly $c_2$ and secondly $c_1$ (unless $c_1$ is malformed), because
+if the link $l$ has assumed the ID $\textrm{ID}_{c_2}(l)$, then all the
+successive CTP traversing it will have an ID $\ge  \textrm{ID}_{c_2}(l)$.
+
 \subsection{Death of a node}
 When a node $N$ dies the network must be updated. For this reason, each of its former
-rnode $R$ will send a CTP.\\
+neighbour $R$ will send a CTP.\\
 The first part of the CTP will contain the route $N \stackrel{-\infty}{\longrightarrow } R$. The efficiency
 of this route is set to $-\infty$.\\
 
@@ -892,7 +922,7 @@ Indeed, if the node didn't know (or didn't care) about the route $N
 \rightarrow R$, then it doesn't need to know that the link $N\rightarrow R$
 doesn't exist anymore.
 
-When an interested node receives the CTP, it updates its memorized routes. For
+When an interested node receives the CTP, it updates its memorised routes. For
 example, the two routes
 \begin{align*}
 &L\rightarrow M\rightarrow N \rightarrow R\rightarrow S\\

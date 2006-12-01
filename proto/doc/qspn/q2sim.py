@@ -29,6 +29,11 @@
 # lowest `time' value. This "popped" event will be executed.
 #
 #
+# TODO BUGS:
+#	./q2sim.py -r 9 -n  gives  6 missing routes, while ./q2sim.py -r 9
+#	works fine. This doesn't happen with -k, -m
+#	The same happens with large enough .dot graph.
+#	What's the reason?
 #
 # TODO: Various tests:
 # 	
@@ -579,14 +584,22 @@ class graph:
 	def dump_stats(self):
 		# compute the Mean Flux of TPs
 		mean=n=0.0
+		missing_routes=0
 		for id, node in graph.graph.iteritems():
 			mean+=node.tracer_forwarded
 			n+=1
+			for id2, node2 in graph.graph.iteritems():
+				if id == id2:
+					continue
+				if id2 not in node.route:
+					print "Missing route: %s -> %s"%(id, id2)
+					missing_routes+=1
 		mean=mean/n
 		print "Total nodes:\t", len(graph.graph)
 		print "Total packets:\t", packet.total_pkts
 		print "Individual TPs:\t", packet.total_tpkts
 		print "Mean TPs flux:\t", mean
+		print "Missing routes:\t", missing_routes
 		print "Total time:\t", G.curtime/1000.0, "sec"
 
 	def reset_stats(self):
