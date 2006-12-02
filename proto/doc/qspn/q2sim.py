@@ -93,6 +93,9 @@ class packet:
 	total_pkts=0
 	total_tpkts=0
 
+	def __str__(self):
+		return self.tracer_to_str()
+
 	def __cmp__(self, other):
 		return self.time-other.time
 
@@ -186,9 +189,8 @@ class packet:
 		packet_interesting=False
 		tr_old=None
 		tr_old_added=False
-#		print "Evaluating TP: ", [i.id for i in tp],
+#		print "Evaluating TP: ", [kk.id for kk in tp]
 		if G.rnode_routes:
-			#skip_hops=-2	# skip myself and the rnode too
 			skip_hops=-1	# skip myself and the rnode too
 			if len(tp) == 2:
 				packet_interesting=True
@@ -242,7 +244,7 @@ class packet:
 
 	def exec_pkt(self):
 		if G.verbose:
-			print self.tracer_to_str(),
+			print self.tracer_to_str()+"\t",
 
 		if not self.first_pkt:
 			#
@@ -255,7 +257,7 @@ class packet:
 
 			if not packet_interesting:
 				if G.verbose:
-					print "  completely dropped"
+					print "completely dropped"
 				return 1
 		if G.verbose:
 			print ""
@@ -312,15 +314,35 @@ class route:
 		for i,r in enumerate(self.route[:-1]):
 			self.trtt+=r.rtt[self.route[i+1].id]
 
+	def compute_links_id(self):
+		self.links_id={}
+		iid=self.src.id+'->'+self.route[0].id
+		if self.route[0].id in self.src.rtt and iid in self.src.link_id and self.src.link_id[iid] > 0:
+#			print "%s :="%iid, self.src.link_id[iid]
+			self.links_id[iid]=self.src.link_id[iid]
+			iid=self.route[0].id+'->'+self.src.id
+			self.links_id[iid]=self.src.link_id[iid]
+
+		for i,r in enumerate(self.route[:-1]):
+			iid=r.id+'->'+self.route[i+1].id
+			if r.link_id[iid] > 0:
+#				print "%s +="%iid, r.link_id[iid]
+				self.links_id[iid]=r.link_id[iid]
+				iid=self.route[i+1].id+'->'+r.id
+				self.links_id[iid]=r.link_id[iid]
+
 	def __init__(self, src, dst, route):
 		self.src=src
 		self.dst=dst
 		self.route=route
+		self.links_id={}
+		self.compute_links_id()
 		self.compute_trtt()
 
 	def init_from_routec(self, routec):
 		self.dst=routec.dst
 		self.route=routec.route[:]
+		self.links_id=routec.links_id
 		self.trtt=routec.trtt
 
 	def append(self, node):
@@ -328,9 +350,17 @@ class route:
 		if not self.route:
 			self.route=[node]
 			self.compute_trtt()
+			self.compute_links_id()
 		else:
 			self.route.append(node)
 			self.trtt+=self.route[-2].rtt[node.id]
+
+			nid=self.route[-2].id+'->'+node.id
+			if nid in self.route[-2].link_id and  self.route[-2].link_id[nid] > 0:
+				iid=self.route[-2].id+'->'+node.id
+				self.links_id[iid]=self.route[-2].link_id[nid]
+				iid=node.id+'->'+self.route[-2].id
+				self.links_id[iid]=self.route[-2].link_id[nid]
 
 	def extend(self, dst, route):
 		self.dst=dst
@@ -350,6 +380,7 @@ class node:
 		self.rtt={}
 		self.route={}
 		self.rnode_id=[]
+		self.link_id={}
 		self.id=id
 		self.tracer=[]
 		self.tracer_forwarded=0
@@ -358,7 +389,6 @@ class node:
 		for (node, rtt) in rnodes:
 			self.rtt[node]=rtt
 			self.rnode_id.append(node)
-
 
 	def tracer_to_str(self):
 		ttp=[join([o.id for o in i], '->') for i in self.tracer]
@@ -378,19 +408,15 @@ class node:
 			self.route[dst]=[route]
 			self.worst_route[dst]=0
 		else:
-			if route in self.route[dst]:
-				ridx=self.route[dst].index(route)
-				if route < self.route[dst][ridx]:
-					#TODO: or not a new route
-					#TODO: CONTINUE HERE
-
-					############################
-					############################
-					####### HERE ###############
-					############ CONTINUE ######
-					#################### HERE ##
-					############################
-
+			rarray=[k.route for k in self.route[dst]]
+#			print self.id,
+#			print route, [k.route for k in self.route[dst]]
+			if route.route in rarray:
+				ridx=rarray.index(route.route)
+				
+				if route < self.route[dst][ridx] or\
+				self.update_link_id(route) or\
+				(len(route.route)==1 and route.links_id):
 					ptr=self.route[dst][ridx]
 					self.route[dst][ridx]=route
 					del ptr
@@ -418,10 +444,47 @@ class node:
 		# Clean the house
 		if len(self.route[dst]) > G.MAX_ROUTES:
 			self.purge_worst_route(dst)
-		
-		print "Added route (src %s): "%(route.src.id), route
+
 		# The added route is not the worst, it's interesting
 		return interesting
+
+	def update_link_id(self, route):
+		new_link_id=False
+		rt=[self]+route.route
+#		print "update_link_id: ", [oo.id for oo in rt],
+#		print "self.link_id: ", self.link_id
+
+		for i,r in enumerate(rt[:-1]):
+			newid=False
+			iid=rt[i].id+'->'+rt[i+1].id
+			iid2=rt[i+1].id+'->'+rt[i].id
+#			print "update_link_id iid: ", iid
+
+			if iid not in route.links_id:
+#				print "%s is not in the route"%iid
+				continue
+
+			if iid not in self.link_id:
+#				print "%s hadn't the link id %s"%(self, iid)
+				self.link_id[iid]=route.links_id[iid]
+				self.link_id[iid2]=route.links_id[iid2]
+				if self.link_id[iid] > 0:
+					new_link_id=newid=True
+			elif self.link_id[iid] <  route.links_id[iid]:
+#				print "%s greater link id: %d < %d"%(iid, self.link_id[iid], route.links_id[iid])
+				self.link_id[iid]=route.links_id[iid]
+				self.link_id[iid2]=route.links_id[iid2]
+				new_link_id=newid=True
+			elif self.link_id[iid] > route.links_id[iid]:
+				print "Invalid link id %s: %d, cur: %d"%(iid, route.links_id[iid], self.link_id[iid])
+				
+			if newid:
+				if G.verbose:
+					print "new link_id %s: %d"%(iid, self.link_id[iid]),
+#			else:
+#				print "normal link: ",iid
+
+		return new_link_id
 
 	def purge_worst_route(self, dst):
 		del self.route[dst][self.worst_route[dst]]
@@ -445,7 +508,7 @@ class node:
 			self.add_route(rt)
 
 	def dump_routes(self, dst):
-		return join([i.route_to_str() for i in self.route[dst]], '||')
+		return join([i.route_to_str()+' ('+str(i.trtt)+')' for i in self.route[dst]], '||')
 
 class graph:
 	graph={}
@@ -589,15 +652,19 @@ class graph:
 		# compute the Mean Flux of TPs
 		mean=n=0.0
 		missing_routes=0
+		if G.verbose:
+			print "Routes table:"
 		for id, node in graph.graph.iteritems():
 			mean+=node.tracer_forwarded
 			n+=1
 			for id2, node2 in graph.graph.iteritems():
 				if id == id2:
 					continue
-				print "%s to %s via"%(id, id2), node.dump_routes(id2)
+
+				if G.verbose:
+					print "\t%s  to  %s  via "%(id, id2), node.dump_routes(id2)
 				if id2 not in node.route:
-					print "Missing route: %s -> %s"%(id, id2)
+					print "\tMissing route: %s -> %s"%(id, id2)
 					missing_routes+=1
 		mean=mean/n
 		print "Total nodes:\t", len(graph.graph)
@@ -620,9 +687,25 @@ def change_graph(nlinks):
 		l=random.choice(n.rnode_id)
 
 		# rtt(n --> rn) = rtt(rn --> n) = rand
-		n.rtt[l]=random.randint(G.DELTA_RTT, G.DEFAULT_RTT*2)
+		#######################################n.rtt[l]=random.randint(G.DELTA_RTT, G.DEFAULT_RTT*2)
+		n.rtt[l]=random.randint(G.DEFAULT_RTT*2, G.DEFAULT_RTT*3)
 		rn=graph.graph[l]
 		rn.rtt[n.id]=n.rtt[l]
+
+		# Update the link id
+		print "\tchanging",n.id+'->'+rn.id
+		if n.id+'->'+rn.id not in rn.link_id:
+			rn.link_id[n.id+'->'+rn.id]=1
+			rn.link_id[rn.id+'->'+n.id]=1
+		else:
+			rn.link_id[n.id+'->'+rn.id]+=1
+			rn.link_id[rn.id+'->'+n.id]+=1
+		if n.id+'->'+rn.id not in n.link_id:
+			n.link_id[n.id+'->'+rn.id]=1
+			n.link_id[rn.id+'->'+n.id]=1
+		else:
+			n.link_id[n.id+'->'+rn.id]+=1
+			n.link_id[rn.id+'->'+n.id]+=1
 
 		# TP(n --> rn)
 		packet(n, rn, [n])
@@ -656,8 +739,8 @@ def start_exploration(starters=[]):
 	if not starters:
 		# Randomly chosen starters
 		if G.STARTER_NODES <= 0:
-			print "The number of starter nodes must be > 0,"
-			print " where g is the number of nodes of the graph."
+			print "[!] The number of starter nodes must be > 0,"
+			print "    where g is the number of nodes of the graph."
 			sys.exit(2)
 
 		for k in xrange(G.STARTER_NODES):
@@ -666,7 +749,7 @@ def start_exploration(starters=[]):
 	
 	for i in starters:
 		packet(i, i, [])
-		print "Starting node %s"%i.id
+	print "[*] Starting node %s"%(join([i.id for i in starters], ','))
 
 
 def usage():
@@ -759,23 +842,23 @@ def main():
 	g=graph()
 
 	if ingraph:
-		print "Loading graph from "+ingraph
+		print "[*] Loading graph from "+ingraph
 		g.load_graph(ingraph)
 	elif mgraph > 0:
-		print "Generating a mesh graph of %d*%d=%d node"%(mgraph,mgraph, mgraph*mgraph)
+		print "[*] Generating a mesh graph of %d*%d=%d node"%(mgraph,mgraph, mgraph*mgraph)
 		g.gen_mesh_graph(mgraph)
 	elif kgraph > 0:
-		print "Generating a complete graph of %d node"%kgraph
+		print "[*] Generating a complete graph of %d node"%kgraph
 		g.gen_complete_graph(kgraph)
 	elif rgraph > 0:
-		print "Generating a random graph of %d node"%rgraph
+		print "[*] Generating a random graph of %d node"%rgraph
 		g.gen_rand_graph(rgraph)
 
-	print "Saving the graph to "+outgraph
+	print "[*] Saving the graph to "+outgraph
 	g.print_dot(outgraph)
 
 	if G.rnode_routes:
-		print "Adding the rnodes routes"
+		print "[*] Adding the rnodes routes"
 		g.add_rnodes_routes()
 
 	# The main loop begins
@@ -783,17 +866,20 @@ def main():
 	main_loop()
 
 	if G.change_graph:
-		print "Resetting the statistics"
+		print "\n---- Statistics ----"
+		g.dump_stats()
+		print "[*] Resetting the statistics"
 		g.reset_stats()
-		print "Modifying %d links of the graph"%G.change_graph
+		print "[*] Modifying %d links of the graph"%G.change_graph
 		change_graph(G.change_graph)
-		print "Starting the new exploration"
+		G.rnode_routes=False
+		print "[*] Starting the new exploration"
 		main_loop()
 
 
 	if G.events_limit_reached:
-		print "Warning: The simulation has been aborted, because the"
-		print "          events limit (%d) has been reached"%G.EVENTS_LIMIT
+		print "[!] Warning: The simulation has been aborted, because the"
+		print "             events limit (%d) has been reached"%G.EVENTS_LIMIT
 
 	print "\n---- Statistics ----"
 	g.dump_stats()
