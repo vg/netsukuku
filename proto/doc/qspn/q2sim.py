@@ -188,7 +188,8 @@ class packet:
 		tr_old_added=False
 #		print "Evaluating TP: ", [i.id for i in tp],
 		if G.rnode_routes:
-			skip_hops=-2	# skip myself and the rnode too
+			#skip_hops=-2	# skip myself and the rnode too
+			skip_hops=-1	# skip myself and the rnode too
 			if len(tp) == 2:
 				packet_interesting=True
 		else:
@@ -417,7 +418,8 @@ class node:
 		# Clean the house
 		if len(self.route[dst]) > G.MAX_ROUTES:
 			self.purge_worst_route(dst)
-
+		
+		print "Added route (src %s): "%(route.src.id), route
 		# The added route is not the worst, it's interesting
 		return interesting
 
@@ -442,6 +444,8 @@ class node:
 			rt=route(self, graph.graph[i], [graph.graph[i]])
 			self.add_route(rt)
 
+	def dump_routes(self, dst):
+		return join([i.route_to_str() for i in self.route[dst]], '||')
 
 class graph:
 	graph={}
@@ -591,6 +595,7 @@ class graph:
 			for id2, node2 in graph.graph.iteritems():
 				if id == id2:
 					continue
+				print "%s to %s via"%(id, id2), node.dump_routes(id2)
 				if id2 not in node.route:
 					print "Missing route: %s -> %s"%(id, id2)
 					missing_routes+=1
