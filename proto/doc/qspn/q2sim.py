@@ -29,13 +29,7 @@
 # lowest `time' value. This "popped" event will be executed.
 #
 #
-# TODO BUGS:
-#	./q2sim.py -r 9 -n  gives  6 missing routes, while ./q2sim.py -r 9
-#	works fine. This doesn't happen with -k, -m
-#	The same happens with large enough .dot graph.
-#	What's the reason?
-#
-# TODO: Various tests:
+# Various tests:
 # 	
 #	- Complete graph
 #	
@@ -83,7 +77,6 @@ class G:
 	#
 	# Flags
 	#
-	rnode_routes=False
 	change_graph=False
 	verbose=False
 	events_limit_reached=False
@@ -190,14 +183,10 @@ class packet:
 		tr_old=None
 		tr_old_added=False
 #		print "Evaluating TP: ", [kk.id for kk in tp]
-		if G.rnode_routes:
-			skip_hops=-1	# skip myself and the rnode too
-			if len(tp) == 2:
-				packet_interesting=True
-		else:
-			skip_hops=-1	# skip just myself
-			if len(tp) == 1:
-				packet_interesting=True
+
+		skip_hops=-1	# skip just myself
+		if len(tp) == 1:
+			packet_interesting=True
 
 		for i in reversed(tp[:skip_hops]):
 			tr=route(self.me, i, [i])
@@ -376,6 +365,9 @@ class node:
 	def __hash__(self):
 		return hash(self.id)
 
+	def __str__(self):
+		return self.me.id
+
 	def __init__(self, id, rnodes):
 		self.rtt={}
 		self.route={}
@@ -498,17 +490,11 @@ class node:
 				worst=i
 		self.worst_route[dst]=self.route[dst].index(worst)
 
-	def add_rnodes_routes(self):
-		"""Add the routes to reach our own rnodes.
-		   This is the real-world situation, because the radar will
-		   provide these routes to each ntk node.
-		"""
-		for i in self.rnode_id:
-			rt=route(self, graph.graph[i], [graph.graph[i]])
-			self.add_route(rt)
-
 	def dump_routes(self, dst):
-		return join([i.route_to_str()+' ('+str(i.trtt)+')' for i in self.route[dst]], '||')
+		if dst not in self.route:
+			return "None"
+		else:
+			return join([i.route_to_str()+' ('+str(i.trtt)+')' for i in self.route[dst]], '||')
 
 class graph:
 	graph={}
@@ -629,10 +615,6 @@ class graph:
 
 		graph.graph_len=len(graph.graph)
 
-	def add_rnodes_routes(self):
-		for id, node in graph.graph.iteritems():
-			node.add_rnodes_routes()
-
 	def print_dot(self, file):
 		f=open(file, 'w')
 		f.write("graph G {\n")
@@ -661,16 +643,20 @@ class graph:
 				if id == id2:
 					continue
 
-				if G.verbose:
-					print "\t%s  to  %s  via "%(id, id2), node.dump_routes(id2)
 				if id2 not in node.route:
 					print "\tMissing route: %s -> %s"%(id, id2)
 					missing_routes+=1
+				elif G.verbose:
+					print "\t%s  to  %s  via "%(id, id2), node.dump_routes(id2)
 		mean=mean/n
 		print "Total nodes:\t", len(graph.graph)
 		print "Total packets:\t", packet.total_pkts
 		print "Individual TPs:\t", packet.total_tpkts
 		print "Mean TPs flux:\t", mean
+		if G.verbose:
+			print "Single TPs flux:\t"
+			for id, node in graph.graph.iteritems():
+				print "\t%s  %d"%(id,node.tracer_forwarded)
 		print "Missing routes:\t", missing_routes
 		print "Total time:\t", G.curtime/1000.0, "sec"
 
@@ -687,8 +673,7 @@ def change_graph(nlinks):
 		l=random.choice(n.rnode_id)
 
 		# rtt(n --> rn) = rtt(rn --> n) = rand
-		#######################################n.rtt[l]=random.randint(G.DELTA_RTT, G.DEFAULT_RTT*2)
-		n.rtt[l]=random.randint(G.DEFAULT_RTT*2, G.DEFAULT_RTT*3)
+		n.rtt[l]=random.randint(G.DELTA_RTT, G.DEFAULT_RTT*2)
 		rn=graph.graph[l]
 		rn.rtt[n.id]=n.rtt[l]
 
@@ -759,9 +744,6 @@ def usage():
 	print "\t-h\t\tthis help"
 	print "\t-v\t\tverbose"
 	print "\t-p\t\tenable psyco optimization (see http://psyco.sourceforge.net/)"
-	print ""
-	print "\t-n\t\tenable the radar for each node, i.e. each node will"
-	print "\t  \t\thave, from the start, the routes to reach its rnodes."
 	print ""
 	print "\t-k [n]\t\tuse a complete graph of n nodes (default n=8)"
 	print "\t-m [n]\t\tuse a mesh graph of n*n nodes (default n=4)"
@@ -834,11 +816,10 @@ def main():
 			G.STARTER_NODES=int(a)
 		if o == "-R":
 			G.MAX_ROUTES=int(a)
-		if o == "-n":
-			G.rnode_routes=True
 		if o == "-c":
 			G.change_graph=int(a)
-
+	
+	print join(sys.argv, ' ')
 	g=graph()
 
 	if ingraph:
@@ -857,10 +838,6 @@ def main():
 	print "[*] Saving the graph to "+outgraph
 	g.print_dot(outgraph)
 
-	if G.rnode_routes:
-		print "[*] Adding the rnodes routes"
-		g.add_rnodes_routes()
-
 	# The main loop begins
 	start_exploration()
 	main_loop()
@@ -872,7 +849,6 @@ def main():
 		g.reset_stats()
 		print "[*] Modifying %d links of the graph"%G.change_graph
 		change_graph(G.change_graph)
-		G.rnode_routes=False
 		print "[*] Starting the new exploration"
 		main_loop()
 
