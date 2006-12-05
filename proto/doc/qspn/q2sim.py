@@ -373,6 +373,7 @@ class node:
 		self.route={}
 		self.rnode_id=[]
 		self.link_id={}
+		self.link_id_rcv={}
 		self.id=id
 		self.tracer=[]
 		self.tracer_forwarded=0
@@ -407,8 +408,7 @@ class node:
 				ridx=rarray.index(route.route)
 				
 				if route < self.route[dst][ridx] or\
-				self.update_link_id(route) or\
-				(len(route.route)==1 and route.links_id):
+						self.update_link_id(route):
 					ptr=self.route[dst][ridx]
 					self.route[dst][ridx]=route
 					del ptr
@@ -443,6 +443,8 @@ class node:
 	def update_link_id(self, route):
 		new_link_id=False
 		rt=[self]+route.route
+		dst=route.dst.id
+
 #		print "update_link_id: ", [oo.id for oo in rt],
 #		print "self.link_id: ", self.link_id
 
@@ -456,17 +458,16 @@ class node:
 #				print "%s is not in the route"%iid
 				continue
 
-			if iid not in self.link_id:
+			if (iid not in self.link_id) or\
+					(self.link_id[iid] < route.links_id[iid]) or\
+					(self.link_id[iid] == route.links_id[iid] and\
+					self.link_id_rcv[iid] < self.link_id[iid]):
 #				print "%s hadn't the link id %s"%(self, iid)
 				self.link_id[iid]=route.links_id[iid]
 				self.link_id[iid2]=route.links_id[iid2]
 				if self.link_id[iid] > 0:
 					new_link_id=newid=True
-			elif self.link_id[iid] <  route.links_id[iid]:
-#				print "%s greater link id: %d < %d"%(iid, self.link_id[iid], route.links_id[iid])
-				self.link_id[iid]=route.links_id[iid]
-				self.link_id[iid2]=route.links_id[iid2]
-				new_link_id=newid=True
+					self.link_id_rcv[iid]=self.link_id[iid]
 			elif self.link_id[iid] > route.links_id[iid]:
 				print "Invalid link id %s: %d, cur: %d"%(iid, route.links_id[iid], self.link_id[iid])
 				
@@ -673,21 +674,27 @@ def change_graph(nlinks):
 		l=random.choice(n.rnode_id)
 
 		# rtt(n --> rn) = rtt(rn --> n) = rand
+		rold=n.rtt[l]
 		n.rtt[l]=random.randint(G.DELTA_RTT, G.DEFAULT_RTT*2)
 		rn=graph.graph[l]
 		rn.rtt[n.id]=n.rtt[l]
 
 		# Update the link id
-		print "\tchanging",n.id+'->'+rn.id
+		print "\tchanging",n.id+'->'+rn.id, 'rtt: %d -> %d'%(rold, n.rtt[l])
+
 		if n.id+'->'+rn.id not in rn.link_id:
 			rn.link_id[n.id+'->'+rn.id]=1
+			rn.link_id_rcv[n.id+'->'+rn.id]=0
 			rn.link_id[rn.id+'->'+n.id]=1
+			rn.link_id_rcv[rn.id+'->'+n.id]=0
 		else:
 			rn.link_id[n.id+'->'+rn.id]+=1
 			rn.link_id[rn.id+'->'+n.id]+=1
 		if n.id+'->'+rn.id not in n.link_id:
 			n.link_id[n.id+'->'+rn.id]=1
+			n.link_id_rcv[n.id+'->'+rn.id]=0
 			n.link_id[rn.id+'->'+n.id]=1
+			n.link_id_rcv[rn.id+'->'+n.id]=0
 		else:
 			n.link_id[n.id+'->'+rn.id]+=1
 			n.link_id[rn.id+'->'+n.id]+=1
@@ -757,6 +764,8 @@ def usage():
 	print "\t-c n\t\tWhen the graph exploration terminates, modifies n links"
 	print "\t    \t\tand let the interestered nodes send a CTP. By default"
 	print "\t    \t\tthis is disabled "
+	print ""
+	print "\t-S s\t\tUse  s  as the seed for the pseudrandom generator"
 
 
 #
@@ -764,11 +773,7 @@ def usage():
 #
 
 def main():
-
-	# TODO: remove this
-	random.seed(12)
-	
-	shortopt="hpvno:g:l:k::m::r::s:R:c:"
+	shortopt="hpvo:g:l:k::m::r::s:R:c:S:"
 
 	try:
 		opts, args = getopt.gnu_getopt(sys.argv[1:], shortopt, ["help"])
@@ -780,6 +785,8 @@ def main():
 	kgraph=rgraph=8
 	mgraph=4
 	ingraph=""
+	G.seed=random.randint(0, 0xffffffff)
+	random.seed(G.seed)
 
 	for o, a in opts:
 		if o == "-v":
@@ -818,8 +825,11 @@ def main():
 			G.MAX_ROUTES=int(a)
 		if o == "-c":
 			G.change_graph=int(a)
-	
-	print join(sys.argv, ' ')
+		if o == "-S":
+			G.seed=int(a)
+			random.seed(G.seed)
+			
+	print join(sys.argv+['-S %d'%G.seed], ' ')
 	g=graph()
 
 	if ingraph:
@@ -841,6 +851,7 @@ def main():
 	# The main loop begins
 	start_exploration()
 	main_loop()
+
 
 	if G.change_graph:
 		print "\n---- Statistics ----"
