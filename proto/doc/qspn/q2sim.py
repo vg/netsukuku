@@ -65,7 +65,7 @@ class G:
 	MAX_ROUTES	= 1
 
 	STARTER_NODES	= 1
-	EVENTS_LIMIT	= 100000
+	EVENTS_LIMIT	= 0
 
 
 	#
@@ -461,7 +461,8 @@ class node:
 			if (iid not in self.link_id) or\
 					(self.link_id[iid] < route.links_id[iid]) or\
 					(self.link_id[iid] == route.links_id[iid] and\
-					self.link_id_rcv[iid] < self.link_id[iid]):
+					(iid not in self.link_id_rcv or\
+						self.link_id_rcv[iid] < self.link_id[iid])):
 #				print "%s hadn't the link id %s"%(self, iid)
 				self.link_id[iid]=route.links_id[iid]
 				self.link_id[iid2]=route.links_id[iid2]
@@ -713,7 +714,7 @@ def change_graph(nlinks):
 def main_loop():
 	idx=1
 	while G.events:
-		if idx==G.EVENTS_LIMIT:
+		if idx==G.EVENTS_LIMIT and idx!=0:
 			print "-----------[[[[ ===== ---       --- ===== ]]]]----------------"
 			print "-----------[[[[ ===== --- BREAK --- ===== ]]]]----------------"
 			print "-----------[[[[ ===== ---       --- ===== ]]]]----------------"

@@ -786,6 +786,7 @@ capacity. However, we'll see in section \ref{sec:bandwidth_q1q2} that the QSPN
 can be used in the general case.
 
 \subsection{Worst case}
+\label{worstcase}
 The graph, formed by $n$ nodes, which has the maximum number of cycles is the
 worst case for $Q^2$, because, if not limited, it will have to explore any
 combination of cycles.
@@ -1048,6 +1049,44 @@ Note that this is a generalization of concept of interesting route defined in
 section \ref{sec:routes_limit}, in fact, when $R$ and $S$ are equal,
 $s(R,S)=1$ and the $R_e$ value will be equal to $0$.
 
+\section{Simulating the QSPN v2}
+As a proof of concept, we've a written the q2sim.py\cite{q2sim}, a simulator
+implementing the core of the QSPN v2.\\
+The q2sim is  an event-oriented Discrete Event Simulator.
+Each (event,time) pair is pushed in a priority queue.
+The main loop of the program will retrieve from the queue the event having the
+lowest `time' value. This "popped" event will be executed. In this case, the
+events are the packets sent on the network.
+
+In this paragraph we'll analyze the results of various simulations.
+\begin{description}
+	\item[TP flux] The \emph{TP flux} of a node $n$, is the number of TP
+		packets which have been forwarded by $n$ during the entire QSPN
+		exploration. it is indicated with $\Phi(n)$.
+	\item[Mean TP flux] Given $k$ nodes ${n_1,\dots,n_k}$, their mean TP
+		flux is:
+		\[
+		\Phi_m({n_1,\dots,n_k})=\frac{\sum_{i=1}^{k}\Phi(n_i)}{k}
+		\]
+	\item[Starter node]
+		A starter node is a node which sends the first TP in a graph,
+		not yet explored by the $Q^2$. There can be more than one
+		simultaneous starter node.
+\end{description}
+As a general result, the mean TP flux is proportional to the number of
+subcycles present in the graph. Thus the maximum mean TP flux is reached in a
+complete graph, where each node is connected to all the others. In a complete
+graph of $k$ nodes the mean TP flux is approximately:
+\[
+	\Phi_m \approx k-1
+\]
+The below figure shows this result.
+\begin{center}
+\label{fig:k_one_starter}
+\includegraphics[scale=0.4]{fig/k_one_starter}
+\end{center}
+
+
 \section{Open questions}
 \begin{enumerate}
 	\item The number of TPs and routes (of the QSPN v1, v2) is
@@ -1059,10 +1098,7 @@ $s(R,S)=1$ and the $R_e$ value will be equal to $0$.
 
 \section{TODO}
 \begin{enumerate}
-	\item We need to write a ns2 \cite{ns2} simulator to confront the efficiency of the
-		QSPN v1 with that of the v2.
-	\item If $Q^2$ is chosen over Q, it must be implemented for the
-		ntkd daemon.
+	\item The $Q^2$ must be implemented for in the ntkd daemon.
 \end{enumerate}
 
 %%%%%%%%%%%%%%%%
@@ -1082,6 +1118,9 @@ $s(R,S)=1$ and the $R_e$ value will be equal to $0$.
 	\bibitem{simrouteawk} Simplify Routes in Awk:
 		\ifpdf \else \\ \fi
 		\href{http://cvs.hinezumi.org/viewcvs/netsukuku/proto/doc/qspn/simplify\_routes.awk}{simplify\_routes.awk}
+	\bibitem{q2sim} QSPN v2 simulator:
+		\ifpdf \else \\ \fi
+		\href{http://cvs.hinezumi.org/viewcvs/netsukuku/proto/doc/qspn/q2sim.py}{q2sim.py}
 	\bibitem{completegraph} Complete graph:
 		\ifpdf \else \\ \fi
 		\href{http://mathworld.wolfram.com/CompleteGraph.html}{http://mathworld.wolfram.com/}
