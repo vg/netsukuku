@@ -1054,8 +1054,8 @@ As a proof of concept, we've a written the q2sim.py\cite{q2sim}, a simulator
 implementing the core of the QSPN v2.\\
 The q2sim is  an event-oriented Discrete Event Simulator.
 Each (event,time) pair is pushed in a priority queue.
-The main loop of the program will retrieve from the queue the event having the
-lowest `time' value. This "popped" event will be executed. In this case, the
+The main loop of the program retrieves from the queue the event having the
+lowest `time' value. This "popped" event is executed. In this case, the
 events are the packets sent on the network.
 
 In this paragraph we'll analyze the results of various simulations.
@@ -1078,14 +1078,68 @@ subcycles present in the graph. Thus the maximum mean TP flux is reached in a
 complete graph, where each node is connected to all the others. In a complete
 graph of $k$ nodes the mean TP flux is approximately:
 \[
-	\Phi_m \approx k-1
+	\Phi_m \approx k-1,\;\; \Phi_m \le k
 \]
-The below figure shows this result.
+The figure below shows this result. In the $x$ axis, an integer point
+corresponds to the number of nodes of the complete graph. The adjacent points of the
+graph have been connected  with straight line segments.
 \begin{center}
 \label{fig:k_one_starter}
-\includegraphics[scale=0.4]{fig/k_one_starter}
+\includegraphics[scale=0.45]{fig/k_one_starter}
 \end{center}
-
+By increasing the number of starter nodes the
+mean TP flux increases slightly until it reaches $\Phi_m=k$. Indeed, if all the
+nodes of the graph are starters, then each of them will send a TP to all the
+other nodes. The increasing of the number of starter nodes decreases the time required
+to complete the exploration of the graph.
+The figure below shows this result. In the $x$ axis, an integer point
+corresponds to the number of starter nodes. Each plotted line corresponds to a
+complete graph with different number of nodes. The first bisector has been
+plotted to facilitate the reading of the graph.
+\begin{center}
+\label{fig:k_starters}
+\includegraphics[scale=0.45]{fig/k_starters}
+\end{center}
+The complete graph is the worst case for the $Q^2$, therefore in the general case the mean TP flux will be:
+\[ \Phi_m \le n \]
+where $n$ is the number of nodes of the graph.
+For example, in random graphs with increasing number of nodes, the mean TP
+flux will assume the distribution shown in the figure below:
+\begin{center}
+\label{fig:rone_starter}
+\includegraphics[scale=0.45]{fig/rone_starter}
+\end{center}
+The same happens for a mesh graph. The mesh graph used in the simulations
+is a square grid where every intersection represents a node.\\
+If the graph is uniformly connected, as in the case of a mesh graph, then the
+distribution of single TP fluxes is uniform too.
+The majority of single TP fluxes are near to the mean TP
+flux, while the highest TP fluxes are shared between different nodes, i.e.
+there aren't few unlucky nodes which have to bear a high TP flux.
+In the following figure, we can observe the TP flux distribution
+of two different QSPN exploration of a mesh graph with $11\times11$ nodes.
+In the $x$ axis, an integer point corresponds to a single node of the graph.
+Adjacent points are connected by a straight line.\\
+\begin{center}
+\label{fig:C-dist}
+\includegraphics[scale=0.45]{fig/C-dist}
+\end{center}
+In the first exploration, plotted in red, the starter node (node 40) and the eight nodes
+surrounding him (node 50,51,52,28,29,30,39,41) have the highest TP flux. The TP flux decreases with the
+increase of the distance from the starter node. Since the graph is a
+$11\times11$ grid, there are $11$ classes where the TP flux falls and for this
+reason in the graph there are exactly $11$ slopes. The nodes with lower TP fluxes are
+those with the least number of links, i.e. the nodes on the edge of the mesh,
+which have only 3 links (and not 4). The four nodes at the vertices of the
+grid (node 0,10,110,120), which have just 2
+links, register the lowest TP flux.\\
+The second exploration, plotted in blue, simulates the scenario where 32 links of the graph
+change and consequently the interested nodes send a new CTP to inform the
+other nodes and update their maps. As supposed, the mean TP flux (26.80) is heavily
+lower than that of the initial exploration (82.90), because the majority of
+routes are already known by the nodes. Even the execution time is lower (2.6s
+vs 3.5s). Note that this scenario is the most common in real world, because
+in general, the nodes won't join or die at once, but progressively.
 
 \section{Open questions}
 \begin{enumerate}
