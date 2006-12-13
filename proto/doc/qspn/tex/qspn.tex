@@ -1049,6 +1049,21 @@ Note that this is a generalization of concept of interesting route defined in
 section \ref{sec:routes_limit}, in fact, when $R$ and $S$ are equal,
 $s(R,S)=1$ and the $R_e$ value will be equal to $0$.
 
+\subsection{Cryptographic QSPN}
+A node could easily forge a TP, injecting in the network false routes and
+links information. The attack would just create a temporary local damage,
+thanks to the distributed nature of the QSPN. However the optimal solution is
+to prevent these attacks.\\
+
+A node, whenever joins Netsukuku, generates a new RSA key pair. The
+continuous generation of keys prevents the leakage of the node's anonymity.
+The node shares its public key to all the other nodes of its group node.\\
+Each entry appended in a TP is then signed with its private key, doing so the
+other nodes will be able to prove its authenticity and validate the path
+covered by the TP.\\
+The size required to store the signatures in the TP can be kept costant using the
+aggregate signature system \cite{aggrsign1} \cite{aggrsign2}.
+
 \section{Simulating the QSPN v2}
 As a proof of concept, we've a written the q2sim.py\cite{q2sim}, a simulator
 implementing the core of the QSPN v2.\\
@@ -1141,18 +1156,10 @@ routes are already known by the nodes. Even the execution time is lower (2.6s
 vs 3.5s). Note that this scenario is the most common in real world, because
 in general, the nodes won't join or die at once, but progressively.
 
-\section{Open questions}
-\begin{enumerate}
-	\item The number of TPs and routes (of the QSPN v1, v2) is
-		proportional to the number of the graph subcycles. It would be
-		interesting to find an analytic relation between these two
-		quantities.
-	\item Does an algorithm more efficient than the QSPN v1, v2 exist?
-\end{enumerate}
 
 \section{TODO}
 \begin{enumerate}
-	\item The $Q^2$ must be implemented for in the ntkd daemon.
+	\item The $Q^2$ must be implemented in the ntkd daemon.
 \end{enumerate}
 
 %%%%%%%%%%%%%%%%
@@ -1184,6 +1191,15 @@ in general, the nodes won't join or die at once, but progressively.
 	\bibitem{ntkrfc0002} NTK\_RFC 002:
 		\href{http://lab.dyne.org/Ntk\_bandwidth\_measurement}{Bandwidth
 		measurement}
+	\bibitem{aggrsign1}   A Survey of Two Signature Aggregation
+		Techniques:
+		\ifpdf \else \\ \fi
+		\href{http://crypto.stanford.edu/~dabo/abstracts/aggsurvey.html}{http://crypto.stanford.edu/~dabo/abstracts/aggsurvey.html}
+	\bibitem{aggrsign2}  Aggregate and Verifiably Encrypted Signatures
+		from Bilinear Maps:
+		\ifpdf \else \\ \fi
+		\href{http://crypto.stanford.edu/~dabo/abstracts/aggreg.html}{http://crypto.stanford.edu/~dabo/abstracts/aggreg.html}
+
 \end{thebibliography}
 \newpage
 
