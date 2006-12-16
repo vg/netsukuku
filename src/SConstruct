@@ -215,6 +215,7 @@ idir_mod    = '$destdir' + '$MOD_DIR'
 idir_conf   = '$destdir' + '$CONF_DIR'
 idir_pid    = '$destdir' + '$PID_DIR'
 
+SConsignFile()
 env.Install(idir_bin, [ntkd])
 env.Install(idir_bin, [ntkresolv])
 env.Alias('install', [idir_bin, idir_conf])

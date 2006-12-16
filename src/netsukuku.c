@@ -548,6 +548,11 @@ void check_conflicting_options(void)
 void init_netsukuku(char **argv)
 {
 	init_rand();
+
+#ifdef DEBUG
+	loginfo("Setting MALLOC_CHECK_=2 since we've been complied with -DDEBUG");
+	setenv("MALLOC_CHECK_", "2", 1);
+#endif
 	
         if(geteuid())
 		fatal("Need root privileges");

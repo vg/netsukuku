@@ -38,7 +38,8 @@
  * 	struct bla_bla *next;
  * 	struct bla_bla *prev; 
  * at the beginning.
- * You can also use the LLIST_HDR() macro.
+ * You can also use the LLIST_HDR() macro:
+ * 	LLIST_HDR	(struct bla_bla);
  */
 
 #define LLIST_HDR(_struct)	_struct *next, *prev
@@ -513,8 +514,9 @@ do{ 									\
  
 /*
  * Here below there are the definitions for the linked list with a counter.
- * The arguments format is:
- * l_list **_head, int *_counter, l_list *list
+ * The general arguments format is:
+ *
+ *	 l_list **_head, int *_counter, l_list *list
  */
 
 #define clist_add(_head, _counter, _list)				\
@@ -591,7 +593,8 @@ do{                  							\
  *
  * It qsorts the `_head' llist, which has `_counter' elements.
  * The `_cmp_func' function will be used to compare two llist.
- * The new head of the llist is returned. Example:
+ * The new head of the llist is returned. 
+ * Example:
  * 	head=clist_qsort(head, counter, my_cmp_func);
  * `counter' can be also 0, but it's better if you've counted already.
  * 
@@ -600,7 +603,7 @@ do{                  							\
  * 	  This is done only if `_counter' is 0.
  * 	- it uses a temporary callocated array to store all the pointers to the
  * 	  elements of the llist. 
- * 	  tmp[0]=_head; tmp[1]=_head->next; tmp[..]=_head->next->..
+ * 	  tmp[0]=_head; tmp[1]=_head->next; tmp[...]=_head->next->...
  * 	- it calls qsort(3) on the tmp array. Note that qsort gives the
  *        address of &tmp[x] and &tmp[y] to `_cmp_func()', thus `_cmp_func()'
  *        should be aware of this.

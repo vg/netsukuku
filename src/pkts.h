@@ -41,7 +41,7 @@
  *
  * 		(* Fill the header of the packet *)
  *        	pkt_fill_hdr(&pkt.hdr, 0, 0, FOO_GET_NEW_MAP, 512);
- *       	 	pkt_addto(&pkt, &rfrom);
+ *       	pkt_addto(&pkt, &rfrom);
  *        	pkt_addsk(&pkt, my_family, 0, SKT_TCP);
  *        	pkt_addport(&pkt, ntk_tcp_port);
  *

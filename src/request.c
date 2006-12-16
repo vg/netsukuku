@@ -18,11 +18,11 @@
  * --
  * request.c
  *
- * The code that flowa from this source preserves the database of the
+ * The code that flows from this source preserves the database of the
  * Netsukuku requests, replies and errors.
  *
  * It's structure is completely modular: it's possible to register at any
- * moment a new request, therefore if a module registers its own requests,
+ * moment a new request. If a module registers its own requests,
  * they will be accessible by all the other modules and sources of NTK.
  * 
  * The API is described in request.h
@@ -165,7 +165,7 @@ void rq_sort_requests(void)
  * prefixed with a unique identifier.
  * It's adviced to use the name of the relative source code.
  *
- * If an error occurred fatal() is called, because this is a function which
+ * If an error occurred, fatal() is called, because this is a function which
  * must never fail.
  *
  *  :Warning: 
