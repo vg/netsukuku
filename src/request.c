@@ -35,9 +35,9 @@
 #include "xmalloc.h"
 #include "log.h"
 
-const static u_char unknown_request[]="Unknow request";
-const static char unknown_reply[]="Unknow reply";
-const static u_char unknown_error[]="Unknow error";
+const static u_char unknown_request[]="Unknown request";
+const static char unknown_reply[]="Unknown reply";
+const static u_char unknown_error[]="Unknown error";
 
 request *ntk_request=0;
 request_err *ntk_request_err=0;

@@ -39,6 +39,8 @@
 ev_tbl *ntk_event;
 int ntk_ev_counter=0;
 u_char ntk_event_sorted=0;
+const static u_char unknown_event[]="Unknown event";
+
 
 /*
  * ev_hash_name
@@ -127,6 +129,21 @@ void ev_sort_events(void)
 }
 
 /*
+ * ev_to_str
+ *
+ * Returns the string of the name of the `ev_hash' event.
+ */
+const u_char *ev_to_str(ev_t ev_hash)
+{
+	int i=ev_bsearch_hash(ev_hash);
+
+	if(i < 0)
+		return unknown_event;
+	return ntk_event[i].name;
+}
+
+
+/*
  * ev_register_event
  * -----------------
  *
@@ -181,6 +198,7 @@ int ev_register_event(const char *ev_name, u_char flags)
 
 /*
  * ev_del_event
+ * ------------
  *
  * Removes the `ev_hash' event from the ntk_event array.
  */
@@ -223,7 +241,7 @@ int ev_listener_cmp(const void *a, const void *b)
 	ev_listener *la=*(ev_listener **)a;
 	ev_listener *lb=*(ev_listener **)b;
 
-	return (la->priority > lb->priority) - (la->priority < lb->priority);
+	return (la->priority < lb->priority) - (la->priority > lb->priority);
 }
 
 /*
@@ -249,7 +267,7 @@ int ev_listen_event(ev_t event,
 	ev_listener *evl = xzalloc(sizeof(ev_listener));
    	evl->listener = listener;
 	evl->priority = priority;
-	evl->flags    = !flags ? EV_LISTENER_BlOCK : flags;
+	evl->flags    = flags;
 
 	/* Add the new listener and sort the llist by priority */
 	evt->listener = list_add(evt->listener, evl);
@@ -289,6 +307,7 @@ int ev_ignore_event(ev_t event, int (*listener)(ev_t, void *, size_t))
 
 /*
  * ev_init_event_queue
+ * -------------------
  *
  * Initializes the event queue `q', setting its capacity of maximum
  * number of events to `max_events'.
@@ -398,7 +417,7 @@ loop:
 				memcpy(cdata, q->data, q->data_sz);
 			}
 
-			if(e->flags & EV_LISTENER_BlOCK)
+			if(!(e->flags & EV_LISTENER_NONBlOCK))
 				ret = e->listener(q->hash, cdata, cdata_sz);
 			else if(e->flags & EV_LISTENER_NONBlOCK) {
 				struct listener_thread *lt;

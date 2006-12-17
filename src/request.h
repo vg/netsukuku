@@ -54,7 +54,8 @@
  * It must be saved in a global variable (non static), in this way, even other
  * modules we'll be able to use it. Use the RQ_ADD_REQUEST() and
  * RQERR_ADD_ERROR() macros to facilitate this assignment.
- * The variable name is the same of the request name (always in upper case).
+ * The global variable name must the same of the request name (always in
+ * upper case).
  * All the other functions of the NTK code which deals with requests, will
  * take as arguments this numeric id.
  * See request.c for the complete description rq_add_request().
