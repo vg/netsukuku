@@ -4,8 +4,8 @@ AM_CFLAGS= -g -I. @debug_flags@ -I@gmp@
 AM_CXXFLAGS = -g -I. @debug_flags@ -I@gmp@
 
 bin_PROGRAMS = ntkd ntk-resolv
-ntkd_SOURCES = map.c misc.c buffer.c hash.c pkts.c qspn.c   \
-	xargz.c request.c opt.c rand.c module.c\
+ntkd_SOURCES = map.c misc.c buffer.c hash.c pkts.c qspn.c            \
+	xargz.c request.c opt.c rand.c module.c event.c		     \
 	radar.c gmap.c hook.c rehook.c if.c inet.c ipv6-gmp.c        \
 	krnl_route.c andna.c snsd_cache.c andna_cache.c err_errno.c  \
 	andns.c andns_lib.c dnslib.c andns_net.c andns_snsd.c	     \

@@ -22,7 +22,7 @@
  * One or more functions of different modules are attached to a particular
  * event. When that event occurs, they will be called in order. For example,
  * when a packet is received, the event EV_RECVD_PACKET is triggered, and the
- * function exec_pkt() is be called.
+ * function exec_pkt() is called.
  *
  * For more information see event.h
  */
@@ -31,8 +31,7 @@
 
 #include "hash.h"
 #include "event.h"
-#include "xmalloc.h"
-#include "log.h"
+#include "common.h"
 
 /*
  * The global event table
@@ -99,7 +98,7 @@ int ev_bsearch_hash(const ev_t ev_hash)
 	ev_tbl ev_tmp={.hash = ev_hash};
 
 	if(!ntk_event_sorted)
-		ev_sort_requests();
+		ev_sort_events();
 
 	if((ev=bsearch(&ev_tmp, ntk_event, ntk_ev_counter, 
 			sizeof(ev_tbl), ev_hash_cmp)))
@@ -109,7 +108,7 @@ int ev_bsearch_hash(const ev_t ev_hash)
 }
 
 /*
- * ev_sort_requests
+ * ev_sort_events
  *
  * Sorts the `ntk_event' array using the 32bit hashes.
  *
@@ -120,7 +119,7 @@ int ev_bsearch_hash(const ev_t ev_hash)
  * This function should be called after all the events have been added to
  * the array with ev_register_event().
  */
-void ev_sort_requests(void)
+void ev_sort_events(void)
 {
 	qsort(ntk_event, ntk_ev_counter,
 			sizeof(ev_tbl), ev_hash_cmp);
@@ -239,24 +238,24 @@ int ev_listener_cmp(const void *a, const void *b)
  * otherwise 0 is the returned value.
  */
 int ev_listen_event(ev_t event, 
-		    int (*listener)(ev_t, void *), u_char priority,
+		    int (*listener)(ev_t, void *, size_t), u_char priority,
 		    u_char flags)
 {
 	ev_tbl *evt;
 
-	if(!(evt=ev_get_evstruct(event)))
+	if(!(evt = ev_get_evstruct(event)))
 		return -1;
 
 	ev_listener *evl = xzalloc(sizeof(ev_listener));
-   	evl.listener=listener;
-	evl.priority=priority;
-	evl.flags=flags;
+   	evl->listener = listener;
+	evl->priority = priority;
+	evl->flags    = !flags ? EV_LISTENER_BlOCK : flags;
 
 	/* Add the new listener and sort the llist by priority */
-	evt->listener=list_add(evt->listener, evl);
-	evt->listener=qsort(evt->listener, 0, ev_listener_cmp);
+	evt->listener = list_add(evt->listener, evl);
+	evt->listener = clist_qsort(evt->listener, 0, ev_listener_cmp);
 
-	return hash;
+	return 0;
 }
 
 /*
@@ -269,7 +268,7 @@ int ev_listen_event(ev_t event,
  * function has never been associated to `event', -1 is returned,
  * otherwise 0 is the returned value.
  */
-int ev_ignore_event(ev_t event, int (*listener)(ev_t, void *))
+int ev_ignore_event(ev_t event, int (*listener)(ev_t, void *, size_t))
 {
 	ev_tbl *evt;
 	ev_listener *el, *next;
@@ -296,9 +295,196 @@ int ev_ignore_event(ev_t event, int (*listener)(ev_t, void *))
  */
 void ev_init_event_queue(ev_queue *q, int max_events)
 {
+	setzero(q, sizeof(ev_queue));
 	q->max_events=max_events;
-	q->qhead=q->qtail=clist_init(&q->queue_counter);
+	q->qhead=q->qtail=(ev_queue_entry *)clist_init(&q->qcounter);
+	pthread_mutex_init(&q->tail_mutex, 0);
 }
+
+void ev_free_event_queue(ev_queue *q)
+{
+	if(q->dispatcher_t) {
+		/* Destroy the dispatcher thread. Setting to zero
+		 * q->dispatcher_t and unlocking q->mutex_t will do
+		 * the trick. */
+		q->dispatcher_t=0;
+		pthread_mutex_unlock(&q->mutex_t);
+	
+		/* At this point the thread should have killed itself, free
+		 * its resources */
+		pthread_mutex_destroy(&q->mutex_t);
+	}
+
+	pthread_mutex_destroy(&q->tail_mutex);
+
+	clist_destroy(&q->qhead, &q->qcounter);
+}
+
+struct listener_thread
+{
+	ev_t 	event;
+	void	*data;
+	size_t 	data_sz;
+	int (*listener)(ev_t, void *, size_t);
+};
+
+void *ev_listener_thread(void *arg)
+{
+	struct listener_thread *lt=(struct listener_thread *)arg;
+
+	if(!arg)
+		return 0;
+
+	lt->listener(lt->event, lt->data,lt->data_sz);
+
+	if(lt)
+		xfree(lt);
+
+	return 0;
+}
+
+void *ev_dispatcher_thread(void *eventq)
+{
+	ev_queue *eq=(ev_queue *)eventq;
+	ev_queue_entry *q, *next, *head, *tail;
+	int counter;
+
+loop:
+	/* Check if we should die */
+	if(!eq->dispatcher_t)
+		/* Someone has set our pid to zero.
+		 * Seppuku!!! */
+		return 0;
+
+	eq->dispatching=1;
+
+	q=head=eq->qhead;
+	tail=eq->qtail;
+	counter=eq->qcounter;
+
+	pthread_mutex_lock(&eq->tail_mutex);
+	eq->qcounter=0;
+	eq->qhead=eq->qhead=0;
+	pthread_mutex_unlock(&eq->tail_mutex);
+
+	list_safe_for(q, next) {
+		/*
+		 * Loop trough the events in the queue
+		 */
+
+		ev_tbl *evt;
+		ev_listener *e;
+
+		if(!(evt=ev_get_evstruct(q->hash)))
+			goto skip;
+
+		e=evt->listener;
+		list_for(e) {
+			/*
+			 * Call each listener
+			 */
+
+			int ret=EV_PASS;
+			void *cdata;
+			size_t cdata_sz;
+
+			if(!e->listener)
+				continue;
+
+			cdata=q->data;
+			cdata_sz=q->data_sz;
+			if(q->data) {
+				cdata=xmalloc(q->data_sz);
+				memcpy(cdata, q->data, q->data_sz);
+			}
+
+			if(e->flags & EV_LISTENER_BlOCK)
+				ret = e->listener(q->hash, cdata, cdata_sz);
+			else if(e->flags & EV_LISTENER_NONBlOCK) {
+				struct listener_thread *lt;
+
+				lt=xmalloc(sizeof(struct listener_thread));
+				lt->event=q->hash;
+				lt->data=cdata;
+				lt->data_sz=cdata_sz;
+				lt->listener=e->listener;
+
+				pthread_t t;
+				pthread_attr_t t_attr;
+				pthread_attr_init(&t_attr);
+				pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
+				pthread_create(&t, &t_attr, ev_listener_thread, lt);
+			}
+
+			if(ret == EV_DROP)
+				/* Event dropped */
+				break;
+		}
+
+skip:
+		/* Delete the event */
+		if(q->data) {
+			xfree(q->data);
+			q->data_sz=0;
+		}
+		clist_del(&head, &counter, q);
+	}
+
+	if(eq->qtail || eq->qhead || eq->qcounter)
+		/*
+		 * If some new events have been put in the queue, 
+		 * run again the loop 
+		 */
+		goto loop;
+
+	eq->dispatching=0;
+
+	/* Hibernate, until new events pops in the queue */
+	pthread_mutex_lock(&eq->mutex_t);
+	pthread_mutex_lock(&eq->mutex_t);
+
+	/* We've been unlocked, restart the loop */
+	goto loop;
+}
+
+void ev_event_dispatcher(ev_queue *q, u_char detach)
+{
+	if(q->dispatching)
+		/* 
+		 * There's already one thread currently dispatching the events
+		 */
+		return;
+
+	if(!detach)
+		/*
+		 * Do not detach. Use the current thread to run the dispatcher 
+		 */
+		ev_dispatcher_thread(q);
+	else {
+		/* Detach */
+
+		if(!q->dispatcher_t) {
+			/* 
+			 * This is the first time the dispatcher has been
+			 * called in detached mode. 
+			 * Create its new thread.
+			 */
+			pthread_attr_t t_attr;
+			pthread_attr_init(&t_attr);
+			pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
+			pthread_mutex_init(&q->mutex_t, 0);
+			pthread_create(&q->dispatcher_t, &t_attr, ev_dispatcher_thread, q);
+		} else {
+			/* 
+			 * The dispatcher thread already exists. Just unlock
+			 * its mutex so it can re-run its loop
+			 */
+			pthread_mutex_unlock(&q->mutex_t);
+			pthread_mutex_unlock(&q->mutex_t);
+		}
+	}
+}
+
 
 /*
  * ev_trigger_event
@@ -315,18 +501,22 @@ void ev_init_event_queue(ev_queue *q, int max_events)
  * If the queue is full -1 is returned.
  * On success 0 is returned.
  */
-int ev_trigger_event(ev_queue *q, ev_t event, void *data, u_char detach)
+int ev_trigger_event(ev_queue *q, ev_t event, void *data, size_t data_sz, 
+			u_char detach)
 {
 	ev_queue_entry *qe;
-	int i;
 
-	if(q->queue_counter >= q->max_events)
+	if(q->qcounter >= q->max_events)
 		return -1;
 
 	qe=xmalloc(sizeof(ev_queue_entry));
 	qe->hash=event;
 	qe->data=data;
+	qe->data_sz=data_sz;
+
+	pthread_mutex_lock(&q->tail_mutex);
 	clist_append(&q->qhead, &q->qtail, &q->qcounter, qe);
+	pthread_mutex_unlock(&q->tail_mutex);
 
 	ev_event_dispatcher(q, detach);
 

@@ -63,8 +63,12 @@
  * Registering a new event
  * -----------------------
  *
+ *  ....
  *
+ *  The listener should always free `data'!!
 \*/
+
+#include "llist.c"
 
 typedef int32_t ev_t;
 
@@ -72,7 +76,7 @@ typedef int32_t ev_t;
 /*
  * Return values of the listener() function
  */
-#define EV_PASS		-1		/* Pass the event to the successive
+#define EV_PASS		 0		/* Pass the event to the successive
 					   listeners */
 #define EV_DROP		-2		/* Drop the event. Don't pass it to
 					   successive listeners */
@@ -83,7 +87,8 @@ typedef int32_t ev_t;
  */
 #define EV_LISTENER_BlOCK	1	/* Before calling the next listener in
 					   turn, wait that the return of the 
-					   called function of current one. */
+					   called function of current one. 
+					   This is the default. */
 #define EV_LISTENER_NONBlOCK	(1<<1)
 
 
@@ -100,7 +105,7 @@ struct ev_listener
 	 * registered event is triggered and when the turn of this listener
 	 * comes.
 	 */
-	int		(*listener)(ev_t event, void *data);
+	int		(*listener)(ev_t event, void *data, size_t data_sz);
 };
 typedef struct ev_listener ev_listener;
 
@@ -133,6 +138,7 @@ struct ev_queue_entry
 				           This must be a pointer to a 
 					   mallocated buffer, since it will be 
 					   freed upon the event destruction */
+	size_t		data_sz;
 };
 typedef struct ev_queue_entry ev_queue_entry;
 
@@ -154,9 +160,12 @@ typedef struct
 	ev_queue_entry  *qtail;		/* its tail */
 	int		qcounter;	/* number of elements in the queue */
 
-	u_char		mutex;		/* If non-zero, there's some dispatcher 
+	u_char		dispatching;	/* If non-zero, there's some dispatcher 
 					   thread active currently handling 
 					   this queue */
+	pthread_t	dispatcher_t;
+	pthread_mutex_t mutex_t;
+	pthread_mutex_t tail_mutex;	/* Write mutex for `qtail' */
 } ev_queue;
 
 /*\
@@ -169,16 +178,21 @@ ev_t ev_hash_name(const char *ev_name);
 void ev_sort_events(void);
 
 #define EV_REG_EVENT(_ev, _flags)	_ev = ev_register_event(#_ev , (_flags))
-int ev_register_event(const char *ev_name, u_char flags);
-void ev_del_event(int ev_hash);
+int 	ev_register_event(const char *ev_name, u_char flags);
+void 	ev_del_event(int ev_hash);
+
 ev_tbl *ev_get_evstruct(int ev_hash);
 
+
 int ev_listen_event(ev_t event,
-                    int (*listener)(ev_t, void *), u_char priority,
+                    int (*listener)(ev_t, void *, size_t), u_char priority,
                     u_char flags);
-int ev_ignore_event(ev_t event, int (*listener)(ev_t, void *));
+int ev_ignore_event(ev_t event, int (*listener)(ev_t, void *, size_t));
 
 void ev_init_event_queue(ev_queue *q, int max_events);
-int ev_trigger_event(ev_queue *q, ev_t event, void *data, u_char detach);
+void ev_free_event_queue(ev_queue *q);
+
+int ev_trigger_event(ev_queue *q, ev_t event, void *data, 
+		     size_t data_sz, u_char detach);
 
 #endif /*EVENT_H*/

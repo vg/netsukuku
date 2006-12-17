@@ -227,7 +227,13 @@ do {									\
  * 
  * It's the same of list_join() but it frees the `list'.
  * It returns the new head of the linked list, so it must be called in
- * this way: head=list_del(head, list); 
+ * this way: 
+ * 		
+ * 	head=list_del(head, list);
+ *
+ * Note: If you know what you're doing, you can also use:
+ * 	 list_del((your_llist *)0, list);
+ * 	 However you won't know if the head has been deleted or not.
  */
 #define list_del(head, list)						\
 ({									\
