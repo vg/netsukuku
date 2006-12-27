@@ -59,13 +59,9 @@ crea_list()
 	mv $dir/.list2 $dir/.list
 }
 
-run="run! syntax/2html.vim"
-subs="%s/^<pre>/<pre id=\"filez\">/"
-del="delete"
-
 solo_pre()
 {
-	vim -S $proto_dir/scripts/converti_html.vim $1
+	gvim -S $proto_dir/scripts/converti_html.vim $1
 }
 
 old_dir=`pwd`
