@@ -41,9 +41,6 @@
 			$line = ereg_replace("\n", '', $line);
 			if (ereg(".info", $line)) {
 				continue;
-			} else if (preg_match($languages_expr, $line)) {
-				//file.lang
-				continue;
 			} else {
 				if(preg_match('/.pdf$/', $line)) {
 					$tpl_page .= '<p><a href="'.NTK_DOCROOT.$_GET['dir'].$line.'">'.$line.'</a>';
@@ -54,11 +51,10 @@
 				$file_info = @fopen(NTK_DOCROOT.$_GET['dir'].$line.".info", "r");
 					
 				if ($file_info != NULL) {
-					$parse_cmd = 'cat '. '2html/documentation/' . $_GET['dir'];
-					$parse_cmd.= '.list' . '| ./inc/parse_lang.sh ' . $line . ' ' . $_GET['dir'];
-					//$tpl_lang = system($parse_cmd);
-					$tpl_lang = exec($parse_cmd);
-
+                                        # $parse_cmd = 'cat '. '2html/documentation/' . $_GET['dir'];
+                                        # $parse_cmd.= '.list' . '| ./inc/parse_lang.sh ' . $line . ' ' . $_GET['dir'];
+                                        # $tpl_lang = exec($parse_cmd);
+                                        
 					$info_line = fgets($file_info);
 					$tpl_page .= ' ' . $tpl_lang . ' --> ' . $info_line;
 					$file_info = fclose($file_info);

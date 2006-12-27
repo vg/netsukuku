@@ -1046,8 +1046,10 @@ used as a parameter to evaluate its interest, therefore the more a route is
 similar to a memorised route the more its efficiency will decrease. Hence it
 will be considered less interesting.\\
 Note that this is a generalization of concept of interesting route defined in
-section \ref{sec:routes_limit}, in fact, when $R$ and $S$ are equal,
-$s(R,S)=1$ and the $R_e$ value will be equal to $0$.
+section \ref{sec:routes_limit}, in fact, when $R$ and $S$ are equal, we'll
+have
+\[s(R,S)=1\]
+so the $R_e$ value will be equal to $0$.
 
 \subsection{Cryptographic QSPN}
 A node could easily forge a TP, injecting in the network false routes and
@@ -1088,6 +1090,8 @@ In this paragraph we'll analyze the results of various simulations.
 		not yet explored by the $Q^2$. There can be more than one
 		simultaneous starter node.
 \end{description}
+In all the following tests the \emph{MaxRoutes} limit has been set to 1.\\
+
 As a general result, the mean TP flux is proportional to the number of
 subcycles present in the graph. Thus the maximum mean TP flux is reached in a
 complete graph, where each node is connected to all the others. In a complete

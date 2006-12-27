@@ -139,8 +139,9 @@ inline unsigned int dl_elf_hash (const unsigned char *name)
 }
 
 /* 
- * hash_time: As the name says: hash time!
- * This function generates the hash of the timeval struct which refer
+ * hash_time
+ *
+ * This function generates the hash of the timeval struct which refers
  * to the current time. 
  * If h_sec or h_usec are not null, it stores in them respectively the hash of
  * the second and the microsecond.

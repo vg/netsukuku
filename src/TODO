@@ -6,6 +6,11 @@
 
 * (generally these TODOs are already being implemented at the moment)
 
+- The info regarding the External nodes must be kept in an ad-hoc struct.
+
+- igw.c must register the event QSPN_DEL_NODE, to notice the death of
+  a igw.
+
 - General API
 	- add_new_dev()
 	- tracer_pkt_add_build() // tracer_pkt_add_unpack()
