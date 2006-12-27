@@ -30,6 +30,7 @@ then
 	echo Adjust the '$NTK_REPOSITORY' variable
 	exit 1
 fi
+cd $NTK_REPOSITORY
 
 proto_dir="$NTK_REPOSITORY/proto"
 
@@ -61,7 +62,7 @@ crea_list()
 
 solo_pre()
 {
-	gvim -S $proto_dir/scripts/converti_html.vim $1
+	gvim -f -S $proto_dir/scripts/converti_html.vim $1
 }
 
 old_dir=`pwd`
@@ -76,21 +77,26 @@ copy_cvs_entry doc proto/2html/documentation
 mv proto/2html/documentation/main_doc proto/2html/documentation/main_documentation
 copy_cvs_entry site/documentation proto/2html/documentation
 
-cd proto/2html/
+cd $proto_dir/2html
 
 ################  Converti html ######
 
 for i in `find ./  -type f | egrep -v 'CVS/|\.info$|\.pdf$'`; do
-	if echo $i | grep '\.html$';
+	if echo $i | grep -q '\.html$';
 	then
 		echo $i already html
+		oldi=$i
+		newi=$(echo $i | sed -e 's/\.html$//')
+		echo "$oldi --> $newi"
 	else
+		echo "$i --> $i.html"
 		solo_pre $i
 		rm $i
 		mv $i.html $i
 	fi
 done
 
+cd $proto_dir/2html
 
 ################  Crea list ####
 
