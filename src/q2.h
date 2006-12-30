@@ -22,7 +22,6 @@
 
 /* 
  * Maximum number of recorded interesting routes.
- * DO NOT set it > MAXROUTES (see map.h) 
  */
 #define MAX_QCACHE_ROUTES	1
 

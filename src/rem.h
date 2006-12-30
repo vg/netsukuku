@@ -41,7 +41,7 @@ typedef uint32_t bw32_t;
 /*
  * TODO: define f(rtt, upbw, dwbw)
  */
-typedef uint8_t avg8_t;
+typedef uint8_t  avg8_t;
 typedef uint32_t avg32_t;
 
 

@@ -45,8 +45,10 @@
  * in a metric array (see :MetricArrays:). It can be set set at runtime. 
  * This is useful for small machine with strict memory limits.
  *
- * MAX_METRIC_ROUTES must be greater than MIN_MAX_METRIC_ROUTES.
- * 
+ * These conditions must be respected:
+ * 	MAX_METRIC_ROUTES >= MIN_MAX_METRIC_ROUTES  
+ * 	MAX_METRIC_ROUTES >= :MAX_QCACHE_ROUTES:
+ *
  * By default MAX_METRIC_ROUTES is set to DEFAULT_MAX_METRIC_ROUTES.
  */
 #define DEFAULT_MAX_METRIC_ROUTES	8	
@@ -68,24 +70,6 @@ int 	MAX_METRIC_ROUTES = DEFAULT_MAX_METRIC_ROUTES;
 #define MAP_UPDATE	(1<<7)	/* If it is set, the node status changed 
 				   since the last update, thus the its
 				   route in the krnl should be updated */
-
-/*
- * 		      The QSPN internal map
- * 		    =========================
- * :map_node:
- * For any node `N' of the map, `N.gw' points to the rnode of the root node
- * to be used as gateway to reach `N'.
- * The only exception is the root_node itself: in `root_node.gw' we keep the 
- * rnodes of the root node.
- * The root node may have also rnodes of a different gnode, i.e. border nodes.
- * To store these external rnodes in root_node.r_node[x], the
- * * TODO: CONTINUE HERE * 
- * root_node.r_node[x].r_node will point to the relative ext_rnode struct 
- * (see gmap.h) and the MAP_GNODE | MAP_ERNODE flags will be set in 
- * root_node.r_node[x].flags.
- * The rnodes of the root_node of 0 level are updated by the radar(), 
- * instead the root_nodes of greater levels are updated by the qspn.
- */
 
 /*
  * Link ID
@@ -110,26 +94,8 @@ typedef uint8_t nid_t;
 
 #define MAX_LINKS	MAXGROUPNODE
 
-/*
- *
- * `similarity_with_' viene anche usata per sortare (escluso gw[0])
-	 *
-	 * Questa storia non influenza il QSPN
-	 *
-	 * In gw[0] ci sta' solo chi ha il REM migliore.
-	 *
-	 * u_int	gwhash;	<-- usato per distinguere rotte uguali e
-	 * quindi scartare quella peggiore. E' utile solo nel caso in cui i
-	 * rispettivi gw sono diversi (quindi non si deve hashare il gw, ma
-	 * solo gli altri hop. Ah, si hasha la bitmask del TP (escluso il gw).
-	 *
-	 * Come distinguere tra rotte di upload e download?
-	 *
-	 * Che succede quando gw[0] viene cancellato?
-	 *  - Lasciare invariato tpmask, fino a quando non se ne presenta uno
-	 *    nuovo.
-	 *  - resettarlo a zero
 
+/*
  * TODO: description
  */
 
@@ -146,15 +112,18 @@ struct map_node
 	 *
 	 * Since a route can be classified in REM_METRICS different ways (rtt,
 	 * upload bandwidth, ...), we keep a "metric array" for each category.
-	 * In each array, we can save a maximum of MAX_METRIC_ROUTES different routes,
-	 * however only their first hop is saved. The first hop is called
-	 * "gateway".
+	 * In each array, we can save a maximum of MAX_METRIC_ROUTES different
+	 * routes, however only their first hop is saved. The first hop is 
+	 * called "gateway".
 	 *
 	 * A metric array is always kept sorted. Its first element is the
 	 * most efficient (in terms of array's metric).
 	 * 
 	 * `self.metrics' is the array of all the metric arrays.
 	 * `self.metrics[M].gw' is the metric array associated to the metric `M'.
+	 *
+	 * Note: the QSPN utilises only the first MAX_QCACHE_ROUTES routes of each
+	 *       metric array.
 	 *
 	 * Example
 	 * -------
@@ -167,7 +136,8 @@ struct map_node
 	 * Shared gateways
 	 * ---------------
 	 * 
-	 *	 ** TODO: implement this :TODO **
+	 *	 ** TODO: implement this **
+	 *
 	 * self.metrics[M].gw is an array of pointers. 
 	 * It may happen that a gateway is present simultaneusly in different
 	 * metric arrays. For this reason, when deleting a gateway, you must
@@ -197,41 +167,33 @@ struct map_node
 			 * Suppose we are trying to insert the gateway G in self^^gw,
 			 * then
 			 *
-			 * 	if    the self^^gw[j] gateway is a "very similar" to G:
-			 * 		the worst between {G, self^^gw[j]} is discarded
-			 * 		from the self^^gw array, the other is kept
+			 * 	if    the self^^gw[j] gateway is "very similar" to G:
+			 * 		the worst of the two is discarded from the 
+			 * 		self^^gw array, the other is kept
 			 *
 			 * 	elif  self.gw isn't full:
-			 * 		G is inserted in self.gw[j]
-			 *
-			 *	elif  G is better then self.gw[0]:
-			 *	    	G replaces self.gw[0] and self.tpmask is
-			 *	    	set to the mask of G
-			 *
-			 *	elif  G is very similar to self.gw[0]:
-			 *		G isn't inserted
+			 * 		G is inserted in self^^gw
 			 *
 			 *	else:
-			 *	 	G is inserted in self.gw, and the worst
-			 *	 	gateway is removed from self.gw
+			 *	 	G is inserted in self^^gw, and the worst
+			 *	 	gateway is removed from self^^gw
 			 *
-			 * 	self.gw is sorted;
+			 * 	self^^gw is sorted;
 			 * 
-			 * *TODO: CONTINUERE HERE *
+			 * For the notion of "very similar" see :tp_almost_identical:
 			 *
-			 * Remotion
-			 * --------
+			 * Fuzzy hash
+			 * ----------
 			 *
-			 * If self.gw[0] is removed, then self.tpmask will be reset
-			 * to 0 until the tracer packet mask of the new self.gw[0]
-			 * will be available.
+			 * See :TODO_FUZZY_HASH:
 			 */
 			tpmask_t	topmask;
 
 			/* A pointer to the map node of this gateway */
 			struct map_node *node;
 
-			/* Route Efficiency Measure (see :rem_t:) of the
+			/*
+			 * Route Efficiency Measure (see :rem_t:) of the
 			 * following route:
 			 * 	this gw --> ^^map_node
 			 */
@@ -248,7 +210,8 @@ struct map_node
 		 * Empty elements are set to NULL.
 		 *
 		 * struct map_gw*/  *gw[MAX_METRIC_ROUTES];
-		/* TODO: use bsearch to peek into this array */
+
+		/* TODO: :TODO_BSEARCH_FOR_MAP_GW: */
 
 	} **metrics;
 
