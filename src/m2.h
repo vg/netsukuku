@@ -27,17 +27,37 @@
 
 #include "inet.h"
 
-/* Generic map defines */
-#define MAXGROUPNODE_BITS	8	/* 2^MAXGROUPNODE_BITS == MAXGROUPNODE */
+/*
+ * MAXGROUPNODE
+ * ============
+ *
+ * Maximum number of nodes present inside a single group node.
+ * This number must always be a power of 2.
+ */
+#define MAXGROUPNODE_BITS	8
 #define MAXGROUPNODE		(1<<MAXGROUPNODE_BITS)
-#define MAXROUTES	 	8
 
-#define MAXLINKS		MAXROUTES
+/*
+ * MAX_METRIC_ROUTES
+ * =================
+ *
+ * MAX_METRIC_ROUTES is the maximum number of different routes that can be saved
+ * in a metric array (see :MetricArrays:). It can be set set at runtime. 
+ * This is useful for small machine with strict memory limits.
+ *
+ * MAX_METRIC_ROUTES must be greater than MIN_MAX_METRIC_ROUTES.
+ * 
+ * By default MAX_METRIC_ROUTES is set to DEFAULT_MAX_METRIC_ROUTES.
+ */
+#define DEFAULT_MAX_METRIC_ROUTES	8	
+#define MIN_MAX_METRIC_ROUTES		1
+int 	MAX_METRIC_ROUTES = DEFAULT_MAX_METRIC_ROUTES;
+
 
 /*
  * map_node.flags 
  */
-
+#define MAP_NODE_FLAGS
 #define MAP_ME		1	/* The root node, i.e. localhost */
 #define MAP_VOID	(1<<1)	/* This node doesn't exist in the net */
 #define MAP_HNODE	(1<<2)  /* Hooking node. The node is hooking*/
@@ -52,10 +72,10 @@
 /*
  * 		      The QSPN internal map
  * 		    =========================
- *
+ * :map_node:
  * For any node `N' of the map, `N.gw' points to the rnode of the root node
  * to be used as gateway to reach `N'.
- * The only execption is the root_node itself: in `root_node.gw' we keep the 
+ * The only exception is the root_node itself: in `root_node.gw' we keep the 
  * rnodes of the root node.
  * The root node may have also rnodes of a different gnode, i.e. border nodes.
  * To store these external rnodes in root_node.r_node[x], the
@@ -68,39 +88,31 @@
  */
 
 /*
- * TODO: 
- * 	 - link_id
- * 	 - REM
+ * Link ID
+ * 
+ * Its 16 bits are splitted in this way:
+ *
+ * 	||   node id   |   link id counter   ||
+ *	     8 bits           8 bits
+ * TODO: what to do when the counter resets?
  */
+typedef struct {
+	u_short		nid:8;		/* node id */
+	u_short		lid:8;		/* link id */
+} linkid_t;
 
-typedef struct
-{
-	u_int		rtt;		/* Round trip time in ms */
+/* 
+ * Node ID
+ *
+ * It's a number in [0, 255]
+ */
+typedef uint8_t nid_t;
 
-	u_char		upbw;		/* Upload bandwidth */
-	/* TODO: remember the bottleneck */
-	u_char		dwbw;		/* Download */
-	u_char		uptime;		/* TODO: Specify a good format. Use bandwidth_in_8bit ? */
-} rem_t;
+#define MAX_LINKS	MAXGROUPNODE
 
-typedef struct
-{
-	nid_t		node;		/* TODO: when a `node' dies, we must update 
-					   all the `map_node.gw' */
-	
-	rem_t		rem;
-	
-	u_int		tphash[2];
-	u_char		tpsz;
-
-	/* TODO:
-	 * u_char	similarity_with_`gw[0]';
-	 *
-	 * insertion:
-	 *
-	 * remotion:
-	 *
-	 * `similarity_with_' viene anche usata per sortare (escluso gw[0])
+/*
+ *
+ * `similarity_with_' viene anche usata per sortare (escluso gw[0])
 	 *
 	 * Questa storia non influenza il QSPN
 	 *
@@ -112,57 +124,138 @@ typedef struct
 	 * solo gli altri hop. Ah, si hasha la bitmask del TP (escluso il gw).
 	 *
 	 * Come distinguere tra rotte di upload e download?
-	 */
-} map_gw;
+	 *
+	 * Che succede quando gw[0] viene cancellato?
+	 *  - Lasciare invariato tpmask, fino a quando non se ne presenta uno
+	 *    nuovo.
+	 *  - resettarlo a zero
 
-/*
- * Link ID
- * 
- * Its 16 bits are splitted in this way:
- *
- * 	||   node id   |   link id counter   ||
- *	     8 bits           8 bits
- * TODO: what to do when the counter resets?
+ * TODO: description
  */
-typedef unsigned short linkid_t;
 
-/* 
- * Node ID
- *
- * It's a number 0 <= n <= 255 
- */
-typedef unsigned char nid_t;
-
-#define MAX_LINKS	MAXGROUPNODE
-
-typedef struct
+struct map_node
 {
-	u_short 	flags;
+	u_short 	flags;		/* See :MAP_NODE_FLAGS: */
 
 	linkid_t	*linkids;	/* Array of link IDs */ 
 	u_char		links;		/* # links of this node */
 
-	map_gw		*gw;		/* Gateways used by the root node to
-					   reach this node */
-	u_short		gw_counter;	/* Number of gateways*/
-
-	/* 
-	 * The Tracer Packet bitmask of map_node.gw[0]
-	 * It is formed by MAX_TP_HOPS bits.
-	 * If the i-th bit is set, then the node with id `i', was a hop of the 
-	 * Tracer Packet from which gw[0] was extracted.
+	/*
+	 * MetricArrays
+	 * ============
 	 *
-	 * The `tpmask' is used to discard routes similar to that of gw[0],
-	 * thus all the gateways added in `map_node.gw' will point to routes
-	 * dissimilar to that of map_node.gw[0].
+	 * Since a route can be classified in REM_METRICS different ways (rtt,
+	 * upload bandwidth, ...), we keep a "metric array" for each category.
+	 * In each array, we can save a maximum of MAX_METRIC_ROUTES different routes,
+	 * however only their first hop is saved. The first hop is called
+	 * "gateway".
 	 *
-	 * In this way, if the route of gw[0] dies, the others will have a
-	 * high probability of being active, because they share a low number
-	 * of hops.
+	 * A metric array is always kept sorted. Its first element is the
+	 * most efficient (in terms of array's metric).
+	 * 
+	 * `self.metrics' is the array of all the metric arrays.
+	 * `self.metrics[M].gw' is the metric array associated to the metric `M'.
+	 *
+	 * Example
+	 * -------
+	 *
+	 * self.metrics[REM_IDX_RTT].gw is the metric array which keeps 
+	 * routes sorted by their rtt. 
+	 * self.metrics[REM_IDX_RTT].gw[0] is the route with the smallest
+	 * rtt value.
+	 *
+	 * Shared gateways
+	 * ---------------
+	 * 
+	 *	 ** TODO: implement this :TODO **
+	 * self.metrics[M].gw is an array of pointers. 
+	 * It may happen that a gateway is present simultaneusly in different
+	 * metric arrays. For this reason, when deleting a gateway, you must
+	 * be sure to delete it from all the other arrays.
 	 */
-	u_char		tpmask[MAX_TP_HOPS/8];
+	struct MetricArrays {
 
-	RSA		*pubk;		/* Public key of the node */
-} map_node;
+		/*
+		 * The gateway structure
+		 */
+		struct map_gw
+		{
+			/* 
+			 * tpmask
+			 * =======
+			 *
+			 * It is the Tracer Packet bitmask (see :tpmask_t:) of 
+			 * this gateway. It is used to discard gateways similar 
+			 * to `self' from the self^^gw metric array.
+			 *
+			 * In this way, if the route pointed by `self' dies, then the
+			 * others will have a high probability of being active.
+			 *
+			 * Insertion
+			 * ---------
+			 * 
+			 * Suppose we are trying to insert the gateway G in self^^gw,
+			 * then
+			 *
+			 * 	if    the self^^gw[j] gateway is a "very similar" to G:
+			 * 		the worst between {G, self^^gw[j]} is discarded
+			 * 		from the self^^gw array, the other is kept
+			 *
+			 * 	elif  self.gw isn't full:
+			 * 		G is inserted in self.gw[j]
+			 *
+			 *	elif  G is better then self.gw[0]:
+			 *	    	G replaces self.gw[0] and self.tpmask is
+			 *	    	set to the mask of G
+			 *
+			 *	elif  G is very similar to self.gw[0]:
+			 *		G isn't inserted
+			 *
+			 *	else:
+			 *	 	G is inserted in self.gw, and the worst
+			 *	 	gateway is removed from self.gw
+			 *
+			 * 	self.gw is sorted;
+			 * 
+			 * *TODO: CONTINUERE HERE *
+			 *
+			 * Remotion
+			 * --------
+			 *
+			 * If self.gw[0] is removed, then self.tpmask will be reset
+			 * to 0 until the tracer packet mask of the new self.gw[0]
+			 * will be available.
+			 */
+			tpmask_t	topmask;
+
+			/* A pointer to the map node of this gateway */
+			struct map_node *node;
+
+			/* Route Efficiency Measure (see :rem_t:) of the
+			 * following route:
+			 * 	this gw --> ^^map_node
+			 */
+			rem_t		rem;
+		}
+	
+		/* 
+		 * The metric array
+		 * ================
+		 *
+		 * This is the metric array. It is an array of pointers of
+		 * type `map_gw *'.
+		 *
+		 * Empty elements are set to NULL.
+		 *
+		 * struct map_gw*/  *gw[MAX_METRIC_ROUTES];
+		/* TODO: use bsearch to peek into this array */
+
+	} **metrics;
+
+	RSA		*pubk;		/* Public key of the this node */
+};
+typedef struct map_node map_node;
+typedef struct map_gw   map_gw;
+
 
 #endif /* MAP_H */

@@ -46,17 +46,20 @@
 int igw_multi_gw_disabled;
 
 /*
- * bandwidth_in_8bit:
+ * bandwidth_in_8bit
+ * -----------------
+ *
  * `x' is the bandwidth value expressed in Kb/s.
  * 
  * Since we consider `x' expressed in this form:
  * 	 x = y * 2^y; 
- * we can store just `y' in a u_char (8bit) variable.
+ * we can store `y' in a u_char (8bit) variable.
  *
  * `bandwidth_in_8bit' returns `y' from `x'.
  *
- * `x' cannot be greater than 3623878656 (27*2^27), so if `x' is in Kb/s the
- * maximum bandwidth we can store in a byte is 3.6Tb/s.
+ * The maximum integer we can store in an u_int is 27*2^27, thus `x' cannot be
+ * greater than 3623878656. In terms of bandwidth, this means that the maximum
+ * bandwidth we can store is 3.6Tb/s.
  */
 u_char bandwidth_in_8bit(u_int x)
 {

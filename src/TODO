@@ -6,10 +6,14 @@
 
 * (generally these TODOs are already being implemented at the moment)
 
+- grep TODO q2.[ch] m2.[ch] t2.[ch] rem.[ch]
+
 - The info regarding the External nodes must be kept in an ad-hoc struct.
 
 - igw.c must register the event QSPN_DEL_NODE, to notice the death of
   a igw.
+
+- Option -tiny which enables memory hacks, f.e. see :MAX_METRIC_ROUTES:
 
 - General API
 	- add_new_dev()
@@ -167,6 +171,13 @@
 	  "int_map" dumps the internal map in a ASCIIful way,
 	  "ext_map", "bnode_map", "andna_cache", ...,
 	  "flush rhcache"
+
+- RSA implementation of signature aggregation, see:
+  A Survey of Two Signature Aggregation Techniques:
+	  http://crypto.stanford.edu/~dabo/abstracts/aggsurvey.html
+
+  Aggregate and Verifiably Encrypted Signatures from Bilinear Maps:
+	  http://crypto.stanford.edu/~dabo/abstracts/aggreg.html
 
 - ntk-finger: it would be handy to be able to know some info on a particular
   node. The user puts his node info in /etc/netsukuku/finger.

@@ -34,5 +34,40 @@ typedef struct
 } tracer_hop;
 
 /*
- * Usare la stessa tecnica di tpmask per memorizzare gli hop in un TP ?!? 
+ * tpmask_t
+ * ========
+ *
+ * Tracer Packet bitmask. The mask is formed by MAX_TP_HOPS bits and is
+ * extracted from a tracer packet T.
+ * If the i-th bit is set, then the node with id `i', was a hop of the 
+ * T.
+ *
+ * This structure is used in :map_node:.
+ *
+ * Definitions
+ * -----------
+ *
+ * The "tpmask of the route R" is the mask of the tracer packet which
+ * has carried the route R.
+ *
+ * The "tpmask of the gateway N" is the mask of the tracer packet which
+ * has carried, as hop, the node N.
+ *
+ * The "tpmask of the gateway G" is the mask of the tracer packet which
+ * has carried, as last hop, the node G.
+ *
+ * Similarity
+ * ----------
+ *
+ * The similarity between two tpmasks is calculated as their hamming 
+ * distance. The hamming distance between two binary string a and b, is
+ * the number of ones in  a XOR b.
+ *
+ * distance = 0   	       -->  the two masks are identical, 
+ *          = MAX_TP_HOPS/8-1  -->  the two masks are completely the opposite
  */
+typedef struct
+{
+	u_char		mask[MAX_TP_HOPS/8];
+} tpmask_t;
+#define HAMD_MIN_EQ 	/* TODO: continue here */	
