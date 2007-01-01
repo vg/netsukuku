@@ -81,6 +81,67 @@ do{									\
 #define _return(x)	({return (x); (x);})
 
 
+/*
+ * counter_cmp
+ * ===========
+ *
+ * It is used to compare generic unsigned counters considering also their
+ * overflow.
+ *
+ * `a' is the old counter, while `b' is the new one.
+ *
+ * Generally the counter are bound in this way:
+ * 	
+ * 	{
+ * 	{ a_i = b_{i-1}
+ * 	{
+ * 	{ b_i = b_{i-1} + 1
+ * 	{ 
+ *
+ * For example, consider this simple protocol: host B sends periodically a 
+ * packet to A and includes in it the number of sent packets plus one.
+ * Host A, upon receiving the packet, saves the number in a counter and for
+ * each new received packet it updates the counter with the new value.
+ * If no packets are lost then  b - a == 1.
+ *
+ * Overflow
+ * --------
+ *
+ * `a' and `b' must be of the same unsigned integer type. 
+ * Suppose they are B bits long, then the following condition hold:
+ *
+ * 	if  a >= ( 1<<B - 1<<(B/2) )  AND  b <= 1<<(B/2)
+ * 	then
+ * 		a < b
+ * 	fi
+ * 
+ * Using this condition we can also compare desynchronised counters.
+ * For example, suppose a=254. It may happen that some packets sent by host B
+ * are lost and that the received packet contains b=2. In this case, `a' 
+ * will be considered less than `b', because we are supposing that `b' 
+ * overflowed.
+ *
+ * Return value
+ * ------------
+ * 
+ * It returns an integer less than, equal to, or greater than zero if `a'
+ * is considered to be respectively less than, equal to, or greater than `b'.
+ */
+#define counter_cmp(a,b)						\
+({									\
+ 	int _ret;							\
+#if sizeof(a) != sizeof(b)						\
+#error `a' and `b' aren't of the unsigned int type			\
+#endif									\
+	if((a) >= (1<<(sizeof(a)*8)) - (1<<(sizeof(a)*4)) &&		\
+			(b) <= (1<<(sizeof(a)*4)) )			\
+		_ret = -1;						\
+	else								\
+		/* Normal comparison */					\
+		_ret = ((a) > (b)) - ((a) < (b));			\
+	_ret;								\
+})
+
 /*\
  *   * *  Functions declaration  * *
 \*/

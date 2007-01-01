@@ -78,7 +78,9 @@ int 	MAX_METRIC_ROUTES = DEFAULT_MAX_METRIC_ROUTES;
  *
  * 	||   node id   |   link id counter   ||
  *	     8 bits           8 bits
- * TODO: what to do when the counter resets?
+ *
+ * The overflow of the link id counter is handled with the :counter_cmp:
+ * macro.
  */
 typedef struct {
 	u_short		nid:8;		/* node id */
@@ -96,9 +98,16 @@ typedef uint8_t nid_t;
 
 
 /*
- * TODO: description
+ * map_node
+ * ========
+ *
+ * A map_node struct contains all the information regarding a node of the
+ * gnode of level 0.
+ *
+ * The internal map is composed by MAXGROUPNODE map_node structs and is
+ * basically an array. The i-th struct of the array corresponds to the node
+ * whose id is `i'.
  */
-
 struct map_node
 {
 	u_short 	flags;		/* See :MAP_NODE_FLAGS: */
@@ -187,7 +196,7 @@ struct map_node
 			 *
 			 * See :TODO_FUZZY_HASH:
 			 */
-			tpmask_t	topmask;
+			tpmask_t	tpmask;
 
 			/* A pointer to the map node of this gateway */
 			struct map_node *node;

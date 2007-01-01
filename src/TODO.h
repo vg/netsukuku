@@ -29,3 +29,9 @@
  * The ext_rnodes struct can be merged here.
  */
 #define TODO_ROOT_NODE_STRUCT
+
+/*
+ * Use :counter_cmp: for all the counters, f.e. in andna.c there's the
+ * hnames_updates counter.
+ */
+#define TODO_COUNTER_CMP

@@ -3,18 +3,18 @@
 Subject: Life probability 
 
 ----
-This text describes a change to the Npv7.
-It will be included in the final documentation, so feel free to correct it.
-But if you want to change the system here described, please contact us first.
+		    * WARNING *
+	    This RFC has been deprecated
+		    * WARNING *
 ----
 
-Statistically the probability of a node to continue to stay up is related to
-its uptime, for example if the node X has an uptime of 30 seconds and the node Y of
-1200 seconds, then it is more probable that the node Y will continue to stay
-up.
+Statistically, the probability of a link to continue to stay up is
+proportional to its uptime, f.e. it's more probable that a link with 1200
+seconds of uptime is more stable than 10 seconds old link.
 
-For this reason we give higher credits to older nodes/gnodes, this means that
-we prefer to avoid routes which contain very young nodes.
+For this reason we give higher credits to older links, this means that
+we prefer to avoid routes which contain very young links.
+The uptime of a route is the uptime of the youngest link.
 
 {{{
 		A
@@ -24,12 +24,12 @@ we prefer to avoid routes which contain very young nodes.
                 N
 }}}
 
-Let's say K has an uptime of 600 seconds and L of 200.
-The node N, to reach A, will prefer the node K.
+Let's say K-A has an uptime of 600 seconds and L-A of 200.
+The node N, to reach A, will prefer the route N-K-A.
 
 === Implementation ===
 
-In the TP we record the uptime of each traversed node. In this way, the node
+In the TP we record the uptime of each traversed link. In this way, the node
 receiving the TP will be able to discriminate young routes from stable ones.
 
 ----
