@@ -46,57 +46,6 @@
 int igw_multi_gw_disabled;
 
 /*
- * bandwidth_in_8bit
- * -----------------
- *
- * `x' is the bandwidth value expressed in Kb/s.
- * 
- * Since we consider `x' expressed in this form:
- * 	 x = y * 2^y; 
- * we can store `y' in a u_char (8bit) variable.
- *
- * `bandwidth_in_8bit' returns `y' from `x'.
- *
- * The maximum integer we can store in an u_int is 27*2^27, thus `x' cannot be
- * greater than 3623878656. In terms of bandwidth, this means that the maximum
- * bandwidth we can store is 3.6Tb/s.
- */
-u_char bandwidth_in_8bit(u_int x)
-{
-	u_int i,z,a,b;
-	u_int diff_2;
-
-	for(z=27;z>=0;z--) {
-		
-		i=z<<z;
-		if(i==x)
-			/* x is exactly z*2^z */
-			return (u_char)z;
-	
-		b=(z-1)<<(z-1);
-		diff_2=(i-b)>>1;
-		if(x >= i-diff_2 && x <=i)
-			/* `x' is nearer to z*2^z than (z-1)*2^(z-1) */ 
-			return z;
-
-		a = z == 27 ? i : (z+1)<<(z+1);
-		diff_2=(a-i)>>1;
-		if(x <= i+diff_2 && x >= i)
-			/* `x' is nearer to z*2^z than (z+1)*2^(z+1) */ 
-			return z;
-	}
-	return 0;
-}
-
-/*
- * bandwidth_to_32bit: the inverse of bandwidth_in_8bit
- */
-u_int bandwidth_to_32bit(u_char x)
-{
-	return (u_int)x<<x;
-}
-
-/*
  * str_to_inet_gw:
  * The syntax of `str' is IP:devname, i.e. 192.168.1.1:eth0.
  * str_to_inet_gw() stores the IP in `gw'.
@@ -644,9 +593,9 @@ int igw_cmp(const void *a, const void *b)
 
 	/* let's calculate the connection quality of both A and B */
 	trtt = gw_a->node->links ? gw_a->node->r_node[0].trtt/1000 : 0;
-	cq_a = bandwidth_to_32bit(gw_a->bandwidth) - trtt;
+	cq_a = rem_bw_8to32(gw_a->bandwidth) - trtt;
 	trtt = gw_b->node->links ? gw_b->node->r_node[0].trtt/1000 : 0;
-	cq_b = bandwidth_to_32bit(gw_b->bandwidth) - trtt;
+	cq_b = rem_bw_8to32(gw_b->bandwidth) - trtt;
 	
 	return (cq_a > cq_b) - (cq_a < cq_b);
 }

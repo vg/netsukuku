@@ -361,7 +361,7 @@ int put_qspn_round(PACKET rq_pkt)
 {	
         /*
 	 * We cannot use this elegant struct because gcc is bugged, -_.
-	 * http://gcc.gnu.org/bugzilla/show_bug.cgi?id=27945
+	 * See :CITE_GCC_STRUCT_BUG:
 	 *
 	 * We have to wait some years, then when gcc4 will be obsolete (and
 	 * the bug will be solved), we'll activate it.

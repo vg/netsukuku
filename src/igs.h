@@ -21,6 +21,7 @@
 
 #include "route.h"
 #include "request.h"
+#include "rem.h"
 
 
 /*
@@ -39,8 +40,7 @@
  * The bandwidth of a gnode is the average of all the bandwidths of the nodes
  * belonging to that gnode.
  * 
- * Internally we save the `bandwidth' as a u_char variable using the
- * `bandwidth_in_8bit' function (see igs.c)
+ * Internally we save the `bandwidth' as a bw8_t variable (see :bw8_t:)
 \*/
 
 /* Minum bandwidth necessary to share an internet connection */
@@ -172,7 +172,7 @@ typedef struct default_inet_gw_nexthop igw_nexthop;
  * 	bchunk.gnode	= 0; this value has no meaning
  *	bchunk.level	= GET_LEVELS(my_family) + 1;
  *	bchunk.rtt	= the bandwidth of the internet connection of the gw.
- *			  It is in the bandwidth_in_8bit() format.
+ *			  It is in the bw8_t format.
 \*/
 
 #define MAX_IGW_PER_QSPN_CHUNK		16	/* Maximum number of IGWs 
@@ -196,7 +196,6 @@ igw_nexthop multigw_nh[MAX_MULTIPATH_ROUTES];
  *
 \*/
 
-u_char bandwidth_in_8bit(u_int x);
 int str_to_inet_gw(char *str, inet_prefix *gw, char **dev);
 char **parse_internet_hosts(char *str, int *hosts);
 void free_internet_hosts(char **hnames, int hosts);

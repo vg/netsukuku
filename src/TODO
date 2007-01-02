@@ -8,6 +8,8 @@
 
 - grep TODO q2.[ch] m2.[ch] t2.[ch] rem.[ch]
 
+- See TODO.h
+
 - igw.c must register the event QSPN_DEL_NODE, to notice the death of
   a igw.
 

@@ -16,10 +16,13 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * --
- * andna.c:
+ * andna.c
+ *
  * Here there are all the functions that send, receive and exec ANDNA packets.
  * All the threads of the ANDNA daemon and the main andna functions are here 
  * too.
+ *
+ * For more information on ANDNA see :CITE_ANDNA_DOC:
  */
 
 #include "includes.h"

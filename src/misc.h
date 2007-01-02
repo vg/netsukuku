@@ -130,9 +130,7 @@ do{									\
 #define counter_cmp(a,b)						\
 ({									\
  	int _ret;							\
-#if sizeof(a) != sizeof(b)						\
-#error `a' and `b' aren't of the unsigned int type			\
-#endif									\
+ 									\
 	if((a) >= (1<<(sizeof(a)*8)) - (1<<(sizeof(a)*4)) &&		\
 			(b) <= (1<<(sizeof(a)*4)) )			\
 		_ret = -1;						\

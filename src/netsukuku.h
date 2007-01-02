@@ -84,6 +84,9 @@ struct current_globals
 					   igw_find_node(igws, me.cur_quadg.gnode[_EL(level)]); */
 	u_char		my_bandwidth;	/* The bandwidth of the Internet connection 
 					   we are sharing*/
+	/* TODO --> :TODO_MY_UPBW: */
+	bw8_t		my_upbw;	/* Upload bandwidth */
+	bw8_t		my_dwbw;	/* Download bandwidth */
 	u_char		inet_connected; /* If it is 1, we are connected to the Internet */
 	
 	/* 

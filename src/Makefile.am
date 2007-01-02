@@ -12,8 +12,8 @@ ntkd_SOURCES = map.c misc.c buffer.c hash.c pkts.c qspn.c            \
 	bmap.c  conf.c crypto.c daemon.c dns_wrapper.c endianness.c  \
 	krnl_rule.c iptunnel.c libnetlink.c ll_map.c llist.c log.c   \
 	route.c tracer.c igs.c libping.c xmalloc.c netsukuku.c       \
-	mark.c libiptc/libip4tc.c
-ntkd_LDADD = -lpthread -lgmp -lcrypto -lresolv -lz
+	mark.c libiptc/libip4tc.c rem.c
+ntkd_LDADD = -lpthread -lgmp -lcrypto -lresolv -lz -lm
 ntkd_LDFLAGS = -rdynamic
 
 ntk_resolv_SOURCES = andns_lib.c ntkresolv.c andns_net.c crypto.c    \

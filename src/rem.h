@@ -21,18 +21,51 @@
  * Route Efficiency Measure
  */
 
+#ifndef REM_H
+#define REM_H
+
 /*
- * TODO: y=f(x)=4*x^2
- * 	 radar.c won't use anymore RTT_DELTA, it will just observes the
- * 	 changes of rtt8_t
+ * Round Trip time
+ * ---------------
+ *
+ * We can save the rtt, in millisec, using an unsigned integer of 8 bit or 32.
+ * The 32 bit integer `y' is used when an accurate precision is needed or when
+ * we just need to express the rtt in ms.
+ * The 8 bit integer `x' is used when we don't want to waste memory.
+ * The two are bounded by this law:
+ *
+ * 	y = 4*x^2
+ * 
+ * Note: a value stored in x isn't expressed in ms.
+ *
+ * You can use the :rem_rtt_8to32: and :rem_rtt_32to8: functions to convert a
+ * value in the preferred format.
+ *
+ * The maximum rtt value is 4*255^2 ms = 260100 ms = 260 s
  */
 typedef uint8_t rtt8_t;
 typedef uint32_t rtt32_t;
 
 /*
- * TODO:
- * y=f(x)=int(x/32+2)^2*x^int(x/128+2)+1; }
+ * Bandwidth
+ * ---------
+ * 
+ * We can save the bandwidth, in Kb/s, using an unsigned integer of 8 bit or 32.
+ * The 32 bit integer `y' is used when an accurate precision is needed or when
+ * we just need to express the bandwidth in Kb/s.
+ * The 8 bit integer `x' is used when we don't want to waste memory.
+ * The two are bounded by this law:
  *
+ * 	y = f(x) = int(x/32+2)^2*x^int(x/128+2)+1
+ *
+ * Where the int(x) function returns the integer part of x.
+ *
+ * Note: a value stored in x isn't expressed in Kb/s.
+ * 
+ * You can use the :rem_bw_8to32: and :rem_bw_32to8: functions to convert a
+ * value in the preferred format.
+ *
+ * The maximum bw value is f(255) = 1343091376 Kb/s = 1.25 Tb/s
  */
 typedef uint8_t bw8_t;
 typedef uint32_t bw32_t;
@@ -46,15 +79,15 @@ typedef uint32_t avg32_t;
 
 
 /*
- * TODO: 
- * 	 - link_id
- * 	 - REM
+ * rem_t
+ * -----
+ *
+ * Route Efficiency Measure structure.
+ * It is used to save the quality of a link or route.
  */
-
-
 typedef struct
 {
-	rtt_t		rtt;		/* Round trip time in ms */
+	rtt8_t		rtt;		/* Round trip time in ms */
 
 	bw8_t		upbw;		/* Upload bandwidth */
 	/* TODO: remember the bottleneck */
@@ -76,3 +109,16 @@ enum REM_indexes {
 	REM_IDX_DWBW,
 	REM_IDX_AVG
 };
+
+
+/*\
+ *  * * *  Exported functions  * * *
+\*/
+
+rtt32_t rem_rtt_8to32(rtt8_t x);
+rtt8_t rem_rtt_32to8(rtt32_t y);
+
+bw32_t rem_bw_8to32(bw8_t x);
+bw8_t rem_bw_32to8(bw32_t y);
+
+#endif /* REM_H */

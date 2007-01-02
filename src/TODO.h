@@ -1,3 +1,10 @@
+/*\
+ * TODO.h
+ * ------
+ *
+ * Detailed description of various TODOs sparsed in the sources. 
+ * Use cscope (or grep) to see where they are cited.
+\*/
 
 
 /*
@@ -35,3 +42,14 @@
  * hnames_updates counter.
  */
 #define TODO_COUNTER_CMP
+
+/*
+ * Observe the changes of a rtt8_t variable instead of using RTT_DELTA.
+ */
+#define TODO_RTT_DELTA_RTT8BIT
+
+/*
+ * Use me.my_upbw, me.my_dwbw, instead of me.my_bandwidth.
+ * More generally, split bandwidth in upload and downlod in igs.c
+ */
+#define TODO_MY_UPBW

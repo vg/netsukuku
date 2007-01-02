@@ -311,7 +311,7 @@ void fill_loaded_cfg_options(void)
 	OPT_GET_INT_VALUE ( "internet_download", co, server_opt.my_dnload_bw );
 	if(server_opt.my_upload_bw && server_opt.my_dnload_bw)
 		me.my_bandwidth =
-			bandwidth_in_8bit((server_opt.my_upload_bw+server_opt.my_dnload_bw)/2);
+			rem_bw_32to8((server_opt.my_upload_bw+server_opt.my_dnload_bw)/2);
 
 	if((value=opt_get_value("internet_ping_hosts", co))) {
 		server_opt.inet_hosts=parse_internet_hosts(value, 
@@ -592,7 +592,7 @@ void init_netsukuku(char **argv)
 	 * Initialize the Internet gateway stuff
 	 */
 	if(server_opt.my_upload_bw && server_opt.my_dnload_bw)
-	      me.my_bandwidth = bandwidth_in_8bit((server_opt.my_upload_bw + 
+	      me.my_bandwidth = rem_bw_32to8((server_opt.my_upload_bw + 
 						   server_opt.my_dnload_bw)/2);
 	init_internet_gateway_search();
 	

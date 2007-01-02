@@ -14,6 +14,14 @@
  * You should have received a copy of the GNU Public License along with
  * this source code; if not, write to:
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * --
+ * gmap.c
+ *
+ * Code regarding the gnodes and the external map.
+ *
+ * For more information on the maps and the topology of Netsukuku see
+ * :CITE_TOPOLOGY_DOC:
  */
 
 #include "includes.h"
