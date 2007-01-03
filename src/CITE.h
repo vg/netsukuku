@@ -46,3 +46,11 @@
  * http://gcc.gnu.org/bugzilla/show_bug.cgi?id=27945
  */
 #define CITE_GCC_STRUCT_BUG
+
+/*
+ * CIDR
+ *
+ * Classless InterDomain Routing
+ * http://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing
+ */
+#define CITE_CIDR

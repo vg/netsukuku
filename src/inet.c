@@ -19,7 +19,6 @@
 #include "includes.h"
 
 #include "common.h"
-#include "ipv6-gmp.h"
 #include "libnetlink.h"
 #include "ll_map.h"
 #include "inet.h"

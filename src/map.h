@@ -171,7 +171,8 @@ INT_INFO int_map_hdr_iinfo = { 2,
 
 /*\
  *
- * 	* * *  Functions' declaration  * * *
+ * 	* * *  Exported functions  * * *
+ *
 \*/
 
 /*conversion functions*/

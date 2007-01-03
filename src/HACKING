@@ -1,0 +1,75 @@
+Use cscope! 
+(Or better cscope+vim)
+
+--
+
+If you see a word surrounded by semicolon, jump on it. 
+Example:
+	 ...
+	 *
+	 * This structure is used in :map_node:.
+	 *
+	 ...
+
+--
+
+The word `self', when used in a comment placed inside a structure
+definition, refers to the same structure. Ex:
+
+	struct foo
+	{
+		/*
+		 * self.baz is a friend of self.bar
+		 */
+
+		int bar;
+		int baz;
+	}
+
+Suppose we have a nested structure definition, then we'll use the ^^ symbol to
+refer to the top structure. Ex:
+
+	struct map 
+	{
+		struct node
+		{
+			/*
+			 * Coordinates relative to this ^^map
+			 */
+			int xyz;
+		}
+	}
+
+The ^^ symbol can be also used to indicate the upper structures. Ex:
+
+	struct map 
+	{
+		struct group
+		{
+			/*
+			 * Distance from the start of the  self^^map  map
+			 */
+			int group_distance;
+
+			struct node
+			{
+				/*
+				 * Distance from the start of the
+				 * self^^group^^map  map
+				 */
+				/*
+				 * Distance from the start of the ^^map
+				 */
+				int node_distance;
+			}
+		}
+	}
+
+
+-- 
+
+See /usr/src/linux/Documentation/CodingStyle
+
+-- 
+
+Use todo.h, cite.h

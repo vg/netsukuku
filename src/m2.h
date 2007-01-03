@@ -32,7 +32,8 @@
  * ============
  *
  * Maximum number of nodes present inside a single group node.
- * This number must always be a power of 2.
+ * This number MUST NOT be changed, there are many hardcoded parts relying on
+ * MAXGROUPNODE == 256.
  */
 #define MAXGROUPNODE_BITS	8
 #define MAXGROUPNODE		(1<<MAXGROUPNODE_BITS)
@@ -108,10 +109,22 @@ typedef uint8_t nid_t;
  * basically an array. The i-th struct of the array corresponds to the node
  * whose id is `i'.
  */
+#define map_node_t
 struct map_node
 {
 	u_short 	flags;		/* See :MAP_NODE_FLAGS: */
 
+	/*
+	 * linkids
+	 * -------
+	 *
+	 * Each element of the `linkids' array is the link id (see :linkid_t)
+	 * of a link connecting the `self' map_node to another node of the
+	 * same internal map.
+	 * For this reason, the maximum number of elements is MAXGROUPNODE-1.
+	 * (We substract one because `self' can never be linked with itself).
+	 * Hence, using an u_char for the `links' counter is lecit.
+	 */
 	linkid_t	*linkids;	/* Array of link IDs */ 
 	u_char		links;		/* # links of this node */
 
@@ -228,6 +241,33 @@ struct map_node
 };
 typedef struct map_node map_node;
 typedef struct map_gw   map_gw;
+
+/*
+ * MAP_END
+ *
+ * Returns the pointer to the last struct of the internal map.
+ */
+#define MAP_END(mapstart)	(&mapstart[MAXGROUPNODE-1])
+
+/*\
+ *
+ * 	* * *  Exported functions  * * *
+ *
+\*/
+
+/*
+ * Conversion functions
+ */
+nid_t map_node2pos(map_node *node, map_node *map);
+map_node *map_pos2node(nid_t pos, map_node *map);
+void map_pos2ip(nid_t map_pos, inet_prefix ipstart, inet_prefix *ret);
+void map_node2ip(map_node *map, map_node *node, inet_prefix ipstart, inet_prefix *ret);
+int  map_ip2node(map_node *map, inet_prefix ip, inet_prefix ipstart, map_node **ret);
+
+map_node *map_alloc(int nnodes);
+void map_free(map_node *map, size_t count);
+void map_del_node(map_node *node);
+void map_reset(map_node *map, int maxgroupnode);
 
 
 #endif /* MAP_H */

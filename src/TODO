@@ -13,6 +13,9 @@
 - igw.c must register the event QSPN_DEL_NODE, to notice the death of
   a igw.
 
+- Remove ipv6-gmp.[ch]. It's no more necessary. Remove also the dependence of
+  libgmp.
+
 - Option -tiny which enables memory hacks, f.e. see :MAX_METRIC_ROUTES:
 
 - General API

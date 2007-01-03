@@ -126,16 +126,45 @@ INT_INFO map_gnode_iinfo = { 1,
  * a gnode of the `lvl'th level */
 #define NODES_PER_LEVEL(lvl)	((1<<(MAXGROUPNODE_BITS*(lvl))))
 
+/*
+ * ipstart_t
+ * ---------
+ *
+ * The ipstart is the full IP of a node or gnode.
+ *
+ * Generally the ipstart is associated to a level.
+ * The ipstart of level 0 is the full IP of a single node, f.e. 11.22.33.44.
+ * The ipstart of level 1 is the CIDR [1] IP of a gnode of level 1, f.e.
+ * 11.22.33.0/24
+ * So the same ipstart of level 2 is 11.22.0.0/16
+ *
+ * [1] See :CITE_CIDR:
+ */
+typedef inet_prefix ipstart_t;
+
 /* Struct used to keep all the quadro_group ids of a node. (The node is part of this
  * quadro groups) */
 typedef struct {
-	u_char      levels;		 /*How many levels we have*/
-	int         gid[MAX_LEVELS];	 /*Group ids. Each element is the gid of the quadrogroup in the 
-					   relative level. (ex: gid[n] is the gid of the quadro_group a 
-					   the n-th level)*/
-	map_gnode  *gnode[MAX_LEVELS-ZERO_LEVEL]; /*Each element is a pointer to the relative
-						    gnode in the ext_map.*/
-	inet_prefix ipstart[MAX_LEVELS]; /*The ipstart of each quadg.gid in their respective levels*/
+	u_char		levels;		 /*How many levels we have*/
+
+	/* 
+	 * Group IDs
+	 *
+	 * Each element is the gid of the quadrogroup in the
+	 * relative level. (ex: gid[n] is the gid of the quadro_group a
+	 * the n-th level)
+	 */
+	int		gid[MAX_LEVELS];
+
+	/*
+	 * Each element is a pointer to the relative gnode in the ext_map.
+	 */
+	map_gnode	*gnode[MAX_LEVELS-ZERO_LEVEL];
+
+	/* 
+	 * The ipstart of each quadg.gid in their respective levels
+	 */
+	ipstart_t	ipstart[MAX_LEVELS];
 }quadro_group;
 
 /* Note: this is the int_info of the a packed quadro_group struct, which

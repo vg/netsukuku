@@ -42,7 +42,7 @@ typedef struct
  * If the i-th bit is set, then the node with id `i', was a hop of the 
  * T.
  *
- * This structure is used in :map_node:.
+ * This structure is used in :map_node_t:.
  *
  * Definitions
  * -----------
@@ -70,4 +70,4 @@ typedef struct
 {
 	u_char		mask[MAX_TP_HOPS/8];
 } tpmask_t;
-#define HAMD_MIN_EQ 	/* TODO: continue here */	
+#define HAMD_MIN_EQ 	/* TODO: continue here */

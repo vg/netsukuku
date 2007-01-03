@@ -21,6 +21,10 @@
 #ifndef IPV6_GMP_H
 #define IPV6_GMP_H
 
+#warning THIS HAS BEEN DEPRECATED. REMOVE ME!!
+#warning THIS HAS BEEN DEPRECATED. REMOVE ME!!
+#warning THIS HAS BEEN DEPRECATED. REMOVE ME!!
+
 #define ZERO128		{0,0,0,0}
 
 /* * * Defines used for mpz_import/export * * */

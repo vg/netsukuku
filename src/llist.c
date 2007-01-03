@@ -22,7 +22,7 @@
  * Why did I used macros for all these functions?
  * Well, I just love the blue-smurf-like syntax highlighting of Vim ^_-
  *
- * Moreover using `typeof' and other nice tricks each macro can recognize the
+ * Moreover using `typeof' and other nice tricks, each macro can recognize the
  * size of the arguments, in this way we can have functions like `list_copy',
  * `list_init'.
  * Finally, performance is optimised. I don't trust gcc and its -O2, (and they
@@ -368,11 +368,11 @@ do{									\
  *	 }
  *
  * WARNING: do not use expressions!! For example:
- *    DO NOT THIS
+ *    DON'T DO THIS
  * 	list_for(index=head_of_the_llist) {
  * 		...
  * 	}
- *    DO NOT THIS
+ *    DON'T DO THIS
  * In this case `index' will be set to `head_of_the_llist' each time and
  * you'll get an infinite loop;
  */

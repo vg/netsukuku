@@ -24,6 +24,9 @@
 #define MAX_IP_INT	4
 #define MAX_IP_SZ	(MAX_IP_INT*sizeof(int))
 
+#define INET_IPV4_SZ	4
+#define INET_IPV6_SZ	16
+
 /*
  * This is the "link-scope all-hosts multicast" address: ff02::1.
  */
