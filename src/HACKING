@@ -3,7 +3,7 @@ Use cscope!
 
 --
 
-If you see a word surrounded by semicolon, jump on it. 
+If you see a word surrounded by semicolon, jump on it (you need cscope). 
 Example:
 	 ...
 	 *
@@ -68,8 +68,15 @@ The ^^ symbol can be also used to indicate the upper structures. Ex:
 
 -- 
 
-See /usr/src/linux/Documentation/CodingStyle
+Read /usr/src/linux/Documentation/CodingStyle
 
 -- 
 
-Use todo.h, cite.h
+Use TODO.h, CITE.h
+
+-- 
+
+In the name of the function defined in foo.c use the prefix `foo_' or its
+abbrevation. For example,
+
+	int foo_bar(int gh) {  };

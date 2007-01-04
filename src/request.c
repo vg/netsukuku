@@ -32,6 +32,7 @@
 
 #include "hash.h"
 #include "request.h"
+#include "buffer.h"
 #include "xmalloc.h"
 #include "log.h"
 
@@ -214,14 +215,7 @@ void rq_del_request(rq_t rq_hash)
 	if((idx=rq_bsearch_hash(rq_hash)) < 0)
 		return;
 
-	if(idx < ntk_rq_counter-1)
-		/* Shifts all the succesive elements of `idx', in this way,
-		 * the order of the array isn't changed */
-		memmove(&ntk_request[idx], 
-			  &ntk_request[idx+1],
-				sizeof(request)*(ntk_rq_counter-idx-1));
-	ntk_rq_counter--;
-	ntk_request=xrealloc(ntk_request, ntk_rq_counter*sizeof(request));
+	array_rem_free(&ntk_request, &ntk_rq_counter, 0, idx);
 }
 
 /*
@@ -343,14 +337,7 @@ void rqerr_del_error(rqerr_t rqerr_hash)
 	if((idx=rqerr_bsearch_hash(rqerr_hash)) < 0)
 		return;
 
-	if(idx < ntk_err_counter-1)
-		/* Shifts all the succesive elements of `idx', in this way,
-		 * the order of the array isn't changed */
-		memmove(&ntk_request_err[idx], 
-			  &ntk_request_err[idx+1],
-				sizeof(request_err)*(ntk_err_counter-idx-1));
-	ntk_err_counter--;
-	ntk_request_err=xrealloc(ntk_request_err, ntk_err_counter*sizeof(request_err));
+	array_rem_free(&ntk_request_err, &ntk_err_counter, 0, idx);
 }
 
 

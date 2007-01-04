@@ -45,7 +45,7 @@
  * xfree
  *
  * It calls _xfree(__pptr) and then sets `__pptr' to 0.
- * It is safe, you can use it also with expressions:
+ * It is safe, you can use it also with expressions like
  * 	xfree(a++);
  */
 #define xfree(__pptr)							\
@@ -53,6 +53,18 @@
 	char **_p=(char **)&(__pptr); 					\
 	_xfree(*_p);							\
 	*_p=0;								\
+})
+
+/*
+ * zfree
+ *
+ * Calls :xfree: only if _zPtr is non zero
+ */
+#define zfree(_zPtr)							\
+({									\
+	char **_zP=(char **)&(_zPtr); 					\
+	if(*_zP)							\
+		xfree(*_zP);						\
 })
 
 /* Functions declaration */

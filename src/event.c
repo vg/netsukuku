@@ -209,14 +209,7 @@ void ev_del_event(ev_t ev_hash)
 	if((idx=ev_bsearch_hash(ev_hash)) < 0)
 		return;
 
-	if(idx < ntk_ev_counter-1)
-		/* Shifts all the succesive elements of `idx', in this way,
-		 * the order of the array isn't changed */
-		memmove(&ntk_event[idx], 
-			  &ntk_event[idx+1],
-				sizeof(ev_tbl)*(ntk_ev_counter-idx-1));
-	ntk_ev_counter--;
-	ntk_event=xrealloc(ntk_event, ntk_ev_counter*sizeof(ev_tbl));
+	array_rem_free(&ntk_event, &ntk_ev_counter, 0, idx);
 }
 
 /*

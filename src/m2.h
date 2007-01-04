@@ -227,15 +227,16 @@ struct map_node
 		 * ================
 		 *
 		 * This is the metric array. It is an array of pointers of
-		 * type `map_gw *'.
+		 * type `map_gw *'. The number of elements doesn't vary and
+		 * it's :MAX_METRIC_ROUTES:.
 		 *
 		 * Empty elements are set to NULL.
 		 *
-		 * struct map_gw*/  *gw[MAX_METRIC_ROUTES];
+		 * struct map_gw*/  **gw/*[MAX_METRIC_ROUTES]*/;
 
 		/* TODO: :TODO_BSEARCH_FOR_MAP_GW: */
 
-	} **metrics;
+	} metrics[REM_METRICS];
 
 	RSA		*pubk;		/* Public key of the this node */
 };

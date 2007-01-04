@@ -101,33 +101,51 @@
  *
  * `buf' is the pointer to the start of the array, i.e. the first element.
  *
- * `nmemb' is the number of elements stored in the array. buf[nmemb-1] is the
+ * `nmemb' is the number of elements stored in the array. buf[*nmemb-1] is the
  * last one.
  *
  * `nalloc' is the number of allocated elements of the array. It can be
- * greater than `nmemb'.
+ * greater than `nmemb'. 
  *
  *
- * The following macros are used to manipulate a buffer array.
+ * The macros defined below are used to manipulate a buffer array. Their
+ * generic prototype is:
+ *
+ * 	atype **_buf, int *_nmemb, int *_nalloc
+ *
+ * Where `_buf' is a pointer to a `buf' pointer described above.
+ * `_nmemb' is a pointer to a `nmemb' variable,
+ * `_nalloc' is a pointer to a `nalloc' variable.
+ * Note that a macro may modify `*_buf', `*_nmemb' or `*_nalloc'.
+ * 
+ *
  * WARNING: do not use expression as arguments to these macros. For example,
- * DO NOT use array_replace(.., pos++, ...), but instead
- * array_replace(.., pos, ...); pos++;
+ * 	    DO NOT use array_replace(.., pos++, ...), but instead
+ * 	    array_replace(.., pos, ...); pos++;
  *
+ * Note:    `_nmemb' and `_nalloc' must to two different variables.
+ * 	    If you don't want to specify `_nalloc', set it to 0.
+ * 	    If the `nalloc' argument passed to a macro is set to 0, then
+ * 	    the macro will assume that  *nmemb == *nalloc  and it will only 
+ * 	    modify `*nmemb'.
 \*/
 #define bufarr_t
 
 /*
  * array_replace
- * ------------
+ * -------------
  *
- * Copies the data pointed by _new to _buf[_pos] and returns &_buf[pos]
- * Note: `_pos' must be < `_nmemb', otherwise an overflow will occur.
+ * Copies the data pointed by _new to (*_buf)[_pos] and returns &(*_buf)[pos]
+ * Note: `_pos' must be < `*nalloc', otherwise an overflow will occur.
+ *
+ * Usage:
+ * 	array_replace(&buf_array_ptr, pos, new_element_ptr);
  */
-#define array_replace(_buf, _nmemb, _nalloc, _pos, _new)		\
+#define array_replace(_buf, _pos, _new)					\
 ({									\
-	void *_ptr=(_buf)[(_pos)];					\
-	memcpy(_ptr, (_new), sizeof(typeof(*(_new))));			\
-	_ptr;								\
+	void *_ar_ptr=(*(_buf))[(_pos)];				\
+	memcpy(_ar_ptr, (_new), sizeof(typeof(*(_new))));		\
+	(typeof(*(_buf)) _ar_ptr;					\
 })
 
 /*
@@ -135,15 +153,18 @@
  * ------------
  *
  * The same of :array_replace:, but with an additional check.
- * :fatal(): is called is _pos is greater than _nmemb
+ * :fatal(): is called if _pos is greater than *_nalloc
+ *
+ * Usage:
+ * 	array_insert(&buf_array_ptr, &nalloc_var, new_elem_ptr);
  */
-#define array_insert(_buf, _nmemb, _nalloc, _pos, _new)			\
+#define array_insert(_buf, _nalloc, _pos, _new)				\
 ({									\
- 	if((_pos) >= (_nmemb) || (_pos) < 0)				\
-		fatal(ERROR_MSG"Array overflow: _nmemb %d, _pos %d",	\
-			ERROR_POS, (_nmemb), (_pos));			\
+ 	if(_pos >= *(_nalloc) || _pos < 0)				\
+		fatal(ERROR_MSG"Array overflow: _nalloc %d, _pos %d",	\
+			ERROR_POS, _nalloc, _pos);			\
 									\
-	array_replace((_buf), (_nmemb), (_nalloc), (_pos), (_new));	\
+	array_replace(_buf, _pos, _new);				\
 })
 
 
@@ -153,34 +174,51 @@
  *
  * It enlarges the array by allocating `_count' elements and appending them at
  * its end.
- * _nalloc is incremented and the new pointer to the start of the array is
- * returned.
+ * `*_nalloc' is incremented and `*_buf' is set to point to the new start of the 
+ * array (since :xrealloc(): is used).
  *
- * Usage:
- *	buf_array_grow(buf, nmemb, nalloc, count);
+ * If the `_nalloc' argument is set to 0, then this macro will ignore the
+ * `_count' argument assuming that `*_nmemb' == `*_nalloc'+`*_count' and it 
+ * won't increment anything.
  *
  * Note: if `_count' is a negative value, the array is shrinked (see
  * :array_shrink:)
+ *
+ * Usage:
+ * 	array_grow(&buf_array_ptr, &nmemb_var, &nalloc_var, count);
+ * or
+ * 	array_grow(&buf_array_ptr, &nmemb_var_already_incremented, 0, 0);
  */
 #define array_grow(_buf, _nmemb, _nalloc, _count)                       \
-({									\
- 	ssize_t _na=(_nalloc);						\
-	(_nalloc) = ( _na+=(_count) );					\
- 	if(_na < 0)							\
-		fatal(ERROR_MSG"Array overflow: _count %d",		\
+do {									\
+ 	typeof(_nmemb) _ag_na = (_nalloc);				\
+	typeof(*(_nmemb)) _ag_fake_na;					\
+	if(!_ag_na) {							\
+		_ag_fake_na = *(_nmemb);				\
+		_ag_na = &_ag_fake_na;					\
+	}								\
+	(*_ag_na)+=(_count);						\
+ 	if(*_ag_na < 0)							\
+		fatal(ERROR_MSG"Array underflow: _count %d",		\
 			ERROR_POS, _count);				\
-	(_buf)=xrealloc((_buf), sizeof(typeof(*(_buf))) * _na);		\
-)}
+	*(_buf)=xrealloc(*(_buf), sizeof(typeof(**(_buf))) * (*_ag_na));\
+} while(0)
 
 /*
  * array_shrink
  * ------------
  *
  * Deallocates and destroys the last `_count' elements of the array.
- * The new pointer to the start of the array is returned.
+ * `*_buf' is set to point to the new start of the array (since :xrealloc():
+ * is used).
+ *
+ * If the `_nalloc' argument is set to 0, then this macro will assume that 
+ * `*_nmemb' == `*_nalloc'-`*_count' and it won't increment anything.
  *
  * Usage:
- *	buf_array_shrink(buf, nmemb, nalloc, count);
+ * 	array_shrink(&buf_array_ptr, &nmemb_var, &nalloc_var, count);
+ * or
+ * 	array_shrink(&buf_array_ptr, &nmemb_var_already_decremented, 0, 0);
  */
 #define array_shrink(_buf, _nmemb, _nalloc, _count)			\
 		array_grow(_buf, _nmemb, _nalloc, -abs(_count))
@@ -190,12 +228,12 @@
  */
 #define array_add_grow(_buf, _nmemb, _nalloc, _new, _newalloc)		\
 ({									\
- 	(_nmemb)++;							\
+ 	(*(_nmemb))++;							\
 									\
-	if((_nmemb) > (_nalloc))					\
-		array_grow((_buf), (_nmemb), (_nalloc), (_newalloc));	\
+	if(!(_nalloc) || *(_nmemb) > *(_nalloc))			\
+		array_grow(_buf, _nmemb, _nalloc, _newalloc);		\
 									\
-	array_insert((_buf), (_nmemb), (_nalloc), (_nmemb)-1, (_new));	\
+	array_replace(_buf, (*(_nmemb))-1, _new);			\
 )}
 
 
@@ -206,11 +244,20 @@
  * Adds a new element at the end of the array and copies in it
  * the data pointed by `_new'.
  *
- * _nmemb is incremented by one.
- * If necessary, a new element is allocated at the end of the
- * array and _nalloc is incremented by one.
+ * `*_nmemb' is always incremented by one. If necessary, a new 
+ * element is allocated at the end of the array and `*_nalloc' is incremented
+ * by one.
  *
  * The pointer to the new inserted element is returned.
+ *
+ * Exception:
+ * if the `_nalloc' argument is set to 0, then this macro will assume that 
+ * `*_nmemb' == `*_nalloc', and only `*_nmemb' will be incremented.
+ *
+ * Usage:
+ * 	array_add(&buf_array_ptr, &nmemb_var, &nalloc_var, new_elem_ptr);
+ * or
+ * 	array_add(&buf_array_ptr, &nmemb_var, 0, new_element_ptr);
  */
 #define array_add(_buf, _nmemb, _nalloc, _new)				\
 		array_add_grow(_buf, _nmemb, _nalloc, _new, 1)
@@ -233,8 +280,9 @@
  *
  * Deletes the element at position `_pos'.
  * The element is deleted by copying the last element of the array over it,
- * i.e. we copy _buf[_nmemb-1] over _buf[_pos]. In this way, the last element
- * of the array is reusable.
+ * i.e. we copy (*_buf)[*_nmemb-1] over (*_buf)[_pos]. In this way, the last 
+ * element of the array is reusable.
+ * `*_nmemb' is decremented by one.
  *
  * Note that this macro doesn't deallocate anything, see :array_del_free: for
  * that.
@@ -242,15 +290,15 @@
  * If `_pos' isn't a valid value, an array overflow occurs and :fatal(): is
  * called.
  */
-#define array_del(_buf, _nmemb, _nalloc, _pos)				\
+#define array_del(_buf, _nmemb, _pos)					\
 do {									\
-	if((_pos) >= (_nmemb) || (_pos) < 0)				\
-		fatal(ERROR_MSG"Array overflow: _nmemb %d, _pos %d",	\
-			ERROR_POS, ((_nmemb)), ((_pos)));		\
-	(_nmemb)--;							\
-	if((_pos) < (_nmemb))						\
-		memcpy( (_buf)[(_pos)], (_buf)[(_nmemb)], 		\
-				sizeof(typeof(*((_buf)))) );		\
+	if(_pos >= *(_nmemb) || _pos < 0)				\
+		fatal(ERROR_MSG "Array overflow: _nmemb %d, _pos %d",	\
+			ERROR_POS, *(_nmemb), *(_pos));			\
+	(*(_nmemb))--;							\
+	if(_pos < *(_nmemb))						\
+		memcpy( (*(_buf))[(_pos)], (*(_buf))[*(_nmemb)], 	\
+				sizeof(typeof(**(_buf))) );		\
 } while(0)
 
 /*
@@ -258,29 +306,94 @@ do {									\
  * --------------
  *
  * The same of :array_del:, but deallocates one element from the array.
- * The new pointer to the start of the array is returned.
+ * `*_buf' is set to point to the new start of the array (since :xrealloc():
+ * is used).
+ *
+ * Exception:
+ * if the `_nalloc' argument is set to 0, then this macro will assume that 
+ * `*_nmemb' == `*_nalloc', and only `*_nmemb' will be decremented.
  *
  * Usage:
- *	buf_del_free(buf, nmemb, nalloc, pos);
+ * 	array_del_free(&buf_array_ptr, &nmemb_var, &nalloc_var, pos);
+ * or
+ * 	array_del_free(&buf_array_ptr, &nmemb_var, 0, pos);
  */
 #define array_del_free(_buf, _nmemb, _nalloc, _pos)			\
-({									\
-	array_del((_buf), (_nmemb), (_nalloc), (_pos));			\
-	array_shrink((_buf), (_nmemb), (_nalloc), 1);			\
-})
+do {									\
+	array_del(_buf, _nmemb, _pos);					\
+	array_shrink(_buf, _nmemb, _nalloc, 1);				\
+} while(0)
+
+/*
+ * array_rem
+ * ---------
+ *
+ * Deletes the element at position `_pos'.
+ * The element is deleted by shifting to the left all its successive elements.
+ * In this way, the order of the array is preserved.
+ * This is useful if the array has been ordered with qsort(3), however this is
+ * less efficient than :array_del:.
+ *
+ * Note that this macro doesn't deallocate anything, see :array_rem_free: for
+ * that.
+ *
+ * If `_pos' isn't a valid value, an array overflow occurs and :fatal(): is
+ * called.
+ */
+#define array_rem(_buf, _nmemb, _pos)					\
+do {									\
+	if(_pos >= *(_nmemb) || _pos < 0)				\
+		fatal(ERROR_MSG"Array overflow: _nmemb %d, _pos %d",	\
+			ERROR_POS, *(_nmemb), _pos);			\
+	/* Shift the array */						\
+	if(_pos < (*(_nmemb))-1)					\
+                memmove( &(*(_buf))[_pos], &(*(_buf))[_pos+1],		\
+                      sizeof(typeof(**(_buf))) * ((*(_nmemb))-_pos-1));	\
+	(*(_nmemb))--;							\
+} while(0)
+
+/*
+ * array_rem_free
+ * --------------
+ *
+ * The same of :array_rem:, but deallocates one element from the array.
+ * `*_buf' is set to point to the new start of the array (since :xrealloc():
+ * is used).
+ */
+#define array_rem_free(_buf, _nmemb, _nalloc, _pos)			\
+do {									\
+	array_rem(_buf, _nmemb, _pos);					\
+	array_shrink(_buf, _nmemb, _nalloc, 1);				\
+} while(0)
 
 /*
  * array_destroy
  * -------------
  *
- * Deallocates the whole array, setting _nmemb and _nalloc to zero.
+ * Deallocates the whole array, setting `*_nmemb' and `*_nalloc' to zero.
  */
 #define array_destroy(_buf, _nmemb, _nalloc)				\
 do {									\
-	if((_buf) && (_nmemb))						\
-		xfree((_buf));						\
-	(_nmemb)=0;							\
-	(_nalloc)=0;							\
+	if(*(_buf) && *(_nmemb))					\
+		xfree(*(_buf));						\
+	*(_nmemb)=0;							\
+	*(_nalloc)=0;							\
+} while(0)
+
+/*
+ * array_bzero
+ * -----------
+ *
+ * Sets `_count' elements of the array to 0. 
+ * If `_count' > `*_nalloc', :fatal(): is called.
+ */
+#define array_bzero(_buf, _nalloc, _count)				\
+do {									\
+	if((_count) > *(_nalloc))					\
+		fatal(ERROR_MSG "Array overflow: _count %d",		\
+			ERROR_POS, (_count));				\
+									\
+	setzero(*(_buf), sizeof(typeof(**(_buf))) * (_count));		\
 } while(0)
 
 
