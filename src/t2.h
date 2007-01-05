@@ -16,6 +16,9 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#ifndef TRACER_H
+#define TRACER_H
+
 /*
  * Note: this file will substitute tracer.h
  */
@@ -71,3 +74,5 @@ typedef struct
 	u_char		mask[MAX_TP_HOPS/8];
 } tpmask_t;
 #define HAMD_MIN_EQ 	/* TODO: continue here */
+
+#endif /*TRACER_H*/

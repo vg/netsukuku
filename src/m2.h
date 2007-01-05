@@ -158,8 +158,6 @@ struct map_node
 	 * Shared gateways
 	 * ---------------
 	 * 
-	 *	 ** TODO: implement this **
-	 *
 	 * self.metrics[M].gw is an array of pointers. 
 	 * It may happen that a gateway is present simultaneusly in different
 	 * metric arrays. For this reason, when deleting a gateway, you must
@@ -227,18 +225,26 @@ struct map_node
 		 * ================
 		 *
 		 * This is the metric array. It is an array of pointers of
-		 * type `map_gw *'. The number of elements doesn't vary and
-		 * it's :MAX_METRIC_ROUTES:.
+		 * type `map_gw *'. Each pointer must be unique, i.e. there
+		 * can't be two of them pointing to the same gw.
 		 *
-		 * Empty elements are set to NULL.
+		 * The number of elements is :MAX_METRIC_ROUTES:.
+		 * This array is allocated, once for all, at the initialization
+		 * of the map, so its number of elements never change. Empty 
+		 * elements are just set to NULL.
+		 * All the non-empty elements are at the start of the array. 
+		 * There can't be an empty element between two non-empty.
+		 *
+		 * --
 		 *
 		 * struct map_gw*/  **gw/*[MAX_METRIC_ROUTES]*/;
+#define map_metrarray_t
 
 		/* TODO: :TODO_BSEARCH_FOR_MAP_GW: */
 
 	} metrics[REM_METRICS];
 
-	RSA		*pubk;		/* Public key of the this node */
+	RSA		*pubkey;	/* Public key of the this node */
 };
 typedef struct map_node map_node;
 typedef struct map_gw   map_gw;
@@ -249,6 +255,11 @@ typedef struct map_gw   map_gw;
  * Returns the pointer to the last struct of the internal map.
  */
 #define MAP_END(mapstart)	(&mapstart[MAXGROUPNODE-1])
+
+
+/*
+ * TODO: TODO_PACK_MAP_HEADER
+ */
 
 /*\
  *
@@ -267,8 +278,17 @@ int  map_ip2node(map_node *map, inet_prefix ip, inet_prefix ipstart, map_node **
 
 map_node *map_alloc(int nnodes);
 void map_free(map_node *map, size_t count);
-void map_del_node(map_node *node);
-void map_reset(map_node *map, int maxgroupnode);
+void map_reset(map_node *map, size_t count);
 
+int map_gw_del(map_node *node, map_gw *gw);
+void map_gw_reset(map_node *node);
+void map_gw_destroy(map_node *node);
+
+void map_node_reset(map_node *node);
+void map_node_del(map_node *node);
+
+map_gw *map_gw_find(map_node *node, map_node *n);
+int map_gw_count(map_gw **gw);
+void map_gw_sort(map_gw **gw, metric_t metric);
 
 #endif /* MAP_H */

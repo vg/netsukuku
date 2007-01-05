@@ -76,7 +76,18 @@ Use TODO.h, CITE.h
 
 -- 
 
+** Functions names 
+
 In the name of the function defined in foo.c use the prefix `foo_' or its
 abbrevation. For example,
 
 	int foo_bar(int gh) {  };
+
+In the first part of the function, put what the function is operating on, then
+in the last part of the name put the action performed by it.
+For example:
+
+	RIGHT:	void map_node_del(map_node *node);
+	
+	WRONG:	void map_del_node()
+	WRONG:	void del_map_node()

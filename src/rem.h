@@ -103,6 +103,7 @@ typedef struct
 /*
  * Indexes of the various metrics placed in rem_t
  */
+typedef int metric_t;
 enum REM_indexes {
 	REM_IDX_RTT=0,
 	REM_IDX_UPBW,
@@ -120,5 +121,10 @@ rtt8_t rem_rtt_32to8(rtt32_t y);
 
 bw32_t rem_bw_8to32(bw8_t x);
 bw8_t rem_bw_32to8(bw32_t y);
+
+int rem_bw_cmp(bw32_t a, bw32_t b);
+int rem_rtt_cmp(rtt32_t a, rtt32_t b);
+int rem_avg_cmp(rem_t a, rem_t b);
+int rem_metric_cmp(rem_t a, rem_t b, metric_t metric);
 
 #endif /* REM_H */

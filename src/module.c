@@ -229,7 +229,7 @@ int mod_parse_args(module *mod)
 	opt_close(&o);
 
 finish:
-	arg_line && xfree(arg_line);
+	zfree(arg_line);
 
 	return ret;
 }
@@ -518,11 +518,11 @@ void module_free(module *mod)
 {
 	if(mod->mod_opt)
 		opt_close(&mod->mod_opt);
-	mod->name && xfree(mod->name);
-	mod->filename && xfree(mod->filename);
-	mod->args && xfree(mod->args);
-	mod->deps && xfree(mod->deps);
-	mod->deps_args && xfree(mod->deps_args);
+	zfree(mod->name);
+	zfree(mod->filename);
+	zfree(mod->args);
+	zfree(mod->deps);
+	zfree(mod->deps_args);
 	clist_del(&ntk_modules, &ntk_modules_counter, mod);
 }
 

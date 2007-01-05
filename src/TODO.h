@@ -40,6 +40,14 @@
 #define TODO_MY_UPBW
 
 
+/*
+ * Header for tha pack of the internal map.
+ *
+ * 	* The header must contain the MAX_METRIC_ROUTES variables
+ */
+#define TODO_PACK_MAP_HEADER
+
+
 /*\
  *
  * 	Long term TODOs 

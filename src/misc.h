@@ -78,7 +78,7 @@ do{									\
  * Since it is not possible to use the standard return in that case, we trick
  * gcc.
  */
-#define _return(x)	({return (x); (x);})
+#define _return(x)	({return (x); 0;})
 
 
 /*

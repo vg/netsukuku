@@ -16,6 +16,10 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#ifndef QSPN_H
+#define QSPN_H
+
+
 /* 
  * NOTE: this file will substitute qspn.h
  */
@@ -43,3 +47,5 @@ ev_t QSPN_ADD_NODE,
      QSPN_ADD_GNODE,
      QSPN_DEL_NODE,
      QSPN_DEL_GNODE;
+
+#endif /*QSPN_H*/

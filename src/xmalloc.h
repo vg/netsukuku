@@ -38,7 +38,7 @@
  *
  * --
  *  
- * xfree() macro wrapper added. AlpT
+ * xfree, zfree macros wrapper added. AlpT
  */
 
 /*

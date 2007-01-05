@@ -335,7 +335,11 @@ do {									\
  * less efficient than :array_del:.
  *
  * Note that this macro doesn't deallocate anything, see :array_rem_free: for
- * that.
+ * that. Moreover, once the array is shifted, the data stored in 
+ * (*_buf)[*_nmemb] is not touched. You may want to zero it. Example:
+ *
+ * 	array_rem(&buf_array_ptr, &nmemb_var, pos);
+ * 	setzero( buf_array_ptr[nmemb_var], sizeof(typeof(*buf_array_ptr)) );
  *
  * If `_pos' isn't a valid value, an array overflow occurs and :fatal(): is
  * called.
@@ -371,13 +375,19 @@ do {									\
  * -------------
  *
  * Deallocates the whole array, setting `*_nmemb' and `*_nalloc' to zero.
+ * `_nmemb' or `_nalloc' can be 0.
+ * 
+ * Usage:
+ * 	array_destroy(&buf_array_ptr, &nmemb_var, &nalloc_var);
+ * or
+ * 	array_destroy(&buf_array_ptr, 0, 0);
  */
 #define array_destroy(_buf, _nmemb, _nalloc)				\
 do {									\
-	if(*(_buf) && *(_nmemb))					\
+	if( *(_buf) && (!(_nmemb) || *(_nmemb) > 0) )			\
 		xfree(*(_buf));						\
-	*(_nmemb)=0;							\
-	*(_nalloc)=0;							\
+	_nmemb && *(_nmemb)=0;						\
+	_nalloc && *(_nalloc)=0;					\
 } while(0)
 
 /*
@@ -385,7 +395,13 @@ do {									\
  * -----------
  *
  * Sets `_count' elements of the array to 0. 
+ * If `_count' == -1, then the whole array is zeroed.
  * If `_count' > `*_nalloc', :fatal(): is called.
+ *
+ * Usage:
+ * 	array_bzero(&buf_array_ptr, &nalloc_var, count);
+ * or
+ * 	array_bzero(&buf_array_ptr, &nalloc_var, -1);
  */
 #define array_bzero(_buf, _nalloc, _count)				\
 do {									\
@@ -393,7 +409,8 @@ do {									\
 		fatal(ERROR_MSG "Array overflow: _count %d",		\
 			ERROR_POS, (_count));				\
 									\
-	setzero(*(_buf), sizeof(typeof(**(_buf))) * (_count));		\
+	setzero(*(_buf), sizeof(typeof(**(_buf))) * 			\
+				(_count == -1 ? *(_nalloc) : _count) );	\
 } while(0)
 
 

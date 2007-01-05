@@ -131,3 +131,93 @@ bw8_t rem_bw_32to8(bw32_t y)
 
 	return 0; /* Shut up the compiler */
 }
+
+/*
+ * rem_bw_cmp
+ * -----------
+ *
+ * It returns an integer less than, equal to, or greater than zero if `a'
+ * is considered to be respectively less than, equal to, or greater than
+ * `b'.
+ */
+int rem_bw_cmp(bw32_t a, bw32_t b)
+{
+        /*
+         * a < b   -1	 -->  The bw `a' is worse  than `b'
+         * a > b    1    -->  The bw `a' is better than `b'
+         * a = b    0	 -->  They are the same
+         */
+	return (a > b) - (a < b);
+}
+
+/*
+ * rem_rtt_cmp
+ * -----------
+ *
+ * It returns an integer less than, equal to, or greater than zero if `a'
+ * is considered to be respectively *greater* than, equal to, or *less* than
+ * `b'.
+ *
+ * This is the reverse of the standard comparison. The rtt `b' is
+ * considered more efficient if it is less than `a'!
+ */
+int rem_rtt_cmp(rtt32_t a, rtt32_t b)
+{
+        /*
+         * a < b    1	 -->  The rtt `a' is better than `b'
+         * a > b   -1    -->  The rtt `a' is worse  than `b'
+         * a = b    0	 -->  They are the same
+         */
+	return (a < b) - (a > b);
+}
+
+/*
+ * rem_avg_cmp
+ * -----------
+ */
+int rem_avg_cmp(rem_t a, rem_t b)
+{
+	/*
+	 * TODO: 
+	 */
+	fatal("CODE ME!!!");
+}
+
+/*
+ * rem_metric_cmp
+ * --------------
+ *
+ * Wrapper function. It does a comparison of `a' and `b' using the specified
+ * `metric' (see :metric_t:)
+ *
+ * It returns an integer less than, equal to, or greater than zero if `a'
+ * is considered to be respectively  *more efficient*  than, equal to, 
+ * or  *less efficient*  than `b'.
+ *
+ * :fatal(): is called is no valid metric has been specified
+ */
+int rem_metric_cmp(rem_t a, rem_t b, metric_t metric)
+{
+	int ret;
+
+	switch(metric) {
+		case REM_IDX_RTT:
+			ret=rem_rtt_cmp((rtt32_t)a.rtt, (rtt32_t)b.rtt);
+			break;
+		case REM_IDX_UPBW:
+			ret=rem_bw_cmp((bw32_t)a.upbw, (bw32_t)b.upbw);
+			break;
+		case REM_IDX_DWBW:
+			ret=rem_bw_cmp((bw32_t)a.dwbw, (bw32_t)b.dwbw);
+			break;
+		case REM_IDX_AVG:
+			ret=rem_avg_cmp((avg32_t)a.avg, (avg32_t)b.avg);
+			break;
+		default:
+			fatal(ERROR_MSG "Unknown metric %d\n",
+					ERROR_POS, metric);
+			break;
+	}
+	
+	return ret;
+}
