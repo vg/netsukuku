@@ -45,7 +45,7 @@ typedef struct
  * If the i-th bit is set, then the node with id `i', was a hop of the 
  * T.
  *
- * This structure is used in :map_node_t:.
+ * This structure is used in {-map_node_t-}.
  *
  * Definitions
  * -----------

@@ -78,7 +78,7 @@ if ("yes" in env['debug']) or ("1" in env['debug']):
 	env.Append(CPPDEFINES={'DEBUG' : '${debug}'}, CCFLAGS = ' -ggdb', CXXFLAGS = '-g')
 #CCFLAGS = ' -ggdb -Wall -DDMALLOC_FUNC_CHECK'
 #	libs+=['dmalloc', 'dmallocth']
-	os.system("echo Cscoping and ctagging...; cscope -b; ctags *")
+	os.system("echo Cscoping and ctagging...; ./gentags.sh")
 else:
 	debug  = 0
 if ("yes" in env['static']) or ("1" in env['static']):

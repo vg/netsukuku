@@ -58,7 +58,7 @@
 /*
  * zfree
  *
- * Calls :xfree: only if _zPtr is non zero
+ * Calls {-xfree-} only if _zPtr is non zero
  */
 #define zfree(_zPtr)							\
 ({									\

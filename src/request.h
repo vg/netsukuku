@@ -189,12 +189,12 @@ int rqerr_add_error(const char *err_name, const char *err_desc);
 void rqerr_del_error(int rq_hash);
 request_err *rqerr_get_rqstruct(int err_hash);
 
-const u_char *rq_strerror(int err_hash);
-const u_char *re_strerror(int err_hash);
-const u_char *rq_to_str(int rq_hash);
-const u_char *re_to_str(int rq_hash);
-const u_char *rqerr_to_str(rqerr_t err_hash);
-const u_char *rq_rqerr_to_str(rq_t rq_hash);
+const char *rq_strerror(int err_hash);
+const char *re_strerror(int err_hash);
+const char *rq_to_str(int rq_hash);
+const char *re_to_str(int rq_hash);
+const char *rqerr_to_str(rqerr_t err_hash);
+const char *rq_rqerr_to_str(rq_t rq_hash);
 
 int op_filter_set(int rq_hash);
 int op_filter_clr(int rq_hash);

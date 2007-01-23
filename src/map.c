@@ -19,7 +19,7 @@
  * Internal map code.
  *
  * For more information on the maps and the topology of Netsukuku see
- * :CITE_TOPOLOGY_DOC:
+ * {-CITE_TOPOLOGY_DOC-}
  */
 
 #include "includes.h"

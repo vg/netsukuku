@@ -43,12 +43,12 @@
  * =================
  *
  * MAX_METRIC_ROUTES is the maximum number of different routes that can be saved
- * in a metric array (see :MetricArrays:). It can be set set at runtime. 
+ * in a metric array (see {-MetricArrays-}). It can be set set at runtime. 
  * This is useful for small machine with strict memory limits.
  *
  * These conditions must be respected:
  * 	MAX_METRIC_ROUTES >= MIN_MAX_METRIC_ROUTES  
- * 	MAX_METRIC_ROUTES >= :MAX_QCACHE_ROUTES:
+ * 	MAX_METRIC_ROUTES >= {-MAX_QCACHE_ROUTES-}
  *
  * By default MAX_METRIC_ROUTES is set to DEFAULT_MAX_METRIC_ROUTES.
  */
@@ -80,7 +80,7 @@ int 	MAX_METRIC_ROUTES = DEFAULT_MAX_METRIC_ROUTES;
  * 	||   node id   |   link id counter   ||
  *	     8 bits           8 bits
  *
- * The overflow of the link id counter is handled with the :counter_cmp:
+ * The overflow of the link id counter is handled with the {-counter_cmp-}
  * macro.
  */
 typedef struct {
@@ -99,7 +99,7 @@ typedef uint8_t nid_t;
 
 
 /*
- * map_node
+ * map_node						       |{map_node_t}|
  * ========
  *
  * A map_node struct contains all the information regarding a node of the
@@ -109,10 +109,9 @@ typedef uint8_t nid_t;
  * basically an array. The i-th struct of the array corresponds to the node
  * whose id is `i'.
  */
-#define map_node_t
 struct map_node
 {
-	u_short 	flags;		/* See :MAP_NODE_FLAGS: */
+	u_short 	flags;		/* See {-MAP_NODE_FLAGS-} */
 
 	/*
 	 * linkids
@@ -174,7 +173,7 @@ struct map_node
 			 * tpmask
 			 * =======
 			 *
-			 * It is the Tracer Packet bitmask (see :tpmask_t:) of 
+			 * It is the Tracer Packet bitmask (see {-tpmask_t-}) of 
 			 * this gateway. It is used to discard gateways similar 
 			 * to `self' from the self^^gw metric array.
 			 *
@@ -200,12 +199,12 @@ struct map_node
 			 *
 			 * 	self^^gw is sorted;
 			 * 
-			 * For the notion of "very similar" see :tp_almost_identical:
+			 * For the notion of "very similar" see {-tp_almost_identical-}
 			 *
 			 * Fuzzy hash
 			 * ----------
 			 *
-			 * See :TODO_FUZZY_HASH:
+			 * See {-TODO_FUZZY_HASH-}
 			 */
 			tpmask_t	tpmask;
 
@@ -213,9 +212,9 @@ struct map_node
 			struct map_node *node;
 
 			/*
-			 * Route Efficiency Measure (see :rem_t:) of the
+			 * Route Efficiency Measure (see {-rem_t-}) of the
 			 * following route:
-			 * 	this gw --> ^^map_node
+			 * 	root node --> this gw --> ^^map_node
 			 */
 			rem_t		rem;
 		}
@@ -228,7 +227,7 @@ struct map_node
 		 * type `map_gw *'. Each pointer must be unique, i.e. there
 		 * can't be two of them pointing to the same gw.
 		 *
-		 * The number of elements is :MAX_METRIC_ROUTES:.
+		 * The number of elements is {-MAX_METRIC_ROUTES-}.
 		 * This array is allocated, once for all, at the initialization
 		 * of the map, so its number of elements never change. Empty 
 		 * elements are just set to NULL.
@@ -240,7 +239,7 @@ struct map_node
 		 * struct map_gw*/  **gw/*[MAX_METRIC_ROUTES]*/;
 #define map_metrarray_t
 
-		/* TODO: :TODO_BSEARCH_FOR_MAP_GW: */
+		/* TODO: {-TODO_BSEARCH_FOR_MAP_GW-} */
 
 	} metrics[REM_METRICS];
 

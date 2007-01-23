@@ -28,7 +28,7 @@
 #define RTT_DELTA		258	/*If the change delta of the new rtt is
 					  >= RTT_DELTA, the qspn_q.send_qspn 
 					  will be set. (It's in millisec)*/
-/* TODO: :TODO_RTT_DELTA_RTT8BIT: */
+/* TODO: {-TODO_RTT_DELTA_RTT8BIT-} */
 
 #ifdef DEBUG		
 #undef MAX_RADAR_WAIT

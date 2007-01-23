@@ -38,7 +38,7 @@
  * 
  * Note: a value stored in x isn't expressed in ms.
  *
- * You can use the :rem_rtt_8to32: and :rem_rtt_32to8: functions to convert a
+ * You can use the {-rem_rtt_8to32-} and {-rem_rtt_32to8-} functions to convert a
  * value in the preferred format.
  *
  * The maximum rtt value is 4*255^2 ms = 260100 ms = 260 s
@@ -62,7 +62,7 @@ typedef uint32_t rtt32_t;
  *
  * Note: a value stored in x isn't expressed in Kb/s.
  * 
- * You can use the :rem_bw_8to32: and :rem_bw_32to8: functions to convert a
+ * You can use the {-rem_bw_8to32-} and {-rem_bw_32to8-} functions to convert a
  * value in the preferred format.
  *
  * The maximum bw value is f(255) = 1343091376 Kb/s = 1.25 Tb/s
@@ -124,7 +124,7 @@ bw8_t rem_bw_32to8(bw32_t y);
 
 int rem_bw_cmp(bw32_t a, bw32_t b);
 int rem_rtt_cmp(rtt32_t a, rtt32_t b);
-int rem_avg_cmp(rem_t a, rem_t b);
+int rem_avg_cmp(avg32_t a, avg32_t b);
 int rem_metric_cmp(rem_t a, rem_t b, metric_t metric);
 
 #endif /* REM_H */

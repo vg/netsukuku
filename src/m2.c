@@ -19,7 +19,7 @@
  * Internal map code.
  *
  * For more information on the maps and the topology of Netsukuku see
- * :CITE_TOPOLOGY_DOC:
+ * {-CITE_TOPOLOGY_DOC-}
  */
 
 #include "includes.h"
@@ -36,7 +36,7 @@ extern int errno;
  *
  * Converts a map_node pointer `node' to the position of the pointed struct 
  * in the internal map.
- * This position corresponds to the node id (see :map_node_t:)
+ * This position corresponds to the node id (see {-map_node_t-})
  *
  * `map' must be a pointer to the first struct of the internal map.
  */
@@ -49,7 +49,7 @@ nid_t map_node2pos(map_node *node, map_node *map)
  * map_pos2node
  * ------------
  *
- * The inverse of :map_node2pos:
+ * The inverse of {-map_node2pos-}
  *
  * `map' must be a pointer to the first struct of the internal map.
  */
@@ -63,11 +63,11 @@ map_node *map_pos2node(nid_t pos, map_node *map)
  * ----------
  * 
  * `map_pos' is the position of a map_node struct in the internal map, it is
- * also a node's id (see :map_node_t:).
+ * also a node's id (see {-map_node_t-}).
  * This function converts `map_pos' to the IP of the node, which is then saved 
  * in `ret'.
  *
- * The localhost `ipstart' of level 1 is also needed (see :ipstart_t:)
+ * The localhost `ipstart' of level 1 is also needed (see {-ipstart_t-})
  */
 void map_pos2ip(nid_t map_pos, inet_prefix ipstart, inet_prefix *ret) 
 {
@@ -94,7 +94,7 @@ void map_pos2ip(nid_t map_pos, inet_prefix ipstart, inet_prefix *ret)
  * then saved in `ret'.
  *
  * `map' must be a pointer to the first struct of the internal map.
- * `ipstart' must be the localhost ipstart of level 1 (see :ipstart_t:).
+ * `ipstart' must be the localhost ipstart of level 1 (see {-ipstart_t-}).
  */
 void map_node2ip(map_node *map, map_node *node, inet_prefix ipstart, inet_prefix *ret);
 {
@@ -105,14 +105,14 @@ void map_node2ip(map_node *map, map_node *node, inet_prefix ipstart, inet_prefix
  * map_ip2node
  * -----------
  *
- * The inverse of :map_node2ip:
+ * The inverse of {-map_node2ip-}
  * It converts `ip' to a pointer `*ret' pointing to the relative node of
  * level 0.
  * For example, if the IP is 11.22.33.44, then this functions returns 
  * &map[44], where `map' is the pointer to the first struct of the internal
  * map.
  *
- * `ipstart' must be the localhost ipstart of level 1 (see :ipstart_t:).
+ * `ipstart' must be the localhost ipstart of level 1 (see {-ipstart_t-}).
  *
  * If the converted node doesn't belong to the localhost's gnode of level 1, 
  * then 1 is returned.
@@ -206,7 +206,7 @@ void map_free(map_node *map, size_t count)
  * map_reset
  * ---------
  * 
- * Calls :map_node_reset: for the first `count' elements of the `map'.
+ * Calls {-map_node_reset-} for the first `count' elements of the `map'.
  * If `count' is zero, it supposes that the `map' has MAXGROUPNODE elements.
  */
 void map_reset(map_node *map, size_t count)
@@ -235,7 +235,7 @@ int map_gw_del(map_node *node, map_gw *gw)
 	!gw && _return(ret);
 
 	/*
-	 * See the "Shared gateways" notes in :MetricArrays: to understand why
+	 * See the "Shared gateways" notes in {-MetricArrays-} to understand why
 	 * we are using this first loop.
 	 */
 	for(e=0; e<REM_METRICS; e++) {
@@ -287,7 +287,7 @@ void map_gw_reset(map_node *node)
  * map_gw_destroy
  * --------------
  *
- * Like :map_gw_reset:, but it deallocate the `node.metrics[*].gw' arrays of
+ * Like {-map_gw_reset-}, but it deallocate the `node.metrics[*].gw' arrays of
  * pointers too.
  */
 void map_gw_destroy(map_node *node)
@@ -305,7 +305,7 @@ void map_gw_destroy(map_node *node)
  *
  * Reset the map_node structure pointed by `node' and keeps allocated some
  * arrays which might be useful in future. If you want to free every single
- * allocated resource use :map_node_del:
+ * allocated resource use {-map_node_del-}
  *
  * The `node.flags' is set to MAP_VOID, to indicate that this node is now
  * empty.
@@ -332,7 +332,7 @@ void map_node_reset(map_node *node)
  * map_node_del
  * ------------
  *
- * The same of :map_node_reset:, but deallocates every allocated resource.
+ * The same of {-map_node_reset-}, but deallocates every allocated resource.
  */
 void map_node_del(map_node *node)
 {
@@ -378,8 +378,8 @@ int map_gw_count(map_gw **gw)
  * map_gw_sort
  * -----------
  *
- * Sorts the `gw' metric array (see :map_metrarray_t:) using the specified
- * `metric' (see :metric_t:).
+ * Sorts the `gw' metric array (see {-map_metrarray_t-}) using the specified
+ * `metric' (see {-metric_t-}).
  */
 void map_gw_sort(map_gw **gw, metric_t metric)
 {
@@ -414,7 +414,7 @@ int map_node_add_gw(map_node *dst, map_gw gw)
  * `base_root' points to the root_node present in the `base' map.
  * `new_root' points to the root_node of the `new' map.
  *
- * `base_new_rem' is the :rem_t: of the link `base'<-->`new'.
+ * `base_new_rem' is the {-rem_t-} of the link `base'<-->`new'.
  *
  * * WARNING *
  * It's assumed that `new_root' is a rnode of `base_root'.

@@ -24,7 +24,7 @@
  * when a packet is received, the event EV_RECVD_PACKET is triggered, and the
  * function exec_pkt() is called.
  *
- * For more information see event.h
+ * For more information see {-event_api_desc-}
  */
 
 #include "includes.h"

@@ -1,6 +1,8 @@
 Use cscope! 
 (Or better cscope+vim)
 
+Use WoC: http://www.freaknet.org/alpt/src/utils/woc/readme
+
 --
 
 If you see a word surrounded by semicolon, jump on it (you need cscope). 
@@ -11,7 +13,41 @@ Example:
 	 *
 	 ...
 
+If you see something like {-this-}, that's a WoC tag. You can jump on it, but
+you need a WoC client: http://www.freaknet.org/alpt/src/utils/woc/readme
+
 --
+
+Use TODO.h, CITE.h . They are useful to don't pollute the comments of the
+sources.
+
+-- 
+
+See http://idiki.dyne.org/wiki/HLL_overview
+
+-- 
+
+Read /usr/src/linux/Documentation/CodingStyle
+
+-- 
+
+** Functions names 
+
+In the name of the function defined in foo.c use the prefix `foo_' or its
+abbrevation. For example,
+
+	int foo_bar(int gh) {  };
+
+In the first part of the function, put what the function is operating on, then
+in the last part put the action performed by it.
+For example:
+
+	RIGHT:	void map_node_del(map_node *node);
+	
+	WRONG:	void map_del_node()
+	WRONG:	void del_map_node()
+
+-- 
 
 The word `self', when used in a comment placed inside a structure
 definition, refers to the same structure. Ex:
@@ -64,30 +100,3 @@ The ^^ symbol can be also used to indicate the upper structures. Ex:
 			}
 		}
 	}
-
-
--- 
-
-Read /usr/src/linux/Documentation/CodingStyle
-
--- 
-
-Use TODO.h, CITE.h
-
--- 
-
-** Functions names 
-
-In the name of the function defined in foo.c use the prefix `foo_' or its
-abbrevation. For example,
-
-	int foo_bar(int gh) {  };
-
-In the first part of the function, put what the function is operating on, then
-in the last part of the name put the action performed by it.
-For example:
-
-	RIGHT:	void map_node_del(map_node *node);
-	
-	WRONG:	void map_del_node()
-	WRONG:	void del_map_node()

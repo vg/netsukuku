@@ -18,7 +18,7 @@
  * --
  * buffer.c
  *
- * Various functions to manipulate buffers and arrays (see :bufarr_t:).
+ * Various functions to manipulate buffers and arrays (see {-bufarr_t-}).
  */
 
 #ifndef BUFFER_H
@@ -89,7 +89,7 @@
 
 /*\
  *
- * Buffer Array
+ * Buffer Array							|{bufarr_t}|
  * ============
  *
  * A buffer array is defined by these three elements:
@@ -129,7 +129,6 @@
  * 	    the macro will assume that  *nmemb == *nalloc  and it will only 
  * 	    modify `*nmemb'.
 \*/
-#define bufarr_t
 
 /*
  * array_replace
@@ -152,7 +151,7 @@
  * array_insert
  * ------------
  *
- * The same of :array_replace:, but with an additional check.
+ * The same of {-array_replace-}, but with an additional check.
  * :fatal(): is called if _pos is greater than *_nalloc
  *
  * Usage:
@@ -182,7 +181,7 @@
  * won't increment anything.
  *
  * Note: if `_count' is a negative value, the array is shrinked (see
- * :array_shrink:)
+ * {-array_shrink-})
  *
  * Usage:
  * 	array_grow(&buf_array_ptr, &nmemb_var, &nalloc_var, count);
@@ -224,7 +223,7 @@ do {									\
 		array_grow(_buf, _nmemb, _nalloc, -abs(_count))
 
 /*
- * Private macro. See :array_add: and :array_add_more: below.
+ * Private macro. See {-array_add-} and {-array_add_more-} below.
  */
 #define array_add_grow(_buf, _nmemb, _nalloc, _new, _newalloc)		\
 ({									\
@@ -266,7 +265,7 @@ do {									\
  * array_add_more
  * --------------
  *
- * The same of :array_add:, but instead of allocating just one new element, it
+ * The same of {-array_add-}, but instead of allocating just one new element, it
  * allocates _nmemb/2+1 elements.
  * This is useful if array_add_more() is called many times.
  */
@@ -284,7 +283,7 @@ do {									\
  * element of the array is reusable.
  * `*_nmemb' is decremented by one.
  *
- * Note that this macro doesn't deallocate anything, see :array_del_free: for
+ * Note that this macro doesn't deallocate anything, see {-array_del_free-} for
  * that.
  *
  * If `_pos' isn't a valid value, an array overflow occurs and :fatal(): is
@@ -305,7 +304,7 @@ do {									\
  * array_del_free
  * --------------
  *
- * The same of :array_del:, but deallocates one element from the array.
+ * The same of {-array_del-}, but deallocates one element from the array.
  * `*_buf' is set to point to the new start of the array (since :xrealloc():
  * is used).
  *
@@ -332,9 +331,9 @@ do {									\
  * The element is deleted by shifting to the left all its successive elements.
  * In this way, the order of the array is preserved.
  * This is useful if the array has been ordered with qsort(3), however this is
- * less efficient than :array_del:.
+ * less efficient than {-array_del-}.
  *
- * Note that this macro doesn't deallocate anything, see :array_rem_free: for
+ * Note that this macro doesn't deallocate anything, see {-array_rem_free-} for
  * that. Moreover, once the array is shifted, the data stored in 
  * (*_buf)[*_nmemb] is not touched. You may want to zero it. Example:
  *
@@ -360,7 +359,7 @@ do {									\
  * array_rem_free
  * --------------
  *
- * The same of :array_rem:, but deallocates one element from the array.
+ * The same of {-array_rem-}, but deallocates one element from the array.
  * `*_buf' is set to point to the new start of the array (since :xrealloc():
  * is used).
  */

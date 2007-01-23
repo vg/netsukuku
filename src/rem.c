@@ -29,7 +29,7 @@
 
 
 /*
- * See :rtt8_t:
+ * See {-rtt8_t-}
  */
 rtt32_t rem_rtt_8to32(rtt8_t x)
 {
@@ -40,7 +40,7 @@ rtt32_t rem_rtt_8to32(rtt8_t x)
 }
 
 /*
- * The inverse of :rem_rtt_8to32:
+ * The inverse of {-rem_rtt_8to32-}
  */
 rtt8_t rem_rtt_32to8(rtt32_t y)
 {
@@ -54,7 +54,7 @@ rtt8_t rem_rtt_32to8(rtt32_t y)
 }
 
 /*
- * See :bw8_t:
+ * See {-bw8_t-}
  */
 bw32_t rem_bw_8to32(bw8_t x)
 {
@@ -88,12 +88,12 @@ bw32_t rem_bw_8to32(bw8_t x)
 }
 
 /*
- * The inverse of :rem_bw_8to32:
+ * The inverse of {-rem_bw_8to32-}
  */
 bw8_t rem_bw_32to8(bw32_t y)
 {
 	/* 
-	 * The int() function used in :rem_bw_8to32: creates 8 different
+	 * The int() function used in {-rem_bw_8to32-} creates 8 different
 	 * cases when  x  is in [0,255]. We just need to take the inverse of
 	 * each case.
 	 *
@@ -175,7 +175,7 @@ int rem_rtt_cmp(rtt32_t a, rtt32_t b)
  * rem_avg_cmp
  * -----------
  */
-int rem_avg_cmp(rem_t a, rem_t b)
+int rem_avg_cmp(avg32_t a, avg32_t b)
 {
 	/*
 	 * TODO: 
@@ -188,13 +188,13 @@ int rem_avg_cmp(rem_t a, rem_t b)
  * --------------
  *
  * Wrapper function. It does a comparison of `a' and `b' using the specified
- * `metric' (see :metric_t:)
+ * `metric' (see {-metric_t-})
  *
  * It returns an integer less than, equal to, or greater than zero if `a'
  * is considered to be respectively  *more efficient*  than, equal to, 
  * or  *less efficient*  than `b'.
  *
- * :fatal(): is called is no valid metric has been specified
+ * {-fatal-} is called is no valid metric has been specified
  */
 int rem_metric_cmp(rem_t a, rem_t b, metric_t metric)
 {

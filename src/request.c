@@ -36,9 +36,9 @@
 #include "xmalloc.h"
 #include "log.h"
 
-const static u_char unknown_request[]="Unknown request";
+const static char unknown_request[]="Unknown request";
 const static char unknown_reply[]="Unknown reply";
-const static u_char unknown_error[]="Unknown error";
+const static char unknown_error[]="Unknown error";
 
 request *ntk_request=0;
 request_err *ntk_request_err=0;
@@ -364,7 +364,7 @@ request_err *rqerr_get_rqstruct(rqerr_t err_hash)
  *
  * Returns the description of the error `err_hash'.
  */
-const u_char *rq_strerror(rqerr_t err_hash)
+const char *rq_strerror(rqerr_t err_hash)
 {
 	int i=rqerr_bsearch_hash(err_hash);
 
@@ -373,7 +373,7 @@ const u_char *rq_strerror(rqerr_t err_hash)
 	return ntk_request_err[i].desc;
 }
 
-const u_char *re_strerror(rqerr_t err_hash)
+const char *re_strerror(rqerr_t err_hash)
 {
 	return rq_strerror(err_hash);
 }
@@ -383,7 +383,7 @@ const u_char *re_strerror(rqerr_t err_hash)
  *
  * Returns the string of the name of the `rq_hash' request.
  */
-const u_char *rq_to_str(rq_t rq_hash)
+const char *rq_to_str(rq_t rq_hash)
 {
 	int i=rq_bsearch_hash(rq_hash);
 
@@ -397,7 +397,7 @@ const u_char *rq_to_str(rq_t rq_hash)
  *
  * Returns the string of the name of the `rq_hash' reply.
  */
-const u_char *re_to_str(rq_t rq_hash)
+const char *re_to_str(rq_t rq_hash)
 {
 	int i=rq_bsearch_hash(rq_hash);
 
@@ -411,7 +411,7 @@ const u_char *re_to_str(rq_t rq_hash)
  *
  * Returns the string of the name of the `err_hash' request error.
  */
-const u_char *rqerr_to_str(rqerr_t err_hash)
+const char *rqerr_to_str(rqerr_t err_hash)
 {
 	int i=rqerr_bsearch_hash(err_hash);
 
@@ -426,7 +426,7 @@ const u_char *rqerr_to_str(rqerr_t err_hash)
  * It's a mix between rq_to_str() and rqerr_to_str(): it the former fails, the
  * return value of the latter is returned
  */
-const u_char *rq_rqerr_to_str(rq_t rq_hash)
+const char *rq_rqerr_to_str(rq_t rq_hash)
 {
 	const u_char *str=0;
 

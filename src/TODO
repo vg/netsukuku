@@ -213,7 +213,7 @@
 - option (both on command line and in netsukuku.conf) to disable the saving of
   caches. (the keyring will always be saved).
 
-- Change with something else the eliminable fatal() calls in netsukuku_hook()
+- Change with something else the eliminable fatal calls in netsukuku_hook()
 
 - Ipv6 support: use ff05::23 for multicast. qspn_gnode_count isn't IPv6
   compatible!

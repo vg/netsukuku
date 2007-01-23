@@ -138,7 +138,7 @@ INT_INFO map_gnode_iinfo = { 1,
  * 11.22.33.0/24
  * So the same ipstart of level 2 is 11.22.0.0/16
  *
- * [1] See :CITE_CIDR:
+ * [1] See {-CITE_CIDR-}
  */
 typedef inet_prefix ipstart_t;
 

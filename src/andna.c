@@ -22,7 +22,7 @@
  * All the threads of the ANDNA daemon and the main andna functions are here 
  * too.
  *
- * For more information on ANDNA see :CITE_ANDNA_DOC:
+ * For more information on ANDNA see {-CITE_ANDNA_DOC-}
  */
 
 #include "includes.h"
