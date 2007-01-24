@@ -22,3 +22,36 @@ e' il nostro risveglio.
 Unitevi e non abbiate timore,
 le porte sono aperte,
 la Rete ci attende.
+
+--
+
+**
+****  News
+**
+
+Tue Jan  2 16:16:05 UTC 2007
+----------------------------
+
+The implementation of the QSPN v2 has started [1].
+
+The core code is being completely rewritten. The code in general is becoming
+completely modular [2] with a clean and reusable API.
+The code documentation is also growing: every part of the sources is being
+heavily commented.
+
+Since we're busy with the new code, we can't actively follow the bugs of the
+current releases, however you're invited to report them [3].
+
+The Netsukuku daemon will come back operative with the 1.0.0b release, which
+will include all the new changes.
+We hope that when the new code will be ready, more developers will join the
+project, since it will be possible to work, in parallel, to many part of
+Netsukuku.
+
+PS: Right now, dyne.org is down, so the wiki and the ntk mailing list are down
+    too.
+
+[1] QSPN v2 document: http://netsukuku.freaknet.org/doc/main_doc/qspn.pdf
+[2] See module.c, event.c, modules/foo/foo.c
+    http://cvs.hinezumi.org/viewcvs/netsukuku/src/
+[3] Bug tracker: http://bugs.dyne.org/

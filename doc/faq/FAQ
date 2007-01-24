@@ -17,7 +17,7 @@
 	Q: What about the security of my packets? Everyone will be able to
 	   sniff them!
 	Q: How can I join in Netsukuku?
-	Q: And how does a new node begin to locate any of the other nodes in
+	Q: How does a new node begin to locate any of the other nodes in
 	   the network?
 	Q: Will you provide "Internet to Netsukuku" tunnels?
 	Q: Aside from what I hack myself I was wondering what can be done on
@@ -31,7 +31,6 @@
 	Q: On what OS does it run?
 	Q: Will Netsukuku be ported to Windows?
 	Q: Will Netsukuku be ported to PSP / Nintendo DS / wifi phones / PDAs?
-	Q: How does it join the network?
 	Q: For using a wifi link do I need of an access point? What to do?
 	Q: Why the code is not written in java?
 
@@ -57,8 +56,8 @@ A: Netsukuku is a mesh network or a p2p net system that generates and sustains
    The Domain Name System is also replaced by a decentralised and distributed
    system: the Abnormal Netsukuku Domain Name Anarchy.
 
-   For more information read the section "2.3  So, WTF is it?" of the
-   document ( http://netsukuku.freaknet.org/doc/netsukuku )
+   For more information read the main document:
+   http://netsukuku.freaknet.org/doc/main_doc/netsukuku
 
 Q: What are its features?
 A: The complete list of features is here:
@@ -75,22 +74,21 @@ A: Networked Electronic Technician Skilled in Ultimate Killing, Utility and
    By the way, you can always think of any other deceitful and hidden
    meanings.
 
-Q: What does it mean "it uses chaos and fractals"?
+Q: What does it mean "it uses fractals"?
 A: The Netsukuku protocol (Npv7) structures the entire net as a fractal and,
    in order to calculate all the needed routes which are necessary to connect a
    node to all the other nodes, it makes use of a particular algorithm called
    Quantum Shortest Path Netsukuku (QSPN).
    Here a fractal is meant as a highly clusterized graph of nodes.
-   (For the in depth description of the map system in Netsukuku read the 
-   "5.3  The truly Gnode^n for n<=INFINITE"  section in the document.)
+   Read the Netsukuku topology document:
+   http://netsukuku.freaknet.org/doc/main_doc/topology.pdf
 
    On the other hand, the QSPN is a meta-algorithm in the sense that it
    has to run on a real (or simulated) network. The nodes have to send the
-   QSPN pkt in order to "execute" it. For this reason it is not always true
-   that a determinate pkt will be sent before another one.
+   QSPN pkt in order to "execute" it. 
    This system allows to get the best routes without any heavy computation.
-   (read the "5.1   QSPN: Quantum Shortest Path Netsukuku" section in the
-   document).
+   Read the QSPN document: 
+   http://netsukuku.freaknet.org/doc/main_doc/qspn.pdf 
 
 Q: Why another p2p network?
 A: Netsukuku is not a p2p net built upon the Internet. It is a physical
@@ -127,8 +125,6 @@ A: Simple and not accurate reasons for the scalability of Netsukuku:
    3) There are few floods for each discovery.
    4) When a node receives a flood it already has the routes without
       calculating anything.
-   5) A flood is synchronized: the same flood starts at the same time for all
-      the nodes.
 
    You can read the detailed analysis of the QSPN v2 here:
    http://netsukuku.freaknet.org/doc/main_doc/qspn.pdf
@@ -175,7 +171,7 @@ A: The situation in Ntk isn't much different from the current Internet:
    Moreover in Netsukuku, there will be a complete cryptographic layer, see
    http://lab.dyne.org/Ntk_carciofo
 
-Q: And how does a new node begin to locate any of the other nodes in the
+Q: How does a new node begin to locate any of the other nodes in the
    network?
 A: The Netsukuku radar sends echo packets about every 10 seconds, if someone
    replies it communicates with it.
@@ -186,14 +182,14 @@ A: Yes, Viphilama will provide an automatic tunnelling system:
 
 Q: Aside from what I hack myself I was wondering what can be done on the
    Netsukuku network?
-A: Whatever you already do in the actual Internet. What the Netsukuku daemon
+A: Whatever you already do in the current Internet. What the Netsukuku daemon
    does is to only set the routes in the kernel routing table.
 
 Q: Will we be able to host websites anytime soon?
 A: You can do it by now!
 
 Q: Will glibc be able to resolve names for the ANDNA system?
-A: ANDNA comes with a DNS wrapper so it is trasparent to all the programs
+A: ANDNA comes with a DNS wrapper so it is transparent to all the programs
    which uses the glibc. Read "man andna":
    http://netsukuku.freaknet.org/doc/manuals/html/andna.html
 
@@ -205,7 +201,7 @@ A: What do you mean by `performance'?
    linked by 100Mbps cable you will feel like in a large LAN. 
    The distance from yourself and the destination node is also relevant.
    Remember that the Netsukuku daemon chooses only the best way to reach
-   the other nodes, but cannot improve the roads themself.
+   the other nodes, but cannot improve the roads themselves.
    
    Software performance: you really shouldn't worry about this:
    PID   USER  PRI  NI  SIZE  RSS  SHARE %CPU %MEM TIME CPU COMMAND
