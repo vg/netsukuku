@@ -3,7 +3,7 @@
         Q: Che cos'e' Netsukuku?
         Q: Quali sono le sue caratteristiche?
         Q: Perche' avete scelto questo nome?
-        Q: Cosa significa "usa il caos ed i fratali"?
+        Q: Cosa significa "usa il caos ed i frattali"?
         Q: C'era proprio bisogno di un'altra rete P2P?
 	Q: Ehi, ma siete pazzi? Non funzionera' mai!
         Q: Dove sono le reti Netsukuku in funzione alle quali posso
@@ -30,7 +30,6 @@
         Q: Su quale OS gira?
         Q: Netsukuku sara' portato su Windows?
         Q: Netsukuku sara' portato su PSP/Nintendo DS/wifi phones/linux PDAs ?
-        Q: How does it join the network? 
         Q: Per usare un link wifi c'e' bisogno di un access point? Cosa devo fare?
         Q: Perche' il codice non e' scritto in java?
 
@@ -72,10 +71,10 @@ A: Networked Electronic Technician Skilled in Ultimate Killing, Utility and
    Sfortunatamente, quando abbiamo incontrato la parola "Network", scritta in
    giapponese, non conoscevamo tutti i relativi simboli, e cosi' i katakana che
    eravamo capaci di leggere erano pochi e mescolati con altri. Il nome era Ne
-   tsu ku ku. A proposito, sentitevi pure liberi di immaginare qualunque altro
-   significato subliminale e nascosto.
+   tsu ku ku. Comunque, sentitevi pure liberi di attribuire a questo nome
+   tutti i messaggi subliminali o i significati esotici che volete.
 
-Q: Cosa significa "usa il caos ed i fratali"?
+Q: Cosa significa "usa il caos ed i frattali"?
 A: Il protocollo Netsukuku (Npv7) struttura l'intera rete come un frattale e,
    per calcolare tutte le rotte necessarie a connettere un nodo con tutti gli
    altri nodi, fa uso di un algoritmo particolare chiamato Quantum Shortest Path
@@ -145,8 +144,8 @@ Q: Netsukuku e' separato da Internet. Come?
    Qualcuno sta installando nuove infrastrutture? Chi le sta finanziando?
 A: Niente di tutto questo, non c'e' alcun bisogno di pagare. Il modo migliore
    di collegare fisicamente due nodi e' quello di usare il wifi. Sono ormai
-   disponibili numerosi dispositivo wifi, che consentono di collegare nodi posti
-   anche a kilometri di distanza l'un l'altro.
+   disponibili numerosi dispositivi wifi, che consentono di collegare nodi posti
+   anche a chilometri di distanza l'un l'altro.
    Nelle citta' non ci sono problemi, perche' basta un nodo in ciascun quartiere
    o isolato per coprire tutto il centro urbano.
 
@@ -243,7 +242,7 @@ A: Avete solo bisogno di una scheda di rete wifi, che dovete settare in
    http://netsukuku.freaknet.org/doc/manuals/html/netsukuku_wifi.html )
 
 Q: Perche' il codice non e' scritto in java?
-A: Stai scherzando?
+A: Stai scherzando, vero?
 
 
 --

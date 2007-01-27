@@ -90,7 +90,7 @@ do{									\
  *
  * `a' is the old counter, while `b' is the new one.
  *
- * Generally the counter are bound in this way:
+ * Generally the counters are bound in this way:
  * 	
  * 	{
  * 	{ a_i = b_{i-1}
@@ -144,6 +144,7 @@ do{									\
  *   * *  Functions declaration  * *
 \*/
 char xor_int(int i);
+int count_bits(int n);
 
 void swap_array(int nmemb, size_t nmemb_sz, void *src, void *dst);
 void swap_ints(int nmemb, unsigned int *x, unsigned int *y) ;

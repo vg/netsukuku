@@ -25,10 +25,6 @@
 
 #define MAX_TP_HOPS			MAXGROUPNODE
 
-/*
- * TODO: wipe brdcast_hdr from the Netsukuku sources
- */
-
 typedef struct
 {
 	u_char		link_id;
@@ -53,13 +49,13 @@ typedef struct
  * The "tpmask of the route R" is the mask of the tracer packet which
  * has carried the route R.
  *
- * The "tpmask of the gateway N" is the mask of the tracer packet which
+ * The "tpmask of the node N" is the mask of the tracer packet which
  * has carried, as hop, the node N.
  *
  * The "tpmask of the gateway G" is the mask of the tracer packet which
  * has carried, as last hop, the node G.
  *
- * Similarity
+ * Similarity						|{tp_similarity}|
  * ----------
  *
  * The similarity between two tpmasks is calculated as their hamming 
@@ -68,11 +64,38 @@ typedef struct
  *
  * distance = 0   	       -->  the two masks are identical, 
  *          = MAX_TP_HOPS/8-1  -->  the two masks are completely the opposite
+ * 
+ * See {-tp_mask_cmp-} and {-HAMD_MIN_EQ-}
  */
 typedef struct
 {
 	u_char		mask[MAX_TP_HOPS/8];
 } tpmask_t;
-#define HAMD_MIN_EQ 	/* TODO: continue here */
+
+/*
+ * Given two tpmask X and Y, they are considered equal if the following
+ * condition is true:
+ *	
+ *	tp_mask_cmp(X, Y) <= HAMD_MIN_EQ(n)
+ * 
+ * where 
+ *
+ *	bX = count_bits(X)
+ *	bY = count_bits(Y)
+ *	n  = min(bX, bY)
+ * 
+ * See {-tp_is_similar-}
+ */
+#define HAMD_MIN_EQ(n)		((n)>>2)
+
+
+/*\
+ *
+ *      * * *  Exported functions  * * *
+ *
+\*/
+
+int tp_mask_cmp(tpmask_t a, tpmask_t b);
+int tp_is_similar(tpmask_t X, tpmask_t Y);
 
 #endif /*TRACER_H*/

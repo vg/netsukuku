@@ -191,10 +191,10 @@ int rem_avg_cmp(avg32_t a, avg32_t b)
  * `metric' (see {-metric_t-})
  *
  * It returns an integer less than, equal to, or greater than zero if `a'
- * is considered to be respectively  *more efficient*  than, equal to, 
- * or  *less efficient*  than `b'.
+ * is considered to be respectively  *less efficient*  than, equal to, 
+ * or  *more efficient*  than `b'.
  *
- * {-fatal-} is called is no valid metric has been specified
+ * {-fatal-} is called if no valid metric has been specified
  */
 int rem_metric_cmp(rem_t a, rem_t b, metric_t metric)
 {

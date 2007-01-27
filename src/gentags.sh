@@ -2,7 +2,8 @@
 #
 # gentags.sh
 # 
-# Generate every possible tag file
+# Generate every possible tag file by examining only the files residing in the
+# CVS repository.
 #
 
 exclude_files='~$|\<tags\.woc$|\<tags$|\<TAGS$|\<tags\.rev\.woc$|\<cscope.out$|\<CVS/$'

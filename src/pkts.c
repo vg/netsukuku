@@ -780,7 +780,7 @@ int pkt_send_rq(PACKET *pkt, int pkt_flags, rq_t rq_hash, int rq_id, re_t re_has
 				ERROR_POS, rq_hash);
 		return SEND_RQ_ERR_RQ;
 	}
-	rq_str = rq_h->name;
+	rq_str = (u_char *) rq_h->name;
 	pot = pktop_bsearch_rq(rq_hash);
 
 	ntop=inet_to_str(pkt->to);

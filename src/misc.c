@@ -41,6 +41,22 @@ char xor_int(int i)
         return c;
 }
 
+/*
+ * count_bits
+ *
+ * Counts the number of ones in `n'
+ */
+int count_bits(int n)
+{
+	int nbits=0;
+
+	do {
+		nbits+=n&1;
+	} while(n>>=1);
+
+	return nbits;
+}
+
 
 /*\
  *

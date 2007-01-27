@@ -100,14 +100,11 @@ typedef uint8_t nid_t;
 
 /*
  * map_node						       |{map_node_t}|
- * ========
+ * --------
  *
  * A map_node struct contains all the information regarding a node of the
  * gnode of level 0.
  *
- * The internal map is composed by MAXGROUPNODE map_node structs and is
- * basically an array. The i-th struct of the array corresponds to the node
- * whose id is `i'.
  */
 struct map_node
 {
@@ -199,7 +196,7 @@ struct map_node
 			 *
 			 * 	self^^gw is sorted;
 			 * 
-			 * For the notion of "very similar" see {-tp_almost_identical-}
+			 * For the notion of "very similar" see {-tp_similarity-}
 			 *
 			 * Fuzzy hash
 			 * ----------
@@ -220,7 +217,7 @@ struct map_node
 		}
 	
 		/* 
-		 * The metric array
+		 * The metric array			   |{map_metrarray}|
 		 * ================
 		 *
 		 * This is the metric array. It is an array of pointers of
@@ -237,7 +234,6 @@ struct map_node
 		 * --
 		 *
 		 * struct map_gw*/  **gw/*[MAX_METRIC_ROUTES]*/;
-#define map_metrarray_t
 
 		/* TODO: {-TODO_BSEARCH_FOR_MAP_GW-} */
 
@@ -247,6 +243,29 @@ struct map_node
 };
 typedef struct map_node map_node;
 typedef struct map_gw   map_gw;
+
+/*
+ * int_map
+ * -------
+ *
+ * The internal map.
+ *
+ * The internal map is an array composed by MAXGROUPNODE map_node structs.
+ * The i-th struct of the array corresponds to the node whose id is `i'.
+ *
+ * You can use the following functions to convert a node id to a struct
+ * position: {-map_node2pos-}, {-map_pos2node-}.
+ *
+ */
+typedef struct {
+
+	map_node	*map;		/* Pointer to the start of the map */
+
+	map_node	*root_node;	/* The root node, i.e. localhost */
+	nid_t		*root_id;	/* Root node ID */
+	inet_prefix 	*root_ip;	/* IP of the root node */
+
+} int_map;
 
 /*
  * MAP_END

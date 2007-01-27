@@ -221,85 +221,6 @@ void map_reset(map_node *map, size_t count)
 }
 
 /*
- * map_gw_del
- * ----------
- *
- * Deletes the gateway pointed by `gw' from the map_node `node' and deallocates
- * it.
- * If nothing is deleted a zero is returned.
- */
-int map_gw_del(map_node *node, map_gw *gw)
-{
-	int ret=0, e;
-
-	!gw && _return(ret);
-
-	/*
-	 * See the "Shared gateways" notes in {-MetricArrays-} to understand why
-	 * we are using this first loop.
-	 */
-	for(e=0; e<REM_METRICS; e++) {
-
-		int x;
-		for(x=0; x < MAX_METRIC_ROUTES; x++) {
-			if(node.metrics[e].gw[x] == gw) {
-				int nmemb=MAX_METRIC_ROUTES;
-
-				/* If it's the first time we are deleting
-				 * `gw', deallocate it too. */
-				!ret && zfree(node.metrics[e].gw[x]);
-
-				/* Remove the pointer from the metric array */
-				array_rem(&node.metrics[e].gw, &nmemb, x);
-
-				/* Set to zero the pointer left by the
-				 * shifting of the array */
-				node.metrics[e].gw[nmemb]=0;
-
-				ret+=1;
-				break; /* We're assuming there's only 
-					  one gw in each metric array */
-			}
-		}
-	}
-
-	return ret;
-}
-
-/*
- * map_gw_reset
- * ------------
- *
- * It frees each map_gw referenced in the `node.metrics[*].gw' arrays, but it
- * doesn't deallocate the `node.metrics[*].gw' arrays of pointers.
- */
-void map_gw_reset(map_node *node)
-{
-	int e;
-	for(e=0; e < REM_METRICS; e++) {
-		int x;
-		for(x=0; x < MAX_METRIC_ROUTES; x++)
-			map_gw_del(node, node.metrics[e].gw[x]);
-	}
-}
-
-/*
- * map_gw_destroy
- * --------------
- *
- * Like {-map_gw_reset-}, but it deallocate the `node.metrics[*].gw' arrays of
- * pointers too.
- */
-void map_gw_destroy(map_node *node)
-{
-	map_gw_reset(node);
-
-	int e;
-	for(e=0; e < REM_METRICS; e++)
-		array_destroy(&node.metrics[e].gw, 0, 0);
-}
-
-/*
  * map_node_reset
  * --------------
  *
@@ -311,8 +232,8 @@ void map_gw_destroy(map_node *node)
  * empty.
  *
  * It frees `node.linkids'.
- * It frees each map_gw referenced in the `node.metrics[*].gw' arrays, but it
- * doesn't deallocate the `node.metrics[*].gw' arrays of pointers.
+ * It frees each map_gw referenced in the `node.metrics[*].gw' arrays, but 
+ * it doesn't deallocate the `node.metrics[*].gw' arrays of pointers.
  * The `node.pubkey' is also deallocated.
  */
 void map_node_reset(map_node *node)
@@ -332,7 +253,7 @@ void map_node_reset(map_node *node)
  * map_node_del
  * ------------
  *
- * The same of {-map_node_reset-}, but deallocates every allocated resource.
+ * The same of {-map_node_reset-}, but deallocates every allocated resource
  */
 void map_node_del(map_node *node)
 {
@@ -343,20 +264,150 @@ void map_node_del(map_node *node)
 }
 
 /*
+ * map_gw_del
+ * ----------
+ *
+ * Deletes the gateway pointed by `gw' from the map_node `node' and deallocates
+ * it.
+ * If nothing is deleted zero is returned.
+ */
+int map_gw_del(map_node *node, map_gw *gw)
+{
+	int ret=0, e;
+
+	!gw && _return(ret);
+
+	/*
+	 * See the "Shared gateways" notes in {-MetricArrays-} to
+	 * understand why we are using this loop.
+	 */
+	for(e=0; e<REM_METRICS; e++) {
+
+		int x;
+
+		x=map_metr_gw_find(node, e, gw.node);
+		if(x == -1)
+			continue;
+
+		int nmemb=MAX_METRIC_ROUTES;
+
+		/* If it's the first time we are deleting
+		 * `gw', deallocate it too. */
+		!ret && zfree(node.metrics[e].gw[x]);
+
+		/* Remove the pointer from the metric array */
+		array_rem(&node.metrics[e].gw, &nmemb, x);
+
+		/* Set to zero the pointer left by the
+		 * shifting of the array */
+		node.metrics[e].gw[nmemb]=0;
+
+		ret+=1;
+		break; /* We're assuming there's only 
+			  one gw in each metric array */
+	}
+
+	return ret;
+}
+
+/*
+ * map_metr_gw_del
+ * ---------------
+ *
+ * Deletes the gateway pointed by `gw' from the metric array
+ * `node'.metrics[`metric']. 
+ * `gw' will be deallocated if it was used only in the specified metric array.
+ *
+ * It returns 1 if it has been deleted, otherwise 0.
+ */
+int map_metr_gw_del(map_node *node, int metric, map_gw *gw)
+{
+	int x;
+	x=map_metr_gw_find(node, e, gw.node);
+	if(x == -1)
+		return 0;
+
+	int nmemb=MAX_METRIC_ROUTES;
+
+	/* Remove the pointer from the metric array */
+	array_rem(&node.metrics[metric].gw, &nmemb, x);
+
+	/* Set to zero the pointer left by the
+	 * shifting of the array */
+	node.metrics[metric].gw[nmemb]=0;
+
+	if(!map_gw_find(node, gw.node))
+		/* We can deallocate `gw' since it was used
+		 * only in the metric `metric'. */
+		zfree(gw);
+
+	return 1;
+}
+
+/*
+ * map_gw_reset
+ * ------------
+ *
+ * It frees each map_gw referenced in the `node.metrics[*].gw' arrays, but it
+ * doesn't deallocate the `node.metrics[*].gw' arrays of pointers.
+ */
+void map_gw_reset(map_node *node)
+{
+	int e;
+	for(e=0; e < REM_METRICS; e++)
+		while(node.metrics[e].gw[0])
+			map_gw_del(node, node.metrics[e].gw[x]);
+}
+
+/*
+ * map_gw_destroy
+ * --------------
+ *
+ * Like {-map_gw_reset-}, but it deallocate the `node.metrics[*].gw' arrays of
+ * pointers too.
+ */
+void map_gw_destroy(map_node *node)
+{
+	map_gw_reset(node);
+
+	int e;
+	for(e=0; e < REM_METRICS; e++)
+		array_destroy(&node.metrics[e].gw, 0, 0);
+}
+
+/*
+ * map_gw_find
+ * -----------
+ *
+ * It searches, inside the metric array `node'.metrics[`metric'],
+ * a gw which points to the node `n'.
+ * It then returns the array position of the gw.
+ * If it isn't found -1, is returned.
+ */
+int map_metr_gw_find(map_node *node, int metric, map_node *n)
+{
+	int i;
+
+	for(i=0; i < MAX_METRIC_ROUTES; i++)
+		if(node.metrics[e].gw[i].node == n)
+			return i;
+	return -1;
+}
+
+/*
  * map_gw_find
  * -----------
  *
  * It searches in the `node' a gw which points to the node `n'.
  * It then returns the pointer to that gw.
- * If the rnode is not found it returns 0;
+ * If it is not found it returns 0;
  */
 map_gw *map_gw_find(map_node *node, map_node *n)
 {
 	int e, i;
 	for(e=0; e < REM_METRICS; e++)
-		for(i=0; i < MAX_METRIC_ROUTES; i++)
-			if(node.metrics[e].gw[i].node == n)
-				return node.metrics[e].gw[i];
+		if((i=map_metr_gw_find(node, e, n) != -1))
+			return node.metrics[e].gw[i];
 	return 0;
 }
 
@@ -378,8 +429,10 @@ int map_gw_count(map_gw **gw)
  * map_gw_sort
  * -----------
  *
- * Sorts the `gw' metric array (see {-map_metrarray_t-}) using the specified
- * `metric' (see {-metric_t-}).
+ * Sorts, in decrescent order of efficiency, the `gw' metric array 
+ * using the specified `metric'.
+ * 
+ * See {-map_metrarray-}, {-metric_t-}.
  */
 void map_gw_sort(map_gw **gw, metric_t metric)
 {
@@ -388,18 +441,105 @@ void map_gw_sort(map_gw **gw, metric_t metric)
 
 	int map_gw_cmp(const void *a, const void *b)
 	{
-		return rem_metric_cmp(a.rem, b.rem, metric);
+		return -rem_metric_cmp(a.rem, b.rem, metric);
 	}
 
 	qsort(gw, map_gw_count(gw), sizeof(map_gw *), map_gw_cmp);
 }
 
-int map_node_add_gw(map_node *dst, map_gw gw)
+/*
+ * map_gw_add
+ * ----------
+ *
+ * Adds `gw' in the list of gateways used to reach the `dst' node.
+ *
+ * `root_node' must point to the root node of the internal map.
+ *
+ * Returns 1 on success, 0 if the `gw' has been discarded.
+ */
+int map_gw_add(map_node *dst, map_gw gw, map_node *root_node)
 {
-	/* 
-	 * TODO: check if gw.node == root_node. If yes, discard
-	 * TODO: if dst == root_node, discard
-	 */
+	if(gw.node == root_node || dst == root_node)
+		/* Invalid call */
+		return 0;
+
+	map_gw *newgw;
+	int e, ret=0;
+
+	/* Check if the `gw' has been added before */
+	newgw = map_gw_find(dst, gw.node);
+
+	for(e=0; e<REM_METRICS; e++) {
+
+		int j, skip_metric=-1;
+
+		for(j=0; j < MAX_METRIC_ROUTES; j++) {
+			if(!dst.metrics[e].gw[j])
+				break;
+
+			if(skip_metric && 
+				tp_is_similar(gw.tpmask, dst.metrics[e].gw[j].tpmask)) {
+
+				/* 
+				 * `gw' is very similar to `gw[j]'. Delete the
+				 * worst and keep the best
+				 */
+				int cmp;
+				cmp = rem_metric_cmp(gw.rem, dst.metrics[e].gw[j].rem, e);
+
+				if(cmp <= 0) {
+					/* gw.rem is worse than, or equal to gw[j].
+					 * Discard `gw' from this metric array. */
+					skip_metric=1;
+					break;
+				} else {
+					/* gw.rem is better than gw[j].
+					 * Delete gw[j], `gw' will replace
+					 * it. */
+					if(map_metr_gw_del(dst, e, dst.metrics[e].gw[j]))
+						/* In the current position, there's now
+						   a different gw */
+						j--; 
+
+					skip_metric=0;
+				}
+			}
+		}
+		if(skip_metric > 0)
+			continue;
+
+		/* `j' is now equal to the number of gateways present in the
+		 * array */
+
+		if(j > MAX_METRIC_ROUTES) {
+			/* The array is full. Delete the worst gateway */
+			int cmp;
+
+			j=MAX_METRIC_ROUTES-1;
+			cmp=rem_metric_cmp(gw.rem, dst.metrics[e].gw[j].rem, e);
+
+			if(cmp <= 0)
+				/* gw.rem is worse than, or equal to gw[j],
+				 * that is, in this case, the worst gw.
+				 * Discard `gw' from this metric array. */
+				continue;
+			else
+				/* `gw' is better than gw[j]. Delete gw[j]. */
+				map_metr_gw_del(dst, e, dst.metrics[e].gw[j]);
+		}
+
+		if(!newgw) {
+			newgw=xmalloc(sizeof(map_gw));
+			memcpy(newgw, &gw, sizeof(map_gw));
+		}
+
+		/* Add the new gw */
+		int nalloc=MAX_METRIC_ROUTES;
+		array_add(&dst.metrics[e].gw, &j, &nalloc, newgw);
+		ret=1;
+	}
+
+	return ret;
 }
 
 

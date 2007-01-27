@@ -67,3 +67,9 @@
  * Note: sizeof(H(A)) < 32 byte
  */
 #define TODO_FUZZY_HASH
+
+/*
+ * |{no brdcast_hdr}|
+ *
+ * Wipe brdcast_hdr from the Netsukuku sources
+ */

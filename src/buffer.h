@@ -123,11 +123,59 @@
  * 	    DO NOT use array_replace(.., pos++, ...), but instead
  * 	    array_replace(.., pos, ...); pos++;
  *
- * Note:    `_nmemb' and `_nalloc' must to two different variables.
- * 	    If you don't want to specify `_nalloc', set it to 0.
- * 	    If the `nalloc' argument passed to a macro is set to 0, then
- * 	    the macro will assume that  *nmemb == *nalloc  and it will only 
- * 	    modify `*nmemb'.
+ * Optional arguments
+ * ------------------
+ *
+ * `_nmemb' and `_nalloc' must to two different variables.
+ * If you don't want to specify `_nalloc', set it to 0.
+ * If the `nalloc' argument passed to a macro is set to 0, then
+ * the macro will assume that  *nmemb == *nalloc  and it will only 
+ * modify `*nmemb'.
+ *
+ * Notes on loops and buffer deletion
+ * ----------------------------------
+ *
+ * Consider the following loop:
+ *
+ * 	for(i=0; i<nmembs; i++)
+ *		* Remove buffer[i] 
+ * 		array_del(&buffer, &nmembs, i);
+ *
+ * What will happen?
+ * The loop will skip over some elements. That's why:
+ *
+ * 	the loop starts;
+ * 	i=0;
+ * 	buffer[0] is removed:
+ *
+ *	the array is shifted to the left by one:
+ *		buffer[1] replaces buffer[0],
+ *		buffer[2] replaces buffer[1],
+ *		and so on... until
+ *   	        buffer[nmembs-1] replaces buffer[nmembs-2]
+ *
+ *      nmembs is decremented by one
+ *
+ * 	the loop continues;
+ * 	i=1;
+ *  [!]	buffer[1] is removed, however buffer[1] was substituted with
+ *      buffer[2]! Thus, the original buffer[1] is not removed.
+ *
+ *      ...
+ *
+ * The correct loop is:
+ *
+ * 	
+ * 	for(i=0; i<nmembs; i++) {
+ *		* Remove buffer[i] 
+ * 		array_del(&buffer, &nmembs, i);
+ * 		* Adjust the index
+ * 		i--; 
+ * 	}
+ *
+ * Note also that `nmembs' is modified during the call to `array_del'.
+ *
+ * If you want to simply destroy the array, use {-array_destroy-}
 \*/
 
 /*
