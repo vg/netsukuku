@@ -40,3 +40,41 @@ int tp_is_similar(tpmask_t X, tpmask_t Y)
 	
 	return hamming <= HAMD_MIN_EQ(n);
 }
+
+/*
+ * tp_mask_set
+ * -----------
+ *
+ * Sets the `bitpos'-th bit of the tpmask `mask' to `bit'.
+ * `bit' can be zero or a non zero value. In the latter case it is
+ * interpreted as one.
+ */
+void tp_mask_set(tpmask_t *mask, int bitpos, u_char bit)
+{
+#ifdef DEBUG
+	if(bitpos >= MAX_TP_HOPS)
+		fatal(ERROR_MSG "Too many bits", ERROR_FUNC);
+#endif
+
+	if(bit)
+		SET_BIT(mask->mask, bitpos)
+	else
+		CLR_BIT(mask->mask, bitpos);
+}
+
+/*
+ * tp_mask_test
+ * ------------
+ *
+ * Returns one if the `bitpos'-th bit of `mask' is set, otherwise zero is
+ * returned.
+ */
+int tp_mask_test(tpmask_t *mask, int bitpos)
+{
+#ifdef DEBUG
+	if(bitpos >= MAX_TP_HOPS)
+		fatal(ERROR_MSG "Too many bits", ERROR_FUNC);
+#endif
+
+	return TEST_BIT(mask->mask, bitpos);
+}

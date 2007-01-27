@@ -298,12 +298,13 @@ map_node *map_alloc(int nnodes);
 void map_free(map_node *map, size_t count);
 void map_reset(map_node *map, size_t count);
 
+void map_node_reset(map_node *node);
+void map_node_del(map_node *node);
+
+int map_gw_add(map_node *dst, map_gw gw, map_node *root_node);
 int map_gw_del(map_node *node, map_gw *gw);
 void map_gw_reset(map_node *node);
 void map_gw_destroy(map_node *node);
-
-void map_node_reset(map_node *node);
-void map_node_del(map_node *node);
 
 map_gw *map_gw_find(map_node *node, map_node *n);
 int map_gw_count(map_gw **gw);

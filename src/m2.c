@@ -389,7 +389,7 @@ int map_metr_gw_find(map_node *node, int metric, map_node *n)
 	int i;
 
 	for(i=0; i < MAX_METRIC_ROUTES; i++)
-		if(node.metrics[e].gw[i].node == n)
+		if(node.metrics[e].gw[i]->node == n)
 			return i;
 	return -1;
 }
@@ -478,14 +478,14 @@ int map_gw_add(map_node *dst, map_gw gw, map_node *root_node)
 				break;
 
 			if(skip_metric && 
-				tp_is_similar(gw.tpmask, dst.metrics[e].gw[j].tpmask)) {
+				tp_is_similar(gw.tpmask, dst.metrics[e].gw[j]->tpmask)) {
 
 				/* 
 				 * `gw' is very similar to `gw[j]'. Delete the
 				 * worst and keep the best
 				 */
 				int cmp;
-				cmp = rem_metric_cmp(gw.rem, dst.metrics[e].gw[j].rem, e);
+				cmp = rem_metric_cmp(gw.rem, dst.metrics[e].gw[j]->rem, e);
 
 				if(cmp <= 0) {
 					/* gw.rem is worse than, or equal to gw[j].
@@ -516,7 +516,7 @@ int map_gw_add(map_node *dst, map_gw gw, map_node *root_node)
 			int cmp;
 
 			j=MAX_METRIC_ROUTES-1;
-			cmp=rem_metric_cmp(gw.rem, dst.metrics[e].gw[j].rem, e);
+			cmp=rem_metric_cmp(gw.rem, dst.metrics[e].gw[j]->rem, e);
 
 			if(cmp <= 0)
 				/* gw.rem is worse than, or equal to gw[j],
@@ -558,121 +558,54 @@ int map_gw_add(map_node *dst, map_gw gw, map_node *root_node)
  *
  * * WARNING *
  * It's assumed that `new_root' is a rnode of `base_root'.
- *
- * Note that the `new' map is modified during the merging!
  * * WARNING *
  */
 int map_merge_maps(map_node *base, map_node *new, map_node *base_root, 
 			map_node *new_root, rem_t base_new_rem)
 {
-	int i, e, x, count=0, base_root_pos, ngpos;
-	u_int base_trtt, new_trtt;
-	map_node *new_root_in_base, *node_gw;
-	
-	base_root_pos=map_node2pos(base_root, base);
-	new_root_in_base=&base[map_node2pos(new_root, new)];
-		
+	/* Vars */
+	int i, e, x, count=0, base_root_pos, new_root_pos;
+	map_gw gwstub, *gwnew;
+
+	/* Code */
+
+	base_root_pos= map_node2pos(base_root, base);
+	new_root_pos = map_node2pos(new_root, new);
+	gwstub.node=&base[new_root_pos];
+
 	/* forall node in `new' */
 	for(i=0; i<MAXGROUPNODE; i++) {
 
 		if(new[i].flags & MAP_ME || new[i].flags & MAP_VOID)
 			continue;
-		
- /* TODO: CONTINUE HERE.
-  * Non e' meglio fare come se stessimo inserendo nuove rotte in base per ogni
-  * suo nodo? Se si, prima di passare la map_gw a map_node_add_gw() bisogna
-  * modificare la tpmask e il gw.node adeguatamente (gw.node = new_root)
-  */
-		for(e=0; e < new[i].links; e++) {
-			/* 
-			 * We set in node_gw the gw that must be used to reach
-			 * the new[i] node, with the new_root_node as the 
-			 * starting point; `node_gw' is a rnode of new_root_node.
-			 */
-			node_gw=(map_node *)new[i].r_node[e].r_node; 
-			
-			ngpos=pos_from_node(node_gw, new);
-			if(ngpos == base_root_pos)
-				/* We skip, cause the new_map it's using the 
-				 * base_root node (me) as gw to reach new[i]. 
-				 */
-				continue;
 
-			/* 
-			 * Now we change the r_nodes pointers of the new map to
-			 * let them point to the base map's nodes. 
-			 */
-			if(new[i].flags & MAP_RNODE) {
-				/* 
-				 * new[i] is a rnode of new_root node, so we
-				 * reach it trough new_root.
-				 */
-				new[i].r_node[e].r_node=(int *)new_root_in_base;
+		for(e=0; e < REM_METRICS; e++)
+		    for(x=0; x < MAX_METRIC_ROUTES && new[i].metrics[e].gw[x]; x++) {
 
-			} else if(base[ngpos].flags & MAP_VOID || 
-					!base[ngpos].links) {
-				/*
-				 * In the `base' map, `node_gw' is VOID.
-				 * We must use the new_root node as gw because
-				 * it is one of our rnode.
-				 */
-				new[i].r_node[e].r_node=(int *)new_root_in_base;
-			} else {
-				/* 
-				 * In this case the node_gw is already known in
-				 * the base map, so we change it to the gw used
-				 * to reach itself in the base map.
-				 */
-				new[i].r_node[e].r_node=base[ngpos].r_node[0].r_node;
-			}
-			
+			gwnew = new[i].metrics[e].gw[x];
+
 			/*
-			 * new[i] has more routes than base[i]. Add them in
-			 * base[i].
+			 * Migrate the tpmask to the new map
 			 */
-			if(e >= base[i].links) {
-				rnode_add(&base[i], &new[i].r_node[e]);
-				rnode_trtt_order(&base[i]);
-				base[i].flags|=MAP_UPDATE;
-				count++;
-				
+			memcpy(&gwstub.tpmask, &gwnew->tpmask, sizeof(tpmask_t));
+			if(tp_mask_test(&gwstub.tpmask, base_root_pos))
+				/* This route uses base_root_pos as a hop,
+				 * thus discard it. */
 				continue;
-			}
-		
-			/* 
-			 * If the worst route in base[i] is better than the best
-			 * route in new[i], let's go ahead.
+
+			tp_mask_set(&gwstub.tpmask, new_root_pos, 1);
+
+			/*
+			 * Migrate the REM value
 			 */
-			base_trtt = get_route_trtt(&base[i], base[i].links-1);
-			new_trtt  = get_route_trtt(&new[i], e);
-			if(base_trtt < new_trtt)
-				continue;
-		
-			/* 
-			 * Compare the each route of base[i] with
-			 * new[i].r_node[e]. The first route of base[i] which
-			 * is found to be worse than new[i].r_node[e] is
-			 * deleted and replaced with new[i].r_node[e] itself.
-			 */
-			for(x=0; x<base[i].links; x++) {
-				base_trtt = get_route_trtt(&base[i], x);
-				new_trtt  = get_route_trtt(&new[i], e);
-				if(base_trtt > new_trtt) {
-					map_rnode_insert(&base[i], x, &new[i].r_node[e]);
-					base[i].flags|=MAP_UPDATE;
-					count++;
-					break;
-				}
-			}
-		}
-		
-		if(base[i].links)
-			base[i].flags&=~MAP_VOID;
-		else
-			map_node_del(&base[i]);
+			memcpy(&gwstub.rem, &gwnew->rem, sizeof(rem_t));
+			/* gwstub.rem = gwstub.rem + base_new_rem */
+			rem_add(&gwstub.rem, gwstub.rem, base_new_rem);
+
+			/* Add the gw in `base' */
+			count+=map_gw_add(&base[i], gwstub, base_root);
+		    }
 	}
 
 	return count;
 }
-
-
