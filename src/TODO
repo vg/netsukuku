@@ -1,8 +1,8 @@
 --
-Not parallelizzable TODOs. This means that if you want to implement one of
+Not parallelizable TODOs. This means that if you want to implement one of
 the following TODOs, you have first to coordinate with someone, learn what he
 did and what you have to do to continue the development.
-The list of parallelizzable TODOs is in ./TOCODE
+The list of parallelizable TODOs is in ./TOCODE
 --
 
 
