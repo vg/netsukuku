@@ -1,3 +1,11 @@
+--
+Not parallelizzable TODOs. This means that if you want to implement one of
+the following TODOs, you have first to coordinate with someone, learn what he
+did and what you have to do to continue the development.
+The list of parallelizzable TODOs is in ./TOCODE
+--
+
+
 *
 **
 ***		HIGH PRIORITY
@@ -130,35 +138,8 @@
 - SNSD
 	- pubkey: automatic deletion request
 
-- A firewall script to turn a ntk node into a routing only node.
-
-
-	              other ntk nodes
-		             |
-			     |
-			     |
-			 _________
-			|    N    |
-    Internet ---------- | WRT ntk | - - w i f i - - - Ntk node A
-			|_________|             \
-			     |                   \
-			     |                    \ Ntk node B
-			   L A N
-			    
-  If N is set to a routing only node, then the nodes A and B will always be
-  able to reach the Internet and the "other ntk nodes" through it, but they 
-  will not be able to reach the LAN connected to the node N.
-  Optionally the node N can leave some "backdoor" ports opened, f.e. it might
-  want to leave a ssh login which accepts keys authentication only.
-
-  The port used by Netsukuku will be leaved open too, in this way the nodes
-  can still communicate between them.
-
 - Can multiple qspn packets be processed concurrently? Or do we need mutexes
   for them? Only the tests will give answer.
-
-- Write packagizing scripts for .deb, .rpm, ....
-  http://lists.dyne.org/netsukuku/msg00610.php
 
 *
 **
@@ -167,20 +148,6 @@
 *	
 
 - ANDNA: Hostname cancellation request
-
-- Interactive shell/console. Some commands that should be implemented:
-	  "stats" gives statistics, 
-	  "rnodes" show the list of rnodes,
-	  "int_map" dumps the internal map in a ASCIIful way,
-	  "ext_map", "bnode_map", "andna_cache", ...,
-	  "flush rhcache"
-
-- RSA implementation of signature aggregation, see:
-  A Survey of Two Signature Aggregation Techniques:
-	  http://crypto.stanford.edu/~dabo/abstracts/aggsurvey.html
-
-  Aggregate and Verifiably Encrypted Signatures from Bilinear Maps:
-	  http://crypto.stanford.edu/~dabo/abstracts/aggreg.html
 
 - ntk-finger: it would be handy to be able to know some info on a particular
   node. The user puts his node info in /etc/netsukuku/finger.
@@ -252,7 +219,5 @@
 - restore the network when NetsukukuD is closed (call /etc/rc.d/rc.inet1 ?)
 
 - Use binreloc from autopackage (  http://autopackage.org/docs/binreloc/ )
-
-- Use qemu to make Netsukuku run on windows?!?
 
 - /*\ \*/
