@@ -133,6 +133,19 @@ bw8_t rem_bw_32to8(bw32_t y)
 }
 
 /*
+ * rem_avg_compute
+ * ---------------
+ *
+ * Returns the average of the metrics present in `x'.
+ * See {-avg_t-}
+ */
+avg_t rem_avg_compute(rem_t x)
+{
+	return AVG_UPBW_COEF*x->upbw + AVG_DWBW_COEF*x->dwbw 
+			+ AVG_RTT_COEF*(REM_MAX_RTT8 - x->rtt);
+}
+
+/*
  * rem_bw_cmp
  * -----------
  *
@@ -174,13 +187,19 @@ int rem_rtt_cmp(rtt32_t a, rtt32_t b)
 /*
  * rem_avg_cmp
  * -----------
+ *
+ * Standard comparison between the two numbers `a' and `b', i.e. if `a' is
+ * greater than `b', it means that `a' has a better average than `b'.
+ *
  */
 int rem_avg_cmp(avg32_t a, avg32_t b)
 {
-	/*
-	 * TODO: 
-	 */
-	fatal("CODE ME!!!");
+        /*
+         * a < b   -1	 -->  The avg `a' is worse  than `b'
+         * a > b    1    -->  The avg `a' is better than `b'
+         * a = b    0	 -->  They are the same
+         */
+	return (a > b) - (a < b);
 }
 
 /*
@@ -219,5 +238,70 @@ int rem_metric_cmp(rem_t a, rem_t b, metric_t metric)
 			break;
 	}
 	
+	return ret;
+}
+
+/*
+ * rem_rtt_add
+ * -----------
+ *
+ * ret = x + y
+ */
+void rem_rtt_add(rem_t *ret, rem_t x, rem_t y)
+{
+	rtt32_t x32, y32;
+
+	x32 = rem_rtt_8to32(x.rtt);
+	y32 = rem_rtt_8to32(y.rtt);
+
+	ret->rtt = rem_rtt_32to8(x32+y32);
+}
+
+/*
+ * rem_bw_add
+ * ----------
+ *
+ * ret = min{x,y}
+ */
+void rem_bw_add(rem_t *ret, rem_t x, rem_t y)
+{
+	ret->upbw = x.upbw > y.upbw ? y.upbw : x.upbw;
+	ret->dwbw = x.dwbw > y.dwbw ? y.dwbw : x.dwbw;
+}
+
+/*
+ * rem_avg_cmp
+ * -----------
+ *
+ * It simply calls {-rem_avg_compute-}. 
+ * For this reason, when before executing this function call {-rem_bw_add-} and
+ * {-rem_rtt_add-}.
+ */
+void rem_avg_add(rem_t *ret)
+{
+	ret->avg=rem_avg_compute(*ret);
+}
+
+
+/*
+ * rem_add
+ * -------
+ *
+ * *ret = x + y
+ *
+ * It sums two metrics and saves the result in `ret'.
+ * The sum is associative, i.e.
+ * 	rem_add(ret, *rem_add(ret, x, y), z)
+ * is the same of
+ * 	rem_add(ret, x, *rem_add(ret, y, z))
+ * 
+ * `ret' is returned.
+ */
+rem_t *rem_add(rem_t *ret, rem_t x, rem_t y)
+{
+	rem_rtt_add(ret, x, y);
+	rem_bw_add(ret, x, y);
+	rem_avg_add(ret);
+
 	return ret;
 }

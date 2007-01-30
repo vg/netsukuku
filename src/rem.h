@@ -46,6 +46,10 @@
 typedef uint8_t rtt8_t;
 typedef uint32_t rtt32_t;
 
+/* Maximal value assumed by {-rtt8_t-} (255) */
+#define REM_MAX_RTT8		(UINT8_MAX)
+#define REM_MAX_RTT32		(UINT32_MAX)
+
 /*
  * Bandwidth
  * ---------
@@ -72,11 +76,26 @@ typedef uint32_t bw32_t;
 
 
 /*
- * TODO: define f(rtt, upbw, dwbw)
+ * Average
+ * -------
+ *
+ * Average of the Upload, Download bandwidths and of the RTT.
+ * It is given by:
+ *
+ * 	avg  = k*DwBw + j*UpBw + t*(MAXRTT-rtt)
+ *
+ * Where k,j,t are coefficients whose sum is 1 and MAXRTT is {-REM_MAX_RTT8-}.
+ *
+ * The 32bit version of the avg isn't really utilised.
  */
-typedef uint8_t  avg8_t;
-typedef uint32_t avg32_t;
+typedef uint8_t   avg8_t;
+typedef uint32_t  avg32_t;
+typedef avg8_t avg_t;
 
+/* Coefficients used to compute the average (see {-avg_t-}) */
+#define AVG_UPBW_COEF		(1/4)
+#define AVG_DWBW_COEF		(1/4)
+#define AVG_RTT_COEF		(2/4)
 
 /*
  * rem_t
@@ -90,7 +109,6 @@ typedef struct
 	rtt8_t		rtt;		/* Round trip time in ms */
 
 	bw8_t		upbw;		/* Upload bandwidth */
-	/* TODO: remember the bottleneck */
 	bw8_t		dwbw;		/* Download */
 
 	avg8_t		avg;		/* An ad-hoc average of the
@@ -122,9 +140,16 @@ rtt8_t rem_rtt_32to8(rtt32_t y);
 bw32_t rem_bw_8to32(bw8_t x);
 bw8_t rem_bw_32to8(bw32_t y);
 
+avg_t rem_avg_compute(rem_t x);
+
 int rem_bw_cmp(bw32_t a, bw32_t b);
 int rem_rtt_cmp(rtt32_t a, rtt32_t b);
 int rem_avg_cmp(avg32_t a, avg32_t b);
 int rem_metric_cmp(rem_t a, rem_t b, metric_t metric);
 
+
+void rem_rtt_add(rem_t *ret, rem_t x, rem_t y);
+void rem_bw_add(rem_t *ret, rem_t x, rem_t y);
+void rem_avg_add(rem_t *ret);
+rem_t *rem_add(rem_t *ret, rem_t x, rem_t y);
 #endif /* REM_H */
