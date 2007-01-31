@@ -197,7 +197,7 @@ void map_free(map_node *map, size_t count)
 		count=MAXGROUPNODE;
 
 	for(i=0; i<count; i++)
-		map_node_free(&map[i]);
+		map_node_del(&map[i]);
 
 	xfree(map);
 }
@@ -683,17 +683,20 @@ int map_merge_maps(map_node *base, map_node *new, map_node *base_root,
  * map_pack
  * --------
  *
- * Packs the internal mao `imap' and returns the pointer to the newly
+ * Packs the internal map `imap' and returns the pointer to the newly
  * allocated package.
  * The size of the pack is saved in `*pack_sz'.
  */
-char *map_pack(int_map *imap, size_t *pack_sz)
+char *map_pack(int_map imap, size_t *pack_sz)
 {
 	struct int_map_hdr imap_hdr;
 	char *pack, *buf;
 
-	imap_hdr.max_metric_routes = imap->max_metric_routes;
-	imap_hdr.root_id = imap->root_id;
+	pack=0;
+	*pack_sz = 0;
+
+	imap_hdr.max_metric_routes = imap.max_metric_routes;
+	imap_hdr.root_id = imap.root_id;
 	
 	/* 
 	 * Calculate the size of the pack 
@@ -710,7 +713,7 @@ char *map_pack(int_map *imap, size_t *pack_sz)
 			count++;
 		}
 	}
-	imap_hdr.int_map_sz = INT_MAP_PACK_SZ(imap->max_metric_routes, count);
+	imap_hdr.int_map_sz = INT_MAP_PACK_SZ(imap.max_metric_routes, count);
 
 	/* 
 	 * Let the packing begin 
@@ -720,6 +723,7 @@ char *map_pack(int_map *imap, size_t *pack_sz)
 
 	/* packing {-int_map_hdr-} */
 	bufput(&imap_hdr, sizeof(imap_hdr));
+	ints_host_to_network(pack, int_map_hdr_iinfo);
 
 	for(i=0; i<MAXGROUPNODE; i++) {
 		if(!TEST_BIT(imap_hdr.map_mask, i))
@@ -743,9 +747,10 @@ char *map_pack(int_map *imap, size_t *pack_sz)
 				if(crypto_pack_pubkey(map[i].pubkey, &keydump, 0))
 					keydump=0;
 			}
-			if(!keydump)
+			if(!keydump) {
 				setzero(nhdr->pubkey, NODE_PKEY_LEN);
-			else {
+				strcpy(nhdr->pubkey, MAP_NODE_HDR_NOPUBKEY);
+			} else {
 				memcpy(nhdr->pubkey, keydump, NODE_PKEY_LEN);
 				xfree(keydump);
 			}
@@ -775,4 +780,243 @@ char *map_pack(int_map *imap, size_t *pack_sz)
 				bufput(&gpack, sizeof(gpack));
 			}
 	}
+
+	*pack_sz = imap_hdr.int_map_sz;
+	return pack;
+}
+
+/*
+ * map_unpack
+ * ----------
+ *
+ * Unpacks `pack', which is a map packed with {-map_pack-}.
+ * `pack_sz' is the size of the pack.
+ *
+ * An {-int_map-} struct is returned.
+ * If an error occurred, int_map.map is set to zero.
+ *
+ * Note: int_map.root_ip is leaved unset!
+ */
+int_map map_unpack(char *pack, size_t pack_sz)
+{	
+	int_map imap;
+	map_node *map;
+	char *buf=pack;
+	size_t sz=0;
+	int ret=1, i;
+
+	imap.map=0;
+
+	/* Unpacking {-int_map_hdr-} */
+	struct int_map_hdr imap_hdr;
+	if((sz+=sizeof(struct int_map_hdr)) > pack_sz)
+		ERROR_FINISH(ret, 0, finish);
+	bufget(&imap_hdr, sizeof(struct int_map_hdr));
+	ints_network_to_host(&imap_hdr, int_map_hdr_iinfo);
+
+	imap.max_metric_routes = imap_hdr->max_metric_routes;
+	imap.root_id = imap_hdr->root_id;
+
+	/* Check the validity of the size of the pack */
+	int count=0;
+	for(i=0; i<MAXGROUPNODE; i++)
+		if(TEST_BIT(imap_hdr->map_mask, i))
+			count++;
+	if(INT_MAP_BLOCK_SZ(imap.max_metric_routes, count) > pack_sz)
+		ERROR_FINISH(ret, 0, finish);
+
+	/*
+	 * Unpacking the map
+	 */
+	imap.map = map = map_alloc(0);
+	for(i=0; i < MAXGROUPNODE; i++) {
+		struct map_node_hdr *nhdr;
+
+		if(!TEST_BIT(imap_hdr->map_mask, i))
+			continue;
+
+		/* 
+		 * Unpacking {-map_node_hdr-} 
+		 */
+		nhdr = (struct map_node_hdr *)buf;
+		buf+=sizeof(struct map_node_hdr);
+		if((sz +=sizeof(struct map_node_hdr)) > pack_sz)
+			ERROR_FINISH(ret, 0, finish);
+
+
+		map[i].flags = nhdr->flags;
+		map[i].links = nhdr->links;
+
+		if(!strncmp(nhdr->pubkey, MAP_NODE_HDR_NOPUBKEY, MAP_NODE_HDR_NOPUBKEY_LEN))
+			map[i].pubkey = 0;
+		else {
+			const u_char *pk;
+			pk=(const u_char *)nhdr->pubkey;
+			map[i].pubkey = get_rsa_pub(&pk, NODE_PKEY_LEN);
+		}
+
+		/* Unpacking linkids */
+		if(map[i].links) {
+			size_t _sz=sizeof(linkid_t)*map[i].links;
+			if((sz += _sz) > pack_sz)
+				ERROR_FINISH(ret, 0, finish);
+
+			map[i].linkids = xmalloc(_sz);
+			bufget(map[i].linkids, _sz);
+		}
+
+		size_t gws_sz=sizeof(map_gw_pack)*REM_METRICS*imap.max_metric_routes;
+		if((sz += gws_sz) > pack_sz)
+			ERROR_FINISH(ret, 0, finish);
+
+		/*
+		 * Unpacking {-map_gw_pack-}
+		 */
+		int e,x;
+		for(e=0; e<REM_METRICS; e++)
+			for(x=0; x < imap.max_metric_routes; x++) {
+				struct map_gw_pack *gpack;
+				gpack = (struct map_gw_pack *)buf;
+				buf += sizeof(gpack);
+
+				map[i].metrics[e].gw[x]=0;
+
+				if(is_bufzero(&gpack, sizeof(gpack)))
+					continue;
+
+				map_gw *gw = map[i].metrics[e].gw[x];
+
+				gw->tpmask = gpack->tpmask;
+				gw->rem    = gpack->rem;
+				gw->node   = map_pos2node(gpack->node, map);
+
+				bufput(&gpack, sizeof(gpack));
+			}
+	}
+
+	imap.root_node = map_pos2node(imap.root_id, map);
+
+finish:
+	if(!ret && imap.map) {
+		map_free(imap.map, 0);
+		imap.map = 0;
+	}
+
+	return imap;
+}
+
+/*
+ * map_verify_hdr
+ * --------------
+ *
+ * Verifies the validity of the `imap_hdr' int_map_hdr struct.
+ * If `imap_hdr' is invalid 1 will be returned.
+ */
+int map_verify_hdr(struct int_map_hdr *imap_hdr)
+{
+	if(imap_hdr->max_metric_routes < MIN_MAX_METRIC_ROUTES)
+		return 1;
+
+	size_t realsz;
+	int count=0;
+	for(i=0; i<MAXGROUPNODE; i++)
+		if(TEST_BIT(imap_hdr->map_mask, i))
+			count++;
+	realsz = INT_MAP_BLOCK_SZ(imap_hdr->max_metric_routes, count);
+
+	if(imap_hdr->int_map_sz != realsz)
+		return 1;
+
+	return 0;
+}
+
+
+
+/*\
+ *
+ *  * * * save/load the Internal Map * * *
+ *
+\*/
+
+/*
+ * map_save
+ * --------
+ *
+ * Saves the int_map `imap' in `file'
+ */
+int map_save(int_map imap, char *file)
+{
+	FILE *fd;
+	size_t pack_sz;
+	char *pack;
+
+	/*Pack!*/
+	pack=map_pack(imap, &pack_sz);
+	if(!pack_sz || !pack)
+		return 0;
+	
+	if((fd=fopen(file, "w"))==NULL) {
+		error("Cannot save the int_map in %s: %s", file, strerror(errno));
+		return -1;
+	}
+
+	/*Write!*/
+	fwrite(pack, pack_sz, 1, fd);
+	
+	xfree(pack);
+	fclose(fd);
+	return 0;
+}
+
+/* 
+ * load_map
+ * --------
+ *
+ * It loads the internal map from `file'.
+ * It returns an {-int_map-} struct, where int_map.map is a pointer to the
+ * start of the newly allocated map.
+ *
+ * Note: the global variable {-MAX_METRIC_ROUTES-} is untouched. You have to
+ * set it manually, using int_map.max_metric_routes.
+ *
+ * On error it returns NULL. 
+ */
+int_map load_map(char *file)
+{
+	map_node *map=0;
+	FILE *fd;
+	struct int_map_hdr imap_hdr;
+	char *pack=0;
+	size_t pack_sz;
+	
+	if((fd=fopen(file, "r"))==NULL) {
+		error("Cannot load the map from %s: %s", file, strerror(errno));
+		return 0;
+	}
+
+	if(!fread(&imap_hdr, sizeof(struct int_map_hdr), 1, fd))
+		goto finish;
+
+	ints_network_to_host(&imap_hdr, int_map_hdr_iinfo);
+	
+	if(map_verify_hdr(&imap_hdr))
+		goto finish;
+		
+	rewind(fd);
+	pack_sz = imap_hdr.int_map_sz;
+	pack    = xmalloc(pack_sz);
+	if(!fread(pack, pack_sz, 1, fd))
+		goto finish;
+
+	int_map imap;
+	imap = map_unpack(pack, pack_sz);
+
+finish:
+	if(pack)
+		xfree(pack);
+	fclose(fd);
+	if(!imap.map)
+		error("Malformed map file. Aborting load_map().");
+
+	return imap;
 }

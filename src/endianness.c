@@ -16,8 +16,9 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * --
- * endian.c:
- * stuff to handle endianess mischief.
+ * endian.c
+ *
+ * stuff to handle endianess mischief. See {-int_info_t-}
  */
 
 #include "includes.h"
@@ -42,6 +43,12 @@
 
 #endif	/*DEBUG*/
 
+/*
+ * int_info_copy
+ * -------------
+ *
+ * Copies `src' over `dst'.
+ */
 void *int_info_copy(int_info *dst, const int_info *src)
 {
 	return memcpy(dst, src, sizeof(int_info));
@@ -89,9 +96,12 @@ void ints_array_htons(short *netshort, int nmemb)
 
 
 /*
- * ints_network_to_host: converts all the int/short variables present in the
- * struct `s' from network order to host order. The `s' struct must be
- * described in the `iinfo' struct.
+ * ints_network_to_host
+ * --------------------
+ *
+ * Converts all the int/short variables present in the struct `s' from
+ * network order to host order. The `s' struct must be described in
+ * the `iinfo' struct.
  */
 void ints_network_to_host(void *s, int_info iinfo)
 {
@@ -136,9 +146,12 @@ void ints_network_to_host(void *s, int_info iinfo)
 }
 
 /*
- * ints_host_to_network: converts all the int/short variables present in the
- * struct `s' from host order to network order. The `s' struct must be
- * described in the `iinfo' struct.
+ * ints_host_to_network
+ * --------------------
+ *
+ * Converts all the int/short variables present in the struct `s' from
+ * host order to network order. The `s' struct must be described in 
+ * the `iinfo' struct.
  */
 void ints_host_to_network(void *s, int_info iinfo)
 {
@@ -180,8 +193,11 @@ void ints_host_to_network(void *s, int_info iinfo)
 }
 
 /*
- * ints_printf: prints all the int/short vars present in the `s' struct
- * described by `iinfo'. It uses `print_func' as the the printing function
+ * ints_printf
+ * -----------
+ *
+ * Prints all the int/short vars present in the `s' struct described 
+ * by `iinfo'. It uses `print_func' as the the printing function
  */
 void ints_printf(void *s, int_info iinfo, void(*print_func(const char *, ...)))
 {

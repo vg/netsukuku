@@ -47,8 +47,8 @@
  * This is useful for small machine with strict memory limits.
  *
  * These conditions must be respected:
- * 	MAX_METRIC_ROUTES >= MIN_MAX_METRIC_ROUTES  
- * 	MAX_METRIC_ROUTES >= {-MAX_QCACHE_ROUTES-}
+ * 	MAX_METRIC_ROUTES >= max(MIN_MAX_METRIC_ROUTES, {-MAX_QCACHE_ROUTES-})
+ * 	MAX_METRIC_ROUTES <= 255
  *
  * By default MAX_METRIC_ROUTES is set to DEFAULT_MAX_METRIC_ROUTES.
  */
@@ -83,10 +83,11 @@ int 	MAX_METRIC_ROUTES = DEFAULT_MAX_METRIC_ROUTES;
  * The overflow of the link id counter is handled with the {-counter_cmp-}
  * macro.
  */
-typedef struct {
-	u_short		nid:8;		/* node id */
-	u_short		lid:8;		/* link id */
-} linkid_t;
+struct linkid_t {
+	nid_t		nid;		/* node id */
+	uint8_t		lid;		/* link id */
+} _PACKED_;
+typedef struct linkid_t linkid_t;
 
 /* 
  * Node ID
@@ -301,22 +302,18 @@ typedef struct {
 
 struct int_map_hdr
 {
-	size_t		int_map_sz;
+	size_t		int_map_sz;		/* Size of the whole pack */
 
 	/* bit mask of the nodes included in the pack.
 	 * If the i-th bit is set, then the node with ID `i' is included in
 	 * the pack. */
 	char		map_mask[MAXGROUPNODE/8];
 
-	int		max_metric_routes;	/* See {-MAX_METRIC_ROUTES-} */
+	uint8_t		max_metric_routes;	/* See {-MAX_METRIC_ROUTES-} */
 
 	nid_t		root_id;
 }_PACKED_;
-INT_INFO int_map_hdr_iinfo = { 2, 
-			       { INT_TYPE_32BIT, INT_TYPE_32BIT }, 
-			       { 0, sizeof(size_t) },
-			       { 1, 1 }
-			     };
+INT_INFO int_map_hdr_iinfo = { 1, { INT_TYPE_32BIT }, { 0 }, { 1 } };
 
 struct map_node_hdr
 {
@@ -325,6 +322,14 @@ struct map_node_hdr
 					   node->linkids[] array */
 
 	char		pubkey[NODE_PKEY_LEN];
+
+	/*
+	 * this magic string is put at the start of `pubkey' to indicate that
+	 * no pubkey has been saved. The rest of `pubkey' is filled with
+	 * zeros.
+	 */
+#define MAP_NODE_HDR_NOPUBKEY	"No pubkey saved"
+#define MAP_NODE_HDR_NOPUBKEY_LEN  15
 }_PACKED_;
 /* No INT_INFO required */
 
@@ -347,22 +352,10 @@ struct map_gw_pack
  */
 #define INT_MAP_PACK_SZ(mmr, mcount)					\
 	( sizeof(struct int_map_hdr) + 					\
-	  	(sizeof(map_node_hdr) + 				\
-		 	(sizeof(map_gw_pack)*(REM_METRICS*(mmr))	\
+	  	(sizeof(struct map_node_hdr) + 				\
+		 	(sizeof(struct map_gw_pack)*(REM_METRICS*(mmr))	\
 		)*(mcount)						\
 	)
-
-/*
- * The int_map_block is:
- * 	struct int_map_hdr hdr;
- * 	char map_node[int_map_sz];
- * 	char map_rnode[rblock_sz];
- */
-#define INT_MAP_BLOCK_SZ(int_map_sz, rblock_sz) (sizeof(struct int_map_hdr)+(int_map_sz)+(rblock_sz))
-
-/*
- * TODO: TODO_PACK_MAP_HEADER
- */
 
 /*\
  *
@@ -403,6 +396,10 @@ int     map_gw_add(map_node *dst, map_gw gw, map_node *root_node);
 int map_merge_maps(map_node *base, map_node *new, map_node *base_root, 
 			map_node *new_root, rem_t base_new_rem);
 
-char *map_pack(int_map *imap, size_t *pack_sz);
+char *map_pack(int_map imap, size_t *pack_sz);
+int_map map_unpack(char *pack, size_t pack_sz);
+
+int map_save(int_map imap, char *file);
+int_map load_map(char *file);
 
 #endif /* MAP_H */

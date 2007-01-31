@@ -14,6 +14,10 @@
  * You should have received a copy of the GNU Public License along with
  * this source code; if not, write to:
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ * 
+ * --
+ *
+ * See {-int_info_t-}.
  */
 
 #ifndef ENDIANNESS_H
@@ -42,7 +46,7 @@
  * int_info							|{int_info_t}|
  * --------
  *
- * this struct is used to keep the information about the int/short
+ * This struct is used to keep the information about the int/short
  * variables present in a struct. It is useful to convert all the int/short
  * vars in another endian format with a simple function. 
  * WARNING: There is a drawback: the struct must have the __packed__
@@ -68,6 +72,9 @@
  *			   	sizeof(char)+sizeof(int)+sizeof(short)+sizeof(char)*23},
  *		           { 1, 1, 4 }
  *			 };
+ *
+ * Finally, use {-ints_network_to_host-} and {-ints_host_to_network-} to convert the
+ * struct from host to network and viceversa.
  */
 typedef struct
 {
@@ -103,12 +110,13 @@ typedef struct
 #endif
 
 
-/* * * Functions declaration * * */
+/*\
+ *
+ *  * * * Exported functions * * *
+ *
+\*/
+
 void *int_info_copy(int_info *dst, const int_info *src);
-void ints_array_htons(short *netshort, int nmemb);
-void ints_array_ntohs(short *hostshort, int nmemb);
-void ints_array_htonl(int *netlong, int nmemb);
-void ints_array_ntohl(int *hostlong, int nmemb);
 void ints_network_to_host(void *s, int_info iinfo);
 void ints_host_to_network(void *s, int_info iinfo);
 void ints_printf(void *s, int_info iinfo, void(*print_func(const char *, ...)));
