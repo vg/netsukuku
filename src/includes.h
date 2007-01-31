@@ -57,7 +57,7 @@
 #include <gmp.h>
 #include <pthread.h>
 
-
+/* |{packed-attr}| */
 #define _PACKED_ __attribute__ ((__packed__))
 
 #define DEBUG_TEST

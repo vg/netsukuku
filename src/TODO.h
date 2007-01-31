@@ -3,13 +3,8 @@
  * ------
  *
  * Detailed description of various TODOs sparse in the sources. 
- * Use cscope (or grep) to see where they are cited.
+ * Use cscope (or grep) to see where they are cited, or better, use {-WoC-}.
 \*/
-
-/*
- * Use bsearch(3) to search in the metrics.gw array (see {-MetricArrays-})
- */
-#define TODO_BSEARCH_FOR_MAP_GW
 
 /*
  * Use an ad-hoc struct for each root node (of any level).

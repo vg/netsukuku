@@ -39,7 +39,10 @@
 #define INT_TYPE_NETWORK 	(1<<3)		/* The int var is stored in network order */
 
 /*
- * int_info: this struct is used to keep the information about the int/short
+ * int_info							|{int_info_t}|
+ * --------
+ *
+ * this struct is used to keep the information about the int/short
  * variables present in a struct. It is useful to convert all the int/short
  * vars in another endian format with a simple function. 
  * WARNING: There is a drawback: the struct must have the __packed__
@@ -86,8 +89,12 @@ typedef struct
 
 } int_info;
 
-/* Useful to declare constant static int_info structs in .h files */
+/* 
+ * Useful to declare constant static int_info structs in .h files.
+ * See {-int_info_t-}.
+ */
 #define INT_INFO const static int_info
+
 
 #if BYTE_ORDER == LITTLE_ENDIAN
 #include <linux/byteorder/little_endian.h>

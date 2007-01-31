@@ -136,11 +136,11 @@ typedef struct snsd_service snsd_service;
 #define SNSD_SERVICE_PACK_SZ		(sizeof(u_short)+sizeof(u_char))
 
 
-/*
+/*\
  * 
  *  * * * snsd structs package * * *
  *  
- */
+\*/
 
 struct snsd_node_llist_hdr
 {

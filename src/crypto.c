@@ -52,7 +52,61 @@ char *ssl_strerr(void)
 }
 
 /*
- * genrsa: generates a new rsa key pair and returns the private key in the RSA
+ * crypto_pack_pubkey
+ * ------------------
+ *
+ * Packs the RSA public key `pkey', and saves the result in a newly allocated
+ * space. The pointer to that space is saved in `*pub'.
+ * If `pub_len' is not NULL, the size of the pack will be saved in `*pub_len'.
+ *
+ * It return -1 on error, otherwise 0;
+ */
+int crypto_pack_pubkey(RSA *pkey, u_char **pub, u_int *pub_len)
+{
+	if(!pub)
+		return -1;
+
+	*pub=0;
+	len=i2d_RSAPublicKey(pkey, pub);
+	if(pub_len)
+		*pub_len=len;
+
+	if(len <= 0) {
+		debug(DBG_SOFT, "Cannot dump RSA public key: %s", ssl_strerr());
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
+ * crypto_pack_privkey
+ * ------------------
+ *
+ * The same of {-crypto_pack_pubkey-}, but for private key only.
+ */
+int crypto_pack_privkey(RSA *pkey, u_char **priv, u_int *priv_len)
+{
+	if(!priv)
+		return -1;
+
+	*priv=0;
+	len=i2d_RSAPrivateKey(pkey, priv);
+	if(priv_len)
+		*priv_len=len;
+	if(len <= 0) {
+		debug(DBG_SOFT, "Cannot dump RSA public key: %s", ssl_strerr());
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
+ * genrsa
+ * ------
+ *
+ * Generates a new rsa key pair and returns the private key in the RSA
  * format. If `pub' is not null, it stores in it the pointer to a newly
  * allocated dump of the public key that is `*pub_len' bytes. The same is for
  * `priv' and `priv_len'.
@@ -70,25 +124,13 @@ RSA *genrsa(int key_bits, u_char **pub, u_int *pub_len, u_char **priv, u_int *pr
 	}
 
 	if(priv) {
-		*priv=0;
-		len=i2d_RSAPrivateKey(rsa, priv);
-		if(priv_len)
-			*priv_len=len;
-		if(len <= 0) {
-			debug(DBG_SOFT, "Cannot dump RSA public key: %s", ssl_strerr());
+		if(crypto_dump_privkey(rsa, priv, priv_len))
 			goto error;
-		}
 	}
 
 	if(pub) {
-		*pub=0;
-		len=i2d_RSAPublicKey(rsa, pub);
-		if(pub_len)
-			*pub_len=len;
-		if(len <= 0) {
-			debug(DBG_SOFT, "Cannot dump RSA public key: %s", ssl_strerr());
+		if(crypto_dump_pubkey(rsa, pub, pub_len))
 			goto error;
-		}
 	}
 	
 	return rsa;

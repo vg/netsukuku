@@ -47,7 +47,7 @@
  * It copies `__sz' bytes from `__src' to `__dst' and then increments the `__dst'
  * pointer of `__sz' bytes.
  *
- * It incremented `__dst' pointer is returned.
+ * The incremented `__dst' pointer is returned.
  *
  * Note: you can also use side expression, f.e.	
  * 	 memput(buf++, src, (size+=sizeof(src));
@@ -68,7 +68,7 @@
  *
  * the same of memput(), but it increments `__src' instead.
  *
- * It incremented `__src' pointer is returned.
+ * The incremented `__src' pointer is returned.
  */
 #define memget(__dst, __src, __sz)					\
 ({ 									\

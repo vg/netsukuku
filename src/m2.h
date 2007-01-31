@@ -240,6 +240,8 @@ struct map_node
 	} metrics[REM_METRICS];
 
 	RSA		*pubkey;	/* Public key of the this node */
+#define NODE_PRIVKEY_BITS	1024
+#define NODE_PKEY_LEN		140
 };
 typedef struct map_node map_node;
 typedef struct map_gw   map_gw;
@@ -250,20 +252,22 @@ typedef struct map_gw   map_gw;
  *
  * The internal map.
  *
- * The internal map is an array composed by MAXGROUPNODE map_node structs.
- * The i-th struct of the array corresponds to the node whose id is `i'.
- *
+ * The main part of the internal map is an array composed by 
+ * MAXGROUPNODE map_node structs. The i-th struct of the array corresponds 
+ * to the node whose id is `i'. The start of the array is int_map.map.
  * You can use the following functions to convert a node id to a struct
  * position: {-map_node2pos-}, {-map_pos2node-}.
- *
  */
 typedef struct {
 
 	map_node	*map;		/* Pointer to the start of the map */
 
+	/* {-MAX_METRIC_ROUTES-} value, relative to this map */
+	int 		max_metric_routes;
+
 	map_node	*root_node;	/* The root node, i.e. localhost */
-	nid_t		*root_id;	/* Root node ID */
-	inet_prefix 	*root_ip;	/* IP of the root node */
+	nid_t		root_id;	/* Root node ID */
+	inet_prefix 	root_ip;	/* IP of the root node */
 
 } int_map;
 
@@ -274,6 +278,87 @@ typedef struct {
  */
 #define MAP_END(mapstart)	(&mapstart[MAXGROUPNODE-1])
 
+
+/*\
+ *
+ * Internal map pack					|{intmap_pack}|
+ * =================
+ *
+ * The internal map is packed in this way:
+ *         
+ *  { int_map_hdr },
+ *  {
+ *  	{ map_node_hdr },
+ *  	{ linkid_t }^(map_node_hdr.links),
+ *  	{ map_gw_pack }^(REM_METRICS*max_metric_routes)
+ *  }^B
+ * Where,  B = count_bits(int_map_hdr.map_mask)
+ *
+ * To understand this syntax see {-pack-syntax-}
+ *
+\*/
+
+
+struct int_map_hdr
+{
+	size_t		int_map_sz;
+
+	/* bit mask of the nodes included in the pack.
+	 * If the i-th bit is set, then the node with ID `i' is included in
+	 * the pack. */
+	char		map_mask[MAXGROUPNODE/8];
+
+	int		max_metric_routes;	/* See {-MAX_METRIC_ROUTES-} */
+
+	nid_t		root_id;
+}_PACKED_;
+INT_INFO int_map_hdr_iinfo = { 2, 
+			       { INT_TYPE_32BIT, INT_TYPE_32BIT }, 
+			       { 0, sizeof(size_t) },
+			       { 1, 1 }
+			     };
+
+struct map_node_hdr
+{
+	u_char		flags;
+	u_char		links;		/* # of elements of the
+					   node->linkids[] array */
+
+	char		pubkey[NODE_PKEY_LEN];
+}_PACKED_;
+/* No INT_INFO required */
+
+struct map_gw_pack
+{
+	tpmask_t        tpmask;
+	nid_t		node;
+	rem_t           rem;
+}_PACKED_;
+/* No INT_INFO required */
+
+
+/*
+ * INT_MAP_PACK_SZ
+ * ---------------
+ *
+ * Returns the size of the {-intmap_pack-}.
+ * `mmr' is the {-MAX_METRIC_ROUTES-} value associated to the map.
+ * `mcount' is the number of nodes included in the pack.
+ */
+#define INT_MAP_PACK_SZ(mmr, mcount)					\
+	( sizeof(struct int_map_hdr) + 					\
+	  	(sizeof(map_node_hdr) + 				\
+		 	(sizeof(map_gw_pack)*(REM_METRICS*(mmr))	\
+		)*(mcount)						\
+	)
+
+/*
+ * The int_map_block is:
+ * 	struct int_map_hdr hdr;
+ * 	char map_node[int_map_sz];
+ * 	char map_rnode[rblock_sz];
+ */
+#define INT_MAP_BLOCK_SZ(int_map_sz, rblock_sz) (sizeof(struct int_map_hdr)+(int_map_sz)+(rblock_sz))
 
 /*
  * TODO: TODO_PACK_MAP_HEADER
@@ -301,13 +386,23 @@ void map_reset(map_node *map, size_t count);
 void map_node_reset(map_node *node);
 void map_node_del(map_node *node);
 
-int map_gw_add(map_node *dst, map_gw gw, map_node *root_node);
-int map_gw_del(map_node *node, map_gw *gw);
+int map_lid_find_nid(map_node *node, nid_t nid);
+int map_lid_add(map_node *node, linkid_t id);
+int map_lid_del(map_node *node, nid_t nid);
+
+int  map_gw_add(map_node *dst, map_gw gw, map_node *root_node);
+int  map_gw_del(map_node *node, map_gw *gw);
 void map_gw_reset(map_node *node);
 void map_gw_destroy(map_node *node);
 
 map_gw *map_gw_find(map_node *node, map_node *n);
-int map_gw_count(map_gw **gw);
-void map_gw_sort(map_gw **gw, metric_t metric);
+int     map_gw_count(map_gw **gw);
+void    map_gw_sort(map_gw **gw, metric_t metric);
+int     map_gw_add(map_node *dst, map_gw gw, map_node *root_node);
+
+int map_merge_maps(map_node *base, map_node *new, map_node *base_root, 
+			map_node *new_root, rem_t base_new_rem);
+
+char *map_pack(int_map *imap, size_t *pack_sz);
 
 #endif /* MAP_H */

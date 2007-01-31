@@ -25,9 +25,11 @@
 #include "llist.c"
 #include "snsd_cache.h"
 
-/*
+/*\
+ *
  * ANDNA definitions
- */
+ *
+\*/
 
 #define ANDNA_MAX_BACKUP_GNODES		2
 #define ANDNA_MAX_QUEUE			5
@@ -60,9 +62,11 @@
 	#define ANDNA_MIN_UPDATE_TIME 2
 #endif 
 
-/* 
+/*\
+ *
  * * *  Cache stuff  * * *
- */
+ *
+\*/
 
 /* * andna_cache flags * */
 #define ANDNA_BACKUP		1		/* We are a backup_node */
@@ -227,9 +231,11 @@ struct resolved_hnames_cache
 typedef struct resolved_hnames_cache rh_cache;
 
 
-/*
+/*\
+ *
  *  * * *  Global vars   * * *
- */
+ *
+\*/
 andna_cache *andna_c;
 int andna_c_counter;
 
@@ -244,11 +250,11 @@ rh_cache *andna_rhc;
 int rhc_counter;
 
 
-/*
+/*\
  * 
  *  *  *  *  Package stuff  *  *  * 
  *  
- */
+\*/
 
 
 /*
@@ -415,9 +421,11 @@ INT_INFO rh_cache_pkt_body_iinfo = { 3,
 				   };
 
 
-/*
+/*\
+ *
  * * * Functions' declaration * * *
- */
+ *
+\*/
 
 void andna_caches_init(int family);
 

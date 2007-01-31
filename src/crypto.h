@@ -35,6 +35,8 @@
 void init_crypto(void);
 void free_crypto(void);
 char *ssl_strerr(void);
+int crypto_dump_pubkey(RSA *pkey, u_char **priv, u_int *priv_len);
+int crypto_dump_pubkey(RSA *pkey, u_char **pub, u_int *pub_len);
 RSA *genrsa(int key_bits, u_char **pub, u_int *pub_len, u_char **priv, u_int *priv_len);
 RSA *get_rsa_pub(const u_char **pub_key, long length);
 RSA *get_rsa_priv(const u_char **priv_key, long length);

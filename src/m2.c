@@ -264,6 +264,71 @@ void map_node_del(map_node *node)
 }
 
 /*
+ * map_lid_find_nid
+ * ----------------
+ *
+ * Searches in node->links[] a linkid_t which has a node id member equal to
+ * `nid'.
+ * It returns the array position of the found linkid_t struct.
+ * If nothing is found, -1 is returned.
+ */
+int map_lid_find_nid(map_node *node, nid_t nid)
+{
+	int i;
+
+	for(i=0; i<node->links; i++)
+		if(node->linkids[i].nid == nid)
+			return i;
+	return -1;
+}
+
+/*
+ * map_lid_add
+ * -----------
+ *
+ * Adds `id' in `node'->linkids[], which is a {-linkid_t-} array.
+ * If `node'->linkids[] contained already a member J, whose nid is equal to
+ * id.nid, then it just updates J.lid, setting it to id.lid. In this case, 1
+ * is returned.
+ * Otherwise, a new member is added in the array, and `node'->links is
+ * incremented by one. In this case, 2 is returned.
+ */
+int map_lid_add(map_node *node, linkid_t id)
+{
+	int idx;
+	int ret;
+
+	if((idx=map_lid_find_nid(node, id.nid)) != -1) {
+		node->linkids[idx].lid=id.lid;
+		ret=1;
+	} else {
+		array_add(&node->linkids, &node->links, 0, &id);
+		ret=2;
+	}
+
+	return ret;
+}
+
+/*
+ * map_lid_del
+ * -----------
+ *
+ * Deletes, from the `node'->linkids[] array, the linkid_t struct which has
+ * its nid member equal to `nid'.
+ * It returns 1, if something is deleted, 0 otherwise.
+ */
+int map_lid_del(map_node *node, nid_t nid)
+{
+	int idx;
+	if((idx=map_lid_find_nid(node, id.nid)) != -1) {
+		array_del_free(&node->linkids, &node->links, 0, idx);
+		return 1;
+	}
+
+	return 0;
+}
+
+/*
  * map_gw_del
  * ----------
  *
@@ -398,7 +463,7 @@ int map_metr_gw_find(map_node *node, int metric, map_node *n)
  * map_gw_find
  * -----------
  *
- * It searches in the `node' a gw which points to the node `n'.
+ * It searches in `node' a gw which points to the node `n'.
  * It then returns the pointer to that gw.
  * If it is not found it returns 0;
  */
@@ -555,13 +620,16 @@ int map_gw_add(map_node *dst, map_gw gw, map_node *root_node)
  * `new_root' points to the root_node of the `new' map.
  *
  * `base_new_rem' is the {-rem_t-} of the link `base'<-->`new'.
+ * `new_max_metric_routes' is the {-MAX_METRIC_ROUTES-} value relative to
+ * the `new' map.
  *
  * * WARNING *
  * It's assumed that `new_root' is a rnode of `base_root'.
  * * WARNING *
  */
 int map_merge_maps(map_node *base, map_node *new, map_node *base_root, 
-			map_node *new_root, rem_t base_new_rem)
+			map_node *new_root, rem_t base_new_rem, 
+			int new_max_metric_routes)
 {
 	/* Vars */
 	int i, e, x, count=0, base_root_pos, new_root_pos;
@@ -580,7 +648,8 @@ int map_merge_maps(map_node *base, map_node *new, map_node *base_root,
 			continue;
 
 		for(e=0; e < REM_METRICS; e++)
-		    for(x=0; x < MAX_METRIC_ROUTES && new[i].metrics[e].gw[x]; x++) {
+		    for(x=0; x < new_max_metric_routes && 
+				    new[i].metrics[e].gw[x]; x++) {
 
 			gwnew = new[i].metrics[e].gw[x];
 
@@ -608,4 +677,102 @@ int map_merge_maps(map_node *base, map_node *new, map_node *base_root,
 	}
 
 	return count;
+}
+
+/*
+ * map_pack
+ * --------
+ *
+ * Packs the internal mao `imap' and returns the pointer to the newly
+ * allocated package.
+ * The size of the pack is saved in `*pack_sz'.
+ */
+char *map_pack(int_map *imap, size_t *pack_sz)
+{
+	struct int_map_hdr imap_hdr;
+	char *pack, *buf;
+
+	imap_hdr.max_metric_routes = imap->max_metric_routes;
+	imap_hdr.root_id = imap->root_id;
+	
+	/* 
+	 * Calculate the size of the pack 
+	 */
+
+	map_node *map=imap.map;
+	int i, count=0;
+
+	for(i=0; i<MAXGROUPNODE; i++) {
+		if(map[i].flags & MAP_VOID)
+			CLR_BIT(imap_hdr.map_mask, i);
+		else {
+			SET_BIT(imap_hdr.map_mask, i);
+			count++;
+		}
+	}
+	imap_hdr.int_map_sz = INT_MAP_PACK_SZ(imap->max_metric_routes, count);
+
+	/* 
+	 * Let the packing begin 
+	 */
+
+	pack=buf=xmalloc(imap_hdr.int_map_sz);
+
+	/* packing {-int_map_hdr-} */
+	bufput(&imap_hdr, sizeof(imap_hdr));
+
+	for(i=0; i<MAXGROUPNODE; i++) {
+		if(!TEST_BIT(imap_hdr.map_mask, i))
+			continue;
+
+		/*
+		 * Packing {-map_node_hdr-}
+		 */
+		{
+			struct map_node_hdr *nhdr;
+			nhdr=(struct map_node_hdr *)buf;
+			buf+=sizeof(struct map_node_hdr);
+
+			/* flags, links */
+			nhdr->flags = map[i].flags;
+			nhdr->links = map[i].links;
+
+			/* pubkey */
+			char *keydump=0;
+			if(map[i].pubkey) {
+				if(crypto_pack_pubkey(map[i].pubkey, &keydump, 0))
+					keydump=0;
+			}
+			if(!keydump)
+				setzero(nhdr->pubkey, NODE_PKEY_LEN);
+			else {
+				memcpy(nhdr->pubkey, keydump, NODE_PKEY_LEN);
+				xfree(keydump);
+			}
+
+			/* linkids */
+			if(map[i].links)
+				bufput(map[i].linkids, sizeof(linkid_t)*map[i].links);
+		}
+
+		/*
+		 * Packing {-map_gw_pack-}
+		 */
+		int e,x;
+		for(e=0; e<REM_METRICS; e++)
+			for(x=0; x < imap_hdr.max_metric_routes; x++) {
+				struct map_gw_pack gpack;
+				map_gw *gw=map[i].metrics[e].gw[x];
+
+				setzero(&gpack, sizeof(gpack));
+
+				if(gw) {
+					gpack.tpmask = gw->tpmask;
+					gpack.rem    = gw->rem;
+					gpack.node   = map_node2pos(gw->node, imap.map);
+				} 
+
+				bufput(&gpack, sizeof(gpack));
+			}
+	}
 }
