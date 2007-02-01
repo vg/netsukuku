@@ -124,7 +124,7 @@ INT_INFO map_gnode_iinfo = { 1,
  * which is the same of:
  * 	ext_map[0]
  *
- * Some of these arrays of levels are: quadg.gnode, rblock, ext_map, qspn_gnode_count.
+ * Some of these arrays of levels are: nnet.gnode, rblock, ext_map, qspn_gnode_count.
  */
 #define ZERO_LEVEL	1
 #define UNITY_LEVEL	1
@@ -219,7 +219,7 @@ typedef struct {
 	map_gnode	*gnode[MAX_LEVELS-ZERO_LEVEL];
 
 	/* 
-	 * The ipstart of each quadg.gid in their respective levels
+	 * The ipstart of each nnet.gid in their respective levels
 	 */
 	ipstart_t	ipstart[MAX_LEVELS];
 } nodenet_t;
@@ -232,34 +232,34 @@ INT_INFO nodenet_t_iinfo = { 1,
 				{ sizeof(u_char) },
 				{ MAX_LEVELS }
 			      };
-#define QUADRO_GROUP_PACK_SZ (sizeof(u_char) + sizeof(int)*MAX_LEVELS +     \
+#define NODENET_PACK_SZ (sizeof(u_char) + sizeof(int)*MAX_LEVELS +     \
 				+ INET_PREFIX_PACK_SZ * MAX_LEVELS)
 
-/*These are the flags passed to iptoquadg()*/
-#define QUADG_IPSTART 1
-#define QUADG_GID     (1<<1)
-#define QUADG_GNODE   (1<<2)
+/*These are the flags passed to iptonnet()*/
+#define NNET_IPSTART 1
+#define NNET_GID     (1<<1)
+#define NNET_GNODE   (1<<2)
 
 /* This block is used to send the ext_map */
 struct ext_map_hdr
 {
-	char   quadg[QUADRO_GROUP_PACK_SZ];  /* The packed me.cur_quadg */
+	char   nnet[NODENET_PACK_SZ];  /* The packed me.cur_nnet */
 
 	size_t ext_map_sz; 		/*It's the sum of all the gmaps_sz.
 					  The size of a single map is:
 					  (ext_map_sz/(MAP_GNODE_PACK_SZ*
-					  (quadg.levels-EXTRA_LEVELS)); */
+					  (nnet.levels-EXTRA_LEVELS)); */
 	size_t rblock_sz[MAX_LEVELS];	/*The size of the rblock of each gmap*/
 	size_t total_rblock_sz;		/*The sum of all rblock_sz*/
 }_PACKED_;
 
-/* Note: You have to consider the nodenet_t struct when convert between
+/* Note: You have to consider the nodenet_t struct when converting between
  * endianness */
 INT_INFO ext_map_hdr_iinfo = { 3, 
 			       { INT_TYPE_32BIT, INT_TYPE_32BIT, INT_TYPE_32BIT },
-			       { QUADRO_GROUP_PACK_SZ, 
-				   QUADRO_GROUP_PACK_SZ+sizeof(size_t),
-				   QUADRO_GROUP_PACK_SZ+(sizeof(size_t)*(MAX_LEVELS+1)) },
+			       { NODENET_PACK_SZ, 
+				   NODENET_PACK_SZ+sizeof(size_t),
+				   NODENET_PACK_SZ+(sizeof(size_t)*(MAX_LEVELS+1)) },
 			       { 1, MAX_LEVELS, 1 }
 			     };
 	
@@ -276,10 +276,10 @@ INT_INFO ext_map_hdr_iinfo = { 3,
  */
 typedef struct {
 	map_node	node;
-	nodenet_t 	quadg;	/* quadg.gnode[level] may be set to 0
+	nodenet_t 	nnet;	/* nnet.gnode[level] may be set to 0
 				 * if that gnode doesn't belong to the
-				 * same upper level of me.cur_quadg:
-				 * quadg.gid[level+1] != me.cur_quadg.gid[level+1]
+				 * same upper level of me.cur_nnet:
+				 * nnet.gid[level+1] != me.cur_nnet.gid[level+1]
 				 */
 }ext_rnode;
 
@@ -305,11 +305,11 @@ int iptogid(inet_prefix *ip, int level);
 void iptogids(inet_prefix *ip, int *gid, int levels);
 void gidtoipstart(int *gid, u_char total_levels, u_char levels, int family, 
 		inet_prefix *ip);
-void iptoquadg(inet_prefix ip, map_gnode **ext_map, nodenet_t *qg, char flags);
+void iptonnet(inet_prefix ip, map_gnode **ext_map, nodenet_t *qg, char flags);
 
-void quadg_setflags(nodenet_t *qg, char flags);
-void quadg_free(nodenet_t *qg);
-void quadg_destroy(nodenet_t *qg);
+void nnet_setflags(nodenet_t *qg, char flags);
+void nnet_free(nodenet_t *qg);
+void nnet_destroy(nodenet_t *qg);
 void gnode_inc_seeds(nodenet_t *qg, int level);
 void gnode_dec_seeds(nodenet_t *qg, int level);
 void pack_nodenet_t(nodenet_t *qg, char *pack);
@@ -321,9 +321,9 @@ int void_gids(nodenet_t *qg, int level, map_gnode **ext_map,	map_node *int_map);
 int random_ip(inet_prefix *ipstart, int final_level, int final_gid, 
 		int total_levels, map_gnode **ext_map, int only_free_gnode, 
 		inet_prefix *new_ip, int my_family);
-void gnodetoip(nodenet_t *quadg, int gnodeid, u_char level, inet_prefix *ip);
+void gnodetoip(nodenet_t *nnet, int gnodeid, u_char level, inet_prefix *ip);
 int gids_cmp(int *gids_a, int *gids_b, int lvl, int max_lvl);
-int quadg_gids_cmp(nodenet_t a, nodenet_t b, int lvl);
+int nnet_gids_cmp(nodenet_t a, nodenet_t b, int lvl);
 int ip_gids_cmp(inet_prefix a, inet_prefix b, int lvl);
 ext_rnode_cache *erc_find(ext_rnode_cache *erc, ext_rnode *e_rnode);
 void e_rnode_del(ext_rnode_cache **erc_head, u_int *counter, ext_rnode_cache *erc);
@@ -335,9 +335,9 @@ void erc_update_rnodepos(ext_rnode_cache *erc, map_node *root_node, int old_rnod
 void erc_reorder_rnodepos(ext_rnode_cache **erc, u_int *erc_counter, map_node *root_node);
 ext_rnode_cache *erc_find_gnode(ext_rnode_cache *erc, map_gnode *gnode, u_char level);
 
-map_gnode *init_gmap(int groups);
-void reset_gmap(map_gnode *gmap, int groups);
-map_gnode **init_extmap(u_char levels, int groups);
+map_gnode *gmap_alloc(int groups);
+void gmap_reset(map_gnode *gmap, int groups);
+map_gnode **extmap_init(u_char levels, int groups);
 void free_extmap(map_gnode **ext_map, u_char levels, int groups);
 void reset_extmap(map_gnode **ext_map, u_char levels, int groups);
 
@@ -348,13 +348,13 @@ void gmap_node_del(map_gnode *gnode);
 int merge_ext_maps(map_gnode **base, map_gnode **new, nodenet_t base_root,
 		nodenet_t new_root);
 
-int verify_ext_map_hdr(struct ext_map_hdr *emap_hdr, nodenet_t *quadg);
+int verify_ext_map_hdr(struct ext_map_hdr *emap_hdr, nodenet_t *nnet);
 void free_extmap_rblock(map_rnode **rblock, u_char levels);
 void pack_map_gnode(map_gnode *gnode, char *pack);
 void unpack_map_gnode(map_gnode *gnode, char *pack);
-char *pack_extmap(map_gnode **ext_map, int maxgroupnode, nodenet_t *quadg, size_t *pack_sz);
-map_gnode **unpack_extmap(char *package, nodenet_t *quadg);
-int save_extmap(map_gnode **ext_map, int maxgroupnode, nodenet_t *quadg, char *file);
-map_gnode **load_extmap(char *file, nodenet_t *quadg);
+char *extmap_pack(map_gnode **ext_map, int maxgroupnode, nodenet_t *nnet, size_t *pack_sz);
+map_gnode **extmap_unpack(char *package, nodenet_t *nnet);
+int extmap_save(map_gnode **ext_map, int maxgroupnode, nodenet_t *nnet, char *file);
+map_gnode **extmap_load(char *file, nodenet_t *nnet);
 
 #endif /*GMAP_H*/

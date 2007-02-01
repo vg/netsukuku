@@ -78,6 +78,10 @@ Note: These TODOs are not ordered.
    Ntkd (like andna does). However this is a though one and requires a lot of
    work.
 
+ - Extend the Q2 simulator. Let it be modular and expandible, and let it
+   simulate even multi-gnodes and levels.
+   See http://cvs.hinezumi.org/viewcvs/netsukuku/proto/doc/qspn/q2sim.py
+
  - Documentation:
 	
 	- Write a document which explain why and how is it possible to easily
@@ -135,4 +139,5 @@ Note: These TODOs are not ordered.
 
 - Write packagizing scripts for .deb, .rpm, ....
   http://lists.dyne.org/netsukuku/msg00610.php
+
 
