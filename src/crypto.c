@@ -63,6 +63,8 @@ char *ssl_strerr(void)
  */
 int crypto_pack_pubkey(RSA *pkey, u_char **pub, u_int *pub_len)
 {
+	size_t len;
+
 	if(!pub)
 		return -1;
 
@@ -87,6 +89,8 @@ int crypto_pack_pubkey(RSA *pkey, u_char **pub, u_int *pub_len)
  */
 int crypto_pack_privkey(RSA *pkey, u_char **priv, u_int *priv_len)
 {
+	size_t len;
+
 	if(!priv)
 		return -1;
 
@@ -124,12 +128,12 @@ RSA *genrsa(int key_bits, u_char **pub, u_int *pub_len, u_char **priv, u_int *pr
 	}
 
 	if(priv) {
-		if(crypto_dump_privkey(rsa, priv, priv_len))
+		if(crypto_pack_privkey(rsa, priv, priv_len))
 			goto error;
 	}
 
 	if(pub) {
-		if(crypto_dump_pubkey(rsa, pub, pub_len))
+		if(crypto_pack_pubkey(rsa, pub, pub_len))
 			goto error;
 	}
 	

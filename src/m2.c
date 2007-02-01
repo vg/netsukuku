@@ -969,7 +969,7 @@ int map_save(int_map imap, char *file)
 }
 
 /* 
- * load_map
+ * map_load
  * --------
  *
  * It loads the internal map from `file'.
@@ -981,7 +981,7 @@ int map_save(int_map imap, char *file)
  *
  * On error it returns NULL. 
  */
-int_map load_map(char *file)
+int_map map_load(char *file)
 {
 	map_node *map=0;
 	FILE *fd;
@@ -1016,7 +1016,7 @@ finish:
 		xfree(pack);
 	fclose(fd);
 	if(!imap.map)
-		error("Malformed map file. Aborting load_map().");
+		error("Malformed map file. Aborting map_load().");
 
 	return imap;
 }

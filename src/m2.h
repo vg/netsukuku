@@ -16,12 +16,6 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-
-/* 
- * NOTE: this file will substitute map.h
- */
-
-
 #ifndef MAP_H
 #define MAP_H
 
@@ -103,8 +97,8 @@ typedef uint8_t nid_t;
  * map_node						       |{map_node_t}|
  * --------
  *
- * A map_node struct contains all the information regarding a node of the
- * gnode of level 0.
+ * A map_node struct contains all the information regarding a node of
+ * level 0.
  *
  */
 struct map_node
@@ -236,8 +230,6 @@ struct map_node
 		 *
 		 * struct map_gw*/  **gw/*[MAX_METRIC_ROUTES]*/;
 
-		/* TODO: {-TODO_BSEARCH_FOR_MAP_GW-} */
-
 	} metrics[REM_METRICS];
 
 	RSA		*pubkey;	/* Public key of the this node */
@@ -287,13 +279,16 @@ typedef struct {
  *
  * The internal map is packed in this way:
  *         
- *  { int_map_hdr },
- *  {
- *  	{ map_node_hdr },
- *  	{ linkid_t }^(map_node_hdr.links),
- *  	{ map_gw_pack }^(REM_METRICS*max_metric_routes)
- *  }^B
+ *1  { int_map_hdr },
+ *2  {
+ *3 	 { map_node_hdr },
+ *4 	 { linkid_t }^(map_node_hdr.links),
+ *5 	 { map_gw_pack }^(REM_METRICS*max_metric_routes)
+ *6  }^B
+ *
  * Where,  B = count_bits(int_map_hdr.map_mask)
+ * 
+ * Line 3-5 form the |{mapnode_pack}|.
  *
  * To understand this syntax see {-pack-syntax-}
  *
@@ -343,19 +338,28 @@ struct map_gw_pack
 
 
 /*
+ * MAP_NODE_PACK_SZ
+ * ----------------
+ *
+ * Returns the size of the {-mapnode_pack-}.
+ * `__mmr' is the {-MAX_METRIC_ROUTES-} value associated to the map.
+ */
+#define MAP_NODE_PACK_SZ(__mmr)						\
+	( sizeof(struct map_node_hdr) +					\
+	  	(sizeof(struct map_gw_pack)*(REM_METRICS*(__mmr))) )
+
+/*
  * INT_MAP_PACK_SZ
  * ---------------
  *
  * Returns the size of the {-intmap_pack-}.
- * `mmr' is the {-MAX_METRIC_ROUTES-} value associated to the map.
+ * `_mmr' is the {-MAX_METRIC_ROUTES-} value associated to the map.
  * `mcount' is the number of nodes included in the pack.
  */
-#define INT_MAP_PACK_SZ(mmr, mcount)					\
+#define INT_MAP_PACK_SZ(_mmr, mcount)					\
 	( sizeof(struct int_map_hdr) + 					\
-	  	(sizeof(struct map_node_hdr) + 				\
-		 	(sizeof(struct map_gw_pack)*(REM_METRICS*(mmr))	\
-		)*(mcount)						\
-	)
+	  	MAP_NODE_PACK_SZ((_mmr))*(mcount) )
+
 
 /*\
  *
@@ -368,17 +372,22 @@ struct map_gw_pack
  */
 nid_t map_node2pos(map_node *node, map_node *map);
 map_node *map_pos2node(nid_t pos, map_node *map);
-void map_pos2ip(nid_t map_pos, inet_prefix ipstart, inet_prefix *ret);
-void map_node2ip(map_node *map, map_node *node, inet_prefix ipstart, inet_prefix *ret);
-int  map_ip2node(map_node *map, inet_prefix ip, inet_prefix ipstart, map_node **ret);
+void	  map_pos2ip(nid_t map_pos, inet_prefix ipstart, inet_prefix *ret);
+void 	  map_node2ip(map_node *map, map_node *node, inet_prefix ipstart,
+			inet_prefix *ret);
+int  	  map_ip2node(map_node *map, inet_prefix ip, inet_prefix ipstart,
+			map_node **ret);
 
 map_node *map_alloc(int nnodes);
-void map_free(map_node *map, size_t count);
-void map_reset(map_node *map, size_t count);
+void      map_free(map_node *map, size_t count);
+void      map_reset(map_node *map, size_t count);
 
 void map_node_reset(map_node *node);
 void map_node_del(map_node *node);
 
+/*
+ * Link ID functions
+ */
 int map_lid_find_nid(map_node *node, nid_t nid);
 int map_lid_add(map_node *node, linkid_t id);
 int map_lid_del(map_node *node, nid_t nid);
@@ -396,10 +405,10 @@ int     map_gw_add(map_node *dst, map_gw gw, map_node *root_node);
 int map_merge_maps(map_node *base, map_node *new, map_node *base_root, 
 			map_node *new_root, rem_t base_new_rem);
 
-char *map_pack(int_map imap, size_t *pack_sz);
-int_map map_unpack(char *pack, size_t pack_sz);
+char 	*map_pack(int_map imap, size_t *pack_sz);
+int_map  map_unpack(char *pack, size_t pack_sz);
 
-int map_save(int_map imap, char *file);
-int_map load_map(char *file);
+int     map_save(int_map imap, char *file);
+int_map map_load(char *file);
 
 #endif /* MAP_H */

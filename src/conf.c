@@ -16,10 +16,10 @@
  * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * --
- * conf.c:
+ * conf.c
  *
  * General configuration file loader and parser. To understand how to use it, 
- * see conf.h.
+ * see {-conf-usage-}.
  */
 
 #include "includes.h"

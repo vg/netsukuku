@@ -20,7 +20,7 @@
  *
  * This code unifies the modules with the rest of the Netsukuku code.
  * It loads the modules and registers their functions.
- * The module API is explained in module.h
+ * The module API is explained here: {-module-api-}
  */
 
 #include "includes.h"

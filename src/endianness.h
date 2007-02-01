@@ -26,11 +26,15 @@
 #define MAX_INTS_PER_STRUCT	8		/* The maximum number of short/int variables 
 						   present in a struct */
 
-#define IINFO_DYNAMIC_VALUE	-1		/* This define is used to fill part in a 
-						   int_info struct that must be set each time. 
-						   If that part is not set, -1 will remain, and
-						   the int_info functions will call fatal(). 
-						   Therefore this is useful to track bugs. */
+/*
+ * IINFO_DYNAMIC_VALUE
+ * -------------------
+ *
+ * It's used to mark a member of a int_info struct as dynamic.
+ * This member has to be set at runtime. If it remains unset, fatal() will be
+ * called.
+ */
+#define IINFO_DYNAMIC_VALUE	-1
 
 
 /* flags for int_info.int_type */

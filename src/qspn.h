@@ -75,8 +75,11 @@ int *qspn_send_mutex;	     /*It is sizeof(int)*levels big.*/
 #define GCOUNT_LEVELS		(MAX_LEVELS-ZERO_LEVEL+UNITY_LEVEL)
 /*
  * qspn_gnode_count[x] is the number of nodes present in the gnode
- * me.cur_quadg.gnode[x], it is updated at each qspn_round.
- * Use the _EL() macro!
+ * me.cur_quadg.gnode[x], minus one.
+ *
+ * It is updated at each qspn_round.
+ *
+ * Remeber: use the {-EL_macro-}!
  */ 
 u_int qspn_gnode_count[GCOUNT_LEVELS];
 

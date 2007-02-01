@@ -19,7 +19,7 @@
  * qspn.c
  *
  * Implementation of the Quantum Shortest Path Netsukuku v2 algorithm.
- * For more information on the Q^2 see :CITE_Q2_DOC:
+ * For more information on the Q^2 see {-CITE_Q2_DOC-}
  */
 
 

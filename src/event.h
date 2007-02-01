@@ -19,12 +19,18 @@
 #ifndef EVENT_H
 #define EVENT_H
 
-#define event_api_desc
 /*\
- * 
+ * 							|{event_api}|
  * 			Event API
  * 		      =============
- * Event flow
+ *
+ * 1. Event flow		  {-event-flow-}
+ * 2. Registering a new event	  {-event-register-}
+ * 3. Listening to an event	  {-event-listen-}
+ * 4. Triggering an event	  {-event-trigger-}
+ *
+ *
+ * Event flow						|{event-flow}|
  * ----------	
  *
  * Suppose we are dealing with the NEW_FOO event, which has been already
@@ -38,7 +44,7 @@
  * 	mod1_exec_func()	mod2_exec_func() 	mod3_exec_func()
  *
  * At some point a module triggers the NEW_FOO event. The event is
- * pushed in the event queue. The event is then fetched from the queue and 
+ * pushed in the event queue. The event is then fetched from the queue and
  * dispatched to the listening functions. In this example, the listening
  * functions will be called in the following order:
  *
@@ -62,7 +68,7 @@
  * with the same priority value.
  *
  *
- * Registering a new event
+ * Registering a new event 				|{event-register}|
  * -----------------------
  *
  * The name of the event has to be in this format:
@@ -106,7 +112,7 @@
  * 	ev_init_event_queue(&my_event_queue);
  *
  *
- * Listening to an event
+ * Listening to an event				|{event-listen}|
  * ---------------------
  * 
  * A module can listen to an event by calling the ev_listen_event() function.
@@ -165,7 +171,7 @@
  *
  *	}
  *
- * Triggering an event
+ * Triggering an event					|{event-trigger}|
  * -------------------
  *
  * The function ev_trigger_event() is used to trigger events:

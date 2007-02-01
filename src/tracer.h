@@ -54,8 +54,7 @@ typedef struct
 	u_int		rtt;	/* The rtt to reach the `node' of the previous
 				   chunk from the node of the current `one'. 
 				   (in milliseconds) */
-	u_int		gcount; /* how many nodes there are in the `node' 
-				   gnode */
+	u_int		gcount; /* # nodes present in the `node' gnode */
 }_PACKED_ tracer_chunk;
 INT_INFO tracer_chunk_iinfo = { 2, 
 				{ INT_TYPE_32BIT, INT_TYPE_32BIT }, 

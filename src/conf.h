@@ -25,7 +25,7 @@
 #define CONF_H
 
 /*\
- *	
+ *							|{conf-usage}|
  *		              Conf.c usage
  *		            ================
  *

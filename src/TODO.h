@@ -34,6 +34,11 @@
  */
 #define TODO_MY_UPBW
 
+/*
+ * |{no brdcast_hdr}|
+ *
+ * Wipe brdcast_hdr from the Netsukuku sources
+ */
 
 /*\
  *
@@ -56,7 +61,16 @@
 #define TODO_FUZZY_HASH
 
 /*
- * |{no brdcast_hdr}|
+ * |{TODO_gcount}|
  *
- * Wipe brdcast_hdr from the Netsukuku sources
+ * map_gnode.gcount is an unsigned int (32 bit).
+ * If we are dealing with ipv6, it should be an 128 bit number, because
+ * if there are more than 4294967295 nodes in Netsukuku, map_gnode.gcount will
+ * overflow.
+ *
+ * The same problem persists for {-qspn_gnode_count-}, and
+ * for {-NODES_PER_LEVEL-}.
+ *
+ * It should be easy to fix this: use uint128_t. However, for now, we don't
+ * care.
  */

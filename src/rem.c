@@ -141,8 +141,8 @@ bw8_t rem_bw_32to8(bw32_t y)
  */
 avg_t rem_avg_compute(rem_t x)
 {
-	return AVG_UPBW_COEF*x->upbw + AVG_DWBW_COEF*x->dwbw 
-			+ AVG_RTT_COEF*(REM_MAX_RTT8 - x->rtt);
+	return AVG_UPBW_COEF*x.upbw + AVG_DWBW_COEF*x.dwbw 
+			+ AVG_RTT_COEF*(REM_MAX_RTT8 - x.rtt);
 }
 
 /*

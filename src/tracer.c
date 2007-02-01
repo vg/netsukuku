@@ -1192,7 +1192,7 @@ int tracer_store_pkt(inet_prefix rip, quadro_group *rip_quadg, u_char level,
 			gnode=gnode_from_pos(tracer[i].node, me.ext_map[_EL(level)]);
 			node=&gnode->g;
 
-			if(tracer[i].gcount == NODES_PER_LEVEL(level))
+			if(tracer[i].gcount-1 == NODES_PER_LEVEL(level)-1)
 				/* The gnode is full */
 				gnode->g.flags|=GMAP_FULL;
 		}
