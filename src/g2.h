@@ -107,7 +107,7 @@ INT_INFO map_gnode_iinfo = { 1,
  * ------------
  *
  * The external map is composed by {-FAMILY_LVLS-}# levels.
- * Each level is called |{single extmap}|.
+ * Each level is called |{single extmap}| or |{gmap}|.
  *
  * A single extmap is an array composed by MAXGROUPNODE# map_gnode structs.
  * The i-th struct of the array corresponds to the gnode whose id is `i'.
@@ -306,29 +306,6 @@ INT_INFO ext_map_hdr_iinfo = { 3,
  * 	char rnode_blocks[total_rblock_sz];
  */
 #define EXT_MAP_BLOCK_SZ(ext_map_sz, rblock_sz) (sizeof(struct ext_map_hdr)+(ext_map_sz)+(rblock_sz))
-
-/* 
- * This struct is used by the root_node to describe all the rnodes which
- * doesn't belongs to our same gnode.
- */
-typedef struct {
-	map_node	node;
-	nodenet_t 	nnet;	/* nnet.gnode[level] may be set to 0
-				 * if that gnode doesn't belong to the
-				 * same upper level of me.cur_nnet:
-				 * nnet.gid[level+1] != me.cur_nnet.gid[level+1]
-				 */
-}ext_rnode;
-
-/*This cache keeps the list of all the ext_rnode used.*/
-struct ext_rnode_cache {
-	LLIST_HDR	(struct ext_rnode_cache);
-
-	ext_rnode	*e;		/*The pointer to the ext_rnode struct*/
-	int		rnode_pos;	/*The ext_rnode position in the 
-					  array of rnodes of the root_node */
-};
-typedef struct ext_rnode_cache ext_rnode_cache;
 
 /* * * Functions' declaration * * */
 

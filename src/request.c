@@ -402,7 +402,7 @@ const char *re_to_str(rq_t rq_hash)
 	int i=rq_bsearch_hash(rq_hash);
 
 	if(i < 0 || !(ntk_request[i].flags & RQ_REPLY))
-		return (const u_char*)unknown_reply;
+		return (const char *)unknown_reply;
 	return ntk_request[i].name;
 }
 
@@ -428,7 +428,7 @@ const char *rqerr_to_str(rqerr_t err_hash)
  */
 const char *rq_rqerr_to_str(rq_t rq_hash)
 {
-	const u_char *str=0;
+	const char *str=0;
 
 	if((str=rq_to_str(rq_hash)) == unknown_request)
 		str = rqerr_to_str((rqerr_t) rq_hash);

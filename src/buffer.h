@@ -224,31 +224,24 @@
  * `*_nalloc' is incremented and `*_buf' is set to point to the new start of the 
  * array (since :xrealloc(): is used).
  *
- * If the `_nalloc' argument is set to 0, then this macro will ignore the
- * `_count' argument assuming that `*_nmemb' == `*_nalloc'+`*_count' and it 
- * won't increment anything.
+ * If `_count' is zero, then the array will be shrinked/enlarged to exactly 
+ * `*_nalloc' elements.
  *
- * Note: if `_count' is a negative value, the array is shrinked (see
- * {-array_shrink-})
+ * Note: if `_count' is a negative value and _nalloc-_count >= 0, then
+ * the array is shrinked (see {-array_shrink-}).
  *
  * Usage:
- * 	array_grow(&buf_array_ptr, &nmemb_var, &nalloc_var, count);
- * or
- * 	array_grow(&buf_array_ptr, &nmemb_var_already_incremented, 0, 0);
+ * 	array_grow(&buf_array_ptr, &nalloc_var, count);
+ *    or
+ * 	array_grow(&buf_array_ptr, &nalloc_var, 0);
  */
-#define array_grow(_buf, _nmemb, _nalloc, _count)                       \
+#define array_grow(_buf, _nalloc, _count)                       	\
 do {									\
- 	typeof(_nmemb) _ag_na = (_nalloc);				\
-	typeof(*(_nmemb)) _ag_fake_na;					\
-	if(!_ag_na) {							\
-		_ag_fake_na = *(_nmemb);				\
-		_ag_na = &_ag_fake_na;					\
-	}								\
-	(*_ag_na)+=(_count);						\
- 	if(*_ag_na < 0)							\
+	(*_nalloc)+=(_count);						\
+ 	if((*_nalloc) < 0)						\
 		fatal(ERROR_MSG"Array underflow: _count %d",		\
 			ERROR_POS, _count);				\
-	*(_buf)=xrealloc(*(_buf), sizeof(typeof(**(_buf))) * (*_ag_na));\
+	*(_buf)=xrealloc(*(_buf), sizeof(typeof(**(_buf)))*(*_nalloc)); \
 } while(0)
 
 /*
@@ -259,26 +252,37 @@ do {									\
  * `*_buf' is set to point to the new start of the array (since :xrealloc():
  * is used).
  *
- * If the `_nalloc' argument is set to 0, then this macro will assume that 
- * `*_nmemb' == `*_nalloc'-`*_count' and it won't increment anything.
- *
  * Usage:
  * 	array_shrink(&buf_array_ptr, &nmemb_var, &nalloc_var, count);
- * or
- * 	array_shrink(&buf_array_ptr, &nmemb_var_already_decremented, 0, 0);
  */
-#define array_shrink(_buf, _nmemb, _nalloc, _count)			\
-		array_grow(_buf, _nmemb, _nalloc, -abs(_count))
+#define array_shrink(_buf, _nalloc, _count)				\
+		array_grow(_buf, _nalloc, -abs(_count))
+
+
+/* 
+ * Trick to handle NULL pointers.
+ * If you want to understand it, see where it is 
+ * used: {-__array_fake_nalloc:"r-} 
+ */
+#define __array_fake_nalloc(__nmemb, __nalloc)				\
+ 	typeof(__nmemb) _ag_na = (__nalloc);				\
+	typeof(*(__nmemb)) _ag_fake_na;					\
+	if(!_ag_na) {							\
+		_ag_fake_na = *(__nmemb);				\
+		_ag_na = &_ag_fake_na;					\
+	}
 
 /*
  * Private macro. See {-array_add-} and {-array_add_more-} below.
  */
 #define array_add_grow(_buf, _nmemb, _nalloc, _new, _newalloc)		\
 ({									\
+	__array_fake_nalloc(_nmemb, _nalloc);				\
+									\
  	(*(_nmemb))++;							\
 									\
-	if(!(_nalloc) || *(_nmemb) > *(_nalloc))			\
-		array_grow(_buf, _nmemb, _nalloc, _newalloc);		\
+	if(*(_nmemb) > *(_ag_na))					\
+		array_grow(_buf, _ag_na, _newalloc);			\
 									\
 	array_replace(_buf, (*(_nmemb))-1, _new);			\
 )}
@@ -348,6 +352,7 @@ do {									\
 				sizeof(typeof(**(_buf))) );		\
 } while(0)
 
+	
 /*
  * array_del_free
  * --------------
@@ -367,8 +372,10 @@ do {									\
  */
 #define array_del_free(_buf, _nmemb, _nalloc, _pos)			\
 do {									\
+	__array_fake_nalloc(_nmemb, _nalloc);				\
+									\
 	array_del(_buf, _nmemb, _pos);					\
-	array_shrink(_buf, _nmemb, _nalloc, 1);				\
+	array_shrink(_buf, _ag_na, 1);					\
 } while(0)
 
 /*
@@ -413,15 +420,17 @@ do {									\
  */
 #define array_rem_free(_buf, _nmemb, _nalloc, _pos)			\
 do {									\
+	__array_fake_nalloc(_nmemb, _nalloc);				\
 	array_rem(_buf, _nmemb, _pos);					\
-	array_shrink(_buf, _nmemb, _nalloc, 1);				\
+	array_shrink(_buf, _ag_na, 1);					\
 } while(0)
 
 /*
  * array_destroy
  * -------------
  *
- * Deallocates the whole array, setting `*_nmemb' and `*_nalloc' to zero.
+ * Deallocates the whole array and sets `*_nmemb', `*_nalloc' to zero.
+ * 
  * `_nmemb' or `_nalloc' can be 0.
  * 
  * Usage:

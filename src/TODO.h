@@ -40,6 +40,13 @@
  * Wipe brdcast_hdr from the Netsukuku sources
  */
 
+/*
+ * |{TODO_rnl_nnet}|
+ *
+ * Integrate rnode_list.nnet in the existing radar.c code.
+ */
+
+
 /*\
  *
  * 	Long term TODOs 

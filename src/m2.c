@@ -145,6 +145,27 @@ int map_ip2node(map_node *map, inet_prefix ip, inet_prefix ipstart, map_node **r
 }
 
 
+/*
+ * map_node_alloc
+ * --------------
+ *
+ * Sets `node.flags' to MAP_VOID and allocates the arrays of map_gw
+ * pointers, i.e. node.metrics[*].gw
+ */
+void map_node_alloc(map_node *node)
+{
+	int e;
+
+	node->flags|=MAP_VOID;
+
+	/* Allocate the metric arrays */
+	for(e=0; e<REM_METRICS; e++) {
+		int nmemb=MAX_METRIC_ROUTES;
+		array_grow(&node->metrics[e].gw, &nmemb, 0);
+		array_bzero(&node->metrics[e].gw, &nmemb, -1);
+	}
+}
+
 
 /*
  * map_alloc
@@ -167,17 +188,8 @@ map_node *map_alloc(int nnodes)
 		nnodes = MAXGROUPNODE;
 
 	map = xzalloc(nnodes*sizeof(map_node));
-	for(i=0; i<nnodes; i++) {
-		map[i].flags|=MAP_VOID;
-		int e;
-		
-		/* Allocate the metric arrays */
-		for(e=0; e<REM_METRICS; e++) {
-			int nmemb=MAX_METRIC_ROUTES;
-			array_grow(&map[i].metrics[e].gw, &nmemb, -1, 0);
-			array_bzero(&map[i].metrics[e].gw, &nmemb, -1);
-		}
-	}
+	for(i=0; i<nnodes; i++)
+		map_node_alloc(map[i]);
 
 	return map;
 }

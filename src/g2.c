@@ -112,6 +112,13 @@ int gmap_is_gid_invalid(gid_t *gids, gid_t gid, int lvl, int family)
 	return 0;
 }
 
+/*\
+ *
+ *     * * *  Conversion functions  * * *
+ *
+\*/
+
+
 /*
  * gmap_gnode2pos
  * --------------
@@ -198,6 +205,9 @@ void gmap_ip2gids(inet_prefix *ip, gid_t *gid, int levels)
  * will be considered, the other will be ignored.
  *
  * `family' is used to fill the inet_prefix of ipstart.
+ *
+ * `ip'->bits is set to `levels'*8, thus respecting the CIDR format (see
+ * {-ipstart_t-}).
  */
 void gmap_gids2ip(gid_t *gid, u_char total_levels, uint8_t levels, int family,
 			inet_prefix *ip)
@@ -225,7 +235,7 @@ void gmap_gids2ip(gid_t *gid, u_char total_levels, uint8_t levels, int family,
 	memcpy(ip->data, h_ip, MAX_IP_SZ);
 	ip->family=family;
 	ip->len = (family == AF_INET) ? 4 : 16;
-	ip->bits=ip->len*8;
+	ip->bits = levels*8;
 }
 
 /* 
@@ -261,6 +271,14 @@ void gmap_ip2nnet(inet_prefix ip, map_gnode **ext_map, nodenet_t *nn, char flags
 		nn->gnode[levels-ZERO_LEVEL]=&ext_map[i][0];
 	}
 }
+
+
+/*\
+ *
+ *     * * *  Nodenet functions  * * *
+ *
+\*/
+
 
 /*
  * gnode_seeds_inc
@@ -605,7 +623,6 @@ int gmap_random_ip(inet_prefix *ipstart, int final_level, gid_t final_gid,
 			inet_prefix *new_ip, int my_family)
 {
 	int i, e, x, level;
-	gid_t gid[total_levels];
 	nodenet_t nn;
 
 	setzero(new_ip, sizeof(inet_prefix));
@@ -616,81 +633,55 @@ int gmap_random_ip(inet_prefix *ipstart, int final_level, gid_t final_gid,
                  */
 		new_ip->family = my_family;
 		inet_random_ip(new_ip);
-		return 0;
-	}
-	
-	/*
-	 * We can choose only a random ip which is inside the final_gid.
-	 * `final_gid' is a gnode of the `final_level' level.
-	 * `final_level' has its `ipstart'; with it we determine
-	 * its higher levels.
-	 * The work is done in this way:
-	 *   - ipstart is splitted in gids and they are placed in nn.gid.
-	 *   - The gids of levels higher than `final_level' are set to the
-	 *     gids of nn.gid[x >= final_level].
-	 *   - The final_level gid is set to `final_gid'.
-	 *   - The gids of levels lower than `final_level' are chosen
-	 *     randomly.
-	 *   - The ipstart is recomposed from the gids.
-	 */
-	gmap_ip2nnet(*ipstart, ext_map, &nn, NNET_GID);
-	for(i=final_level+1; i<total_levels; i++)
-		gid[i]=nn.gid[i];
-	gid[final_level]=final_gid;
 
-	/* Choose random gids for each level lower than `final_level'. */
-	for(level=final_level-1; level >=0; level--)
-		gid[level]=rand_range(0, MAXGROUPNODE-1);
+		if(!only_free_gnode)
+			return 0;
+		else
+			gmap_ip2nnet(*new_ip, ext_map, &nn, NNET_GID);
+	} else {
+		/*
+		 * We can choose only a random ip which is inside the final_gid.
+		 * `final_gid' is a gnode of the `final_level' level.
+		 * `final_level' has its `ipstart'; with it we determine
+		 * its higher levels.
+		 * The work is done in this way:
+		 *   - ipstart is splitted in gids and they are placed in nn.gid.
+		 *   - The gids of levels higher than `final_level' are left untouched.
+		 *   - The final_level gid is set to `final_gid'.
+		 *   - The gids of levels lower than `final_level' are chosen
+		 *     randomly.
+		 *   - The ipstart is recomposed from the gids.
+		 */
+		gmap_ip2nnet(*ipstart, ext_map, &nn, NNET_GID);
+		nn.gid[final_level]=final_gid;
+
+		/* Choose random gids for each level lower than `final_level'. */
+		for(level=final_level-1; level >=0; level--)
+			nn.gid[final_level]=rand_range(0, MAXGROUPNODE-1);
+	}
 
 	if(only_free_gnode)
 		/* Change the gids if some of them point to full gnodes */
-		gids_find_free(&nn, 1, ext_map, 0);
+		gids_find_free(&nn, 0, ext_map, 0);
 
 	/* 
 	 * Ok, we've set the gids of each level so we recompose them in the
 	 * new_ip.
 	 */
-	gmap_gids2ip(gid, total_levels, total_levels, my_family, new_ip);
+	gmap_gids2ip(nn.gid, total_levels, total_levels, my_family, new_ip);
 
 	return 0;
 }
 
-/* TODO: CONTINUE HERE */
-
-/*
- * gnodetoip
- * 
- * It converts the gnode which has the given `gnodeid' at `level'
- * to its corresponding ipstart. The `nnet' struct must refer to the given
- * gnode.
- * The ip is stored in `ip', and the ip->bits are choosen carefully in the 
- * CIDR blocks format, in this way the `ip' includes also the ranges of the 
- * gnode's level: ip <= x <= ip+MAXGROUPNODE^(level+1).
- */
-void gnodetoip(nodenet_t *nnet, int gnodeid, u_char level, inet_prefix *ip)
-{
-	int gid[nnet->levels];
-	
-	if(level > nnet->levels || !level)
-		return;
-	
-	memcpy(gid, nnet->gid, sizeof(int)*nnet->levels);
-	gid[level]=gnodeid;
-	
-	gmap_gids2ip(gid, nnet->levels, nnet->levels-level, 
-			nnet->ipstart[0].family, ip);
-
-	ip->bits-=(level*MAXGROUPNODE_BITS);
-}
-
 /*
  * gids_cmp
+ * --------
  * 
  * compares the two `gids_a' and `gids_b' arrays starting from the
- * `lvl'th member to the `max_lvl-1'th. If the gids compared are the same,
- * zero is returned.
+ * `lvl'th member to the `max_lvl-1'th
+ * If the gids compared are the same, zero is returned.
  */
-int gids_cmp(int *gids_a, int *gids_b, int lvl, int max_lvl)
+int gids_cmp(gid_t *gids_a, gid_t *gids_b, int lvl, int max_lvl)
 {
 	int i;
 
@@ -703,8 +694,9 @@ int gids_cmp(int *gids_a, int *gids_b, int lvl, int max_lvl)
 
 /* 
  * nnet_gids_cmp
+ * -------------
  * 
- * compares the gids of `a' and `b' starting from the `lvl'th
+ * Compares the gids of `a' and `b' starting from the `lvl'th
  * level. If the gids compared are the same, zero is returned.
  */
 int nnet_gids_cmp(nodenet_t a, nodenet_t b, int lvl)
@@ -716,11 +708,12 @@ int nnet_gids_cmp(nodenet_t a, nodenet_t b, int lvl)
 }
 
 /*
- * ip_gids_cmp
+ * inetp_gids_cmp
+ * --------------
  * 
  * a wrapper to nnet_gids_cmp() that takes inet_prefixes as argvs.
  */
-int ip_gids_cmp(inet_prefix a, inet_prefix b, int lvl)
+int inetp_gids_cmp(inet_prefix a, inet_prefix b, int lvl)
 {
 	nodenet_t qa, qb;
 
@@ -730,213 +723,109 @@ int ip_gids_cmp(inet_prefix a, inet_prefix b, int lvl)
 	return nnet_gids_cmp(qa, qb, lvl);
 }
 
-/* 
- * * * External rnodes functions * * *
+
+/*\
+ *
+ *     * * *  External map functions  * * *
+ *
+\*/
+
+/*
+ * gmap_gnode_alloc
+ * ----------------
+ *
+ * Allocates the components of the `gnode' map_gnode struct.
  */
-
-/* e_rnode_init: Initialize an ext_rnode_cache list and zeros the `counter' */
-ext_rnode_cache *e_rnode_init(u_int *counter)
+void gmap_gnode_alloc(map_gnode *gnode)
 {
-	return (ext_rnode_cache *)clist_init(counter);
-}
-
-/* e_rnode_free: destroy an ext_rnode_cache list */
-void e_rnode_free(ext_rnode_cache **erc, u_int *counter)
-{
-	if(counter)
-		*counter=0;
-	if(!*erc)
-		return;
-	list_destroy(*erc);
-	*erc=0;
-}
-
-/* 
- * e_rnode_add
- * 
- * adds an external node in the ext_rnode_cache list.
- */
-void e_rnode_add(ext_rnode_cache **erc, ext_rnode *e_rnode, int rnode_pos, u_int *counter)
-{
-	ext_rnode_cache *p;
-
-	p=xzalloc(sizeof(ext_rnode_cache));
-	p->e=e_rnode;
-	p->rnode_pos=rnode_pos;
-
-	clist_add(erc, counter, p);
-}
-
-void e_rnode_del(ext_rnode_cache **erc_head, u_int *counter, ext_rnode_cache *erc)
-{
-	if((*counter) <= 0 || !*erc_head)
-		return;
-
-	if(erc->e) {
-		xfree(erc->e);
-		erc->e=0;
-	}
-
-	clist_del(erc_head, counter, erc);
+	gnode->flags|=GMAP_VOID;
+	map_node_alloc(&gnode->g);
 }
 
 /*
- * erc_update_rnodepos
- * 
- * When a rnode is deleted from the root_node all the
- * erc->rnode_pos vars must be updated. For example if there's 
- * an  erc->rnode_pos == 5 and the 4th rnode is deleted, than the 5th rnode
- * doesn't exist anymore because it is swapped in the 4th position.
- * The `old_rnode_pos' holds the deleted rnode position.
- * Note: it's assumed that the old rnode has been alread deleted.
+
+
+ * gmap_gnode_del
+ * --------------
+ *
+ * Frees what has been allocated with {-gmap_gnode_alloc-}
  */
-void erc_update_rnodepos(ext_rnode_cache *erc, map_node *root_node, int old_rnode_pos)
+void gmap_gnode_del(map_gnode *gnode)
 {
-	ext_rnode_cache *p=erc;
-
-	if(!erc)
-		return;
-
-	/* If the old rnode was in the last position, it wasn't swapped */
-	if(old_rnode_pos == root_node->links)
-		return;
-
-	list_for(p) {
-		if(!p->e)
-			continue;
-
-		/* If the ext_rnode was in the last position, now it is swapped
-		 * in `old_rnode_pos' */
-		if(p->rnode_pos == root_node->links)
-			p->rnode_pos=old_rnode_pos;
-	}
-
-	return;
+	map_node_del(&gnode.g);
+	setzero(gnode, sizeof(*gnode));
 }
+
 
 /*
- * erc_reorder_rnodepos
- * 
- * adjusts the erc->rnode_pos value contained in each ext_rnode_cache struct
- * of the `*erc' list. It checks if the rnode of `root_node' at 
- * the erc->rnode_pos position points to erc->e->node, if not
- * it finds the right rnode and it updates the erc->rnode_pos value.
- * If an adequate rnode isn't find, the relative erc struct is removed.
+ * gmap_alloc
+ * ----------
+ *
+ * Allocates a {-single extmap-}, formed by `groups' map_gnode structs,
+ * and returns the pointer to its start.
+ *
+ * If `groups' is zero, then MAXGROUPNODE structs are allocated.
  */
-void erc_reorder_rnodepos(ext_rnode_cache **erc, u_int *erc_counter, map_node *root_node)
-{
-	ext_rnode_cache *p=*erc, *next;
-
-	if(!erc || !*erc)
-		return;
-	
-	list_safe_for(p, next) {
-		if(p->rnode_pos >= root_node->links || 
-			root_node->r_node[p->rnode_pos].r_node != (int *)&p->e->node) {
-
-			/* Search the right rnode_pos */
-			p->rnode_pos = rnode_find(root_node, &p->e->node);
-			
-			if(p->rnode_pos < 0) {
-				debug(DBG_NOISE, "erc_reorder_rnodepos: Warning erc 0x%x delete. "
-						"Something strange is happening", (int)p);
-				e_rnode_del(erc, erc_counter, p);
-			}
-		}
-	}
-}
-
-/* 
- * erc_find
- * 
- * Searches in the `erc' ext_rnode_cache list a struct which has the
- * erc->e == e_rnode and returns it.
- */
-ext_rnode_cache *
-erc_find(ext_rnode_cache *erc, ext_rnode *e_rnode)
-{
-	ext_rnode_cache *p=erc;
-	if(!erc)
-		return 0;
-
-	list_for(p) {
-		if(!p->e)
-			continue;
-		if(p->e == e_rnode)
-			return p;
-	}
-	return 0;
-}
-
-/* 
- * e_rnode_find
- * 
- * It searches in the `erc' list a nodenet_t struct equal to `nn', by
- * comparing their gids that goes from gid[`level'] to gid[`nn->levels'].
- * If an ext_rnode which has such struct is found it returns the pointer to the
- * struct.
- * If nothing is found 0 is returned.
- */
-ext_rnode_cache *
-e_rnode_find(ext_rnode_cache *erc, nodenet_t *nn, int level)
-{
-	ext_rnode_cache *p=erc;
-
-	if(!erc)
-		return 0;
-
-	list_for(p) {
-		if(!p->e)
-			continue;
-		if(!nnet_gids_cmp(p->e->nnet, *nn, level))
-			return p;
-	}
-	return 0;
-}
-
-/* 
- * erc_find_gnode; Returns the first ext_rnode_cache having 
- * erc->e->nnet.gnode[_EL( `level' )] == `gnode'
- */
-ext_rnode_cache *
-erc_find_gnode(ext_rnode_cache *erc, map_gnode *gnode, u_char level)
-{
-	ext_rnode_cache *p=erc;
-
-	if(!erc || !level)
-		return 0;
-
-	list_for(p) {
-		if(!p->e)
-			continue;
-
-		if(p->e->nnet.gnode[_EL(level)] == gnode)
-				return p;
-	}
-	
-	return 0;
-}
-
-/* 
- * * * External map functions * * *
- */
-
 map_gnode *gmap_alloc(int groups)
 {
 	map_gnode *gmap;
 	size_t len;
+	int i;
 	
 	if(!groups)
 		groups=MAXGROUPNODE;
-	len=sizeof(map_gnode) * groups;
-	gmap=(map_gnode *)xmalloc(len);
-	setzero(gmap, len);
 
-	gmap_reset(gmap, groups);
-	
+	len=sizeof(map_gnode) * groups;
+	gmap=(map_gnode *)xzalloc(len);
+
+	for(i=0; i<groups; i++)
+		gmap_gnode_alloc(&gmap[i]);
+
 	return gmap;
 }
 
+/*
+ * gmap_free
+ * ---------
+ *
+ * Frees what has been allocated with {-gmap_alloc-}.
+ */
+void gmap_free(map_gnode *gmap, int groups)
+{
+	int i;
+
+	if(!groups)
+		groups=MAXGROUPNODE;
+
+	for(i=0; i<groups; i++)
+		gmap_gnode_del(&gmap[i]);
+
+	xfree(gmap);
+}
+
+/*
+ * gmap_gnode_reset
+ * ----------------
+ *
+ * Resets the map_gnode struct pointed by `gnode'.
+ * See also {-map_node_reset-} for more details.
+ */
+void gmap_gnode_reset(map_gnode *gnode)
+{
+	map_node_reset(&gnode.g);
+	gnode->flags=GMAP_VOID;
+	gnode->seeds=gnode->gcount=0;
+}
+
+/*
+ * gmap_reset
+ * ----------
+ *
+ * Resets the entire `gmap', which is a{-single extmap-}, formed by
+ * `groups'# structs.
+ *
+ * If `groups' is zero, then the first MAXGROUPNODE structs are reset.
+ */
 void gmap_reset(map_gnode *gmap, int groups)
 {
 	int i;
@@ -947,12 +836,17 @@ void gmap_reset(map_gnode *gmap, int groups)
 	len=sizeof(map_gnode)*groups;
 	
 	for(i=0; i<groups; i++)
-		gmap_node_del(&gmap[i]);
+		gmap_gnode_reset(&gmap[i]);
 }
 
-/* gmap_alloc: Initialize an ext_map with `levels' gmap. Each gmap
- * has `groups' elements*/
-map_gnode **extmap_init(u_char levels, int groups)
+/* extmap_alloc
+ * ------------
+ *
+ * Initialize an {-extmap-} by allocating `levels'# gmaps. Each gmap
+ * has `groups'# elements.
+ * If `groups' is zero, then it is considered to be equal to MAXGROUPNODE.
+ */
+map_gnode **extmap_alloc(u_char levels, int groups)
 {
 	map_gnode **ext_map;
 	int i;
@@ -963,7 +857,7 @@ map_gnode **extmap_init(u_char levels, int groups)
 		groups=MAXGROUPNODE;
 
 	ext_map=(map_gnode **)xmalloc(sizeof(map_gnode *) * (levels));
-	levels--; /*We strip off the Zero level*/
+	levels-=ZERO_LEVEL; /*We strip off the Zero level*/
 	for(i=0; i<levels; i++)
 		ext_map[i]=gmap_alloc(groups);
 	
@@ -972,7 +866,12 @@ map_gnode **extmap_init(u_char levels, int groups)
 	return ext_map;
 }
 
-/* extmap_free: Destroy the ext_map*/
+/* 
+ * extmap_free
+ * -----------
+ *
+ * Destroy the {-extmap-} allocated with {-extmap_alloc-}
+ */
 void extmap_free(map_gnode **ext_map, u_char levels, int groups)
 {
 	int e;
@@ -984,39 +883,56 @@ void extmap_free(map_gnode **ext_map, u_char levels, int groups)
 
 	levels--;
 	for(e=0; e<levels; e++) {
-		gmap_reset(ext_map[e], groups);
-		xfree(ext_map[e]);
+		gmap_free(ext_map[e], 0);
+		ext_map[e]=0;
 	}
 	/*Free the unity_level map*/
-	gmap_reset(ext_map[levels], 1);
-	xfree(ext_map[levels]);
+	gmap_free(ext_map[levels], 1);
+	ext_map[levels]=0;
 
 	xfree(ext_map);
 }
 
+/*
+ * extmap_reset
+ * ------------
+ *
+ * Resets the entire `ext_map'.
+ */
 void extmap_reset(map_gnode **ext_map, u_char levels, int groups)
 {
 	int i;
 	
 	for(i=1; i<levels; i++) 
 		gmap_reset(ext_map[_EL(i)], groups);
-	gmap_node_del(&ext_map[_EL(levels)][0]);
+	gmap_reset(ext_map[_EL(i)], 1);
 }
 
-/* g_rnode_find: It searches in `gnode'.g a rnode which points to the gnode `n'.
- * It then returns the position of that rnode.
- * If the rnode is not found it returns -1;*/
-int g_rnode_find(map_gnode *gnode, map_gnode *n)
+/*
+ * gmap_gw_find
+ * ------------
+ *
+ * A wrapper to {-map_gw_find-}
+ */
+map_gw *gmap_gw_find(map_gnode *gnode, map_gnode *n)
 {
-	return rnode_find(&gnode->g, (map_node *)n);
+	return map_gw_find(&gnode.g, (map_node *)n);
 }
 
-/* extmap_find_level: It returns the position of the gnode map which contains 
- * the 'gnode`. This position corresponds to the level of that gmap.
- * The ext_map is given in `ext_map`. `max_level' is the maximum number of level 
- * present in the `ext_map'.
- * ex: if gnode is in ext_map[i] it will return i; 
- * On failure -1 is returned.*/
+
+/* 
+ * extmap_find_level
+ * -----------------
+ *
+ * It returns the position of the gnode map which contains `gnode'. 
+ * This position corresponds to the level of that gmap.
+ * The ext_map is given in `ext_map`. 
+ * `max_level' is the maximum number of levela present in the `ext_map'.
+ * 
+ * Example: if `gnode' is in ext_map[i] it will return i; 
+ *
+ * On failure -1 is returned.
+ */
 int  extmap_find_level(map_gnode **ext_map, map_gnode *gnode, u_char max_level)
 {
 	int i, a, b, c;
@@ -1032,15 +948,12 @@ int  extmap_find_level(map_gnode **ext_map, map_gnode *gnode, u_char max_level)
 	return -1;
 }
 
-/* gmap_node_del: It deletes a `gnode' from the `gmap'. Really it sets the
- * gnode's flags to GMAP_VOID.*/
-void gmap_node_del(map_gnode *gnode)
-{
-	map_node_del(&gnode->g);
-	setzero(gnode, sizeof(map_gnode));
-	gnode->flags|=GMAP_VOID;
-	gnode->g.flags|=MAP_VOID;
-}
+/*\
+ *
+ *     * * *  Packing functions  * * *
+ *
+\*/
+
 
 /*
  * merge_lvl_ext_maps
@@ -1415,7 +1328,7 @@ map_gnode **extmap_unpack(char *package, nodenet_t *nnet)
 	
 	/*Unpacking the ext_map*/
 	p=package+sizeof(struct ext_map_hdr);
-	ext_map=extmap_init(nnet->levels, maxgroupnode);
+	ext_map=extmap_alloc(nnet->levels, maxgroupnode);
 	for(i=0; i<levels; i++) {
 		for(e=0; e<maxgroupnode; e++) {
 			unpack_map_gnode(&ext_map[i][e], p);

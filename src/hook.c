@@ -1260,6 +1260,11 @@ int hook_choose_new_ip(map_gnode *hook_gnode, int hook_level,
 				random_ip(gnode_ipstart, fn_hdr->level, fn_hdr->gid, 
 						FAMILY_LVLS, me.ext_map, 0, 
 						&me.cur_ip, my_family);
+
+				/* The validity check is already done during
+				 * the generation of the random ip (using
+				 * {-gmap_is_gid_invalid-}), however, we check
+				 * the IP here, just to be 100% sure. */
 				if(!inet_validate_ip(me.cur_ip))
 					break;
 			}
