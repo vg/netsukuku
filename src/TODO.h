@@ -74,3 +74,9 @@
  * It should be easy to fix this: use uint128_t. However, for now, we don't
  * care.
  */
+
+/*
+ * |{TODO rand_valid_ip}|
+ *
+ * Find a cleaner way to generate a valid random ip
+ */

@@ -80,18 +80,32 @@ typedef struct
 	u_char	bits;		     /* Number of used bits of the IP */
 	u_int	data[MAX_IP_INT];    /* The address is kept in host long format, 
 				       word ORDER 1 (most significant word first) */
-}inet_prefix;
+} inet_prefix;
 
-/* int_info struct used for packing the inet_prefix struct.
+/*
+ * Inet prefix pack					|{inetp-pack}|
+ *
+ * See {-inetp_pack-}
+ */
+struct inet_prefix_pack
+{
+	u_char	family;
+	u_short len;
+	u_char  bits;
+	u_int   data[MAX_IP_INT];	/* Packed in network order
+					   with {-inet_htonl-} */
+}_PACKED_;
+
+/* 
  * Note that `data' is ignored 'cause it will be converted with
- * inet_htonl() / inet_ntohl() */
+ * inet_htonl() / inet_ntohl() 
+ */
 INT_INFO inet_prefix_iinfo = { 1,
 			       { INT_TYPE_16BIT },
 			       { sizeof(u_char) },
 			       { 1 }
 			     };
-#define INET_PREFIX_PACK_SZ (sizeof(u_char) + sizeof(u_short) +\
-				sizeof(u_char) + MAX_IP_SZ)
+#define INET_PREFIX_PACK_SZ (sizeof(struct inet_prefix_pack))
 
 
 /* * * defines from linux/in.h * * */
@@ -134,6 +148,19 @@ INT_INFO inet_prefix_iinfo = { 1,
  * Globals
  */
 
+/*
+ * It holds the currently used inet family (AF_INET or AF_INET6).
+ */
+int my_family;
+
+/*
+ * restricted_mode  is 1 if ntkd has been started in restricted mode.
+ *
+ * restricted_class contains the class used in restricted mode
+ */
+int restricted_mode, restricted_class;
+
+/* Values for `restricted_class' */
 #define RESTRICTED_10		1	/* We are using the 10.x.x.x class for 
 					   the restricted mode */
 #define RESTRICTED_172		2	/* 172.16.0.0-172.31.255.255 class */
@@ -141,8 +168,7 @@ INT_INFO inet_prefix_iinfo = { 1,
 #define RESTRICTED_10_STR	"10.0.0.0-10.255.255.255"
 #define RESTRICTED_172_STR	"172.16.0.0-172.31.255.255"
 
-int my_family, restricted_mode, restricted_class;
-	
+
 /* 
  * * * Functions declaration * * 
  */
@@ -154,12 +180,13 @@ int inet_setip_bcast(inet_prefix *ip, int family);
 int inet_setip_anyaddr(inet_prefix *ip, int family);
 int inet_setip_loopback(inet_prefix *ip, int family);
 int inet_setip_localaddr(inet_prefix *ip, int family, int class);
+void inet_random_ip(inet_prefix *ip);
 int inet_is_ip_local(inet_prefix *ip, int class);
 void inet_copy_ipdata_raw(u_int *dst_data, inet_prefix *ip);
 void inet_copy_ipdata(u_int *dst_data, inet_prefix *ip);
 void inet_copy(inet_prefix *dst, inet_prefix *src);
-void pack_inet_prefix(inet_prefix *ip, char *pack);
-void unpack_inet_prefix(inet_prefix *ip, char *pack);
+void inetp_pack(inet_prefix *ip, char *pack);
+void inetp_unpack(inet_prefix *ip, char *pack);
 int inet_addr_match(const inet_prefix *a, const inet_prefix *b, int bits);
 int ipv6_addr_type(inet_prefix addr);
 int inet_validate_ip(inet_prefix ip);

@@ -33,8 +33,8 @@
 ** Functions names 
 *
 
-In the name of the function defined in foo.c use the prefix `foo_' or its
-abbrevation. For example,
+In the name of exported functions defined in foo.c use the prefix `foo_' or
+its abbrevation. For example,
 
 	int foo_bar(int gh) {  };
 
@@ -46,6 +46,8 @@ For example:
 	
 	WRONG:	void map_del_node()
 	WRONG:	void del_map_node()
+
+Note: for local/private functions you can omit the prefix.
 
 *
 ** Pack syntax							|{pack-syntax}|
@@ -145,3 +147,12 @@ The ^^ symbol can be also used to indicate the upper structures. Ex:
 			}
 		}
 	}
+
+*
+*** Star syntax
+*
+
+By writing:
+	array[*]
+we mean:
+	forall members of array[*]

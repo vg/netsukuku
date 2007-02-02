@@ -34,15 +34,15 @@ extern int errno;
  * map_node2pos
  * ------------
  *
- * Converts a map_node pointer `node' to the position of the pointed struct 
+ * Converts the map_node pointer `node' to the position of the pointed struct 
  * in the internal map.
- * This position corresponds to the node id (see {-map_node_t-})
+ * This position corresponds to the node id, see {-intmap-}
  *
  * `map' must be a pointer to the first struct of the internal map.
  */
 nid_t map_node2pos(map_node *node, map_node *map)
 {
-	return ((char *)node-(char *)map)/sizeof(map_node);
+	return (nid_t)(((char *)node-(char *)map)/sizeof(map_node));
 }
 
 /*

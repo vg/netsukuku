@@ -167,6 +167,41 @@ int inet_setip_localaddr(inet_prefix *ip, int family, int class)
 }
 
 /*
+ * inet_random_ip
+ * --------------
+ *
+ * Sets a full random IP in `ip'.
+ * `ip'->family must be already set.
+ */
+void inet_random_ip(inet_prefix *ip)
+{
+	u_int idata[MAX_IP_INT]={0,0,0,0};
+
+	for(;;) {	
+		/*
+		 * loop:
+		 * 	generate randip
+		 * 	is randip valid?
+		 * 	    no  --> goto loop;
+		 * 	    yes --> break;
+		 *
+		 * This loop is a fast hack, if you want to improve it, do it.
+		 * {-TODO rand_valid_ip-}
+		 */
+
+		if(ip->family == AF_INET)
+			idata[0]=xrand();
+		else
+			get_rand_bytes(idata, sizeof(idata));
+
+		inet_setip(ip, idata, my_family);
+
+		if(!inet_validate_ip(*ip))
+			break;
+	}
+}
+
+/*
  * inet_is_ip_local: verifies if `ip' is a local address. If it is, 1 is
  * returned. `class' specifies what restricted class is currently 
  * being used (10.x.x.x or 172.16.x.x). In ipv6 the site local class is the
@@ -213,56 +248,51 @@ void inet_copy_ipdata(u_int *dst_data, inet_prefix *ip)
 }
 
 /*
- * pack_inet_prefix: packs the `ip' inet_prefix struct and stores it in
+ * inetp_pack
+ * ----------
+ *
+ * packs the `ip' inet_prefix struct and stores it in
  * `pack', which must be INET_PREFIX_PACK_SZ bytes big. `pack' will be in
  * network order.
  */
-void pack_inet_prefix(inet_prefix *ip, char *pack)
+void inetp_pack(inet_prefix *ip, char *pack)
 {
 	char *buf;
+	struct inet_prefix_pack *ipack;
 
 	buf=pack;
+	ipack=(struct inet_prefix_pack *)pack;
 
-	memcpy(buf, &ip->family, sizeof(u_char));
-	buf+=sizeof(u_char);
+	ipack->family = ip->family;
+	ipack->len    = ip->len;
+	ipack->bits   = ip->bits;
 
-	memcpy(buf, &ip->len, sizeof(u_short));
-	buf+=sizeof(u_short);
+	memcpy(ipack->data, ip->data, MAX_IP_SZ);
+	inet_htonl(ipack->data, ip->family);
 
-	memcpy(buf, &ip->bits, sizeof(u_char));
-	buf+=sizeof(u_char);
-
-	memcpy(buf, ip->data, MAX_IP_SZ);
-	inet_htonl((u_int *)buf, ip->family);
-	buf+=MAX_IP_SZ;
-	
 	ints_host_to_network(pack, inet_prefix_iinfo);
 }
 
 /*
- * unpack_inet_prefix: restores in `ip' the inet_prefix struct contained in `pack'.
+ * inetp_unpack: restores in `ip' the inet_prefix struct contained in `pack'.
  * Note that `pack' will be modified during the restoration.
  */
-void unpack_inet_prefix(inet_prefix *ip, char *pack)
+void inetp_unpack(inet_prefix *ip, char *pack)
 {
+	struct inet_prefix_pack *ipack;
 	char *buf;
 
 	buf=pack;
+	ipack=(struct inet_prefix_pack *)pack;
 	
 	ints_network_to_host(pack, inet_prefix_iinfo);
 
-	memcpy(&ip->family, buf, sizeof(u_char));
-	buf+=sizeof(u_char);
+	ip->family = ipack->family;
+	ip->len    = ipack->len;
+	ip->bits   = ipack->bits;
 
-	memcpy(&ip->len, buf, sizeof(u_short));
-	buf+=sizeof(u_short);
-
-	memcpy(&ip->bits, buf, sizeof(u_char));
-	buf+=sizeof(u_char);
-
-	memcpy(ip->data, buf, MAX_IP_SZ);
+	memcpy(ip->data, ipack->data, MAX_IP_SZ);
 	inet_ntohl(ip->data, ip->family);
-	buf+=MAX_IP_SZ;
 }
 
 /* 
@@ -590,7 +620,7 @@ int inet_getpeername(int sk, inet_prefix *ip, short *port)
 		return -1;
 	}
 
-	return sockaddr_to_inet(sa, ip, port);
+	return sockaddr_to_inet(sa, ip, (u_short *)port);
 }
 
 /* 

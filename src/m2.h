@@ -240,7 +240,7 @@ typedef struct map_node map_node;
 typedef struct map_gw   map_gw;
 
 /*
- * int_map
+ * int_map						|{intmap}|
  * -------
  *
  * The internal map.
@@ -370,7 +370,7 @@ struct map_gw_pack
 /*
  * Conversion functions
  */
-nid_t map_node2pos(map_node *node, map_node *map);
+nid_t 	  map_node2pos(map_node *node, map_node *map);
 map_node *map_pos2node(nid_t pos, map_node *map);
 void	  map_pos2ip(nid_t map_pos, inet_prefix ipstart, inet_prefix *ret);
 void 	  map_node2ip(map_node *map, map_node *node, inet_prefix ipstart,
