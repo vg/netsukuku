@@ -101,27 +101,12 @@ INT_INFO map_gnode_iinfo = { 1,
 	( MAP_NODE_PACK_SZ(g_mmr) +					\
 	  	sizeof(u_char) + sizeof(uint8_t) + sizeof(int) )
 
-/*\
- *
- * External map						|{extmap}|
- * ------------
- *
- * The external map is composed by {-FAMILY_LVLS-}# levels.
- * Each level is called |{single extmap}| or |{gmap}|.
- *
- * A single extmap is an array composed by MAXGROUPNODE# map_gnode structs.
- * The i-th struct of the array corresponds to the gnode whose id is `i'.
- *
- * You can use the following functions to convert a gnode id to a struct
- * position: {-gmap_gnode2pos-}, {-gmap_pos2gnode-}.
- *
-\*/
 
 /*
  * 			      Levels notes
  * 			    ================
  * 			
- * These are the levels of the external map. 
+ * These are the levels of the {-external map-}.
  *
  * The |{ZERO LEVEL}| level is never used in the ext_map because it corresponds to the
  * internal map.
@@ -131,25 +116,33 @@ INT_INFO map_gnode_iinfo = { 1,
  *
  * The EXTRA_LEVELS are the ZERO_LEVEL and the UNITY_LEVEL.
  *
+ * See also {-EL_macro-}, {-extmap-}.
+ */
+#define ZERO_LEVEL	1
+#define UNITY_LEVEL	1
+#define EXTRA_LEVELS	(ZERO_LEVEL + UNITY_LEVEL)
+
+/* 
  * |{EL_macro}|
- * All the arrays of levels related to the external map, and the ext_map itself, don't
- * use the EXTRA_LEVELS. For this reason, they lack of the zero level.
- * This means that the level 1 is in the position 0 of the array,
+ * All the arrays of levels [1] related to the external map, and the ext_map 
+ * itself, don't use the EXTRA_LEVELS. For this reason, they lack of
+ * the {-ZERO LEVEL-}.
+ * This means that the level 1 is in the position 0 of the array, 
  * level 2 in 1, and so on.
  * To simplify the access to the array use the {-_EL-} macro:
  * 	ext_map[_EL(1)]  <--  access level 1 of the external map
  * which is the same of:
  * 	ext_map[0]
  *
- * Some of these arrays of levels are: nnet.gnode, rblock, ext_map, qspn_gnode_count.
+ * The _NL() macro does the opposite of _EL().
+ *
+ * These macros are very stupid, but useful to avoid to worry too much about
+ * using the right array index.
+ *
+ * [1] Some of these arrays of levels are: 
+ *     nnet.gnode, rblock, ext_map, qspn_gnode_count.
  */
-#define ZERO_LEVEL	1
-#define UNITY_LEVEL	1
-#define EXTRA_LEVELS	(ZERO_LEVEL + UNITY_LEVEL)
-
-/* To use the right level. See {-EL_macro-} */
 #define _EL(level)    ((level)-1)
-/* And to restore it. */
 #define _NL(level)    ((level)+1)
 
 /*
@@ -276,6 +269,40 @@ struct nodenet_pack
 #define NNET_IPSTART 1
 #define NNET_GID     (1<<1)
 #define NNET_GNODE   (1<<2)
+
+
+/*\
+ *
+ * External map						|{extmap}|
+ * ------------						|{external map}|
+ *
+ * The external map is composed by {-FAMILY_LVLS-}# levels.
+ * Each level is called |{single extmap}| or |{gmap}|.
+ *
+ * A single extmap is an array composed by MAXGROUPNODE# {-map_gnode-} structs.
+ * The i-th struct of the array corresponds to the gnode whose id is i-1.
+ *
+ * You can use the following functions to convert a gnode id to a struct
+ * position: {-gmap_gnode2pos-}, {-gmap_pos2gnode-}.
+ *
+\*/
+typedef struct {
+	/* 
+	 * An array of pointers. 
+	 * gmap[x] points to the gmap of the level _NL(x).
+	 */
+	map_gnode	**gmap;
+
+        /* {-MAX_METRIC_ROUTES-} value, relative to the gmaps */
+        int             max_metric_routes;
+
+	/* 
+	 * This struct contains the root_gnodes of each level of the
+	 * ext_map.
+	 */
+	nodenet_t	root_gnode;
+} ext_map;
+
 
 /* This block is used to send the ext_map */
 struct ext_map_hdr

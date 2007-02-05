@@ -103,11 +103,9 @@ INT_INFO free_nodes_hdr_iinfo = { 1, { INT_TYPE_32BIT },
 /* 
  * the free_nodes block is:
  *
- *	u_char		free_nodes[fn_hdr.nodes/8]; The bit x inside `free_nodes'
- *						    tells if the node x, i.e.
- *						    int_map[x], is up or not.
- *						    If the bit is set to 1, it
- *						    is.
+ *	u_char		free_nodes[fn_hdr.nodes/8]; The i-th bit inside `free_nodes'
+ *						    tells if the node with ID i-1
+ *						    is up (1) or not (0).
  *
  * The free_nodes pkt is:
  *	fn_hdr;

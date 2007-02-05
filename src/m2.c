@@ -626,28 +626,34 @@ int map_gw_add(map_node *dst, map_gw gw, map_node *root_node)
  *
  * Given two maps it merges them selecting only the best routes.
  *
- * In `base' map there will be the resulting map. 
- * The `new' map is the second map.
- * `base_root' points to the root_node present in the `base' map.
- * `new_root' points to the root_node of the `new' map.
+ * In `base_map' there will be the resulting map.
+ * `new_map' map is the second map, which will be merged with `base_map'.
  *
- * `base_new_rem' is the {-rem_t-} of the link `base'<-->`new'.
+ * `base_new_rem' is the {-rem_t-} of the link 
+ *
+ * 	`base_map'.root_node <--> `new_map'.root_node
+ *
  * `new_max_metric_routes' is the {-MAX_METRIC_ROUTES-} value relative to
  * the `new' map.
  *
  * * WARNING *
- * It's assumed that `new_root' is a rnode of `base_root'.
+ * It's assumed that `new_map'.root_node is a rnode of `base_map'.root_node
  * * WARNING *
  */
-int map_merge_maps(map_node *base, map_node *new, map_node *base_root, 
-			map_node *new_root, rem_t base_new_rem, 
+int map_merge_maps(int_map base_map, int_map new_map,
+			rem_t base_new_rem, 
 			int new_max_metric_routes)
 {
 	/* Vars */
 	int i, e, x, count=0, base_root_pos, new_root_pos;
 	map_gw gwstub, *gwnew;
+	map_node *base, *new, *base_root, *new_root;
+	base = base_map->map;
+	new  = new_map->map;
+	base_root = base_map->root_node;
+	new_root  = new_map->root_node;
 
-	/* Code */
+	 /* Code */
 
 	base_root_pos= map_node2pos(base_root, base);
 	new_root_pos = map_node2pos(new_root, new);

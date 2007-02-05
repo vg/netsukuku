@@ -247,7 +247,7 @@ typedef struct map_gw   map_gw;
  *
  * The main part of the internal map is an array composed by 
  * MAXGROUPNODE map_node structs. The i-th struct of the array corresponds 
- * to the node whose id is `i'. The start of the array is int_map.map.
+ * to the node whose id is i-1. The start of the array is int_map.map.
  * You can use the following functions to convert a node id to a struct
  * position: {-map_node2pos-}, {-map_pos2node-}.
  */
@@ -300,7 +300,7 @@ struct int_map_hdr
 	size_t		int_map_sz;		/* Size of the whole pack */
 
 	/* bit mask of the nodes included in the pack.
-	 * If the i-th bit is set, then the node with ID `i' is included in
+	 * If the i-th bit is set, then the node with ID i-1 is included in
 	 * the pack. */
 	char		map_mask[MAXGROUPNODE/8];
 
@@ -403,8 +403,9 @@ int     map_gw_count(map_gw **gw);
 void    map_gw_sort(map_gw **gw, metric_t metric);
 int     map_gw_add(map_node *dst, map_gw gw, map_node *root_node);
 
-int map_merge_maps(map_node *base, map_node *new, map_node *base_root, 
-			map_node *new_root, rem_t base_new_rem);
+int map_merge_maps(int_map base_map, int_map new_map,
+			rem_t base_new_rem, 
+			int new_max_metric_routes);
 
 char 	*map_pack(int_map imap, size_t *pack_sz);
 int_map  map_unpack(char *pack, size_t pack_sz);

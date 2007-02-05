@@ -68,7 +68,7 @@ int tp_is_similar(tpmask_t X, tpmask_t Y)
  * tp_mask_set
  * -----------
  *
- * Sets the `bitpos'-th bit of the tpmask `mask' to `bit'.
+ * Sets the bit `bitpos' of the tpmask `mask' to `bit'.
  * `bit' can be zero or a non zero value. In the latter case it is
  * interpreted as one.
  */
@@ -89,7 +89,7 @@ void tp_mask_set(tpmask_t *mask, int bitpos, u_char bit)
  * tp_mask_test
  * ------------
  *
- * Returns one if the `bitpos'-th bit of `mask' is set, otherwise zero is
+ * Returns one if the bit `bitpos' of `mask' is set, otherwise zero is
  * returned.
  */
 int tp_mask_test(tpmask_t *mask, int bitpos)
