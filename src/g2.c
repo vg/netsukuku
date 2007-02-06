@@ -954,94 +954,124 @@ int  extmap_find_level(map_gnode **ext_map, map_gnode *gnode, u_char max_level)
  *
 \*/
 
-/*TODO: CONTINUE HERE */
 /*
- * merge_lvl_ext_maps
- * 
- * merges two ext_maps of a specific `level'. It is used by merge_ext_maps(),
- * see below.
- * This function is the exact replica of merge_maps() in map.c, that's why it
- * isn't commented.
+ * __gmap_merge_eq_maps
+ *
+ * Used by {-gmap_merge_maps-} when the `base_root' gnode is the same
+ * of `new_root'.
  */
-int merge_lvl_ext_maps(map_gnode *base, map_gnode *new, nodenet_t base_root,
-		nodenet_t new_root, int level)
+int __gmap_merge_eq_maps(map_gnode *base, map_gnode *new, 
+				int new_max_metric_routes)
 {
-	map_gnode *gnode_gw, *new_root_in_base;
-	int base_root_pos, ngpos;
-	u_int base_trtt, new_trtt;
-	int i, e, x;
-
-	new_root_in_base=&base[new_root.gid[level]];
-	base_root_pos=base_root.gid[level];
+	map_gw gw;
+	int i, count=0;
 
 	for(i=0; i<MAXGROUPNODE; i++) {
-		if(base[i].g.flags & MAP_ME 	  || new[i].g.flags & MAP_ME ||
-			new[i].g.flags & MAP_VOID || base[i].flags & GMAP_ME || 
-			new[i].flags & GMAP_ME    || new[i].flags & GMAP_VOID)
+		if(new[i].flags & GMAP_ME || new[i].flags & GMAP_VOID ||
+			new[i].g.flags & MAP_ME || new[i].g.flags & MAP_VOID)
 			continue;
 
-		for(e=0; e<new[i].g.links; e++) {
-			gnode_gw=(map_gnode *)new[i].g.r_node[e].r_node; 
-			
-			ngpos=gmap_gnode2pos(gnode_gw, new);
-			if(ngpos == base_root_pos)
-				continue;
+		for(e=0; e < REM_METRICS; e++)
+		    for(x=0; x < new_max_metric_routes && 
+				    new[i].g.metrics[e].gw[x]; x++) {
+			    gid_t gwpos;
 
-			if(new[i].g.flags & MAP_RNODE)
-				new[i].g.r_node[e].r_node=(int *)new_root_in_base;
-			else if(base[ngpos].g.flags & MAP_VOID || 
-				base[ngpos].flags & GMAP_VOID || !base[ngpos].g.links)
-				new[i].g.r_node[e].r_node=(int *)new_root_in_base;
-			else
-				new[i].g.r_node[e].r_node=base[ngpos].g.r_node[0].r_node;
-						
-			if(e >= base[i].g.links) {
-				rnode_add(&base[i].g, &new[i].g.r_node[e]);
-				rnode_trtt_order(&base[i].g);
-				base[i].g.flags|=MAP_UPDATE;
-				continue;
-			}
-		
-			base_trtt = get_route_trtt(&base[i].g, base[i].g.links-1);
-			new_trtt  = get_route_trtt(&new[i].g, e);
-			if(base_trtt < new_trtt)
-				continue;
-		
-			for(x=0; x<base[i].g.links; x++) {
-				base_trtt = get_route_trtt(&base[i].g, x);
-				new_trtt  = get_route_trtt(&new[i].g, e);
-				if(base_trtt > new_trtt) {
-					map_rnode_insert(&base[i].g, x, &new[i].g.r_node[e]);
-					base[i].g.flags|=MAP_UPDATE;
-					break;
-				}
-			}
-		}
-		
-		if(base[i].g.links) {
-			base[i].g.flags&=~MAP_VOID;
-			base[i].flags&=~GMAP_VOID;
-		} else
-			gmap_node_del(&base[i]);
+			    /*
+			     * We just need to copy the gateway of `new' and
+			     * changing the gw.gnode pointer to an address of
+			     * the `base' map.
+			     */
+			    memcpy(&gw, &new[i].g.metrics[e].gw[x], sizeof(gw));
+			    gwpos    = gmap_gnode2pos(new[i].g.metrics[e].gw[x].gnode, new);
+			    gw.gnode = gmap_pos2gnode(gwpos, base);
+			    
+			    count+=map_gw_add(&base[i].g, gw, 0);
+		    }
 	}
 
-	return 0;
+	return count;
 }
 
 /*
- * merge_ext_maps
+ * gmap_merge_maps
+ * ---------------
  * 
- * it fuses the `base' and `new' ext_maps generating a single
- * ext_map which has the best routes. The generated map is stored in `base'
- * `base_root' is the nodenet_t related to `base'.
- * `new_root' is the nodenet_t of the `new' ext_map.
+ * Merges two gmaps.
+ *
+ * This function is the exact replica of {-map_merge_maps-}, with the only
+ * difference that we are operating on gnodes instead of nodes.
+ *
+ * Generally, you shouldn't use directly this function,
+ * use {-extmap_merge_maps-} instead.
+ */
+int gmap_merge_maps(map_gnode *base, map_gnode *new, map_gnode *base_root, 
+			map_gnode *new_root, rem_t base_new_rem, 
+			int new_max_metric_routes)
+{
+	int i, e, x, count=0, base_root_pos, new_root_pos;
+	map_gw gwstub, *gwnew;
+
+	base_root_pos= gmap_gnode2pos(base_root, base);
+	new_root_pos = gmap_gnode2pos(new_root, new);
+	gwstub.node=&base[new_root_pos];
+
+	if(base_root_pos == new_root_pos)
+		return __gmap_merge_eq_maps(base, new);
+
+	for(i=0; i<MAXGROUPNODE; i++) {
+
+		if(new[i].flags & GMAP_ME || new[i].flags & GMAP_VOID ||
+			new[i].g.flags & MAP_ME || new[i].g.flags & MAP_VOID)
+			continue;
+
+		for(e=0; e < REM_METRICS; e++)
+		    for(x=0; x < new_max_metric_routes && 
+				    new[i].metrics[e].gw[x]; x++) {
+
+			gwnew = new[i].metrics[e].gw[x];
+
+			memcpy(&gwstub.tpmask, &gwnew->tpmask, sizeof(tpmask_t));
+			if(tp_mask_test(&gwstub.tpmask, base_root_pos))
+				continue;
+
+			tp_mask_set(&gwstub.tpmask, new_root_pos, 1);
+
+			memcpy(&gwstub.rem, &gwnew->rem, sizeof(rem_t));
+			rem_add(&gwstub.rem, gwstub.rem, base_new_rem);
+
+			count+=map_gw_add(&base[i].g, gwstub, base_root);
+		    }
+	}
+
+	return count;
+}
+
+/*
+ * extmap_merge_maps
+ * -----------------
+ *
+ * Merges two {-external map-}.
+ *
+ * `base' is the extmap of a node J, while `new' is the extmap of the node N,
+ * which is a rnode of J.
+ * `base_new_rem' is the {-rem_t-} of the link J <--> N.
+ * `new_max_metric_routes' is the {-MAX_METRIC_ROUTES-} value relative to
+ * `new_map'.
+ *
+ * The merged extmap will be directly saved in `base_map'.
+ *
  * On error -1 is returned.
  */
-int merge_ext_maps(map_gnode **base, map_gnode **new, nodenet_t base_root,
-		nodenet_t new_root) 
+int extmap_merge_maps(ext_map base_map, ext_map new_map,
+			rem_t base_new_rem,
+			int new_max_metric_routes) 
 {
 	int level, i;
 
+	/*
+	 * Find the first level where the gnode of `base' differs from that of
+	 * `new'.
+	 */
 	for(level=base_root.levels-1; level >= 0; level--) {
 		
 		if(base_root.gid[level] != base_root.gid[level])
@@ -1052,9 +1082,15 @@ int merge_ext_maps(map_gnode **base, map_gnode **new, nodenet_t base_root,
 			return -1;
 	}
 	
+	/*
+	 * Start to merge the maps from the found level, and go up.
+	 */
 	for(i=level; i < base_root.levels; i++)
-		merge_lvl_ext_maps(base[_EL(i)], new[_EL(i)], base_root, 
-				new_root, i);
+		gmap_merge_maps(base_map.gmap[_EL(i)], new_map.gmap[_EL(i)], 
+				base_map.root_gnode[_EL(i)], 
+				new_map.root_gnode[_EL(i)],
+				base_new_rem,
+				new_max_metric_routes);
 
 	return 0;
 }

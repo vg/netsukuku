@@ -530,7 +530,8 @@ void map_gw_sort(map_gw **gw, metric_t metric)
  *
  * Adds `gw' in the list of gateways used to reach the `dst' node.
  *
- * `root_node' must point to the root node of the internal map.
+ * `root_node' is optional, it is a pointer to the root node of the
+ * internal map (use NULL to ignore it).
  *
  * Returns 1 on success, 0 if the `gw' has been discarded.
  */
@@ -653,11 +654,22 @@ int map_merge_maps(int_map base_map, int_map new_map,
 	base_root = base_map->root_node;
 	new_root  = new_map->root_node;
 
-	 /* Code */
+	/* Code */
 
 	base_root_pos= map_node2pos(base_root, base);
 	new_root_pos = map_node2pos(new_root, new);
 	gwstub.node=&base[new_root_pos];
+
+	/*
+	 * The merging works as follow:
+	 *	
+	 *	- let G be the gateway used by `new_map'.root_node to reach
+	 *	  the node D
+	 *	- Try to add G, as a gw to reach D, in the `base_map'.
+	 *	  This done using {-map_gw_add-}, which is the standard way to
+	 *	  add a new gateway in the intmap.
+	 *	- do this procedure forall nodes D of `new_map'.
+	 */
 
 	/* forall node in `new' */
 	for(i=0; i<MAXGROUPNODE; i++) {
