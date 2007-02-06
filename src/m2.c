@@ -844,6 +844,9 @@ int_map map_unpack(char *pack, size_t pack_sz)
 	bufget(&imap_hdr, sizeof(struct int_map_hdr));
 	ints_network_to_host(&imap_hdr, int_map_hdr_iinfo);
 
+	if(map_verify_hdr(&imap_hdr))
+		ERROR_FINISH(ret, 0, finish);
+
 	imap.max_metric_routes = imap_hdr->max_metric_routes;
 	imap.root_id = imap_hdr->root_id;
 
@@ -1013,6 +1016,7 @@ int map_save(int_map imap, char *file)
  */
 int_map map_load(char *file)
 {
+	int_map imap;
 	map_node *map=0;
 	FILE *fd;
 	struct int_map_hdr imap_hdr;
@@ -1038,7 +1042,6 @@ int_map map_load(char *file)
 	if(!fread(pack, pack_sz, 1, fd))
 		goto finish;
 
-	int_map imap;
 	imap = map_unpack(pack, pack_sz);
 
 finish:

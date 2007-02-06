@@ -288,7 +288,7 @@ typedef struct {
  *
  * Where,  B = count_bits(int_map_hdr.map_mask)
  * 
- * Line 3-5 form the |{mapnode_pack}|.
+ * Lines 3-5 form the |{mapnode_pack}|.
  *
  * To understand this syntax see {-pack-syntax-}
  *

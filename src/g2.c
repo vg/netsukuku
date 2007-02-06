@@ -1069,12 +1069,12 @@ int extmap_merge_maps(ext_map base_map, ext_map new_map,
 	int level, i;
 
 	/*
-	 * Find the first level where the gnode of `base' differs from that of
-	 * `new'.
+	 * Find the first level where the gnode of `base' differs from 
+	 * that of `new'.
 	 */
 	for(level=base_root.levels-1; level >= 0; level--) {
 		
-		if(base_root.gid[level] != base_root.gid[level])
+		if(base_map.root_gnode.gid[level] != new_map.root_gnode.gid[level])
 			break;
 
 		if(level == 1)
@@ -1087,250 +1087,260 @@ int extmap_merge_maps(ext_map base_map, ext_map new_map,
 	 */
 	for(i=level; i < base_root.levels; i++)
 		gmap_merge_maps(base_map.gmap[_EL(i)], new_map.gmap[_EL(i)], 
-				base_map.root_gnode[_EL(i)], 
-				new_map.root_gnode[_EL(i)],
+				base_map.root_gnode.gnode[_EL(i)], 
+				new_map.root_gnode.gnode[_EL(i)],
 				base_new_rem,
 				new_max_metric_routes);
 
 	return 0;
 }
 
-/* 
- * gmap_get_rblock
- * 
- * It uses get_rnode_block to pack all the ext_map's rnodes
- * `maxgroupnode' is the number of nodes present in the map.
- * It returns a pointer to the start of the rnode block and stores in "count" 
- * the number of rnode structs packed.
+/*
+ * gmap_to_map
+ * -----------
+ *
+ * Converts `gmap' to a normal {-intmap-}. This is done by ignoring the
+ * extra fields added in the map_gnode structs.
+ * A pointer to the start of the newly allocate intmap is returned.
+ * WARNING: the structs of the returned intmap are just a shallow copy of
+ *          that of `gmap'. You don't have to free it using map_free()! Use
+ *          only xfree().
+ *
+ * `count' is the number of map_gnode structs forming `gmap', if it is 0, it
+ * is set to  MAXGROUPNODE.
  */
-map_rnode *gmap_get_rblock(map_gnode *map, int maxgroupnode, int *count)
+map_node *gmap_to_map(map_gnode *gmap, int count)
 {
-	int i, c=0, tot=0;
- 	map_rnode *rblock;
-	*count=0;
-	
-	for(i=0; i<maxgroupnode; i++)
-		tot+=map[i].g.links;
-	if(!tot)
-		return 0;
-	rblock=(map_rnode *)xmalloc(sizeof(map_rnode)*tot);
+	map_node *map;
 
-	for(i=0; i<maxgroupnode; i++)
-		c+=get_rnode_block((int *)map, &map[i].g, rblock, c);
+	if(!count)
+		count=MAXGROUPNODE;
 
-	*count=c;
-	return rblock;
-}
+	map = xmalloc(count * sizeof(*map));
 
-/* gmap_store_rblock: Given a correct ext_map with `maxgroupnode' elements it
- * restores all the r_node structs in the map from the rnode_block using 
- * store_rnode_block.*/
-int gmap_store_rblock(map_gnode *gmap, int maxgroupnode, map_rnode *rblock)
-{
-	int i, c=0;
-
-	for(i=0; i<maxgroupnode; i++)
-		c+=store_rnode_block((int *)gmap, &gmap[i].g, rblock, c);
-	return c;
-}
-
-/* 
- * extmap_get_rblock
- * 
- * It packs the rnode_block for each map present in the `ext_map'.
- * There are a total of `levels' maps in the ext_map. Each map has 
- * `maxgroupnodes' nodes. In `*ret_count' is stored an array of map's rnodes 
- * count, so each element of the array represents the number of rnodes in the 
- * rblock of the relative map.
- * It returns an array of rblock's pointer. Each array's element points to the 
- * rblock for the map in that level.
- * Ex: ret_count[n] is the number of rnodes placed in rblock[n], and n is also 
- * the level of the map which has those rnodes. I hope I was clear ^_-
- * PS: You'll have to xfree ret_count, rblock[0-levels], and rblock;
- */ 
-map_rnode **extmap_get_rblock(map_gnode **ext_map, u_char levels, int maxgroupnodes, int **ret_count)
-{
 	int i;
- 	map_rnode **rblock;
-	int *count;
-	
-	if(!levels)
-		return 0;
-	rblock=xmalloc(sizeof(map_rnode *) * levels);
-	count=xmalloc(sizeof(int) * levels);
-	
-	for(i=0; i<levels; i++) 
-		rblock[i]=gmap_get_rblock(ext_map[i], maxgroupnodes, &count[i]);
-	
-	*ret_count=count;
-	return rblock;
+	for(i=0; i < count; i++)
+		map[i] = gmap[i].g;
+
+	return map;
 }
 
-/* extmap_store_rblock: It [re]stores all the rnodes in all the maps of the `ext_map'.
- * The maps have `maxgroupnode' nodes, while the `ext_map' has `levels' levels.
- * The rnodes are taken from the `rblock'.
- * The number of map restored is returned and it shall be equal to the number of `levels'.
+/*
+ * map_to_gmap
+ * -----------
+ *
+ * The inverse of gmap_to_map.
  */
-int extmap_store_rblock(map_gnode **ext_map, u_char levels, int maxgroupnode, 
-		map_rnode *rblock, size_t *rblock_sz)
+map_gnode *map_to_gmap(map_node *map, int count)
 {
+	map_gnode *gmap;
+
+	if(!count)
+		count=MAXGROUPNODE;
+
+	gmap = xmalloc(count * sizeof(*gmap));
+
 	int i;
-	for(i=0; i<levels; i++) {
-		if(rblock_sz[i])
-			gmap_store_rblock(ext_map[i], maxgroupnode, rblock);
-		rblock = (map_rnode *)((char *)rblock + rblock_sz[i]);
+	for(i=0; i < count; i++)
+		gmap[i].g = map[i];
+
+	return gmap;
+}
+
+
+/*
+ * gmap_pack
+ * ---------
+ *
+ * Packs `gmap'.
+ * `*pack_sz' is set to the size of the pack.
+ * 
+ * `root_gnode' is the root gnode of `gmap'.
+ * `max_metric_routes' is the {-MAX_METRIC_ROUTES-} value of `gmap'.
+ *
+ * The pointer to the package is returned, it resides in a newly allocated
+ * block of memory.
+ */
+char *gmap_pack(map_gnode *gmap, map_gnode *root_gnode,
+		int max_metric_routes, size_t *pack_sz)
+{
+	int_map imap;
+	char *pack, *buf, *oldbuf;
+
+	/*
+	 * Convert `gmap' to an intmap, then pack it
+	 */
+
+	imap.map = gmap_to_map(gmap, 0);
+	imap.root_id = gmap_gnode2pos(root_gnode, gmap);
+	imap.root_node = map_pos2node(imap.root_id, imap.map);
+	imap.max_metric_routes = max_metric_routes;
+
+	pack = map_pack(imap, pack_sz);
+	buf = pack + *pack_sz;
+	oldbuf = buf;
+
+	/*
+	 * Pack what's left
+	 */
+
+	int i;
+	for(i=0; i<MAXGROUPNODE; i++) {
+		bufput(&gmap[i].flags, sizeof(gmap[i].flags));
+		bufput(&gmap[i].seeds, sizeof(gmap[i].seeds));
+
+		u_int gcount;
+		gcount = htonl(gmap[i].gcount);
+		bufput(&gcount, sizeof(gcount));
 	}
-	return i;
+
+
+	(*pack_sz) += (size_t)(buf - oldbuf);
+
+	xfree(imap.map);
+
+	return pack;
 }
 
-/* 
- * verify_ext_map_hdr
- * 
- * It verifies the validity of an ext_map_hdr.
- * `nnet' is the unpacked emap_hdr->nnet nodenet_t.
+/*
+ * gmap_unpack
+ * -----------
+ *
+ * The inverse of {-gmap_pack-}.
+ *
+ * `*root_id' will hold the ID of the root gnode of the returned gmap.
  */
-int verify_ext_map_hdr(struct ext_map_hdr *emap_hdr, nodenet_t *nnet)
+map_gnode *gmap_unpack(char *pack, size_t pack_sz, gid_t *root_id)
 {
-	u_char levels;
-	int maxgroupnode, i;
-	
-	levels=nnet->levels-UNITY_LEVEL;
-	maxgroupnode=emap_hdr->ext_map_sz/(MAP_GNODE_PACK_SZ*levels);
-	if(levels > MAX_LEVELS || maxgroupnode > MAXGROUPNODE || 
-			emap_hdr->total_rblock_sz > MAXRNODEBLOCK_PACK_SZ*levels ||
-			emap_hdr->ext_map_sz > maxgroupnode*MAP_GNODE_PACK_SZ*levels)
-		return 1;
+	struct int_map_hdr *imap_hdr;
+	int_map imap;
+	map_gnode *gmap;
+	char *pack, *buf;
+	int ret=1;
 
-	for(i=0; i<levels; i++)
-		if(nnet->gid[i] > maxgroupnode)
-			return 1;
+	/* Unpack the intmap */
+	imap = map_unpack(pack, pack_sz);
+	if(!imap.map)
+		return 0;
 
-	return 0;
-}
+	/* Convert back the intmap to the gmap */
+	gmap = map_to_gmap(imap.map, 0);
+	root_id = imap.root_id;
 
-void extmap_free_rblock(map_rnode **rblock, u_char levels)
-{
+
+	imap_hdr = (struct int_map_hdr *)pack;
+	/* number of current extracted bytes */
+	size_t sz=imap_hdr->int_map_sz;
+	buf = pack + sz;
+
+	/*
+	 * Unpack what's left
+	 */
+
 	int i;
-	for(i=0; i<levels; i++)
-		if(rblock[i])
-			xfree(rblock[i]);
-	xfree(rblock);
+	for(i=0; i<MAXGROUPNODE; i++) {
+		if((sz+=MAP_GNODE_EXTRA_SZ) > pack_sz)
+			ERROR_FINISH(ret, 0, finish);
+
+		bufget(&gmap[i].flags, sizeof(gmap[i].flags));
+		bufget(&gmap[i].seeds, sizeof(gmap[i].seeds));
+
+		u_int gcount;
+		bufget(&gcount, sizeof(gmap[i].gcount));
+		gmap[i].gcount = ntohl(gcount);
+	}
+
+finish:
+	if(!ret)
+		if(gmap) {
+			xfree(gmap);
+			map_free(imap.map, 0);
+		}
+
+	return gmap;
 }
 
 /*
- * pack_map_gnode
- * 
- * packs the `nn' map_gnode struct and stores it in
- * `pack', which must be MAP_GNODE_PACK_SZ bytes big. `pack' will be in
- * network order.
- */
-void pack_map_gnode(map_gnode *gnode, char *pack)
-{
-	char *buf;
-
-	buf=pack;
-
-	pack_map_node(&gnode->g, buf);
-	buf+=MAP_NODE_PACK_SZ;
-
-	memcpy(buf, &gnode->flags, sizeof(char));
-	buf+=sizeof(char);
-
-	memcpy(buf, &gnode->seeds, sizeof(char));
-	buf+=sizeof(char);
-
-	memcpy(buf, &gnode->gcount, sizeof(u_int));
-	buf+=sizeof(u_int);
-
-	ints_host_to_network(pack, map_gnode_iinfo);
-}
-
-/*
- * unpack_map_gnode
- * 
- * restores in `nn' the map_gnode struct contained in `pack'.
- * Note that `pack' will be modified during the restoration.
- */
-void unpack_map_gnode(map_gnode *gnode, char *pack)
-{
-	char *buf;
-
-	buf=pack;
-
-	ints_nodenet_to_host(pack, map_gnode_iinfo);
-	
-	unpack_map_node(&gnode->g, buf);
-	buf+=MAP_NODE_PACK_SZ;
-
-	memcpy(&gnode->flags, buf, sizeof(char));
-	buf+=sizeof(char);
-
-	memcpy(&gnode->seeds, buf, sizeof(char));
-	buf+=sizeof(char);
-
-	memcpy(&gnode->gcount, buf, sizeof(u_int));
-	buf+=sizeof(u_int);
-}
-
-/* 
  * extmap_pack
- * 
- * It returns the packed `ext_map', ready to be saved or sent. It stores 
- * in `pack_sz' the size of the package. Each gmaps, present in the `ext_map', has 
- * `maxgroupnode' nodes. `nnet' must be a valid nodenet_t struct filled with 
- * valid values. 
+ * -----------
+ *
+ * Packs the external map `emap'.
  */
-char *extmap_pack(map_gnode **ext_map, int maxgroupnode, nodenet_t *nnet, size_t *pack_sz)
+char *extmap_pack(ext_map emap, size_t *pack_sz)
 {
+	int levels = emap.root_gnode.levels - ZERO_LEVEL;
+
 	struct ext_map_hdr emap_hdr;
-	map_rnode **rblock;
-	int *count, i, e;
-	char *package, *p=0;
-	u_char levels=nnet->levels-UNITY_LEVEL;
+	char *gmap_packs[levels];
+	size_t packs_sz[levels];
+	char *pack, *buf;
+	int i;
 
-	/*Packing the rblocks*/
-	rblock=extmap_get_rblock(ext_map, levels, maxgroupnode, &count);
+	*pack_sz=0;
 
-	/*Building the hdr...*/
-	setzero(&emap_hdr, sizeof(struct ext_map_hdr));
-	emap_hdr.ext_map_sz=maxgroupnode*MAP_GNODE_PACK_SZ*levels;
+	/* Pack each gmap */
 	for(i=0; i<levels; i++) {
-		emap_hdr.rblock_sz[i]=count[i]*MAP_RNODE_PACK_SZ;
-		emap_hdr.total_rblock_sz+=emap_hdr.rblock_sz[i];
+		gmap_packs = gmap_pack(emap.gnode[i], 
+				emap.root_gnode[i].gnode,
+				emap.max_metric_routes,
+				&packs_sz[i]);
+		(*pack_sz) += packs_sz[i];
 	}
-	
-	nnet_pack(nnet, emap_hdr.nnet);
 
-	/*Let's fuse all in one*/
-	*pack_sz=EXT_MAP_BLOCK_SZ(emap_hdr.ext_map_sz, emap_hdr.total_rblock_sz);
-	package=xmalloc(*pack_sz);
-	
-	memcpy(package, &emap_hdr, sizeof(struct ext_map_hdr));
-	ints_host_to_network(package, ext_map_hdr_iinfo);
+	emap_hdr.ext_map_sz = *pack_sz + sizeof(struct ext_map_hdr);
+	emap_hdr.max_metric_routes = emap.max_metric_routes;
+	nnet_pack(&emap.nnet, (char *)&emap_hdr.nnet);
 
-	p=package+sizeof(struct ext_map_hdr);
+	pack = xmalloc(emap_hdr.ext_map_sz);
+	buf = pack;
+
+	bufput(&emap_hdr, sizeof(emap_hdr));
+	ints_host_to_network(pack, ext_map_hdr_iinfo);
+
 	for(i=0; i<levels; i++) {
-		for(e=0; e<maxgroupnode; e++) {
-			pack_map_gnode(&ext_map[i][e], p);
-			p+=MAP_GNODE_PACK_SZ;
-		}
-	}
-	
-	/* If the rblock is not null copy it in the `package' */
-	if(rblock) {
-		for(i=0; i<levels; i++) {
-			if(!emap_hdr.rblock_sz[i])
-				continue;
-			memcpy(p, rblock[i], emap_hdr.rblock_sz[i]);
-			p+=emap_hdr.rblock_sz[i];
-		}
-		extmap_free_rblock(rblock, levels);
+		bufput(gmap_packs[i], packs_sz[i]);
+		xfree(gmap_packs[i]);
 	}
 
-	xfree(count);
-	return package;
+	return pack;
 }
 
+/*
+ * extmap_unpack
+ * -------------
+ *
+ * The inverse of `extmap_unpack'.
+ */
+ext_map extmap_unpack(char *pack, size_t pack_sz)
+{
+	ext_map emap;
+	struct ext_map_hdr emap_hdr;
+	int ret=1;
+	char *buf;
+
+	setzero(&emap, sizeof(emap));
+	buf = pack;
+
+	if(sizeof(struct ext_map_hdr) > pack_sz)
+		ERROR_FINISH(ret, 0, finish);
+
+	bufget(&emap_hdr, sizeof(emap_hdr));
+	ints_network_to_host(&emap_hdr, ext_map_hdr_iinfo);
+
+	if(extmap_verify_hdr(emap_hdr) || emap_hdr->ext_map_sz > pack_sz)
+		ERROR_FINISH(ret, 0, finish);
+
+	nnet_unpack(&emap.nnet, (char *)&emap_hdr.nnet);
+
+	int i, levels;
+	levels = emap.nnet.levels; 
+	for(i=0; i<emap_hdr->levels; i++) {
+		/* TODO: CONTINUE HERE */
+	}
+
+finish:
+	
+}
 
 /* 
  * extmap_unpack
@@ -1357,7 +1367,7 @@ map_gnode **extmap_unpack(char *package, nodenet_t *nnet)
 	levels=nnet->levels-UNITY_LEVEL;
 	maxgroupnode=emap_hdr->ext_map_sz/(MAP_GNODE_PACK_SZ*levels);
 	
-	if(verify_ext_map_hdr(emap_hdr, nnet)) {
+	if(extmap_verify_hdr(emap_hdr, nnet)) {
 		error("Malformed ext_map_hdr. Aborting unpack_map().");
 		return 0;
 	}
@@ -1391,6 +1401,30 @@ map_gnode **extmap_unpack(char *package, nodenet_t *nnet)
 
 	return ext_map;
 }
+
+/* 
+ * extmap_verify_hdr
+ * -----------------
+ * 
+ * It verifies the validity of an {-ext_map_hdr-}.
+ * If it is invalid, 1 is returned, otherwise 0.
+ */
+int extmap_verify_hdr(struct ext_map_hdr *emap_hdr)
+{
+	int levels, mmr;
+	int maxgroupnode, i;
+	
+	levels = emap_hdr->nnet.levels;
+	mmr    = emap_hdr->max_metric_routes;
+
+	if(levels > MAX_LEVELS  ||
+			emap_hdr->max_metric_routes < MIN_MAX_METRIC_ROUTES ||
+			emap_hdr->ext_map_sz > EXTMAP_MAX_PACK_SZ(mmr, levels-ZERO_LEVEL))
+		return 1;
+
+	return 0;
+}
+
 
 /* * * save/load ext_map * * */
 int extmap_save(map_gnode **ext_map, int maxgroupnode, nodenet_t *nnet, char *file)
@@ -1434,7 +1468,7 @@ map_gnode **extmap_load(char *file, nodenet_t *nnet)
 
 	ints_nodenet_to_host(&emap_hdr, ext_map_hdr_iinfo);
 	nnet_unpack(nnet, emap_hdr.nnet);
-	if(verify_ext_map_hdr(&emap_hdr, nnet))
+	if(extmap_verify_hdr(&emap_hdr, nnet))
 		goto error;
 
 	rewind(fd);

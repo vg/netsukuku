@@ -46,6 +46,17 @@
  * Integrate rnode_list.nnet in the existing radar.c code.
  */
 
+/*
+ * |{TODO_NODE_PRIV_KEY}|
+ *
+ * RSA *node_priv_key[levels];
+ *
+ * node_priv_key[0] is the priv_key of localhost.
+ * node_priv_key[1] is the priv_ket of the gnode of level 1, where localhost
+ * belongs.
+ * ...
+ */
+
 
 /*\
  *

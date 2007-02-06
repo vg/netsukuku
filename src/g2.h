@@ -81,15 +81,6 @@ typedef struct
 	u_int		gcount;	
 } map_gnode;
 
-/*\
- * |{mapgnode_pack}|
- * TODO:
-\*/
-INT_INFO map_gnode_iinfo = { 1, 
-			     { INT_TYPE_32BIT }, 
-			     { IINFO_DYNAMIC_VALUE },
-			     { 1 }
-			   };
 /* 
  * MAP_GNODE_PACK_SZ
  * -----------------
@@ -303,37 +294,55 @@ typedef struct {
 	nodenet_t	root_gnode;
 } ext_map;
 
+/*\
+ *
+ * External map pack					|{extmap_pack}|
+ * =================					|{extmap pack}|
+ *
+ * The pack is:
+ *
+ *   { ext_map_hdr },
+ *   {
+ *   	 { intmap_pack },
+ *   	 { 
+ *   	     { map_gnode.flags },
+ *   	     { map_gnode.seeds },
+ *   	     { map_gnode.gcount }
+ *   	 }^MAXGROUPNODE
+ *   }^LEVELS
+ *
+ * Where intmap_pack is the pack of the intmap generated with {-gmap_to_map-},
+ * 	 LEVELS is ext_map_hdr.nnet.levels
+ *
+ * To understand this syntax see {-pack-syntax-}
+ *
+\*/
 
-/* This block is used to send the ext_map */
 struct ext_map_hdr
 {
-	char   nnet[NODENET_PACK_SZ];  /* The packed me.cur_nnet */
+	/* Size of the whole pack */
+	size_t		ext_map_sz;
 
-	size_t ext_map_sz; 		/*It's the sum of all the gmaps_sz.
-					  The size of a single map is:
-					  (ext_map_sz/(MAP_GNODE_PACK_SZ*
-					  (nnet.levels-EXTRA_LEVELS)); */
-	size_t rblock_sz[MAX_LEVELS];	/*The size of the rblock of each gmap*/
-	size_t total_rblock_sz;		/*The sum of all rblock_sz*/
-}_PACKED_;
-
-/* Note: You have to consider the nodenet_t struct when converting between
- * endianness */
-INT_INFO ext_map_hdr_iinfo = { 3, 
-			       { INT_TYPE_32BIT, INT_TYPE_32BIT, INT_TYPE_32BIT },
-			       { NODENET_PACK_SZ, 
-				   NODENET_PACK_SZ+sizeof(size_t),
-				   NODENET_PACK_SZ+(sizeof(size_t)*(MAX_LEVELS+1)) },
-			       { 1, MAX_LEVELS, 1 }
-			     };
+	/* See {-MAX_METRIC_ROUTES-} */
+	uint8_t         max_metric_routes;
 	
-/* The ext_map_block is:
- * 	struct ext_map_hdr hdr;
- * 	char ext_map[ext_map_sz];
- * 	char rnode_blocks[total_rblock_sz];
- */
-#define EXT_MAP_BLOCK_SZ(ext_map_sz, rblock_sz) (sizeof(struct ext_map_hdr)+(ext_map_sz)+(rblock_sz))
+	/* Packed nodenet_t of this extmap */
+	struct nodenet_pack	nnet;
+}_PACKED_;
+INT_INFO ext_map_hdr_iinfo = { 1, { INT_TYPE_32BIT }, { 0 }, { 1 } };
 
-/* * * Functions' declaration * * */
+/* Size of map_gnode.{flags, seeds, gcount} */
+#define MAP_GNODE_EXTRA_SZ	(sizeof(u_char)+sizeof(uint8_t)+sizeof(u_int))
+
+/*
+ * Maximum size of an {-extmap pack-} 
+ * `_emmr' is the {-MAX_METRIC_ROUTES-} value.
+ * `_levels' is the numer of levels which compose the packed extmap.
+ */
+#define EXTMAP_MAX_PACK_SZ(_emmr, _levels)				\
+	( sizeof(struct ext_map_hdr) + 					\
+	  	(INT_MAP_PACK_SZ((_emmr), MAXGROUPNODE) * _levels) + 	\
+	  	(MAP_GNODE_EXTRA_SZ * MAXGROUPNODE) )
+
 
 #endif /*GMAP_H*/
