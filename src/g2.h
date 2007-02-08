@@ -94,27 +94,20 @@ typedef struct
 
 
 /*
- * 			      Levels notes
- * 			    ================
- * 			
- * These are the levels of the {-external map-}.
+ * |{ZERO LEVEL}|
  *
- * The |{ZERO LEVEL}| level is never used in the ext_map because it corresponds to the
- * internal map.
- *
- * The UNITY_LEVEL is the symbolic level which contains only one gnode, i.e.
- * the gnode containing the entire Netsukuku. This level isn't used, 
- *
- * The EXTRA_LEVELS are the ZERO_LEVEL and the UNITY_LEVEL.
+ * The level 0, formed by single nodes, is called "zero level".
+ * Its corresponding map is the {-internal map-}. For this reason,
+ * the {-external map-} doesn't include it and as a consequence, if the total
+ * number of levels is L, then the external map has only L-1 levels.
  *
  * See also {-EL_macro-}, {-extmap-}.
  */
 #define ZERO_LEVEL	1
-#define UNITY_LEVEL	1
-#define EXTRA_LEVELS	(ZERO_LEVEL + UNITY_LEVEL)
 
 /* 
  * |{EL_macro}|
+ *
  * All the arrays of levels [1] related to the external map, and the ext_map 
  * itself, don't use the EXTRA_LEVELS. For this reason, they lack of
  * the {-ZERO LEVEL-}.
@@ -133,8 +126,8 @@ typedef struct
  * [1] Some of these arrays of levels are: 
  *     nnet.gnode, rblock, ext_map, qspn_gnode_count.
  */
-#define _EL(level)    ((level)-1)
-#define _NL(level)    ((level)+1)
+#define _EL(level)    ((level)-ZERO_LEVEL)
+#define _NL(level)    ((level)+ZERO_LEVEL)
 
 /*
  * Total number of levels using the ipv4
@@ -172,7 +165,8 @@ typedef struct
 
 /*
  * Calls GET_LEVELS using the global variable {-my_family-}, which contains the
- * currently used family.
+ * currently used family. The returned value is either {-IPV4_LEVELS-} or
+ * {-IPV6_LEVELS-}.
  */
 #define FAMILY_LVLS		(GET_LEVELS(my_family))
 
@@ -211,7 +205,6 @@ typedef inet_prefix ipstart_t;
  * 
  * The nodenet_t struct of the node N, contains info regarding the network
  * where N belongs. It contains the gnode ID and the ipstart of each network level.
- *
  */
 typedef struct {
 
@@ -220,8 +213,9 @@ typedef struct {
 	/* 
 	 * Array of gnode IDs				|{gidarray}|
 	 *
-	 * The member gid[x] is the gid of the gnode of level x, belonging to
-	 * this network.
+	 * gid[0] is the node ID of N.
+	 * gid[x] is the gid of the gnode of level x, belonging to this
+	 * network.
 	 */
 	gid_t		gid[MAX_LEVELS];
 
@@ -231,7 +225,7 @@ typedef struct {
 	map_gnode	*gnode[MAX_LEVELS-ZERO_LEVEL];
 
 	/* 
-	 * The ipstart of each nnet.gid in their respective levels
+	 * The {-ipstart_t-} of each nnet.gid in their respective levels
 	 */
 	ipstart_t	ipstart[MAX_LEVELS];
 } nodenet_t;
@@ -268,7 +262,8 @@ struct nodenet_pack
  * ------------						|{external map}|
  *
  * The external map is composed by {-FAMILY_LVLS-}# levels.
- * Each level is called |{single extmap}| or |{gmap}|.
+ * A single level of the extmap is called |{single extmap}| or 
+ * |{gnode map}|.
  *
  * A single extmap is an array composed by MAXGROUPNODE# {-map_gnode-} structs.
  * The i-th struct of the array corresponds to the gnode whose id is i-1.
@@ -344,5 +339,98 @@ INT_INFO ext_map_hdr_iinfo = { 1, { INT_TYPE_32BIT }, { 0 }, { 1 } };
 	  	(INT_MAP_PACK_SZ((_emmr), MAXGROUPNODE) * _levels) + 	\
 	  	(MAP_GNODE_EXTRA_SZ * MAXGROUPNODE) )
 
+/*\
+ *
+ * 	* * *  Exported functions  * * *
+ *
+\*/
+
+int gmap_is_gid_invalid(gid_t *gids, gid_t gid, int lvl, int family);
+
+/* 
+ * Conversion functions 
+ */
+
+gid_t 	   gmap_gnode2pos(map_gnode *gnode, map_gnode *map);
+map_gnode *gmap_pos2gnode(gid_t pos, map_gnode *map);
+gid_t gmap_ip2gid(inet_prefix *ip, int level);
+void  gmap_ip2gids(inet_prefix *ip, gid_t *gid, int levels);
+void  gmap_gids2ip(gid_t *gid, u_char total_levels, uint8_t levels, int family,
+void  gmap_ip2nnet(inet_prefix ip, map_gnode **ext_map, nodenet_t *nn, char flags);
+
+
+/* 
+ * {-nodenet_t-} functions 
+ */
+void nnet_setflags(nodenet_t *nn, char flags);
+void nnet_reset(nodenet_t *nn);
+void nnet_free(nodenet_t *nn);
+
+void nnet_seeds_inc(nodenet_t *nn, int level);
+void nnet_seeds_dec(nodenet_t *nn, int level);
+void nnet_pack(nodenet_t *nn, char *pack);
+void nnet_unpack(nodenet_t *nn, char *pack, map_gnode **extmap);
+
+int nnet_gids_inc(nodenet_t *nn, int level,
+			map_gnode **ext_map, 
+			map_node *int_map, 
+			int(*is_gnode_flag_set)(map_gnode *gnode), 
+			int(*is_node_flag_set)(map_node *node));
+int gids_find_free(nodenet_t *nn, int level, map_gnode **ext_map,
+int gids_find_void(nodenet_t *nn, int level, map_gnode **ext_map,
+
+int gmap_random_ip(inet_prefix *ipstart, int final_level, gid_t final_gid, 
+			int total_levels, map_gnode **ext_map, int only_free_gnode, 
+			inet_prefix *new_ip, int my_family);
+
+
+int gids_cmp(gid_t *gids_a, gid_t *gids_b, int lvl, int max_lvl);
+int nnet_gids_cmp(nodenet_t a, nodenet_t b, int lvl);
+int inetp_gids_cmp(inet_prefix a, inet_prefix b, int lvl);
+
+/* map_gnode */
+void map_gnode_alloc(map_gnode *gnode);
+void map_gnode_del(map_gnode *gnode);
+void map_gnode_reset(map_gnode *gnode);
+
+void gnode_seeds_inc(map_gnode *gnode);
+void gnode_seeds_dec(map_gnode *gnode);
+
+/* {-gnode map-} */
+map_gnode *gmap_alloc(int groups);
+void gmap_free(map_gnode *gmap, int groups);
+void gmap_reset(map_gnode *gmap, int groups);
+
+/* {-extmap-} */
+map_gnode **extmap_alloc(u_char levels, int groups);
+void extmap_free(map_gnode **ext_map, u_char levels, int groups);
+void extmap_reset(map_gnode **ext_map, u_char levels, int groups);
+
+map_gw *gmap_gw_find(map_gnode *gnode, map_gnode *n);
+int  extmap_find_level(map_gnode **ext_map, map_gnode *gnode, u_char max_level);
+
+int gmap_merge_maps(map_gnode *base, map_gnode *new, map_gnode *base_root, 
+			rem_t base_new_rem,
+			int new_max_metric_routes);
+int extmap_merge_maps(ext_map base_map, ext_map new_map,
+			rem_t base_new_rem,
+			int new_max_metric_routes);
+
+/*
+ * Maps packing functions
+ */
+
+map_node *gmap_to_map(map_gnode *gmap, int count);
+map_gnode *map_to_gmap(map_node *map, int count);
+char *gmap_pack(map_gnode *gmap, map_gnode *root_gnode,
+map_gnode *gmap_unpack(char *pack, size_t pack_sz, gid_t *root_id);
+
+char *extmap_pack(ext_map emap, size_t *pack_sz);
+ext_map extmap_unpack(char *pack, size_t pack_sz);
+int extmap_verify_hdr(struct ext_map_hdr *emap_hdr);
+
+/* Save to/Load from file */
+int extmap_save(ext_map emap, char *file);
+ext_map extmap_load(char *file);
 
 #endif /*GMAP_H*/

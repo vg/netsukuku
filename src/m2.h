@@ -241,7 +241,7 @@ typedef struct map_gw   map_gw;
 
 /*
  * int_map						|{intmap}|
- * -------
+ * -------						|{internal map}|
  *
  * The internal map.
  *

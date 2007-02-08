@@ -267,8 +267,7 @@ void gmap_ip2nnet(inet_prefix ip, map_gnode **ext_map, nodenet_t *nn, char flags
 	}
 	if(flags & NNET_GNODE) {
 		for(i=0; i<levels-ZERO_LEVEL; i++)
-			nn->gnode[i]=gmap_pos2gnode(nn->gid[i+1], ext_map[i]);
-		nn->gnode[levels-ZERO_LEVEL]=&ext_map[i][0];
+			nn->gnode[i]=gmap_pos2gnode(nn->gid[_NL(i)], ext_map[i]);
 	}
 }
 
@@ -398,9 +397,11 @@ void nnet_pack(nodenet_t *nn, char *pack)
  * -----------
  * 
  * Restores in `nn' the nodenet_t struct contained in `pack'.
- * Note that `pack' will be modified during the restoration.
+ *
+ * If `extmap' is not NULL and points to an external map, then `nn'->gnode will
+ * be restored.
  */
-void nnet_unpack(nodenet_t *nn, char *pack)
+void nnet_unpack(nodenet_t *nn, char *pack, map_gnode **extmap)
 {
 	struct nodenet_pack *npack;
 	char *buf;
@@ -411,6 +412,10 @@ void nnet_unpack(nodenet_t *nn, char *pack)
 
 	nn->levels = npack->levels;
 	memcpy(nn->gid, npack->gid, sizeof(npack->gid));
+
+	if(extmap)
+		for(i=0; i < nn->levels-ZERO_LEVEL; i++)
+			nn->gnode[i]=gmap_pos2gnode(nn->gid[_NL(i)], extmap[i]);
 
 	for(i=0; i<MAX_LEVELS; i++)
 		inetp_unpack(&nn->ipstart[i], (char *)&npack->ipstart_pack[i]);
@@ -731,12 +736,12 @@ int inetp_gids_cmp(inet_prefix a, inet_prefix b, int lvl)
 \*/
 
 /*
- * gmap_gnode_alloc
+ * map_gnode_alloc
  * ----------------
  *
  * Allocates the components of the `gnode' map_gnode struct.
  */
-void gmap_gnode_alloc(map_gnode *gnode)
+void map_gnode_alloc(map_gnode *gnode)
 {
 	gnode->flags|=GMAP_VOID;
 	map_node_alloc(&gnode->g);
@@ -745,12 +750,12 @@ void gmap_gnode_alloc(map_gnode *gnode)
 /*
 
 
- * gmap_gnode_del
+ * map_gnode_del
  * --------------
  *
- * Frees what has been allocated with {-gmap_gnode_alloc-}
+ * Frees what has been allocated with {-map_gnode_alloc-}
  */
-void gmap_gnode_del(map_gnode *gnode)
+void map_gnode_del(map_gnode *gnode)
 {
 	map_node_del(&gnode.g);
 	setzero(gnode, sizeof(*gnode));
@@ -779,7 +784,7 @@ map_gnode *gmap_alloc(int groups)
 	gmap=(map_gnode *)xzalloc(len);
 
 	for(i=0; i<groups; i++)
-		gmap_gnode_alloc(&gmap[i]);
+		map_gnode_alloc(&gmap[i]);
 
 	return gmap;
 }
@@ -798,19 +803,19 @@ void gmap_free(map_gnode *gmap, int groups)
 		groups=MAXGROUPNODE;
 
 	for(i=0; i<groups; i++)
-		gmap_gnode_del(&gmap[i]);
+		map_gnode_del(&gmap[i]);
 
 	xfree(gmap);
 }
 
 /*
- * gmap_gnode_reset
+ * map_gnode_reset
  * ----------------
  *
  * Resets the map_gnode struct pointed by `gnode'.
  * See also {-map_node_reset-} for more details.
  */
-void gmap_gnode_reset(map_gnode *gnode)
+void map_gnode_reset(map_gnode *gnode)
 {
 	map_node_reset(&gnode.g);
 	gnode->flags=GMAP_VOID;
@@ -836,15 +841,18 @@ void gmap_reset(map_gnode *gmap, int groups)
 	len=sizeof(map_gnode)*groups;
 	
 	for(i=0; i<groups; i++)
-		gmap_gnode_reset(&gmap[i]);
+		map_gnode_reset(&gmap[i]);
 }
 
 /* extmap_alloc
  * ------------
  *
- * Initialize an {-extmap-} by allocating `levels'# gmaps. Each gmap
+ * Initialize an {-extmap-} by allocating `levels-1'# gmaps. Each gmap
  * has `groups'# elements.
  * If `groups' is zero, then it is considered to be equal to MAXGROUPNODE.
+ *
+ * Note: `levels' is the total number of levels of the network, f.e. a valid
+ *       value is {-IPV4_LEVELS-}.
  */
 map_gnode **extmap_alloc(u_char levels, int groups)
 {
@@ -861,8 +869,6 @@ map_gnode **extmap_alloc(u_char levels, int groups)
 	for(i=0; i<levels; i++)
 		ext_map[i]=gmap_alloc(groups);
 	
-	/*Ok, now we stealthy add the unity_level which has only one gmap.*/
-	ext_map[levels]=gmap_alloc(1);
 	return ext_map;
 }
 
@@ -871,6 +877,9 @@ map_gnode **extmap_alloc(u_char levels, int groups)
  * -----------
  *
  * Destroy the {-extmap-} allocated with {-extmap_alloc-}
+ *
+ * Note: `levels' is the total number of levels of the network, f.e. a valid
+ *       value is {-IPV4_LEVELS-}.
  */
 void extmap_free(map_gnode **ext_map, u_char levels, int groups)
 {
@@ -883,12 +892,10 @@ void extmap_free(map_gnode **ext_map, u_char levels, int groups)
 
 	levels--;
 	for(e=0; e<levels; e++) {
-		gmap_free(ext_map[e], 0);
+		if(ext_map[e])
+			gmap_free(ext_map[e], 0);
 		ext_map[e]=0;
 	}
-	/*Free the unity_level map*/
-	gmap_free(ext_map[levels], 1);
-	ext_map[levels]=0;
 
 	xfree(ext_map);
 }
@@ -1208,7 +1215,8 @@ char *gmap_pack(map_gnode *gmap, map_gnode *root_gnode,
  *
  * The inverse of {-gmap_pack-}.
  *
- * `*root_id' will hold the ID of the root gnode of the returned gmap.
+ * If `root_id' is not zero, `*root_id' will hold the ID of the root gnode
+ * of the returned gmap.
  */
 map_gnode *gmap_unpack(char *pack, size_t pack_sz, gid_t *root_id)
 {
@@ -1225,7 +1233,8 @@ map_gnode *gmap_unpack(char *pack, size_t pack_sz, gid_t *root_id)
 
 	/* Convert back the intmap to the gmap */
 	gmap = map_to_gmap(imap.map, 0);
-	root_id = imap.root_id;
+	if(root_id)
+		*root_id = imap.root_id;
 
 
 	imap_hdr = (struct int_map_hdr *)pack;
@@ -1287,9 +1296,9 @@ char *extmap_pack(ext_map emap, size_t *pack_sz)
 		(*pack_sz) += packs_sz[i];
 	}
 
-	emap_hdr.ext_map_sz = *pack_sz + sizeof(struct ext_map_hdr);
+	emap_hdr.ext_map_sz = *pack_sz = (*pack_sz) + sizeof(struct ext_map_hdr);
 	emap_hdr.max_metric_routes = emap.max_metric_routes;
-	nnet_pack(&emap.nnet, (char *)&emap_hdr.nnet);
+	nnet_pack(&emap.root_gnode, (char *)&emap_hdr.nnet);
 
 	pack = xmalloc(emap_hdr.ext_map_sz);
 	buf = pack;
@@ -1309,19 +1318,24 @@ char *extmap_pack(ext_map emap, size_t *pack_sz)
  * extmap_unpack
  * -------------
  *
- * The inverse of `extmap_unpack'.
+ * The inverse of {-extmap_pack-}.
  */
 ext_map extmap_unpack(char *pack, size_t pack_sz)
 {
 	ext_map emap;
 	struct ext_map_hdr emap_hdr;
+	size_t sz;
 	int ret=1;
 	char *buf;
 
 	setzero(&emap, sizeof(emap));
 	buf = pack;
 
-	if(sizeof(struct ext_map_hdr) > pack_sz)
+	/* 
+	 * Unpack the header
+	 */
+
+	if((sz=sizeof(struct ext_map_hdr)) > pack_sz)
 		ERROR_FINISH(ret, 0, finish);
 
 	bufget(&emap_hdr, sizeof(emap_hdr));
@@ -1330,76 +1344,33 @@ ext_map extmap_unpack(char *pack, size_t pack_sz)
 	if(extmap_verify_hdr(emap_hdr) || emap_hdr->ext_map_sz > pack_sz)
 		ERROR_FINISH(ret, 0, finish);
 
-	nnet_unpack(&emap.nnet, (char *)&emap_hdr.nnet);
+	emap.max_metric_routes = emap_hdr.max_metric_routes;
+	nnet_unpack(&emap.root_gnode, (char *)&emap_hdr.nnet, 0);
+
+	/*
+	 * Unpack the single gmaps
+	 */
 
 	int i, levels;
-	levels = emap.nnet.levels; 
-	for(i=0; i<emap_hdr->levels; i++) {
-		/* TODO: CONTINUE HERE */
+	levels = emap.root_gnode.levels; 
+	emap.gmap = xmalloc(sizeof(map_gnode *) * levels);
+	for(i=0; i < emap_hdr->levels-ZERO_LEVEL; i++) {
+		emap.gmap[i] = gmap_unpack(buf, pack_sz-sz, 0);
+
+		if(!emap.gmap[i])
+			ERROR_FINISH(ret, 0, finish);
 	}
 
 finish:
-	
-}
-
-/* 
- * extmap_unpack
- * 
- * Given a valid ext_map package (packed with extmap_pack), it 
- * allocates a brand new ext_map and restores in it the gmaps and the rnodes.
- * In `nnet' is stored the nodenet_t referring to this ext_map.
- * On success the a pointer to the new ext_map is retuned, otherwise 0 will be
- * the fatal value.
- * Note: `package' will be modified during the unpacking.
- */
-map_gnode **extmap_unpack(char *package, nodenet_t *nnet)
-{
-	map_gnode **ext_map;
-	struct ext_map_hdr *emap_hdr=(struct ext_map_hdr *)package;
-	map_rnode *rblock;
-	u_char levels;
-	int err, i, e, maxgroupnode;
-	char *p;
-
-	ints_nodenet_to_host(emap_hdr, ext_map_hdr_iinfo);
-	nnet_unpack(nnet, emap_hdr->nnet);
-	
-	levels=nnet->levels-UNITY_LEVEL;
-	maxgroupnode=emap_hdr->ext_map_sz/(MAP_GNODE_PACK_SZ*levels);
-	
-	if(extmap_verify_hdr(emap_hdr, nnet)) {
-		error("Malformed ext_map_hdr. Aborting unpack_map().");
-		return 0;
-	}
-	
-	/*Unpacking the ext_map*/
-	p=package+sizeof(struct ext_map_hdr);
-	ext_map=extmap_alloc(nnet->levels, maxgroupnode);
-	for(i=0; i<levels; i++) {
-		for(e=0; e<maxgroupnode; e++) {
-			unpack_map_gnode(&ext_map[i][e], p);
-			p+=MAP_GNODE_PACK_SZ;
+	if(!ret) {
+		/* An error occurred */
+		if(emap.gmap) {
+			extmap_free(emap.gmap, emap.root_gnode.levels, 0);
+			emap.gmap=0;
 		}
 	}
 
-	/*Let's store in it the lost rnodes.*/
-	if(emap_hdr->total_rblock_sz) {
-		rblock=(map_rnode *)p;
-		err=extmap_store_rblock(ext_map, levels, maxgroupnode, rblock,
-				emap_hdr->rblock_sz);
-		if(err!=levels) {
-			error("extmap_unpack(): It was not possible to restore"
-					" all the rnodes in the ext_map");
-			extmap_free(ext_map, nnet->levels, maxgroupnode);
-			return 0;
-		}
-	}
-	
-	/* We restore the nodenet_t struct */
-	for(i=0; i<levels; i++)
-		nnet->gnode[i]=gmap_pos2gnode(nnet->gid[i+1], ext_map[i]);
-
-	return ext_map;
+	return emap;
 }
 
 /* 
@@ -1426,20 +1397,31 @@ int extmap_verify_hdr(struct ext_map_hdr *emap_hdr)
 }
 
 
-/* * * save/load ext_map * * */
-int extmap_save(map_gnode **ext_map, int maxgroupnode, nodenet_t *nnet, char *file)
+/*\
+ *
+ *  * * * save/load the External Map * * *
+ *
+\*/
+
+/*
+ * extmap_save
+ * -----------
+ *
+ * Saves the external map `emap' in `file'.
+ */
+int extmap_save(ext_map emap, char *file)
 {
 	FILE *fd;
 	size_t pack_sz;
 	char *pack;
 	
 	/*Pack!*/
-	pack=extmap_pack(ext_map, maxgroupnode, nnet, &pack_sz);
+	pack=extmap_pack(emap, &pack_sz);
 	if(!pack || !pack_sz)
 		return 0;
 	
 	if((fd=fopen(file, "w"))==NULL) {
-		error("Cannot save the map in %s: %s", file, strerror(errno));
+		error("Cannot save the ext_map in %s: %s", file, strerror(errno));
 		return -1;
 	}
 	/*Write!*/
@@ -1450,36 +1432,45 @@ int extmap_save(map_gnode **ext_map, int maxgroupnode, nodenet_t *nnet, char *fi
 	return 0;
 }
 
-map_gnode **extmap_load(char *file, nodenet_t *nnet)
+/* 
+ * extmap_load
+ * -----------
+ *
+ * It loads the external map from `file'.
+ * It returns an {-ext_map-} struct describing the loaded map.
+ *
+ * On error the ext_map.gmap pointer of the returned ext_map struct is set to
+ * NULL.
+ */
+ext_map extmap_load(char *file)
 {
-	map_gnode **ext_map;
+	ext_map emap;
 	FILE *fd;
 	struct ext_map_hdr emap_hdr;
 	size_t pack_sz;
 	char *pack;
 	
 	if((fd=fopen(file, "r"))==NULL) {
-		error("Cannot load the map from %s: %s", file, strerror(errno));
+		error("Cannot load the ext_map from %s: %s", file, strerror(errno));
 		return 0;
 	}
 
 	if(!fread(&emap_hdr, sizeof(struct ext_map_hdr), 1, fd))
 		goto error;
 
-	ints_nodenet_to_host(&emap_hdr, ext_map_hdr_iinfo);
-	nnet_unpack(nnet, emap_hdr.nnet);
-	if(extmap_verify_hdr(&emap_hdr, nnet))
+	ints_network_to_host(&emap_hdr, ext_map_hdr_iinfo);
+	if(extmap_verify_hdr(&emap_hdr))
 		goto error;
 
 	rewind(fd);
-	pack_sz=EXT_MAP_BLOCK_SZ(emap_hdr.ext_map_sz, emap_hdr.total_rblock_sz);
+	pack_sz=emap_hdr.ext_map_sz;
 	pack=xmalloc(pack_sz);
 	if(!fread(pack, pack_sz, 1, fd))
 		goto error;
 
-	ext_map=extmap_unpack(pack, nnet);
-	if(!ext_map)
-		error("Cannot unpack the ext_map!");
+	emap = extmap_unpack(pack, pack_sz);
+	if(!emap.gmap)
+		error("Cannot unpack the ext_map.");
 
 	xfree(pack);
 	fclose(fd);

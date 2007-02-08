@@ -1012,7 +1012,8 @@ int map_save(int_map imap, char *file)
  * Note: the global variable {-MAX_METRIC_ROUTES-} is untouched. You have to
  * set it manually, using int_map.max_metric_routes.
  *
- * On error it returns NULL. 
+ * On error the int_map.map pointer of the returned int_map struct is set
+ * to NULL.
  */
 int_map map_load(char *file)
 {
