@@ -608,3 +608,9 @@ void destroy_andns_pkt(andns_pkt *ap)
 	destroy_andns_pkt_datas(ap);
         xfree(ap);
 }
+
+void align_andns_question(andns_pkt *ap, int len)
+{
+    ap->qstlength= len;
+    ap->qstdata= xmalloc(len);
+}
