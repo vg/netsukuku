@@ -27,9 +27,10 @@
 
 typedef struct
 {
-	u_char		link_id;
+	nid_t		nid;		/* id of the node which appended
+					   this hop */
+	uint8_t		chuck_nb;	/* Number of chunks attached to this hop */
 
-	rem_t		rem;		/* Route Efficiency Measure */
 } tracer_hop;
 
 /*

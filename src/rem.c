@@ -274,7 +274,7 @@ void rem_bw_add(rem_t *ret, rem_t x, rem_t y)
  * -----------
  *
  * It simply calls {-rem_avg_compute-}. 
- * For this reason, when before executing this function call {-rem_bw_add-} and
+ * For this reason, before executing this function call {-rem_bw_add-} and
  * {-rem_rtt_add-}.
  */
 void rem_avg_add(rem_t *ret)

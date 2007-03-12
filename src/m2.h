@@ -109,7 +109,7 @@ struct map_node
 	 * linkids
 	 * -------
 	 *
-	 * Each element of the `linkids' array is the link id (see :linkid_t)
+	 * Each element of the `linkids' array is the link id (see {-linkid_t-})
 	 * of a link connecting the `self' map_node to another node of the
 	 * same internal map.
 	 * For this reason, the maximum number of elements is MAXGROUPNODE-1.

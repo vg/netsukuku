@@ -2,6 +2,24 @@
 %     Created: Thu Nov 09 01:00 PM 2006 C
 % Last Change: Thu Nov 09 01:00 PM 2006 C
 %
+% This file is part of Netsukuku
+% (c) Copyright 2007 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+%
+% This source code is free software; you can redistribute it and/or
+% modify it under the terms of the GNU General Public License as published 
+% by the Free Software Foundation; either version 2 of the License,
+% or (at your option) any later version.
+%
+% This source code is distributed in the hope that it will be useful,
+% but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+% Please refer to the GNU Public License for more details.
+%
+% You should have received a copy of the GNU Public License along with
+% this source code; if not, write to:
+% Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+%
+
 \documentclass[a4paper]{article}
 \usepackage{color,graphicx}
 \usepackage{amsmath}
@@ -371,12 +389,19 @@ The REM value of a route, whose hops are gnodes and single nodes is defined as
 follow.
 \begin{enumerate}
 	\item The REM value of the route $x\rightarrow y$ is $E(x\rightarrow
-		y)$. The REM of a route has to be associative, i.e. this
-		propriety must hold:
+		y)$. The following condition must be respected:
+		\begin{enumerate}
+			\item 
+		The REM of a route has to be associative:
 		\[
 		REM(x\rightarrow y\rightarrow z)=REM(x\rightarrow
 		y)+REM(y\rightarrow z)
 		\]
+		\item The REM of the loopback route must be ``zero'':
+			\[
+			REM(z\rightarrow z)+REM(x\rightarrow y)=REM(x+y)
+			\]
+		\end{enumerate}
 	\item Let $G$ be a gnode, $x$ one of its nodes and $x \rightarrow G$ the
 		link between the node and the gnode. $x \rightarrow G$ can be
 		thought as the set of all the routes, which connect $x$ to
@@ -392,7 +417,7 @@ follow.
 		where $g_i$ is a node of $G$, and $n$ is the number of nodes
 		of $G$.
 	\item Let $A=\{a_1, \dots,a_j\}$ and $B=\{b_1,\dots,b_k\}$ be two sets 
-		of nodes (gnodes), then:
+		of nodes, then:
 		\begin{align*}
 		E(A \rightarrow  B)&=
 		\frac{\sum_{i=1}^j\sum_{e=1}^k E(a_i \rightarrow b_e)}{jk}\\
@@ -402,44 +427,53 @@ follow.
 		&=
 		\frac{\sum_{i=1}^j E(a_i \rightarrow B)}{j}
 		\end{align*}
-	\item Let $G$ be a gnode, $g_i' \in G$ its $i$-th bnode. Let $H$ be a
-		gnode bordering with $G$, $x \in H$ one of its nodes, and
-		$h_j' \in H$ its $j$-th bnode. Finally let
-		$B_G=\{g_1',\dots,g_j'\}$ be the set of the bnodes of $G$ which
-		are connected respectively with $B_H=\{h_1', h_2',
-		\dots,h_j'\}$, the bnodes of H.\\
-		As we've done above, we define the REM value $x\rightarrow G$
+		$E(A \rightarrow B)$ indicates the cost of moving from a
+		generic node of $A$ to a generic node of $B$.
+	\item \label{p4}
+		\begin{enumerate}
+			\item Let $G=\{g_1,\dots,g_n\}$ be a gnode. We consider it as a set of
+				nodes.
+			\item Let $H$ be a gnode bordering with $G$.
+			\item Let $x \in H$, i.e. let $x$ be a node of $H$.
+			\item Let $B_G=\{g_1',\dots,g_j'\}$ be the set
+				of the bnodes of $G$ and $B_H=\{h_1', h_2',
+				\dots,h_j'\}$ the set of bnodes of $H$ such
+				that $g_i'$ is connected with with $h_i'$ for
+				$i=1,\dots,j$.
+		\end{enumerate}
+		We define the REM value $E(x\rightarrow G)$
 		as the arithmetic mean of the REM value of all the routes, connecting
-		$x$ to every node of $G$, such that only one bnode $h_i'$ and
-		$g_i'$ is contained in each route.\\
-		Instead of the whole arithmetic mean in a single step, we can
-		calculate two different REM values and then combine them.
-		This is convenient, because the node $x$, being external to
-		$G$,  doesn't know the information regarding the nodes of
-		$G$.\\
-		The REM value of the link $x\rightarrow G$ is calculated as
+		$x$ to every node of $G$, such that only one bnode of type $h_i'$ and
+		one of type $g_i'$ is contained in each route.\\
+		The REM value of the link $x\rightarrow G$ can be calculated as
 		follow:\\
-		Let $G'$ be the set of all the nodes of $G$ excepting its
-		bnodes belonging to $B_G$,
 		\begin{eqnarray*}
-		G'=\{g_1,\dots,g_n\},\;\;\;B_G \nsubseteq G\\
 		E(x \rightarrow \{g_1',\dots,g_j'\})&=&
 				\frac{\sum_{i=1}^j E(x \rightarrow h_i' \rightarrow g_i')}
 						{j}\\
 				&=&
 				\frac{\sum_{i=1}^j E(x \rightarrow
 				h_i')+E(h_i' \rightarrow g_i')}{j}\\
-		E(\{g_1',\dots,g_j'\}\rightarrow G')&=&
-				\frac{\sum_{i=1}^j E(g_i'\rightarrow G')}{j}\\
-		E(x\rightarrow G)&=&
-			E(x \rightarrow \{g_1',\dots,g_j'\}) + E(\{g_1',\dots,g_j'\}\rightarrow G')
+		E(\{g_1',\dots,g_j'\}\rightarrow G)&=&
+				\frac{\sum_{i=1}^j E(g_i'\rightarrow G)}{j}\\
+		(*)\;\;\;E(x\rightarrow G)&=&
+			E(x \rightarrow \{g_1',\dots,g_j'\}) + E(\{g_1',\dots,g_j'\}\rightarrow G)
 		\end{eqnarray*}
-		The last equation corresponds to the arithmetic mean described
-		above.
+		The equation $(*)$ corresponds to the searched arithmetic mean. 
+		It is convenient to calculate it in this form, because we can
+		split its computation in two independent phases: the
+		computation of $E(x\rightarrow B_G)$ and that of
+		$E(B_G\rightarrow G)$. Doing so, the node $x$, to compute
+		$E(x\rightarrow G)$,  will only need
+		to calculate $E(x\rightarrow B_G)$. The $E(B_G\rightarrow G)$
+		value, which it can't calculate since it is an external node
+		to G, will be calculated and sent by the same $B_G$ bnodes.
+		Here follow the proof of equation $(*)$.
 		\begin{proof}
+			\label{proofrem1}
 			For simplicity, by writing $\overline{xy}$ we will indicate the route $x
 			\rightarrow y$.\\
-			All the routes from $x$ to $G'$ are:
+			All the routes from $x$ to $G$ are:
 			\begin{align*}
 				&\overline{x h_1  g_1'  g_1},\;\; \overline{x
 				h_1  g_1'g_2},\;\;\dots,\;\; \overline{x h_1
@@ -481,17 +515,49 @@ follow.
 			\{g_1',\dots,g_j'\})&=\frac{\sum_{i=1}^j
 			E(\overline{xh_i'g_i'})}{j}\\
 			E(\{g_1',\dots,g_j'\}\rightarrow
-			G')&=\frac{\sum_{k=1}^n
+			G)&=\frac{\sum_{k=1}^n
 			\sum_{i=1}^jE(\overline{g_i'g_k})}{jn}\\
 			E(x\rightarrow G)&=
 			E(x \rightarrow \{g_1',\dots,g_j'\}) +
-			E(\{g_1',\dots,g_j'\}\rightarrow G')\\
+			E(\{g_1',\dots,g_j'\}\rightarrow G)\\
 			&= \frac{\sum_{i=1}^j
 			E(\overline{xh_i'g_i'})}{j}+\frac{\sum_{k=1}^n
 			\sum_{i=1}^jE(\overline{g_i'g_k})}{jn}
 			\end{align*}
 		\end{proof}
+	\item Under the same assumption of point \ref{p4}, we add only the
+		following: let $X=\{x_1,\dots,x_r\} \subseteq H$.
+		We define $E(X\rightarrow G)$ as the average of the REM value
+		of all routes connecting $x_i \rightarrow G$ for
+		$i=1,\dots,r$. The constraint imposed on the routes
+		$x_i \rightarrow G$ have been already defined in point
+		\ref{p4}. This definition is equivalent to:
+		\[
+		E(X\rightarrow G) = \frac{\sum_{i=1}^rE(x_i\rightarrow G)}{r}
+		\]
+		\begin{proof}
+			In the precedent proof (\ref{proofrem1}) we've seen
+			that the average of the REM value of the routes $x\rightarrow G$ is
+			\[
+			\frac{\sum_{k=1}^n \sum_{i=1}^j
+			E(\overline{xh_i'g_i'g_k})}{jn}
+			\]
+			thus in this case, it's just a matter of adding
+			another summation:
+			\begin{align*}
+				& \frac{\sum_{e=1}^r \sum_{k=1}^n
+				\sum_{i=1}^jE(\overline{x_eh_i'g_i'g_k})}{jnr}=\\
+				&\frac{\sum_{e=1}^r\left(
+				\frac{\sum_{k=1}^n \sum_{i=1}^j
+				E(\overline{x_eh_i'g_i'g_k})}{jn}
+				\right)}{r}=\\
+				&\frac{\sum_{e=1}^rE(x_e\rightarrow G)}{r}
+			\end{align*}
+		\end{proof}
+		%%%% TODO CONTINUE HERE:
+		%% \dots\rightarrow X\rightarrow Y\rightarrow \dots
 \end{enumerate}
+
 
 \subsubsection{REM in a Tracer Packet}
 Each link contained in a TP contains its relative REM value. Consider the TP

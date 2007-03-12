@@ -114,6 +114,10 @@ typedef struct
 #endif
 
 
+/* |{packed-attr}| */
+#define _PACKED_ __attribute__ ((__packed__))
+
+
 /*\
  *
  *  * * * Exported functions * * *

@@ -19,6 +19,10 @@
 #ifndef INET_H
 #define INET_H
 
+#include <asm/types.h>
+#include <sys/types.h>
+#include <arpa/inet.h>
+
 #include "endianness.h"
 
 #define MAX_IP_INT	4
