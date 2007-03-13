@@ -1,25 +1,30 @@
-#include "andns.h"
-#include <openssl/md5.h>
+
+#include "andns_shared.h"
+#include "andns_lib.h"
+#include "crypto.h"
 
 
-void andns_set_error(const char err, andns_query *q)
+void andns_set_error(const char *err, andns_query *q)
 {
-    q->errors = xmalloc(strlen(err) + 1);
+    q->errors = (char*)xmalloc(strlen(err) + 1);
     strcpy(q->errors, err);
 }
 
-void hstrcpy(d, s)
+void hstrcpy(char *d, char *s)
 {
-    int i,t;
+    int i;
+    char t;
 
     for (i=0; i< ANDNS_HASH_H; i++) {
-        sscanf(s+ 2*i, "%02x", &t);
-        d[i]= (unsigned char)(t);
+        sscanf((const char*)(s+ 2*i), "%02x", &t);
+        *(d+i)= t;
     }
 }
 
 int andns_set_ntk_hname(andns_query *q, andns_pkt *p)
 {
+    int qlen= strlen(q->question);
+
     align_andns_question(p, ANDNA_HASH_SZ);
     
     if (q->hashed) {
@@ -29,7 +34,7 @@ int andns_set_ntk_hname(andns_query *q, andns_pkt *p)
             return -1;
             }
 
-            hstrcpy(p->qstdata, qst);
+            hstrcpy(p->qstdata, q->question);
         }
     else {
         if (qlen> ANDNA_MAX_HNAME_LEN) {
@@ -37,29 +42,10 @@ int andns_set_ntk_hname(andns_query *q, andns_pkt *p)
             return -1;
         }
 
-        MD5(qst, qlen, p->qstdata);
+        MD5(q->question, qlen, p->qstdata);
     }
     return 0;
 }
-
-
-
-typedef struct addrinfo AINF;
-typedef struct andns_query 
-{
-    char    question[ANDNA_MAX_HNAME_LEN];
-    int     hashed;
-    int     recursion;
-    int     type;
-    int     realm;
-    int     proto;
-    int     service;
-    char    *error;
-    int     status;
-    char    **answers;
-    AINF    andns_server;
-    int     port;
-} andns_query;
 
 int andns_set_question(andns_query *q, andns_pkt *p)
 {
@@ -70,15 +56,15 @@ int andns_set_question(andns_query *q, andns_pkt *p)
     qst= q->question;
     qlen= strlen(qst);
 
-    if (qt == QTYPE_A) 
+    if (qt == AT_A) 
     {
         if (!qlen) {
             andns_set_error("Void query.", q);
             return -1;
         }
 
-        if (q->real == REALM_INET) {
-            if (qlen> MAX_INET_HOSTNAME_LEN) {
+        if (q->realm == ANDNS_INET_REALM) {
+            if (qlen> ANDNS_MAX_INET_HNAME_LEN) {
                 andns_set_error("Hostname too long for inet query.", q);
                 return -1;
             }
@@ -91,7 +77,7 @@ int andns_set_question(andns_query *q, andns_pkt *p)
                 return -1;
             }
     }
-    else if (qt == QTYPE_PTR)
+    else if (qt == AT_PTR)
     {
         int res;
         struct in_addr ia;
@@ -106,7 +92,7 @@ int andns_set_question(andns_query *q, andns_pkt *p)
 
         else {
 
-            res= inet_pton(AF_INET6, qst, &ia6);
+            res= inet_pton(AF_INET6, qst, &i6a);
             if (res) {
                 align_andns_question(p, 16);
                 memcpy(p->qstdata, &i6a.in6_u, 16);
@@ -114,16 +100,16 @@ int andns_set_question(andns_query *q, andns_pkt *p)
             }
 
             else {
-                andns_set_error("Invalid address.", p);
+                andns_set_error("Invalid address.", q);
                 return -1;
             }
         }
     }
 
-    else if (qt ==  QTYPE_G)
+    else if (qt ==  AT_G)
     {
-        if (quey->realm != REALM_NTK) {
-            andns_set_error("Invalid realm for global query type.", p);
+        if (q->realm != ANDNS_NTK_REALM) {
+            andns_set_error("Invalid realm for global query type.", q);
             return -1;
         }
 
@@ -154,47 +140,49 @@ int andns_dialog(andns_query *q, andns_pkt *ap)
     if (res< 0) {
 
         if (res== -1)
-            andns_set_error("Unable to connect().");
+            andns_set_error("Unable to connect().", q);
         else if (res== -2)
-            andns_set_error("Unable to send().");
+            andns_set_error("Unable to send().", q);
         else
-            andns_set_error("Unable to recv().");
+            andns_set_error("Unable to recv().", q);
 
         return -1;
     }
 
-    res= a_u(answ, res, ap);
+    res= a_u(answ, res, &ap);
     if (res<=0) {
         andns_set_error("Internal error (unpacking andns). "
                         "This seems a bug.", q);
+        destroy_andns_pkt(ap);
         return -1;
     }
 
     if (ap->id != id) {
-        andns_set_error("Mismatching IDs.");
+        andns_set_error("Mismatching IDs.", q);
+        destroy_andns_pkt(ap);
         return -1;
     }
 
     return 0;
 }
 
-andns_pkt *andns_query(andns_query *query)
+andns_pkt *ntk_query(andns_query *query)
 {
     andns_pkt *ap;
 
-    q= create_andns_pkt();
+    ap= create_andns_pkt();
 
     if (andns_set_question(query, ap))
         return NULL;
 
     xsrand();
 
-    p->nk= query->realm;
-    p->p= query->proto;
-    p->service= query->service;
-    p->r= query->recursion;
-    p->qtype= q->qt;
-    p->id= xrand();
+    ap->nk      = query->realm;
+    ap->p       = query->proto;
+    ap->service = query->service;
+    ap->r       = query->recursion;
+    ap->qtype   = query->type;
+    ap->id      = xrand();
 
     if (andns_dialog(query, ap))
         return NULL;
