@@ -1,5 +1,4 @@
 #include "andns_shared.h"
-#include "andns_lib.h"
 #include "crypto.h"
 
 

@@ -25,8 +25,6 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-#include "andna_cache.h"
-
 /*
  * Structures
  */
@@ -64,12 +62,13 @@ typedef struct andns_pkt
 #define ANDNS_COMPR_THRESHOLD   1000
 #define ANDNS_COMPR_LEVEL   Z_BEST_COMPRESSION
 
-/* Structure */
+/* Misc */
 #define ANDNS_MAX_ANSWERS   255
+#define ANDNS_TIMEOUT       15
 
 /* Hostnames */
 #define ANDNS_MAX_INET_HNAME_LEN    255
-#define ANDNS_MAX_NTK_HNAME_LEN     ANDNA_MAX_HNAME_LEN
+#define ANDNS_MAX_NTK_HNAME_LEN     512
 #define ANDNS_HASH_HNAME_LEN        16
 
 /* Realms */
