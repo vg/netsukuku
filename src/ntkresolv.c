@@ -485,9 +485,10 @@ void do_command(void)
 	char answer[ANDNS_MAX_PK_LEN];
 	int res;
 
-	memset(buf,0,ANDNS_MAX_SZ);
-	GOP.id=GQT->id;
-	res=a_p(GQT,buf);
+	memset(buf, 0, ANDNS_MAX_SZ);
+	GOP.id= GQT->id;
+
+	res= a_p(GQT, buf);
 	if (res==-1) {
 		say("Error building question.\n");
 		ntkresolv_exit(1);
