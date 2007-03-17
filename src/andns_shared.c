@@ -1,4 +1,3 @@
-
 #include "andns_shared.h"
 #include "andns_lib.h"
 #include "crypto.h"
@@ -15,7 +14,7 @@ void hstrcpy(char *d, char *s)
     int i;
     char t;
 
-    for (i=0; i< ANDNS_HASH_H; i++) {
+    for (i=0; i< ANDNS_HASH_HNAME_LEN; i++) {
         sscanf((const char*)(s+ 2*i), "%02x", &t);
         *(d+i)= t;
     }
@@ -25,19 +24,19 @@ int andns_set_ntk_hname(andns_query *q, andns_pkt *p)
 {
     int qlen= strlen(q->question);
 
-    align_andns_question(p, ANDNA_HASH_SZ);
+    align_andns_question(p, ANDNS_HASH_HNAME_LEN);
     
     if (q->hashed) {
         /* ascii doubles the hash */
-        if (qlen!= ANDNA_HASH_SZ * 2) { 
+        if (qlen!= ANDNS_HASH_HNAME_LEN * 2) { 
             andns_set_error("Invalid hash.", q);
             return -1;
-            }
-
-            hstrcpy(p->qstdata, q->question);
         }
+
+        hstrcpy(p->qstdata, q->question);
+    }
     else {
-        if (qlen> ANDNA_MAX_HNAME_LEN) {
+        if (qlen> ANDNS_MAX_NTK_HNAME_LEN) {
             andns_set_error("Hostname too long.", q);
             return -1;
         }
@@ -71,11 +70,7 @@ int andns_set_question(andns_query *q, andns_pkt *p)
             align_andns_question(p, qlen);
             memcpy(p->qstdata, qst, qlen);
         }
-        else {
-        
-            if (andns_set_ntk_hname(q, p))
-                return -1;
-            }
+        else if (andns_set_ntk_hname(q, p)) return -1;
     }
     else if (qt == AT_PTR)
     {
@@ -89,16 +84,13 @@ int andns_set_question(andns_query *q, andns_pkt *p)
             memcpy(p->qstdata, &ia.s_addr, 4);
             p->ipv= AF_INET;
         }
-
         else {
-
             res= inet_pton(AF_INET6, qst, &i6a);
             if (res) {
                 align_andns_question(p, 16);
                 memcpy(p->qstdata, &i6a.in6_u, 16);
                 p->ipv= AF_INET6;
             }
-
             else {
                 andns_set_error("Invalid address.", q);
                 return -1;
@@ -121,8 +113,8 @@ int andns_set_question(andns_query *q, andns_pkt *p)
 
 int andns_dialog(andns_query *q, andns_pkt *ap)
 {
-    char buf[ANDNS_MAX_SZ];
-    char answ[ANDNS_MAX_PK_LEN];
+    char buf[ANDNS_PKT_QUERY_SZ];
+    char answ[ANDNS_PKT_TOT_SZ];
     int res, id;
 
     id= ap->id;
@@ -134,7 +126,7 @@ int andns_dialog(andns_query *q, andns_pkt *ap)
     }
 
     res= send_recv_close(q->andns_server, q->port, SOCK_DGRAM, 
-                         buf, res, answ, ANDNS_MAX_PK_LEN, 0, 
+                         buf, res, answ, ANDNS_PKT_TOT_SZ, 0, 
                          ANDNS_TIMEOUT);
 
     if (res< 0) {

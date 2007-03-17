@@ -25,34 +25,11 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-/* next generations */
+#include "andna_cache.h"
 
-/* Hostnames */
-#define ANDNS_MAX_INET_HNAME_LEN    255
-#define ANDNS_MAX_NTK_HNAME_LEN     511
-
-/* Realms */
-#define ANDNS_NTK_REALM             1
-#define ANDNS_INET_REALM            2
-
-/* old generations */
-#define ANDNS_MAX_QUESTION_LEN  263 /* TODO */
-#define ANDNS_MAX_ANSWER_LEN    516
-#define ANDNS_MAX_ANSWERS_NUM   256
-#define ANDNS_MAX_PK_LEN    ANDNS_MAX_QUESTION_LEN+\
-                ANDNS_MAX_ANSWERS_NUM*ANDNS_MAX_ANSWER_LEN
-
-#define ANDNS_MAX_DATA_LEN  512
-#define ANDNS_MAX_QST_LEN   512
-#define ANNDS_DNS_MAZ_QST_LEN   255
-#define ANDNS_MAX_ANSW_IP_LEN   20
-#define ANDNS_MAX_ANSW_H_LEN    516
-
-#define ANDNS_HASH_H        16
-
-#define ANDNS_COMPR_LEVEL   Z_BEST_COMPRESSION
-#define ANDNS_COMPR_THRESHOLD   1000
-
+/*
+ * Structures
+ */
 struct andns_pkt_data
 {
     uint8_t                 m;
@@ -64,13 +41,6 @@ struct andns_pkt_data
     struct andns_pkt_data   *next;
 };
 typedef struct andns_pkt_data andns_pkt_data;
-#define ANDNS_PKT_DATA_SZ sizeof(andns_pkt_data)
-#define APD_ALIGN(apd)  (apd)->rdata=(char*)xmalloc((apd)->rdlength+1);     \
-                     memset((apd)->rdata,0,(apd)->rdlength+1)
-#define APD_MAIN_IP 1<<0
-#define APD_IP      1<<1
-#define APD_TCP     1<<2
-#define APD_UDP     1<<3
 
 typedef struct andns_pkt
 {
@@ -89,27 +59,61 @@ typedef struct andns_pkt
     char            *qstdata;
     andns_pkt_data  *pkt_answ;
 } andns_pkt;
-#define ANDNS_PKT_SZ sizeof(andns_pkt)
-#define AP_ALIGN(ap)    (ap)->qstdata=(char*)xmalloc((ap)->qstlength)
 
-#define ANDNS_HDR_SZ    4
-#define ANDNS_HDR_Z 4
-#define ANDNS_MAX_SZ    ANDNS_HDR_SZ+ANDNS_MAX_QST_LEN+ANDNS_MAX_QST_LEN+4
+/* Compression */
+#define ANDNS_COMPR_THRESHOLD   1000
+#define ANDNS_COMPR_LEVEL   Z_BEST_COMPRESSION
 
+/* Structure */
+#define ANDNS_MAX_ANSWERS   255
 
+/* Hostnames */
+#define ANDNS_MAX_INET_HNAME_LEN    255
+#define ANDNS_MAX_NTK_HNAME_LEN     ANDNA_MAX_HNAME_LEN
+#define ANDNS_HASH_HNAME_LEN        16
+
+/* Realms */
+#define ANDNS_NTK_REALM     1
+#define ANDNS_INET_REALM    2
+
+/* Query Type */
+#define AT_A    0 /* h->ip */
+#define AT_PTR  1 /* ip->h */
+#define AT_G    2 /* global */
+
+/* Andns Proto */
+#define ANDNS_PROTO_TCP     0
+#define ANDNS_PROTO_UDP     1
+
+/* Ipv */
+#define ANDNS_IPV4      0
+#define ANDNS_IPV6      1
+
+/* Answers info */
+#define ANDNS_APD_MAIN_IP 1<<0
+#define ANDNS_APD_IP      1<<1
+#define ANDNS_APD_TCP     1<<2
+#define ANDNS_APD_UDP     1<<3
+
+/* Macros */
 #define ANDNS_SET_RCODE(s,c)    *((s)+3)=(((*((s)+3))&0xf0)|c)
 #define ANDNS_SET_QR(s)         (*((s)+2))|=0x80
 #define ANDNS_SET_ANCOUNT(s,n)  *(s+2)|=((n)>>1);*(s+3)|=((n)<<7);
-#define ANDNS_SET_Z(s)      *(s+3)|=0x20;
-#define ANDNS_UNSET_Z(s)    *(s+3)&=0xdf;
+#define ANDNS_SET_Z(s)          *(s+3)|=0x20;
+#define ANDNS_UNSET_Z(s)        *(s+3)&=0xdf;
+#define APD_ALIGN(apd)          (apd)->rdata=(char*)xmalloc((apd)->rdlength+1); \
+                                memset((apd)->rdata,0,(apd)->rdlength+1)
+#define AP_ALIGN(ap)            (ap)->qstdata=(char*)xmalloc((ap)->qstlength)
 
-/* ANDNS PROTO-TYPE */
-#define ANDNS_PROTO_TCP 0
-#define ANDNS_PROTO_UDP 1
-/* ANDNS QUERY-TYPE */
-#define AT_A            0 /* h->ip */
-#define AT_PTR          1 /* ip->h */
-#define AT_G            2 /* global */
+/* Pkts */
+#define ANDNS_PKT_HDR_SZ    4
+#define ANDNS_PKT_HDRZ_SZ   4
+#define ANDNS_PKT_QST_SZ    ANDNS_MAX_NTK_HNAME_LEN + 4 
+#define ANDNS_PKT_QUERY_SZ  ANDNS_PKT_HDR_SZ + ANDNS_PKT_QST_SZ
+#define ANDNS_PKT_ANSW_SZ   20
+#define ANDNS_PKT_ANSWS_SZ  ANDNS_PKT_ANSW_SZ * ANDNS_MAX_ANSWERS
+#define ANDNS_PKT_TOT_SZ    ANDNS_PKT_QUERY_SZ + ANDNS_PKT_ANSWS_SZ
+
 /* RCODES: The rcodes are portable between ANDNS and DNS */
 #define ANDNS_RCODE_NOERR     0       /* No error */
 #define ANDNS_RCODE_EINTRPRT  1       /* Intepret error */
@@ -117,13 +121,14 @@ typedef struct andns_pkt
 #define ANDNS_RCODE_ENSDMN    3       /* No such domain */
 #define ANDNS_RCODE_ENIMPL    4       /* Not implemented */
 #define ANDNS_RCODE_ERFSD     5       /* Refused */
-/* REALMS TO SEARCH */
-#define NTK_REALM               1
-#define INET_REALM              2
-/* IP VERSION */
-#define ANDNS_IPV4      0
-#define ANDNS_IPV6      1
 
+/* Structs size */
+#define ANDNS_PKT_DATA_SZ   sizeof(andns_pkt_data)
+#define ANDNS_PKT_SZ        sizeof(andns_pkt)
+
+/*
+ * Functions
+ */
 int andns_compress(char *src,int srclen);
 char* andns_uncompress(char *src,int srclen,int *dstlen) ;
 int a_hdr_u(char *buf,andns_pkt *ap);

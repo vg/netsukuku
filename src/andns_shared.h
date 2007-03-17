@@ -2,7 +2,6 @@
 #define ANDNS_SHARED_H
 
 #include "andns.h"
-#include "andna_cache.h"
 
 typedef struct addrinfo AINF;
 typedef struct andns_query
@@ -20,5 +19,12 @@ typedef struct andns_query
     AINF    andns_server;
     int     port;
 } andns_query;
+
+void andns_set_error(const char *err, andns_query *q);
+void hstrcpy(char *d, char *s);
+int andns_set_ntk_hname(andns_query *q, andns_pkt *p);
+int andns_set_question(andns_query *q, andns_pkt *p);
+int andns_dialog(andns_query *q, andns_pkt *ap);
+andns_pkt *ntk_query(andns_query *query);
 
 #endif

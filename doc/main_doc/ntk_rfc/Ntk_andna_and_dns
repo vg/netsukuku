@@ -345,7 +345,7 @@ INDEX:
         +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
 
    The two bytes are the number of answers that the query
-   produced. After the two bytes.
+   produced. 
 
    Note: the ANCOUNT field on main headers has to be 1 if
    RCODE=0, 0 otherwise.
@@ -414,9 +414,7 @@ INDEX:
         +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
         |QR| P| Z| QT  |  ANCOUNT  |I |   NK|   RCODE   |
         +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-        |                                               |
         |                     USIZE                     |
-        |                                               |
         |                                               |
         +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
         |                                               |

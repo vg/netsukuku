@@ -32,17 +32,17 @@ int andns_compress(char *src, int srclen)
     int res;
     uLongf space;
     
-    src+= ANDNS_HDR_SZ;
-    srclen-= ANDNS_HDR_SZ;
+    src+= ANDNS_PKT_HDR_SZ;
+    srclen-= ANDNS_PKT_HDR_SZ;
     space= compressBound(srclen);
 
-    unsigned char dst[space+ ANDNS_HDR_Z];
+    unsigned char dst[space+ ANDNS_PKT_HDRZ_SZ];
 
     /* 
      * The first four bytes will store
      * the uncompressed size 
      */
-    res=compress2(dst+ ANDNS_HDR_Z, &space, 
+    res=compress2(dst+ ANDNS_PKT_HDRZ_SZ, &space, 
             (u_char *) src, srclen, ANDNS_COMPR_LEVEL);
 
     if (res!= Z_OK) 
@@ -52,11 +52,11 @@ int andns_compress(char *src, int srclen)
     * We have to consider the four 
     * bytes too 
     */
-    if (space >= srclen- ANDNS_HDR_Z) 
+    if (space >= srclen- ANDNS_PKT_HDRZ_SZ) 
         err_ret(ERR_ZLIBNU,-1); 
 
     res= htonl(srclen);
-    memcpy(dst, &res, ANDNS_HDR_Z);
+    memcpy(dst, &res, ANDNS_PKT_HDRZ_SZ);
     memcpy(src, dst, space);
 
     return (int) space;
@@ -68,15 +68,15 @@ char* andns_uncompress(char *src, int srclen, int *dstlen)
     uLongf space;
     int res;
     int c_len;
-    const int hdrsz= ANDNS_HDR_SZ+ ANDNS_HDR_Z;
+    const int hdrsz= ANDNS_PKT_HDR_SZ+ ANDNS_PKT_HDRZ_SZ;
 
-    memcpy(&c_len, src+ ANDNS_HDR_SZ, ANDNS_HDR_Z);
+    memcpy(&c_len, src+ ANDNS_PKT_HDR_SZ, ANDNS_PKT_HDRZ_SZ);
     c_len= ntohl(c_len);
-    dst= xmalloc(c_len+ ANDNS_HDR_SZ); 
+    dst= xmalloc(c_len+ ANDNS_PKT_HDR_SZ); 
 
     space= c_len;
 
-    res= uncompress(dst+ ANDNS_HDR_SZ, &space, 
+    res= uncompress(dst+ ANDNS_PKT_HDR_SZ, &space, 
             (u_char*) src+ hdrsz, srclen- hdrsz);
 
     if (res!= Z_OK) {
@@ -89,8 +89,8 @@ char* andns_uncompress(char *src, int srclen, int *dstlen)
         err_ret(ERR_ANDMAP, NULL);
     }
 
-    memcpy(dst, src, ANDNS_HDR_SZ);
-    *dstlen= c_len+ ANDNS_HDR_SZ; 
+    memcpy(dst, src, ANDNS_PKT_HDR_SZ);
+    *dstlen= c_len+ ANDNS_PKT_HDR_SZ; 
 
     return (char*)dst;
 }
@@ -129,7 +129,7 @@ int a_hdr_u(char *buf,andns_pkt *ap)
     ap->ipv= (c>>6) & 0x01;
     ap->nk= (c>>4) & 0x03;
     ap->rcode= c & 0x0f;
-    return ANDNS_HDR_SZ;
+    return ANDNS_PKT_HDR_SZ;
 }
 /*
  * Translate the andns_pkt question stream to andns_pkt struct.
@@ -155,13 +155,13 @@ int a_qst_u(char *buf, andns_pkt *ap, int limitlen)
 
           if (ap->nk== ANDNS_NTK_REALM) 
           {
-              ap->qstlength= ANDNS_HASH_H;
+              ap->qstlength= ANDNS_HASH_HNAME_LEN;
               if (ap->qstlength> limitlen- 2)
                   err_ret(ERR_ANDPLB, -1);
 
               AP_ALIGN(ap);
-              memcpy(ap->qstdata, buf, ANDNS_HASH_H);
-              ret= ANDNS_HASH_H+ 2;
+              memcpy(ap->qstdata, buf, ANDNS_HASH_HNAME_LEN);
+              ret= ANDNS_HASH_HNAME_LEN+ 2;
           } 
           else if (ap->nk== ANDNS_INET_REALM) 
           {
@@ -200,12 +200,12 @@ int a_qst_u(char *buf, andns_pkt *ap, int limitlen)
           if (ap->nk!= ANDNS_NTK_REALM)
               err_ret(ERR_ANDMAP,-1);
 
-          ap->qstlength= ANDNS_HASH_H;
+          ap->qstlength= ANDNS_HASH_HNAME_LEN;
           if (ap->qstlength> limitlen)
               err_ret(ERR_ANDPLB,-1);
 
           AP_ALIGN(ap);
-          memcpy(ap->qstdata, buf, ANDNS_HASH_H);
+          memcpy(ap->qstdata, buf, ANDNS_HASH_HNAME_LEN);
           ret= ap->qstlength;
           break;
 
@@ -236,13 +236,13 @@ int a_answ_u(char *buf, andns_pkt *ap, int limitlen)
             apd=andns_add_answ(ap);
 
             if (*buf & 0x40) {
-                apd->m|= APD_IP;
+                apd->m|= ANDNS_APD_IP;
                 if (*buf & 0x80)
-                    apd->m|= APD_MAIN_IP;
+                    apd->m|= ANDNS_APD_MAIN_IP;
                 limit= ap->ipv?16:4;
             } 
             else
-                limit=ANDNS_HASH_H;
+                limit= ANDNS_HASH_HNAME_LEN;
 
             if (limitlen< limit+2)
                 err_ret(ERR_ANDPLB, -1);
@@ -260,17 +260,15 @@ int a_answ_u(char *buf, andns_pkt *ap, int limitlen)
             memcpy(&alen, buf, 2);
             alen= ntohs(alen);
 
-            if (alen+2>limitlen)
-                err_ret(ERR_ANDPLB,-1);
-
-            if (alen>ANDNS_MAX_DATA_LEN)
+            if (alen+2 > limitlen ||
+                alen > ANDNS_MAX_NTK_HNAME_LEN)    
                 err_ret(ERR_ANDPLB,-1);
 
             apd= andns_add_answ(ap);
             apd->rdlength= alen;
             APD_ALIGN(apd);
-            memcpy(apd->rdata,buf+2,alen);
-            limit=alen+2;
+            memcpy(apd->rdata, buf+ 2, alen);
+            limit= alen+ 2;
             break;
 
         case AT_G:
@@ -281,12 +279,12 @@ int a_answ_u(char *buf, andns_pkt *ap, int limitlen)
             apd= andns_add_answ(ap);
 
             if (*buf & 0x40) {
-                apd->m|= APD_IP;
+                apd->m|= ANDNS_APD_IP;
                 if (*buf & 0x80)
-                    apd->m|= APD_MAIN_IP;
+                    apd->m|= ANDNS_APD_MAIN_IP;
             }
 
-            apd->m|= *buf & 0x20? APD_UDP: APD_TCP;
+            apd->m|= *buf & 0x20? ANDNS_APD_UDP: ANDNS_APD_TCP;
             apd->wg= (*buf & 0x1f);
             apd->prio= (*(buf+ 1));
             buf+= 2;
@@ -295,10 +293,10 @@ int a_answ_u(char *buf, andns_pkt *ap, int limitlen)
             apd->service= ntohs(alen);
             buf+= 2;
 
-            if (apd-> m & APD_IP) 
+            if (apd-> m & ANDNS_APD_IP) 
                 apd->rdlength=(ap->ipv? 16: 4);
             else
-                apd->rdlength= ANDNS_HASH_H;
+                apd->rdlength= ANDNS_HASH_HNAME_LEN;
 
             limit= 4+ apd->rdlength;
             if (limitlen< limit)
@@ -358,7 +356,7 @@ int a_u(char *buf, int pktlen, andns_pkt **app)
     int limitlen,u_len;
     char *u_buf;
 
-    if (pktlen<ANDNS_HDR_SZ)
+    if (pktlen<ANDNS_PKT_HDR_SZ)
        err_ret(ERR_ANDPLB, 0);
     /* TODO upper control */
     
@@ -367,7 +365,7 @@ int a_u(char *buf, int pktlen, andns_pkt **app)
 
     if (ap->z) 
     { 
-        if (pktlen< ANDNS_HDR_SZ+ ANDNS_HDR_Z) 
+        if (pktlen< ANDNS_PKT_HDR_SZ+ ANDNS_PKT_HDRZ_SZ) 
         {
             destroy_andns_pkt(ap);
                 err_ret(ERR_ANDPLB,0);
@@ -441,7 +439,7 @@ int a_hdr_p(andns_pkt *ap, char *buf)
     (*buf)|= ((ap->nk)<< 4);
     (*buf)|= (ap->rcode);
 
-    return ANDNS_HDR_SZ;
+    return ANDNS_PKT_HDR_SZ;
 }
 
 int a_qst_p(andns_pkt *ap, char *buf, int limitlen)
@@ -454,7 +452,7 @@ int a_qst_p(andns_pkt *ap, char *buf, int limitlen)
     {
         case AT_A:
 
-          limit= ap->nk== ANDNS_NTK_REALM? ANDNS_HASH_H+ 2: ap->qstlength+ 4;
+          limit= ap->nk== ANDNS_NTK_REALM? ANDNS_HASH_HNAME_LEN+ 2: ap->qstlength+ 4;
           if (limitlen<limit)
               err_ret(ERR_ANDMAD,-1);
 
@@ -464,8 +462,8 @@ int a_qst_p(andns_pkt *ap, char *buf, int limitlen)
           buf+=2; 
           if (ap->nk== ANDNS_NTK_REALM) 
           {
-              memcpy(buf, ap->qstdata, ANDNS_HASH_H);
-              ret= ANDNS_HASH_H+ 2;
+              memcpy(buf, ap->qstdata, ANDNS_HASH_HNAME_LEN);
+              ret= ANDNS_HASH_HNAME_LEN+ 2;
           } 
           else if (ap->nk==ANDNS_INET_REALM) 
           {
@@ -492,12 +490,12 @@ int a_qst_p(andns_pkt *ap, char *buf, int limitlen)
 
         case AT_G:
 
-          limit= ANDNS_HASH_H;
+          limit= ANDNS_HASH_HNAME_LEN;
           if (limitlen<limit)
               err_ret(ERR_ANDMAD,-1);
 
-          memcpy(buf, ap->qstdata, ANDNS_HASH_H);
-          ret= ANDNS_HASH_H;
+          memcpy(buf, ap->qstdata, ANDNS_HASH_HNAME_LEN);
+          ret= ANDNS_HASH_HNAME_LEN;
            break;
 
         default:
@@ -619,16 +617,17 @@ int a_answs_p(andns_pkt *ap, char *buf, int limitlen)
     }
     return offset;
 }
+
 int a_p(andns_pkt *ap, char *buf)
 {
     int offset, res;
 
-    memset(buf, 0, ANDNS_MAX_SZ);
+    memset(buf, 0, ANDNS_PKT_TOT_SZ);
 
     offset= a_hdr_p(ap, buf);
     buf+=offset;
 
-    if ((res= a_qst_p(ap, buf, ANDNS_MAX_SZ- offset))==-1)
+    if ((res= a_qst_p(ap, buf, ANDNS_PKT_TOT_SZ- offset))==-1)
         goto server_fail;
 
     offset+= res;
@@ -636,7 +635,7 @@ int a_p(andns_pkt *ap, char *buf)
 
     if (ap->ancount) 
     {
-        if ((res= a_answs_p(ap, buf, ANDNS_MAX_SZ- offset))==-1)
+        if ((res= a_answs_p(ap, buf, ANDNS_PKT_TOT_SZ- offset))==-1)
             goto server_fail;
 
         offset+=res;

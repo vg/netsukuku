@@ -30,9 +30,9 @@
 #define ANDNS_TIMEOUT		15
 
 #define MAXNSSERVERS 		3
-#define DNS_REPLY_TIMEOUT       10      /* seconds */
+#define DNS_REPLY_TIMEOUT   10 /* seconds */
 
-#define DNS_PORT		53
+#define DNS_PORT		    53
 #define DNS_PORT_STR		"53"
 
 /* PREFIX TO QUERY THE INET REALM */
@@ -50,12 +50,12 @@
 #define NK_INET			2
 #define GET_NK_BIT(msg)		(*((msg+3))>>4)&0x03
 
-#define RCODE_NOERR		0	
+#define RCODE_NOERR		    0	
 #define RCODE_EINTRPRT		1
 #define RCODE_ESRVFAIL		2
 #define RCODE_ENSDMN 		3
 #define RCODE_ENIMPL		4
-#define RCODE_ERFSD		5
+#define RCODE_ERFSD		    5
 
 
 
