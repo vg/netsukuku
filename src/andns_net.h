@@ -13,19 +13,19 @@
 
 
 int idp_inet_ntop(struct sockaddr *addr,char *buf,int buflen);
-int w_socket(int family,int type, int proto,int die);
-int w_connect(struct addrinfo *ai,int die) ;
-int serial_connect(struct addrinfo *ai,int die);
-int host_connect(const char *host,uint16_t port,int type,int die) ;
-int ai_connect(struct addrinfo *ai,int die,int free_ai);
-ssize_t w_send(int sk,const void *buf,size_t len,int die) ;
-ssize_t w_recv(int sk,void *buf,size_t len,int die);
-ssize_t w_send_timeout(int s,const void *buf,size_t len,int die,int timeout);
-ssize_t w_recv_timeout(int s,void *buf,size_t len,int die,int timeout);
+int w_socket(int family,int type, int proto);
+int w_connect(struct addrinfo *ai) ;
+int serial_connect(struct addrinfo *ai);
+int host_connect(const char *host,uint16_t port,int type) ;
+int ai_connect(struct addrinfo *ai,int free_ai);
+ssize_t w_send(int sk,const void *buf,size_t len) ;
+ssize_t w_recv(int sk,void *buf,size_t len);
+ssize_t w_send_timeout(int s,const void *buf,size_t len,int timeout);
+ssize_t w_recv_timeout(int s,void *buf,size_t len,int timeout);
 ssize_t ai_send_recv_close(struct addrinfo *ai,void *buf,size_t buflen,
-    void *anbuf,size_t anlen,int die,int free_ai,int timeout);
+    void *anbuf,size_t anlen,int free_ai,int timeout);
 ssize_t hn_send_recv_close(const char *host,uint16_t port,int type,void *buf,
-    size_t buflen,void *anbuf,size_t anlen,int die,int timeout);
+    size_t buflen,void *anbuf,size_t anlen,int timeout);
 void char_print(char *buf, int len);
 
 

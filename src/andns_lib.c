@@ -20,9 +20,6 @@
 
 #include "andns_lib.h"
 #include "andns_net.h"
-#include "log.h"
-#include "err_errno.h"
-#include "xmalloc.h"
 
 #include <arpa/inet.h>
 #include <zlib.h>
@@ -46,14 +43,14 @@ int andns_compress(char *src, int srclen)
             (u_char *) src, srclen, ANDNS_COMPR_LEVEL);
 
     if (res!= Z_OK) 
-        err_ret(ERR_ZLIBCP, -1);
+        return -1;
 
    /*
     * We have to consider the four 
     * bytes too 
     */
     if (space >= srclen- ANDNS_PKT_HDRZ_SZ) 
-        err_ret(ERR_ZLIBNU,-1); 
+        return -1;
 
     res= htonl(srclen);
     memcpy(dst, &res, ANDNS_PKT_HDRZ_SZ);
@@ -72,21 +69,18 @@ char* andns_uncompress(char *src, int srclen, int *dstlen)
 
     memcpy(&c_len, src+ ANDNS_PKT_HDR_SZ, ANDNS_PKT_HDRZ_SZ);
     c_len= ntohl(c_len);
-    dst= xmalloc(c_len+ ANDNS_PKT_HDR_SZ); 
+    if (!(dst= (unsigned char*)malloc(c_len+ ANDNS_PKT_HDR_SZ)))
+        exit(1);
 
     space= c_len;
 
     res= uncompress(dst+ ANDNS_PKT_HDR_SZ, &space, 
             (u_char*) src+ hdrsz, srclen- hdrsz);
 
-    if (res!= Z_OK) {
-        xfree(dst);
-        err_ret(ERR_ZLIBUP, NULL);
-    }
-
-    if ((int)space!= c_len) {
-        xfree(dst);
-        err_ret(ERR_ANDMAP, NULL);
+    if (res!= Z_OK || (int)space!= c_len) 
+    {
+        free(dst);
+        return NULL;
     }
 
     memcpy(dst, src, ANDNS_PKT_HDR_SZ);
@@ -143,7 +137,7 @@ int a_qst_u(char *buf, andns_pkt *ap, int limitlen)
     uint16_t s;
 
     if (limitlen< 3)
-        err_ret(ERR_ANDMAP, -1);
+        return -1;
 
     switch(ap->qtype) {
 
@@ -157,7 +151,7 @@ int a_qst_u(char *buf, andns_pkt *ap, int limitlen)
           {
               ap->qstlength= ANDNS_HASH_HNAME_LEN;
               if (ap->qstlength> limitlen- 2)
-                  err_ret(ERR_ANDPLB, -1);
+                  return -1;
 
               AP_ALIGN(ap);
               memcpy(ap->qstdata, buf, ANDNS_HASH_HNAME_LEN);
@@ -173,9 +167,7 @@ int a_qst_u(char *buf, andns_pkt *ap, int limitlen)
                   ap->qstlength>= ANDNS_MAX_INET_HNAME_LEN
                               || 
                   ap->qstlength> limitlen- 4
-                 ) 
-                  
-                  err_ret(ERR_ANDPLB,-1);
+                 ) return -1;
 
               AP_ALIGN(ap);
               memcpy(ap->qstdata, buf, ap->qstlength);
@@ -187,8 +179,7 @@ int a_qst_u(char *buf, andns_pkt *ap, int limitlen)
         case AT_PTR:
 
           ap->qstlength= ap->ipv? 16: 4;
-          if (ap->qstlength> limitlen)
-              err_ret(ERR_ANDMAP,-1)
+          if (ap->qstlength> limitlen) return -1;
 
           AP_ALIGN(ap);
           memcpy(ap->qstdata, buf, ap->qstlength);
@@ -197,12 +188,10 @@ int a_qst_u(char *buf, andns_pkt *ap, int limitlen)
 
         case AT_G:
 
-          if (ap->nk!= ANDNS_NTK_REALM)
-              err_ret(ERR_ANDMAP,-1);
+          if (ap->nk!= ANDNS_NTK_REALM) return -1;
 
           ap->qstlength= ANDNS_HASH_HNAME_LEN;
-          if (ap->qstlength> limitlen)
-              err_ret(ERR_ANDPLB,-1);
+          if (ap->qstlength> limitlen) return -1;
 
           AP_ALIGN(ap);
           memcpy(ap->qstdata, buf, ANDNS_HASH_HNAME_LEN);
@@ -210,8 +199,7 @@ int a_qst_u(char *buf, andns_pkt *ap, int limitlen)
           break;
 
         default:
-          debug(DBG_INSANE,"In a_qst_u: unknow query type.");
-          err_ret(ERR_ANDMAP,-1)
+          return -1;
     }
     return ret;
 }
@@ -222,16 +210,14 @@ int a_answ_u(char *buf, andns_pkt *ap, int limitlen)
     andns_pkt_data *apd;
     int limit;
 
-    if (limitlen<3)
-        err_ret(ERR_ANDMAP,-1);
+    if (limitlen<3) return -1;
 
     switch (ap->qtype) {
 
         case AT_A:
 
             limit=2;
-            if (limitlen< limit)
-                err_ret(ERR_ANDPLB,-1);
+            if (limitlen< limit) return -1;
 
             apd=andns_add_answ(ap);
 
@@ -244,8 +230,7 @@ int a_answ_u(char *buf, andns_pkt *ap, int limitlen)
             else
                 limit= ANDNS_HASH_HNAME_LEN;
 
-            if (limitlen< limit+2)
-                err_ret(ERR_ANDPLB, -1);
+            if (limitlen< limit+2) return -1;
 
             apd->wg= (*buf & 0x3f);
             apd->prio= (*(buf +1));
@@ -260,9 +245,8 @@ int a_answ_u(char *buf, andns_pkt *ap, int limitlen)
             memcpy(&alen, buf, 2);
             alen= ntohs(alen);
 
-            if (alen+2 > limitlen ||
-                alen > ANDNS_MAX_NTK_HNAME_LEN)    
-                err_ret(ERR_ANDPLB,-1);
+            if (alen+2 > limitlen || alen > ANDNS_MAX_NTK_HNAME_LEN) 
+                return -1;
 
             apd= andns_add_answ(ap);
             apd->rdlength= alen;
@@ -273,8 +257,7 @@ int a_answ_u(char *buf, andns_pkt *ap, int limitlen)
 
         case AT_G:
 
-            if (limitlen<8)
-                err_ret(ERR_ANDMAP,-1);
+            if (limitlen<8) return -1;
 
             apd= andns_add_answ(ap);
 
@@ -299,15 +282,14 @@ int a_answ_u(char *buf, andns_pkt *ap, int limitlen)
                 apd->rdlength= ANDNS_HASH_HNAME_LEN;
 
             limit= 4+ apd->rdlength;
-            if (limitlen< limit)
-                err_ret(ERR_ANDPLB, -1);
+            if (limitlen< limit) return -1;
 
             APD_ALIGN(apd);
             memcpy(apd->rdata, buf, apd->rdlength);
             break;
 
         default:
-            err_ret(ERR_ANDMAP,-1);
+            return -1;
     }
     return limit;
 }
@@ -328,11 +310,7 @@ int a_answs_u(char *buf,andns_pkt *ap,int limitlen)
     for (i=0;i<ancount;i++) 
     {
         res=a_answ_u(buf+offset,ap,limitlen-offset);
-        if (res==-1) 
-        {
-            error(err_str);
-            err_ret(ERR_ANDMAD,-1);
-        }
+        if (res==-1) return -1;
         offset+=res;
     }
     return offset;
@@ -357,7 +335,7 @@ int a_u(char *buf, int pktlen, andns_pkt **app)
     char *u_buf;
 
     if (pktlen<ANDNS_PKT_HDR_SZ)
-       err_ret(ERR_ANDPLB, 0);
+        return 0;
     /* TODO upper control */
     
     *app= ap= create_andns_pkt();
@@ -368,7 +346,7 @@ int a_u(char *buf, int pktlen, andns_pkt **app)
         if (pktlen< ANDNS_PKT_HDR_SZ+ ANDNS_PKT_HDRZ_SZ) 
         {
             destroy_andns_pkt(ap);
-                err_ret(ERR_ANDPLB,0);
+            return 0;
         }
 
         if (!(u_buf= andns_uncompress(buf, pktlen, &u_len))) 
@@ -377,7 +355,7 @@ int a_u(char *buf, int pktlen, andns_pkt **app)
         destroy_andns_pkt(ap); 
         ANDNS_UNSET_Z(u_buf);
         res= a_u(u_buf, u_len, app);
-        xfree(u_buf);
+        free(u_buf);
         return res;
     }
 
@@ -399,13 +377,11 @@ int a_u(char *buf, int pktlen, andns_pkt **app)
 
     offset+= res;
     if (offset!= pktlen)
-        error("In a_u(): pktlen mismatchs contents: ID query %d.", ap->id);
         return offset;
 
 andmap:
     destroy_andns_pkt(ap);
-    error(err_str);
-    err_ret(ERR_ANDMAP,-1);
+    return -1;
 }
 
 int a_hdr_p(andns_pkt *ap, char *buf)
@@ -453,8 +429,7 @@ int a_qst_p(andns_pkt *ap, char *buf, int limitlen)
         case AT_A:
 
           limit= ap->nk== ANDNS_NTK_REALM? ANDNS_HASH_HNAME_LEN+ 2: ap->qstlength+ 4;
-          if (limitlen<limit)
-              err_ret(ERR_ANDMAD,-1);
+          if (limitlen<limit) return -1;
 
           s= htons(ap->service);
           memcpy(buf, &s, 2);
@@ -473,16 +448,14 @@ int a_qst_p(andns_pkt *ap, char *buf, int limitlen)
               memcpy(buf, ap->qstdata, ap->qstlength);
               ret= ap->qstlength+4;
           } 
-          else
-              err_ret(ERR_ANDMAD,-1);
+          else return -1;
 
           break;
 
         case AT_PTR:
 
           limit=ap->ipv? 16: 4;
-          if (limitlen<limit)
-              err_ret(ERR_ANDMAD,-1);
+          if (limitlen<limit) return -1;
 
           memcpy(buf, ap->qstdata, limit);
           ret= limit;
@@ -491,16 +464,14 @@ int a_qst_p(andns_pkt *ap, char *buf, int limitlen)
         case AT_G:
 
           limit= ANDNS_HASH_HNAME_LEN;
-          if (limitlen<limit)
-              err_ret(ERR_ANDMAD,-1);
+          if (limitlen<limit) return -1;
 
           memcpy(buf, ap->qstdata, ANDNS_HASH_HNAME_LEN);
           ret= ANDNS_HASH_HNAME_LEN;
            break;
 
         default:
-          debug(DBG_INSANE,"In a_qst_p: unknow query type.");
-          err_ret(ERR_ANDMAD,-1);
+           return -1;
           break;
     }
     return ret;
@@ -517,8 +488,7 @@ int a_answ_p(andns_pkt *ap, andns_pkt_data *apd, char *buf, int limitlen)
         case AT_A:
 
             limit= ap->ipv? 16: 4;
-            if (limitlen< limit+ 2)
-                err_ret(ERR_ANDPLB,-1);
+            if (limitlen< limit+ 2) return -1;
 
             if (apd->m) *buf|= 0x80;
 
@@ -531,8 +501,7 @@ int a_answ_p(andns_pkt *ap, andns_pkt_data *apd, char *buf, int limitlen)
 
         case AT_PTR:
 
-            if (limitlen< apd->rdlength+ 2)
-                err_ret(ERR_ANDPLB,-1);
+            if (limitlen< apd->rdlength+ 2) return -1;
 
             s=htons(apd->rdlength);
             memcpy(buf, &s, sizeof(uint16_t));
@@ -543,8 +512,7 @@ int a_answ_p(andns_pkt *ap, andns_pkt_data *apd, char *buf, int limitlen)
 
         case AT_G: 
 
-            if (limitlen<4)
-                err_ret(ERR_ANDPLB,-1);
+            if (limitlen<4) return -1;
 
             if (apd->m==1) (*buf)|=0xc0;
             else if (apd->m) (*buf)|=0x40;
@@ -558,8 +526,7 @@ int a_answ_p(andns_pkt *ap, andns_pkt_data *apd, char *buf, int limitlen)
             if (apd->m) 
             {
                 limit= ap->ipv? 16: 4;
-                if (limitlen< limit+ 4)
-                    err_ret(ERR_ANDPLB,-1);
+                if (limitlen< limit+ 4) return -1;
 
                 memcpy(buf, apd->rdata, limit);
                 ret=limit+ 4;
@@ -567,8 +534,7 @@ int a_answ_p(andns_pkt *ap, andns_pkt_data *apd, char *buf, int limitlen)
             else 
             {
                 limit= strlen(apd->rdata);
-                if (limitlen< limit+ 6)
-                    err_ret(ERR_ANDPLB,-1);
+                if (limitlen< limit+ 6) return -1;
 
                 s= htons(limit);
                 memcpy(buf, &s, 2);
@@ -580,8 +546,7 @@ int a_answ_p(andns_pkt *ap, andns_pkt_data *apd, char *buf, int limitlen)
             break;
 
         default:
-            debug(DBG_INSANE,"In a_answ_p(): unknow query type.");
-            err_ret(ERR_ANDMAD,-1);
+            return -1;
             break;
     }
     return ret;
@@ -595,8 +560,7 @@ int a_answs_p(andns_pkt *ap, char *buf, int limitlen)
 
     if (ap->qtype==AT_G) 
     {
-        if (limitlen<2)
-            err_ret(ERR_ANDPLB,-1);
+        if (limitlen<2) return -1;
 
         s= htons(ap->ancount);
         memcpy(buf, &s, 2);
@@ -607,10 +571,7 @@ int a_answs_p(andns_pkt *ap, char *buf, int limitlen)
     for (i=0; i< ap->ancount && apd; i++) 
     {
         if ((res= a_answ_p(ap, apd, buf+ offset, limitlen- offset))==-1) 
-        {
-            error(err_str);
-            err_ret(ERR_ANDMAD,-1);
-        }
+            return -1;
 
         offset+=res;
         apd=apd->next;
@@ -647,9 +608,7 @@ int a_p(andns_pkt *ap, char *buf)
     if (offset> ANDNS_COMPR_THRESHOLD) 
     {
         res= andns_compress(buf, offset);
-        if (res==-1)
-            error(err_str);
-        else
+        if (res!=-1)
             return res;
     }
 
@@ -657,8 +616,7 @@ int a_p(andns_pkt *ap, char *buf)
 
 server_fail:
     destroy_andns_pkt(ap);
-    error(err_str);
-    err_ret(ERR_ANDMAD,-1);
+    return -1;
 }
 
 
@@ -668,7 +626,7 @@ server_fail:
 andns_pkt* create_andns_pkt(void)
 {
     andns_pkt *ap;
-    ap= xmalloc(ANDNS_PKT_SZ);
+    ap= (andns_pkt*)malloc(ANDNS_PKT_SZ);
     memset(ap, 0, ANDNS_PKT_SZ);
     return ap;
 }
@@ -676,7 +634,7 @@ andns_pkt* create_andns_pkt(void)
 andns_pkt_data* create_andns_pkt_data(void)
 {
     andns_pkt_data *apd;
-    apd= xmalloc(ANDNS_PKT_DATA_SZ);
+    apd= (andns_pkt_data*)malloc(ANDNS_PKT_DATA_SZ);
     memset(apd, 0, ANDNS_PKT_DATA_SZ);
     return apd;
 }
@@ -703,8 +661,8 @@ andns_pkt_data* andns_add_answ(andns_pkt *ap)
     /* Death functions */
 void destroy_andns_pkt_data(andns_pkt_data *apd)
 {
-    if (apd->rdata) xfree(apd->rdata);
-    xfree(apd);
+    if (apd->rdata) free(apd->rdata);
+    free(apd);
 }
 
 void andns_del_answ(andns_pkt *ap)
@@ -739,13 +697,13 @@ void destroy_andns_pkt_datas(andns_pkt *ap)
 
 void destroy_andns_pkt(andns_pkt *ap)
 {
-    if (ap->qstdata) xfree(ap->qstdata);
+    if (ap->qstdata) free(ap->qstdata);
     destroy_andns_pkt_datas(ap);
-    xfree(ap);
+    free(ap);
 }
 
 void align_andns_question(andns_pkt *ap, int len)
 {
     ap->qstlength= len;
-    ap->qstdata= xmalloc(len);
+    ap->qstdata= (char*)malloc(len);
 }

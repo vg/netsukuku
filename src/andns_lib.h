@@ -100,9 +100,9 @@ typedef struct andns_pkt
 #define ANDNS_SET_ANCOUNT(s,n)  *(s+2)|=((n)>>1);*(s+3)|=((n)<<7);
 #define ANDNS_SET_Z(s)          *(s+3)|=0x20;
 #define ANDNS_UNSET_Z(s)        *(s+3)&=0xdf;
-#define APD_ALIGN(apd)          (apd)->rdata=(char*)xmalloc((apd)->rdlength+1); \
+#define APD_ALIGN(apd)          (apd)->rdata=(char*)malloc((apd)->rdlength+1); \
                                 memset((apd)->rdata,0,(apd)->rdlength+1)
-#define AP_ALIGN(ap)            (ap)->qstdata=(char*)xmalloc((ap)->qstlength)
+#define AP_ALIGN(ap)            (ap)->qstdata=(char*)malloc((ap)->qstlength)
 
 /* Pkts */
 #define ANDNS_PKT_HDR_SZ    4

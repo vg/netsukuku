@@ -18,7 +18,6 @@
 *                                   *
 ************************************************************************/
 
-#include "log.h"
 #include "andns_net.h"
 
 
@@ -41,54 +40,35 @@ int idp_inet_ntop(struct sockaddr *addr,char *buf,int buflen)
 
 /* Connection Layer */
 
-int w_socket(int family,int type, int proto,int die)
-{
-    int sk;
-    sk=socket(family,type,proto);
-    if (sk==-1) {
-        if (die)
-            fatal("w_socket: %s.",strerror(errno));
-        debug(DBG_NORMAL,"w_socket: %s.",strerror(errno));
-        return -1;
-    }
-    return sk;
-}
-
-int w_connect(struct addrinfo *ai,int die) 
+int w_connect(struct addrinfo *ai) 
 {
     int sk,res;
-    sk=w_socket(ai->ai_family,ai->ai_socktype,ai->ai_protocol,die);
-    res=connect(sk,ai->ai_addr,ai->ai_addrlen);
+    if((sk= socket(ai->ai_family,ai->ai_socktype,ai->ai_protocol,die))==-1)
+        return -1;
+    
+    res= connect(sk,ai->ai_addr,ai->ai_addrlen);
     if (!res) 
         return sk;
-    if (die)
-        fatal("Unable to connect: %s.", strerror(errno));
-    debug(DBG_NORMAL,"w_connect: %s.",strerror(errno));
+
     close(sk);
     return -1;
 }
-int serial_connect(struct addrinfo *ai,int die)
+
+int serial_connect(struct addrinfo *ai)
 {
     int res;
     struct addrinfo *temp;
 
-    temp=ai;
-    if (!temp) {
-        if (die)
-            fatal("Unable to connect: no host specified.");
-        debug(DBG_NORMAL,"serial_connect: no host specified.");
-        return -1;
-    }
+    temp= ai;
+    if (!temp) return -1;
+
     do {
-        res=w_connect(temp,0);
-        temp=temp->ai_next;
+        res= w_connect(temp, 0);
+        temp= temp->ai_next;
     } while (res==-1 && temp);
-    if (res==-1)  {
-        if (die)
-            fatal("Unable to connect.");
-        debug(DBG_NORMAL,"serial_connect: unable to connect.");
-        return -1;
-    }
+
+    if (res==-1) return -1;
+
     return res;
 }
     
@@ -97,36 +77,35 @@ int serial_connect(struct addrinfo *ai,int die)
  * endpoint. It is protocol independent.
  * -1 on error.
  */
-int host_connect(const char *host,uint16_t port,int type,int die) 
+int host_connect(const char *host,uint16_t port,int type) 
 {
     int res;
     char portstr[6];
     struct addrinfo *ai,filter;
 
-    memset(&filter,0,sizeof(struct addrinfo));
-    filter.ai_socktype=type;
     if (!host)
-        fatal("w_connect: malicious call.");
-    memset(portstr,0,6);
-    res=snprintf(portstr,6,"%d",port);
-    if (res<0 || res>=6) {
-        printf("Depousceve\n");
         return -1;
-    }
-    res=getaddrinfo(host,portstr,&filter,&ai);
-    if (res!=0) {
-        printf("w_connect: error %s.\n",gai_strerror(errno));
-        return -1;
-    }
-    res=serial_connect(ai,die);
+
+    memset(&filter, 0, sizeof(struct addrinfo));
+    filter.ai_socktype= type;
+    memset(portstr, 0, 6);
+
+    res= snprintf(portstr, 6, "%d", port);
+    if (res<0 || res>=6) return -1;
+
+    res= getaddrinfo(host, portstr, &filter, &ai);
+    if (res!=0) return -1;
+    
+    res= serial_connect(ai);
     freeaddrinfo(ai);
     return res;
 }
+
 int ai_connect(struct addrinfo *ai,int die,int free_ai)
 {
     int res;
 
-    res=serial_connect(ai,die);
+    res=serial_connect(ai);
     if (free_ai)
         freeaddrinfo(ai);
     return res;
@@ -134,30 +113,14 @@ int ai_connect(struct addrinfo *ai,int die,int free_ai)
 
 /* Communication Layer */
 
-ssize_t w_send(int sk,const void *buf,size_t len,int die) 
+ssize_t w_send(int sk,const void *buf,size_t len) 
 {
-    ssize_t ret;
-
-    ret=send(sk,buf,len,0);
-    if (ret!=len) {
-        if (die)
-            fatal("Unable to send(): %s.",strerror(errno));
-        debug(DBG_NORMAL,"w_send(): %s.",strerror(errno));
-    }
-    return ret;
+    return send(sk, buf, len, 0);
 }
 
-ssize_t w_recv(int sk,void *buf,size_t len,int die)
+ssize_t w_recv(int sk,void *buf,size_t len)
 {
-    ssize_t ret;
-
-    ret=recv(sk,buf,len,0);
-    if (ret<=0) {
-        if (die)
-            fatal("Unable to recv(): %s.",strerror(errno));
-        debug(DBG_INSANE,"w_recv(): %s.",strerror(errno));
-    }
-    return ret;
+    return recv(sk,buf,len,0);
 }
 
 
@@ -173,52 +136,43 @@ do{                                                                     \
         (t).tv_usec=((x) - ((x)/1000)*1000)*1000;                       \
 }while(0)
 
-ssize_t w_send_timeout(int s,const void *buf,size_t len,int die,int timeout)
+ssize_t w_send_timeout(int s,const void *buf,size_t len,int timeout)
 {
-        struct timeval timeout_t;
-        fd_set fdset;
-        int ret;
+    struct timeval timeout_t;
+    fd_set fdset;
+    int ret;
 
-        MILLISEC_TO_TV(timeout*1000, timeout_t);
+    MILLISEC_TO_TV(timeout*1000, timeout_t);
 
-        FD_ZERO(&fdset);
-        FD_SET(s, &fdset);
+    FD_ZERO(&fdset);
+    FD_SET(s, &fdset);
 
-        ret = select(s+1, NULL, &fdset, NULL, &timeout_t);
-        if (ret == -1) {
-        if (die)
-            fatal("send(): select error.");
-        debug(DBG_NORMAL,"send(): select error.");
-        return ret;
-        }
+    ret = select(s+1, NULL, &fdset, NULL, &timeout_t);
+    return ret;
 
-        if(FD_ISSET(s, &fdset))
-                return w_send(s, buf, len, die);
-        return -1;
+    if(FD_ISSET(s, &fdset))
+        return w_send(s, buf, len, die);
+
+    return -1;
 }
 
-ssize_t w_recv_timeout(int s,void *buf,size_t len,int die,int timeout)
+ssize_t w_recv_timeout(int s,void *buf,size_t len,int timeout)
 {
-        struct timeval timeout_t;
-        fd_set fdset;
-        int ret;
+    struct timeval timeout_t;
+    fd_set fdset;
+    int ret;
 
-        MILLISEC_TO_TV(timeout*1000, timeout_t);
+    MILLISEC_TO_TV(timeout*1000, timeout_t);
 
-        FD_ZERO(&fdset);
-        FD_SET(s, &fdset);
+    FD_ZERO(&fdset);
+    FD_SET(s, &fdset);
 
-        ret = select(s+1, &fdset, NULL, NULL, &timeout_t);
-        if (ret == -1) {
-        if (die)
-            fatal("recv(): select error.");
-        debug(DBG_NORMAL,"recv(): select error.");
-        return ret;
-        }
+    ret = select(s+1, &fdset, NULL, NULL, &timeout_t);
+    if (ret == -1) return -1;
 
-        if(FD_ISSET(s, &fdset))
-                return w_recv(s, buf, len, die);
-        return -1;
+    if(FD_ISSET(s, &fdset))
+        return w_recv(s, buf, len);
+    return -1;
 }
 
 
@@ -227,24 +181,24 @@ ssize_t w_recv_timeout(int s,void *buf,size_t len,int die,int timeout)
 
 /* "Botta e risposta" */
 ssize_t hn_send_recv_close(const char *host,uint16_t port,int type,void *buf,
-        size_t buflen,void *anbuf,size_t anlen,int die,int timeout)
+        size_t buflen,void *anbuf,size_t anlen,int timeout)
 {
     ssize_t ret;
     int res;
 
-    res=host_connect(host,port,type,die);
+    res=host_connect(host,port,type);
     if (res==-1) 
         return -1;
     if (timeout)
-        ret=w_send_timeout(res,buf,buflen,die,timeout);
+        ret=w_send_timeout(res,buf,buflen,timeout);
     else
-        ret=w_send(res,buf,buflen,die);
+        ret=w_send(res,buf,buflen);
     if (ret==-1) 
         return -2;
     if (timeout)
-        ret=w_recv_timeout(res,anbuf,anlen,die,timeout);
+        ret=w_recv_timeout(res,anbuf,anlen,timeout);
     else
-        ret=w_recv(res,anbuf,anlen,die);
+        ret=w_recv(res,anbuf,anlen);
     if (ret==-1)
         return -3;
     close(res);
@@ -252,24 +206,24 @@ ssize_t hn_send_recv_close(const char *host,uint16_t port,int type,void *buf,
 }
 /* "Botta e risposta" */
 ssize_t ai_send_recv_close(struct addrinfo *ai,void *buf,size_t buflen,
-        void *anbuf,size_t anlen,int die,int free_ai,int timeout)
+        void *anbuf,size_t anlen,int free_ai,int timeout)
 {
     ssize_t ret;
     int res;
 
-    res=ai_connect(ai,die,free_ai);
+    res=ai_connect(ai,free_ai);
     if (res==-1) 
         return -1;
     if (timeout)
-        ret=w_send_timeout(res,buf,buflen,die,timeout);
+        ret=w_send_timeout(res,buf,buflen,timeout);
     else
-        ret=w_send(res,buf,buflen,die);
+        ret=w_send(res,buf,buflen);
     if (ret==-1) 
         return -2;
     if (timeout)
-        ret=w_recv_timeout(res,anbuf,anlen,die,timeout);
+        ret=w_recv_timeout(res,anbuf,anlen,timeout);
     else
-        ret=w_recv(res,anbuf,anlen,die);
+        ret=w_recv(res,anbuf,anlen);
     if (ret==-1) 
         return -3;
     close(res);

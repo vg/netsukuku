@@ -3,7 +3,8 @@
 
 void andns_set_error(const char *err, andns_query *q)
 {
-    q->errors = (char*)xmalloc(strlen(err) + 1);
+    if (!(q->errors = (char*)malloc(strlen(err) + 1)))
+        exit(1);
     strcpy(q->errors, err);
 }
 
