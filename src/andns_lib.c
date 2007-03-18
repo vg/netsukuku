@@ -21,6 +21,7 @@
 #include "andns_lib.h"
 #include "andns_net.h"
 
+#include <stdlib.h>
 #include <arpa/inet.h>
 #include <zlib.h>
 

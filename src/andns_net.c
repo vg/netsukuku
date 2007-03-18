@@ -43,7 +43,7 @@ int idp_inet_ntop(struct sockaddr *addr,char *buf,int buflen)
 int w_connect(struct addrinfo *ai) 
 {
     int sk,res;
-    if((sk= socket(ai->ai_family,ai->ai_socktype,ai->ai_protocol,die))==-1)
+    if((sk= socket(ai->ai_family,ai->ai_socktype,ai->ai_protocol))==-1)
         return -1;
     
     res= connect(sk,ai->ai_addr,ai->ai_addrlen);
@@ -63,7 +63,7 @@ int serial_connect(struct addrinfo *ai)
     if (!temp) return -1;
 
     do {
-        res= w_connect(temp, 0);
+        res= w_connect(temp);
         temp= temp->ai_next;
     } while (res==-1 && temp);
 
@@ -101,7 +101,7 @@ int host_connect(const char *host,uint16_t port,int type)
     return res;
 }
 
-int ai_connect(struct addrinfo *ai,int die,int free_ai)
+int ai_connect(struct addrinfo *ai,int free_ai)
 {
     int res;
 
@@ -151,7 +151,7 @@ ssize_t w_send_timeout(int s,const void *buf,size_t len,int timeout)
     return ret;
 
     if(FD_ISSET(s, &fdset))
-        return w_send(s, buf, len, die);
+        return w_send(s, buf, len);
 
     return -1;
 }

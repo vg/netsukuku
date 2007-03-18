@@ -1,5 +1,7 @@
-#include "andns_shared.h"
+#include <stdlib.h>
+#include <sys/time.h>
 #include <openssl/md5.h>
+#include "andns_shared.h"
 
 void andns_set_error(const char *err, andns_query *q)
 {
@@ -10,12 +12,11 @@ void andns_set_error(const char *err, andns_query *q)
 
 void hstrcpy(char *d, char *s)
 {
-    int i;
-    char t;
+    int i, t;
 
     for (i=0; i< ANDNS_HASH_HNAME_LEN; i++) {
-        sscanf((const char*)(s+ 2*i), "%02x", &t);
-        *(d+i)= t;
+        sscanf((s+ 2*i), "%02x", &t);
+        *(d+i)= (unsigned char)t;
     }
 }
 
@@ -40,7 +41,7 @@ int andns_set_ntk_hname(andns_query *q, andns_pkt *p)
             return -1;
         }
 
-        MD5(q->question, qlen, p->qstdata);
+        MD5((unsigned const char*)q->question, qlen, (unsigned char*)p->qstdata);
     }
     return 0;
 }
@@ -48,7 +49,7 @@ int andns_set_ntk_hname(andns_query *q, andns_pkt *p)
 int andns_set_question(andns_query *q, andns_pkt *p)
 {
 
-    int res, qlen, qt= q->type;
+    int qlen, qt= q->type;
     char *qst;
 
     qst= q->question;
@@ -132,7 +133,7 @@ int andns_dialog(andns_query *q, andns_pkt *ap)
     else port= q->port;
 
     res= hn_send_recv_close(ns_server, port, SOCK_DGRAM, 
-                         buf, res, answ, ANDNS_PKT_TOT_SZ, 0, 
+                         buf, res, answ, ANDNS_PKT_TOT_SZ, 
                          ANDNS_TIMEOUT);
 
     if (res< 0) {
@@ -167,20 +168,25 @@ int andns_dialog(andns_query *q, andns_pkt *ap)
 andns_pkt *ntk_query(andns_query *query)
 {
     andns_pkt *ap;
+    struct timeval randgen;
+    unsigned short x[3];
 
     ap= create_andns_pkt();
 
     if (andns_set_question(query, ap))
         return NULL;
 
-    xsrand();
+    gettimeofday(&randgen, 0);
+    x[0]= (ushort) (randgen.tv_usec);
+    x[1]= (ushort) (randgen.tv_usec >> 16);
+    x[2]= (ushort) getpid();
 
+    ap->qtype   = query->type;
     ap->nk      = query->realm;
     ap->p       = query->proto;
     ap->service = query->service;
     ap->r       = query->recursion;
-    ap->qtype   = query->type;
-    ap->id      = xrand();
+    ap->id      = (uint16_t) nrand48(x);
 
     if (andns_dialog(query, ap))
         return NULL;

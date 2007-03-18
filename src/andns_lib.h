@@ -128,17 +128,17 @@ typedef struct andns_pkt
 /*
  * Functions
  */
-int andns_compress(char *src,int srclen);
-char* andns_uncompress(char *src,int srclen,int *dstlen) ;
+int andns_compress(char *src, int srclen);
+char* andns_uncompress(char *src, int srclen, int *dstlen);
 int a_hdr_u(char *buf,andns_pkt *ap);
-int a_qst_u(char *buf,andns_pkt *ap,int limitlen);
-int a_answ_u(char *buf,andns_pkt *ap,int limitlen);
+int a_qst_u(char *buf, andns_pkt *ap, int limitlen);
+int a_answ_u(char *buf, andns_pkt *ap, int limitlen);
 int a_answs_u(char *buf,andns_pkt *ap,int limitlen);
-int a_u(char *buf,int pktlen,andns_pkt **app);
-int a_hdr_p(andns_pkt *ap,char *buf);
-int a_qst_p(andns_pkt *ap,char *buf,int limitlen);
-int a_answ_p(andns_pkt *ap,andns_pkt_data *apd,char *buf,int limitlen);
-int a_answs_p(andns_pkt *ap,char *buf, int limitlen);
+int a_u(char *buf, int pktlen, andns_pkt **app);
+int a_hdr_p(andns_pkt *ap, char *buf);
+int a_qst_p(andns_pkt *ap, char *buf, int limitlen);
+int a_answ_p(andns_pkt *ap, andns_pkt_data *apd, char *buf, int limitlen);
+int a_answs_p(andns_pkt *ap, char *buf, int limitlen);
 int a_p(andns_pkt *ap, char *buf);
 andns_pkt* create_andns_pkt(void);
 andns_pkt_data* create_andns_pkt_data(void);
@@ -147,5 +147,7 @@ void destroy_andns_pkt_data(andns_pkt_data *apd);
 void andns_del_answ(andns_pkt *ap);
 void destroy_andns_pkt_datas(andns_pkt *ap);
 void destroy_andns_pkt(andns_pkt *ap);
+void align_andns_question(andns_pkt *ap, int len);
+
 
 #endif /* ANDNS_LIB_H */

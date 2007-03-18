@@ -2,6 +2,8 @@
 #include <openssl/md5.h>
 #include <stdlib.h>
 #include <getopt.h>
+#include <ctype.h>
+#include <sys/time.h>
 #include "ntkresolv.h"
 
 uint8_t mode_parsable_output= 0;
@@ -13,7 +15,7 @@ void version(void)
         "Copyright (C) 2006.\n"
         "This is free software.  You may redistribute copies of it under the terms of\n"
         "the GNU General Public License <http://www.gnu.org/licenses/gpl.html>.\n"
-        "There is NO WARRANTY, to the extent permitted by law.\n");
+        "There is NO WARRANTY, to the extent permitted by law.\n", NTK_RESOLV_VERSION);
     exit(1);
 }
 
@@ -263,8 +265,6 @@ void print_results(andns_query *q, andns_pkt *ap)
 
 void do_command(andns_query *q, const char *qst)
 {
-    char buf[ANDNS_PKT_QUERY_SZ];
-    int res;
     andns_pkt *ap;
 
     if (strlen(qst)>= ANDNS_MAX_NTK_HNAME_LEN) {
@@ -346,7 +346,6 @@ void opts_set_realm(andns_query *q, char *arg)
 
 void opts_set_service_and_proto(andns_query *q, char *arg)
 {
-    int ret;
     char *proto;
     struct servent *st;
 
@@ -385,9 +384,10 @@ void opts_set_proto(andns_query *q, char *arg)
 
 void compute_hash(const char *arg)
 {
-    char hash[17], temp[16];
+    unsigned char temp[16];
+    char hash[17];
 
-    MD5(arg, strlen(arg), temp);
+    MD5((const unsigned char*)arg, strlen(arg), temp);
     NTK_RESOLV_HASH_STR(temp, hash);
     hash[16]=0;
     printf("%s\n", hash);
