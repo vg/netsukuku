@@ -13,7 +13,7 @@ E = @echo
 Q = @
 
 all: $(OBJ)
-	$(E) "  LD      " $(NAME)${VERSION}
+	$(E) "  LD      " $(NAME).${VERSION}
 	$(Q) gcc -shared -Wl,-soname,${NAME}.${PREFIX_VERSION} -o ${NAME}.${VERSION} ${OBJ} ${LIBS}
 
 %.o: %.c
