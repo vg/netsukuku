@@ -8,8 +8,7 @@
 
 void andns_set_error(const char *err, andns_query *q)
 {
-    if (!(q->errors = (char*)malloc(strlen(err) + 1)))
-        exit(1);
+    if (strlen(err)>= ANDNS_STRERROR) exit(1);
     strcpy(q->errors, err);
 }
 
@@ -124,14 +123,12 @@ int andns_dialog(andns_query *q, andns_pkt *ap)
     id= ap->id;
 
     if (((res= a_p(ap, buf)) == -1)) {
-        andns_set_error("Internal error (packing andns). "
-                        "This seems a bug.", q);
+        andns_set_error("Malformed Packet (packing).", q);
         return -1;
     }
 
     if (!q->andns_server) {
-        q->andns_server= (char*)malloc(strlen("localhost") +1 );
-        strcpy(q->andns_server, "localhost");
+        strcpy(q->andns_server, "127.0.0.1");
     }
 
     if (!q->port) port= 53;
@@ -155,8 +152,7 @@ int andns_dialog(andns_query *q, andns_pkt *ap)
 
     res= a_u(answ, res, &ap);
     if (res<=0) {
-        andns_set_error("Internal error (unpacking andns). "
-                        "This seems a bug.", q);
+        andns_set_error("Malformed Packet (unpacking).", q);
         destroy_andns_pkt(ap);
         return -1;
     }
