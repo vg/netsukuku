@@ -19,11 +19,10 @@
 ************************************************************************/
 
 #include "andns_lib.h"
-#include "andns_net.h"
 
 #include <stdlib.h>
+#include <string.h>
 #include <arpa/inet.h>
-#include <zlib.h>
 
 int andns_compress(char *src, int srclen)
 {
