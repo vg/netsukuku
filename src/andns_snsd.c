@@ -82,8 +82,8 @@ int snsd_node_to_data(char *buf,snsd_node *sn,u_char prio,int iplen,int recursio
 			return res;
 		}
 	}
-	memcpy(buf+2,sn->record,ANDNS_HASH_H);
-	return ANDNS_HASH_H+2;
+	memcpy(buf+2,sn->record,ANDNS_HASH_HNAME_LEN);
+	return ANDNS_HASH_HNAME_LEN+2;
 }
 
 /*
@@ -190,14 +190,14 @@ int snsd_service_to_aansws(char *buf,snsd_service *ss,int iplen,int *count,int r
 						inet_htonl((u_int*)buf,family);
 						buf+=iplen;
 					} else {
-						memcpy(buf,sn->record, ANDNS_HASH_H);
-						buf+=ANDNS_HASH_H;
+						memcpy(buf,sn->record, ANDNS_HASH_HNAME_LEN);
+						buf+=ANDNS_HASH_HNAME_LEN;
 					}
 /*					service=strlen((char*)sn->record);
 					temp=htons(service);
 					memcpy(buf,&temp,2);
 					memcpy(buf+2,sn->record,service);
-					buf+=ANDNS_HASH_H;
+					buf+=ANDNS_HASH_HNAME_LEN;
 					res=snsd_main_ip(sn->record,&snt);
 					if (res) {
 						buf-=4;

@@ -30,32 +30,32 @@
  */
 struct andns_pkt_data
 {
-    uint8_t                 m;
-    uint8_t                 wg;
-    uint8_t                 prio;
-    uint16_t                rdlength;
-    uint16_t                service;
-    char                    *rdata;
-    struct andns_pkt_data   *next;
+    uint8_t                 m;          /* main ip      */
+    uint8_t                 wg;         /* snsd weight  */
+    uint8_t                 prio;       /* snsd prio    */
+    uint16_t                rdlength;   /* answer len   */
+    uint16_t                service;    /* snsd service */
+    char                    *rdata;     /* answer       */
+    struct andns_pkt_data   *next;      /* next answer  */
 };
 typedef struct andns_pkt_data andns_pkt_data;
 
 typedef struct andns_pkt
 {
-    uint16_t        id;
-    uint8_t         r;
-    uint8_t         qr;
-    uint8_t         p;
-    uint8_t         z;
-    uint8_t         qtype;
-    uint16_t        ancount;
-    uint8_t         ipv;
-    uint8_t         nk;
-    uint8_t         rcode;
-    uint16_t        service; 
-    uint16_t        qstlength;
-    char            *qstdata;
-    andns_pkt_data  *pkt_answ;
+    uint16_t        id;         /* id                   */
+    uint8_t         r;          /* recursion            */
+    uint8_t         qr;         /* question or answer?  */
+    uint8_t         z;          /* compression          */
+    uint8_t         qtype;      /* query type           */
+    uint16_t        ancount;    /* answers number       */
+    uint8_t         ipv;        /* ipv4 ipv6            */
+    uint8_t         nk;         /* ntk Bit              */
+    uint8_t         rcode;      /* response code        */
+    uint8_t         p;          /* snsd protocol        */
+    uint16_t        service;    /* snsd service         */
+    uint16_t        qstlength;  /* question lenght      */
+    char            *qstdata;   /* question             */
+    andns_pkt_data  *pkt_answ;  /* answres              */
 } andns_pkt;
 
 /* Compression */

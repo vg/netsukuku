@@ -1,6 +1,5 @@
 #include "andns_shared.h"
-#include "crypto.h"
-
+#include <openssl/md5.h>
 
 void andns_set_error(const char *err, andns_query *q)
 {
@@ -114,6 +113,8 @@ int andns_dialog(andns_query *q, andns_pkt *ap)
 {
     char buf[ANDNS_PKT_QUERY_SZ];
     char answ[ANDNS_PKT_TOT_SZ];
+    char *ns_server;
+    int port;
     int res, id;
 
     id= ap->id;
@@ -124,7 +125,12 @@ int andns_dialog(andns_query *q, andns_pkt *ap)
         return -1;
     }
 
-    res= send_recv_close(q->andns_server, q->port, SOCK_DGRAM, 
+    if (!q->andns_server) ns_server= "localhost";
+    else ns_server= q->andns_server;
+    if (!q->port) port= 53;
+    else port= q->port;
+
+    res= hn_send_recv_close(ns_server, port, SOCK_DGRAM, 
                          buf, res, answ, ANDNS_PKT_TOT_SZ, 0, 
                          ANDNS_TIMEOUT);
 

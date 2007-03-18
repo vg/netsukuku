@@ -2,11 +2,8 @@
 #define ANDNS_SHARED_H
 
 #include "andns_lib.h"
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
+#include "andns_net.h"
 
-typedef struct addrinfo AINF;
 typedef struct andns_query
 {
     char    question[ANDNS_MAX_NTK_HNAME_LEN];
@@ -19,7 +16,7 @@ typedef struct andns_query
     char    *errors;
     int     status;
     char    **answers;
-    AINF    andns_server;
+    char    *andns_server;
     int     port;
 } andns_query;
 
