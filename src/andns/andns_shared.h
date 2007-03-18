@@ -4,6 +4,8 @@
 #include "andns_lib.h"
 #include "andns_net.h"
 
+#define ANDNS_SHARED_VERSION "0.0.1"
+
 typedef struct andns_query
 {
     char    question[ANDNS_MAX_NTK_HNAME_LEN];
