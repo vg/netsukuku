@@ -113,26 +113,28 @@ int andns_set_question(andns_query *q, andns_pkt *p)
 
 int andns_dialog(andns_query *q, andns_pkt *ap)
 {
-    char buf[ANDNS_PKT_QUERY_SZ];
+    char buf[ANDNS_PKT_TOT_SZ];
     char answ[ANDNS_PKT_TOT_SZ];
-    char *ns_server;
     int port;
     int res, id;
 
     id= ap->id;
 
-    if ((a_p(ap, buf) == -1)) {
+    if (((res= a_p(ap, buf)) == -1)) {
         andns_set_error("Internal error (packing andns). "
                         "This seems a bug.", q);
         return -1;
     }
 
-    if (!q->andns_server) ns_server= "localhost";
-    else ns_server= q->andns_server;
+    if (!q->andns_server) {
+        q->andns_server= (char*)malloc(strlen("localhost") +1 );
+        strcpy(q->andns_server, "localhost");
+    }
+
     if (!q->port) port= 53;
     else port= q->port;
 
-    res= hn_send_recv_close(ns_server, port, SOCK_DGRAM, 
+    res= hn_send_recv_close(q->andns_server, port, SOCK_DGRAM, 
                          buf, res, answ, ANDNS_PKT_TOT_SZ, 
                          ANDNS_TIMEOUT);
 

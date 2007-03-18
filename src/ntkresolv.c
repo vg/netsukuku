@@ -276,7 +276,7 @@ void do_command(andns_query *q, const char *qst)
 
     ap= ntk_query(q);
     if (!ap) {
-        printf("Error: %s.", q->errors);
+        printf("Error: %s\n", q->errors);
         exit(1);
     }
 
