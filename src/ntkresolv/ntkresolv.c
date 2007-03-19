@@ -1,17 +1,21 @@
 #include <sys/types.h>
 #include <openssl/md5.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 #include <getopt.h>
 #include <ctype.h>
 #include <sys/time.h>
+#include <netdb.h>
 #include "ntkresolv.h"
 
 uint8_t mode_parsable_output= 0;
 uint8_t mode_silent= 0;
 
+
 void version(void)
 {
-    printf("ntk-resolv version %s (Netsukuku tools)\n\n"
+    fprintf(stderr, "ntk-resolv version %s (Netsukuku tools)\n\n"
         "Copyright (C) 2006.\n"
         "This is free software.  You may redistribute copies of it under the terms of\n"
         "the GNU General Public License <http://www.gnu.org/licenses/gpl.html>.\n"
@@ -21,7 +25,7 @@ void version(void)
 
 void usage(void)
 {
-    printf("Usage:\n"
+    fprintf(stderr, "Usage:\n"
         "\tntk-resolv [OPTIONS] host\n"
         "\tntk-resolv -H host\n\n"
         "Options:\n"
@@ -31,7 +35,7 @@ void usage(void)
         " -t --query-type=qt    query type (`-t help' shows more info).\n"
         " -r --realm=realm      realm to scan (`-r help' shows more info).\n"
         " -s --service=service  SNSD service (`-s help' shows more info).\n"
-        " -p --protocolo=proto  SNSD protocol (`-p help' shows more info).\n"
+        " -p --protocol=proto  SNSD protocol (`-p help' shows more info).\n"
         " -S --silent           ntk-resolv will be not loquacious.\n"
         " -b --block-recursion  set recursion OFF.\n"
         " -m --md5-hash         hostname specified is hash-ed.\n"
@@ -43,26 +47,26 @@ void usage(void)
 void qt_usage(char *arg)
 {
     if (arg)
-        printf("Bad Query Type %s\n\n",arg);
+        fprintf(stderr, "Bad Query Type %s\n\n",arg);
     else
-        printf("ntk-resolv Query Type Help.\n\n");
-    printf("Valid query types are:\n"
+        fprintf(stderr, "ntk-resolv Query Type Help.\n\n"
+        "Valid query types are:\n"
         " * snsd\t\thost:port -> ip\n"
         "   ptr\t\tip -> host\n"
         "   global\thostname -> all services ip\n"
         "   mx\t\thostname MX -> ip\n\n"
         "(you can also use univoque abbreviation)\n"
         "Note: mx query is equivalent to --query-type="
-        "snsd AND --service=25\n\n");
+        "snsd --protocol=tcp --service=25\n\n");
     exit(1);
 }
 void realm_usage(char *arg)
 {
     if (arg)
-        printf("Bad Realm %s\n\n",arg);
+        fprintf(stderr, "Bad Realm %s\n\n",arg);
     else
-        printf("ntk-resolv Realm Help.\n\n");
-    printf("Valid realms are:\n"
+        fprintf(stderr, "ntk-resolv Realm Help.\n\n"
+        "Valid realms are:\n"
         " * ntk\tnetsukuku realm\n"
         "   inet\tinternet realm\n\n"
         "(you can also use univoque abbreviation)\n\n");
@@ -71,10 +75,10 @@ void realm_usage(char *arg)
 void proto_usage(char *arg)
 {
     if (arg)
-        printf("Bad Protocol %s\n\n",arg);
+        fprintf(stderr, "Bad Protocol %s\n\n",arg);
     else
-        printf("ntk-resolv Protocol Help.\n\n");
-    printf("Valid protocols are:\n"
+        fprintf(stderr, "ntk-resolv Protocol Help.\n\n"
+        "Valid protocols are:\n"
         " * tcp\n"
         "   udp\n"
         "(you can also use univoque abbreviation)\n"
@@ -86,10 +90,10 @@ void proto_usage(char *arg)
 void service_and_proto_usage(char *arg)
 {
     if (arg)
-        printf("Bad service/proto %s\n\n"
+        fprintf(stderr, "Bad service/proto %s\n\n"
             "Use `ntk-resolv -s help` for more info on"
             " service and proto.\n" ,arg);
-    else printf(
+    else fprintf(stderr,
         "ntk-resolv Service and Proto Help.\n\n"
         "The form to specify a service and a protocol are:\n"
         "  ntk-resolv -s service/proto\n"
@@ -125,7 +129,8 @@ double diff_time(struct timeval a,struct timeval b)
 
 void print_headers(andns_pkt *ap)
 {
-    printf("\n - Headers Section:\n"
+    fprintf(stdout,
+           "\n - Headers Section:\n"
            "\tid ~ %6d\tqr  ~ %4d\tqtype ~ %7s\n"
            "\tan ~ %6d\tipv ~ %s\trealm ~ %7s\n"
            "\tsv ~ %6s\tprt ~ %4s\trCode ~ %s\n"
@@ -137,7 +142,7 @@ void print_headers(andns_pkt *ap)
 }
 void print_question(andns_query *q)
 {
-    printf("\n - Question Section:\n"
+    fprintf(stdout, "\n - Question Section:\n"
         "\tObj ~ %s\n\n", q->question);
 }
 
@@ -190,30 +195,30 @@ void print_answers(andns_query *q, andns_pkt *ap)
     if (!ancount)
         return;
 
-    printf(" - Answers Section:\n");
+    fprintf(stdout, " - Answers Section:\n");
 
     apd= ap->pkt_answ;
     while (apd) {
         i++;
-        if (i> ancount) printf("Answer not declared in Headers Packet.\n");
+        if (i> ancount) fprintf(stderr, "Answer not declared in Headers Packet.\n");
 
         answer_data_to_str(ap, apd, temp);
-        printf("\t ~ %s", temp);
+        fprintf(stdout, "\t ~ %s", temp);
         if (apd->m & ANDNS_APD_MAIN_IP) printf(" *");
 
         else if (ap->qtype!= QTYPE_PTR && !(apd->m & ANDNS_APD_IP) && ap->r)
-            printf("\t + Recursion Failed");
+            fprintf(stderr, "\t + Recursion Failed");
 
-        printf("\n");
+        fprintf(stdout, "\n");
 
         if (ap->qtype== QTYPE_A || ap->qtype== QTYPE_G) 
-            printf("\t\tPrio ~ %d  Weigth ~ %d\n", apd->prio, apd->wg);
+            fprintf(stdout, "\t\tPrio ~ %d  Weigth ~ %d\n", apd->prio, apd->wg);
 
         if (ap->qtype==QTYPE_G)
-            printf("\t\tService ~ %d  Proto ~ %s\n", 
+            fprintf(stdout, "\t\tService ~ %d  Proto ~ %s\n", 
                 apd->service, apd->m & ANDNS_APD_UDP? "udp":"tcp");
 
-        printf("\n");
+        fprintf(stdout, "\n");
 
         apd= apd->next;
     }
@@ -232,19 +237,19 @@ void print_parsable_answers(andns_query *q, andns_pkt *ap)
     apd= ap->pkt_answ;
     while(apd) {
         i++;
-        if (i>ancount) printf("Answer not declared in Headers Packet.\n");
+        if (i>ancount) fprintf(stderr, "Answer not declared in Headers Packet.\n");
 
         answer_data_to_str(ap, apd, temp);
 
         if (ap->qtype==QTYPE_PTR || (ap->qtype==QTYPE_A && !ap->service)) 
-            printf("%s %s\n", NTK_RESOLV_SYMBOL(apd), temp);
+            fprintf(stdout, "%s %s\n", NTK_RESOLV_SYMBOL(apd), temp);
 
         else if (ap->qtype== QTYPE_A) 
-            printf("%s %s %d %d\n",NTK_RESOLV_SYMBOL(apd),
+            fprintf(stdout, "%s %s %d %d\n",NTK_RESOLV_SYMBOL(apd),
                 temp, apd->prio, apd->wg);
 
         else 
-            printf("%s %s %d %s %d %d\n", NTK_RESOLV_SYMBOL(apd),
+            fprintf(stdout, "%s %s %d %s %d %d\n", NTK_RESOLV_SYMBOL(apd),
                 temp, apd->service, apd->m&ANDNS_APD_UDP?"udp":"tcp",
                 apd->prio,apd->wg);
 
@@ -268,7 +273,7 @@ void do_command(andns_query *q, const char *qst)
     andns_pkt *ap;
 
     if (strlen(qst)>= ANDNS_MAX_NTK_HNAME_LEN) {
-        printf("Question is too long.");
+        fprintf(stderr, "Question is too long.");
         exit(1);
     }
         
@@ -276,24 +281,24 @@ void do_command(andns_query *q, const char *qst)
 
     ap= ntk_query(q);
     if (!ap) {
-        printf("Error: %s\n", q->errors);
+        fprintf(stderr, "Error: %s\n", q->errors);
         exit(1);
     }
 
     print_results(q, ap);
-    destroy_andns_pkt(ap);
+    free_andns_pkt(ap);
 }
 
 void opts_init(andns_query *q)
 {
     q->hashed=          0;
-    q->andns_server=    0;
-    q->port=            0;
+    q->port=            53;
     q->service=         0;
     q->proto=           0;
     q->recursion=       1;
     q->type=            QTYPE_A;
     q->realm=           ANDNS_NTK_REALM;
+    strcpy(q->andns_server, "127.0.0.1");
 }
 
 void opts_set_ns(andns_query *q, const char *h)
@@ -306,15 +311,11 @@ void opts_set_ns(andns_query *q, const char *h)
     if (res<= 0) {
         res= inet_pton(AF_INET6, h, &saddr6);
         if (res<= 0) {
-            printf("Invalid andns server %s.\n", h);
+            fprintf(stderr, "Invalid andns server %s.\n", h);
             exit(1);
         }
     }
 
-    if (!(q->andns_server= (char*)malloc(1 + strlen(h)))) {
-        printf("Memory Allocation problem. Abort.");
-        exit(1);
-    }
     strcpy(q->andns_server, h);
 }
 
@@ -357,14 +358,14 @@ void opts_set_service_and_proto(andns_query *q, char *arg)
         if (strcmp(proto, "tcp")) q->proto= 0;
         else if (strcmp(proto, "udp")) q->proto= 1;
         else {
-            printf("Invalid Protocol `%s`.\n", proto);
+            fprintf(stderr, "Invalid Protocol `%s`.\n", proto);
             exit(1);
         }
     }
     
     if (!isdigit(arg[0])) {
-        if(!(st= getservbyname(arg, 0))) {
-            printf("Invalid Service `%s`.\n", arg);
+        if(!(st= getservbyname((const char*)arg, q->proto?"tcp":"udp"))) {
+            fprintf(stderr, "Invalid Service `%s`.\n", arg);
             exit(1);
         }
         q->service= ntohs(st->s_port);
@@ -390,7 +391,7 @@ void compute_hash(const char *arg)
     MD5((const unsigned char*)arg, strlen(arg), temp);
     NTK_RESOLV_HASH_STR(temp, hash);
     hash[16]=0;
-    printf("%s\n", hash);
+    fprintf(stdout, "%s\n", hash);
     exit(0);
 }
 
@@ -482,8 +483,8 @@ int main(int argc, char **argv)
     
     if (!mode_silent) {
         gettimeofday(&time_stop, NULL);
-        printf("Query time: %f seconds.\n", diff_time(time_start, time_stop));
-        printf("\tBye.\n");
+        fprintf(stdout, "Query time: %f seconds.\n", diff_time(time_start, time_stop));
+        fprintf(stdout, "\tBye.\n");
     }
 
     return 0;

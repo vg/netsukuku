@@ -127,13 +127,6 @@ int andns_dialog(andns_query *q, andns_pkt *ap)
         return -1;
     }
 
-    if (!q->andns_server) {
-        strcpy(q->andns_server, "127.0.0.1");
-    }
-
-    if (!q->port) port= 53;
-    else port= q->port;
-
     res= hn_send_recv_close(q->andns_server, port, SOCK_DGRAM, 
                          buf, res, answ, ANDNS_PKT_TOT_SZ, 
                          ANDNS_TIMEOUT);

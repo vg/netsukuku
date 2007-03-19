@@ -1,8 +1,7 @@
 #ifndef NTK_RESOLV_H
 #define NTK_RESOLV_H
 
-#include "andns_lib.h"
-#include "andns_shared.h"
+#include <andns.h>
 
 #define NTK_RESOLV_VERSION      "0.3.4"
 
@@ -24,8 +23,8 @@
 
 /* NK BIT */
 #define NK_DNS  0
-#define NK_NTK  1
-#define NK_INET 2
+#define NK_NTK  ANDNS_NTK_REALM
+#define NK_INET ANDNS_INET_REALM
 
 #define HELP_STR   "help"
 

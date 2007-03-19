@@ -81,17 +81,16 @@
 
 typedef struct andns_query
 {
-    char    question[ANDNS_MAX_NTK_HNAME_LEN];
-    int     hashed;
-    int     recursion;
-    int     type;
-    int     realm;
-    int     proto;
-    int     service;
-    char    errors[ANDNS_STRERROR];
-    int     status;
-    char    andns_server[INET6_ADDRSTRLEN];
-    int     port;
+    char        question[ANDNS_MAX_NTK_HNAME_LEN];
+    uint8_t     hashed;
+    uint8_t     recursion;
+    uint8_t     type;
+    uint8_t     realm;
+    uint8_t     proto;
+    uint16_t    service;
+    char        errors[ANDNS_STRERROR];
+    char        andns_server[INET6_ADDRSTRLEN];
+    int         port;
 } andns_query;
 
 
