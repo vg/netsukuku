@@ -270,7 +270,7 @@ void rem_bw_add(rem_t *ret, rem_t x, rem_t y)
 }
 
 /*
- * rem_avg_cmp
+ * rem_avg_add
  * -----------
  *
  * It simply calls {-rem_avg_compute-}. 

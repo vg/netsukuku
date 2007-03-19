@@ -685,7 +685,7 @@ order of efficiency, will be listed starting from the position $(n-1)c+1$. Where
 $c$ is the numbers of routes contained in each class.
 
 In the classes we are including \emph{routes} and not \emph{tracer packets},
-because a TP may more than one route.
+because a TP may contain more than one route.
 
 \subsubsection{Subcycle filter}
 Each node of the graph acts as a filter for all the subcycles containing it.
@@ -829,18 +829,54 @@ You can apply this procedure to any level $n$, considering that:
 
 \section{QSPN v1}
 \label{sec:QSPNv1}
-The QSPN v1 is a restricted case of $Q^2$.
-It is divided in two phases. The first one is called qspn\_close and is equivalent
-to a CTP which explores the graph. However when two CTPs collide, they will be
-converted to two normal TPs. The second phase, called qspn\_open is the
-propagation of the normal TPs.
+\small{It isn't necessary to read this paragraph in order to understand the
+rest of the paper. If you aren't interesent in the QSPN v1, just skip over.}
 
-The CTP $c_1$ collides with the CTP $c_2$ when it enters in a segment, which
-has been already covered, in the opposite verse by $c_2$. The CTP $c_1$ is
-then converted to a normal TP, because it doesn't have to be reflected back to
-explore the same path which $c_2$ had already covered.
+The QSPN v1 is a restricted case of $Q^2$. 
+It is divided in two phases.
+The first one is called qspn\_close:
+a node sends a QTP (QSPN Tracer Packet) called qclose, this node becomes a qspn starter.
+A qclose is a modified form of tracer packet.
+  A node $N$, which receives a qclose from the link $l$, marks as ``closed'' the
+  same link $l$ and forwards the packet to all its other neighbours.
+  All the following qclose packets received by the same node $N$, will
+  be forwarded only to the links which have not been already closed.\\
+  During the graph exploration, some nodes will close all their links.
+  These nodes are called \emph{extreme nodes}. When a node becomes an extreme node, 
+  it will send another type of tracer packet, called qspn\_open (which is also
+  the name of the second phase) to all its neighbours, except the one from
+  which it received the last qclose packet (let's call this neighbour $L$).
+  The qopen packet sent to $L$ is empty, while those sent to the other
+  neighbours contains the body of the last received qclose packet.\\
+  The qopen behaves as the qclose: it "opens" the links, however the nodes
+  which have all their links opened won't forward any other packets.\\
+\textbf{Example: }
+\begin{figure}[h]
+	\begin{center}
+		\includegraphics[scale=0.4]{fig/cycleQ1ex}
+	\end{center}
+	\caption{Example of a QSPN v1 graph exploration}
+	\label{fig:q1ex}
+\end{figure}
+  \begin{itemize}
+	  \item The node $E$ sends a qclose. It is now a qspn starter.
+	  \item Suppose that the node A receives the qclose before $C$. $A$
+		  closes the link $E\rightarrow A$ and forwards the qclose to
+		  $B$, $C$ and $D$.
+	  \item $C$ receives the qclose from $E$, closes the link $E\rightarrow C$ and forwards it to A and $D$.
+	  \item $C$ receives the qclose from $A$ and closes the link.
+	  \item $B$ and $D$ have received from $A$ the qclose and close the respective links.
+	  \item Suppose that $B$ is the first to forwards the qclose to $F$.
+	  \item $D$ forwards the qclose to $F$, but at the same time $F$ forwards it to $D$.
+	  \item $D$ receives the qclose from $B$, too.
+	  \item $D$ and $F$ have all the links closed. They send a qopen.
+	  \item The qopen propagates itself in the opposite sense.
+	  \item The qopen ends.  Each node has the routes to reach all the other nodes.
+\end{itemize}
 
-The QSPN has been already implemented in Netsukuku \cite{ntksite}.
+The qspn\_close phase can be seen
+as a CTP with the added rule that when two CTPs collide, they will be
+converted to two normal TPs (the qopen phase).
 
 \subsection{$\mathbf{Q}$ vs $\mathbf{Q^2}$}
 These are the substantial differences between Q (QSPN v1) and $Q^2$ (QSPN v2):
@@ -851,7 +887,7 @@ These are the substantial differences between Q (QSPN v1) and $Q^2$ (QSPN v2):
 		the best routes. However Q gives at least one route to
 		reach each node of the graph.
 
-	\item Q uses less memory than $Q^2$, because it keeps a
+	\item Q uses less memory than $Q^2$, because it just keeps a
 		forwarding table, instead, $Q^2$ needs to memorize 
 		$\emph{MaxRoutes}$ complete routes to evaluate the successive
 		CTPs. By the way, this difference is minimal.
@@ -874,10 +910,7 @@ These are the substantial differences between Q (QSPN v1) and $Q^2$ (QSPN v2):
 		bugs.
 \end{enumerate}
 
-From this comparison we can conclude that $Q^2$ is preferable over Q,
-even if its is slightly less efficient.
-However the tests in the network simulator ns2 \cite{ns2}, will give the final
-words.
+From this comparison we can conclude that $Q^2$ is preferable over Q.
 
 \section{QSPN optimisations}
 \subsection{Worsening link}
