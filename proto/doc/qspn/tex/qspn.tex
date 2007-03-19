@@ -10,7 +10,14 @@
 \usepackage{amsfonts}
 \RequirePackage{ifpdf} % running on pdfTeX?
 \ifpdf
-\usepackage[pdftex]{hyperref}
+\usepackage[pdftex,bookmarks=true,
+		   bookmarksnumbered=false,
+		   bookmarksopen=false,
+		   colorlinks=true,
+		   linkcolor=webred] {hyperref}
+\definecolor{webgreen}{rgb}{0, 0.5, 0} % less intense green
+\definecolor{webblue}{rgb}{0, 0, 0.5} % less intense blue
+\definecolor{webred}{rgb}{0.5, 0, 0}   % less intense red
 \else
 \newcommand{\href}[2]{ #1 }
 \fi
@@ -851,13 +858,14 @@ A qclose is a modified form of tracer packet.
   The qopen behaves as the qclose: it "opens" the links, however the nodes
   which have all their links opened won't forward any other packets.\\
 \textbf{Example: }
-\begin{figure}[h]
-	\begin{center}
-		\includegraphics[scale=0.4]{fig/cycleQ1ex}
-	\end{center}
-	\caption{Example of a QSPN v1 graph exploration}
-	\label{fig:q1ex}
-\end{figure}
+  \begin{figure}[h]
+  \begin{center}
+	  \includegraphics[scale=0.4]{fig/cycleQ1ex}
+	  \caption{Example of a QSPN v1 graph exploration}
+	  \label{fig:q1ex}
+  \end{center}
+  \end{figure}
+  Consider figure \ref{fig:q1ex}.
   \begin{itemize}
 	  \item The node $E$ sends a qclose. It is now a qspn starter.
 	  \item Suppose that the node A receives the qclose before $C$. $A$
