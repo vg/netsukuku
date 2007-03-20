@@ -1,4 +1,3 @@
-#include <sys/time.h>
 #include <stdlib.h>
 
 #include "andns.h"
@@ -9,25 +8,18 @@
 andns_pkt *ntk_query(andns_query *query)
 {
     andns_pkt *ap;
-    struct timeval randgen;
-    unsigned short x[3];
 
     ap= create_andns_pkt();
 
     if (andns_set_question(query, ap))
         return NULL;
 
-    gettimeofday(&randgen, 0);
-    x[0]= (ushort) (randgen.tv_usec);
-    x[1]= (ushort) (randgen.tv_usec >> 16);
-    x[2]= (ushort) getpid();
-
     ap->qtype   = query->type;
     ap->nk      = query->realm;
     ap->p       = query->proto;
     ap->service = query->service;
     ap->r       = query->recursion;
-    ap->id      = (uint16_t) nrand48(x);
+    ap->id      = query->id;
 
     if (andns_dialog(query, ap))
         return NULL;

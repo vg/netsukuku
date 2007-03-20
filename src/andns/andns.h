@@ -82,6 +82,7 @@
 typedef struct andns_query
 {
     char        question[ANDNS_MAX_NTK_HNAME_LEN];
+    int         id;
     uint8_t     hashed;
     uint8_t     recursion;
     uint8_t     type;
