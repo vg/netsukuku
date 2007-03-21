@@ -1,4 +1,25 @@
+/*
+ * (c) Copyright 2006, 2007 Federico Tomassini aka efphe <effetom@gmail.com>
+ *
+ * This source code is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as published
+ * by the Free Software Foundation; either version 2 of the License,
+ * or (at your option) any later version.
+ *
+ * This source code is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * Please refer to the GNU Public License for more details.
+ *
+ * You should have received a copy of the GNU Public License along with
+ * this source code; if not, write to:
+ * Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ */
+
+
+
 #include <sys/types.h>
+#include <sys/time.h>
 #include <openssl/md5.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -271,6 +292,14 @@ void print_results(andns_query *q, andns_pkt *ap)
 void do_command(andns_query *q, const char *qst)
 {
     andns_pkt *ap;
+    unsigned short x[3];
+    struct timeval randgen;
+
+    gettimeofday(&randgen, 0);
+
+    x[0]= (ushort) (randgen.tv_usec);
+    x[1]= (ushort) (randgen.tv_usec >> 16);
+    x[2]= (ushort) getpid();
 
     if (strlen(qst)>= ANDNS_MAX_NTK_HNAME_LEN) {
         fprintf(stderr, "Question is too long.");
