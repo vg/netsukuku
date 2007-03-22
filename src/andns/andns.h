@@ -107,7 +107,7 @@ typedef struct andns_query
     int     	type;
     int     	realm;
     int     	proto;
-    int    	service;
+    int    	    service;
     char        errors[ANDNS_STRERROR];
     char        andns_server[INET6_ADDRSTRLEN];
     int         port;
