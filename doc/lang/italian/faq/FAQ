@@ -198,7 +198,7 @@ A: Potete farlo sin da adesso!
 Q: Glibc sara' in grado di risolvere i nomi per il sistema ANDNA>
 A: ANDNA interviene con un DNS wrapper e, pertanto, e' trasparente per tutti i
    programmi che usano il glibc. Leggete "man andna" su:
-   http://netsukuku.freaknet.org/doc/manuals/html/andna.html
+   http://netsukuku.freaknet.org/doc/manuals/andna
 
 Q: Che genere di performance ha Netsukuku? E' adatto alle chat vocali, alle
    video chat o per i giochi?
@@ -239,7 +239,7 @@ Q: Per usare un link wifi c'e' bisogno di un access point? Cosa devo fare?
 A: Avete solo bisogno di una scheda di rete wifi, che dovete settare in
    modalita' ad-hoc usando  "netsukuku" come essid.
    ( man netsukuku_wifi:
-   http://netsukuku.freaknet.org/doc/manuals/html/netsukuku_wifi.html )
+   http://netsukuku.freaknet.org/doc/manuals/ntk-wifi )
 
 Q: Perche' il codice non e' scritto in java?
 A: Stai scherzando, vero?

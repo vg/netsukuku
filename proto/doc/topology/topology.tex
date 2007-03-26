@@ -43,12 +43,38 @@
 \author{http://netsukuku.freaknet.org\\AlpT (@freaknet.org)}
 \begin{document}
 \maketitle
-
 \begin{abstract}
 	In this document, we describe the fractal structure of the Netsukuku
 	topology. Moreover, we show how it is possible to use the QSPN v2 on
 	the high levels of the fractal.
 \end{abstract}
+\pagenumbering{roman}
+\pagebreak
+\begin{small}
+  This document is part of Netsukuku.\\
+  Copyright \copyright 2007 Andrea Lo Pumo aka AlpT $<$alpt@freaknet.org$>$.
+  All rights reserved.
+
+  This document is free; you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 2 of the License, or
+  (at your option) any later version.
+
+  This document is distributed in the hope that it will be useful, but
+  WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE\@.  See the GNU
+  General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this document; if not, write to the Free Software
+  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+\end{small}
+
+\clearpage
+\tableofcontents
+\clearpage
+\pagenumbering{arabic}
+
 
 \section{Preface}
 \label{sec:preface}
@@ -312,7 +338,7 @@ single node.\\
 A gnode $G$ can act as a single node too.
 \begin{enumerate}
 	\item A bnode $I$, which belongs to $G$, receives an input from its
-		links. We call $I$ the ingress (b)node.
+		links. We call $I$ the \emph{ingress} (b)node.
 	\item this input is flooded to all the nodes, of any level, of the
 		gnode. The nodes will memorize the information contained in
 		the input.\\
@@ -320,7 +346,7 @@ A gnode $G$ can act as a single node too.
 		received only once by each node.
 	\item A bnode $O$, of the same gnode, which is different from $I$,
 		receives the flooded input and computes it.
-		We call $O$ the egress (b)node.
+		We call $O$ the \emph{egress} (b)node.
 	\item The bnode $O$ sends the output of its computation to its
 		external links, i.e. avoiding those links which connect it to
 		nodes of $G$ or to the same gnode which sent the input to $I$.
@@ -380,7 +406,7 @@ A and B are bnodes of the node $G_1$, while $C$ is a bnode of the gnode $G_2$.
 Suppose C sends a TP to B. B floods it inside $G_1$, thus $A$ receives it. At
 this point, $A$ sends the packet to all its external links, and thus to $C$.
 $C$ will send the packet again to $B$ and the cycle will continue.\\
-
+\newline
 This situation can be avoided if an ingress bnode, before forwarding a packet to a an
 external gnode $F$, checks if the packet has already traversed $F$ itself. If
 it has, the bnode won't forward it to $F$.
@@ -388,32 +414,225 @@ it has, the bnode won't forward it to $F$.
 \subsection{Route Efficiency Measure}
 We will refer to REM (Route Efficiency Measure), as a value characterising the
 quality of a route. REM can be calculated in various ways, f.e. by taking in
-account the total rtt and the bw capacity of the route. 
+account the total rtt and the bw capacity of the route.  We denote the REM of
+a route $r$ as $REM(r)$.
 %We suppose that the REM value of a normal route/link has been already defined. 
 
 \subsection{Flat levels}
+\label{sec:flat}
 From the point of view of the QSPN v2, the levels are ``flattened'', because
 the propagation of CTPs\footnote{Continuous Tracer Packet, see \cite{qspndoc}} ignore the subdivisions of
-the network in gnodes and levels.\\
+the network in gnodes and levels. The structure of the network remains
+unchanged, subdvided fractally in gnodes, but the exploration of the CTP
+doesn't. A CTP doesn't consider a gnode as a single, homogenous entity. It propagates 
+itself between the single nodes, tracing a precise route formed by single
+hops, until it is considered interesting. 
+In this way every node will have its own personal route to reach a specific gnode. 
 
+The memory limits are respected, because the CTP, once it jumped
+over the border of a gnode, deletes the specific details that were useful by the nodes of
+the gnode.\\
+\newline
+We'll know describe the rules of the Flat levels.\\
 Suppose we want to explore the level $n\ge 1$ (we already know how to
-explore $n=0$). Let $G_1,\dots, G_r$ be the gnode of level $n$. The general
+explore $n=0$). Let $G_1,\dots, G_r$ be the gnode of level $n$. The generic
 rule of the QSPN v2 in high levels is: 
 \begin{quote}
-When a bnode $b$ of $G_i$ receives a CTP from a neighbouring bnode of $G_j$
-($i\neq j$), it appends in the packet its IP and the ID of $G_i$. 
-Then $b$ floods the packet inside $G_i$ following the same rules of the 
-QSPN v2, i.e if the packet isn't interesting, it's dropped.
+When an ingress bnode $b$ of $G$ receives a CTP from a neighbouring bnode of
+$H$, it appends in the packet its IP. The packet, called
+\emph{Locked Tracer Packet} is then flooded inside $G$.
+The LTP of level $n$, is a packet that is propagated with the same rules of
+the CTP, i.e if it isn't interesting it's dropped, but that isn't updated
+while it explores the levels inferior to $n$. When the egress bnode $b'$,
+of $G$ receives the LTP, it changes it in a CTP, appends the ID of $G$ and
+forwards it to all its neighbouring gnodes.
 \end{quote}
-The packet, flooded inside $G_i$ by $b$ is called \emph{Locked Tracer Packet}.
-A LTP is a packet which is propagated with the same rules of the CTP, but
-isn't updated at each hop. In this case, a LTP of level $n$ isn't updated
-while it travels inside a level $<n$.
+Detailed rules:
+\begin{enumerate}
+	\item When exploring the level $n$, each inferior level must been
+		already explored.\\
+		To accomplish this, it sufficies that a
+		node, before sending/forwarding a CTP of level $n$ has already
+		sent/forwarded at least a CTP of level $n-1$. If it hasn't, it will
+		queue the CTP of level $n$.
+	\item Suppose that the ingress bnode $b$ belonging to a gnode $G$ of
+		level $n$, has received a CTP of the same level, sent by the
+		gnode $G'$. The following
+		will happen: $b$ makes copy of the CTP, marking it as a LTP, appends in
+		it its IP and floods it in $G$. If $b$ is also linked to a
+		gnode different from $G'$, it will respect the rule
+		\ref{ruleegressbnode} for egress bnodes. 
+	\item \label{ruleegressbnode}
+		Suppose that the egress bnode $b'$ of $G$ receives the LTP
+		sent by $b$ (see above). $b'$ transforms the LTP in a CTP,
+		deletes the IP added by $b$ and sets (in the TP) the REM of $G\rightarrow G'$
+		as:
+		\[
+		REM(G\rightarrow G'):=REM(b'\rightarrow b)
+		\]
+		Finally, it forwards the CTP to all its external rnodes.
+	\item A node $n$ of $G$, uses the received LTP to learn that $b$ is a
+		bnode bordering on $G'$ and to find out the route of level $n$
+		contained in the packet. It considers the REM of the route to
+		reach $G'$ equal to
+		\[
+		REM(n\rightarrow b)
+		\]
+		in other words, it saves in its map that $REM(n\rightarrow
+		G):=REM(n\rightarrow b)$.\\
+		$n$ forwards the LTP to its rnodes without modifying it.
+	\item The LTP respects the same rule of the QSPN v2: it is forwarded
+		by a node only if it is carries interesting information,
+		otherwise it is dropped. A
+		node $n$ consider the LTP interesting if one of the following
+		conditions\footnote{this isn't the complete list of
+		conditions} is met:
+		\begin{itemize}
+			\item The LTP contains the IP of a bnode $b$, which wasn't
+				already known by $n$.
+			\item The LTP contains a bnode already known by $n$, but that
+				borders on a new gnode $g$: with this LTP, the
+				node $n$ learns that it can reach $g$ by
+				passing through the bnode.
+			\item The LTP contains the information of the death of
+				a bnode which was used by $n$ to reach some
+				gnodes.
+			\item The LTP contains a new gnode, which was
+				previously unknown.
+			\item The LTP contains the information of the death of a
+				gnode.
+			\item The LTP contains an improved route to reach a
+				gnode.
+		\end{itemize}
+		Note: the first three conditions are used by the nodes to
+		build and update the bnode map.
+	\item Recall the situation of rule \ref{ruleegressbnode}.\\
+		When the value $REM(b'\rightarrow b)$ changes
+		considerably,
+		both $b$ and $b'$ sends a CTP of level $n$ to their external
+		nodes\footnote{A CTP of level $n-1$ tells $b$ and $b'$ of the
+		REM change}. The CTP contains the new $REM$ value. Every node which used $G$ as hop of some routes,
+		will consider the CTP interesting.\\
+		This rule permits the updates of the high levels.
+	\item When a bnode $b$ (of any level)\footnote{a bnode $b''$, which is a
+		gnode of level $l\ge 1$, loses its external link to the gnode
+		$H$ of level $l+1$, when all its
+		bnodes of level $l-1$ loses their link to $H$. This is a
+		recursive definition.}
+		loses one of its external links of
+		level $n$, a CTP is sent in the level $n-1$.  The CTP contains
+		the information regarding the lost link.
+		The CTP is forwarded by all the (g)nodes that used the
+		bnode $b$ in one of their saved routes to reach the lost link.\\
+		If $b$ was the unique bnode of its gnode $G$
+		bordering to gnode $G'$ of level $n$, then the link
+		$G\leftrightarrow G'$ becomes broken. In this case a CTP of
+		level $n$ is sent by $G'$ and by the other bnodes of
+		$G$\footnote{they will know of the broken link when receiving
+		the CTP of level $n-1$}.\\
+		A dying bnode is equivalent to a bnode which loses all its
+		external links. The only difference is that a CTP of level 0
+		is sent to inform the nodes of its gnode.
+\end{enumerate}
+We'll now describe some of rules by giving an example (see figure
+\ref{figexq2}). For simplicity, we'll use the IP notation: $11.22.33$
+indicates the single node $33$ belonging to the gnode $22$, belonging to the
+ggnode $11$. Using the symbolic notation: $11.22.33 \in 11.22 \in 11$. We are
+also assuming that the routes are symmetric.
+\begin{figure}[h]
+	\begin{center}
+		\includegraphics[scale=0.5]{fig/segG3}
+	\end{center}
+	\caption{Level 3}
+	\label{figexq2}
+\end{figure}
+\newline
+\emph{CASE 1:  A new gnode join.}\\
+We are exploring the level 3, which is formed by the gnodes 
+$11,\;22,\;33,\;44$. The level 2, of each gnode, has been already
+explored.
+\begin{itemize}
+	\item 
+The gnode $44$ has just created the link to the gnode $33$. The
+new physical link is maintained by the two single bnodes
+$33.33.33,\;44.44.44$.
+\item The bnode $33.33.33$ creates a CTP of level 3, appends in it the ID ``$33$''
+and sends it to $44.44.44$.
+\item The bnode $44.44.44$ receives it.
+	\begin{itemize}
+		\item It reflects back a new CTP to $33.33.33$, appending in it
+			the ID ``$44$''.
+		\item It appends in the received CTP, its IP, marks it as a
+			LTP and sends it to its gnode. The LTP contains the
+			path $33\rightarrow 44.44.44$.
+			\begin{itemize}
+				\item The node $44.44.x$, receiving the LTP,
+					learns the following: $44.44$ is a bnode of
+					level 2 that can be used to reach
+					$33$, and $44.44.x$ is a bnode of its
+					own gnode which borders on $33$. It
+					also learns its own REM for the
+					route to $33$: \[REM(44.44.x
+					\rightarrow
+					33):=REM(44.44.x\rightarrow 44.44.44)\]
+					$44.44.x$ continues to forward the LTP
+					(without modifying it).
+				\item The LTP reaches the node $44.y.z$,
+					node of $44.y$. $44.y.z$, from the LTP
+					learns that: $44.44$ is a bnode of
+                                        level 2 that can be used to reach
+					$33$. Since the level $2$ has been
+					already explored, $44.y.z$ already
+					knows a route to reach $44.44$.
+				\item The LTP having reached all the nodes of
+					$44$ ceases to being forwarded.
+			\end{itemize}
+	\end{itemize}
+\item The bnode $33.33.33$ receives the reflected CTP sent by $44.44.44$.
+	\begin{itemize}
+		\item It appends in it its IP, marks it as a LTP and sends it to its gnode.
+			\begin{itemize}
+				\item The LTP is propagated in $33$ (in the same way of the
+					previous LTP).
+			\end{itemize}
+	\end{itemize}
+\item The bnode $33.x3.y3$, which borders on $22$, receives the LTP.
+	\begin{itemize}
+		\item It modifies it in a CTP: it removes the IP $33.33.33$
+			and appends the ID $33$. The CTP is now $44\rightarrow
+			33$. Finally, it sets the first REM of the CTP:
+			\[ REM_{CTP}(33 \leftrightarrow 44):= REM(33.x3.y3
+			\leftrightarrow 33.33)\;\;\;\textrm{ see note }
+			\footnote{The node $33.x3.y3$
+			knows that $33.33$ is a bnode of level 2 used to reach
+			$44$ because it is written in the LTP. Moreover it
+			knows a route to reach $33.33$, the level $2$ has been
+			already explored. Thus $REM(33.x3.y3\leftrightarrow
+			33.33)$ is a known measure.}\]
+			The CTP is then sent to $22.22.22$, bnode of $22$.
+	\end{itemize}
+\item The bnode $22.22.22$ receives the CTP. It sends a LTP in $22$.
+\item The bnode $22.x2.x2$, which borders on $11$, receives the LTP. It 
+	appends $22$ in it and sends it to $11$. The CTP is now: $44
+	\rightarrow 33\rightarrow 22$.
+\item A bnode of $11$ receives it, and reflect it to $22$. It sends also the
+	LTP to $11$.
+\item \dots
+\item The reflected CTP is finally received by the node $44.44.44$, which
+	sends the LTP to $44$ and reflects the CTP to $33.33.33$. The bnode
+	$33.33.33$, drops immediately the CTP, because it doesn't contain any
+	interesting information.
+\item the exploration is completed.
+\end{itemize}
 
+
+%
+% CASE 2: un nuovo bnode ridondante nasce.
+%
+% - Annunciazione della morte di un bnode
 % - implications of the rule
 %	- subjective routes
 %	- flattened levels
-% - assume the sublevels are already explored
 % - pseudo code
 %	- if I am a bnode
 %		- if my gnode doesn't have any more links
@@ -421,7 +640,6 @@ while it travels inside a level $<n$.
 %	- if I am a normal node
 %		\dots
 %	- 
-% 
 
 \subsection{Unique flood}
 Suppose that a TP has been flooded inside the gnode $G$.
@@ -450,15 +668,42 @@ all its (physical) near nodes. By collecting the replies, the radar is able to
 determine the active rnodes of the node and the quality of its links.
 
 \subsection{Level 0}
-In level 0, a QSPN is sent every time a node joins the network, dies or every
-time the change of the quality of a link exceeds a predefined delta value.
-The QSPN is sent by the nodes noticing the changes, i.e. by the rnodes of the
-mutated node. In this case the QSPN is restricted to level 0, and thus it cannot
-escape from the gnode where it has been originated.
-
-In order to prevent false positives, the rnodes of the mutated node won't
-immediately send the QSPN, but will wait a small amount of time. If the change
-persists, they will send the QSPN.
+\label{sec:netdyn-level0}
+In level 0, a CTP is sent every time a node joins the network, dies or every
+time the change of the quality of a link exceeds a predefined delta value. The
+CTP is also is restricted to the gnode where it has been originated: a
+bnode won't send it to external nodes.\\
+\newline
+When a node joins, it won't send a CTP, only its rnodes will.
+Their CTP will be directed to the node. More formally:\\
+if the node $n$ joins, that is if the node $n$ creates a link
+with the nodes $r_1,\dots,r_n$, with $n\ge 1$, then a CTP will
+be sent by each rnode $r_i$ \emph{only} to $n$. This means that if $r_j$ is connected to a node $s$, when
+$n$ joins, $r_j$ will send the CTP only to $n$ and not to
+$s$.\\
+This saves the propagation of two CTP in the following situation:
+\[\dots \leftrightarrow A\leftrightarrow B\leftrightarrow C\leftrightarrow\dots\]
+suppose that the node $B$ joins. As a consequence of the rule we've described,
+the node $C$ will send a CTP to $B$ and $A$ to $B$, thus only two distinct CTP are
+generated. Their path is $A\rightarrow B\rightarrow C\rightarrow \dots$ and
+the reverse. If instead the node $B$ sends a CTP to $C$ and then $A$ to $B$,
+two distinct CTP will explore the same verse: $B\rightarrow
+C\rightarrow\dots $ and $A\rightarrow B\rightarrow C\rightarrow \dots$, the
+same is for the reverse, thus, in total, four distinct CTP are propagated.\\
+\newline
+Let $A\stackrel{l}{\leftrightarrow}B$ be a link. If its quality changes $B$
+will send a CTP to $A$ and vice-versa.\\
+\newline
+When a node dies, all its rnodes will send a CTP to all their rnodes. The CTP
+will include, as the first hop, the ID of the dead node, with a flag which
+indicates its death. For example:
+\[A\leftrightarrow B\leftrightarrow C\leftrightarrow\dots\]
+if $A$ dies, then $B$ will send the following CTP to $C$:
+$\stackrel{+}{A}\;\rightarrow B$\\
+\newline
+In order to prevent false positives, the nodes won't immediately send the CTP, but
+will wait a small amount of time. Only if the change persists, they will send
+the it.
 
 \subsection{Level n}
 In high levels the bnodes are responsible to start the new QSPN.
@@ -521,6 +766,7 @@ The hook procedure is formed by these general steps:
 		ends the hooking.
 	\item $n$ gets the internal and the bnode map from the same rnode.
 	\item $n$ launches a second radar and updates its routing table.
+	\item All the rnodes of $n$ send a CTP to update the maps.
 \end{enumerate}
 
 
@@ -542,7 +788,16 @@ would. You can find more information about this in the NTK\_RFC 001\cite{gnodeco
 %%%%%%%%%%%%%%%%
 % Bibliography %
 %%%%%%%%%%%%%%%%
-
+\section{ChangeLog}
+\begin{itemize}
+	\item \verb|March 2007|
+		\begin{itemize}
+			\item Description of the Flat levels (sec. \ref{sec:flat})
+			\item Section \ref{sec:netdyn-level0} ``Network dynamics - Level 0'' expanded.
+		\end{itemize}
+	\item \verb|October 2006|\\
+		Initial release.
+\end{itemize}
 \begin{thebibliography}{99}
 	\bibitem{qspndoc} QSPN document:
 		\href{http://netsukuku.freaknet.org/doc/main\_doc/qspn.pdf}{qspn.pdf}

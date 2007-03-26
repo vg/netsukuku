@@ -191,7 +191,7 @@ A: You can do it by now!
 Q: Will glibc be able to resolve names for the ANDNA system?
 A: ANDNA comes with a DNS wrapper so it is transparent to all the programs
    which uses the glibc. Read "man andna":
-   http://netsukuku.freaknet.org/doc/manuals/html/andna.html
+   http://netsukuku.freaknet.org/doc/manuals/andna
 
 Q: What sort of performance does Netsukuku have? Is it any good for voice chat
    video chat?
@@ -229,7 +229,7 @@ A: We are currently working on flashing Netsukuku on Access Points (like
 Q: For using a wifi link do I need of an access point? What to do?
 A: You just need a wifi network card. Put it in ad-hoc mode using "netsukuku"
    as essid. ( man netsukuku_wifi:
-   http://netsukuku.freaknet.org/doc/manuals/html/netsukuku_wifi.html )
+   http://netsukuku.freaknet.org/doc/manuals/ntk-wifi )
 
 Q: Why the code is not written in java?
 A: Are you kidding?

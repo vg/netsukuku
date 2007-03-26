@@ -1,12 +1,22 @@
 <?php
 	//if ($_GET['pag'] == "download")
-	//	header("Location: http://netsukuku.freaknet.org/?p=Download");
+	//	header("Location: http://www.netsukuku.org/?p=Download");
+//	if ($_GET['pag'] == "home")
+//		header("Location: http://www.netsukuku.org/index.php?pag=home");
+//	if ($_GET['pag'] == "about")
+//		header("Location: http://www.netsukuku.org/index.php?pag=about");
+//	if ($_GET['pag'] == "documentation")
+//		header("Location: http://www.netsukuku.org/index.php?pag=documentation");
+//	if ($_GET['pag'] == "faq")
+//		header("Location: http://www.netsukuku.org/index.php?pag=faq");
+//	if ($_GET['pag'] == "contacts")
+//		header("Location: http://www.netsukuku.org/index.php?pag=contacts");
 	if ($_GET['pag'] == "wiki")
 		header("Location: http://lab.dyne.org/Netsukuku");
 	if ($_GET['pag'] == "forum")
-		header("Location: http://nariki.bourneagain.jp/ntk/index.php?pag=forum");
+		header("Location: http://www.netsukuku.org/index.php?pag=forum");
 	if ($_GET['pag'] == "maps")
-		header("Location: http://nariki.bourneagain.jp/ntk/index.php?pag=maps");
+		header("Location: http://www.netsukuku.org/index.php?pag=maps");
 
 	/* forum compatibility */
 	require_once("inc_var.php");
@@ -189,7 +199,7 @@
 	<div id="container"> <!-- CONTAINER START-->
 
 		<div id="logo">
-			<div style="float: left;"><img src="http://netsukuku.freaknet.org/logo_netsukuku.jpg" alt="" /></div>
+			<div style="float: left;"><img src="http://www.netsukuku.org/logo_netsukuku.jpg" alt="" /></div>
 			<?php
 				if (($username == "Guest") || (empty($_COOKIE['biscottino_patatina']))) {
 					print('<div id="login" style="float: right; padding-right: 10px; padding-top: 10px; color: #CCCCCC; ">Already a user? <a href="index.php?pag=forum&act=login&ntk=lgn" style="font-weight: bold; font-size: 12px;">Sign in!</a><br />Not registered? <a href="index.php?pag=forum&amp;act=register&amp;ntk=rgstr" style="font-weight: bold; font-size: 12px">Sign up!</a><br /></div>');
