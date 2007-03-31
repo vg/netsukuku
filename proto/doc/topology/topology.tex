@@ -506,15 +506,17 @@ Detailed rules:
 		\end{itemize}
 		Note: the first three conditions are used by the nodes to
 		build and update the bnode map.
-	\item Recall the situation of rule \ref{ruleegressbnode}.\\
+	\item \label{rule6}
+		Recall the situation of rule \ref{ruleegressbnode}.\\
 		When the value $REM(b'\rightarrow b)$ changes
 		considerably,
 		both $b$ and $b'$ sends a CTP of level $n$ to their external
 		nodes\footnote{A CTP of level $n-1$ tells $b$ and $b'$ of the
 		REM change}. The CTP contains the new $REM$ value. Every node which used $G$ as hop of some routes,
 		will consider the CTP interesting.\\
-		This rule permits the updates of the high levels.
-	\item When a bnode $b$ (of any level)\footnote{a bnode $b''$, which is a
+		This rule permits the update of high levels.
+	\item \label{rule7}
+		When a bnode $b$ (of any level)\footnote{a bnode $b''$, which is a
 		gnode of level $l\ge 1$, loses its external link to the gnode
 		$H$ of level $l+1$, when all its
 		bnodes of level $l-1$ loses their link to $H$. This is a
@@ -534,7 +536,7 @@ Detailed rules:
 		external links. The only difference is that a CTP of level 0
 		is sent to inform the nodes of its gnode.
 \end{enumerate}
-We'll now describe some of rules by giving an example (see figure
+We'll now describe some rules by giving an example (see figure
 \ref{figexq2}). For simplicity, we'll use the IP notation: $11.22.33$
 indicates the single node $33$ belonging to the gnode $22$, belonging to the
 ggnode $11$. Using the symbolic notation: $11.22.33 \in 11.22 \in 11$. We are
@@ -702,37 +704,26 @@ if $A$ dies, then $B$ will send the following CTP to $C$:
 $\stackrel{+}{A}\;\rightarrow B$\\
 \newline
 In order to prevent false positives, the nodes won't immediately send the CTP, but
-will wait a small amount of time. Only if the change persists, they will send
-the it.
+will wait a small amount of time. Only if the change persists, they will send it.
 
 \subsection{Level n}
-In high levels the bnodes are responsible to start the new QSPN.
-The bnode $b \in G$ will send a QSPN in the level of $G$, every time the value
-$E(G)$ or\\$E(B_G\rightarrow B_R)$ changes substantially.
-
-The bnode can notice the change of $E(G)$ by inspecting the QSPN of lower
-levels, which are sent inside $G$.
-When the quality of the routes to reach the internal nodes of G varies, the $E(G)$
-value will change too. If the variation exceeds a predefined delta, the bnode
-will send a QSPN in the level of $G$, to inform the other gnodes that the links
-passing through $G$ have now a different efficiency.
-
-The bnode, instead of sending immediately the QSPN, will wait for a small
-time, using a timer. During this wait, if it receives any other information about a
-new variation of $E(G)$, it will resets the timer, waiting for a second time,
-and it will increment the variation counter.\\
-If the variation counter reaches the threshold value or if no more information
-regarding $E(G)$ are received, then the bnode will send the QSPN.
-
-This strategy is adopted to avoid false positives and to normalize the case
-when $E(G)$ varies frequently. Thus if $E(G)$ varies four times in a minute,
-only one QSPN will be sent, not four.
-
-The same applies for the variation of $E(B_G\rightarrow B_R)$, where $B_G$ are
-the bnodes of $G$ linked to the bnodes $B_R$ of the gnode $R$, which is any
-bordering gnode of $G$. Only significant variations of $E(G\rightarrow R)$ are
-considered. For examples, if $G$ and $R$ are connected by $20$ bnodes, when
-only one of the bnode dies, the $E(G\rightarrow R)$ will (generally) vary lightly.
+\label{sec:netdyn-leveln}
+The dynamics for the update of high levels are mainly governed by rule
+\ref{rule6} and \ref{rule7} of flat levels (see \ref{sec:flat}). In this
+paragraph, we'll specify some details.\\
+\newline
+Rule \ref{rule6} says: ``when the value $REM(b'\rightarrow b)$ changes
+considerably, a new CTP is sent''.
+By considerably we mean that the difference of the current REM value with the
+previous one exceedes a predefined threshold. More precisely: let
+$A\rightarrow B$ be a route of level $n$. If \[|REM_{\textrm{now}}(A\rightarrow B)-
+REM_{prev}(A\rightarrow B)| > \Delta_n\]
+then the route has changed considerably. $\Delta_n$ is proportional to $n$, in this way the nodes will be
+more sensible to minor changes of lower levels and they will consider only
+relevant changes of higher levels.\\
+\newline
+Also in high levels, a bnode won't immediately send a new CTP, but it
+will delay it for a small amount of time.
 
 \subsection{Hooking phase}
 A new node joins the network when it has been able to create at least one
@@ -794,6 +785,10 @@ would. You can find more information about this in the NTK\_RFC 001\cite{gnodeco
 		\begin{itemize}
 			\item Description of the Flat levels (sec. \ref{sec:flat})
 			\item Section \ref{sec:netdyn-level0} ``Network dynamics - Level 0'' expanded.
+			\item Section \ref{sec:netdyn-leveln} ``Network
+				dynamics - Level n'' updated: the references to
+				the pre-Flatlevels REM metric have been
+				removed.
 		\end{itemize}
 	\item \verb|October 2006|\\
 		Initial release.
