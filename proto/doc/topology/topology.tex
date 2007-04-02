@@ -571,7 +571,7 @@ and sends it to $44.44.44$.
 				\item The node $44.44.x$, receiving the LTP,
 					learns the following: $44.44$ is a bnode of
 					level 2 that can be used to reach
-					$33$, and $44.44.x$ is a bnode of its
+					$33$, and $44.44.44$ is a bnode of its
 					own gnode which borders on $33$. It
 					also learns its own REM for the
 					route to $33$: \[REM(44.44.x
@@ -598,23 +598,23 @@ and sends it to $44.44.44$.
 					previous LTP).
 			\end{itemize}
 	\end{itemize}
-\item The bnode $33.x3.y3$, which borders on $22$, receives the LTP.
+\item The bnode $33.r.s$, which borders on $22$, receives the LTP.
 	\begin{itemize}
 		\item It modifies it in a CTP: it removes the IP $33.33.33$
 			and appends the ID $33$. The CTP is now $44\rightarrow
 			33$. Finally, it sets the first REM of the CTP:
-			\[ REM_{CTP}(33 \leftrightarrow 44):= REM(33.x3.y3
+			\[ REM_{CTP}(33 \leftrightarrow 44):= REM(33.r.s
 			\leftrightarrow 33.33)\;\;\;\textrm{ see note }
-			\footnote{The node $33.x3.y3$
+			\footnote{The node $33.r.s$
 			knows that $33.33$ is a bnode of level 2 used to reach
 			$44$ because it is written in the LTP. Moreover it
 			knows a route to reach $33.33$, the level $2$ has been
-			already explored. Thus $REM(33.x3.y3\leftrightarrow
+			already explored. Thus $REM(33.r.s\leftrightarrow
 			33.33)$ is a known measure.}\]
 			The CTP is then sent to $22.22.22$, bnode of $22$.
 	\end{itemize}
 \item The bnode $22.22.22$ receives the CTP. It sends a LTP in $22$.
-\item The bnode $22.x2.x2$, which borders on $11$, receives the LTP. It 
+\item The bnode $22.t.u$, which borders on $11$, receives the LTP. It 
 	appends $22$ in it and sends it to $11$. The CTP is now: $44
 	\rightarrow 33\rightarrow 22$.
 \item A bnode of $11$ receives it, and reflect it to $22$. It sends also the
@@ -776,9 +776,6 @@ would. You can find more information about this in the NTK\_RFC 001\cite{gnodeco
 %int map  (sizeof)
 %
 
-%%%%%%%%%%%%%%%%
-% Bibliography %
-%%%%%%%%%%%%%%%%
 \section{ChangeLog}
 \begin{itemize}
 	\item \verb|March 2007|
@@ -793,6 +790,10 @@ would. You can find more information about this in the NTK\_RFC 001\cite{gnodeco
 	\item \verb|October 2006|\\
 		Initial release.
 \end{itemize}
+
+%%%%%%%%%%%%%%%%
+% Bibliography %
+%%%%%%%%%%%%%%%%
 \begin{thebibliography}{99}
 	\bibitem{qspndoc} QSPN document:
 		\href{http://netsukuku.freaknet.org/doc/main\_doc/qspn.pdf}{qspn.pdf}

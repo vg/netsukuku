@@ -830,36 +830,6 @@ number of its subcycles is:
 \sum_{k=3}^n\,\frac{1}{2}\binom{n}{k}(k-1)!
 \]
 
-\subsection{High levels}
-$Q^2$ can explore independently any level of the topology\footnote{We've
-talked about the network topology in section \ref{sec:fractal_topology}}.
-
-Suppose that $Q^2$ is exploring the level $n$. The gnode $g$, which belongs
-to the level $n$, acts as a single node:
-\begin{enumerate}
-	\item The bnodes\footnote{A border\_node is a node which is on the
-		border between two or more gnodes, i.e. it belongs to the all
-		its bordering gnodes} of level $n-1$ will receive all the CTPs.
-		They will append the ID of $g$ in the body of the CTP and then
-		forward it inside the same gnode $g$ as a normal TP.
-		All the (g)nodes of $g$ (including the bnodes) which will
-		receive the TP, will memorise in their caches the routes
-		contained in it.
-	\item When a bnode $b_2$ receives the TP forwarded by another bnode
-		$b_1$ of the same gnode, it will reconvert the TP in a CTP and
-		forward it to its bordering gnodes (except the one which
-		originally sent the CTP to $b_1$).
-	\item The bnodes will respect the rules of $Q^2$, thus if a CTP will
-		exceed the \emph{MaxRoutes} limit it will be dropped. 
-\end{enumerate}
-You can apply this procedure to any level $n$, considering that:
-\begin{enumerate}
-	\item A bnode can be an entire gnode too.
-	\item A gnode of level $-1$ is a single node.
-	\item A bnode of the gnode of level $-1$ is the gnode itself, i.e. it
-		is the same single node.
-\end{enumerate}
-
 \section{QSPN v1}
 \label{sec:QSPNv1}
 \small{It isn't necessary to read this paragraph in order to understand the
@@ -946,9 +916,12 @@ These are the substantial differences between Q (QSPN v1) and $Q^2$ (QSPN v2):
 
 From this comparison we can conclude that $Q^2$ is preferable over Q.
 
-\section{QSPN optimisations}
-\subsection{Worsening link}
-Suppose that the whole graph has been already explored, and thus every node
+\section{Network dynamics}
+\label{sec:netdyn}
+The QSPN v2 defined until now is not suitable for dynamic networks. As
+example, consider this problem:
+
+suppose that the whole graph has been already explored, and thus every node
 has at least one route to reach all the other nodes. Consider the case when
 the efficiency of a link, f.e. $N \leftrightarrow P$, worsens.
 $N$, in order to update the maps of the other nodes, sends a CTP to its
@@ -957,26 +930,69 @@ immediately dropped! Indeed, the nodes will consider this CTP not interesting,
 because the contained $\dots\rightarrow P \rightarrow N$ route is less
 efficient than the old one, which has been saved during the last graph
 exploration.\\
-The solution to this inconvenient is to associate a numeric ID to each link of
-the graph. 
-When a node $n$ forwards a CTP to its neighbour $p$, it includes the ID of the link
-$n \rightarrow p$ in the same CTP. The nodes receiving the packet will
-memorize the link's ID.
-Each time the node $n$ notices that one of its links has worsened, it
-increments its associated ID. \\
-In this way, we can modify the rule of the $Q^2$ as follow: let $l$ be a link
-contained in a CTP,  $\textrm{ ID}(l)$ the ID associated to the link $l$ 
-and ${\textrm{ID} }_x(l)$ the associated ID saved by the node $x$.
+\newline
+The natural solution is to totally re-explore the network each
+time a change occurs. However, when the change affects only a local portion of the
+network, a new total exploration becomes inefficient, because it will involve
+even unaffected nodes.
+It is then necessary to define an extension of the QSPN, which
+will explore only the local part of the network affected by the change.
+
+\subsection{Link ID}
+A solution to the worsened link recognition problem is the use of
+the Link IDs.
+
+Each node $n$ assigns an ID to all its links. $n$ will change the ID of a
+link, when its quality worsens. The ID is set to the current uptime of the
+node\footnote{a simple numeric ID will work too. The only requirement is that
+it must be strictly crescent, i.e. $ID_{now}>ID_{prev}$. However, using the
+uptime of a (g)node simplify different tasks}.\\
+Let $r$ be a rnode of $n$. When a TP traverse the link $r\rightarrow n$, the
+node $n$ will append, as usual, its ID and the ID of its link $n\rightarrow
+r$.\\
+The node receiving the packet will memorize the link IDs stored in the TP
+together with the route information. In this way, if in future TPs they will
+find a link ID greater than the memorized one, they will understand that the link
+has worsened.\\
+We can modify the rule of the $Q^2$ as follow: let $l$ be a link contained in
+a CTP, $\textrm{ID}(l)$ the ID associated to the link $l$
+and ${\textrm{ID}}_x(l)$ the ID associated to $l$, which has been previously saved by the node $x$.
 The node $x$ will consider the CTP interesting if \[\textrm{ID}(l) >
 {\textrm{ID} }_x(l)\]
-If  $\textrm{ID}(l) = {\textrm{ID} }_x(l)$, then we fall back to the normal
+If  $\textrm{ID}(l) = {\textrm{ID}}_x(l)$, then we fall back to the normal
 CTP evaluation. If, instead, $\textrm{ID}(l) < {\textrm{ID} }_x(l)$, then the
-CTP will be considered invalid: given two CTPs $c_1$
-and $c_2$ such that $\textrm{ID}_{c_1}(l) < \textrm{ID}_{c_2}(l)$, it is impossible to
-receive firstly $c_2$ and secondly $c_1$ (unless $c_1$ is malformed), because
-if the link $l$ has assumed the ID $\textrm{ID}_{c_2}(l)$, then all the
-successive CTP traversing it will have an ID $\ge  \textrm{ID}_{c_2}(l)$.
+CTP will be considered invalid.
 
+\subsection{Local QSPN}
+\label{sec:localqspn}
+The Local QSPN can be intuitively described as follo: 
+\begin{quote}
+	Suppose that a change occurred in the network. A Local CTP will
+	explore only the portion of the network, which is formed by nodes
+	interested in the change. This local zone becomes, for the CTP,
+	as a separated network: the nodes adopts a separated QSPN cache
+	for the CTPs restricted to this zone, and when a CTP reaches its
+	boundaries, it will be reflected back, as if it reached the end of the
+	network.
+\end{quote}
+TODO:
+- definizione di cambiamento interessante\\
+- come viene riflesso il CTP una volta che raggiunge il confine della zona\\
+- casi: morte, join, miglioramento/peggioramento di un link, creazione di un nuovo link
+
+%
+% - local qspn: esplorazione locale
+%	- interessante come hop per raggiungere altri posti oltre l'hop stesso
+%	- oltre al qspn locale, c'e' la propagazione broadcast usuale
+%	- il nodo nn interessato, oltre a dropparlo lo riflette (il CTP)
+% - aggiornamenti periodici: esplorazione totale
+%	- perche' ?
+% - qspn locale simultanei: che succede?
+%
+%
+
+\section{QSPN optimisations}
+%%%%%%%%%%%%%%%%% TODO TODO TODO Remove ME %%%%%%%%%%%%%%%%%%%
 \subsection{Death of a node}
 When a node $N$ dies the network must be updated. For this reason, each of its former
 neighbour $R$ will send a CTP.\\
@@ -1001,6 +1017,7 @@ will be transformed in:
 	&L\rightarrow M\rightarrow N\\
 	&I\rightarrow N\\
 \end{align*}
+%%%%%%%%%%%%%%%%% TODO TODO TODO Remove ME %%%%%%%%%%%%%%%%%%%
 
 
 \subsection{Rtt and bandwidth}
@@ -1235,6 +1252,21 @@ in general, the nodes won't join or die at once, but progressively.
 		\href{http://lab.dyne.org/Ntk\_caustic\_routing}{RFC 0013}
 	\item Research a ``mobile QSPN''
 \end{enumerate}
+
+\section{ChangeLog}
+\begin{itemize}
+	\item \verb|March 2007|
+		\begin{itemize}
+			\item New section: ``Network dynamics'' (\ref{sec:netdyn})
+			\item Description of the Local QSPN (sec.  \ref{sec:localqspn})
+			\item More detailed description of the QSPN v1 (sec. \ref{sec:QSPNv1})
+			\item Subsection ``QSPN v2 - High levels'' removed. It
+				was redundant with the topology
+				document\cite{ntktopology}
+		\end{itemize}
+	\item \verb|October 2006|\\
+		Initial release.
+\end{itemize}
 
 %%%%%%%%%%%%%%%%
 % Bibliography %
