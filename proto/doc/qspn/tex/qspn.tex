@@ -21,6 +21,7 @@
 \else
 \newcommand{\href}[2]{ #1 }
 \fi
+\newcommand{\T}[1]{\textrm{#1}}
 \title{Quantum Shortest Path Netsukuku}
 \author{AlpT (@freaknet.org)}
 \author{http://netsukuku.freaknet.org\\AlpT (@freaknet.org)}
@@ -929,57 +930,148 @@ neighbour $P$, and $P$ forwards it to its neighbours. However this CTP will be
 immediately dropped! Indeed, the nodes will consider this CTP not interesting,
 because the contained $\dots\rightarrow P \rightarrow N$ route is less
 efficient than the old one, which has been saved during the last graph
-exploration.\\
-\newline
-The natural solution is to totally re-explore the network each
-time a change occurs. However, when the change affects only a local portion of the
-network, a new total exploration becomes inefficient, because it will involve
-even unaffected nodes.
-It is then necessary to define an extension of the QSPN, which
-will explore only the local part of the network affected by the change.
+exploration.
 
-\subsection{Link ID}
-A solution to the worsened link recognition problem is the use of
-the Link IDs.
+%\subsection{Link ID}
+%A solution to the worsened link recognition problem is the use of
+%the Link IDs.
+%
+%Each node $n$ assigns an ID to all its links. $n$ will change the ID of a
+%link, when its quality worsens. The ID is set to the current uptime of the
+%node\footnote{a simple numeric ID will work too. The only requirement is that
+%it must be strictly crescent, i.e. $ID_{now}>ID_{prev}$. However, using the
+%uptime of a (g)node simplify different tasks}.\\
+%Let $r$ be a rnode of $n$. When a TP traverse the link $r\rightarrow n$, the
+%node $n$ will append, as usual, its ID and the ID of its link $n\rightarrow
+%r$.\\
+%The node receiving the packet will memorize the link IDs stored in the TP
+%together with the route information. In this way, if in future TPs they will
+%find a link ID greater than the memorized one, they will understand that the link
+%has worsened.\\
+%We can modify the rule of the $Q^2$ as follow: let $l$ be a link contained in
+%a CTP, $\textrm{ID}(l)$ the ID associated to the link $l$
+%and ${\textrm{ID}}_x(l)$ the ID associated to $l$, which has been previously saved by the node $x$.
+%The node $x$ will consider the CTP interesting if \[\textrm{ID}(l) >
+%{\textrm{ID} }_x(l)\]
+%If  $\textrm{ID}(l) = {\textrm{ID}}_x(l)$, then we fall back to the normal
+%CTP evaluation. If, instead, $\textrm{ID}(l) < {\textrm{ID} }_x(l)$, then the
+%CTP will be considered invalid.
 
-Each node $n$ assigns an ID to all its links. $n$ will change the ID of a
-link, when its quality worsens. The ID is set to the current uptime of the
-node\footnote{a simple numeric ID will work too. The only requirement is that
-it must be strictly crescent, i.e. $ID_{now}>ID_{prev}$. However, using the
-uptime of a (g)node simplify different tasks}.\\
-Let $r$ be a rnode of $n$. When a TP traverse the link $r\rightarrow n$, the
-node $n$ will append, as usual, its ID and the ID of its link $n\rightarrow
-r$.\\
-The node receiving the packet will memorize the link IDs stored in the TP
-together with the route information. In this way, if in future TPs they will
-find a link ID greater than the memorized one, they will understand that the link
-has worsened.\\
-We can modify the rule of the $Q^2$ as follow: let $l$ be a link contained in
-a CTP, $\textrm{ID}(l)$ the ID associated to the link $l$
-and ${\textrm{ID}}_x(l)$ the ID associated to $l$, which has been previously saved by the node $x$.
-The node $x$ will consider the CTP interesting if \[\textrm{ID}(l) >
-{\textrm{ID} }_x(l)\]
-If  $\textrm{ID}(l) = {\textrm{ID}}_x(l)$, then we fall back to the normal
-CTP evaluation. If, instead, $\textrm{ID}(l) < {\textrm{ID} }_x(l)$, then the
-CTP will be considered invalid.
+\subsection{Extended Tracer Packet}
+\label{sec:etp}
+The ETP solves the problem of how the graph should be re-explored to
+update the maps of the nodes interested to a network change.
+Its way of working is based on a simple observation:
 
-\subsection{Local QSPN}
-\label{sec:localqspn}
-The Local QSPN can be intuitively described as follo: 
-\begin{quote}
-	Suppose that a change occurred in the network. A Local CTP will
-	explore only the portion of the network, which is formed by nodes
-	interested in the change. This local zone becomes, for the CTP,
-	as a separated network: the nodes adopts a separated QSPN cache
-	for the CTPs restricted to this zone, and when a CTP reaches its
-	boundaries, it will be reflected back, as if it reached the end of the
-	network.
-\end{quote}
-TODO:
+The first QSPN exploration distributes, among the nodes, information describing
+the network topology. 
+When a change in the network occurs, only
+the information stored in the nodes affected by the change must be updated.
+The unaffected nodes will still have up to date information that they can simply
+redistribute with the use of the Extended Tracer Packets.
+
+An ETP is a Continuos Tracer Packet,
+which contains a portion of a map. Since a map is a set of routes and a
+route can be described by a TP, the ETP can be considered as different TPs packed togheter.
+Each TP of the ETP is then subjected to the rules of the QSPN v2.
+
+In order to give an exact definition of an ETP, we must examine each case of network change.
+\begin{description}
+	\item[Worsened link] Suppose that the link $A
+		\stackrel{l}{\leftrightarrow} B$
+		worsens. 
+		$B$ will use the following algorithm to notice the other nodes
+		of the link change:
+		\begin{enumerate}
+		\item If at least one of the primary
+		       routes\footnote{
+				a route src$\rightarrow dst$ is called primary
+				if it is among the first MaxRoutes routes of
+				type src$\rightarrow dst$}
+			saved in the map
+			of $B$ and different from the route $B\rightarrow A$, uses the link $l$, then $B$ creates an
+			empty ETP, otherwise the algorithm halts, i.e. $B$
+			won't do anything.
+		\item \label{stepQ} If the empty ETP has been created,
+			$B$ creates the set $Q$, containing all the primary 
+			routes passing through the link $l$.
+			Each route $q\in Q$ is 
+			saved as $(\T{dst}(q), \T{rem}(q), \T{tpmask}(q))$ where 
+			$\T{dst}(q)$ is the destination of the route,
+			$\T{rem}(q)$ is the Route
+			Efficiency Measure, and $\T{tpmask}(q)$ is a bitmask of 256
+			bits, where the bit at the i-th position indicates if
+			the node i is an hop of the route $q$. We'll later
+			reference to $Q$ as the \emph{set of old routes}.
+		\item \label{upmap}
+			If the empty ETP has been created, $B$ updates its maps:
+			suppose that the route $r$, passing through the link
+			$l$, had a total rtt $t_0(r)$. If the rtt of the link
+			$l$ before the change was $t_0(l)$ and now is
+			$t_1(l)$, where $t_0(l) < t_1(l)$, then
+			$t_1(r):=t_0(r)-t_0(l)+t_1(l)$.\\
+			For the bandwidth we have:
+			\begin{align*}
+				&b_0(r)\;\;\T{ the total bandwidth of the
+				route $r$, before the change}\\
+				&b_0(l) > b_1(l)\;\;\T{the bw of $l$ has
+				worsend during the change}\\
+				&b_1(r):=\min \{b_0(r), b_1(l)\}
+			\end{align*}
+			The routes are then sorted.
+		\item \label{stepR} 
+			$B$ creates the set $R$, containing all the primary
+			routes passing through the link $l$. Note that $R\neq
+			Q$, because now the map has been already updated. Each
+			route is saved as $(\T{dst}(q), \T{rem}(q))$.
+			$R$ is called the \emph{set of new routes}.
+		\item $B$ fills the ETP: it adds in it the set $Q$ and $R$.
+		\item $B$ appends the ID of $A$, along with the efficiency
+			value of the link $l$, and, as usual, its ID. It sends
+			the ETP to all its rnodes, except $A$.
+		\end{enumerate}
+		Suppose that the rnode $C$ of $B$ has received the ETP. $C$
+		will examine the ETP, and if it is found interesting, $C$ will
+		update its map and forward the ETP to the other rnodes, as
+		follow:
+		\begin{enumerate}
+		\item Let $Q$ and $R$ the two set of routes contained in the
+			ETP received by $C$.\\
+			Let $M$ be the set of routes contained in the map of $C$.\\
+		For each route $q\in Q$, %TODO CONTINUE HERE!
+		%UPTIME FOR THE checking of duplicate ETP
+		the node $C$ looks for 
+		a route $s\in M$ such that 
+		\[\T{dst}(s)=\T{dst}(q),\;\;\T{tpmask}(s)=\T{tpmask}(q)\]
+		If $s$ exists, then 
+		\begin{enumerate}
+			\item $s$ is removed from the map
+			\item $q$ is added
+		\end{enumerate}
+			$\T{tpmask}(s)=\T{tpmask}(q)$, then all the routes in
+			$S$ are deleted from the map and are replaced by the
+			routes of the ETP with the same destination of
+			$q$ (note \footnote{When saving a route $q$ of the ETP in
+			the map, we must consider the hops covered by the ETP,
+			so the real saved route is
+			$q\leftarrow \T{hop}_1\leftarrow \T{hop}_2\leftarrow
+			\dots\leftarrow \T{hop}_n$. In this
+			case we'll have $q\leftarrow B\leftarrow A$.}).
+			If such $s$ doesn't exists, then $q$ is removed from
+			the set $Q$ contained in the ETP, and each route of
+			the ETP with the same destination of $q$ is removed
+			too.
+		\end{enumerate}
+	\item[A new node join]
+	\item[Improved link]
+		%TOWRITE: s/B/A
+\end{description}
 - definizione di cambiamento interessante\\
+- l'ETP puo' essere visto come un agglomerato di TP\\
+- l'ETP puo' essere spezzettato\\
+- criptografia dell'ETP\\
 - come viene riflesso il CTP una volta che raggiunge il confine della zona\\
 - casi: morte, join, miglioramento/peggioramento di un link, creazione di un nuovo link
-
 %
 % - local qspn: esplorazione locale
 %	- interessante come hop per raggiungere altri posti oltre l'hop stesso
@@ -992,34 +1084,6 @@ TODO:
 %
 
 \section{QSPN optimisations}
-%%%%%%%%%%%%%%%%% TODO TODO TODO Remove ME %%%%%%%%%%%%%%%%%%%
-\subsection{Death of a node}
-When a node $N$ dies the network must be updated. For this reason, each of its former
-neighbour $R$ will send a CTP.\\
-The first part of the CTP will contain the route $N \stackrel{-\infty}{\longrightarrow } R$. The efficiency
-of this route is set to $-\infty$.\\
-
-The value $-\infty$ has the higher priority on any other efficiency value.
-However a node will consider the route $N \stackrel{-\infty}{\longrightarrow }
-R$ interesting only if it has in memory the same route.
-Indeed, if the node didn't know (or didn't care) about the route $N
-\rightarrow R$, then it doesn't need to know that the link $N\rightarrow R$
-doesn't exist anymore.
-
-When an interested node receives the CTP, it updates its memorised routes. For
-example, the two routes
-\begin{align*}
-&L\rightarrow M\rightarrow N \rightarrow R\rightarrow S\\
-&I\rightarrow N\rightarrow R\rightarrow H
-\end{align*}
-will be transformed in:
-\begin{align*}
-	&L\rightarrow M\rightarrow N\\
-	&I\rightarrow N\\
-\end{align*}
-%%%%%%%%%%%%%%%%% TODO TODO TODO Remove ME %%%%%%%%%%%%%%%%%%%
-
-
 \subsection{Rtt and bandwidth}
 \label{sec:bandwidth_q1q2}
 
@@ -1161,8 +1225,12 @@ events are the packets sent on the network.
 
 In this paragraph we'll analyze the results of various simulations.
 \begin{description}
-	\item[TP flux] The \emph{TP flux} of a node $n$, is the number of TP
-		packets which have been forwarded by $n$ during the entire QSPN
+	\item[TP flux] The \emph{TP flux} of a node $n$, is the number of
+		distinct\footnote{To clarify what we mean with ``distinct
+		TPs'': suppose $n$ has $6$ rnodes, it receives only two
+		TPs and sends only a new one, then $\Phi(n)\neq 5+5+6$, but
+		$\Phi(n)=3$.}
+		TP packets which have been forwarded by $n$ during the entire QSPN
 		exploration. it is indicated with $\Phi(n)$.
 	\item[Mean TP flux] Given $k$ nodes ${n_1,\dots,n_k}$, their mean TP
 		flux is:
@@ -1258,7 +1326,9 @@ in general, the nodes won't join or die at once, but progressively.
 	\item \verb|March 2007|
 		\begin{itemize}
 			\item New section: ``Network dynamics'' (\ref{sec:netdyn})
-			\item Description of the Local QSPN (sec.  \ref{sec:localqspn})
+			\item Description of the ETP (sec.  \ref{sec:etp})
+			\item Link ID section remove. With the ETP they are no
+				more necessary.
 			\item More detailed description of the QSPN v1 (sec. \ref{sec:QSPNv1})
 			\item Subsection ``QSPN v2 - High levels'' removed. It
 				was redundant with the topology
