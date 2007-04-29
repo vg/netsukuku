@@ -983,11 +983,15 @@ In order to give an exact definition of an ETP, we must examine each case of net
 \begin{description}
 	\item[Worsened link] Suppose that the link $A
 		\stackrel{l}{\leftrightarrow} B$ worsens.\\
+		Let's analyse what $B$ will do (the situation is symmetric for
+		$A$).
+
 		$B$, if interested in the change, will create an ETP
 		containing all its old routes, affected by the change, and all
-		the new modified routes.
-		$B$ will use the following algorithm to notice the other nodes
-		of the link change:
+		the backup routes used as substitute for the old ones. The ETP
+		will be sent to all its neighbours, except $A$. In detail,
+		$B$ will use the following algorithm
+		:
 		\begin{enumerate}
 		\item If at least one of the primary
 		       routes\footnote{
@@ -1020,9 +1024,9 @@ In order to give an exact definition of an ETP, we must examine each case of net
 			routes passing through the link $l$. From $Q$
 			it creates the set $R$, where
 			\[
-			R=\{r\in M_p\;|\;\exists q\in Q:\;\T{dst}(r)=\T{dst}(q)\}
+			R=\{r\in M\;|\;\exists q\in Q:\;\T{dst}(r)=\T{dst}(q)\}
 			\]
-			where $M_p$ are all the primary routes of the map, and 
+			where $M$ is the set of all the primary routes of the map, and 
 			$\T{dst}(r)$ is the destination of the route $r$.
 			Note that $Q\subseteq R$.
 			Each
@@ -1036,9 +1040,10 @@ In order to give an exact definition of an ETP, we must examine each case of net
 			value of the link $l$, and, as usual, its ID. It sends
 			the ETP to all its neighbours, except $A$.
 		\end{enumerate}
+		\label{ETPrule1}
 		Suppose that the neighbor $C$ of $B$ has received the ETP. $C$
-		will examine the ETP, and if it is found interesting, $C$ will
-		update its map and forward the ETP to the other neighbours, as
+		will examine the ETP and, if considered interesting, it 
+	will update its map and forward the ETP to the other neighbours, as
 		follow:
 		\begin{enumerate}
 		\item If the ID of the node $C$ is already present in the
@@ -1047,7 +1052,7 @@ In order to give an exact definition of an ETP, we must examine each case of net
 			rule}.
 		\item Let $R$ be the set of routes contained in the
 			ETP received by $C$.\\
-			Let $M$ be the set of routes contained in the map of $C$.\\
+			Let $M$ be the set of all primary routes contained in the map of $C$.\\
 		For each route $r\in R$, the node $C$ looks for 
 		a route $m\in M$ such that 
 		\[\T{dst}(m)=\T{dst}(r),\;\;\T{tpmask}(m)=\T{tpmask}(r)\]
@@ -1062,28 +1067,61 @@ In order to give an exact definition of an ETP, we must examine each case of net
 			\item if $r'$ is a better alternative to at least one primary route
 				$m'\in M$ such that $\T{dst}(r')=\T{dst}(m')$,
 				then $r'$  is saved in the map of $C$
-	(note \footnote{When saving a
-		route $r$ of the ETP
-		in the map, we must consider the hops covered by the ETP,
-		so the real saved route is
-		$r\leftarrow \T{hop}_1\leftarrow \T{hop}_2\leftarrow
-		\dots\leftarrow \T{hop}_n$. In this
-		case we'll have $r\leftarrow B\leftarrow A$.}), 
-	\item otherwise, $r'$ is removed from $R$.
+				(note \footnote{When saving a route $r$ of the ETP
+				in the map, we must consider the hops covered by the ETP,
+				so the real saved route is
+				$r\leftarrow \T{hop}_1\leftarrow \T{hop}_2\leftarrow
+				\dots\leftarrow \T{hop}_n$. In this
+				case we'll have $r\leftarrow B\leftarrow A$.}), 
+			\item otherwise, $r'$ is removed from $R$.
 		\end{enumerate}
+		Note \footnote{this step implements the QSPN v2 rules: only
+		good routes are kept, the other are discarded. Notice
+		the extension: if the ETP had only one route, it would be
+		almost equal to a CTP (the CTP doesn't have the acyclic rule)}
 	\item If $R$ is now empty, i.e. all its routes have been removed, then
 		$C$ considers the ETP as uninteresting. Let's suppose for now
 		that it is interesting.
 	\item $C$ packs the ETP with the previously modified
 		set $R$, and adds its ID. The ETP is sent to all its neighbours,
 		except $B$
-		\end{enumerate}
-	\item[A new node join]
+	\end{enumerate}
+	The rnodes of $C$ will use this same procedure. In this way, the ETP
+	will continue to be propagated until it is considered interesting.
+
+	Let's suppose now that a node $N$ receives the ETP and considers it
+	uninteresting. $N$ won't just drop the ETP, but will also send back
+	another ETP containing its own routes. The reason is simple: $N$
+	considers the received ETP uninteresting, this means that $N$ isn't
+	affected by the change of the link $l$, i.e. all its primary routes don't
+	pass through $l$ and thus are still optimal. Therefore, $N$ will
+	send back its routes, hoping that they will be useful to the nodes
+	affected by the change. In detail, this is what will happen when $N$
+	receives the ETP:
+	\begin{enumerate}
+		\item $N$ receives the ETP from the node $L$, and considers it
+			uninteresting.
+		\item Let $R$ be the set of routes contained in the ETP.\\
+		Let $M$ be the set of all primary routes contained in the map
+		of $N$.\\
+		$N$ creates the following set:
+		\[
+		S=\{m\in M\;|\; \exists r\in R:\;\T{dst}(m)=\T{dst}(r)\}
+		\]
+		\item $N$ creates the new ETP, appending in it the set $S$ and
+			its ID.
+		\item The ETP is sent to $L$.
+	\end{enumerate}
+	At this point, the new ETP created by $N$, will propagate back in this
+	same fashion of the previous ETP (see page \pageref{ETPrule1}), i.e.
+	until considered interesting. The only difference is that when a node
+	considers it uninteresting, it is just dropped.
+	\item[A new node joins]
+	\item[A node dies]
 	\item[Improved link]
-		%TOWRITE: s/B/A
 \end{description}
 - definizione di cambiamento interessante\\
-- l'ETP puo' essere visto come un agglomerato di TP\\
+- CTP ACICLICO!
 - l'ETP puo' essere spezzettato\\
 - criptografia dell'ETP\\
 - come viene riflesso il CTP una volta che raggiunge il confine della zona\\
