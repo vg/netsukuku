@@ -981,7 +981,9 @@ Each TP of the ETP is then subjected to the rules of the QSPN v2.
 
 In order to give an exact definition of an ETP, we must examine each case of network change.
 \begin{description}
-	\item[Worsened link] Suppose that the link $A
+	\item[Worsened link] 
+		\label{wlink}
+		Suppose that the link $A
 		\stackrel{l}{\leftrightarrow} B$ worsens.\\
 		Let's analyse what $B$ will do (the situation is symmetric for
 		$A$).
@@ -1035,10 +1037,14 @@ In order to give an exact definition of an ETP, we must examine each case of net
 			Efficiency Measure, and $\T{tpmask}(r)$ is a bitmask of 256
 			bits, where the bit at the i-th position indicates if
 			the node i is an hop of the route $r$.
-		\item $B$ fills the ETP: it adds in it the set $R$.
-		\item $B$ appends the ID of $A$, along with the efficiency
-			value of the link $l$, and, as usual, its ID. It sends
-			the ETP to all its neighbours, except $A$.
+		\item $B$ fills the ETP: 
+			\begin{enumerate}
+				\item it adds in it the set $R$
+		\item it appends the ID of $A$, along with the efficiency
+			value of the link $l$, and, as usual, its ID.
+		\item it sets to 1 the \emph{flag of interest}.
+			\end{enumerate}
+		\item Finally, $B$ sends the ETP to all its neighbours, except $A$.
 		\end{enumerate}
 		\label{ETPrule1}
 		Suppose that the neighbor $C$ of $B$ has received the ETP. $C$
@@ -1081,7 +1087,8 @@ In order to give an exact definition of an ETP, we must examine each case of net
 		almost equal to a CTP (the CTP doesn't have the acyclic rule)}
 	\item If $R$ is now empty, i.e. all its routes have been removed, then
 		$C$ considers the ETP as uninteresting. Let's suppose for now
-		that it is interesting.
+		that it is interesting: the \emph{flag of interest} remains
+		set to	1.
 	\item $C$ packs the ETP with the previously modified
 		set $R$, and adds its ID. The ETP is sent to all its neighbours,
 		except $B$
@@ -1109,15 +1116,44 @@ In order to give an exact definition of an ETP, we must examine each case of net
 		S=\{m\in M\;|\; \exists r\in R:\;\T{dst}(m)=\T{dst}(r)\}
 		\]
 		\item $N$ creates the new ETP, appending in it the set $S$ and
-			its ID.
+			its ID. The \emph{flag of interest} of this ETP is set
+			to 0.
 		\item The ETP is sent to $L$.
 	\end{enumerate}
-	At this point, the new ETP created by $N$, will propagate back in this
+	At this point, the new ETP created by $N$, will propagate back in the
 	same fashion of the previous ETP (see page \pageref{ETPrule1}), i.e.
 	until considered interesting. The only difference is that when a node
-	considers it uninteresting, it is just dropped.
-	\item[A new node joins]
+	considers it uninteresting, it is just dropped\footnote{the node will
+	drop the ETP if the \emph{flag of interest} is set to 0 and if it is
+	uninteresting}.
 	\item[A node dies]
+		Suppose the node $A$ dies. Each neighbour $B$ of $A$ will send
+		an ETP. The ETPs are generated and propagated with the
+		algorithms described in the \textbf{worsened link} case (page
+		\pageref{wlink}), the differences are:
+		\begin{enumerate}
+			\item Instead of considering the routes passing
+				through the worsened link we consider the
+				routes passing from the dead node.
+			\item Suppose that the node $N$ receives the ETP from
+				its neighbour $L$ and considers it uninteresting.
+				$N$ sends back to $L$ the new ETP to share its
+				routes
+				among the interested node. However, unlike the
+				case for the worsened link, $N$ creates also a
+				new simple TP, where it writes only the
+				information of the death of $A$.
+				$N$ sends this TP to all its neighbours, except $L$.
+
+				This simple TP will be propagated with the
+				rules of the QSPN v2. For this reason and since it carries
+				only one useful information (the death of
+				$A$), each node will receive it just once (the
+				second time it will be dropped). This simple
+				TP serves to inform the nodes unaffected
+				by the network change of the death of $A$.
+		\end{enumerate}
+	\item[A new node joins]
 	\item[Improved link]
 \end{description}
 - definizione di cambiamento interessante\\
