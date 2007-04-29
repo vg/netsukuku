@@ -321,26 +321,26 @@ Given this graph as input the algorithm will output:
 & D \rightarrow E
 \end{align*}
 
-\section{Raw Tracer Packet flood}
-\label{sec:raw_TP_flood}
+\section{Acyclic Tracer Packet flood}
+\label{sec:acyclic_TP_flood}
 
 We can consider each route given by the output of the above algorithm as a
 single Tracer Packet.
 In fact, it is possible to implement the same algorithm using a slightly
-modified version of the TP flood, called the Raw TP flood (the name explains
-why it isn't used by the QSPN):
+modified version of the TP flood, called the Acyclic TP flood:
 
-The flood is not restricted like in a normal TP flood: one or more Raw TP can
+The flood is not restricted like in a normal TP flood: one or more ATP can
 pass from the same node. The end of the flood is given by this rule: a node
-will not forward to any of its neighbours the RTP if its ID is already present
-in the route contained in the body of the packet.
-Finally, like in the normal TP, a node doesn't forward the RTP to the
+will not forward to any of its neighbours the ATP if its node ID is already present
+in the route contained in the body of the packet. With this rule an ATP can
+walk in a cycle only once, hence the name.
+Finally, like in the normal TP, a node doesn't forward the ATP to the
 neighbour from which it has received the packet itself.
 
-If every node of the network sends a Raw TP flood, then every node will get
+If every node of the network sends an ATP flood, then every node will get
 all the possible routes to reach any other node.
 \newline
-As you can see, the RTP flood performs a ``live'' version of the algorithm
+As you can see, the ATP flood performs a ``live'' version of the algorithm
 described in section \ref{sec:gen_routes}.
 Obviously this is far from an efficient routing discovery algorithm, but it
 represents a good start.
@@ -359,7 +359,7 @@ Consider for example the following four routes:
 	& D \rightarrow C \rightarrow A \rightarrow B \label{eq:e4}
 \end{align}
 
-As we've seen in the previous section \ref{sec:raw_TP_flood}, we can consider
+As we've seen in the previous section \ref{sec:acyclic_TP_flood}, we can consider
 these routes as effective Tracer Packets.
 In this example, the TP (1) cover the same route of the TP
 (2). Therefore we can save one TP by just sending the TP
@@ -613,8 +613,8 @@ in a cycle.
 The QSPN v2 is the ``live'' version of the Simplify Route algorithm (section
 \ref{sec:simplify_routes}).
 
-The CTP flood of the QSPN v2 explores the entire graph, but unlike the RTP
-(section \ref{sec:raw_TP_flood}), it drops the TPs which contains
+The CTP flood of the QSPN v2 explores the entire graph, but unlike the ATP
+(section \ref{sec:acyclic_TP_flood}), it drops the TPs which contains
 redundant routes, thus only the simplified, non redundant routes survives and
 continue to explore the graph.
 
@@ -941,7 +941,7 @@ exploration.
 %node\footnote{a simple numeric ID will work too. The only requirement is that
 %it must be strictly crescent, i.e. $ID_{now}>ID_{prev}$. However, using the
 %uptime of a (g)node simplify different tasks}.\\
-%Let $r$ be a rnode of $n$. When a TP traverse the link $r\rightarrow n$, the
+%Let $r$ be a neighbor of $n$. When a TP traverse the link $r\rightarrow n$, the
 %node $n$ will append, as usual, its ID and the ID of its link $n\rightarrow
 %r$.\\
 %The node receiving the packet will memorize the link IDs stored in the TP
@@ -970,7 +970,11 @@ the information stored in the nodes affected by the change must be updated.
 The unaffected nodes will still have up to date information that they can simply
 redistribute with the use of the Extended Tracer Packets.
 
-An ETP is a Continuos Tracer Packet,
+An ETP is an Acyclic Tracer Packet,\footnote{
+An ATP (see paragraph \ref{sec:acyclic_TP_flood}) is a normal TP with the following
+rule: a node drops the received ATP if  its  node ID is already present in the route
+contained in the body of the packet. Note also, that since it is a normal TP,
+it is not reflected back, when it reaches the end of a segment.}
 which contains a portion of a map. Since a map is a set of routes and a
 route can be described by a TP, the ETP can be considered as different TPs packed togheter.
 Each TP of the ETP is then subjected to the rules of the QSPN v2.
@@ -978,8 +982,10 @@ Each TP of the ETP is then subjected to the rules of the QSPN v2.
 In order to give an exact definition of an ETP, we must examine each case of network change.
 \begin{description}
 	\item[Worsened link] Suppose that the link $A
-		\stackrel{l}{\leftrightarrow} B$
-		worsens. 
+		\stackrel{l}{\leftrightarrow} B$ worsens.\\
+		$B$, if interested in the change, will create an ETP
+		containing all its old routes, affected by the change, and all
+		the new modified routes.
 		$B$ will use the following algorithm to notice the other nodes
 		of the link change:
 		\begin{enumerate}
@@ -992,17 +998,6 @@ In order to give an exact definition of an ETP, we must examine each case of net
 			of $B$ and different from the route $B\rightarrow A$, uses the link $l$, then $B$ creates an
 			empty ETP, otherwise the algorithm halts, i.e. $B$
 			won't do anything.
-		\item \label{stepQ} If the empty ETP has been created,
-			$B$ creates the set $Q$, containing all the primary 
-			routes passing through the link $l$.
-			Each route $q\in Q$ is 
-			saved as $(\T{dst}(q), \T{rem}(q), \T{tpmask}(q))$ where 
-			$\T{dst}(q)$ is the destination of the route,
-			$\T{rem}(q)$ is the Route
-			Efficiency Measure, and $\T{tpmask}(q)$ is a bitmask of 256
-			bits, where the bit at the i-th position indicates if
-			the node i is an hop of the route $q$. We'll later
-			reference to $Q$ as the \emph{set of old routes}.
 		\item \label{upmap}
 			If the empty ETP has been created, $B$ updates its maps:
 			suppose that the route $r$, passing through the link
@@ -1020,47 +1015,68 @@ In order to give an exact definition of an ETP, we must examine each case of net
 			\end{align*}
 			The routes are then sorted.
 		\item \label{stepR} 
-			$B$ creates the set $R$, containing all the primary
-			routes passing through the link $l$. Note that $R\neq
-			Q$, because now the map has been already updated. Each
-			route is saved as $(\T{dst}(q), \T{rem}(q))$.
-			$R$ is called the \emph{set of new routes}.
-		\item $B$ fills the ETP: it adds in it the set $Q$ and $R$.
+			$B$ creates the temporary set $Q$, 
+			containing all the primary
+			routes passing through the link $l$. From $Q$
+			it creates the set $R$, where
+			\[
+			R=\{r\in M_p\;|\;\exists q\in Q:\;\T{dst}(r)=\T{dst}(q)\}
+			\]
+			where $M_p$ are all the primary routes of the map, and 
+			$\T{dst}(r)$ is the destination of the route $r$.
+			Note that $Q\subseteq R$.
+			Each
+			route $r\in R$ is saved as $(\T{dst}(r), \T{rem}(r),
+			\T{tpmask}(r))$, where $\T{rem}(r)$ is the Route
+			Efficiency Measure, and $\T{tpmask}(r)$ is a bitmask of 256
+			bits, where the bit at the i-th position indicates if
+			the node i is an hop of the route $r$.
+		\item $B$ fills the ETP: it adds in it the set $R$.
 		\item $B$ appends the ID of $A$, along with the efficiency
 			value of the link $l$, and, as usual, its ID. It sends
-			the ETP to all its rnodes, except $A$.
+			the ETP to all its neighbours, except $A$.
 		\end{enumerate}
-		Suppose that the rnode $C$ of $B$ has received the ETP. $C$
+		Suppose that the neighbor $C$ of $B$ has received the ETP. $C$
 		will examine the ETP, and if it is found interesting, $C$ will
-		update its map and forward the ETP to the other rnodes, as
+		update its map and forward the ETP to the other neighbours, as
 		follow:
 		\begin{enumerate}
-		\item Let $Q$ and $R$ the two set of routes contained in the
+		\item If the ID of the node $C$ is already present in the
+			received ETP, then $C$ immediately drops the ETP, and
+			skips all the following steps\footnote{This is the acyclic
+			rule}.
+		\item Let $R$ be the set of routes contained in the
 			ETP received by $C$.\\
 			Let $M$ be the set of routes contained in the map of $C$.\\
-		For each route $q\in Q$, %TODO CONTINUE HERE!
-		%UPTIME FOR THE checking of duplicate ETP
-		the node $C$ looks for 
-		a route $s\in M$ such that 
-		\[\T{dst}(s)=\T{dst}(q),\;\;\T{tpmask}(s)=\T{tpmask}(q)\]
-		If $s$ exists, then 
+		For each route $r\in R$, the node $C$ looks for 
+		a route $m\in M$ such that 
+		\[\T{dst}(m)=\T{dst}(r),\;\;\T{tpmask}(m)=\T{tpmask}(r)\]
+		If $m$ exists, then $C$ sets $\T{rem}(m):=\T{rem}(r)$
+		\footnote{with this operation we are actually replacing $m$
+		with $r$, in the map $M$}.
+		Otherwise, $r$ is copied in the temporary set $R'$.\\
+		$M$ is sorted, i.e. the routes of the map of $C$ are sorted in
+		order of efficiency.
+	\item For all $r' \in R'$,
 		\begin{enumerate}
-			\item $s$ is removed from the map
-			\item $q$ is added
+			\item if $r'$ is a better alternative to at least one primary route
+				$m'\in M$ such that $\T{dst}(r')=\T{dst}(m')$,
+				then $r'$  is saved in the map of $C$
+	(note \footnote{When saving a
+		route $r$ of the ETP
+		in the map, we must consider the hops covered by the ETP,
+		so the real saved route is
+		$r\leftarrow \T{hop}_1\leftarrow \T{hop}_2\leftarrow
+		\dots\leftarrow \T{hop}_n$. In this
+		case we'll have $r\leftarrow B\leftarrow A$.}), 
+	\item otherwise, $r'$ is removed from $R$.
 		\end{enumerate}
-			$\T{tpmask}(s)=\T{tpmask}(q)$, then all the routes in
-			$S$ are deleted from the map and are replaced by the
-			routes of the ETP with the same destination of
-			$q$ (note \footnote{When saving a route $q$ of the ETP in
-			the map, we must consider the hops covered by the ETP,
-			so the real saved route is
-			$q\leftarrow \T{hop}_1\leftarrow \T{hop}_2\leftarrow
-			\dots\leftarrow \T{hop}_n$. In this
-			case we'll have $q\leftarrow B\leftarrow A$.}).
-			If such $s$ doesn't exists, then $q$ is removed from
-			the set $Q$ contained in the ETP, and each route of
-			the ETP with the same destination of $q$ is removed
-			too.
+	\item If $R$ is now empty, i.e. all its routes have been removed, then
+		$C$ considers the ETP as uninteresting. Let's suppose for now
+		that it is interesting.
+	\item $C$ packs the ETP with the previously modified
+		set $R$, and adds its ID. The ETP is sent to all its neighbours,
+		except $B$
 		\end{enumerate}
 	\item[A new node join]
 	\item[Improved link]
@@ -1227,7 +1243,7 @@ In this paragraph we'll analyze the results of various simulations.
 \begin{description}
 	\item[TP flux] The \emph{TP flux} of a node $n$, is the number of
 		distinct\footnote{To clarify what we mean with ``distinct
-		TPs'': suppose $n$ has $6$ rnodes, it receives only two
+		TPs'': suppose $n$ has $6$ neighbours, it receives only two
 		TPs and sends only a new one, then $\Phi(n)\neq 5+5+6$, but
 		$\Phi(n)=3$.}
 		TP packets which have been forwarded by $n$ during the entire QSPN
