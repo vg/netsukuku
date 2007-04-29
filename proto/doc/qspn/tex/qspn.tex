@@ -932,31 +932,6 @@ because the contained $\dots\rightarrow P \rightarrow N$ route is less
 efficient than the old one, which has been saved during the last graph
 exploration.
 
-%\subsection{Link ID}
-%A solution to the worsened link recognition problem is the use of
-%the Link IDs.
-%
-%Each node $n$ assigns an ID to all its links. $n$ will change the ID of a
-%link, when its quality worsens. The ID is set to the current uptime of the
-%node\footnote{a simple numeric ID will work too. The only requirement is that
-%it must be strictly crescent, i.e. $ID_{now}>ID_{prev}$. However, using the
-%uptime of a (g)node simplify different tasks}.\\
-%Let $r$ be a neighbor of $n$. When a TP traverse the link $r\rightarrow n$, the
-%node $n$ will append, as usual, its ID and the ID of its link $n\rightarrow
-%r$.\\
-%The node receiving the packet will memorize the link IDs stored in the TP
-%together with the route information. In this way, if in future TPs they will
-%find a link ID greater than the memorized one, they will understand that the link
-%has worsened.\\
-%We can modify the rule of the $Q^2$ as follow: let $l$ be a link contained in
-%a CTP, $\textrm{ID}(l)$ the ID associated to the link $l$
-%and ${\textrm{ID}}_x(l)$ the ID associated to $l$, which has been previously saved by the node $x$.
-%The node $x$ will consider the CTP interesting if \[\textrm{ID}(l) >
-%{\textrm{ID} }_x(l)\]
-%If  $\textrm{ID}(l) = {\textrm{ID}}_x(l)$, then we fall back to the normal
-%CTP evaluation. If, instead, $\textrm{ID}(l) < {\textrm{ID} }_x(l)$, then the
-%CTP will be considered invalid.
-
 \subsection{Extended Tracer Packet}
 \label{sec:etp}
 The ETP solves the problem of how the graph should be re-explored to
@@ -992,8 +967,7 @@ In order to give an exact definition of an ETP, we must examine each case of net
 		containing all its old routes, affected by the change, and all
 		the backup routes used as substitute for the old ones. The ETP
 		will be sent to all its neighbours, except $A$. In detail,
-		$B$ will use the following algorithm
-		:
+		$B$ will use the following algorithm:
 		\begin{enumerate}
 		\item If at least one of the primary
 		       routes\footnote{
@@ -1032,17 +1006,16 @@ In order to give an exact definition of an ETP, we must examine each case of net
 			$\T{dst}(r)$ is the destination of the route $r$.
 			Note that $Q\subseteq R$.
 			Each
-			route $r\in R$ is saved as $(\T{dst}(r), \T{rem}(r),
-			\T{tpmask}(r))$, where $\T{rem}(r)$ is the Route
+			route $r\in R$ is saved as $(\T{dst}(r), \T{rem}(r), \T{tpmask}(r))$, where $\T{rem}(r)$ is the Route
 			Efficiency Measure, and $\T{tpmask}(r)$ is a bitmask of 256
 			bits, where the bit at the i-th position indicates if
 			the node i is an hop of the route $r$.
 		\item $B$ fills the ETP: 
 			\begin{enumerate}
 				\item it adds in it the set $R$
-		\item it appends the ID of $A$, along with the efficiency
-			value of the link $l$, and, as usual, its ID.
-		\item it sets to 1 the \emph{flag of interest}.
+				\item it appends the ID of $A$, along with the efficiency
+					value of the link $l$, and, as usual, its ID.
+				\item it sets to 1 the \emph{flag of interest}.
 			\end{enumerate}
 		\item Finally, $B$ sends the ETP to all its neighbours, except $A$.
 		\end{enumerate}
@@ -1153,24 +1126,76 @@ In order to give an exact definition of an ETP, we must examine each case of net
 				TP serves to inform the nodes unaffected
 				by the network change of the death of $A$.
 		\end{enumerate}
-	\item[A new node joins]
 	\item[Improved link]
+	\label{ilink}
+		Suppose that the link $A
+		\stackrel{l}{\leftrightarrow} B$ improves.\\
+		Let's examine the events, starting from $A$, keeping in mind
+		that the situation is symmetric for $B$.
+
+		Since the link $l$ improved, it may be possible for $B$ to use
+		it to improve some of its routes. For this reason, $A$ will
+		send to it an ETP with all the routes of its map, except those of the form
+		$A\rightarrow B\rightarrow \rightarrow \dots$. If $B$ finds
+		something of interest, it will forwards the ETP. In detail:
+		\begin{enumerate}
+			\item Let $M$ be the set of all primary routes
+				contained in the map of $A$.\\
+			      $A$ creates the following set:
+			      \[
+			      R=\{m\in M\;|\; \T{gw}(m)\neq B\}
+			      \]
+			      where $\T{gw}(m)$ is the first hop of the route
+			      $m$. 
+			      Each route $r\in R$ is saved as $(\T{dst}(r),
+			      \T{rem}(r), \T{tpmask}(r))$.
+		      \item $A$ creates the ETP:
+			\begin{enumerate}
+				\item it writes in it the set $R$
+				\item it appends the its node ID, along with the efficiency
+					value of the link $l$.
+				\item it sets to 1 the \emph{flag of interest}.
+			\end{enumerate}
+		      \item It sends the ETP to $B$
+		\end{enumerate}
+		At this point, the ETP is propagated exactly in the same way
+		of the \textbf{worsened link} case (see page \pageref{wlink}).
+	\item[A new node joins]
+		Suppose the node $A$ is joining the network. Its neighbours
+		are $B_1, B_2,\dots, B_n$, which are all already hooked, i.e.
+		they aren't joining. Then,
+		\begin{enumerate}
+			\item Each neighbour $B_i$ sends its whole map to
+				$A$
+			\item $A$ waits until the maps of all its neighbours
+				are received.
+			\item The maps are ``merged'' into a single map, which
+				becomes the map of $A$. In simple words, the
+				merge of two maps result in a map having only the
+				best routes of the two.
+			\item If the neighbours of $A$ are more than one, i.e.
+				$n>1$, then $A$ sends, to each of them, an ETP
+				containing all the primary routes of its map.
+			\item The ETPs are propagated exactly in the same way
+				of the \textbf{worsened link} case (see page
+				\pageref{wlink}).
+		\end{enumerate}
+		Note that this case extends the hooking procedure.
+	\item[Broken link] 
+		The case where the link $A
+		\stackrel{l}{\leftrightarrow} B$ becomes invalid, is handled
+		in the same way of the \textbf{worsened link} case (see
+		page \pageref{wlink}), because we can consider $l$ as
+		infinitely worsened.
+	\item[New link]
+		The case where a new link $A \stackrel{l}{\leftrightarrow} B$
+		is established between, is handled  in the same way of the
+		\textbf{improved link} case (see page \pageref{ilink}),
+		because we can consider $l$ as infinitely improved.
 \end{description}
-- definizione di cambiamento interessante\\
-- CTP ACICLICO!
-- l'ETP puo' essere spezzettato\\
-- criptografia dell'ETP\\
-- come viene riflesso il CTP una volta che raggiunge il confine della zona\\
-- casi: morte, join, miglioramento/peggioramento di un link, creazione di un nuovo link
-%
-% - local qspn: esplorazione locale
-%	- interessante come hop per raggiungere altri posti oltre l'hop stesso
-%	- oltre al qspn locale, c'e' la propagazione broadcast usuale
-%	- il nodo nn interessato, oltre a dropparlo lo riflette (il CTP)
-% - aggiornamenti periodici: esplorazione totale
-%	- perche' ?
-% - qspn locale simultanei: che succede?
-%
+%- l'ETP e' un CTP aciclico!
+%- l'ETP puo' essere spezzettato
+%- criptografia dell'ETP
 %
 
 \section{QSPN optimisations}
@@ -1413,7 +1438,7 @@ in general, the nodes won't join or die at once, but progressively.
 
 \section{ChangeLog}
 \begin{itemize}
-	\item \verb|March 2007|
+	\item \verb|April 2007|
 		\begin{itemize}
 			\item New section: ``Network dynamics'' (\ref{sec:netdyn})
 			\item Description of the ETP (sec.  \ref{sec:etp})
