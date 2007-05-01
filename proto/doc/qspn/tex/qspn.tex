@@ -1003,7 +1003,9 @@ In order to give an exact definition of an ETP, we must examine each case of net
 			R=\{r\in M\;|\;\exists q\in Q:\;\T{dst}(r)=\T{dst}(q)\}
 			\]
 			where $M$ is the set of all the primary routes of the map, and 
-			$\T{dst}(r)$ is the destination of the route $r$.
+			$\T{dst}(r)$ is the destination of the route $r$. In
+			other words, $R$ is the set of primary routes having
+			the same destination of at least one route of $Q$.
 			Note that $Q\subseteq R$.
 			Each
 			route $r\in R$ is saved as $(\T{dst}(r), \T{rem}(r), \T{tpmask}(r))$, where $\T{rem}(r)$ is the Route
@@ -1123,8 +1125,8 @@ In order to give an exact definition of an ETP, we must examine each case of net
 				only one useful information (the death of
 				$A$), each node will receive it just once (the
 				second time it will be dropped). This simple
-				TP serves to inform the nodes unaffected
-				by the network change of the death of $A$.
+				TP serves to inform the nodes, unaffected
+				by the network change, of the death of $A$.
 		\end{enumerate}
 	\item[Improved link]
 	\label{ilink}
@@ -1193,6 +1195,7 @@ In order to give an exact definition of an ETP, we must examine each case of net
 		\textbf{improved link} case (see page \pageref{ilink}),
 		because we can consider $l$ as infinitely improved.
 \end{description}
+%- joining simultaneo di piu' nodi
 %- l'ETP e' un CTP aciclico!
 %- l'ETP puo' essere spezzettato
 %- criptografia dell'ETP
