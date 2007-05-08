@@ -268,17 +268,17 @@ class node:
 			del self.int_map[rnode.nid]
 
 		def del_dead_route(nid, metric, route):
-			mgw=self.int_map.[nid].metric_array[metric].gw
+			mgw=self.int_map[nid].metric_array[metric].gw
 			mgw.remove(route)
 			deleted=1
 			if mgw == []:
 				empty=0
 				for metric in G.metrics:
-					if self.int_map.[nid].metric_array[metric].gw == []:
+					if self.int_map[nid].metric_array[metric].gw == []:
 						# We don't have any route to
 						# reach `node'. Delete it from
 						# our int_map
-						del self.int_map.[nid]
+						del self.int_map[nid]
 			else:
 				mapgw_set.add(mgw)
 

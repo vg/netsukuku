@@ -320,15 +320,18 @@ def main():
 	if ingraph:
 		print "[*] Loading graph from "+ingraph
 		g.load_graph(ingraph)
-	elif mgraph > 0:
-		print "[*] Generating a mesh graph of %d*%d=%d node"%(mgraph,mgraph, mgraph*mgraph)
-		g.gen_mesh_graph(mgraph)
-	elif kgraph > 0:
-		print "[*] Generating a complete graph of %d node"%kgraph
-		g.gen_complete_graph(kgraph)
-	elif rgraph > 0:
-		print "[*] Generating a random graph of %d node"%rgraph
-		g.gen_rand_graph(rgraph)
+	else:
+		print "Use 'python ntksim.py -g tests/FILE.ntksim'"
+		sys.exit(1)
+#	elif mgraph > 0:
+#		print "[*] Generating a mesh graph of %d*%d=%d node"%(mgraph,mgraph, mgraph*mgraph)
+#		g.gen_mesh_graph(mgraph)
+#	elif kgraph > 0:
+#		print "[*] Generating a complete graph of %d node"%kgraph
+#		g.gen_complete_graph(kgraph)
+#	elif rgraph > 0:
+#		print "[*] Generating a random graph of %d node"%rgraph
+#		g.gen_rand_graph(rgraph)
 
 	#print "[*] Saving the graph to "+outgraph
 	#g.print_dot(outgraph)

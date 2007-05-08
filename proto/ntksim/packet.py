@@ -95,7 +95,7 @@ class etp_section:
 	def __init__(self):
 		self.enabled=0	# Indicates if this Extended section is being
 				# used.
-		self.change=CHANGE_WORSENED_LINK # type of change
+		self.change=etp_section.CHANGE_WORSENED_LINK # type of change
 		self.changed_node=0	# pointer to the changed node (f.e.
 					# the dead or new node)
 		self.interest_flag=0
@@ -159,7 +159,7 @@ class etp_section:
 		mapgw_set=set()
 		def append_routes(nid, metric, route):
 			"""function passed to me.forall_routes_through()"""
-			mapgw_set.add(self.int_map.[nid].metric_array[metric].gw)
+			mapgw_set.add(self.int_map[nid].metric_array[metric].gw)
 
 		me.forall_routes_through(rnode, append_routes)
 
@@ -227,7 +227,7 @@ class tracer_packet:
 			# the chunks of the TP and that of `r'
 			# It's tpmask is  r.tpmask|tmask, and it's rem is
 			# r.rem+route_of_the_tp.rem
-			rp=route(me.nid, ...)
+			#rp=route(me.nid, ...)
 			
 			# Delete from the map all the routes passing from `gw'
 			# and having the tpmask set to `tpm'
@@ -366,7 +366,7 @@ class tracer_packet:
 			if (me.nid!=i):
 				#they aren't neighbour!
 				#pdb.set_trace()
-				r=route(me.nid, i,neigh_gw,tp,self)
+				r=route(me.nid, i, neigh_gw, tp, self)
 
 				if G.verbose:
 					r.print_route()
@@ -431,7 +431,7 @@ class packet:
 
 		# Evaluate the tracer packet, if it isn't interesting, drop
 		# it, otherwise forward it to the other rnodes.
-		if !tp.etp.enabled:
+		if not tp.etp.enabled:
 			# Normal TP
 			packet_interesting=tp.exec_tp(self.me)
 			self.me.tracer_forwarded+=1

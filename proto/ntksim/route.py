@@ -40,9 +40,9 @@ class route:
 	def __str__(self):
 		return "dst="+str(self.dst.nid)+" src="+str(self.src.nid)+" gw="+str(self.gw.nid)+" trtt="+str(self.rem.rtt)+" bwup="+str(self.rem.bwup)+" dp="+str(self.rem.dp)
 
-	def __init__(self, src_id, dst_id, gw_id, trc, pkt):
+	def __init__(self, src_id, dst_id, gw_id, trc, pktpayload):
 		"""
-		`pkt' is used just to recover the rem and link_id info.
+		`pktpayload' is used just to recover the rem and link_id info.
 		`trc' is what we actually use: it is an array of node IDs
 		"""
 		
@@ -63,7 +63,7 @@ class route:
 		for i in reversed(trc):
 			self.tpmask|=1<<i
 			
-			for j in reversed(pkt.payload.chunks): 
+			for j in reversed(pktpayload.chunks): 
 				#search  for all chunks in the packet starting from the
 				#end to avoid strange beavior with the cycles
 				if (j.nid==i):

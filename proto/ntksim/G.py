@@ -62,8 +62,8 @@ class G:
 	events=[]
 	EVENTS_LIMIT=0
 	MAX_ROUTES=1
-	metrics=["rtt","bwup","bwdw","avg","dp"]
-	#metrics=["dp","avg"]
+	#metrics=["rtt","bwup","bwdw","avg","dp"]
+	metrics=["rtt"]
 	total_packets_forwarded=0
 	
 	#
