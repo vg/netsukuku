@@ -27,9 +27,9 @@
 #include "andns.h"
 #include "err_errno.h"
 #include "andna.h"
-#include "andns_lib.h"
-#include "andns_net.h"
-#include "andns_snsd.h"
+#include "andns/andns_lib.h"
+#include "andns/andns_net.h"
+#include "andns/andns_snsd.h"
 #include "dnslib.h"
 
 

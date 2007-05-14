@@ -24,7 +24,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include "dnslib.h"
-#include "andns_lib.h"
+#include "andns/andns_lib.h"
 #include "inet.h"
 
 #define ANDNS_TIMEOUT		15

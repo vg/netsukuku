@@ -26,8 +26,8 @@
  * Functions
  */
 int andns_compress(char *src, int srclen);
-char* andns_uncompress(char *src, int srclen, int *dstlen);
-int a_hdr_u(char *buf,andns_pkt *ap);
+char *andns_uncompress(char *src, int srclen, int *dstlen);
+int a_hdr_u(char *buf, andns_pkt *ap);
 int a_qst_u(char *buf, andns_pkt *ap, int limitlen);
 int a_answ_u(char *buf, andns_pkt *ap, int limitlen);
 int a_answs_u(char *buf,andns_pkt *ap,int limitlen);
