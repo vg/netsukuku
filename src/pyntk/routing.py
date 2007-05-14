@@ -1,3 +1,7 @@
+#
+## Routes
+#
+
 def route_add():
     pass
 
@@ -15,6 +19,29 @@ def route_append():
 
 def route_gw():
     pass
+
+def route_flush():
+    pass
+
+#
+## Rules
+#
+ 
+def rule_add():
+    pass
+
+def rule_del():
+    pass
+
+def rule_replace():
+    pass
+
+def rule_flush():
+    pass
+
+#
+## Queries
+#
 
 def node_from_prefix():
     pass
