@@ -172,16 +172,14 @@ def kill_nodes():
 			node.dead=1
 			num_of_killed_nodes+=1
 			
-			#
-			# TODO: all the neighbours will send the new ETP,
-			# which must be built with etp_section.build_etp()
-			# The code below is deprecated
+			# node is the dead node
+			# neigh are the neighbours of the dead node
+			# all the neighbours will send the new ETP
+			for neigh,link_neigh in node.rnodes.iteritems():
+				if G.whole_network[neigh].dead!=1:
+					etp_pack=etp_section()
+					etp_section.build_etp(neigh,etp_pack.CHANGE_DEAD_NODE,G.whole_network[node])
 
-			#now all the neighbours of the dead node will be QSPN starters
-			for neigh,link in node.rnodes.iteritems():
-				if G.whole_network[neigh].dead!=1: # check if the neighbor is already dead :)
-					new_starters.append(G.whole_network[neigh])
-	
 	print "killed nodes:",num_of_killed_nodes
 	return new_starters
 

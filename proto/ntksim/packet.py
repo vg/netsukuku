@@ -233,7 +233,7 @@ class tracer_packet:
 			# and having the tpmask set to `tpm'
 			if not me.update_map_deadnode(gw, rp.tpmask):
 				# no route has been deleted
-				# Try to add  r in the map
+				# Try to add r in the map
 				if not me.add_route(rp):
 				   # this route isn't interesting, we may as
 				   # well delete it from the ETP
