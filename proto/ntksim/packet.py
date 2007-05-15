@@ -497,7 +497,7 @@ class packet:
 						pack.payload.etp.change=self.payload.etp.change
 						pack.payload.etp.change_node=self.payload.etp.change_node
 						pack.payload.etp.interest_flag=self.payload.etp.interest_flag
-						pack.payload.etp.routes=self.payload.etp.routes
+						pack.payload.etp.routes=self.payload.etp.routes[:]
 										
 					delay=link.l_rem.rtt
 					pack.time=G.curtime+delay
