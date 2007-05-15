@@ -492,12 +492,12 @@ class packet:
 						pack.copy_old_chunks(ch)
 					pack.add_chunk(link)
 
-					#TODO: support for the ETP: we have to
-					# copy the whole
-					# self.payload.etp_section. Can we use
-					# the copy.deepcopy() python tool ?
-											
-					#whole_tracer=pack.create_trcr()
+					if self.payload.etp.enabled:
+						pack.payload.etp.enabled=self.payload.etp.enabled
+						pack.payload.etp.change=self.payload.etp.change
+						pack.payload.etp.change_node=self.payload.etp.change_node
+						pack.payload.etp.interest_flag=self.payload.etp.interest_flag
+						pack.payload.etp.routes=self.payload.etp.routes
 										
 					delay=link.l_rem.rtt
 					pack.time=G.curtime+delay
