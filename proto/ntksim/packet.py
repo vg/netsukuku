@@ -232,22 +232,15 @@ class tracer_packet:
 			# the chunks of the TP and that of `r'
 			# Its tpmask is  r.tpmask|tmask, and its rem is
 			# r.rem+route_of_the_tp.rem
+			rp_tarcer=[]
 			
-			#non ho capito molto bene il todo ma se incrocio il codice
-			#con la descrizione degli ETP nel documento
-			#mi viene naturale pensare che rp sia quella rotta presente nell'etp
-			#e anche nella mia mappa con:
-			#dst(m) = dst(r) tpmask(m)=tpmask(r)
+			for hop in reversed(trcr):
+				rp_tarcer=hop
+			for hop in reversed(r.hops):
+				rp_tarcer.append(hop)
 			
-			#mi accingo a fare una for per tutte le entri nella mia mappa
-			#con destinazione pari a self.etp.routes.dst
-			#andando a cercare il tp mask uguale
+			rp=route(self.me.nid,r.dst.nid,gw,rp_tarcer,self)
 			
-			for m in self.me.int_map:
-				if (m.dst==r.dst) and (m.tpmask==r.tpmask):	
-					#r contains the rem modified
-					#we have to do this either r already exist or not
-					rp=r
 			# Delete from the map all the routes passing from `gw'
 			# and having the tpmask set to `tpm'
 			if not me.update_map_deadnode(gw, rp.tpmask):
