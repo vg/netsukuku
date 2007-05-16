@@ -128,7 +128,7 @@ class etp_section:
 		self.changed_node=rnode
 
 		if change == etp_section.CHANGE_DEAD_NODE:
-			created = _build_etp_deadnode(me, rnode)
+			created = self._build_etp_deadnode(me, rnode)
 			me.update_map(change, rnode)
 			self.interest_flag=created
 
@@ -219,16 +219,35 @@ class tracer_packet:
 	
 	def exec_etp_deadnode(self, me, trcr, tmask):
 		"""Returns 1 if the ETP is interesting, 0 otherwise"""
-
+		exist=0
 		trash=set()
+		
+		#e' sempre vero che gw e' l'utimo elemento di trcr?
+		#sappiamo solo che e' il nodo che ci ha mandato il pachetto
+		
 		gw=trcr[len(trcr)-1]
 		for r in self.etp.routes:
+			
 			# TODO: this is the route mentioned above formed by
 			# the chunks of the TP and that of `r'
-			# It's tpmask is  r.tpmask|tmask, and it's rem is
+			# Its tpmask is  r.tpmask|tmask, and its rem is
 			# r.rem+route_of_the_tp.rem
-			#rp=route(me.nid, ...)
 			
+			#non ho capito molto bene il todo ma se incrocio il codice
+			#con la descrizione degli ETP nel documento
+			#mi viene naturale pensare che rp sia quella rotta presente nell'etp
+			#e anche nella mia mappa con:
+			#dst(m) = dst(r) tpmask(m)=tpmask(r)
+			
+			#mi accingo a fare una for per tutte le entri nella mia mappa
+			#con destinazione pari a self.etp.routes.dst
+			#andando a cercare il tp mask uguale
+			
+			for m in self.me.int_map:
+				if (m.dst==r.dst) and (m.tpmask==r.tpmask):	
+					#r contains the rem modified
+					#we have to do this either r already exist or not
+					rp=r
 			# Delete from the map all the routes passing from `gw'
 			# and having the tpmask set to `tpm'
 			if not me.update_map_deadnode(gw, rp.tpmask):
@@ -251,6 +270,7 @@ class tracer_packet:
 				new_etp_routes=self.me.get_all_routes_bydst(r.dst)
 				
 				#TODO: pack and send the ETP
+				#cosa intendi per pack?
 
 			else:
 				# The ETP was considered uninteresting before,

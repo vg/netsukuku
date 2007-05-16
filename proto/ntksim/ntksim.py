@@ -178,7 +178,7 @@ def kill_nodes():
 			for neigh,link_neigh in node.rnodes.iteritems():
 				if G.whole_network[neigh].dead!=1:
 					etp_pack=etp_section()
-					etp_section.build_etp(neigh,etp_pack.CHANGE_DEAD_NODE,G.whole_network[node])
+					etp_pack.build_etp(neigh,etp_pack.CHANGE_DEAD_NODE,node)
 
 	print "killed nodes:",num_of_killed_nodes
 	return new_starters
@@ -348,7 +348,7 @@ def main():
 	print_statistics()
 	
 	
-	#new_starters=kill_nodes()
+	kill_nodes()
 	#start_exploration(new_starters)
 	#main_loop()
 	#print_statistics()
