@@ -232,14 +232,14 @@ class tracer_packet:
 			# the chunks of the TP and that of `r'
 			# Its tpmask is  r.tpmask|tmask, and its rem is
 			# r.rem+route_of_the_tp.rem
-			rp_tarcer=[]
+			rp_tracer=[]
 			
 			for hop in reversed(trcr):
-				rp_tarcer=hop
+				rp_tracer.append(hop)
 			for hop in reversed(r.hops):
-				rp_tarcer.append(hop)
+				rp_tracer.append(hop)
 			
-			rp=route(self.me.nid,r.dst.nid,gw,rp_tarcer,self)
+			rp=route(self.me.nid,r.dst.nid,gw,rp_tracer,self)
 			
 			# Delete from the map all the routes passing from `gw'
 			# and having the tpmask set to `tpm'
