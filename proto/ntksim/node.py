@@ -44,7 +44,7 @@ class node:
 		self.dp=0.0
 		self.dead=0 #node_dead
 		
-		self.int_map={} #The element of this list will be map_gw_t elements
+		self.int_map={} #The element of this list will be metric_array_t elements
 				#Only alive nodes are kept in this map
 	
 	def print_node(self):

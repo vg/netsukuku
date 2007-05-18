@@ -228,7 +228,7 @@ class tracer_packet:
 		gw=trcr[len(trcr)-1]
 		for r in self.etp.routes:
 			
-			# TODO: this is the route mentioned above formed by
+			# this is the route mentioned above formed by
 			# the chunks of the TP and that of `r'
 			# Its tpmask is  r.tpmask|tmask, and its rem is
 			# r.rem+route_of_the_tp.rem
@@ -239,7 +239,7 @@ class tracer_packet:
 			for hop in reversed(r.hops):
 				rp_tracer.append(hop)
 			
-			rp=route(self.me.nid,r.dst.nid,gw,rp_tracer,self)
+			rp=route(me.nid,r.dst.nid,gw,rp_tracer,self)
 			
 			# Delete from the map all the routes passing from `gw'
 			# and having the tpmask set to `tpm'
@@ -253,18 +253,43 @@ class tracer_packet:
 		for r in trash:
 			self.etp.routes.remove(r)
 		
-		if self.etp.routes == set():
+		if self.etp.routes == set(): 
+			#the etp is empty!
+			
 			if self.etp.interest_flag:
+				
 				self.etp.interest_flag=0
 
 				# The interest_flag was set, but we've found
 				# the packet uninteresting, thus we'll send
 				# back the new ETP containing our routes
-				new_etp_routes=self.me.get_all_routes_bydst(r.dst)
 				
-				#TODO: pack and send the ETP
-				#cosa intendi per pack?
-
+				#pack the new ETP
+				#if we send back the old ETP it will be  infringe
+				#the acyclic rule
+				#we need to create a new one 
+				new_pack=pack(me,G.whole_network[gw],"QSPN")
+				link=self.me.rnodes[gw]
+				new_pack.add_chunk(link)
+				delay=link.l_rem.rtt
+				new_pack.time=G.curtime+delay
+				
+				new_pack.etp.enabled=1
+				new_pack.etp.change=self.etp.change
+				new_pack.etp.changed_node=self.etp.changed_node
+				new_pack.etp.interest_flag=self.etp.interest_flag
+				
+				new_etp_routes=set()
+				#copy in the new packet all the routes of me
+				for dest,marray in me.int_map.iteritems(): 
+					new_etp_routes=self.me.get_all_routes_bydst(G.whole_network[dest])	
+					#union of 2 sets 
+					#we don't care if it is not sorted
+					new_pack.etp.routes|=new_etp_routes
+					
+				#send the packet
+				new_pack.send_packet()
+				
 			else:
 				# The ETP was considered uninteresting before,
 				# thus it is just propagating to carry the
