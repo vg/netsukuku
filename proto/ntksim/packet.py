@@ -159,8 +159,8 @@ class etp_section:
 		mapgw_set=set()
 		def append_routes(nid, metric, route):
 			"""function passed to me.forall_routes_through()"""
-			mapgw_set.add(self.int_map[nid].metric_array[metric].gw)
-
+			mapgw_set.add(me.int_map[nid].metric_array[metric].gw)
+		
 		me.forall_routes_through(rnode, append_routes)
 
 		# let's add in the ETP all the primary routes equivalent
@@ -265,7 +265,7 @@ class tracer_packet:
 				# back the new ETP containing our routes
 				
 				#pack the new ETP
-				#if we send back the old ETP it will be  infringe
+				#if we send back the old ETP it will be infringe
 				#the acyclic rule
 				#we need to create a new one 
 				new_pack=pack(me,G.whole_network[gw],"QSPN")

@@ -161,7 +161,6 @@ def start_exploration(starters=[]):
 
 def kill_nodes():
 	
-	new_starters=[] #start_exploration needs a vector of node as input
 	#CHANGE THE for WHEN HIGH LEVEL WILL BE IMPLEMENTED
 	num_of_killed_nodes=0
 	G.total_packets_forwarded=0
@@ -169,6 +168,7 @@ def kill_nodes():
 		node.tracer_forwarded=0
 		unif=random.uniform(0,1)
 		if unif < node.dp: #the node is dead
+			pdb.set_trace()
 			node.dead=1
 			num_of_killed_nodes+=1
 			
@@ -178,11 +178,9 @@ def kill_nodes():
 			for neigh,link_neigh in node.rnodes.iteritems():
 				if G.whole_network[neigh].dead!=1:
 					etp_pack=etp_section()
-					etp_pack.build_etp(neigh,etp_pack.CHANGE_DEAD_NODE,node)
+					etp_pack.build_etp(G.whole_network[neigh],etp_pack.CHANGE_DEAD_NODE,node)
 
 	print "killed nodes:",num_of_killed_nodes
-	return new_starters
-
 #
 # Main loop
 # 

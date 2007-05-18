@@ -209,8 +209,8 @@ class node:
 						dnode.metric_array[metric].gw.pop(G.MAX_ROUTES)
 		else:	
 			if G.verbose:
-				print "a new metric_array for the node:	",route.dst.nid,\
-					"for all the metrics: has been created!"
+				print "a new metric_array for the node:",route.dst.nid,\
+				"for all the metrics has been created!"
 			
 			self.int_map[route.dst.nid]=metric_array_t(route)
 			route_interesting=True
@@ -224,7 +224,7 @@ class node:
 		   r.tpmask == tpmask
 		"""
 		for nid, marray in self.int_map.iteritems():
-			if nid == self.nid or nid == rnode.nid:
+			if nid == self.nid or nid == gw.nid:
 				#skip myself, skip `gw'
 				continue
 			for metric in G.metrics:
