@@ -21,6 +21,8 @@
 #  Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 # 
 
+
+
 #This file contains all global objects
 
 
@@ -61,7 +63,7 @@ class G:
 	EVENTS_LIMIT=0
 	MAX_ROUTES=1
 	#metrics=["rtt","bwup","bwdw","avg","dp"]
-	metrics=["rtt"]
+	metrics=["bwdw"]
 	total_packets_forwarded=0
 	
 	#

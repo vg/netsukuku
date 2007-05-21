@@ -77,10 +77,19 @@ class route:
 					#consider that the direction of the packet is 
 					#the opposite of the direction of the route 
 					
+					#alessandro 1/bw modification 5-21-2007
+					"""
 					if j.chunk.rem.bwdw<bw_up:
 						bw_up=j.chunk.rem.bwdw
 					if j.chunk.rem.bwup<bw_dw:
 						bw_dw=j.chunk.rem.bwup
+					"""
+					
+					#alessandro 1/bw modification 5-21-2007
+					bw_up+=j.chunk.rem.bwdw
+					bw_dw+=j.chunk.rem.bwup	
+						
+						
 						
 					#dp is min={dp_x,dp_y} 
 					if j.ndp>tot_dp:

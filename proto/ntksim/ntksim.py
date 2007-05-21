@@ -54,6 +54,7 @@ from packet import *
 from route import *
 from rem import *
 
+
 class graph:
 	
 	#in this class I have the map of the whole phisical network
@@ -243,6 +244,7 @@ def print_statistics():
 	#for i in G.whole_network:
 	#	print G.whole_network[i].dp
 	print "total packets forwarded: ",G.total_packets_forwarded
+	#print "total ETP forwarded: ",G.total_packets_forwarded
 	
 
 

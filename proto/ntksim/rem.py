@@ -46,7 +46,9 @@ class rem_t:
 
 	
 	def bw_up_cmp(self, b):
-		return (self.bwup > b.bwup) - (self.bwup < b.bwup)
+		#alessandro 1/bw modification 5-21-2007
+		#return (self.bwup > b.bwup) - (self.bwup < b.bwup)
+		return  (self.bwup < b.bwup) - (self.bwup > b.bwup)
 	"""
          * self < b   -1	 -->  The bw self' is worse  than `new' --> APPEND b ROUTE
 	 * self > b    1  	 -->  The bw self' is better than `new'
@@ -54,7 +56,10 @@ class rem_t:
          """	
 	
 	def bw_dw_cmp(self, b):
-		return (self.bwdw > b.bwdw) - (self.bwdw < b.bwdw)
+		#alessandro 1/bw modification 5-21-2007
+		#return (self.bwdw > b.bwdw) - (self.bwdw < b.bwdw)
+		return  (self.bwdw < b.bwdw) - (self.bwdw > b.bwdw)
+		
 	"""
          * self < b   -1	 -->  The bw self' is worse  than `new' --> APPEND b ROUTE
          * self > b    1   	 -->  The bw self' is better than `new'
