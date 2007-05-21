@@ -29,6 +29,7 @@ from node import *
 from maps import *
 from route import *
 from heapq import *
+from misc import *
 
 ####
 ######## TRACER PACKET
@@ -96,10 +97,10 @@ class etp_section:
 		self.enabled=0	# Indicates if this Extended section is being
 				# used.
 		self.change=etp_section.CHANGE_WORSENED_LINK # type of change
-		self.changed_node=0	# pointer to the changed node (f.e.
-					# the dead or new node)
+		self.changed_node=0		# pointer to the changed node (f.e.
+						# the dead or new node)
 		self.interest_flag=0
-		self.routes=set()	# Each element is a tuple (dst,rem,tpmask)
+		self.routes=[]		# Each element is a tuple (dst,rem,tpmask)
 
 	def build_etp(self, me, change, rnode):
 		"""
@@ -156,20 +157,23 @@ class etp_section:
 	def _build_etp_deadnode(self, me, rnode):
 		created=1
 
-		mapgw_set=set()
+		mapgw_list=[]
 		def append_routes(nid, metric, route):
 			"""function passed to me.forall_routes_through()"""
-			mapgw_set.add(me.int_map[nid].metric_array[metric].gw)
+			mapgw_list.append(me.int_map[nid].metric_array[metric].gw)
 		
 		me.forall_routes_through(rnode, append_routes)
-
+		
+		mapgw_list=remove_duplicates(mapgw_list)
+		
 		# let's add in the ETP all the primary routes equivalent
 		# to `route'
-		for mgw in mapgw_set:
+		for mgw in mapgw_list:
 			for r in mgw:
-				self.routes.add(r)
+				self.routes.append(r)
+		self.routes=remove_duplicates(self.routes)
 
-		if self.routes == set():
+		if self.routes == []:
 			created=0
 		return created
 
@@ -220,7 +224,7 @@ class tracer_packet:
 	def exec_etp_deadnode(self, me, trcr, tmask):
 		"""Returns 1 if the ETP is interesting, 0 otherwise"""
 		exist=0
-		trash=set()
+		trash=[]
 		
 		#e' sempre vero che gw e' l'utimo elemento di trcr?
 		#sappiamo solo che e' il nodo che ci ha mandato il pachetto
@@ -249,11 +253,12 @@ class tracer_packet:
 				if not me.add_route(rp):
 				   # this route isn't interesting, we may as
 				   # well delete it from the ETP
-				   trash.add(r)
+				   trash.append(r)
+		trash=remove_duplicates(trash)
 		for r in trash:
 			self.etp.routes.remove(r)
 		
-		if self.etp.routes == set(): 
+		if self.etp.routes == []: 
 			#the etp is empty!
 			
 			if self.etp.interest_flag:
@@ -275,7 +280,7 @@ class tracer_packet:
 				new_pack.time=G.curtime+delay
 				
 	
-				new_etp_routes=set()
+				new_etp_routes=[]
 				#copy in the new packet all the routes of me
 				for dest,marray in me.int_map.iteritems(): 
 					new_etp_routes|=self.me.get_all_routes_bydst(G.whole_network[dest])	

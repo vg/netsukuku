@@ -223,7 +223,12 @@ class node:
 		   If `tpmask' is not zero, f(..., r) will be called only if
 		   r.tpmask == tpmask
 		"""
-		for nid, marray in self.int_map.iteritems():
+		for nid, marray in self.int_map.items():
+		# - note -
+		# we cannot use .iteritems() because f() might deleted
+		# some elements from the dictionary during the for
+		# - note -
+
 			if nid == self.nid or nid == gw.nid:
 				#skip myself, skip `gw'
 				continue
