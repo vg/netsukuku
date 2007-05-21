@@ -168,7 +168,6 @@ def kill_nodes():
 		node.tracer_forwarded=0
 		unif=random.uniform(0,1)
 		if unif < node.dp: #the node is dead
-			pdb.set_trace()
 			node.dead=1
 			num_of_killed_nodes+=1
 			

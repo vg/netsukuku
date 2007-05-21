@@ -274,19 +274,21 @@ class tracer_packet:
 				delay=link.l_rem.rtt
 				new_pack.time=G.curtime+delay
 				
-				new_pack.etp.enabled=1
-				new_pack.etp.change=self.etp.change
-				new_pack.etp.changed_node=self.etp.changed_node
-				new_pack.etp.interest_flag=self.etp.interest_flag
-				
+	
 				new_etp_routes=set()
 				#copy in the new packet all the routes of me
 				for dest,marray in me.int_map.iteritems(): 
-					new_etp_routes=self.me.get_all_routes_bydst(G.whole_network[dest])	
+					new_etp_routes|=self.me.get_all_routes_bydst(G.whole_network[dest])	
 					#union of 2 sets 
 					#we don't care if it is not sorted
-					new_pack.etp.routes|=new_etp_routes
-					
+				
+				#copy the etp section for the new packet
+				new_pack.copy_etp_pkt(self.etp)
+				
+				#now we have to change the routes of the new pack 
+				#with the ones obtained by get_all_routes_bydst
+				new_pack.payload.etp.route=new_etp_routes
+	
 				#send the packet
 				new_pack.send_packet()
 				
@@ -458,6 +460,13 @@ class packet:
 		G.total_packets_forwarded+=1
 		heappush(G.events,self)
 		#self.print_packet()
+		
+	def copy_etp_pkt(self, old_etp):
+		self.payload.etp.enabled=old_etp.enabled
+		self.payload.etp.change=old_etp.change
+		self.payload.etp.change_node=old_etp.change_node
+		self.payload.etp.interest_flag=old_etp.interest_flag
+		self.payload.etp.route=old_etp.route[:]
 
 	def exec_pkt(self):
 		"""self.me has received the `self' packet.
@@ -491,9 +500,7 @@ class packet:
 
 		self.forward_pkt()
 		return 0
-
-
-
+		
 	def forward_pkt(self):
 		
 		rlen=self.me.num_of_active_neigh()
@@ -531,11 +538,8 @@ class packet:
 					pack.add_chunk(link)
 
 					if self.payload.etp.enabled:
-						pack.payload.etp.enabled=self.payload.etp.enabled
-						pack.payload.etp.change=self.payload.etp.change
-						pack.payload.etp.change_node=self.payload.etp.change_node
-						pack.payload.etp.interest_flag=self.payload.etp.interest_flag
-						pack.payload.etp.routes=self.payload.etp.routes[:]
+						#copying the ETP section of the packet
+						pack.copy_etp_pkt(self.payload.etp)
 										
 					delay=link.l_rem.rtt
 					pack.time=G.curtime+delay
