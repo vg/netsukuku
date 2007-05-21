@@ -174,12 +174,22 @@ def kill_nodes():
 			
 			# node is the dead node
 			# neigh are the neighbours of the dead node
-			# all the neighbours will send the new ETP
+			# all the neighbours will send the new ETP 
 			for neigh,link_neigh in node.rnodes.iteritems():
 				if G.whole_network[neigh].dead!=1:
-					etp_pack=etp_section()
-					etp_pack.build_etp(G.whole_network[neigh],etp_pack.CHANGE_DEAD_NODE,node)
+					
+					#neigh has to send the packet to all his neighbours called 'dest'
+					for dest,link_dest in G.whole_network[neigh].rnodes.iteritems(): 
+						new_pack=packet(G.whole_network[neigh],G.whole_network[dest],"QSPN")
+						new_pack.add_chunk(link_dest)
+						delay=link_dest.l_rem.rtt
+						new_pack.time=G.curtime+delay
+						new_pack.payload.etp.build_etp(G.whole_network[neigh],new_pack.payload.etp.CHANGE_DEAD_NODE,node)
+						
+						#send the packet
+						new_pack.send_packet()
 
+						
 	print "killed nodes:",num_of_killed_nodes
 #
 # Main loop
@@ -350,7 +360,7 @@ def main():
 	kill_nodes()
 	#start_exploration(new_starters)
 	#main_loop()
-	#print_statistics()
+	print_statistics()
 
 
 

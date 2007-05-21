@@ -63,7 +63,7 @@ class G:
 	EVENTS_LIMIT=0
 	MAX_ROUTES=1
 	#metrics=["rtt","bwup","bwdw","avg","dp"]
-	metrics=["bwdw"]
+	metrics=["dp"]
 	total_packets_forwarded=0
 	
 	#

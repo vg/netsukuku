@@ -273,7 +273,7 @@ class tracer_packet:
 				#if we send back the old ETP it will be infringe
 				#the acyclic rule
 				#we need to create a new one 
-				new_pack=pack(me,G.whole_network[gw],"QSPN")
+				new_pack=packet(me,G.whole_network[gw],"QSPN")
 				link=self.me.rnodes[gw]
 				new_pack.add_chunk(link)
 				delay=link.l_rem.rtt
