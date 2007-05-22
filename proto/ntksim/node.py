@@ -225,29 +225,29 @@ class node:
 		"""
 		for nid, marray in self.int_map.items():
 		# - note -
-		# we cannot use .iteritems() because f() might deleted
+		# we cannot use .iteritems() because f() might delete
 		# some elements from the dictionary during the for
 		# - note -
 
-			if nid == self.nid or nid == gw:
+			if nid == self.nid or nid == gw.nid:
 				#skip myself, skip `gw'
 				continue
 			for metric in G.metrics:
 				for route in marray.metric_array[metric].gw:
-				    if route.gw.nid == gw and\
+				    if route.gw.nid == gw.nid and\
 				    	not tpmask or (tpmask and route.tpmask==tpmask):
 						# this is a route passing 
 						# through `rnode', call f()
 						f(nid, metric, route)
 	def get_all_routes_bydst(self, dst):
-		"""Returns the set containing all the routes with destination
+		"""Returns the list containing all the routes with destination
 		   `dst'"""
-		rset=set()
+		rlist=[]
 		for metric in G.metrics:
-			for route in self.me.int_map[r.dst.nid].metric_array[metric].gw:
-				if route.dst==dst:
-					rset.add(route)
-		return rset
+			for route in self.int_map[dst.nid].metric_array[metric].gw:
+				if route.dst.nid==dst.nid:
+					rlist.append(route)
+		return rlist
 
 	def update_map(self, change, rnode, tpmask=0):
 		# The arguments are the same of {-build_etp-}
@@ -269,8 +269,8 @@ class node:
 		mapgw_set=set()
 
 		# delete `rnode' from the intmap
-		if self.int_map.has_key(rnode):
-			del self.int_map[rnode]
+		if self.int_map.has_key(rnode.nid):
+			del self.int_map[rnode.nid]
 
 		def del_dead_route(nid, metric, route):
 			mgw=self.int_map[nid].metric_array[metric].gw

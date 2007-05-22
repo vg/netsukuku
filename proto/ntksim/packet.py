@@ -226,28 +226,25 @@ class tracer_packet:
 		exist=0
 		trash=[]
 		
-		#e' sempre vero che gw e' l'utimo elemento di trcr?
-		#sappiamo solo che e' il nodo che ci ha mandato il pachetto
 		gw=trcr[len(trcr)-1]
 		for r in self.etp.routes:
 			
-			# this is the route mentioned above formed by
-			# the chunks of the TP and that of `r'
+			# this is the route formed by the chunks of the TP 
+			# and that of `r'
 			# Its tpmask is  r.tpmask|tmask, and its rem is
 			# r.rem+route_of_the_tp.rem
 			rp_tracer=[]
 			
-			for hop in reversed(trcr):
-				rp_tracer.append(hop)
-			for hop in reversed(r.hops):
+			for hop in r.hops:
 				rp_tracer.append(hop.nid)
-			
+			for hop in trcr:
+				rp_tracer.append(hop)
 
 			rp=route(me.nid,r.dst.nid,gw,rp_tracer,self)
 			
 			# Delete from the map all the routes passing from `gw'
 			# and having the tpmask set to `tpm'
-			if not me.update_map_deadnode(gw, rp.tpmask):
+			if not me.update_map_deadnode(G.whole_network[gw], rp.tpmask):
 				# no route has been deleted
 				# Try to add r in the map
 				if not me.add_route(rp):
@@ -270,11 +267,9 @@ class tracer_packet:
 				# back the new ETP containing our routes
 				
 				#pack the new ETP
-				#if we send back the old ETP it will be infringe
-				#the acyclic rule
 				#we need to create a new one 
 				new_pack=packet(me,G.whole_network[gw],"QSPN")
-				link=self.me.rnodes[gw]
+				link=me.rnodes[gw]
 				new_pack.add_chunk(link)
 				delay=link.l_rem.rtt
 				new_pack.time=G.curtime+delay
@@ -283,7 +278,9 @@ class tracer_packet:
 				new_etp_routes=[]
 				#copy in the new packet all the routes of me
 				for dest,marray in me.int_map.iteritems(): 
-					new_etp_routes|=self.me.get_all_routes_bydst(G.whole_network[dest])	
+					new_etp_routes+=me.get_all_routes_bydst(G.whole_network[dest])
+				new_etp_routes=remove_duplicates(new_etp_routes)
+
 
 				
 				#copy the etp section for the new packet
@@ -291,7 +288,7 @@ class tracer_packet:
 				
 				#now we have to change the routes of the new pack 
 				#with the ones obtained by get_all_routes_bydst
-				new_pack.payload.etp.route=new_etp_routes
+				new_pack.payload.etp.routes=new_etp_routes
 	
 				#send the packet
 				new_pack.send_packet()
@@ -468,17 +465,17 @@ class packet:
 	def copy_etp_pkt(self, old_etp):
 		self.payload.etp.enabled=old_etp.enabled
 		self.payload.etp.change=old_etp.change
-		self.payload.etp.change_node=old_etp.change_node
+		self.payload.etp.changed_node=old_etp.changed_node
 		self.payload.etp.interest_flag=old_etp.interest_flag
-		self.payload.etp.route=old_etp.route[:]
+		self.payload.etp.routes=old_etp.routes[:]
 
 	def exec_pkt(self):
 		"""self.me has received the `self' packet.
 		   Do something with it"""
 
-		if packet.total_pkts % 100==0:
-			print "DEBUG stats: tpkts %d, events %d"%(packet.total_pkts,len(G.events))
 		tp=self.payload
+		if packet.total_pkts % 100==0:
+			print "DEBUG stats: tpkts %d, events %d, ETP %d"%(packet.total_pkts,len(G.events),tp.etp.enabled)
 
 		# Evaluate the tracer packet, if it isn't interesting, drop
 		# it, otherwise forward it to the other rnodes.
