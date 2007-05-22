@@ -169,6 +169,7 @@ def kill_nodes():
 		node.tracer_forwarded=0
 		unif=random.uniform(0,1)
 		if unif < node.dp: #the node is dead
+			print "the node:",node.nid,"is dead"
 			node.dead=1
 			num_of_killed_nodes+=1
 			
@@ -244,18 +245,28 @@ def print_maps():
 				print "optimized for the metric: ",k
 				G.whole_network[i].int_map[j].metric_array[k].gw[0].print_route()
 
-def print_statistics():
+def print_node_features():
+	for i in G.whole_network:
+		print G.whole_network[i].print_node()
+
+
+def print_TP_statistics():
+	print 5 * ""
+	print "NUMBER OF TRACERS FORWARDED PER NODE (TP flux)" 
+	for i in G.whole_network:
+		print G.whole_network[i].tracer_forwarded
+	print "total packets forwarded: ",G.total_packets_forwarded
+	
+
+def print_ETP_statistics():
 	
 	print 5 * ""
-	print "NUMBER OF TRACERS FORWARDED PER NODE" 
+	print "NUMBER OF EXTENDED TRACERS FORWARDED PER NODE (ETP flux)" 
 	for i in G.whole_network:
-		#print "node:",G.whole_network[i].nid," forwarded packets:",G.whole_network[i].tracer_forwarded
-		print G.whole_network[i].tracer_forwarded
-	#for i in G.whole_network:
-	#	print G.whole_network[i].dp
+		if G.whole_network[i].dead!=1:
+			print G.whole_network[i].etracer_forwarded
 	print "total packets forwarded: ",G.total_packets_forwarded
-	#print "total ETP forwarded: ",G.total_packets_forwarded
-	
+
 
 
 
@@ -348,19 +359,16 @@ def main():
 	graph_=graph()
 	graph_.print_graph_len()
 	
-	for i in G.whole_network:
-		print "nodo ",G.whole_network[i].nid, "dp:",G.whole_network[i].dp
 	
 	start_exploration()
 	main_loop()
 	#print_maps()
-	print_statistics()
+	print_TP_statistics()
 	
 	
 	kill_nodes()
-	#start_exploration(new_starters)
-	#main_loop()
-	print_statistics()
+	main_loop()
+	print_ETP_statistics()
 
 
 

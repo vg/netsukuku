@@ -103,8 +103,8 @@ class route:
 					       #there should be other chunks due to the cicles, 
 					       #in this case we want the closer to the node
 			
-			if ok==0 :
-				EHM_SOMETHING_WRONG
+			#if ok==0 :
+			#	EHM_SOMETHING_WRONG
 				
 			if i!=dst_id:
 				self.hops.append(G.whole_network[i])

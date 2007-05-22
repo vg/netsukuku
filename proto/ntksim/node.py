@@ -41,7 +41,7 @@ class node:
 		self.tracer_forwarded=0
 		self.etracer_forwarded=0
 		
-		self.dp=0.0
+		self.dp=0.0 #death probability
 		self.dead=0 #node_dead
 		
 		self.int_map={} #The element of this list will be metric_array_t elements
@@ -49,11 +49,11 @@ class node:
 	
 	def print_node(self):
 		rlen=self.num_of_active_neigh()
-		print "nodeid=", self.nid, "number of rnodes:", rlen, "ip:", self.ip
+		print "nodeid=", self.nid, "number of rnodes:", rlen, "ip:", self.ip, "death prob:", self.dp
 		
-		for a,b in self.rnodes.iteritems():
-			if G.whole_network[a].dead!=1:
-				print "\tneighour:", a
+		#for a,b in self.rnodes.iteritems():
+		#	if G.whole_network[a].dead!=1:
+		#		print "\tneighour:", a
 	
 	def get_id(self):
 		return self.nid
@@ -269,8 +269,8 @@ class node:
 		mapgw_set=set()
 
 		# delete `rnode' from the intmap
-		if self.int_map.has_key(rnode.nid):
-			del self.int_map[rnode.nid]
+		if self.int_map.has_key(rnode):
+			del self.int_map[rnode]
 
 		def del_dead_route(nid, metric, route):
 			mgw=self.int_map[nid].metric_array[metric].gw

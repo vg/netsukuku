@@ -200,7 +200,7 @@ class tracer_packet:
 				self.etp.change, "cnode:",self.etp.changed_node,\
 				"iflag:", self.etp.interest_flag
 		# The tpmask of the single route formed by the chunks of the TP
-		tpmask=reduce(lambda x, y: x|1<<y, trcr, 0)
+		tpmask=reduce(lambda x, y: x|1<<y, whole_tracer, 0)
 
 		# Acyclic rule
 		if me.nid in whole_tracer:
@@ -228,7 +228,6 @@ class tracer_packet:
 		
 		#e' sempre vero che gw e' l'utimo elemento di trcr?
 		#sappiamo solo che e' il nodo che ci ha mandato il pachetto
-		
 		gw=trcr[len(trcr)-1]
 		for r in self.etp.routes:
 			
@@ -241,8 +240,9 @@ class tracer_packet:
 			for hop in reversed(trcr):
 				rp_tracer.append(hop)
 			for hop in reversed(r.hops):
-				rp_tracer.append(hop)
+				rp_tracer.append(hop.nid)
 			
+
 			rp=route(me.nid,r.dst.nid,gw,rp_tracer,self)
 			
 			# Delete from the map all the routes passing from `gw'
@@ -553,8 +553,7 @@ class packet:
 						print "forwarding the packet to node: ", node
 					
 					pack.send_packet()
-		#	print "PACCHETTO:"
-		#	self.print_packet()
+
 	
 	def copy_old_chunks(self,old):
 		
