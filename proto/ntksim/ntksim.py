@@ -88,17 +88,24 @@ class graph:
 			if len(w) == 1:
 				continue
 			
-			if len(w)==5: 
+			if len(w)==7: 
 			         rtt=float(w[2])
 				 bwXY=float(w[3])
 				 bwYX=float(w[4])
+				 dpx=float(w[5])
+				 dpy=float(w[6])
+				 
 			
 			elif len(w) == 2:
 				rtt=G.DEFAULT_RTT
 				bwXY=G.DEFAULT_BW
 				bwYX=G.DEFAULT_BW
+				dpx=G.DEFAULT_DP
+				dpy=G.DEFAULT_DP
+				
+				
 			else:
-				print "ERROR: The format of the file must be: \n nodeX -- nodeY -- rtt -- bwXY -- bwYX \n nodeX -- nodeZ -- rtt -- bwXZ -- bwZX \n ..."
+				print "ERROR: The format of the file must be: \n nodeX -- nodeY -- rtt -- bwXY -- bwYX -- dpx -- dpy \n nodeX -- nodeZ -- rtt -- bwXZ -- bwZX -- dpx -- dpz\n ..."
 				sys.exit()
 			
 			first_n=int(w[0])
@@ -114,8 +121,8 @@ class graph:
 				nodex = node(first_n, second_n,rem_first) #create an istance of the nodeX 
 				
 				if G.DP_ENHANCEMENT:	#assign a death probability
-					unif=random.uniform(0,1)
-					nodex.dp=-1/G.LAMBDA*math.log(1-unif*(1-math.exp(-G.LAMBDA*0.1)))
+					if nodex.dp==0:
+						nodex.dp=dpx
 				
 				G.whole_network[first_n]=nodex
 				nodex.hook()
@@ -128,8 +135,8 @@ class graph:
 				nodey = node(second_n, first_n,rem_second) #create an istance of the nodex 
 				
 				if G.DP_ENHANCEMENT:	#assign a death probability
-					unif=random.uniform(0,1)
-					nodey.dp=-1/G.LAMBDA*math.log(1-unif*(1-math.exp(-G.LAMBDA*0.1)))
+					if nodey.dp==0:
+						nodey.dp=dpy
 				
 				G.whole_network[second_n]=nodey
 				nodey.hook()
@@ -181,14 +188,15 @@ def kill_nodes():
 					
 					#neigh has to send the packet to all his neighbours called 'dest'
 					for dest,link_dest in G.whole_network[neigh].rnodes.iteritems(): 
-						new_pack=packet(G.whole_network[neigh],G.whole_network[dest],"QSPN")
-						new_pack.add_chunk(link_dest)
-						delay=link_dest.l_rem.rtt
-						new_pack.time=G.curtime+delay
-						new_pack.payload.etp.build_etp(G.whole_network[neigh],new_pack.payload.etp.CHANGE_DEAD_NODE,node)
+						if G.whole_network[dest].dead!=1:	
+							new_pack=packet(G.whole_network[neigh],G.whole_network[dest],"QSPN")
+							new_pack.add_chunk(link_dest)
+							delay=link_dest.l_rem.rtt
+							new_pack.time=G.curtime+delay
+							new_pack.payload.etp.build_etp(G.whole_network[neigh],new_pack.payload.etp.CHANGE_DEAD_NODE,node)
 						
 						#send the packet
-						new_pack.send_packet()
+							new_pack.send_packet()
 
 						
 	print "killed nodes:",num_of_killed_nodes
@@ -362,13 +370,14 @@ def main():
 	
 	start_exploration()
 	main_loop()
-	#print_maps()
 	print_TP_statistics()
+	print_maps()
 	
-	
+
 	kill_nodes()
 	main_loop()
 	print_ETP_statistics()
+	print_maps()
 
 
 

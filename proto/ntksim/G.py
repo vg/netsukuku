@@ -33,6 +33,8 @@ class G:
 	DEFAULT_RTT = 100 #ms
 	DEFAULT_BW = 50 #kbps	
 	DELTA_RTT = DEFAULT_RTT/10
+	DEFAULT_DP= 0.05 #5%
+	
 	
 	AVG_UPBW_COEF=1.0/4
 	AVG_DWBW_COEF=1.0/4
@@ -63,7 +65,7 @@ class G:
 	EVENTS_LIMIT=0
 	MAX_ROUTES=1
 	#metrics=["rtt","bwup","bwdw","avg","dp"]
-	metrics=["dp"]
+	metrics=["rtt"]
 	total_packets_forwarded=0
 	
 	#

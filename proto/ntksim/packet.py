@@ -284,8 +284,7 @@ class tracer_packet:
 				#copy in the new packet all the routes of me
 				for dest,marray in me.int_map.iteritems(): 
 					new_etp_routes|=self.me.get_all_routes_bydst(G.whole_network[dest])	
-					#union of 2 sets 
-					#we don't care if it is not sorted
+
 				
 				#copy the etp section for the new packet
 				new_pack.copy_etp_pkt(self.etp)
