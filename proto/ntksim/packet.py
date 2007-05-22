@@ -197,7 +197,7 @@ class tracer_packet:
 		whole_tracer=self.create_trcr()
 		if G.verbose:
 			print "ETP:", whole_tracer, "change:",\
-				self.etp.change, "cnode:",self.etp.changed_node,\
+				self.etp.change, "cnode:",self.etp.changed_node.nid,\
 				"iflag:", self.etp.interest_flag
 		# The tpmask of the single route formed by the chunks of the TP
 		tpmask=reduce(lambda x, y: x|1<<y, whole_tracer, 0)
@@ -206,8 +206,8 @@ class tracer_packet:
 		if me.nid in whole_tracer:
 			#drop it
 			if G.verbose:
-				print "Cycle detected, ETP completely dropped"
-			return 1
+				print "ETP: Cycle detected, ETP completely dropped"
+			return 0
 		
                 if self.etp.change == etp_section.CHANGE_DEAD_NODE:
 			etp_interesting = self.exec_etp_deadnode(me, whole_tracer, tpmask)
@@ -281,8 +281,6 @@ class tracer_packet:
 					new_etp_routes+=me.get_all_routes_bydst(G.whole_network[dest])
 				new_etp_routes=remove_duplicates(new_etp_routes)
 
-
-				
 				#copy the etp section for the new packet
 				new_pack.copy_etp_pkt(self.etp)
 				
@@ -291,6 +289,7 @@ class tracer_packet:
 				new_pack.payload.etp.routes=new_etp_routes
 	
 				#send the packet
+				print "ETP: sending back to %d the new routes"%(gw)
 				new_pack.send_packet()
 				
 			else:
@@ -303,7 +302,7 @@ class tracer_packet:
 					# Yea, we already knew it
 					# drop the packet then!
 					if G.verbose:
-						print "dropping the ETP"
+						print "ETP: dropping it"
 					return 0
 
 		# You may as well forward the ETP
@@ -407,8 +406,8 @@ class tracer_packet:
 				#pdb.set_trace()
 				r=route(me.nid, i, neigh_gw, tp, self)
 
-				if G.verbose:
-					r.print_route()
+				#if G.verbose:
+				#	r.print_route()
 				# Save the route if it is interesting
 				if me.add_route(r):
 					packet_interesting=True
@@ -508,14 +507,17 @@ class packet:
 			#We are at the extremity of a segment, reflect back a
 			#new TP
 			for node,link in self.me.rnodes.iteritems():
+				#if node == self.src.nid:
+				#	print "SINGLE ", node, self.src.nid,self.me.nid, G.whole_network[node].dead
 				if G.whole_network[node].dead!=1:
-					if node!=self.src.nid:
-						pack=packet(self.me,G.whole_network[node],"QSPN")
-						pack.add_chunk(link)		#add its personal chunk
-						
-						delay=link.l_rem.rtt
-						pack.time=G.curtime+delay
-						pack.send_packet()
+					#if node!=self.src.nid:
+				#	print "SINGLE fwd", node, self.src.nid,self.me.nid
+					pack=packet(self.me,G.whole_network[node],"QSPN")
+					pack.add_chunk(link)		#add its personal chunk
+					
+					delay=link.l_rem.rtt
+					pack.time=G.curtime+delay
+					pack.send_packet()
 		   else:
 			#The ETPs don't need to be reflected back, because
 			#they are acyclic TPs
@@ -523,11 +525,12 @@ class packet:
 		else:
 			#whole_tracer=self.create_trcr()
 			for node, link in self.me.rnodes.iteritems():
+				if node == self.src.nid:
+					# do not fwd to self.src
+					continue
 				#for all its neighbours 
 				# -- each element is a link (neghibour id; (l_id, l_rem))
 				if G.whole_network[node].dead != 1:
-					if node == self.src.nid:
-						continue
 					pack=packet(self.me,G.whole_network[node], "QSPN")
 					
 					#copy all the chunks in the new packet	
@@ -544,7 +547,7 @@ class packet:
 					pack.time=G.curtime+delay
 					
 					if G.verbose:
-						print "forwarding the packet to node: ", node
+						print "fwding the pkt from %d to %d node: "%(self.me.nid, node)
 					
 					pack.send_packet()
 
