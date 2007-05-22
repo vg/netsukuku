@@ -229,12 +229,12 @@ class node:
 		# some elements from the dictionary during the for
 		# - note -
 
-			if nid == self.nid or nid == gw.nid:
+			if nid == self.nid or nid == gw:
 				#skip myself, skip `gw'
 				continue
 			for metric in G.metrics:
 				for route in marray.metric_array[metric].gw:
-				    if route.gw.nid == gw.nid and\
+				    if route.gw.nid == gw and\
 				    	not tpmask or (tpmask and route.tpmask==tpmask):
 						# this is a route passing 
 						# through `rnode', call f()
