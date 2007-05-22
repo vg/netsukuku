@@ -302,6 +302,8 @@ class tracer_packet:
 				if not me.int_map.has_key(self.etp.changed_node):
 					# Yea, we already knew it
 					# drop the packet then!
+					if G.verbose:
+						print "dropping the ETP"
 					return 0
 
 		# You may as well forward the ETP
@@ -333,11 +335,7 @@ class tracer_packet:
 		return packet_interesting
 
 	def create_trcr(self):
-		trcr=[]
-		for i in xrange(len(self.chunks)):
-			trcr.append(self.chunks[i].nid)
-		return trcr
-
+		return [c.nid for c in self.chunks]
 
 	def split_tracer(self, me, tp=[]):
 		

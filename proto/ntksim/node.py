@@ -196,7 +196,7 @@ class node:
 					#the old is worse than the new one
 					if G.verbose:
 						print "a better route for the node: ",\
-							oute.dst.nid, "for the metric: ",\
+							route.dst.nid, "for the metric: ",\
 							metric, "has been found!"
 						print "OLD: ", dnode_worst_rt
 						print "NEW: ", route
