@@ -46,6 +46,8 @@ class node:
 		
 		self.int_map={} #The element of this list will be metric_array_t elements
 				#Only alive nodes are kept in this map
+		self.dead_nodes=[]	# list of dead nodes present in
+					# the int map
 	
 	def print_node(self):
 		rlen=self.num_of_active_neigh()
@@ -253,6 +255,15 @@ class node:
 					rlist.append(route)
 		return rlist
 
+	def del_node(self, node):
+		# delete `node' from the intmap
+		if self.int_map.has_key(node.nid):
+			print "(%d) the node %d is dead, sigh"%(self.nid, node.nid)
+			self.dead_nodes.append(node.nid)
+			del self.int_map[node.nid]
+	def is_dead(self, nodeid):
+		return (nodeid in self.dead_nodes)
+
 	def update_map(self, change, rnode):
 		# The arguments are the same of {-build_etp-}
 		
@@ -263,11 +274,6 @@ class node:
 			self.update_map_deadnode(rnode)
 		else:
 			NOT_IMPLEMENTED
-
-	def del_node(self, node):
-		# delete `node' from the intmap
-		if self.int_map.has_key(node.nid):
-			del self.int_map[node.nid]
 
 	_update_map_deadnode_deleted=0 #ugly hack
 	def update_map_deadnode(self, rnode, tpmask=0):

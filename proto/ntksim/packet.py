@@ -229,6 +229,7 @@ class tracer_packet:
 		
 		gw=trcr[len(trcr)-1]
 		for r in self.etp.routes:
+			contains_dead=0
 			
 			# this is the route formed by the chunks of the TP 
 			# and that of `r'
@@ -241,9 +242,22 @@ class tracer_packet:
 			for hop in trcr:
 				rp_tracer.append(hop)
 
+			for hop in [r.dst]+r.hops:
+				if me.is_dead(hop.nid) and\
+				 hop.nid!=self.etp.changed_node.nid:
+				# We know that this hop is dead, but this
+				# route contains it!
+				# Since this ETP carries only information
+				# about dead, and not about new nodes, we'll
+				# delete it. 
+				# This event has probably happened due two
+				# simultaneus dead-node events.
+					print "CONTAINS DEAD!",rp_tracer, len(r.hops), len(trcr), hop.nid
+					contains_dead=1
+
 			rp=route(me.nid,r.dst.nid,gw,rp_tracer,self)
 ##			print "rp: ", rp_tracer
-			
+		
 			# Delete now the rp route from the map (if present),
 			# in other words, delete from the map all the routes passing from `gw'
 			# and having the tpmask set to `tpm'
@@ -251,9 +265,12 @@ class tracer_packet:
 			if not me.update_map_deadnode(G.whole_network[gw], rp.tpmask):
 				# no route has been deleted
 				# If the route is dead (it passes trough the dead node),
+				# or it contains other dead nodes (see above),
 				# or if it isn't a better alternative to what
 				# we already have in the map, then delete it
-				if (rp.tpmask & (1<<self.etp.changed_node.nid)) or not me.add_route(rp):
+				if (rp.tpmask & (1<<self.etp.changed_node.nid))\
+					or contains_dead\
+					or not me.add_route(rp):\
 				   # this route isn't interesting, we may as
 				   # well delete it from the ETP
 				   trash.append(r)
@@ -308,7 +325,7 @@ class tracer_packet:
 				# information of the death the node
 				# `self.etp.changed_node'.
 				# Let's check if we already know this info.
-				if not me.int_map.has_key(self.etp.changed_node):
+				if not me.int_map.has_key(self.etp.changed_node.nid):
 					# Yea, we already knew it
 					# drop the packet then!
 					if G.verbose:

@@ -207,7 +207,7 @@ def kill_nodes():
 					del new_pack
 					print "not %d, "%(dest),
 			print ""
-			break
+			#break
 
 				
     print "killed nodes:",num_of_killed_nodes
