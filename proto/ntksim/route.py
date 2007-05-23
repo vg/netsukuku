@@ -28,6 +28,7 @@ from maps import *
 from G import *
 from node import *
 from rem import *
+from misc import *
 
 
 ####
@@ -124,7 +125,8 @@ class route:
 	
 	
 	def print_route(self):
-		print "Route:: src:",self.src.nid, "dst:",self.dst.nid, "gw:",self.gw.nid
+		print "Route:: src:",self.src.nid, "dst:",self.dst.nid,	"gw:",self.gw.nid,\
+				"tpmask: ",dec2bin(self.tpmask)
 		print "        trtt:",self.rem.rtt, "bw_up:",self.rem.bwup,\
 			"bw_dw:",self.rem.bwdw,"avg:",self.rem.avg
 		print "        dp%:",(self.rem.dp)*100

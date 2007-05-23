@@ -234,6 +234,9 @@ class node:
 				continue
 			for metric in G.metrics:
 				for route in marray.metric_array[metric].gw:
+				    #print "XXX: ", route.dst.nid,\
+				    # 	route.gw.nid, gw.nid, dec2bin(route.tpmask),\
+				    # 	dec2bin(tpmask)
 				    if route.gw.nid == gw.nid and\
 				    	(not tpmask or (tpmask and\
 							route.tpmask==tpmask)):
@@ -250,33 +253,42 @@ class node:
 					rlist.append(route)
 		return rlist
 
-	def update_map(self, change, rnode, tpmask=0):
+	def update_map(self, change, rnode):
 		# The arguments are the same of {-build_etp-}
 		
 		if change == etp_section.CHANGE_DEAD_NODE:
-			self.update_map_deadnode(rnode, tpmask)
+			#Deletes from the map the node `rnode' and all the routes
+			#using `rnode' as gw
+			self.del_node(rnode)
+			self.update_map_deadnode(rnode)
 		else:
 			NOT_IMPLEMENTED
 
+	def del_node(self, node):
+		# delete `node' from the intmap
+		if self.int_map.has_key(node.nid):
+			del self.int_map[node.nid]
+
+	_update_map_deadnode_deleted=0 #ugly hack
 	def update_map_deadnode(self, rnode, tpmask=0):
 		"""Deletes from the map all the routes having as gw `rnode'
+
 		   If tpmask!=0, the routes will be deleted only if their
-		   tpmask is set to `tpmask'
-		   The node `rnode' is also deleted from the map.
+		      tpmask is set to `tpmask'
+		   else all the routes with gw `rnode' are removed 
 		   
 		   It returns 1 if some routes have been deleted
 		   """
-		deleted=0
+		global _update_map_deadnode_deleted
+		_update_map_deadnode_deleted=0
 		mapgw_set=set()
 
-		# delete `rnode' from the intmap
-		if self.int_map.has_key(rnode.nid):
-			del self.int_map[rnode.nid]
-
 		def del_dead_route(nid, metric, route):
+			global _update_map_deadnode_deleted
+			print "del_dead_route: %d,%s,%s"%(nid,metric,str(route))
 			mgw=self.int_map[nid].metric_array[metric].gw
 			mgw.remove(route)
-			deleted=1
+			_update_map_deadnode_deleted=1
 			if mgw == []:
 				empty=1
 				for metric in G.metrics:
@@ -292,11 +304,9 @@ class node:
 				mapgw_set.add(mgw)
 
 		# Delete dead routes
-		#TODO: continue debugging here
 		self.forall_routes_through(rnode, del_dead_route, tpmask)
 
 		#sort what we've changed
 		for mgw in mapgw_set:
 			mgw.sort_gw()
-
-		return deleted
+		return _update_map_deadnode_deleted

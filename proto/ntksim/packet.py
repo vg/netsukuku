@@ -233,7 +233,7 @@ class tracer_packet:
 			# and that of `r'
 			# Its tpmask is  r.tpmask|tmask, and its rem is
 			# r.rem+route_of_the_tp.rem
-			rp_tracer=[]
+			rp_tracer=[r.dst.nid]
 			
 			for hop in r.hops:
 				rp_tracer.append(hop.nid)
@@ -241,13 +241,16 @@ class tracer_packet:
 				rp_tracer.append(hop)
 
 			rp=route(me.nid,r.dst.nid,gw,rp_tracer,self)
+			print "rp: ", rp_tracer
 			
-			# Delete from the map all the routes passing from `gw'
+			# Delete now the rp route from the map (if present),
+			# in other words, delete from the map all the routes passing from `gw'
 			# and having the tpmask set to `tpm'
-			print "update_map_deadnode", gw, dec2bin(rp.tpmask)
+			print "update_map_deadnode", gw, dec2bin(rp.tpmask), me.nid
 			if not me.update_map_deadnode(G.whole_network[gw], rp.tpmask):
 				# no route has been deleted
-				# Try to add r in the map
+				# Try to add r in the map, maybe it's a better
+				# alternative to what we already have
 				if not me.add_route(rp):
 				   # this route isn't interesting, we may as
 				   # well delete it from the ETP
@@ -305,6 +308,9 @@ class tracer_packet:
 					if G.verbose:
 						print "ETP: dropping it"
 					return 0
+
+		# delete the dead node from the map
+		me.del_node(self.etp.changed_node)
 
 		# You may as well forward the ETP
 		return 1
