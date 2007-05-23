@@ -198,7 +198,7 @@ class tracer_packet:
 		if G.verbose:
 			print "ETP:", whole_tracer, "change:",\
 				self.etp.change, "cnode:",self.etp.changed_node.nid,\
-				"iflag:", self.etp.interest_flag
+				"iflag:", self.etp.interest_flag, "nroutes: ",len(self.etp.routes)
 		# The tpmask of the single route formed by the chunks of the TP
 		tpmask=reduce(lambda x, y: x|1<<y, whole_tracer, 0)
 
@@ -227,7 +227,6 @@ class tracer_packet:
 		forwardit=1
 		trash=[]
 		
-		print "ETP: I'm %d, executing exec_etp_deadnode"%(me.nid)
 		gw=trcr[len(trcr)-1]
 		for r in self.etp.routes:
 			
@@ -243,24 +242,28 @@ class tracer_packet:
 				rp_tracer.append(hop)
 
 			rp=route(me.nid,r.dst.nid,gw,rp_tracer,self)
-			print "rp: ", rp_tracer
+##			print "rp: ", rp_tracer
 			
 			# Delete now the rp route from the map (if present),
 			# in other words, delete from the map all the routes passing from `gw'
 			# and having the tpmask set to `tpm'
-			print "update_map_deadnode", gw, dec2bin(rp.tpmask), me.nid
+##			print "update_map_deadnode", gw, dec2bin(rp.tpmask), me.nid
 			if not me.update_map_deadnode(G.whole_network[gw], rp.tpmask):
 				# no route has been deleted
-				# Try to add r in the map, maybe it's a better
-				# alternative to what we already have
-				if not me.add_route(rp):
+				# If the route is dead (it passes trough the dead node),
+				# or if it isn't a better alternative to what
+				# we already have in the map, then delete it
+				if (rp.tpmask & (1<<self.etp.changed_node.nid)) or not me.add_route(rp):
 				   # this route isn't interesting, we may as
 				   # well delete it from the ETP
 				   trash.append(r)
+			   	else:
+					print "ETP: route added: ", rp_tracer
+
 		trash=remove_duplicates(trash)
 		for r in trash:
 			self.etp.routes.remove(r)
-		
+	
 		if self.etp.routes == []: 
 			#the etp is empty!
 			
@@ -295,7 +298,8 @@ class tracer_packet:
 				new_pack.payload.etp.routes=new_etp_routes
 	
 				#send the packet
-				print "ETP: sending back to %d the new routes"%(gw)
+				if G.verbose:
+					print "ETP: sending back to %d the new routes"%(gw)
 				new_pack.send_packet()
 				
 			else:
@@ -310,6 +314,8 @@ class tracer_packet:
 					if G.verbose:
 						print "ETP: dropping it"
 					forwardit=0
+				else:
+					print "good, now I know the death of ", self.etp.changed_node
 
 		# delete the dead node from the map
 		me.del_node(self.etp.changed_node)
