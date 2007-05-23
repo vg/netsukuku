@@ -234,9 +234,9 @@ class node:
 				continue
 			for metric in G.metrics:
 				for route in marray.metric_array[metric].gw:
-				    #print "XXX: ", route.dst.nid,\
-				    # 	route.gw.nid, gw.nid, dec2bin(route.tpmask),\
-				    # 	dec2bin(tpmask)
+				    print "XXX: ", route.dst.nid,\
+				     	route.gw.nid, gw.nid, dec2bin(route.tpmask),\
+				     	dec2bin(tpmask)
 				    if route.gw.nid == gw.nid and\
 				    	(not tpmask or (tpmask and\
 							route.tpmask==tpmask)):

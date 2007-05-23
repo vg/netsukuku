@@ -224,8 +224,10 @@ class tracer_packet:
 	def exec_etp_deadnode(self, me, trcr, tmask):
 		"""Returns 1 if the ETP is interesting, 0 otherwise"""
 		exist=0
+		forwardit=1
 		trash=[]
 		
+		print "ETP: I'm %d, executing exec_etp_deadnode"%(me.nid)
 		gw=trcr[len(trcr)-1]
 		for r in self.etp.routes:
 			
@@ -307,13 +309,13 @@ class tracer_packet:
 					# drop the packet then!
 					if G.verbose:
 						print "ETP: dropping it"
-					return 0
+					forwardit=0
 
 		# delete the dead node from the map
 		me.del_node(self.etp.changed_node)
 
 		# You may as well forward the ETP
-		return 1
+		return forwardit
 
 	#
 	### Tracer Packet 
