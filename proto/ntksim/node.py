@@ -235,7 +235,8 @@ class node:
 			for metric in G.metrics:
 				for route in marray.metric_array[metric].gw:
 				    if route.gw.nid == gw.nid and\
-				    	not tpmask or (tpmask and route.tpmask==tpmask):
+				    	(not tpmask or (tpmask and\
+							route.tpmask==tpmask)):
 						# this is a route passing 
 						# through `rnode', call f()
 						f(nid, metric, route)
@@ -277,17 +278,21 @@ class node:
 			mgw.remove(route)
 			deleted=1
 			if mgw == []:
-				empty=0
+				empty=1
 				for metric in G.metrics:
-					if self.int_map[nid].metric_array[metric].gw == []:
-						# We don't have any route to
-						# reach `node'. Delete it from
-						# our int_map
-						del self.int_map[nid]
+					if self.int_map[nid].metric_array[metric].gw != []:
+						empty=0
+					break
+				if empty:
+					# We don't have any route to
+					# reach `node'. Delete it from
+					# our int_map
+					del self.int_map[nid]
 			else:
 				mapgw_set.add(mgw)
 
 		# Delete dead routes
+		#TODO: continue debugging here
 		self.forall_routes_through(rnode, del_dead_route, tpmask)
 
 		#sort what we've changed

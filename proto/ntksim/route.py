@@ -124,21 +124,14 @@ class route:
 	
 	
 	def print_route(self):
-		print "***ROTTA***"
-		print "src:",self.src.nid
-		print "dst:",self.dst.nid
-		print "gw:",self.gw.nid
-		print "trtt:",self.rem.rtt
-		print "bw_up:",self.rem.bwup
-		print "bw_dw:",self.rem.bwdw
-		print "dp%:",(self.rem.dp)*100
-		print "avg:",self.rem.avg
-		print "hops:",
+		print "Route:: src:",self.src.nid, "dst:",self.dst.nid, "gw:",self.gw.nid
+		print "        trtt:",self.rem.rtt, "bw_up:",self.rem.bwup,\
+			"bw_dw:",self.rem.bwdw,"avg:",self.rem.avg
+		print "        dp%:",(self.rem.dp)*100
+		print "        hops:",
 		for i in self.hops:
 			print i.nid,
 		print ""
-		print "link_id:",
-		for i in self.link_id:
-			print i,
-		print ""
-		print ""
+#		print "        link_id:",
+#		for i in self.link_id:
+#			print i,

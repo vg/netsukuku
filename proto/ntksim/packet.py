@@ -244,6 +244,7 @@ class tracer_packet:
 			
 			# Delete from the map all the routes passing from `gw'
 			# and having the tpmask set to `tpm'
+			print "update_map_deadnode", gw, dec2bin(rp.tpmask)
 			if not me.update_map_deadnode(G.whole_network[gw], rp.tpmask):
 				# no route has been deleted
 				# Try to add r in the map

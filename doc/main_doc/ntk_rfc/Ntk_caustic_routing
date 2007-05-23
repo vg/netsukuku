@@ -339,6 +339,12 @@ This paper can be used as a starting point:
 http://www.cs.pitt.edu/%7Eelhaddad/aequitas/
 http://www.cs.pitt.edu/%7Eelhaddad/aequitas/elhaddad.pdf
 
+==== Network coding ====
+
+Explore the possibilities of integrating the network coding approac in the
+Caustic Routing:
+http://en.wikipedia.org/wiki/Network_coding
+
 ==== Packet reordering ====
 
 The TCP Packet reordering problem can make useless the use of Caustic or

@@ -168,38 +168,48 @@ def start_exploration(starters=[]):
 
 
 def kill_nodes():
-	
-	#CHANGE THE for WHEN HIGH LEVEL WILL BE IMPLEMENTED
-	num_of_killed_nodes=0
-	G.total_packets_forwarded=0
-	for i,node in G.whole_network.iteritems():
-		node.tracer_forwarded=0
-		unif=random.uniform(0,1)
-		if unif < node.dp: #the node is dead
-			print "the node:",node.nid,"is dead"
-			node.dead=1
-			num_of_killed_nodes+=1
+    
+    #CHANGE THE for WHEN HIGH LEVEL WILL BE IMPLEMENTED
+    num_of_killed_nodes=0
+    G.total_packets_forwarded=0
+    for i,node in G.whole_network.iteritems():
+    	node.tracer_forwarded=0
+    	unif=random.uniform(0,1)
+    	if unif < node.dp: #the node is dead
+    		print "the node:",node.nid,"is dead"
+    		node.dead=1
+    		num_of_killed_nodes+=1
+    		
+    		# node is the dead node
+    		# neigh are the neighbours of the dead node
+    		# all the neighbours will send the new ETP 
+    		for neigh,link_neigh in node.rnodes.iteritems():
+    			if G.whole_network[neigh].dead:
+				continue
+			print "I'm node %d. The rnode %d is dead. Sending ETP to: "%(neigh,node.nid),
+    				
+			#neigh has to send the packet to all his neighbours called 'dest'
+			for dest,link_dest in G.whole_network[neigh].rnodes.iteritems(): 
+				new_pack=packet(G.whole_network[neigh],G.whole_network[dest],"QSPN")
+				new_pack.add_chunk(link_dest)
+				delay=link_dest.l_rem.rtt
+				new_pack.time=G.curtime+delay
+				ret=new_pack.payload.etp.build_etp(G.whole_network[neigh],new_pack.payload.etp.CHANGE_DEAD_NODE,node)
 			
-			# node is the dead node
-			# neigh are the neighbours of the dead node
-			# all the neighbours will send the new ETP 
-			for neigh,link_neigh in node.rnodes.iteritems():
-				if G.whole_network[neigh].dead!=1:
-					
-					#neigh has to send the packet to all his neighbours called 'dest'
-					for dest,link_dest in G.whole_network[neigh].rnodes.iteritems(): 
-						if G.whole_network[dest].dead!=1:	
-							new_pack=packet(G.whole_network[neigh],G.whole_network[dest],"QSPN")
-							new_pack.add_chunk(link_dest)
-							delay=link_dest.l_rem.rtt
-							new_pack.time=G.curtime+delay
-							new_pack.payload.etp.build_etp(G.whole_network[neigh],new_pack.payload.etp.CHANGE_DEAD_NODE,node)
-						
-						#send the packet
-							new_pack.send_packet()
+				if G.whole_network[dest].dead:
+					# do not send to dead guys
+					continue
+				if ret:
+					#ETP build ok. Send the packet
+					print "%d, "%(dest),
+					new_pack.send_packet()
+				else:
+					del new_pack
+					print "not %d, "%(dest),
+			print ""
 
-						
-	print "killed nodes:",num_of_killed_nodes
+				
+    print "killed nodes:",num_of_killed_nodes
 #
 # Main loop
 # 
@@ -247,10 +257,14 @@ def print_maps():
 	
 	print 5 * ""
 	for i in G.whole_network:
+		if G.whole_network[i].dead:
+			continue
+		print "----"
+		print "Node:",i
 		for j in G.whole_network[i].int_map:
-			print "routes of the node: ",i, "for the destination: ", j
+			print "dst", j
 			for k in G.metrics:
-				print "optimized for the metric: ",k
+				print "metric",k
 				G.whole_network[i].int_map[j].metric_array[k].gw[0].print_route()
 
 def print_node_features():
@@ -273,7 +287,7 @@ def print_ETP_statistics():
 	for i in G.whole_network:
 		if G.whole_network[i].dead!=1:
 			print G.whole_network[i].etracer_forwarded
-	print "total packets forwarded: ",G.total_packets_forwarded
+	print "total ETP packets forwarded: ",G.total_packets_forwarded
 
 
 
