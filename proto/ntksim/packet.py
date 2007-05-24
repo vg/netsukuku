@@ -252,7 +252,8 @@ class tracer_packet:
 				# delete it. 
 				# This event has probably happened due two
 				# simultaneus dead-node events.
-					print "CONTAINS DEAD!",rp_tracer, len(r.hops), len(trcr), hop.nid
+					#if G.verbose:
+						#print "CONTAINS DEAD!",rp_tracer, len(r.hops), len(trcr), hop.nid
 					contains_dead=1
 
 			rp=route(me.nid,r.dst.nid,gw,rp_tracer,self)
@@ -275,7 +276,8 @@ class tracer_packet:
 				   # well delete it from the ETP
 				   trash.append(r)
 			   	else:
-					print "ETP: route added: ", rp_tracer
+					if G.debug:
+						print "ETP: route added: ", rp_tracer
 
 		trash=remove_duplicates(trash)
 		for r in trash:
@@ -315,8 +317,9 @@ class tracer_packet:
 				new_pack.payload.etp.routes=new_etp_routes
 	
 				#send the packet
-				if G.verbose:
-					print "ETP: sending back to %d the new routes"%(gw)
+				#if G.verbose:
+				#	print "ETP: sending back to %d the new routes"%(gw)
+				
 				new_pack.send_packet()
 				
 			else:
@@ -328,11 +331,13 @@ class tracer_packet:
 				if not me.int_map.has_key(self.etp.changed_node.nid):
 					# Yea, we already knew it
 					# drop the packet then!
-					if G.verbose:
+					
+					if G.debug:
 						print "ETP: dropping it"
 					forwardit=0
 				else:
-					print "good, now I know the death of ", self.etp.changed_node
+					if G.debug:
+						print "good, now I know the death of ", self.etp.changed_node
 
 		# delete the dead node from the map
 		me.del_node(self.etp.changed_node)
@@ -504,6 +509,7 @@ class packet:
 
 		tp=self.payload
 		if packet.total_pkts % 100==0:
+			#if G.debug:
 			print "DEBUG stats: tpkts %d, events %d, ETP %d"%(packet.total_pkts,len(G.events),tp.etp.enabled)
 
 		# Evaluate the tracer packet, if it isn't interesting, drop

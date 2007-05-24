@@ -258,7 +258,8 @@ class node:
 	def del_node(self, node):
 		# delete `node' from the intmap
 		if self.int_map.has_key(node.nid):
-			print "(%d) the node %d is dead, sigh"%(self.nid, node.nid)
+			if G.debug:
+				print "(%d) the node %d is dead, sigh"%(self.nid, node.nid)
 			self.dead_nodes.append(node.nid)
 			del self.int_map[node.nid]
 	def is_dead(self, nodeid):
@@ -291,7 +292,10 @@ class node:
 
 		def del_dead_route(nid, metric, route):
 			global _update_map_deadnode_deleted
-			print "del_dead_route: %d,%s,%s"%(nid,metric,str(route))
+		
+			if G.debug:
+				print "del_dead_route: %d,%s,%s"%(nid,metric,str(route))
+			
 			mgw=self.int_map[nid].metric_array[metric].gw
 			mgw.remove(route)
 			_update_map_deadnode_deleted=1

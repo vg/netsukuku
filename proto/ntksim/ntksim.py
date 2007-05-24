@@ -186,7 +186,8 @@ def kill_nodes():
     		for neigh,link_neigh in node.rnodes.iteritems():
     			if G.whole_network[neigh].dead:
 				continue
-			print "I'm node %d. The rnode %d is dead. Sending ETP to: "%(neigh,node.nid),
+			if G.debug:
+				print "I'm node %d. The rnode %d is dead. Sending ETP to: "%(neigh,node.nid),
     				
 			#neigh has to send the packet to all his neighbours called 'dest'
 			for dest,link_dest in G.whole_network[neigh].rnodes.iteritems(): 
@@ -201,12 +202,15 @@ def kill_nodes():
 					continue
 				if ret:
 					#ETP build ok. Send the packet
-					print "%d, "%(dest),
+					if G.debug:
+						#this print is related to the prevoius one (I'm the node %d. The node %d...
+						print "%d, "%(dest),
 					new_pack.send_packet()
 				else:
 					del new_pack
-					print "not %d, "%(dest),
-			print ""
+					if G.debug:
+						#this print is related to the prevoius one (I'm the node %d. The node %d...
+						print "not %d, "%(dest),
 			#break
 
 				
@@ -386,13 +390,13 @@ def main():
 	start_exploration()
 	main_loop()
 	print_TP_statistics()
-	print_maps()
+	#print_maps()
 	
 
 	kill_nodes()
 	main_loop()
 	print_ETP_statistics()
-	print_maps()
+	#print_maps()
 
 
 

@@ -72,4 +72,5 @@ class G:
 	# Flags
 	#
 	verbose=False
+	debug=False
 	events_limit_reached=False
