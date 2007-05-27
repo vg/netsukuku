@@ -59,10 +59,10 @@ INDEX:
         ID      =  It's a 2-byte value which identifies the query.
                    ID is choosed in a random way and the future
                    answers must have the same ID.
-	
-	R	=  Recursion bit. If set, SNSD queries that have
-		   a hostname as resolution will be resolved (if
-		   possible).
+    
+        R       =  Recursion bit. If set, SNSD queries that have
+                   a hostname as resolution will be resolved (if
+                   possible).
 
         QR      =  0 implies that this packet contains a question
                    1 if the packets contains answers
@@ -72,13 +72,13 @@ INDEX:
                    0 for TCP
                    1 for UDP
                    P has to be zero otherwise.
-	
-	Z	= zlib compression. If z=1, the packet contents, 
-		  headers excluded, are zlib-compressed. See
-		  Section 8.
+    
+        Z       =  zlib compression. If z=1, the packet contents, 
+                   headers excluded, are zlib-compressed. See
+                   Section 8.
 
-        QT      = Query Type. See below.
-                  Note: answers must leave this field unchanged.
+        QT      =  Query Type. See below.
+                   Note: answers must leave this field unchanged.
 
         ANCOUNT = Answer Count. This field is set only if QR=1,
                   ie if this packet contains answers.
@@ -110,6 +110,7 @@ INDEX:
                   question.
                   In the case of errors, ANCOUNT has to be 0.
 
+
 3. - QUERY TYPE -
 
   There are different kind of questions:
@@ -139,9 +140,10 @@ INDEX:
         This is a reverse resolution: `ip -> host`.
 
   QTYPE =2
-  	This is a global query: all services for the
-	hostname will be answered.
-	The query realm has to be Ntk.
+    This is a global query: all services for the
+    hostname will be answered.
+    The query realm has to be Ntk.
+
 
 4. - QUERY REALMS -
 
@@ -167,6 +169,7 @@ INDEX:
   will be made in the default realm.
   Otherwise, dns_wrapper removes this suffix and
   resolves the query without it.
+
 
 5. - RCODE -
 
@@ -204,6 +207,7 @@ INDEX:
   ie, if RCODE contains some error (RCODE!=0), there is
   not answer in this packet. If RCODE is 0 (no error),
   the packet contains some answer.
+
 
 6. - QUESTIONS -
 
@@ -292,6 +296,7 @@ INDEX:
 
      HH is the 16-bytes hostname hash.
 
+
 7. - ANSWERS -
 
   The format of answers is:
@@ -353,7 +358,7 @@ INDEX:
    case of QTYPE=2.
 
    After the two bytes, this is the format for each answer:
-	
+    
         +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
         | M| T| P|  WG          |       PRIO            |
         +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
@@ -367,8 +372,8 @@ INDEX:
 
    where T is the type of the DATA.
    T is:
-   	T = 0	Hostname
-	T = 1 	Ip
+    T = 0   Hostname
+    T = 1   Ip
 
    M is set if T is set, and specifies that this is the MAIN_IP
    of the hostname.
@@ -429,6 +434,6 @@ INDEX:
   USIZE is the original size of packet contents (question and 
   answers). 
   If a packet is compressed, then Z=1.
-	
+    
 }}}
 
