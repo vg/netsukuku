@@ -1044,16 +1044,20 @@ In order to give an exact definition of an ETP, we must examine each case of net
 		$M$ is sorted, i.e. the routes of the map of $C$ are sorted in
 		order of efficiency.
 	\item For all $r' \in R'$,
+		\label{ETPstep3}
 		\begin{enumerate}
-			\item if $r'$ is a better alternative to at least one primary route
-				$m'\in M$ such that $\T{dst}(r')=\T{dst}(m')$,
+			\item \label{ETPstep3a}
+				let $m'\in M$ be a route such that
+				$\T{dst}(r')=\T{dst}(m')$. If $m'$
+				exists and if $r'$ is a better alternative to $m'$,
 				then $r'$  is saved in the map of $C$
 				(note \footnote{When saving a route $r$ of the ETP
 				in the map, we must consider the hops covered by the ETP,
 				so the real saved route is
 				$r\leftarrow \T{hop}_1\leftarrow \T{hop}_2\leftarrow
 				\dots\leftarrow \T{hop}_n$. In this
-				case we'll have $r\leftarrow B\leftarrow A$.}), 
+				case we'll have $r\leftarrow B\leftarrow
+				A$.}),
 			\item otherwise, $r'$ is removed from $R$.
 		\end{enumerate}
 		Note \footnote{this step implements the QSPN v2 rules: only
@@ -1127,7 +1131,35 @@ In order to give an exact definition of an ETP, we must examine each case of net
 				second time it will be dropped). This simple
 				TP serves to inform the nodes, unaffected
 				by the network change, of the death of $A$.
-		\end{enumerate}
+			\item Note: the rule of step \ref{ETPstep3a} of the worsened
+				link case implies that if $m'$ doesn't exist
+				then $r'$ is removed from $R$. This strategy is adopted
+				to discard misleading information regarding
+				new routes, in fact, a node can know the
+				existence of a new route only with the
+				\textbf{new link} ETP packets. As an
+				example, consider the following infinite loop
+				that can happen without the use of this rule:
+				\begin{enumerate}
+					\item Suppose
+						that two nodes $X,Y$ die almost at the
+						same instant. Then two death-ETPs are
+						generated, one for the death of $X$ and
+						another for $Y$. Suppose that
+						the X-ETP contains routes
+						with $Y$ as destination and
+						viceversa for the Y-ETP
+				\item The node $Z$ receives the X-ETP, and
+					deletes $X$ from the map.
+				\item $Z$ receives the Y-ETP, deletes $Y$ from
+					the map but re-adds $X$, because
+					the packet contains a route to reach
+					it.
+				\item $Z$ receives again the X-ETP, 
+					deletes $X$ but re-adds $Y$.
+				\item and so on.
+			\end{enumerate}
+	\end{enumerate}
 	\item[Improved link]
 	\label{ilink}
 		Suppose that the link $A
@@ -1177,7 +1209,9 @@ In order to give an exact definition of an ETP, we must examine each case of net
 				best routes of the two.
 			\item If the neighbours of $A$ are more than one, i.e.
 				$n>1$, then $A$ sends, to each of them, an ETP
-				containing all the primary routes of its map.
+				containing all the primary routes of its
+				map.\\
+				If $n=1$, then $A$ sends just an empty ETP.
 			\item The ETPs are propagated exactly in the same way
 				of the \textbf{worsened link} case (see page
 				\pageref{wlink}).
