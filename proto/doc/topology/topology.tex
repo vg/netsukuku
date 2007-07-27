@@ -429,11 +429,11 @@ itself between the single nodes, tracing a precise route formed by single
 hops, until it is considered interesting. 
 In this way every node will have its own personal route to reach a specific gnode. 
 
-The memory limits are respected, because the CTP, once it jumped
+The memory limits are respected, because the CTP, once it jumps
 over the border of a gnode, deletes the specific details that were useful by the nodes of
 the gnode.\\
 \newline
-We'll know describe the rules of the Flat levels.\\
+We'll now describe the rules of the Flat levels.\\
 Suppose we want to explore the level $n\ge 1$ (we already know how to
 explore $n=0$). Let $G_1,\dots, G_r$ be the gnode of level $n$. The generic
 rule of the QSPN v2 in high levels is: 
@@ -449,7 +449,7 @@ forwards it to all its neighbouring gnodes.
 \end{quote}
 Detailed rules:
 \begin{enumerate}
-	\item When exploring the level $n$, each inferior level must been
+	\item When exploring the level $n$, each inferior level must be
 		already explored.\\
 		To accomplish this, it sufficies that a
 		node, before sending/forwarding a CTP of level $n$ has already
@@ -482,7 +482,7 @@ Detailed rules:
 		G):=REM(n\rightarrow b)$.\\
 		$n$ forwards the LTP to its rnodes without modifying it.
 	\item The LTP respects the same rule of the QSPN v2: it is forwarded
-		by a node only if it is carries interesting information,
+		by a node only if it carries interesting information,
 		otherwise it is dropped. A
 		node $n$ consider the LTP interesting if one of the following
 		conditions\footnote{this isn't the complete list of
@@ -510,7 +510,7 @@ Detailed rules:
 		Recall the situation of rule \ref{ruleegressbnode}.\\
 		When the value $REM(b'\rightarrow b)$ changes
 		considerably,
-		both $b$ and $b'$ sends a CTP of level $n$ to their external
+		both $b$ and $b'$ send a CTP of level $n$ to their external
 		nodes\footnote{A CTP of level $n-1$ tells $b$ and $b'$ of the
 		REM change}. The CTP contains the new $REM$ value. Every node which used $G$ as hop of some routes,
 		will consider the CTP interesting.\\

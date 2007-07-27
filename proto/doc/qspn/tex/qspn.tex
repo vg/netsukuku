@@ -969,17 +969,8 @@ In order to give an exact definition of an ETP, we must examine each case of net
 		will be sent to all its neighbours, except $A$. In detail,
 		$B$ will use the following algorithm:
 		\begin{enumerate}
-		\item If at least one of the primary
-		       routes\footnote{
-				a route src$\rightarrow dst$ is called primary
-				if it is among the first MaxRoutes routes of
-				type src$\rightarrow dst$}
-			saved in the map
-			of $B$ and different from the route $B\rightarrow A$, uses the link $l$, then $B$ creates an
-			empty ETP, otherwise the algorithm halts, i.e. $B$
-			won't do anything.
 		\item \label{upmap}
-			If the empty ETP has been created, $B$ updates its maps:
+			$B$ updates its maps:
 			suppose that the route $r$, passing through the link
 			$l$, had a total rtt $t_0(r)$. If the rtt of the link
 			$l$ before the change was $t_0(l)$ and now is
@@ -997,7 +988,12 @@ In order to give an exact definition of an ETP, we must examine each case of net
 		\item \label{stepR} 
 			$B$ creates the temporary set $Q$, 
 			containing all the primary
-			routes passing through the link $l$. From $Q$
+			routes\footnote{
+				a route src$\rightarrow dst$ is called primary
+				if it is among the first MaxRoutes routes of
+				type src$\rightarrow dst$}
+			passing through the link $l$, including the route
+			$B\rightarrow A$. From $Q$
 			it creates the set $R$, where
 			\[
 			R=\{r\in M\;|\;\exists q\in Q:\;\T{dst}(r)=\T{dst}(q)\}
@@ -1048,8 +1044,9 @@ In order to give an exact definition of an ETP, we must examine each case of net
 		\begin{enumerate}
 			\item \label{ETPstep3a}
 				let $m'\in M$ be a route such that
-				$\T{dst}(r')=\T{dst}(m')$. If $m'$
-				exists and if $r'$ is a better alternative to $m'$,
+				$\T{dst}(r')=\T{dst}(m')$. If
+				$r'$ is a better alternative to $m'$ and if
+				every hop of $r'$ is reachable by $C$,
 				then $r'$  is saved in the map of $C$
 				(note \footnote{When saving a route $r$ of the ETP
 				in the map, we must consider the hops covered by the ETP,
@@ -1105,62 +1102,7 @@ In order to give an exact definition of an ETP, we must examine each case of net
 	considers it uninteresting, it is just dropped\footnote{the node will
 	drop the ETP if the \emph{flag of interest} is set to 0 and if it is
 	uninteresting}.
-	\item[A node dies]
-		Suppose the node $A$ dies. Each neighbour $B$ of $A$ will send
-		an ETP. The ETPs are generated and propagated with the
-		algorithms described in the \textbf{worsened link} case (page
-		\pageref{wlink}), the differences are:
-		\begin{enumerate}
-			\item Instead of considering the routes passing
-				through the worsened link we consider the
-				routes passing from the dead node.
-			\item Suppose that the node $N$ receives the ETP from
-				its neighbour $L$ and considers it uninteresting.
-				$N$ sends back to $L$ the new ETP to share its
-				routes
-				among the interested node. However, unlike the
-				case for the worsened link, $N$ creates also a
-				new simple TP, where it writes only the
-				information of the death of $A$.
-				$N$ sends this TP to all its neighbours, except $L$.
-
-				This simple TP will be propagated with the
-				rules of the QSPN v2. For this reason and since it carries
-				only one useful information (the death of
-				$A$), each node will receive it just once (the
-				second time it will be dropped). This simple
-				TP serves to inform the nodes, unaffected
-				by the network change, of the death of $A$.
-			\item Note: the rule of step \ref{ETPstep3a} of the worsened
-				link case implies that if $m'$ doesn't exist
-				then $r'$ is removed from $R$. This strategy is adopted
-				to discard misleading information regarding
-				new routes, in fact, a node can know the
-				existence of a new route only with the
-				\textbf{new link} ETP packets. As an
-				example, consider the following infinite loop
-				that can happen without the use of this rule:
-				\begin{enumerate}
-					\item Suppose
-						that two nodes $X,Y$ die almost at the
-						same instant. Then two death-ETPs are
-						generated, one for the death of $X$ and
-						another for $Y$. Suppose that
-						the X-ETP contains routes
-						with $Y$ as destination and
-						viceversa for the Y-ETP
-				\item The node $Z$ receives the X-ETP, and
-					deletes $X$ from the map.
-				\item $Z$ receives the Y-ETP, deletes $Y$ from
-					the map but re-adds $X$, because
-					the packet contains a route to reach
-					it.
-				\item $Z$ receives again the X-ETP, 
-					deletes $X$ but re-adds $Y$.
-				\item and so on.
-			\end{enumerate}
-	\end{enumerate}
-	\item[Improved link]
+		\item[Improved link]
 	\label{ilink}
 		Suppose that the link $A
 		\stackrel{l}{\leftrightarrow} B$ improves.\\
@@ -1194,10 +1136,23 @@ In order to give an exact definition of an ETP, we must examine each case of net
 		\end{enumerate}
 		At this point, the ETP is propagated exactly in the same way
 		of the \textbf{worsened link} case (see page \pageref{wlink}).
+	\item[Broken link] 
+		The case where the link $A
+		\stackrel{l}{\leftrightarrow} B$ becomes invalid, is handled
+		in the same way of the \textbf{worsened link} case (see
+		page \pageref{wlink}), because we can consider $l$ as
+		infinitely worsened.
+	\item[New link]
+		The case where a new link $A \stackrel{l}{\leftrightarrow} B$
+		is established between, is handled  in the same way of the
+		\textbf{improved link} case (see page \pageref{ilink}),
+		because we can consider $l$ as infinitely improved.
 	\item[A new node joins]
 		Suppose the node $A$ is joining the network. Its neighbours
 		are $B_1, B_2,\dots, B_n$, which are all already hooked, i.e.
-		they aren't joining. Then,
+		they aren't joining. Then, the \textbf{new link} case is
+		applied to each link $A\leftrightarrow B_i,\;\;i=1,2,\dots,n$.
+		In detail:
 		\begin{enumerate}
 			\item Each neighbour $B_i$ sends its whole map to
 				$A$
@@ -1217,20 +1172,49 @@ In order to give an exact definition of an ETP, we must examine each case of net
 				\pageref{wlink}).
 		\end{enumerate}
 		Note that this case extends the hooking procedure.
-	\item[Broken link] 
-		The case where the link $A
-		\stackrel{l}{\leftrightarrow} B$ becomes invalid, is handled
-		in the same way of the \textbf{worsened link} case (see
-		page \pageref{wlink}), because we can consider $l$ as
-		infinitely worsened.
-	\item[New link]
-		The case where a new link $A \stackrel{l}{\leftrightarrow} B$
-		is established between, is handled  in the same way of the
-		\textbf{improved link} case (see page \pageref{ilink}),
-		because we can consider $l$ as infinitely improved.
+	\item[A node dies]
+		When the node $A$ dies, the \textbf{broken link} case is
+		simply applied to each link of $A$.
 \end{description}
+\subsubsection{Real time issues}
+When different events happen almost simultaneously, a node can receive
+contradictory ETPs. In order to discard misleading information, the following
+strategy is adopted: every TP contained in an ETP is paired with a time ID,
+generated at its creation time. The time ID is based on the gnode uptime, that
+is a value known by all its nodes. When a node will examine two inconsistent
+TP of two different ETPs, it will digregard the TP with the oldest time ID.
+Some inconsistent TPs are:\\
+\begin{center}
+\begin{tabular}{l|l}
+	TP 1 & TP 2\\
+	\hline\\
+	node X is dead & node X is alive, here it is a route to X\\
+	the rem of route X is 40 & the rem of route X is 50
+\end{tabular}
+\end{center}
+As an example, consider the following infinite loop that can happen without
+the use of the time ID:
+\begin{enumerate}
+	\item Suppose that two nodes $X,Y$ die almost at the
+		same instant, and for convenience suppose they had just one
+		link. Then two broken-link-ETPs are
+		generated, one for the death of the $X$ link and
+		another for $Y$. Suppose that
+		the X-ETP contains routes
+		with $Y$ as destination and
+		viceversa for the Y-ETP
+	\item The node $Z$ receives the X-ETP, and
+		deletes $X$ from the map.
+	\item $Z$ receives the Y-ETP, deletes $Y$ from
+		the map but re-adds $X$, because
+		the packet contains a route to reach
+		it.
+	\item $Z$ receives again the X-ETP, 
+		deletes $X$ but re-adds $Y$.
+	\item and so on.
+\end{enumerate}
+
 %- joining simultaneo di piu' nodi
-%- l'ETP e' un CTP aciclico!
 %- l'ETP puo' essere spezzettato
 %- criptografia dell'ETP
 %
