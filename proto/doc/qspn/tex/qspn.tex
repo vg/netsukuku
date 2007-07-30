@@ -21,7 +21,37 @@
 \else
 \newcommand{\href}[2]{ #1 }
 \fi
+
+%%%% Misc
 \newcommand{\T}[1]{\textrm{#1}}
+\newcommand{\see}[1]{\T{[\ref{#1},pg.\pageref{#1}]}}
+\newcommand{\vedi}[1]{\T{vedi \see{#1}}}
+\newcommand{\pgra}[1]{\left\{#1\right\}}
+\newcommand{\pqua}[1]{\left[#1\right]}
+\newcommand{\pton}[1]{\left(#1\right)}
+\newcommand{\pass}[1]{\Big|#1\Big|}
+\newcommand{\sist}[1]{{ \begin{cases} #1 \end{cases} }}
+\newcommand{\eal}[1]{{\begin{align*} #1 \end{align*}}}
+\def\ove#1{{\overline{#1}}}
+\newcommand{\qq}{\qquad}
+%% Defs
+\def\*{{\times}}
+\def\|{{\;\lor\;}}
+\def\&{{\;\land\;}}
+\def\-{{\setminus}}
+\def\0{{\emptyset}}
+\def\8{{\infty}}
+\def\v{{\cup}}
+\def\^{{\cap}}
+\def\<{{\;\Leftarrow\;}}
+\def\>{{\;\Rightarrow\;}}
+\def\={{\;\Leftrightarrow\;}}
+\def\({{\subseteq}}
+\def\){{\supseteq}}
+\def\'{{\;\;\;}}
+\def\,{{,\;}}
+
+
 \title{Quantum Shortest Path Netsukuku}
 \author{AlpT (@freaknet.org)}
 \author{http://netsukuku.freaknet.org\\AlpT (@freaknet.org)}
@@ -732,12 +762,12 @@ rest will be disregarded, and \textbf{not} forwarded. \\
 The CTP $t$ won't be forwarded by the node $D$, if it contains routes which
 exceed the \emph{MaxRoutes} limit, but this is true for all the nodes of
 $\sigma$, therefore $t$ won't even be able to escape from the subcycle
-$\sigma$. However, this also means that all the CTPs, which are in a higher
+$\sigma$. This also means that all the CTPs, which are in a higher
 class than that of $t$, won't be allowed to pass from $\sigma$.\\
 
-Since this happens for all the subcycles of the graph, we can conclude that at
-worst, the number of CTPs increases in polynomial time with the increase of
-subcycles.
+Since this happens for all the subcycles of the graph, we can conclude that
+the increase of the number of subcycles won't increase exponentially the
+number of CTPs.
 
 \subsubsection*{Example}
 Consider this graph.
@@ -811,7 +841,7 @@ In conclusion, the CTP of class $[7]$ would be allowed to be propagated among
 the network even if the \emph{MaxRoutes} has been set to $2$ routes.
 Instead, if $D$ receives the packet in an ordered
 manner, it will first get the CTPs of class $[1]$, then those of class $[2]$
-and so on. For this reason the CTP of class $[7]$. and all the other which
+and so on. For this reason the CTP of class $[7]$, and all the other which
 exceed the \emph{MaxRoutes} limit, won't be allowed to pass from $D$.
 
 \subsection{Bandwidth issues}
@@ -892,11 +922,6 @@ These are the substantial differences between Q (QSPN v1) and $Q^2$ (QSPN v2):
 		the best routes. However Q gives at least one route to
 		reach each node of the graph.
 
-	\item Q uses less memory than $Q^2$, because it just keeps a
-		forwarding table, instead, $Q^2$ needs to memorize 
-		$\emph{MaxRoutes}$ complete routes to evaluate the successive
-		CTPs. By the way, this difference is minimal.
-
 	\item $Q^2$ doesn't need synchronization. the CTPs doesn't need to
 		have an ID, thus many nodes can send simultaneously or
 		asynchronously a CTP without creating any problem.\\
@@ -963,11 +988,13 @@ In order to give an exact definition of an ETP, we must examine each case of net
 		Let's analyse what $B$ will do (the situation is symmetric for
 		$A$).
 
-		$B$, if interested in the change, will create an ETP
-		containing all its old routes, affected by the change, and all
-		the backup routes used as substitute for the old ones. The ETP
-		will be sent to all its neighbours, except $A$. In detail,
-		$B$ will use the following algorithm:
+		$B$ updates its maps. As a consequence, the best routes used to
+		reach some nodes change. Then, $B$ creates an ETP containing
+		all these routes.
+		The ETP will be sent to all its neighbours, except $A$. In
+		this way its neighbours will know how convenient is to pass
+		through $B$ to reach the changed nodes.
+		In detail, $B$ will use the following algorithm:
 		\begin{enumerate}
 		\item \label{upmap}
 			$B$ updates its maps:
@@ -982,32 +1009,31 @@ In order to give an exact definition of an ETP, we must examine each case of net
 				route $r$, before the change}\\
 				&b_0(l) > b_1(l)\;\;\T{the bw of $l$ has
 				worsend during the change}\\
-				&b_1(r):=\min \{b_0(r), b_1(l)\}
+				&b_1(r):=b_1(l)
 			\end{align*}
 			The routes are then sorted.
 		\item \label{stepR} 
-			$B$ creates the temporary set $Q$, 
-			containing all the primary
-			routes\footnote{
-				a route src$\rightarrow dst$ is called primary
-				if it is among the first MaxRoutes routes of
-				type src$\rightarrow dst$}
-			passing through the link $l$, including the route
-			$B\rightarrow A$. From $Q$
-			it creates the set $R$, where
-			\[
-			R=\{r\in M\;|\;\exists q\in Q:\;\T{dst}(r)=\T{dst}(q)\}
-			\]
-			where $M$ is the set of all the primary routes of the map, and 
-			$\T{dst}(r)$ is the destination of the route $r$. In
-			other words, $R$ is the set of primary routes having
-			the same destination of at least one route of $Q$.
-			Note that $Q\subseteq R$.
-			Each
-			route $r\in R$ is saved as $(\T{dst}(r), \T{rem}(r), \T{tpmask}(r))$, where $\T{rem}(r)$ is the Route
-			Efficiency Measure, and $\T{tpmask}(r)$ is a bitmask of 256
-			bits, where the bit at the i-th position indicates if
-			the node i is an hop of the route $r$.
+			$B$ creates the set $R$:
+			\eal{
+			&R=\pgra{r\in \overline{M}\;|\; gw(r)=A}\\
+			&\T{where }\\
+			&\qq r\in \ove M \;\= \;r\in M,\;\;  rem(r)=\max \{
+			rem(s)
+			\;|\;s\in M,\;dst(s)=dst(r) \} \\
+			&\qq M \T{ is the set of all the routes of the map of
+			$B$}\\
+			&\qq gw(r)\T{ is the first hop of the route $r$}\\
+			&\qq dst(r) \T{ is the destination of the route $r$}\\
+			&\qq \T{rem}(r) \T{ is the Route Efficiency Measure of
+			$r$}.
+			}
+			In other words, $\ove M$ is the set of all the best routes of
+			the map, and $R$ is the set of all the best routes passing
+			through $A$. Note that $R\neq \0$, because there's at
+			least the route $B\rightarrow A$.
+			
+			Each route $r\in R$ is saved as the pair $(\T{dst}(r),
+			\T{rem}(r))$.
 		\item $B$ fills the ETP: 
 			\begin{enumerate}
 				\item it adds in it the set $R$
@@ -1029,10 +1055,10 @@ In order to give an exact definition of an ETP, we must examine each case of net
 			rule}.
 		\item Let $R$ be the set of routes contained in the
 			ETP received by $C$.\\
-			Let $M$ be the set of all primary routes contained in the map of $C$.\\
+			Let $M$ be the set of all the routes contained in the map of $C$.\\
 		For each route $r\in R$, the node $C$ looks for 
 		a route $m\in M$ such that 
-		\[\T{dst}(m)=\T{dst}(r),\;\;\T{tpmask}(m)=\T{tpmask}(r)\]
+		\[\T{dst}(m)=\T{dst}(r),\;\;\T{gw}(m)=\T{gw}(r)\]
 		If $m$ exists, then $C$ sets $\T{rem}(m):=\T{rem}(r)$
 		\footnote{with this operation we are actually replacing $m$
 		with $r$, in the map $M$}.
@@ -1076,7 +1102,7 @@ In order to give an exact definition of an ETP, we must examine each case of net
 	uninteresting. $N$ won't just drop the ETP, but will also send back
 	another ETP containing its own routes. The reason is simple: $N$
 	considers the received ETP uninteresting, this means that $N$ isn't
-	affected by the change of the link $l$, i.e. all its primary routes don't
+	affected by the change of the link $l$, i.e. all its routes don't
 	pass through $l$ and thus are still optimal. Therefore, $N$ will
 	send back its routes, hoping that they will be useful to the nodes
 	affected by the change. In detail, this is what will happen when $N$
@@ -1085,11 +1111,11 @@ In order to give an exact definition of an ETP, we must examine each case of net
 		\item $N$ receives the ETP from the node $L$, and considers it
 			uninteresting.
 		\item Let $R$ be the set of routes contained in the ETP.\\
-		Let $M$ be the set of all primary routes contained in the map
+		Let $M$ be the set of all the routes contained in the map
 		of $N$.\\
 		$N$ creates the following set:
 		\[
-		S=\{m\in M\;|\; \exists r\in R:\;\T{dst}(m)=\T{dst}(r)\}
+		S=\{s\in \ove M\;|\; \exists r\in R:\;\T{dst}(s)=\T{dst}(r)\}
 		\]
 		\item $N$ creates the new ETP, appending in it the set $S$ and
 			its ID. The \emph{flag of interest} of this ETP is set
@@ -1109,22 +1135,19 @@ In order to give an exact definition of an ETP, we must examine each case of net
 		Let's examine the events, starting from $A$, keeping in mind
 		that the situation is symmetric for $B$.
 
-		Since the link $l$ improved, it may be possible for $B$ to use
-		it to improve some of its routes. For this reason, $A$ will
+		Since the link $l$ improved, it may be the case for $B$ to
+		discover new optimal routes passing from it.
+		For this reason, $A$ will
 		send to it an ETP with all the routes of its map, except those of the form
-		$A\rightarrow B\rightarrow \rightarrow \dots$. If $B$ finds
+		$A\rightarrow B\rightarrow \dots$. If $B$ finds
 		something of interest, it will forwards the ETP. In detail:
 		\begin{enumerate}
-			\item Let $M$ be the set of all primary routes
-				contained in the map of $A$.\\
+			\item
 			      $A$ creates the following set:
 			      \[
-			      R=\{m\in M\;|\; \T{gw}(m)\neq B\}
+			      R=\{r\in \ove M\;|\; \T{gw}(r)\neq B\}
 			      \]
-			      where $\T{gw}(m)$ is the first hop of the route
-			      $m$. 
-			      Each route $r\in R$ is saved as $(\T{dst}(r),
-			      \T{rem}(r), \T{tpmask}(r))$.
+			      Each route $r\in R$ is saved as $(\T{dst}(r), \T{rem}(r))$.
 		      \item $A$ creates the ETP:
 			\begin{enumerate}
 				\item it writes in it the set $R$
@@ -1135,13 +1158,37 @@ In order to give an exact definition of an ETP, we must examine each case of net
 		      \item It sends the ETP to $B$
 		\end{enumerate}
 		At this point, the ETP is propagated exactly in the same way
-		of the \textbf{worsened link} case (see page \pageref{wlink}).
+		of the \textbf{worsened link} case (see page
+		\pageref{wlink}).\\
+
+		It is worth to note that when the bandwidth of a link
+		improves, it isn't possible to update the total bandwidth of a route
+		as in the case of the step \ref{upmap} of the
+		\textbf{worsend link} case. In fact, suppose to have the route
+		\[
+		A \stackrel{100 Mb/s}{\leftrightarrow} B \stackrel{2
+		Mb/s}{\leftrightarrow} C \stackrel{7 Mb/s}{\leftrightarrow}
+		D
+\]
+Its total bandwidth is $bw(A\rightarrow D)=2 Mb/s$. If $bw(C\rightarrow D)$
+becomes $1 Mb/s$, then $bw(A\rightarrow D)=1 Mb/s$. However, if
+$bw(C\rightarrow D)=100 Mb/s$, the total bandwidth is still $2 Mb/s$, because
+$B\rightarrow C$ isn't changed. Even if $bw(C\rightarrow D)=3$, the total
+bandwidth
+doesn't change. For these reasons, a node $N$, when saving in its map a route
+$r$, will also indicate if $b_1=bw(N\rightarrow gw(r))$ was the lowest
+bandwidth of the links of $r$ or not. It will also save the bandwidth $b_2$, which is the
+nearest bandwidth to $b_1$, or in other words:
+\eal{&\forall l\in links(r)\;\;\pass{b_1-b_2}\le \pass{b_1-bw(l)}}
+With these information, $N$ will be able to determine the bandwidth of the route $r$,
+then the link $N\rightarrow gw(r)$ changes.
 	\item[Broken link] 
-		The case where the link $A
-		\stackrel{l}{\leftrightarrow} B$ becomes invalid, is handled
+		The case where the link $A \stackrel{l}{\leftrightarrow} B$ becomes invalid, is handled
 		in the same way of the \textbf{worsened link} case (see
 		page \pageref{wlink}), because we can consider $l$ as
-		infinitely worsened.
+		infinitely worsened. 
+		Note that the set $R$, created by $B$, will also include dead
+		routes, i.e. routes with $rem=-\8$
 	\item[New link]
 		The case where a new link $A \stackrel{l}{\leftrightarrow} B$
 		is established between, is handled  in the same way of the
@@ -1223,7 +1270,7 @@ the use of the time ID:
 \subsection{Rtt and bandwidth}
 \label{sec:bandwidth_q1q2}
 
-The bandwith capacity of a route can be used as a parameter of its
+The bandwidth capacity of a route can be used as a parameter of its
 efficiency. In this section we'll analyse the implications for the QSPN.
 For more information about the bandwidth management in Netsukuku you can read
 the NTK\_RFC 002 \cite{ntkrfc0002}.
@@ -1295,16 +1342,16 @@ CTPs will remain equal to that of the symmetric $Q^2$.
 The routing table of each node should be differentiated, i.e. it should not
 contain redundant routes.
 
-For example, consider these $S \rightarrow D$ routes:
+For example, consider these $P \rightarrow S$ routes:
 \begin{align}
-	& SBCFG_1G_2G_3G_4G_5G_6G_7 \dots G_{19} D	\\
-	& SRTEG_1G_2G_3G_4G_5G_6G_7 \dots G_{19} D	\\
-	& SZXMNO_1O_2O_3O_4O_5D				\\
-	& SQPVY_1Y_2Y_3Y_4D
+	& PBCFG_1G_2G_3G_4G_5G_6G_7 \dots G_{19} S	\\
+	& PRTEG_1G_2G_3G_4G_5G_6G_7 \dots G_{19} S	\\
+	& PZXMNO_1O_2O_3O_4O_5S				\\
+	& PQPVY_1Y_2Y_3Y_4S
 \end{align}
 The first two are almost identical, indeed they differ only in the first three
 hops. The last two are, instead, totally different from all the others.\\
-Since the first two routes are redundant, the node $S$ should keep in memory only
+Since the first two routes are redundant, the node $P$ should keep in memory only
 one of them, saving up space for the others non-redundant routes.
 \newline
 
@@ -1314,26 +1361,41 @@ routes will fail too. Moreover when implementing the multipath routing to load
 balance the traffic there won't be any significative improvements.
 \newline
 
-$Q^2$ itself should avoid to spread redundant routes. In order to achieve
-this result, we refine the efficiency value associated to a route. Suppose we
-want to affect the efficiency value $R_e$ assigned to the route $R$:
-\begin{enumerate}
-	\item let $0\le s(R,S)\le 1$ be the similarity level of the route $R$
-		with $S$.
-	\item for each memorised route $S$ we compute $s(R,S)$ and if we find
-		a route $S$ such that $s(R,S) > 0.5$ we go to step 3.
-	\item we set \[R_e = R_e\frac{1-s(R,S)}{k}\] where $k$ is an appropriate
-		coefficient.
-\end{enumerate}
-As explained in section \ref{sec:routes_limit} the efficiency of a route is
-used as a parameter to evaluate its interest, therefore the more a route is
-similar to a memorised route the more its efficiency will decrease. Hence it
-will be considered less interesting.\\
-Note that this is a generalization of concept of interesting route defined in
-section \ref{sec:routes_limit}, in fact, when $R$ and $S$ are equal, we'll
-have
-\[s(R,S)=1\]
-so the $R_e$ value will be equal to $0$.
+The following distributed mechanism is adopted: 
+suppose that the node $N$ receives a generic TP, suppose also that it contains
+a route to reach the node $S$. If $N$ considers the TP interesting, then 
+$N$ will write in the TP the tern $a=(N,S,n+1)$, where
+$n$ is the number of routes already known by $N$ to reach the node $S$. In
+this way, the other nodes will know that the TP is the $(n+1)-$th route of $N$
+to reach $S$.\\
+Now suppose that the node $P$ receives the $TP$ (the TP may or may not have passed
+through other nodes after having passed from $N$). Let $T_S=\pgra{
+(a,b,c) \in T \;|\;b=S
+}$, where $T$ is the set of all the terns written in the $TP$. $P$ will
+calculate the following mean:
+\[
+m=\frac{\sum_{t \in T_S}^{}t_3}{|T_S|}
+\]
+where $t_3$ is the third element of the tern $t$ and $|T_S|$ is the number of elements of the set $|T_s|$.\\ 
+The number $m$ indicates how disjoint is the route contained in the $TP$ from
+previous routes. If $m\ge 2$, then the route is exactly the copy of a previous
+route. If $m\approx 2$, then the route is approximately a copy of a previous
+route. If $m=1$, the route is definitely original.\\
+%TODO: show a proof ;)
+Example: see figure \ref{fig:disjroute}.\\
+\begin{figure}[h]
+	\begin{center}
+		\includegraphics[scale=0.35]{fig/disjrouteU}
+	\end{center}
+	\caption{Example of the disjoint route mechanism}
+	\label{fig:disjroute}
+\end{figure}
+If $e_r$ is the efficiency of the route $r$, using the value $m$ relative to
+$r$, we can obtain a new efficiency value:
+\eal{&e_r'=e_r(2-m)k}
+where $k$ is an appropriate positive coefficient. 
+The obtained efficiency value $e_r'$ can be used by the $Q^2$ to
+decide if the route $r$ is interesting or not. 
 
 \subsection{Cryptographic QSPN}
 A node could easily forge a TP, injecting in the network false routes and
@@ -1459,6 +1521,14 @@ in general, the nodes won't join or die at once, but progressively.
 
 \section{ChangeLog}
 \begin{itemize}
+	\item \verb|July 2007|
+		\begin{enumerate}
+			\item The ETP has been simplified: all the cases are 
+				now just a minor adaptation of a single case.
+			\item Usage of the \emph{tpmask} has been abolished.
+			\item Simplified and distributed method to identify
+				non disjoint routes.
+		\end{enumerate}
 	\item \verb|April 2007|
 		\begin{itemize}
 			\item New section: ``Network dynamics'' (\ref{sec:netdyn})
