@@ -1,0 +1,157 @@
+%        File: Ntk_p2p_over_ntk.tex
+%     Created: Thu Aug 02 07:00 PM 2007 C
+% Last Change: Thu Aug 02 07:00 PM 2007 C
+%
+% This file is part of Netsukuku
+% (c) Copyright 2007 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+%
+% This source code is free software; you can redistribute it and/or
+% modify it under the terms of the GNU General Public License as published 
+% by the Free Software Foundation; either version 2 of the License,
+% or (at your option) any later version.
+%
+% This source code is distributed in the hope that it will be useful,
+% but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+% Please refer to the GNU Public License for more details.
+%
+% You should have received a copy of the GNU Public License along with
+% this source code; if not, write to:
+% Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+%
+
+\documentclass[a4paper]{article}
+\usepackage{color,graphicx}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\RequirePackage{ifpdf} % running on pdfTeX?
+\ifpdf
+\usepackage[pdftex,bookmarks=true,
+		   bookmarksnumbered=false,
+		   bookmarksopen=false,
+		   colorlinks=true,
+		   linkcolor=webred] {hyperref}
+\definecolor{webgreen}{rgb}{0, 0.5, 0} % less intense green
+\definecolor{webblue}{rgb}{0, 0, 0.5} % less intense blue
+\definecolor{webred}{rgb}{0.5, 0, 0}   % less intense red
+\else
+\newcommand{\href}[2]{ #1 }
+\fi
+
+%%%% Misc
+\newcommand{\T}[1]{\textrm{#1}}
+\newcommand{\see}[1]{\T{[\ref{#1},pg.\pageref{#1}]}}
+\newcommand{\vedi}[1]{\T{vedi \see{#1}}}
+\newcommand{\pgra}[1]{\left\{#1\right\}}
+\newcommand{\pqua}[1]{\left[#1\right]}
+\newcommand{\pton}[1]{\left(#1\right)}
+\newcommand{\pass}[1]{\Big|#1\Big|}
+\newcommand{\sist}[1]{{ \begin{cases} #1 \end{cases} }}
+\newcommand{\eal}[1]{{\begin{align*} #1 \end{align*}}}
+\def\ove#1{{\overline{#1}}}
+\newcommand{\qq}{\qquad}
+%% Defs
+\def\*{{\times}}
+\def\|{{\;\lor\;}}
+\def\&{{\;\land\;}}
+\def\-{{\setminus}}
+\def\0{{\emptyset}}
+\def\8{{\infty}}
+\def\v{{\cup}}
+\def\^{{\cap}}
+\def\<{{\;\Leftarrow\;}}
+\def\>{{\;\Rightarrow\;}}
+\def\={{\;\Leftrightarrow\;}}
+\def\({{\subseteq}}
+\def\){{\supseteq}}
+\def\'{{\;\;\;}}
+\def\,{{,\;}}
+
+\theoremstyle{definition}
+\newtheorem{defn}{Definition}[section]
+
+\title{P2P over Netsukuku\\\small{NTK RFC 0014}}
+\author{http://netsukuku.freaknet.org}
+\begin{document}
+\maketitle
+\begin{abstract}
+This text describes how is it possible to create a distributed P2P service
+over the Netsukuku network.
+\end{abstract}
+
+\section{Introduction}
+
+Netsukuku is a distributed, collaborative network of nodes. 
+For this reason, the development of P2P applications over Netsukuku is
+rather easy.
+
+A P2P application over Ntk can directly access the information
+regarding every part of the network by reading the maps and can known
+immediately its dynamic changes by listening to QSPN packets.
+In order to ease the development of such applications, a ``ntkp2p'' library will
+be developed.
+
+\section{P2P structure}
+\def\key{\textbf{KEY}}
+\def\ip{\textbf{IP}}
+\def\ipe{\textbf{IP}^*}
+\def\PID{\textbf{PID}}
+The P2P architecture is a Distributed Hash Table.
+\begin{defn}\qq\\
+$\key$ is the key space, i.e the set of all the keys. \\
+$\ip$ is IP space, i.e. the set of all the IPs of the network. In the ipv4 case, we have 
+$\ip=ipv4=\pgra{n\in\mathbb{N}\;|\;0\le n\le 2^{32}-1}$, in the ipv6 case we have
+$\ip=ipv6=\pgra{n\in\mathbb{N}\;|\;0\le n\le 2^{128}-1}$.\\
+The Netsukuku network can host up to $2^{16}$ different P2P services. Each
+registered service has a unique identification number called PID (P2P ID). The
+set of all PIDs is $\PID=\pgra{n\in \mathbb{N}\;|\;0\le n\le 2^{16}-1}$.\\
+A node is a \emph{partecipant} to a P2P service $p\in \PID$ if it exists in the
+network and if it announced its partecipation to the service (we'll see later
+how).\\
+$\ipe$ is the set of all the IPs of the partecipant nodes of the network, i.e. 
+$\forall x\in \ipe\;\;\exists_1 \T{ a partecipant node X:\;ip(X)=x}$.
+\end{defn}
+\begin{defn}
+The function $h:\key\longrightarrow \ip$ maps a key $k$ to an IP $x$.
+If the keys have the same bit length of the IPs, then h can be
+simply defined as the identity function, for example, if $\key$ is the md5
+hashes set and $\ip=ipv6$\footnote{An md5 hash has 128 bit, an ipv6 IP too}.\\
+The function $H(x):\ip\longrightarrow \ipe$, is defined as follow
+\eal{&H(x)=\max \pgra{y\in \ipe \;|\; \forall t\in \ipe\;\;|y-x| \le  |y-t| } }
+in simple words, $H(x)$ is the closest existent IP to $x$.
+\end{defn}
+
+\subsection{Becoming a partecipant}
+A node $g$, in order to become an active partecipant of a $p\in \PID$, sends a
+CTP inside its gnode $G$. This CTP is considered interesting by a node $g'\in
+G$, if $g'$ didn't know that $g$ is a partecipant of $p$ or if the CTP is
+interesting as described in the QSPN document\cite{qspndoc}.\\
+This same procedure is reitered in all the higher levels: $G$ becomes an
+active partecipant of $p$, because it has at least one partecipant node. $G$
+sends a CTP in level 1, informing all the gnodes it is a partecipant.
+Etcetera.\\
+
+Note: at the end of the above procedures, all the nodes of the network will
+know what gnode and nodes are partecipants to $p$.
+
+\subsection{Storing information in $p$}
+
+
+%%%%%%%%%%%%%%%%
+% Bibliography %
+%%%%%%%%%%%%%%%%
+\begin{thebibliography}{99}
+	\bibitem{qspndoc} QSPN document:
+		\href{http://netsukuku.freaknet.org/doc/main\_doc/qspn.pdf}{qspn.pdf}
+	\bibitem{ntksite} Netsukuku website:
+		\href{http://netsukuku.freaknet.org/}{http://netsukuku.freaknet.org/}
+\end{thebibliography}
+\newpage
+
+\begin{center}
+\verb|^_^|
+\end{center}
+
+\end{document}

@@ -50,7 +50,32 @@
 	decentralised system of hostname management used in the Netsukuku
 	network.
 \end{abstract}
+\pagenumbering{roman}
+\pagebreak
+\begin{small}
+  This document is part of Netsukuku.\\
+  Copyright \copyright 2007 Andrea Lo Pumo aka AlpT $<$alpt@freaknet.org$>$.
+  All rights reserved.
 
+  This document is free; you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 2 of the License, or
+  (at your option) any later version.
+
+  This document is distributed in the hope that it will be useful, but
+  WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE\@.  See the GNU
+  General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this document; if not, write to the Free Software
+  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+\end{small}
+
+\clearpage
+\tableofcontents
+\clearpage
+\pagenumbering{arabic}
 \section{Preface}
 \label{sec:preface}
 
@@ -102,7 +127,7 @@ The resolution of the hostname $h$ by the node $m$:
 
 \subsection{Hash gnode}
 It is highly probable that the hash $H(h)$ doesn't corresponds to any active
-node: if there are a total of $2^30$ active nodes and we are using IP of 32
+node: if there are a total of $2^{30}$ active nodes and we are using IP of 32
 bits, then by taking the 32 bit hash of $h$ the probability is equal to
 $25\%$. Moreover, even the actives node can also exit from the network.
 
@@ -201,7 +226,7 @@ counter gnode.
 The hash gnode keeps the hostname in an hibernated state for about 30 days
 since the moment of its registration or last update.
 The expiration time is very long to stabilise the domains. In this way, even
-someone attacks a node to steal its domain, it will have to wait 30 days
+if someone attacks a node to steal its domain, it will have to wait 30 days
 to fully have it.
 
 When the expiration time runs out, all the expired hostnames are deleted and
