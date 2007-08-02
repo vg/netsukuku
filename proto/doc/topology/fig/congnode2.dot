@@ -1,0 +1,16 @@
+graph G {
+node [shape=circle]
+
+V2 -- G -- V1
+V1 -- V2
+V1 -- G1
+H1 -- V2
+G2 -- G1
+H2 -- H1
+
+G1 [label = "11.1", color = red]
+G2 [label = "11.2", color = red]
+H1 [label = "11.3", color = red]
+H2 [label = "11.4", color = red]
+
+}
