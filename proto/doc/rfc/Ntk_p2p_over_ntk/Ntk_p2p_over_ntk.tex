@@ -78,11 +78,11 @@
 \maketitle
 \begin{abstract}
 This text describes how is it possible to create a distributed P2P service
-over the Netsukuku network.
+over the Netsukuku network. As example, a distributed P2P Bittorrent service
+is presented.
 \end{abstract}
 
 \section{Introduction}
-
 Netsukuku is a distributed, collaborative network of nodes. 
 For this reason, the development of P2P applications over Netsukuku is
 rather easy.
@@ -98,20 +98,29 @@ be developed.
 \def\ip{\textbf{IP}}
 \def\ipe{\textbf{IP}^*}
 \def\PID{\textbf{PID}}
+\def\h{{\ove h}}
+
 The P2P architecture is a Distributed Hash Table.
-\begin{defn}\qq\\
+\begin{defn}
 $\key$ is the key space, i.e the set of all the keys. \\
 $\ip$ is IP space, i.e. the set of all the IPs of the network. In the ipv4 case, we have 
 $\ip=ipv4=\pgra{n\in\mathbb{N}\;|\;0\le n\le 2^{32}-1}$, in the ipv6 case we have
 $\ip=ipv6=\pgra{n\in\mathbb{N}\;|\;0\le n\le 2^{128}-1}$.\\
+Taking an IP $m\in \ip$, we can write it as a compound of gnode IDs of
+different levels: $m=m_l.m_{l-1}. \dots . m_1.m_0$, where $l$ is the highest
+level\footnote{for example, in ipv4 we have
+$m=m_3*256^3+m_2*256^2+m_1*256^1+m_0$}. $m_i$ is the ID of the gnode of level $i$ where $m$ belongs. For more
+information, see the topology document \cite{topodoc}.
+\end{defn}
+\begin{defn}
 The Netsukuku network can host up to $2^{16}$ different P2P services. Each
 registered service has a unique identification number called PID (P2P ID). The
 set of all PIDs is $\PID=\pgra{n\in \mathbb{N}\;|\;0\le n\le 2^{16}-1}$.\\
-A node is a \emph{partecipant} to a P2P service $p\in \PID$ if it exists in the
+A node is a \emph{participant} to a P2P service $p\in \PID$ if it exists in the
 network and if it announced its partecipation to the service (we'll see later
 how).\\
-$\ipe$ is the set of all the IPs of the partecipant nodes of the network, i.e. 
-$\forall x\in \ipe\;\;\exists_1 \T{ a partecipant node X:\;ip(X)=x}$.
+$\ipe$ is the set of all the IPs of the participant nodes of the network, i.e. 
+$\forall x\in \ipe\;\;\exists_1 \T{ a participant node X:\;ip(X)=x}$.
 \end{defn}
 \begin{defn}
 The function $h:\key\longrightarrow \ip$ maps a key $k$ to an IP $x$.
@@ -119,34 +128,147 @@ If the keys have the same bit length of the IPs, then h can be
 simply defined as the identity function, for example, if $\key$ is the md5
 hashes set and $\ip=ipv6$\footnote{An md5 hash has 128 bit, an ipv6 IP too}.\\
 The function $H(x):\ip\longrightarrow \ipe$, is defined as follow
-\eal{&H(x)=\max \pgra{y\in \ipe \;|\; \forall t\in \ipe\;\;|y-x| \le  |y-t| } }
-in simple words, $H(x)$ is the closest existent IP to $x$.
+\eal{&H(x)=\max \pgra{y \in \ipe\;|\; \forall t\in \ipe\;\;|y-x| \le |y-t| } }
+in simple words, $H(x)$ is the closest existent IP to $x$. 
+\\
+The function $\h:\key \longrightarrow \ipe$ is $\h(k)=H(h(k))$.\\
+The node having the IP $\h(k)$, is called hash node of $k$.
 \end{defn}
 
-\subsection{Becoming a partecipant}
-A node $g$, in order to become an active partecipant of a $p\in \PID$, sends a
+\subsection{Becoming a participant}
+A node $g$, in order to become an active participant of a $p\in \PID$, sends a
 CTP inside its gnode $G$. This CTP is considered interesting by a node $g'\in
-G$, if $g'$ didn't know that $g$ is a partecipant of $p$ or if the CTP is
+G$, if $g'$ didn't know that $g$ is a participant of $p$ or if the CTP is
 interesting as described in the QSPN document\cite{qspndoc}.\\
 This same procedure is reitered in all the higher levels: $G$ becomes an
-active partecipant of $p$, because it has at least one partecipant node. $G$
-sends a CTP in level 1, informing all the gnodes it is a partecipant.
+active participant of $p$, because it has at least one participant node. $G$
+sends a CTP in level 1, informing all the gnodes it is a participant.
 Etcetera.\\
 
 Note: at the end of the above procedures, all the nodes of the network will
-know what gnode and nodes are partecipants to $p$.
+know what gnode and nodes are participants to $p$.
+Note 2: it isn't necessary to become a participant to store or retrieve data
+from $p$.
 
 \subsection{Storing information in $p$}
+\label{storeinfop}
+Suppose a node $n$ wants to store some data $d$ in the distributed P2P service
+$p\in \PID$. It will operate as follow:
+\begin{enumerate}
+	\item It computes the key $k$ from the data $d$.
+	\item It computes $m=\h(k)$:
+		\begin{enumerate}
+			\item $m':=h(k)$
+			\item $m:=H(m')$ is computed with the use of the maps
+				of $n$ as follow: 
+				\eal{
+				&m:=\emph{undef}\\
+				&\textbf{for }i=0,1,2,\dots,l\\
+				&\qq \emph{let }m_{l-i} \T{ be the closest
+				participant (g)node ID to } m'_{l-i}\\
+				&\qq \T{[the search of $m_{l-i}$ is restricted
+				inside the gnode $n_{l-i+1}$]}\\
+				&\qq \textbf{if } m_{l-i} \neq  n_{l-i}\\
+				&\qq\qq break\\
+				&\textbf{if } m=undef\\
+				&\qq \T{There are no participants to $p$}
+				}
+				Notes:
+				\begin{enumerate}
+					\item below a certain point, some levels
+						of $m$ may be left undefined. This happens
+						when the break istruction is
+						executed.
+					\item if $n$ itself is a participant
+						node, then $n_{l-i}$ surely is a
+						participant.
+				\end{enumerate}
+		\end{enumerate}
+	\item $n$ sends to $m$ the \emph{store request} $r$:
+		\begin{enumerate}
+			\item If all the levels of $m$ are defined, then $m\in
+				n_1$. Thus, $n$ can directly contact $m$.
+			\item otherwise, if the last defined level of $m$ is
+				$i$ , then $r$ will be routed by the
+				ntk nodes to a node $\ove m\in m_i$.\\
+				The node $\ove m$ will then recompute $m=\h(k)$.
+				This time, more levels will be defined,
+				because $\ove m$ is nearer to the $m$ and its
+				map can give more accurate information
+				(regarding $m$).
+			\item This same procedure is reiterated: $\ove m$
+				forwards $r$ to a node $\ove {\ove m} \in m_j$,
+				where $j<i$. This node will compute $m=h(k)$, and so
+				on.
+			\item Finally, $m$ will receive the request $r$.
+		\end{enumerate}
+	\item At this point, the $p$-protocol will dictate what $m$ must do
+		with $r$ , f.e. $m$ can store the data in its cache.
+	\item To ensure redundancy, if $m$ has accepted the request, it will
+		send it to $31$ nodes, which have the closest IP to $m$. 
+		In this way, when $m$ dies, they will automatically replace it.
+\end{enumerate}
+$m$, and all the backup nodes, will automatically delete the stored data
+after a time limit specified by the $p$-protocol. For this reason, $n$ has to
+repeat the storing procedure periodically. This also has the benefit of
+restoring dead hash nodes: if $m$ and all the backup nodes dies simultaneusly,
+and if $m\notin n_1$, then $n$ won't be able to know their death, however,
+with the next periodic storing procedure, a new hash node $m$ will be elected.\\
+\newline
+Suppose a node $b$ enters in the gnode $m_1$. Let $B$ be the set containing
+the hash node $m$ and all its backup nodes. If the IP of $b$ is closer to
+$\h(k)$ than at least one node $b' \in B$, then $m$ will send the request $r$
+to $b$, in this way $b$ will become the new hash node or will substitute a
+backup node.\\
+This same procedure is applied to any level, f.e. suppose that a new gnode $g$
+joins in $m_2$. If its ID is closer to $\h(k)$ than the ID of $m_2$, then $m$
+will send to $g$ the request $r$. In this way, $g$ will substitute $m_1$.\\
+An optimisation to this procedure is based on the following observation: 
+if a (g)node $g$ joins the network and if its IP is closer to $\h(k)$ than the
+actual hash gnode, then all the successive P2P requests will be
+routed to $g$. Since $g$ knows it is a new (g)node, it has to simply forward
+the received requests to the old hash node, that is $m$, to see if it knows
+the answer to the requests. This method has the advantage that there will be
+no delay when a new, closer, hash node joins the network.
+
+\section{Examples of P2P over Ntk}
+\begin{enumerate}
+	\item 
+We'll now present as example a simple P2P Bittorrent\cite{bittorrent}
+service.\\\newline
+
+Suppose a node $n$ wants to share a file $f$.
+$n$ will calculate the key $k$ from the filename of $f$. 
+$n$ will send a store request to $\h(k)$, where the data of the
+request is the \emph{.torrent} metafile generated from $f$.
+The node $\h(k)$, after having accepted the request, will start up a
+bittorrent tracker.
+Finally, $n$ will connect to the tracker $\h(k)$, becoming a seeder.\\\newline
+The node $m$ that wants to download the file, has to simply calculate $k$ and 
+connect to the tracker $\h(k)$.
+\item As a further example consider ANDNA\cite{andnadoc}. In ANDNA there are
+	two different P2P services in one: the service that stores the IPs and
+	the service of the counter nodes, that serves to store the number of
+	hostnames registered by a node.
+\end{enumerate}
 
 
 %%%%%%%%%%%%%%%%
 % Bibliography %
 %%%%%%%%%%%%%%%%
 \begin{thebibliography}{99}
-	\bibitem{qspndoc} QSPN document:
-		\href{http://netsukuku.freaknet.org/doc/main\_doc/qspn.pdf}{qspn.pdf}
 	\bibitem{ntksite} Netsukuku website:
 		\href{http://netsukuku.freaknet.org/}{http://netsukuku.freaknet.org/}
+	\bibitem{ntkrfc} Netsukuku RFCs:
+		\href{http://lab.dyne.org/Netsukuku\_RFC}{NTK RFCs}
+	\bibitem{qspndoc} QSPN document:
+		\href{http://netsukuku.freaknet.org/doc/main\_doc/qspn.pdf}{qspn.pdf}
+	\bibitem{topodoc} Netsukuku topology document:
+		\href{http://netsukuku.freaknet.org/doc/main\_doc/topology.pdf}{topology.pdf}
+	\bibitem{bittorrent} Bittorrent:
+		\href{http://en.wikipedia.org/wiki/Bittorrent}{Bittorrent}
+	\bibitem{andnadoc} ANDNA document:
+		\href{http://netsukuku.freaknet.org/doc/main\_doc/andna.pdf}{andna.pdf}
 \end{thebibliography}
 \newpage
 
