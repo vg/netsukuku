@@ -22,7 +22,7 @@
 
 from event import *
 
-class map:
+class Map:
 
     def __init__(self, levels, gsize, dataclass):
 	"""Initialise the map."""
@@ -34,8 +34,7 @@ class map:
 	# The member self.node[l][i] is a node of level l and its ID is i
 	self.node = [[None for i in xrange(gsize)] for i in xrange(levels)]
 
-	self.events = event( send_ev = [ 'NEW_NODE', 'DEL_NODE' ],
-			     recv_ev = None )
+	self.events = Event( send_ev = [ 'NEW_NODE', 'DEL_NODE' ] )
 
     def node(self, lvl, id):
 	"""Returns from the map a node of level `lvl' and id `id'.

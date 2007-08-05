@@ -17,6 +17,7 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
+from event import *
 
 class Rem:
     """Route Efficiency Measure.
@@ -121,11 +122,10 @@ class Route:
     	self.gw	   = gw
     	self.rem   = rem
     
-    	self.events = event( send_ev = [ 'NEW_ROUTE', 
+    	self.events = Event( send_ev = [ 'NEW_ROUTE', 
 					 'DEL_ROUTE', 
 					 'REM_ROUTE'	# the route rem changed
-				       ],
-    		     	     recv_ev = None )
+				       ] )
 
     def rem_modify(self, new_rem):
     	if self.rem != new_rem:
