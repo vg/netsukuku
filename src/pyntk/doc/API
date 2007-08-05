@@ -72,3 +72,12 @@ qspn.py:
 This direct approach is used for non concurrent events, which are
 generally read-only events, f.e. reading the map, the rnode list from the
 radar, ...
+
+
+****
+
+Every module has its own ntk map.
+
+****
+
+The .conf file is just a .py file which is imported/executed.

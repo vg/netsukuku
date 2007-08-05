@@ -1,0 +1,19 @@
+ 
+ CITE.h
+ ------
+
+ The bibliography of the source code.
+
+ Use cscope (or grep or WoC) to see where each reference is cited.
+
+
+  * * *  Main documentation  * * *
+
+   QSPN v2 document				|{qspndoc}|
+   http://netsukuku.freaknet.org/doc/main_doc/qspn.pdf
+
+   Netsukuku topology document			|{topodoc}|
+   http://netsukuku.freaknet.org/doc/main_doc/topology.pdf
+
+   ANDNA document				|{andnadoc}|
+   http://netsukuku.freaknet.org/doc/main_doc/andna.pdf
