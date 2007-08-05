@@ -34,9 +34,9 @@ class Map:
 	# The member self.node[l][i] is a node of level l and its ID is i
 	self.node = [[None for i in xrange(gsize)] for i in xrange(levels)]
 
-	self.events = Event( send_ev = [ 'NEW_NODE', 'DEL_NODE' ] )
+	self.events = Event( [ 'NEW_NODE', 'DEL_NODE' ] )
 
-    def node(self, lvl, id):
+    def node_get(self, lvl, id):
 	"""Returns from the map a node of level `lvl' and id `id'.
 
 	A class instance of type `self.dataclass' will always be returned: if
@@ -44,6 +44,7 @@ class Map:
 	
 	if self.node[lvl][id] == None:
 		self.node[lvl][id]=self.dataclass(lvl, id)
+	    	self.events.send('NEW_NODE', (lvl, id))
 	return self.node[lvl][id]
 
     def node_del(self, lvl, id):

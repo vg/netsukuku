@@ -39,10 +39,10 @@ class Event:
 		# Surely it must not block
 		pass
 
-	def listen(self, event, dst, remove=0):
+	def listen(self, event, dst, remove=False):
 		"""Listen to an event.
 
-		If `remove'=0, then `dst' is added in the listeners queue of
+		If `remove'=False, then `dst' is added in the listeners queue of
 		the event `event', otherwise `dst' is removed from that queue.
 		"""
 
