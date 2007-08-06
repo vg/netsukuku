@@ -50,6 +50,7 @@
 \def\){{\supseteq}}
 \def\'{{\;\;\;}}
 \def\,{{,\;}}
+\newcommand{\ubrace}[2]{\underbrace{#1}_{#2}}
 
 
 \title{Quantum Shortest Path Netsukuku}
@@ -1044,8 +1045,9 @@ In order to give an exact definition of an ETP, we must examine each case of net
 		\item Finally, $B$ sends the ETP to all its neighbours, except $A$.
 		\end{enumerate}
 		\label{ETPrule1}
-		Suppose that the neighbor $C$ of $B$ has received the ETP. $C$
-		will examine the ETP and, if considered interesting, it 
+		Suppose the node $C$ has received the ETP from its neighbor
+		$N$\footnote{$N$ may be $B$ itself}.
+		$C$ will examine the ETP and, if considered interesting, it 
 	will update its map and forward the ETP to the other neighbours, as
 		follow:
 		\begin{enumerate}
@@ -1058,7 +1060,8 @@ In order to give an exact definition of an ETP, we must examine each case of net
 			Let $M$ be the set of all the routes contained in the map of $C$.\\
 		For each route $r\in R$, the node $C$ looks for 
 		a route $m\in M$ such that 
-		\[\T{dst}(m)=\T{dst}(r),\;\;\T{gw}(m)=\T{gw}(r)\]
+		\[\T{dst}(m)=\T{dst}(r),\;\;\T{gw}(m)=N
+		\]
 		If $m$ exists, then $C$ sets $\T{rem}(m):=\T{rem}(r)$
 		\footnote{with this operation we are actually replacing $m$
 		with $r$, in the map $M$}.
@@ -1073,61 +1076,43 @@ In order to give an exact definition of an ETP, we must examine each case of net
 				$\T{dst}(r')=\T{dst}(m')$. If
 				$r'$ is a better alternative to $m'$ and if
 				every hop of $r'$ is reachable by $C$,
-				then $r'$  is saved in the map of $C$
-				(note \footnote{When saving a route $r$ of the ETP
-				in the map, we must consider the hops covered by the ETP,
-				so the real saved route is
-				$r\leftarrow \T{hop}_1\leftarrow \T{hop}_2\leftarrow
-				\dots\leftarrow \T{hop}_n$. In this
-				case we'll have $r\leftarrow B\leftarrow
-				A$.}),
-			\item otherwise, $r'$ is removed from $R$.
+				then $r'$  is saved in the map of $C$,
+			\item otherwise, $r'$ is removed from $R$ and added in
+				the set $R''$.
 		\end{enumerate}
 		Note \footnote{this step implements the QSPN v2 rules: only
 		good routes are kept, the other are discarded. Notice
 		the extension: if the ETP had only one route, it would be
 		almost equal to a CTP (the CTP doesn't have the acyclic rule)}
-	\item If $R$ is now empty, i.e. all its routes have been removed, then
-		$C$ considers the ETP as uninteresting. Let's suppose for now
-		that it is interesting: the \emph{flag of interest} remains
-		set to	1.
-	\item $C$ packs the ETP with the previously modified
-		set $R$, and adds its ID. The ETP is sent to all its neighbours,
-		except $B$
+	\item If $R''$ is not empty, $C$ creates the following set:
+		\[
+		S=\{s\in \ove M\;|\; \exists r\in R'':\;\T{dst}(s)=\T{dst}(r)\}
+		\]
+		\begin{enumerate}
+			\item $C$ creates a new ETP, appending in it the set $S$ and its ID. 
+				The \emph{flag of interest} of this ETP is set to 0. 
+			\item The ETP is sent to $N$.\\
+				This new ETP will propagate back in the
+				same fashion of the previous ETP (see page \pageref{ETPrule1}), i.e.
+				until considered interesting. The only difference is that when a node
+				considers it uninteresting, it is just dropped\footnote{the node will
+				drop the ETP if the \emph{flag of interest} is set to 0 and if it is
+				uninteresting}.
+		\end{enumerate}
+		The reason for the above procedure is simple: $C$ considers
+		uninteresting some of the routes contained in the received
+		ETP, i.e. all the routes in $R''$.
+		Therefore, $C$ will send back its routes with the same destination of
+		those of $R''$, hoping that they will be useful to the
+		previous interested nodes.
+	\item In every case, if $R$ is not empty, i.e. not all its elements
+		have been removed, then the ETP is still interesting: the \emph{flag of interest} remains set to 1.
+		$C$ packs the ETP with the set $R$, and adds its ID.
+		The ETP is sent to all its neighbours, except $N$.
 	\end{enumerate}
 	The rnodes of $C$ will use this same procedure. In this way, the ETP
 	will continue to be propagated until it is considered interesting.
 
-	Let's suppose now that a node $N$ receives the ETP and considers it
-	uninteresting. $N$ won't just drop the ETP, but will also send back
-	another ETP containing its own routes. The reason is simple: $N$
-	considers the received ETP uninteresting, this means that $N$ isn't
-	affected by the change of the link $l$, i.e. all its routes don't
-	pass through $l$ and thus are still optimal. Therefore, $N$ will
-	send back its routes, hoping that they will be useful to the nodes
-	affected by the change. In detail, this is what will happen when $N$
-	receives the ETP:
-	\begin{enumerate}
-		\item $N$ receives the ETP from the node $L$, and considers it
-			uninteresting.
-		\item Let $R$ be the set of routes contained in the ETP.\\
-		Let $M$ be the set of all the routes contained in the map
-		of $N$.\\
-		$N$ creates the following set:
-		\[
-		S=\{s\in \ove M\;|\; \exists r\in R:\;\T{dst}(s)=\T{dst}(r)\}
-		\]
-		\item $N$ creates the new ETP, appending in it the set $S$ and
-			its ID. The \emph{flag of interest} of this ETP is set
-			to 0.
-		\item The ETP is sent to $L$.
-	\end{enumerate}
-	At this point, the new ETP created by $N$, will propagate back in the
-	same fashion of the previous ETP (see page \pageref{ETPrule1}), i.e.
-	until considered interesting. The only difference is that when a node
-	considers it uninteresting, it is just dropped\footnote{the node will
-	drop the ETP if the \emph{flag of interest} is set to 0 and if it is
-	uninteresting}.
 		\item[Improved link]
 	\label{ilink}
 		Suppose that the link $A
@@ -1516,6 +1501,7 @@ in general, the nodes won't join or die at once, but progressively.
 	\item The $Q^2$ must be implemented in the ntkd daemon.
 	\item Improve, test and implement the Caustic Routing:
 		\href{http://lab.dyne.org/Ntk\_caustic\_routing}{RFC 0013}
+	\item Well define a ``secure QSPN''
 	\item Research a ``mobile QSPN''
 \end{enumerate}
 
