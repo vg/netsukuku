@@ -45,6 +45,7 @@ class NtkRPCDispatcher(object):
             raise Exception('function %s is not registered' % func_name)
 
         if func is not None:
+            print 'dispatch', func(*params)
             return func(*params)
 
     def marshalled_dispatch(self, data):
@@ -62,22 +63,24 @@ class NtkRPCDispatcher(object):
         return response
 
 
-class NtkRequestHandler(SocketServer.StreamRequestHandler):
+class NtkRequestHandler(SocketServer.BaseRequestHandler):
     '''RPC request handler class
     
     Handles all request and try to decode them.
     '''
     def handle(self):
-       
+         logging.debug('Connected from %s', self.client_address)
+
         try:
-            data = self.rfile.readline() # TODO must be refactored
+            data = self.request.recv(1024) 
             logging.debug('Handling data: %s', data)
             response = self.server.marshalled_dispatch(data)
             logging.debug('Response: %s', response)
         except:
-            pass
+            pass # TODO Handle exceptions!
         else:
-            self.wfile.write(response)
+            self.request.send(response)
+            self.request.close()
             logging.debug('Response sended')
 
 
