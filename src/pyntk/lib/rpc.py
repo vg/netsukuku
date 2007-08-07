@@ -18,6 +18,7 @@
 ##
 
 import logging
+import socket
 import SocketServer
 
 import rencode
@@ -45,7 +46,6 @@ class NtkRPCDispatcher(object):
             raise Exception('function %s is not registered' % func_name)
 
         if func is not None:
-            print 'dispatch', func(*params)
             return func(*params)
 
     def marshalled_dispatch(self, data):
@@ -69,7 +69,7 @@ class NtkRequestHandler(SocketServer.BaseRequestHandler):
     Handles all request and try to decode them.
     '''
     def handle(self):
-         logging.debug('Connected from %s', self.client_address)
+        logging.debug('Connected from %s', self.client_address)
 
         try:
             data = self.request.recv(1024) 
@@ -85,11 +85,37 @@ class NtkRequestHandler(SocketServer.BaseRequestHandler):
 
 
 class SimpleNtkRPCServer(SocketServer.TCPServer, NtkRPCDispatcher):
+    '''Tis class implement a simple Ntk-Rpc server'''
     
     def __init__(self, addr, requestHandler=NtkRequestHandler):
 
         NtkRPCDispatcher.__init__(self)
         SocketServer.TCPServer.__init__(self, addr, requestHandler)
+
+class SimpleNtkRPCClient:
+    '''This class implement a simple Ntk-RPC client'''
+
+    def __init__(self, host='localhost', port=8888):
+        self.host = host
+        self.port = port
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.connect((self.host, self.port))
+
+    def rpc_call(self, func_name, params):
+        '''Performs a rpc call
+        
+        @param func_name: name of the remote callable
+        @param params: a tuple of arguments to pass to the remote callable
+        '''
+
+        data = rencode.dumps((func_name, params))
+        self.socket.send(data)
+        
+        recv_data = self.socket.recv(1024)
+        self.socket.close()
+        
+        return rencode.loads(recv_data)
+        
 
 if __name__ == '__main__':
     
