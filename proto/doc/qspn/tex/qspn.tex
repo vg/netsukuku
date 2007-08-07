@@ -997,22 +997,6 @@ In order to give an exact definition of an ETP, we must examine each case of net
 		through $B$ to reach the changed nodes.
 		In detail, $B$ will use the following algorithm:
 		\begin{enumerate}
-		\item \label{upmap}
-			$B$ updates its maps:
-			suppose that the route $r$, passing through the link
-			$l$, had a total rtt $t_0(r)$. If the rtt of the link
-			$l$ before the change was $t_0(l)$ and now is
-			$t_1(l)$, where $t_0(l) < t_1(l)$, then
-			$t_1(r):=t_0(r)-t_0(l)+t_1(l)$.\\
-			For the bandwidth we have:
-			\begin{align*}
-				&b_0(r)\;\;\T{ the total bandwidth of the
-				route $r$, before the change}\\
-				&b_0(l) > b_1(l)\;\;\T{the bw of $l$ has
-				worsend during the change}\\
-				&b_1(r):=b_1(l)
-			\end{align*}
-			The routes are then sorted.
 		\item \label{stepR} 
 			$B$ creates the set $R$:
 			\eal{
@@ -1035,9 +1019,29 @@ In order to give an exact definition of an ETP, we must examine each case of net
 			
 			Each route $r\in R$ is saved as the pair $(\T{dst}(r),
 			\T{rem}(r))$.
+		\item \label{upmap}
+			$B$ updates its maps:
+			suppose that the route $r$, passing through the link
+			$l$, had a total rtt $t_0(r)$. If the rtt of the link
+			$l$ before the change was $t_0(l)$ and now is
+			$t_1(l)$, where $t_0(l) < t_1(l)$, then
+			$t_1(r):=t_0(r)-t_0(l)+t_1(l)$.\\
+			For the bandwidth we have:
+			\begin{align*}
+				&b_0(r)\;\;\T{ the total bandwidth of the
+				route $r$, before the change}\\
+				&b_0(l) > b_1(l)\;\;\T{the bw of $l$ has
+				worsend during the change}\\
+				&b_1(r):=b_1(l)
+			\end{align*}
+			The routes are then sorted.
+		\item $B$ creates the following set:
+			\[
+			\ove R = \pgra{r\in \ove M\;|\;\exists s\in R:\;dst(s)=dst(r)}
+			\]
 		\item $B$ fills the ETP: 
 			\begin{enumerate}
-				\item it adds in it the set $R$
+				\item it adds in it the set $\ove R$
 				\item it appends the ID of $A$, along with the efficiency
 					value of the link $l$, and, as usual, its ID.
 				\item it sets to 1 the \emph{flag of interest}.
@@ -1127,8 +1131,8 @@ In order to give an exact definition of an ETP, we must examine each case of net
 		$A\rightarrow B\rightarrow \dots$. If $B$ finds
 		something of interest, it will forwards the ETP. In detail:
 		\begin{enumerate}
-			\item
-			      $A$ creates the following set:
+			\item $A$ updates its map.
+			\item $A$ creates the following set:
 			      \[
 			      R=\{r\in \ove M\;|\; \T{gw}(r)\neq B\}
 			      \]
@@ -1184,26 +1188,27 @@ then the link $N\rightarrow gw(r)$ changes.
 		are $B_1, B_2,\dots, B_n$, which are all already hooked, i.e.
 		they aren't joining. Then, the \textbf{new link} case is
 		applied to each link $A\leftrightarrow B_i,\;\;i=1,2,\dots,n$.
-		In detail:
-		\begin{enumerate}
-			\item Each neighbour $B_i$ sends its whole map to
-				$A$
-			\item $A$ waits until the maps of all its neighbours
-				are received.
-			\item The maps are ``merged'' into a single map, which
-				becomes the map of $A$. In simple words, the
-				merge of two maps result in a map having only the
-				best routes of the two.
-			\item If the neighbours of $A$ are more than one, i.e.
-				$n>1$, then $A$ sends, to each of them, an ETP
-				containing all the primary routes of its
-				map.\\
-				If $n=1$, then $A$ sends just an empty ETP.
-			\item The ETPs are propagated exactly in the same way
-				of the \textbf{worsened link} case (see page
-				\pageref{wlink}).
-		\end{enumerate}
-		Note that this case extends the hooking procedure.
+		If $n=1$, then $A$ sends an empty ETP (which is equivalent to
+		a new ATP).
+%TODO: a possible improvement?
+%		\begin{enumerate}
+%			\item Each neighbour $B_i$ sends its whole map to
+%				$A$
+%			\item $A$ waits until the maps of all its neighbours
+%				are received.
+%			\item The maps are ``merged'' into a single map, which
+%				becomes the map of $A$. In simple words, the
+%				merge of two maps result in a map having only the
+%				best routes of the two.
+%			\item If the neighbours of $A$ are more than one, i.e.
+%				$n>1$, then $A$ sends, to each of them, an ETP
+%				containing all the primary routes of its
+%				map.\\
+%				If $n=1$, then $A$ sends just an empty ETP.
+%			\item The ETPs are propagated exactly in the same way
+%				of the \textbf{worsened link} case (see page
+%				\pageref{wlink}).
+%		\end{enumerate}
 	\item[A node dies]
 		When the node $A$ dies, the \textbf{broken link} case is
 		simply applied to each link of $A$.
