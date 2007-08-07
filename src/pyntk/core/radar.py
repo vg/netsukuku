@@ -51,6 +51,13 @@ class Neighbour:
     # the events we raise
     self.events = Event(['NEW_NEIGH', 'DEL_NEIGH', 'REM_NEIGH'])
 
+  def neigh_list(self):
+    # return the list of neighbours
+    nlist = {}
+    for key, val in ip_table:
+      nlist[key] = Neigh(key, translation_table[key], val[1])
+    return nlist
+
   def ip_to_id(self, ipn):
     # if ipn is in the translation table, return the associated id;
     # if it isn't, insert it into the translation table assigning a new id,
