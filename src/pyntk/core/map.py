@@ -20,7 +20,7 @@
 # Implementation of the map. See {-topodoc-}
 # 
 
-from event import *
+from event import Event
 
 class Map:
 

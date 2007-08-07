@@ -17,7 +17,7 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
-class ntkd:
+class Ntkd:
     def __init__(self, levels):
     	self.levels = levels
     	self.me     = [0 for i in levels]
