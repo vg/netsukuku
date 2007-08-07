@@ -53,9 +53,9 @@ class Neighbour:
 
   def neigh_list(self):
     # return the list of neighbours
-    nlist = {}
+    nlist = []
     for key, val in ip_table:
-      nlist[key] = Neigh(key, translation_table[key], val[1])
+      nlist.append(Neigh(key, translation_table[key], val[1]))
     return nlist
 
   def ip_to_id(self, ipn):
