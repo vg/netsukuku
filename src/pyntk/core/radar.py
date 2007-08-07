@@ -1,5 +1,31 @@
+##
+# This file is part of Netsukuku
+# (c) Copyright 2007 Alberto Santini <alberto@unix-monk.com>
+#
+# This source code is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as published 
+# by the Free Software Foundation; either version 2 of the License,
+# or (at your option) any later version.
+#
+# This source code is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# Please refer to the GNU Public License for more details.
+#
+# You should have received a copy of the GNU Public License along with
+# this source code; if not, write to:
+# Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+##
+
 import time
+from route import Rtt
 from operator import itemgetter
+
+class Neigh:
+	def __init__(self, nip, idn, rtt):
+		self.ip = ip
+		self.id = idn
+		self.rem = Rtt(rtt)
 
 class Neighbour:
 	def __init__(self, multipath = 0, max_neigh = 16):
@@ -8,6 +34,7 @@ class Neighbour:
 		self.rtt_variation = 0.1
 		self.ip_table = {}
 		self.translation_table = {}
+		self.events = Event(['NEW_NEIGH', 'DEL_NEIGH', 'REM_NEIGH'])
 	
 	def ip_to_id(self, ipn):
 		''' Trova o genera, se possibile, un id per un ip '''
@@ -33,8 +60,9 @@ class Neighbour:
 			else:
 				if(self.ip_table.has_key(key)):
 					trucated.append(key)
+					old_id = self.translation_table(key)
 					self.translation_table.pop(key)
-					# <genera_evento_morte>
+					self.events.send('DEL_NEIGH', (Neigh(key, old_id, self.ip_table[key][1])))
 		return truncated
 
 	def find_hole_in_tt(self):
@@ -53,16 +81,17 @@ class Neighbour:
 		
 		for key in self.ip_table:
 			if((not (ip_table.has_key(key))) and (not (key in died_ip_list))):
+				old_id = self.translation_table(key)
 				self.translation_table.pop(key)
-				# <genera_evento_morte>
+				self.events.send('DEL_NEIGH', (Neigh(key, old_id, self.ip_table[key][1])))
 
 		for key in ip_table:
 			if(not (self.ip_table.has_key(key))):
-				# <genera_evento_vita>
 				ip_to_id(key)
+				self.events.send('NEW_NEIGH', (Neigh(key, self.translation_table(key), self.ip_table[key][1])))
 			else:
 				if(abs(ip_table[key][1] - self.ip_table[key][1]) / self.ip_table[key][1] > self.rtt_mav_var):
-					# <genera_evento_cambiamento>
+					self.events.send('REM_NEIGH', (Neigh(key, self.translation_table(key), ip_table[key][1]), self.ip_table[key][1]))
 		self.ip_table = ip_table
 
 class Radar:
@@ -117,7 +146,7 @@ class Radar:
 			return (sum / counter)
 
 	def get_all_avg_rtt(self):
-		''' Calcola l'rtt medio di tutti i nodi'''
+		''' Calcola l'rtt medio di tutti i nodi '''
 		all_avg = {}
 		for ip in self.bcast_arrival_time:
 			if(self.multipath == 0):
