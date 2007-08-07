@@ -355,7 +355,8 @@ class MapRoute(Map):
 	   
 	   Let L be the returned list, then L[lvl] is the list of all the best
 	   routes of level lvl of the map. An element of this latter list is a 
-	   tuple (dst, rem), where dst is the destination of the route."""
+	   tuple (dst, gw, rem), where dst is the destination of the route, gw
+	   its gateway."""
 	
 	L=[]
 	for lvl in xrange(self.levels):
@@ -364,6 +365,6 @@ class MapRoute(Map):
 			br=self.node_get(lvl, dst).best_route()
 			if br == None:
 				continue
-    			l.append((dst, br.rem))
+    			l.append((dst, bw.gw, br.rem))
 		L.append(l)
 	return L
