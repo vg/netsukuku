@@ -45,6 +45,19 @@ class Rem:
 
     	The sum must be commutative, i.e. Rx+Ry=Ry+Rx"""
     	pass
+    
+    def gwrem_change(self, oldvalue, newvalue):
+	"""Changes the gwrem.
+	
+	Let r be the route me->...->x, where x is a node. Let gw be the first
+	hop after me in r, i.e r is me->gw->...->x. Then, gwrem is
+	rem(me->gw).
+	
+	`oldvalue' is the old gwrem value.
+	"""
+
+        self.value+=newvalue-oldvalue
+	return 1
 
 class Rtt(Rem):
     """Round Trip Time"""
@@ -68,6 +81,23 @@ class Rtt(Rem):
 class Bw(Rem):
     """Bandwidth"""
 
+    def __init__(self, (value, lb, nb), max_value=0, avgcoeff=1):
+        """Initialise the bandwidth Rem for a route.
+
+	Let r be the route me->...->x, where x is a node. Let gw be the first
+	hop after me in r, i.e r is me->gw->...->x. (note, gw is a neighbour
+	of me).
+	`value' is the total bw of the route r.
+	`lb' is boolean: if 1, then the bandwidth of the link me->gw is the
+	lowest in the route r.
+	`nb' is the nearest bandwidth to bw(me->gw).
+	See {-topodoc-} for more info.  """
+
+    	Rem.__init__(self, value, max_value, avgcoeff)
+	
+	self.lb = lb
+	self.nb = nb
+
     def __cmp__(self, b):
     	"""bandwidth comparison
 
@@ -79,6 +109,25 @@ class Bw(Rem):
     
     def __add__(self, b):
     	return min(self.value, b.value)
+
+    def gwrem_change(self, oldvalue, newvalue):
+	"""Updates self.value using the new value of bw(me->gw)
+	
+	Returns 0 if nothing effectively changed."""
+
+	if oldvalue == newvalue:
+		return 0
+	elif newvalue < self.value:
+		self.value=newvalue
+	else:
+		if not self.lb:
+			return 0
+		else:
+			if newvalue > self.nb:
+				self.value=self.nb
+			else:
+				self.value=newvalue
+	return 1
 
 class Avg(Rem):
     """Average"""
@@ -111,14 +160,21 @@ class Avg(Rem):
     def __add__(self, b):
     	raise Exception, "the Avg metric cannot be summed. It must be computed each time"
     	pass
+    def gwrem_change(self, oldvalue, newvalue):
+    	raise Exception, "the Avg metric cannot be modified. It must be computed each time"
+    	pass
 
 
 class RouteGw:
     """A route to a known destination.
 
-    This class is intended for routes pointing to a same known destination.
+    This class is intended for routes pointing to a same known destination d.
     The only variables here are `gw', the gateway of the route, and `rem',
-    its Rem"""
+    its Rem.
+    
+    If d = `gw', then `gw' is one of our internal neighbours, i.e. a neighbour
+    belonging to our gnode of level 1.
+    """
 
     def __init__(self, gw, rem):
 	"""New gw route"""
@@ -137,7 +193,6 @@ class RouteGw:
 		return oldrem
 	return self.rem
 
-
 class RouteNode:
     """List of routes to a known destination.
 
@@ -154,11 +209,6 @@ class RouteNode:
 		):
     	self.routes = []
 
-    	self.events = Event( [  'NEW_ROUTE',
-    				'DEL_ROUTE',
-    				'REM_ROUTE'	# the route's rem changed
-    			     ] )
-
     def route_getby_gw(self, gw):
 	"""Returns the route having as gateway `gw'"""
     	for r in self.routes:
@@ -169,11 +219,12 @@ class RouteNode:
     def route_add(self, lvl, dst, gw, rem):
     	"""Add a route.
 
-    	It returns 0 if the route hasn't been added, and thus it isn't
-    	interesting, otherwise it returns 1 if it is a new route, 2 if
-    	it substituted an old route."""
+    	It returns (0,None) if the route hasn't been added, and thus it isn't
+    	interesting, otherwise it returns (1,None) if it is a new route, 
+	(2, oldrem) if it substituted an old route."""
 
     	ret  = 0
+	val  = None
     	oldr = self.route_getby_gw(gw)
     	
     	if self.is_empty() or
@@ -181,19 +232,17 @@ class RouteNode:
     	# If there aren't routes, or if it is better than the worst
     	# route, add it
     		self.routes.append(RouteGw(gw, rem))
-    			self.events.send('NEW_ROUTE', (lvl, dst, gw, rem))
     		ret=1
     	elif oldr != None and rem > oldr.rem:
     		oldrem=oldr.rem_modify(rem)
-    			self.events.send('REM_ROUTE', 
-    					((lvl, dst, gw, rem), oldrem) )
+		val=oldrem
     		ret=2
     	else:
-    		return 0 # route not interesting
+    		return (ret, val) # route not interesting
 
     	self.sort()
 
-    	return ret	 # good route
+    	return (ret, val)	  # good route
 
     def route_del(self, lvl, dst, gw):
     	"""Delete a route.
@@ -203,10 +252,23 @@ class RouteNode:
     	r = route_getby_gw(gw)
     	if r != None:
 		self.routes.remove(r)
-		self.events.send('DEL_ROUTE', (lvl, dst, gw))
     		return 1
     	return 0
-    
+
+
+    def gwrem_change(self, gw, oldrem, newrem):
+	"""See Rem.gwrem_change"""
+        
+	gwroute = route_getby_gw(gw)
+	if gwroute == None:
+		return 0
+
+	gwroute.rem.gwrem_change(oldrem.value, newrem.value)
+    	self.sort()
+
+	return 1
+
+
     def sort(self):
     	# Order the routes in decrescent order of efficiency, so that
     	# self.routes[0] is the best one
@@ -215,6 +277,11 @@ class RouteNode:
     def is_empty(self):
     	return self.routes == []
 
+    def best_route(self):
+        if self.is_empty():
+		return None
+	else:
+		return self.routes[0]
 
 class MapRoute(Map):
     """Map of routes, all of a same Rem type.
@@ -222,25 +289,75 @@ class MapRoute(Map):
     MapRoute.node[lvl][id] is a RouteNode class, i.e. a list of routes
     having as destination the node (lvl, id)"""
 
-    def __init__(self):
-    	Map.__init__(self, levels, gsize, RouteNode)
-    
-    def route_add(self, lvl, dst, gw, rem):
-    	return self.node_get(lvl, dst).route_add(lvl, dst, gw, rem)
+    def __init__(self, levels, gsize, me):
+    	Map.__init__(self, levels, gsize, RouteNode, me)
 
-    def route_del(self, lvl, dst, gw):
+	self.events = Event( [  'NEW_ROUTE',
+    				'DEL_ROUTE',
+    				'REM_ROUTE',	# the route's rem changed
+
+				# Neighbour events generated by radar.py
+				# MapRoute listen and relays them
+				'NEW_NEIGH',
+				'DEL_NEIGH',
+				'REM_NEIGH'
+    			     ] )
+
+    def route_add(self, lvl, dst, gw, rem, silent=0):
+    	ret, val = self.node_get(lvl, dst).route_add(lvl, dst, gw, rem)
+	if not silent:
+		if ret == 1:
+			self.events.send('NEW_ROUTE', (lvl, dst, gw, rem))
+		elif ret == 2:
+			oldrem=val
+			self.events.send('REM_ROUTE', (lvl, dst, gw, rem, oldrem))
+	return ret
+
+    def route_del(self, lvl, dst, gw, silent=0):
     	d=self.node_get(lvl, dst)
     	d.route_del(lvl, dst, gw)
+
+	if not silent:
+		self.events.send('DEL_ROUTE', (lvl, dst, gw))
 
     	if d.is_empty():
     		# No more routes to reach the node (lvl, dst).
     		# Consider it dead
     		self.node_del(lvl, dst)
 
-    def routegw_del(self, gw):
+    
+
+    def routeneigh_del(self, neigh):
     	"""Delete from the MapRoute all the routes passing from the
-    	   gateway `gw'"""
+    	   gateway `neigh.id' and delete the node `neigh' itself (if present)"""
+
+	self.events.send('DEL_NEIGH', (neigh))
 
     	for lvl in xrange(self.levels):
     		for dst in xrange(self.gsize):
-    			self.route_del(lvl, dst, gw)
+    			self.route_del(lvl, dst, neigh.id, silent=1)
+    
+    def routeneigh_add(self, neigh):
+        """Add a route to reach neigh.id if the node `neigh' belongs to our
+	   gnode of level 1"""
+
+	self.events.send('NEW_NEIGH', (neigh))
+
+	if not self.is_in_level(neigh.nip, 0):
+		return 0
+	else:
+		nid=neigh.nip[0]
+		return self.route_add(0, nid, nid, neigh.rem, silent=1)
+
+    def routeneigh_rem(self, neigh, oldrem):
+	"""Changes the gwrem relative to the neighbour `neigh'
+	   (see Rem.gwrem_change) in all the nodes of the map"""
+	
+	self.events.send('REM_NEIGH', (neigh, oldrem))
+
+	if not self.is_in_level(neigh.nip, 0):
+		return 0
+	
+	for lvl in xrange(self.levels):
+    		for dst in xrange(self.gsize):
+    			self.node_get(lvl, dst).gwrem_change(gw, oldrem, neigh.rem)
