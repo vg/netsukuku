@@ -54,5 +54,5 @@ class Event:
 
 		if not remove:
 			self.listeners[event].append(dst)
-		else if dst in self.listeners[event]:
+		elif dst in self.listeners[event]:
 			self.listeners[event].remove(dst)
