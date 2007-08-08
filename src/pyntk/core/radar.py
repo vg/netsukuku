@@ -45,7 +45,7 @@ class Neigh:
     self.ip = ip
     self.id = idn
     self.rem = Rtt(rtt)
-    """ neighbour's ntk remote instance """
+    # neighbour's ntk remote instance
     self.ntk = Ntk(ip)
 
 class Neighbour:
@@ -59,7 +59,8 @@ class Neighbour:
     self.max_neigh = max_neigh
     # variation on neighbours' rtt greater than this will be notified
     self.rtt_variation = 0.1
-    # our ip_table    self.ip_table = {}
+    # our ip_table
+    self.ip_table = {}
     # our IP => ID translation table
     self.translation_table = {}
     # the events we raise
@@ -86,6 +87,13 @@ class Neighbour:
       return new_id
     else:
       return False
+
+  def ip_to_neigh(self, ip):
+    """ ip: neighbour's ip
+        return a Neigh object from an ip
+    """
+    
+    return Neigh(ip, self.translation_table[ip], self.ip_table[ip].rtt)
 
   def truncate(self, ip_table):
     """ ip_table: an {IP => NodeInfo ~ [dev, rtt, ntk]};
