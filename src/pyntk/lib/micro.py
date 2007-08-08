@@ -55,3 +55,26 @@ def micro(function, *args):
     else:
         return stackless.tasklet(function)()
 
+def dispatcher(func, chan, is_micro):
+    while True:
+        msg = chan.recv()
+    if is_micro:
+        micro(func, msg)
+    else:
+        f(*msg)
+
+def microfunc(is_micro):
+    '''Create a new channel and start a microthread
+    
+    This is a decorator
+
+    @param is_micro: Tells the dispatcher to create a new microthread
+
+    '''
+    def decorate(func)
+        ch = Channel()
+        micro(dispatcher, (func, ch, is_micro)
+        return ch.send
+    
+    return decorate
+
