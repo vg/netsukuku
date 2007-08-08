@@ -85,12 +85,14 @@ class NtkRequestHandler(SocketServer.BaseRequestHandler):
 
 
 class SimpleNtkRPCServer(SocketServer.TCPServer, NtkRPCDispatcher):
-    '''Tis class implement a simple Ntk-Rpc server'''
+    '''This class implement a simple Ntk-Rpc server'''
     
-    def __init__(self, addr, requestHandler=NtkRequestHandler):
+    def __init__(self, ntkd, addr=('localhost',269), requestHandler=NtkRequestHandler):
 
         NtkRPCDispatcher.__init__(self)
         SocketServer.TCPServer.__init__(self, addr, requestHandler)
+
+	self.ntkd=ntkd
 
 class SimpleNtkRPCClient:
     '''This class implement a simple Ntk-RPC client'''
@@ -116,6 +118,8 @@ class SimpleNtkRPCClient:
         
         return rencode.loads(recv_data)
         
+
+
 
 if __name__ == '__main__':
     
