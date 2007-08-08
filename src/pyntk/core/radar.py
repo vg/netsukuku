@@ -79,7 +79,7 @@ class Neighbour:
         if the table isn't full
     """
 
-    if(self.translation_table.has_key(ipn)):
+    if(ipn in self.translation_table):
       return self.translation_table[ipn]
     new_id = self.find_hole_in_tt
     if new_id:
@@ -122,7 +122,7 @@ class Neighbour:
       else:
         # otherwise just drop it
         # but, if old ip_table contained this row, we should notify our listeners about this:
-        if(self.ip_table.has_key(key)):
+        if(key in self.ip_table):
           # remember we are truncating this row
           trucated.append(key)
           # remember its id
@@ -137,7 +137,7 @@ class Neighbour:
   def find_hole_in_tt(self):
     """find the first available index in translation_table"""
     for i in xrange(self.max_neigh):
-      if((i in self.translation_table) == False):
+      if((i in self.translation_table.values()) == False):
         return i
     return False
 
@@ -157,7 +157,7 @@ class Neighbour:
       # if we find a row that isn't in the new ip_table and whose
       # deletion hasn't already been notified (raising an event)
       # during truncation
-      if((not (ip_table.has_key(key))) and (not (key in died_ip_list))):
+      if((not (key in ip_table)) and (not (key in died_ip_list))):
         # remember its id
         old_id = self.translation_table(key)
         # delete the entry from the translation table
@@ -170,7 +170,7 @@ class Neighbour:
     # or whose rtt has sensibly changed
     for key in ip_table:
       # if a node has been added
-      if(not (self.ip_table.has_key(key))):
+      if(not (key in self.ip_table)):
         # generate an id and add the entry in translation_table
         ip_to_id(key)
         # send a message notifying we added a node
@@ -233,8 +233,8 @@ class Radar:
     # this is the rtt
     time_elapsed = int(xtime.time() - bcast_send_time / 2)
     # let's store it in the bcast_arrival_time table
-    if(self.bcast_arrival_time.has_key(ip)):
-      if(self.bcast_arrival_time(ip).has_key(net_device)):
+    if(ip in self.bcast_arrival_time):
+      if(net_device in self.bcast_arrival_time[ip]):
         self.bcast_arrival_time[ip].append(time_elapsed)
       else:
         self.bcast_arrival_time[ip][net_device] = [time_elapsed]
