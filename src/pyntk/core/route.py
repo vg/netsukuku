@@ -29,7 +29,10 @@ class Rem:
 
     	self.max_value=max_value	# Maximum value assumed by this REM
     	self.avgcoeff=avgcoeff		# Coefficient used for the average
-    
+
+    def _pack(self):
+        return (self.value, self.max_value, self.avgcoeff)
+
     def __cmp__(self, b):
     	"""Compares two REMs
     	if remA > remB, then remA is better than remB
@@ -76,7 +79,7 @@ class Rtt(Rem):
     	return (self.value < b.value) - (self.value > b.value);
     
     def __add__(self, b):
-    	return self.value+b.value
+    	return Rtt(self.value+b.value, self.max_value, self.avgcoeff)
 
 class Bw(Rem):
     """Bandwidth"""
@@ -108,7 +111,8 @@ class Bw(Rem):
     	return (self.value > b.value) - (self.value < b.value);
     
     def __add__(self, b):
-    	return min(self.value, b.value)
+    	return Bw((min(self.value, b.value), self.lb, self.nb), 
+			self.max_value, self.avgcoeff)
 
     def gwrem_change(self, oldvalue, newvalue):
 	"""Updates self.value using the new value of bw(me->gw)
@@ -216,6 +220,18 @@ class RouteNode:
     			return self.routes[r]
     	return None
 
+    def route_rem(self, lvl, dst, gw, newrem):
+	"""Changes the rem of the route with gateway `gw'
+
+	Returns (0, None) if the route doesn't exists, (1, oldrem) else."""
+
+        r=self.route_getby_gw(gw)
+	if r == None:
+		return (0, None)
+	oldrem=r.rem_modify(newrem)
+	self.sort()
+	return (1, oldrem)
+
     def route_add(self, lvl, dst, gw, rem):
     	"""Add a route.
 
@@ -255,7 +271,6 @@ class RouteNode:
     		return 1
     	return 0
 
-
     def gwrem_change(self, gw, oldrem, newrem):
 	"""See Rem.gwrem_change"""
         
@@ -276,6 +291,9 @@ class RouteNode:
     
     def is_empty(self):
     	return self.routes == []
+
+    def nroutes(self):
+        return len(self.routes)
 
     def best_route(self):
         if self.is_empty():
@@ -298,10 +316,14 @@ class MapRoute(Map):
     			     ] )
 
     def route_add(self, lvl, dst, gw, rem, silent=0):
-    	ret, val = self.node_get(lvl, dst).route_add(lvl, dst, gw, rem)
+	n=self.node_get(lvl, dst)
+    	ret, val = n.route_add(lvl, dst, gw, rem)
 	if not silent:
 		if ret == 1:
 			self.events.send('NEW_ROUTE', (lvl, dst, gw, rem))
+			if n.nroutes() == 1:
+				# The node is new
+				self.node_add(lvl, dst)
 		elif ret == 2:
 			oldrem=val
 			self.events.send('REM_ROUTE', (lvl, dst, gw, rem, oldrem))
@@ -319,7 +341,18 @@ class MapRoute(Map):
     		# Consider it dead
     		self.node_del(lvl, dst)
 
-    
+    def route_rem(self, lvl, dst, gw, newrem):
+	"""Changes the rem of the route with gateway `gw'
+
+	Returns 0 if the route doesn't exists, 1 else."""
+
+        d=self.node_get(lvl, dst)
+        ret, val = d.route_rem(lvl, dst, gw, newrem)
+	if ret:
+		oldrem=val
+		self.events.send('REM_ROUTE', (lvl, dst, gw, newrem, oldrem))
+	else:
+		return 0
 
     def routeneigh_del(self, neigh):
     	"""Delete from the MapRoute all the routes passing from the
@@ -360,13 +393,10 @@ class MapRoute(Map):
 	   tuple (dst, gw, rem), where dst is the destination of the route, gw
 	   its gateway."""
 	
-	L=[]
-	for lvl in xrange(self.levels):
-		l=[]
-    		for dst in xrange(self.gsize):
-			br=self.node_get(lvl, dst).best_route()
-			if br == None:
-				continue
-    			l.append((dst, bw.gw, br.rem))
-		L.append(l)
-	return L
+        return [ 
+		[ (dst, br.gw, br.rem)
+			for dst in xrange(self.gsize)
+			    for br in [self.node_get(lvl, dst).best_route()]
+			        if br != None
+		] for lvl in xrange(self.levels)
+	       ]

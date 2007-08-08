@@ -44,7 +44,7 @@ class Neigh:
 
     self.ip = ip
     self.id = idn
-    self.rem = Rtt(rtt)
+    self.rem = Rtt(rtt)		# TODO(low): support the other metrics
     # neighbour's ntk remote instance
     self.ntk = Ntk(ip)
 

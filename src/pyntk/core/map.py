@@ -48,8 +48,11 @@ class Map:
 	
 	if self.node[lvl][id] == None:
 		self.node[lvl][id]=self.dataclass(lvl, id)
-	    	self.events.send('NEW_NODE', (lvl, id))
 	return self.node[lvl][id]
+
+    def node_add(self, lvl, id):
+        node=self.node_get(lvl, id)
+	self.events.send('NEW_NODE', (lvl, id))
 
     def node_del(self, lvl, id):
         if self.node[lvl][id] is not None:
