@@ -333,17 +333,19 @@ class MapRoute(Map):
         """Add a route to reach neigh.id if the node `neigh' belongs to our
 	   gnode of level 1"""
 
-	if not self.is_in_level(neigh.nip, 0):
+	nip=self.ip_to_nip(neigh.ip)
+	if not self.is_in_level(nip, 0):
 		return 0
 	else:
-		nid=neigh.nip[0]
+		nid=nip[0]
 		return self.route_add(0, nid, nid, neigh.rem, silent=1)
 
     def routeneigh_rem(self, neigh, oldrem):
 	"""Changes the gwrem relative to the neighbour `neigh'
 	   (see Rem.gwrem_change) in all the nodes of the map"""
 	
-	if not self.is_in_level(neigh.nip, 0):
+	nip=self.ip_to_nip(neigh.ip)
+	if not self.is_in_level(nip, 0):
 		return 0
 	
 	for lvl in xrange(self.levels):

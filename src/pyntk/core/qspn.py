@@ -104,8 +104,7 @@ class Etp:
 	##
 
     def etp_forward(self, etp, exclude):
-        """Forwards the `etp' to all our neighbours, exclude those contained in
-	`exclude'"""
+        """Forwards the `etp' to all our neighbours, exclude those contained in `exclude'"""
 
 	for nr in self.neigh_list():
 		nr.ntkd.etp.etp_exec(etp)

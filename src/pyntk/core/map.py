@@ -20,7 +20,9 @@
 # Implementation of the map. See {-topodoc-}
 # 
 
-from event import Event
+import sys
+sys.path.append("..")
+from lib.event import Event
 
 class Map:
 
@@ -57,3 +59,19 @@ class Map:
     def is_in_level(self, nip, lvl):
 	"""Does the node nip belongs to our gnode of level `lvl'?"""
 	return nip[:-lvl-1] == self.me[:-lvl-1]
+
+    def ip_to_nip(self, ip):
+        """Converts the given ip to a nip (Netsukuku IP)
+	
+	A nip is a list [a_0, a_1, ..., a_{n-1}], where n = self.levels
+	and such that a_{n-1}*g^{n-1}+a_{n-2}*g^(n-2)+...+a_0 = ip, 
+	where g = self.gsize"""
+
+	g=self.gsize
+	return [int(ip/g**l) - (int(ip/g**(l+1)) * g) for l in xrange(self.levels)]
+
+    def nip_to_ip(self, nip):
+        """The reverse of ip_to_nip"""
+
+	g=self.gsize
+        return sum([nip[l] * g**l for l in xrange(self.levels)])
