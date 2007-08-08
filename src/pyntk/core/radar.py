@@ -25,10 +25,12 @@ from operator import itemgetter
 
 class Neigh:
   """ this class simply represent a neighbour """
-  def __init__(self, nip, idn, rtt):
-    # nip: the neighbour's IP;
-    # idn: the neighbour's ID;
-    # rtt: the neighbour's Round Trip Time;
+
+  def __init__(self, ip, idn, rtt):
+    """
+    ip:  the neighbour's IP;
+    idn: the neighbour's ID;
+    rtt: the neighbour's Round Trip Time;"""
 
     self.ip = ip
     self.id = idn
@@ -37,8 +39,10 @@ class Neigh:
 class Neighbour:
   """ this class manages all neighbours """
   def __init__(self, multipath = 0, max_neigh = 16):
-    # multipath: does the current kernel we're running on support multipath routing?;
-    # max_neigh: maximum number of neighbours we can have;
+    """
+    multipath: does the current kernel we're running on support multipath routing?;
+    max_neigh: maximum number of neighbours we can have
+    """
 
     self.multipath = multipath
     self.max_neigh = max_neigh
@@ -52,16 +56,17 @@ class Neighbour:
     self.events = Event(['NEW_NEIGH', 'DEL_NEIGH', 'REM_NEIGH'])
 
   def neigh_list(self):
-    # return the list of neighbours
+    """return the list of neighbours"""
     nlist = []
     for key, val in ip_table:
       nlist.append(Neigh(key, translation_table[key], val[1]))
     return nlist
 
   def ip_to_id(self, ipn):
-    # if ipn is in the translation table, return the associated id;
-    # if it isn't, insert it into the translation table assigning a new id,
-    # if the table isn't full;
+    """
+    if ipn is in the translation table, return the associated id;
+    if it isn't, insert it into the translation table assigning a new id,
+    if the table isn't full"""
 
     if(self.translation_table.has_key(ipn)):
       return self.translation_table[ipn]
@@ -73,8 +78,10 @@ class Neighbour:
       return False
 
   def truncate(self, ip_table):
-    # ip_table: an {IP => [dev, rtt]};
-    # we want the best (with the lowest rtt) max_neigh nodes only to remain in the table
+    """
+    ip_table: an {IP => [dev, rtt]};
+    we want the best (with the lowest rtt) max_neigh nodes only to remain in the table
+    """
 
     # auxiliary function, to take rtt from {IP => [dev,rtt]}
     def interesting(x):
@@ -111,15 +118,16 @@ class Neighbour:
     return (ip_table_trunc, truncated)
 
   def find_hole_in_tt(self):
-    # find the first available index in translation_table
+    """find the first available index in translation_table"""
     for i in xrange(self.max_neigh):
       if((i in self.translation_table) == False):
         return i
     return False
 
   def store(self, ip_table):
-    # ip_table: the new ip_table;
-    # substitute the old ip_table with the new and notify about the changes
+    """
+    ip_table: the new ip_table;
+    substitute the old ip_table with the new and notify about the changes"""
 
     # the rows deleted during truncation
     died_ip_list = []
@@ -162,10 +170,12 @@ class Neighbour:
 
 class Radar:
   def __init__(self, multipath = 0, bquet_num = 16, max_neigh = 16, max_wait_time = 10):
-    # multipath: does the current kernel we're running on support multipath routing?;
-    #    bquet_num: how many packets does each bouquet contain?;
-    #    max_neigh: maximum number of neighbours we can have;
-    #    max_wait_time: the maximum time we can wait for a reply, in seconds;
+    """
+    multipath: does the current kernel we're running on support multipath routing?;
+    bquet_num: how many packets does each bouquet contain?;
+    max_neigh: maximum number of neighbours we can have;
+    max_wait_time: the maximum time we can wait for a reply, in seconds;
+    """
 
     # when we sent the broadcast packets
     self.bcast_send_time = 0
@@ -202,7 +212,7 @@ class Radar:
     pass
 
   def time_register(self, ip, net_device):
-    # save each node's rtt
+    """save each node's rtt"""
 
     # this is the rtt
     time_elapsed = int(time.time() - bcast_send_time * 1000 / 2)
@@ -217,8 +227,10 @@ class Radar:
       self.bcast_arrival_time[ip][net_device] = [time_elapsed]
 
   def get_avg_rtt(self, ip):
-    # ip: an ip;
-    # calculate the average rtt of ip
+    """
+    ip: an ip;
+    calculate the average rtt of ip
+    """
 
     if(self.multipath == 0):
       # if we can't use multipath routing use the value from the best nic
@@ -250,7 +262,7 @@ class Radar:
       return (sum / counter)
 
   def get_all_avg_rtt(self):
-    # calculate the average rtt of all the ips
+    """calculate the average rtt of all the ips"""
 
     all_avg = {}
     # for each ip
@@ -263,3 +275,4 @@ class Radar:
         # otherwise, set None as the device
         all_avg[ip] = [None, get_avg_rtt(ip)]
     return all_avg
+
