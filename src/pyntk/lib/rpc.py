@@ -44,6 +44,14 @@ import SocketServer
 
 import rencode
 
+class NtkRPCError(Exception):
+    pass
+
+class RPCFunctionNotRegistered(NtkRPCError):
+    pass
+
+class RPCFunctionTypeError(NtkRPCError):
+    pass
 
 class NtkRPCDispatcher(object):
     '''
@@ -77,9 +85,14 @@ class NtkRPCDispatcher(object):
                     pass
 
         if func is not None:
-            return func(*params)
+            try:
+                return func(*params)
+            except TypeError:
+                raise (RPCFunctionTypeError,
+                      'TypeError in function %s' % func_name)
         else:
-            raise Exception('function %s is not registered' % func_name)
+            raise (RPCFunctionNotRegistered,
+                  'Function %s is not registered' % func_name)
 
     def marshalled_dispatch(self, data):
         '''Dispaches a RPC function from marshalled data'''
@@ -88,9 +101,11 @@ class NtkRPCDispatcher(object):
 
         try:
             response = self._dispatch(func, params)
-        except:
-            logging.debug('Dispatching function error')
-
+        except RPCFunctionNotRegistered:
+            logging.debug('Function Not Registered')
+            response = 'Function %s is not registered' % func
+        except RPCFunctionTypeError:
+            response = 'TypeError in function %s' % func
         response = rencode.dumps(response)
         return response
 
@@ -104,12 +119,12 @@ class NtkRequestHandler(SocketServer.BaseRequestHandler):
         logging.debug('Connected from %s', self.client_address)
 
         try:
-            data = self.request.recv(1024) 
+            data = self.request.recv(1024)
             logging.debug('Handling data: %s', data)
             response = self.server.marshalled_dispatch(data)
             logging.debug('Response: %s', response)
-        except:
-            pass # TODO Handle exceptions!
+        except NtkRPCError:
+            logging.debug('An error occurred during request handling')
         else:
             self.request.send(response)
             self.request.close()
@@ -119,7 +134,8 @@ class NtkRequestHandler(SocketServer.BaseRequestHandler):
 class SimpleNtkRPCServer(SocketServer.TCPServer, NtkRPCDispatcher):
     '''This class implement a simple Ntk-Rpc server'''
 
-    def __init__(self, addr=('localhost', 269), requestHandler=NtkRequestHandler):
+    def __init__(self, addr=('localhost', 269),
+                 requestHandler=NtkRequestHandler):
 
         NtkRPCDispatcher.__init__(self)
         SocketServer.TCPServer.__init__(self, addr, requestHandler)
