@@ -16,7 +16,28 @@
 # this source code; if not, write to:
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
+'''Netsukuku RPC
 
+Usage example:
+
+- Register functions
+
+ntk_server = SimpleNtkRPCServer()
+ntk_server.register_function(my_cool_function)
+ntk_server.serve_forever()
+
+- Register an instance
+
+class MyClass:
+
+    def my_cool_method(self, x):
+        return x*2
+
+ntk_server = SimpleNtkRPCServer()
+ntk_server.register_instance(MyClass())
+ntk_server.serve_forever()
+
+'''
 import logging
 import socket
 import SocketServer
@@ -31,6 +52,7 @@ class NtkRPCDispatcher(object):
     '''
     def __init__(self):
         self.funcs = {} # Dispatcher functions dictionary
+        self.instance = None
 
     def register_function(self, func):
         '''Register a function to respond to an RPC request'''
@@ -38,34 +60,44 @@ class NtkRPCDispatcher(object):
         func_name = func.__name__
         self.funcs[func_name] = func
 
+    def register_instance(self, instance):
+        '''Register an instance'''
+        self.instance = instance
+
     def _dispatch(self, func_name, params):
         func = None
         try:
             func = self.funcs[func_name]
         except KeyError:
-            raise Exception('function %s is not registered' % func_name)
+            if self.instance is not None:
+                try:
+                    if not func_name.startswith('_'):
+                        func = getattr(self.instance, func_name)
+                except AttributeError:
+                    pass
 
         if func is not None:
             return func(*params)
+        else:
+            raise Exception('function %s is not registered' % func_name)
 
     def marshalled_dispatch(self, data):
         '''Dispaches a RPC function from marshalled data'''
 
         func, params = rencode.loads(data) 
-        
+
         try:
             response = self._dispatch(func, params)
         except:
             logging.debug('Dispatching function error')
 
         response = rencode.dumps(response)
-
         return response
 
 
 class NtkRequestHandler(SocketServer.BaseRequestHandler):
     '''RPC request handler class
-    
+
     Handles all request and try to decode them.
     '''
     def handle(self):
@@ -86,13 +118,11 @@ class NtkRequestHandler(SocketServer.BaseRequestHandler):
 
 class SimpleNtkRPCServer(SocketServer.TCPServer, NtkRPCDispatcher):
     '''This class implement a simple Ntk-Rpc server'''
-    
-    def __init__(self, ntkd, addr=('localhost',269), requestHandler=NtkRequestHandler):
+
+    def __init__(self, addr=('localhost', 269), requestHandler=NtkRequestHandler):
 
         NtkRPCDispatcher.__init__(self)
         SocketServer.TCPServer.__init__(self, addr, requestHandler)
-
-	self.ntkd=ntkd
 
 class SimpleNtkRPCClient:
     '''This class implement a simple Ntk-RPC client'''
@@ -105,44 +135,15 @@ class SimpleNtkRPCClient:
 
     def rpc_call(self, func_name, params):
         '''Performs a rpc call
-        
+
         @param func_name: name of the remote callable
         @param params: a tuple of arguments to pass to the remote callable
         '''
 
         data = rencode.dumps((func_name, params))
         self.socket.send(data)
-        
+
         recv_data = self.socket.recv(1024)
         self.socket.close()
-        
+
         return rencode.loads(recv_data)
-        
-
-
-
-if __name__ == '__main__':
-    
-    import sys
-
-    # Logging option
-
-    LOG_LEVEL = logging.DEBUG
-    LOG_FILE = ''
-    
-    log_config = {
-        'level': LOG_LEVEL,
-        'format': '%(levelname)s %(message)s'
-    }
-
-    if LOG_FILE == '':
-        log_config['stream'] = sys.stdout
-    else:
-        log_config['filename'] = LOG_FILE
-
-    logging.basicConfig(**log_config)
-
-    server = SimpleNtkRPCServer(('localhost', 8888))
-    server.register_function(pow)
-    server.serve_forever()
-
