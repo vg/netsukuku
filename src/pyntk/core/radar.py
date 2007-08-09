@@ -83,7 +83,7 @@ class Neighbour:
 
     if(ipn in self.translation_table):
       return self.translation_table[ipn]
-    new_id = self.find_hole_in_tt
+    new_id = self._find_hole_in_tt
     if new_id:
       self.translation_table[ipn] = new_id
       return new_id
@@ -97,7 +97,7 @@ class Neighbour:
     
     return Neigh(ip, self.translation_table[ip], self.ip_table[ip].rtt)
 
-  def truncate(self, ip_table):
+  def _truncate(self, ip_table):
     """ ip_table: an {IP => NodeInfo ~ [dev, rtt, ntk]};
         we want the best (with the lowest rtt) max_neigh nodes only to remain in the table
     """
@@ -136,7 +136,7 @@ class Neighbour:
     # return the new ip_table and the list of truncated entries
     return (ip_table_trunc, truncated)
 
-  def find_hole_in_tt(self):
+  def _find_hole_in_tt(self):
     """find the first available index in translation_table"""
     for i in xrange(self.max_neigh):
       if((i in self.translation_table.values()) == False):
@@ -151,7 +151,7 @@ class Neighbour:
     # the rows deleted during truncation
     died_ip_list = []
 
-    (ip_table, died_ip_list) = self.truncate(ip_table)
+    (ip_table, died_ip_list) = self._truncate(ip_table)
 
     # first of all we cycle through the old ip_table
     # looking for nodes that aren't in the new one
@@ -293,3 +293,4 @@ class Radar:
         # otherwise, set None as the device
         all_avg[ip] = NodeInfo(None, get_avg_rtt(ip), Ntk(ip))
     return all_avg
+
