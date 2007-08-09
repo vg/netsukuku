@@ -9,6 +9,7 @@ import threading
 from lib.rpc import SimpleNtkRPCServer, SimpleNtkRPCClient
 
 REQUEST = 3
+PORT = 8888
 
 # Logging option
 
@@ -48,7 +49,7 @@ class ThreadedNtkRPCServer(threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self):
-        ntk_server = NtkRPCFewServer(('localhost', 8888))
+        ntk_server = NtkRPCFewServer(('localhost', PORT))
         ntk_server.register_instance(MyClass())
         ntk_server.serve_few()
 
@@ -57,14 +58,15 @@ class ThreadedNtkRPCClient(threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self):
-        ntk_client = SimpleNtkRPCClient(port=8888)
+        ntk_client = SimpleNtkRPCClient(port=PORT)
 
         response = ntk_client.rpc_call('my_cool_method', (3,))
         assert response == 6
-        response = ntk_client.rpc_call('my_cool_method2', ())
-        assert response == 'An error occurred in requested function'
+        # Use try to catch RPCError if you don't want to crash :D
+        try:
+            response = ntk_client.rpc_call('my_cool_method2', ())
+        except: pass
         response = ntk_client.rpc_call('my_cool_method3', ()) # not exist!
-        assert response == 'Function not registered'
 
 if __name__ == '__main__':
     print 'Starting server...'
@@ -74,4 +76,5 @@ if __name__ == '__main__':
     client = ThreadedNtkRPCClient()
     client.start()
 
+    client.join()
     server.join()

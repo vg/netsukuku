@@ -44,13 +44,14 @@ import SocketServer
 
 import rencode
 
-class NtkRPCError(Exception):
+
+class RPCError(Exception):
     pass
 
-class RPCFunctionNotRegistered(NtkRPCError):
+class RPCFunctionNotRegistered(RPCError):
     pass
 
-class RPCFunctionError(NtkRPCError):
+class RPCFunctionError(RPCError):
     pass
 
 
@@ -121,12 +122,12 @@ class NtkRPCDispatcher(object):
         if func is not None:
             try:
                 return func(*params)
-            except StandardError:
-                raise (RPCFunctionError,
-                      'Error in function %s' % func_name)
+            # I propagate all exceptions to `marshalled_dispatch'
+            except Exception, e:
+                raise
         else:
-            raise (RPCFunctionNotRegistered,
-                  'Function %s is not registered' % func_name)
+            raise RPCFunctionNotRegistered(
+                        'Function %s is not registered' % func_name)
 
     def marshalled_dispatch(self, data):
         '''Dispaches a RPC function from marshalled data'''
@@ -135,12 +136,10 @@ class NtkRPCDispatcher(object):
 
         try:
             response = self._dispatch(func, params)
-        except RPCFunctionNotRegistered:
-            logging.debug('Function Not Registered')
-            response = 'Function not registered'
-        except RPCFunctionError:
-            response = 'An error occurred in requested function' # TODO standard
-        response = rencode.dumps(response)                       # error code?
+        except Exception, e:
+            logging.debug(str(e))
+            response = ('rmt_error', str(e))
+        response = rencode.dumps(response)
         return response
 
 
@@ -157,7 +156,7 @@ class NtkRequestHandler(SocketServer.BaseRequestHandler):
             logging.debug('Handling data: %s', data)
             response = self.server.marshalled_dispatch(data)
             logging.debug('Response: %s', response)
-        except NtkRPCError:
+        except RPCError:
             logging.debug('An error occurred during request handling')
         else:
             self.request.send(response)
@@ -194,7 +193,16 @@ class SimpleNtkRPCClient:
         data = rencode.dumps((func_name, params))
         self.socket.send(data)
 
-        recv_data = self.socket.recv(1024)
+        recv_encoded_data = self.socket.recv(1024)
         self.socket.close()
 
-        return rencode.loads(recv_data)
+        recv_data = rencode.loads(recv_encoded_data)
+
+        # Handling errors
+        # I receive a message with the following format:
+        #     ('rmt_error', message_error)
+        # where message_error is a string
+        if isinstance(recv_data, tuple) and recv_data[0] == 'rmt_error':
+            raise RPCError(recv_data[1])
+
+        return recv_data
