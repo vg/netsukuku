@@ -53,6 +53,40 @@ class RPCFunctionNotRegistered(NtkRPCError):
 class RPCFunctionError(NtkRPCError):
     pass
 
+
+class FakeNtkd(object):
+    '''A fake Ntkd class
+
+    This class is used to perform RPC call using the following form:
+
+        ntkd.ept.mymethod(p1, p2, p3)
+
+    instead of:
+
+        ntkd.rmt('etp.mymethod', (p1, p2, p3))
+    '''
+    def __init__(self, name=''):
+        self._name = name
+
+    def __getattr__(self, name):
+        '''
+        @return: A new FakeNtkd: used to accumulate instance attributes
+        '''
+
+        return FakeNtkd(self._name + '.' + name)
+
+    def __call__(self, *params):
+        self.rmt(self._name[1:], params)
+
+    def rmt(self, func_name, *params):
+        '''Perform the RPC call
+
+           This method must be ovverrided in child class.
+        '''
+        raise NotImplementedError, 'You must override this method'
+
+
+
 class NtkRPCDispatcher(object):
     '''
     This class is used to register RPC function handlers and
