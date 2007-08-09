@@ -982,75 +982,47 @@ Each TP of the ETP is then subjected to the rules of the QSPN v2.
 
 In order to give an exact definition of an ETP, we must examine each case of network change.
 \begin{description}
-	\item[Worsened link] 
-		\label{wlink}
-		Suppose that the link $A
-		\stackrel{l}{\leftrightarrow} B$ worsens.\\
-		Let's analyse what $B$ will do (the situation is symmetric for
-		$A$).
+	\item[Changed link]
+		\label{ilink}
+		Suppose that the quality of the link $A
+		\stackrel{l}{\leftrightarrow} B$ changes, (it may improve or worsen).\\
+		Let's examine the events, starting from $A$, keeping in mind
+		that the situation is symmetric for $B$.
 
-		$B$ updates its maps. As a consequence, the best routes used to
-		reach some nodes change. Then, $B$ creates an ETP containing
-		all these routes.
-		The ETP will be sent to all its neighbours, except $A$. In
-		this way its neighbours will know how convenient is to pass
-		through $B$ to reach the changed nodes.
-		In detail, $B$ will use the following algorithm:
+		Since the link $l$ changed, it may be the case for $B$ to
+		discover new optimal routes passing from it.
+		For this reason, $A$ will send to it an ETP with all the routes of its
+		map, except those of the form $A\rightarrow B\rightarrow \dots$. If $B$ finds
+		something of interest, it will forwards the ETP. In detail:
 		\begin{enumerate}
-		\item \label{stepR} 
-			$B$ creates the set $R$:
-			\eal{
-			&R=\pgra{r\in \overline{M}\;|\; gw(r)=A}\\
-			&\T{where }\\
-			&\qq r\in \ove M \;\= \;r\in M,\;\;  rem(r)=\max \{
-			rem(s)
-			\;|\;s\in M,\;dst(s)=dst(r) \} \\
-			&\qq M \T{ is the set of all the routes of the map of
-			$B$}\\
-			&\qq gw(r)\T{ is the first hop of the route $r$}\\
-			&\qq dst(r) \T{ is the destination of the route $r$}\\
-			&\qq \T{rem}(r) \T{ is the Route Efficiency Measure of
-			$r$}.
-			}
-			In other words, $\ove M$ is the set of all the best routes of
-			the map, and $R$ is the set of all the best routes passing
-			through $A$. Note that $R\neq \0$, because there's at
-			least the route $B\rightarrow A$.
-			
-			Each route $r\in R$ is saved as the pair $(\T{dst}(r),
-			\T{rem}(r))$.
-		\item \label{upmap}
-			$B$ updates its maps:
-			suppose that the route $r$, passing through the link
-			$l$, had a total rtt $t_0(r)$. If the rtt of the link
-			$l$ before the change was $t_0(l)$ and now is
-			$t_1(l)$, where $t_0(l) < t_1(l)$, then
-			$t_1(r):=t_0(r)-t_0(l)+t_1(l)$.\\
-			For the bandwidth we have:
-			\begin{align*}
-				&b_0(r)\;\;\T{ the total bandwidth of the
-				route $r$, before the change}\\
-				&b_0(l) > b_1(l)\;\;\T{the bw of $l$ has
-				worsend during the change}\\
-				&b_1(r):=b_1(l)
-			\end{align*}
-			The routes are then sorted.
-		\item $B$ creates the following set:
-			\[
-			\ove R = \pgra{r\in \ove M\;|\;\exists s\in R:\;dst(s)=dst(r)}
-			\]
-		\item $B$ fills the ETP: 
+			\item $A$ updates its map.
+			\item $A$ creates the following set:
+			      \eal{
+			      &R=\{r\in \ove M\;|\; \T{gw}(r)\neq B\}\\
+			      &\T{where }\\
+			      &\qq r\in \ove M \;\= \;r\in M,\;\;  rem(r)=\max \{
+			      rem(s)
+			      \;|\;s\in M,\;dst(s)=dst(r) \} \\
+			      &\qq\T{In other words, $\ove M$ is the set of all the best routes of the map}\\
+			      &\qq M \T{ is the set of all the routes of the map of
+			      $B$}\\
+			      &\qq gw(r)\T{ is the first hop of the route $r$}\\
+			      &\qq dst(r) \T{ is the destination of the route $r$}\\
+			      &\qq \T{rem}(r) \T{ is the Route Efficiency Measure of
+			      $r$}.
+			      }
+			      Each route $r\in R$ is saved as $(\T{dst}(r), \T{rem}(r))$.
+		      \item $A$ creates the ETP:
 			\begin{enumerate}
-				\item it adds in it the set $\ove R$
-				\item it appends the ID of $A$, along with the efficiency
-					value of the link $l$, and, as usual, its ID.
+				\item it writes in it the set $R$
+				\item it appends the its node ID, along with the efficiency
+					value of the link $l$.
 				\item it sets to 1 the \emph{flag of interest}.
 			\end{enumerate}
-		\item Finally, $B$ sends the ETP to all its neighbours, except $A$.
+		      \item It sends the ETP to $B$
 		\end{enumerate}
-		\label{ETPrule1}
 		Suppose the node $C$ has received the ETP from its neighbor
-		$N$\footnote{$N$ may be $B$ itself}.
+		$N$\footnote{$C$ may be $B$ itself and $N$ may be $A$}.
 		$C$ will examine the ETP and, if considered interesting, it 
 	will update its map and forward the ETP to the other neighbours, as
 		follow:
@@ -1073,8 +1045,6 @@ In order to give an exact definition of an ETP, we must examine each case of net
 		$M$ is sorted, i.e. the routes of the map of $C$ are sorted in
 		order of efficiency.
 	\item For all $r' \in R'$,
-		\label{ETPstep3}
-		\label{ETPstep3a}
 		let $m'\in M$ be a route such that
 		$\T{dst}(r')=\T{dst}(m')$. If
 		$r'$ is a better alternative to $m'$ and if
@@ -1092,7 +1062,7 @@ In order to give an exact definition of an ETP, we must examine each case of net
 				The \emph{flag of interest} of this ETP is set to 0. 
 			\item The ETP is sent to $N$.\\
 				This new ETP will propagate back in the
-				same fashion of the previous ETP (see page \pageref{ETPrule1}), i.e.
+				same fashion of the previous ETP, i.e.
 				until considered interesting. The only difference is that when a node
 				considers it uninteresting, it is just dropped\footnote{the node will
 				drop the ETP if the \emph{flag of interest} is set to 0 and if it is
@@ -1116,73 +1086,42 @@ In order to give an exact definition of an ETP, we must examine each case of net
 	\end{enumerate}
 	The rnodes of $C$ will use this same procedure. In this way, the ETP
 	will continue to be propagated until it is considered interesting.
+	\item[New link]
+	The case where a new link $A \stackrel{l}{\leftrightarrow} B$
+	is established is handled  in the same way of the
+	\textbf{Changed link} case, because we can consider $l$ as a link with
+	a new rem.
 
-		\item[Improved link]
-	\label{ilink}
-		Suppose that the link $A
-		\stackrel{l}{\leftrightarrow} B$ improves.\\
-		Let's examine the events, starting from $A$, keeping in mind
-		that the situation is symmetric for $B$.
-
-		Since the link $l$ improved, it may be the case for $B$ to
-		discover new optimal routes passing from it.
-		For this reason, $A$ will
-		send to it an ETP with all the routes of its map, except those of the form
-		$A\rightarrow B\rightarrow \dots$. If $B$ finds
-		something of interest, it will forwards the ETP. In detail:
+	\item[Broken link] 
 		\begin{enumerate}
-			\item $A$ updates its map.
-			\item $A$ creates the following set:
-			      \[
-			      R=\{r\in \ove M\;|\; \T{gw}(r)\neq B\}
-			      \]
-			      Each route $r\in R$ is saved as $(\T{dst}(r), \T{rem}(r))$.
-		      \item $A$ creates the ETP:
+		\item \label{stepR} 
+			$B$ creates the set $R$:
+			\eal{
+			&R=\pgra{r\in \overline{M}\;|\; gw(r)=A}}
+			In other words, 
+			$R$ is the set of all the best routes passing through $A$. 
+			Note that $R\neq \0$, because there's at least the route $B\rightarrow A$.
+			
+			Each route $r\in R$ is saved as the pair $(\T{dst}(r),
+			\T{rem}(r))$.
+		\item \label{upmap}
+			$B$ updates its map:
+			\eal{&\forall r\in M:\;gw(r)=A\;\;\T{ it sets }rem(r):=-\8}
+			The routes are then sorted in order of efficiency.
+		\item $B$ creates the following set:
+			\[
+			\ove R = \pgra{r\in \ove M\;|\;\exists s\in R:\;dst(s)=dst(r)}
+			\]
+		\item $B$ fills the ETP: 
 			\begin{enumerate}
-				\item it writes in it the set $R$
-				\item it appends the its node ID, along with the efficiency
-					value of the link $l$.
+				\item it adds in it the set $\ove R$
+				\item it appends its ID
 				\item it sets to 1 the \emph{flag of interest}.
 			\end{enumerate}
-		      \item It sends the ETP to $B$
+		\item Finally, $B$ sends the ETP to all its neighbours, except $A$.
 		\end{enumerate}
-		At this point, the ETP is propagated exactly in the same way
-		of the \textbf{worsened link} case (see page
-		\pageref{wlink}).\\
-
-		It is worth to note that when the bandwidth of a link
-		improves, it isn't possible to update the total bandwidth of a route
-		as in the case of the step \ref{upmap} of the
-		\textbf{worsend link} case. In fact, suppose to have the route
-		\[
-		A \stackrel{100 Mb/s}{\leftrightarrow} B \stackrel{2
-		Mb/s}{\leftrightarrow} C \stackrel{7 Mb/s}{\leftrightarrow}
-		D
-\]
-Its total bandwidth is $bw(A\rightarrow D)=2 Mb/s$. If $bw(C\rightarrow D)$
-becomes $1 Mb/s$, then $bw(A\rightarrow D)=1 Mb/s$. However, if
-$bw(C\rightarrow D)=100 Mb/s$, the total bandwidth is still $2 Mb/s$, because
-$B\rightarrow C$ isn't changed. Even if $bw(C\rightarrow D)=3$, the total
-bandwidth
-doesn't change. For these reasons, a node $N$, when saving in its map a route
-$r$, will also indicate if $b_1=bw(N\rightarrow gw(r))$ was the lowest
-bandwidth of the links of $r$ or not. It will also save the bandwidth $b_2$, which is the
-nearest bandwidth to $b_1$, or in other words:
-\eal{&\forall l\in links(r)\;\;\pass{b_1-b_2}\le \pass{b_1-bw(l)}}
-With these information, $N$ will be able to determine the bandwidth of the route $r$,
-then the link $N\rightarrow gw(r)$ changes.
-	\item[Broken link] 
-		The case where the link $A \stackrel{l}{\leftrightarrow} B$ becomes invalid, is handled
-		in the same way of the \textbf{worsened link} case (see
-		page \pageref{wlink}), because we can consider $l$ as
-		infinitely worsened. 
-		Note that the set $R$, created by $B$, will also include dead
-		routes, i.e. routes with $rem=-\8$
-	\item[New link]
-		The case where a new link $A \stackrel{l}{\leftrightarrow} B$
-		is established between, is handled  in the same way of the
-		\textbf{improved link} case (see page \pageref{ilink}),
-		because we can consider $l$ as infinitely improved.
+		At this point, the ETP is propagated in the same way of the
+		\textbf{Changed link} case.
 	\item[A new node joins]
 		Suppose the node $A$ is joining the network. Its neighbours
 		are $B_1, B_2,\dots, B_n$, which are all already hooked, i.e.
