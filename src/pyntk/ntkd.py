@@ -18,9 +18,14 @@
 ##
 
 class Ntkd:
-    def __init__(self, levels):
+    def __init__(self, levels, IP=None):
     	self.levels = levels
     	self.me     = [0 for i in xrange(levels)]
 	
 	# TODO
 	self.etp    = Etp()
+
+class NtkdBroadcast(Ntkd):
+    def __init__(self, level, callbackfunc):
+	    #TODO
+	    pass

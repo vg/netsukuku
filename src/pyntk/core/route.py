@@ -282,6 +282,10 @@ class MapRoute(Map):
 	self.events = Event( [  'NEW_ROUTE',
     				'DEL_ROUTE',
     				'REM_ROUTE',	# the route's rem changed
+
+				'NEW_NEIGH',
+				'DEL_NEIGH',
+				'REM_NEIGH'
     			     ] )
 
     def route_add(self, lvl, dst, gw, rem, silent=0):
@@ -310,7 +314,7 @@ class MapRoute(Map):
     		# Consider it dead
     		self.node_del(lvl, dst)
 
-    def route_rem(self, lvl, dst, gw, newrem):
+    def route_rem(self, lvl, dst, gw, newrem, silent=0):
 	"""Changes the rem of the route with gateway `gw'
 
 	Returns 0 if the route doesn't exists, 1 else."""
@@ -319,7 +323,8 @@ class MapRoute(Map):
         ret, val = d.route_rem(lvl, dst, gw, newrem)
 	if ret:
 		oldrem=val
-		self.events.send('REM_ROUTE', (lvl, dst, gw, newrem, oldrem))
+		if not silent:
+			self.events.send('REM_ROUTE', (lvl, dst, gw, newrem, oldrem))
 	else:
 		return 0
 
@@ -331,6 +336,9 @@ class MapRoute(Map):
 	else:
 		return self.route_add(lvl, dst, gw, rem)
 
+
+## Neighbour stuff
+
     def routeneigh_del(self, neigh):
     	"""Delete from the MapRoute all the routes passing from the
     	   gateway `neigh.id' and delete the node `neigh' itself (if present)"""
@@ -338,19 +346,26 @@ class MapRoute(Map):
     	for lvl in xrange(self.levels):
     		for dst in xrange(self.gsize):
     			self.route_del(lvl, dst, neigh.id, silent=1)
+	self.events.send('REM_DEL', (lvl, dst, neigh))
     
     def routeneigh_add(self, neigh):
-        """Add a route to reach neigh.id if the node `neigh' belongs to our
-	   gnode of level 1"""
+        """Add a route to reach the neighbour `neigh'"""
+	lvl, nid = routeneigh_get(neigh)
+	self.events.send('REM_ADD', (lvl, dst, neigh))
+	return self.route_add(0, nid, nid, neigh.rem, silent=1)
 
-	#TODO: aggiungere un neigh di livello alto!
+    def routeneigh_rem(self, neigh):
+	lvl, nid = routeneigh_get(neigh)
+	self.events.send('REM_NEIGH', (lvl, dst, neigh))
+	return self.route_rem(lvl, dst, neigh.rem, silent=1)
+
+
+    def routeneigh_get(self, neigh):
+        """Converts a neighbour to a (g)node of the map"""
 	nip=self.ip_to_nip(neigh.ip)
-	if not self.is_in_level(nip, 0):
-		return 0
-	else:
-		nid=nip[0]
-		return self.route_add(0, nid, nid, neigh.rem, silent=1)
-
+	lvl=self.nip_cmp(self.me, neigh.nip)
+	return (lvl, nip[lvl])
+        
     def bestroutes_get(self):
         """Returns the list of all the best routes of the map.
 	   
