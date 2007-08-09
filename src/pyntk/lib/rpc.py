@@ -50,7 +50,7 @@ class NtkRPCError(Exception):
 class RPCFunctionNotRegistered(NtkRPCError):
     pass
 
-class RPCFunctionTypeError(NtkRPCError):
+class RPCFunctionError(NtkRPCError):
     pass
 
 class NtkRPCDispatcher(object):
@@ -87,9 +87,9 @@ class NtkRPCDispatcher(object):
         if func is not None:
             try:
                 return func(*params)
-            except TypeError:
-                raise (RPCFunctionTypeError,
-                      'TypeError in function %s' % func_name)
+            except StandardError:
+                raise (RPCFunctionError,
+                      'Error in function %s' % func_name)
         else:
             raise (RPCFunctionNotRegistered,
                   'Function %s is not registered' % func_name)
@@ -103,10 +103,10 @@ class NtkRPCDispatcher(object):
             response = self._dispatch(func, params)
         except RPCFunctionNotRegistered:
             logging.debug('Function Not Registered')
-            response = 'Function %s is not registered' % func
-        except RPCFunctionTypeError:
-            response = 'TypeError in function %s' % func
-        response = rencode.dumps(response)
+            response = 'Function not registered'
+        except RPCFunctionError:
+            response = 'An error occurred in requested function' # TODO standard
+        response = rencode.dumps(response)                       # error code?
         return response
 
 
@@ -143,11 +143,9 @@ class SimpleNtkRPCServer(SocketServer.TCPServer, NtkRPCDispatcher):
 class SimpleNtkRPCClient:
     '''This class implement a simple Ntk-RPC client'''
 
-    def __init__(self, host='localhost', port=8888):
+    def __init__(self, host='localhost', port=269):
         self.host = host
         self.port = port
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect((self.host, self.port))
 
     def rpc_call(self, func_name, params):
         '''Performs a rpc call
@@ -155,6 +153,9 @@ class SimpleNtkRPCClient:
         @param func_name: name of the remote callable
         @param params: a tuple of arguments to pass to the remote callable
         '''
+
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.connect((self.host, self.port))
 
         data = rencode.dumps((func_name, params))
         self.socket.send(data)
