@@ -24,7 +24,7 @@ class Micro(object):
     def __init__(self, function, *args):
         self.function = function
         self.args = args
-    
+
     def micro(self):
         if self.args:
             return stackless.tasklet(self.function)(args)()
@@ -33,20 +33,20 @@ class Micro(object):
 
 class Channel(object):
     '''This class is used to wrap a stackless channel'''
-    
+
     def __init__(self):
         self.ch = stackless.channel()
 
     def send(self, data):
         self.ch.send(data)
-    
+
     def recv(self):
         return self.ch.receive()
-   
+
 
 def micro(function, *args):
     '''Factory function that return tasklets
-    
+
     @param function: A callable
     @return: A tasklet
     '''
@@ -61,11 +61,11 @@ def dispatcher(func, chan, is_micro):
     if is_micro:
         micro(func, msg)
     else:
-        f(*msg)
+        func(*msg)
 
-def microfunc(is_micro):
+def microfunc(is_micro=False):
     '''Create a new channel and start a microthread
-    
+
     This is a decorator
 
     @param is_micro: Tells the dispatcher to create a new microthread
@@ -75,6 +75,5 @@ def microfunc(is_micro):
         ch = Channel()
         micro(dispatcher, (func, ch, is_micro)
         return ch.send
-    
-    return decorate
 
+    return decorate
