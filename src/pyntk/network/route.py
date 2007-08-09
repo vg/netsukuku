@@ -75,7 +75,7 @@ class Route:
     """ add a route in kernel routing table, via 'ip route' """
 
     # generate the ip route string
-    _ipr_str = "ip route add" + ip_route_gen_str(destination_ip, destination_bit, self.protocol, table, net_device, gateway)
+    ipr_str = "ip route add" + _ip_route_gen_str(destination_ip, destination_bit, self.protocol, table, net_device, gateway)
     
     # execute ip route
     _exec_ipr(ipr_str)
@@ -84,7 +84,7 @@ class Route:
     """ delete a route from kernel routing table, via 'ip route' """
 
     # generate the ip route string
-    _ipr_str = "ip route delete" + ip_route_gen_str(destination_ip, destination_bit, self.protocol, table, net_device, gateway)
+    ipr_str = "ip route delete" + _ip_route_gen_str(destination_ip, destination_bit, self.protocol, table, net_device, gateway)
 
     # execute ip route
     _exec_ipr(ipr_str)
@@ -97,7 +97,7 @@ class Route:
       logger.error("Cannot flush without valid criteria")
 
     # generate the ip route string
-    _ipr_str = "ip route flush" + ip_route_gen_str(destination_ip, destination_bit, self.protocol, table, net_device, gateway)
+    ipr_str = "ip route flush" + _ip_route_gen_str(destination_ip, destination_bit, self.protocol, table, net_device, gateway)
 
     # execute ip route
     _exec_ipr(ipr_str)
@@ -106,7 +106,7 @@ class Route:
     """ change a route in kernel routing table via 'ip route' """
 
     # generate the ip route string
-    _ipr_str = "ip route change" + ip_route_gen_str(destination_ip, destination_bit, self.protocol, table, net_device, gateway)
+    ipr_str = "ip route change" + _ip_route_gen_str(destination_ip, destination_bit, self.protocol, table, net_device, gateway)
     
     # execute ip route
     _exec_ipr(ipr_str)
