@@ -21,3 +21,6 @@ class Ntkd:
     def __init__(self, levels):
     	self.levels = levels
     	self.me     = [0 for i in levels]
+	
+	# TODO
+	self.etp    = Etp()

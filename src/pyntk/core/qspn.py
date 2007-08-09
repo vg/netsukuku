@@ -17,7 +17,10 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
-from event import Event
+import sys
+sys.path.append("..")
+from lib.event import Event
+from utils.misc import unique
 
 class Etp:
 
@@ -31,6 +34,7 @@ class Etp:
     	
 
     def etp_new(self, neigh, oldrem):
+        #TODO: non ha piu' senso questa distinzione
     	if oldrem < neigh.rem:
     		etp_new_improved(neigh, new=0)
     	else:
@@ -57,13 +61,17 @@ class Etp:
 	##
     	
     	## Create R2
+	def rem_or_none(r):
+		if r!=None:
+			return r.rem
+		return DeadRem()
+
 	R2 = [ 
-	      [ (dst, r.rem) 
+	      [ (dst, rem_or_none(self.maproute.node_get(lvl, dst).best_route())
 		    for dst,gw,rem in R[lvl]
-		        for r in [self.maproute.node_get(lvl, dst).best_route()]
-			    if r != None
 	      ] for lvl in xrange(self.maproute.levels)
 	     ]
+	#Note: if rem is None, then its relative route is dead
 	##
 
 	## Forward the ETP to the neighbours
@@ -102,47 +110,59 @@ class Etp:
 	## Send the ETP to `neigh'
 	TP = [(self.me, None)]	# Tracer Packet included in the ETP
 	flag_of_interest=1
-	etp = (R2, TP, flag_of_interest)
+	etp = (R, TP, flag_of_interest)
 	neigh.ntkd.etp.etp_exec(etp)
 	##
 
     def etp_exec(self, R, TP, flag_of_interest):
+        """Executes a received ETP"""
+
+	def isnot_empty(x):return x!=[] #helper func
+        
+	def group_rule(TP, lvl):
+		#TODO....
+		return gTP, lvl
 
         gwip    = TP[-1]
 	neigh   = self.neigh.ip_to_neigh(gwip)
 	gw	= neigh.id
 	gwrem	= neigh.rem
 
-	tprem = sum(rem for hop, rem in TP)
-
-	S = [ 
-	      [ (dst, self.maproute.node_get(lvl, dst).best_route().rem)
-	    	for dst, rem in R[lvl]
-	            if not self.maproute.route_rem(lvl, dst, gw, rem+tprem)\
-		        and not self.maproute.route_add(lvl, dst, gw, rem+tprem)
-              ] for lvl in xrange(self.maproute.levels)
-	    ]
+	TP+=[(self.me, gwrem)]
+	self.group_rule(TP)
+	tprem = sum(rem for hop, rem in TP[1:])
+	
+	## Update the map
+	for lvl in xrange(self.maproute.levels):
+		for dst, rem in R[lvl]:
+			if not self.maproute.route_rem(lvl, dst, gw, rem+tprem):
+				self.maproute.route_change(lvl, dst, gw, rem+tprem)
+        #TODO: update from the TP too!
+        ##
+	
+	S = [ [ (dst, r.rem)
+		for dst, rem in R[lvl]
+		    for r in [self.maproute.node_get(lvl, dst).best_route()]
+		        if r.gw != gw
+	      ] for lvl in xrange(self.maproute.levels) ]
 
 	if flag_of_interest:
-		def isnot_empty(x):return x!=[]
 		if sum(filter(isnot_empty, S)) != 0:  # <==> if S != [[], ...]:  
 						      # <==> S isn't empty
 			flag_of_interest=0
 			etp = (S, [(self.me, None)], flag_of_interest)
 			neigh.ntkd.etp.etp_exec(etp)
 
-	## R minus S
-	R = [ [ (dst, rem)
+	## R2 
+	R2 = [ [ (dst, rem)
 		for dst, rem in R[lvl]
-		    if (dst, rem) not in S
-	      ] for lvl in xrange(self.maproute.levels)
-	    ]
+		    if dst not in [d for d, r in S[lvl]]
+	      ] for lvl in xrange(self.maproute.levels) ]
 	##
 
-	if R != []:
-		etp = (R, TP+[(self.me, gwrem)], flag_of_interest)
+	if sum(filter(isnot_empty, R2)) != 0:  # <==> if R2 isn't empty
+		etp = (R2, TP+[(self.me, gwrem)], flag_of_interest)
 		self.etp_forward(etp, [neigh.id])
-
 
     def etp_forward(self, etp, exclude):
         """Forwards the `etp' to all our neighbours, exclude those contained in `exclude'"""

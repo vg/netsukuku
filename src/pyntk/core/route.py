@@ -17,7 +17,9 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
-from event import *
+import sys
+sys.path.append("..")
+from lib.event import Event
 
 class Rem:
     """Route Efficiency Measure.
@@ -62,6 +64,11 @@ class Rem:
         self.value+=newvalue-oldvalue
 	return 1
 
+class DeadRem(Rem):
+    """A route with this rem is dead"""
+    def __add__(self, b):
+	    return self
+
 class Rtt(Rem):
     """Round Trip Time"""
 
@@ -79,7 +86,10 @@ class Rtt(Rem):
     	return (self.value < b.value) - (self.value > b.value);
     
     def __add__(self, b):
-    	return Rtt(self.value+b.value, self.max_value, self.avgcoeff)
+        if isinstance(b, DeadRem):
+		return b+self
+	else:
+		return Rtt(self.value+b.value, self.max_value, self.avgcoeff)
 
 class Bw(Rem):
     """Bandwidth"""
@@ -101,6 +111,10 @@ class Bw(Rem):
 	self.lb = lb
 	self.nb = nb
 
+    def _pack(self):
+        return ((self.value,  self.lb, self.nb),
+		 self.max_value, self.avgcoeff, self.lb, self.nb)
+
     def __cmp__(self, b):
     	"""bandwidth comparison
 
@@ -111,8 +125,11 @@ class Bw(Rem):
     	return (self.value > b.value) - (self.value < b.value);
     
     def __add__(self, b):
-    	return Bw((min(self.value, b.value), self.lb, self.nb), 
-			self.max_value, self.avgcoeff)
+        if isinstance(b, DeadRem):
+		return b+self
+	else:
+		return Bw((min(self.value, b.value), self.lb, self.nb), 
+			    self.max_value, self.avgcoeff)
 
     def gwrem_change(self, oldvalue, newvalue):
 	"""Updates self.value using the new value of bw(me->gw)
@@ -354,6 +371,14 @@ class MapRoute(Map):
 	else:
 		return 0
 
+    def route_change(self, lvl, dst, gw, newrem):
+	"""A wrapper to route_add, route_del"""
+
+	if isinstance(newrem, DeadRem):
+		return self.route_del(lvl, dst, gw)
+	else:
+		return self.route_add(lvl, dst, gw, rem)
+
     def routeneigh_del(self, neigh):
     	"""Delete from the MapRoute all the routes passing from the
     	   gateway `neigh.id' and delete the node `neigh' itself (if present)"""
@@ -366,6 +391,7 @@ class MapRoute(Map):
         """Add a route to reach neigh.id if the node `neigh' belongs to our
 	   gnode of level 1"""
 
+	#TODO: aggiungere un neigh di livello alto!
 	nip=self.ip_to_nip(neigh.ip)
 	if not self.is_in_level(nip, 0):
 		return 0

@@ -17,9 +17,11 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
-from xtime import *
-from micro import micro
-from route import Rtt
+import sys
+sys.path.append("..")
+from lib.xtime import *
+from lib.micro import micro
+from core.route import Rtt
 from operator import itemgetter
 
 class NodeInfo:
