@@ -29,7 +29,7 @@ class Route:
     # we're using netsukuku, ain't we?
     self.protocol = "ntk"
 
-  def exec_ipr(self, ipr_str):
+  def _exec_ipr(self, ipr_str):
     """ ipr_str: ip route string """
 
      # execute ip route
@@ -78,7 +78,7 @@ class Route:
     _ipr_str = "ip route add" + ip_route_gen_str(destination_ip, destination_bit, self.protocol, table, net_device, gateway)
     
     # execute ip route
-    exec_ipr(ipr_str)
+    _exec_ipr(ipr_str)
 
   def _ip_route_delete(self, destination_ip, destination_bit, table = None, net_device = None, gateway = none):
     """ delete a route from kernel routing table, via 'ip route' """
@@ -87,7 +87,7 @@ class Route:
     _ipr_str = "ip route delete" + ip_route_gen_str(destination_ip, destination_bit, self.protocol, table, net_device, gateway)
 
     # execute ip route
-    exec_ipr(ipr_str)
+    _exec_ipr(ipr_str)
 
   def _ip_route_flush(self, destination_ip = None, destination_bit = None, table = None, net_device = None, gateway = None):
     """ flush some routes from kernel routing table via 'ip route' """
@@ -100,7 +100,7 @@ class Route:
     _ipr_str = "ip route flush" + ip_route_gen_str(destination_ip, destination_bit, self.protocol, table, net_device, gateway)
 
     # execute ip route
-    exec_ipr(ipr_str)
+    _exec_ipr(ipr_str)
 
   def _ip_route_change(self, destination_ip, destination_bit, table = None, net_device = None, gateway = None):
     """ change a route in kernel routing table via 'ip route' """
@@ -109,7 +109,7 @@ class Route:
     _ipr_str = "ip route change" + ip_route_gen_str(destination_ip, destination_bit, self.protocol, table, net_device, gateway)
     
     # execute ip route
-    exec_ipr(ipr_str)
+    _exec_ipr(ipr_str)
 
   def route_add(self, destination_ip, destination_bit, table, net_device, gateway):
     """ add a route in kernel routing table """
@@ -135,17 +135,17 @@ class Route:
     """ disable rp filtering on net_device """
     _route_rp_filter(net_device, False)
     
-  def route_ip_forward_enable():
+  def route_ip_forward_enable(self):
     """ enable ip forwarding """
     _route_ip_forward(True)
 
-  def route_ip_forward_disable():
+  def route_ip_forward_disable(self):
     """ disable ip forwarding """
     _route_ip_forward(False)
 
-  def route_flush_cache():
+  def route_flush_cache(self):
     """ flush kernel route cache """
-    _proc_route_flush_cache():
+    _proc_route_flush_cache()
 
   def _route_rp_filter(net_device, enable):
     """ enable/disable rp filtering """
@@ -189,7 +189,7 @@ class Route:
     # write in proc
     _proc_write(proc_path, proc_value)
 
-  def _proc_flush_cache():
+  def _proc_flush_cache(self):
     """ flush kernel route cache via '/proc' """
     
     # where to write in /proc
