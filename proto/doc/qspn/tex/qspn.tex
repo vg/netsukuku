@@ -1074,24 +1074,19 @@ In order to give an exact definition of an ETP, we must examine each case of net
 		order of efficiency.
 	\item For all $r' \in R'$,
 		\label{ETPstep3}
-		\begin{enumerate}
-			\item \label{ETPstep3a}
-				let $m'\in M$ be a route such that
-				$\T{dst}(r')=\T{dst}(m')$. If
-				$r'$ is a better alternative to $m'$ and if
-				every hop of $r'$ is reachable by $C$,
-				then $r'$  is saved in the map of $C$,
-			\item otherwise, $r'$ is removed from $R$ and added in
-				the set $R''$.
-		\end{enumerate}
-		Note \footnote{this step implements the QSPN v2 rules: only
-		good routes are kept, the other are discarded. Notice
-		the extension: if the ETP had only one route, it would be
-		almost equal to a CTP (the CTP doesn't have the acyclic rule)}
-	\item If $R''$ is not empty, $C$ creates the following set:
+		\label{ETPstep3a}
+		let $m'\in M$ be a route such that
+		$\T{dst}(r')=\T{dst}(m')$. If
+		$r'$ is a better alternative to $m'$ and if
+		every hop of $r'$ is reachable by $C$,
+		then $r'$  is saved in the map of $C$ as the
+		tern $(dst(r'), N, rem(r')+rem(C\rightarrow
+		N))$. The map is then ordered.
+	\item $C$ creates the following set:
 		\[
-		S=\{s\in \ove M\;|\; \exists r\in R'':\;\T{dst}(s)=\T{dst}(r)\}
+		S=\{s\in \ove M\;|\; \exists r\in R:\;\T{dst}(s)=\T{dst}(r),\;gw(s)\neq N\}
 		\]
+		if $S\neq \0$
 		\begin{enumerate}
 			\item $C$ creates a new ETP, appending in it the set $S$ and its ID. 
 				The \emph{flag of interest} of this ETP is set to 0. 
@@ -1105,14 +1100,19 @@ In order to give an exact definition of an ETP, we must examine each case of net
 		\end{enumerate}
 		The reason for the above procedure is simple: $C$ considers
 		uninteresting some of the routes contained in the received
-		ETP, i.e. all the routes in $R''$.
-		Therefore, $C$ will send back its routes with the same destination of
-		those of $R''$, hoping that they will be useful to the
+		ETP, then $C$ will send back its better routes, which have the same destination of
+		those belonging to $R$, hoping that they will be useful to the
 		previous interested nodes.
-	\item In every case, if $R$ is not empty, i.e. not all its elements
-		have been removed, then the ETP is still interesting: the \emph{flag of interest} remains set to 1.
-		$C$ packs the ETP with the set $R$, and adds its ID.
-		The ETP is sent to all its neighbours, except $N$.
+	\item In every case, 
+		let \[\ove R=\pgra{r\in R\;|\;\nexists s\in S:\;dst(r)=dst(s)}\] 
+		if $\ove R \neq \0$, then the ETP is still interesting: 
+		the \emph{flag of interest} remains set to 1.
+		$C$ packs the ETP with the set $\ove R$, and adds its ID.
+		The ETP is sent to all its neighbours, except $N$.\\
+		Note \footnote{this step implements the QSPN v2 rules: only
+		good routes are kept, the other are discarded. Notice
+		the extension: if the ETP had only one route, it would be
+		almost equal to a CTP (the CTP doesn't have the acyclic rule)}
 	\end{enumerate}
 	The rnodes of $C$ will use this same procedure. In this way, the ETP
 	will continue to be propagated until it is considered interesting.
@@ -1188,8 +1188,6 @@ then the link $N\rightarrow gw(r)$ changes.
 		are $B_1, B_2,\dots, B_n$, which are all already hooked, i.e.
 		they aren't joining. Then, the \textbf{new link} case is
 		applied to each link $A\leftrightarrow B_i,\;\;i=1,2,\dots,n$.
-		If $n=1$, then $A$ sends an empty ETP (which is equivalent to
-		a new ATP).
 %TODO: a possible improvement?
 %		\begin{enumerate}
 %			\item Each neighbour $B_i$ sends its whole map to
@@ -1203,8 +1201,7 @@ then the link $N\rightarrow gw(r)$ changes.
 %			\item If the neighbours of $A$ are more than one, i.e.
 %				$n>1$, then $A$ sends, to each of them, an ETP
 %				containing all the primary routes of its
-%				map.\\
-%				If $n=1$, then $A$ sends just an empty ETP.
+%				map.
 %			\item The ETPs are propagated exactly in the same way
 %				of the \textbf{worsened link} case (see page
 %				\pageref{wlink}).
