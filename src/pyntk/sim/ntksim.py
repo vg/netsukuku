@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 #  This file is part of Netsukuku
-#  (c) Copyright 2007 
+#  (c) Copyright 2007 Andrea Milazzo aka Mancausoft <andreamilazzo@mancausoft.org>
 # 
 #  This source code is free software; you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License as published 
