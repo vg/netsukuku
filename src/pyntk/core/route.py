@@ -51,19 +51,6 @@ class Rem:
     	The sum must be commutative, i.e. Rx+Ry=Ry+Rx"""
     	pass
     
-    def gwrem_change(self, oldvalue, newvalue):
-	"""Changes the gwrem.
-	
-	Let r be the route me->...->x, where x is a node. Let gw be the first
-	hop after me in r, i.e r is me->gw->...->x. Then, gwrem is
-	rem(me->gw).
-	
-	`oldvalue' is the old gwrem value.
-	"""
-
-        self.value+=newvalue-oldvalue
-	return 1
-
 class DeadRem(Rem):
     """A route with this rem is dead"""
     def __add__(self, b):
@@ -131,25 +118,6 @@ class Bw(Rem):
 		return Bw((min(self.value, b.value), self.lb, self.nb), 
 			    self.max_value, self.avgcoeff)
 
-    def gwrem_change(self, oldvalue, newvalue):
-	"""Updates self.value using the new value of bw(me->gw)
-	
-	Returns 0 if nothing effectively changed."""
-
-	if oldvalue == newvalue:
-		return 0
-	elif newvalue < self.value:
-		self.value=newvalue
-	else:
-		if not self.lb:
-			return 0
-		else:
-			if newvalue > self.nb:
-				self.value=self.nb
-			else:
-				self.value=newvalue
-	return 1
-
 class Avg(Rem):
     """Average"""
     
@@ -181,10 +149,6 @@ class Avg(Rem):
     def __add__(self, b):
     	raise Exception, "the Avg metric cannot be summed. It must be computed each time"
     	pass
-    def gwrem_change(self, oldvalue, newvalue):
-    	raise Exception, "the Avg metric cannot be modified. It must be computed each time"
-    	pass
-
 
 class RouteGw:
     """A route to a known destination.
@@ -288,18 +252,6 @@ class RouteNode:
     		return 1
     	return 0
 
-    def gwrem_change(self, gw, oldrem, newrem):
-	"""See Rem.gwrem_change"""
-        
-	gwroute = route_getby_gw(gw)
-	if gwroute == None:
-		return 0
-
-	gwroute.rem.gwrem_change(oldrem.value, newrem.value)
-    	self.sort()
-
-	return 1
-
 
     def sort(self):
     	# Order the routes in decrescent order of efficiency, so that
@@ -398,18 +350,6 @@ class MapRoute(Map):
 	else:
 		nid=nip[0]
 		return self.route_add(0, nid, nid, neigh.rem, silent=1)
-
-    def routeneigh_rem(self, neigh, oldrem):
-	"""Changes the gwrem relative to the neighbour `neigh'
-	   (see Rem.gwrem_change) in all the nodes of the map"""
-	
-	nip=self.ip_to_nip(neigh.ip)
-	if not self.is_in_level(nip, 0):
-		return 0
-	
-	for lvl in xrange(self.levels):
-    		for dst in xrange(self.gsize):
-    			self.node_get(lvl, dst).gwrem_change(gw, oldrem, neigh.rem)
 
     def bestroutes_get(self):
         """Returns the list of all the best routes of the map.
