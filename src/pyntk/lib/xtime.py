@@ -1,6 +1,5 @@
 import time
 
-class Time:
     def swait(self, t):
     	"""Waits `t' ms"""
 

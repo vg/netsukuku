@@ -20,7 +20,7 @@
 import sys
 sys.path.append("..")
 from ntkd import NtkdBroadcast
-from lib.xtime import *
+from lib.xtime import swait, time
 from lib.micro import micro
 from core.route import Rtt
 from operator import itemgetter
@@ -204,9 +204,15 @@ class Radar:
     self.multipath = multipath
     self.max_wait_time = max_wait_time
     # an instance of the NtkdBroadcast class to manage broadcast sending
-    self.broadcast = NtkdBroadcast(time_register)
+    self.broadcast = NtkdBroadcast(self.time_register)
     # our neighbours
     self.neigh = Neighbour(multipath, max_neigh)
+
+  def run(self, started=0):
+    if not started:
+      micro(self.radar_run, started=1)
+    else:
+      while True: self.radar()
 
   def radar(self):
     """ Send broadcast packets and store the results in neigh """
@@ -216,7 +222,7 @@ class Radar:
 
     # send all packets in the bouquet
     def br():
-      broadcast.reply()
+      self.broadcast.reply()
     for i in xrange(bquet_num):
       micro(br)
 

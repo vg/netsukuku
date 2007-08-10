@@ -19,6 +19,7 @@
 
 import sys
 sys.path.append("..")
+from lib.micro import microfunc
 from lib.event import Event
 from utils.misc import unique
 
@@ -66,8 +67,8 @@ class Etp:
 
 	## Forward the ETP to the neighbours
 	flag_of_interest=1
-	TP = [(self.me, None)]	# Tracer Packet included in the first block of
-				# the ETP
+	TP = [(self.maproute.me, None)]	# Tracer Packet included in the first
+	                                # block of the ETP
 	etp = (R, [(0, TP)], flag_of_interest)
 	self.etp_forward(etp, [neigh.id])
 	##
@@ -101,8 +102,8 @@ class Etp:
 
 	## Send the ETP to `neigh'
 	flag_of_interest=1
-	TP = [(self.me, None)]	# Tracer Packet included in the first block of
-				# the ETP
+	TP = [(self.maproute.me, None)]	# Tracer Packet included in the first
+	                                # block of the ETP
 	etp = (R, [(0, TP)], flag_of_interest)
 	neigh.ntkd.etp.etp_exec(self.maproute.me, *etp)
 	##
@@ -119,7 +120,7 @@ class Etp:
 	gwrem	= neigh.rem
 
 	## Group rule
-	level = self.maproute.nip_cmp(self.me, gwip)
+	level = self.maproute.nip_cmp(self.maproute.me, gwip)
 	for block in TPL:
 		lvl = block[0] # the level of the block
 		if lvl < level:
@@ -160,7 +161,7 @@ class Etp:
 
 	## ATP rule
 	for block in TPL:
-		if self.me[block[0]] in block[1]:
+		if self.maproute.me[block[0]] in block[1]:
 			return
 	##
 
@@ -184,7 +185,7 @@ class Etp:
 		if sum(filter(isnot_empty, S)) != 0:  # <==> if S != [[], ...]:  
 						      # <==> S isn't empty
 			flag_of_interest=0
-			TP = [(self.me, None)]	
+			TP = [(self.maproute.me, None)]	
 			etp = (S, [(0, TP)], flag_of_interest)
 			neigh.ntkd.etp.etp_exec(self.maproute.me, *etp)
 	##
@@ -198,10 +199,10 @@ class Etp:
 
 	if sum(filter(isnot_empty, R2)) != 0:  # <==> if R2 isn't empty
 		if TPL[-1][0] != 0:
-			TP = [(self.me, None)]	
+			TP = [(self.maproute.me, None)]	
 			TPL.append((0, TP))
 		else:
-			TPL[-1][1].append((self.me, gwrem))
+			TPL[-1][1].append((self.maproute.me, gwrem))
 		etp = (R2, TPL, flag_of_interest)
 		self.etp_forward(etp, [neigh.id])
 

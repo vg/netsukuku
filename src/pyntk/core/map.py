@@ -23,17 +23,23 @@
 import sys
 sys.path.append("..")
 from lib.event import Event
+from random import randint
 
 class Map:
 
-    def __init__(self, levels, gsize, dataclass, me):
-	"""Initialise the map."""
+    def __init__(self, levels, gsize, dataclass, me=None):
+	"""Initialise the map
+	
+	If me = None, then self.me is set to a random nip (ntk ip)
+	"""
 	
 	self.levels = levels	# Number of levels
 	self.gsize  = gsize	# How many nodes are contained in a gnode
 	self.dataclass = dataclass
-	self.me	    = []	# Ourself. self.me[lvl] is the ID of our
+	self.me	    = me	# Ourself. self.me[lvl] is the ID of our
 				# (g)node of level lvl
+	# Choose a random nip
+	if me == None: self.me = self.nip_rand()
 
 	# The member self.node[l][i] is a node of level l and its ID is i
 	self.node = [[None for i in xrange(gsize)] for i in xrange(levels)]
@@ -88,3 +94,6 @@ class Map:
 		if nipA[l] != nipB[l]:
 			return l
 	return self.levels+1
+
+    def nip_rand(self):
+        return [randint(0, self.gsize-1) for i in xrange(self.levels)]
