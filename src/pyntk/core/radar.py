@@ -19,11 +19,11 @@
 
 import sys
 sys.path.append("..")
-from ntkd import NtkdBroadcast
-from lib.xtime import swait, time
-from lib.micro import micro
+from ntkd       import NtkdBroadcast
+from lib.xtime  import swait, time
+from lib.micro  import micro
 from core.route import Rtt
-from operator import itemgetter
+from operator   import itemgetter
 
 class NodeInfo:
   """ this class store informations about a node """

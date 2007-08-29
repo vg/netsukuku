@@ -50,7 +50,14 @@ class Rem:
 
     	The sum must be commutative, i.e. Rx+Ry=Ry+Rx"""
     	pass
-    
+
+class NullRem(Rem):
+    """The equivalent of None for the REM"""
+    def __add__(self, b):
+	    return b
+    def __radd__(self, b):
+	    return b
+
 class DeadRem(Rem):
     """A route with this rem is dead"""
     def __add__(self, b):
@@ -366,18 +373,23 @@ class MapRoute(Map):
 	lvl=self.nip_cmp(self.me, neigh.nip)
 	return (lvl, nip[lvl])
         
-    def bestroutes_get(self):
+    def bestroutes_get(self, f=ftrue):
         """Returns the list of all the best routes of the map.
 	   
 	   Let L be the returned list, then L[lvl] is the list of all the best
 	   routes of level lvl of the map. An element of this latter list is a 
 	   tuple (dst, gw, rem), where dst is the destination of the route, gw
-	   its gateway."""
-	
+	   its gateway.
+	   
+	   If a function `f' has been specified, then each element L[lvl][i]
+	   in L is such that f(L[lvl][i])==True
+	   """
         return [ 
 		[ (dst, br.gw, br.rem)
 			for dst in xrange(self.gsize)
 			    for br in [self.node_get(lvl, dst).best_route()]
-			        if br != None
+			        if br != None and f((dst, br.gw, br.rem))
 		] for lvl in xrange(self.levels)
 	       ]
+
+def ftrue(*args):return True

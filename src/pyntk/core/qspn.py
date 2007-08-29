@@ -22,6 +22,7 @@ sys.path.append("..")
 from lib.micro import microfunc
 from lib.event import Event
 from utils.misc import unique
+from route import NullRem, DeadRem
 
 class Etp:
 
@@ -34,17 +35,13 @@ class Etp:
     	neigh.events.listen('DEL_NEIGH', self.etp_new_dead)
     
     @microfunc(True)
-    def etp_new_dead(self, neigh, oldrem=None):
-	"""Builds and sends a new ETP for the worsened link case.
-	
-	If oldrem=None, the node `neigh' is considered dead."""
+    def etp_new_dead(self, neigh):
+	"""Builds and sends a new ETP for the worsened link case."""
     	
 	## Create R
-	R=self.maproute.bestroutes_get()
 	def gw_is_neigh((dst, gw, rem)):
 		return gw == neigh.id
-	for L in R:
-		L=filter(gw_is_neigh, L)
+	R=self.maproute.bestroutes_get(gw_is_neigh)
 	##
 
 	## Update the map
@@ -62,20 +59,19 @@ class Etp:
 		    for dst,gw,rem in R[lvl]
 	      ] for lvl in xrange(self.maproute.levels)
 	     ]
-	#Note: if rem is None, then its relative route is dead
 	##
 
 	## Forward the ETP to the neighbours
 	flag_of_interest=1
-	TP = [(self.maproute.me, None)]	# Tracer Packet included in the first
-	                                # block of the ETP
-	etp = (R, [(0, TP)], flag_of_interest)
+	TP = [(self.maproute.me, NullRem())]	# Tracer Packet included in
+	block_lvl = 0                           # the first block of the ETP
+	etp = (R2, [(block_lvl, TP)], flag_of_interest)
 	self.etp_forward(etp, [neigh.id])
 	##
 
     @microfunc(True)
-    def etp_new_improved(self, neigh, oldrem=None):
-	"""Builds and sends a new ETP for the improved link case
+    def etp_new_changed(self, neigh, oldrem=None):
+	"""Builds and sends a new ETP for the changed link case
 	
 	If oldrem=None, the node `neigh' is considered new."""
 
@@ -87,14 +83,10 @@ class Etp:
 	##
 
 	## Create R
-	R=self.maproute.bestroutes_get()
-	def gw_is_neigh((dst, gw, rem)):
+	def gw_isnot_neigh((dst, gw, rem)):
 		return gw != neigh.id
-	for L in R:
-		L=filter(gw_is_neigh, L)
-	##
-
-	## Fix R
+	R=self.maproute.bestroutes_get(gw_isnot_neigh)
+	
 	def takeoff_gw((dst, gw, rem)):
 		return (dst, rem)
 	R=map(takeoff_gw, R)
@@ -102,15 +94,25 @@ class Etp:
 
 	## Send the ETP to `neigh'
 	flag_of_interest=1
-	TP = [(self.maproute.me, None)]	# Tracer Packet included in the first
-	                                # block of the ETP
+	TP = [(self.maproute.me, NullRem)]
 	etp = (R, [(0, TP)], flag_of_interest)
 	neigh.ntkd.etp.etp_exec(self.maproute.me, *etp)
 	##
 
     @microfunc()
     def etp_exec(self, sender_nip, R, TPL, flag_of_interest):
-        """Executes a received ETP"""
+        """Executes a received ETP
+	
+	sender_nip: sender ntk ip (see map.py)
+	R  : the set of routes of the ETP
+	TPL: the tracer packet of the path covered until now by this ETP.
+	     This TP may have covered different levels. In general, TPL 
+	     is a list of blocks. Each block is a (lvl, TP) pair, where lvl is
+	     the level of the block and TP is the tracer packet composed
+	     during the transit in the level `lvl'.
+	     TP is a list of (hop, rem) pairs.
+	flag_of_interest: a boolean
+	"""
 
 	def isnot_empty(x):return x!=[] #helper func
         
@@ -125,36 +127,38 @@ class Etp:
 		lvl = block[0] # the level of the block
 		if lvl < level:
 			block[0] = level
-			blockrem = sum(rem for hop, rem in block[1][1:])
+			blockrem = sum(rem for hop, rem in block[1])
 			block[1] = [(gwip[level], blockrem)]
 			R[lvl] = []
         
 	
 	### Collapse blocks of the same level
 	TPL2=[]
-	precblk=None
+	precblk=(None, [])
 	for block in TPL:
-		if block[0] == preclvl:
+		if block[0] == precblk[0]:
 			precblk[1]+=block[1]
 		else:
-			if precblk != None:
+			if precblk[0] != None:
 				TPL2.append(precblk)
 			precblk = block
         TPL=TPL2
 	###
 	
 	### Remove dups
-	def remove_contiguos_dups_in_list(L):
+	def remove_contiguos_dups_in_TP(L):
 		L2=[]
-		prec=None
+		prec=(None, NullRem())
 		for x in L:
-			if x != prec:
+			if x[0] != prec[0]:
 				prec=x
 				L2.append(x)
+			else:
+				prec[1]+=x[1]
 		return L2
 
 	for block in TPL:
-		block[1]=remove_contiguos_dups_in_list(block[1])
+		block[1]=remove_contiguos_dups_in_TP(block[1])
 	###
 
 	##
@@ -162,10 +166,10 @@ class Etp:
 	## ATP rule
 	for block in TPL:
 		if self.maproute.me[block[0]] in block[1]:
-			return
+			return    # drop the pkt
 	##
 
-	tprem = sum(rem for hop, rem in TP[1:])
+	tprem = sum(rem for block in TPL for hop, rem in block[1])+gwrem
 	
 	## Update the map
 	for lvl in xrange(self.maproute.levels):
@@ -184,9 +188,9 @@ class Etp:
 	if flag_of_interest:
 		if sum(filter(isnot_empty, S)) != 0:  # <==> if S != [[], ...]:  
 						      # <==> S isn't empty
-			flag_of_interest=0
-			TP = [(self.maproute.me, None)]	
-			etp = (S, [(0, TP)], flag_of_interest)
+			Sflag_of_interest=0
+			TP = [(self.maproute.me, NullRem())]
+			etp = (S, [(0, TP)], Sflag_of_interest)
 			neigh.ntkd.etp.etp_exec(self.maproute.me, *etp)
 	##
 
@@ -199,7 +203,7 @@ class Etp:
 
 	if sum(filter(isnot_empty, R2)) != 0:  # <==> if R2 isn't empty
 		if TPL[-1][0] != 0:
-			TP = [(self.maproute.me, None)]	
+			TP = [(self.maproute.me, NullRem())]	
 			TPL.append((0, TP))
 		else:
 			TPL[-1][1].append((self.maproute.me, gwrem))
@@ -207,8 +211,12 @@ class Etp:
 		self.etp_forward(etp, [neigh.id])
 
     def etp_forward(self, etp, exclude):
-        """Forwards the `etp' to all our neighbours, exclude those contained in `exclude'"""
+        """Forwards the `etp' to all our neighbours,
+	   excluding those contained in `exclude'
+	   
+	   `Exclude' is a list of "Neighbour.id"s"""
 
 	for nr in self.neigh_list():
-		nr.ntkd.etp.etp_exec(self.maproute.me, *etp)
+		if nr.id not in exclude:
+			nr.ntkd.etp.etp_exec(self.maproute.me, *etp)
 
