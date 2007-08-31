@@ -1056,6 +1056,7 @@ In order to give an exact definition of an ETP, we must examine each case of net
 		\[
 		S=\{s\in \ove M\;|\; \exists r\in R:\;\T{dst}(s)=\T{dst}(r),\;gw(s)\neq N\}
 		\]
+	\item \label{backpropstep}
 		if $S\neq \0$
 		\begin{enumerate}
 			\item $C$ creates a new ETP, appending in it the set $S$ and its ID. 
@@ -1073,8 +1074,7 @@ In order to give an exact definition of an ETP, we must examine each case of net
 		ETP, then $C$ will send back its better routes, which have the same destination of
 		those belonging to $R$, hoping that they will be useful to the
 		previous interested nodes.
-	\item In every case, 
-		let \[\ove R=\pgra{r\in R\;|\;\nexists s\in S:\;dst(r)=dst(s)}\] 
+	\item 	let \[\ove R=\pgra{r\in R\;|\;\nexists s\in S:\;dst(r)=dst(s)}\] 
 		if $\ove R \neq \0$, then the ETP is still interesting: 
 		the \emph{flag of interest} remains set to 1.
 		$C$ packs the ETP with the set $\ove R$, and adds its ID.
@@ -1086,6 +1086,32 @@ In order to give an exact definition of an ETP, we must examine each case of net
 	\end{enumerate}
 	The rnodes of $C$ will use this same procedure. In this way, the ETP
 	will continue to be propagated until it is considered interesting.
+
+	\textbf{Observation: }Suppose the following propositions hold:
+	\eal{
+	&\forall \T{ node }N\;\forall \T{ node }D\;\;
+	C_D:= \pgra{\T{route }r\;|\;gw(r)\in V_N,\;dst(r)=D}\\
+	&\qq\T{where $V_N$ is the set of all the neighbours of $N$}\\
+	&V(C_D):=\pgra{gw(r)\;|\;r\in C_D} \( V_N\\
+	&\T{Given } r \in C_D, \T{ let } B(r)\in C_D \T{ such that } 
+	rem(B(r))=\max\pgra{rem(s)\;|\;s\in C_D,\;gw(s)=gw(r)}\\
+	&\ove {C_D} = \pgra{B(r)\;|\;r\in C_D}\\
+	&\forall x\in V(C_D)\;\exists r\in
+	\ove{C_D}\^M:\;gw(r)=x\'\'(\gamma)\\
+	&\qq\T{where $M$ is the map of $N$}
+	}
+	If the property $(\gamma)$ holds, then the step \ref{backpropstep}
+	can be omitted, in fact, suppose $N$ sends an ETP to $C$ and that $C$
+	considers as uninteresting a route $r$ contained in it. 
+	By step \ref{backpropstep}, $C$ sends back to $N$ its known best route
+	$s$, with $dst(s)=dst(r),\;rem(s)>rem(r)$. However, $s$ has been
+	aldready sent by $C$ to $N$ (f.e. when the link $N\leftrightarrow C$
+	was established), thus by the property $(\gamma)$, $N$ kept memorised
+	$s$ in its map $M$. For this reason, the backpropagated ETP doesn't
+	bring any new information. If the map described in the topology
+	document\cite{ntktopology} is used, then the property $(\gamma)$
+	holds.
+	
 	\item[New link]
 	The case where a new link $A \stackrel{l}{\leftrightarrow} B$
 	is established is handled  in the same way of the
@@ -1149,43 +1175,6 @@ In order to give an exact definition of an ETP, we must examine each case of net
 		When the node $A$ dies, the \textbf{broken link} case is
 		simply applied to each link of $A$.
 \end{description}
-\subsubsection{Real time issues}
-When different events happen almost simultaneously, a node can receive
-contradictory ETPs. In order to discard misleading information, the following
-strategy is adopted: every TP contained in an ETP is paired with a time ID,
-generated at its creation time. The time ID is based on the gnode uptime, that
-is a value known by all its nodes. When a node will examine two inconsistent
-TP of two different ETPs, it will digregard the TP with the oldest time ID.
-Some inconsistent TPs are:\\
-\begin{center}
-\begin{tabular}{l|l}
-	TP 1 & TP 2\\
-	\hline\\
-	node X is dead & node X is alive, here it is a route to X\\
-	the rem of route X is 40 & the rem of route X is 50
-\end{tabular}
-\end{center}
-As an example, consider the following infinite loop that can happen without
-the use of the time ID:
-\begin{enumerate}
-	\item Suppose that two nodes $X,Y$ die almost at the
-		same instant, and for convenience suppose they had just one
-		link. Then two broken-link-ETPs are
-		generated, one for the death of the $X$ link and
-		another for $Y$. Suppose that
-		the X-ETP contains routes
-		with $Y$ as destination and
-		viceversa for the Y-ETP
-	\item The node $Z$ receives the X-ETP, and
-		deletes $X$ from the map.
-	\item $Z$ receives the Y-ETP, deletes $Y$ from
-		the map but re-adds $X$, because
-		the packet contains a route to reach
-		it.
-	\item $Z$ receives again the X-ETP, 
-		deletes $X$ but re-adds $Y$.
-	\item and so on.
-\end{enumerate}
 
 %- joining simultaneo di piu' nodi
 %- l'ETP puo' essere spezzettato
