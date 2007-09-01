@@ -144,7 +144,8 @@ Internet, without the support of any servers, ISPs or control authorities.
 		a value that indicates the quality of a route. 
 		REM can be calculated in various ways, f.e. by taking in
 		account the total rtt and the bw capacity of the route.  We denote the REM of
-a route $r$ as $REM(r)$.
+a route $r$ as $REM(r)$. If $r$ is a better route than $s$, then
+$rem(r)>rem(s)$.
 
 \end{description}
 Example:\\
@@ -297,6 +298,12 @@ of the various levels. In our previous example we have:
 where each $g_i$ corresponds to the gnode ID of the level $i$. Note that $g_0$
 is the ID attributed to the single node, at level 0.
 
+Finally, we can assign to each gnode G, of any level, a fingerprint $fg(G)$,
+which identifies $G$ in a unique way, indipendently from its ID: two
+different, separated gnodes may have the same ID, but not the same
+fingerprint. A valid fingerprint is $fg(G)=(uptime(G), rid(G))$, where
+$rid(G)$ is a random ID generated at creation time of $G$.
+
 \subsection{Fractal map}
 The advantages of using a fractal topology are clear.\\
 The node $N$, instead of memorising information about each node of the whole
@@ -359,22 +366,30 @@ We define a route $r_N$ of the node $N$ as the following tern:
 &\qq \T{$rem$ is a number: the REM value of the route}
 }
 We'll use $ dst(r), gw(r), rem(r)$, to indicate respectively the first, second
-and third element of the tern $r$.\\
+and third element of the tern $r$. Let $V_N$ be the set of all neighbours of
+$N$.\\
 Let $\textbf{R}$ be the set
-of all routes of the node $N$ (note \footnote{for semplicity we are considering just one metric for all
+of all routes of the node $N$ (note \footnote{for simplicity we are considering just one metric for all
 the routes. However, it's easy to see that the following
 propositions are valid for different metrics (just use a different set
 $\textbf{R}_m$ for each metric $m$)}). We can define the following equivalence relation:
 \eal{&\forall r,s\in \textbf{R}\;\;\;r\sim s \= dst(r)=dst(s) }
-With $\ove r$ we indicate the equivalence class of $r$.\\
+With $\ove r$ we indicate the equivalence class of $r$. Let $B_x(r)$ be the
+best route of the routes in $\ove r$ with gateway $x$, where $x\in V_N$, i.e. 
+\eal{&
+x\in V_N,\;B_x(r)\in \ove r,\;\;rem(B_x(r))= \max \pgra{rem(s)\;|\;s\in\ove
+r,\;gw(s)=x}
+}
+\\
 Consider the following subset of $\textbf{R}$:
 \eal{&R=\pgra{r \in \textbf{R}\;|\;dst(r) \in G}\\
 &\T{where $G$ is the gnode of level 1 such that $N\in G$}
 }
-At this point we can define the internal map of $N$ as the subset $M\( R$, such that
+At this point we can define the internal map of $N$ as the subset $M\( R$,
+where $M=\pgra{B_x(r)\;|\;r\in R,\;x=gw(r)}$. The following property holds:
 \eal{& \forall r\in M\;\;\forall s,t\in \ove r\;\T{with}\;s\neq t\;\;\; gw(s)\neq gw(t)
 }
-This means that when the node $N$ wants to save in $M$ a route $s$, which has
+Algorithmically,  when the node $N$ wants to save in $M$ a route $s$, which has
 the same destination of a route $r\in M$, the following algorithm will be
 adopted:
 \eal{&\textbf{if}\' \exists t\in \ove r:\;gw(t)=gw(s)\\
@@ -397,7 +412,7 @@ definitions, i.e. it's way of working doesn't change.
 \section{Flat levels}
 \label{sec:flat}
 From the point of view of the QSPN v2, the levels are ``flattened'', because
-the propagation of an ETP or a CTP \footnote{for more info on the ETP and CTP,
+the propagation of an ETP \footnote{for more info on the ETP,
 see the QSPN document \cite{qspndoc}} inside the whole network is exactly as
 before, briefly: a packet is propagated until it is interesting, the
 subdvisions of nodes in gnodes are simply ignored . The only
@@ -421,7 +436,7 @@ Some examples:
 	\item The tracer packet
 		\eal{&11.22.1,\;11.22.80,\;11.22.35,\;11.44.13,\;55.32.20}
 		can be grouped in the following tracer packet:
-		\eal{&11.*,\;55.32.30\'\'(1)}
+		\eal{&11.*,\;55.32.20\'\'(1)}
 \end{enumerate}
 The description of a route in the external map is local, as in the internal
 map (see \ref{sec:intmyopia}). For example, when the node $55.32.12$ receives
@@ -459,148 +474,164 @@ any other route $b\rightarrow g'$ contained in $G$ (see \ref{hooking}).
 \label{hooking}
 The hooking procedures serve to:
 \begin{enumerate}
-	\item Maximize the grouping of nodes
+	\item Making new nodes join the network while keeping the space of the
+		gnodes uniform.
 	\item Keep the gnodes internally connected
 	\item Keep the gnodes compact.
 \end{enumerate}
-Moreover, with the hooking procedures, a new node can join the Netsukuku network:
-the node has to simply choose a random IP. When it will meet other nodes, i.e. establish a link to them, the rules
-described below will be applied, then the ETP will update the network.\\Note \footnote{In this paragraph we'll omit information regarding the secure hooking
-procedures. For more information, see the old RFC 001
-\cite{gnodecontiguity}.}.
 
-\subsection{Grouped nodes}
+Generally speaking, the hooking procedures serves to resolve the problem of
+assigning each node of the network to a group. This problem is not simple
+because the groups must always remain internally connected, they are finite
+and the network is dynamic.
+
+\subsection{Uniform gnodes}
 \label{groupednodeshook}
-In order to maximize the grouping of node the following strategy is adopted: suppose that two gnode
-$G$, $G'$ meet for the first time, i.e. a link is created between a node $g\in
-G$ and $g'\in G'$. The following case may happen:
+Let $G$ be a non empty gnode.
+Since $G$ must be internally connected, a node $n$ can become a node of $G$
+iff it is directly linked to at least one node $g\in G$. 
+This fact brings some problems in the distribution and allocation of free
+IPs.
+
+We say that $G$ is \emph{allocated} iff it isn't empty. A gnode of level $l$ is said
+\emph{saturated} iff all its nodes are allocated.
+An entire gnode $G\in \ove G$ of any level $l$ can be kept allocated by a single node $n$,
+thus it is possible to quickly saturate the gnode $\ove G$ of level $l+1$. 
+A saturated gnode may appear full even if it has free space, f.e. suppose the
+gnode $\ove G$ has been saturated by the gnodes $A,B,C \in \ove G$, suppose
+also that $A$ is full and $B,C$ have some free space.
+A node $n$, that is directly linked to a node $a\in A$, won't be
+able to join in $\ove G$. In fact, $n$ can't become a node of $A$ because it is
+a full gnode and can't become a node of $B$ nor of $C$ because it isn't directly
+connected to one of their nodes. Therefore, the only option left to $n$ is to
+create a new gnode in $\ove G$. However, if $\ove G$ is the highest gnode,
+i.e. the gnode of all the nodes of the network, $n$ won't be able to,
+because $\ove G$ is saturated by $A,B,C$. This problem is called \emph{gnodes
+saturation}.\\
+
+A strategy to solve the gnodes saturation problem is to uniformly distribute
+the nodes: all the gnodes of the net will have approximately the same number
+of nodes, at any time. This is achieved using a system that imitates the
+communicating vessels:
 \begin{enumerate}
-	\item $G$ is full, i.e. it cannot accept any other nodes. 
-		\begin{enumerate}
-			\item	If
-				$ID(G) = ID(G')$, then one of the two gnodes has to change
-				$ID$. 
-				\begin{enumerate}
-					\item If the two gnodes are both full,
-						i.e. with the same number of
-						nodes ($|G|=|G'|$), then the
-						gnode with the lowest uptime
-						will take the lowest free ID.
-					\item otherwise, the gnode with the lowest number of nodes, 
-						will take the lowest free ID. 
-				\end{enumerate}
-			\item If $ID(G)\neq ID(G')$, then no action must be
-				taken.
-		\end{enumerate}
-		The situation is symmetric if $G'$ is full.
-	\item Neither $G$ nor $G'$ are full.\\
-		If $\pton{ |G| < |G'| \lor  \pton{|G| = |G'| \land  ID(G) <
-		ID(G')}}$, let $H:=G,\;J:=G'$.\\
-		If $\pton{ |G'| < |G| \lor  \pton{|G'| = |G| \land  ID(G') <
-		ID(G)}}$, let $H:=G',\;J:=G$.\\
-		Let $n$ be the number of free node IDs\footnote{a node ID $i$ of
-		the gnode $G$ is free if and only if $\nexists g\in
-		G:\;ID(g)=i$.
-		}
-		of $J$  and 
-		$\pgra{a_1,a_2,\dots,a_n}$ the respective list of IDs, such
-		that $a_1\le a_2\le \dots a_n$ 
-		(it isn't empty, because $J$ isn't full).\\
-		Let $\pgra{b_1,b_2,\dots,b_m}$ be the list of bound node
-		IDs\footnote{a node ID of $G$ is bound if and only if it
-		isn't free}
-		of $H$, such that $b_1\le b_2\le \dots\le b_m$ (note $m=|H|$).\\
-		Let $\delta=min\pgra{n,m}$.\\
-		The nodes of $H$
-		$\pgra{h_i\;|\;ID(h_i)=b_i,\;\;i=1,2,\dots,\delta}$
-		will change their IDs respectively to 
-		$\pgra{a_1,a_2,\dots,a_\delta}$ and will become nodes of $J$,
-		i.e. they'll change their gnode id to $ID(J)$.
-		\\
-		If $m>n$, $H$ will have now $m-n$ nodes. In this case, $H$
-		will change its gnode ID, choosing the lowest free ID. 
+	\item A hooking node $n$ (f.e. a node which is joining the network) will
+		create the set $\ove S$ containing the names of all the
+		highest non saturated gnodes, all of level $l$. $n$ can
+		compose $\ove S$ by looking in the maps of its neighbours.
+		From $\ove S$ it will choose $\ove G$, which is the gnode with
+		the lowest number of nodes, i.e.
+		\[
+		\ove G \in \ove S:\;\;|\ove G| = \min_{G \in \ove S} |G|
+		\]
+
+		Then, it will become a new (g)node of level $l-1$ of the gnode $\ove G$.
+
+	\item Let $b$ be a bnode of the gnode $G$ of level 1, and $B$ the set
+	      of neighbours of $b$, such that $\forall c\in B\;\;c\notin G$.
+	      Let $G(c)$ be the gnode of level 1 of the node $c$ and
+	      \[
+	      \ove B=\pgra{G(c)\;:\;|G(c)|+1 < |G|,\;c\in B}
+	      \]
+	      If $\ove B=\0$, stop here, otherwise let $H \in \ove B$ be the gnode with
+	      the lowest number of nodes, i.e. $|H|=\min_{J\in \ove B} |J|$.
+	      Then $b$ will become a hooking node, thus it will create a new gnode or it will become
+	      a node of $H$, leaving $G$. Afterwhile, $b$ will inform its
+	      neighbours belonging to $G$ to repeat this same
+	      procedure\footnote{note that since these neighbours are linked
+	      to $b$, which is now a node of $H$, they are also bnodes of
+	      $G$, bordering with $H$}. The adviced neighbour, that cannot fulfill this
+	      procedure, will send an ETP in $G$, to inform the other nodes of
+	      the departure of $b$ from $G$.
 \end{enumerate}
 
-The above method is valid for any level and it is applied recursively. For
-example, 
+Example:
 \begin{enumerate}
-	\item Consider the following two simple gnodes meeting for the first time,
-and suppose each gnode can contain a maximum of 4 nodes.\\		Initial situation:
+	\item Consider the following scenario, where we have only one level,
+		saturated by 3 gnodes:
+\eal{ &11.11 \leftrightarrow 22.11 \leftrightarrow 33.11}
+\item Two nodes join in $11.*$:
+\eal{ &11.33\leftrightarrow 11.22\leftrightarrow 11.11 \leftrightarrow 22.11 \leftrightarrow 33.11}
+\item The communicating vessels rule is applied:
+\eal{ &11.33\leftrightarrow 11.22\leftrightarrow 22.22 \leftrightarrow 22.11 \leftrightarrow 33.11}
+\item Other two nodes join in $11.*$:
+\eal{ &11.55\leftrightarrow 11.44\leftrightarrow 11.33\leftrightarrow 11.22\leftrightarrow 22.22 \leftrightarrow 22.11 \leftrightarrow 33.11}
+	The situation evolves to
 \eal{
-&11.11.1 \leftrightarrow 11.11.2 \leftrightarrow 11.11.3 
-\'\' 33.44.1 \leftrightarrow 33.22.2\\
-&11.11.1 \leftrightarrow 11.11.2 \leftrightarrow 11.11.3 \stackrel{\T{new
-link}}{\leftrightarrow } 33.44.1 \leftrightarrow 33.22.2
+&11.55\leftrightarrow 11.44\leftrightarrow 11.33\leftrightarrow
+22.33\leftrightarrow 22.22 \leftrightarrow 22.11 \leftrightarrow 33.11\\ 
+&11.55\leftrightarrow 11.44\leftrightarrow 11.33\leftrightarrow
+22.33\leftrightarrow 22.22 \leftrightarrow 33.22 \leftrightarrow 33.11
 }
-\item The ggnode $11.*$ has the following free gnode IDs:
-	$11.22,11.33,11.44$.\\
-	The ggnode $33.*$ has the following bound gnode IDs: $33.44,33.22$.\\
-	The situation evolves to
-	\eal{&33.22.2 \T{ changes to } 11.22.2,\;\;33.44.1
-	\T{ changes to } 11.33.1\\
-&11.11.1 \leftrightarrow 11.11.2 \leftrightarrow 11.11.3 \leftrightarrow
-11.33.1 \leftrightarrow 11.22.2}
-\item Now, for the first time the gnode $11.11.*$ meets the gnode $11.33.*$.
-	The former gnode has the following free node ID: $4$.\\
-	The latter has the following bound node ID: $1$.\\
-	The situation evolves to
-\eal{ &11.11.1 \leftrightarrow 11.11.2 \leftrightarrow 11.11.3 \leftrightarrow
-11.11.4 \leftrightarrow 11.22.2}
 \end{enumerate}
 
-It is worth to note that when a gnode or some nodes change ID, no information
-is lost, in fact, the nodes to update their map have just to rename its
-entries. In theory, even active connection should remain active.
+\subsubsection{Coordinator node}
+The transition of nodes from a gnode $A$ to another $B$, must be serialized.
+The nodes can't translate simultaneously, because when a node $n$ migrates, it knows
+$|A|$ and $|B|$ but it doesn't know how many other nodes are going to $B$ and
+how many other are going away from $A$. Thus, without serialization, too many
+nodes can escape from a gnode or enter in another, without respecting the
+rules of the communicating vessels.
 
-\subsection{Connected gnodes}
+The solution is to assign a coordinator node $co(G)$ to each gnode of any
+level. This is essentially achieved using the ``P2P over Ntk''\cite{ntkp2p}:
+the coordinator P2P service is created, and all the nodes are implicit
+participant. In this document, it suffices to say that given a gnode $G$ we
+can reach its coordinator node $co(G)$.
+
+A node $n$ will contact $co(G)$ for any of the following cases:
+\begin{enumerate}
+	\item $n$ wants to become a node of $G$,
+		if $|G|$ satifies a given condition (f.e. $|G| < |N|$, where $N$ is the gnode of $n$)
+	\item $n$ wants to leave $G$,
+		if $|G|$ satifies a given condition (f.e. $|G| > |M|$)
+	\item $n$ wants to create a new gnode
+	\item $n$ wants to know the current $|G|$
+\end{enumerate}
+$n$ will execute the relative action, only if the $co(G)$ replies
+affirmatively. Obviously, $co(G)$ has to process the requests in a serial
+manner, i.e. interpreting one request and blocking all the other. $co(G)$ will
+consider a request as definitive, when it'll receive the relative ETP,
+otherwise, it will revert the change after a timeout, f.e. $n$ may ask and
+have granted the request of joining in $G$, but it may not honor it, thus
+$co(G)$, will consider as void the request after a timeout of 30 seconds,
+restoring $|G|$.\\
+
+\subsubsection{Limits of the Communicating Vessels}
+The communicating vessels system is the main hard part of Netsukuku, it is the
+most expensive in terms of work, because when a node changes gnode it changes
+IP too. This is also the main reason for the non-mobility of Netsukuku.\\
+In order to mitigate these problems, it is possible to classify the nodes in
+Static Nodes and Guest Nodes: the former are nodes connected for more than 10
+minutes and are effectively nodes of Netsukuku, instead the latter are
+connected to the network just behind the NAT of their neighbours.\\
+
+Contributes to these problems are very welcome.
+
+\subsection{Internal connection}
 A gnode $G$ is internally connected if
 \eal{&\forall a,b\in G\;\;\exists \T{ a path $a\rightarrow b$ all contained in $G$}}
-A gnode can become broken (not internally connected), if there is a subset \[H\(
-G:\;\;\forall h\in H\;\;\forall g\in G\-H\;\;\nexists \T{ a path $h\leftrightarrow
-g$}\'\'(1)\]
-If the method seen in \ref{groupednodeshook} is applied, then a gnode becomes
-broken if and only if $(1)$.\\
-\newline
-Suppose $G$ is a broken gnode.
-Let $V$ be the set of its neighbours and 
-\eal{&\ove H=\pgra{H_i\;|\;H_i\( H,\;\;H_i\T{ is internally connected
-},\;\;i=1\dots n}\\
-&\T{such that } \bigcup \ove H = H,\;\;\forall H_i,H_j\in \ove H:\;H_i\neq
-H_j \' \sist{H_i\^H_j=\0\\
-\forall a\in H_i\forall b\in H_j\;\;\nexists \T{
-a path $a\leftrightarrow b$}}
-}
-in other words, $H_i\in \ove H$ is a connected component of $H$, $\ove H$
-is a covering of $H$, and its element aren't connected each other.\\
-Each component $H_i\in \ove H$ will send a message to each $v\in V$. Fix
-$H_i\in H$ and $v\in V$, $H_i$ sends the message $m$ to $v$. $v$ forwards it
-to a node $g\in G$, using the old route it knew to reach $G$. 
-Suppose $g\in H_j\in \ove H$.\\
-If $H_j$ isn't the sender of $m$ ($H_j\neq H_i$), and \\if
-$|H_j| < |H_i|\;\lor \;(|H_j|=|H_i|\;\land maxID(H_j) \le maxID(H_i))$
-\footnote{the information $|H_i|,\;maxID(H_i)$ are all contained in the
-message $m$. $maxID(H_i)$ is $\max\pgra{ID(h)\;|\;h\in H_i}$}
-, then
-$g$ will acknowledge that $G$ has been broken and that its connected component
-$H_j$ must form a gnode with a new ID. Therefore, $g$ will change its gnode ID
-to $ID(H_j)'$, where $ID(H_j)'$ is an hash number dependent on the node IDs of
-$H_j$\footnote{in this way, even if another component $H_{\ove j}$ changes its ID,
-there won't be collision}. Finally, g will forward the message $m$ to its neighbours
-belonging to $H_j$
-(Note \footnote{the message $m$ is thus flooded inside $H_j$}).
-. These neighbours, will repeat the same action of $g$, changing their gnode
-ID to the same $ID(H_j)'$.\\
-\newline
-Some notes:
-\begin{enumerate}
-	\item If $H_i$ cannot reach a node $v\in V$ due the breaking of $G$, it will
-		wait until a new route to $v$ is found.\\
-	\item By saying that \emph{$H_i$ sends a message to $v$}, we mean that only the
-		first node of $H_j$, able to act, will send the message.
-	\item $v\in V$ is a gnode. By saying that \emph{$v$ receives $m$ and
-		forwards it}, we mean that the first node of $v$ which receives $m$ will
-		forward it. No other nodes of $v$ are involved.
-\end{enumerate}
+A gnode can become broken (not internally connected) if another gnode of the
+network assumes the same gnode ID, or if one or more link inside the gnode
+die, splitting the gnode in two separate parts. In practice, the
+first case may happen only if two separate gnodes meet each other for the
+first time: we have $G \leftrightarrow G'$, with $ID(G)=ID(G')$, then the nodes 
+of the smallest gnode or oldest uptime will rehook.\\
+The second case, where $G$ is split into two parts is handled as follow:
+a bnode $n\in G$ receives the ETP for the death of a link.
+Updating the maps with this ETP, it notices that it doesn't
+have any route to reach some nodes of $G$. Call $E$ the set of
+the unreachable nodes. (note \footnote{generally, the fact that $n$ doesn't
+know any route to reach $d$ doesn't imply that there aren't any routes to
+reach $d$, however, due the structure of the internal map, this implication is true})\\
+There are two possibilities: the nodes of $E$ have changed
+gnode due the communicating vessels system, or the broken link
+has effectively split $G$ in two parts.
+$n$ can distinguish the two cases, because the ETP generated
+by the communicating vessels system are marked in a particular way.
+If $n$ is in the second case, it belongs to the set $G\-E$. If
+$|G\-E| < |E|$, then $n$ decides to becoming a hooking node, and it informs
+all the other nodes of $G\-E$ to do the same.
+
 Example: see figure \ref{fig:congnode}
 \begin{figure}[h]
 	\begin{center}
@@ -611,7 +642,6 @@ Example: see figure \ref{fig:congnode}
 	described above has been applied, we have two gnodes: 11.* and 22.*}
 	\label{fig:congnode}
 \end{figure}
-\newpage
 
 \subsection{Compact gnodes}
 A gnode $G$ is compact if, fixed a rem value $\ove r$, 
@@ -621,12 +651,38 @@ The gnodes don't necessary need to be compact, however the more compact they
 are, the more the grouping approximation is reduced (see \ref{groupapprox}).
 
 An optimal technique to keep the gnodes compact hasn't been found yet. As an
-example, consider this simple one: if the node $a\in G$ finds out that there's
-a $b\in G$ such that $rem(a\stackrel{*}{\rightarrow} b) > \ove r$, then $a$
-will change its gnode ID.
+example, consider the following, which has been inspired by the gravitational
+model: let $n$ be a node and $V_n$ the set of its
+neighbours. For each neighbours $v\in V_n$, $n$ calculates the following
+\emph{attraction value}:
+\eal{&att(v) = \sum_{r\in R_v} rem(r)\\
+&\qq\T{ where $R_v$ is the set of all the best routes of $n$ passing from $v$}
+}
+$n$ is then attracted by the neighbour $\ove v$, which has the highest
+attraction value: $n$ will enter in the gnode of $v$ (if it isn't already in).
+
+The problem with any Compact gnodes system is that the grouping of nodes
+becomes dependent on the quality of the links, thus the network may be
+reconfigured more often.
 
 \section{ChangeLog}
 \begin{itemize}
+	\item \verb|August 2007|
+		\begin{enumerate}
+			\item Hooking procedures redesigned, probably they are
+				near to their definitive form:
+				\begin{enumerate}
+					\item The grouping of nodes is now
+						handled by the communicating
+						vessels system
+					\item The case where a gnode is
+						split in two parts is managed
+						in a less complicated way
+					\item a ``gravitational model'' for
+						the Compact gnodes has been
+						proposed.
+				\end{enumerate}
+		\end{enumerate}
 	\item \verb|July 2007|
 		\begin{enumerate}
 			\item Internal and external map structure redisigned:
@@ -660,8 +716,8 @@ will change its gnode ID.
 		\href{http://netsukuku.freaknet.org/}{http://netsukuku.freaknet.org/}
 	\bibitem{CIDR} CIDR routing:
 		\href{http://en.wikipedia.org/wiki/Classless\_Inter-Domain\_Routing}{Classless\_Inter-Domain\_Routing in Wikipedia}
-	\bibitem{gnodecontiguity} NTK\_RFC 001:
-		\href{http://lab.dyne.org/Ntk\_gnodes\_contiguity}{Gnode contiguity}
+	\bibitem{ntkp2p} P2P over Ntk:
+		\href{http://netsukuku.freaknet.org/doc/main\_doc/ntk\_rfc/Ntk\_p2p\_over\_ntk.pdf}{P2P over Ntk}
 	\bibitem{caurout} Caustic routing:
 		\href{http://lab.dyne.org/Ntk\_caustic\_routing}{RFC 0013}
 \end{thebibliography}
