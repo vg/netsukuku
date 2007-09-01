@@ -29,6 +29,53 @@ la Rete ci attende.
 ****  News
 **
 
+
+Thu Aug  9 23:20:53 UTC 2007
+----------------------------
+
+We've begun the ntkd implementation of the second version of the
+Netsukuku theory, which has been improved and simplified since 
+the last news [1].
+
+This time we're working with Python, because:
+
+	1) we're prioritising the release of a stable, functional
+	   prototype.
+
+	2) since it's easier to maintain a completely modular architecture
+	   of the Ntk daemon, the coordination between the developers is
+	   enhanced.
+
+	3) the Ntk daemon is an application that requires very low
+	   computational and memory resources: it is network bound.
+	   As example, consider the original Bittorrent implementation,
+	   written in Python.
+
+	4) we're going to use our own stripped version of Python, in
+	   this way it will be possible to use Netsukuku in embedded devices.
+	   See for example: http://www.areasx.com/index.php?D=1&id=8173
+
+	5) the C language will be used to implement low level code.
+
+We hope that as soon as possible a first stable release of Netsukuku will
+will be available.
+
+You can check the development progress here:
+http://cia.vc/stats/project/netsukuku
+You can give a look at the Python code here:
+http://hinezumi.org/viewcvs/netsukuku/src/pyntk/
+
+
+[1] qspn document:
+    http://netsukuku.freaknet.org/2html/documentation/main_documentation/qspn.pdf
+
+    topology document:
+    http://netsukuku.freaknet.org/2html/documentation/main_documentation/topology.pdf
+
+    NTK RFC 0014 - P2P over Netsukuku:
+    http://netsukuku.freaknet.org/2html/documentation/main_documentation/ntk_rfc/Ntk_p2p_over_ntk.pdf
+
+
 Tue Jan  2 16:16:05 UTC 2007
 ----------------------------
 
