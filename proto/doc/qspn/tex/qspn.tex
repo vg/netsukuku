@@ -92,15 +92,6 @@
 \clearpage
 \pagenumbering{arabic}
 
-\section{Preface}
-\label{sec:preface}
-
-The first part of the document describes the reasoning which led us to the
-construction of the current form of the QSPN v2.
-If you are just interested in the description of the QSPN v1 and v2 and you
-already know the concept of the Tracer Packet, you can directly skip to
-section \ref{sec:CTP}.
-
 \section{The general idea}
 \label{sec:general_idea}
 
@@ -215,7 +206,7 @@ receives a TP will forward it to all its neighbours, except the one from which
 it received the TP. Once a node has forwarded a TP, it will not forward any
 other TPs of the same flood.
 
-\subsection{Proprieties of the tracer packet}
+\subsection{Properties of the tracer packet}
 \label{sec:proprieties_TP}
 
 \begin{enumerate}
@@ -261,106 +252,10 @@ because either $A$ and $F$ won't be able to forward the TP to any other node.
 At the end, $A$ will know the route $A \rightarrow B \rightarrow C \rightarrow D$ and $F$ will know the
 route $F \rightarrow E \rightarrow D$.
 
-\section{Routes of a graph}
-\label{sec:gen_routes}
-
-Given a graph $\mathbf{G}$ we want to find all the existing routes between a node and
-all the other nodes.
-
-Let $N$ be a generic node. Starting from $N$ we explore the entire graph
-until we re-enter in a cycle already visited or we cannot proceed any further.
-This approach is similar to the Depth-First Search\cite{DFS} algorithm, but instead of
-searching for a specific goal, we just traverse the entire graph.
-Note that a cycle is traversed only once, because we need non redundant
-routes. In other words, if we already know the $S \rightarrow A \rightarrow B
-\rightarrow C \rightarrow D$ route,
-it's useless to known that we can reach $D$ with the $S \rightarrow A
-\rightarrow B \rightarrow C \rightarrow A \rightarrow B \rightarrow C
-\rightarrow D$ route.
-
-This is the pseudo code of the algorithm:
-
-\begin{verbatim}
-generate_routes(G) {
-        forall node in G
-                /* Starts the exploration of the graph from the ``node'' of the
-                   graph ``G'' and print all its routes */
-                walk(node, node)
-}
-
-/* Print all the routes which start from the node `N' */
-walk(N, branch) {
-        deepened=0
-
-        forall L in N.links
-                /* L is a neighbour of N */
-
-                if(L in branch)
-                        /* If ``L'' is already contained in the explored
-                           branch, we've found a cycle. Since we just need to
-                           traverse only once a cycle, we skip this ``L'' node
-                           and continue to consider the other neighbours
-                           of N */
-                        continue;
-
-                newbranch=branch + L    /* Append in the explored branch the
-                                           ``L'' node. */
-
-                walk(L, newbranch)      /* Recursively  explore the new
-                                           branch */
-                
-                /* Indicate that we've deepened in the graph at least once */
-                deepened=1
-
-        if(!deepened)
-                /* We haven't deepened in the above for, this means that the
-                   current branch can't be explored anymore, therefore it is a
-                   valid route. Print it */
-                print branch
-}
-\end{verbatim}
-
-A proof of concept of the above algorithm has been implemented in Awk
-\cite{genrouteawk}.
-
-\subsection*{Example}
-Consider this graph:
-
-\begin{figure}[h]
-	\begin{center}
-		\includegraphics[scale=0.4]{fig/cycleABCD_E}
-	\end{center}
-	\caption{A simple graph with one segment and one cycle}
-	\label{fig:gen_route_sample}
-\end{figure}
-
-Given this graph as input the algorithm will output:
-\label{sec:genroute_output}
-\begin{align*}
-& A \rightarrow B \rightarrow D \rightarrow C\\
-& A \rightarrow B \rightarrow D \rightarrow E\\
-& A \rightarrow C \rightarrow D \rightarrow B\\
-& A \rightarrow C \rightarrow D \rightarrow E\\
-& B \rightarrow A \rightarrow C \rightarrow D \rightarrow E\\
-& B \rightarrow D \rightarrow C \rightarrow A\\
-& B \rightarrow D \rightarrow E\\
-& C \rightarrow A \rightarrow B \rightarrow D \rightarrow E\\
-& C \rightarrow D \rightarrow B \rightarrow A\\
-& C \rightarrow D \rightarrow E\\
-& D \rightarrow B \rightarrow A \rightarrow C\\
-& D \rightarrow C \rightarrow A \rightarrow B\\
-& D \rightarrow E
-\end{align*}
-
-\section{Acyclic Tracer Packet flood}
+\subsection{Acyclic Tracer Packet flood}
 \label{sec:acyclic_TP_flood}
 
-We can consider each route given by the output of the above algorithm as a
-single Tracer Packet.
-In fact, it is possible to implement the same algorithm using a slightly
-modified version of the TP flood, called the Acyclic TP flood:
-
-The flood is not restricted like in a normal TP flood: one or more ATP can
+The Acyclic flood is not restricted like in a normal TP flood: one or more ATP can
 pass from the same node. The end of the flood is given by this rule: a node
 will not forward to any of its neighbours the ATP if its node ID is already present
 in the route contained in the body of the packet. With this rule an ATP can
@@ -370,156 +265,11 @@ neighbour from which it has received the packet itself.
 
 If every node of the network sends an ATP flood, then every node will get
 all the possible routes to reach any other node.
-\newline
-As you can see, the ATP flood performs a ``live'' version of the algorithm
-described in section \ref{sec:gen_routes}.
-Obviously this is far from an efficient routing discovery algorithm, but it
-represents a good start.
+%%%%TODO%%%%
+%The ATP is equivalent to Dijkstra$
+%%%%%%%%%%%%
 
-\section{Routes simplification}
-\label{sec:simplify_routes}
-
-Looking carefully at the example output (\ref{sec:genroute_output}) of the
-Generate Route algorithm, we can notice that many routes are higly redundant,
-in other words, some routes are almost the same.
-Consider for example the following four routes:
-\begin{align}
-	& A \rightarrow B \rightarrow D \rightarrow E \label{eq:e1}\\
-	& D \rightarrow E \label{eq:e2} \\
-	& A \rightarrow B \rightarrow D \rightarrow C \label{eq:e3}\\
-	& D \rightarrow C \rightarrow A \rightarrow B \label{eq:e4}
-\end{align}
-
-As we've seen in the previous section \ref{sec:acyclic_TP_flood}, we can consider
-these routes as effective Tracer Packets.
-In this example, the TP (1) cover the same route of the TP
-(2). Therefore we can save one TP by just sending the TP
-(1), which will traverse the route (2) too.
-
-The TP (3) covers part of the TP (4), thus we can simplify
-the two of them by just sending a TP which cover this route: $A \rightarrow B
-\rightarrow D \rightarrow C \rightarrow A \rightarrow B$.
-
-Continuing in this process we can further simplify the two TP:
-\[ ABDCAB + ABDE \Rightarrow  ABDCABDE \]
-
-Thus, from the initial four TPs we've found a unique TP which gives the same
-routes of the original ones.
-
-\subsection{Simplification rules}
-\label{sec:simplification_rules}
-
-We can derive some rules to simplify routes.
-
-Since we can represent a route as a string where each symbol is a node, we can
-also describe the routes simplification as a series of operations on strings.
-
-In the following rules, each letter found in an expression represents a generic string,
-which may be also the NULL string, f.e. the ``$XX$'' string can be anything like
-$foofoo$ or $1234512345$.
-\\
-The $c\dots c$ expression represents a cycle, where the $c$ character refers
-to just one node, and not to an entire string.
-\begin{description}
-	\item[XY+YZ $\Rightarrow$ XYZ]
-		If two routes share respectively the ending and the starting
-		part, they can be merged into a unique route. Example:
-		\[ABCDE + CDEKRE \Rightarrow ABCDEKRE \]
-	\item[YXZ + X $\Rightarrow$ YXZ]
-		Example:
-		\[123ABCXYZ + ABC \Rightarrow 123ABCXYZ\]
-	\item[Xc\dots c + XcY $\Rightarrow$ Xc\dots cY]
-		Example:
-		\[123ABCDA + 123A987 \Rightarrow 123ABCDA987\]
-	\item[c\dots cZ + YcZ $\Rightarrow$ Yc\dots cZ]
-		Example:
-		\[ABCDA123 + 987A123 \Rightarrow 987ABCDA123\]
-	\item[c\dots c + YcZ $\Rightarrow$ Yc\dots cZ]
-		Example:
-		\[ABCDA + 987A123 \Rightarrow 987ABCDA123\]
-	\item[Invalid route]
-		\label{sec:simroute_invalid}
-		A route must not be in the form of:
-		\[ XacaY \]
-		where $a$ and $c$ are two nodes.
-		A simplification, which gives a route of this form, is
-		not considered valid. This is because a TP must not change its
-		verse while traversing a network.
-\end{description}
-
-All these rules can be applied recursively to the routes of a graph, until
-they cannot be simplified anymore.
-
-A proof of concept of the above algorithm has been implemented in Awk \cite{simrouteawk}.
-
-\subsection*{Example}
-Simplifying all the routes of the example \ref{sec:genroute_output}, we obtain
-just these two TPs:
-\begin{align}
- &A \rightarrow B \rightarrow D \rightarrow C \rightarrow A \rightarrow B
- \rightarrow D \rightarrow E\\
- &A \rightarrow C \rightarrow D \rightarrow B \rightarrow A \rightarrow C \rightarrow D \rightarrow E
-\end{align}
-
-You can verify that all the routes listed in \ref{sec:genroute_output} are
-contained in these two simplified TPs.
-
-\subsection{General results}
-By looking at many different simplifications, we can recognize some general
-rules:
-\begin{enumerate}
-	\item For each TP there has to be its inverse. For example, if there's
-		a TP which covered the route $12345$, then there has to be at
-		least the TP which covers the inverse route $54321$.
-	\item In a segment, to give all the routes to all the nodes, it is
-		sufficient that the two extremes sends a TP. Example:
-		\begin{figure}[h]
-			\begin{center}
-				\includegraphics[scale=0.4]{fig/segABCDEF}
-			\end{center}
-			\caption{A segment}
-		\end{figure}
-		in this case, if $A$ and $F$ send a TP, all the routes will be
-		generated, since the two TP would be: $ABCDEF$ and $FEDCBA$.
-		You can verify that in these two TP, there are contained all
-		the routes of the segment.
-	\item In a cycle, just two TP are needed, and one is the reverse of
-		the other. The first can be constructed in this way: 
-		\begin{itemize}
-			\item Choose a node of the cycle, this will be the
-				pivot node.
-			\item Start from one neighbour of the pivot and write
-				sequencially all the other nodes until you
-				return to the pivot (but do not include it).
-				Call this string $C$.
-			\item The TP will be:
-				\[CpC\]
-				where $p$ is the pivot node.
-		\end{itemize}
-		Example:
-		\begin{figure}[h]
-			\begin{center}
-				\includegraphics[scale=0.4]{fig/cycleABCDEF}
-			\end{center}
-			\caption{A cycle}
-		\end{figure}
-		if we choose the node $D$ as the pivot, we can write the TP
-		as:
-		\[ EFABCDEFABC \]
-		and its reverse:
-		\[ CBAFEDCBAFE \]
-		These two TPs will give all the routes to all the nodes of the
-		cycle.
-\end{enumerate}
-
-\subsection{The question}
-
-Can we implement a ``live'' version of the Simplify Route algorithm like we
-did with the Generate Route one?\\
-The reply is ahead.
-
-\newpage
-\section{Continuous Tracer Packet}
+\subsection{Continuous Tracer Packet}
 \label{sec:CTP}
 
 A Continuous Tracer Packet (CTP) is an extension of the TP flood: a node will
@@ -531,72 +281,25 @@ erase the route stored in the body of the TP and will forward back the TP.
 In short, a CTP is a TP flood which will never end, thus it will continue to
 explore all the infinite combination of routes. 
 
-\subsection*{Example}
-Consider this graph.
-\begin{figure}[h]
-	\begin{center}
-		\includegraphics[scale=0.4]{fig/cycleABC}
-	\end{center}
-	\caption{The simplest cyclic graph}
-	\label{fig:cycleABC}
-\end{figure}
-If $A$ sends a CTP flood, there will be two CTPs that will explore
-respectively these routes:
-\[
-	 A \rightarrow B \rightarrow C \rightarrow A \rightarrow B \rightarrow
-	 C \rightarrow A \rightarrow B \rightarrow C \rightarrow A \rightarrow
-	 B \rightarrow C \rightarrow \dots
-\]
-\[
-	 A \rightarrow C \rightarrow B \rightarrow A \rightarrow C \rightarrow
-	 B \rightarrow A \rightarrow C \rightarrow B \rightarrow A \rightarrow
-	 C \rightarrow B \rightarrow \dots
-\]
+\subsection{Interesting Information rule}
+\label{intinforule}
+This rule can be described in a single phrase:
 
-\subsection{Reflected CTP}
-\label{sec:reflected_CTP}
-
-Suppose that the node $N$ has just one link.
-$N$, before back forwarding the received CTP, erases the route contained in
-the body, because the nodes preceding it, already know this same route.
-\\
-For example, consider this segment:
-\[ \cdots \leftrightarrow A \leftrightarrow B \leftrightarrow C \leftrightarrow N \]
-If $N$ hadn't erased the route received in the CTP, $A$ would have received
-the following CTP:
-\[
-\cdots \rightarrow A \rightarrow B \rightarrow C \rightarrow N \rightarrow C \rightarrow B \rightarrow A
-\]
-This packet contains the route $C \rightarrow N \rightarrow C$, which is
-invalid, as explained in section \ref{sec:simroute_invalid}.
-The valid parts of the packet are: $\cdots \rightarrow A \rightarrow B
-\rightarrow C \rightarrow N$ and $N \rightarrow C \rightarrow B \rightarrow
-A$. For this reason, when $N$ receives the first part, it will send a new,
-empty CTP.
-
-\section{QSPN v2}
-\label{sec:QSPNv2}
-The second version of the QSPN\footnote{The short name of the QSPN v2 is
-$Q^2$} can be described in a single phrase:
-
-\emph{A Continuous Tracer Packet will continue to roam inside}
+\emph{A Tracer Packet will continue to roam inside}
 
 \emph{the network until it carries interesting information.}
-
-\subsection{Interesting information}
-\label{sec:interesting_info}
-
-A node considers a received CTP interesting when its body contains at least a
+\qq\\
+A node considers a received TP interesting when its body contains at least a
 new route, i.e. a route that the node didn't previously know.
-In other words, if a CTP contains routes already known by the node, it is
+In other words, if a TP contains routes already known by the node, it is
 considered uninteresting.
 
-When a node receives an interesting CTP, it forwards the packet to all its
-neighbours, excepting the one from which it has received the CTP.
-If, instead, the CTP is uninteresting, it will drop the packet.
+When a node receives an interesting TP, it forwards the packet to all its
+neighbours, excepting the one from which it has received the TP.
+If, instead, the TP is uninteresting, it will drop the packet.
 
-Note that if a CTP is uninteresting for the node $N$, then it is also
-uninteresting for all the other nodes. This is because an uninteresting CTP
+Note that if a TP is uninteresting for the node $N$, then it is also
+uninteresting for all the other nodes. This is because an uninteresting TP
 contains routes which has been previously received, memorised and forwarded
 by the node $N$. Therefore all the other nodes already know the same
 routes too.
@@ -637,337 +340,19 @@ CTP, none knew any route.
 		already knows all the routes contained in it.
 \end{description}
 
-From this example we can derive a general result: a CTP will always terminate
-in a cycle.
 
-\subsection{Live routes simplification}
-The QSPN v2 is the ``live'' version of the Simplify Route algorithm (section
-\ref{sec:simplify_routes}).
-
-The CTP flood of the QSPN v2 explores the entire graph, but unlike the ATP
-(section \ref{sec:acyclic_TP_flood}), it drops the TPs which contains
-redundant routes, thus only the simplified, non redundant routes survives and
-continue to explore the graph.
-
-\newpage
-\subsection{Cyclicity}
-\label{sec:CTP_ciclicity}
-When a CTP reaches the extremity of a segment, it is back forwarded, thus it's
-as if the extreme nodes had a link with themselves.
-
-\begin{figure}[h]
-	\begin{center}
-		\includegraphics[scale=0.4]{fig/cycleselfABC}
-	\end{center}
-	\caption{A segment as viewed from a CTP}
-	\label{fig:CTP_segment}
-\end{figure}
-
-From the point of view of a CTP, even a segment is a cycle, therefore, for a
-CTP, any connected graph is formed just by cycles.
-
-For this reason, a CTP will explore any combination of cycles of the graph.
-
-\subsubsection{Subcycles examples}
-These examples highlights some subcycles of a simple graph.
-
-\begin{figure}[h]
-	\begin{center}
-		\includegraphics[scale=0.4]{fig/cycleABCD_BC_123}
-	\end{center}
-\end{figure}
-A CTP would explore all these cycles.
-
-\subsection{Finiteness}
-$Q^2$ will finish the exploration of the graph in a finite amount of time,
-i.e. the flood will terminate.
-
-As we've seen in the example \ref{sec:cycle_qv2_example}, a CTP flood of a
-cycle will always terminate. Moreover in section \ref{sec:CTP_ciclicity} we've
-noticed that, from the point of view of a CTP, any connected graph is formed
-by a combination of cycles. Therefore, a CTP flood of a graph will always
-terminate in a finite amount of time.
-
-\subsection{Routes limit}
-\label{sec:routes_limit}
-
-Even if $Q^2$ is finite, it still generates too many routes and packets.
-Therefore we need to limit the exploration of the graph.\\
-An efficient and elegant solution is to further define what the ``interesting
-information'' is:
-
-Let each node of the network keep a maximum of \emph{MaxRoutes} routes in
-its memory. A node considers a received CTP interesting when its body contains
-at least a route which is more efficient than the previously memorised routes.
-The efficiency of a route can be quantified with a convenient parameter, f.e.
-the rtt or the bandwidth capacity.
-If the node has reached the \emph{MaxRoutes} limit, it will substitute the old
-route with the more efficient one.
-
-Note that this definition is more general than the previous. Indeed, if the
-node $S$ doesn't know the route to reach $D$, the efficiency of the route $S
-\rightarrow D$ is equal to $0$.
-
-A node can also keep in memory more than \emph{MaxRoutes} routes, because this
-limit applies only to the number of routes which will be used to evaluate the
-received CTP.
-
-\subsection{Scalability}
-\label{sec:Scalability}
-We will now exploit the bouquet property of the Tracer Packets, which has
-been described in section \ref{sec:proprieties_TP}.
-
-Suppose that in our network every link has the same bandwidth capacity and
-that the generic node $D$ doesn't know any route to reach the
-node $T$.
-If a TP, received by the node $D$, contains a new route $t$ that
-connects $D \rightarrow T$, then we can deduce, by the bouquet property, that
-$t$ is the fastest route between $D$ and $T$.
-
-The immediate consequence is that $D$ will receive all the other $D
-\rightarrow T$ routes in order of efficiency: the first is, as we've seen,
-the best route, the second one will be slower than the first but surely
-better than any other, and so on.
-
-
-\subsubsection{TP Classes}
-\label{sec:tp_classes}
-Two different routes can be very similar, because they can differ only in a
-small part. Two routes which differs of just one hop, are almost identical.
-For this reason, other than the best $D \rightarrow  T$ route, the CTP will
-also explore all the other routes which are almost identical to it.
-
-We can thus order all the TPs which $D$ will receive into classes. The first
-class, denoted with $[1]$, contains the TP which have covered the best
-route and all the others similar to it, i.e. all the other routes with the same
-number of hop and a similar trtt (total round trip time).
-The second class $[2]$, contains the TP which have covered routes which are
-less efficient than those contained in $[1]$ but are more efficient than those
-of class $[3]$.
-More generally we can say that the $[n\textrm{-th}]$ class contains the routes that,
-if included in a list of all the routes of the graph, ordered in decrescent
-order of efficiency, will be listed starting from the position $(n-1)c+1$. Where
-$c$ is the numbers of routes contained in each class.
-
-In the classes we are including \emph{routes} and not \emph{tracer packets},
-because a TP may contain more than one route.
-
-\subsubsection{Subcycle filter}
-Each node of the graph acts as a filter for all the subcycles containing it.
-
-Suppose the node $D$ is contained in the subcycle $\sigma$ and that a CTP $t$
-enters in it (through another node).
-If the node $D$ has the \emph{MaxRoutes} limit set, it will memorise, for each
-node of the network, only the first \emph{MaxRoutes} received routes, while the
-rest will be disregarded, and \textbf{not} forwarded. \\
-The CTP $t$ won't be forwarded by the node $D$, if it contains routes which
-exceed the \emph{MaxRoutes} limit, but this is true for all the nodes of
-$\sigma$, therefore $t$ won't even be able to escape from the subcycle
-$\sigma$. This also means that all the CTPs, which are in a higher
-class than that of $t$, won't be allowed to pass from $\sigma$.\\
-
-Since this happens for all the subcycles of the graph, we can conclude that
-the increase of the number of subcycles won't increase exponentially the
-number of CTPs.
-
-\subsubsection*{Example}
-Consider this graph.
-\begin{figure}[h]
-	\begin{center}
-		\includegraphics[scale=0.5]{fig/neato_3cycles}
-	\end{center}
-	\caption{Sequential composition of cycles}
-	\label{fig:q2_scalability_example}
-\end{figure}
-Let's analyse the difference between a CTP without limits and the same CTP
-with \emph{MaxRoutes} set.
-\begin{description}
-	\item[Unlimited CTP] $A$ sends a CTP. Suppose for simplicity that
-		this CTP won't loop inside a cycle.\\
-		$D$ receives $2$ packets from $A$, $G$ $2*2$ from $D$ and
-		finally $L$ $2*2*2$ from $D$.\\
-		$L$ sends back all the received CTPs, thus $G$ gets $2^4$ CTPs
-		from $L$, $D$ gets $2^5$ and finally $A$ receives $2^6=64$
-		packets.
-		Obviously this is too much for this simple graph.
-	\item[Limited CTP] Let's use $\textrm{\emph{MaxRoutes}}=1$ and suppose
-		that the CTP won't loop inside a cycle. We'll write
-		$D_A(n,z)$ to indicate that $D$ received $n$ CTPs from the node
-		$A$ but has kept and forwarded only $z$ packets.\\
-		$A$ sends a CTP.\\
-		\begin{align*}
-			&A_{\emptyset}(0,2) \rightarrow	D_A(2,2)\rightarrow
-			G_D(4,3) \rightarrow L_G(6,4) \rightarrow \\
-			& \qquad G_L(8,5) \rightarrow D_G(10, 6) \rightarrow
-			A_D(12, 0)
-		\end{align*}
-		At the end, A gets $12$ packets.\\
-		Each node forwards $p/2+1$ packets, where $p$ is the number of
-		received CTPs. This is because the first two packets give to
-		the node a new route, while the other two, and the successive
-		ones, cover a superflous route. For example, consider
-		\begin{align}	
-			&\underline{A \rightarrow  C \rightarrow D \rightarrow
-			E \rightarrow  G} \label{eq:d1}\\
-			&A \rightarrow  C \rightarrow D \rightarrow
-			\underline{F \rightarrow  G} \label{eq:d2}\\
-			&A \rightarrow  \underline{B \rightarrow D} \rightarrow
-			E \rightarrow  G \label{eq:d3}\\
-			&A \rightarrow B \rightarrow D \rightarrow F
-			\rightarrow  G \mathbb{!}\label{eq:d4}
-		\end{align}
-		The underlined routes are the new route for $G$. As you can
-		see, in the CTP (10) G doesn't find any new route, so
-		it drops the packet and doesn't forward it.
-	\end{description}
-
-\subsubsection{Efficiency order}
-\label{sec:eff_order}
-
-We've noted in section \ref{sec:Scalability} that any node will receive the
-CTPs in order of efficiency, thus we are sure that only the first
-\emph{MaxRoutes} received routes (which point to a specific node) are
-meaningfull, while all the successive ones are uninteresting and should be
-dropped. This is important, because each
-node will first receive \emph{MaxRoutes} interesting routes and
-\textbf{then} the uninteresting ones, that will be dropped. 
-Doing so, an uninteresting route won't be forwarded before its interesting
-correspondent, and as soon it is recognised it will be dropped.
-
-To clarify this concept suppose that the routes aren't received in order of
-efficiency and that $\textrm{\emph{MaxRoutes}}=2$. Then suppose that node $D$ doesn't
-have any route yet and receives a CTP of class $[7]$. $D$ will consider this
-CTP as interesting and forward it, because it's the first one it receives.\\
-In conclusion, the CTP of class $[7]$ would be allowed to be propagated among
-the network even if the \emph{MaxRoutes} has been set to $2$ routes.
-Instead, if $D$ receives the packet in an ordered
-manner, it will first get the CTPs of class $[1]$, then those of class $[2]$
-and so on. For this reason the CTP of class $[7]$, and all the other which
-exceed the \emph{MaxRoutes} limit, won't be allowed to pass from $D$.
-
-\subsection{Bandwidth issues}
-Until now we've supposed that every link of the network has the same bandwidth
-capacity. However, we'll see in section \ref{sec:bandwidth_q1q2} that the QSPN
-can be used in the general case.
-
-\subsection{Worst case}
-\label{worstcase}
-The graph, formed by $n$ nodes, which has the maximum number of cycles is the
-worst case for $Q^2$, because, if not limited, it will have to explore any
-combination of cycles.
-
-Such graph is the \emph{complete graph} \cite{completegraph}, and the total
-number of its subcycles is:
-\[
-\sum_{k=3}^n\,\frac{1}{2}\binom{n}{k}(k-1)!
-\]
-
-\section{QSPN v1}
-\label{sec:QSPNv1}
-\small{It isn't necessary to read this paragraph in order to understand the
-rest of the paper. If you aren't interesent in the QSPN v1, just skip over.}
-
-The QSPN v1 is a restricted case of $Q^2$. 
-It is divided in two phases.
-The first one is called qspn\_close:
-a node sends a QTP (QSPN Tracer Packet) called qclose, this node becomes a qspn starter.
-A qclose is a modified form of tracer packet.
-  A node $N$, which receives a qclose from the link $l$, marks as ``closed'' the
-  same link $l$ and forwards the packet to all its other neighbours.
-  All the following qclose packets received by the same node $N$, will
-  be forwarded only to the links which have not been already closed.\\
-  During the graph exploration, some nodes will close all their links.
-  These nodes are called \emph{extreme nodes}. When a node becomes an extreme node, 
-  it will send another type of tracer packet, called qspn\_open (which is also
-  the name of the second phase) to all its neighbours, except the one from
-  which it received the last qclose packet (let's call this neighbour $L$).
-  The qopen packet sent to $L$ is empty, while those sent to the other
-  neighbours contains the body of the last received qclose packet.\\
-  The qopen behaves as the qclose: it "opens" the links, however the nodes
-  which have all their links opened won't forward any other packets.\\
-\textbf{Example: }
-  \begin{figure}[h]
-  \begin{center}
-	  \includegraphics[scale=0.4]{fig/cycleQ1ex}
-	  \caption{Example of a QSPN v1 graph exploration}
-	  \label{fig:q1ex}
-  \end{center}
-  \end{figure}
-  Consider figure \ref{fig:q1ex}.
-  \begin{itemize}
-	  \item The node $E$ sends a qclose. It is now a qspn starter.
-	  \item Suppose that the node A receives the qclose before $C$. $A$
-		  closes the link $E\rightarrow A$ and forwards the qclose to
-		  $B$, $C$ and $D$.
-	  \item $C$ receives the qclose from $E$, closes the link $E\rightarrow C$ and forwards it to A and $D$.
-	  \item $C$ receives the qclose from $A$ and closes the link.
-	  \item $B$ and $D$ have received from $A$ the qclose and close the respective links.
-	  \item Suppose that $B$ is the first to forwards the qclose to $F$.
-	  \item $D$ forwards the qclose to $F$, but at the same time $F$ forwards it to $D$.
-	  \item $D$ receives the qclose from $B$, too.
-	  \item $D$ and $F$ have all the links closed. They send a qopen.
-	  \item The qopen propagates itself in the opposite sense.
-	  \item The qopen ends.  Each node has the routes to reach all the other nodes.
-\end{itemize}
-
-The qspn\_close phase can be seen
-as a CTP with the added rule that when two CTPs collide, they will be
-converted to two normal TPs (the qopen phase).
-
-\subsection{$\mathbf{Q}$ vs $\mathbf{Q^2}$}
-These are the substantial differences between Q (QSPN v1) and $Q^2$ (QSPN v2):
-\begin{enumerate}
-	\item Q generates less packets than $Q^2$, because in the qopen
-		phase it uses normal TPs which expires quickly. The side
-		effect of this behaviour is that Q may not discover all
-		the best routes. However Q gives at least one route to
-		reach each node of the graph.
-
-	\item $Q^2$ doesn't need synchronization. the CTPs doesn't need to
-		have an ID, thus many nodes can send simultaneously or
-		asynchronously a CTP without creating any problem.\\
-		This isn't the same in Q, which requires a strict
-		synchronization between the nodes: two nodes can send 
-		a qclose only at the same time.
-	
-	\item This is a consequence of the propriety described above: every
-		time a node joins the net or dies or its rtt/bw capacity
-		changes, it is possible to immediately send a CTP. Indeed, if
-		the changes in the local gnode regard that node only, the CTP
-		will be like a normal Tracer Packet (see \ref{sec:TP_flood}).
-
-	\item $Q^2$ is easier and simpler than Q to be implemented. In
-		general this means that the code of $Q^2$ will have less
-		bugs.
-\end{enumerate}
-
-From this comparison we can conclude that $Q^2$ is preferable over Q.
 
 \section{Network dynamics}
 \label{sec:netdyn}
-The QSPN v2 defined until now is not suitable for dynamic networks. As
-example, consider this problem:
-
-suppose that the whole graph has been already explored, and thus every node
-has at least one route to reach all the other nodes. Consider the case when
-the efficiency of a link, f.e. $N \leftrightarrow P$, worsens.
-$N$, in order to update the maps of the other nodes, sends a CTP to its
-neighbour $P$, and $P$ forwards it to its neighbours. However this CTP will be
-immediately dropped! Indeed, the nodes will consider this CTP not interesting,
-because the contained $\dots\rightarrow P \rightarrow N$ route is less
-efficient than the old one, which has been saved during the last graph
-exploration.
+The QSPN v2 defined until now is not suitable for dynamic networks.
 
 \subsection{Extended Tracer Packet}
 \label{sec:etp}
-The ETP solves the problem of how the graph should be re-explored to
+The ETP solves the problem of how the graph should be explored and re-explored to
 update the maps of the nodes interested to a network change.
 Its way of working is based on a simple observation:
 
-The first QSPN exploration distributes, among the nodes, information describing
-the network topology. 
-When a change in the network occurs, only
-the information stored in the nodes affected by the change must be updated.
+When a change in the network occurs, only the information stored in the nodes affected by the change must be updated.
 The unaffected nodes will still have up to date information that they can simply
 redistribute with the use of the Extended Tracer Packets.
 
@@ -978,7 +363,8 @@ contained in the body of the packet. Note also, that since it is a normal TP,
 it is not reflected back, when it reaches the end of a segment.}
 which contains a portion of a map. Since a map is a set of routes and a
 route can be described by a TP, the ETP can be considered as different TPs packed togheter.
-Each TP of the ETP is then subjected to the rules of the QSPN v2.
+Each TP of the ETP is then subjected to the Interesting Information rule (see
+\ref{intinforule}).
 
 In order to give an exact definition of an ETP, we must examine each case of network change.
 \begin{description}
@@ -1118,10 +504,9 @@ In order to give an exact definition of an ETP, we must examine each case of net
 	\textbf{Changed link} case, because we can consider $l$ as a link with
 	a new rem.
 
-	\item[Broken link] 
+	\item[Broken link] \qq\\
 		\begin{enumerate}
-		\item \label{stepR} 
-			$B$ creates the set $R$:
+		\item \label{stepR} $B$ creates the set $R$:
 			\eal{
 			&R=\pgra{r\in \overline{M}\;|\; gw(r)=A}}
 			In other words, 
@@ -1182,77 +567,6 @@ In order to give an exact definition of an ETP, we must examine each case of net
 %
 
 \section{QSPN optimisations}
-\subsection{Rtt and bandwidth}
-\label{sec:bandwidth_q1q2}
-
-The bandwidth capacity of a route can be used as a parameter of its
-efficiency. In this section we'll analyse the implications for the QSPN.
-For more information about the bandwidth management in Netsukuku you can read
-the NTK\_RFC 002 \cite{ntkrfc0002}.
-
-\subsubsection{Rtt delay}
-\label{sec:rtt_delay}
-
-Each node of the network will delay the forwarding of a received CTP by a time
-inversely proportional to its upload bandwidth. In this way the CTPs will
-continue to be received in order of efficiency (see section
-\ref{sec:eff_order}).
-The side effect of this rule is that the extreme cases will be ignored, i.e. a
-route with a very low rtt but with a very poor bw, or a route with an optimal
-bw but with a very high rtt. However, in the ``real world'' these extreme
-cases are rare, because the rtt and the bw are often related.
-
-\subsubsection{Asymmetry in $Q^2$}
-The QSPN v2 is a very flexible algorithm that can be adapted to a large range
-of cases. Indeed, with a minimal added overhead, it is possible to achieve
-asymmetric routing discovery, i.e. a discovery that discerns the upload
-bandwidth of a route from its download one.\\
-We call this extension the \emph{asymmetric QSPN v2}, while we refer to the
-old one as \emph{symmetric $Q^2$}.
-
-\begin{enumerate}
-	\item	First of all, it is necessary to define further the ``interesting
-		information''. A CTP will be considered interesting, not only when it contains
-		interesting (see \ref{sec:interesting_info}) download routes, but also upload
-		ones. In other words, we consider the upload sense of a route too. 
-
-		For example, suppose that the node $A$ received the CTP $ABCDAERTA$. In this
-		case $A$ will know two dinstinct upload routes: $A\rightarrow B\rightarrow
-		C\rightarrow D$ and $A\rightarrow E\rightarrow R\rightarrow T$. Instead, in
-		the classic CTP, $A$ would have known only $A\rightarrow T\rightarrow
-		R\rightarrow E$ and $A\rightarrow D\rightarrow C\rightarrow B$.
-	\item Secondly, since we are considering the reverse (upload) routes
-		too, we have to remove the restriction imposed on the CTP,
-		which has been described in section \ref{sec:reflected_CTP}.
-                The body of the CTP reflected from the extreme of a segment
-                won't be erased, thus it will contain the old routes too.
-		This is because the old routes can contain interesting
-		information about upload routes.
-		For example, consider this segment:
-		\[ \cdots \leftrightarrow A \leftrightarrow B \leftrightarrow C \leftrightarrow N \]
-		If $N$ doesn't erase the route received in the CTP, $A$ will
-		receive the following CTP:
-		\[
-		\cdots \rightarrow A \rightarrow B \rightarrow C \rightarrow N \rightarrow C \rightarrow B \rightarrow A
-		\]
-		In this case $A$ will know the following upload route:
-		\[
-			A \rightarrow B \rightarrow C \rightarrow N
-		\]
-		When parsing a CTP, a node will recognize the part of the
-		routes which are in the form of $XacaY$, where $a$, $c$ are
-		two nodes and $X$ and $Y$ are two generic routes. The packet
-		will then be split in $Xac$ and $caY$.
-\end{enumerate}
-At this point we've finished. In fact, we are sure to receive at least one
-upload route per node because a CTP traverses each path first in one sense
-and then in the opposite. The CTP information filter, will allow us
-to receive only the best routes. However, since the Rtt Delay
-(\ref{sec:rtt_delay}) is tuned for download routes only, it is possible that
-some upload paths will be ignored.\\
-It is interesting to note that in the majority of cases, the number of
-CTPs will remain equal to that of the symmetric $Q^2$.
-
 \subsection{Disjoint routes}
 The routing table of each node should be differentiated, i.e. it should not
 contain redundant routes.
@@ -1327,108 +641,8 @@ covered by the TP.\\
 The size required to store the signatures in the TP can be kept costant using the
 aggregate signature system \cite{aggrsign1} \cite{aggrsign2}.
 
-\section{Simulating the QSPN v2}
-As a proof of concept, we've a written the q2sim.py\cite{q2sim}, a simulator
-implementing the core of the QSPN v2.\\
-The q2sim is  an event-oriented Discrete Event Simulator.
-Each (event,time) pair is pushed in a priority queue.
-The main loop of the program retrieves from the queue the event having the
-lowest `time' value. This "popped" event is executed. In this case, the
-events are the packets sent on the network.
-
-In this paragraph we'll analyze the results of various simulations.
-\begin{description}
-	\item[TP flux] The \emph{TP flux} of a node $n$, is the number of
-		distinct\footnote{To clarify what we mean with ``distinct
-		TPs'': suppose $n$ has $6$ neighbours, it receives only two
-		TPs and sends only a new one, then $\Phi(n)\neq 5+5+6$, but
-		$\Phi(n)=3$.}
-		TP packets which have been forwarded by $n$ during the entire QSPN
-		exploration. it is indicated with $\Phi(n)$.
-	\item[Mean TP flux] Given $k$ nodes ${n_1,\dots,n_k}$, their mean TP
-		flux is:
-		\[
-		\Phi_m({n_1,\dots,n_k})=\frac{\sum_{i=1}^{k}\Phi(n_i)}{k}
-		\]
-	\item[Starter node]
-		A starter node is a node which sends the first TP in a graph,
-		not yet explored by the $Q^2$. There can be more than one
-		simultaneous starter node.
-\end{description}
-In all the following tests the \emph{MaxRoutes} limit has been set to 1.\\
-
-As a general result, the mean TP flux is proportional to the number of
-subcycles present in the graph. Thus the maximum mean TP flux is reached in a
-complete graph, where each node is connected to all the others. In a complete
-graph of $k$ nodes the mean TP flux is approximately:
-\[
-	\Phi_m \approx k-1,\;\; \Phi_m \le k
-\]
-The figure below shows this result. In the $x$ axis, an integer point
-corresponds to the number of nodes of the complete graph. The adjacent points of the
-graph have been connected  with straight line segments.
-\begin{center}
-\label{fig:k_one_starter}
-\includegraphics[scale=0.45]{fig/k_one_starter}
-\end{center}
-By increasing the number of starter nodes the
-mean TP flux increases slightly until it reaches $\Phi_m=k$. Indeed, if all the
-nodes of the graph are starters, then each of them will send a TP to all the
-other nodes. The increasing of the number of starter nodes decreases the time required
-to complete the exploration of the graph.
-The figure below shows this result. In the $x$ axis, an integer point
-corresponds to the number of starter nodes. Each plotted line corresponds to a
-complete graph with different number of nodes. The first bisector has been
-plotted to facilitate the reading of the graph.
-\begin{center}
-\label{fig:k_starters}
-\includegraphics[scale=0.45]{fig/k_starters}
-\end{center}
-The complete graph is the worst case for the $Q^2$, therefore in the general case the mean TP flux will be:
-\[ \Phi_m \le n \]
-where $n$ is the number of nodes of the graph.
-For example, in random graphs with increasing number of nodes, the mean TP
-flux will assume the distribution shown in the figure below:
-\begin{center}
-\label{fig:rone_starter}
-\includegraphics[scale=0.45]{fig/rone_starter}
-\end{center}
-The same happens for a mesh graph. The mesh graph used in the simulations
-is a square grid where every intersection represents a node.\\
-If the graph is uniformly connected, as in the case of a mesh graph, then the
-distribution of single TP fluxes is uniform too.
-The majority of single TP fluxes are near to the mean TP
-flux, while the highest TP fluxes are shared between different nodes, i.e.
-there aren't few unlucky nodes which have to bear a high TP flux.
-In the following figure, we can observe the TP flux distribution
-of two different QSPN exploration of a mesh graph with $11\times11$ nodes.
-In the $x$ axis, an integer point corresponds to a single node of the graph.
-Adjacent points are connected by a straight line.\\
-\begin{center}
-\label{fig:C-dist}
-\includegraphics[scale=0.45]{fig/C-dist}
-\end{center}
-In the first exploration, plotted in red, the starter node (node 40) and the eight nodes
-surrounding him (node 50,51,52,28,29,30,39,41) have the highest TP flux. The TP flux decreases with the
-increase of the distance from the starter node. Since the graph is a
-$11\times11$ grid, there are $11$ classes where the TP flux falls and for this
-reason in the graph there are exactly $11$ slopes. The nodes with lower TP fluxes are
-those with the least number of links, i.e. the nodes on the edge of the mesh,
-which have only 3 links (and not 4). The four nodes at the vertices of the
-grid (node 0,10,110,120), which have just 2
-links, register the lowest TP flux.\\
-The second exploration, plotted in blue, simulates the scenario where 32 links of the graph
-change and consequently the interested nodes send a new CTP to inform the
-other nodes and update their maps. As supposed, the mean TP flux (26.80) is heavily
-lower than that of the initial exploration (82.90), because the majority of
-routes are already known by the nodes. Even the execution time is lower (2.6s
-vs 3.5s). Note that this scenario is the most common in real world, because
-in general, the nodes won't join or die at once, but progressively.
-
-
 \section{TODO}
 \begin{enumerate}
-	\item The $Q^2$ must be implemented in the ntkd daemon.
 	\item Improve, test and implement the Caustic Routing:
 		\href{http://lab.dyne.org/Ntk\_caustic\_routing}{RFC 0013}
 	\item Well define a ``secure QSPN''
@@ -1437,6 +651,18 @@ in general, the nodes won't join or die at once, but progressively.
 
 \section{ChangeLog}
 \begin{itemize}
+	\item \verb|August 2007|
+		\begin{enumerate}
+%TODO			\item %The ATP is equivalent to Dijkstra
+			\item ``Real time issues'' removed from the ETP
+				section: it was superfluous.
+			\item The whole section regarding the CTP has been
+				removed, because until now the ETP is
+				sufficient to handle all the routing issues.
+			\item An observation regarding the step
+				\ref{backpropstep} of the \textbf{changed
+				link} case of the ETP has been added.
+		\end{enumerate}
 	\item \verb|July 2007|
 		\begin{enumerate}
 			\item The ETP has been simplified: all the cases are 
@@ -1451,7 +677,7 @@ in general, the nodes won't join or die at once, but progressively.
 			\item Description of the ETP (sec.  \ref{sec:etp})
 			\item Link ID section remove. With the ETP they are no
 				more necessary.
-			\item More detailed description of the QSPN v1 (sec. \ref{sec:QSPNv1})
+			\item More detailed description of the QSPN v1.
 			\item Subsection ``QSPN v2 - High levels'' removed. It
 				was redundant with the topology
 				document\cite{ntktopology}
