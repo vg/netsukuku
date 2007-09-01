@@ -184,14 +184,15 @@ class Etp:
 		    for r in [self.maproute.node_get(lvl, dst).best_route()]
 		        if r.gw != gw
 	      ] for lvl in xrange(self.maproute.levels) ]
-
-	if flag_of_interest:
-		if sum(filter(isnot_empty, S)) != 0:  # <==> if S != [[], ...]:  
-						      # <==> S isn't empty
-			Sflag_of_interest=0
-			TP = [(self.maproute.me, NullRem())]
-			etp = (S, [(0, TP)], Sflag_of_interest)
-			neigh.ntkd.etp.etp_exec(self.maproute.me, *etp)
+	
+	#step 5 omitted
+	#if flag_of_interest:
+	#	if sum(filter(isnot_empty, S)) != 0:  # <==> if S != [[], ...]:  
+	#					      # <==> S isn't empty
+	#		Sflag_of_interest=0
+	#		TP = [(self.maproute.me, NullRem())]
+	#		etp = (S, [(0, TP)], Sflag_of_interest)
+	#		neigh.ntkd.etp.etp_exec(self.maproute.me, *etp)
 	##
 
 	## R2 
