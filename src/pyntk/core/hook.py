@@ -1,0 +1,191 @@
+##
+# This file is part of Netsukuku
+# (c) Copyright 2007 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+#
+# This source code is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as published 
+# by the Free Software Foundation; either version 2 of the License,
+# or (at your option) any later version.
+#
+# This source code is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# Please refer to the GNU Public License for more details.
+#
+# You should have received a copy of the GNU Public License along with
+# this source code; if not, write to:
+# Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+##
+
+import sys
+sys.path.append("..")
+from lib.micro import microfunc
+from lib.event import Event
+from utils.misc import unique
+from random import choice, randint
+
+class Hook:
+
+    def __init__(self, neigh, maproute, coordnode): 
+    	self.neigh    = neigh
+    	self.maproute = maproute
+	self.coordnode= coordnode
+
+	self.events = Event(['HOOKED'])
+
+    	maproute.events.listen('NEW_NODE', self.communicating_vessels)
+    	maproute.events.listen('DEL_NODE', self.communicating_vessels)
+
+
+    @microfunc()
+    def communicating_vessels(self, *args):
+    	candidates=[]	# List of (neigh, fnb) elements. neigh is a
+    			# Neigh instance; fnb is the number of free
+    			# of the level 0 of neigh
+    	inv_candidates=[]
+    	def cand_cmp((a1, a2), (b1, b2)):
+    		return cmp(a2, b2)
+
+    	for nr in self.neigh.neigh_list():
+    		nrnip=self.maproute.ip_to_nip(nr.ip)
+    		if self.maproute.nip_cmp(self.maproute.me, nrnip) <= 0:
+    			# we're interested in external neighbours
+    			continue
+    		fnb=nr.ntkd.maproute.free_nodes_nb(0)
+    		if fnb+1 < self.maproute.free_nodes_nb(0):
+    			candidates.append((nr, fnb))
+    		elif self.maproute.free_nodes_nb(0)+1 < fnb:
+    			inv_candidates.append((nr, fnb))
+
+    	if inv_candidates != []:
+    		inv_candidates.sort(cmp=cand_cmp, reverse=1)
+    		# tell our neighbour, which is bigger than us, to launch 
+    		# its communicating vessels system
+    		inv_candidates[0][0].ntkd.hook.communicating_vessels()
+
+        if candidates != []:
+		candidates.sort(cmp=cand_cmp)
+    		# We've found some neighbour gnodes smaller than us. 
+    		# Let's rehook
+    		self.hook([nr for (nr, fnb) in candidates], True,
+				candidates[0][1])
+
+    @microfunc()
+    def hook(self, neigh_list=[], condition=False, gnumb=0):
+    	"""Lets the current node become a hooking node.
+
+    	I neigh_list!=[], it tries to hook among the given neighbours
+    	list, otherwise neigh_list is generated from the Radar.
+    	
+    	If condition is True, the re-hook take place only if the following
+    	is true:
+		gnumb < |G|
+    		|G'| < |G|
+    	where |G'| and `gnumb' is the number of nodes of the gnode where 
+	we are going to re-hook, and |G| is the number of nodes of our
+    	gnodes. |G'| and |G| are calculated using the coordinator
+	nodes. Note: this is used only by communicating_vessels()
+	"""
+	
+	oldip=self.maproute.me[:]
+	we_are_alone=False
+
+    	## Find all the highest non saturated gnodes
+    	hfn = [(self.maproute.me, self.highest_free_nodes())]
+    	
+    	if neigh_list == []:
+    		neigh_list = self.neigh.neigh_list()
+	if neigh_list == []:
+		we_are_alone = True
+	
+    	for nr in neigh_list:
+    		nrnip=self.maproute.ip_to_nip(nr.ip)
+    		if self.maproute.nip_cmp(self.maproute.me, nrnip) <= 0:
+    			# we're interested in external neighbours
+    			continue
+    		hfn.append((nrnip, nr.ntkd.hook.highest_free_nodes()))
+    	##
+
+    	## Find the highest level and remove all the lower ones
+    	hfn2=[]
+    	hfn_lvlmax = -1
+    	for h in hfn:
+    		if h[1][0] >= hfn_lvlmax:
+    			hfn_lvlmax = h[1][0]
+    			hfn2.append(h)
+                hfn=hfn2
+    	##
+
+    	## Find the list with the highest number of elements
+    	lenmax = 0
+    	for h in hfn:
+    		l=len(h[1][1])
+    		if l > lenmax:
+    			lenmax=l
+    			H=h
+    	##
+
+    	if lenmax == 0:
+    		raise Exception, "Netsukuku is full"
+
+    	## Generate part of our new IP
+    	newnip = H[0]
+    	lvl = H[1][0]
+    	fnl = H[1][1]
+    	newnip[lvl] = choice(fnl)
+    	newnip[self.maproute.levels]=0
+    	for l in reversed(xrange(lvl)): newnip[l]=randint(0, self.maproute.gsize)
+    	##
+	
+    	
+	## Contact the coordinator nodes 
+
+	if lvl > 0:
+		# If we are going to create a new gnode, it's useless to pose
+		# any condition
+		condition=False
+
+    	if condition:
+    		# <<I'm going out>>
+    		co=self.coordnode.co(1, self.maproute.me[1])
+		# get |G| and check that  gnumb < |G|
+    		rid, Gnumb = co.going_out(self.maproute.me, 1, gnumb)
+		if rid == None:
+			# nothing to be done
+			return
+
+    		# <<I'm going in, can I?>>
+    		co2=self.coordnode.co(lvl+1, newnip[lvl+1])
+		# ask if we can get in and if |G'| < |G|, and get our new IP
+    		newip=co2.going_in(newip, lvl+1, Gnumb)
+
+    		if newnip != None:
+			# we've been accepted
+    			co.going_out_ok(rid)
+		else:
+    			raise Exception, "Netsukuku is full"
+
+    		co.close()
+    		co2.close()
+	else not we_are_alone:
+		# <<I'm going in, can I?>>
+    		co2=self.coordnode.co(lvl+1, newnip[lvl+1])
+		# ask if we can get in, get our new IP
+    		newip=co2.going_in(newip, lvl+1)
+		if newnip == None:
+    			raise Exception, "Netsukuku is full"
+		co2.close()
+    	##
+
+	# hook complete
+	self.events.send('HOOKED', (oldip, newip[:]))
+
+
+    def highest_free_nodes(self):
+    	"""Returns (lvl, fnl), where fnl is a list of free node IDs of
+    	   level `lvl'."""
+    	for lvl in reversed(xrange(self.maproute.levels)):
+    		fnl = self.maproute.free_nodes_list(lvl)
+    		if fnl != []:
+    			return (lvl, fnl)
+    	return (-1, None)
