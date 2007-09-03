@@ -21,15 +21,7 @@ import commands
 import logging as logger
 import re
 
-class Nic:
-  """ this class is used to manage network interfaces """
-  def __init__(self, devname, devaddr=None):
-    """ devname: nic's name """
-    
-    self.devname = devname
-    self.devaddr = devaddr
-
-  def _exec_ipl(self, ipl_str):
+def _exec_ipl(ipl_str):
     """ ipl_str: ip link string (or ip addr) """
       
     # execute ip link/addr
@@ -40,6 +32,14 @@ class Nic:
       logger.error(output)
       
     return output
+
+class Nic:
+  """ this class is used to manage network interfaces """
+
+  def __init__(self, devname):
+    """ devname: nic's name """
+    
+    self.devname = devname
 
   def up(self):
     """ bring up the interface """
@@ -62,7 +62,8 @@ class Nic:
     return self._ip_address_show(ip_version)
 
   def activate(self, address):
-    """ Brings up the interface and changes its address to `address' """
+    """ Brings down and up the interface and changes its address to `address' """
+    self.down()
     self.up()
     self.change_address(address)
     
@@ -73,10 +74,10 @@ class Nic:
     ipa_str = "ip addr show dev " + str(self.devname)
     
     # execute ip addr
-    ipa_out = self._exec_ipl(ipa_str)
+    ipa_out = _exec_ipl(ipa_str)
     
     # check wether the interface is up or down
-    up_reg = re.compile("up", re.IGNORECASE)
+    up_reg = re.compile("\Wup\W", re.IGNORECASE)
     up_mat = up_reg.search(ipa_out)
     if up_mat is None:
       up_or_down = False
@@ -122,7 +123,7 @@ class Nic:
     ipl_str = "ip link set dev " + str(self.devname) + " " + str(up_or_down)
     
     # execute ip link
-    self._exec_ipl(ipl_str)
+    _exec_ipl(ipl_str)
 
   def _ip_link_change_address(self, address):
     """ change the interface's address via ip addr """
@@ -133,10 +134,61 @@ class Nic:
     ipl_str2 = "ip addr add "+ str(address) +" dev " + str(self.devname)
     
     # execute
-    self._exec_ipl(ipl_str1)
-    self._exec_ipl(ipl_str2)
+    _exec_ipl(ipl_str1)
+    _exec_ipl(ipl_str2)
 
-if __name__ != "main":
+class NicAll:
+    """Class to manage all the network interfaces"""
+
+    def __init__(self, nics=[], exclude_nics=['lo']):
+        
+        self.nic_names = nics
+        
+	if nics == []:
+    	    self.nic_names = self.nics_list()
+	for en in exclude_nics:
+		self.nic_names.remove(en)
+        
+	self.nics = map(Nic, self.nic_names)
+
+    def nics_list(self):
+        """Returns the list of the names of all the nic that are currently
+	   up"""
+
+        # generate ip addr string
+        ipl_str = "ip link show"
+        ipl_out = _exec_ipl(ipl_str)
+
+        rec=re.compile(r"^[0-9]+: (\w+):.*\WUP\W")
+    	return [ m.group(1) for l in ipl_out.splitlines()
+				for m in [rec.match(l)] 
+					if m != None ]
+    
+    def up(self):
+        """Brings up all the interfaces"""
+	for n in self.nics:
+    		n.up()
+    
+    def down(self):
+        """Brings up all the interfaces"""
+	for n in self.nics:
+    		n.down()
+
+    def retrieve_info(self, ip_version):
+	return [ (n.devname,)+n.retrieve_info(ip_version) for n in self.nics]
+
+    def change_address(self, address):
+        """Change the address to all the interfaces """
+	for n in self.nics:
+		n.change_address(address)
+    
+    def activate(self, address):
+        """Activate all the interfaces"""
+	for n in self.nics:
+		n.activate(address)
+
+    
+if __name__ == "__main__":
 	n=Nic("dummy0")
 	n.up()
 	print n.retrieve_info(4)
@@ -146,3 +198,6 @@ if __name__ != "main":
 	print n.retrieve_info(4)
 	n.activate("11.22.33.55")
 	print n.retrieve_info(4)
+
+	na=NicAll()
+	print na.retrieve_info(4)
