@@ -30,6 +30,12 @@ class Ntkd:
 
 	self._set_ipv(**drn({'levels' : opt.levels, 'ipv' : opt.ipv}))
 
+	self.nics = NicAll(**drn({'nics' : opt.nics, 
+				  'exclude_nics' : opt.exclude_nics}))
+	if self.nics.nics == []:
+		raise Exception, "No network interfaces found in the current system"
+
+	# Load the core modules
         self.radar      = radar.Radar( **drn({'multipath' : opt.multipath, 
                                               'bquet_num' : opt.bquet_num,
                                               'max_neigh' : opt.max_neigh,
@@ -39,9 +45,9 @@ class Ntkd:
 
 	self.maproute   = maproute.Maproute(self.levels, self.gsize)
 	self.etp        = qspn.Etp(self.neighbour, self.maproute)
-	self.hook       = hook.Hook(self.neighbour, self.maproute)
+	self.hook       = hook.Hook(self.neighbour, self.maproute, self.nics)
 
-
+    
     def _set_ipv(self, levels = 4, ipv = net.ipv4):
     	self.levels = levels
 	self.ipv    = ipv

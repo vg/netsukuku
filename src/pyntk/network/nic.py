@@ -142,12 +142,14 @@ class NicAll:
 
     def __init__(self, nics=[], exclude_nics=['lo']):
         
-        self.nic_names = nics
-        
-	if nics == []:
-    	    self.nic_names = self.nics_list()
+        self.nic_names = self.nics_list()
+
+	if nics != []:
+		# Leaves only the specified interfaces
+		self.nic_names = [ n for n in self.nic_names if n in nics ]
 	for en in exclude_nics:
-		self.nic_names.remove(en)
+		if en in self.nic_names:
+			self.nic_names.remove(en)
         
 	self.nics = map(Nic, self.nic_names)
 
@@ -200,4 +202,6 @@ if __name__ == "__main__":
 	print n.retrieve_info(4)
 
 	na=NicAll()
+	print na.retrieve_info(4)
+	na=NicAll(nics=['dummy0', 'eth0'])
 	print na.retrieve_info(4)

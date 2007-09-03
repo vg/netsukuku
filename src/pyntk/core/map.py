@@ -112,3 +112,13 @@ class Map:
 
     def nip_rand(self):
         return [randint(0, self.gsize-1) for i in xrange(self.levels)]
+
+    def level_reset(self, level):
+        """Resets the specified level, without raising any event"""
+	self.node[level]    = [None for i in xrange(gsize)]
+	self.node_nb[level] = 0
+    
+    def map_reset(self):
+        """Silently resets the whole map"""
+	for l in xrange(self.levels):
+		self.level_reset(l)

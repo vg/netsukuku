@@ -21,15 +21,17 @@ import sys
 sys.path.append("..")
 from lib.micro import microfunc
 from lib.event import Event
+from network.inet import ip_to_str
 from utils.misc import unique
 from random import choice, randint
 
 class Hook:
 
-    def __init__(self, neigh, maproute, coordnode): 
+    def __init__(self, neigh, maproute, coordnode, nics): 
     	self.neigh    = neigh
     	self.maproute = maproute
 	self.coordnode= coordnode
+	self.nics     = nics
 
 	self.events = Event(['HOOKED'])
 
@@ -177,8 +179,23 @@ class Hook:
 		co2.close()
     	##
 
-	# hook complete
+	
+	## complete the hook
+
+	# change the IPs of the NICs
+	self.nics.activate(ip_to_str(self.maproute.nip_to_ip(newip)))
+
+	# reset the map
+    	for l in reversed(xrange(lvl)): self.maproute.level_reset(l)
+
+	# Restore the neighbours in the map
+	for nr in self.neigh:
+		self.maproute.routeneigh_add(nr, silent=1)
+
+        # all done
 	self.events.send('HOOKED', (oldip, newip[:]))
+
+	##
 
 
     def highest_free_nodes(self):
@@ -189,3 +206,4 @@ class Hook:
     		if fnl != []:
     			return (lvl, fnl)
     	return (-1, None)
+

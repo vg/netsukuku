@@ -346,24 +346,27 @@ class MapRoute(Map):
 
 ## Neighbour stuff
 
-    def routeneigh_del(self, neigh):
+    def routeneigh_del(self, neigh, silent=0):
     	"""Delete from the MapRoute all the routes passing from the
     	   gateway `neigh.id' and delete the node `neigh' itself (if present)"""
 
     	for lvl in xrange(self.levels):
     		for dst in xrange(self.gsize):
     			self.route_del(lvl, dst, neigh.id, silent=1)
-	self.events.send('REM_DEL', (lvl, dst, neigh))
+	if not silent:
+		self.events.send('REM_DEL', (lvl, dst, neigh))
     
-    def routeneigh_add(self, neigh):
+    def routeneigh_add(self, neigh, silent=0):
         """Add a route to reach the neighbour `neigh'"""
 	lvl, nid = routeneigh_get(neigh)
-	self.events.send('REM_ADD', (lvl, nid, neigh))
+	if not silent:
+		self.events.send('REM_ADD', (lvl, nid, neigh))
 	return self.route_add(0, nid, nid, neigh.rem, silent=1)
 
-    def routeneigh_rem(self, neigh):
+    def routeneigh_rem(self, neigh, silent=0):
 	lvl, nid = routeneigh_get(neigh)
-	self.events.send('REM_NEIGH', (lvl, nid, neigh))
+	if not silent:
+		self.events.send('REM_NEIGH', (lvl, nid, neigh))
 	return self.route_rem(lvl, dst, neigh.rem, silent=1)
 
 
