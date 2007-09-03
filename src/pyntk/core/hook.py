@@ -182,6 +182,10 @@ class Hook:
 	
 	## complete the hook
 
+	# close the ntkd sessions
+	for nr in self.neigh:
+		nr.ntkd.close()
+
 	# change the IPs of the NICs
 	self.nics.activate(ip_to_str(self.maproute.nip_to_ip(newip)))
 
@@ -192,9 +196,14 @@ class Hook:
 	for nr in self.neigh:
 		self.maproute.routeneigh_add(nr, silent=1)
 
-        # all done
+        # we've done our part
 	self.events.send('HOOKED', (oldip, newip[:]))
 
+	# warn our previous internal neighbours
+	for nr in self.neigh:
+    		nrnip=self.maproute.ip_to_nip(nr.ip)
+    		if self.maproute.nip_cmp(oldip, nrnip) <= 0:
+			nr.ntkd.neigh.delete(oldip)
 	##
 
 

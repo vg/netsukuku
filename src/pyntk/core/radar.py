@@ -191,7 +191,8 @@ class Neighbour:
     """Deletes an entry from the ip_table"""
     if ip in self.ip_table:
 	    del self.ip_table[ip]
-	    del self.translation_table[ip]
+	    old_id=self.translation_table[ip]
+            self.events.send('DEL_NEIGH', (Neigh(ip, old_id, None)))
 
 class Radar:
   def __init__(self, multipath = 0, bquet_num = 16, max_neigh = 16, max_wait_time = 8):
