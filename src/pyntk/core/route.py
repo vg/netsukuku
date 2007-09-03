@@ -286,14 +286,14 @@ class MapRoute(Map):
     def __init__(self, levels, gsize, me):
     	Map.__init__(self, levels, gsize, RouteNode, me)
 
-	self.events = Event( [  'NEW_ROUTE',
-    				'DEL_ROUTE',
-    				'REM_ROUTE',	# the route's rem changed
+	self.events.add( [  'NEW_ROUTE',
+    			    'DEL_ROUTE',
+    			    'REM_ROUTE',	# the route's rem changed
 
-				'NEW_NEIGH',
-				'DEL_NEIGH',
-				'REM_NEIGH'
-    			     ] )
+			    'NEW_NEIGH',
+			    'DEL_NEIGH',
+			    'REM_NEIGH'
+    		     	] )
 
     def route_add(self, lvl, dst, gw, rem, silent=0):
 	n=self.node_get(lvl, dst)
@@ -358,12 +358,12 @@ class MapRoute(Map):
     def routeneigh_add(self, neigh):
         """Add a route to reach the neighbour `neigh'"""
 	lvl, nid = routeneigh_get(neigh)
-	self.events.send('REM_ADD', (lvl, dst, neigh))
+	self.events.send('REM_ADD', (lvl, nid, neigh))
 	return self.route_add(0, nid, nid, neigh.rem, silent=1)
 
     def routeneigh_rem(self, neigh):
 	lvl, nid = routeneigh_get(neigh)
-	self.events.send('REM_NEIGH', (lvl, dst, neigh))
+	self.events.send('REM_NEIGH', (lvl, nid, neigh))
 	return self.route_rem(lvl, dst, neigh.rem, silent=1)
 
 

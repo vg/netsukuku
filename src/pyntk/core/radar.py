@@ -22,6 +22,7 @@ sys.path.append("..")
 from ntkd       import NtkdBroadcast
 from lib.xtime  import swait, time
 from lib.micro  import micro
+from lib.event import Event
 from core.route import Rtt
 from operator   import itemgetter
 
@@ -84,7 +85,7 @@ class Neighbour:
 
     if(ipn in self.translation_table):
       return self.translation_table[ipn]
-    new_id = self._find_hole_in_tt
+    new_id = self._find_hole_in_tt()
     if new_id:
       self.translation_table[ipn] = new_id
       return new_id
@@ -128,10 +129,8 @@ class Neighbour:
         if(key in self.ip_table):
           # remember we are truncating this row
           trucated.append(key)
-          # remember its id
-          old_id = self.translation_table(key)
           # delete the entry from the translation table
-          self.translation_table.pop(key)
+          old_id = self.translation_table.pop(key)
           # send a message notifying we deleted the entry
           self.events.send('DEL_NEIGH', (Neigh(key, old_id, None)))
     # return the new ip_table and the list of truncated entries
@@ -175,7 +174,7 @@ class Neighbour:
       # if a node has been added
       if(not (key in self.ip_table)):
         # generate an id and add the entry in translation_table
-        ip_to_id(key)
+        self.ip_to_id(key)
         # send a message notifying we added a node
         self.events.send('NEW_NEIGH', (Neigh(key, self.translation_table(key), self.ip_table[key].rtt)))
       else:
@@ -183,19 +182,27 @@ class Neighbour:
         # its rtt has changed more than rtt_variation
         if(abs(ip_table[key].rtt - self.ip_table[key].rtt) / self.ip_table[key].rtt > self.rtt_mav_var):
           # send a message notifying the node's rtt changed
-          self.events.send('REM_NEIGH', (Neigh(key, self.translation_table(key), ip_table[key].rtt), self.ip_table[key].rtt))
+          self.events.send('REM_NEIGH', (Neigh(key, self.translation_table[key], ip_table[key].rtt), self.ip_table[key].rtt))
 
     # finally, update the ip_table
     self.ip_table = ip_table
 
+  def delete(self, ip):
+    """Deletes an entry from the ip_table"""
+    if ip in self.ip_table:
+	    del self.ip_table[ip]
+	    del self.translation_table[ip]
+
 class Radar:
-  def __init__(self, multipath = 0, bquet_num = 16, max_neigh = 16, max_wait_time = 10):
+  def __init__(self, multipath = 0, bquet_num = 16, max_neigh = 16, max_wait_time = 8):
     """ multipath: does the current kernel we're running on support multipath routing?;
         bquet_num: how many packets does each bouquet contain?;
         max_neigh: maximum number of neighbours we can have;
         max_wait_time: the maximum time we can wait for a reply, in seconds;
     """
 
+    # how many bouquet we have already sent
+    self.bouquet_numb = 0
     # when we sent the broadcast packets
     self.bcast_send_time = 0
     # when the replies arrived
@@ -207,6 +214,10 @@ class Radar:
     self.broadcast = NtkdBroadcast(self.time_register)
     # our neighbours
     self.neigh = Neighbour(multipath, max_neigh)
+
+    # Send a SCAN_DONE event each time a sent bouquet has been completely
+    # collected
+    self.events = Event( [ 'SCAN_DONE' ] )
 
   def run(self, started=0):
     if not started:
@@ -231,6 +242,10 @@ class Radar:
 
     # update the neighbours' ip_table
     self.neigh.store(self.get_all_avg_rtt())
+
+    # Send the event
+    self.bouquet_numb+=1
+    self.events.send('SCAN_DONE', (bouquet_numb))
 
   def reply(self):
     """ just do nothing """

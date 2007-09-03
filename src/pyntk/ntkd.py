@@ -21,6 +21,7 @@ from lib.opt import Opt, OptErr
 import core.radar   as radar
 import core.route   as maproute
 import core.qspn    as qspn
+import core.hook    as hook
 import network.inet as inet
 from lib.misc import dict_remove_none as drn
 
@@ -34,11 +35,11 @@ class Ntkd:
                                               'max_neigh' : opt.max_neigh,
                                               'max_wait_time' : opt.max_wait_time)})
 				     )
-	self.neighbour  = radar.Neighbour(**drn({'multipath' : opt.multipath,
-		                                 'max_neigh' : opt.max_neigh}))
+	self.neighbour  = radar.neigh
 
 	self.maproute   = maproute.Maproute(self.levels, self.gsize)
 	self.etp        = qspn.Etp(self.neighbour, self.maproute)
+	self.hook       = hook.Hook(self.neighbour, self.maproute)
 
 
     def _set_ipv(self, levels = 4, ipv = net.ipv4):

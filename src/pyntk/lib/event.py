@@ -21,38 +21,82 @@
 class EventError(Exception):pass
 
 class Event:
-	def __init__(self, events):
-		self.events    = events	  # List of events
-		self.listeners = {}	  # {event : [listener,] }
+    """Event class.
+
+    Any module M can register its own events. Any other module N can
+    listen to these events.
+
+    ** Registering the events
+
+	    class M:
+	    	def __init__(self):
+			self.events = Event( ['EVENT1', 'EVENT2', 'FOOEVENT'] )
+			...
+			self.events.add( ['EVENT3', 'EVENT4'] )
+
+    ** Sending an event:
+	    
+	    class M:
+	    	...
+		def f(self):
+		    self.events.send('EVENT1', (param1, param2, param3))
+
+    ** Listening to an event
+
+    	    class N:
+	    	def __init__(self, m)
+		    # m is an instance of the class M
+		    m.events.listen('EVENT1', self.func_for_ev1)
+
+		def func_for_ev1(param1, param2, param3):
+		    ...
+	
+	If func_for_ev1 is defined as a normal function, then the code calling
+	events.send('EVENT1', (...)) will block until func_for_ev1 finishes.
+	If you don't want this behaviour, then the listeners must be
+	microfunctions, f.e.
+
+		@microfunc()
+		def func_for_ev1(param1, param2, param3):
+		    ...
+	
+	For more info on microfunctions see lib/micro.py
+    """
 		
-	def send(self, event, msg):
-		if event not in self.events:
-			raise EventError, "\""+event+"\" is not a registered event"
 
-		if self.listeners.has_key(event):
-			for dst in self.listeners[event]:
-				self._send(dst, msg)
+    def __init__(self, events):
+    	self.events    = events	  # List of events
+    	self.listeners = {}	  # {event : [listener,] }
+    
+    def add(self, events):
+    	self.events   += events
 
-	def _send(self, dst, msg):
-		# TODO
-		# What to use? tasklets? queue.append()? 
-		# Surely it must not block
-		pass
+    def send(self, event, msg):
+    	if event not in self.events:
+    		raise EventError, "\""+event+"\" is not a registered event"
 
-	def listen(self, event, dst, remove=False):
-		"""Listen to an event.
+    	if self.listeners.has_key(event):
+    		for dst in self.listeners[event]:
+    			self._send(dst, msg)
 
-		If `remove'=False, then `dst' is added in the listeners queue of
-		the event `event', otherwise `dst' is removed from that queue.
-		"""
+    def _send(self, dst, msg):
+    	# call the microfunc `dst'
+    	dst(*msg)
 
-		if event not in self.events:
-			raise EventError, "\""+event+"\" is not a registered event"
+    def listen(self, event, dst, remove=False):
+    	"""Listen to an event.
 
-		if event not in self.listeners:
-			self.listeners[event]=[]
+    	If `remove'=False, then `dst' is added in the listeners queue of
+    	the event `event', otherwise `dst' is removed from that queue.
+    	"""
 
-		if not remove:
-			self.listeners[event].append(dst)
-		elif dst in self.listeners[event]:
-			self.listeners[event].remove(dst)
+    	if event not in self.events:
+    		raise EventError, "\""+event+"\" is not a registered event"
+
+    	if event not in self.listeners:
+    		self.listeners[event]=[]
+
+    	if not remove:
+    		self.listeners[event].append(dst)
+    	elif dst in self.listeners[event]:
+    		self.listeners[event].remove(dst)

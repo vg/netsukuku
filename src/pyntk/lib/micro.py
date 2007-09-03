@@ -73,7 +73,7 @@ def microfunc(is_micro=False):
     '''
     def decorate(func)
         ch = Channel()
-        micro(dispatcher, (func, ch, is_micro)
+        micro(dispatcher, (func, ch, is_micro))
         return ch.send
 
     return decorate

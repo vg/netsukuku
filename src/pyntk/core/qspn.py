@@ -28,6 +28,7 @@ class Etp:
 
     def __init__(self, neigh, maproute):
 
+	self.neigh   =neigh
     	self.maproute=maproute
 
     	neigh.events.listen('NEW_NEIGH', self.etp_new_changed)
@@ -89,12 +90,14 @@ class Etp:
 	
 	def takeoff_gw((dst, gw, rem)):
 		return (dst, rem)
-	R=map(takeoff_gw, R)
+	def takeoff_gw_lvl(L):
+		return map(takeoff_gw, L)
+	R=map(takeoff_gw_lvl, R)
 	##
 
 	## Send the ETP to `neigh'
 	flag_of_interest=1
-	TP = [(self.maproute.me, NullRem)]
+	TP = [(self.maproute.me[0], NullRem)]
 	etp = (R, [(0, TP)], flag_of_interest)
 	neigh.ntkd.etp.etp_exec(self.maproute.me, *etp)
 	##
@@ -169,9 +172,19 @@ class Etp:
 			return    # drop the pkt
 	##
 
-	tprem = sum(rem for block in TPL for hop, rem in block[1])+gwrem
+
+	## Update the map from the TPL
+	tprem=gwrem
+	TPL_is_interesting=0
+	for block in TPL:
+		lvl=block[0]
+		for dst, rem in block[1]:
+			tprem+=rem
+			if self.maproute.route_change(lvl, dst, gw, tprem):
+				TPL_is_interesting+=1
+        ##
 	
-	## Update the map
+	## Update the map from R
 	for lvl in xrange(self.maproute.levels):
 		for dst, rem in R[lvl]:
 			if not self.maproute.route_rem(lvl, dst, gw, rem+tprem):
@@ -190,7 +203,7 @@ class Etp:
 	#	if sum(filter(isnot_empty, S)) != 0:  # <==> if S != [[], ...]:  
 	#					      # <==> S isn't empty
 	#		Sflag_of_interest=0
-	#		TP = [(self.maproute.me, NullRem())]
+	#		TP = [(self.maproute.me[0], NullRem())]
 	#		etp = (S, [(0, TP)], Sflag_of_interest)
 	#		neigh.ntkd.etp.etp_exec(self.maproute.me, *etp)
 	##
@@ -202,14 +215,20 @@ class Etp:
 	      ] for lvl in xrange(self.maproute.levels) ]
 	##
 
-	if sum(filter(isnot_empty, R2)) != 0:  # <==> if R2 isn't empty
+	## Continue to forward the ETP if it is interesting
+
+	                                   # <==> if R2 isn't empty
+	if sum(filter(isnot_empty, R2)) != 0  				\
+			or TPL_is_interesting:
+
 		if TPL[-1][0] != 0:
-			TP = [(self.maproute.me, NullRem())]	
+			TP = [(self.maproute.me[0], NullRem())]	
 			TPL.append((0, TP))
 		else:
 			TPL[-1][1].append((self.maproute.me, gwrem))
 		etp = (R2, TPL, flag_of_interest)
 		self.etp_forward(etp, [neigh.id])
+	##
 
     def etp_forward(self, etp, exclude):
         """Forwards the `etp' to all our neighbours,
@@ -217,7 +236,7 @@ class Etp:
 	   
 	   `Exclude' is a list of "Neighbour.id"s"""
 
-	for nr in self.neigh_list():
+	for nr in self.neigh.neigh_list():
 		if nr.id not in exclude:
 			nr.ntkd.etp.etp_exec(self.maproute.me, *etp)
 

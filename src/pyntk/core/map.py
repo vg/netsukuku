@@ -43,6 +43,8 @@ class Map:
 
 	# The member self.node[l][i] is a node of level l and its ID is i
 	self.node = [[None for i in xrange(gsize)] for i in xrange(levels)]
+	# Number of nodes of each level
+	self.node_nb = [ 0 for i in xrange(levels) ]
 
 	self.events = Event( [ 'NEW_NODE', 'DEL_NODE' ] )
 
@@ -57,13 +59,26 @@ class Map:
 	return self.node[lvl][id]
 
     def node_add(self, lvl, id):
-        node=self.node_get(lvl, id)
-	self.events.send('NEW_NODE', (lvl, id))
+        if self.node[lvl][id] is None:
+		node=self.node_get(lvl, id)
+		self.node_nb[lvl]+=1
+		self.events.send('NEW_NODE', (lvl, id))
 
     def node_del(self, lvl, id):
         if self.node[lvl][id] is not None:
+		self.node_nb[lvl]-=1
 	    	self.events.send('DEL_NODE', (lvl, id))
 	self.node[lvl][id]=None
+
+    def free_nodes_nb(self, lvl):
+    	"""Returns the number of free nodes of level `lvl'"""
+    	return self.maproute.gsize-self.maproute.node_nb[lvl]
+
+    def free_nodes_list(self, lvl):
+        """Returns the list of free nodes of level `lvl'"""\
+        return [nid for n in self.node[lvl] 
+			for nid in self.gsize
+			    if self.node[lvl][nid] != None]
 
     def is_in_level(self, nip, lvl):
 	"""Does the node nip belongs to our gnode of level `lvl'?"""
@@ -89,10 +104,10 @@ class Map:
         """Returns the first level where nipA and nipB differs. The search
 	start from the end of the nip """
 
-	for lvl in xrange(self.levels):
-		l=self.levels-lvl-1
-		if nipA[l] != nipB[l]:
-			return l
+	for lvl in reversed(xrange(self.levels)):
+		if nipA[lvl] != nipB[lvl]:
+			return lvl
+
 	return self.levels+1
 
     def nip_rand(self):
