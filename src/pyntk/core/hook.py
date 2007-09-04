@@ -37,22 +37,16 @@ class Hook:
 
 	self.events = Event(['HOOKED'])
 
-    	maproute.events.listen('NEW_NODE', self._set_node_chgd)
-    	maproute.events.listen('DEL_NODE', self._set_node_chgd)
     	etp.events.listen('ETP_EXECED', self.communicating_vessels)
     	etp.events.listen('NET_COLLISION', self.hook)
         
-	# with _node_chgd we ensure that after receiving a NEW_NODE/DEL_NODE
-	# event, and after receiving a ETP_EXECED event,
-	# communicating_vessels() is called
-	self._node_chgd = 0 
-
-    def _set_node_chgd(self, *args):
-        self._node_chgd=1
-
     @microfunc()
-    def communicating_vessels(self, *args):
-        if not self._node_chgd: return
+    def communicating_vessels(self, old_node_nb, cur_node_nb):
+	
+    	if cur_node_nb[0] == old_node_nb[0]:
+		return
+	if self.gnodes_split(old_node_nb, cur_node_nb):
+		return 
 
     	candidates=[]	# List of (neigh, fnb) elements. neigh is a
     			# Neigh instance; fnb is the number of free
@@ -84,8 +78,6 @@ class Hook:
     		# Let's rehook
     		self.hook([nr for (nr, fnb) in candidates], True,
 				candidates[0][1])
-	
-	self._node_chgd = 0
 
     @microfunc()
     def hook(self, neigh_list=[], condition=False, gnumb=0):
@@ -210,9 +202,8 @@ class Hook:
 	# reset the map
     	for l in reversed(xrange(lvl)): self.maproute.level_reset(l)
 
-	# Restore the neighbours in the map
-	for nr in self.neigh:
-		self.maproute.routeneigh_add(nr, silent=1)
+	# Restore the neighbours in the map and send the ETP
+	self.neigh.readvertise()
 
         # we've done our part
 	self.events.send('HOOKED', (oldip, newip[:]))
@@ -225,7 +216,6 @@ class Hook:
 	##
         
 
-
     def highest_free_nodes(self):
     	"""Returns (lvl, fnl), where fnl is a list of free node IDs of
     	   level `lvl'."""
@@ -234,4 +224,24 @@ class Hook:
     		if fnl != []:
     			return (lvl, fnl)
     	return (-1, None)
+    
+    def gnodes_split(old_node_nb, cur_node_nb):
+        """Handles the case of gnode splitting"""
+	gnodesplitted = 0
+	for lvl in reversed(xrange(self.maproute-1)):
+		diff = old_node_nb - cur_node_nb
+		if diff > 0 and diff >= cur_node_nb:
+			level = lvl+1
+        if not gnodesplitted:
+		return 0
 
+	N = [ nr for nr in self.neigh.neigh_list():
+    		     if self.maproute.nip_cmp(self.maproute.me,
+				self.maproute.ip_to_nip(nr.ip)) >= level ]
+        if N == []:
+		# we don't have any place to rehook
+		return gnodesplitted
+
+	# ok, our gnode of level `level' has become broken, and we are in the
+	# smallest part of the two. Let's rehook
+	self.hook(N)

@@ -191,6 +191,13 @@ class Neighbour:
     # finally, update the ip_table
     self.ip_table = ip_table
 
+  def readvertise(self):
+    """Sends a NEW_NEIGH event for each stored neighbour"""
+    for key in ip_table:
+        self.events.send('NEW_NEIGH', 
+			 (Neigh(key, self.translation_table(key),
+				self.ip_table[key].rtt, self.netid_table[key])))
+
   def delete(self, ip, remove_from_iptable=True):
     """Deletes an entry from the ip_table"""
     if ip in self.ip_table and remove_from_iptable:

@@ -613,8 +613,9 @@ A gnode $G$ is internally connected if
 A gnode can become broken (not internally connected) if another gnode of the
 network assumes the same gnode ID, or if one or more link inside the gnode
 die, splitting the gnode in two separate parts. In practice, the
-first case may happen only if two separate gnodes meet each other for the
-first time: we have $G \leftrightarrow G'$, with $ID(G)=ID(G')$, then the nodes 
+first case may happen only if two separate networks meet each other for the
+first time: let $\ove G, \ove {G'}$ be two gnodes of level $l+1$, meeting for the first time. 
+Suppose that $\exists G\in \ove G,\;\exists G'\in \ove G':\; ID(G)=ID(G')$, then the nodes 
 of the smallest gnode or oldest uptime will rehook.\\
 The second case, where $G$ is split into two parts is handled as follow:
 a bnode $n\in G$ receives the ETP for the death of a link.

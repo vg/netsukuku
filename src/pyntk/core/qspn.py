@@ -25,6 +25,7 @@ from utils.misc import unique
 from route import NullRem, DeadRem
 
 class Etp:
+    """Extended Tracer Packet"""
 
     def __init__(self, radar, maproute):
 
@@ -183,6 +184,7 @@ class Etp:
 			return    # drop the pkt
 	##
 
+	old_node_nb = self.maproute.node_nb[:]
 
 	## Update the map from the TPL
 	tprem=gwrem
@@ -241,7 +243,7 @@ class Etp:
 		self.etp_forward(etp, [neigh.id])
 	##
 
-	self.events.send('ETP_EXECED', ())
+	self.events.send('ETP_EXECED', (old_node_nb, self.maproute.node_nb[:]))
 
     def etp_forward(self, etp, exclude):
         """Forwards the `etp' to all our neighbours,
