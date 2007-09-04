@@ -22,7 +22,7 @@ sys.path.append("..")
 from ntkd       import NtkdBroadcast
 from lib.xtime  import swait, time
 from lib.micro  import micro
-from lib.event import Event
+from lib.event  import Event
 from core.route import Rtt
 from operator   import itemgetter
 
@@ -40,10 +40,11 @@ class NodeInfo:
 class Neigh:
   """ this class simply represent a neighbour """
 
-  def __init__(self, ip, idn, rtt):
+  def __init__(self, ip, idn, rtt, netid):
     """ ip: neighbour's ip;
         idn: neighbour's id;
         rtt: neighbour's round trip time;
+	netid: network id of the node
     """
 
     self.ip = ip
@@ -51,6 +52,7 @@ class Neigh:
     self.rem = Rtt(rtt)		# TODO(low): support the other metrics
     # neighbour's ntk remote instance
     self.ntk = Ntk(ip)
+    self.netid = netid
 
 class Neighbour:
   """ this class manages all neighbours """
@@ -63,10 +65,12 @@ class Neighbour:
     self.max_neigh = max_neigh
     # variation on neighbours' rtt greater than this will be notified
     self.rtt_variation = 0.1
-    # our ip_table
+    # ip_table
     self.ip_table = {}
-    # our IP => ID translation table
+    # IP => ID translation table
     self.translation_table = {}
+    # IP => netid
+    self.netid_table = {}
     # the events we raise
     self.events = Event(['NEW_NEIGH', 'DEL_NEIGH', 'REM_NEIGH'])
 
@@ -74,7 +78,7 @@ class Neighbour:
     """ return the list of neighbours """
     nlist = []
     for key, val in ip_table:
-      nlist.append(Neigh(key, translation_table[key], val.rtt))
+      nlist.append(Neigh(key, translation_table[key], val.rtt, self.netid_table[key]))
     return nlist
 
   def ip_to_id(self, ipn):
@@ -97,7 +101,8 @@ class Neighbour:
         return a Neigh object from an ip
     """
     
-    return Neigh(ip, self.translation_table[ip], self.ip_table[ip].rtt)
+    return Neigh(ip, self.translation_table[ip], self.ip_table[ip].rtt,
+		    self.netid_table[ip])
 
   def _truncate(self, ip_table):
     """ ip_table: an {IP => NodeInfo ~ [dev, rtt, ntk]};
@@ -129,10 +134,9 @@ class Neighbour:
         if(key in self.ip_table):
           # remember we are truncating this row
           trucated.append(key)
-          # delete the entry from the translation table
-          old_id = self.translation_table.pop(key)
-          # send a message notifying we deleted the entry
-          self.events.send('DEL_NEIGH', (Neigh(key, old_id, None)))
+	  # delete the entry
+	  self.delete(key, remove_from_iptable=False)
+
     # return the new ip_table and the list of truncated entries
     return (ip_table_trunc, truncated)
 
@@ -160,12 +164,7 @@ class Neighbour:
       # deletion hasn't already been notified (raising an event)
       # during truncation
       if((not (key in ip_table)) and (not (key in died_ip_list))):
-        # remember its id
-        old_id = self.translation_table(key)
-        # delete the entry from the translation table
-        self.translation_table.pop(key)
-        # send a message notifying we deleted the entry
-        self.events.send('DEL_NEIGH', (Neigh(key, old_id, None)))
+	  self.delete(key, remove_from_iptable=False)
 
     # now we cycle through the new ip_table
     # looking for nodes who weren't in the old one
@@ -176,23 +175,32 @@ class Neighbour:
         # generate an id and add the entry in translation_table
         self.ip_to_id(key)
         # send a message notifying we added a node
-        self.events.send('NEW_NEIGH', (Neigh(key, self.translation_table(key), self.ip_table[key].rtt)))
+        self.events.send('NEW_NEIGH', 
+			 (Neigh(key, self.translation_table(key),
+				self.ip_table[key].rtt, self.netid_table[key])))
       else:
         # otherwise (if the node already was in old ip_table) check if
         # its rtt has changed more than rtt_variation
         if(abs(ip_table[key].rtt - self.ip_table[key].rtt) / self.ip_table[key].rtt > self.rtt_mav_var):
           # send a message notifying the node's rtt changed
-          self.events.send('REM_NEIGH', (Neigh(key, self.translation_table[key], ip_table[key].rtt), self.ip_table[key].rtt))
+          self.events.send('REM_NEIGH',
+			   (Neigh(key, self.translation_table[key], ip_table[key].rtt), 
+				   self.ip_table[key].rtt,
+				   self.netid_table[key]))
 
     # finally, update the ip_table
     self.ip_table = ip_table
 
-  def delete(self, ip):
+  def delete(self, ip, remove_from_iptable=True):
     """Deletes an entry from the ip_table"""
-    if ip in self.ip_table:
+    if ip in self.ip_table and remove_from_iptable:
 	    del self.ip_table[ip]
-	    old_id=self.translation_table[ip]
-            self.events.send('DEL_NEIGH', (Neigh(ip, old_id, None)))
+    # delete the entry from the translation table...
+    old_id = self.translation_table.pop(ip)
+    # ...and from the netid_table
+    old_netid = self.netid_table.pop(ip)
+    # send a message notifying we deleted the entry
+    self.events.send('DEL_NEIGH', (Neigh(ip, old_id, None, old_netid)))
 
 class Radar:
   def __init__(self, multipath = 0, bquet_num = 16, max_neigh = 16, max_wait_time = 8):
@@ -219,6 +227,9 @@ class Radar:
     # Send a SCAN_DONE event each time a sent bouquet has been completely
     # collected
     self.events = Event( [ 'SCAN_DONE' ] )
+
+    # Our netid. It's a random id used to detect network collisions.
+    self.netid  = None
 
   def run(self, started=0):
     if not started:
@@ -249,10 +260,10 @@ class Radar:
     self.events.send('SCAN_DONE', (bouquet_numb))
 
   def reply(self):
-    """ just do nothing """
-    pass
+    """ As answer we'll return our netid """
+    return self.netid
 
-  def time_register(self, ip, net_device):
+  def time_register(self, ip, net_device, msg):
     """save each node's rtt"""
 
     # this is the rtt
@@ -266,6 +277,9 @@ class Radar:
     else:
       self.bcast_arrival_time[ip] = {}
       self.bcast_arrival_time[ip][net_device] = [time_elapsed]
+    
+    self.neigh.netid_table[ip] = msg
+
 
   def get_avg_rtt(self, ip):
     """ ip: an ip;
