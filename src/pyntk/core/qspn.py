@@ -26,14 +26,16 @@ from route import NullRem, DeadRem
 
 class Etp:
 
-    def __init__(self, neigh, maproute):
+    def __init__(self, radar, maproute):
 
-	self.neigh   =neigh
+	self.neigh   =radar.neigh
     	self.maproute=maproute
 
     	neigh.events.listen('NEW_NEIGH', self.etp_new_changed)
     	neigh.events.listen('REM_NEIGH', self.etp_new_changed)
     	neigh.events.listen('DEL_NEIGH', self.etp_new_dead)
+
+	self.events = Event(['ETP_EXECED', 'NET_COLLISION'])
     
     @microfunc(True)
     def etp_new_dead(self, neigh):
@@ -119,19 +121,28 @@ class Etp:
 
 	def isnot_empty(x):return x!=[] #helper func
         
-        gwip    = sender_nip
-	neigh   = self.neigh.ip_to_neigh(gwip)
+        gwnip    = sender_nip
+	neigh   = self.neigh.ip_to_neigh(gwnip)
 	gw	= neigh.id
 	gwrem	= neigh.rem
 
+	## Collision check
+	if self.collision_check(gwnip, neigh, R):
+		# collision detected. rehook.
+		self.events.send('NET_COLLISION', 
+				 ([nr for nr in self.neigh.neigh_list()
+						if nr.netid == neigh.netid])
+		return # drop the packet
+        ##
+
 	## Group rule
-	level = self.maproute.nip_cmp(self.maproute.me, gwip)
+	level = self.maproute.nip_cmp(self.maproute.me, gwnip)
 	for block in TPL:
 		lvl = block[0] # the level of the block
 		if lvl < level:
 			block[0] = level
 			blockrem = sum(rem for hop, rem in block[1])
-			block[1] = [(gwip[level], blockrem)]
+			block[1] = [(gwnip[level], blockrem)]
 			R[lvl] = []
         
 	
@@ -230,6 +241,8 @@ class Etp:
 		self.etp_forward(etp, [neigh.id])
 	##
 
+	self.events.send('ETP_EXECED', ())
+
     def etp_forward(self, etp, exclude):
         """Forwards the `etp' to all our neighbours,
 	   excluding those contained in `exclude'
@@ -239,4 +252,58 @@ class Etp:
 	for nr in self.neigh.neigh_list():
 		if nr.id not in exclude:
 			nr.ntkd.etp.etp_exec(self.maproute.me, *etp)
+    
+    def collision_check(self, gwnip, neigh, R):
+        """ Checks if we are colliding with the network of `neigh'.
+	
+	    It returns True if we are colliding and we are going to rehook.
+	    !NOTE! the set R will be modified: all the colliding routes will
+	    be removed.
+	"""
+	
+	if neigh.netid == self.radar.netid				\
+	    or self.radar.netid == None:
+		self.radar.netid = neigh.netid
+		return (False, R) # all ok
 
+	# uhm... we are in different networks
+
+	## Calculate the size of the two nets
+	def add(a,b):return a+b
+	mynetsz = reduce(add, self.maproute.node_nb)
+	ngnetsz = reduce(add, map(len, R))
+
+	if mynetsz > ngnetsz or 					\
+		(mynetsz == ngnetsz and self.radar.netid > neigh.netid):
+		# we don't care if we are colliding or not. We can simply
+		# ignore colliding routes, the rest will be done by the other
+		# net.
+
+		### Remove colliding routes from R
+		R = [ [ (dst, rem) 
+			    for dst, rem in R[lvl]
+			        if self.maproute.node_get(lvl, dst).is_empty() ]
+			for lvl in xrange(self.maproute.levels) ]
+		###
+		return False
+	##
+
+	# We are the smaller net.
+
+	## Check if we are colliding with another (g)node of the neighbour
+	## net
+	level = self.maproute.nip_cmp(self.maproute.me, gwnip) + 1
+	if level < self.maproute.levels:
+		for dst, rem in R[level]:
+			if dst == self.maproute.me[level]:
+				# we are colliding! LET'S REHOOOOK
+				return True
+        ## 
+
+	## Remove colliding routes directly from our map
+	for lvl in xrange(self.maproute.levels):
+		for dst, rem in R[lvl]:
+			self.maproute.node_get(lvl, dst).route_reset(lvl, dst)
+	##
+
+	return False

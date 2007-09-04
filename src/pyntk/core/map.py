@@ -108,7 +108,7 @@ class Map:
 		if nipA[lvl] != nipB[lvl]:
 			return lvl
 
-	return self.levels+1
+	return -1
 
     def nip_rand(self):
         return [randint(0, self.gsize-1) for i in xrange(self.levels)]

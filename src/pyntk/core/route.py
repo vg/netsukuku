@@ -259,6 +259,9 @@ class RouteNode:
     		return 1
     	return 0
 
+    def route_reset(self, lvl, dst):
+    	"""Delete all the routes"""
+	self.routes = []
 
     def sort(self):
     	# Order the routes in decrescent order of efficiency, so that

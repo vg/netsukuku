@@ -44,8 +44,8 @@ class Ntkd:
 	self.neighbour  = radar.neigh
 
 	self.maproute   = maproute.Maproute(self.levels, self.gsize)
-	self.etp        = qspn.Etp(self.neighbour, self.maproute)
-	self.hook       = hook.Hook(self.neighbour, self.maproute, self.nics)
+	self.etp        = qspn.Etp(self.radar, self.maproute)
+	self.hook       = hook.Hook(self.radar, self.maproute, self.etp, self.coordnode, self.nics)
 
     
     def _set_ipv(self, levels = 4, ipv = net.ipv4):

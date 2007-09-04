@@ -27,20 +27,33 @@ from random import choice, randint
 
 class Hook:
 
-    def __init__(self, neigh, maproute, coordnode, nics): 
-    	self.neigh    = neigh
+    def __init__(self, radar, maproute, etp, coordnode, nics): 
+    	self.radar    = radar
+    	self.neigh    = radar.neigh
     	self.maproute = maproute
+    	self.etp      = etp
 	self.coordnode= coordnode
 	self.nics     = nics
 
 	self.events = Event(['HOOKED'])
 
-    	maproute.events.listen('NEW_NODE', self.communicating_vessels)
-    	maproute.events.listen('DEL_NODE', self.communicating_vessels)
+    	maproute.events.listen('NEW_NODE', self._set_node_chgd)
+    	maproute.events.listen('DEL_NODE', self._set_node_chgd)
+    	etp.events.listen('ETP_EXECED', self.communicating_vessels)
+    	etp.events.listen('NET_COLLISION', self.hook)
+        
+	# with _node_chgd we ensure that after receiving a NEW_NODE/DEL_NODE
+	# event, and after receiving a ETP_EXECED event,
+	# communicating_vessels() is called
+	self._node_chgd = 0 
 
+    def _set_node_chgd(self, *args):
+        self._node_chgd=1
 
     @microfunc()
     def communicating_vessels(self, *args):
+        if not self._node_chgd: return
+
     	candidates=[]	# List of (neigh, fnb) elements. neigh is a
     			# Neigh instance; fnb is the number of free
     			# of the level 0 of neigh
@@ -71,6 +84,8 @@ class Hook:
     		# Let's rehook
     		self.hook([nr for (nr, fnb) in candidates], True,
 				candidates[0][1])
+	
+	self._node_chgd = 0
 
     @microfunc()
     def hook(self, neigh_list=[], condition=False, gnumb=0):
@@ -137,6 +152,9 @@ class Hook:
     	newnip[lvl] = choice(fnl)
     	newnip[self.maproute.levels]=0
     	for l in reversed(xrange(lvl)): newnip[l]=randint(0, self.maproute.gsize)
+
+	# If we are alone, let's generate our netid
+	if we_are_alone: self.radar.netid = randint(0, 2**32-1)
     	##
 	
     	
@@ -169,7 +187,7 @@ class Hook:
 
     		co.close()
     		co2.close()
-	else not we_are_alone:
+	elif not we_are_alone:
 		# <<I'm going in, can I?>>
     		co2=self.coordnode.co(lvl+1, newnip[lvl+1])
 		# ask if we can get in, get our new IP
@@ -205,6 +223,7 @@ class Hook:
     		if self.maproute.nip_cmp(oldip, nrnip) <= 0:
 			nr.ntkd.neigh.delete(oldip)
 	##
+        
 
 
     def highest_free_nodes(self):

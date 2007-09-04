@@ -229,7 +229,7 @@ class Radar:
     self.events = Event( [ 'SCAN_DONE' ] )
 
     # Our netid. It's a random id used to detect network collisions.
-    self.netid  = None
+    self.netid = None
 
   def run(self, started=0):
     if not started:
