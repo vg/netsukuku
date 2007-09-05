@@ -191,6 +191,7 @@ class Hook:
 
 	
 	## complete the hook
+	self.radar.do_reply = False
 
 	# close the ntkd sessions
 	for nr in self.neigh:
@@ -200,19 +201,21 @@ class Hook:
 	self.nics.activate(ip_to_str(self.maproute.nip_to_ip(newip)))
 
 	# reset the map
+	self.maproute.me_change(newip[:])
     	for l in reversed(xrange(lvl)): self.maproute.level_reset(l)
+
+	self.radar.do_reply = True
+
+	# warn our neighbours
+	for nr in self.neigh:
+    		nrnip=self.maproute.ip_to_nip(nr.ip)
+		nr.ntkd.neigh.ip_change(oldip, newip)
 
 	# Restore the neighbours in the map and send the ETP
 	self.neigh.readvertise()
 
         # we've done our part
 	self.events.send('HOOKED', (oldip, newip[:]))
-
-	# warn our previous internal neighbours
-	for nr in self.neigh:
-    		nrnip=self.maproute.ip_to_nip(nr.ip)
-    		if self.maproute.nip_cmp(oldip, nrnip) <= 0:
-			nr.ntkd.neigh.delete(oldip)
 	##
         
 

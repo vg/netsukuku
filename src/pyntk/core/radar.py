@@ -72,7 +72,7 @@ class Neighbour:
     # IP => netid
     self.netid_table = {}
     # the events we raise
-    self.events = Event(['NEW_NEIGH', 'DEL_NEIGH', 'REM_NEIGH'])
+    self.events = Event(['NEIGH_NEW', 'NEIGH_DELETED', 'NEIGH_REM_CHGED'])
 
   def neigh_list(self):
     """ return the list of neighbours """
@@ -100,9 +100,23 @@ class Neighbour:
     """ ip: neighbour's ip
         return a Neigh object from an ip
     """
-    
-    return Neigh(ip, self.translation_table[ip], self.ip_table[ip].rtt,
-		    self.netid_table[ip])
+    if ip not in self.translation_table:
+	    return None
+    else:
+	    return Neigh(ip, self.translation_table[ip], 
+			    self.ip_table[ip].rtt, self.netid_table[ip])
+
+  def id_to_ip(self, id):
+    """ Returns the IP associated to `id'.
+        If not found, returns None"""
+    for ip in self.translation_table:
+	    if self.translation_table[ip] == id:
+		    return ip
+    return None
+ 
+  def id_to_neigh(self, id):
+    """ Returns a Neigh object from an id """
+    return self.ip_to_neigh(self.id_to_ip(id))
 
   def _truncate(self, ip_table):
     """ ip_table: an {IP => NodeInfo ~ [dev, rtt, ntk]};
@@ -175,7 +189,7 @@ class Neighbour:
         # generate an id and add the entry in translation_table
         self.ip_to_id(key)
         # send a message notifying we added a node
-        self.events.send('NEW_NEIGH', 
+        self.events.send('NEIGH_NEW', 
 			 (Neigh(key, self.translation_table(key),
 				self.ip_table[key].rtt, self.netid_table[key])))
       else:
@@ -183,7 +197,7 @@ class Neighbour:
         # its rtt has changed more than rtt_variation
         if(abs(ip_table[key].rtt - self.ip_table[key].rtt) / self.ip_table[key].rtt > self.rtt_mav_var):
           # send a message notifying the node's rtt changed
-          self.events.send('REM_NEIGH',
+          self.events.send('NEIGH_REM_CHGED',
 			   (Neigh(key, self.translation_table[key], ip_table[key].rtt), 
 				   self.ip_table[key].rtt,
 				   self.netid_table[key]))
@@ -192,22 +206,36 @@ class Neighbour:
     self.ip_table = ip_table
 
   def readvertise(self):
-    """Sends a NEW_NEIGH event for each stored neighbour"""
+    """Sends a NEIGH_NEW event for each stored neighbour"""
     for key in ip_table:
-        self.events.send('NEW_NEIGH', 
+        self.events.send('NEIGH_NEW', 
 			 (Neigh(key, self.translation_table(key),
 				self.ip_table[key].rtt, self.netid_table[key])))
 
   def delete(self, ip, remove_from_iptable=True):
     """Deletes an entry from the ip_table"""
-    if ip in self.ip_table and remove_from_iptable:
+    if remove_from_iptable:
 	    del self.ip_table[ip]
     # delete the entry from the translation table...
     old_id = self.translation_table.pop(ip)
     # ...and from the netid_table
     old_netid = self.netid_table.pop(ip)
     # send a message notifying we deleted the entry
-    self.events.send('DEL_NEIGH', (Neigh(ip, old_id, None, old_netid)))
+    self.events.send('NEIGH_DELETED', (Neigh(ip, old_id, None, old_netid)))
+
+  def ip_change(self, oldip, newip):
+    """Adds `newip' in the Neighbours as a copy of `oldip', then it removes
+       `oldip'. The relative events are raised."""
+
+    self.ip_table[newip]         = self.ip_table[oldip]
+    self.translation_table[newip]= self.translation_table[oldip]
+    self.netid_table[newip]      = self.netid_table[oldip]
+
+    self.events.send('NEIGH_NEW', 
+		     (Neigh(newip, self.translation_table(newip),
+			    self.ip_table[newip].rtt, self.netid_table[newip])))
+    self.delete(oldip)
+
 
 class Radar:
   def __init__(self, multipath = 0, bquet_num = 16, max_neigh = 16, max_wait_time = 8):
@@ -236,7 +264,11 @@ class Radar:
     self.events = Event( [ 'SCAN_DONE' ] )
 
     # Our netid. It's a random id used to detect network collisions.
-    self.netid = None
+    self.netid = -1
+
+    # If set to True, this module will reply to radar queries sent by our
+    # neighbours.
+    self.do_reply = False
 
   def run(self, started=0):
     if not started:
@@ -268,7 +300,10 @@ class Radar:
 
   def reply(self):
     """ As answer we'll return our netid """
-    return self.netid
+    if self.do_reply:
+	    return self.netid
+    else:
+	    return DoNotReply
 
   def time_register(self, ip, net_device, msg):
     """save each node's rtt"""

@@ -20,6 +20,7 @@
 import sys
 sys.path.append("..")
 from lib.event import Event
+from core.map import Map
 
 class Rem:
     """Route Efficiency Measure.
@@ -271,6 +272,9 @@ class RouteNode:
     def is_empty(self):
     	return self.routes == []
 
+    def is_free(self)
+        return self.is_empty()
+
     def nroutes(self):
         return len(self.routes)
 
@@ -289,13 +293,13 @@ class MapRoute(Map):
     def __init__(self, levels, gsize, me):
     	Map.__init__(self, levels, gsize, RouteNode, me)
 
-	self.events.add( [  'NEW_ROUTE',
-    			    'DEL_ROUTE',
-    			    'REM_ROUTE',	# the route's rem changed
+	self.events.add( [  'ROUTE_NEW',
+    			    'ROUTE_DELETED',
+    			    'ROUTE_REM_CHGED',	# the route's rem changed
 
-			    'NEW_NEIGH',
-			    'DEL_NEIGH',
-			    'REM_NEIGH'
+			    'NEIGH_NEW',
+			    'NEIGH_DELETED',
+			    'NEIGH_REM_CHGED'
     		     	] )
 
     def route_add(self, lvl, dst, gw, rem, silent=0):
@@ -303,13 +307,13 @@ class MapRoute(Map):
     	ret, val = n.route_add(lvl, dst, gw, rem)
 	if not silent:
 		if ret == 1:
-			self.events.send('NEW_ROUTE', (lvl, dst, gw, rem))
+			self.events.send('ROUTE_NEW', (lvl, dst, gw, rem))
 			if n.nroutes() == 1:
 				# The node is new
 				self.node_add(lvl, dst)
 		elif ret == 2:
 			oldrem=val
-			self.events.send('REM_ROUTE', (lvl, dst, gw, rem, oldrem))
+			self.events.send('ROUTE_REM_CHGED', (lvl, dst, gw, rem, oldrem))
 	return ret
 
     def route_del(self, lvl, dst, gw, silent=0):
@@ -317,7 +321,7 @@ class MapRoute(Map):
     	d.route_del(lvl, dst, gw)
 
 	if not silent:
-		self.events.send('DEL_ROUTE', (lvl, dst, gw))
+		self.events.send('ROUTE_DELETED', (lvl, dst, gw))
 
     	if d.is_empty():
     		# No more routes to reach the node (lvl, dst).
@@ -334,7 +338,7 @@ class MapRoute(Map):
 	if ret:
 		oldrem=val
 		if not silent:
-			self.events.send('REM_ROUTE', (lvl, dst, gw, newrem, oldrem))
+			self.events.send('ROUTE_REM_CHGED', (lvl, dst, gw, newrem, oldrem))
 	else:
 		return 0
 
@@ -357,19 +361,19 @@ class MapRoute(Map):
     		for dst in xrange(self.gsize):
     			self.route_del(lvl, dst, neigh.id, silent=1)
 	if not silent:
-		self.events.send('REM_DEL', (lvl, dst, neigh))
+		self.events.send('NEIGH_DELETED', (lvl, dst, neigh))
     
     def routeneigh_add(self, neigh, silent=0):
         """Add a route to reach the neighbour `neigh'"""
 	lvl, nid = routeneigh_get(neigh)
 	if not silent:
-		self.events.send('REM_ADD', (lvl, nid, neigh))
+		self.events.send('NEIGH_NEW', (lvl, nid, neigh))
 	return self.route_add(0, nid, nid, neigh.rem, silent=1)
 
     def routeneigh_rem(self, neigh, silent=0):
 	lvl, nid = routeneigh_get(neigh)
 	if not silent:
-		self.events.send('REM_NEIGH', (lvl, nid, neigh))
+		self.events.send('NEIGH_REM_CHGED', (lvl, nid, neigh))
 	return self.route_rem(lvl, dst, neigh.rem, silent=1)
 
 

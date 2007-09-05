@@ -25,6 +25,24 @@ sys.path.append("..")
 from lib.event import Event
 from random import randint
 
+class DataClass:
+    """Data class example.
+    
+    A Data class contains information regarding a node of the map.
+    Each Map.node[level][id] entry is a Data class instance.
+
+    This Data class is just a stub.
+    As another example, look MapRoute and RouteNode in route.py
+    """
+
+    def __init__(self, level, id):
+	# do something
+	pass
+
+    def is_free(self):
+	"""Returns True if this data class is free. False otherwise"""
+        return True
+
 class Map:
 
     def __init__(self, levels, gsize, dataclass, me=None):
@@ -42,11 +60,11 @@ class Map:
 	if me == None: self.me = self.nip_rand()
 
 	# The member self.node[l][i] is a node of level l and its ID is i
-	self.node = [[None for i in xrange(gsize)] for i in xrange(levels)]
+	self.node = [[None]*gize]*levels
 	# Number of nodes of each level
-	self.node_nb = [ 0 for i in xrange(levels) ]
+	self.node_nb = [0]*levels 
 
-	self.events = Event( [ 'NEW_NODE', 'DEL_NODE' ] )
+	self.events = Event( [ 'NODE_NEW', 'NODE_DELETED', 'ME_CHANGED' ] )
 
     def node_get(self, lvl, id):
 	"""Returns from the map a node of level `lvl' and id `id'.
@@ -59,15 +77,13 @@ class Map:
 	return self.node[lvl][id]
 
     def node_add(self, lvl, id):
-        if self.node[lvl][id] is None:
-		node=self.node_get(lvl, id)
-		self.node_nb[lvl]+=1
-		self.events.send('NEW_NODE', (lvl, id))
+	node=self.node_get(lvl, id)
+	self.node_nb[lvl]+=1
+	self.events.send('NODE_NEW', (lvl, id))
 
     def node_del(self, lvl, id):
-        if self.node[lvl][id] is not None:
-		self.node_nb[lvl]-=1
-	    	self.events.send('DEL_NODE', (lvl, id))
+	self.node_nb[lvl]-=1
+	self.events.send('NODE_DELETED', (lvl, id))
 	self.node[lvl][id]=None
 
     def free_nodes_nb(self, lvl):
@@ -78,7 +94,7 @@ class Map:
         """Returns the list of free nodes of level `lvl'"""\
         return [nid for n in self.node[lvl] 
 			for nid in self.gsize
-			    if self.node[lvl][nid] != None]
+			    if self.node[lvl][nid].is_free() ]
 
     def is_in_level(self, nip, lvl):
 	"""Does the node nip belongs to our gnode of level `lvl'?"""
@@ -115,10 +131,16 @@ class Map:
 
     def level_reset(self, level):
         """Resets the specified level, without raising any event"""
-	self.node[level]    = [None for i in xrange(gsize)]
+	self.node[level]    = [None]*self.gsize
 	self.node_nb[level] = 0
     
     def map_reset(self):
         """Silently resets the whole map"""
 	for l in xrange(self.levels):
 		self.level_reset(l)
+
+    def me_change(self, new_me):
+        """Changes self.me"""
+	old_me=self.me[:]
+	self.me=new_me
+	self.events.send('ME_CHANGED', (old_me, new_me))

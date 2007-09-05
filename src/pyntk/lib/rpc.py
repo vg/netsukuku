@@ -36,14 +36,30 @@ class MyClass:
 ntk_server = SimpleNtkRPCServer()
 ntk_server.register_instance(MyClass())
 ntk_server.serve_forever()
-
 '''
+
+## TODO
+# 
+# - Support for broadcast queries. See radar.py and how it utilises NtkdBroadcast
+#
+#### Done, but to be revisioned
+#
+# - If the function on the remote side returns DoNotReply, then 
+#   reply must be sent!
+#
+# - The client must not create a new connection for each new rpc_call!
+#   Create a connection just when the instance is created
+#
+##
+
 import logging
 import socket
 import SocketServer
 
 import rencode
 
+
+DoNotReply = "__DoNotReply__"
 
 class RPCError(Exception):
     pass
@@ -60,11 +76,11 @@ class FakeNtkd(object):
 
     This class is used to perform RPC call using the following form:
 
-        ntkd.ept.mymethod(p1, p2, p3)
+        ntkd.mymethod1.mymethod2.func(p1, p2, p3)
 
     instead of:
 
-        ntkd.rmt('etp.mymethod', (p1, p2, p3))
+        ntkd.rmt('mymethod1.method2.func', (p1, p2, p3))
     '''
     def __init__(self, name=''):
         self._name = name
@@ -158,9 +174,9 @@ class NtkRequestHandler(SocketServer.BaseRequestHandler):
             logging.debug('Response: %s', response)
         except RPCError:
             logging.debug('An error occurred during request handling')
-        else:
+	elif response != DoNotReply:
             self.request.send(response)
-            self.request.close()
+            #self.request.close()
             logging.debug('Response sended')
 
 
@@ -180,6 +196,9 @@ class SimpleNtkRPCClient:
         self.host = host
         self.port = port
 
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	self.connected = False
+
     def rpc_call(self, func_name, params):
         '''Performs a rpc call
 
@@ -187,15 +206,13 @@ class SimpleNtkRPCClient:
         @param params: a tuple of arguments to pass to the remote callable
         '''
 
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect((self.host, self.port))
+	if not self.connected:
+		self.connect()
 
         data = rencode.dumps((func_name, params))
         self.socket.send(data)
 
         recv_encoded_data = self.socket.recv(1024)
-        self.socket.close()
-
         recv_data = rencode.loads(recv_encoded_data)
 
         # Handling errors
@@ -206,3 +223,11 @@ class SimpleNtkRPCClient:
             raise RPCError(recv_data[1])
 
         return recv_data
+    
+    def connect(self):
+        self.socket.connect((self.host, self.port))
+	self.connected = True
+
+    def close(self):
+        self.socket.close()
+	self.connected = False
