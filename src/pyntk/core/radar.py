@@ -23,6 +23,7 @@ from ntkd       import NtkdBroadcast
 from lib.xtime  import swait, time
 from lib.micro  import micro
 from lib.event  import Event
+from lib.rpc    import DoNotReply
 from core.route import Rtt
 from operator   import itemgetter
 

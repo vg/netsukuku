@@ -144,3 +144,19 @@ class Map:
 	old_me=self.me[:]
 	self.me=new_me
 	self.events.send('ME_CHANGED', (old_me, new_me))
+
+
+    def map_data_pack(self):
+        return (self.me, [self.node[lvl][id] 
+			  for lvl in xrange(self.levels) 
+				for id in xrange(self.gsize)],
+		[self.node_nb[lvl] for lvl in xrange(self.levels)])
+
+    def map_data_merge(self, (nip, plist, nblist)):
+        lvl=self.nip_cmp(nip, self.me)
+	for l in xrange(lvl, self.levels):
+		self.node_nb[l]=nblist[l]
+		for id in xrange(self.gsize):
+			self.node[l][id]=plist[l][id]
+        for l in xrange(0, lvl):
+		self.level_reset(l)

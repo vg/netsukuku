@@ -20,6 +20,18 @@ same rencode version throughout your project.
 __version__ = '1.0.0'
 __all__ = ['dumps', 'loads']
 
+
+##TODO
+# - Why the hell it encodes both tuples and lists to list?
+#   Try loads(dumps([1,(2,3)]))
+#   Grr
+#
+# - extend it! Support other basic types, f.e. Set()
+#
+# - Make it encode Classes:
+#   - use class._pack(), class._unpack()
+##
+
 # Original bencode module by Petru Paler, et al.
 #
 # Modifications by Connelly Barnes:

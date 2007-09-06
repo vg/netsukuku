@@ -35,6 +35,8 @@ class Rem:
 
     def _pack(self):
         return (self.value, self.max_value, self.avgcoeff)
+    def _unpack(self, *args):
+        return Rem(args)
 
     def __cmp__(self, b):
     	"""Compares two REMs
