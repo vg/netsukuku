@@ -40,7 +40,16 @@ ntk_server.serve_forever()
 
 ## TODO
 # 
+# - Add a timeout in the .recv()
+#
 # - Support for broadcast queries. See radar.py and how it utilises NtkdBroadcast
+#
+# - There is no need to register functions and instances. Just check for a
+#   .remotable attribute. For example, suppose to call	ntkd.foo(arg).
+#   in the the remote side the dispatcher will do:
+#   if "remotable" in foo.__dict__ and foo.remotable == 1: foo(arg)
+#   
+#   To set the .remotable attribute, use a decorator: @remotable()
 #
 #### Done, but to be revisioned
 #

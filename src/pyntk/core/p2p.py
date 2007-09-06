@@ -55,12 +55,10 @@ class MapP2P(Map):
 	self.pid = pid
 	self.h = h
 
-    def H(self, key):
-        """This is the function that maps each key to an existent hash node
+    def H(self, IP):
+        """This is the function that maps each IP to an existent hash node IP
 	
 	   If there are no partecipants, None is returned"""
-
-	IP = self.h(key)
 
 	hIP = [None]*self.levels
 	for l in reversed(xrange(self.levels)):
@@ -85,6 +83,10 @@ class MapP2P(Map):
 
 	for l in xrange(self.levels):
 		self.node[l][self.me[l]].partecipant = True
+
+    def map_copy_hdr(self, a):
+        self.h  =a.h
+	self.pid=a.pid
 
     @microfunc()
     def _me_changed(self, old_me, new_me):
@@ -149,6 +151,29 @@ class P2P:
 	for nr in self.neigh.neigh_list():
 		nr.ntkd.p2p.partecipant_add(self.pid, pIP)
 
+    def p2p_copy_hdr(self, a):
+	self.partecipant = a.partecipant
+	self.mapp2p.map_copy_hdr(a.mapp2p)
+
+    def msg_send(self, sender_nip, hip, msg):
+	hip = self.mapp2p.H(hip)
+        if hip == self.mapp2p.me:
+		# the msg has arrived
+		return self.msg_exec(sender_nip, msg)
+
+        # forward the message until it arrives at destination
+	n = self.neigh_get(hip)
+	if n != None: 
+		exec("return n.ntkd.p2p.pid_"+str(self.mapp2p.pid)+
+			".msg_send(sender_nip, hip, msg)")
+	else:
+		return None
+
+
+    def msg_exec(self, sender_nip, msg):
+        raise NotImplementedError, 'You must override this method'
+
+
 class P2PAll:
     """Class of all the registered P2P services"""
 
@@ -163,26 +188,29 @@ class P2PAll:
 
 	self.hook.listen('HOOKED', self.p2p_hook)
 
-    def add(self, pid, h=identity):
+    def pid_add(self, pid, h=identity):
         self.service[pid] = P2P(self.radar, self.maproute, self.hook, pid, h)
 	return self.service[pid]
 
-    def del(self, pid):
+    def pid_del(self, pid):
         if pid in self.service:
 		del self.service[pid]
     
-    def get(self, pid):
+    def pid_get(self, pid):
         if pid not in self.service:
 		return self.add(pid)
 	else:
 		return self.service[pid]
 
-    def getall(self):
+    def pid_getall(self):
         return [(s, self.service[s].mapp2p.map_data_pack()) 
 			for s in self.service]
 
+    def p2p_add(self, p2p):
+        self.pid_get(p2p.pid).p2p_copy_hdr(p2p)
+
     def partecipant_add(self, pid, pIP):
-        self.get(pid).partecipant_add(pIP)
+        self.pid_get(pid).partecipant_add(pIP)
 
     @microfunc()
     def p2p_hook(self, *args):
@@ -204,12 +232,17 @@ class P2PAll:
 		# nothing to do
 		return
 
-	nrmaps_pack = minnr.ntkd.p2p.getall()
+	nrmaps_pack = minnr.ntkd.p2p.pid_getall()
 	for (pid, map_pack) in nrmaps_pack:
-		self.get(pid).mapp2p.map_data_merge(*map_pack)
+		self.pid_get(pid).mapp2p.map_data_merge(*map_pack)
        
         for s in self.service:
 		if self.service[s].partecipant:
 			self.service[s].partecipate()
 
 	self.events.send('P2P_HOOKED', ())
+
+    def __getattr__(self, str):
+
+        if str[:4] == "pid_":
+		return self.pid_get(int(str[4:])
