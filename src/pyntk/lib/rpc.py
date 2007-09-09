@@ -16,45 +16,62 @@
 # this source code; if not, write to:
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
-'''Netsukuku RPC
-
-Usage example:
-
-- Register functions
-
-ntk_server = SimpleNtkRPCServer()
-ntk_server.register_function(my_cool_function)
-ntk_server.serve_forever()
-
-- Register an instance
-
-class MyClass:
-
-    def my_cool_method(self, x):
-        return x*2
-
-ntk_server = SimpleNtkRPCServer()
-ntk_server.register_instance(MyClass())
-ntk_server.serve_forever()
-'''
-
+#
+# Netsukuku RPC
+# 
+## Usage example
+# 
+#### The server
+# 
+# class MyNestedMod:
+#     def __init__(self)
+#         self.remotable_funcs = [self.add]
+# 
+#     def add(self, x,y): return x+y
+# 
+# class MyMod:
+#     def __init__(self):
+#         self.nestmod = MyNestedMod()
+# 
+#         self.remotable_funcs = [self.square, self.mul]
+# 
+#     def square(self, x): return x*x
+#     def mul(self, x, y): return x*y
+# 
+# def another_foo():pass
+# remotable_funcs = [another_foo]
+# 
+# mod = MyMod()
+# 
+# ntk_server = SimpleRPCServer()
+# ntk_server.serve_forever()
+# 
+#
+#### The client
+# 
+# ntk_client = SimpleRPCClient()
+# x=5
+# xsquare = ntk_client.mod.square(x)
+# xmul7   = ntk_client.mod.mul(x, 7)
+# xadd9	= ntk_client.mod.nestmod.add(x, 9)
+# ntk_client.another_foo()
+# 
+# # something trickier
+# nm = ntk_client.mod
+# result = nm.square(nm.mul(x, nm.nestmod.add(x, 10)))
+# 
+#### Notes
+# 
+# - If the function on the remote side returns DoNotReply, then no
+#   reply is sent.
+# 
 ## TODO
 # 
 # - Add a timeout in the .recv()
 #
 # - Support for broadcast queries. See radar.py and how it utilises NtkdBroadcast
 #
-# - There is no need to register functions and instances. Just check for a
-#   .remotable attribute. For example, suppose to call	ntkd.foo(arg).
-#   in the the remote side the dispatcher will do:
-#   if "remotable" in foo.__dict__ and foo.remotable == 1: foo(arg)
-#   
-#   To set the .remotable attribute, use a decorator: @remotable()
-#
 #### Done, but to be revisioned
-#
-# - If the function on the remote side returns DoNotReply, then 
-#   reply must be sent!
 #
 # - The client must not create a new connection for each new rpc_call!
 #   Create a connection just when the instance is created
@@ -70,36 +87,31 @@ import rencode
 
 DoNotReply = "__DoNotReply__"
 
-class RPCError(Exception):
-    pass
-
-class RPCFunctionNotRegistered(RPCError):
-    pass
-
-class RPCFunctionError(RPCError):
-    pass
+class RPCError(Exception): pass
+class RPCFuncNotRemotable(RPCError): pass
+class RPCFunctionError(RPCError): pass
 
 
-class FakeNtkd(object):
-    '''A fake Ntkd class
+class FakeRmt(object):
+    """A fake remote class
 
     This class is used to perform RPC call using the following form:
 
-        ntkd.mymethod1.mymethod2.func(p1, p2, p3)
+        remote_instance.mymethod1.mymethod2.func(p1, p2, p3)
 
     instead of:
 
-        ntkd.rmt('mymethod1.method2.func', (p1, p2, p3))
-    '''
+        remote_instance.rpc_call('mymethod1.method2.func', (p1, p2, p3))
+    """
     def __init__(self, name=''):
         self._name = name
 
     def __getattr__(self, name):
         '''
-        @return: A new FakeNtkd: used to accumulate instance attributes
+        @return: A new FakeRmt: used to accumulate instance attributes
         '''
 
-        return FakeNtkd(self._name + '.' + name)
+        return FakeRmt(self._name + '.' + name)
 
     def __call__(self, *params):
         self.rmt(self._name[1:], params)
@@ -112,60 +124,81 @@ class FakeNtkd(object):
         raise NotImplementedError, 'You must override this method'
 
 
-
-class NtkRPCDispatcher(object):
+class RPCDispatcher(object):
     '''
     This class is used to register RPC function handlers and
     to dispatch them.
     '''
-    def __init__(self):
-        self.funcs = {} # Dispatcher functions dictionary
-        self.instance = None
+    def __init__(self, root_instance=None):
+        self.root_instance=root_instance
 
-    def register_function(self, func):
-        '''Register a function to respond to an RPC request'''
+    def func_get(self, func_name):
+        """Returns the function (if any and if remotable), which has the given
+	  `func_name'
 
-        func_name = func.__name__
-        self.funcs[func_name] = func
+	  `func_name' is a string in the form "mod1.mod2.mod3....modn.func"
+	  or just "func". In the latter case "func" is searched in the
+	  globals()
+	"""
+        
+	def func_to_name(f): return f.__name__
 
-    def register_instance(self, instance):
-        '''Register an instance'''
-        self.instance = instance
+	splitted = func_name.split('.')
+	lens = len(splitted)
+	if lens < 1:
+		return None
+	mods = splitted[:-1]
+	func = splitted[-1] 
 
+	if self.root_instance != None:
+		p = self.root_instance
+	elif lens > 1 and mods[0] in globals():
+		p = globals()[mods[0]]
+		del mods[0]
+	elif lens == 1 and 'remotable_funcs' in globals() 		\
+			and func in map(func_to_name, globals()['remotable_funcs']):
+		return globals()[func]
+	else:
+		return None
+	
+	try:
+		for m in mods: p=getattr(p, m)
+		if func in map(func_to_name, p.remotable_funcs):
+			return getattr(p, func)
+	except AttributeError:
+		return None
+
+	return None
+	
     def _dispatch(self, func_name, params):
-        func = None
+        func = self.func_get(func_name)
+	if func == None:
+        	raise RPCFuncNotRemotable('Function %s is not remotable' % func_name)
         try:
-            func = self.funcs[func_name]
-        except KeyError:
-            if self.instance is not None:
-                try:
-                    if not func_name.startswith('_'):
-                        func = getattr(self.instance, func_name)
-                except AttributeError:
-                    pass
+        	return func(*params)
+        except Exception, e:
+        # I propagate all exceptions to `dispatch'
+        	raise
 
-        if func is not None:
-            try:
-                return func(*params)
-            # I propagate all exceptions to `marshalled_dispatch'
-            except Exception, e:
-                raise
-        else:
-            raise RPCFunctionNotRegistered(
-                        'Function %s is not registered' % func_name)
-
-    def marshalled_dispatch(self, data):
-        '''Dispaches a RPC function from marshalled data'''
-
-        func, params = rencode.loads(data) 
-
+    def dispatch(self, func, params):
         try:
             response = self._dispatch(func, params)
         except Exception, e:
             logging.debug(str(e))
             response = ('rmt_error', str(e))
-        response = rencode.dumps(response)
-        return response
+	return response
+
+    def marshalled_dispatch(self, sender, data):
+        '''Dispatches a RPC function from marshalled data'''
+
+	unpacked = rencode.loads(data) 
+	if not isinstance(unpacked, tuple) or not len(unpacked) == 2:
+		e = 'Malformed packet received from '+sender
+		logging.debug(e)
+                response = ('rmt_error', str(e))
+        else:
+		response = self.dispatch(*unpacked)
+        return rencode.dumps(response)
 
 
 class NtkRequestHandler(SocketServer.BaseRequestHandler):
@@ -179,7 +212,7 @@ class NtkRequestHandler(SocketServer.BaseRequestHandler):
         try:
             data = self.request.recv(1024)
             logging.debug('Handling data: %s', data)
-            response = self.server.marshalled_dispatch(data)
+            response = self.server.marshalled_dispatch(self.client_address, data)
             logging.debug('Response: %s', response)
         except RPCError:
             logging.debug('An error occurred during request handling')
@@ -189,16 +222,17 @@ class NtkRequestHandler(SocketServer.BaseRequestHandler):
             logging.debug('Response sended')
 
 
-class SimpleNtkRPCServer(SocketServer.TCPServer, NtkRPCDispatcher):
+class SimpleRPCServer(SocketServer.TCPServer, RPCDispatcher):
     '''This class implement a simple Ntk-Rpc server'''
 
     def __init__(self, addr=('localhost', 269),
-                 requestHandler=NtkRequestHandler):
+                 requestHandler=NtkRequestHandler,
+		 root_instance=None):
 
-        NtkRPCDispatcher.__init__(self)
+	RPCDispatcher.__init__(self, root_instance)
         SocketServer.TCPServer.__init__(self, addr, requestHandler)
 
-class SimpleNtkRPCClient:
+class SimpleRPCClient(FakeRmt):
     '''This class implement a simple Ntk-RPC client'''
 
     def __init__(self, host='localhost', port=269):
@@ -207,6 +241,8 @@ class SimpleNtkRPCClient:
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	self.connected = False
+
+	FakeRmt.__init__(self)
 
     def rpc_call(self, func_name, params):
         '''Performs a rpc call
@@ -240,3 +276,9 @@ class SimpleNtkRPCClient:
     def close(self):
         self.socket.close()
 	self.connected = False
+
+    def rmt(self, func_name, *params):
+        return self.rpc_call(func_name, params)
+    
+    def __del__(self):
+        self.close()

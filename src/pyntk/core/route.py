@@ -303,6 +303,7 @@ class MapRoute(Map):
 			    'NEIGH_DELETED',
 			    'NEIGH_REM_CHGED'
     		     	] )
+	self.remotable_funcs = [self.free_nodes_nb]
 
     def route_add(self, lvl, dst, gw, rem, silent=0):
 	n=self.node_get(lvl, dst)

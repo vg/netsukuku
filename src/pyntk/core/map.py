@@ -76,14 +76,16 @@ class Map:
 		self.node[lvl][id]=self.dataclass(lvl, id)
 	return self.node[lvl][id]
 
-    def node_add(self, lvl, id):
+    def node_add(self, lvl, id, silent=0):
 	node=self.node_get(lvl, id)
 	self.node_nb[lvl]+=1
-	self.events.send('NODE_NEW', (lvl, id))
+	if not silent:
+		self.events.send('NODE_NEW', (lvl, id))
 
-    def node_del(self, lvl, id):
+    def node_del(self, lvl, id, silent=0):
 	self.node_nb[lvl]-=1
-	self.events.send('NODE_DELETED', (lvl, id))
+	if not silent:
+		self.events.send('NODE_DELETED', (lvl, id))
 	self.node[lvl][id]=None
 
     def free_nodes_nb(self, lvl):

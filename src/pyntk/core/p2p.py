@@ -23,9 +23,8 @@
 import sys
 sys.path.append("..")
 from lib.event import Event
+from lib.rpc   import FakeRmt, RPCDispatcher
 from core.map import Map
-
-def identity(x): return x
 
 class PartecipantNode:
     def __init__(self, 
@@ -44,28 +43,75 @@ class PartecipantNode:
 class MapP2P(Map):
    """Map of the partecipant nodes"""
 
-   def __init__(self, levels, gsize, me, pid, h):
+   def __init__(self, levels, gsize, me, pid):
        """levels, gsize, me: the same of Map
 
-	  pid: P2P id of the service associated to this map
-	  h  : the function h:KEY-->IP"""
+	  pid: P2P id of the service associated to this map"""
 	
     	Map.__init__(self, levels, gsize, PartecipantNode, me)
 
 	self.pid = pid
-	self.h = h
+
+    def partecipate(self):
+        """self.me is now a partecipant node"""
+
+	for l in xrange(self.levels):
+		self.node_get(l, self.me[l]).partecipant = True
+
+    @microfunc()
+    def me_changed(self, old_me, new_me):
+        return Map.me_change(self new_me)
+
+    @microfunc(True)
+    def node_del(self, lvl, id):
+        return Map.node_del(self, lvl, id)
+
+class P2P(RPCDispatcher):
+    """This is the class that must be inherited to create a P2P module.
+    
+    ** Executing a remote function of the node associated to the key K
+    
+    seld.msg_send("""
+
+    def __init__(self, radar, maproute, pid):
+	  """radar, maproute, hook: the instances of the relative modules
+
+	  pid: P2P id of the service associated to this map
+	  """
+
+	self.radar    = radar
+    	self.neigh    = radar.neigh
+    	self.maproute = maproute
+
+	self.mapp2p   = MapP2P(self.maproute.levels, self.maproute.gsize, self.maproute.me, pid)
+	
+        self.maproute.events.listen('ME_CHANGED', self.mapp2p.me_changed)
+        self.maproute.events.listen('NODE_DELETED', self.mapp2p.node_del)
+
+        # are we a partecipant?
+	self.partecipant = False
+	
+	self.remotable_funcs = [self.pid_getall, self.partecipant_add, self.msg_send]
+	RPCDispatcher.__init__(self, root_instance=self)
+
+    def h(self, key):
+        """This is the function h:KEY-->IP.
+	
+        You should override it with your own mapping function."""
+	return key
 
     def H(self, IP):
         """This is the function that maps each IP to an existent hash node IP
 	
 	   If there are no partecipants, None is returned"""
 
-	hIP = [None]*self.levels
-	for l in reversed(xrange(self.levels)):
-		for id in xrange(self.gize):
+        mp = self.mapp2p
+	hIP = [None]*mp.levels
+	for l in reversed(xrange(mp.levels)):
+		for id in xrange(mp.gize):
 			for sign in [-1,1]:
-				hid=(IP[l]+id*sign)%self.gsize
-				if self.node_get(l, hid).partecipant:
+				hid=(IP[l]+id*sign)%mp.gsize
+				if mp.node_get(l, hid).partecipant:
 					hIP[l]=hid
 					break
 			if hIP[l]:
@@ -73,50 +119,10 @@ class MapP2P(Map):
 		if hIP[l] is None:
 			return None
 
-		if hIP[l] != self.me[l]:
+		if hIP[l] != mp.me[l]:
 			# we can stop here
 			break
 	return hIP
-
-    def partecipate(self):
-        """self.me is now a partecipant node"""
-
-	for l in xrange(self.levels):
-		self.node[l][self.me[l]].partecipant = True
-
-    def map_copy_hdr(self, a):
-        self.h  =a.h
-	self.pid=a.pid
-
-    @microfunc()
-    def _me_changed(self, old_me, new_me):
-        return self.me_change(new_me)
-
-    @microfunc(True)
-    def _node_del(self, lvl, id):
-        return self.node_del(lvl, id)
-
-
-class P2P:
-    def __init__(self, radar, maproute,
-		 pid, h=identity):
-	  """radar, maproute, hook: the instances of the relative modules
-
-	  pid: P2P id of the service associated to this map
-	  h  : the function h:KEY-->IP"""
-
-	self.radar    = radar
-    	self.neigh    = radar.neigh
-    	self.maproute = maproute
-
-	self.mapp2p   = MapP2P(self.maproute.levels, self.maproute.gsize, self.maproute.me, 
-				pid, h)
-	
-        self.maproute.events.listen('ME_CHANGED', self.mapp2p._me_changed)
-        self.maproute.events.listen('NODE_DELETED', self.mapp2p._node_del)
-
-        # are we a partecipant?
-	self.partecipant = False
 
     def neigh_get(self, hip):
         """Returns the Neigh instance of the neighbour we must use to reach
@@ -125,7 +131,7 @@ class P2P:
 	   
 	   If nothing is found, None is returned"""
 	
-	lvl = self.mapp2p.nip_cmp(hip, self.mapp2p.me)
+	lvl = self.mapp2p.nip_cmp(hip, self.maproute.me)
 	return self.neigh.id_to_neigh(self.maproute.node_get(lvl,hip[lvl]).best_route().gw)
 
     def partecipate(self):
@@ -134,29 +140,33 @@ class P2P:
 	self.mapp2p.partecipate()
 
 	for nr in self.neigh.neigh_list():
-		nr.ntkd.p2p.partecipant_add(self.pid, self.me)
+		nr.ntkd.p2p.partecipant_add(self.maproute.pid, self.maproute.me)
 
     def partecipant_add(self, pIP):
 	continue_to_forward = False
 
-        lvl = self.nip_cmp(pIP, self.mapp2p.me)
-	for l in xrange(lvl, self.mapp2p.levels):
-		if not self.mapp2p.node[l][pIP[l]].partecipant:
-			self.mapp2p.node[l][pIP[l]].partecipant=True
+	mp  = self.mapp2p
+        lvl = self.nip_cmp(pIP, mp.me)
+	for l in xrange(lvl, mp.levels):
+		if not mp.node_get(l, pIP[l]).partecipant:
+			mp.node_get(l, pIP[l]).partecipant=True
+			mp.node_add(l, pIP[l])
 			continue_to_forward = True
 
 	if not continue_to_forward:
 		return
-
+        
+	# continue to advertise the new partecipant
 	for nr in self.neigh.neigh_list():
 		nr.ntkd.p2p.partecipant_add(self.pid, pIP)
 
-    def p2p_copy_hdr(self, a):
-	self.partecipant = a.partecipant
-	self.mapp2p.map_copy_hdr(a.mapp2p)
-
     def msg_send(self, sender_nip, hip, msg):
-	hip = self.mapp2p.H(hip)
+        """Routes a packet to `hip'. Do not use this function directly, use
+	self.peer() instead
+
+	msg: it is a (func_name, args) pair."""
+
+	hip = self.H(hip)
         if hip == self.mapp2p.me:
 		# the msg has arrived
 		return self.msg_exec(sender_nip, msg)
@@ -169,10 +179,26 @@ class P2P:
 	else:
 		return None
 
-
     def msg_exec(self, sender_nip, msg):
-        raise NotImplementedError, 'You must override this method'
+        return self.dispatch(*msg)
 
+    class RmtPeer(FakeRmt):
+	def __init__(self, p2p, hIP=None, key=None):
+	    self.p2p = p2p
+	    self.key = key
+	    self.hIP = None
+	    FakeRmt.__init__(self)
+
+        def rmt(self, func_name, *params):
+            """Overrides FakeRmt.rmt()"""
+	    if self.hIP == None:
+		    self.hIP = p2p.H(p2p.h(self.key))
+            return p2p.msg_send(p2p.maproute.me, self.hIP, (func_name, params))
+
+    def peer(self, hIP=None, key=None):
+        if hIP == None and key == None:
+		raise Exception, "hIP and key are both None. Specify at least one"
+        return self.RmtPeer(self, key, hIP)
 
 class P2PAll:
     """Class of all the registered P2P services"""
@@ -188,8 +214,8 @@ class P2PAll:
 
 	self.hook.listen('HOOKED', self.p2p_hook)
 
-    def pid_add(self, pid, h=identity):
-        self.service[pid] = P2P(self.radar, self.maproute, self.hook, pid, h)
+    def pid_add(self, pid):
+        self.service[pid] = P2P(self.radar, self.maproute, self.hook, pid)
 	return self.service[pid]
 
     def pid_del(self, pid):
@@ -206,8 +232,17 @@ class P2PAll:
         return [(s, self.service[s].mapp2p.map_data_pack()) 
 			for s in self.service]
 
-    def p2p_add(self, p2p):
-        self.pid_get(p2p.pid).p2p_copy_hdr(p2p)
+    def p2p_register(self, p2p):
+        """Used to add for the first time a P2P instance of a module in the
+	   P2PAll dictionary."""
+
+        # It's possible that the stub P2P instance `self.pid_get(p2p.pid)'
+	# created by pid_add() has an update map of partecipants, which has
+	# been accumulated during the time. Copy this map in the `p2p'
+	# instance to be sure.
+        map_pack = self.pid_get(p2p.pid).map_data_pack()
+	p2p.mapp2p.map_data_merge(*map_pack)
+	self.pid_get(p2p.pid) = p2p
 
     def partecipant_add(self, pid, pIP):
         self.pid_get(pid).partecipant_add(pIP)

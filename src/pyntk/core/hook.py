@@ -39,6 +39,8 @@ class Hook:
 
     	etp.events.listen('ETP_EXECED', self.communicating_vessels)
     	etp.events.listen('NET_COLLISION', self.hook)
+
+	self.remotable_funcs = [self.communicating_vessels, self.highest_free_nodes]
         
     @microfunc()
     def communicating_vessels(self, old_node_nb, cur_node_nb):
@@ -159,21 +161,21 @@ class Hook:
 
     	if condition:
     		# <<I'm going out>>
-    		co=self.coordnode.co(1, self.maproute.me[1])
+    		co = self.coordnode.peer(key = (1, self.maproute.me))
 		# get |G| and check that  gnumb < |G|
-    		rid, Gnumb = co.going_out(self.maproute.me, 1, gnumb)
-		if rid == None:
+    		Gnumb = co.going_out(0, self.maproute.me[0], gnumb)
+		if Gnumb == None:
 			# nothing to be done
 			return
 
     		# <<I'm going in, can I?>>
-    		co2=self.coordnode.co(lvl+1, newnip[lvl+1])
+    		co2 = self.coordnode.peer(key = (lvl+1, newnip))
 		# ask if we can get in and if |G'| < |G|, and get our new IP
-    		newip=co2.going_in(newip, lvl+1, Gnumb)
+    		newnip=co2.going_in(lvl, Gnumb)
 
     		if newnip != None:
 			# we've been accepted
-    			co.going_out_ok(rid)
+    			co.going_out_ok(0, self.maproute.me[0])
 		else:
     			raise Exception, "Netsukuku is full"
 
@@ -181,9 +183,9 @@ class Hook:
     		co2.close()
 	elif not we_are_alone:
 		# <<I'm going in, can I?>>
-    		co2=self.coordnode.co(lvl+1, newnip[lvl+1])
+    		co2 = self.coordnode.peer(key = (lvl+1, newnip))
 		# ask if we can get in, get our new IP
-    		newip=co2.going_in(newip, lvl+1)
+    		newnip=co2.going_in(lvl)
 		if newnip == None:
     			raise Exception, "Netsukuku is full"
 		co2.close()
@@ -198,10 +200,10 @@ class Hook:
 		nr.ntkd.close()
 
 	# change the IPs of the NICs
-	self.nics.activate(ip_to_str(self.maproute.nip_to_ip(newip)))
+	self.nics.activate(ip_to_str(self.maproute.nip_to_ip(newnip)))
 
 	# reset the map
-	self.maproute.me_change(newip[:])
+	self.maproute.me_change(newnip[:])
     	for l in reversed(xrange(lvl)): self.maproute.level_reset(l)
 
 	self.radar.do_reply = True
@@ -209,13 +211,13 @@ class Hook:
 	# warn our neighbours
 	for nr in self.neigh:
     		nrnip=self.maproute.ip_to_nip(nr.ip)
-		nr.ntkd.neigh.ip_change(oldip, newip)
+		nr.ntkd.neigh.ip_change(oldip, newnip)
 
 	# Restore the neighbours in the map and send the ETP
 	self.neigh.readvertise()
 
         # we've done our part
-	self.events.send('HOOKED', (oldip, newip[:]))
+	self.events.send('HOOKED', (oldip, newnip[:]))
 	##
         
 

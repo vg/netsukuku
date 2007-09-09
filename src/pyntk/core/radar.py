@@ -75,6 +75,7 @@ class Neighbour:
     # the events we raise
     self.events = Event(['NEIGH_NEW', 'NEIGH_DELETED', 'NEIGH_REM_CHGED'])
 
+    self.remotable_funcs = [self.ip_change]
   def neigh_list(self):
     """ return the list of neighbours """
     nlist = []
@@ -281,7 +282,7 @@ class Radar:
     """ Send broadcast packets and store the results in neigh """
 
     # we're sending the broadcast packets NOW
-    self.bcast_send_time = xtime.time()
+    self.bcast_send_time = time()
 
     # send all packets in the bouquet
     def br():
@@ -310,7 +311,7 @@ class Radar:
     """save each node's rtt"""
 
     # this is the rtt
-    time_elapsed = int(xtime.time() - bcast_send_time / 2)
+    time_elapsed = int(time() - bcast_send_time / 2)
     # let's store it in the bcast_arrival_time table
     if(ip in self.bcast_arrival_time):
       if(net_device in self.bcast_arrival_time[ip]):

@@ -37,6 +37,8 @@ class Etp:
     	neigh.events.listen('NEIGH_DELETED', self.etp_new_dead)
 
 	self.events = Event(['ETP_EXECED', 'NET_COLLISION'])
+	
+	self.remotable_funcs = [self.etp_exec]
     
     @microfunc(True)
     def etp_new_dead(self, neigh):

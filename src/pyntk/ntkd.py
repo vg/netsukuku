@@ -22,6 +22,8 @@ import core.radar   as radar
 import core.route   as maproute
 import core.qspn    as qspn
 import core.hook    as hook
+import core.p2p     as p2p
+import core.coord   as coord
 import network.inet as inet
 from lib.misc import dict_remove_none as drn
 
@@ -47,6 +49,7 @@ class Ntkd:
 	self.etp        = qspn.Etp(self.radar, self.maproute)
 	self.hook       = hook.Hook(self.radar, self.maproute, self.etp, self.coordnode, self.nics)
    	self.p2p	= p2p.P2PAll(self.radar, self.maproute, self.hook)
+   	self.coordnode	= coord.Coord(self.radar, self.maproute, self.p2p)
 
     def _set_ipv(self, levels = 4, ipv = net.ipv4):
     	self.levels = levels
