@@ -95,8 +95,11 @@ class ThreadedNtkRPCClient(threading.Thread):
 	nm = ntk_client.mod
 	result = nm.square(nm.mul(x, nm.nestmod.add(x, 10)))
 
-	# should crash now
-	ntk_client.private_func()
+        try:
+		# should crash now
+		ntk_client.private_func()
+	except Exception, e:
+		logging.debug(str(e)) 
 
 
 if __name__ == '__main__':

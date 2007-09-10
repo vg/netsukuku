@@ -172,7 +172,7 @@ class RPCDispatcher(object):
 	return None
 	
     def _dispatch(self, func_name, params):
-        logging.debug("_dispatch: "+func_name+"("+str(*params)+")")
+        logging.debug("_dispatch: "+func_name+"("+str(params)+")")
         func = self.func_get(func_name)
 	if func == None:
         	raise RPCFuncNotRemotable('Function %s is not remotable' % func_name)
@@ -217,17 +217,18 @@ class NtkRequestHandler(SocketServer.BaseRequestHandler):
     def handle(self):
         logging.debug('Connected from %s', self.client_address)
 
-        try:
-            data = self.request.recv(1024)
-            logging.debug('Handling data: %s', data)
-            response = self.server.marshalled_dispatch(self.client_address, data)
-            logging.debug('Response: %s', response)
-        except RPCError:
-            logging.debug('An error occurred during request handling')
-	if response != DoNotReply:
-            self.request.send(response)
-            #self.request.close()
-            logging.debug('Response sended')
+        while 1:
+		try:
+		    data = self.request.recv(1024)
+		    logging.debug('Handling data: %s', data)
+		    response = self.server.marshalled_dispatch(self.client_address, data)
+		    logging.debug('Response: %s', response)
+		except RPCError:
+		    logging.debug('An error occurred during request handling')
+		if response != DoNotReply:
+		    self.request.send(response)
+		    #self.request.close()
+		    logging.debug('Response sended')
 
 
 class SimpleRPCServer(SocketServer.TCPServer, RPCDispatcher):
