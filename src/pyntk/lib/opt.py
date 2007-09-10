@@ -1,10 +1,11 @@
 class OptErr(Exception):pass
 
 class Opt:
+    def __init__(self):
+        self.dict = {}
+
     def __getattr__(self, str):
         return None
 
-OptFileCode = 'class OptFile(Opt): execfile(path)'
-def opt_load_file(path):
-    exec(OptFileCode)
-    return OptFile
+    def opt_load_file(self, path):
+	execfile(path, self.__dict__, self.__dict__)
