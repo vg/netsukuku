@@ -84,7 +84,6 @@ class ThreadedNtkRPCClient(threading.Thread):
 
 	x=5
 	xsquare = ntk_client.mod.square(x)
-	logging.debug("xsquare: "+str(xsquare))
 	assert xsquare == 25
 	xmul7   = ntk_client.mod.mul(x, 7)
 	assert xmul7 == 35

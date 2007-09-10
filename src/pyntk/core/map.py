@@ -60,7 +60,7 @@ class Map:
 	if me == None: self.me = self.nip_rand()
 
 	# The member self.node[l][i] is a node of level l and its ID is i
-	self.node = [[None]*gize]*levels
+	self.node = [[None]*gsize]*levels
 	# Number of nodes of each level
 	self.node_nb = [0]*levels 
 
@@ -93,7 +93,7 @@ class Map:
     	return self.maproute.gsize-self.maproute.node_nb[lvl]
 
     def free_nodes_list(self, lvl):
-        """Returns the list of free nodes of level `lvl'"""\
+        """Returns the list of free nodes of level `lvl'"""
         return [nid for n in self.node[lvl] 
 			for nid in self.gsize
 			    if self.node[lvl][nid].is_free() ]

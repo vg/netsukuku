@@ -116,7 +116,7 @@ class FakeRmt(object):
 	return fr
 
     def __call__(self, *params):
-        self.rmt(self._name[1:], *params)
+        return self.rmt(self._name[1:], *params)
 
     def rmt(self, func_name, *params):
         '''Perform the RPC call
@@ -287,10 +287,7 @@ class SimpleRPCClient(FakeRmt):
 	self.connected = False
 
     def rmt(self, func_name, *params):
-	recv_data = self.rpc_call(func_name, params)
-	logging.debug("Recvd data2: "+str(recv_data))
-	return recv_data
-#        return self.rpc_call(func_name, params)
+        return self.rpc_call(func_name, params)
     
     def __del__(self):
         self.close()
