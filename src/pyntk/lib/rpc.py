@@ -24,7 +24,7 @@
 #### The server
 # 
 # class MyNestedMod:
-#     def __init__(self)
+#     def __init__(self):
 #         self.remotable_funcs = [self.add]
 # 
 #     def add(self, x,y): return x+y
@@ -111,10 +111,12 @@ class FakeRmt(object):
         @return: A new FakeRmt: used to accumulate instance attributes
         '''
 
-        return FakeRmt(self._name + '.' + name)
+        fr=FakeRmt(self._name + '.' + name)
+	fr.rmt=self.rmt
+	return fr
 
     def __call__(self, *params):
-        self.rmt(self._name[1:], params)
+        self.rmt(self._name[1:], *params)
 
     def rmt(self, func_name, *params):
         '''Perform the RPC call
@@ -140,7 +142,9 @@ class RPCDispatcher(object):
 	  or just "func". In the latter case "func" is searched in the
 	  globals()
 	"""
-        
+       
+        logging.debug("func_get: "+str(func_name))
+
 	def func_to_name(f): return f.__name__
 
 	splitted = func_name.split('.')
@@ -152,17 +156,14 @@ class RPCDispatcher(object):
 
 	if self.root_instance != None:
 		p = self.root_instance
-	elif lens > 1 and mods[0] in globals():
-		p = globals()[mods[0]]
-		del mods[0]
-	elif lens == 1 and 'remotable_funcs' in globals() 		\
-			and func in map(func_to_name, globals()['remotable_funcs']):
-		return globals()[func]
-	else:
-		return None
+        else:
+		import __main__
+		p = __main__
 	
 	try:
-		for m in mods: p=getattr(p, m)
+		for m in mods:
+			p=getattr(p, m)
+
 		if func in map(func_to_name, p.remotable_funcs):
 			return getattr(p, func)
 	except AttributeError:
@@ -171,6 +172,7 @@ class RPCDispatcher(object):
 	return None
 	
     def _dispatch(self, func_name, params):
+        logging.debug("_dispatch: "+func_name+"("+str(*params)+")")
         func = self.func_get(func_name)
 	if func == None:
         	raise RPCFuncNotRemotable('Function %s is not remotable' % func_name)
@@ -186,6 +188,7 @@ class RPCDispatcher(object):
         except Exception, e:
             logging.debug(str(e))
             response = ('rmt_error', str(e))
+        logging.debug("dispatch response: "+str(response))
 	return response
 
     def marshalled_dispatch(self, sender, data):
@@ -198,7 +201,12 @@ class RPCDispatcher(object):
                 response = ('rmt_error', str(e))
         else:
 		response = self.dispatch(*unpacked)
-        return rencode.dumps(response)
+
+	if response != DoNotReply:
+		encresp = rencode.dumps(response)
+	else:
+		encresp = DoNotReply
+        return encresp
 
 
 class NtkRequestHandler(SocketServer.BaseRequestHandler):
@@ -216,7 +224,7 @@ class NtkRequestHandler(SocketServer.BaseRequestHandler):
             logging.debug('Response: %s', response)
         except RPCError:
             logging.debug('An error occurred during request handling')
-	elif response != DoNotReply:
+	if response != DoNotReply:
             self.request.send(response)
             #self.request.close()
             logging.debug('Response sended')
@@ -259,6 +267,7 @@ class SimpleRPCClient(FakeRmt):
 
         recv_encoded_data = self.socket.recv(1024)
         recv_data = rencode.loads(recv_encoded_data)
+	logging.debug("Recvd data: "+str(recv_data))
 
         # Handling errors
         # I receive a message with the following format:
@@ -278,7 +287,10 @@ class SimpleRPCClient(FakeRmt):
 	self.connected = False
 
     def rmt(self, func_name, *params):
-        return self.rpc_call(func_name, params)
+	recv_data = self.rpc_call(func_name, params)
+	logging.debug("Recvd data2: "+str(recv_data))
+	return recv_data
+#        return self.rpc_call(func_name, params)
     
     def __del__(self):
         self.close()

@@ -6,10 +6,11 @@ sys.path.append('..')
 import logging
 import threading
 
-from lib.rpc import SimpleNtkRPCServer, SimpleNtkRPCClient
+from lib.rpc import SimpleRPCServer, SimpleRPCClient
 
 REQUEST = 3
-PORT = 8888
+from random import randint
+PORT = randint(8880, 8889)
 
 # Logging option
 
@@ -28,21 +29,39 @@ else:
 
 logging.basicConfig(**log_config)
 
-class MyClass:
+#
+###The server
+#
 
-    def my_cool_method(self, x):
-        return x * 2
+class MyNestedMod:
+    def __init__(self):
+        self.remotable_funcs = [self.add]
 
-    def my_cool_method2(self, x):
-        return x[1] * 2
+    def add(self, x,y): return x+y
+
+class MyMod:
+    def __init__(self):
+        self.nestmod = MyNestedMod()
+
+        self.remotable_funcs = [self.square, self.mul]
+
+    def square(self, x): return x*x
+    def mul(self, x, y): return x*y
+
+    def private_func(self): pass
+
+def another_foo():pass
+
+remotable_funcs = [another_foo]
+mod = MyMod()
 
 class MixinServer:
     def serve_few(self):
         for _ in range(REQUEST):
             self.handle_request()
 
-class NtkRPCFewServer(MixinServer, SimpleNtkRPCServer):
-    '''A SimpleNtkRPCServer that handles only `REQUEST' requests'''
+class NtkRPCFewServer(MixinServer, SimpleRPCServer):
+    '''A SimpleRPCServer that handles only `REQUEST' requests'''
 
 class ThreadedNtkRPCServer(threading.Thread):
     def __init__(self):
@@ -50,23 +69,36 @@ class ThreadedNtkRPCServer(threading.Thread):
 
     def run(self):
         ntk_server = NtkRPCFewServer(('localhost', PORT))
-        ntk_server.register_instance(MyClass())
         ntk_server.serve_few()
+
+#
+#### The client
+#
 
 class ThreadedNtkRPCClient(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
 
     def run(self):
-        ntk_client = SimpleNtkRPCClient(port=PORT)
+        ntk_client = SimpleRPCClient(port=PORT)
 
-        response = ntk_client.rpc_call('my_cool_method', (3,))
-        assert response == 6
-        # Use try to catch RPCError if you don't want to crash :D
-        try:
-            response = ntk_client.rpc_call('my_cool_method2', ())
-        except: pass
-        response = ntk_client.rpc_call('my_cool_method3', ()) # not exist!
+	x=5
+	xsquare = ntk_client.mod.square(x)
+	logging.debug("xsquare: "+str(xsquare))
+	assert xsquare == 25
+	xmul7   = ntk_client.mod.mul(x, 7)
+	assert xmul7 == 35
+	xadd9	= ntk_client.mod.nestmod.add(x, 9)
+	assert xadd9 == 14
+	ntk_client.another_foo()
+
+	# something trickier
+	nm = ntk_client.mod
+	result = nm.square(nm.mul(x, nm.nestmod.add(x, 10)))
+
+	# should crash now
+	ntk_client.private_func()
+
 
 if __name__ == '__main__':
     print 'Starting server...'
