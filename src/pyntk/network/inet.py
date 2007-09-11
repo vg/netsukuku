@@ -1,13 +1,55 @@
+from socket import inet_pton, inet_ntop, AF_INET, AF_INET6, ntohl, htonl
+
 ipv4 = 4
 ipv6 = 6
+ipfamily = {ipv4 : AF_INET, ipv6 : AF_INET6}
+ipbit = {ipv4 : 32, ipv6 : 128}
 
-def ip_bit(ipv=ipv4):
-    if ipv == ipv4:
-	    return 32
-    elif ipv == ipv6:
-	    return 128
+def pip_to_ip(pip):
+    ps = pip[::-1]
+    return sum(ord(ps[i]) * 256**i for i in xrange(len(ps)))
 
-    raise Exception, str(ipv)+" is not a supported ip version"
+def ip_to_pip(ip, ver):
+    return ''.join([chr( (ip % 256**(i+1))/256**i ) for i in reversed(xrange(ipbit[ver]/8))])
 
-def ip_to_str(ip, ipv=ipv4):pass
-    #TODO
+# def pip_to_ip(pip, version=ipv4):
+#     """packed ip to numeric ip"""
+#     if version == 4:
+# 	    return ntohl(pip)
+#     else:
+# 	    #TODO
+# 	    raise NotImplementedError
+# 
+# def ip_to_pip(ip, version=ipv4):
+#     """numeric ip to packed ip"""
+#     if version == 4:
+# 	    return htonl(ip)
+#     else:
+# 	    #TODO
+# 	    raise NotImplementedError
+
+
+def pip_to_str(pip, version=ipv4):
+    return inet_ntop(ipfamily[version], pip)
+def str_to_pip(ipstr, version=ipv4):
+    return inet_pton(ipfamily[version], ipstr)
+
+def ip_to_str(ip, version=ipv4):
+    return pip_to_str(ip_to_pip(ip, version), version)
+def str_to_ip(ipstr, version=ipv4):
+    return pip_to_ip(str_to_pip(ipstr, version))
+
+
+if __name__ == "__main__":
+	ps = "1.2.3.4"
+	pv = ipv4
+
+	pip = str_to_pip(ps, pv)
+	ip  = pip_to_ip(pip)
+	PIP = ip_to_pip(ip, pv)
+	IP  = pip_to_ip(PIP)
+	print str(ps)+" --> "+pip+" --> "+str(ip)+" --> "+PIP+" --> "+str(IP)
+	assert PIP == pip
+	assert IP == ip
+	assert ip_to_str(ip, pv) == ps
+	print "all ok"

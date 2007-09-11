@@ -10,4 +10,6 @@ nip=[11,22,33,44]
 print nip
 ip=m.nip_to_ip(nip)
 print ip
-print m.ip_to_nip(ip)
+mnip = m.ip_to_nip(ip)
+print mnip
+assert nip == mnip

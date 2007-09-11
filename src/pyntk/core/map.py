@@ -110,7 +110,7 @@ class Map:
 	where g = self.gsize"""
 
 	g=self.gsize
-	return [int(ip/g**l) - (int(ip/g**(l+1)) * g) for l in xrange(self.levels)]
+        return [(ip % g**(l+1)) / g**l for l in xrange(self.levels)]
 
     def nip_to_ip(self, nip):
         """The reverse of ip_to_nip"""

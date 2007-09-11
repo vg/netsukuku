@@ -54,7 +54,7 @@ class Ntkd:
     def _set_ipv(self, levels = 4, ipv = net.ipv4):
     	self.levels = levels
 	self.ipv    = ipv
-	self.gsize  = 2**(inet.ip_bit(ipv)/levels)	# size of a gnode
+	self.gsize  = 2**(inet.ipbit[ipv]/levels)	# size of a gnode
 	if self.gsize == 1:
 		raise OptErr, "the gnode size cannot be equal to 1"
 
