@@ -18,55 +18,55 @@
 ##
 #
 # Netsukuku RPC
-# 
+#
 ## Usage example
-# 
+#
 #### The server
-# 
+#
 # class MyNestedMod:
 #     def __init__(self):
 #         self.remotable_funcs = [self.add]
-# 
+#
 #     def add(self, x,y): return x+y
-# 
+#
 # class MyMod:
 #     def __init__(self):
 #         self.nestmod = MyNestedMod()
-# 
+#
 #         self.remotable_funcs = [self.square, self.mul]
-# 
+#
 #     def square(self, x): return x*x
 #     def mul(self, x, y): return x*y
-# 
+#
 # def another_foo():pass
 # remotable_funcs = [another_foo]
-# 
+#
 # mod = MyMod()
-# 
+#
 # ntk_server = SimpleRPCServer()
 # ntk_server.serve_forever()
-# 
+#
 #
 #### The client
-# 
+#
 # ntk_client = SimpleRPCClient()
 # x=5
 # xsquare = ntk_client.mod.square(x)
 # xmul7   = ntk_client.mod.mul(x, 7)
-# xadd9	= ntk_client.mod.nestmod.add(x, 9)
+# xadd9 = ntk_client.mod.nestmod.add(x, 9)
 # ntk_client.another_foo()
-# 
+#
 # # something trickier
 # nm = ntk_client.mod
 # result = nm.square(nm.mul(x, nm.nestmod.add(x, 10)))
-# 
+#
 #### Notes
-# 
+#
 # - If the function on the remote side returns DoNotReply, then no
 #   reply is sent.
-# 
+#
 ## TODO
-# 
+#
 # - Add a timeout in the .recv()
 #
 # - Support for broadcast queries. See radar.py and how it utilises NtkdBroadcast
@@ -112,8 +112,8 @@ class FakeRmt(object):
         '''
 
         fr=FakeRmt(self._name + '.' + name)
-	fr.rmt=self.rmt
-	return fr
+        fr.rmt=self.rmt
+        return fr
 
     def __call__(self, *params):
         return self.rmt(self._name[1:], *params)
@@ -136,51 +136,49 @@ class RPCDispatcher(object):
 
     def func_get(self, func_name):
         """Returns the function (if any and if remotable), which has the given
-	  `func_name'
+          `func_name'
 
-	  `func_name' is a string in the form "mod1.mod2.mod3....modn.func"
-	  or just "func". In the latter case "func" is searched in the
-	  globals()
-	"""
-       
+          `func_name' is a string in the form "mod1.mod2.mod3....modn.func"
+          or just "func". In the latter case "func" is searched in the
+          globals()
+        """
+
         logging.debug("func_get: "+str(func_name))
 
-	def func_to_name(f): return f.__name__
+        splitted = func_name.split('.')
 
-	splitted = func_name.split('.')
-	lens = len(splitted)
-	if lens < 1:
-		return None
-	mods = splitted[:-1]
-	func = splitted[-1] 
+        if not len(splitted):
+            return None
 
-	if self.root_instance != None:
-		p = self.root_instance
+        mods, func = splitted[:-1], splitted[-1]
+
+        if self.root_instance is not None:
+            p = self.root_instance
         else:
-		import __main__
-		p = __main__
-	
-	try:
-		for m in mods:
-			p=getattr(p, m)
+            import __main__
+            p = __main__
 
-		if func in map(func_to_name, p.remotable_funcs):
-			return getattr(p, func)
-	except AttributeError:
-		return None
+        try:
+            for m in mods:
+                p = getattr(p, m)
 
-	return None
-	
+            if func in map(lambda f:f.__name__, p.remotable_funcs):
+                return getattr(p, func)
+        except AttributeError:
+            return None
+
+        return None
+
     def _dispatch(self, func_name, params):
         logging.debug("_dispatch: "+func_name+"("+str(params)+")")
         func = self.func_get(func_name)
-	if func == None:
-        	raise RPCFuncNotRemotable('Function %s is not remotable' % func_name)
+        if func == None:
+            raise RPCFuncNotRemotable('Function %s is not remotable' % func_name)
         try:
-        	return func(*params)
+            return func(*params)
         except Exception, e:
         # I propagate all exceptions to `dispatch'
-        	raise
+            raise
 
     def dispatch(self, func, params):
         try:
@@ -189,23 +187,23 @@ class RPCDispatcher(object):
             logging.debug(str(e))
             response = ('rmt_error', str(e))
         logging.debug("dispatch response: "+str(response))
-	return response
+        return response
 
     def marshalled_dispatch(self, sender, data):
         '''Dispatches a RPC function from marshalled data'''
 
-	unpacked = rencode.loads(data) 
-	if not isinstance(unpacked, tuple) or not len(unpacked) == 2:
-		e = 'Malformed packet received from '+sender
-		logging.debug(e)
-                response = ('rmt_error', str(e))
+        unpacked = rencode.loads(data)
+        if not isinstance(unpacked, tuple) or not len(unpacked) == 2:
+            e = 'Malformed packet received from '+sender
+            logging.debug(e)
+            response = ('rmt_error', str(e))
         else:
-		response = self.dispatch(*unpacked)
+            response = self.dispatch(*unpacked)
 
-	if response != DoNotReply:
-		encresp = rencode.dumps(response)
-	else:
-		encresp = DoNotReply
+        if response != DoNotReply:
+            encresp = rencode.dumps(response)
+        else:
+            encresp = DoNotReply
         return encresp
 
 
@@ -217,18 +215,19 @@ class NtkRequestHandler(SocketServer.BaseRequestHandler):
     def handle(self):
         logging.debug('Connected from %s', self.client_address)
 
-        while 1:
-		try:
-		    data = self.request.recv(1024)
-		    logging.debug('Handling data: %s', data)
-		    response = self.server.marshalled_dispatch(self.client_address, data)
-		    logging.debug('Response: %s', response)
-		except RPCError:
-		    logging.debug('An error occurred during request handling')
-		if response != DoNotReply:
-		    self.request.send(response)
-		    #self.request.close()
-		    logging.debug('Response sended')
+        while True:
+            try:
+                data = self.request.recv(1024)
+                if not data: break
+                logging.debug('Handling data: %s', data)
+                response = self.server.marshalled_dispatch(self.client_address, data)
+                logging.debug('Response: %s', response)
+            except RPCError:
+                logging.debug('An error occurred during request handling')
+            if response != DoNotReply:
+                self.request.send(response)
+                #self.request.close()
+                logging.debug('Response sended')
 
 
 class SimpleRPCServer(SocketServer.TCPServer, RPCDispatcher):
@@ -236,9 +235,9 @@ class SimpleRPCServer(SocketServer.TCPServer, RPCDispatcher):
 
     def __init__(self, addr=('localhost', 269),
                  requestHandler=NtkRequestHandler,
-		 root_instance=None):
+                 root_instance=None):
 
-	RPCDispatcher.__init__(self, root_instance)
+        RPCDispatcher.__init__(self, root_instance)
         SocketServer.TCPServer.__init__(self, addr, requestHandler)
 
 class SimpleRPCClient(FakeRmt):
@@ -249,9 +248,9 @@ class SimpleRPCClient(FakeRmt):
         self.port = port
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	self.connected = False
+        self.connected = False
 
-	FakeRmt.__init__(self)
+        FakeRmt.__init__(self)
 
     def rpc_call(self, func_name, params):
         '''Performs a rpc call
@@ -260,15 +259,15 @@ class SimpleRPCClient(FakeRmt):
         @param params: a tuple of arguments to pass to the remote callable
         '''
 
-	if not self.connected:
-		self.connect()
+        if not self.connected:
+            self.connect()
 
         data = rencode.dumps((func_name, params))
         self.socket.send(data)
 
         recv_encoded_data = self.socket.recv(1024)
         recv_data = rencode.loads(recv_encoded_data)
-	logging.debug("Recvd data: "+str(recv_data))
+        logging.debug("Recvd data: "+str(recv_data))
 
         # Handling errors
         # I receive a message with the following format:
@@ -278,17 +277,17 @@ class SimpleRPCClient(FakeRmt):
             raise RPCError(recv_data[1])
 
         return recv_data
-    
+
     def connect(self):
         self.socket.connect((self.host, self.port))
-	self.connected = True
+        self.connected = True
 
     def close(self):
         self.socket.close()
-	self.connected = False
+        self.connected = False
 
     def rmt(self, func_name, *params):
         return self.rpc_call(func_name, params)
-    
+
     def __del__(self):
         self.close()

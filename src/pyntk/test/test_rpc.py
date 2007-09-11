@@ -82,28 +82,29 @@ class ThreadedNtkRPCClient(threading.Thread):
     def run(self):
         ntk_client = SimpleRPCClient(port=PORT)
 
-	x=5
-	xsquare = ntk_client.mod.square(x)
-	assert xsquare == 25
-	xmul7   = ntk_client.mod.mul(x, 7)
-	assert xmul7 == 35
-	xadd9	= ntk_client.mod.nestmod.add(x, 9)
-	assert xadd9 == 14
-	ntk_client.another_foo()
+        x=5
+        xsquare = ntk_client.mod.square(x)
+        assert xsquare == 25
+        xmul7   = ntk_client.mod.mul(x, 7)
+        assert xmul7 == 35
+        xadd9   = ntk_client.mod.nestmod.add(x, 9)
+        assert xadd9 == 14
+        ntk_client.another_foo()
 
-	# something trickier
-	nm = ntk_client.mod
-	result = nm.square(nm.mul(x, nm.nestmod.add(x, 10)))
+        # something trickier
+        nm = ntk_client.mod
+        result = nm.square(nm.mul(x, nm.nestmod.add(x, 10)))
 
         try:
-		# should crash now
-		ntk_client.private_func()
-	except Exception, e:
-		logging.debug(str(e)) 
+            # should crash now
+            ntk_client.private_func()
+        except Exception, e:
+            logging.debug(str(e))
 
 
 if __name__ == '__main__':
     print 'Starting server...'
+
     server = ThreadedNtkRPCServer()
     server.start()
 
