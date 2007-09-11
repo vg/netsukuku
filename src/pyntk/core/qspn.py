@@ -61,8 +61,8 @@ class Etp:
 		return DeadRem()
 
 	R2 = [ 
-	      [ (dst, rem_or_none(self.maproute.node_get(lvl, dst).best_route())
-		    for dst,gw,rem in R[lvl]
+	      [ (dst, rem_or_none(self.maproute.node_get(lvl, dst).best_route()))
+		    for (dst,gw,rem) in R[lvl]
 	      ] for lvl in xrange(self.maproute.levels)
 	     ]
 	##
@@ -134,7 +134,7 @@ class Etp:
 		# collision detected. rehook.
 		self.events.send('NET_COLLISION', 
 				 ([nr for nr in self.neigh.neigh_list()
-						if nr.netid == neigh.netid])
+						if nr.netid == neigh.netid]))
 		return # drop the packet
         ##
 

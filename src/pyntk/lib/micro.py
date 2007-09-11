@@ -71,7 +71,7 @@ def microfunc(is_micro=False):
     @param is_micro: Tells the dispatcher to create a new microthread
 
     '''
-    def decorate(func)
+    def decorate(func):
         ch = Channel()
         micro(dispatcher, (func, ch, is_micro))
         return ch.send

@@ -24,6 +24,7 @@ import sys
 sys.path.append("..")
 from lib.event import Event
 from lib.rpc   import FakeRmt, RPCDispatcher
+from lib.micro import microfunc
 from core.map import Map
 
 class PartecipantNode:
@@ -41,14 +42,14 @@ class PartecipantNode:
 	return ret
 
 class MapP2P(Map):
-   """Map of the partecipant nodes"""
+    """Map of the partecipant nodes"""
 
-   def __init__(self, levels, gsize, me, pid):
-       """levels, gsize, me: the same of Map
+    def __init__(self, levels, gsize, me, pid):
+        """levels, gsize, me: the same of Map
 
 	  pid: P2P id of the service associated to this map"""
 	
-    	Map.__init__(self, levels, gsize, PartecipantNode, me)
+        Map.__init__(self, levels, gsize, PartecipantNode, me)
 
 	self.pid = pid
 
@@ -60,7 +61,7 @@ class MapP2P(Map):
 
     @microfunc()
     def me_changed(self, old_me, new_me):
-        return Map.me_change(self new_me)
+        return Map.me_change(self, new_me)
 
     @microfunc(True)
     def node_del(self, lvl, id):
@@ -74,10 +75,10 @@ class P2P(RPCDispatcher):
     seld.msg_send("""
 
     def __init__(self, radar, maproute, pid):
-	  """radar, maproute, hook: the instances of the relative modules
+        """radar, maproute, hook: the instances of the relative modules
 
-	  pid: P2P id of the service associated to this map
-	  """
+           pid: P2P id of the service associated to this map
+        """
 
 	self.radar    = radar
     	self.neigh    = radar.neigh
@@ -203,7 +204,7 @@ class P2P(RPCDispatcher):
 class P2PAll:
     """Class of all the registered P2P services"""
 
-    def __init__(self, radar, maproute, hook)
+    def __init__(self, radar, maproute, hook):
         self.radar = radar
 	self.maproute = maproute
 	self.hook = hook
@@ -242,7 +243,7 @@ class P2PAll:
 	# instance to be sure.
         map_pack = self.pid_get(p2p.pid).map_data_pack()
 	p2p.mapp2p.map_data_merge(*map_pack)
-	self.pid_get(p2p.pid) = p2p
+	self.service[p2p.pid] = p2p
 
     def partecipant_add(self, pid, pIP):
         self.pid_get(pid).partecipant_add(pIP)
@@ -280,4 +281,4 @@ class P2PAll:
     def __getattr__(self, str):
 
         if str[:4] == "pid_":
-		return self.pid_get(int(str[4:])
+		return self.pid_get(int(str[4:]))

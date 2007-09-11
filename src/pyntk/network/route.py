@@ -22,24 +22,27 @@ import logging
 
 class Route:
   """ this class is used to manage routes """
+
+  # we're using netsukuku, ain't we?
+  protocol = "ntk"
+
   def __init__(self, ip_version = 4):
     """ ip_version: tells if we're using IPv4 or IPv6 """
 
     self.ip_version = ip_version
-    # we're using netsukuku, ain't we?
-    self.protocol = "ntk"
 
   def _exec_ipr(self, ipr_str):
     """ ipr_str: ip route string """
 
      # execute ip route
-     status, output = commands.getstatusoutput(ipr_str)
+    status, output = commands.getstatusoutput(ipr_str)
 
-     # check if everything went good.. if not, log!
-     if(status != 0):
-        logger.error(output)
+    # check if everything went good.. if not, log!
+    if(status != 0):
+	    logger.error(output)
 
-  def _ip_route_gen_str(self, destination_ip = None, destination_bit = None, protocol = self.protocol, table = None, net_device = None, gateway = None):
+  def _ip_route_gen_str(self, destination_ip = None, destination_bit = None,
+		  protocol = "ntk", table = None, net_device = None, gateway = None):
     """ destination_ip: destination node's ip address
         destination_bit: destination node ip's bitmask
         protocol: the protocol we're using
@@ -54,7 +57,7 @@ class Route:
     
     # if an ip is provided, a bitmask has to, also. in this case, use them
     if(destination_ip != None):
-      if(destionation_bit == None)):
+      if destionation_bit == None:
         logger.error("Invalid ip provided (missing bitmask)")
       else:
         ipr_str += " to " + str(destination_ip) + "/" + str(destination_bit)
@@ -75,16 +78,16 @@ class Route:
     """ add a route in kernel routing table, via 'ip route' """
 
     # generate the ip route string
-    ipr_str = "ip route add" + _ip_route_gen_str(destination_ip, destination_bit, self.protocol, table, net_device, gateway)
+    ipr_str = "ip route add" + _ip_route_gen_str(destination_ip, destination_bit, Route.protocol, table, net_device, gateway)
     
     # execute ip route
     _exec_ipr(ipr_str)
 
-  def _ip_route_delete(self, destination_ip, destination_bit, table = None, net_device = None, gateway = none):
+  def _ip_route_delete(self, destination_ip, destination_bit, table = None, net_device = None, gateway = None):
     """ delete a route from kernel routing table, via 'ip route' """
 
     # generate the ip route string
-    ipr_str = "ip route delete" + _ip_route_gen_str(destination_ip, destination_bit, self.protocol, table, net_device, gateway)
+    ipr_str = "ip route delete" + _ip_route_gen_str(destination_ip, destination_bit, Route.protocol, table, net_device, gateway)
 
     # execute ip route
     _exec_ipr(ipr_str)
@@ -97,7 +100,7 @@ class Route:
       logger.error("Cannot flush without valid criteria")
 
     # generate the ip route string
-    ipr_str = "ip route flush" + _ip_route_gen_str(destination_ip, destination_bit, self.protocol, table, net_device, gateway)
+    ipr_str = "ip route flush" + _ip_route_gen_str(destination_ip, destination_bit, Route.protocol, table, net_device, gateway)
 
     # execute ip route
     _exec_ipr(ipr_str)
@@ -106,7 +109,7 @@ class Route:
     """ change a route in kernel routing table via 'ip route' """
 
     # generate the ip route string
-    ipr_str = "ip route change" + _ip_route_gen_str(destination_ip, destination_bit, self.protocol, table, net_device, gateway)
+    ipr_str = "ip route change" + _ip_route_gen_str(destination_ip, destination_bit, Route.protocol, table, net_device, gateway)
     
     # execute ip route
     _exec_ipr(ipr_str)
@@ -181,9 +184,9 @@ class Route:
       proc_path += "/conf/all/forwarding"
   
   	# what to write in /proc
-  	if(enable):
+      if enable:
   	  proc_value = "1"
-  	else:
+      else:
   	  proc_value = "0"
   
     # write in proc

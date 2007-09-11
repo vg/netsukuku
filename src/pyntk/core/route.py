@@ -274,7 +274,7 @@ class RouteNode:
     def is_empty(self):
     	return self.routes == []
 
-    def is_free(self)
+    def is_free(self):
         return self.is_empty()
 
     def nroutes(self):
@@ -285,6 +285,8 @@ class RouteNode:
 		return None
 	else:
 		return self.routes[0]
+
+def ftrue(*args):return True
 
 class MapRoute(Map):
     """Map of routes, all of a same Rem type.
@@ -404,5 +406,3 @@ class MapRoute(Map):
 			        if br != None and f((dst, br.gw, br.rem))
 		] for lvl in xrange(self.levels)
 	       ]
-
-def ftrue(*args):return True

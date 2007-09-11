@@ -240,7 +240,7 @@ class Hook:
         if not gnodesplitted:
 		return 0
 
-	N = [ nr for nr in self.neigh.neigh_list():
+	N = [ nr for nr in self.neigh.neigh_list()
     		     if self.maproute.nip_cmp(self.maproute.me,
 				self.maproute.ip_to_nip(nr.ip)) >= level ]
         if N == []:

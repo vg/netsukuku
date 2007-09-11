@@ -9,5 +9,5 @@ def ip_bit(ipv=ipv4):
 
     raise Exception, str(ipv)+" is not a supported ip version"
 
-def ip_to_str(ip, ipv=ipv4):
+def ip_to_str(ip, ipv=ipv4):pass
     #TODO

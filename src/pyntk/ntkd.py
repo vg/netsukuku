@@ -41,7 +41,7 @@ class Ntkd:
         self.radar      = radar.Radar( **drn({'multipath' : opt.multipath, 
                                               'bquet_num' : opt.bquet_num,
                                               'max_neigh' : opt.max_neigh,
-                                              'max_wait_time' : opt.max_wait_time)})
+                                              'max_wait_time' : opt.max_wait_time})
 				     )
 	self.neighbour  = radar.neigh
 
