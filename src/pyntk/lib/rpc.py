@@ -38,27 +38,23 @@
 #     def square(self, x): return x*x
 #     def mul(self, x, y): return x*y
 #
-# def another_foo():pass
-# remotable_funcs = [another_foo]
-#
 # mod = MyMod()
 #
-# ntk_server = SimpleRPCServer()
-# ntk_server.serve_forever()
+# server = SimpleRPCServer(mod)
+# server.serve_forever()
 #
 #
 #### The client
 #
-# ntk_client = SimpleRPCClient()
+# client = SimpleRPCClient()
 # x=5
-# xsquare = ntk_client.mod.square(x)
-# xmul7   = ntk_client.mod.mul(x, 7)
-# xadd9 = ntk_client.mod.nestmod.add(x, 9)
-# ntk_client.another_foo()
+# xsquare = client.square(x)
+# xmul7   = client.mul(x, 7)
+# xadd9 = client.nestmod.add(x, 9)
 #
 # # something trickier
-# nm = ntk_client.mod
-# result = nm.square(nm.mul(x, nm.nestmod.add(x, 10)))
+# n, nn = client, client.nestmod
+# result = n.square(n.mul(x, nn.add(x, 10)))
 #
 #### Notes
 #
@@ -131,7 +127,7 @@ class RPCDispatcher(object):
     This class is used to register RPC function handlers and
     to dispatch them.
     '''
-    def __init__(self, root_instance=None):
+    def __init__(self, root_instance):
         self.root_instance=root_instance
 
     def func_get(self, func_name):
@@ -152,12 +148,7 @@ class RPCDispatcher(object):
 
         mods, func = splitted[:-1], splitted[-1]
 
-        if self.root_instance is not None:
-            p = self.root_instance
-        else:
-            import __main__
-            p = __main__
-
+        p = self.root_instance
         try:
             for m in mods:
                 p = getattr(p, m)
@@ -207,7 +198,7 @@ class RPCDispatcher(object):
         return encresp
 
 
-class NtkRequestHandler(SocketServer.BaseRequestHandler):
+class RequestHandler(SocketServer.BaseRequestHandler):
     '''RPC request handler class
 
     Handles all request and try to decode them.
@@ -231,17 +222,16 @@ class NtkRequestHandler(SocketServer.BaseRequestHandler):
 
 
 class SimpleRPCServer(SocketServer.TCPServer, RPCDispatcher):
-    '''This class implement a simple Ntk-Rpc server'''
+    '''This class implement a simple Rpc server'''
 
-    def __init__(self, addr=('localhost', 269),
-                 requestHandler=NtkRequestHandler,
-                 root_instance=None):
+    def __init__(self, root_instance, addr=('localhost', 269),
+		    requestHandler=RequestHandler):
 
         RPCDispatcher.__init__(self, root_instance)
         SocketServer.TCPServer.__init__(self, addr, requestHandler)
 
 class SimpleRPCClient(FakeRmt):
-    '''This class implement a simple Ntk-RPC client'''
+    '''This class implement a simple RPC client'''
 
     def __init__(self, host='localhost', port=269):
         self.host = host
