@@ -174,7 +174,7 @@ class P2P(RPCDispatcher):
 
         # forward the message until it arrives at destination
 	n = self.neigh_get(hip)
-	if n != None: 
+	if n: 
 		exec("return n.ntkd.p2p.pid_"+str(self.mapp2p.pid)+
 			".msg_send(sender_nip, hip, msg)")
 	else:

@@ -20,15 +20,15 @@
 import SocketServer
 #import ntksim
 import sys
-sys.path.append('..')
+sys.path+=['..', '../../']
 from lib.micro import Channel
 
 class VirtualSocket:
     
+    def __init__(self, address_family, socket_type, net):
+        self.net=net # virtual Net instance
 
-    def __init__(self, address_family, socket_type):
-        pass
-
+	self.sck=None
     
     def accept(self, addr=None, sck=None):
         self.sck=sck
@@ -37,17 +37,16 @@ class VirtualSocket:
    
     def bind(self, addr):
         self.addr = addr
-        pass
 
     def close(self):
-        pass
+        self.sck=None
 
     def connect(self, addr, t=None): #TODO: connect error 
         self.sck = randint()
         self.chan = Channel() 
         self.t = t
         self.r_addr = addr
-        ntksim.connect(self)
+        self.net.connect(self)
         return self.sck
     
     def connect_ex(self,addr):
@@ -78,18 +77,19 @@ class VirtualSocket:
     def makefile(self,mode=0,bufsize=0):
         pass
     
-    def rcv(self, buflen, flag=0): 
+    def recv(self, buflen, flag=0): 
+        if not self.sck: return None
         return self.chan.rcv()
    
-    def rcvfrom(self, buflen, flag=0):
-        rcv(self, buflen, flag=0)
+    def recvfrom(self, buflen, flag=0):
+        return self.recv(self, buflen, flag)
     
     def sendall(self, data, flag=0):
         self.send(data, flag)
         pass
  
     def send(self, data, flag=0):
-        ntksend.send(self, data, flag)
+        ntksim.send(self, data, flag)
         pass
     
     def sendto(self, data,falg=0):
