@@ -66,26 +66,16 @@ http://netsukuku.freaknet.org/files/
 
 
 If you want to download the development code you have to checkout it from the
-cvs repository:
+svn repository:
 (Warning: It is highly probable the development code will not work!)
 
-$ cvs -d :pserver:anoncvs@cvs.hinezumi.org:/home/cvsroot login
-or
-$ export CVSROOT=":pserver:anoncvs@cvs.hinezumi.org:/home/cvsroot"
-$ cvs login
-
-then check it out:
-
-$ cvs -z3 -d :pserver:anoncvs@cvs.hinezumi.org:/home/cvsroot co netsukuku
-or
-$ cvs -z3 co netsukuku
-(providing the CVSROOT variable was set in the previous step)
-
+$ svn co http://dev.hinezumi.org/svnroot/netsukuku/trunk netsukuku
 
 Once you've checked out a copy of the source tree, you can update 
 your source tree at any time so it is in sync with the latest and 
 greatest by running the command:
-# cvs -z3 update -d -P
+# cd netsukuku
+# svn update
 
 
 **
