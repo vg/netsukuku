@@ -11,3 +11,5 @@ echo PDF compiled
 
 #latex2html -split 0 -dir html -mkdir inetntk.tex &> /dev/null &&\
 #echo HTML compiled
+
+cp inetntk.pdf ../../../doc/main_doc/inetntk.pdf

@@ -11,3 +11,5 @@ echo PDF compiled
 
 #latex2html -split 0 -dir html -mkdir *.tex &> /dev/null &&\
 #echo HTML compiled
+
+cp Ntk_p2p_over_ntk.pdf ../../../../doc/main_doc/ntk_rfc/Ntk_p2p_over_ntk.pdf

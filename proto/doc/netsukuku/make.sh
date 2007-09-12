@@ -20,3 +20,6 @@ echo PDF compiled
 
 #latex2html -split 0 -dir html -mkdir netsukuku.tex &> /dev/null &&\
 #echo HTML compiled
+
+cp netsukuku.pdf     ../../../doc/main_doc/
+cp netsukuku-ita.pdf ../../../doc/lang/italian/main_doc/

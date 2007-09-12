@@ -17,14 +17,14 @@
 #  this source code; if not, write to:
 #  Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-
-import time
+import sys
+sys.path.append('..')
+from G import G
 
 class Time:
     def swait(self, t):
-    	"""Waits `t' ms"""
-
-    	time.sleep(t/1000.)
+    	"""Waits `t' time units"""
+	G.sim.wait(t)
 
     def time(self):
-        return int(time.time()*1000)
+        return G.sim.curtime

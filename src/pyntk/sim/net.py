@@ -25,15 +25,14 @@ from opt     import Opt
 
 class ENet(Exception):
     errstr="""Generic network error"""
-    pass
 
 class ENotNeigh(ENet):
     errstr="""Specified destination is not a neighbour"""
-    pass
 
 class ESendMsg(ENet):
     errstr="""`msg' is not a string"""
-    pass
+class ESkt(ENet):
+    errstr="""Socket doesn't exist"""
 
 class Link(object):
     __slots__ = [ 'rtt', 'bw' ]
@@ -55,18 +54,25 @@ class Link(object):
     
 class Node:
     def __init__(self, ip=None, neighs={}):
-        self.ip=ip
-	if self.ip == None:
-		self.ip=randint(1, 2**32-1)
+        self.change_ip(ip)
 
 	# {Node: Link}
 	self.neighbours = {}
 
-	self.recv_queue = []
+	self.recv_chan = Channel()
+	self.accept_chan = Channel()
+
+	self.sk_table = {} # {sk: sk_chan}
+
+    def change_ip(self, newip=None):
+	self.ip=newip
+	if self.ip == None:
+		self.ip=randint(1, 2**32-1)
 
     def __hash__(self):
         return self.ip
 
+    
     def neigh_add(self, n, link):
         self.neighbours[n]=link
 	n.neighbours[self]=link # the links are symmetric
@@ -85,7 +91,10 @@ class Node:
 	   size `sz', from `self' to `d'"""
         return self.neighbours[d].rtt+float(sz)/self.neighbours[d].bw
 
-    def send(self, dst, msg):
+
+## Non socket based
+
+    def sendto(self, dst, msg):
         """dst: the destination neighbour
 	   msg: the packet itself. It must be a string!
 	   
@@ -95,13 +104,77 @@ class Node:
 
 	if dst not in self.neighbours:
 		raise ENotNeigh, ENotNeigh.errstr
-	
-	ev = Event(self.calc_time(dst, len(msg)), dst.recv, (self, msg))
-	G.sim.ev_add(ev)
 
-    def recv(self, sender, msg):
-        """Adds to the received queue the msg"""
-	self.recv_queue.append((sender, msg))
+        msglen = len(msg)
+	ev = Event(self.calc_time(dst, msglen), dst._sendto, (self, msg))
+	G.sim.ev_add(ev)
+	return msglen
+
+    def _sendto(self, sender, msg):
+        """Send the msg to the recv channel"""
+	self.recv_chan.send((sender, msg))
+    
+    def sendtoall(self, msg):
+        """Send the msg to all neighbours"""
+	for n in self.neighbours:
+		self.sendto(n, msg)
+
+    def recvfrom(self):
+        """Returns the (sender, msg) pair"""
+        return self.recv_chan.recv()
+  
+
+## Socket based 
+
+    def connect(self, dst):
+        """Returns sk_chan, the Channel() of the new established socket"""
+
+	if dst not in self.neighbours:
+		raise ENotNeigh, ENotNeigh.errstr
+
+        sk      = randint(1, 2**32-1)
+	sk_chan = Channel()
+	self.sk_table[sk]=sk_chan
+
+	dst.accept_chan.send((self, sk, sk_chan))
+	return sk
+
+    def accept(self):
+        """Returns (sk, src), where sk is the new established socket and 
+	  `src' is the instance of the source node"""
+
+        src, sk, sk_chan = self.accept_chan.recv()
+	self.sk_table[sk]=sk_chan
+        return sk, src
+
+    def send(self, dst, sk, msg):
+	if not isinstance(msg, str):
+		raise ESendMsg, ESendMsg.errstr
+	try:
+		sk_chan = self.sk_table[sk]
+	except KeyError:
+		raise ESkt, ESkt.errstr
+
+	msglen = len(msg)
+        ev = Event(self.calc_time(dst, msglen), dst._send, (sk_chan, msg))
+	G.sim.ev_add(ev)
+	return msglen
+
+    def _send(self, sk_chan, msg):
+	sk_chan.send(msg)
+
+    def recv(self, sk):
+	try:
+		sk_chan = self.sk_table[sk]
+	except KeyError:
+		raise ESkt, ESkt.errstr
+        return sk_chan.recv()
+
+    def close(self, dst, sk):
+	if sk in dst.sk_table:
+		del dst.sk_table[sk]
+	if sk in self.sk_table:
+        	del self.sk_table[sk]
 
 class Net:
     def __init__(self):
@@ -121,6 +194,14 @@ class Net:
 		return self.node_add(ip)
 	else:
 		return self.net[ip]
+
+    def node_change_ip(self, ip, newip):
+        self.net[newip]=self.net[ip]
+	self.net[newip].change_ip(newip)
+	del self.net[ip]
+
+    def node_is_alive(self, ip):
+        return ip in self.net
     
     def complete_net_build(self, k):
     	for i in xrange(k):

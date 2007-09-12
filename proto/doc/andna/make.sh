@@ -11,3 +11,5 @@ echo PDF compiled
 
 #latex2html -split 0 -dir html -mkdir andna.tex &> /dev/null &&\
 #echo HTML compiled
+
+cp andna.pdf ../../../doc/main_doc/andna.pdf

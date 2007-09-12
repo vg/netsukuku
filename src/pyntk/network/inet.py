@@ -1,4 +1,5 @@
-from socket import inet_pton, inet_ntop, AF_INET, AF_INET6, ntohl, htonl
+from socket import inet_pton, inet_ntop, 
+		   AF_INET, AF_INET6, ntohl, htonl, setsockopt
 
 ipv4 = 4
 ipv6 = 6
@@ -12,23 +13,6 @@ def pip_to_ip(pip):
 def ip_to_pip(ip, ver):
     return ''.join([chr( (ip % 256**(i+1))/256**i ) for i in reversed(xrange(ipbit[ver]/8))])
 
-# def pip_to_ip(pip, version=ipv4):
-#     """packed ip to numeric ip"""
-#     if version == 4:
-# 	    return ntohl(pip)
-#     else:
-# 	    #TODO
-# 	    raise NotImplementedError
-# 
-# def ip_to_pip(ip, version=ipv4):
-#     """numeric ip to packed ip"""
-#     if version == 4:
-# 	    return htonl(ip)
-#     else:
-# 	    #TODO
-# 	    raise NotImplementedError
-
-
 def pip_to_str(pip, version=ipv4):
     return inet_ntop(ipfamily[version], pip)
 def str_to_pip(ipstr, version=ipv4):
@@ -38,6 +22,17 @@ def ip_to_str(ip, version=ipv4):
     return pip_to_str(ip_to_pip(ip, version), version)
 def str_to_ip(ipstr, version=ipv4):
     return pip_to_ip(str_to_pip(ipstr, version))
+
+def sk_bindtodevice(sck, devname):
+    sck.setsockopt(SOL_SOCKET, SO_BINDTODEVICE, devname)
+
+def sk_set_broadcast(sck, ipver, devname):
+    if ipver == 4:
+	    sck.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
+    elif ipver == 6:
+	    raise NotImplementedError, 'please, call a coder!'
+
+    sck.bind(sck.getsockname())
 
 
 if __name__ == "__main__":

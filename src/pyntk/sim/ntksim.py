@@ -25,45 +25,4 @@ from string import join
 sys.path.append('..')
 from core import ntkd
 
-
-def send(sck, data, flag=0):
-    pck = packet (sck.id, sck.addr, sck.r_addr, sck.chan, data, sck.t)
-    
-
-def connect(self, sck):
-    n = graph.ip2node(sck.addr)
-    if not n.is_neigh(graph.ip2node(sck.r_addr)) \
-       or graph.ip2node(sck.addr).ntkd == None:
-        return false
-    graph.ip2node(sck.r_addr).ntkd.accept(sck.chan) #TODO: check
-    return true
-
-class packet:
-    total_pkts=0
-
-    def __str__(self):
-        return self.tracer_to_str()
-
-    def __cmp__(self, other):
-        return self.time-other.time
-
-    def __init__(self, sck, src, dst, chan, data,t=None):
-        self.sck = sck
-        self.src = src
-        self.dst = dst
-        self.chan = chan
-        self.data = data
-          
-        if t:
-            delay = t
-        elif dst.id != src.id:
-            delay=self.src.rtt[dst.id] #TODO: check
-        else:
-            delay=0
-
-        self.time = G.curtime+delay
-        heappush(G.events, self)
-
-    def exec_pkt():
-       self.chan.send(self.data)
-       total_pkts += 1
+#TODO

@@ -11,3 +11,5 @@ echo PDF compiled
 
 #latex2html -split 0 -dir html -mkdir topology.tex &> /dev/null &&\
 #echo HTML compiled
+
+cp topology.pdf ../../../doc/main_doc/topology.pdf

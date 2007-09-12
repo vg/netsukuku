@@ -19,51 +19,56 @@
 #
 # Netsukuku RPC
 #
-## Usage example
-#
-#### The server
-#
-# class MyNestedMod:
-#     def __init__(self):
-#         self.remotable_funcs = [self.add]
-#
-#     def add(self, x,y): return x+y
-#
-# class MyMod:
-#     def __init__(self):
-#         self.nestmod = MyNestedMod()
-#
-#         self.remotable_funcs = [self.square, self.mul]
-#
-#     def square(self, x): return x*x
-#     def mul(self, x, y): return x*y
-#
-# mod = MyMod()
-#
-# server = SimpleRPCServer(mod)
-# server.serve_forever()
-#
-#
-#### The client
-#
-# client = SimpleRPCClient()
-# x=5
-# xsquare = client.square(x)
-# xmul7   = client.mul(x, 7)
-# xadd9 = client.nestmod.add(x, 9)
-#
-# # something trickier
-# n, nn = client, client.nestmod
-# result = n.square(n.mul(x, nn.add(x, 10)))
-#
-#### Notes
-#
-# - If the function on the remote side returns DoNotReply, then no
-#   reply is sent.
-#
+"""
+# Usage example
+
+### The server
+
+ class MyNestedMod:
+     def __init__(self):
+         self.remotable_funcs = [self.add]
+
+     def add(self, x,y): return x+y
+
+ class MyMod:
+     def __init__(self):
+         self.nestmod = MyNestedMod()
+
+         self.remotable_funcs = [self.square, self.mul]
+
+     def square(self, x): return x*x
+     def mul(self, x, y): return x*y
+
+ mod = MyMod()
+
+ server = SimpleRPCServer(mod)
+ server.serve_forever()
+
+
+### The client
+
+ client = SimpleRPCClient()
+ x=5
+ xsquare = client.square(x)
+ xmul7   = client.mul(x, 7)
+ xadd9 = client.nestmod.add(x, 9)
+
+ # something trickier
+ n, nn = client, client.nestmod
+ result = n.square(n.mul(x, nn.add(x, 10)))
+
+### Notes
+
+ - If the function on the remote side returns DoNotReply, then no
+   reply is sent.
+"""
+
 ## TODO
 #
 # - Add a timeout in the .recv()
+#
+# - Udp support: in the Udp server, packets sent by our same IP must be
+#   discard (this happens when a pkt is sent in broadcast)
 #
 # - Support for broadcast queries. See radar.py and how it utilises NtkdBroadcast
 #
