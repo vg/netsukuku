@@ -74,7 +74,7 @@ $ svn co http://dev.hinezumi.org/svnroot/netsukuku/trunk netsukuku
 Once you've checked out a copy of the source tree, you can update 
 your source tree at any time so it is in sync with the latest and 
 greatest by running the command:
-# cd netsukuku
+# cd netsukuku/
 # svn update
 
 
