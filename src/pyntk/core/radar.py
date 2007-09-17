@@ -24,44 +24,47 @@ from lib.micro  import micro
 from lib.event  import Event
 from lib.rpc    import RPCBroadcast, DoNotReply
 from core.route import Rtt
-from operator   import itemgetter
 
 class NodeInfo:
   """ this class store informations about a node """
-  def __init__(self, net_device, rtt, ntk):
-    """ net_device: node's nic
-        rtt: node's round trip time
+  def __init__(self, devs, bestdev, ntk):
+    """ devs: a dict which maps a device to the average rtt
+        bestdev: a pair (d, avg_rtt), where devs[d] is the best element of
+	         devs.
         ntk: node's ntk remote instance
     """
-    self.dev = net_device
-    self.rtt = rtt
+    self.devs = devs
+    self.bestdev = bestdev
     self.ntk = ntk
 
 class Neigh:
   """ this class simply represent a neighbour """
 
-  def __init__(self, ip, idn, rtt, netid):
+  def __init__(self, ip, idn, devs, bestdev, netid):
     """ ip: neighbour's ip;
         idn: neighbour's id;
-        rtt: neighbour's round trip time;
+        devs: a dict which maps a device to the average rtt
+        bestdev: a pair (d, avg_rtt), where devs[d] is the best element of
+	         devs.
 	netid: network id of the node
     """
 
+    self.devs = devs
+    self.bestdev = bestdev
+
     self.ip = ip
     self.id = idn
-    self.rem = Rtt(rtt)		# TODO(low): support the other metrics
+    self.rem = Rtt(self.bestdev[1])		# TODO(low): support the other metrics
     # neighbour's ntk remote instance
     self.ntk = Ntk(ip)
     self.netid = netid
 
 class Neighbour:
   """ this class manages all neighbours """
-  def __init__(self, multipath = 0, max_neigh = 16):
-    """ multipath: does the current kernel we're running on support multipath routing?;
-        max_neigh: maximum number of neighbours we can have
+  def __init__(self, max_neigh = 16):
+    """  max_neigh: maximum number of neighbours we can have
     """
 
-    self.multipath = multipath
     self.max_neigh = max_neigh
     # variation on neighbours' rtt greater than this will be notified
     self.rtt_variation = 0.1
@@ -79,7 +82,7 @@ class Neighbour:
     """ return the list of neighbours """
     nlist = []
     for key, val in ip_table:
-      nlist.append(Neigh(key, translation_table[key], val.rtt, self.netid_table[key]))
+      nlist.append(Neigh(key, translation_table[key], val.devs, val.bestdev, self.netid_table[key]))
     return nlist
 
   def ip_to_id(self, ipn):
@@ -105,7 +108,9 @@ class Neighbour:
 	    return None
     else:
 	    return Neigh(ip, self.translation_table[ip], 
-			    self.ip_table[ip].rtt, self.netid_table[ip])
+			    self.ip_table[ip].devs,
+			    self.ip_table[ip].bestdev,
+			    self.netid_table[ip])
 
   def id_to_ip(self, id):
     """ Returns the IP associated to `id'.
@@ -120,13 +125,13 @@ class Neighbour:
     return self.ip_to_neigh(self.id_to_ip(id))
 
   def _truncate(self, ip_table):
-    """ ip_table: an {IP => NodeInfo ~ [dev, rtt, ntk]};
+    """ ip_table: an {IP => NodeInfo};
         we want the best (with the lowest rtt) max_neigh nodes only to remain in the table
     """
 
     # auxiliary function, to take rtt from {IP => NodeInfo}
     def interesting(x):
-      return x[1].rtt
+      return x[1].bestdev[1]
 
     # remember who we are truncating
     trucated = []
@@ -192,16 +197,20 @@ class Neighbour:
         # send a message notifying we added a node
         self.events.send('NEIGH_NEW', 
 			 (Neigh(key, self.translation_table(key),
-				self.ip_table[key].rtt, self.netid_table[key])))
+				self.ip_table[key].devs,
+				self.ip_table[key].bestdev,
+				self.netid_table[key])))
       else:
         # otherwise (if the node already was in old ip_table) check if
         # its rtt has changed more than rtt_variation
-        if(abs(ip_table[key].rtt - self.ip_table[key].rtt) / self.ip_table[key].rtt > self.rtt_mav_var):
+        if(abs(ip_table[key].bestdev[0][1] - self.ip_table[key].bestdev[1]) /
+			self.ip_table[key].bestdev[1] > self.rtt_variation):
           # send a message notifying the node's rtt changed
           self.events.send('NEIGH_REM_CHGED',
-			   (Neigh(key, self.translation_table[key], ip_table[key].rtt), 
-				   self.ip_table[key].rtt,
-				   self.netid_table[key]))
+			   (Neigh(key, self.translation_table[key],
+				       self.ip_table[key].devs,
+				       self.ip_table[key].bestdev,
+				       self.netid_table[key]) ))
 
     # finally, update the ip_table
     self.ip_table = ip_table
@@ -211,7 +220,9 @@ class Neighbour:
     for key in ip_table:
         self.events.send('NEIGH_NEW', 
 			 (Neigh(key, self.translation_table(key),
-				self.ip_table[key].rtt, self.netid_table[key])))
+				       self.ip_table[key].devs,
+				       self.ip_table[key].bestdev,
+				       self.netid_table[key])))
 
   def delete(self, ip, remove_from_iptable=True):
     """Deletes an entry from the ip_table"""
@@ -222,7 +233,7 @@ class Neighbour:
     # ...and from the netid_table
     old_netid = self.netid_table.pop(ip)
     # send a message notifying we deleted the entry
-    self.events.send('NEIGH_DELETED', (Neigh(ip, old_id, None, old_netid)))
+    self.events.send('NEIGH_DELETED', (Neigh(ip, old_id, None, None, old_netid)))
 
   def ip_change(self, oldip, newip):
     """Adds `newip' in the Neighbours as a copy of `oldip', then it removes
@@ -232,15 +243,17 @@ class Neighbour:
     self.translation_table[newip]= self.translation_table[oldip]
     self.netid_table[newip]      = self.netid_table[oldip]
 
-    self.events.send('NEIGH_NEW', 
-		     (Neigh(newip, self.translation_table(newip),
-			    self.ip_table[newip].rtt, self.netid_table[newip])))
+    self.events.send('NEIGH_NEW', (
+	    	      Neigh(newip, self.translation_table(newip),
+				   self.ip_table[newip].devs,
+				   self.ip_table[newip].bestdev,
+			    	   self.netid_table[newip]) ))
     self.delete(oldip)
 
 
 class Radar:
-  def __init__(self, multipath = 0, bquet_num = 16, max_neigh = 16, max_wait_time = 8):
-    """ multipath: does the current kernel we're running on support multipath routing?;
+  def __init__(self, bquet_num = 16, max_neigh = 16, max_wait_time = 8):
+    """
         bquet_num: how many packets does each bouquet contain?;
         max_neigh: maximum number of neighbours we can have;
         max_wait_time: the maximum time we can wait for a reply, in seconds;
@@ -253,12 +266,11 @@ class Radar:
     # when the replies arrived
     self.bcast_arrival_time = {}
     self.bquet_dimension = bquet_num
-    self.multipath = multipath
     self.max_wait_time = max_wait_time
     # an instance of the RPCBroadcast class to manage broadcast sending
     self.broadcast = RPCBroadcast(self.time_register)
     # our neighbours
-    self.neigh = Neighbour(multipath, max_neigh)
+    self.neigh = Neighbour(max_neigh)
 
     # Send a SCAN_DONE event each time a sent bouquet has been completely
     # collected
@@ -326,37 +338,24 @@ class Radar:
 
   def get_avg_rtt(self, ip):
     """ ip: an ip;
-        calculate the average rtt of ip
-    """
+        Calculates the average rtt of IP for each device
 
-    if(self.multipath == 0):
-      # if we can't use multipath routing use the value from the best nic
-      best_dev = None
-      best_rtt = float("infinity")
-      # for each nic
-      for dev in self.bcast_arrival_time[ip]:
-        # calculate the average rtt
-        avg = sum(self.bcast_arrival_time[node][dev]) / len(self.bcast_arrival_time[node][dev])
-        # and check if it's the current best
-        if(avg <= best_time):
-          best_dev = dev
-          best_rtt = avg
-      # finally return which nic had the best average rtt and what was it
-      return (best_dev, best_rtt)
-    else:
-      # otherwise use the value from all the nics
-      counter = 0
-      sum = 0
-      # for each nic
-      for dev in self.bcast_arrival_time[ip]:
-        # for each time measurement
-        for time in self.bcast_arrival_time[ip][dev]:
-          # just add it to the total sum
-          sum += time
-          # and update the counter
-          counter += 1
-      # finally return the average rtt
-      return (sum / counter)
+	Returns the ordered list [(dev, avgrtt)], the first element has the
+	best average rtt.
+    """
+    
+    devlist = []
+
+    # for each nic
+    for dev in self.bcast_arrival_time[ip]:
+        avg = sum(self.bcast_arrival_time[ip][dev]) / len(self.bcast_arrival_time[ip][dev])
+	devlist.append( (dev, avg) )
+
+    # sort the devices, the best is the first
+    def second_element((x,y)): return y
+    devlist.sort(key=second_element)
+    
+    return devlist
 
   def get_all_avg_rtt(self):
     """calculate the average rtt of all the ips"""
@@ -364,13 +363,6 @@ class Radar:
     all_avg = {}
     # for each ip
     for ip in self.bcast_arrival_time:
-      # if we can't use multipath routing
-      if(self.multipath == 0):
-        # simply store get_avg_rtt's value
-        a_dev, a_rtt = get_avg_rtt(ip)
-        all_avg[ip] = NodeInfo(a_dev, a_rtt, Ntk(ip))
-      else:
-        # otherwise, set None as the device
-        all_avg[ip] = NodeInfo(None, get_avg_rtt(ip), Ntk(ip))
+        devs = get_avg_rtt(ip)
+        all_avg[ip] = NodeInfo(dict(devs), devs[0], Ntk(ip))
     return all_avg
-

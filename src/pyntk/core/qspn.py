@@ -123,7 +123,7 @@ class Etp:
 
 	def isnot_empty(x):return x!=[] #helper func
         
-        gwnip    = sender_nip
+        gwnip   = sender_nip
 	neigh   = self.neigh.ip_to_neigh(gwnip)
 	gw	= neigh.id
 	gwrem	= neigh.rem

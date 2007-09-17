@@ -27,6 +27,7 @@ import core.qspn    as qspn
 import core.hook    as hook
 import core.p2p     as p2p
 import core.coord   as coord
+import core.krnl_route as kroute
 import network.inet as inet
 from config import *
 
@@ -40,26 +41,35 @@ class Ntkd:
 		raise Exception, "No network interfaces found in the current system"
 
 	# Load the core modules
-        self.radar      = radar.Radar( opt.getdict(
-					     ['multipath', 'bquet_num',
-					      'max_neigh', 'max_wait_time']) )
-	self.neighbour  = radar.neigh
+	self.inet	= inet.Inet(self.ipv, self.bitslvl)
+        self.radar      = radar.Radar( opt.getdict(['bquet_num', 'max_neigh', 'max_wait_time']) )
+	self.neighbour  = self.radar.neigh
 
 	self.maproute   = maproute.Maproute(self.levels, self.gsize)
 	self.etp        = qspn.Etp(self.radar, self.maproute)
-	self.hook       = hook.Hook(self.radar, self.maproute, self.etp, self.coordnode, self.nics)
+	self.hook       = hook.Hook(self.radar, self.maproute, self.etp,
+				    self.coordnode, self.nics, self.inet)
+	self.kroute     = kroute.KrnlRoute(self.neighbour, self.maproute, self.inet, **opt.getdict(['multipath']))
+
    	self.p2p	= p2p.P2PAll(self.radar, self.maproute, self.hook)
    	self.coordnode	= coord.Coord(self.radar, self.maproute, self.p2p)
 
     def _set_ipv(self, levels = 4, ipv = inet.ipv4):
     	self.levels = levels
 	self.ipv    = ipv
-	self.gsize  = 2**(inet.ipbit[ipv]/levels)	# size of a gnode
+
+	self.bitslvl= inet.ipbit[ipv]/levels	# how many bits of the IP
+						# addres are allocate to each gnode
+	self.gsize  = 2**(self.bitslvl)		# size of a gnode
+
 	if self.gsize == 1:
 		raise OptErr, "the gnode size cannot be equal to 1"
 
     def run(self):
 
+	self.kroute.route_ip_forward_enable()
+	for nic in self.nics.nics:
+		self.kroute.route_rp_filter_disable(nic)
         self.radar.run()
 	#self.rpc.serve_forever()
 

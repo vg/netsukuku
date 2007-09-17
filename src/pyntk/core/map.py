@@ -102,6 +102,14 @@ class Map:
 	"""Does the node nip belongs to our gnode of level `lvl'?"""
 	return nip[:-lvl-1] == self.me[:-lvl-1]
 
+    def lvlid_to_nip(self, lvl, id):
+	"""Converts a (lvl, id) pair, referring to this map, to 
+	   its equivalent netsukuku ip"""
+	nip=self.me[:]
+	nip[lvl]=id
+	for l in reversed(xrange(lvl)): nip[l]=None
+	return nip
+
     def ip_to_nip(self, ip):
         """Converts the given ip to a nip (Netsukuku IP)
 	
@@ -129,6 +137,7 @@ class Map:
 	return -1
 
     def nip_rand(self):
+	"""Returns a random netsukuku ip"""
         return [randint(0, self.gsize-1) for i in xrange(self.levels)]
 
     def level_reset(self, level):

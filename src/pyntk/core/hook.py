@@ -21,18 +21,18 @@ import sys
 sys.path.append("..")
 from lib.micro import microfunc
 from lib.event import Event
-from network.inet import ip_to_str
 from random import choice, randint
 
 class Hook:
 
-    def __init__(self, radar, maproute, etp, coordnode, nics): 
+    def __init__(self, radar, maproute, etp, coordnode, nics, inet): 
     	self.radar    = radar
     	self.neigh    = radar.neigh
     	self.maproute = maproute
     	self.etp      = etp
 	self.coordnode= coordnode
 	self.nics     = nics
+	self.inet     = inet
 
 	self.events = Event(['HOOKED'])
 
@@ -199,7 +199,7 @@ class Hook:
 		nr.ntkd.close()
 
 	# change the IPs of the NICs
-	self.nics.activate(ip_to_str(self.maproute.nip_to_ip(newnip)))
+	self.nics.activate(self.inet.ip_to_str(self.maproute.nip_to_ip(newnip)))
 
 	# reset the map
 	self.maproute.me_change(newnip[:])

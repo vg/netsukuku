@@ -26,10 +26,11 @@ class Route:
   # we're using netsukuku, ain't we?
   protocol = "ntk"
 
-  def __init__(self, ip_version = 4):
+  def __init__(self, ip_version = 4, multipath=False):
     """ ip_version: tells if we're using IPv4 or IPv6 """
 
     self.ip_version = ip_version
+    self.multipath  = multipath
 
   def _exec_ipr(self, ipr_str):
     """ ipr_str: ip route string """

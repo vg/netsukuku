@@ -299,12 +299,8 @@ class MapRoute(Map):
 
 	self.events.add( [  'ROUTE_NEW',
     			    'ROUTE_DELETED',
-    			    'ROUTE_REM_CHGED',	# the route's rem changed
-
-			    'NEIGH_NEW',
-			    'NEIGH_DELETED',
-			    'NEIGH_REM_CHGED'
-    		     	] )
+    			    'ROUTE_REM_CHGED'	# the route's rem changed
+    		     	 ] )
 	self.remotable_funcs = [self.free_nodes_nb]
 
     def route_add(self, lvl, dst, gw, rem, silent=0):
@@ -358,28 +354,22 @@ class MapRoute(Map):
 
 ## Neighbour stuff
 
-    def routeneigh_del(self, neigh, silent=0):
+    def routeneigh_del(self, neigh):
     	"""Delete from the MapRoute all the routes passing from the
     	   gateway `neigh.id' and delete the node `neigh' itself (if present)"""
 
     	for lvl in xrange(self.levels):
     		for dst in xrange(self.gsize):
     			self.route_del(lvl, dst, neigh.id, silent=1)
-	if not silent:
-		self.events.send('NEIGH_DELETED', (lvl, dst, neigh))
     
     def routeneigh_add(self, neigh, silent=0):
         """Add a route to reach the neighbour `neigh'"""
 	lvl, nid = routeneigh_get(neigh)
-	if not silent:
-		self.events.send('NEIGH_NEW', (lvl, nid, neigh))
-	return self.route_add(0, nid, nid, neigh.rem, silent=1)
+	return self.route_add(0, nid, neigh.id, neigh.rem, silent)
 
     def routeneigh_rem(self, neigh, silent=0):
 	lvl, nid = routeneigh_get(neigh)
-	if not silent:
-		self.events.send('NEIGH_REM_CHGED', (lvl, nid, neigh))
-	return self.route_rem(lvl, dst, neigh.rem, silent=1)
+	return self.route_rem(lvl, nid, neigh.id, neigh.rem, silent)
 
 
     def routeneigh_get(self, neigh):
