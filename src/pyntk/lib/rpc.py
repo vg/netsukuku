@@ -286,3 +286,7 @@ class SimpleRPCClient(FakeRmt):
 
     def __del__(self):
         self.close()
+
+class RPCBroadcast:
+    #TODO
+    pass

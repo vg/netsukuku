@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 ##
 # This file is part of Netsukuku
 # (c) Copyright 2007 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
@@ -17,6 +18,8 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
+import sys
+
 from lib.opt import Opt, OptErr
 import core.radar   as radar
 import core.route   as maproute
@@ -25,24 +28,21 @@ import core.hook    as hook
 import core.p2p     as p2p
 import core.coord   as coord
 import network.inet as inet
-from lib.misc import dict_remove_none as drn
+from config import *
 
 class Ntkd:
     def __init__(self, opt, IP=None):
 
-	self._set_ipv(**drn({'levels' : opt.levels, 'ipv' : opt.ipv}))
+	self._set_ipv( opt.getdict(['levels', 'ipv']) )
 
-	self.nics = NicAll(**drn({'nics' : opt.nics, 
-				  'exclude_nics' : opt.exclude_nics}))
+	self.nics = NicAll( opt.getdict(['nics', 'exclude_nics']) )
 	if self.nics.nics == []:
 		raise Exception, "No network interfaces found in the current system"
 
 	# Load the core modules
-        self.radar      = radar.Radar( **drn({'multipath' : opt.multipath, 
-                                              'bquet_num' : opt.bquet_num,
-                                              'max_neigh' : opt.max_neigh,
-                                              'max_wait_time' : opt.max_wait_time})
-				     )
+        self.radar      = radar.Radar( opt.getdict(
+					     ['multipath', 'bquet_num',
+					      'max_neigh', 'max_wait_time']) )
 	self.neighbour  = radar.neigh
 
 	self.maproute   = maproute.Maproute(self.levels, self.gsize)
@@ -51,7 +51,7 @@ class Ntkd:
    	self.p2p	= p2p.P2PAll(self.radar, self.maproute, self.hook)
    	self.coordnode	= coord.Coord(self.radar, self.maproute, self.p2p)
 
-    def _set_ipv(self, levels = 4, ipv = net.ipv4):
+    def _set_ipv(self, levels = 4, ipv = inet.ipv4):
     	self.levels = levels
 	self.ipv    = ipv
 	self.gsize  = 2**(inet.ipbit[ipv]/levels)	# size of a gnode
@@ -68,3 +68,47 @@ class NtkdBroadcast(Ntkd):
     def __init__(self, level, callbackfunc):
 	    #TODO 
 	    pass
+
+usage = """
+ntkd [n=nics_list] [c=config] 
+
+
+     n=['nic1', 'nic2', ...]		explicit nics to use
+
+     c="/path/to/config/file.conf"	configuration file path
+
+     ipv=4 or ipv=6			IP version
+    
+     dbg=0..9				debug level (default 0)
+     v or version			version
+     h or help				this help
+"""
+
+def main():
+
+    # load options
+    opt = Opt( {'n':'nics', 
+	    
+	    	'c':'config_file',
+
+		'v':'version',
+		'-v':'version',
+		'h':'help',
+		'-h':'help'
+	       } )
+    opt.config_file = CONF_DIR + '/netsukuku.conf'
+    opt.load_argv(sys.argv)
+
+    if opt.help:
+	    print usage
+	    sys.exit(1)
+    if opt.version:
+	    print "NetsukukuD " + VERSION
+	    sys.exit(1)
+
+    if opt.config_file:
+	    opt.load_file(opt.config_file)
+            opt.load_argv(sys.argv)
+
+if __name__ == "__main__":
+	main()

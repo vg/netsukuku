@@ -19,11 +19,10 @@
 
 import sys
 sys.path.append("..")
-from ntkd       import NtkdBroadcast
 from lib.xtime  import swait, time
 from lib.micro  import micro
 from lib.event  import Event
-from lib.rpc    import DoNotReply
+from lib.rpc    import RPCBroadcast, DoNotReply
 from core.route import Rtt
 from operator   import itemgetter
 
@@ -256,8 +255,8 @@ class Radar:
     self.bquet_dimension = bquet_num
     self.multipath = multipath
     self.max_wait_time = max_wait_time
-    # an instance of the NtkdBroadcast class to manage broadcast sending
-    self.broadcast = NtkdBroadcast(self.time_register)
+    # an instance of the RPCBroadcast class to manage broadcast sending
+    self.broadcast = RPCBroadcast(self.time_register)
     # our neighbours
     self.neigh = Neighbour(multipath, max_neigh)
 

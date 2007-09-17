@@ -21,7 +21,6 @@ import sys
 sys.path.append("..")
 from lib.micro import microfunc
 from lib.event import Event
-from utils.misc import unique
 from route import NullRem, DeadRem
 
 class Etp:

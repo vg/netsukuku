@@ -1,5 +1,4 @@
-from socket import inet_pton, inet_ntop, 
-		   AF_INET, AF_INET6, ntohl, htonl, setsockopt
+from socket import inet_pton, inet_ntop, AF_INET, AF_INET6, ntohl, htonl
 
 ipv4 = 4
 ipv6 = 6

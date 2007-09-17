@@ -22,7 +22,6 @@ sys.path.append("..")
 from lib.micro import microfunc
 from lib.event import Event
 from network.inet import ip_to_str
-from utils.misc import unique
 from random import choice, randint
 
 class Hook:
