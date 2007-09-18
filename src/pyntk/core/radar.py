@@ -17,13 +17,16 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
+from random import randint
+
 import sys
 sys.path.append("..")
 from lib.xtime  import swait, time
 from lib.micro  import micro
 from lib.event  import Event
-from lib.rpc    import RPCBroadcast, DoNotReply
 from core.route import Rtt
+
+import lib.rpc as rpc
 
 class NodeInfo:
   """ this class store informations about a node """
@@ -78,6 +81,7 @@ class Neighbour:
     self.events = Event(['NEIGH_NEW', 'NEIGH_DELETED', 'NEIGH_REM_CHGED'])
 
     self.remotable_funcs = [self.ip_change]
+
   def neigh_list(self):
     """ return the list of neighbours """
     nlist = []
@@ -252,8 +256,9 @@ class Neighbour:
 
 
 class Radar:
-  def __init__(self, bquet_num = 16, max_neigh = 16, max_wait_time = 8):
+  def __init__(self, inet, bquet_num = 16, max_neigh = 16, max_wait_time = 8):
     """
+    	inet:	network.inet.Inet instance
         bquet_num: how many packets does each bouquet contain?;
         max_neigh: maximum number of neighbours we can have;
         max_wait_time: the maximum time we can wait for a reply, in seconds;
@@ -268,7 +273,7 @@ class Radar:
     self.bquet_dimension = bquet_num
     self.max_wait_time = max_wait_time
     # an instance of the RPCBroadcast class to manage broadcast sending
-    self.broadcast = RPCBroadcast(self.time_register)
+    self.broadcast = rpc.BcastClient()
     # our neighbours
     self.neigh = Neighbour(max_neigh)
 
@@ -283,6 +288,9 @@ class Radar:
     # neighbours.
     self.do_reply = False
 
+    self.remotable_funcs = [self.reply, self.time_register]
+
+  
   def run(self, started=0):
     if not started:
       micro(self.radar_run, started=1)
@@ -292,12 +300,14 @@ class Radar:
   def radar(self):
     """ Send broadcast packets and store the results in neigh """
 
+    self.radar_id = randint(0, 2**32-1)
+
     # we're sending the broadcast packets NOW
     self.bcast_send_time = time()
 
     # send all packets in the bouquet
     def br():
-      self.broadcast.reply()
+      self.broadcast.radar.reply(radar_id)
     for i in xrange(bquet_num):
       micro(br)
 
@@ -311,15 +321,21 @@ class Radar:
     self.bouquet_numb+=1
     self.events.send('SCAN_DONE', (bouquet_numb))
 
-  def reply(self):
+  def reply(self, _rpc_caller, radar_id):
     """ As answer we'll return our netid """
     if self.do_reply:
+	    rpc.BcastClient(devs=[_rpc_caller.dev]).radar.time_register(radar_id, self.netid)
 	    return self.netid
-    else:
-	    return DoNotReply
 
-  def time_register(self, ip, net_device, msg):
+  def time_register(self, _rpc_caller, radar_id, netid):
     """save each node's rtt"""
+
+    if radar_id != self.radar_id:
+	    # drop. It isn't a reply to our current bouquet
+	    return
+
+    ip = self.inet.str_to_ip(_rpc_caller.ip)
+    net_device = _rpc_caller.dev
 
     # this is the rtt
     time_elapsed = int(time() - bcast_send_time / 2)
@@ -333,7 +349,7 @@ class Radar:
       self.bcast_arrival_time[ip] = {}
       self.bcast_arrival_time[ip][net_device] = [time_elapsed]
     
-    self.neigh.netid_table[ip] = msg
+    self.neigh.netid_table[ip] = netid
 
 
   def get_avg_rtt(self, ip):

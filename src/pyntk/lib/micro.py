@@ -54,7 +54,7 @@ def micro(function, *args):
     @return: A tasklet
     '''
     if args:
-        return stackless.tasklet(function)(args)()
+        return stackless.tasklet(function)(args)
     else:
         return stackless.tasklet(function)()
 

@@ -26,6 +26,7 @@ import sys
 sys.path.append("..")
 from lib.event import Event
 from lib.micro import microfunc
+from network.route import Route as KRoute
 
 class KrnlRoute:
     def __init__(self, neigh, maproute, inet, multipath=False):

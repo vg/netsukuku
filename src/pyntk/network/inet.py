@@ -1,4 +1,6 @@
-from socket import inet_pton, inet_ntop, AF_INET, AF_INET6, ntohl, htonl
+from socket import inet_pton, inet_ntop, AF_INET, AF_INET6, ntohl, htonl, \
+		   SOL_SOCKET, SO_BROADCAST
+from IN import SO_BINDTODEVICE
 
 ipv4 = 4
 ipv6 = 6
@@ -42,8 +44,6 @@ class Inet:
     	    sck.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
         elif S.ipv == 6:
     	    raise NotImplementedError, 'please, call a coder!'
-    
-        sck.bind(sck.getsockname())
     
     
 if __name__ == "__main__":

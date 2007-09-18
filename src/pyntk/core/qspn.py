@@ -31,9 +31,9 @@ class Etp:
 	self.neigh   =radar.neigh
     	self.maproute=maproute
 
-    	neigh.events.listen('NEIGH_NEW', self.etp_new_changed)
-    	neigh.events.listen('NEIGH_REM_CHGED', self.etp_new_changed)
-    	neigh.events.listen('NEIGH_DELETED', self.etp_new_dead)
+    	self.neigh.events.listen('NEIGH_NEW', self.etp_new_changed)
+    	self.neigh.events.listen('NEIGH_REM_CHGED', self.etp_new_changed)
+    	self.neigh.events.listen('NEIGH_DELETED', self.etp_new_dead)
 
 	self.events = Event(['ETP_EXECED', 'NET_COLLISION'])
 	

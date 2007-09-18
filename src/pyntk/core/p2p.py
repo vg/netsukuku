@@ -23,7 +23,7 @@
 import sys
 sys.path.append("..")
 from lib.event import Event
-from lib.rpc   import FakeRmt, RPCDispatcher
+from lib.rpc   import FakeRmt, RPCDispatcher, CallerInfo
 from lib.micro import microfunc
 from core.map import Map
 
@@ -181,7 +181,7 @@ class P2P(RPCDispatcher):
 		return None
 
     def msg_exec(self, sender_nip, msg):
-        return self.dispatch(*msg)
+        return self.dispatch(CallerInfo(), *msg)
 
     class RmtPeer(FakeRmt):
 	def __init__(self, p2p, hIP=None, key=None):

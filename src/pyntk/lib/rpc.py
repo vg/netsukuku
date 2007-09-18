@@ -22,6 +22,8 @@
 """
 # Usage example
 
+import rpc
+
 ### The server
 
  class MyNestedMod:
@@ -41,13 +43,13 @@
 
  mod = MyMod()
 
- server = SimpleRPCServer(mod)
+ server = rpc.TCPServer(mod)
  server.serve_forever()
 
 
 ### The client
 
- client = SimpleRPCClient()
+ client = rpc.TCPClient()
  x=5
  xsquare = client.square(x)
  xmul7   = client.mul(x, 7)
@@ -56,14 +58,11 @@
  # something trickier
  n, nn = client, client.nestmod
  result = n.square(n.mul(x, nn.add(x, 10)))
-
-### Notes
-
- - If the function on the remote side returns DoNotReply, then no
-   reply is sent.
 """
 
 ## TODO
+#
+# - Describe the _rpc_caller feature
 #
 # - Add a timeout in the .recv()
 #
@@ -81,12 +80,10 @@
 
 import logging
 import socket
-import SocketServer
+import SocketServer as SckSrv
 
 import rencode
 
-
-DoNotReply = "__DoNotReply__"
 
 class RPCError(Exception): pass
 class RPCFuncNotRemotable(RPCError): pass
@@ -126,6 +123,13 @@ class FakeRmt(object):
         '''
         raise NotImplementedError, 'You must override this method'
 
+class CallerInfo(object):
+    __slots__ = ['ip','port','dev','socket']
+    def __init__(self, ip=None, port=None, dev=None, socket=None):
+        self.ip=ip
+	self.port=port
+	self.dev=dev
+	self.socket=socket
 
 class RPCDispatcher(object):
     '''
@@ -165,78 +169,81 @@ class RPCDispatcher(object):
 
         return None
 
-    def _dispatch(self, func_name, params):
+    def _dispatch(self, caller, func_name, params):
         logging.debug("_dispatch: "+func_name+"("+str(params)+")")
         func = self.func_get(func_name)
         if func == None:
             raise RPCFuncNotRemotable('Function %s is not remotable' % func_name)
         try:
-            return func(*params)
+	    if '_rpc_caller' in func.im_func.func_code.co_varnames:
+                return func(caller, *params)
+	    else:
+                return func(*params)
         except Exception, e:
         # I propagate all exceptions to `dispatch'
             raise
 
-    def dispatch(self, func, params):
+    def dispatch(self, caller, func, params):
         try:
-            response = self._dispatch(func, params)
+            response = self._dispatch(caller, func, params)
         except Exception, e:
             logging.debug(str(e))
             response = ('rmt_error', str(e))
         logging.debug("dispatch response: "+str(response))
         return response
 
-    def marshalled_dispatch(self, sender, data):
+    def marshalled_dispatch(self, caller, data):
         '''Dispatches a RPC function from marshalled data'''
 
         unpacked = rencode.loads(data)
         if not isinstance(unpacked, tuple) or not len(unpacked) == 2:
-            e = 'Malformed packet received from '+sender
+            e = 'Malformed packet received from '+caller.ip
             logging.debug(e)
             response = ('rmt_error', str(e))
         else:
-            response = self.dispatch(*unpacked)
+            response = self.dispatch(caller, *unpacked)
 
-        if response != DoNotReply:
-            encresp = rencode.dumps(response)
-        else:
-            encresp = DoNotReply
-        return encresp
+	return rencode.dumps(response)
 
-
-class RequestHandler(SocketServer.BaseRequestHandler):
-    '''RPC request handler class
+class StreamRequestHandler(SckSrv.BaseRequestHandler):
+    '''RPC stream request handler class
 
     Handles all request and try to decode them.
     '''
+    def setup(self):
+        logging.debug('Connected from %s, dev %s', self.client_address, self.server.dev)
+	self.caller = CallerInfo(self.client_address[0], self.client_address[1],
+				self.server.dev, self.request)
     def handle(self):
-        logging.debug('Connected from %s', self.client_address)
-
         while True:
             try:
                 data = self.request.recv(1024)
                 if not data: break
                 logging.debug('Handling data: %s', data)
-                response = self.server.marshalled_dispatch(self.client_address, data)
+                response = self.server.marshalled_dispatch(self.caller, data)
                 logging.debug('Response: %s', response)
             except RPCError:
                 logging.debug('An error occurred during request handling')
-            if response != DoNotReply:
-                self.request.send(response)
-                #self.request.close()
-                logging.debug('Response sended')
+
+            self.request.send(response)
+            #self.request.close()
+            logging.debug('Response sent')
 
 
-class SimpleRPCServer(SocketServer.TCPServer, RPCDispatcher):
+class TCPServer(SckSrv.TCPServer, RPCDispatcher):
     '''This class implement a simple Rpc server'''
 
-    def __init__(self, root_instance, addr=('localhost', 269),
-		    requestHandler=RequestHandler):
-
+    def __init__(self, root_instance, addr=('localhost', 269), dev=None,
+		    requestHandler=StreamRequestHandler):
+	
+        self.dev=dev
+	#TODO: if dev!=None: bind to device the listening socket
         RPCDispatcher.__init__(self, root_instance)
-        SocketServer.TCPServer.__init__(self, addr, requestHandler)
+        SckSrv.TCPServer.__init__(self, addr, requestHandler)
+	self.allow_reuse_address=True
 
-class SimpleRPCClient(FakeRmt):
-    '''This class implement a simple RPC client'''
+class TCPClient(FakeRmt):
+    '''This class implement a simple TCP RPC client'''
 
     def __init__(self, host='localhost', port=269):
         self.host = host
@@ -258,7 +265,7 @@ class SimpleRPCClient(FakeRmt):
             self.connect()
 
         data = rencode.dumps((func_name, params))
-        self.socket.send(data)
+        self.socket.sendall(data)
 
         recv_encoded_data = self.socket.recv(1024)
         recv_data = rencode.loads(recv_encoded_data)
@@ -287,6 +294,89 @@ class SimpleRPCClient(FakeRmt):
     def __del__(self):
         self.close()
 
-class RPCBroadcast:
-    #TODO
-    pass
+
+class DgramRequestHandler(SckSrv.BaseRequestHandler):
+    '''RPC stream request handler class
+
+    Handles all request and try to decode them.
+    '''
+    def setup(self):
+        self.packet, self.socket = self.request
+	self.caller = CallerInfo(self.client_address[0], self.client_address[1],
+				self.server.dev, self.socket)
+        logging.debug('UDP packet from %s, dev %s', self.client_address, self.server.dev)
+
+    def handle(self):
+
+        try:
+            data = self.packet
+            logging.debug('Handling data: %s', data)
+            response = self.server.marshalled_dispatch(self.caller, data)
+        except RPCError:
+            logging.debug('An error occurred during request handling')
+
+class UDPServer(SckSrv.UDPServer, RPCDispatcher):
+    '''This class implement a simple Rpc UDP server'''
+
+    def __init__(self, root_instance, addr=('localhost', 269), dev=None,
+		    requestHandler=DgramRequestHandler):
+        self.dev=dev
+	#TODO: if dev!=None: bind to device the listening socket
+        RPCDispatcher.__init__(self, root_instance)
+        SckSrv.UDPServer.__init__(self, addr, requestHandler)
+	self.allow_reuse_address=True
+
+class BcastClient(FakeRmt):
+    '''This class implement a simple Broadcast RPC client'''
+
+    def __init__(self, inet, devs=[], port=269):
+        """
+	inet:  network.inet.Inet instance
+	devs:  list of devices where to send the broadcast calls
+	If devs=[], the msg calls will be sent through all the available
+	devices"""
+
+        self.port = port
+	self.inet = inet
+
+        self.dev_sk = {}
+	for d in devs:
+		self.dev_sk[d] = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.connected = False
+
+        FakeRmt.__init__(self)
+
+    def rpc_call(self, func_name, params):
+        '''Performs a rpc call
+
+        @param func_name: name of the remote callable
+        @param params: a tuple of arguments to pass to the remote callable
+        '''
+
+        if not self.connected:
+            self.connect()
+
+        data = rencode.dumps((func_name, params))
+        self.send(data)
+
+    def send(self, data):
+        for d, sk in self.dev_sk.iteritems():
+		sk.sendto(data, ('<broadcast>', self.port))
+
+    def connect(self):
+	for d, sk in self.dev_sk.iteritems():
+		#self.inet.sk_bindtodevice(sk, d)
+		self.inet.sk_set_broadcast(sk, d)
+        	sk.connect(('<broadcast>', self.port))
+        self.connected = True
+
+    def close(self):
+	for d, sk in self.dev_sk.iteritems():
+		sk.close()
+        self.connected = False
+
+    def rmt(self, func_name, *params):
+        self.rpc_call(func_name, params)
+
+    def __del__(self):
+        self.close()
