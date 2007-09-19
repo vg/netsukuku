@@ -158,9 +158,8 @@ class Map:
 
 
     def map_data_pack(self):
-        return (self.me, [self.node[lvl][id] 
-			  for lvl in xrange(self.levels) 
-				for id in xrange(self.gsize)],
+        return (self.me, [ [self.node[lvl][id] for id in xrange(self.gsize)]
+			     for lvl in xrange(self.levels) ],
 		[self.node_nb[lvl] for lvl in xrange(self.levels)])
 
     def map_data_merge(self, (nip, plist, nblist)):

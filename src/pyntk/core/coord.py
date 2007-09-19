@@ -133,7 +133,7 @@ class Coord(P2P):
     def coornodes_set(self):
         """Sets the coordinator nodes of each level, using the current map"""
 	for lvl in xrange(self.maproute.levels):
-		self.coordnode[lvl] = self.H(self.h(lvl, self.maproute.me))
+		self.coordnode[lvl] = self.H(self.h((lvl, self.maproute.me)))
 
     @microfunc()
     def new_partecipant_joined(self, lvl, id):

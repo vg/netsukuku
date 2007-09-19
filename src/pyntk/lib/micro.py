@@ -22,18 +22,6 @@ import socket
 
 import stackless
 
-class Micro(object):
-
-    def __init__(self, function, *args):
-        self.function = function
-        self.args = args
-
-    def micro(self):
-        if self.args:
-            return stackless.tasklet(self.function)(args)()
-        else:
-            return stackless.tasklet(self.function)()
-
 class Channel(object):
     '''This class is used to wrap a stackless channel'''
 
@@ -46,7 +34,6 @@ class Channel(object):
     def recv(self):
         return self.ch.receive()
 
-
 def micro(function, *args):
     '''Factory function that return tasklets
 
@@ -57,6 +44,9 @@ def micro(function, *args):
         return stackless.tasklet(function)(args)
     else:
         return stackless.tasklet(function)()
+
+def allmicro_run():
+    stackless.run()
 
 def _dispatcher(func, chan, is_micro):
     while True:

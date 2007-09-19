@@ -233,7 +233,7 @@ class StreamRequestHandler(SckSrv.BaseRequestHandler):
 class TCPServer(SckSrv.TCPServer, RPCDispatcher):
     '''This class implement a simple Rpc server'''
 
-    def __init__(self, root_instance, addr=('localhost', 269), dev=None,
+    def __init__(self, root_instance, addr=('', 269), dev=None,
 		    requestHandler=StreamRequestHandler):
 	
         self.dev=dev
@@ -318,7 +318,7 @@ class DgramRequestHandler(SckSrv.BaseRequestHandler):
 class UDPServer(SckSrv.UDPServer, RPCDispatcher):
     '''This class implement a simple Rpc UDP server'''
 
-    def __init__(self, root_instance, addr=('localhost', 269), dev=None,
+    def __init__(self, root_instance, addr=('', 269), dev=None,
 		    requestHandler=DgramRequestHandler):
         self.dev=dev
 	#TODO: if dev!=None: bind to device the listening socket

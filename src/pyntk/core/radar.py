@@ -264,6 +264,8 @@ class Radar:
         max_wait_time: the maximum time we can wait for a reply, in seconds;
     """
 
+    self.inet = inet
+
     # how many bouquet we have already sent
     self.bouquet_numb = 0
     # when we sent the broadcast packets
@@ -273,7 +275,7 @@ class Radar:
     self.bquet_dimension = bquet_num
     self.max_wait_time = max_wait_time
     # an instance of the RPCBroadcast class to manage broadcast sending
-    self.broadcast = rpc.BcastClient()
+    self.broadcast = rpc.BcastClient(self.inet)
     # our neighbours
     self.neigh = Neighbour(max_neigh)
 
@@ -290,10 +292,11 @@ class Radar:
 
     self.remotable_funcs = [self.reply, self.time_register]
 
+    self.ntkd_id = randint(0, 2**32-1)
   
   def run(self, started=0):
     if not started:
-      micro(self.radar_run, started=1)
+      micro(self.run, (1))
     else:
       while True: self.radar()
 
@@ -306,10 +309,8 @@ class Radar:
     self.bcast_send_time = time()
 
     # send all packets in the bouquet
-    def br():
-      self.broadcast.radar.reply(radar_id)
     for i in xrange(bquet_num):
-      micro(br)
+      self.broadcast.radar.reply(self.ntkd_id, self.radar_id)
 
     # then wait
     swait(self.max_wait_time * 1000)
@@ -321,9 +322,9 @@ class Radar:
     self.bouquet_numb+=1
     self.events.send('SCAN_DONE', (bouquet_numb))
 
-  def reply(self, _rpc_caller, radar_id):
+  def reply(self, _rpc_caller, ntkd_id, radar_id):
     """ As answer we'll return our netid """
-    if self.do_reply:
+    if self.do_reply and ntkd_id != self.ntkd_id:
 	    rpc.BcastClient(devs=[_rpc_caller.dev]).radar.time_register(radar_id, self.netid)
 	    return self.netid
 

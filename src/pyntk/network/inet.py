@@ -6,6 +6,7 @@ ipv4 = 4
 ipv6 = 6
 ipfamily = {ipv4 : AF_INET, ipv6 : AF_INET6}
 ipbit = {ipv4 : 32, ipv6 : 128}
+familyver = { AF_INET : ipv4, AF_INET6 : ipv6}
  
 class Inet:
   

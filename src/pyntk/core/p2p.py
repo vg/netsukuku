@@ -75,7 +75,7 @@ class P2P(RPCDispatcher):
     seld.msg_send("""
 
     def __init__(self, radar, maproute, pid):
-        """radar, maproute, hook: the instances of the relative modules
+        """radar, maproute: the instances of the relative modules
 
            pid: P2P id of the service associated to this map
         """
@@ -92,7 +92,7 @@ class P2P(RPCDispatcher):
         # are we a partecipant?
 	self.partecipant = False
 	
-	self.remotable_funcs = [self.pid_getall, self.partecipant_add, self.msg_send]
+	self.remotable_funcs = [self.partecipant_add, self.msg_send]
 	RPCDispatcher.__init__(self, root_instance=self)
 
     def h(self, key):
@@ -109,7 +109,7 @@ class P2P(RPCDispatcher):
         mp = self.mapp2p
 	hIP = [None]*mp.levels
 	for l in reversed(xrange(mp.levels)):
-		for id in xrange(mp.gize):
+		for id in xrange(mp.gsize):
 			for sign in [-1,1]:
 				hid=(IP[l]+id*sign)%mp.gsize
 				if mp.node_get(l, hid).partecipant:
@@ -175,7 +175,7 @@ class P2P(RPCDispatcher):
         # forward the message until it arrives at destination
 	n = self.neigh_get(hip)
 	if n: 
-		exec("return n.ntkd.p2p.pid_"+str(self.mapp2p.pid)+
+		exec("return n.ntkd.p2p.PID_"+str(self.mapp2p.pid)+
 			".msg_send(sender_nip, hip, msg)")
 	else:
 		return None
@@ -204,19 +204,20 @@ class P2P(RPCDispatcher):
 class P2PAll:
     """Class of all the registered P2P services"""
 
-    def __init__(self, radar, maproute, hook):
+    def __init__(self, radar, maproute):
         self.radar = radar
 	self.maproute = maproute
-	self.hook = hook
 
         self.service = {}
-
+ 
+	self.remotable_funcs = [self.pid_getall]
 	self.events=Event(['P2P_HOOKED'])
 
-	self.hook.listen('HOOKED', self.p2p_hook)
+    def listen_hook_ev(self, hook):
+	hook.events.listen('HOOKED', self.p2p_hook)
 
     def pid_add(self, pid):
-        self.service[pid] = P2P(self.radar, self.maproute, self.hook, pid)
+        self.service[pid] = P2P(self.radar, self.maproute, pid)
 	return self.service[pid]
 
     def pid_del(self, pid):
@@ -225,7 +226,7 @@ class P2PAll:
     
     def pid_get(self, pid):
         if pid not in self.service:
-		return self.add(pid)
+		return self.pid_add(pid)
 	else:
 		return self.service[pid]
 
@@ -241,8 +242,8 @@ class P2PAll:
 	# created by pid_add() has an update map of partecipants, which has
 	# been accumulated during the time. Copy this map in the `p2p'
 	# instance to be sure.
-        map_pack = self.pid_get(p2p.pid).map_data_pack()
-	p2p.mapp2p.map_data_merge(*map_pack)
+        map_pack = self.pid_get(p2p.pid).mapp2p.map_data_pack()
+	p2p.mapp2p.map_data_merge(map_pack)
 	self.service[p2p.pid] = p2p
 
     def partecipant_add(self, pid, pIP):
@@ -270,7 +271,7 @@ class P2PAll:
 
 	nrmaps_pack = minnr.ntkd.p2p.pid_getall()
 	for (pid, map_pack) in nrmaps_pack:
-		self.pid_get(pid).mapp2p.map_data_merge(*map_pack)
+		self.pid_get(pid).mapp2p.map_data_merge(map_pack)
        
         for s in self.service:
 		if self.service[s].partecipant:
@@ -280,5 +281,6 @@ class P2PAll:
 
     def __getattr__(self, str):
 
-        if str[:4] == "pid_":
+        if str[:4] == "PID_":
 		return self.pid_get(int(str[4:]))
+	raise AttributeError

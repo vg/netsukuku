@@ -32,7 +32,8 @@ class KrnlRoute:
     def __init__(self, neigh, maproute, inet, multipath=False):
         self.maproute = maproute
 	self.inet     = inet
-	self.kroute   = KRoute(ipversion)
+	self.neigh    = neigh
+	self.kroute   = KRoute(self.inet.ipv)
 
 	self.multipath = multipath
 
