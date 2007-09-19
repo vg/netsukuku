@@ -28,12 +28,12 @@ sys.path+=['..']
 from net import ESkt, ENotNeigh
 
 sys.path+=['../../']
-from lib.inet import ip_to_str, str_to_ip
 from lib.micro import Channel
 
 class VirtualSocket:
     
-    def __init__(self, address_family, socket_type, net, me):
+    def __init__(self, address_family, socket_type, inet, net, me):
+	self.inet = inet # network.inet.Inet() instance
         self.net=net # virtual Net instance
 	self.me =me  # our Node instance
 
@@ -52,14 +52,14 @@ class VirtualSocket:
 	retsck.sck  = sck
 	retsck.addr = addr
 	retsck.node = node
-        return retsck, (ip_to_str(addr), 1)
+        return retsck, (self.inet.ip_to_str(addr), 1)
    
     def bind(self, *args):pass
 
     def listen(self,n): pass
 
     def _get_net_node(self, addr):
-	addr = str_to_ip(addr)
+	addr = self.inet.str_to_ip(addr)
 	if not self.net.node_is_alive(addr):
 		raise socket.error, (ENETUNREACH, os.strerror(ENETUNREACH))
 
@@ -167,7 +167,7 @@ class VirtualSocket:
 
 class TCPVirtualServer(SocketServer.TCPServer):
 
-    def __init__(self, server_address, RequestHandlerClass, net, me):
+    def __init__(self, server_address, RequestHandlerClass, inet, net, me):
         BaseServer.__init__(self, server_address, RequestHandlerClass) 
         self.socket = VirtualSocket(self.address_family,
-                                    self.socket_type, net, me)
+                                    self.socket_type, inet, net, me)
