@@ -34,14 +34,14 @@ class Channel(object):
     def recv(self):
         return self.ch.receive()
 
-def micro(function, *args):
+def micro(function, args=()):
     '''Factory function that return tasklets
 
     @param function: A callable
     @return: A tasklet
     '''
     if args:
-        return stackless.tasklet(function)(args)
+        return stackless.tasklet(function)(*args)
     else:
         return stackless.tasklet(function)()
 

@@ -296,7 +296,7 @@ class Radar:
   
   def run(self, started=0):
     if not started:
-      micro(self.run, (1))
+      micro(self.run, (1,))
     else:
       while True: self.radar()
 
