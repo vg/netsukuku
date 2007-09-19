@@ -85,7 +85,7 @@ class Neighbour:
   def neigh_list(self):
     """ return the list of neighbours """
     nlist = []
-    for key, val in ip_table:
+    for key, val in self.ip_table:
       nlist.append(Neigh(key, translation_table[key], val.devs, val.bestdev, self.netid_table[key]))
     return nlist
 

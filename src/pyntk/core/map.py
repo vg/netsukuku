@@ -95,7 +95,7 @@ class Map:
     def free_nodes_list(self, lvl):
         """Returns the list of free nodes of level `lvl'"""
         return [nid for n in self.node[lvl] 
-			for nid in self.gsize
+			for nid in xrange(self.gsize)
 			    if self.node[lvl][nid].is_free() ]
 
     def is_in_level(self, nip, lvl):

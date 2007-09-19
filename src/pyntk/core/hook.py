@@ -139,11 +139,11 @@ class Hook:
     		raise Exception, "Netsukuku is full"
 
     	## Generate part of our new IP
-    	newnip = H[0]
+	newnip = list(H[0])
     	lvl = H[1][0]
     	fnl = H[1][1]
     	newnip[lvl] = choice(fnl)
-    	newnip[self.maproute.levels]=0
+    	newnip.append(0)
     	for l in reversed(xrange(lvl)): newnip[l]=randint(0, self.maproute.gsize)
 
 	# If we are alone, let's generate our netid
@@ -195,7 +195,7 @@ class Hook:
 	self.radar.do_reply = False
 
 	# close the ntkd sessions
-	for nr in self.neigh:
+	for nr in self.neigh.neigh_list():
 		nr.ntkd.close()
 
 	# change the IPs of the NICs
