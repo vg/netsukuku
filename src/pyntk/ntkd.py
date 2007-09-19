@@ -89,7 +89,7 @@ class Ntkd:
 	micro(udp_server.serve_forever)
 
         self.radar.run()
-#	self.hook.hook()
+	self.hook.hook()
 
 usage = """
 ntkd [n=nics_list] [c=config] 

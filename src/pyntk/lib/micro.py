@@ -30,6 +30,9 @@ class Channel(object):
 
     def send(self, data):
         self.ch.send(data)
+    
+    def fsend(self, *data):
+        self.ch.send(data)
 
     def recv(self):
         return self.ch.receive()
@@ -40,10 +43,7 @@ def micro(function, args=()):
     @param function: A callable
     @return: A tasklet
     '''
-    if args:
-        return stackless.tasklet(function)(*args)
-    else:
-        return stackless.tasklet(function)()
+    return stackless.tasklet(function)(*args)
 
 def allmicro_run():
     stackless.run()
@@ -51,10 +51,10 @@ def allmicro_run():
 def _dispatcher(func, chan, is_micro):
     while True:
         msg = chan.recv()
-    if is_micro:
-        micro(func, msg)
-    else:
-        func(*msg)
+        if is_micro:
+        	micro(func, msg)
+        else:
+        	func(*msg)
 
 def microfunc(is_micro=False):
     '''Create a new channel and start a microthread
@@ -67,7 +67,7 @@ def microfunc(is_micro=False):
     def decorate(func):
         ch = Channel()
         micro(_dispatcher, (func, ch, is_micro))
-        return ch.send
+        return ch.fsend
 
     return decorate
 

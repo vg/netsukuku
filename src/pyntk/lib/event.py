@@ -81,7 +81,7 @@ class Event:
 
     def _send(self, dst, msg):
     	# call the microfunc `dst'
-    	dst(*msg)
+	dst(*msg)
 
     def listen(self, event, dst, remove=False):
     	"""Listen to an event.
