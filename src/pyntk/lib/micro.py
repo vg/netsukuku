@@ -21,6 +21,7 @@ import asyncore
 import socket
 
 import stackless
+import functools
 
 class Channel(object):
     '''This class is used to wrap a stackless channel'''
@@ -31,9 +32,6 @@ class Channel(object):
     def send(self, data):
         self.ch.send(data)
     
-    def fsend(self, *data):
-        self.ch.send(data)
-
     def recv(self):
         return self.ch.receive()
 
@@ -64,10 +62,16 @@ def microfunc(is_micro=False):
     @param is_micro: Tells the dispatcher to create a new microthread
 
     '''
+
     def decorate(func):
         ch = Channel()
+
+	@functools.wraps(func)
+        def fsend(*data):
+            ch.send(data)
+
         micro(_dispatcher, (func, ch, is_micro))
-        return ch.fsend
+        return fsend
 
     return decorate
 
