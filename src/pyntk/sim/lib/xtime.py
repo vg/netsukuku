@@ -19,12 +19,11 @@
 
 import sys
 sys.path.append('..')
-from G import G
+import sim
 
-class Time:
-    def swait(self, t):
-    	"""Waits `t' time units"""
-	G.sim.wait(t)
+def swait(self, t):
+    """Waits `t' time units"""
+    sim.cursim.wait(t)
 
-    def time(self):
-        return G.sim.curtime
+def time(self):
+    return sim.cursim.curtime

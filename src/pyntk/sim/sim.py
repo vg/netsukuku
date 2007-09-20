@@ -17,12 +17,14 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
+from heapq import heappush, heappop
+
 import sys
 sys.path.append('..')
 from lib.micro import Channel
 
-class Event(object):
-    __slots__ = [ 'exec_time', 'callf', 'abs_time' ]
+class SimEvent(object):
+    __slots__ = [ 'exec_time', 'callf', 'callf_args', 'abs_time' ]
 
     def __init__(self, time, callf, callf_args):
 	"""time: how much time needs this event to be executed
@@ -41,11 +43,7 @@ class Event(object):
 class Simulator(object):
     """This is a Descrete Event Simulator"""
 
-    def __init__(self, tickfreq=50):
-        """tickfreq: tick frequency in millisecond"""
-        
-	self.tickfreq = tickfreq
-        
+    def __init__(self):
         self.curtime = 0
 	self.queue = []
     
@@ -68,5 +66,16 @@ class Simulator(object):
     def wait(self, t):
         """Waits the specified number of time units"""
 	chan = Channel()
-	self.ev_add( Event(t, self._wake_up_wait, chan) )
-	chen.recv()
+	self.ev_add( SimEvent(t, self._wake_up_wait, chan) )
+	chan.recv()
+
+
+#global instance of the simulator
+cursim = None
+
+def sim_activate():
+    global cursim
+    cursim = Simulator()
+def sim_run():
+    global cursim
+    cursim.loop()

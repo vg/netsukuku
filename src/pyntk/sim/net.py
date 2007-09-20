@@ -19,8 +19,8 @@
 
 from heapq   import heappush, heappop
 from random  import randint, choice
-from sim     import Event
-from G       import G
+from sim     import SimEvent, Simulator
+import sim
 import sys
 sys.path.append('..')
 from lib.opt   import Opt
@@ -39,7 +39,7 @@ class ESkt(ENet):
 
 class Link(object):
     __slots__ = [ 'rtt', 'bw', 'average' ]
-    def __init__(self, rtt, bw, rand=0):
+    def __init__(self, rtt=0, bw=0, rand=0):
         self.rtt=rtt #in millisec
 	self.bw =bw  #byte per millisec
 	if rand:
@@ -111,8 +111,8 @@ class Node:
 		raise ENotNeigh, ENotNeigh.errstr
 
         msglen = len(msg)
-	ev = Event(self.calc_time(dst, msglen), dst._sendto, (self, msg))
-	G.sim.ev_add(ev)
+	ev = SimEvent(self.calc_time(dst, msglen), dst._sendto, (self, msg))
+	sim.cursim.ev_add(ev)
 	return msglen
 
     def _sendto(self, sender, msg):
@@ -170,8 +170,8 @@ class Node:
 		raise ESkt, ESkt.errstr
 
 	msglen = len(msg)
-        ev = Event(self.calc_time(dst, msglen), dst._send, (sk_chan, msg))
-	G.sim.ev_add(ev)
+        ev = SimEvent(self.calc_time(dst, msglen), dst._send, (sk_chan, msg))
+	sim.cursim.ev_add(ev)
 	return msglen
 
     def _send(self, sk_chan, msg):
@@ -223,7 +223,7 @@ class Net:
 		for o in xrange(k):
 			if o == i:
 				continue
-			l=Link()
+			l=Link(rand=1)
 			l.set_random()
 			node.neigh_add(self.node_get(o), l)
 
@@ -234,22 +234,22 @@ class Net:
 
     			if x > 0:
     				#left
-				l=Link()
+				l=Link(rand=1)
 				l.set_random()
 				node.neigh_add(self.node_get((x-1)*k+y), l)
     			if x < k-1:
     				#right
-				l=Link()
+				l=Link(rand=1)
 				l.set_random()
 				node.neigh_add(self.node_get((x+1)*k+y), l)
     			if y > 0:
     				#down
-				l=Link()
+				l=Link(rand=1)
 				l.set_random()
 				node.neigh_add(self.node_get(x*k+(y-1)), l)
     			if y < k-1:
     				#up
-				l=Link()
+				l=Link(rand=1)
 				l.set_random()
 				node.neigh_add(self.node_get(x*k+(y+1)), l)
 
@@ -262,7 +262,7 @@ class Net:
 
 		rn = range(k)
     		for j in xrange(nb):
-			l=Link()
+			l=Link(rand=1)
 			l.set_random()
 
     			# Choose a random rnode which is not i and

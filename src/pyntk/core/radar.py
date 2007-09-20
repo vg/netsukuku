@@ -339,7 +339,7 @@ class Radar:
     net_device = _rpc_caller.dev
 
     # this is the rtt
-    time_elapsed = int(time() - bcast_send_time / 2)
+    time_elapsed = int((time() - bcast_send_time) / 2)
     # let's store it in the bcast_arrival_time table
     if(ip in self.bcast_arrival_time):
       if(net_device in self.bcast_arrival_time[ip]):

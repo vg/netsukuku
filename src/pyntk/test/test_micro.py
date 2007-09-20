@@ -1,6 +1,6 @@
 import sys
 sys.path.append('..')
-from lib.micro import micro, microfunc, allmicro_run
+from lib.micro import micro, microfunc, allmicro_run, Channel
 
 T=[]
 
@@ -29,6 +29,16 @@ class foo:
     def void(self):
         print "foovoid", self.a
 
+@microfunc()
+def crecv(ch):
+	r=ch.recv()
+	print r
+	ch.send('got')
+
+@microfunc()
+def csend(ch):
+	ch.send('take')
+	print ch.recv()
 
 mf(1,1)
 micro(f, (2,2))
@@ -45,6 +55,8 @@ F2=foo(2)
 F1.void()
 F2.void()
 
+c=Channel()
+crecv(c); csend(c)
 allmicro_run()
 
 
