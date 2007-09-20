@@ -62,8 +62,6 @@ class Node:
 	# {Node: Link}
 	self.neighbours = {}
 
-	self.recv_queue= []
-	self.recv_listening = False
 	self.recv_chan = Channel()
 	self.accept_chan = Channel()
 
@@ -117,10 +115,7 @@ class Node:
 
     def _sendto(self, sender, msg):
         """Send the msg to the recv channel"""
-	if self.recv_listening:
-		self.recv_chan.send((sender, msg))
-	else:
-		self.recv_queue.append((sender, msg))
+	self.recv_chan.sendq((sender, msg))
     
     def sendtoall(self, msg):
         """Send the msg to all neighbours"""
@@ -129,13 +124,7 @@ class Node:
 
     def recvfrom(self):
         """Returns the (sender, msg) pair"""
-	if self.recv_queue == []:
-		self.recv_listening = True
-		ret = self.recv_chan.recv()
-		self.recv_listening = False
-	else:
-		ret = self.recv_queue.pop(0)
-	return ret
+	return self.recv_chan.recvq()
 
 
 ## Socket based 

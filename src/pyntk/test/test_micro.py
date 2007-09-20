@@ -41,12 +41,12 @@ def csend(ch):
 	print ch.recv()
 
 mf(1,1)
-micro(f, (2,2))
-mft(4,4)
-micro(f, (5,5))
-mf(3,3)
+micro(f, (4,4))
+mft(5,5)
+micro(f, (6,6))
+mf(2,2)
 mft(7,7)
-mf(6,6)
+mf(3,3)
 micro(f, (8,8))
 mvoid()
 
@@ -60,7 +60,7 @@ crecv(c); csend(c)
 allmicro_run()
 
 
-
+print T
 assert T == range(1,9)
 
 print "all ok"

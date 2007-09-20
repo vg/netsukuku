@@ -59,6 +59,7 @@ class Simulator(object):
     def loop(self):
         while self.queue != []:
 		self.ev_exec()
+	print "simulation finished"
 
     def _wake_up_wait(self, chan):
         chan.send(())

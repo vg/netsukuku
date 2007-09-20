@@ -25,15 +25,32 @@ import functools
 
 class Channel(object):
     '''This class is used to wrap a stackless channel'''
+    __slots__ = ['ch', 'chq']
 
     def __init__(self):
         self.ch = stackless.channel()
+	self.chq = []
 
     def send(self, data):
         self.ch.send(data)
     
     def recv(self):
         return self.ch.receive()
+
+    def sendq(self, data):
+        """It just sends `data' to the channel queue.
+	   `data' can or cannot be received."""
+	if self.ch.balance < 0:
+		self.ch.send(data)
+	else:
+		self.chq.append(data)
+    
+    def recvq(self):
+	"""Receives data sent by `sendq'"""
+        if self.chq == []:
+		return self.ch.receive()
+	else:
+		return self.chq.pop(0)
 
 def micro(function, args=()):
     '''Factory function that return tasklets
@@ -46,21 +63,20 @@ def micro(function, args=()):
 def allmicro_run():
     stackless.run()
 
-def _dispatcher(func, chan, is_micro):
+def _dispatcher(func, chan):
     while True:
-        msg = chan.recv()
-        if is_micro:
-        	micro(func, msg)
-        else:
-        	func(*msg)
+        msg = chan.recvq()
+        func(*msg)
 
 def microfunc(is_micro=False):
-    '''Create a new channel and start a microthread
+    '''A microfunction is a function that never blocks the caller microthread.
 
-    This is a decorator
+    Note: This is a decorator! (see test/test_micro.py for examples)
 
-    @param is_micro: Tells the dispatcher to create a new microthread
-
+    If is_micro == True, each call of the function will executed in a new
+    microthread. 
+    If is_micro != True, each call will be queued. A dispatcher microthread
+    will automatically pop and execute each call.
     '''
 
     def decorate(func):
@@ -68,10 +84,17 @@ def microfunc(is_micro=False):
 
 	@functools.wraps(func)
         def fsend(*data):
-            ch.send(data)
+            ch.sendq(data)
+        
+	@functools.wraps(func)
+        def fmicro(*data):
+            micro(func, data)
 
-        micro(_dispatcher, (func, ch, is_micro))
-        return fsend
+	if is_micro:
+		return fmicro
+	else:
+		micro(_dispatcher, (func, ch))
+		return fsend
 
     return decorate
 
