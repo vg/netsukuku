@@ -65,7 +65,8 @@ class Node:
 	self.recv_chan = Channel()
 	self.accept_chan = Channel()
 
-	self.sk_table = {} # {sk: sk_chan}
+	self.sk_in  = {} # {sk: sk_chan}
+	self.sk_out = {} # {sk: sk_chan}
 
     def change_ip(self, newip=None):
 	self.ip=newip
@@ -136,25 +137,26 @@ class Node:
 		raise ENotNeigh, ENotNeigh.errstr
 
         sk      = randint(1, 2**32-1)
-	sk_chan = Channel()
-	self.sk_table[sk]=sk_chan
+	self.sk_out[sk]=Channel()
+	self.sk_in[sk]=Channel()
 
-	dst.accept_chan.send((self, sk, sk_chan))
+	dst.accept_chan.send((self, sk, self.sk_in[sk], self.sk_out[sk]))
 	return sk
 
     def accept(self):
         """Returns (sk, src), where sk is the new established socket and 
 	  `src' is the instance of the source node"""
 
-        src, sk, sk_chan = self.accept_chan.recv()
-	self.sk_table[sk]=sk_chan
+        src, sk, sk_out, sk_in = self.accept_chan.recv()
+	self.sk_out[sk]=sk_out
+	self.sk_in[sk] =sk_in
         return sk, src
 
     def send(self, dst, sk, msg):
 	if not isinstance(msg, str):
 		raise ESendMsg, ESendMsg.errstr
 	try:
-		sk_chan = self.sk_table[sk]
+		sk_chan = self.sk_out[sk]
 	except KeyError:
 		raise ESkt, ESkt.errstr
 
@@ -164,20 +166,22 @@ class Node:
 	return msglen
 
     def _send(self, sk_chan, msg):
-	sk_chan.send(msg)
+	sk_chan.sendq(msg)
 
     def recv(self, sk):
 	try:
-		sk_chan = self.sk_table[sk]
+		sk_chan = self.sk_in[sk]
 	except KeyError:
 		raise ESkt, ESkt.errstr
-        return sk_chan.recv()
+        return sk_chan.recvq()
 
     def close(self, dst, sk):
-	if sk in dst.sk_table:
-		del dst.sk_table[sk]
-	if sk in self.sk_table:
-        	del self.sk_table[sk]
+	if sk in dst.sk_in:
+		del dst.sk_in[sk]
+		del dst.sk_out[sk]
+	if sk in self.sk_in:
+        	del self.sk_in[sk]
+        	del self.sk_out[sk]
 
 class Net:
     def __init__(self):

@@ -21,9 +21,9 @@ import sys
 sys.path.append('..')
 import sim
 
-def swait(self, t):
+def swait(t):
     """Waits `t' time units"""
     sim.cursim.wait(t)
 
-def time(self):
+def time():
     return sim.cursim.curtime

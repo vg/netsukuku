@@ -19,8 +19,7 @@
 
 from heapq import heappush, heappop
 
-import sys
-sys.path.append('..')
+import inithook
 from lib.micro import Channel
 
 class SimEvent(object):
@@ -53,8 +52,8 @@ class Simulator(object):
 
     def ev_exec(self):
 	ev = heappop(self.queue)
-	ev.callf(*ev.callf_args)
 	self.curtime = ev.abs_time
+	ev.callf(*ev.callf_args)
 
     def loop(self):
         while self.queue != []:
@@ -67,7 +66,7 @@ class Simulator(object):
     def wait(self, t):
         """Waits the specified number of time units"""
 	chan = Channel()
-	self.ev_add( SimEvent(t, self._wake_up_wait, chan) )
+	self.ev_add( SimEvent(t, self._wake_up_wait, (chan,)) )
 	chan.recv()
 
 

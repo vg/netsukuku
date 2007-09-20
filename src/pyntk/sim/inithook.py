@@ -10,8 +10,7 @@ def wrapped_import(name, globals={}, locals={}, fromlist=[], level=-1):
 	    return real_import(name, globals, locals, fromlist, level)
     except ImportError:
 	    a,b = name.split('.')
-	    spath = P.split(P.dirname(sys.path[0]))[1]
-	    mpath = P.join(P.abspath(P.curdir), spath, P.pardir, a)
+#	    print sys.path[0]+'/../'+a,b
 	    m=imp.find_module(b, [sys.path[0]+'/../'+a])
 #	    print m
 	    return imp.load_module(name, *m)
