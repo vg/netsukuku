@@ -14,18 +14,17 @@ class Inet:
         S.ipv = ip_version
 
 	S.bitslvl = bits_per_level
-	S.gsize   = 2**(S.bitslvl)
 
     def lvl_to_bits(S, lvl):
 	return ipbit[S.ipv]-lvl*S.bitslvl
 
     def pip_to_ip(S, pip):
         ps = pip[::-1]
-        return sum(ord(ps[i]) * S.gsize**i for i in xrange(len(ps)))
+        return sum(ord(ps[i]) * 256**i for i in xrange(len(ps)))
     
     def ip_to_pip(S, ip):
 	ver=S.ipv
-        return ''.join([chr( (ip % S.gsize**(i+1))/S.gsize**i ) for i in reversed(xrange(ipbit[ver]/8))])
+        return ''.join([chr( (ip % 256**(i+1))/256**i ) for i in reversed(xrange(ipbit[ver]/8))])
     
     def pip_to_str(S, pip):
         return inet_ntop(ipfamily[S.ipv], pip)
@@ -50,14 +49,14 @@ class Inet:
 if __name__ == "__main__":
 	ps = "1.2.3.4"
 
-	I = Inet(ipv4, 8)
+	I = Inet(ipv4, 2)
 	
-	assert I.lvl_to_bits(1) == 24
+	assert I.lvl_to_bits(1) == 30
 	pip = I.str_to_pip(ps)
 	ip  = I.pip_to_ip(pip)
 	PIP = I.ip_to_pip(ip)
 	IP  = I.pip_to_ip(PIP)
-	print str(ps)+" --> "+pip+" --> "+str(ip)+" --> "+PIP+" --> "+str(IP)
+	print str(ps)+" --> "+repr(pip)+" --> "+str(ip)+" --> "+repr(PIP)+" --> "+str(IP)
 	assert PIP == pip
 	assert IP == ip
 	assert I.ip_to_str(ip) == ps

@@ -1,0 +1,89 @@
+#!/usr/bin/env python
+##
+# This file is part of Netsukuku
+# (c) Copyright 2007 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+#
+# This source code is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as published 
+# by the Free Software Foundation; either version 2 of the License,
+# or (at your option) any later version.
+#
+# This source code is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# Please refer to the GNU Public License for more details.
+#
+# You should have received a copy of the GNU Public License along with
+# this source code; if not, write to:
+# Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+##
+
+import sys
+from ntkd import NtkNode
+from lib.opt import Opt, OptErr
+from config import *
+
+usage = """
+ntkd [n=nics_list] [c=config] 
+
+
+     n=['nic1', 'nic2', ...]		explicit nics to use
+
+     c="/path/to/config/file.conf"	configuration file path
+
+     ipv=4 or ipv=6			IP version
+    
+     dbg=0..9				debug level (default 0)
+     v or version			version
+     h or help				this help
+"""
+
+def main():
+
+    # load options
+    opt = Opt( {'n':'nics', 
+	    
+	    	'c':'config_file',
+
+		'v':'version',
+		'-v':'version',
+		'h':'help',
+		'-h':'help',
+		'dbg':'debug'
+	       } )
+    opt.config_file = CONF_DIR + '/netsukuku.conf'
+    opt.load_argv(sys.argv)
+
+    if opt.help:
+	    print usage
+	    sys.exit(1)
+    if opt.version:
+	    print "NetsukukuD " + VERSION
+	    sys.exit(1)
+
+    if opt.config_file:
+	    opt.load_file(opt.config_file)
+            opt.load_argv(sys.argv)
+    
+    if opt.debug:
+	    logging.basicConfig(level=logging.DEBUG, 
+			        format='%(asctime)s %(levelname)s %(message)s')
+
+    if not opt.simulated:
+	    N = NtkNode(opt)
+	    N.run()
+    else:
+	    sys.path[0]='sim'
+	    import inithook
+	    ###
+	    #TODO:
+	    #      - Create the simulated network. For each node create a
+	    #        NtkNode() instance
+	    #	   - run the simulation
+	    ###
+	    pass
+
+    allmicro_run()
+
+if __name__ == "__main__":
+	main()

@@ -18,9 +18,6 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
-import sys
-
-from lib.opt import Opt, OptErr
 import core.radar   as radar
 import core.route   as maproute
 import core.qspn    as qspn
@@ -32,9 +29,8 @@ import network.inet as inet
 import network.nic  as nic
 import lib.rpc      as rpc
 from lib.micro import micro, allmicro_run
-from config import *
 
-class Ntkd:
+class NtkNode:
     def __init__(self, opt, IP=None):
 
         self.opt = opt
@@ -90,52 +86,3 @@ class Ntkd:
 
         self.radar.run()
 	self.hook.hook()
-
-usage = """
-ntkd [n=nics_list] [c=config] 
-
-
-     n=['nic1', 'nic2', ...]		explicit nics to use
-
-     c="/path/to/config/file.conf"	configuration file path
-
-     ipv=4 or ipv=6			IP version
-    
-     dbg=0..9				debug level (default 0)
-     v or version			version
-     h or help				this help
-"""
-
-def main():
-
-    # load options
-    opt = Opt( {'n':'nics', 
-	    
-	    	'c':'config_file',
-
-		'v':'version',
-		'-v':'version',
-		'h':'help',
-		'-h':'help'
-	       } )
-    opt.config_file = CONF_DIR + '/netsukuku.conf'
-    opt.load_argv(sys.argv)
-
-    if opt.help:
-	    print usage
-	    sys.exit(1)
-    if opt.version:
-	    print "NetsukukuD " + VERSION
-	    sys.exit(1)
-
-    if opt.config_file:
-	    opt.load_file(opt.config_file)
-            opt.load_argv(sys.argv)
-
-    N = Ntkd(opt)
-    N.run()
-
-    allmicro_run()
-
-if __name__ == "__main__":
-	main()

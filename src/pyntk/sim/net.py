@@ -21,7 +21,10 @@ from heapq   import heappush, heappop
 from random  import randint, choice
 from sim     import Event
 from G       import G
-from opt     import Opt
+import sys
+sys.path.append('..')
+from lib.opt   import Opt
+from lib.micro import Channel
 
 class ENet(Exception):
     errstr="""Generic network error"""
@@ -35,7 +38,7 @@ class ESkt(ENet):
     errstr="""Socket doesn't exist"""
 
 class Link(object):
-    __slots__ = [ 'rtt', 'bw' ]
+    __slots__ = [ 'rtt', 'bw', 'average' ]
     def __init__(self, rtt, bw, rand=0):
         self.rtt=rtt #in millisec
 	self.bw =bw  #byte per millisec
@@ -273,7 +276,7 @@ class Net:
 			neigh = self.node_get(choice(rn))
 			node.neigh_add(neigh, l)
 
-    def net_file_load(self, file):
+    def net_file_load(self, filename):
         """A sample file:
 
         --- BEGIN ---
@@ -283,14 +286,14 @@ class Net:
 
         	'B' : [ ('node D', 'rtt=2, bw=9') ],
             
-    	'C' : [],
+        	'C' : [],
 
-    	'node D' : []
+        	'node D' : []
         }
         ---  END  ---
         """
         o = Opt()
-        o.opt_load_file(file)
+        o.load_file(filename)
 
         count = 0
         idtoip = {}
@@ -298,12 +301,13 @@ class Net:
     	    idtoip[x]=count
     	    count+=1
 
-            for x in o.net:
-		    node = self.node_get(idtoip[x])
+        for x in o.net:
+            node = self.node_get(idtoip[x])
 
-    	    for y, link in o.net[x]:
-    		    ynode = self.node_get(idtoip[y])
-    		    exec 'node.neigh_add(ynode,'+link+')'
+	    for y, l in o.net[x]:
+	    	ynode = self.node_get(idtoip[y])
+		exec 'link=Link('+l+')'
+	    	node.neigh_add(ynode,link)
 
     def net_dot_dump(self, fd):
         """Dumps the net to a .dot graphviz file.

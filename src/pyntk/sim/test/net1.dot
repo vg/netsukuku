@@ -1,0 +1,5 @@
+graph g {
+	node [shape=circle]
+
+	0 -- 1 [weight=8]
+}
