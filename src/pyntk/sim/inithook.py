@@ -9,6 +9,8 @@ def wrapped_import(name, globals={}, locals={}, fromlist=[], level=-1):
     try:
 	    return real_import(name, globals, locals, fromlist, level)
     except ImportError:
+	    if '.' not in name:
+		    raise
 	    a,b = name.split('.')
 #	    print sys.path[0]+'/../'+a,b
 	    m=imp.find_module(b, [sys.path[0]+'/../'+a])
