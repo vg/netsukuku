@@ -1,9 +1,13 @@
-import time as t
+import time as T
+import micro
 
 def swait(t):
     """Waits `t' ms"""
 
-    time.sleep(t/1000.)
+    final_time = T.time()+t/1000.
+    while final_time >= T.time():
+	    T.sleep(0.001)
+	    micro.micro_block()
 
 def time():
-    return int(t.time()*1000)
+    return int(T.time()*1000)
