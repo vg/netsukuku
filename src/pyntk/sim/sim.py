@@ -20,7 +20,7 @@
 from heapq import heappush, heappop
 
 import inithook
-from lib.micro import Channel
+from lib.micro import Channel, microfunc
 
 class SimEvent(object):
     __slots__ = [ 'exec_time', 'callf', 'callf_args', 'abs_time' ]
@@ -40,15 +40,27 @@ class SimEvent(object):
         return cmp(self.abs_time, other.abs_time)
 
 class Simulator(object):
-    """This is a Descrete Event Simulator"""
+    """This is a Descrete Event Simulator
+    
+    *WARNING* 
+    Inside a simulated function, do not directly use `channel.send' of
+    python stackless, because you'll mess with the schedule of the simulator.
+    Use instead @microfunc(true/false), or Channel(True) (see lib/micro.py)
+    *WARNING* 
+    """
 
     def __init__(self):
         self.curtime = 0
 	self.queue = []
+
+	self.looping = False
+	self.simchan = Channel()
     
     def ev_add(self, ev):
         ev.abs_time = self.curtime+ev.exec_time
         heappush(self.queue, ev)
+	if self.curtime > 0 and not self.looping:
+		self.simchan.sendq(1)
 
     def ev_exec(self):
 	ev = heappop(self.queue)
@@ -56,9 +68,10 @@ class Simulator(object):
 	ev.callf(*ev.callf_args)
 
     def loop(self):
+	self.looping = True
         while self.queue != []:
 		self.ev_exec()
-	print "simulation finished"
+	self.looping = False
 
     def _wake_up_wait(self, chan):
         chan.send(())
@@ -69,6 +82,12 @@ class Simulator(object):
 	self.ev_add( SimEvent(t, self._wake_up_wait, (chan,)) )
 	chan.recv()
 
+    @microfunc(True)
+    def run(self):
+        while 1:
+		self.loop()
+		self.simchan.recvq()
+
 
 #global instance of the simulator
 cursim = None
@@ -78,4 +97,4 @@ def sim_activate():
     cursim = Simulator()
 def sim_run():
     global cursim
-    cursim.loop()
+    cursim.run()

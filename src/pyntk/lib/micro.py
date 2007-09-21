@@ -23,35 +23,6 @@ import socket
 import stackless
 import functools
 
-class Channel(object):
-    '''This class is used to wrap a stackless channel'''
-    __slots__ = ['ch', 'chq']
-
-    def __init__(self):
-        self.ch = stackless.channel()
-	self.chq = []
-
-    def send(self, data):
-        self.ch.send(data)
-    
-    def recv(self):
-        return self.ch.receive()
-
-    def sendq(self, data):
-        """It just sends `data' to the channel queue.
-	   `data' can or cannot be received."""
-	if self.ch.balance < 0:
-		self.ch.send(data)
-	else:
-		self.chq.append(data)
-    
-    def recvq(self):
-	"""Receives data sent by `sendq'"""
-        if self.chq == []:
-		return self.ch.receive()
-	else:
-		return self.chq.pop(0)
-
 def micro(function, args=()):
     '''Factory function that return tasklets
 
@@ -62,6 +33,42 @@ def micro(function, args=()):
 
 def allmicro_run():
     stackless.run()
+
+
+class Channel(object):
+    '''This class is used to wrap a stackless channel'''
+    __slots__ = ['ch', 'chq', 'micro_send']
+
+    def __init__(self, micro_send=False):
+        """Is micro_send=True, then a new microthread will be used for each
+	send call"""
+        self.ch  = stackless.channel()
+	self.chq = []
+	self.micro_send=micro_send
+
+    def send(self, data):
+        if self.micro_send:
+		micro(self.ch.send, (data,))
+	else:
+		self.ch.send(data)
+    
+    def recv(self):
+        return self.ch.receive()
+
+    def sendq(self, data):
+        """It just sends `data' to the channel queue.
+	   `data' can or cannot be received."""
+	if self.ch.balance < 0:
+		self.send(data)
+	else:
+		self.chq.append(data)
+    
+    def recvq(self):
+	"""Receives data sent by `sendq'"""
+        if self.chq == []:
+		return self.recv()
+	else:
+		return self.chq.pop(0)
 
 def _dispatcher(func, chan):
     while True:
@@ -80,7 +87,7 @@ def microfunc(is_micro=False):
     '''
 
     def decorate(func):
-        ch = Channel()
+        ch = Channel(True)
 
 	@functools.wraps(func)
         def fsend(*data):

@@ -11,8 +11,6 @@ from net import Net
 import sim
 from network.vsock import VirtualSocket
 import lib.xtime as xtime
-
-sys.path.append('../../')
 from lib.micro import micro, microfunc, allmicro_run
 
 random.seed(1)
@@ -47,7 +45,7 @@ def echo_client():
     message, address = s1.recvfrom(8192)
     print "t:", xtime.time(), "got reply from %s: %s"%(address, message)
 
-@microfunc()
+@microfunc(1)
 def echo_client_II():
     s1=VirtualSocket(AF_INET, SOCK_DGRAM, N, N.net[1])
     ip = s1.inet.ip_to_str(0)
@@ -85,7 +83,7 @@ def tcp_echo_srv():
     s0.listen(1)
     while 1: tcp_handler(*s0.accept())
 
-@microfunc(True)
+@microfunc()
 def tcp_echo_client():
     s1=VirtualSocket(AF_INET, SOCK_STREAM, N, N.net[1])
     ip = s1.inet.ip_to_str(0)
@@ -105,13 +103,13 @@ sim.sim_activate()
 
 echo_srv()
 echo_client()
-echo_client()
 echo_client_II()
+echo_client()
 echo_client()
 
 tcp_echo_srv()
 tcp_echo_client()
 tcp_echo_client()
 
-micro(sim.sim_run)
+sim.sim_run()
 allmicro_run()
