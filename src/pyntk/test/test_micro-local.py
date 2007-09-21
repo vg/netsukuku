@@ -32,19 +32,23 @@ class EchoServer:
             while listen_socket.accepting:
                 client_sock, client_addr = listen_socket.accept()
                 stackless.tasklet(self.manage_connection)(client_sock, client_addr)
-                stackless.schedule()
         except socket.error:
             traceback.print_exc()
+	print "server closed"
 
     def manage_connection(self, client_sock, client_addr):
         data = ''
-        while client_sock.connected:
-            data += client_sock.recv(1024)
-            if data == '':
-                break
-            client_sock.send(data)
-            data = ''
-            stackless.schedule()
+	try:
+		while client_sock.connected:
+		    data += client_sock.recv(1024)
+		    if data == '':
+			break
+		    client_sock.send(data)
+		    data = ''
+	except:
+		traceback.print_exc()
+	print "connection closed"
+	raise SystemExit
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG,
