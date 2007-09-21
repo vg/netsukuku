@@ -64,13 +64,6 @@ import rpc
 #
 # - Describe the _rpc_caller feature
 #
-# - Add a timeout in the .recv()
-#
-# - Udp support: in the Udp server, packets sent by our same IP must be
-#   discard (this happens when a pkt is sent in broadcast)
-#
-# - Support for broadcast queries. See radar.py and how it utilises NtkdBroadcast
-#
 #### Done, but to be revisioned
 #
 # - The client must not create a new connection for each new rpc_call!
@@ -81,6 +74,7 @@ import rpc
 import logging
 import socket
 import SocketServer as SckSrv
+import struct
 
 import rencode
 
@@ -205,6 +199,45 @@ class RPCDispatcher(object):
 
 	return rencode.dumps(response)
 
+### Code taken from examples/networking/rpc.py of stackless python
+#
+#
+_data_hdr_sz = struct.calcsize("I")
+def _data_pack(data):
+    return struct.pack("I", len(data)) + data
+
+def _data_unpack_from_stream_socket(socket):
+    readBuffer = ""
+    while True:
+        rawPacket = socket.recv(_data_hdr_sz-len(readBuffer))
+        if not rawPacket:
+            return ""
+        readBuffer += rawPacket
+        if len(readBuffer) == _data_hdr_sz:
+            dataLength = struct.unpack("I", readBuffer)[0]
+            readBuffer = ""
+            while len(readBuffer) != dataLength:
+                rawPacket = socket.recv(dataLength - len(readBuffer))
+                if not rawPacket:
+                    return ""
+                readBuffer += rawPacket
+            return readBuffer
+#
+###
+
+def _data_unpack_from_buffer(buffer):
+    readBuffer = ""
+    buflen = len(buffer)
+    if buflen < _data_hdr_sz:
+	    return ""
+
+    dataLength = struct.unpack("I", buffer[:_data_hdr_sz])[0]
+    if buflen == dataLength+_data_hdr_sz:
+	    return buffer[_data_hdr_sz:]
+
+    return ""
+
+
 class StreamRequestHandler(SckSrv.BaseRequestHandler):
     '''RPC stream request handler class
 
@@ -217,7 +250,7 @@ class StreamRequestHandler(SckSrv.BaseRequestHandler):
     def handle(self):
         while True:
             try:
-                data = self.request.recv(1024)
+                data = _data_unpack_from_stream_socket(self.request)
                 if not data: break
                 logging.debug('Handling data: %s', data)
                 response = self.server.marshalled_dispatch(self.caller, data)
@@ -225,7 +258,7 @@ class StreamRequestHandler(SckSrv.BaseRequestHandler):
             except RPCError:
                 logging.debug('An error occurred during request handling')
 
-            self.request.send(response)
+            self.request.send(_data_pack(response))
             #self.request.close()
             logging.debug('Response sent')
 
@@ -265,9 +298,9 @@ class TCPClient(FakeRmt):
             self.connect()
 
         data = rencode.dumps((func_name, params))
-        self.socket.sendall(data)
+        self.socket.sendall(_data_pack(data))
 
-        recv_encoded_data = self.socket.recv(1024)
+        recv_encoded_data = _data_unpack_from_stream_socket(self.socket)
         recv_data = rencode.loads(recv_encoded_data)
         logging.debug("Recvd data: "+str(recv_data))
 
@@ -309,14 +342,22 @@ class DgramRequestHandler(SckSrv.BaseRequestHandler):
     def handle(self):
 
         try:
-            data = self.packet
+	    data = _data_unpack_from_buffer(self.packet)
             logging.debug('Handling data: %s', data)
             response = self.server.marshalled_dispatch(self.caller, data)
         except RPCError:
             logging.debug('An error occurred during request handling')
 
 class UDPServer(SckSrv.UDPServer, RPCDispatcher):
-    '''This class implement a simple Rpc UDP server'''
+    '''This class implement a simple Rpc UDP server
+    
+    *WARNING*
+    If the message to be received is greater than the buffer
+    size, it will be lost! (buffer size is 8Kb)
+    Use UDP RPC only for small calls, i.e. if the arguments passed to the
+    remote function are small when packed.
+    *WARNING*
+    '''
 
     def __init__(self, root_instance, addr=('', 269), dev=None,
 		    requestHandler=DgramRequestHandler):
@@ -327,7 +368,15 @@ class UDPServer(SckSrv.UDPServer, RPCDispatcher):
 	self.allow_reuse_address=True
 
 class BcastClient(FakeRmt):
-    '''This class implement a simple Broadcast RPC client'''
+    '''This class implement a simple Broadcast RPC client
+    
+    *WARNING*
+    If the message to be received by the remote side is greater than the buffer
+    size, it will be lost! (buffer size is 8Kb)
+    Use UDP RPC only for small calls, i.e. if the arguments passed to the
+    remote function are small when packed.
+    *WARNING*
+    '''
 
     def __init__(self, inet, devs=[], port=269):
         """
@@ -357,7 +406,7 @@ class BcastClient(FakeRmt):
             self.connect()
 
         data = rencode.dumps((func_name, params))
-        self.send(data)
+        self.send(_data_pack(data))
 
     def send(self, data):
         for d, sk in self.dev_sk.iteritems():

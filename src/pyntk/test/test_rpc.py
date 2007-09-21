@@ -12,7 +12,7 @@ from network.inet import Inet
 REQUEST = 3
 from random import randint
 PORT =8888
-#randint(8880, 8889)
+PORT=randint(8880, 8889)
 
 # Logging option
 

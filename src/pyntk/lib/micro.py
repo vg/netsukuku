@@ -31,6 +31,9 @@ def micro(function, args=()):
     '''
     return stackless.tasklet(function)(*args)
 
+def micro_block():
+	stackless.schedule()
+
 def allmicro_run():
     stackless.run()
 
@@ -115,7 +118,8 @@ class SocketScheduler(object):
             if not asyncore.socket_map:
                 break
 
-            asyncore.poll(0.0)
+            #asyncore.poll(None)
+            asyncore.poll(0.001)
             stackless.schedule()
 
         self.running = False
