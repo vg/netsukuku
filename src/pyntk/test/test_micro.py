@@ -91,6 +91,6 @@ T2=T[:]
 print T1
 assert T1 == range(1,9)
 print T2
-assert T2 == [1, 4, 5, 6, 2, 7, 3, 8]
+assert T2 == range(1,9)
 
 print "all ok"

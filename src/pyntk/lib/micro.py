@@ -42,12 +42,19 @@ class Channel(object):
     '''This class is used to wrap a stackless channel'''
     __slots__ = ['ch', 'chq', 'micro_send']
 
-    def __init__(self, micro_send=False):
-        """Is micro_send=True, then a new microthread will be used for each
-	send call"""
+    def __init__(self, prefer_sender=False, micro_send=False):
+        """If prefer_sender=True, the send() calls won't block. More
+	precisely, the calling tasklet doesn't block and the receiving tasklet
+	will be the next to be scheduled.
+
+	If micro_send=True, then a new microthread will be used for each
+	send call, thus each send() call won't block.
+	"""
         self.ch  = stackless.channel()
 	self.chq = []
 	self.micro_send=micro_send
+	if prefer_sender:
+		self.ch.preference=1
 
     def send(self, data):
         if self.micro_send:
@@ -107,109 +114,3 @@ def microfunc(is_micro=False):
 		return fsend
 
     return decorate
-
-class SocketScheduler(object):
-    '''A socket scheduler using asyncore module'''
-    def __init__(self):
-        self.running = False
-
-    def sched(self):
-        while True:
-            if not asyncore.socket_map:
-                break
-
-            #asyncore.poll(None)
-            asyncore.poll(0.001)
-            stackless.schedule()
-
-        self.running = False
-
-def socket_factory(scheduler,
-                   family=socket.AF_INET,
-                   type=socket.SOCK_STREAM,
-                   proto=0):
-
-    s = socket.socket(family, type, proto)
-    if not scheduler.running:
-        scheduler.running = True
-        stackless.tasklet(scheduler.sched)()
-    return SocketDispatcher(s)
-
-
-class SocketDispatcher(asyncore.dispatcher):
-    '''A socket dispatcher using asyncore
-
-    Based on stacklesssocket.py of Richard Tew
-    '''
-    def __init__(self, sock):
-        asyncore.dispatcher.__init__(self, sock)
-
-        self.accept_channel = stackless.channel()
-        self.connect_channel = stackless.channel()
-        self.read_channel = stackless.channel()
-        self.input_buffer = ''
-        self.output_buffer = ''
-
-    def accept(self):
-        return self.accept_channel.receive()
-
-    def connect(self, address):
-        asyncore.dispatcher.connect(self, address)
-        if not self.connected:
-            self.connect_channel.receive()
-
-    def send(self, data):
-        self.output_buffer += data
-        return len(data)
-
-    def recv(self, buffer_size):
-        if len(self.input_buffer) < buffer_size:
-            self.input_buffer += self.read_channel.receive()
-        data = self.input_buffer[:buffer_size]
-        self.input_buffer = self.input_buffer[buffer_size:]
-        return data
-
-    def close(self):
-        asyncore.dispatcher.close(self)
-        self.connected = False
-        self.accepting = False
-
-        # Errors handling
-        while self.accept_channel.balance < 0:
-            self.accept_channel.send_exception(
-                                    socket.error, 9, 'Bad file descriptor')
-        while self.connect_channel.balance < 0:
-            self.connect_channel.send_exception(
-                                    socket.error, 10061, 'Connection refused')
-        while self.read_channel.balance < 0:
-            self.read_channel.send_exception(
-                                    socket.error, 10054, 'Connection reset by peer')
-
-    def wrap_accept_socket(self, currentSocket):
-        return SocketDispatcher(currentSocket)
-
-    def handle_accept(self):
-        if self.accept_channel.balance < 0:
-            sock, address = asyncore.dispatcher.accept(self)
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            sock = self.wrap_accept_socket(sock)
-            stackless.tasklet(self.accept_channel.send)((sock, address))
-
-    def handle_connect(self):
-        self.connect_channel.send(None)
-
-    def handle_close(self):
-        self.close()
-
-    def handle_expt(self):
-        self.close()
-
-    def handle_read(self):
-        buffer = asyncore.dispatcher.recv(self, 20000)
-        stackless.tasklet(self.read_channel.send)(buffer)
-
-    def handle_write(self):
-        if len(self.output_buffer):
-            sent_bytes = asyncore.dispatcher.send(
-                                        self, self.output_buffer[:512])
-            self.output_buffer = self.output_buffer[sent_bytes:]

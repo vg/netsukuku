@@ -5,14 +5,13 @@ import sys
 sys.path.append('..')
 
 import logging
+import lib.sock
 import socket
+print socket.ManageSockets
 import traceback
 
 import stackless
 
-from lib.micro import SocketScheduler, socket_factory
-
-s = SocketScheduler()
 
 class EchoServer:
     def __init__(self, host, port):
@@ -22,7 +21,7 @@ class EchoServer:
         stackless.tasklet(self.serve)()
 
     def serve(self):
-        listen_socket = socket_factory(s, socket.AF_INET, socket.SOCK_STREAM)
+        listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         listen_socket.bind((self.host, self.port))
         listen_socket.listen(5)
