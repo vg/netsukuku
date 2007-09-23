@@ -78,6 +78,7 @@ import struct
 
 import rencode
 
+from micro import micro
 
 class RPCError(Exception): pass
 class RPCFuncNotRemotable(RPCError): pass
@@ -238,6 +239,10 @@ def _data_unpack_from_buffer(buffer):
     return ""
 
 
+class MicroMixin:
+    def process_request_micro(self, request, client_address):
+        micro(self.process_request, (request, client_address))
+
 class StreamRequestHandler(SckSrv.BaseRequestHandler):
     '''RPC stream request handler class
 
@@ -274,6 +279,8 @@ class TCPServer(SckSrv.TCPServer, RPCDispatcher):
         RPCDispatcher.__init__(self, root_instance)
         SckSrv.TCPServer.__init__(self, addr, requestHandler)
 	self.allow_reuse_address=True
+
+class MicroTCPServer(MicroMixin, TCPServer): pass
 
 class TCPClient(FakeRmt):
     '''This class implement a simple TCP RPC client'''
@@ -366,6 +373,8 @@ class UDPServer(SckSrv.UDPServer, RPCDispatcher):
         RPCDispatcher.__init__(self, root_instance)
         SckSrv.UDPServer.__init__(self, addr, requestHandler)
 	self.allow_reuse_address=True
+
+class MicroUDPServer(MicroMixin, UDPServer): pass
 
 class BcastClient(FakeRmt):
     '''This class implement a simple Broadcast RPC client
