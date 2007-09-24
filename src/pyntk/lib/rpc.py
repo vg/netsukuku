@@ -1,6 +1,7 @@
 ##
 # This file is part of Netsukuku
 # (c) Copyright 2007 Daniele Tricoli aka Eriol <eriol@mornie.org>
+# (c) Copyright 2007 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
 #
 # This source code is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as published
@@ -122,9 +123,9 @@ class CallerInfo(object):
     __slots__ = ['ip','port','dev','socket']
     def __init__(self, ip=None, port=None, dev=None, socket=None):
         self.ip=ip
-	self.port=port
-	self.dev=dev
-	self.socket=socket
+        self.port=port
+        self.dev=dev
+        self.socket=socket
 
 class RPCDispatcher(object):
     '''
@@ -170,9 +171,9 @@ class RPCDispatcher(object):
         if func == None:
             raise RPCFuncNotRemotable('Function %s is not remotable' % func_name)
         try:
-	    if '_rpc_caller' in func.im_func.func_code.co_varnames:
+            if '_rpc_caller' in func.im_func.func_code.co_varnames:
                 return func(caller, *params)
-	    else:
+            else:
                 return func(*params)
         except Exception, e:
         # I propagate all exceptions to `dispatch'
@@ -198,7 +199,7 @@ class RPCDispatcher(object):
         else:
             response = self.dispatch(caller, *unpacked)
 
-	return rencode.dumps(response)
+        return rencode.dumps(response)
 
 ### Code taken from examples/networking/rpc.py of stackless python
 #
@@ -230,11 +231,11 @@ def _data_unpack_from_buffer(buffer):
     readBuffer = ""
     buflen = len(buffer)
     if buflen < _data_hdr_sz:
-	    return ""
+        return ""
 
     dataLength = struct.unpack("I", buffer[:_data_hdr_sz])[0]
     if buflen == dataLength+_data_hdr_sz:
-	    return buffer[_data_hdr_sz:]
+        return buffer[_data_hdr_sz:]
 
     return ""
 
@@ -250,8 +251,8 @@ class StreamRequestHandler(SckSrv.BaseRequestHandler):
     '''
     def setup(self):
         logging.debug('Connected from %s, dev %s', self.client_address, self.server.dev)
-	self.caller = CallerInfo(self.client_address[0], self.client_address[1],
-				self.server.dev, self.request)
+        self.caller = CallerInfo(self.client_address[0], self.client_address[1],
+                                self.server.dev, self.request)
     def handle(self):
         while True:
             try:
@@ -272,13 +273,13 @@ class TCPServer(SckSrv.TCPServer, RPCDispatcher):
     '''This class implement a simple Rpc server'''
 
     def __init__(self, root_instance, addr=('', 269), dev=None,
-		    requestHandler=StreamRequestHandler):
-	
+                    requestHandler=StreamRequestHandler):
+
         self.dev=dev
-	#TODO: if dev!=None: bind to device the listening socket
+        #TODO: if dev!=None: bind to device the listening socket
         RPCDispatcher.__init__(self, root_instance)
         SckSrv.TCPServer.__init__(self, addr, requestHandler)
-	self.allow_reuse_address=True
+        self.allow_reuse_address=True
 
 class MicroTCPServer(MicroMixin, TCPServer): pass
 
@@ -342,14 +343,14 @@ class DgramRequestHandler(SckSrv.BaseRequestHandler):
     '''
     def setup(self):
         self.packet, self.socket = self.request
-	self.caller = CallerInfo(self.client_address[0], self.client_address[1],
-				self.server.dev, self.socket)
+        self.caller = CallerInfo(self.client_address[0], self.client_address[1],
+                                self.server.dev, self.socket)
         logging.debug('UDP packet from %s, dev %s', self.client_address, self.server.dev)
 
     def handle(self):
 
         try:
-	    data = _data_unpack_from_buffer(self.packet)
+            data = _data_unpack_from_buffer(self.packet)
             logging.debug('Handling data: %s', data)
             response = self.server.marshalled_dispatch(self.caller, data)
         except RPCError:
@@ -357,7 +358,7 @@ class DgramRequestHandler(SckSrv.BaseRequestHandler):
 
 class UDPServer(SckSrv.UDPServer, RPCDispatcher):
     '''This class implement a simple Rpc UDP server
-    
+
     *WARNING*
     If the message to be received is greater than the buffer
     size, it will be lost! (buffer size is 8Kb)
@@ -367,18 +368,18 @@ class UDPServer(SckSrv.UDPServer, RPCDispatcher):
     '''
 
     def __init__(self, root_instance, addr=('', 269), dev=None,
-		    requestHandler=DgramRequestHandler):
+                    requestHandler=DgramRequestHandler):
         self.dev=dev
-	#TODO: if dev!=None: bind to device the listening socket
+        #TODO: if dev!=None: bind to device the listening socket
         RPCDispatcher.__init__(self, root_instance)
         SckSrv.UDPServer.__init__(self, addr, requestHandler)
-	self.allow_reuse_address=True
+        self.allow_reuse_address=True
 
 class MicroUDPServer(MicroMixin, UDPServer): pass
 
 class BcastClient(FakeRmt):
     '''This class implement a simple Broadcast RPC client
-    
+
     *WARNING*
     If the message to be received by the remote side is greater than the buffer
     size, it will be lost! (buffer size is 8Kb)
@@ -389,17 +390,17 @@ class BcastClient(FakeRmt):
 
     def __init__(self, inet, devs=[], port=269):
         """
-	inet:  network.inet.Inet instance
-	devs:  list of devices where to send the broadcast calls
-	If devs=[], the msg calls will be sent through all the available
-	devices"""
+        inet:  network.inet.Inet instance
+        devs:  list of devices where to send the broadcast calls
+        If devs=[], the msg calls will be sent through all the available
+        devices"""
 
         self.port = port
-	self.inet = inet
+        self.inet = inet
 
         self.dev_sk = {}
-	for d in devs:
-		self.dev_sk[d] = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        for d in devs:
+            self.dev_sk[d] = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.connected = False
 
         FakeRmt.__init__(self)
@@ -419,18 +420,18 @@ class BcastClient(FakeRmt):
 
     def send(self, data):
         for d, sk in self.dev_sk.iteritems():
-		sk.sendto(data, ('<broadcast>', self.port))
+            sk.sendto(data, ('<broadcast>', self.port))
 
     def connect(self):
-	for d, sk in self.dev_sk.iteritems():
-		#self.inet.sk_bindtodevice(sk, d)
-		self.inet.sk_set_broadcast(sk, d)
-        	sk.connect(('<broadcast>', self.port))
+        for d, sk in self.dev_sk.iteritems():
+            #self.inet.sk_bindtodevice(sk, d)
+            self.inet.sk_set_broadcast(sk, d)
+            sk.connect(('<broadcast>', self.port))
         self.connected = True
 
     def close(self):
-	for d, sk in self.dev_sk.iteritems():
-		sk.close()
+        for d, sk in self.dev_sk.iteritems():
+            sk.close()
         self.connected = False
 
     def rmt(self, func_name, *params):
