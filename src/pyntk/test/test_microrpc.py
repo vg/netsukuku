@@ -3,8 +3,8 @@
 import sys
 sys.path.append('..')
 
-import lib.sock
-import socket
+from lib.sock import Sock
+socket=Sock()
 print socket.ManageSockets
 import logging
 import lib.rpc as rpc

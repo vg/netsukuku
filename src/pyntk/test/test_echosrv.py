@@ -5,8 +5,8 @@ import sys
 sys.path.append('..')
 
 import logging
-import lib.sock
-import socket
+from lib.sock import Sock
+socket=Sock()
 print socket.ManageSockets
 import traceback
 

@@ -1,6 +1,5 @@
 import sys
 
-from socket import AF_INET, SOCK_DGRAM, SOCK_STREAM, SO_REUSEADDR, SOL_SOCKET
 import traceback
 import random
 from random import randint
@@ -9,7 +8,8 @@ import pdb
 sys.path[0]='../'
 from net import Net
 import sim
-from network.vsock import VirtualSocket
+from lib.sock import Sock
+from socket import AF_INET, SOCK_DGRAM, SOCK_STREAM, SO_REUSEADDR, SOL_SOCKET
 import lib.xtime as xtime
 from lib.micro import micro, microfunc, allmicro_run
 
@@ -24,7 +24,8 @@ def echo_srv():
     """Standard echo server example"""
     host = ''
     port = 51423
-    s0=VirtualSocket(AF_INET, SOCK_DGRAM, N, N.net[0])
+    socket=Sock(N, N.net[0])
+    s0=socket.socket(AF_INET, SOCK_DGRAM)
     s0.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
     s0.bind((host, port))
     while 1:
@@ -37,7 +38,8 @@ def echo_srv():
 
 @microfunc()
 def echo_client():
-    s1=VirtualSocket(AF_INET, SOCK_DGRAM, N, N.net[1])
+    socket=Sock(N, N.net[1])
+    s1=socket.socket(AF_INET, SOCK_DGRAM)
     ip = s1.inet.ip_to_str(0)
     r=randint(0, 256)
     print "t:", xtime.time(), ("sending data %d to "+ip)%(r)
@@ -47,7 +49,8 @@ def echo_client():
 
 @microfunc(1)
 def echo_client_II():
-    s1=VirtualSocket(AF_INET, SOCK_DGRAM, N, N.net[1])
+    socket=Sock(N, N.net[1])
+    s1=socket.socket(AF_INET, SOCK_DGRAM)
     ip = s1.inet.ip_to_str(0)
 
     r=randint(0, 256)
@@ -77,7 +80,8 @@ def tcp_echo_srv():
     """Standard tcp echo server example"""
     host = ''
     port = 51423
-    s0=VirtualSocket(AF_INET, SOCK_STREAM, N, N.net[0])
+    socket=Sock(N, N.net[0])
+    s0=socket.socket(AF_INET, SOCK_STREAM)
     s0.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
     s0.bind((host, port))
     s0.listen(1)
@@ -85,7 +89,8 @@ def tcp_echo_srv():
 
 @microfunc()
 def tcp_echo_client():
-    s1=VirtualSocket(AF_INET, SOCK_STREAM, N, N.net[1])
+    socket=Sock(N, N.net[1])
+    s1=socket.socket(AF_INET, SOCK_STREAM)
     ip = s1.inet.ip_to_str(0)
     print "t:", xtime.time(), "waiting"
     xtime.swait(70)

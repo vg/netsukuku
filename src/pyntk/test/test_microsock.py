@@ -2,11 +2,12 @@ import sys
 sys.path.append('..')
 from lib.micro import micro, microfunc, allmicro_run, Channel
 
-import lib.sock
-import socket
-print socket.ManageSockets
+from lib.sock import Sock
+socket = Sock()
 from socket import AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR, SOCK_DGRAM
 import struct
+
+
 
 # Test code goes here.
 testAddress = "127.0.0.1", 3000
