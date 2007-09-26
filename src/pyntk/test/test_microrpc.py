@@ -106,25 +106,31 @@ def udp_client():
     print "udp_client end"
 
 
-if __name__ == '__main__':
-  if len(sys.argv) == 1:
-	  print "specify udp or tcp"
-	  sys.exit(1)
-
-  if sys.argv[1]== 'tcp':
+def run_test_tcp():
     print 'Starting tcp server...'
 
     server = rpc.MicroTCPServer(mod, ('localhost', PORT))
     micro(server.serve_forever)
 
     micro(tcp_client)
+    allmicro_run()
 
-  if sys.argv[1]== 'udp':
+def run_test_udp():
     print 'Starting udp server...'
 
     server = rpc.MicroUDPServer(mod, ('', PORT))
     micro(server.serve_forever)
 
     micro(udp_client)
+    allmicro_run()
 
-  allmicro_run()
+
+if __name__ == '__main__':
+  if len(sys.argv) == 1:
+	  print "specify udp or tcp"
+	  sys.exit(1)
+
+  if sys.argv[1]== 'tcp':
+	  run_test_tcp()
+  if sys.argv[1]== 'udp':
+	  run_test_udp()

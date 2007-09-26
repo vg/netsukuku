@@ -1,4 +1,3 @@
-print 'LALA'*20
 class Sock:
     def __init__(self, net=None, me=None):
     	self._net = net
