@@ -81,7 +81,7 @@ except: pass
 import SocketServer as SckSrv
 
 import ntk.lib.rencode as rencode
-from   ntk.lib.micro import  micro
+from   ntk.lib.micro import  micro, microfunc
 
 class RPCError(Exception): pass
 class RPCNetError(Exception): pass
@@ -244,9 +244,13 @@ def _data_unpack_from_buffer(buffer):
 
 
 class MicroMixin:
-    def process_request(self, request, client_address):
-        micro(self.finish_request, (request, client_address))
+    @microfunc(True)
+    def process_request_micro(self, request, client_address):
+        self.finish_request(request, client_address)
         self.close_request(request)
+        
+    def process_request(self, request, client_address):
+        self.process_request_micro(request, client_address)
 
 class StreamRequestHandler(SckSrv.BaseRequestHandler):
     '''RPC stream request handler class
@@ -313,8 +317,8 @@ class TCPClient(FakeRmt):
         self.socket.sendall(_data_pack(data))
 
         recv_encoded_data = _data_unpack_from_stream_socket(self.socket)
-	if not recv_encoded_data:
-		raise RPCNetError, 'connection closed before reply'
+        if not recv_encoded_data:
+                raise RPCNetError, 'connection closed before reply'
         recv_data = rencode.loads(recv_encoded_data)
         logging.debug("Recvd data: "+str(recv_data))
 

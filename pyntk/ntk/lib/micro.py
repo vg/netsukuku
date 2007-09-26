@@ -29,7 +29,7 @@ def micro(function, args=()):
     return stackless.tasklet(function)(*args)
 
 def micro_block():
-	stackless.schedule()
+        stackless.schedule()
 
 def allmicro_run():
     stackless.run()
@@ -41,41 +41,41 @@ class Channel(object):
 
     def __init__(self, prefer_sender=False, micro_send=False):
         """If prefer_sender=True, the send() calls won't block. More
-	precisely, the calling tasklet doesn't block and the receiving tasklet
-	will be the next to be scheduled.
+        precisely, the calling tasklet doesn't block and the receiving tasklet
+        will be the next to be scheduled.
 
-	If micro_send=True, then a new microthread will be used for each
-	send call, thus each send() call won't block.
-	"""
+        If micro_send=True, then a new microthread will be used for each
+        send call, thus each send() call won't block.
+        """
         self.ch  = stackless.channel()
-	self.chq = []
-	self.micro_send=micro_send
-	if prefer_sender:
-		self.ch.preference=1
+        self.chq = []
+        self.micro_send=micro_send
+        if prefer_sender:
+                self.ch.preference=1
 
     def send(self, data):
         if self.micro_send:
-		micro(self.ch.send, (data,))
-	else:
-		self.ch.send(data)
+                micro(self.ch.send, (data,))
+        else:
+                self.ch.send(data)
     
     def recv(self):
         return self.ch.receive()
 
     def sendq(self, data):
         """It just sends `data' to the channel queue.
-	   `data' can or cannot be received."""
-	if self.ch.balance < 0:
-		self.send(data)
-	else:
-		self.chq.append(data)
+           `data' can or cannot be received."""
+        if self.ch.balance < 0:
+                self.send(data)
+        else:
+                self.chq.append(data)
     
     def recvq(self):
-	"""Receives data sent by `sendq'"""
+        """Receives data sent by `sendq'"""
         if self.chq == []:
-		return self.recv()
-	else:
-		return self.chq.pop(0)
+                return self.recv()
+        else:
+                return self.chq.pop(0)
 
 def _dispatcher(func, chan):
     while True:
@@ -96,18 +96,18 @@ def microfunc(is_micro=False):
     def decorate(func):
         ch = Channel(True)
 
-	@functools.wraps(func)
+        @functools.wraps(func)
         def fsend(*data):
             ch.sendq(data)
         
-	@functools.wraps(func)
+        @functools.wraps(func)
         def fmicro(*data):
             micro(func, data)
 
-	if is_micro:
-		return fmicro
-	else:
-		micro(_dispatcher, (func, ch))
-		return fsend
+        if is_micro:
+                return fmicro
+        else:
+                micro(_dispatcher, (func, ch))
+                return fsend
 
     return decorate

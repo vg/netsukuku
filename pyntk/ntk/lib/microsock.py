@@ -79,7 +79,7 @@ def ManageSockets():
         # Check the sockets for activity.
         asyncore.poll(0.05)
         # Yield to give other tasklets a chance to be scheduled.
-	micro_block()
+        micro_block()
 
     managerRunning = False
 
@@ -87,7 +87,7 @@ def StartManager():
     global managerRunning
     if not managerRunning:
         managerRunning = True
-	micro(ManageSockets)
+        micro(ManageSockets)
 
 _manage_sockets_func = StartManager
 
