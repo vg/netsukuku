@@ -53,7 +53,9 @@ class Link(object):
         self.average = float(self.rtt+self.bw)/2
 
     
-class Node:
+class Node(object):
+    __slots__ = ['neighbours', 'recv_chan', 'accept_chan', 'sk_in', 'sk_out',
+		    'ip']
     def __init__(self, ip=None, neighs={}):
         self.change_ip(ip)
 
@@ -130,7 +132,6 @@ class Node:
 
     def connect(self, dst):
         """Returns sk_chan, the Channel() of the new established socket"""
-        print "I am", self.ip, " connecting to ", dst.ip
 	if dst not in self.neighbours:
 		raise ENotNeigh, ENotNeigh.errstr
 

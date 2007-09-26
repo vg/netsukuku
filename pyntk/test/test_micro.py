@@ -1,6 +1,6 @@
 import sys
 sys.path.append('..')
-from lib.micro import micro, microfunc, allmicro_run, Channel
+from ntk.lib.micro import micro, microfunc, allmicro_run, Channel
 
 T=T1=T2=[]
 

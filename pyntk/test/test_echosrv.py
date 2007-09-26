@@ -5,7 +5,7 @@ import sys
 sys.path.append('..')
 
 import logging
-from wrap.sock import Sock
+from ntk.wrap.sock import Sock
 socket=Sock()
 print socket.ManageSockets
 import traceback

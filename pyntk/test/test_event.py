@@ -1,6 +1,6 @@
 import sys
 sys.path.append('..')
-from lib.event import Event
+from ntk.lib.event import Event
 from functools import partial
 
 

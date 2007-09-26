@@ -1,6 +1,6 @@
 import sys
 sys.path.append("..")
-from core.map import Map
+from ntk.core.map import Map
 
 class Fake:
 	def __init__(self, lvl, id):pass

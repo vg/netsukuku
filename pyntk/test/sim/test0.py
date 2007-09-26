@@ -1,4 +1,5 @@
 import sys
+sys.path.append('../../')
 
 import traceback
 import random
@@ -6,8 +7,8 @@ from random import randint
 import pdb
 
 from ntk.sim.net import Net
-import ntk.sim.sim
-import ntk.sim.lib.xtime as xtime
+import ntk.sim.sim as sim
+import ntk.sim.wrap.xtime as xtime
 from ntk.lib.micro import micro, microfunc, allmicro_run, Channel
 
 ch = Channel()

@@ -3,13 +3,11 @@
 import sys
 sys.path.append('..')
 
-from wrap.sock import Sock
-socket=Sock()
-print socket.ManageSockets
 import logging
-import lib.rpc as rpc
-from lib.micro import micro, allmicro_run, micro_block
-from network.inet import Inet
+import threading
+
+import ntk.lib.rpc as rpc
+from ntk.network.inet import Inet
 
 REQUEST = 3
 from random import randint
@@ -70,9 +68,35 @@ mod = MyMod()
 
 
 #
+### TCP server
+#
+
+class MixinServer:
+    def serve_few(self):
+        for _ in range(REQUEST):
+            self.handle_request()
+
+class RPCFewServer(MixinServer, rpc.TCPServer):
+    '''A rpc.TCPServer that handles only `REQUEST' requests'''
+
+class ThreadedRPCServer(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+
+    def run(self):
+        server = RPCFewServer(mod, ('localhost', PORT))
+        server.serve_few()
+
+
+#
 #### TCP client
 #
-def tcp_client():
+
+class ThreadedRPCClient(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+
+    def run(self):
         client = rpc.TCPClient(port=PORT)
    
         x=5
@@ -96,41 +120,58 @@ def tcp_client():
             logging.debug(str(e))
 
 #
+### UDP server
+#
+class UDPFewServer(MixinServer, rpc.UDPServer):
+    '''A rpc.UDPServer that handles only `REQUEST' requests'''
+
+class ThreadedUDPServer(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+
+    def run(self):
+        server = UDPFewServer(mod, ('', PORT))
+        server.serve_few()
+
+#
 ### Bcast client
 #
-def udp_client():
-    client = rpc.BcastClient(Inet(), devs=['lo'], port=PORT)
-    print "calling void func"
-    client.void_func()
-    client.void_func_caller()
-    print "udp_client end"
 
+class ThreadedBcastRPCClient(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+    def run(self):
+        client = rpc.BcastClient(Inet(), devs=['lo'], port=PORT)
 
-def run_test_tcp():
-    print 'Starting tcp server...'
-
-    server = rpc.MicroTCPServer(mod, ('localhost', PORT))
-    micro(server.serve_forever)
-
-    micro(tcp_client)
-    allmicro_run()
-
-def run_test_udp():
-    print 'Starting udp server...'
-
-    server = rpc.MicroUDPServer(mod, ('', PORT))
-    micro(server.serve_forever)
-
-    micro(udp_client)
-    allmicro_run()
-
-
+        client.void_func()
+        client.void_func_caller()
+    
 if __name__ == '__main__':
   if len(sys.argv) == 1:
 	  print "specify udp or tcp"
 	  sys.exit(1)
 
   if sys.argv[1]== 'tcp':
-	  run_test_tcp()
+    print 'Starting tcp server...'
+
+    server = ThreadedRPCServer()
+    server.start()
+
+    client = ThreadedRPCClient()
+    client.start()
+
+    client.join()
+    server.join()
+
+
   if sys.argv[1]== 'udp':
-	  run_test_udp()
+    print 'Starting udp server...'
+
+    server = ThreadedUDPServer()
+    server.start()
+
+    client = ThreadedBcastRPCClient()
+    client.start()
+
+    client.join()
+    server.join()

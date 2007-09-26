@@ -1,10 +1,10 @@
 import sys
+sys.path.append('../../')
 
 import md5
 import random
 from random import randint
 import pdb
-
 
 from ntk.sim.net import Net
 
@@ -41,3 +41,5 @@ assert m.hexdigest() == '8ba964a2d421e4a4d86980daffc290c5'
 
 m=md5.new(); m.update(open('net1.dot', 'r').read())
 assert m.hexdigest() == '7665a14c07f50187b2c7844643d0bb77'
+
+print 'all ok'
