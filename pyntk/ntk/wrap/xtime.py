@@ -1,7 +1,5 @@
 import time as T
-import sys
-sys.path.append('..')
-import lib.micro as micro
+import ntk.lib.micro as micro
 
 def swait(t):
     """Waits `t' ms"""

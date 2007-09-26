@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+import sys
+sys.path.append('../')
 from ntk.lib.opt import Opt
 
 opt = Opt({'s1':'short_opt_1', 's2':'short_opt_2'})

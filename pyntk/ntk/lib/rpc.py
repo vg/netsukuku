@@ -72,12 +72,12 @@ import rpc
 #
 ##
 
+import struct
 import logging
 import socket
 import SocketServer as SckSrv
-import struct
 
-import rencode
+import ntk.lib.rencode as rencode
 
 class RPCError(Exception): pass
 class RPCFuncNotRemotable(RPCError): pass
@@ -206,9 +206,12 @@ _data_hdr_sz = struct.calcsize("I")
 def _data_pack(data):
     return struct.pack("I", len(data)) + data
 
+import pdb
 def _data_unpack_from_stream_socket(socket):
     readBuffer = ""
     while True:
+        print struct
+	print pdb
         rawPacket = socket.recv(_data_hdr_sz-len(readBuffer))
         if not rawPacket:
             return ""

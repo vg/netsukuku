@@ -24,7 +24,7 @@
 
 from ntk.lib.event import Event
 from ntk.lib.micro import microfunc
-from network.route import Route as KRoute
+from ntk.network.route import Route as KRoute
 
 class KrnlRoute:
     def __init__(self, neigh, maproute, inet, multipath=False):

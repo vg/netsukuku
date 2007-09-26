@@ -19,8 +19,8 @@
 ##
 
 import sys
-from ntkd import NtkNode
-from lib.opt import Opt, OptErr
+from ntk.ntkd import NtkNode
+from ntk.lib.opt import Opt, OptErr
 from config import *
 
 usage = """
