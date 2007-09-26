@@ -55,7 +55,7 @@ class MyMod:
         self.nestmod = MyNestedMod()
 
         self.remotable_funcs = [self.square, self.mul, self.caller_test,
-				self.void_func_caller, self.void_func]
+                                self.void_func_caller, self.void_func]
 
     def square(self, x): return x*x
     def mul(self, x, y): return x*y
@@ -63,15 +63,15 @@ class MyMod:
     def private_func(self): pass
 
     def caller_test(self, _rpc_caller, x, y):
-	c = _rpc_caller
+        c = _rpc_caller
         logging.debug("caller test: "+str([c.ip, c.port, c.dev, c.socket]))
-	return (x,y)
+        return (x,y)
     
     def void_func_caller(self, _rpc_caller):
-	c = _rpc_caller
+        c = _rpc_caller
         logging.debug("void func caller: "+str([c.ip, c.port, c.dev, c.socket]))
     def void_func(self):
-	logging.debug("void_func")
+        logging.debug("void_func")
 
 mod = MyMod()
 
@@ -80,11 +80,11 @@ mod = MyMod()
 #### TCP client
 #
 def tcp_client():
-	Sock(N, N.net[1], 'ntk.lib.rpc')
-	import ntk.lib.rpc as rpc
-	from ntk.lib.micro import micro, allmicro_run, micro_block
+        Sock(N, N.net[1], 'ntk.lib.rpc')
+        import ntk.lib.rpc as rpc
+        from ntk.lib.micro import micro, allmicro_run, micro_block
         from ntk.network.inet import Inet
-	
+        
         client = rpc.TCPClient(Inet().ip_to_str(N.net[0].ip), port=PORT)
    
         x=5
@@ -153,15 +153,15 @@ def run_test_udp():
 
 if __name__ == '__main__':
   if len(sys.argv) == 1:
-	  print "specify udp or tcp"
-	  sys.exit(1)
+          print "specify udp or tcp"
+          sys.exit(1)
 
   sim.sim_activate()
 
   if sys.argv[1]== 'tcp':
-	  run_test_tcp()
+          run_test_tcp()
   if sys.argv[1]== 'udp':
-	  run_test_udp()
+          run_test_udp()
 
   sim.sim_run()
   allmicro_run()

@@ -18,16 +18,16 @@ ch3 = Channel()
 T=[]
 
 def myxtime():
-	t=xtime.time()
-	T.append(t)
-	return t
+        t=xtime.time()
+        T.append(t)
+        return t
 
 @microfunc(True)
 def f(x):
-	ch2.recv()
-	print 'ch2'
-	print "t:", myxtime()
-	f(x)
+        ch2.recv()
+        print 'ch2'
+        print "t:", myxtime()
+        f(x)
 
 @microfunc(True)
 def fe(x):

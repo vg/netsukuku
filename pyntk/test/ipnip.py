@@ -3,7 +3,7 @@ sys.path.append("..")
 from ntk.core.map import Map
 
 class Fake:
-	def __init__(self, lvl, id):pass
+        def __init__(self, lvl, id):pass
 
 m=Map(4, 256, Fake, [0,0,0,0])
 nip=[11,22,33,44]

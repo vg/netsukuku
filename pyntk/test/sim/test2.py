@@ -29,12 +29,12 @@ def echo_srv():
     s0.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
     s0.bind((host, port))
     while 1:
-	    try:
-		message, address = s0.recvfrom(8192)
-		print "t:", xtime.time(), "Got data from %s: %s"%(address, message)
-		s0.sendto('yo there ('+message+')', address)
-	    except:
-		traceback.print_exc()
+            try:
+                message, address = s0.recvfrom(8192)
+                print "t:", xtime.time(), "Got data from %s: %s"%(address, message)
+                s0.sendto('yo there ('+message+')', address)
+            except:
+                traceback.print_exc()
 
 @microfunc()
 def echo_client():
@@ -65,15 +65,15 @@ def echo_client_II():
 def tcp_handler(conn, addr):
     print "t:", xtime.time(),"Got connection from",str(addr)
     while 1:
-	try:
-#		message = conn.recv(1)
-		message = conn.recv(8192)
-		if not message: break
-		print "t:", xtime.time(), "Got data message: %s"%message
-		conn.send('ACK')
-    	except:
-        	traceback.print_exc()
-		raise
+        try:
+#               message = conn.recv(1)
+                message = conn.recv(8192)
+                if not message: break
+                print "t:", xtime.time(), "Got data message: %s"%message
+                conn.send('ACK')
+        except:
+                traceback.print_exc()
+                raise
     print "t:", xtime.time(), addr, "connection closed"
 
 @microfunc()

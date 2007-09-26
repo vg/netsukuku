@@ -9,8 +9,8 @@ events = Event(['A', 'B'])
 events.add(['C'])
 
 def ev_listener(ev='', *msg):
-	print ev, msg
-	T.append(ev)
+        print ev, msg
+        T.append(ev)
 
 events.listen('A', partial(ev_listener, 'A'))
 events.listen('B', partial(ev_listener, 'B'))
