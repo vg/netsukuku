@@ -84,6 +84,7 @@ import ntk.lib.rencode as rencode
 from   ntk.lib.micro import  micro
 
 class RPCError(Exception): pass
+class RPCNetError(Exception): pass
 class RPCFuncNotRemotable(RPCError): pass
 class RPCFunctionError(RPCError): pass
 
@@ -210,14 +211,10 @@ _data_hdr_sz = struct.calcsize("I")
 def _data_pack(data):
     return struct.pack("I", len(data)) + data
 
-import pdb
 def _data_unpack_from_stream_socket(socket):
     readBuffer = ""
     while True:
-        print struct
-	print pdb
         rawPacket = socket.recv(_data_hdr_sz-len(readBuffer))
-	print rawPacket, len(rawPacket)
         if not rawPacket:
             return ""
         readBuffer += rawPacket
@@ -316,6 +313,8 @@ class TCPClient(FakeRmt):
         self.socket.sendall(_data_pack(data))
 
         recv_encoded_data = _data_unpack_from_stream_socket(self.socket)
+	if not recv_encoded_data:
+		raise RPCNetError, 'connection closed before reply'
         recv_data = rencode.loads(recv_encoded_data)
         logging.debug("Recvd data: "+str(recv_data))
 
