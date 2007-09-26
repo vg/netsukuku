@@ -1,5 +1,0 @@
-You need libandns. Once installed, run:
-
-    # python setup.py install
-
-It's all.
