@@ -1,8 +1,11 @@
+import sys
+sys.path.append('..')
+import lib.microsock as microsock
+
 class Sock:
     def __init__(self, net=None, me=None):
     	self._net = net
     	self._me  = me
-    	import microsock
     	self._socket = microsock
 	import sys
 	sys.modules['socket']=self

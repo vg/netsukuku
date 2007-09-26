@@ -21,15 +21,16 @@ from random import randint
 
 import sys
 sys.path.append("..")
-from lib.xtime  import swait, time
+from wrap.xtime  import swait, time
 from lib.micro  import micro
 from lib.event  import Event
 from core.route import Rtt
 
 import lib.rpc as rpc
 
-class NodeInfo:
+class NodeInfo(object):
   """ this class store informations about a node """
+  __slots__ = ['devs', 'bestdev', 'ntk']
   def __init__(self, devs, bestdev, ntk):
     """ devs: a dict which maps a device to the average rtt
         bestdev: a pair (d, avg_rtt), where devs[d] is the best element of
@@ -42,6 +43,8 @@ class NodeInfo:
 
 class Neigh:
   """ this class simply represent a neighbour """
+
+  __slots__ = ['devs', 'bestdev', 'ip', 'id', 'rem', 'ntk', 'netid']
 
   def __init__(self, ip, idn, devs, bestdev, netid):
     """ ip: neighbour's ip;
@@ -64,10 +67,12 @@ class Neigh:
 
 class Neighbour:
   """ this class manages all neighbours """
+  __slots__ = ['max_neigh', 'rtt_variation', 'ip_table', 'translation_table',
+		  'netid_table', 'events', 'remotable_funcs']
+
   def __init__(self, max_neigh = 16):
     """  max_neigh: maximum number of neighbours we can have
     """
-
     self.max_neigh = max_neigh
     # variation on neighbours' rtt greater than this will be notified
     self.rtt_variation = 0.1
@@ -256,6 +261,10 @@ class Neighbour:
 
 
 class Radar:
+  __slots__ = ['inet', 'bouquet_numb', 'bcast_send_time',
+    'bcast_arrival_time', 'bquet_dimension', 'max_wait_time', 'broadcast',
+    'neigh', 'events', 'netid', 'do_reply', 'remotable_funcs', 'ntkd_id' ]
+    
   def __init__(self, inet, bquet_num = 16, max_neigh = 16, max_wait_time = 8):
     """
     	inet:	network.inet.Inet instance
@@ -263,7 +272,7 @@ class Radar:
         max_neigh: maximum number of neighbours we can have;
         max_wait_time: the maximum time we can wait for a reply, in seconds;
     """
-
+   
     self.inet = inet
 
     # how many bouquet we have already sent

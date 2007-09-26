@@ -5,12 +5,13 @@ import random
 from random import randint
 import pdb
 
-sys.path[0]='../'
+sys.path.append('..')
 from net import Net
 import sim
-from lib.sock import Sock
+from wrap.sock import Sock
 from socket import AF_INET, SOCK_DGRAM, SOCK_STREAM, SO_REUSEADDR, SOL_SOCKET
-import lib.xtime as xtime
+import wrap.xtime as xtime
+sys.path.append('../../')
 from lib.micro import micro, microfunc, allmicro_run
 
 random.seed(1)
@@ -66,6 +67,7 @@ def tcp_handler(conn, addr):
     print "t:", xtime.time(),"Got connection from",str(addr)
     while 1:
 	try:
+#		message = conn.recv(1)
 		message = conn.recv(8192)
 		if not message: break
 		print "t:", xtime.time(), "Got data message: %s"%message

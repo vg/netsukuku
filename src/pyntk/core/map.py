@@ -43,7 +43,9 @@ class DataClass:
 	"""Returns True if this data class is free. False otherwise"""
         return True
 
-class Map:
+class Map(object):
+    __slots__ = ['levels', 'gsize', 'dataclass', 'me', 'node', 'node_nb',
+                 'events']
 
     def __init__(self, levels, gsize, dataclass, me=None):
 	"""Initialise the map

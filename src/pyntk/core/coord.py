@@ -24,7 +24,7 @@ import sys
 sys.path.append("..")
 from lib.micro import microfunc
 from lib.event import Event
-from lib.xtime import time
+from wrap.xtime import time
 from core.p2p import P2P
 from core.map import Map
 from random import choice

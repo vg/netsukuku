@@ -3,7 +3,7 @@
 import sys
 sys.path.append('..')
 
-from lib.sock import Sock
+from wrap.sock import Sock
 socket=Sock()
 print socket.ManageSockets
 import logging

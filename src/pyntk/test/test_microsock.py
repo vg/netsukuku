@@ -2,7 +2,7 @@ import sys
 sys.path.append('..')
 from lib.micro import micro, microfunc, allmicro_run, Channel
 
-from lib.sock import Sock
+from wrap.sock import Sock
 socket = Sock()
 from socket import AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR, SOCK_DGRAM
 import struct

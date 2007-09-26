@@ -19,7 +19,8 @@
 
 from heapq import heappush, heappop
 
-import inithook
+import sys
+sys.path.append('../')
 from lib.micro import Channel, microfunc
 
 class SimEvent(object):

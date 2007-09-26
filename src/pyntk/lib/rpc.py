@@ -79,8 +79,6 @@ import struct
 
 import rencode
 
-from micro import micro
-
 class RPCError(Exception): pass
 class RPCFuncNotRemotable(RPCError): pass
 class RPCFunctionError(RPCError): pass

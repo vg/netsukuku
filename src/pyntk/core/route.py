@@ -22,10 +22,12 @@ sys.path.append("..")
 from lib.event import Event
 from core.map import Map
 
-class Rem:
+class Rem(object):
     """Route Efficiency Measure.
     
     This is a base class for different metrics (rtt, bandwidth, ...)"""
+
+    __slots__ = ['value', 'max_value', 'avgcoeff']
 
     def __init__(self, value, max_value=0, avgcoeff=1):
     	self.value=value
@@ -90,6 +92,7 @@ class Rtt(Rem):
 
 class Bw(Rem):
     """Bandwidth"""
+    __slots__ = Rem.__slots__+['lb', 'nb']
 
     def __init__(self, (value, lb, nb), max_value=0, avgcoeff=1):
         """Initialise the bandwidth Rem for a route.
@@ -160,7 +163,7 @@ class Avg(Rem):
     	raise Exception, "the Avg metric cannot be summed. It must be computed each time"
     	pass
 
-class RouteGw:
+class RouteGw(object):
     """A route to a known destination.
 
     This class is intended for routes pointing to a same known destination d.
@@ -170,6 +173,7 @@ class RouteGw:
     If d = `gw', then `gw' is one of our internal neighbours, i.e. a neighbour
     belonging to our gnode of level 1.
     """
+    __slots__ = ['gw', 'rem']
 
     def __init__(self, gw, rem):
 	"""New gw route"""
@@ -188,7 +192,7 @@ class RouteGw:
 		return oldrem
 	return self.rem
 
-class RouteNode:
+class RouteNode(object):
     """List of routes to a known destination.
 
     This class is basically a list of RouteGw classes, where the
@@ -198,6 +202,7 @@ class RouteNode:
           which has the same gateway G
     """
 
+    __slots__ = ['routes']
     def __init__(self, 
 		 lvl=None, id=None  # these are mandatory for Map.__init__(),
 		 		    # but they aren't used
@@ -293,6 +298,7 @@ class MapRoute(Map):
 
     MapRoute.node[lvl][id] is a RouteNode class, i.e. a list of routes
     having as destination the node (lvl, id)"""
+    __slots__ = Map.__slots__+['remotable_funcs']
 
     def __init__(self, levels, gsize, me):
     	Map.__init__(self, levels, gsize, RouteNode, me)
