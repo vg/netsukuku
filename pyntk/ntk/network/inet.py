@@ -1,5 +1,5 @@
 from socket import inet_pton, inet_ntop, AF_INET, AF_INET6, ntohl, htonl, \
-		   SOL_SOCKET, SO_BROADCAST
+                   SOL_SOCKET, SO_BROADCAST
 from IN import SO_BINDTODEVICE
 
 ipv4 = 4
@@ -13,17 +13,17 @@ class Inet:
     def __init__(S, ip_version=ipv4, bits_per_level=8):
         S.ipv = ip_version
 
-	S.bitslvl = bits_per_level
+        S.bitslvl = bits_per_level
 
     def lvl_to_bits(S, lvl):
-	return ipbit[S.ipv]-lvl*S.bitslvl
+        return ipbit[S.ipv]-lvl*S.bitslvl
 
     def pip_to_ip(S, pip):
         ps = pip[::-1]
         return sum(ord(ps[i]) * 256**i for i in xrange(len(ps)))
     
     def ip_to_pip(S, ip):
-	ver=S.ipv
+        ver=S.ipv
         return ''.join([chr( (ip % 256**(i+1))/256**i ) for i in reversed(xrange(ipbit[ver]/8))])
     
     def pip_to_str(S, pip):
@@ -41,23 +41,23 @@ class Inet:
     
     def sk_set_broadcast(S, sck, devname):
         if S.ipv == 4:
-    	    sck.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
+            sck.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
         elif S.ipv == 6:
-    	    raise NotImplementedError, 'please, call a coder!'
+            raise NotImplementedError, 'please, call a coder!'
     
     
 if __name__ == "__main__":
-	ps = "1.2.3.4"
+        ps = "1.2.3.4"
 
-	I = Inet(ipv4, 2)
-	
-	assert I.lvl_to_bits(1) == 30
-	pip = I.str_to_pip(ps)
-	ip  = I.pip_to_ip(pip)
-	PIP = I.ip_to_pip(ip)
-	IP  = I.pip_to_ip(PIP)
-	print str(ps)+" --> "+repr(pip)+" --> "+str(ip)+" --> "+repr(PIP)+" --> "+str(IP)
-	assert PIP == pip
-	assert IP == ip
-	assert I.ip_to_str(ip) == ps
-	print "all ok"
+        I = Inet(ipv4, 2)
+        
+        assert I.lvl_to_bits(1) == 30
+        pip = I.str_to_pip(ps)
+        ip  = I.pip_to_ip(pip)
+        PIP = I.ip_to_pip(ip)
+        IP  = I.pip_to_ip(PIP)
+        print str(ps)+" --> "+repr(pip)+" --> "+str(ip)+" --> "+repr(PIP)+" --> "+str(IP)
+        assert PIP == pip
+        assert IP == ip
+        assert I.ip_to_str(ip) == ps
+        print "all ok"

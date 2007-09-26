@@ -31,7 +31,7 @@ class NodeInfo(object):
   def __init__(self, devs, bestdev, ntk):
     """ devs: a dict which maps a device to the average rtt
         bestdev: a pair (d, avg_rtt), where devs[d] is the best element of
-	         devs.
+                 devs.
         ntk: node's ntk remote instance
     """
     self.devs = devs
@@ -48,8 +48,8 @@ class Neigh:
         idn: neighbour's id;
         devs: a dict which maps a device to the average rtt
         bestdev: a pair (d, avg_rtt), where devs[d] is the best element of
-	         devs.
-	netid: network id of the node
+                 devs.
+        netid: network id of the node
     """
 
     self.devs = devs
@@ -57,7 +57,7 @@ class Neigh:
 
     self.ip = ip
     self.id = idn
-    self.rem = Rtt(self.bestdev[1])		# TODO(low): support the other metrics
+    self.rem = Rtt(self.bestdev[1])             # TODO(low): support the other metrics
     # neighbour's ntk remote instance
     self.ntk = Ntk(ip)
     self.netid = netid
@@ -65,7 +65,7 @@ class Neigh:
 class Neighbour:
   """ this class manages all neighbours """
   __slots__ = ['max_neigh', 'rtt_variation', 'ip_table', 'translation_table',
-		  'netid_table', 'events', 'remotable_funcs']
+                  'netid_table', 'events', 'remotable_funcs']
 
   def __init__(self, max_neigh = 16):
     """  max_neigh: maximum number of neighbours we can have
@@ -111,19 +111,19 @@ class Neighbour:
         return a Neigh object from an ip
     """
     if ip not in self.translation_table:
-	    return None
+            return None
     else:
-	    return Neigh(ip, self.translation_table[ip], 
-			    self.ip_table[ip].devs,
-			    self.ip_table[ip].bestdev,
-			    self.netid_table[ip])
+            return Neigh(ip, self.translation_table[ip], 
+                            self.ip_table[ip].devs,
+                            self.ip_table[ip].bestdev,
+                            self.netid_table[ip])
 
   def id_to_ip(self, id):
     """ Returns the IP associated to `id'.
         If not found, returns None"""
     for ip in self.translation_table:
-	    if self.translation_table[ip] == id:
-		    return ip
+            if self.translation_table[ip] == id:
+                    return ip
     return None
  
   def id_to_neigh(self, id):
@@ -160,8 +160,8 @@ class Neighbour:
         if(key in self.ip_table):
           # remember we are truncating this row
           trucated.append(key)
-	  # delete the entry
-	  self.delete(key, remove_from_iptable=False)
+          # delete the entry
+          self.delete(key, remove_from_iptable=False)
 
     # return the new ip_table and the list of truncated entries
     return (ip_table_trunc, truncated)
@@ -190,7 +190,7 @@ class Neighbour:
       # deletion hasn't already been notified (raising an event)
       # during truncation
       if((not (key in ip_table)) and (not (key in died_ip_list))):
-	  self.delete(key, remove_from_iptable=False)
+          self.delete(key, remove_from_iptable=False)
 
     # now we cycle through the new ip_table
     # looking for nodes who weren't in the old one
@@ -202,21 +202,21 @@ class Neighbour:
         self.ip_to_id(key)
         # send a message notifying we added a node
         self.events.send('NEIGH_NEW', 
-			 (Neigh(key, self.translation_table(key),
-				self.ip_table[key].devs,
-				self.ip_table[key].bestdev,
-				self.netid_table[key])))
+                         (Neigh(key, self.translation_table(key),
+                                self.ip_table[key].devs,
+                                self.ip_table[key].bestdev,
+                                self.netid_table[key])))
       else:
         # otherwise (if the node already was in old ip_table) check if
         # its rtt has changed more than rtt_variation
         if(abs(ip_table[key].bestdev[0][1] - self.ip_table[key].bestdev[1]) /
-			self.ip_table[key].bestdev[1] > self.rtt_variation):
+                        self.ip_table[key].bestdev[1] > self.rtt_variation):
           # send a message notifying the node's rtt changed
           self.events.send('NEIGH_REM_CHGED',
-			   (Neigh(key, self.translation_table[key],
-				       self.ip_table[key].devs,
-				       self.ip_table[key].bestdev,
-				       self.netid_table[key]) ))
+                           (Neigh(key, self.translation_table[key],
+                                       self.ip_table[key].devs,
+                                       self.ip_table[key].bestdev,
+                                       self.netid_table[key]) ))
 
     # finally, update the ip_table
     self.ip_table = ip_table
@@ -225,15 +225,15 @@ class Neighbour:
     """Sends a NEIGH_NEW event for each stored neighbour"""
     for key in ip_table:
         self.events.send('NEIGH_NEW', 
-			 (Neigh(key, self.translation_table(key),
-				       self.ip_table[key].devs,
-				       self.ip_table[key].bestdev,
-				       self.netid_table[key])))
+                         (Neigh(key, self.translation_table(key),
+                                       self.ip_table[key].devs,
+                                       self.ip_table[key].bestdev,
+                                       self.netid_table[key])))
 
   def delete(self, ip, remove_from_iptable=True):
     """Deletes an entry from the ip_table"""
     if remove_from_iptable:
-	    del self.ip_table[ip]
+            del self.ip_table[ip]
     # delete the entry from the translation table...
     old_id = self.translation_table.pop(ip)
     # ...and from the netid_table
@@ -250,10 +250,10 @@ class Neighbour:
     self.netid_table[newip]      = self.netid_table[oldip]
 
     self.events.send('NEIGH_NEW', (
-	    	      Neigh(newip, self.translation_table(newip),
-				   self.ip_table[newip].devs,
-				   self.ip_table[newip].bestdev,
-			    	   self.netid_table[newip]) ))
+                      Neigh(newip, self.translation_table(newip),
+                                   self.ip_table[newip].devs,
+                                   self.ip_table[newip].bestdev,
+                                   self.netid_table[newip]) ))
     self.delete(oldip)
 
 
@@ -264,7 +264,7 @@ class Radar:
     
   def __init__(self, inet, bquet_num = 16, max_neigh = 16, max_wait_time = 8):
     """
-    	inet:	network.inet.Inet instance
+        inet:   network.inet.Inet instance
         bquet_num: how many packets does each bouquet contain?;
         max_neigh: maximum number of neighbours we can have;
         max_wait_time: the maximum time we can wait for a reply, in seconds;
@@ -331,15 +331,15 @@ class Radar:
   def reply(self, _rpc_caller, ntkd_id, radar_id):
     """ As answer we'll return our netid """
     if self.do_reply and ntkd_id != self.ntkd_id:
-	    rpc.BcastClient(devs=[_rpc_caller.dev]).radar.time_register(radar_id, self.netid)
-	    return self.netid
+            rpc.BcastClient(devs=[_rpc_caller.dev]).radar.time_register(radar_id, self.netid)
+            return self.netid
 
   def time_register(self, _rpc_caller, radar_id, netid):
     """save each node's rtt"""
 
     if radar_id != self.radar_id:
-	    # drop. It isn't a reply to our current bouquet
-	    return
+            # drop. It isn't a reply to our current bouquet
+            return
 
     ip = self.inet.str_to_ip(_rpc_caller.ip)
     net_device = _rpc_caller.dev
@@ -363,8 +363,8 @@ class Radar:
     """ ip: an ip;
         Calculates the average rtt of IP for each device
 
-	Returns the ordered list [(dev, avgrtt)], the first element has the
-	best average rtt.
+        Returns the ordered list [(dev, avgrtt)], the first element has the
+        best average rtt.
     """
     
     devlist = []
@@ -372,7 +372,7 @@ class Radar:
     # for each nic
     for dev in self.bcast_arrival_time[ip]:
         avg = sum(self.bcast_arrival_time[ip][dev]) / len(self.bcast_arrival_time[ip][dev])
-	devlist.append( (dev, avg) )
+        devlist.append( (dev, avg) )
 
     # sort the devices, the best is the first
     def second_element((x,y)): return y

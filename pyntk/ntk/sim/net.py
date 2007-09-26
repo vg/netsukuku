@@ -39,9 +39,9 @@ class Link(object):
     __slots__ = [ 'rtt', 'bw', 'average' ]
     def __init__(self, rtt=0, bw=0, rand=0):
         self.rtt=rtt #in millisec
-	self.bw =bw  #byte per millisec
-	if rand:
-		self.set_random()
+        self.bw =bw  #byte per millisec
+        if rand:
+                self.set_random()
         self.set_average()
     
     def set_random(self, rtt_range=(4,32), bw_range=(8, 128)):
@@ -55,23 +55,23 @@ class Link(object):
     
 class Node(object):
     __slots__ = ['neighbours', 'recv_chan', 'accept_chan', 'sk_in', 'sk_out',
-		    'ip']
+                    'ip']
     def __init__(self, ip=None, neighs={}):
         self.change_ip(ip)
 
-	# {Node: Link}
-	self.neighbours = {}
+        # {Node: Link}
+        self.neighbours = {}
 
-	self.recv_chan = Channel()
-	self.accept_chan = Channel()
+        self.recv_chan = Channel()
+        self.accept_chan = Channel()
 
-	self.sk_in  = {} # {sk: sk_chan}
-	self.sk_out = {} # {sk: sk_chan}
+        self.sk_in  = {} # {sk: sk_chan}
+        self.sk_out = {} # {sk: sk_chan}
 
     def change_ip(self, newip=None):
-	self.ip=newip
-	if self.ip == None:
-		self.ip=randint(1, 2**32-1)
+        self.ip=newip
+        if self.ip == None:
+                self.ip=randint(1, 2**32-1)
 
     def __hash__(self):
         return self.ip
@@ -79,20 +79,20 @@ class Node(object):
     
     def neigh_add(self, n, link):
         self.neighbours[n]=link
-	n.neighbours[self]=link # the links are symmetric
+        n.neighbours[self]=link # the links are symmetric
     
     def neigh_del(self, n):
         if n in self.neighbours:
-		del self.neighbours[n]
-		del n.neighbours[self]
+                del self.neighbours[n]
+                del n.neighbours[self]
 
     def neigh_del_all(self):
         for n in self.neighbours:
-		self.neigh_del(n)
+                self.neigh_del(n)
 
     def calc_time(self, d, sz):
         """Return the time necessary to send a packet of 
-	   size `sz', from `self' to `d'"""
+           size `sz', from `self' to `d'"""
         return self.neighbours[d].rtt+float(sz)/self.neighbours[d].bw
 
 
@@ -100,96 +100,96 @@ class Node(object):
 
     def sendto(self, dst, msg):
         """dst: the destination neighbour
-	   msg: the packet itself. It must be a string!
-	   
-	   On error hell will be raised"""
-	if not isinstance(msg, str):
-		raise ESendMsg, ESendMsg.errstr
+           msg: the packet itself. It must be a string!
+           
+           On error hell will be raised"""
+        if not isinstance(msg, str):
+                raise ESendMsg, ESendMsg.errstr
 
-	if dst not in self.neighbours:
-		raise ENotNeigh, ENotNeigh.errstr
+        if dst not in self.neighbours:
+                raise ENotNeigh, ENotNeigh.errstr
 
         msglen = len(msg)
-	ev = SimEvent(self.calc_time(dst, msglen), dst._sendto, (self, msg))
-	sim.cursim.ev_add(ev)
-	return msglen
+        ev = SimEvent(self.calc_time(dst, msglen), dst._sendto, (self, msg))
+        sim.cursim.ev_add(ev)
+        return msglen
 
     def _sendto(self, sender, msg):
         """Send the msg to the recv channel"""
-	self.recv_chan.sendq((sender, msg))
+        self.recv_chan.sendq((sender, msg))
     
     def sendtoall(self, msg):
         """Send the msg to all neighbours"""
-	for n in self.neighbours:
-		self.sendto(n, msg)
+        for n in self.neighbours:
+                self.sendto(n, msg)
 
     def recvfrom(self):
         """Returns the (sender, msg) pair"""
-	return self.recv_chan.recvq()
+        return self.recv_chan.recvq()
 
 
 ## Socket based 
 
     def connect(self, dst):
         """Returns sk_chan, the Channel() of the new established socket"""
-	if dst not in self.neighbours:
-		raise ENotNeigh, ENotNeigh.errstr
+        if dst not in self.neighbours:
+                raise ENotNeigh, ENotNeigh.errstr
 
         sk      = randint(1, 2**32-1)
-	self.sk_out[sk]=Channel()
-	self.sk_in[sk]=Channel()
+        self.sk_out[sk]=Channel()
+        self.sk_in[sk]=Channel()
 
-	dst.accept_chan.send((self, sk, self.sk_in[sk], self.sk_out[sk]))
-	return sk
+        dst.accept_chan.send((self, sk, self.sk_in[sk], self.sk_out[sk]))
+        return sk
 
     def accept(self):
         """Returns (sk, src), where sk is the new established socket and 
-	  `src' is the instance of the source node"""
+          `src' is the instance of the source node"""
 
         src, sk, sk_out, sk_in = self.accept_chan.recv()
-	self.sk_out[sk]=sk_out
-	self.sk_in[sk] =sk_in
+        self.sk_out[sk]=sk_out
+        self.sk_in[sk] =sk_in
         return sk, src
 
     def send(self, dst, sk, msg):
-	if not isinstance(msg, str):
-		raise ESendMsg, ESendMsg.errstr
-	try:
-		sk_chan = self.sk_out[sk]
-	except KeyError:
-		raise ESkt, ESkt.errstr
+        if not isinstance(msg, str):
+                raise ESendMsg, ESendMsg.errstr
+        try:
+                sk_chan = self.sk_out[sk]
+        except KeyError:
+                raise ESkt, ESkt.errstr
 
-	msglen = len(msg)
+        msglen = len(msg)
         ev = SimEvent(self.calc_time(dst, msglen), dst._send, (sk_chan, msg))
-	sim.cursim.ev_add(ev)
-	return msglen
+        sim.cursim.ev_add(ev)
+        return msglen
 
     def _send(self, sk_chan, msg):
-	sk_chan.sendq(msg)
+        sk_chan.sendq(msg)
 
     def recv(self, sk):
-	try:
-		sk_chan = self.sk_in[sk]
-	except KeyError:
-		raise ESkt, ESkt.errstr
+        try:
+                sk_chan = self.sk_in[sk]
+        except KeyError:
+                raise ESkt, ESkt.errstr
         return sk_chan.recvq()
 
     def close(self, dst, sk):
-	if sk in dst.sk_in:
-		del dst.sk_in[sk]
-		del dst.sk_out[sk]
-	if sk in self.sk_in:
-        	del self.sk_in[sk]
-        	del self.sk_out[sk]
+        if sk in dst.sk_in:
+                del dst.sk_in[sk]
+                del dst.sk_out[sk]
+        if sk in self.sk_in:
+                del self.sk_in[sk]
+                del self.sk_out[sk]
 
 class Net:
     def __init__(self):
-	self.net={} # {IP: Node} The dict of nodes
+        self.net={} # {IP: Node} The dict of nodes
 
     def node_add(self, ip=None, neighs={}):
-	n=Node(ip, neighs)
+        n=Node(ip, neighs)
         self.net[n.ip]=n
-	return n
+        return n
 
     def node_del(self, n):
         n.neigh_del_all() 
@@ -197,76 +197,76 @@ class Net:
 
     def node_get(self, ip):
         if ip not in self.net:
-		return self.node_add(ip)
-	else:
-		return self.net[ip]
+                return self.node_add(ip)
+        else:
+                return self.net[ip]
 
     def node_change_ip(self, ip, newip):
         self.net[newip]=self.net[ip]
-	self.net[newip].change_ip(newip)
-	del self.net[ip]
+        self.net[newip].change_ip(newip)
+        del self.net[ip]
 
     def node_is_alive(self, ip):
         return ip in self.net
     
     def complete_net_build(self, k):
-    	for i in xrange(k):
-		node = self.node_get(i)
-		for o in xrange(k):
-			if o == i:
-				continue
-			l=Link(rand=1)
-			l.set_random()
-			node.neigh_add(self.node_get(o), l)
+        for i in xrange(k):
+                node = self.node_get(i)
+                for o in xrange(k):
+                        if o == i:
+                                continue
+                        l=Link(rand=1)
+                        l.set_random()
+                        node.neigh_add(self.node_get(o), l)
 
     def mesh_net_build(self, k):
-    	for x in xrange(k):
-    		for y in xrange(k):
-			node = self.node_get(x*k+y)
+        for x in xrange(k):
+                for y in xrange(k):
+                        node = self.node_get(x*k+y)
 
-    			if x > 0:
-    				#left
-				l=Link(rand=1)
-				l.set_random()
-				node.neigh_add(self.node_get((x-1)*k+y), l)
-    			if x < k-1:
-    				#right
-				l=Link(rand=1)
-				l.set_random()
-				node.neigh_add(self.node_get((x+1)*k+y), l)
-    			if y > 0:
-    				#down
-				l=Link(rand=1)
-				l.set_random()
-				node.neigh_add(self.node_get(x*k+(y-1)), l)
-    			if y < k-1:
-    				#up
-				l=Link(rand=1)
-				l.set_random()
-				node.neigh_add(self.node_get(x*k+(y+1)), l)
+                        if x > 0:
+                                #left
+                                l=Link(rand=1)
+                                l.set_random()
+                                node.neigh_add(self.node_get((x-1)*k+y), l)
+                        if x < k-1:
+                                #right
+                                l=Link(rand=1)
+                                l.set_random()
+                                node.neigh_add(self.node_get((x+1)*k+y), l)
+                        if y > 0:
+                                #down
+                                l=Link(rand=1)
+                                l.set_random()
+                                node.neigh_add(self.node_get(x*k+(y-1)), l)
+                        if y < k-1:
+                                #up
+                                l=Link(rand=1)
+                                l.set_random()
+                                node.neigh_add(self.node_get(x*k+(y+1)), l)
 
     def rand_net_build(self, k):
-    	for i in xrange(k):
-		node = self.node_get(i)
-		
-		# how many neighbour
-    		nb   = randint(1, max(k/8, 1))
+        for i in xrange(k):
+                node = self.node_get(i)
+                
+                # how many neighbour
+                nb   = randint(1, max(k/8, 1))
 
-		rn = range(k)
-    		for j in xrange(nb):
-			l=Link(rand=1)
-			l.set_random()
+                rn = range(k)
+                for j in xrange(nb):
+                        l=Link(rand=1)
+                        l.set_random()
 
-    			# Choose a random rnode which is not i and
-    			# which hasn't been already choosen
-			def not_me_or_already_neigh(x): 
-				return x!=i and self.node_get(x) not in node.neighbours
-			rn=filter(not_me_or_already_neigh,  rn)
-			if rn == []:
-				break
-			
-			neigh = self.node_get(choice(rn))
-			node.neigh_add(neigh, l)
+                        # Choose a random rnode which is not i and
+                        # which hasn't been already choosen
+                        def not_me_or_already_neigh(x): 
+                                return x!=i and self.node_get(x) not in node.neighbours
+                        rn=filter(not_me_or_already_neigh,  rn)
+                        if rn == []:
+                                break
+                        
+                        neigh = self.node_get(choice(rn))
+                        node.neigh_add(neigh, l)
 
     def net_file_load(self, filename):
         """A sample file:
@@ -274,13 +274,13 @@ class Net:
         --- BEGIN ---
         net = {
 
-        	'A' : [ ('B', 'rtt=10, bw=6'), ('C', 'rand=1') ],
+                'A' : [ ('B', 'rtt=10, bw=6'), ('C', 'rand=1') ],
 
-        	'B' : [ ('node D', 'rtt=2, bw=9') ],
+                'B' : [ ('node D', 'rtt=2, bw=9') ],
             
-        	'C' : [],
+                'C' : [],
 
-        	'node D' : []
+                'node D' : []
         }
         ---  END  ---
         """
@@ -290,36 +290,36 @@ class Net:
         count = 0
         idtoip = {}
         for x in o.net:
-    	    idtoip[x]=count
-    	    count+=1
+            idtoip[x]=count
+            count+=1
 
         for x in o.net:
             node = self.node_get(idtoip[x])
 
-	    for y, l in o.net[x]:
-	    	ynode = self.node_get(idtoip[y])
-		exec 'link=Link('+l+')'
-	    	node.neigh_add(ynode,link)
+            for y, l in o.net[x]:
+                ynode = self.node_get(idtoip[y])
+                exec 'link=Link('+l+')'
+                node.neigh_add(ynode,link)
 
     def net_dot_dump(self, fd):
         """Dumps the net to a .dot graphviz file.
 
-	fd: an open file descriptor"""
-	fd.write("graph g {\n\tnode [shape=circle]\n\n")
-	
-	t = {}
+        fd: an open file descriptor"""
+        fd.write("graph g {\n\tnode [shape=circle]\n\n")
+        
+        t = {}
         for ip in self.net:
-		n = self.net[ip]
-		if n not in t: t[n]=[]
+                n = self.net[ip]
+                if n not in t: t[n]=[]
 
-		for neigh in n.neighbours:
-			if neigh not in t:
-				t[neigh]=[]
-			if neigh in t[n] or n in t[neigh]:
-				continue
-			t[n].append(neigh)
-			t[neigh].append(n)
+                for neigh in n.neighbours:
+                        if neigh not in t:
+                                t[neigh]=[]
+                        if neigh in t[n] or n in t[neigh]:
+                                continue
+                        t[n].append(neigh)
+                        t[neigh].append(n)
 
-			l=n.neighbours[neigh]
-			fd.write("\t"+str(n.ip)+" -- "+str(neigh.ip)+" [weight=%d]"%l.average+"\n")
-	fd.write("}\n")
+                        l=n.neighbours[neigh]
+                        fd.write("\t"+str(n.ip)+" -- "+str(neigh.ip)+" [weight=%d]"%l.average+"\n")
+        fd.write("}\n")

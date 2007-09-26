@@ -24,15 +24,15 @@ class SimEvent(object):
     __slots__ = [ 'exec_time', 'callf', 'callf_args', 'abs_time' ]
 
     def __init__(self, time, callf, callf_args):
-	"""time: how much time needs this event to be executed
-	   callf: the callback function called when the event is executed
-	   callf_args: arguments passed to callf"""
-	self.callf     = callf
-	self.callf_args= callf_args
+        """time: how much time needs this event to be executed
+           callf: the callback function called when the event is executed
+           callf_args: arguments passed to callf"""
+        self.callf     = callf
+        self.callf_args= callf_args
         self.exec_time = time
-	
-	# absolute time: this is set when the event is added in the queue
-	self.abs_time=0
+        
+        # absolute time: this is set when the event is added in the queue
+        self.abs_time=0
     
     def __cmp__(self, other):
         return cmp(self.abs_time, other.abs_time)
@@ -49,42 +49,42 @@ class Simulator(object):
 
     def __init__(self):
         self.curtime = 0
-	self.queue = []
+        self.queue = []
 
-	self.looping = False
-	self.simchan = Channel()
+        self.looping = False
+        self.simchan = Channel()
     
     def ev_add(self, ev):
         ev.abs_time = self.curtime+ev.exec_time
         heappush(self.queue, ev)
-	if self.curtime > 0 and not self.looping:
-		self.simchan.sendq(1)
+        if self.curtime > 0 and not self.looping:
+                self.simchan.sendq(1)
 
     def ev_exec(self):
-	ev = heappop(self.queue)
-	self.curtime = ev.abs_time
-	ev.callf(*ev.callf_args)
+        ev = heappop(self.queue)
+        self.curtime = ev.abs_time
+        ev.callf(*ev.callf_args)
 
     def loop(self):
-	self.looping = True
+        self.looping = True
         while self.queue != []:
-		self.ev_exec()
-	self.looping = False
+                self.ev_exec()
+        self.looping = False
 
     def _wake_up_wait(self, chan):
         chan.send(())
 
     def wait(self, t):
         """Waits the specified number of time units"""
-	chan = Channel()
-	self.ev_add( SimEvent(t, self._wake_up_wait, (chan,)) )
-	chan.recv()
+        chan = Channel()
+        self.ev_add( SimEvent(t, self._wake_up_wait, (chan,)) )
+        chan.recv()
 
     @microfunc(True)
     def run(self):
         while 1:
-		self.loop()
-		self.simchan.recvq()
+                self.loop()
+                self.simchan.recvq()
 
 
 #global instance of the simulator

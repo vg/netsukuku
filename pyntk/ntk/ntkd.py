@@ -35,54 +35,54 @@ class NtkNode:
 
         self.opt = opt
 
-	self._set_ipv( **opt.getdict(['levels', 'ipv']) )
+        self._set_ipv( **opt.getdict(['levels', 'ipv']) )
 
-	self.nics = nic.NicAll( **opt.getdict(['nics', 'exclude_nics']) )
-	if self.nics.nics == []:
-		raise Exception, "No network interfaces found in the current system"
+        self.nics = nic.NicAll( **opt.getdict(['nics', 'exclude_nics']) )
+        if self.nics.nics == []:
+                raise Exception, "No network interfaces found in the current system"
 
-	# Load the core modules
-	self.inet	= inet.Inet(self.ipv, self.bitslvl)
+        # Load the core modules
+        self.inet       = inet.Inet(self.ipv, self.bitslvl)
 
         self.radar      = radar.Radar(self.inet, **opt.getdict(
-				      ['bquet_num', 'max_neigh', 'max_wait_time']) )
-	self.neighbour  = self.radar.neigh
-	self.maproute   = maproute.MapRoute(self.levels, self.gsize, me=IP)
-	self.etp        = qspn.Etp(self.radar, self.maproute)
+                                      ['bquet_num', 'max_neigh', 'max_wait_time']) )
+        self.neighbour  = self.radar.neigh
+        self.maproute   = maproute.MapRoute(self.levels, self.gsize, me=IP)
+        self.etp        = qspn.Etp(self.radar, self.maproute)
 
-   	self.p2p	= p2p.P2PAll(self.radar, self.maproute)
-   	self.coordnode	= coord.Coord(self.radar, self.maproute, self.p2p)
-	self.hook       = hook.Hook(self.radar, self.maproute, self.etp,
-				    self.coordnode, self.nics, self.inet)
-	self.p2p.listen_hook_ev(self.hook)
+        self.p2p        = p2p.P2PAll(self.radar, self.maproute)
+        self.coordnode  = coord.Coord(self.radar, self.maproute, self.p2p)
+        self.hook       = hook.Hook(self.radar, self.maproute, self.etp,
+                                    self.coordnode, self.nics, self.inet)
+        self.p2p.listen_hook_ev(self.hook)
 
-	self.kroute     = kroute.KrnlRoute(self.neighbour, self.maproute, self.inet, 
-						**opt.getdict(['multipath']))
+        self.kroute     = kroute.KrnlRoute(self.neighbour, self.maproute, self.inet, 
+                                                **opt.getdict(['multipath']))
 
 
     def _set_ipv(self, levels = 4, ipv = inet.ipv4):
-    	self.levels = levels
-	self.ipv    = ipv
+        self.levels = levels
+        self.ipv    = ipv
 
-	self.bitslvl= inet.ipbit[ipv] / levels	# how many bits of the IP
-						# addres are allocate to each gnode
-	self.gsize  = 2**(self.bitslvl)		# size of a gnode
+        self.bitslvl= inet.ipbit[ipv] / levels  # how many bits of the IP
+                                                # addres are allocate to each gnode
+        self.gsize  = 2**(self.bitslvl)         # size of a gnode
 
-	if self.gsize == 1:
-		raise OptErr, "the gnode size cannot be equal to 1"
+        if self.gsize == 1:
+                raise OptErr, "the gnode size cannot be equal to 1"
 
     def run(self):
 
-	self.kroute.kroute.route_ip_forward_enable()
-	for nic in self.nics.nics:
-		self.kroute.kroute.route_rp_filter_disable(nic)
-	
+        self.kroute.kroute.route_ip_forward_enable()
+        for nic in self.nics.nics:
+                self.kroute.kroute.route_rp_filter_disable(nic)
+        
 
-	tcp_server = rpc.TCPServer(self)
-	micro(tcp_server.serve_forever)
+        tcp_server = rpc.TCPServer(self)
+        micro(tcp_server.serve_forever)
 
-	udp_server = rpc.UDPServer(self)
-	micro(udp_server.serve_forever)
+        udp_server = rpc.UDPServer(self)
+        micro(udp_server.serve_forever)
 
         self.radar.run()
-	self.hook.hook()
+        self.hook.hook()

@@ -4,21 +4,21 @@ import ntk.sim.network.vsock as vsock
 
 class Sock:
     def __init__(self, net, me, del_mods=[]):
-    	self._net = net
-    	self._me  = me
-    	self._socket = vsock
-	
-	if type(del_mods) == str:
-		del_mods=[del_mods]
+        self._net = net
+        self._me  = me
+        self._socket = vsock
+        
+        if type(del_mods) == str:
+                del_mods=[del_mods]
 
-	del_mods.append('socket')
-	for m in del_mods:
-		try: del sys.modules[m]
-		except: pass
-	sys.modules['socket']=self
+        del_mods.append('socket')
+        for m in del_mods:
+                try: del sys.modules[m]
+                except: pass
+        sys.modules['socket']=self
 
     def __getattr__(self, name):
-	return getattr(self._socket, name)
+        return getattr(self._socket, name)
 
     def socket(self, family=socket.AF_INET, type=socket.SOCK_STREAM, proto=0):
         return self._socket.VirtualSocket(family, type, self._net, self._me)

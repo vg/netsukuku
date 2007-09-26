@@ -40,10 +40,10 @@ class Route:
 
     # check if everything went good.. if not, log!
     if(status != 0):
-	    logging.error(output)
+            logging.error(output)
 
   def _ip_route_gen_str(self, destination_ip = None, destination_bit = None,
-		  protocol = "ntk", table = None, net_device = None, gateway = None):
+                  protocol = "ntk", table = None, net_device = None, gateway = None):
     """ destination_ip: destination node's ip address
         destination_bit: destination node ip's bitmask
         protocol: the protocol we're using

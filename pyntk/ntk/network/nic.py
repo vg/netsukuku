@@ -152,70 +152,70 @@ class NicAll:
         
         nic_names = self.nics_list()
 
-	if nics != []:
-		# Leaves only the specified interfaces
-		nic_names = [ n for n in nic_names if n in nics ]
-	for en in exclude_nics:
-		if en in nic_names:
-			nic_names.remove(en)
+        if nics != []:
+                # Leaves only the specified interfaces
+                nic_names = [ n for n in nic_names if n in nics ]
+        for en in exclude_nics:
+                if en in nic_names:
+                        nic_names.remove(en)
         
-	self.nics = dict( zip(nic_names, map(Nic, nic_names)) )
+        self.nics = dict( zip(nic_names, map(Nic, nic_names)) )
 
     def nic_get(self, name):
-	if name not in self.nics:
-		return None
-	else:
-		return self.nics[name]
+        if name not in self.nics:
+                return None
+        else:
+                return self.nics[name]
 
     def nics_list(self):
         """Returns the list of the names of all the nic that are currently
-	   up"""
+           up"""
 
         # generate ip addr string
         ipl_str = "ip link show"
         ipl_out = _exec_ipl(ipl_str)
 
         rec=re.compile(r"^[0-9]+: (\w+):.*\WUP\W")
-    	return [ m.group(1) for l in ipl_out.splitlines()
-				for m in [rec.match(l)] 
-					if m != None ]
+        return [ m.group(1) for l in ipl_out.splitlines()
+                                for m in [rec.match(l)] 
+                                        if m != None ]
     
     def up(self):
         """Brings up all the interfaces"""
-	for n in self.nics.itervalues():
-    		n.up()
+        for n in self.nics.itervalues():
+                n.up()
     
     def down(self):
         """Brings up all the interfaces"""
-	for n in self.nics.itervalues():
-    		n.down()
+        for n in self.nics.itervalues():
+                n.down()
 
     def retrieve_info(self, ip_version):
-	return [ (n.devname,)+n.retrieve_info(ip_version) for n in self.nics.itervalues()]
+        return [ (n.devname,)+n.retrieve_info(ip_version) for n in self.nics.itervalues()]
 
     def change_address(self, address):
         """Change the address to all the interfaces """
-	for n in self.nics.itervalues():
-		n.change_address(address)
+        for n in self.nics.itervalues():
+                n.change_address(address)
     
     def activate(self, address):
         """Activate all the interfaces"""
-	for n in self.nics.itervalues():
-		n.activate(address)
+        for n in self.nics.itervalues():
+                n.activate(address)
 
     
 if __name__ == "__main__":
-	n=Nic("dummy0")
-	n.up()
-	print n.retrieve_info(4)
-	n.down()
-	print n.retrieve_info(4)
-	n.change_address("11.22.33.44")
-	print n.retrieve_info(4)
-	n.activate("11.22.33.55")
-	print n.retrieve_info(4)
+        n=Nic("dummy0")
+        n.up()
+        print n.retrieve_info(4)
+        n.down()
+        print n.retrieve_info(4)
+        n.change_address("11.22.33.44")
+        print n.retrieve_info(4)
+        n.activate("11.22.33.55")
+        print n.retrieve_info(4)
 
-	na=NicAll()
-	print na.retrieve_info(4)
-	na=NicAll(nics=['dummy0', 'eth0'])
-	print na.retrieve_info(4)
+        na=NicAll()
+        print na.retrieve_info(4)
+        na=NicAll(nics=['dummy0', 'eth0'])
+        print na.retrieve_info(4)
