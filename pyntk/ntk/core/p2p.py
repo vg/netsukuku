@@ -20,12 +20,10 @@
 # Implementation of the P2P Over Ntk RFC. See {-P2PNtk-}
 #
 
-import sys
-sys.path.append("..")
-from lib.event import Event
-from lib.rpc   import FakeRmt, RPCDispatcher, CallerInfo
-from lib.micro import microfunc
-from core.map import Map
+from ntk.lib.event import Event
+from ntk.lib.rpc   import FakeRmt, RPCDispatcher, CallerInfo
+from ntk.lib.micro import microfunc
+from ntk.core.map import Map
 
 class PartecipantNode:
     def __init__(self, 

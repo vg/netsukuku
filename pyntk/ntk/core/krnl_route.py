@@ -22,10 +22,8 @@
 # Listens to MapRoute generated events, and updates the kernel table
 #
 
-import sys
-sys.path.append("..")
-from lib.event import Event
-from lib.micro import microfunc
+from ntk.lib.event import Event
+from ntk.lib.micro import microfunc
 from network.route import Route as KRoute
 
 class KrnlRoute:

@@ -20,9 +20,7 @@
 # Implementation of the map. See {-topodoc-}
 # 
 
-import sys
-sys.path.append("..")
-from lib.event import Event
+from ntk.lib.event import Event
 from random import randint
 
 class DataClass:

@@ -5,14 +5,12 @@ import random
 from random import randint
 import pdb
 
-sys.path.append('..')
-from net import Net
-import sim
-from wrap.sock import Sock
+from ntk.sim.net import Net
+import ntk.sim.sim as sim
+from ntk.sim.wrap.sock import Sock
 from socket import AF_INET, SOCK_DGRAM, SOCK_STREAM, SO_REUSEADDR, SOL_SOCKET
-import wrap.xtime as xtime
-sys.path.append('../../')
-from lib.micro import micro, microfunc, allmicro_run
+import ntk.sim.wrap.xtime as xtime
+from ntk.lib.micro import micro, microfunc, allmicro_run
 
 random.seed(1)
 

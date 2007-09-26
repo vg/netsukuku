@@ -19,12 +19,10 @@
 
 from heapq   import heappush, heappop
 from random  import randint, choice
-from sim     import SimEvent, Simulator
-import sim
-import sys
-sys.path.append('..')
-from lib.opt   import Opt
-from lib.micro import Channel
+from ntk.sim.sim import SimEvent, Simulator
+import ntk.sim.sim as sim
+from ntk.lib.opt   import Opt
+from ntk.lib.micro import Channel
 
 class ENet(Exception):
     errstr="""Generic network error"""

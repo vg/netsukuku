@@ -19,14 +19,11 @@
 
 from random import randint
 
-import sys
-sys.path.append("..")
-from wrap.xtime  import swait, time
-from lib.micro  import micro
-from lib.event  import Event
-from core.route import Rtt
-
-import lib.rpc as rpc
+from ntk.wrap.xtime  import swait, time
+from ntk.lib.micro  import micro
+from ntk.lib.event  import Event
+from ntk.core.route import Rtt
+import ntk.lib.rpc as rpc
 
 class NodeInfo(object):
   """ this class store informations about a node """

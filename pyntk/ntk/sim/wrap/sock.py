@@ -1,7 +1,5 @@
 import socket
-import sys
-sys.path.append('..')
-import network.vsock as vsock
+import ntk.sim.network.vsock as vsock
 
 class Sock:
     def __init__(self, net, me):

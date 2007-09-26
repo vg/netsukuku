@@ -6,8 +6,7 @@ from random import randint
 import pdb
 
 
-sys.path[0]='..'
-from net import Net
+from ntk.sim.net import Net
 
 random.seed(1)
 

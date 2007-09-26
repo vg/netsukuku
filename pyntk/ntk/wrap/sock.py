@@ -1,6 +1,5 @@
 import sys
-sys.path.append('..')
-import lib.microsock as microsock
+import ntk.lib.microsock as microsock
 
 class Sock:
     def __init__(self, net=None, me=None):

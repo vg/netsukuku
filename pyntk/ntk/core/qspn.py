@@ -17,11 +17,9 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
-import sys
-sys.path.append("..")
-from lib.micro import microfunc
-from lib.event import Event
-from route import NullRem, DeadRem
+from ntk.lib.micro import microfunc
+from ntk.lib.event import Event
+from ntk.core.route import NullRem, DeadRem
 
 class Etp:
     """Extended Tracer Packet"""

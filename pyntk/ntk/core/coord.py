@@ -20,13 +20,11 @@
 # Coordinator Node
 #
 
-import sys
-sys.path.append("..")
-from lib.micro import microfunc
-from lib.event import Event
-from wrap.xtime import time
-from core.p2p import P2P
-from core.map import Map
+from ntk.lib.micro import microfunc
+from ntk.lib.event import Event
+from ntk.wrap.xtime import time
+from ntk.core.p2p import P2P
+from ntk.core.map import Map
 from random import choice
 
 

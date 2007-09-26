@@ -17,9 +17,7 @@
 #  this source code; if not, write to:
 #  Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-import sys
-sys.path.append('..')
-import sim
+import ntk.sim.sim as sim
 
 def swait(t):
     """Waits `t' time units"""

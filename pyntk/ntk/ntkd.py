@@ -18,17 +18,17 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
-import core.radar   as radar
-import core.route   as maproute
-import core.qspn    as qspn
-import core.hook    as hook
-import core.p2p     as p2p
-import core.coord   as coord
-import core.krnl_route as kroute
-import network.inet as inet
-import network.nic  as nic
-import lib.rpc      as rpc
-from lib.micro import micro, allmicro_run
+import ntk.core.radar   as radar
+import ntk.core.route   as maproute
+import ntk.core.qspn    as qspn
+import ntk.core.hook    as hook
+import ntk.core.p2p     as p2p
+import ntk.core.coord   as coord
+import ntk.core.krnl_route as kroute
+import ntk.network.inet as inet
+import ntk.network.nic  as nic
+import ntk.lib.rpc      as rpc
+from ntk.lib.micro import micro, allmicro_run
 
 class NtkNode:
     def __init__(self, opt, IP=None):

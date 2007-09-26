@@ -17,10 +17,8 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
-import sys
-sys.path.append("..")
-from lib.event import Event
-from core.map import Map
+from ntk.lib.event import Event
+from ntk.core.map import Map
 
 class Rem(object):
     """Route Efficiency Measure.

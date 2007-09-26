@@ -32,7 +32,7 @@
 #   send is a little over the top.  It should be possible to add it to the
 #   rest of the queued data
 
-from micro import Channel, micro, allmicro_run, micro_block
+from ntk.lib.micro import Channel, micro, allmicro_run, micro_block
 import asyncore
 import socket as stdsocket # We need the "socket" name for the function we export.
 

@@ -5,11 +5,10 @@ import random
 from random import randint
 import pdb
 
-sys.path[0]='../'
-from net import Net
-import sim
-import lib.xtime as xtime
-from lib.micro import micro, microfunc, allmicro_run, Channel
+from ntk.sim.net import Net
+import ntk.sim.sim
+import ntk.sim.lib.xtime as xtime
+from ntk.lib.micro import micro, microfunc, allmicro_run, Channel
 
 ch = Channel()
 ch2 = Channel(True)

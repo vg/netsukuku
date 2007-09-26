@@ -18,10 +18,7 @@
 ##
 
 from heapq import heappush, heappop
-
-import sys
-sys.path.append('../')
-from lib.micro import Channel, microfunc
+from ntk.lib.micro import Channel, microfunc
 
 class SimEvent(object):
     __slots__ = [ 'exec_time', 'callf', 'callf_args', 'abs_time' ]
