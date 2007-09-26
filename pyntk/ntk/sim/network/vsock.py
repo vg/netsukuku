@@ -18,21 +18,21 @@
 #  Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 import os
-import socket
-from errno import ENETUNREACH, EINVAL, ENOTSOCK
+import socket as stdsock
+from errno import ENETUNREACH, EINVAL, ENOTSOCK, EPIPE
 
-if "__all__" in socket.__dict__:
-    __all__ = socket.__dict__
-    for k, v in socket.__dict__.iteritems():
+if "__all__" in stdsock.__dict__:
+    __all__ = stdsock.__dict__
+    for k, v in stdsock.__dict__.iteritems():
         if k in __all__:
             globals()[k] = v
 else:
-    for k, v in socket.__dict__.iteritems():
+    for k, v in stdsock.__dict__.iteritems():
         if k.upper() == k:
             globals()[k] = v
-    error = socket.error
-    timeout = socket.timeout
-    getaddrinfo = socket.getaddrinfo
+    error = stdsock.error
+    timeout = stdsock.timeout
+    getaddrinfo = stdsock.getaddrinfo
 
 from ntk.lib.micro import Channel
 from ntk.network.inet import Inet, familyver

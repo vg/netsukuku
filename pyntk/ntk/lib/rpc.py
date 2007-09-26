@@ -75,9 +75,13 @@ import rpc
 import struct
 import logging
 import socket
+import sys
+try: del sys.modules['SocketServer']
+except: pass 
 import SocketServer as SckSrv
 
 import ntk.lib.rencode as rencode
+from   ntk.lib.micro import  micro
 
 class RPCError(Exception): pass
 class RPCFuncNotRemotable(RPCError): pass
@@ -213,6 +217,7 @@ def _data_unpack_from_stream_socket(socket):
         print struct
 	print pdb
         rawPacket = socket.recv(_data_hdr_sz-len(readBuffer))
+	print rawPacket, len(rawPacket)
         if not rawPacket:
             return ""
         readBuffer += rawPacket
@@ -242,8 +247,9 @@ def _data_unpack_from_buffer(buffer):
 
 
 class MicroMixin:
-    def process_request_micro(self, request, client_address):
-        micro(self.process_request, (request, client_address))
+    def process_request(self, request, client_address):
+        micro(self.finish_request, (request, client_address))
+        self.close_request(request)
 
 class StreamRequestHandler(SckSrv.BaseRequestHandler):
     '''RPC stream request handler class
