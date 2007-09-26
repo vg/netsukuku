@@ -176,10 +176,10 @@ class VirtualSocket(object):
 	return self.sck
     
     def getpeername(self):
-	return (ip_to_str(self.addr), 1)
+	return (self.inet.ip_to_str(self.addr), 1)
 
     def getsockname(self):
-	return (ip_to_str(self.me.ip), 1)
+	return (self.inet.ip_to_str(self.me.ip), 1)
 
     def getsockopt(self, level, optname, buflen=0):
         pass
