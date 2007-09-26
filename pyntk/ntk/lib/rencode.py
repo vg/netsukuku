@@ -395,14 +395,5 @@ def test():
     assert loads(dumps(None)) == None
     assert loads(dumps({None:None})) == {None:None}
 
-
-try:
-    import psyco
-    psyco.bind(dumps)
-    psyco.bind(loads)
-except ImportError:
-    pass
-
-
 if __name__ == '__main__':
   test()
