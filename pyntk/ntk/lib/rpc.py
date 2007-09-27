@@ -263,8 +263,8 @@ def micro_stream_request_handler(sock, clientaddr, dev, rpcdispatcher):
     micro(stream_request_handler, (sock, clientaddr, dev, rpcdispatcher))
     
 def TCPServer(root_instance, addr=('', 269), dev=None, net=None, me=None,
-                request_handler=stream_request_handler):
-    socket=Sock(net, me)
+                sockmodgen=Sock, request_handler=stream_request_handler):
+    socket=sockmodgen(net, me)
     s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind(addr)
@@ -274,17 +274,18 @@ def TCPServer(root_instance, addr=('', 269), dev=None, net=None, me=None,
         sock, clientaddr = s.accept()
         request_handler(sock, clientaddr, dev, rpcdispatcher)
 
-def MicroTCPServer(root_instance, addr=('', 269), dev=None, net=None, me=None):
-    TCPServer(root_instance, addr, dev, net, me, micro_stream_request_handler)    
+@microfunc(True)
+def MicroTCPServer(root_instance, addr=('', 269), dev=None, net=None, me=None, sockmodgen=Sock):
+    TCPServer(root_instance, addr, dev, net, me, sockmodgen, micro_stream_request_handler)    
 
 class TCPClient(FakeRmt):
     '''This class implement a simple TCP RPC client'''
 
-    def __init__(self, host='localhost', port=269, net=None, me=None):
+    def __init__(self, host='localhost', port=269, net=None, me=None, sockmodgen=Sock):
         self.host = host
         self.port = port
 
-        socket=Sock(net, me)
+        socket=sockmodgen(net, me)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.connected = False
 
@@ -351,7 +352,7 @@ def micro_dgram_request_handler(sock, clientaddr, packet, dev, rpcdispatcher):
     micro(dgram_request_handler, (sock, clientaddr, packet, dev, rpcdispatcher))
 
 def UDPServer(root_instance, addr=('', 269), dev=None, net=None, me=None,
-                requestHandler=dgram_request_handler):
+                sockmodgen=Sock, requestHandler=dgram_request_handler):
     '''This function implement a simple Rpc UDP server
 
     *WARNING*
@@ -363,7 +364,7 @@ def UDPServer(root_instance, addr=('', 269), dev=None, net=None, me=None,
     '''
 
     rpcdispatcher=RPCDispatcher(root_instance)
-    socket=Sock(net, me)
+    socket=sockmodgen(net, me)
     s=socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind(addr)
@@ -371,8 +372,9 @@ def UDPServer(root_instance, addr=('', 269), dev=None, net=None, me=None,
             message, address = s.recvfrom(8192)
             requestHandler(s, address, message, dev, rpcdispatcher)
 
-def MicroUDPServer(root_instance, addr=('', 269), dev=None, net=None, me=None):
-    UDPServer(root_instance, addr, dev, net, me, micro_dgram_request_handler)
+@microfunc(True)
+def MicroUDPServer(root_instance, addr=('', 269), dev=None, net=None, me=None, sockmodgen=Sock):
+    UDPServer(root_instance, addr, dev, net, me, sockmodgen, micro_dgram_request_handler)
         
 class BcastClient(FakeRmt):
     '''This class implement a simple Broadcast RPC client
@@ -385,7 +387,8 @@ class BcastClient(FakeRmt):
     *WARNING*
     '''
 
-    def __init__(self, inet, devs=[], port=269, net=None, me=None):
+    def __init__(self, inet, devs=[], port=269, net=None, me=None,
+                    sockmodgen=Sock):
         """
         inet:  network.inet.Inet instance
         devs:  list of devices where to send the broadcast calls
@@ -395,7 +398,7 @@ class BcastClient(FakeRmt):
         self.port = port
         self.inet = inet
 
-        socket=Sock(net, me)
+        socket=sockmodgen(net, me)
         self.dev_sk = {}
         for d in devs:
             self.dev_sk[d] = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

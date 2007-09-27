@@ -28,10 +28,14 @@ sys.path.append('../../')
 from ntk.sim.net import Net
 import ntk.sim.sim as sim
 from ntk.sim.wrap.sock import Sock
+import ntk.sim.wrap.xtime as xtime
 from socket import AF_INET, SOCK_DGRAM, SOCK_STREAM, SO_REUSEADDR, SOL_SOCKET
 import ntk.sim.wrap.xtime as xtime
 from ntk.lib.micro import micro, microfunc, allmicro_run
 
+import ntk.lib.rpc as rpc
+from ntk.lib.micro import micro, allmicro_run, micro_block
+from ntk.network.inet import Inet
 
 seed(1)
 
@@ -80,19 +84,18 @@ mod = MyMod()
 #### TCP client
 #
 def tcp_client():
-        Sock(N, N.net[1], 'ntk.lib.rpc')
-        import ntk.lib.rpc as rpc
-        from ntk.lib.micro import micro, allmicro_run, micro_block
-        from ntk.network.inet import Inet
-        
-        client = rpc.TCPClient(Inet().ip_to_str(N.net[0].ip), port=PORT)
+        client = rpc.TCPClient(Inet().ip_to_str(N.net[0].ip), port=PORT,
+                        net=N, me=N.net[1], sockmodgen=Sock)
    
         x=5
         xsquare = client.square(x)
+        print xtime.time(), 'assert xsquare == 25'
         assert xsquare == 25
         xmul7   = client.mul(x, 7)
+        print xtime.time(), 'assert xmul7 == 35'
         assert xmul7 == 35
         xadd9   = client.nestmod.add(x, 9)
+        print xtime.time(), 'assert xadd9 == 14'
         assert xadd9 == 14
     
         # something trickier
@@ -111,43 +114,24 @@ def tcp_client():
 ### Bcast client
 #
 def udp_client():
-    Sock(N, N.net[1], 'ntk.lib.rpc')
-    import ntk.lib.rpc as rpc
-    from ntk.lib.micro import micro, allmicro_run, micro_block
-    from ntk.network.inet import Inet
-
-    client = rpc.BcastClient(Inet(), devs=['lo'], port=PORT)
-    print "calling void func"
+    client = rpc.BcastClient(Inet(), devs=['lo'], port=PORT, net=N,
+                    me=N.net[1], sockmodgen=Sock)
+    print xtime.time(),"calling void func"
     client.void_func()
     client.void_func_caller()
-    print "udp_client end"
+    print xtime.time(), "udp_client end"
 
 def run_test_tcp():
-    Sock(N, N.net[0], 'ntk.lib.rpc')
-    import ntk.lib.rpc as rpc
-    from ntk.lib.micro import micro, allmicro_run, micro_block
-    from ntk.network.inet import Inet
-
     print 'Starting tcp server...'
 
-    server = rpc.MicroTCPServer(mod, (Inet().ip_to_str(N.net[0].ip), PORT))
-    micro(server.serve_forever)
-
+    rpc.MicroTCPServer(mod, (Inet().ip_to_str(N.net[0].ip), PORT), 'lo', N, N.net[0], Sock)
     micro(tcp_client)
     allmicro_run()
 
 def run_test_udp():
-    Sock(N, N.net[0], 'ntk.lib.rpc')
-
-    import ntk.lib.rpc as rpc
-    from ntk.lib.micro import micro, allmicro_run, micro_block
-    from ntk.network.inet import Inet
-
     print 'Starting udp server...'
 
-    server = rpc.MicroUDPServer(mod, ('', PORT))
-    micro(server.serve_forever)
-
+    rpc.MicroUDPServer(mod, ('', PORT), 'lo', N, N.net[0], Sock)
     micro(udp_client)
 
 

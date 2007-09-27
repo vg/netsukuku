@@ -81,6 +81,8 @@ class VirtualSocket(object):
         return self.net.node_get(addr)
 
     def connect(self, (addr, port)):
+        if self.broadcast:
+                return 0
         dst = self._get_net_node(addr)
         if self.sck_type != SOCK_DGRAM:
                 try:
@@ -126,12 +128,7 @@ class VirtualSocket(object):
                                 msg, (addr, port) = self.recvfrom(buflen, flag)
                         self.recvbuf+=msg
                 else: #TCP
-                        import pprint
-                        print 'vsockrecv', 
-                        pprint.pprint(sys.modules)
                         self.recvbuf+=self.me.recv(self.sck)
-                        print 'vsockrecv2',
-                        pprint.pprint(sys.modules)
 
                 return _eat_data_from_buf(buflen)       
 
@@ -162,9 +159,9 @@ class VirtualSocket(object):
                 raise error, (EPIPE, os.strerror(EPIPE))
     
     def sendto(self, data, (addr, port)):
-        dst = self._get_net_node(addr)
         try:
                 if not self.broadcast:
+                        dst = self._get_net_node(addr)
                         return self.me.sendto(dst, data)
                 else:
                         return self.me.sendtoall(data)

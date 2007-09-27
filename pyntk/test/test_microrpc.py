@@ -109,7 +109,7 @@ def udp_client():
 def run_test_tcp():
     print 'Starting tcp server...'
 
-    micro(rpc.MicroTCPServer, (mod, ('localhost', PORT)))
+    rpc.MicroTCPServer(mod, ('localhost', PORT))
 
     micro(tcp_client)
     allmicro_run()
@@ -117,7 +117,7 @@ def run_test_tcp():
 def run_test_udp():
     print 'Starting udp server...'
 
-    micro(rpc.MicroUDPServer, (mod, ('', PORT)))
+    rpc.MicroUDPServer(mod, ('', PORT))
 
     micro(udp_client)
     allmicro_run()
