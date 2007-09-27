@@ -77,7 +77,7 @@ class Map(object):
         return self.node[lvl][id]
 
     def node_add(self, lvl, id, silent=0):
-        node=self.node_get(lvl, id)
+        self.node_get(lvl, id)
         self.node_nb[lvl]+=1
         if not silent:
                 self.events.send('NODE_NEW', (lvl, id))
