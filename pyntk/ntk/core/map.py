@@ -90,7 +90,7 @@ class Map(object):
 
     def free_nodes_nb(self, lvl):
         """Returns the number of free nodes of level `lvl'"""
-        return self.maproute.gsize-self.maproute.node_nb[lvl]
+        return self.gsize-self.node_nb[lvl]
 
     def free_nodes_list(self, lvl):
         """Returns the list of free nodes of level `lvl'"""
