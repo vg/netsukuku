@@ -170,6 +170,8 @@ class dispatcher(asyncore.dispatcher):
         self.sendBuffer = ''
         self.sendToBuffers = []
 
+        self.maxreceivebuf=65536
+
     def writable(self):
         if self.socket.type != SOCK_DGRAM and not self.connected:
             return True
@@ -218,6 +220,7 @@ class dispatcher(asyncore.dispatcher):
 
     # Read at most byteCount bytes.
     def recv(self, byteCount):
+        self.maxreceivebuf=byteCount
         if len(self.readBufferString) < byteCount:
             # If our buffer is empty, we must block for more data we also
             # aggressively request more if it's available.
@@ -234,26 +237,9 @@ class dispatcher(asyncore.dispatcher):
     def recvfrom(self, byteCount):
         ret = ""
         address = None
-        while 1:
-            while len(self.readBufferList):
-                data, dataAddress = self.readBufferList[0]
-                if address is None:
-                    address = dataAddress
-                elif address != dataAddress:
-                    # They got all the sequential data from the given address.
-                    return ret, address
-
-                ret += data
-                if len(ret) >= byteCount:
-                    # We only partially used up this data.
-                    self.readBufferList[0] = ret[byteCount:], address
-                    return ret[:byteCount], address
-
-                # We completely used up this data.
-                del self.readBufferList[0]
-
-            self.readBufferList.append(self.recvChannel.recv())
-
+        self.maxreceivebuf=byteCount
+        return self.recvChannel.recv()
+        
     def close(self):
         asyncore.dispatcher.close(self)
         self.connected = False
@@ -302,10 +288,10 @@ class dispatcher(asyncore.dispatcher):
     def handle_read(self):
         try:
             if self.socket.type == SOCK_DGRAM:
-                ret, address = self.socket.recvfrom(20000)
+                ret, address = self.socket.recvfrom(self.maxreceivebuf)
                 self.recvChannel.send((ret, address))
             else:
-                ret = asyncore.dispatcher.recv(self, 20000)
+                ret = asyncore.dispatcher.recv(self, self.maxreceivebuf)
                 # Not sure this is correct, but it seems to give the
                 # right behaviour.  Namely removing the socket from
                 # asyncore.
