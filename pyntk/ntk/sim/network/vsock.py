@@ -37,6 +37,7 @@ else:
 from ntk.lib.micro import Channel
 from ntk.network.inet import Inet, familyver
 from ntk.sim.net import ESkt, ENotNeigh
+import sys
 
 class VirtualSocket(object):
     __slots__ = ['inet', 'net', 'me', 'addr_family', 'sck_type', 'sck',
@@ -125,7 +126,12 @@ class VirtualSocket(object):
                                 msg, (addr, port) = self.recvfrom(buflen, flag)
                         self.recvbuf+=msg
                 else: #TCP
+                        import pprint
+                        print 'vsockrecv', 
+                        pprint.pprint(sys.modules)
                         self.recvbuf+=self.me.recv(self.sck)
+                        print 'vsockrecv2',
+                        pprint.pprint(sys.modules)
 
                 return _eat_data_from_buf(buflen)       
 

@@ -44,9 +44,7 @@ import rpc
 
  mod = MyMod()
 
- server = rpc.TCPServer(mod)
- server.serve_forever()
-
+ rpc.TCPServer(mod)
 
 ### The client
 
@@ -74,14 +72,12 @@ import rpc
 
 import struct
 import logging
-import socket
 import sys
-try: del sys.modules['SocketServer']
-except: pass 
-import SocketServer as SckSrv
 
 import ntk.lib.rencode as rencode
 from   ntk.lib.micro import  micro, microfunc
+from ntk.wrap.sock import Sock
+
 
 class RPCError(Exception): pass
 class RPCNetError(Exception): pass
@@ -193,9 +189,12 @@ class RPCDispatcher(object):
 
     def marshalled_dispatch(self, caller, data):
         '''Dispatches a RPC function from marshalled data'''
-
-        unpacked = rencode.loads(data)
-        if not isinstance(unpacked, tuple) or not len(unpacked) == 2:
+        error=0
+        try:
+                unpacked = rencode.loads(data)
+        except ValueError:
+                error=1
+        if error or not isinstance(unpacked, tuple) or not len(unpacked) == 2:
             e = 'Malformed packet received from '+caller.ip
             logging.debug(e)
             response = ('rmt_error', str(e))
@@ -242,62 +241,50 @@ def _data_unpack_from_buffer(buffer):
 
     return ""
 
+def stream_request_handler(sock, clientaddr, dev, rpcdispatcher):
+    logging.debug('Connected from %s, dev %s', clientaddr, dev)
+    caller = CallerInfo(clientaddr[0], clientaddr[1], dev, sock)
+    while True:
+        try:
+            data = _data_unpack_from_stream_socket(sock)
+            if not data: break
+            logging.debug('Handling data: %s', data)
+            response = rpcdispatcher.marshalled_dispatch(caller, data)
+            logging.debug('Response: %s', response)
+        except RPCError:
+            logging.debug('An error occurred during request handling')
 
-class MicroMixin:
-    @microfunc(True)
-    def process_request_micro(self, request, client_address):
-        self.finish_request(request, client_address)
-        self.close_request(request)
-        
-    def process_request(self, request, client_address):
-        self.process_request_micro(request, client_address)
+        sock.send(_data_pack(response))
+        #self.request.close()
+        logging.debug('Response sent')
+    sock.close()
 
-class StreamRequestHandler(SckSrv.BaseRequestHandler):
-    '''RPC stream request handler class
+def micro_stream_request_handler(sock, clientaddr, dev, rpcdispatcher):
+    micro(stream_request_handler, (sock, clientaddr, dev, rpcdispatcher))
+    
+def TCPServer(root_instance, addr=('', 269), dev=None, net=None, me=None,
+                request_handler=stream_request_handler):
+    socket=Sock(net, me)
+    s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(addr)
+    s.listen(8)
+    rpcdispatcher=RPCDispatcher(root_instance)
+    while 1: 
+        sock, clientaddr = s.accept()
+        request_handler(sock, clientaddr, dev, rpcdispatcher)
 
-    Handles all request and try to decode them.
-    '''
-    def setup(self):
-        logging.debug('Connected from %s, dev %s', self.client_address, self.server.dev)
-        self.caller = CallerInfo(self.client_address[0], self.client_address[1],
-                                self.server.dev, self.request)
-    def handle(self):
-        while True:
-            try:
-                data = _data_unpack_from_stream_socket(self.request)
-                if not data: break
-                logging.debug('Handling data: %s', data)
-                response = self.server.marshalled_dispatch(self.caller, data)
-                logging.debug('Response: %s', response)
-            except RPCError:
-                logging.debug('An error occurred during request handling')
-
-            self.request.send(_data_pack(response))
-            #self.request.close()
-            logging.debug('Response sent')
-
-
-class TCPServer(SckSrv.TCPServer, RPCDispatcher):
-    '''This class implement a simple Rpc server'''
-
-    def __init__(self, root_instance, addr=('', 269), dev=None,
-                    requestHandler=StreamRequestHandler):
-
-        self.dev=dev
-        #TODO: if dev!=None: bind to device the listening socket
-        RPCDispatcher.__init__(self, root_instance)
-        SckSrv.TCPServer.__init__(self, addr, requestHandler)
-        self.allow_reuse_address=True
-
-class MicroTCPServer(MicroMixin, TCPServer): pass
+def MicroTCPServer(root_instance, addr=('', 269), dev=None, net=None, me=None):
+    TCPServer(root_instance, addr, dev, net, me, micro_stream_request_handler)    
 
 class TCPClient(FakeRmt):
     '''This class implement a simple TCP RPC client'''
 
-    def __init__(self, host='localhost', port=269):
+    def __init__(self, host='localhost', port=269, net=None, me=None):
         self.host = host
         self.port = port
 
+        socket=Sock(net, me)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.connected = False
 
@@ -346,28 +333,26 @@ class TCPClient(FakeRmt):
         self.close()
 
 
-class DgramRequestHandler(SckSrv.BaseRequestHandler):
+def dgram_request_handler(sock, clientaddr, packet, dev, rpcdispatcher):
     '''RPC stream request handler class
 
     Handles all request and try to decode them.
     '''
-    def setup(self):
-        self.packet, self.socket = self.request
-        self.caller = CallerInfo(self.client_address[0], self.client_address[1],
-                                self.server.dev, self.socket)
-        logging.debug('UDP packet from %s, dev %s', self.client_address, self.server.dev)
+    caller = CallerInfo(clientaddr[0], clientaddr[1], dev, sock)
+    logging.debug('UDP packet from %s, dev %s', clientaddr, dev)
+    try:
+        data = _data_unpack_from_buffer(packet)
+        logging.debug('Handling data: %s', data)
+        response = rpcdispatcher.marshalled_dispatch(caller, data)
+    except RPCError:
+        logging.debug('An error occurred during request handling')
 
-    def handle(self):
+def micro_dgram_request_handler(sock, clientaddr, packet, dev, rpcdispatcher):
+    micro(dgram_request_handler, (sock, clientaddr, packet, dev, rpcdispatcher))
 
-        try:
-            data = _data_unpack_from_buffer(self.packet)
-            logging.debug('Handling data: %s', data)
-            response = self.server.marshalled_dispatch(self.caller, data)
-        except RPCError:
-            logging.debug('An error occurred during request handling')
-
-class UDPServer(SckSrv.UDPServer, RPCDispatcher):
-    '''This class implement a simple Rpc UDP server
+def UDPServer(root_instance, addr=('', 269), dev=None, net=None, me=None,
+                requestHandler=dgram_request_handler):
+    '''This function implement a simple Rpc UDP server
 
     *WARNING*
     If the message to be received is greater than the buffer
@@ -377,16 +362,18 @@ class UDPServer(SckSrv.UDPServer, RPCDispatcher):
     *WARNING*
     '''
 
-    def __init__(self, root_instance, addr=('', 269), dev=None,
-                    requestHandler=DgramRequestHandler):
-        self.dev=dev
-        #TODO: if dev!=None: bind to device the listening socket
-        RPCDispatcher.__init__(self, root_instance)
-        SckSrv.UDPServer.__init__(self, addr, requestHandler)
-        self.allow_reuse_address=True
+    rpcdispatcher=RPCDispatcher(root_instance)
+    socket=Sock(net, me)
+    s=socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(addr)
+    while 1:
+            message, address = s.recvfrom(8192)
+            requestHandler(s, address, message, dev, rpcdispatcher)
 
-class MicroUDPServer(MicroMixin, UDPServer): pass
-
+def MicroUDPServer(root_instance, addr=('', 269), dev=None, net=None, me=None):
+    UDPServer(root_instance, addr, dev, net, me, micro_dgram_request_handler)
+        
 class BcastClient(FakeRmt):
     '''This class implement a simple Broadcast RPC client
 
@@ -398,7 +385,7 @@ class BcastClient(FakeRmt):
     *WARNING*
     '''
 
-    def __init__(self, inet, devs=[], port=269):
+    def __init__(self, inet, devs=[], port=269, net=None, me=None):
         """
         inet:  network.inet.Inet instance
         devs:  list of devices where to send the broadcast calls
@@ -408,6 +395,7 @@ class BcastClient(FakeRmt):
         self.port = port
         self.inet = inet
 
+        socket=Sock(net, me)
         self.dev_sk = {}
         for d in devs:
             self.dev_sk[d] = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

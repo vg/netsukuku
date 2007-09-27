@@ -13,8 +13,8 @@ from ntk.network.inet import Inet
 
 REQUEST = 3
 from random import randint
-PORT =8888
 PORT=randint(8880, 8889)
+PORT =8888
 
 # Logging option
 
@@ -109,8 +109,7 @@ def udp_client():
 def run_test_tcp():
     print 'Starting tcp server...'
 
-    server = rpc.MicroTCPServer(mod, ('localhost', PORT))
-    micro(server.serve_forever)
+    micro(rpc.MicroTCPServer, (mod, ('localhost', PORT)))
 
     micro(tcp_client)
     allmicro_run()
@@ -118,8 +117,7 @@ def run_test_tcp():
 def run_test_udp():
     print 'Starting udp server...'
 
-    server = rpc.MicroUDPServer(mod, ('', PORT))
-    micro(server.serve_forever)
+    micro(rpc.MicroUDPServer, (mod, ('', PORT)))
 
     micro(udp_client)
     allmicro_run()

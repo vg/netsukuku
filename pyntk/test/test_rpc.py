@@ -71,21 +71,12 @@ mod = MyMod()
 ### TCP server
 #
 
-class MixinServer:
-    def serve_few(self):
-        for _ in range(REQUEST):
-            self.handle_request()
-
-class RPCFewServer(MixinServer, rpc.TCPServer):
-    '''A rpc.TCPServer that handles only `REQUEST' requests'''
-
 class ThreadedRPCServer(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
 
     def run(self):
-        server = RPCFewServer(mod, ('localhost', PORT))
-        server.serve_few()
+        rpc.TCPServer(mod, ('localhost', PORT))
 
 
 #
@@ -122,16 +113,12 @@ class ThreadedRPCClient(threading.Thread):
 #
 ### UDP server
 #
-class UDPFewServer(MixinServer, rpc.UDPServer):
-    '''A rpc.UDPServer that handles only `REQUEST' requests'''
-
 class ThreadedUDPServer(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
 
     def run(self):
-        server = UDPFewServer(mod, ('', PORT))
-        server.serve_few()
+        rpc.UDPServer(mod, ('', PORT))
 
 #
 ### Bcast client

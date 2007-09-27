@@ -15,6 +15,9 @@ class Sock:
         for m in del_mods:
                 try: del sys.modules[m]
                 except: pass
+        #for m in sys.modules.keys():
+        #        if 'socket' in m:
+        #                del sys.modules[m]
         sys.modules['socket']=self
 
     def __getattr__(self, name):
