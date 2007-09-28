@@ -29,25 +29,34 @@ import ntk.network.inet as inet
 import ntk.network.nic  as nic
 import ntk.lib.rpc      as rpc
 from ntk.lib.micro import micro, allmicro_run
+from ntk.wrap.sock import Sock
+import ntk.wrap.xtime as xtime
 
 class NtkNode:
-    def __init__(self, opt, IP=None):
-
+    def __init__(self, opt, simnet=None, simme=None, sockmodgen=Sock,
+                    xtimemod=xtime):
         self.opt = opt
 
-        self._set_ipv( **opt.getdict(['levels', 'ipv']) )
+        self.set_ipv( **opt.getdict(['levels', 'ipv']) )
 
-        self.nics = nic.NicAll( **opt.getdict(['nics', 'exclude_nics']) )
-        if self.nics.nics == []:
-                raise Exception, "No network interfaces found in the current system"
+        self.simulated=opt.simulated
+        self.simnet= simnet
+        self.simme = simme
+        self.simsock = sockmodgen
+        
+        self.load_nics(opt)
 
         # Load the core modules
         self.inet       = inet.Inet(self.ipv, self.bitslvl)
-
-        self.radar      = radar.Radar(self.inet, **opt.getdict(
-                                      ['bquet_num', 'max_neigh', 'max_wait_time']) )
+        
+        rpcbcastclient = rpc.BcastClient(self.inet, self.nics.nics.keys(),
+                                         net=self.simnet, me=self.simme,
+                                         sockmodgen=self.simsock)
+        self.radar      = radar.Radar(self.inet, rpcbcastclient, xtimemod,
+                                        **opt.getdict(['bquet_num', 'max_neigh', 
+                                                        'max_wait_time']) )
         self.neighbour  = self.radar.neigh
-        self.maproute   = maproute.MapRoute(self.levels, self.gsize, me=IP)
+        self.maproute   = maproute.MapRoute(self.levels, self.gsize, None)
         self.etp        = qspn.Etp(self.radar, self.maproute)
 
         self.p2p        = p2p.P2PAll(self.radar, self.maproute)
@@ -56,11 +65,11 @@ class NtkNode:
                                     self.coordnode, self.nics, self.inet)
         self.p2p.listen_hook_ev(self.hook)
 
-        self.kroute     = kroute.KrnlRoute(self.neighbour, self.maproute, self.inet, 
+        if not self.simulated:
+                self.kroute     = kroute.KrnlRoute(self.neighbour, self.maproute, self.inet, 
                                                 **opt.getdict(['multipath']))
 
-
-    def _set_ipv(self, levels = 4, ipv = inet.ipv4):
+    def set_ipv(self, levels = 4, ipv = inet.ipv4):
         self.levels = levels
         self.ipv    = ipv
 
@@ -71,18 +80,25 @@ class NtkNode:
         if self.gsize == 1:
                 raise OptErr, "the gnode size cannot be equal to 1"
 
+    def load_nics(self, opt):
+        if type(opt.nics) == str:
+                opt.nics=[opt.nics]
+        if self.simulated:
+                self.nics = nic.SimNicAll()
+        else:
+                self.nics = nic.NicAll( **opt.getdict(['nics', 'exclude_nics']) )
+        if self.nics.nics == []:
+                raise Exception, "No network interfaces found in the current system"
+
+
     def run(self):
+        if not self.simulated:
+                self.kroute.kroute.route_ip_forward_enable()
+                for nic in self.nics.nics:
+                        self.kroute.kroute.route_rp_filter_disable(nic)
 
-        self.kroute.kroute.route_ip_forward_enable()
-        for nic in self.nics.nics:
-                self.kroute.kroute.route_rp_filter_disable(nic)
-        
-
-        tcp_server = rpc.TCPServer(self)
-        micro(tcp_server.serve_forever)
-
-        udp_server = rpc.UDPServer(self)
-        micro(udp_server.serve_forever)
+        rpc.MicroTCPServer(self, ('', 269), None, self.simnet, self.simme, self.simsock)
+        rpc.MicroUDPServer(self, ('', 269), None, self.simnet, self.simme, self.simsock)
 
         self.radar.run()
         self.hook.hook()

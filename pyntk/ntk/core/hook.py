@@ -206,7 +206,7 @@ class Hook:
         self.radar.do_reply = True
 
         # warn our neighbours
-        for nr in self.neigh:
+        for nr in self.neigh.neigh_list():
                 nrnip=self.maproute.ip_to_nip(nr.ip)
                 nr.ntkd.neigh.ip_change(oldip, newnip)
 

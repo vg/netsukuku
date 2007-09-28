@@ -201,9 +201,10 @@ class P2P(RPCDispatcher):
 
 class P2PAll:
     """Class of all the registered P2P services"""
-
+    __slots__ = ['radar', 'neigh', 'maproute', 'service', 'remotable_funcs', 'events']
     def __init__(self, radar, maproute):
         self.radar = radar
+        self.neigh = radar.neigh
         self.maproute = maproute
 
         self.service = {}
@@ -254,7 +255,7 @@ class P2PAll:
         It gets the P2P maps from our nearest neighbour"""
 
         ## Find our nearest neighbour
-        minlvl=self.levels
+        minlvl=self.maproute.levels
         minnr =None
         for nr in self.neigh.neigh_list():
                 lvl=self.nip_cmp(self.me, self.ip_to_nip(nr.ip))

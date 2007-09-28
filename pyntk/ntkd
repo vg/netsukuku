@@ -21,6 +21,7 @@
 import sys
 from ntk.ntkd import NtkNode
 from ntk.lib.opt import Opt, OptErr
+from ntk.lib.micro import allmicro_run
 from config import *
 
 usage = """
@@ -66,22 +67,11 @@ def main():
             opt.load_argv(sys.argv)
     
     if opt.debug:
+            import logging
 	    logging.basicConfig(level=logging.DEBUG, 
-			        format='%(asctime)s %(levelname)s %(message)s')
+			        format='%(levelname)s %(message)s')
 
-    if not opt.simulated:
-	    N = NtkNode(opt)
-	    N.run()
-    else:
-	    sys.path[0]='sim'
-	    import inithook
-	    ###
-	    #TODO:
-	    #      - Create the simulated network. For each node create a
-	    #        NtkNode() instance
-	    #	   - run the simulation
-	    ###
-	    pass
+    NtkNode(opt).run()
 
     allmicro_run()
 

@@ -150,11 +150,10 @@ class NicAll:
 
     def __init__(self, nics=[], exclude_nics=['lo']):
         
-        nic_names = self.nics_list()
-
-        if nics != []:
-                # Leaves only the specified interfaces
-                nic_names = [ n for n in nic_names if n in nics ]
+        if nics == []:
+                nic_names = self.nics_list()
+        else:
+                nic_names = nics
         for en in exclude_nics:
                 if en in nic_names:
                         nic_names.remove(en)
@@ -203,19 +202,12 @@ class NicAll:
         for n in self.nics.itervalues():
                 n.activate(address)
 
-    
-if __name__ == "__main__":
-        n=Nic("dummy0")
-        n.up()
-        print n.retrieve_info(4)
-        n.down()
-        print n.retrieve_info(4)
-        n.change_address("11.22.33.44")
-        print n.retrieve_info(4)
-        n.activate("11.22.33.55")
-        print n.retrieve_info(4)
-
-        na=NicAll()
-        print na.retrieve_info(4)
-        na=NicAll(nics=['dummy0', 'eth0'])
-        print na.retrieve_info(4)
+class SimNicAll(NicAll):
+    def nics_list(self):
+        return ['lo']
+    def up(self):pass
+    def down(self):pass
+    def retrieve_info(self, ip_version):
+        return []
+    def change_address(self, address):pass
+    def activate(self, address):pass

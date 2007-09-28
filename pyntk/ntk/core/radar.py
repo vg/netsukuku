@@ -18,8 +18,8 @@
 ##
 
 from random import randint
+import logging
 
-from ntk.wrap.xtime  import swait, time
 from ntk.lib.micro  import micro
 from ntk.lib.event  import Event
 from ntk.core.route import Rtt
@@ -140,7 +140,7 @@ class Neighbour:
       return x[1].bestdev[1]
 
     # remember who we are truncating
-    trucated = []
+    truncated = []
 
     # the new table, without truncated rows
     ip_table_trunc = {}
@@ -159,7 +159,7 @@ class Neighbour:
         # but, if old ip_table contained this row, we should notify our listeners about this:
         if(key in self.ip_table):
           # remember we are truncating this row
-          trucated.append(key)
+          truncated.append(key)
           # delete the entry
           self.delete(key, remove_from_iptable=False)
 
@@ -223,7 +223,7 @@ class Neighbour:
 
   def readvertise(self):
     """Sends a NEIGH_NEW event for each stored neighbour"""
-    for key in ip_table:
+    for key in self.ip_table:
         self.events.send('NEIGH_NEW', 
                          (Neigh(key, self.translation_table(key),
                                        self.ip_table[key].devs,
@@ -262,15 +262,20 @@ class Radar:
     'bcast_arrival_time', 'bquet_dimension', 'max_wait_time', 'broadcast',
     'neigh', 'events', 'netid', 'do_reply', 'remotable_funcs', 'ntkd_id' ]
     
-  def __init__(self, inet, bquet_num = 16, max_neigh = 16, max_wait_time = 8):
+  def __init__(self, inet, broadcast, xtime, 
+                  bquet_num = 16, max_neigh = 16, max_wait_time = 8):
     """
         inet:   network.inet.Inet instance
+        broadcast: an instance of the RPCBroadcast class to manage broadcast sending
+        xtime: a wrap.xtime module
         bquet_num: how many packets does each bouquet contain?;
         max_neigh: maximum number of neighbours we can have;
         max_wait_time: the maximum time we can wait for a reply, in seconds;
     """
    
     self.inet = inet
+    self.xtime=xtime
+    self.broadcast = broadcast
 
     # how many bouquet we have already sent
     self.bouquet_numb = 0
@@ -278,10 +283,8 @@ class Radar:
     self.bcast_send_time = 0
     # when the replies arrived
     self.bcast_arrival_time = {}
-    self.bquet_dimension = bquet_num
+    self.bquet_num = bquet_num
     self.max_wait_time = max_wait_time
-    # an instance of the RPCBroadcast class to manage broadcast sending
-    self.broadcast = rpc.BcastClient(self.inet)
     # our neighbours
     self.neigh = Neighbour(max_neigh)
 
@@ -310,23 +313,24 @@ class Radar:
     """ Send broadcast packets and store the results in neigh """
 
     self.radar_id = randint(0, 2**32-1)
+    logging.debug('radar scan %s'%self.radar_id)
 
     # we're sending the broadcast packets NOW
-    self.bcast_send_time = time()
+    self.bcast_send_time = self.xtime.time()
 
     # send all packets in the bouquet
-    for i in xrange(bquet_num):
+    for i in xrange(self.bquet_num):
       self.broadcast.radar.reply(self.ntkd_id, self.radar_id)
 
     # then wait
-    swait(self.max_wait_time * 1000)
+    self.xtime.swait(self.max_wait_time * 1000)
 
     # update the neighbours' ip_table
     self.neigh.store(self.get_all_avg_rtt())
 
     # Send the event
     self.bouquet_numb+=1
-    self.events.send('SCAN_DONE', (bouquet_numb))
+    self.events.send('SCAN_DONE', (self.bouquet_numb))
 
   def reply(self, _rpc_caller, ntkd_id, radar_id):
     """ As answer we'll return our netid """
@@ -345,7 +349,7 @@ class Radar:
     net_device = _rpc_caller.dev
 
     # this is the rtt
-    time_elapsed = int((time() - bcast_send_time) / 2)
+    time_elapsed = int((self.xtime.time() - bcast_send_time) / 2)
     # let's store it in the bcast_arrival_time table
     if(ip in self.bcast_arrival_time):
       if(net_device in self.bcast_arrival_time[ip]):
