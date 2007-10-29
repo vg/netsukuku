@@ -76,11 +76,15 @@ class Rtt(Rem):
     def __cmp__(self, b):
         """rtt comparison
 
-        self < b    -1    -->  The rtt `self' is better than `b'
-        self > b     1    -->  The rtt `self' is worse  than `b'
-        self = b     0    -->  They are the same"""
+        The comparison's semantic is reversed:
+        if the first rtt is worse (bigger) than the second we will have:
+        rem(rtt1) < rem(rtt2)
 
-        return (self.value > b.value) - (self.value < b.value)
+        self < b    1    -->  The rtt `self' is better than `b'
+        self > b   -1    -->  The rtt `self' is worse  than `b'
+        self = b    0    -->  They are the same"""
+
+        return (self.value < b.value) - (self.value > b.value)
 
     def __add__(self, b):
         if isinstance(b, DeadRem):

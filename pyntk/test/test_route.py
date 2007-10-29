@@ -46,9 +46,9 @@ class TestRouteEfficiencyMeasure(unittest.TestCase):
         '''Comparing 2 Rtt'''
 
         # self.rtt is better than Rtt(5)
-        self.failUnless(self.rtt < Rtt(5))
+        self.failUnless(self.rtt > Rtt(5))
         # Rtt(5) is worse than self.rtt
-        self.failUnless(Rtt(5) > self.rtt)
+        self.failUnless(Rtt(5) < self.rtt)
         # self.rtt and Rtt(1) are the same
         self.failUnless(Rtt(1) == self.rtt)
 
