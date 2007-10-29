@@ -76,23 +76,23 @@ class Rtt(Rem):
     def __cmp__(self, b):
         """rtt comparison
 
-        self < b    1    -->  The rtt `self' is better than `b'
-        self > b   -1    -->  The rtt `self' is worse  than `b'
-        self = b    0    -->  They are the same"""
+        self < b    -1    -->  The rtt `self' is better than `b'
+        self > b     1    -->  The rtt `self' is worse  than `b'
+        self = b     0    -->  They are the same"""
 
-        return (self.value < b.value) - (self.value > b.value);
-    
+        return (self.value > b.value) - (self.value < b.value)
+
     def __add__(self, b):
         if isinstance(b, DeadRem):
-                return b+self
+            return b+self
         else:
-                return Rtt(self.value+b.value, self.max_value, self.avgcoeff)
+            return Rtt(self.value+b.value, self.max_value, self.avgcoeff)
 
 class Bw(Rem):
     """Bandwidth"""
     __slots__ = Rem.__slots__+['lb', 'nb']
 
-    def __init__(self, (value, lb, nb), max_value=0, avgcoeff=1):
+    def __init__(self, value, lb, nb, max_value=0, avgcoeff=1):
         """Initialise the bandwidth Rem for a route.
 
         Let r be the route me->...->x, where x is a node. Let gw be the first
@@ -105,7 +105,7 @@ class Bw(Rem):
         See {-topodoc-} for more info.  """
 
         Rem.__init__(self, value, max_value, avgcoeff)
-        
+
         self.lb = lb
         self.nb = nb
 
@@ -381,15 +381,15 @@ class MapRoute(Map):
         nip=self.ip_to_nip(neigh.ip)
         lvl=self.nip_cmp(self.me, neigh.nip)
         return (lvl, nip[lvl])
-        
+
     def bestroutes_get(self, f=ftrue):
         """Returns the list of all the best routes of the map.
-           
+
            Let L be the returned list, then L[lvl] is the list of all the best
            routes of level lvl of the map. An element of this latter list is a 
            tuple (dst, gw, rem), where dst is the destination of the route, gw
            its gateway.
-           
+
            If a function `f' has been specified, then each element L[lvl][i]
            in L is such that f(L[lvl][i])==True
            """
