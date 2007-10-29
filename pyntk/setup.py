@@ -29,7 +29,8 @@ if sys.version_info < (2,5):
 from distutils.core import setup
 from config import VERSION
 
-setup(name='pyntk', 
+setup(
+    name='pyntk', 
     description='Mesh network that generates and sustains itself autonomously.',
     long_description=\
 '''
@@ -39,12 +40,12 @@ with minimal CPU and memory resources. Thanks to this feature it can be
 easily used to build a worldwide distributed, anonymous and anarchical
 network, separated from the Internet, without the support of any servers,
 ISPs or control authorities.
-'''
+''',
     author='The Netsukuku Team',
     author_email='http://netsukuku.freaknet.org/?pag=contacts',
     url='http://www.netsukuku.org',
     version=VERSION,
     license='General Public License',
-    packages=['ntk'],
+    packages=['ntk', 'ntk.core', 'ntk.lib',
+              'ntk.network', 'ntk.sim', 'ntk.wrap'],
     scripts=['ntkd'])
-
