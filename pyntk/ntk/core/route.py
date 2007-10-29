@@ -22,7 +22,7 @@ from ntk.core.map import Map
 
 class Rem(object):
     """Route Efficiency Measure.
-    
+
     This is a base class for different metrics (rtt, bandwidth, ...)"""
 
     __slots__ = ['value', 'max_value', 'avgcoeff']
@@ -41,18 +41,16 @@ class Rem(object):
     def __cmp__(self, b):
         """Compares two REMs
         if remA > remB, then remA is better than remB
-        
+
         NOTE: this means that if you have a list of rems and you
         want to sort it in decrescent order of efficiency, than you
         have to reverse sort it: list.sort(reverse=1)
         """
-        pass
-    
+
     def __add__(self, b):
         """It sums two REMs.
 
         The sum must be commutative, i.e. Rx+Ry=Ry+Rx"""
-        pass
 
 class NullRem(Rem):
     """The equivalent of None for the REM"""
@@ -125,23 +123,23 @@ class Bw(Rem):
         self = b    0    -->  They are the same"""
 
         return (self.value > b.value) - (self.value < b.value);
-    
+
     def __add__(self, b):
         if isinstance(b, DeadRem):
-                return b+self
+            return b+self
         else:
-                return Bw((min(self.value, b.value), self.lb, self.nb), 
-                            self.max_value, self.avgcoeff)
+            return Bw(min(self.value, b.value), self.lb, self.nb,
+                      self.max_value, self.avgcoeff)
 
 class Avg(Rem):
     """Average"""
-    
+
     def __init__(self, rems):
         """Calculates the average of different REMs.
 
         `rems' is a list of type [R], where R is a Rem class, f.e. Rtt.
         """
-        
+
         length=sum=0
         for r in rems:
                 if not issubclass(r, Rem):
@@ -160,10 +158,9 @@ class Avg(Rem):
         self = b    0    -->  They are the same"""
 
         return (self.value > b.value) - (self.value < b.value);
-    
+
     def __add__(self, b):
         raise Exception, "the Avg metric cannot be summed. It must be computed each time"
-        pass
 
 class RouteGw(object):
     """A route to a known destination.
@@ -171,7 +168,7 @@ class RouteGw(object):
     This class is intended for routes pointing to a same known destination d.
     The only variables here are `gw', the gateway of the route, and `rem',
     its Rem.
-    
+
     If d = `gw', then `gw' is one of our internal neighbours, i.e. a neighbour
     belonging to our gnode of level 1.
     """
@@ -181,7 +178,7 @@ class RouteGw(object):
         """New gw route"""
         self.gw    = gw
         self.rem   = rem
-    
+
     def __cmp__(self, b):
         """The route self is better (greater) than b iff its rem is better"""
         return self.rem.__cmp__(b.rem)
@@ -189,9 +186,9 @@ class RouteGw(object):
     def rem_modify(self, new_rem):
         """Sets self.rem=new_rem and returns the old rem"""
         if self.rem != new_rem:
-                oldrem=self.rem
-                self.rem=new_rem
-                return oldrem
+            oldrem=self.rem
+            self.rem=new_rem
+            return oldrem
         return self.rem
 
 class RouteNode(object):

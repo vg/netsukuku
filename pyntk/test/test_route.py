@@ -1,6 +1,7 @@
+# This file is part of Netsukuku
+# (c) Copyright 2007 Daniele Tricoli aka Eriol <eriol@mornie.org>
 #
 # Tests for ntk.core.route
-#
 
 import sys
 import unittest
@@ -16,8 +17,6 @@ class TestRouteEfficiencyMeasure(unittest.TestCase):
         self.dead_rem = DeadRem(rem_value)
         self.rtt = Rtt(rem_value)
         self.bw = Bw(rem_value, 1, 1)
-
-        # TODO self.avg = Avg(...)
 
     def testAdd2NullRem(self):
         '''Test adding 2 NullRem'''
@@ -51,6 +50,28 @@ class TestRouteEfficiencyMeasure(unittest.TestCase):
         self.failUnless(Rtt(5) < self.rtt)
         # self.rtt and Rtt(1) are the same
         self.failUnless(Rtt(1) == self.rtt)
+
+    def testAddBwNullRem(self):
+        '''Test adding a Bw with a NullRem'''
+        newBw = self.bw + self.null_rem
+        self.failUnless(isinstance(newBw, Bw))
+        self.failUnlessEqual(newBw.value,
+                             min(self.bw.value, self.null_rem.value))
+
+    def testAddBwDeadRem(self):
+        '''Test adding a Rtt with a DeadRem'''
+        self.failUnless(self.bw + self.dead_rem is self.dead_rem)
+
+    def testCompareBw(self):
+        '''Comparing 2 Bw'''
+
+        # self.bw is worse than Bw(5)
+        self.failUnless(self.bw < Bw(5, 1, 1))
+        # Bw(5) is better than self.bw
+        self.failUnless(Bw(5, 1, 1) > self.bw)
+        # self.bw and Bw(1) are the same
+        self.failUnless(Bw(1, 1, 1) == self.bw)
+
 
 if __name__ == '__main__':
     unittest.main()
