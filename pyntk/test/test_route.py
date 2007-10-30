@@ -3,11 +3,15 @@
 #
 # Tests for ntk.core.route
 
+
 import sys
 import unittest
 sys.path.append('..')
 
-from ntk.core.route import NullRem, DeadRem, Rtt, Bw, Avg, RouteGw, RouteNode
+from operator import add
+
+from ntk.core.route import (NullRem, DeadRem, Rtt, Bw, Avg, RemError,
+                             AvgSumError, RouteGw, RouteNode)
 
 class TestRouteEfficiencyMeasure(unittest.TestCase):
 
@@ -17,6 +21,7 @@ class TestRouteEfficiencyMeasure(unittest.TestCase):
         self.dead_rem = DeadRem(rem_value)
         self.rtt = Rtt(rem_value)
         self.bw = Bw(rem_value, 1, 1)
+        self.avg = Avg([Rtt(1), Rtt(5), Rtt(10)])
 
     def testAdd2NullRem(self):
         '''Test adding 2 NullRem'''
@@ -74,6 +79,25 @@ class TestRouteEfficiencyMeasure(unittest.TestCase):
 
     def testAvgInit(self):
         '''Test Avg initialization'''
+        self.failUnlessEqual(self.avg.value, 59994)
+
+    def testAvgInitError(self):
+        '''Test Avg initialization error'''
+        self.assertRaises(RemError, Avg,
+                          [Rtt(1), Rtt(5), 'Not a Rem instance'])
+
+    def testCompareAvg(self):
+        '''Comparing 2 Avg'''
+        avg2 = Avg([Rtt(30), Rtt(25), Rtt(15)]) # avg2.value == 59976
+
+        self.failUnless(avg2 < self.avg)
+        self.failUnless(self.avg > avg2)
+        self.failUnless(self.avg == Avg([Rtt(1), Rtt(5), Rtt(10)]))
+
+    def testAddAvg(self):
+        '''Test adding 2 Avg'''
+
+        self.assertRaises(AvgSumError, add, self.avg, self.avg)
 
 class TestRouteGw(unittest.TestCase):
 
