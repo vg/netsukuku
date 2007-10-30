@@ -1,23 +1,48 @@
+# This file is part of Netsukuku
+#
+# Tests for ntk.lib.event
+
 import sys
+import unittest
 sys.path.append('..')
-from ntk.lib.event import Event
+
 from functools import partial
+from ntk.lib.event import Event, EventError
 
-
-T=[]
-events = Event(['A', 'B'])
-events.add(['C'])
+DICT_EV = {}
 
 def ev_listener(ev='', *msg):
-        print ev, msg
-        T.append(ev)
+    DICT_EV[ev] = msg
 
-events.listen('A', partial(ev_listener, 'A'))
-events.listen('B', partial(ev_listener, 'B'))
-events.listen('C', partial(ev_listener, 'C'))
+class TestEvent(unittest.TestCase):
 
-events.send('A', ())
-events.send('B', ('test', 'test'))
-events.send('C', (range(10)))
+    def setUp(self):
+        self.events = Event(['A', 'B'])
 
-assert T == ['A', 'B', 'C']
+    def testAddEvent(self):
+        '''Test adding a new event'''
+        self.events.add(['C'])
+        self.failUnless(self.events.events == ['A', 'B', 'C'])
+
+    def testEventListenFailure(self):
+        '''Test listening of unregistered event'''
+
+        self.assertRaises(EventError,
+                          self.events.listen,
+                          'D', partial(ev_listener, 'D'))
+
+    def testEventSendFailure(self):
+        '''Test sending of unregistered event'''
+        self.assertRaises(EventError,
+                          self.events.send,
+                          'D', 'Message...')
+
+    def testEventListen(self):
+        '''Test event listening'''
+        self.events.listen('A', partial(ev_listener, 'A'))
+        self.events.send('A', (1,2,3,4))
+
+        self.failUnlessEqual(DICT_EV['A'], (1,2,3,4))
+
+if __name__ == '__main__':
+    unittest.main()
