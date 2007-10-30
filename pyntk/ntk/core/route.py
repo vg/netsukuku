@@ -176,11 +176,11 @@ class RouteGw(object):
 
     def __init__(self, gw, rem):
         """New gw route"""
-        self.gw    = gw
-        self.rem   = rem
+        self.gw = gw
+        self.rem = rem
 
     def __cmp__(self, b):
-        """The route self is better (greater) than b iff its rem is better"""
+        """The route self is better (greater) than b if its rem is better"""
         return self.rem.__cmp__(b.rem)
 
     def rem_modify(self, new_rem):
@@ -196,12 +196,13 @@ class RouteNode(object):
 
     This class is basically a list of RouteGw classes, where the
     destination node and its level are fixed and known.
-    
+
     Note: for each gateway G there's only one route in self.routes, 
           which has the same gateway G
     """
 
     __slots__ = ['routes']
+
     def __init__(self, 
                  lvl=None, id=None  # these are mandatory for Map.__init__(),
                                     # but they aren't used
@@ -237,7 +238,7 @@ class RouteNode(object):
         ret  = 0
         val  = None
         oldr = self.route_getby_gw(gw)
-        
+
         if self.is_empty() or                                           \
                 (oldr == None and rem > self.routes[-1]):
         # If there aren't routes, or if it is better than the worst
@@ -274,7 +275,7 @@ class RouteNode(object):
         # Order the routes in decrescent order of efficiency, so that
         # self.routes[0] is the best one
         self.routes.sort(reverse=1)
-    
+
     def is_empty(self):
         return self.routes == []
 

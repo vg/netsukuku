@@ -7,7 +7,7 @@ import sys
 import unittest
 sys.path.append('..')
 
-from ntk.core.route import NullRem, DeadRem, Rtt, Bw, Avg
+from ntk.core.route import NullRem, DeadRem, Rtt, Bw, Avg, RouteGw, RouteNode
 
 class TestRouteEfficiencyMeasure(unittest.TestCase):
 
@@ -32,9 +32,9 @@ class TestRouteEfficiencyMeasure(unittest.TestCase):
 
     def testAddRttNullRem(self):
         '''Test adding a Rtt with a NullRem'''
-        newRtt = self.rtt + self.null_rem
-        self.failUnless(isinstance(newRtt, Rtt))
-        self.failUnlessEqual(newRtt.value,
+        new_rtt = self.rtt + self.null_rem
+        self.failUnless(isinstance(new_rtt, Rtt))
+        self.failUnlessEqual(new_rtt.value,
                              self.rtt.value + self.null_rem.value)
 
     def testAddRttDeadRem(self):
@@ -53,9 +53,9 @@ class TestRouteEfficiencyMeasure(unittest.TestCase):
 
     def testAddBwNullRem(self):
         '''Test adding a Bw with a NullRem'''
-        newBw = self.bw + self.null_rem
-        self.failUnless(isinstance(newBw, Bw))
-        self.failUnlessEqual(newBw.value,
+        new_bw = self.bw + self.null_rem
+        self.failUnless(isinstance(new_bw, Bw))
+        self.failUnlessEqual(new_bw.value,
                              min(self.bw.value, self.null_rem.value))
 
     def testAddBwDeadRem(self):
@@ -72,6 +72,24 @@ class TestRouteEfficiencyMeasure(unittest.TestCase):
         # self.bw and Bw(1) are the same
         self.failUnless(Bw(1, 1, 1) == self.bw)
 
+    def testAvgInit(self):
+        '''Test Avg initialization'''
+
+class TestRouteGw(unittest.TestCase):
+
+    def setUp(self):
+        self.route_gw = RouteGw(object(), Rtt(1))
+
+    def testCompareRouteGw(self):
+        '''Comparing 2 RouteGw'''
+        self.failUnless(self.route_gw > RouteGw(object(), Rtt(10)))
+
+    def testRemModify(self):
+        '''Test modifying rem'''
+        self.failUnless(self.route_gw.rem_modify(Rtt(1)) == Rtt(1))
+
+        self.failUnless(self.route_gw.rem_modify(Rtt(10)) == Rtt(1))
+        self.failUnless(self.route_gw.rem == Rtt(10))
 
 if __name__ == '__main__':
     unittest.main()
