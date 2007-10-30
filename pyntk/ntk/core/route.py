@@ -20,6 +20,17 @@
 from ntk.lib.event import Event
 from ntk.core.map import Map
 
+class RemError(Exception):
+    '''General Route Efficiency Measure Exception'''
+
+class AvgError(RemError):
+    '''Average Exception'''
+
+class AvgSumError(AvgError):
+    '''Average Sum Error'''
+
+
+
 class Rem(object):
     """Route Efficiency Measure.
 
@@ -86,7 +97,7 @@ class Rtt(Rem):
 
     def __add__(self, b):
         if isinstance(b, DeadRem):
-            return b+self
+            return b + self
         else:
             return Rtt(self.value+b.value, self.max_value, self.avgcoeff)
 
@@ -112,8 +123,8 @@ class Bw(Rem):
         self.nb = nb
 
     def _pack(self):
-        return ((self.value,  self.lb, self.nb),
-                 self.max_value, self.avgcoeff, self.lb, self.nb)
+        return (self.value,  self.lb, self.nb, self.max_value,
+                self.avgcoeff, self.lb, self.nb)
 
     def __cmp__(self, b):
         """bandwidth comparison
@@ -137,18 +148,18 @@ class Avg(Rem):
     def __init__(self, rems):
         """Calculates the average of different REMs.
 
-        `rems' is a list of type [R], where R is a Rem class, f.e. Rtt.
+        `rems' is a list of type [R], where R is a Rem instance, f.e. Rtt.
         """
 
-        length=sum=0
+        length = sum = 0
         for r in rems:
-                if not issubclass(r, Rem):
-                        raise Exception, "an element of `rems' is not a Rem class"
+            if not isinstance(r, Rem):
+                raise RemError, "an element of `rems' is not a Rem instance"
 
-                sum+=abs( r.max_value-r.value*r.avgcoeff )
-                length+=1
+            sum += abs(r.max_value-r.value*r.avgcoeff)
+            length += 1
 
-        Rem.__init__(self, sum/length)
+        Rem.__init__(self, sum/length)      # XXX: value is always an integer?
 
     def __cmp__(self, b):
         """avg comparison
@@ -160,7 +171,8 @@ class Avg(Rem):
         return (self.value > b.value) - (self.value < b.value);
 
     def __add__(self, b):
-        raise Exception, "the Avg metric cannot be summed. It must be computed each time"
+        raise AvgSumError, ('the Avg metric cannot be summed.'
+                            ' It must be computed each time')
 
 class RouteGw(object):
     """A route to a known destination.
