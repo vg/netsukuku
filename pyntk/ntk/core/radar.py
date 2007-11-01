@@ -26,19 +26,21 @@ from ntk.core.route import Rtt
 import ntk.lib.rpc as rpc
 
 class NodeInfo(object):
-  """ this class store informations about a node """
-  __slots__ = ['devs', 'bestdev', 'ntk']
-  def __init__(self, devs, bestdev, ntk):
-    """ devs: a dict which maps a device to the average rtt
-        bestdev: a pair (d, avg_rtt), where devs[d] is the best element of
-                 devs.
-        ntk: node's ntk remote instance
-    """
-    self.devs = devs
-    self.bestdev = bestdev
-    self.ntk = ntk
+    """ this class store informations about a node """
 
-class Neigh:
+    __slots__ = ['devs', 'bestdev', 'ntk']
+
+    def __init__(self, devs, bestdev, ntk):
+        """ devs: a dict which maps a device to the average rtt
+            bestdev: a pair (d, avg_rtt), where devs[d] is the best element of
+                    devs.
+            ntk: node's ntk remote instance
+        """
+        self.devs = devs
+        self.bestdev = bestdev
+        self.ntk = ntk
+
+class Neigh(object):
   """ this class simply represent a neighbour """
 
   __slots__ = ['devs', 'bestdev', 'ip', 'id', 'rem', 'ntk', 'netid']
@@ -62,7 +64,7 @@ class Neigh:
     self.ntk = Ntk(ip)
     self.netid = netid
 
-class Neighbour:
+class Neighbour(object):
   """ this class manages all neighbours """
   __slots__ = ['max_neigh', 'rtt_variation', 'ip_table', 'translation_table',
                   'netid_table', 'events', 'remotable_funcs']
@@ -113,7 +115,7 @@ class Neighbour:
     if ip not in self.translation_table:
             return None
     else:
-            return Neigh(ip, self.translation_table[ip], 
+            return Neigh(ip, self.translation_table[ip],
                             self.ip_table[ip].devs,
                             self.ip_table[ip].bestdev,
                             self.netid_table[ip])
@@ -257,11 +259,11 @@ class Neighbour:
     self.delete(oldip)
 
 
-class Radar:
+class Radar(object):
   __slots__ = ['inet', 'bouquet_numb', 'bcast_send_time',
     'bcast_arrival_time', 'bquet_dimension', 'max_wait_time', 'broadcast',
     'neigh', 'events', 'netid', 'do_reply', 'remotable_funcs', 'ntkd_id' ]
-    
+
   def __init__(self, inet, broadcast, xtime, 
                   bquet_num = 16, max_neigh = 16, max_wait_time = 8):
     """
@@ -272,7 +274,7 @@ class Radar:
         max_neigh: maximum number of neighbours we can have;
         max_wait_time: the maximum time we can wait for a reply, in seconds;
     """
-   
+
     self.inet = inet
     self.xtime=xtime
     self.broadcast = broadcast
