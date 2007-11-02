@@ -11,7 +11,8 @@ sys.path.append('..')
 from operator import add
 
 from ntk.core.route import (NullRem, DeadRem, Rtt, Bw, Avg, RemError,
-                            AvgSumError, RouteGw, RouteGwError, RouteNode)
+                            AvgSumError, RouteGw, RouteGwError, RouteNode,
+                            MapRoute)
 
 class TestRouteEfficiencyMeasure(unittest.TestCase):
 
@@ -179,6 +180,12 @@ class TestRouteNode(unittest.TestCase):
 
         self.route_node.route_reset(0, 0)
         self.failUnlessEqual(self.route_node.is_empty(), True)
+
+class TestMapRoute(unittest.TestCase):
+
+    def setUp(self):
+
+        self.map = MapRoute()
 
 if __name__ == '__main__':
     unittest.main()

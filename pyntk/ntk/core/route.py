@@ -318,10 +318,12 @@ class MapRoute(Map):
 
     MapRoute.node[lvl][id] is a RouteNode class, i.e. a list of routes
     having as destination the node (lvl, id)"""
+
     __slots__ = Map.__slots__ + ['remotable_funcs']
 
     def __init__(self, levels, gsize, me):
-        Map.__init__(self, levels, gsize, RouteNode, me)
+
+        Map.__init__(self, levels, gsize, RouteNode, me) # ???: Why we pass a class?
 
         self.events.add( [  'ROUTE_NEW',
                             'ROUTE_DELETED',
@@ -330,17 +332,17 @@ class MapRoute(Map):
         self.remotable_funcs = [self.free_nodes_nb]
 
     def route_add(self, lvl, dst, gw, rem, silent=0):
-        n=self.node_get(lvl, dst)
+        n = self.node_get(lvl, dst)
         ret, val = n.route_add(lvl, dst, gw, rem)
         if not silent:
-                if ret == 1:
-                        self.events.send('ROUTE_NEW', (lvl, dst, gw, rem))
-                        if n.nroutes() == 1:
-                                # The node is new
-                                self.node_add(lvl, dst)
-                elif ret == 2:
-                        oldrem=val
-                        self.events.send('ROUTE_REM_CHGED', (lvl, dst, gw, rem, oldrem))
+            if ret == 1:
+                self.events.send('ROUTE_NEW', (lvl, dst, gw, rem))
+                if n.nroutes() == 1:
+                    # The node is new
+                    self.node_add(lvl, dst)
+            elif ret == 2:
+                oldrem = val
+                self.events.send('ROUTE_REM_CHGED', (lvl, dst, gw, rem, oldrem))
         return ret
 
     def route_del(self, lvl, dst, gw, silent=0):
