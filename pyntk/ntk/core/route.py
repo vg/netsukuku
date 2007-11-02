@@ -21,15 +21,16 @@ from ntk.lib.event import Event
 from ntk.core.map import Map
 
 class RemError(Exception):
-    '''General Route Efficiency Measure Exception'''
+    ''' General Route Efficiency Measure Exception '''
 
 class AvgError(RemError):
-    '''Average Exception'''
+    ''' Average Exception '''
 
 class AvgSumError(AvgError):
-    '''Average Sum Error'''
+    ''' Average Sum Error '''
 
-
+class RouteGwError(Exception):
+    ''' General RouteGw Error '''
 
 class Rem(object):
     """Route Efficiency Measure.
@@ -103,7 +104,7 @@ class Rtt(Rem):
 
 class Bw(Rem):
     """Bandwidth"""
-    __slots__ = Rem.__slots__+['lb', 'nb']
+    __slots__ = Rem.__slots__ + ['lb', 'nb']
 
     def __init__(self, value, lb, nb, max_value=0, avgcoeff=1):
         """Initialise the bandwidth Rem for a route.
@@ -156,10 +157,10 @@ class Avg(Rem):
             if not isinstance(r, Rem):
                 raise RemError, "an element of `rems' is not a Rem instance"
 
-            sum += abs(r.max_value-r.value*r.avgcoeff)
+            sum += abs(r.max_value - r.value*r.avgcoeff)
             length += 1
 
-        Rem.__init__(self, sum/length)      # XXX: value is always an integer?
+        Rem.__init__(self, sum/length)      # ???: value is always an integer?
 
     def __cmp__(self, b):
         """avg comparison
@@ -193,20 +194,23 @@ class RouteGw(object):
 
     def __cmp__(self, b):
         """The route self is better (greater) than b if its rem is better"""
-        return self.rem.__cmp__(b.rem)
+        if isinstance(b, RouteGw):
+            return self.rem.__cmp__(b.rem)
+        else:
+            raise RouteGwError, 'comparison with not RouteGw'
 
     def rem_modify(self, new_rem):
         """Sets self.rem=new_rem and returns the old rem"""
         if self.rem != new_rem:
-            oldrem=self.rem
-            self.rem=new_rem
+            oldrem = self.rem
+            self.rem = new_rem
             return oldrem
         return self.rem
 
 class RouteNode(object):
     """List of routes to a known destination.
 
-    This class is basically a list of RouteGw classes, where the
+    This class is basically a list of RouteGw instances, where the
     destination node and its level are fixed and known.
 
     Note: for each gateway G there's only one route in self.routes, 
@@ -224,19 +228,21 @@ class RouteNode(object):
     def route_getby_gw(self, gw):
         """Returns the route having as gateway `gw'"""
         for r in self.routes:
-                if self.routes[r].gw == gw:
-                        return self.routes[r]
+            if r.gw == gw:
+                return r
         return None
 
-    def route_rem(self, lvl, dst, gw, newrem):
+    def route_rem(self, lvl, dst, gw, newrem):              # ???: lvl and dst are not used
         """Changes the rem of the route with gateway `gw'
 
         Returns (0, None) if the route doesn't exists, (1, oldrem) else."""
 
-        r=self.route_getby_gw(gw)
-        if r == None:
-                return (0, None)
-        oldrem=r.rem_modify(newrem)
+        r = self.route_getby_gw(gw)
+
+        if r is None:
+            return (0, None)
+
+        oldrem = r.rem_modify(newrem)
         self.sort()
         return (1, oldrem)
 
@@ -247,22 +253,22 @@ class RouteNode(object):
         interesting, otherwise it returns (1,None) if it is a new route, 
         (2, oldrem) if it substituted an old route."""
 
-        ret  = 0
-        val  = None
+        ret = 0
+        val = None
         oldr = self.route_getby_gw(gw)
 
         if self.is_empty() or                                           \
-                (oldr == None and rem > self.routes[-1]):
-        # If there aren't routes, or if it is better than the worst
-        # route, add it
-                self.routes.append(RouteGw(gw, rem))
-                ret=1
-        elif oldr != None and rem > oldr.rem:
-                oldrem=oldr.rem_modify(rem)
-                val=oldrem
-                ret=2
+            (oldr is None and rem > self.routes[-1]):
+            # If there aren't routes, or if it is better than the worst
+            # route, add it
+            self.routes.append(RouteGw(gw, rem))
+            ret = 1
+        elif oldr is not None and rem > oldr.rem:
+            oldrem = oldr.rem_modify(rem)
+            val = oldrem
+            ret = 2
         else:
-                return (ret, val) # route not interesting
+            return (ret, val) # route not interesting
 
         self.sort()
 
@@ -274,9 +280,9 @@ class RouteNode(object):
         Returns 1 if the route has been deleted, otherwise 0"""
 
         r = route_getby_gw(gw)
-        if r != None:
-                self.routes.remove(r)
-                return 1
+        if r is not None:
+            self.routes.remove(r)
+            return 1
         return 0
 
     def route_reset(self, lvl, dst):
@@ -284,8 +290,11 @@ class RouteNode(object):
         self.routes = []
 
     def sort(self):
-        # Order the routes in decrescent order of efficiency, so that
-        # self.routes[0] is the best one
+        '''Order the routes
+
+        Order the routes in decrescent order of efficiency, so that
+        self.routes[0] is the best one
+        '''
         self.routes.sort(reverse=1)
 
     def is_empty(self):
@@ -299,9 +308,9 @@ class RouteNode(object):
 
     def best_route(self):
         if self.is_empty():
-                return None
+            return None
         else:
-                return self.routes[0]
+            return self.routes[0]
 
 def ftrue(*args):return True
 
@@ -310,7 +319,7 @@ class MapRoute(Map):
 
     MapRoute.node[lvl][id] is a RouteNode class, i.e. a list of routes
     having as destination the node (lvl, id)"""
-    __slots__ = Map.__slots__+['remotable_funcs']
+    __slots__ = Map.__slots__ + ['remotable_funcs']
 
     def __init__(self, levels, gsize, me):
         Map.__init__(self, levels, gsize, RouteNode, me)
@@ -379,14 +388,14 @@ class MapRoute(Map):
         for lvl in xrange(self.levels):
                 for dst in xrange(self.gsize):
                         self.route_del(lvl, dst, neigh.id, silent=1)
-    
+
     def routeneigh_add(self, neigh, silent=0):
         """Add a route to reach the neighbour `neigh'"""
-        lvl, nid = routeneigh_get(neigh)
+        lvl, nid = self.routeneigh_get(neigh)
         return self.route_add(0, nid, neigh.id, neigh.rem, silent)
 
     def routeneigh_rem(self, neigh, silent=0):
-        lvl, nid = routeneigh_get(neigh)
+        lvl, nid = self.routeneigh_get(neigh)
         return self.route_rem(lvl, nid, neigh.id, neigh.rem, silent)
 
 
