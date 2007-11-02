@@ -25,7 +25,7 @@ from random import randint
 
 class DataClass:
     """Data class example.
-    
+
     A Data class contains information regarding a node of the map.
     Each Map.node[level][id] entry is a Data class instance.
 
@@ -42,22 +42,24 @@ class DataClass:
         return True
 
 class Map(object):
+
     __slots__ = ['levels', 'gsize', 'dataclass', 'me', 'node', 'node_nb',
                  'events']
 
     def __init__(self, levels, gsize, dataclass, me=None):
         """Initialise the map
-        
+
         If me = None, then self.me is set to a random nip (ntk ip)
         """
-        
-        self.levels = levels    # Number of levels
-        self.gsize  = gsize     # How many nodes are contained in a gnode
+
+        self.levels = levels   # Number of levels
+        self.gsize = gsize     # How many nodes are contained in a gnode
         self.dataclass = dataclass
-        self.me     = me        # Ourself. self.me[lvl] is the ID of our
-                                # (g)node of level lvl
+        self.me = me        # Ourself. self.me[lvl] is the ID of our
+                            # (g)node of level lvl
         # Choose a random nip
-        if me == None: self.me = self.nip_rand()
+        if me is None:
+            self.me = self.nip_rand()
 
         # The member self.node[l][i] is a node of level l and its ID is i
         self.node = [[None]*gsize]*levels
@@ -69,23 +71,23 @@ class Map(object):
     def node_get(self, lvl, id):
         """Returns from the map a node of level `lvl' and id `id'.
 
-        A class instance of type `self.dataclass' will always be returned: if
+        An instance of type `self.dataclass' will always be returned: if
         it doesn't exist, it is created"""
-        
-        if self.node[lvl][id] == None:
-                self.node[lvl][id]=self.dataclass(lvl, id)
+
+        if self.node[lvl][id] is None:
+            self.node[lvl][id] = self.dataclass(lvl, id)
         return self.node[lvl][id]
 
     def node_add(self, lvl, id, silent=0):
         self.node_get(lvl, id)
-        self.node_nb[lvl]+=1
+        self.node_nb[lvl] += 1
         if not silent:
-                self.events.send('NODE_NEW', (lvl, id))
+            self.events.send('NODE_NEW', (lvl, id))
 
     def node_del(self, lvl, id, silent=0):
-        self.node_nb[lvl]-=1
+        self.node_nb[lvl] -= 1
         if not silent:
-                self.events.send('NODE_DELETED', (lvl, id))
+            self.events.send('NODE_DELETED', (lvl, id))
         self.node[lvl][id]=None
 
     def free_nodes_nb(self, lvl):
@@ -112,7 +114,7 @@ class Map(object):
 
     def ip_to_nip(self, ip):
         """Converts the given ip to a nip (Netsukuku IP)
-        
+
         A nip is a list [a_0, a_1, ..., a_{n-1}], where n = self.levels
         and such that a_{n-1}*g^{n-1}+a_{n-2}*g^(n-2)+...+a_0 = ip, 
         where g = self.gsize"""
@@ -144,7 +146,7 @@ class Map(object):
         """Resets the specified level, without raising any event"""
         self.node[level]    = [None]*self.gsize
         self.node_nb[level] = 0
-    
+
     def map_reset(self):
         """Silently resets the whole map"""
         for l in xrange(self.levels):

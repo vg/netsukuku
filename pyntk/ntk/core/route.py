@@ -323,7 +323,7 @@ class MapRoute(Map):
 
     def __init__(self, levels, gsize, me):
 
-        Map.__init__(self, levels, gsize, RouteNode, me) # ???: Why we pass a class?
+        Map.__init__(self, levels, gsize, RouteNode, me)
 
         self.events.add( [  'ROUTE_NEW',
                             'ROUTE_DELETED',
@@ -332,6 +332,8 @@ class MapRoute(Map):
         self.remotable_funcs = [self.free_nodes_nb]
 
     def route_add(self, lvl, dst, gw, rem, silent=0):
+        ''' Add a new route
+        '''
         n = self.node_get(lvl, dst)
         ret, val = n.route_add(lvl, dst, gw, rem)
         if not silent:
@@ -346,38 +348,39 @@ class MapRoute(Map):
         return ret
 
     def route_del(self, lvl, dst, gw, silent=0):
-        d=self.node_get(lvl, dst)
+        d = self.node_get(lvl, dst)
         d.route_del(lvl, dst, gw)
 
         if not silent:
-                self.events.send('ROUTE_DELETED', (lvl, dst, gw))
+            self.events.send('ROUTE_DELETED', (lvl, dst, gw))
 
         if d.is_empty():
-                # No more routes to reach the node (lvl, dst).
-                # Consider it dead
-                self.node_del(lvl, dst)
+            # No more routes to reach the node (lvl, dst).
+            # Consider it dead
+            self.node_del(lvl, dst)
 
     def route_rem(self, lvl, dst, gw, newrem, silent=0):
         """Changes the rem of the route with gateway `gw'
 
         Returns 0 if the route doesn't exists, 1 else."""
 
-        d=self.node_get(lvl, dst)
+        d = self.node_get(lvl, dst)
         ret, val = d.route_rem(lvl, dst, gw, newrem)
         if ret:
-                oldrem=val
-                if not silent:
-                        self.events.send('ROUTE_REM_CHGED', (lvl, dst, gw, newrem, oldrem))
+            oldrem = val
+            if not silent:
+                self.events.send('ROUTE_REM_CHGED', (lvl, dst, gw, newrem, oldrem))
+            return 1
         else:
-                return 0
+            return 0
 
     def route_change(self, lvl, dst, gw, newrem):
         """A wrapper to route_add, route_del"""
 
         if isinstance(newrem, DeadRem):
-                return self.route_del(lvl, dst, gw)
+            return self.route_del(lvl, dst, gw)
         else:
-                return self.route_add(lvl, dst, gw, rem)
+            return self.route_add(lvl, dst, gw, rem)
 
 
 ## Neighbour stuff
@@ -387,8 +390,8 @@ class MapRoute(Map):
            gateway `neigh.id' and delete the node `neigh' itself (if present)"""
 
         for lvl in xrange(self.levels):
-                for dst in xrange(self.gsize):
-                        self.route_del(lvl, dst, neigh.id, silent=1)
+            for dst in xrange(self.gsize):
+                    self.route_del(lvl, dst, neigh.id, silent=1)
 
     def routeneigh_add(self, neigh, silent=0):
         """Add a route to reach the neighbour `neigh'"""

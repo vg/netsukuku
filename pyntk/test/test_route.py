@@ -185,7 +185,36 @@ class TestMapRoute(unittest.TestCase):
 
     def setUp(self):
 
-        self.map = MapRoute()
+        self.map = MapRoute(levels=1, gsize=256, me=3)
+
+    def testRouteAdd(self):
+        ''' MapRoute: add a route '''
+
+        # MapRoute is empty so we have 256 free node!
+        self.failUnlessEqual(self.map.free_nodes_nb(lvl=0), 256)
+
+        # Add a node
+        res = self.map.route_add(lvl=0, dst=200, gw=5, rem=Rtt(1))
+        self.failUnlessEqual(res, 1)
+        self.failUnlessEqual(self.map.free_nodes_nb(lvl=0), 255)
+
+    def testDeleteRoute(self):
+        ''' MapRoute: delete a route '''
+        self.map.route_add(lvl=0, dst=200, gw=5, rem=Rtt(1))
+        self.map.route_del(lvl=0, dst=200, gw=5)
+        self.failUnlessEqual(self.map.free_nodes_nb(lvl=0), 256)
+
+    def testChangeRouteRem(self):
+        ''' MapRoute: change route rem '''
+        # Changing rem for a non existent route
+        res = self.map.route_rem(lvl=0, dst=200, gw=5, newrem=Rtt(10))
+        self.failUnlessEqual(res, 0)
+
+        self.map.route_add(lvl=0, dst=200, gw=5, rem=Rtt(10))
+        res = self.map.route_rem(lvl=0, dst=200, gw=5, newrem=Rtt(5))
+        self.failUnlessEqual(res, 1)
+
+    # TODO: Neighbour stuff
 
 if __name__ == '__main__':
     unittest.main()
