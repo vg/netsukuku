@@ -11,7 +11,7 @@ sys.path.append('..')
 from operator import add
 
 from ntk.core.route import (NullRem, DeadRem, Rtt, Bw, Avg, RemError,
-                             AvgSumError, RouteGw, RouteGwError, RouteNode)
+                            AvgSumError, RouteGw, RouteGwError, RouteNode)
 
 class TestRouteEfficiencyMeasure(unittest.TestCase):
 
@@ -123,9 +123,20 @@ class TestRouteNode(unittest.TestCase):
     def testRouteAdd(self):
         ''' Add a route '''
         self.failUnlessEqual(self.route_node.routes, [])
-        self.route_node.route_add(lvl=0, dst=1234, gw=1, rem=Rtt(20))
+        res = self.route_node.route_add(lvl=0, dst=1234, gw=1, rem=Rtt(20))
+        self.failUnlessEqual(res, (1, None))
         self.failUnless(isinstance(self.route_node.routes[0], RouteGw))
         self.failUnlessEqual(self.route_node.routes[0].gw, 1)
+
+        # substitute an old route
+        res = self.route_node.route_add(lvl=0, dst=1234, gw=1, rem=Rtt(10))
+        self.failUnlessEqual(res, (2, Rtt(20)))
+
+        # Add new route
+        res = self.route_node.route_add(lvl=0, dst=1234, gw=2, rem=Rtt(5))
+        self.failUnlessEqual(res, (1, None))
+
+        self.failUnlessEqual(self.route_node.nroutes(), 2)
 
     def testRouteGetbyGw(self):
         ''' Getting a route having as gateway "gw" '''
@@ -168,7 +179,6 @@ class TestRouteNode(unittest.TestCase):
 
         self.route_node.route_reset(0, 0)
         self.failUnlessEqual(self.route_node.is_empty(), True)
-
 
 if __name__ == '__main__':
     unittest.main()
