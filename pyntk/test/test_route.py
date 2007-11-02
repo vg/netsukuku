@@ -144,6 +144,31 @@ class TestRouteNode(unittest.TestCase):
         res = self.route_node.route_rem(0, 0, 5, Rtt(10))
         self.failUnlessEqual(res, (1, Rtt(50)))
 
+    def testDeleteRoute(self):
+        '''Delete a route'''
+        res = self.route_node.route_del(0, 0, 5)
+        self.failUnlessEqual(res, 0)
+
+        self.route_node.route_add(lvl=0, dst=123, gw=5, rem=Rtt(50))
+        res = self.route_node.route_del(0, 0, 5)
+        self.failUnlessEqual(res, 1)
+        self.failUnless(self.route_node.is_empty())
+
+    def testIsEmpty(self):
+        '''Check if a RouteNode instance is empty '''
+        self.failUnlessEqual(self.route_node.is_empty(), True)
+
+        self.route_node.route_add(lvl=0, dst=123, gw=5, rem=Rtt(50))
+        self.failUnlessEqual(self.route_node.is_empty(), False)
+
+    def testReset(self):
+        ''' Delete all routes '''
+        self.route_node.route_add(lvl=0, dst=123, gw=5, rem=Rtt(50))
+        self.failUnlessEqual(self.route_node.is_empty(), False)
+
+        self.route_node.route_reset(0, 0)
+        self.failUnlessEqual(self.route_node.is_empty(), True)
+
 
 if __name__ == '__main__':
     unittest.main()

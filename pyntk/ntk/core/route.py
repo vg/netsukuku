@@ -257,8 +257,7 @@ class RouteNode(object):
         val = None
         oldr = self.route_getby_gw(gw)
 
-        if self.is_empty() or                                           \
-            (oldr is None and rem > self.routes[-1]):
+        if self.is_empty() or (oldr is None and rem > self.routes[-1].rem):
             # If there aren't routes, or if it is better than the worst
             # route, add it
             self.routes.append(RouteGw(gw, rem))
@@ -274,18 +273,18 @@ class RouteNode(object):
 
         return (ret, val)         # good route
 
-    def route_del(self, lvl, dst, gw):
+    def route_del(self, lvl, dst, gw):           # ???: lvl and dst are not used
         """Delete a route.
 
         Returns 1 if the route has been deleted, otherwise 0"""
 
-        r = route_getby_gw(gw)
+        r = self.route_getby_gw(gw)
         if r is not None:
             self.routes.remove(r)
             return 1
         return 0
 
-    def route_reset(self, lvl, dst):
+    def route_reset(self, lvl, dst):             # ???: lvl and dst are not used
         """Delete all the routes"""
         self.routes = []
 
@@ -300,7 +299,7 @@ class RouteNode(object):
     def is_empty(self):
         return self.routes == []
 
-    def is_free(self):
+    def is_free(self):                        # ???: Why duplicated?
         return self.is_empty()
 
     def nroutes(self):
