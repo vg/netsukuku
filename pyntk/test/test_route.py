@@ -10,9 +10,11 @@ sys.path.append('..')
 
 from operator import add
 
+from ntk.core.radar import Neigh
 from ntk.core.route import (NullRem, DeadRem, Rtt, Bw, Avg, RemError,
                             AvgSumError, RouteGw, RouteGwError, RouteNode,
                             MapRoute)
+
 
 class TestRouteEfficiencyMeasure(unittest.TestCase):
 
@@ -150,19 +152,19 @@ class TestRouteNode(unittest.TestCase):
         ''' Change route rem '''
         self.route_node.route_add(lvl=0, dst=123, gw=5, rem=Rtt(50))
 
-        res = self.route_node.route_rem(0, 0, 1, Rtt(10)) # Route don't exist
+        res = self.route_node.route_rem(1, Rtt(10)) # Route don't exist
         self.failUnlessEqual(res, (0, None))
 
-        res = self.route_node.route_rem(0, 0, 5, Rtt(10))
+        res = self.route_node.route_rem(5, Rtt(10))
         self.failUnlessEqual(res, (1, Rtt(50)))
 
     def testDeleteRoute(self):
         '''Delete a route'''
-        res = self.route_node.route_del(0, 0, 5)
+        res = self.route_node.route_del(5)
         self.failUnlessEqual(res, 0)
 
         self.route_node.route_add(lvl=0, dst=123, gw=5, rem=Rtt(50))
-        res = self.route_node.route_del(0, 0, 5)
+        res = self.route_node.route_del(5)
         self.failUnlessEqual(res, 1)
         self.failUnless(self.route_node.is_empty())
 
@@ -178,7 +180,7 @@ class TestRouteNode(unittest.TestCase):
         self.route_node.route_add(lvl=0, dst=123, gw=5, rem=Rtt(50))
         self.failUnlessEqual(self.route_node.is_empty(), False)
 
-        self.route_node.route_reset(0, 0)
+        self.route_node.route_reset()
         self.failUnlessEqual(self.route_node.is_empty(), True)
 
 class TestMapRoute(unittest.TestCase):
@@ -215,6 +217,10 @@ class TestMapRoute(unittest.TestCase):
         self.failUnlessEqual(res, 1)
 
     # TODO: Neighbour stuff
+
+    #def testRouteneighAdd(self):
+        #n = Neigh() ...
+        #self.map.routeneigh_add ...
 
 if __name__ == '__main__':
     unittest.main()

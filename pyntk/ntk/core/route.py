@@ -232,7 +232,7 @@ class RouteNode(object):
                 return r
         return None
 
-    def route_rem(self, lvl, dst, gw, newrem):              # ???: lvl and dst are not used
+    def route_rem(self, gw, newrem):
         """Changes the rem of the route with gateway `gw'
 
         Returns (0, None) if the route doesn't exists, (1, oldrem) else."""
@@ -273,7 +273,7 @@ class RouteNode(object):
 
         return (ret, val)         # good route
 
-    def route_del(self, lvl, dst, gw):           # ???: lvl and dst are not used
+    def route_del(self, gw):
         """Delete a route.
 
         Returns 1 if the route has been deleted, otherwise 0"""
@@ -284,7 +284,7 @@ class RouteNode(object):
             return 1
         return 0
 
-    def route_reset(self, lvl, dst):             # ???: lvl and dst are not used
+    def route_reset(self):
         """Delete all the routes"""
         self.routes = []
 
@@ -349,7 +349,7 @@ class MapRoute(Map):
 
     def route_del(self, lvl, dst, gw, silent=0):
         d = self.node_get(lvl, dst)
-        d.route_del(lvl, dst, gw)
+        d.route_del(gw)
 
         if not silent:
             self.events.send('ROUTE_DELETED', (lvl, dst, gw))
@@ -365,11 +365,12 @@ class MapRoute(Map):
         Returns 0 if the route doesn't exists, 1 else."""
 
         d = self.node_get(lvl, dst)
-        ret, val = d.route_rem(lvl, dst, gw, newrem)
+        ret, val = d.route_rem(gw, newrem)
         if ret:
             oldrem = val
             if not silent:
-                self.events.send('ROUTE_REM_CHGED', (lvl, dst, gw, newrem, oldrem))
+                self.events.send('ROUTE_REM_CHGED',
+                                 (lvl, dst, gw, newrem, oldrem))
             return 1
         else:
             return 0
@@ -405,8 +406,8 @@ class MapRoute(Map):
 
     def routeneigh_get(self, neigh):
         """Converts a neighbour to a (g)node of the map"""
-        nip=self.ip_to_nip(neigh.ip)
-        lvl=self.nip_cmp(self.me, neigh.nip)
+        nip = self.ip_to_nip(neigh.ip)                     # ??? Where are defined?
+        lvl = self.nip_cmp(self.me, neigh.nip)             # ???
         return (lvl, nip[lvl])
 
     def bestroutes_get(self, f=ftrue):
@@ -420,7 +421,7 @@ class MapRoute(Map):
            If a function `f' has been specified, then each element L[lvl][i]
            in L is such that f(L[lvl][i])==True
            """
-        return [ 
+        return [
                 [ (dst, br.gw, br.rem)
                         for dst in xrange(self.gsize)
                             for br in [self.node_get(lvl, dst).best_route()]
