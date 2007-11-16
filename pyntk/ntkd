@@ -28,52 +28,50 @@ usage = """
 ntkd [n=nics_list] [c=config] 
 
 
-     n=['nic1', 'nic2', ...]		explicit nics to use
+     n=['nic1', 'nic2', ...]        explicit nics to use
 
-     c="/path/to/config/file.conf"	configuration file path
+     c="/path/to/config/file.conf"  configuration file path
 
-     ipv=4 or ipv=6			IP version
-    
-     dbg=0..9				debug level (default 0)
-     v or version			version
-     h or help				this help
+     ipv=4 or ipv=6                 IP version
+
+     dbg=0..9                       debug level (default 0)
+     v or version                   version
+     h or help                      this help
 """
 
 def main():
 
     # load options
     opt = Opt( {'n':'nics', 
-	    
-	    	'c':'config_file',
-
-		'v':'version',
-		'-v':'version',
-		'h':'help',
-		'-h':'help',
-		'dbg':'debug'
-	       } )
+                'c':'config_file',
+                'v':'version',
+                '-v':'version',
+                'h':'help',
+                '-h':'help',
+                'dbg':'debug'
+                } )
     opt.config_file = CONF_DIR + '/netsukuku.conf'
     opt.load_argv(sys.argv)
 
     if opt.help:
-	    print usage
-	    sys.exit(1)
+        print usage
+        sys.exit(1)
     if opt.version:
-	    print "NetsukukuD " + VERSION
-	    sys.exit(1)
+        print "NetsukukuD " + VERSION
+        sys.exit(1)
 
     if opt.config_file:
-	    opt.load_file(opt.config_file)
-            opt.load_argv(sys.argv)
-    
+        opt.load_file(opt.config_file)
+        opt.load_argv(sys.argv)
+
     if opt.debug:
-            import logging
-	    logging.basicConfig(level=logging.DEBUG, 
-			        format='%(levelname)s %(message)s')
+        import logging
+        logging.basicConfig(level=logging.DEBUG,
+                            format='%(levelname)s %(message)s')
 
     NtkNode(opt).run()
 
     allmicro_run()
 
 if __name__ == "__main__":
-	main()
+    main()
