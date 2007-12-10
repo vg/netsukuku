@@ -29,6 +29,20 @@ la Rete ci attende.
 ****  News
 **
 
+Mon Oct  8 13:19:56 CEST 2007
+-----------------------------
+
+The python implementation of Netsukuku has been finished last week, during the
+Italian Hackmeeting at Pisa.
+
+The last step before the first release is to debug the code, removing all the
+various unexpected errors.
+
+If you want to help us, checkout the SVN version.
+
+May Pdb and Print be with you.
+
+
 Mon Sep 10 12:08:31 UTC 2007
 ----------------------------
 

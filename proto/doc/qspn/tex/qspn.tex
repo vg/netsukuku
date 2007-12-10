@@ -392,6 +392,7 @@ In order to give an exact definition of the ETP, we must examine each case of ne
 			      &\qq \T{rem}(r) \T{ is the Route Efficiency Measure of
 			      $r$}.
 			      }
+			      If $R=\0$ then this algorithm halts.\\
 			      Each route $r\in R$ is saved as $(\T{dst}(r), \T{rem}(r))$.
 		      \item $A$ creates the ETP:
 			\begin{enumerate}
@@ -506,8 +507,9 @@ In order to give an exact definition of the ETP, we must examine each case of ne
 			\eal{
 			&R=\pgra{r\in \overline{M}\;|\; gw(r)=A}}
 			In other words, 
-			$R$ is the set of all the best routes passing through $A$. 
-			Note that $R\neq \0$, because there's at least the route $B\rightarrow A$.
+			$R$ is the set of all the best routes passing through
+			$A$. \\
+			If $R=\0$ then this algorithm halts.
 			
 			Each route $r\in R$ is saved as the pair $(\T{dst}(r),
 			\T{rem}(r))$.

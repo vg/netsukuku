@@ -21,6 +21,12 @@ from ntk.lib.micro import microfunc
 from ntk.lib.event import Event
 from ntk.core.route import NullRem, DeadRem
 
+def isnot_empty(x):return x!=[] #helper func
+def is_listlist_empty(L):
+        """L is a list of lists.
+           Returns true if L=[[],[], ...]"""
+        return sum(filter(isnot_empty, L)) == 0
+
 class Etp:
     """Extended Tracer Packet"""
 
@@ -45,6 +51,9 @@ class Etp:
         def gw_is_neigh((dst, gw, rem)):
                 return gw == neigh.id
         R=self.maproute.bestroutes_get(gw_is_neigh)
+        if is_listlist_empty(R):
+                # R is empty: no need to proceed
+                return
         ##
 
         ## Update the map
@@ -89,6 +98,9 @@ class Etp:
         def gw_isnot_neigh((dst, gw, rem)):
                 return gw != neigh.id
         R=self.maproute.bestroutes_get(gw_isnot_neigh)
+        if is_listlist_empty(R):
+                # R is empty: no need to proceed
+                return
         
         def takeoff_gw((dst, gw, rem)):
                 return (dst, rem)
@@ -119,8 +131,6 @@ class Etp:
         flag_of_interest: a boolean
         """
 
-        def isnot_empty(x):return x!=[] #helper func
-        
         gwnip   = sender_nip
         neigh   = self.neigh.ip_to_neigh(gwnip)
         gw      = neigh.id
@@ -212,8 +222,8 @@ class Etp:
         
         #step 5 omitted
         #if flag_of_interest:
-        #       if sum(filter(isnot_empty, S)) != 0:  # <==> if S != [[], ...]:  
-        #                                             # <==> S isn't empty
+        #       if not is_listlist_empty(S):
+        #
         #               Sflag_of_interest=0
         #               TP = [(self.maproute.me[0], NullRem())]
         #               etp = (S, [(0, TP)], Sflag_of_interest)
@@ -229,10 +239,7 @@ class Etp:
 
         ## Continue to forward the ETP if it is interesting
 
-                                           # <==> if R2 isn't empty
-        if sum(filter(isnot_empty, R2)) != 0                            \
-                        or TPL_is_interesting:
-
+        if not is_listlist_empty(R2) or TPL_is_interesting:
                 if TPL[-1][0] != 0:
                         TP = [(self.maproute.me[0], NullRem())] 
                         TPL.append((0, TP))
