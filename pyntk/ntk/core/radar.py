@@ -259,9 +259,10 @@ class Neighbour(object):
 
 
 class Radar(object):
-    __slots__ = ['inet', 'bouquet_numb', 'bcast_send_time',
-        'bcast_arrival_time', 'bquet_dimension', 'max_wait_time', 'broadcast',
-        'neigh', 'events', 'netid', 'do_reply', 'remotable_funcs', 'ntkd_id' ]
+    __slots__ = ['inet', 'bouquet_numb', 'bcast_send_time', 'xtime', 
+                  'bcast_arrival_time', 'bquet_num', 'max_wait_time', 
+                  'broadcast', 'neigh', 'events', 'netid', 'do_reply',
+                  'remotable_funcs', 'ntkd_id', 'radar_id' ]
 
     def __init__(self, inet, broadcast, xtime,
                  bquet_num=16, max_neigh=16, max_wait_time=8):
@@ -350,11 +351,11 @@ class Radar(object):
         net_device = _rpc_caller.dev
 
         # this is the rtt
-        time_elapsed = int((self.xtime.time() - bcast_send_time) / 2)
+        time_elapsed = int((self.xtime.time() - self.bcast_send_time) / 2)
         # let's store it in the bcast_arrival_time table
         if(ip in self.bcast_arrival_time):
             if(net_device in self.bcast_arrival_time[ip]):
-                self.bcast_arrival_time[ip].append(time_elapsed)
+                self.bcast_arrival_time[ip][net_device].append(time_elapsed)
             else:
                 self.bcast_arrival_time[ip][net_device] = [time_elapsed]
         else:
@@ -391,6 +392,6 @@ class Radar(object):
         all_avg = {}
         # for each ip
         for ip in self.bcast_arrival_time:
-            devs = get_avg_rtt(ip)
-            all_avg[ip] = NodeInfo(dict(devs), devs[0], Ntk(ip))
+            devs = self.get_avg_rtt(ip)
+            all_avg[ip] = NodeInfo(dict(devs), devs[0], rpc.TCPClient(self.inet.ip_to_str(ip)))
         return all_avg

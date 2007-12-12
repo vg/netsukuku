@@ -135,7 +135,7 @@ class stacklesssocket(object):
 
     def __del__(self):
         # Close dispatcher if it isn't already closed
-        if self.dispatcher._fileno is not None:
+        if self.dispatcher.fileno() is not None:
             try:
                 self.dispatcher.close()
             finally:

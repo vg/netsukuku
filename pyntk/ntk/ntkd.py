@@ -82,7 +82,9 @@ class NtkNode:
 
     def load_nics(self, opt):
         if type(opt.nics) == str:
+                # normalize opt.nics as a list
                 opt.nics=[opt.nics]
+
         if self.simulated:
                 self.nics = nic.SimNicAll()
         else:

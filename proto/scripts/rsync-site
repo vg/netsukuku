@@ -26,4 +26,5 @@ rsynca()
 }
 
 rsynca freaknet.org:netsukuku/
+rsynca tamarindo.freaknet.org:netsukuku/
 rsynca hinezumi.org:/usr/local/apache2/htdocs/net/

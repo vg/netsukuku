@@ -114,14 +114,17 @@ class Hook:
                 hfn.append((nrnip, nr.ntkd.hook.highest_free_nodes()))
         ##
 
-        ## Find the highest level and remove all the lower ones
+        ## Find all the hfn elements with the highest level and 
+        ## remove all the lower ones
         hfn2=[]
         hfn_lvlmax = -1
         for h in hfn:
-                if h[1][0] >= hfn_lvlmax:
+                if h[1][0] > hfn_lvlmax:
                         hfn_lvlmax = h[1][0]
+                        hfn2=[]
+                if h[1][0] == hfn_lvlmax:
                         hfn2.append(h)
-                hfn=hfn2
+        hfn=hfn2
         ##
 
         ## Find the list with the highest number of elements
