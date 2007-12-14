@@ -28,25 +28,25 @@ import ntk.lib.rpc as rpc
 class NodeInfo(object):
     """ this class store informations about a node """
 
-    __slots__ = ['devs', 'bestdev', 'ntk']
+    __slots__ = ['devs', 'bestdev']
 
-    def __init__(self, devs, bestdev, ntk):
+    def __init__(self, devs, bestdev):
         """ devs: a dict which maps a device to the average rtt
             bestdev: a pair (d, avg_rtt), where devs[d] is the best element of
                     devs.
-            ntk: node's ntk remote instance
         """
         self.devs = devs
         self.bestdev = bestdev
-        self.ntk = ntk
 
 class Neigh(object):
     """ this class simply represent a neighbour """
 
-    __slots__ = ['devs', 'bestdev', 'ip', 'id', 'rem', 'ntk', 'netid']
+    __slots__ = ['devs', 'bestdev', 'ip', 'id', 'rem', 'ntkd', 'netid']
 
-    def __init__(self, ip, idn, devs, bestdev, netid):
+    def __init__(self, ip, ntkd, idn, devs, bestdev, netid):
         """ ip: neighbour's ip;
+            ntkd: neighbour's ntk remote instance
+            ipstr: ip in string format
             idn: neighbour's id;
             devs: a dict which maps a device to the average rtt
             bestdev: a pair (d, avg_rtt), where devs[d] is the best element of
@@ -60,23 +60,26 @@ class Neigh(object):
         self.ip = ip
         self.id = idn
         self.rem = Rtt(self.bestdev[1])             # TODO(low): support the other metrics
-        # neighbour's ntk remote instance
-        self.ntk = Ntk(ip)
+        self.ntkd = ntkd
         self.netid = netid
 
 class Neighbour(object):
     """ this class manages all neighbours """
-    __slots__ = ['max_neigh', 'rtt_variation', 'ip_table',
-                 'translation_table', 'netid_table', 'events',
-                 'remotable_funcs']
+    __slots__ = ['max_neigh', 'inet', 'rtt_variation', 'ip_table', 'ntk_client',
+                 'translation_table', 'netid_table', 'events', 'remotable_funcs']
 
-    def __init__(self, max_neigh = 16):
-        """  max_neigh: maximum number of neighbours we can have """
+    def __init__(self, inet, max_neigh = 16):
+        """  max_neigh: maximum number of neighbours we can have 
+             inet:   network.inet.Inet instance """
+        self.inet = inet
+
         self.max_neigh = max_neigh
         # variation on neighbours' rtt greater than this will be notified
         self.rtt_variation = 0.1
         # ip_table
         self.ip_table = {}
+        # Remote client instances table
+        ntk_client = { }  # ip : rpc.TCPClient(ipstr)
         # IP => ID translation table
         self.translation_table = {}
         # IP => netid
@@ -90,7 +93,9 @@ class Neighbour(object):
         """ return the list of neighbours """
         nlist = []
         for key, val in self.ip_table:
-            nlist.append(Neigh(key, translation_table[key], val.devs, val.bestdev, self.netid_table[key]))
+            nlist.append(Neigh(key, self.ntk_client[key], 
+                                translation_table[key], val.devs,
+                                val.bestdev, self.netid_table[key]))
         return nlist
 
     def ip_to_id(self, ipn):
@@ -115,7 +120,8 @@ class Neighbour(object):
         if ip not in self.translation_table:
             return None
         else:
-            return Neigh(ip, self.translation_table[ip],
+            return Neigh(ip, self.ntk_client[ip],
+                             self.translation_table[ip],
                              self.ip_table[ip].devs,
                              self.ip_table[ip].bestdev,
                              self.netid_table[ip])
@@ -201,9 +207,14 @@ class Neighbour(object):
             if(not (key in self.ip_table)):
                 # generate an id and add the entry in translation_table
                 self.ip_to_id(key)
+
+                # create a TCP connection to the neighbour
+                self.ntk_client[key]=rpc.TCPClient(self.inet.ip_to_str(key))
+
                 # send a message notifying we added a node
                 self.events.send('NEIGH_NEW',
-                                (Neigh(key, self.translation_table(key),
+                                (Neigh(key, self.ntk_client[key],
+                                            self.translation_table(key),
                                             self.ip_table[key].devs,
                                             self.ip_table[key].bestdev,
                                             self.netid_table[key])))
@@ -214,7 +225,8 @@ class Neighbour(object):
                                 self.ip_table[key].bestdev[1] > self.rtt_variation):
                     # send a message notifying the node's rtt changed
                     self.events.send('NEIGH_REM_CHGED',
-                                    (Neigh(key, self.translation_table[key],
+                                    (Neigh(key, self.ntk_client[key],
+                                                self.translation_table[key],
                                                 self.ip_table[key].devs,
                                                 self.ip_table[key].bestdev,
                                                 self.netid_table[key]) ))
@@ -226,7 +238,8 @@ class Neighbour(object):
         """Sends a NEIGH_NEW event for each stored neighbour"""
         for key in self.ip_table:
             self.events.send('NEIGH_NEW', 
-                            (Neigh(key, self.translation_table(key),
+                            (Neigh(key, self.ntk_client[key],
+                                        self.translation_table(key),
                                         self.ip_table[key].devs,
                                         self.ip_table[key].bestdev,
                                         self.netid_table[key])))
@@ -235,23 +248,35 @@ class Neighbour(object):
         """Deletes an entry from the ip_table"""
         if remove_from_iptable:
                 del self.ip_table[ip]
+        
+        # close the connection ( if any )
+        if self.ntk_client[ip].connected:
+                self.ntk_client[ip].close()
+        del self.ntk_client[ip]
+
         # delete the entry from the translation table...
         old_id = self.translation_table.pop(ip)
         # ...and from the netid_table
         old_netid = self.netid_table.pop(ip)
         # send a message notifying we deleted the entry
-        self.events.send('NEIGH_DELETED', (Neigh(ip, old_id, None, None, old_netid)))
+        self.events.send('NEIGH_DELETED', (Neigh(ip, self.ntk_client[ip], 
+                                                 old_id, None, None, old_netid)))
 
     def ip_change(self, oldip, newip):
         """Adds `newip' in the Neighbours as a copy of `oldip', then it removes
         `oldip'. The relative events are raised."""
 
         self.ip_table[newip]         = self.ip_table[oldip]
+        self.ip_table[newip]         = self.ip_table[oldip]
         self.translation_table[newip]= self.translation_table[oldip]
         self.netid_table[newip]      = self.netid_table[oldip]
 
+        # we have to create a new TCP connection
+        self.ntk_client[newip]       = rpc.TCPClient(self.inet.ip_to_str(newip))
+
         self.events.send('NEIGH_NEW', (
-                        Neigh(newip, self.translation_table(newip),
+                        Neigh(newip, self.ntk_client[newip], 
+                                    self.translation_table(newip),
                                     self.ip_table[newip].devs,
                                     self.ip_table[newip].bestdev,
                                     self.netid_table[newip]) ))
@@ -288,7 +313,7 @@ class Radar(object):
         self.bquet_num = bquet_num
         self.max_wait_time = max_wait_time
         # our neighbours
-        self.neigh = Neighbour(max_neigh)
+        self.neigh = Neighbour(self.inet, max_neigh)
 
         # Send a SCAN_DONE event each time a sent bouquet has been completely
         # collected
@@ -393,5 +418,5 @@ class Radar(object):
         # for each ip
         for ip in self.bcast_arrival_time:
             devs = self.get_avg_rtt(ip)
-            all_avg[ip] = NodeInfo(dict(devs), devs[0], rpc.TCPClient(self.inet.ip_to_str(ip)))
+            all_avg[ip] = NodeInfo(dict(devs), devs[0])
         return all_avg
