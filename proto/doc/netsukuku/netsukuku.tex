@@ -47,159 +47,215 @@
 \maketitle
 
 \begin{abstract}
-Netsukuku is a P2P network system designed to handle a large number of nodes
-with minimal CPU and memory resources. It can be easily used to build a
-worldwide distributed, anonymous and not controlled network, separated from the
-Internet, without the support of any servers, ISP's or authority controls.\\
+Netsukuku is a P2P network system designed to handle massive numbers of nodes 
+with minimal consumption of CPU and memory resources.  It can be used to build a
+world-wide distributed, fault-tolerant, anonymous, and censorship-immune network,
+fully independent from the Internet.\\
+Netsukuku does not rely upon any form of backbone router, internet service 
+provider network, or any centralized system, although it may take advantage of
+existing systems of this nature to augment unity and connectivity of the 
+existing Netsukuku network. 
 
-In this document, we give a generic and non technical description of the
-Netsukuku network, emphasizing its main ideas and features.
+In this document, we will give a plain-english description of the theory 
+behind the Netsukuku system, with a focus upon core concepts and capabilities.
 \end{abstract}
 
 
 \section{The old wired}
 
-The Internet is a hierarchic network managed by multinational companies and 
-organisations supported by governments. Each bit of Internet traffic passes
-through proprietary backbones and routers.\\
+The Internet is a hierarchical network maintained, operated, and controlled 
+by large corporations and governments.  Each and every packet of data must 
+traverse countless backbone routers via unending lengths of fiber, all 
+under corporate or government ownership, and subject to their exclusive control.
 
-The Internet Service Providers give the connectivity to all the users, who
-are in the lowest rank of this hierarchic pyramid. For this reason, the 
-Internet is not a global network created by the users and shared between
-them. The people can join the net only in accordance with the restrictive
-conditions and terms imposed by the Majors.\\
+The Internet Service Providers provide connectivity to the lowest rank of
+this hierarchical pyramid, the end user.
+This is far removed from the ideal of a global user-based and decentralized 
+network, depending upon the ISPs, both putting them in a position of power 
+over the data received by the end users, and making them a single point of
+failure for those who they provide service to.
+The people can join the net only in accordance with the restrictive conditions
+and terms imposed by the ISPs, and subject to the filters and restrictions
+placed upon them, often even without their knowledge.
 
-Today, the Internet represents the means to access information, knowledge
-and communication. About 1 billion of people can connect to this great
-proprietary network, but the remaining 5 billion, which doesn't have enough
-economic resource, are still waiting the multinationals to supply a service
-within their reach.\\
+Today, the Internet represents the ultimate means of access to information, 
+knowledge and communication.  More than 1 billion people\cite{mwmgstats}
+can connect to this massive and immensely valuable, yet fundamentally 
+proprietary and controlled, network. As impressive a statistic as this may
+be, the remaining 5 billion, lacking the economic resources necessary to 
+assemble the necessary infrastructure or subscribe to what services are 
+already available, are still waiting for the multinationals to supply a 
+service within their reach.  In this modern day, their lack of connectivity 
+is more than an inconvenience; without this tool available to them, they 
+are at a massive economic and educational disadvantage to those of us 
+who possess it. \\
 
-The Internet was born with the intent of warranting a secure and
-unattackable communication between the various nodes of the network, but
-now, paradoxically, an ISP has the power to cut out of the Internet entire
-nations by simply stopping to give its services.\\
+The Internet was designed to be a secure, distributed, and failure-resistant
+communications of such quality that it would be appropriate for military 
+usage, but now, paradoxically, as even the rigidly controlled military 
+system proposed held distribution and redundancy in high regard, ISPs has the
+power to completely cut off even entire nations by simply refusing to provide
+their services any further, granting them an obscene amount of power, which
+is already commonly taken advantage of in no small way for profit.  
+This prolific centralization also enables more sinister abuses of power, 
+such as we see in China's censorship of all dissident thought\cite{cbschina}.
+This becomes even more worrying in light of the fact that any corporation who
+owns a single backbone router may view and modify a massive amount of the
+total data flowing through the Internet, even when it begins and ends at 
+points outside of their control.  Additionally, authorities with access 
+to ISP data may use and have used the system as a means to identify and 
+persecute locals who voice dissent\cite{ipdindymedia}.
+This results from the non anonymous nature of the Internet: the ISP can
+easily trace all traffic going through their servers back to its point of origin. \\
 
-Beside that, Internet is not anonymous: the ISP can trace back and analyse
-the data traffic going through their servers, without any limitations.\\
+Throughout the history of the Internet, its centralised and hierarchical 
+structure has been the model for many subsidiary systems, such as the 
+Domain Name System. DNS servers are managed by many of the same organizations
+responsible for providing Internet service (beyond simple consumer ISPs), with 
+registration of a domain upon these servers a privilege provided by InterNIC, 
+a United States controlled company, who grants registrars the right to sell 
+single domain names to end users.  This system is subject to all of the same 
+issues as the Internet itself, if not more, resulting from its even greater
+centralization, and the reliance upon it for locating servers by almost all
+users of the Internet.
 
-The centralised and hierarchical structure of the Internet creates, as a
-consequence, other identical systems based on it, i.e. the DNS.
-The servers of the Domain Name System are managed by different ISP's as well
-and the domains are literally sold through a similar centralised system.
-This kind of structures allows in a very simple and efficient way, to
-physically localise any computer which is connected to the Internet, in a
-very short time and without any particular efforts.\\
+In China, all Internet traffic is constantly watched by several servers
+filtering the Internet traffic: a Chinese citizen must go to extreme and
+illegal measures to even become aware of a site which so much as mentions
+certain keywords, such as ``democracy\cite{cbschina}.''  Disturbingly,
+even the risk of discovery of his circumventing the censors pales in
+comparison to that imposed by attempting to express his own political
+opinion online. Should it differ significantly from that supported by his
+government, his own life might even be at stake.  This state of affairs is
+widely known, but few realise how close to home this practice truly is.
+Internet traffic is already routinely sniffed by countless national
+governments, and there even exists a small industry producing hardware
+and software to process the massive streams of data captured.
 
-In China, the whole net is constantly watched by several computers filtering
-the Internet traffic: a Chinese will never be able to see or come to know
-about a site containing some keywords such as ``democracy'', they are
-censored by the government. He'll never be able to express his own ideas
-on the net, e.g. about his government's policy, without risking even the
-death penalty.\\
-
-Internet was born to satisfy the military needs of security for the
-administration of the US defence, not to ensure freedom of communication
-and information. In order to communicate between each other the Internet
-users are obliged to submit themselves to the control and to the support
-of big multinationals, whose only aim is to expand their own hegemony.\\
-
-As long as all the efforts to bring more freedom, privacy and accessibility
-in the Internet face aversions, fears, contrary interests of governments and
-private companies, the very alternative solution to this problem is to let
-the users migrate toward a distributed, decentralised and fully efficient
-net, in where all the users interact at the same level, with no privilege
-and no conditioning means, as authentic citizens of a free world wide
-community.
+Efforts have been made to create systems offering additional levels
+of security and anonymity atop the existing Internet, but all have
+met with only limited success, if any, and none are totally free of
+vulnerabilities to the unavoidably well positioned administrators of
+the network.  Even were one of these systems to prove technologically
+sufficient, its widespread adoption would be made impossible by the
+common tendency to adhere to the status quo, reinforced by the efforts
+of those who benefit from the current system to retain their power. As
+long as these efforts to bring more freedom, privacy, and accessibility
+to the Internet face resistance by governments and other organizations
+fearful of the risk imposed by true common freedom of expression, it
+will remain impossible to make the necessary changes by building upon the
+existing system.  The only remaining option is to rebuild from the ground
+up with a truly distributed, self-sufficient and fault-tolerant network,
+requiring support from none but those that use it. Such a system is
+inherently censorship-immune, as without any form of centralized backbone,
+any given node is unable to have any sort of widespread effect upon data
+originating elsewhere, or even form a clear idea of the content of data
+not sent to it. Netsukuku is just such a system.
 
 \section{The Netsukuku wired}
 
-Netsukuku is a mesh network or a P2P net system that generates and sustains
-itself autonomously. It is designed to handle an unlimited number of nodes
-with minimal CPU and memory resources. Thanks to this feature it can be
-easily used to build a worldwide distributed, anonymous and not controlled
-network, separated from the Internet, without the support of any servers,
-ISP's or control authorities.\\
-
-This net is composed by computers linked physically each other, therefore
-it isn't build upon any existing network. Netsukuku builds only the routes
-which connects all the computers of the net.\\
-
-In other words, Netsukuku replaces the level 3 of the model ISO/OSI with
-another routing protocol.\\
-
-Being Netsukuku a distributed and decentralised net, it is possible to
-implement real distributed systems on it, e.g. the Abnormal Netsukuku Domain
-Name Anarchy (ANDNA)\cite{andnadoc} which will replace the actual hierarchic
-and centralised system of DNS.
+The Netsukuku network is composed of nearby computers directly linked each other, 
+and thus has no dependence upon the Internet, or indeed any existing network. 
+The system augments level 3 of the OSI model with its own true distributed routing protocol.
+Netsukuku's distributed nature is emulated by the core services that are built upon 
+it to replace those with similar centralization problems to the Internet, such as
+the previously discussed DNS, which is replaced by the introspectively-named 
+Abnormal Netsukuku Domain Name Anarchy (ANDNA)\cite{andnadoc}.
 
 \subsection{Gandhi}
 
-The main characteristic of Netsukuku is its self-management: the network
-dynamically configures itself without any external interventions.
-All the nodes share the same privileges and limitations, giving their
-contribution to sustain and expand Netsukuku. The more the nodes increase
-in number the more the net grows and becomes efficient.\\
+The most notable characteristic of Netsukuku is its fully distributed self-management. 
+The network dynamically configures itself without any external interventions, or any 
+form of central organizing authority, something commonly believed to be infeasible, 
+if not outright impossible.  
+All nodes share the same privileges, each making a contribution to sustain and expand
+Netsukuku.  
+Of particular interest is Netsukuku's increase in efficiency proportional to the 
+number of well-connected nodes in the network, meaning that more users will typically
+lead to even lower latencies and greater bandwidth available to all.
+This is the exact opposite of the current system, where more users simply add stress 
+to the system, leading to long response times and slow data transfers.  
+This makes the network almost self-improving, as each user of the network has incentive
+to improve the network's quality.  Even he who consumes massive amounts of bandwidth
+stands only to benefit from adding more interconnections of greater quality to more
+nearby nodes, substantially improving the network for all.
 
-The total decentralisation and distribution allows Netsukuku to be
-neither controlled nor destroyed: the only way to manipulate or demolish
-it is to knock physically down each single node composing the network.
+This total decentralisation and distribution allows Netsukuku to be neither controlled
+nor destroyed: the only way to manipulate or demolish it is to knock physically down 
+each single node composing the network, making any form of attack or takeover attempt
+completely infeasible; if a hostile party had the resources to do such a thing, 
+they would invariably find it easier to simply take what they had hoped to gain through
+control of information by force.
 
 \subsection{No name, no identity}
 
-Inside Netsukuku everyone, in any place, at any moment, can hook immediately
-to the net without coming trough any bureaucratic or legal compliance.\\
-
-All the elements of the net are extremely dynamic and they are never the same.
-The IP address identifying a computer is chosen randomly, therefore it's
-extremely difficult to associate it to a particular physical place. Furthermore,
-since the routes are composed by a huge number of nodes, it becomes a titanic
-task to trace a specific node.\\
-
-The traffic of the nodes is protected by a complete cryptographic
-layer\cite{carciofo}, which ensures a strong anonymity and security.
+Netsukuku allows anyone, in any place, at any moment, to connect directly to the network
+without need for paperwork or subscriptions. 
+All the elements of the net are highly dynamic; nodes can come and go at will, needing to
+retain no inherent identifying characteristics, making identity and even route immensely
+malleable concepts.  The IP address identifying a computer is chosen randomly, making it
+impossible to associate it with a particular location.  Furthermore, because the routes 
+are composed by a huge number of nodes, it becomes a wholly infeasible task to trace
+a specific node by its traffic.  Finally, traffic is protected by a strong cryptographic
+layer\cite{carciofo}, which guarantees unparalleled security and anonymity for any connection.
 
 \subsection{So, what is it?}
 
-Netsukuku is a mesh network built on top of it's own dynamic routing protocol.\\
+Netsukuku is a peer to peer or mesh network built on top of it's own dynamic routing protocol.
+While currently there are many dynamic routing protocols, most are, unlike Netsukuku, incapable
+of managing networks of significant size.  To continue comparison, Internet backbone routers
+are managed by another set of functionally similar protocols, including OSPF, RIP, and BGP.
+They use classical graph algorithms designed to find out the best path to reach a node in a 
+given net-graph, making for reasonably efficient routing.  Unfortunately, all of these 
+protocols must consume massive amounts of computational resources to function on a network
+of the scale of the Internet, and must exist on special dedicated machines. 
+So great are the physical requirements of these unique (usually even purpose-built) machines,
+that decentralization is not only politically infeasible, but also economically impossible.
+Additionally, they depend upon a certain amount of hierarchy to function at all, and are
+thus easily disqualified from candidacy for mesh networking.
 
-Currently there are a wide number of dynamic routing protocols, but they
-are solely utilised to create small and medium nets.
-The routers of Internet are also managed by different protocols such as the
-OSPF, RIP, or BGP. They are based on different classical graph
-algorithms, which are able to find out the best path to reach a node in a
-given graph. However, all these protocols require a very high waste of CPU and
-memory resources. Indeed, the Internet routers are computers specifically
-dedicated to the executions of these algorithms. It would be impossible to
-implement one of these protocols to create and maintain a mesh network as large
-as the whole Internet.\\
+% Ralith: This paragraph needs a more in-depth and meaningful explanation.
+%% Alpt: it's better to forward the reader to the appropriate documents
+The Netsukuku protocol structures the topology of the network in different
+layers that resemble a fractal\cite{ntktopology}. The  
+Quantum Shortest Path Netsukuku (QSPN)\cite{qspndoc} algorithm, designed for this
+specific situation, is then used to determine routes. Since the topology is
+characterized by an high degree of self-similarity, only the basic pattern must be stored.
+This massive compression level grants the ability to store the entire network map in
+just a few kilobytes. On the other hand, the QSPN algorithm must be executed by not
+any central routers, but instead the network itself.  The component nodes perform this 
+duty simply by generating, propagating, and parsing Tracer Packets (TPs), an activity 
+that consumes very few computational resources.\\
+For more information, please refer to the technical
+documentation: \cite{ntktopology}, \cite{qspndoc}.
 
-The Netsukuku protocol structures the entire net as a
-fractal\cite{ntktopology} and, in order to calculate all the needed routes it
-makes use of a particular algorithm called Quantum Shortest Path Netsukuku
-(QSPN)\cite{qspndoc}.\\
+\subsection{The wireless}
 
-A fractal is a structure which can be compressed infinitely, because every
-part of itself is composed by the same fractal. Thus it's high compression
-level gives the ability to store the whole Netsukuku map in just few
-kilobytes.\\
+The cheapest and most convenient medium to establish physical connections between 
+typical urban nodes is radio, incarnate as WiFi and similar technologies.  
+In a scenario of widespread adoption, a new Netsukuku user need do little more
+than install a transceiver within range of other local nodes, linking themselves
+into the network, and configure their computer to take advantage of it. 
+Today there exist a wide variety of WiFi technologies and similar which allows 
+wireless connectivity between nodes even several kilometers distant.  
+Even with common consumer technologies, an entire city can be easily covered
+by placing a single node in each neighbourhood.
 
-On the other hand, the QSPN is an algorithm that has to be executed by the
-network itself. The nodes, in order to execute it, have just to send and
-receive the Tracer Packets, without using heavy computational resources.
+Unfortunately, there will inevitably remain cases where geography or
+distance prevent a direct radio link. In these situations, or even 
+in many cases where a long range radio link is feasible, a high-bandwidth 
+low-latency connection more along the lines of a fiber bundle can be
+highly desirable, perhaps for connecting distant cities.  
+However, such a solution is extremely costly, and is out of reach 
+of a typical grassroots effort.  If and when Netsukuku becomes 
+widely prolific, such projects might be sponsored by cities or
+governments, but in the meantime, we are unlikely to see much of that.  
+Therefore, as a stopgap measure, it is possible to replace missing 
+physical links by tunneling over the Internet\cite{inetdoc}, a practice 
+that should be discouraged in the long term, but which makes a global
+Netsukuku network vastly more feasible in the immediate future.
 
-\subsection{Netsukuku the wireless}
-
-The best medium to establish physical connections between nodes is the WiFi.
-When Netsukuku will be widely adopted, it's users will have just to set up their
-own WiFi antennas on a well exposed place (i.e. windows or roofs), linking
-themselves to the other Netsukuku users, placed within their radio ranges.
-Nowadays, there is a great variety of WiFi technologies which allows us to link
-two nodes distant kilometres away. A whole city can be easily covered by
-placing just one node in each neighbourhood.\\
-
-Moreover, it is possible to use virtual tunnels over the Internet to temporarily
-replace missing physical links. This subject is described in \cite{inetdoc}.
+% TODO: Conclusion
 
 %%%%%%%%%%%%%%%%
 % Bibliography %
@@ -209,16 +265,27 @@ replace missing physical links. This subject is described in \cite{inetdoc}.
 	\bibitem{ntksite} Netsukuku website:
 		\href{http://netsukuku.freaknet.org/}{http://netsukuku.freaknet.org/}
 	\bibitem{qspndoc} QSPN document:
-		\href{http://netsukuku.freaknet.org/doc/main\_doc/qspn.pdf}{qspn.pdf}
+		\href{http://netsukuku.freaknet.org/doc/main\_doc/qspn.pdf}{http://netsukuku.freaknet.org/doc/main\_doc/qspn.pdf}
 	\bibitem{ntktopology} Netsukuku topology document:
-		\href{http://netsukuku.freaknet.org/doc/main\_doc/topology.pdf}{topology.pdf}
+		\href{http://netsukuku.freaknet.org/doc/main\_doc/topology.pdf}{http://netsukuku.freaknet.org/doc/main\_doc/topology.pdf}
 	\bibitem{andnadoc} ANDNA document:
-		\href{http://netsukuku.freaknet.org/doc/main\_doc/andna.pdf}{andna.pdf}
+		\href{http://netsukuku.freaknet.org/doc/main\_doc/andna.pdf}{http://netsukuku.freaknet.org/doc/main\_doc/andna.pdf}
 	\bibitem{carciofo} Carciofo NTK\_RFC:
-		\href{http://lab.dyne.org/Ntk\_carciofo}{Carciofo}
+		\href{http://lab.dyne.org/Ntk\_carciofo}{http://lab.dyne.org/Ntk\_carciofo}
 	\bibitem{inetdoc}  Internet and Netsukuku:
-		\href{http://netsukuku.freaknet.org/doc/main\_doc/inetntk.pdf}{inetntk.pdf}
-	
+		\href{http://netsukuku.freaknet.org/doc/main\_doc/inetntk.pdf}{http://netsukuku.freaknet.org/doc/main\_doc/inetntk.pdf}
+
+	\bibitem{ccfilters} CNET article on the legality of Comcast's filtering:
+		\href{http://www.cnet.com/8301-13739_1-9769645-46.html}{http://www.cnet.com/8301-13739_1-9769645-46.html}
+
+	\bibitem{mwmgstats} Miniwatts Marketing Group Internet Statistics:
+		\href{http://www.internetworldstats.com/stats.htm}{http://www.internetworldstats.com/stats.htm}
+
+	\bibitem{cbschina} CBS on China's Internet Censorship:
+		\href{http://www.cbsnews.com/stories/2002/12/03/tech/main531567.shtml}{http://www.cbsnews.com/stories/2002/12/03/tech/main531567.shtml}
+
+	\bibitem{ipdindymedia}  Second Indymedia Server Seized in UK Within a Year:
+		\href{http://yro.slashdot.org/article.pl?sid=05/06/28/0113237&tid=153&tid=158&tid=149&tid=17}{http://yro.slashdot.org/article.pl?sid=05/06/28/0113237&tid=153&tid=158&tid=149&tid=17}	
 
 \end{thebibliography}
 \newpage
