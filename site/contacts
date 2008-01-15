@@ -25,36 +25,6 @@ on the FreeNode irc server (irc.freenode.org).
 
 
 **
-***  Authors
-**
-
-Main authors and maintainers:
- 
-Andrea Lo Pumo aka AlpT <alpt@netsukuku.org>
-
-
-Contributors (in chronological order of initial contribution):
-
-Andrea Leofreddi <andrea.leofreddi@gmail.com> wrote the DNS wrapper code
-(dns_pkt.cpp, dns_rendian.h, dns_utils.h).  
-
-Enzo Nicosia (Katolaz) <katolaz@netsukuku.org> wrote the files needed to use
-Automake/Autoconf. (Makefile.am configure.ac, src/Makefile.am,
-src/man/Makefile.am).
-
-Federico Tomassini (Efphe) <efphe@netsukuku.org> wrote andns, which provides
-DNS compatibility for the ANDNA system. He also wrote the interface to the
-libiptc. (andns* dnslib.[ch] mark.[ch] libiptc/*)
-
-
-Website developers and maintainers:
-
-Crash 		<crash@netsukuku.org>,
-Entropika	<e@entropika.net>,
-Black		<black@netsukuku.org>
-
-
-**
 *** Related links
 **
 
@@ -67,3 +37,51 @@ Black		<black@netsukuku.org>
  - http://www.dyne.org
  - http://www.hinezumi.org
  - http://poetry.freaknet.org
+
+
+**
+***  Authors
+**
+
+
+> Main authors and maintainers:
+
+  Andrea Lo Pumo aka AlpT <alpt@netsukuku.org>
+
+
+> Contributors to the Pyntk code:
+
+  Daniele Tricoli aka Eriol <eriol@mornie.org>
+  Alberto Santini	    <alberto@unix-monk.com>
+
+
+> Contributors to the old Netsukuku C code:
+
+  Federico Tomassini aka Efphe <efphe@netsukuku.org> 
+  Enzo Nicosia aka Katolaz     <katolaz@netsukuku.org>
+
+
+> Website developers and maintainers:
+
+  Manuel Cangemi aka Crash <crash@netsukuku.org>,
+  Black			   <black@netsukuku.org>
+
+
+> Occasional contributors:
+
+>> Pyntk code:
+
+  Sergey Konyahin <sergey.konyahin@gmail.com>
+
+>> Documentation:
+
+  Ralith		<ralith@gmail.com>
+  Ricardo Lanziano	<ricardo.lanziano@gmail.com>
+
+>> Old Netsukuku C code:
+
+  Andrea Leofreddi	<andrea.leofreddi@gmail.com> 
+
+>> Website
+
+  Elisa Manara aka Entropika	<e@entropika.net> 
