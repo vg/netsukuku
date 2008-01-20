@@ -1,0 +1,240 @@
+
+  0. General
+  	P: ¿Que es Netsukuku?
+	P: ¿Cuales son sus características?
+	P: ¿Porque escogieron ese nombre?
+	P: ¿Que significa eso de "y usa el caos y fractales"?
+	P: ¿Porque otra red P2P?
+	P: Ehi! Están locos. No funcionara!
+	P: ¿Donde están las redes de Netsukuku actuales y como me puedo conectar?
+	P: ¿Que puedo hacer para ayudar en el desarrollo de Netsukuku? Como puedo
+	   contribuir a su crecimiento?
+
+  1. Técnico
+	P: ¿Escala bien en una red con MUCHOS nodos?
+	P: ¿De veras funciona?
+	P: Netsukuku esta separado de Internet. ¿Como?
+       ¿Alguien esta construyendo toda una nueva infraestructura? ¿Quien paga por eso?
+    P: ¿Como puedo unirme en Netsukuku?
+	P: ¿Y que hay de la seguridad de mis paquetes? Todo el mundo podrá ser
+	   capaz de verlos!
+	P: ¿Como un nuevo nodo empieza a localizar otros nodos en la red?
+	P: ¿Van a proporcionar túneles de "Internet a Netsukuku"?
+	P: Aparte de lo que yo mismo hackeo, me preguntaba que otras cosas se
+	   pueden implementar en la red de Netsukuku?
+	P: ¿Puedo ser capaz de alojar sitios web en algún momento?
+	P: ¿Podrá glibc ser capaz de resolver nombres por el sistema ANDNA?
+	P: ¿Que tipo de rendimiento tiene Netsukuku? ¿Es bueno para voz, chat,
+       vídeo chat, juegos?
+
+  2. Software
+	P: ¿En que SO corre?
+	P: ¿Sera Netsukuku portado a Windows?
+	P: ¿Sera Netsukuku portado a PSP / Nintendo DS / teléfonos WiFi / PDAs?
+	P: ¿Para usar un enlace WiFi necesito un access point? ¿Que hago?
+	P: ¿Porque el código no esta escrito en java?
+
+--
+
+
+/		 \
+   0. General
+\		 /
+
+P: ¿Que es Netsukuku?
+R: Netsukuku es una red mesh o un sistema de red P2P que se genera y mantiene
+   de forma autónoma. Esta diseñado para manejar un numero ilimitado de nodos
+   utilizando recursos mínimos de CPU y memoria. Gracias a esta característica
+   puede ser usado fácilmente para crear una red mundial distribuida, anónima
+   y anárquica, separada de la Internet, sin el soporte de ningún servidor, ISPs
+   o autoridades de control.
+   Esta red esta compuesta por computadoras enlazadas físicamente unas con otras,
+   por lo tanto, no esta construida sobre ninguna red existente.
+   Netsukuku construye solamente las rutas que conectan todas las computadoras en
+   la red.
+   En otras palabras, Netsukuku reemplaza el nivel 3 del modelo ISO/OSI con otro
+   protocolo de enrutamiento.
+   El sistema de nombres de dominio también ha sido reemplazado por un sistema
+   descentralizado y distribuido: the Abnormal Netsukuku Domain Name Anarchy.
+
+   Para mas información, lea la documentación principal:
+   http://netsukuku.freaknet.org/doc/main_doc/netsukuku-es
+
+P: ¿Cuales son sus características?
+R: La lista completa de sus características se encuentra en:
+   http://netsukuku.freaknet.org/files/doc/misc/Ntk_features_list
+
+P: ¿Porque eligieron ese nombre?
+R: Networked Electronic Technician Skilled in Ultimate Killing, Utility and
+   Kamikaze Uplinking.
+   Pero también existe otra razón: estábamos aprendiendo Japones katakana con
+   `slimeforest', un juego interesante para GNU/Linux.
+   Desafortunadamente cuando encontramos la palabra "Red", escrita en Japones,
+   no sabíamos todos los símbolos relativos, así que la única katakana que pudimos
+   leer eran pocas y estaban mezcladas con otras, el nombre era: Ne tsu ku ku.
+   Por cierto, puedes pensar en otros significados escondidos y engañosos.
+
+P: ¿Que significa eso de "y usa el caos y fractales"?
+R: El protocolo Netsukuku (Npv7) estructura la red completa como un fractal, y
+   para calcular todas las rutas requeridas las cuales son necesarias para conectar
+   a un nodo con todos los demás, hace uso de un algoritmo particular llamado
+   Quantum Shortest Path Netsukuku (QSPN).
+   Cuando hablamos de fractal, nos referimos a el como una gráfica de nodos altamente
+   clusterizada.
+   Léase el documento de la topología de Netsukuku:
+   http://netsukuku.freaknet.org/doc/main_doc/topology.pdf
+
+   Por otro lado, el QSPN es un meta-algoritmo en el sentido de que tiene
+   que correr en una red real (o simulada). Los nodos tienen que enviar el paquete
+   QSPN para "ejecutarlo".
+   Este sistema permite tener las mejores rutas sin ningún tipo de computación pesada.
+   Léase el documento de QSPN:
+   http://netsukuku.freaknet.org/doc/main_doc/qspn.pdf 
+
+P: ¿Porque otra red P2P?
+R: Netsukuku no es una red P2P construida sobre la Internet. Es una red física
+   y un sistema dinámico de enrutamiento diseñado para manejar 2^128 nodos
+   sin necesidad de ningún servidor o sistemas centralizados. De esta manera, es
+   posible construir una red física separada de la Internet. Por cierto, léase
+   "Que es Netsukuku".
+
+P: Ehi! Están locos. No funcionara!
+R: Ehi amigo, esto no pretende ser _ahora_ la solución final al significado de la
+   vida, el universo y todo lo demás. ¿Porque no contribuyes y nos das tips de
+   utilidad de tu vasto conocimiento? Si quieres ayudar en el desarrollo, lee el código
+   y contactanos ;)
+
+P: ¿Donde están las redes de Netsukuku actuales y como me puedo conectar?
+R: Simplemente no sabemos y no podemos, pero el equipo del website esta desarrollando
+   un portal comunitario que ayudara a disminuir la dificultad de coordinación. (Piensa en
+   Google maps).
+
+P: ¿Que puedo hacer para ayudar en el desarrollo de Netsukuku? Como puedo
+   contribuir a su crecimiento?
+R: http://lab.dyne.org/Ntk_Grow_Netsukuku
+
+
+/		 \
+   1. Técnico
+\		 /
+
+P: ¿Escala bien en una red con MUCHOS nodos?
+R: Razones simples y no exactas sobre la escalabilidad de Netsukuku:
+   1) El tamaño de los mapas es fijo: acerca de 4Kb para int_map y 16Kb para
+      ext_map.
+   2) No todos los nodos envían un descubrimiento broadcast.
+   3) Hay algunos floods por cada descubrimiento.
+   4) Cuando un nodo recibe un flood ya tiene las rutas sin necesidad de calcular
+      nada.
+
+   Puedes leer el análisis detallado de QSPN v2 acá:
+   http://netsukuku.freaknet.org/doc/main_doc/qspn.pdf
+
+   El primer borrador de la explicación de la escalabilidad de Netsukuku esta
+   disponible acá: http://lab.dyne.org/Netsukuku_scalability
+
+P: ¿De veras funciona?
+R: ^_^
+
+P: Netsukuku esta separado de Internet. ¿Como?
+   ¿Alguien esta construyendo toda una nueva infraestructura? ¿Quien paga por eso?
+R: Absolutamente no, no hay necesidad de pagar. La mejor manera de enlazar físicamente
+   dos nodos es usando WiFi. Hoy en día, existen muchas tecnologías WiFi interesantes,
+   que nos posibilitan la unión de dos nodos que estén kilómetros de distancia uno del
+   otro.
+   En la ciudad no habría problemas, es suficiente colocar un nodo por cada barrio
+   y la ciudad quedaría completamente cubierta.
+
+P: ¿Como puedo unirme en Netsukuku?
+R: Saca tu antena de WiFi, y corre el demonio de Netsukuku en la interfaz de red a usar,
+   luego espera y dile a tus amigos que hagan lo mismo.
+
+P: ¿Y que hay de la seguridad de mis paquetes? Todo el mundo podrá ser capaz de verlos!
+R: La situación en Ntk no es muy diferente de la actual Internet:
+	
+	- en Internet, solo aquellos pocos que tienen acceso al ISP, los
+	  routers y los backbones puede sniffear, alterar y destruir tu
+	  trafico.
+	
+	- en Netsukuku, solo los nodos pertenecientes a la ruta temporal, la cual
+	  estas usando para tu conexión, serán capaces de sniffear, alterar
+	  y destruir trafico. Sin embargo, considera que:
+	  	
+		1) con el uso de multipath tu trafico es dividido entre diferentes
+		   rutas, por lo tanto cada ruta podría leer solo una parte parcial
+           de tu trafico.
+
+		2) para cada conexión tienes una ruta potencial diferente.
+
+   La solución para evitar estos problemas es similar: usar protocolos seguros como
+   https, SSH, SSL, y así sucesivamente.
+
+   Además en Netsukuku, habrá una completa capa criptográfica, mas información:
+   http://lab.dyne.org/Ntk_carciofo
+
+P: ¿Como un nuevo nodo empieza a localizar otros nodos en la red?
+R: El radar de Netsukuku envía paquetes echo al rededor de uno cada 10 segundos, si
+   alguien contesta entonces el nodo se comunica con el.
+
+P: ¿Van a proporcionar túneles de "Internet a Netsukuku"?
+R: Si, Viphilama proveerá un sistema de tunneling automático:
+   http://lab.dyne.org/Ntk_viphilama
+
+P: Aparte de lo que yo mismo hackeo, me preguntaba que otras cosas se
+   pueden implementar en la red de Netsukuku?
+R: Lo que sea que ya estés haciendo en la actual Internet. Lo que el demonio
+   de Netsukuku hace es solamente configurar las rutas en la tabla de enrutamiento
+   del kernel.
+
+P: ¿Puedo ser capaz de alojar sitios web en algún momento?
+R: Ya lo puedes hacer!
+
+P: ¿Podrá glibc ser capaz de resolver nombres por el sistema ANDNA?
+R: ANDNA viene con un wrapper de DNS así que es transparente para todos los programas
+   que usen glibc. Lee "man andna":
+   http://netsukuku.freaknet.org/doc/manuals/andna
+
+P: ¿Que tipo de rendimiento tiene Netsukuku? ¿Es bueno para voz, chat, vídeo chat,
+   juegos?
+R: A que te refieres con `desempeño'?
+
+   Desempeño de red: es dependiente de la calidad del enlace. Si los nodos están
+   enlazados por un cable de 100Mbps entonces te sentirías en una LAN grande.
+   La distancia desde donde estas hasta el destino también es relevante.
+   Recuerda que el demonio de Netsukuku selecciona solo la mejor vía para alcanzar
+   los otros nodos, pero no puede mejorar los caminos mismos.
+   
+   Desempeño de software: En realidad no tienes porque preocuparte por eso:
+   PID   USER  PRI  NI  SIZE  RSS  SHARE %CPU %MEM TIME CPU COMMAND
+   18521 root  15   0   17708 1552 1164  0.0  0.3  0:00 0   ntkd
+   
+
+/		 \
+   2. Software
+\		 /
+
+P: ¿En que SO corre?
+R: Por ahora solo corre en GNU/Linux, pero puede ser portado fácilmente a otros SO.
+   Si quieres unirte en el desarrollo cuentanos ;)
+
+P: ¿Sera Netsukuku portado a Windows?
+R: Respuesta corta: si tu te encargas de portar el código, si.
+   Respuesta: Necesitamos programadores para eso. Existen muchas cosas por hacer y
+   portar el código a Windows es lo que menos nos importa.
+
+P: ¿Sera Netsukuku portado a PSP / Nintendo DS / teléfonos WiFi / PDAs?
+R: Por el momento estamos trabajando en flashear Netsukuku en Access Points (como
+   Linksys). Lee http://netsukuku.freaknet.org/openwrt/
+
+P: ¿Para usar un enlace WiFi necesito un access point? ¿Que hago?
+R: Solo necesitas una tarjeta de red inalámbrica. Colocala en modo ad-hoc usando "netsukuku"
+   como ESSID. (man netsukuku_wifi: http://netsukuku.freaknet.org/doc/manuals/ntk-wifi)
+
+P: ¿Porque el código no esta escrito en java?
+R: ¿Estas bromeando?
+
+
+--
+
+P: Mi pregunta no esta en esta lista!
+R: Contactanos: http://netsukuku.freaknet.org
