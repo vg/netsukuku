@@ -41,13 +41,14 @@ class NodeInfo(object):
 class Neigh(object):
     """ this class simply represent a neighbour """
 
-    __slots__ = ['devs', 'bestdev', 'ip', 'id', 'rem', 'ntkd', 'netid']
+    __slots__ = ['devs', 'bestdev', 'ip', 'nip', 'id', 'rem', 'ntkd', 'netid']
 
-    def __init__(self, ip, ntkd, idn, devs, bestdev, netid):
-        """ ip: neighbour's ip;
+    def __init__(self, ip, idn, ntkd, devs, bestdev, netid):
+        """
+            ip: neighbour's ip;
+            nip: neighbour's nip;
             ntkd: neighbour's ntk remote instance
-            ipstr: ip in string format
-            idn: neighbour's id;
+            idn: neighbour's id; use Neighbour.ip_to_id to create it
             devs: a dict which maps a device to the average rtt
             bestdev: a pair (d, avg_rtt), where devs[d] is the best element of
                     devs.
@@ -58,8 +59,9 @@ class Neigh(object):
         self.bestdev = bestdev
 
         self.ip = ip
+        self.nip = None
         self.id = idn
-        self.rem = Rtt(self.bestdev[1])             # TODO(low): support the other metrics
+        self.rem = Rtt(self.bestdev[1])   # TODO(low): support the other metrics
         self.ntkd = ntkd
         self.netid = netid
 
@@ -68,7 +70,7 @@ class Neighbour(object):
     __slots__ = ['max_neigh', 'inet', 'rtt_variation', 'ip_table', 'ntk_client',
                  'translation_table', 'netid_table', 'events', 'remotable_funcs']
 
-    def __init__(self, inet, max_neigh = 16):
+    def __init__(self, inet, max_neigh=16):
         """  max_neigh: maximum number of neighbours we can have 
              inet:   network.inet.Inet instance """
         self.inet = inet
@@ -248,7 +250,7 @@ class Neighbour(object):
         """Deletes an entry from the ip_table"""
         if remove_from_iptable:
                 del self.ip_table[ip]
-        
+
         # close the connection ( if any )
         if self.ntk_client[ip].connected:
                 self.ntk_client[ip].close()

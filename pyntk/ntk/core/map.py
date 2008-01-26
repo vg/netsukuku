@@ -133,8 +133,8 @@ class Map(object):
         start from the end of the nip """
 
         for lvl in reversed(xrange(self.levels)):
-                if nipA[lvl] != nipB[lvl]:
-                        return lvl
+            if nipA[lvl] != nipB[lvl]:
+                return lvl
 
         return -1
 

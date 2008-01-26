@@ -183,11 +183,16 @@ class TestRouteNode(unittest.TestCase):
         self.route_node.route_reset()
         self.failUnlessEqual(self.route_node.is_empty(), True)
 
+
 class TestMapRoute(unittest.TestCase):
 
     def setUp(self):
 
-        self.map = MapRoute(levels=1, gsize=256, me=3)
+        self.map = MapRoute(levels=1, gsize=256, me=[3])
+
+        # I'm interested only in Neigh.ip, other parameters are faked
+        self.neigh = Neigh(ip=127, ntkd='Fake_rcpClient',
+                           idn=0, devs=[], bestdev=[0,1], netid=0)
 
     def testRouteAdd(self):
         ''' MapRoute: add a route '''
@@ -218,9 +223,15 @@ class TestMapRoute(unittest.TestCase):
 
     # TODO: Neighbour stuff
 
-    #def testRouteneighAdd(self):
-        #n = Neigh() ...
-        #self.map.routeneigh_add ...
+    def testRouteneighGet(self):
+        ''' MapRoute: get a neighbour '''
+        self.failUnless(self.map.routeneigh_get(self.neigh) == (0, 127))
+
+    def testRouteneighAdd(self):
+        ''' MapRoute: add a route to reach a neighbour '''
+        res = self.map.routeneigh_add(self.neigh)
+        self.failUnlessEqual(res, 1)
+        self.failUnlessEqual(self.map.free_nodes_nb(lvl=0), 255)
 
 if __name__ == '__main__':
     unittest.main()

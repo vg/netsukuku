@@ -406,9 +406,10 @@ class MapRoute(Map):
 
     def routeneigh_get(self, neigh):
         """Converts a neighbour to a (g)node of the map"""
-        nip = self.ip_to_nip(neigh.ip)                     # ??? Where are defined?
-        lvl = self.nip_cmp(self.me, neigh.nip)             # ???
-        return (lvl, nip[lvl])
+        neigh.nip = self.ip_to_nip(neigh.ip)   # XXX: fast patch
+                                               #      To fix refactoring Neigh
+        lvl = self.nip_cmp(self.me, neigh.nip)
+        return (lvl, neigh.nip[lvl])
 
     def bestroutes_get(self, f=ftrue):
         """Returns the list of all the best routes of the map.
