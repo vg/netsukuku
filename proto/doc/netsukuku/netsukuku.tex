@@ -91,25 +91,31 @@ are at a massive economic and educational disadvantage to those of us
 who possess it. \\
 
 The Internet was designed to be a secure, distributed, and failure-resistant
-communications of such quality that it would be appropriate for military 
-usage, but now, paradoxically, as even the rigidly controlled military 
-system proposed held distribution and redundancy in high regard, ISPs has the
-power to completely cut off even entire nations by simply refusing to provide
-their services any further, granting them an obscene amount of power, which
-is already commonly taken advantage of in no small way for profit.  
-This prolific centralization also enables more sinister abuses of power, 
-such as we see in China's censorship of all dissident thought\cite{cbschina}.
+communication system of such quality that it would be appropriate for military
+usage. But now, paradoxically, as even the rigidly controlled military system
+proposed held distribution and redundancy in high regard, ISPs has the power
+to completely cut off even entire nations by simply choosing to provide
+their services only on favourable terms\cite{digitaldivide}, granting
+them an obscene amount of power, which is already commonly taken
+advantage of in no small way for profit. This prolific centralization
+also enables more sinister abuses of power, such as censorship of all
+dissident thought\cite{cbschina}.
 This becomes even more worrying in light of the fact that any corporation who
 owns a single backbone router may view and modify a massive amount of the
 total data flowing through the Internet, even when it begins and ends at 
-points outside of their control.  Additionally, authorities with access 
+points outside of their control. Thanks the non anonymous nature of the 
+Internet, the ISP can easily trace all traffic going through their servers
+back to its point of origin\dots Additionally, authorities with access 
 to ISP data may use and have used the system as a means to identify and 
 persecute locals who voice dissent\cite{ipdindymedia}.
-This results from the non anonymous nature of the Internet: the ISP can
-easily trace all traffic going through their servers back to its point of origin. \\
+This state of affairs is widely known, but few realise how close to home
+this practice truly is. Internet traffic is already routinely sniffed by
+countless national governments, and there even exists a small industry
+producing hardware and software to process the massive streams of data
+captured.\\
 
 Throughout the history of the Internet, its centralised and hierarchical 
-structure has been the model for many subsidiary systems, such as the 
+structure has been the model for many subsidiary systems, such as the
 Domain Name System. DNS servers are managed by many of the same organizations
 responsible for providing Internet service (beyond simple consumer ISPs), with 
 registration of a domain upon these servers a privilege provided by InterNIC, 
@@ -117,45 +123,23 @@ a United States controlled company, who grants registrars the right to sell
 single domain names to end users.  This system is subject to all of the same 
 issues as the Internet itself, if not more, resulting from its even greater
 centralization, and the reliance upon it for locating servers by almost all
-users of the Internet.
+users of the Internet.\\
 
-In China, all Internet traffic is constantly watched by several servers
-filtering the Internet traffic: a Chinese citizen must go to extreme and
-illegal measures to even become aware of a site which so much as mentions
-certain keywords, such as ``democracy\cite{cbschina}.''  Disturbingly,
-even the risk of discovery of his circumventing the censors pales in
-comparison to that imposed by attempting to express his own political
-opinion online. Should it differ significantly from that supported by his
-government, his own life might even be at stake.  This state of affairs is
-widely known, but few realise how close to home this practice truly is.
-Internet traffic is already routinely sniffed by countless national
-governments, and there even exists a small industry producing hardware
-and software to process the massive streams of data captured.
+It is utopistic to bring more accessibility, freedom of expression and
+privacy to the Internet as long as these efforts rely on the existing
+system. But a remaining option is still allowed: to conceive a system to
+rebuild from the ground up with a network, requiring support from none
+but those that use it. Such a system is inherently censorship-immune:
+as without any form of centralized backbone,  any given node is unable
+to have any sort of widespread effect upon data originating elsewhere,
+or even form a clear idea of the content of data sent to it. Netsukuku
+is designed to build such a system.
 
-Efforts have been made to create systems offering additional levels
-of security and anonymity atop the existing Internet, but all have
-met with only limited success, if any, and none are totally free of
-vulnerabilities to the unavoidably well positioned administrators of
-the network.  Even were one of these systems to prove technologically
-sufficient, its widespread adoption would be made impossible by the
-common tendency to adhere to the status quo, reinforced by the efforts
-of those who benefit from the current system to retain their power. As
-long as these efforts to bring more freedom, privacy, and accessibility
-to the Internet face resistance by governments and other organizations
-fearful of the risk imposed by true common freedom of expression, it
-will remain impossible to make the necessary changes by building upon the
-existing system.  The only remaining option is to rebuild from the ground
-up with a truly distributed, self-sufficient and fault-tolerant network,
-requiring support from none but those that use it. Such a system is
-inherently censorship-immune, as without any form of centralized backbone,
-any given node is unable to have any sort of widespread effect upon data
-originating elsewhere, or even form a clear idea of the content of data
-not sent to it. Netsukuku is just such a system.
 
 \section{The Netsukuku wired}
 
 The Netsukuku network is composed of nearby computers directly linked each other, 
-and thus has no dependence upon the Internet, or indeed any existing network. 
+and thus has no dependence upon the Internet, or indeed any existing network.
 The system augments level 3 of the OSI model with its own true distributed routing protocol.
 Netsukuku's distributed nature is emulated by the core services that are built upon 
 it to replace those with similar centralization problems to the Internet, such as
@@ -164,12 +148,12 @@ Abnormal Netsukuku Domain Name Anarchy (ANDNA)\cite{andnadoc}.
 
 \subsection{Gandhi}
 
-The most notable characteristic of Netsukuku is its fully distributed self-management. 
+The most notable characteristic of Netsukuku is its fully distributed self-management.
 The network dynamically configures itself without any external interventions, or any 
-form of central organizing authority, something commonly believed to be infeasible, 
+form of central organizing authority, something commonly believed to be infeasible,
 if not outright impossible.  
 All nodes share the same privileges, each making a contribution to sustain and expand
-Netsukuku.  
+Netsukuku.
 Of particular interest is Netsukuku's increase in efficiency proportional to the 
 number of well-connected nodes in the network, meaning that more users will typically
 lead to even lower latencies and greater bandwidth available to all.
@@ -183,9 +167,7 @@ nearby nodes, substantially improving the network for all.
 This total decentralisation and distribution allows Netsukuku to be neither controlled
 nor destroyed: the only way to manipulate or demolish it is to knock physically down 
 each single node composing the network, making any form of attack or takeover attempt
-completely infeasible; if a hostile party had the resources to do such a thing, 
-they would invariably find it easier to simply take what they had hoped to gain through
-control of information by force.
+completely infeasible.
 
 \subsection{No name, no identity}
 
@@ -281,12 +263,16 @@ Netsukuku network vastly more feasible in the immediate future.
 	\bibitem{mwmgstats} Miniwatts Marketing Group Internet Statistics:
 		\href{http://www.internetworldstats.com/stats.htm}{http://www.internetworldstats.com/stats.htm}
 
-	\bibitem{cbschina} CBS on China's Internet Censorship:
-		\href{http://www.cbsnews.com/stories/2002/12/03/tech/main531567.shtml}{http://www.cbsnews.com/stories/2002/12/03/tech/main531567.shtml}
 
 	\bibitem{ipdindymedia}  Second Indymedia Server Seized in UK Within a Year:
-		\href{http://yro.slashdot.org/article.pl?sid=05/06/28/0113237&tid=153&tid=158&tid=149&tid=17}{http://yro.slashdot.org/article.pl?sid=05/06/28/0113237&tid=153&tid=158&tid=149&tid=17}	
+		\href{http://yro.slashdot.org/article.pl?sid=05/06/28/0113237&tid=153&tid=158&tid=149&tid=17}{http://yro.slashdot.org/article.pl?sid=05/06/28/0113237&tid=153&tid=158&tid=149&tid=17} \\
+                 CBS on China's Internet Censorship:
+		\href{http://www.cbsnews.com/stories/2002/12/03/tech/main531567.shtml}{http://www.cbsnews.com/stories/2002/12/03/tech/main531567.shtml}
 
+        \bibitem{digitaldivide} The "Digital Divide" refers to the gap
+        between the developed world and the developing world about the
+        effective access to digital and information technology:
+ 		\href{http://www.digitaldivide.org/dd/index.html}{http://www.digitaldivide.org/dd/index.html}
 \end{thebibliography}
 \newpage
 
