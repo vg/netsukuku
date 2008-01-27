@@ -213,6 +213,7 @@ class TestMapRoute(unittest.TestCase):
 
     def testChangeRouteRem(self):
         ''' MapRoute: change route rem '''
+
         # Changing rem for a non existent route
         res = self.map.route_rem(lvl=0, dst=200, gw=5, newrem=Rtt(10))
         self.failUnlessEqual(res, 0)
@@ -221,11 +222,12 @@ class TestMapRoute(unittest.TestCase):
         res = self.map.route_rem(lvl=0, dst=200, gw=5, newrem=Rtt(5))
         self.failUnlessEqual(res, 1)
 
-    # TODO: Neighbour stuff
+    # Neighbour stuff
 
     def testRouteneighGet(self):
         ''' MapRoute: get a neighbour '''
-        self.failUnless(self.map.routeneigh_get(self.neigh) == (0, 127))
+        res = self.map.routeneigh_get(self.neigh)
+        self.failUnless(res == (0, self.neigh.ip))
 
     def testRouteneighAdd(self):
         ''' MapRoute: add a route to reach a neighbour '''
@@ -235,11 +237,16 @@ class TestMapRoute(unittest.TestCase):
 
     def testRouteneighDel(self):
         ''' MapRoute: delete routes to reach a neighbour '''
-
         self.testRouteneighAdd()
         self.failUnlessEqual(self.map.free_nodes_nb(lvl=0), 255)
         self.map.routeneigh_del(self.neigh)
         self.failUnlessEqual(self.map.free_nodes_nb(lvl=0), 256)
+
+    def testBestroutesGet(self):
+        ''' MapRoute: get all best routes of the map '''
+        self.testRouteneighAdd()
+        res = self.map.bestroutes_get()
+        self.failUnless(res == [[(self.neigh.ip, 0, self.neigh.rem)]])
 
 if __name__ == '__main__':
     unittest.main()

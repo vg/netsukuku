@@ -41,12 +41,12 @@ class Rem(object):
 
     def __init__(self, value, max_value=0, avgcoeff=1):
         self.value=value
-
         self.max_value=max_value        # Maximum value assumed by this REM
         self.avgcoeff=avgcoeff          # Coefficient used for the average
 
     def _pack(self):
         return (self.value, self.max_value, self.avgcoeff)
+
     def _unpack(self, *args):
         return Rem(args)
 
@@ -74,13 +74,12 @@ class NullRem(Rem):
 class DeadRem(Rem):
     """A route with this rem is dead"""
     def __add__(self, b):
-            return self
+        return self
 
 class Rtt(Rem):
     """Round Trip Time"""
 
-    def __init__(self, value, max_value=60*1000, avgcoeff=1):
-                          #1 minute in ms
+    def __init__(self, value, max_value=60*1000, avgcoeff=1): # 1 minute in ms
         Rem.__init__(self, value, max_value, avgcoeff)
 
     def __cmp__(self, b):
@@ -425,6 +424,6 @@ class MapRoute(Map):
                 [ (dst, br.gw, br.rem)
                         for dst in xrange(self.gsize)
                             for br in [self.node_get(lvl, dst).best_route()]
-                                if br != None and f((dst, br.gw, br.rem))
+                                if br is not None and f((dst, br.gw, br.rem))
                 ] for lvl in xrange(self.levels)
                ]
