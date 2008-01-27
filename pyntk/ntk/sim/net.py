@@ -283,6 +283,15 @@ class Net:
                 'node D' : []
         }
         ---  END  ---
+
+        The meaning is clear: you're specifying the links between nodes and their
+        properties. In this example, the network graph is:
+
+               A -- B -- D
+               |
+               C
+
+        Note: Links are symmetric.
         """
         o = Opt()
         o.load_file(filename)
