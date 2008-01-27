@@ -17,12 +17,12 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
-from random import randint
 import logging
+from random import randint
 
-from ntk.lib.micro  import micro
-from ntk.lib.event  import Event
 from ntk.core.route import Rtt
+from ntk.lib.event  import Event
+from ntk.lib.micro  import micro
 import ntk.lib.rpc as rpc
 
 class NodeInfo(object):
@@ -81,7 +81,7 @@ class Neighbour(object):
         # ip_table
         self.ip_table = {}
         # Remote client instances table
-        ntk_client = { }  # ip : rpc.TCPClient(ipstr)
+        self.ntk_client = {}  # ip : rpc.TCPClient(ipstr)
         # IP => ID translation table
         self.translation_table = {}
         # IP => netid
@@ -211,15 +211,15 @@ class Neighbour(object):
                 self.ip_to_id(key)
 
                 # create a TCP connection to the neighbour
-                self.ntk_client[key]=rpc.TCPClient(self.inet.ip_to_str(key))
+                self.ntk_client[key] = rpc.TCPClient(self.inet.ip_to_str(key))
 
                 # send a message notifying we added a node
                 self.events.send('NEIGH_NEW',
-                                (Neigh(key, self.ntk_client[key],
-                                            self.translation_table(key),
-                                            self.ip_table[key].devs,
-                                            self.ip_table[key].bestdev,
-                                            self.netid_table[key])))
+                                 (Neigh(key, self.ntk_client[key],
+                                             self.translation_table(key),
+                                             self.ip_table[key].devs,
+                                             self.ip_table[key].bestdev,
+                                             self.netid_table[key])))
             else:
                 # otherwise (if the node already was in old ip_table) check if
                 # its rtt has changed more than rtt_variation
@@ -289,7 +289,7 @@ class Radar(object):
     __slots__ = ['inet', 'bouquet_numb', 'bcast_send_time', 'xtime', 
                   'bcast_arrival_time', 'bquet_num', 'max_wait_time', 
                   'broadcast', 'neigh', 'events', 'netid', 'do_reply',
-                  'remotable_funcs', 'ntkd_id', 'radar_id' ]
+                  'remotable_funcs', 'ntkd_id', 'radar_id']
 
     def __init__(self, inet, broadcast, xtime,
                  bquet_num=16, max_neigh=16, max_wait_time=8):
@@ -303,7 +303,7 @@ class Radar(object):
         """
 
         self.inet = inet
-        self.xtime=xtime
+        self.xtime = xtime
         self.broadcast = broadcast
 
         # how many bouquet we have already sent
@@ -358,14 +358,14 @@ class Radar(object):
         self.neigh.store(self.get_all_avg_rtt())
 
         # Send the event
-        self.bouquet_numb+=1
+        self.bouquet_numb += 1
         self.events.send('SCAN_DONE', (self.bouquet_numb))
 
     def reply(self, _rpc_caller, ntkd_id, radar_id):
         """ As answer we'll return our netid """
         if self.do_reply and ntkd_id != self.ntkd_id:
-                rpc.BcastClient(devs=[_rpc_caller.dev]).radar.time_register(radar_id, self.netid)
-                return self.netid
+            rpc.BcastClient(devs=[_rpc_caller.dev]).radar.time_register(radar_id, self.netid)
+            return self.netid
 
     def time_register(self, _rpc_caller, radar_id, netid):
         """save each node's rtt"""
@@ -380,8 +380,8 @@ class Radar(object):
         # this is the rtt
         time_elapsed = int((self.xtime.time() - self.bcast_send_time) / 2)
         # let's store it in the bcast_arrival_time table
-        if(ip in self.bcast_arrival_time):
-            if(net_device in self.bcast_arrival_time[ip]):
+        if ip in self.bcast_arrival_time:
+            if net_device in self.bcast_arrival_time[ip]:
                 self.bcast_arrival_time[ip][net_device].append(time_elapsed)
             else:
                 self.bcast_arrival_time[ip][net_device] = [time_elapsed]
