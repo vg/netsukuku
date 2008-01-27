@@ -392,7 +392,7 @@ class MapRoute(Map):
 
         for lvl in xrange(self.levels):
             for dst in xrange(self.gsize):
-                    self.route_del(lvl, dst, neigh.id, silent=1)
+                self.route_del(lvl, dst, neigh.id, silent=1)
 
     def routeneigh_add(self, neigh, silent=0):
         """Add a route to reach the neighbour `neigh'"""
@@ -406,8 +406,7 @@ class MapRoute(Map):
 
     def routeneigh_get(self, neigh):
         """Converts a neighbour to a (g)node of the map"""
-        neigh.nip = self.ip_to_nip(neigh.ip)   # XXX: fast patch
-                                               #      To fix refactoring Neigh
+        neigh.nip = self.ip_to_nip(neigh.ip)   # TODO: refactoring Neigh
         lvl = self.nip_cmp(self.me, neigh.nip)
         return (lvl, neigh.nip[lvl])
 

@@ -233,5 +233,13 @@ class TestMapRoute(unittest.TestCase):
         self.failUnlessEqual(res, 1)
         self.failUnlessEqual(self.map.free_nodes_nb(lvl=0), 255)
 
+    def testRouteneighDel(self):
+        ''' MapRoute: delete routes to reach a neighbour '''
+
+        self.testRouteneighAdd()
+        self.failUnlessEqual(self.map.free_nodes_nb(lvl=0), 255)
+        self.map.routeneigh_del(self.neigh)
+        self.failUnlessEqual(self.map.free_nodes_nb(lvl=0), 256)
+
 if __name__ == '__main__':
     unittest.main()

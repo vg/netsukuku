@@ -85,7 +85,10 @@ class Map(object):
             self.events.send('NODE_NEW', (lvl, id))
 
     def node_del(self, lvl, id, silent=0):
-        self.node_nb[lvl] -= 1
+        ''' Delete node 'id` at level 'lvl` '''
+        if self.node_nb[lvl] > 0:
+            self.node_nb[lvl] -= 1
+
         if not silent:
             self.events.send('NODE_DELETED', (lvl, id))
         self.node[lvl][id]=None
