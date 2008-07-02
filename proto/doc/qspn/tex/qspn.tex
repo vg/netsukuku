@@ -53,7 +53,7 @@
 \newcommand{\ubrace}[2]{\underbrace{#1}_{#2}}
 
 
-\title{Quantum Shortest Path Netsukuku}
+\title{The QSPN}
 \author{AlpT (@freaknet.org)}
 \author{http://netsukuku.freaknet.org\\AlpT (@freaknet.org)}
 \begin{document}
@@ -148,12 +148,8 @@ the network or the nodes' CPU and memory resources.
 
 \subsection{The QSPN}
 
-Netsukuku implements its own algorithm, the \emph{QSPN} (\textbf{Q}uantum
-\textbf{S}hortest \textbf{P}ath \textbf{N}etsukuku). The name derives from the
-way of working of its principal component: the \emph{TP} (Tracer Packet), a
-packet that gains a ``quantum'' of information at each hop.\\
-
-The QSPN is based on the assumptions described in section \ref{sec:net_model}.
+Netsukuku implements its own algorithm, the \emph{QSPN}.
+It is based on the assumptions described in section \ref{sec:net_model}.
 
 \section{Network topology}
 \label{sec:net_topology}
@@ -166,16 +162,16 @@ route to reach one node and even if this route costs one byte, we would need
 For this reason, it's necessary to structure the network in a convenient
 topology.
 
-\subsection{Fractal topology}
+\subsection{Hierarchical topology}
 \label{sec:fractal_topology}
-Netsukuku adopts a fractal like structure:
+Netsukuku adopts a hierarchical structure:
 256 nodes are grouped inside a \emph{group node} (gnode), 256 group nodes are grouped
 in a single \emph{group of group nodes} (ggnode), 256 group of group nodes are
 grouped in a gggnode, and so on. (We won't analyse the topology of Netsukuku. You 
 can find more information about it in the proper document: \cite{ntktopology}).\\
 
 Since each gnode acts as a single real node, the QSPN is able to operate independently
-on each level of the fractal.\\
+on each level of the hierarchy.\\
 
 Since in each level there is a maximum of 256 (g)nodes, the QSPN will
 always operate on a maximum of 256 (g)nodes. Therefore we would need just to

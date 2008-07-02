@@ -14,11 +14,11 @@
 
   2. The Netsukuku protocol
   
-	2.1  QSPN  - Quantum Shortest Path Netsukuku
+	2.1  The QSPN - routing discovery algorithm 
 
   	2.2  Netsukuku topology
 
-	2.3  ANDNA - Abnormal Netsukuku Domain Name Anarchy
+	2.3  ANDNA - A Netsukuku Domain Name Architecture
 
 	2.4  Internet and Netsukuku
 
@@ -66,9 +66,7 @@
   They are a must for anyone who wants to understand how Netsukuku works.
 
 
-  2.1  QSPN  - Quantum Shortest Path Netsukuku
-
-  The QSPN algorithm:
+  2.1  The QSPN - routing discovery algorithm 
 
   http://netsukuku.freaknet.org/doc/main_doc/qspn.pdf
 
@@ -84,21 +82,20 @@
 
   http://netsukuku.freaknet.org/doc/main_doc/topology.pdf
 
-  In this document, we describe the fractal structure of the Netsukuku
+  In this document, we describe the structure of the Netsukuku
   topology. Moreover, we show how it is possible to use the QSPN v2 on
-  the high levels of the fractal.
+  the high levels of the topology.
 
 
-  2.3  ANDNA - Abnormal Netsukuku Domain Name Anarchy
+  2.3  ANDNA - A Netsukuku Domain Name Architecture
 
   The Domain Name system of Netsukuku:
 		
   http://netsukuku.freaknet.org/doc/main_doc/andna.pdf
 
-  In this document, we present the Abnormal Netsukuku Domain Name
-  Anarchy system. ANDNA is the distributed, non hierarchical and
-  decentralised system of hostname management used in the Netsukuku
-  network.
+  In this document, we present the ANDNA system. 
+  ANDNA is the distributed, non hierarchical and decentralised system 
+  of hostname management used in the Netsukuku network.
 
   
   2.4  Internet and Netsukuku

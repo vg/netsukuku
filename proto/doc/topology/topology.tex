@@ -77,9 +77,9 @@
 \begin{document}
 \maketitle
 \begin{abstract}
-	In this document, we describe the fractal structure of the Netsukuku
+	In this document, we describe the hierarchical structure of the Netsukuku
 	topology. Moreover, we show how it is possible to use the QSPN v2 on
-	the high levels of the fractal.
+	the high levels of the hierarchy.
 \end{abstract}
 \pagenumbering{roman}
 \pagebreak
@@ -173,7 +173,7 @@ by $10^9$ nodes (the current Internet).
 For this reason, it's necessary to structure the network in a convenient
 topology.
 
-\subsection{Fractal topology}
+\subsection{Hierarchical topology}
 \label{sec:fractal_topology}
 \subsubsection{Level 1}
 First of all we'll subdivide the network in groups of 256 nodes and we'll use
@@ -227,14 +227,14 @@ is a single group which contains the whole network.\\
 
 The QSPN algorithm is able to operate independently on any level,
 considering each gnode as a single node of level 0.
-For this reason, we can view the Netsukuku topology as a fractal, where each
+For this reason, we can view the Netsukuku topology as a hierarchy, where each
 level is composed by single nodes.
 
 \subsubsection*{Example}
 
 Figure \ref{fig:fract_circle}\footnote{this figure has been taken from:
 \href{http://www.ian.org/FX/Plugins.html}{http://www.ian.org/FX/Plugins.html}}
-is an example of the fractal topology of Netsukuku.
+is an example of the hierarchical topology of Netsukuku.
 
 \begin{figure}[h]
 	\begin{center}
@@ -304,8 +304,8 @@ different, separated gnodes may have the same ID, but not the same
 fingerprint. A valid fingerprint is $fg(G)=(uptime(G), rid(G))$, where
 $rid(G)$ is a random ID generated at creation time of $G$.
 
-\subsection{Fractal map}
-The advantages of using a fractal topology are clear.\\
+\subsection{Hierarchical map}
+The advantages of using a hierarchical topology are clear.\\
 The node $N$, instead of memorising information about each node of the whole
 network, will keep only that regarding the gnodes where it belongs to.
 Suppose the node $N$ had this ID:
@@ -328,7 +328,7 @@ Even with this lack of knowledge, as we'll see later, the node $N$ is still
 able to reach all the other nodes of the network.
 In conclusion, $N$ only needs $256n$ entries in its map, instead of $2^{32}$. 
 To clarify the ideas suppose that each entry costs one byte. In the plain
-topology we needed $4Gb$, while in the fractal one we just need $256\cdot 4\;
+topology we needed $4Gb$, while in the hierarchical one we just need $256\cdot 4\;
 b= 1Kb$.
 
 \subsubsection{IP v4 and v6}
@@ -668,6 +668,8 @@ reconfigured more often.
 
 \section{ChangeLog}
 \begin{itemize}
+	\item \verb|July 2008|
+		Changed the term ``fractal'' with ``hierarchical''.
 	\item \verb|August 2007|
 		\begin{enumerate}
 			\item Hooking procedures redesigned, probably they are

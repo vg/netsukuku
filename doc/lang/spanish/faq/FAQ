@@ -3,7 +3,6 @@
   	P: ¿Que es Netsukuku?
 	P: ¿Cuales son sus características?
 	P: ¿Porque escogieron ese nombre?
-	P: ¿Que significa eso de "y usa el caos y fractales"?
 	P: ¿Porque otra red P2P?
 	P: Ehi! Están locos. No funcionara!
 	P: ¿Donde están las redes de Netsukuku actuales y como me puedo conectar?
@@ -55,7 +54,8 @@ R: Netsukuku es una red mesh o un sistema de red P2P que se genera y mantiene
    En otras palabras, Netsukuku reemplaza el nivel 3 del modelo ISO/OSI con otro
    protocolo de enrutamiento.
    El sistema de nombres de dominio también ha sido reemplazado por un sistema
-   descentralizado y distribuido: the Abnormal Netsukuku Domain Name Anarchy.
+   descentralizado y distribuido: the ANDNA (A Netsukuku Domain Name
+   Architecture).
 
    Para mas información, lea la documentación principal:
    http://netsukuku.freaknet.org/doc/main_doc/netsukuku-es
@@ -73,23 +73,6 @@ R: Networked Electronic Technician Skilled in Ultimate Killing, Utility and
    no sabíamos todos los símbolos relativos, así que la única katakana que pudimos
    leer eran pocas y estaban mezcladas con otras, el nombre era: Ne tsu ku ku.
    Por cierto, puedes pensar en otros significados escondidos y engañosos.
-
-P: ¿Que significa eso de "y usa el caos y fractales"?
-R: El protocolo Netsukuku (Npv7) estructura la red completa como un fractal, y
-   para calcular todas las rutas requeridas las cuales son necesarias para conectar
-   a un nodo con todos los demás, hace uso de un algoritmo particular llamado
-   Quantum Shortest Path Netsukuku (QSPN).
-   Cuando hablamos de fractal, nos referimos a el como una gráfica de nodos altamente
-   clusterizada.
-   Léase el documento de la topología de Netsukuku:
-   http://netsukuku.freaknet.org/doc/main_doc/topology.pdf
-
-   Por otro lado, el QSPN es un meta-algoritmo en el sentido de que tiene
-   que correr en una red real (o simulada). Los nodos tienen que enviar el paquete
-   QSPN para "ejecutarlo".
-   Este sistema permite tener las mejores rutas sin ningún tipo de computación pesada.
-   Léase el documento de QSPN:
-   http://netsukuku.freaknet.org/doc/main_doc/qspn.pdf 
 
 P: ¿Porque otra red P2P?
 R: Netsukuku no es una red P2P construida sobre la Internet. Es una red física

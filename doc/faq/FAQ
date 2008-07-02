@@ -3,7 +3,6 @@
   	Q: What is Netsukuku?
 	Q: What are its features?
 	Q: Why did you choose that name?
-	Q: What does it mean "it uses chaos and fractals"?
 	Q: Why another p2p network?
 	Q: Ehi! You're crazy. It won't work!
 	Q: Where are current Netsukuku networks that I can connect to?
@@ -54,7 +53,7 @@ A: Netsukuku is a mesh network or a p2p net system that generates and sustains
    In other words, Netsukuku replaces the level 3 of the model iso/osi with
    another routing protocol.
    The Domain Name System is also replaced by a decentralised and distributed
-   system: the Abnormal Netsukuku Domain Name Anarchy.
+   system: the ANDNA (A Netsukuku Domain Name Architecture).
 
    For more information read the main document:
    http://netsukuku.freaknet.org/doc/main_doc/netsukuku
@@ -73,22 +72,6 @@ A: Networked Electronic Technician Skilled in Ultimate Killing, Utility and
    to read were few and mixed with others the name was: Ne tsu ku ku.
    By the way, you can always think of any other deceitful and hidden
    meanings.
-
-Q: What does it mean "it uses fractals"?
-A: The Netsukuku protocol (Npv7) structures the entire net as a fractal and,
-   in order to calculate all the needed routes which are necessary to connect a
-   node to all the other nodes, it makes use of a particular algorithm called
-   Quantum Shortest Path Netsukuku (QSPN).
-   Here a fractal is meant as a highly clusterized graph of nodes.
-   Read the Netsukuku topology document:
-   http://netsukuku.freaknet.org/doc/main_doc/topology.pdf
-
-   On the other hand, the QSPN is a meta-algorithm in the sense that it
-   has to run on a real (or simulated) network. The nodes have to send the
-   QSPN pkt in order to "execute" it. 
-   This system allows to get the best routes without any heavy computation.
-   Read the QSPN document: 
-   http://netsukuku.freaknet.org/doc/main_doc/qspn.pdf 
 
 Q: Why another p2p network?
 A: Netsukuku is not a p2p net built upon the Internet. It is a physical
@@ -119,8 +102,7 @@ A: http://lab.dyne.org/Ntk_Grow_Netsukuku
 
 Q: Does it scale in a network with A LOT of nodes?
 A: Simple and not accurate reasons for the scalability of Netsukuku:
-   1) the size of the maps is fixed: about 4Kb for the int_map and 16Kb for
-      the ext_map.
+   1) the size of the maps is fixed
    2) Not all the nodes sends a broadcast discovery.
    3) There are few floods for each discovery.
    4) When a node receives a flood it already has the routes without
@@ -128,9 +110,6 @@ A: Simple and not accurate reasons for the scalability of Netsukuku:
 
    You can read the detailed analysis of the QSPN v2 here:
    http://netsukuku.freaknet.org/doc/main_doc/qspn.pdf
-
-   A first draft of the explanation of the Netsukuku scalability is available
-   here: http://lab.dyne.org/Netsukuku_scalability
 
 Q: Does it really works?
 A: ^_^
