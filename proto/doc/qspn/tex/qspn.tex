@@ -116,12 +116,12 @@ has to be able to grow to even $2^{2^7}$ nodes.\\
 A completely dynamic network would require rapid and frequent updates
 of the routes and this is in contrast with the stability and the scalability
 requirements of Netsukuku. For this reason, we restrict Netsukuku to the case
-where a node won't change it's physical location quickly or often.\\
+where a node won't change its physical location quickly or often.\\
 
 This assumption is licit because the location of a WiFi node mounted on
-top of a building won't change and it's only dynamic actions would be the
+top of a building won't change and its only dynamic actions would be the
 joining and the disconnecting to and from the network and the changes of the
-quality of it's links.\\
+quality of its links.\\
 
 However, there are some consequences with this assumption:
 \begin{enumerate}
@@ -135,7 +135,7 @@ However, there are some consequences with this assumption:
 		network (new nodes have joined, more efficient routes have
 		become available, \dots). However, when a node joins
 		the network, it can reach all the other nodes from the first
-		instant using the routes of it's neighbours.
+		instant using the routes of its neighbours.
 \end{enumerate}
 
 \subsection{The routing algorithm}
@@ -148,9 +148,9 @@ the network or the nodes' CPU and memory resources.
 
 \subsection{The QSPN}
 
-Netsukuku implements it's own algorithm, the \emph{QSPN} (\textbf{Q}uantum
+Netsukuku implements its own algorithm, the \emph{QSPN} (\textbf{Q}uantum
 \textbf{S}hortest \textbf{P}ath \textbf{N}etsukuku). The name derives from the
-way of working of it's principal component: the \emph{TP} (Tracer Packet), a
+way of working of its principal component: the \emph{TP} (Tracer Packet), a
 packet that gains a ``quantum'' of information at each hop.\\
 
 The QSPN is based on the assumptions described in section \ref{sec:net_model}.
@@ -189,7 +189,7 @@ For the sake of simplicity in this paper, we will assume to operate on level
 \label{sec:TP}
 
 A \emph{TP} (Tracer Packet) is the fundamental concept on which the QSPN is
-based: it's a packet which stores the ID's of the traversed hops in it's body.
+based: it's a packet which stores the ID's of the traversed hops in its body.
 
 \subsection{Tracer Packet flood}
 \label{sec:TP_flood}
@@ -199,7 +199,7 @@ network. By saying ``the node A sends a TP'' we mean that ``the node A is
 starting a TP flood''.\\
 
 A TP flood passes only once through each node of the net: a node which
-receives a TP will forward it to all it's neighbours, except the one from which
+receives a TP will forward it to all its neighbours, except the one from which
 it received the TP. Once a node has forwarded a TP, it will not forward any
 other TP's of the same flood.
 
@@ -253,7 +253,7 @@ and $F$ will know the route $F \rightarrow E \rightarrow D$.
 
 The Acyclic flood is not restricted like a normal TP flood: one or more ATP can
 pass from the same node. The end of the flood is given by this rule: a node
-will not forward the ATP to any of it's neighbours if it's node ID is already present
+will not forward the ATP to any of its neighbours if its node ID is already present
 in the route contained in the body of the packet. With this rule, an ATP can
 walk in a cycle only once, hence the name.\\
 
@@ -287,11 +287,11 @@ This rule can be described in a single phrase:\\
 \emph{the network until it carries interesting information.}
 \qq\\
 
-A node considers a received TP interesting when it's body contains at least a
+A node considers a received TP interesting when its body contains at least a
 new route. In other words, if a TP contains routes already known by the node,
 it's considered uninteresting.\\
 
-When a node receives an interesting TP, it forwards the packet to all it's
+When a node receives an interesting TP, it forwards the packet to all its
 neighbours, excepting the one from which it has received the TP.
 If the TP is uninteresting, the packet gets dropped by the node.\\
 
@@ -353,7 +353,7 @@ redistribute with the use of the Extended Tracer Packets.\\
 
 An ETP is an Acyclic Tracer Packet\footnote{
 An ATP (see paragraph \ref{sec:acyclic_TP_flood}) is a normal TP with the following
-rule: a node drops the received ATP if it's node ID is already present in the route
+rule: a node drops the received ATP if its node ID is already present in the route
 contained in the body of the packet. Note also, that since it is a normal TP,
 it is not reflected back, when it reaches the end of a segment.}
 which contains a portion of a map. Since a map is a set of routes and a
@@ -397,16 +397,16 @@ In order to give an exact definition of the ETP, we must examine each case of ne
 		      \item $A$ creates the ETP:
 			\begin{enumerate}
 				\item $A$ writes the set $R$ in the ETP.
-				\item $A$ appends it's node ID, along with the efficiency
+				\item $A$ appends its node ID, along with the efficiency
 					value of the link $l$.
 				\item $A$ sets to 1 the \emph{flag of interest}.
 			\end{enumerate}
 		      \item $A$ sends the ETP to $B$.
 		\end{enumerate}
-		Suppose the node $C$ has received the ETP from it's neighbor
+		Suppose the node $C$ has received the ETP from its neighbor
 		$N$\footnote{$C$ may be $B$ itself and $N$ may be $A$}.
 		$C$ will examine the ETP and, if considered interesting, updates
-        it's map and forwards the ETP to the other neighbours as
+        its map and forwards the ETP to the other neighbours as
 		follow:
 		\begin{enumerate}
 		\item If the ID of the node $C$ is already present in the
@@ -441,7 +441,7 @@ In order to give an exact definition of the ETP, we must examine each case of ne
 	\item \label{backpropstep}
 		If $S\neq \0$
 		\begin{enumerate}
-			\item $C$ creates a new ETP, appending the set $S$ and it's ID on it.
+			\item $C$ creates a new ETP, appending the set $S$ and its ID on it.
 				The \emph{flag of interest} of this ETP is set to 0. 
 			\item The ETP is sent to $N$.\\
 				This new ETP will propagate back in the
@@ -453,14 +453,14 @@ In order to give an exact definition of the ETP, we must examine each case of ne
 		\end{enumerate}
 		The reason for the above procedure is simple: $C$ considers
 		uninteresting some of the routes contained in the received
-		ETP, then $C$ sends back it's better routes which have the same destination of
+		ETP, then $C$ sends back its better routes which have the same destination of
 		those belonging to $R$ (hoping that they will be useful to the
 		previous interested nodes).
 	\item 	Let \[\ove R=\pgra{r\in R\;|\;\nexists s\in S:\;dst(r)=dst(s)}\] 
 		If $\ove R \neq \0$, then the ETP is still interesting: 
 		the \emph{flag of interest} remains set to 1.
-		$C$ packs the ETP with the set $\ove R$ and adds it's ID.
-		The ETP is sent to all it's neighbours except $N$.\\
+		$C$ packs the ETP with the set $\ove R$ and adds its ID.
+		The ETP is sent to all its neighbours except $N$.\\
 		Note \footnote{This step implements the Interesting
 		Information rule: only
 		good routes are kept, the other are discarded. Notice
@@ -486,7 +486,7 @@ In order to give an exact definition of the ETP, we must examine each case of ne
 	If the property $(\gamma)$ holds, then the step \ref{backpropstep}
 	can be omitted (in fact, suppose $N$ sends an ETP to $C$ and that $C$
 	considers the route $r$ contained in it as uninteresting).\\
-	By step \ref{backpropstep}, $C$ sends back to $N$ it's known best route
+	By step \ref{backpropstep}, $C$ sends back to $N$ its known best route
 	$s$, with $dst(s)=dst(r),\;rem(s)>rem(r)$. However, $s$ has been
 	already sent by $C$ to $N$ (i.e. when the link $N\leftrightarrow C$
 	was established), thus by the property $(\gamma)$, $N$ kept memorised
@@ -524,10 +524,10 @@ In order to give an exact definition of the ETP, we must examine each case of ne
 		\item $B$ fills the ETP: 
 			\begin{enumerate}
 				\item $B$ adds in it the set $\ove R$.
-				\item $B$ appends it's ID.
+				\item $B$ appends its ID.
 				\item $B$ sets to 1 the \emph{flag of interest}.
 			\end{enumerate}
-		\item Finally, $B$ sends the ETP to all it's neighbours, except $A$.
+		\item Finally, $B$ sends the ETP to all its neighbours, except $A$.
 		\end{enumerate}
 		At this point, the ETP is propagated in the same way of the
 		\textbf{Changed link} case.
@@ -538,7 +538,7 @@ In order to give an exact definition of the ETP, we must examine each case of ne
 		applied to each link $A\leftrightarrow B_i,\;\;i=1,2,\dots,n$.
 %TODO: a possible improvement?
 %		\begin{enumerate}
-%			\item Each neighbour $B_i$ sends it's whole map to
+%			\item Each neighbour $B_i$ sends its whole map to
 %				$A$
 %			\item $A$ waits until the maps of all its neighbours
 %				are received.
@@ -548,7 +548,7 @@ In order to give an exact definition of the ETP, we must examine each case of ne
 %				best routes of the two.
 %			\item If the neighbours of $A$ are more than one, i.e.
 %				$n>1$, then $A$ sends, to each of them, an ETP
-%				containing all the primary routes of it's
+%				containing all the primary routes of its
 %				map.
 %			\item The ETPs are propagated exactly in the same way
 %				of the \textbf{worsened link} case (see page
