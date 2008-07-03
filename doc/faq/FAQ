@@ -4,7 +4,7 @@
 	Q: What are its features?
 	Q: Why did you choose that name?
 	Q: Why another p2p network?
-	Q: Is this a serious project? I find too naive: are you
+	Q: Is this a serious project? I find it too naive: are you
 	   totally sure it will work?
 	Q: Where are current Netsukuku networks that 
 	   I can connect to?
@@ -83,7 +83,7 @@ A: Netsukuku is not a p2p net built upon the Internet. It is a physical
    build a physical network separated from the Internet. Btw, read "What is
    Netsukuku".
 
-Q: Is this a serious project? I find too naive: are you totally sure
+Q: Is this a serious project? I find it too naive: are you totally sure
    it will work?
 A: It's a problem implicit in every project: if you don't have a mathematical
    proof, you can't be totally sure about the results.
@@ -169,10 +169,19 @@ A: Until now, no rigorous proof of the performance of the Netsukuku topology and
    You can find the appropriate documentation here:
    http://netsukuku.freaknet.org/index.php?pag=documentation&dir=main_documentation
 
-Q: What if all the traffic flows through a single node? 
-A: See the Caustic Routing:
-   http://lab.dyne.org/Ntk_caustic_routing
-   (it is work in progress).
+Q: What if all the traffic flows through a single node?
+   You subdivide the network in levels and groups. Does it mean that
+   a single node would have to transfer the data of a whole group?
+A: No, it doesn't. Even if the network is subdivided in levels and groups, the
+   actual routes are traced as if the network was flat (see the "6. flat levels"
+   section in topology.pdf).
+   
+   There is a drawback: the routes are not really the shortest, they are just
+   an approximation (see "6.1 The approximation of the group rule").
+
+   Moreover, to increase transfer efficiency, a multipath approach is planned:
+     Caustic Routing
+     http://lab.dyne.org/Ntk_caustic_routing
 
 Q: Netsukuku is separated from Internet. How?
    Someone is building all new infrastructure? Who's paying for that?
