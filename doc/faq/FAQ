@@ -4,33 +4,36 @@
 	Q: What are its features?
 	Q: Why did you choose that name?
 	Q: Why another p2p network?
-	Q: Ehi! You're crazy. It won't work!
-	Q: Where are current Netsukuku networks that I can connect to?
-	Q: What can I do to help the development of Netsukuku? How can I
-	   contribute to its growth?
+	Q: Is this a serious project? I find too naive: are you
+	   totally sure it will work?
+	Q: Where are current Netsukuku networks that 
+	   I can connect to?
+	Q: What can I do to help the development of Netsukuku?
+	   How can I contribute to its growth?
 
   1. Technical
 	Q: Does it scale in a network with A LOT of nodes?
-	Q: Does it really works?
+	Q: What is the performance of the network? 
+	   Why should it work? Do you have any proof?
+	Q: What if all the traffic flows through a single node? 
 	Q: Netsukuku is separated from Internet. How?
-	Q: What about the security of my packets? Everyone will be able to
-	   sniff them!
+	Q: What about the security of my packets? Everyone will be 
+	   able to sniff them!
 	Q: How can I join in Netsukuku?
-	Q: How does a new node begin to locate any of the other nodes in
-	   the network?
+	Q: How does a new node begin to locate any of the other 
+	   nodes in the network?
 	Q: Will you provide "Internet to Netsukuku" tunnels?
-	Q: Aside from what I hack myself I was wondering what can be done on
-	   the Netsukuku network?
+	Q: Aside from what I hack myself I was wondering what can be
+	   done on the Netsukuku network?
 	Q: Will we be able to host websites anytime soon?
 	Q: Will glibc be able to resolve names for the ANDNA system?
-	Q: What sort of performance does Netsukuku have? Is it any good for 
-	   voice chat, video chat, games?
+	Q: Is it any good for voice chat, video chat, games?
 
   2. Software 
 	Q: On what OS does it run?
 	Q: Will Netsukuku be ported to Windows?
-	Q: Will Netsukuku be ported to PSP / Nintendo DS / wifi phones / PDAs?
-	Q: For using a wifi link do I need of an access point? What to do?
+	Q: Will Netsukuku be ported to handled devices?
+	Q: Do I need an access point to use a wifi link?
 	Q: Why the code is not written in java?
 
 --
@@ -80,11 +83,33 @@ A: Netsukuku is not a p2p net built upon the Internet. It is a physical
    build a physical network separated from the Internet. Btw, read "What is
    Netsukuku".
 
-Q: Ehi! You're crazy. It won't work!
-A: Ehi pal, this doesn't pretend to be _now_ the final solution to the meaning
-   of life, the universe and everything. Why don't you contribute and give us
-   useful hints from your great knowledge? If you want to help in the
-   development, read the code and contact us ;)
+Q: Is this a serious project? I find too naive: are you totally sure
+   it will work?
+A: It's a problem implicit in every project: if you don't have a mathematical
+   proof, you can't be totally sure about the results.
+
+   The same apply in reverse: how can you be so sure that it won't approximately
+   work as expected?  Have you read, in depth, the documentation? Do
+   you have a valid proof of your claims?
+   
+   Instead, in the Netsukuku site every claim is supported by a complete
+   reasoning.  You can find detailed explanation of the protocols, the
+   way of working of the algorithms and how and why they have been chosen.
+   And if the doc isn't enough, you can always communicate with the developers 
+   (mailinglist).
+   
+   In short: the Netsukuku community has developed reasonably
+   algorithms that have the possibility to be reviewed, expanded and
+   work efficiently.
+   
+   What shouldn't be considered "serious" is the habit of disregarding with
+   superficiality well developed arguments.
+   
+   As a side note, there isn't any written rules in the Ntk site that
+   forbids contributor to develop new algorithms.
+
+   If you want to help in the development,
+   read the docs, code and contact us ;)
 
 Q: Where are current Netsukuku networks that I can connect to?
 A: Simply we don't know and we can't, but the website team si developing a
@@ -108,11 +133,46 @@ A: Simple and not accurate reasons for the scalability of Netsukuku:
    4) When a node receives a flood it already has the routes without
       calculating anything.
 
-   You can read the detailed analysis of the QSPN v2 here:
-   http://netsukuku.freaknet.org/doc/main_doc/qspn.pdf
 
-Q: Does it really works?
-A: ^_^
+Q: What is the performance of the network? Why should it work?
+   Do you have any proof?
+
+A: Until now, no rigorous proof of the performance of the Netsukuku topology and
+   routing system is available. You are invited to try finding one, or wait the
+   Netsukuku developers.
+   
+   If you want to evaluate the Netsukuku protocol performance, you should
+   take into account the following factors (in order of priority):
+
+      - Topology (how the logic structure of the network is organised)
+      - Dynamics of the topology: what happens when a node changes its
+        status (see "7 Hooking phase")
+      - IP distribution (see "7.1 Uniform gnodes"): how the IP addresses are
+        allocated, trying to avoid waste of space.
+      - Routing in high levels (see "6 Flat levels"): how the QSPN is used
+        in the high level of the hierarchy.
+      - "7.2 Internal connection": what happens when the network is split in
+        two separated nets.
+      - ETP: valuate its performance, etc...
+   
+   The real difficulty doesn't concern the particular routing algorithm used, 
+   but lies in the Network structure and organisation. For example, instead of the 
+   QSPN you can try to use a normal routing discovery method: it will always work
+   inside a group of nodes (256).
+   Then you have to take into account the higher levels of the hierarchy,
+   i.e. group of group of nodes, but here you can still try to use your
+   favorite routing scheme. 
+   The QSPN has been designed to be well integrated in the ntk
+   topology (see "6 Flat levels"), f.e. it uses the "interesting
+   information rule".
+
+   You can find the appropriate documentation here:
+   http://netsukuku.freaknet.org/index.php?pag=documentation&dir=main_documentation
+
+Q: What if all the traffic flows through a single node? 
+A: See the Caustic Routing:
+   http://lab.dyne.org/Ntk_caustic_routing
+   (it is work in progress).
 
 Q: Netsukuku is separated from Internet. How?
    Someone is building all new infrastructure? Who's paying for that?
@@ -130,19 +190,19 @@ A: Take out your wifi antenna, and start the Netsukuku daemon on the relative
 Q: What about the security of my packets? Everyone will be able to sniff them!
 A: The situation in Ntk isn't much different from the current Internet:
 	
-	- in the Internet, only those few who have access to the ISPs, the
-	  routers and the backbones can sniff, alter and destroy your
-	  traffic.
-	
-	- in Netsukuku, only the nodes belonging to the temporary route, which
-	  you are using for your connection, will be able to sniff, alter
-	  and destroy your traffic. However  consider that:
-	  	
-		1) with the use of multipath your traffic is split among
-		   different routes, thus each route will be able to read only
-		   a partial part of your traffic.
-
-		2) for each connection you have a potential different route
+    - in the Internet, only those few who have access to the ISPs, the
+      routers and the backbones can sniff, alter and destroy your
+      traffic.
+    
+    - in Netsukuku, only the nodes belonging to the temporary route, which
+      you are using for your connection, will be able to sniff, alter
+      and destroy your traffic. However  consider that:
+    	
+        1) with the use of multipath your traffic is split among
+           different routes, thus each route will be able to read only
+           a partial part of your traffic.
+        
+        2) for each connection you have a potential different route
 
    The solution to avoid these problems are alike: use secure protocols https,
    SSH, SSL, and so on.
@@ -200,12 +260,11 @@ A: Short answer: if you code the port, yes.
    Answer: We need coders for that. There are a lot of things to be done and
    the Windows port is what we care less.
 
-Q: Will Netsukuku be ported to PSP / Nintendo DS / wifi phones / linux PDAs 
-   etc...
+Q: Will Netsukuku be ported to handled devices?
 A: We are currently working on flashing Netsukuku on Access Points (like
    Linksys). See http://netsukuku.freaknet.org/openwrt/
 
-Q: For using a wifi link do I need of an access point? What to do?
+Q: Do I need an access point to use a wifi link?
 A: You just need a wifi network card. Put it in ad-hoc mode using "netsukuku"
    as essid. ( man netsukuku_wifi:
    http://netsukuku.freaknet.org/doc/manuals/ntk-wifi )
