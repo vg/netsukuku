@@ -16,6 +16,8 @@
 	Q: What is the performance of the network? 
 	   Why should it work? Do you have any proof?
 	Q: What if all the traffic flows through a single node? 
+	   You subdivide the network in levels and groups. Does it mean that
+	   a single node would have to transfer the data of a whole group?
 	Q: Netsukuku is separated from Internet. How?
 	Q: What about the security of my packets? Everyone will be 
 	   able to sniff them!
@@ -31,6 +33,7 @@
 
   2. Software 
 	Q: On what OS does it run?
+	Q: What are the requirements for running Netsukuku?
 	Q: Will Netsukuku be ported to Windows?
 	Q: Will Netsukuku be ported to handled devices?
 	Q: Do I need an access point to use a wifi link?
@@ -50,11 +53,13 @@ A: Netsukuku is a mesh network or a p2p net system that generates and sustains
    easily used to build a worldwide distributed, anonymous and anarchical
    network, separated from the Internet, without the support of any servers,
    ISPs or control authorities.
+   
    This net is composed by computers linked physically each other, therefore it
    isn't build upon any existing network. Netsukuku builds only the routes which
    connects all the computers of the net.
    In other words, Netsukuku replaces the level 3 of the model iso/osi with
    another routing protocol.
+   
    The Domain Name System is also replaced by a decentralised and distributed
    system: the ANDNA (A Netsukuku Domain Name Architecture).
 
@@ -68,8 +73,10 @@ A: The complete list of features is here:
 Q: Why did you choose that name?
 A: Networked Electronic Technician Skilled in Ultimate Killing, Utility and 
    Kamikaze Uplinking.
+
    But there is also another story: we were learning Japanese katakana with
    `slimeforest', a nice game for GNU/Linux.
+
    Unfortunately when we encountered the "Network" word, written in Japanese,
    we didn't know all the relative symbols, so the only katakana we were able
    to read were few and mixed with others the name was: Ne tsu ku ku.
@@ -136,7 +143,6 @@ A: Simple and not accurate reasons for the scalability of Netsukuku:
 
 Q: What is the performance of the network? Why should it work?
    Do you have any proof?
-
 A: Until now, no rigorous proof of the performance of the Netsukuku topology and
    routing system is available. You are invited to try finding one, or wait the
    Netsukuku developers.
@@ -159,9 +165,11 @@ A: Until now, no rigorous proof of the performance of the Netsukuku topology and
    but lies in the Network structure and organisation. For example, instead of the 
    QSPN you can try to use a normal routing discovery method: it will always work
    inside a group of nodes (256).
+
    Then you have to take into account the higher levels of the hierarchy,
    i.e. group of group of nodes, but here you can still try to use your
-   favorite routing scheme. 
+   favorite routing scheme.
+
    The QSPN has been designed to be well integrated in the ntk
    topology (see "6 Flat levels"), f.e. it uses the "interesting
    information rule".
@@ -263,6 +271,17 @@ A: What do you mean by `performance'?
 Q: On what OS does it run?
 A: For now it runs only on GNU/Linux, but it is easy to port it on other OS.
    If you want to join in the development let us now ;)
+
+Q: What are the requirements for running Netsukuku?
+A: There are currently two Netsukuku implementations:
+
+  * For the C implementation, you only need the proper kernel configuration
+    and the required modules loaded. You can find more info about it in the
+    HOWTO pages.
+
+  * For the Python implementation, you need iproute2 and stackless python.
+    Stackless python normally isn't bundled with common GNU/Linux distributions,
+    however a HOWTO is available in the Netsukuku site.
 
 Q: Will Netsukuku be ported to Windows?
 A: Short answer: if you code the port, yes.

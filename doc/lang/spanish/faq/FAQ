@@ -2,16 +2,20 @@
   0. General
   	P: ¿Que es Netsukuku?
 	P: ¿Cuales son sus características?
-	P: ¿Porque escogieron ese nombre?
+	P: ¿Porque escojieron ese nombre?
 	P: ¿Porque otra red P2P?
-	P: Ehi! Están locos. No funcionara!
+	P: ¿Es este un proyecto serio? Lo encuentro muy ingenuo: estan totalmente
+       seguros de que funcionará?
 	P: ¿Donde están las redes de Netsukuku actuales y como me puedo conectar?
 	P: ¿Que puedo hacer para ayudar en el desarrollo de Netsukuku? Como puedo
 	   contribuir a su crecimiento?
 
   1. Técnico
 	P: ¿Escala bien en una red con MUCHOS nodos?
-	P: ¿De veras funciona?
+	P: ¿Cual es el desempeño de la red?, ¿Porque deberia funcionar?, ¿Tienen alguna prueba?
+    P: ¿Y que pasa si el trafico fluye a travez de un solo nodo? Ustedes subdividen la red
+    en niveles y grupos. ¿Acaso significa que un simple nodo tiene que transferir datos a
+    un grupo completo?
 	P: Netsukuku esta separado de Internet. ¿Como?
        ¿Alguien esta construyendo toda una nueva infraestructura? ¿Quien paga por eso?
     P: ¿Como puedo unirme en Netsukuku?
@@ -81,11 +85,32 @@ R: Netsukuku no es una red P2P construida sobre la Internet. Es una red física
    posible construir una red física separada de la Internet. Por cierto, léase
    "Que es Netsukuku".
 
-P: Ehi! Están locos. No funcionara!
-R: Ehi amigo, esto no pretende ser _ahora_ la solución final al significado de la
-   vida, el universo y todo lo demás. ¿Porque no contribuyes y nos das tips de
-   utilidad de tu vasto conocimiento? Si quieres ayudar en el desarrollo, lee el código
-   y contactanos ;)
+P: ¿Es este un proyecto serio? Lo encuentro muy ingenuo: estan totalmente
+   seguros de que funcionará?
+R: Es un problema implicito en cualquier proyecto: si no tienes una prueba
+   matematica, no puedes totalmente seguro de los resultados.
+
+   Lo mismo aplica en reversa: ¿Como puedes estar tan seguro de que no funcionará
+   como lo esperado? Has leido, con profundidad, la documentación? Tienen pruebas
+   validas de tus reclamos?
+
+   De lo contrario, en el sitio de Netsukuku todo lo dicho esta soportado por un
+   razonamiento completo. Puedes encontrar explicacion detallada de los protocolos,
+   la forma como funcionan los algoritmos y porque han sido escogidos. Y si la
+   documentación no es suficiente, siempre te puedes comunicar con los desarrolladores
+   (lista de correos).
+
+   La explicacion corta: la comunidad de Netsukuku ha desarrollado algoritmos razonables
+   que tienen la posibilidad de ser revisados, expandidos y que trabajan de manera
+   eficiente.
+
+   Lo que no se puede considerar como "grave" es la costumbre de hacer caso omiso a
+   la superficialidad de argumentos bien desarrollados.
+
+   Como nota aparte, no hay reglas escritas en el sitio de Ntk que prohiba a un
+   programador de desarrollar nuevos algoritmos.
+
+   Si quieres ayudar en el desarrollo, lee los documentos, programa y contactanos ;)
 
 P: ¿Donde están las redes de Netsukuku actuales y como me puedo conectar?
 R: Simplemente no sabemos y no podemos, pero el equipo del website esta desarrollando
@@ -103,21 +128,55 @@ R: http://lab.dyne.org/Ntk_Grow_Netsukuku
 
 P: ¿Escala bien en una red con MUCHOS nodos?
 R: Razones simples y no exactas sobre la escalabilidad de Netsukuku:
-   1) El tamaño de los mapas es fijo: acerca de 4Kb para int_map y 16Kb para
-      ext_map.
+   1) El tamaño de los mapas es fijo.
    2) No todos los nodos envían un descubrimiento broadcast.
    3) Hay algunos floods por cada descubrimiento.
    4) Cuando un nodo recibe un flood ya tiene las rutas sin necesidad de calcular
       nada.
 
-   Puedes leer el análisis detallado de QSPN v2 acá:
-   http://netsukuku.freaknet.org/doc/main_doc/qspn.pdf
+P: ¿Cual es el desempeño de la red?, ¿Porque deberia funcionar?, ¿Tienen alguna prueba?
+R: Hasta ahora, no existe una prueba riguroza sobre el desempeño de la topologia de
+   Netsukuku y su sistema de enrutamiento. Eres bienvenido de desarrollar una o esperar
+   a que los desarrolladores de Netsukuku lo hagan.
 
-   El primer borrador de la explicación de la escalabilidad de Netsukuku esta
-   disponible acá: http://lab.dyne.org/Netsukuku_scalability
+   Si quieres evaluar el desempeño del protocolo de Netsukuku, deberias tener en cuenta
+   los siguientes factores (en orden de prioridad):
 
-P: ¿De veras funciona?
-R: ^_^
+     - Topologia (como es organizada la estructura logica de la red)
+     - Dinamica de la topologia: que es lo que pasa cuando un nodo cambia de estado
+     (ver "7 hooking phase")
+     - Distribucion de IP (ver "7.1 Uniform gnodes"): como las IP son alocadas, tratando
+     de evitar perdida de espacio.
+     - Enrutamiento en niveles superiores (ver "6 Flat levels"): como QSPN es usado en
+     el nivel superior de la jerarquia.
+     - "7.2 Internal connection": lo que pasa cuando la red es separada en dos partes
+     individuales.
+     - ETP: evaluar su desempeño, etc...
+
+   La verdadera dificultad no concierne a un algoritmo particular usado, sino en la
+   estructura y organizacion de la red. Por ejemplo, en vez de QSPN, podrias usar un
+   metodo normal de descubrimiento de rutas: siempre va a funcionar dentro de un grupo
+   de nodos (256).
+   Tambien tienes que tener en consideracion los altos niveles de jerarquia, i.e. grupos
+   de grupos de nodos, peroaca tambien puedes usar tu algoritmo de enrutamiento favorito.
+   QSPN ha sido diseñado para estar bien integrado con la topologia de ntk (ver "6 Flat
+   levels"), i.e. usa la "regla de informacion interesante".
+
+   Puedes encontrar la informacion apropiada aca:
+   http://netsukuku.freaknet.org/index.php?pag=documentation&dir=main_documentation
+
+P: ¿Y que pasa si el trafico fluye a travez de un solo nodo?
+   Ustedes subdividen la red en niveles y grupos. ¿Acaso significa que un simple nodo
+   tiene que transferir datos a un grupo completo? 
+R: No, no lo hace. Asi la red este dividida en niveles y en grupos, las rutas actuales
+   son trazadas como si la rastreadas como si la red fuera plana (ver "6 Flat levels")
+
+   Existe un pero a esta regla: las rutas no son realmente las más cortas, son
+   simplemente una aproxmacion (ver "6.1 The approximation of the group rule").
+
+   Sin embargo, para incrementar la eficiencia del transporte, se ha planeado un
+   acercamiento multiruta: Caustic Routing
+   http://lab.dyne.org/Ntk_caustic_routing
 
 P: Netsukuku esta separado de Internet. ¿Como?
    ¿Alguien esta construyendo toda una nueva infraestructura? ¿Quien paga por eso?
@@ -205,11 +264,11 @@ R: Respuesta corta: si tu te encargas de portar el código, si.
    Respuesta: Necesitamos programadores para eso. Existen muchas cosas por hacer y
    portar el código a Windows es lo que menos nos importa.
 
-P: ¿Sera Netsukuku portado a PSP / Nintendo DS / teléfonos WiFi / PDAs?
+P: ¿Sera Netsukuku portado a dispositivos manipulables?
 R: Por el momento estamos trabajando en flashear Netsukuku en Access Points (como
    Linksys). Lee http://netsukuku.freaknet.org/openwrt/
 
-P: ¿Para usar un enlace WiFi necesito un access point? ¿Que hago?
+P: ¿Para usar un enlace WiFi necesito un access point?
 R: Solo necesitas una tarjeta de red inalámbrica. Colocala en modo ad-hoc usando "netsukuku"
    como ESSID. (man netsukuku_wifi: http://netsukuku.freaknet.org/doc/manuals/ntk-wifi)
 
