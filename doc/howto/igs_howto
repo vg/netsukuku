@@ -4,6 +4,8 @@ This document describes how to configure a Netsukuku node to share its
 Internet connection and how to configure another node that will use the shared
 connection.
 
+:WARNING: this howto refers to the old C implementation of Netsukuku :WARNING:
+
 --
 
 	* Internet Gateway Search
