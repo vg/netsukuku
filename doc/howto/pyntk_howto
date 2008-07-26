@@ -1,0 +1,62 @@
+pyntk howto
+-----------
+
+The new Netsukuku implementation is written in python, and it runs under the stackless python
+implementation. Stackless was chosed because that way, we can create microthreads as we wish
+without wasting CPU and RAM resources, as normal kernel threads are too much of overhead. As
+an advantage, we can launch a microthread per package that comes in the WNIC and it wouln't be
+a problem at all.
+
+The new implementation also comes with a simulator that utilizes the microthread benefits.
+
+First of all, be sure you got iproute2 and stackless python. If you want to test the new code,
+here is what you should do:
+
+If you don't have stackless python then you might want to build it/installing it following
+this:
+
+% wget http://www.stackless.com/binaries/stackless-251-export.tar.bz2
+% tar jxf stackless-251-export.tar.bz2 && cd stackless-251-export
+% mkdir -p ~/mybins/
+% ./configure --prefix=/home/arpunk/mybins
+% make
+# make altinstall
+
+Next, grab the current ntk trunk from the SVN repository:
+
+% svn co http://dev.hinezumi.org/svnroot/netsukuku/trunk ntk
+% cd ~/ntk/pyntk
+
+In case you have a working netsukuku.conf (or an old one from the C implementation):
+
+# mv /etc/netsukuku/netsukuku.conf /etc/netsukuku/netsukuku.conf.old
+# touch /etc/netsukuku/netsukuku.conf
+
+Now, you are ready to launch the daemon:
+
+# /home/arpunk/mybins/bin/python2.5 ntkd "n='wlan0'"
+
+If you want to test pyntk using a test NIC, you can load the dummy module:
+
+# modprobe dummy
+# /home/arpunk/mybins/bin/python2.5 ntkd "n='dummy0'" dbg=9
+DEBUG radar scan 2455672771
+DEBUG UDP packet from ('192.168.1.109', 32771), dev None
+DEBUG Handling data: radar.replyÂAٯCµA^Ã
+DEBUG _dispatch: radar.reply((3652142005L, 2455672771L))
+DEBUG func_get: radar.reply
+DEBUG dispatch response: None
+DEBUG UDP packet from ('192.168.1.109', 32771), dev None
+DEBUG Handling data: radar.replyÂAٯCµA^Ã
+DEBUG _dispatch: radar.reply((3652142005L, 2455672771L))
+DEBUG func_get: radar.reply
+DEBUG dispatch response: None
+DEBUG UDP packet from ('192.168.1.109', 32771), dev None
+DEBUG Handling data: radar.replyÂAٯCµA^Ã
+DEBUG _dispatch: radar.reply((3652142005L, 2455672771L))
+DEBUG func_get: radar.reply
+DEBUG dispatch response: None
+DEBUG UDP packet from ('192.168.1.109', 32771), dev None
+...
+
+
