@@ -32,23 +32,22 @@ from ntk.lib.micro import micro, allmicro_run
 from ntk.wrap.sock import Sock
 import ntk.wrap.xtime as xtime
 
-class NtkNode:
+class NtkNode(object):
     def __init__(self, opt, simnet=None, simme=None, sockmodgen=Sock,
-                    xtimemod=xtime):
-        self.opt = opt
+                 xtimemod=xtime):
 
-        self.set_ipv( **opt.getdict(['levels', 'ipv']) )
+        self.opt = opt
+        self.set_ipv(**opt.getdict(['levels', 'ipv']))
 
         self.simulated=opt.simulated
         self.simnet= simnet
         self.simme = simme
         self.simsock = sockmodgen
-        
         self.load_nics(opt)
 
         # Load the core modules
         self.inet       = inet.Inet(self.ipv, self.bitslvl)
-        
+
         rpcbcastclient = rpc.BcastClient(self.inet, self.nics.nics.keys(),
                                          net=self.simnet, me=self.simme,
                                          sockmodgen=self.simsock)
@@ -69,16 +68,19 @@ class NtkNode:
                 self.kroute     = kroute.KrnlRoute(self.neighbour, self.maproute, self.inet, 
                                                 **opt.getdict(['multipath']))
 
-    def set_ipv(self, levels = 4, ipv = inet.ipv4):
+    def set_ipv(self, levels=4, ipv=inet.ipv4):
         self.levels = levels
-        self.ipv    = ipv
+        self.ipv = ipv
 
-        self.bitslvl= inet.ipbit[ipv] / levels  # how many bits of the IP
+        if self.ipv == 6:
+            self.levels = 16
+
+        self.bitslvl= inet.ipbit[ipv] / self.levels  # how many bits of the IP
                                                 # addres are allocate to each gnode
-        self.gsize  = 2**(self.bitslvl)         # size of a gnode
+        self.gsize = 2 ** self.bitslvl         # size of a gnode
 
         if self.gsize == 1:
-                raise OptErr, "the gnode size cannot be equal to 1"
+            raise OptErr, "the gnode size cannot be equal to 1"
 
     def load_nics(self, opt):
         if type(opt.nics) == str:

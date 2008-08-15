@@ -62,9 +62,9 @@ class Map(object):
             self.me = self.nip_rand()
 
         # The member self.node[l][i] is a node of level l and its ID is i
-        self.node = [[None]*gsize]*levels
+        self.node = [[None] * self.gsize] * self.levels
         # Number of nodes of each level
-        self.node_nb = [0]*levels 
+        self.node_nb = [0] * self.levels 
 
         self.events = Event( [ 'NODE_NEW', 'NODE_DELETED', 'ME_CHANGED' ] )
 

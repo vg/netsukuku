@@ -95,9 +95,9 @@ class Neighbour(object):
         """ return the list of neighbours """
         nlist = []
         for key, val in self.ip_table:
-            nlist.append(Neigh(key, self.ntk_client[key], 
-                                translation_table[key], val.devs,
-                                val.bestdev, self.netid_table[key]))
+            nlist.append(Neigh(key, self.ntk_client[key],
+                               translation_table[key], val.devs,
+                               val.bestdev, self.netid_table[key]))
         return nlist
 
     def ip_to_id(self, ipn):
@@ -158,7 +158,7 @@ class Neighbour(object):
         counter = 0
 
         # we're cycling through ip_table, ordered by rtt
-        for key, val in sorted(ip_table.items(), reverse = False, key = interesting):
+        for key, val in sorted(ip_table.items(), reverse=False, key=interesting):
             # if we haven't still reached max_neigh entries in the new ip_table
             if counter < self.max_neigh:
                 # add the current row into ip_table
@@ -166,7 +166,7 @@ class Neighbour(object):
             else:
                 # otherwise just drop it
                 # but, if old ip_table contained this row, we should notify our listeners about this:
-                if(key in self.ip_table):
+                if key in self.ip_table:
                     # remember we are truncating this row
                     truncated.append(key)
                     # delete the entry
@@ -178,7 +178,7 @@ class Neighbour(object):
     def _find_hole_in_tt(self):
         """find the first available index in translation_table"""
         for i in xrange(self.max_neigh):
-            if ((i in self.translation_table.values()) == False):
+            if (i in self.translation_table.values()) == False:
                 return i
         return False
 
@@ -198,7 +198,7 @@ class Neighbour(object):
             # if we find a row that isn't in the new ip_table and whose
             # deletion hasn't already been notified (raising an event)
             # during truncation
-            if((not (key in ip_table)) and (not (key in died_ip_list))):
+            if not key in ip_table and not key in died_ip_list:
                 self.delete(key, remove_from_iptable=False)
 
         # now we cycle through the new ip_table
@@ -206,7 +206,7 @@ class Neighbour(object):
         # or whose rtt has sensibly changed
         for key in ip_table:
             # if a node has been added
-            if(not (key in self.ip_table)):
+            if not key in self.ip_table:
                 # generate an id and add the entry in translation_table
                 self.ip_to_id(key)
 

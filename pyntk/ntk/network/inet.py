@@ -15,6 +15,9 @@ class Inet(object):
         self.ipv = ip_version
         self.bitslvl = bits_per_level
 
+        if self.ipv == 6:
+            raise NotImplementedError('IPV6 not supported yet!')
+
     def lvl_to_bits(self, lvl):
         return ipbit[self.ipv] - lvl*self.bitslvl
 
@@ -43,8 +46,6 @@ class Inet(object):
     def sk_set_broadcast(self, sck, devname):
         if self.ipv == 4:
             sck.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
-        elif self.ipv == 6:
-            raise NotImplementedError, 'please, call a coder!'
 
 if __name__ == "__main__":
     ps = "1.2.3.4"
