@@ -132,7 +132,7 @@ bits, then by taking the 32 bit hash of $h$ the probability is equal to
 $25\%$. Moreover, even the actives node can also exit from the network.
 
 For this reasons, the registration of a hostname will be kept by all the nodes
-of a single gnodes. This ensures the distribution and the redundancy of the
+of a single gnode. This ensures the distribution and the redundancy of the
 database. The gnode associated to $H(h)$ is the \emph{hash gnode}, and it is
 simply the gnode of level 1 of the hash node $H(h)$. We will denote the former
 with $gH(h)$ and the latter with $nH(h)$. In symbols we can write: $nH(h) \in
@@ -159,7 +159,7 @@ are already distributed inside its hash gnode.
   
 Before making a request to ANDNA, a node generates a couple of RSA keys,
 i.e. a public one (\emph{pub key}) and a private (\emph{priv key}). The size of the
-pub key will be limited due to reasons of space.
+public key will be limited due to reasons of space.
 The request of a hostname made to ANDNA will be signed with the private key
 and in the same request the public key will be attached.
 In this way, the node will be able to certify the true identity of its
@@ -167,10 +167,10 @@ future requests.
 
 \subsection{Hostnames limit}
 
-The maximum number of hostnames, which can be registered is 256.
+The maximum number of hostnames which can be registered is 256.
 This limit is necessary to prevent the massive registration of hostnames,
 which may lead to a overload of the ANDNA system. One its side effect is to
-slow down the action of spammers, which registers thousands of common words to
+slow down the action of spammers, which register thousands of common words to
 resell them.
 
 \subsubsection{Implementation of the limit}
@@ -210,7 +210,7 @@ counter gnode.
 		hash gnode, on the contrary it rejects the request.
 		The signature validity is also checked.
 	\item The node $y$ contacts the counter gnode $cr(n)$ and sends to it
-		the IP, the hash of th hostname to be registered and a copy of
+		the IP, the hash of the hostname to be registered and a copy of
 		the registration request itself.
 	\item $cr(n)$ checks the data and gives its ok.
 	\item The node $y$, after the affirmative reply, accepts the
@@ -218,7 +218,7 @@ counter gnode.
 		storing the date of registration,
 	\item $y$ forwards to its gnode the registration request.
 	\item The nodes, which receive the forwarded request, will check its
-		validity and store the entry in their db.
+		validity and store the entry in their database.
 \end{enumerate}
   
 \subsection{Hostname hibernation}
@@ -232,7 +232,7 @@ to fully have it.
 When the expiration time runs out, all the expired hostnames are deleted and
 substituted with the others in queue.\\
 A node has to send an update request for each of its hostnames, each time it
-changes ip and before the hibernation time expires, in this way it's
+changes ip and before the hibernation time expires, in this way its
 hostname won't be deleted.
 
 The packet of the update request has an id, which is equal to the number of
@@ -280,7 +280,7 @@ substituted by the next hostname.
 
 \subsection{Distributed cache for hostname resolution}
 
-In order to optimise the resolution of a hostname, a simple strategy is
+In order to optimize the resolution of a hostname, a simple strategy is
 used: a node, each time it resolves a hostname, stores the result in a
 cache. For each next resolution of the same hostname, the node has already
 the result in its cache.\\
@@ -413,7 +413,7 @@ anything about it. It has only to check the validity of the signature.\\
 
 The register node can also choose to use an optional SNSD feature to be sure
 that a SNSD hostname is always associated to its trusted machine. In this
-case, the register node needs the ANDNA pubkey of the SNSD node to send a
+case, the register node needs the ANDNA public key of the SNSD node to send a
 periodical challenge to the node.
 If the node fails to reply, the register node will send to ANDNA a delete
 request for the relative SNSD record.\\
