@@ -1,7 +1,7 @@
 
 from IN import SO_BINDTODEVICE
-from socket import (inet_pton, inet_ntop, AF_INET, AF_INET6, ntohl, htonl,
-                    SOL_SOCKET, SO_BROADCAST)
+from socket import (inet_pton, inet_ntop, AF_INET, AF_INET6,SOL_SOCKET,
+                    SO_BROADCAST)
 
 ipv4 = 4
 ipv6 = 6
@@ -37,6 +37,7 @@ class Inet(object):
 
     def ip_to_str(self, ip):
         return self.pip_to_str(self.ip_to_pip(ip))
+
     def str_to_ip(self, ipstr):
         return self.pip_to_ip(self.str_to_pip(ipstr))
 
