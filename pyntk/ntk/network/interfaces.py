@@ -44,9 +44,15 @@ class BaseNIC(object):
         ''' Gets NIC address '''
         raise NotImplementedError
 
-    address = property(get_address, set_address)
+    def _get_address_getter(self):
+        return self.get_address()
 
-    # TODO: we really use multicast?
+    def _set_address_getter(self, address):
+        return self.set_address(address)
+
+    address = property(_get_address_getter, _set_address_getter)
+
+    # multicast is used with ipv6
     def set_multicast(self, m):
         ''' Set multicast for the interface '''
         raise NotImplementedError
@@ -55,7 +61,13 @@ class BaseNIC(object):
         ''' Gets multicast for the interface '''
         raise NotImplementedError
 
-    multicast = property(get_multicast, set_multicast)
+    def _get_multicast_getter(self):
+        return self.get_multicast()
+
+    def _set_multicast_getter(self, m):
+        return self.set_multicast(self, m)
+
+    multicast = property(_get_multicast_getter, _set_multicast_getter)
 
 class BaseRoute(object):
     ''' Rapresents a route '''

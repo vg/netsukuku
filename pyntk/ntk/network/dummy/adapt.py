@@ -18,14 +18,25 @@
 ##
 
 
-import sys
+from ntk.network.interfaces import BaseNIC, BaseRoute
 
-if sys.platform == 'linux2':
-    NETWORK_BACKEND = 'linux'
-else:
-    NETWORK_BACKEND = 'dummy'
+class NIC(BaseNIC):
+    ''' Dummy Network Interface Controller '''
 
-backend = __import__('ntk.network.%s.adapt' % NETWORK_BACKEND, {}, {}, [''])
+    def up(self):
+        pass
 
-NIC = backend.NIC
-Route = backend.Route
+    def down(self):
+        pass
+
+    def show(self):
+        print 'Netsukuku Dummy Interface'
+
+    def set_address(self, address):
+        pass
+
+    def get_address(self):
+        return None
+
+class Route(BaseRoute):
+    ''' Dummy route  '''
