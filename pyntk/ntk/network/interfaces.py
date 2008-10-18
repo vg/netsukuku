@@ -25,23 +25,23 @@ class BaseNIC(object):
         self.name = name
 
     def up(self):
-        ''' Brings the interface up '''
+        ''' Brings the interface up. '''
         raise NotImplementedError
 
     def down(self):
-        ''' Brings the interface down '''
+        ''' Brings the interface down. '''
         raise NotImplementedError
 
     def show(self):
-        ''' Shows NIC address information   '''
+        ''' Shows NIC information. '''
         raise NotImplementedError
 
     def set_address(self, address):
-        ''' Set NIC address '''
+        ''' Set NIC address. '''
         raise NotImplementedError
 
     def get_address(self):
-        ''' Gets NIC address '''
+        ''' Gets NIC address. '''
         raise NotImplementedError
 
     def _get_address_getter(self):
@@ -54,11 +54,11 @@ class BaseNIC(object):
 
     # multicast is used with ipv6
     def set_multicast(self, m):
-        ''' Set multicast for the interface '''
+        ''' Set multicast for the interface. '''
         raise NotImplementedError
 
     def get_multicast(self, m):
-        ''' Gets multicast for the interface '''
+        ''' Gets multicast for the interface. '''
         raise NotImplementedError
 
     def _get_multicast_getter(self):
@@ -70,22 +70,22 @@ class BaseNIC(object):
     multicast = property(_get_multicast_getter, _set_multicast_getter)
 
 class BaseRoute(object):
-    ''' Rapresents a route '''
+    ''' Rapresents a route controller. '''
 
     def add(self, properties):
-        ''' Adds a new route with corresponding properties '''
+        ''' Adds a new route with corresponding properties. '''
         raise NotImplementedError
 
     def edit(self, properties):
-        ''' Edits the route with the corresponding properties '''
+        ''' Edits the route with the corresponding properties. '''
         raise NotImplementedError
 
     def delete(self, properties):
-        ''' Removes the route with the corresponding properties '''
+        ''' Removes the route with the corresponding properties. '''
         raise NotImplementedError
 
     def flush(self, properties):
-        ''' Flushes routes selected by some criteria '''
+        ''' Flushes routes selected by some criteria. '''
         raise NotImplementedError
 
     def flush_cache(self, properties):
@@ -93,5 +93,5 @@ class BaseRoute(object):
         raise NotImplementedError
 
     def ip_forward(self, enable):
-        ''' Enables/disables ip forwarding '''
+        ''' Enables/disables ip forwarding. '''
         raise NotImplementedError
