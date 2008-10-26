@@ -21,7 +21,9 @@ import os
 import re
 import subprocess
 
+from ntk.config import settings
 from ntk.network.interfaces import BaseNIC, BaseRoute
+
 
 
 class IPROUTECommandError(Exception):
@@ -79,9 +81,8 @@ class NIC(BaseNIC):
 
     def get_address(self):
         ''' Gets NIC address. '''
-        # TODO: use global settings to determine ip version
-        #       following implementation is for ipv4 only
-        r = re.compile(r'''inet\s((?:\d{1,3}\.){3}\d{1,3})/''')
+        if settings.IP_VERSION == 4:
+            r = re.compile(r'''inet\s((?:\d{1,3}\.){3}\d{1,3})/''')
         matched_address = r.search(self.show())
         return matched_address.groups()[0] if matched_address else None
 
