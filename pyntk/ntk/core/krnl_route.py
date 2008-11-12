@@ -24,16 +24,17 @@
 
 from ntk.lib.event import Event
 from ntk.lib.micro import microfunc
-from ntk.network.route import Route as KRoute
+from ntk.network import Route as KRoute
+from ntk.config import settings
 
 class KrnlRoute:
-    def __init__(self, neigh, maproute, inet, multipath=False):
+    def __init__(self, neigh, maproute, inet):
         self.maproute = maproute
         self.inet     = inet
         self.neigh    = neigh
         self.kroute   = KRoute(self.inet.ipv)
 
-        self.multipath = multipath
+        self.multipath = settings.MULTIPATH
 
         self.maproute.events.listen('ROUTE_NEW', self.route_new)
         self.maproute.events.listen('ROUTE_DELETED', self.route_deleted)

@@ -291,15 +291,11 @@ class Radar(object):
                   'broadcast', 'neigh', 'events', 'netid', 'do_reply',
                   'remotable_funcs', 'ntkd_id', 'radar_id']
 
-    def __init__(self, inet, broadcast, xtime,
-                 bquet_num=16, max_neigh=16, max_wait_time=8):
+    def __init__(self, inet, broadcast, xtime):
         """
             inet:   network.inet.Inet instance
             broadcast: an instance of the RPCBroadcast class to manage broadcast sending
             xtime: a wrap.xtime module
-            bquet_num: how many packets does each bouquet contain?;
-            max_neigh: maximum number of neighbours we can have;
-            max_wait_time: the maximum time we can wait for a reply, in seconds;
         """
 
         self.inet = inet
@@ -312,14 +308,18 @@ class Radar(object):
         self.bcast_send_time = 0
         # when the replies arrived
         self.bcast_arrival_time = {}
-        self.bquet_num = bquet_num
-        self.max_wait_time = max_wait_time
+        # bquet_num: how many packets does each bouquet contain?
+        self.bquet_num = settings.BQUET_NUM
+        # max_wait_time: the maximum time we can wait for a reply, in seconds
+        self.max_wait_time = settings.MAX_WAIT_TIME
+        # max_neigh: maximum number of neighbours we can have
+        self.max_neigh = settings.MAX_NEIGH
         # our neighbours
-        self.neigh = Neighbour(self.inet, max_neigh)
+        self.neigh = Neighbour(self.inet, self.max_neigh)
 
         # Send a SCAN_DONE event each time a sent bouquet has been completely
         # collected
-        self.events = Event( [ 'SCAN_DONE' ] )
+        self.events = Event(['SCAN_DONE'])
 
         # Our netid. It's a random id used to detect network collisions.
         self.netid = -1

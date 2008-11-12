@@ -26,62 +26,56 @@ import ntk.core.p2p     as p2p
 import ntk.core.coord   as coord
 import ntk.core.krnl_route as kroute
 import ntk.network.inet as inet
-import ntk.network.nic  as nic
+from ntk.network import NIC as nic
 import ntk.lib.rpc      as rpc
 from ntk.lib.micro import micro, allmicro_run
 from ntk.wrap.sock import Sock
 import ntk.wrap.xtime as xtime
+from ntk.config import settings
 
 class NtkNode(object):
-    def __init__(self, opt, simnet=None, simme=None, sockmodgen=Sock,
-                 xtimemod=xtime):
+    def __init__(self, simnet=None, simme=None, sockmodgen=Sock, xtimemod=xtime):
 
-        self.opt = opt
-        self.set_ipv(**opt.getdict(['levels', 'ipv']))
+        self.set_ipv()
 
-        self.simulated=opt.simulated
-        self.simnet= simnet
+        self.simulated = settings.SIMULATED
+        self.simnet = simnet
         self.simme = simme
         self.simsock = sockmodgen
         self.load_nics(opt)
 
         # Load the core modules
-        self.inet       = inet.Inet(self.ipv, self.bitslvl)
+        self.inet = inet.Inet(self.ipv, self.bitslvl)
 
         rpcbcastclient = rpc.BcastClient(self.inet, self.nics.nics.keys(),
                                          net=self.simnet, me=self.simme,
                                          sockmodgen=self.simsock)
-        self.radar      = radar.Radar(self.inet, rpcbcastclient, xtimemod,
-                                        **opt.getdict(['bquet_num', 'max_neigh', 
-                                                        'max_wait_time']) )
-        self.neighbour  = self.radar.neigh
-        self.maproute   = maproute.MapRoute(self.levels, self.gsize, None)
-        self.etp        = qspn.Etp(self.radar, self.maproute)
+        self.radar = radar.Radar(self.inet, rpcbcastclient, xtimemod)
+        self.neighbour = self.radar.neigh
+        self.maproute = maproute.MapRoute(self.levels, self.gsize, None)
+        self.etp = qspn.Etp(self.radar, self.maproute)
 
-        self.p2p        = p2p.P2PAll(self.radar, self.maproute)
-        self.coordnode  = coord.Coord(self.radar, self.maproute, self.p2p)
-        self.hook       = hook.Hook(self.radar, self.maproute, self.etp,
-                                    self.coordnode, self.nics, self.inet)
+        self.p2p = p2p.P2PAll(self.radar, self.maproute)
+        self.coordnode = coord.Coord(self.radar, self.maproute, self.p2p)
+        self.hook = hook.Hook(self.radar, self.maproute, self.etp,
+                              self.coordnode, self.nics, self.inet)
         self.p2p.listen_hook_ev(self.hook)
 
         if not self.simulated:
-                self.kroute     = kroute.KrnlRoute(self.neighbour, self.maproute, self.inet, 
-                                                **opt.getdict(['multipath']))
+            self.kroute = kroute.KrnlRoute(self.neighbour, self.maproute, self.inet)
 
-    def set_ipv(self, levels=4, ipv=inet.ipv4):
-        self.levels = levels
-        self.ipv = ipv
-
-        if self.ipv == 6:
-            self.levels = 16
+    def set_ipv(self, levels=None, ipv=None):
+        self.levels = levels if levels is not None else settings.LEVELS
+        self.ipv = ipv if ipv is not None else settings.IP_VERSION
 
         self.bitslvl= inet.ipbit[ipv] / self.levels  # how many bits of the IP
                                                 # addres are allocate to each gnode
         self.gsize = 2 ** self.bitslvl         # size of a gnode
 
         if self.gsize == 1:
-            raise OptErr, "the gnode size cannot be equal to 1"
+            raise Exception, "the gnode size cannot be equal to 1"
 
+    # XXX: TO CHANGE!
     def load_nics(self, opt):
         if type(opt.nics) == str:
                 # normalize opt.nics as a list

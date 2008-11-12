@@ -31,6 +31,9 @@ if sys.platform == 'linux2':
 else:
     raise Exception('Your platform is not supported yet.')
 
+class ImproperlyConfigured(Exception):
+    ''' Improperly configured error '''
+
 class Settings(object):
 
     def __init__(self):
@@ -55,7 +58,21 @@ class Settings(object):
 
         for setting in dir(user_settings):
             if setting == setting.upper():
-                setting_value = getattr(user_settings, setting)
-                setattr(self, setting, setting_value)
+                # LEVELS is excluded because it is handled with a read only
+                # property
+                if setting != 'LEVELS':
+                    setting_value = getattr(user_settings, setting)
+                    setattr(self, setting, setting_value)
+
+    def _get_levels(self):
+        ''' Returns proper LEVELS according IP_VERSION '''
+        if self.IP_VERSION == 4:
+            return 4
+        elif self.IP_VERSION == 6:
+            return 16
+        else:
+            raise ImproperlyConfigured('IP_VERSION must be either 4 or 6')
+
+    LEVELS = property(_get_levels)
 
 settings = Settings()
