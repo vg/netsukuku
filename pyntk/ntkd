@@ -2,6 +2,7 @@
 ##
 # This file is part of Netsukuku
 # (c) Copyright 2007 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+# (c) Copyright 2008 Daniele Tricoli aka Eriol <eriol@mornie.org>
 #
 # This source code is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as published 
@@ -18,60 +19,53 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
-import sys
-from ntk.ntkd import NtkNode
-from ntk.lib.opt import Opt, OptErr
+from optparse import OptionParser
+
+from ntk import VERSION
+from ntk.config import settings
 from ntk.lib.micro import allmicro_run
-from config import *
+from ntk.ntkd import NtkNode
 
-usage = """
-ntkd [n=nics_list] [c=config] 
-
-
-     n=['nic1', 'nic2', ...]        explicit nics to use
-
-     c="/path/to/config/file.conf"  configuration file path
-
-     ipv=4 or ipv=6                 IP version
-
-     dbg=0..9                       debug level (default 0)
-     v or version                   version
-     h or help                      this help
-"""
 
 def main():
 
-    # load options
-    opt = Opt( {'n':'nics', 
-                'c':'config_file',
-                'v':'version',
-                '-v':'version',
-                'h':'help',
-                '-h':'help',
-                'dbg':'debug'
-                } )
-    opt.config_file = CONF_DIR + '/netsukuku.conf'
-    opt.load_argv(sys.argv)
+    usage = '''usage: %prog [OPTION] [NIC LIST]'''
 
-    if opt.help:
-        print usage
-        sys.exit(1)
-    if opt.version:
-        print "NetsukukuD " + VERSION
-        sys.exit(1)
+    parser = OptionParser(usage, version='%%prog %s' % VERSION)
 
-    if opt.config_file:
-        opt.load_file(opt.config_file)
-        opt.load_argv(sys.argv)
+    parser.add_option('-c', '--config', dest='config_file',
+                      help='override configuration file path')
+    parser.add_option('-4', '--ipv4', action='store_true',
+                      help='use Internet Protocol version 4')
+    parser.add_option('-6', '--ipv6', action='store_true',
+                      help='use Internet Protocol version 6')
+    parser.add_option('-d', '--debug', action='store_true',
+                      help='enable debugging messages')
 
-    if opt.debug:
+    (options, args) = parser.parse_args()
+
+    if options.ipv4 and options.ipv6:
+        msg = 'Options --ipv4 (-4) and --ipv6 (-6) are mutually exclusive!'
+        parser.error(msg)
+
+    if options.ipv4:
+        settings.IP_VERSION = 4
+
+    if options.ipv6:
+        settings.IP_VERSION = 6
+
+    if options.config_file:
+        pass
+        # TODO: load settings mechanism from file
+
+    if options.debug:
         import logging
         logging.basicConfig(level=logging.DEBUG,
                             format='%(levelname)s %(message)s')
 
-    NtkNode(opt).run()
+    NtkNode().run()
 
     allmicro_run()
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
