@@ -37,3 +37,5 @@ def update_rt_table():
             rt_table.write(conf)
     finally:
         rt_table.close()
+
+update_rt_table()

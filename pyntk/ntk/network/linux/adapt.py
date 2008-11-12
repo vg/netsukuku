@@ -90,4 +90,44 @@ class NIC(BaseNIC):
         return 'NIC: %s' % self.name
 
 class Route(BaseRoute):
-    '''  '''
+    ''' Managing routes using iproute
+        For ALL netsukuku routes is used the `ntk' table
+    '''
+
+    def add(self, properties):
+        pass
+
+    def change(self, properties):
+        pass
+
+    def delete(self, properties):
+        pass
+
+    def flush(self):
+        ''' Flushes the `ntk' routing table '''
+        iproute('route flush table ntk')
+
+    def flush_cache(self):
+        ''' Flushes cache '''
+        iproute('route flush cache')
+
+    def ip_forward(self, enable=True):
+        ''' Enables/disables ip forwarding. '''
+        PATH = '/proc/sys/net/ipv%s' % settings.IP_VERSION
+
+        if settings.IP_VERSION == 4:
+            PATH = os.path.join(PATH, 'ip_forward')
+        elif settings.IP_VERSION == 6:
+            # Enable forwarding for all interfaces
+            PATH = os.path.join(PATH, 'conf/all/forwarding')
+
+        if enable:
+            value = '1'
+        else:
+            value = '0'
+
+        f = open(PATH, 'w')
+        try:
+            f.write(value)
+        finally:
+            f.close()

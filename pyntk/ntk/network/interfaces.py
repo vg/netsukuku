@@ -76,7 +76,7 @@ class BaseRoute(object):
         ''' Adds a new route with corresponding properties. '''
         raise NotImplementedError
 
-    def edit(self, properties):
+    def change(self, properties):
         ''' Edits the route with the corresponding properties. '''
         raise NotImplementedError
 
@@ -84,12 +84,12 @@ class BaseRoute(object):
         ''' Removes the route with the corresponding properties. '''
         raise NotImplementedError
 
-    def flush(self, properties):
-        ''' Flushes routes selected by some criteria. '''
+    def flush(self):
+        ''' Flushes all routes. '''
         raise NotImplementedError
 
-    def flush_cache(self, properties):
-        '''  '''
+    def flush_cache(self):
+        ''' Flushes cache '''
         raise NotImplementedError
 
     def ip_forward(self, enable):
