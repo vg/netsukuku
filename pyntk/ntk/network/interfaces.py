@@ -1,6 +1,6 @@
 ##
 # This file is part of Netsukuku
-# (c) Copyright 2007 Daniele Tricoli aka Eriol <eriol@mornie.org>
+# (c) Copyright 2008 Daniele Tricoli aka Eriol <eriol@mornie.org>
 #
 # This source code is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as published
