@@ -94,14 +94,32 @@ class Route(BaseRoute):
         For ALL netsukuku routes is used the `ntk' table
     '''
 
-    def add(self, properties):
-        pass
+    def _add_delete_cmd(self, command, ip, cidr, dev, gateway):
+        ''' Returns proper iproute command arguments to add and delete routes
+        '''
+        cmd = 'route %s %s/%s' % (command, ip, cidr)
+
+        if dev is not None:
+            cmd += ' dev %s' % dev
+        if gateway is not None:
+            cmd += ' via %s' % gateway
+
+        cmd += ' table ntk'
+
+        return cmd
+
+    def add(self, ip, cidr, dev=None, gateway=None):
+        ''' Adds a new route with corresponding properties. '''
+        cmd = self._add_delete_cmd('add', ip, cidr, dev, gateway)
+        iproute(cmd)
 
     def change(self, properties):
         pass
 
-    def delete(self, properties):
-        pass
+    def delete(self, ip, cidr, dev=None, gateway=None):
+    ''' Removes a route with corresponding properties. '''
+        cmd = self._add_delete_cmd('del', ip, cidr, dev, gateway)
+        iproute(cmd)
 
     def flush(self):
         ''' Flushes the `ntk' routing table '''

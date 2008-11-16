@@ -72,7 +72,7 @@ class BaseNIC(object):
 class BaseRoute(object):
     ''' Rapresents a route controller. '''
 
-    def add(self, properties):
+    def add(self, ip, cidr, dev=None, gateway=None):
         ''' Adds a new route with corresponding properties. '''
         raise NotImplementedError
 
@@ -80,7 +80,7 @@ class BaseRoute(object):
         ''' Edits the route with the corresponding properties. '''
         raise NotImplementedError
 
-    def delete(self, properties):
+    def delete(self, ip, cidr, dev=None, gateway=None):
         ''' Removes the route with the corresponding properties. '''
         raise NotImplementedError
 

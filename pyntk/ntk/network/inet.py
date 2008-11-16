@@ -1,6 +1,6 @@
 
 from IN import SO_BINDTODEVICE
-from socket import (inet_pton, inet_ntop, AF_INET, AF_INET6,SOL_SOCKET,
+from socket import (inet_pton, inet_ntop, AF_INET, AF_INET6, SOL_SOCKET,
                     SO_BROADCAST)
 
 from ntk.config import settings
