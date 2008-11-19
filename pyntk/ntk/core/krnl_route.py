@@ -22,18 +22,16 @@
 # Listens to MapRoute generated events, and updates the kernel table
 #
 
+from ntk.config import settings
 from ntk.lib.event import Event
 from ntk.lib.micro import microfunc
 from ntk.network import Route as KRoute
-from ntk.config import settings
 
 class KrnlRoute:
     def __init__(self, neigh, maproute, inet):
         self.maproute = maproute
-        self.inet     = inet
-        self.neigh    = neigh
-        self.kroute   = KRoute(self.inet.ipv)
-
+        self.inet = inet
+        self.neigh = neigh
         self.multipath = settings.MULTIPATH
 
         self.maproute.events.listen('ROUTE_NEW', self.route_new)
@@ -54,7 +52,7 @@ class KrnlRoute:
         dev = neigh.bestdev[0]
         gwipstr = self.inet.ip_to_str(neigh.ip)
 
-        self.kroute.route_add(ipstr, self.inet.lvl_to_bits(lvl), None, dev, gwipstr)
+        KRoute.add(ipstr, self.inet.lvl_to_bits(lvl), dev, gwipstr)
 
     @microfunc(True)
     def route_deleted(self, lvl, dst, gw):
@@ -65,7 +63,7 @@ class KrnlRoute:
         dev = neigh.bestdev[0]
         gwipstr = self.inet.ip_to_str(neigh.ip)
 
-        self.krnl_route.route_delete(ipstr, self.inet.lvl_to_bits(lvl), gateway=gwipstr)
+        KRoute.delete(ipstr, self.inet.lvl_to_bits(lvl), gateway=gwipstr)
 
     def route_rem_changed(self, lvl, dst, gw, rem, oldrem):
         pass
@@ -73,10 +71,10 @@ class KrnlRoute:
     @microfunc(True)
     def neigh_new(self, neigh):
         ipstr = self.inet.ip_to_str(neigh.ip)
-        dev   = neigh.bestdev[0]
+        dev = neigh.bestdev[0]
         gwipstr = ipstr
 
-        self.kroute.route_add(ipstr, self.inet.lvl_to_bits(0), None, dev, gwipstr)
+        KRoute.add(ipstr, self.inet.lvl_to_bits(0), dev, gwipstr)
 
     def neigh_rem_changed(self, neigh):
         pass
@@ -84,4 +82,5 @@ class KrnlRoute:
     @microfunc(True)
     def neigh_deleted(self, neigh):
         ipstr = self.inet.ip_to_str(neigh.ip)
-        self.kroute.route_delete(ipstr, self.inet.lvl_to_bits(0))
+
+        KRoute.delete(ipstr, self.inet.lvl_to_bits(0))

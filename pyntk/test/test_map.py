@@ -1,3 +1,8 @@
+# This file is part of Netsukuku
+# (c) Copyright 2007 Daniele Tricoli aka Eriol <eriol@mornie.org>
+#
+# Tests for ntk.core.map
+
 import unittest
 
 import sys
