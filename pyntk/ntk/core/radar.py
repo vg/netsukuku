@@ -16,6 +16,22 @@
 # this source code; if not, write to:
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
+#
+# The radar sends in broadcast a bouquet of BQUET_NUM packets and waits
+# for the reply of the alive nodes. It then recollects the replies and builds
+# a small statistic.
+# By watching the previous statistics, it can deduces if a change occurred or
+# not. If it is, one of the following events is fired:
+#        'NEIGH_NEW', 'NEIGH_DELETED', 'NEIGH_REM_CHGED'
+# In this way, the other modules of pyntk will be noticed.
+#
+# In more details, the current statistic is based on the RTT (Round Trip Time) 
+# of the packets. However, more refined way can be used and shall be
+# implemented. See NTK_RFC 0002  http://lab.dyne.org/Ntk_bandwidth_measurement
+#
+##
+
+
 
 import logging
 from random import randint
