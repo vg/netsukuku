@@ -25,7 +25,10 @@
 #        'NEIGH_NEW', 'NEIGH_DELETED', 'NEIGH_REM_CHGED'
 # In this way, the other modules of pyntk will be noticed.
 #
-# In more details, the current statistic is based on the RTT (Round Trip Time) 
+# A radar is fired periodically by Radar.run(), which is started as a
+# microthread.
+#
+# Note: the current statistic is based on the RTT (Round Trip Time) 
 # of the packets. However, more refined way can be used and shall be
 # implemented. See NTK_RFC 0002  http://lab.dyne.org/Ntk_bandwidth_measurement
 #
