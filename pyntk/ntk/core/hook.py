@@ -70,6 +70,9 @@ class Hook:
                 # tell our neighbour, which is bigger than us, to launch 
                 # its communicating vessels system
                 inv_candidates[0][0].ntkd.hook.communicating_vessels()
+                #TODO:XXX: doesn't communicating_vessels() need two
+                #          arguments? F.e:
+                #          communicating_vessels(old_node_nb, cur_node_nb)
 
         if candidates:
                 candidates.sort(cmp=cand_cmp)
@@ -232,11 +235,14 @@ class Hook:
     
     def gnodes_split(old_node_nb, cur_node_nb):
         """Handles the case of gnode splitting"""
+        ##TODO:XXX: Check the validity of this function. In particular, see
+        ##          what happens to the return value gnodesplitted
         gnodesplitted = 0
         for lvl in reversed(xrange(self.maproute-1)):
                 diff = old_node_nb - cur_node_nb
                 if diff > 0 and diff >= cur_node_nb:
                         level = lvl+1
+                        gnodesplitted=1
         if not gnodesplitted:
                 return 0
 
@@ -250,3 +256,4 @@ class Hook:
         # ok, our gnode of level `level' has become broken, and we are in the
         # smallest part of the two. Let's rehook
         self.hook(N)
+        return gnodesplitted
