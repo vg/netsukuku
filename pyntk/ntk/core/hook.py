@@ -17,42 +17,45 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
-from ntk.lib.micro import microfunc
-from ntk.lib.event import Event
 from random import choice, randint
 
-class Hook:
+from ntk.lib.micro import microfunc
+from ntk.lib.event import Event
 
-    def __init__(self, radar, maproute, etp, coordnode, nics, inet): 
-        self.radar    = radar
-        self.neigh    = radar.neigh
+from ntk.network.inet import ip_to_str
+
+class Hook(object):
+
+    def __init__(self, radar, maproute, etp, coordnode, nics): 
+        self.radar = radar
+        self.neigh = radar.neigh
         self.maproute = maproute
-        self.etp      = etp
+        self.etp = etp
         self.coordnode= coordnode
-        self.nics     = nics
-        self.inet     = inet
+        self.nics = nics
 
         self.events = Event(['HOOKED'])
 
         etp.events.listen('ETP_EXECED', self.communicating_vessels)
         etp.events.listen('NET_COLLISION', self.hook)
 
-        self.remotable_funcs = [self.communicating_vessels, self.highest_free_nodes]
-        
+        self.remotable_funcs = [self.communicating_vessels,
+                                self.highest_free_nodes]
+
     @microfunc()
     def communicating_vessels(self, old_node_nb, cur_node_nb):
-        
+
         if cur_node_nb[0] == old_node_nb[0]:
-                return
+            return
         if self.gnodes_split(old_node_nb, cur_node_nb):
-                return 
+            return 
 
         candidates=[]   # List of (neigh, fnb) elements. neigh is a
                         # Neigh instance; fnb is the number of free
                         # of the level 0 of neigh
         inv_candidates=[]
         def cand_cmp((a1, a2), (b1, b2)):
-                return cmp(a2, b2)
+            return cmp(a2, b2)
 
         for nr in self.neigh.neigh_list():
                 nrnip=self.maproute.ip_to_nip(nr.ip)
@@ -153,8 +156,8 @@ class Hook:
         # If we are alone, let's generate our netid
         if we_are_alone: self.radar.netid = randint(0, 2**32-1)
         ##
-        
-        
+
+
         ## Contact the coordinator nodes 
 
         if lvl > 0:
@@ -203,7 +206,7 @@ class Hook:
                 nr.ntkd.close()
 
         # change the IPs of the NICs
-        self.nics.activate(self.inet.ip_to_str(self.maproute.nip_to_ip(newnip)))
+        self.nics.activate(ip_to_str(self.maproute.nip_to_ip(newnip)))
 
         # reset the map
         self.maproute.me_change(newnip[:])

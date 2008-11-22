@@ -23,7 +23,7 @@
 from ntk.lib.event import Event
 from random import randint
 
-class DataClass:
+class DataClass(object):
     """Data class example.
 
     A Data class contains information regarding a node of the map.

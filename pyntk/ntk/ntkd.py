@@ -25,8 +25,7 @@ import ntk.core.hook    as hook
 import ntk.core.p2p     as p2p
 import ntk.core.coord   as coord
 import ntk.core.krnl_route as kroute
-import ntk.network.inet as inet
-from ntk.network import NIC as nic
+from ntk.network import NIC as nic # TODO: NicsManager
 import ntk.lib.rpc      as rpc
 from ntk.lib.micro import micro, allmicro_run
 from ntk.wrap.sock import Sock
@@ -49,12 +48,9 @@ class NtkNode(object):
         self.load_nics(opt)
 
         # Load the core modules
-        self.inet = inet.Inet(self.ipv, self.bitslvl)
-
-        rpcbcastclient = rpc.BcastClient(self.inet, self.nics.nics.keys(),
-                                         net=self.simnet, me=self.simme,
-                                         sockmodgen=self.simsock)
-        self.radar = radar.Radar(self.inet, rpcbcastclient, xtimemod)
+        rpcbcastclient = rpc.BcastClient(self.nics.nics.keys(), net=self.simnet,
+                                         me=self.simme, sockmodgen=self.simsock)
+        self.radar = radar.Radar(rpcbcastclient, xtimemod)
         self.neighbour = self.radar.neigh
         self.maproute = maproute.MapRoute(settings.LEVELS, self.gsize, None)
         self.etp = qspn.Etp(self.radar, self.maproute)
@@ -62,11 +58,11 @@ class NtkNode(object):
         self.p2p = p2p.P2PAll(self.radar, self.maproute)
         self.coordnode = coord.Coord(self.radar, self.maproute, self.p2p)
         self.hook = hook.Hook(self.radar, self.maproute, self.etp,
-                              self.coordnode, self.nics, self.inet)
+                              self.coordnode, self.nics)
         self.p2p.listen_hook_ev(self.hook)
 
         if not self.simulated:
-            self.kroute = kroute.KrnlRoute(self.neighbour, self.maproute, self.inet)
+            self.kroute = kroute.KrnlRoute(self.neighbour, self.maproute)
 
     # XXX: TO CHANGE!
     def load_nics(self, opt):

@@ -26,11 +26,11 @@ from ntk.config import settings
 from ntk.lib.event import Event
 from ntk.lib.micro import microfunc
 from ntk.network import Route as KRoute
+from ntk.network.inet import ip_to_str, lvl_to_bits
 
 class KrnlRoute:
-    def __init__(self, neigh, maproute, inet):
+    def __init__(self, neigh, maproute):
         self.maproute = maproute
-        self.inet = inet
         self.neigh = neigh
         self.multipath = settings.MULTIPATH
 
@@ -47,40 +47,40 @@ class KrnlRoute:
     def route_new(self, lvl, dst, gw, rem):
         nip = self.maproute.lvlid_to_nip(lvl, dst)
         ip  = self.maproute.nip_to_ip(nip)
-        ipstr = self.inet.ip_to_str(ip)
+        ipstr = ip_to_str(ip)
         neigh = self.neigh.id_to_neigh(gw)
         dev = neigh.bestdev[0]
-        gwipstr = self.inet.ip_to_str(neigh.ip)
+        gwipstr = ip_to_str(neigh.ip)
 
-        KRoute.add(ipstr, self.inet.lvl_to_bits(lvl), dev, gwipstr)
+        KRoute.add(ipstr, lvl_to_bits(lvl), dev, gwipstr)
 
     @microfunc(True)
     def route_deleted(self, lvl, dst, gw):
         nip = self.maproute.lvlid_to_nip(lvl, dst)
         ip  = self.maproute.nip_to_ip(nip)
-        ipstr = self.inet.ip_to_str(ip)
+        ipstr = ip_to_str(ip)
         neigh = self.neigh.id_to_neigh(gw)
         dev = neigh.bestdev[0]
-        gwipstr = self.inet.ip_to_str(neigh.ip)
+        gwipstr = ip_to_str(neigh.ip)
 
-        KRoute.delete(ipstr, self.inet.lvl_to_bits(lvl), gateway=gwipstr)
+        KRoute.delete(ipstr, lvl_to_bits(lvl), gateway=gwipstr)
 
     def route_rem_changed(self, lvl, dst, gw, rem, oldrem):
         pass
 
     @microfunc(True)
     def neigh_new(self, neigh):
-        ipstr = self.inet.ip_to_str(neigh.ip)
+        ipstr = ip_to_str(neigh.ip)
         dev = neigh.bestdev[0]
         gwipstr = ipstr
 
-        KRoute.add(ipstr, self.inet.lvl_to_bits(0), dev, gwipstr)
+        KRoute.add(ipstr, lvl_to_bits(0), dev, gwipstr)
 
     def neigh_rem_changed(self, neigh):
         pass
 
     @microfunc(True)
     def neigh_deleted(self, neigh):
-        ipstr = self.inet.ip_to_str(neigh.ip)
+        ipstr = ip_to_str(neigh.ip)
 
-        KRoute.delete(ipstr, self.inet.lvl_to_bits(0))
+        KRoute.delete(ipstr, lvl_to_bits(0))
