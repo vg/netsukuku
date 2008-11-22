@@ -21,10 +21,13 @@ import imp
 import os
 import sys
 
+# Settings handled with a read only property
+NOT_OVERRIDABLE_SETTINGS = ('LEVELS', 'BITS_PER_LEVEL')
+
 if sys.platform == 'linux2':
     global_settings = dict(
         CONFIGURATION_DIR = '/etc/netsukuku',
-        CONFIGURATION_FILE = 'settings.py',
+        CONFIGURATION_FILE = 'settings.conf',
         DATA_DIR = '/usr/share/netsukuku',
         PID_DIR  = '/var/run',
     )
@@ -58,9 +61,7 @@ class Settings(object):
 
         for setting in dir(user_settings):
             if setting == setting.upper():
-                # LEVELS is excluded because it is handled with a read only
-                # property
-                if setting != 'LEVELS':
+                if setting not in NOT_OVERRIDABLE_SETTINGS:
                     setting_value = getattr(user_settings, setting)
                     setattr(self, setting, setting_value)
 
@@ -74,5 +75,12 @@ class Settings(object):
             raise ImproperlyConfigured('IP_VERSION must be either 4 or 6')
 
     LEVELS = property(_get_levels)
+
+    def _get_bits_per_level(self):
+        ''' Returns proper bits according IP_VERSION and LEVELS '''
+        # IP_VERSION_BIT = {4: 32, 6: 128}
+        return 8 # ---> IP_VERSION_BIT[self.IP_VERSION] / self.LEVELS
+
+    BITS_PER_LEVEL = property(_get_bits_per_level)
 
 settings = Settings()

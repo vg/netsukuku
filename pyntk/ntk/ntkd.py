@@ -31,12 +31,16 @@ import ntk.lib.rpc      as rpc
 from ntk.lib.micro import micro, allmicro_run
 from ntk.wrap.sock import Sock
 import ntk.wrap.xtime as xtime
-from ntk.config import settings
+from ntk.config import settings, ImproperlyConfigured
 
 class NtkNode(object):
     def __init__(self, simnet=None, simme=None, sockmodgen=Sock, xtimemod=xtime):
 
-        self.set_ipv()
+        # Size of a gnode
+        self.gsize = 2 ** settings.BITS_PER_LEVEL
+
+        if self.gsize == 1:
+            raise ImproperlyConfigured('Gnode size cannot be equal to 1')
 
         self.simulated = settings.SIMULATED
         self.simnet = simnet
@@ -52,7 +56,7 @@ class NtkNode(object):
                                          sockmodgen=self.simsock)
         self.radar = radar.Radar(self.inet, rpcbcastclient, xtimemod)
         self.neighbour = self.radar.neigh
-        self.maproute = maproute.MapRoute(self.levels, self.gsize, None)
+        self.maproute = maproute.MapRoute(settings.LEVELS, self.gsize, None)
         self.etp = qspn.Etp(self.radar, self.maproute)
 
         self.p2p = p2p.P2PAll(self.radar, self.maproute)
@@ -63,17 +67,6 @@ class NtkNode(object):
 
         if not self.simulated:
             self.kroute = kroute.KrnlRoute(self.neighbour, self.maproute, self.inet)
-
-    def set_ipv(self, levels=None, ipv=None):
-        self.levels = levels if levels is not None else settings.LEVELS
-        self.ipv = ipv if ipv is not None else settings.IP_VERSION
-
-        self.bitslvl= inet.ipbit[ipv] / self.levels  # how many bits of the IP
-                                                # addres are allocate to each gnode
-        self.gsize = 2 ** self.bitslvl         # size of a gnode
-
-        if self.gsize == 1:
-            raise Exception, "the gnode size cannot be equal to 1"
 
     # XXX: TO CHANGE!
     def load_nics(self, opt):
