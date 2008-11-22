@@ -5,13 +5,12 @@ sys.path.append('..')
 
 import logging
 import threading
+from random import randint
 
 import ntk.lib.rpc as rpc
 
 REQUEST = 3
-from random import randint
-PORT = 8888
-PORT=randint(8880, 8889)
+PORT = randint(8880, 8889)
 
 # Logging option
 
@@ -56,7 +55,7 @@ class MyMod:
         c = _rpc_caller
         logging.debug("caller test: "+str([c.ip, c.port, c.dev, c.socket]))
         return (x,y)
-    
+
     def void_func_caller(self, _rpc_caller):
         c = _rpc_caller
         logging.debug("void func caller: "+str([c.ip, c.port, c.dev, c.socket]))
@@ -88,21 +87,21 @@ class ThreadedRPCClient(threading.Thread):
 
     def run(self):
         client = rpc.TCPClient(port=PORT)
-   
-        x=5
+
+        x = 5
         xsquare = client.square(x)
         assert xsquare == 25
-        xmul7   = client.mul(x, 7)
+        xmul7 = client.mul(x, 7)
         assert xmul7 == 35
-        xadd9   = client.nestmod.add(x, 9)
+        xadd9 = client.nestmod.add(x, 9)
         assert xadd9 == 14
-    
+
         # something trickier
         n, nn = client, client.nestmod
         result = n.square(n.mul(x, nn.add(x, 10)))
-    
+
         assert (1,2) == client.caller_test(1,2)
-    
+
         try:
             # should crash now
             client.private_func()
@@ -131,33 +130,33 @@ class ThreadedBcastRPCClient(threading.Thread):
 
         client.void_func()
         client.void_func_caller()
-    
+
 if __name__ == '__main__':
-  if len(sys.argv) == 1:
-          print "specify udp or tcp"
-          sys.exit(1)
+    if len(sys.argv) == 1:
+        print "specify udp or tcp"
+        sys.exit(1)
 
-  if sys.argv[1]== 'tcp':
-    print 'Starting tcp server...'
+    if sys.argv[1] == 'tcp':
+        print 'Starting tcp server...'
 
-    server = ThreadedRPCServer()
-    server.start()
+        server = ThreadedRPCServer()
+        server.start()
 
-    client = ThreadedRPCClient()
-    client.start()
+        client = ThreadedRPCClient()
+        client.start()
 
-    client.join()
-    server.join()
+        client.join()
+        server.join()
 
 
-  if sys.argv[1]== 'udp':
-    print 'Starting udp server...'
+    if sys.argv[1] == 'udp':
+        print 'Starting udp server...'
 
-    server = ThreadedUDPServer()
-    server.start()
+        server = ThreadedUDPServer()
+        server.start()
 
-    client = ThreadedBcastRPCClient()
-    client.start()
+        client = ThreadedBcastRPCClient()
+        client.start()
 
-    client.join()
-    server.join()
+        client.join()
+        server.join()

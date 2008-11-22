@@ -394,15 +394,15 @@ class BcastClient(FakeRmt):
         If devs=[], the msg calls will be sent through all the available
         devices"""
 
+        FakeRmt.__init__(self)
+        socket=sockmodgen(net, me)
+
         self.port = port
 
-        socket=sockmodgen(net, me)
         self.dev_sk = {}
         for d in devs:
             self.dev_sk[d] = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.connected = False
-
-        FakeRmt.__init__(self)
 
     def rpc_call(self, func_name, params):
         '''Performs a rpc call
