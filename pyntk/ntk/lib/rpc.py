@@ -75,7 +75,8 @@ import logging
 import sys
 
 import ntk.lib.rencode as rencode
-from   ntk.lib.micro import  micro, microfunc
+from ntk.lib.micro import  micro, microfunc
+from ntk.network.inet import sk_set_broadcast
 from ntk.wrap.sock import Sock
 
 
@@ -104,8 +105,8 @@ class FakeRmt(object):
         @return: A new FakeRmt: used to accumulate instance attributes
         '''
 
-        fr=FakeRmt(self._name + '.' + name)
-        fr.rmt=self.rmt
+        fr = FakeRmt(self._name + '.' + name)
+        fr.rmt = self.rmt
         return fr
 
     def __call__(self, *params):
@@ -276,7 +277,7 @@ def TCPServer(root_instance, addr=('', 269), dev=None, net=None, me=None,
 
 @microfunc(True)
 def MicroTCPServer(root_instance, addr=('', 269), dev=None, net=None, me=None, sockmodgen=Sock):
-    TCPServer(root_instance, addr, dev, net, me, sockmodgen, micro_stream_request_handler)    
+    TCPServer(root_instance, addr, dev, net, me, sockmodgen, micro_stream_request_handler)
 
 class TCPClient(FakeRmt):
     '''This class implement a simple TCP RPC client'''
@@ -387,16 +388,13 @@ class BcastClient(FakeRmt):
     *WARNING*
     '''
 
-    def __init__(self, inet, devs=[], port=269, net=None, me=None,
-                    sockmodgen=Sock):
+    def __init__(self, devs=[], port=269, net=None, me=None, sockmodgen=Sock):
         """
-        inet:  network.inet.Inet instance
         devs:  list of devices where to send the broadcast calls
         If devs=[], the msg calls will be sent through all the available
         devices"""
 
         self.port = port
-        self.inet = inet
 
         socket=sockmodgen(net, me)
         self.dev_sk = {}
@@ -425,8 +423,8 @@ class BcastClient(FakeRmt):
 
     def connect(self):
         for d, sk in self.dev_sk.iteritems():
-            #self.inet.sk_bindtodevice(sk, d)
-            self.inet.sk_set_broadcast(sk, d)
+            #sk_bindtodevice(sk, d)
+            sk_set_broadcast(sk)
             sk.connect(('<broadcast>', self.port))
         self.connected = True
 

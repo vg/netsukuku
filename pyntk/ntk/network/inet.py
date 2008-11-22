@@ -19,26 +19,26 @@ def pip_to_ip(pip):
     ps = pip[::-1]
     return sum(ord(ps[i]) * 256**i for i in xrange(len(ps)))
 
-def ip_to_pip(self, ip):
+def ip_to_pip(ip):
     ver = settings.IP_VERSION
     return ''.join([chr( (ip % 256**(i+1))/256**i ) for i in reversed(xrange(ipbit[ver]/8))])
 
 def pip_to_str(pip):
     return inet_ntop(ipfamily[settings.IP_VERSION], pip)
 
-def str_to_pip(self, ipstr):
+def str_to_pip(ipstr):
     return inet_pton(ipfamily[settings.IP_VERSION], ipstr)
 
-def ip_to_str(self, ip):
-    return self.pip_to_str(self.ip_to_pip(ip))
+def ip_to_str(ip):
+    return pip_to_str(ip_to_pip(ip))
 
-def str_to_ip(self, ipstr):
-    return self.pip_to_ip(self.str_to_pip(ipstr))
+def str_to_ip(ipstr):
+    return pip_to_ip(str_to_pip(ipstr))
 
-def sk_bindtodevice(self, sck, devname):
+def sk_bindtodevice(sck, devname):
     sck.setsockopt(SOL_SOCKET, SO_BINDTODEVICE, devname)
 
-def sk_set_broadcast(self, sck):
+def sk_set_broadcast(sck):
     if settings.IP_VERSION == 4:
         sck.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
 

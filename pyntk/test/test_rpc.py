@@ -7,7 +7,6 @@ import logging
 import threading
 
 import ntk.lib.rpc as rpc
-from ntk.network.inet import Inet
 
 REQUEST = 3
 from random import randint
@@ -128,7 +127,7 @@ class ThreadedBcastRPCClient(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
     def run(self):
-        client = rpc.BcastClient(Inet(), devs=['lo'], port=PORT)
+        client = rpc.BcastClient(devs=['lo'], port=PORT)
 
         client.void_func()
         client.void_func_caller()

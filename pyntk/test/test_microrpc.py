@@ -9,7 +9,6 @@ print socket.ManageSockets
 import logging
 import ntk.lib.rpc as rpc
 from ntk.lib.micro import micro, allmicro_run, micro_block
-from ntk.network.inet import Inet
 
 REQUEST = 3
 from random import randint
@@ -99,7 +98,7 @@ def tcp_client():
 ### Bcast client
 #
 def udp_client():
-    client = rpc.BcastClient(Inet(), devs=['lo'], port=PORT)
+    client = rpc.BcastClient(devs=['lo'], port=PORT)
     print "calling void func"
     client.void_func()
     client.void_func_caller()
