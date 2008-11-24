@@ -19,7 +19,7 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
-
+import sys
 from optparse import OptionParser
 
 from ntk import VERSION
@@ -96,4 +96,8 @@ def main():
     allmicro_run()
 
 if __name__ == '__main__':
-    main()
+
+    try:
+        main()
+    except KeyboardInterrupt:
+        sys.exit(0)

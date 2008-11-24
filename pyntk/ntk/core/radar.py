@@ -354,13 +354,14 @@ class Radar(object):
         if not started:
             micro(self.run, (1,))
         else:
-            while True: self.radar()
+            while True:
+                self.radar()
 
     def radar(self):
         """ Send broadcast packets and store the results in neigh """
 
         self.radar_id = randint(0, 2**32-1)
-        logging.debug('radar scan %s'%self.radar_id)
+        logging.debug('radar scan %s' % self.radar_id)
 
         # we're sending the broadcast packets NOW
         self.bcast_send_time = self.xtime.time()
