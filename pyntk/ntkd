@@ -19,6 +19,7 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
+
 from optparse import OptionParser
 
 from ntk import VERSION
@@ -26,10 +27,28 @@ from ntk.config import settings
 from ntk.lib.micro import allmicro_run
 from ntk.ntkd import NtkNode
 
+def nics_optcb(option, opt, value, parser):
+    ''' Callback for nics and exclude-nics option.
+
+    Manage several nics and add them to a list
+    For example:
+        ntkd -n wlan1 wlan2 -e lo eth0
+    '''
+    if value is not None:
+        value = [value]
+
+    for arg in parser.rargs:
+        if ((arg[:2] == "--" and len(arg) > 2) or
+            (arg[:1] == "-" and len(arg) > 1)):
+            break
+        else:
+            value.append(arg)
+
+    setattr(parser.values, option.dest, value)
 
 def main():
 
-    usage = '''usage: %prog [OPTION] [NIC LIST]'''
+    usage = '''usage: %prog [OPTION]'''
 
     parser = OptionParser(usage, version='%%prog %s' % VERSION)
 
@@ -41,6 +60,12 @@ def main():
                       help='use Internet Protocol version 6')
     parser.add_option('-d', '--debug', action='store_true',
                       help='enable debugging messages')
+    parser.add_option('-e', '--exclude-nics', dest='exclude_nics',
+                      action='callback', callback=nics_optcb, default=[],
+                      type='string', help='exclude specified nics')
+    parser.add_option('-n', '--nics', dest='nics', action='callback',
+                      callback=nics_optcb, default=[], type='string',
+                      help='include specified nics')
 
     (options, args) = parser.parse_args()
 
@@ -62,6 +87,9 @@ def main():
         import logging
         logging.basicConfig(level=logging.DEBUG,
                             format='%(levelname)s %(message)s')
+
+    settings.NICS = options.nics if options.nics else []
+    settings.EXCLUDE_NICS = options.exclude_nics if options.exclude_nics else []
 
     NtkNode().run()
 

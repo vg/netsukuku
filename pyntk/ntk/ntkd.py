@@ -18,6 +18,7 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
+
 import ntk.core.radar   as radar
 import ntk.core.route   as maproute
 import ntk.core.qspn    as qspn
@@ -25,7 +26,7 @@ import ntk.core.hook    as hook
 import ntk.core.p2p     as p2p
 import ntk.core.coord   as coord
 import ntk.core.krnl_route as kroute
-from ntk.network import NIC as nic # TODO: NicsManager
+from ntk.network import NICManager, Route
 import ntk.lib.rpc      as rpc
 from ntk.lib.micro import micro, allmicro_run
 from ntk.wrap.sock import Sock
@@ -45,11 +46,15 @@ class NtkNode(object):
         self.simnet = simnet
         self.simme = simme
         self.simsock = sockmodgen
-        self.load_nics(opt)
+
+        self.nic_manager = NICManager(nics=settings.NICS,
+                                      exclude_nics=settings.EXCLUDE_NICS)
 
         # Load the core modules
-        rpcbcastclient = rpc.BcastClient(self.nics.nics.keys(), net=self.simnet,
-                                         me=self.simme, sockmodgen=self.simsock)
+        rpcbcastclient = rpc.BcastClient(list(self.nic_manager),
+                                         net=self.simnet,
+                                         me=self.simme,
+                                         sockmodgen=self.simsock)
         self.radar = radar.Radar(rpcbcastclient, xtimemod)
         self.neighbour = self.radar.neigh
         self.maproute = maproute.MapRoute(settings.LEVELS, self.gsize, None)
@@ -64,25 +69,12 @@ class NtkNode(object):
         if not self.simulated:
             self.kroute = kroute.KrnlRoute(self.neighbour, self.maproute)
 
-    # XXX: TO CHANGE!
-    def load_nics(self, opt):
-        if type(opt.nics) == str:
-                # normalize opt.nics as a list
-                opt.nics=[opt.nics]
-
-        if self.simulated:
-                self.nics = nic.SimNicAll()
-        else:
-                self.nics = nic.NicAll( **opt.getdict(['nics', 'exclude_nics']) )
-        if self.nics.nics == []:
-                raise Exception, "No network interfaces found in the current system"
-
-
     def run(self):
         if not self.simulated:
-                self.kroute.kroute.route_ip_forward_enable()
-                for nic in self.nics.nics:
-                        self.kroute.kroute.route_rp_filter_disable(nic)
+            Route.ip_forward(enable=True)
+            for nic in self.nic_manager:
+                # TODO: rp_filter there is only on unix!
+                self.nic_manager[nic].rp_filter(enable=False)
 
         rpc.MicroTCPServer(self, ('', 269), None, self.simnet, self.simme, self.simsock)
         rpc.MicroUDPServer(self, ('', 269), None, self.simnet, self.simme, self.simsock)

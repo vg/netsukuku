@@ -17,6 +17,7 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
+
 import os
 import re
 import subprocess
@@ -24,12 +25,20 @@ import subprocess
 from ntk.config import settings
 from ntk.network.interfaces import BaseNIC, BaseRoute
 
+def file_write(path, data):
+    ''' Writes `data' to the file pointed by `path' '''
+    fout = open(path, 'w')
+    try:
+        fout.write(data)
+    finally:
+        fout.close()
+
 
 
 class IPROUTECommandError(Exception):
     ''' A generic iproute exception '''
 
-IPROUTE_PATH = os.path.join('/','bin', 'ip')
+IPROUTE_PATH = os.path.join('/', 'bin', 'ip')
 
 def iproute(args):
     ''' An iproute wrapper '''
@@ -86,6 +95,16 @@ class NIC(BaseNIC):
         matched_address = r.search(self.show())
         return matched_address.groups()[0] if matched_address else None
 
+    def rp_filter(self, enable=True):
+        ''' Enables/disables rp filtering. '''
+        path = '/proc/sys/net/ipv%s' % settings.IP_VERSION
+        path = os.path.join(path, 'conf', self.name, 'rp_filter')
+
+        value = '1' if enable else '0'
+
+        file_write(path, value)
+
+
     def __str__(self):
         return 'NIC: %s' % self.name
 
@@ -138,21 +157,14 @@ class Route(BaseRoute):
     @staticmethod
     def ip_forward(enable=True):
         ''' Enables/disables ip forwarding. '''
-        PATH = '/proc/sys/net/ipv%s' % settings.IP_VERSION
+        path = '/proc/sys/net/ipv%s' % settings.IP_VERSION
 
         if settings.IP_VERSION == 4:
-            PATH = os.path.join(PATH, 'ip_forward')
+            path = os.path.join(path, 'ip_forward')
         elif settings.IP_VERSION == 6:
             # Enable forwarding for all interfaces
-            PATH = os.path.join(PATH, 'conf/all/forwarding')
+            path = os.path.join(path, 'conf/all/forwarding')
 
-        if enable:
-            value = '1'
-        else:
-            value = '0'
+        value = '1' if enable else '0'
 
-        f = open(PATH, 'w')
-        try:
-            f.write(value)
-        finally:
-            f.close()
+        file_write(path, value)

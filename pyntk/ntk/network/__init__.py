@@ -29,3 +29,31 @@ backend = __import__('ntk.network.%s.adapt' % NETWORK_BACKEND, {}, {}, [''])
 
 NIC = backend.NIC
 Route = backend.Route
+
+class NICManager(object):
+    ''' A NIC manager to handle all node's nics '''
+
+    def __init__(self, nics=None, exclude_nics=None):
+
+        if nics is None:
+            raise Exception('No NIC specified!')
+        if exclude_nics is None:
+            exclude_nics = []
+
+        self._nics = dict([(n, NIC(n)) for n in nics if n not in exclude_nics])
+
+    def __getitem__(self, key):
+        return self._nics[key]
+
+    def __iter__(self):
+        return iter(self._nics)
+
+    def up(self):
+        ''' Brings all interfaces up '''
+        for n in self._nics:
+            n.up()
+
+    def down(self):
+        ''' Brings all interfaces down '''
+        for n in self._nics:
+            n.down()
