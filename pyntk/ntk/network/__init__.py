@@ -51,9 +51,16 @@ class NICManager(object):
     def up(self):
         ''' Brings all interfaces up '''
         for n in self._nics:
-            n.up()
+            self._nics[n].up()
 
     def down(self):
         ''' Brings all interfaces down '''
         for n in self._nics:
-            n.down()
+            self._nics[n].down()
+
+     # ???: From old implememntation; it's used by Hook
+    def activate(self, address):
+        for n in self._nics:
+            self._nics[n].down()
+            self._nics[n].up()
+            self._nics[n].address = address

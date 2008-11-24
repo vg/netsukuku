@@ -63,7 +63,7 @@ class NtkNode(object):
         self.p2p = p2p.P2PAll(self.radar, self.maproute)
         self.coordnode = coord.Coord(self.radar, self.maproute, self.p2p)
         self.hook = hook.Hook(self.radar, self.maproute, self.etp,
-                              self.coordnode, self.nics)
+                              self.coordnode, self.nic_manager)
         self.p2p.listen_hook_ev(self.hook)
 
         if not self.simulated:
