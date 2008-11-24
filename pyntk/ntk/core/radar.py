@@ -39,10 +39,13 @@
 import logging
 from random import randint
 
+import ntk.lib.rpc as rpc
+
+from ntk.config import settings
 from ntk.core.route import Rtt
 from ntk.lib.event  import Event
 from ntk.lib.micro  import micro
-import ntk.lib.rpc as rpc
+from ntk.network.inet import ip_to_str, str_to_ip
 
 class NodeInfo(object):
     """ this class store informations about a node """
@@ -86,13 +89,11 @@ class Neigh(object):
 
 class Neighbour(object):
     """ this class manages all neighbours """
-    __slots__ = ['max_neigh', 'inet', 'rtt_variation', 'ip_table', 'ntk_client',
+    __slots__ = ['max_neigh', 'rtt_variation', 'ip_table', 'ntk_client',
                  'translation_table', 'netid_table', 'events', 'remotable_funcs']
 
-    def __init__(self, inet, max_neigh=16):
-        """  max_neigh: maximum number of neighbours we can have 
-             inet:   network.inet.Inet instance """
-        self.inet = inet
+    def __init__(self, max_neigh=16):
+        """  max_neigh: maximum number of neighbours we can have """
 
         self.max_neigh = max_neigh
         # variation on neighbours' rtt greater than this will be notified
@@ -230,7 +231,7 @@ class Neighbour(object):
                 self.ip_to_id(key)
 
                 # create a TCP connection to the neighbour
-                self.ntk_client[key] = rpc.TCPClient(self.inet.ip_to_str(key))
+                self.ntk_client[key] = rpc.TCPClient(ip_to_str(key))
 
                 # send a message notifying we added a node
                 self.events.send('NEIGH_NEW',
@@ -287,13 +288,13 @@ class Neighbour(object):
         """Adds `newip' in the Neighbours as a copy of `oldip', then it removes
         `oldip'. The relative events are raised."""
 
-        self.ip_table[newip]         = self.ip_table[oldip]
-        self.ip_table[newip]         = self.ip_table[oldip]
-        self.translation_table[newip]= self.translation_table[oldip]
-        self.netid_table[newip]      = self.netid_table[oldip]
+        self.ip_table[newip] = self.ip_table[oldip]
+        self.ip_table[newip] = self.ip_table[oldip]
+        self.translation_table[newip] = self.translation_table[oldip]
+        self.netid_table[newip] = self.netid_table[oldip]
 
         # we have to create a new TCP connection
-        self.ntk_client[newip]       = rpc.TCPClient(self.inet.ip_to_str(newip))
+        self.ntk_client[newip] = rpc.TCPClient(ip_to_str(newip))
 
         self.events.send('NEIGH_NEW', (
                         Neigh(newip, self.ntk_client[newip], 
@@ -305,19 +306,17 @@ class Neighbour(object):
 
 
 class Radar(object):
-    __slots__ = ['inet', 'bouquet_numb', 'bcast_send_time', 'xtime', 
+    __slots__ = [ 'bouquet_numb', 'bcast_send_time', 'xtime',
                   'bcast_arrival_time', 'bquet_num', 'max_wait_time', 
                   'broadcast', 'neigh', 'events', 'netid', 'do_reply',
-                  'remotable_funcs', 'ntkd_id', 'radar_id']
+                  'remotable_funcs', 'ntkd_id', 'radar_id', 'max_neigh']
 
-    def __init__(self, inet, broadcast, xtime):
+    def __init__(self, broadcast, xtime):
         """
-            inet:   network.inet.Inet instance
             broadcast: an instance of the RPCBroadcast class to manage broadcast sending
             xtime: a wrap.xtime module
         """
 
-        self.inet = inet
         self.xtime = xtime
         self.broadcast = broadcast
 
@@ -334,7 +333,7 @@ class Radar(object):
         # max_neigh: maximum number of neighbours we can have
         self.max_neigh = settings.MAX_NEIGH
         # our neighbours
-        self.neigh = Neighbour(self.inet, self.max_neigh)
+        self.neigh = Neighbour(self.max_neigh)
 
         # Send a SCAN_DONE event each time a sent bouquet has been completely
         # collected
@@ -393,7 +392,7 @@ class Radar(object):
             # drop. It isn't a reply to our current bouquet
             return
 
-        ip = self.inet.str_to_ip(_rpc_caller.ip)
+        ip = str_to_ip(_rpc_caller.ip)
         net_device = _rpc_caller.dev
 
         # this is the rtt
