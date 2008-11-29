@@ -1,0 +1,135 @@
+== NTK_RFC 0015 ==
+
+Subject: Local ANDNA - improving the efficiency of local IP updates
+
+----
+This text describes a possible expansion of the current Netsukuku protocol.
+It will be included in the final documentation, so feel free to correct it.
+But if you want to change the system here described, please contact us first.
+----
+
+
+This solution is based on the following assumption: it is more
+probable that a node changes its lower gnodes than its higher ones.
+F.e, say that the netsukuku IP of the node is 11.22.33, that is
+	33 is the ID of the gnode of level 1
+	22 is the ID of the gnode of level 2
+	11 is the ID of the gnode of level 3
+Then, the following changes: 
+	11.22.33 becomes 11.22.77
+	11.22.33 becomes 11.22.55
+	11.22.33 becomes 11.22.16
+are more probable than the following:
+	11.22.33 becomes 77.22.33
+	11.22.33 becomes 11.88.33
+	11.22.33 becomes 99.88.33
+We call this assumption as the "Local IP Change assumption".
+
+Considering this, we might want to split the IP and store _separately_
+the split parts using ANDNA, in a local manner:
+	
+	Suppose the node N wants to register the hostname "myhostname".
+	Let's say a.b.c.d is the hash of "myhostname".
+	Let's say 11.22.33.44 is the Ntk IP of N.
+	Do the following:
+		Contact the node 11.22.33.d, and tell it to store the pair
+		(11.22.33.44, "myhostname")
+		Contact the node 11.22.c.d, and tell it to store the pair
+		(11.22.33, "myhostname")
+		Contact the node 11.b.c.d, and tell it to store the pair
+		(11.22, "myhostname")
+		Contact the node a.b.c.d, and tell it to store the pair
+		(11, "myhostname")
+	
+	Suppose N changes its IP from 11.22.33.44 to 11.22.30.40.
+	Do the following to update the hostname:
+		Contact the node 11.22.33.d, and tell it to store the pair
+		(11.22.33.40, "myhostname")
+		Contact the node 11.22.c.d, and tell it to store the pair
+		(11.22.30, "myhostname")
+		Halt.
+	
+	Suppose M wants to resolve "myhostname".
+	Do the following:
+		Calculate the hash a.b.c.d of "myhostname"
+		Contact the node a.b.c.d and ask it about "myhostname".
+		It receives the answer from a.b.c.d and has thus
+		completed the resolution.
+		In order to answer, the node a.b.c.d does the following:
+			It retrieves the (11, "myhostname") pair
+			from its database.
+			It contacts the node 11.b.c.d and asks it
+			about "myhostname".
+			It receives the answer from 11.b.c.d and sends
+			it back to M.
+		In order to answer, the node 11.b.c.d will do the following:
+			It retrieves the (11.22, "myhostname") pair.
+			It contacts the node 11.22.c.d and asks it
+			about "myhostname".
+			It receives the answer from 11.b.c.d and sends
+			it back to a.b.c.d.
+		In order to answer, the node 11.22.c.d will do the following:
+			It retrieves the (11.22.33, "myhostname") pair.
+			It contacts the node 11.22.33.d and asks it
+			about "myhostname".
+			It receives the answer from 11.22.33.d and sends
+			it back to 11.b.c.d.
+		In order to answer, the node 11.22.33.d will do the following:
+			It retrieves the (11.22.33.44, "myhostname") pair, 
+			__which is the complete IP__.
+			It sends the IP back to 11.22.c.d.
+		The procedure is thus complete.
+
+		
+		
+	In all the above procedures, the "approximation method" will
+	be used. F.e., if the node a.b.c.d doesn't exist, than the
+	node a'.b'.c'.d' will be used, where a'.b'.c'.d' is the closest available
+	IP to a.b.c.d.
+
+These are some advantages of the presented method:
+	
+	1) Faster hostname updates. As shown above, if a node changes
+	   its IP it will updated only the changed parts in an
+	   efficient way.
+	   This fact mitigates the overhead posed by the Communicating Vessel
+	   System, Network Splits and Network merging.
+
+	1.1) It is more mobile-oriented: the nodes can change their IP without 
+	     worrying to much about hostname updates.
+	     However, this doesn't automatically make Netsukuku mobile compliant.
+
+	1.2) For the same reason as above, this method could mitigate
+	     the effects of using a "Compact gnodes" system. (See
+	     topology.pdf, paragraph 7.3)
+
+	2) Hostnames of "local" nodes can be resolved faster:
+		suppose 10.20.30.40 wants to resolve "myhostname", and
+		suppose that "myhostname" is associated to the IP
+		"10.20.33.44".
+		suppose that a.b.c.d is the hash of "myhostname"
+		10.20.30.40 does the following at the same time, or in
+		sequentially:
+			1. it tries to resolve "myhostname" using 10.20.30.d
+			2. it tries to resolve "myhostname" using 10.20.c.d
+			3. it tries to resolve "myhostname" using 10.b.c.d
+			4. it tries to resolve "myhostname" using a.b.c.d
+		In this example, the first try will fail, because the
+		nodes keeping the hostname association are:
+			10.20.33.d
+			10.20.b.d
+			10.c.b.d
+			a.c.b.d
+		However, the subsequent tries will succeed, and it is
+		more probable that the second will be the first to send
+		back the answer, in fact, the node 10.20.c.d is nearer
+		to 10.20.30.40 than the nodes 10.b.c.d, a.b.c.d 
+		(if b!=20 and a!=10).
+			
+	3) SNSD could be improved with this method, using the same
+	   insights.
+
+TODO:
+	- see if the Communicating Vessel System isn't in conflict with
+	  the "Local IP Change assumption"
+	- add this RFC in the wiki and in andna.pdf

@@ -3,7 +3,7 @@
 Subject: Carciofo - The vegetable sister of Tor in the Netsukuku realm
 
 ----
-This text describes a possible expansion of the current Npv7 protocol.
+This text describes a possible expansion of the current Netsukuku protocol.
 It will be included in the final documentation, so feel free to correct it.
 But if you want to change the system here described, please contact us first.
 ----
@@ -34,9 +34,8 @@ to Tor, but it has some peculiar differences:
 
  * Carciofo will also work on the Internet with the advent of Viphilama ( http://lab.dyne.org/Ntk_viphilama ).
 
-Since Carciofo is an expansion of the Npv7, it can be implemented as a total
-separated application from ntkd. The Carciofo daemon will communicate with
-ntkd using its API.
+Carciofo can be implemented as a total separated application from ntkd. The Carciofo
+daemon will communicate with ntkd using its API.
 
 Carciofo can be also seen as an extension of Tor, in fact, a good idea would
 be to modify the Tor code and starting from there. Is it feasible?
