@@ -58,8 +58,12 @@ class NICManager(object):
         for n in self._nics:
             self._nics[n].down()
 
-     # ???: From old implememntation; it's used by Hook
     def activate(self, address):
+        ''' Set same `address' for every NIC of the node
+
+        Every ntk node is unique in the network, so we assign the same IP
+        address. TODO: assess ARP problems' probability
+        '''
         for n in self._nics:
             self._nics[n].down()
             self._nics[n].up()

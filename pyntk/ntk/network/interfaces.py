@@ -72,26 +72,32 @@ class BaseNIC(object):
 class BaseRoute(object):
     ''' Rapresents a route controller. '''
 
-    def add(self, ip, cidr, dev=None, gateway=None):
+    @staticmethod
+    def add(ip, cidr, dev=None, gateway=None):
         ''' Adds a new route with corresponding properties. '''
         raise NotImplementedError
 
-    def change(self, properties):
+    @staticmethod
+    def change(properties):
         ''' Edits the route with the corresponding properties. '''
         raise NotImplementedError
 
-    def delete(self, ip, cidr, dev=None, gateway=None):
+    @staticmethod
+    def delete(ip, cidr, dev=None, gateway=None):
         ''' Removes the route with the corresponding properties. '''
         raise NotImplementedError
 
-    def flush(self):
+    @staticmethod
+    def flush():
         ''' Flushes all routes. '''
         raise NotImplementedError
 
-    def flush_cache(self):
+    @staticmethod
+    def flush_cache():
         ''' Flushes cache '''
         raise NotImplementedError
 
-    def ip_forward(self, enable):
+    @staticmethod
+    def ip_forward(enable):
         ''' Enables/disables ip forwarding. '''
         raise NotImplementedError
