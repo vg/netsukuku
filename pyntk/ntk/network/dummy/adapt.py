@@ -40,3 +40,27 @@ class NIC(BaseNIC):
 
 class Route(BaseRoute):
     ''' Dummy route  '''
+
+    @staticmethod
+    def add(ip, cidr, dev=None, gateway=None):
+        ''' Adds a new route with corresponding properties. '''
+
+    @staticmethod
+    def change(properties):
+        ''' Edits the route with the corresponding properties. '''
+
+    @staticmethod
+    def delete(ip, cidr, dev=None, gateway=None):
+        ''' Removes the route with the corresponding properties. '''
+
+    @staticmethod
+    def flush():
+        ''' Flushes all routes. '''
+
+    @staticmethod
+    def flush_cache():
+        ''' Flushes cache '''
+
+    @staticmethod
+    def ip_forward(enable):
+        ''' Enables/disables ip forwarding. '''
