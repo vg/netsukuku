@@ -25,6 +25,7 @@ NTK_TABLE = 26
 NTK_IN_RT_TABLE = re.compile(r'\d+\s+ntk')
 
 def update_rt_table():
+    ''' Set proper iproute table for Netsukuku if it does't already set. '''
     conf = ''
     rt_table = open(RT_TABLE, 'a+')
     try:

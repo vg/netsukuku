@@ -124,6 +124,7 @@ class Route(BaseRoute):
         if gateway is not None:
             cmd += ' via %s' % gateway
 
+        cmd += ' protocol ntk'
         cmd += ' table ntk'
 
         return cmd
