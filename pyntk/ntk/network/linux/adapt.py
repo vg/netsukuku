@@ -95,8 +95,13 @@ class NIC(BaseNIC):
         matched_address = r.search(self.show())
         return matched_address.groups()[0] if matched_address else None
 
-    def rp_filter(self, enable=True):
-        ''' Enables/disables rp filtering. '''
+    def filtering(self, *args, **kargs):
+        ''' Enables or disables filtering. '''
+
+        self._rp_filter(*args, **kargs)
+
+    def _rp_filter(self, enable=True):
+        ''' Enables or disables rp filtering. '''
         path = '/proc/sys/net/ipv%s' % settings.IP_VERSION
         path = os.path.join(path, 'conf', self.name, 'rp_filter')
 

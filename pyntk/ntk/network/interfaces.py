@@ -69,6 +69,10 @@ class BaseNIC(object):
 
     multicast = property(_get_multicast_getter, _set_multicast_getter)
 
+    def filtering(*args, **kargs):
+        ''' Enables or disables filtering. '''
+        raise NotImplementedError
+
 class BaseRoute(object):
     ''' Rapresents a route controller. '''
 

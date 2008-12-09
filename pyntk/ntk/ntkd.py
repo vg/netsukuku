@@ -72,9 +72,9 @@ class NtkNode(object):
     def run(self):
         if not self.simulated:
             Route.ip_forward(enable=True)
+
             for nic in self.nic_manager:
-                # TODO: rp_filter there is only on unix!
-                self.nic_manager[nic].rp_filter(enable=False)
+                self.nic_manager[nic].filtering(enable=False)
 
         rpc.MicroTCPServer(self, ('', 269), None, self.simnet, self.simme, self.simsock)
         rpc.MicroUDPServer(self, ('', 269), None, self.simnet, self.simme, self.simsock)

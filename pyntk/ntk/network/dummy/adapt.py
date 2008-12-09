@@ -38,6 +38,9 @@ class NIC(BaseNIC):
     def get_address(self):
         return None
 
+    def filtering(self, *args, **kargs):
+        pass
+
 class Route(BaseRoute):
     ''' Dummy route  '''
 
