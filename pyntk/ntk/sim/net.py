@@ -21,7 +21,7 @@ from heapq   import heappush, heappop
 from random  import randint, choice
 from ntk.sim.sim import SimEvent, Simulator
 import ntk.sim.sim as sim
-from ntk.lib.opt   import Opt
+from ntk.sim.lib.opt import Opt
 from ntk.lib.micro import Channel
 
 class ENet(Exception):
