@@ -36,7 +36,16 @@ from ntk.wrap.sock import Sock
 
 
 class NtkNode(object):
-    def __init__(self, simnet=None, simme=None, sockmodgen=Sock, xtimemod=xtime):
+
+    def __init__(self,
+                 simnet=None,
+                 simme=None,
+                 sockmodgen=Sock,
+                 xtimemod=xtime,
+                 simsettings=None):
+
+        if simsettings is not None:
+            settings = simsettings
 
         # Size of a gnode
         self.gsize = 2 ** settings.BITS_PER_LEVEL

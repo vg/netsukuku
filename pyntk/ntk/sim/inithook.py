@@ -15,9 +15,9 @@ def wrapped_import(name, globals={}, locals={}, fromlist=[], level=-1):
         #print name
         #print '#'*80
         a,b,c = name.split('.')
-        print sys.path[0]+'/../'+a,b
+        #print sys.path[0]+'/../'+a,b
         m=imp.find_module(b, [sys.path[0]+'/../'+a])
-        print m
+        #print m
         return imp.load_module(name, *m)
 
 __builtin__.__import__ = wrapped_import

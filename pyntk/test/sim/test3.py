@@ -32,6 +32,7 @@ from ntk.sim.lib.opt import Opt
 import ntk.lib.rpc as rpc
 from ntk.lib.micro import micro, allmicro_run, micro_block
 from ntk.ntkd import NtkNode
+from ntk.config import Settings
 
 #Initialize the pseudo-random seed
 seed(1)
@@ -68,16 +69,20 @@ sim.sim_activate()
 
 def run_sim():
         # Fill the options to pass to the nodes.
-        o=Opt()
-        o.simulated=1
+        s = Settings()
+        s.SIMULATED = True
+        s.IP_VERSION = 4
+        s.NICS = []
+        s.EXCLUDE_NICS = []
+
 
         # Add the node N.net[0], and N.net[1] to the simulation. They are the
         # nodes loaded by N.net_file_load().
-        micro(NtkNode(o, N, N.net[0], Sock, xtime).run)
+        micro(NtkNode(N, N.net[0], Sock, xtime, s).run)
 
         # Wait 10 time units before adding N.net[1]
         xtime.swait(10)
-        micro(NtkNode(o, N, N.net[1], Sock, xtime).run)
+        micro(NtkNode(N, N.net[1], Sock, xtime, s).run)
 
 #Run the simulation
 sim.sim_run()
