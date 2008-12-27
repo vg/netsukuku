@@ -39,4 +39,4 @@ def update_rt_table():
     finally:
         rt_table.close()
 
-update_rt_table()
+#update_rt_table()

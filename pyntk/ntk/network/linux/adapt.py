@@ -115,8 +115,9 @@ class NIC(BaseNIC):
 
 class Route(BaseRoute):
     ''' Managing routes using iproute
-        For ALL netsukuku routes is used the `ntk' table
     '''
+        
+    ##TODO: add the possibility to specify a routing table, f.e. 'table ntk'
 
     @staticmethod
     def _add_delete_cmd(command, ip, cidr, dev, gateway):
@@ -130,7 +131,7 @@ class Route(BaseRoute):
             cmd += ' via %s' % gateway
 
         cmd += ' protocol ntk'
-        cmd += ' table ntk'
+#        cmd += ' table ntk'
 
         return cmd
 
@@ -152,8 +153,8 @@ class Route(BaseRoute):
 
     @staticmethod
     def flush():
-        ''' Flushes the `ntk' routing table '''
-        iproute('route flush table ntk')
+        ''' Flushes the routing table '''
+        iproute('route flush')
 
     @staticmethod
     def flush_cache():
