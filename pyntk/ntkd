@@ -77,7 +77,8 @@ def main():
         settings.IP_VERSION = 4
 
     if options.ipv6:
-        settings.IP_VERSION = 6
+        #settings.IP_VERSION = 6
+        sys.exit('IPV6 not supported yet!')
 
     if options.config_file:
         pass
