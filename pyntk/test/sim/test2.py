@@ -12,6 +12,7 @@ from ntk.sim.wrap.sock import Sock
 from socket import AF_INET, SOCK_DGRAM, SOCK_STREAM, SO_REUSEADDR, SOL_SOCKET
 import ntk.sim.wrap.xtime as xtime
 from ntk.lib.micro import micro, microfunc, allmicro_run
+from ntk.network.inet import ip_to_str
 
 random.seed(1)
 
@@ -40,7 +41,7 @@ def echo_srv():
 def echo_client():
     socket=Sock(N, N.net[1])
     s1=socket.socket(AF_INET, SOCK_DGRAM)
-    ip = s1.inet.ip_to_str(0)
+    ip = ip_to_str(0)
     r=randint(0, 256)
     print "t:", xtime.time(), ("sending data %d to "+ip)%(r)
     s1.sendto('hey '+str(r), (ip, 51423))
@@ -51,7 +52,7 @@ def echo_client():
 def echo_client_II():
     socket=Sock(N, N.net[1])
     s1=socket.socket(AF_INET, SOCK_DGRAM)
-    ip = s1.inet.ip_to_str(0)
+    ip = ip_to_str(0)
 
     r=randint(0, 256)
     print "t:", xtime.time(), ("II sending data %d to "+ip)%(r)
@@ -92,7 +93,7 @@ def tcp_echo_srv():
 def tcp_echo_client():
     socket=Sock(N, N.net[1])
     s1=socket.socket(AF_INET, SOCK_STREAM)
-    ip = s1.inet.ip_to_str(0)
+    ip = ip_to_str(0)
     print "t:", xtime.time(), "waiting"
     xtime.swait(70)
     print "t:", xtime.time(), "connecting to "+ip

@@ -19,6 +19,8 @@
 
 import os
 import socket as stdsock
+import sys
+
 from errno import ENETUNREACH, EINVAL, ENOTSOCK, EPIPE
 
 if "__all__" in stdsock.__dict__:
@@ -35,16 +37,15 @@ else:
     getaddrinfo = stdsock.getaddrinfo
 
 from ntk.lib.micro import Channel
-from ntk.network.inet import Inet, familyver
+from ntk.network.inet import ip_to_str, str_to_ip
 from ntk.sim.net import ESkt, ENotNeigh
-import sys
+
 
 class VirtualSocket(object):
-    __slots__ = ['inet', 'net', 'me', 'addr_family', 'sck_type', 'sck',
-                    'addr', 'node', 'broadcast', 'recvbuf']
+    __slots__ = ['net', 'me', 'addr_family', 'sck_type', 'sck',
+                 'addr', 'node', 'broadcast', 'recvbuf']
 
     def __init__(self, address_family, socket_type, net, me):
-        self.inet = Inet(ip_version=familyver[address_family])
         self.net=net # virtual Net instance
         self.me =me  # our Node instance
 
@@ -62,7 +63,7 @@ class VirtualSocket(object):
                 raise error, (EINVAL, os.strerror(EINVAL))
 
         sck, node = self.me.accept()
-        addr = self.inet.ip_to_str(node.ip)
+        addr = ip_to_str(node.ip)
         retsck = VirtualSocket(self.addr_family, self.sck_type, self.net, self.me)
         retsck.sck  = sck
         retsck.addr = addr
@@ -74,37 +75,37 @@ class VirtualSocket(object):
     def listen(self,n): pass
 
     def _get_net_node(self, addr):
-        addr = self.inet.str_to_ip(addr)
+        addr = str_to_ip(addr)
         if not self.net.node_is_alive(addr):
-                raise error, (ENETUNREACH, os.strerror(ENETUNREACH))
+            raise error, (ENETUNREACH, os.strerror(ENETUNREACH))
 
         return self.net.node_get(addr)
 
     def connect(self, (addr, port)):
         if self.broadcast:
-                return 0
+            return 0
         dst = self._get_net_node(addr)
         if self.sck_type != SOCK_DGRAM:
-                try:
-                        self.sck = self.me.connect(dst)
-                except ENotNeigh:
-                        print self.me.ip, dst.ip
-                        raise error, (ENETUNREACH, os.strerror(ENETUNREACH))
+            try:
+                self.sck = self.me.connect(dst)
+            except ENotNeigh:
+                print self.me.ip, dst.ip
+                raise error, (ENETUNREACH, os.strerror(ENETUNREACH))
 
         self.addr = addr
         self.node = dst
         return self.sck
-    
+
     def connect_ex(self,(addr,port)):
         try:
-                self.connect((addr,port))
+            self.connect((addr,port))
         except error, (errno, str):
-                return errno
+            return errno
         return 0
 
     def close(self):
         if self.sck_type != SOCK_DGRAM:
-                self.me.close(self.node, self.sck)
+            self.me.close(self.node, self.sck)
         self.sck = -1
         self.addr= -1
         self.node= None
@@ -138,7 +139,7 @@ class VirtualSocket(object):
     def recvfrom(self, buflen, flag=0):
         try:
                 src, msg = self.me.recvfrom()
-                return (msg, (self.inet.ip_to_str(src.ip), 0))
+                return (msg, (ip_to_str(src.ip), 0))
         except:
                 raise error, (ENOTSOCK, os.strerror(ENOTSOCK))
     
@@ -179,10 +180,10 @@ class VirtualSocket(object):
         return self.sck
     
     def getpeername(self):
-        return (self.inet.ip_to_str(self.addr), 1)
+        return (ip_to_str(self.addr), 1)
 
     def getsockname(self):
-        return (self.inet.ip_to_str(self.me.ip), 1)
+        return (ip_to_str(self.me.ip), 1)
 
     def getsockopt(self, level, optname, buflen=0):
         pass
@@ -201,7 +202,7 @@ class VirtualSocket(object):
                 self.broadcast=value
         if level == IPPROTO_IPV6 and IPV6_JOIN_GROUP:
                 self.broadcast=1
-    
+
     def settimeout(self, flag):
         pass
 

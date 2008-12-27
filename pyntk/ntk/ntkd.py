@@ -19,19 +19,21 @@
 ##
 
 
-import ntk.core.radar   as radar
-import ntk.core.route   as maproute
-import ntk.core.qspn    as qspn
-import ntk.core.hook    as hook
-import ntk.core.p2p     as p2p
-import ntk.core.coord   as coord
+import ntk.core.radar as radar
+import ntk.core.route as maproute
+import ntk.core.qspn as qspn
+import ntk.core.hook as hook
+import ntk.core.p2p as p2p
+import ntk.core.coord as coord
 import ntk.core.krnl_route as kroute
-from ntk.network import NICManager, Route
-import ntk.lib.rpc      as rpc
-from ntk.lib.micro import micro, allmicro_run
-from ntk.wrap.sock import Sock
+import ntk.lib.rpc as rpc
 import ntk.wrap.xtime as xtime
+
 from ntk.config import settings, ImproperlyConfigured
+from ntk.lib.micro import micro, allmicro_run
+from ntk.network import NICManager, Route
+from ntk.wrap.sock import Sock
+
 
 class NtkNode(object):
     def __init__(self, simnet=None, simme=None, sockmodgen=Sock, xtimemod=xtime):

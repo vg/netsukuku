@@ -27,11 +27,10 @@ from ntk.sim.wrap.sock import Sock
 import ntk.sim.wrap.xtime as xtime
 from socket import AF_INET, SOCK_DGRAM, SOCK_STREAM, SO_REUSEADDR, SOL_SOCKET
 from ntk.lib.micro import micro, microfunc, allmicro_run
-from ntk.lib.opt import Opt
+from ntk.sim.lib.opt import Opt
 
 import ntk.lib.rpc as rpc
 from ntk.lib.micro import micro, allmicro_run, micro_block
-from ntk.network.inet import Inet
 from ntk.ntkd import NtkNode
 
 #Initialize the pseudo-random seed
