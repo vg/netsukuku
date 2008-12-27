@@ -69,6 +69,7 @@ def main():
 
     (options, args) = parser.parse_args()
 
+
     if options.ipv4 and options.ipv6:
         msg = 'Options --ipv4 (-4) and --ipv6 (-6) are mutually exclusive!'
         parser.error(msg)

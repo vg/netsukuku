@@ -87,3 +87,11 @@ class Settings(object):
     BITS_PER_LEVEL = property(_get_bits_per_level)
 
 settings = Settings()
+
+## Default options
+### Radar
+settings.BQUET_NUM = 16
+settings.MAX_NEIGH = 16
+settings.MAX_WAIT_TIME = 8 # seconds
+### Inet
+settings.IP_VERSION = 4
