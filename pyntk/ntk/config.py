@@ -44,12 +44,15 @@ class Settings(object):
             # Configuration settings must be uppercase
             if setting == setting.upper():
                 setattr(self, setting, global_settings[setting])
-
+        
         self._load_configuration_file()
 
     def _load_configuration_file(self):
         configuration_file = os.path.join(self.CONFIGURATION_DIR,
                                           self.CONFIGURATION_FILE)
+        if not os.path.isfile(configuration_file):
+                # No configuration file. Ignore it.
+                return 
         try:
             user_settings = imp.load_source('configuration_file',
                                             configuration_file)
