@@ -1,18 +1,34 @@
 
+import socket
 from IN import SO_BINDTODEVICE
-from socket import (inet_pton, inet_ntop, AF_INET, AF_INET6, SOL_SOCKET,
-                    SO_BROADCAST)
 
 from ntk.config import settings
 
+
 ipv4 = 4
 ipv6 = 6
-ipfamily = {ipv4: AF_INET, ipv6: AF_INET6}
+ipfamily = {ipv4: socket.AF_INET, ipv6: socket.AF_INET6}
 ipbit = {ipv4: 32, ipv6: 128}
-familyver = {AF_INET: ipv4, AF_INET6: ipv6}
+familyver = {socket.AF_INET: ipv4, socket.AF_INET6: ipv6}
 
+# Compatibility functions that will work only with IPV4
+# For now this is not a problem because IPV6 is currently disabled.
+def _inet_ntop(family, address):
+    if family == socket.AF_INET:
+        return socket.inet_ntoa(address)
+
+def _inet_pton(family, address):
+    if family == socket.AF_INET:
+        return socket.inet_aton(address)
+
+try:
+    socket.inet_pton
+except AttributeError:
+    socket.inet_pton = _inet_pton
+    socket.inet_ntop = _inet_ntop
 
 def lvl_to_bits(lvl):
+    ''' Returns bits corresponding to `lvl' '''
     return ipbit[settings.IP_VERSION] - lvl*settings.BITS_PER_LEVEL
 
 def pip_to_ip(pip):
@@ -23,11 +39,12 @@ def ip_to_pip(ip):
     ver = settings.IP_VERSION
     return ''.join([chr( (ip % 256**(i+1))/256**i ) for i in reversed(xrange(ipbit[ver]/8))])
 
+
 def pip_to_str(pip):
-    return inet_ntop(ipfamily[settings.IP_VERSION], pip)
+    return socket.inet_ntop(ipfamily[settings.IP_VERSION], pip)
 
 def str_to_pip(ipstr):
-    return inet_pton(ipfamily[settings.IP_VERSION], ipstr)
+    return socket.inet_pton(ipfamily[settings.IP_VERSION], ipstr)
 
 def ip_to_str(ip):
     return pip_to_str(ip_to_pip(ip))
@@ -36,11 +53,11 @@ def str_to_ip(ipstr):
     return pip_to_ip(str_to_pip(ipstr))
 
 def sk_bindtodevice(sck, devname):
-    sck.setsockopt(SOL_SOCKET, SO_BINDTODEVICE, devname)
+    sck.setsockopt(socket.SOL_SOCKET, SO_BINDTODEVICE, devname)
 
 def sk_set_broadcast(sck):
     if settings.IP_VERSION == 4:
-        sck.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
+        sck.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
 if __name__ == "__main__":
     ps = "1.2.3.4"
