@@ -87,7 +87,7 @@ def microfunc(is_micro=False):
 
     Note: This is a decorator! (see test/test_micro.py for examples)
 
-    If is_micro == True, each call of the function will executed in a new
+    If is_micro == True, each call of the function will be executed in a new
     microthread. 
     If is_micro != True, each call will be queued. A dispatcher microthread
     will automatically pop and execute each call.
