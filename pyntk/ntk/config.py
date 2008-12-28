@@ -24,8 +24,17 @@ import sys
 # Settings handled with a read only property
 NOT_OVERRIDABLE_SETTINGS = ('LEVELS', 'BITS_PER_LEVEL')
 
+DEFAULT_SETTINGS = dict(
+    # Inet
+    IP_VERSION = 4,
+    # Radar
+    BQUET_NUM = 16,
+    MAX_NEIGH = 16,
+    MAX_WAIT_TIME = 8, # seconds
+)
+
 if sys.platform == 'linux2':
-    global_settings = dict(
+    GLOBAL_SETTINGS = dict(
         CONFIGURATION_DIR = '/etc/netsukuku',
         CONFIGURATION_FILE = 'settings.conf',
         DATA_DIR = '/usr/share/netsukuku',
@@ -34,17 +43,19 @@ if sys.platform == 'linux2':
 else:
     raise Exception('Your platform is not supported yet.')
 
+GLOBAL_SETTINGS.update(DEFAULT_SETTINGS)
+
 class ImproperlyConfigured(Exception):
     ''' Improperly configured error '''
 
 class Settings(object):
 
     def __init__(self):
-        for setting in global_settings:
+        for setting in GLOBAL_SETTINGS:
             # Configuration settings must be uppercase
             if setting == setting.upper():
-                setattr(self, setting, global_settings[setting])
-        
+                setattr(self, setting, GLOBAL_SETTINGS[setting])
+
         self._load_configuration_file()
 
     def _load_configuration_file(self):
@@ -87,11 +98,3 @@ class Settings(object):
     BITS_PER_LEVEL = property(_get_bits_per_level)
 
 settings = Settings()
-
-## Default options
-### Radar
-settings.BQUET_NUM = 16
-settings.MAX_NEIGH = 16
-settings.MAX_WAIT_TIME = 8 # seconds
-### Inet
-settings.IP_VERSION = 4
