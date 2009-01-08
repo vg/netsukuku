@@ -9,3 +9,5 @@ sys.path.append('..')
 
 class TestNeighbour(unittest.TestCase):
     pass
+
+raise NotImplementedError, 'Call someone to code this test'
