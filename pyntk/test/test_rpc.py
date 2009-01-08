@@ -29,7 +29,6 @@ from random import randint
 
 import ntk.lib.rpc as rpc
 
-REQUEST = 3
 PORT = randint(8880, 8889)
 
 # Logging option

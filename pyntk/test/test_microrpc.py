@@ -25,15 +25,13 @@ sys.path.append('..')
 
 from ntk.wrap.sock import Sock
 socket=Sock()
-print socket.ManageSockets
+
 import logging
 import ntk.lib.rpc as rpc
 from ntk.lib.micro import micro, allmicro_run, micro_block
 
-REQUEST = 3
 from random import randint
 PORT=randint(8880, 8889)
-PORT =8888
 
 # Logging option
 
@@ -101,13 +99,13 @@ def tcp_client():
         assert xmul7 == 35
         xadd9   = client.nestmod.add(x, 9)
         assert xadd9 == 14
-    
+
         # something trickier
         n, nn = client, client.nestmod
         result = n.square(n.mul(x, nn.add(x, 10)))
-    
+
         assert (1,2) == client.caller_test(1,2)
-    
+
         try:
             # should crash now
             client.private_func()
