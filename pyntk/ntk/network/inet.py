@@ -22,7 +22,7 @@
 
 
 import socket
-from IN import SO_BINDTODEVICE
+import sys
 
 from ntk.config import settings
 
@@ -61,7 +61,6 @@ def ip_to_pip(ip):
     ver = settings.IP_VERSION
     return ''.join([chr( (ip % 256**(i+1))/256**i ) for i in reversed(xrange(ipbit[ver]/8))])
 
-
 def pip_to_str(pip):
     return socket.inet_ntop(ipfamily[settings.IP_VERSION], pip)
 
@@ -75,22 +74,13 @@ def str_to_ip(ipstr):
     return pip_to_ip(str_to_pip(ipstr))
 
 def sk_bindtodevice(sck, devname):
-    sck.setsockopt(socket.SOL_SOCKET, SO_BINDTODEVICE, devname)
+    if sys.platform == 'linux2':
+        from IN import SO_BINDTODEVICE
+        sck.setsockopt(socket.SOL_SOCKET, SO_BINDTODEVICE, devname)
+    else:
+        m = 'SO_BINDTODEVICE is not supported by your platform.'
+        raise NotImplementedError(m)
 
 def sk_set_broadcast(sck):
     if settings.IP_VERSION == 4:
         sck.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-
-if __name__ == "__main__":
-    ps = "1.2.3.4"
-
-    assert lvl_to_bits(1) == 24
-    pip = str_to_pip(ps)
-    ip  = pip_to_ip(pip)
-    PIP = ip_to_pip(ip)
-    IP  = pip_to_ip(PIP)
-    print str(ps)+" --> "+repr(pip)+" --> "+str(ip)+" --> "+repr(PIP)+" --> "+str(IP)
-    assert PIP == pip
-    assert IP == ip
-    assert ip_to_str(ip) == ps
-    print "all ok"
