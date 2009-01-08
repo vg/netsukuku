@@ -34,7 +34,6 @@ from ntk.lib.micro import micro, allmicro_run
 from ntk.network import NICManager, Route
 from ntk.wrap.sock import Sock
 
-
 class NtkNode(object):
 
     def __init__(self,
@@ -43,6 +42,8 @@ class NtkNode(object):
                  sockmodgen=Sock,
                  xtimemod=xtime,
                  simsettings=None):
+
+        global settings
 
         if simsettings is not None:
             settings = simsettings
