@@ -268,7 +268,10 @@ class dispatcher(asyncore.dispatcher):
 
     # asyncore doesn't support this.  Why not?
     def fileno(self):
-        #return self.socket.fileno() # self.socket.fileno() raises a Bad file descriptor error
+            # XXX: self.socket.fileno() raises a Bad file descriptor error.
+            #      Therefore, we're using _fileno as a hack. This has to be
+            #      cleaned.
+            # return self.socket.fileno() 
         return self._fileno
 
     def handle_accept(self):
