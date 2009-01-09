@@ -29,7 +29,7 @@ def micro(function, args=()):
     return stackless.tasklet(function)(*args)
 
 def micro_block():
-        stackless.schedule()
+    stackless.schedule()
 
 def allmicro_run():
     stackless.run()
@@ -49,16 +49,16 @@ class Channel(object):
         """
         self.ch  = stackless.channel()
         self.chq = []
-        self.micro_send=micro_send
+        self.micro_send = micro_send
         if prefer_sender:
-                self.ch.preference=1
+            self.ch.preference = 1
 
     def send(self, data):
         if self.micro_send:
-                micro(self.ch.send, (data,))
+            micro(self.ch.send, (data,))
         else:
-                self.ch.send(data)
-    
+            self.ch.send(data)
+
     def recv(self):
         return self.ch.receive()
 
@@ -66,16 +66,16 @@ class Channel(object):
         """It just sends `data' to the channel queue.
            `data' can or cannot be received."""
         if self.ch.balance < 0:
-                self.send(data)
+            self.send(data)
         else:
-                self.chq.append(data)
-    
+            self.chq.append(data)
+
     def recvq(self):
         """Receives data sent by `sendq'"""
         if self.chq == []:
-                return self.recv()
+            return self.recv()
         else:
-                return self.chq.pop(0)
+            return self.chq.pop(0)
 
 def _dispatcher(func, chan):
     while True:
@@ -87,7 +87,7 @@ def microfunc(is_micro=False):
 
     Note: This is a decorator! (see test/test_micro.py for examples)
 
-    If is_micro == True, each call of the function will executed in a new
+    If is_micro == True, each call of the function will be executed in a new
     microthread. 
     If is_micro != True, each call will be queued. A dispatcher microthread
     will automatically pop and execute each call.
@@ -99,15 +99,15 @@ def microfunc(is_micro=False):
         @functools.wraps(func)
         def fsend(*data):
             ch.sendq(data)
-        
+
         @functools.wraps(func)
         def fmicro(*data):
             micro(func, data)
 
         if is_micro:
-                return fmicro
+            return fmicro
         else:
-                micro(_dispatcher, (func, ch))
-                return fsend
+            micro(_dispatcher, (func, ch))
+            return fsend
 
     return decorate

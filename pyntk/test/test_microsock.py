@@ -1,3 +1,7 @@
+##
+# Test taken (and modified) from the examples of stackless.
+##
+
 import sys
 sys.path.append('..')
 from ntk.lib.micro import micro, microfunc, allmicro_run, Channel

@@ -40,9 +40,9 @@ class Rem(object):
     __slots__ = ['value', 'max_value', 'avgcoeff']
 
     def __init__(self, value, max_value=0, avgcoeff=1):
-        self.value=value
-        self.max_value=max_value        # Maximum value assumed by this REM
-        self.avgcoeff=avgcoeff          # Coefficient used for the average
+        self.value = value
+        self.max_value = max_value        # Maximum value assumed by this REM
+        self.avgcoeff = avgcoeff          # Coefficient used for the average
 
     def _pack(self):
         return (self.value, self.max_value, self.avgcoeff)

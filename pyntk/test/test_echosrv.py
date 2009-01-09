@@ -1,5 +1,24 @@
-# Test suite for micro.py
-# By Eriol
+##
+# This file is part of Netsukuku
+# (c) Copyright 2007 Daniele Tricoli aka Eriol <eriol@mornie.org>
+#
+# This source code is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as published
+# by the Free Software Foundation; either version 2 of the License,
+# or (at your option) any later version.
+#
+# This source code is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# Please refer to the GNU Public License for more details.
+#
+# You should have received a copy of the GNU Public License along with
+# this source code; if not, write to:
+# Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+##
+#
+# A testing stackless ECHO server
+#
 
 import sys
 sys.path.append('..')
@@ -7,13 +26,12 @@ sys.path.append('..')
 import logging
 from ntk.wrap.sock import Sock
 socket=Sock()
-print socket.ManageSockets
+
 import traceback
 
 import stackless
 
-
-class EchoServer:
+class EchoServer(object):
     def __init__(self, host, port):
         self.host = host
         self.port = port
@@ -26,14 +44,13 @@ class EchoServer:
         listen_socket.bind((self.host, self.port))
         listen_socket.listen(5)
 
-        logging.info("Accepting connections on %s %s", self.host, self.port)
+        logging.info('Accepting connections on %s %s', self.host, self.port)
         try:
             while listen_socket.accepting:
                 client_sock, client_addr = listen_socket.accept()
                 stackless.tasklet(self.manage_connection)(client_sock, client_addr)
         except socket.error:
             traceback.print_exc()
-        print "server closed"
 
     def manage_connection(self, client_sock, client_addr):
         data = ''
@@ -53,4 +70,8 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s %(levelname)s %(message)s')
     server = EchoServer('127.0.0.1', 1234)
-    stackless.run()
+    try:
+        stackless.run()
+    except KeyboardInterrupt:
+        logging.info('Stopping ECHO server')
+        sys.exit()

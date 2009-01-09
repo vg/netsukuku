@@ -134,12 +134,15 @@ class stacklesssocket(object):
             object.__setattr__(self, name, value)
 
     def __del__(self):
-        # Close dispatcher if it isn't already closed
-        if self.dispatcher.fileno() is not None:
-            try:
-                self.dispatcher.close()
-            finally:
-                self.dispatcher = None
+        try:
+            # Close dispatcher if it isn't already closed
+            if self.dispatcher.fileno() is not None:
+                try:
+                    self.dispatcher.close()
+                finally:
+                    self.dispatcher = None
+        except stdsocket.error, e:
+            raise
 
     # Catch this one here to make gc work correctly.
     # (Consider if stacklesssocket gets gc'ed before the _fileobject)
@@ -185,6 +188,7 @@ class dispatcher(asyncore.dispatcher):
     def connect(self, address):
         asyncore.dispatcher.connect(self, address)
         # UDP sockets do not connect.
+
         if self.socket.type != SOCK_DGRAM and not self.connected:
             if not self.connectChannel:
                 # Prefer the sender.  Do not block when sending, given that
@@ -239,7 +243,7 @@ class dispatcher(asyncore.dispatcher):
         address = None
         self.maxreceivebuf=byteCount
         return self.recvChannel.recv()
-        
+
     def close(self):
         asyncore.dispatcher.close(self)
         self.connected = False
@@ -247,20 +251,28 @@ class dispatcher(asyncore.dispatcher):
         self.sendBuffer = None  # breaks the loop in sendall
 
         # Clear out all the channels with relevant errors.
-        while self.acceptChannel and self.acceptChannel.ch.balance < 0:
-            self.acceptChannel.send_exception(error, 9, 'Bad file descriptor')
-        while self.connectChannel and self.connectChannel.ch.balance < 0:
-            self.connectChannel.send_exception(error, 10061, 'Connection refused')
-        while self.recvChannel and self.recvChannel.ch.balance < 0:
-            # The closing of a socket is indicted by receiving nothing.  The
-            # exception would have been sent if the server was killed, rather
-            # than closed down gracefully.
-            self.recvChannel.ch.send("")
-            #self.recvChannel.send_exception(error, 10054, 'Connection reset by peer')
+
+        if self.acceptChannel is not None:
+            while self.acceptChannel and self.acceptChannel.ch.balance < 0:
+                self.acceptChannel.send_exception(error, 9, 'Bad file descriptor')
+        if self.connectChannel is not None:
+            while self.connectChannel and self.connectChannel.ch.balance < 0:
+                self.connectChannel.send_exception(error, 10061, 'Connection refused')
+        if self.recvChannel is not None:
+            while self.recvChannel and self.recvChannel.ch.balance < 0:
+                # The closing of a socket is indicted by receiving nothing.  The
+                # exception would have been sent if the server was killed, rather
+                # than closed down gracefully.
+                self.recvChannel.ch.send("")
+                #self.recvChannel.send_exception(error, 10054, 'Connection reset by peer')
 
     # asyncore doesn't support this.  Why not?
     def fileno(self):
-        return self.socket.fileno()
+            # XXX: self.socket.fileno() raises a Bad file descriptor error.
+            #      Therefore, we're using _fileno as a hack. This has to be
+            #      cleaned.
+            # return self.socket.fileno() 
+        return self._fileno
 
     def handle_accept(self):
         if self.acceptChannel and self.acceptChannel.ch.balance < 0:
@@ -272,7 +284,7 @@ class dispatcher(asyncore.dispatcher):
 
     # Inform the blocked connect call that the connection has been made.
     def handle_connect(self):
-        if self.socket.type != SOCK_DGRAM:
+        if self.socket.type != SOCK_DGRAM and self.connectChannel is not None:
             self.connectChannel.send(None)
 
     # Asyncore says its done but self.readBuffer may be non-empty

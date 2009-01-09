@@ -27,7 +27,7 @@ if sys.version_info < (2,5):
     sys.exit(3)
 
 from distutils.core import setup
-from config import VERSION
+from ntk import VERSION
 
 setup(
     name='pyntk', 

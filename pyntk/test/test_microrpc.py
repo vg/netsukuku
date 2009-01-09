@@ -1,20 +1,37 @@
+##
+# This file is part of Netsukuku
+# (c) Copyright 2008 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+#
+# This source code is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as published 
+# by the Free Software Foundation; either version 2 of the License,
+# or (at your option) any later version.
+#
+# This source code is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# Please refer to the GNU Public License for more details.
+#
+# You should have received a copy of the GNU Public License along with
+# this source code; if not, write to:
+# Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+##
+#
 # Test suite for rpc.py
+#
 
 import sys
 sys.path.append('..')
 
 from ntk.wrap.sock import Sock
 socket=Sock()
-print socket.ManageSockets
+
 import logging
 import ntk.lib.rpc as rpc
 from ntk.lib.micro import micro, allmicro_run, micro_block
-from ntk.network.inet import Inet
 
-REQUEST = 3
 from random import randint
 PORT=randint(8880, 8889)
-PORT =8888
 
 # Logging option
 
@@ -82,13 +99,13 @@ def tcp_client():
         assert xmul7 == 35
         xadd9   = client.nestmod.add(x, 9)
         assert xadd9 == 14
-    
+
         # something trickier
         n, nn = client, client.nestmod
         result = n.square(n.mul(x, nn.add(x, 10)))
-    
+
         assert (1,2) == client.caller_test(1,2)
-    
+
         try:
             # should crash now
             client.private_func()
@@ -99,7 +116,7 @@ def tcp_client():
 ### Bcast client
 #
 def udp_client():
-    client = rpc.BcastClient(Inet(), devs=['lo'], port=PORT)
+    client = rpc.BcastClient(devs=['lo'], port=PORT)
     print "calling void func"
     client.void_func()
     client.void_func_caller()

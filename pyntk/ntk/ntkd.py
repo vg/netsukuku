@@ -18,88 +18,75 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
-import ntk.core.radar   as radar
-import ntk.core.route   as maproute
-import ntk.core.qspn    as qspn
-import ntk.core.hook    as hook
-import ntk.core.p2p     as p2p
-import ntk.core.coord   as coord
+
+import ntk.core.radar as radar
+import ntk.core.route as maproute
+import ntk.core.qspn as qspn
+import ntk.core.hook as hook
+import ntk.core.p2p as p2p
+import ntk.core.coord as coord
 import ntk.core.krnl_route as kroute
-import ntk.network.inet as inet
-import ntk.network.nic  as nic
-import ntk.lib.rpc      as rpc
-from ntk.lib.micro import micro, allmicro_run
-from ntk.wrap.sock import Sock
+import ntk.lib.rpc as rpc
 import ntk.wrap.xtime as xtime
 
+from ntk.config import settings, ImproperlyConfigured
+from ntk.lib.micro import micro, allmicro_run
+from ntk.network import NICManager, Route
+from ntk.wrap.sock import Sock
+
 class NtkNode(object):
-    def __init__(self, opt, simnet=None, simme=None, sockmodgen=Sock,
-                 xtimemod=xtime):
 
-        self.opt = opt
-        self.set_ipv(**opt.getdict(['levels', 'ipv']))
+    def __init__(self,
+                 simnet=None,
+                 simme=None,
+                 sockmodgen=Sock,
+                 xtimemod=xtime,
+                 simsettings=None):
 
-        self.simulated=opt.simulated
-        self.simnet= simnet
+        global settings
+
+        if simsettings is not None:
+            settings = simsettings
+
+        # Size of a gnode
+        self.gsize = 2 ** settings.BITS_PER_LEVEL
+
+        if self.gsize == 1:
+            raise ImproperlyConfigured('Gnode size cannot be equal to 1')
+
+        self.simulated = settings.SIMULATED
+        self.simnet = simnet
         self.simme = simme
         self.simsock = sockmodgen
-        self.load_nics(opt)
+
+        self.nic_manager = NICManager(nics=settings.NICS,
+                                      exclude_nics=settings.EXCLUDE_NICS)
 
         # Load the core modules
-        self.inet       = inet.Inet(self.ipv, self.bitslvl)
-
-        rpcbcastclient = rpc.BcastClient(self.inet, self.nics.nics.keys(),
-                                         net=self.simnet, me=self.simme,
+        rpcbcastclient = rpc.BcastClient(list(self.nic_manager),
+                                         net=self.simnet,
+                                         me=self.simme,
                                          sockmodgen=self.simsock)
-        self.radar      = radar.Radar(self.inet, rpcbcastclient, xtimemod,
-                                        **opt.getdict(['bquet_num', 'max_neigh', 
-                                                        'max_wait_time']) )
-        self.neighbour  = self.radar.neigh
-        self.maproute   = maproute.MapRoute(self.levels, self.gsize, None)
-        self.etp        = qspn.Etp(self.radar, self.maproute)
+        self.radar = radar.Radar(rpcbcastclient, xtimemod)
+        self.neighbour = self.radar.neigh
+        self.maproute = maproute.MapRoute(settings.LEVELS, self.gsize, None)
+        self.etp = qspn.Etp(self.radar, self.maproute)
 
-        self.p2p        = p2p.P2PAll(self.radar, self.maproute)
-        self.coordnode  = coord.Coord(self.radar, self.maproute, self.p2p)
-        self.hook       = hook.Hook(self.radar, self.maproute, self.etp,
-                                    self.coordnode, self.nics, self.inet)
+        self.p2p = p2p.P2PAll(self.radar, self.maproute)
+        self.coordnode = coord.Coord(self.radar, self.maproute, self.p2p)
+        self.hook = hook.Hook(self.radar, self.maproute, self.etp,
+                              self.coordnode, self.nic_manager)
         self.p2p.listen_hook_ev(self.hook)
 
         if not self.simulated:
-                self.kroute     = kroute.KrnlRoute(self.neighbour, self.maproute, self.inet, 
-                                                **opt.getdict(['multipath']))
-
-    def set_ipv(self, levels=4, ipv=inet.ipv4):
-        self.levels = levels
-        self.ipv = ipv
-
-        if self.ipv == 6:
-            self.levels = 16
-
-        self.bitslvl= inet.ipbit[ipv] / self.levels  # how many bits of the IP
-                                                # addres are allocate to each gnode
-        self.gsize = 2 ** self.bitslvl         # size of a gnode
-
-        if self.gsize == 1:
-            raise OptErr, "the gnode size cannot be equal to 1"
-
-    def load_nics(self, opt):
-        if type(opt.nics) == str:
-                # normalize opt.nics as a list
-                opt.nics=[opt.nics]
-
-        if self.simulated:
-                self.nics = nic.SimNicAll()
-        else:
-                self.nics = nic.NicAll( **opt.getdict(['nics', 'exclude_nics']) )
-        if self.nics.nics == []:
-                raise Exception, "No network interfaces found in the current system"
-
+            self.kroute = kroute.KrnlRoute(self.neighbour, self.maproute)
 
     def run(self):
         if not self.simulated:
-                self.kroute.kroute.route_ip_forward_enable()
-                for nic in self.nics.nics:
-                        self.kroute.kroute.route_rp_filter_disable(nic)
+            Route.ip_forward(enable=True)
+
+            for nic in self.nic_manager:
+                self.nic_manager[nic].filtering(enable=False)
 
         rpc.MicroTCPServer(self, ('', 269), None, self.simnet, self.simme, self.simsock)
         rpc.MicroUDPServer(self, ('', 269), None, self.simnet, self.simme, self.simsock)

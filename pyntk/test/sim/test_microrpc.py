@@ -1,4 +1,25 @@
-# Test suite for rpc.py
+##
+# This file is part of Netsukuku
+# (c) Copyright 2008 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+#
+# This source code is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as published 
+# by the Free Software Foundation; either version 2 of the License,
+# or (at your option) any later version.
+#
+# This source code is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# Please refer to the GNU Public License for more details.
+#
+# You should have received a copy of the GNU Public License along with
+# this source code; if not, write to:
+# Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+##
+#
+# Test suite for rpc.py using a simulated network
+#
+
 import sys
 import logging
 
@@ -35,7 +56,7 @@ from ntk.lib.micro import micro, microfunc, allmicro_run
 
 import ntk.lib.rpc as rpc
 from ntk.lib.micro import micro, allmicro_run, micro_block
-from ntk.network.inet import Inet
+from ntk.network.inet import ip_to_str
 
 seed(1)
 
@@ -84,9 +105,9 @@ mod = MyMod()
 #### TCP client
 #
 def tcp_client():
-        client = rpc.TCPClient(Inet().ip_to_str(N.net[0].ip), port=PORT,
-                        net=N, me=N.net[1], sockmodgen=Sock)
-   
+        client = rpc.TCPClient(ip_to_str(N.net[0].ip), port=PORT,
+                               net=N, me=N.net[1], sockmodgen=Sock)
+
         x=5
         xsquare = client.square(x)
         print xtime.time(), 'assert xsquare == 25'
@@ -114,8 +135,8 @@ def tcp_client():
 ### Bcast client
 #
 def udp_client():
-    client = rpc.BcastClient(Inet(), devs=['lo'], port=PORT, net=N,
-                    me=N.net[1], sockmodgen=Sock)
+    client = rpc.BcastClient(devs=['lo'], port=PORT, net=N,
+                             me=N.net[1], sockmodgen=Sock)
     print xtime.time(),"calling void func"
     client.void_func()
     client.void_func_caller()
@@ -124,7 +145,7 @@ def udp_client():
 def run_test_tcp():
     print 'Starting tcp server...'
 
-    rpc.MicroTCPServer(mod, (Inet().ip_to_str(N.net[0].ip), PORT), 'lo', N, N.net[0], Sock)
+    rpc.MicroTCPServer(mod, (ip_to_str(N.net[0].ip), PORT), 'lo', N, N.net[0], Sock)
     micro(tcp_client)
     allmicro_run()
 

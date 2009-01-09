@@ -1,5 +1,27 @@
+##
+# This file is part of Netsukuku
+# (c) Copyright 2008 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+#
+# This source code is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as published 
+# by the Free Software Foundation; either version 2 of the License,
+# or (at your option) any later version.
+#
+# This source code is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# Please refer to the GNU Public License for more details.
+#
+# You should have received a copy of the GNU Public License along with
+# this source code; if not, write to:
+# Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+##
+
 import sys
 sys.path.append('../../')
+
+from ntk.config import settings
+settings.IP_VERSION = 4
 
 import traceback
 import random
@@ -12,6 +34,7 @@ from ntk.sim.wrap.sock import Sock
 from socket import AF_INET, SOCK_DGRAM, SOCK_STREAM, SO_REUSEADDR, SOL_SOCKET
 import ntk.sim.wrap.xtime as xtime
 from ntk.lib.micro import micro, microfunc, allmicro_run
+from ntk.network.inet import ip_to_str
 
 random.seed(1)
 
@@ -40,7 +63,7 @@ def echo_srv():
 def echo_client():
     socket=Sock(N, N.net[1])
     s1=socket.socket(AF_INET, SOCK_DGRAM)
-    ip = s1.inet.ip_to_str(0)
+    ip = ip_to_str(0)
     r=randint(0, 256)
     print "t:", xtime.time(), ("sending data %d to "+ip)%(r)
     s1.sendto('hey '+str(r), (ip, 51423))
@@ -51,7 +74,7 @@ def echo_client():
 def echo_client_II():
     socket=Sock(N, N.net[1])
     s1=socket.socket(AF_INET, SOCK_DGRAM)
-    ip = s1.inet.ip_to_str(0)
+    ip = ip_to_str(0)
 
     r=randint(0, 256)
     print "t:", xtime.time(), ("II sending data %d to "+ip)%(r)
@@ -92,7 +115,7 @@ def tcp_echo_srv():
 def tcp_echo_client():
     socket=Sock(N, N.net[1])
     s1=socket.socket(AF_INET, SOCK_STREAM)
-    ip = s1.inet.ip_to_str(0)
+    ip = ip_to_str(0)
     print "t:", xtime.time(), "waiting"
     xtime.swait(70)
     print "t:", xtime.time(), "connecting to "+ip

@@ -16,14 +16,36 @@
 # this source code; if not, write to:
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
+#
+# The radar sends in broadcast a bouquet of BQUET_NUM packets and waits
+# for the reply of the alive nodes. It then recollects the replies and builds
+# a small statistic.
+# By watching the previous statistics, it can deduces if a change occurred or
+# not. If it is, one of the following events is fired:
+#        'NEIGH_NEW', 'NEIGH_DELETED', 'NEIGH_REM_CHGED'
+# In this way, the other modules of pyntk will be noticed.
+#
+# A radar is fired periodically by Radar.run(), which is started as a
+# microthread.
+#
+# Note: the current statistic is based on the RTT (Round Trip Time) 
+# of the packets. However, more refined way can be used and shall be
+# implemented. See NTK_RFC 0002  http://lab.dyne.org/Ntk_bandwidth_measurement
+#
+##
+
+
 
 import logging
 from random import randint
 
+import ntk.lib.rpc as rpc
+
+from ntk.config import settings
 from ntk.core.route import Rtt
 from ntk.lib.event  import Event
 from ntk.lib.micro  import micro
-import ntk.lib.rpc as rpc
+from ntk.network.inet import ip_to_str, str_to_ip
 
 class NodeInfo(object):
     """ this class store informations about a node """
@@ -67,13 +89,11 @@ class Neigh(object):
 
 class Neighbour(object):
     """ this class manages all neighbours """
-    __slots__ = ['max_neigh', 'inet', 'rtt_variation', 'ip_table', 'ntk_client',
+    __slots__ = ['max_neigh', 'rtt_variation', 'ip_table', 'ntk_client',
                  'translation_table', 'netid_table', 'events', 'remotable_funcs']
 
-    def __init__(self, inet, max_neigh=16):
-        """  max_neigh: maximum number of neighbours we can have 
-             inet:   network.inet.Inet instance """
-        self.inet = inet
+    def __init__(self, max_neigh=16):
+        """  max_neigh: maximum number of neighbours we can have """
 
         self.max_neigh = max_neigh
         # variation on neighbours' rtt greater than this will be notified
@@ -211,7 +231,7 @@ class Neighbour(object):
                 self.ip_to_id(key)
 
                 # create a TCP connection to the neighbour
-                self.ntk_client[key] = rpc.TCPClient(self.inet.ip_to_str(key))
+                self.ntk_client[key] = rpc.TCPClient(ip_to_str(key))
 
                 # send a message notifying we added a node
                 self.events.send('NEIGH_NEW',
@@ -268,13 +288,13 @@ class Neighbour(object):
         """Adds `newip' in the Neighbours as a copy of `oldip', then it removes
         `oldip'. The relative events are raised."""
 
-        self.ip_table[newip]         = self.ip_table[oldip]
-        self.ip_table[newip]         = self.ip_table[oldip]
-        self.translation_table[newip]= self.translation_table[oldip]
-        self.netid_table[newip]      = self.netid_table[oldip]
+        self.ip_table[newip] = self.ip_table[oldip]
+        self.ip_table[newip] = self.ip_table[oldip]
+        self.translation_table[newip] = self.translation_table[oldip]
+        self.netid_table[newip] = self.netid_table[oldip]
 
         # we have to create a new TCP connection
-        self.ntk_client[newip]       = rpc.TCPClient(self.inet.ip_to_str(newip))
+        self.ntk_client[newip] = rpc.TCPClient(ip_to_str(newip))
 
         self.events.send('NEIGH_NEW', (
                         Neigh(newip, self.ntk_client[newip], 
@@ -286,23 +306,17 @@ class Neighbour(object):
 
 
 class Radar(object):
-    __slots__ = ['inet', 'bouquet_numb', 'bcast_send_time', 'xtime', 
+    __slots__ = [ 'bouquet_numb', 'bcast_send_time', 'xtime',
                   'bcast_arrival_time', 'bquet_num', 'max_wait_time', 
                   'broadcast', 'neigh', 'events', 'netid', 'do_reply',
-                  'remotable_funcs', 'ntkd_id', 'radar_id']
+                  'remotable_funcs', 'ntkd_id', 'radar_id', 'max_neigh']
 
-    def __init__(self, inet, broadcast, xtime,
-                 bquet_num=16, max_neigh=16, max_wait_time=8):
+    def __init__(self, broadcast, xtime):
         """
-            inet:   network.inet.Inet instance
             broadcast: an instance of the RPCBroadcast class to manage broadcast sending
             xtime: a wrap.xtime module
-            bquet_num: how many packets does each bouquet contain?;
-            max_neigh: maximum number of neighbours we can have;
-            max_wait_time: the maximum time we can wait for a reply, in seconds;
         """
 
-        self.inet = inet
         self.xtime = xtime
         self.broadcast = broadcast
 
@@ -312,14 +326,18 @@ class Radar(object):
         self.bcast_send_time = 0
         # when the replies arrived
         self.bcast_arrival_time = {}
-        self.bquet_num = bquet_num
-        self.max_wait_time = max_wait_time
+        # bquet_num: how many packets does each bouquet contain?
+        self.bquet_num = settings.BQUET_NUM
+        # max_wait_time: the maximum time we can wait for a reply, in seconds
+        self.max_wait_time = settings.MAX_WAIT_TIME
+        # max_neigh: maximum number of neighbours we can have
+        self.max_neigh = settings.MAX_NEIGH
         # our neighbours
-        self.neigh = Neighbour(self.inet, max_neigh)
+        self.neigh = Neighbour(self.max_neigh)
 
         # Send a SCAN_DONE event each time a sent bouquet has been completely
         # collected
-        self.events = Event( [ 'SCAN_DONE' ] )
+        self.events = Event(['SCAN_DONE'])
 
         # Our netid. It's a random id used to detect network collisions.
         self.netid = -1
@@ -336,13 +354,14 @@ class Radar(object):
         if not started:
             micro(self.run, (1,))
         else:
-            while True: self.radar()
+            while True:
+                self.radar()
 
     def radar(self):
         """ Send broadcast packets and store the results in neigh """
 
         self.radar_id = randint(0, 2**32-1)
-        logging.debug('radar scan %s'%self.radar_id)
+        logging.debug('radar scan %s' % self.radar_id)
 
         # we're sending the broadcast packets NOW
         self.bcast_send_time = self.xtime.time()
@@ -374,7 +393,7 @@ class Radar(object):
             # drop. It isn't a reply to our current bouquet
             return
 
-        ip = self.inet.str_to_ip(_rpc_caller.ip)
+        ip = str_to_ip(_rpc_caller.ip)
         net_device = _rpc_caller.dev
 
         # this is the rtt

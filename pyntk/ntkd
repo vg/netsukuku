@@ -2,6 +2,7 @@
 ##
 # This file is part of Netsukuku
 # (c) Copyright 2007 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+# (c) Copyright 2008 Daniele Tricoli aka Eriol <eriol@mornie.org>
 #
 # This source code is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as published 
@@ -19,59 +20,86 @@
 ##
 
 import sys
-from ntk.ntkd import NtkNode
-from ntk.lib.opt import Opt, OptErr
+from optparse import OptionParser
+
+from ntk import VERSION
+from ntk.config import settings
 from ntk.lib.micro import allmicro_run
-from config import *
+from ntk.ntkd import NtkNode
 
-usage = """
-ntkd [n=nics_list] [c=config] 
+def nics_optcb(option, opt, value, parser):
+    ''' Callback for nics and exclude-nics option.
 
+    Manage several nics and add them to a list
+    For example:
+        ntkd -n wlan1 wlan2 -e lo eth0
+    '''
+    if value is not None:
+        value = [value]
 
-     n=['nic1', 'nic2', ...]        explicit nics to use
+    for arg in parser.rargs:
+        if ((arg[:2] == "--" and len(arg) > 2) or
+            (arg[:1] == "-" and len(arg) > 1)):
+            break
+        else:
+            value.append(arg)
 
-     c="/path/to/config/file.conf"  configuration file path
-
-     ipv=4 or ipv=6                 IP version
-
-     dbg=0..9                       debug level (default 0)
-     v or version                   version
-     h or help                      this help
-"""
+    setattr(parser.values, option.dest, value)
 
 def main():
 
-    # load options
-    opt = Opt( {'n':'nics', 
-                'c':'config_file',
-                'v':'version',
-                '-v':'version',
-                'h':'help',
-                '-h':'help',
-                'dbg':'debug'
-                } )
-    opt.config_file = CONF_DIR + '/netsukuku.conf'
-    opt.load_argv(sys.argv)
+    usage = '''usage: %prog [OPTION]'''
 
-    if opt.help:
-        print usage
-        sys.exit(1)
-    if opt.version:
-        print "NetsukukuD " + VERSION
-        sys.exit(1)
+    parser = OptionParser(usage, version='%%prog %s' % VERSION)
 
-    if opt.config_file:
-        opt.load_file(opt.config_file)
-        opt.load_argv(sys.argv)
+    parser.add_option('-c', '--config', dest='config_file',
+                      help='override configuration file path')
+    parser.add_option('-4', '--ipv4', action='store_true',
+                      help='use Internet Protocol version 4')
+    parser.add_option('-6', '--ipv6', action='store_true',
+                      help='use Internet Protocol version 6')
+    parser.add_option('-d', '--debug', action='store_true',
+                      help='enable debugging messages')
+    parser.add_option('-e', '--exclude-nics', dest='exclude_nics',
+                      action='callback', callback=nics_optcb, default=[],
+                      type='string', help='exclude specified nics')
+    parser.add_option('-n', '--nics', dest='nics', action='callback',
+                      callback=nics_optcb, default=[], type='string',
+                      help='include specified nics')
 
-    if opt.debug:
+    (options, args) = parser.parse_args()
+
+
+    if options.ipv4 and options.ipv6:
+        msg = 'Options --ipv4 (-4) and --ipv6 (-6) are mutually exclusive!'
+        parser.error(msg)
+
+    if options.ipv4:
+        settings.IP_VERSION = 4
+
+    if options.ipv6:
+        #settings.IP_VERSION = 6
+        sys.exit('IPV6 not supported yet!')
+
+    if options.config_file:
+        pass
+        # TODO: load settings mechanism from file
+
+    if options.debug:
         import logging
         logging.basicConfig(level=logging.DEBUG,
                             format='%(levelname)s %(message)s')
 
-    NtkNode(opt).run()
+    settings.NICS = options.nics if options.nics else []
+    settings.EXCLUDE_NICS = options.exclude_nics if options.exclude_nics else []
+
+    NtkNode().run()
 
     allmicro_run()
 
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+
+    try:
+        main()
+    except KeyboardInterrupt:
+        sys.exit(0)
