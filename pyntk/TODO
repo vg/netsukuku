@@ -2,7 +2,7 @@
 
 - ANDNA
 	- Core: use ntk/core/p2p.py to implement the basic services of ANDNA.
-	  As an example, see coord.py. It is a P2P services based on p2p.py.
+	  As an example, see coord.py. It is a P2P service based on p2p.py.
 	  Keep in mind what is written in doc/main_doc/ntk_rfc/Ntk_p2p_over_ntk.pdf
 	  
 	  The ANDNA core is composed by two different P2P services: 
