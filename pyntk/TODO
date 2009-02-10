@@ -1,0 +1,44 @@
+- debug, debug, debug
+
+- ANDNA
+	- Core: use ntk/core/p2p.py to implement the basic services of ANDNA.
+	  As an example, see coord.py. It is a P2P services based on p2p.py.
+	  Keep in mind what is written in doc/main_doc/ntk_rfc/Ntk_p2p_over_ntk.pdf
+	  
+	  The ANDNA core is composed by two different P2P services: 
+	  	1) the service that stores the IPs
+		2) the service of the counter nodes, that stores the number of hostnames registered by a node.
+
+		- You need to use OpenSSL to implement the cryptographic part of ANDNA
+		  (see 3.4 Cryptographic ANDNA  of andna.pdf)
+		  You can easily port the src/crypto.[ch] C wrapper because it
+		  uses standard calls to OpenSSL.
+
+		- Try to copy the old C implementation (src/andn*.[ch])
+		  You can leave almost unchanged some function:
+		     andna.c: andna_hash(), andna_hash_by_family(), andna_resolvconf_modify()
+		  Moreover you can read some function to know the detail of
+		  the ANDNA protocol, even by just reading the comments, for
+		  example see andna.c: andna_hook(), andna_update_hnames()
+
+	- Implement the resolution cache, see (3.10 Distributed cache for
+	  hostname resolution) and see src/andna_cache.[ch]
+	  In python you should be able to implement it in less than two days ;)
+	  Try to optimize it! A cache should be fast and small.
+
+	- Adjust the C implementation of ANDNS and make it work with the pyntk
+	  version of ANDNA. ANDNS is the DNS server which listen to DNS
+	  queries and calls the  client part of ANDNA to resolve them.
+	  Note: you shouldn't recode ANDNS in python. It is already good in C,
+	  you have just to interface pyntk and ANDNS.
+	  Make ntk-resolve work too.
+	  See http://lab.dyne.org/Ntk_andna_and_dns
+	  Contact Federico Tomassini for further info ( effetom [a][t] gmail dot com )
+
+	- Implement the Scattered Name Service Disgregation (see andna.pdf)
+
+	- Revise and implement the Local ANDNA RFC ( see http://lab.dyne.org/Ntk_local_ANDNA )
+
+	- Write a test suite for everything ;)
+
+- RFCs and other TODOs: http://lab.dyne.org/Ntk_TODO, http://lab.dyne.org/Netsukuku_RFC
