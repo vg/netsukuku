@@ -76,7 +76,7 @@ import sys
 
 import ntk.lib.rencode as rencode
 from ntk.lib.micro import  micro, microfunc
-from ntk.network.inet import sk_set_broadcast
+from ntk.network.inet import sk_set_broadcast, sk_bindtodevice
 from ntk.wrap.sock import Sock
 
 
@@ -121,11 +121,15 @@ class FakeRmt(object):
 
 class CallerInfo(object):
     __slots__ = ['ip','port','dev','socket']
+
     def __init__(self, ip=None, port=None, dev=None, socket=None):
         self.ip=ip
         self.port=port
         self.dev=dev
         self.socket=socket
+
+    def __str__(self):
+        return '%s %s' % (self.ip, self.port)
 
 class RPCDispatcher(object):
     '''
@@ -168,7 +172,7 @@ class RPCDispatcher(object):
     def _dispatch(self, caller, func_name, params):
         logging.debug("_dispatch: "+func_name+"("+str(params)+")")
         func = self.func_get(func_name)
-        if func == None:
+        if func is None:
             raise RPCFuncNotRemotable('Function %s is not remotable' % func_name)
         try:
             if '_rpc_caller' in func.im_func.func_code.co_varnames:
@@ -262,7 +266,7 @@ def stream_request_handler(sock, clientaddr, dev, rpcdispatcher):
 
 def micro_stream_request_handler(sock, clientaddr, dev, rpcdispatcher):
     micro(stream_request_handler, (sock, clientaddr, dev, rpcdispatcher))
-    
+
 def TCPServer(root_instance, addr=('', 269), dev=None, net=None, me=None,
                 sockmodgen=Sock, request_handler=stream_request_handler):
     socket=sockmodgen(net, me)
@@ -376,7 +380,7 @@ def UDPServer(root_instance, addr=('', 269), dev=None, net=None, me=None,
 @microfunc(True)
 def MicroUDPServer(root_instance, addr=('', 269), dev=None, net=None, me=None, sockmodgen=Sock):
     UDPServer(root_instance, addr, dev, net, me, sockmodgen, micro_dgram_request_handler)
-        
+
 class BcastClient(FakeRmt):
     '''This class implement a simple Broadcast RPC client
 
@@ -423,7 +427,7 @@ class BcastClient(FakeRmt):
 
     def connect(self):
         for d, sk in self.dev_sk.iteritems():
-            #sk_bindtodevice(sk, d)
+            sk_bindtodevice(sk, d)
             sk_set_broadcast(sk)
             sk.connect(('<broadcast>', self.port))
         self.connected = True
