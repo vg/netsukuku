@@ -47,25 +47,12 @@ from ntk.lib.event  import Event
 from ntk.lib.micro  import micro
 from ntk.network.inet import ip_to_str, str_to_ip
 
-class NodeInfo(object):
-    """ this class store informations about a node """
-
-    __slots__ = ['devs', 'bestdev']
-
-    def __init__(self, devs, bestdev):
-        """ devs: a dict which maps a device to the average rtt
-            bestdev: a pair (d, avg_rtt), where devs[d] is the best element of
-                    devs.
-        """
-        self.devs = devs
-        self.bestdev = bestdev
-
 class Neigh(object):
     """ this class simply represent a neighbour """
 
     __slots__ = ['devs', 'bestdev', 'ip', 'nip', 'id', 'rem', 'ntkd', 'netid']
 
-    def __init__(self, ip, idn, ntkd, devs, bestdev, netid):
+    def __init__(self, bestdev, devs, idn=None, ip=None, netid=None, ntkd=None):
         """
             ip: neighbour's ip;
             nip: neighbour's nip;
@@ -83,7 +70,7 @@ class Neigh(object):
         self.ip = ip
         self.nip = None
         self.id = idn
-        self.rem = Rtt(self.bestdev[1])   # TODO(low): support the other metrics
+        self.rem = Rtt(self.bestdev[1]) # TODO(low): support the other metrics
         self.ntkd = ntkd
         self.netid = netid
 
@@ -162,7 +149,8 @@ class Neighbour(object):
 
     def _truncate(self, ip_table):
         """ ip_table: an {IP => NodeInfo};
-            we want the best (with the lowest rtt) max_neigh nodes only to remain in the table
+            we want the best (with the lowest rtt) max_neigh nodes only to
+            remain in the table
         """
 
         # auxiliary function, to take rtt from {IP => NodeInfo}
@@ -185,7 +173,8 @@ class Neighbour(object):
                 ip_table_trunc[key] = val
             else:
                 # otherwise just drop it
-                # but, if old ip_table contained this row, we should notify our listeners about this:
+                # but, if old ip_table contained this row, we should notify
+                # our listeners about this:
                 if key in self.ip_table:
                     # remember we are truncating this row
                     truncated.append(key)
@@ -313,8 +302,8 @@ class Radar(object):
 
     def __init__(self, broadcast, xtime):
         """
-            broadcast: an instance of the RPCBroadcast class to manage broadcast sending
-            xtime: a wrap.xtime module
+            broadcast: an instance of the RPCBroadcast class to manage broadcast
+            sending xtime: a wrap.xtime module
         """
 
         self.xtime = xtime
@@ -415,13 +404,13 @@ class Radar(object):
         """ ip: an ip;
             Calculates the average rtt of IP for each device
 
-            Returns the ordered list [(dev, avgrtt)], the first element has the
-            best average rtt.
+            Returns the ordered list [(dev, avgrtt)], the first element has
+            the best average rtt.
         """
 
         devlist = []
 
-        # for each nic
+        # for each NIC
         for dev in self.bcast_arrival_time[ip]:
             avg = sum(self.bcast_arrival_time[ip][dev]) / len(self.bcast_arrival_time[ip][dev])
             devlist.append( (dev, avg) )
@@ -433,11 +422,11 @@ class Radar(object):
         return devlist
 
     def get_all_avg_rtt(self):
-        """calculate the average rtt of all the ips"""
+        """ Calculate the average rtt of all the ips """
 
         all_avg = {}
         # for each ip
         for ip in self.bcast_arrival_time:
             devs = self.get_avg_rtt(ip)
-            all_avg[ip] = NodeInfo(dict(devs), devs[0])
+            all_avg[ip] = Neigh(dict(devs), devs[0])
         return all_avg

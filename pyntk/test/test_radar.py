@@ -7,7 +7,18 @@ import sys
 import unittest
 sys.path.append('..')
 
-class TestNeighbour(unittest.TestCase):
-    pass
+from ntk.core.radar import Neigh, Neighbour
 
-raise NotImplementedError, 'Call someone to code this test'
+class TestNeighbour(unittest.TestCase):
+
+    def setUp(self):
+        self.neighbour = Neighbour()
+
+    def testEmptyNeighList(self):
+        ''' Empty neigh list '''
+        self.failUnless(self.neighbour.neigh_list() == [])
+
+    
+
+if __name__ == '__main__':
+    unittest.main()
