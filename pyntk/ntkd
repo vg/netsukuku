@@ -27,12 +27,12 @@ from ntk.config import settings
 from ntk.lib.micro import allmicro_run
 from ntk.ntkd import NtkNode
 
-def nics_optcb(option, opt, value, parser):
-    ''' Callback for nics and exclude-nics option.
+def interfaces_optcb(option, opt, value, parser):
+    ''' Callback for interfaces and exclude-interfaces option.
 
-    Manage several nics and add them to a list
+    Manage several interfaces and add them to a list
     For example:
-        ntkd -n wlan1 wlan2 -e lo eth0
+        ntkd -i wlan1 wlan2 -e lo eth0
     '''
     if value is not None:
         value = [value]
@@ -60,12 +60,20 @@ def main():
                       help='use Internet Protocol version 6')
     parser.add_option('-d', '--debug', action='store_true',
                       help='enable debugging messages')
-    parser.add_option('-e', '--exclude-nics', dest='exclude_nics',
-                      action='callback', callback=nics_optcb, default=[],
-                      type='string', help='exclude specified nics')
-    parser.add_option('-n', '--nics', dest='nics', action='callback',
-                      callback=nics_optcb, default=[], type='string',
-                      help='include specified nics')
+    parser.add_option('-e', '--exclude-interface(s)',
+                      dest='exclude_interfaces',
+                      action='callback',
+                      callback=interfaces_optcb,
+                      default=[],
+                      type='string',
+                      help='don\'t use specified interface(s)')
+    parser.add_option('-i', '--interfaces',
+                      dest='interfaces',
+                      action='callback',
+                      callback=interfaces_optcb,
+                      default=[],
+                      type='string',
+                      help='use specified interface(s)')
 
     (options, args) = parser.parse_args()
 
@@ -90,8 +98,9 @@ def main():
         logging.basicConfig(level=logging.DEBUG,
                             format='%(levelname)s %(message)s')
 
-    settings.NICS = options.nics if options.nics else []
-    settings.EXCLUDE_NICS = options.exclude_nics if options.exclude_nics else []
+    settings.NICS = options.interfaces if options.interfaces else []
+    settings.EXCLUDE_NICS = (options.exclude_interfaces if
+                                 options.exclude_interfaces else [])
 
     NtkNode().run()
 
