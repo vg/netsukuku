@@ -29,9 +29,9 @@ class PartecipantNode:
     def __init__(self, 
                  lvl=None, id=None  # these are mandatory for Map.__init__(),
                 ):
-        
+
         self.partecipant = False
-    
+
     def _pack(self):
         return (self.partecipant,)
     def _unpack(self, (p,)):
@@ -46,7 +46,7 @@ class MapP2P(Map):
         """levels, gsize, me: the same of Map
 
           pid: P2P id of the service associated to this map"""
-        
+
         Map.__init__(self, levels, gsize, PartecipantNode, me)
 
         self.pid = pid
@@ -67,9 +67,9 @@ class MapP2P(Map):
 
 class P2P(RPCDispatcher):
     """This is the class that must be inherited to create a P2P module.
-    
+
     ** Executing a remote function of the node associated to the key K
-    
+
     seld.msg_send("""
 
     def __init__(self, radar, maproute, pid):
@@ -139,22 +139,22 @@ class P2P(RPCDispatcher):
         self.mapp2p.partecipate()
 
         for nr in self.neigh.neigh_list():
-                nr.ntkd.p2p.partecipant_add(self.maproute.pid, self.maproute.me)
+            nr.ntkd.p2p.partecipant_add(self.maproute.pid, self.maproute.me)
 
     def partecipant_add(self, pIP):
         continue_to_forward = False
 
         mp  = self.mapp2p
-        lvl = self.nip_cmp(pIP, mp.me)
+        lvl = self.maproute.nip_cmp(pIP, mp.me)
         for l in xrange(lvl, mp.levels):
-                if not mp.node_get(l, pIP[l]).partecipant:
-                        mp.node_get(l, pIP[l]).partecipant=True
-                        mp.node_add(l, pIP[l])
-                        continue_to_forward = True
+            if not mp.node_get(l, pIP[l]).partecipant:
+                mp.node_get(l, pIP[l]).partecipant = True
+                mp.node_add(l, pIP[l])
+                continue_to_forward = True
 
         if not continue_to_forward:
-                return
-        
+            return
+
         # continue to advertise the new partecipant
         for nr in self.neigh.neigh_list():
                 nr.ntkd.p2p.partecipant_add(self.pid, pIP)
@@ -195,13 +195,20 @@ class P2P(RPCDispatcher):
             return p2p.msg_send(p2p.maproute.me, self.hIP, (func_name, params))
 
     def peer(self, hIP=None, key=None):
-        if hIP == None and key == None:
+        if hIP is None and key is None:
                 raise Exception, "hIP and key are both None. Specify at least one"
         return self.RmtPeer(self, key, hIP)
 
-class P2PAll:
+class P2PAll(object):
     """Class of all the registered P2P services"""
-    __slots__ = ['radar', 'neigh', 'maproute', 'service', 'remotable_funcs', 'events']
+
+    __slots__ = ['radar',
+                 'neigh',
+                 'maproute',
+                 'service',
+                 'remotable_funcs',
+                 'events']
+
     def __init__(self, radar, maproute):
         self.radar = radar
         self.neigh = radar.neigh
@@ -221,8 +228,8 @@ class P2PAll:
 
     def pid_del(self, pid):
         if pid in self.service:
-                del self.service[pid]
-    
+            del self.service[pid]
+
     def pid_get(self, pid):
         if pid not in self.service:
                 return self.pid_add(pid)
@@ -251,17 +258,17 @@ class P2PAll:
     @microfunc()
     def p2p_hook(self, *args):
         """P2P hooking procedure
-        
+
         It gets the P2P maps from our nearest neighbour"""
 
         ## Find our nearest neighbour
-        minlvl=self.maproute.levels
-        minnr =None
+        minlvl = self.maproute.levels
+        minnr = None
         for nr in self.neigh.neigh_list():
-                lvl=self.nip_cmp(self.me, self.ip_to_nip(nr.ip))
-                if lvl < minlvl:
-                        minlvl = lvl
-                        minnr  = nr
+            lvl = self.maproute.nip_cmp(self.me, self.ip_to_nip(nr.ip))
+            if lvl < minlvl:
+                minlvl = lvl
+                minnr  = nr
         ##
 
         if minnr == None:
