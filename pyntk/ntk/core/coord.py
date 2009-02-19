@@ -19,6 +19,9 @@
 # 
 # Coordinator Node
 #
+# TODO: tmp_deleted_purge() isn't called, moreover a fixed timeout isn't a
+#       good thing, you have to consider the rtt from the requester node to
+#       the coordinator node.
 
 from ntk.lib.micro import microfunc
 from ntk.lib.event import Event

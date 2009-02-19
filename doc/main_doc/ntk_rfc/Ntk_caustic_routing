@@ -66,7 +66,7 @@ will follow these principles:
    low trtt (total round-trip time) for real time applications. In all the
    other average cases, the unicast best route will be sufficient.
 
- * A CT connection isn't necessarily symmetric: the best CRT from S to D may
+ * A CR connection isn't necessarily symmetric: the best CRT from S to D may
    not coincide with that from D to S. 
    Hence, if also D needs to replies to S large chunks of data it will need to
    create a new CRT, otherwise it will just use the inverse of the S->D CRT.
@@ -118,38 +118,35 @@ The discovery of the S->D CRT will be done in the following way:
 			return  best_trtt;
 	}
 
-	/* The first call */
-	crt_discovery(S,  D,  best_bw,  max_trtt(S -> D),  NULL);
+	/* The first call: send a discovery packet to `S', asking it to find a
+	 * way to reach D */
+	ret = S.crt_discovery(D,  best_bw,  max_trtt(S -> D),  NULL);
 
-	crt_discovery(S (source node), 
-			D (destination node), 
+	/* 
+	 * Note that calling S.crt_discovery(arguments) is equivalent to send a
+	 * `arguments' to  `S'.
+	 * The return value from a call to S.crt_discovery() is the reply
+	 * packet sent by S.
+	 */
+
+	crt_discovery(	D (destination node), 
 			min_bw (minimum avail bw required for each route),
 			trtt_limit (maximum trtt allowed),
 			dpkt (discovery packet))
 	{
-
-		/* 
-		 * Note that calling crt_discovery() is equivalent to send a
-		 * `dpkt' to  `S'  with the min_bw and trtt_limit values
-		 * included in the pkt itself.
-		 * Reading the return value from a call to crt_discovery() is
-		 * equivalent to receive a reply packet from `S'.
-		 */
-	
 		int deepened=0;
 		
-		if(S  in  dpkt)
-			/* We're present in the dpkt, and this is the
-			 * second time we received it, thus a cycle
+		if(self  in  dpkt)
+			/* We're in the dpkt, thus a cycle
 			 * has been formed. Return ACK_NEGATIVE and
 			 * destroy it. */
 			return  ACK_NEGATIVE;
 
-		/* Append  S  in  dpkt.
+		/* Append  self  in  dpkt.
 		 * This is the same operation used in Tracer Packets. */
-		dpkt.append(S);
+		dpkt.append(self);
 
-		if(S.route_D_set == 1  AND  dpkt.flag!=ACK_FORCED)
+		if(self.route_D_set == 1  AND  dpkt.flag!=ACK_FORCED)
 			/* 
 			 * We've already received a dpkt and set a route to D,
 			 * moreover the caller isn't forcing us to use this
@@ -157,7 +154,7 @@ The discovery of the S->D CRT will be done in the following way:
 			 */
 			 return ACK_CHANGEPATH;
 
-		foreach  i  in  r(S) 
+		foreach  i  in  r(self) 
 		{ 
 
 			if (i  in  last_node(dpkt))
@@ -165,8 +162,14 @@ The discovery of the S->D CRT will be done in the following way:
 				 * received the `dpkt' */
 				continue;
 
-			if (trtt(S -> D, i) > trtt_limit  OR 
-				bw(S -> D, i) < min_bw)
+			if (i in dpkt)
+				/* The dpkt has already been sent to i. In
+				 * order to avoid infinite loops, we don't
+				 * send it to him again. */
+				 continue;
+
+			if (trtt(self -> D, i) > trtt_limit  OR 
+				bw(self -> D, i) < min_bw)
 				/* Don't use `i' as gw, since it doesn't meet
 				 * the minimum requirements */
 				continue;
@@ -176,17 +179,16 @@ The discovery of the S->D CRT will be done in the following way:
 			 * These two routes, if not utilised, will expire after
 			 * 300 seconds. 
 			 */
-			add_tmp  S -> D, gw i;
-			add_tmp  D -> S, gw i;
+			add_tmp  self -> D, gw i;
 
 			/* 
 			 * Recurse.
 			 * The  min_bw  for  `i'  will be the throughput of 
-			 * packets of the connection  S -> D  which S receives
+			 * packets of the connection  self -> D  which  self  receives
 			 * from I.
 			 */
-			ack = crt_discovery(i,  D,  
-					    flowbrate(last_node(dpkt) -> S),
+			ack = i.crt_discovery(i,  D,  
+					    flowbrate(last_node(dpkt) -> self),
 					    trtt_limit, dpkt);
 			if (ack == ACK_NEGATIVE)
 				/* 
@@ -194,18 +196,15 @@ The discovery of the S->D CRT will be done in the following way:
 				 * Remove the temporary routes previously set in
 				 * the routing table
 				 */
-				del  S -> D, gw i;
-				del  D -> S, gw i;
-				continue;
+				del  self -> D, gw i;
 
 			else if (ack == ACK_CHANGEPATH)
 				/* `i' is advising us to use another path 
 				 * append  `i'  to the set  JointGW */
 				 JointGW.append(i);
-
-
-			/* If we've got this far, set deepened to 1 */
-			deepened=1;
+			else
+				/* If we've got this far, set deepened to 1 */
+				deepened=1;
 		}
 
 		if (deepened == 1)
@@ -217,16 +216,15 @@ The discovery of the S->D CRT will be done in the following way:
 			 * try to use those added in the JointGW set 
 			 */
 			for  i  in  JointGW {
-				ack = crt_discovery(i,  D,  
-						flowbrate(last_node(dpkt) -> S),
+				ack = i.crt_discovery(i,  D,  
+						flowbrate(last_node(dpkt) -> self),
 						trtt_limit, dpkt);
 				if (ack == ACK_NEGATIVE || ack == ACK_CHANGEPATH)
 					/* 
 					 * This time, we know that `i'
 					 * definitely cannoy be used.
 					 */
-					del  S -> D, gw i;
-					del  D -> S, gw i;
+					del  self -> D, gw i;
 					continue;
 
 				/* If we've got this far, set deepened to 1 */
@@ -238,86 +236,10 @@ The discovery of the S->D CRT will be done in the following way:
 			/* We didn't find any good gateway to reach D. */
 			return  ACK_NEGATIVE;
 	}
+
+	/* TODO: is it correct to use `flowbrate' in that way? */
 }}}
 
-Here it is the same pseudo code without comments:
-{{{
-
-	int  max_trtt(S -> D) {
-
-		if (S wants to create CRT to D to send a large amount of data)
-			return  (A directly proportional value to D);
-
-		else if (S wants to create a fast, low delay, connection to D)
-			return  best_trtt;
-	}
-
-	crt_discovery(S,  D,  best_bw,  max_trtt(S -> D),  NULL);
-
-	crt_discovery(S (source node), 
-			D (destination node), 
-			min_bw (minimum avail bw required for each route),
-			trtt_limit (maximum trtt allowed),
-			dpkt (discovery packet)) 
-	{
-
-		int deepened=0;
-		
-		if(S  in  dpkt)
-			return  ACK_NEGATIVE;
-
-		dpkt.append(S);
-
-		if(S.route_D_set == 1  AND  dpkt.flag!=ACK_FORCED)
-			 return ACK_CHANGEPATH;
-
-		foreach  i  in  r(S) 
-		{ 
-
-			if (i  in  last_node(dpkt))
-				continue;
-
-			if (trtt(S -> D, i) > trtt_limit  OR 
-				bw(S -> D, i) < min_bw)
-				continue;
-
-			add_tmp  S -> D, gw i;
-			add_tmp  D -> S, gw i;
-
-			ack = crt_discovery(i,  D,  
-					    flowbrate(last_node(dpkt) -> S),
-					    trtt_limit, dpkt);
-			if (ack == ACK_NEGATIVE)
-				del  S -> D, gw i;
-				del  D -> S, gw i;
-				continue;
-
-			else if (ack == ACK_CHANGEPATH)
-				 JointGW.append(i);
-
-			deepened=1;
-		}
-
-		if (deepened == 1)
-			return;
-
-		else if (JointGW is not NULL) {
-			for  i  in  JointGW {
-				ack = crt_discovery(i,  D,  
-						flowbrate(last_node(dpkt) -> S),
-						trtt_limit, dpkt);
-				if (ack == ACK_NEGATIVE || ack == ACK_CHANGEPATH)
-					del  S -> D, gw i;
-					del  D -> S, gw i;
-					continue;
-				deepened=1;
-			}
-		} 
-		
-		if(deepened == 0)
-			return  ACK_NEGATIVE;
-	}
-}}}
 
 ===== Bnodes diversification =====
 

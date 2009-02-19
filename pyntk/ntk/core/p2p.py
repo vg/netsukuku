@@ -67,10 +67,7 @@ class MapP2P(Map):
 
 class P2P(RPCDispatcher):
     """This is the class that must be inherited to create a P2P module.
-
-    ** Executing a remote function of the node associated to the key K
-
-    seld.msg_send("""
+    """
 
     def __init__(self, radar, maproute, pid):
         """radar, maproute: the instances of the relative modules

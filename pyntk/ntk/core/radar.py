@@ -28,9 +28,10 @@
 # A radar is fired periodically by Radar.run(), which is started as a
 # microthread.
 #
-# Note: the current statistic is based on the RTT (Round Trip Time) 
+# TODO: the current statistic is based on the RTT (Round Trip Time) 
 # of the packets. However, more refined way can be used and shall be
-# implemented. See NTK_RFC 0002  http://lab.dyne.org/Ntk_bandwidth_measurement
+# implemented: first of all consider the number of bouquet packets lost, then
+# see NTK_RFC 0002  http://lab.dyne.org/Ntk_bandwidth_measurement
 #
 ##
 
