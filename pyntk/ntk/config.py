@@ -31,6 +31,8 @@ DEFAULT_SETTINGS = dict(
     BQUET_NUM = 16,
     MAX_NEIGH = 16,
     MAX_WAIT_TIME = 8, # seconds
+    MULTIPATH = False,
+    SIMULATED = False,
 )
 
 if sys.platform == 'linux2':
