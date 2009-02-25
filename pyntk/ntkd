@@ -23,9 +23,10 @@ import sys
 from optparse import OptionParser
 
 from ntk import VERSION
-from ntk.config import settings
+from ntk.config import settings, ImproperlyConfigured
 from ntk.lib.micro import allmicro_run
 from ntk.ntkd import NtkNode
+
 
 def interfaces_optcb(option, opt, value, parser):
     ''' Callback for interfaces and exclude-interfaces option.
@@ -112,3 +113,6 @@ if __name__ == '__main__':
         main()
     except KeyboardInterrupt:
         sys.exit(0)
+    except ImproperlyConfigured, e:
+        print e,
+        sys.exit(1)

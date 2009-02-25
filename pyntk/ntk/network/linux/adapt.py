@@ -22,7 +22,7 @@ import os
 import re
 import subprocess
 
-from ntk.config import settings
+from ntk.config import settings, ImproperlyConfigured
 from ntk.network.interfaces import BaseNIC, BaseRoute
 
 def file_write(path, data):
@@ -38,10 +38,16 @@ def file_write(path, data):
 class IPROUTECommandError(Exception):
     ''' A generic iproute exception '''
 
-IPROUTE_PATH = os.path.join('/', 'bin', 'ip')
+IPROUTE_PATH = os.path.join('/', 'sbin', 'ip')
 
 def iproute(args):
     ''' An iproute wrapper '''
+
+    if not os.path.isfile(IPROUTE_PATH):
+        error_msg = ('Can not find %s.\n'
+                     'Have you got iproute properly installed?')
+        raise ImproperlyConfigured(error_msg % IPROUTE_PATH)
+
     args_list = args.split()
     cmd = [IPROUTE_PATH] + args_list
     proc = subprocess.Popen(cmd,
