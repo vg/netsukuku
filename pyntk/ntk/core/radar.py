@@ -76,9 +76,16 @@ class Neigh(object):
         self.netid = netid
 
 class Neighbour(object):
-    """ this class manages all neighbours """
-    __slots__ = ['max_neigh', 'rtt_variation', 'ip_table', 'ntk_client',
-                 'translation_table', 'netid_table', 'events', 'remotable_funcs']
+    """ This class manages all neighbours """
+
+    __slots__ = ['max_neigh',
+                 'rtt_variation',
+                 'ip_table',
+                 'ntk_client',
+                 'translation_table',
+                 'netid_table',
+                 'events',
+                 'remotable_funcs']
 
     def __init__(self, max_neigh=16):
         """  max_neigh: maximum number of neighbours we can have """
@@ -103,9 +110,12 @@ class Neighbour(object):
         """ return the list of neighbours """
         nlist = []
         for key, val in self.ip_table:
-            nlist.append(Neigh(key, self.ntk_client[key],
-                               translation_table[key], val.devs,
-                               val.bestdev, self.netid_table[key]))
+            nlist.append(Neigh(bestdev=val.bestdev,
+                               devs=val.devs,
+                               idn=self.ntk_client[key],
+                               ip=key,
+                               netid=self.netid_table[key],
+                               ntkd=self.translation_table[key]))
         return nlist
 
     def ip_to_id(self, ipn):
@@ -130,11 +140,12 @@ class Neighbour(object):
         if ip not in self.translation_table:
             return None
         else:
-            return Neigh(ip, self.ntk_client[ip],
-                             self.translation_table[ip],
-                             self.ip_table[ip].devs,
-                             self.ip_table[ip].bestdev,
-                             self.netid_table[ip])
+            return Neigh(bestdev=self.ip_table[ip].bestdev,
+                         devs=self.ip_table[ip].devs
+                         idn=self.ntk_client[ip],
+                         ip=ip,
+                         netid=self.netid_table[ip],
+                         ntkd=self.translation_table[ip])
 
     def id_to_ip(self, id):
         """ Returns the IP associated to `id'.
@@ -225,11 +236,12 @@ class Neighbour(object):
 
                 # send a message notifying we added a node
                 self.events.send('NEIGH_NEW',
-                                 (Neigh(key, self.ntk_client[key],
-                                             self.translation_table(key),
-                                             self.ip_table[key].devs,
-                                             self.ip_table[key].bestdev,
-                                             self.netid_table[key])))
+                                 (Neigh(bestdev=self.ip_table[key].bestdev,
+                                        devs=self.ip_table[key].devs,
+                                        idn=self.ntk_client[key],
+                                        ip=key,
+                                        netid=self.netid_table[key],
+                                        ntkd=self.translation_table[key])))
             else:
                 # otherwise (if the node already was in old ip_table) check if
                 # its rtt has changed more than rtt_variation
@@ -237,11 +249,12 @@ class Neighbour(object):
                                 self.ip_table[key].bestdev[1] > self.rtt_variation):
                     # send a message notifying the node's rtt changed
                     self.events.send('NEIGH_REM_CHGED',
-                                    (Neigh(key, self.ntk_client[key],
-                                                self.translation_table[key],
-                                                self.ip_table[key].devs,
-                                                self.ip_table[key].bestdev,
-                                                self.netid_table[key]) ))
+                                     (Neigh(bestdev=self.ip_table[key].bestdev,
+                                            devs=self.ip_table[key].devs,
+                                            idn=self.ntk_client[key],
+                                            ip=key,
+                                            netid=self.netid_table[key],
+                                            ntkd=self.translation_table[key])))
 
         # finally, update the ip_table
         self.ip_table = ip_table
@@ -249,21 +262,23 @@ class Neighbour(object):
     def readvertise(self):
         """Sends a NEIGH_NEW event for each stored neighbour"""
         for key in self.ip_table:
-            self.events.send('NEIGH_NEW', 
-                            (Neigh(key, self.ntk_client[key],
-                                        self.translation_table(key),
-                                        self.ip_table[key].devs,
-                                        self.ip_table[key].bestdev,
-                                        self.netid_table[key])))
+            self.events.send('NEIGH_NEW',
+                             (Neigh(bestdev=self.ip_table[key].bestdev,
+                                    devs=self.ip_table[key].devs,
+                                    idn=self.ntk_client[key],
+                                    ip=key,
+                                    netid=self.netid_table[key],
+                                    ntkd=self.translation_table[key])))
+
 
     def delete(self, ip, remove_from_iptable=True):
         """Deletes an entry from the ip_table"""
         if remove_from_iptable:
-                del self.ip_table[ip]
+            del self.ip_table[ip]
 
         # close the connection ( if any )
         if self.ntk_client[ip].connected:
-                self.ntk_client[ip].close()
+            self.ntk_client[ip].close()
         del self.ntk_client[ip]
 
         # delete the entry from the translation table...
@@ -271,8 +286,13 @@ class Neighbour(object):
         # ...and from the netid_table
         old_netid = self.netid_table.pop(ip)
         # send a message notifying we deleted the entry
-        self.events.send('NEIGH_DELETED', (Neigh(ip, self.ntk_client[ip], 
-                                                 old_id, None, None, old_netid)))
+        self.events.send('NEIGH_DELETED',
+                         (Neigh(bestdev=None,
+                                devs=None,
+                                idn=self.ntk_client[ip],
+                                ip=ip,
+                                netid=old_netid,
+                                ntkd=old_id)))
 
     def ip_change(self, oldip, newip):
         """Adds `newip' in the Neighbours as a copy of `oldip', then it removes
@@ -286,12 +306,14 @@ class Neighbour(object):
         # we have to create a new TCP connection
         self.ntk_client[newip] = rpc.TCPClient(ip_to_str(newip))
 
-        self.events.send('NEIGH_NEW', (
-                        Neigh(newip, self.ntk_client[newip], 
-                                    self.translation_table(newip),
-                                    self.ip_table[newip].devs,
-                                    self.ip_table[newip].bestdev,
-                                    self.netid_table[newip]) ))
+        self.events.send('NEIGH_NEW',
+                         (Neigh(bestdev=self.ip_table[newip].bestdev,
+                                devs=self.ip_table[newip].devs,
+                                idn=self.ntk_client[newip],
+                                ip=newip,
+                                netid=self.netid_table[newip]),
+                                ntkd=self.translation_table(newip)))
+
         self.delete(oldip)
 
 
@@ -429,5 +451,5 @@ class Radar(object):
         # for each ip
         for ip in self.bcast_arrival_time:
             devs = self.get_avg_rtt(ip)
-            all_avg[ip] = Neigh(dict(devs), devs[0])
+            all_avg[ip] = Neigh(bestdev=devs[0], devs=dict(devs))
         return all_avg
