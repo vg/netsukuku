@@ -141,7 +141,7 @@ class Neighbour(object):
             return None
         else:
             return Neigh(bestdev=self.ip_table[ip].bestdev,
-                         devs=self.ip_table[ip].devs
+                         devs=self.ip_table[ip].devs,
                          idn=self.ntk_client[ip],
                          ip=ip,
                          netid=self.netid_table[ip],
@@ -311,8 +311,8 @@ class Neighbour(object):
                                 devs=self.ip_table[newip].devs,
                                 idn=self.ntk_client[newip],
                                 ip=newip,
-                                netid=self.netid_table[newip]),
-                                ntkd=self.translation_table(newip)))
+                                netid=self.netid_table[newip],
+                                ntkd=self.translation_table(newip))))
 
         self.delete(oldip)
 
