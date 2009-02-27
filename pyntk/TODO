@@ -1,5 +1,11 @@
 - debug, debug, debug
 
+- misc
+	- When using wifi devices, don't create a TCP connection for each
+	  link. Use UDP and exploit the broadcast. In other words, if it is
+	  possible to send a packet to more than one neighbor, at the same
+	  time, do it using broadcast.
+
 - ANDNA
 	- Core: use ntk/core/p2p.py to implement the basic services of ANDNA.
 	  As an example, see coord.py. It is a P2P service based on p2p.py.
