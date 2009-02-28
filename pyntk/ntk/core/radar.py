@@ -236,12 +236,12 @@ class Neighbour(object):
 
                 # send a message notifying we added a node
                 self.events.send('NEIGH_NEW',
-                                 (Neigh(bestdev=self.ip_table[key].bestdev,
-                                        devs=self.ip_table[key].devs,
+                                 (Neigh(bestdev=ip_table[key].bestdev,
+                                        devs=ip_table[key].devs,
                                         idn=self.ntk_client[key],
                                         ip=key,
                                         netid=self.netid_table[key],
-                                        ntkd=self.translation_table[key])))
+                                        ntkd=self.translation_table[key]),))
             else:
                 # otherwise (if the node already was in old ip_table) check if
                 # its rtt has changed more than rtt_variation
@@ -254,7 +254,7 @@ class Neighbour(object):
                                             idn=self.ntk_client[key],
                                             ip=key,
                                             netid=self.netid_table[key],
-                                            ntkd=self.translation_table[key])))
+                                            ntkd=self.translation_table[key]),))
 
         # finally, update the ip_table
         self.ip_table = ip_table
@@ -268,7 +268,7 @@ class Neighbour(object):
                                     idn=self.ntk_client[key],
                                     ip=key,
                                     netid=self.netid_table[key],
-                                    ntkd=self.translation_table[key])))
+                                    ntkd=self.translation_table[key]),))
 
 
     def delete(self, ip, remove_from_iptable=True):
@@ -292,7 +292,7 @@ class Neighbour(object):
                                 idn=self.ntk_client[ip],
                                 ip=ip,
                                 netid=old_netid,
-                                ntkd=old_id)))
+                                ntkd=old_id),))
 
     def ip_change(self, oldip, newip):
         """Adds `newip' in the Neighbours as a copy of `oldip', then it removes
@@ -312,7 +312,7 @@ class Neighbour(object):
                                 idn=self.ntk_client[newip],
                                 ip=newip,
                                 netid=self.netid_table[newip],
-                                ntkd=self.translation_table(newip))))
+                                ntkd=self.translation_table(newip)),))
 
         self.delete(oldip)
 
@@ -390,7 +390,7 @@ class Radar(object):
 
         # Send the event
         self.bouquet_numb += 1
-        self.events.send('SCAN_DONE', (self.bouquet_numb))
+        self.events.send('SCAN_DONE', (self.bouquet_numb,))
 
     def reply(self, _rpc_caller, ntkd_id, radar_id):
         """ As answer we'll return our netid """
