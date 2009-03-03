@@ -33,15 +33,16 @@ def file_write(path, data):
     finally:
         fout.close()
 
-
-
 class IPROUTECommandError(Exception):
     ''' A generic iproute exception '''
 
-IPROUTE_PATH = os.path.join('/', 'sbin', 'ip')
-
 def iproute(args):
     ''' An iproute wrapper '''
+
+    try:
+        IPROUTE_PATH = settings.IPROUTE_PATH
+    except AttributeError:
+        IPROUTE_PATH = os.path.join('/', 'sbin', 'ip')
 
     if not os.path.isfile(IPROUTE_PATH):
         error_msg = ('Can not find %s.\n'
@@ -122,7 +123,7 @@ class NIC(BaseNIC):
 class Route(BaseRoute):
     ''' Managing routes using iproute
     '''
-        
+
     ##TODO: add the possibility to specify a routing table, f.e. 'table ntk'
 
     @staticmethod
