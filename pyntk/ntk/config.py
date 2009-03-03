@@ -1,6 +1,6 @@
 ##
 # This file is part of Netsukuku
-# (c) Copyright 2007 Daniele Tricoli aka Eriol <eriol@mornie.org>
+# (c) Copyright 2008 Daniele Tricoli aka Eriol <eriol@mornie.org>
 #
 # This source code is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as published
@@ -58,14 +58,16 @@ class Settings(object):
             if setting == setting.upper():
                 setattr(self, setting, GLOBAL_SETTINGS[setting])
 
-        self._load_configuration_file()
+        self.load_configuration_file()
 
-    def _load_configuration_file(self):
+    def load_configuration_file(self):
         configuration_file = os.path.join(self.CONFIGURATION_DIR,
                                           self.CONFIGURATION_FILE)
+
         if not os.path.isfile(configuration_file):
-                # No configuration file. Ignore it.
-                return 
+            # No configuration file. Ignore it.
+            return
+
         try:
             user_settings = imp.load_source('configuration_file',
                                             configuration_file)

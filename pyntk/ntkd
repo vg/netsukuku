@@ -19,7 +19,9 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
+import os.path
 import sys
+
 from optparse import OptionParser
 
 from ntk import VERSION
@@ -91,8 +93,11 @@ def main():
         sys.exit('IPV6 not supported yet!')
 
     if options.config_file:
-        pass
-        # TODO: load settings mechanism from file
+        config_file = os.path.abspath(options.config_file)
+        settings.CONFIGURATION_DIR, settings.CONFIGURATION_FILE = (
+            os.path.split(config_file)
+        )
+        settings.load_configuration_file()
 
     if options.debug:
         import logging
