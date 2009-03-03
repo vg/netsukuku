@@ -133,7 +133,7 @@ class Route(BaseRoute):
 
         if dev is not None:
             cmd += ' dev %s' % dev
-        if gateway is not None:
+        if gateway is not None and gateway != ip:
             cmd += ' via %s' % gateway
 
         cmd += ' protocol ntk'
