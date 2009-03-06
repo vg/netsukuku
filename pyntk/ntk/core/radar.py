@@ -112,10 +112,10 @@ class Neighbour(object):
         for key, val in self.ip_table:
             nlist.append(Neigh(bestdev=val.bestdev,
                                devs=val.devs,
-                               idn=self.ntk_client[key],
+                               idn=self.translation_table[key],
                                ip=key,
                                netid=self.netid_table[key],
-                               ntkd=self.translation_table[key]))
+                               ntkd=self.ntk_client[key]))
         return nlist
 
     def ip_to_id(self, ipn):
@@ -142,10 +142,10 @@ class Neighbour(object):
         else:
             return Neigh(bestdev=self.ip_table[ip].bestdev,
                          devs=self.ip_table[ip].devs,
-                         idn=self.ntk_client[ip],
+                         idn=self.translation_table[ip],
                          ip=ip,
                          netid=self.netid_table[ip],
-                         ntkd=self.translation_table[ip])
+                         ntkd=self.ntk_client[ip])
 
     def id_to_ip(self, id):
         """ Returns the IP associated to `id'.
@@ -198,8 +198,8 @@ class Neighbour(object):
 
     def _find_hole_in_tt(self):
         """find the first available index in translation_table"""
-        for i in xrange(self.max_neigh):
-            if (i in self.translation_table.values()) == False:
+        for i in xrange(1, self.max_neigh + 1):
+            if i not in self.translation_table.values():
                 return i
         return False
 
@@ -238,23 +238,27 @@ class Neighbour(object):
                 self.events.send('NEIGH_NEW',
                                  (Neigh(bestdev=ip_table[key].bestdev,
                                         devs=ip_table[key].devs,
-                                        idn=self.ntk_client[key],
+                                        idn=self.translation_table[key],
                                         ip=key,
                                         netid=self.netid_table[key],
-                                        ntkd=self.translation_table[key]),))
+                                        ntkd=self.ntk_client[key]),))
             else:
                 # otherwise (if the node already was in old ip_table) check if
                 # its rtt has changed more than rtt_variation
-                if(abs(ip_table[key].bestdev[0][1] - self.ip_table[key].bestdev[1]) /
-                                self.ip_table[key].bestdev[1] > self.rtt_variation):
+
+                old_rtt = ip_table[key].bestdev[1]
+                cur_rtt = self.ip_table[key].bestdev[1]
+                cur_rtt_variation = abs(old_rtt - cur_rtt) / float(cur_rtt)
+
+                if cur_rtt_variation > self.rtt_variation:
                     # send a message notifying the node's rtt changed
                     self.events.send('NEIGH_REM_CHGED',
                                      (Neigh(bestdev=self.ip_table[key].bestdev,
                                             devs=self.ip_table[key].devs,
-                                            idn=self.ntk_client[key],
+                                            idn=self.translation_table[key],
                                             ip=key,
                                             netid=self.netid_table[key],
-                                            ntkd=self.translation_table[key]),))
+                                            ntkd=self.ntk_client[key]),))
 
         # finally, update the ip_table
         self.ip_table = ip_table
@@ -265,10 +269,10 @@ class Neighbour(object):
             self.events.send('NEIGH_NEW',
                              (Neigh(bestdev=self.ip_table[key].bestdev,
                                     devs=self.ip_table[key].devs,
-                                    idn=self.ntk_client[key],
+                                    idn=self.translation_table[key],
                                     ip=key,
                                     netid=self.netid_table[key],
-                                    ntkd=self.translation_table[key]),))
+                                    ntkd=self.ntk_client[key]),))
 
 
     def delete(self, ip, remove_from_iptable=True):
@@ -289,10 +293,10 @@ class Neighbour(object):
         self.events.send('NEIGH_DELETED',
                          (Neigh(bestdev=None,
                                 devs=None,
-                                idn=self.ntk_client[ip],
+                                idn=old_id,
                                 ip=ip,
                                 netid=old_netid,
-                                ntkd=old_id),))
+                                ntkd=self.ntk_client[ip]),))
 
     def ip_change(self, oldip, newip):
         """Adds `newip' in the Neighbours as a copy of `oldip', then it removes
@@ -309,10 +313,10 @@ class Neighbour(object):
         self.events.send('NEIGH_NEW',
                          (Neigh(bestdev=self.ip_table[newip].bestdev,
                                 devs=self.ip_table[newip].devs,
-                                idn=self.ntk_client[newip],
+                                idn=self.translation_table[newip],
                                 ip=newip,
                                 netid=self.netid_table[newip],
-                                ntkd=self.translation_table(newip)),))
+                                ntkd=self.ntk_client[newip]),))
 
         self.delete(oldip)
 
