@@ -188,13 +188,13 @@ class P2P(RPCDispatcher):
         def rmt(self, func_name, *params):
             """Overrides FakeRmt.rmt()"""
             if self.hIP == None:
-                    self.hIP = p2p.H(p2p.h(self.key))
-            return p2p.msg_send(p2p.maproute.me, self.hIP, (func_name, params))
+                    self.hIP = self.p2p.H(self.p2p.h(self.key))
+            return self.p2p.msg_send(self.p2p.maproute.me, self.hIP, (func_name, params))
 
     def peer(self, hIP=None, key=None):
         if hIP is None and key is None:
                 raise Exception, "hIP and key are both None. Specify at least one"
-        return self.RmtPeer(self, key, hIP)
+        return self.RmtPeer(self, hIP=hIP, key=key)
 
 class P2PAll(object):
     """Class of all the registered P2P services"""
