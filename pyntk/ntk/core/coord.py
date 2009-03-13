@@ -127,7 +127,7 @@ class Coord(P2P):
 
     def h(self, (lvl, ip)):
         """h:KEY-->IP"""
-        IP = ip
+        IP = list(ip)
         for l in reversed(xrange(lvl)): IP[l] = 0
         return IP
 

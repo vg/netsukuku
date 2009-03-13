@@ -128,7 +128,10 @@ class P2P(RPCDispatcher):
            If nothing is found, None is returned"""
         
         lvl = self.mapp2p.nip_cmp(hip, self.maproute.me)
-        return self.neigh.id_to_neigh(self.maproute.node_get(lvl,hip[lvl]).best_route().gw)
+        br=self.maproute.node_get(lvl,hip[lvl]).best_route()
+        if not br:
+                return None
+        return self.neigh.id_to_neigh(br.gw)
 
     def partecipate(self):
         """Let's become a partecipant node"""
@@ -182,7 +185,7 @@ class P2P(RPCDispatcher):
         def __init__(self, p2p, hIP=None, key=None):
             self.p2p = p2p
             self.key = key
-            self.hIP = None
+            self.hIP = hIP
             FakeRmt.__init__(self)
 
         def rmt(self, func_name, *params):
