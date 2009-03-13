@@ -87,9 +87,10 @@ class NtkNode(object):
 
             for nic in self.nic_manager:
                 self.nic_manager[nic].filtering(enable=False)
+                rpc.MicroUDPServer(self, ('', 269), nic, self.simnet, self.simme, self.simsock)
 
         rpc.MicroTCPServer(self, ('', 269), None, self.simnet, self.simme, self.simsock)
-        rpc.MicroUDPServer(self, ('', 269), None, self.simnet, self.simme, self.simsock)
+
 
         self.radar.run()
         self.hook.hook()
