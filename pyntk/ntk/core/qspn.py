@@ -21,11 +21,12 @@ from ntk.lib.micro import microfunc
 from ntk.lib.event import Event
 from ntk.core.route import NullRem, DeadRem
 
-def isnot_empty(x):return x!=[] #helper func
-def is_listlist_empty(L):
-        """L is a list of lists.
-           Returns true if L=[[],[], ...]"""
-        return sum(filter(isnot_empty, L)) == 0
+def is_listlist_empty(l):
+        """
+            Returns true if l=[[],[], ...]
+            l is a list of lists.
+        """
+        return not any(l)
 
 class Etp:
     """Extended Tracer Packet"""
@@ -40,13 +41,13 @@ class Etp:
         self.neigh.events.listen('NEIGH_DELETED', self.etp_new_dead)
 
         self.events = Event(['ETP_EXECED', 'NET_COLLISION'])
-        
+
         self.remotable_funcs = [self.etp_exec]
-    
+
     @microfunc(True)
     def etp_new_dead(self, neigh):
         """Builds and sends a new ETP for the worsened link case."""
-        
+
         ## Create R
         def gw_is_neigh((dst, gw, rem)):
                 return gw == neigh.id
@@ -84,7 +85,7 @@ class Etp:
     @microfunc(True)
     def etp_new_changed(self, neigh, oldrem=None):
         """Builds and sends a new ETP for the changed link case
-        
+
         If oldrem=None, the node `neigh' is considered new."""
 
         ## Update the map
@@ -97,11 +98,11 @@ class Etp:
         ## Create R
         def gw_isnot_neigh((dst, gw, rem)):
                 return gw != neigh.id
-        R=self.maproute.bestroutes_get(gw_isnot_neigh)
+        R = self.maproute.bestroutes_get(gw_isnot_neigh)
         if is_listlist_empty(R):
                 # R is empty: no need to proceed
                 return
-        
+
         def takeoff_gw((dst, gw, rem)):
                 return (dst, rem)
         def takeoff_gw_lvl(L):
