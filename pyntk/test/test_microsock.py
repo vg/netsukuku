@@ -2,14 +2,17 @@
 # Test taken (and modified) from the examples of stackless.
 ##
 
+
+import struct
 import sys
 sys.path.append('..')
-from ntk.lib.micro import micro, microfunc, allmicro_run, Channel
 
+from socket import AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR, SOCK_DGRAM
+
+from ntk.lib.micro import micro, microfunc, allmicro_run, Channel
 from ntk.wrap.sock import Sock
 socket = Sock()
-from socket import AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR, SOCK_DGRAM
-import struct
+
 
 
 
@@ -168,9 +171,9 @@ else:
     micro(TestTCPClient, (testAddress,))
     allmicro_run()
 
-    micro(TestMonkeyPatchUrllib, ("http://python.org/",))
-    allmicro_run()
+    #micro(TestMonkeyPatchUrllib, ("http://python.org/",))
+    #allmicro_run()
 
-    TestMonkeyPatchUDP(testAddress)
+    #TestMonkeyPatchUDP(testAddress)
 
     print "result: SUCCESS"
