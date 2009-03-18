@@ -39,7 +39,7 @@ class Rem(object):
 
     __slots__ = ['value', 'max_value', 'avgcoeff']
 
-    def __init__(self, value, max_value=0, avgcoeff=1):
+    def __init__(self, value=None, max_value=0, avgcoeff=1):
         self.value = value
         self.max_value = max_value        # Maximum value assumed by this REM
         self.avgcoeff = avgcoeff          # Coefficient used for the average
@@ -66,8 +66,7 @@ class Rem(object):
 
 class NullRem(Rem):
     """The equivalent of None for the REM"""
-    def __init__(self):
-            Rem.__init__(self, 0)
+
     def __add__(self, b):
             return b
     def __radd__(self, b):
