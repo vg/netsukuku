@@ -66,6 +66,8 @@ class Rem(object):
 
 class NullRem(Rem):
     """The equivalent of None for the REM"""
+    def __init__(self):
+            Rem.__init__(self, 0)
     def __add__(self, b):
             return b
     def __radd__(self, b):

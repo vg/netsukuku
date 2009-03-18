@@ -150,7 +150,6 @@ class Hook(object):
         lvl = H[1][0]
         fnl = H[1][1]
         newnip[lvl] = choice(fnl)
-        newnip.append(0)
         for l in reversed(xrange(lvl)): newnip[l]=randint(0, self.maproute.gsize)
 
         # If we are alone, let's generate our netid
