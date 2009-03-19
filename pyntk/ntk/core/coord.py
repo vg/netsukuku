@@ -45,7 +45,7 @@ class Node:
         return (self.alive,)
 
     def _unpack(self, (p,)):
-        ret=PartecipantNode()
+        ret=Node()
         ret.alive=p
         return ret
 
