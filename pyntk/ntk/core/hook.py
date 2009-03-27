@@ -157,43 +157,46 @@ class Hook(object):
         ##
 
 
-        ## Contact the coordinator nodes 
+        if lvl < self.maproute.levels-1:
+                # We are creating a new gnode which is not in the latest
+                # level. 
+                # Contact the coordinator nodes 
+                
+                if lvl > 0:
+                        # If we are going to create a new gnode, it's useless to pose
+                        # any condition
+                        condition=False
 
-        if lvl > 0:
-                # If we are going to create a new gnode, it's useless to pose
-                # any condition
-                condition=False
+                if condition:
+                        # <<I'm going out>>
+                        co = self.coordnode.peer(key = (1, self.maproute.me))
+                        # get |G| and check that  gnumb < |G|
+                        Gnumb = co.going_out(0, self.maproute.me[0], gnumb)
+                        if Gnumb == None:
+                                # nothing to be done
+                                return
 
-        if condition:
-                # <<I'm going out>>
-                co = self.coordnode.peer(key = (1, self.maproute.me))
-                # get |G| and check that  gnumb < |G|
-                Gnumb = co.going_out(0, self.maproute.me[0], gnumb)
-                if Gnumb == None:
-                        # nothing to be done
-                        return
+                        # <<I'm going in, can I?>>
+                        co2 = self.coordnode.peer(key = (lvl+1, newnip))
+                        # ask if we can get in and if |G'| < |G|, and get our new IP
+                        newnip=co2.going_in(lvl, Gnumb)
 
-                # <<I'm going in, can I?>>
-                co2 = self.coordnode.peer(key = (lvl+1, newnip))
-                # ask if we can get in and if |G'| < |G|, and get our new IP
-                newnip=co2.going_in(lvl, Gnumb)
+                        if newnip:
+                                # we've been accepted
+                                co.going_out_ok(0, self.maproute.me[0])
+                        else:
+                                raise Exception, "Netsukuku is full"
 
-                if newnip:
-                        # we've been accepted
-                        co.going_out_ok(0, self.maproute.me[0])
-                else:
-                        raise Exception, "Netsukuku is full"
-
-                co.close()
-                co2.close()
-        elif not we_are_alone:
-                # <<I'm going in, can I?>>
-                co2 = self.coordnode.peer(key = (lvl+1, newnip))
-                # ask if we can get in, get our new IP
-                newnip=co2.going_in(lvl)
-                if newnip == None:
-                        raise Exception, "Netsukuku is full"
-                co2.close()
+                        co.close()
+                        co2.close()
+                elif not we_are_alone:
+                        # <<I'm going in, can I?>>
+                        co2 = self.coordnode.peer(key = (lvl+1, newnip))
+                        # ask if we can get in, get our new IP
+                        newnip=co2.going_in(lvl)
+                        if newnip == None:
+                                raise Exception, "Netsukuku is full"
+                        co2.close()
         ##
 
         
