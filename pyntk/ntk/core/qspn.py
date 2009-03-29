@@ -34,6 +34,7 @@ class Etp:
     def __init__(self, radar, maproute):
 
         self.neigh   =radar.neigh
+        self.netid   =radar.netid
         self.maproute=maproute
 
         self.neigh.events.listen('NEIGH_NEW', self.etp_new_changed)
@@ -112,7 +113,7 @@ class Etp:
 
         ## Send the ETP to `neigh'
         flag_of_interest=1
-        TP = [(self.maproute.me[0], NullRem)]
+        TP = [(self.maproute.me[0], NullRem())]
         etp = (R, [(0, TP)], flag_of_interest)
         neigh.ntkd.etp.etp_exec(self.maproute.me, *etp)
         ##
@@ -133,7 +134,7 @@ class Etp:
         """
 
         gwnip   = sender_nip
-        neigh   = self.neigh.ip_to_neigh(gwnip)
+        neigh   = self.neigh.ip_to_neigh(self.maproute.nip_to_ip(gwnip))
         gw      = neigh.id
         gwrem   = neigh.rem
 
@@ -141,8 +142,8 @@ class Etp:
         if self.collision_check(gwnip, neigh, R):
                 # collision detected. rehook.
                 self.events.send('NET_COLLISION', 
-                                 ([nr for nr in self.neigh.neigh_list()
-                                                if nr.netid == neigh.netid]))
+                                 ([[nr for nr in self.neigh.neigh_list()
+                                                if nr.netid == neigh.netid]]))
                 return # drop the packet
         ##
 
@@ -270,9 +271,9 @@ class Etp:
             be removed.
         """
         
-        if neigh.netid == self.radar.netid                              \
-            or self.radar.netid == -1:
-                self.radar.netid = neigh.netid
+        if neigh.netid == self.netid                              \
+            or self.netid == -1:
+                self.netid = neigh.netid
                 return (False, R) # all ok
 
         # uhm... we are in different networks
@@ -283,7 +284,7 @@ class Etp:
         ngnetsz = reduce(add, map(len, R))
 
         if mynetsz > ngnetsz or                                         \
-                (mynetsz == ngnetsz and self.radar.netid > neigh.netid):
+                (mynetsz == ngnetsz and self.netid > neigh.netid):
                 # we don't care if we are colliding or not. We can simply
                 # ignore colliding routes, the rest will be done by the other
                 # net.

@@ -109,7 +109,7 @@ class Neighbour(object):
     def neigh_list(self):
         """ return the list of neighbours """
         nlist = []
-        for key, val in self.ip_table:
+        for key, val in self.ip_table.items():
             nlist.append(Neigh(bestdev=val.bestdev,
                                devs=val.devs,
                                idn=self.translation_table[key],
