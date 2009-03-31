@@ -59,6 +59,13 @@ class Channel(object):
         else:
             self.ch.send(data)
 
+    def send_exception(self, exc, value, wait=False):
+        result = None
+        for i in range(0, self.ch.balance, -1):
+            # there are tasklets waiting to receive
+            result = stackless.channel.send_exception(self.ch, exc, value)
+        return result
+
     def recv(self):
         return self.ch.receive()
 
