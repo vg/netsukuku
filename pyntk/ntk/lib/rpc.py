@@ -286,12 +286,19 @@ def MicroTCPServer(root_instance, addr=('', 269), dev=None, net=None, me=None, s
 class TCPClient(FakeRmt):
     '''This class implement a simple TCP RPC client'''
 
-    def __init__(self, host='localhost', port=269, net=None, me=None, sockmodgen=Sock):
+    def __init__(self,
+                 host='localhost',
+                 port=269,
+                 net=None,
+                 me=None,
+                 sockmodgen=Sock):
+
         self.host = host
         self.port = port
 
-        socket=sockmodgen(net, me)
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sockfactory = sockmodgen
+        self.net = net
+        self.me = me
         self.connected = False
 
         FakeRmt.__init__(self)
@@ -303,7 +310,7 @@ class TCPClient(FakeRmt):
         @param params: a tuple of arguments to pass to the remote callable
         '''
 
-        if not self.connected:
+        while not self.connected:
             self.connect()
 
         data = rencode.dumps((func_name, params))
@@ -311,7 +318,7 @@ class TCPClient(FakeRmt):
 
         recv_encoded_data = _data_unpack_from_stream_socket(self.socket)
         if not recv_encoded_data:
-                raise RPCNetError, 'connection closed before reply'
+            raise RPCNetError, 'connection closed before reply'
         recv_data = rencode.loads(recv_encoded_data)
         logging.debug("Recvd data: "+str(recv_data))
 
@@ -325,8 +332,14 @@ class TCPClient(FakeRmt):
         return recv_data
 
     def connect(self):
-        self.socket.connect((self.host, self.port))
-        self.connected = True
+        socket = self.sockfactory(net=self.net, me=self.me)
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            self.socket.connect((self.host, self.port))
+        except socket.error, e:
+            pass
+        else:
+            self.connected = True
 
     def close(self):
         self.socket.close()
