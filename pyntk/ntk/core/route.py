@@ -17,8 +17,9 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
-from ntk.lib.event import Event
 from ntk.core.map import Map
+from ntk.lib.event import Event
+from ntk.lib.rencode import serializable
 
 class RemError(Exception):
     ''' General Route Efficiency Measure Exception '''
@@ -47,9 +48,6 @@ class Rem(object):
     def _pack(self):
         return (self.value, self.max_value, self.avgcoeff)
 
-    def _unpack(self, *args):
-        return Rem(args)
-
     def __cmp__(self, b):
         """Compares two REMs
         if remA > remB, then remA is better than remB
@@ -71,6 +69,8 @@ class NullRem(Rem):
             return b
     def __radd__(self, b):
             return b
+
+serializable.register(NullRem)
 
 class DeadRem(Rem):
     """A route with this rem is dead"""
@@ -102,6 +102,8 @@ class Rtt(Rem):
         else:
             return Rtt(self.value+b.value, self.max_value, self.avgcoeff)
 
+serializable.register(Rtt)
+
 class Bw(Rem):
     """Bandwidth"""
     __slots__ = Rem.__slots__ + ['lb', 'nb']
@@ -124,8 +126,7 @@ class Bw(Rem):
         self.nb = nb
 
     def _pack(self):
-        return (self.value,  self.lb, self.nb, self.max_value,
-                self.avgcoeff, self.lb, self.nb)
+        return (self.value, self.lb, self.nb, self.max_value, self.avgcoeff)
 
     def __cmp__(self, b):
         """bandwidth comparison
@@ -138,7 +139,7 @@ class Bw(Rem):
 
     def __add__(self, b):
         if isinstance(b, DeadRem):
-            return b+self
+            return b + self
         else:
             return Bw(min(self.value, b.value), self.lb, self.nb,
                       self.max_value, self.avgcoeff)

@@ -17,22 +17,35 @@ rencode module versions, so you should check that you are using the
 same rencode version throughout your project.
 """
 
-__version__ = '1.0.0'
-__all__ = ['dumps', 'loads']
+__version__ = '1.0.0-ntk'
+__all__ = ['dumps', 'loads', 'serializable']
 
 
 ##TODO
-# - Why the hell it encodes both tuples and lists to list?
+# - Why the hell it encodes both tuples and lists to tuple?
 #   Try loads(dumps([1,(2,3)]))
 #   Grr
 #
 # - extend it! Support other basic types, f.e. Set()
 #
-# - Make it encode Classes:
-#   - use class._pack(), class._unpack()
 ##
 
 # Original bencode module by Petru Paler, et al.
+#
+# Modifications by Daniele Tricoli:
+#
+#  - Added support for instances
+#    Only registered instances can be serialized. An instance to be serialized
+#    must provide a '_pack` method.
+#    E.g.
+#
+#    class X(object):
+#
+#        def __init__(self, x):
+#            self.x = x
+#
+#        def _pack(self)
+#           return (self.x,) # a tuple
 #
 # Modifications by Connelly Barnes:
 #
@@ -72,8 +85,77 @@ __all__ = ['dumps', 'loads']
 # (The rencode module is licensed under the above license as well).
 #
 
-import struct
+import inspect
 import string
+import struct
+
+from types import (StringType,
+                   IntType,
+                   LongType,
+                   DictType,
+                   ListType,
+                   TupleType,
+                   FloatType,
+                   NoneType)
+
+class AlreadyRegistered(Exception): pass
+
+class NotRegistered(Exception):
+
+    def __init__(self, class_):
+        self.class_ = class_
+
+    def __str__(self):
+        return 'Class %s is not registered' % self.class_
+
+class NotSerializable(Exception): pass
+
+def add_class_name(func):
+
+    if inspect.ismethod(func):
+        def decorate(*args, **kargs):
+            result = func(*args, **kargs)
+            result = (str(func.im_class.__name__),) + result
+            return result
+
+        return decorate
+
+class _SerializableRegistry(object):
+
+    def __init__(self):
+        self._registry = {}
+
+    def __contains__(self, item):
+        return item in self._registry
+
+    def __getitem__(self, key):
+        return self._registry[key]
+
+    def register(self, cls):
+        '''   '''
+        if inspect.isclass(cls):
+
+            if cls.__name__ in self._registry:
+                m = 'Class %s is already registered' % cls.__name__
+                raise AlreadyRegistered(m)
+
+            try:
+                if inspect.ismethod(cls._pack):
+                    cls._pack = add_class_name(cls._pack)
+                    self._registry[cls.__name__] = cls
+            except AttributeError, e:
+                raise NotSerializable(e)
+
+    def unregister(self, cls):
+        '''   '''
+        if inspect.isclass(cls):
+
+            if cls in self._registry:
+                del self._registry[cls.__name__]
+            else: 
+                raise NotRegistered(cls.__name__)
+
+serializable = _SerializableRegistry()
 
 # Number of bits for serialized floats, either 32 or 64.
 FLOAT_BITS = 32
@@ -83,18 +165,19 @@ MAX_INT_LENGTH = 64
 
 # The bencode 'typecodes' such as i, d, etc have been extended and
 # relocated on the base-256 character set.
-CHR_LIST  = chr(59)
-CHR_DICT  = chr(60)
-CHR_INT   = chr(61)
-CHR_INT1  = chr(62)
-CHR_INT2  = chr(63)
-CHR_INT4  = chr(64)
-CHR_INT8  = chr(65)
+CHR_INSTANCE = chr(58)
+CHR_LIST = chr(59)
+CHR_DICT = chr(60)
+CHR_INT = chr(61)
+CHR_INT1 = chr(62)
+CHR_INT2 = chr(63)
+CHR_INT4 = chr(64)
+CHR_INT8 = chr(65)
 CHR_FLOAT = chr(66)
-CHR_TRUE  = chr(67)
+CHR_TRUE = chr(67)
 CHR_FALSE = chr(68)
-CHR_NONE  = chr(69)
-CHR_TERM  = chr(127)
+CHR_NONE = chr(69)
+CHR_TERM = chr(127)
 
 # Positive integers with value embedded in typecode.
 INT_POS_FIXED_START = 0
@@ -193,6 +276,16 @@ def decode_false(x, f):
 def decode_none(x, f):
   return (None, f+1)
 
+def decode_instance(x, f):
+    f += 1
+    while x[f] != CHR_TERM:
+        v, f = decode_func[x[f]](x, f)
+    if v[0] in serializable:
+        r = serializable[v[0]](*v[1:])
+    else:
+        raise NotRegistered(v[0])
+    return (r, f+1)
+
 decode_func = {}
 decode_func['0'] = decode_string
 decode_func['1'] = decode_string
@@ -215,6 +308,7 @@ decode_func[CHR_FLOAT] = decode_float
 decode_func[CHR_TRUE ] = decode_true
 decode_func[CHR_FALSE] = decode_false
 decode_func[CHR_NONE ] = decode_none
+decode_func[CHR_INSTANCE] = decode_instance
 
 def make_fixed_length_string_decoders():
     def make_decoder(slen):
@@ -273,7 +367,6 @@ def encode_dict(x,r):
         encode_func[type(v)](v, r)
     r.append(CHR_TERM)
 
-
 def loads(x):
     try:
         r, l = decode_func[x[0]](x, 0)
@@ -282,8 +375,6 @@ def loads(x):
     if l != len(x):
         raise ValueError
     return r
-
-from types import StringType, IntType, LongType, DictType, ListType, TupleType, FloatType, NoneType
 
 def encode_int(x, r):
     if 0 <= x < INT_POS_FIXED_COUNT:
@@ -328,11 +419,11 @@ def encode_list(x, r):
     if len(x) < LIST_FIXED_COUNT:
         r.append(chr(LIST_FIXED_START + len(x)))
         for i in x:
-            encode_func[type(i)](i, r)
+            encode_func.get(type(i), encode_instance)(i, r)
     else:
         r.append(CHR_LIST)
         for i in x:
-            encode_func[type(i)](i, r)
+            encode_func.get(type(i), encode_instance)(i, r)
         r.append(CHR_TERM)
 
 def encode_dict(x,r):
@@ -364,11 +455,22 @@ try:
 except ImportError:
     pass
 
+def encode_instance(x, r):
+    if hasattr(x, '_pack'):
+        if x.__class__.__name__ in serializable:
+            # Calling the class of instance `x' passing it to the
+            # unbound method
+            result = serializable[x.__class__.__name__]._pack(x)
+            r.append(CHR_INSTANCE)
+            encode_func[type(result)](result, r)
+            r.append(CHR_TERM)
+        else:
+            raise NotRegistered(x.__class__.__name__)
+
 def dumps(x):
     r = []
-    encode_func[type(x)](x, r)
+    encode_func.get(type(x), encode_instance)(x, r)
     return ''.join(r)
-
 
 def test():
     f1 = struct.unpack('!f', struct.pack('!f', 25.5))[0]
@@ -395,5 +497,20 @@ def test():
     assert loads(dumps(None)) == None
     assert loads(dumps({None:None})) == {None:None}
 
+    class A(object):
+        def __init__(self, a, b, c):
+            self.a = a
+            self.b = b
+            self.c = c
+
+        def _pack(self):
+            return (self.a, self.b, self.c)
+
+    serializable.register(A)
+
+    instance = [A(1,2,3), 1, A(1,3,4), 'sss']
+    print loads(dumps(instance))
+
 if __name__ == '__main__':
   test()
+
