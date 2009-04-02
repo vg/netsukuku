@@ -214,12 +214,12 @@ class Hook(object):
         self.maproute.me_change(newnip[:])
         for l in reversed(xrange(lvl)): self.maproute.level_reset(l)
 
-        self.radar.do_reply = True
-
         # warn our neighbours
         for nr in self.neigh.neigh_list():
                 nrnip=self.maproute.ip_to_nip(nr.ip)
                 nr.ntkd.neigh.ip_change(oldip, newnip)
+        
+        self.radar.do_reply = True
 
         # Restore the neighbours in the map and send the ETP
         self.neigh.readvertise()
