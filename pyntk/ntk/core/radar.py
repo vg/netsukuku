@@ -396,8 +396,8 @@ class Radar(object):
         self.bouquet_numb += 1
         self.events.send('SCAN_DONE', (self.bouquet_numb,))
 
-        # Close the broadcast sockets
-        self.broadcast.close()
+        # Reset the broadcast sockets
+        self.broadcast.reset()
 
     def reply(self, _rpc_caller, ntkd_id, radar_id):
         """ As answer we'll return our netid """

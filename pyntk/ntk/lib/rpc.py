@@ -417,6 +417,9 @@ class BcastClient(FakeRmt):
         self.port = port
 
         self.dev_sk = {}
+        self.create_sockets()
+
+    def create_sockets(self):
         for d in devs:
             self.dev_sk[d] = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.connected = False
@@ -449,6 +452,10 @@ class BcastClient(FakeRmt):
         for d, sk in self.dev_sk.iteritems():
             sk.close()
         self.connected = False
+
+    def reset(self):
+        self.close()
+        self.create_sockets()
 
     def rmt(self, func_name, *params):
         self.rpc_call(func_name, params)
