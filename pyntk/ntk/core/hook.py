@@ -205,10 +205,12 @@ class Hook(object):
 
         # close the ntkd sessions
         for nr in self.neigh.neigh_list():
-                nr.ntkd.close()
+                if nr.ntkd.connected:
+                        nr.ntkd.close()
 
         # change the IPs of the NICs
-        self.nics.activate(ip_to_str(self.maproute.nip_to_ip(newnip)))
+        newnip_ip = self.maproute.nip_to_ip(newnip)
+        self.nics.activate(ip_to_str(newnip_ip))
 
         # reset the map
         self.maproute.me_change(newnip[:])
@@ -216,8 +218,9 @@ class Hook(object):
 
         # warn our neighbours
         for nr in self.neigh.neigh_list():
-                nrnip=self.maproute.ip_to_nip(nr.ip)
-                nr.ntkd.neigh.ip_change(oldip, newnip)
+                oldip = self.maproute.nip_to_ip(oldip)
+                logging.debug("Hook: calling ip_change of my neighbour %s" % ip_to_str(nr.ip)) 
+                nr.ntkd.neigh.ip_change(oldip, newnip_ip)
         
         self.radar.do_reply = True
 
