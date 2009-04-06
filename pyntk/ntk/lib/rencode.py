@@ -47,6 +47,8 @@ __all__ = ['dumps', 'loads', 'serializable']
 #        def _pack(self)
 #           return (self.x,) # a tuple
 #
+#  - Lists are decoded again as list
+#
 # Modifications by Connelly Barnes:
 #
 #  - Added support for floats (sent as 32-bit or 64-bit in network
@@ -86,8 +88,9 @@ __all__ = ['dumps', 'loads', 'serializable']
 #
 
 import inspect
-import string
 import struct
+
+from threading import Lock
 
 from types import (StringType,
                    IntType,
@@ -136,15 +139,15 @@ class _SerializableRegistry(object):
         if inspect.isclass(cls):
 
             if cls.__name__ in self._registry:
-                m = 'Class %s is already registered' % cls.__name__
-                raise AlreadyRegistered(m)
+                msg = 'Class %s is already registered' % cls.__name__
+                raise AlreadyRegistered(msg)
 
             try:
                 if inspect.ismethod(cls._pack):
                     cls._pack = add_class_name(cls._pack)
                     self._registry[cls.__name__] = cls
-            except AttributeError, e:
-                raise NotSerializable(e)
+            except AttributeError, err:
+                raise NotSerializable(err)
 
     def unregister(self, cls):
         '''   '''
@@ -165,7 +168,9 @@ MAX_INT_LENGTH = 64
 
 # The bencode 'typecodes' such as i, d, etc have been extended and
 # relocated on the base-256 character set.
-CHR_INSTANCE = chr(58)
+# Can't be used chr(48) to chr(57) because they are manually set
+CHR_INSTANCE = chr(47) 
+CHR_TUPLE = chr(58)
 CHR_LIST = chr(59)
 CHR_DICT = chr(60)
 CHR_INT = chr(61)
@@ -196,8 +201,12 @@ STR_FIXED_START = 128
 STR_FIXED_COUNT = 64
 
 # Lists with length embedded in typecode.
-LIST_FIXED_START = STR_FIXED_START+STR_FIXED_COUNT
-LIST_FIXED_COUNT = 64
+LIST_FIXED_START = STR_FIXED_START + STR_FIXED_COUNT
+LIST_FIXED_COUNT = 32
+
+# Tuples with length embedded in typecode.
+TUPLE_FIXED_START = LIST_FIXED_START + LIST_FIXED_COUNT
+TUPLE_FIXED_COUNT = 32
 
 def decode_int(x, f):
     f += 1
@@ -258,6 +267,13 @@ def decode_list(x, f):
     while x[f] != CHR_TERM:
         v, f = decode_func[x[f]](x, f)
         r.append(v)
+    return (r, f + 1)
+
+def decode_tuple(x, f):
+    r, f = [], f+1
+    while x[f] != CHR_TERM:
+        v, f = decode_func[x[f]](x, f)
+        r.append(v)
     return (tuple(r), f + 1)
 
 def decode_dict(x, f):
@@ -298,6 +314,7 @@ decode_func['7'] = decode_string
 decode_func['8'] = decode_string
 decode_func['9'] = decode_string
 decode_func[CHR_LIST ] = decode_list
+decode_func[CHR_TUPLE] = decode_tuple
 decode_func[CHR_DICT ] = decode_dict
 decode_func[CHR_INT  ] = decode_int
 decode_func[CHR_INT1 ] = decode_intb
@@ -312,9 +329,9 @@ decode_func[CHR_INSTANCE] = decode_instance
 
 def make_fixed_length_string_decoders():
     def make_decoder(slen):
-        def f(x, f):
+        def f_fixed_string(x, f):
             return (x[f+1:f+1+slen], f+1+slen)
-        return f
+        return f_fixed_string
     for i in range(STR_FIXED_COUNT):
         decode_func[chr(STR_FIXED_START+i)] = make_decoder(i)
 
@@ -322,17 +339,31 @@ make_fixed_length_string_decoders()
 
 def make_fixed_length_list_decoders():
     def make_decoder(slen):
-        def f(x, f):
+        def f_fixed_list(x, f):
+            r, f = [], f+1
+            for i in range(slen):
+                v, f = decode_func[x[f]](x, f)
+                r.append(v)
+            return (r, f)
+        return f_fixed_list
+    for i in range(LIST_FIXED_COUNT):
+        decode_func[chr(LIST_FIXED_START+i)] = make_decoder(i)
+
+make_fixed_length_list_decoders()
+
+def make_fixed_length_tuple_decoders():
+    def make_decoder(slen):
+        def f_fixed_tuple(x, f):
             r, f = [], f+1
             for i in range(slen):
                 v, f = decode_func[x[f]](x, f)
                 r.append(v)
             return (tuple(r), f)
-        return f
-    for i in range(LIST_FIXED_COUNT):
-        decode_func[chr(LIST_FIXED_START+i)] = make_decoder(i)
+        return f_fixed_tuple
+    for i in range(TUPLE_FIXED_COUNT):
+        decode_func[chr(TUPLE_FIXED_START+i)] = make_decoder(i)
 
-make_fixed_length_list_decoders()
+make_fixed_length_tuple_decoders()
 
 def make_fixed_length_int_decoders():
     def make_decoder(j):
@@ -360,18 +391,11 @@ def make_fixed_length_dict_decoders():
 
 make_fixed_length_dict_decoders()
 
-def encode_dict(x,r):
-    r.append(CHR_DICT)
-    for k, v in x.items():
-        encode_func[type(k)](k, r)
-        encode_func[type(v)](v, r)
-    r.append(CHR_TERM)
-
 def loads(x):
     try:
         r, l = decode_func[x[0]](x, 0)
     except (IndexError, KeyError):
-        raise ValueError
+        raise 
     if l != len(x):
         raise ValueError
     return r
@@ -426,6 +450,18 @@ def encode_list(x, r):
             encode_func.get(type(i), encode_instance)(i, r)
         r.append(CHR_TERM)
 
+
+def encode_tuple(x, r):
+    if len(x) < TUPLE_FIXED_COUNT:
+        r.append(chr(TUPLE_FIXED_START + len(x)))
+        for i in x:
+            encode_func.get(type(i), encode_instance)(i, r)
+    else:
+        r.append(CHR_TUPLE)
+        for i in x:
+            encode_func.get(type(i), encode_instance)(i, r)
+        r.append(CHR_TERM)
+
 def encode_dict(x,r):
     if len(x) < DICT_FIXED_COUNT:
         r.append(chr(DICT_FIXED_START + len(x)))
@@ -445,7 +481,7 @@ encode_func[LongType] = encode_int
 encode_func[FloatType] = encode_float
 encode_func[StringType] = encode_string
 encode_func[ListType] = encode_list
-encode_func[TupleType] = encode_list
+encode_func[TupleType] = encode_tuple
 encode_func[DictType] = encode_dict
 encode_func[NoneType] = encode_none
 
@@ -467,9 +503,13 @@ def encode_instance(x, r):
         else:
             raise NotRegistered(x.__class__.__name__)
 
+lock = Lock()
+
 def dumps(x):
+    lock.acquire()
     r = []
     encode_func.get(type(x), encode_instance)(x, r)
+    lock.release()
     return ''.join(r)
 
 def test():
@@ -490,9 +530,11 @@ def test():
     assert loads(dumps(L)) == L
     L = tuple([tuple(range(n)) for n in range(100)]) + ('b',)
     assert loads(dumps(L)) == L
-    L = tuple(['a'*n for n in range(1000)]) + ('b',)
+    L = tuple(['a'*n for n in range(100)]) + ('b',)
     assert loads(dumps(L)) == L
-    L = tuple(['a'*n for n in range(1000)]) + (None,True,None)
+    L = tuple(['a'*n for n in range(100)]) + (None,True,None)
+    assert loads(dumps(L)) == L
+    L = list(['a'*n for n in range(100)]) + [None,True,None]
     assert loads(dumps(L)) == L
     assert loads(dumps(None)) == None
     assert loads(dumps({None:None})) == {None:None}
@@ -513,4 +555,3 @@ def test():
 
 if __name__ == '__main__':
   test()
-

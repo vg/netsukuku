@@ -77,6 +77,8 @@ class DeadRem(Rem):
     def __add__(self, b):
         return self
 
+serializable.register(DeadRem)
+
 class Rtt(Rem):
     """Round Trip Time"""
 
