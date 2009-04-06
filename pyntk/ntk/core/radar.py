@@ -47,6 +47,7 @@ from ntk.core.route import Rtt
 from ntk.lib.event  import Event
 from ntk.lib.micro  import micro
 from ntk.network.inet import ip_to_str, str_to_ip
+import ntk.wrap.xtime as xtime
 
 class Neigh(object):
     """ this class simply represent a neighbour """
@@ -88,9 +89,10 @@ class Neighbour(object):
                  'translation_table',
                  'netid_table',
                  'events',
-                 'remotable_funcs']
+                 'remotable_funcs',
+                 'xtime']
 
-    def __init__(self, max_neigh=16):
+    def __init__(self, max_neigh=16, xtimemod=xtime):
         """  max_neigh: maximum number of neighbours we can have """
 
         self.max_neigh = max_neigh
@@ -106,6 +108,8 @@ class Neighbour(object):
         self.netid_table = {}
         # the events we raise
         self.events = Event(['NEIGH_NEW', 'NEIGH_DELETED', 'NEIGH_REM_CHGED'])
+        # time module
+        self.xtime = xtimemod
 
         self.remotable_funcs = [self.ip_change]
 
@@ -235,7 +239,7 @@ class Neighbour(object):
                 self.ip_to_id(key)
 
                 # create a TCP connection to the neighbour
-                self.ntk_client[key] = rpc.TCPClient(ip_to_str(key))
+                self.ntk_client[key] = rpc.TCPClient(ip_to_str(key), xtimemod=self.xtime)
 
                 # send a message notifying we added a node
                 self.events.send('NEIGH_NEW',
@@ -357,7 +361,7 @@ class Radar(object):
         # max_neigh: maximum number of neighbours we can have
         self.max_neigh = settings.MAX_NEIGH
         # our neighbours
-        self.neigh = Neighbour(self.max_neigh)
+        self.neigh = Neighbour(self.max_neigh, self.xtime)
 
         # Send a SCAN_DONE event each time a sent bouquet has been completely
         # collected
@@ -410,7 +414,7 @@ class Radar(object):
     def reply(self, _rpc_caller, ntkd_id, radar_id):
         """ As answer we'll return our netid """
         if self.do_reply and ntkd_id != self.ntkd_id:
-            rpc.BcastClient(devs=[_rpc_caller.dev]).radar.time_register(radar_id, self.netid)
+            rpc.BcastClient(devs=[_rpc_caller.dev], xtimemod=self.xtime).radar.time_register(radar_id, self.netid)
             return self.netid
 
     def time_register(self, _rpc_caller, radar_id, netid):

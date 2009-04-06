@@ -78,6 +78,7 @@ import ntk.lib.rencode as rencode
 from ntk.lib.micro import  micro, microfunc
 from ntk.network.inet import sk_set_broadcast, sk_bindtodevice
 from ntk.wrap.sock import Sock
+import ntk.wrap.xtime as xtime
 
 
 class RPCError(Exception): pass
@@ -291,10 +292,13 @@ class TCPClient(FakeRmt):
                  port=269,
                  net=None,
                  me=None,
-                 sockmodgen=Sock):
+                 sockmodgen=Sock,
+                 xtimemod=xtime):
 
         self.host = host
         self.port = port
+        
+        self.xtime = xtimemod
 
         self.sockfactory = sockmodgen
         self.net = net
@@ -312,7 +316,7 @@ class TCPClient(FakeRmt):
 
         while not self.connected:
             self.connect()
-            #TODO: swait(500)
+            self.xtime.swait(500)
 
         data = rencode.dumps((func_name, params))
         self.socket.sendall(_data_pack(data))
@@ -406,22 +410,25 @@ class BcastClient(FakeRmt):
     *WARNING*
     '''
 
-    def __init__(self, devs=[], port=269, net=None, me=None, sockmodgen=Sock):
+    def __init__(self, devs=[], port=269, net=None, me=None, sockmodgen=Sock, xtimemod=xtime):
         """
         devs:  list of devices where to send the broadcast calls
         If devs=[], the msg calls will be sent through all the available
         devices"""
 
         FakeRmt.__init__(self)
-        socket=sockmodgen(net, me)
+        self.socket=sockmodgen(net, me)
+        self.xtime = xtimemod
 
         self.port = port
 
+        self.devs = devs
         self.dev_sk = {}
         self.create_sockets()
 
     def create_sockets(self):
-        for d in devs:
+        socket = self.socket
+        for d in self.devs:
             self.dev_sk[d] = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.connected = False
 
@@ -434,7 +441,7 @@ class BcastClient(FakeRmt):
 
         while not self.connected:
             self.connect()
-            #TODO: swait(500)
+            self.xtime.swait(500)
 
         data = rencode.dumps((func_name, params))
         self.send(_data_pack(data))
