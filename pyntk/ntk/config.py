@@ -28,7 +28,7 @@ DEFAULT_SETTINGS = dict(
     # Inet
     IP_VERSION = 4,
     # Radar
-    BQUET_NUM = 16,
+    MAX_BOUQUET = 16,
     MAX_NEIGH = 16,
     MAX_WAIT_TIME = 8, # seconds
     MULTIPATH = False,

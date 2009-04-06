@@ -17,7 +17,7 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 #
-# The radar sends in broadcast a bouquet of BQUET_NUM packets and waits
+# The radar sends in broadcast a bouquet of MAX_BOUQUET packets and waits
 # for the reply of the alive nodes. It then recollects the replies and builds
 # a small statistic.
 # By watching the previous statistics, it can deduces if a change occurred or
@@ -335,7 +335,7 @@ class Neighbour(object):
 
 class Radar(object):
     __slots__ = [ 'bouquet_numb', 'bcast_send_time', 'xtime',
-                  'bcast_arrival_time', 'bquet_num', 'max_wait_time', 
+                  'bcast_arrival_time', 'max_bouquet', 'max_wait_time', 
                   'broadcast', 'neigh', 'events', 'netid', 'do_reply',
                   'remotable_funcs', 'ntkd_id', 'radar_id', 'max_neigh']
 
@@ -354,8 +354,8 @@ class Radar(object):
         self.bcast_send_time = 0
         # when the replies arrived
         self.bcast_arrival_time = {}
-        # bquet_num: how many packets does each bouquet contain?
-        self.bquet_num = settings.BQUET_NUM
+        # max_bouquet: how many packets does each bouquet contain?
+        self.max_bouquet = settings.MAX_BOUQUET
         # max_wait_time: the maximum time we can wait for a reply, in seconds
         self.max_wait_time = settings.MAX_WAIT_TIME
         # max_neigh: maximum number of neighbours we can have
@@ -395,7 +395,7 @@ class Radar(object):
         self.bcast_send_time = self.xtime.time()
 
         # send all packets in the bouquet
-        for i in xrange(self.bquet_num):
+        for i in xrange(self.max_bouquet):
             self.broadcast.radar.reply(self.ntkd_id, self.radar_id)
 
         # then wait
