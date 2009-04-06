@@ -71,7 +71,10 @@ class Neigh(object):
         self.ip = ip
         self.nip = None
         self.id = idn
-        self.rem = Rtt(self.bestdev[1]) # TODO(low): support the other metrics
+        if self.bestdev:
+                self.rem = Rtt(self.bestdev[1]) # TODO(low): support the other metrics
+        else:
+                self.rem = DeadRem() # The neighbour is dead
         self.ntkd = ntkd
         self.netid = netid
 
@@ -277,13 +280,15 @@ class Neighbour(object):
 
     def delete(self, ip, remove_from_iptable=True):
         """Deletes an entry from the ip_table"""
+
+        logging.debug("Deleting neigh %s", ip_to_str(ip)) 
+
         if remove_from_iptable:
             del self.ip_table[ip]
 
         # close the connection ( if any )
         if self.ntk_client[ip].connected:
             self.ntk_client[ip].close()
-        del self.ntk_client[ip]
 
         # delete the entry from the translation table...
         old_id = self.translation_table.pop(ip)
@@ -298,10 +303,13 @@ class Neighbour(object):
                                 netid=old_netid,
                                 ntkd=self.ntk_client[ip]),))
 
+        del self.ntk_client[ip]
+
     def ip_change(self, oldip, newip):
         """Adds `newip' in the Neighbours as a copy of `oldip', then it removes
         `oldip'. The relative events are raised."""
 
+        logging.debug("New IP of neigh %s is now %s " % (ip_to_str(oldip), ip_to_str(newip))) 
         self.ip_table[newip] = self.ip_table[oldip]
         self.ip_table[newip] = self.ip_table[oldip]
         self.translation_table[newip] = self.translation_table[oldip]
