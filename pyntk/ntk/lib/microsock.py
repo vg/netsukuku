@@ -248,7 +248,7 @@ class dispatcher(asyncore.dispatcher):
         asyncore.dispatcher.close(self)
         self.connected = False
         self.accepting = False
-        self.sendBuffer = None  # breaks the loop in sendall
+        self.sendBuffer = ''  # breaks the loop in sendall
 
         # Clear out all the channels with relevant errors.
 

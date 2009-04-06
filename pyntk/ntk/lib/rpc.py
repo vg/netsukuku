@@ -312,6 +312,7 @@ class TCPClient(FakeRmt):
 
         while not self.connected:
             self.connect()
+            #TODO: swait(500)
 
         data = rencode.dumps((func_name, params))
         self.socket.sendall(_data_pack(data))
@@ -431,8 +432,9 @@ class BcastClient(FakeRmt):
         @param params: a tuple of arguments to pass to the remote callable
         '''
 
-        if not self.connected:
+        while not self.connected:
             self.connect()
+            #TODO: swait(500)
 
         data = rencode.dumps((func_name, params))
         self.send(_data_pack(data))
