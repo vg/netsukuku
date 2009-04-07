@@ -1,6 +1,7 @@
 ##
 # This file is part of Netsukuku
-# (c) Copyright 2007 Daniele Tricoli aka Eriol <eriol@mornie.org>
+# (c) Copyright 2008 Daniele Tricoli aka Eriol <eriol@mornie.org>
+# (c) Copyright 2008 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
 #
 # This source code is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as published
@@ -21,12 +22,30 @@ import stackless
 import functools
 
 def micro(function, args=()):
-    '''Factory function that return tasklets
+    '''Factory function that returns tasklets
 
     @param function: A callable
     @return: A tasklet
     '''
     return stackless.tasklet(function)(*args)
+
+def microatomic(function, args=()):
+    '''Factory function that returns atomic tasklets
+ 
+    @param function: A callable
+    @return: A tasklet
+    '''
+    t = stackless.tasklet()
+ 
+    def callable():
+        flag = t.set_atomic(True)
+        try:
+            function(*args)
+        finally:
+            t.set_atomic(flag)
+ 
+    t.bind(callable)
+    return t()
 
 def micro_block():
     stackless.schedule()
@@ -89,15 +108,18 @@ def _dispatcher(func, chan):
         msg = chan.recvq()
         func(*msg)
 
-def microfunc(is_micro=False):
+def microfunc(is_micro=False, is_atomic=False):
     '''A microfunction is a function that never blocks the caller microthread.
 
     Note: This is a decorator! (see test/test_micro.py for examples)
 
+    If is_micro != True and is_micro != True (default), each call will be queued. 
+    A dispatcher microthread will automatically pop and execute each call.
     If is_micro == True, each call of the function will be executed in a new
     microthread. 
-    If is_micro != True, each call will be queued. A dispatcher microthread
-    will automatically pop and execute each call.
+    If is_atomic == True, each call will be executed inside a new atomic
+    microthread. WARNING: this means that the microthread won't be interrupted
+    by the stackless scheduler until it has finished running.
     '''
 
     def decorate(func):
@@ -111,7 +133,13 @@ def microfunc(is_micro=False):
         def fmicro(*data):
             micro(func, data)
 
-        if is_micro:
+        @functools.wraps(func)
+        def fatom(*data):
+            microatomic(func, data)
+ 
+        if is_atomic:
+            return fatom
+        elif is_micro:
             return fmicro
         else:
             micro(_dispatcher, (func, ch))

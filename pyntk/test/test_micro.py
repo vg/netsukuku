@@ -50,21 +50,33 @@ class foo:
         print "foovoid", self.a
 
 @microfunc(True)
-def crecv(ch):
-        print 'crecv start'
+def crecv(ch,n):
+        print 'crecv start',n
         r=ch.recv()
-        print r
+        print 'crecv',n, ' received:', r
         ch.send('got')
-        print 'crecv end'
+        print 'crecv end',n
 
 @microfunc(True)
-def csend(ch):
-        print 'csend start'
+def csend(ch,n):
+        print 'csend start',n
         ch.send('take')
-        def xf():print 'xf1'
+        print 'csend sent', n
+        def xf():print 'csend xf1',n
         micro(xf)
-        print ch.recv()
-        print 'csend end'
+        print 'csend',n,' ch.recv: ',ch.recv()
+        print 'csend end',n
+
+@microfunc(is_atomic=True)
+def csend_atomic(ch, n):
+        print 'csend_atomic start',n
+        ch.send('take the atom')
+        print 'csend_atomic sent', n
+        def xf():print 'csend_atomic xf1',n
+        micro(xf)
+        print 'csend_atomic ch.recv',n,': ',ch.recv()
+        print 'csend_atomic end',n
+
 
 mf(1,1)
 micro(f, (4,4))
@@ -96,11 +108,26 @@ F2=foo(2)
 F1.void()
 F2.void()
 
+def xf():print 'xf2',1
 c=Channel()
-csend(c)
-def xf():print 'xf2'
+csend(c, 1)
 micro(xf)
-crecv(c)
+crecv(c,1)
+
+#print '---Atomic test---'
+def xf():print 'xf4',3
+c=Channel(prefer_sender=True)
+crecv(c,3)
+micro(xf)
+csend_atomic(c,3)
+
+#print '--- Channel test 2 ---'
+c=Channel()
+def xf():print 'xf3',2
+crecv(c, 2)
+micro(xf)
+csend(c, 2)
+
 
 test_sequence_II()
 
