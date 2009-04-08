@@ -302,7 +302,8 @@ class RouteNode(object):
     def is_empty(self):
         return self.routes == []
 
-    def is_free(self):                        # ???: Why duplicated?
+    def is_free(self):
+        '''Override the is_free() method of DataClass (see map.py)'''
         return self.is_empty()
 
     def nroutes(self):
