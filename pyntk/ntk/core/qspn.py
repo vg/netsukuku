@@ -313,7 +313,7 @@ class Etp:
         ## Remove colliding routes directly from our map
         for lvl in xrange(self.maproute.levels):
                 for dst, rem in R[lvl]:
-                        self.maproute.node_get(lvl, dst).route_reset(lvl, dst)
+                        self.maproute.node_get(lvl, dst).route_reset()
         ##
 
         return False
