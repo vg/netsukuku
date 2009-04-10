@@ -408,8 +408,17 @@ class Radar(object):
         self.bouquet_numb += 1
         self.events.send('SCAN_DONE', (self.bouquet_numb,))
 
+        # We're done. Reset.
+        self.radar_reset()
+
+    def radar_reset(self):
+        ''' Clean the objects needed by radar()'''
+        # Clean some stuff
+        del self.bcast_arrival_time
+
         # Reset the broadcast sockets
         self.broadcast.reset()
+        
 
     def reply(self, _rpc_caller, ntkd_id, radar_id):
         """ As answer we'll return our netid """
