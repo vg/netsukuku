@@ -438,6 +438,7 @@ class Radar(object):
         else:
             self.bcast_arrival_time[ip] = {}
             self.bcast_arrival_time[ip][net_device] = [time_elapsed]
+            logging.debug("Radar: new IP %s detected", ip_to_str(ip)) 
 
         self.neigh.netid_table[ip] = netid
 
