@@ -110,7 +110,7 @@ class Map(object):
            its equivalent netsukuku ip"""
         nip=self.me[:]
         nip[lvl]=id
-        for l in reversed(xrange(lvl)): nip[l]=None
+        for l in reversed(xrange(lvl)): nip[l]=0
         return nip
 
     def ip_to_nip(self, ip):
