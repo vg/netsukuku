@@ -401,7 +401,7 @@ class MapRoute(Map):
     def routeneigh_add(self, neigh, silent=0):
         """Add a route to reach the neighbour `neigh'"""
         lvl, nid = self.routeneigh_get(neigh)
-        return self.route_add(0, nid, neigh.id, neigh.rem, silent)
+        return self.route_add(lvl, nid, neigh.id, neigh.rem, silent)
 
     def routeneigh_rem(self, neigh, silent=0):
         lvl, nid = self.routeneigh_get(neigh)
