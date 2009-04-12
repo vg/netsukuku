@@ -159,15 +159,14 @@ class Etp:
         
         
         ### Collapse blocks of the same level
-        TPL2=[]
-        precblk=(None, [])
-        for block in TPL:
-                if block[0] == precblk[0]:
-                        precblk[1]+=block[1]
+        #Note: we're assuming the two blocks with the same level are one after
+        #      another.
+        TPL2=[TPL[0]]
+        for block in TPL[1:]:
+                if block[0] == TPL2[-1][0]:
+                        TPL2[-1][1]+=block[1]
                 else:
-                        if precblk[0] != None:
-                                TPL2.append(precblk)
-                        precblk = block
+                        TPL2.append(block)
         TPL=TPL2
         ###
         
