@@ -101,7 +101,7 @@ class Hook(object):
         nodes. Note: this is used only by communicating_vessels()
         """
         
-        oldip=self.maproute.me[:]
+        oldnip=self.maproute.me[:]
         we_are_alone=False
 
         ## Find all the highest non saturated gnodes
@@ -217,8 +217,8 @@ class Hook(object):
         for l in reversed(xrange(lvl)): self.maproute.level_reset(l)
 
         # warn our neighbours
+        oldip = self.maproute.nip_to_ip(oldnip)
         for nr in self.neigh.neigh_list():
-                oldip = self.maproute.nip_to_ip(oldip)
                 logging.debug("Hook: calling ip_change of my neighbour %s" % ip_to_str(nr.ip)) 
                 nr.ntkd.neigh.ip_change(oldip, newnip_ip)
         

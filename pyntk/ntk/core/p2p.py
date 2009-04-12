@@ -23,21 +23,21 @@
 from ntk.lib.event import Event
 from ntk.lib.rpc   import FakeRmt, RPCDispatcher, CallerInfo
 from ntk.lib.micro import microfunc
+from ntk.lib.rencode import serializable
 from ntk.core.map import Map
 
 class PartecipantNode:
     def __init__(self, 
-                 lvl=None, id=None  # these are mandatory for Map.__init__(),
+                 lvl=None, id=None,  # these are mandatory for Map.__init__(),
+                 partecipate = False
                 ):
 
-        self.partecipant = False
+        self.partecipant = partecipate
 
     def _pack(self):
-        return (self.partecipant,)
-    def _unpack(self, (p,)):
-        ret=PartecipantNode()
-        ret.partecipant=p
-        return ret
+        return (0, 0, self.partecipant)
+
+serializable.register(PartecipantNode)
 
 class MapP2P(Map):
     """Map of the partecipant nodes"""
@@ -265,7 +265,7 @@ class P2PAll(object):
         minlvl = self.maproute.levels
         minnr = None
         for nr in self.neigh.neigh_list():
-            lvl = self.maproute.nip_cmp(self.me, self.ip_to_nip(nr.ip))
+            lvl = self.maproute.nip_cmp(self.maproute.me, self.maproute.ip_to_nip(nr.ip))
             if lvl < minlvl:
                 minlvl = lvl
                 minnr  = nr

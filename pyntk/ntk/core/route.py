@@ -385,7 +385,7 @@ class MapRoute(Map):
         if isinstance(newrem, DeadRem):
             return self.route_del(lvl, dst, gw)
         else:
-            return self.route_add(lvl, dst, gw, rem)
+            return self.route_add(lvl, dst, gw, newrem)
 
 
 ## Neighbour stuff

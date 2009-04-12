@@ -414,7 +414,7 @@ class Radar(object):
     def radar_reset(self):
         ''' Clean the objects needed by radar()'''
         # Clean some stuff
-        del self.bcast_arrival_time
+        self.bcast_arrival_time={}
 
         # Reset the broadcast sockets
         self.broadcast.reset()
