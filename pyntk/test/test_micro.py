@@ -116,7 +116,7 @@ crecv(c,1)
 
 #print '---Atomic test---'
 def xf():print 'xf4',3
-c=Channel(prefer_sender=True)
+c=Channel(prefer_sender=False)
 crecv(c,3)
 micro(xf)
 csend_atomic(c,3)

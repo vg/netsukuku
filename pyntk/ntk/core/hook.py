@@ -85,6 +85,9 @@ class Hook(object):
                 self.hook([nr for (nr, fnb) in candidates], [], True,
                                 candidates[0][1])
 
+                ##TODO: Maybe self.hook() should be done BEFORE forwarding the
+                #       ETP that has generated the ETP_EXECUTED event.
+
     @microfunc()
     def hook(self, neigh_list=[], forbidden_neighs=[], condition=False, gnumb=0):
         """Lets the current node become a hooking node.
