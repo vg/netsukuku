@@ -63,7 +63,8 @@ class Map(object):
 
         # The member self.node[l][i] is a node of level l and its ID is i
         self.node = [[None] * self.gsize] * self.levels
-        # Number of nodes of each level
+        # Number of nodes of each level, that is:
+        #   self.node_nb[i] = number of (g)nodes inside the gnode self.me[i+1]
         self.node_nb = [0] * self.levels 
 
         self.events = Event( [ 'NODE_NEW', 'NODE_DELETED', 'ME_CHANGED' ] )

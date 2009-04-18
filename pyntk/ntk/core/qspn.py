@@ -41,7 +41,7 @@ class Etp:
         self.neigh.events.listen('NEIGH_REM_CHGED', self.etp_new_changed)
         self.neigh.events.listen('NEIGH_DELETED', self.etp_new_dead)
 
-        self.events = Event(['ETP_EXECED', 'NET_COLLISION'])
+        self.events = Event(['ETP_EXECUTED', 'NET_COLLISION'])
 
         self.remotable_funcs = [self.etp_exec]
 
@@ -250,7 +250,7 @@ class Etp:
                 self.etp_forward(etp, [neigh.id])
         ##
 
-        self.events.send('ETP_EXECED', (old_node_nb, self.maproute.node_nb[:]))
+        self.events.send('ETP_EXECUTED', (old_node_nb, self.maproute.node_nb[:]))
 
     def etp_forward(self, etp, exclude):
         """Forwards the `etp' to all our neighbours,
