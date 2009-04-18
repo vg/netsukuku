@@ -274,6 +274,8 @@ class RouteNode(object):
             self.routes.append(RouteGw(gw, rem))
             ret = 1
         elif oldr is not None and rem > oldr.rem:
+            # We already have a route with gateway `gw'. However, the new
+            # route is better. Let's update the rem.
             oldrem = oldr.rem_modify(rem)
             val = oldrem
             ret = 2

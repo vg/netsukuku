@@ -53,14 +53,16 @@ class Etp:
         def gw_is_neigh((dst, gw, rem)):
                 return gw == neigh.id
         R=self.maproute.bestroutes_get(gw_is_neigh)
-        if is_listlist_empty(R):
-                # R is empty: no need to proceed
-                return
         ##
 
         ## Update the map
         self.maproute.routeneigh_del(neigh)
         ##
+
+        if is_listlist_empty(R):
+                # R is empty, that is we don't have routes passing by `gw'.
+                # Therefore, nothing to update, nothing to do.
+                return
         
         ## Create R2
         def rem_or_none(r):
