@@ -216,16 +216,16 @@ class Hook(object):
         self.maproute.me_change(newnip[:])
         for l in reversed(xrange(lvl)): self.maproute.level_reset(l)
 
+        # Restore the neighbours in the map and send the ETP
+        self.neigh.readvertise()
+        
         # warn our neighbours
         oldip = self.maproute.nip_to_ip(oldnip)
         for nr in self.neigh.neigh_list():
                 logging.debug("Hook: calling ip_change of my neighbour %s" % ip_to_str(nr.ip)) 
-                nr.ntkd.neigh.ip_change(oldip, newnip_ip)
+                nr.ntkd.neighbour.ip_change(oldip, newnip_ip)
         
         self.radar.do_reply = True
-
-        # Restore the neighbours in the map and send the ETP
-        self.neigh.readvertise()
 
         # we've done our part
         self.events.send('HOOKED', (oldip, newnip[:]))
@@ -241,14 +241,14 @@ class Hook(object):
                         return (lvl, fnl)
         return (-1, None)
     
-    def gnodes_split(old_node_nb, cur_node_nb):
+    def gnodes_split(self, old_node_nb, cur_node_nb):
         """Handles the case of gnode splitting"""
         ##TODO:XXX: Check the validity of this function. In particular, see
         ##          what happens to the return value gnodesplitted
         gnodesplitted = 0
-        for lvl in reversed(xrange(self.maproute-1)):
-                diff = old_node_nb - cur_node_nb
-                if diff > 0 and diff >= cur_node_nb:
+        for lvl in reversed(xrange(self.maproute.levels)):
+                diff = old_node_nb[lvl] - cur_node_nb[lvl]
+                if diff > 0 and diff >= cur_node_nb[lvl]:
                         level = lvl+1
                         gnodesplitted=1
         if not gnodesplitted:
