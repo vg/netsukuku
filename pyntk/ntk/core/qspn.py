@@ -77,7 +77,7 @@ class Etp:
 
         ## Forward the ETP to the neighbours
         flag_of_interest=1
-        TP = [(self.maproute.me, NullRem())]    # Tracer Packet included in
+        TP = [(self.maproute.me[0], NullRem())]    # Tracer Packet included in
         block_lvl = 0                           # the first block of the ETP
         etp = (R2, [(block_lvl, TP)], flag_of_interest)
         self.etp_forward(etp, [neigh.id])
@@ -202,7 +202,7 @@ class Etp:
         for block in TPL:
                 lvl=block[0]
                 for dst, rem in block[1]:
-                        tprem+=rem
+                        tprem+=rem # TODO: sometimes rem is an integer
                         if self.maproute.route_change(lvl, dst, gw, tprem):
                                 TPL_is_interesting+=1
         ##
@@ -241,11 +241,13 @@ class Etp:
         ## Continue to forward the ETP if it is interesting
 
         if not is_listlist_empty(R2) or TPL_is_interesting:
-                if TPL[-1][0] != 0:
+                if TPL[-1][0] != 0: 
+                        # The last block isn't of level 0. Let's add a new block
                         TP = [(self.maproute.me[0], NullRem())] 
                         TPL.append((0, TP))
                 else:
-                        TPL[-1][1].append((self.maproute.me, gwrem))
+                        # The last block is of level 0. We can append our ID
+                        TPL[-1][1].append((self.maproute.me[0], gwrem))
                 etp = (R2, TPL, flag_of_interest)
                 self.etp_forward(etp, [neigh.id])
         ##
