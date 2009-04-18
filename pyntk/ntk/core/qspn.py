@@ -281,7 +281,7 @@ class Etp:
         if neigh.netid == self.netid                              \
             or self.netid == -1:
                 self.netid = neigh.netid
-                return (False, R) # all ok
+                return False    # all ok
 
         # uhm... we are in different networks
 

@@ -265,7 +265,8 @@ class Neighbour(object):
                                             idn=self.translation_table[key],
                                             ip=key,
                                             netid=self.netid_table[key],
-                                            ntkd=self.ntk_client[key]),))
+                                            ntkd=self.ntk_client[key]), 
+                                      Rtt(old_rtt)))
 
         # finally, update the ip_table
         self.ip_table = ip_table
