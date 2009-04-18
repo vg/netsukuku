@@ -145,7 +145,8 @@ class Etp:
                 # collision detected. rehook.
                 self.events.send('NET_COLLISION', 
                                  ([[nr for nr in self.neigh.neigh_list()
-                                                if nr.netid == neigh.netid]]))
+                                                if nr.netid == neigh.netid]],)
+                                )
                 return # drop the packet
         ##
 
