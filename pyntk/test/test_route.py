@@ -58,10 +58,8 @@ class TestRouteEfficiencyMeasure(unittest.TestCase):
     def testAddRttNullRem(self):
         ''' Sum a Rtt with a NullRem '''
         new_rtt = self.rtt + self.null_rem
-
         self.failUnless(isinstance(new_rtt, Rtt))
-        self.failUnlessEqual(new_rtt.value,
-                             self.rtt.value + self.null_rem.value)
+        self.failUnlessEqual(new_rtt.value, self.rtt.value)
 
     def testAddRttDeadRem(self):
         ''' Sum a Rtt with a DeadRem '''
@@ -80,8 +78,14 @@ class TestRouteEfficiencyMeasure(unittest.TestCase):
         ''' Sum a Bw with a NullRem '''
         new_bw = self.bw + self.null_rem
         self.failUnless(isinstance(new_bw, Bw))
-        self.failUnlessEqual(new_bw.value,
-                             min(self.bw.value, self.null_rem.value))
+        self.failUnlessEqual(new_bw.value, self.bw.value)
+        self.failUnlessEqual(new_bw.value, min(self.bw.value, self.null_rem.value))
+        another_bw = Bw(12, 1, 1)
+        new_bw = another_bw + self.null_rem
+        self.failUnless(isinstance(new_bw, Bw))
+        self.failUnlessEqual(new_bw.value, another_bw.value)
+        #self.failUnlessEqual(new_bw.value,
+        #                     min(another_bw.value, self.null_rem.value))
 
     def testAddBwDeadRem(self):
         ''' Sum a Rtt with a DeadRem '''

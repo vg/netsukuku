@@ -92,17 +92,21 @@ class Rtt(Rem):
         if the first rtt is worse (bigger) than the second we will have:
         rem(rtt1) < rem(rtt2)
 
-        self < b    1    -->  The rtt `self' is better than `b'
-        self > b   -1    -->  The rtt `self' is worse  than `b'
-        self = b    0    -->  They are the same"""
+        self.value <  b.value   1   ->  The rtt `self' is better than `b' -> self > b
+        self.value >  b.value  -1   ->  The rtt `self' is worse  than `b' -> self < b
+        self.value == b.value   0   ->  They are the same -> self == b"""
 
         return (self.value < b.value) - (self.value > b.value)
 
     def __add__(self, b):
         if isinstance(b, DeadRem):
             return b + self
-        else:
+        elif isinstance(b, NullRem):
+            return b + self
+        elif isinstance(b, Rtt):
             return Rtt(self.value+b.value, self.max_value, self.avgcoeff)
+        else:
+            return NotImplemented
 
 serializable.register(Rtt)
 
@@ -142,9 +146,13 @@ class Bw(Rem):
     def __add__(self, b):
         if isinstance(b, DeadRem):
             return b + self
-        else:
+        elif isinstance(b, NullRem):
+            return b + self
+        elif isinstance(b, Bw):
             return Bw(min(self.value, b.value), self.lb, self.nb,
                       self.max_value, self.avgcoeff)
+        else:
+            return NotImplemented
 
 class Avg(Rem):
     """Average"""
