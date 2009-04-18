@@ -220,8 +220,11 @@ class Etp:
                     for r in [self.maproute.node_get(lvl, dst).best_route()]
                         if r.gw != gw
               ] for lvl in xrange(self.maproute.levels) ]
-        
-        #step 5 omitted
+       
+        #--
+        # Step 5 omitted, see qspn.pdf, 4.1 Extended Tracer Packet:
+        # """If the property (g) holds, then the step 5 can be omitted..."""
+        #--
         #if flag_of_interest:
         #       if not is_listlist_empty(S):
         #
