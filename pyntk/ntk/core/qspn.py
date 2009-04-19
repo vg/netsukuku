@@ -79,9 +79,9 @@ class Etp:
 
         ## Forward the ETP to the neighbours
         flag_of_interest=1
-        TP = [(self.maproute.me[0], NullRem())]    # Tracer Packet included in
+        TP = [[self.maproute.me[0], NullRem()]]    # Tracer Packet included in
         block_lvl = 0                           # the first block of the ETP
-        etp = (R2, [(block_lvl, TP)], flag_of_interest)
+        etp = (R2, [[block_lvl, TP]], flag_of_interest)
         self.etp_forward(etp, [neigh.id])
         ##
 
@@ -115,8 +115,8 @@ class Etp:
 
         ## Send the ETP to `neigh'
         flag_of_interest=1
-        TP = [(self.maproute.me[0], NullRem())]
-        etp = (R, [(0, TP)], flag_of_interest)
+        TP = [[self.maproute.me[0], NullRem()]]
+        etp = (R, [[0, TP]], flag_of_interest)
         neigh.ntkd.etp.etp_exec(self.maproute.me, *etp)
         ##
 
@@ -157,7 +157,7 @@ class Etp:
                 if lvl < level:
                         block[0] = level                     
                         blockrem = sum([rem for hop, rem in block[1]], NullRem())
-                        block[1] = [(gwnip[level], blockrem)]
+                        block[1] = [[gwnip[level], blockrem]]
                         R[lvl] = []
         
         
@@ -176,7 +176,7 @@ class Etp:
         ### Remove dups
         def remove_contiguos_dups_in_TP(L):
                 L2=[]
-                prec=(None, NullRem())
+                prec=[None, NullRem()]
                 for x in L:
                         if x[0] != prec[0]:
                                 prec=x
@@ -249,11 +249,12 @@ class Etp:
         if not is_listlist_empty(R2) or TPL_is_interesting:
                 if TPL[-1][0] != 0: 
                         # The last block isn't of level 0. Let's add a new block
-                        TP = [(self.maproute.me[0], NullRem())] 
-                        TPL.append((0, TP))
+                        TP = [[self.maproute.me[0], NullRem()]] 
+                        TPL.append([0, TP])
                 else:
                         # The last block is of level 0. We can append our ID
-                        TPL[-1][1].append((self.maproute.me[0], gwrem))
+                        TPL[-1][1].append([self.maproute.me[0], gwrem])
+
 
                 etp = (R2, TPL, flag_of_interest)
                 self.etp_forward(etp, [neigh.id])
