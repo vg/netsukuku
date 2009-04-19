@@ -50,7 +50,8 @@ class Hook(object):
             # The gnode has splitted and we have rehooked. Nothing to do anymore.
             return 
 
-        if cur_node_nb[0] == old_node_nb[0]:
+        if cur_node_nb and old_node_nb:
+          if cur_node_nb[0] == old_node_nb[0]:
             # No new or dead node in level 0
             return
 
@@ -263,6 +264,7 @@ class Hook(object):
         """Handles the case of gnode splitting
         
            Returns True if we have to rehook"""
+
         gnodesplitted = 0
 
         # Note: at level self.maproute.levels-1 is meaningless to talk about
@@ -288,5 +290,5 @@ class Hook(object):
         # smallest part of the two. Let's rehook. However, be sure to to rehook
         # in a place different from the splitted gnode
         forbidden_neighs = (level, [0]*level+self.maproute.me[level:])
-        self.hook(N, forbidden_neighs)
+        self.hook(neigh_list=[], forbidden_neighs)
         return True

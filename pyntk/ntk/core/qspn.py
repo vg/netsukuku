@@ -144,8 +144,8 @@ class Etp:
         if self.collision_check(gwnip, neigh, R):
                 # collision detected. rehook.
                 self.events.send('NET_COLLISION', 
-                                 ([[nr for nr in self.neigh.neigh_list()
-                                                if nr.netid == neigh.netid]],)
+                                 ([nr for nr in self.neigh.neigh_list()
+                                                if nr.netid == neigh.netid],)
                                 )
                 return # drop the packet
         ##
@@ -155,8 +155,8 @@ class Etp:
         for block in TPL:
                 lvl = block[0] # the level of the block
                 if lvl < level:
-                        block[0] = level
-                        blockrem = sum(rem for hop, rem in block[1])
+                        block[0] = level                     
+                        blockrem = sum([rem for hop, rem in block[1]], NullRem())
                         block[1] = [(gwnip[level], blockrem)]
                         R[lvl] = []
         
@@ -254,6 +254,7 @@ class Etp:
                 else:
                         # The last block is of level 0. We can append our ID
                         TPL[-1][1].append((self.maproute.me[0], gwrem))
+
                 etp = (R2, TPL, flag_of_interest)
                 self.etp_forward(etp, [neigh.id])
         ##
