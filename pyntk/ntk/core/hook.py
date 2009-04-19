@@ -47,20 +47,20 @@ class Hook(object):
         '''Note: old_node_nb and cur_node_nb are used only by the ETP_EXECUTED event'''
 
         if old_node_nb != None and self.gnodes_split(old_node_nb, cur_node_nb):
-            # The gnode has splitted and we have rehooked. Nothing to do anymore.
-            return 
+                # The gnode has splitted and we have rehooked. 
+                # Nothing to do anymore.
+                return 
 
-        if cur_node_nb and old_node_nb:
-          if cur_node_nb[0] == old_node_nb[0]:
-            # No new or dead node in level 0
-            return
+        if cur_node_nb and old_node_nb and cur_node_nb[0] == old_node_nb[0]:
+                # No new or dead node in level 0
+                return
 
         candidates=[]   # List of (neigh, fnb) elements. neigh is a
                         # Neigh instance; fnb is the number of free
                         # of the level 0 of neigh
         inv_candidates=[]
         def cand_cmp((a1, a2), (b1, b2)):
-            return cmp(a2, b2)
+                return cmp(a2, b2)
 
         for nr in self.neigh.neigh_list():
                 nrnip=self.maproute.ip_to_nip(nr.ip)
