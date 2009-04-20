@@ -250,7 +250,7 @@ class Etp:
         if not is_listlist_empty(R2) or TPL_is_interesting:
                 if TPL[-1][0] != 0: 
                         # The last block isn't of level 0. Let's add a new block
-                        TP = [[self.maproute.me[0], NullRem()]] 
+                        TP = [[self.maproute.me[0], gwrem]] 
                         TPL.append([0, TP])
                 else:
                         # The last block is of level 0. We can append our ID
