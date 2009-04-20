@@ -141,7 +141,8 @@ class Etp:
         gwrem   = neigh.rem
 
         ## Collision check
-        if self.collision_check(gwnip, neigh, R):
+        colliding, R = self.collision_check(gwnip, neigh, R)
+        if colliding:
                 # collision detected. rehook.
                 self.events.send('NET_COLLISION', 
                                  ([nr for nr in self.neigh.neigh_list()
@@ -283,7 +284,7 @@ class Etp:
         if neigh.netid == self.netid                              \
             or self.netid == -1:
                 self.netid = neigh.netid
-                return False    # all ok
+                return (False, R) # all ok
 
         # uhm... we are in different networks
 
@@ -304,7 +305,7 @@ class Etp:
                                 if self.maproute.node_get(lvl, dst).is_empty() ]
                         for lvl in xrange(self.maproute.levels) ]
                 ###
-                return False
+                return (False, R)
         ##
 
         # We are the smaller net.
@@ -315,8 +316,8 @@ class Etp:
         if level < self.maproute.levels:
                 for dst, rem in R[level]:
                         if dst == self.maproute.me[level]:
-                                # we are colliding! LET'S REHOOOOK
-                                return True
+                                # we are colliding! LET'S REHOOK
+                                return (True, R)
         ## 
 
         ## Remove colliding routes directly from our map
@@ -325,4 +326,4 @@ class Etp:
                         self.maproute.node_get(lvl, dst).route_reset()
         ##
 
-        return False
+        return (False, R)
