@@ -198,17 +198,21 @@ class Etp:
                         return    # drop the pkt
         ##
 
+        ## The rem of the first block is useless.
+        TPL[0][1][0][1] = NullRem()
+        ##
+
         old_node_nb = self.maproute.node_nb[:]
 
         ## Update the map from the TPL
         tprem=gwrem
         TPL_is_interesting=0
-        for block in TPL:
+        for block in reversed(TPL):
                 lvl=block[0]
-                for dst, rem in block[1]:
-                        tprem+=rem # TODO: sometimes rem is an integer
+                for dst, rem in reversed(block[1]):
                         if self.maproute.route_change(lvl, dst, gw, tprem):
                                 TPL_is_interesting+=1
+                        tprem+=rem # TODO: sometimes rem is an integer
         ##
         
         ## Update the map from R
