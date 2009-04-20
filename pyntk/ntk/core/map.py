@@ -174,3 +174,4 @@ class Map(object):
                         self.node[l][id]=plist[l][id]
         for l in xrange(0, lvl):
                 self.level_reset(l)
+
