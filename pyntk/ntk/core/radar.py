@@ -43,7 +43,7 @@ from random import randint
 import ntk.lib.rpc as rpc
 
 from ntk.config import settings
-from ntk.core.route import Rtt
+from ntk.core.route import DeadRem, Rtt
 from ntk.lib.event  import Event
 from ntk.lib.micro  import micro
 from ntk.network.inet import ip_to_str, str_to_ip
