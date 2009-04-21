@@ -20,8 +20,10 @@
 # Implementation of the map. See {-topodoc-}
 # 
 
-from ntk.lib.event import Event
 from random import randint
+
+from ntk.lib.event import Event
+
 
 class DataClass(object):
     """Data class example.
@@ -62,12 +64,12 @@ class Map(object):
             self.me = self.nip_rand()
 
         # The member self.node[l][i] is a node of level l and its ID is i
-        self.node = [ [None] * self.gsize for i in in xrange(self.levels) ]
+        self.node = [[None] * self.gsize for i in xrange(self.levels)]
         # Number of nodes of each level, that is:
         #   self.node_nb[i] = number of (g)nodes inside the gnode self.me[i+1]
         self.node_nb = [0] * self.levels 
 
-        self.events = Event( [ 'NODE_NEW', 'NODE_DELETED', 'ME_CHANGED' ] )
+        self.events = Event(['NODE_NEW', 'NODE_DELETED', 'ME_CHANGED'])
 
     def node_get(self, lvl, id):
         """Returns from the map a node of level `lvl' and id `id'.
@@ -100,7 +102,7 @@ class Map(object):
 
     def free_nodes_list(self, lvl):
         """Returns the list of free nodes of level `lvl'"""
-        return [nid for nid in xrange(self.gsize) if self.node[lvl][nid].is_free() ]
+        return [nid for nid in xrange(self.gsize) if self.node[lvl][nid].is_free()]
 
     def is_in_level(self, nip, lvl):
         """Does the node nip belongs to our gnode of level `lvl'?"""
