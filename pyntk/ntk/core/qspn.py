@@ -206,15 +206,15 @@ class Etp:
 
         ## Update the map from the TPL
         tprem=gwrem
-        TPL_is_interesting=0
+        TPL_is_interesting = False
         for block in reversed(TPL):
                 lvl=block[0]
                 for dst, rem in reversed(block[1]):
                         if self.maproute.route_change(lvl, dst, gw, tprem):
-                                TPL_is_interesting+=1
+                                TPL_is_interesting = True
                         tprem+=rem # TODO: sometimes rem is an integer
         ##
-        
+
         ## Update the map from R
         for lvl in xrange(self.maproute.levels):
                 for dst, rem in R[lvl]:
