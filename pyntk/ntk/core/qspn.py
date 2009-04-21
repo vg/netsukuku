@@ -92,10 +92,10 @@ class Etp:
         If oldrem=None, the node `neigh' is considered new."""
 
         ## Update the map
-        if oldrem == None:
-                self.maproute.routeneigh_add(neigh)
+        if oldrem is None:
+            self.maproute.routeneigh_add(neigh)
         else:
-                self.maproute.routeneigh_rem(neigh)
+            self.maproute.routeneigh_rem(neigh)
         ##
 
         ## Create R
