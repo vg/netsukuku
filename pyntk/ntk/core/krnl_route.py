@@ -76,7 +76,7 @@ class KrnlRoute(object):
 
         KRoute.add(ipstr, lvl_to_bits(0), dev, gwipstr)
 
-    def neigh_rem_changed(self, neigh):
+    def neigh_rem_changed(self, neigh, oldrem=None):
         pass
 
     @microfunc(True)
