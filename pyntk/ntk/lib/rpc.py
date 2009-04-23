@@ -148,8 +148,9 @@ class RPCDispatcher(object):
           or just "func". In the latter case "func" is searched in the
           globals()
         """
-
-        logging.debug("func_get: "+str(func_name))
+        
+        if not 'radar' in func_name:
+            logging.debug("func_get: "+str(func_name))
 
         splitted = func_name.split('.')
 
@@ -171,7 +172,8 @@ class RPCDispatcher(object):
         return None
 
     def _dispatch(self, caller, func_name, params):
-        logging.debug("_dispatch: "+func_name+"("+str(params)+")")
+        if not 'radar' in func_name:
+            logging.debug("_dispatch: "+func_name+"("+str(params)+")")
         func = self.func_get(func_name)
         if func is None:
             raise RPCFuncNotRemotable('Function %s is not remotable' % func_name)
@@ -190,7 +192,8 @@ class RPCDispatcher(object):
         except Exception, e:
             logging.debug(str(e))
             response = ('rmt_error', str(e))
-        logging.debug("dispatch response: "+str(response))
+        if not 'radar' in func:
+            logging.debug("dispatch response: "+str(response))
         return response
 
     def marshalled_dispatch(self, caller, data):
@@ -363,10 +366,10 @@ def dgram_request_handler(sock, clientaddr, packet, dev, rpcdispatcher):
     Handles all request and try to decode them.
     '''
     caller = CallerInfo(clientaddr[0], clientaddr[1], dev, sock)
-    logging.debug('UDP packet from %s, dev %s', clientaddr, dev)
+    #logging.debug('UDP packet from %s, dev %s', clientaddr, dev)
     try:
         data = _data_unpack_from_buffer(packet)
-        logging.debug('Handling data: %s', data)
+        #logging.debug('Handling data: %s', data)
         response = rpcdispatcher.marshalled_dispatch(caller, data)
     except RPCError:
         logging.debug('An error occurred during request handling')
