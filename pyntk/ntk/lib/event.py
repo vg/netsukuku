@@ -17,6 +17,8 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
+from micro import Channel
+import functools
 
 class EventError(Exception):pass
 
@@ -99,3 +101,69 @@ class Event:
             self.listeners[event].append(dst)
         elif dst in self.listeners[event]:
             self.listeners[event].remove(dst)
+
+def wakeup_on_event(events=[]):
+    '''This is a decorator. A function decorated with wakeup_on_event() can
+    call event_wait() in order to block and wait for the specified events.
+
+    events=[(EventInstance, EventName), ...]
+    EventClass is an Event() instance, EventName is a string.
+    
+    The decorated function must define the keyword argument `event_wait' (with
+    arbitrary initial value).
+
+    F.e. 
+        @wakeup_on_event(events=[(wheater_events, 'IT_IS_SUNNY')])
+        def go_out(param1, param2, event_wait=None):
+                ...
+                
+                msg = event_wait[(wheater_events, 'IT_IS_SUNNY')]() # Block and wait the event 'IT_IS_SUNNY'
+
+                # Ok, here I've received the event 'IT_IS_SUNNY'. `msg' is the
+                # data sent along with the event
+                do_stuff()
+                ...
+    Note: event_wait is a dictionary of the following type: { (event_instance, evname) : wait_func }
+    '''
+
+    def decorate(func):
+        event_wait_func_dict={ }  # { (ev, evname) : wait_func }
+        for ev, evname in events:
+                chan = Channel(prefer_sender=False)
+                ## Create the dispatcher and the event_wait() function. They are all
+                ## dependent on `chan'
+                ##
+
+                @microfunc(is_micro=False) # Using is_micro=False, ensures that each
+                                           # call is queued. In this way, no event
+                                           # will be lost
+                def _wakeup_on_event_dispatcher(*event_data):
+                        chan.bcast_send(event_data, pre)  # blocks if necessary
+
+                def event_wait_func():
+                        return chan.recv()
+
+                # Register _wakeup_on_event_dispatcher as a listener of the specified event
+                ev.listen(evname, _wakeup_on_event_dispatcher)
+                ##
+
+                wait_func_dict[(ev, evname)]=event_wait_func
+
+        func_with_wait=functools.partial(func, event_wait=event_wait_func_dict)
+        return func_with_wait
+
+    return decorate
+
+def apply_wakeup_on_event(func, events=[]):
+        '''This is the same of wakeup_on_event(), but it has to be manually
+        applied. F.e:
+                def go_out(param1, param2, event_wait=None):
+                        ... # the same as the example of wakeup_on_event()
+                go_out=apply_wakeup_on_event(go_out, events=[(wheater_events, 'IT_IS_SUNNY')])
+        '''
+                
+        @wakeup_on_event(events)
+        @functools.wraps(func)
+        def new_func(*args, **kwargs):
+                return func(*args, **kwargs)
+        return new_func

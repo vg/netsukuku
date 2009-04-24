@@ -103,6 +103,15 @@ class Channel(object):
         else:
             return self.chq.pop(0)
 
+    def bcast_send(self, data):
+        '''Send `data' to _all_ tasklets that are waiting to receive.
+           If there are no tasklets, this function will immediately return!
+        '''
+        for idx in range(0, self.ch.balance, -1):
+            # there are tasklets waiting to receive
+            self.sendq(data)
+
+
 def _dispatcher(func, chan):
     while True:
         msg = chan.recvq()

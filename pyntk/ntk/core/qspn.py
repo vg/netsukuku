@@ -66,7 +66,7 @@ class Etp:
         
         ## Create R2
         def rem_or_none(r):
-                if r!=None:
+                if r is not None:
                         return r.rem
                 return DeadRem()
 

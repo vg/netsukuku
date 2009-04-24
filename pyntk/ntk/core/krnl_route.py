@@ -23,7 +23,7 @@
 #
 
 from ntk.config import settings
-from ntk.lib.event import Event
+from ntk.lib.event import Event, apply_wakeup_on_event
 from ntk.lib.micro import microfunc
 from ntk.network import Route as KRoute
 from ntk.network.inet import ip_to_str, lvl_to_bits
@@ -42,16 +42,44 @@ class KrnlRoute(object):
         self.neigh.events.listen('NEIGH_DELETED', self.neigh_deleted)
         self.neigh.events.listen('NEIGH_REM_CHGED', self.neigh_rem_changed)
 
+        self.route_new = apply_wakeup_on_event(self.route_new, 
+                                               events=[(self.neigh.events, 'NEIGH_NEW'),
+                                                       (self.events, 'KRNL_NEIGH_NEW')])
 
     @microfunc(True)
-    def route_new(self, lvl, dst, gw, rem):
+    def route_new(self, lvl, dst, gw, rem, event_wait=None):
+        
+        if not self.multipath and self.maproute.node_get(lvl, dst).best_route() is not None:
+                # We don't have multipath and we've already set one route.
+                return
+
         nip = self.maproute.lvlid_to_nip(lvl, dst)
         ip  = self.maproute.nip_to_ip(nip)
         ipstr = ip_to_str(ip)
         neigh = self.neigh.id_to_neigh(gw)
         dev = neigh.bestdev[0]
         gwipstr = ip_to_str(neigh.ip)
+        neigh_node = self.maproute.node_get(routeneigh_get(neigh))
 
+        if neigh_node.best_route() is not None:
+                # Let's wait to add the neighbour first
+                while 1:
+                        ev_neigh = event_wait[(self.neigh.events, 'NEIGH_NEW')]()
+                        # !!!  TODO: add __cmp__ in Neigh() !!!
+                        if neigh == ev_neigh:
+                        # !!!  TODO !!!
+                                # found
+                                break
+
+        if neigh_node.kernel_synced:
+                while 1:
+                        ev_neigh = event_wait[(self.events, 'KRNL_NEIGH_NEW')]()
+                        if neigh == ev_neigh:
+                        # !!!  TODO !!!
+                                # found
+                                break
+
+        # We can add the route in the kernel
         KRoute.add(ipstr, lvl_to_bits(lvl), dev, gwipstr)
 
     @microfunc(True)
@@ -75,6 +103,8 @@ class KrnlRoute(object):
         gwipstr = ipstr
 
         KRoute.add(ipstr, lvl_to_bits(0), dev, gwipstr)
+
+        # TODO: generate the KRNL_NEIGH_NEW event
 
     def neigh_rem_changed(self, neigh, oldrem=None):
         pass
