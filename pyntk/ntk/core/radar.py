@@ -78,6 +78,9 @@ class Neigh(object):
                 self.rem = DeadRem() # The neighbour is dead
         self.ntkd = ntkd
         self.netid = netid
+        
+    def __cmp__(self, b):
+        return self.ip - b.ip
 
 class Neighbour(object):
     """ This class manages all neighbours """

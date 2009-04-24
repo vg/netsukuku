@@ -34,6 +34,8 @@ class KrnlRoute(object):
         self.neigh = neigh
         self.multipath = settings.MULTIPATH
 
+        self.events =  Event(['KRNL_NEIGH_NEW'])
+        
         self.maproute.events.listen('ROUTE_NEW', self.route_new)
         self.maproute.events.listen('ROUTE_DELETED', self.route_deleted)
         self.maproute.events.listen('ROUTE_REM_CHGED', self.route_rem_changed)
@@ -49,7 +51,7 @@ class KrnlRoute(object):
     @microfunc(True)
     def route_new(self, lvl, dst, gw, rem, event_wait=None):
         
-        if not self.multipath and self.maproute.node_get(lvl, dst).best_route() is not None:
+        if not self.multipath and self.maproute.node_get(lvl, dst).nroutes_synced() >= 1:
                 # We don't have multipath and we've already set one route.
                 return
 
@@ -59,28 +61,29 @@ class KrnlRoute(object):
         neigh = self.neigh.id_to_neigh(gw)
         dev = neigh.bestdev[0]
         gwipstr = ip_to_str(neigh.ip)
-        neigh_node = self.maproute.node_get(routeneigh_get(neigh))
+        neigh_node = self.maproute.node_get(*self.maproute.routeneigh_get(neigh))
 
-        if neigh_node.best_route() is not None:
+        if neigh_node.nroutes() > 1:
                 # Let's wait to add the neighbour first
                 while 1:
                         ev_neigh = event_wait[(self.neigh.events, 'NEIGH_NEW')]()
-                        # !!!  TODO: add __cmp__ in Neigh() !!!
                         if neigh == ev_neigh:
-                        # !!!  TODO !!!
                                 # found
                                 break
 
-        if neigh_node.kernel_synced:
+        if neigh_node.routes_tobe_synced > 0:
+                # The routes to neigh are still to be synced, let's wait
                 while 1:
                         ev_neigh = event_wait[(self.events, 'KRNL_NEIGH_NEW')]()
                         if neigh == ev_neigh:
-                        # !!!  TODO !!!
                                 # found
                                 break
 
         # We can add the route in the kernel
         KRoute.add(ipstr, lvl_to_bits(lvl), dev, gwipstr)
+
+        self.maproute.node_get(lvl, id).routes_tobe_synced-=1
+
 
     @microfunc(True)
     def route_deleted(self, lvl, dst, gw):

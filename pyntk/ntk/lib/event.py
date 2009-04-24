@@ -17,7 +17,7 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
-from micro import Channel
+from micro import Channel, microfunc
 import functools
 
 class EventError(Exception):pass
@@ -138,7 +138,7 @@ def wakeup_on_event(events=[]):
                                            # call is queued. In this way, no event
                                            # will be lost
                 def _wakeup_on_event_dispatcher(*event_data):
-                        chan.bcast_send(event_data, pre)  # blocks if necessary
+                        chan.bcast_send(event_data)  # blocks if necessary
 
                 def event_wait_func():
                         return chan.recv()
@@ -147,7 +147,7 @@ def wakeup_on_event(events=[]):
                 ev.listen(evname, _wakeup_on_event_dispatcher)
                 ##
 
-                wait_func_dict[(ev, evname)]=event_wait_func
+                event_wait_func_dict[(ev, evname)]=event_wait_func
 
         func_with_wait=functools.partial(func, event_wait=event_wait_func_dict)
         return func_with_wait
