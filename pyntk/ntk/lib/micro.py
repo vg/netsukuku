@@ -21,16 +21,17 @@
 import stackless
 import functools
 
-def micro(function, args=()):
+def micro(function, args=(), **kwargs):
     '''Factory function that returns tasklets
 
     @param function: A callable
     @return: A tasklet
     '''
-    return stackless.tasklet(function)(*args)
+    return stackless.tasklet(function)(*args, **kwargs)
 
-def microatomic(function, args=()):
-    '''Factory function that returns atomic tasklets
+def microatomic(function, args=(), **kwargs):
+    '''Factory function that returns atomic tasklets, 
+    usable only with preemptive schedulers.
  
     @param function: A callable
     @return: A tasklet
@@ -40,7 +41,7 @@ def microatomic(function, args=()):
     def callable():
         flag = t.set_atomic(True)
         try:
-            function(*args)
+            function(*args, **kwargs)
         finally:
             t.set_atomic(flag)
  
@@ -139,12 +140,12 @@ def microfunc(is_micro=False, is_atomic=False):
             ch.sendq(data)
 
         @functools.wraps(func)
-        def fmicro(*data):
-            micro(func, data)
+        def fmicro(*data, **kwargs):
+            micro(func, data, **kwargs)
 
         @functools.wraps(func)
-        def fatom(*data):
-            microatomic(func, data)
+        def fatom(*data, **kwargs):
+            microatomic(func, data, **kwargs)
  
         if is_atomic:
             return fatom

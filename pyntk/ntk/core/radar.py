@@ -80,7 +80,7 @@ class Neigh(object):
         self.netid = netid
         
     def __cmp__(self, b):
-        return self.ip - b.ip
+        return (self.ip > b.ip) - (self.ip < b.ip);
 
 class Neighbour(object):
     """ This class manages all neighbours """
