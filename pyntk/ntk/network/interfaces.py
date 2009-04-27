@@ -52,6 +52,15 @@ class BaseNIC(object):
 
     address = property(_get_address_getter, _set_address_getter)
 
+    def get_is_active(self):
+        ''' Returns True if NIC is active. '''
+        raise NotImplementedError
+
+    def _get_is_active_getter(self):
+        return self.get_is_active()
+
+    is_active = property(_get_is_active_getter)
+
     # multicast is used with ipv6
     def set_multicast(self, m):
         ''' Set multicast for the interface. '''
@@ -72,6 +81,12 @@ class BaseNIC(object):
     def filtering(*args, **kargs):
         ''' Enables or disables filtering. '''
         raise NotImplementedError
+
+    def __str__(self):
+        return '<NIC: %s>' % self.name
+
+    def __repr__(self):
+        return '<NIC: %s>' % self.name
 
 class BaseRoute(object):
     ''' Rapresents a route controller. '''

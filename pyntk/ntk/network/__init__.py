@@ -1,6 +1,6 @@
 ##
 # This file is part of Netsukuku
-# (c) Copyright 2007 Daniele Tricoli aka Eriol <eriol@mornie.org>
+# (c) Copyright 2008 Daniele Tricoli aka Eriol <eriol@mornie.org>
 #
 # This source code is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as published
@@ -30,13 +30,25 @@ backend = __import__('ntk.network.%s.adapt' % NETWORK_BACKEND, {}, {}, [''])
 NIC = backend.NIC
 Route = backend.Route
 
+
+class NICError(Exception):
+    ''' Generic NIC error '''
+
+class NICDoesNotExist(NICError):
+    ''' NIC does not exist '''
+
+class MultipleNICReturned(NICError):
+    ''' Multiple NIC returned instead of one '''
+
+
 class NICManager(object):
     ''' A NIC manager to handle all node's nics '''
 
     def __init__(self, nics=None, exclude_nics=None):
 
         if nics is None:
-            raise Exception('No NIC specified!')
+            raise NICError('No NIC specified!')
+
         if exclude_nics is None:
             exclude_nics = []
 
@@ -47,6 +59,35 @@ class NICManager(object):
 
     def __iter__(self):
         return iter(self._nics)
+
+    def all(self):
+        ''' Returns all managed NICs. '''
+        return self._nics.values()
+
+    def filter(self, **kwargs):
+        ''' Returns a list of NICs matching the given keyword arguments. '''
+
+        def _check(nic, **kwargs):
+            r = []
+            for arg in kwargs:
+                value = getattr(nic, arg)
+                r.append(value == kwargs[arg])
+            return all(r)
+
+        return [n for n in self._nics.values() if _check(n, **kwargs)]
+
+    def get(self, **kwargs):
+        ''' Returns a single NIC matching the given keyword arguments. '''
+        result = self.filter(**kwargs)
+
+        if not result:
+            raise NICDoesNotExist('NIC does not exist!')
+
+        count = len(result)
+        if count == 1:
+            return result[0]
+        else:
+            raise MultipleNICReturned('Returned %s instead of one NIC' % count)
 
     def up(self):
         ''' Brings all interfaces up '''

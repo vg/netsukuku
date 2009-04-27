@@ -102,6 +102,12 @@ class NIC(BaseNIC):
         matched_address = r.search(self.show())
         return matched_address.groups()[0] if matched_address else None
 
+    def get_is_active(self):
+        ''' Returns True if NIC is active. '''
+        r = re.compile(r'''<.*,(UP),.*>''')
+        matched_active = r.search(self.show())
+        return True if matched_active else False
+
     def filtering(self, *args, **kargs):
         ''' Enables or disables filtering. '''
 
@@ -117,12 +123,8 @@ class NIC(BaseNIC):
         file_write(path, value)
 
 
-    def __str__(self):
-        return 'NIC: %s' % self.name
-
 class Route(BaseRoute):
-    ''' Managing routes using iproute
-    '''
+    ''' Managing routes using iproute '''
 
     ##TODO: add the possibility to specify a routing table, f.e. 'table ntk'
 
