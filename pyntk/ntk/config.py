@@ -40,6 +40,7 @@ if sys.platform == 'linux2':
         CONFIGURATION_DIR = '/etc/netsukuku',
         CONFIGURATION_FILE = 'settings.conf',
         DATA_DIR = '/usr/share/netsukuku',
+        LOG_DIR = '/var/log',
         PID_DIR  = '/var/run',
     )
 else:
