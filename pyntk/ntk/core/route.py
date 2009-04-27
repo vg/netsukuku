@@ -259,6 +259,7 @@ class RouteNode(object):
 
         oldrem = r.rem_modify(newrem)
         self.sort()
+        self.routes_tobe_synced+=1 
         return (1, oldrem)
 
     def route_add(self, lvl, dst, gw, rem):
