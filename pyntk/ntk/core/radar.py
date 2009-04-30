@@ -37,15 +37,15 @@
 
 
 
-import logging
 from random import randint
 
 import ntk.lib.rpc as rpc
 
 from ntk.config import settings
 from ntk.core.route import DeadRem, Rtt
-from ntk.lib.event  import Event
-from ntk.lib.micro  import micro
+from ntk.lib.event import Event
+from ntk.lib.log import logger as logging
+from ntk.lib.micro import micro
 from ntk.network.inet import ip_to_str, str_to_ip
 import ntk.wrap.xtime as xtime
 
@@ -73,12 +73,12 @@ class Neigh(object):
         self.nip = None
         self.id = idn
         if self.bestdev:
-                self.rem = Rtt(self.bestdev[1]) # TODO(low): support the other metrics
+            self.rem = Rtt(self.bestdev[1]) # TODO(low): support the other metrics
         else:
-                self.rem = DeadRem() # The neighbour is dead
+            self.rem = DeadRem() # The neighbour is dead
         self.ntkd = ntkd
         self.netid = netid
-        
+
     def __cmp__(self, b):
         return (self.ip > b.ip) - (self.ip < b.ip);
 
@@ -289,7 +289,7 @@ class Neighbour(object):
     def delete(self, ip, remove_from_iptable=True):
         """Deletes an entry from the ip_table"""
 
-        logging.debug("Deleting neigh %s", ip_to_str(ip)) 
+        logging.info("Deleting neigh %s", ip_to_str(ip))
 
         if remove_from_iptable:
             del self.ip_table[ip]
@@ -317,7 +317,7 @@ class Neighbour(object):
         """Adds `newip' in the Neighbours as a copy of `oldip', then it removes
         `oldip'. The relative events are raised."""
 
-        logging.debug("New IP of neigh %s is now %s " % (ip_to_str(oldip), ip_to_str(newip))) 
+        logging.info("New IP of neigh %s is now %s " % (ip_to_str(oldip), ip_to_str(newip)))
         self.ip_table[newip] = self.ip_table[oldip]
         self.ip_table[newip] = self.ip_table[oldip]
         self.translation_table[newip] = self.translation_table[oldip]
@@ -422,7 +422,6 @@ class Radar(object):
 
         # Reset the broadcast sockets
         self.broadcast.reset()
-        
 
     def reply(self, _rpc_caller, ntkd_id, radar_id):
         """ As answer we'll return our netid """
@@ -451,7 +450,7 @@ class Radar(object):
         else:
             self.bcast_arrival_time[ip] = {}
             self.bcast_arrival_time[ip][net_device] = [time_elapsed]
-            logging.debug("Radar: new IP %s detected", ip_to_str(ip)) 
+            logging.info("Radar: new IP %s detected", ip_to_str(ip))
 
         self.neigh.netid_table[ip] = netid
 

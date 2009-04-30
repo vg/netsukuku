@@ -22,8 +22,8 @@ import os
 import re
 import subprocess
 
-from ntk.lib import logger as logging
 from ntk.config import settings, ImproperlyConfigured
+from ntk.lib.log import logger as logging
 from ntk.network.interfaces import BaseNIC, BaseRoute
 
 def file_write(path, data):
@@ -52,7 +52,7 @@ def iproute(args):
 
     args_list = args.split()
     cmd = [IPROUTE_PATH] + args_list
-    logging.debug(" ".join(cmd))
+    logging.debug(' '.join(cmd))
     proc = subprocess.Popen(cmd,
                             stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE,

@@ -70,15 +70,19 @@ import rpc
 #
 ##
 
+
+
 import struct
-import logging
 import sys
 
 import ntk.lib.rencode as rencode
+import ntk.wrap.xtime as xtime
+
+from ntk.lib.log import logger as logging
 from ntk.lib.micro import  micro, microfunc
 from ntk.network.inet import sk_set_broadcast, sk_bindtodevice
 from ntk.wrap.sock import Sock
-import ntk.wrap.xtime as xtime
+
 
 
 class RPCError(Exception): pass

@@ -26,6 +26,7 @@ from optparse import OptionParser
 
 from ntk import VERSION
 from ntk.config import settings, ImproperlyConfigured
+from ntk.lib.log import config as logger_config
 from ntk.lib.micro import allmicro_run
 from ntk.ntkd import NtkNode
 
@@ -100,9 +101,9 @@ def main():
         settings.load_configuration_file()
 
     if options.debug:
-        import logging
-        logging.basicConfig(level=logging.DEBUG,
-                            format='%(levelname)s %(message)s')
+        # TODO: add levels support
+        settings.DEBUG = True
+        logger_config()
 
     settings.NICS = options.interfaces if options.interfaces else []
     settings.EXCLUDE_NICS = (options.exclude_interfaces if

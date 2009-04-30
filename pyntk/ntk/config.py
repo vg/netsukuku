@@ -25,6 +25,7 @@ import sys
 NOT_OVERRIDABLE_SETTINGS = ('LEVELS', 'BITS_PER_LEVEL')
 
 DEFAULT_SETTINGS = dict(
+    DEBUG = False,
     # Inet
     IP_VERSION = 4,
     # Radar
