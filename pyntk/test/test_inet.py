@@ -48,20 +48,24 @@ class TestInet(unittest.TestCase):
         ''' Test conversion str --> pip '''
         self.assertEqual(inet.str_to_pip(self.ps), '\x01\x02\x03\x04')
 
-    def testPipToIp(self):
+    def testPipToIP(self):
         ''' Test conversion pip --> ip '''
         pip = inet.str_to_pip(self.ps)
         self.assertEqual(inet.pip_to_ip(pip), 16909060)
 
-    def testIpToPip(self):
+    def testIPToPip(self):
         ''' Test conversion ip --> pip '''
         ip = inet.pip_to_ip(inet.str_to_pip(self.ps))
         self.assertEqual(inet.ip_to_pip(ip), '\x01\x02\x03\x04')
 
-    def testIpToStr(self):
+    def testIPToStr(self):
         ''' Test conversion ip --> str '''
         ip = inet.pip_to_ip(inet.str_to_pip(self.ps))
         self.assertEqual(inet.ip_to_str(ip), self.ps)
+
+    def testStrToIP(self):
+        ''' Test conversion str --> ip '''
+        self.assertEqual(inet.str_to_ip(self.ps), 16909060)
 
 if __name__ == '__main__':
     unittest.main()
