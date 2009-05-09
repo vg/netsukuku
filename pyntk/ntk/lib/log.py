@@ -23,7 +23,7 @@ import os.path
 
 from ntk.config import settings
 
-LOG_FILE = os.path.join(settings.LOG_DIR, 'netsukuku.log')
+LOG_FILE = os.path.join(settings.LOG_DIR, settings.LOG_FILE)
 
 def config():
     ''' Configure the logging system using `settings'. '''

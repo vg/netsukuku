@@ -25,21 +25,23 @@ import sys
 NOT_OVERRIDABLE_SETTINGS = ('LEVELS', 'BITS_PER_LEVEL')
 
 DEFAULT_SETTINGS = dict(
+    CONFIGURATION_FILE = 'settings.conf',
     DEBUG = False,
     # Inet
     IP_VERSION = 4,
+    LOG_FILE = 'netsukuku.log',
     # Radar
     MAX_BOUQUET = 16,
     MAX_NEIGH = 16,
     MAX_WAIT_TIME = 8, # seconds
     MULTIPATH = False,
     SIMULATED = False,
+
 )
 
 if sys.platform == 'linux2':
     GLOBAL_SETTINGS = dict(
         CONFIGURATION_DIR = '/etc/netsukuku',
-        CONFIGURATION_FILE = 'settings.conf',
         DATA_DIR = '/usr/share/netsukuku',
         LOG_DIR = '/var/log',
         PID_DIR  = '/var/run',
