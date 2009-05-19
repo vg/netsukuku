@@ -332,7 +332,8 @@ class TCPClient(FakeRmt):
         if not recv_encoded_data:
             raise RPCNetError('Connection closed before reply')
         recv_data = rencode.loads(recv_encoded_data)
-        logging.debug('Recvd data: %s' % recv_data)
+        print recv_data
+        logging.debug('Recvd data: %s' % str(recv_data))
 
         # Handling errors
         # I receive a message with the following format:
