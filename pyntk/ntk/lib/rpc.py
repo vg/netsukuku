@@ -86,7 +86,7 @@ from ntk.wrap.sock import Sock
 
 
 class RPCError(Exception): pass
-class RPCNetError(Exception): pass
+class RPCNetError(RPCError): pass
 class RPCFuncNotRemotable(RPCError): pass
 class RPCFunctionError(RPCError): pass
 
@@ -122,7 +122,7 @@ class FakeRmt(object):
 
            This method must be ovverrided in child class.
         '''
-        raise NotImplementedError, 'You must override this method'
+        raise NotImplementedError('You must override this method')
 
 class CallerInfo(object):
     __slots__ = ['ip','port','dev','socket']
@@ -152,7 +152,7 @@ class RPCDispatcher(object):
           or just "func". In the latter case "func" is searched in the
           globals()
         """
-        
+
         if not 'radar' in func_name:
             logging.debug("func_get: "+str(func_name))
 
@@ -304,7 +304,7 @@ class TCPClient(FakeRmt):
 
         self.host = host
         self.port = port
-        
+
         self.xtime = xtimemod
 
         self.sockfactory = sockmodgen
@@ -330,9 +330,9 @@ class TCPClient(FakeRmt):
 
         recv_encoded_data = _data_unpack_from_stream_socket(self.socket)
         if not recv_encoded_data:
-            raise RPCNetError, 'connection closed before reply'
+            raise RPCNetError('Connection closed before reply')
         recv_data = rencode.loads(recv_encoded_data)
-        logging.debug("Recvd data: "+str(recv_data))
+        logging.debug('Recvd data: %s' % recv_data)
 
         # Handling errors
         # I receive a message with the following format:
@@ -361,7 +361,8 @@ class TCPClient(FakeRmt):
         return self.rpc_call(func_name, params)
 
     def __del__(self):
-        self.close()
+        if self.connected:
+            self.close()
 
 
 def dgram_request_handler(sock, clientaddr, packet, dev, rpcdispatcher):
@@ -398,9 +399,9 @@ def UDPServer(root_instance, addr=('', 269), dev=None, net=None, me=None,
     s=socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind(addr)
-    while 1:
-            message, address = s.recvfrom(8192)
-            requestHandler(s, address, message, dev, rpcdispatcher)
+    while True:
+        message, address = s.recvfrom(8192)
+        requestHandler(s, address, message, dev, rpcdispatcher)
 
 @microfunc(True)
 def MicroUDPServer(root_instance, addr=('', 269), dev=None, net=None, me=None, sockmodgen=Sock):
@@ -477,4 +478,5 @@ class BcastClient(FakeRmt):
         self.rpc_call(func_name, params)
 
     def __del__(self):
-        self.close()
+        if self.connected:
+            self.close()
