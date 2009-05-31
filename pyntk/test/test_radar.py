@@ -44,15 +44,6 @@ NEIGH = Neigh(bestdev=('eth0', 42),
 
 class NeighbourObserver(BaseObserver):
 
-    #def __init__(self, neighbour):
-        #self.delete_events = []
-        #self.new_events = []
-        #self.rem_changed_events = []
-
-        #neighbour.events.listen('NEIGH_DELETED', self.neigh_deleted)
-        #neighbour.events.listen('NEIGH_NEW', self.neigh_new)
-        #neighbour.events.listen('NEIGH_REM_CHGED', self.neigh_rem_changed)
-
     def neigh_new(self, neighbour):
         self.neigh_new_event = neighbour
 
@@ -159,12 +150,12 @@ class TestNeighbour(unittest.TestCase):
                                                    # the neighbour to sort
                                                    # properly neighbours list
         neighbours.sort(key=f)
-        best_neighbours_ip_table = neighbours[:MAX_NEIGHBOUR]
+        neighbours = neighbours[:MAX_NEIGHBOUR]
+        best_neighbours_ip_table = dict([(n.ip, n) for n in neighbours])
 
         trunc_ip_table, truncated = self.neighbour._truncate(ip_table)
 
-        self.failUnlessEqual(sorted(trunc_ip_table.values(), key=f),
-                             best_neighbours)
+        self.failUnlessEqual(trunc_ip_table, best_neighbours_ip_table)
 
 if __name__ == '__main__':
     unittest.main()
