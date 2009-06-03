@@ -23,12 +23,12 @@ class ObserverBlindError(Exception):
 
 class BaseObserver(object):
 
-    def __init__(self, who=None, what=None):
+    EVENTS = []
+
+    def __init__(self, who=None):
         '''A generic observer with auto-generated name.
 
         :param who: who is observed
-        :param what: events we want to observe
-        :type what: list of strings
 
         You must derive your observer from this class and provide a callback
         method for each event observed.
@@ -36,13 +36,15 @@ class BaseObserver(object):
         Put data associated with event inside self.<event_name>_event.
         '''
 
-        if who is None or what is None:
-            raise ObserverBlindError
+        if who is None:
+            raise ObserverBlindError('Can not observe %s' % who)
+        if self.EVENTS is []:
+            raise ObserverBlindError('Events list is empty')
 
         def _fake_method(*args, **kwargs):
             raise NotImplementedError
 
-        for event in what:
+        for event in self.EVENTS:
             # Set self.<event_name>_event = None
             # E.g:
             #     Given the event 'BLINDED_BY_THE_LIGHT' you will have

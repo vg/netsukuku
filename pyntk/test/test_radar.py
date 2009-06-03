@@ -44,6 +44,8 @@ NEIGH = Neigh(bestdev=('eth0', 42),
 
 class NeighbourObserver(BaseObserver):
 
+    EVENTS = ['NEIGH_DELETED', 'NEIGH_NEW', 'NEIGH_REM_CHGED']
+
     def neigh_new(self, neighbour):
         self.neigh_new_event = neighbour
 
@@ -57,10 +59,7 @@ class TestNeighbour(unittest.TestCase):
 
     def setUp(self):
         self.neighbour = Neighbour(max_neigh=MAX_NEIGHBOUR)
-        self.observer = NeighbourObserver(who=self.neighbour,
-                                          what=['NEIGH_DELETED',
-                                                'NEIGH_NEW',
-                                                'NEIGH_REM_CHGED'])
+        self.observer = NeighbourObserver(who=self.neighbour)
 
     def testEmptyNeighbourList(self):
         '''Empty neighbour list'''
