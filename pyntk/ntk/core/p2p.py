@@ -26,6 +26,9 @@ from ntk.lib.micro import microfunc
 from ntk.lib.rencode import serializable
 from ntk.lib.rpc import FakeRmt, RPCDispatcher, CallerInfo
 
+class P2PError(Exception):
+    '''Generic P2P Error'''
+
 class ParticipantNode(object):
     def __init__(self,
                  lvl=None, id=None,  # these are mandatory for Map.__init__()
@@ -51,8 +54,8 @@ class MapP2P(Map):
 
         self.pid = pid
 
-    def partecipate(self):
-        """self.me is now a participant node"""
+    def participate(self):
+        """Set self.me to be a participant node."""
 
         for l in xrange(self.levels):
             self.node_get(l, self.me[l]).participant = True
@@ -107,22 +110,23 @@ class P2P(RPCDispatcher):
         """
 
         mp = self.mapp2p
-        hIP = [None]*mp.levels
+        hIP = [None] * mp.levels
         for l in reversed(xrange(mp.levels)):
             for id in xrange(mp.gsize):
-                    for sign in [-1,1]:
-                            hid=(IP[l]+id*sign)%mp.gsize
-                            if mp.node_get(l, hid).participant:
-                                    hIP[l]=hid
-                                    break
-                    if hIP[l]:
-                            break
+                for sign in [-1, 1]:
+                    hid = (IP[l] + id * sign) % mp.gsize
+                    if mp.node_get(l, hid).participant:
+                        hIP[l] = hid
+                        break
+                if hIP[l]:
+                    break
             if hIP[l] is None:
                 return None
 
             if hIP[l] != mp.me[l]:
                 # we can stop here
                 break
+
         return hIP
 
     def neigh_get(self, hip):
@@ -134,20 +138,24 @@ class P2P(RPCDispatcher):
         """
 
         lvl = self.mapp2p.nip_cmp(hip, self.maproute.me)
-        br = self.maproute.node_get(lvl,hip[lvl]).best_route()
+        br = self.maproute.node_get(lvl, hip[lvl]).best_route()
         if not br:
             return None
         return self.neigh.id_to_neigh(br.gw)
 
-    def partecipate(self):
+    def participate(self):
         """Let's become a participant node"""
 
-        self.mapp2p.partecipate()
+        self.mapp2p.participate()
 
         for nr in self.neigh.neigh_list():
             nr.ntkd.p2p.participant_add(self.maproute.pid, self.maproute.me)
 
     def participant_add(self, pIP):
+        '''Add a participant node to the P2P service
+
+        :param pIP: participant node's Netsukuku IP (nip)
+        '''
         continue_to_forward = False
 
         mp  = self.mapp2p
@@ -163,7 +171,9 @@ class P2P(RPCDispatcher):
 
         # continue to advertise the new participant
         for nr in self.neigh.neigh_list():
-            nr.ntkd.p2p.participant_add(self.pid, pIP)
+            nr.ntkd.p2p.participant_add(self.pid, pIP) # ntkd.p2p is a P2PAll
+                                                       # instance so we must
+                                                       # pass also the P2P pid
 
     def msg_send(self, sender_nip, hip, msg):
         """Routes a packet to `hip'. Do not use this function directly, use
@@ -179,7 +189,7 @@ class P2P(RPCDispatcher):
         # forward the message until it arrives at destination
         n = self.neigh_get(hip)
         if n:
-            exec("return n.ntkd.p2p.PID_"+str(self.mapp2p.pid)+
+            exec("return n.ntkd.p2p.PID_" + str(self.mapp2p.pid) +
                  ".msg_send(sender_nip, hip, msg)")
         else:
             return None
@@ -204,7 +214,7 @@ class P2P(RPCDispatcher):
 
     def peer(self, hIP=None, key=None):
         if hIP is None and key is None:
-            raise Exception("hIP and key are both None. Specify at least one")
+            raise P2PError("hIP and key are both None. Specify at least one")
         return self.RmtPeer(self, hIP=hIP, key=key)
 
 class P2PAll(object):
@@ -225,7 +235,7 @@ class P2PAll(object):
         self.service = {}
 
         self.remotable_funcs = [self.pid_getall]
-        self.events=Event(['P2P_HOOKED'])
+        self.events = Event(['P2P_HOOKED'])
 
     def listen_hook_ev(self, hook):
         hook.events.listen('HOOKED', self.p2p_hook)
@@ -240,13 +250,13 @@ class P2PAll(object):
 
     def pid_get(self, pid):
         if pid not in self.service:
-                return self.pid_add(pid)
+            return self.pid_add(pid)
         else:
-                return self.service[pid]
+            return self.service[pid]
 
     def pid_getall(self):
         return [(s, self.service[s].mapp2p.map_data_pack())
-                        for s in self.service]
+                    for s in self.service]
 
     def p2p_register(self, p2p):
         """Used to add for the first time a P2P instance of a module in the
@@ -290,7 +300,7 @@ class P2PAll(object):
 
         for s in self.service:
             if self.service[s].participant:
-                    self.service[s].partecipate()
+                self.service[s].participate()
 
         self.events.send('P2P_HOOKED', ())
 
