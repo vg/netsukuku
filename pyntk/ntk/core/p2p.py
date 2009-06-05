@@ -61,7 +61,12 @@ class MapP2P(Map):
             self.node_get(l, self.me[l]).participant = True
 
     @microfunc()
-    def me_changed(self, new_me):
+    def me_changed(self, old_me, new_me):
+        '''Changes self.me
+
+        :param old_me: my old nip (not used in MapP2P)
+        :param new_me: new nip
+        '''
         Map.me_change(self, new_me)
 
     @microfunc(True)

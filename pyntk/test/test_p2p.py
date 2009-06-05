@@ -74,7 +74,7 @@ class TestMapP2P(unittest.TestCase):
     def testMeChanged(self):
         '''Test my nip change'''
         old_me = self.map.me
-        self.map.me_changed([19, 8, 84, 82])
+        self.map.me_changed(old_me, [19, 8, 84, 82])
 
         stackless.run()
 
