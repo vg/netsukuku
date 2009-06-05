@@ -55,7 +55,7 @@ class TestMapP2P(unittest.TestCase):
         levels = 4
         gsize = 256
 
-        self.map = MapP2P(levels, gsize, me=[8, 19, 82, 85], pid=1234)
+        self.map = MapP2P(levels, gsize, me=[8, 19, 82, 84], pid=1234)
         self.observer = MapP2PObserver(who=self.map)
 
     def testParticipant(self):
@@ -74,7 +74,7 @@ class TestMapP2P(unittest.TestCase):
     def testMeChanged(self):
         '''Test my nip change'''
         old_me = self.map.me
-        self.map.me_changed([19, 8, 85, 82])
+        self.map.me_changed([19, 8, 84, 82])
 
         stackless.run()
 
@@ -102,7 +102,7 @@ class TestP2P(unittest.TestCase):
 
     def setUp(self):
         radar = FakeRadar()
-        maproute = MapRoute(levels=4, gsize=256, me=[8, 19, 82, 85])
+        maproute = MapRoute(levels=4, gsize=256, me=[8, 19, 82, 84])
 
         self.p2p = P2P(radar, maproute, pid=819)
 
@@ -112,7 +112,7 @@ class TestP2P(unittest.TestCase):
             self.failUnlessEqual(self.p2p.mapp2p.free_nodes_nb(l),
                                  self.p2p.mapp2p.gsize)
 
-        self.p2p.participant_add([19, 19, 82, 85])
+        self.p2p.participant_add([19, 19, 82, 84])
 
         for l in range(self.p2p.mapp2p.levels):
             self.failUnlessEqual(self.p2p.mapp2p.free_nodes_nb(l),
@@ -126,9 +126,9 @@ class TestP2P(unittest.TestCase):
         '''Test H function: IP->IP*'''
         self.failUnlessEqual(self.p2p.H([1, 2, 3, 4]), None)
 
-        self.p2p.participant_add([2, 19, 82, 85])
+        self.p2p.participant_add([2, 19, 82, 84])
 
-        self.failUnlessEqual(self.p2p.H([1, 2, 3, 4]), [2, 19, 82, 85])
+        self.failUnlessEqual(self.p2p.H([1, 2, 3, 4]), [2, 19, 82, 84])
 
     def testParticipate(self):
         '''Self participation to the P2P service'''
@@ -144,9 +144,9 @@ class TestP2P(unittest.TestCase):
 
     def testNeighGet(self):
         '''Getting the neighbour reach the hash node'''
-        self.failUnlessEqual(self.p2p.neigh_get([2, 19, 82, 85]), None)
+        self.failUnlessEqual(self.p2p.neigh_get([2, 19, 82, 84]), None)
 
-        n = [2, 19, 82, 85]
+        n = [2, 19, 82, 84]
         self.p2p.participant_add(n)
 
         IP = 84215045
@@ -170,26 +170,26 @@ class TestP2PAll(unittest.TestCase):
 
     def setUp(self):
         radar = FakeRadar()
-        maproute = MapRoute(levels=4, gsize=256, me=[8, 19, 82, 85])
+        maproute = MapRoute(levels=4, gsize=256, me=[8, 19, 82, 84])
         self.p2pall = P2PAll(radar, maproute)
 
     def testPidAdd(self):
         '''Add a new P2P id'''
         self.failUnlessEqual(self.p2pall.service, {})
         self.p2pall.pid_add(1234)
-        self.failUnless(self.p2pall.service.has_key(1234))
+        self.failUnless(1234 in self.p2pall.service)
 
     def testPidGet(self):
         '''Get a P2P id'''
         self.p2pall.pid_get(1234)
-        self.failUnless(self.p2pall.service.has_key(1234))
+        self.failUnless(1234 in self.p2pall.service)
 
     def testPidDel(self):
         '''Deleting a P2P id'''
         self.p2pall.pid_add(1234)
-        self.failUnless(self.p2pall.service.has_key(1234))
+        self.failUnless(1234 in self.p2pall.service)
         self.p2pall.pid_del(1234)
-        self.assertFalse(self.p2pall.service.has_key(1234))
+        self.assertFalse(1234 in self.p2pall.service)
         self.failUnlessEqual(self.p2pall.service, {})
 
     #def testPidGetAll(self):
