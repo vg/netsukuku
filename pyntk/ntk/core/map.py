@@ -3,7 +3,7 @@
 # (c) Copyright 2007 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
 #
 # This source code is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as published 
+# modify it under the terms of the GNU General Public License as published
 # by the Free Software Foundation; either version 2 of the License,
 # or (at your option) any later version.
 #
@@ -18,7 +18,7 @@
 ##
 #
 # Implementation of the map. See {-topodoc-}
-# 
+#
 
 from random import randint
 
@@ -67,7 +67,7 @@ class Map(object):
         self.node = [[None] * self.gsize for i in xrange(self.levels)]
         # Number of nodes of each level, that is:
         #   self.node_nb[i] = number of (g)nodes inside the gnode self.me[i+1]
-        self.node_nb = [0] * self.levels 
+        self.node_nb = [0] * self.levels
 
         self.events = Event(['NODE_NEW', 'NODE_DELETED', 'ME_CHANGED'])
 
@@ -102,28 +102,30 @@ class Map(object):
 
     def free_nodes_list(self, lvl):
         """Returns the list of free nodes of level `lvl'"""
-        return [nid for nid in xrange(self.gsize) if self.node[lvl][nid].is_free()]
+        return [nid for nid in xrange(self.gsize)
+                        if self.node_get(lvl, nid).is_free()]
 
     def is_in_level(self, nip, lvl):
         """Does the node nip belongs to our gnode of level `lvl'?"""
         return nip[:-lvl-1] == self.me[:-lvl-1]
 
     def lvlid_to_nip(self, lvl, id):
-        """Converts a (lvl, id) pair, referring to this map, to 
+        """Converts a (lvl, id) pair, referring to this map, to
            its equivalent netsukuku ip"""
-        nip=self.me[:]
-        nip[lvl]=id
-        for l in reversed(xrange(lvl)): nip[l]=0
+        nip = self.me[:]
+        nip[lvl] = id
+        for l in reversed(xrange(lvl)):
+            nip[l] = 0
         return nip
 
     def ip_to_nip(self, ip):
         """Converts the given ip to a nip (Netsukuku IP)
 
         A nip is a list [a_0, a_1, ..., a_{n-1}], where n = self.levels
-        and such that a_{n-1}*g^{n-1}+a_{n-2}*g^(n-2)+...+a_0 = ip, 
+        and such that a_{n-1}*g^{n-1}+a_{n-2}*g^(n-2)+...+a_0 = ip,
         where g = self.gsize"""
 
-        g=self.gsize
+        g = self.gsize
         return [(ip % g**(l+1)) / g**l for l in xrange(self.levels)]
 
     def nip_to_ip(self, nip):
@@ -148,32 +150,34 @@ class Map(object):
 
     def level_reset(self, level):
         """Resets the specified level, without raising any event"""
-        self.node[level]    = [None]*self.gsize
+        self.node[level] = [None] * self.gsize
         self.node_nb[level] = 0
 
     def map_reset(self):
         """Silently resets the whole map"""
         for l in xrange(self.levels):
-                self.level_reset(l)
+            self.level_reset(l)
 
     def me_change(self, new_me):
         """Changes self.me"""
-        old_me=self.me[:]
-        self.me=new_me
+        old_me = self.me[:]
+        self.me = new_me
         self.events.send('ME_CHANGED', (old_me, new_me))
 
 
     def map_data_pack(self):
-        return (self.me, [ [self.node[lvl][id] for id in xrange(self.gsize)]
-                             for lvl in xrange(self.levels) ],
+        '''Pack the data map'''
+        return (self.me,
+                [[self.node[lvl][id] for id in xrange(self.gsize)]
+                                     for lvl in xrange(self.levels)],
                 [self.node_nb[lvl] for lvl in xrange(self.levels)])
 
     def map_data_merge(self, (nip, plist, nblist)):
-        lvl=self.nip_cmp(nip, self.me)
+        lvl = self.nip_cmp(nip, self.me)
         for l in xrange(lvl, self.levels):
-                self.node_nb[l]=nblist[l]
-                for id in xrange(self.gsize):
-                        self.node[l][id]=plist[l][id]
+            self.node_nb[l] = nblist[l]
+            for id in xrange(self.gsize):
+                self.node[l][id] = plist[l][id]
         for l in xrange(0, lvl):
-                self.level_reset(l)
+            self.level_reset(l)
 

@@ -64,6 +64,10 @@ class TestMap(unittest.TestCase):
         self.test_node_add()
         self.assertEqual(self.map.free_nodes_nb(lvl=0), self.gsize - 1)
 
+    def test_free_nodes_list(self):
+        '''Free nodes of specified level'''
+        self.assertEqual(self.map.free_nodes_list(lvl=0), range(self.gsize))
+
     def test_is_in_level(self):
         '''Node nip belongs to our gnode of level'''
         self.assertEqual(self.map.is_in_level(self.map.me, 0), True)
