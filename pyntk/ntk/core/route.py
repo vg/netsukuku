@@ -261,15 +261,18 @@ class RouteNode(object):
 
         It returns (0,None) if the route hasn't been added, and thus it isn't
         interesting, otherwise it returns (1,None) if it is a new route,
-        (2, oldrem) if it substituted an old route."""
+        (2, oldrem) if it substituted an old route.
+        
+        The following code implements the algorithm described in 
+        Chapter 5 of topology.pdf.
+        """
 
         ret = 0
         val = None
         oldr = self.route_getby_gw(gw)
 
-        if self.is_empty() or (oldr is None and rem > self.routes[-1].rem):
-            # If there aren't routes, or if it is better than the worst
-            # route, add it
+        if self.is_empty() or oldr is None:
+            # If it is a new route, add it
             self.routes.append(RouteGw(gw, rem))
             ret = 1
         elif oldr is not None and rem > oldr.rem:
