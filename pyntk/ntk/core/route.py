@@ -166,12 +166,12 @@ class Avg(Rem):
         length = sum = 0
         for r in rems:
             if not isinstance(r, Rem):
-                raise RemError, "an element of `rems' is not a Rem instance"
+                raise RemError("an element of `rems' is not a Rem instance")
 
-            sum += abs(r.max_value - r.value*r.avgcoeff)
+            sum += abs(r.max_value - r.value * r.avgcoeff)
             length += 1
 
-        Rem.__init__(self, sum/length)      # ???: value is always an integer?
+        Rem.__init__(self, sum/length) # ???: value is always an integer?
 
     def __add__(self, b):
         raise AvgSumError('the Avg metric cannot be summed.'
@@ -199,7 +199,17 @@ class RouteGw(object):
         if isinstance(b, RouteGw):
             return self.rem.__cmp__(b.rem)
         else:
-            raise RouteGwError, 'comparison with not RouteGw'
+            raise RouteGwError('comparison with not RouteGw')
+
+    def __eq__(self, b):
+        '''The route self is equal to route b'''
+        if isinstance(b, RouteGw):
+            if self.gw == b.gw and self.rem == b.rem:
+                return True
+            else:
+                return False
+        else:
+            raise RouteGwError('comparison with not RouteGw')
 
     def rem_modify(self, new_rem):
         """Sets self.rem=new_rem and returns the old rem"""
@@ -262,8 +272,8 @@ class RouteNode(object):
         It returns (0,None) if the route hasn't been added, and thus it isn't
         interesting, otherwise it returns (1,None) if it is a new route,
         (2, oldrem) if it substituted an old route.
-        
-        The following code implements the algorithm described in 
+
+        The following code implements the algorithm described in
         Chapter 5 of topology.pdf.
         """
 
@@ -326,7 +336,7 @@ class RouteNode(object):
 
     def nroutes_synced(self):
         # Note: it can be < 0
-        return len(self.routes)-self.routes_tobe_synced
+        return len(self.routes) - self.routes_tobe_synced
 
     def best_route(self):
         if self.is_empty():
@@ -337,7 +347,8 @@ class RouteNode(object):
     def __repr__(self):
         return '<RouteNode: %s>' % self.routes
 
-def ftrue(*args):return True
+def ftrue(*args):
+    return True
 
 class MapRoute(Map):
     """Map of routes, all of a same Rem type.
