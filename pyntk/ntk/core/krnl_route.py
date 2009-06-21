@@ -3,7 +3,7 @@
 # (c) Copyright 2007 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
 #
 # This source code is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as published 
+# modify it under the terms of the GNU General Public License as published
 # by the Free Software Foundation; either version 2 of the License,
 # or (at your option) any later version.
 #
@@ -16,7 +16,7 @@
 # this source code; if not, write to:
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
-# 
+#
 # krnl_route.py
 #
 # Listens to MapRoute generated events, and updates the kernel table
@@ -35,11 +35,11 @@ class KrnlRoute(object):
         self.multipath = settings.MULTIPATH
 
         self.events =  Event(['KRNL_NEIGH_NEW'])
-        
-        self.route_new = apply_wakeup_on_event(self.route_new, 
+
+        self.route_new = apply_wakeup_on_event(self.route_new,
                                                events=[(self.neigh.events, 'NEIGH_NEW'),
                                                        (self.events, 'KRNL_NEIGH_NEW')])
-        
+
         self.maproute.events.listen('ROUTE_NEW', self.route_new)
         self.maproute.events.listen('ROUTE_DELETED', self.route_deleted)
         self.maproute.events.listen('ROUTE_REM_CHGED', self.route_rem_changed)
@@ -51,7 +51,7 @@ class KrnlRoute(object):
 
     @microfunc(True)
     def route_new(self, lvl, dst, gw, rem, event_wait=None):
-        
+
         if not self.multipath and self.maproute.node_get(lvl, dst).nroutes_synced() >= 1:
                 # We don't have multipath and we've already set one route.
                 return
