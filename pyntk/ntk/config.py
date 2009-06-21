@@ -40,9 +40,11 @@ DEFAULT_SETTINGS = dict(
 )
 
 if sys.platform == 'linux2':
+    CONFIGURATION_DIR = '/etc/netsukuku'
     GLOBAL_SETTINGS = dict(
-        CONFIGURATION_DIR = '/etc/netsukuku',
+        CONFIGURATION_DIR = CONFIGURATION_DIR,
         DATA_DIR = '/usr/share/netsukuku',
+        KEY_PAIR_DIR = os.path.join(CONFIGURATION_DIR, 'keys'),
         LOG_DIR = '/var/log',
         PID_DIR  = '/var/run',
     )
