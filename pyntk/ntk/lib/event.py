@@ -17,6 +17,8 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
+from ntk.lib.log import logger as logging
+from ntk.lib.log import get_stackframes
 from micro import Channel, microfunc
 import functools
 
@@ -76,15 +78,24 @@ class Event:
         if event not in self.events:
             raise EventError, "\""+event+"\" is not a registered event"
 
+        # auxiliary function, to take priority from (dst, pri)
+        def priority(x):
+            return x[1]
+
+        # auxiliary function, to take dst from (dst, pri)
+        def dst(x):
+            return x[0]
+
         if event in self.listeners:
-            for dst in self.listeners[event]:
-                self._send(dst, msg)
+            unorderedlist = self.listeners[event]
+            for dst_pair in sorted(unorderedlist, reverse=False, key=priority):
+                self._send(dst(dst_pair), msg)
 
     def _send(self, dst, msg):
         # call the microfunc `dst'
         dst(*msg)
 
-    def listen(self, event, dst, remove=False):
+    def listen(self, event, dst, remove=False, priority=10):
         """Listen to an event.
 
         If `remove'=False, then `dst' is added in the listeners queue of
@@ -98,9 +109,9 @@ class Event:
             self.listeners[event]=[]
 
         if not remove:
-            self.listeners[event].append(dst)
-        elif dst in self.listeners[event]:
-            self.listeners[event].remove(dst)
+            self.listeners[event].append((dst, priority))
+        elif (dst, priority) in self.listeners[event]:
+            self.listeners[event].remove((dst, priority))
 
 def wakeup_on_event(events=[]):
     '''This is a decorator. A function decorated with wakeup_on_event() can
@@ -125,31 +136,63 @@ def wakeup_on_event(events=[]):
                 ...
     Note: event_wait is a dictionary of the following type: { (event_instance, evname) : wait_func }
     '''
+    
+    class Channel_with_wakeup(Channel):
+        def __init__(self):
+            Channel.__init__(self, prefer_sender=True)
+
+        ## Create the dispatcher and the event_wait() function. They are all
+        ## dependent on this Channel
+
+        def _wakeup_on_event_dispatcher(self, *event_data):
+            logging.log(logging.ULTRADEBUG, 'I will send a wakeup on chan ' + str(self))
+            stacktrace = get_stackframes(back=1)
+            logging.log(logging.ULTRADEBUG, '  the event above was called from ' + stacktrace)
+            self.__wakeup_on_event_dispatcher(*event_data)
+
+        @microfunc()   # Each call is queued. No event will be lost
+        def __wakeup_on_event_dispatcher(self, *event_data):
+            self.bcast_send(event_data)  # blocks if necessary
+            logging.log(logging.ULTRADEBUG, 'wakeup sent on chan ' + str(self))
+
+        def event_wait_func(self):
+            logging.log(logging.ULTRADEBUG, 'wakeup receiving on chan ' + str(self))
+            stacktrace = get_stackframes(back=1)
+            logging.log(logging.ULTRADEBUG, '  the event_wait above was called from ' + stacktrace)
+            ret = self.recv()
+            logging.log(logging.ULTRADEBUG, 'wakeup received on chan ' + str(self))
+            logging.log(logging.ULTRADEBUG, '  the event_wait above was called from ' + stacktrace)
+            return ret
 
     def decorate(func):
         event_wait_func_dict={ }  # { (ev, evname) : wait_func }
         for ev, evname in events:
-                chan = Channel(prefer_sender=False)
-                ## Create the dispatcher and the event_wait() function. They are all
-                ## dependent on `chan'
-                ##
-
-                @microfunc(is_micro=False) # Using is_micro=False, ensures that each
-                                           # call is queued. In this way, no event
-                                           # will be lost
-                def _wakeup_on_event_dispatcher(*event_data):
-                        chan.bcast_send(event_data)  # blocks if necessary
-
-                def event_wait_func():
-                        return chan.recv()
+                chan = Channel_with_wakeup()
+                logging.log(logging.ULTRADEBUG, 'wakeup decorator on func ' + str(func) + ': created chan for ' + evname + ', chan ' + str(chan))
+                stacktrace = get_stackframes(back=1)
+                if stacktrace.find('apply_wakeup_on_event') >= 0: stacktrace = get_stackframes(back=2)
+                logging.log(logging.ULTRADEBUG, '  the decoration above was called from ' + stacktrace)
 
                 # Register _wakeup_on_event_dispatcher as a listener of the specified event
-                ev.listen(evname, _wakeup_on_event_dispatcher)
+                ev.listen(evname, chan._wakeup_on_event_dispatcher)
                 ##
 
-                event_wait_func_dict[(ev, evname)]=event_wait_func
+                event_wait_func_dict[(ev, evname)] = chan.event_wait_func
 
         func_with_wait=functools.partial(func, event_wait=event_wait_func_dict)
+        
+        # if the method must be remotable (and used by rpc), we need 
+        # to add this attributes to the functools.partial function
+        class fake(): 
+            def func(self): pass
+            
+        setattr(func_with_wait, '__name__', func.__name__)
+        if hasattr(func, 'im_func'):
+            setattr(func_with_wait, 'im_func', func.im_func)
+        else:
+            setattr(func_with_wait, 'im_func', fake().func.im_func)
+        ##
+            
         return func_with_wait
 
     return decorate

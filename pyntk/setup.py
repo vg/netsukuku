@@ -46,6 +46,6 @@ ISPs or control authorities.
     url='http://www.netsukuku.org',
     version=VERSION,
     license='General Public License',
-    packages=['ntk', 'ntk.core', 'ntk.lib',
+    packages=['ntk', 'ntk.core', 'ntk.lib', 'ntk.network.linux',
               'ntk.network', 'ntk.sim', 'ntk.wrap'],
     scripts=['ntkd'])

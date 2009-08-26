@@ -165,12 +165,22 @@ class Map(object):
         self.events.send('ME_CHANGED', (old_me, new_me))
 
 
-    def map_data_pack(self):
-        '''Pack the data map'''
-        return (self.me,
+    def map_data_pack(self, func=None):
+        '''Pack the data map
+        
+        `func' is a function that receives a node and makes it not free.
+        '''
+        ret = (self.me,
                 [[self.node[lvl][id] for id in xrange(self.gsize)]
                                      for lvl in xrange(self.levels)],
                 [self.node_nb[lvl] for lvl in xrange(self.levels)])
+        
+        # Let's execute func() and replace self.me with a normal node
+        for lvl in xrange(self.levels):
+            node = self.dataclass(lvl, self.me[lvl])
+            if func: func(node)
+            ret[1][lvl][self.me[lvl]] = node
+
 
     def map_data_merge(self, (nip, plist, nblist)):
         lvl = self.nip_cmp(nip, self.me)
@@ -181,3 +191,23 @@ class Map(object):
         for l in xrange(0, lvl):
             self.level_reset(l)
 
+
+    def repr_me(self, func_repr_node=None):
+        '''debugging function'''
+        ret = 'me ' + str(self.me) + ', node_nb ' + str(self.node_nb) + ', {'
+        for lvl in xrange(self.levels):
+            ret += self.repr_level(lvl, func_repr_node)
+        ret += '}'
+        return ret
+
+    def repr_level(self, lvl, func_repr_node=None):
+        '''debugging function'''
+        def repr_node_map(node):
+            if node.is_free(): return ' '
+            return 'X'
+        if func_repr_node is None: func_repr_node = repr_node_map
+        ret = ' ['
+        for i in xrange(self.gsize):
+            ret += '\'' + func_repr_node(self.node_get(lvl, i))
+        ret += '\'] '
+        return ret

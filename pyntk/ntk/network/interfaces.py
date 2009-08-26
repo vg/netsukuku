@@ -97,13 +97,28 @@ class BaseRoute(object):
         raise NotImplementedError
 
     @staticmethod
-    def change(properties):
+    def add_neigh(ip, dev=None):
+        ''' Adds a new neighbour with corresponding properties. '''
+        raise NotImplementedError
+
+    @staticmethod
+    def change(ip, cidr, dev=None, gateway=None):
         ''' Edits the route with the corresponding properties. '''
+        raise NotImplementedError
+
+    @staticmethod
+    def change_neigh(ip, dev=None):
+        ''' Edits the neighbour with the corresponding properties. '''
         raise NotImplementedError
 
     @staticmethod
     def delete(ip, cidr, dev=None, gateway=None):
         ''' Removes the route with the corresponding properties. '''
+        raise NotImplementedError
+
+    @staticmethod
+    def delete_neigh(ip, dev=None):
+        ''' Removes the neighbour with the corresponding properties. '''
         raise NotImplementedError
 
     @staticmethod

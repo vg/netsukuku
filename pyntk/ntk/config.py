@@ -26,14 +26,15 @@ NOT_OVERRIDABLE_SETTINGS = ('LEVELS', 'BITS_PER_LEVEL')
 
 DEFAULT_SETTINGS = dict(
     CONFIGURATION_FILE = 'settings.conf',
-    DEBUG = False,
+    VERBOSE_LEVEL = 0,
+    DEBUG_ON_SCREEN = False,
     # Inet
     IP_VERSION = 4,
     LOG_FILE = 'netsukuku.log',
     # Radar
     MAX_BOUQUET = 16,
     MAX_NEIGH = 16,
-    MAX_WAIT_TIME = 8, # seconds
+    RADAR_WAIT_TIME = 8, # seconds
     MULTIPATH = False,
     SIMULATED = False,
 
