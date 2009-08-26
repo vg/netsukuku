@@ -39,14 +39,16 @@
 
 from random import randint
 
+import time
 import ntk.lib.rpc as rpc
 import ntk.wrap.xtime as xtime
 
+import ntk.lib.rpc as rpc
 from ntk.config import settings
 from ntk.core.route import DeadRem, Rtt
 from ntk.lib.event import Event
 from ntk.lib.log import logger as logging
-from ntk.lib.micro import micro
+from ntk.lib.micro import micro, micro_block, microfunc, Channel
 from ntk.network.inet import ip_to_str, str_to_ip
 
 
@@ -72,7 +74,7 @@ class Neigh(object):
         self.bestdev = bestdev
 
         self.ip = ip
-        self.nip = None
+        self.nip = None   # TODO: refactoring Neigh
         self.id = idn
         if self.bestdev:
             # TODO(low): support the other metrics
@@ -86,6 +88,8 @@ class Neigh(object):
         return (self.ip > b.ip) - (self.ip < b.ip)
 
     def __repr__(self):
+        if not self.ip: return object.__repr__(self)
+        if not self.rem: return '<Neighbour(%s): No rem>' % (ip_to_str(self.ip))
         return '<Neighbour(%s):%s>' % (ip_to_str(self.ip), self.rem)
 
     def values(self):
@@ -95,13 +99,14 @@ class Neigh(object):
                                checks
         '''
         v = [(name, getattr(self, name)) for name in self.__slots__
-                                            if name != 'ntkd']
+             if name != 'ntkd']
         return dict(v)
 
 class Neighbour(object):
     """ This class manages all neighbours """
 
-    __slots__ = ['max_neigh',
+    __slots__ = ['ntkd',
+                 'max_neigh',
                  'rtt_variation_threshold',
                  'ip_table',
                  'ntk_client',
@@ -109,14 +114,22 @@ class Neighbour(object):
                  'netid_table',
                  'events',
                  'remotable_funcs',
-                 'xtime']
+                 'xtime',
+                 'netid',
+                 'increment_wait_time',
+                 'number_of_scan_before_deleting',
+                 'missing_neighbour_ids',
+                 'channels']
 
-    def __init__(self, max_neigh=settings.MAX_NEIGH, xtimemod=xtime):
+    def __init__(self, ntkd, max_neigh=settings.MAX_NEIGH, xtimemod=xtime):
         """  max_neigh: maximum number of neighbours we can have """
+        self.ntkd = ntkd
 
         self.max_neigh = max_neigh
         # variation on neighbours' rtt greater than this will be notified
-        self.rtt_variation_threshold = 0.1
+        # TODO changed to do less variations in netkit environment
+        #self.rtt_variation_threshold = 0.1
+        self.rtt_variation_threshold = 0.9
         # ip_table
         self.ip_table = {}
         # Remote client instances table
@@ -129,13 +142,30 @@ class Neighbour(object):
         self.events = Event(['NEIGH_NEW', 'NEIGH_DELETED', 'NEIGH_REM_CHGED'])
         # time module
         self.xtime = xtimemod
+        # channels
+        self.channels = [None] * max_neigh
 
-        self.remotable_funcs = [self.ip_change]
+        # Our netid. It's a random id used to detect network collisions.
+        self.netid = -1
+
+        # To be certain, before deleting a neighbour, check a few times with
+        # a greater delay.
+        self.increment_wait_time = 1000
+        self.number_of_scan_before_deleting = 3
+        # This is a dict. The key is the neigh id, the value is missing_scans.
+        # e.g. {2:4} means neighbour 2 has not replied for 4 consecutive
+        # scans.
+        self.missing_neighbour_ids = {}
+
+        self.remotable_funcs = [self.ip_change,
+                                self.ip_change_udp,
+                                self.reply_ip_change_udp]
 
     def neigh_list(self):
         """ return the list of neighbours """
         nlist = []
         for key, val in self.ip_table.items():
+            logging.log(logging.ULTRADEBUG, 'neigh_list: preparing Neigh for ' + ip_to_str(key))
             nlist.append(Neigh(bestdev=val.bestdev,
                                devs=val.devs,
                                idn=self.translation_table[key],
@@ -158,6 +188,65 @@ class Neighbour(object):
             return new_id
         else:
             return False
+
+    #############################################################
+    ######## Synchronization gateway <-> nodes
+    # Abstract:
+    #
+    # When Neighbour notice a new neighbour (gateway) it calls announce_gw.
+    # Then, Neighbour emits event NEIGH_NEW which in turn does other
+    # things...
+    # When KrnlRoute actually has added the route towards the gateway,
+    # it calls announce_gw_added.
+    #
+    # When Neighbour notice a dead link towards a neighbour it calls
+    # announce_gw_removing.
+    # Then, Neighbour emits event NEIGH_DELETED which in turn does other
+    # things...
+    # When MapRoute.routeneigh_del has finished deleting all the
+    # routes passing through it, it calls announce_gw_removable.
+    #
+    # Before actually adding a route through a gateway we must
+    # call waitfor_gw_added.
+    # Before actually removing the route towards a gateway we
+    # must call waitfor_gw_removable.
+    #
+    # This way we ensure to add a gateway before adding routes
+    # through it, and to remove routes through a gateway before
+    # removing the gateway itself.
+
+    def announce_gw(self, gwid):
+        self.channels[gwid-1] = Channel(prefer_sender=True)
+
+    def waitfor_gw_added(self, gwid):
+        channel = self.channels[gwid-1]
+        if channel is None: return
+        channel.recv()
+
+    def announce_gw_added(self, gwid):
+        channel = self.channels[gwid-1]
+        if channel is None: return
+        channel.bcast_send('')
+        micro_block()
+        self.channels[gwid-1] = None
+
+    def announce_gw_removing(self, gwid):
+        self.channels[gwid-1] = Channel(prefer_sender=True)
+
+    def waitfor_gw_removable(self, gwid):
+        channel = self.channels[gwid-1]
+        if channel is None: return
+        channel.recv()
+
+    def announce_gw_removable(self, gwid):
+        channel = self.channels[gwid-1]
+        if channel is None: return
+        channel.bcast_send('')
+        micro_block()
+        self.channels[gwid-1] = None
+
+    ##
+    #############################################################
 
     def ip_to_neigh(self, ip):
         """ ip: neighbour's ip
@@ -192,7 +281,7 @@ class Neighbour(object):
         remain in the table
         """
 
-        # auxiliary function, to take rtt from {IP => NodeInfo}
+        # auxiliary function, to take rtt from {IP => Neigh}
         def interesting(x):
             return x[1].bestdev[1]
 
@@ -231,6 +320,11 @@ class Neighbour(object):
                 return i
         return False
 
+    def set_netid(self, ip, new_netid):
+        """Updates our neighbour's network id."""
+        if ip in self.netid_table:
+            self.netid_table[ip] = new_netid
+
     def store(self, ip_table):
         """Substitute the old ip_table with the new and notify about the
         changes
@@ -243,40 +337,63 @@ class Neighbour(object):
 
         ip_table, died_ip_list = self._truncate(ip_table)
 
+        # remove from missing_neighbour_ids the detected neighbours
+        for key in ip_table:
+            if key in self.missing_neighbour_ids:
+                del self.missing_neighbour_ids[key]
+
         # first of all we cycle through the old ip_table
         # looking for nodes that aren't in the new one
-        for key in self.ip_table:
+        for key in self.ip_table.keys():
             # if we find a row that isn't in the new ip_table and whose
             # deletion hasn't already been notified (raising an event)
             # during truncation
             if not key in ip_table and not key in died_ip_list:
-                self.delete(key, remove_from_iptable=False)
+                # It is a missing neigh. For how many scan is it missing?
+                if key in self.missing_neighbour_ids:
+                    times = self.missing_neighbour_ids[key] + 1
+                else:
+                    times = 1
+                self.missing_neighbour_ids[key] = times
+
+                if times > self.number_of_scan_before_deleting:
+                    # now, we assume it is really dead.
+                    self.delete(key)
+                    del self.missing_neighbour_ids[key]
+                else:
+                    # pretend it is still there, for the moment.
+                    ip_table[key] = self.ip_table[key]
+
+        # now, update the ip_table
+        old_ip_table = self.ip_table
+        self.ip_table = ip_table
+        # first, for new neighs, update translation_table and ntk_client
+        for key in self.ip_table:
+            if not key in old_ip_table:
+                # insert neigh id into translation_table
+                self.ip_to_id(key)
+                # create a TCPClient which will be able to connect to the
+                # neighbour
+                self.ntk_client[key] = rpc.TCPClient(ip_to_str(key))
 
         # now we cycle through the new ip_table
         # looking for nodes who weren't in the old one
         # or whose rtt has sensibly changed
-        for key in ip_table:
+        for key in self.ip_table:
             # if a node has been added
-            if not key in self.ip_table:
-                # generate an id and add the entry in translation_table
-                self.ip_to_id(key)
-                # create a TCP connection to the neighbour
-                self.ntk_client[key] = rpc.TCPClient(ip_to_str(key))
-                # send a message notifying we added a node
-                self.events.send('NEIGH_NEW',
-                                 (Neigh(bestdev=ip_table[key].bestdev,
-                                        devs=ip_table[key].devs,
-                                        idn=self.translation_table[key],
-                                        ip=key,
-                                        netid=self.netid_table[key],
-                                        ntkd=self.ntk_client[key]),))
+            if not key in old_ip_table:
+                # info
+                logging.info('Change in our LAN: new neighbour ' + ip_to_str(key))
+                self.add(key, already_in_ntk_client=True)
             else:
                 # otherwise (if the node already was in old ip_table) check if
                 # its rtt has changed more than rtt_variation
-                new_rtt = ip_table[key].bestdev[1]
-                old_rtt = self.ip_table[key].bestdev[1]
+                new_rtt = self.ip_table[key].bestdev[1]
+                old_rtt = old_ip_table[key].bestdev[1]
                 rtt_variation = abs(new_rtt - old_rtt) / float(old_rtt)
                 if rtt_variation > self.rtt_variation_threshold:
+                    # info
+                    logging.info('Change in our LAN: changed REM for neighbour ' + ip_to_str(key))
                     # send a message notifying the node's rtt changed
                     self.events.send('NEIGH_REM_CHGED',
                                      (Neigh(bestdev=self.ip_table[key].bestdev,
@@ -284,31 +401,76 @@ class Neighbour(object):
                                             idn=self.translation_table[key],
                                             ip=key,
                                             netid=self.netid_table[key],
-                                            ntkd=self.ntk_client[key]),
-                                      Rtt(new_rtt)))
+                                            ntkd=self.ntk_client[key]), 
+                                      Rtt(old_rtt)))
+                else:
+                    self.ip_table[key] = old_ip_table[key]
+                # TODO better handling of different devs to reach the same neighbour
 
-        # finally, update the ip_table
-        self.ip_table = ip_table
+        # returns an indication for next wait time to the radar
+        if not self.missing_neighbour_ids:
+            return 0
+        return max(self.missing_neighbour_ids.values()) * self.increment_wait_time
 
     def readvertise(self):
         """Sends a NEIGH_NEW event for each stored neighbour"""
+        # info
+        logging.info('Readvertising all my neighbours')
         for key in self.ip_table:
+            idn = self.translation_table[key]
+            logging.debug('ANNOUNCE: gw ' + str(idn) + ' detected.')
+            self.announce_gw(idn)
             self.events.send('NEIGH_NEW',
                              (Neigh(bestdev=self.ip_table[key].bestdev,
                                     devs=self.ip_table[key].devs,
-                                    idn=self.translation_table[key],
+                                    idn=idn,
                                     ip=key,
                                     netid=self.netid_table[key],
                                     ntkd=self.ntk_client[key]),))
 
+    def reset_ntk_clients(self):
+        """Reset connected TCPClients. To be used after hooking, to avoid
+           using invalid sockets."""
+        for key in self.ip_table:
+            if self.ntk_client[key]:
+                if self.ntk_client[key].connected:
+                    self.ntk_client[key].close()
+
+    def add(self, ip, already_in_ntk_client=True):
+        """Sends event for a new neighbour.
+        The entry already exists in ip_table and netid_table.
+        The entry might already exist in translation_table and ntk_client."""
+
+        logging.info("Adding neighbour %s", ip_to_str(ip))
+
+        # insert/recover neigh id into translation_table
+        idn = self.ip_to_id(ip)
+        if not already_in_ntk_client:
+            # create a TCPClient which will be able to connect to the
+            # neighbour
+            self.ntk_client[ip] = rpc.TCPClient(ip_to_str(ip))
+        # send a message notifying we added a node
+        logging.debug('ANNOUNCE: gw ' + str(idn) + ' detected.')
+        self.announce_gw(idn)
+        self.events.send('NEIGH_NEW',
+                         (Neigh(bestdev=self.ip_table[ip].bestdev,
+                                devs=self.ip_table[ip].devs,
+                                idn=idn,
+                                ip=ip,
+                                netid=self.netid_table[ip],
+                                ntkd=self.ntk_client[ip]),))
 
     def delete(self, ip, remove_from_iptable=True):
-        """Deletes an entry from the ip_table"""
+        """Sends event for a dead neighbour.
+        Optionally removes its entry from the ip_table."""
 
         logging.info("Deleting neighbour %s", ip_to_str(ip))
 
+        old_bestdev = self.ip_table[ip].bestdev
+        old_devs = self.ip_table[ip].devs
         if remove_from_iptable:
             del self.ip_table[ip]
+            logging.log(logging.ULTRADEBUG, 'removed from ip_table ' + ip_to_str(ip))
 
         # close the connection ( if any )
         if self.ntk_client[ip].connected:
@@ -318,10 +480,14 @@ class Neighbour(object):
         old_id = self.translation_table.pop(ip)
         # ...and from the netid_table
         old_netid = self.netid_table.pop(ip)
+        # info
+        logging.info('Change in our LAN: removed neighbour ' + ip_to_str(ip))
         # send a message notifying we deleted the entry
+        logging.debug('ANNOUNCE: gw ' + str(old_id) + ' removing.')
+        self.announce_gw_removing(old_id)
         self.events.send('NEIGH_DELETED',
-                         (Neigh(bestdev=None,
-                                devs=None,
+                         (Neigh(bestdev=old_bestdev,
+                                devs=old_devs,
                                 idn=old_id,
                                 ip=ip,
                                 netid=old_netid,
@@ -329,41 +495,83 @@ class Neighbour(object):
 
         del self.ntk_client[ip]
 
+    @microfunc()
     def ip_change(self, oldip, newip):
         """Adds `newip' in the Neighbours as a copy of `oldip', then it removes
         `oldip'. The relative events are raised."""
 
-        logging.info("New IP of neighbour %s is now %s " % (ip_to_str(oldip),
-                                                            ip_to_str(newip)))
-        self.ip_table[newip] = self.ip_table[oldip]
-        self.translation_table[newip] = self.translation_table[oldip]
-        self.netid_table[newip] = self.netid_table[oldip]
+        if not oldip in self.ip_table:
+            # probably our radar did not observed previously the ip that is changing,
+            # then leave this work to the next radar scan
+            return
 
-        # we have to create a new TCP connection
-        self.ntk_client[newip] = rpc.TCPClient(ip_to_str(newip))
+        # info
+        logging.info('Change in our LAN: new neighbour ' + ip_to_str(newip))
+        logging.info('                   replacing an old one... ' + ip_to_str(oldip))
+        # copy values from old ip_table and netid_table
+        copy_devs = self.ip_table[oldip]
+        copy_netid = self.netid_table[oldip]
+        # recover (prior to delete) the id of the gateway
+        old_id = self.translation_table[oldip]
+        # delete old ip gateway
+        logging.log(logging.ULTRADEBUG, 'ip_change: deleting...')
+        self.delete(oldip, remove_from_iptable=True)
+        # Attention: this removes "oldip" from self.ip_table. But current radar
+        # scan might already have put this "oldip" in bcast_arrival_time. So...
+        logging.log(logging.ULTRADEBUG, 'ip_change: removing from scan...')
+        if oldip in self.ntkd.radar.bcast_arrival_time:
+            del self.ntkd.radar.bcast_arrival_time[oldip]
+        # wait for the removing of routes to be completed
+        logging.log(logging.ULTRADEBUG, 'ip_change: waiting routemap.routeneigh_del...')
+        self.waitfor_gw_removable(old_id)
+        # copy values into new ip_table and netid_table
+        self.ip_table[newip] = copy_devs
+        self.netid_table[newip] = copy_netid
+        # add new ip gateway
+        logging.log(logging.ULTRADEBUG, 'ip_change: adding...')
+        self.add(newip, already_in_ntk_client=False)
+        logging.log(logging.ULTRADEBUG, 'ip_change: done.')
 
-        self.events.send('NEIGH_NEW',
-                         (Neigh(bestdev=self.ip_table[newip].bestdev,
-                                devs=self.ip_table[newip].devs,
-                                idn=self.translation_table[newip],
-                                ip=newip,
-                                netid=self.netid_table[newip],
-                                ntkd=self.ntk_client[newip]),))
+    def call_ip_change_udp(self, neigh, oldip, newip):
+        """Use BcastClient to call ip_change"""
+        devs = [neigh.bestdev[0]]
+        nip = self.ntkd.maproute.ip_to_nip(neigh.ip)
+        netid = neigh.netid
+        return rpc.UDP_call(nip, netid, devs, 'neighbour.ip_change_udp', (oldip, newip))
 
-        self.delete(oldip)
+    def ip_change_udp(self, _rpc_caller, caller_id, callee_nip, callee_netid, oldip, newip):
+        """Returns the result of ip_change to remote caller.
+           caller_id is the random value generated by the caller for this call.
+            It is replied back to the LAN for the caller to recognize a reply destinated to it.
+           callee_nip is the NIP of the callee;
+           callee_netid is the netid of the callee.
+            They are used by the callee to recognize a request destinated to it.
+           """
+        if self.ntkd.maproute.me == callee_nip and self.netid == callee_netid:
+            self.ip_change(oldip, newip)
+            # Since it is micro, I will reply None
+            rpc.UDP_send_reply(_rpc_caller, caller_id, 'neighbour.reply_ip_change_udp', None)
+
+    def reply_ip_change_udp(self, _rpc_caller, caller_id, ret):
+        """Receives reply from ip_change_udp."""
+        rpc.UDP_got_reply(_rpc_caller, caller_id, ret)
 
 
 class Radar(object):
-    __slots__ = [ 'bouquet_numb', 'bcast_send_time', 'xtime',
-                  'bcast_arrival_time', 'max_bouquet', 'max_wait_time',
-                  'broadcast', 'neigh', 'events', 'netid', 'do_reply',
-                  'remotable_funcs', 'ntkd_id', 'radar_id', 'max_neigh']
+    
+    __slots__ = [ 'ntkd', 'bouquet_numb', 'bcast_send_time', 'xtime',
+                  'bcast_arrival_time', 'max_bouquet', 'wait_time', 
+                  'broadcast', 'neigh', 'events', 'do_reply', 
+                  'remotable_funcs', 'ntkd_id', 'radar_id', 'max_neigh',
+                  'increment_wait_time', 'stopping', 'running_instances',
+                  'hooking_network_id']
 
-    def __init__(self, broadcast, xtime):
+    def __init__(self, ntkd, broadcast, xtime):
         """
             broadcast: an instance of the RPCBroadcast class to manage broadcast
             sending xtime: a wrap.xtime module
         """
+        self.ntkd = ntkd
 
         self.xtime = xtime
         self.broadcast = broadcast
@@ -376,57 +584,88 @@ class Radar(object):
         self.bcast_arrival_time = {}
         # max_bouquet: how many packets does each bouquet contain?
         self.max_bouquet = settings.MAX_BOUQUET
-        # max_wait_time: the maximum time we can wait for a reply, in seconds
-        self.max_wait_time = settings.MAX_WAIT_TIME
+        # wait_time: the time we wait for a reply, in seconds
+        self.wait_time = settings.RADAR_WAIT_TIME
         # max_neigh: maximum number of neighbours we can have
         self.max_neigh = settings.MAX_NEIGH
         # our neighbours
-        self.neigh = Neighbour(self.max_neigh, self.xtime)
+        self.neigh = Neighbour(self.ntkd, self.max_neigh, self.xtime)
+        # Do I have to wait longer? in millis
+        self.increment_wait_time = 0
 
         # Send a SCAN_DONE event each time a sent bouquet has been completely
         # collected
         self.events = Event(['SCAN_DONE'])
 
-        # Our netid. It's a random id used to detect network collisions.
-        self.netid = -1
-
         # If set to True, this module will reply to radar queries sent by our
         # neighbours.
         self.do_reply = False
 
+        self.stopping = False
+        self.running_instances = []
+
         self.remotable_funcs = [self.reply, self.time_register]
 
+        # this is needed to avoid to answer to myself
         self.ntkd_id = randint(0, 2**32-1)
+        # this is assigned when we hook inside a certain network
+        self.hooking_network_id = None
 
-    def run(self, started=0):
-        if not started:
-            micro(self.run, (1,))
-        else:
-            while True:
-                self.radar()
+    def run(self):
+        # Before launching the microfunc,
+        # make sure to note down that radar.run has been launched.
+
+        # There should always be just one instance
+        if self.running_instances:
+            raise Exception('An instance of Radar is already running')
+
+        self.running_instances.append(1)
+        self._run()
+
+    @microfunc(True)
+    def _run(self):
+        while not self.stopping:
+            self.radar()
+        self.running_instances.remove(1)
+        if not self.running_instances:
+            self.stopping = False
+
+    def stop(self, event_wait = None):
+        """ Stop the radar scanner """
+        if self.running_instances:
+            self.stopping = True
+            while self.stopping:
+                time.sleep(0.005)
+                micro_block()
 
     def radar(self):
         """ Send broadcast packets and store the results in neigh """
 
         self.radar_id = randint(0, 2**32-1)
         logging.debug('radar scan %s' % self.radar_id)
+        logging.debug('My netid is ' + str(self.neigh.netid))
+        logging.debug('I know these netids ' + str(self.neigh.netid_table))
 
         # we're sending the broadcast packets NOW
         self.bcast_send_time = self.xtime.time()
 
         # send all packets in the bouquet
         for i in xrange(self.max_bouquet):
-            self.broadcast.radar.reply(self.ntkd_id, self.radar_id)
+            self.broadcast.radar.reply(self.ntkd_id, self.radar_id, self.neigh.netid)
 
         # then wait
-        self.xtime.swait(self.max_wait_time * 1000)
+        self.xtime.swait(self.wait_time * 1000 + self.increment_wait_time)
 
-        # update the neighbours' ip_table
-        self.neigh.store(self.get_all_avg_rtt())
+        # test wether we are stopping
+        if not self.stopping:
+            # update the neighbours' ip_table
+            # Note: the neighbour manager will tell me if I have to wait
+            #       longer than usual at the next scan.
+            self.increment_wait_time = self.neigh.store(self.get_all_avg_rtt())
 
-        # Send the event
-        self.bouquet_numb += 1
-        self.events.send('SCAN_DONE', (self.bouquet_numb,))
+            # Send the event
+            self.bouquet_numb += 1
+            self.events.send('SCAN_DONE', (self.bouquet_numb,))
 
         # We're done. Reset.
         self.radar_reset()
@@ -439,11 +678,26 @@ class Radar(object):
         # Reset the broadcast sockets
         self.broadcast.reset()
 
-    def reply(self, _rpc_caller, ntkd_id, radar_id):
+    def reply(self, _rpc_caller, ntkd_id, radar_id, rmt_netid):
         """ As answer we'll return our netid """
-        if self.do_reply and ntkd_id != self.ntkd_id:
-            rpc.BcastClient(devs=[_rpc_caller.dev], xtimemod=self.xtime).radar.time_register(radar_id, self.netid)
-            return self.netid
+        # check we are not during a final hooking phase, or at bootstrap
+        if self.do_reply:
+            # check we are not replying to a different network than the one
+            # we are currently hooking to
+            if self.neigh.netid != -1 \
+                     or self.hooking_network_id is None \
+                     or self.hooking_network_id == rmt_netid:
+                # check we are not replying to ourselves
+                if ntkd_id != self.ntkd_id:
+                    bcc = rpc.BcastClient(devs=[_rpc_caller.dev],
+                          xtimemod=self.xtime)
+                    try:
+                        bcc.radar.time_register(radar_id, self.neigh.netid)
+                    except:
+                        logging.log(logging.ULTRADEBUG, 'Radar: Reply: BcastClient ' \
+                                + str(bcc) + ' with dispatcher ' \
+                                + repr(bcc.dev_sk[_rpc_caller.dev].dispatcher) \
+                                + ' error in rpc execution. Ignored.')
 
     def time_register(self, _rpc_caller, radar_id, netid):
         """save each node's rtt"""
@@ -466,7 +720,7 @@ class Radar(object):
         else:
             self.bcast_arrival_time[ip] = {}
             self.bcast_arrival_time[ip][net_device] = [time_elapsed]
-            logging.info("Radar: new IP %s detected", ip_to_str(ip))
+            logging.debug("Radar: IP %s detected", ip_to_str(ip))
 
         self.neigh.netid_table[ip] = netid
 
@@ -499,5 +753,5 @@ class Radar(object):
         # for each ip
         for ip in self.bcast_arrival_time:
             devs = self.get_avg_rtt(ip)
-            all_avg[ip] = Neigh(bestdev=devs[0], devs=dict(devs))
+            all_avg[ip] = Neigh(bestdev=devs[0], devs=dict(devs), ip=ip)
         return all_avg
