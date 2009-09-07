@@ -23,6 +23,8 @@ from ntk.core.route import NullRem, DeadRem
 from ntk.lib.event import Event
 from ntk.lib.micro import microfunc
 
+from ntk.config import settings
+
 def is_listlist_empty(l):
     """Returns true if l=[[],[], ...]
     :type l: a list of lists.
@@ -297,9 +299,18 @@ class Etp(object):
 
         # uhm... we are in different networks
 
-        ## Calculate the size of the two nets
-        mynetsz = reduce(add, self.maproute.node_nb)
-        ngnetsz = reduce(add, map(len, R))
+        ### Calculate the size of the two nets
+        lvl = self.maproute.nip_cmp(self.maproute.me, gwnip)
+        mynetsz=self.maproute.node_nb[lvl]
+        # TODO/TOCHECK: we are supposing that we are processing a new-link
+        # ETP, so that R[lvl] contains all the routes of level `lvl' of the
+        # neigh's network. Thus, to count its size we simply do as follow:
+        ngnetsz=len(R[lvl])
+
+        #NOTE: assuming that the communicating vessel system is working well,
+        #      to compare the size of the two network it is sufficient to
+        #      compare the number of gnodes of level `lvl'
+        ###
 
         if mynetsz > ngnetsz or \
            (mynetsz == ngnetsz and self.radar.netid > neigh.netid):
@@ -321,8 +332,8 @@ class Etp(object):
 
         ## Check if we are colliding with another (g)node of the neighbour
         ## net
-        level = self.maproute.nip_cmp(self.maproute.me, gwnip) + 1
-        if level < self.maproute.levels:
+        level = self.maproute.nip_cmp(self.maproute.me, gwnip)
+        if level+1 < self.maproute.levels:
             for dst, rem in R[level]:
                 if dst == self.maproute.me[level]:
                     # we are colliding! LET'S REHOOK
@@ -334,5 +345,11 @@ class Etp(object):
             for dst, rem in R[lvl]:
                 self.maproute.node_get(lvl, dst).route_reset()
         ##
+
+        ##TODO: uncomment this!
+        ##From now on, we are in the new net
+        ##logging.info('From now on, we are in the new net, our network id: %s' % neigh.netid)
+        ##self.ntkd.neighbour.netid = neigh.netid
+        ##self.events.send('COMPLETE_HOOK', ())
 
         return (False, R)
