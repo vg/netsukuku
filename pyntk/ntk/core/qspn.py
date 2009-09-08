@@ -218,6 +218,9 @@ class Etp(object):
         for block in reversed(TPL):
                 lvl=block[0]
                 for dst, rem in reversed(block[1]):
+                        # Ok, we can reach `dst' through `gw'. Is it really
+                        # worth doing? If it is better than the known route,
+                        # then yes! So, let's use route_change to check.
                         if self.maproute.route_change(lvl, dst, gw, tprem):
                                 TPL_is_interesting = True
                         tprem+=rem # TODO: sometimes rem is an integer
@@ -226,6 +229,10 @@ class Etp(object):
         ## Update the map from R
         for lvl in xrange(self.maproute.levels):
                 for dst, rem in R[lvl]:
+                        # Ok, the ETP is telling us that the best way to reach
+                        # `dst' through `gw' is `rem+tprem'.
+                        # So, if we have already such route, let's update its
+                        # rem, otherwise let's create it.
                         if not self.maproute.route_rem(lvl, dst, gw, rem+tprem):
                                 self.maproute.route_change(lvl, dst, gw, rem+tprem)
         ##
