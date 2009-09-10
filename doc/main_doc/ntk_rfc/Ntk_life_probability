@@ -1,0 +1,36 @@
+== NTK_RFC 0005 ==
+
+Subject: Life probability 
+
+----
+		    * WARNING *
+	    This RFC has been deprecated
+		    * WARNING *
+----
+
+Statistically, the probability of a link to continue to stay up is
+proportional to its uptime, f.e. it's more probable that a link with 1200
+seconds of uptime is more stable than 10 seconds old link.
+
+For this reason we give higher credits to older links, this means that
+we prefer to avoid routes which contain very young links.
+The uptime of a route is the uptime of the youngest link.
+
+{{{
+		A
+	       / \
+	      L   K
+	       \ /
+                N
+}}}
+
+Let's say K-A has an uptime of 600 seconds and L-A of 200.
+The node N, to reach A, will prefer the route N-K-A.
+
+=== Implementation ===
+
+In the TP we record the uptime of each traversed link. In this way, the node
+receiving the TP will be able to discriminate young routes from stable ones.
+
+----
+related: [Netsukuku_RFC]

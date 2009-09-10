@@ -1,0 +1,87 @@
+- debug, debug, debug
+
+- p2p.py: 
+	- add support for "strict services", that this services that all
+	  Netsukuku nodes have to participate (Coord, maybe even ANDNA).
+	  For the strict services p2p.py can assume that all the active nodes
+	  in the map are participant. Thus, for example, it isn't necessary to
+	  inform the other nodes that X is a participant to Coord.
+	- add support to stop to be a participant (participant_del)
+	-  suppose X becomes a participant and then stops to be one.
+	  suppose that Y receives first the message telling that X is no more
+	  a participant, and then the one telling X is a participant. This is
+	  a problem. To avoid this, X shall add incremental IDs to each p2p
+	  message it sends. Y shall store the last received IDs from X.
+	  If Y receives a message whose ID is less or equal then the current
+	  one, then Y drops it.
+
+	- extend the theory:  declare the participation of nodes using a 
+	  coordinator-node. In this way:
+		- don't use numerical ID for services. Let's use descriptive strings.
+		  For example, 'ntk.andna', 'ntk.coord'.
+		- a node will announce its partecipation to the 'myp2psrv'
+		  service  contacting its Local Hash Gnodes associated to the string
+		  'myp2psrv'. (see the Ntk_local_ANDNA  RFC)
+		  The Local Hash Gnodes will keep the list of participant that
+		  contacted them. For example, if a LHG has IP 11.22.33.44,
+		  its stored list can be as follow:
+		  	[11.22.33.13, 11.22.33.15, 11.22.55, 11.22.91, ...
+			 ..., 11.55, 23, 29]
+		  (stored in the TPL format)
+	  With this method, it isn't necessary to flood the network to
+	  announce the partecipation of a gnode.
+	  Clearly, each time the list of participant of a given level is
+	  needed, the Local Hash Gnodes must be contacted. This isn't optimal
+	  for the LHG which maintain the list of the last level (it would be
+	  contacted to many times)
+
+		  ...To do...   ...To refine...
+
+- misc
+	- When using wifi devices, don't create a TCP connection for each
+	  link. Use UDP and exploit the broadcast. In other words, if it is
+	  possible to send a packet to more than one neighbor, at the same
+	  time, do it using broadcast.
+
+- ANDNA
+	- Core: use ntk/core/p2p.py to implement the basic services of ANDNA.
+	  As an example, see coord.py. It is a P2P service based on p2p.py.
+	  Keep in mind what is written in doc/main_doc/ntk_rfc/Ntk_p2p_over_ntk.pdf
+	  
+	  The ANDNA core is composed by two different P2P services: 
+	  	1) the service that stores the IPs
+		2) the service of the counter nodes, that stores the number of hostnames registered by a node.
+
+		- You need to use OpenSSL to implement the cryptographic part of ANDNA
+		  (see 3.4 Cryptographic ANDNA  of andna.pdf)
+		  You can easily port the src/crypto.[ch] C wrapper because it
+		  uses standard calls to OpenSSL.
+
+		- Try to copy the old C implementation (src/andn*.[ch])
+		  You can leave almost unchanged some function:
+		     andna.c: andna_hash(), andna_hash_by_family(), andna_resolvconf_modify()
+		  Moreover you can read some function to know the detail of
+		  the ANDNA protocol, even by just reading the comments, for
+		  example see andna.c: andna_hook(), andna_update_hnames()
+
+	- Implement the resolution cache, see (3.10 Distributed cache for
+	  hostname resolution) and see src/andna_cache.[ch]
+	  In python you should be able to implement it in less than two days ;)
+	  Try to optimize it! A cache should be fast and small.
+
+	- Adjust the C implementation of ANDNS and make it work with the pyntk
+	  version of ANDNA. ANDNS is the DNS server which listen to DNS
+	  queries and calls the  client part of ANDNA to resolve them.
+	  Note: you shouldn't recode ANDNS in python. It is already good in C,
+	  you have just to interface pyntk and ANDNS.
+	  Make ntk-resolve work too.
+	  See http://lab.dyne.org/Ntk_andna_and_dns
+	  Contact Federico Tomassini for further info ( effetom [a][t] gmail dot com )
+
+	- Implement the Scattered Name Service Disgregation (see andna.pdf)
+
+	- Revise and implement the Local ANDNA RFC ( see http://lab.dyne.org/Ntk_local_ANDNA )
+
+	- Write a test suite for everything ;)
+
+- RFCs and other TODOs: http://lab.dyne.org/Ntk_TODO, http://lab.dyne.org/Netsukuku_RFC

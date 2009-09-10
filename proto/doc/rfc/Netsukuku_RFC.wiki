@@ -1,0 +1,37 @@
+﻿Request For Comments about Netsukuku
+
+ * NTK_RFC 0015 Local ANDNA                     [[Ntk_local_ANDNA]]
+ * NTK_RFC 0014 P2P over Netsukuku              [[Ntk_p2p_over_ntk]] (done)
+ * NTK_RFC 0013 Caustic Routing                 [[Ntk_caustic_routing]]
+ * NTK_RFC 0012 Net Split                       [[Ntk_net_split]]
+ * NTK_RFC 0011 Carciofo                        [[Ntk_carciofo]]
+ * NTK_RFC 0010 Viphilama                       [[Ntk_viphilama]]
+ * NTK_RFC 0009 SNSD                            [[Ntk_SNSD]]
+ * NTK_RFC 0008 Restricted IP classes           [[Ntk_restricted_ip_classes]] (deprecated)
+ * NTK_RFC 0007 Andna counter pubk:             [[Ntk_andna_counter_pubk]]
+ * NTK_RFC 0006 Andna and dns:                  [[Ntk_andna_and_dns]]
+ * NTK_RFC 0005 Life probability:               [[Ntk_life_probability]]
+ * NTK_RFC 0004 Mail Exchange request:          [[Ntk_MX_request]] (deprecated)
+ * NTK_RFC 0003 Internet gateways search:       [[Ntk_IGS]]
+ * NTK_RFC 0002 Bandwidth measurement:          [[Ntk_bandwidth_measurement]]
+ * NTK_RFC 0001 Gnodes contiguity:              [[Ntk_gnodes_contiguity]]
+
+== Implementation status ==
+ * NTK_RFC 0001  [ 50% ]
+ * NTK_RFC 0002  [  0% ]
+ * NTK_RFC 0003  [ 90% ]
+ * NTK_RFC 0004  [100% ]  (deprecated by NTK_RFC 0009)
+ * NTK_RFC 0005  [  0% ]
+ * NTK_RFC 0006  [100% ]
+ * NTK_RFC 0007  [100% ]
+ * NTK_RFC 0008  [100% ]  (deprecated by NTK_RFC 0012)
+ * NTK_RFC 0009  [ 90% ]
+ * NTK_RFC 0010  [ 05% ]
+ * NTK_RFC 0011  [  0% ]
+ * NTK_RFC 0012  [100% ] 
+ * NTK_RFC 0013  [  0% ]
+ * NTK_RFC 0014  [100% ]
+ * NTK_RFC 0015  [  0% ]
+
+----
+ . Related [[Netsukuku]]

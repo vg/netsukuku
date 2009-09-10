@@ -1,0 +1,209 @@
+%        File: netsukuku.tex
+%     Created: Sun Nov 19 03:00 PM 2006 C
+% Last Change: Sun Nov 19 03:00 PM 2006 C
+%
+% This file is part of Netsukuku
+% (c) Copyright 2007 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+%
+% This source code is free software; you can redistribute it and/or
+% modify it under the terms of the GNU General Public License as published 
+% by the Free Software Foundation; either version 2 of the License,
+% or (at your option) any later version.
+%
+% This source code is distributed in the hope that it will be useful,
+% but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+% Please refer to the GNU Public License for more details.
+%
+% You should have received a copy of the GNU Public License along with
+% this source code; if not, write to:
+% Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+%
+
+\documentclass[a4paper]{article}
+\usepackage{color,graphicx}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\RequirePackage{ifpdf} % running on pdfTeX?
+\ifpdf
+\usepackage[pdftex,bookmarks=true,
+		   bookmarksnumbered=false,
+		   bookmarksopen=false,
+		   colorlinks=true,
+		   linkcolor=webred] {hyperref}
+\definecolor{webgreen}{rgb}{0, 0.5, 0} % less intense green
+\definecolor{webblue}{rgb}{0, 0, 0.5} % less intense blue
+\definecolor{webred}{rgb}{0.5, 0, 0}   % less intense red
+\else
+\newcommand{\href}[2]{ #1 }
+\fi
+\title{Netsukuku\\
+{\small Close the world, \reflectbox{Open the next}}}
+\author{http://netsukuku.freaknet.org}
+	%AlpT (@freaknet.org)
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Netsukuku e' un sistema di rete p2p creato per gestire un numero pressoche' 
+illimitato di nodi con minime risorse di CPU e memoria. E' idoneo a far 
+nascere agevolmente una rete mondiale distribuita, anonima e non controllabile, 
+totalmente avulsa da Internet, dai suoi server, ISP ed Enti di controllo.\\
+In questo documento, diamo una descrizione generica e non tecnica della rete 
+Netsukuku, evidenziandone l'idea di fondo e le principali caratteristiche.
+\end{abstract}
+
+
+\section{La vecchia Rete}
+
+Internet e' una rete a struttura gerarchica gestita da societa' multinazionali e da organizzazioni governative. Non esiste un solo byte di traffico su Internet che non passi attraverso le dorsali ed i router delle societa' di telecomunicazioni che ne sono proprietari.\\
+Gli Internet Service Provider (ISP) offrono connettivita' a tutti gli utenti che si trovano nel livello piu' basso di una struttura rigorosamente gerarchica e piramidale. Per questa ragione, Internet non puo' essere affatto considerata una rete globale condivisa tra i suoi utenti. Le persone possono partecipare a questa grande rete solo se s'impegnano ad accettare le condizioni ed i termini rigorosamente  imposti dalle multinazionali.
+Internet rappresenta, oggi, la rete per eccellenza di accesso
+all'informazione, al sapere e alla comunicazione. Circa un miliardo di persone
+puo' connettersi a questa enorme rete proprietaria, mentre ai rimanenti cinque
+miliardi di abitanti, che vivono in Paesi con risorse insufficienti, non
+rimane altro che attendere che le multinazionali delle telecomunicazioni
+decidano come e quando offrire loro connettivita'.
+Internet e' stata in origine concepita col fine di garantire comunicazioni
+sicure ed inattaccabili tra diversi nodi della rete, ma oggi, paradossalmente,
+un qualsiasi ISP ha il potere di tagliare fuori da Internet intere nazioni,
+semplicemente interrompendo la fornitura del proprio servizio.
+Internet, inoltre, non e' ne potra' mai essere anonima: gli ISP posso
+rintracciare ed analizzare il traffico di dati che passano attraverso i loro
+server, senza alcuna limitazione.
+Internet da' origine, come naturale conseguenza, ad altri sistemi improntati
+alla sua stessa natura gerarchica e centralizzata, come, ad esempio, il DNS. I
+server del Domain Name System sono gestiti da diversi ISP, e gli stessi domini sono 
+letteralmente venduti attraverso un simile sistema centralizzato. Questo
+insieme di servizi consente, in modo molto semplice ed efficace, di
+localizzare fisicamente qualunque computer collegato a Internet, in un tempo
+molto breve e senza alcun particolare sforzo.
+In Cina, l'intera rete e' costantemente controllata da diversi computer che
+filtrano il traffico Internet: un cittadino cinese non sara' mai in grado di
+visionare o venire a conoscenza di siti che contengono parole chiavi che, come
+``democrazia'', sono sottoposte a censura dal suo governo. Non gli sara' mai concessa la possibilita' di esprimere le proprie idee politiche, senza, per questo, rischiare persino una condanna alla pena di morte.
+D'altronde, Internet e' nata con il fine di soddisfare i bisogni di sicurezza
+dell'amministrazione militare degli stati Uniti d'America e non certo per
+assicurare la liberta' di comunicazione e d'informazione. Ogni utente di
+Internet, oggi, per poter comunicare con altri utenti, e' obbligato a
+sottomettersi al controllo e ricorrere ai servizi delle grandi multinazionali, la cui
+vera missione e' di espandere sempre piu' la propria egemonia.\\
+Essendo un dato di fatto che tutti gli sforzi per apportare su Internet
+maggiore liberta', tutela della privicy e garanzie di accessibilita' si
+scontrano con l'avversione, le fobie e gli interessi contrari di Governi e
+compagnie private, la soluzione piu' adeguata al problema e' quella di offrire
+a tutti l'alternativa di migrare verso un'altra rete totalmente avulsa da
+Internet, che sia efficiente, distribuita e decentralizzata, in modo tale che
+al suo interno ci siano soltanto utenti che interagiscano tra loro in maniera
+assolutamente paritetica, senza privilegi, sistemi di condizionamento o di
+controllo, per dar modo a chiunque vi sia connesso di far parte di una nuova
+comunita' mondiale veramente libera.
+
+\section{The Netsukuku wired}
+Netsukuku e' una mesh network o sistema di rete p2p che si 
+genera e sostiene autonomamente. E' stato concepito per supportare
+un numero pressoche' illimitato di nodi, richiedendo dalla CPU e 
+dalla memoria di ciascun PC collegato un impiego minimale di risorse.
+Grazie alle sue caratteristiche Netsukuku 
+puo' essere facilmente impiegato per costruire una rete non controllata, 
+anonima e distribuita, totalmente staccata da Internet, dai suoi server, 
+ISP e dai suoi enti di governo.\\
+Questa rete e' costituita dagli stessi computer collegati fisicamente 
+l'un l'altro e, pertanto, non poggia su Internet o su alcun altra rete esistente.\\
+Netsukuku provvede autonomamente a stabilire le rotte tra i computer: 
+in termini tecnici, Netsukuku rimpiazza il livello 3 del modello iso/osi 
+con un altro protocollo di routing.\\
+Poiche' Netsukuku e' una rete a struttura distribuita e decentralizzata, 
+rende possibile l'implementazione di altri sistemi distribuiti poggianti 
+su di essa come, ad esempio, l'ANDNA (A Netsukuku Domain Name Architecture)
+\cite{andnadoc} che rimpiazza il sistema DNS gerarchico e 
+centralizzato attualmente in uso su Internet.
+
+\subsection{Gandhi}
+La principale caratteristica di Netsukuku e' quella dell'auto-sostentamento: 
+la rete si configura dinamicamente, senza mai aver necessita' di alcun 
+intervento esterno. Tutti i nodi condividono gli stessi privilegi e limitazioni, 
+dando lo stesso contributo al sostentamento ed all'espansione della rete Netsukuku. 
+Piu' i nodi crescono in numero e piu' la rete si espande e diventa efficiente.\\
+La totale decentralizzazione e distribuzione consente a Netsukuku di non essere 
+ne' controllabile ne' distruggibile: l'unico modo per manipolare o demolirla e' di 
+abbattere fisicamente ogni singolo nodo di cui la rete e' composta.
+
+
+\subsection{Nessun nome, nessuna identita'}
+
+All'interno della rete Netsukuku chiunque, in qualunque luogo, in ogni momento puo' 
+agganciarsi immediatamente alla rete, senza passare attraverso procedure burocratiche 
+o adempimenti legali.\\
+Ogni elemento della rete e' estremamente dinamico non rimanendo mai identificato 
+univocamente. Infatti, l'indirizzo IP che identifica ciascun computer e' assegnato 
+casualmente ed e' estremamente difficile associarlo a un determinato luogo fisico.
+Inoltre, poiche' le rotte attraversano un alto numero di nodi, e' un'impresa 
+davvero titanica quella di rintracciare uno specifico nodo.\\
+Il traffico dei nodi e' protetto da un layer di crittografia completo \cite{carciofo}, 
+che assicura un grado elevato di anonimita' e sicurezza.
+
+
+\subsection{Allora, cos'e'?}
+
+Netsukuku e' una mesh network che si sostiene grazie al proprio protocollo di routing 
+dinamico. 
+Attualmente esiste un largo numero di protocolli di routing dinamico, ma sono 
+utilizzabili soltanto per creare reti di piccole o medie dimensioni. Gli stessi routers 
+di Internet sono gestiti con diversi protocolli come l'OSPF, il RIP o il BGP, fondati 
+su differenti algoritmi classici della teoria dei grafi, che sono capaci di trovare la rotta
+migliore per raggiungere un nodo all'interno di un dato grafo. Tuttavia, tutti 
+questi protocolli richiedono un impiego massiccio di CPU e di memoria. Per
+questo motivo, 
+i router di Internet sono computer dedicati espressamente all'esecuzione dei predetti 
+algoritmi. Sarebbe impossibile implementare uno solo di questi protocolli per creare 
+e mantenere una mesh network con un numero di utenti simile a Internet.
+Il protocollo di Netsukuku struttura l'intera rete come un frattale\cite{ntktopology} 
+e, per calcolare tutte le rotte necessarie, fa uso di un particolare algoritmo denominato 
+QSPN \cite{qspndoc}.
+Un frattale e' una struttura che puo' essere compressa all'infinito, perche' ogni sua 
+parte e' composta dallo stesso frattale. Pertanto il suo alto livello di compressibilita' 
+offre la possibilita' di conservare l'intera mappa di Netsukuku in soli pochi Kilobyte.
+D'altra parte, il QSPN e' un algoritmo che ha il compito di essere eseguito dalla stessa rete. 
+I nodi lo eseguono semplicemente inviando e ricevendo i Tracer Packets, senza impegnare 
+affatto pesanti risorse computazionali.
+
+\subsection{Netsukuku e il wireless}
+Il modo migliore per stabilire connessioni fisiche tra nodi e' il wifi.
+Quando Netsukuku sara' ampiamente diffuso, i suoi utenti dovranno soltanto
+piazzare la propria antenna wifi in maniera ben
+esposta (ad esempio finestre o tetti) e connettersi ad altri utenti di
+Netsukuku situati all'interno della loro portata radio.
+Ad oggi, esiste una grande varieta' di tecnologie wifi che consentono di
+collegare due nodi distanti anche chilometri tra loro. Inoltre, un'intera
+citta' puo' essere facilmente coperta perche' la sua alta densita' abitativa
+rende necessario solo un nodo-ponte per ogni quartiere.\\
+Tra l'altro e' possibile utilizzare tunnel virtuali poggianti su Internet per
+rimpiazzare temporaneamente i link fisici mancanti. Vedi \cite{inetdoc}.
+
+%%%%%%%%%%%%%%%%
+% Bibliography %
+%%%%%%%%%%%%%%%%
+
+\begin{thebibliography}{99}
+	\bibitem{ntksite} Netsukuku website:
+		\href{http://netsukuku.freaknet.org/}{http://netsukuku.freaknet.org/}
+	\bibitem{qspndoc} Documento del QSPN:
+		\href{http://netsukuku.freaknet.org/doc/main\_doc/qspn.pdf}{qspn.pdf}
+	\bibitem{ntktopology} Netsukuku topology document:
+		\href{http://netsukuku.freaknet.org/doc/main\_doc/topology.pdf}{topology.pdf}
+	\bibitem{andnadoc} Documento dell'ANDNA:
+		\href{http://netsukuku.freaknet.org/doc/main\_doc/andna.pdf}{andna.pdf}
+	\bibitem{carciofo} Carciofo NTK\_RFC:
+		\href{http://lab.dyne.org/Ntk\_carciofo}{Carciofo}
+	\bibitem{inetdoc}  Internet e Netsukuku:
+		\href{http://netsukuku.freaknet.org/doc/main\_doc/inetntk.pdf}{inetntk.pdf}
+\end{thebibliography}
+\newpage
+
+\begin{center}
+\verb|^_^|
+\end{center}
+\end{document}

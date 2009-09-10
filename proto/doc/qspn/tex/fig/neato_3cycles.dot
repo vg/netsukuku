@@ -1,0 +1,216 @@
+graph "G" {
+	graph [
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		bb = "0,0,198,180"
+		color = "black"
+	]
+	node [
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		shape = "circle"
+		color = "black"
+	]
+	edge [
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		color = "black"
+	]
+	"C" [
+		label = "\N"
+		color = "black"
+		width = "0.500000"
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		pos = "31,162"
+		height = "0.500000"
+		shape = "circle"
+	]
+	"A" [
+		label = "\N"
+		color = "black"
+		width = "0.500000"
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		pos = "18,90"
+		height = "0.500000"
+		shape = "circle"
+	]
+	"B" [
+		label = "\N"
+		color = "black"
+		width = "0.500000"
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		pos = "31,18"
+		height = "0.500000"
+		shape = "circle"
+	]
+	"D" [
+		label = "\N"
+		color = "black"
+		width = "0.500000"
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		pos = "72,90"
+		height = "0.500000"
+		shape = "circle"
+	]
+	"E" [
+		label = "\N"
+		color = "black"
+		width = "0.500000"
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		pos = "99,162"
+		height = "0.500000"
+		shape = "circle"
+	]
+	"F" [
+		label = "\N"
+		color = "black"
+		width = "0.500000"
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		pos = "85,18"
+		height = "0.500000"
+		shape = "circle"
+	]
+	"G" [
+		label = "\N"
+		color = "black"
+		width = "0.500000"
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		pos = "126,90"
+		height = "0.500000"
+		shape = "circle"
+	]
+	"H" [
+		label = "\N"
+		color = "black"
+		width = "0.500000"
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		pos = "153,162"
+		height = "0.500000"
+		shape = "circle"
+	]
+	"I" [
+		label = "\N"
+		color = "black"
+		width = "0.500000"
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		pos = "166,18"
+		height = "0.500000"
+		shape = "circle"
+	]
+	"L" [
+		label = "\N"
+		color = "black"
+		width = "0.500000"
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		pos = "180,90"
+		height = "0.500000"
+		shape = "circle"
+	]
+	"C" -- "A" [
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		pos = " 28,144 26,133 23,119 21,108"
+		color = "black"
+	]
+	"A" -- "B" [
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		pos = " 21,72 23,61 26,47 28,36"
+		color = "black"
+	]
+	"C" -- "D" [
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		pos = " 40,146 47,134 56,118 63,106"
+		color = "black"
+	]
+	"D" -- "B" [
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		pos = " 63,74 56,62 47,46 40,34"
+		color = "black"
+	]
+	"D" -- "F" [
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		pos = " 75,72 77,61 80,47 82,36"
+		color = "black"
+	]
+	"E" -- "D" [
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		pos = " 93,145 89,134 83,119 79,107"
+		color = "black"
+	]
+	"E" -- "G" [
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		pos = " 105,145 109,134 115,119 119,107"
+		color = "black"
+	]
+	"G" -- "F" [
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		pos = " 117,74 110,62 101,46 94,34"
+		color = "black"
+	]
+	"G" -- "I" [
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		pos = " 135,74 142,62 151,46 157,34"
+		color = "black"
+	]
+	"H" -- "G" [
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		pos = " 147,145 143,134 137,119 133,107"
+		color = "black"
+	]
+	"L" -- "I" [
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		pos = " 177,72 174,61 172,47 169,36"
+		color = "black"
+	]
+	"H" -- "L" [
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		pos = " 159,145 163,134 169,119 173,107"
+		color = "black"
+	]
+}

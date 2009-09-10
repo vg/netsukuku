@@ -1,0 +1,31 @@
+#!/bin/bash
+#
+#
+
+img="$1"
+basenamepack="$2"
+destdir="$3"
+
+if [ -z "$img" ] || [ ! -d "$img" ]
+then
+	echo Error 1
+	exit 1
+fi
+
+if [ -z "$basenamepack" ]
+then
+	echo Error 2
+	exit 1
+fi
+
+if [ -z "$destdir" ] || [ ! -d "$destdir" ]
+then
+	echo Error 3
+	exit 1
+fi
+
+
+cd $img
+makepkg -l y -c n $basenamepack-i486-9.tgz > /dev/null
+echo "moving $basenamepack-i486-9.tgz to $destdir"
+mv $basenamepack-i486-9.tgz $destdir

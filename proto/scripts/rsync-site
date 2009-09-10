@@ -1,0 +1,30 @@
+#!/bin/bash
+
+NTK_REPOSITORY="`echo ~/tmp/netsukuku`"
+
+if [ ! -d $NTK_REPOSITORY ]
+then
+	echo Adjust the '$NTK_REPOSITORY' variable
+	exit 1
+fi
+cd $NTK_REPOSITORY
+
+rsynca()
+{
+	local url
+
+	url="$1"
+
+	rsync -auv -P --delete proto/2html $url/
+	rsync -auv -P ChangeLog doc/faq/FAQ README $url/files/
+	rsync -auv -P doc/main_doc/netsukuku doc/faq/FAQ $url/
+	rsync -auv -LP -C 'CVS' --exclude '*~' --delete  doc $url/files/
+	rsync -auv -LP -C 'CVS' --exclude '*~' --delete  doc $url/
+	cd site/
+	rsync -auv -P contacts  home  index.php  logo_netsukuku.jpg  style.css inc $url/
+	cd ../
+}
+
+rsynca freaknet.org:netsukuku/
+rsynca tamarindo.freaknet.org:netsukuku/
+rsynca hinezumi.org:/usr/local/apache2/htdocs/net/

@@ -1,0 +1,184 @@
+%        File: inetntk.tex
+%     Created: Mon Nov 20 11:00 PM 2006 C
+% Last Change: Mon Nov 20 11:00 PM 2006 C
+%
+% This file is part of Netsukuku
+% (c) Copyright 2007 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+%
+% This source code is free software; you can redistribute it and/or
+% modify it under the terms of the GNU General Public License as published 
+% by the Free Software Foundation; either version 2 of the License,
+% or (at your option) any later version.
+%
+% This source code is distributed in the hope that it will be useful,
+% but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+% Please refer to the GNU Public License for more details.
+%
+% You should have received a copy of the GNU Public License along with
+% this source code; if not, write to:
+% Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+%
+
+\documentclass[a4paper]{article}
+\usepackage{color,graphicx}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\RequirePackage{ifpdf} % running on pdfTeX?
+\ifpdf
+\usepackage[pdftex,bookmarks=true,
+		   bookmarksnumbered=false,
+		   bookmarksopen=false,
+		   colorlinks=true,
+		   linkcolor=webred] {hyperref}
+\definecolor{webgreen}{rgb}{0, 0.5, 0} % less intense green
+\definecolor{webblue}{rgb}{0, 0, 0.5} % less intense blue
+\definecolor{webred}{rgb}{0.5, 0, 0}   % less intense red
+\else
+\newcommand{\href}[2]{ #1 }
+\fi
+\title{Internet and Netsukuku}
+\author{http://netsukuku.freaknet.org\\AlpT (@freaknet.org)}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+	Netsukuku is completely independent from the Internet. However, a good
+	level of integration between the two networks must be preserved.
+	In this document, we present the techniques that allow Netsukuku to be
+	compatible with the standard Internet. Moreover, we show how it is
+	possible to use virtual Internet tunnels to temporarily replace missing
+	physical links.
+\end{abstract}
+
+\section{Internet compatibility}
+Even if Netsukuku has the potential to be a full substitute of the Internet,
+it must remain compatible with it for several reasons:
+\begin{enumerate}
+	\item During the transition phase, the Internet will play a key role
+		for the distribution of Netsukuku.
+	\item Internet virtual tunnels will be used to temporarily replace
+		missing physical links between nodes or entire gnodes.
+	\item The Internet will continue to be active and many people will
+		rely on it. One optimist prospective is that Netsukuku will
+		take its current place, and the Internet will become more and
+		more a commercial network, f.e. a huge interactive network-TV.
+\end{enumerate}
+There are two techniques which ensure the Internet compatibility.
+The first restricts the IP assigned to the Netsukuku network to a large
+private class. The second is a Linux hack which permits Netsukuku to utilise
+the complete set of IPs.\\
+Currently only the first has been implemented, however, when the second will
+replace it.
+
+\subsection{IP restriction}
+
+Netsukuku, in the Internet compatibility mode, is restricted to a subclass of
+ip, so that it doesn't interfere with the public classes of the Internet.
+We use the private class A (10.0.0.0) for the ipv4 and the Site-Local class for the
+ipv6.\\
+The other private classes are not influenced, to let the user create a LAN
+with just one gw/node Netsukuku.
+
+You can read more information about the Netsukuku restricted mode, in the
+NTK\_RFC 008 \cite{restrictedip}.
+
+\subsection{Net split}
+Net Split is a method, which gives Netsukuku the ability to use all the IP
+addresses available for a specific Internet Protocol while being compatible
+with it.\\
+In other words, Netsukuku can use all the ipv4 addresses while avoiding any IP
+conflict with the Internet.
+
+For more information about this method, read Net Split \cite{netsplit}.
+
+\section{Internet sharing}
+If the nodes are in restricted mode, they can share their Internet connection.
+Netsukuku will distribute efficiently the shared connections among the nodes,
+in this way every node will automatically know its nearest Internet gateway.
+
+For more information read IGS\cite{IGS}.
+
+\subsection{Distributed Internet connections}
+Netsukuku supports a routing method called "multi inet gateway".
+A node $n$ can connect to the Internet using, at the same time, multiple
+nodes which are sharing their connection.\\
+For example, if there are 5 nodes which share their 640Kb/s connections, the
+node $n$ will be able to use 5 parallel downloads at 640Kb/s.
+
+Furthermore, even the nodes which share their connections are able to
+use the Internet connections shared by the other nodes. In this way, a node
+donates its bandwidth but, at the same time, it receives donations from other
+users.
+
+For more information read IGS\cite{IGS}.
+
+\section{Virtual to Physical Layer Mapper}
+Viphilama stands for \textrm{Virtual to Physical Layer Mapper}.\\
+The basic idea of Viphilama is to connect, with Internet tunnels, nodes which
+aren't physically linked.
+Then whenever, Viphilama finds that a virtual link can be replaced by a
+physical one, it removes the virtual link.
+
+Viphilama  will permit to Netsukuku to expand itself over the Internet and then
+switch automatically to the physical layer without interfering with the
+stability of the Net.
+
+Viphilama transforms Netsukuku into a hybrid overlay network which expands the
+original structure of the Internet. Its main advantages are:
+
+\begin{enumerate}
+	\item the faster diffusion of Netsukuku: every user with an Internet
+		connection can join Netsukuku
+
+	\item the creation of a scalable network which is built upon the Internet
+		but is completely separated from it.
+
+	\item the automatic switch from the Netsukuku overlay network to the physical one
+
+	\item the freely registration of domain names (see ANDNA\cite{ANDNA}).
+
+	\item the usage of Carciofo \cite{carciofo} over the Internet.
+
+	\item the workaround of NAT restrictions: even with only one Internet
+		connection it is possible to connect an entire LAN to Viphilama. 
+		Inside Viphilama, every node of the LAN will get an unique IP,
+		therefore the NAT restriction imposed by the ISP (if you want more
+		IPs you have to pay) is ignored.
+\end{enumerate}
+
+
+
+%%%%%%%%%%%%%%%%
+% Bibliography %
+%%%%%%%%%%%%%%%%
+
+\begin{thebibliography}{99}
+	\bibitem{ntksite} Netsukuku website:
+		\href{http://netsukuku.freaknet.org/}{http://netsukuku.freaknet.org/}
+	\bibitem{ntktopology} Netsukuku topology document:
+		\href{http://netsukuku.freaknet.org/doc/main\_doc/topology.pdf}{topology.pdf}
+	\bibitem{viphilama} Viphilama NTK\_RFC:
+		\href{http://lab.dyne.org/Ntk\_viphilama}{Viphilama}
+	\bibitem{IGS} IGS NTK\_RFC:
+		\href{http://lab.dyne.org/Ntk\_IGS}{IGS}
+	\bibitem{restrictedip} NTK\_RFC 008:
+		\href{http://lab.dyne.org/Ntk\_restricted\_ip\_classes}{Restricted ip classes}
+	\bibitem{netsplit} Net Split NTK\_RFC:
+		\href{http://lab.dyne.org/Ntk\_net\_split}{Net split}
+	\bibitem{ANDNA} ANDNA document:
+		\href{http://netsukuku.freaknet.org/doc/main\_doc/andna.pdf}{andna.pdf}
+	\bibitem{carciofo} Carciofo NTK\_RFC:
+		\href{http://lab.dyne.org/Ntk\_carciofo}{Carciofo}
+\end{thebibliography}
+\newpage
+
+\begin{center}
+\verb|^_^|
+\end{center}
+
+
+
+\end{document}

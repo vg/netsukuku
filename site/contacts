@@ -1,0 +1,88 @@
+
+**
+***  General contacts
+**
+
+> Mailing list
+
+Subscribe to the netsukuku mailing to get help, be updated on the latest news
+and discuss on its development.
+
+To subscribe to the list, send a message to:
+    netsukuku-subscribe@lists.dyne.org
+or use the web interface:
+    http://lists.dyne.org/mailman/listinfo/netsukuku
+   
+You can browse the archive here:
+    http://lists.dyne.org/lurker/list/netsukuku.en.html
+    http://dir.gmane.org/gmane.network.peer-to-peer.netsukuku
+
+> IRC
+
+We live night and day in IRC, come to see us on channel
+   #netsukuku
+on the FreeNode irc server (irc.freenode.org).
+
+
+**
+*** Related links
+**
+
+ - Wiki	      : http://lab.dyne.org/Netsukuku
+ - svn online : http://dev.hinezumi.org/browser/netsukuku/trunk
+ - svn commits: http://cia.navi.cx/stats/project/netsukuku
+ 		http://dev.hinezumi.org/log/netsukuku
+ - Bug tracker: http://dev.hinezumi.org/report
+
+ - http://www.freaknet.org
+ - http://www.dyne.org
+ - http://www.hinezumi.org
+ - http://poetry.freaknet.org
+
+
+**
+***  Authors
+**
+
+
+> Main authors and maintainers:
+
+  Andrea Lo Pumo aka AlpT <alpt@netsukuku.org>
+
+
+> Contributors to the Pyntk code:
+
+  Daniele Tricoli aka Eriol <eriol@mornie.org>
+  Alberto Santini	    <alberto@unix-monk.com>
+
+
+> Contributors to the old Netsukuku C code:
+
+  Federico Tomassini aka Efphe <efphe@netsukuku.org> 
+  Enzo Nicosia aka Katolaz     <katolaz@netsukuku.org>
+
+
+> Website developers and maintainers:
+
+  Manuel Cangemi aka Crash <crash@netsukuku.org>,
+  Black			   <black@netsukuku.org>
+
+
+> Occasional contributors:
+
+>> Pyntk code:
+
+  Sergey Konyahin <sergey.konyahin@gmail.com>
+
+>> Documentation:
+
+  Ralith		<ralith@gmail.com>
+  Ricardo Lanziano	<ricardo.lanziano@gmail.com>
+
+>> Old Netsukuku C code:
+
+  Andrea Leofreddi	<andrea.leofreddi@gmail.com> 
+
+>> Website
+
+  Elisa Manara aka Entropika	<e@entropika.net> 

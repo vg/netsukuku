@@ -1,0 +1,29 @@
+== Netsukuku puede crear una red global independiente de la Internet ==
+
+{{{
+El Open Source te permite migrar hacia el software libre, pero no hay ningún
+chance de unir tu PC con el resto del mundo en de manera libre.
+
+Imagina ser el titular de una membresia total hacia una red global, sin necesidad
+de contratos con ningún operador de Internet. Imagina navegar en una red donde no
+hay autoridad reguladora central que asigna IPs, condiciones, nombres y sufijos...
+
+Netsukuku, software libre que puede ser descargado de http://netsukuku.freaknet.org,
+hace posible la creación de una nueva red global distribuida, expandible a un numero
+ilimitado de usuarios, independiente y totalmente aparte de la Internet. Gracias al
+sistema particular de enrutamiento de Netsukuku, creado por el grupo "Freaknet" de
+Catania (Italia), la red es auto sostenida, gracias a todos los usuarios de la red que
+comparten un poco de sus recursos de hardware. Cualquier persona tiene oportunidades de
+unirse a la red, y al mismo tiempo, permitir que los demás usuarios también hagan lo
+mismo.
+
+De esta manera, los países y áreas del mundo donde las instalaciones de Internet no
+estén disponibles, simplemente mediante cubrimiento WiFi se puede crear y desarrollar
+una red sin someterse a ningún operador que ofrezca servicios de Internet y ninguna
+autoridad reguladora centralizada.
+
+"I hope someday you'll join us
+And the world will be as one..."
+                        -- J. Lenon
+
+}}}

@@ -1,0 +1,57 @@
+#!/bin/bash
+# This file is part of Netsukuku
+# (c) Copyright 2006 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+#
+# This source code is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as published
+# by the Free Software Foundation; either version 2 of the License,
+# or (at your option) any later version.
+#
+# This source code is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# Please refer to the GNU Public License for more details.
+#
+# You should have received a copy of the GNU Public License along with
+# this source code; if not, write to:
+# Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
+# -
+# pacca-static
+#
+# Creates the packages with the static binaries
+#
+
+# The directory where you have the checkout of Ntk
+NTK_REPOSITORY="`echo ~/tmp/netsukuku`"
+NTK_SCRIPTS="$NTK_REPOSITORY/proto/scripts"
+
+STATIC_REP="$NTK_REPOSITORY/proto/static"
+STATIC_PACKAGES="$NTK_REPOSITORY/proto/packages"
+TMP_STATIC_REP="/tmp/ntk-static"
+
+if [ ! -d $NTK_REPOSITORY ]
+then
+	echo Adjust the '$NTK_REPOSITORY' variable
+	exit 1
+fi
+
+cd $NTK_REPOSITORY
+version="`cat version`"
+BASENAME="netsukuku-$version"
+
+rm -r $STATIC_REP
+make clean > /dev/null
+LDFLAGS="-static" ./configure && make && \
+	DESTDIR="$STATIC_REP" make install  > /dev/null
+
+#
+# Build the packages
+#
+
+rm -r $STATIC_PACKAGES
+mkdir -p $STATIC_PACKAGES
+
+[ -d $TMP_STATIC_REP ] && rm -r $TMP_STATIC_REP
+cp -r $STATIC_REP $TMP_STATIC_REP
+$NTK_SCRIPTS/pacca-slack $TMP_STATIC_REP $BASENAME $STATIC_PACKAGES

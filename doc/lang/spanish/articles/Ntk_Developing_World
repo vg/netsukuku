@@ -1,0 +1,58 @@
+== Netsukuku y la infraestructura ICT en el mundo en vía de desarrollo ==
+
+{{{
+
+Red de Netsukuku: infraestructura de las TIC auto construida y auto
+sostenible para países en desarrollo.
+
+Los usuarios finales, para poder conectar sus PCs al resto del mundo a
+través de Internet, tienen que tener una subscripción con un operador de
+Internet.
+
+De la misma manera, los nombres de dominio son una manera única por la cual
+un dispositivo de red (que puede consistir en una computadora, un servidor
+de archivos, un dispositivo NAS, un cable modem, etc.) es conocido en Internet,
+y son vendidos literalmente mediante un sistema centralizado de nombres de
+dominio (DNS).
+
+Netsukuku, software libre que puede ser descargado de http://netsukuku.freaknet.org,
+hace posible la creación de una nueva red global distribuida, expandible a un
+numero ilimitado de usuarios, independiente y totalmente aparte de la Internet.
+
+Gracias al sistema particular de enrutamiento de Netsukuku, creado por el grupo
+"Freaknet" de Catania (Italia), la red es auto sostenida, gracias a todos los
+usuarios de la red que comparten un poco de sus recursos de hardware. Cualquier
+persona tiene oportunidades de unirse a la red, y al mismo tiempo, permitir que
+los demás usuarios también hagan lo mismo.
+
+En estos países y áreas del mundo donde no existen instalaciones que presten servicio
+de Internet, una red publica puede ser creada y desarrollada de manera muy simple
+(i.e. Mediante cubrimiento de WiFi), sin necesidad de depender de ningún proveedor
+de Internet. De la misma manera, todas las personas pueden compartir sus documentos,
+ya que hay un limite de 256 hostnames que pueden ser registrados y son automáticamente
+soportados por cada PC (i.e. Nodo de la red).
+
+Por ultimo, pero no menos importante, dentro de la red de Netsukuku todos los usuarios
+tienen la oportunidad de entrar a la Internet: de hecho, cualquier usuario puede
+obtener conectividad a Internet de otros usuarios que comparten y delegan el ancho
+de banda que no estén usando en el momento a la red de Netsukuku.
+
+El sistema de enrutamiento de Netsukuku difiere de todos los otros protocolos y
+algoritmos: los esquemas dinámicos existentes son utilizados únicamente para crear
+redes pequeñas y medianas.
+
+Los enrutadores de Internet también son manejados por diferentes protocolos como OSPF,
+RIP y BGP, todos ellos basados en diferentes algoritmos clásicos. Estos algoritmos
+son capaces de encontrar el mejor camino para llegar a un nodo en la red, pero requieren
+de un gran desperdicio de CPU y memoria para hacerlo. Es por eso que dentro de la
+Internet, todos los enrutadores son máquinas poderosas, dedicadas exclusivamente a
+este propósito. Por el contario, cuando un nodo se enlaza a Netsukuku, la red automáticamente
+se sobreescribe, mientras todos los demás nodos, usando una muy pequeña parte de sus
+recursos (unos pocos kb), reconocen cuales son las rutas mas rápidas y eficientes para
+comunicarse con el nodo que recién ingreso. Los nodos no tienen privilegios ni limitaciones:
+cuando comparados con otros nodos, ellos son parte de la red y dan su contribución para
+ayudar a la expansión y eficiencia de la red. Entre mas se incremente el numero de nodos,
+mas crecerá la red y se volverá estable. En Netsukuku no hay diferencias entre redes
+publicas y privadas, y hablar de LAN no tiene sentido.
+
+}}}

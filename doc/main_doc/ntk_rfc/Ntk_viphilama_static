@@ -1,0 +1,164 @@
+
+*
+**
+*** 1- The problem
+**
+*
+                                                                                                          
+          *******                               *******
+         *       *                             *       *    
+        *  GNODE  *                           *  GNODE  *                          
+         *       *                             *       *   
+          *******                               ******* 
+                           +----------+    
+                           | INTERNET | 
+                           +----------+    
+
+          *******                               *******
+         *       *                             *       *    
+        *  GNODE  *                           *  GNODE  *                                                        
+         *       *                             *       *                                                      
+          *******                               *******                                  
+                                                                     
+                                                                     
+The problem is to join the Gnodes with internet. 
+
+*
+**
+*** 2- A simple approach
+**
+*
+
+Consider only two gnode, with only one vnode:
+
+    GNODE A                        GNODE B
+
+      *  *  (VA)               (VB) *  *
+    *    *  *---      INET    ---*     *   *
+     *  *                            *   *
+     *    *
+
+The vnode are named VA and VB.
+Suppose also that the inet address of VA is know.
+
+VB decides to contact VA.
+
+*
+**
+*** 3- The vplama daemon
+**
+*
+
+The vplama daemon is a daemon running on vnodes.
+Initially, it listens on a locally unix socket and on the Inet 
+interface.
+
+The unix socket will be used to talk with ntkd.
+The network socket will be used to talk with other vnodes.
+
+For each vnode, a tunnel will be created. Then the vnode become
+a vrnode.
+
+When ntkd has to forward a ntk packet *which provenience is internal 
+to his gnode*, like a tracer, it forward the packet also to vplamad 
+using unix socket.
+Then, vplamad forwards the packet to each tunnel, ie to each vrnode.
+Then, when a remote vplamad receives the packet, it will forward it
+to his local ntkd.
+
+When ntkd receives a packet from vplamad, the packet will be 
+forwarded only inside the gnode: ie, pkts coming from inet are not
+resended to any vpalama daemon.
+
+The communication happens:
+
+        +-----------------+                   +-----------------+
+        |     **VA**      |                   |   **VB**        |
+        |                 |    +----------+   |                 |
+Gnode --|--ntkd    vplamd-|--  | INTERNET | --|-vplamd   ntkd --|-- Gnode
+        |    |    /       |    +----------+   |       \    |    |
+        |    |   /        |                   |        \   |    |
+        |  Unix /         |                   |         \ Unix  |
+        | Scoket          |                   |          Socket |
+        +-----------------+                   +-----------------+
+
+*
+**
+*** 4- Useless tunnels
+**
+*
+
+Vplamad will test the tunnel, killing the dead tunnel.
+
+*
+**
+*** 5- Hooking
+**
+*
+
+There is no hooking, just routing. Or, in the worst case, an internal 
+gnode rehooking.
+
+Let's explain.
+When VA and VB join, they control the compatibility of ntk netwrok 
+addresses.
+
+Switch:
+
+ i) network addresses are compatible
+    The VA vplamad informs the VA ntkd on the new route to join 
+    the addresses of the VB-Gnode. 
+    The route is the tunnel that vplamd created with VB ;)
+    For VB it's the same.
+ 
+ ii) network are not compatible
+    To join, one of the two gnode has to change his network.
+    Suppose that initially VB contacted VA: in such case, VA
+    imposes to VB to change the addresses.
+    Ie, the gnode that has to change the address is the 
+    connecting gnode.
+
+
+*
+**
+*** 6- Too Many rehook?
+**
+*
+
+The problem of rehooking arises.
+But it's important to consider the following
+
+ i) Internet is very diffused, so, each gnode will have a lot
+    of vnodes.
+
+ ii) When two gnodes will be vplamad connected with multiple
+     vnodes, it's safe to consider stable that connection.
+ 
+ iii) If the connection is stable, each gnode knows continuously
+      the ntk-network address of the remote gnode.
+ 
+ iv) So, it's very easy for each gnode to choose, in the case of
+    internal rehook, a compatible network.
+ 
+ v) When a group of gnodes will be connected in a stable way, 
+    the vnodes of this group will never contact new gnodes.
+    They already have a good net. Ie, they will play a passive
+    role: new gnodes that want to join this group will do the
+    active part. 
+    So (see 5(ii)) stable network will remain stable, while the
+    problem of rehooking is a problem for the atomic new gnodes.
+ 
+
+*
+**
+*** 6- Entry servers
+**
+*
+
+vplamad stores the list of all his vrnodes that lives at 
+least 3 days.
+The daemon could be contacted and send the list.
+
+A list of reliable, fast entryservers will be stored somewhere
+on the net.
+

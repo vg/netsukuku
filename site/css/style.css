@@ -1,0 +1,182 @@
+html {
+	font-family: Verdana, sans-serif;
+	font-size: 11px;
+	color: #000000;
+	margin: 0px;
+	padding: 0px;
+	background-color: #AAAAAA;
+}
+
+body { 
+	margin: 0px;
+	padding: 0px;
+}
+
+div.top {
+	text-align: center;
+}
+
+.on { color: #24EE69; }
+
+.off { color: #EE2469; }
+
+/*a:link, a:active, a:visited { text-decoration: none; color : #006699; }
+
+a:hover { text-decoration: none; color : #DD6900; }*/
+
+a:link, a:visited, a:active, a:hover { text-decoration: none; }
+
+#filez a {
+	color: #B33C8C
+}
+
+#login a {
+	color: #CCCCCC;
+}
+
+#login a:hover {
+	color: #FFFFFF;
+}
+
+#mycode {
+	font-family: Verdana, sans-serif;
+	border: 1px black dashed;
+	text-align: left;
+	font-size: 10px;
+	color: #000000;
+	padding: 5px;
+	white-space: pre;
+}
+
+#mycode span {
+	font-family: Verdana, sans-serif;
+}
+
+#mycode pre {
+	font-family: Verdana, sans-serif;
+}
+
+/*a#notc {
+	position: fixed;
+	left: 0;
+	display: block;
+	height: 80px;
+	width: 80px;
+	background: url(./notc_web.png) bottom right no-repeat;
+	text-indent: -999em;
+	text-decoration: none;
+}*/
+
+#logo {
+	background-color: #000000;
+	height: 111px;
+	/*text-align: center;*/
+}
+
+#container {
+	margin: 0px auto;
+	width: 800px;
+	border-left: black solid 1px;
+	border-right: black solid 1px;
+	background-color: #FFFFFF;
+}
+
+#menu {
+	background-color: #EEE;
+	width: 99%;
+	color: #000000;
+	margin: 2px;
+	padding: 2px;
+	/*text-transform: uppercase;*/
+	border-bottom: 1px solid #000000;
+}
+
+#menu ul {
+	margin-left: 6px;
+	margin-top: 2px;
+	margin-bottom: -1px;
+	padding: 0px;
+}
+
+#menu a:link, a:visited {
+	color: #000000;
+}
+
+#menu a:hover {
+	background-color: #B33C8C;
+	color: #FFFFFF;
+}
+
+#sidebar {
+	float: right;
+	width: 12em;
+	text-align: left;
+	margin: 0px 0px 0px 0px;
+	padding: 7px 7px 7px 14px;
+	color: #AAAAAA;
+	/*background-color: #CCCCCC; */
+}
+
+#content {
+	border-right: 1px solid silver;
+	margin: 0 14em 0 0;
+	padding: 10px;
+}
+
+#foot {
+	border-top: 1px solid #DDDDDD;
+	border-bottom: 1px solid #000;
+	background-color: #FFFFFF;
+	color: #000000;
+	margin: 0px 0px 0px 0px;
+	clear: both;
+	font-size: 10px;
+	text-align: center;
+	padding: 5px 15px 5px 15px;
+}
+
+#foot a {
+	color: #B33C8C;
+}
+
+#powered {
+	width: 100%;
+}
+
+#powered img {
+	padding: 1px;
+	margin-left: 4px;
+	border: none;
+}
+
+#netmon {
+	margin: auto;
+	border: none;
+}
+
+li.entry { display: inline; }
+
+li.men {
+	background-color: #BBB;
+	padding: 0px;
+	margin-left: 2px;
+	display: inline;
+	border-left: 1px black solid;
+	border-top: 1px black solid;
+	border-right: 1px black solid;
+}
+
+li.active {
+	background-color: #FFFFFF;
+        padding: 1px;
+        margin-left: 2px;
+        display: inline;
+        border-left: 1px black solid;
+        border-top: 1px black solid;
+        border-right: 1px black solid;
+	border-bottom: 1px white solid;
+}
+
+li.sep {
+	display: inline;
+}

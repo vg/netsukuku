@@ -1,0 +1,30 @@
+#!/bin/bash
+#
+# functions to be sourced by `pacca' scripts
+#
+
+###
+##########  Copy CVS
+###
+
+copy_cvs_entry() {
+	local from=$1
+	local to=$2
+	
+	echo Copying CVS from $from to $to
+	if [ ! -d $to ]
+	then
+		mkdir --verbose -p $to
+	fi
+
+	for i in `cat $from/CVS/Entries |grep -v CVS |  cut -d "/" -f 2`
+	do
+		if [ -d $from/$i ]
+		then
+			copy_cvs_entry $from/$i $to/$i
+		elif [ -f $from/$i ]
+		then
+			cp -pv $from/$i $to/
+		fi
+	done
+}

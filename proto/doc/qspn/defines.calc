@@ -1,0 +1,2 @@
+define cbinom(n,k) { return (n!)/((k!)*(n-k)!); }
+define nc(n) { local i,r; for(i=3; i<=n; i++) { r+=(cbinom(n,i)/2)*((i-1)!); } return r; }

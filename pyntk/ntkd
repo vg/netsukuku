@@ -1,0 +1,128 @@
+#!/usr/bin/env python
+##
+# This file is part of Netsukuku
+# (c) Copyright 2007 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+# (c) Copyright 2008 Daniele Tricoli aka Eriol <eriol@mornie.org>
+#
+# This source code is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as published 
+# by the Free Software Foundation; either version 2 of the License,
+# or (at your option) any later version.
+#
+# This source code is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# Please refer to the GNU Public License for more details.
+#
+# You should have received a copy of the GNU Public License along with
+# this source code; if not, write to:
+# Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+##
+
+import os.path
+import sys
+
+from optparse import OptionParser
+
+from ntk import VERSION
+from ntk.config import settings, ImproperlyConfigured
+from ntk.lib.log import init_logger
+from ntk.lib.micro import allmicro_run
+from ntk.ntkd import NtkNode
+
+
+def interfaces_optcb(option, opt, value, parser):
+    ''' Callback for interfaces and exclude-interfaces option.
+
+    Manage several interfaces and add them to a list
+    For example:
+        ntkd -i wlan1 wlan2 -e lo eth0
+    '''
+    if value is not None:
+        value = [value]
+
+    for arg in parser.rargs:
+        if ((arg[:2] == "--" and len(arg) > 2) or
+            (arg[:1] == "-" and len(arg) > 1)):
+            break
+        else:
+            value.append(arg)
+
+    setattr(parser.values, option.dest, value)
+
+def main():
+
+    usage = '''usage: %prog [OPTION]'''
+
+    parser = OptionParser(usage, version='%%prog %s' % VERSION)
+
+    parser.add_option('-c', '--config', dest='config_file',
+                      help='override configuration file path')
+    parser.add_option('-4', '--ipv4', action='store_true',
+                      help='use Internet Protocol version 4')
+    parser.add_option('-6', '--ipv6', action='store_true',
+                      help='use Internet Protocol version 6')
+    parser.add_option('-e', '--exclude-interface(s)',
+                      dest='exclude_interfaces',
+                      action='callback',
+                      callback=interfaces_optcb,
+                      default=[],
+                      type='string',
+                      help='don\'t use specified interface(s)')
+    parser.add_option('-i', '--interfaces',
+                      dest='interfaces',
+                      action='callback',
+                      callback=interfaces_optcb,
+                      default=[],
+                      type='string',
+                      help='use specified interface(s)')
+    parser.add_option('-v',
+                      action='count',
+                      default=0,
+                      dest='verbosity_level',
+                      help='be verbose (repeat many times to be more verbose)')
+
+    (options, args) = parser.parse_args()
+
+
+    if options.ipv4 and options.ipv6:
+        msg = 'Options --ipv4 (-4) and --ipv6 (-6) are mutually exclusive!'
+        parser.error(msg)
+
+    if options.ipv4:
+        settings.IP_VERSION = 4
+
+    if options.ipv6:
+        #settings.IP_VERSION = 6
+        sys.exit('IPV6 not supported yet!')
+
+    if options.config_file:
+        config_file = os.path.abspath(options.config_file)
+        settings.CONFIGURATION_DIR, settings.CONFIGURATION_FILE = (
+            os.path.split(config_file)
+        )
+        settings.load_configuration_file()
+
+    settings.VERBOSE_LEVEL = options.verbosity_level
+    if settings.VERBOSE_LEVEL > 0:
+        settings.DEBUG_ON_SCREEN = True
+    
+    init_logger()
+
+    settings.NICS = options.interfaces if options.interfaces else []
+    settings.EXCLUDE_NICS = (options.exclude_interfaces if
+                                 options.exclude_interfaces else [])
+
+    NtkNode().run()
+
+    allmicro_run()
+
+if __name__ == '__main__':
+
+    try:
+        main()
+    except KeyboardInterrupt:
+        sys.exit(0)
+    except ImproperlyConfigured, e:
+        print e,
+        sys.exit(1)

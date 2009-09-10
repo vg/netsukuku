@@ -1,0 +1,73 @@
+== Netsukuku y las redes cívicas ==
+
+{{{
+
+Ciudades e instituciones están mostrando un creciente interés en proyectos
+de tipo e-goverment que estén orientados en proveer servicios en linea a los
+ciudadanos mediante Internet.
+
+Por ejemplo, proyectos como:
+
+    - actividades relacionadas con la academia (inscripciones, programas
+      educacionales y culturales)
+    - noticias, radios locales y televisión
+    - guias de exposiciones y eventos, información cultural y turística
+    - foros de discusión, actividades sociales y culturales
+
+Sin embargo, la difusión y el acceso a la red no esta disponible a todo el mundo:
+Las instalaciones de DSL no están disponibles en todas las ciudades y los ISPs
+imponen costos/tasas de transferencia caros para proveer conectividad.
+
+La creación de redes cívicas, en donde los usuarios tienen acceso a los sitios
+web y a servicios en linea, navegar los diferentes sitios web dedicados a actividades
+sociales, institucionales, educacionales, turísticas y comerciales de manera libre,
+sin ningún costo, que necesita un dialogo constante y directo con la gente, es posible
+hoy con Netsukuku.
+
+Su primer objetivo es la implementación de una red mesh global, completamente
+independiente de la Internet, en donde cada PC, comunicándose con otro mediante
+radio frecuencias, se convierte automáticamente en un nodo / punto de acceso de
+la red y de esta manera hace su contribución para mantener la red viva, y al
+mismo tiempo expandirla, exactamente como en un régimen fractal.
+
+El sistema de enrutamiento de Netsukuku permite:
+
+- cada usuario puede unirse no solo a la red de su ciudad, si no a través
+  de otras redes localizadas en todas las demás ciudades que, una vez inter-
+  conectadas, crearan una especie de red global, paralela a la Internet, que
+  puede expandise indefinidamente, sin el soporte de ningún ISP.
+
+- hasta un máximo de 256 hostnames para ser registrados y soportados por cada
+  PC (i.e. Nodo de la red).
+
+En la red de Netsukuku, todos los que desean ofrecer información y contenido
+digital puede hacerlo simplemente desde su PC. Entre mas actores estén
+representados en el sistema, se concibe mas el dialogo y la circulación de
+diferentes ideas, procesos democráticos y el pleno derecho de ciudadanía
+dentro de la sociedad de la información.
+
+Por ultimo, pero no menos importante, dentro de la red de Netsukuku todos los
+usuarios tienen la oportunidad de entrar a la Internet: de hecho, cualquier
+usuario puede obtener conectividad a Internet de otros usuarios que comparten
+y delegan el ancho de banda que no estén usando en el momento a la red de
+Netsukuku.
+
+=== Como construir una red inalámbrica Netsukuku ===
+
+Netsukuku es una arquitectura de red flexible y crea una red mesh inalámbrica
+de manera autónoma y eficiente entre los diferentes PCs equipados con dispositivos
+de comunicación inalámbricos. La manera más simple de crear / unirse a una red
+de Netsukuku es instalando una tarjeta WiFi e iniciando el demonio, de descarga
+libre de Internet. El flujo de datos alcanzara el destino deseado, mientras viaja
+por los otros nodos (PCs o Access Points en donde ha sido instalado Netsukuku),
+interconectados entre ellos. Obviamente una difusión mas grande y dedicada de
+Netsukuku puede lograrse con un cubrimiento WiFi en zonas urbanas y rurales: en
+el mercado existen muchas alternativas y soluciones para dispositivos inalámbricos
+y todo tipo de hardware barato (routers, access points, antenas omni direccionales).
+
+Para mas información o cualquier asistencia el sitio web de la comunidad de
+Netsukuku se encuentra en:
+
+http://netsukuku.freaknet.org
+
+}}}

@@ -1,0 +1,17 @@
+graph G {
+node [shape=circle]
+
+D -- A -- C 
+D -- B -- C
+C -- D3 -- D2 -- D1 -- S
+D -- E -- S
+
+A 	[ label = "" ];
+B 	[ label = "" ];
+C 	[ label = "" ];
+D3 	[ label = "" ];
+D2 	[ label = "" ];
+D1 	[ label = "" ];
+E	[ label = "1" ];
+
+}

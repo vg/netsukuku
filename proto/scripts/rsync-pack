@@ -1,0 +1,11 @@
+#!/bin/bash
+
+STATIC_PACKAGES="$NTK_REPOSITORY/proto/packages"
+
+cd $NTK_REPOSITORY
+
+for rmt in freaknet.org tamarindo.freaknet.org
+do
+	rsync -auv -P $packdir.tar.bz2  $rmt:netsukuku/files/
+	rsync -auPv $STATIC_PACKAGES $rmt:netsukuku/files/
+done
