@@ -23,42 +23,29 @@
 #       good thing, you have to consider the rtt from the requester node to
 #       the coordinator node.
 
+from random import choice
 
-from ntk.lib.log import logger as logging
-from ntk.lib.log import get_stackframes
+from ntk.core.map import Map
+from ntk.core.p2p import P2P
+from ntk.lib.event import Event
 from ntk.lib.micro import microfunc
 from ntk.wrap.xtime import time
-from ntk.core.p2p import P2P
-from ntk.lib.rencode import serializable
-from ntk.core.map import Map
-from random import choice
-from ntk.network.inet import valid_ids
-
 
 class Node(object):
+    def __init__(self,
+                 lvl=None, id=None  # these are mandatory for Map.__init__(),
+                ):
 
-    def __init__(self, lvl, id, alive=False, its_me=False):
-        self.lvl = lvl
-        self.id = id
-        self.its_me = its_me
-        self.alive = alive
-        if self.its_me:
-            self.alive = True
+        self.alive = False
 
     def is_free(self):
-        return not self.alive
+        return self.alive
 
     def _pack(self):
-        # lvl and id are not used (as for now) at the time of de-serialization. So
-        # use the value that will produce the smaller output with rencode.dumps.
-        # TODO test what this value is... perhaps None is better than 0 ?
-        return (0, 0, self.alive)
-
-serializable.register(Node)
+        return (self.alive,)
 
 class MapCache(Map):
     def __init__(self, maproute):
-        logging.log(logging.ULTRADEBUG, 'Coord: copying a mapcache from our maproute.')
         Map.__init__(self, maproute.levels, maproute.gsize, Node, maproute.me)
 
         self.copy_from_maproute(maproute)
@@ -66,60 +53,21 @@ class MapCache(Map):
 
         self.tmp_deleted = {}
 
-    def alive_node_add(self, lvl, id):
-        if self.node_get(lvl, id).is_free():
-            self.node_get(lvl, id).alive = True
-            self.node_add(lvl, id)
-        logging.log(logging.ULTRADEBUG, 'Coord: MapCache updated: ' + str(self.repr_me()))
-
-    def me_changed(self, old_me, new_me):
-        '''Changes self.me
-
-        :param old_me: my old nip (not used in MapCache)
-        :param new_me: new nip
-        '''
-        Map.me_change(self, new_me)
-        logging.log(logging.ULTRADEBUG, 'Coord: MapCache updated after me_changed: ' + str(self.repr_me()))
-
     def copy_from_maproute(self, maproute):
         for lvl in xrange(self.levels):
             for id in xrange(self.gsize):
-                if not maproute.node_get(lvl, id).is_free():
-                    self.alive_node_add(lvl, id)
+                if not maproute.node_get(lvl, id).is_empty():
+                    self.node_add(lvl, id)
 
-    def map_data_pack(self):
-        """Prepares a packed_mapcache to be passed to mapcache.map_data_merge
-        in another host."""
-        def fmake_alive(node):
-            node.alive = True
-        return Map.map_data_pack(self, fmake_alive)
+    def node_add(self, lvl, id, silent=0):
+        if not self.node_get(lvl, id).alive:
+            Map.node_add(self, lvl, id, silent)
+            self.node_get(lvl, id).alive = True
 
-    def map_data_merge(self, (nip, plist, nblist)):
-        """Copies a mapcache from another nip's point of view."""
-        logging.log(logging.ULTRADEBUG, 'Merging a mapcache.map_data_merge: before: ' + self.repr_me())
-        # Was I alive?
-        # TODO always alive?
-        me_was = [False] * self.levels
-        for lvl in xrange(self.levels):
-            me_was[lvl] = self.node_get(lvl, self.me[lvl]).alive
-        logging.debug('MapCache replication: me_was : ' + str(me_was))
-        # Merge as usual...
-        lvl=self.nip_cmp(nip, self.me)
-        logging.log(logging.ULTRADEBUG, 'Merging a mapcache at level ' + str(lvl))
-        logging.log(logging.ULTRADEBUG, get_stackframes(back=1))
-        Map.map_data_merge(self, (nip, plist, nblist))
-        # ... ripristine myself.
-        for lvl in xrange(self.levels):
-            if me_was[lvl]:
-                self.alive_node_add(lvl, self.me[lvl])
-        logging.log(logging.ULTRADEBUG, 'Merging a mapcache.map_data_merge: after: ' + self.repr_me())
-
-    def repr_me(self, func_repr_node=None):
-        def repr_node_mapcache(node):
-            if node.alive: return 'X'
-            return ' '
-        if func_repr_node is None: func_repr_node = repr_node_mapcache
-        return Map.repr_me(self, func_repr_node)
+    def node_del(self, lvl, id, silent=False):
+        if self.node_get(lvl, id).alive:
+            Map.node_del(self, lvl, id, silent)
+            self.node_get(lvl, id).alive = False
 
     def tmp_deleted_add(self, lvl, id):
         self.tmp_deleted[lvl, id] = time()
@@ -152,10 +100,9 @@ class Coord(P2P):
 
     pid = 1
 
-    def __init__(self, ntkd, radar, maproute, p2pall):
+    def __init__(self, radar, maproute, p2pall):
 
         P2P.__init__(self, radar, maproute, Coord.pid)
-        self.ntkd = ntkd
 
         # let's register ourself in p2pall
         p2pall.p2p_register(self)
@@ -163,143 +110,95 @@ class Coord(P2P):
         # The cache of the coordinator node
         self.mapcache = MapCache(self.maproute)
 
-        self.maproute.events.listen('NODE_NEW', self.mapcache.alive_node_add)
+        self.maproute.events.listen('NODE_NEW', self.mapcache.node_add)
         self.maproute.events.listen('NODE_DELETED', self.mapcache.node_del)
-        self.maproute.events.listen('ME_CHANGED', self.mapcache.me_changed)
-
         self.mapp2p.events.listen('NODE_NEW', self.new_participant_joined)
 
-        self.coordnode = [None] * (self.maproute.levels + 1)
+        self.coordnode = [None] * self.maproute.levels
+        self.coornodes_set()
 
-        self.remotable_funcs += [self.going_out, self.going_out_ok, self.going_in]
+        self.remotable_funcs = [self.going_out,
+                                self.going_out_ok,
+                                self.going_in]
 
     def h(self, key):
-        """h:KEY-->hIP
+        """h:KEY-->IP
         :type key: a tuple (lvl, ip)
         """
         lvl, ip = key
-        hIP = list(ip)
+        IP = list(ip)
         for l in reversed(xrange(lvl)):
-            hIP[l] = 0
-        return hIP
+            IP[l] = 0
+        return IP
 
-    def coord_nodes_set(self):
+    def coornodes_set(self):
         """Sets the coordinator nodes of each level, using the current map"""
-        logging.log(logging.ULTRADEBUG, 'Coord: calculating coord_nodes for our gnodes of each level...')
         for lvl in xrange(self.maproute.levels):
-                self.coordnode[lvl+1] = self.H(self.h((lvl+1, self.maproute.me)))
-        logging.log(logging.ULTRADEBUG, 'Coord: coord_nodes (Note: check from the second one) is now ' + str(self.coordnode))
-
-    def participate(self):
-        """Let's become a participant node"""
-        P2P.participate(self)  # base method
-        self.coord_nodes_set()
-
+            self.coordnode[lvl] = self.H(self.h((lvl, self.maproute.me)))
 
     @microfunc()
     def new_participant_joined(self, lvl, id):
         """Shall the new participant succeed us as a coordinator node?"""
 
-        logging.log(logging.ULTRADEBUG, 'Coord: new_participant_joined started, a new participant in level ' + str(lvl) + ' id ' + str(id))
         # the node joined in level `lvl', thus it may be a coordinator of the
         # level `lvl+1'
         level = lvl + 1
 
-        # The new participant has this part of NIP
-        pIP = self.maproute.me[:]
-
+        pIP = list(self.maproute.me)
         pIP[lvl] = id
 
-        for l in reversed(xrange(lvl)): pIP[l] = None
-        # Note: I don't know its exact IP, it may have some None in lower-than-lvl levels.
+        for l in reversed(xrange(lvl)):
+            pIP[l] = None
 
-        # Was I the previous coordinator? Remember it.
-        it_was_me = self.coordnode[level] == self.maproute.me
+        newcor = self.H(self.h((level, self.maproute.me)))
+        if newcor != pIP:
+            # the new partecipant isn't a coordinator node
+            return None
 
-        # perfect IP for this service is...
-        hIP = self.h((level, self.maproute.me))
-        # as to our knowledge, the nearest participant to 'hIP' is now...
-        HhIP = self.H(hIP)
-        # Is it the new participant?
-        for j in xrange(lvl, self.maproute.levels):
-            if HhIP[j] != pIP[j]:
-                # the new participant isn't a coordinator node
-                return
+        oldcor = self.coordnode[level]
+        self.coordnode[level] = newcor
 
-        # Yes it is. Keep track.
-        self.coordnode[level] = HhIP
-        logging.info('Coord: new coordinator for our level ' + str(level) + ' is ' + str(HhIP))
+        if oldcor == self.maproute.me and pIP != self.maproute.me:
+            #if we were a coordinator node, and it is different from us:
+            # let's pass it our cache
+            peer = self.peer(hIP=newcor)
+            peer.mapp2p.map_data_merge(self.mapp2p.map_data_pack())
 
-        # Then, if I was the previous one... (Tricky enough, new participant could just be me!)
-        if it_was_me and HhIP != self.maproute.me:
-            # ... let's pass it our cache
-            logging.debug('Coord: I was coordinator for our level ' + str(level) + ', new coordinator is ' + str(HhIP))
-            logging.debug('Coord: So I will pass him my mapcache.')
-            peer = self.peer(hIP=hIP)
-            peer.mapcache.map_data_merge(self.mapcache.map_data_pack())
-            logging.debug('Coord: Done passing my mapcache.')
-
-
-    def going_out(self, lvl, id, gfree_new=None):
+    def going_out(self, lvl, id, gnumb=None):
         """The node of level `lvl' and ID `id', wants to go out from its gnode
         G of level lvl+1. We are the coordinator of this gnode G.
+        We'll give an affermative answer if `gnumb' < |G| or if `gnumb'=None
+        """
 
-        If gfree_new is None, then we don't have to check any condition.
-        So we remove the node and return the new free_nodes of this gnode.
 
-        Otherwise, the caller has passed the number of free nodes in the
-        gnode where it's going to rehook. So we must check that our
-        free_nodes is lesser than (gfree_new - 1).
-        If so, we remove the node and return the new free_nodes of this gnode,
-        else, we return None."""
-
-        if gfree_new is None \
-                or self.mapcache.free_nodes_nb(lvl) < gfree_new - 1:
-            if self.mapcache.node_get(lvl, id).alive:
-                self.mapcache.node_del(lvl, id)
-                return self.mapcache.free_nodes_nb(lvl)
-            else:
-                return None
+        if (gnumb < self.mapp2p.nodes_nb[lvl]-1 or gnumb is None) \
+            and self.mapp2p.node_get(lvl, id).alive:
+                self.mapp2p.node_del(lvl, id)
+                return self.mapp2p.nodes_nb[lvl]
         else:
             return None
 
     def going_out_ok(self, lvl, id):
         """The node, which was going out, is now acknowledging the correct
         migration"""
+        self.mapp2p.tmp_deleted_del(lvl, id)
 
-        self.mapcache.tmp_deleted_del(lvl, id)
-
-    def going_in(self, lvl, gfree_old_coord=None):
+    def going_in(self, lvl, gnumb=None):
         """A node wants to become a member of our gnode G of level `lvl+1'.
         We are the coordinator of this gnode G (so we are also a member of G).
+        We'll give an affermative answer if `gnumb' > |G| or if `gnumb'=None
+        """
 
-        If gfree_old_coord is None, then we don't have to check any condition.
-        So we add the node and return the assigned newnip.
-
-        Otherwise, the caller has passed the current number of free nodes
-        in the gnode which it's leaving. So we must check that our
-        current free_nodes is bigger than gfree_old_coord.
-        If so, we add the node and return the assigned newnip,
-        else, we return None."""
-
-        logging.log(logging.ULTRADEBUG, 'Coord.going_in: The requested level is ' + str(lvl))
-        logging.log(logging.ULTRADEBUG, 'Coord.going_in: This is mapcache.')
-        logging.log(logging.ULTRADEBUG, self.mapcache.repr_me())
-
-        if gfree_old_coord is not None \
-                and not self.mapcache.free_nodes_nb(lvl) > gfree_old_coord:
-            return None
-
-        fnl = self.mapcache.free_nodes_list(lvl)
-        if fnl == []:
+        if gnumb > self.mapp2p.node_nb[lvl]+1:
+            fnl = self.mapp2p.free_nodes_list(lvl)
+            if fnl == []:
                 return None
 
-        newnip = self.mapcache.me[:]
-        newnip[lvl] = choice(fnl)
-        for l in reversed(xrange(lvl)): newnip[l] = choice(valid_ids(lvl, newnip))
+            newip = self.mapp2p.me
+            newip[lvl] = choice(fnl)
+            for l in reversed(xrange(lvl)):
+                newnip[l]=randint(0, self.mapp2p.gsize)
+            self.node_add(lvl, newip[lvl])
+            return newip
 
-        self.mapcache.alive_node_add(lvl, newnip[lvl])
-
-        logging.log(logging.ULTRADEBUG, 'Coord.going_in: returns ' + str(newnip))
-        return newnip
-
+        return None

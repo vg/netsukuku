@@ -28,10 +28,6 @@ from ntk.network.interfaces import BaseNIC, BaseRoute
 
 def file_write(path, data):
     ''' Writes `data' to the file pointed by `path' '''
-    try:
-        logging.info('\'' + data + '\'  -->  \'' + path + '\'')
-    except:
-        pass
     fout = open(path, 'w')
     try:
         fout.write(data)
@@ -56,7 +52,7 @@ def iproute(args):
 
     args_list = args.split()
     cmd = [IPROUTE_PATH] + args_list
-    logging.info(' '.join(cmd))
+    logging.debug(' '.join(cmd))
     proc = subprocess.Popen(cmd,
                             stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE,
@@ -135,83 +131,35 @@ class Route(BaseRoute):
     ##TODO: add the possibility to specify a routing table, f.e. 'table ntk'
 
     @staticmethod
-    def _modify_routes_cmd(command, ip, cidr, dev, gateway):
-        ''' Returns proper iproute command arguments to add/change/delete routes
+    def _add_delete_cmd(command, ip, cidr, dev, gateway):
+        ''' Returns proper iproute command arguments to add and delete routes
         '''
         cmd = 'route %s %s/%s' % (command, ip, cidr)
 
         if dev is not None:
             cmd += ' dev %s' % dev
-        if gateway is not None:
+        if gateway is not None and gateway != ip:
             cmd += ' via %s' % gateway
 
         cmd += ' protocol ntk'
-        #cmd += ' table ntk'
-
-        return cmd
-
-    @staticmethod
-    def _modify_neighbour_cmd(command, ip, dev):
-        ''' Returns proper iproute command arguments to add/change/delete a neighbour
-        '''
-        cmd = 'route %s %s' % (command, ip)
-
-        if dev is not None:
-            cmd += ' dev %s' % dev
-
-        cmd += ' protocol ntk'
-        #cmd += ' table ntk'
+#        cmd += ' table ntk'
 
         return cmd
 
     @staticmethod
     def add(ip, cidr, dev=None, gateway=None):
         ''' Adds a new route with corresponding properties. '''
-        # When at level 0, that is cidr = lvl_to_bits(0), this method
-        # might be called with ip = gateway. In this case the command
-        # below makes no sense and would result in a error.
-        if cidr == 32 and ip == gateway: return
-        cmd = Route._modify_routes_cmd('add', ip, cidr, dev, gateway)
+        cmd = Route._add_delete_cmd('add', ip, cidr, dev, gateway)
         iproute(cmd)
 
     @staticmethod
-    def add_neigh(ip, dev=None):
-        ''' Adds a new neighbour with corresponding properties. '''
-        cmd = Route._modify_neighbour_cmd('add', ip, dev)
-        iproute(cmd)
-
-    @staticmethod
-    def change(ip, cidr, dev=None, gateway=None):
-        ''' Edits the route with corresponding properties. '''
-        # When at level 0, that is cidr = lvl_to_bits(0), this method
-        # might be called with ip = gateway. In this case the command
-        # below makes no sense and would result in a error.
-        if cidr == 32 and ip == gateway: return
-        cmd = Route._modify_routes_cmd('change', ip, cidr, dev, gateway)
-        iproute(cmd)
-
-    @staticmethod
-    def change_neigh(ip, dev=None):
-        ''' Edits the neighbour with corresponding properties. '''
-        # If a neighbour previously reached via eth0, now has a better link
-        # in eth1, it makes sense to use this command.
-        cmd = Route._modify_neighbour_cmd('change', ip, dev)
-        iproute(cmd)
+    def change(properties):
+        pass
 
     @staticmethod
     def delete(ip, cidr, dev=None, gateway=None):
-        ''' Removes the route with corresponding properties. '''
-        # When at level 0, that is cidr = lvl_to_bits(0), this method
-        # might be called with ip = gateway. In this case the command
-        # below makes no sense and would result in a error.
-        if cidr == 32 and ip == gateway: return
-        cmd = Route._modify_routes_cmd('del', ip, cidr, dev, gateway)
-        iproute(cmd)
-
-    @staticmethod
-    def delete_neigh(ip, dev=None):
-        ''' Removes the neighbour with corresponding properties. '''
-        cmd = Route._modify_neighbour_cmd('del', ip, None)
+        ''' Removes a route with corresponding properties. '''
+        cmd = Route._add_delete_cmd('del', ip, cidr, dev, gateway)
         iproute(cmd)
 
     @staticmethod
