@@ -117,7 +117,7 @@ The Netsukuku network can host up to $2^{16}$ different P2P services. Each
 registered service has a unique identification number called PID (P2P ID). The
 set of all PIDs is $\PID=\pgra{n\in \mathbb{N}\;|\;0\le n\le 2^{16}-1}$.\\
 A node is a \emph{participant} to a P2P service $p\in \PID$ if it exists in the
-network and if it announced its partecipation to the service (we'll see later
+network and if it announced its participation to the service (we'll see later
 how).\\
 $\ipe$ is the set of all the IPs of the participant nodes of the network, i.e. 
 $\forall x\in \ipe\;\;\exists_1 \T{ a participant node X:\;ip(X)=x}$.
@@ -140,7 +140,7 @@ A node $g$, in order to become an active participant of a $p\in \PID$, sends a
 CTP inside its gnode $G$. This CTP is considered interesting by a node $g'\in
 G$, if $g'$ didn't know that $g$ is a participant of $p$ or if the CTP is
 interesting as described in the QSPN document\cite{qspndoc}.\\
-This same procedure is reitered in all the higher levels: $G$ becomes an
+This same procedure is reiterated in all the higher levels: $G$ becomes an
 active participant of $p$, because it has at least one participant node. $G$
 sends a CTP in level 1, informing all the gnodes it is a participant.
 Etcetera.\\
