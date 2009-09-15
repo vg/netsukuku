@@ -37,9 +37,9 @@ class Etp:
 
     def __init__(self, radar, maproute):
 
-        self.neigh   =radar.neigh
-        self.netid   =radar.netid
-        self.maproute=maproute
+        self.radar = radar
+        self.neigh = radar.neigh
+        self.maproute = maproute
         
         self.etp_exec = apply_wakeup_on_event(self.etp_exec, 
                                               events=[(self.neigh.events, 'NEIGH_NEW')])
@@ -113,8 +113,11 @@ class Etp:
         def gw_isnot_neigh((dst, gw, rem)):
                 return gw != neigh.id
         R = self.maproute.bestroutes_get(gw_isnot_neigh)
-        if is_listlist_empty(R):
-                # R is empty: no need to proceed
+
+        # Usually we don't need to send a ETP if R is empty. But we have to send
+        # the ETP in any case if this link is new (that is, oldrem is None)
+        if is_listlist_empty(R) and not oldrem is None:
+                # R is empty and this link is old: no need to proceed
                 return
 
         def takeoff_gw((dst, gw, rem)):
@@ -316,21 +319,25 @@ class Etp:
             be removed.
         """
         
-        logging.debug("Etp: collition check: my netid %d and neighbour's netid %d", self.netid, neigh.netid)
-        if neigh.netid == self.netid                              \
-            or self.netid == -1:
-                self.netid = neigh.netid
+        logging.debug("Etp: collision check: my netid %d and neighbour's netid %d", self.radar.netid, neigh.netid)
+        if neigh.netid == self.radar.netid                              \
+            or self.radar.netid == -1:
+                self.radar.netid = neigh.netid
                 return (False, R) # all ok
 
         # uhm... we are in different networks
 
-        ## Calculate the size of the two nets
-        def add(a,b):return a+b
-        mynetsz = reduce(add, self.maproute.node_nb)
-        ngnetsz = reduce(add, map(len, R))
+        # ## Calculate the size of the two nets
+        # def add(a,b):return a+b
+        # mynetsz = reduce(add, self.maproute.node_nb)
+        # ngnetsz = reduce(add, map(len, R))
 
-        if mynetsz > ngnetsz or                                         \
-                (mynetsz == ngnetsz and self.netid > neigh.netid):
+        # TODO At the moment, we dictate that the net with smaller netid is going to give up.
+        # Improvement: Find a secure way to detect if we are in one of these 3 cases:
+        #  1. The other net surely will give up. So we are not going to.
+        #  2. The other net surely won't give up. So we are going to.
+        #  3. The other net surely will choose to use the 'lesser netid' method. So we are going to do the same.
+        if self.radar.netid > neigh.netid:
                 # we don't care if we are colliding or not. We can simply
                 # ignore colliding routes, the rest will be done by the other
                 # net.
@@ -342,7 +349,7 @@ class Etp:
                         for lvl in xrange(self.maproute.levels) ]
                 ###
                 
-                logging.debug("Etp: collition check: just remove colliding routes from R")
+                logging.debug("Etp: collision check: just remove colliding routes from R")
                 return (False, R)
         ##
 
