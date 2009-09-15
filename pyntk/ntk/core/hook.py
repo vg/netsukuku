@@ -333,6 +333,6 @@ class Hook(object):
         # ok, our gnode of level `level' has become broken, and we are in the
         # smallest part of the two. Let's rehook. However, be sure to to rehook
         # in a place different from the splitted gnode
-        forbidden_neighs = (level, [0]*level+self.maproute.me[level:])
+        forbidden_neighs = [(level, [0]*level+self.maproute.me[level:])]
         self.hook(neigh_list=[], forbidden_neighs=forbidden_neighs)
         return True

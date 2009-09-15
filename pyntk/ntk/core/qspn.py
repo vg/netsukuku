@@ -371,7 +371,6 @@ class Etp:
         ## Remove colliding routes directly from our map
         for lvl in xrange(self.maproute.levels):
                 for dst, rem in R[lvl]:
-                        self.maproute.node_get(lvl, dst).route_reset()
                         # The node I know as (lvl, dst) is invalid; it will eventually rehook.
                         # I must delete all the routes in the map and in the kernel
                         node = self.maproute.node_get(lvl, dst)
