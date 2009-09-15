@@ -49,7 +49,7 @@ class Route(BaseRoute):
         ''' Adds a new route with corresponding properties. '''
 
     @staticmethod
-    def change(properties):
+    def change(ip, cidr, dev=None, gateway=None):
         ''' Edits the route with the corresponding properties. '''
 
     @staticmethod

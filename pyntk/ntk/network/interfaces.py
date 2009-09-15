@@ -98,7 +98,7 @@ class BaseRoute(object):
         raise NotImplementedError
 
     @staticmethod
-    def change(properties):
+    def change(ip, cidr, dev=None, gateway=None):
         ''' Edits the route with the corresponding properties. '''
         raise NotImplementedError
 

@@ -131,8 +131,8 @@ class Route(BaseRoute):
     ##TODO: add the possibility to specify a routing table, f.e. 'table ntk'
 
     @staticmethod
-    def _add_delete_cmd(command, ip, cidr, dev, gateway):
-        ''' Returns proper iproute command arguments to add and delete routes
+    def _modify_routes_cmd(command, ip, cidr, dev, gateway):
+        ''' Returns proper iproute command arguments to add/change/delete routes
         '''
         cmd = 'route %s %s/%s' % (command, ip, cidr)
 
@@ -149,18 +149,28 @@ class Route(BaseRoute):
     @staticmethod
     def add(ip, cidr, dev=None, gateway=None):
         ''' Adds a new route with corresponding properties. '''
-        cmd = Route._add_delete_cmd('add', ip, cidr, dev, gateway)
+        cmd = Route._modify_routes_cmd('add', ip, cidr, dev, gateway)
         iproute(cmd)
 
     @staticmethod
-    def change(properties):
-        pass
+    def change(ip, cidr, dev=None, gateway=None):
+        ''' Edits the route with corresponding properties. '''
+        cmd = Route._modify_routes_cmd('change', ip, cidr, dev, gateway)
+        iproute(cmd)
 
     @staticmethod
     def delete(ip, cidr, dev=None, gateway=None):
-        ''' Removes a route with corresponding properties. '''
-        cmd = Route._add_delete_cmd('del', ip, cidr, dev, gateway)
-        iproute(cmd)
+        ''' Removes the route with corresponding properties. '''
+        cmd = Route._modify_routes_cmd('del', ip, cidr, dev, gateway)
+        if dev is None and gateway is None:
+            # remove all routes (in case we use multipath)
+            while True:
+                try:
+                    iproute(cmd)
+                except IPROUTECommandError:
+                    break
+        else:
+            iproute(cmd)
 
     @staticmethod
     def flush():
