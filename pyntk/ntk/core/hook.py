@@ -199,6 +199,7 @@ class Hook(object):
         # If we are alone, let's generate our netid
         if we_are_alone:
                 self.radar.netid = randint(0, 2**32-1)
+                logging.info("Generated our netid: %s", self.radar.netid)
                 # and we don't need to contact coordinator node...
         # removed:  if lvl < self.maproute.levels-1:
         #           We are creating a new gnode which is not in the latest
@@ -288,7 +289,6 @@ class Hook(object):
     def highest_free_nodes(self):
         """Returns (lvl, fnl), where fnl is a list of free node IDs of
            level `lvl'."""
-        logging.debug('Hook.highest_free_nodes started')
         for lvl in reversed(xrange(self.maproute.levels)):
                 fnl = self.maproute.free_nodes_list(lvl)
                 if fnl:
@@ -297,21 +297,15 @@ class Hook(object):
     
     def call_highest_free_nodes_udp(self, nip):
         """Use BcastClient to call highest_free_nodes"""
-        logging.debug('Calling highest_free_nodes to ' + str(nip) + ' via UDP')
-        # from nip to bestdev
-        bcastclient = None
+        devs = self.radar.broadcast.devs
         try:
-            dev = self.neigh.ip_to_neigh(self.maproute.nip_to_ip(nip)).bestdev[0]
-            bcastclient = rpc.BcastClient(devs=[dev], xtimemod=xtime)
-            logging.debug('created BcastClient with dev = ' + dev)
+            devs = [self.neigh.ip_to_neigh(self.maproute.nip_to_ip(nip)).bestdev[0]]
+            logging.log(logging.ULTRADEBUG, 'I\'ll create a BcastClient with NIC = ' + devs[0])
         except:
-            bcastclient = self.radar.broadcast
-            logging.debug('Cannot create BcastClient with right dev, so using Radar.broadcast')
-        bcastclient.hook.highest_free_nodes_udp(self.radar.ntkd_id, nip)
-        ret = self.chan_replies.recv()
-        return ret
+            logging.log(logging.ULTRADEBUG, 'I\'ll create a BcastClient with any handled NIC')
+        return rpc.UDP_call(nip, devs, 'hook.highest_free_nodes_udp')
 
-    def highest_free_nodes_udp(self, _rpc_caller, ntkd_id_caller, nip_callee):
+    def highest_free_nodes_udp(self, _rpc_caller, caller_id, nip_callee):
         """Returns highest_free_nodes to remote caller.
            ntkd_id_caller is the value of radar.ntkd_id of the caller.
             It is replied back to the LAN for the caller to recognize a reply destinated to it.
@@ -320,14 +314,11 @@ class Hook(object):
            """
         if self.maproute.me == nip_callee:
             ret = self.highest_free_nodes()
-            rpc.BcastClient(devs=[_rpc_caller.dev], xtimemod=xtime).hook.reply_highest_free_nodes_udp(ntkd_id_caller, ret)
+            rpc.UDP_send_reply(_rpc_caller, caller_id, 'hook.reply_highest_free_nodes_udp', ret)
 
-    def reply_highest_free_nodes_udp(self, _rpc_caller, ntkd_id_caller, ret):
+    def reply_highest_free_nodes_udp(self, _rpc_caller, caller_id, ret):
         """Receives reply from highest_free_nodes_udp."""
-        if ntkd_id_caller == self.radar.ntkd_id:
-            # This reply is for me.
-            if self.chan_replies.ch.balance < 0:
-                 self.chan_replies.send(ret)
+        rpc.UDP_got_reply(_rpc_caller, caller_id, ret)
 
     def gnodes_split(self, old_node_nb, cur_node_nb):
         """Handles the case of gnode splitting
