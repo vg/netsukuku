@@ -124,7 +124,7 @@ class Coord(P2P):
 
         self.mapp2p.events.listen('NODE_NEW', self.new_participant_joined)
 
-        self.coordnode = [None]*self.maproute.levels
+        self.coordnode = [None] * (self.maproute.levels + 1)
 
         self.remotable_funcs += [self.going_out, self.going_out_ok, self.going_in]
 
@@ -137,7 +137,7 @@ class Coord(P2P):
     def coord_nodes_set(self):
         """Sets the coordinator nodes of each level, using the current map"""
         for lvl in xrange(self.maproute.levels):
-                self.coordnode[lvl] = self.H(self.h((lvl, self.maproute.me)))
+                self.coordnode[lvl+1] = self.H(self.h((lvl+1, self.maproute.me)))
 
     def participate(self):
         """Let's become a participant node"""
@@ -148,27 +148,37 @@ class Coord(P2P):
     def new_participant_joined(self, lvl, id):
         """Shall the new participant succeed us as a coordinator node?"""
 
+        logging.log(logging.ULTRADEBUG, 'new_participant_joined started')
         # the node joined in level `lvl', thus it may be a coordinator of the
         # level `lvl+1'
-        level = lvl+1
+        level = lvl + 1
 
+        # The new participant has this part of NIP
         pIP = self.maproute.me[:]
         pIP[lvl] = id
-        for l in reversed(xrange(lvl)): pIP[l]=None
+        for l in reversed(xrange(lvl)): pIP[l] = None
+        # Note: I don't know its exact IP, it may have some None in lower levels.
 
-        newcor = self.H(self.h((level, self.maproute.me)))
-        if newcor != pIP:
+        # Was I the previous coordinator? Remember it.
+        it_was_me = self.coordnode[level] == self.maproute.me
+
+        # perfect IP for this service is...
+        hIP = self.h((level, self.maproute.me))
+        # as to our knowledge, the nearest participant to 'hIP' is now...
+        HhIP = self.H(hIP)
+        # Is it the new participant?
+        if HhIP != pIP:
                 # the new participant isn't a coordinator node
                 return
 
-        oldcor = self.coordnode[level]
-        self.coordnode[level] = newcor
+        # Yes it is. Keep track.
+        self.coordnode[level] = HhIP
 
-        if oldcor == self.maproute.me and pIP != self.maproute.me:
-        #if we were a coordinator node, and it is different from us:
-                # let's pass it our cache
-                peer = self.peer(hIP=newcor)
-                peer.mapcache.map_data_merge(self.mapcache.map_data_pack())
+        # Then, if I was the previous one... (Tricky enough, new participant could just be me!)
+        if it_was_me and HhIP != self.maproute.me:
+            # ... let's pass it our cache
+            peer = self.peer(hIP=hIP)
+            peer.mapcache.map_data_merge(self.mapcache.map_data_pack())
 
     def going_out(self, lvl, id, gnumb=None):
         """The node of level `lvl' and ID `id', wants to go out from its gnode

@@ -131,7 +131,7 @@ class P2P(RPCDispatcher):
            If nothing is found, None is returned"""
         
         lvl = self.mapp2p.nip_cmp(hip, self.maproute.me)
-        br=self.maproute.node_get(lvl,hip[lvl]).best_route()
+        br = self.maproute.node_get(lvl,hip[lvl]).best_route()
         if not br:
                 return None
         return self.neigh.id_to_neigh(br.gw)
@@ -196,12 +196,15 @@ class P2P(RPCDispatcher):
 
             # forward the message until it arrives at destination
             n = self.neigh_get(H_hip)
-            logging.debug(' forwarding to ' + str(n.ip))
-            logging.debug(' that is...')
             logging.debug(' forwarding to ' + str(self.maproute.ip_to_nip(n.ip)))
-            if n: 
-                exec("return n.ntkd.p2p.PID_"+str(self.mapp2p.pid)+
-                     ".msg_send(sender_nip, hip, msg)")
+            if n:
+                ret = None
+                stringexec = "ret = n.ntkd.p2p.PID_"+str(self.mapp2p.pid) + \
+                     ".msg_send(sender_nip, hip, msg)"
+                logging.debug('Calling ' + stringexec)
+                exec(stringexec)
+                logging.debug('Calling ' + stringexec + '  done. Got reply. Returning ' + str(ret))
+                return ret
             else:
                 return None
 
