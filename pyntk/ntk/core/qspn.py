@@ -20,7 +20,10 @@
 from ntk.lib.log import logger as logging
 from ntk.lib.micro import microfunc
 from ntk.lib.event import Event
+from ntk.network.inet import ip_to_str
 from ntk.core.route import NullRem, DeadRem
+
+from ntk.lib.log import logger as logging
 
 def is_listlist_empty(l):
         """
@@ -50,6 +53,8 @@ class Etp:
     def etp_new_dead(self, neigh):
         """Builds and sends a new ETP for the worsened link case."""
 
+        logging.debug("Etp: dead of %s", ip_to_str(neigh.ip))
+        
         ## Create R
         def gw_is_neigh((dst, gw, rem)):
                 return gw == neigh.id
@@ -92,6 +97,8 @@ class Etp:
 
         If oldrem=None, the node `neigh' is considered new."""
 
+        logging.debug("Etp: new changed %s", ip_to_str(neigh.ip))
+        
         ## Update the map
         if oldrem is None:
             self.maproute.routeneigh_add(neigh)
@@ -141,6 +148,8 @@ class Etp:
         gw      = neigh.id
         gwrem   = neigh.rem
 
+        logging.debug("Etp: received from %s", ip_to_str(neigh.ip))
+        
         ## Collision check
         colliding, R = self.collision_check(gwnip, neigh, R)
         if colliding:
@@ -276,6 +285,7 @@ class Etp:
 
         for nr in self.neigh.neigh_list():
                 if nr.id not in exclude:
+                        logging.debug("Etp: forwarding to %s", ip_to_str(nr.ip))
                         nr.ntkd.etp.etp_exec(self.maproute.me, *etp)
     
     def collision_check(self, gwnip, neigh, R):
@@ -286,6 +296,7 @@ class Etp:
             be removed.
         """
         
+        logging.debug("Etp: collition check: my netid %d and neighbour's netid %d", self.netid, neigh.netid)
         if neigh.netid == self.netid                              \
             or self.netid == -1:
                 self.netid = neigh.netid
@@ -310,6 +321,8 @@ class Etp:
                                 if self.maproute.node_get(lvl, dst).is_empty() ]
                         for lvl in xrange(self.maproute.levels) ]
                 ###
+                
+                logging.debug("Etp: collition check: just remove colliding routes from R")
                 return (False, R)
         ##
 
@@ -317,11 +330,14 @@ class Etp:
 
         ## Check if we are colliding with another (g)node of the neighbour
         ## net
+        logging.debug("Etp: we are the smaller net, check if we are colliding with another gnode")
+
         level = self.maproute.nip_cmp(self.maproute.me, gwnip) + 1
         if level < self.maproute.levels:
                 for dst, rem in R[level]:
                         if dst == self.maproute.me[level]:
                                 # we are colliding! LET'S REHOOK
+                                logging.debug("Etp: let's rehook now.")
                                 return (True, R)
         ## 
 

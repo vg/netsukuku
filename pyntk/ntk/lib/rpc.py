@@ -154,7 +154,7 @@ class RPCDispatcher(object):
         """
         
         if not 'radar' in func_name:
-            logging.debug("func_get: "+str(func_name))
+            pass #logging.debug("func_get: "+str(func_name))
 
         splitted = func_name.split('.')
 
@@ -177,7 +177,7 @@ class RPCDispatcher(object):
 
     def _dispatch(self, caller, func_name, params):
         if not 'radar' in func_name:
-            logging.debug("_dispatch: "+func_name+"("+str(params)+")")
+            pass #logging.debug("_dispatch: "+func_name+"("+str(params)+")")
         func = self.func_get(func_name)
         if func is None:
             raise RPCFuncNotRemotable('Function %s is not remotable' % func_name)
@@ -194,10 +194,10 @@ class RPCDispatcher(object):
         try:
             response = self._dispatch(caller, func, params)
         except Exception, e:
-            logging.debug(str(e))
+            pass #logging.debug(str(e))
             response = ('rmt_error', str(e))
         if not 'radar' in func:
-            logging.debug("dispatch response: "+str(response))
+            pass #logging.debug("dispatch response: "+str(response))
         return response
 
     def marshalled_dispatch(self, caller, data):
@@ -209,7 +209,7 @@ class RPCDispatcher(object):
                 error=1
         if error or not isinstance(unpacked, tuple) or not len(unpacked) == 2:
             e = 'Malformed packet received from '+caller.ip
-            logging.debug(e)
+            pass #logging.debug(e)
             response = ('rmt_error', str(e))
         else:
             response = self.dispatch(caller, *unpacked)
@@ -255,21 +255,21 @@ def _data_unpack_from_buffer(buffer):
     return ""
 
 def stream_request_handler(sock, clientaddr, dev, rpcdispatcher):
-    logging.debug('Connected from %s, dev %s', clientaddr, dev)
+    pass #logging.debug('Connected from %s, dev %s', clientaddr, dev)
     caller = CallerInfo(clientaddr[0], clientaddr[1], dev, sock)
     while True:
         try:
             data = _data_unpack_from_stream_socket(sock)
             if not data: break
-            logging.debug('Handling data: %s', data)
+            pass #logging.debug('Handling data: %s', data)
             response = rpcdispatcher.marshalled_dispatch(caller, data)
-            logging.debug('Response: %s', response)
+            pass #logging.debug('Response: %s', response)
         except RPCError:
-            logging.debug('An error occurred during request handling')
+            pass #logging.debug('An error occurred during request handling')
 
         sock.send(_data_pack(response))
         #self.request.close()
-        logging.debug('Response sent')
+        pass #logging.debug('Response sent')
     sock.close()
 
 def micro_stream_request_handler(sock, clientaddr, dev, rpcdispatcher):
@@ -332,7 +332,7 @@ class TCPClient(FakeRmt):
         if not recv_encoded_data:
             raise RPCNetError, 'connection closed before reply'
         recv_data = rencode.loads(recv_encoded_data)
-        logging.debug("Recvd data: "+str(recv_data))
+        pass #logging.debug("Recvd data: "+str(recv_data))
 
         # Handling errors
         # I receive a message with the following format:
@@ -370,13 +370,13 @@ def dgram_request_handler(sock, clientaddr, packet, dev, rpcdispatcher):
     Handles all request and try to decode them.
     '''
     caller = CallerInfo(clientaddr[0], clientaddr[1], dev, sock)
-    #logging.debug('UDP packet from %s, dev %s', clientaddr, dev)
+    #pass #logging.debug('UDP packet from %s, dev %s', clientaddr, dev)
     try:
         data = _data_unpack_from_buffer(packet)
-        #logging.debug('Handling data: %s', data)
+        #pass #logging.debug('Handling data: %s', data)
         response = rpcdispatcher.marshalled_dispatch(caller, data)
     except RPCError:
-        logging.debug('An error occurred during request handling')
+        pass #logging.debug('An error occurred during request handling')
 
 def micro_dgram_request_handler(sock, clientaddr, packet, dev, rpcdispatcher):
     micro(dgram_request_handler, (sock, clientaddr, packet, dev, rpcdispatcher))
