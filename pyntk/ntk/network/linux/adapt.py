@@ -28,6 +28,10 @@ from ntk.network.interfaces import BaseNIC, BaseRoute
 
 def file_write(path, data):
     ''' Writes `data' to the file pointed by `path' '''
+    try:
+        logging.info('\'' + data + '\'  -->  \'' + path + '\'')
+    except:
+        pass
     fout = open(path, 'w')
     try:
         fout.write(data)
@@ -52,7 +56,7 @@ def iproute(args):
 
     args_list = args.split()
     cmd = [IPROUTE_PATH] + args_list
-    logging.debug(' '.join(cmd))
+    logging.info(' '.join(cmd))
     proc = subprocess.Popen(cmd,
                             stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE,

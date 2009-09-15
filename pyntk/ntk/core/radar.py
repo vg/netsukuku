@@ -263,6 +263,8 @@ class Neighbour(object):
                 self.ip_to_id(key)
                 # create a TCP connection to the neighbour
                 self.ntk_client[key] = rpc.TCPClient(ip_to_str(key))
+                # info
+                logging.info('Change in our LAN: new neighbour ' + ip_to_str(key))
                 # send a message notifying we added a node
                 self.events.send('NEIGH_NEW',
                                  (Neigh(bestdev=ip_table[key].bestdev,
@@ -278,6 +280,8 @@ class Neighbour(object):
                 old_rtt = self.ip_table[key].bestdev[1]
                 rtt_variation = abs(new_rtt - old_rtt) / float(old_rtt)
                 if rtt_variation > self.rtt_variation_threshold:
+                    # info
+                    logging.info('Change in our LAN: changed REM for neighbour ' + ip_to_str(key))
                     # send a message notifying the node's rtt changed
                     self.events.send('NEIGH_REM_CHGED',
                                      (Neigh(bestdev=self.ip_table[key].bestdev,
@@ -305,7 +309,6 @@ class Neighbour(object):
     def reset_ntk_clients(self):
         """Reset connected TCPClients. To be used after hooking, to avoid
            using invalid sockets."""
-        #TODO: do we really need it after the hooking phase?
         for key in self.ip_table:
             if self.ntk_client[key]:
                 if self.ntk_client[key].connected:
@@ -327,6 +330,8 @@ class Neighbour(object):
         old_id = self.translation_table.pop(ip)
         # ...and from the netid_table
         old_netid = self.netid_table.pop(ip)
+        # info
+        logging.info('Change in our LAN: removed neighbour ' + ip_to_str(ip))
         # send a message notifying we deleted the entry
         self.events.send('NEIGH_DELETED',
                          (Neigh(bestdev=None,
@@ -346,9 +351,6 @@ class Neighbour(object):
 	       # probably our radar did not observed previously the ip that is changing,
 	       # then leave this work to the next radar scan
                return
-	
-        logging.info("New IP of neigh %s is now %s " % (ip_to_str(oldip), 
-	                                                ip_to_str(newip)))
 							
         self.ip_table[newip] = self.ip_table[oldip]
         self.translation_table[newip] = self.translation_table[oldip]
@@ -357,6 +359,9 @@ class Neighbour(object):
         # we have to create a new TCP connection
         self.ntk_client[newip] = rpc.TCPClient(ip_to_str(newip))
 
+        # info
+        logging.info('Change in our LAN: new neighbour ' + ip_to_str(newip))
+        logging.info('                   replacing an old one... ' + ip_to_str(oldip))
         self.events.send('NEIGH_NEW',
                          (Neigh(bestdev=self.ip_table[newip].bestdev,
                                 devs=self.ip_table[newip].devs,
@@ -509,7 +514,7 @@ class Radar(object):
         else:
             self.bcast_arrival_time[ip] = {}
             self.bcast_arrival_time[ip][net_device] = [time_elapsed]
-            logging.info("Radar: new IP %s detected", ip_to_str(ip))
+            logging.info("Radar: IP %s detected", ip_to_str(ip))
 
         self.neigh.netid_table[ip] = netid
 

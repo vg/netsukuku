@@ -18,6 +18,7 @@
 ##
 
 from ntk.lib.log import logger as logging
+from ntk.lib.log import get_stackframes
 from ntk.core.map import Map
 from ntk.lib.event import Event
 from ntk.lib.rencode import serializable
@@ -352,8 +353,15 @@ class MapRoute(Map):
     def route_add(self, lvl, dst, gw, rem, silent=0):
         ''' Add a new route
         '''
+
+        # If destination is me I won't add a route.
+        if self.me[lvl] == dst:
+            logging.debug('I won\'t add a route to myself (%s, %s).' % (lvl, dst))
+            logging.debug(get_stackframes(back=1))
+            return 0
+        
         n = self.node_get(lvl, dst)
-        ret, val = n.route_add(lvl, dst, gw, rem)
+        ret, oldrem = n.route_add(lvl, dst, gw, rem)
         if not silent:
             if ret == 1:
                 self.events.send('ROUTE_NEW', (lvl, dst, gw, rem))
@@ -361,7 +369,6 @@ class MapRoute(Map):
                     # The node is new
                     self.node_add(lvl, dst)
             elif ret == 2:
-                oldrem = val
                 self.events.send('ROUTE_REM_CHGED', (lvl, dst, gw, rem, oldrem))
         return ret
 

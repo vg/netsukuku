@@ -145,33 +145,33 @@ def wakeup_on_event(events=[]):
         ## dependent on this Channel
 
         def _wakeup_on_event_dispatcher(self, *event_data):
-            logging.debug('I will send a wakeup on chan ' + str(self))
+            logging.log(logging.ULTRADEBUG, 'I will send a wakeup on chan ' + str(self))
             stacktrace = get_stackframes(back=1)
-            logging.debug('  the event above was called from ' + stacktrace)
+            logging.log(logging.ULTRADEBUG, '  the event above was called from ' + stacktrace)
             self.__wakeup_on_event_dispatcher(*event_data)
 
         @microfunc()   # Each call is queued. No event will be lost
         def __wakeup_on_event_dispatcher(self, *event_data):
             self.bcast_send(event_data)  # blocks if necessary
-            logging.debug('wakeup sent on chan ' + str(self))
+            logging.log(logging.ULTRADEBUG, 'wakeup sent on chan ' + str(self))
 
         def event_wait_func(self):
-            logging.debug('wakeup receiving on chan ' + str(self))
+            logging.log(logging.ULTRADEBUG, 'wakeup receiving on chan ' + str(self))
             stacktrace = get_stackframes(back=1)
-            logging.debug('  the event_wait above was called from ' + stacktrace)
+            logging.log(logging.ULTRADEBUG, '  the event_wait above was called from ' + stacktrace)
             ret = self.recv()
-            logging.debug('wakeup received on chan ' + str(self))
-            logging.debug('  the event_wait above was called from ' + stacktrace)
+            logging.log(logging.ULTRADEBUG, 'wakeup received on chan ' + str(self))
+            logging.log(logging.ULTRADEBUG, '  the event_wait above was called from ' + stacktrace)
             return ret
 
     def decorate(func):
         event_wait_func_dict={ }  # { (ev, evname) : wait_func }
         for ev, evname in events:
                 chan = Channel_with_wakeup()
-                logging.debug('wakeup decorator on func ' + str(func) + ': created chan for ' + evname + ', chan ' + str(chan))
+                logging.log(logging.ULTRADEBUG, 'wakeup decorator on func ' + str(func) + ': created chan for ' + evname + ', chan ' + str(chan))
                 stacktrace = get_stackframes(back=1)
                 if stacktrace.find('apply_wakeup_on_event') >= 0: stacktrace = get_stackframes(back=2)
-                logging.debug('  the decoration above was called from ' + stacktrace)
+                logging.log(logging.ULTRADEBUG, '  the decoration above was called from ' + stacktrace)
 
                 # Register _wakeup_on_event_dispatcher as a listener of the specified event
                 ev.listen(evname, chan._wakeup_on_event_dispatcher)
