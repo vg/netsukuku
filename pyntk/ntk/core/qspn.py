@@ -20,7 +20,7 @@
 from ntk.lib.log import logger as logging
 from ntk.lib.micro import microfunc
 from ntk.lib.rpc import RPCError, RPCNetError
-from ntk.lib.event import Event
+from ntk.lib.event import Event, apply_wakeup_on_event
 from ntk.network.inet import ip_to_str
 from ntk.core.route import NullRem, DeadRem
 
@@ -40,6 +40,9 @@ class Etp:
         self.neigh   =radar.neigh
         self.netid   =radar.netid
         self.maproute=maproute
+        
+        self.etp_exec = apply_wakeup_on_event(self.etp_exec, 
+                                              events=[(self.neigh.events, 'NEIGH_NEW')])
 
         self.neigh.events.listen('NEIGH_NEW', self.etp_new_changed)
         self.neigh.events.listen('NEIGH_REM_CHGED', self.etp_new_changed)
@@ -133,8 +136,8 @@ class Etp:
             pass
         ##
 
-    @microfunc()
-    def etp_exec(self, sender_nip, R, TPL, flag_of_interest):
+    @microfunc(True)
+    def etp_exec(self, sender_nip, R, TPL, flag_of_interest, event_wait=None):
         """Executes a received ETP
         
         sender_nip: sender ntk ip (see map.py)
@@ -150,6 +153,14 @@ class Etp:
 
         gwnip   = sender_nip
         neigh   = self.neigh.ip_to_neigh(self.maproute.nip_to_ip(gwnip))
+        
+        # check if we have found the neigh, otherwise wait it
+        while neigh is None:
+                ev_neigh = event_wait[(self.neigh.events, 'NEIGH_NEW')]()
+                if cmp(ev_neigh[0].ip, self.maproute.nip_to_ip(gwnip)):
+                        # ok, continue now
+                        neigh   = self.neigh.ip_to_neigh(self.maproute.nip_to_ip(gwnip))
+                        
         gw      = neigh.id
         gwrem   = neigh.rem
 

@@ -151,6 +151,19 @@ def wakeup_on_event(events=[]):
                 event_wait_func_dict[(ev, evname)]=event_wait_func
 
         func_with_wait=functools.partial(func, event_wait=event_wait_func_dict)
+        
+        # if the method must be remotable (and used by rpc), we need 
+        # to add this attributes to the functools.partial function
+        class fake(): 
+            def func(self): pass
+            
+        setattr(func_with_wait, '__name__', func.__name__)
+        if hasattr(func, 'im_func'):
+            setattr(func_with_wait, 'im_func', func.im_func)
+        else:
+            setattr(func_with_wait, 'im_func', fake().func.im_func)
+        ##
+            
         return func_with_wait
 
     return decorate
