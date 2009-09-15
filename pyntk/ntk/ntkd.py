@@ -18,7 +18,7 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
-
+from ntk.lib.log import logger as logging
 import ntk.core.radar as radar
 import ntk.core.route as maproute
 import ntk.core.qspn as qspn
@@ -28,6 +28,8 @@ import ntk.core.coord as coord
 import ntk.core.krnl_route as kroute
 import ntk.lib.rpc as rpc
 import ntk.wrap.xtime as xtime
+from ntk.lib.event import Event, apply_wakeup_on_event
+from ntk.lib.micro import microfunc
 
 from ntk.config import settings, ImproperlyConfigured
 from ntk.lib.micro import micro, allmicro_run
@@ -76,6 +78,12 @@ class NtkNode(object):
         self.coordnode = coord.Coord(self.radar, self.maproute, self.p2p)
         self.hook = hook.Hook(self.radar, self.maproute, self.etp,
                               self.coordnode, self.nic_manager)
+
+        # The method initialize must be able to wait for an event of Radar and Hook
+        self.initialize = apply_wakeup_on_event(self.initialize, 
+                                              events=[(self.radar.events, 'SCAN_DONE'),
+                                                      (self.hook.events, 'HOOKED')])
+
         self.p2p.listen_hook_ev(self.hook)
         self.hook.events.listen('HOOKED', self.reset)
 
@@ -106,5 +114,33 @@ class NtkNode(object):
 
         self.launch_servers()
 
-        self.radar.run()
+        self.initialize()
+
+    @microfunc(True)
+    def initialize(self, event_wait = None):
+        # first hook to activate interfaces
+        logging.debug('start Hook.hook')
         self.hook.hook()
+        logging.debug('waiting HOOKED')
+        msg = event_wait[(self.hook.events, 'HOOKED')]() # waits for the end of first hook
+        logging.debug('got HOOKED')
+        # but we don't care about the netid that has been choosen
+        self.radar.netid = -1
+        # and do_reply has to be false yet. It will be activated with next hook.
+        self.radar.do_reply = False
+        # just one radar 
+        logging.debug('start Radar.radar')
+        micro(self.radar.radar)
+        logging.debug('waiting SCAN_DONE')
+        msg = event_wait[(self.radar.events, 'SCAN_DONE')]() # waits for the end of radar
+        logging.debug('got SCAN_DONE')
+        # now the real hooking can be done
+        logging.debug('start Hook.hook')
+        self.hook.hook()
+        logging.debug('waiting HOOKED')
+        msg = event_wait[(self.hook.events, 'HOOKED')]() # waits for the end of hook
+        logging.debug('got HOOKED')
+        # now keep doing radar forever.
+        logging.debug('start Radar.run')
+        self.radar.run()
+
