@@ -81,6 +81,7 @@ import time
 
 from ntk.lib.log import logger as logging
 from ntk.lib.micro import  micro, microfunc, micro_block
+from ntk.lib.microsock import MicrosockTimeout
 from ntk.network.inet import sk_set_broadcast, sk_bindtodevice
 from ntk.wrap.sock import Sock
 

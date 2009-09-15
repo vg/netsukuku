@@ -29,6 +29,7 @@ from ntk.config import settings, ImproperlyConfigured
 from ntk.lib.log import config as logger_config
 from ntk.lib.micro import allmicro_run
 from ntk.ntkd import NtkNode
+from ntk.lib.log import logger as logging
 
 
 def interfaces_optcb(option, opt, value, parser):

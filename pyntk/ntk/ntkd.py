@@ -85,7 +85,6 @@ class NtkNode(object):
                                                       (self.hook.events, 'HOOKED')])
 
         self.p2p.listen_hook_ev(self.hook)
-        self.hook.events.listen('HOOKED', self.reset)
 
         if not self.simulated:
             self.kroute = kroute.KrnlRoute(self.neighbour, self.maproute)
@@ -117,7 +116,7 @@ class NtkNode(object):
         self.initialize()
 
     @microfunc(True)
-    def initialize(self, event_wait = None):
+    def initialize(self, event_wait=None):
         # first hook to activate interfaces
         logging.debug('start Hook.hook')
         self.hook.hook()
@@ -140,6 +139,8 @@ class NtkNode(object):
         logging.debug('waiting HOOKED')
         msg = event_wait[(self.hook.events, 'HOOKED')]() # waits for the end of hook
         logging.debug('got HOOKED')
+        # From now on a reset is needed for each new hook
+        self.hook.events.listen('HOOKED', self.reset)
         # now keep doing radar forever.
         logging.debug('start Radar.run')
         self.radar.run()

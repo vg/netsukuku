@@ -45,7 +45,7 @@ from ntk.config import settings
 from ntk.core.route import DeadRem, Rtt
 from ntk.lib.event import Event
 from ntk.lib.log import logger as logging
-from ntk.lib.micro import micro, micro_block
+from ntk.lib.micro import micro, micro_block, microfunc
 from ntk.network.inet import ip_to_str, str_to_ip
 import ntk.wrap.xtime as xtime
 import time
@@ -387,16 +387,17 @@ class Radar(object):
 
         self.ntkd_id = randint(0, 2**32-1)
 
-    def run(self, started=0):
-        if not started:
-            micro(self.run, (1,))
-        else:
-            self.running_instances.append(1)   # there is just one instance, so we use a constant
-            while not self.stopping:
-                self.radar()
-            self.running_instances.remove(1)
-            if not self.running_instances:
-                self.stopping = False
+    def run(self):
+        self.running_instances.append(1) # make sure to note down that radar.run has been launched.
+        self._run()
+
+    @microfunc(True)
+    def _run(self):
+        while not self.stopping:
+            self.radar()
+        self.running_instances.remove(1)
+        if not self.running_instances:
+            self.stopping = False
 
     def stop(self, event_wait = None):
         """ Stop the radar scanner """
