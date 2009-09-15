@@ -56,10 +56,7 @@ class Etp:
     def etp_new_dead(self, neigh):
         """Builds and sends a new ETP for the worsened link case."""
 
-        if self.radar.netid == -1: return
-        # TODO find a better descriptive flag to tell me I'm not ready to interact.
-
-        logging.debug("Etp: death of %s", ip_to_str(neigh.ip))
+        logging.debug("QSPN: death of %s: update my map.", ip_to_str(neigh.ip))
         
         ## Create R
         def gw_is_neigh((dst, gw, rem)):
@@ -71,6 +68,11 @@ class Etp:
         self.maproute.routeneigh_del(neigh)
         ##
 
+        if self.radar.netid == -1: return
+        # TODO find a better descriptive flag to tell me I'm not ready to interact.
+
+        logging.debug("QSPN: death of %s: prepare the ETP", ip_to_str(neigh.ip))
+        
         if is_listlist_empty(R):
                 # R is empty, that is we don't have routes passing by `gw'.
                 # Therefore, nothing to update, nothing to do.
@@ -103,10 +105,7 @@ class Etp:
 
         If oldrem=None, the node `neigh' is considered new."""
 
-        if self.radar.netid == -1: return
-        # TODO find a better descriptive flag to tell me I'm not ready to interact.
-
-        logging.debug("Etp: new changed %s", ip_to_str(neigh.ip))
+        logging.debug("QSPN: new changed %s: update my map", ip_to_str(neigh.ip))
         
         ## Update the map
         if oldrem is None:
@@ -115,6 +114,11 @@ class Etp:
             self.maproute.routeneigh_rem(neigh)
         ##
 
+        if self.radar.netid == -1: return
+        # TODO find a better descriptive flag to tell me I'm not ready to interact.
+
+        logging.debug("QSPN: new changed %s: prepare the ETP", ip_to_str(neigh.ip))
+        
         ## Create R
         def gw_isnot_neigh((dst, gw, rem)):
                 return gw != neigh.id
