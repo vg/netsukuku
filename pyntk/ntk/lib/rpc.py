@@ -82,7 +82,7 @@ from ntk.wrap import xtime as xtime
 import time
 
 from ntk.lib.log import logger as logging
-from ntk.lib.micro import  micro, microfunc, micro_block
+from ntk.lib.micro import  micro, microfunc, micro_block, Channel
 from ntk.lib.microsock import MicrosockTimeout
 from ntk.network.inet import sk_set_broadcast, sk_bindtodevice
 from ntk.wrap.sock import Sock
@@ -180,7 +180,7 @@ class RPCDispatcher(object):
 
     def _dispatch(self, caller, func_name, params):
         if not 'radar' in func_name:
-            logging.debug("_dispatch: "+func_name+"("+str(params)+")")
+            logging.log(logging.ULTRADEBUG, "_dispatch: "+func_name+"("+str(params)+")")
         func = self.func_get(func_name)
         if func is None:
             raise RPCFuncNotRemotable('Function %s is not remotable' % func_name)
@@ -557,3 +557,49 @@ class BcastClient(FakeRmt):
     def __del__(self):
         if self.connected:
             self.close()
+
+UDP_caller_ids = {}
+def UDP_call(callee_nip, devs, func_name, *args):
+    """Use a BcastClient to call 'func_name' to 'callee_nip' on the LAN via UDP broadcast."""
+    
+    logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + ' to ' + str(callee_nip) + ' on the LAN via UDP broadcast.')
+    bcastclient = None
+    try:
+        bcastclient = BcastClient(devs=devs, xtimemod=xtime)
+        logging.log(logging.ULTRADEBUG, 'created BcastClient with devs = ' + str(devs))
+    except:
+        raise RPCError('Couldn\'t create BcastClient.')
+    caller_id = randint(0, 2**32-1)
+    UDP_caller_ids[caller_id] = Channel()
+    exec('bcastclient.' + func_name + '(caller_id, callee_nip, *args)')
+    logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + ' done. Waiting reply...')
+    ret = UDP_caller_ids[caller_id].recv()
+    logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + ' got reply.')
+    return ret
+
+def UDP_send_reply(_rpc_caller, caller_id, func_name_reply, ret):
+    """Send a reply"""
+    
+    logging.log(logging.ULTRADEBUG, 'Sending reply to ' + func_name_reply + ' through ' + str(_rpc_caller.dev))
+    exec('BcastClient(devs=[_rpc_caller.dev], xtimemod=xtime).' + func_name_reply + '(caller_id, ret)')
+
+def UDP_got_reply(_rpc_caller, caller_id, ret):
+    """Receives reply from a UDP_call."""
+    
+    logging.debug('Seen a reply to UDP_call.')
+    if UDP_caller_ids[caller_id]:
+        # This reply is for me.
+        logging.log(logging.ULTRADEBUG, ' ...it is for me!')
+        chan = UDP_caller_ids[caller_id]
+        if chan.ch.balance < 0:
+            logging.log(logging.ULTRADEBUG, ' ...sending through channel')
+            chan.send(ret)
+            logging.log(logging.ULTRADEBUG, ' ...deleting channel')
+            del UDP_caller_ids[caller_id]
+            logging.log(logging.ULTRADEBUG, ' ...done.')
+    else:
+        logging.log(logging.ULTRADEBUG, ' ...it is not for me.')
+
+
+
+
