@@ -23,7 +23,6 @@ from ntk.lib.event import Event
 from ntk.network.inet import ip_to_str
 from ntk.core.route import NullRem, DeadRem
 
-from ntk.lib.log import logger as logging
 
 def is_listlist_empty(l):
         """
