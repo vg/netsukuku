@@ -245,6 +245,7 @@ class Hook(object):
         for l in reversed(xrange(lvl)): self.maproute.level_reset(l)
 
         # Restore the neighbours in the map and send the ETP
+        self.neigh.reset_ntk_clients()
         self.neigh.readvertise()
         
         # warn our neighbours

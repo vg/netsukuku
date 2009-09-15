@@ -286,6 +286,14 @@ class Neighbour(object):
                                     netid=self.netid_table[key],
                                     ntkd=self.ntk_client[key]),))
 
+    def reset_ntk_clients(self):
+        """Reset connected TCPClients. To be used after hooking, to avoid
+           using invalid sockets."""
+        #TODO: do we really need it after the hooking phase?
+        for key in self.ip_table:
+            if self.ntk_client[key]:
+                if self.ntk_client[key].connected:
+                    self.ntk_client[key].close()
 
     def delete(self, ip, remove_from_iptable=True):
         """Deletes an entry from the ip_table"""
