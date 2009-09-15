@@ -32,10 +32,10 @@ from ntk.core.map import Map
 
 class ParticipantNode(object):
     def __init__(self,
-                 lvl=None, id=None,  # these are mandatory for Map.__init__()
-                 participant=False):
+                 lvl=None, id=None  # these are mandatory for Map.__init__()
+	         ):
 
-        self.participant = participant
+        self.participant = False
 
     def _pack(self):
         return (0, 0, self.participant)
@@ -55,14 +55,14 @@ class MapP2P(Map):
 
         self.pid = pid
 
-    def partecipate(self):
+    def participate(self):
         """self.me is now a participant node"""
 
         for l in xrange(self.levels):
                 self.node_get(l, self.me[l]).participant = True
 
     @microfunc()
-    def me_changed(self, new_me):
+    def me_changed(self, old_me, new_me):
         Map.me_change(self, new_me)
 
     @microfunc(True)
@@ -123,9 +123,9 @@ class P2P(RPCDispatcher):
                 if hIP[l] is None:
                         return None
 
-            if hIP[l] != mp.me[l]:
-                # we can stop here
-                break
+                if hIP[l] != mp.me[l]:
+                        # we can stop here
+                        break
         return hIP
 
     def neigh_get(self, hip):
@@ -142,7 +142,7 @@ class P2P(RPCDispatcher):
             return None
         return self.neigh.id_to_neigh(br.gw)
 
-    def partecipate(self):
+    def participate(self):
         """Let's become a participant node"""
         self.participant = True
         self.mapp2p.participate()
