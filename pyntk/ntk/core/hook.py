@@ -17,13 +17,17 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
+import ntk.lib.rpc as rpc
+import ntk.wrap.xtime as xtime
+
 from ntk.lib.log import logger as logging
 from random import choice, randint
 
-from ntk.lib.micro import microfunc
+from ntk.lib.micro import microfunc, Channel
 from ntk.lib.event import Event
 
 from ntk.network.inet import ip_to_str, valid_ids
+
 
 class Hook(object):
 
@@ -34,6 +38,8 @@ class Hook(object):
         self.etp = etp
         self.coordnode= coordnode
         self.nics = nics
+	
+	self.chan_replies = Channel()
 
         self.events = Event(['HOOKED'])
 
@@ -41,7 +47,9 @@ class Hook(object):
         etp.events.listen('NET_COLLISION', self.hook)
 
         self.remotable_funcs = [self.communicating_vessels,
-                                self.highest_free_nodes]
+                                self.highest_free_nodes,
+                                self.highest_free_nodes_udp,
+                                self.reply_highest_free_nodes_udp]
 
     @microfunc()
     def communicating_vessels(self, old_node_nb=None, cur_node_nb=None):
@@ -137,7 +145,7 @@ class Hook(object):
                 if is_neigh_forbidden(nrnip):
                         # We don't want forbidden neighbours
                         continue
-                hfn.append((nrnip, nr.ntkd.hook.highest_free_nodes()))
+                hfn.append((nrnip, self.call_highest_free_nodes_udp(nrnip)))
         ##
 
         ## Find all the hfn elements with the highest level and 
@@ -261,6 +269,30 @@ class Hook(object):
                         return (lvl, fnl)
         return (-1, None)
     
+    def call_highest_free_nodes_udp(self, nip):
+        """Use BcastClient to call highest_free_nodes"""
+        self.radar.broadcast.hook.highest_free_nodes_udp(self.radar.ntkd_id, nip)
+        ret = self.chan_replies.recv()
+        return ret
+
+    def highest_free_nodes_udp(self, _rpc_caller, ntkd_id_caller, nip_callee):
+        """Returns highest_free_nodes to remote caller.
+           ntkd_id_caller is the value of radar.ntkd_id of the caller.
+            It is replied back to the LAN for the caller to recognize a reply destinated to it.
+           nip_callee is the NIP of the callee.
+            It is used by the callee to recognize a request destinated to it.
+           """
+        if self.maproute.me == nip_callee:
+            ret = self.highest_free_nodes()
+            rpc.BcastClient(devs=[_rpc_caller.dev], xtimemod=xtime).hook.reply_highest_free_nodes_udp(ntkd_id_caller, ret)
+
+    def reply_highest_free_nodes_udp(self, _rpc_caller, ntkd_id_caller, ret):
+        """Receives reply from highest_free_nodes_udp."""
+        if ntkd_id_caller == self.radar.ntkd_id:
+            # This reply is for me.
+            if self.chan_replies.ch.balance < 0:
+                 self.chan_replies.send(ret)
+
     def gnodes_split(self, old_node_nb, cur_node_nb):
         """Handles the case of gnode splitting
         
