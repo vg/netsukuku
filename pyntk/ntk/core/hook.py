@@ -123,17 +123,18 @@ class Hook(object):
         gnodes. |G'| and |G| are calculated using the coordinator
         nodes. Note: this is used only by communicating_vessels()
         """
-        
-        logging.info('Hooking procedure started. We haven\'t got any network id.')
+
+        logging.info('Hooking procedure started.')
+        logging.info('We haven\'t got any network id.')
         self.radar.netid = -1
         oldnip = self.maproute.me[:]
         oldip = self.maproute.nip_to_ip(oldnip)
         we_are_alone = False
-        neigh_coord_service_nip = None
+        suitable_neighbours = []
 
         ## Find all the highest non saturated gnodes
         hfn = [(self.maproute.me, self.highest_free_nodes())]
-        logging.debug('Hook.hook step one')
+        logging.log(logging.ULTRADEBUG, 'Hook: highest non saturated gnodes that I know: ' + str(hfn))
         
         if neigh_list == []:
                 neigh_list = self.neigh.neigh_list()
@@ -146,26 +147,27 @@ class Hook(object):
                                 return True
                 return False
 
-        logging.debug('Hook.hook step one.2')
         for nr in neigh_list:
                 nrnip=self.maproute.ip_to_nip(nr.ip)
 
                 if self.maproute.nip_cmp(self.maproute.me, nrnip) <= 0:
                         # we're interested in external neighbours 
                         continue
-                logging.debug('Hook.hook step one.3')
                 if is_neigh_forbidden(nrnip):
                         # We don't want forbidden neighbours
                         continue
-                neigh_coord_service_nip = nrnip
-                logging.debug('Hook.hook step one.4')
-                hfn.append((nrnip, self.call_highest_free_nodes_udp(nrnip)))
-                logging.debug('Hook.hook step one.5')
+
+                suitable_neighbours.append(nr)
+
+        for nr in suitable_neighbours:
+                nrnip=self.maproute.ip_to_nip(nr.ip)
+                nr_hfn = self.call_highest_free_nodes_udp(nrnip)
+                hfn.append((nrnip, nr_hfn))
+                logging.log(logging.ULTRADEBUG, 'Hook: highest non saturated gnodes that ' + str(nrnip) + ' knows: ' + str(nr_hfn))
         ##
 
         ## Find all the hfn elements with the highest level and 
         ## remove all the lower ones
-        logging.debug('Hook.hook step two')
         hfn2 = []
         hfn_lvlmax = -1
         for h in hfn:
@@ -190,12 +192,14 @@ class Hook(object):
                 raise Exception, "Netsukuku is full"
 
         ## Generate part of our new IP
-        logging.debug('Hook.hook step three')
         newnip = list(H[0])
         lvl = H[1][0]
+        logging.log(logging.ULTRADEBUG, 'Hook: the best is level ' + str(lvl) + ' known by ' + str(H[0]))
         fnl = H[1][1]
         newnip[lvl] = choice(fnl)
+        logging.log(logging.ULTRADEBUG, 'Hook: we choose ' + str(newnip[lvl]))
         for l in reversed(xrange(lvl)): newnip[l] = choice(valid_ids(l, newnip))
+        logging.log(logging.ULTRADEBUG, 'Hook: our option is ' + str(newnip))
 
         # If we are alone, let's generate our netid
         if we_are_alone:
@@ -206,7 +210,12 @@ class Hook(object):
         #           We are creating a new gnode which is not in the latest
         #           level.
         else:
-                # Contact the coordinator nodes 
+                # Contact the coordinator nodes
+                neigh_coord_service_nip = self.maproute.ip_to_nip(suitable_neighbours[0].ip)
+                # TODO We are using UDP for the first step and we try with just one neigh, the first one of the suitable_neighbours.
+                # It should work but we could do better:
+                #   1. If a neigh fails to answer we could try with other suitable_neighbours if we have them.
+                #   2. If the final destination is one of our suitable_neighbours we could try directly with him (always with UDP).
                 if lvl > 0:
                         # If we are going to create a new gnode, it's useless to pose
                         # any condition
@@ -249,14 +258,13 @@ class Hook(object):
                         #co2.close()
         ##
 
-        logging.debug('Hook.hook step four')
+        logging.log(logging.ULTRADEBUG, 'Hook: completing hook...')
         ## complete the hook
         self.radar.do_reply = False
 
         # close the ntkd sessions
         self.neigh.reset_ntk_clients()
 
-        logging.debug('Hook.hook step five')
         # change the IPs of the NICs
         newnip_ip = self.maproute.nip_to_ip(newnip)
         self.nics.activate(ip_to_str(newnip_ip))
@@ -269,20 +277,23 @@ class Hook(object):
         self.neigh.readvertise()
 
         self.radar.do_reply = True
+        logging.log(logging.ULTRADEBUG, 'Hook: done. Now we should be able to use TCP')
 
         # warn our neighbours
         # TODO find a better descriptive flag to tell me I'm not ready to interact.
         if self.radar.netid == -1 or we_are_alone:
-            logging.debug('Hook.hook warn neighbours skipped')
+            logging.log(logging.ULTRADEBUG, 'Hook.hook warn neighbours skipped')
         else:
-            logging.debug('Hook.hook warn neighbours of my change from %s to %s.' % (ip_to_str(oldip), ip_to_str(newnip_ip)))
+            logging.log(logging.ULTRADEBUG, 'Hook.hook warn neighbours of my change from %s to %s.' % (ip_to_str(oldip), ip_to_str(newnip_ip)))
             for nr in self.neigh.neigh_list():
-                logging.debug("Hook: calling ip_change of my neighbour %s." % ip_to_str(nr.ip)) 
+                logging.log(logging.ULTRADEBUG, 'Hook: calling ip_change of my neighbour %s.' % ip_to_str(nr.ip)) 
                 nr.ntkd.neighbour.ip_change(oldip, newnip_ip)
-                logging.debug("Hook: %s ack." % ip_to_str(nr.ip)) 
+                logging.log(logging.ULTRADEBUG, 'Hook: %s ack.' % ip_to_str(nr.ip)) 
 
         # we've done our part
-        logging.debug('Hook.hook done')
+        logging.info('Hooking procedure completed.')
+        if self.radar.netid == -1:
+            logging.info('We haven\'t got any network id yet.')
         self.events.send('HOOKED', (oldip, newnip[:]))
         ##
         

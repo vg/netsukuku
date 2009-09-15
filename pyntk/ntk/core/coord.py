@@ -148,7 +148,7 @@ class Coord(P2P):
     def new_participant_joined(self, lvl, id):
         """Shall the new participant succeed us as a coordinator node?"""
 
-        logging.log(logging.ULTRADEBUG, 'new_participant_joined started')
+        logging.log(logging.ULTRADEBUG, 'Coord: new_participant_joined started')
         # the node joined in level `lvl', thus it may be a coordinator of the
         # level `lvl+1'
         level = lvl + 1
@@ -173,12 +173,16 @@ class Coord(P2P):
 
         # Yes it is. Keep track.
         self.coordnode[level] = HhIP
+        logging.log(logging.ULTRADEBUG, 'Coord: new coordinator for our level ' + str(level) + ' is ' + str(HhIP))
 
         # Then, if I was the previous one... (Tricky enough, new participant could just be me!)
         if it_was_me and HhIP != self.maproute.me:
             # ... let's pass it our cache
+            logging.debug('Coord: I was coordinator for our level ' + str(level) + ', new coordinator is ' + str(HhIP))
+            logging.debug('Coord: So I will pass him my mapcache.')
             peer = self.peer(hIP=hIP)
             peer.mapcache.map_data_merge(self.mapcache.map_data_pack())
+            logging.debug('Coord: Done passing my mapcache.')
 
     def going_out(self, lvl, id, gnumb=None):
         """The node of level `lvl' and ID `id', wants to go out from its gnode

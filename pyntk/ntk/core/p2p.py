@@ -341,7 +341,8 @@ class P2PAll(object):
         if self.radar.netid == -1: return
         # TODO find a better descriptive flag to tell me I'm not ready to interact.
 
-        logging.debug('P2P hooking started')
+        logging.log(logging.ULTRADEBUG, 'P2P hooking: started')
+        logging.log(logging.ULTRADEBUG, 'P2P hooking: My actual pid_getall is: ' + str(self.pid_getall()))
         ## Find our nearest neighbour
         minlvl = self.maproute.levels
         minnr = None
@@ -355,9 +356,11 @@ class P2PAll(object):
 
         if minnr is None:
                 # nothing to do
+                logging.log(logging.ULTRADEBUG, 'P2P hooking: No neighbours to ask for the list of services.')
                 return
 
 
+        logging.log(logging.ULTRADEBUG, 'P2P hooking: I will ask for the list of services to ' + str(self.maproute.ip_to_nip(minnr.ip)))
         nrmaps_pack = minnr.ntkd.p2p.pid_getall()
         for (pid, map_pack) in nrmaps_pack:
             self.pid_get(pid).mapp2p.map_data_merge(map_pack)
@@ -365,6 +368,7 @@ class P2PAll(object):
         for s in self.service:
                 if self.service[s].participant:
                         self.service[s].participate()
+        logging.log(logging.ULTRADEBUG, 'P2P hooking: My final pid_getall is: ' + str(self.pid_getall()))
 
 
         self.events.send('P2P_HOOKED', ())

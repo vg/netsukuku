@@ -425,7 +425,10 @@ def dgram_request_handler(sock, clientaddr, packet, dev, rpcdispatcher):
     #logging.debug('UDP packet from %s, dev %s', clientaddr, dev)
     try:
         data = _data_unpack_from_buffer(packet)
-        if len(data) > 1024: logging.debug('Handling UDP data of %s bytes.' % len(data))
+        lendata = len(data)
+        if lendata > 4000: logging.warning('CAUTION! Handling UDP data of %s bytes.' % lendata)
+        elif lendata > 3000: logging.debug('WARNING!!! Handling UDP data of %s bytes.' % lendata)
+        elif lendata > 1024: logging.debug('Handling UDP data of %s bytes.' % lendata)
         response = rpcdispatcher.marshalled_dispatch(caller, data)
         #logging.debug('Dispatched some data')
     except RPCError:
