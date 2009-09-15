@@ -30,7 +30,7 @@ LOG_FILE = os.path.join(settings.LOG_DIR, settings.LOG_FILE)
 def config():
     ''' Configure the logging system using `settings'. '''
 
-    if settings.DEBUG:
+    if settings.VERBOSE_LEVEL > 0:
         m = ('%(asctime)s %(levelname)s:'
              '(%(filename)s at line %(lineno)d): %(message)s')
     else:
@@ -47,10 +47,12 @@ def config():
     console.setFormatter(formatter)
 
     logger = logging.getLogger('')
-    logger.setLevel(logging.DEBUG)
+    if settings.VERBOSE_LEVEL > 3: settings.VERBOSE_LEVEL = 3
+    levels = {0 : logging.ERROR, 1 : logging.WARNING, 2 : logging.INFO, 3 : logging.DEBUG}
+    logger.setLevel(levels[settings.VERBOSE_LEVEL])
     logger.addHandler(rfh)
 
-    if settings.DEBUG:
+    if settings.DEBUG_ON_SCREEN:
         logger.addHandler(console)
 
     return logger

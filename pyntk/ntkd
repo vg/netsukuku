@@ -29,7 +29,6 @@ from ntk.config import settings, ImproperlyConfigured
 from ntk.lib.log import config as logger_config
 from ntk.lib.micro import allmicro_run
 from ntk.ntkd import NtkNode
-from ntk.lib.log import logger as logging
 
 
 def interfaces_optcb(option, opt, value, parser):
@@ -63,8 +62,6 @@ def main():
                       help='use Internet Protocol version 4')
     parser.add_option('-6', '--ipv6', action='store_true',
                       help='use Internet Protocol version 6')
-    parser.add_option('-d', '--debug', action='store_true',
-                      help='enable debugging messages')
     parser.add_option('-e', '--exclude-interface(s)',
                       dest='exclude_interfaces',
                       action='callback',
@@ -79,6 +76,11 @@ def main():
                       default=[],
                       type='string',
                       help='use specified interface(s)')
+    parser.add_option('-v',
+                      action='count',
+                      default=0,
+                      dest='verbosity_level',
+                      help='be verbose (repeat many times to be more verbose)')
 
     (options, args) = parser.parse_args()
 
@@ -101,10 +103,11 @@ def main():
         )
         settings.load_configuration_file()
 
-    if options.debug:
-        # TODO: add levels support
-        settings.DEBUG = True
-        logger_config()
+    settings.VERBOSE_LEVEL = options.verbosity_level
+    if settings.VERBOSE_LEVEL > 0:
+        settings.DEBUG_ON_SCREEN = True
+    
+    logger_config()
 
     settings.NICS = options.interfaces if options.interfaces else []
     settings.EXCLUDE_NICS = (options.exclude_interfaces if
