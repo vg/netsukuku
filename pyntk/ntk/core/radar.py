@@ -45,9 +45,10 @@ from ntk.config import settings
 from ntk.core.route import DeadRem, Rtt
 from ntk.lib.event import Event
 from ntk.lib.log import logger as logging
-from ntk.lib.micro import micro
+from ntk.lib.micro import micro, micro_block
 from ntk.network.inet import ip_to_str, str_to_ip
 import ntk.wrap.xtime as xtime
+import time
 
 class Neigh(object):
     """ this class simply represent a neighbour """
@@ -377,6 +378,9 @@ class Radar(object):
         # If set to True, this module will reply to radar queries sent by our
         # neighbours.
         self.do_reply = False
+        
+        self.stopping = False
+        self.running_instances = []
 
         self.remotable_funcs = [self.reply, self.time_register]
 
@@ -386,8 +390,20 @@ class Radar(object):
         if not started:
             micro(self.run, (1,))
         else:
-            while True:
+            self.running_instances.append(1)   # there is just one instance, so we use a constant
+            while not self.stopping:
                 self.radar()
+            self.running_instances.remove(1)
+            if not self.running_instances:
+                self.stopping = False
+
+    def stop(self, event_wait = None):
+        """ Stop the radar scanner """
+        if self.running_instances:
+            self.stopping = True
+            while self.stopping:
+                time.sleep(0.005)
+                micro_block()
 
     def radar(self):
         """ Send broadcast packets and store the results in neigh """
@@ -404,13 +420,15 @@ class Radar(object):
 
         # then wait
         self.xtime.swait(self.max_wait_time * 1000)
+        
+        # test wether we are stopping
+        if not self.stopping:
+            # update the neighbours' ip_table
+            self.neigh.store(self.get_all_avg_rtt())
 
-        # update the neighbours' ip_table
-        self.neigh.store(self.get_all_avg_rtt())
-
-        # Send the event
-        self.bouquet_numb += 1
-        self.events.send('SCAN_DONE', (self.bouquet_numb,))
+            # Send the event
+            self.bouquet_numb += 1
+            self.events.send('SCAN_DONE', (self.bouquet_numb,))
 
         # We're done. Reset.
         self.radar_reset()
