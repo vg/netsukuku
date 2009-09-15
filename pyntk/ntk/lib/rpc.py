@@ -157,9 +157,6 @@ class RPCDispatcher(object):
           globals()
         """
 
-        if not 'radar' in func_name:
-            pass #logging.debug("func_get: "+str(func_name))
-
         splitted = func_name.split('.')
 
         if not len(splitted):
@@ -175,21 +172,25 @@ class RPCDispatcher(object):
             if func in map(lambda f:f.__name__, p.remotable_funcs):
                 return getattr(p, func)
         except AttributeError:
+            logging.warning("func_get: "+str(func_name) + " AttributeError, not remotable.")
             return None
 
+        logging.warning("func_get: "+str(func_name) + " not remotable.")
         return None
 
     def _dispatch(self, caller, func_name, params):
         if not 'radar' in func_name:
-            pass #logging.debug("_dispatch: "+func_name+"("+str(params)+")")
+            logging.debug("_dispatch: "+func_name+"("+str(params)+")")
         func = self.func_get(func_name)
         if func is None:
             raise RPCFuncNotRemotable('Function %s is not remotable' % func_name)
         try:
             if '_rpc_caller' in func.im_func.func_code.co_varnames:
-                return func(caller, *params)
+                ret = func(caller, *params)
+                return ret
             else:
-                return func(*params)
+                ret = func(*params)
+                return ret
         except Exception, e:
         # I propagate all exceptions to `dispatch'
             raise
@@ -421,13 +422,14 @@ def dgram_request_handler(sock, clientaddr, packet, dev, rpcdispatcher):
     Handles all request and try to decode them.
     '''
     caller = CallerInfo(clientaddr[0], clientaddr[1], dev, sock)
-    #pass #logging.debug('UDP packet from %s, dev %s', clientaddr, dev)
+    #logging.debug('UDP packet from %s, dev %s', clientaddr, dev)
     try:
         data = _data_unpack_from_buffer(packet)
-        #pass #logging.debug('Handling data: %s', data)
+        if len(data) > 1024: logging.debug('Handling UDP data of %s bytes.' % len(data))
         response = rpcdispatcher.marshalled_dispatch(caller, data)
+        #logging.debug('Dispatched some data')
     except RPCError:
-        pass #logging.debug('An error occurred during request handling')
+        logging.warning('An error occurred during request handling')
 
 def micro_dgram_request_handler(sock, clientaddr, packet, dev, rpcdispatcher):
     micro(dgram_request_handler, (sock, clientaddr, packet, dev, rpcdispatcher))

@@ -31,11 +31,10 @@ from ntk.core.map import Map
 
 class ParticipantNode:
     def __init__(self, 
-                 lvl=None, id=None,  # these are mandatory for Map.__init__(),
-                 participate = False
+                 lvl=None, id=None  # these are mandatory for Map.__init__(),
                 ):
 
-        self.participant = participate
+        self.participant = False
 
     def _pack(self):
         return (0, 0, self.participant)
@@ -140,11 +139,15 @@ class P2P(RPCDispatcher):
     def participate(self):
         """Let's become a participant node"""
 
-        self.mapp2p.participate()
         self.participant = True
+        self.mapp2p.participate()
 
         for nr in self.neigh.neigh_list():
-            nr.ntkd.p2p.participant_add(self.maproute.pid, self.maproute.me)
+            logging.debug('calling participant_add(myself) to %s.' % self.maproute.ip_to_nip(nr.ip))
+            stringexec = "nr.ntkd.p2p.PID_"+str(self.mapp2p.pid)+".participant_add(self.maproute.me)"
+            logging.debug(stringexec)
+            exec(stringexec)
+            logging.debug('done')
 
     def participant_add(self, pIP):
         continue_to_forward = False
@@ -153,6 +156,7 @@ class P2P(RPCDispatcher):
         lvl = self.maproute.nip_cmp(pIP, mp.me)
         for l in xrange(lvl, mp.levels):
             if not mp.node_get(l, pIP[l]).participant:
+                logging.debug('registering participant (%s, %s) to service %s.' % (l, pIP[l], self.mapp2p.pid))
                 mp.node_get(l, pIP[l]).participant = True
                 mp.node_add(l, pIP[l])
                 continue_to_forward = True
@@ -162,7 +166,11 @@ class P2P(RPCDispatcher):
 
         # continue to advertise the new participant
         for nr in self.neigh.neigh_list():
-                nr.ntkd.p2p.participant_add(self.pid, pIP)
+            logging.debug('forwarding participant_add(%s) to %s.' % (pIP, self.maproute.ip_to_nip(nr.ip)))
+            stringexec = "nr.ntkd.p2p.PID_"+str(self.mapp2p.pid)+".participant_add(pIP)"
+            logging.debug(stringexec)
+            exec(stringexec)
+            logging.debug('done')
 
     def msg_send(self, sender_nip, hip, msg, use_udp_nip=None):
         """Routes a packet to `hip'. Do not use this function directly, use
@@ -170,16 +178,24 @@ class P2P(RPCDispatcher):
 
         msg: it is a (func_name, args) pair."""
 
+        logging.debug(str(sender_nip) + ' is asking for P2P service to ' + str(hip))
         if use_udp_nip:
+            logging.debug(' using UDP through ' + str(use_udp_nip))
             return self.call_msg_send_udp(use_udp_nip, sender_nip, hip, msg)
         else:
+            logging.debug(' using TCP')
             H_hip = self.H(hip)
+            logging.debug(' nearest known is ' + str(H_hip))
             if H_hip == self.mapp2p.me:
                 # the msg has arrived
+                logging.debug(' nearest known is me.')
                 return self.msg_exec(sender_nip, msg)
 
             # forward the message until it arrives at destination
             n = self.neigh_get(H_hip)
+            logging.debug(' forwarding to ' + str(n.ip))
+            logging.debug(' that is...')
+            logging.debug(' forwarding to ' + str(self.maproute.ip_to_nip(n.ip)))
             if n: 
                 exec("return n.ntkd.p2p.PID_"+str(self.mapp2p.pid)+
                      ".msg_send(sender_nip, hip, msg)")
@@ -188,16 +204,22 @@ class P2P(RPCDispatcher):
 
     def call_msg_send_udp(self, nip, sender_nip, hip, msg):
         """Use BcastClient to call msg_send"""
+        logging.debug('Calling msg_send to ' + str(nip) + ' via UDP')
         # from nip to bestdev
         bcastclient = None
         try:
             dev = self.neigh.ip_to_neigh(self.maproute.nip_to_ip(nip)).bestdev[0]
             bcastclient = rpc.BcastClient(devs=[dev], xtimemod=xtime)
+            logging.debug('created BcastClient with dev = ' + dev)
         except:
             bcastclient = self.radar.broadcast
+            logging.debug('Cannot create BcastClient with right dev, so using Radar.broadcast')
         stringexec = "bcastclient.p2p.PID_"+str(self.mapp2p.pid)+".msg_send_udp(self.radar.ntkd_id, nip, sender_nip, hip, msg)"
+        logging.debug('Calling ' + stringexec)
         exec(stringexec)
+        logging.debug('Calling ' + stringexec + '  done. Waiting...')
         ret = self.chan_replies.recv()
+        logging.debug('Calling ' + stringexec + '  done. Got reply. Returning ' + str(ret))
         return ret
 
     def msg_send_udp(self, _rpc_caller, ntkd_id_caller, nip_callee, sender_nip, hip, msg):
@@ -207,8 +229,11 @@ class P2P(RPCDispatcher):
            nip_callee is the NIP of the callee.
             It is used by the callee to recognize a request destinated to it.
            """
+        logging.debug('Someone is asking for P2P service on the LAN!')
         if self.maproute.me == nip_callee:
+            logging.debug('Someone is asking for P2P service on the LAN! To me! Forwarding...')
             ret = self.msg_send(sender_nip, hip, msg)
+            logging.debug('Someone is asking for P2P service on the LAN! To me! Got a reply. Sending reply.')
             bcastclient = rpc.BcastClient(devs=[_rpc_caller.dev], xtimemod=xtime)
             exec("bcastclient = bcastclient.p2p.PID_"+str(self.mapp2p.pid))
             bcastclient.reply_msg_send_udp(ntkd_id_caller, ret)
@@ -304,6 +329,10 @@ class P2PAll(object):
 
         It gets the P2P maps from our nearest neighbour"""
 
+        if self.radar.netid == -1: return
+        # TODO find a better descriptive flag to tell me I'm not ready to interact.
+
+        logging.debug('P2P hooking started')
         ## Find our nearest neighbour
         minlvl = self.maproute.levels
         minnr = None

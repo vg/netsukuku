@@ -161,6 +161,8 @@ class NtkNode(object):
         logging.debug('radar reset (client broadcast reset)')
         # From now on a complete reset is needed for each new hook
         self.hook.events.listen('HOOKED', self.reset)
+        # Now I'm also participating to service Coord
+        self.coordnode.participate()
         # now keep doing radar forever.
         logging.debug('start Radar.run')
         self.radar.run()

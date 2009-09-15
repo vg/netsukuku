@@ -128,6 +128,7 @@ class Hook(object):
         oldnip = self.maproute.me[:]
         oldip = self.maproute.nip_to_ip(oldnip)
         we_are_alone = False
+        neigh_coord_service_nip = None
 
         ## Find all the highest non saturated gnodes
         hfn = [(self.maproute.me, self.highest_free_nodes())]
@@ -155,6 +156,7 @@ class Hook(object):
                 if is_neigh_forbidden(nrnip):
                         # We don't want forbidden neighbours
                         continue
+                neigh_coord_service_nip = nrnip
                 logging.debug('Hook.hook step one.4')
                 hfn.append((nrnip, self.call_highest_free_nodes_udp(nrnip)))
                 logging.debug('Hook.hook step one.5')
@@ -195,17 +197,14 @@ class Hook(object):
         for l in reversed(xrange(lvl)): newnip[l] = choice(valid_ids(l, newnip))
 
         # If we are alone, let's generate our netid
-        if we_are_alone: 
-            self.radar.netid = randint(0, 2**32-1)
-            logging.debug("Generated our netid: %s", self.radar.netid)
-        ##
-
-
-        if lvl < self.maproute.levels-1:
-                # We are creating a new gnode which is not in the latest
-                # level. 
+        if we_are_alone:
+                self.radar.netid = randint(0, 2**32-1)
+                # and we don't need to contact coordinator node...
+        # removed:  if lvl < self.maproute.levels-1:
+        #           We are creating a new gnode which is not in the latest
+        #           level.
+        else:
                 # Contact the coordinator nodes 
-                
                 if lvl > 0:
                         # If we are going to create a new gnode, it's useless to pose
                         # any condition
@@ -213,15 +212,15 @@ class Hook(object):
 
                 if condition:
                         # <<I'm going out>>
-                        co = self.coordnode.peer(key = (1, self.maproute.me))
+                        co = self.coordnode.peer(key = (1, self.maproute.me), use_udp_nip=neigh_coord_service_nip)
                         # get |G| and check that  gnumb < |G|
                         Gnumb = co.going_out(0, self.maproute.me[0], gnumb)
-                        if Gnumb == None:
+                        if Gnumb is None:
                                 # nothing to be done
                                 return
 
                         # <<I'm going in, can I?>>
-                        co2 = self.coordnode.peer(key = (lvl+1, newnip))
+                        co2 = self.coordnode.peer(key = (lvl+1, newnip), use_udp_nip=neigh_coord_service_nip)
                         # ask if we can get in and if |G'| < |G|, and get our new IP
                         newnip=co2.going_in(lvl, Gnumb)
 
@@ -231,16 +230,21 @@ class Hook(object):
                         else:
                                 raise Exception, "Netsukuku is full"
 
-                        co.close()
-                        co2.close()
+                        # TODO do we need to implement a close?
+                        #co.close()
+                        #co2.close()
+
                 elif not we_are_alone:
                         # <<I'm going in, can I?>>
-                        co2 = self.coordnode.peer(key = (lvl+1, newnip))
+                        co2 = self.coordnode.peer(key = (lvl+1, newnip), use_udp_nip=neigh_coord_service_nip)
                         # ask if we can get in, get our new IP
+                        logging.debug('contacting coordinator node...')
                         newnip=co2.going_in(lvl)
-                        if newnip == None:
+                        logging.debug('contacted coordinator node, assigned nip = ' + str(newnip))
+                        if newnip is None:
                                 raise Exception, "Netsukuku is full"
-                        co2.close()
+                        # TODO do we need to implement a close?
+                        #co2.close()
         ##
 
         logging.debug('Hook.hook step four')

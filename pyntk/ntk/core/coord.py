@@ -125,9 +125,8 @@ class Coord(P2P):
         self.mapp2p.events.listen('NODE_NEW', self.new_participant_joined)
 
         self.coordnode = [None]*self.maproute.levels
-        self.coornodes_set()
 
-        self.remotable_funcs = [self.going_out, self.going_out_ok, self.going_in]
+        self.remotable_funcs += [self.going_out, self.going_out_ok, self.going_in]
 
     def h(self, (lvl, ip)):
         """h:KEY-->IP"""
@@ -135,10 +134,15 @@ class Coord(P2P):
         for l in reversed(xrange(lvl)): IP[l] = 0
         return IP
 
-    def coornodes_set(self):
+    def coord_nodes_set(self):
         """Sets the coordinator nodes of each level, using the current map"""
         for lvl in xrange(self.maproute.levels):
                 self.coordnode[lvl] = self.H(self.h((lvl, self.maproute.me)))
+
+    def participate(self):
+        """Let's become a participant node"""
+        P2P.participate(self)  # base method
+        self.coord_nodes_set()
 
     @microfunc()
     def new_participant_joined(self, lvl, id):
@@ -152,7 +156,7 @@ class Coord(P2P):
         pIP[lvl] = id
         for l in reversed(xrange(lvl)): pIP[l]=None
 
-        newcor = self.H(self.h(level, self.maproute.me))
+        newcor = self.H(self.h((level, self.maproute.me)))
         if newcor != pIP:
                 # the new participant isn't a coordinator node
                 return
@@ -191,15 +195,15 @@ class Coord(P2P):
            We'll give an affermative answer if `gnumb' > |G| or if
            `gnumb'=None"""
 
-        if gnumb > self.mapcache.nodes_nb[lvl]+1:
-                fnl = self.mapcache.free_nodes_list(lvl)
-                if fnl == []:
-                        return None
+        if gnumb and not gnumb > self.mapcache.nodes_nb[lvl]+1: return None
 
-                newip = self.mapcache.me
-                newip[lvl] = choice(fnl)
-                for l in reversed(xrange(lvl)): newip[l] = choice(valid_ids(lvl, newip))
-                self.node_add(lvl, newip[lvl])
-                return newip
+        fnl = self.mapcache.free_nodes_list(lvl)
+        if fnl == []:
+                return None
 
-        return None
+        newnip = self.mapcache.me
+        newnip[lvl] = choice(fnl)
+        for l in reversed(xrange(lvl)): newnip[l] = choice(valid_ids(lvl, newnip))
+        self.mapcache.node_add(lvl, newnip[lvl])
+        return newnip
+
