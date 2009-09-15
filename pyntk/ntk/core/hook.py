@@ -119,8 +119,9 @@ class Hook(object):
         nodes. Note: this is used only by communicating_vessels()
         """
         
-        oldnip=self.maproute.me[:]
-        we_are_alone=False
+        oldnip = self.maproute.me[:]
+        oldip = self.maproute.nip_to_ip(oldnip)
+        we_are_alone = False
 
         ## Find all the highest non saturated gnodes
         hfn = [(self.maproute.me, self.highest_free_nodes())]
@@ -150,7 +151,7 @@ class Hook(object):
 
         ## Find all the hfn elements with the highest level and 
         ## remove all the lower ones
-        hfn2=[]
+        hfn2 = []
         hfn_lvlmax = -1
         for h in hfn:
                 if h[1][0] > hfn_lvlmax:
@@ -158,13 +159,13 @@ class Hook(object):
                         hfn2=[]
                 if h[1][0] == hfn_lvlmax:
                         hfn2.append(h)
-        hfn=hfn2
+        hfn = hfn2
         ##
 
         ## Find the list with the highest number of elements
         lenmax = 0
         for h in hfn:
-                l=len(h[1][1])
+                l = len(h[1][1])
                 if l > lenmax:
                         lenmax=l
                         H=h
@@ -232,9 +233,7 @@ class Hook(object):
         self.radar.do_reply = False
 
         # close the ntkd sessions
-        for nr in self.neigh.neigh_list():
-                if nr.ntkd.connected:
-                        nr.ntkd.close()
+        self.neigh.reset_ntk_clients()
 
         # change the IPs of the NICs
         newnip_ip = self.maproute.nip_to_ip(newnip)
@@ -245,16 +244,20 @@ class Hook(object):
         for l in reversed(xrange(lvl)): self.maproute.level_reset(l)
 
         # Restore the neighbours in the map and send the ETP
-        self.neigh.reset_ntk_clients()
         self.neigh.readvertise()
 
         self.radar.do_reply = True
 
         # warn our neighbours
-        oldip = self.maproute.nip_to_ip(oldnip)
-        for nr in self.neigh.neigh_list():
-                logging.debug("Hook: calling ip_change of my neighbour %s" % ip_to_str(nr.ip)) 
+        # TODO find a better descriptive flag to tell me I'm not ready to interact.
+        if self.radar.netid == -1:
+            logging.debug('Hook.hook warn neighbours skipped')
+        else:
+            logging.debug('Hook.hook warn neighbours of my change from %s to %s.' % (ip_to_str(oldip), ip_to_str(newnip_ip)))
+            for nr in self.neigh.neigh_list():
+                logging.debug("Hook: calling ip_change of my neighbour %s." % ip_to_str(nr.ip)) 
                 nr.ntkd.neighbour.ip_change(oldip, newnip_ip)
+                logging.debug("Hook: %s ack." % ip_to_str(nr.ip))
 
         # we've done our part
         self.events.send('HOOKED', (oldip, newnip[:]))
