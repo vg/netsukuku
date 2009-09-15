@@ -126,29 +126,31 @@ def wakeup_on_event(events=[]):
                 ...
     Note: event_wait is a dictionary of the following type: { (event_instance, evname) : wait_func }
     '''
+    
+    class Channel_with_wakeup(Channel):
+        def __init__(self):
+            Channel.__init__(self, prefer_sender=True)
+
+        ## Create the dispatcher and the event_wait() function. They are all
+        ## dependent on this Channel
+
+        @microfunc()   # Each call is queued. No event will be lost
+        def _wakeup_on_event_dispatcher(self, *event_data):
+            self.bcast_send(event_data)  # blocks if necessary
+
+        def event_wait_func(self):
+            return self.recv()
 
     def decorate(func):
         event_wait_func_dict={ }  # { (ev, evname) : wait_func }
         for ev, evname in events:
-                chan = Channel(prefer_sender=False)
-                ## Create the dispatcher and the event_wait() function. They are all
-                ## dependent on `chan'
-                ##
-
-                @microfunc(is_micro=False) # Using is_micro=False, ensures that each
-                                           # call is queued. In this way, no event
-                                           # will be lost
-                def _wakeup_on_event_dispatcher(*event_data):
-                        chan.bcast_send(event_data)  # blocks if necessary
-
-                def event_wait_func():
-                        return chan.recv()
+                chan = Channel_with_wakeup()
 
                 # Register _wakeup_on_event_dispatcher as a listener of the specified event
-                ev.listen(evname, _wakeup_on_event_dispatcher)
+                ev.listen(evname, chan._wakeup_on_event_dispatcher)
                 ##
 
-                event_wait_func_dict[(ev, evname)]=event_wait_func
+                event_wait_func_dict[(ev, evname)] = chan.event_wait_func
 
         func_with_wait=functools.partial(func, event_wait=event_wait_func_dict)
         
