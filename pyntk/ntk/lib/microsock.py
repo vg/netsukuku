@@ -166,7 +166,7 @@ def socket(family=AF_INET, type=SOCK_STREAM, proto=0):
         # a reply to a udp request
         if stacktrace.find('reply') >= 0:
             stacktrace = 'handling of a radar.reply'
-    logging.debug('created dispatcher ' + ret.dispatcher.__repr__() + ' in ' + stacktrace)
+    #logging.debug('created dispatcher ' + ret.dispatcher.__repr__() + ' in ' + stacktrace)
     return ret
 
 # This is a facade to the dispatcher object.
@@ -202,7 +202,7 @@ class stacklesssocket(object):
                 # a reply to a udp request
                 if stacktrace.find('reply') >= 0:
                     stacktrace = 'handling of a radar.reply'
-            logging.debug('**removed** dispatcher ' + self.dispatcher.__repr__() + ' in ' + stacktrace)
+            #logging.debug('**removed** dispatcher ' + self.dispatcher.__repr__() + ' in ' + stacktrace)
             # Close dispatcher if it isn't already closed
             if self.dispatcher.fileno() is not None:
                 try:
