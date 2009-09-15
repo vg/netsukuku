@@ -27,36 +27,36 @@ from ntk.lib.micro import microfunc
 from ntk.lib.rencode import serializable
 from ntk.core.map import Map
 
-class PartecipantNode:
+class ParticipantNode:
     def __init__(self, 
                  lvl=None, id=None,  # these are mandatory for Map.__init__(),
-                 partecipate = False
+                 participate = False
                 ):
 
-        self.partecipant = partecipate
+        self.participant = participate
 
     def _pack(self):
-        return (0, 0, self.partecipant)
+        return (0, 0, self.participant)
 
-serializable.register(PartecipantNode)
+serializable.register(ParticipantNode)
 
 class MapP2P(Map):
-    """Map of the partecipant nodes"""
+    """Map of the participant nodes"""
 
     def __init__(self, levels, gsize, me, pid):
         """levels, gsize, me: the same of Map
 
           pid: P2P id of the service associated to this map"""
 
-        Map.__init__(self, levels, gsize, PartecipantNode, me)
+        Map.__init__(self, levels, gsize, ParticipantNode, me)
 
         self.pid = pid
 
-    def partecipate(self):
-        """self.me is now a partecipant node"""
+    def participate(self):
+        """self.me is now a participant node"""
 
         for l in xrange(self.levels):
-                self.node_get(l, self.me[l]).partecipant = True
+                self.node_get(l, self.me[l]).participant = True
 
     @microfunc()
     def me_changed(self, old_me, new_me):
@@ -85,10 +85,10 @@ class P2P(RPCDispatcher):
         self.maproute.events.listen('ME_CHANGED', self.mapp2p.me_changed)
         self.maproute.events.listen('NODE_DELETED', self.mapp2p.node_del)
 
-        # are we a partecipant?
-        self.partecipant = False
+        # are we a participant?
+        self.participant = False
         
-        self.remotable_funcs = [self.partecipant_add, self.msg_send]
+        self.remotable_funcs = [self.participant_add, self.msg_send]
         RPCDispatcher.__init__(self, root_instance=self)
 
     def h(self, key):
@@ -100,7 +100,7 @@ class P2P(RPCDispatcher):
     def H(self, IP):
         """This is the function that maps each IP to an existent hash node IP
         
-           If there are no partecipants, None is returned"""
+           If there are no participants, None is returned"""
 
         mp = self.mapp2p
         hIP = [None]*mp.levels
@@ -108,7 +108,7 @@ class P2P(RPCDispatcher):
                 for id in xrange(mp.gsize):
                         for sign in [-1,1]:
                                 hid=(IP[l]+id*sign)%mp.gsize
-                                if mp.node_get(l, hid).partecipant:
+                                if mp.node_get(l, hid).participant:
                                         hIP[l]=hid
                                         break
                         if hIP[l]:
@@ -134,31 +134,32 @@ class P2P(RPCDispatcher):
                 return None
         return self.neigh.id_to_neigh(br.gw)
 
-    def partecipate(self):
-        """Let's become a partecipant node"""
+    def participate(self):
+        """Let's become a participant node"""
 
-        self.mapp2p.partecipate()
+        self.mapp2p.participate()
+        self.participant = True
 
         for nr in self.neigh.neigh_list():
-            nr.ntkd.p2p.partecipant_add(self.maproute.pid, self.maproute.me)
+            nr.ntkd.p2p.participant_add(self.maproute.pid, self.maproute.me)
 
-    def partecipant_add(self, pIP):
+    def participant_add(self, pIP):
         continue_to_forward = False
 
         mp  = self.mapp2p
         lvl = self.maproute.nip_cmp(pIP, mp.me)
         for l in xrange(lvl, mp.levels):
-            if not mp.node_get(l, pIP[l]).partecipant:
-                mp.node_get(l, pIP[l]).partecipant = True
+            if not mp.node_get(l, pIP[l]).participant:
+                mp.node_get(l, pIP[l]).participant = True
                 mp.node_add(l, pIP[l])
                 continue_to_forward = True
 
         if not continue_to_forward:
             return
 
-        # continue to advertise the new partecipant
+        # continue to advertise the new participant
         for nr in self.neigh.neigh_list():
-                nr.ntkd.p2p.partecipant_add(self.pid, pIP)
+                nr.ntkd.p2p.participant_add(self.pid, pIP)
 
     def msg_send(self, sender_nip, hip, msg):
         """Routes a packet to `hip'. Do not use this function directly, use
@@ -166,13 +167,13 @@ class P2P(RPCDispatcher):
 
         msg: it is a (func_name, args) pair."""
 
-        hip = self.H(hip)
-        if hip == self.mapp2p.me:
+        H_hip = self.H(hip)
+        if H_hip == self.mapp2p.me:
                 # the msg has arrived
                 return self.msg_exec(sender_nip, msg)
 
         # forward the message until it arrives at destination
-        n = self.neigh_get(hip)
+        n = self.neigh_get(H_hip)
         if n: 
                 exec("return n.ntkd.p2p.PID_"+str(self.mapp2p.pid)+
                         ".msg_send(sender_nip, hip, msg)")
@@ -192,7 +193,7 @@ class P2P(RPCDispatcher):
         def rmt(self, func_name, *params):
             """Overrides FakeRmt.rmt()"""
             if self.hIP is None:
-                    self.hIP = self.p2p.H(self.p2p.h(self.key))
+                    self.hIP = self.p2p.h(self.key)
             return self.p2p.msg_send(self.p2p.maproute.me, self.hIP, (func_name, params))
 
     def peer(self, hIP=None, key=None):
@@ -246,15 +247,15 @@ class P2PAll(object):
            P2PAll dictionary."""
 
         # It's possible that the stub P2P instance `self.pid_get(p2p.pid)'
-        # created by pid_add() has an update map of partecipants, which has
+        # created by pid_add() has an update map of participants, which has
         # been accumulated during the time. Copy this map in the `p2p'
         # instance to be sure.
         map_pack = self.pid_get(p2p.pid).mapp2p.map_data_pack()
         p2p.mapp2p.map_data_merge(map_pack)
         self.service[p2p.pid] = p2p
 
-    def partecipant_add(self, pid, pIP):
-        self.pid_get(pid).partecipant_add(pIP)
+    def participant_add(self, pid, pIP):
+        self.pid_get(pid).participant_add(pIP)
 
     @microfunc()
     def p2p_hook(self, *args):
@@ -281,8 +282,8 @@ class P2PAll(object):
                 self.pid_get(pid).mapp2p.map_data_merge(map_pack)
        
         for s in self.service:
-                if self.service[s].partecipant:
-                        self.service[s].partecipate()
+                if self.service[s].participant:
+                        self.service[s].participate()
 
         self.events.send('P2P_HOOKED', ())
 

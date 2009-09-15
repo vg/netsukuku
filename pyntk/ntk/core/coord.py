@@ -120,7 +120,7 @@ class Coord(P2P):
         self.maproute.events.listen('NODE_NEW', self.mapcache.node_add)
         self.maproute.events.listen('NODE_DELETED', self.mapcache.node_del)
 
-        self.mapp2p.events.listen('NODE_NEW', self.new_partecipant_joined)
+        self.mapp2p.events.listen('NODE_NEW', self.new_participant_joined)
 
         self.coordnode = [None]*self.maproute.levels
         self.coornodes_set()
@@ -139,8 +139,8 @@ class Coord(P2P):
                 self.coordnode[lvl] = self.H(self.h((lvl, self.maproute.me)))
 
     @microfunc()
-    def new_partecipant_joined(self, lvl, id):
-        """Shall the new partecipant succeed us as a coordinator node?"""
+    def new_participant_joined(self, lvl, id):
+        """Shall the new participant succeed us as a coordinator node?"""
 
         # the node joined in level `lvl', thus it may be a coordinator of the
         # level `lvl+1'
@@ -152,7 +152,7 @@ class Coord(P2P):
 
         newcor = self.H(self.h(level, self.maproute.me))
         if newcor != pIP:
-                # the new partecipant isn't a coordinator node
+                # the new participant isn't a coordinator node
                 return
 
         oldcor = self.coordnode[level]
