@@ -3,7 +3,7 @@
 # (c) Copyright 2007 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
 #
 # This source code is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as published 
+# modify it under the terms of the GNU General Public License as published
 # by the Free Software Foundation; either version 2 of the License,
 # or (at your option) any later version.
 #
@@ -29,12 +29,13 @@ from ntk.lib.micro import microfunc, Channel
 from ntk.lib.rencode import serializable
 from ntk.core.map import Map
 
-class ParticipantNode:
-    def __init__(self, 
-                 lvl=None, id=None  # these are mandatory for Map.__init__(),
-                ):
 
-        self.participant = False
+class ParticipantNode(object):
+    def __init__(self,
+                 lvl=None, id=None,  # these are mandatory for Map.__init__()
+                 participant=False):
+
+        self.participant = participant
 
     def _pack(self):
         return (0, 0, self.participant)
@@ -47,25 +48,26 @@ class MapP2P(Map):
     def __init__(self, levels, gsize, me, pid):
         """levels, gsize, me: the same of Map
 
-          pid: P2P id of the service associated to this map"""
+        pid: P2P id of the service associated to this map
+        """
 
         Map.__init__(self, levels, gsize, ParticipantNode, me)
 
         self.pid = pid
 
-    def participate(self):
+    def partecipate(self):
         """self.me is now a participant node"""
 
         for l in xrange(self.levels):
                 self.node_get(l, self.me[l]).participant = True
 
     @microfunc()
-    def me_changed(self, old_me, new_me):
-        return Map.me_change(self, new_me)
+    def me_changed(self, new_me):
+        Map.me_change(self, new_me)
 
     @microfunc(True)
     def node_del(self, lvl, id):
-        return Map.node_del(self, lvl, id)
+        Map.node_del(self, lvl, id)
 
 class P2P(RPCDispatcher):
     """This is the class that must be inherited to create a P2P module.
@@ -77,33 +79,36 @@ class P2P(RPCDispatcher):
            pid: P2P id of the service associated to this map
         """
 
-        self.radar    = radar
-        self.neigh    = radar.neigh
+        self.radar = radar
+        self.neigh = radar.neigh
         self.maproute = maproute
         self.chan_replies = Channel()
 
-        self.mapp2p   = MapP2P(self.maproute.levels, self.maproute.gsize, self.maproute.me, pid)
-        
+        self.mapp2p = MapP2P(self.maproute.levels,
+                             self.maproute.gsize,
+                             self.maproute.me,
+                             pid)
+
         self.maproute.events.listen('ME_CHANGED', self.mapp2p.me_changed)
         self.maproute.events.listen('NODE_DELETED', self.mapp2p.node_del)
 
         # are we a participant?
         self.participant = False
-        
+
         self.remotable_funcs = [self.participant_add, self.msg_send, self.msg_send_udp, self.reply_msg_send_udp]
+
         RPCDispatcher.__init__(self, root_instance=self)
 
     def h(self, key):
         """This is the function h:KEY-->IP.
-        
-        You should override it with your own mapping function."""
+
+        You should override it with your own mapping function.
+        """
         return key
 
     def H(self, IP):
         """This is the function that maps each IP to an existent hash node IP
-        
            If there are no participants, None is returned"""
-
         mp = self.mapp2p
         hIP = [None]*mp.levels
         for l in reversed(xrange(mp.levels)):
@@ -118,27 +123,27 @@ class P2P(RPCDispatcher):
                 if hIP[l] is None:
                         return None
 
-                if hIP[l] != mp.me[l]:
-                        # we can stop here
-                        break
+            if hIP[l] != mp.me[l]:
+                # we can stop here
+                break
         return hIP
 
     def neigh_get(self, hip):
         """Returns the Neigh instance of the neighbour we must use to reach
            the hash node.
-           `hip' is the IP of the hash node.
-           
-           If nothing is found, None is returned"""
-        
+
+        `hip' is the IP of the hash node.
+        If nothing is found, None is returned
+        """
+
         lvl = self.mapp2p.nip_cmp(hip, self.maproute.me)
         br = self.maproute.node_get(lvl,hip[lvl]).best_route()
         if not br:
-                return None
+            return None
         return self.neigh.id_to_neigh(br.gw)
 
-    def participate(self):
+    def partecipate(self):
         """Let's become a participant node"""
-
         self.participant = True
         self.mapp2p.participate()
 
@@ -166,8 +171,10 @@ class P2P(RPCDispatcher):
             return
 
         # continue to advertise the new participant
+
         # TODO handle the case where one of neighbours does not reply (raises an error)
         # TODO do we have to skip the one who sent to us?
+
         for nr in self.neigh.neigh_list():
             logging.debug('forwarding participant_add(%s) to %s.' % (pIP, self.maproute.ip_to_nip(nr.ip)))
             stringexec = "nr.ntkd.p2p.PID_"+str(self.mapp2p.pid)+".participant_add(pIP)"
@@ -175,12 +182,13 @@ class P2P(RPCDispatcher):
             exec(stringexec)
             logging.debug('done')
 
+
     def msg_send(self, sender_nip, hip, msg, use_udp_nip=None):
         """Routes a packet to `hip'. Do not use this function directly, use
         self.peer() instead
 
         msg: it is a (func_name, args) pair."""
-
+	
         logging.debug(str(sender_nip) + ' is asking for P2P service to ' + str(hip))
         if use_udp_nip:
             logging.debug(' using UDP through ' + str(use_udp_nip))
@@ -207,6 +215,7 @@ class P2P(RPCDispatcher):
                 return ret
             else:
                 return None
+
 
     def call_msg_send_udp(self, nip, sender_nip, hip, msg):
         """Use BcastClient to call msg_send"""
@@ -268,10 +277,12 @@ class P2P(RPCDispatcher):
                     self.hIP = self.p2p.h(self.key)
             return self.p2p.msg_send(self.p2p.maproute.me, self.hIP, (func_name, params), use_udp_nip=self.use_udp_nip)
 
+
     def peer(self, hIP=None, key=None, use_udp_nip=None):
         if hIP is None and key is None:
                 raise Exception, "hIP and key are both None. Specify at least one"
         return self.RmtPeer(self, hIP=hIP, key=key, use_udp_nip=use_udp_nip)
+
 
 class P2PAll(object):
     """Class of all the registered P2P services"""
@@ -289,7 +300,7 @@ class P2PAll(object):
         self.maproute = maproute
 
         self.service = {}
- 
+
         self.remotable_funcs = [self.pid_getall]
         self.events=Event(['P2P_HOOKED'])
 
@@ -311,7 +322,7 @@ class P2PAll(object):
                 return self.service[pid]
 
     def pid_getall(self):
-        return [(s, self.service[s].mapp2p.map_data_pack()) 
+        return [(s, self.service[s].mapp2p.map_data_pack())
                         for s in self.service]
 
     def p2p_register(self, p2p):
@@ -345,7 +356,8 @@ class P2PAll(object):
         minlvl = self.maproute.levels
         minnr = None
         for nr in self.neigh.neigh_list():
-            lvl = self.maproute.nip_cmp(self.maproute.me, self.maproute.ip_to_nip(nr.ip))
+            lvl = self.maproute.nip_cmp(self.maproute.me,
+                                        self.maproute.ip_to_nip(nr.ip))
             if lvl < minlvl:
                 minlvl = lvl
                 minnr  = nr
@@ -355,18 +367,20 @@ class P2PAll(object):
                 # nothing to do
                 return
 
+
         nrmaps_pack = minnr.ntkd.p2p.pid_getall()
         for (pid, map_pack) in nrmaps_pack:
-                self.pid_get(pid).mapp2p.map_data_merge(map_pack)
-       
+            self.pid_get(pid).mapp2p.map_data_merge(map_pack)
+
         for s in self.service:
                 if self.service[s].participant:
                         self.service[s].participate()
+
 
         self.events.send('P2P_HOOKED', ())
 
     def __getattr__(self, str):
 
         if str[:4] == "PID_":
-                return self.pid_get(int(str[4:]))
+            return self.pid_get(int(str[4:]))
         raise AttributeError

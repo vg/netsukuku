@@ -31,6 +31,8 @@ sys.path.append('..')
 from ntk.core.radar import Neigh, Neighbour
 from ntk.core.route import DeadRem
 
+from utils import BaseObserver
+
 IP = 16909060
 MAX_NEIGHBOUR = 5
 NETID = randint(0, 2**32-1)
@@ -40,31 +42,24 @@ NEIGH = Neigh(bestdev=('eth0', 42),
               netid=NETID,
               idn=1)
 
-class Observer(object):
+class NeighbourObserver(BaseObserver):
 
-    def __init__(self, neighbour):
-        self.delete_events = []
-        self.new_events = []
-        self.rem_changed_events = []
-
-        neighbour.events.listen('NEIGH_DELETED', self.neigh_deleted)
-        neighbour.events.listen('NEIGH_NEW', self.neigh_new)
-        neighbour.events.listen('NEIGH_REM_CHGED', self.neigh_rem_changed)
+    EVENTS = ['NEIGH_DELETED', 'NEIGH_NEW', 'NEIGH_REM_CHGED']
 
     def neigh_new(self, neighbour):
-        self.new_events.append(neighbour)
+        self.neigh_new_event = neighbour
 
     def neigh_deleted(self, neighbour):
-        self.delete_events.append(neighbour)
+        self.neigh_deleted_event = neighbour
 
-    def neigh_rem_changed(self, neighbour, rem):
-        self.rem_changed_events.append((neighbour, rem))
+    def neigh_rem_chged(self, neighbour, rem):
+        self.neigh_rem_chged_event = (neighbour, rem)
 
 class TestNeighbour(unittest.TestCase):
 
     def setUp(self):
         self.neighbour = Neighbour(max_neigh=MAX_NEIGHBOUR)
-        self.observer = Observer(self.neighbour)
+        self.observer = NeighbourObserver(who=self.neighbour)
 
     def testEmptyNeighbourList(self):
         '''Empty neighbour list'''
@@ -83,8 +78,8 @@ class TestNeighbour(unittest.TestCase):
         self.failUnlessEqual(self.neighbour.ip_to_neigh(IP).values(),
                              NEIGH.values())
 
-        neighbour_observed = self.observer.new_events.pop()
-        self.failUnlessEqual(NEIGH.values(), neighbour_observed.values())
+        self.failUnlessEqual(NEIGH.values(),
+                             self.observer.neigh_new_event.values())
 
     def testDeleteNeighbour(self):
         '''Delete a neighbour'''
@@ -93,12 +88,11 @@ class TestNeighbour(unittest.TestCase):
         self.neighbour.delete(IP)
         self.failUnlessEqual(self.neighbour.neigh_list(), [])
 
-        neighbour_observed = self.observer.delete_events.pop()
         deleted_neighbour = copy.copy(NEIGH)
         deleted_neighbour.devs = deleted_neighbour.bestdev = None
         deleted_neighbour.rem = DeadRem()
         self.failUnlessEqual(deleted_neighbour.values(),
-                             neighbour_observed.values())
+                             self.observer.neigh_deleted_event.values())
 
     def testChangeNeighbourRem(self):
         '''Change neighbour REM'''
@@ -114,7 +108,7 @@ class TestNeighbour(unittest.TestCase):
         self.failUnlessEqual(n.rem.value, 8)
 
         (neighbour_observed,
-         rem_observed) = self.observer.rem_changed_events.pop()
+         rem_observed) = self.observer.neigh_rem_chged_event
         self.failUnlessEqual(NEIGH.values(),
                              neighbour_observed.values())
         self.failUnlessEqual(rem_observed.value, 8)
@@ -132,9 +126,8 @@ class TestNeighbour(unittest.TestCase):
         self.failUnlessEqual(self.neighbour.ip_to_neigh(new_ip),
                              new_neighbour)
 
-        neighbour_observed = self.observer.new_events.pop()
         self.failUnlessEqual(new_neighbour.values(),
-                             neighbour_observed.values())
+                             self.observer.neigh_new_event.values())
 
     def testFindHoleInTranslationTable(self):
         '''Find hole in traslation table'''
@@ -156,12 +149,12 @@ class TestNeighbour(unittest.TestCase):
                                                    # the neighbour to sort
                                                    # properly neighbours list
         neighbours.sort(key=f)
-        best_neighbours = neighbours[:MAX_NEIGHBOUR]
+        neighbours = neighbours[:MAX_NEIGHBOUR]
+        best_neighbours_ip_table = dict([(n.ip, n) for n in neighbours])
 
         trunc_ip_table, truncated = self.neighbour._truncate(ip_table)
 
-        self.failUnlessEqual(sorted(trunc_ip_table.values(), key=f),
-                             best_neighbours)
+        self.failUnlessEqual(trunc_ip_table, best_neighbours_ip_table)
 
 if __name__ == '__main__':
     unittest.main()
