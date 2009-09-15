@@ -286,7 +286,7 @@ def TCPServer(root_instance, addr=('', 269), dev=None, net=None, me=None,
     while 1: 
         sock, clientaddr = s.accept()
         request_handler(sock, clientaddr, dev, rpcdispatcher)
-
+	
 @microfunc(True)
 def MicroTCPServer(root_instance, addr=('', 269), dev=None, net=None, me=None, sockmodgen=Sock):
     TCPServer(root_instance, addr, dev, net, me, sockmodgen, micro_stream_request_handler)
@@ -304,13 +304,14 @@ class TCPClient(FakeRmt):
 
         self.host = host
         self.port = port
-        
+
         self.xtime = xtimemod
 
         self.sockfactory = sockmodgen
         self.net = net
         self.me = me
         self.connected = False
+	self.calling = False
 
         FakeRmt.__init__(self)
 
@@ -325,11 +326,24 @@ class TCPClient(FakeRmt):
             self.connect()
             self.xtime.swait(500)
 
-        data = rencode.dumps((func_name, params))
-        self.socket.sendall(_data_pack(data))
+	while self.calling:
+	    # go away waiting that the previous 
+	    # rpc_call is accomplished
+	    self.xtime.swait(500)
 
+        data = rencode.dumps((func_name, params))
+	
+	# now other microthread cannot call make an RPC call
+	# until the previous call has not received the reply
+	self.calling = True
+        
+	self.socket.sendall(_data_pack(data))
         recv_encoded_data = _data_unpack_from_stream_socket(self.socket)
-        if not recv_encoded_data:
+	
+	self.calling = False
+	# let other calls working
+        
+	if not recv_encoded_data:
             raise RPCNetError, 'connection closed before reply'
         recv_data = rencode.loads(recv_encoded_data)
         pass #logging.debug("Recvd data: "+str(recv_data))
