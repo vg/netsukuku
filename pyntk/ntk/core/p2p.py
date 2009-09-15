@@ -136,7 +136,7 @@ class P2P(RPCDispatcher):
         If nothing is found, None is returned
         """
 
-        lvl = self.mapp2p.nip_cmp(hip, self.maproute.me)
+        lvl = self.maproute.nip_cmp(hip, self.maproute.me)
         br = self.maproute.node_get(lvl,hip[lvl]).best_route()
         if not br:
             return None
@@ -189,31 +189,39 @@ class P2P(RPCDispatcher):
 
         msg: it is a (func_name, args) pair."""
 	
-        logging.debug(str(sender_nip) + ' is asking for P2P service to ' + str(hip))
+        logging.log(logging.ULTRADEBUG, str(sender_nip) + ' is asking for P2P service to ' + str(hip))
         if use_udp_nip:
-            logging.debug(' using UDP through ' + str(use_udp_nip))
+            logging.log(logging.ULTRADEBUG, ' using UDP through ' + str(use_udp_nip))
             return self.call_msg_send_udp(use_udp_nip, sender_nip, hip, msg)
         else:
-            logging.debug(' using TCP')
+            logging.log(logging.ULTRADEBUG, ' using TCP')
             H_hip = self.H(hip)
-            logging.debug(' nearest known is ' + str(H_hip))
+            logging.log(logging.ULTRADEBUG, ' nearest known is ' + str(H_hip))
             if H_hip == self.mapp2p.me:
                 # the msg has arrived
-                logging.debug(' nearest known is me.')
+                logging.debug('I have been asked a P2P service, as the nearest to ' + str(hip) + ' (sender=' + str(sender_nip) + ', msg=' + str(msg) + ')')
                 return self.msg_exec(sender_nip, msg)
 
             # forward the message until it arrives at destination
             n = self.neigh_get(H_hip)
-            logging.debug(' forwarding to ' + str(self.maproute.ip_to_nip(n.ip)))
             if n:
+                logging.log(logging.ULTRADEBUG, ' forwarding to ' + str(self.maproute.ip_to_nip(n.ip)))
                 ret = None
                 stringexec = "ret = n.ntkd.p2p.PID_"+str(self.mapp2p.pid) + \
                      ".msg_send(sender_nip, hip, msg)"
-                logging.debug('Calling ' + stringexec)
+                logging.log(logging.ULTRADEBUG, 'Calling ' + stringexec)
                 exec(stringexec)
-                logging.debug('Calling ' + stringexec + '  done. Got reply. Returning ' + str(ret))
+                logging.log(logging.ULTRADEBUG, 'Calling ' + stringexec + '  done. Got reply. Returning ' + str(ret))
                 return ret
             else:
+                # Is it possible? Don't we retry?
+                logging.warning('I don\'t know to whom I must forward. Giving up. Returning None.')
+                logging.warning('This is mapp2p.')
+                #logging.warning(str(self.mapp2p.map_data_pack()))
+                logging.warning(self.segnamappa(self.mapp2p, is_mapp2p=True))
+                logging.warning('This is maproute.')
+                #logging.warning(str(self.maproute.map_data_pack()))
+                logging.warning(self.segnamappa(self.maproute, is_maproute=True))
                 return None
 
 

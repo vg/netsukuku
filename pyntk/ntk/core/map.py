@@ -22,6 +22,7 @@
 
 from ntk.lib.log import logger as logging
 from random import randint, choice
+from ntk.lib.log import get_stackframes
 
 from ntk.lib.event import Event
 from ntk.network.inet import valid_ids
@@ -182,10 +183,13 @@ class Map(object):
 
     def map_data_merge(self, (nip, plist, nblist)):
         lvl=self.nip_cmp(nip, self.me)
+        logging.log(logging.ULTRADEBUG, 'Merging a map at level ' + str(lvl))
+        logging.log(logging.ULTRADEBUG, get_stackframes(back=1))
         for l in xrange(lvl, self.levels):
                 self.node_nb[l]=nblist[l]
                 for id in xrange(self.gsize):
                         self.node[l][id]=plist[l][id]
         for l in xrange(0, lvl):
                 self.level_reset(l)
+        logging.log(logging.ULTRADEBUG, str(self.map_data_pack()))
 

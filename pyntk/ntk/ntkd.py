@@ -95,6 +95,7 @@ class NtkNode(object):
         logging.debug('resetting node')
         # clean our map route
         self.maproute.map_reset()
+        logging.info('MapRoute cleaned')
         # close the server socket
         rpc.stop_tcp_servers()
         logging.debug('TCP servers stopped')
@@ -141,7 +142,7 @@ class NtkNode(object):
         logging.debug('UDP servers launched')
         # clean our map route
         self.maproute.map_reset()
-        logging.debug('MapRoute cleaned')
+        logging.info('MapRoute cleaned')
         # now the real hooking can be done
         logging.debug('start Hook.hook')
         self.hook.hook()

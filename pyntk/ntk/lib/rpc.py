@@ -594,9 +594,9 @@ def UDP_got_reply(_rpc_caller, caller_id, ret):
         if chan.ch.balance < 0:
             logging.log(logging.ULTRADEBUG, ' ...sending through channel')
             chan.send(ret)
-            logging.log(logging.ULTRADEBUG, ' ...deleting channel')
+            # We have passed the schedule to the receiving channel, so don't put
+            # loggings after this, they would just confuse the reader.
             del UDP_caller_ids[caller_id]
-            logging.log(logging.ULTRADEBUG, ' ...done.')
     else:
         logging.log(logging.ULTRADEBUG, ' ...it is not for me.')
 
