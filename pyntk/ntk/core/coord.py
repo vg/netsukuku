@@ -30,6 +30,7 @@ from ntk.wrap.xtime import time
 from ntk.core.p2p import P2P
 from ntk.core.map import Map
 from random import choice
+from ntk.network.inet import valid_ids
 
 
 class Node:
@@ -195,7 +196,7 @@ class Coord(P2P):
 
                 newip = self.mapp2p.me
                 newip[lvl] = choice(fnl)
-                for l in reversed(xrange(lvl)): newnip[l]=randint(0, self.mapp2p.gsize)
+                for l in reversed(xrange(lvl)): newip[l] = choice(valid_ids(lvl, newip))
                 self.node_add(lvl, newip[lvl])
                 return newip
 

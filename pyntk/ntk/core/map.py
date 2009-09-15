@@ -21,9 +21,10 @@
 # 
 
 from ntk.lib.log import logger as logging
-from random import randint
+from random import randint, choice
 
 from ntk.lib.event import Event
+from ntk.network.inet import valid_ids
 
 
 class DataClass(object):
@@ -68,7 +69,7 @@ class Map(object):
         self.node = [[None] * self.gsize for i in xrange(self.levels)]
         # Number of nodes of each level, that is:
         #   self.node_nb[i] = number of (g)nodes inside the gnode self.me[i+1]
-        self.node_nb = [0] * self.levels 
+        self.node_nb = [1] * self.levels 
 
         self.events = Event(['NODE_NEW', 'NODE_DELETED', 'ME_CHANGED'])
 
@@ -99,11 +100,13 @@ class Map(object):
 
     def free_nodes_nb(self, lvl):
         """Returns the number of free nodes of level `lvl'"""
-        return self.gsize-self.node_nb[lvl]
+        #it depends on the lvl and on the previous ids
+        return len(valid_ids(lvl, self.me))-self.node_nb[lvl]
 
     def free_nodes_list(self, lvl):
         """Returns the list of free nodes of level `lvl'"""
-        return [nid for nid in xrange(self.gsize) if self.node[lvl][nid].is_free()]
+        #it depends on the lvl and on the previous ids
+        return [nid for nid in valid_ids(lvl, self.me) if (not self.node[lvl][nid]) or self.node[lvl][nid].is_free()]
 
     def is_in_level(self, nip, lvl):
         """Does the node nip belongs to our gnode of level `lvl'?"""
@@ -145,12 +148,19 @@ class Map(object):
 
     def nip_rand(self):
         """Returns a random netsukuku ip"""
-        return [randint(0, self.gsize-1) for i in xrange(self.levels)]
+        nip = [0 for i in xrange(self.levels)]
+        for lvl in reversed(xrange(self.levels)):
+            nip[lvl] = self._nip_rand(lvl, nip)
+        return nip
+
+    def _nip_rand(self, lvl, nip):
+        """Returns a random id for level lvl that is valid, given that the previous ids are in nip"""
+        return choice(valid_ids(lvl, nip))
 
     def level_reset(self, level):
         """Resets the specified level, without raising any event"""
         self.node[level]    = [None]*self.gsize
-        self.node_nb[level] = 0
+        self.node_nb[level] = 1
 
     def map_reset(self):
         """Silently resets the whole map"""

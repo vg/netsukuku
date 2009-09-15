@@ -23,7 +23,7 @@ from random import choice, randint
 from ntk.lib.micro import microfunc
 from ntk.lib.event import Event
 
-from ntk.network.inet import ip_to_str
+from ntk.network.inet import ip_to_str, valid_ids
 
 class Hook(object):
 
@@ -170,7 +170,7 @@ class Hook(object):
         lvl = H[1][0]
         fnl = H[1][1]
         newnip[lvl] = choice(fnl)
-        for l in reversed(xrange(lvl)): newnip[l]=randint(0, self.maproute.gsize-1)
+        for l in reversed(xrange(lvl)): newnip[l] = choice(valid_ids(l, newnip))
 
         # If we are alone, let's generate our netid
         if we_are_alone: self.radar.netid = randint(0, 2**32-1)
