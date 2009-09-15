@@ -26,7 +26,7 @@ from optparse import OptionParser
 
 from ntk import VERSION
 from ntk.config import settings, ImproperlyConfigured
-from ntk.lib.log import config as logger_config
+from ntk.lib.log import init_logger
 from ntk.lib.micro import allmicro_run
 from ntk.ntkd import NtkNode
 
@@ -107,7 +107,7 @@ def main():
     if settings.VERBOSE_LEVEL > 0:
         settings.DEBUG_ON_SCREEN = True
     
-    logger_config()
+    init_logger()
 
     settings.NICS = options.interfaces if options.interfaces else []
     settings.EXCLUDE_NICS = (options.exclude_interfaces if

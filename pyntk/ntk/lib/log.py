@@ -27,9 +27,12 @@ from ntk.config import settings
 
 LOG_FILE = os.path.join(settings.LOG_DIR, settings.LOG_FILE)
 
-def config():
+logger = logging.getLogger('')
+
+def init_logger():
     ''' Configure the logging system using `settings'. '''
 
+    global logger
     if settings.VERBOSE_LEVEL > 0:
         m = ('%(asctime)s %(levelname)s:'
              '(%(filename)s at line %(lineno)d): %(message)s')
@@ -46,18 +49,15 @@ def config():
     console = logging.StreamHandler()
     console.setFormatter(formatter)
 
-    logger = logging.getLogger('')
-    if settings.VERBOSE_LEVEL > 3: settings.VERBOSE_LEVEL = 3
-    levels = {0 : logging.ERROR, 1 : logging.WARNING, 2 : logging.INFO, 3 : logging.DEBUG}
+    logger.ULTRADEBUG = 5
+    logging.addLevelName(logger.ULTRADEBUG, 'ULTRADEBUG')
+    if settings.VERBOSE_LEVEL > 4: settings.VERBOSE_LEVEL = 4
+    levels = {0 : logging.ERROR, 1 : logging.WARNING, 2 : logging.INFO, 3 : logging.DEBUG, 4 : logger.ULTRADEBUG}
     logger.setLevel(levels[settings.VERBOSE_LEVEL])
     logger.addHandler(rfh)
 
     if settings.DEBUG_ON_SCREEN:
         logger.addHandler(console)
-
-    return logger
-
-logger = config()
 
 def get_stackframes(back=0):
     ret = sys._current_frames().items()[0][1]
