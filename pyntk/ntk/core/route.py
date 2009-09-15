@@ -3,7 +3,7 @@
 # (c) Copyright 2007 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
 #
 # This source code is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as published
+# modify it under the terms of the GNU General Public License as published 
 # by the Free Software Foundation; either version 2 of the License,
 # or (at your option) any later version.
 #
@@ -22,16 +22,16 @@ from ntk.lib.event import Event
 from ntk.lib.rencode import serializable
 
 class RemError(Exception):
-    '''General Route Efficiency Measure Exception'''
+    ''' General Route Efficiency Measure Exception '''
 
 class AvgError(RemError):
-    '''Average Exception'''
+    ''' Average Exception '''
 
 class AvgSumError(AvgError):
-    '''Average Sum Error'''
+    ''' Average Sum Error '''
 
 class RouteGwError(Exception):
-    '''General RouteGw Error'''
+    ''' General RouteGw Error '''
 
 class Rem(object):
     """Route Efficiency Measure.
@@ -52,24 +52,15 @@ class Rem(object):
         """Compares two REMs
         if remA > remB, then remA is better than remB
 
-        self < b   -1    -->  The rem `self' is worse  than `b'
-        self > b    1    -->  The rem `self' is better than `b'
-        self == b   0    -->  They are the same
-
         NOTE: this means that if you have a list of rems and you
         want to sort it in decrescent order of efficiency, than you
         have to reverse sort it: list.sort(reverse=1)
         """
-        return (self.value > b.value) - (self.value < b.value)
 
     def __add__(self, b):
         """It sums two REMs.
 
         The sum must be commutative, i.e. Rx+Ry=Ry+Rx"""
-        raise NotImplementedError
-
-    def __repr__(self):
-        return '<%s: %s>' % (self.__class__.__name__, self.value)
 
 class NullRem(Rem):
     """The equivalent of None for the REM"""
@@ -143,6 +134,15 @@ class Bw(Rem):
     def _pack(self):
         return (self.value, self.lb, self.nb, self.max_value, self.avgcoeff)
 
+    def __cmp__(self, b):
+        """bandwidth comparison
+
+        self < b   -1    -->  The bw `self' is worse  than `b'
+        self > b    1    -->  The bw `self' is better than `b'
+        self = b    0    -->  They are the same"""
+
+        return (self.value > b.value) - (self.value < b.value);
+
     def __add__(self, b):
         if isinstance(b, DeadRem):
             return b + self
@@ -166,16 +166,25 @@ class Avg(Rem):
         length = sum = 0
         for r in rems:
             if not isinstance(r, Rem):
-                raise RemError("an element of `rems' is not a Rem instance")
+                raise RemError, "an element of `rems' is not a Rem instance"
 
-            sum += abs(r.max_value - r.value * r.avgcoeff)
+            sum += abs(r.max_value - r.value*r.avgcoeff)
             length += 1
 
-        Rem.__init__(self, sum/length) # ???: value is always an integer?
+        Rem.__init__(self, sum/length)      # ???: value is always an integer?
+
+    def __cmp__(self, b):
+        """avg comparison
+
+        self < b   -1    -->  The bw `self' is worse  than `b'
+        self > b    1    -->  The bw `self' is better than `b'
+        self = b    0    -->  They are the same"""
+
+        return (self.value > b.value) - (self.value < b.value);
 
     def __add__(self, b):
-        raise AvgSumError('the Avg metric cannot be summed.'
-                          ' It must be computed each time')
+        raise AvgSumError, ('the Avg metric cannot be summed.'
+                            ' It must be computed each time')
 
 class RouteGw(object):
     """A route to a known destination.
@@ -199,17 +208,7 @@ class RouteGw(object):
         if isinstance(b, RouteGw):
             return self.rem.__cmp__(b.rem)
         else:
-            raise RouteGwError('comparison with not RouteGw')
-
-    def __eq__(self, b):
-        '''The route self is equal to route b'''
-        if isinstance(b, RouteGw):
-            if self.gw == b.gw and self.rem == b.rem:
-                return True
-            else:
-                return False
-        else:
-            raise RouteGwError('comparison with not RouteGw')
+            raise RouteGwError, 'comparison with not RouteGw'
 
     def rem_modify(self, new_rem):
         """Sets self.rem=new_rem and returns the old rem"""
@@ -219,27 +218,24 @@ class RouteGw(object):
             return oldrem
         return self.rem
 
-    def __repr__(self):
-        return '<RouteGw: gw(%s), rem(%s)>' % (self.gw, self.rem)
-
 class RouteNode(object):
     """List of routes to a known destination.
 
     This class is basically a list of RouteGw instances, where the
     destination node and its level are fixed and known.
 
-    Note: for each gateway G there's only one route in self.routes,
+    Note: for each gateway G there's only one route in self.routes, 
           which has the same gateway G
     """
 
     __slots__ = ['routes', 'routes_tobe_synced']
 
-    def __init__(self,
+    def __init__(self, 
                  lvl=None, id=None  # these are mandatory for Map.__init__(),
                                     # but they aren't used
                 ):
         self.routes = []
-        self.routes_tobe_synced = 0 # number of routes to update in the kernel
+        self.routes_tobe_synced = 0     # number of routes to update in the kernel
         #TODO: keep the right track of `self.routes_tobe_synced'
         #      maybe it's better to use "self.routes_tobe_synced+-=1" before
         #      sending the ROUTE_NEW/ROUTE_DELETED/ROUTE_REM_CHGED events?
@@ -263,26 +259,23 @@ class RouteNode(object):
 
         oldrem = r.rem_modify(newrem)
         self.sort()
-        self.routes_tobe_synced += 1
+        self.routes_tobe_synced+=1 
         return (1, oldrem)
 
     def route_add(self, lvl, dst, gw, rem):
         """Add a route.
 
         It returns (0,None) if the route hasn't been added, and thus it isn't
-        interesting, otherwise it returns (1,None) if it is a new route,
-        (2, oldrem) if it substituted an old route.
-
-        The following code implements the algorithm described in
-        Chapter 5 of topology.pdf.
-        """
+        interesting, otherwise it returns (1,None) if it is a new route, 
+        (2, oldrem) if it substituted an old route."""
 
         ret = 0
         val = None
         oldr = self.route_getby_gw(gw)
 
-        if self.is_empty() or oldr is None:
-            # If it is a new route, add it
+        if self.is_empty() or (oldr is None and rem > self.routes[-1].rem):
+            # If there aren't routes, or if it is better than the worst
+            # route, add it
             self.routes.append(RouteGw(gw, rem))
             ret = 1
         elif oldr is not None and rem > oldr.rem:
@@ -298,7 +291,7 @@ class RouteNode(object):
 
         self.sort()
 
-        return (ret, val) # good route
+        return (ret, val)         # good route
 
     def route_del(self, gw):
         """Delete a route.
@@ -336,7 +329,7 @@ class RouteNode(object):
 
     def nroutes_synced(self):
         # Note: it can be < 0
-        return len(self.routes) - self.routes_tobe_synced
+        return len(self.routes)-self.routes_tobe_synced
 
     def best_route(self):
         if self.is_empty():
@@ -344,11 +337,7 @@ class RouteNode(object):
         else:
             return self.routes[0]
 
-    def __repr__(self):
-        return '<RouteNode: %s>' % self.routes
-
-def ftrue(*args):
-    return True
+def ftrue(*args):return True
 
 class MapRoute(Map):
     """Map of routes, all of a same Rem type.
@@ -369,7 +358,8 @@ class MapRoute(Map):
         self.remotable_funcs = [self.free_nodes_nb]
 
     def route_add(self, lvl, dst, gw, rem, silent=0):
-        '''Add a new route'''
+        ''' Add a new route
+        '''
         n = self.node_get(lvl, dst)
         ret, val = n.route_add(lvl, dst, gw, rem)
         if not silent:
@@ -450,7 +440,7 @@ class MapRoute(Map):
         """Returns the list of all the best routes of the map.
 
            Let L be the returned list, then L[lvl] is the list of all the best
-           routes of level lvl of the map. An element of this latter list is a
+           routes of level lvl of the map. An element of this latter list is a 
            tuple (dst, gw, rem), where dst is the destination of the route, gw
            its gateway.
 

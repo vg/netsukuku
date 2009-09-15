@@ -3,7 +3,7 @@
 # (c) Copyright 2008 Daniele Tricoli aka Eriol <eriol@mornie.org>
 #
 # This source code is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as published
+# modify it under the terms of the GNU General Public License as published 
 # by the Free Software Foundation; either version 2 of the License,
 # or (at your option) any later version.
 #
@@ -184,17 +184,9 @@ class TestRouteNode(unittest.TestCase):
         res = self.route_node.route_del(5)
         self.failUnlessEqual(res, 0)
 
-        self.route_node.route_add(lvl=0, dst=123, gw=3, rem=Rtt(50))
-        self.route_node.route_add(lvl=0, dst=123, gw=4, rem=Rtt(50))
         self.route_node.route_add(lvl=0, dst=123, gw=5, rem=Rtt(50))
-
         res = self.route_node.route_del(5)
         self.failUnlessEqual(res, 1)
-        self.failUnlessEqual(self.route_node.routes,
-                             [RouteGw(3, Rtt(50)), RouteGw(4, Rtt(50))])
-        res = self.route_node.route_del(3)
-        self.failUnlessEqual(self.route_node.routes, [RouteGw(4, Rtt(50))])
-        res = self.route_node.route_del(4)
         self.failUnless(self.route_node.is_empty())
 
     def testIsEmpty(self):
@@ -217,7 +209,7 @@ class TestMapRoute(unittest.TestCase):
 
     def setUp(self):
 
-        self.map = MapRoute(None, levels=1, gsize=256, me=[3])
+        self.map = MapRoute(levels=1, gsize=256, me=[3])
 
         # I'm interested only in Neigh.ip, other parameters are faked
         self.neigh = Neigh(ip=127, ntkd='Fake_rcpClient',

@@ -76,36 +76,6 @@ def ip_to_str(ip):
 def str_to_ip(ipstr):
     return pip_to_ip(str_to_pip(ipstr))
 
-# Invalid IPs are:
-# 192.168.* that are private network address
-# 224.* to 255.*, the multicast and badclass address range
-# 127.* the loopback address
-# 0.* of course
-valid_id_list_for_3 = range(1, 127)
-valid_id_list_for_3 += range(128, 224)
-valid_id_list_for_2_after_192 = range(0, 168)
-valid_id_list_for_2_after_192 += range(169, 256)
-def valid_ids(lvl, nip):
-    '''Returns the list of valid IDs for level lvl, given that IDs for upper
-    levels are already choosen in nip.
-    E.g. what are valid IDs for level 2 when level 3 is 192?
-    valid_ids(2, [0, 0, 0, 192])
-    Elements of nip for levels <= lvl is not relevant'''
-
-    #first thing is to see what is the IPVERSION
-    if settings.IP_VERSION == ipv6:
-        return xrange(256)
-    else:
-        if lvl == 3:
-            return valid_id_list_for_3
-        elif lvl == 2:
-            if nip[3] == 192:
-                return valid_id_list_for_2_after_192
-            else:
-                return xrange(256)
-        else:
-            return xrange(256)
-
 def sk_bindtodevice(sck, devname):
     if sys.platform == 'linux2':
         from IN import SO_BINDTODEVICE

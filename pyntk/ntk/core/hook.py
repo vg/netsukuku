@@ -3,7 +3,7 @@
 # (c) Copyright 2007 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
 #
 # This source code is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as published
+# modify it under the terms of the GNU General Public License as published 
 # by the Free Software Foundation; either version 2 of the License,
 # or (at your option) any later version.
 #
@@ -19,13 +19,14 @@
 
 from random import choice, randint
 
-from ntk.lib.event import Event
 from ntk.lib.micro import microfunc
+from ntk.lib.event import Event
+
 from ntk.network.inet import ip_to_str
 
 class Hook(object):
 
-    def __init__(self, radar, maproute, etp, coordnode, nics):
+    def __init__(self, radar, maproute, etp, coordnode, nics): 
         self.radar = radar
         self.neigh = radar.neigh
         self.maproute = maproute
@@ -46,9 +47,9 @@ class Hook(object):
         '''Note: old_node_nb and cur_node_nb are used only by the ETP_EXECUTED event'''
 
         if old_node_nb != None and self.gnodes_split(old_node_nb, cur_node_nb):
-                # The gnode has splitted and we have rehooked.
+                # The gnode has splitted and we have rehooked. 
                 # Nothing to do anymore.
-                return
+                return 
 
         if cur_node_nb and old_node_nb and cur_node_nb[0] == old_node_nb[0]:
                 # No new or dead node in level 0
@@ -59,7 +60,7 @@ class Hook(object):
                         # of the level 0 of neigh
         inv_candidates=[]
         def cand_cmp((a1, a2), (b1, b2)):
-            return cmp(a2, b2)
+                return cmp(a2, b2)
 
         for nr in self.neigh.neigh_list():
                 nrnip=self.maproute.ip_to_nip(nr.ip)
@@ -74,13 +75,13 @@ class Hook(object):
 
         if inv_candidates:
                 inv_candidates.sort(cmp=cand_cmp, reverse=1)
-                # tell our neighbour, which is bigger than us, to launch
+                # tell our neighbour, which is bigger than us, to launch 
                 # its communicating vessels system
                 inv_candidates[0][0].ntkd.hook.communicating_vessels()
 
         if candidates:
                 candidates.sort(cmp=cand_cmp)
-                # We've found some neighbour gnodes smaller than us.
+                # We've found some neighbour gnodes smaller than us. 
                 # Let's rehook
                 self.hook([nr for (nr, fnb) in candidates], [], True,
                                 candidates[0][1])
@@ -98,28 +99,28 @@ class Hook(object):
         forbidden_neighs is a list [(lvl,nip), ...]. All the neighbours nr with a
         NIP nr.nip matching nip up to lvl levels are excluded, that is:
                 NIP is excluded <==> nip_cmp(nip, NIP) < lvl
-
+        
         If condition is True, the re-hook take place only if the following
         is true:
                 gnumb < |G|
                 |G'| < |G|
-        where |G'| and `gnumb' is the number of nodes of the gnode where
+        where |G'| and `gnumb' is the number of nodes of the gnode where 
         we are going to re-hook, and |G| is the number of nodes of our
         gnodes. |G'| and |G| are calculated using the coordinator
         nodes. Note: this is used only by communicating_vessels()
         """
-
+        
         oldnip=self.maproute.me[:]
         we_are_alone=False
 
         ## Find all the highest non saturated gnodes
         hfn = [(self.maproute.me, self.highest_free_nodes())]
-
+        
         if neigh_list == []:
                 neigh_list = self.neigh.neigh_list()
         if neigh_list == []:
                 we_are_alone = True
-
+        
         def is_neigh_forbidden(nrip):
                 for lvl, fnr in forbidden_neighs:
                         if self.maproute.nip_cmp(nrnip, fnr) < lvl:
@@ -130,7 +131,7 @@ class Hook(object):
                 nrnip=self.maproute.ip_to_nip(nr.ip)
 
                 if self.maproute.nip_cmp(self.maproute.me, nrnip) <= 0:
-                        # we're interested in external neighbours
+                        # we're interested in external neighbours 
                         continue
                 if is_neigh_forbidden(nrnip):
                         # We don't want forbidden neighbours
@@ -138,7 +139,7 @@ class Hook(object):
                 hfn.append((nrnip, nr.ntkd.hook.highest_free_nodes()))
         ##
 
-        ## Find all the hfn elements with the highest level and
+        ## Find all the hfn elements with the highest level and 
         ## remove all the lower ones
         hfn2=[]
         hfn_lvlmax = -1
@@ -177,9 +178,9 @@ class Hook(object):
 
         if lvl < self.maproute.levels-1:
                 # We are creating a new gnode which is not in the latest
-                # level.
-                # Contact the coordinator nodes
-
+                # level. 
+                # Contact the coordinator nodes 
+                
                 if lvl > 0:
                         # If we are going to create a new gnode, it's useless to pose
                         # any condition
@@ -217,7 +218,7 @@ class Hook(object):
                         co2.close()
         ##
 
-
+        
         ## complete the hook
         self.radar.do_reply = False
 
@@ -236,19 +237,19 @@ class Hook(object):
 
         # Restore the neighbours in the map and send the ETP
         self.neigh.readvertise()
-
+        
         # warn our neighbours
         oldip = self.maproute.nip_to_ip(oldnip)
         for nr in self.neigh.neigh_list():
-                logging.debug("Hook: calling ip_change of my neighbour %s" % ip_to_str(nr.ip))
+                logging.debug("Hook: calling ip_change of my neighbour %s" % ip_to_str(nr.ip)) 
                 nr.ntkd.neighbour.ip_change(oldip, newnip_ip)
-
+        
         self.radar.do_reply = True
 
         # we've done our part
         self.events.send('HOOKED', (oldip, newnip[:]))
         ##
-
+        
 
     def highest_free_nodes(self):
         """Returns (lvl, fnl), where fnl is a list of free node IDs of
@@ -258,17 +259,17 @@ class Hook(object):
                 if fnl:
                         return (lvl, fnl)
         return (-1, None)
-
+    
     def gnodes_split(self, old_node_nb, cur_node_nb):
         """Handles the case of gnode splitting
-
+        
            Returns True if we have to rehook"""
 
         gnodesplitted = 0
 
         # Note: at level self.maproute.levels-1 is meaningless to talk about
         # gnode splitting, in fact, is the whole network that has been splitted
-        levels = self.maproute.levels-1
+        levels = self.maproute.levels-1 
 
         for lvl in reversed(xrange(levels)):
                 diff = old_node_nb[lvl] - cur_node_nb[lvl]
@@ -282,7 +283,7 @@ class Hook(object):
         ##TODO: gnode splitting can be handled in a different way:
         #        if the ETP has been generated by 'NEIGH_DELETED'
         #        and we are in the smaller part, rehook  and _THEN_ forward the
-        #        ETP.
+        #        ETP. 
         #        Is it better? Maybe not.
 
         # ok, our gnode of level `level' has become broken, and we are in the

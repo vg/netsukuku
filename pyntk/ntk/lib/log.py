@@ -20,20 +20,15 @@
 import logging
 import logging.handlers
 import os.path
-import sys
-import traceback
 
 from ntk.config import settings
 
 LOG_FILE = os.path.join(settings.LOG_DIR, settings.LOG_FILE)
 
-logger = logging.getLogger('')
-
-def init_logger():
+def config():
     ''' Configure the logging system using `settings'. '''
 
-    global logger
-    if settings.VERBOSE_LEVEL > 0:
+    if settings.DEBUG:
         m = ('%(asctime)s %(levelname)s:'
              '(%(filename)s at line %(lineno)d): %(message)s')
     else:
@@ -49,39 +44,13 @@ def init_logger():
     console = logging.StreamHandler()
     console.setFormatter(formatter)
 
-    logger.ULTRADEBUG = 5
-    logging.addLevelName(logger.ULTRADEBUG, 'ULTRADEBUG')
-    if settings.VERBOSE_LEVEL > 4: settings.VERBOSE_LEVEL = 4
-    levels = {0 : logging.ERROR, 1 : logging.WARNING, 2 : logging.INFO, 3 : logging.DEBUG, 4 : logger.ULTRADEBUG}
-    logger.setLevel(levels[settings.VERBOSE_LEVEL])
+    logger = logging.getLogger('')
+    logger.setLevel(logging.DEBUG)
     logger.addHandler(rfh)
 
-    if settings.DEBUG_ON_SCREEN:
+    if settings.DEBUG:
         logger.addHandler(console)
 
-def get_stackframes(back=0):
-    ret = sys._current_frames().items()[0][1]
-    while ret is not None and ret.f_back and back >= 0:
-        ret = ret.f_back
-        back -= 1
-    return get_stackframes_repr(ret)
+    return logger
 
-def get_stackframes_repr(frame):
-    ret = []
-    while True:
-        ret.append((frame.f_code.co_filename, frame.f_code.co_name, frame.f_lineno))
-        frame = frame.f_back
-        if not frame: break
-    return ret.__repr__()
-
-def log_exception_stacktrace(e, indent=2):
-    spaces = ' ' * indent
-    excinfo = sys.exc_info()
-    tb = excinfo[2]
-    logger.error(spaces + "Exception: %s" % (e.__repr__(), ))
-    logger.error(spaces + "Stacktrace:")
-    frames = traceback.extract_tb(tb)
-    for fr in frames:
-        logger.error(spaces + "  File \"%s\", line %s, in %s" % (fr[0], fr[1], fr[2]))
-        logger.error(spaces + "    %s" % (fr[3], ))
-
+logger = config()

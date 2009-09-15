@@ -466,13 +466,13 @@ def encode_dict(x,r):
     if len(x) < DICT_FIXED_COUNT:
         r.append(chr(DICT_FIXED_START + len(x)))
         for k, v in x.items():
-            encode_func.get(type(k), encode_instance)(k, r)
-            encode_func.get(type(v), encode_instance)(v, r)
+            encode_func[type(k)](k, r)
+            encode_func[type(v)](v, r)
     else:
         r.append(CHR_DICT)
         for k, v in x.items():
-            encode_func.get(type(k), encode_instance)(k, r)
-            encode_func.get(type(v), encode_instance)(v, r)
+            encode_func[type(k)](k, r)
+            encode_func[type(v)](v, r)
         r.append(CHR_TERM)
 
 encode_func = {}
