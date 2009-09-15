@@ -272,7 +272,7 @@ class Hook(object):
 
         # warn our neighbours
         # TODO find a better descriptive flag to tell me I'm not ready to interact.
-        if self.radar.netid == -1:
+        if self.radar.netid == -1 or we_are_alone:
             logging.debug('Hook.hook warn neighbours skipped')
         else:
             logging.debug('Hook.hook warn neighbours of my change from %s to %s.' % (ip_to_str(oldip), ip_to_str(newnip_ip)))
