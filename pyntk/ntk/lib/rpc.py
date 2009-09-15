@@ -74,12 +74,13 @@ import rpc
 
 import struct
 import sys
+import time
 
 import ntk.lib.rencode as rencode
 import ntk.wrap.xtime as xtime
 
 from ntk.lib.log import logger as logging
-from ntk.lib.micro import  micro, microfunc
+from ntk.lib.micro import  micro, microfunc, micro_block
 from ntk.network.inet import sk_set_broadcast, sk_bindtodevice
 from ntk.wrap.sock import Sock
 
@@ -329,7 +330,8 @@ class TCPClient(FakeRmt):
 	while self.calling:
 	    # go away waiting that the previous 
 	    # rpc_call is accomplished
-	    self.xtime.swait(500)
+            time.sleep(0.01)
+            micro_block()
 
         data = rencode.dumps((func_name, params))
 	
