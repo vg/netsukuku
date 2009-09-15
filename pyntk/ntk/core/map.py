@@ -59,8 +59,9 @@ class Map(object):
         self.levels = levels   # Number of levels
         self.gsize = gsize     # How many nodes are contained in a gnode
         self.dataclass = dataclass
-        self.me = me        # Ourself. self.me[lvl] is the ID of our
-                            # (g)node of level lvl
+        if me is None: self.me = None
+        else: self.me = me[:]     # Ourself. self.me[lvl] is the ID of our
+                                  # (g)node of level lvl
         # Choose a random nip
         if me is None:
             self.me = self.nip_rand()
@@ -169,8 +170,8 @@ class Map(object):
 
     def me_change(self, new_me):
         """Changes self.me"""
-        old_me=self.me[:]
-        self.me=new_me
+        old_me = self.me[:]
+        self.me = new_me[:]
         self.events.send('ME_CHANGED', (old_me, new_me))
 
 

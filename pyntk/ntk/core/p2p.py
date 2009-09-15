@@ -319,8 +319,9 @@ class P2PAll(object):
         # created by pid_add() has an update map of participants, which has
         # been accumulated during the time. Copy this map in the `p2p'
         # instance to be sure.
-        map_pack = self.pid_get(p2p.pid).mapp2p.map_data_pack()
-        p2p.mapp2p.map_data_merge(map_pack)
+        if p2p.pid in self.service:
+            map_pack = self.pid_get(p2p.pid).mapp2p.map_data_pack()
+            p2p.mapp2p.map_data_merge(map_pack)
         self.service[p2p.pid] = p2p
 
     #  TODO  DELETED. Ok?

@@ -152,7 +152,7 @@ class Coord(P2P):
         # level `lvl+1'
         level = lvl+1
 
-        pIP = self.maproute.me
+        pIP = self.maproute.me[:]
         pIP[lvl] = id
         for l in reversed(xrange(lvl)): pIP[l]=None
 
