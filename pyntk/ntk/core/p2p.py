@@ -217,13 +217,16 @@ class P2P(RPCDispatcher):
                 # Is it possible? Don't we retry?
                 logging.warning('I don\'t know to whom I must forward. Giving up. Returning None.')
                 logging.warning('This is mapp2p.')
-                #logging.warning(str(self.mapp2p.map_data_pack()))
-                logging.warning(self.segnamappa(self.mapp2p, is_mapp2p=True))
+                def repr_node_mapp2p(node):
+                    if node.participant: return 'X'
+                    return ' '
+                logging.warning(self.mapp2p.repr_me(repr_node_mapp2p))
                 logging.warning('This is maproute.')
-                #logging.warning(str(self.maproute.map_data_pack()))
-                logging.warning(self.segnamappa(self.maproute, is_maproute=True))
+                def repr_node_maproute(node):
+                    if node.is_free(): return ' '
+                    return 'X'
+                logging.warning(self.maproute.repr_me(repr_node_maproute))
                 return None
-
 
     def call_msg_send_udp(self, nip, sender_nip, hip, msg):
         """Use BcastClient to call msg_send"""
@@ -342,7 +345,7 @@ class P2PAll(object):
         # TODO find a better descriptive flag to tell me I'm not ready to interact.
 
         logging.log(logging.ULTRADEBUG, 'P2P hooking: started')
-        logging.log(logging.ULTRADEBUG, 'P2P hooking: My actual pid_getall is: ' + str(self.pid_getall()))
+        logging.log(logging.ULTRADEBUG, 'P2P hooking: My actual list of services is: ' + str(self.log_services()))
         ## Find our nearest neighbour
         minlvl = self.maproute.levels
         minnr = None
@@ -368,7 +371,7 @@ class P2PAll(object):
         for s in self.service:
                 if self.service[s].participant:
                         self.service[s].participate()
-        logging.log(logging.ULTRADEBUG, 'P2P hooking: My final pid_getall is: ' + str(self.pid_getall()))
+        logging.log(logging.ULTRADEBUG, 'P2P hooking: My final list of services is: ' + str(self.log_services()))
 
 
         self.events.send('P2P_HOOKED', ())
@@ -378,3 +381,11 @@ class P2PAll(object):
         if str[:4] == "PID_":
             return self.pid_get(int(str[4:]))
         raise AttributeError
+
+    def log_services(self):
+        def repr_node_mapp2p(node):
+            if node.participant: return 'X'
+            return ' '
+        return [(s, self.service[s].mapp2p.repr_me(repr_node_mapp2p))
+                        for s in self.service]
+

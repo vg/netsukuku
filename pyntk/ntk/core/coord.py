@@ -56,6 +56,7 @@ serializable.register(Node)
 
 class MapCache(Map):
     def __init__(self, maproute):
+        logging.log(logging.ULTRADEBUG, 'Coord: copying a mapcache from our maproute.')
         Map.__init__(self, maproute.levels, maproute.gsize, Node, maproute.me)
 
         self.copy_from_maproute(maproute)
@@ -136,6 +137,7 @@ class Coord(P2P):
 
     def coord_nodes_set(self):
         """Sets the coordinator nodes of each level, using the current map"""
+        logging.log(logging.ULTRADEBUG, 'Coord: calculating coord_nodes for our gnodes of each level.')
         for lvl in xrange(self.maproute.levels):
                 self.coordnode[lvl+1] = self.H(self.h((lvl+1, self.maproute.me)))
 
@@ -208,6 +210,13 @@ class Coord(P2P):
            We are the coordinator of this gnode G (so we are also a member of G).
            We'll give an affermative answer if `gnumb' > |G| or if
            `gnumb'=None"""
+
+        logging.log(logging.ULTRADEBUG, 'Coord.going_in: The requested level is ' + str(lvl))
+        logging.log(logging.ULTRADEBUG, 'Coord.going_in: This is mapcache.')
+        def repr_node_mapcache(node):
+            if node.is_free: return ' '
+            return 'X'
+        logging.log(logging.ULTRADEBUG, self.mapcache.repr_me(repr_node_mapcache))
 
         if gnumb and not gnumb > self.mapcache.nodes_nb[lvl]+1: return None
 

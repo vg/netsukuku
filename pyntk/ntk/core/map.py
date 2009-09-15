@@ -175,7 +175,6 @@ class Map(object):
         self.me = new_me[:]
         self.events.send('ME_CHANGED', (old_me, new_me))
 
-
     def map_data_pack(self):
         return (self.me, [ [self.node[lvl][id] for id in xrange(self.gsize)]
                              for lvl in xrange(self.levels) ],
@@ -192,4 +191,18 @@ class Map(object):
         for l in xrange(0, lvl):
                 self.level_reset(l)
         logging.log(logging.ULTRADEBUG, str(self.map_data_pack()))
+
+    def repr_me(self, func_repr_node):
+        ret = 'me' + str(self.me) + ', node_nb,' + str(self.node_nb) + ' {'
+        for lvl in xrange(self.levels):
+            ret += self.repr_level(lvl, func_repr_node)
+        ret += '}'
+        return ret
+
+    def repr_level(self, lvl, func_repr_node):
+        ret = ' ['
+        for i in xrange(self.gsize):
+            ret += '\'' + func_repr_node(self.node_get(lvl, i))
+        ret += '\'] '
+        return ret
 
