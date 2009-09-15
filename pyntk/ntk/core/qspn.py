@@ -56,6 +56,9 @@ class Etp:
     def etp_new_dead(self, neigh):
         """Builds and sends a new ETP for the worsened link case."""
 
+        if self.radar.netid == -1: return
+        # TODO find a better descriptive flag to tell me I'm not ready to interact.
+
         logging.debug("Etp: dead of %s", ip_to_str(neigh.ip))
         
         ## Create R
@@ -99,6 +102,9 @@ class Etp:
         """Builds and sends a new ETP for the changed link case
 
         If oldrem=None, the node `neigh' is considered new."""
+
+        if self.radar.netid == -1: return
+        # TODO find a better descriptive flag to tell me I'm not ready to interact.
 
         logging.debug("Etp: new changed %s", ip_to_str(neigh.ip))
         
