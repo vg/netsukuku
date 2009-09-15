@@ -20,6 +20,7 @@
 import logging
 import logging.handlers
 import os.path
+import sys
 
 from ntk.config import settings
 
@@ -54,3 +55,19 @@ def config():
     return logger
 
 logger = config()
+
+def get_stackframes(back=0):
+    ret = sys._current_frames().items()[0][1]
+    while not ret is None and ret.f_back and back >= 0:
+        ret = ret.f_back
+        back -= 1
+    return get_stackframes_repr(ret)
+
+def get_stackframes_repr(frame):
+    ret = []
+    while True:
+        ret.append((frame.f_code.co_filename, frame.f_code.co_name, frame.f_lineno))
+        frame = frame.f_back
+        if not frame: break
+    return ret.__repr__()
+
