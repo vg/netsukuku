@@ -29,10 +29,9 @@ import ntk.core.krnl_route as kroute
 import ntk.lib.rpc as rpc
 import ntk.wrap.xtime as xtime
 from ntk.lib.event import Event, apply_wakeup_on_event
-from ntk.lib.micro import microfunc
+from ntk.lib.micro import microfunc, micro, micro_block
 
 from ntk.config import settings, ImproperlyConfigured
-from ntk.lib.micro import micro, allmicro_run
 from ntk.network import NICManager, Route
 from ntk.network.inet import ip_to_str
 from ntk.wrap.sock import Sock
@@ -162,7 +161,9 @@ class NtkNode(object):
         # From now on a complete reset is needed for each new hook
         self.hook.events.listen('HOOKED', self.reset)
         # Now I'm also participating to service Coord
-        self.coordnode.participate()
+        micro(self.coordnode.participate)
+        # We launched it in a microfunc because we have to enable the radar
+        micro_block()
         # now keep doing radar forever.
         logging.debug('start Radar.run')
         self.radar.run()

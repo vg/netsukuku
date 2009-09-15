@@ -142,6 +142,7 @@ class P2P(RPCDispatcher):
         self.participant = True
         self.mapp2p.participate()
 
+        # TODO handle the case where one of neighbours does not reply (raises an error)
         for nr in self.neigh.neigh_list():
             logging.debug('calling participant_add(myself) to %s.' % self.maproute.ip_to_nip(nr.ip))
             stringexec = "nr.ntkd.p2p.PID_"+str(self.mapp2p.pid)+".participant_add(self.maproute.me)"
@@ -165,6 +166,8 @@ class P2P(RPCDispatcher):
             return
 
         # continue to advertise the new participant
+        # TODO handle the case where one of neighbours does not reply (raises an error)
+        # TODO do we have to skip the one who sent to us?
         for nr in self.neigh.neigh_list():
             logging.debug('forwarding participant_add(%s) to %s.' % (pIP, self.maproute.ip_to_nip(nr.ip)))
             stringexec = "nr.ntkd.p2p.PID_"+str(self.mapp2p.pid)+".participant_add(pIP)"
@@ -320,8 +323,9 @@ class P2PAll(object):
         p2p.mapp2p.map_data_merge(map_pack)
         self.service[p2p.pid] = p2p
 
-    def participant_add(self, pid, pIP):
-        self.pid_get(pid).participant_add(pIP)
+    #  TODO  DELETED. Ok?
+    #def participant_add(self, pid, pIP):
+    #    self.pid_get(pid).participant_add(pIP)
 
     @microfunc()
     def p2p_hook(self, *args):
