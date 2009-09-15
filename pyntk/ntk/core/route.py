@@ -23,16 +23,16 @@ from ntk.lib.event import Event
 from ntk.lib.rencode import serializable
 
 class RemError(Exception):
-    ''' General Route Efficiency Measure Exception '''
+    '''General Route Efficiency Measure Exception'''
 
 class AvgError(RemError):
-    ''' Average Exception '''
+    '''Average Exception'''
 
 class AvgSumError(AvgError):
-    ''' Average Sum Error '''
+    '''Average Sum Error'''
 
 class RouteGwError(Exception):
-    ''' General RouteGw Error '''
+    '''General RouteGw Error'''
 
 class Rem(object):
     """Route Efficiency Measure.
@@ -53,15 +53,24 @@ class Rem(object):
         """Compares two REMs
         if remA > remB, then remA is better than remB
 
+        self < b   -1    -->  The rem `self' is worse  than `b'
+        self > b    1    -->  The rem `self' is better than `b'
+        self == b   0    -->  They are the same
+
         NOTE: this means that if you have a list of rems and you
         want to sort it in decrescent order of efficiency, than you
         have to reverse sort it: list.sort(reverse=1)
         """
+        return (self.value > b.value) - (self.value < b.value)
 
     def __add__(self, b):
         """It sums two REMs.
 
         The sum must be commutative, i.e. Rx+Ry=Ry+Rx"""
+        raise NotImplementedError
+
+    def __repr__(self):
+        return '<%s: %s>' % (self.__class__.__name__, self.value)
 
 class NullRem(Rem):
     """The equivalent of None for the REM"""
@@ -135,15 +144,6 @@ class Bw(Rem):
     def _pack(self):
         return (self.value, self.lb, self.nb, self.max_value, self.avgcoeff)
 
-    def __cmp__(self, b):
-        """bandwidth comparison
-
-        self < b   -1    -->  The bw `self' is worse  than `b'
-        self > b    1    -->  The bw `self' is better than `b'
-        self = b    0    -->  They are the same"""
-
-        return (self.value > b.value) - (self.value < b.value);
-
     def __add__(self, b):
         if isinstance(b, DeadRem):
             return b + self
@@ -174,18 +174,9 @@ class Avg(Rem):
 
         Rem.__init__(self, sum/length)      # ???: value is always an integer?
 
-    def __cmp__(self, b):
-        """avg comparison
-
-        self < b   -1    -->  The bw `self' is worse  than `b'
-        self > b    1    -->  The bw `self' is better than `b'
-        self = b    0    -->  They are the same"""
-
-        return (self.value > b.value) - (self.value < b.value);
-
     def __add__(self, b):
-        raise AvgSumError, ('the Avg metric cannot be summed.'
-                            ' It must be computed each time')
+        raise AvgSumError('the Avg metric cannot be summed.'
+                          ' It must be computed each time')
 
 class RouteGw(object):
     """A route to a known destination.

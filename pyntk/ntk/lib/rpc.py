@@ -90,7 +90,7 @@ from ntk.wrap.sock import Sock
 
 
 class RPCError(Exception): pass
-class RPCNetError(Exception): pass
+class RPCNetError(RPCError): pass
 class RPCFuncNotRemotable(RPCError): pass
 class RPCFunctionError(RPCError): pass
 
@@ -126,7 +126,7 @@ class FakeRmt(object):
 
            This method must be ovverrided in child class.
         '''
-        raise NotImplementedError, 'You must override this method'
+        raise NotImplementedError('You must override this method')
 
 class CallerInfo(object):
     __slots__ = ['ip','port','dev','socket']
@@ -156,7 +156,7 @@ class RPCDispatcher(object):
           or just "func". In the latter case "func" is searched in the
           globals()
         """
-        
+
         if not 'radar' in func_name:
             pass #logging.debug("func_get: "+str(func_name))
 
@@ -376,10 +376,12 @@ class TCPClient(FakeRmt):
 	
 	self.calling = False
 	# let other calls working
-        
-	if not recv_encoded_data:
-            raise RPCNetError, 'connection closed before reply'
+
+        if not recv_encoded_data:
+            raise RPCNetError('Connection closed before reply')
+
         recv_data = rencode.loads(recv_encoded_data)
+
         pass #logging.debug("Recvd data: "+str(recv_data))
 
         # Handling errors
@@ -409,7 +411,8 @@ class TCPClient(FakeRmt):
         return self.rpc_call(func_name, params)
 
     def __del__(self):
-        self.close()
+        if self.connected:
+            self.close()
 
 
 def dgram_request_handler(sock, clientaddr, packet, dev, rpcdispatcher):
@@ -451,6 +454,7 @@ def UDPServer(root_instance, addr=('', 269), dev=None, net=None, me=None,
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sk_bindtodevice(s, dev)
     s.bind(addr)
+    
     while not udp_stopping_servers:
         try:
             message, address = s.recvfrom(8192, timeout = 1000)
@@ -461,6 +465,7 @@ def UDPServer(root_instance, addr=('', 269), dev=None, net=None, me=None,
     udp_servers_running_instances.remove('UDP' + str(this_server_id))
     if not udp_servers_running_instances:
         udp_stopping_servers = False
+
 
 @microfunc(True)
 def MicroUDPServer(root_instance, addr=('', 269), dev=None, net=None, me=None, sockmodgen=Sock):
@@ -548,5 +553,5 @@ class BcastClient(FakeRmt):
         self.rpc_call(func_name, params)
 
     def __del__(self):
-        self.close()
-
+        if self.connected:
+            self.close()
