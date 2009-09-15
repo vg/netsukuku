@@ -73,7 +73,7 @@ class NtkNode(object):
                                          sockmodgen=self.simsock)
         self.radar = radar.Radar(rpcbcastclient, xtimemod)
         self.neighbour = self.radar.neigh
-        self.firstnip = choose_first_nip()
+        self.firstnip = self.choose_first_nip()
         self.maproute = maproute.MapRoute(settings.LEVELS, self.gsize, self.firstnip)
         self.etp = qspn.Etp(self.radar, self.maproute)
 
