@@ -77,6 +77,7 @@ import sys
 
 import ntk.lib.rencode as rencode
 from ntk.wrap import xtime as xtime
+import time
 
 from ntk.lib.log import logger as logging
 from ntk.lib.micro import  micro, microfunc, micro_block
@@ -289,9 +290,13 @@ def TCPServer(root_instance, addr=('', 269), dev=None, net=None, me=None,
     s.bind(addr)
     s.listen(8)
     rpcdispatcher=RPCDispatcher(root_instance)
-    while not stopping_servers: 
-        sock, clientaddr = s.accept()
-        request_handler(sock, clientaddr, dev, rpcdispatcher)
+    while not stopping_servers:
+        try:
+            sock, clientaddr = s.accept(timeout = 1000)
+        except MicrosockTimeout:
+            pass
+        else:
+            request_handler(sock, clientaddr, dev, rpcdispatcher)
 	
     servers_running_instances.remove('TCP')
     if not servers_running_instances:
@@ -340,7 +345,7 @@ class TCPClient(FakeRmt):
 	while self.calling:
 	    # go away waiting that the previous 
 	    # rpc_call is accomplished
-            time.sleep(0.01)
+            time.sleep(0.001)
             micro_block()
 
         data = rencode.dumps((func_name, params))
@@ -427,8 +432,12 @@ def UDPServer(root_instance, addr=('', 269), dev=None, net=None, me=None,
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sk_bindtodevice(s, dev)
     s.bind(addr)
-    while not stopping_servers: 
-            message, address = s.recvfrom(8192)
+    while not stopping_servers:
+        try:
+            message, address = s.recvfrom(8192, timeout = 1000)
+        except MicrosockTimeout:
+            pass
+        else:
             requestHandler(s, address, message, dev, rpcdispatcher)
     servers_running_instances.remove('UDP' + dev)
     if not servers_running_instances:
@@ -519,8 +528,7 @@ def stop_servers():
     
     if servers_running_instances:
         stopping_servers = True
-        #TODO to be implemented a effective mechanism to stop accept and recvfrom calls.
         while stopping_servers:
-            xtime.time.sleep(0.005)
+            time.sleep(0.001)
             micro_block()
 
