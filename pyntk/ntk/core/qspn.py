@@ -236,7 +236,7 @@ class Etp:
         for block in reversed(TPL):
                 lvl=block[0]
                 for dst, rem in reversed(block[1]):
-                        if self.maproute.route_change(lvl, dst, gw, tprem, wait_sync=False):
+                        if self.maproute.route_change(lvl, dst, gw, tprem):
                                 TPL_is_interesting = True
                         tprem+=rem # TODO: sometimes rem is an integer
         ##
@@ -244,8 +244,8 @@ class Etp:
         ## Update the map from R
         for lvl in xrange(self.maproute.levels):
                 for dst, rem in R[lvl]:
-                        if not self.maproute.route_rem(lvl, dst, gw, rem+tprem, wait_sync=False):
-                                self.maproute.route_change(lvl, dst, gw, rem+tprem, wait_sync=False)
+                        if not self.maproute.route_rem(lvl, dst, gw, rem+tprem):
+                                self.maproute.route_change(lvl, dst, gw, rem+tprem)
         ##
 
         ## S
@@ -360,6 +360,12 @@ class Etp:
                                 logging.debug("Etp: let's rehook now.")
                                 return (True, R)
         ## 
+
+        ## Remove colliding routes directly from our map
+        for lvl in xrange(self.maproute.levels):
+                for dst, rem in R[lvl]:
+                        self.maproute.node_get(lvl, dst).route_reset()
+        ##
 
         return (False, R)
 

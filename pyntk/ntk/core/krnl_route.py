@@ -35,19 +35,11 @@ class KrnlRoute(object):
         self.neigh = neigh
         self.multipath = settings.MULTIPATH
 
-        self.events =  Event(['KRNL_NEIGH_NEW', 'KRNL_NEIGH_DELETED', 'KRNL_REM_CHGED']) 
+        self.events =  Event(['KRNL_NEIGH_NEW'])
         
         self.route_new = apply_wakeup_on_event(self.route_new, 
                                                events=[(self.neigh.events, 'NEIGH_NEW'),
                                                        (self.events, 'KRNL_NEIGH_NEW')])
-        
-        self.route_deleted = apply_wakeup_on_event(self.route_deleted,  
-                                                       events=[(self.neigh.events, 'NEIGH_DELETED'), 
-                                                                (self.events, 'KRNL_NEIGH_DELETED')]) 
-          
-        self.route_rem_changed = apply_wakeup_on_event(self.route_rem_changed,  
-                                                       events=[(self.neigh.events, 'NEIGH_REM_CHGED'), 
-                                                                (self.events, 'KRNL_REM_CHGED')]) 
         
         self.maproute.events.listen('ROUTE_NEW', self.route_new)
         self.maproute.events.listen('ROUTE_DELETED', self.route_deleted)
@@ -59,13 +51,10 @@ class KrnlRoute(object):
 
 
     @microfunc(True)
-    def route_new(self, lvl, dst, gw, rem, wait_sync=False, event_wait=None):
+    def route_new(self, lvl, dst, gw, rem, event_wait=None):
         
-        route_node = self.maproute.node_get(lvl, dst)
-        
-        if not self.multipath and route_node.nroutes_synced() >= 1:
+        if not self.multipath and self.maproute.node_get(lvl, dst).nroutes_synced() >= 1:
                 # We don't have multipath and we've already set one route.
-                route_node.routes_tobe_synced -= 1
                 return
 
         nip = self.maproute.lvlid_to_nip(lvl, dst)
@@ -76,7 +65,15 @@ class KrnlRoute(object):
         gwipstr = ip_to_str(neigh.ip)
         neigh_node = self.maproute.node_get(*self.maproute.routeneigh_get(neigh))
 
-        if neigh_node.routes_tobe_synced > 0 and wait_sync:
+        if neigh_node.nroutes() > 1:
+                # Let's wait to add the neighbour first
+                while 1:
+                        ev_neigh = event_wait[(self.neigh.events, 'NEIGH_NEW')]()
+                        if neigh == ev_neigh[0]:
+                                # found
+                                break
+
+        if neigh_node.routes_tobe_synced > 0:
                 # The routes to neigh are still to be synced, let's wait
                 while 1:
                         ev_neigh = event_wait[(self.events, 'KRNL_NEIGH_NEW')]()
@@ -86,50 +83,23 @@ class KrnlRoute(object):
 
         # We can add the route in the kernel
         KRoute.add(ipstr, lvl_to_bits(lvl), dev, gwipstr)
-        route_node.routes_tobe_synced -= 1
+
+        self.maproute.node_get(lvl, dst).routes_tobe_synced-=1
 
 
     @microfunc(True)
-    def route_deleted(self, lvl, dst, gw, wait_sync=False, event_wait=None):
+    def route_deleted(self, lvl, dst, gw):
         nip = self.maproute.lvlid_to_nip(lvl, dst)
         ip  = self.maproute.nip_to_ip(nip)
         ipstr = ip_to_str(ip)
         neigh = self.neigh.id_to_neigh(gw)
         dev = neigh.bestdev[0]
         gwipstr = ip_to_str(neigh.ip)
-        
-        neigh_node = self.maproute.node_get(*self.maproute.routeneigh_get(neigh)) 
-    
-        if neigh_node.routes_tobe_synced > 0 and wait_sync: 
-                   # The routes to neigh are still to be synced, let's wait 
-                   while 1: 
-                           ev_neigh = event_wait[(self.events, 'KRNL_NEIGH_DELETED')]() 
-                           if neigh == ev_neigh[0]: 
-                                    # found 
-                                    break 
-                                
-        # We can delete the route now
+
         KRoute.delete(ipstr, lvl_to_bits(lvl), gateway=gwipstr)
-        self.maproute.node_get(lvl, dst).routes_tobe_synced -= 1
 
-
-    def route_rem_changed(self, lvl, dst, gw, rem, oldrem, wait_sync=False, event_wait=None):
-        
-        neigh = self.neigh.id_to_neigh(gw) 
-        neigh_node = self.maproute.node_get(*self.maproute.routeneigh_get(neigh)) 
-        
-        if neigh_node.routes_tobe_synced > 0 and wait_sync: 
-                    while 1: 
-                        ev_neigh = event_wait[(self.events, 'KRNL_REM_CHGED')]() 
-                        if neigh == ev_neigh[0]: 
-                                 # found  
-                                 break               
-        
-        ## TODO
-        # KRoute.change_rem(...)
-        #  
-        self.maproute.node_get(lvl, dst).routes_tobe_synced-=1
-
+    def route_rem_changed(self, lvl, dst, gw, rem, oldrem):
+        pass
 
     @microfunc(True)
     def neigh_new(self, neigh):
@@ -142,13 +112,10 @@ class KrnlRoute(object):
         self.events.send('KRNL_NEIGH_NEW', (neigh,))
 
     def neigh_rem_changed(self, neigh, oldrem=None):
-        ## TODO: complete 
-        self.events.send('KRNL_REM_CHGED', (neigh,)) 
+        pass
 
     @microfunc(True)
     def neigh_deleted(self, neigh):
         ipstr = ip_to_str(neigh.ip)
 
         KRoute.delete(ipstr, lvl_to_bits(0))
-
-        self.events.send('KRNL_NEIGH_DELETED', (neigh,)) 
