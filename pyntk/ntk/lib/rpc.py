@@ -397,6 +397,7 @@ def UDPServer(root_instance, addr=('', 269), dev=None, net=None, me=None,
     socket=sockmodgen(net, me)
     s=socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sk_bindtodevice(s, dev)
     s.bind(addr)
     while 1:
             message, address = s.recvfrom(8192)
