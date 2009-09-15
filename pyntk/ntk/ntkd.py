@@ -145,14 +145,14 @@ class NtkNode(object):
         logging.debug('UDP servers stopped')
         self.launch_udp_servers()
         logging.debug('UDP servers launched')
+        # clean our map route
+        self.maproute.map_reset()
         # now the real hooking can be done
         logging.debug('start Hook.hook')
         self.hook.hook()
         logging.debug('waiting HOOKED')
         msg = event_wait[(self.hook.events, 'HOOKED')]() # waits for the end of hook
         logging.debug('got HOOKED')
-        # clean our map route
-        self.maproute.map_reset()
         # re-initialize the UDP servers sockets, and start the TCP servers
         rpc.stop_udp_servers()
         logging.debug('UDP servers stopped')
