@@ -75,6 +75,8 @@ import rpc
 import struct
 import sys
 
+from random import randint
+
 import ntk.lib.rencode as rencode
 from ntk.wrap import xtime as xtime
 import time
@@ -256,8 +258,10 @@ def _data_unpack_from_buffer(buffer):
 
     return ""
 
-servers_running_instances = []
-stopping_servers = False
+tcp_servers_running_instances = []
+tcp_stopping_servers = False
+udp_servers_running_instances = []
+udp_stopping_servers = False
 
 def stream_request_handler(sock, clientaddr, dev, rpcdispatcher):
     pass #logging.debug('Connected from %s, dev %s', clientaddr, dev)
@@ -282,16 +286,18 @@ def micro_stream_request_handler(sock, clientaddr, dev, rpcdispatcher):
 
 def TCPServer(root_instance, addr=('', 269), dev=None, net=None, me=None,
                 sockmodgen=Sock, request_handler=stream_request_handler):
-    global stopping_servers
-    global servers_running_instances
-
+    global tcp_stopping_servers
+    global tcp_servers_running_instances
+ 
+    this_server_id = randint(0, 2**32-1)
+    tcp_servers_running_instances.append('TCP' + str(this_server_id))
     socket=sockmodgen(net, me)
     s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind(addr)
     s.listen(8)
     rpcdispatcher=RPCDispatcher(root_instance)
-    while not stopping_servers:
+    while not tcp_stopping_servers:
         try:
             sock, clientaddr = s.accept(timeout = 1000)
         except MicrosockTimeout:
@@ -299,14 +305,24 @@ def TCPServer(root_instance, addr=('', 269), dev=None, net=None, me=None,
         else:
             request_handler(sock, clientaddr, dev, rpcdispatcher)
 	
-    servers_running_instances.remove('TCP')
-    if not servers_running_instances:
-        stopping_servers = False
+    tcp_servers_running_instances.remove('TCP' + str(this_server_id))
+    if not tcp_servers_running_instances:
+        tcp_stopping_servers = False
 
 @microfunc(True)
 def MicroTCPServer(root_instance, addr=('', 269), dev=None, net=None, me=None, sockmodgen=Sock):
-    servers_running_instances.append('TCP')  #  there is just one instance of TCP server
     TCPServer(root_instance, addr, dev, net, me, sockmodgen, micro_stream_request_handler)
+
+def stop_tcp_servers():
+    """ Stop the TCP servers """
+    global tcp_stopping_servers
+    global tcp_servers_running_instances
+    
+    if tcp_servers_running_instances:
+        tcp_stopping_servers = True
+        while tcp_stopping_servers:
+            time.sleep(0.001)
+            micro_block()
 
 class TCPClient(FakeRmt):
     '''This class implement a simple TCP RPC client'''
@@ -424,30 +440,42 @@ def UDPServer(root_instance, addr=('', 269), dev=None, net=None, me=None,
     remote function are small when packed.
     *WARNING*
     '''
-    global stopping_servers
-    global servers_running_instances
-    
+    global udp_stopping_servers
+    global udp_servers_running_instances
+
+    this_server_id = randint(0, 2**32-1)
+    udp_servers_running_instances.append('UDP' + str(this_server_id))
     rpcdispatcher=RPCDispatcher(root_instance)
     socket=sockmodgen(net, me)
     s=socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sk_bindtodevice(s, dev)
     s.bind(addr)
-    while not stopping_servers:
+    while not udp_stopping_servers:
         try:
             message, address = s.recvfrom(8192, timeout = 1000)
         except MicrosockTimeout:
             pass
         else:
             requestHandler(s, address, message, dev, rpcdispatcher)
-    servers_running_instances.remove('UDP' + dev)
-    if not servers_running_instances:
-        stopping_servers = False
+    udp_servers_running_instances.remove('UDP' + str(this_server_id))
+    if not udp_servers_running_instances:
+        udp_stopping_servers = False
 
 @microfunc(True)
 def MicroUDPServer(root_instance, addr=('', 269), dev=None, net=None, me=None, sockmodgen=Sock):
-    servers_running_instances.append('UDP' + dev)  #  there is one instance of UDP server for each dev
     UDPServer(root_instance, addr, dev, net, me, sockmodgen, micro_dgram_request_handler)
+
+def stop_udp_servers():
+    """ Stop the UDP servers """
+    global udp_stopping_servers
+    global udp_servers_running_instances
+
+    if udp_servers_running_instances:
+        udp_stopping_servers = True
+        while udp_stopping_servers:
+            time.sleep(0.001)
+            micro_block()
 
 class BcastClient(FakeRmt):
     '''This class implement a simple Broadcast RPC client
@@ -521,15 +549,4 @@ class BcastClient(FakeRmt):
 
     def __del__(self):
         self.close()
-
-def stop_servers():
-    """ Stop the servers """
-    global stopping_servers
-    global servers_running_instances
-    
-    if servers_running_instances:
-        stopping_servers = True
-        while stopping_servers:
-            time.sleep(0.001)
-            micro_block()
 

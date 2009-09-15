@@ -247,14 +247,14 @@ class Hook(object):
         # Restore the neighbours in the map and send the ETP
         self.neigh.reset_ntk_clients()
         self.neigh.readvertise()
-        
+
+        self.radar.do_reply = True
+
         # warn our neighbours
         oldip = self.maproute.nip_to_ip(oldnip)
         for nr in self.neigh.neigh_list():
                 logging.debug("Hook: calling ip_change of my neighbour %s" % ip_to_str(nr.ip)) 
                 nr.ntkd.neighbour.ip_change(oldip, newnip_ip)
-        
-        self.radar.do_reply = True
 
         # we've done our part
         self.events.send('HOOKED', (oldip, newnip[:]))
