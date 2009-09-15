@@ -74,10 +74,9 @@ import rpc
 
 import struct
 import sys
-import time
 
 import ntk.lib.rencode as rencode
-import ntk.wrap.xtime as xtime
+from ntk.wrap import xtime as xtime
 
 from ntk.lib.log import logger as logging
 from ntk.lib.micro import  micro, microfunc, micro_block
@@ -281,6 +280,9 @@ def micro_stream_request_handler(sock, clientaddr, dev, rpcdispatcher):
 
 def TCPServer(root_instance, addr=('', 269), dev=None, net=None, me=None,
                 sockmodgen=Sock, request_handler=stream_request_handler):
+    global stopping_servers
+    global servers_running_instances
+
     socket=sockmodgen(net, me)
     s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -290,14 +292,11 @@ def TCPServer(root_instance, addr=('', 269), dev=None, net=None, me=None,
     while not stopping_servers: 
         sock, clientaddr = s.accept()
         request_handler(sock, clientaddr, dev, rpcdispatcher)
-<<<<<<< TREE
 	
-=======
     servers_running_instances.remove('TCP')
     if not servers_running_instances:
         stopping_servers = False
 
->>>>>>> MERGE-SOURCE
 @microfunc(True)
 def MicroTCPServer(root_instance, addr=('', 269), dev=None, net=None, me=None, sockmodgen=Sock):
     servers_running_instances.append('TCP')  #  there is just one instance of TCP server
@@ -419,7 +418,9 @@ def UDPServer(root_instance, addr=('', 269), dev=None, net=None, me=None,
     remote function are small when packed.
     *WARNING*
     '''
-
+    global stopping_servers
+    global servers_running_instances
+    
     rpcdispatcher=RPCDispatcher(root_instance)
     socket=sockmodgen(net, me)
     s=socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -511,12 +512,15 @@ class BcastClient(FakeRmt):
     def __del__(self):
         self.close()
 
-def stop_servers()
+def stop_servers():
     """ Stop the servers """
+    global stopping_servers
+    global servers_running_instances
+    
     if servers_running_instances:
         stopping_servers = True
         #TODO to be implemented a effective mechanism to stop accept and recvfrom calls.
         while stopping_servers:
-            time.sleep(0.005)
+            xtime.time.sleep(0.005)
             micro_block()
 

@@ -341,8 +341,9 @@ class Neighbour(object):
 class Radar(object):
     __slots__ = [ 'bouquet_numb', 'bcast_send_time', 'xtime',
                   'bcast_arrival_time', 'max_bouquet', 'max_wait_time', 
-                  'broadcast', 'neigh', 'events', 'netid', 'do_reply',
-                  'remotable_funcs', 'ntkd_id', 'radar_id', 'max_neigh']
+                  'broadcast', 'neigh', 'events', 'netid', 'do_reply', 
+                  'remotable_funcs', 'ntkd_id', 'radar_id', 'max_neigh',
+		  'stopping', 'running_instances']
 
     def __init__(self, broadcast, xtime):
         """

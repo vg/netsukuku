@@ -34,6 +34,8 @@
 
 from ntk.lib.log import logger as logging
 from ntk.lib.micro import Channel, micro, allmicro_run, micro_block
+from ntk.wrap.xtime import swait, time
+
 import asyncore
 import socket as stdsocket # We need the "socket" name for the function we export.
 
@@ -73,12 +75,64 @@ _fileobject = stdsocket._fileobject
 
 managerRunning = False
 
+class MicrosockTimeout(Exception):
+    pass
+
+class WaitingSocketsManager(object):
+    operation_accept = 1
+    operation_recvfrom = 2
+    
+    def __init__(self):
+        self.tuplelist = []
+
+    def add(self, sock, operation, timeout):
+        """Adds a socket with an operation and an expiration time."""
+        def time_from_tuple(x):
+            return x[2]
+
+        expires = time() + timeout
+        self.tuplelist.append((sock, operation, expires))
+        self.tuplelist.sort(key = time_from_tuple)
+
+    def remove(self, sock):
+        """Removes a socket from the list."""
+        def check(x):
+            return x[0] == sock
+        self.tuplelist = [t for t in self.tuplelist if not check(t)]
+
+    def get_next(self):
+        """Gets the first of sockets expired.
+           Returns a tuple (sock, operation), or None.
+           Also removes the returned sock from the list."""
+        ret = None
+        if self.tuplelist:
+            if self.tuplelist[0][2] <= time():
+                ret = self.tuplelist.pop(0)
+                ret = (ret[0], ret[1])
+        return ret
+
+expiring_sockets = WaitingSocketsManager()
+
 def ManageSockets():
     global managerRunning
 
     while len(asyncore.socket_map):
         # Check the sockets for activity.
         asyncore.poll(0.05)
+        # Check if we have timed out operations.
+        ret = expiring_sockets.get_next()
+        if not ret is None:
+            sock, operation = ret
+            if operation == WaitingSocketsManager.operation_accept:
+                # timed out accept
+                if sock.acceptChannel and sock.acceptChannel.ch.balance < 0:
+                    sock.acceptChannel.send(MicrosockTimeout())
+            elif operation == WaitingSocketsManager.operation_recvfrom:
+                # timed out recvfrom
+                if sock.recvChannel and sock.recvChannel.ch.balance < 0:
+                    sock.recvChannel.send(MicrosockTimeout())
+            else:
+                pass  # timeout not honored. we should signal that.
         # Yield to give other tasklets a chance to be scheduled.
         micro_block()
 
@@ -188,10 +242,19 @@ class dispatcher(asyncore.dispatcher):
             return True
         return len(self.sendBuffer) or len(self.sendToBuffers)
 
-    def accept(self):
+    def accept(self, timeout = None):
+        if not timeout is None:
+            expiring_sockets.add(self, WaitingSocketsManager.operation_accept, timeout)
         if not self.acceptChannel:
             self.acceptChannel = Channel(micro_send=True)
-        return self.acceptChannel.recv()
+        ret = self.acceptChannel.recv()
+        self.acceptChannel = None
+        if not timeout is None:
+            if isinstance(ret,MicrosockTimeout):
+                raise ret
+            else:
+                expiring_sockets.remove(self)
+        return ret
 
     def connect(self, address):
         asyncore.dispatcher.connect(self, address)
@@ -253,11 +316,17 @@ class dispatcher(asyncore.dispatcher):
         finally:
             self._receiving = False
 
-    def recvfrom(self, byteCount):
-        ret = ""
-        address = None
+    def recvfrom(self, byteCount, timeout = None):
         self.maxreceivebuf=byteCount
-        return self.recvChannel.recv()
+        if not timeout is None:
+            expiring_sockets.add(self, WaitingSocketsManager.operation_recvfrom, timeout)
+        ret = self.recvChannel.recv()
+        if not timeout is None:
+            if isinstance(ret,MicrosockTimeout):
+                raise ret
+            else:
+                expiring_sockets.remove(self)
+        return ret
 
     def close(self):
         asyncore.dispatcher.close(self)
