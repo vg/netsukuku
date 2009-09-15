@@ -41,13 +41,13 @@ class KrnlRoute(object):
                                                events=[(self.neigh.events, 'NEIGH_NEW'),
                                                        (self.events, 'KRNL_NEIGH_NEW')])
         
-        self.maproute.events.listen('ROUTE_NEW', self.route_new)
-        self.maproute.events.listen('ROUTE_DELETED', self.route_deleted)
-        self.maproute.events.listen('ROUTE_REM_CHGED', self.route_rem_changed)
+        self.maproute.events.listen('ROUTE_NEW', self.route_new, priority=5)
+        self.maproute.events.listen('ROUTE_DELETED', self.route_deleted, priority=5)
+        self.maproute.events.listen('ROUTE_REM_CHGED', self.route_rem_changed, priority=5)
 
-        self.neigh.events.listen('NEIGH_NEW', self.neigh_new)
-        self.neigh.events.listen('NEIGH_DELETED', self.neigh_deleted)
-        self.neigh.events.listen('NEIGH_REM_CHGED', self.neigh_rem_changed)
+        self.neigh.events.listen('NEIGH_NEW', self.neigh_new, priority=5)
+        self.neigh.events.listen('NEIGH_DELETED', self.neigh_deleted, priority=5)
+        self.neigh.events.listen('NEIGH_REM_CHGED', self.neigh_rem_changed, priority=5)
 
 
     @microfunc(True)
@@ -64,25 +64,25 @@ class KrnlRoute(object):
         dev = neigh.bestdev[0]
         gwipstr = ip_to_str(neigh.ip)
 
-        # Wait...
-        logging.debug('KrnlRoute: waiting to add route for ' + ipstr + ' through ' + gwipstr)
-        neigh_node = self.maproute.node_get(*self.maproute.routeneigh_get(neigh))
-        if neigh_node.nroutes() > 1:
-                # Let's wait to add the neighbour first
-                while 1:
-                        ev_neigh = event_wait[(self.neigh.events, 'NEIGH_NEW')]()
-                        if neigh == ev_neigh[0]:
-                                # found
-                                break
-        logging.debug('KrnlRoute: waiting to add route for ' + ipstr + ' through ' + gwipstr + ': NEIGH_NEW ok, wait for KRNL_NEIGH_NEW')
-        if neigh_node.routes_tobe_synced > 0:
-                # The routes to neigh are still to be synced, let's wait
-                while 1:
-                        ev_neigh = event_wait[(self.events, 'KRNL_NEIGH_NEW')]()
-                        if neigh == ev_neigh[0]:
-                                # found
-                                break
-        logging.debug('KrnlRoute: waiting to add route for ' + ipstr + ' through ' + gwipstr + ': KRNL_NEIGH_NEW ok, I add (I hope).')
+        ## Wait...
+        #logging.debug('KrnlRoute: waiting to add route for ' + ipstr + ' through ' + gwipstr)
+        #neigh_node = self.maproute.node_get(*self.maproute.routeneigh_get(neigh))
+        #if neigh_node.nroutes() > 1:
+        #        # Let's wait to add the neighbour first
+        #        while 1:
+        #                ev_neigh = event_wait[(self.neigh.events, 'NEIGH_NEW')]()
+        #                if neigh == ev_neigh[0]:
+        #                        # found
+        #                        break
+        #logging.debug('KrnlRoute: waiting to add route for ' + ipstr + ' through ' + gwipstr + ': NEIGH_NEW ok, wait for KRNL_NEIGH_NEW')
+        #if neigh_node.routes_tobe_synced > 0:
+        #        # The routes to neigh are still to be synced, let's wait
+        #        while 1:
+        #                ev_neigh = event_wait[(self.events, 'KRNL_NEIGH_NEW')]()
+        #                if neigh == ev_neigh[0]:
+        #                        # found
+        #                        break
+        #logging.debug('KrnlRoute: waiting to add route for ' + ipstr + ' through ' + gwipstr + ': KRNL_NEIGH_NEW ok, I add (I hope).')
 
         # Do we have multipath
         if self.multipath:

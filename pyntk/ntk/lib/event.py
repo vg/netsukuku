@@ -78,15 +78,24 @@ class Event:
         if event not in self.events:
             raise EventError, "\""+event+"\" is not a registered event"
 
+        # auxiliary function, to take priority from (dst, pri)
+        def priority(x):
+            return x[1]
+
+        # auxiliary function, to take dst from (dst, pri)
+        def dst(x):
+            return x[0]
+
         if event in self.listeners:
-            for dst in self.listeners[event]:
-                self._send(dst, msg)
+            unorderedlist = self.listeners[event]
+            for dst_pair in sorted(unorderedlist, reverse=False, key=priority):
+                self._send(dst(dst_pair), msg)
 
     def _send(self, dst, msg):
         # call the microfunc `dst'
         dst(*msg)
 
-    def listen(self, event, dst, remove=False):
+    def listen(self, event, dst, remove=False, priority=10):
         """Listen to an event.
 
         If `remove'=False, then `dst' is added in the listeners queue of
@@ -100,9 +109,9 @@ class Event:
             self.listeners[event]=[]
 
         if not remove:
-            self.listeners[event].append(dst)
-        elif dst in self.listeners[event]:
-            self.listeners[event].remove(dst)
+            self.listeners[event].append((dst, priority))
+        elif (dst, priority) in self.listeners[event]:
+            self.listeners[event].remove((dst, priority))
 
 def wakeup_on_event(events=[]):
     '''This is a decorator. A function decorated with wakeup_on_event() can

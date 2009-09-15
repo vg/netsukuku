@@ -193,7 +193,7 @@ class Neighbour(object):
         remain in the table
         """
 
-        # auxiliary function, to take rtt from {IP => NodeInfo}
+        # auxiliary function, to take rtt from {IP => Neigh}
         def interesting(x):
             return x[1].bestdev[1]
 
