@@ -223,14 +223,14 @@ class dispatcher(asyncore.dispatcher):
 
     def sendto(self, sendData, sendAddress):
         waitChannel = None
-        for idx, (data, address, channel, sentBytes) in enumerate(self.sendToBuffers):
+        for idx, (data, address, channel, sentBytes, waiting_tasklets) in enumerate(self.sendToBuffers):
             if address == sendAddress:
-                self.sendToBuffers[idx] = (data + sendData, address, channel, sentBytes)
+                self.sendToBuffers[idx] = (data + sendData, address, channel, sentBytes, waiting_tasklets + 1)
                 waitChannel = channel
                 break
         if waitChannel is None:
             waitChannel = Channel(micro_send=True)
-            self.sendToBuffers.append((sendData, sendAddress, waitChannel, 0))
+            self.sendToBuffers.append((sendData, sendAddress, waitChannel, 0, 1))
         return waitChannel.recv()
 
     # Read at most byteCount bytes.
@@ -348,14 +348,15 @@ class dispatcher(asyncore.dispatcher):
             sentBytes = asyncore.dispatcher.send(self, self.sendBuffer[:512])
             self.sendBuffer = self.sendBuffer[sentBytes:]
         elif len(self.sendToBuffers):
-            data, address, channel, oldSentBytes = self.sendToBuffers[0]
+            data, address, channel, oldSentBytes, waiting_tasklets = self.sendToBuffers[0]
             sentBytes = self.socket.sendto(data, address)
             totalSentBytes = oldSentBytes + sentBytes
             if len(data) > sentBytes:
-                self.sendToBuffers[0] = data[sentBytes:], address, channel, totalSentBytes
+                self.sendToBuffers[0] = data[sentBytes:], address, channel, totalSentBytes, waiting_tasklets
             else:
                 del self.sendToBuffers[0]
-                channel.send(totalSentBytes)
+                for i in xrange(waiting_tasklets):
+                    channel.send(totalSentBytes)
 
     # In order for incoming connections to be stackless compatible,
     # they need to be wrapped by an asyncore based dispatcher subclass.
