@@ -255,6 +255,9 @@ def _data_unpack_from_buffer(buffer):
 
     return ""
 
+servers_running_instances = []
+stopping_servers = False
+
 def stream_request_handler(sock, clientaddr, dev, rpcdispatcher):
     pass #logging.debug('Connected from %s, dev %s', clientaddr, dev)
     caller = CallerInfo(clientaddr[0], clientaddr[1], dev, sock)
@@ -284,12 +287,20 @@ def TCPServer(root_instance, addr=('', 269), dev=None, net=None, me=None,
     s.bind(addr)
     s.listen(8)
     rpcdispatcher=RPCDispatcher(root_instance)
-    while 1: 
+    while not stopping_servers: 
         sock, clientaddr = s.accept()
         request_handler(sock, clientaddr, dev, rpcdispatcher)
+<<<<<<< TREE
 	
+=======
+    servers_running_instances.remove('TCP')
+    if not servers_running_instances:
+        stopping_servers = False
+
+>>>>>>> MERGE-SOURCE
 @microfunc(True)
 def MicroTCPServer(root_instance, addr=('', 269), dev=None, net=None, me=None, sockmodgen=Sock):
+    servers_running_instances.append('TCP')  #  there is just one instance of TCP server
     TCPServer(root_instance, addr, dev, net, me, sockmodgen, micro_stream_request_handler)
 
 class TCPClient(FakeRmt):
@@ -415,12 +426,16 @@ def UDPServer(root_instance, addr=('', 269), dev=None, net=None, me=None,
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sk_bindtodevice(s, dev)
     s.bind(addr)
-    while 1:
+    while not stopping_servers: 
             message, address = s.recvfrom(8192)
             requestHandler(s, address, message, dev, rpcdispatcher)
+    servers_running_instances.remove('UDP' + dev)
+    if not servers_running_instances:
+        stopping_servers = False
 
 @microfunc(True)
 def MicroUDPServer(root_instance, addr=('', 269), dev=None, net=None, me=None, sockmodgen=Sock):
+    servers_running_instances.append('UDP' + dev)  #  there is one instance of UDP server for each dev
     UDPServer(root_instance, addr, dev, net, me, sockmodgen, micro_dgram_request_handler)
 
 class BcastClient(FakeRmt):
@@ -495,3 +510,13 @@ class BcastClient(FakeRmt):
 
     def __del__(self):
         self.close()
+
+def stop_servers()
+    """ Stop the servers """
+    if servers_running_instances:
+        stopping_servers = True
+        #TODO to be implemented a effective mechanism to stop accept and recvfrom calls.
+        while stopping_servers:
+            time.sleep(0.005)
+            micro_block()
+

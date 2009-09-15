@@ -77,20 +77,34 @@ class NtkNode(object):
         self.hook = hook.Hook(self.radar, self.maproute, self.etp,
                               self.coordnode, self.nic_manager)
         self.p2p.listen_hook_ev(self.hook)
+        self.hook.events.listen('HOOKED', self.reset)
 
         if not self.simulated:
             self.kroute = kroute.KrnlRoute(self.neighbour, self.maproute)
 
-    def run(self):
-        if not self.simulated:
-            Route.ip_forward(enable=True)
+    def reset(self, oldnip=None, newnip=None):
+        # stop the radar is really needed?
+        self.radar.stop()
+        # close the server socket
+        rpc.stop_servers()
+        # restart servers
+        self.launch_servers()
+        # restart radar
+        self.radar.run()
 
+    def launch_servers(self):
+        if not self.simulated:
             for nic in self.nic_manager:
                 self.nic_manager[nic].filtering(enable=False)
                 rpc.MicroUDPServer(self, ('', 269), nic, self.simnet, self.simme, self.simsock)
 
         rpc.MicroTCPServer(self, ('', 269), None, self.simnet, self.simme, self.simsock)
 
+    def run(self):
+        if not self.simulated:
+            Route.ip_forward(enable=True)
+
+        self.launch_servers()
 
         self.radar.run()
         self.hook.hook()
