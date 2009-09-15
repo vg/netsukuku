@@ -24,6 +24,7 @@
 #
 
 
+from ntk.lib.log import logger as logging
 import socket
 import sys
 

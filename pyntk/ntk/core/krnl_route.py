@@ -22,6 +22,7 @@
 # Listens to MapRoute generated events, and updates the kernel table
 #
 
+from ntk.lib.log import logger as logging
 from ntk.config import settings
 from ntk.lib.event import Event, apply_wakeup_on_event
 from ntk.lib.micro import microfunc

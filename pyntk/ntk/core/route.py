@@ -17,6 +17,7 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
+from ntk.lib.log import logger as logging
 from ntk.core.map import Map
 from ntk.lib.event import Event
 from ntk.lib.rencode import serializable

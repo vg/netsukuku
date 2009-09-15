@@ -20,6 +20,7 @@
 # Implementation of the P2P Over Ntk RFC. See {-P2PNtk-}
 #
 
+from ntk.lib.log import logger as logging
 from ntk.lib.event import Event
 from ntk.lib.rpc   import FakeRmt, RPCDispatcher, CallerInfo
 from ntk.lib.micro import microfunc

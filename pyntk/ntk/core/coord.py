@@ -23,6 +23,7 @@
 #       good thing, you have to consider the rtt from the requester node to
 #       the coordinator node.
 
+from ntk.lib.log import logger as logging
 from ntk.lib.micro import microfunc
 from ntk.lib.event import Event
 from ntk.wrap.xtime import time

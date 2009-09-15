@@ -17,6 +17,7 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
+from ntk.lib.log import logger as logging
 from random import choice, randint
 
 from ntk.lib.micro import microfunc

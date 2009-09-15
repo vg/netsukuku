@@ -20,6 +20,7 @@
 # Implementation of the map. See {-topodoc-}
 # 
 
+from ntk.lib.log import logger as logging
 from random import randint
 
 from ntk.lib.event import Event
