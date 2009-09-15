@@ -155,6 +155,8 @@ class dispatcher(asyncore.dispatcher):
     connectChannel = None
     acceptChannel = None
     recvChannel = None
+    _receiving = False
+    _justConnected = False
 
     def __init__(self, sock):
         # This is worth doing.  I was passing in an invalid socket which was
@@ -176,6 +178,11 @@ class dispatcher(asyncore.dispatcher):
 
         self.maxreceivebuf=65536
 
+    def readable(self):
+        if self.socket.type != SOCK_DGRAM and self.connected:
+            return self._receiving
+        return asyncore.dispatcher.readable(self)
+
     def writable(self):
         if self.socket.type != SOCK_DGRAM and not self.connected:
             return True
@@ -196,6 +203,7 @@ class dispatcher(asyncore.dispatcher):
                 # there is a tasklet known to be waiting, this will happen.
                 self.connectChannel = Channel(prefer_sender=True)
             self.connectChannel.recv()
+            self.connectChannel = None   # To make sure that we don't do again a 'send' on this channel
 
     def send(self, data):
         self.sendBuffer += data
@@ -209,6 +217,8 @@ class dispatcher(asyncore.dispatcher):
         self.sendBuffer += data
         while self.sendBuffer:
             micro_block()
+            import time
+            time.sleep(0.001)
         return len(data)
 
     def sendto(self, sendData, sendAddress):
@@ -225,19 +235,23 @@ class dispatcher(asyncore.dispatcher):
 
     # Read at most byteCount bytes.
     def recv(self, byteCount):
-        self.maxreceivebuf=byteCount
-        if len(self.readBufferString) < byteCount:
-            # If our buffer is empty, we must block for more data we also
-            # aggressively request more if it's available.
-            if len(self.readBufferString) == 0 or self.recvChannel.ch.balance > 0:
-                self.readBufferString += self.recvChannel.recv()
-        # Disabling this because I believe it is the onus of the application
-        # to be aware of the need to run the scheduler to give other tasklets
-        # leeway to run.
-        # stackless.schedule()
-        ret = self.readBufferString[:byteCount]
-        self.readBufferString = self.readBufferString[byteCount:]
-        return ret
+        self._receiving = True
+        try:
+            self.maxreceivebuf=byteCount
+            if len(self.readBufferString) < byteCount:
+                # If our buffer is empty, we must block for more data we also
+                # aggressively request more if it's available.
+                if len(self.readBufferString) == 0 or self.recvChannel.ch.balance > 0:
+                    self.readBufferString += self.recvChannel.recv()
+            # Disabling this because I believe it is the onus of the application
+            # to be aware of the need to run the scheduler to give other tasklets
+            # leeway to run.
+            # stackless.schedule()
+            ret = self.readBufferString[:byteCount]
+            self.readBufferString = self.readBufferString[byteCount:]
+            return ret
+        finally:
+            self._receiving = False
 
     def recvfrom(self, byteCount):
         ret = ""
@@ -285,6 +299,7 @@ class dispatcher(asyncore.dispatcher):
 
     # Inform the blocked connect call that the connection has been made.
     def handle_connect(self):
+        self._justConnected = True
         if self.socket.type != SOCK_DGRAM and self.connectChannel is not None:
             self.connectChannel.send(None)
 
@@ -296,9 +311,14 @@ class dispatcher(asyncore.dispatcher):
     # Some error, just close the channel and let that raise errors to
     # blocked calls.
     def handle_expt(self):
+        if self._justConnected:
+            self._justConnected = False
         self.close()
 
     def handle_read(self):
+        if self._justConnected:
+            self._justConnected = False
+            return
         try:
             if self.socket.type == SOCK_DGRAM:
                 ret, address = self.socket.recvfrom(self.maxreceivebuf)
@@ -321,6 +341,9 @@ class dispatcher(asyncore.dispatcher):
             self.recvChannel.ch.send_exception(stdsocket.error, err)
 
     def handle_write(self):
+        if self._justConnected:
+            self._justConnected = False
+            return
         if len(self.sendBuffer):
             sentBytes = asyncore.dispatcher.send(self, self.sendBuffer[:512])
             self.sendBuffer = self.sendBuffer[sentBytes:]
