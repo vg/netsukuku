@@ -19,7 +19,7 @@
 
 from ntk.lib.log import logger as logging
 from ntk.lib.micro import microfunc
-from ntk.lib.rpc import RPCError, RPCNetError
+from ntk.lib.rpc import RPCError
 from ntk.lib.event import Event, apply_wakeup_on_event
 from ntk.network.inet import ip_to_str
 from ntk.core.route import NullRem, DeadRem
@@ -59,7 +59,7 @@ class Etp:
         if self.radar.netid == -1: return
         # TODO find a better descriptive flag to tell me I'm not ready to interact.
 
-        logging.debug("Etp: dead of %s", ip_to_str(neigh.ip))
+        logging.debug("Etp: death of %s", ip_to_str(neigh.ip))
         
         ## Create R
         def gw_is_neigh((dst, gw, rem)):
@@ -137,12 +137,15 @@ class Etp:
         flag_of_interest=1
         TP = [[self.maproute.me[0], NullRem()]]
         etp = (R, [[0, TP]], flag_of_interest)
+        logging.debug("Etp: sending to %s", ip_to_str(neigh.ip))
         try:
             neigh.ntkd.etp.etp_exec(self.maproute.me, *etp)
-            # RPCErrors and RPCNetErrors may arise for many reasons.
-            # We don't need to produce an error log.
-        except (RPCError, RPCNetError):
-            pass
+            # RPCErrors may arise for many reasons. We should not care.
+            # Also, we don't need to produce an error log.
+        except RPCError:
+            logging.debug("Etp: sending to %s RPCError. We ignore it.", ip_to_str(neigh.ip))
+        else:
+            logging.debug("Etp: sending to %s done.", ip_to_str(neigh.ip))
         ##
 
     @microfunc(True)
@@ -239,13 +242,19 @@ class Etp:
 
         old_node_nb = self.maproute.node_nb[:]
 
+        def anode(lvl, dst, gw, rem):
+            return (lvl, dst, gw, rem).__repr__()
+
         ## Update the map from the TPL
         tprem=gwrem
         TPL_is_interesting = False
         for block in reversed(TPL):
                 lvl=block[0]
                 for dst, rem in reversed(block[1]):
+                        logging.debug('ETP received: Executing: TPL has info about this node:')
+                        logging.debug('    %s' % anode(lvl, dst, gw, tprem))
                         if self.maproute.route_change(lvl, dst, gw, tprem):
+                                logging.debug('    Info is interesting. TPL is interesting.')
                                 TPL_is_interesting = True
                         tprem+=rem # TODO: sometimes rem is an integer
         ##
@@ -253,8 +262,13 @@ class Etp:
         ## Update the map from R
         for lvl in xrange(self.maproute.levels):
                 for dst, rem in R[lvl]:
+                        logging.debug('ETP received: Executing: R has info about this node:')
+                        logging.debug('    %s' % anode(lvl, dst, gw, rem+tprem))
                         if not self.maproute.route_rem(lvl, dst, gw, rem+tprem):
                                 self.maproute.route_change(lvl, dst, gw, rem+tprem)
+                                logging.debug('    New route.')
+                        else:
+                                logging.debug('    Old route. Updated REM.')
         ##
 
         ## S
@@ -311,12 +325,14 @@ class Etp:
 
         for nr in self.neigh.neigh_list():
             if nr.id not in exclude:
+                logging.debug("Etp: forwarding to %s", ip_to_str(nr.ip))
                 try:
-                    logging.debug("Etp: forwarding to %s", ip_to_str(nr.ip))
                     nr.ntkd.etp.etp_exec(self.maproute.me, *etp)
-                    # RPCErrors and RPCNetErrors may arise for many reasons. We should not care.
-                except (RPCError, RPCNetError):
-                    pass
+                    # RPCErrors may arise for many reasons. We should not care.
+                except RPCError:
+                    logging.debug("Etp: forwarding to %s RPCError. We ignore it.", ip_to_str(nr.ip))
+                else:
+                    logging.debug("Etp: forwarding to %s done.", ip_to_str(nr.ip))
     
     def collision_check(self, gwnip, neigh, R):
         """ Checks if we are colliding with the network of `neigh'.

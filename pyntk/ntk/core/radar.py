@@ -449,6 +449,8 @@ class Radar(object):
 
         self.radar_id = randint(0, 2**32-1)
         logging.debug('radar scan %s' % self.radar_id)
+        logging.debug('My radar.netid is ' + str(self.netid))
+        logging.debug('I know these netids ' + str(self.neigh.netid_table))
 
         # we're sending the broadcast packets NOW
         self.bcast_send_time = self.xtime.time()

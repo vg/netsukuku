@@ -55,6 +55,8 @@ class Hook(object):
     def communicating_vessels(self, old_node_nb=None, cur_node_nb=None):
         '''Note: old_node_nb and cur_node_nb are used only by the ETP_EXECUTED event'''
 
+        logging.debug('Coomunicating vessels microfunc started')
+        
         if old_node_nb != None and self.gnodes_split(old_node_nb, cur_node_nb):
                 # The gnode has splitted and we have rehooked. 
                 # Nothing to do anymore.
@@ -62,6 +64,7 @@ class Hook(object):
 
         if cur_node_nb and old_node_nb and cur_node_nb[0] == old_node_nb[0]:
                 # No new or dead node in level 0
+                logging.debug('Coomunicating vessels: No new or dead node in level 0')
                 return
 
         candidates=[]   # List of (neigh, fnb) elements. neigh is a
@@ -98,6 +101,8 @@ class Hook(object):
                 ##TODO: Maybe self.hook() should be done BEFORE forwarding the
                 #       ETP that has generated the ETP_EXECUTED event.
 
+        logging.debug('Coomunicating vessels microfunc end')
+
     @microfunc()
     def hook(self, neigh_list=[], forbidden_neighs=[], condition=False, gnumb=0):
         """Lets the current node become a hooking node.
@@ -119,12 +124,14 @@ class Hook(object):
         nodes. Note: this is used only by communicating_vessels()
         """
         
+        logging.debug('Hook.hook started')
         oldnip = self.maproute.me[:]
         oldip = self.maproute.nip_to_ip(oldnip)
         we_are_alone = False
 
         ## Find all the highest non saturated gnodes
         hfn = [(self.maproute.me, self.highest_free_nodes())]
+        logging.debug('Hook.hook step one')
         
         if neigh_list == []:
                 neigh_list = self.neigh.neigh_list()
@@ -137,20 +144,25 @@ class Hook(object):
                                 return True
                 return False
 
+        logging.debug('Hook.hook step one.2')
         for nr in neigh_list:
                 nrnip=self.maproute.ip_to_nip(nr.ip)
 
                 if self.maproute.nip_cmp(self.maproute.me, nrnip) <= 0:
                         # we're interested in external neighbours 
                         continue
+                logging.debug('Hook.hook step one.3')
                 if is_neigh_forbidden(nrnip):
                         # We don't want forbidden neighbours
                         continue
+                logging.debug('Hook.hook step one.4')
                 hfn.append((nrnip, self.call_highest_free_nodes_udp(nrnip)))
+                logging.debug('Hook.hook step one.5')
         ##
 
         ## Find all the hfn elements with the highest level and 
         ## remove all the lower ones
+        logging.debug('Hook.hook step two')
         hfn2 = []
         hfn_lvlmax = -1
         for h in hfn:
@@ -175,6 +187,7 @@ class Hook(object):
                 raise Exception, "Netsukuku is full"
 
         ## Generate part of our new IP
+        logging.debug('Hook.hook step three')
         newnip = list(H[0])
         lvl = H[1][0]
         fnl = H[1][1]
@@ -182,7 +195,9 @@ class Hook(object):
         for l in reversed(xrange(lvl)): newnip[l] = choice(valid_ids(l, newnip))
 
         # If we are alone, let's generate our netid
-        if we_are_alone: self.radar.netid = randint(0, 2**32-1)
+        if we_are_alone: 
+            self.radar.netid = randint(0, 2**32-1)
+            logging.debug("Generated our netid: %s", self.radar.netid)
         ##
 
 
@@ -228,13 +243,14 @@ class Hook(object):
                         co2.close()
         ##
 
-        
+        logging.debug('Hook.hook step four')
         ## complete the hook
         self.radar.do_reply = False
 
         # close the ntkd sessions
         self.neigh.reset_ntk_clients()
 
+        logging.debug('Hook.hook step five')
         # change the IPs of the NICs
         newnip_ip = self.maproute.nip_to_ip(newnip)
         self.nics.activate(ip_to_str(newnip_ip))
@@ -257,9 +273,10 @@ class Hook(object):
             for nr in self.neigh.neigh_list():
                 logging.debug("Hook: calling ip_change of my neighbour %s." % ip_to_str(nr.ip)) 
                 nr.ntkd.neighbour.ip_change(oldip, newnip_ip)
-                logging.debug("Hook: %s ack." % ip_to_str(nr.ip))
+                logging.debug("Hook: %s ack." % ip_to_str(nr.ip)) 
 
         # we've done our part
+        logging.debug('Hook.hook done')
         self.events.send('HOOKED', (oldip, newnip[:]))
         ##
         
@@ -267,6 +284,7 @@ class Hook(object):
     def highest_free_nodes(self):
         """Returns (lvl, fnl), where fnl is a list of free node IDs of
            level `lvl'."""
+        logging.debug('Hook.highest_free_nodes started')
         for lvl in reversed(xrange(self.maproute.levels)):
                 fnl = self.maproute.free_nodes_list(lvl)
                 if fnl:

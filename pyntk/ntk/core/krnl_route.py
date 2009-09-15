@@ -65,6 +65,7 @@ class KrnlRoute(object):
         gwipstr = ip_to_str(neigh.ip)
 
         # Wait...
+        logging.debug('KrnlRoute: waiting to add route for ' + ipstr + ' through ' + gwipstr)
         neigh_node = self.maproute.node_get(*self.maproute.routeneigh_get(neigh))
         if neigh_node.nroutes() > 1:
                 # Let's wait to add the neighbour first
@@ -73,6 +74,7 @@ class KrnlRoute(object):
                         if neigh == ev_neigh[0]:
                                 # found
                                 break
+        logging.debug('KrnlRoute: waiting to add route for ' + ipstr + ' through ' + gwipstr + ': NEIGH_NEW ok, wait for KRNL_NEIGH_NEW')
         if neigh_node.routes_tobe_synced > 0:
                 # The routes to neigh are still to be synced, let's wait
                 while 1:
@@ -80,6 +82,7 @@ class KrnlRoute(object):
                         if neigh == ev_neigh[0]:
                                 # found
                                 break
+        logging.debug('KrnlRoute: waiting to add route for ' + ipstr + ' through ' + gwipstr + ': KRNL_NEIGH_NEW ok, I add (I hope).')
 
         # Do we have multipath
         if self.multipath:
@@ -135,6 +138,7 @@ class KrnlRoute(object):
                 # Change route in the kernel
                 KRoute.change(ipstr, lvl_to_bits(lvl), newgw_dev, gateway=newgw_gwipstr)
 
+    @microfunc(True)
     def route_rem_changed(self, lvl, dst, gw, rem, oldrem):
         # Do we have multipath?
         if not self.multipath:
