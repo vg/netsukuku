@@ -117,11 +117,11 @@ class Channel(object):
     def bcast_send(self, data):
         '''Send `data' to _all_ tasklets that are waiting to receive.
            If there are no tasklets, this function will immediately return!
+           
+           This is best used in a Channel with prefer_sender=True and micro_send=False
         '''
-        for idx in range(0, self.ch.balance, -1):
-            # there are tasklets waiting to receive
-            self.sendq(data)
-
+        while self.ch.balance < 0:
+            self.ch.send(data)
 
 def _dispatcher(func, chan):
     while True:
