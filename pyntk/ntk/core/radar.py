@@ -117,7 +117,9 @@ class Neighbour(object):
 
         self.max_neigh = max_neigh
         # variation on neighbours' rtt greater than this will be notified
-        self.rtt_variation_threshold = 0.1
+        # TODO changed to do less variations in netkit environment
+        #self.rtt_variation_threshold = 0.1
+        self.rtt_variation_threshold = 3
         # ip_table
         self.ip_table = {}
         # Remote client instances table
