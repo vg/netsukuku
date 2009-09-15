@@ -272,7 +272,17 @@ class Hook(object):
     
     def call_highest_free_nodes_udp(self, nip):
         """Use BcastClient to call highest_free_nodes"""
-        self.radar.broadcast.hook.highest_free_nodes_udp(self.radar.ntkd_id, nip)
+        logging.debug('Calling highest_free_nodes to ' + str(nip) + ' via UDP')
+        # from nip to bestdev
+        bcastclient = None
+        try:
+            dev = self.neigh.ip_to_neigh(self.maproute.nip_to_ip(nip)).bestdev[0]
+            bcastclient = rpc.BcastClient(devs=[dev], xtimemod=xtime)
+            logging.debug('created BcastClient with dev = ' + dev)
+        except:
+            bcastclient = self.radar.broadcast
+            logging.debug('Cannot create BcastClient with right dev, so using Radar.broadcast')
+        bcastclient.hook.highest_free_nodes_udp(self.radar.ntkd_id, nip)
         ret = self.chan_replies.recv()
         return ret
 
