@@ -28,6 +28,7 @@ from ntk.lib.micro import microfunc
 from ntk.lib.event import Event
 from ntk.wrap.xtime import time
 from ntk.core.p2p import P2P
+from ntk.lib.rencode import serializable
 from ntk.core.map import Map
 from random import choice
 from ntk.network.inet import valid_ids
@@ -41,7 +42,7 @@ class Node:
         self.alive = False
 
     def is_free(self):
-        return self.alive
+        return not self.alive
 
     def _pack(self):
         return (self.alive,)
@@ -50,6 +51,8 @@ class Node:
         ret=Node()
         ret.alive=p
         return ret
+
+serializable.register(Node)
 
 class MapCache(Map):
     def __init__(self, maproute):
@@ -67,14 +70,13 @@ class MapCache(Map):
                                 self.node_add(lvl, id)
 
     def node_add(self, lvl, id):
-        if self.node_get(lvl, id).alive:
+        if self.node_get(lvl, id).is_free():
                 Map.node_add(self, lvl, id)
                 self.node_get(lvl, id).alive = True
 
     def node_del(self, lvl, id):
         if self.node_get(lvl, id).alive:
                 Map.node_del(self, lvl, id)
-                self.node_get(lvl, id).alive = False
 
     def tmp_deleted_add(self, lvl, id):
         self.tmp_deleted[lvl, id] = time()
@@ -162,7 +164,7 @@ class Coord(P2P):
         #if we were a coordinator node, and it is different from us:
                 # let's pass it our cache
                 peer = self.peer(hIP=newcor)
-                peer.mapp2p.map_data_merge(self.mapp2p.map_data_pack())
+                peer.mapcache.map_data_merge(self.mapcache.map_data_pack())
 
     def going_out(self, lvl, id, gnumb=None):
         """The node of level `lvl' and ID `id', wants to go out from its gnode
@@ -171,17 +173,17 @@ class Coord(P2P):
            `gnumb'=None"""
 
         
-        if (gnumb < self.mapp2p.nodes_nb[lvl]-1 or gnumb == None)       \
-                and self.mapp2p.node_get(lvl, id).alive:
-                self.mapp2p.node_del(lvl, id)
-                return self.mapp2p.nodes_nb[lvl]
+        if (gnumb < self.mapcache.nodes_nb[lvl]-1 or gnumb is None)       \
+                and self.mapcache.node_get(lvl, id).alive:
+                self.mapcache.node_del(lvl, id)
+                return self.mapcache.nodes_nb[lvl]
         else:
                 return None
 
     def going_out_ok(self, lvl, id):
         """The node, which was going out, is now acknowledging the correct
         migration"""
-        self.mapp2p.tmp_deleted_del(lvl, id)
+        self.mapcache.tmp_deleted_del(lvl, id)
 
     def going_in(self, lvl, gnumb=None):
         """A node wants to become a member of our gnode G of level `lvl+1'.
@@ -189,12 +191,12 @@ class Coord(P2P):
            We'll give an affermative answer if `gnumb' > |G| or if
            `gnumb'=None"""
 
-        if gnumb > self.mapp2p.nodes_nb[lvl]+1:
-                fnl = self.mapp2p.free_nodes_list(lvl)
+        if gnumb > self.mapcache.nodes_nb[lvl]+1:
+                fnl = self.mapcache.free_nodes_list(lvl)
                 if fnl == []:
                         return None
 
-                newip = self.mapp2p.me
+                newip = self.mapcache.me
                 newip[lvl] = choice(fnl)
                 for l in reversed(xrange(lvl)): newip[l] = choice(valid_ids(lvl, newip))
                 self.node_add(lvl, newip[lvl])
