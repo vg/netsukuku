@@ -300,6 +300,7 @@ class Etp:
                 self.etp_forward(etp, [neigh.id])
         ##
 
+        logging.debug('ETP executed.')
         self.events.send('ETP_EXECUTED', (old_node_nb, self.maproute.node_nb[:]))
 
     def etp_forward(self, etp, exclude):
@@ -326,10 +327,11 @@ class Etp:
         """
         
         logging.debug("Etp: collision check: my netid %d and neighbour's netid %d", self.radar.netid, neigh.netid)
-        if neigh.netid == self.radar.netid                              \
-            or self.radar.netid == -1:
-                self.radar.netid = neigh.netid
-                return (False, R) # all ok
+        if self.radar.netid == -1:
+            logging.debug('Now I know my netid: %s' % neigh.netid)
+            self.radar.netid = neigh.netid
+        if neigh.netid == self.radar.netid:
+            return (False, R) # all ok
 
         # uhm... we are in different networks
 
@@ -365,6 +367,10 @@ class Etp:
         ## net
         logging.debug("Etp: we are the smaller net, check if we are colliding with another gnode")
 
+        # Do you wanna test re-hook? uncomment these lines:
+        #logging.debug("Etp: (debugging) forcing rehook now.")
+        #return (True, R)
+
         level = self.maproute.nip_cmp(self.maproute.me, gwnip) + 1
         if level < self.maproute.levels:
                 for dst, rem in R[level]:
@@ -385,6 +391,10 @@ class Etp:
                             gw = node.routes[-1].gw
                             node.route_del(gw)
         ##
+
+        #From now on, we are in the new net
+        logging.debug('From now on, we are in the new net: %s' % neigh.netid)
+        self.radar.netid = neigh.netid
 
         return (False, R)
 
