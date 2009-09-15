@@ -406,7 +406,7 @@ class Radar(object):
 
         # There should always be just one instance
         if self.running_instances:
-            raise Exception()
+            raise Exception('An instance of Radar is already running')
 
         self.running_instances.append(1)
         self._run()

@@ -21,6 +21,7 @@ import logging
 import logging.handlers
 import os.path
 import sys
+import traceback
 
 from ntk.config import settings
 
@@ -70,4 +71,15 @@ def get_stackframes_repr(frame):
         frame = frame.f_back
         if not frame: break
     return ret.__repr__()
+
+def log_exception_stacktrace(e, indent=2):
+    spaces = ' ' * indent
+    excinfo = sys.exc_info()
+    tb = excinfo[2]
+    logger.error(spaces + "Exception: %s" % (e.__repr__(), ))
+    logger.error(spaces + "Stacktrace:")
+    frames = traceback.extract_tb(tb)
+    for fr in frames:
+        logger.error(spaces + "  File \"%s\", line %s, in %s" % (fr[0], fr[1], fr[2]))
+        logger.error(spaces + "    %s" % (fr[3], ))
 
