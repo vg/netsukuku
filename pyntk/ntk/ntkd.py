@@ -34,7 +34,9 @@ from ntk.lib.micro import microfunc
 from ntk.config import settings, ImproperlyConfigured
 from ntk.lib.micro import micro, allmicro_run
 from ntk.network import NICManager, Route
+from ntk.network.inet import ip_to_str
 from ntk.wrap.sock import Sock
+from random import choice
 
 class NtkNode(object):
 
@@ -71,7 +73,8 @@ class NtkNode(object):
                                          sockmodgen=self.simsock)
         self.radar = radar.Radar(rpcbcastclient, xtimemod)
         self.neighbour = self.radar.neigh
-        self.maproute = maproute.MapRoute(settings.LEVELS, self.gsize, None)
+        self.firstnip = choose_first_nip()
+        self.maproute = maproute.MapRoute(settings.LEVELS, self.gsize, self.firstnip)
         self.etp = qspn.Etp(self.radar, self.maproute)
 
         self.p2p = p2p.P2PAll(self.radar, self.maproute)
@@ -121,20 +124,12 @@ class NtkNode(object):
         # enable ip forwarding
         if not self.simulated:
             Route.ip_forward(enable=True)
+        # first, activate the interfaces
+        self.first_activation()
         # start just UDP servers
         logging.debug('start UDP servers')
         self.launch_udp_servers()
-        # first hook to activate interfaces and doing the radar scan
-        logging.debug('start Hook.hook')
-        self.hook.hook()
-        logging.debug('waiting HOOKED')
-        msg = event_wait[(self.hook.events, 'HOOKED')]() # waits for the end of first hook
-        logging.debug('got HOOKED')
-        # but we don't care about the netid that has been choosen
-        self.radar.netid = -1
-        # and do_reply has to be false yet. It will be activated with next hook.
-        self.radar.do_reply = False
-        # just one radar 
+        # then, do just one radar scan
         logging.debug('start Radar.radar')
         micro(self.radar.radar)
         logging.debug('waiting SCAN_DONE')
@@ -147,6 +142,7 @@ class NtkNode(object):
         logging.debug('UDP servers launched')
         # clean our map route
         self.maproute.map_reset()
+        logging.debug('MapRoute cleaned')
         # now the real hooking can be done
         logging.debug('start Hook.hook')
         self.hook.hook()
@@ -168,4 +164,16 @@ class NtkNode(object):
         # now keep doing radar forever.
         logging.debug('start Radar.run')
         self.radar.run()
+
+    def first_activation(self):
+        logging.debug('First NIC activation started')
+        nip_ip = self.maproute.nip_to_ip(self.firstnip)
+        nip_ip_str = ip_to_str(nip_ip)
+        logging.debug('First IP choosen %s' % nip_ip_str)
+        self.nic_manager.activate(ip_to_str(nip_ip))
+        logging.debug('First NIC activation done')
+
+    def choose_first_nip(self):
+        # TODO a valid IP for our IP version, possibly one that is not choosen by normal node.
+        return [choice(xrange(self.gsize)), choice(xrange(self.gsize)), 168, 192]
 
