@@ -299,6 +299,8 @@ class Neighbour(object):
 
     def readvertise(self):
         """Sends a NEIGH_NEW event for each stored neighbour"""
+        # info
+        logging.info('Readvertising all my neighbours')
         for key in self.ip_table:
             self.events.send('NEIGH_NEW',
                              (Neigh(bestdev=self.ip_table[key].bestdev,
@@ -516,7 +518,7 @@ class Radar(object):
         else:
             self.bcast_arrival_time[ip] = {}
             self.bcast_arrival_time[ip][net_device] = [time_elapsed]
-            logging.info("Radar: IP %s detected", ip_to_str(ip))
+            logging.debug("Radar: IP %s detected", ip_to_str(ip))
 
         self.neigh.netid_table[ip] = netid
 

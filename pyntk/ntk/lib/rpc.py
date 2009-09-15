@@ -586,7 +586,7 @@ def UDP_send_reply(_rpc_caller, caller_id, func_name_reply, ret):
 def UDP_got_reply(_rpc_caller, caller_id, ret):
     """Receives reply from a UDP_call."""
     
-    logging.debug('Seen a reply to UDP_call.')
+    logging.log(logging.ULTRADEBUG, 'Seen a reply to UDP_call.')
     if UDP_caller_ids[caller_id]:
         # This reply is for me.
         logging.log(logging.ULTRADEBUG, ' ...it is for me!')

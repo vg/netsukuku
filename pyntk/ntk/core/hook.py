@@ -124,7 +124,8 @@ class Hook(object):
         nodes. Note: this is used only by communicating_vessels()
         """
         
-        logging.debug('Hook.hook started')
+        logging.info('Hooking procedure started. We haven\'t got any network id.')
+        self.radar.netid = -1
         oldnip = self.maproute.me[:]
         oldip = self.maproute.nip_to_ip(oldnip)
         we_are_alone = False
@@ -199,7 +200,7 @@ class Hook(object):
         # If we are alone, let's generate our netid
         if we_are_alone:
                 self.radar.netid = randint(0, 2**32-1)
-                logging.info("Generated our netid: %s", self.radar.netid)
+                logging.info("Generated our network id: %s", self.radar.netid)
                 # and we don't need to contact coordinator node...
         # removed:  if lvl < self.maproute.levels-1:
         #           We are creating a new gnode which is not in the latest

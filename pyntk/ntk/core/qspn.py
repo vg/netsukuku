@@ -96,6 +96,7 @@ class Etp:
         TP = [[self.maproute.me[0], NullRem()]]    # Tracer Packet included in
         block_lvl = 0                           # the first block of the ETP
         etp = (R2, [[block_lvl, TP]], flag_of_interest)
+        logging.info('Sending ETP for a dead neighbour.')
         self.etp_forward(etp, [neigh.id])
         ##
 
@@ -141,9 +142,11 @@ class Etp:
         flag_of_interest=1
         TP = [[self.maproute.me[0], NullRem()]]
         etp = (R, [[0, TP]], flag_of_interest)
+        logging.info('Sending ETP for a new neighbour or changed REM.')
         logging.debug("Etp: sending to %s", ip_to_str(neigh.ip))
         try:
             neigh.ntkd.etp.etp_exec(self.maproute.me, *etp)
+            logging.info("Sent ETP to %s", ip_to_str(neigh.ip))
             # RPCErrors may arise for many reasons. We should not care.
             # Also, we don't need to produce an error log.
         except RPCError:
@@ -180,7 +183,7 @@ class Etp:
         gw      = neigh.id
         gwrem   = neigh.rem
 
-        logging.debug("Etp: received from %s", ip_to_str(neigh.ip))
+        logging.info("Received ETP from %s", ip_to_str(neigh.ip))
         
         ## Collision check
         colliding, R = self.collision_check(gwnip, neigh, R)
@@ -316,6 +319,7 @@ class Etp:
 
 
                 etp = (R2, TPL, flag_of_interest)
+                logging.info('Sending received ETP to propagate its information.')
                 self.etp_forward(etp, [neigh.id])
         ##
 
@@ -333,6 +337,7 @@ class Etp:
                 logging.debug("Etp: forwarding to %s", ip_to_str(nr.ip))
                 try:
                     nr.ntkd.etp.etp_exec(self.maproute.me, *etp)
+                    logging.info("Sent ETP to %s", ip_to_str(nr.ip))
                     # RPCErrors may arise for many reasons. We should not care.
                 except RPCError:
                     logging.debug("Etp: forwarding to %s RPCError. We ignore it.", ip_to_str(nr.ip))
