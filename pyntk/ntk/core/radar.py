@@ -326,6 +326,11 @@ class Neighbour(object):
         """Adds `newip' in the Neighbours as a copy of `oldip', then it removes
         `oldip'. The relative events are raised."""
 
+        if not oldip in self.ip_table:
+	       # probably our radar did not observed previously the ip that is changing,
+	       # then leave this work to the next radar scan
+               return
+	
         logging.info("New IP of neigh %s is now %s " % (ip_to_str(oldip), ip_to_str(newip)))
         self.ip_table[newip] = self.ip_table[oldip]
         self.ip_table[newip] = self.ip_table[oldip]
