@@ -20,10 +20,12 @@
 # Implementation of the P2P Over Ntk RFC. See {-P2PNtk-}
 #
 
+import ntk.lib.rpc as rpc
+import ntk.wrap.xtime as xtime
 from ntk.lib.log import logger as logging
 from ntk.lib.event import Event
 from ntk.lib.rpc   import FakeRmt, RPCDispatcher, CallerInfo
-from ntk.lib.micro import microfunc
+from ntk.lib.micro import microfunc, Channel
 from ntk.lib.rencode import serializable
 from ntk.core.map import Map
 
@@ -79,6 +81,7 @@ class P2P(RPCDispatcher):
         self.radar    = radar
         self.neigh    = radar.neigh
         self.maproute = maproute
+        self.chan_replies = Channel()
 
         self.mapp2p   = MapP2P(self.maproute.levels, self.maproute.gsize, self.maproute.me, pid)
         
@@ -88,7 +91,7 @@ class P2P(RPCDispatcher):
         # are we a participant?
         self.participant = False
         
-        self.remotable_funcs = [self.participant_add, self.msg_send]
+        self.remotable_funcs = [self.participant_add, self.msg_send, self.msg_send_udp, self.reply_msg_send_udp]
         RPCDispatcher.__init__(self, root_instance=self)
 
     def h(self, key):
@@ -161,45 +164,83 @@ class P2P(RPCDispatcher):
         for nr in self.neigh.neigh_list():
                 nr.ntkd.p2p.participant_add(self.pid, pIP)
 
-    def msg_send(self, sender_nip, hip, msg):
+    def msg_send(self, sender_nip, hip, msg, use_udp_nip=None):
         """Routes a packet to `hip'. Do not use this function directly, use
         self.peer() instead
 
         msg: it is a (func_name, args) pair."""
 
-        H_hip = self.H(hip)
-        if H_hip == self.mapp2p.me:
+        if use_udp_nip:
+            return self.call_msg_send_udp(use_udp_nip, sender_nip, hip, msg)
+        else:
+            H_hip = self.H(hip)
+            if H_hip == self.mapp2p.me:
                 # the msg has arrived
                 return self.msg_exec(sender_nip, msg)
 
-        # forward the message until it arrives at destination
-        n = self.neigh_get(H_hip)
-        if n: 
+            # forward the message until it arrives at destination
+            n = self.neigh_get(H_hip)
+            if n: 
                 exec("return n.ntkd.p2p.PID_"+str(self.mapp2p.pid)+
-                        ".msg_send(sender_nip, hip, msg)")
-        else:
+                     ".msg_send(sender_nip, hip, msg)")
+            else:
                 return None
+
+    def call_msg_send_udp(self, nip, sender_nip, hip, msg):
+        """Use BcastClient to call msg_send"""
+        # from nip to bestdev
+        bcastclient = None
+        try:
+            dev = self.neigh.ip_to_neigh(self.maproute.nip_to_ip(nip)).bestdev[0]
+            bcastclient = rpc.BcastClient(devs=[dev], xtimemod=xtime)
+        except:
+            bcastclient = self.radar.broadcast
+        stringexec = "bcastclient.p2p.PID_"+str(self.mapp2p.pid)+".msg_send_udp(self.radar.ntkd_id, nip, sender_nip, hip, msg)"
+        exec(stringexec)
+        ret = self.chan_replies.recv()
+        return ret
+
+    def msg_send_udp(self, _rpc_caller, ntkd_id_caller, nip_callee, sender_nip, hip, msg):
+        """Returns msg_send to remote caller.
+           ntkd_id_caller is the value of radar.ntkd_id of the caller.
+            It is replied back to the LAN for the caller to recognize a reply destinated to it.
+           nip_callee is the NIP of the callee.
+            It is used by the callee to recognize a request destinated to it.
+           """
+        if self.maproute.me == nip_callee:
+            ret = self.msg_send(sender_nip, hip, msg)
+            bcastclient = rpc.BcastClient(devs=[_rpc_caller.dev], xtimemod=xtime)
+            exec("bcastclient = bcastclient.p2p.PID_"+str(self.mapp2p.pid))
+            bcastclient.reply_msg_send_udp(ntkd_id_caller, ret)
+
+    def reply_msg_send_udp(self, _rpc_caller, ntkd_id_caller, ret):
+        """Receives reply from msg_send_udp."""
+        if ntkd_id_caller == self.radar.ntkd_id:
+            # This reply is for me.
+            if self.chan_replies.ch.balance < 0:
+                 self.chan_replies.send(ret)
 
     def msg_exec(self, sender_nip, msg):
         return self.dispatch(CallerInfo(), *msg)
 
     class RmtPeer(FakeRmt):
-        def __init__(self, p2p, hIP=None, key=None):
+        def __init__(self, p2p, hIP=None, key=None, use_udp_nip=None):
             self.p2p = p2p
             self.key = key
             self.hIP = hIP
+            self.use_udp_nip = use_udp_nip
             FakeRmt.__init__(self)
 
         def rmt(self, func_name, *params):
             """Overrides FakeRmt.rmt()"""
             if self.hIP is None:
                     self.hIP = self.p2p.h(self.key)
-            return self.p2p.msg_send(self.p2p.maproute.me, self.hIP, (func_name, params))
+            return self.p2p.msg_send(self.p2p.maproute.me, self.hIP, (func_name, params), use_udp_nip=self.use_udp_nip)
 
-    def peer(self, hIP=None, key=None):
+    def peer(self, hIP=None, key=None, use_udp_nip=None):
         if hIP is None and key is None:
                 raise Exception, "hIP and key are both None. Specify at least one"
-        return self.RmtPeer(self, hIP=hIP, key=key)
+        return self.RmtPeer(self, hIP=hIP, key=key, use_udp_nip=use_udp_nip)
 
 class P2PAll(object):
     """Class of all the registered P2P services"""
