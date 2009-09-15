@@ -19,6 +19,7 @@
 
 from ntk.lib.log import logger as logging
 from ntk.lib.micro import microfunc
+from ntk.lib.rpc import RPCError, RPCNetError
 from ntk.lib.event import Event
 from ntk.network.inet import ip_to_str
 from ntk.core.route import NullRem, DeadRem
@@ -124,7 +125,12 @@ class Etp:
         flag_of_interest=1
         TP = [[self.maproute.me[0], NullRem()]]
         etp = (R, [[0, TP]], flag_of_interest)
-        neigh.ntkd.etp.etp_exec(self.maproute.me, *etp)
+        try:
+            neigh.ntkd.etp.etp_exec(self.maproute.me, *etp)
+            # RPCErrors and RPCNetErrors may arise for many reasons.
+            # We don't need to produce an error log.
+        except (RPCError, RPCNetError):
+            pass
         ##
 
     @microfunc()
@@ -283,9 +289,13 @@ class Etp:
            `Exclude' is a list of "Neighbour.id"s"""
 
         for nr in self.neigh.neigh_list():
-                if nr.id not in exclude:
-                        logging.debug("Etp: forwarding to %s", ip_to_str(nr.ip))
-                        nr.ntkd.etp.etp_exec(self.maproute.me, *etp)
+            if nr.id not in exclude:
+                try:
+                    logging.debug("Etp: forwarding to %s", ip_to_str(nr.ip))
+                    nr.ntkd.etp.etp_exec(self.maproute.me, *etp)
+                    # RPCErrors and RPCNetErrors may arise for many reasons. We should not care.
+                except (RPCError, RPCNetError):
+                    pass
     
     def collision_check(self, gwnip, neigh, R):
         """ Checks if we are colliding with the network of `neigh'.
