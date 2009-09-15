@@ -191,7 +191,7 @@ class P2P(RPCDispatcher):
 
         def rmt(self, func_name, *params):
             """Overrides FakeRmt.rmt()"""
-            if self.hIP == None:
+            if self.hIP is None:
                     self.hIP = self.p2p.H(self.p2p.h(self.key))
             return self.p2p.msg_send(self.p2p.maproute.me, self.hIP, (func_name, params))
 
@@ -272,7 +272,7 @@ class P2PAll(object):
                 minnr  = nr
         ##
 
-        if minnr == None:
+        if minnr is None:
                 # nothing to do
                 return
 
