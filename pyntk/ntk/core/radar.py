@@ -388,7 +388,14 @@ class Radar(object):
         self.ntkd_id = randint(0, 2**32-1)
 
     def run(self):
-        self.running_instances.append(1) # make sure to note down that radar.run has been launched.
+        # Before launching the microfunc,
+        # make sure to note down that radar.run has been launched.
+
+        # There should always be just one instance
+        if self.running_instances:
+            raise Exception()
+
+        self.running_instances.append(1)
         self._run()
 
     @microfunc(True)
