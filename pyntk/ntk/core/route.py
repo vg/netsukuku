@@ -236,10 +236,7 @@ class RouteNode(object):
                                     # but they aren't used
                 ):
         self.routes = []
-        self.routes_tobe_synced = 0     # number of routes to update in the kernel
-        #TODO: keep the right track of `self.routes_tobe_synced'
-        #      maybe it's better to use "self.routes_tobe_synced+-=1" before
-        #      sending the ROUTE_NEW/ROUTE_DELETED/ROUTE_REM_CHGED events?
+        self.routes_tobe_synced = 0     # number of routes to add in the kernel
 
     def route_getby_gw(self, gw):
         """Returns the route having as gateway `gw'"""
@@ -274,11 +271,14 @@ class RouteNode(object):
         val = None
         oldr = self.route_getby_gw(gw)
 
-        if self.is_empty() or (oldr is None and rem > self.routes[-1].rem):
-            # If there aren't routes, or if it is better than the worst
-            # route, add it
+        if self.is_empty():
+            # If there aren't routes, , add it
             self.routes.append(RouteGw(gw, rem))
             ret = 1
+        elif oldr is None and rem > self.routes[-1].rem:
+            # Else if it is better than the worst route, add it
+            self.routes.append(RouteGw(gw, rem))
+            ret = 2
         elif oldr is not None and rem > oldr.rem:
             # We already have a route with gateway `gw'. However, the new
             # route is better. Let's update the rem.
@@ -358,16 +358,16 @@ class MapRoute(Map):
                          ] )
         self.remotable_funcs = [self.free_nodes_nb]
 
-    def route_add(self, lvl, dst, gw, rem, silent=0):
+    def route_add(self, lvl, dst, gw, rem, silent=0, wait_sync=True):
         ''' Add a new route
         '''
         n = self.node_get(lvl, dst)
         ret, val = n.route_add(lvl, dst, gw, rem)
         if not silent:
             if ret == 1:
-                self.events.send('ROUTE_NEW', (lvl, dst, gw, rem))
-                if n.nroutes() == 1:
+                if val is None:
                     # The node is new
+                    self.events.send('ROUTE_NEW', (lvl, dst, gw, rem))
                     self.node_add(lvl, dst)
             elif ret == 2:
                 oldrem = val
@@ -386,7 +386,7 @@ class MapRoute(Map):
             # Consider it dead
             self.node_del(lvl, dst)
 
-    def route_rem(self, lvl, dst, gw, newrem, silent=0):
+    def route_rem(self, lvl, dst, gw, newrem, silent=0, wait_sync=True):
         """Changes the rem of the route with gateway `gw'
 
         Returns 0 if the route doesn't exists, 1 else."""
@@ -402,7 +402,7 @@ class MapRoute(Map):
         else:
             return 0
 
-    def route_change(self, lvl, dst, gw, newrem):
+    def route_change(self, lvl, dst, gw, newrem, wait_sync=True):
         """A wrapper to route_add, route_del"""
 
         if isinstance(newrem, DeadRem):
@@ -421,14 +421,14 @@ class MapRoute(Map):
             for dst in xrange(self.gsize):
                 self.route_del(lvl, dst, neigh.id, silent=1)
 
-    def routeneigh_add(self, neigh, silent=0):
+    def routeneigh_add(self, neigh, silent=0, wait_sync=True):
         """Add a route to reach the neighbour `neigh'"""
         lvl, nid = self.routeneigh_get(neigh)
-        return self.route_add(lvl, nid, neigh.id, neigh.rem, silent)
+        return self.route_add(lvl, nid, neigh.id, neigh.rem, silent, wait_sync)
 
-    def routeneigh_rem(self, neigh, silent=0):
+    def routeneigh_rem(self, neigh, silent=0, wait_sync=True):
         lvl, nid = self.routeneigh_get(neigh)
-        return self.route_rem(lvl, nid, neigh.id, neigh.rem, silent)
+        return self.route_rem(lvl, nid, neigh.id, neigh.rem, silent, wait_sync)
 
 
     def routeneigh_get(self, neigh):
