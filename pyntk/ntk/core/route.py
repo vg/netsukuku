@@ -439,7 +439,7 @@ class MapRoute(Map):
             # We want the route deleted (if present)
             ret = 0
             if was_there:
-                gwip = self.neigh.id_to_ip(gw)
+                gwip = self.ntkd.neighbour.id_to_ip(gw)
                 ret = self.route_del(lvl, dst, gw, gwip)
                 if ret: logging.debug('    Deleted old route.')
             return ret
