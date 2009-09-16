@@ -233,7 +233,7 @@ class Coord(P2P):
         if fnl == []:
                 return None
 
-        newnip = self.mapcache.me
+        newnip = self.mapcache.me[:]
         newnip[lvl] = choice(fnl)
         for l in reversed(xrange(lvl)): newnip[l] = choice(valid_ids(lvl, newnip))
         # it should be previously free...
@@ -241,5 +241,6 @@ class Coord(P2P):
         if node.is_free():
             node.alive = True
             self.mapcache.node_add(lvl, newnip[lvl])
+        logging.log(logging.ULTRADEBUG, 'Coord.going_in: returns ' + str(newnip))
         return newnip
 
