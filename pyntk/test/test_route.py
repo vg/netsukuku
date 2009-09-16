@@ -209,7 +209,7 @@ class TestMapRoute(unittest.TestCase):
 
     def setUp(self):
 
-        self.map = MapRoute(levels=1, gsize=256, me=[3])
+        self.map = MapRoute(None, levels=1, gsize=256, me=[3])
 
         # I'm interested only in Neigh.ip, other parameters are faked
         self.neigh = Neigh(ip=127, ntkd='Fake_rcpClient',

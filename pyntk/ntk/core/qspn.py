@@ -35,7 +35,8 @@ def is_listlist_empty(l):
 class Etp:
     """Extended Tracer Packet"""
 
-    def __init__(self, radar, maproute):
+    def __init__(self, ntkd, radar, maproute):
+        self.ntkd = ntkd
 
         self.radar = radar
         self.neigh = radar.neigh

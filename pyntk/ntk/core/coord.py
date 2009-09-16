@@ -105,9 +105,10 @@ class Coord(P2P):
     
     pid = 1
 
-    def __init__(self, radar, maproute, p2pall):
+    def __init__(self, ntkd, radar, maproute, p2pall):
         
         P2P.__init__(self, radar, maproute, Coord.pid)
+        self.ntkd = ntkd
 
         # let's register ourself in p2pall
         p2pall.p2p_register(self)

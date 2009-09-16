@@ -290,7 +290,8 @@ class P2P(RPCDispatcher):
 class P2PAll(object):
     """Class of all the registered P2P services"""
 
-    __slots__ = ['radar',
+    __slots__ = ['ntkd',
+                 'radar',
                  'neigh',
                  'maproute',
                  'service',
@@ -298,7 +299,9 @@ class P2PAll(object):
                  'events',
                  'etp']
 
-    def __init__(self, radar, maproute, etp):
+    def __init__(self, ntkd, radar, maproute, etp):
+        self.ntkd = ntkd
+
         self.radar = radar
         self.neigh = radar.neigh
         self.maproute = maproute

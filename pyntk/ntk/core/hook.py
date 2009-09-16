@@ -31,7 +31,9 @@ from ntk.network.inet import ip_to_str, valid_ids
 
 class Hook(object):
 
-    def __init__(self, radar, maproute, etp, coordnode, nics): 
+    def __init__(self, ntkd, radar, maproute, etp, coordnode, nics): 
+        self.ntkd = ntkd
+
         self.radar = radar
         self.neigh = radar.neigh
         self.maproute = maproute

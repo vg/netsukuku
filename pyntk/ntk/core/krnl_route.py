@@ -30,7 +30,9 @@ from ntk.network import Route as KRoute
 from ntk.network.inet import ip_to_str, lvl_to_bits
 
 class KrnlRoute(object):
-    def __init__(self, neigh, maproute):
+    def __init__(self, ntkd, neigh, maproute):
+        self.ntkd = ntkd
+
         self.maproute = maproute
         self.neigh = neigh
         self.multipath = settings.MULTIPATH

@@ -234,6 +234,11 @@ class Neighbour(object):
                 return i
         return False
 
+    def set_netid(self, ip, new_netid):
+        """Updates our neighbour's network id."""
+        if ip in self.netid_table:
+            self.netid_table[ip] = new_netid
+
     def store(self, ip_table):
         """Substitute the old ip_table with the new and notify about the
         changes
@@ -378,17 +383,18 @@ class Neighbour(object):
 
 
 class Radar(object):
-    __slots__ = [ 'bouquet_numb', 'bcast_send_time', 'xtime',
+    __slots__ = [ 'ntkd', 'bouquet_numb', 'bcast_send_time', 'xtime',
                   'bcast_arrival_time', 'max_bouquet', 'max_wait_time', 
                   'broadcast', 'neigh', 'events', 'netid', 'do_reply', 
                   'remotable_funcs', 'ntkd_id', 'radar_id', 'max_neigh',
 		  'stopping', 'running_instances']
 
-    def __init__(self, broadcast, xtime):
+    def __init__(self, ntkd, broadcast, xtime):
         """
             broadcast: an instance of the RPCBroadcast class to manage broadcast
             sending xtime: a wrap.xtime module
         """
+        self.ntkd = ntkd
 
         self.xtime = xtime
         self.broadcast = broadcast

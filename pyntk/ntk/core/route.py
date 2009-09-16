@@ -347,11 +347,12 @@ class MapRoute(Map):
     MapRoute.node[lvl][id] is a RouteNode class, i.e. a list of routes
     having as destination the node (lvl, id)"""
 
-    __slots__ = Map.__slots__ + ['remotable_funcs']
+    __slots__ = Map.__slots__ + ['ntkd', 'remotable_funcs']
 
-    def __init__(self, levels, gsize, me):
+    def __init__(self, ntkd, levels, gsize, me):
 
         Map.__init__(self, levels, gsize, RouteNode, me)
+        self.ntkd = ntkd
 
         self.events.add( [  'ROUTE_NEW',
                             'ROUTE_DELETED',
