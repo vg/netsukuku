@@ -122,14 +122,11 @@ def microfunc(is_micro=False):
 
     Note: This is a decorator! (see test/test_micro.py for examples)
 
-    If is_micro != True and is_atomic != True (default), each call will be
-    queued.
+    If is_micro != True (default), each call will be queued.
     A dispatcher microthread will automatically pop and execute each call.
+
     If is_micro == True, each call of the function will be executed in a new
     microthread.
-    If is_atomic == True, each call will be executed inside a new atomic
-    microthread. WARNING: this means that the microthread won't be interrupted
-    by the stackless scheduler until it has finished running.
     '''
 
     def decorate(func):
