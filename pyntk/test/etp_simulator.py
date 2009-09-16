@@ -217,7 +217,7 @@ class FakeNeighbour():
         logging.debug('ANNOUNCE: gw ' + str(neigh.id) + ' detected.')
         self.announce_gw(neigh.id)
         self.events.send('NEIGH_NEW', (neigh,))
-    def send_event_neigh_new(self, bestdev,devs,idn,ip,netid):
+    def send_event_neigh_new(self, bestdev, devs, idn, ip, netid):
         neigh = radar.Neigh(bestdev=bestdev,
                                         devs=devs,
                                         idn=idn,
@@ -225,7 +225,7 @@ class FakeNeighbour():
                                         netid=netid,
                                         ntkd=FakeTCPClient(ip))
         self.send_event_neigh_new_for_neigh(neigh)
-    def send_event_neigh_rem_chged(self, bestdev,devs,idn,ip,netid,new_rtt):
+    def send_event_neigh_rem_chged(self, bestdev, devs, idn, ip, netid, new_rtt):
         self.events.send('NEIGH_REM_CHGED',
                                  (radar.Neigh(bestdev=bestdev,
                                         devs=devs,
@@ -233,7 +233,7 @@ class FakeNeighbour():
                                         ip=ip,
                                         netid=netid,
                                         ntkd=FakeTCPClient(ip)),Rtt(new_rtt)))
-    def send_event_neigh_deleted(self, idn,ip,netid, bestdev=None, devs=None):
+    def send_event_neigh_deleted(self, bestdev, devs, idn, ip, netid):
         logging.debug('ANNOUNCE: gw ' + str(idn) + ' removing.')
         self.announce_gw_removing(idn)
         self.events.send('NEIGH_DELETED',

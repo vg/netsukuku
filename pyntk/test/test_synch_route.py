@@ -228,20 +228,20 @@ remove_simulated_node_by_ip(node_guest1_ip)
 ## node_guest2 detects it
 log_executing_node(node_guest2)
 node_guest2.neighbour.send_event_neigh_deleted(
+                      ('eth1',100),
+                      {'eth1':100},
                       1,
                       node_guest1_ip,
-                      node_guest1_netid,
-                      ('eth1',100),
-                      {'eth1':100})
+                      node_guest1_netid)
 simulate_delay()
 ## node_guest3 detects it too
 log_executing_node(node_guest3)
 node_guest3.neighbour.send_event_neigh_deleted(
+                      ('eth0',100),
+                      {'eth0':100},
                       1,
                       node_guest1_ip,
-                      node_guest1_netid,
-                      ('eth0',100),
-                      {'eth0':100})
+                      node_guest1_netid)
 simulate_delay()
 
 #retrieve etps and execute them in the proper node
