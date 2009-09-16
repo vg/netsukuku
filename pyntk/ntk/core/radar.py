@@ -319,12 +319,12 @@ class Neighbour(object):
 
         # first of all we cycle through the old ip_table
         # looking for nodes that aren't in the new one
-        for key in self.ip_table:
+        for key in self.ip_table.keys():
             # if we find a row that isn't in the new ip_table and whose
             # deletion hasn't already been notified (raising an event)
             # during truncation
             if not key in ip_table and not key in died_ip_list:
-                self.delete(key, remove_from_iptable=False)
+                self.delete(key)
 
         # now we cycle through the new ip_table
         # looking for nodes who weren't in the old one

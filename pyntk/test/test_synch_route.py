@@ -276,6 +276,11 @@ def retrieve_execute_etps():
                 etp = etp_pool.pop_first_etp_by_ip(ip)
                 log_executing_node(node)
                 node.etp.etp_exec(*etp)
+#                              and len(etp)>2 and len(etp[2])>3 and len(etp[2][3])>0 and len(etp[2][3][0])>1 \
+#                              and etp[2][3][0][0]==9 and isinstance(etp[2][3][0][1], maproute.DeadRem):
+#                if node.maproute.me==[8,7,6,5] and etp[0]==[16,15,14,13]:
+#                    for zzz in range(10): print 'achtung'
+#                    xtime.swait(120000000)
                 xtime.swait(1200)
         etp_ips =  etp_pool.get_ips()
 ##
@@ -448,14 +453,14 @@ remove_simulated_node_by_ip(node_guest1_ip)
 log_executing_node(node_guest2)
 node_guest2.neighbour.send_event_neigh_deleted(
                       1,
-                      node_guest2.maproute.nip_to_ip(node_guest1_nip),
+                      node_guest1_ip,
                       node_guest1_netid)
 simulate_delay()
 ## node_guest3 detects it too
 log_executing_node(node_guest3)
 node_guest3.neighbour.send_event_neigh_deleted(
                       1,
-                      node_guest3.maproute.nip_to_ip(node_guest1_nip),
+                      node_guest1_ip,
                       node_guest1_netid)
 simulate_delay()
 
