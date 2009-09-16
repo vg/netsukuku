@@ -57,7 +57,7 @@ class Etp:
     def etp_new_dead(self, neigh):
         """Builds and sends a new ETP for the worsened link case."""
 
-        logging.debug("QSPN: death of %s: update my map.", ip_to_str(neigh.ip))
+        logging.debug('QSPN: death of %s: update my map.', ip_to_str(neigh.ip))
         
         ## Create R
         def gw_is_neigh((dst, gw, rem)):
@@ -73,7 +73,7 @@ class Etp:
             # I'm not ready to interact.
             return
 
-        logging.debug("QSPN: death of %s: prepare the ETP", ip_to_str(neigh.ip))
+        logging.debug('QSPN: death of %s: prepare the ETP', ip_to_str(neigh.ip))
         
         if is_listlist_empty(R):
                 # R is empty, that is we don't have routes passing by `gw'.
@@ -108,7 +108,7 @@ class Etp:
 
         If oldrem=None, the node `neigh' is considered new."""
 
-        logging.debug("QSPN: new changed %s: update my map", ip_to_str(neigh.ip))
+        logging.debug('QSPN: new changed %s: update my map', ip_to_str(neigh.ip))
         
         ## Update the map
         if oldrem is None:
@@ -121,7 +121,7 @@ class Etp:
             # I'm not ready to interact.
             return
 
-        logging.debug("QSPN: new changed %s: prepare the ETP", ip_to_str(neigh.ip))
+        logging.debug('QSPN: new changed %s: prepare the ETP', ip_to_str(neigh.ip))
         
         ## Create R
         def gw_isnot_neigh((dst, gw, rem)):
@@ -129,7 +129,7 @@ class Etp:
         R = self.maproute.bestroutes_get(gw_isnot_neigh)
 
         # Usually we don't need to send a ETP if R is empty. But we have to send
-        # the ETP in any case if this link is new (that is, oldrem is None)
+        # the ETP in any case if this link is new (that is, oldrem is None).
         if is_listlist_empty(R) and oldrem is not None:
                 # R is empty and this link is old: no need to proceed
                 return
@@ -146,16 +146,16 @@ class Etp:
         TP = [[self.maproute.me[0], NullRem()]]
         etp = (R, [[0, TP]], flag_of_interest)
         logging.info('Sending ETP for a new neighbour or changed REM.')
-        logging.debug("Etp: sending to %s", ip_to_str(neigh.ip))
+        logging.debug('Etp: sending to %s', ip_to_str(neigh.ip))
         try:
             neigh.ntkd.etp.etp_exec(self.maproute.me, self.ntkd.neighbour.netid, *etp)
-            logging.info("Sent ETP to %s", ip_to_str(neigh.ip))
+            logging.info('Sent ETP to %s', ip_to_str(neigh.ip))
             # RPCErrors may arise for many reasons. We should not care.
             # Also, we don't need to produce an error log.
         except RPCError:
-            logging.debug("Etp: sending to %s RPCError. We ignore it.", ip_to_str(neigh.ip))
+            logging.debug('Etp: sending to %s RPCError. We ignore it.', ip_to_str(neigh.ip))
         else:
-            logging.debug("Etp: sending to %s done.", ip_to_str(neigh.ip))
+            logging.debug('Etp: sending to %s done.', ip_to_str(neigh.ip))
         ##
 
     @microfunc(True)
@@ -190,7 +190,7 @@ class Etp:
         gw = neigh.id
         gwrem = neigh.rem
 
-        logging.info("Received ETP from %s", ip_to_str(neigh.ip))
+        logging.info('Received ETP from %s', ip_to_str(neigh.ip))
         
         ## Collision check
         colliding, R = self.collision_check(gwnip, neigh, R)
@@ -338,15 +338,15 @@ class Etp:
 
         for nr in self.neigh.neigh_list():
             if nr.id not in exclude:
-                logging.debug("Etp: forwarding to %s", ip_to_str(nr.ip))
+                logging.debug('Etp: forwarding to %s', ip_to_str(nr.ip))
                 try:
                     nr.ntkd.etp.etp_exec(self.maproute.me, self.ntkd.neighbour.netid, *etp)
-                    logging.info("Sent ETP to %s", ip_to_str(nr.ip))
+                    logging.info('Sent ETP to %s', ip_to_str(nr.ip))
                     # RPCErrors may arise for many reasons. We should not care.
                 except RPCError:
-                    logging.debug("Etp: forwarding to %s RPCError. We ignore it.", ip_to_str(nr.ip))
+                    logging.debug('Etp: forwarding to %s RPCError. We ignore it.', ip_to_str(nr.ip))
                 else:
-                    logging.debug("Etp: forwarding to %s done.", ip_to_str(nr.ip))
+                    logging.debug('Etp: forwarding to %s done.', ip_to_str(nr.ip))
     
     def collision_check(self, gwnip, neigh, R):
         """ Checks if we are colliding with the network of `neigh'.
@@ -401,7 +401,7 @@ class Etp:
 
         ## Check if we are colliding with another (g)node of the neighbour
         ## net
-        logging.debug("Etp: we are the smaller net, check if we are colliding with another gnode")
+        logging.debug('Etp: we are the smaller net, check if we are colliding with another gnode')
 
         # Do you wanna test re-hook? uncomment these lines:
         #logging.debug("Etp: (debugging) forcing rehook now.")
@@ -412,7 +412,7 @@ class Etp:
                 for dst, rem in R[level]:
                         if dst == self.maproute.me[level]:
                                 # we are colliding! LET'S REHOOK
-                                logging.debug("Etp: let's rehook now.")
+                                logging.debug('Etp: let\'s rehook now.')
                                 return (True, R)
         ## 
 
