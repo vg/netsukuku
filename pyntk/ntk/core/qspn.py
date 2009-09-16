@@ -287,8 +287,8 @@ class Etp:
         for lvl in xrange(self.maproute.levels):
                 for dst, rem in R[lvl]:
                         logging.debug('ETP received: Executing: R has info about this node:')
-                        logging.debug('    %s' % anode(lvl, dst, gw, rem+tprem))
-                        if self.maproute.route_change(lvl, dst, gw, rem+tprem):
+                        logging.debug('    %s' % anode(lvl, dst, gw, rem + gwrem))
+                        if self.maproute.route_change(lvl, dst, gw, rem + gwrem):
                             logging.debug('    Info is interesting. Map updated.')
         ##
 
