@@ -126,7 +126,7 @@ etp_pool = EtpPool()
 ## fakes:
 ##   network package:   NIC, Route
 ##   rpc stuff:   BcastClient, TCPClient
-##   core stuff:   NtkNode, Radar, Neighbour
+##   core stuff:   NtkNode, Radar, Neighbour, Hook.communicating_vessels
 
 class FakeBcastClient:
     def __init__(self, nics):
@@ -264,6 +264,10 @@ class FakeRadar():
         self.neigh = FakeNeighbour()
 radar.Radar = FakeRadar
 
+def fake_com_vessels(*args):
+    pass
+hook.Hook.communicating_vessels = fake_com_vessels
+
 ##
 ########################################
 
@@ -318,23 +322,28 @@ def node_x_in_map_of_y(node_x, node_y):
 ##  We have a method to retrieve etps and execute them in the proper node
 ##   just once
 def retrieve_execute_etps_once(exclude_ips=[]):
+    tot = 0
     etp_ips =  etp_pool.get_ips()
     for ip in etp_ips:
+        tot += 1
         if ip in exclude_ips:
             etp_pool.pop_first_etp_by_ip(ip)
         else:
+            etp = etp_pool.pop_first_etp_by_ip(ip)
             node = get_simulated_node_by_ip(ip)
             if node:
-                etp = etp_pool.pop_first_etp_by_ip(ip)
                 node_gonna_exec_etp(node)
                 node.etp.etp_exec(*etp)
                 xtime.swait(delay_each_etp_exec())
+    return tot
 ##  We have a method to *repeatedly* retrieve and execute etps until the end
 def retrieve_execute_etps(exclude_ips=[]):
+    tot = 0
     etp_ips =  etp_pool.get_ips()
     while len(etp_ips) > 0:
-        retrieve_execute_etps_once(exclude_ips=exclude_ips)
+        tot += retrieve_execute_etps_once(exclude_ips=exclude_ips)
         etp_ips = etp_pool.get_ips()
+    return tot
 ##  We have a method to retrieve all etps in the pool given a destination ip
 def retrieve_etps_to_ip(ip):
     return etp_pool.get_etps_to_ip(ip)

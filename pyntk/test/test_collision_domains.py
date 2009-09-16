@@ -155,6 +155,27 @@ def test_etp_new_changed(check_etp_emission=True):
     nodelinks[node_C, node_D] = 2, 'eth0', 100
     nodelinks[node_C, node_E] = 3, 'eth0', 100
     ignore_etp_for=[]
+    def node_x_meets_node_y(node_x,node_y):
+        # node_y is a new neighbour to node_x
+        #log_executing_node(node_x)
+        gwnum,bestdev,rtt = nodelinks[node_x, node_y]
+        node_x.neighbour.send_event_neigh_new(
+        	              (bestdev,rtt),
+        	              {bestdev:rtt},
+        	              gwnum,
+        	              node_x.maproute.nip_to_ip(node_y.maproute.me),
+        	              node_y.neighbour.netid)
+        simulate_delay()
+        # node_x is a new neighbour to node_y
+        #log_executing_node(node_y)
+        gwnum,bestdev,rtt = nodelinks[node_y, node_x]
+        node_y.neighbour.send_event_neigh_new(
+        	              (bestdev,rtt),
+        	              {bestdev:rtt},
+        	              gwnum,
+        	              node_y.maproute.nip_to_ip(node_x.maproute.me),
+        	              node_x.neighbour.netid)
+        simulate_delay()
 
     # node_B has a neighbour (the number 10) with ip 101.102.103.104
     # through which he sees:
@@ -193,136 +214,32 @@ def test_etp_new_changed(check_etp_emission=True):
     simulate_delay()
     ignore_etp_for.append(node_D.maproute.nip_to_ip([114,113,112,111]))
 
-    # node_B is a new neighbour to node_A
-    #log_executing_node(node_A)
-    gwnum,bestdev,rtt = nodelinks[node_A, node_B]
-    node_A.neighbour.send_event_neigh_new(
-    	              (bestdev,rtt),
-    	              {bestdev:rtt},
-    	              gwnum,
-    	              node_A.maproute.nip_to_ip(node_B.maproute.me),
-    	              node_B.neighbour.netid)
-    simulate_delay()
-
-    # node_A is a new neighbour to node_B
-    #log_executing_node(node_B)
-    gwnum,bestdev,rtt = nodelinks[node_B, node_A]
-    node_B.neighbour.send_event_neigh_new(
-    	              (bestdev,rtt),
-    	              {bestdev:rtt},
-    	              gwnum,
-    	              node_B.maproute.nip_to_ip(node_A.maproute.me),
-    	              node_A.neighbour.netid)
-    simulate_delay()
+    # link A - B
+    node_x_meets_node_y(node_A,node_B)
 
     #retrieve etps and execute them in the proper node
     retrieve_execute_etps(exclude_ips=ignore_etp_for)
     #printmaps()
     simulate_delay()
 
-    #########################################################
-    #   |--eth1   eth0--|                  /^^^^^^^^\       #
-    #   |       A       |--eth0   eth1--|--<  12.*  >       #
-    #   |               |       B          <  13.*  >       #
-    #   |                                  \VVVVVVVV/       #
-    #   |--eth0                                             #
-    #   |       C                      /^^^^^^^^\           #
-    #   |                              <  12.*  >           #
-    #   |--eth0   eth1--|--------------<  14.*  >           #
-    #   |       D                      \VVVVVVVV/           #
-    #   |                                                   #
-    #   |--eth0   eth1--<void>                              #
-    #   |       E                                           #
-    #########################################################
-
-
-    # node_D is a new neighbour to node_A
-    #log_executing_node(node_A)
-    gwnum,bestdev,rtt = nodelinks[node_A, node_D]
-    node_A.neighbour.send_event_neigh_new(
-    	              (bestdev,rtt),
-    	              {bestdev:rtt},
-    	              gwnum,
-    	              node_A.maproute.nip_to_ip(node_D.maproute.me),
-    	              node_D.neighbour.netid)
-    simulate_delay()
-
-    # node_A is a new neighbour to node_D
-    #log_executing_node(node_D)
-    gwnum,bestdev,rtt = nodelinks[node_D, node_A]
-    node_D.neighbour.send_event_neigh_new(
-    	              (bestdev,rtt),
-    	              {bestdev:rtt},
-    	              gwnum,
-    	              node_D.maproute.nip_to_ip(node_A.maproute.me),
-    	              node_A.neighbour.netid)
-    simulate_delay()
+    # link A - D
+    node_x_meets_node_y(node_A,node_D)
 
     #retrieve etps and execute them in the proper node
     retrieve_execute_etps(exclude_ips=ignore_etp_for)
     #printmaps()
     simulate_delay()
 
+    # link A - E
+    node_x_meets_node_y(node_A,node_E)
 
-    #########################################################
-    #   |--eth1   eth0--|                  /^^^^^^^^\       #
-    #   |       A       |--eth0   eth1--|--<  12.*  >       #
-    #   |               |       B          <  13.*  >       #
-    #   |                                  \VVVVVVVV/       #
-    #   |--eth0                                             #
-    #   |       C                      /^^^^^^^^\           #
-    #   |                              <  12.*  >           #
-    #   |--eth0   eth1--|--------------<  14.*  >           #
-    #   |       D                      \VVVVVVVV/           #
-    #   |                                                   #
-    #   |--eth0   eth1--<void>                              #
-    #   |       E                                           #
-    #########################################################
-
-
-    # node_E is a new neighbour to node_A
-    #log_executing_node(node_A)
-    gwnum,bestdev,rtt = nodelinks[node_A, node_E]
-    node_A.neighbour.send_event_neigh_new(
-    	              (bestdev,rtt),
-    	              {bestdev:rtt},
-    	              gwnum,
-    	              node_A.maproute.nip_to_ip(node_E.maproute.me),
-    	              node_E.neighbour.netid)
+    #retrieve etps and execute them in the proper node
+    retrieve_execute_etps(exclude_ips=ignore_etp_for)
+    #printmaps()
     simulate_delay()
 
-    # node_E is a new neighbour to node_D
-    #log_executing_node(node_D)
-    gwnum,bestdev,rtt = nodelinks[node_D, node_E]
-    node_D.neighbour.send_event_neigh_new(
-    	              (bestdev,rtt),
-    	              {bestdev:rtt},
-    	              gwnum,
-    	              node_D.maproute.nip_to_ip(node_E.maproute.me),
-    	              node_E.neighbour.netid)
-    simulate_delay()
-
-    # node_A is a new neighbour to node_E
-    #log_executing_node(node_E)
-    gwnum,bestdev,rtt = nodelinks[node_E, node_A]
-    node_E.neighbour.send_event_neigh_new(
-    	              (bestdev,rtt),
-    	              {bestdev:rtt},
-    	              gwnum,
-    	              node_E.maproute.nip_to_ip(node_A.maproute.me),
-    	              node_A.neighbour.netid)
-    simulate_delay()
-
-    # node_D is a new neighbour to node_E
-    #log_executing_node(node_E)
-    gwnum,bestdev,rtt = nodelinks[node_E, node_D]
-    node_E.neighbour.send_event_neigh_new(
-    	              (bestdev,rtt),
-    	              {bestdev:rtt},
-    	              gwnum,
-    	              node_E.maproute.nip_to_ip(node_D.maproute.me),
-    	              node_D.neighbour.netid)
-    simulate_delay()
+    # link D - E
+    node_x_meets_node_y(node_D,node_E)
 
     #retrieve etps and execute them in the proper node
     retrieve_execute_etps(exclude_ips=ignore_etp_for)
@@ -389,86 +306,15 @@ def test_etp_new_changed(check_etp_emission=True):
     #########################################################
 
 
-    # node_C is a new neighbour to node_E
-    #log_executing_node(node_E)
-    gwnum,bestdev,rtt = nodelinks[node_E, node_C]
-    node_E.neighbour.send_event_neigh_new(
-    	              (bestdev,rtt),
-    	              {bestdev:rtt},
-    	              gwnum,
-    	              node_E.maproute.nip_to_ip(node_C.maproute.me),
-    	              node_C.neighbour.netid)
-    simulate_delay()
+    # link C - A
+    node_x_meets_node_y(node_C,node_A)
 
-    # node_C is a new neighbour to node_A
-    #log_executing_node(node_A)
-    gwnum,bestdev,rtt = nodelinks[node_A, node_C]
-    node_A.neighbour.send_event_neigh_new(
-    	              (bestdev,rtt),
-    	              {bestdev:rtt},
-    	              gwnum,
-    	              node_A.maproute.nip_to_ip(node_C.maproute.me),
-    	              node_C.neighbour.netid)
-    simulate_delay()
+    # link C - D
+    node_x_meets_node_y(node_C,node_D)
 
-    # node_A is a new neighbour to node_C
-    #log_executing_node(node_C)
-    gwnum,bestdev,rtt = nodelinks[node_C, node_A]
-    node_C.neighbour.send_event_neigh_new(
-    	              (bestdev,rtt),
-    	              {bestdev:rtt},
-    	              gwnum,
-    	              node_C.maproute.nip_to_ip(node_A.maproute.me),
-    	              node_A.neighbour.netid)
-    simulate_delay()
+    # link C - E
+    node_x_meets_node_y(node_C,node_E)
 
-    # node_E is a new neighbour to node_C
-    #log_executing_node(node_C)
-    gwnum,bestdev,rtt = nodelinks[node_C, node_E]
-    node_C.neighbour.send_event_neigh_new(
-    	              (bestdev,rtt),
-    	              {bestdev:rtt},
-    	              gwnum,
-    	              node_C.maproute.nip_to_ip(node_E.maproute.me),
-    	              node_E.neighbour.netid)
-    simulate_delay()
-
-    # node_D is a new neighbour to node_C
-    #log_executing_node(node_C)
-    gwnum,bestdev,rtt = nodelinks[node_C, node_D]
-    node_C.neighbour.send_event_neigh_new(
-    	              (bestdev,rtt),
-    	              {bestdev:rtt},
-    	              gwnum,
-    	              node_C.maproute.nip_to_ip(node_D.maproute.me),
-    	              node_D.neighbour.netid)
-    simulate_delay()
-
-    # node_C is a new neighbour to node_D
-    #log_executing_node(node_D)
-    gwnum,bestdev,rtt = nodelinks[node_D, node_C]
-    node_D.neighbour.send_event_neigh_new(
-    	              (bestdev,rtt),
-    	              {bestdev:rtt},
-    	              gwnum,
-    	              node_D.maproute.nip_to_ip(node_C.maproute.me),
-    	              node_C.neighbour.netid)
-    simulate_delay()
-
-    #########################################################
-    #   |--eth1   eth0--|                  /^^^^^^^^\       #
-    #   |       A       |--eth0   eth1--|--<  12.*  >       #
-    #   |               |       B          <  13.*  >       #
-    #   |                                  \VVVVVVVV/       #
-    #   |--eth0                                             #
-    #   |       C                      /^^^^^^^^\           #
-    #   |                              <  12.*  >           #
-    #   |--eth0   eth1--|--------------<  14.*  >           #
-    #   |       D                      \VVVVVVVV/           #
-    #   |                                                   #
-    #   |--eth0   eth1--<void>                              #
-    #   |       E                                           #
-    #########################################################
 
     # Node C has appeared:
 
@@ -593,6 +439,27 @@ def test_etp_new_dead(check_etp_emission=True):
     nodelinks[node_Z, node_B] = 2, 'eth0', 100
     simulate_delay()
     ignore_etp_for=[]
+    def node_x_meets_node_y(node_x,node_y):
+        # node_y is a new neighbour to node_x
+        #log_executing_node(node_x)
+        gwnum,bestdev,rtt = nodelinks[node_x, node_y]
+        node_x.neighbour.send_event_neigh_new(
+        	              (bestdev,rtt),
+        	              {bestdev:rtt},
+        	              gwnum,
+        	              node_x.maproute.nip_to_ip(node_y.maproute.me),
+        	              node_y.neighbour.netid)
+        simulate_delay()
+        # node_x is a new neighbour to node_y
+        #log_executing_node(node_y)
+        gwnum,bestdev,rtt = nodelinks[node_y, node_x]
+        node_y.neighbour.send_event_neigh_new(
+        	              (bestdev,rtt),
+        	              {bestdev:rtt},
+        	              gwnum,
+        	              node_y.maproute.nip_to_ip(node_x.maproute.me),
+        	              node_x.neighbour.netid)
+        simulate_delay()
 
     # node_W has a neighbour (the number 10) with ip 101.102.103.104
     # through which he sees:
@@ -655,134 +522,44 @@ def test_etp_new_dead(check_etp_emission=True):
     ignore_etp_for.append(node_Z.maproute.nip_to_ip([104,103,102,131]))
 
 
-    #log_executing_node(node_X)
-    gwnum,bestdev,rtt = nodelinks[node_X, node_B]
-    node_X.neighbour.send_event_neigh_new(
-    	              (bestdev,rtt),
-    	              {bestdev:rtt},
-    	              gwnum,
-                          node_X.maproute.nip_to_ip(node_B.maproute.me),
-                          node_B.neighbour.netid)
-    simulate_delay()
-    #log_executing_node(node_B)
-    gwnum,bestdev,rtt = nodelinks[node_B, node_X]
-    node_B.neighbour.send_event_neigh_new(
-    	              (bestdev,rtt),
-    	              {bestdev:rtt},
-    	              gwnum,
-                          node_B.maproute.nip_to_ip(node_X.maproute.me),
-                          node_X.neighbour.netid)
-    simulate_delay()
+    # link X - B
+    node_x_meets_node_y(node_X,node_B)
+
     retrieve_execute_etps(exclude_ips=ignore_etp_for)
     #printmaps()
     simulate_delay()
 
-    #log_executing_node(node_W)
-    gwnum,bestdev,rtt = nodelinks[node_W, node_B]
-    node_W.neighbour.send_event_neigh_new(
-    	              (bestdev,rtt),
-    	              {bestdev:rtt},
-    	              gwnum,
-                          node_W.maproute.nip_to_ip(node_B.maproute.me),
-                          node_B.neighbour.netid)
-    simulate_delay()
-    #log_executing_node(node_B)
-    gwnum,bestdev,rtt = nodelinks[node_B, node_W]
-    node_B.neighbour.send_event_neigh_new(
-    	              (bestdev,rtt),
-    	              {bestdev:rtt},
-    	              gwnum,
-                          node_B.maproute.nip_to_ip(node_W.maproute.me),
-                          node_W.neighbour.netid)
-    simulate_delay()
+    # link W - B
+    node_x_meets_node_y(node_W,node_B)
+
     retrieve_execute_etps(exclude_ips=ignore_etp_for)
     #printmaps()
     simulate_delay()
 
-    #log_executing_node(node_W)
-    gwnum,bestdev,rtt = nodelinks[node_W, node_X]
-    node_W.neighbour.send_event_neigh_new(
-    	              (bestdev,rtt),
-    	              {bestdev:rtt},
-    	              gwnum,
-                          node_W.maproute.nip_to_ip(node_X.maproute.me),
-                          node_X.neighbour.netid)
-    simulate_delay()
-    #log_executing_node(node_X)
-    gwnum,bestdev,rtt = nodelinks[node_X, node_W]
-    node_X.neighbour.send_event_neigh_new(
-    	              (bestdev,rtt),
-    	              {bestdev:rtt},
-    	              gwnum,
-                          node_X.maproute.nip_to_ip(node_W.maproute.me),
-                          node_W.neighbour.netid)
-    simulate_delay()
+    # link W - X
+    node_x_meets_node_y(node_W,node_X)
+
     retrieve_execute_etps(exclude_ips=ignore_etp_for)
     #printmaps()
     simulate_delay()
 
-    #log_executing_node(node_Y)
-    gwnum,bestdev,rtt = nodelinks[node_Y, node_B]
-    node_Y.neighbour.send_event_neigh_new(
-    	              (bestdev,rtt),
-    	              {bestdev:rtt},
-    	              gwnum,
-                          node_Y.maproute.nip_to_ip(node_B.maproute.me),
-                          node_B.neighbour.netid)
-    simulate_delay()
-    #log_executing_node(node_B)
-    gwnum,bestdev,rtt = nodelinks[node_B, node_Y]
-    node_B.neighbour.send_event_neigh_new(
-    	              (bestdev,rtt),
-    	              {bestdev:rtt},
-    	              gwnum,
-                          node_B.maproute.nip_to_ip(node_Y.maproute.me),
-                          node_Y.neighbour.netid)
-    simulate_delay()
+    # link Y - B
+    node_x_meets_node_y(node_Y,node_B)
+
     retrieve_execute_etps(exclude_ips=ignore_etp_for)
     #printmaps()
     simulate_delay()
 
-    #log_executing_node(node_Z)
-    gwnum,bestdev,rtt = nodelinks[node_Z, node_B]
-    node_Z.neighbour.send_event_neigh_new(
-    	              (bestdev,rtt),
-    	              {bestdev:rtt},
-    	              gwnum,
-                          node_Z.maproute.nip_to_ip(node_B.maproute.me),
-                          node_B.neighbour.netid)
-    simulate_delay()
-    #log_executing_node(node_B)
-    gwnum,bestdev,rtt = nodelinks[node_B, node_Z]
-    node_B.neighbour.send_event_neigh_new(
-    	              (bestdev,rtt),
-    	              {bestdev:rtt},
-    	              gwnum,
-                          node_B.maproute.nip_to_ip(node_Z.maproute.me),
-                          node_Z.neighbour.netid)
-    simulate_delay()
+    # link Z - B
+    node_x_meets_node_y(node_Z,node_B)
+
     retrieve_execute_etps(exclude_ips=ignore_etp_for)
     #printmaps()
     simulate_delay()
 
-    #log_executing_node(node_Z)
-    gwnum,bestdev,rtt = nodelinks[node_Z, node_Y]
-    node_Z.neighbour.send_event_neigh_new(
-    	              (bestdev,rtt),
-    	              {bestdev:rtt},
-    	              gwnum,
-                          node_Z.maproute.nip_to_ip(node_Y.maproute.me),
-                          node_Y.neighbour.netid)
-    simulate_delay()
-    #log_executing_node(node_Y)
-    gwnum,bestdev,rtt = nodelinks[node_Y, node_Z]
-    node_Y.neighbour.send_event_neigh_new(
-    	              (bestdev,rtt),
-    	              {bestdev:rtt},
-    	              gwnum,
-                          node_Y.maproute.nip_to_ip(node_Z.maproute.me),
-                          node_Z.neighbour.netid)
-    simulate_delay()
+    # link Y - Z
+    node_x_meets_node_y(node_Y,node_Z)
+
     retrieve_execute_etps(exclude_ips=ignore_etp_for)
     #printmaps()
     simulate_delay()
