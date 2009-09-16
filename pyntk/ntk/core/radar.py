@@ -98,7 +98,7 @@ class Neigh(object):
                                checks
         '''
         v = [(name, getattr(self, name)) for name in self.__slots__
-                                            if name != 'ntkd']
+             if name != 'ntkd']
         return dict(v)
 
 class Neighbour(object):
@@ -475,10 +475,10 @@ class Neighbour(object):
         `oldip'. The relative events are raised."""
 
         if not oldip in self.ip_table:
-	       # probably our radar did not observed previously the ip that is changing,
-	       # then leave this work to the next radar scan
-               return
-							
+            # probably our radar did not observed previously the ip that is changing,
+            # then leave this work to the next radar scan
+            return
+
         self.ip_table[newip] = self.ip_table[oldip]
         self.translation_table[newip] = self.translation_table[oldip]
         self.netid_table[newip] = self.netid_table[oldip]
@@ -508,7 +508,7 @@ class Radar(object):
                   'bcast_arrival_time', 'max_bouquet', 'wait_time', 
                   'broadcast', 'neigh', 'events', 'do_reply', 
                   'remotable_funcs', 'ntkd_id', 'radar_id', 'max_neigh',
-		  'increment_wait_time', 'stopping', 'running_instances']
+                  'increment_wait_time', 'stopping', 'running_instances']
 
     def __init__(self, ntkd, broadcast, xtime):
         """
@@ -544,7 +544,7 @@ class Radar(object):
         # If set to True, this module will reply to radar queries sent by our
         # neighbours.
         self.do_reply = False
-        
+
         self.stopping = False
         self.running_instances = []
 
@@ -596,7 +596,7 @@ class Radar(object):
 
         # then wait
         self.xtime.swait(self.wait_time * 1000 + self.increment_wait_time)
-        
+
         # test wether we are stopping
         if not self.stopping:
             # update the neighbours' ip_table
