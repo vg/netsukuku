@@ -32,10 +32,11 @@ from ntk.core.map import Map
 
 class ParticipantNode(object):
     def __init__(self,
-                 lvl=None, id=None  # these are mandatory for Map.__init__()
+                 lvl=None, id=None,  # these are mandatory for Map.__init__()
+                 participant=False
 	         ):
 
-        self.participant = False
+        self.participant = participant
 
     def _pack(self):
         return (0, 0, self.participant)
