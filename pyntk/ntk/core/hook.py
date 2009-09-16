@@ -58,6 +58,7 @@ class Hook(object):
         '''Note: old_node_nb and cur_node_nb are used only by the ETP_EXECUTED event'''
 
         logging.debug('Coomunicating vessels microfunc started')
+        current_nr_list = self.neigh.neigh_list()
         
         if old_node_nb != None and self.gnodes_split(old_node_nb, cur_node_nb):
                 # The gnode has splitted and we have rehooked. 
@@ -76,7 +77,7 @@ class Hook(object):
         def cand_cmp((a1, a2), (b1, b2)):
                 return cmp(a2, b2)
 
-        for nr in self.neigh.neigh_list():
+        for nr in current_nr_list:
                 nrnip=self.maproute.ip_to_nip(nr.ip)
                 if self.maproute.nip_cmp(self.maproute.me, nrnip) <= 0:
                         # we're interested in external neighbours
@@ -127,6 +128,7 @@ class Hook(object):
         """
 
         logging.info('Hooking procedure started.')
+        current_nr_list = self.neigh.neigh_list()
         previous_netid = self.ntkd.neighbour.netid
         if previous_netid != -1:
             logging.info('We previously had got a network id = ' + str(previous_netid))
@@ -296,12 +298,11 @@ class Hook(object):
         logging.log(logging.ULTRADEBUG, 'Hook: done. Now we should be able to use TCP')
 
         # warn our neighbours
-        # TODO find a better descriptive flag to tell me I'm not ready to interact.
         if self.ntkd.neighbour.netid == -1 or we_are_alone:
             logging.log(logging.ULTRADEBUG, 'Hook.hook warn neighbours skipped')
         else:
             logging.log(logging.ULTRADEBUG, 'Hook.hook warn neighbours of my change from %s to %s.' % (ip_to_str(oldip), ip_to_str(newnip_ip)))
-            for nr in self.neigh.neigh_list():
+            for nr in current_nr_list:
                 logging.log(logging.ULTRADEBUG, 'Hook: calling ip_change of my neighbour %s.' % ip_to_str(nr.ip)) 
                 nr.ntkd.neighbour.ip_change(oldip, newnip_ip)
                 logging.log(logging.ULTRADEBUG, 'Hook: %s ack.' % ip_to_str(nr.ip)) 

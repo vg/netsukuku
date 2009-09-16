@@ -80,6 +80,7 @@ class Etp:
     def etp_new_dead(self, neigh):
         """Builds and sends a new ETP for the worsened link case."""
 
+        current_nr_list = self.neigh.neigh_list()
         logging.debug('QSPN: death of %s: update my map.', ip_to_str(neigh.ip))
         
         ## Create R
@@ -90,7 +91,7 @@ class Etp:
         def gw_is_neigh((dst, gw, rem)):
             return gw == neigh.id
         set_of_R = {}
-        for nr in self.neigh.neigh_list():
+        for nr in current_nr_list:
             if nr.id != neigh.id:
                 # It's a tough work! Be kind to other tasks.
                 xtime.swait(10)
@@ -117,7 +118,7 @@ class Etp:
         # Through which devs did I see the defunct?
         devs_to_neigh = [dev for dev in neigh.devs.keys()]
         ## Forward the ETP to the neighbours
-        for nr in self.neigh.neigh_list():
+        for nr in current_nr_list:
             if nr.id != neigh.id:
                 # Did this neighbour (nr) see the now defunct (neigh)
                 # straightly? If so, we must NOT forward.
@@ -137,7 +138,7 @@ class Etp:
                     devs_to_nr = [dev for dev in nr.devs.keys()]
                     # Which neighbours do I see through those devs too?
                     common_devs_neighbours_to_nr = []
-                    for nr2 in self.neigh.neigh_list():
+                    for nr2 in current_nr_list:
                         if nr2.id != nr.id:
                             devs_to_nr2_and_nr = [dev 
                                                   for dev in nr2.devs.keys()
@@ -172,6 +173,7 @@ class Etp:
 
         If oldrem=None, the node `neigh' is considered new."""
 
+        current_nr_list = self.neigh.neigh_list()
         logging.debug('QSPN: new changed %s: update my map', ip_to_str(neigh.ip))
         
         ## Update the map
@@ -191,7 +193,7 @@ class Etp:
         devs_to_neigh = [dev for dev in neigh.devs.keys()]
         # Which neighbours do I see through those devs too?
         common_devs_neighbours_to_neigh = []
-        for nr in self.neigh.neigh_list():
+        for nr in current_nr_list:
             if nr.id != neigh.id:
                 devs_to_nr_and_neigh = [dev 
                                         for dev in nr.devs.keys()
@@ -247,6 +249,7 @@ class Etp:
         # update our neighbour's netid
         self.neigh.set_netid(gwip, sender_netid)
         neigh = self.neigh.ip_to_neigh(gwip)
+        current_nr_list = self.neigh.neigh_list()
         
         # check if we have found the neigh, otherwise wait it
         while neigh is None:
@@ -265,7 +268,7 @@ class Etp:
         if colliding:
                 # collision detected. rehook.
                 self.events.send('NET_COLLISION', 
-                                 ([nr for nr in self.neigh.neigh_list()
+                                 ([nr for nr in current_nr_list
                                                 if nr.netid == neigh.netid],)
                                 )
                 return # drop the packet
@@ -371,7 +374,7 @@ class Etp:
         # Through which devs do I see the sender?
         devs_to_neigh = [dev for dev in neigh.devs.keys()]
 
-        for nr in self.neigh.neigh_list():
+        for nr in current_nr_list:
             if nr.id != neigh.id:
                 # Does this neighbour (nr) see new neighbour (neigh)
                 # straightly? If so, we must NOT forward.
@@ -385,7 +388,7 @@ class Etp:
                     devs_to_nr = [dev for dev in nr.devs.keys()]
                     # Which neighbours do I see through those devs too?
                     common_devs_neighbours_to_nr = []
-                    for nr2 in self.neigh.neigh_list():
+                    for nr2 in current_nr_list:
                         if nr2.id != nr.id:
                             devs_to_nr2_and_nr = [dev 
                                                   for dev in nr2.devs.keys()
