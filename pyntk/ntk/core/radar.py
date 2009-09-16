@@ -87,6 +87,8 @@ class Neigh(object):
         return (self.ip > b.ip) - (self.ip < b.ip)
 
     def __repr__(self):
+        if not self.ip: return object.__repr__(self)
+        if not self.rem: return '<Neighbour(%s): No rem>' % (ip_to_str(self.ip))
         return '<Neighbour(%s):%s>' % (ip_to_str(self.ip), self.rem)
 
     def values(self):
@@ -359,6 +361,13 @@ class Neighbour(object):
         # now, update the ip_table
         old_ip_table = self.ip_table
         self.ip_table = ip_table
+        # first, for new neighs, update translation_table and ntk_client
+        for key in self.ip_table:
+            if not key in old_ip_table:
+                # insert neigh id into translation_table
+                self.ip_to_id(key)
+                # create a TCP connection to the neighbour
+                self.ntk_client[key] = rpc.TCPClient(ip_to_str(key))
 
         # now we cycle through the new ip_table
         # looking for nodes who weren't in the old one
@@ -366,10 +375,8 @@ class Neighbour(object):
         for key in self.ip_table:
             # if a node has been added
             if not key in old_ip_table:
-                # generate an id and add the entry in translation_table
+                # recover neigh id from translation_table
                 idn = self.ip_to_id(key)
-                # create a TCP connection to the neighbour
-                self.ntk_client[key] = rpc.TCPClient(ip_to_str(key))
                 # info
                 logging.info('Change in our LAN: new neighbour ' + ip_to_str(key))
                 # send a message notifying we added a node
@@ -672,5 +679,5 @@ class Radar(object):
         # for each ip
         for ip in self.bcast_arrival_time:
             devs = self.get_avg_rtt(ip)
-            all_avg[ip] = Neigh(bestdev=devs[0], devs=dict(devs))
+            all_avg[ip] = Neigh(bestdev=devs[0], devs=dict(devs), ip=ip)
         return all_avg
