@@ -400,6 +400,8 @@ class Neighbour(object):
 
         logging.info("Deleting neighbour %s", ip_to_str(ip))
 
+        old_bestdev = self.ip_table[ip].bestdev
+        old_devs = self.ip_table[ip].devs
         if remove_from_iptable:
             del self.ip_table[ip]
 
@@ -417,8 +419,8 @@ class Neighbour(object):
         logging.debug('ANNOUNCE: gw ' + str(old_id) + ' removing.')
         self.announce_gw_removing(old_id)
         self.events.send('NEIGH_DELETED',
-                         (Neigh(bestdev=None,
-                                devs=None,
+                         (Neigh(bestdev=old_bestdev,
+                                devs=old_devs,
                                 idn=old_id,
                                 ip=ip,
                                 netid=old_netid,
