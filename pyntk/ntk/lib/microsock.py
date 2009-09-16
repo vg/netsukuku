@@ -134,6 +134,7 @@ def ManageSockets():
                     sock.recvChannel.send(MicrosockTimeout())
             else:
                 pass  # timeout not honored. we should signal that.
+
         # Yield to give other tasklets a chance to be scheduled.
         micro_block()
 
@@ -225,6 +226,7 @@ class dispatcher(asyncore.dispatcher):
     _receiving = False
     _justConnected = False
 
+
     def __init__(self, sock):
         # This is worth doing.  I was passing in an invalid socket which was
         # an instance of dispatcher and it was causing tasklet death.
@@ -269,6 +271,7 @@ class dispatcher(asyncore.dispatcher):
                 expiring_sockets.remove(self)
         return ret
 
+
     def connect(self, address):
         asyncore.dispatcher.connect(self, address)
         # UDP sockets do not connect.
@@ -280,6 +283,7 @@ class dispatcher(asyncore.dispatcher):
                 self.connectChannel = Channel(prefer_sender=True)
             self.connectChannel.recv()
             self.connectChannel = None   # To make sure that we don't do again a 'send' on this channel
+
 
     def send(self, data):
         self.sendBuffer += data
@@ -295,11 +299,13 @@ class dispatcher(asyncore.dispatcher):
             micro_block()
             import time
             time.sleep(0.001)
+
         return len(data)
 
     def sendto(self, sendData, sendAddress):
         waitChannel = None
         for idx, (data, address, channel, sentBytes, waiting_tasklets) in enumerate(self.sendToBuffers):
+
             if address == sendAddress:
                 self.sendToBuffers[idx] = (data + sendData, address, channel, sentBytes, waiting_tasklets + 1)
                 waitChannel = channel
@@ -307,6 +313,7 @@ class dispatcher(asyncore.dispatcher):
         if waitChannel is None:
             waitChannel = Channel(micro_send=True)
             self.sendToBuffers.append((sendData, sendAddress, waitChannel, 0, 1))
+
         return waitChannel.recv()
 
     # Read at most byteCount bytes.
@@ -435,10 +442,12 @@ class dispatcher(asyncore.dispatcher):
             totalSentBytes = oldSentBytes + sentBytes
             if len(data) > sentBytes:
                 self.sendToBuffers[0] = data[sentBytes:], address, channel, totalSentBytes, waiting_tasklets
+
             else:
                 del self.sendToBuffers[0]
                 for i in xrange(waiting_tasklets):
                     channel.send(totalSentBytes)
+
 
     # In order for incoming connections to be stackless compatible,
     # they need to be wrapped by an asyncore based dispatcher subclass.

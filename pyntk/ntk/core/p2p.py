@@ -30,6 +30,9 @@ from ntk.lib.rencode import serializable
 from ntk.core.map import Map
 
 
+class P2PError(Exception):
+    '''Generic P2P Error'''
+
 class ParticipantNode(object):
     def __init__(self, lvl, id, participant=False, its_me=False):
         self.lvl = lvl
@@ -65,7 +68,7 @@ class MapP2P(Map):
         self.pid = pid
 
     def participate(self):
-        """self.me is now a participant node"""
+        """Set self.me to be a participant node."""
 
         for l in xrange(self.levels):
             node = self.node_get(l, self.me[l])
@@ -76,6 +79,11 @@ class MapP2P(Map):
 
     @microfunc()
     def me_changed(self, old_me, new_me):
+        '''Changes self.me
+
+        :param old_me: my old nip (not used in MapP2P)
+        :param new_me: new nip
+        '''
         Map.me_change(self, new_me)
 
     @microfunc(True)
@@ -123,13 +131,13 @@ class P2P(RPCDispatcher):
         """This is the function that maps each IP to an existent hash node IP
            If there are no participants, None is returned"""
         mp = self.mapp2p
-        hIP = [None]*mp.levels
+        hIP = [None] * mp.levels
         for l in reversed(xrange(mp.levels)):
                 for id in xrange(mp.gsize):
                         for sign in [-1,1]:
-                                hid=(IP[l]+id*sign)%mp.gsize
+                                hid=(IP[l] + id * sign) % mp.gsize
                                 if mp.node_get(l, hid).participant:
-                                        hIP[l]=hid
+                                        hIP[l] = hid
                                         break
                         if hIP[l]:
                                 break
@@ -139,6 +147,7 @@ class P2P(RPCDispatcher):
                 if hIP[l] != mp.me[l]:
                         # we can stop here
                         break
+
         return hIP
 
     def neigh_get(self, hip):
@@ -150,7 +159,8 @@ class P2P(RPCDispatcher):
         """
 
         lvl = self.maproute.nip_cmp(hip, self.maproute.me)
-        br = self.maproute.node_get(lvl,hip[lvl]).best_route()
+        br = self.maproute.node_get(lvl, hip[lvl]).best_route()
+
         if not br:
             return None
         return self.neigh.id_to_neigh(br.gw)
@@ -169,6 +179,10 @@ class P2P(RPCDispatcher):
             logging.debug('done calling participant_add(myself) to %s.' % self.maproute.ip_to_nip(nr.ip))
 
     def participant_add(self, pIP):
+        '''Add a participant node to the P2P service
+
+        :param pIP: participant node's Netsukuku IP (nip)
+        '''
         continue_to_forward = False
 
         mp  = self.mapp2p
@@ -324,15 +338,16 @@ class P2PAll(object):
 
     def pid_get(self, pid):
         if pid not in self.service:
-                return self.pid_add(pid)
+            return self.pid_add(pid)
         else:
-                return self.service[pid]
+            return self.service[pid]
 
     def pid_getall(self):
         def fmake_participant(node):
             node.participant = True
         return [(s, self.service[s].mapp2p.map_data_pack(fmake_participant))
                         for s in self.service]
+
 
     def p2p_register(self, p2p):
         """Used to add for the first time a P2P instance of a module in the

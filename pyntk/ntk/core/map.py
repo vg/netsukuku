@@ -3,7 +3,7 @@
 # (c) Copyright 2007 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
 #
 # This source code is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as published 
+# modify it under the terms of the GNU General Public License as published
 # by the Free Software Foundation; either version 2 of the License,
 # or (at your option) any later version.
 #
@@ -18,7 +18,7 @@
 ##
 #
 # Implementation of the map. See {-topodoc-}
-# 
+#
 
 from ntk.lib.log import logger as logging
 from random import randint, choice
@@ -72,6 +72,7 @@ class Map(object):
         # Number of nodes of each level, that is:
         #   self.node_nb[i] = number of (g)nodes inside the gnode self.me[i+1]
         self.node_nb = [0] * self.levels
+
         for lvl in xrange(self.levels):
             node_me = self.node_get(lvl, self.me[lvl])
             if not node_me.is_free(): self.node_add(lvl, self.me[lvl], silent=1)
@@ -123,6 +124,7 @@ class Map(object):
 
     def free_nodes_list(self, lvl):
         """Returns the list of free nodes of level `lvl'"""
+	
         #it depends on the lvl and on the previous ids
         return [nid for nid in valid_ids(lvl, self.me) if (not self.node[lvl][nid]) or self.node[lvl][nid].is_free()]
 
@@ -131,21 +133,22 @@ class Map(object):
         return nip[:-lvl-1] == self.me[:-lvl-1]
 
     def lvlid_to_nip(self, lvl, id):
-        """Converts a (lvl, id) pair, referring to this map, to 
+        """Converts a (lvl, id) pair, referring to this map, to
            its equivalent netsukuku ip"""
-        nip=self.me[:]
-        nip[lvl]=id
-        for l in reversed(xrange(lvl)): nip[l]=0
+        nip = self.me[:]
+        nip[lvl] = id
+        for l in reversed(xrange(lvl)):
+            nip[l] = 0
         return nip
 
     def ip_to_nip(self, ip):
         """Converts the given ip to a nip (Netsukuku IP)
 
         A nip is a list [a_0, a_1, ..., a_{n-1}], where n = self.levels
-        and such that a_{n-1}*g^{n-1}+a_{n-2}*g^(n-2)+...+a_0 = ip, 
+        and such that a_{n-1}*g^{n-1}+a_{n-2}*g^(n-2)+...+a_0 = ip,
         where g = self.gsize"""
 
-        g=self.gsize
+        g = self.gsize
         return [(ip % g**(l+1)) / g**l for l in xrange(self.levels)]
 
     def nip_to_ip(self, nip):
@@ -177,7 +180,9 @@ class Map(object):
 
     def level_reset(self, level):
         """Resets the specified level, without raising any event"""
-        self.node[level] = [None]*self.gsize
+
+        self.node[level] = [None] * self.gsize
+
         self.node_nb[level] = 0
         node_me = self.node_get(level, self.me[level])
         if not node_me.is_free(): self.node_add(level, self.me[level], silent=1)
@@ -185,10 +190,11 @@ class Map(object):
     def map_reset(self):
         """Silently resets the whole map"""
         for l in xrange(self.levels):
-                self.level_reset(l)
+            self.level_reset(l)
 
     def me_change(self, new_me):
         """Changes self.me"""
+
         # changing my nip will make many nodes no more significant in my map
         lev = self.nip_cmp(self.me, new_me)
         if lev == -1: return  # the same old nip
@@ -198,6 +204,7 @@ class Map(object):
         for l in xrange(self.levels):
                 self.node[l][self.me[l]] = None
         # now, change
+
         old_me = self.me[:]
         self.me = new_me[:]
         # silently add the dataclass objects representing new me
@@ -227,12 +234,14 @@ class Map(object):
         lvl=self.nip_cmp(nip, self.me)
         logging.log(logging.ULTRADEBUG, 'Merging a map at level ' + str(lvl))
         logging.log(logging.ULTRADEBUG, get_stackframes(back=1))
+
         for l in xrange(lvl, self.levels):
                 self.node_nb[l]=nblist[l]
                 for id in xrange(self.gsize):
                     if id != self.me[l]:  # self.me MUST NOT be replaced
                                           # with a normal node
                         self.node[l][id]=plist[l][id]
+
         for l in xrange(0, lvl):
                 self.level_reset(l)
         logging.log(logging.ULTRADEBUG, self.repr_me())
@@ -254,4 +263,5 @@ class Map(object):
             ret += '\'' + func_repr_node(self.node_get(lvl, i))
         ret += '\'] '
         return ret
+
 

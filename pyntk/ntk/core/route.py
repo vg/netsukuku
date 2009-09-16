@@ -3,7 +3,7 @@
 # (c) Copyright 2007 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
 #
 # This source code is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as published 
+# modify it under the terms of the GNU General Public License as published
 # by the Free Software Foundation; either version 2 of the License,
 # or (at your option) any later version.
 #
@@ -211,13 +211,16 @@ class RouteGw(object):
             return oldrem
         return self.rem
 
+    def __repr__(self):
+        return '<RouteGw: gw(%s), rem(%s)>' % (self.gw, self.rem)
+
 class RouteNode(object):
     """List of routes to a known destination.
 
     This class is basically a list of RouteGw instances, where the
     destination node and its level are fixed and known.
 
-    Note: for each gateway G there's only one route in self.routes, 
+    Note: for each gateway G there's only one route in self.routes,
           which has the same gateway G
     """
 
@@ -255,7 +258,7 @@ class RouteNode(object):
         """Add a route.
 
         It returns (0,None) if the route hasn't been added, and thus it isn't
-        interesting, otherwise it returns (1,None) if it is a new route, 
+        interesting, otherwise it returns (1,None) if it is a new route,
         (2, oldrem) if it substituted an old route."""
 
         self.busy = True # For sure now we are busy.
@@ -277,6 +280,7 @@ class RouteNode(object):
             self.sort()
 
         return (ret, val)
+
 
     def route_del(self, gw):
         """Delete a route.
@@ -324,6 +328,9 @@ class RouteNode(object):
         else:
             return self.routes[0]
 
+    def __repr__(self):
+        return '<RouteNode: %s>' % self.routes
+
 def ftrue(*args):return True
 
 class MapRoute(Map):
@@ -346,8 +353,7 @@ class MapRoute(Map):
         self.remotable_funcs = [self.free_nodes_nb]
 
     def route_add(self, lvl, dst, gw, rem, silent=0):
-        ''' Add a new route
-        '''
+        ''' Add a new route '''
 
         logging.log(logging.ULTRADEBUG, 'maproute.route_add')
         # If destination is me I won't add a route.
@@ -355,7 +361,7 @@ class MapRoute(Map):
             logging.debug('I won\'t add a route to myself (%s, %s).' % (lvl, dst))
             logging.debug(get_stackframes(back=1))
             return 0
-        
+
         n = self.node_get(lvl, dst)
         was_free = n.is_free()
         ret, oldrem = n.route_add(lvl, dst, gw, rem)
@@ -491,7 +497,7 @@ class MapRoute(Map):
         """Returns the list of all the best routes of the map.
 
            Let L be the returned list, then L[lvl] is the list of all the best
-           routes of level lvl of the map. An element of this latter list is a 
+           routes of level lvl of the map. An element of this latter list is a
            tuple (dst, gw, rem), where dst is the destination of the route, gw
            its gateway.
 

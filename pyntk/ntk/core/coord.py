@@ -3,7 +3,7 @@
 # (c) Copyright 2007 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
 #
 # This source code is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as published 
+# modify it under the terms of the GNU General Public License as published
 # by the Free Software Foundation; either version 2 of the License,
 # or (at your option) any later version.
 #
@@ -16,16 +16,16 @@
 # this source code; if not, write to:
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
-# 
+#
 # Coordinator Node
 #
 # TODO: tmp_deleted_purge() isn't called, moreover a fixed timeout isn't a
 #       good thing, you have to consider the rtt from the requester node to
 #       the coordinator node.
 
+
 from ntk.lib.log import logger as logging
 from ntk.lib.micro import microfunc
-from ntk.lib.event import Event
 from ntk.wrap.xtime import time
 from ntk.core.p2p import P2P
 from ntk.lib.rencode import serializable
@@ -35,6 +35,7 @@ from ntk.network.inet import valid_ids
 
 
 class Node(object):
+
     def __init__(self, lvl, id, alive=False, its_me=False):
         self.lvl = lvl
         self.id = id
@@ -81,32 +82,32 @@ class MapCache(Map):
     def tmp_deleted_del(self, lvl, id):
         """Removes an entry from the self.tmp_deleted cache"""
         if (lvl, id) in self.tmp_deleted:
-                del self.tmp_deleted[lvl, id]
+            del self.tmp_deleted[lvl, id]
 
     @microfunc()
     def tmp_deleted_purge(self, timeout=32):
         """After a `timeout' seconds, restore a node added in the tmp_deleted
            cache"""
-        
+
         new_tmp_deleted = {}
 
         curt = time()
         for lvl, id in self.tmp_deleted:
-                t = self.tmp_deleted[lvl, id]
-                if curt-t >= timeout:
-                        self.node_add(lvl, id, silent=1)
-                else:
-                        new_tmp_deleted[lvl, id] = t
-        
+            t = self.tmp_deleted[lvl, id]
+            if curt-t >= timeout:
+                self.node_add(lvl, id, silent=1)
+            else:
+                new_tmp_deleted[lvl, id] = t
+
         self.tmp_deleted = new_tmp_deleted
 
 
 class Coord(P2P):
-    
+
     pid = 1
 
     def __init__(self, ntkd, radar, maproute, p2pall):
-        
+
         P2P.__init__(self, radar, maproute, Coord.pid)
         self.ntkd = ntkd
 
@@ -125,10 +126,15 @@ class Coord(P2P):
 
         self.remotable_funcs += [self.going_out, self.going_out_ok, self.going_in]
 
-    def h(self, (lvl, ip)):
-        """h:KEY-->IP"""
+
+    def h(self, key):
+        """h:KEY-->IP
+        :type key: a tuple (lvl, ip)
+        """
+        lvl, ip = key
         IP = list(ip)
-        for l in reversed(xrange(lvl)): IP[l] = 0
+        for l in reversed(xrange(lvl)):
+            IP[l] = 0
         return IP
 
     def coord_nodes_set(self):
@@ -143,6 +149,7 @@ class Coord(P2P):
         P2P.participate(self)  # base method
         self.coord_nodes_set()
 
+
     @microfunc()
     def new_participant_joined(self, lvl, id):
         """Shall the new participant succeed us as a coordinator node?"""
@@ -154,7 +161,9 @@ class Coord(P2P):
 
         # The new participant has this part of NIP
         pIP = self.maproute.me[:]
+
         pIP[lvl] = id
+
         for l in reversed(xrange(lvl)): pIP[l] = None
         # Note: I don't know its exact IP, it may have some None in lower-than-lvl levels.
 
@@ -186,8 +195,10 @@ class Coord(P2P):
             peer.mapcache.map_data_merge(self.mapcache.map_data_pack(fmake_alive))
             logging.debug('Coord: Done passing my mapcache.')
 
+
     def going_out(self, lvl, id, gnumb=None):
         """The node of level `lvl' and ID `id', wants to go out from its gnode
+
            G of level lvl+1. We are the coordinator of this gnode G.
            We'll give an affermative answer if `gnumb' < |G| or if
            `gnumb'=None"""
@@ -198,7 +209,7 @@ class Coord(P2P):
                 self.mapcache.node_del(lvl, id)
                 return self.mapcache.nodes_nb[lvl]
         else:
-                return None
+            return None
 
     def going_out_ok(self, lvl, id):
         """The node, which was going out, is now acknowledging the correct
@@ -207,6 +218,7 @@ class Coord(P2P):
 
     def going_in(self, lvl, gnumb=None):
         """A node wants to become a member of our gnode G of level `lvl+1'.
+
            We are the coordinator of this gnode G (so we are also a member of G).
            We'll give an affermative answer if `gnumb' > |G| or if
            `gnumb'=None"""
