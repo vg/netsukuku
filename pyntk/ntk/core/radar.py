@@ -326,12 +326,16 @@ class Neighbour(object):
             if not key in ip_table and not key in died_ip_list:
                 self.delete(key)
 
+        # now, update the ip_table
+        old_ip_table = self.ip_table
+        self.ip_table = ip_table
+
         # now we cycle through the new ip_table
         # looking for nodes who weren't in the old one
         # or whose rtt has sensibly changed
-        for key in ip_table:
+        for key in self.ip_table:
             # if a node has been added
-            if not key in self.ip_table:
+            if not key in old_ip_table:
                 # generate an id and add the entry in translation_table
                 idn = self.ip_to_id(key)
                 # create a TCP connection to the neighbour
@@ -342,8 +346,8 @@ class Neighbour(object):
                 logging.debug('ANNOUNCE: gw ' + str(idn) + ' detected.')
                 self.announce_gw(idn)
                 self.events.send('NEIGH_NEW',
-                                 (Neigh(bestdev=ip_table[key].bestdev,
-                                        devs=ip_table[key].devs,
+                                 (Neigh(bestdev=self.ip_table[key].bestdev,
+                                        devs=self.ip_table[key].devs,
                                         idn=idn,
                                         ip=key,
                                         netid=self.netid_table[key],
@@ -351,8 +355,8 @@ class Neighbour(object):
             else:
                 # otherwise (if the node already was in old ip_table) check if
                 # its rtt has changed more than rtt_variation
-                new_rtt = ip_table[key].bestdev[1]
-                old_rtt = self.ip_table[key].bestdev[1]
+                new_rtt = self.ip_table[key].bestdev[1]
+                old_rtt = old_ip_table[key].bestdev[1]
                 rtt_variation = abs(new_rtt - old_rtt) / float(old_rtt)
                 if rtt_variation > self.rtt_variation_threshold:
                     # info
@@ -366,9 +370,6 @@ class Neighbour(object):
                                             netid=self.netid_table[key],
                                             ntkd=self.ntk_client[key]), 
                                       Rtt(new_rtt)))
-
-        # finally, update the ip_table
-        self.ip_table = ip_table
 
     def readvertise(self):
         """Sends a NEIGH_NEW event for each stored neighbour"""
