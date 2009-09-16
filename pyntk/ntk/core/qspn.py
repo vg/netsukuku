@@ -51,7 +51,16 @@ class Etp:
 
         self.events = Event(['ETP_EXECUTED', 'NET_COLLISION', 'COMPLETE_HOOK'])
 
+        # After COMPLETE_HOOK we have to send ETPs that were previously blocked.
+        self.events.listen('COMPLETE_HOOK', self.send_etp_to_neighbours)
+
         self.remotable_funcs = [self.etp_exec]
+
+    def send_etp_to_neighbours(self):
+        """Simulate the changed link case towards all our neighbours."""
+        logging.log(logging.ULTRADEBUG, 'Simulate the changed link case towards all our neighbours.')
+        for neigh in self.neigh.neigh_list():
+            self.etp_new_changed(neigh)
 
     @microfunc(True)
     def etp_new_dead(self, neigh):
