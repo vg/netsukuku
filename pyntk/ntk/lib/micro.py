@@ -42,25 +42,6 @@ def micro(function, args=(), **kwargs):
     t.bind(callable)
     return t()
 
-def microatomic(function, args=(), **kwargs):
-    '''Factory function that returns atomic tasklets,
-    usable only with preemptive schedulers.
-
-    @param function: A callable
-    @return: A tasklet
-    '''
-    t = stackless.tasklet()
-
-    def callable():
-        flag = t.set_atomic(True)
-        try:
-            function(*args, **kwargs)
-        finally:
-            t.set_atomic(flag)
-
-    t.bind(callable)
-    return t()
-
 def micro_block():
     stackless.schedule()
 
@@ -136,7 +117,7 @@ def _dispatcher(func, chan):
             logging.error("  The microfunc has been called like this: %s(%s)" % (func.__name__, msg.__repr__()))
             log_exception_stacktrace(e)
 
-def microfunc(is_micro=False, is_atomic=False):
+def microfunc(is_micro=False):
     '''A microfunction is a function that never blocks the caller microthread.
 
     Note: This is a decorator! (see test/test_micro.py for examples)
@@ -155,20 +136,14 @@ def microfunc(is_micro=False, is_atomic=False):
         ch = Channel(True)
 
         @functools.wraps(func)
-        def fsend(*data, **kwargs):
+        def fsend(*data):
             ch.sendq(data)
 
         @functools.wraps(func)
         def fmicro(*data, **kwargs):
             micro(func, data, **kwargs)
 
-        @functools.wraps(func)
-        def fatom(*data, **kwargs):
-            microatomic(func, data, **kwargs)
-
-        if is_atomic:
-            return fatom
-        elif is_micro:
+        if is_micro:
             return fmicro
         else:
             micro(_dispatcher, (func, ch))
