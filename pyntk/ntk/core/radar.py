@@ -47,7 +47,7 @@ from ntk.config import settings
 from ntk.core.route import DeadRem, Rtt
 from ntk.lib.event import Event
 from ntk.lib.log import logger as logging
-from ntk.lib.micro import micro, micro_block, microfunc
+from ntk.lib.micro import micro, micro_block, microfunc, Channel
 from ntk.network.inet import ip_to_str, str_to_ip
 
 
@@ -111,7 +111,8 @@ class Neighbour(object):
                  'events',
                  'remotable_funcs',
                  'xtime',
-                 'netid']
+                 'netid',
+                 'channels']
 
     def __init__(self, max_neigh=settings.MAX_NEIGH, xtimemod=xtime):
         """  max_neigh: maximum number of neighbours we can have """
@@ -133,6 +134,8 @@ class Neighbour(object):
         self.events = Event(['NEIGH_NEW', 'NEIGH_DELETED', 'NEIGH_REM_CHGED'])
         # time module
         self.xtime = xtimemod
+        # channels
+        self.channels = [None] * max_neigh
 
         # Our netid. It's a random id used to detect network collisions.
         self.netid = -1
@@ -165,6 +168,61 @@ class Neighbour(object):
             return new_id
         else:
             return False
+
+    #############################################################
+    ######## Synchronization gateway <-> nodes
+    # Abstract:
+    #
+    # When Neighbour notice a new neighbour (gateway) it calls announce_gw.
+    # Then, Neighbour emits event NEIGH_NEW which in turn does other things...
+    # When KrnlRoute actually has added the route towards the gateway,
+    # it calls announce_gw_added.
+    #
+    # When Neighbour notice a dead link towards a neighbour it calls
+    # announce_gw_removing.
+    # Then, Neighbour emits events which in turn do other things...
+    # When MapRoute.routeneigh_del has finished deleting all the
+    # routes passing through it, it calls announce_gw_removable.
+    #
+    # Before actually adding a route through a gateway we must
+    # call waitfor_gw_added.
+    # Before actually removing the route towards a gateway we
+    # must call waitfor_gw_removable.
+    #
+    # This way we ensure to add a gateway before adding routes
+    # through it, and to remove routes through a gateway before
+    # removing the gateway itself.
+
+    def announce_gw(self, gwid):
+        self.channels[gwid-1] = Channel(prefer_sender=True)
+
+    def waitfor_gw_added(self, gwid):
+        channel = self.channels[gwid-1]
+        if channel is None: return
+        channel.recv()
+
+    def announce_gw_added(self, gwid):
+        channel = self.channels[gwid-1]
+        if channel is None: return
+        channel.bcast_send('')
+        self.channels[gwid-1] = None
+
+    def announce_gw_removing(self, gwid):
+        self.channels[gwid-1] = Channel(prefer_sender=True)
+
+    def waitfor_gw_removable(self, gwid):
+        channel = self.channels[gwid-1]
+        if channel is None: return
+        channel.recv()
+
+    def announce_gw_removable(self, gwid):
+        channel = self.channels[gwid-1]
+        if channel is None: return
+        channel.bcast_send('')
+        self.channels[gwid-1] = None
+
+    ##
+    #############################################################
 
     def ip_to_neigh(self, ip):
         """ ip: neighbour's ip
@@ -271,16 +329,18 @@ class Neighbour(object):
             # if a node has been added
             if not key in self.ip_table:
                 # generate an id and add the entry in translation_table
-                self.ip_to_id(key)
+                idn = self.ip_to_id(key)
                 # create a TCP connection to the neighbour
                 self.ntk_client[key] = rpc.TCPClient(ip_to_str(key))
                 # info
                 logging.info('Change in our LAN: new neighbour ' + ip_to_str(key))
                 # send a message notifying we added a node
+                logging.debug('ANNOUNCE: gw ' + str(idn) + ' detected.')
+                self.announce_gw(idn)
                 self.events.send('NEIGH_NEW',
                                  (Neigh(bestdev=ip_table[key].bestdev,
                                         devs=ip_table[key].devs,
-                                        idn=self.translation_table[key],
+                                        idn=idn,
                                         ip=key,
                                         netid=self.netid_table[key],
                                         ntkd=self.ntk_client[key]),))
@@ -311,10 +371,13 @@ class Neighbour(object):
         # info
         logging.info('Readvertising all my neighbours')
         for key in self.ip_table:
+            idn = self.translation_table[key]
+            logging.debug('ANNOUNCE: gw ' + str(idn) + ' detected.')
+            self.announce_gw(idn)
             self.events.send('NEIGH_NEW',
                              (Neigh(bestdev=self.ip_table[key].bestdev,
                                     devs=self.ip_table[key].devs,
-                                    idn=self.translation_table[key],
+                                    idn=idn,
                                     ip=key,
                                     netid=self.netid_table[key],
                                     ntkd=self.ntk_client[key]),))
@@ -346,6 +409,8 @@ class Neighbour(object):
         # info
         logging.info('Change in our LAN: removed neighbour ' + ip_to_str(ip))
         # send a message notifying we deleted the entry
+        logging.debug('ANNOUNCE: gw ' + str(old_id) + ' removing.')
+        self.announce_gw_removing(old_id)
         self.events.send('NEIGH_DELETED',
                          (Neigh(bestdev=None,
                                 devs=None,
@@ -375,10 +440,13 @@ class Neighbour(object):
         # info
         logging.info('Change in our LAN: new neighbour ' + ip_to_str(newip))
         logging.info('                   replacing an old one... ' + ip_to_str(oldip))
+        idn = self.translation_table[newip]
+        logging.debug('ANNOUNCE: gw ' + str(idn) + ' detected.')
+        self.announce_gw(idn)
         self.events.send('NEIGH_NEW',
                          (Neigh(bestdev=self.ip_table[newip].bestdev,
                                 devs=self.ip_table[newip].devs,
-                                idn=self.translation_table[newip],
+                                idn=idn,
                                 ip=newip,
                                 netid=self.netid_table[newip],
                                 ntkd=self.ntk_client[newip]),))

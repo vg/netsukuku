@@ -72,7 +72,7 @@ class MapCache(Map):
     def deriv_node_add(self, lvl, id):
         if self.node_get(lvl, id).is_free():
                 self.node_get(lvl, id).alive = True
-                Map.node_add(self, lvl, id)
+                self.node_add(lvl, id)
 
     def tmp_deleted_add(self, lvl, id):
         self.tmp_deleted[lvl, id] = time()
@@ -116,7 +116,7 @@ class Coord(P2P):
         # The cache of the coordinator node
         self.mapcache = MapCache(self.maproute)
 
-        self.maproute.events.listen('NODE_NEW', self.mapcache.node_add)
+        self.maproute.events.listen('NODE_NEW', self.mapcache.deriv_node_add)
         self.maproute.events.listen('NODE_DELETED', self.mapcache.node_del)
 
         self.mapp2p.events.listen('NODE_NEW', self.new_participant_joined)

@@ -382,13 +382,13 @@ class MapRoute(Map):
         d = self.node_get(lvl, dst)
         d.route_del(gw)
 
-        if not silent:
-            self.events.send('ROUTE_DELETED', (lvl, dst, gw))
-
         if d.is_empty():
             # No more routes to reach the node (lvl, dst).
             # Consider it dead
             self.node_del(lvl, dst)
+
+        if not silent:
+            self.events.send('ROUTE_DELETED', (lvl, dst, gw))
 
     def route_rem(self, lvl, dst, gw, newrem, silent=0):
         """Changes the rem of the route with gateway `gw'
@@ -429,16 +429,23 @@ class MapRoute(Map):
 
         for lvl in xrange(self.levels):
             for dst in xrange(self.gsize):
-                self.route_del(lvl, dst, neigh.id, silent=1)
+                # Don't try deleting a route towards myself.
+                if self.me[lvl] != dst:
+                    node = self.node_get(lvl, dst)
+                    if not node.is_free():
+                        if node.route_getby_gw(neigh.id) is not None:
+                            self.route_del(lvl, dst, neigh.id)
+        logging.debug('ANNOUNCE: gw ' + str(neigh.id) + ' removable.')
+        self.ntkd.neighbour.announce_gw_removable(neigh.id)
 
-    def routeneigh_add(self, neigh, silent=0):
+    def routeneigh_add(self, neigh):
         """Add a route to reach the neighbour `neigh'"""
         lvl, nid = self.routeneigh_get(neigh)
-        return self.route_add(lvl, nid, neigh.id, neigh.rem, silent)
+        return self.route_add(lvl, nid, neigh.id, neigh.rem)
 
-    def routeneigh_rem(self, neigh, silent=0):
+    def routeneigh_rem(self, neigh):
         lvl, nid = self.routeneigh_get(neigh)
-        return self.route_rem(lvl, nid, neigh.id, neigh.rem, silent)
+        return self.route_rem(lvl, nid, neigh.id, neigh.rem)
 
 
     def routeneigh_get(self, neigh):
