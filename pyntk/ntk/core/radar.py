@@ -174,13 +174,15 @@ class Neighbour(object):
     # Abstract:
     #
     # When Neighbour notice a new neighbour (gateway) it calls announce_gw.
-    # Then, Neighbour emits event NEIGH_NEW which in turn does other things...
+    # Then, Neighbour emits event NEIGH_NEW which in turn does other
+    # things...
     # When KrnlRoute actually has added the route towards the gateway,
     # it calls announce_gw_added.
     #
     # When Neighbour notice a dead link towards a neighbour it calls
     # announce_gw_removing.
-    # Then, Neighbour emits events which in turn do other things...
+    # Then, Neighbour emits event NEIGH_DELETED which in turn does other
+    # things...
     # When MapRoute.routeneigh_del has finished deleting all the
     # routes passing through it, it calls announce_gw_removable.
     #

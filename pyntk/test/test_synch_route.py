@@ -66,17 +66,20 @@ class EtpData:
         self.flag_of_interest = etp[4]
 class EtpPool:
     def __init__(self):
-        self.etps = {}
+        self.etps = []
     def add(self, to_ip, etp):
-        self.etps[to_ip] = etp
+        self.etps.append((to_ip, etp))
     def get_ips(self):
-        return self.etps.keys()
-    def pop_etp_by_ip(self, ip):
-        return self.etps.pop(ip)
-    def get_etp_by_ip(self, ip):
-        return self.etps[ip]
-    def get_etpdata_by_ip(self, ip):
-        return EtpData(self.etps[ip])
+        return [x[0] for x in self.etps]
+    def get_first_etp_by_ip(self, ip, remove=False):
+        for index in xrange(len(self.etps)):
+            etp_pair = self.etps[index]
+            if etp_pair[0] == ip:
+                if remove: self.etps[index:index+1] = []
+                return etp_pair[1]
+        return None
+    def pop_first_etp_by_ip(self, ip):
+        return self.get_first_etp_by_ip(ip, remove=True)
 etp_pool = EtpPool()
 ##
 ############################################
@@ -272,6 +275,23 @@ def log_executing_node(node):
     ipstr = ip_to_str(ip)
     print 'Logs from now on are from node ' + ipstr
 
+
+###############################################################
+#                               A                             #
+#           eth0 ---------------------------- eth0            #
+#      guest1                                     guest3      #
+#     eth1                                           eth1     #
+#      |                                              |       #
+#      |                                              |       #
+#  B   |                                              |   D   #
+#      |                                              |       #
+#     eth1                                          eth1      #
+#      guest2                                     guest4      #
+#           eth0 ---------------------------- eth0            #
+#                               C                             #
+###############################################################
+
+
 node_guest1 = create_node(firstnip=[4,3,2,1], nics=['eth0', 'eth1'], netid=12345)
 node_guest2 = create_node(firstnip=[8,7,6,5], nics=['eth0', 'eth1'], netid=12345)
 xtime.swait(2000)
@@ -279,8 +299,8 @@ xtime.swait(2000)
 # node_guest2 is a new neighbour (the first) to node_guest1
 log_executing_node(node_guest1)
 node_guest1.neighbour.send_event_neigh_new(
-                      ('eth0',100),
-                      {'eth0':100},
+                      ('eth1',100),
+                      {'eth1':100},
                       1,
                       node_guest1.maproute.nip_to_ip(node_guest2.maproute.me),
                       node_guest2.neighbour.netid)
@@ -289,8 +309,8 @@ xtime.swait(2000)
 # node_guest1 is a new neighbour (the first) to node_guest2
 log_executing_node(node_guest2)
 node_guest2.neighbour.send_event_neigh_new(
-                      ('eth0',100),
-                      {'eth0':100},
+                      ('eth1',100),
+                      {'eth1':100},
                       1,
                       node_guest2.maproute.nip_to_ip(node_guest1.maproute.me),
                       node_guest1.neighbour.netid)
@@ -302,7 +322,7 @@ while len(etp_ips) > 0:
     for ip in etp_ips:
         node = get_simulated_node_by_ip(ip)
         if node:
-            etp = etp_pool.pop_etp_by_ip(ip)
+            etp = etp_pool.pop_first_etp_by_ip(ip)
             log_executing_node(node)
             node.etp.etp_exec(*etp)
             xtime.swait(2000)
@@ -315,8 +335,8 @@ xtime.swait(2000)
 # node_guest3 is a new neighbour (the second) to node_guest1
 log_executing_node(node_guest1)
 node_guest1.neighbour.send_event_neigh_new(
-                      ('eth1',100),
-                      {'eth1':100},
+                      ('eth0',100),
+                      {'eth0':100},
                       2,
                       node_guest1.maproute.nip_to_ip(node_guest3.maproute.me),
                       node_guest3.neighbour.netid)
@@ -325,8 +345,8 @@ xtime.swait(2000)
 # node_guest1 is a new neighbour (the first) to node_guest3
 log_executing_node(node_guest3)
 node_guest3.neighbour.send_event_neigh_new(
-                      ('eth1',100),
-                      {'eth1':100},
+                      ('eth0',100),
+                      {'eth0':100},
                       1,
                       node_guest3.maproute.nip_to_ip(node_guest1.maproute.me),
                       node_guest1.neighbour.netid)
@@ -338,11 +358,68 @@ while len(etp_ips) > 0:
     for ip in etp_ips:
         node = get_simulated_node_by_ip(ip)
         if node:
-            etp = etp_pool.pop_etp_by_ip(ip)
+            etp = etp_pool.pop_first_etp_by_ip(ip)
             log_executing_node(node)
             node.etp.etp_exec(*etp)
             xtime.swait(2000)
     etp_ips =  etp_pool.get_ips()
+
+
+node_guest4 = create_node(firstnip=[16,15,14,13], nics=['eth0', 'eth1'], netid=12345)
+xtime.swait(2000)
+
+# node_guest4 is a new neighbour (the second) to node_guest3
+log_executing_node(node_guest3)
+node_guest3.neighbour.send_event_neigh_new(
+                      ('eth1',100),
+                      {'eth1':100},
+                      2,
+                      node_guest3.maproute.nip_to_ip(node_guest4.maproute.me),
+                      node_guest4.neighbour.netid)
+xtime.swait(2000)
+
+# node_guest4 is a new neighbour (the second) to node_guest2
+log_executing_node(node_guest2)
+node_guest2.neighbour.send_event_neigh_new(
+                      ('eth0',100),
+                      {'eth0':100},
+                      2,
+                      node_guest2.maproute.nip_to_ip(node_guest4.maproute.me),
+                      node_guest4.neighbour.netid)
+xtime.swait(2000)
+
+# node_guest3 is a new neighbour (the first) to node_guest4
+log_executing_node(node_guest4)
+node_guest4.neighbour.send_event_neigh_new(
+                      ('eth1',100),
+                      {'eth1':100},
+                      1,
+                      node_guest4.maproute.nip_to_ip(node_guest3.maproute.me),
+                      node_guest3.neighbour.netid)
+xtime.swait(2000)
+
+# node_guest2 is a new neighbour (the second) to node_guest4
+log_executing_node(node_guest4)
+node_guest4.neighbour.send_event_neigh_new(
+                      ('eth0',100),
+                      {'eth0':100},
+                      2,
+                      node_guest4.maproute.nip_to_ip(node_guest2.maproute.me),
+                      node_guest2.neighbour.netid)
+xtime.swait(2000)
+
+#retrieve etps and execute them in the proper node
+etp_ips =  etp_pool.get_ips()
+while len(etp_ips) > 0:
+    for ip in etp_ips:
+        node = get_simulated_node_by_ip(ip)
+        if node:
+            etp = etp_pool.pop_first_etp_by_ip(ip)
+            log_executing_node(node)
+            node.etp.etp_exec(*etp)
+            xtime.swait(2000)
+    etp_ips =  etp_pool.get_ips()
+
 
 
 for node in simulated_nodes:
