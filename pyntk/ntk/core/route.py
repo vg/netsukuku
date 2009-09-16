@@ -349,6 +349,7 @@ class MapRoute(Map):
         ''' Add a new route
         '''
 
+        logging.log(logging.ULTRADEBUG, 'maproute.route_add')
         # If destination is me I won't add a route.
         if self.me[lvl] == dst:
             logging.debug('I won\'t add a route to myself (%s, %s).' % (lvl, dst))
@@ -368,13 +369,14 @@ class MapRoute(Map):
                 self.events.send('ROUTE_REM_CHGED', (lvl, dst, gw, rem, oldrem))
         return ret
 
-    def route_del(self, lvl, dst, gw, silent=0):
+    def route_del(self, lvl, dst, gw, gwip, silent=0):
 
+        logging.log(logging.ULTRADEBUG, 'maproute.route_del')
         # If destination is me I won't delete a route. Pretend it didn't happen.
         if self.me[lvl] == dst:
             logging.debug('I won\'t delete a route to myself (%s, %s).' % (lvl, dst))
             logging.debug(get_stackframes(back=1))
-            return
+            return 0
 
         d = self.node_get(lvl, dst)
         d.route_del(gw)
@@ -385,13 +387,16 @@ class MapRoute(Map):
             self.node_del(lvl, dst)
 
         if not silent:
-            self.events.send('ROUTE_DELETED', (lvl, dst, gw))
+            self.events.send('ROUTE_DELETED', (lvl, dst, gwip))
+
+        return 1
 
     def route_rem(self, lvl, dst, gw, newrem, silent=0):
         """Changes the rem of the route with gateway `gw'
 
         Returns 0 if the route doesn't exists, 1 else."""
 
+        logging.log(logging.ULTRADEBUG, 'maproute.route_rem')
         # If destination is me I won't do a route change. Pretend it didn't happen.
         if self.me[lvl] == dst:
             logging.debug('I won\'t update a route to myself (%s, %s).' % (lvl, dst))
@@ -410,12 +415,43 @@ class MapRoute(Map):
             return 0
 
     def route_change(self, lvl, dst, gw, newrem):
-        """A wrapper to route_add, route_del"""
+        """Changes routes according to parameters obtained in a ETP
+        
+        The method has to handle several cases:
+        1. Argument newrem may be a DeadRem instance. It means we want the route to be deleted.
+        2. We may have or may not have a current route through this gw.
+        
+        Returns 1 if the ETP is interesting, 0 otherwise."""
+
+        logging.log(logging.ULTRADEBUG, 'maproute.route_change')
+        # If destination is me I won't do a route change. Pretend it didn't happen.
+        if self.me[lvl] == dst:
+            logging.debug('I won\'t update a route to myself (%s, %s).' % (lvl, dst))
+            logging.debug(get_stackframes(back=1))
+            return 0
+
+        # Do we have this route?
+        d = self.node_get(lvl, dst)
+        r = d.route_getby_gw(gw)
+        was_there = r is not None
 
         if isinstance(newrem, DeadRem):
-            return self.route_del(lvl, dst, gw)
+            # We want the route deleted (if present)
+            ret = 0
+            if was_there:
+                gwip = self.neigh.id_to_ip(gw)
+                ret = self.route_del(lvl, dst, gw, gwip)
+                if ret: logging.debug('    Deleted old route.')
+            return ret
         else:
-            return self.route_add(lvl, dst, gw, newrem)
+            # We want the route added or updated
+            if was_there:
+                ret = self.route_rem(lvl, dst, gw, newrem)
+                if ret: logging.debug('    Updated old route.')
+            else:
+                ret = self.route_add(lvl, dst, gw, newrem)
+                if ret: logging.debug('    Added new route.')
+            return ret
 
 
 ## Neighbour stuff
@@ -431,7 +467,7 @@ class MapRoute(Map):
                     node = self.node_get(lvl, dst)
                     if not node.is_free():
                         if node.route_getby_gw(neigh.id) is not None:
-                            self.route_del(lvl, dst, neigh.id)
+                            self.route_del(lvl, dst, neigh.id, neigh.ip)
         logging.debug('ANNOUNCE: gw ' + str(neigh.id) + ' removable.')
         self.ntkd.neighbour.announce_gw_removable(neigh.id)
 

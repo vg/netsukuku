@@ -95,21 +95,20 @@ class KrnlRoute(object):
                 self.neigh.waitfor_gw_added(gw)
                 KRoute.add(ipstr, lvl_to_bits(lvl), dev, gwipstr)
 
-    def route_deleted(self, lvl, dst, gw):
+    def route_deleted(self, lvl, dst, gwip):
         # We'll do the real thing in a microfunc, but make sure
         # to have a chance to get scheduled as soon as possible.
-        self._route_deleted(lvl, dst, gw)
+        self._route_deleted(lvl, dst, gwip)
         micro_block()
 
     @microfunc(True)
-    def _route_deleted(self, lvl, dst, gw):
+    def _route_deleted(self, lvl, dst, gwip):
         # Obtain a IP string for the node
         nip = self.maproute.lvlid_to_nip(lvl, dst)
         ip  = self.maproute.nip_to_ip(nip)
         ipstr = ip_to_str(ip)
         # Obtain a IP string for the old gateway
-        neigh = self.neigh.id_to_neigh(gw)
-        gwipstr = ip_to_str(neigh.ip)
+        gwipstr = ip_to_str(gwip)
         # Do we have multipath?
         if self.multipath:
             # Just remove old route from kernel

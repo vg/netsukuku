@@ -268,13 +268,9 @@ class Etp:
                 for dst, rem in reversed(block[1]):
                         logging.debug('ETP received: Executing: TPL has info about this node:')
                         logging.debug('    %s' % anode(lvl, dst, gw, tprem))
-                        if not self.maproute.route_rem(lvl, dst, gw, tprem):
-                                if self.maproute.route_add(lvl, dst, gw, tprem):
-                                        logging.debug('    Info is interesting. TPL is interesting.')
-                                        TPL_is_interesting = True
-                                        logging.debug('    New route.')
-                        else:
-                                logging.debug('    Old route. Updated REM.')
+                        if self.maproute.route_change(lvl, dst, gw, tprem):
+                            logging.debug('    Info is interesting. TPL is interesting. Map updated.')
+                            TPL_is_interesting = True
                         tprem+=rem
         ##
 
@@ -283,11 +279,8 @@ class Etp:
                 for dst, rem in R[lvl]:
                         logging.debug('ETP received: Executing: R has info about this node:')
                         logging.debug('    %s' % anode(lvl, dst, gw, rem+tprem))
-                        if not self.maproute.route_rem(lvl, dst, gw, rem+tprem):
-                                if self.maproute.route_add(lvl, dst, gw, rem+tprem):
-                                        logging.debug('    New route.')
-                        else:
-                                logging.debug('    Old route. Updated REM.')
+                        if self.maproute.route_change(lvl, dst, gw, rem+tprem):
+                            logging.debug('    Info is interesting. Map updated.')
         ##
 
         ## S
