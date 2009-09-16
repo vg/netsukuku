@@ -169,27 +169,33 @@ class P2P(RPCDispatcher):
         """Let's become a participant node"""
         self.participant = True
         self.mapp2p.participate()
+        current_nr_list = self.neigh.neigh_list()
 
         # TODO handle the case where one of neighbours does not reply (raises an error)
-        for nr in self.neigh.neigh_list():
-            logging.debug('calling participant_add(myself) to %s.' % self.maproute.ip_to_nip(nr.ip))
-            stringexec = "nr.ntkd.p2p.PID_"+str(self.mapp2p.pid)+".participant_add(self.maproute.me)"
-            logging.debug(stringexec)
-            exec(stringexec)
-            logging.debug('done calling participant_add(myself) to %s.' % self.maproute.ip_to_nip(nr.ip))
+        for nr in current_nr_list:
+            try:
+                logging.debug('calling participant_add(myself) to %s.' % self.maproute.ip_to_nip(nr.ip))
+                stringexec = "nr.ntkd.p2p.PID_"+str(self.mapp2p.pid)+".participant_add(self.maproute.me)"
+                logging.debug(stringexec)
+                exec(stringexec)
+                logging.debug('done calling participant_add(myself) to %s.' % self.maproute.ip_to_nip(nr.ip))
+            except:
+                logging.debug('timeout (no problem) calling participant_add(myself) to %s.' % self.maproute.ip_to_nip(nr.ip))
 
+    @microfunc(True)
     def participant_add(self, pIP):
         '''Add a participant node to the P2P service
 
         :param pIP: participant node's Netsukuku IP (nip)
         '''
-        continue_to_forward = False
 
+        continue_to_forward = False
+        current_nr_list = self.neigh.neigh_list()
         mp  = self.mapp2p
         lvl = self.maproute.nip_cmp(pIP, mp.me)
         for l in xrange(lvl, mp.levels):
             if not mp.node_get(l, pIP[l]).participant:
-                logging.debug('registering participant (%s, %s) to service %s.' % (l, pIP[l], self.mapp2p.pid))
+                logging.debug('registering participant (%s, %s) to service %s.' % (l, pIP[l], mp.pid))
                 mp.node_get(l, pIP[l]).participant = True
                 mp.node_add(l, pIP[l])
                 continue_to_forward = True
@@ -200,14 +206,17 @@ class P2P(RPCDispatcher):
         # continue to advertise the new participant
 
         # TODO handle the case where one of neighbours does not reply (raises an error)
-        # TODO do we have to skip the one who sent to us?
+        # TODO do we have to skip the one who sent to us? It is not needed cause it won't forward anyway.
 
-        for nr in self.neigh.neigh_list():
-            logging.debug('forwarding participant_add(%s) to %s service %s.' % (pIP, self.maproute.ip_to_nip(nr.ip), self.mapp2p.pid))
-            stringexec = "nr.ntkd.p2p.PID_"+str(self.mapp2p.pid)+".participant_add(pIP)"
-            logging.debug(stringexec)
-            exec(stringexec)
-            logging.debug('done forwarding participant_add(%s) to %s.' % (pIP, self.maproute.ip_to_nip(nr.ip)))
+        for nr in current_nr_list:
+            try:
+                logging.debug('forwarding participant_add(%s) to %s service %s.' % (pIP, self.maproute.ip_to_nip(nr.ip), mp.pid))
+                stringexec = "nr.ntkd.p2p.PID_"+str(mp.pid)+".participant_add(pIP)"
+                logging.debug(stringexec)
+                exec(stringexec)
+                logging.debug('done forwarding participant_add(%s) to %s.' % (pIP, self.maproute.ip_to_nip(nr.ip)))
+            except:
+                logging.debug('timeout (no problem) forwarding participant_add(%s) to %s.' % (pIP, self.maproute.ip_to_nip(nr.ip)))
 
 
     def msg_send(self, sender_nip, hip, msg, use_udp_nip=None):
