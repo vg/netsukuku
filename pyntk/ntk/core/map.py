@@ -26,6 +26,7 @@ from ntk.lib.log import get_stackframes
 
 from ntk.lib.event import Event
 from ntk.network.inet import valid_ids
+import ntk.wrap.xtime as xtime
 
 
 class DataClass(object):
@@ -227,6 +228,8 @@ class Map(object):
             node = self.dataclass(lvl, self.me[lvl])
             if func: func(node)
             ret[1][lvl][self.me[lvl]] = node
+        # It's been a tough work! And now we'll probably serialize the result! Be kind to other tasks.
+        xtime.swait(10)
         return ret
 
     def map_data_merge(self, (nip, plist, nblist)):
@@ -236,6 +239,8 @@ class Map(object):
         logging.log(logging.ULTRADEBUG, get_stackframes(back=1))
 
         for l in xrange(lvl, self.levels):
+                # It's a tough work! Be kind to other tasks.
+                xtime.swait(10)
                 self.node_nb[l]=nblist[l]
                 for id in xrange(self.gsize):
                     if id != self.me[l]:  # self.me MUST NOT be replaced

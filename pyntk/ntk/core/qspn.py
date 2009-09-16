@@ -23,6 +23,7 @@ from ntk.lib.rpc import RPCError
 from ntk.lib.event import Event, apply_wakeup_on_event
 from ntk.network.inet import ip_to_str
 from ntk.core.route import NullRem, DeadRem
+import ntk.wrap.xtime as xtime
 
 
 def is_listlist_empty(l):
@@ -91,10 +92,13 @@ class Etp:
         set_of_R = {}
         for nr in self.neigh.neigh_list():
             if nr.id != neigh.id:
+                # It's a tough work! Be kind to other tasks.
+                xtime.swait(10)
                 set_of_R[nr.id] = self.maproute.bestroutes_get(f=gw_is_neigh, exclude_gw=[nr.id])
         ##
 
         ## Update the map
+        xtime.swait(10)
         self.maproute.routeneigh_del(neigh)
         ##
 
@@ -154,6 +158,7 @@ class Etp:
                                 for (dst,gw,rem) in set_of_R[nr.id][lvl]
                           ] for lvl in xrange(self.maproute.levels)
                          ]
+                    xtime.swait(10)
                     ##
 
                     etp = (R2, [[block_lvl, TP]], flag_of_interest)
@@ -198,6 +203,7 @@ class Etp:
         ## Create R
         exclude_gw = [neigh.id] + common_devs_neighbours_to_neigh
         R = self.maproute.bestroutes_get(exclude_gw=exclude_gw)
+        xtime.swait(10)
 
         # Usually we don't need to send a ETP if R is empty. But we have to send
         # the ETP in any case if this link is new (that is, oldrem is None).
@@ -265,15 +271,21 @@ class Etp:
                 return # drop the packet
         ##
 
-        ## Group rule
+        xtime.swait(10)
+
         level = self.maproute.nip_cmp(self.maproute.me, gwnip)
+        
+        ## Purify map portion R
+        for lvl in reversed(xrange(level)):
+            R[lvl] = []
+
+        ## Group rule
         for block in TPL:
                 lvl = block[0] # the level of the block
                 if lvl < level:
                         block[0] = level                     
                         blockrem = sum([rem for hop, rem in block[1]], NullRem())
                         block[1] = [[gwnip[level], blockrem]]
-                        R[lvl] = []
         
         
         ### Collapse blocks of the same level
@@ -327,6 +339,7 @@ class Etp:
         TPL_is_interesting = False
         for lvl, pairs in reversed(TPL):
             for dst, rem in reversed(pairs):
+                xtime.swait(10)
                 logging.debug('ETP received: Executing: TPL has info about this node:')
                 logging.debug('    %s' % anode(lvl, dst, gw, tprem))
                 if self.maproute.route_change(lvl, dst, gw, tprem):
@@ -338,6 +351,7 @@ class Etp:
         ## Update the map from R
         for lvl in xrange(self.maproute.levels):
             for dst, rem in R[lvl]:
+                xtime.swait(10)
                 logging.debug('ETP received: Executing: R has info about this node:')
                 logging.debug('    %s' % anode(lvl, dst, gw, rem+gwrem))
                 if self.maproute.route_change(lvl, dst, gw, rem+gwrem):
@@ -382,6 +396,7 @@ class Etp:
                     # We exclude them from research of bestroutes.
                     exclude_gw = [nr.id] + common_devs_neighbours_to_nr
                     # Evaluate only once this set, which then we use twice:
+                    xtime.swait(10)
                     best_routes_of_R = dict( [ ((lvl, dst), r)
                                                for lvl in xrange(self.maproute.levels)
                                                    for dst, rem in R[lvl]
@@ -418,6 +433,7 @@ class Etp:
                     ##
 
                     ## R2
+                    xtime.swait(10)
                     def rem_or_none(r):
                         if r is not None:
                             return r.rem
