@@ -213,10 +213,7 @@ class Coord(P2P):
 
         logging.log(logging.ULTRADEBUG, 'Coord.going_in: The requested level is ' + str(lvl))
         logging.log(logging.ULTRADEBUG, 'Coord.going_in: This is mapcache.')
-        def repr_node_mapcache(node):
-            if node.is_free: return ' '
-            return 'X'
-        logging.log(logging.ULTRADEBUG, self.mapcache.repr_me(repr_node_mapcache))
+        logging.log(logging.ULTRADEBUG, self.mapcache.repr_me())
 
         if gnumb and not gnumb > self.mapcache.nodes_nb[lvl]+1: return None
 

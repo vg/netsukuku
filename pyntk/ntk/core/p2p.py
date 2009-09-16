@@ -223,10 +223,7 @@ class P2P(RPCDispatcher):
                     return ' '
                 logging.warning(self.mapp2p.repr_me(repr_node_mapp2p))
                 logging.warning('This is maproute.')
-                def repr_node_maproute(node):
-                    if node.is_free(): return ' '
-                    return 'X'
-                logging.warning(self.maproute.repr_me(repr_node_maproute))
+                logging.warning(self.maproute.repr_me())
                 return None
 
     def call_msg_send_udp(self, nip, sender_nip, hip, msg):

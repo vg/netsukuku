@@ -192,14 +192,18 @@ class Map(object):
                 self.level_reset(l)
         logging.log(logging.ULTRADEBUG, str(self.map_data_pack()))
 
-    def repr_me(self, func_repr_node):
+    def repr_me(self, func_repr_node=None):
         ret = 'me' + str(self.me) + ', node_nb,' + str(self.node_nb) + ' {'
         for lvl in xrange(self.levels):
             ret += self.repr_level(lvl, func_repr_node)
         ret += '}'
         return ret
 
-    def repr_level(self, lvl, func_repr_node):
+    def repr_level(self, lvl, func_repr_node=None):
+        def repr_node_maproute(node):
+            if node.is_free(): return ' '
+            return 'X'
+        if func_repr_node is None: func_repr_node = repr_node_maproute
         ret = ' ['
         for i in xrange(self.gsize):
             ret += '\'' + func_repr_node(self.node_get(lvl, i))

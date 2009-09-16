@@ -74,10 +74,14 @@ class NtkNode(object):
         self.neighbour = self.radar.neigh
         self.firstnip = self.choose_first_nip()
         self.maproute = maproute.MapRoute(settings.LEVELS, self.gsize, self.firstnip)
+        logging.log(logging.ULTRADEBUG, 'NtkNode: This is maproute as soon as started.')
+        logging.log(logging.ULTRADEBUG, self.maproute.repr_me())
         self.etp = qspn.Etp(self.radar, self.maproute)
 
         self.p2p = p2p.P2PAll(self.radar, self.maproute)
         self.coordnode = coord.Coord(self.radar, self.maproute, self.p2p)
+        logging.log(logging.ULTRADEBUG, 'NtkNode: This is mapcache of coord as soon as started.')
+        logging.log(logging.ULTRADEBUG, self.coordnode.mapcache.repr_me())
         self.hook = hook.Hook(self.radar, self.maproute, self.etp,
                               self.coordnode, self.nic_manager)
 
@@ -173,7 +177,7 @@ class NtkNode(object):
         logging.debug('First NIC activation started')
         nip_ip = self.maproute.nip_to_ip(self.firstnip)
         nip_ip_str = ip_to_str(nip_ip)
-        logging.debug('First IP choosen %s' % nip_ip_str)
+        logging.debug('First IP choosen (before...) was %s' % nip_ip_str)
         self.nic_manager.activate(ip_to_str(nip_ip))
         logging.debug('First NIC activation done')
 
