@@ -373,6 +373,13 @@ class MapRoute(Map):
         return ret
 
     def route_del(self, lvl, dst, gw, silent=0):
+
+        # If destination is me I won't delete a route. Pretend it didn't happen.
+        if self.me[lvl] == dst:
+            logging.debug('I won\'t delete a route to myself (%s, %s).' % (lvl, dst))
+            logging.debug(get_stackframes(back=1))
+            return
+
         d = self.node_get(lvl, dst)
         d.route_del(gw)
 
@@ -388,6 +395,12 @@ class MapRoute(Map):
         """Changes the rem of the route with gateway `gw'
 
         Returns 0 if the route doesn't exists, 1 else."""
+
+        # If destination is me I won't do a route change. Pretend it didn't happen.
+        if self.me[lvl] == dst:
+            logging.debug('I won\'t update a route to myself (%s, %s).' % (lvl, dst))
+            logging.debug(get_stackframes(back=1))
+            return 0
 
         d = self.node_get(lvl, dst)
         ret, val = d.route_rem(gw, newrem)
