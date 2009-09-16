@@ -83,8 +83,8 @@ class EtpData:
     def __init__(self, etp):
         self.sender_nip = etp[0]
         self.sender_netid = etp[1]
-        self.TPL = etp[2]
-        self.R = etp[3]
+        self.R = etp[2]
+        self.TPL = etp[3]
         self.flag_of_interest = etp[4]
 class EtpPool:
     def __init__(self):
@@ -102,6 +102,21 @@ class EtpPool:
         return None
     def pop_first_etp_by_ip(self, ip):
         return self.get_first_etp_by_ip(ip, remove=True)
+    def get_etps_to_ip(self, ip):
+        ret = []
+        for index in xrange(len(self.etps)):
+            etp_pair = self.etps[index]
+            if etp_pair[0] == ip:
+                ret.append(etp_pair[1])
+        return ret
+    def get_etps_from_node(self, node):
+        ret = []
+        for index in xrange(len(self.etps)):
+            etp_pair = self.etps[index]
+            etp = etp_pair[1]
+            if EtpData(etp).sender_nip == node.maproute.me:
+                ret.append((etp_pair[0], etp)) # (to_ip, etp)
+        return ret
 etp_pool = EtpPool()
 ##
 ############################################
@@ -175,13 +190,13 @@ class Null:
         exec_rpc_call(self.ip, self.pieces, params)
         if 'etp' in self.pieces and 'etp_exec' in self.pieces: etp_pool.add(self.ip, params)
         return True
-    
+
 class FakeTCPClient:
     def __init__(self, ip):
         self.ip = ip
     def __getattr__(self, name):
         return Null(self.ip, [name])
-    
+
 class FakeNeighbour():
     def __init__(self):
         real_ = radar.Neighbour(16)
@@ -288,18 +303,50 @@ def get_simulated_node_by_ip(ip):
 def remove_simulated_node_by_ip(ip):
     node = get_simulated_node_by_ip(ip)
     if node: simulated_nodes.remove(node)
+##  We have a method to obtain the pair (lvl, id) where node_x is saved
+##   in node_y's map.
+def getcoords_node_x_in_map_of_y(node_x, node_y):
+    x_nip = node_x.maproute.me
+    y_nip = node_y.maproute.me
+    lvl = node_y.maproute.nip_cmp(y_nip, x_nip)
+    return (lvl, x_nip[lvl])
+##  We have a method to find node_x as a destination (RouteNode)
+##   in node_y's map.
+def node_x_in_map_of_y(node_x, node_y):
+    return node_y.maproute.node_get(
+                  *getcoords_node_x_in_map_of_y(node_x, node_y) )
 ##  We have a method to retrieve etps and execute them in the proper node
-def retrieve_execute_etps():
+##   just once
+def retrieve_execute_etps_once(exclude_ips=[]):
     etp_ips =  etp_pool.get_ips()
-    while len(etp_ips) > 0:
-        for ip in etp_ips:
+    for ip in etp_ips:
+        if ip in exclude_ips:
+            etp_pool.pop_first_etp_by_ip(ip)
+        else:
             node = get_simulated_node_by_ip(ip)
             if node:
                 etp = etp_pool.pop_first_etp_by_ip(ip)
                 node_gonna_exec_etp(node)
                 node.etp.etp_exec(*etp)
                 xtime.swait(delay_each_etp_exec())
-        etp_ips =  etp_pool.get_ips()
+##  We have a method to *repeatedly* retrieve and execute etps until the end
+def retrieve_execute_etps(exclude_ips=[]):
+    etp_ips =  etp_pool.get_ips()
+    while len(etp_ips) > 0:
+        retrieve_execute_etps_once(exclude_ips=exclude_ips)
+        etp_ips = etp_pool.get_ips()
+##  We have a method to retrieve all etps in the pool given a destination ip
+def retrieve_etps_to_ip(ip):
+    return etp_pool.get_etps_to_ip(ip)
+##  We have a method to retrieve all etps in the pool given a source node
+def retrieve_etps_from_node(node):
+    return etp_pool.get_etps_from_node(node)
+##
+##  We provide a method to clear all things before a new test.
+def initialize():
+    simulated_nodes[:] = []
+    global etp_pool
+    etp_pool = EtpPool()
 ##
 ########################################
 
