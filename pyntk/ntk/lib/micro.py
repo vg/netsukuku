@@ -123,11 +123,8 @@ class Channel(object):
            
            This is best used in a Channel with prefer_sender=True and micro_send=False
         '''
-        logging.log(logging.ULTRADEBUG, 'bcast_send start')
         while self.ch.balance < 0:
-            logging.log(logging.ULTRADEBUG, 'bcast_send sending')
             self.ch.send(data)
-        logging.log(logging.ULTRADEBUG, 'bcast_send end')
 
 def _dispatcher(func, chan):
     while True:
