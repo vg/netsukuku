@@ -221,7 +221,7 @@ class RouteNode(object):
           which has the same gateway G
     """
 
-    __slots__ = ['routes', 'routes_tobe_synced', 'lvl', 'id', 'busy', 'its_me']
+    __slots__ = ['routes', 'lvl', 'id', 'busy', 'its_me']
 
     def __init__(self, lvl, id, busy=False, its_me=False):
         self.lvl = lvl
@@ -229,10 +229,6 @@ class RouteNode(object):
         self.its_me = its_me
         self.busy = busy
         self.routes = []
-        self.routes_tobe_synced = 0     # number of routes to update in the kernel
-        #TODO: keep the right track of `self.routes_tobe_synced'
-        #      maybe it's better to use "self.routes_tobe_synced+-=1" before
-        #      sending the ROUTE_NEW/ROUTE_DELETED/ROUTE_REM_CHGED events?
 
     def route_getby_gw(self, gw):
         """Returns the route having as gateway `gw'"""
@@ -253,7 +249,6 @@ class RouteNode(object):
 
         oldrem = r.rem_modify(newrem)
         self.sort()
-        self.routes_tobe_synced+=1 
         return (1, oldrem)
 
     def route_add(self, lvl, dst, gw, rem):
@@ -282,8 +277,6 @@ class RouteNode(object):
         else:
             return (ret, val) # route not interesting
 
-        self.routes_tobe_synced+=1
-
         self.sort()
 
         return (ret, val)         # good route
@@ -295,7 +288,6 @@ class RouteNode(object):
 
         r = self.route_getby_gw(gw)
         if r is not None:
-            self.routes_tobe_synced+=1
             self.routes.remove(r)
             return 1
         return 0
@@ -328,10 +320,6 @@ class RouteNode(object):
 
     def nroutes(self):
         return len(self.routes)
-
-    def nroutes_synced(self):
-        # Note: it can be < 0
-        return len(self.routes)-self.routes_tobe_synced
 
     def best_route(self):
         if self.is_empty():

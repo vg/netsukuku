@@ -56,7 +56,7 @@ class KrnlRoute(object):
     def _route_new(self, lvl, dst, gw, rem):
         node = self.maproute.node_get(lvl, dst)
         # Do we already have one route to this node?
-        existing = node.nroutes_synced() >= 1
+        existing = node.nroutes() >= 2
         # Obtain a IP string for the node
         nip = self.maproute.lvlid_to_nip(lvl, dst)
         ip  = self.maproute.nip_to_ip(nip)
@@ -70,7 +70,6 @@ class KrnlRoute(object):
         if self.multipath:
             # Add new route
             KRoute.add(ipstr, lvl_to_bits(lvl), dev, gwipstr)
-            node.routes_tobe_synced-=1
         else:
             # Add or eventually change best route
             if existing:
@@ -86,7 +85,6 @@ class KrnlRoute(object):
             else:
                 # Add
                 KRoute.add(ipstr, lvl_to_bits(lvl), dev, gwipstr)
-                node.routes_tobe_synced-=1
 
     def route_deleted(self, lvl, dst, gw):
         # We'll do the real thing in a microfunc, but make sure
