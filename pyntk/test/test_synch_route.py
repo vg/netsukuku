@@ -150,7 +150,7 @@ class Null:
     def __getattr__(self, name):
         return Null(self.ip, self.pieces + [name])
     def __call__(self, *params):
-        print 'To ip ' + str(self.ip) + ': ' + '.'.join(self.pieces) + str(params)
+        print 'To ip ' + ip_to_str(self.ip) + ': ' + '.'.join(self.pieces) + str(params)
         if 'etp' in self.pieces and 'etp_exec' in self.pieces: etp_pool.add(self.ip, params)
         return True
     
@@ -177,6 +177,8 @@ class FakeNeighbour():
         for key, neigh in self.dict_id_to_neigh.items():
             if neigh.ip == ip: return neigh
         return None
+    def id_to_ip(self, idn):
+        return self.dict_id_to_neigh[idn].ip
     def id_to_neigh(self, idn):
         return self.dict_id_to_neigh[idn]
     def neigh_list(self):
@@ -231,7 +233,11 @@ radar.Radar = FakeRadar
 
 #######################################
 ##  Each simulated node has an instance of FakeNtkNode
-##   created with the function create_node
+##   created with the function create_node.
+##  When a node dies use the function remove_simulated_node_by_ip.
+##  We have a list of all current nodes (simulated_nodes).
+##  We have a method to retrieve a node by its ip
+##   (get_simulated_node_by_ip).
 gsize, levels = 256, 4
 simulated_nodes = []
 def create_node(firstnip, nics, netid):
@@ -257,15 +263,32 @@ def get_simulated_node_by_ip(ip):
         if node.maproute.nip_to_ip(node.maproute.me) == ip:
             return node
     return None
+def remove_simulated_node_by_ip(ip):
+    node = get_simulated_node_by_ip(ip)
+    if node: simulated_nodes.remove(node)
+##  We have a method to retrieve etps and execute them in the proper node
+def retrieve_execute_etps():
+    etp_ips =  etp_pool.get_ips()
+    while len(etp_ips) > 0:
+        for ip in etp_ips:
+            node = get_simulated_node_by_ip(ip)
+            if node:
+                etp = etp_pool.pop_first_etp_by_ip(ip)
+                log_executing_node(node)
+                node.etp.etp_exec(*etp)
+                xtime.swait(1200)
+        etp_ips =  etp_pool.get_ips()
 ##
 ########################################
 
 
 #######################################
-##  Remember to add a little delay  (eg xtime.swait(2000))
+##  Remember to add a little delay  (eg simulate_delay())
 ##  after each simulated signal or event.
 ##  This will provide enough micro_block to completely
 ##  execute each started microthread.
+def simulate_delay():
+    xtime.swait(1200)
 
 
 ############################################
@@ -294,7 +317,7 @@ def log_executing_node(node):
 
 node_guest1 = create_node(firstnip=[4,3,2,1], nics=['eth0', 'eth1'], netid=12345)
 node_guest2 = create_node(firstnip=[8,7,6,5], nics=['eth0', 'eth1'], netid=12345)
-xtime.swait(2000)
+simulate_delay()
 
 # node_guest2 is a new neighbour (the first) to node_guest1
 log_executing_node(node_guest1)
@@ -304,7 +327,7 @@ node_guest1.neighbour.send_event_neigh_new(
                       1,
                       node_guest1.maproute.nip_to_ip(node_guest2.maproute.me),
                       node_guest2.neighbour.netid)
-xtime.swait(2000)
+simulate_delay()
 
 # node_guest1 is a new neighbour (the first) to node_guest2
 log_executing_node(node_guest2)
@@ -314,23 +337,18 @@ node_guest2.neighbour.send_event_neigh_new(
                       1,
                       node_guest2.maproute.nip_to_ip(node_guest1.maproute.me),
                       node_guest1.neighbour.netid)
-xtime.swait(2000)
+simulate_delay()
 
 #retrieve etps and execute them in the proper node
-etp_ips =  etp_pool.get_ips()
-while len(etp_ips) > 0:
-    for ip in etp_ips:
-        node = get_simulated_node_by_ip(ip)
-        if node:
-            etp = etp_pool.pop_first_etp_by_ip(ip)
-            log_executing_node(node)
-            node.etp.etp_exec(*etp)
-            xtime.swait(2000)
-    etp_ips =  etp_pool.get_ips()
+retrieve_execute_etps()
+for node in simulated_nodes:
+    log_executing_node(node)
+    print node.maproute.repr_me()
+simulate_delay()
 
 
 node_guest3 = create_node(firstnip=[12,11,10,9], nics=['eth0', 'eth1'], netid=12345)
-xtime.swait(2000)
+simulate_delay()
 
 # node_guest3 is a new neighbour (the second) to node_guest1
 log_executing_node(node_guest1)
@@ -340,7 +358,7 @@ node_guest1.neighbour.send_event_neigh_new(
                       2,
                       node_guest1.maproute.nip_to_ip(node_guest3.maproute.me),
                       node_guest3.neighbour.netid)
-xtime.swait(2000)
+simulate_delay()
 
 # node_guest1 is a new neighbour (the first) to node_guest3
 log_executing_node(node_guest3)
@@ -350,23 +368,18 @@ node_guest3.neighbour.send_event_neigh_new(
                       1,
                       node_guest3.maproute.nip_to_ip(node_guest1.maproute.me),
                       node_guest1.neighbour.netid)
-xtime.swait(2000)
+simulate_delay()
 
 #retrieve etps and execute them in the proper node
-etp_ips =  etp_pool.get_ips()
-while len(etp_ips) > 0:
-    for ip in etp_ips:
-        node = get_simulated_node_by_ip(ip)
-        if node:
-            etp = etp_pool.pop_first_etp_by_ip(ip)
-            log_executing_node(node)
-            node.etp.etp_exec(*etp)
-            xtime.swait(2000)
-    etp_ips =  etp_pool.get_ips()
+retrieve_execute_etps()
+for node in simulated_nodes:
+    log_executing_node(node)
+    print node.maproute.repr_me()
+simulate_delay()
 
 
 node_guest4 = create_node(firstnip=[16,15,14,13], nics=['eth0', 'eth1'], netid=12345)
-xtime.swait(2000)
+simulate_delay()
 
 # node_guest4 is a new neighbour (the second) to node_guest3
 log_executing_node(node_guest3)
@@ -376,17 +389,7 @@ node_guest3.neighbour.send_event_neigh_new(
                       2,
                       node_guest3.maproute.nip_to_ip(node_guest4.maproute.me),
                       node_guest4.neighbour.netid)
-xtime.swait(2000)
-
-# node_guest4 is a new neighbour (the second) to node_guest2
-log_executing_node(node_guest2)
-node_guest2.neighbour.send_event_neigh_new(
-                      ('eth0',100),
-                      {'eth0':100},
-                      2,
-                      node_guest2.maproute.nip_to_ip(node_guest4.maproute.me),
-                      node_guest4.neighbour.netid)
-xtime.swait(2000)
+simulate_delay()
 
 # node_guest3 is a new neighbour (the first) to node_guest4
 log_executing_node(node_guest4)
@@ -396,8 +399,17 @@ node_guest4.neighbour.send_event_neigh_new(
                       1,
                       node_guest4.maproute.nip_to_ip(node_guest3.maproute.me),
                       node_guest3.neighbour.netid)
-xtime.swait(2000)
+simulate_delay()
 
+#retrieve etps and execute them in the proper node
+retrieve_execute_etps()
+for node in simulated_nodes:
+    log_executing_node(node)
+    print node.maproute.repr_me()
+simulate_delay()
+
+
+# A new link between guest2 and guest4 is now active.
 # node_guest2 is a new neighbour (the second) to node_guest4
 log_executing_node(node_guest4)
 node_guest4.neighbour.send_event_neigh_new(
@@ -406,25 +418,55 @@ node_guest4.neighbour.send_event_neigh_new(
                       2,
                       node_guest4.maproute.nip_to_ip(node_guest2.maproute.me),
                       node_guest2.neighbour.netid)
-xtime.swait(2000)
+simulate_delay()
+
+# node_guest4 is a new neighbour (the second) to node_guest2
+log_executing_node(node_guest2)
+node_guest2.neighbour.send_event_neigh_new(
+                      ('eth0',100),
+                      {'eth0':100},
+                      2,
+                      node_guest2.maproute.nip_to_ip(node_guest4.maproute.me),
+                      node_guest4.neighbour.netid)
+simulate_delay()
+
 
 #retrieve etps and execute them in the proper node
-etp_ips =  etp_pool.get_ips()
-while len(etp_ips) > 0:
-    for ip in etp_ips:
-        node = get_simulated_node_by_ip(ip)
-        if node:
-            etp = etp_pool.pop_first_etp_by_ip(ip)
-            log_executing_node(node)
-            node.etp.etp_exec(*etp)
-            xtime.swait(2000)
-    etp_ips =  etp_pool.get_ips()
-
-
-
+retrieve_execute_etps()
 for node in simulated_nodes:
     log_executing_node(node)
     print node.maproute.repr_me()
+simulate_delay()
+
+
+## node_guest1 dies
+node_guest1_nip = node_guest1.maproute.me
+node_guest1_ip = node_guest1.maproute.nip_to_ip(node_guest1_nip)
+node_guest1_netid = node_guest1.neighbour.netid
+remove_simulated_node_by_ip(node_guest1_ip)
+## node_guest2 detects it
+log_executing_node(node_guest2)
+node_guest2.neighbour.send_event_neigh_deleted(
+                      1,
+                      node_guest2.maproute.nip_to_ip(node_guest1_nip),
+                      node_guest1_netid)
+simulate_delay()
+## node_guest3 detects it too
+log_executing_node(node_guest3)
+node_guest3.neighbour.send_event_neigh_deleted(
+                      1,
+                      node_guest3.maproute.nip_to_ip(node_guest1_nip),
+                      node_guest1_netid)
+simulate_delay()
+
+#retrieve etps and execute them in the proper node
+retrieve_execute_etps()
+for node in simulated_nodes:
+    log_executing_node(node)
+    print node.maproute.repr_me()
+simulate_delay()
+
+
 
 ## an etp received
 #R = [[],[],[],[(9, maproute.Rtt(100))]]

@@ -460,6 +460,24 @@ class MapRoute(Map):
             return ret
 
 
+    def repr_me(self, func_repr_node=None):
+        def repr_node_maproute(node):
+            coding_gw = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+            free_repr = '  '
+            if node.is_free(): return free_repr
+            str_repr_node = ''
+            for rgw in node.routes:
+                if len(str_repr_node) > 0: str_repr_node += ','
+                str_repr_node += coding_gw[rgw.gw]
+                str_repr_node += '(' + str(rgw.rem.value) + ')'
+            if node.its_me: str_repr_node = 'ITSME'
+            if len(str_repr_node) < len(free_repr):
+                padding = len(free_repr) - len(str_repr_node)
+                str_repr_node += free_repr[:padding]
+            return str_repr_node
+        if func_repr_node is None: func_repr_node = repr_node_maproute
+        return Map.repr_me(self, func_repr_node)
+
 ## Neighbour stuff
 
     def routeneigh_del(self, neigh):
