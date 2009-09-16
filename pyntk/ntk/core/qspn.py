@@ -110,29 +110,55 @@ class Etp:
         block_lvl = 0                           # the first block of the ETP
         ##
 
+        # Through which devs did I see the defunct?
+        devs_to_neigh = [dev for dev in neigh.devs.keys()]
         ## Forward the ETP to the neighbours
         for nr in self.neigh.neigh_list():
             if nr.id != neigh.id:
-                if is_listlist_empty(set_of_R[nr.id]):
-                    # R is empty, that is we don't have routes passing by `gw'.
-                    # Therefore, nothing to do for this neighbour.
-                    continue
-        
-                ## Create R2
-                def rem_or_none(r):
-                    if r is not None:
-                        return r.rem
-                    return DeadRem()
-                R2 = [
-                      [ (dst, rem_or_none(self.maproute.node_get(lvl, dst).best_route(exclude_gw=[nr.id])))
-                            for (dst,gw,rem) in set_of_R[nr.id][lvl]
-                      ] for lvl in xrange(self.maproute.levels)
-                     ]
-                ##
+                # Did this neighbour (nr) see the now defunct (neigh)
+                # straightly? If so, we must NOT forward.
+                devs_to_nr_and_neigh = [dev 
+                                        for dev in nr.devs.keys()
+                                        if dev in devs_to_neigh
+                                       ]
+                if not devs_to_nr_and_neigh:
+                    # We must forward.
 
-                etp = (R2, [[block_lvl, TP]], flag_of_interest)
-                logging.info('Sending ETP for a dead neighbour.')
-                self.etp_send_to_neigh(etp, nr)
+                    if is_listlist_empty(set_of_R[nr.id]):
+                        # R is empty, that is we don't have routes passing by `gw'.
+                        # Therefore, nothing to do for this neighbour.
+                        continue
+
+                    # Through which devs do I see this neighbour (nr)?
+                    devs_to_nr = [dev for dev in nr.devs.keys()]
+                    # Which neighbours do I see through those devs too?
+                    common_devs_neighbours_to_nr = []
+                    for nr2 in self.neigh.neigh_list():
+                        if nr2.id != nr.id:
+                            devs_to_nr2_and_nr = [dev 
+                                                  for dev in nr2.devs.keys()
+                                                  if dev in devs_to_nr
+                                                 ]
+                            if devs_to_nr2_and_nr:
+                                common_devs_neighbours_to_nr.append(nr2.id)
+                    # We exclude them from research of bestroutes.
+                    exclude_gw = [nr.id] + common_devs_neighbours_to_nr
+
+                    ## Create R2
+                    def rem_or_none(r):
+                        if r is not None:
+                            return r.rem
+                        return DeadRem()
+                    R2 = [
+                          [ (dst, rem_or_none(self.maproute.node_get(lvl, dst).best_route(exclude_gw=exclude_gw)))
+                                for (dst,gw,rem) in set_of_R[nr.id][lvl]
+                          ] for lvl in xrange(self.maproute.levels)
+                         ]
+                    ##
+
+                    etp = (R2, [[block_lvl, TP]], flag_of_interest)
+                    logging.info('Sending ETP for a dead neighbour.')
+                    self.etp_send_to_neigh(etp, nr)
         ##
 
     @microfunc(True)
@@ -155,9 +181,23 @@ class Etp:
             return
 
         logging.debug('QSPN: new changed %s: prepare the ETP', ip_to_str(neigh.ip))
-        
+
+        # Through which devs do I see the new neighbour?
+        devs_to_neigh = [dev for dev in neigh.devs.keys()]
+        # Which neighbours do I see through those devs too?
+        common_devs_neighbours_to_neigh = []
+        for nr in self.neigh.neigh_list():
+            if nr.id != neigh.id:
+                devs_to_nr_and_neigh = [dev 
+                                        for dev in nr.devs.keys()
+                                        if dev in devs_to_neigh
+                                       ]
+                if devs_to_nr_and_neigh:
+                    common_devs_neighbours_to_neigh.append(nr.id)
+
         ## Create R
-        R = self.maproute.bestroutes_get(exclude_gw=[neigh.id])
+        exclude_gw = [neigh.id] + common_devs_neighbours_to_neigh
+        R = self.maproute.bestroutes_get(exclude_gw=exclude_gw)
 
         # Usually we don't need to send a ETP if R is empty. But we have to send
         # the ETP in any case if this link is new (that is, oldrem is None).
@@ -314,64 +354,89 @@ class Etp:
             TPL[-1][1].append([self.maproute.me[0], gwrem])
         ##
 
+        # Through which devs do I see the sender?
+        devs_to_neigh = [dev for dev in neigh.devs.keys()]
+
         for nr in self.neigh.neigh_list():
             if nr.id != neigh.id:
-                # Evaluate only once this set, which then we use twice:
-                best_routes_of_R = dict( [ ((lvl, dst), r)
-                                           for lvl in xrange(self.maproute.levels)
-                                               for dst, rem in R[lvl]
-                                                   for r in [self.maproute.node_get(lvl, dst).best_route(exclude_gw=[nr.id])]
-                                         ] )
-                ## S
-                def nr_doesnt_care(lvl, dst, r):
-                    # If destination is me (it happens) then nr does not care.
-                    if self.maproute.me[lvl] == dst: return True
-                    # If best route (except for nr) is none, then nr cares.
-                    if r is None: return False 
-                    # If best route (except for nr) is neigh, then nr cares.
-                    # Else it does not.
-                    return r.gw != gw
-                # If step 5 is omitted we don't need the Rem in S.
-                S = [ [ (dst, None)
-                        for lvl, dst in best_routes_of_R.keys()
-                            if lvl == l
-                                for r in [best_routes_of_R[(lvl, dst)]]
-                                    if nr_doesnt_care(lvl, dst, r)
-                      ] for l in xrange(self.maproute.levels) ]
+                # Does this neighbour (nr) see new neighbour (neigh)
+                # straightly? If so, we must NOT forward.
+                devs_to_nr_and_neigh = [dev 
+                                        for dev in nr.devs.keys()
+                                        if dev in devs_to_neigh
+                                       ]
+                if not devs_to_nr_and_neigh:
+                    # We must forward.
+                    # Through which devs do I see this neighbour (nr)?
+                    devs_to_nr = [dev for dev in nr.devs.keys()]
+                    # Which neighbours do I see through those devs too?
+                    common_devs_neighbours_to_nr = []
+                    for nr2 in self.neigh.neigh_list():
+                        if nr2.id != nr.id:
+                            devs_to_nr2_and_nr = [dev 
+                                                  for dev in nr2.devs.keys()
+                                                  if dev in devs_to_nr
+                                                 ]
+                            if devs_to_nr2_and_nr:
+                                common_devs_neighbours_to_nr.append(nr2.id)
+                    # We exclude them from research of bestroutes.
+                    exclude_gw = [nr.id] + common_devs_neighbours_to_nr
+                    # Evaluate only once this set, which then we use twice:
+                    best_routes_of_R = dict( [ ((lvl, dst), r)
+                                               for lvl in xrange(self.maproute.levels)
+                                                   for dst, rem in R[lvl]
+                                                       for r in [self.maproute.node_get(lvl, dst).best_route(exclude_gw=exclude_gw)]
+                                             ] )
+                    ## S
+                    def nr_doesnt_care(lvl, dst, r):
+                        # If destination is me (it happens) then nr does not care.
+                        if self.maproute.me[lvl] == dst: return True
+                        # If best route (except for nr) is none, then nr cares.
+                        if r is None: return False 
+                        # If best route (except for nr) is neigh, then nr cares.
+                        # Else it does not.
+                        return r.gw != gw
+                    # If step 5 is omitted we don't need the Rem in S.
+                    S = [ [ (dst, None)
+                            for lvl, dst in best_routes_of_R.keys()
+                                if lvl == l
+                                    for r in [best_routes_of_R[(lvl, dst)]]
+                                        if nr_doesnt_care(lvl, dst, r)
+                          ] for l in xrange(self.maproute.levels) ]
 
-                #--
-                # Step 5 omitted, see qspn.pdf, 4.1 Extended Tracer Packet:
-                # """If the property (g) holds, then the step 5 can be omitted..."""
-                #--
-                #if flag_of_interest:
-                #       if not is_listlist_empty(S):
-                #
-                #               Sflag_of_interest=0
-                #               TP = [(self.maproute.me[0], NullRem())]
-                #               etp = (S, [(0, TP)], Sflag_of_interest)
-                #               neigh.ntkd.etp.etp_exec(self.maproute.me, *etp)
-                ##
+                    #--
+                    # Step 5 omitted, see qspn.pdf, 4.1 Extended Tracer Packet:
+                    # """If the property (g) holds, then the step 5 can be omitted..."""
+                    #--
+                    #if flag_of_interest:
+                    #       if not is_listlist_empty(S):
+                    #
+                    #               Sflag_of_interest=0
+                    #               TP = [(self.maproute.me[0], NullRem())]
+                    #               etp = (S, [(0, TP)], Sflag_of_interest)
+                    #               neigh.ntkd.etp.etp_exec(self.maproute.me, *etp)
+                    ##
 
-                ## R2
-                def rem_or_none(r):
-                    if r is not None:
-                        return r.rem
-                    return DeadRem()
-                R2 = [ [ (dst, rem_or_none(r))
-                        for lvl, dst in best_routes_of_R.keys()
-                            if lvl == l
-                                for r in [best_routes_of_R[(lvl, dst)]]
-                                    if dst not in [d for d, r2 in S[lvl]]
-                      ] for l in xrange(self.maproute.levels) ]
-                ##
+                    ## R2
+                    def rem_or_none(r):
+                        if r is not None:
+                            return r.rem
+                        return DeadRem()
+                    R2 = [ [ (dst, rem_or_none(r))
+                            for lvl, dst in best_routes_of_R.keys()
+                                if lvl == l
+                                    for r in [best_routes_of_R[(lvl, dst)]]
+                                        if dst not in [d for d, r2 in S[lvl]]
+                          ] for l in xrange(self.maproute.levels) ]
+                    ##
 
-                ## Continue to forward the ETP if it is interesting
+                    ## Continue to forward the ETP if it is interesting
 
-                if not is_listlist_empty(R2) or TPL_is_interesting:
-                    etp = (R2, TPL, flag_of_interest)
-                    logging.info('Sending received ETP to propagate its information.')
-                    self.etp_send_to_neigh(etp, nr)
-                ##
+                    if not is_listlist_empty(R2) or TPL_is_interesting:
+                        etp = (R2, TPL, flag_of_interest)
+                        logging.info('Sending received ETP to propagate its information.')
+                        self.etp_send_to_neigh(etp, nr)
+                    ##
 
         logging.info('ETP executed.')
         self.events.send('ETP_EXECUTED', (old_node_nb, self.maproute.node_nb[:]))
