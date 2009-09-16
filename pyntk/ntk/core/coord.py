@@ -34,23 +34,18 @@ from random import choice
 from ntk.network.inet import valid_ids
 
 
-class Node:
+class Node(object):
     def __init__(self, 
-                 lvl=None, id=None  # these are mandatory for Map.__init__(),
+                 lvl=None, id=None, alive=False  # these are mandatory for Map.__init__(),
                 ):
         
-        self.alive = False
+        self.alive = alive
 
     def is_free(self):
         return not self.alive
 
     def _pack(self):
-        return (self.alive,)
-
-    def _unpack(self, (p,)):
-        ret=Node()
-        ret.alive=p
-        return ret
+        return (0, 0, self.alive)
 
 serializable.register(Node)
 
