@@ -215,8 +215,11 @@ class P2P(RPCDispatcher):
         self.peer() instead
 
         msg: it is a (func_name, args) pair."""
-	
-        logging.log(logging.ULTRADEBUG, str(sender_nip) + ' is asking for P2P service to ' + str(hip))
+
+        if self.maproute.me == sender_nip:
+            logging.log(logging.ULTRADEBUG, 'I am asking for P2P service to ' + str(hip))
+        else:
+            logging.log(logging.ULTRADEBUG, str(sender_nip) + ' is asking for P2P service to ' + str(hip) + '. I will forward...')
         if use_udp_nip:
             logging.log(logging.ULTRADEBUG, ' using UDP through ' + str(use_udp_nip))
             return self.call_msg_send_udp(use_udp_nip, sender_nip, hip, msg)
