@@ -356,6 +356,10 @@ class TCPClient(FakeRmt):
         @param params: a tuple of arguments to pass to the remote callable
         '''
 
+        # Let's make sure that we'll send the actual content of the params.
+        # Evaluate them before possibly passing the schedule.
+        data = rencode.dumps((func_name, params))
+
         while not self.connected:
             self.connect()
             self.xtime.swait(500)
@@ -366,8 +370,6 @@ class TCPClient(FakeRmt):
             time.sleep(0.001)
             micro_block()
 
-        data = rencode.dumps((func_name, params))
-	
 	# now other microthread cannot call make an RPC call
 	# until the previous call has not received the reply
 	self.calling = True
@@ -376,7 +378,7 @@ class TCPClient(FakeRmt):
         recv_encoded_data = _data_unpack_from_stream_socket(self.socket)
 	
 	self.calling = False
-	# let other calls working
+	# let other calls work
 
         if not recv_encoded_data:
             raise RPCNetError('Connection closed before reply')
@@ -527,11 +529,14 @@ class BcastClient(FakeRmt):
         @param params: a tuple of arguments to pass to the remote callable
         '''
 
+        # Let's make sure that we'll send the actual content of the params.
+        # Evaluate them before possibly passing the schedule.
+        data = rencode.dumps((func_name, params))
+
         while not self.connected:
             self.connect()
             self.xtime.swait(500)
 
-        data = rencode.dumps((func_name, params))
         self.send(_data_pack(data))
 
     def send(self, data):
@@ -582,15 +587,15 @@ def UDP_call(callee_nip, devs, func_name, args=()):
 
 def UDP_send_reply(_rpc_caller, caller_id, func_name_reply, ret):
     """Send a reply"""
-    
-    logging.log(logging.ULTRADEBUG, 'Sending reply to ' + func_name_reply + ' through ' + str(_rpc_caller.dev))
+
+    logging.log(logging.ULTRADEBUG, 'Sending reply to id ' + str(caller_id) + ' func ' + func_name_reply + ' through ' + str(_rpc_caller.dev))
     exec('BcastClient(devs=[_rpc_caller.dev], xtimemod=xtime).' + func_name_reply + '(caller_id, ret)')
 
 def UDP_got_reply(_rpc_caller, caller_id, ret):
     """Receives reply from a UDP_call."""
     
     logging.log(logging.ULTRADEBUG, 'Seen a reply to UDP_call.')
-    if UDP_caller_ids[caller_id]:
+    if caller_id in UDP_caller_ids:
         # This reply is for me.
         logging.log(logging.ULTRADEBUG, ' ...it is for me!')
         chan = UDP_caller_ids[caller_id]
