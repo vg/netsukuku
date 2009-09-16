@@ -112,6 +112,9 @@ class Neighbour(object):
                  'remotable_funcs',
                  'xtime',
                  'netid',
+                 'increment_wait_time',
+                 'number_of_scan_before_deleting',
+                 'missing_neighbour_ids',
                  'channels']
 
     def __init__(self, max_neigh=settings.MAX_NEIGH, xtimemod=xtime):
@@ -139,6 +142,15 @@ class Neighbour(object):
 
         # Our netid. It's a random id used to detect network collisions.
         self.netid = -1
+
+        # To be certain, before deleting a neighbour, check a few times with
+        # a greater delay.
+        self.increment_wait_time = 1000
+        self.number_of_scan_before_deleting = 3
+        # This is a dict. The key is the neigh id, the value is missing_scans.
+        # e.g. {2:4} means neighbour 2 has not replied for 4 consecutive
+        # scans.
+        self.missing_neighbour_ids = {}
 
         self.remotable_funcs = [self.ip_change]
 
@@ -317,6 +329,11 @@ class Neighbour(object):
 
         ip_table, died_ip_list = self._truncate(ip_table)
 
+        # remove from missing_neighbour_ids the detected neighbours
+        for key in ip_table:
+            if key in self.missing_neighbour_ids:
+                del self.missing_neighbour_ids[key]
+
         # first of all we cycle through the old ip_table
         # looking for nodes that aren't in the new one
         for key in self.ip_table.keys():
@@ -324,7 +341,20 @@ class Neighbour(object):
             # deletion hasn't already been notified (raising an event)
             # during truncation
             if not key in ip_table and not key in died_ip_list:
-                self.delete(key)
+                # It is a missing neigh. For how many scan is it missing?
+                if key in self.missing_neighbour_ids:
+                    times = self.missing_neighbour_ids[key] + 1
+                else:
+                    times = 1
+                self.missing_neighbour_ids[key] = times
+
+                if times > self.number_of_scan_before_deleting:
+                    # now, we assume it is really dead.
+                    self.delete(key)
+                    del self.missing_neighbour_ids[key]
+                else:
+                    # pretend it is still there, for the moment.
+                    ip_table[key] = self.ip_table[key]
 
         # now, update the ip_table
         old_ip_table = self.ip_table
@@ -370,6 +400,11 @@ class Neighbour(object):
                                             netid=self.netid_table[key],
                                             ntkd=self.ntk_client[key]), 
                                       Rtt(new_rtt)))
+
+        # returns an indication for next wait time to the radar
+        if not self.missing_neighbour_ids:
+            return 0
+        return max(self.missing_neighbour_ids.values()) * self.increment_wait_time
 
     def readvertise(self):
         """Sends a NEIGH_NEW event for each stored neighbour"""
@@ -463,10 +498,10 @@ class Neighbour(object):
 
 class Radar(object):
     __slots__ = [ 'ntkd', 'bouquet_numb', 'bcast_send_time', 'xtime',
-                  'bcast_arrival_time', 'max_bouquet', 'max_wait_time', 
+                  'bcast_arrival_time', 'max_bouquet', 'wait_time', 
                   'broadcast', 'neigh', 'events', 'do_reply', 
                   'remotable_funcs', 'ntkd_id', 'radar_id', 'max_neigh',
-		  'stopping', 'running_instances']
+		  'increment_wait_time', 'stopping', 'running_instances']
 
     def __init__(self, ntkd, broadcast, xtime):
         """
@@ -486,12 +521,14 @@ class Radar(object):
         self.bcast_arrival_time = {}
         # max_bouquet: how many packets does each bouquet contain?
         self.max_bouquet = settings.MAX_BOUQUET
-        # max_wait_time: the maximum time we can wait for a reply, in seconds
-        self.max_wait_time = settings.MAX_WAIT_TIME
+        # wait_time: the time we wait for a reply, in seconds
+        self.wait_time = settings.RADAR_WAIT_TIME
         # max_neigh: maximum number of neighbours we can have
         self.max_neigh = settings.MAX_NEIGH
         # our neighbours
         self.neigh = Neighbour(self.max_neigh, self.xtime)
+        # Do I have to wait longer? in millis
+        self.increment_wait_time = 0
 
         # Send a SCAN_DONE event each time a sent bouquet has been completely
         # collected
@@ -551,12 +588,14 @@ class Radar(object):
             self.broadcast.radar.reply(self.ntkd_id, self.radar_id)
 
         # then wait
-        self.xtime.swait(self.max_wait_time * 1000)
+        self.xtime.swait(self.wait_time * 1000 + self.increment_wait_time)
         
         # test wether we are stopping
         if not self.stopping:
             # update the neighbours' ip_table
-            self.neigh.store(self.get_all_avg_rtt())
+            # Note: the neighbour manager will tell me if I have to wait
+            #       longer than usual at the next scan.
+            self.increment_wait_time = self.neigh.store(self.get_all_avg_rtt())
 
             # Send the event
             self.bouquet_numb += 1

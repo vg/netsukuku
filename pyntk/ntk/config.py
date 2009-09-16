@@ -34,7 +34,7 @@ DEFAULT_SETTINGS = dict(
     # Radar
     MAX_BOUQUET = 16,
     MAX_NEIGH = 16,
-    MAX_WAIT_TIME = 8, # seconds
+    RADAR_WAIT_TIME = 8, # seconds
     MULTIPATH = False,
     SIMULATED = False,
 
