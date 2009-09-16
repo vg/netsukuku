@@ -261,10 +261,14 @@ class Etp:
                 for dst, rem in reversed(block[1]):
                         logging.debug('ETP received: Executing: TPL has info about this node:')
                         logging.debug('    %s' % anode(lvl, dst, gw, tprem))
-                        if self.maproute.route_change(lvl, dst, gw, tprem):
-                                logging.debug('    Info is interesting. TPL is interesting.')
-                                TPL_is_interesting = True
-                        tprem+=rem # TODO: sometimes rem is an integer
+                        if not self.maproute.route_rem(lvl, dst, gw, tprem):
+                                if self.maproute.route_add(lvl, dst, gw, tprem):
+                                        logging.debug('    Info is interesting. TPL is interesting.')
+                                        TPL_is_interesting = True
+                                        logging.debug('    New route.')
+                        else:
+                                logging.debug('    Old route. Updated REM.')
+                        tprem+=rem
         ##
 
         ## Update the map from R
@@ -273,8 +277,8 @@ class Etp:
                         logging.debug('ETP received: Executing: R has info about this node:')
                         logging.debug('    %s' % anode(lvl, dst, gw, rem+tprem))
                         if not self.maproute.route_rem(lvl, dst, gw, rem+tprem):
-                                self.maproute.route_change(lvl, dst, gw, rem+tprem)
-                                logging.debug('    New route.')
+                                if self.maproute.route_add(lvl, dst, gw, rem+tprem):
+                                        logging.debug('    New route.')
                         else:
                                 logging.debug('    Old route. Updated REM.')
         ##
@@ -323,7 +327,7 @@ class Etp:
                 self.etp_forward(etp, [neigh.id])
         ##
 
-        logging.debug('ETP executed.')
+        logging.info('ETP executed.')
         self.events.send('ETP_EXECUTED', (old_node_nb, self.maproute.node_nb[:]))
 
     def etp_forward(self, etp, exclude):
@@ -354,12 +358,13 @@ class Etp:
         
         logging.debug("Etp: collision check: my netid %d and neighbour's netid %d", self.radar.netid, neigh.netid)
         if self.radar.netid == -1:
-            logging.debug('Now I know my netid: %s' % neigh.netid)
+            logging.info('Now I know my network id: %s' % neigh.netid)
             self.radar.netid = neigh.netid
         if neigh.netid == self.radar.netid:
             return (False, R) # all ok
 
         # uhm... we are in different networks
+        logging.info('Detected Network Collision')
 
         # ## Calculate the size of the two nets
         # def add(a,b):return a+b
@@ -419,7 +424,7 @@ class Etp:
         ##
 
         #From now on, we are in the new net
-        logging.debug('From now on, we are in the new net: %s' % neigh.netid)
+        logging.info('From now on, we are in the new net, our network id: %s' % neigh.netid)
         self.radar.netid = neigh.netid
 
         return (False, R)
