@@ -17,7 +17,7 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 #
-# Tests for ntk.core.route
+# Tests for synchronization of ip commands, ETP execution, and so on...
 #
 
 import sys
@@ -49,6 +49,35 @@ from ntk.lib.log import init_logger
 settings.VERBOSE_LEVEL = 3
 settings.DEBUG_ON_SCREEN = True
 init_logger()
+##
+############################################
+
+
+############################################
+## For storing ETPs.
+## We simulate the sending by intercepting calls to
+## neigh.ntkd.etp.etp_exec (see FakeTCPClient)
+class EtpData:
+    def __init__(self, etp):
+        self.sender_nip = etp[0]
+        self.sender_netid = etp[1]
+        self.TPL = etp[2]
+        self.R = etp[3]
+        self.flag_of_interest = etp[4]
+class EtpPool:
+    def __init__(self):
+        self.etps = {}
+    def add(self, to_ip, etp):
+        self.etps[to_ip] = etp
+    def get_ips(self):
+        return self.etps.keys()
+    def pop_etp_by_ip(self, ip):
+        return self.etps.pop(ip)
+    def get_etp_by_ip(self, ip):
+        return self.etps[ip]
+    def get_etpdata_by_ip(self, ip):
+        return EtpData(self.etps[ip])
+etp_pool = EtpPool()
 ##
 ############################################
 
@@ -112,19 +141,21 @@ ntk.network.Route = FakeRoute
 ntk.core.krnl_route.KRoute = FakeRoute
 
 class Null:
-    def __init__(self, concat):
-        self.concat = concat
+    def __init__(self, ip, pieces=[]):
+        self.ip = ip
+        self.pieces = pieces
     def __getattr__(self, name):
-        return Null(str(self.concat) + '.' + str(name))
+        return Null(self.ip, self.pieces + [name])
     def __call__(self, *params):
-        print str(self.concat) + str(params)
+        print 'To ip ' + str(self.ip) + ': ' + '.'.join(self.pieces) + str(params)
+        if 'etp' in self.pieces and 'etp_exec' in self.pieces: etp_pool.add(self.ip, params)
         return True
     
 class FakeTCPClient:
     def __init__(self, ip):
         self.ip = ip
     def __getattr__(self, name):
-        return Null('To ip ' + str(self.ip) + ': ' + str(name))
+        return Null(self.ip, [name])
     
 class FakeNeighbour():
     def __init__(self):
@@ -199,6 +230,7 @@ radar.Radar = FakeRadar
 ##  Each simulated node has an instance of FakeNtkNode
 ##   created with the function create_node
 gsize, levels = 256, 4
+simulated_nodes = []
 def create_node(firstnip, nics, netid):
     node = FakeNtkNode()
     node.nic_manager = NICManager(nics=nics)
@@ -214,40 +246,108 @@ def create_node(firstnip, nics, netid):
                                  node.coordnode, node.nic_manager)
     node.kroute = kroute.KrnlRoute(node, node.neighbour, node.maproute)
     node.neighbour.netid = netid
-    
-    # we add some code before a etp forward
-    node.etp.etp_forward_ = node.etp.etp_forward
-    def fakeetpforward(_self, etp, exclude):
-        print 'ETP forwarding ' + str(etp)
-        _self.etp_forward_(etp, exclude)
-    node.etp.etp_forward = fakeetpforward
 
+    simulated_nodes.append(node)
     return node
-
+def get_simulated_node_by_ip(ip):
+    for node in simulated_nodes:
+        if node.maproute.nip_to_ip(node.maproute.me) == ip:
+            return node
+    return None
 ##
 ########################################
 
 
 #######################################
-##  Remember to add a little delay  (eg xtime.swait(3000))
+##  Remember to add a little delay  (eg xtime.swait(2000))
 ##  after each simulated signal or event.
 ##  This will provide enough micro_block to completely
 ##  execute each started microthread.
 
+
+############################################
+## for logging
+def log_executing_node(node):
+    ip = node.maproute.nip_to_ip(node.maproute.me)
+    ipstr = ip_to_str(ip)
+    print 'Logs from now on are from node ' + ipstr
+
 node_guest1 = create_node(firstnip=[4,3,2,1], nics=['eth0', 'eth1'], netid=12345)
 node_guest2 = create_node(firstnip=[8,7,6,5], nics=['eth0', 'eth1'], netid=12345)
+xtime.swait(2000)
 
-# a little delay will provide 
-xtime.swait(3000)
-
-# node_guest2 is a new neighbour to node_guest1
+# node_guest2 is a new neighbour (the first) to node_guest1
+log_executing_node(node_guest1)
 node_guest1.neighbour.send_event_neigh_new(
                       ('eth0',100),
                       {'eth0':100},
                       1,
                       node_guest1.maproute.nip_to_ip(node_guest2.maproute.me),
                       node_guest2.neighbour.netid)
-xtime.swait(3000)
+xtime.swait(2000)
+
+# node_guest1 is a new neighbour (the first) to node_guest2
+log_executing_node(node_guest2)
+node_guest2.neighbour.send_event_neigh_new(
+                      ('eth0',100),
+                      {'eth0':100},
+                      1,
+                      node_guest2.maproute.nip_to_ip(node_guest1.maproute.me),
+                      node_guest1.neighbour.netid)
+xtime.swait(2000)
+
+#retrieve etps and execute them in the proper node
+etp_ips =  etp_pool.get_ips()
+while len(etp_ips) > 0:
+    for ip in etp_ips:
+        node = get_simulated_node_by_ip(ip)
+        if node:
+            etp = etp_pool.pop_etp_by_ip(ip)
+            log_executing_node(node)
+            node.etp.etp_exec(*etp)
+            xtime.swait(2000)
+    etp_ips =  etp_pool.get_ips()
+
+
+node_guest3 = create_node(firstnip=[12,11,10,9], nics=['eth0', 'eth1'], netid=12345)
+xtime.swait(2000)
+
+# node_guest3 is a new neighbour (the second) to node_guest1
+log_executing_node(node_guest1)
+node_guest1.neighbour.send_event_neigh_new(
+                      ('eth1',100),
+                      {'eth1':100},
+                      2,
+                      node_guest1.maproute.nip_to_ip(node_guest3.maproute.me),
+                      node_guest3.neighbour.netid)
+xtime.swait(2000)
+
+# node_guest1 is a new neighbour (the first) to node_guest3
+log_executing_node(node_guest3)
+node_guest3.neighbour.send_event_neigh_new(
+                      ('eth1',100),
+                      {'eth1':100},
+                      1,
+                      node_guest3.maproute.nip_to_ip(node_guest1.maproute.me),
+                      node_guest1.neighbour.netid)
+xtime.swait(2000)
+
+#retrieve etps and execute them in the proper node
+etp_ips =  etp_pool.get_ips()
+while len(etp_ips) > 0:
+    for ip in etp_ips:
+        node = get_simulated_node_by_ip(ip)
+        if node:
+            etp = etp_pool.pop_etp_by_ip(ip)
+            log_executing_node(node)
+            node.etp.etp_exec(*etp)
+            xtime.swait(2000)
+    etp_ips =  etp_pool.get_ips()
+
+
+for node in simulated_nodes:
+    log_executing_node(node)
+    print node.maproute.repr_me()
 
 ## an etp received
 #R = [[],[],[],[(9, maproute.Rtt(100))]]
