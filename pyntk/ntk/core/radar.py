@@ -110,7 +110,8 @@ class Neighbour(object):
                  'netid_table',
                  'events',
                  'remotable_funcs',
-                 'xtime']
+                 'xtime',
+                 'netid']
 
     def __init__(self, max_neigh=settings.MAX_NEIGH, xtimemod=xtime):
         """  max_neigh: maximum number of neighbours we can have """
@@ -132,6 +133,9 @@ class Neighbour(object):
         self.events = Event(['NEIGH_NEW', 'NEIGH_DELETED', 'NEIGH_REM_CHGED'])
         # time module
         self.xtime = xtimemod
+
+        # Our netid. It's a random id used to detect network collisions.
+        self.netid = -1
 
         self.remotable_funcs = [self.ip_change]
 
@@ -385,7 +389,7 @@ class Neighbour(object):
 class Radar(object):
     __slots__ = [ 'ntkd', 'bouquet_numb', 'bcast_send_time', 'xtime',
                   'bcast_arrival_time', 'max_bouquet', 'max_wait_time', 
-                  'broadcast', 'neigh', 'events', 'netid', 'do_reply', 
+                  'broadcast', 'neigh', 'events', 'do_reply', 
                   'remotable_funcs', 'ntkd_id', 'radar_id', 'max_neigh',
 		  'stopping', 'running_instances']
 
@@ -417,9 +421,6 @@ class Radar(object):
         # Send a SCAN_DONE event each time a sent bouquet has been completely
         # collected
         self.events = Event(['SCAN_DONE'])
-
-        # Our netid. It's a random id used to detect network collisions.
-        self.netid = -1
 
         # If set to True, this module will reply to radar queries sent by our
         # neighbours.
@@ -464,7 +465,7 @@ class Radar(object):
 
         self.radar_id = randint(0, 2**32-1)
         logging.debug('radar scan %s' % self.radar_id)
-        logging.debug('My radar.netid is ' + str(self.netid))
+        logging.debug('My netid is ' + str(self.neigh.netid))
         logging.debug('I know these netids ' + str(self.neigh.netid_table))
 
         # we're sending the broadcast packets NOW
@@ -500,8 +501,8 @@ class Radar(object):
     def reply(self, _rpc_caller, ntkd_id, radar_id):
         """ As answer we'll return our netid """
         if self.do_reply and ntkd_id != self.ntkd_id:
-            rpc.BcastClient(devs=[_rpc_caller.dev], xtimemod=self.xtime).radar.time_register(radar_id, self.netid)
-            return self.netid
+            rpc.BcastClient(devs=[_rpc_caller.dev], xtimemod=self.xtime).radar.time_register(radar_id, self.neigh.netid)
+            return self.neigh.netid
 
     def time_register(self, _rpc_caller, radar_id, netid):
         """save each node's rtt"""

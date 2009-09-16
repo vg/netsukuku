@@ -69,8 +69,9 @@ class Etp:
         self.maproute.routeneigh_del(neigh)
         ##
 
-        if self.radar.netid == -1: return
-        # TODO find a better descriptive flag to tell me I'm not ready to interact.
+        if self.ntkd.neighbour.netid == -1:
+            # I'm not ready to interact.
+            return
 
         logging.debug("QSPN: death of %s: prepare the ETP", ip_to_str(neigh.ip))
         
@@ -116,8 +117,9 @@ class Etp:
             self.maproute.routeneigh_rem(neigh)
         ##
 
-        if self.radar.netid == -1: return
-        # TODO find a better descriptive flag to tell me I'm not ready to interact.
+        if self.ntkd.neighbour.netid == -1:
+            # I'm not ready to interact.
+            return
 
         logging.debug("QSPN: new changed %s: prepare the ETP", ip_to_str(neigh.ip))
         
@@ -146,7 +148,7 @@ class Etp:
         logging.info('Sending ETP for a new neighbour or changed REM.')
         logging.debug("Etp: sending to %s", ip_to_str(neigh.ip))
         try:
-            neigh.ntkd.etp.etp_exec(self.maproute.me, self.radar.netid, *etp)
+            neigh.ntkd.etp.etp_exec(self.maproute.me, self.ntkd.neighbour.netid, *etp)
             logging.info("Sent ETP to %s", ip_to_str(neigh.ip))
             # RPCErrors may arise for many reasons. We should not care.
             # Also, we don't need to produce an error log.
@@ -175,7 +177,7 @@ class Etp:
         gwnip = sender_nip
         gwip = self.maproute.nip_to_ip(gwnip)
         # update our neighbour's netid
-        self.neigh.netid_table[gwip] = sender_netid
+        self.neigh.set_netid(gwip, sender_netid)
         neigh = self.neigh.ip_to_neigh(gwip)
         
         # check if we have found the neigh, otherwise wait it
@@ -345,7 +347,7 @@ class Etp:
             if nr.id not in exclude:
                 logging.debug("Etp: forwarding to %s", ip_to_str(nr.ip))
                 try:
-                    nr.ntkd.etp.etp_exec(self.maproute.me, self.radar.netid, *etp)
+                    nr.ntkd.etp.etp_exec(self.maproute.me, self.ntkd.neighbour.netid, *etp)
                     logging.info("Sent ETP to %s", ip_to_str(nr.ip))
                     # RPCErrors may arise for many reasons. We should not care.
                 except RPCError:
@@ -361,16 +363,16 @@ class Etp:
             be removed.
         """
         
-        logging.debug("Etp: collision check: my netid %d and neighbour's netid %d", self.radar.netid, neigh.netid)
+        logging.debug("Etp: collision check: my netid %d and neighbour's netid %d", self.ntkd.neighbour.netid, neigh.netid)
 
         if neigh.netid == -1: raise Exception('ETP received from a node with netid = -1 (not completely kooked).')
 
-        if self.radar.netid == -1:
-            self.radar.netid = neigh.netid
+        if self.ntkd.neighbour.netid == -1:
+            self.ntkd.neighbour.netid = neigh.netid
             logging.info('Now I know my network id: %s' % neigh.netid)
             self.events.send('COMPLETE_HOOK', ())
 
-        if neigh.netid == self.radar.netid:
+        if neigh.netid == self.ntkd.neighbour.netid:
             return (False, R) # all ok
 
         # uhm... we are in different networks
@@ -386,7 +388,7 @@ class Etp:
         #  1. The other net surely will give up. So we are not going to.
         #  2. The other net surely won't give up. So we are going to.
         #  3. The other net surely will choose to use the 'lesser netid' method. So we are going to do the same.
-        if self.radar.netid > neigh.netid:
+        if self.ntkd.neighbour.netid > neigh.netid:
                 # we don't care if we are colliding or not. We can simply
                 # ignore colliding routes, the rest will be done by the other
                 # net.
@@ -435,7 +437,7 @@ class Etp:
 
         #From now on, we are in the new net
         logging.info('From now on, we are in the new net, our network id: %s' % neigh.netid)
-        self.radar.netid = neigh.netid
+        self.ntkd.neighbour.netid = neigh.netid
         self.events.send('COMPLETE_HOOK', ())
 
         return (False, R)

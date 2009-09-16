@@ -127,11 +127,11 @@ class Hook(object):
         """
 
         logging.info('Hooking procedure started.')
-        previous_netid = self.radar.netid
+        previous_netid = self.ntkd.neighbour.netid
         if previous_netid != -1:
             logging.info('We previously had got a network id = ' + str(previous_netid))
         logging.info('We haven\'t got any network id, now.')
-        self.radar.netid = -1
+        self.ntkd.neighbour.netid = -1
         oldnip = self.maproute.me[:]
         oldip = self.maproute.nip_to_ip(oldnip)
         we_are_alone = False
@@ -217,8 +217,8 @@ class Hook(object):
 
         # If we are alone, let's generate our netid
         if we_are_alone:
-                self.radar.netid = randint(0, 2**32-1)
-                logging.info("Generated our network id: %s", self.radar.netid)
+                self.ntkd.neighbour.netid = randint(0, 2**32-1)
+                logging.info("Generated our network id: %s", self.ntkd.neighbour.netid)
                 # and we don't need to contact coordinator node...
         # removed:  if lvl < self.maproute.levels-1:
         #           We are creating a new gnode which is not in the latest
@@ -243,7 +243,7 @@ class Hook(object):
                         if Gnumb is None:
                                 # nothing to be done
                                 logging.info('Hooking procedure canceled because of \'condition\'. Our network id is back.')
-                                self.radar.netid = previous_netid
+                                self.ntkd.neighbour.netid = previous_netid
                                 return
 
                         # <<I'm going in, can I?>>
@@ -297,7 +297,7 @@ class Hook(object):
 
         # warn our neighbours
         # TODO find a better descriptive flag to tell me I'm not ready to interact.
-        if self.radar.netid == -1 or we_are_alone:
+        if self.ntkd.neighbour.netid == -1 or we_are_alone:
             logging.log(logging.ULTRADEBUG, 'Hook.hook warn neighbours skipped')
         else:
             logging.log(logging.ULTRADEBUG, 'Hook.hook warn neighbours of my change from %s to %s.' % (ip_to_str(oldip), ip_to_str(newnip_ip)))
@@ -308,7 +308,7 @@ class Hook(object):
 
         # we've done our part
         logging.info('Hooking procedure completed.')
-        if self.radar.netid == -1:
+        if self.ntkd.neighbour.netid == -1:
             logging.info('We haven\'t got any network id yet.')
         else:
             self.etp.events.send('COMPLETE_HOOK', ())

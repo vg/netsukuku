@@ -361,8 +361,9 @@ class P2PAll(object):
 
         It gets the P2P maps from our nearest neighbour"""
 
-        if self.radar.netid == -1: return
-        # TODO find a better descriptive flag to tell me I'm not ready to interact.
+        if self.ntkd.neighbour.netid == -1:
+            # I'm not ready to interact.
+            return
 
         logging.log(logging.ULTRADEBUG, 'P2P hooking: started')
         logging.log(logging.ULTRADEBUG, 'P2P hooking: My actual list of services is: ' + str(self.log_services()))
