@@ -205,6 +205,7 @@ class Neighbour(object):
         channel = self.channels[gwid-1]
         if channel is None: return
         channel.bcast_send('')
+        micro_block()
         self.channels[gwid-1] = None
 
     def announce_gw_removing(self, gwid):
@@ -219,6 +220,7 @@ class Neighbour(object):
         channel = self.channels[gwid-1]
         if channel is None: return
         channel.bcast_send('')
+        micro_block()
         self.channels[gwid-1] = None
 
     ##
