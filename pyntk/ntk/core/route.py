@@ -514,6 +514,8 @@ class MapRoute(Map):
     def routeneigh_rem(self, neigh):
         lvl, nid = self.routeneigh_get(neigh)
         return self.route_rem(lvl, nid, neigh.id, neigh.rem)
+        # TODO Don't we have to update Rems of all routes passing through
+        # this gw?
 
 
     def routeneigh_get(self, neigh):
