@@ -122,7 +122,7 @@ def ManageSockets():
         asyncore.poll(0.05)
         # Check if we have timed out operations.
         ret = expiring_sockets.get_next()
-        if not ret is None:
+        if ret is not None:
             sock, operation = ret
             if operation == WaitingSocketsManager.operation_accept:
                 # timed out accept
@@ -256,13 +256,13 @@ class dispatcher(asyncore.dispatcher):
         return len(self.sendBuffer) or len(self.sendToBuffers)
 
     def accept(self, timeout = None):
-        if not timeout is None:
+        if timeout is not None:
             expiring_sockets.add(self, WaitingSocketsManager.operation_accept, timeout)
         if not self.acceptChannel:
             self.acceptChannel = Channel(micro_send=True)
         ret = self.acceptChannel.recv()
         self.acceptChannel = None
-        if not timeout is None:
+        if timeout is not None:
             if isinstance(ret,MicrosockTimeout):
                 raise ret
             else:
@@ -331,10 +331,10 @@ class dispatcher(asyncore.dispatcher):
 
     def recvfrom(self, byteCount, timeout = None):
         self.maxreceivebuf=byteCount
-        if not timeout is None:
+        if timeout is not None:
             expiring_sockets.add(self, WaitingSocketsManager.operation_recvfrom, timeout)
         ret = self.recvChannel.recv()
-        if not timeout is None:
+        if timeout is not None:
             if isinstance(ret,MicrosockTimeout):
                 raise ret
             else:

@@ -125,22 +125,34 @@ class Hook(object):
         """
 
         logging.info('Hooking procedure started.')
-        logging.info('We haven\'t got any network id.')
+        previous_netid = self.radar.netid
+        if previous_netid != -1:
+            logging.info('We previously had got a network id = ' + str(previous_netid))
+        logging.info('We haven\'t got any network id, now.')
         self.radar.netid = -1
         oldnip = self.maproute.me[:]
         oldip = self.maproute.nip_to_ip(oldnip)
         we_are_alone = False
         suitable_neighbours = []
 
-        ## Find all the highest non saturated gnodes
-        hfn = [(self.maproute.me, self.highest_free_nodes())]
-        logging.log(logging.ULTRADEBUG, 'Hook: highest non saturated gnodes that I know: ' + str(hfn))
-        
         if neigh_list == []:
                 neigh_list = self.neigh.neigh_list()
         if neigh_list == []:
                 we_are_alone = True
-        
+
+        hfn = []
+        ## Find all the highest non saturated gnodes
+
+        def is_current_hfn_valid():
+            # Should our actual knowledge of the network be considered?
+            # TODO Review implementation
+            return we_are_alone or previous_netid != -1
+        if is_current_hfn_valid():
+            hfn = [(self.maproute.me, self.highest_free_nodes())]
+            logging.log(logging.ULTRADEBUG, 'Hook: highest non saturated gnodes that I know: ' + str(hfn))
+        else:
+            logging.log(logging.ULTRADEBUG, 'Hook: highest non saturated gnodes that I know is irrelevant.')
+
         def is_neigh_forbidden(nrip):
                 for lvl, fnr in forbidden_neighs:
                         if self.maproute.nip_cmp(nrnip, fnr) < lvl:

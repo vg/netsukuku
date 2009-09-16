@@ -127,7 +127,7 @@ class Etp:
 
         # Usually we don't need to send a ETP if R is empty. But we have to send
         # the ETP in any case if this link is new (that is, oldrem is None)
-        if is_listlist_empty(R) and not oldrem is None:
+        if is_listlist_empty(R) and oldrem is not None:
                 # R is empty and this link is old: no need to proceed
                 return
 

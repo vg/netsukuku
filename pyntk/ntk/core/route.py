@@ -221,12 +221,13 @@ class RouteNode(object):
           which has the same gateway G
     """
 
-    __slots__ = ['routes', 'routes_tobe_synced']
+    __slots__ = ['routes', 'routes_tobe_synced', 'lvl', 'id', 'busy', 'its_me']
 
-    def __init__(self, 
-                 lvl=None, id=None  # these are mandatory for Map.__init__(),
-                                    # but they aren't used
-                ):
+    def __init__(self, lvl, id, busy=False, its_me=False):
+        self.lvl = lvl
+        self.id = id
+        self.its_me = its_me
+        self.busy = busy
         self.routes = []
         self.routes_tobe_synced = 0     # number of routes to update in the kernel
         #TODO: keep the right track of `self.routes_tobe_synced'
@@ -262,6 +263,7 @@ class RouteNode(object):
         interesting, otherwise it returns (1,None) if it is a new route, 
         (2, oldrem) if it substituted an old route."""
 
+        self.busy = True # For sure now we are busy.
         ret = 0
         val = None
         oldr = self.route_getby_gw(gw)
@@ -315,7 +317,11 @@ class RouteNode(object):
 
     def is_free(self):
         '''Override the is_free() method of DataClass (see map.py)'''
-        return self.is_empty()
+        if self.its_me: return False
+        return not self.busy
+
+    def _pack(self):
+        return (self.lvl, self.id, self.busy)
 
     def nroutes(self):
         return len(self.routes)
@@ -361,13 +367,14 @@ class MapRoute(Map):
             return 0
         
         n = self.node_get(lvl, dst)
+        was_free = n.is_free()
         ret, oldrem = n.route_add(lvl, dst, gw, rem)
+        if was_free and not n.is_free():
+            # The node is new
+            self.node_add(lvl, dst)
         if not silent:
             if ret == 1:
                 self.events.send('ROUTE_NEW', (lvl, dst, gw, rem))
-                if n.nroutes() == 1:
-                    # The node is new
-                    self.node_add(lvl, dst)
             elif ret == 2:
                 self.events.send('ROUTE_REM_CHGED', (lvl, dst, gw, rem, oldrem))
         return ret

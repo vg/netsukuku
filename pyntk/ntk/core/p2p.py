@@ -31,15 +31,19 @@ from ntk.core.map import Map
 
 
 class ParticipantNode(object):
-    def __init__(self,
-                 lvl=None, id=None,  # these are mandatory for Map.__init__()
-                 participant=False
-	         ):
-
+    def __init__(self, lvl, id, participant=False, its_me=False):
+        self.lvl = lvl
+        self.id = id
+        self.its_me = its_me
         self.participant = participant
 
+    def is_free(self):
+        '''Override the is_free() method of DataClass (see map.py)'''
+        if self.its_me: return False
+        return not self.participant
+
     def _pack(self):
-        return (0, 0, self.participant)
+        return (self.lvl, self.id, self.participant)
 
 serializable.register(ParticipantNode)
 
@@ -313,7 +317,9 @@ class P2PAll(object):
                 return self.service[pid]
 
     def pid_getall(self):
-        return [(s, self.service[s].mapp2p.map_data_pack())
+        def fmake_participant(node):
+            node.participant = True
+        return [(s, self.service[s].mapp2p.map_data_pack(fmake_participant))
                         for s in self.service]
 
     def p2p_register(self, p2p):
@@ -324,8 +330,10 @@ class P2PAll(object):
         # created by pid_add() has an update map of participants, which has
         # been accumulated during the time. Copy this map in the `p2p'
         # instance to be sure.
+        def fmake_participant(node):
+            node.participant = True
         if p2p.pid in self.service:
-            map_pack = self.pid_get(p2p.pid).mapp2p.map_data_pack()
+            map_pack = self.pid_get(p2p.pid).mapp2p.map_data_pack(fmake_participant)
             p2p.mapp2p.map_data_merge(map_pack)
         self.service[p2p.pid] = p2p
 

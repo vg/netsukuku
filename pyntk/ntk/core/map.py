@@ -38,7 +38,7 @@ class DataClass(object):
     As another example, look MapRoute and RouteNode in route.py
     """
 
-    def __init__(self, level, id):
+    def __init__(self, level, id, its_me=False):
         # do something
         pass
 
@@ -71,7 +71,10 @@ class Map(object):
         self.node = [[None] * self.gsize for i in xrange(self.levels)]
         # Number of nodes of each level, that is:
         #   self.node_nb[i] = number of (g)nodes inside the gnode self.me[i+1]
-        self.node_nb = [1] * self.levels 
+        self.node_nb = [0] * self.levels
+        for lvl in xrange(self.levels):
+            node_me = self.node_get(lvl, me[lvl])
+            self.node_add(lvl, me[lvl], silent=1)
 
         self.events = Event(['NODE_NEW', 'NODE_DELETED', 'ME_CHANGED'])
 
@@ -82,23 +85,36 @@ class Map(object):
         it doesn't exist, it is created"""
 
         if self.node[lvl][id] is None:
-            self.node[lvl][id] = self.dataclass(lvl, id)
+            if self.me is not None and self.me[lvl] == id:
+                self.node[lvl][id] = self.dataclass(lvl, id, its_me=True)
+            else:
+                self.node[lvl][id] = self.dataclass(lvl, id)
         return self.node[lvl][id]
 
     def node_add(self, lvl, id, silent=0):
-        self.node_get(lvl, id)
-        self.node_nb[lvl] += 1
-        if not silent:
-            self.events.send('NODE_NEW', (lvl, id))
+        """Add node 'id` at level 'lvl'.
+        
+        The caller of this method has the responsibility to check that the node was
+        previously free, and that now it is busy. This method just sends the event
+        and updates the counters"""
+        node = self.node[lvl][id]
+        if node is not None and not node.is_free():
+            self.node_nb[lvl] += 1
+            if not silent:
+                self.events.send('NODE_NEW', (lvl, id))
 
     def node_del(self, lvl, id, silent=0):
-        ''' Delete node 'id` at level 'lvl` '''
-        if self.node_nb[lvl] > 0:
-            self.node_nb[lvl] -= 1
-
-        if not silent:
-            self.events.send('NODE_DELETED', (lvl, id))
-        self.node[lvl][id]=None
+        """Delete node 'id` at level 'lvl'.
+        
+        This method checks that the node was previously busy. Then it deletes the
+        node, sends the event and updates the counters"""
+        node = self.node[lvl][id]
+        if node is not None and not node.is_free():
+            self.node[lvl][id]=None
+            if self.node_nb[lvl] > 0:
+                self.node_nb[lvl] -= 1
+            if not silent:
+                self.events.send('NODE_DELETED', (lvl, id))
 
     def free_nodes_nb(self, lvl):
         """Returns the number of free nodes of level `lvl'"""
@@ -161,8 +177,9 @@ class Map(object):
 
     def level_reset(self, level):
         """Resets the specified level, without raising any event"""
-        self.node[level]    = [None]*self.gsize
-        self.node_nb[level] = 1
+        self.node[level] = [None]*self.gsize
+        self.node_nb[level] = 0
+        self.node_add(level, self.me[level], silent=1)
 
     def map_reset(self):
         """Silently resets the whole map"""
@@ -171,29 +188,56 @@ class Map(object):
 
     def me_change(self, new_me):
         """Changes self.me"""
+        # changing my nip will make many nodes no more significant in my map
+        lev = self.nip_cmp(self.me, new_me)
+        if lev == -1: return  # the same old nip
+        for l in xrange(lev):
+            self.level_reset(l)
+        # silently remove the dataclass objects representing old me (current)
+        for l in xrange(self.levels):
+                self.node[l][self.me[l]] = None
+        # now, change
         old_me = self.me[:]
         self.me = new_me[:]
-        self.events.send('ME_CHANGED', (old_me, new_me))
+        # silently add the dataclass objects representing new me
+        for l in xrange(self.levels):
+                self.node[l][self.me[l]] = self.dataclass(l, self.me[l], its_me=True)
+        self.events.send('ME_CHANGED', (old_me, self.me))
 
-    def map_data_pack(self):
-        return (self.me, [ [self.node[lvl][id] for id in xrange(self.gsize)]
+    def map_data_pack(self, func=None):
+        """Prepares a packed_map to be passed to map_data_merge in another host.
+        
+        "func" is a function that receives a node and makes it not free.
+        It is needed to make a node "normally busy" that is "its_me busy"
+        in my point of view, but won't be in the other nip's point of view."""
+        ret = (self.me, [ [self.node[lvl][id] for id in xrange(self.gsize)]
                              for lvl in xrange(self.levels) ],
                 [self.node_nb[lvl] for lvl in xrange(self.levels)])
+        for lvl in xrange(self.levels):
+            # self.me MUST be replaced
+            # with a normal node
+            node = self.dataclass(lvl, self.me[lvl])
+            if func: func(node)
+            ret[1][lvl][self.me[lvl]] = node
+        return ret
 
     def map_data_merge(self, (nip, plist, nblist)):
+        """Copies a map from another nip's point of view."""
         lvl=self.nip_cmp(nip, self.me)
         logging.log(logging.ULTRADEBUG, 'Merging a map at level ' + str(lvl))
         logging.log(logging.ULTRADEBUG, get_stackframes(back=1))
         for l in xrange(lvl, self.levels):
                 self.node_nb[l]=nblist[l]
                 for id in xrange(self.gsize):
+                    if id != self.me[l]:  # self.me MUST NOT be replaced
+                                          # with a normal node
                         self.node[l][id]=plist[l][id]
         for l in xrange(0, lvl):
                 self.level_reset(l)
-        logging.log(logging.ULTRADEBUG, str(self.map_data_pack()))
+        logging.log(logging.ULTRADEBUG, self.repr_me())
 
     def repr_me(self, func_repr_node=None):
-        ret = 'me' + str(self.me) + ', node_nb,' + str(self.node_nb) + ' {'
+        ret = 'me ' + str(self.me) + ', node_nb ' + str(self.node_nb) + ', {'
         for lvl in xrange(self.levels):
             ret += self.repr_level(lvl, func_repr_node)
         ret += '}'

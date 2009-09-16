@@ -35,17 +35,18 @@ from ntk.network.inet import valid_ids
 
 
 class Node(object):
-    def __init__(self, 
-                 lvl=None, id=None, alive=False  # these are mandatory for Map.__init__(),
-                ):
-        
+    def __init__(self, lvl, id, alive=False, its_me=False):
+        self.lvl = lvl
+        self.id = id
+        self.its_me = its_me
         self.alive = alive
 
     def is_free(self):
+        if self.its_me: return False
         return not self.alive
 
     def _pack(self):
-        return (0, 0, self.alive)
+        return (self.lvl, self.id, self.alive)
 
 serializable.register(Node)
 
@@ -63,16 +64,12 @@ class MapCache(Map):
         for lvl in xrange(self.levels):
                 for id in xrange(self.gsize):
                         if not maproute.node_get(lvl, id).is_empty():
-                                self.node_add(lvl, id)
+                                self.deriv_node_add(lvl, id)
 
-    def node_add(self, lvl, id):
+    def deriv_node_add(self, lvl, id):
         if self.node_get(lvl, id).is_free():
-                Map.node_add(self, lvl, id)
                 self.node_get(lvl, id).alive = True
-
-    def node_del(self, lvl, id):
-        if self.node_get(lvl, id).alive:
-                Map.node_del(self, lvl, id)
+                Map.node_add(self, lvl, id)
 
     def tmp_deleted_add(self, lvl, id):
         self.tmp_deleted[lvl, id] = time()
@@ -140,6 +137,10 @@ class Coord(P2P):
         """Let's become a participant node"""
         P2P.participate(self)  # base method
         self.coord_nodes_set()
+        def repr_node_mapp2p(node):
+            if node.participant: return 'X'
+            return ' '
+        logging.log(logging.ULTRADEBUG, 'Coord: My actual participant list is: ' + self.mapp2p.repr_me(repr_node_mapp2p))
 
     @microfunc()
     def new_participant_joined(self, lvl, id):
@@ -178,7 +179,9 @@ class Coord(P2P):
             logging.debug('Coord: I was coordinator for our level ' + str(level) + ', new coordinator is ' + str(HhIP))
             logging.debug('Coord: So I will pass him my mapcache.')
             peer = self.peer(hIP=hIP)
-            peer.mapcache.map_data_merge(self.mapcache.map_data_pack())
+            def fmake_alive(node):
+                node.alive = True
+            peer.mapcache.map_data_merge(self.mapcache.map_data_pack(fmake_alive))
             logging.debug('Coord: Done passing my mapcache.')
 
     def going_out(self, lvl, id, gnumb=None):
@@ -219,6 +222,10 @@ class Coord(P2P):
         newnip = self.mapcache.me
         newnip[lvl] = choice(fnl)
         for l in reversed(xrange(lvl)): newnip[l] = choice(valid_ids(lvl, newnip))
-        self.mapcache.node_add(lvl, newnip[lvl])
+        # it should be previously free...
+        node = self.mapcache.node_get(lvl, newnip[lvl])
+        if node.is_free():
+            node.alive = True
+            self.mapcache.node_add(lvl, newnip[lvl])
         return newnip
 

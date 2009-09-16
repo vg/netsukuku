@@ -61,7 +61,7 @@ def init_logger():
 
 def get_stackframes(back=0):
     ret = sys._current_frames().items()[0][1]
-    while not ret is None and ret.f_back and back >= 0:
+    while ret is not None and ret.f_back and back >= 0:
         ret = ret.f_back
         back -= 1
     return get_stackframes_repr(ret)
