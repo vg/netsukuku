@@ -332,9 +332,9 @@ class RouteNode(object):
     def nroutes(self):
         return len(self.routes)
 
-    def best_route(self, exclude_gw=-1):
+    def best_route(self, exclude_gw=[]):
         for r in self.routes:
-            if r.gw != exclude_gw: return r
+            if r.gw not in exclude_gw: return r
         return None
 
     def __repr__(self):
@@ -523,7 +523,7 @@ class MapRoute(Map):
         lvl = self.nip_cmp(self.me, neigh.nip)
         return (lvl, neigh.nip[lvl])
 
-    def bestroutes_get(self, f=ftrue, exclude_gw=-1):
+    def bestroutes_get(self, f=ftrue, exclude_gw=[]):
         """Returns the list of all the best routes of the map.
 
            Let L be the returned list, then L[lvl] is the list of all the best
@@ -534,9 +534,9 @@ class MapRoute(Map):
            If a function `f' has been specified, then each element L[lvl][i]
            in L is such that f(L[lvl][i])==True.
            
-           If a gateway ID has been specified in exclude_gw then the routes
-           using that gateway are not considered when searching for best
-           routes.
+           If a list of gateway IDs have been specified in exclude_gw then the
+           routes using those gateways are not considered when searching for
+           best routes.
            """
         return [
                 [ (dst, br.gw, br.rem)

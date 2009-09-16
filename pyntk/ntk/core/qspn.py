@@ -91,7 +91,7 @@ class Etp:
         set_of_R = {}
         for nr in self.neigh.neigh_list():
             if nr.id != neigh.id:
-                set_of_R[nr.id] = self.maproute.bestroutes_get(f=gw_is_neigh, exclude_gw=nr.id)
+                set_of_R[nr.id] = self.maproute.bestroutes_get(f=gw_is_neigh, exclude_gw=[nr.id])
         ##
 
         ## Update the map
@@ -123,8 +123,8 @@ class Etp:
                     if r is not None:
                         return r.rem
                     return DeadRem()
-                R2 = [ 
-                      [ (dst, rem_or_none(self.maproute.node_get(lvl, dst).best_route(exclude_gw=nr.id)))
+                R2 = [
+                      [ (dst, rem_or_none(self.maproute.node_get(lvl, dst).best_route(exclude_gw=[nr.id])))
                             for (dst,gw,rem) in set_of_R[nr.id][lvl]
                       ] for lvl in xrange(self.maproute.levels)
                      ]
@@ -157,7 +157,7 @@ class Etp:
         logging.debug('QSPN: new changed %s: prepare the ETP', ip_to_str(neigh.ip))
         
         ## Create R
-        R = self.maproute.bestroutes_get(exclude_gw=neigh.id)
+        R = self.maproute.bestroutes_get(exclude_gw=[neigh.id])
 
         # Usually we don't need to send a ETP if R is empty. But we have to send
         # the ETP in any case if this link is new (that is, oldrem is None).
@@ -320,7 +320,7 @@ class Etp:
                 best_routes_of_R = dict( [ ((lvl, dst), r)
                                            for lvl in xrange(self.maproute.levels)
                                                for dst, rem in R[lvl]
-                                                   for r in [self.maproute.node_get(lvl, dst).best_route(exclude_gw=nr.id)]
+                                                   for r in [self.maproute.node_get(lvl, dst).best_route(exclude_gw=[nr.id])]
                                          ] )
                 ## S
                 def nr_doesnt_care(lvl, dst, r):
@@ -328,7 +328,8 @@ class Etp:
                     if self.maproute.me[lvl] == dst: return True
                     # If best route (except for nr) is none, then nr cares.
                     if r is None: return False 
-                    # If best route (except for nr) is neigh, then nr cares. Else not.
+                    # If best route (except for nr) is neigh, then nr cares.
+                    # Else it does not.
                     return r.gw != gw
                 # If step 5 is omitted we don't need the Rem in S.
                 S = [ [ (dst, None)
