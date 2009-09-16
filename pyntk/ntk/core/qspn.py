@@ -246,7 +246,7 @@ class Etp:
 
         ## ATP rule
         for block in TPL:
-                if self.maproute.me[block[0]] in block[1]:
+                if self.maproute.me[block[0]] in [x[0] for x in block[1]]:
                         logging.debug('ETP received: Executing: Ignore ETP because of Acyclic Rule.')
                         return    # drop the pkt
         ##
