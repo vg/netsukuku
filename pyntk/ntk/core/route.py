@@ -263,23 +263,20 @@ class RouteNode(object):
         val = None
         oldr = self.route_getby_gw(gw)
 
-        if self.is_empty() or (oldr is None and rem > self.routes[-1].rem):
-            # If there aren't routes, or if it is better than the worst
-            # route, add it
+        if oldr is None:
+            # If there isn't a route through this gateway, add it
             self.routes.append(RouteGw(gw, rem))
             ret = 1
-        elif oldr is not None and rem > oldr.rem:
+            self.sort()
+        elif rem > oldr.rem:
             # We already have a route with gateway `gw'. However, the new
             # route is better. Let's update the rem.
             oldrem = oldr.rem_modify(rem)
             val = oldrem
             ret = 2
-        else:
-            return (ret, val) # route not interesting
+            self.sort()
 
-        self.sort()
-
-        return (ret, val)         # good route
+        return (ret, val)
 
     def route_del(self, gw):
         """Delete a route.
