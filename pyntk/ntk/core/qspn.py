@@ -48,7 +48,7 @@ class Etp:
         self.neigh.events.listen('NEIGH_REM_CHGED', self.etp_new_changed)
         self.neigh.events.listen('NEIGH_DELETED', self.etp_new_dead)
 
-        self.events = Event(['ETP_EXECUTED', 'NET_COLLISION'])
+        self.events = Event(['ETP_EXECUTED', 'NET_COLLISION', 'COMPLETE_HOOK'])
 
         self.remotable_funcs = [self.etp_exec]
 
@@ -145,7 +145,7 @@ class Etp:
         logging.info('Sending ETP for a new neighbour or changed REM.')
         logging.debug("Etp: sending to %s", ip_to_str(neigh.ip))
         try:
-            neigh.ntkd.etp.etp_exec(self.maproute.me, *etp)
+            neigh.ntkd.etp.etp_exec(self.maproute.me, self.radar.netid, *etp)
             logging.info("Sent ETP to %s", ip_to_str(neigh.ip))
             # RPCErrors may arise for many reasons. We should not care.
             # Also, we don't need to produce an error log.
@@ -156,10 +156,11 @@ class Etp:
         ##
 
     @microfunc(True)
-    def etp_exec(self, sender_nip, R, TPL, flag_of_interest, event_wait=None):
+    def etp_exec(self, sender_nip, sender_netid, R, TPL, flag_of_interest, event_wait=None):
         """Executes a received ETP
         
         sender_nip: sender ntk ip (see map.py)
+        sender_netid: updated network id of the sender
         R  : the set of routes of the ETP
         TPL: the tracer packet of the path covered until now by this ETP.
              This TP may have covered different levels. In general, TPL 
@@ -170,8 +171,11 @@ class Etp:
         flag_of_interest: a boolean
         """
 
-        gwnip   = sender_nip
-        neigh   = self.neigh.ip_to_neigh(self.maproute.nip_to_ip(gwnip))
+        gwnip = sender_nip
+        gwip = self.maproute.nip_to_ip(gwnip)
+        # update our neighbour's netid
+        self.neigh.netid_table[gwip] = sender_netid
+        neigh = self.neigh.ip_to_neigh(gwip)
         
         # check if we have found the neigh, otherwise wait it
         while neigh is None:
@@ -180,8 +184,8 @@ class Etp:
                         # ok, continue now
                         neigh   = self.neigh.ip_to_neigh(self.maproute.nip_to_ip(gwnip))
                         
-        gw      = neigh.id
-        gwrem   = neigh.rem
+        gw = neigh.id
+        gwrem = neigh.rem
 
         logging.info("Received ETP from %s", ip_to_str(neigh.ip))
         
@@ -340,7 +344,7 @@ class Etp:
             if nr.id not in exclude:
                 logging.debug("Etp: forwarding to %s", ip_to_str(nr.ip))
                 try:
-                    nr.ntkd.etp.etp_exec(self.maproute.me, *etp)
+                    nr.ntkd.etp.etp_exec(self.maproute.me, self.radar.netid, *etp)
                     logging.info("Sent ETP to %s", ip_to_str(nr.ip))
                     # RPCErrors may arise for many reasons. We should not care.
                 except RPCError:
@@ -357,9 +361,14 @@ class Etp:
         """
         
         logging.debug("Etp: collision check: my netid %d and neighbour's netid %d", self.radar.netid, neigh.netid)
+
+        if neigh.netid == -1: raise Exception('ETP received from a node with netid = -1 (not completely kooked).')
+
         if self.radar.netid == -1:
-            logging.info('Now I know my network id: %s' % neigh.netid)
             self.radar.netid = neigh.netid
+            logging.info('Now I know my network id: %s' % neigh.netid)
+            self.events.send('COMPLETE_HOOK', ())
+
         if neigh.netid == self.radar.netid:
             return (False, R) # all ok
 
@@ -426,6 +435,7 @@ class Etp:
         #From now on, we are in the new net
         logging.info('From now on, we are in the new net, our network id: %s' % neigh.netid)
         self.radar.netid = neigh.netid
+        self.events.send('COMPLETE_HOOK', ())
 
         return (False, R)
 

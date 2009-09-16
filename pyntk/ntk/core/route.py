@@ -321,7 +321,10 @@ class RouteNode(object):
         return not self.busy
 
     def _pack(self):
-        return (self.lvl, self.id, self.busy)
+        # lvl and id are not used (as for now) at the time of de-serialization. So
+        # use the value that will produce the smaller output with rencode.dumps.
+        # TODO test what this value is... perhaps None is better than 0 ?
+        return (0, 0, self.busy)
 
     def nroutes(self):
         return len(self.routes)

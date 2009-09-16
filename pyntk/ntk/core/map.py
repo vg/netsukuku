@@ -73,8 +73,8 @@ class Map(object):
         #   self.node_nb[i] = number of (g)nodes inside the gnode self.me[i+1]
         self.node_nb = [0] * self.levels
         for lvl in xrange(self.levels):
-            node_me = self.node_get(lvl, me[lvl])
-            self.node_add(lvl, me[lvl], silent=1)
+            node_me = self.node_get(lvl, self.me[lvl])
+            if not node_me.is_free(): self.node_add(lvl, self.me[lvl], silent=1)
 
         self.events = Event(['NODE_NEW', 'NODE_DELETED', 'ME_CHANGED'])
 
@@ -179,7 +179,8 @@ class Map(object):
         """Resets the specified level, without raising any event"""
         self.node[level] = [None]*self.gsize
         self.node_nb[level] = 0
-        self.node_add(level, self.me[level], silent=1)
+        node_me = self.node_get(level, self.me[level])
+        if not node_me.is_free(): self.node_add(level, self.me[level], silent=1)
 
     def map_reset(self):
         """Silently resets the whole map"""

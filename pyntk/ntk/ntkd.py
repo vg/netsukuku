@@ -78,10 +78,15 @@ class NtkNode(object):
         logging.log(logging.ULTRADEBUG, self.maproute.repr_me())
         self.etp = qspn.Etp(self.radar, self.maproute)
 
-        self.p2p = p2p.P2PAll(self.radar, self.maproute)
+        self.p2p = p2p.P2PAll(self.radar, self.maproute, self.etp)
         self.coordnode = coord.Coord(self.radar, self.maproute, self.p2p)
         logging.log(logging.ULTRADEBUG, 'NtkNode: This is mapcache of coord as soon as started.')
         logging.log(logging.ULTRADEBUG, self.coordnode.mapcache.repr_me())
+        def repr_node_mapp2p(node):
+            if node.participant: return 'X'
+            return ' '
+        logging.log(logging.ULTRADEBUG, 'NtkNode: This is mapp2p of coord as soon as started.')
+        logging.log(logging.ULTRADEBUG, self.coordnode.mapp2p.repr_me(repr_node_mapp2p))
         self.hook = hook.Hook(self.radar, self.maproute, self.etp,
                               self.coordnode, self.nic_manager)
 
@@ -90,12 +95,10 @@ class NtkNode(object):
                                               events=[(self.radar.events, 'SCAN_DONE'),
                                                       (self.hook.events, 'HOOKED')])
 
-        self.p2p.listen_hook_ev(self.hook)
-
         if not self.simulated:
             self.kroute = kroute.KrnlRoute(self.neighbour, self.maproute)
 
-    def reset(self, oldnip=None, newnip=None):
+    def reset(self, oldip=None, newnip=None):
         logging.debug('resetting node')
         # clean our map route
         self.maproute.map_reset()

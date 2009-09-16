@@ -43,8 +43,8 @@ class Hook(object):
 
         self.events = Event(['HOOKED'])
 
-        etp.events.listen('ETP_EXECUTED', self.communicating_vessels)
-        etp.events.listen('NET_COLLISION', self.hook)
+        self.etp.events.listen('ETP_EXECUTED', self.communicating_vessels)
+        self.etp.events.listen('NET_COLLISION', self.hook)
 
         self.remotable_funcs = [self.communicating_vessels,
                                 self.highest_free_nodes,
@@ -149,9 +149,9 @@ class Hook(object):
             return we_are_alone or previous_netid != -1
         if is_current_hfn_valid():
             hfn = [(self.maproute.me, self.highest_free_nodes())]
-            logging.log(logging.ULTRADEBUG, 'Hook: highest non saturated gnodes that I know: ' + str(hfn))
+            logging.info('Hook: highest non saturated gnodes that I know: ' + str(hfn))
         else:
-            logging.log(logging.ULTRADEBUG, 'Hook: highest non saturated gnodes that I know is irrelevant.')
+            logging.info('Hook: highest non saturated gnodes that I know is irrelevant.')
 
         def is_neigh_forbidden(nrip):
                 for lvl, fnr in forbidden_neighs:
@@ -175,7 +175,7 @@ class Hook(object):
                 nrnip=self.maproute.ip_to_nip(nr.ip)
                 nr_hfn = self.call_highest_free_nodes_udp(nrnip)
                 hfn.append((nrnip, nr_hfn))
-                logging.log(logging.ULTRADEBUG, 'Hook: highest non saturated gnodes that ' + str(nrnip) + ' knows: ' + str(nr_hfn))
+                logging.info('Hook: highest non saturated gnodes that ' + str(nrnip) + ' knows: ' + str(nr_hfn))
         ##
 
         ## Find all the hfn elements with the highest level and 
@@ -240,6 +240,8 @@ class Hook(object):
                         Gnumb = co.going_out(0, self.maproute.me[0], gnumb)
                         if Gnumb is None:
                                 # nothing to be done
+                                logging.info('Hooking procedure canceled because of \'condition\'. Our network id is back.')
+                                self.radar.netid = previous_netid
                                 return
 
                         # <<I'm going in, can I?>>
@@ -261,9 +263,9 @@ class Hook(object):
                         # <<I'm going in, can I?>>
                         co2 = self.coordnode.peer(key = (lvl+1, newnip), use_udp_nip=neigh_coord_service_nip)
                         # ask if we can get in, get our new IP
-                        logging.debug('contacting coordinator node...')
+                        logging.info('Hook: contacting coordinator node...')
                         newnip=co2.going_in(lvl)
-                        logging.debug('contacted coordinator node, assigned nip = ' + str(newnip))
+                        logging.info('Hook: contacted coordinator node, assigned nip = ' + str(newnip))
                         if newnip is None:
                                 raise Exception, "Netsukuku is full"
                         # TODO do we need to implement a close?
@@ -306,6 +308,8 @@ class Hook(object):
         logging.info('Hooking procedure completed.')
         if self.radar.netid == -1:
             logging.info('We haven\'t got any network id yet.')
+        else:
+            self.etp.events.send('COMPLETE_HOOK', ())
         self.events.send('HOOKED', (oldip, newnip[:]))
         ##
         

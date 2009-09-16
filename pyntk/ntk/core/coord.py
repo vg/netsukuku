@@ -46,7 +46,10 @@ class Node(object):
         return not self.alive
 
     def _pack(self):
-        return (self.lvl, self.id, self.alive)
+        # lvl and id are not used (as for now) at the time of de-serialization. So
+        # use the value that will produce the smaller output with rencode.dumps.
+        # TODO test what this value is... perhaps None is better than 0 ?
+        return (0, 0, self.alive)
 
 serializable.register(Node)
 
@@ -129,24 +132,21 @@ class Coord(P2P):
 
     def coord_nodes_set(self):
         """Sets the coordinator nodes of each level, using the current map"""
-        logging.log(logging.ULTRADEBUG, 'Coord: calculating coord_nodes for our gnodes of each level.')
+        logging.log(logging.ULTRADEBUG, 'Coord: calculating coord_nodes for our gnodes of each level...')
         for lvl in xrange(self.maproute.levels):
                 self.coordnode[lvl+1] = self.H(self.h((lvl+1, self.maproute.me)))
+        logging.log(logging.ULTRADEBUG, 'Coord: coord_nodes (Note: check from the second one) is now ' + str(self.coordnode))
 
     def participate(self):
         """Let's become a participant node"""
         P2P.participate(self)  # base method
         self.coord_nodes_set()
-        def repr_node_mapp2p(node):
-            if node.participant: return 'X'
-            return ' '
-        logging.log(logging.ULTRADEBUG, 'Coord: My actual participant list is: ' + self.mapp2p.repr_me(repr_node_mapp2p))
 
     @microfunc()
     def new_participant_joined(self, lvl, id):
         """Shall the new participant succeed us as a coordinator node?"""
 
-        logging.log(logging.ULTRADEBUG, 'Coord: new_participant_joined started')
+        logging.log(logging.ULTRADEBUG, 'Coord: new_participant_joined started, a new participant in level ' + str(lvl) + ' id ' + str(id))
         # the node joined in level `lvl', thus it may be a coordinator of the
         # level `lvl+1'
         level = lvl + 1
@@ -155,7 +155,7 @@ class Coord(P2P):
         pIP = self.maproute.me[:]
         pIP[lvl] = id
         for l in reversed(xrange(lvl)): pIP[l] = None
-        # Note: I don't know its exact IP, it may have some None in lower levels.
+        # Note: I don't know its exact IP, it may have some None in lower-than-lvl levels.
 
         # Was I the previous coordinator? Remember it.
         it_was_me = self.coordnode[level] == self.maproute.me
@@ -165,13 +165,14 @@ class Coord(P2P):
         # as to our knowledge, the nearest participant to 'hIP' is now...
         HhIP = self.H(hIP)
         # Is it the new participant?
-        if HhIP != pIP:
+        for j in xrange(lvl, self.maproute.levels):
+            if HhIP[j] != pIP[j]:
                 # the new participant isn't a coordinator node
                 return
 
         # Yes it is. Keep track.
         self.coordnode[level] = HhIP
-        logging.log(logging.ULTRADEBUG, 'Coord: new coordinator for our level ' + str(level) + ' is ' + str(HhIP))
+        logging.info('Coord: new coordinator for our level ' + str(level) + ' is ' + str(HhIP))
 
         # Then, if I was the previous one... (Tricky enough, new participant could just be me!)
         if it_was_me and HhIP != self.maproute.me:

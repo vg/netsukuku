@@ -39,11 +39,15 @@ class ParticipantNode(object):
 
     def is_free(self):
         '''Override the is_free() method of DataClass (see map.py)'''
-        if self.its_me: return False
+        # DON'T DO THIS:   if self.its_me: return False
+        # Myself, I might be not participant!
         return not self.participant
 
     def _pack(self):
-        return (self.lvl, self.id, self.participant)
+        # lvl and id are not used (as for now) at the time of de-serialization. So
+        # use the value that will produce the smaller output with rencode.dumps.
+        # TODO test what this value is... perhaps None is better than 0 ?
+        return (0, 0, self.participant)
 
 serializable.register(ParticipantNode)
 
@@ -64,7 +68,11 @@ class MapP2P(Map):
         """self.me is now a participant node"""
 
         for l in xrange(self.levels):
-                self.node_get(l, self.me[l]).participant = True
+            node = self.node_get(l, self.me[l])
+            was_free = node.is_free()
+            node.participant = True
+            if was_free and not node.is_free():
+                self.node_add(l, self.me[l])
 
     @microfunc()
     def me_changed(self, old_me, new_me):
@@ -158,7 +166,7 @@ class P2P(RPCDispatcher):
             stringexec = "nr.ntkd.p2p.PID_"+str(self.mapp2p.pid)+".participant_add(self.maproute.me)"
             logging.debug(stringexec)
             exec(stringexec)
-            logging.debug('done')
+            logging.debug('done calling participant_add(myself) to %s.' % self.maproute.ip_to_nip(nr.ip))
 
     def participant_add(self, pIP):
         continue_to_forward = False
@@ -181,11 +189,11 @@ class P2P(RPCDispatcher):
         # TODO do we have to skip the one who sent to us?
 
         for nr in self.neigh.neigh_list():
-            logging.debug('forwarding participant_add(%s) to %s.' % (pIP, self.maproute.ip_to_nip(nr.ip)))
+            logging.debug('forwarding participant_add(%s) to %s service %s.' % (pIP, self.maproute.ip_to_nip(nr.ip), self.mapp2p.pid))
             stringexec = "nr.ntkd.p2p.PID_"+str(self.mapp2p.pid)+".participant_add(pIP)"
             logging.debug(stringexec)
             exec(stringexec)
-            logging.debug('done')
+            logging.debug('done forwarding participant_add(%s) to %s.' % (pIP, self.maproute.ip_to_nip(nr.ip)))
 
 
     def msg_send(self, sender_nip, hip, msg, use_udp_nip=None):
@@ -287,22 +295,23 @@ class P2PAll(object):
                  'maproute',
                  'service',
                  'remotable_funcs',
-                 'events']
+                 'events',
+                 'etp']
 
-    def __init__(self, radar, maproute):
+    def __init__(self, radar, maproute, etp):
         self.radar = radar
         self.neigh = radar.neigh
         self.maproute = maproute
+        self.etp = etp
 
         self.service = {}
 
         self.remotable_funcs = [self.pid_getall]
         self.events=Event(['P2P_HOOKED'])
-
-    def listen_hook_ev(self, hook):
-        hook.events.listen('HOOKED', self.p2p_hook)
+        self.etp.events.listen('COMPLETE_HOOK', self.p2p_hook)
 
     def pid_add(self, pid):
+        logging.log(logging.ULTRADEBUG, 'Called P2PAll.pid_add...')
         self.service[pid] = P2P(self.radar, self.maproute, pid)
         return self.service[pid]
 
@@ -326,6 +335,7 @@ class P2PAll(object):
         """Used to add for the first time a P2P instance of a module in the
            P2PAll dictionary."""
 
+        logging.log(logging.ULTRADEBUG, 'Called P2PAll.p2p_register for ' + str(p2p.pid) + '...')
         # It's possible that the stub P2P instance `self.pid_get(p2p.pid)'
         # created by pid_add() has an update map of participants, which has
         # been accumulated during the time. Copy this map in the `p2p'
@@ -333,6 +343,7 @@ class P2PAll(object):
         def fmake_participant(node):
             node.participant = True
         if p2p.pid in self.service:
+            logging.log(logging.ULTRADEBUG, 'Called P2PAll.p2p_register for ' + str(p2p.pid) + '... cloning...')
             map_pack = self.pid_get(p2p.pid).mapp2p.map_data_pack(fmake_participant)
             p2p.mapp2p.map_data_merge(map_pack)
         self.service[p2p.pid] = p2p
@@ -342,7 +353,7 @@ class P2PAll(object):
     #    self.pid_get(pid).participant_add(pIP)
 
     @microfunc()
-    def p2p_hook(self, *args):
+    def p2p_hook(self):
         """P2P hooking procedure
 
         It gets the P2P maps from our nearest neighbour"""
