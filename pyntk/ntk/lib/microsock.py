@@ -35,6 +35,7 @@
 from ntk.lib.log import logger as logging
 from ntk.lib.log import get_stackframes
 from ntk.lib.micro import Channel, micro, allmicro_run, micro_block
+import time as stdtime
 from ntk.wrap.xtime import swait, time
 
 import asyncore
@@ -163,11 +164,8 @@ def socket(family=AF_INET, type=SOCK_STREAM, proto=0):
     # Ensure that the sockets actually work.
     _manage_sockets_func()
     stacktrace = get_stackframes(back=1)
-    if stacktrace.find('dgram_request_handler') >= 0:
-        # a reply to a udp request
-        if stacktrace.find('reply') >= 0:
-            stacktrace = 'handling of a radar.reply'
-    #logging.debug('created dispatcher ' + ret.dispatcher.__repr__() + ' in ' + stacktrace)
+    logging.log(logging.ULTRADEBUG, 'created dispatcher ' + ret.dispatcher.__repr__() + ' in ' + stacktrace)
+    logging.log(logging.ULTRADEBUG, 'asyncore map: ' + str(asyncore.socket_map))
     return ret
 
 # This is a facade to the dispatcher object.
@@ -199,11 +197,8 @@ class stacklesssocket(object):
     def __del__(self):
         try:
             stacktrace = get_stackframes(back=1)
-            if stacktrace.find('dgram_request_handler') >= 0:
-                # a reply to a udp request
-                if stacktrace.find('reply') >= 0:
-                    stacktrace = 'handling of a radar.reply'
-            #logging.debug('**removed** dispatcher ' + self.dispatcher.__repr__() + ' in ' + stacktrace)
+            logging.log(logging.ULTRADEBUG, '**removed** dispatcher ' + self.dispatcher.__repr__() + ' in ' + stacktrace)
+            logging.log(logging.ULTRADEBUG, 'asyncore map: ' + str(asyncore.socket_map))
             # Close dispatcher if it isn't already closed
             if self.dispatcher.fileno() is not None:
                 try:
@@ -243,6 +238,8 @@ class dispatcher(asyncore.dispatcher):
         self.readBufferList = []
 
         self.sendBuffer = ''
+        self.send_has_exception = None
+        self.send_will_handle_exception = False
         self.sendToBuffers = []
 
         self.maxreceivebuf=65536
@@ -291,12 +288,21 @@ class dispatcher(asyncore.dispatcher):
         return len(data)
 
     def sendall(self, data):
-        self.sendBuffer += data
-        while self.sendBuffer:
-            micro_block()
-            import time
-            time.sleep(0.001)
-
+        self.send_has_exception = None
+        self.send_will_handle_exception = True
+        try:
+            self.sendBuffer += data
+            while True:
+                # Handling errors
+                if self.send_has_exception:
+                    # self.sendBuffer has been already cleared.
+                    raise self.send_has_exception
+                if self.sendBuffer == '':
+                    break
+                micro_block()
+                stdtime.sleep(0.001)
+        finally:
+            self.send_will_handle_exception = False
         return len(data)
 
     def sendto(self, sendData, sendAddress):
@@ -311,7 +317,14 @@ class dispatcher(asyncore.dispatcher):
             waitChannel = Channel(micro_send=True)
             self.sendToBuffers.append((sendData, sendAddress, waitChannel, 0, 1))
 
-        return waitChannel.recv()
+        ret = waitChannel.recv()
+        # Handling errors
+        # I receive a message with the following format:
+        #     ('rmt_error', message_error)
+        # where message_error is a string
+        if isinstance(ret, tuple) and ret[0] == 'microsock_error':
+            raise error(ret[1])
+        return ret
 
     # Read at most byteCount bytes.
     def recv(self, byteCount):
@@ -431,19 +444,34 @@ class dispatcher(asyncore.dispatcher):
             self._justConnected = False
             return
         if len(self.sendBuffer):
-            sentBytes = asyncore.dispatcher.send(self, self.sendBuffer[:512])
-            self.sendBuffer = self.sendBuffer[sentBytes:]
+            try:
+                sentBytes = asyncore.dispatcher.send(self, self.sendBuffer[:512])
+            except Exception as e:
+                logging.log(logging.ULTRADEBUG, 'microsock: dispatcher ' + self.__repr__() + ' in handle_write raised ' + str(type(e)) + ' - ' + str(e))
+                self.sendBuffer = ''
+                if self.send_will_handle_exception:
+                    self.send_has_exception = e
+                else:
+                    logging.warning('An exception was raised in microsock.dispatcher.handle_write raised, that won\'t be reported.')
+            else:
+                self.sendBuffer = self.sendBuffer[sentBytes:]
         elif len(self.sendToBuffers):
             data, address, channel, oldSentBytes, waiting_tasklets = self.sendToBuffers[0]
-            sentBytes = self.socket.sendto(data, address)
-            totalSentBytes = oldSentBytes + sentBytes
-            if len(data) > sentBytes:
-                self.sendToBuffers[0] = data[sentBytes:], address, channel, totalSentBytes, waiting_tasklets
-
-            else:
+            try:
+                sentBytes = self.socket.sendto(data, address)
+            except Exception as e:
+                logging.log(logging.ULTRADEBUG, 'microsock: dispatcher ' + self.__repr__() + ' in handle_write raised ' + str(type(e)) + ' - ' + str(e))
                 del self.sendToBuffers[0]
                 for i in xrange(waiting_tasklets):
-                    channel.send(totalSentBytes)
+                    channel.send(('microsock_error', str(e)))
+            else:
+                totalSentBytes = oldSentBytes + sentBytes
+                if len(data) > sentBytes:
+                    self.sendToBuffers[0] = data[sentBytes:], address, channel, totalSentBytes, waiting_tasklets
+                else:
+                    del self.sendToBuffers[0]
+                    for i in xrange(waiting_tasklets):
+                        channel.send(totalSentBytes)
 
 
     # In order for incoming connections to be stackless compatible,
