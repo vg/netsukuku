@@ -59,7 +59,7 @@ class Neigh(object):
     __slots__ = ['devs', 'bestdev', 'ip', 'nip', 'id', 'rem', 'ntkd', 'netid']
 
     def __init__(self, bestdev, devs, ip, netid,
-                 idn=None, ntkd=None, nip=None):
+                 id=None, ntkd=None, nip=None):
         """
         ip: neighbour's ip;
         netid: network id of the node
@@ -70,7 +70,7 @@ class Neigh(object):
 
         nip: neighbour's nip;
         ntkd: neighbour's ntk remote instance
-        idn: neighbour's id; use Neighbour.key_to_id to create it
+        id: neighbour's id; use Neighbour.key_to_id to create it
         """
 
         self.devs = devs
@@ -79,7 +79,7 @@ class Neigh(object):
         self.netid = netid
 
         self.nip = nip
-        self.id = idn
+        self.id = id
         if self.bestdev:
             # TODO(low): support the other metrics
             self.rem = Rtt(self.bestdev[1])
@@ -236,7 +236,7 @@ class Neighbour(object):
                                devs=val.devs,
                                ip=ip,
                                netid=netid,
-                               idn=self.translation_table[key],
+                               id=self.translation_table[key],
                                ntkd=self.get_ntk_client(ip, netid),
                                nip=self.ntkd.maproute.ip_to_nip(ip)))
         return nlist
@@ -372,7 +372,7 @@ class Neighbour(object):
                         devs=val.devs,
                         ip=ip,
                         netid=netid,
-                        idn=self.translation_table[key],
+                        id=self.translation_table[key],
                         ntkd=self.get_ntk_client(ip, netid),
                         nip=self.ntkd.maproute.ip_to_nip(ip))
 
@@ -547,16 +547,16 @@ class Neighbour(object):
         # info
         logging.info('Readvertising all my neighbours')
         for key, val in self.ip_netid_table.items():
-            idn = self.translation_table[key]
-            logging.debug('ANNOUNCE: gw ' + str(idn) + ' detected.')
-            self.announce_gw(idn)
+            id = self.translation_table[key]
+            logging.debug('ANNOUNCE: gw ' + str(id) + ' detected.')
+            self.announce_gw(id)
             ip, netid = key
             self.events.send('NEIGH_NEW',
                              (Neigh(bestdev=val.bestdev,
                                 devs=val.devs,
                                 ip=ip,
                                 netid=netid,
-                                idn=idn,
+                                id=id,
                                 ntkd=self.get_ntk_client(ip, netid),
                                 nip=self.ntkd.maproute.ip_to_nip(ip)),))
 
@@ -574,18 +574,18 @@ class Neighbour(object):
 
         ip, netid = key
         val = self.ip_netid_table[key]
-        idn = self.key_to_id(key)
+        id = self.key_to_id(key)
         logging.info('Adding neighbour ip ' + ip_to_str(ip) + ', netid ' + str(netid))
 
         # send a message notifying we added a node
-        logging.debug('ANNOUNCE: gw ' + str(idn) + ' detected.')
-        self.announce_gw(idn)
+        logging.debug('ANNOUNCE: gw ' + str(id) + ' detected.')
+        self.announce_gw(id)
         self.events.send('NEIGH_NEW',
                          (Neigh(bestdev=val.bestdev,
                             devs=val.devs,
                             ip=ip,
                             netid=netid,
-                            idn=idn,
+                            id=id,
                             ntkd=self.get_ntk_client(ip, netid),
                             nip=self.ntkd.maproute.ip_to_nip(ip)),))
 
@@ -607,7 +607,7 @@ class Neighbour(object):
                             devs=old_devs,
                             ip=ip,
                             netid=netid,
-                            idn=old_id,
+                            id=old_id,
                             ntkd=None,
                             nip=self.ntkd.maproute.ip_to_nip(ip)),))
 
@@ -616,7 +616,7 @@ class Neighbour(object):
 
         ip, netid = key
         val = self.ip_netid_table[key]
-        idn = self.key_to_id(key)
+        id = self.key_to_id(key)
         logging.info('Change in our LAN: changed REM for neighbour ' + ip_to_str(ip))
 
         # send a message notifying the node's rtt changed
@@ -625,7 +625,7 @@ class Neighbour(object):
                             devs=val.devs,
                             ip=ip,
                             netid=netid,
-                            idn=idn,
+                            id=id,
                             ntkd=self.get_ntk_client(ip, netid),
                             nip=self.ntkd.maproute.ip_to_nip(ip)), 
                           Rtt(old_rtt)))
