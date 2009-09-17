@@ -50,7 +50,7 @@ from ntk.lib.event import Event
 from ntk.lib.log import logger as logging
 from ntk.lib.micro import micro, micro_block, microfunc, Channel
 from ntk.network.inet import ip_to_str, str_to_ip
-from ntk.lib.log import get_stackframes
+from ntk.lib.log import get_stackframes, log_exception_stacktrace
 
 
 class Neigh(object):
@@ -863,32 +863,36 @@ class Radar(object):
     def radar(self):
         """ Send broadcast packets and store the results in neigh """
 
-        self.radar_id = randint(0, 2**32-1)
-        logging.debug('radar scan %s' % self.radar_id)
-        logging.debug('My netid is ' + str(self.neigh.netid))
-        # TODO remove:
-        #logging.debug('I know these netids ' + str(self.neigh.netid_table))
+        try:
+            self.radar_id = randint(0, 2**32-1)
+            logging.debug('radar scan %s' % self.radar_id)
+            logging.debug('My netid is ' + str(self.neigh.netid))
+            # TODO remove:
+            #logging.debug('I know these netids ' + str(self.neigh.netid_table))
 
-        # we're sending the broadcast packets NOW
-        self.bcast_send_time = self.xtime.time()
+            # we're sending the broadcast packets NOW
+            self.bcast_send_time = self.xtime.time()
 
-        # send all packets in the bouquet
-        for i in xrange(self.max_bouquet):
-            self.broadcast.radar.reply(self.ntkd_id, self.radar_id)
+            # send all packets in the bouquet
+            for i in xrange(self.max_bouquet):
+                self.broadcast.radar.reply(self.ntkd_id, self.radar_id)
 
-        # then wait
-        self.xtime.swait(self.wait_time * 1000 + self.increment_wait_time)
+            # then wait
+            self.xtime.swait(self.wait_time * 1000 + self.increment_wait_time)
 
-        # test wether we are stopping
-        if not self.stopping:
-            # update the neighbours' ip_netid_table
-            # Note: the neighbour manager will tell me if I have to wait
-            #       longer than usual at the next scan.
-            self.increment_wait_time = self.neigh.store(self.get_all_avg_rtt())
+            # test wether we are stopping
+            if not self.stopping:
+                # update the neighbours' ip_netid_table
+                # Note: the neighbour manager will tell me if I have to wait
+                #       longer than usual at the next scan.
+                self.increment_wait_time = self.neigh.store(self.get_all_avg_rtt())
 
-            # Send the event
-            self.bouquet_numb += 1
-            self.events.send('SCAN_DONE', (self.bouquet_numb,))
+                # Send the event
+                self.bouquet_numb += 1
+                self.events.send('SCAN_DONE', (self.bouquet_numb,))
+        except Exception, e:
+            logging.error("Exception while doing a radar scan. We ignore it. Soon another scan.")
+            log_exception_stacktrace(e)
 
         # We're done. Reset.
         self.radar_reset()
