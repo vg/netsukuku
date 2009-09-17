@@ -93,7 +93,6 @@ from ntk.wrap.sock import Sock
 class RPCError(Exception): pass
 class RPCNetError(RPCError): pass
 class RPCFuncNotRemotable(RPCError): pass
-class RPCFunctionError(RPCError): pass
 
 
 class FakeRmt(object):
@@ -582,7 +581,11 @@ def UDP_call(callee_nip, callee_netid, devs, func_name, args=()):
     UDP_caller_ids[caller_id] = Channel()
     exec('bcastclient.' + func_name + '(caller_id, callee_nip, callee_netid, *args)')
     logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + ' done. Waiting reply...')
-    ret = UDP_caller_ids[caller_id].recv()
+    ret = None
+    try:
+        ret = UDP_caller_ids[caller_id].recv(timeout=15000)
+    except:
+        raise RPCNetError()
     logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + ' got reply.')
     # Handling errors
     # I receive a message with the following format:
