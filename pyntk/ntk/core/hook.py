@@ -396,9 +396,6 @@ class Hook(object):
 
         logging.log(logging.ULTRADEBUG, 'Hook: completing hook...')
 
-        ## complete the hook
-        self.radar.do_reply = False
-
         # close the ntkd sessions
         self.neigh.reset_ntk_clients()
 
@@ -414,19 +411,11 @@ class Hook(object):
         for l in reversed(xrange(lvl)): self.maproute.level_reset(l)
 
         # warn our neighbours
-        if previous_netid == -1 or we_are_alone:
-            logging.log(logging.ULTRADEBUG, 'Hook: warn neighbours' + \
-                    ' skipped')
-        else:
-            logging.log(logging.ULTRADEBUG, 'Hook: warn neighbours of' + \
-                    ' my change from %s to %s.' \
-                    % (ip_to_str(oldip), ip_to_str(newnip_ip)))
-            self.neigh.call_ip_netid_change_broadcast_udp(oldip, previous_netid, newnip_ip, self.ntkd.neighbour.netid)
-            logging.log(logging.ULTRADEBUG, 'Hook: called ip_netid_change on broadcast.')
-
-        # now that our neighbours have been warned, we can reply to their
-        # radar scans
-        self.radar.do_reply = True
+        logging.log(logging.ULTRADEBUG, 'Hook: warn neighbours of' + \
+                ' my change from %s to %s.' \
+                % (ip_to_str(oldip), ip_to_str(newnip_ip)))
+        self.neigh.call_ip_netid_change_broadcast_udp(oldip, -1, newnip_ip, -1)
+        logging.log(logging.ULTRADEBUG, 'Hook: called ip_netid_change on broadcast.')
 
         if not we_are_alone:
             # We wait some seconds to receive ETPs before to assign us the new

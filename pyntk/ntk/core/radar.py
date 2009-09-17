@@ -785,8 +785,8 @@ class Neighbour(object):
 class Radar(object):
     
     __slots__ = [ 'ntkd', 'bouquet_numb', 'bcast_send_time', 'xtime',
-                  'bcast_arrival_time', 'max_bouquet', 'wait_time', 
-                  'broadcast', 'neigh', 'events', 'do_reply', 
+                  'bcast_arrival_time', 'max_bouquet', 'wait_time',
+                  'broadcast', 'neigh', 'events',
                   'remotable_funcs', 'ntkd_id', 'radar_id', 'max_neigh',
                   'increment_wait_time', 'stopping', 'running_instances']
 
@@ -820,10 +820,6 @@ class Radar(object):
         # Send a SCAN_DONE event each time a sent bouquet has been completely
         # collected
         self.events = Event(['SCAN_DONE'])
-
-        # If set to True, this module will reply to radar queries sent by our
-        # neighbours.
-        self.do_reply = False
 
         self.stopping = False
         self.running_instances = []
@@ -905,12 +901,14 @@ class Radar(object):
 
     def reply(self, _rpc_caller, ntkd_id, radar_id):
         """ As answer we'll return our netid """
-        if self.do_reply and ntkd_id != self.ntkd_id:
-            bcc = rpc.BcastClient(devs=[_rpc_caller.dev], xtimemod=self.xtime)
-            try:
-                bcc.radar.time_register(radar_id, self.neigh.netid)
-            except:
-                logging.log(logging.ULTRADEBUG, 'Radar: Reply: BcastClient ' + str(bcc) + ' with dispatcher ' + repr(bcc.dev_sk[_rpc_caller.dev].dispatcher) + ' error in rpc execution. Ignored.')
+        if ntkd_id != self.ntkd_id:
+            # If I am hooking I will not reply to radar scans from my neighbours
+            if self.neigh.netid != -1:
+                bcc = rpc.BcastClient(devs=[_rpc_caller.dev], xtimemod=self.xtime)
+                try:
+                    bcc.radar.time_register(radar_id, self.neigh.netid)
+                except:
+                    logging.log(logging.ULTRADEBUG, 'Radar: Reply: BcastClient ' + str(bcc) + ' with dispatcher ' + repr(bcc.dev_sk[_rpc_caller.dev].dispatcher) + ' error in rpc execution. Ignored.')
 
     def time_register(self, _rpc_caller, radar_id, netid):
         """save each node's rtt"""
