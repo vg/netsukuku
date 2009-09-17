@@ -394,7 +394,16 @@ class Neighbour(object):
                 # its rtt has changed more than rtt_variation
                 new_rtt = self.ip_table[key].bestdev[1]
                 old_rtt = old_ip_table[key].bestdev[1]
-                rtt_variation = abs(new_rtt - old_rtt) / float(old_rtt)
+                # using the following algorithm, we accomplish this:
+                #  e.g. rtt_variation_threshold = .5, we want to be warned when
+                #       rtt become more than double of previous or less than half of previous.
+                #  from 200 to 400+ we get warned, because (400 - 200) / 400 = 0.5
+                #  from 400 to 200- we get warned, because (400 - 200) / 400 = 0.5
+                rtt_variation = 0
+                if new_rtt > old_rtt:
+                    rtt_variation = (new_rtt - old_rtt) / float(new_rtt)
+                else:
+                    rtt_variation = (old_rtt - new_rtt) / float(old_rtt)
                 if rtt_variation > self.rtt_variation_threshold:
                     # info
                     logging.info('Change in our LAN: changed REM for neighbour ' + ip_to_str(key))
@@ -406,7 +415,10 @@ class Neighbour(object):
                                             ip=key,
                                             netid=self.netid_table[key],
                                             ntkd=self.ntk_client[key]), 
-                                      Rtt(new_rtt)))
+                                      Rtt(old_rtt)))
+                else:
+                    self.ip_table[key] = old_ip_table[key]
+                # TODO better handling of different devs to reach the same neighbour
 
         # returns an indication for next wait time to the radar
         if not self.missing_neighbour_ids:
