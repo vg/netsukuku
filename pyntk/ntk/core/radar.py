@@ -392,7 +392,11 @@ class Neighbour(object):
         ip_netid_table: the new ip_netid_table;
         """
 
+        logging.log(logging.ULTRADEBUG, 'Neighbour.store: starting  with ip_netid_table = ' + str(self.ip_netid_table))
+        logging.log(logging.ULTRADEBUG, 'Neighbour.store:         and translation_table = ' + str(self.translation_table))
+        logging.log(logging.ULTRADEBUG, 'Neighbour.store: new ip_netid_table = ' + str(ip_netid_table))
         ip_netid_table = self._truncate(ip_netid_table)
+        logging.log(logging.ULTRADEBUG, 'Neighbour.store: after truncate, ip_netid_table = ' + str(ip_netid_table))
 
         # remove from missing_neighbour_keys the detected neighbours
         for key in ip_netid_table:
@@ -423,6 +427,7 @@ class Neighbour(object):
         old_ip_netid_table = self.ip_netid_table
         self.ip_netid_table = ip_netid_table
         # first, for new neighs, update translation_table and ntk_client
+        logging.log(logging.ULTRADEBUG, 'Neighbour.store: before update translation table = ' + str(self.translation_table))
         for key in self.ip_netid_table:
             if not key in old_ip_netid_table:
                 # insert neigh id into translation_table
@@ -431,6 +436,7 @@ class Neighbour(object):
                 # neighbour
                 ip, netid = key
                 self.ntk_client[ip] = rpc.TCPClient(ip_to_str(ip))
+        logging.log(logging.ULTRADEBUG, 'Neighbour.store: after update translation table = ' + str(self.translation_table))
 
         # now we cycle through the new ip_netid_table
         # looking for nodes who weren't in the old one
@@ -473,6 +479,8 @@ class Neighbour(object):
                     self.ip_netid_table[key] = old_ip_netid_table[key]
                 # TODO better handling of different devs to reach the same neighbour
 
+        logging.log(logging.ULTRADEBUG, 'Neighbour.store: finishing with ip_netid_table = ' + str(self.ip_netid_table))
+        logging.log(logging.ULTRADEBUG, 'Neighbour.store:         and translation_table = ' + str(self.translation_table))
         # returns an indication for next wait time to the radar
         if not self.missing_neighbour_keys:
             return 0
@@ -510,7 +518,7 @@ class Neighbour(object):
         The entry might already exist in translation_table and ntk_client."""
 
         ip, netid = key
-        logging.info("Adding neighbour %s", ip_to_str(ip))
+        logging.info('Adding neighbour ip ' + ip_to_str(ip) + ', netid ' + str(netid))
 
         # insert/recover neigh id into translation_table
         idn = self.key_to_id(key)
@@ -534,7 +542,7 @@ class Neighbour(object):
         Removes its entry from the ip_netid_table."""
 
         ip, netid = key
-        logging.info("Deleting neighbour %s", ip_to_str(ip))
+        logging.info('Deleting neighbour ip ' + ip_to_str(ip) + ', netid ' + str(netid))
 
         old_bestdev = self.ip_netid_table[key].bestdev
         old_devs = self.ip_netid_table[key].devs
@@ -568,6 +576,8 @@ class Neighbour(object):
         """Adds `newip' in the Neighbours as a copy of `oldip', then it removes
         `oldip'. The relative events are raised."""
 
+        logging.log(logging.ULTRADEBUG, 'Neighbour.ip_netid_change: starting  with ip_netid_table = ' + str(self.ip_netid_table))
+        logging.log(logging.ULTRADEBUG, 'Neighbour.ip_netid_change:         and translation_table = ' + str(self.translation_table))
         oldkey = (oldip, oldnetid)
         newkey = (newip, newnetid)
         if not oldkey in self.ip_netid_table:
@@ -598,7 +608,8 @@ class Neighbour(object):
         # add new ip gateway
         logging.log(logging.ULTRADEBUG, 'ip_netid_change: adding...')
         self.add(newkey, already_in_ntk_client=False)
-        logging.log(logging.ULTRADEBUG, 'ip_netid_change: done.')
+        logging.log(logging.ULTRADEBUG, 'Neighbour.ip_netid_change: finishing with ip_netid_table = ' + str(self.ip_netid_table))
+        logging.log(logging.ULTRADEBUG, 'Neighbour.ip_netid_change:         and translation_table = ' + str(self.translation_table))
 
     def call_ip_netid_change_udp(self, neigh, oldip, oldnetid, newip, newnetid):
         """Use BcastClient to call ip_netid_change"""

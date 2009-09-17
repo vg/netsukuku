@@ -306,6 +306,7 @@ class Etp(object):
         flag_of_interest: a boolean
         """
 
+        logging.info('Received ETP from (nip, netid) = ' + str((sender_nip, sender_netid)))
         gwnip = sender_nip
         gwip = self.maproute.nip_to_ip(gwnip)
         # TODO remove:
