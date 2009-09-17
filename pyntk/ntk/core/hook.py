@@ -220,26 +220,9 @@ class Hook(object):
             hfn = []
             ## Find all the highest non saturated gnodes
 
-            def is_current_hfn_valid():
-                # Should our actual knowledge of the network be considered?
-                # TODO Review implementation
-                if called_for == called_for_network_collision:
-                    return False
-                if called_for == called_for_communicating_vessels:
-                    return False
-                if called_for == called_for_bootstrap:
-                    if we_are_alone:
-                        return True
-                    else:
-                        return False
-                if called_for == called_for_gnode_splitting:
-                    return False
-                raise Exception('Hooking phase does not recognize the situation.')
-            if is_current_hfn_valid():
-                hfn = [(self.maproute.me, None, self.highest_free_nodes())]
-                logging.info('Hook: highest non saturated gnodes that I know: ' + str(hfn))
-            else:
-                logging.info('Hook: highest non saturated gnodes that I know is irrelevant.')
+            if called_for == called_for_bootstrap and we_are_alone:
+                hfn = [(self.maproute.me, None, self.highest_free_nodes_in_empty_network())]
+                logging.info('Hook: highest non saturated gnodes in new empty network: ' + str(hfn))
 
             def is_neigh_forbidden(nrip):
                     for lvl, fnr in forbidden_neighs:
@@ -466,11 +449,21 @@ class Hook(object):
             self.hook()
             return
 
-    def highest_free_nodes(self, fromrpc=False):
+    def highest_free_nodes_in_empty_network(self):
+        """Returns (lvl, fnl), where fnl is a list of free node IDs of
+           level `lvl'."""
+        fnl = self.maproute.free_nodes_list_in_empty_network()
+        if fnl:
+            logging.log(logging.ULTRADEBUG, 'highest_free_nodes_in_empty_network: returning...')
+            return (self.maproute.levels - 1, fnl)
+        logging.log(logging.ULTRADEBUG, 'highest_free_nodes_in_empty_network: returning NONE ...')
+        return (-1, None)
+
+    def highest_free_nodes(self):
         """Returns (lvl, fnl), where fnl is a list of free node IDs of
            level `lvl'."""
         logging.log(logging.ULTRADEBUG, 'highest_free_nodes: start.')
-        if fromrpc and etp_exec_dispatcher_token.executing:
+        if etp_exec_dispatcher_token.executing:
             logging.log(logging.ULTRADEBUG, 'highest_free_nodes: delayed because etp is executing.')
             while etp_exec_dispatcher_token.executing:
                 # I'm not ready to interact.
@@ -505,7 +498,7 @@ class Hook(object):
             rpc.UDP_send_keepalive_forever_start(_rpc_caller, caller_id)
             try:
                 logging.log(logging.ULTRADEBUG, 'calling highest_free_nodes...')
-                ret = self.highest_free_nodes(fromrpc=True)
+                ret = self.highest_free_nodes()
                 logging.log(logging.ULTRADEBUG, 'returning ' + str(ret))
             except Exception as e:
                 ret = ('rmt_error', e.message)

@@ -125,9 +125,12 @@ class Map(object):
 
     def free_nodes_list(self, lvl):
         """Returns the list of free nodes of level `lvl'"""
-
         #it depends on the lvl and on the previous ids
         return [nid for nid in valid_ids(lvl, self.me) if (not self.node[lvl][nid]) or self.node[lvl][nid].is_free()]
+
+    def free_nodes_list_in_empty_network(self):
+        """Returns the list of free nodes of level `self.levels-1' in an empty network"""
+        return [nid for nid in valid_ids(self.levels - 1, self.me)]
 
     def is_in_level(self, nip, lvl):
         """Does the node nip belongs to our gnode of level `lvl'?"""
