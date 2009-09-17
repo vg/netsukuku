@@ -684,8 +684,11 @@ class Radar(object):
     def reply(self, _rpc_caller, ntkd_id, radar_id):
         """ As answer we'll return our netid """
         if self.do_reply and ntkd_id != self.ntkd_id:
-            rpc.BcastClient(devs=[_rpc_caller.dev], xtimemod=self.xtime).radar.time_register(radar_id, self.neigh.netid)
-            return self.neigh.netid
+            bcc = rpc.BcastClient(devs=[_rpc_caller.dev], xtimemod=self.xtime)
+            try:
+                bcc.radar.time_register(radar_id, self.neigh.netid)
+            except:
+                logging.log(logging.ULTRADEBUG, 'Radar: Reply: BcastClient ' + str(bcc) + ' with dispatcher ' + str(bcc.dev_sk[_rpc_caller.dev].dispatcher) + ' error in rpc execution. Ignored.')
 
     def time_register(self, _rpc_caller, radar_id, netid):
         """save each node's rtt"""
