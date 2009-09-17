@@ -267,19 +267,13 @@ def test_etp_newlink(link_is_really_good=False,
         #print 'After link A-B appears... check ETP emitted'
 
         # Y has to receive an ETP from X iff link_is_really_good.
-        #  (But we assume the problem of cyclic route, so we don't consider
-        #  an etp whom only route in is towards node_Y itself.)
         _toY = False
         Y_lvl, Y_id = getcoords_node_x_in_map_of_y(node_Y, node_X)
         ret = 1
         while ret:
             for to_ip, etp_from_X in retrieve_etps_from_node(node_X):
                 if to_ip == node_Y.maproute.nip_to_ip(node_Y.maproute.me):
-                    R = etp_from_X[2]
-                    for lvl in xrange(node_X.maproute.levels):
-                        for dst, rem in R[lvl]:
-                            if lvl != Y_lvl or dst != Y_id:
-                                _toY = True
+                    _toY = True
 
             #retrieve etps and execute them in the proper node, but just once.
             ret = retrieve_execute_etps_once(exclude_ips=ignore_etp_for)

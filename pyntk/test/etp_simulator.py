@@ -240,6 +240,7 @@ class FakeNeighbour():
                                         netid=netid,
                                         ntkd=FakeTCPClient(ip))
         self.send_event_neigh_new_for_neigh(neigh)
+        return neigh
     def send_event_neigh_rem_chged(self, bestdev, devs, idn, ip, netid, new_rtt):
         self.events.send('NEIGH_REM_CHGED',
                                  (radar.Neigh(bestdev=bestdev,

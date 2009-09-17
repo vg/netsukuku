@@ -182,16 +182,16 @@ def test_etp_new_changed(check_etp_emission=True):
     #    gnode 12 of level 3 at Rtt 3456;
     #    gnode 13 of level 3 at Rtt 3456;
     #log_executing_node(node_B)
-    node_B.neighbour.send_event_neigh_new(
+    ngh10 = node_B.neighbour.send_event_neigh_new(
     	              ('eth1',100),
     	              {'eth1':100},
     	              10,
     	              node_B.maproute.nip_to_ip([104,103,102,101]),
     	              12345)
     simulate_delay()
-    node_B.maproute.route_add(3, 12, 10, maproute.Rtt(3456))
+    node_B.maproute.route_add(3, 12, ngh10, maproute.Rtt(3356), [])
     simulate_delay()
-    node_B.maproute.route_add(3, 13, 10, maproute.Rtt(3456))
+    node_B.maproute.route_add(3, 13, ngh10, maproute.Rtt(3356), [])
     simulate_delay()
     ignore_etp_for.append(node_B.maproute.nip_to_ip([104,103,102,101]))
 
@@ -201,16 +201,16 @@ def test_etp_new_changed(check_etp_emission=True):
     #    gnode 12 of level 3 at Rtt 5678;
     #    gnode 14 of level 3 at Rtt 200;
     #log_executing_node(node_D)
-    node_D.neighbour.send_event_neigh_new(
+    ngh10 = node_D.neighbour.send_event_neigh_new(
     	              ('eth1',100),
     	              {'eth1':100},
     	              10,
     	              node_D.maproute.nip_to_ip([114,113,112,111]),
     	              12345)
     simulate_delay()
-    node_D.maproute.route_add(3, 12, 10, maproute.Rtt(5678))
+    node_D.maproute.route_add(3, 12, ngh10, maproute.Rtt(5578), [])
     simulate_delay()
-    node_D.maproute.route_add(3, 14, 10, maproute.Rtt(200))
+    node_D.maproute.route_add(3, 14, ngh10, maproute.Rtt(100), [])
     simulate_delay()
     ignore_etp_for.append(node_D.maproute.nip_to_ip([114,113,112,111]))
 
@@ -465,14 +465,14 @@ def test_etp_new_dead(check_etp_emission=True):
     # through which he sees:
     #    gnode 42 of level 3 at Rtt 2900;
     #log_executing_node(node_W)
-    node_W.neighbour.send_event_neigh_new(
+    ngh10 = node_W.neighbour.send_event_neigh_new(
     	              ('eth1',100),
     	              {'eth1':100},
     	              10,
     	              node_W.maproute.nip_to_ip([104,103,102,101]),
     	              12345)
     simulate_delay()
-    node_W.maproute.route_add(3, 42, 10, maproute.Rtt(2900))
+    node_W.maproute.route_add(3, 42, ngh10, maproute.Rtt(2800), [])
     simulate_delay()
     ignore_etp_for.append(node_W.maproute.nip_to_ip([104,103,102,101]))
 
@@ -480,14 +480,14 @@ def test_etp_new_dead(check_etp_emission=True):
     # through which he sees:
     #    gnode 42 of level 3 at Rtt 900;
     #log_executing_node(node_X)
-    node_X.neighbour.send_event_neigh_new(
+    ngh10 = node_X.neighbour.send_event_neigh_new(
     	              ('eth1',100),
     	              {'eth1':100},
     	              10,
     	              node_X.maproute.nip_to_ip([104,103,102,111]),
     	              12345)
     simulate_delay()
-    node_X.maproute.route_add(3, 42, 10, maproute.Rtt(900))
+    node_X.maproute.route_add(3, 42, ngh10, maproute.Rtt(800), [])
     simulate_delay()
     ignore_etp_for.append(node_X.maproute.nip_to_ip([104,103,102,111]))
 
@@ -495,14 +495,14 @@ def test_etp_new_dead(check_etp_emission=True):
     # through which he sees:
     #    gnode 42 of level 3 at Rtt 1900;
     #log_executing_node(node_Y)
-    node_Y.neighbour.send_event_neigh_new(
+    ngh10 = node_Y.neighbour.send_event_neigh_new(
     	              ('eth1',100),
     	              {'eth1':100},
     	              10,
     	              node_Y.maproute.nip_to_ip([104,103,102,121]),
     	              12345)
     simulate_delay()
-    node_Y.maproute.route_add(3, 42, 10, maproute.Rtt(1900))
+    node_Y.maproute.route_add(3, 42, ngh10, maproute.Rtt(1800), [])
     simulate_delay()
     ignore_etp_for.append(node_Y.maproute.nip_to_ip([104,103,102,121]))
     node_Z
@@ -510,14 +510,14 @@ def test_etp_new_dead(check_etp_emission=True):
     # through which he sees:
     #    gnode 42 of level 3 at Rtt 1900;
     #log_executing_node(node_Z)
-    node_Z.neighbour.send_event_neigh_new(
+    ngh10 = node_Z.neighbour.send_event_neigh_new(
     	              ('eth1',100),
     	              {'eth1':100},
     	              10,
     	              node_Z.maproute.nip_to_ip([104,103,102,131]),
     	              12345)
     simulate_delay()
-    node_Z.maproute.route_add(3, 42, 10, maproute.Rtt(1900))
+    node_Z.maproute.route_add(3, 42, ngh10, maproute.Rtt(1800), [])
     simulate_delay()
     ignore_etp_for.append(node_Z.maproute.nip_to_ip([104,103,102,131]))
 
