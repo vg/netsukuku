@@ -441,11 +441,11 @@ def dgram_request_handler(sock, clientaddr, packet, dev, rpcdispatcher):
     caller = CallerInfo(clientaddr[0], clientaddr[1], dev, sock)
     #logging.debug('UDP packet from %s, dev %s', clientaddr, dev)
     try:
+        lenpacket = len(packet)
+        if lenpacket > 4000: logging.warning('CAUTION! Handling UDP packet of %s bytes.' % lenpacket)
+        elif lenpacket > 3000: logging.debug('WARNING!!! Handling UDP packet of %s bytes.' % lenpacket)
+        elif lenpacket > 1024: logging.debug('Handling UDP packet of %s bytes.' % lenpacket)
         data = _data_unpack_from_buffer(packet)
-        lendata = len(data)
-        if lendata > 4000: logging.warning('CAUTION! Handling UDP data of %s bytes.' % lendata)
-        elif lendata > 3000: logging.debug('WARNING!!! Handling UDP data of %s bytes.' % lendata)
-        elif lendata > 1024: logging.debug('Handling UDP data of %s bytes.' % lendata)
         response = rpcdispatcher.marshalled_dispatch(caller, data)
         #logging.debug('Dispatched some data')
     except RPCError:
