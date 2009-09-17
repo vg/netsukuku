@@ -572,7 +572,8 @@ class Radar(object):
                   'bcast_arrival_time', 'max_bouquet', 'wait_time', 
                   'broadcast', 'neigh', 'events', 'do_reply', 
                   'remotable_funcs', 'ntkd_id', 'radar_id', 'max_neigh',
-                  'increment_wait_time', 'stopping', 'running_instances']
+                  'increment_wait_time', 'stopping', 'running_instances',
+                  'hooking_network_id']
 
     def __init__(self, ntkd, broadcast, xtime):
         """
@@ -614,7 +615,10 @@ class Radar(object):
 
         self.remotable_funcs = [self.reply, self.time_register]
 
+        # this is needed to avoid to answer to myself
         self.ntkd_id = randint(0, 2**32-1)
+        # this is assigned when we hook inside a certain network
+        self.hooking_network_id = None
 
     def run(self):
         # Before launching the microfunc,
@@ -656,7 +660,7 @@ class Radar(object):
 
         # send all packets in the bouquet
         for i in xrange(self.max_bouquet):
-            self.broadcast.radar.reply(self.ntkd_id, self.radar_id)
+            self.broadcast.radar.reply(self.ntkd_id, self.radar_id, self.neigh.netid)
 
         # then wait
         self.xtime.swait(self.wait_time * 1000 + self.increment_wait_time)
@@ -683,14 +687,26 @@ class Radar(object):
         # Reset the broadcast sockets
         self.broadcast.reset()
 
-    def reply(self, _rpc_caller, ntkd_id, radar_id):
+    def reply(self, _rpc_caller, ntkd_id, radar_id, rmt_netid):
         """ As answer we'll return our netid """
-        if self.do_reply and ntkd_id != self.ntkd_id:
-            bcc = rpc.BcastClient(devs=[_rpc_caller.dev], xtimemod=self.xtime)
-            try:
-                bcc.radar.time_register(radar_id, self.neigh.netid)
-            except:
-                logging.log(logging.ULTRADEBUG, 'Radar: Reply: BcastClient ' + str(bcc) + ' with dispatcher ' + repr(bcc.dev_sk[_rpc_caller.dev].dispatcher) + ' error in rpc execution. Ignored.')
+        # check we are not during a final hooking phase, or at bootstrap
+        if self.do_reply:
+            # check we are not replying to a different network than the one
+            # we are currently hooking to
+            if self.neigh.netid != -1 \
+                     or self.hooking_network_id is None \
+                     or self.hooking_network_id == rmt_netid:
+                # check we are not replying to ourselves
+                if ntkd_id != self.ntkd_id:
+                    bcc = rpc.BcastClient(devs=[_rpc_caller.dev],
+                          xtimemod=self.xtime)
+                    try:
+                        bcc.radar.time_register(radar_id, self.neigh.netid)
+                    except:
+                        logging.log(logging.ULTRADEBUG, 'Radar: Reply: BcastClient ' \
+                                + str(bcc) + ' with dispatcher ' \
+                                + repr(bcc.dev_sk[_rpc_caller.dev].dispatcher) \
+                                + ' error in rpc execution. Ignored.')
 
     def time_register(self, _rpc_caller, radar_id, netid):
         """save each node's rtt"""
