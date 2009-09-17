@@ -1,5 +1,7 @@
 #!/bin/bash
 
+out_prefix=$1
+
 # Add to PATH the directory where this script resides.
 SCRIPT_IS_HERE=$(dirname $(which $0))
 if [ $SCRIPT_IS_HERE = '.' ]
@@ -9,7 +11,7 @@ fi
 PATH=${PATH}:${SCRIPT_IS_HERE}
 
 node=$(uname -n)
-outdir=/hosthome/ntklogs/${node}
+outdir=${out_prefix}/${node}
 mkdir -p ${outdir}
 
 launch(){

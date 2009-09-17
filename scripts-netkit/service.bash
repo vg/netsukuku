@@ -8,6 +8,6 @@ then
 fi
 PATH=${PATH}:${SCRIPT_IS_HERE}
 
-ntkboot.bash &
+ntkboot.bash /hosthome/ntklogs &
 
 
