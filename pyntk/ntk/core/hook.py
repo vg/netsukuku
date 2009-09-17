@@ -84,18 +84,18 @@ class Hook(object):
                         continue
                 fnb=nr.ntkd.maproute.free_nodes_nb(0)
                 if fnb+1 < self.maproute.free_nodes_nb(0):
-                        candidates.append((nr, fnb))
-                elif self.maproute.free_nodes_nb(0)+1 < fnb:
                         inv_candidates.append((nr, fnb))
+                elif self.maproute.free_nodes_nb(0)+1 < fnb:
+                        candidates.append((nr, fnb))
 
         if inv_candidates:
-                inv_candidates.sort(cmp=cand_cmp, reverse=1)
+                inv_candidates.sort(cmp=cand_cmp)
                 # tell our neighbour, which is bigger than us, to launch
                 # its communicating vessels system
                 inv_candidates[0][0].ntkd.hook.communicating_vessels()
 
         if candidates:
-                candidates.sort(cmp=cand_cmp)
+                candidates.sort(cmp=cand_cmp, reverse=1)
                 # We've found some neighbour gnodes smaller than us.
                 # Let's rehook
                 self.hook([nr for (nr, fnb) in candidates], [], True,
