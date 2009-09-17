@@ -68,15 +68,15 @@ class MapP2P(Map):
 
         self.pid = pid
 
-    def participate(self):
-        """Set self.me to be a participant node."""
-
-        for l in xrange(self.levels):
-            node = self.node_get(l, self.me[l])
-            was_free = node.is_free()
-            node.participant = True
-            if was_free and not node.is_free():
-                self.node_add(l, self.me[l])
+    def participant_node_add(self, lvl, id):
+        # It is called:
+        #  * by participate, when I begin to participate to this service.
+        #  * by participant_add, when another node lets me know it
+        #       participates.
+        if self.node_get(lvl, id).is_free():
+                self.node_get(lvl, id).participant = True
+                self.node_add(lvl, id)
+        logging.log(logging.ULTRADEBUG, 'P2P: MapP2P updated: ' + str(self.repr_me()))
 
     @microfunc()
     def me_changed(self, old_me, new_me):
@@ -86,10 +86,17 @@ class MapP2P(Map):
         :param new_me: new nip
         '''
         Map.me_change(self, new_me)
+        logging.log(logging.ULTRADEBUG, 'P2P: MapP2P updated after me_changed: ' + str(self.repr_me()))
 
     @microfunc(True)
     def node_del(self, lvl, id):
         Map.node_del(self, lvl, id)
+
+    def participate(self):
+        """Set self.me to be a participant node."""
+
+        for l in xrange(self.levels):
+            self.participant_node_add(l, self.me[l])
 
     def map_data_pack(self):
         """Prepares a packed_mapp2p to be passed to mapp2p.map_data_merge
@@ -236,8 +243,7 @@ class P2P(RPCDispatcher):
                 xtime.swait(100)
             if not mp.node_get(l, pIP[l]).participant:
                 logging.debug('registering participant (%s, %s) to service %s.' % (l, pIP[l], mp.pid))
-                mp.node_get(l, pIP[l]).participant = True
-                mp.node_add(l, pIP[l])
+                mp.participant_node_add(l, pIP[l])
                 continue_to_forward = True
 
         if not continue_to_forward:

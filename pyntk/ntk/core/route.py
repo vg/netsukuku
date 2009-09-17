@@ -187,7 +187,7 @@ class Route(object):
     `gw': the gateway of the route. Our next hop. It is an instance of the
           class Neigh in module radar.py
     `rem_at_gw': a REM (Route Efficience Measure) of the route from the gateway to
-                 the destination d. It is an instance of the class Rem or derivate.
+                 the destination d. It is an instance of the class Rem or a derivative.
     `hops': a sequence of unique identifiers of the hops represented by this
             route. The identifier of a node is its ip (such as neigh.ip).
             The hops of a route are the ones that form the best route from the

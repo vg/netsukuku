@@ -42,9 +42,10 @@ class Node(object):
         self.id = id
         self.its_me = its_me
         self.alive = alive
+        if self.its_me:
+            self.alive = True
 
     def is_free(self):
-        if self.its_me: return False
         return not self.alive
 
     def _pack(self):
@@ -65,16 +66,31 @@ class MapCache(Map):
 
         self.tmp_deleted = {}
 
+    def alive_node_add(self, lvl, id):
+        # It is called:
+        #  * by copy_from_maproute, when I begin to participate to this service (usually at boot
+        #       when we have a temporary NIP!)
+        #  * by MapRoute's event NODE_NEW, when I come to know a new destination
+        #  * by going_in, if I *am* the coordinator, when I accept a request.
+        if self.node_get(lvl, id).is_free():
+            self.node_get(lvl, id).alive = True
+            self.node_add(lvl, id)
+        logging.log(logging.ULTRADEBUG, 'Coord: MapCache updated: ' + str(self.repr_me()))
+
+    def me_changed(self, old_me, new_me):
+        '''Changes self.me
+
+        :param old_me: my old nip (not used in MapCache)
+        :param new_me: new nip
+        '''
+        Map.me_change(self, new_me)
+        logging.log(logging.ULTRADEBUG, 'Coord: MapCache updated after me_changed: ' + str(self.repr_me()))
+
     def copy_from_maproute(self, maproute):
         for lvl in xrange(self.levels):
-                for id in xrange(self.gsize):
-                        if not maproute.node_get(lvl, id).is_empty():
-                                self.deriv_node_add(lvl, id)
-
-    def deriv_node_add(self, lvl, id):
-        if self.node_get(lvl, id).is_free():
-                self.node_get(lvl, id).alive = True
-                self.node_add(lvl, id)
+            for id in xrange(self.gsize):
+                if not maproute.node_get(lvl, id).is_free():
+                    self.alive_node_add(lvl, id)
 
     def map_data_pack(self):
         """Prepares a packed_mapcache to be passed to mapcache.map_data_merge
@@ -153,8 +169,9 @@ class Coord(P2P):
         # The cache of the coordinator node
         self.mapcache = MapCache(self.maproute)
 
-        self.maproute.events.listen('NODE_NEW', self.mapcache.deriv_node_add)
+        self.maproute.events.listen('NODE_NEW', self.mapcache.alive_node_add)
         self.maproute.events.listen('NODE_DELETED', self.mapcache.node_del)
+        self.maproute.events.listen('ME_CHANGED', self.mapcache.me_changed)
 
         self.mapp2p.events.listen('NODE_NEW', self.new_participant_joined)
 
@@ -270,11 +287,9 @@ class Coord(P2P):
         newnip = self.mapcache.me[:]
         newnip[lvl] = choice(fnl)
         for l in reversed(xrange(lvl)): newnip[l] = choice(valid_ids(lvl, newnip))
-        # it should be previously free...
-        node = self.mapcache.node_get(lvl, newnip[lvl])
-        if node.is_free():
-            node.alive = True
-            self.mapcache.node_add(lvl, newnip[lvl])
+
+        self.mapcache.alive_node_add(lvl, newnip[lvl])
+
         logging.log(logging.ULTRADEBUG, 'Coord.going_in: returns ' + str(newnip))
         return newnip
 
