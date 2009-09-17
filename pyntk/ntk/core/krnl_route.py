@@ -176,6 +176,8 @@ class KrnlRoute(object):
     @microfunc()
     def _neigh_new(self):
         neigh = self.neigh_new_calls.pop(0)
+        if neigh.netid != self.neigh.netid:
+            return
         ipstr = ip_to_str(neigh.ip)
         dev = neigh.bestdev[0]
         KRoute.add_neigh(ipstr, dev)
@@ -193,6 +195,8 @@ class KrnlRoute(object):
     @microfunc()
     def _neigh_rem_changed(self):
         neigh, oldrem = self.neigh_rem_changed_calls.pop(0)
+        if neigh.netid != self.neigh.netid:
+            return
         ipstr = ip_to_str(neigh.ip)
         dev = neigh.bestdev[0]
         KRoute.change_neigh(ipstr, dev)
@@ -208,6 +212,8 @@ class KrnlRoute(object):
     @microfunc()
     def _neigh_deleted(self):
         neigh = self.neigh_deleted_calls.pop(0)
+        if neigh.netid != self.neigh.netid:
+            return
         ipstr = ip_to_str(neigh.ip)
         self.neigh.waitfor_gw_removable(neigh.id)
         KRoute.delete_neigh(ipstr)
