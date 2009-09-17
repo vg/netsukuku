@@ -75,6 +75,13 @@ class MapCache(Map):
                 self.node_get(lvl, id).alive = True
                 self.node_add(lvl, id)
 
+    def repr_me(self, func_repr_node=None):
+        def repr_node_mapcache(node):
+            if node.alive: return 'X'
+            return ' '
+        if func_repr_node is None: func_repr_node = repr_node_mapcache
+        return Map.repr_me(self, func_repr_node)
+
     def tmp_deleted_add(self, lvl, id):
         self.tmp_deleted[lvl, id] = time()
         self.node_del(lvl, id, silent=1)

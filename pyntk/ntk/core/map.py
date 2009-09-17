@@ -229,7 +229,8 @@ class Map(object):
             node = self.dataclass(lvl, self.me[lvl])
             if func: func(node)
             ret[1][lvl][self.me[lvl]] = node
-        # It's been a tough work! And now we'll probably serialize the result! Be kind to other tasks.
+        # It's been a tough work! And now we'll probably serialize the result!
+        # Be kind to other tasks.
         xtime.swait(10)
         return ret
 
@@ -260,10 +261,10 @@ class Map(object):
         return ret
 
     def repr_level(self, lvl, func_repr_node=None):
-        def repr_node_maproute(node):
+        def repr_node_map(node):
             if node.is_free(): return ' '
             return 'X'
-        if func_repr_node is None: func_repr_node = repr_node_maproute
+        if func_repr_node is None: func_repr_node = repr_node_map
         ret = ' ['
         for i in xrange(self.gsize):
             ret += '\'' + func_repr_node(self.node_get(lvl, i))

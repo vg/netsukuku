@@ -82,11 +82,8 @@ class NtkNode(object):
         self.coordnode = coord.Coord(self, self.radar, self.maproute, self.p2p)
         logging.log(logging.ULTRADEBUG, 'NtkNode: This is mapcache of coord as soon as started.')
         logging.log(logging.ULTRADEBUG, self.coordnode.mapcache.repr_me())
-        def repr_node_mapp2p(node):
-            if node.participant: return 'X'
-            return ' '
         logging.log(logging.ULTRADEBUG, 'NtkNode: This is mapp2p of coord as soon as started.')
-        logging.log(logging.ULTRADEBUG, self.coordnode.mapp2p.repr_me(repr_node_mapp2p))
+        logging.log(logging.ULTRADEBUG, self.coordnode.mapp2p.repr_me())
         self.hook = hook.Hook(self, self.radar, self.maproute, self.etp,
                               self.coordnode, self.nic_manager)
 

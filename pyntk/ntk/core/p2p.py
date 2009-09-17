@@ -90,6 +90,13 @@ class MapP2P(Map):
     def node_del(self, lvl, id):
         Map.node_del(self, lvl, id)
 
+    def repr_me(self, func_repr_node=None):
+        def repr_node_mapp2p(node):
+            if node.participant: return 'X'
+            return ' '
+        if func_repr_node is None: func_repr_node = repr_node_mapp2p
+        return Map.repr_me(self, func_repr_node)
+
 class P2P(RPCDispatcher):
     """This is the class that must be inherited to create a P2P module.
     """
@@ -262,10 +269,7 @@ class P2P(RPCDispatcher):
                 # Is it possible? Don't we retry?
                 logging.warning('I don\'t know to whom I must forward. Giving up. Returning None.')
                 logging.warning('This is mapp2p.')
-                def repr_node_mapp2p(node):
-                    if node.participant: return 'X'
-                    return ' '
-                logging.warning(self.mapp2p.repr_me(repr_node_mapp2p))
+                logging.warning(self.mapp2p.repr_me())
                 logging.warning('This is maproute.')
                 logging.warning(Map.repr_me(self.maproute))
                 return None
@@ -437,9 +441,6 @@ class P2PAll(object):
         raise AttributeError
 
     def log_services(self):
-        def repr_node_mapp2p(node):
-            if node.participant: return 'X'
-            return ' '
-        return [(s, self.service[s].mapp2p.repr_me(repr_node_mapp2p))
+        return [(s, self.service[s].mapp2p.repr_me())
                         for s in self.service]
 
