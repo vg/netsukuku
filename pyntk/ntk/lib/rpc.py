@@ -83,6 +83,7 @@ from ntk.wrap import xtime as xtime
 import time
 
 from ntk.lib.log import logger as logging
+from ntk.lib.log import log_exception_stacktrace
 from ntk.lib.micro import  micro, microfunc, micro_block, Channel, MicrochannelTimeout
 from ntk.lib.microsock import MicrosockTimeout
 from ntk.network.inet import sk_set_broadcast, sk_bindtodevice
@@ -211,7 +212,9 @@ class RPCDispatcher(object):
         try:
             response = self._dispatch(caller, func, params)
         except Exception, e:
-            pass #logging.debug(str(e))
+            logging.error("Uncaught exception in a remotable function")
+            logging.error("  The function has been called like this: %s(%s)" % (func, params))
+            log_exception_stacktrace(e)
             response = ('rmt_error', str(e))
         if not 'radar' in func:
             pass #logging.debug("dispatch response: "+str(response))
