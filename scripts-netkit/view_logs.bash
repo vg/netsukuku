@@ -18,6 +18,9 @@ do
  indent=$indent"   "
 done
 
+cat ${OUTFILE} | grep -v "DELETETHISLOG" > ${TEMPFILE}
+cat ${TEMPFILE} > ${OUTFILE}
+
 if [ $lev -lt 4 ]
 then
  cat ${OUTFILE} | grep -v "ULTRADEBUG:" > ${TEMPFILE}

@@ -187,7 +187,7 @@ class Etp(object):
         # be sent.
         current_netid = self.ntkd.neighbour.netid
 
-        logging.debug('QSPN: new link %s: prepare the ETP', ip_to_str(neigh.ip))
+        logging.debug('QSPN: new link for ' + ip_to_str(neigh.ip) + ' in ' + str(neigh.netid) + ': prepare the ETP')
         current_nr_list = self.neigh.neigh_list()
 
         # Through which devs do I see the new neighbour?
@@ -333,7 +333,7 @@ class Etp(object):
         timeout = xtime.time() + 6000
         while neigh is None:
             if xtime.time() > timeout:
-                logging.info('ETP dropped: timeout.')
+                logging.info('ETP from (nip, netid) = ' + str((sender_nip, sender_netid)) + ' dropped: timeout.')
                 return
             xtime.swait(50)
             neigh = self.neigh.key_to_neigh((gwip, sender_netid))

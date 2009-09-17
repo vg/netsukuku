@@ -175,6 +175,18 @@ class Neighbour(object):
         self.remotable_funcs = [self.ip_netid_change,
                                 self.ip_netid_change_udp,
                                 self.ip_netid_change_broadcast_udp]
+        self.monitor_neighbours()
+
+    @microfunc(True)
+    def monitor_neighbours(self):
+        while True:
+            xtime.swait(100)
+            known_neighs = '{'
+            for ip, netid in self.ip_netid_table:
+                nip = self.ntkd.maproute.ip_to_nip(ip)
+                known_neighs += '(' + str(nip) + ',' + str(netid) + ')  '
+            known_neighs += '}'
+            logging.log(logging.ULTRADEBUG, 'monitor_neighbours: DELETETHISLOG - Known Neighbours: ' + known_neighs)
 
     def neigh_list(self, in_my_network=False, out_of_my_network=False,
                          in_this_netid=None, out_of_this_netid=None):
@@ -232,7 +244,7 @@ class Neighbour(object):
             if not requirement(netid):
                 # this one is not wanted
                 continue
-            logging.log(logging.ULTRADEBUG, 'neigh_list: preparing Neigh for ' + ip_to_str(ip))
+            logging.log(logging.ULTRADEBUG, 'neigh_list: preparing Neigh for nip ' + str(self.ntkd.maproute.ip_to_nip(ip)) + ', netid ' + str(netid))
             nlist.append(Neigh(bestdev=val.bestdev,
                                devs=val.devs,
                                ip=ip,
