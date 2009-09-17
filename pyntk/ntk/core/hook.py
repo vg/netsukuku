@@ -134,6 +134,32 @@ class Hook(object):
         In contrast, we request the other values to the Coordinator.
         """
 
+        # The method 'hook' is called in various situations. How do we
+        # detect them?
+        # 1. hook called at bootstrap. We are in a private gnode (192.168..).
+        #    We get called without any argument.
+        # 2. hook called for a gnode splitting. We have some
+        #    "forbidden_neighs".
+        # 3. hook called for a communicating vessels. We have some
+        #    "candidates" in "passed_neigh_list". We have a "condition" to
+        #    satisfy too.
+        # 4. hook called for a network collision. We have some nodes of the
+        #    new network in "passed_neigh_list". But, we don't have any
+        #    "condition" to satisfy.
+        called_for_bootstrap = 1
+        called_for_gnode_splitting = 2
+        called_for_communicating_vessels = 3
+        called_for_network_collision = 4
+        called_for = None
+        if forbidden_neighs:
+            called_for = called_for_gnode_splitting
+        elif not passed_neigh_list:
+            called_for = called_for_bootstrap
+        elif condition:
+            called_for = called_for_communicating_vessels
+        else:
+            called_for = called_for_network_collision
+
         logging.info('Hooking procedure started.')
         current_nr_list = self.neigh.neigh_list()
         previous_netid = self.ntkd.neighbour.netid
@@ -158,11 +184,18 @@ class Hook(object):
         def is_current_hfn_valid():
             # Should our actual knowledge of the network be considered?
             # TODO Review implementation
-            if we_are_alone:
-                return True
-            if passed_neigh_list:
+            if called_for == called_for_network_collision:
                 return False
-            return previous_netid != -1
+            if called_for == called_for_communicating_vessels:
+                return False
+            if called_for == called_for_bootstrap:
+                if we_are_alone:
+                    return True
+                else:
+                    return False
+            if called_for == called_for_gnode_splitting:
+                return False
+            raise Exception('Hooking phase does not recognize the situation.')
         if is_current_hfn_valid():
             hfn = [(self.maproute.me, self.highest_free_nodes())]
             logging.info('Hook: highest non saturated gnodes that I know: ' + str(hfn))
