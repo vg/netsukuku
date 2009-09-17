@@ -38,30 +38,38 @@ class KrnlRoute(object):
         self.multipath = settings.MULTIPATH
 
         self.maproute.events.listen('ROUTE_NEW', self.route_new)
+        self.route_new_calls = []
         self.maproute.events.listen('ROUTE_DELETED', self.route_deleted)
+        self.route_deleted_calls = []
         self.maproute.events.listen('ROUTE_REM_CHGED', self.route_rem_changed)
+        self.route_rem_changed_calls = []
 
         self.neigh.events.listen('NEIGH_NEW', self.neigh_new, priority=5)
+        self.neigh_new_calls = []
         self.neigh.events.listen('NEIGH_DELETED', self.neigh_deleted, priority=15)
+        self.neigh_deleted_calls = []
         self.neigh.events.listen('NEIGH_REM_CHGED', self.neigh_rem_changed, priority=5)
+        self.neigh_rem_changed_calls = []
 
 
     def route_new(self, lvl, dst, gw, rem):
         # We'll do the real thing in a microfunc, but make sure
-        # to have a chance to get scheduled as soon as possible.
-        self._route_new(lvl, dst, gw, rem)
+        # to have a chance to get scheduled as soon as possible
+        # and obtain immediately any data that is susceptible to change.
+        self.route_new_calls.append((lvl, dst, gw, rem, self.maproute.node_get(lvl, dst).nroutes()))
+        self._route_new()
         micro_block()
 
-    @microfunc(True)
-    def _route_new(self, lvl, dst, gw, rem):
+    @microfunc()
+    def _route_new(self):
+        lvl, dst, gw, rem, nroutes = self.route_new_calls.pop(0)
         # Obtain IP for node and gateway
         nip = self.maproute.lvlid_to_nip(lvl, dst)
         ip  = self.maproute.nip_to_ip(nip)
         neighgw = self.neigh.id_to_neigh(gw)
         gwip = neighgw.ip
         # Did we already have one route to this node?
-        node = self.maproute.node_get(lvl, dst)
-        existing = node.nroutes() >= 2
+        existing = nroutes >= 2
         # Obtain a IP string for the node
         ipstr = ip_to_str(ip)
         # Obtain a IP string for this gateway
@@ -77,6 +85,7 @@ class KrnlRoute(object):
             if existing:
                 # Eventually change
                 # Obtain a IP string for the best gateway
+                node = self.maproute.node_get(lvl, dst)
                 best = node.best_route()
                 newgw = best.gw.id
                 newgw_neigh = best.gw
@@ -92,12 +101,15 @@ class KrnlRoute(object):
 
     def route_deleted(self, lvl, dst, gwip):
         # We'll do the real thing in a microfunc, but make sure
-        # to have a chance to get scheduled as soon as possible.
-        self._route_deleted(lvl, dst, gwip)
+        # to have a chance to get scheduled as soon as possible
+        # and obtain immediately any data that is susceptible to change.
+        self.route_deleted_calls.append((lvl, dst, gwip, self.maproute.node_get(lvl, dst).is_free()))
+        self._route_deleted()
         micro_block()
 
-    @microfunc(True)
-    def _route_deleted(self, lvl, dst, gwip):
+    @microfunc()
+    def _route_deleted(self):
+        lvl, dst, gwip, isfree = self.route_deleted_calls.pop(0)
         # Obtain a IP string for the node
         nip = self.maproute.lvlid_to_nip(lvl, dst)
         ip  = self.maproute.nip_to_ip(nip)
@@ -110,14 +122,12 @@ class KrnlRoute(object):
             KRoute.delete(ipstr, lvl_to_bits(lvl), gateway=gwipstr)
         else:
             # Is there a new best route for this node?
-            newgw_gwipstr = None
-            newgw_dev = None
-            node = self.maproute.node_get(lvl, dst)
-            if node.is_free():
+            if isfree:
                 # No more routes, just remove old route from kernel
                 KRoute.delete(ipstr, lvl_to_bits(lvl), gateway=gwipstr)
             else:
                 # Obtain a IP string for the new gateway
+                node = self.maproute.node_get(lvl, dst)
                 best = node.best_route()
                 newgw = best.gw.id
                 newgw_neigh = best.gw
@@ -128,12 +138,15 @@ class KrnlRoute(object):
 
     def route_rem_changed(self, lvl, dst, gw, rem, oldrem):
         # We'll do the real thing in a microfunc, but make sure
-        # to have a chance to get scheduled as soon as possible.
-        self._route_rem_changed(lvl, dst, gw, rem, oldrem)
+        # to have a chance to get scheduled as soon as possible
+        # and obtain immediately any data that is susceptible to change.
+        self.route_rem_changed_calls.append((lvl, dst, gw, rem, oldrem))
+        self._route_rem_changed()
         micro_block()
 
-    @microfunc(True)
-    def _route_rem_changed(self, lvl, dst, gw, rem, oldrem):
+    @microfunc()
+    def _route_rem_changed(self):
+        lvl, dst, gw, rem, oldrem = self.route_rem_changed_calls.pop(0)
         # Do we have multipath?
         if not self.multipath:
             # We might have a different best route now
@@ -154,12 +167,15 @@ class KrnlRoute(object):
 
     def neigh_new(self, neigh):
         # We'll do the real thing in a microfunc, but make sure
-        # to have a chance to get scheduled as soon as possible.
-        self._neigh_new(neigh)
+        # to have a chance to get scheduled as soon as possible
+        # and obtain immediately any data that is susceptible to change.
+        self.neigh_new_calls.append(neigh)
+        self._neigh_new()
         micro_block()
 
-    @microfunc(True)
-    def _neigh_new(self, neigh):
+    @microfunc()
+    def _neigh_new(self):
+        neigh = self.neigh_new_calls.pop(0)
         ipstr = ip_to_str(neigh.ip)
         dev = neigh.bestdev[0]
         KRoute.add_neigh(ipstr, dev)
@@ -168,24 +184,30 @@ class KrnlRoute(object):
 
     def neigh_rem_changed(self, neigh, oldrem=None):
         # We'll do the real thing in a microfunc, but make sure
-        # to have a chance to get scheduled as soon as possible.
-        self._neigh_rem_changed(neigh, oldrem)
+        # to have a chance to get scheduled as soon as possible
+        # and obtain immediately any data that is susceptible to change.
+        self.neigh_rem_changed_calls.append((neigh, oldrem))
+        self._neigh_rem_changed()
         micro_block()
 
-    @microfunc(True)
-    def _neigh_rem_changed(self, neigh, oldrem):
+    @microfunc()
+    def _neigh_rem_changed(self):
+        neigh, oldrem = self.neigh_rem_changed_calls.pop(0)
         ipstr = ip_to_str(neigh.ip)
         dev = neigh.bestdev[0]
         KRoute.change_neigh(ipstr, dev)
 
     def neigh_deleted(self, neigh):
         # We'll do the real thing in a microfunc, but make sure
-        # to have a chance to get scheduled as soon as possible.
-        self._neigh_deleted(neigh)
+        # to have a chance to get scheduled as soon as possible
+        # and obtain immediately any data that is susceptible to change.
+        self.neigh_deleted_calls.append(neigh)
+        self._neigh_deleted()
         micro_block()
 
-    @microfunc(True)
-    def _neigh_deleted(self, neigh):
+    @microfunc()
+    def _neigh_deleted(self):
+        neigh = self.neigh_deleted_calls.pop(0)
         ipstr = ip_to_str(neigh.ip)
         self.neigh.waitfor_gw_removable(neigh.id)
         KRoute.delete_neigh(ipstr)

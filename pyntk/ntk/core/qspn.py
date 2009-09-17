@@ -43,9 +43,6 @@ class Etp:
         self.neigh = radar.neigh
         self.maproute = maproute
         
-        self.etp_exec = apply_wakeup_on_event(self.etp_exec, 
-                                              events=[(self.neigh.events, 'NEIGH_NEW')])
-
         self.neigh.events.listen('NEIGH_NEW', self.etp_new_link)
         self.neigh.events.listen('NEIGH_REM_CHGED', self.etp_changed_link)
         self.neigh.events.listen('NEIGH_DELETED', self.etp_dead_link)
@@ -257,8 +254,8 @@ class Etp:
         logging.info('Forwarding ETP for a changed-rem neighbour.')
         self.etp_forward_referring_to_neigh(R, TPL, flag_of_interest, neigh)
 
-    @microfunc(True)
-    def etp_exec(self, sender_nip, sender_netid, R, TPL, flag_of_interest, event_wait=None):
+    @microfunc()
+    def etp_exec(self, sender_nip, sender_netid, R, TPL, flag_of_interest):
         """Executes a received ETP
         
         sender_nip: sender ntk ip (see map.py)
@@ -281,11 +278,13 @@ class Etp:
         current_nr_list = self.neigh.neigh_list()
         
         # check if we have found the neigh, otherwise wait it
+        timeout = xtime.time() + 6000
         while neigh is None:
-                ev_neigh = event_wait[(self.neigh.events, 'NEIGH_NEW')]()
-                if cmp(ev_neigh[0].ip, self.maproute.nip_to_ip(gwnip)):
-                        # ok, continue now
-                        neigh   = self.neigh.ip_to_neigh(self.maproute.nip_to_ip(gwnip))
+            if xtime.time() > timeout:
+                logging.info('ETP dropped: timeout.')
+                return
+            xtime.swait(50)
+            neigh = self.neigh.ip_to_neigh(gwip)
 
         logging.info('Received ETP from %s', ip_to_str(neigh.ip))
                         
