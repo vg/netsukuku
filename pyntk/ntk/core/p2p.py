@@ -468,11 +468,6 @@ class P2PAll(object):
 
         It gets the P2P maps from our nearest neighbour"""
 
-        while self.ntkd.neighbour.netid == -1:
-            # I'm not ready to interact.
-            time.sleep(0.001)
-            micro_block()
-
         logging.log(logging.ULTRADEBUG, 'P2P hooking: started')
         logging.log(logging.ULTRADEBUG, 'P2P hooking: My actual list of services is: ' + str(self.log_services()))
         ## Find our nearest neighbour

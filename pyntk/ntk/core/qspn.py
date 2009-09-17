@@ -54,9 +54,13 @@ class Etp(object):
                                 self.etp_exec_udp,
                                 self.reply_etp_exec_udp]
 
-    def etp_send_to_neigh(self, etp, neigh):
+    def etp_send_to_neigh(self, etp, neigh, current_netid):
         """Sends the `etp' to neigh"""
 
+        if current_netid != self.ntkd.neighbour.netid:
+            logging.info('An ETP dropped because we changed network from ' + \
+                    str(current_netid) + ' to ' + str(self.ntkd.neighbour.netid) + '.')
+            return
         logging.debug('Etp: sending to %s', ip_to_str(neigh.ip))
         try:
             self.call_etp_exec_udp(neigh, self.maproute.me, self.ntkd.neighbour.netid, *etp)
@@ -70,6 +74,17 @@ class Etp(object):
     @microfunc(True)
     def etp_dead_link(self, neigh):
         """Builds and sends a new ETP for the dead link case."""
+
+        if self.ntkd.neighbour.netid == -1:
+            # I'm hooking, I must not react to this event.
+            # TODO probably we can safely remove this test because
+            #  when self.netid == -1 in radar the NEIGH_XXX are not emitted.
+            logging.warning('QSPN: new link %s: detected while hooking!', ip_to_str(neigh.ip))
+            return
+
+        # Memorize current netid because it might change. In this case the ETP should not
+        # be sent.
+        current_netid = self.ntkd.neighbour.netid
 
         current_nr_list = self.neigh.neigh_list(in_my_network=True)
         logging.debug('QSPN: death of %s: update my map.', ip_to_str(neigh.ip))
@@ -93,11 +108,6 @@ class Etp(object):
         xtime.swait(10)
         self.maproute.routeneigh_del(neigh)
         ##
-
-        while self.ntkd.neighbour.netid == -1:
-            # I'm not ready to interact.
-            time.sleep(0.001)
-            micro_block()
 
         logging.debug('QSPN: death of %s: prepare the ETP', ip_to_str(neigh.ip))
         
@@ -161,17 +171,22 @@ class Etp(object):
 
                     etp = (R2, [[block_lvl, TP]], flag_of_interest)
                     logging.info('Sending ETP for a dead neighbour.')
-                    self.etp_send_to_neigh(etp, nr)
+                    self.etp_send_to_neigh(etp, nr, current_netid)
         ##
 
     @microfunc(True)
     def etp_new_link(self, neigh):
         """Builds and sends a new ETP for the new link case."""
 
-        while self.ntkd.neighbour.netid == -1:
-            # I'm not ready to interact.
-            time.sleep(0.001)
-            micro_block()
+        if self.ntkd.neighbour.netid == -1:
+            # I'm hooking, I must not react to this event.
+            # NOTE: this method gets called with COLLIDING_NEIGH_NEW too. So we need to check.
+            logging.warning('QSPN: new link %s: detected while hooking!', ip_to_str(neigh.ip))
+            return
+
+        # Memorize current netid because it might change. In this case the ETP should not
+        # be sent.
+        current_netid = self.ntkd.neighbour.netid
 
         logging.debug('QSPN: new link %s: prepare the ETP', ip_to_str(neigh.ip))
         current_nr_list = self.neigh.neigh_list()
@@ -212,12 +227,23 @@ class Etp(object):
         TP = [[self.maproute.me[0], NullRem()]]
         etp = (R, [[0, TP]], flag_of_interest)
         logging.info('Sending ETP for a new neighbour.')
-        self.etp_send_to_neigh(etp, neigh)
+        self.etp_send_to_neigh(etp, neigh, current_netid)
         ##
 
     @microfunc(True)
     def etp_changed_link(self, neigh, oldrem):
         """Builds and sends a new ETP for the changed link case."""
+
+        if self.ntkd.neighbour.netid == -1:
+            # I'm hooking, I must not react to this event.
+            # TODO probably we can safely remove this test because
+            #  when self.netid == -1 in radar the NEIGH_XXX are not emitted.
+            logging.warning('QSPN: new link %s: detected while hooking!', ip_to_str(neigh.ip))
+            return
+
+        # Memorize current netid because it might change. In this case the ETP should not
+        # be sent.
+        current_netid = self.ntkd.neighbour.netid
 
         current_nr_list = self.neigh.neigh_list()
         logging.debug('QSPN: changed %s: update my map', ip_to_str(neigh.ip))
@@ -225,11 +251,6 @@ class Etp(object):
         ## Update the map
         self.maproute.routeneigh_rem(neigh, oldrem)
         ##
-
-        while self.ntkd.neighbour.netid == -1:
-            # I'm not ready to interact.
-            time.sleep(0.001)
-            micro_block()
 
         logging.debug('QSPN: changed %s: prepare the ETP', ip_to_str(neigh.ip))
 
@@ -252,7 +273,7 @@ class Etp(object):
         ##       the acyclic rule.
 
         logging.info('Forwarding ETP for a changed-rem neighbour.')
-        self.etp_forward_referring_to_neigh(R, TPL, flag_of_interest, neigh)
+        self.etp_forward_referring_to_neigh(R, TPL, flag_of_interest, neigh, current_netid)
 
     def call_etp_exec_udp(self, neigh, sender_nip, sender_netid, R, TPL, flag_of_interest):
         """Use BcastClient to call etp_exec"""
@@ -293,6 +314,20 @@ class Etp(object):
              TP is a list of (hop, rem) pairs.
         flag_of_interest: a boolean
         """
+
+        # Ignore ETP from -1 ... that should not happen.
+        if sender_netid == -1:
+            # I raise exception just to give more visibility.
+            raise Exception('ETP received from a node with netid = -1 (not completely kooked).')
+
+        while self.ntkd.neighbour.netid == -1:
+            # I'm not ready to interact.
+            time.sleep(0.001)
+            micro_block()
+
+        # Memorize current netid because it might change. In this case the ETP should not
+        # be sent.
+        current_netid = self.ntkd.neighbour.netid
 
         logging.info('Received ETP from (nip, netid) = ' + str((sender_nip, sender_netid)))
         gwnip = sender_nip
@@ -429,12 +464,12 @@ class Etp(object):
             TPL[-1][1].append([self.maproute.me[0], gwrem])
         ##
 
-        self.etp_forward_referring_to_neigh(R, TPL, flag_of_interest, neigh)
+        self.etp_forward_referring_to_neigh(R, TPL, flag_of_interest, neigh, current_netid)
         logging.info('ETP executed.')
 
         self.events.send('ETP_EXECUTED', (old_node_nb, self.maproute.node_nb[:]))
 
-    def etp_forward_referring_to_neigh(self, R, TPL, flag_of_interest, neigh):
+    def etp_forward_referring_to_neigh(self, R, TPL, flag_of_interest, neigh, current_netid):
         """Forwards, when interesting, to all other neighbour info about neigh"""
 
         current_nr_list = self.neigh.neigh_list(in_my_network=True)
@@ -499,7 +534,7 @@ class Etp(object):
                     #               Sflag_of_interest=0
                     #               TP = [(self.maproute.me[0], NullRem())]
                     #               etp = (S, [(0, TP)], Sflag_of_interest)
-                    #               self.etp_send_to_neigh(etp, neigh)
+                    #               self.etp_send_to_neigh(etp, neigh, current_netid)
                     ##
 
                     ## R2
@@ -523,7 +558,7 @@ class Etp(object):
                     if not is_listlist_empty(R2):
                         etp = (R2, TPL, flag_of_interest)
                         logging.info('Sending ETP.')
-                        self.etp_send_to_neigh(etp, nr)
+                        self.etp_send_to_neigh(etp, nr, current_netid)
                     ##
 
     def collision_check(self, gwnip, neigh, R):
@@ -535,13 +570,6 @@ class Etp(object):
         """
         
         logging.debug("Etp: collision check: my netid %d and neighbour's netid %d", self.ntkd.neighbour.netid, neigh.netid)
-
-        if neigh.netid == -1: raise Exception('ETP received from a node with netid = -1 (not completely kooked).')
-
-        while self.ntkd.neighbour.netid == -1:
-            # I'm not ready to interact.
-            time.sleep(0.001)
-            micro_block()
 
         previous_netid = self.ntkd.neighbour.netid
 

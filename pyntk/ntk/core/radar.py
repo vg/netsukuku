@@ -571,10 +571,15 @@ class Neighbour(object):
         """Sends event for a new neighbour."""
 
         ip, netid = key
+
+        if self.netid == -1:
+            # I'm hooking, better not to emit any signal.
+            return
+
         val = self.ip_netid_table[key]
         id = self.key_to_id(key)
 
-        is_in_my_net = netid == self.netid and self.netid != -1
+        is_in_my_net = netid == self.netid
         event_to_fire = 'NEIGH_NEW' if is_in_my_net else 'COLLIDING_NEIGH_NEW'
         if is_in_my_net:
             logging.info('Neighbour ip ' + ip_to_str(ip) + ', netid ' + str(netid) + ', is now in my network.')
@@ -597,7 +602,12 @@ class Neighbour(object):
         """Sends event for a dead neighbour."""
 
         ip, netid = key
-        is_in_my_net = netid == self.netid and self.netid != -1
+
+        if self.netid == -1:
+            # I'm hooking, better not to emit any signal.
+            return
+
+        is_in_my_net = netid == self.netid
         event_to_fire = 'NEIGH_DELETED' if is_in_my_net else 'COLLIDING_NEIGH_DELETED'
         if is_in_my_net:
             logging.info('Neighbour ip ' + ip_to_str(ip) + ', netid ' + str(netid) + ', is no more in my network.')
@@ -623,10 +633,15 @@ class Neighbour(object):
         """Sends event for a changed rem neighbour."""
 
         ip, netid = key
+
+        if self.netid == -1:
+            # I'm hooking, better not to emit any signal.
+            return
+
         val = self.ip_netid_table[key]
         id = self.key_to_id(key)
 
-        is_in_my_net = netid == self.netid and self.netid != -1
+        is_in_my_net = netid == self.netid
         event_to_fire = 'NEIGH_REM_CHGED' if is_in_my_net else 'COLLIDING_NEIGH_REM_CHGED'
         if is_in_my_net:
             logging.info('Neighbour ip ' + ip_to_str(ip) + ', netid ' + str(netid) + ', which is in my network, changed its REM.')
