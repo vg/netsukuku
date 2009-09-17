@@ -142,7 +142,7 @@ class Route(BaseRoute):
 
         if dev is not None:
             cmd += ' dev %s' % dev
-        if gateway is not None and gateway != ip:
+        if gateway is not None:
             cmd += ' via %s' % gateway
 
         cmd += ' protocol ntk'
@@ -170,7 +170,7 @@ class Route(BaseRoute):
         # When at level 0, that is cidr = lvl_to_bits(0), this method
         # might be called with ip = gateway. In this case the command
         # below makes no sense and would result in a error.
-        if ip == gateway: return
+        if cidr == 32 and ip == gateway: return
         cmd = Route._modify_routes_cmd('add', ip, cidr, dev, gateway)
         iproute(cmd)
 
@@ -183,6 +183,10 @@ class Route(BaseRoute):
     @staticmethod
     def change(ip, cidr, dev=None, gateway=None):
         ''' Edits the route with corresponding properties. '''
+        # When at level 0, that is cidr = lvl_to_bits(0), this method
+        # might be called with ip = gateway. In this case the command
+        # below makes no sense and would result in a error.
+        if cidr == 32 and ip == gateway: return
         cmd = Route._modify_routes_cmd('change', ip, cidr, dev, gateway)
         iproute(cmd)
 
@@ -197,6 +201,10 @@ class Route(BaseRoute):
     @staticmethod
     def delete(ip, cidr, dev=None, gateway=None):
         ''' Removes the route with corresponding properties. '''
+        # When at level 0, that is cidr = lvl_to_bits(0), this method
+        # might be called with ip = gateway. In this case the command
+        # below makes no sense and would result in a error.
+        if cidr == 32 and ip == gateway: return
         cmd = Route._modify_routes_cmd('del', ip, cidr, dev, gateway)
         iproute(cmd)
 
