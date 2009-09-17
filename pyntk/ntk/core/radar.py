@@ -165,11 +165,60 @@ class Neighbour(object):
                                 self.ip_netid_change_udp,
                                 self.reply_ip_netid_change_udp]
 
-    def neigh_list(self):
-        """ return the list of neighbours """
+    def neigh_list(self, in_my_network=False, out_of_my_network=False,
+                         in_this_netid=None, out_of_this_netid=None):
+        """ Returns the list of neighbours.
+            If in_my_network == True, then returns only nodes
+              that are in my network.
+            Else, if out_of_my_network == True, then returns only nodes
+              that are NOT in my network.
+            Else, if in_this_netid is not None, then returns only nodes
+              that are in the network with this netid.
+            Else, if out_of_this_netid is not None, then returns only nodes
+              that are NOT in the network with this netid.
+            Else all the neighbours are returned.
+            netid == -1 is a special case. It is not in any network.
+            So, in_this_netid=-1 is a non-sense, but will simply return
+            a void list.
+            On the other hand, out_of_this_netid=-1 will return all the
+            neighbours.
+        """
+
+        def in_my_network_requirement(netid):
+            if netid == -1:
+                return False
+            return netid == self.netid
+        def out_of_my_network_requirement(netid):
+            if netid == -1:
+                return True
+            return netid != self.netid
+        def in_this_netid_requirement(netid):
+            if netid == -1:
+                return False
+            return netid == in_this_netid
+        def out_of_this_netid_requirement(netid):
+            if netid == -1:
+                return True
+            return netid != in_this_netid
+        def no_requirements(netid):
+            return True
+
+        requirement = no_requirements
+        if in_my_network:
+            requirement = in_my_network_requirement
+        elif out_of_my_network:
+            requirement = out_of_my_network_requirement
+        elif in_this_netid is not None:
+            requirement = in_this_netid_requirement
+        elif out_of_this_netid is not None:
+            requirement = out_of_this_netid_requirement
+
         nlist = []
         for key, val in self.ip_netid_table.items():
             ip, netid = key
+            if not requirement(netid):
+                # this one is not wanted
+                continue
             logging.log(logging.ULTRADEBUG, 'neigh_list: preparing Neigh for ' + ip_to_str(ip))
             nlist.append(Neigh(bestdev=val.bestdev,
                                devs=val.devs,
@@ -574,6 +623,10 @@ class Neighbour(object):
     def reply_ip_netid_change_udp(self, _rpc_caller, caller_id, ret):
         """Receives reply from ip_netid_change_udp."""
         rpc.UDP_got_reply(_rpc_caller, caller_id, ret)
+
+    def is_neigh_in_my_network(self, neigh):
+        """Returns True if the passed Neigh is in my network."""
+        return neigh.netid == self.netid
 
 
 class Radar(object):
