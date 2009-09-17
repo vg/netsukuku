@@ -366,7 +366,8 @@ class Neighbour(object):
             if not key in old_ip_table:
                 # insert neigh id into translation_table
                 self.ip_to_id(key)
-                # create a TCP connection to the neighbour
+                # create a TCPClient which will be able to connect to the
+                # neighbour
                 self.ntk_client[key] = rpc.TCPClient(ip_to_str(key))
 
         # now we cycle through the new ip_table
@@ -375,20 +376,9 @@ class Neighbour(object):
         for key in self.ip_table:
             # if a node has been added
             if not key in old_ip_table:
-                # recover neigh id from translation_table
-                idn = self.ip_to_id(key)
                 # info
                 logging.info('Change in our LAN: new neighbour ' + ip_to_str(key))
-                # send a message notifying we added a node
-                logging.debug('ANNOUNCE: gw ' + str(idn) + ' detected.')
-                self.announce_gw(idn)
-                self.events.send('NEIGH_NEW',
-                                 (Neigh(bestdev=self.ip_table[key].bestdev,
-                                        devs=self.ip_table[key].devs,
-                                        idn=idn,
-                                        ip=key,
-                                        netid=self.netid_table[key],
-                                        ntkd=self.ntk_client[key]),))
+                self.add(key, already_in_ntk_client=True)
             else:
                 # otherwise (if the node already was in old ip_table) check if
                 # its rtt has changed more than rtt_variation
@@ -449,8 +439,33 @@ class Neighbour(object):
                 if self.ntk_client[key].connected:
                     self.ntk_client[key].close()
 
+    def add(self, ip, already_in_ntk_client=True):
+        """Sends event for a new neighbour.
+        The entry already exists in ip_table and netid_table.
+        The entry might already exist in translation_table and ntk_client."""
+
+        logging.info("Adding neighbour %s", ip_to_str(ip))
+
+        # insert/recover neigh id into translation_table
+        idn = self.ip_to_id(ip)
+        if not already_in_ntk_client:
+            # create a TCPClient which will be able to connect to the
+            # neighbour
+            self.ntk_client[ip] = rpc.TCPClient(ip_to_str(ip))
+        # send a message notifying we added a node
+        logging.debug('ANNOUNCE: gw ' + str(idn) + ' detected.')
+        self.announce_gw(idn)
+        self.events.send('NEIGH_NEW',
+                         (Neigh(bestdev=self.ip_table[ip].bestdev,
+                                devs=self.ip_table[ip].devs,
+                                idn=idn,
+                                ip=ip,
+                                netid=self.netid_table[ip],
+                                ntkd=self.ntk_client[ip]),))
+
     def delete(self, ip, remove_from_iptable=True):
-        """Deletes an entry from the ip_table"""
+        """Sends event for a dead neighbour.
+        Optionally removes its entry from the ip_table."""
 
         logging.info("Deleting neighbour %s", ip_to_str(ip))
 
