@@ -501,7 +501,7 @@ class Etp:
 
                     if not is_listlist_empty(R2):
                         etp = (R2, TPL, flag_of_interest)
-                        logging.info('Sending received ETP to propagate its information.')
+                        logging.info('Sending ETP.')
                         self.etp_send_to_neigh(etp, nr)
                     ##
 

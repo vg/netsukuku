@@ -241,14 +241,14 @@ class FakeNeighbour():
                                         ntkd=FakeTCPClient(ip))
         self.send_event_neigh_new_for_neigh(neigh)
         return neigh
-    def send_event_neigh_rem_chged(self, bestdev, devs, idn, ip, netid, new_rtt):
+    def send_event_neigh_rem_chged(self, bestdev, devs, idn, ip, netid, old_rtt):
         self.events.send('NEIGH_REM_CHGED',
                                  (radar.Neigh(bestdev=bestdev,
                                         devs=devs,
                                         idn=idn,
                                         ip=ip,
                                         netid=netid,
-                                        ntkd=FakeTCPClient(ip)),Rtt(new_rtt)))
+                                        ntkd=FakeTCPClient(ip)),radar.Rtt(old_rtt)))
     def send_event_neigh_deleted(self, bestdev, devs, idn, ip, netid):
         logging.debug('ANNOUNCE: gw ' + str(idn) + ' removing.')
         self.announce_gw_removing(idn)
