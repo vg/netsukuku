@@ -53,6 +53,9 @@ class ParticipantNode(object):
         # TODO test what this value is... perhaps None is better than 0 ?
         return (0, 0, self.participant)
 
+    def __repr__(self):
+        return '<%s: %s>' % (self.__class__.__name__, self.participant)
+
 serializable.register(ParticipantNode)
 
 class MapP2P(Map):
@@ -110,6 +113,7 @@ class MapP2P(Map):
 
     def map_data_merge(self, (nip, plist, nblist)):
         """Copies a mapp2p from another nip's point of view."""
+        logging.log(logging.ULTRADEBUG, 'Merging a mapp2p.map_data_merge: before: ' + self.repr_me())
         # Was I participant?
         me_was = [False] * self.levels
         for lvl in xrange(self.levels):
@@ -122,7 +126,7 @@ class MapP2P(Map):
         # ... ripristine myself.
         for lvl in xrange(self.levels):
             self.node_get(lvl, self.me[lvl]).participant = me_was[lvl]
-        logging.log(logging.ULTRADEBUG, self.repr_me())
+        logging.log(logging.ULTRADEBUG, 'Merging a mapp2p.map_data_merge: after: ' + self.repr_me())
 
     def repr_me(self, func_repr_node=None):
         def repr_node_mapp2p(node):
@@ -456,6 +460,7 @@ class P2PAll(object):
 
         logging.log(logging.ULTRADEBUG, 'P2P hooking: I will ask for the list of services to ' + str(self.maproute.ip_to_nip(minnr.ip)))
         nrmaps_pack = minnr.ntkd.p2p.pid_getall()
+        logging.log(logging.ULTRADEBUG, 'P2P hooking: ' + str(self.maproute.ip_to_nip(minnr.ip)) + ' answers ' + str(nrmaps_pack))
         for (pid, map_pack) in nrmaps_pack:
             self.pid_get(pid).mapp2p.map_data_merge(map_pack)
 

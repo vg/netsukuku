@@ -104,6 +104,7 @@ class MapCache(Map):
 
     def map_data_merge(self, (nip, plist, nblist)):
         """Copies a mapcache from another nip's point of view."""
+        logging.log(logging.ULTRADEBUG, 'Merging a mapcache.map_data_merge: before: ' + self.repr_me())
         # Was I alive?
         # TODO always alive?
         me_was = [False] * self.levels
@@ -118,7 +119,7 @@ class MapCache(Map):
         # ... ripristine myself.
         for lvl in xrange(self.levels):
             self.node_get(lvl, self.me[lvl]).alive = me_was[lvl]
-        logging.log(logging.ULTRADEBUG, self.repr_me())
+        logging.log(logging.ULTRADEBUG, 'Merging a mapcache.map_data_merge: after: ' + self.repr_me())
 
     def repr_me(self, func_repr_node=None):
         def repr_node_mapcache(node):
@@ -178,7 +179,6 @@ class Coord(P2P):
         self.coordnode = [None] * (self.maproute.levels + 1)
 
         self.remotable_funcs += [self.going_out, self.going_out_ok, self.going_in]
-
 
     def h(self, key):
         """h:KEY-->hIP
