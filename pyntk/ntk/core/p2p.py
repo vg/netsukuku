@@ -194,6 +194,12 @@ class P2P(RPCDispatcher):
         mp  = self.mapp2p
         lvl = self.maproute.nip_cmp(pIP, mp.me)
         for l in xrange(lvl, mp.levels):
+            # We might receive the request to register a participant from a
+            # neighbour that has not yet sent us an ETP. In that case we would
+            # not have yet the route to it in the map. It's a matter of time,
+            # so we wait. (we are in a microfunc)
+            while self.maproute.node_get(l, pIP[l]).is_free():
+                xtime.swait(100)
             if not mp.node_get(l, pIP[l]).participant:
                 logging.debug('registering participant (%s, %s) to service %s.' % (l, pIP[l], mp.pid))
                 mp.node_get(l, pIP[l]).participant = True
@@ -261,7 +267,7 @@ class P2P(RPCDispatcher):
                     return ' '
                 logging.warning(self.mapp2p.repr_me(repr_node_mapp2p))
                 logging.warning('This is maproute.')
-                logging.warning(self.maproute.repr_me())
+                logging.warning(Map.repr_me(self.maproute))
                 return None
 
     def call_msg_send_udp(self, nip, sender_nip, hip, msg):

@@ -175,18 +175,12 @@ class Etp:
     def etp_new_link(self, neigh):
         """Builds and sends a new ETP for the new link case."""
 
-        current_nr_list = self.neigh.neigh_list()
-        logging.debug('QSPN: new link %s: update my map', ip_to_str(neigh.ip))
-        
-        ## Update the map
-        self.maproute.routeneigh_add(neigh)
-        ##
-
         if self.ntkd.neighbour.netid == -1:
             # I'm not ready to interact.
             return
 
         logging.debug('QSPN: new link %s: prepare the ETP', ip_to_str(neigh.ip))
+        current_nr_list = self.neigh.neigh_list()
 
         # Through which devs do I see the new neighbour?
         devs_to_neigh = [dev for dev in neigh.devs.keys()]

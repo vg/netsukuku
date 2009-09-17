@@ -311,17 +311,14 @@ class RouteNode(object):
             self.routes.append(Route(gw, rem_at_gw, hops))
             ret = 1
             self.sort()
-        #elif rem_at_gw > oldr.rem_at_gw:
-            # Does it make sense? If a neighbour sends to me an ETP it
-            # sends its best route to the destination. It's not an add, it
-            # sure is a rem-chg. Anyway, if we reach this point, we should
-            # update the route no matter if it is better or worse.
-        else:
-            import pdb
-            pdb.set_trace()
-            
-            # We already have a route with gateway `gw'. However, the new
-            # route is better. Let's update the rem.
+        elif rem_at_gw > oldr.rem_at_gw: 
+            # At the moment this does not make sense alot.
+            # We call route_add only to add a route through a gw that was not
+            # there.
+            logging.warning('RouteNode: route_add called, but it was existing.')
+            logging.warning(get_stackframes(back=1))
+            # Anyway, this is not a changed rem, but a different route through
+            # the same gateway. So we update iff the rem is better.
             oldrem_at_gw = oldr.rem_modify(rem_at_gw, hops)
             val = oldrem_at_gw
             ret = 2
@@ -561,11 +558,6 @@ class MapRoute(Map):
                             self.route_del(lvl, dst, neigh.id, neigh.ip)
         logging.debug('ANNOUNCE: gw ' + str(neigh.id) + ' removable.')
         self.ntkd.neighbour.announce_gw_removable(neigh.id)
-
-    def routeneigh_add(self, neigh):
-        """Add a route to reach the neighbour `neigh'"""
-        lvl, nid = self.routeneigh_get(neigh)
-        return self.route_add(lvl, nid, neigh, NullRem(), [])
 
     def routeneigh_rem(self, neigh, oldrem):
         for lvl in xrange(self.levels):
