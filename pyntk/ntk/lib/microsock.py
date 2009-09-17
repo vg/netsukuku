@@ -278,8 +278,11 @@ class dispatcher(asyncore.dispatcher):
                 # Prefer the sender.  Do not block when sending, given that
                 # there is a tasklet known to be waiting, this will happen.
                 self.connectChannel = Channel(prefer_sender=True)
-            self.connectChannel.recv()
+            ret = self.connectChannel.recv()
             self.connectChannel = None   # To make sure that we don't do again a 'send' on this channel
+            # Handling errors
+            if isinstance(ret, Exception):
+                raise ret
 
 
     def send(self, data):
@@ -410,6 +413,15 @@ class dispatcher(asyncore.dispatcher):
     # Some error, just close the channel and let that raise errors to
     # blocked calls.
     def handle_expt(self):
+        # if we were connecting, report error to method connect
+        if self.connectChannel is not None:
+            err = self.socket.getsockopt(stdsocket.SOL_SOCKET, stdsocket.SO_ERROR)
+            import os
+            from errno import errorcode
+            msg = os.strerror(err)
+            if msg == 'Unknown error':
+                msg = errorcode[err]
+            self.connectChannel.send(stdsocket.error(err, msg))
         if self._justConnected:
             self._justConnected = False
         self.close()
