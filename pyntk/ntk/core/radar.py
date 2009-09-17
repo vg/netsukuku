@@ -315,6 +315,13 @@ class Neighbour(object):
     # removing the gateway itself.
 
     def announce_gw(self, gwid):
+        # This place should be void and nobody should be receiving
+        # in it, but just to be sure:
+        channel = self.channels[gwid-1]
+        if channel is not None:
+            channel.bcast_send('')
+            micro_block()
+        # Now the real announce.
         self.channels[gwid-1] = Channel(prefer_sender=True)
 
     def waitfor_gw_added(self, gwid):
@@ -330,6 +337,13 @@ class Neighbour(object):
         self.channels[gwid-1] = None
 
     def announce_gw_removing(self, gwid):
+        # This place should be void and nobody should be receiving
+        # in it, but just to be sure:
+        channel = self.channels[gwid-1]
+        if channel is not None:
+            channel.bcast_send('')
+            micro_block()
+        # Now the real announce.
         self.channels[gwid-1] = Channel(prefer_sender=True)
 
     def waitfor_gw_removable(self, gwid):
