@@ -160,6 +160,7 @@ class Neighbour(object):
         """ return the list of neighbours """
         nlist = []
         for key, val in self.ip_table.items():
+            logging.log(logging.ULTRADEBUG, 'neigh_list: preparing Neigh for ' + ip_to_str(key))
             nlist.append(Neigh(bestdev=val.bestdev,
                                devs=val.devs,
                                idn=self.translation_table[key],
@@ -473,6 +474,7 @@ class Neighbour(object):
         old_devs = self.ip_table[ip].devs
         if remove_from_iptable:
             del self.ip_table[ip]
+            logging.log(logging.ULTRADEBUG, 'removed from ip_table ' + ip_to_str(ip))
 
         # close the connection ( if any )
         if self.ntk_client[ip].connected:
@@ -506,28 +508,32 @@ class Neighbour(object):
             # then leave this work to the next radar scan
             return
 
-        self.ip_table[newip] = self.ip_table[oldip]
-        self.translation_table[newip] = self.translation_table[oldip]
-        self.netid_table[newip] = self.netid_table[oldip]
-
-        # we have to create a new TCP connection
-        self.ntk_client[newip] = rpc.TCPClient(ip_to_str(newip))
-
         # info
         logging.info('Change in our LAN: new neighbour ' + ip_to_str(newip))
         logging.info('                   replacing an old one... ' + ip_to_str(oldip))
-        idn = self.translation_table[newip]
-        logging.debug('ANNOUNCE: gw ' + str(idn) + ' detected.')
-        self.announce_gw(idn)
-        self.events.send('NEIGH_NEW',
-                         (Neigh(bestdev=self.ip_table[newip].bestdev,
-                                devs=self.ip_table[newip].devs,
-                                idn=idn,
-                                ip=newip,
-                                netid=self.netid_table[newip],
-                                ntkd=self.ntk_client[newip]),))
-
-        self.delete(oldip)
+        # copy values from old ip_table and netid_table
+        copy_devs = self.ip_table[oldip]
+        copy_netid = self.netid_table[oldip]
+        # recover (prior to delete) the id of the gateway
+        old_id = self.translation_table[oldip]
+        # delete old ip gateway
+        logging.log(logging.ULTRADEBUG, 'ip_change: deleting...')
+        self.delete(oldip, remove_from_iptable=True)
+        # Attention: this removes "oldip" from self.ip_table. But current radar
+        # scan might already have put this "oldip" in bcast_arrival_time. So...
+        logging.log(logging.ULTRADEBUG, 'ip_change: removing from scan...')
+        if oldip in self.ntkd.radar.bcast_arrival_time:
+            del self.ntkd.radar.bcast_arrival_time[oldip]
+        # wait for the removing of routes to be completed
+        logging.log(logging.ULTRADEBUG, 'ip_change: waiting routemap.routeneigh_del...')
+        self.waitfor_gw_removable(old_id)
+        # copy values into new ip_table and netid_table
+        self.ip_table[newip] = copy_devs
+        self.netid_table[newip] = copy_netid
+        # add new ip gateway
+        logging.log(logging.ULTRADEBUG, 'ip_change: adding...')
+        self.add(newip, already_in_ntk_client=False)
+        logging.log(logging.ULTRADEBUG, 'ip_change: done.')
 
 
 class Radar(object):
