@@ -312,7 +312,6 @@ class Etp(object):
         ## update our neighbour's netid in our netid_table
         #self.neigh.set_netid(gwip, sender_netid)
         neigh = self.neigh.key_to_neigh((gwip, sender_netid))
-        current_nr_list = self.neigh.neigh_list()
         
         # check if we have found the neigh, otherwise wait it
         timeout = xtime.time() + 6000
@@ -394,8 +393,7 @@ class Etp(object):
         if colliding:
                 # collision detected. rehook.
                 self.events.send('NET_COLLISION', 
-                                 ([nr for nr in current_nr_list
-                                                if nr.netid == neigh.netid],)
+                                 (self.neigh.neigh_list(in_this_netid=neigh.netid),)
                                 )
                 return # drop the packet
         ##
