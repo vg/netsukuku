@@ -327,7 +327,7 @@ class Hook(object):
             for nr in current_nr_list:
                 logging.log(logging.ULTRADEBUG, 'Hook: calling ip_change' + \
                             ' of my neighbour %s.' % ip_to_str(nr.ip)) 
-                nr.ntkd.neighbour.ip_change(oldip, newnip_ip)
+                self.neigh.call_ip_change_udp(nr, oldip, newnip_ip)
                 logging.log(logging.ULTRADEBUG, 'Hook: %s ack.' \
                         % ip_to_str(nr.ip)) 
 
@@ -355,7 +355,7 @@ class Hook(object):
                 if fnl:
                         return (lvl, fnl)
         return (-1, None)
-    
+
     def call_highest_free_nodes_udp(self, neigh):
         """Use BcastClient to call highest_free_nodes"""
         devs = [neigh.bestdev[0]]
