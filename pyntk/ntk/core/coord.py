@@ -255,10 +255,10 @@ class Coord(P2P):
            `gnumb'=None"""
 
         
-        if (gnumb < self.mapcache.nodes_nb[lvl]-1 or gnumb is None)       \
+        if (gnumb < self.mapcache.node_nb[lvl]-1 or gnumb is None)       \
                 and self.mapcache.node_get(lvl, id).alive:
                 self.mapcache.node_del(lvl, id)
-                return self.mapcache.nodes_nb[lvl]
+                return self.mapcache.node_nb[lvl]
         else:
             return None
 
@@ -278,7 +278,7 @@ class Coord(P2P):
         logging.log(logging.ULTRADEBUG, 'Coord.going_in: This is mapcache.')
         logging.log(logging.ULTRADEBUG, self.mapcache.repr_me())
 
-        if gnumb and not gnumb > self.mapcache.nodes_nb[lvl]+1: return None
+        if gnumb and not gnumb > self.mapcache.node_nb[lvl]+1: return None
 
         fnl = self.mapcache.free_nodes_list(lvl)
         if fnl == []:
