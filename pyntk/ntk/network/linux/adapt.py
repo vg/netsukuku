@@ -146,14 +146,38 @@ class Route(BaseRoute):
             cmd += ' via %s' % gateway
 
         cmd += ' protocol ntk'
-#        cmd += ' table ntk'
+        #cmd += ' table ntk'
+
+        return cmd
+
+    @staticmethod
+    def _modify_neighbour_cmd(command, ip, dev):
+        ''' Returns proper iproute command arguments to add/change/delete a neighbour
+        '''
+        cmd = 'route %s %s' % (command, ip)
+
+        if dev is not None:
+            cmd += ' dev %s' % dev
+
+        cmd += ' protocol ntk'
+        #cmd += ' table ntk'
 
         return cmd
 
     @staticmethod
     def add(ip, cidr, dev=None, gateway=None):
         ''' Adds a new route with corresponding properties. '''
+        # When at level 0, that is cidr = lvl_to_bits(0), this method
+        # might be called with ip = gateway. In this case the command
+        # below makes no sense and would result in a error.
+        if ip == gateway: return
         cmd = Route._modify_routes_cmd('add', ip, cidr, dev, gateway)
+        iproute(cmd)
+
+    @staticmethod
+    def add_neigh(ip, dev=None):
+        ''' Adds a new neighbour with corresponding properties. '''
+        cmd = Route._modify_neighbour_cmd('add', ip, dev)
         iproute(cmd)
 
     @staticmethod
@@ -163,18 +187,24 @@ class Route(BaseRoute):
         iproute(cmd)
 
     @staticmethod
+    def change_neigh(ip, dev=None):
+        ''' Edits the neighbour with corresponding properties. '''
+        # If a neighbour previously reached via eth0, now has a better link
+        # in eth1, it makes sense to use this command.
+        cmd = Route._modify_neighbour_cmd('change', ip, dev)
+        iproute(cmd)
+
+    @staticmethod
     def delete(ip, cidr, dev=None, gateway=None):
         ''' Removes the route with corresponding properties. '''
         cmd = Route._modify_routes_cmd('del', ip, cidr, dev, gateway)
-        if dev is None and gateway is None:
-            # remove all routes (in case we use multipath)
-            while True:
-                try:
-                    iproute(cmd)
-                except IPROUTECommandError:
-                    break
-        else:
-            iproute(cmd)
+        iproute(cmd)
+
+    @staticmethod
+    def delete_neigh(ip, dev=None):
+        ''' Removes the neighbour with corresponding properties. '''
+        cmd = Route._modify_neighbour_cmd('del', ip, None)
+        iproute(cmd)
 
     @staticmethod
     def flush():

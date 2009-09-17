@@ -49,12 +49,24 @@ class Route(BaseRoute):
         ''' Adds a new route with corresponding properties. '''
 
     @staticmethod
+    def add_neigh(ip, dev=None):
+        ''' Adds a new neighbour with corresponding properties. '''
+
+    @staticmethod
     def change(ip, cidr, dev=None, gateway=None):
         ''' Edits the route with the corresponding properties. '''
 
     @staticmethod
+    def change_neigh(ip, dev=None):
+        ''' Edits the neighbour with the corresponding properties. '''
+
+    @staticmethod
     def delete(ip, cidr, dev=None, gateway=None):
         ''' Removes the route with the corresponding properties. '''
+
+    @staticmethod
+    def delete_neigh(ip, dev=None):
+        ''' Removes the neighbour with the corresponding properties. '''
 
     @staticmethod
     def flush():

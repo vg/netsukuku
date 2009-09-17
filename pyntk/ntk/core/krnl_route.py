@@ -37,9 +37,9 @@ class KrnlRoute(object):
         self.neigh = neigh
         self.multipath = settings.MULTIPATH
 
-        self.maproute.events.listen('ROUTE_NEW', self.route_new, priority=5)
-        self.maproute.events.listen('ROUTE_DELETED', self.route_deleted, priority=5)
-        self.maproute.events.listen('ROUTE_REM_CHGED', self.route_rem_changed, priority=5)
+        self.maproute.events.listen('ROUTE_NEW', self.route_new)
+        self.maproute.events.listen('ROUTE_DELETED', self.route_deleted)
+        self.maproute.events.listen('ROUTE_REM_CHGED', self.route_rem_changed)
 
         self.neigh.events.listen('NEIGH_NEW', self.neigh_new, priority=5)
         self.neigh.events.listen('NEIGH_DELETED', self.neigh_deleted, priority=15)
@@ -59,10 +59,6 @@ class KrnlRoute(object):
         ip  = self.maproute.nip_to_ip(nip)
         neighgw = self.neigh.id_to_neigh(gw)
         gwip = neighgw.ip
-        # If this is a neighbour AND it is in our gnode of level 1,
-        # then we have to do nothing. <self.neigh_new> takes care of it.
-        if ip == gwip and lvl == 0:
-            return
         # Did we already have one route to this node?
         node = self.maproute.node_get(lvl, dst)
         existing = node.nroutes() >= 2
@@ -71,7 +67,6 @@ class KrnlRoute(object):
         # Obtain a IP string for this gateway
         dev = neighgw.bestdev[0]
         gwipstr = ip_to_str(gwip)
-
         # Do we have multipath
         if self.multipath:
             # Add new route
@@ -167,9 +162,7 @@ class KrnlRoute(object):
     def _neigh_new(self, neigh):
         ipstr = ip_to_str(neigh.ip)
         dev = neigh.bestdev[0]
-        gwipstr = ipstr
-
-        KRoute.add(ipstr, lvl_to_bits(0), dev, gwipstr)
+        KRoute.add_neigh(ipstr, dev)
         logging.debug('ANNOUNCE: gw ' + str(neigh.id) + ' added.')
         self.neigh.announce_gw_added(neigh.id)
 
@@ -181,7 +174,9 @@ class KrnlRoute(object):
 
     @microfunc(True)
     def _neigh_rem_changed(self, neigh, oldrem):
-        pass
+        ipstr = ip_to_str(neigh.ip)
+        dev = neigh.bestdev[0]
+        KRoute.change_neigh(ipstr, dev)
 
     def neigh_deleted(self, neigh):
         # We'll do the real thing in a microfunc, but make sure
@@ -192,6 +187,6 @@ class KrnlRoute(object):
     @microfunc(True)
     def _neigh_deleted(self, neigh):
         ipstr = ip_to_str(neigh.ip)
-
         self.neigh.waitfor_gw_removable(neigh.id)
-        KRoute.delete(ipstr, lvl_to_bits(0))
+        KRoute.delete_neigh(ipstr)
+
