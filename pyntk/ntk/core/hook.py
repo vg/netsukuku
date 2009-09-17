@@ -107,24 +107,30 @@ class Hook(object):
         logging.debug('Coomunicating vessels microfunc end')
 
     @microfunc()
-    def hook(self, neigh_list=[], forbidden_neighs=[], condition=False, gnumb=0):
+    def hook(self, passed_neigh_list=[], forbidden_neighs=[], condition=False, gfree_new=0):
         """Lets the current node become a hooking node.
 
-        I neigh_list!=[], it tries to hook among the given neighbours
+        If passed_neigh_list!=[], it tries to hook among the given neighbours
         list, otherwise neigh_list is generated from the Radar.
 
         forbidden_neighs is a list [(lvl,nip), ...]. All the neighbours nr with a
         NIP nr.nip matching nip up to lvl levels are excluded, that is:
                 NIP is excluded <==> nip_cmp(nip, NIP) < lvl
 
-        If condition is True, the re-hook take place only if the following
+        Note: the following is used only by communicating_vessels()
+        
+        If condition is True, the re-hook takes place only if the following
         is true:
-                gnumb < |G|
-                |G'| < |G|
-        where |G'| and `gnumb' is the number of nodes of the gnode where
-        we are going to re-hook, and |G| is the number of nodes of our
-        gnodes. |G'| and |G| are calculated using the coordinator
-        nodes. Note: this is used only by communicating_vessels()
+                gfree_new > gfree_old_coord
+                gfree_new_coord > gfree_old_coord
+        where "gfree" is the number of free nodes of the gnode; "new" refers
+        to the gnode where we are going to re-hook, "old" to the current one
+        where we belong; the suffix "_coord" means that is calculated by the
+        Coordinator node.
+        gfree_new is passed to the function as a parameter. We have obtained
+        it from our neighbour with the remotable method 
+        maproute.free_nodes_nb(0).
+        In contrast, we request the other values to the Coordinator.
         """
 
         logging.info('Hooking procedure started.')
@@ -139,8 +145,9 @@ class Hook(object):
         we_are_alone = False
         suitable_neighbours = []
 
+        neigh_list = passed_neigh_list
         if neigh_list == []:
-                neigh_list = self.neigh.neigh_list()
+                neigh_list = current_nr_list
         if neigh_list == []:
                 we_are_alone = True
 
@@ -150,7 +157,11 @@ class Hook(object):
         def is_current_hfn_valid():
             # Should our actual knowledge of the network be considered?
             # TODO Review implementation
-            return we_are_alone or previous_netid != -1
+            if we_are_alone:
+                return True
+            if passed_neigh_list:
+                return False
+            return previous_netid != -1
         if is_current_hfn_valid():
             hfn = [(self.maproute.me, self.highest_free_nodes())]
             logging.info('Hook: highest non saturated gnodes that I know: ' + str(hfn))
@@ -177,7 +188,7 @@ class Hook(object):
 
         for nr in suitable_neighbours:
                 nrnip=self.maproute.ip_to_nip(nr.ip)
-                nr_hfn = self.call_highest_free_nodes_udp(nrnip)
+                nr_hfn = self.call_highest_free_nodes_udp(nr)
                 hfn.append((nrnip, nr_hfn))
                 logging.info('Hook: highest non saturated gnodes that ' + str(nrnip) + ' knows: ' + str(nr_hfn))
         ##
@@ -227,35 +238,31 @@ class Hook(object):
         #           We are creating a new gnode which is not in the latest
         #           level.
         else:
-
                 # Contact the coordinator nodes
-                neigh_coord_service_nip = self.maproute.ip_to_nip(suitable_neighbours[0].ip)
-                # TODO We are using UDP for the first step and we try with just one neigh, the first one of the suitable_neighbours.
-                # It should work but we could do better:
-                #   1. If a neigh fails to answer we could try with other suitable_neighbours if we have them.
-                #   2. If the final destination is one of our suitable_neighbours we could try directly with him (always with UDP).
                 # TODO We must handle the case of error in contacting the coordinator node. The coordinator itself may die.
-
                 if lvl > 0:
                         # If we are going to create a new gnode, it's useless to pose
                         # any condition
                         condition=False
+                        # TODO Do we have to tell to the old Coord that we're leaving?
 
                 if condition:
                         # <<I'm going out>>
-                        co = self.coordnode.peer(key = (1, self.maproute.me), use_udp_nip=neigh_coord_service_nip)
-                        # get |G| and check that  gnumb < |G|
-                        Gnumb = co.going_out(0, self.maproute.me[0], gnumb)
-                        if Gnumb is None:
+                        logging.log(logging.ULTRADEBUG, 'Hook: going_out, in order to join a gnode which has ' + str(gfree_new) + ' free nodes.')
+                        co = self.coordnode.peer(key=(1, self.maproute.me), use_udp=True)
+                        # get gfree_old_coord and check that  gfree_new > gfree_old_coord
+                        gfree_old_coord = co.going_out(0, self.maproute.me[0], gfree_new)
+                        if gfree_old_coord is None:
                                 # nothing to be done
-                                logging.info('Hooking procedure canceled because of \'condition\'. Our network id is back.')
+                                logging.info('Hooking procedure canceled by our Coord. Our network id is back.')
                                 self.ntkd.neighbour.netid = previous_netid
                                 return
 
                         # <<I'm going in, can I?>>
-                        co2 = self.coordnode.peer(key = (lvl+1, newnip), use_udp_nip=neigh_coord_service_nip)
-                        # ask if we can get in and if |G'| < |G|, and get our new IP
-                        newnip=co2.going_in(lvl, Gnumb)
+                        logging.log(logging.ULTRADEBUG, 'Hook: going_in with gfree_old_coord = ' + str(gfree_old_coord))
+                        co2 = self.coordnode.peer(key = (lvl+1, newnip), use_udp=True)
+                        # ask if we can get in and if gfree_new_coord > gfree_old_coord, and get our new IP
+                        newnip=co2.going_in(lvl, gfree_old_coord)
 
                         if newnip:
                                 # we've been accepted
@@ -269,7 +276,8 @@ class Hook(object):
 
                 elif not we_are_alone:
                         # <<I'm going in, can I?>>
-                        co2 = self.coordnode.peer(key = (lvl+1, newnip), use_udp_nip=neigh_coord_service_nip)
+                        logging.log(logging.ULTRADEBUG, 'Hook: going_in without condition.')
+                        co2 = self.coordnode.peer(key = (lvl+1, newnip), use_udp=True)
                         # ask if we can get in, get our new IP
                         logging.info('Hook: contacting coordinator node...')
                         newnip=co2.going_in(lvl)
@@ -333,14 +341,10 @@ class Hook(object):
                         return (lvl, fnl)
         return (-1, None)
     
-    def call_highest_free_nodes_udp(self, nip):
+    def call_highest_free_nodes_udp(self, neigh):
         """Use BcastClient to call highest_free_nodes"""
-        devs = self.radar.broadcast.devs
-        try:
-            devs = [self.neigh.ip_to_neigh(self.maproute.nip_to_ip(nip)).bestdev[0]]
-            logging.log(logging.ULTRADEBUG, 'I\'ll create a BcastClient with NIC = ' + devs[0])
-        except:
-            logging.log(logging.ULTRADEBUG, 'I\'ll create a BcastClient with any handled NIC')
+        devs = [neigh.bestdev[0]]
+        nip = self.maproute.ip_to_nip(neigh.ip)
         return rpc.UDP_call(nip, devs, 'hook.highest_free_nodes_udp')
 
     def highest_free_nodes_udp(self, _rpc_caller, caller_id, nip_callee):

@@ -245,38 +245,55 @@ class Coord(P2P):
             logging.debug('Coord: Done passing my mapcache.')
 
 
-    def going_out(self, lvl, id, gnumb=None):
+    def going_out(self, lvl, id, gfree_new=None):
         """The node of level `lvl' and ID `id', wants to go out from its gnode
+        G of level lvl+1. We are the coordinator of this gnode G.
 
-           G of level lvl+1. We are the coordinator of this gnode G.
-           We'll give an affermative answer if `gnumb' < |G| or if
-           `gnumb'=None"""
+        If gfree_new is None, then we don't have to check any condition.
+        So we remove the node and return the new free_nodes of this gnode.
 
-        
-        if (gnumb < self.mapcache.node_nb[lvl]-1 or gnumb is None)       \
-                and self.mapcache.node_get(lvl, id).alive:
+        Otherwise, the caller has passed the number of free nodes in the
+        gnode where it's going to rehook. So we must check that our
+        free_nodes is lesser than (gfree_new - 1).
+        If so, we remove the node and return the new free_nodes of this gnode,
+        else, we return None."""
+
+        if gfree_new is None \
+                or self.mapcache.free_nodes_nb(lvl) < gfree_new - 1:
+            if self.mapcache.node_get(lvl, id).alive:
                 self.mapcache.node_del(lvl, id)
-                return self.mapcache.node_nb[lvl]
+                return self.mapcache.free_nodes_nb(lvl)
+            else:
+                return None
         else:
             return None
 
     def going_out_ok(self, lvl, id):
         """The node, which was going out, is now acknowledging the correct
         migration"""
+
         self.mapcache.tmp_deleted_del(lvl, id)
 
-    def going_in(self, lvl, gnumb=None):
+    def going_in(self, lvl, gfree_old_coord=None):
         """A node wants to become a member of our gnode G of level `lvl+1'.
+        We are the coordinator of this gnode G (so we are also a member of G).
 
-           We are the coordinator of this gnode G (so we are also a member of G).
-           We'll give an affermative answer if `gnumb' > |G| or if
-           `gnumb'=None"""
+        If gfree_old_coord is None, then we don't have to check any condition.
+        So we add the node and return the assigned newnip.
+
+        Otherwise, the caller has passed the current number of free nodes
+        in the gnode which it's leaving. So we must check that our
+        current free_nodes is bigger than gfree_old_coord.
+        If so, we add the node and return the assigned newnip,
+        else, we return None."""
 
         logging.log(logging.ULTRADEBUG, 'Coord.going_in: The requested level is ' + str(lvl))
         logging.log(logging.ULTRADEBUG, 'Coord.going_in: This is mapcache.')
         logging.log(logging.ULTRADEBUG, self.mapcache.repr_me())
 
-        if gnumb and not gnumb > self.mapcache.node_nb[lvl]+1: return None
+        if gfree_old_coord is not None \
+                and not self.mapcache.free_nodes_nb(lvl) > gfree_old_coord:
+            return None
 
         fnl = self.mapcache.free_nodes_list(lvl)
         if fnl == []:

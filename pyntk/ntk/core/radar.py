@@ -73,7 +73,7 @@ class Neigh(object):
         self.bestdev = bestdev
 
         self.ip = ip
-        self.nip = None
+        self.nip = None   # TODO: refactoring Neigh
         self.id = idn
         if self.bestdev:
             # TODO(low): support the other metrics
