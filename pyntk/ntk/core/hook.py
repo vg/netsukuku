@@ -21,11 +21,13 @@ from random import choice, randint
 
 import ntk.lib.rpc as rpc
 import ntk.wrap.xtime as xtime
+import time
 from ntk.lib.log import logger as logging
 from ntk.lib.log import log_exception_stacktrace
-from ntk.lib.micro import microfunc, Channel
+from ntk.lib.micro import microfunc, Channel, micro_block
 from ntk.lib.event import Event
 from ntk.network.inet import ip_to_str, valid_ids
+from ntk.core.qspn import etp_exec_dispatcher_token
 
 class Hook(object):
 
@@ -464,10 +466,17 @@ class Hook(object):
             self.hook()
             return
 
-    def highest_free_nodes(self):
+    def highest_free_nodes(self, fromrpc=False):
         """Returns (lvl, fnl), where fnl is a list of free node IDs of
            level `lvl'."""
         logging.log(logging.ULTRADEBUG, 'highest_free_nodes: start.')
+        if fromrpc and etp_exec_dispatcher_token.executing:
+            logging.log(logging.ULTRADEBUG, 'highest_free_nodes: delayed because etp is executing.')
+            while etp_exec_dispatcher_token.executing:
+                # I'm not ready to interact.
+                time.sleep(0.001)
+                micro_block()
+            logging.log(logging.ULTRADEBUG, 'highest_free_nodes: now we can go on.')
         for lvl in reversed(xrange(self.maproute.levels)):
                 fnl = self.maproute.free_nodes_list(lvl)
                 if fnl:
@@ -496,7 +505,7 @@ class Hook(object):
             rpc.UDP_send_keepalive_forever_start(_rpc_caller, caller_id)
             try:
                 logging.log(logging.ULTRADEBUG, 'calling highest_free_nodes...')
-                ret = self.highest_free_nodes()
+                ret = self.highest_free_nodes(fromrpc=True)
                 logging.log(logging.ULTRADEBUG, 'returning ' + str(ret))
             except Exception as e:
                 ret = ('rmt_error', e.message)

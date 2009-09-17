@@ -18,7 +18,7 @@
 ##
 
 from ntk.lib.log import logger as logging
-from ntk.lib.micro import microfunc, micro_block
+from ntk.lib.micro import microfunc, micro_block, DispatcherToken
 from ntk.lib.rpc import RPCError
 import ntk.lib.rpc as rpc
 from ntk.lib.event import Event, apply_wakeup_on_event
@@ -27,6 +27,7 @@ from ntk.core.route import NullRem, DeadRem
 import ntk.wrap.xtime as xtime
 import time
 
+etp_exec_dispatcher_token = DispatcherToken()
 
 def is_listlist_empty(l):
     """Returns true if l=[[],[], ...]
@@ -183,11 +184,23 @@ class Etp(object):
             logging.warning('QSPN: new link %s: detected while hooking!', ip_to_str(neigh.ip))
             return
 
+        # I will send an ETP to the new neighbour, which could be in another network. So
+        # I must be sure to give to him *all* the routes I know, to be sure that when
+        # he detects the collision he will have all data to calculate who is going to rehook.
+        # Therefore, I have to wait for all pending etp_exec.
+        if etp_exec_dispatcher_token.executing:
+            logging.log(logging.ULTRADEBUG, 'QSPN: new link for ' + str(neigh) + ': delayed because etp is executing.')
+            while etp_exec_dispatcher_token.executing:
+                # I'm not ready to interact.
+                time.sleep(0.001)
+                micro_block()
+            logging.log(logging.ULTRADEBUG, 'QSPN: new link for ' + str(neigh) + ': now we can go on.')
+
         # Memorize current netid because it might change. In this case the ETP should not
         # be sent.
         current_netid = self.ntkd.neighbour.netid
 
-        logging.debug('QSPN: new link for ' + ip_to_str(neigh.ip) + ' in ' + str(neigh.netid) + ': prepare the ETP')
+        logging.debug('QSPN: new link for ' + str(neigh) + ': prepare the ETP')
         current_nr_list = self.neigh.neigh_list()
 
         # Through which devs do I see the new neighbour?
@@ -301,7 +314,7 @@ class Etp(object):
             # Since it is micro, I will reply None
             rpc.UDP_send_reply(_rpc_caller, caller_id, None)
 
-    @microfunc()
+    @microfunc(dispatcher_token=etp_exec_dispatcher_token)
     def etp_exec(self, sender_nip, sender_netid, R, TPL, flag_of_interest):
         """Executes a received ETP
 
