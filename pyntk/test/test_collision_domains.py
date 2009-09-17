@@ -345,15 +345,15 @@ def test_etp_new_changed(check_etp_emission=True):
         # E has routes to 3,12 through D.
         # E has routes to 3,13 through A.
         # E has routes to 3,14 through D.
-        # E won't tell to C any route through it.
+        # E won't tell to C any route through it. Just the one to itself.
 
-        _anydest = False
+        _any_other_dest = False
         for to_ip, etp_from_E in retrieve_etps_from_node(node_E):
             if to_ip == node_C.maproute.nip_to_ip(node_C.maproute.me):
                 R = etp_from_E[2]
                 for r1 in R[3]:
-                    _anydest = True
-        if not _anydest: pass #print 'ok'
+                    if r1[0] != node_E.maproute.me[0]: _any_other_dest = True
+        if not _any_other_dest: pass #print 'ok'
         else: return 'Wrong ETP from E to C'
 
         # D has routes to 3,12 through A.

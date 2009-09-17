@@ -309,10 +309,17 @@ def test_etp_newlink(link_is_really_good=False,
 
         # Also, C has to tell to Y new REM for route for N iff link
         #  CM..N is better than CD..N
+        #  (But we assume the problem of cyclic route, so we don't consider
+        #  an etp whom only route in is towards node_Y itself.)
         _etp_toY = False
+        Y_lvl, Y_id = getcoords_node_x_in_map_of_y(node_Y, node_C)
         for to_ip, etp_from_C in retrieve_etps_from_node(node_C):
             if to_ip == node_Y.maproute.nip_to_ip(node_Y.maproute.me):
-                _etp_toY = True
+                R = etp_from_C[2]
+                for lvl in xrange(node_C.maproute.levels):
+                    for dst, rem in R[lvl]:
+                        if lvl != Y_lvl or dst != Y_id:
+                            _etp_toY = True
         if link_is_really_good:
             if _etp_toY: pass #print 'ok'
             else: return 'Missing ETP from C to Y'
