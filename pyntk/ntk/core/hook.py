@@ -184,12 +184,11 @@ class Hook(object):
 
             # The very first step (except at bootstrap) is to avoid that we start
             # a hook when another hook is still running.
-            # This will be probably redundant IFF hook is a microfunc with dispatcher
-            # AND when hook exits the hook is complete. At the moment the hook is
-            # complete only when we receive a ETP.
+            # This is probably redundant SINCE hook is a microfunc with dispatcher
+            # AND when hook exits the hook is complete.
             if called_for != called_for_bootstrap \
                     and self.ntkd.neighbour.netid == -1:
-                return # correct?
+                return
 
             we_are_alone = False
             netid_to_join = None
