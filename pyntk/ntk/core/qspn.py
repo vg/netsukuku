@@ -266,10 +266,17 @@ class Etp(object):
         ##
 
         flag_of_interest=1
-        TPL = [[0, [[self.maproute.me[0], NullRem()]]]]
-        ## TODO Add the correct part of TPL to include the neigh, because
-        ##       if the ETP reaches the neigh itself, then it must stop for
-        ##       the acyclic rule.
+        ## The TPL includes the neigh...
+        level = self.maproute.nip_cmp(self.maproute.me, neigh.nip)
+        TPL = [[level, [[neigh.nip[level], NullRem()]]]]
+        ## ... and myself.
+        if TPL[-1][0] != 0: 
+            # The last block isn't of level 0. Let's add a new block
+            TP = [[self.maproute.me[0], neigh.rem]] 
+            TPL.append([0, TP])
+        else:
+            # The last block is of level 0. We can append our ID
+            TPL[-1][1].append([self.maproute.me[0], neigh.rem])
 
         logging.info('Forwarding ETP for a changed-rem neighbour.')
         self.etp_forward_referring_to_neigh(R, TPL, flag_of_interest, neigh, current_netid)
