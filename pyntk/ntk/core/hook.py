@@ -407,9 +407,9 @@ class Hook(object):
                     ' my change from %s to %s.' \
                     % (ip_to_str(oldip), ip_to_str(newnip_ip)))
             for nr in current_nr_list:
-                logging.log(logging.ULTRADEBUG, 'Hook: calling ip_change' + \
+                logging.log(logging.ULTRADEBUG, 'Hook: calling ip_netid_change' + \
                             ' of my neighbour %s.' % ip_to_str(nr.ip)) 
-                self.neigh.call_ip_change_udp(nr, oldip, newnip_ip)
+                self.neigh.call_ip_netid_change_udp(nr, oldip, previous_netid, newnip_ip, self.ntkd.neighbour.netid)
                 logging.log(logging.ULTRADEBUG, 'Hook: %s ack.' \
                         % ip_to_str(nr.ip)) 
 

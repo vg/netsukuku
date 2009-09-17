@@ -300,9 +300,10 @@ class Etp(object):
 
         gwnip = sender_nip
         gwip = self.maproute.nip_to_ip(gwnip)
-        # update our neighbour's netid in our netid_translation_table
-        self.neigh.set_netid(gwip, sender_netid)
-        neigh = self.neigh.ip_to_neigh(gwip)
+        # TODO remove:
+        ## update our neighbour's netid in our netid_table
+        #self.neigh.set_netid(gwip, sender_netid)
+        neigh = self.neigh.key_to_neigh((gwip, sender_netid))
         current_nr_list = self.neigh.neigh_list()
         
         # check if we have found the neigh, otherwise wait it
@@ -312,7 +313,7 @@ class Etp(object):
                 logging.info('ETP dropped: timeout.')
                 return
             xtime.swait(50)
-            neigh = self.neigh.ip_to_neigh(gwip)
+            neigh = self.neigh.key_to_neigh((gwip, sender_netid))
 
         logging.info('Received ETP from %s', ip_to_str(neigh.ip))
                         
