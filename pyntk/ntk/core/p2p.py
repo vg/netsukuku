@@ -82,7 +82,6 @@ class MapP2P(Map):
                 self.node_add(lvl, id)
         logging.log(logging.ULTRADEBUG, 'P2P: MapP2P updated: ' + str(self.repr_me()))
 
-    @microfunc()
     def me_changed(self, old_me, new_me):
         '''Changes self.me
 
@@ -154,7 +153,7 @@ class P2P(RPCDispatcher):
                              self.maproute.me,
                              pid)
 
-        self.maproute.events.listen('ME_CHANGED', self.mapp2p.me_changed)
+        self.maproute.events.listen('ME_CHANGED', self.me_changed)
         self.maproute.events.listen('NODE_DELETED', self.mapp2p.node_del)
 
         # are we a participant?
@@ -166,6 +165,12 @@ class P2P(RPCDispatcher):
                                 self.msg_send_udp]
 
         RPCDispatcher.__init__(self, root_instance=self)
+
+    @microfunc()
+    def me_changed(self, old_me, new_me):
+        """My nip has changed."""
+        self.mapp2p.me_changed(old_me, new_me)
+        self.re_participate()
 
     def h(self, key):
         """This is the function h:KEY-->hIP.
@@ -215,6 +220,12 @@ class P2P(RPCDispatcher):
         if not br:
             return None
         return br.gw
+
+    def re_participate(self, *args):
+        """Let's become a participant node again. Used when my nip has changed."""
+        if self.participant:
+            self.participate()
+        logging.log(logging.ULTRADEBUG, 'P2P: MapP2P updated after re_participate: ' + str(self.mapp2p.repr_me()))
 
     def participate(self):
         """Let's become a participant node"""
@@ -474,33 +485,38 @@ class P2PAll(object):
         logging.log(logging.ULTRADEBUG, 'P2P hooking: started')
         logging.log(logging.ULTRADEBUG, 'P2P hooking: My actual list of services is: ' + str(self.log_services()))
         ## Find our nearest neighbour
-        minlvl = self.maproute.levels
-        minnr = None
-        for nr in self.neigh.neigh_list(in_my_network=True):
-            lvl = self.maproute.nip_cmp(self.maproute.me,
-                                        self.maproute.ip_to_nip(nr.ip))
-            if lvl < minlvl:
-                minlvl = lvl
-                minnr  = nr
-        ##
+        neighs_in_net = self.neigh.neigh_list(in_my_network=True)
+        while True:
+            minlvl = self.maproute.levels
+            minnr = None
+            for nr in neighs_in_net:
+                lvl = self.maproute.nip_cmp(self.maproute.me, nr.nip)
+                if lvl < minlvl:
+                    minlvl = lvl
+                    minnr  = nr
+            ##
 
-        if minnr is None:
+            if minnr is None:
                 # nothing to do
                 logging.log(logging.ULTRADEBUG, 'P2P hooking: No neighbours to ask for the list of services.')
-                return
+                break
 
+            logging.log(logging.ULTRADEBUG, 'P2P hooking: I will ask for the list of services to ' + str(minnr))
+            try:
+                nrmaps_pack = minnr.ntkd.p2p.pid_getall()
+            except:
+                logging.warning('P2P hooking: Asking to ' + str(minnr) + ' failed.')
+                neighs_in_net.remove(minnr)
+                continue
+            logging.log(logging.ULTRADEBUG, 'P2P hooking: ' + str(minnr) + ' answers ' + str(nrmaps_pack))
+            for (pid, map_pack) in nrmaps_pack:
+                self.pid_get(pid).mapp2p.map_data_merge(map_pack)
 
-        logging.log(logging.ULTRADEBUG, 'P2P hooking: I will ask for the list of services to ' + str(self.maproute.ip_to_nip(minnr.ip)))
-        nrmaps_pack = minnr.ntkd.p2p.pid_getall()
-        logging.log(logging.ULTRADEBUG, 'P2P hooking: ' + str(self.maproute.ip_to_nip(minnr.ip)) + ' answers ' + str(nrmaps_pack))
-        for (pid, map_pack) in nrmaps_pack:
-            self.pid_get(pid).mapp2p.map_data_merge(map_pack)
-
-        for s in self.service:
-                if self.service[s].participant:
-                        self.service[s].participate()
-        logging.log(logging.ULTRADEBUG, 'P2P hooking: My final list of services is: ' + str(self.log_services()))
-
+            for s in self.service:
+                    if self.service[s].participant:
+                            self.service[s].participate()
+            logging.log(logging.ULTRADEBUG, 'P2P hooking: My final list of services is: ' + str(self.log_services()))
+            break
 
         self.events.send('P2P_HOOKED', ())
 
