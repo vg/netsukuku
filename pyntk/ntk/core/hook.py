@@ -374,12 +374,6 @@ class Hook(object):
                     raise Exception, "Netsukuku is full"
                 # TODO do we need to implement a close?
                 #co2.close()
-
-            # reply only to these radars
-            if neighudp:
-                self.ntkd.radar.hooking_network_id = neighudp.netid
-            else:
-                self.ntkd.radar.hooking_network_id = None
         ##
 
         logging.log(logging.ULTRADEBUG, 'Hook: completing hook...')
