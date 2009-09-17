@@ -83,7 +83,7 @@ from ntk.wrap import xtime as xtime
 import time
 
 from ntk.lib.log import logger as logging
-from ntk.lib.micro import  micro, microfunc, micro_block, Channel
+from ntk.lib.micro import  micro, microfunc, micro_block, Channel, MicrochannelTimeout
 from ntk.lib.microsock import MicrosockTimeout
 from ntk.network.inet import sk_set_broadcast, sk_bindtodevice
 from ntk.wrap.sock import Sock
@@ -181,11 +181,23 @@ class RPCDispatcher(object):
     def _dispatch(self, caller, func_name, params):
         if not 'radar' in func_name:
             logging.log(logging.ULTRADEBUG, "_dispatch: "+func_name+"("+str(params)+")")
-        func = self.func_get(func_name)
+        func = None
+        rpc_caller_present = False
+        if func_name == 'UDP_got_keepalive':
+            global UDP_got_keepalive
+            func = UDP_got_keepalive
+            rpc_caller_present = '_rpc_caller' in func.func_code.co_varnames
+        elif func_name == 'UDP_got_reply':
+            global UDP_got_reply
+            func = UDP_got_reply
+            rpc_caller_present = '_rpc_caller' in func.func_code.co_varnames
+        else:
+            func = self.func_get(func_name)
+            rpc_caller_present = '_rpc_caller' in func.im_func.func_code.co_varnames
         if func is None:
             raise RPCFuncNotRemotable('Function %s is not remotable' % func_name)
         try:
-            if '_rpc_caller' in func.im_func.func_code.co_varnames:
+            if rpc_caller_present:
                 ret = func(caller, *params)
                 return ret
             else:
@@ -569,8 +581,8 @@ class BcastClient(FakeRmt):
 UDP_caller_ids = {}
 def UDP_call(callee_nip, callee_netid, devs, func_name, args=()):
     """Use a BcastClient to call 'func_name' to 'callee_nip' on the LAN via UDP broadcast."""
-    
-    logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + ' to ' + str(callee_nip) + ' on the LAN via UDP broadcast.')
+
+    logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + ' to ' + str(callee_nip) + ' of ' + str(callee_netid) + ' on the LAN via UDP broadcast.')
     bcastclient = None
     try:
         bcastclient = BcastClient(devs=devs, xtimemod=xtime)
@@ -583,9 +595,17 @@ def UDP_call(callee_nip, callee_netid, devs, func_name, args=()):
     logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + ' done. Waiting reply...')
     ret = None
     try:
-        ret = UDP_caller_ids[caller_id].recv(timeout=15000)
-    except:
-        raise RPCNetError()
+        while True:
+            ret = UDP_caller_ids[caller_id].recv(timeout=15000)
+            # Handling keepalives
+            # I receive a message with the following format:
+            #     ('rmt_keepalive', )
+            if isinstance(ret, tuple) and ret[0] == 'rmt_keepalive':
+                logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + ' got REFRESHed by a keepalive.')
+            else:
+                break
+    except MicrochannelTimeout:
+        raise RPCNetError('Timeout')
     logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + ' got reply.')
     # Handling errors
     # I receive a message with the following format:
@@ -595,11 +615,57 @@ def UDP_call(callee_nip, callee_netid, devs, func_name, args=()):
         raise RPCError(ret[1])
     return ret
 
-def UDP_send_reply(_rpc_caller, caller_id, func_name_reply, ret):
+UDP_caller_ids_keeping_alive = {}
+def UDP_send_keepalive_forever_start(_rpc_caller, caller_id, interval=2000):
+    """Starts sending a keepalive each interval"""
+    UDP_caller_ids_keeping_alive[caller_id] = None
+    logging.log(logging.ULTRADEBUG, 'keepalive_forever ' + str(caller_id))
+    UDP_send_keepalive_forever_start_micro(_rpc_caller, caller_id, interval)
+
+@microfunc(True)
+def UDP_send_keepalive_forever_start_micro(_rpc_caller, caller_id, interval):
+    """Sends a keepalive each interval"""
+    while True:
+        xtime.swait(interval)
+        if caller_id in UDP_caller_ids_keeping_alive:
+            UDP_send_keepalive(_rpc_caller, caller_id)
+        else:
+            logging.log(logging.ULTRADEBUG, 'keepalive_forever ' + str(caller_id) + ': stopped.')
+            break
+
+def UDP_send_keepalive_forever_stop(caller_id):
+    """Ends sending a keepalive each interval"""
+    logging.log(logging.ULTRADEBUG, 'keepalive_forever ' + str(caller_id) + ': request stop if present.')
+    if caller_id in UDP_caller_ids_keeping_alive:
+        logging.log(logging.ULTRADEBUG, 'keepalive_forever ' + str(caller_id) + ': request stop.')
+        del UDP_caller_ids_keeping_alive[caller_id]
+        logging.log(logging.ULTRADEBUG, 'keepalive_forever ' + str(caller_id) + ': stop requested.')
+
+def UDP_send_keepalive(_rpc_caller, caller_id):
+    """Send a keepalive"""
+    logging.log(logging.ULTRADEBUG, 'Sending keepalive to id ' + str(caller_id) + ' through ' + str(_rpc_caller.dev))
+    exec('BcastClient(devs=[_rpc_caller.dev], xtimemod=xtime).UDP_got_keepalive(caller_id)')
+
+def UDP_got_keepalive(_rpc_caller, caller_id):
+    """Receives keepalive from a UDP_call."""
+    logging.log(logging.ULTRADEBUG, 'Seen a keepalive from a UDP_call.')
+    if caller_id in UDP_caller_ids:
+        # This keepalive is for me.
+        logging.log(logging.ULTRADEBUG, ' ...it is for me!')
+        chan = UDP_caller_ids[caller_id]
+        if chan.balance < 0:
+            logging.log(logging.ULTRADEBUG, ' ...sending through channel')
+            chan.send(('rmt_keepalive', ))
+            # We have passed the schedule to the receiving channel, so don't put
+            # loggings after this, they would just confuse the reader.
+    else:
+        logging.log(logging.ULTRADEBUG, ' ...it is not for me.')
+
+def UDP_send_reply(_rpc_caller, caller_id, ret):
     """Send a reply"""
 
-    logging.log(logging.ULTRADEBUG, 'Sending reply to id ' + str(caller_id) + ' func ' + func_name_reply + ' through ' + str(_rpc_caller.dev))
-    exec('BcastClient(devs=[_rpc_caller.dev], xtimemod=xtime).' + func_name_reply + '(caller_id, ret)')
+    logging.log(logging.ULTRADEBUG, 'Sending reply to id ' + str(caller_id) + ' through ' + str(_rpc_caller.dev))
+    exec('BcastClient(devs=[_rpc_caller.dev], xtimemod=xtime).UDP_got_reply(caller_id, ret)')
 
 def UDP_got_reply(_rpc_caller, caller_id, ret):
     """Receives reply from a UDP_call."""

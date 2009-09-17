@@ -160,7 +160,7 @@ class P2P(RPCDispatcher):
         # are we a participant?
         self.participant = False
 
-        self.remotable_funcs = [self.participant_add, self.msg_send, self.msg_send_udp, self.reply_msg_send_udp]
+        self.remotable_funcs = [self.participant_add, self.msg_send, self.msg_send_udp]
 
         RPCDispatcher.__init__(self, root_instance=self)
 
@@ -331,11 +331,7 @@ class P2P(RPCDispatcher):
            """
         if self.maproute.me == callee_nip and self.neigh.netid == callee_netid:
             ret = self.msg_send(sender_nip, hip, msg)
-            rpc.UDP_send_reply(_rpc_caller, caller_id, 'p2p.PID_'+str(self.mapp2p.pid)+'.reply_msg_send_udp', ret)
-
-    def reply_msg_send_udp(self, _rpc_caller, caller_id, ret):
-        """Receives reply from msg_send_udp."""
-        rpc.UDP_got_reply(_rpc_caller, caller_id, ret)
+            rpc.UDP_send_reply(_rpc_caller, caller_id, ret)
 
     def msg_exec(self, sender_nip, msg):
         return self.dispatch(CallerInfo(), *msg)

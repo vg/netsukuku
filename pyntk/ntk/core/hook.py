@@ -50,8 +50,7 @@ class Hook(object):
 
         self.remotable_funcs = [self.communicating_vessels,
                                 self.highest_free_nodes,
-                                self.highest_free_nodes_udp,
-                                self.reply_highest_free_nodes_udp]
+                                self.highest_free_nodes_udp]
 
     @microfunc()
     def communicating_vessels(self, old_node_nb=None, cur_node_nb=None):
@@ -451,10 +450,13 @@ class Hook(object):
     def highest_free_nodes(self):
         """Returns (lvl, fnl), where fnl is a list of free node IDs of
            level `lvl'."""
+        logging.log(logging.ULTRADEBUG, 'highest_free_nodes: start.')
         for lvl in reversed(xrange(self.maproute.levels)):
                 fnl = self.maproute.free_nodes_list(lvl)
                 if fnl:
+                        logging.log(logging.ULTRADEBUG, 'highest_free_nodes: returning...')
                         return (lvl, fnl)
+        logging.log(logging.ULTRADEBUG, 'highest_free_nodes: returning NONE ...')
         return (-1, None)
 
     def call_highest_free_nodes_udp(self, neigh):
@@ -473,12 +475,19 @@ class Hook(object):
             They are used by the callee to recognize a request destinated to it.
            """
         if self.maproute.me == callee_nip and self.neigh.netid == callee_netid:
-            ret = self.highest_free_nodes()
-            rpc.UDP_send_reply(_rpc_caller, caller_id, 'hook.reply_highest_free_nodes_udp', ret)
-
-    def reply_highest_free_nodes_udp(self, _rpc_caller, caller_id, ret):
-        """Receives reply from highest_free_nodes_udp."""
-        rpc.UDP_got_reply(_rpc_caller, caller_id, ret)
+            ret = None
+            rpc.UDP_send_keepalive_forever_start(_rpc_caller, caller_id)
+            try:
+                logging.log(logging.ULTRADEBUG, 'calling highest_free_nodes...')
+                ret = self.highest_free_nodes()
+                logging.log(logging.ULTRADEBUG, 'returning ' + str(ret))
+            except Exception as e:
+                ret = ('rmt_error', e.message)
+                logging.warning('highest_free_nodes_udp: returning exception ' + str(ret))
+            finally:
+                rpc.UDP_send_keepalive_forever_stop(caller_id)
+            logging.log(logging.ULTRADEBUG, 'calling UDP_send_reply...')
+            rpc.UDP_send_reply(_rpc_caller, caller_id, ret)
 
     def gnodes_split(self, old_node_nb, cur_node_nb):
         """Handles the case of gnode splitting

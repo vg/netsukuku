@@ -51,8 +51,7 @@ class Etp(object):
         self.events = Event(['ETP_EXECUTED', 'NET_COLLISION'])
 
         self.remotable_funcs = [self.etp_exec,
-                                self.etp_exec_udp,
-                                self.reply_etp_exec_udp]
+                                self.etp_exec_udp]
 
     def etp_send_to_neigh(self, etp, neigh, current_netid):
         """Sends the `etp' to neigh"""
@@ -293,11 +292,7 @@ class Etp(object):
         if self.maproute.me == callee_nip and self.neigh.netid == callee_netid:
             self.etp_exec(sender_nip, sender_netid, R, TPL, flag_of_interest)
             # Since it is micro, I will reply None
-            rpc.UDP_send_reply(_rpc_caller, caller_id, 'etp.reply_etp_exec_udp', None)
-
-    def reply_etp_exec_udp(self, _rpc_caller, caller_id, ret):
-        """Receives reply from etp_exec_udp."""
-        rpc.UDP_got_reply(_rpc_caller, caller_id, ret)
+            rpc.UDP_send_reply(_rpc_caller, caller_id, None)
 
     @microfunc()
     def etp_exec(self, sender_nip, sender_netid, R, TPL, flag_of_interest):

@@ -174,7 +174,6 @@ class Neighbour(object):
 
         self.remotable_funcs = [self.ip_netid_change,
                                 self.ip_netid_change_udp,
-                                self.reply_ip_netid_change_udp,
                                 self.ip_netid_change_broadcast_udp]
 
     def neigh_list(self, in_my_network=False, out_of_my_network=False,
@@ -742,11 +741,7 @@ class Neighbour(object):
         if self.ntkd.maproute.me == callee_nip and self.netid == callee_netid:
             self.ip_netid_change(oldip, oldnetid, newip, newnetid)
             # Since it is micro, I will reply None
-            rpc.UDP_send_reply(_rpc_caller, caller_id, 'neighbour.reply_ip_netid_change_udp', None)
-
-    def reply_ip_netid_change_udp(self, _rpc_caller, caller_id, ret):
-        """Receives reply from ip_netid_change_udp."""
-        rpc.UDP_got_reply(_rpc_caller, caller_id, ret)
+            rpc.UDP_send_reply(_rpc_caller, caller_id, None)
 
     def is_neigh_in_my_network(self, neigh):
         """Returns True if the passed Neigh is in my network."""
