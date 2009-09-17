@@ -724,7 +724,15 @@ class Neighbour(object):
         return neigh.netid == self.netid
 
     def change_netid(self, new_netid):
-        """Sets my network id. Handles TCPClients in ntk_client."""
+        """Changes my network id.
+           Handles events for neighbours that are NOW in my network.
+           Handles TCPClients in ntk_client."""
+        # Send delete events for old companions.
+        for neigh in self.neigh_list(in_my_network=True):
+            old_id = neigh.id
+            key = self.id_to_key(old_id)
+            old_val = self.ip_netid_table[key]
+            self.delete(key, old_val, old_id)
         # Closes and removes old TCPClients
         for key in self.ip_netid_table:
             ip, netid = key
@@ -740,6 +748,10 @@ class Neighbour(object):
             if self.netid == netid:
                 # It's in my network
                 self.ntk_client[ip] = rpc.TCPClient(ip_to_str(ip))
+        # Send add events for new companions.
+        for neigh in self.neigh_list(in_my_network=True):
+            key = self.id_to_key(neigh.id)
+            self.add(key)
 
 
 class Radar(object):
