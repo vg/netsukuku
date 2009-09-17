@@ -60,15 +60,15 @@ class Etp(object):
             logging.info('An ETP dropped because we changed network from ' + \
                     str(current_netid) + ' to ' + str(self.ntkd.neighbour.netid) + '.')
             return
-        logging.debug('Etp: sending to %s', ip_to_str(neigh.ip))
+        logging.debug('Etp: sending to %s', str(neigh))
         try:
             self.call_etp_exec_udp(neigh, self.maproute.me, self.ntkd.neighbour.netid, *etp)
             logging.info('Sent ETP to %s', ip_to_str(neigh.ip))
             # RPCErrors may arise for many reasons. We should not care.
         except RPCError:
-            logging.debug('Etp: sending to %s RPCError. We ignore it.', ip_to_str(neigh.ip))
+            logging.debug('Etp: sending to %s RPCError. We ignore it.', str(neigh))
         else:
-            logging.debug('Etp: sending to %s done.', ip_to_str(neigh.ip))
+            logging.debug('Etp: sending to %s done.', str(neigh))
 
     @microfunc(True)
     def etp_dead_link(self, neigh):

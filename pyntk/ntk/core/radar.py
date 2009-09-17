@@ -94,8 +94,8 @@ class Neigh(object):
 
     def __repr__(self):
         if not self.ip: return object.__repr__(self)
-        if not self.rem: return '<Neighbour(%s): No rem>' % (ip_to_str(self.ip))
-        return '<Neighbour(%s):%s>' % (ip_to_str(self.ip), self.rem)
+        if not self.rem: return '<Neighbour(%s in %s): No rem>' % (ip_to_str(self.ip), self.netid)
+        return '<Neighbour(%s in %s):%s>' % (ip_to_str(self.ip), self.netid, self.rem)
 
     def values(self):
         '''Returns a dict rappresentation of the neighbour
