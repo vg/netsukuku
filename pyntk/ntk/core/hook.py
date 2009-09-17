@@ -197,7 +197,7 @@ class Hook(object):
                 return False
             raise Exception('Hooking phase does not recognize the situation.')
         if is_current_hfn_valid():
-            hfn = [(self.maproute.me, self.highest_free_nodes())]
+            hfn = [(self.maproute.me, None, self.highest_free_nodes())]
             logging.info('Hook: highest non saturated gnodes that I know: ' + str(hfn))
         else:
             logging.info('Hook: highest non saturated gnodes that I know is irrelevant.')
@@ -237,9 +237,9 @@ class Hook(object):
                 suitable_neighbours.append(nr)
 
         for nr in suitable_neighbours:
-                nrnip=self.maproute.ip_to_nip(nr.ip)
+                nrnip = self.maproute.ip_to_nip(nr.ip)
                 nr_hfn = self.call_highest_free_nodes_udp(nr)
-                hfn.append((nrnip, nr_hfn))
+                hfn.append((nrnip, nr, nr_hfn))
                 logging.info('Hook: highest non saturated gnodes that ' + str(nrnip) + ' knows: ' + str(nr_hfn))
         ##
 
@@ -248,10 +248,10 @@ class Hook(object):
         hfn2 = []
         hfn_lvlmax = -1
         for h in hfn:
-                if h[1][0] > hfn_lvlmax:
-                        hfn_lvlmax = h[1][0]
+                if h[2][0] > hfn_lvlmax:
+                        hfn_lvlmax = h[2][0]
                         hfn2=[]
-                if h[1][0] == hfn_lvlmax:
+                if h[2][0] == hfn_lvlmax:
                         hfn2.append(h)
         hfn = hfn2
         ##
@@ -259,8 +259,8 @@ class Hook(object):
         ## Find the list with the highest number of elements
         lenmax = 0
         for h in hfn:
-            if h[1][1] is not None:
-                l = len(h[1][1])
+            if h[2][1] is not None:
+                l = len(h[2][1])
                 if l > lenmax:
                         lenmax=l
                         H=h
@@ -271,9 +271,16 @@ class Hook(object):
 
         ## Generate part of our new IP
         newnip = list(H[0])
-        lvl = H[1][0]
-        logging.log(logging.ULTRADEBUG, 'Hook: the best is level ' + str(lvl) + ' known by ' + str(H[0]))
-        fnl = H[1][1]
+        neigh_respond = H[1]
+        lvl = H[2][0]
+        if neigh_respond is None:
+            logging.log(logging.ULTRADEBUG, 'Hook: the best is level ' + str(lvl) \
+                    + ' known by myself')
+        else:
+            logging.log(logging.ULTRADEBUG, 'Hook: the best is level ' + str(lvl) \
+                    + ' known by ' + str(H[0]) \
+                    + ' with netid ' + str(neigh_respond.netid))
+        fnl = H[2][1]
         newnip[lvl] = choice(fnl)
         logging.log(logging.ULTRADEBUG, 'Hook: we choose ' + str(newnip[lvl]))
         for l in reversed(xrange(lvl)): newnip[l] = choice(valid_ids(l, newnip))
@@ -284,14 +291,37 @@ class Hook(object):
             self.ntkd.neighbour.netid = randint(0, 2**32-1)
             logging.info("Generated our network id: %s", self.ntkd.neighbour.netid)
             # and we don't need to contact coordinator node...
-        # removed:  if lvl < self.maproute.levels-1:
-        #           We are creating a new gnode which is not in the latest
-        #           level.
+
         else:
-            # Contact the coordinator nodes
-            neigh_coord_service = suitable_neighbours[0]
+            # Contact the coordinator node.
+
+            # If we are called for bootstrap, we could
+            # have neighbours in different networks (netid).
+            # And we for sure are not the coordinator node for
+            # the gnode we will enter.
+            #
+            # If we are called for network collision, we will contact
+            # neighbours in a different network.
+            # And we for sure are not the coordinator node for
+            # the gnode we will enter.
+            #
+            # In these 2 cases we want to reach the coordinator node for
+            # the gnode we will enter, passing through the neighbour which
+            # we asked for the hfn.
+            if called_for == called_for_bootstrap or called_for == called_for_network_collision:
+                neighudp = neigh_respond
+
+            # In the other situations, we don't
+            # have neighbours in different networks (netid).
+            # And we have the right knowledge of the network.
+            # So, the p2p module knows the best neighbour to use to reach the
+            # coordinator node for the gnode we will enter.
+            else:
+                neighudp = None
+
             # TODO We must handle the case of error in contacting the
             #   coordinator node. The coordinator itself may die.
+
             if lvl > 0:
                 # If we are going to create a new gnode, it's useless to pose
                 # any condition
@@ -302,7 +332,7 @@ class Hook(object):
                 # <<I'm going out>>
                 logging.log(logging.ULTRADEBUG, 'Hook: going_out, in order to' + \
                      ' join a gnode which has ' + str(gfree_new) + ' free nodes.')
-                co = self.coordnode.peer(key=(1, self.maproute.me), use_udp=True)
+                co = self.coordnode.peer(key=(1, self.maproute.me), use_udp=True, neighudp=neighudp)
                 # get gfree_old_coord and check that  gfree_new > gfree_old_coord
                 gfree_old_coord = co.going_out(0, self.maproute.me[0], gfree_new)
                 if gfree_old_coord is None:
@@ -315,7 +345,7 @@ class Hook(object):
                 # <<I'm going in, can I?>>
                 logging.log(logging.ULTRADEBUG, 'Hook: going_in with' + \
                            ' gfree_old_coord = ' + str(gfree_old_coord))
-                co2 = self.coordnode.peer(key = (lvl+1, newnip), use_udp=True)
+                co2 = self.coordnode.peer(key = (lvl+1, newnip), use_udp=True, neighudp=neighudp)
                 # ask if we can get in and if gfree_new_coord > gfree_old_coord,
                 # and get our new IP
                 newnip=co2.going_in(lvl, gfree_old_coord)
@@ -330,11 +360,11 @@ class Hook(object):
                 #co.close()
                 #co2.close()
 
-            elif not we_are_alone:
+            else:
                 # <<I'm going in, can I?>>
                 logging.log(logging.ULTRADEBUG, 'Hook: going_in without' + \
                             ' condition.')
-                co2 = self.coordnode.peer(key = (lvl+1, newnip), use_udp=True)
+                co2 = self.coordnode.peer(key = (lvl+1, newnip), use_udp=True, neighudp=neighudp)
                 # ask if we can get in, get our new IP
                 logging.info('Hook: contacting coordinator node...')
                 newnip=co2.going_in(lvl)

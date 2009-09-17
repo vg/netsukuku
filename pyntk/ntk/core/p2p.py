@@ -340,11 +340,12 @@ class P2P(RPCDispatcher):
         return self.dispatch(CallerInfo(), *msg)
 
     class RmtPeer(FakeRmt):
-        def __init__(self, p2p, hIP=None, key=None, use_udp=False):
+        def __init__(self, p2p, hIP=None, key=None, use_udp=False, neighudp=None):
             self.p2p = p2p
             self.key = key
             self.hIP = hIP
             self.use_udp = use_udp
+            self.neighudp = neighudp
             FakeRmt.__init__(self)
 
         def prepare_rmt(self):
@@ -367,28 +368,32 @@ class P2P(RPCDispatcher):
         def rmt(self, func_name, *params):
             """Overrides FakeRmt.rmt()"""
             self.prepare_rmt()
-            current_nr_list = self.p2p.neigh.neigh_list()
             if self.use_udp:
-                if not self.peer_is_me():
-                     # Peer is not me. Use UDP version.
-                     logging.log(logging.ULTRADEBUG, 'P2P: ...using UDP to reach Coord.')
-                     neighudp = self.peer_get_neigh()
-                     if neighudp is None:
-                          # I can't find the right neigh to peer... Try with a default one.
-                          logging.debug('P2P: I can\'t find the right neigh to peer... Try with a default one.')
-                          neighudp = current_nr_list[0]
+                if self.neighudp:
+                    # We are requested to use this one
+                    logging.log(logging.ULTRADEBUG, 'P2P: ...using UDP to reach Coord.')
+                    neighudp = self.neighudp
                 else:
-                     # I am peer. Use TCP version... which will by-pass network.
-                     logging.log(logging.ULTRADEBUG, 'P2P: ...I am the Coord myself.')
-                     neighudp = None
+                    if not self.peer_is_me():
+                        # Peer is not me. Use UDP version.
+                        logging.log(logging.ULTRADEBUG, 'P2P: ...using UDP to reach Coord.')
+                        neighudp = self.peer_get_neigh()
+                        if neighudp is None:
+                            # I can't find the right neigh to peer... Try with a default one.
+                            logging.debug('P2P: I can\'t find the right neigh to peer... Try with a default one.')
+                            neighudp = self.p2p.neigh.neigh_list()[0]
+                    else:
+                        # I am peer. Use TCP version... which will by-pass network.
+                        logging.log(logging.ULTRADEBUG, 'P2P: ...I am the Coord myself.')
+                        neighudp = None
                 return self.p2p.msg_send(self.p2p.maproute.me, self.hIP, (func_name, params), use_udp_neigh=neighudp)
             else:
                 return self.p2p.msg_send(self.p2p.maproute.me, self.hIP, (func_name, params), use_udp_neigh=None)
 
-    def peer(self, hIP=None, key=None, use_udp=False):
+    def peer(self, hIP=None, key=None, use_udp=False, neighudp=None):
         if hIP is None and key is None:
                 raise Exception, "hIP and key are both None. Specify at least one"
-        return self.RmtPeer(self, hIP=hIP, key=key, use_udp=use_udp)
+        return self.RmtPeer(self, hIP=hIP, key=key, use_udp=use_udp, neighudp=neighudp)
 
 
 class P2PAll(object):
