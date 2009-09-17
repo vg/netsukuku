@@ -99,6 +99,15 @@ def route_change(ip, cidr, dev=None, gateway=None):
 def route_delete(ip, cidr, dev=None, gateway=None):
     pass
     #print 'delete route (ip, cidr, dev, gateway) ' + str((ip, cidr, dev, gateway))
+def neigh_add(ip, dev):
+    pass
+    #print 'add neighbour (ip, dev) ' + str((ip, dev))
+def neigh_change(ip, dev):
+    pass
+    #print 'change neighbour (ip, dev) ' + str((ip, dev))
+def neigh_delete(ip, dev):
+    pass
+    #print 'delete neighbour (ip, dev) ' + str((ip, dev))
 def exec_rpc_call(ip, pieces, params):
     pass
     #print 'To ip ' + ip_to_str(ip) + ': ' + '.'.join(pieces) + str(params)
@@ -109,6 +118,9 @@ set_functions(_node_gonna_exec_etp=node_gonna_exec_etp,
               _route_add=route_add,
               _route_change=route_change,
               _route_delete=route_delete,
+              _neigh_add=neigh_add,
+              _neigh_change=neigh_change,
+              _neigh_delete=neigh_delete,
               _delay_each_etp_exec=delay_each_etp_exec,
               _exec_rpc_call=exec_rpc_call)
 

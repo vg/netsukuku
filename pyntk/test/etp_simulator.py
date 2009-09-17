@@ -55,6 +55,9 @@ def set_functions(_node_gonna_exec_etp=fnull,
                   _route_add=fnull,
                   _route_change=fnull,
                   _route_delete=fnull,
+                  _neigh_add=fnull,
+                  _neigh_change=fnull,
+                  _neigh_delete=fnull,
                   _delay_each_etp_exec=default_delay_each_etp_exec,
                   _exec_rpc_call=fnull):
     global node_gonna_exec_etp
@@ -69,6 +72,12 @@ def set_functions(_node_gonna_exec_etp=fnull,
     route_change = _route_change
     global route_delete
     route_delete = _route_delete
+    global neigh_add
+    neigh_add = _neigh_add
+    global neigh_change
+    neigh_change = _neigh_change
+    global neigh_delete
+    neigh_delete = _neigh_delete
     global delay_each_etp_exec
     delay_each_etp_exec = _delay_each_etp_exec
     global exec_rpc_call
@@ -163,10 +172,19 @@ class FakeRoute():
         route_add(ip, cidr, dev, gateway)
     @staticmethod
     def change(ip, cidr, dev=None, gateway=None):
-        route_add(ip, cidr, dev, gateway)
+        route_change(ip, cidr, dev, gateway)
     @staticmethod
     def delete(ip, cidr, dev=None, gateway=None):
-        route_add(ip, cidr, dev, gateway)
+        route_delete(ip, cidr, dev, gateway)
+    @staticmethod
+    def add_neigh(ip, dev=None):
+        neigh_add(ip, dev)
+    @staticmethod
+    def change_neigh(ip, dev=None):
+        neigh_change(ip, dev)
+    @staticmethod
+    def delete_neigh(ip, dev=None):
+        neigh_delete(ip, dev)
     @staticmethod
     def flush():
         pass #print 'flush'
