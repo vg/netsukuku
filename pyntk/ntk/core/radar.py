@@ -152,7 +152,9 @@ class Neighbour(object):
         # ID => (ip, netid) reverse translation table
         self.reverse_translation_table = {}
         # the events we raise
-        self.events = Event(['NEIGH_NEW', 'NEIGH_DELETED', 'NEIGH_REM_CHGED'])
+        self.events = Event(['NEIGH_NEW', 'NEIGH_DELETED', 'NEIGH_REM_CHGED',
+                      'COLLIDING_NEIGH_NEW', 'COLLIDING_NEIGH_DELETED',
+                      'COLLIDING_NEIGH_REM_CHGED'])
         # time module
         self.xtime = xtimemod
         # channels for the methods to synchronize routes in the kernel table
@@ -571,12 +573,18 @@ class Neighbour(object):
         ip, netid = key
         val = self.ip_netid_table[key]
         id = self.key_to_id(key)
-        logging.info('Neighbour ip ' + ip_to_str(ip) + ', netid ' + str(netid) + ', is now in my network.')
+
+        is_in_my_net = netid == self.netid and self.netid != -1
+        event_to_fire = 'NEIGH_NEW' if is_in_my_net else 'COLLIDING_NEIGH_NEW'
+        if is_in_my_net:
+            logging.info('Neighbour ip ' + ip_to_str(ip) + ', netid ' + str(netid) + ', is now in my network.')
+            logging.debug('ANNOUNCE: gw ' + str(id) + ' detected.')
+            self.announce_gw(id)
+        else:
+            logging.info('Neighbour ip ' + ip_to_str(ip) + ', netid ' + str(netid) + ', is a known neighbour but it is not in my network.')
 
         # send a message notifying we added a node
-        logging.debug('ANNOUNCE: gw ' + str(id) + ' detected.')
-        self.announce_gw(id)
-        self.events.send('NEIGH_NEW',
+        self.events.send(event_to_fire,
                          (Neigh(bestdev=val.bestdev,
                             devs=val.devs,
                             ip=ip,
@@ -589,15 +597,20 @@ class Neighbour(object):
         """Sends event for a dead neighbour."""
 
         ip, netid = key
-        logging.info('Neighbour ip ' + ip_to_str(ip) + ', netid ' + str(netid) + ', is no more in my network.')
+        is_in_my_net = netid == self.netid and self.netid != -1
+        event_to_fire = 'NEIGH_DELETED' if is_in_my_net else 'COLLIDING_NEIGH_DELETED'
+        if is_in_my_net:
+            logging.info('Neighbour ip ' + ip_to_str(ip) + ', netid ' + str(netid) + ', is no more in my network.')
+            logging.debug('ANNOUNCE: gw ' + str(old_id) + ' removing.')
+            self.announce_gw_removing(old_id)
+        else:
+            logging.info('Neighbour ip ' + ip_to_str(ip) + ', netid ' + str(netid) + ', is no more a known neighbour anyway it was not in my network.')
 
         old_bestdev = old_val.bestdev
         old_devs = old_val.devs
 
         # send a message notifying we deleted the node
-        logging.debug('ANNOUNCE: gw ' + str(old_id) + ' removing.')
-        self.announce_gw_removing(old_id)
-        self.events.send('NEIGH_DELETED',
+        self.events.send(event_to_fire,
                          (Neigh(bestdev=old_bestdev,
                             devs=old_devs,
                             ip=ip,
@@ -612,10 +625,16 @@ class Neighbour(object):
         ip, netid = key
         val = self.ip_netid_table[key]
         id = self.key_to_id(key)
-        logging.info('Neighbour ip ' + ip_to_str(ip) + ', netid ' + str(netid) + ', which is in my network, changed its REM.')
+
+        is_in_my_net = netid == self.netid and self.netid != -1
+        event_to_fire = 'NEIGH_REM_CHGED' if is_in_my_net else 'COLLIDING_NEIGH_REM_CHGED'
+        if is_in_my_net:
+            logging.info('Neighbour ip ' + ip_to_str(ip) + ', netid ' + str(netid) + ', which is in my network, changed its REM.')
+        else:
+            logging.info('Neighbour ip ' + ip_to_str(ip) + ', netid ' + str(netid) + ', which is *not* in my network, changed its REM.')
 
         # send a message notifying the node's rtt changed
-        self.events.send('NEIGH_REM_CHGED',
+        self.events.send(event_to_fire,
                          (Neigh(bestdev=val.bestdev,
                             devs=val.devs,
                             ip=ip,

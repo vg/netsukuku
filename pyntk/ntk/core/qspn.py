@@ -44,6 +44,7 @@ class Etp(object):
         self.maproute = maproute
         
         self.neigh.events.listen('NEIGH_NEW', self.etp_new_link)
+        self.neigh.events.listen('COLLIDING_NEIGH_NEW', self.etp_new_link)
         self.neigh.events.listen('NEIGH_REM_CHGED', self.etp_changed_link)
         self.neigh.events.listen('NEIGH_DELETED', self.etp_dead_link)
 
@@ -69,10 +70,6 @@ class Etp(object):
     @microfunc(True)
     def etp_dead_link(self, neigh):
         """Builds and sends a new ETP for the dead link case."""
-
-        # If the neighbour was not in my network, I must do nothing.
-        if not self.neigh.is_neigh_in_my_network(neigh):
-            return
 
         current_nr_list = self.neigh.neigh_list(in_my_network=True)
         logging.debug('QSPN: death of %s: update my map.', ip_to_str(neigh.ip))
@@ -221,10 +218,6 @@ class Etp(object):
     @microfunc(True)
     def etp_changed_link(self, neigh, oldrem):
         """Builds and sends a new ETP for the changed link case."""
-
-        # If the neighbour was not in my network, I must do nothing.
-        if not self.neigh.is_neigh_in_my_network(neigh):
-            return
 
         current_nr_list = self.neigh.neigh_list()
         logging.debug('QSPN: changed %s: update my map', ip_to_str(neigh.ip))
