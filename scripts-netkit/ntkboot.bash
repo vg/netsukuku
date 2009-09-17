@@ -34,5 +34,5 @@ cd /hosthome/netsukuku/pyntk
 launch /opt/stackless/bin/python2.6 ntkd -i ${nics} -vvvv
 NTKD_PID=${LAUNCH_PID}
 NTKD_OUTPUT=${LAUNCH_OUTPUT}
-echo 'Gone...'
+echo 'Netsukuku Daemon Launched...'
 
