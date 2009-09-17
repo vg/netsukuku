@@ -211,9 +211,25 @@ class Hook(object):
         for nr in neigh_list:
                 nrnip=self.maproute.ip_to_nip(nr.ip)
 
-                if self.maproute.nip_cmp(self.maproute.me, nrnip) <= 0:
-                        # we're interested in external neighbours
-                        continue
+                # Do we have to avoid hooking with a neighbour that is in our
+                # gnode of level 1? Based on the situation:
+                # 1. hook called at bootstrap. We are in a private gnode (192.168...)
+                #    In this case we must avoid neighbours with private gnode. Anyway
+                #    such a neighbour would not be present in self.neigh.neigh_list()
+                #    because it won't respond to radar scan
+                # 2. hook called for a gnode-splitting. We are the smaller part of
+                #    the splitted gnode, we must go in another gnode. But, this is
+                #    accomplished with the use of "forbidden_neighs"
+                # 3. hook called for a communicating vessels. We want to change our
+                #    gnode of level 1. But the method communicating_vessels already
+                #    has this control, so such a neighbour would not be in
+                #    "candidates".
+                # 4. hook called for a network collision. In this case we want to
+                #    use only neighbours in the new network.
+                #    We don't want to exclude a neighbour in the new network which
+                #    incidentally has our same previous gnode.
+                # So the answer is "not".
+
                 if is_neigh_forbidden(nrnip):
                         # We don't want forbidden neighbours
                         continue
