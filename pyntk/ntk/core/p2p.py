@@ -105,10 +105,7 @@ class MapP2P(Map):
         """Prepares a packed_mapp2p to be passed to mapp2p.map_data_merge
         in another host."""
         def fmake_participant(node):
-            # If I'm participating to this p2p service, then the node that
-            # represents myself has already the participant flag set.
-            # So, nothing to do here.
-            pass
+            node.participant = True
         return Map.map_data_pack(self, fmake_participant)
 
     def map_data_merge(self, (nip, plist, nblist)):
@@ -125,7 +122,8 @@ class MapP2P(Map):
         Map.map_data_merge(self, (nip, plist, nblist))
         # ... ripristine myself.
         for lvl in xrange(self.levels):
-            self.node_get(lvl, self.me[lvl]).participant = me_was[lvl]
+            if me_was[lvl]:
+                self.participant_node_add(lvl, self.me[lvl])
         logging.log(logging.ULTRADEBUG, 'Merging a mapp2p.map_data_merge: after: ' + self.repr_me())
 
     def repr_me(self, func_repr_node=None):

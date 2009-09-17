@@ -96,10 +96,7 @@ class MapCache(Map):
         """Prepares a packed_mapcache to be passed to mapcache.map_data_merge
         in another host."""
         def fmake_alive(node):
-            # TODO always alive?
-            logging.debug('MapCache replication: fmake_alive : node was ' + str(node) + ' - alive was ' + str(node.alive))
             node.alive = True
-            logging.debug('MapCache replication: fmake_alive : now, node is ' + str(node) + ' - alive is ' + str(node.alive))
         return Map.map_data_pack(self, fmake_alive)
 
     def map_data_merge(self, (nip, plist, nblist)):
@@ -118,7 +115,8 @@ class MapCache(Map):
         Map.map_data_merge(self, (nip, plist, nblist))
         # ... ripristine myself.
         for lvl in xrange(self.levels):
-            self.node_get(lvl, self.me[lvl]).alive = me_was[lvl]
+            if me_was[lvl]:
+                self.alive_node_add(lvl, self.me[lvl])
         logging.log(logging.ULTRADEBUG, 'Merging a mapcache.map_data_merge: after: ' + self.repr_me())
 
     def repr_me(self, func_repr_node=None):
