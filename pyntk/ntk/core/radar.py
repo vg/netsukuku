@@ -555,8 +555,9 @@ class Neighbour(object):
             It is used by the callee to recognize a request destinated to it.
            """
         if self.ntkd.maproute.me == nip_callee:
-            ret = self.ip_change(oldip, newip)
-            rpc.UDP_send_reply(_rpc_caller, caller_id, 'neighbour.reply_ip_change_udp', ret)
+            self.ip_change(oldip, newip)
+            # Since it is micro, I will reply None
+            rpc.UDP_send_reply(_rpc_caller, caller_id, 'neighbour.reply_ip_change_udp', None)
 
     def reply_ip_change_udp(self, _rpc_caller, caller_id, ret):
         """Receives reply from ip_change_udp."""
