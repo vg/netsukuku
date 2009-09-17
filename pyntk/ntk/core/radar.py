@@ -756,11 +756,13 @@ class Neighbour(object):
         """Changes my network id.
            Handles events for neighbours that are NOW in my network.
            Handles TCPClients in ntk_client."""
+        logging.log(logging.ULTRADEBUG, 'change_netid: changing my netid from ' + str(self.netid) + ' to ' + str(new_netid) + '.')
         # Send delete events for old companions.
         for neigh in self.neigh_list():
             old_id = neigh.id
             key = self.id_to_key(old_id)
             old_val = self.ip_netid_table[key]
+            logging.log(logging.ULTRADEBUG, 'change_netid: event for deletion of ' + str(neigh) + '.')
             self.delete(key, old_val, old_id)
         # Closes and removes old TCPClients
         for key in self.ip_netid_table:
@@ -771,6 +773,7 @@ class Neighbour(object):
                 del self.ntk_client[ip]
         # Sets new netid
         self.netid = new_netid
+        logging.info('change_netid: my netid is now ' + str(self.netid) + '.')
         # Creates new TCPClients
         for key in self.ip_netid_table:
             ip, netid = key
@@ -780,6 +783,7 @@ class Neighbour(object):
         # Send add events for new companions.
         for neigh in self.neigh_list():
             key = self.id_to_key(neigh.id)
+            logging.log(logging.ULTRADEBUG, 'change_netid: event for adding of ' + str(neigh) + '.')
             self.add(key)
 
 

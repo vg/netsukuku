@@ -22,11 +22,13 @@ TEMPFILE=$(mktemp)
 view_logs.bash 2 $* >${OUTFILE}
 
 # grep only ip commands
-cat ${OUTFILE} | grep ": /sbin/ip" >${TEMPFILE}
+cat ${OUTFILE} | grep ": \/sbin\/ip\|my netid is now [0-9]" >${TEMPFILE}
 mv ${TEMPFILE} ${OUTFILE}
 
 # remove time and source-file
 cat ${OUTFILE} | sed "s/2009.*\/sbin\///g" >${TEMPFILE}
+mv ${TEMPFILE} ${OUTFILE}
+cat ${OUTFILE} | sed "s/2009.*my netid is now/NETID/g" >${TEMPFILE}
 mv ${TEMPFILE} ${OUTFILE}
 
 # remove lots of "protocol ntk"

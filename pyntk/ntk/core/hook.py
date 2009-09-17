@@ -350,7 +350,7 @@ class Hook(object):
                 if gfree_old_coord is None:
                     # nothing to be done
                     logging.info('Hooking procedure canceled by our Coord. Our' + \
-                                 ' network id is back.')
+                                 ' network id = ' + str(previous_netid) + ' is back.')
                     self.ntkd.neighbour.change_netid(previous_netid)
                     return
 
@@ -428,6 +428,7 @@ class Hook(object):
             logging.log(logging.ULTRADEBUG, 'Hook.hook: waiting 10 sec. to receive some ETPs.')
             xtime.swait(10000)
             self.ntkd.neighbour.change_netid(netid_to_join)
+            logging.info('We now have got a network id = ' + str(netid_to_join))
             # warn our neighbours again
             logging.log(logging.ULTRADEBUG, 'Hook.hook warn neighbours of' + \
                     ' my change from netid -1 to ' + str(netid_to_join))
