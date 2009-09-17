@@ -180,7 +180,7 @@ class P2P(RPCDispatcher):
                                 if mp.node_get(l, hid).participant:
                                         hIP[l] = hid
                                         break
-                        if hIP[l]:
+                        if hIP[l] is not None:
                                 break
                 if hIP[l] is None:
                         return None
