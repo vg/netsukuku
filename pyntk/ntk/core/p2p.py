@@ -163,7 +163,7 @@ class P2P(RPCDispatcher):
 
         if not br:
             return None
-        return self.neigh.id_to_neigh(br.gw)
+        return br.gw
 
     def participate(self):
         """Let's become a participant node"""

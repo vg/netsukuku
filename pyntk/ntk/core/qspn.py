@@ -58,10 +58,10 @@ class Etp:
         self.remotable_funcs = [self.etp_exec]
 
     def send_etp_to_neighbours(self):
-        """Simulate the changed link case towards all our neighbours."""
-        logging.log(logging.ULTRADEBUG, 'Simulate the changed link case towards all our neighbours.')
+        """Simulate the new link case towards all our neighbours."""
+        logging.log(logging.ULTRADEBUG, 'Simulate the new link case towards all our neighbours.')
         for neigh in self.neigh.neigh_list():
-            self.etp_new_changed(neigh)
+            self.etp_new_link(neigh)
 
     def etp_send_to_neigh(self, etp, neigh):
         """Sends the `etp' to neigh"""
