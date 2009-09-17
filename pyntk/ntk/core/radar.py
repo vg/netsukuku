@@ -690,7 +690,7 @@ class Radar(object):
             try:
                 bcc.radar.time_register(radar_id, self.neigh.netid)
             except:
-                logging.log(logging.ULTRADEBUG, 'Radar: Reply: BcastClient ' + str(bcc) + ' with dispatcher ' + str(bcc.dev_sk[_rpc_caller.dev].dispatcher) + ' error in rpc execution. Ignored.')
+                logging.log(logging.ULTRADEBUG, 'Radar: Reply: BcastClient ' + str(bcc) + ' with dispatcher ' + repr(bcc.dev_sk[_rpc_caller.dev].dispatcher) + ' error in rpc execution. Ignored.')
 
     def time_register(self, _rpc_caller, radar_id, netid):
         """save each node's rtt"""

@@ -83,6 +83,7 @@ class Hook(object):
                         # we're interested in external neighbours
                         continue
                 fnb=nr.ntkd.maproute.free_nodes_nb(0)
+                logging.log(logging.ULTRADEBUG, str(nr) + ' has replied its gnode has ' + str(fnb) + ' free nodes.')
                 if fnb+1 < self.maproute.free_nodes_nb(0):
                         inv_candidates.append((nr, fnb))
                 elif self.maproute.free_nodes_nb(0)+1 < fnb:
