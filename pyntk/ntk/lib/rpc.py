@@ -2,6 +2,7 @@
 # This file is part of Netsukuku
 # (c) Copyright 2007 Daniele Tricoli aka Eriol <eriol@mornie.org>
 # (c) Copyright 2007 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
+# (c) Copyright 2009 Luca Dionisi aka lukisi <luca.dionisi@gmail.com>
 #
 # This source code is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as published
@@ -567,7 +568,7 @@ class BcastClient(FakeRmt):
             self.close()
 
 UDP_caller_ids = {}
-def UDP_call(callee_nip, devs, func_name, args=()):
+def UDP_call(callee_nip, callee_netid, devs, func_name, args=()):
     """Use a BcastClient to call 'func_name' to 'callee_nip' on the LAN via UDP broadcast."""
     
     logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + ' to ' + str(callee_nip) + ' on the LAN via UDP broadcast.')
@@ -579,7 +580,7 @@ def UDP_call(callee_nip, devs, func_name, args=()):
         raise RPCError('Couldn\'t create BcastClient.')
     caller_id = randint(0, 2**32-1)
     UDP_caller_ids[caller_id] = Channel()
-    exec('bcastclient.' + func_name + '(caller_id, callee_nip, *args)')
+    exec('bcastclient.' + func_name + '(caller_id, callee_nip, callee_netid, *args)')
     logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + ' done. Waiting reply...')
     ret = UDP_caller_ids[caller_id].recv()
     logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + ' got reply.')
