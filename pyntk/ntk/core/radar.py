@@ -867,8 +867,6 @@ class Radar(object):
             self.radar_id = randint(0, 2**32-1)
             logging.debug('radar scan %s' % self.radar_id)
             logging.debug('My netid is ' + str(self.neigh.netid))
-            # TODO remove:
-            #logging.debug('I know these netids ' + str(self.neigh.netid_table))
 
             # we're sending the broadcast packets NOW
             self.bcast_send_time = self.xtime.time()
@@ -936,9 +934,6 @@ class Radar(object):
             self.bcast_arrival_time[(ip, netid)] = {}
             self.bcast_arrival_time[(ip, netid)][net_device] = [time_elapsed]
             logging.debug("Radar: IP %s from network %s detected", ip_to_str(ip), str(netid))
-
-        # TODO remove: self.neigh.netid_table[ip] = netid
-
 
     def get_avg_rtt(self, ip, netid):
         """ ip: ip of the neighbour;

@@ -327,9 +327,6 @@ class Etp(object):
         logging.info('Received ETP from (nip, netid) = ' + str((sender_nip, sender_netid)))
         gwnip = sender_nip
         gwip = self.maproute.nip_to_ip(gwnip)
-        # TODO remove:
-        ## update our neighbour's netid in our netid_table
-        #self.neigh.set_netid(gwip, sender_netid)
         neigh = self.neigh.key_to_neigh((gwip, sender_netid))
         
         # check if we have found the neigh, otherwise wait it
