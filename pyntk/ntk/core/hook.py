@@ -17,18 +17,15 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
-import ntk.lib.rpc as rpc
-import ntk.wrap.xtime as xtime
-
-from ntk.lib.log import logger as logging
 from random import choice, randint
 
-
+import ntk.lib.rpc as rpc
+import ntk.wrap.xtime as xtime
+from ntk.lib.log import logger as logging
+from ntk.lib.log import log_exception_stacktrace
 from ntk.lib.micro import microfunc, Channel
 from ntk.lib.event import Event
-
 from ntk.network.inet import ip_to_str, valid_ids
-
 
 class Hook(object):
 
@@ -99,6 +96,7 @@ class Hook(object):
                 candidates.sort(cmp=cand_cmp, reverse=1)
                 # We've found some neighbour gnodes smaller than us. 
                 # Let's rehook
+                logging.info('Hook: Communicating vessels found a smaller GNode. We rehook.')
                 self.hook([nr for (nr, fnb) in candidates], [], True,
                                 candidates[0][1])
 
@@ -134,307 +132,316 @@ class Hook(object):
         In contrast, we request the other values to the Coordinator.
         """
 
-        # The method 'hook' is called in various situations. How do we
-        # detect them?
-        # 1. hook called at bootstrap. We are in a private gnode (192.168..).
-        #    We get called without any argument.
-        # 2. hook called for a gnode splitting. We have some
-        #    "forbidden_neighs".
-        # 3. hook called for a communicating vessels. We have some
-        #    "candidates" in "passed_neigh_list". We have a "condition" to
-        #    satisfy too.
-        # 4. hook called for a network collision. We have some nodes of the
-        #    new network in "passed_neigh_list". But, we don't have any
-        #    "condition" to satisfy.
-        called_for_bootstrap = 1
-        called_for_gnode_splitting = 2
-        called_for_communicating_vessels = 3
-        called_for_network_collision = 4
-        called_for = None
-        if forbidden_neighs:
-            called_for = called_for_gnode_splitting
-        elif not passed_neigh_list:
-            called_for = called_for_bootstrap
-        elif condition:
-            called_for = called_for_communicating_vessels
-        else:
-            called_for = called_for_network_collision
+        try:
+            # The method 'hook' is called in various situations. How do we
+            # detect them?
+            # 1. hook called at bootstrap. We are in a private gnode (192.168..).
+            #    We get called without any argument.
+            # 2. hook called for a gnode splitting. We have some
+            #    "forbidden_neighs".
+            # 3. hook called for a communicating vessels. We have some
+            #    "candidates" in "passed_neigh_list". We have a "condition" to
+            #    satisfy too.
+            # 4. hook called for a network collision. We have some nodes of the
+            #    new network in "passed_neigh_list". But, we don't have any
+            #    "condition" to satisfy.
+            called_for_bootstrap = 1
+            called_for_gnode_splitting = 2
+            called_for_communicating_vessels = 3
+            called_for_network_collision = 4
+            called_for = None
+            if forbidden_neighs:
+                called_for = called_for_gnode_splitting
+            elif not passed_neigh_list:
+                called_for = called_for_bootstrap
+            elif condition:
+                called_for = called_for_communicating_vessels
+            else:
+                called_for = called_for_network_collision
 
-        # The very first step (except at bootstrap) is to avoid that we start
-        # a hook when another hook is still running.
-        # This will be probably redundant IFF hook is a microfunc with dispatcher
-        # AND when hook exits the hook is complete. At the moment the hook is
-        # complete only when we receive a ETP.
-        if called_for != called_for_bootstrap \
-                and self.ntkd.neighbour.netid == -1:
-            return # correct?
+            # The very first step (except at bootstrap) is to avoid that we start
+            # a hook when another hook is still running.
+            # This will be probably redundant IFF hook is a microfunc with dispatcher
+            # AND when hook exits the hook is complete. At the moment the hook is
+            # complete only when we receive a ETP.
+            if called_for != called_for_bootstrap \
+                    and self.ntkd.neighbour.netid == -1:
+                return # correct?
 
-        we_are_alone = False
-        netid_to_join = None
-        neigh_list = passed_neigh_list
-        if neigh_list == []:
-                # We are in bootstrap or gnode_splitting. In any case
-                # we want only nodes in my network.
-                neigh_list = self.neigh.neigh_list(in_my_network=True)
-        if neigh_list == []:
-                we_are_alone = True
-        else:
-                netid_to_join = neigh_list[0].netid
+            we_are_alone = False
+            netid_to_join = None
+            neigh_list = passed_neigh_list
+            if neigh_list == []:
+                    # We are in bootstrap or gnode_splitting. In any case
+                    # we want only nodes in my network.
+                    neigh_list = self.neigh.neigh_list(in_my_network=True)
+            if neigh_list == []:
+                    we_are_alone = True
+            else:
+                    netid_to_join = neigh_list[0].netid
 
-        logging.info('Hooking procedure started.')
-        previous_netid = self.ntkd.neighbour.netid
-        oldnip = self.maproute.me[:]
-        oldip = self.maproute.nip_to_ip(oldnip)
-        self.ntkd.neighbour.change_netid(-1)
-        if previous_netid != -1:
-            logging.info('We previously had got a network id = ' + str(previous_netid))
-            logging.log(logging.ULTRADEBUG, 'Hook: warn neighbours of' + \
-                    ' my change netid from ' + str(previous_netid) + ' to ' + str(self.neigh.netid))
-            self.neigh.call_ip_netid_change_broadcast_udp(oldip, previous_netid, oldip, self.neigh.netid)
-            logging.log(logging.ULTRADEBUG, 'Hook: called ip_netid_change on broadcast.')
-        logging.info('We haven\'t got any network id, now.')
-        suitable_neighbours = []
+            logging.info('Hooking procedure started.')
+            previous_netid = self.ntkd.neighbour.netid
+            oldnip = self.maproute.me[:]
+            oldip = self.maproute.nip_to_ip(oldnip)
+            self.ntkd.neighbour.change_netid(-1)
+            if previous_netid != -1:
+                logging.info('We previously had got a network id = ' + str(previous_netid))
+                logging.log(logging.ULTRADEBUG, 'Hook: warn neighbours of' + \
+                        ' my change netid from ' + str(previous_netid) + ' to ' + str(self.neigh.netid))
+                self.neigh.call_ip_netid_change_broadcast_udp(oldip, previous_netid, oldip, self.neigh.netid)
+                logging.log(logging.ULTRADEBUG, 'Hook: called ip_netid_change on broadcast.')
+            logging.info('We haven\'t got any network id, now.')
+            suitable_neighbours = []
 
-        hfn = []
-        ## Find all the highest non saturated gnodes
+            hfn = []
+            ## Find all the highest non saturated gnodes
 
-        def is_current_hfn_valid():
-            # Should our actual knowledge of the network be considered?
-            # TODO Review implementation
-            if called_for == called_for_network_collision:
-                return False
-            if called_for == called_for_communicating_vessels:
-                return False
-            if called_for == called_for_bootstrap:
-                if we_are_alone:
-                    return True
-                else:
+            def is_current_hfn_valid():
+                # Should our actual knowledge of the network be considered?
+                # TODO Review implementation
+                if called_for == called_for_network_collision:
                     return False
-            if called_for == called_for_gnode_splitting:
-                return False
-            raise Exception('Hooking phase does not recognize the situation.')
-        if is_current_hfn_valid():
-            hfn = [(self.maproute.me, None, self.highest_free_nodes())]
-            logging.info('Hook: highest non saturated gnodes that I know: ' + str(hfn))
-        else:
-            logging.info('Hook: highest non saturated gnodes that I know is irrelevant.')
-
-        def is_neigh_forbidden(nrip):
-                for lvl, fnr in forbidden_neighs:
-                        if self.maproute.nip_cmp(nrnip, fnr) < lvl:
-                                return True
-                return False
-
-        for nr in neigh_list:
-                nrnip=self.maproute.ip_to_nip(nr.ip)
-
-                if is_neigh_forbidden(nrnip):
-                        # We don't want forbidden neighbours
-                        continue
-
-                suitable_neighbours.append(nr)
-
-        has_someone_responded = False
-        for nr in suitable_neighbours:
-            # We must consider that a node could not respond. E.g. it is doing a hook, so it has
-            # no more the same netid we thought.
-            try:
-                nrnip = self.maproute.ip_to_nip(nr.ip)
-                nr_hfn = self.call_highest_free_nodes_udp(nr)
-                has_someone_responded = True
-                hfn.append((nrnip, nr, nr_hfn))
-                logging.info('Hook: highest non saturated gnodes that ' + str(nrnip) + ' knows: ' + str(nr_hfn))
-            except:
-                pass
-        if not has_someone_responded:
-            if called_for != called_for_bootstrap:
-                # We must try with a "bootstrap"-style hook. We schedule hook (it is a microfunc with dispatcher)
-                # and we exit immediately.
-                self.hook()
-                return
-        ##
-
-        ## Find all the hfn elements with the highest level and
-        ## remove all the lower ones
-        hfn2 = []
-        hfn_lvlmax = -1
-        for h in hfn:
-                if h[2][0] > hfn_lvlmax:
-                        hfn_lvlmax = h[2][0]
-                        hfn2=[]
-                if h[2][0] == hfn_lvlmax:
-                        hfn2.append(h)
-        hfn = hfn2
-        ##
-
-        ## Find the list with the highest number of elements
-        lenmax = 0
-        for h in hfn:
-            if h[2][1] is not None:
-                l = len(h[2][1])
-                if l > lenmax:
-                        lenmax=l
-                        H=h
-        ##
-
-        if lenmax == 0:
-                raise Exception, "Netsukuku is full"
-
-        ## Generate part of our new IP
-        newnip = list(H[0])
-        neigh_respond = H[1]
-        lvl = H[2][0]
-        if neigh_respond is None:
-            logging.log(logging.ULTRADEBUG, 'Hook: the best is level ' + str(lvl) \
-                    + ' known by myself')
-        else:
-            logging.log(logging.ULTRADEBUG, 'Hook: the best is level ' + str(lvl) \
-                    + ' known by ' + str(H[0]) \
-                    + ' with netid ' + str(neigh_respond.netid))
-        fnl = H[2][1]
-        newnip[lvl] = choice(fnl)
-        logging.log(logging.ULTRADEBUG, 'Hook: we choose ' + str(newnip[lvl]))
-        for l in reversed(xrange(lvl)): newnip[l] = choice(valid_ids(l, newnip))
-        logging.log(logging.ULTRADEBUG, 'Hook: our option is ' + str(newnip))
-
-        # If we are alone, let's generate our netid
-        if we_are_alone:
-            self.ntkd.neighbour.change_netid(randint(0, 2**32-1))
-            logging.info("Generated our network id: %s", self.ntkd.neighbour.netid)
-            # and we don't need to contact coordinator node...
-
-        else:
-            # Contact the coordinator node.
-            # If something goes wrong we'd better to retry from start.
-            try:
-                # If we are called for bootstrap, we could
-                # have neighbours in different networks (netid).
-                # And we for sure are not the coordinator node for
-                # the gnode we will enter.
-                #
-                # If we are called for network collision, we will contact
-                # neighbours in a different network.
-                # And we for sure are not the coordinator node for
-                # the gnode we will enter.
-                #
-                # In these 2 cases we want to reach the coordinator node for
-                # the gnode we will enter, passing through the neighbour which
-                # we asked for the hfn.
-                if called_for == called_for_bootstrap or called_for == called_for_network_collision:
-                    neighudp = neigh_respond
-
-                # In the other situations, we don't
-                # have neighbours in different networks (netid).
-                # And we have the right knowledge of the network.
-                # So, the p2p module knows the best neighbour to use to reach the
-                # coordinator node for the gnode we will enter.
-                else:
-                    neighudp = None
-
-                # TODO We must handle the case of error in contacting the
-                #   coordinator node. The coordinator itself may die.
-
-                if lvl > 0:
-                    # If we are going to create a new gnode, it's useless to pose
-                    # any condition
-                    condition=False
-                    # TODO Do we have to tell to the old Coord that we're leaving?
-
-                if condition:
-                    # <<I'm going out>>
-                    logging.log(logging.ULTRADEBUG, 'Hook: going_out, in order to' + \
-                         ' join a gnode which has ' + str(gfree_new) + ' free nodes.')
-                    co = self.coordnode.peer(key=(1, self.maproute.me), use_udp=True, neighudp=neighudp)
-                    # get gfree_old_coord and check that  gfree_new > gfree_old_coord
-                    gfree_old_coord = co.going_out(0, self.maproute.me[0], gfree_new)
-                    if gfree_old_coord is None:
-                        # nothing to be done
-                        logging.info('Hooking procedure canceled by our Coord. Our' + \
-                                     ' network id = ' + str(previous_netid) + ' is back.')
-                        self.ntkd.neighbour.change_netid(previous_netid)
-                        return
-
-                    # <<I'm going in, can I?>>
-                    logging.log(logging.ULTRADEBUG, 'Hook: going_in with' + \
-                               ' gfree_old_coord = ' + str(gfree_old_coord))
-                    co2 = self.coordnode.peer(key = (lvl+1, newnip), use_udp=True, neighudp=neighudp)
-                    # ask if we can get in and if gfree_new_coord > gfree_old_coord,
-                    # and get our new IP
-                    newnip=co2.going_in(lvl, gfree_old_coord)
-
-                    if newnip:
-                        # we've been accepted
-                        co.going_out_ok(0, self.maproute.me[0])
+                if called_for == called_for_communicating_vessels:
+                    return False
+                if called_for == called_for_bootstrap:
+                    if we_are_alone:
+                        return True
                     else:
-                        raise Exception, "Netsukuku is full"
+                        return False
+                if called_for == called_for_gnode_splitting:
+                    return False
+                raise Exception('Hooking phase does not recognize the situation.')
+            if is_current_hfn_valid():
+                hfn = [(self.maproute.me, None, self.highest_free_nodes())]
+                logging.info('Hook: highest non saturated gnodes that I know: ' + str(hfn))
+            else:
+                logging.info('Hook: highest non saturated gnodes that I know is irrelevant.')
 
-                    # TODO do we need to implement a close?
-                    #co.close()
-                    #co2.close()
+            def is_neigh_forbidden(nrip):
+                    for lvl, fnr in forbidden_neighs:
+                            if self.maproute.nip_cmp(nrnip, fnr) < lvl:
+                                    return True
+                    return False
 
-                else:
-                    # <<I'm going in, can I?>>
-                    logging.log(logging.ULTRADEBUG, 'Hook: going_in without' + \
-                                ' condition.')
-                    co2 = self.coordnode.peer(key = (lvl+1, newnip), use_udp=True, neighudp=neighudp)
-                    # ask if we can get in, get our new IP
-                    logging.info('Hook: contacting coordinator node...')
-                    newnip=co2.going_in(lvl)
-                    logging.info('Hook: contacted coordinator node, assigned nip' + \
-                                 ' = ' + str(newnip))
-                    if newnip is None:
-                        raise Exception, "Netsukuku is full"
-                    # TODO do we need to implement a close?
-                    #co2.close()
-            except:
-                logging.info('Hook: something wrong. We retry hook from start.')
-                # We must try again with a "bootstrap"-style hook. We schedule hook (it is a microfunc with dispatcher)
-                # and we exit immediately.
-                self.hook()
-                return
-        ##
+            for nr in neigh_list:
+                    nrnip=self.maproute.ip_to_nip(nr.ip)
 
-        logging.log(logging.ULTRADEBUG, 'Hook: completing hook...')
+                    if is_neigh_forbidden(nrnip):
+                            # We don't want forbidden neighbours
+                            continue
 
-        # close the ntkd sessions
-        self.neigh.reset_ntk_clients()
+                    suitable_neighbours.append(nr)
 
-        # change the IPs of the NICs
-        newnip_ip = self.maproute.nip_to_ip(newnip)
-        self.nics.activate(ip_to_str(newnip_ip))
+            has_someone_responded = False
+            for nr in suitable_neighbours:
+                # We must consider that a node could not respond. E.g. it is doing a hook, so it has
+                # no more the same netid we thought.
+                try:
+                    nrnip = self.maproute.ip_to_nip(nr.ip)
+                    nr_hfn = self.call_highest_free_nodes_udp(nr)
+                    has_someone_responded = True
+                    hfn.append((nrnip, nr, nr_hfn))
+                    logging.info('Hook: highest non saturated gnodes that ' + str(nrnip) + ' knows: ' + str(nr_hfn))
+                except Exception, e:
+                    logging.log(logging.ULTRADEBUG, 'Exception trying to get hfn from a neighbour. ' + str(e))
+            if not has_someone_responded:
+                if called_for != called_for_bootstrap:
+                    # We must try with a "bootstrap"-style hook. We schedule hook (it is a microfunc with dispatcher)
+                    # and we exit immediately.
+                    logging.info('Hook: No one in the new network. We try a new hook from start.')
+                    self.hook()
+                    return
+            ##
 
-        # reset the map
-        self.maproute.map_reset()
-        logging.info('MapRoute cleaned because NICs have been flushed')
-        self.maproute.me_change(newnip[:])
-        self.coordnode.mapcache.me_change(newnip[:], silent=True)
-        for l in reversed(xrange(lvl)): self.maproute.level_reset(l)
+            ## Find all the hfn elements with the highest level and
+            ## remove all the lower ones
+            hfn2 = []
+            hfn_lvlmax = -1
+            for h in hfn:
+                    if h[2][0] > hfn_lvlmax:
+                            hfn_lvlmax = h[2][0]
+                            hfn2=[]
+                    if h[2][0] == hfn_lvlmax:
+                            hfn2.append(h)
+            hfn = hfn2
+            ##
 
-        # warn our neighbours
-        logging.log(logging.ULTRADEBUG, 'Hook: warn neighbours of' + \
-                ' my change from %s to %s.' \
-                % (ip_to_str(oldip), ip_to_str(newnip_ip)))
-        self.neigh.call_ip_netid_change_broadcast_udp(oldip, -1, newnip_ip, -1)
-        logging.log(logging.ULTRADEBUG, 'Hook: called ip_netid_change on broadcast.')
+            ## Find the list with the highest number of elements
+            lenmax = 0
+            for h in hfn:
+                if h[2][1] is not None:
+                    l = len(h[2][1])
+                    if l > lenmax:
+                            lenmax=l
+                            H=h
+            ##
 
-        if not we_are_alone:
-            # We wait some seconds to receive ETPs before to assign us the new
-            # netid and become part of the net.
-            logging.log(logging.ULTRADEBUG, 'Hook.hook: waiting 10 sec. to receive some ETPs.')
-            xtime.swait(10000)
-            self.ntkd.neighbour.change_netid(netid_to_join)
-            logging.info('We now have got a network id = ' + str(netid_to_join))
-            # warn our neighbours again
-            logging.log(logging.ULTRADEBUG, 'Hook.hook warn neighbours of' + \
-                    ' my change from netid -1 to ' + str(netid_to_join))
-            self.neigh.call_ip_netid_change_broadcast_udp(newnip_ip, -1, newnip_ip, netid_to_join)
-            logging.log(logging.ULTRADEBUG, 'Hook.hook: called ip_netid_change on broadcast.')
+            if lenmax == 0:
+                    raise Exception, "Netsukuku is full"
 
-        # we've done our part
-        logging.info('Hooking procedure completed.')
-        self.events.send('HOOKED', (oldip, newnip[:]))
-        ##
+            ## Generate part of our new IP
+            newnip = list(H[0])
+            neigh_respond = H[1]
+            lvl = H[2][0]
+            if neigh_respond is None:
+                logging.log(logging.ULTRADEBUG, 'Hook: the best is level ' + str(lvl) \
+                        + ' known by myself')
+            else:
+                logging.log(logging.ULTRADEBUG, 'Hook: the best is level ' + str(lvl) \
+                        + ' known by ' + str(H[0]) \
+                        + ' with netid ' + str(neigh_respond.netid))
+            fnl = H[2][1]
+            newnip[lvl] = choice(fnl)
+            logging.log(logging.ULTRADEBUG, 'Hook: we choose ' + str(newnip[lvl]))
+            for l in reversed(xrange(lvl)): newnip[l] = choice(valid_ids(l, newnip))
+            logging.log(logging.ULTRADEBUG, 'Hook: our option is ' + str(newnip))
 
+            # If we are alone, let's generate our netid
+            if we_are_alone:
+                self.ntkd.neighbour.change_netid(randint(0, 2**32-1))
+                logging.info("Generated our network id: %s", self.ntkd.neighbour.netid)
+                # and we don't need to contact coordinator node...
+
+            else:
+                # Contact the coordinator node.
+                # If something goes wrong we'd better to retry from start.
+                try:
+                    # If we are called for bootstrap, we could
+                    # have neighbours in different networks (netid).
+                    # And we for sure are not the coordinator node for
+                    # the gnode we will enter.
+                    #
+                    # If we are called for network collision, we will contact
+                    # neighbours in a different network.
+                    # And we for sure are not the coordinator node for
+                    # the gnode we will enter.
+                    #
+                    # In these 2 cases we want to reach the coordinator node for
+                    # the gnode we will enter, passing through the neighbour which
+                    # we asked for the hfn.
+                    if called_for == called_for_bootstrap or called_for == called_for_network_collision:
+                        neighudp = neigh_respond
+
+                    # In the other situations, we don't
+                    # have neighbours in different networks (netid).
+                    # And we have the right knowledge of the network.
+                    # So, the p2p module knows the best neighbour to use to reach the
+                    # coordinator node for the gnode we will enter.
+                    else:
+                        neighudp = None
+
+                    # TODO We must handle the case of error in contacting the
+                    #   coordinator node. The coordinator itself may die.
+
+                    if lvl > 0:
+                        # If we are going to create a new gnode, it's useless to pose
+                        # any condition
+                        condition=False
+                        # TODO Do we have to tell to the old Coord that we're leaving?
+
+                    if condition:
+                        # <<I'm going out>>
+                        logging.log(logging.ULTRADEBUG, 'Hook: going_out, in order to' + \
+                             ' join a gnode which has ' + str(gfree_new) + ' free nodes.')
+                        co = self.coordnode.peer(key=(1, self.maproute.me), use_udp=True, neighudp=neighudp)
+                        # get gfree_old_coord and check that  gfree_new > gfree_old_coord
+                        gfree_old_coord = co.going_out(0, self.maproute.me[0], gfree_new)
+                        if gfree_old_coord is None:
+                            # nothing to be done
+                            logging.info('Hooking procedure canceled by our Coord. Our' + \
+                                         ' network id = ' + str(previous_netid) + ' is back.')
+                            self.ntkd.neighbour.change_netid(previous_netid)
+                            return
+
+                        # <<I'm going in, can I?>>
+                        logging.log(logging.ULTRADEBUG, 'Hook: going_in with' + \
+                                   ' gfree_old_coord = ' + str(gfree_old_coord))
+                        co2 = self.coordnode.peer(key = (lvl+1, newnip), use_udp=True, neighudp=neighudp)
+                        # ask if we can get in and if gfree_new_coord > gfree_old_coord,
+                        # and get our new IP
+                        newnip=co2.going_in(lvl, gfree_old_coord)
+
+                        if newnip:
+                            # we've been accepted
+                            co.going_out_ok(0, self.maproute.me[0])
+                        else:
+                            raise Exception, "Netsukuku is full"
+
+                        # TODO do we need to implement a close?
+                        #co.close()
+                        #co2.close()
+
+                    else:
+                        # <<I'm going in, can I?>>
+                        logging.log(logging.ULTRADEBUG, 'Hook: going_in without' + \
+                                    ' condition.')
+                        co2 = self.coordnode.peer(key = (lvl+1, newnip), use_udp=True, neighudp=neighudp)
+                        # ask if we can get in, get our new IP
+                        logging.info('Hook: contacting coordinator node...')
+                        newnip=co2.going_in(lvl)
+                        logging.info('Hook: contacted coordinator node, assigned nip' + \
+                                     ' = ' + str(newnip))
+                        if newnip is None:
+                            raise Exception, "Netsukuku is full"
+                        # TODO do we need to implement a close?
+                        #co2.close()
+                except Exception, e:
+                    # We must try again with a "bootstrap"-style hook. We schedule hook (it is a microfunc with dispatcher)
+                    # and we exit immediately.
+                    logging.info('Hook: something wrong in contacting Coord. We retry hook from start.')
+                    log_exception_stacktrace(e)
+                    self.hook()
+                    return
+            ##
+
+            logging.log(logging.ULTRADEBUG, 'Hook: completing hook...')
+
+            # close the ntkd sessions
+            self.neigh.reset_ntk_clients()
+
+            # change the IPs of the NICs
+            newnip_ip = self.maproute.nip_to_ip(newnip)
+            self.nics.activate(ip_to_str(newnip_ip))
+
+            # reset the map
+            self.maproute.map_reset()
+            logging.info('MapRoute cleaned because NICs have been flushed')
+            self.maproute.me_change(newnip[:])
+            self.coordnode.mapcache.me_change(newnip[:], silent=True)
+            for l in reversed(xrange(lvl)): self.maproute.level_reset(l)
+
+            # warn our neighbours
+            logging.log(logging.ULTRADEBUG, 'Hook: warn neighbours of' + \
+                    ' my change from %s to %s.' \
+                    % (ip_to_str(oldip), ip_to_str(newnip_ip)))
+            self.neigh.call_ip_netid_change_broadcast_udp(oldip, -1, newnip_ip, -1)
+            logging.log(logging.ULTRADEBUG, 'Hook: called ip_netid_change on broadcast.')
+
+            if not we_are_alone:
+                # We wait some seconds to receive ETPs before to assign us the new
+                # netid and become part of the net.
+                logging.log(logging.ULTRADEBUG, 'Hook.hook: waiting 10 sec. to receive some ETPs.')
+                xtime.swait(10000)
+                self.ntkd.neighbour.change_netid(netid_to_join)
+                logging.info('We now have got a network id = ' + str(netid_to_join))
+                # warn our neighbours again
+                logging.log(logging.ULTRADEBUG, 'Hook.hook warn neighbours of' + \
+                        ' my change from netid -1 to ' + str(netid_to_join))
+                self.neigh.call_ip_netid_change_broadcast_udp(newnip_ip, -1, newnip_ip, netid_to_join)
+                logging.log(logging.ULTRADEBUG, 'Hook.hook: called ip_netid_change on broadcast.')
+
+            # we've done our part
+            logging.info('Hooking procedure completed.')
+            self.events.send('HOOKED', (oldip, newnip[:]))
+            ##
+        except Exception, e:
+            # We must try with a "bootstrap"-style hook. We schedule hook (it is a microfunc with dispatcher)
+            # and we exit immediately.
+            logging.info('Hook: something wrong. We retry hook from start.')
+            log_exception_stacktrace(e)
+            self.hook()
+            return
 
     def highest_free_nodes(self):
         """Returns (lvl, fnl), where fnl is a list of free node IDs of
@@ -508,5 +515,6 @@ class Hook(object):
         # smallest part of the two. Let's rehook. However, be sure to to rehook
         # in a place different from the splitted gnode
         forbidden_neighs = [(level, [0]*level+self.maproute.me[level:])]
+        logging.info('Hook: GNode splitting. We rehook.')
         self.hook(neigh_list=[], forbidden_neighs=forbidden_neighs)
         return True
