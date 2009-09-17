@@ -306,86 +306,93 @@ class Hook(object):
 
         else:
             # Contact the coordinator node.
+            # If something goes wrong we'd better to retry from start.
+            try:
+                # If we are called for bootstrap, we could
+                # have neighbours in different networks (netid).
+                # And we for sure are not the coordinator node for
+                # the gnode we will enter.
+                #
+                # If we are called for network collision, we will contact
+                # neighbours in a different network.
+                # And we for sure are not the coordinator node for
+                # the gnode we will enter.
+                #
+                # In these 2 cases we want to reach the coordinator node for
+                # the gnode we will enter, passing through the neighbour which
+                # we asked for the hfn.
+                if called_for == called_for_bootstrap or called_for == called_for_network_collision:
+                    neighudp = neigh_respond
 
-            # If we are called for bootstrap, we could
-            # have neighbours in different networks (netid).
-            # And we for sure are not the coordinator node for
-            # the gnode we will enter.
-            #
-            # If we are called for network collision, we will contact
-            # neighbours in a different network.
-            # And we for sure are not the coordinator node for
-            # the gnode we will enter.
-            #
-            # In these 2 cases we want to reach the coordinator node for
-            # the gnode we will enter, passing through the neighbour which
-            # we asked for the hfn.
-            if called_for == called_for_bootstrap or called_for == called_for_network_collision:
-                neighudp = neigh_respond
-
-            # In the other situations, we don't
-            # have neighbours in different networks (netid).
-            # And we have the right knowledge of the network.
-            # So, the p2p module knows the best neighbour to use to reach the
-            # coordinator node for the gnode we will enter.
-            else:
-                neighudp = None
-
-            # TODO We must handle the case of error in contacting the
-            #   coordinator node. The coordinator itself may die.
-
-            if lvl > 0:
-                # If we are going to create a new gnode, it's useless to pose
-                # any condition
-                condition=False
-                # TODO Do we have to tell to the old Coord that we're leaving?
-
-            if condition:
-                # <<I'm going out>>
-                logging.log(logging.ULTRADEBUG, 'Hook: going_out, in order to' + \
-                     ' join a gnode which has ' + str(gfree_new) + ' free nodes.')
-                co = self.coordnode.peer(key=(1, self.maproute.me), use_udp=True, neighudp=neighudp)
-                # get gfree_old_coord and check that  gfree_new > gfree_old_coord
-                gfree_old_coord = co.going_out(0, self.maproute.me[0], gfree_new)
-                if gfree_old_coord is None:
-                    # nothing to be done
-                    logging.info('Hooking procedure canceled by our Coord. Our' + \
-                                 ' network id = ' + str(previous_netid) + ' is back.')
-                    self.ntkd.neighbour.change_netid(previous_netid)
-                    return
-
-                # <<I'm going in, can I?>>
-                logging.log(logging.ULTRADEBUG, 'Hook: going_in with' + \
-                           ' gfree_old_coord = ' + str(gfree_old_coord))
-                co2 = self.coordnode.peer(key = (lvl+1, newnip), use_udp=True, neighudp=neighudp)
-                # ask if we can get in and if gfree_new_coord > gfree_old_coord,
-                # and get our new IP
-                newnip=co2.going_in(lvl, gfree_old_coord)
-
-                if newnip:
-                    # we've been accepted
-                    co.going_out_ok(0, self.maproute.me[0])
+                # In the other situations, we don't
+                # have neighbours in different networks (netid).
+                # And we have the right knowledge of the network.
+                # So, the p2p module knows the best neighbour to use to reach the
+                # coordinator node for the gnode we will enter.
                 else:
-                    raise Exception, "Netsukuku is full"
+                    neighudp = None
 
-                # TODO do we need to implement a close?
-                #co.close()
-                #co2.close()
+                # TODO We must handle the case of error in contacting the
+                #   coordinator node. The coordinator itself may die.
 
-            else:
-                # <<I'm going in, can I?>>
-                logging.log(logging.ULTRADEBUG, 'Hook: going_in without' + \
-                            ' condition.')
-                co2 = self.coordnode.peer(key = (lvl+1, newnip), use_udp=True, neighudp=neighudp)
-                # ask if we can get in, get our new IP
-                logging.info('Hook: contacting coordinator node...')
-                newnip=co2.going_in(lvl)
-                logging.info('Hook: contacted coordinator node, assigned nip' + \
-                             ' = ' + str(newnip))
-                if newnip is None:
-                    raise Exception, "Netsukuku is full"
-                # TODO do we need to implement a close?
-                #co2.close()
+                if lvl > 0:
+                    # If we are going to create a new gnode, it's useless to pose
+                    # any condition
+                    condition=False
+                    # TODO Do we have to tell to the old Coord that we're leaving?
+
+                if condition:
+                    # <<I'm going out>>
+                    logging.log(logging.ULTRADEBUG, 'Hook: going_out, in order to' + \
+                         ' join a gnode which has ' + str(gfree_new) + ' free nodes.')
+                    co = self.coordnode.peer(key=(1, self.maproute.me), use_udp=True, neighudp=neighudp)
+                    # get gfree_old_coord and check that  gfree_new > gfree_old_coord
+                    gfree_old_coord = co.going_out(0, self.maproute.me[0], gfree_new)
+                    if gfree_old_coord is None:
+                        # nothing to be done
+                        logging.info('Hooking procedure canceled by our Coord. Our' + \
+                                     ' network id = ' + str(previous_netid) + ' is back.')
+                        self.ntkd.neighbour.change_netid(previous_netid)
+                        return
+
+                    # <<I'm going in, can I?>>
+                    logging.log(logging.ULTRADEBUG, 'Hook: going_in with' + \
+                               ' gfree_old_coord = ' + str(gfree_old_coord))
+                    co2 = self.coordnode.peer(key = (lvl+1, newnip), use_udp=True, neighudp=neighudp)
+                    # ask if we can get in and if gfree_new_coord > gfree_old_coord,
+                    # and get our new IP
+                    newnip=co2.going_in(lvl, gfree_old_coord)
+
+                    if newnip:
+                        # we've been accepted
+                        co.going_out_ok(0, self.maproute.me[0])
+                    else:
+                        raise Exception, "Netsukuku is full"
+
+                    # TODO do we need to implement a close?
+                    #co.close()
+                    #co2.close()
+
+                else:
+                    # <<I'm going in, can I?>>
+                    logging.log(logging.ULTRADEBUG, 'Hook: going_in without' + \
+                                ' condition.')
+                    co2 = self.coordnode.peer(key = (lvl+1, newnip), use_udp=True, neighudp=neighudp)
+                    # ask if we can get in, get our new IP
+                    logging.info('Hook: contacting coordinator node...')
+                    newnip=co2.going_in(lvl)
+                    logging.info('Hook: contacted coordinator node, assigned nip' + \
+                                 ' = ' + str(newnip))
+                    if newnip is None:
+                        raise Exception, "Netsukuku is full"
+                    # TODO do we need to implement a close?
+                    #co2.close()
+            except:
+                logging.info('Hook: something wrong. We retry hook from start.')
+                # We must try again with a "bootstrap"-style hook. We schedule hook (it is a microfunc with dispatcher)
+                # and we exit immediately.
+                self.hook()
+                return
         ##
 
         logging.log(logging.ULTRADEBUG, 'Hook: completing hook...')
