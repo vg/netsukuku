@@ -542,24 +542,6 @@ class Neighbour(object):
             return 0
         return max(self.missing_neighbour_keys.values()) * self.increment_wait_time
 
-    def readvertise(self):
-        """Sends a NEIGH_NEW event for each stored neighbour"""
-        # info
-        logging.info('Readvertising all my neighbours')
-        for key, val in self.ip_netid_table.items():
-            id = self.translation_table[key]
-            logging.debug('ANNOUNCE: gw ' + str(id) + ' detected.')
-            self.announce_gw(id)
-            ip, netid = key
-            self.events.send('NEIGH_NEW',
-                             (Neigh(bestdev=val.bestdev,
-                                devs=val.devs,
-                                ip=ip,
-                                netid=netid,
-                                id=id,
-                                ntkd=self.get_ntk_client(ip, netid),
-                                nip=self.ntkd.maproute.ip_to_nip(ip)),))
-
     def reset_ntk_clients(self):
         """Reset connected TCPClients. To be used after hooking, to avoid
            using invalid sockets."""
@@ -727,7 +709,7 @@ class Neighbour(object):
            Handles events for neighbours that are NOW in my network.
            Handles TCPClients in ntk_client."""
         # Send delete events for old companions.
-        for neigh in self.neigh_list(in_my_network=True):
+        for neigh in self.neigh_list():
             old_id = neigh.id
             key = self.id_to_key(old_id)
             old_val = self.ip_netid_table[key]
@@ -748,7 +730,7 @@ class Neighbour(object):
                 # It's in my network
                 self.ntk_client[ip] = rpc.TCPClient(ip_to_str(ip))
         # Send add events for new companions.
-        for neigh in self.neigh_list(in_my_network=True):
+        for neigh in self.neigh_list():
             key = self.id_to_key(neigh.id)
             self.add(key)
 

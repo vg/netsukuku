@@ -87,10 +87,9 @@ class NtkNode(object):
         self.hook = hook.Hook(self, self.radar, self.maproute, self.etp,
                               self.coordnode, self.nic_manager)
 
-        # The method initialize must be able to wait for an event of Radar and Hook
-        self.initialize = apply_wakeup_on_event(self.initialize, 
-                                              events=[(self.radar.events, 'SCAN_DONE'),
-                                                      (self.hook.events, 'HOOKED')])
+        self.hook.events.listen('HOOKED', self.p2p.p2p_hook)
+        # A complete reset is needed for each hook
+        self.hook.events.listen('HOOKED', self.reset)
 
         if not self.simulated:
             self.kroute = kroute.KrnlRoute(self, self.neighbour, self.maproute)
@@ -121,54 +120,23 @@ class NtkNode(object):
         self.initialize()
 
     @microfunc(True)
-    def initialize(self, event_wait=None):
-        # enable ip forwarding
+    def initialize(self):
+        # Enable ip forwarding
         if not self.simulated:
             Route.ip_forward(enable=True)
-        # first, activate the interfaces
-        self.first_activation()
-        # start just UDP servers
-        logging.debug('start UDP servers')
-        self.launch_udp_servers()
-        # then, do just one radar scan
-        logging.debug('start Radar.radar')
-        micro(self.radar.radar)
-        logging.debug('waiting SCAN_DONE')
-        msg = event_wait[(self.radar.events, 'SCAN_DONE')]() # waits for the end of radar
-        logging.debug('got SCAN_DONE')
-        # re-initialize the UDP servers sockets
-        rpc.stop_udp_servers()
-        logging.debug('UDP servers stopped')
-        self.launch_udp_servers()
-        logging.debug('UDP servers launched')
-        # clean our map route
-        self.maproute.map_reset()
-        logging.info('MapRoute cleaned')
-        # now the real hooking can be done
+        # Call hook for bootstrap
+        # We can assume that the hook (microfunc) will be complete
+        # before the first radar scan.
         logging.debug('start Hook.hook')
+        self.neighbour.netid = -1
         self.hook.hook()
-        logging.debug('waiting HOOKED')
-        msg = event_wait[(self.hook.events, 'HOOKED')]() # waits for the end of hook
-        logging.debug('got HOOKED')
-        # re-initialize the UDP servers sockets, and start the TCP servers
-        rpc.stop_udp_servers()
-        logging.debug('UDP servers stopped')
-        self.launch_udp_servers()
-        logging.debug('UDP servers launched')
-        self.launch_tcp_servers()
-        logging.debug('TCP servers launched')
-        # re-initialize the UDP client socket before enabling radar
-        self.radar.radar_reset()
-        logging.debug('radar reset (client broadcast reset)')
-        # From now on a complete reset is needed for each new hook
-        self.hook.events.listen('HOOKED', self.reset)
-        # Now I'm also participating to service Coord
-        micro(self.coordnode.participate)
-        # We launched it in a microfunc because we have to enable the radar
-        micro_block()
-        # now keep doing radar forever.
+        # Now keep doing radar forever.
         logging.debug('start Radar.run')
         self.radar.run()
+        # Wait a bit (otherwise problems with coord service)
+        xtime.swait(100)
+        # Now I'm also participating to service Coord
+        micro(self.coordnode.participate)
 
     def first_activation(self):
         logging.debug('First NIC activation started')

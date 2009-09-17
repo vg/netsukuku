@@ -22,11 +22,12 @@
 
 import ntk.lib.rpc as rpc
 import ntk.wrap.xtime as xtime
+import time
 from ntk.lib.log import logger as logging
 from ntk.lib.log import get_stackframes
 from ntk.lib.event import Event
 from ntk.lib.rpc   import FakeRmt, RPCDispatcher, CallerInfo
-from ntk.lib.micro import microfunc, Channel
+from ntk.lib.micro import microfunc, Channel, micro_block
 from ntk.lib.rencode import serializable
 from ntk.core.map import Map
 
@@ -420,7 +421,7 @@ class P2PAll(object):
 
         self.remotable_funcs = [self.pid_getall]
         self.events=Event(['P2P_HOOKED'])
-        self.etp.events.listen('COMPLETE_HOOK', self.p2p_hook)
+        ###self.etp.events.listen('HOOKED', self.p2p_hook)
 
     def pid_add(self, pid):
         logging.log(logging.ULTRADEBUG, 'Called P2PAll.pid_add...')
@@ -462,14 +463,15 @@ class P2PAll(object):
     #    self.pid_get(pid).participant_add(pIP)
 
     @microfunc()
-    def p2p_hook(self):
+    def p2p_hook(self, *args):
         """P2P hooking procedure
 
         It gets the P2P maps from our nearest neighbour"""
 
-        if self.ntkd.neighbour.netid == -1:
+        while self.ntkd.neighbour.netid == -1:
             # I'm not ready to interact.
-            return
+            time.sleep(0.001)
+            micro_block()
 
         logging.log(logging.ULTRADEBUG, 'P2P hooking: started')
         logging.log(logging.ULTRADEBUG, 'P2P hooking: My actual list of services is: ' + str(self.log_services()))

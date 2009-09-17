@@ -18,13 +18,14 @@
 ##
 
 from ntk.lib.log import logger as logging
-from ntk.lib.micro import microfunc
+from ntk.lib.micro import microfunc, micro_block
 from ntk.lib.rpc import RPCError
 import ntk.lib.rpc as rpc
 from ntk.lib.event import Event, apply_wakeup_on_event
 from ntk.network.inet import ip_to_str
 from ntk.core.route import NullRem, DeadRem
 import ntk.wrap.xtime as xtime
+import time
 
 
 def is_listlist_empty(l):
@@ -46,20 +47,11 @@ class Etp(object):
         self.neigh.events.listen('NEIGH_REM_CHGED', self.etp_changed_link)
         self.neigh.events.listen('NEIGH_DELETED', self.etp_dead_link)
 
-        self.events = Event(['ETP_EXECUTED', 'NET_COLLISION', 'COMPLETE_HOOK'])
-
-        # After COMPLETE_HOOK we have to send ETPs that were previously blocked.
-        self.events.listen('COMPLETE_HOOK', self.send_etp_to_neighbours)
+        self.events = Event(['ETP_EXECUTED', 'NET_COLLISION'])
 
         self.remotable_funcs = [self.etp_exec,
                                 self.etp_exec_udp,
                                 self.reply_etp_exec_udp]
-
-    def send_etp_to_neighbours(self):
-        """Simulate the new link case towards all our neighbours."""
-        logging.log(logging.ULTRADEBUG, 'Simulate the new link case towards all our neighbours.')
-        for neigh in self.neigh.neigh_list():
-            self.etp_new_link(neigh)
 
     def etp_send_to_neigh(self, etp, neigh):
         """Sends the `etp' to neigh"""
@@ -105,9 +97,10 @@ class Etp(object):
         self.maproute.routeneigh_del(neigh)
         ##
 
-        if self.ntkd.neighbour.netid == -1:
+        while self.ntkd.neighbour.netid == -1:
             # I'm not ready to interact.
-            return
+            time.sleep(0.001)
+            micro_block()
 
         logging.debug('QSPN: death of %s: prepare the ETP', ip_to_str(neigh.ip))
         
@@ -178,9 +171,10 @@ class Etp(object):
     def etp_new_link(self, neigh):
         """Builds and sends a new ETP for the new link case."""
 
-        if self.ntkd.neighbour.netid == -1:
+        while self.ntkd.neighbour.netid == -1:
             # I'm not ready to interact.
-            return
+            time.sleep(0.001)
+            micro_block()
 
         logging.debug('QSPN: new link %s: prepare the ETP', ip_to_str(neigh.ip))
         current_nr_list = self.neigh.neigh_list()
@@ -239,9 +233,10 @@ class Etp(object):
         self.maproute.routeneigh_rem(neigh, oldrem)
         ##
 
-        if self.ntkd.neighbour.netid == -1:
+        while self.ntkd.neighbour.netid == -1:
             # I'm not ready to interact.
-            return
+            time.sleep(0.001)
+            micro_block()
 
         logging.debug('QSPN: changed %s: prepare the ETP', ip_to_str(neigh.ip))
 
@@ -323,8 +318,6 @@ class Etp(object):
             xtime.swait(50)
             neigh = self.neigh.key_to_neigh((gwip, sender_netid))
 
-        logging.info('Received ETP from %s', ip_to_str(neigh.ip))
-                        
         gw_id = neigh.id
         gwrem = neigh.rem
 
@@ -552,18 +545,14 @@ class Etp(object):
 
         if neigh.netid == -1: raise Exception('ETP received from a node with netid = -1 (not completely kooked).')
 
-        previous_netid = self.ntkd.neighbour.netid
-        if self.ntkd.neighbour.netid == -1:
-            self.ntkd.neighbour.change_netid(neigh.netid)
-            logging.info('Now I know my network id: %s' % neigh.netid)
-            logging.log(logging.ULTRADEBUG, 'etp_exec: collision_check: warn neighbours of' + \
-                    ' my change netid from ' + str(previous_netid) + ' to ' + str(self.ntkd.neighbour.netid))
-            my_ip = self.maproute.nip_to_ip(self.maproute.me)
-            self.neigh.call_ip_netid_change_broadcast_udp(my_ip, previous_netid, my_ip, self.ntkd.neighbour.netid)
-            logging.log(logging.ULTRADEBUG, 'etp_exec: collision_check: called ip_netid_change on broadcast.')
-            self.events.send('COMPLETE_HOOK', ())
+        while self.ntkd.neighbour.netid == -1:
+            # I'm not ready to interact.
+            time.sleep(0.001)
+            micro_block()
 
-        if neigh.netid == self.ntkd.neighbour.netid:
+        previous_netid = self.ntkd.neighbour.netid
+
+        if neigh.netid == previous_netid:
             return (False, R) # all ok
 
         # uhm... we are in different networks
@@ -601,10 +590,6 @@ class Etp(object):
         ## net
         logging.debug('Etp: we are the smaller net, check if we are colliding with another gnode')
 
-        # Do you wanna test re-hook? uncomment these lines:
-        #logging.debug("Etp: (debugging) forcing rehook now.")
-        #return (True, R)
-
         level = self.maproute.nip_cmp(self.maproute.me, gwnip) + 1
         if level < self.maproute.levels:
                 for dst, rem, hops in R[level]:
@@ -629,6 +614,5 @@ class Etp(object):
         my_ip = self.maproute.nip_to_ip(self.maproute.me)
         self.neigh.call_ip_netid_change_broadcast_udp(my_ip, previous_netid, my_ip, self.ntkd.neighbour.netid)
         logging.log(logging.ULTRADEBUG, 'etp_exec: collision_check: called ip_netid_change on broadcast.')
-        self.events.send('COMPLETE_HOOK', ())
 
         return (False, R)
