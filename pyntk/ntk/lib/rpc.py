@@ -583,6 +583,12 @@ def UDP_call(callee_nip, devs, func_name, args=()):
     logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + ' done. Waiting reply...')
     ret = UDP_caller_ids[caller_id].recv()
     logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + ' got reply.')
+    # Handling errors
+    # I receive a message with the following format:
+    #     ('rmt_error', message_error)
+    # where message_error is a string
+    if isinstance(ret, tuple) and ret[0] == 'rmt_error':
+        raise RPCError(ret[1])
     return ret
 
 def UDP_send_reply(_rpc_caller, caller_id, func_name_reply, ret):
