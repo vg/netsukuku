@@ -606,7 +606,7 @@ def UDP_got_reply(_rpc_caller, caller_id, ret):
         # This reply is for me.
         logging.log(logging.ULTRADEBUG, ' ...it is for me!')
         chan = UDP_caller_ids[caller_id]
-        if chan.ch.balance < 0:
+        if chan.balance < 0:
             logging.log(logging.ULTRADEBUG, ' ...sending through channel')
             chan.send(ret)
             # We have passed the schedule to the receiving channel, so don't put

@@ -127,11 +127,11 @@ def ManageSockets():
             sock, operation = ret
             if operation == WaitingSocketsManager.operation_accept:
                 # timed out accept
-                if sock.acceptChannel and sock.acceptChannel.ch.balance < 0:
+                if sock.acceptChannel and sock.acceptChannel.balance < 0:
                     sock.acceptChannel.send(MicrosockTimeout())
             elif operation == WaitingSocketsManager.operation_recvfrom:
                 # timed out recvfrom
-                if sock.recvChannel and sock.recvChannel.ch.balance < 0:
+                if sock.recvChannel and sock.recvChannel.balance < 0:
                     sock.recvChannel.send(MicrosockTimeout())
             else:
                 pass  # timeout not honored. we should signal that.
@@ -337,7 +337,7 @@ class dispatcher(asyncore.dispatcher):
             if len(self.readBufferString) < byteCount:
                 # If our buffer is empty, we must block for more data we also
                 # aggressively request more if it's available.
-                if len(self.readBufferString) == 0 or self.recvChannel.ch.balance > 0:
+                if len(self.readBufferString) == 0 or self.recvChannel.balance > 0:
                     self.readBufferString += self.recvChannel.recv()
             # Disabling this because I believe it is the onus of the application
             # to be aware of the need to run the scheduler to give other tasklets
@@ -370,13 +370,13 @@ class dispatcher(asyncore.dispatcher):
         # Clear out all the channels with relevant errors.
 
         if self.acceptChannel is not None:
-            while self.acceptChannel and self.acceptChannel.ch.balance < 0:
+            while self.acceptChannel and self.acceptChannel.balance < 0:
                 self.acceptChannel.send_exception(error, 9, 'Bad file descriptor')
         if self.connectChannel is not None:
-            while self.connectChannel and self.connectChannel.ch.balance < 0:
+            while self.connectChannel and self.connectChannel.balance < 0:
                 self.connectChannel.send_exception(error, 10061, 'Connection refused')
         if self.recvChannel is not None:
-            while self.recvChannel and self.recvChannel.ch.balance < 0:
+            while self.recvChannel and self.recvChannel.balance < 0:
                 # The closing of a socket is indicted by receiving nothing.  The
                 # exception would have been sent if the server was killed, rather
                 # than closed down gracefully.
@@ -392,7 +392,7 @@ class dispatcher(asyncore.dispatcher):
         return self._fileno
 
     def handle_accept(self):
-        if self.acceptChannel and self.acceptChannel.ch.balance < 0:
+        if self.acceptChannel and self.acceptChannel.balance < 0:
             currentSocket, clientAddress = asyncore.dispatcher.accept(self)
             currentSocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
             # Give them the asyncore based socket, not the standard one.
