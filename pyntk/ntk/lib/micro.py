@@ -139,9 +139,15 @@ class Channel(object):
         while self.ch.balance < 0:
             self.ch.send(data)
 
-def _dispatcher(func, chan):
+class DispatcherToken(object):
+    def __init__(self):
+        self.executing = False
+
+def _dispatcher(func, chan, dispatcher_token):
     while True:
+        dispatcher_token.executing = False
         msg = chan.recvq()
+        dispatcher_token.executing = True
         try:
             func(*msg)
         except Exception, e:
@@ -149,7 +155,7 @@ def _dispatcher(func, chan):
             logging.error("  The microfunc has been called like this: %s(%s)" % (func.__name__, msg.__repr__()))
             log_exception_stacktrace(e)
 
-def microfunc(is_micro=False):
+def microfunc(is_micro=False, dispatcher_token=DispatcherToken()):
     '''A microfunction is a function that never blocks the caller microthread.
 
     Note: This is a decorator! (see test/test_micro.py for examples)
@@ -159,6 +165,10 @@ def microfunc(is_micro=False):
 
     If is_micro == True, each call of the function will be executed in a new
     microthread.
+    
+    When declaring a microfunc with dispatcher (is_micro == False) an instance
+    of DispatcherToken can be passed. It will permit to see in any moment if
+    the dispatcher is serving a request.
     '''
 
     def decorate(func):
@@ -175,7 +185,7 @@ def microfunc(is_micro=False):
         if is_micro:
             return fmicro
         else:
-            micro(_dispatcher, (func, ch))
+            micro(_dispatcher, (func, ch, dispatcher_token))
             return fsend
 
     return decorate
