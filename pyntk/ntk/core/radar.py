@@ -575,7 +575,7 @@ class Neighbour(object):
         ip, netid = key
         val = self.ip_netid_table[key]
         id = self.key_to_id(key)
-        logging.info('Adding neighbour ip ' + ip_to_str(ip) + ', netid ' + str(netid))
+        logging.info('Neighbour ip ' + ip_to_str(ip) + ', netid ' + str(netid) + ', is now in my network.')
 
         # send a message notifying we added a node
         logging.debug('ANNOUNCE: gw ' + str(id) + ' detected.')
@@ -593,11 +593,10 @@ class Neighbour(object):
         """Sends event for a dead neighbour."""
 
         ip, netid = key
-        logging.info('Deleting neighbour ip ' + ip_to_str(ip) + ', netid ' + str(netid))
+        logging.info('Neighbour ip ' + ip_to_str(ip) + ', netid ' + str(netid) + ', is no more in my network.')
 
         old_bestdev = old_val.bestdev
         old_devs = old_val.devs
-        logging.info('Change in our LAN: removed neighbour ' + ip_to_str(ip))
 
         # send a message notifying we deleted the node
         logging.debug('ANNOUNCE: gw ' + str(old_id) + ' removing.')
@@ -617,7 +616,7 @@ class Neighbour(object):
         ip, netid = key
         val = self.ip_netid_table[key]
         id = self.key_to_id(key)
-        logging.info('Change in our LAN: changed REM for neighbour ' + ip_to_str(ip))
+        logging.info('Neighbour ip ' + ip_to_str(ip) + ', netid ' + str(netid) + ', which is in my network, changed its REM.')
 
         # send a message notifying the node's rtt changed
         self.events.send('NEIGH_REM_CHGED',
