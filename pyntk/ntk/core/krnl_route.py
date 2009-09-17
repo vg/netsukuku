@@ -83,8 +83,8 @@ class KrnlRoute(object):
                 # Eventually change
                 # Obtain a IP string for the best gateway
                 best = node.best_route()
-                newgw = best.gw
-                newgw_neigh = self.neigh.id_to_neigh(newgw)
+                newgw = best.gw.id
+                newgw_neigh = best.gw
                 newgw_dev = newgw_neigh.bestdev[0]
                 newgw_gwipstr = ip_to_str(newgw_neigh.ip)
                 # Change route in the kernel
@@ -124,8 +124,8 @@ class KrnlRoute(object):
             else:
                 # Obtain a IP string for the new gateway
                 best = node.best_route()
-                newgw = best.gw
-                newgw_neigh = self.neigh.id_to_neigh(newgw)
+                newgw = best.gw.id
+                newgw_neigh = best.gw
                 newgw_dev = newgw_neigh.bestdev[0]
                 newgw_gwipstr = ip_to_str(newgw_neigh.ip)
                 # Change route in the kernel
@@ -149,8 +149,8 @@ class KrnlRoute(object):
             # Obtain a IP string for the actual best gateway
             node = self.maproute.node_get(lvl, dst)
             best = node.best_route()
-            newgw = best.gw
-            newgw_neigh = self.neigh.id_to_neigh(newgw)
+            newgw = best.gw.id
+            newgw_neigh = best.gw
             newgw_dev = newgw_neigh.bestdev[0]
             newgw_gwipstr = ip_to_str(newgw_neigh.ip)
             # Change route in the kernel

@@ -88,14 +88,14 @@ class Etp:
         # contain all the routes through the dead gateway that each one of our neighbours
         # knows through us. So we must evaluate the best routes *excluding neigh x* that
         # pass through the dead gateway.
-        def gw_is_neigh((dst, gw, rem)):
-            return gw == neigh.id
+        def gw_is_neigh((dst, gw, rem, hops)):
+            return gw.id == neigh.id
         set_of_R = {}
         for nr in current_nr_list:
             if nr.id != neigh.id:
                 # It's a tough work! Be kind to other tasks.
                 xtime.swait(10)
-                set_of_R[nr.id] = self.maproute.bestroutes_get(f=gw_is_neigh, exclude_gw=[nr.id])
+                set_of_R[nr.id] = self.maproute.bestroutes_get(f=gw_is_neigh, exclude_gw_ids=[nr.id])
         ##
 
         ## Update the map
@@ -147,7 +147,7 @@ class Etp:
                             if devs_to_nr2_and_nr:
                                 common_devs_neighbours_to_nr.append(nr2.id)
                     # We exclude them from research of bestroutes.
-                    exclude_gw = [nr.id] + common_devs_neighbours_to_nr
+                    exclude_gw_ids = [nr.id] + common_devs_neighbours_to_nr
 
                     ## Create R2
                     def rem_or_none(r):
@@ -155,8 +155,12 @@ class Etp:
                             return r.rem
                         return DeadRem()
                     R2 = [
-                          [ (dst, rem_or_none(self.maproute.node_get(lvl, dst).best_route(exclude_gw=exclude_gw)))
-                                for (dst,gw,rem) in set_of_R[nr.id][lvl]
+                          [ (dst,
+                             rem_or_none(
+                                self.maproute.node_get(lvl, dst).best_route(exclude_gw_ids=exclude_gw_ids)
+                                ),
+                             hops+[self.maproute.nip_to_ip(self.maproute.me)]
+                            ) for (dst,gw,rem,hops) in set_of_R[nr.id][lvl]
                           ] for lvl in xrange(self.maproute.levels)
                          ]
                     xtime.swait(10)
@@ -203,22 +207,22 @@ class Etp:
                     common_devs_neighbours_to_neigh.append(nr.id)
 
         ## Create R
-        exclude_gw = [neigh.id] + common_devs_neighbours_to_neigh
-        R = self.maproute.bestroutes_get(exclude_gw=exclude_gw)
+        exclude_gw_ids = [neigh.id] + common_devs_neighbours_to_neigh
+        R = self.maproute.bestroutes_get(exclude_gw_ids=exclude_gw_ids)
         xtime.swait(10)
 
         # Usually we don't need to send a ETP if R is empty. But we have to send
         # the ETP in any case if this link is new (that is, oldrem is None).
         if oldrem is None:
             for lvl in xrange(self.maproute.levels):
-                R[lvl].append((self.maproute.me[lvl], -1, NullRem()))
+                R[lvl].append((self.maproute.me[lvl], -1, NullRem(), []))
 
         if is_listlist_empty(R):
                 # R is empty (and this link is old): no need to proceed
                 return
 
-        def takeoff_gw((dst, gw, rem)):
-                return (dst, rem)
+        def takeoff_gw((dst, gw, rem, hops)):
+                return (dst, rem, hops)
         def takeoff_gw_lvl(L):
                 return map(takeoff_gw, L)
         R=map(takeoff_gw_lvl, R)
@@ -250,7 +254,7 @@ class Etp:
 
         gwnip = sender_nip
         gwip = self.maproute.nip_to_ip(gwnip)
-        # update our neighbour's netid
+        # update our neighbour's netid in our netid_translation_table
         self.neigh.set_netid(gwip, sender_netid)
         neigh = self.neigh.ip_to_neigh(gwip)
         current_nr_list = self.neigh.neigh_list()
@@ -262,7 +266,7 @@ class Etp:
                         # ok, continue now
                         neigh   = self.neigh.ip_to_neigh(self.maproute.nip_to_ip(gwnip))
                         
-        gw = neigh.id
+        gw_id = neigh.id
         gwrem = neigh.rem
 
         logging.info('Received ETP from %s', ip_to_str(neigh.ip))
@@ -338,9 +342,6 @@ class Etp:
 
         old_node_nb = self.maproute.node_nb[:]
 
-        def anode(lvl, dst, gw, rem):
-            return (lvl, dst, gw, rem).__repr__()
-
         ### Update the map from the TPL
         #tprem=gwrem
         #TPL_is_interesting = False
@@ -348,7 +349,7 @@ class Etp:
         #    for dst, rem in reversed(pairs):
         #        xtime.swait(10)
         #        logging.debug('ETP received: Executing: TPL has info about this node:')
-        #        logging.debug('    %s' % anode(lvl, dst, gw, tprem))
+        #        logging.debug('    %s' % str((lvl, dst, gw, tprem)))
         #        if self.maproute.route_change(lvl, dst, gw, tprem):
         #            logging.debug('    Info is interesting. TPL is interesting. Map updated.')
         #            TPL_is_interesting = True
@@ -357,12 +358,18 @@ class Etp:
 
         ## Update the map from R
         for lvl in xrange(self.maproute.levels):
-            for dst, rem in R[lvl]:
+            to_remove = []
+            for dst, rem, hops in R[lvl]:
                 xtime.swait(10)
                 logging.debug('ETP received: Executing: R has info about this node:')
-                logging.debug('    %s' % anode(lvl, dst, gw, rem+gwrem))
-                if self.maproute.route_change(lvl, dst, gw, rem+gwrem):
+                logging.debug('    %s' % str((lvl, dst, gw_id, rem, len(hops))))
+                if self.maproute.route_change(lvl, dst, neigh, rem, hops):
                     logging.debug('    Info is interesting. Map updated.')
+                else:
+                    to_remove.append((dst, rem, hops))
+                    logging.debug('    Info is not interesting. Discarded.')
+            for dst, rem, hops in to_remove:
+                R[lvl].remove((dst, rem, hops))
         ##
 
         ## If I'm going to forward, I have to append myself.
@@ -401,13 +408,13 @@ class Etp:
                             if devs_to_nr2_and_nr:
                                 common_devs_neighbours_to_nr.append(nr2.id)
                     # We exclude them from research of bestroutes.
-                    exclude_gw = [nr.id] + common_devs_neighbours_to_nr
+                    exclude_gw_ids = [nr.id] + common_devs_neighbours_to_nr
                     # Evaluate only once this set, which then we use twice:
                     xtime.swait(10)
                     best_routes_of_R = dict( [ ((lvl, dst), r)
                                                for lvl in xrange(self.maproute.levels)
-                                                   for dst, rem in R[lvl]
-                                                       for r in [self.maproute.node_get(lvl, dst).best_route(exclude_gw=exclude_gw)]
+                                                   for dst, rem, hops in R[lvl]
+                                                       for r in [self.maproute.node_get(lvl, dst).best_route(exclude_gw_ids=exclude_gw_ids)]
                                              ] )
                     ## S
                     def nr_doesnt_care(lvl, dst, r):
@@ -417,7 +424,7 @@ class Etp:
                         if r is None: return False 
                         # If best route (except for nr) is neigh, then nr cares.
                         # Else it does not.
-                        return r.gw != gw
+                        return r.gw.id != gw_id
                     # If step 5 is omitted we don't need the Rem in S.
                     S = [ [ (dst, None)
                             for lvl, dst in best_routes_of_R.keys()
@@ -445,7 +452,11 @@ class Etp:
                         if r is not None:
                             return r.rem
                         return DeadRem()
-                    R2 = [ [ (dst, rem_or_none(r))
+                    def hops_or_none(r):
+                        if r is not None:
+                            return r.hops + [self.maproute.nip_to_ip(self.maproute.me)]
+                        return []
+                    R2 = [ [ (dst, rem_or_none(r), hops_or_none(r))
                             for lvl, dst in best_routes_of_R.keys()
                                 if lvl == l
                                     for r in [best_routes_of_R[(lvl, dst)]]
@@ -501,8 +512,8 @@ class Etp:
                 # net.
 
                 ### Remove colliding routes from R
-                R = [ [ (dst, rem) 
-                            for dst, rem in R[lvl]
+                R = [ [ (dst, rem, hops) 
+                            for dst, rem, hops in R[lvl]
                                 if self.maproute.node_get(lvl, dst).is_empty() ]
                         for lvl in xrange(self.maproute.levels) ]
                 ###
@@ -523,7 +534,7 @@ class Etp:
 
         level = self.maproute.nip_cmp(self.maproute.me, gwnip) + 1
         if level < self.maproute.levels:
-                for dst, rem in R[level]:
+                for dst, rem, hops in R[level]:
                         if dst == self.maproute.me[level]:
                                 # we are colliding! LET'S REHOOK
                                 logging.debug('Etp: let\'s rehook now.')
@@ -532,14 +543,14 @@ class Etp:
 
         ## Remove colliding routes directly from our map
         for lvl in xrange(self.maproute.levels):
-                for dst, rem in R[lvl]:
+                for dst, rem, hops in R[lvl]:
                         # The node I know as (lvl, dst) is invalid; it will eventually rehook.
                         # I must delete all the routes in the map and in the kernel
                         node = self.maproute.node_get(lvl, dst)
                         while not node.is_free():
                             # starting from the worst
                             gw = node.routes[-1].gw
-                            node.route_del(gw)
+                            node.route_del(gw.id)
         ##
 
         #From now on, we are in the new net

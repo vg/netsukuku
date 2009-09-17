@@ -211,7 +211,7 @@ class Route(object):
     def _get_rem(self):
         # TODO Return a DeadRem iff "my ip" in self.hops
         #      to avoid cyclic routes.
-        return rem_at_gw + gw.rem
+        return self.rem_at_gw + self.gw.rem
 
     rem = property(_get_rem)
 
@@ -452,12 +452,12 @@ class MapRoute(Map):
             return 0
 
         d = self.node_get(lvl, dst)
-        ret, val = d.route_rem(gw, newrem_at_gw, new_hops)
+        ret, val = d.route_rem(gw_id, newrem_at_gw, new_hops)
         if ret:
             oldrem_at_gw = val
             if not silent:
                 self.events.send('ROUTE_REM_CHGED',
-                                 (lvl, dst, gw, newrem_at_gw, oldrem_at_gw))
+                                 (lvl, dst, gw_id, newrem_at_gw, oldrem_at_gw))
             return 1
         else:
             return 0
@@ -482,7 +482,11 @@ class MapRoute(Map):
         #       WARNING: We don't know if gw has also other routes to dst!
         #                Could this be a problem? TODO answer.
         #    ... and that route passes indirectly through us.
-        #    So we want the route through gw to be deleted in our map.
+        #    So we can't use gw to reach dst. Were we previuosly able to?
+        #    If we were, then we want the route through gw to be deleted in
+        #    our map, and that information to be forwarded.
+        #    If we were not, then we want to remove dst from the routes
+        #    in the processed ETP. We inform about this by returning 0.
         
         logging.log(logging.ULTRADEBUG, 'maproute.route_change')
         # If destination is me I won't do a route change. Pretend it didn't happen.
@@ -496,13 +500,22 @@ class MapRoute(Map):
         r = d.route_getby_gw(gw.id)
         was_there = r is not None
 
-        if isinstance(rem_at_gw, DeadRem) or self.nip_to_ip(self.me) in hops
+        if isinstance(rem_at_gw, DeadRem):
             # We want the route deleted (if present)
             ret = 0
             if was_there:
                 ret = self.route_del(lvl, dst, gw.id, gw.ip)
                 if ret: logging.debug('    Deleted old route.')
             return ret
+        elif self.nip_to_ip(self.me) in hops:
+            # We want the route deleted (if present)
+            if was_there:
+                ret = self.route_del(lvl, dst, gw.id, gw.ip)
+                if ret: logging.debug('    Deleted old route.')
+                return ret
+            else:
+                # else, don't forward this part of R
+                return 0
         else:
             # We want the route added or updated
             if was_there:
