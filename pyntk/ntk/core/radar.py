@@ -583,8 +583,8 @@ class Neighbour(object):
 
         ip, netid = key
 
-        if self.netid == -1:
-            # I'm hooking, better not to emit any signal.
+        if self.netid == -1 or netid == -1:
+            # I'm hooking or it is hooking, better not to emit any signal.
             return
 
         val = self.ip_netid_table[key]
@@ -614,8 +614,8 @@ class Neighbour(object):
 
         ip, netid = key
 
-        if self.netid == -1:
-            # I'm hooking, better not to emit any signal.
+        if self.netid == -1 or netid == -1:
+            # I'm hooking or it is hooking, better not to emit any signal.
             return
 
         is_in_my_net = netid == self.netid
@@ -645,8 +645,8 @@ class Neighbour(object):
 
         ip, netid = key
 
-        if self.netid == -1:
-            # I'm hooking, better not to emit any signal.
+        if self.netid == -1 or netid == -1:
+            # I'm hooking or it is hooking, better not to emit any signal.
             return
 
         val = self.ip_netid_table[key]
