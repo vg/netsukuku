@@ -297,7 +297,7 @@ class Hook(object):
 
         # If we are alone, let's generate our netid
         if we_are_alone:
-            self.ntkd.neighbour.netid = randint(0, 2**32-1)
+            self.ntkd.neighbour.change_netid(randint(0, 2**32-1))
             logging.info("Generated our network id: %s", self.ntkd.neighbour.netid)
             # and we don't need to contact coordinator node...
 
@@ -348,7 +348,7 @@ class Hook(object):
                     # nothing to be done
                     logging.info('Hooking procedure canceled by our Coord. Our' + \
                                  ' network id is back.')
-                    self.ntkd.neighbour.netid = previous_netid
+                    self.ntkd.neighbour.change_netid(previous_netid)
                     return
 
                 # <<I'm going in, can I?>>

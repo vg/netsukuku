@@ -554,7 +554,7 @@ class Etp(object):
 
         previous_netid = self.ntkd.neighbour.netid
         if self.ntkd.neighbour.netid == -1:
-            self.ntkd.neighbour.netid = neigh.netid
+            self.ntkd.neighbour.change_netid(neigh.netid)
             logging.info('Now I know my network id: %s' % neigh.netid)
             logging.log(logging.ULTRADEBUG, 'etp_exec: collision_check: warn neighbours of' + \
                     ' my change netid from ' + str(previous_netid) + ' to ' + str(self.ntkd.neighbour.netid))
@@ -623,7 +623,7 @@ class Etp(object):
 
         #From now on, we are in the new net
         logging.info('From now on, we are in the new net, our network id: %s' % neigh.netid)
-        self.ntkd.neighbour.netid = neigh.netid
+        self.ntkd.neighbour.change_netid(neigh.netid)
         logging.log(logging.ULTRADEBUG, 'etp_exec: collision_check: warn neighbours of' + \
                 ' my change netid from ' + str(previous_netid) + ' to ' + str(self.ntkd.neighbour.netid))
         my_ip = self.maproute.nip_to_ip(self.maproute.me)
