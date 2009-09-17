@@ -436,8 +436,8 @@ class Hook(object):
 
             # warn our neighbours
             logging.log(logging.ULTRADEBUG, 'Hook: warn neighbours of' + \
-                    ' my change from %s to %s.' \
-                    % (ip_to_str(oldip), ip_to_str(newnip_ip)))
+                    ' my change from %s on -1 to %s on %s.' \
+                    % (ip_to_str(oldip), ip_to_str(newnip_ip), str(self.ntkd.neighbour.netid)))
             self.neigh.call_ip_netid_change_broadcast_udp(oldip, -1, newnip_ip, self.ntkd.neighbour.netid)
             logging.log(logging.ULTRADEBUG, 'Hook: called ip_netid_change on broadcast.')
 
