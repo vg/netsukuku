@@ -3,7 +3,7 @@
 # (c) Copyright 2007 Alberto Santini <alberto@unix-monk.com>
 #
 # This source code is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as published 
+# modify it under the terms of the GNU General Public License as published
 # by the Free Software Foundation; either version 2 of the License,
 # or (at your option) any later version.
 #
@@ -28,7 +28,7 @@
 # A radar is fired periodically by Radar.run(), which is started as a
 # microthread.
 #
-# TODO: the current statistic is based on the RTT (Round Trip Time) 
+# TODO: the current statistic is based on the RTT (Round Trip Time)
 # of the packets. However, more refined way can be used and shall be
 # implemented: first of all consider the number of bouquet packets lost, then
 # see NTK_RFC 0002  http://lab.dyne.org/Ntk_bandwidth_measurement
@@ -516,6 +516,7 @@ class Neighbour(object):
 
 
 class Radar(object):
+    
     __slots__ = [ 'ntkd', 'bouquet_numb', 'bcast_send_time', 'xtime',
                   'bcast_arrival_time', 'max_bouquet', 'wait_time', 
                   'broadcast', 'neigh', 'events', 'do_reply', 

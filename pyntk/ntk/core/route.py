@@ -298,6 +298,7 @@ class RouteNode(object):
 
         It returns (0,None) if the route hasn't been added, and thus it isn't
         interesting, otherwise it returns (1,None) if it is a new route,
+
         (2, oldrem_at_gw) if it substituted an old route."""
 
         ret = 0

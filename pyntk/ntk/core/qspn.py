@@ -3,7 +3,7 @@
 # (c) Copyright 2007 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
 #
 # This source code is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as published 
+# modify it under the terms of the GNU General Public License as published
 # by the Free Software Foundation; either version 2 of the License,
 # or (at your option) any later version.
 #
@@ -27,18 +27,16 @@ import ntk.wrap.xtime as xtime
 
 
 def is_listlist_empty(l):
-        """
-            Returns true if l=[[],[], ...]
-            l is a list of lists.
-        """
-        return not any(l)
+    """Returns true if l=[[],[], ...]
+    :type l: a list of lists.
+    """
+    return not any(l)
 
-class Etp:
+class Etp(object):
     """Extended Tracer Packet"""
 
     def __init__(self, ntkd, radar, maproute):
         self.ntkd = ntkd
-
         self.radar = radar
         self.neigh = radar.neigh
         self.maproute = maproute
@@ -107,6 +105,7 @@ class Etp:
         logging.debug('QSPN: death of %s: prepare the ETP', ip_to_str(neigh.ip))
         
         ## Prepare common part of the ETPs for the neighbours
+
         flag_of_interest=1
         TP = [[self.maproute.me[0], NullRem()]]    # Tracer Packet included in
         block_lvl = 0                           # the first block of the ETP
@@ -203,9 +202,11 @@ class Etp:
 
         def takeoff_gw((dst, gw, rem, hops)):
                 return (dst, rem, hops)
+
         def takeoff_gw_lvl(L):
-                return map(takeoff_gw, L)
-        R=map(takeoff_gw_lvl, R)
+            return map(takeoff_gw, L)
+
+        R = map(takeoff_gw_lvl, R)
         ##
 
         ## Send the ETP to `neigh'
@@ -257,12 +258,12 @@ class Etp:
     @microfunc()
     def etp_exec(self, sender_nip, sender_netid, R, TPL, flag_of_interest):
         """Executes a received ETP
-        
+
         sender_nip: sender ntk ip (see map.py)
         sender_netid: updated network id of the sender
         R  : the set of routes of the ETP
         TPL: the tracer packet of the path covered until now by this ETP.
-             This TP may have covered different levels. In general, TPL 
+             This TP may have covered different levels. In general, TPL
              is a list of blocks. Each block is a (lvl, TP) pair, where lvl is
              the level of the block and TP is the tracer packet composed
              during the transit in the level `lvl'.
@@ -309,29 +310,30 @@ class Etp:
         ### Collapse blocks of the same level
         #Note: we're assuming the two blocks with the same level are one after
         #      another.
-        TPL2=[TPL[0]]
+        TPL2 = [TPL[0]]
+
         for block in TPL[1:]:
-                if block[0] == TPL2[-1][0]:
-                        TPL2[-1][1]+=block[1]
-                else:
-                        TPL2.append(block)
-        TPL=TPL2
+            if block[0] == TPL2[-1][0]:
+                TPL2[-1][1]+=block[1]
+            else:
+                TPL2.append(block)
+        TPL = TPL2
         ###
-        
+
         ### Remove dups
         def remove_contiguos_dups_in_TP(L):
-                L2=[]
-                prec=[None, NullRem()]
-                for x in L:
-                        if x[0] != prec[0]:
-                                prec=x
-                                L2.append(x)
-                        else:
-                                prec[1]+=x[1]
-                return L2
+            L2 = []
+            prec = [None, NullRem()]
+            for x in L:
+                if x[0] != prec[0]:
+                    prec = x
+                    L2.append(x)
+                else:
+                    prec[1] += x[1]
+            return L2
 
         for block in TPL:
-                block[1]=remove_contiguos_dups_in_TP(block[1])
+            block[1] = remove_contiguos_dups_in_TP(block[1])
         ###
 
         ##
@@ -408,6 +410,7 @@ class Etp:
 
         self.etp_forward_referring_to_neigh(R, TPL, flag_of_interest, neigh)
         logging.info('ETP executed.')
+
         self.events.send('ETP_EXECUTED', (old_node_nb, self.maproute.node_nb[:]))
 
     def etp_forward_referring_to_neigh(self, R, TPL, flag_of_interest, neigh):
@@ -504,7 +507,7 @@ class Etp:
 
     def collision_check(self, gwnip, neigh, R):
         """ Checks if we are colliding with the network of `neigh'.
-        
+
             It returns True if we are colliding and we are going to rehook.
             !NOTE! the set R will be modified: all the colliding routes will
             be removed.
@@ -583,4 +586,3 @@ class Etp:
         self.events.send('COMPLETE_HOOK', ())
 
         return (False, R)
-
