@@ -193,7 +193,7 @@ class Map(object):
         for l in xrange(self.levels):
             self.level_reset(l)
 
-    def me_change(self, new_me):
+    def me_change(self, new_me, silent=False):
         """Changes self.me"""
 
         # changing my nip will make many nodes no more significant in my map
@@ -211,7 +211,8 @@ class Map(object):
         # silently add the dataclass objects representing new me
         for l in xrange(self.levels):
                 self.node[l][self.me[l]] = self.dataclass(l, self.me[l], its_me=True)
-        self.events.send('ME_CHANGED', (old_me, self.me))
+        if not silent:
+                self.events.send('ME_CHANGED', (old_me, self.me))
 
     def map_data_pack(self, func=None):
         """Prepares a packed_map to be passed to map_data_merge in another host.

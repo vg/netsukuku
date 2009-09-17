@@ -198,6 +198,7 @@ class Hook(object):
         ## Find the list with the highest number of elements
         lenmax = 0
         for h in hfn:
+            if h[1][1] is not None:
                 l = len(h[1][1])
                 if l > lenmax:
                         lenmax=l
@@ -290,6 +291,7 @@ class Hook(object):
 
         # reset the map
         self.maproute.me_change(newnip[:])
+        self.coordnode.mapcache.me_change(newnip[:], silent=True)
         for l in reversed(xrange(lvl)): self.maproute.level_reset(l)
 
         # Restore the neighbours in the map and send the ETP
