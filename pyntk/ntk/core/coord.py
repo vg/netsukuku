@@ -25,6 +25,7 @@
 
 
 from ntk.lib.log import logger as logging
+from ntk.lib.log import get_stackframes
 from ntk.lib.micro import microfunc
 from ntk.wrap.xtime import time
 from ntk.core.p2p import P2P
@@ -74,6 +75,34 @@ class MapCache(Map):
         if self.node_get(lvl, id).is_free():
                 self.node_get(lvl, id).alive = True
                 self.node_add(lvl, id)
+
+    def map_data_pack(self):
+        """Prepares a packed_mapcache to be passed to mapcache.map_data_merge
+        in another host."""
+        def fmake_alive(node):
+            # TODO always alive?
+            logging.debug('MapCache replication: fmake_alive : node was ' + str(node) + ' - alive was ' + str(node.alive))
+            node.alive = True
+            logging.debug('MapCache replication: fmake_alive : now, node is ' + str(node) + ' - alive is ' + str(node.alive))
+        return Map.map_data_pack(self, fmake_alive)
+
+    def map_data_merge(self, (nip, plist, nblist)):
+        """Copies a mapcache from another nip's point of view."""
+        # Was I alive?
+        # TODO always alive?
+        me_was = [False] * self.levels
+        for lvl in xrange(self.levels):
+            me_was[lvl] = self.node_get(lvl, self.me[lvl]).alive
+        logging.debug('MapCache replication: me_was : ' + str(me_was))
+        # Merge as usual...
+        lvl=self.nip_cmp(nip, self.me)
+        logging.log(logging.ULTRADEBUG, 'Merging a mapcache at level ' + str(lvl))
+        logging.log(logging.ULTRADEBUG, get_stackframes(back=1))
+        Map.map_data_merge(self, (nip, plist, nblist))
+        # ... ripristine myself.
+        for lvl in xrange(self.levels):
+            self.node_get(lvl, self.me[lvl]).alive = me_was[lvl]
+        logging.log(logging.ULTRADEBUG, self.repr_me())
 
     def repr_me(self, func_repr_node=None):
         def repr_node_mapcache(node):
@@ -197,9 +226,7 @@ class Coord(P2P):
             logging.debug('Coord: I was coordinator for our level ' + str(level) + ', new coordinator is ' + str(HhIP))
             logging.debug('Coord: So I will pass him my mapcache.')
             peer = self.peer(hIP=hIP)
-            def fmake_alive(node):
-                node.alive = True
-            peer.mapcache.map_data_merge(self.mapcache.map_data_pack(fmake_alive))
+            peer.mapcache.map_data_merge(self.mapcache.map_data_pack())
             logging.debug('Coord: Done passing my mapcache.')
 
 

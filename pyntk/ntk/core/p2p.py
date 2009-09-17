@@ -23,6 +23,7 @@
 import ntk.lib.rpc as rpc
 import ntk.wrap.xtime as xtime
 from ntk.lib.log import logger as logging
+from ntk.lib.log import get_stackframes
 from ntk.lib.event import Event
 from ntk.lib.rpc   import FakeRmt, RPCDispatcher, CallerInfo
 from ntk.lib.micro import microfunc, Channel
@@ -89,6 +90,32 @@ class MapP2P(Map):
     @microfunc(True)
     def node_del(self, lvl, id):
         Map.node_del(self, lvl, id)
+
+    def map_data_pack(self):
+        """Prepares a packed_mapp2p to be passed to mapp2p.map_data_merge
+        in another host."""
+        def fmake_participant(node):
+            # If I'm participating to this p2p service, then the node that
+            # represents myself has already the participant flag set.
+            # So, nothing to do here.
+            pass
+        return Map.map_data_pack(self, fmake_participant)
+
+    def map_data_merge(self, (nip, plist, nblist)):
+        """Copies a mapp2p from another nip's point of view."""
+        # Was I participant?
+        me_was = [False] * self.levels
+        for lvl in xrange(self.levels):
+            me_was[lvl] = self.node_get(lvl, self.me[lvl]).participant
+        # Merge as usual...
+        lvl=self.nip_cmp(nip, self.me)
+        logging.log(logging.ULTRADEBUG, 'Merging a mapp2p at level ' + str(lvl))
+        logging.log(logging.ULTRADEBUG, get_stackframes(back=1))
+        Map.map_data_merge(self, (nip, plist, nblist))
+        # ... ripristine myself.
+        for lvl in xrange(self.levels):
+            self.node_get(lvl, self.me[lvl]).participant = me_was[lvl]
+        logging.log(logging.ULTRADEBUG, self.repr_me())
 
     def repr_me(self, func_repr_node=None):
         def repr_node_mapp2p(node):
@@ -365,9 +392,7 @@ class P2PAll(object):
             return self.service[pid]
 
     def pid_getall(self):
-        def fmake_participant(node):
-            node.participant = True
-        return [(s, self.service[s].mapp2p.map_data_pack(fmake_participant))
+        return [(s, self.service[s].mapp2p.map_data_pack())
                         for s in self.service]
 
 
@@ -380,11 +405,9 @@ class P2PAll(object):
         # created by pid_add() has an update map of participants, which has
         # been accumulated during the time. Copy this map in the `p2p'
         # instance to be sure.
-        def fmake_participant(node):
-            node.participant = True
         if p2p.pid in self.service:
             logging.log(logging.ULTRADEBUG, 'Called P2PAll.p2p_register for ' + str(p2p.pid) + '... cloning...')
-            map_pack = self.pid_get(p2p.pid).mapp2p.map_data_pack(fmake_participant)
+            map_pack = self.pid_get(p2p.pid).mapp2p.map_data_pack()
             p2p.mapp2p.map_data_merge(map_pack)
         self.service[p2p.pid] = p2p
 

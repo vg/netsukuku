@@ -237,8 +237,6 @@ class Map(object):
     def map_data_merge(self, (nip, plist, nblist)):
         """Copies a map from another nip's point of view."""
         lvl=self.nip_cmp(nip, self.me)
-        logging.log(logging.ULTRADEBUG, 'Merging a map at level ' + str(lvl))
-        logging.log(logging.ULTRADEBUG, get_stackframes(back=1))
 
         for l in xrange(lvl, self.levels):
                 # It's a tough work! Be kind to other tasks.
@@ -251,7 +249,6 @@ class Map(object):
 
         for l in xrange(0, lvl):
                 self.level_reset(l)
-        logging.log(logging.ULTRADEBUG, self.repr_me())
 
     def repr_me(self, func_repr_node=None):
         ret = 'me ' + str(self.me) + ', node_nb ' + str(self.node_nb) + ', {'

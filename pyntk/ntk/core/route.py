@@ -533,6 +533,16 @@ class MapRoute(Map):
             # Just one event should be enough.
             self.events.send('ROUTE_DELETED', (lvl, dst, gwip))
 
+    def map_data_pack(self):
+        """Prepares a packed_maproute to be passed to maproute.map_data_merge
+        in another host."""
+        logging.error('MapRoute must not be replicated that way.')
+        raise NotImplementedError
+
+    def map_data_merge(self, (nip, plist, nblist)):
+        """Copies a maproute from another nip's point of view."""
+        logging.error('MapRoute must not be replicated that way.')
+        raise NotImplementedError
 
     def repr_me(self, func_repr_node=None):
         def repr_node_maproute(node):
