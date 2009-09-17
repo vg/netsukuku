@@ -181,14 +181,14 @@ class Coord(P2P):
 
 
     def h(self, key):
-        """h:KEY-->IP
+        """h:KEY-->hIP
         :type key: a tuple (lvl, ip)
         """
         lvl, ip = key
-        IP = list(ip)
+        hIP = list(ip)
         for l in reversed(xrange(lvl)):
-            IP[l] = 0
-        return IP
+            hIP[l] = 0
+        return hIP
 
     def coord_nodes_set(self):
         """Sets the coordinator nodes of each level, using the current map"""

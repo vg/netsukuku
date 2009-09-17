@@ -162,34 +162,38 @@ class P2P(RPCDispatcher):
         RPCDispatcher.__init__(self, root_instance=self)
 
     def h(self, key):
-        """This is the function h:KEY-->IP.
+        """This is the function h:KEY-->hIP.
 
         You should override it with your own mapping function.
         """
         return key
 
-    def H(self, IP):
+    def H(self, hIP):
         """This is the function that maps each IP to an existent hash node IP
            If there are no participants, None is returned"""
         mp = self.mapp2p
-        hIP = [None] * mp.levels
+        logging.log(logging.ULTRADEBUG, 'H: H(' + str(hIP) + ')')
+        logging.log(logging.ULTRADEBUG, 'H: mapp2p = ' + mp.repr_me())
+        H_hIP = [None] * mp.levels
         for l in reversed(xrange(mp.levels)):
-                for id in xrange(mp.gsize):
-                        for sign in [-1,1]:
-                                hid=(IP[l] + id * sign) % mp.gsize
-                                if mp.node_get(l, hid).participant:
-                                        hIP[l] = hid
-                                        break
-                        if hIP[l] is not None:
-                                break
-                if hIP[l] is None:
-                        return None
-
-                if hIP[l] != mp.me[l]:
-                        # we can stop here
+            for id in xrange(mp.gsize):
+                for sign in [-1,1]:
+                    hid=(hIP[l] + id * sign) % mp.gsize
+                    if mp.node_get(l, hid).participant:
+                        H_hIP[l] = hid
                         break
+                if H_hIP[l] is not None:
+                    break
+            if H_hIP[l] is None:
+                logging.log(logging.ULTRADEBUG, 'H: H(' + str(hIP) + ') = None')
+                return None
 
-        return hIP
+            if H_hIP[l] != mp.me[l]:
+                # we can stop here
+                break
+
+        logging.log(logging.ULTRADEBUG, 'H: H(' + str(hIP) + ') = ' + str(H_hIP))
+        return H_hIP
 
     def neigh_get(self, hip):
         """Returns the Neigh instance of the neighbour we must use to reach
