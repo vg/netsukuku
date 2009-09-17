@@ -334,19 +334,6 @@ class Etp(object):
         logging.info('Received ETP from (nip, netid) = ' + str((sender_nip, sender_netid)))
         gwnip = sender_nip
         gwip = self.maproute.nip_to_ip(gwnip)
-        neigh = self.neigh.key_to_neigh((gwip, sender_netid))
-        
-        # check if we have found the neigh, otherwise wait it
-        timeout = xtime.time() + 6000
-        while neigh is None:
-            if xtime.time() > timeout:
-                logging.info('ETP from (nip, netid) = ' + str((sender_nip, sender_netid)) + ' dropped: timeout.')
-                return
-            xtime.swait(50)
-            neigh = self.neigh.key_to_neigh((gwip, sender_netid))
-
-        gw_id = neigh.id
-        gwrem = neigh.rem
 
         level = self.maproute.nip_cmp(self.maproute.me, gwnip)
         
@@ -412,12 +399,38 @@ class Etp(object):
         ## Collision check
         colliding, R = self.collision_check(sender_netid, R)
         if colliding:
-                # collision detected. rehook.
+                # Collision detected. Let's rehook.
+                the_others = self.neigh.neigh_list(in_this_netid=sender_netid)
+                # If we want to rehook with the_others, we have to make sure there is
+                # someone! We have to wait. And we could fail anyway. In that case abort
+                # the processing of this ETP.
+                timeout = xtime.time() + 16000
+                while not any(the_others):
+                    if xtime.time() > timeout:
+                        logging.info('Rehooking to (nip, netid) = ' + str((sender_nip, sender_netid)) + ' aborted: timeout.')
+                        return
+                    xtime.swait(50)
+                    the_others = self.neigh.neigh_list(in_this_netid=sender_netid)
                 self.events.send('NET_COLLISION', 
-                                 (self.neigh.neigh_list(in_this_netid=sender_netid),)
+                                 (the_others,)
                                 )
                 return # drop the packet
+        if not any(R):
+                return # drop the packet
         ##
+
+        neigh = self.neigh.key_to_neigh((gwip, sender_netid))
+        # check if we have found the neigh, otherwise wait it
+        timeout = xtime.time() + 16000
+        while neigh is None:
+            if xtime.time() > timeout:
+                logging.info('ETP from (nip, netid) = ' + str((sender_nip, sender_netid)) + ' dropped: timeout.')
+                return
+            xtime.swait(50)
+            neigh = self.neigh.key_to_neigh((gwip, sender_netid))
+
+        gw_id = neigh.id
+        gwrem = neigh.rem
 
         xtime.swait(10)
 
