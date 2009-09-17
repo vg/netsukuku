@@ -398,16 +398,16 @@ class Etp(object):
         TPL[0][1][0][1] = NullRem()
         ##
 
-        logging.debug('Translated ETP from %s', ip_to_str(neigh.ip))
+        logging.debug('Translated ETP from %s', ip_to_str(gwip))
         logging.debug('R: ' + str(R))
         logging.debug('TPL: ' + str(TPL))
         
         ## Collision check
-        colliding, R = self.collision_check(gwnip, neigh, R)
+        colliding, R = self.collision_check(sender_netid, R)
         if colliding:
                 # collision detected. rehook.
                 self.events.send('NET_COLLISION', 
-                                 (self.neigh.neigh_list(in_this_netid=neigh.netid),)
+                                 (self.neigh.neigh_list(in_this_netid=sender_netid),)
                                 )
                 return # drop the packet
         ##
@@ -553,7 +553,7 @@ class Etp(object):
                         self.etp_send_to_neigh(etp, nr, current_netid)
                     ##
 
-    def collision_check(self, gwnip, neigh, R):
+    def collision_check(self, neigh_netid, R):
         """ Checks if we are colliding with the network of `neigh'.
 
             It returns True if we are colliding and we are going to rehook.
@@ -561,11 +561,11 @@ class Etp(object):
             be removed.
         """
         
-        logging.debug("Etp: collision check: my netid %d and neighbour's netid %d", self.ntkd.neighbour.netid, neigh.netid)
+        logging.debug("Etp: collision check: my netid %d and neighbour's netid %d", self.ntkd.neighbour.netid, neigh_netid)
 
         previous_netid = self.ntkd.neighbour.netid
 
-        if neigh.netid == previous_netid:
+        if neigh_netid == previous_netid:
             return (False, R) # all ok
 
         # uhm... we are in different networks
@@ -581,7 +581,7 @@ class Etp(object):
         #  1. The other net surely will give up. So we are not going to.
         #  2. The other net surely won't give up. So we are going to.
         #  3. The other net surely will choose to use the 'lesser netid' method. So we are going to do the same.
-        if self.ntkd.neighbour.netid > neigh.netid:
+        if self.ntkd.neighbour.netid > neigh_netid:
                 # We are the bigger net.
                 # We cannot use routes from R, since this gateway is going to re-hook.
 
