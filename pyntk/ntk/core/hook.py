@@ -58,7 +58,8 @@ class Hook(object):
         '''Note: old_node_nb and cur_node_nb are used only by the ETP_EXECUTED event'''
 
         logging.debug('Coomunicating vessels microfunc started')
-        current_nr_list = self.neigh.neigh_list()
+        # Get only the neighbours of my network.
+        current_nr_list = self.neigh.neigh_list(in_my_network=True)
         
         if old_node_nb != None and self.gnodes_split(old_node_nb, cur_node_nb):
                 # The gnode has splitted and we have rehooked.
@@ -161,7 +162,6 @@ class Hook(object):
             called_for = called_for_network_collision
 
         logging.info('Hooking procedure started.')
-        current_nr_list = self.neigh.neigh_list()
         previous_netid = self.ntkd.neighbour.netid
         if previous_netid != -1:
             logging.info('We previously had got a network id = ' + str(previous_netid))
@@ -174,7 +174,12 @@ class Hook(object):
 
         neigh_list = passed_neigh_list
         if neigh_list == []:
-                neigh_list = current_nr_list
+                if called_for == called_for_bootstrap:
+                    # At bootstrap we accept every one. It is a temporary
+                    # hack.
+                    neigh_list = self.neigh.neigh_list()
+                else:
+                    neigh_list = self.neigh.neigh_list(in_my_network=True)
         if neigh_list == []:
                 we_are_alone = True
 
@@ -406,7 +411,7 @@ class Hook(object):
             logging.log(logging.ULTRADEBUG, 'Hook.hook warn neighbours of' + \
                     ' my change from %s to %s.' \
                     % (ip_to_str(oldip), ip_to_str(newnip_ip)))
-            for nr in current_nr_list:
+            for nr in self.neigh.neigh_list():
                 logging.log(logging.ULTRADEBUG, 'Hook: calling ip_netid_change' + \
                             ' of my neighbour %s.' % ip_to_str(nr.ip)) 
                 self.neigh.call_ip_netid_change_udp(nr, oldip, previous_netid, newnip_ip, self.ntkd.neighbour.netid)

@@ -78,7 +78,11 @@ class Etp(object):
     def etp_dead_link(self, neigh):
         """Builds and sends a new ETP for the dead link case."""
 
-        current_nr_list = self.neigh.neigh_list()
+        # If the neighbour was not in my network, I must do nothing.
+        if not self.neigh.is_neigh_in_my_network(neigh):
+            return
+
+        current_nr_list = self.neigh.neigh_list(in_my_network=True)
         logging.debug('QSPN: death of %s: update my map.', ip_to_str(neigh.ip))
         
         ## Create R
@@ -223,6 +227,10 @@ class Etp(object):
     @microfunc(True)
     def etp_changed_link(self, neigh, oldrem):
         """Builds and sends a new ETP for the changed link case."""
+
+        # If the neighbour was not in my network, I must do nothing.
+        if not self.neigh.is_neigh_in_my_network(neigh):
+            return
 
         current_nr_list = self.neigh.neigh_list()
         logging.debug('QSPN: changed %s: update my map', ip_to_str(neigh.ip))
@@ -444,7 +452,7 @@ class Etp(object):
     def etp_forward_referring_to_neigh(self, R, TPL, flag_of_interest, neigh):
         """Forwards, when interesting, to all other neighbour info about neigh"""
 
-        current_nr_list = self.neigh.neigh_list()
+        current_nr_list = self.neigh.neigh_list(in_my_network=True)
         # Through which devs do I see the referree?
         devs_to_neigh = [dev for dev in neigh.devs.keys()]
 

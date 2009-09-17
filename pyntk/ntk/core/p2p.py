@@ -216,7 +216,7 @@ class P2P(RPCDispatcher):
         """Let's become a participant node"""
         self.participant = True
         self.mapp2p.participate()
-        current_nr_list = self.neigh.neigh_list()
+        current_nr_list = self.neigh.neigh_list(in_my_network=True)
 
         # TODO handle the case where one of neighbours does not reply (raises an error)
         for nr in current_nr_list:
@@ -237,7 +237,7 @@ class P2P(RPCDispatcher):
         '''
 
         continue_to_forward = False
-        current_nr_list = self.neigh.neigh_list()
+        current_nr_list = self.neigh.neigh_list(in_my_network=True)
         mp  = self.mapp2p
         lvl = self.maproute.nip_cmp(pIP, mp.me)
         for l in xrange(lvl, mp.levels):
@@ -381,7 +381,7 @@ class P2P(RPCDispatcher):
                         if neighudp is None:
                             # I can't find the right neigh to peer... Try with a default one.
                             logging.debug('P2P: I can\'t find the right neigh to peer... Try with a default one.')
-                            neighudp = self.p2p.neigh.neigh_list()[0]
+                            neighudp = self.p2p.neigh.neigh_list(in_my_network=True)[0]
                     else:
                         # I am peer. Use TCP version... which will by-pass network.
                         logging.log(logging.ULTRADEBUG, 'P2P: ...I am the Coord myself.')
@@ -476,7 +476,7 @@ class P2PAll(object):
         ## Find our nearest neighbour
         minlvl = self.maproute.levels
         minnr = None
-        for nr in self.neigh.neigh_list():
+        for nr in self.neigh.neigh_list(in_my_network=True):
             lvl = self.maproute.nip_cmp(self.maproute.me,
                                         self.maproute.ip_to_nip(nr.ip))
             if lvl < minlvl:
