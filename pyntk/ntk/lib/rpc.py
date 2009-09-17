@@ -305,7 +305,7 @@ def TCPServer(root_instance, addr=('', 269), dev=None, net=None, me=None,
             pass
         else:
             request_handler(sock, clientaddr, dev, rpcdispatcher)
-	
+
     tcp_servers_running_instances.remove('TCP' + str(this_server_id))
     if not tcp_servers_running_instances:
         tcp_stopping_servers = False
@@ -345,7 +345,7 @@ class TCPClient(FakeRmt):
         self.net = net
         self.me = me
         self.connected = False
-	self.calling = False
+        self.calling = False
 
         FakeRmt.__init__(self)
 
@@ -364,21 +364,21 @@ class TCPClient(FakeRmt):
             self.connect()
             self.xtime.swait(500)
 
-	while self.calling:
-	    # go away waiting that the previous 
-	    # rpc_call is accomplished
+        while self.calling:
+            # go away waiting that the previous 
+            # rpc_call is accomplished
             time.sleep(0.001)
             micro_block()
 
-	# now other microthread cannot call make an RPC call
-	# until the previous call has not received the reply
-	self.calling = True
-        
-	self.socket.sendall(_data_pack(data))
+        # now other microthread cannot call make an RPC call
+        # until the previous call has not received the reply
+        self.calling = True
+
+        self.socket.sendall(_data_pack(data))
         recv_encoded_data = _data_unpack_from_stream_socket(self.socket)
-	
-	self.calling = False
-	# let other calls work
+
+        self.calling = False
+        # let other calls work
 
         if not recv_encoded_data:
             raise RPCNetError('Connection closed before reply')

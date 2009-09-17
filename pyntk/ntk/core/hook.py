@@ -40,8 +40,8 @@ class Hook(object):
         self.etp = etp
         self.coordnode= coordnode
         self.nics = nics
-	
-	self.chan_replies = Channel()
+
+        self.chan_replies = Channel()
 
         self.events = Event(['HOOKED'])
 

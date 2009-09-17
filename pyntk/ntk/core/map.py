@@ -125,7 +125,7 @@ class Map(object):
 
     def free_nodes_list(self, lvl):
         """Returns the list of free nodes of level `lvl'"""
-	
+
         #it depends on the lvl and on the previous ids
         return [nid for nid in valid_ids(lvl, self.me) if (not self.node[lvl][nid]) or self.node[lvl][nid].is_free()]
 
