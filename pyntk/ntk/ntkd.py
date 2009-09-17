@@ -36,6 +36,7 @@ from ntk.network import NICManager, Route
 from ntk.network.inet import ip_to_str
 from ntk.wrap.sock import Sock
 from random import choice
+from ntk.network.inet import valid_ids
 
 class NtkNode(object):
 
@@ -147,6 +148,9 @@ class NtkNode(object):
         logging.debug('First NIC activation done')
 
     def choose_first_nip(self):
-        # TODO a valid IP for our IP version, possibly one that is not choosen by normal node.
-        return [choice(xrange(self.gsize)), choice(xrange(self.gsize)), 168, 192]
+        # TODO a valid IP for our IP version.
+        nip = [0 for i in xrange(4)]
+        for lvl in reversed(xrange(4)):
+            nip[lvl] = choice(valid_ids(lvl, nip))
+        return nip
 
