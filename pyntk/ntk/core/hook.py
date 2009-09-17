@@ -316,12 +316,8 @@ class Hook(object):
         # Restore the neighbours in the map and send the ETP
         self.neigh.readvertise()
 
-        self.radar.do_reply = True
-        logging.log(logging.ULTRADEBUG, 'Hook: done. Now we should be' + \
-                    ' able to use TCP')
-
         # warn our neighbours
-        if self.ntkd.neighbour.netid == -1 or we_are_alone:
+        if previous_netid == -1 or we_are_alone:
             logging.log(logging.ULTRADEBUG, 'Hook.hook warn neighbours' + \
                     ' skipped')
         else:
@@ -335,6 +331,11 @@ class Hook(object):
                 logging.log(logging.ULTRADEBUG, 'Hook: %s ack.' \
                         % ip_to_str(nr.ip)) 
 
+        # now that our neighbours have been warned, we can reply to their
+        # radar scans
+        self.radar.do_reply = True
+        logging.log(logging.ULTRADEBUG, 'Hook: done. Now we should be' + \
+                    ' able to use TCP')
 
         # we've done our part
         logging.info('Hooking procedure completed.')
