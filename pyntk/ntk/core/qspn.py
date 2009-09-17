@@ -286,24 +286,11 @@ class Etp:
                 if cmp(ev_neigh[0].ip, self.maproute.nip_to_ip(gwnip)):
                         # ok, continue now
                         neigh   = self.neigh.ip_to_neigh(self.maproute.nip_to_ip(gwnip))
+
+        logging.info('Received ETP from %s', ip_to_str(neigh.ip))
                         
         gw_id = neigh.id
         gwrem = neigh.rem
-
-        logging.info('Received ETP from %s', ip_to_str(neigh.ip))
-        
-        ## Collision check
-        colliding, R = self.collision_check(gwnip, neigh, R)
-        if colliding:
-                # collision detected. rehook.
-                self.events.send('NET_COLLISION', 
-                                 ([nr for nr in current_nr_list
-                                                if nr.netid == neigh.netid],)
-                                )
-                return # drop the packet
-        ##
-
-        xtime.swait(10)
 
         level = self.maproute.nip_cmp(self.maproute.me, gwnip)
         
@@ -360,6 +347,23 @@ class Etp:
         ## The rem of the first block is useless.
         TPL[0][1][0][1] = NullRem()
         ##
+
+        logging.debug('Translated ETP from %s', ip_to_str(neigh.ip))
+        logging.debug('R: ' + str(R))
+        logging.debug('TPL: ' + str(TPL))
+        
+        ## Collision check
+        colliding, R = self.collision_check(gwnip, neigh, R)
+        if colliding:
+                # collision detected. rehook.
+                self.events.send('NET_COLLISION', 
+                                 ([nr for nr in current_nr_list
+                                                if nr.netid == neigh.netid],)
+                                )
+                return # drop the packet
+        ##
+
+        xtime.swait(10)
 
         old_node_nb = self.maproute.node_nb[:]
 
@@ -571,12 +575,7 @@ class Etp:
         for lvl in xrange(self.maproute.levels):
                 for dst, rem, hops in R[lvl]:
                         # The node I know as (lvl, dst) is invalid; it will eventually rehook.
-                        # I must delete all the routes in the map and in the kernel
-                        node = self.maproute.node_get(lvl, dst)
-                        while not node.is_free():
-                            # starting from the worst
-                            gw = node.routes[-1].gw
-                            node.route_del(gw.id)
+                        self.maproute.route_reset(lvl, dst)
         ##
 
         #From now on, we are in the new net

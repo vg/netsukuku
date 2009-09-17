@@ -252,13 +252,12 @@ class RouteNode(object):
           which has the same gateway G
     """
 
-    __slots__ = ['routes', 'lvl', 'id', 'busy', 'its_me']
+    __slots__ = ['routes', 'lvl', 'id', 'its_me']
 
-    def __init__(self, lvl, id, busy=False, its_me=False):
+    def __init__(self, lvl, id, its_me=False):
         self.lvl = lvl
         self.id = id
         self.its_me = its_me
-        self.busy = busy
         self.routes = []
 
     def route_getby_gw(self, gw_id):
@@ -301,7 +300,6 @@ class RouteNode(object):
         interesting, otherwise it returns (1,None) if it is a new route,
         (2, oldrem_at_gw) if it substituted an old route."""
 
-        self.busy = True # For sure now we are busy.
         ret = 0
         val = None
         oldr = self.route_getby_gw(gw.id)
@@ -338,10 +336,6 @@ class RouteNode(object):
             return 1
         return 0
 
-    def route_reset(self):
-        """Delete all the routes"""
-        self.routes = []
-
     def sort(self):
         '''Order the routes
 
@@ -356,7 +350,7 @@ class RouteNode(object):
     def is_free(self):
         '''Override the is_free() method of DataClass (see map.py)'''
         if self.its_me: return False
-        return not self.busy
+        return self.is_empty()
 
     def nroutes(self):
         return len(self.routes)
@@ -522,6 +516,22 @@ class MapRoute(Map):
                 ret = self.route_add(lvl, dst, gw, rem_at_gw, hops)
                 if ret: logging.debug('    Added new route.')
             return ret
+
+    def route_reset(self, lvl, dst):
+        # I must delete all the routes in the map and in the kernel
+        gwip = None
+        node = self.node_get(lvl, dst)
+        while not node.is_free():
+            # starting from the worst
+            gw = node.routes[-1].gw
+            gwip = gw.ip
+            node.route_del(gw.id)
+        # No more routes to reach the node (lvl, dst).
+        # Consider it dead, if it wasn't already.
+        self.node_del(lvl, dst)
+        if gwip:
+            # Just one event should be enough.
+            self.events.send('ROUTE_DELETED', (lvl, dst, gwip))
 
 
     def repr_me(self, func_repr_node=None):

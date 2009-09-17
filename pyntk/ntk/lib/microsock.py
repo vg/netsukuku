@@ -291,9 +291,6 @@ class dispatcher(asyncore.dispatcher):
         return len(data)
 
     def sendall(self, data):
-        # WARNING: this will busy wait until all data is sent
-        # It should be possible to do away with the busy wait with
-        # the use of a channel.
         self.sendBuffer += data
         while self.sendBuffer:
             micro_block()
