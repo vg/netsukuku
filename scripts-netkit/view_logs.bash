@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # call this script like this:
-#     view_logs 3 guest1.log guest2.log
+#     view_logs.bash 3 guest1.log guest2.log
 # to produce (at stdout) the logs for guest1
 # and guest2 up to level 3 of loggings, sorted.
 
