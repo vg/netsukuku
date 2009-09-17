@@ -585,6 +585,9 @@ UDP_caller_ids = {}
 def UDP_call(callee_nip, callee_netid, devs, func_name, args=()):
     """Use a BcastClient to call 'func_name' to 'callee_nip' on the LAN via UDP broadcast."""
 
+    if callee_netid == -1:
+        raise Exception('Calling ' + func_name + ' to ' + str(callee_nip) + ' of ' + str(callee_netid) + ': Tried to communicate with a hooking neighbour.')
+
     logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + ' to ' + str(callee_nip) + ' of ' + str(callee_netid) + ' on the LAN via UDP broadcast.')
     bcastclient = None
     try:
@@ -594,22 +597,32 @@ def UDP_call(callee_nip, callee_netid, devs, func_name, args=()):
         raise RPCError('Couldn\'t create BcastClient.')
     caller_id = randint(0, 2**32-1)
     UDP_caller_ids[caller_id] = Channel()
-    exec('bcastclient.' + func_name + '(caller_id, callee_nip, callee_netid, *args)')
-    logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + ' done. Waiting reply...')
-    ret = None
-    try:
-        while True:
-            ret = UDP_caller_ids[caller_id].recv(timeout=15000)
-            # Handling keepalives
-            # I receive a message with the following format:
-            #     ('rmt_keepalive', )
-            if isinstance(ret, tuple) and ret[0] == 'rmt_keepalive':
-                logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + ' got REFRESHed by a keepalive.')
+    for i in xrange(5):
+        try:
+            exec('bcastclient.' + func_name + '(caller_id, callee_nip, callee_netid, *args)')
+            if i == 0:
+                logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + ' to ' + str(callee_nip) + ' of ' + str(callee_netid) + ' done. Waiting reply...')
             else:
-                break
-    except MicrochannelTimeout:
-        raise RPCNetError('Timeout')
-    logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + ' got reply.')
+                logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + ' to ' + str(callee_nip) + ' of ' + str(callee_netid) + ' retried (' + str(i) + '). Waiting reply...')
+            ret = None
+            try:
+                while True:
+                    ret = UDP_caller_ids[caller_id].recv(timeout=3000)
+                    # Handling keepalives
+                    # I receive a message with the following format:
+                    #     ('rmt_keepalive', )
+                    if isinstance(ret, tuple) and ret[0] == 'rmt_keepalive':
+                        logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + ' to ' + str(callee_nip) + ' of ' + str(callee_netid) + ' got REFRESHed by a keepalive.')
+                    else:
+                        break
+            except MicrochannelTimeout:
+                raise RPCNetError('Timeout')
+            break
+        except Exception as e:
+            if i == 4:
+                raise e
+        # Try again
+    logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + ' to ' + str(callee_nip) + ' of ' + str(callee_netid) + ' got reply.')
     # Handling errors
     # I receive a message with the following format:
     #     ('rmt_error', message_error)
@@ -619,7 +632,7 @@ def UDP_call(callee_nip, callee_netid, devs, func_name, args=()):
     return ret
 
 UDP_caller_ids_keeping_alive = {}
-def UDP_send_keepalive_forever_start(_rpc_caller, caller_id, interval=2000):
+def UDP_send_keepalive_forever_start(_rpc_caller, caller_id, interval=800):
     """Starts sending a keepalive each interval"""
     UDP_caller_ids_keeping_alive[caller_id] = None
     logging.log(logging.ULTRADEBUG, 'keepalive_forever ' + str(caller_id))
