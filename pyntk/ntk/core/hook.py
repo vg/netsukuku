@@ -163,12 +163,16 @@ class Hook(object):
 
         logging.info('Hooking procedure started.')
         previous_netid = self.ntkd.neighbour.netid
-        if previous_netid != -1:
-            logging.info('We previously had got a network id = ' + str(previous_netid))
-        logging.info('We haven\'t got any network id, now.')
-        self.ntkd.neighbour.netid = -1
         oldnip = self.maproute.me[:]
         oldip = self.maproute.nip_to_ip(oldnip)
+        self.ntkd.neighbour.change_netid(-1)
+        if previous_netid != -1:
+            logging.info('We previously had got a network id = ' + str(previous_netid))
+            logging.log(logging.ULTRADEBUG, 'Hook: warn neighbours of' + \
+                    ' my change netid from ' + str(previous_netid) + ' to ' + str(self.neigh.netid))
+            self.neigh.call_ip_netid_change_broadcast_udp(oldip, previous_netid, oldip, self.neigh.netid)
+            logging.log(logging.ULTRADEBUG, 'Hook: called ip_netid_change on broadcast.')
+        logging.info('We haven\'t got any network id, now.')
         we_are_alone = False
         suitable_neighbours = []
 
@@ -405,18 +409,14 @@ class Hook(object):
 
         # warn our neighbours
         if previous_netid == -1 or we_are_alone:
-            logging.log(logging.ULTRADEBUG, 'Hook.hook warn neighbours' + \
+            logging.log(logging.ULTRADEBUG, 'Hook: warn neighbours' + \
                     ' skipped')
         else:
-            logging.log(logging.ULTRADEBUG, 'Hook.hook warn neighbours of' + \
+            logging.log(logging.ULTRADEBUG, 'Hook: warn neighbours of' + \
                     ' my change from %s to %s.' \
                     % (ip_to_str(oldip), ip_to_str(newnip_ip)))
-            for nr in self.neigh.neigh_list():
-                logging.log(logging.ULTRADEBUG, 'Hook: calling ip_netid_change' + \
-                            ' of my neighbour %s.' % ip_to_str(nr.ip)) 
-                self.neigh.call_ip_netid_change_udp(nr, oldip, previous_netid, newnip_ip, self.ntkd.neighbour.netid)
-                logging.log(logging.ULTRADEBUG, 'Hook: %s ack.' \
-                        % ip_to_str(nr.ip)) 
+            self.neigh.call_ip_netid_change_broadcast_udp(oldip, previous_netid, newnip_ip, self.ntkd.neighbour.netid)
+            logging.log(logging.ULTRADEBUG, 'Hook: called ip_netid_change on broadcast.')
 
         # now that our neighbours have been warned, we can reply to their
         # radar scans

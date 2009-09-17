@@ -163,7 +163,8 @@ class Neighbour(object):
 
         self.remotable_funcs = [self.ip_netid_change,
                                 self.ip_netid_change_udp,
-                                self.reply_ip_netid_change_udp]
+                                self.reply_ip_netid_change_udp,
+                                self.ip_netid_change_broadcast_udp]
 
     def neigh_list(self, in_my_network=False, out_of_my_network=False,
                          in_this_netid=None, out_of_this_netid=None):
@@ -610,6 +611,16 @@ class Neighbour(object):
         self.add(newkey, already_in_ntk_client=False)
         logging.log(logging.ULTRADEBUG, 'Neighbour.ip_netid_change: finishing with ip_netid_table = ' + str(self.ip_netid_table))
         logging.log(logging.ULTRADEBUG, 'Neighbour.ip_netid_change:         and translation_table = ' + str(self.translation_table))
+
+    def call_ip_netid_change_broadcast_udp(self, oldip, oldnetid, newip, newnetid):
+        """Use BcastClient to call <broadcast> ip_netid_change"""
+        devs = list(self.ntkd.nic_manager)
+        rpc.UDP_broadcast_call(devs, 'neighbour.ip_netid_change_broadcast_udp', (oldip, oldnetid, newip, newnetid))
+
+    def ip_netid_change_broadcast_udp(self, _rpc_caller, caller_id, oldip, oldnetid, newip, newnetid):
+        """Receives call for ip_netid_change_udp."""
+        if rpc.UDP_broadcast_got_call(_rpc_caller, caller_id):
+            self.ip_netid_change(oldip, oldnetid, newip, newnetid)
 
     def call_ip_netid_change_udp(self, neigh, oldip, oldnetid, newip, newnetid):
         """Use BcastClient to call ip_netid_change"""

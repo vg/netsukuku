@@ -552,9 +552,15 @@ class Etp(object):
 
         if neigh.netid == -1: raise Exception('ETP received from a node with netid = -1 (not completely kooked).')
 
+        previous_netid = self.ntkd.neighbour.netid
         if self.ntkd.neighbour.netid == -1:
             self.ntkd.neighbour.netid = neigh.netid
             logging.info('Now I know my network id: %s' % neigh.netid)
+            logging.log(logging.ULTRADEBUG, 'etp_exec: collision_check: warn neighbours of' + \
+                    ' my change netid from ' + str(previous_netid) + ' to ' + str(self.ntkd.neighbour.netid))
+            my_ip = self.maproute.nip_to_ip(self.maproute.me)
+            self.neigh.call_ip_netid_change_broadcast_udp(my_ip, previous_netid, my_ip, self.ntkd.neighbour.netid)
+            logging.log(logging.ULTRADEBUG, 'etp_exec: collision_check: called ip_netid_change on broadcast.')
             self.events.send('COMPLETE_HOOK', ())
 
         if neigh.netid == self.ntkd.neighbour.netid:
@@ -618,6 +624,11 @@ class Etp(object):
         #From now on, we are in the new net
         logging.info('From now on, we are in the new net, our network id: %s' % neigh.netid)
         self.ntkd.neighbour.netid = neigh.netid
+        logging.log(logging.ULTRADEBUG, 'etp_exec: collision_check: warn neighbours of' + \
+                ' my change netid from ' + str(previous_netid) + ' to ' + str(self.ntkd.neighbour.netid))
+        my_ip = self.maproute.nip_to_ip(self.maproute.me)
+        self.neigh.call_ip_netid_change_broadcast_udp(my_ip, previous_netid, my_ip, self.ntkd.neighbour.netid)
+        logging.log(logging.ULTRADEBUG, 'etp_exec: collision_check: called ip_netid_change on broadcast.')
         self.events.send('COMPLETE_HOOK', ())
 
         return (False, R)
