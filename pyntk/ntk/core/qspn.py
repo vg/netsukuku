@@ -209,8 +209,12 @@ class Etp:
 
         # Usually we don't need to send a ETP if R is empty. But we have to send
         # the ETP in any case if this link is new (that is, oldrem is None).
-        if is_listlist_empty(R) and oldrem is not None:
-                # R is empty and this link is old: no need to proceed
+        if oldrem is None:
+            for lvl in xrange(self.maproute.levels):
+                R[lvl].append((self.maproute.me[lvl], -1, NullRem()))
+
+        if is_listlist_empty(R):
+                # R is empty (and this link is old): no need to proceed
                 return
 
         def takeoff_gw((dst, gw, rem)):
@@ -337,19 +341,19 @@ class Etp:
         def anode(lvl, dst, gw, rem):
             return (lvl, dst, gw, rem).__repr__()
 
-        ## Update the map from the TPL
-        tprem=gwrem
-        TPL_is_interesting = False
-        for lvl, pairs in reversed(TPL):
-            for dst, rem in reversed(pairs):
-                xtime.swait(10)
-                logging.debug('ETP received: Executing: TPL has info about this node:')
-                logging.debug('    %s' % anode(lvl, dst, gw, tprem))
-                if self.maproute.route_change(lvl, dst, gw, tprem):
-                    logging.debug('    Info is interesting. TPL is interesting. Map updated.')
-                    TPL_is_interesting = True
-                tprem+=rem
-        ##
+        ### Update the map from the TPL
+        #tprem=gwrem
+        #TPL_is_interesting = False
+        #for lvl, pairs in reversed(TPL):
+        #    for dst, rem in reversed(pairs):
+        #        xtime.swait(10)
+        #        logging.debug('ETP received: Executing: TPL has info about this node:')
+        #        logging.debug('    %s' % anode(lvl, dst, gw, tprem))
+        #        if self.maproute.route_change(lvl, dst, gw, tprem):
+        #            logging.debug('    Info is interesting. TPL is interesting. Map updated.')
+        #            TPL_is_interesting = True
+        #        tprem+=rem
+        ###
 
         ## Update the map from R
         for lvl in xrange(self.maproute.levels):
@@ -449,9 +453,7 @@ class Etp:
                           ] for l in xrange(self.maproute.levels) ]
                     ##
 
-                    ## Continue to forward the ETP if it is interesting
-
-                    if not is_listlist_empty(R2) or TPL_is_interesting:
+                    if not is_listlist_empty(R2): # or TPL_is_interesting:
                         etp = (R2, TPL, flag_of_interest)
                         logging.info('Sending received ETP to propagate its information.')
                         self.etp_send_to_neigh(etp, nr)
