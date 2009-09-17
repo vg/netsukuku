@@ -232,6 +232,7 @@ class Hook(object):
                 # It should work but we could do better:
                 #   1. If a neigh fails to answer we could try with other suitable_neighbours if we have them.
                 #   2. If the final destination is one of our suitable_neighbours we could try directly with him (always with UDP).
+                # TODO We must handle the case of error in contacting the coordinator node. The coordinator itself may die.
                 if lvl > 0:
                         # If we are going to create a new gnode, it's useless to pose
                         # any condition
