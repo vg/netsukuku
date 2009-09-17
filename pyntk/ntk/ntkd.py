@@ -97,9 +97,6 @@ class NtkNode(object):
 
     def reset(self, oldip=None, newnip=None):
         logging.debug('resetting node')
-        # clean our map route
-        self.maproute.map_reset()
-        logging.info('MapRoute cleaned')
         # close the server socket
         rpc.stop_tcp_servers()
         logging.debug('TCP servers stopped')
