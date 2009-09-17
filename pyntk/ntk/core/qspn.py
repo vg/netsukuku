@@ -590,50 +590,21 @@ class Etp(object):
         #  2. The other net surely won't give up. So we are going to.
         #  3. The other net surely will choose to use the 'lesser netid' method. So we are going to do the same.
         if self.ntkd.neighbour.netid > neigh.netid:
-                # we don't care if we are colliding or not. We can simply
-                # ignore colliding routes, the rest will be done by the other
-                # net.
+                # We are the bigger net.
+                # We cannot use routes from R, since this gateway is going to re-hook.
 
-                ### Remove colliding routes from R
-                R = [ [ (dst, rem, hops) 
-                            for dst, rem, hops in R[lvl]
-                                if self.maproute.node_get(lvl, dst).is_empty() ]
-                        for lvl in xrange(self.maproute.levels) ]
+                ### Remove all routes from R
+                R = [ [] for lvl in xrange(self.maproute.levels) ]
                 ###
                 
-                logging.debug("Etp: collision check: just remove colliding routes from R")
+                logging.debug("Etp: collision check: just remove all routes from R")
                 return (False, R)
         ##
 
         # We are the smaller net.
+        # In any case, we have to re-hook.
+        # TODO Find a way, if possible, to not re-hook. We need however to contact
+        # the coordinator node for our new place in the new network.
+        logging.debug('Etp: we are the smaller net, we must rehook now.')
+        return (True, R)
 
-        ## Check if we are colliding with another (g)node of the neighbour
-        ## net
-        logging.debug('Etp: we are the smaller net, check if we are colliding with another gnode')
-
-        level = self.maproute.nip_cmp(self.maproute.me, gwnip) + 1
-        if level < self.maproute.levels:
-                for dst, rem, hops in R[level]:
-                        if dst == self.maproute.me[level]:
-                                # we are colliding! LET'S REHOOK
-                                logging.debug('Etp: let\'s rehook now.')
-                                return (True, R)
-        ## 
-
-        ## Remove colliding routes directly from our map
-        for lvl in xrange(self.maproute.levels):
-                for dst, rem, hops in R[lvl]:
-                        # The node I know as (lvl, dst) is invalid; it will eventually rehook.
-                        self.maproute.route_reset(lvl, dst)
-        ##
-
-        #From now on, we are in the new net
-        logging.info('From now on, we are in the new net, our network id: %s' % neigh.netid)
-        self.ntkd.neighbour.change_netid(neigh.netid)
-        logging.log(logging.ULTRADEBUG, 'etp_exec: collision_check: warn neighbours of' + \
-                ' my change netid from ' + str(previous_netid) + ' to ' + str(self.ntkd.neighbour.netid))
-        my_ip = self.maproute.nip_to_ip(self.maproute.me)
-        self.neigh.call_ip_netid_change_broadcast_udp(my_ip, previous_netid, my_ip, self.ntkd.neighbour.netid)
-        logging.log(logging.ULTRADEBUG, 'etp_exec: collision_check: called ip_netid_change on broadcast.')
-
-        return (False, R)
