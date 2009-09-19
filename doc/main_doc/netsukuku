@@ -6,7 +6,7 @@
 
 
 
---								
+----					
 
   0. Preface
 
@@ -30,14 +30,11 @@
   
   6. Contacts and Credits
   
---
+----
 
   0.  Preface
 
   This text is the index of the Netsukuku documentation.
-
-  The main papers describing the protocol and the algorithms are in pdf
-  format, the rest are text files.
 
   The Netsukuku website is:
   
@@ -112,7 +109,6 @@
   physical links.
 
   
-  
   3.   Netsukuku RFCs
 
   The Netsukuku RFCs (NTK_RFC) are work in progress documents that expands,
@@ -151,127 +147,6 @@
 
   6.   Contacts and Credits
   
-  **
-  ***  General contacts
-  **
+  Mailing list, IRC channel and authors contacts:
 
-  > Mailing list
-
-  Subscribe to the netsukuku mailing to get help, be updated on the latest news
-  and discuss on its development.
-
-  To subscribe to the list, send a message to:
-  netsukuku-subscribe@lists.dyne.org
-  or use the web interface:
-  http://lists.dyne.org/mailman/listinfo/netsukuku
-
-  You can browse the archive here:
-  http://lists.dyne.org/netsukuku/
-  http://dir.gmane.org/gmane.network.peer-to-peer.netsukuku
-
-  > IRC
-
-  We live night and day in IRC, come to see us on channel
-  #netsukuku on the FreeNode irc server (irc.freenode.org).
-
-
-  **
-  ***  Authors
-  **
-
-  Main authors and maintainers:
-
-  Andrea Lo Pumo aka AlpT <alpt@netsukuku.org>
-
-
-  Contributors (in chronological order of initial contribution):
-
-  Andrea Leofreddi <andrea.leofreddi@gmail.com> wrote the DNS wrapper code
-  (dns_pkt.cpp, dns_rendian.h, dns_utils.h).  
-
-  Enzo Nicosia (Katolaz) <katolaz@netsukuku.org> wrote the files needed to use
-  Automake/Autoconf. (Makefile.am configure.ac, src/Makefile.am,
-  src/man/Makefile.am).
-
-  Federico Tomassini (Efphe) <efphe@netsukuku.org> wrote andns, which provides
-  DNS compatibility for the ANDNA system. He also wrote the interface to the
-  libiptc. (andns* dnslib.[ch] mark.[ch] libiptc/*)
-
-
-  Website developers and maintainers:
-
-  Crash 		<crash@netsukuku.org>,
-  Entropika		<e@entropika.net>,
-  Black			<black@netsukuku.org>
-
-
-  Main theory and documentation:
-  
-  Andrea Lo Pumo   	aka    AlpT			<alpt@netsukuku.org>
- 
- 
-  The NTK_RFC 0006 "Andna and dns":
-  
-  Federico Tomassini    aka    Efphe			<efphe@netsukuku.org>
-  
-  
-  The NTK_RFC 0001 "Gnode contiguity":
-
-  Andrea Lo Pumo   	aka    AlpT			<alpt@netsukuku.org>
-  Enzo Nicosia		aka    Katolaz               <katolaz@netsukuku.org>
-  Andrea Milazzo	aka    Mancausoft	   <andreamilazzo@gmail.com>
-  Emanuele Cammarata	aka    U scinziatu          <scinziatu@freaknet.org>
-  
-
-  Special thanks to:
-  
-  Valvoline the non-existent entity for the implementation advices,
-  Newmark, the hibernated guy who helped in some ANDNA problems,
-  Crash aka "il nipponico bionico" who takes BSD, breathes the 2.4Ghz and
-        worship the great Disagio,
-  Tomak aka "il magnanimo" who watches everything with his crypto eyes and
-        talks in the unrandomish slang,
-  Asbesto aka "l'iniziatore" who lives to destroy the old to build the new,
-  Nirvana who exists everywhere to bring peace in your data,
-  Ram aka "il maledetto poeta" who builds streams of null filled with the
-	infinite,
-  Quest who taught me to look in the Code,
-  Martin, the immortal coder and our beloved father,
-  Elibus, the eternal packet present in your lines,
-  Pallotron, the biatomic super AI used to build stream of consciousness,
-  Entropika, the Great Mother of Enea,
-  Uscinziatu, the attentive,
-  Shezzan, the holy bard of the two worlds,
-  Katolaz,
-  Gamel,
-  ...
-  the list goes on...
-  V C G R A N Q E M P N E T S U K
-
-  and finally thanks to all the
-  
-  Freaknet  Medialab      <www.freaknet.org>
-  
-  whose we are all part, and the poetry
-
-  Poetry Hacklab          <poetry.freaknet.org - poetry.homelinux.org>
-  
-  
-  About the translator of this document, you have to thank this great guy:
-  
-  Salahuddin, the hurd-nipponese old british one, which is always joyful.
-
-
-  **
-  *** Related links
-  **
-  
-  - Wiki       : http://lab.dyne.org/Netsukuku
-  - Cvs online : http://www.hinezumi.org/viewcvs/netsukuku/
-  - Cvs commits: http://cia.navi.cx/stats/project/netsukuku
-  - Bug tracker: http://bugs.dyne.org/
-
-  - http://www.freaknet.org
-  - http://www.dyne.org
-  - http://www.hinezumi.org
-  - http://poetry.freaknet.org
+  http://netsukuku.freaknet.org/?pag=contacts

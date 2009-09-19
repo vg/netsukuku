@@ -3,8 +3,6 @@
 	//	header("Location: http://www.netsukuku.org/?p=Download");
 //	if ($_GET['pag'] == "home")
 //		header("Location: http://www.netsukuku.org/index.php?pag=home");
-//	if ($_GET['pag'] == "about")
-//		header("Location: http://www.netsukuku.org/index.php?pag=about");
 //	if ($_GET['pag'] == "documentation")
 //		header("Location: http://www.netsukuku.org/index.php?pag=documentation");
 //	if ($_GET['pag'] == "faq")
@@ -96,9 +94,9 @@
 	/* END forum compatibility */
 	
 	if (($username == "Guest") || empty($_COOKIE['biscottino_patatina']))
-		$pages = array('home', 'about', 'documentation', 'faq', 'download', 'contacts', 'wiki', 'forum', 'maps');
+		$pages = array('home', 'faq', 'documentation', 'download', 'contacts', 'wiki', 'forum', 'maps');
 	else
-		$pages = array('home', 'about', 'documentation', 'faq', 'download', 'contacts', 'wiki', 'forum', 'maps', 'nodes');
+		$pages = array('home', 'faq', 'documentation', 'download', 'contacts', 'wiki', 'forum', 'maps', 'nodes');
 	
 	$i = 0;
 	

@@ -1,41 +1,44 @@
-* Main authors and maintainers:
+Main authors and maintainers
 
-  Andrea Lo Pumo aka AlpT <alpt@netsukuku.org>
-
-
-* Contributors to the Pyntk code:
-
-  Daniele Tricoli aka Eriol <eriol@mornie.org>
-  Alberto Santini	    <alberto@unix-monk.com>
+  * `Andrea Lo Pumo aka AlpT    <alpt@netsukuku.org>`_
 
 
-* Contributors to the old Netsukuku C code:
+Current Python Netsukuku developers
 
-  Federico Tomassini aka Efphe <efphe@netsukuku.org> 
-  Enzo Nicosia aka Katolaz     <katolaz@netsukuku.org>
-
-
-* Website developers and maintainers:
-
-  Manuel Cangemi aka Crash <crash@netsukuku.org>,
-  Black			   <black@netsukuku.org>
+  * `Daniele Tricoli    aka Eriol  <eriol@mornie.org>`_
+  * `Francesco Losciale aka jnz    <francesco.losciale@gmail.com>`_
+  * `Luca Dionisi       aka Lukisi <luca.dionisi@gmail.com>`_
 
 
-* Occasional contributors:
+Contributors to the old Netsukuku C code
 
-** Pyntk code:
+  * `Federico Tomassini aka Efphe <efphe@netsukuku.org>`_ 
 
-  Sergey Konyahin <sergey.konyahin@gmail.com>
 
-** Documentation:
+Website developers and maintainers
 
-  Ralith		<ralith@gmail.com>
-  Ricardo Lanziano	<ricardo.lanziano@gmail.com>
+  * `Manuel Cangemi aka Crash <crash@netsukuku.org>`_
 
-** Old Netsukuku C code:
 
-  Andrea Leofreddi	<andrea.leofreddi@gmail.com> 
+Occasional contributors
 
-** Website
 
-  Elisa Manara aka Entropika	<e@entropika.net> 
+* Pyntk code
+
+  * `Alberto Santini <alberto@unix-monk.com>`_
+  * `Sergey Konyahin <sergey.konyahin@gmail.com>`_
+
+* Documentation
+
+  * `Ralith		<ralith@gmail.com>`_
+  * `Ricardo Lanziano	<ricardo.lanziano@gmail.com>`_
+
+
+* Old Netsukuku C code
+
+  * `Andrea Leofreddi	       <andrea.leofreddi@gmail.com>`_ 
+  * `Enzo Nicosia aka Katolaz     <katolaz@netsukuku.org>`_
+
+* Website
+
+  * `Elisa Manara aka Entropika	<e@entropika.net>`_ 

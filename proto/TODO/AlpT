@@ -10,3 +10,7 @@ In order:
 - write optimizations
 - performance evaluation without optimizations
 - performance evaluation with optimizations
+
+Misc: 
+
+- port the textual documentation to the ReST format

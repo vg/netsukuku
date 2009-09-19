@@ -1,6 +1,9 @@
 
 == Netsukuku features list ==
 
+List of features for the full version of the Netsukuku software (not yet
+released).
+
 {{{
 
 - The Netsukuku mesh network is: distributed, not hierarchic, and higly
@@ -15,24 +18,13 @@
 - Scalability: Netsukuku is specifically designed to handle an unlimited
 	       number of nodes with minimal CPU and memory resources.
 
-	- The net isn't overloaded with discoveries packet
+	- The net isn't overloaded with discovery packets
 	
-	- The size of the maps is fixed: about 4Kb for the int_map and 16Kb
-	  for  the ext_map.
+	- The size of the maps is fixed, it is just a few kilobytes
 	  
-	- Not all the nodes sends a broadcast discovery.
-	
-	- There are few floods for each discovery.
-	
-	- When a node receives a flood it has already the routes that can be
-	  used to reach all the nodes traversed by the flood. It doesn't need
-	  to calculate anything about them.
+	- Distance-Vector routing approach: when a node receives a flood it
+	  can deduce good routes, no heavy calculation are required.
 	  
-	- A flood is synchronized: the same flood starts at the same time for
-	  all the nodes.
-
-	- http://lab.dyne.org/Netsukuku_scalability
-
 - zeroconf: the network builds itself, without need of human intervention
 
 - ANDNA: distributed and not hierarchic DNS
@@ -69,7 +61,7 @@
 - Internet compatibility
 	- internet sharing
 		* Multi-inet-gateways. 
-		  The Netsukuku nodes will now automatically use multiple
+		  The Netsukuku nodes will automatically use multiple
 		  inet-gateways to connect to the Internet, therefore their
 		  Internet connection will be effectively load-balanced.
 		  
@@ -79,16 +71,12 @@
 		  Through a simple marking system, death loops are avoided.
 		  
 		* Traffic shaping.
-		  The nodes which share their Internet connection can now
+		  The nodes which share their Internet connection can 
 		  shape it, in this way they'll prioritize their local
 		  outgoingtraffic and the lowdelay one (f.e. SSH).
 
-- Routes based on bandwidth and latency
-  http://lab.dyne.org/Ntk_bandwidth_measurement
-
 - NetsukukuD:
-	- low memory and CPU usage
-		- it can run smoothly on a small Access Point
+	- low memory and CPU usage, it can run smoothly on a small Access Point
 		
 	- Support for multipath routes: to reach a destination node, the
 	  packets will use, at the same time, more than one route.
@@ -97,4 +85,7 @@
 	
 	- Multi interfaces multipath: if the node can reach a rnode trough
 	  multiple interfaces, it uses them all with a multipath route.
+
+	- Routes based on bandwidth and latency
+
 }}}

@@ -1,33 +1,23 @@
 				    
-				    
 				    Netsukuku
 			
 			- Close the world, txEn eht nepO -
 
 
 
+Fri Sep 18 18:42:25 CEST 2009
+-----------------------------
 
-La Rete, Tao della conoscenza
-che unisce il molteplice nell'uno,
-deve rinascere libera,
-ed avvolgere in un caldo abbraccio
-la dolce madre Gaia.
+We've done a lot of debugging and we'are almost done with the first
+minimal release of PyNtk, the python implementation of Netsukuku. It
+is minimal because it has just the basic features to create a simple
+Netsukuku network, with hostname management.
+We'are also strengthening the theory and writing proofs about it.
 
-Questo e' il risveglio, 
-il risveglio di tutti noi che finora 
-siamo vissuti immersi nella nebbia,
-braccati dalla chimera di un putrefatto Wired,
-e' il nostro risveglio.
+Expect updates soon!
+In the meantime, check out the mailing list and the SVN repository:
+http://netsukuku.freaknet.org/?pag=contacts
 
-Unitevi e non abbiate timore,
-le porte sono aperte,
-la Rete ci attende.
-
---
-
-**
-****  News
-**
 
 Mon Oct  8 13:19:56 CEST 2007
 -----------------------------
@@ -131,6 +121,5 @@ PS: Right now, dyne.org is down, so the wiki and the ntk mailing list are down
     too.
 
 [1] QSPN v2 document: http://netsukuku.freaknet.org/doc/main_doc/qspn.pdf
-[2] See module.c, event.c, modules/foo/foo.c
-    http://cvs.hinezumi.org/viewcvs/netsukuku/src/
+[2] See module.c, event.c, modules/foo/foo.c, http://cvs.hinezumi.org/viewcvs/netsukuku/src/
 [3] Bug tracker: http://bugs.dyne.org/
