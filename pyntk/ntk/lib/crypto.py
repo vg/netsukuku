@@ -35,8 +35,8 @@ if version_info < (0, 19):
 # Simple hash functions
 ##
 
-# Fowler-Noll-Vo hash function
 def fnv_32_buf(msg, hval=0x811c9dc5):
+    """ Fowler-Noll-Vo hash function """
     for c in xrange(len(msg)):
         hval += (hval<<1) + (hval<<4) + (hval<<7) + (hval<<8) + (hval<<24)
         hval ^= ord(msg[c])
@@ -68,26 +68,31 @@ def verify(msg, signature, pubk):
         return False
 
 def public_key_from_pem(pem_string):
-    return PublicKey(pem_string)
+    return PublicKey(pem_string=pem_string)
+
+def to_pem(pubk):
+    return pubk.as_pem()
 
 class PublicKey():
 
-    def __init__(self, rsa=None, pem_string=None):
+    def __init__(self, pem_string=None, rsa=None):
         if rsa is None and pem_string is None:
             raise CryptoError("Invalid parameter passed to the constructor")
         elif rsa is None:
             self.rsa = load_pub_key_bio(MemoryBuffer(pem_string))
         elif pem_string is None:
             self.rsa = rsa
-
+    
+    def __eq__(self, other):
+        return self.as_pem() == other.as_pem()
+    
     def __getattr__(self, name):
+        if name == 'sign':
+            raise CryptoError("You must use KeyPair to sign messages")
         return getattr(self.rsa, name)
 
-    def verify(self, msg, signature):
-        try:
-            return self.rsa.verify(msg, signature)
-        except RSAError:
-            return False
+    def __hash__(self):
+        return hash(self.as_pem())
 
     def __repr__(self):
         return self.rsa.as_pem()
@@ -95,11 +100,17 @@ class PublicKey():
     def _pack(self):
         return (self.rsa.as_pem(),)
 
+    def verify(self, msg, signature):
+        try:
+            return self.rsa.verify(msg, signature)
+        except RSAError:
+            return False
+
 serializable.register(PublicKey)
 
 class KeyPair():
 
-    def __init__(self, keys_path=settings.KEY_PAIR_DIR):
+    def __init__(self, keys_path):
         if os.path.exists(keys_path) and os.path.getsize(keys_path) > 0:
             self.bio = openfile(keys_path, 'rb')
             self.rsa = load_key_bio(self.bio, callback=do_nothing)
@@ -109,16 +120,24 @@ class KeyPair():
             self.rsa.save_key_bio(self.bio, callback=do_nothing)
             self.rsa.save_pub_key_bio(self.bio)
         self.bio.reset()
-
+        self.public_key = None
+        
     def generate(self, keysize=1024, rsa_pub_exponent=65537):
-        """ Generate a key pair """
+        """ Generate new key pair """
         return gen_key(keysize, rsa_pub_exponent, callback=do_nothing)
+        
+    def regenerate(self, keysize=1024, rsa_pub_exponent=65537):
+        """ Regenerate this key pair """
+        self.public_key = None
+        self.rsa = self.generate()
 
     def get_pub_key(self):
         """ Return just the public key (RSA.RSA_pub) """
-        rsa_pubk = load_pub_key_bio(self.bio)
-        self.bio.reset()
-        return PublicKey(rsa=rsa_pubk)
+        if self.public_key is None:
+            rsa_pubk = load_pub_key_bio(self.bio)
+            self.bio.reset()
+            self.public_key = PublicKey(rsa=rsa_pubk)
+        return self.public_key
 
     def sign(self, msg):
         """ Sign the message with my private key """
