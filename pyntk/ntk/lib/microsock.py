@@ -32,16 +32,19 @@
 #   send is a little over the top.  It should be possible to add it to the
 #   rest of the queued data
 
-from ntk.lib.log import logger as logging
-from ntk.lib.log import get_stackframes
-from ntk.lib.micro import Channel, micro, allmicro_run, micro_block
+import asyncore
+import socket as stdsocket # We need the "socket" name for 
+                           # the function we export.
 import time as stdtime
+
+from ntk.lib.log import get_stackframes
+from ntk.lib.log import logger as logging
+from ntk.lib.micro import Channel, micro, allmicro_run, micro_block
 from ntk.wrap.xtime import swait, time
 
-import asyncore
-import socket as stdsocket # We need the "socket" name for the function we export.
 
-# If we are to masquerade as the socket module, we need to provide the constants.
+# If we are to masquerade as the socket module, 
+# we need to provide the constants.
 if "__all__" in stdsocket.__dict__:
     __all__ = stdsocket.__dict__
     for k, v in stdsocket.__dict__.iteritems():
@@ -164,8 +167,10 @@ def socket(family=AF_INET, type=SOCK_STREAM, proto=0):
     # Ensure that the sockets actually work.
     _manage_sockets_func()
     #stacktrace = get_stackframes(back=1)
-    #logging.log(logging.ULTRADEBUG, 'created dispatcher ' + ret.dispatcher.__repr__() + ' in ' + stacktrace)
-    #logging.log(logging.ULTRADEBUG, 'asyncore map: ' + str(asyncore.socket_map))
+    #logging.log(logging.ULTRADEBUG, 'created dispatcher ' + 
+    #                      ret.dispatcher.__repr__() + ' in ' + stacktrace)
+    #logging.log(logging.ULTRADEBUG, 'asyncore map: ' + 
+    #                     str(asyncore.socket_map))
     return ret
 
 # This is a facade to the dispatcher object.
@@ -197,8 +202,10 @@ class stacklesssocket(object):
     def __del__(self):
         try:
             #stacktrace = get_stackframes(back=1)
-            #logging.log(logging.ULTRADEBUG, '**removed** dispatcher ' + self.dispatcher.__repr__() + ' in ' + stacktrace)
-            #logging.log(logging.ULTRADEBUG, 'asyncore map: ' + str(asyncore.socket_map))
+            #logging.log(logging.ULTRADEBUG, '**removed** dispatcher ' + 
+            #             self.dispatcher.__repr__() + ' in ' + stacktrace)
+            #logging.log(logging.ULTRADEBUG, 'asyncore map: ' + 
+            #             str(asyncore.socket_map))
             # Close dispatcher if it isn't already closed
             if self.dispatcher.fileno() is not None:
                 try:
@@ -256,7 +263,8 @@ class dispatcher(asyncore.dispatcher):
 
     def accept(self, timeout = None):
         if timeout is not None:
-            expiring_sockets.add(self, WaitingSocketsManager.operation_accept, timeout)
+            expiring_sockets.add(self, WaitingSocketsManager.operation_accept,
+                                 timeout)
         if not self.acceptChannel:
             self.acceptChannel = Channel(micro_send=True)
         ret = self.acceptChannel.recv()
@@ -279,7 +287,8 @@ class dispatcher(asyncore.dispatcher):
                 # there is a tasklet known to be waiting, this will happen.
                 self.connectChannel = Channel(prefer_sender=True)
             ret = self.connectChannel.recv()
-            self.connectChannel = None   # To make sure that we don't do again a 'send' on this channel
+            self.connectChannel = None   # To make sure that we don't do again
+                                         # a 'send' on this channel
             # Handling errors
             if isinstance(ret, Exception):
                 raise ret
@@ -310,15 +319,18 @@ class dispatcher(asyncore.dispatcher):
 
     def sendto(self, sendData, sendAddress):
         waitChannel = None
-        for idx, (data, address, channel, sentBytes, waiting_tasklets) in enumerate(self.sendToBuffers):
+        for idx, (data, address, channel, sentBytes, waiting_tasklets) in \
+                   enumerate(self.sendToBuffers):
 
             if address == sendAddress:
-                self.sendToBuffers[idx] = (data + sendData, address, channel, sentBytes, waiting_tasklets + 1)
+                self.sendToBuffers[idx] = (data + sendData, address, channel, 
+                                           sentBytes, waiting_tasklets + 1)
                 waitChannel = channel
                 break
         if waitChannel is None:
             waitChannel = Channel(micro_send=True)
-            self.sendToBuffers.append((sendData, sendAddress, waitChannel, 0, 1))
+            self.sendToBuffers.append((sendData, sendAddress, waitChannel, 0, 
+                                       1))
 
         ret = waitChannel.recv()
         # Handling errors
@@ -337,11 +349,12 @@ class dispatcher(asyncore.dispatcher):
             if len(self.readBufferString) < byteCount:
                 # If our buffer is empty, we must block for more data we also
                 # aggressively request more if it's available.
-                if len(self.readBufferString) == 0 or self.recvChannel.balance > 0:
+                if len(self.readBufferString) == 0 or \
+                   self.recvChannel.balance > 0:
                     self.readBufferString += self.recvChannel.recv()
-            # Disabling this because I believe it is the onus of the application
-            # to be aware of the need to run the scheduler to give other tasklets
-            # leeway to run.
+            # Disabling this because I believe it is the onus of the 
+            # application to be aware of the need to run the scheduler 
+            # to give other tasklets leeway to run.
             # stackless.schedule()
             ret = self.readBufferString[:byteCount]
             self.readBufferString = self.readBufferString[byteCount:]
@@ -352,7 +365,8 @@ class dispatcher(asyncore.dispatcher):
     def recvfrom(self, byteCount, timeout = None):
         self.maxreceivebuf=byteCount
         if timeout is not None:
-            expiring_sockets.add(self, WaitingSocketsManager.operation_recvfrom, timeout)
+            expiring_sockets.add(self, 
+                        WaitingSocketsManager.operation_recvfrom, timeout)
         ret = self.recvChannel.recv()
         if timeout is not None:
             if isinstance(ret,MicrosockTimeout):
@@ -371,17 +385,20 @@ class dispatcher(asyncore.dispatcher):
 
         if self.acceptChannel is not None:
             while self.acceptChannel and self.acceptChannel.balance < 0:
-                self.acceptChannel.send_exception(error, 9, 'Bad file descriptor')
+                self.acceptChannel.send_exception(error, 9, 
+                                                  'Bad file descriptor')
         if self.connectChannel is not None:
             while self.connectChannel and self.connectChannel.balance < 0:
-                self.connectChannel.send_exception(error, 10061, 'Connection refused')
+                self.connectChannel.send_exception(error, 10061, 
+                                                   'Connection refused')
         if self.recvChannel is not None:
             while self.recvChannel and self.recvChannel.balance < 0:
-                # The closing of a socket is indicted by receiving nothing.  The
-                # exception would have been sent if the server was killed, rather
-                # than closed down gracefully.
+                # The closing of a socket is indicted by receiving nothing.  
+                # The exception would have been sent if the server was killed,
+                # rather than closed down gracefully.
                 self.recvChannel.ch.send("")
-                #self.recvChannel.send_exception(error, 10054, 'Connection reset by peer')
+                #self.recvChannel.send_exception(error, 10054, 
+                #                              'Connection reset by peer')
 
     # asyncore doesn't support this.  Why not?
     def fileno(self):
@@ -415,7 +432,8 @@ class dispatcher(asyncore.dispatcher):
     def handle_expt(self):
         # if we were connecting, report error to method connect
         if self.connectChannel is not None:
-            err = self.socket.getsockopt(stdsocket.SOL_SOCKET, stdsocket.SO_ERROR)
+            err = self.socket.getsockopt(stdsocket.SOL_SOCKET, 
+                                         stdsocket.SO_ERROR)
             import os
             from errno import errorcode
             msg = os.strerror(err)
@@ -457,29 +475,38 @@ class dispatcher(asyncore.dispatcher):
             return
         if len(self.sendBuffer):
             try:
-                sentBytes = asyncore.dispatcher.send(self, self.sendBuffer[:512])
+                sentBytes = asyncore.dispatcher.send(self, 
+                                                     self.sendBuffer[:512])
             except Exception as e:
-                logging.log(logging.ULTRADEBUG, 'microsock: dispatcher ' + self.__repr__() + ' in handle_write raised ' + str(type(e)) + ' - ' + str(e))
+                logging.log(logging.ULTRADEBUG, 'microsock: dispatcher ' + 
+                            self.__repr__() + ' in handle_write raised ' + 
+                            str(type(e)) + ' - ' + str(e))
                 self.sendBuffer = ''
                 if self.send_will_handle_exception:
                     self.send_has_exception = e
                 else:
-                    logging.warning('An exception was raised in microsock.dispatcher.handle_write raised, that won\'t be reported.')
+                    logging.warning('An exception was raised in '
+                                    'microsock.dispatcher.handle_write raised'
+                                    ' that won\'t be reported.')
             else:
                 self.sendBuffer = self.sendBuffer[sentBytes:]
         elif len(self.sendToBuffers):
-            data, address, channel, oldSentBytes, waiting_tasklets = self.sendToBuffers[0]
+            data, address, channel, oldSentBytes, waiting_tasklets = \
+            self.sendToBuffers[0]
             try:
                 sentBytes = self.socket.sendto(data, address)
             except Exception as e:
-                logging.log(logging.ULTRADEBUG, 'microsock: dispatcher ' + self.__repr__() + ' in handle_write raised ' + str(type(e)) + ' - ' + str(e))
+                logging.log(logging.ULTRADEBUG, 'microsock: dispatcher ' + 
+                            self.__repr__() + ' in handle_write raised ' + 
+                            str(type(e)) + ' - ' + str(e))
                 del self.sendToBuffers[0]
                 for i in xrange(waiting_tasklets):
                     channel.send(('microsock_error', str(e)))
             else:
                 totalSentBytes = oldSentBytes + sentBytes
                 if len(data) > sentBytes:
-                    self.sendToBuffers[0] = data[sentBytes:], address, channel, totalSentBytes, waiting_tasklets
+                    self.sendToBuffers[0] = data[sentBytes:], address, 
+                    channel, totalSentBytes, waiting_tasklets
                 else:
                     del self.sendToBuffers[0]
                     for i in xrange(waiting_tasklets):

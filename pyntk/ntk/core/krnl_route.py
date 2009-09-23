@@ -22,9 +22,9 @@
 # Listens to MapRoute generated events, and updates the kernel table
 #
 
-from ntk.lib.log import logger as logging
 from ntk.config import settings
 from ntk.lib.event import Event, apply_wakeup_on_event
+from ntk.lib.log import logger as logging
 from ntk.lib.micro import microfunc, micro_block
 from ntk.network import Route as KRoute
 from ntk.network.inet import ip_to_str, lvl_to_bits
@@ -46,9 +46,11 @@ class KrnlRoute(object):
 
         self.neigh.events.listen('NEIGH_NEW', self.neigh_new, priority=5)
         self.neigh_new_calls = []
-        self.neigh.events.listen('NEIGH_DELETED', self.neigh_deleted, priority=15)
+        self.neigh.events.listen('NEIGH_DELETED', self.neigh_deleted, 
+                                 priority=15)
         self.neigh_deleted_calls = []
-        self.neigh.events.listen('NEIGH_REM_CHGED', self.neigh_rem_changed, priority=5)
+        self.neigh.events.listen('NEIGH_REM_CHGED', self.neigh_rem_changed, 
+                                 priority=5)
         self.neigh_rem_changed_calls = []
 
 
@@ -56,7 +58,8 @@ class KrnlRoute(object):
         # We'll do the real thing in a microfunc, but make sure
         # to have a chance to get scheduled as soon as possible
         # and obtain immediately any data that is susceptible to change.
-        self.route_new_calls.append((lvl, dst, gw, rem, self.maproute.node_get(lvl, dst).nroutes()))
+        self.route_new_calls.append((lvl, dst, gw, rem, 
+                        self.maproute.node_get(lvl, dst).nroutes()))
         self._route_new()
         micro_block()
 
@@ -93,7 +96,8 @@ class KrnlRoute(object):
                 newgw_gwipstr = ip_to_str(newgw_neigh.ip)
                 # Change route in the kernel
                 self.neigh.waitfor_gw_added(newgw)
-                KRoute.change(ipstr, lvl_to_bits(lvl), newgw_dev, gateway=newgw_gwipstr)
+                KRoute.change(ipstr, lvl_to_bits(lvl), newgw_dev, 
+                              gateway=newgw_gwipstr)
             else:
                 # Add
                 self.neigh.waitfor_gw_added(gw)
@@ -103,7 +107,8 @@ class KrnlRoute(object):
         # We'll do the real thing in a microfunc, but make sure
         # to have a chance to get scheduled as soon as possible
         # and obtain immediately any data that is susceptible to change.
-        self.route_deleted_calls.append((lvl, dst, gwip, self.maproute.node_get(lvl, dst).is_free()))
+        self.route_deleted_calls.append((lvl, dst, gwip, 
+                        self.maproute.node_get(lvl, dst).is_free()))
         self._route_deleted()
         micro_block()
 
@@ -134,7 +139,8 @@ class KrnlRoute(object):
                 newgw_dev = newgw_neigh.bestdev[0]
                 newgw_gwipstr = ip_to_str(newgw_neigh.ip)
                 # Change route in the kernel
-                KRoute.change(ipstr, lvl_to_bits(lvl), newgw_dev, gateway=newgw_gwipstr)
+                KRoute.change(ipstr, lvl_to_bits(lvl), newgw_dev, 
+                              gateway=newgw_gwipstr)
 
     def route_rem_changed(self, lvl, dst, gw, rem, oldrem):
         # We'll do the real thing in a microfunc, but make sure
@@ -163,7 +169,8 @@ class KrnlRoute(object):
             newgw_gwipstr = ip_to_str(newgw_neigh.ip)
             # Change route in the kernel
             self.neigh.waitfor_gw_added(newgw)
-            KRoute.change(ipstr, lvl_to_bits(lvl), newgw_dev, gateway=newgw_gwipstr)
+            KRoute.change(ipstr, lvl_to_bits(lvl), newgw_dev, 
+                          gateway=newgw_gwipstr)
 
     def neigh_new(self, neigh):
         # We'll do the real thing in a microfunc, but make sure

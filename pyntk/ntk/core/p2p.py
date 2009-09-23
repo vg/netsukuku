@@ -20,16 +20,18 @@
 # Implementation of the P2P Over Ntk RFC. See {-P2PNtk-}
 #
 
+import time
+
 import ntk.lib.rpc as rpc
 import ntk.wrap.xtime as xtime
-import time
+
+from ntk.core.map import Map
+from ntk.lib.event import Event
 from ntk.lib.log import logger as logging
 from ntk.lib.log import get_stackframes
-from ntk.lib.event import Event
-from ntk.lib.rpc   import FakeRmt, RPCDispatcher, CallerInfo
 from ntk.lib.micro import microfunc, Channel, micro_block
 from ntk.lib.rencode import serializable
-from ntk.core.map import Map
+from ntk.lib.rpc import FakeRmt, RPCDispatcher, CallerInfo
 
 
 class P2PError(Exception):
@@ -49,8 +51,9 @@ class ParticipantNode(object):
         return not self.participant
 
     def _pack(self):
-        # lvl and id are not used (as for now) at the time of de-serialization. So
-        # use the value that will produce the smaller output with rencode.dumps.
+        # lvl and id are not used (as for now) at the time of 
+        # de-serialization. So use the value that will produce the 
+        # smaller output with rencode.dumps.
         # TODO test what this value is... perhaps None is better than 0 ?
         return (0, 0, self.participant)
 
@@ -80,7 +83,8 @@ class MapP2P(Map):
         if self.node_get(lvl, id).is_free():
                 self.node_get(lvl, id).participant = True
                 self.node_add(lvl, id)
-        logging.log(logging.ULTRADEBUG, 'P2P: MapP2P updated: ' + str(self.repr_me()))
+        logging.log(logging.ULTRADEBUG, 'P2P: MapP2P updated: ' + 
+                    str(self.repr_me()))
 
     def me_changed(self, old_me, new_me):
         '''Changes self.me
@@ -89,7 +93,8 @@ class MapP2P(Map):
         :param new_me: new nip
         '''
         Map.me_change(self, new_me)
-        logging.log(logging.ULTRADEBUG, 'P2P: MapP2P updated after me_changed: ' + str(self.repr_me()))
+        logging.log(logging.ULTRADEBUG, 'P2P: MapP2P updated after '
+                               'me_changed: ' + str(self.repr_me()))
 
     @microfunc(True)
     def node_del(self, lvl, id):
@@ -110,21 +115,24 @@ class MapP2P(Map):
 
     def map_data_merge(self, (nip, plist, nblist)):
         """Copies a mapp2p from another nip's point of view."""
-        logging.log(logging.ULTRADEBUG, 'Merging a mapp2p.map_data_merge: before: ' + self.repr_me())
+        logging.log(logging.ULTRADEBUG, 'Merging a mapp2p.map_data_merge: '
+                    'before: ' + self.repr_me())
         # Was I participant?
         me_was = [False] * self.levels
         for lvl in xrange(self.levels):
             me_was[lvl] = self.node_get(lvl, self.me[lvl]).participant
         # Merge as usual...
         lvl=self.nip_cmp(nip, self.me)
-        logging.log(logging.ULTRADEBUG, 'Merging a mapp2p at level ' + str(lvl))
+        logging.log(logging.ULTRADEBUG, 'Merging a mapp2p at level ' + 
+                    str(lvl))
         logging.log(logging.ULTRADEBUG, get_stackframes(back=1))
         Map.map_data_merge(self, (nip, plist, nblist))
         # ... ripristine myself.
         for lvl in xrange(self.levels):
             if me_was[lvl]:
                 self.participant_node_add(lvl, self.me[lvl])
-        logging.log(logging.ULTRADEBUG, 'Merging a mapp2p.map_data_merge: after: ' + self.repr_me())
+        logging.log(logging.ULTRADEBUG, 'Merging a mapp2p.map_data_merge: '
+                    'after: ' + self.repr_me())
 
     def repr_me(self, func_repr_node=None):
         def repr_node_mapp2p(node):
@@ -196,14 +204,16 @@ class P2P(RPCDispatcher):
                 if H_hIP[l] is not None:
                     break
             if H_hIP[l] is None:
-                logging.log(logging.ULTRADEBUG, 'H: H(' + str(hIP) + ') = None')
+                logging.log(logging.ULTRADEBUG, 'H: H(' + str(hIP) + 
+                            ') = None')
                 return None
 
             if H_hIP[l] != mp.me[l]:
                 # we can stop here
                 break
 
-        logging.log(logging.ULTRADEBUG, 'H: H(' + str(hIP) + ') = ' + str(H_hIP))
+        logging.log(logging.ULTRADEBUG, 'H: H(' + str(hIP) + ') = ' + 
+                    str(H_hIP))
         return H_hIP
 
     def neigh_get(self, hip):
@@ -222,10 +232,12 @@ class P2P(RPCDispatcher):
         return br.gw
 
     def re_participate(self, *args):
-        """Let's become a participant node again. Used when my nip has changed."""
+        """Let's become a participant node again. Used when my nip 
+        has changed."""
         if self.participant:
             self.participate()
-        logging.log(logging.ULTRADEBUG, 'P2P: MapP2P updated after re_participate: ' + str(self.mapp2p.repr_me()))
+        logging.log(logging.ULTRADEBUG, 'P2P: MapP2P updated after '
+                    're_participate: ' + str(self.mapp2p.repr_me()))
 
     def participate(self):
         """Let's become a participant node"""
@@ -233,31 +245,42 @@ class P2P(RPCDispatcher):
         self.mapp2p.participate()
         current_nr_list = self.neigh.neigh_list(in_my_network=True)
 
-        # TODO handle the case where one of neighbours does not reply (raises an error)
+        # TODO handle the case where one of neighbours does not reply
+        # (raises an error)
         for nr in current_nr_list:
             try:
-                logging.debug('calling participant_add(myself) to %s.' % self.maproute.ip_to_nip(nr.ip))
+                logging.debug('calling participant_add(myself) to %s.' % 
+                              self.maproute.ip_to_nip(nr.ip))
                 self.call_participant_add_udp(nr, self.maproute.me)
-                logging.debug('done calling participant_add(myself) to %s.' % self.maproute.ip_to_nip(nr.ip))
+                logging.debug('done calling participant_add(myself) to %s.' % 
+                              self.maproute.ip_to_nip(nr.ip))
             except:
-                logging.debug('timeout (no problem) calling participant_add(myself) to %s.' % self.maproute.ip_to_nip(nr.ip))
+                logging.debug('timeout (no problem) calling '
+                              'participant_add(myself) to %s.' % 
+                              self.maproute.ip_to_nip(nr.ip))
 
     def call_participant_add_udp(self, neigh, pIP):
         """Use BcastClient to call etp_exec"""
         devs = [neigh.bestdev[0]]
         nip = self.ntkd.maproute.ip_to_nip(neigh.ip)
         netid = neigh.netid
-        return rpc.UDP_call(nip, netid, devs, 'p2p.PID_'+str(self.mapp2p.pid)+'.participant_add_udp', (pIP, ))
+        return rpc.UDP_call(nip, netid, devs, 'p2p.PID_'+str(self.mapp2p.pid)+
+                            '.participant_add_udp', (pIP, ))
 
-    def participant_add_udp(self, _rpc_caller, caller_id, callee_nip, callee_netid, pIP):
+    def participant_add_udp(self, _rpc_caller, caller_id, callee_nip, 
+                            callee_netid, pIP):
         """Returns the result of participant_add to remote caller.
-           caller_id is the random value generated by the caller for this call.
-            It is replied back to the LAN for the caller to recognize a reply destinated to it.
+           caller_id is the random value generated by the caller for 
+           this call.
+            It is replied back to the LAN for the caller to recognize a reply
+            destinated to it.
            callee_nip is the NIP of the callee;
            callee_netid is the netid of the callee.
-            They are used by the callee to recognize a request destinated to it.
+            They are used by the callee to recognize a request destinated to 
+            it.
            """
-        if self.maproute.me == callee_nip and self.neigh.netid == callee_netid:
+        if self.maproute.me == callee_nip and \
+           self.neigh.netid == callee_netid:
             self.participant_add(pIP)
             # Since it is micro, I will reply None
             rpc.UDP_send_reply(_rpc_caller, caller_id, None)
@@ -281,7 +304,8 @@ class P2P(RPCDispatcher):
             while self.maproute.node_get(l, pIP[l]).is_free():
                 xtime.swait(100)
             if not mp.node_get(l, pIP[l]).participant:
-                logging.debug('registering participant (%s, %s) to service %s.' % (l, pIP[l], mp.pid))
+                logging.debug('registering participant (%s, %s) to '
+                              'service %s.' % (l, pIP[l], mp.pid))
                 mp.participant_node_add(l, pIP[l])
                 continue_to_forward = True
 
@@ -290,16 +314,23 @@ class P2P(RPCDispatcher):
 
         # continue to advertise the new participant
 
-        # TODO handle the case where one of neighbours does not reply (raises an error)
-        # TODO do we have to skip the one who sent to us? It is not needed cause it won't forward anyway.
+        # TODO handle the case where one of neighbours does not reply 
+        # (raises an error)
+        # TODO do we have to skip the one who sent to us? It is not 
+        # needed cause it won't forward anyway.
 
         for nr in current_nr_list:
             try:
-                logging.debug('forwarding participant_add(%s) to %s service %s.' % (pIP, self.maproute.ip_to_nip(nr.ip), mp.pid))
+                logging.debug('forwarding participant_add(%s) to '
+                              '%s service %s.' % 
+                              (pIP, self.maproute.ip_to_nip(nr.ip), mp.pid))
                 self.call_participant_add_udp(nr, pIP)
-                logging.debug('done forwarding participant_add(%s) to %s.' % (pIP, self.maproute.ip_to_nip(nr.ip)))
+                logging.debug('done forwarding participant_add(%s) to %s.' % 
+                              (pIP, self.maproute.ip_to_nip(nr.ip)))
             except:
-                logging.debug('timeout (no problem) forwarding participant_add(%s) to %s.' % (pIP, self.maproute.ip_to_nip(nr.ip)))
+                logging.debug('timeout (no problem) forwarding '
+                              'participant_add(%s) to %s.' % 
+                              (pIP, self.maproute.ip_to_nip(nr.ip)))
 
 
     def msg_send(self, sender_nip, hip, msg):
@@ -308,12 +339,15 @@ class P2P(RPCDispatcher):
 
         msg: it is a (func_name, args) pair."""
 
-        logging.log(logging.ULTRADEBUG, 'Someone is asking for P2P service to ' + str(hip))
+        logging.log(logging.ULTRADEBUG, 'Someone is asking for P2P '
+                                        'service to ' + str(hip))
         H_hip = self.H(hip)
         logging.log(logging.ULTRADEBUG, ' nearest known is ' + str(H_hip))
         if H_hip == self.mapp2p.me:
             # the msg has arrived
-            logging.debug('I have been asked a P2P service, as the nearest to ' + str(hip) + ' (msg=' + str(msg) + ')')
+            logging.debug('I have been asked a P2P service, as the '
+                          'nearest to ' + str(hip) + ' (msg=' + str(msg) +
+                          ')')
             return self.msg_exec(sender_nip, msg)
 
         # forward the message until it arrives at destination
@@ -321,36 +355,48 @@ class P2P(RPCDispatcher):
         if n:
             logging.log(logging.ULTRADEBUG, ' through ' + str(n))
             ret = None
-            execstr = 'ret = n.ntkd.p2p.PID_' + str(self.mapp2p.pid) + '.msg_send(sender_nip, hip, msg)'
-            logging.log(logging.ULTRADEBUG, 'Executing "' + execstr + '" ...')
+            execstr = 'ret = n.ntkd.p2p.PID_' + str(self.mapp2p.pid) + \
+            '.msg_send(sender_nip, hip, msg)'
+            logging.log(logging.ULTRADEBUG, 'Executing "' + execstr + \
+                        '" ...')
             exec(execstr)
-            logging.log(logging.ULTRADEBUG, 'Executed "' + execstr + '". Returning ' + str(ret))
+            logging.log(logging.ULTRADEBUG, 'Executed "' + execstr + \
+                        '". Returning ' + str(ret))
             return ret
         else:
             # Is it possible? Don't we retry?
-            logging.warning('I don\'t know to whom I must forward. Giving up. Raising exception.')
+            logging.warning('I don\'t know to whom I must forward. '
+                            'Giving up. Raising exception.')
             logging.warning('This is mapp2p.')
             logging.warning(self.mapp2p.repr_me())
             logging.warning('This is maproute.')
             logging.warning(Map.repr_me(self.maproute))
-            raise Exception('Unreachable P2P destination ' + str(H_hip) + ' from ' + str(self.maproute.me) + '.')
+            raise Exception('Unreachable P2P destination ' + str(H_hip) + 
+                            ' from ' + str(self.maproute.me) + '.')
 
     def call_msg_send_udp(self, neigh, sender_nip, hip, msg):
         """Use BcastClient to call msg_send"""
         devs = [neigh.bestdev[0]]
         nip = self.maproute.ip_to_nip(neigh.ip)
         netid = neigh.netid
-        return rpc.UDP_call(nip, netid, devs, 'p2p.PID_' + str(self.mapp2p.pid) + '.msg_send_udp', (sender_nip, hip, msg))
+        return rpc.UDP_call(nip, netid, devs, 'p2p.PID_' + 
+                            str(self.mapp2p.pid) + '.msg_send_udp', 
+                            (sender_nip, hip, msg))
 
-    def msg_send_udp(self, _rpc_caller, caller_id, callee_nip, callee_netid, sender_nip, hip, msg):
+    def msg_send_udp(self, _rpc_caller, caller_id, callee_nip, callee_netid, 
+                     sender_nip, hip, msg):
         """Returns the result of msg_send to remote caller.
-           caller_id is the random value generated by the caller for this call.
-            It is replied back to the LAN for the caller to recognize a reply destinated to it.
+           caller_id is the random value generated by the caller 
+           for this call.
+            It is replied back to the LAN for the caller to recognize a 
+            reply destinated to it.
            callee_nip is the NIP of the callee;
            callee_netid is the netid of the callee.
-            They are used by the callee to recognize a request destinated to it.
+            They are used by the callee to recognize a request destinated 
+            to it.
            """
-        if self.maproute.me == callee_nip and self.neigh.netid == callee_netid:
+        if self.maproute.me == callee_nip and \
+           self.neigh.netid == callee_netid:
             ret = None
             rpc.UDP_send_keepalive_forever_start(_rpc_caller, caller_id)
             try:
@@ -359,7 +405,8 @@ class P2P(RPCDispatcher):
                 logging.log(logging.ULTRADEBUG, 'returning ' + str(ret))
             except Exception as e:
                 ret = ('rmt_error', e.message)
-                logging.warning('msg_send_udp: returning exception ' + str(ret))
+                logging.warning('msg_send_udp: returning exception ' + 
+                                str(ret))
             finally:
                 rpc.UDP_send_keepalive_forever_stop(caller_id)
             logging.log(logging.ULTRADEBUG, 'calling UDP_send_reply...')
@@ -390,7 +437,8 @@ class P2P(RPCDispatcher):
             if self.H_hip is None:
                 return None
             if self.peer_is_me():
-                raise Exception, "Peer is me. You shouldn't ask for neigh, without checking."
+                raise Exception, ("Peer is me. You shouldn't ask for "
+                                  "neigh, without checking.")
             return self.p2p.neigh_get(self.H_hip)
 
         def rmt(self, func_name, *params):
@@ -398,16 +446,22 @@ class P2P(RPCDispatcher):
             self.prepare_rmt()
             if self.neigh:
                 # We are requested to use this one as first hop via UDP.
-                logging.log(logging.ULTRADEBUG, 'P2P: Use UDP via ' + str(self.neigh) + ' to reach peer.')
-                return self.p2p.call_msg_send_udp(self.neigh, self.p2p.maproute.me, self.hIP, (func_name, params))
+                logging.log(logging.ULTRADEBUG, 'P2P: Use UDP via ' + 
+                            str(self.neigh) + ' to reach peer.')
+                return self.p2p.call_msg_send_udp(self.neigh, 
+                                                  self.p2p.maproute.me, 
+                                                  self.hIP, (func_name, 
+                                                             params))
             else:
                 # Use TCP version.
                 logging.log(logging.ULTRADEBUG, 'P2P: Use TCP to reach peer.')
-                return self.p2p.msg_send(self.p2p.maproute.me, self.hIP, (func_name, params))
+                return self.p2p.msg_send(self.p2p.maproute.me, self.hIP, 
+                                         (func_name, params))
 
     def peer(self, hIP=None, key=None, neigh=None):
         if hIP is None and key is None:
-                raise Exception, "hIP and key are both None. Specify at least one"
+                raise Exception, ("hIP and key are both None. "
+                                  "Specify at least one")
         return self.RmtPeer(self, hIP=hIP, key=key, neigh=neigh)
 
 
@@ -461,13 +515,15 @@ class P2PAll(object):
         """Used to add for the first time a P2P instance of a module in the
            P2PAll dictionary."""
 
-        logging.log(logging.ULTRADEBUG, 'Called P2PAll.p2p_register for ' + str(p2p.pid) + '...')
+        logging.log(logging.ULTRADEBUG, 'Called P2PAll.p2p_register for ' + 
+                    str(p2p.pid) + '...')
         # It's possible that the stub P2P instance `self.pid_get(p2p.pid)'
         # created by pid_add() has an update map of participants, which has
         # been accumulated during the time. Copy this map in the `p2p'
         # instance to be sure.
         if p2p.pid in self.service:
-            logging.log(logging.ULTRADEBUG, 'Called P2PAll.p2p_register for ' + str(p2p.pid) + '... cloning...')
+            logging.log(logging.ULTRADEBUG, 'Called P2PAll.p2p_register '
+                        'for ' + str(p2p.pid) + '... cloning...')
             map_pack = self.pid_get(p2p.pid).mapp2p.map_data_pack()
             p2p.mapp2p.map_data_merge(map_pack)
         self.service[p2p.pid] = p2p
@@ -483,7 +539,8 @@ class P2PAll(object):
         It gets the P2P maps from our nearest neighbour"""
 
         logging.log(logging.ULTRADEBUG, 'P2P hooking: started')
-        logging.log(logging.ULTRADEBUG, 'P2P hooking: My actual list of services is: ' + str(self.log_services()))
+        logging.log(logging.ULTRADEBUG, 'P2P hooking: My actual list of '
+                    'services is: ' + str(self.log_services()))
         ## Find our nearest neighbour
         neighs_in_net = self.neigh.neigh_list(in_my_network=True)
         while True:
@@ -498,24 +555,29 @@ class P2PAll(object):
 
             if minnr is None:
                 # nothing to do
-                logging.log(logging.ULTRADEBUG, 'P2P hooking: No neighbours to ask for the list of services.')
+                logging.log(logging.ULTRADEBUG, 'P2P hooking: No neighbours '
+                            'to ask for the list of services.')
                 break
 
-            logging.log(logging.ULTRADEBUG, 'P2P hooking: I will ask for the list of services to ' + str(minnr))
+            logging.log(logging.ULTRADEBUG, 'P2P hooking: I will ask for the '
+                        'list of services to ' + str(minnr))
             try:
                 nrmaps_pack = minnr.ntkd.p2p.pid_getall()
             except:
-                logging.warning('P2P hooking: Asking to ' + str(minnr) + ' failed.')
+                logging.warning('P2P hooking: Asking to ' + str(minnr) + 
+                                ' failed.')
                 neighs_in_net.remove(minnr)
                 continue
-            logging.log(logging.ULTRADEBUG, 'P2P hooking: ' + str(minnr) + ' answers ' + str(nrmaps_pack))
+            logging.log(logging.ULTRADEBUG, 'P2P hooking: ' + str(minnr) + 
+                        ' answers ' + str(nrmaps_pack))
             for (pid, map_pack) in nrmaps_pack:
                 self.pid_get(pid).mapp2p.map_data_merge(map_pack)
 
             for s in self.service:
                     if self.service[s].participant:
                             self.service[s].participate()
-            logging.log(logging.ULTRADEBUG, 'P2P hooking: My final list of services is: ' + str(self.log_services()))
+            logging.log(logging.ULTRADEBUG, 'P2P hooking: My final list of '
+                        'services is: ' + str(self.log_services()))
             break
 
         self.events.send('P2P_HOOKED', ())

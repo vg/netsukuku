@@ -17,10 +17,11 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
+import functools
+
 from ntk.lib.log import logger as logging
 from ntk.lib.log import get_stackframes
 from micro import Channel, microfunc
-import functools
 
 class EventError(Exception):pass
 
@@ -34,7 +35,8 @@ class Event:
 
             class M:
                 def __init__(self):
-                        self.events = Event( ['EVENT1', 'EVENT2', 'FOOEVENT'] )
+                        self.events = Event( ['EVENT1', 'EVENT2', 
+                                              'FOOEVENT'] )
                         ...
                         self.events.add( ['EVENT3', 'EVENT4'] )
 
@@ -88,7 +90,8 @@ class Event:
 
         if event in self.listeners:
             unorderedlist = self.listeners[event]
-            for dst_pair in sorted(unorderedlist, reverse=False, key=priority):
+            for dst_pair in sorted(unorderedlist, reverse=False, 
+                                   key=priority):
                 self._send(dst(dst_pair), msg)
 
     def _send(self, dst, msg):
@@ -128,13 +131,15 @@ def wakeup_on_event(events=[]):
         def go_out(param1, param2, event_wait=None):
                 ...
                 
-                msg = event_wait[(wheater_events, 'IT_IS_SUNNY')]() # Block and wait the event 'IT_IS_SUNNY'
+                msg = event_wait[(wheater_events, 'IT_IS_SUNNY')]() 
+                # Block and wait the event 'IT_IS_SUNNY'
 
                 # Ok, here I've received the event 'IT_IS_SUNNY'. `msg' is the
                 # data sent along with the event
                 do_stuff()
                 ...
-    Note: event_wait is a dictionary of the following type: { (event_instance, evname) : wait_func }
+    Note: event_wait is a dictionary of the following type: 
+                { (event_instance, evname) : wait_func }
     '''
     
     class Channel_with_wakeup(Channel):
@@ -145,41 +150,54 @@ def wakeup_on_event(events=[]):
         ## dependent on this Channel
 
         def _wakeup_on_event_dispatcher(self, *event_data):
-            logging.log(logging.ULTRADEBUG, 'I will send a wakeup on chan ' + str(self))
+            logging.log(logging.ULTRADEBUG, 'I will send a wakeup on chan ' + 
+                        str(self))
             stacktrace = get_stackframes(back=1)
-            logging.log(logging.ULTRADEBUG, '  the event above was called from ' + stacktrace)
+            logging.log(logging.ULTRADEBUG, '  the event above was called '
+                        'from ' + stacktrace)
             self.__wakeup_on_event_dispatcher(*event_data)
 
         @microfunc()   # Each call is queued. No event will be lost
         def __wakeup_on_event_dispatcher(self, *event_data):
             self.bcast_send(event_data)  # blocks if necessary
-            logging.log(logging.ULTRADEBUG, 'wakeup sent on chan ' + str(self))
+            logging.log(logging.ULTRADEBUG, 'wakeup sent on chan ' + 
+                        str(self))
 
         def event_wait_func(self):
-            logging.log(logging.ULTRADEBUG, 'wakeup receiving on chan ' + str(self))
+            logging.log(logging.ULTRADEBUG, 'wakeup receiving on chan ' + 
+                        str(self))
             stacktrace = get_stackframes(back=1)
-            logging.log(logging.ULTRADEBUG, '  the event_wait above was called from ' + stacktrace)
+            logging.log(logging.ULTRADEBUG, '  the event_wait above was '
+                        'called from ' + stacktrace)
             ret = self.recv()
-            logging.log(logging.ULTRADEBUG, 'wakeup received on chan ' + str(self))
-            logging.log(logging.ULTRADEBUG, '  the event_wait above was called from ' + stacktrace)
+            logging.log(logging.ULTRADEBUG, 'wakeup received on chan ' + 
+                        str(self))
+            logging.log(logging.ULTRADEBUG, '  the event_wait above was '
+                        'called from ' + stacktrace)
             return ret
 
     def decorate(func):
         event_wait_func_dict={ }  # { (ev, evname) : wait_func }
         for ev, evname in events:
                 chan = Channel_with_wakeup()
-                logging.log(logging.ULTRADEBUG, 'wakeup decorator on func ' + str(func) + ': created chan for ' + evname + ', chan ' + str(chan))
+                logging.log(logging.ULTRADEBUG, 'wakeup decorator on func ' 
+                            + str(func) + ': created chan for ' + evname + 
+                            ', chan ' + str(chan))
                 stacktrace = get_stackframes(back=1)
-                if stacktrace.find('apply_wakeup_on_event') >= 0: stacktrace = get_stackframes(back=2)
-                logging.log(logging.ULTRADEBUG, '  the decoration above was called from ' + stacktrace)
+                if stacktrace.find('apply_wakeup_on_event') >= 0: 
+                    stacktrace = get_stackframes(back=2)
+                logging.log(logging.ULTRADEBUG, '  the decoration above was '
+                            'called from ' + stacktrace)
 
-                # Register _wakeup_on_event_dispatcher as a listener of the specified event
+                # Register _wakeup_on_event_dispatcher as a listener of the 
+                # specified event
                 ev.listen(evname, chan._wakeup_on_event_dispatcher)
                 ##
 
                 event_wait_func_dict[(ev, evname)] = chan.event_wait_func
 
-        func_with_wait=functools.partial(func, event_wait=event_wait_func_dict)
+        func_with_wait=functools.partial(func, 
+                                         event_wait=event_wait_func_dict)
         
         # if the method must be remotable (and used by rpc), we need 
         # to add this attributes to the functools.partial function
@@ -202,7 +220,8 @@ def apply_wakeup_on_event(func, events=[]):
         applied. F.e:
                 def go_out(param1, param2, event_wait=None):
                         ... # the same as the example of wakeup_on_event()
-                go_out=apply_wakeup_on_event(go_out, events=[(wheater_events, 'IT_IS_SUNNY')])
+                go_out=apply_wakeup_on_event(go_out, events=[(wheater_events, 
+                                                             'IT_IS_SUNNY')])
         '''
                 
         @wakeup_on_event(events)

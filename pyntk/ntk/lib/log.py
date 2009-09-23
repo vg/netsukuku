@@ -52,7 +52,8 @@ def init_logger():
     logger.ULTRADEBUG = 5
     logging.addLevelName(logger.ULTRADEBUG, 'ULTRADEBUG')
     if settings.VERBOSE_LEVEL > 4: settings.VERBOSE_LEVEL = 4
-    levels = {0 : logging.ERROR, 1 : logging.WARNING, 2 : logging.INFO, 3 : logging.DEBUG, 4 : logger.ULTRADEBUG}
+    levels = {0 : logging.ERROR, 1 : logging.WARNING, 2 : logging.INFO, 
+              3 : logging.DEBUG, 4 : logger.ULTRADEBUG}
     logger.setLevel(levels[settings.VERBOSE_LEVEL])
     logger.addHandler(rfh)
 
@@ -69,7 +70,8 @@ def get_stackframes(back=0):
 def get_stackframes_repr(frame):
     ret = []
     while True:
-        ret.append((frame.f_code.co_filename, frame.f_code.co_name, frame.f_lineno))
+        ret.append((frame.f_code.co_filename, frame.f_code.co_name, 
+                    frame.f_lineno))
         frame = frame.f_back
         if not frame: break
     return ret.__repr__()
@@ -82,6 +84,8 @@ def log_exception_stacktrace(e, indent=2):
     logger.error(spaces + "Stacktrace:")
     frames = traceback.extract_tb(tb)
     for fr in frames:
-        logger.error(spaces + "  File \"%s\", line %s, in %s" % (fr[0], fr[1], fr[2]))
+        logger.error(spaces + "  File \"%s\", line %s, in %s" % (fr[0], 
+                                                                 fr[1], 
+                                                                 fr[2]))
         logger.error(spaces + "    %s" % (fr[3], ))
 

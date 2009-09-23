@@ -17,15 +17,17 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
+import time
+
+import ntk.lib.rpc as rpc
+import ntk.wrap.xtime as xtime
+
+from ntk.core.route import NullRem, DeadRem
+from ntk.lib.event import Event, apply_wakeup_on_event
 from ntk.lib.log import logger as logging
 from ntk.lib.micro import microfunc, micro_block, DispatcherToken
 from ntk.lib.rpc import RPCError
-import ntk.lib.rpc as rpc
-from ntk.lib.event import Event, apply_wakeup_on_event
 from ntk.network.inet import ip_to_str
-from ntk.core.route import NullRem, DeadRem
-import ntk.wrap.xtime as xtime
-import time
 
 etp_exec_dispatcher_token = DispatcherToken()
 
@@ -58,16 +60,19 @@ class Etp(object):
         """Sends the `etp' to neigh"""
 
         if current_netid != self.ntkd.neighbour.netid:
-            logging.info('An ETP dropped because we changed network from ' + \
-                    str(current_netid) + ' to ' + str(self.ntkd.neighbour.netid) + '.')
+            logging.info('An ETP dropped because we changed network from ' +
+                         str(current_netid) + ' to ' + 
+                         str(self.ntkd.neighbour.netid) + '.')
             return
         logging.debug('Etp: sending to %s', str(neigh))
         try:
-            self.call_etp_exec_udp(neigh, self.maproute.me, self.ntkd.neighbour.netid, *etp)
+            self.call_etp_exec_udp(neigh, self.maproute.me, 
+                                   self.ntkd.neighbour.netid, *etp)
             logging.info('Sent ETP to %s', ip_to_str(neigh.ip))
             # RPCErrors may arise for many reasons. We should not care.
         except RPCError:
-            logging.debug('Etp: sending to %s RPCError. We ignore it.', str(neigh))
+            logging.debug('Etp: sending to %s RPCError. We ignore it.', 
+                          str(neigh))
         else:
             logging.debug('Etp: sending to %s done.', str(neigh))
 
@@ -79,21 +84,23 @@ class Etp(object):
             # I'm hooking, I must not react to this event.
             # TODO probably we can safely remove this test because
             #  when self.netid == -1 in radar the NEIGH_XXX are not emitted.
-            logging.warning('QSPN: new link %s: detected while hooking!', ip_to_str(neigh.ip))
+            logging.warning('QSPN: new link %s: detected while hooking!', 
+                            ip_to_str(neigh.ip))
             return
 
-        # Memorize current netid because it might change. In this case the ETP should not
-        # be sent.
+        # Memorize current netid because it might change. In this case the 
+        # ETP should not be sent.
         current_netid = self.ntkd.neighbour.netid
 
         current_nr_list = self.neigh.neigh_list(in_my_network=True)
-        logging.debug('QSPN: death of %s: update my map.', ip_to_str(neigh.ip))
+        logging.debug('QSPN: death of %s: update my map.', 
+                      ip_to_str(neigh.ip))
         
         ## Create R
-        # Note that R has to be created for each one of our neighbours. It must
-        # contain all the routes through the dead gateway that each one of our neighbours
-        # knows through us. So we must evaluate the best routes *excluding neigh x* that
-        # pass through the dead gateway.
+        # Note that R has to be created for each one of our neighbours. 
+        # It must contain all the routes through the dead gateway that each 
+        # one of our neighbours knows through us. So we must evaluate the 
+        # best routes *excluding neigh x* that pass through the dead gateway.
         def gw_is_neigh((dst, gw, rem, hops)):
             return gw.id == neigh.id
         set_of_R = {}
@@ -101,7 +108,8 @@ class Etp(object):
             if nr.id != neigh.id:
                 # It's a tough work! Be kind to other tasks.
                 xtime.swait(10)
-                set_of_R[nr.id] = self.maproute.bestroutes_get(f=gw_is_neigh, exclude_gw_ids=[nr.id])
+                set_of_R[nr.id] = self.maproute.bestroutes_get(f=gw_is_neigh, 
+                                                    exclude_gw_ids=[nr.id])
         ##
 
         ## Update the map
@@ -109,12 +117,13 @@ class Etp(object):
         self.maproute.routeneigh_del(neigh)
         ##
 
-        logging.debug('QSPN: death of %s: prepare the ETP', ip_to_str(neigh.ip))
+        logging.debug('QSPN: death of %s: prepare the ETP', 
+                      ip_to_str(neigh.ip))
         
         ## Prepare common part of the ETPs for the neighbours
 
         flag_of_interest=1
-        TP = [[self.maproute.me[0], NullRem()]]    # Tracer Packet included in
+        TP = [[self.maproute.me[0], NullRem()]] # Tracer Packet included in
         block_lvl = 0                           # the first block of the ETP
         ##
 
@@ -133,7 +142,8 @@ class Etp(object):
                     # We must forward.
 
                     if is_listlist_empty(set_of_R[nr.id]):
-                        # R is empty, that is we don't have routes passing by `gw'.
+                        # R is empty, that is we don't have routes passing 
+                        # by `gw'.
                         # Therefore, nothing to do for this neighbour.
                         continue
 
@@ -160,7 +170,8 @@ class Etp(object):
                     R2 = [
                           [ (dst,
                              rem_or_none(
-                                self.maproute.node_get(lvl, dst).best_route(exclude_gw_ids=exclude_gw_ids)
+                                self.maproute.node_get(lvl, dst).
+                                best_route(exclude_gw_ids=exclude_gw_ids)
                                 ),
                              hops+[self.maproute.nip_to_ip(self.maproute.me)]
                             ) for (dst,gw,rem,hops) in set_of_R[nr.id][lvl]
@@ -180,27 +191,33 @@ class Etp(object):
 
         if self.ntkd.neighbour.netid == -1:
             # I'm hooking, I must not react to this event.
-            # NOTE: this method gets called with COLLIDING_NEIGH_NEW too. So we need to check.
-            logging.warning('QSPN: new link %s: detected while hooking!', ip_to_str(neigh.ip))
+            # NOTE: this method gets called with COLLIDING_NEIGH_NEW too. 
+            # So we need to check.
+            logging.warning('QSPN: new link %s: detected while hooking!', 
+                            ip_to_str(neigh.ip))
             return
 
-        # I will send an ETP to the new neighbour, which could be in another network. So
-        # I must be sure to give to him *all* the routes I know, to be sure that when
-        # he detects the collision he will have all data to calculate who is going to rehook.
+        # I will send an ETP to the new neighbour, which could be in another 
+        # network. So I must be sure to give to him *all* the routes I know, 
+        # to be sure that when he detects the collision he will have all data 
+        # to calculate who is going to rehook.
         # Therefore, I have to wait for all pending etp_exec.
         if etp_exec_dispatcher_token.executing:
-            logging.log(logging.ULTRADEBUG, 'QSPN: new link for ' + str(neigh) + ': delayed because etp is executing.')
+            logging.log(logging.ULTRADEBUG, 'QSPN: new link for ' + 
+                        str(neigh) + ': delayed because etp is executing.')
             while etp_exec_dispatcher_token.executing:
                 # I'm not ready to interact.
                 time.sleep(0.001)
                 micro_block()
-            logging.log(logging.ULTRADEBUG, 'QSPN: new link for ' + str(neigh) + ': now we can go on.')
+            logging.log(logging.ULTRADEBUG, 'QSPN: new link for ' + 
+                        str(neigh) + ': now we can go on.')
 
-        # Memorize current netid because it might change. In this case the ETP should not
-        # be sent.
+        # Memorize current netid because it might change. In this case the 
+        # ETP should not be sent.
         current_netid = self.ntkd.neighbour.netid
 
-        logging.debug('QSPN: new link for ' + str(neigh) + ': prepare the ETP')
+        logging.debug('QSPN: new link for ' + str(neigh) + 
+                      ': prepare the ETP')
         current_nr_list = self.neigh.neigh_list()
 
         # Through which devs do I see the new neighbour?
@@ -250,11 +267,12 @@ class Etp(object):
             # I'm hooking, I must not react to this event.
             # TODO probably we can safely remove this test because
             #  when self.netid == -1 in radar the NEIGH_XXX are not emitted.
-            logging.warning('QSPN: new link %s: detected while hooking!', ip_to_str(neigh.ip))
+            logging.warning('QSPN: new link %s: detected while hooking!', 
+                            ip_to_str(neigh.ip))
             return
 
-        # Memorize current netid because it might change. In this case the ETP should not
-        # be sent.
+        # Memorize current netid because it might change. In this case the 
+        # ETP should not be sent.
         current_netid = self.ntkd.neighbour.netid
 
         current_nr_list = self.neigh.neigh_list()
@@ -264,11 +282,13 @@ class Etp(object):
         self.maproute.routeneigh_rem(neigh, oldrem)
         ##
 
-        logging.debug('QSPN: changed %s: prepare the ETP', ip_to_str(neigh.ip))
+        logging.debug('QSPN: changed %s: prepare the ETP', 
+                      ip_to_str(neigh.ip))
 
         # We must evaluate *all* the routes that
         # pass through the changed-rem gateway.
-        exclude_gw_ids = [nr.id for nr in current_nr_list if nr.id != neigh.id]
+        exclude_gw_ids = [nr.id for nr in current_nr_list 
+                                   if nr.id != neigh.id]
         R = self.maproute.bestroutes_get(exclude_gw_ids=exclude_gw_ids)
         xtime.swait(10)
         def takeoff_gw((dst, gw, rem, hops)):
@@ -292,24 +312,33 @@ class Etp(object):
             TPL[-1][1].append([self.maproute.me[0], neigh.rem])
 
         logging.info('Forwarding ETP for a changed-rem neighbour.')
-        self.etp_forward_referring_to_neigh(R, TPL, flag_of_interest, neigh, current_netid)
+        self.etp_forward_referring_to_neigh(R, TPL, flag_of_interest, neigh, 
+                                            current_netid)
 
-    def call_etp_exec_udp(self, neigh, sender_nip, sender_netid, R, TPL, flag_of_interest):
+    def call_etp_exec_udp(self, neigh, sender_nip, sender_netid, R, TPL, 
+                          flag_of_interest):
         """Use BcastClient to call etp_exec"""
         devs = [neigh.bestdev[0]]
         nip = self.ntkd.maproute.ip_to_nip(neigh.ip)
         netid = neigh.netid
-        return rpc.UDP_call(nip, netid, devs, 'etp.etp_exec_udp', (sender_nip, sender_netid, R, TPL, flag_of_interest))
+        return rpc.UDP_call(nip, netid, devs, 'etp.etp_exec_udp', 
+                            (sender_nip, sender_netid, R, TPL, 
+                             flag_of_interest))
 
-    def etp_exec_udp(self, _rpc_caller, caller_id, callee_nip, callee_netid, sender_nip, sender_netid, R, TPL, flag_of_interest):
+    def etp_exec_udp(self, _rpc_caller, caller_id, callee_nip, callee_netid, 
+                     sender_nip, sender_netid, R, TPL, flag_of_interest):
         """Returns the result of etp_exec to remote caller.
-           caller_id is the random value generated by the caller for this call.
-            It is replied back to the LAN for the caller to recognize a reply destinated to it.
+           caller_id is the random value generated by the caller 
+           for this call.
+            It is replied back to the LAN for the caller to recognize a 
+            reply destinated to it.
            callee_nip is the NIP of the callee;
            callee_netid is the netid of the callee.
-            They are used by the callee to recognize a request destinated to it.
+            They are used by the callee to recognize a request 
+            destinated to it.
            """
-        if self.maproute.me == callee_nip and self.neigh.netid == callee_netid:
+        if self.maproute.me == callee_nip and \
+           self.neigh.netid == callee_netid:
             self.etp_exec(sender_nip, sender_netid, R, TPL, flag_of_interest)
             # Since it is micro, I will reply None
             rpc.UDP_send_reply(_rpc_caller, caller_id, None)
@@ -333,18 +362,20 @@ class Etp(object):
         # Ignore ETP from -1 ... that should not happen.
         if sender_netid == -1:
             # I raise exception just to give more visibility.
-            raise Exception('ETP received from a node with netid = -1 (not completely kooked).')
+            raise Exception('ETP received from a node with netid = -1 '
+                            '(not completely kooked).')
 
         while self.ntkd.neighbour.netid == -1:
             # I'm not ready to interact.
             time.sleep(0.001)
             micro_block()
 
-        # Memorize current netid because it might change. In this case the ETP should not
-        # be sent.
+        # Memorize current netid because it might change. In this case the 
+        # ETP should not be sent.
         current_netid = self.ntkd.neighbour.netid
 
-        logging.info('Received ETP from (nip, netid) = ' + str((sender_nip, sender_netid)))
+        logging.info('Received ETP from (nip, netid) = ' + str((sender_nip, 
+                                                             sender_netid)))
         gwnip = sender_nip
         gwip = self.maproute.nip_to_ip(gwnip)
 
@@ -359,7 +390,8 @@ class Etp(object):
                 lvl = block[0] # the level of the block
                 if lvl < level:
                         block[0] = level                     
-                        blockrem = sum([rem for hop, rem in block[1]], NullRem())
+                        blockrem = sum([rem for hop, rem in block[1]], 
+                                       NullRem())
                         block[1] = [[gwnip[level], blockrem]]
         
         
@@ -397,7 +429,8 @@ class Etp(object):
         ## ATP rule
         for lvl, pairs in TPL:
             if self.maproute.me[lvl] in [hop for hop, rem in pairs]:
-                logging.debug('ETP received: Executing: Ignore ETP because of Acyclic Rule.')
+                logging.debug('ETP received: Executing: Ignore ETP because '
+                              'of Acyclic Rule.')
                 return    # drop the pkt
         ##
 
@@ -414,16 +447,19 @@ class Etp(object):
         if colliding:
                 # Collision detected. Let's rehook.
                 the_others = self.neigh.neigh_list(in_this_netid=sender_netid)
-                # If we want to rehook with the_others, we have to make sure there is
-                # someone! We have to wait. And we could fail anyway. In that case abort
-                # the processing of this ETP.
+                # If we want to rehook with the_others, we have to make sure 
+                # there is someone! We have to wait. And we could fail anyway.
+                # In that case abort the processing of this ETP.
                 timeout = xtime.time() + 16000
                 while not any(the_others):
                     if xtime.time() > timeout:
-                        logging.info('Rehooking to (nip, netid) = ' + str((sender_nip, sender_netid)) + ' aborted: timeout.')
+                        logging.info('Rehooking to (nip, netid) = ' + 
+                                     str((sender_nip, sender_netid)) + 
+                                     ' aborted: timeout.')
                         return
                     xtime.swait(50)
-                    the_others = self.neigh.neigh_list(in_this_netid=sender_netid)
+                    the_others = self.neigh.neigh_list(in_this_netid=
+                                                       sender_netid)
                 self.events.send('NET_COLLISION', 
                                  (the_others,)
                                 )
@@ -437,7 +473,9 @@ class Etp(object):
         timeout = xtime.time() + 16000
         while neigh is None:
             if xtime.time() > timeout:
-                logging.info('ETP from (nip, netid) = ' + str((sender_nip, sender_netid)) + ' dropped: timeout.')
+                logging.info('ETP from (nip, netid) = ' + 
+                             str((sender_nip, sender_netid)) + 
+                             ' dropped: timeout.')
                 return
             xtime.swait(50)
             neigh = self.neigh.key_to_neigh((gwip, sender_netid))
@@ -468,8 +506,10 @@ class Etp(object):
             to_remove = []
             for dst, rem, hops in R[lvl]:
                 xtime.swait(10)
-                logging.debug('ETP received: Executing: R has info about this node:')
-                logging.debug('    %s' % str((lvl, dst, gw_id, rem, len(hops))))
+                logging.debug('ETP received: Executing: R has info '
+                              'about this node:')
+                logging.debug('    %s' % str((lvl, dst, gw_id, rem, 
+                                              len(hops))))
                 if self.maproute.route_change(lvl, dst, neigh, rem, hops):
                     logging.debug('    Info is interesting. Map updated.')
                 else:
@@ -489,13 +529,17 @@ class Etp(object):
             TPL[-1][1].append([self.maproute.me[0], gwrem])
         ##
 
-        self.etp_forward_referring_to_neigh(R, TPL, flag_of_interest, neigh, current_netid)
+        self.etp_forward_referring_to_neigh(R, TPL, flag_of_interest, neigh, 
+                                            current_netid)
         logging.info('ETP executed.')
 
-        self.events.send('ETP_EXECUTED', (old_node_nb, self.maproute.node_nb[:]))
+        self.events.send('ETP_EXECUTED', (old_node_nb, 
+                                          self.maproute.node_nb[:]))
 
-    def etp_forward_referring_to_neigh(self, R, TPL, flag_of_interest, neigh, current_netid):
-        """Forwards, when interesting, to all other neighbour info about neigh"""
+    def etp_forward_referring_to_neigh(self, R, TPL, flag_of_interest, neigh,
+                                       current_netid):
+        """Forwards, when interesting, to all other neighbour info 
+        about neigh"""
 
         current_nr_list = self.neigh.neigh_list(in_my_network=True)
         # Through which devs do I see the referree?
@@ -528,17 +572,24 @@ class Etp(object):
                     # Evaluate only once this set, which then we use twice:
                     xtime.swait(10)
                     best_routes_of_R = dict( [ ((lvl, dst), r)
-                                               for lvl in xrange(self.maproute.levels)
-                                                   for dst, rem, hops in R[lvl]
-                                                       for r in [self.maproute.node_get(lvl, dst).best_route(exclude_gw_ids=exclude_gw_ids)]
+                                               for lvl in xrange(self.maproute
+                                                                 .levels)
+                                                for dst, rem, hops in R[lvl]
+                                                   for r in [self.maproute
+                                                    .node_get(lvl, dst)
+                                                    .best_route(exclude_gw_ids
+                                                            =exclude_gw_ids)]
                                              ] )
                     ## S
                     def nr_doesnt_care(lvl, dst, r):
-                        # If destination is me (it happens) then nr does not care.
+                        # If destination is me (it happens) then nr does 
+                        # not care.
                         if self.maproute.me[lvl] == dst: return True
-                        # If best route (except for nr) is none, then nr cares.
+                        # If best route (except for nr) is none, then nr 
+                        # cares.
                         if r is None: return False 
-                        # If best route (except for nr) is neigh, then nr cares.
+                        # If best route (except for nr) is neigh, then nr 
+                        # cares.
                         # Else it does not.
                         return r.gw.id != neigh.id
                     # If step 5 is omitted we don't need the Rem in S.
@@ -550,8 +601,10 @@ class Etp(object):
                           ] for l in xrange(self.maproute.levels) ]
 
                     #--
-                    # Step 5 omitted, see qspn.pdf, 4.1 Extended Tracer Packet:
-                    # """If the property (g) holds, then the step 5 can be omitted..."""
+                    # Step 5 omitted, see qspn.pdf, 4.1 Extended Tracer 
+                    # Packet:
+                    # """If the property (g) holds, then the step 5 can be 
+                    #    omitted..."""
                     #--
                     #if flag_of_interest:
                     #       if not is_listlist_empty(S):
@@ -559,7 +612,8 @@ class Etp(object):
                     #               Sflag_of_interest=0
                     #               TP = [(self.maproute.me[0], NullRem())]
                     #               etp = (S, [(0, TP)], Sflag_of_interest)
-                    #               self.etp_send_to_neigh(etp, neigh, current_netid)
+                    #               self.etp_send_to_neigh(etp, neigh, 
+                    #                                     current_netid)
                     ##
 
                     ## R2
@@ -570,7 +624,8 @@ class Etp(object):
                         return DeadRem()
                     def hops_or_none(r):
                         if r is not None:
-                            return r.hops + [self.maproute.nip_to_ip(self.maproute.me)]
+                            return r.hops + [self.maproute
+                                             .nip_to_ip(self.maproute.me)]
                         return []
                     R2 = [ [ (dst, rem_or_none(r), hops_or_none(r))
                             for lvl, dst in best_routes_of_R.keys()
@@ -594,7 +649,8 @@ class Etp(object):
             be removed.
         """
         
-        logging.debug("Etp: collision check: my netid %d and neighbour's netid %d", self.ntkd.neighbour.netid, neigh_netid)
+        logging.debug("Etp: collision check: my netid %d and neighbour's "
+                      "netid %d", self.ntkd.neighbour.netid, neigh_netid)
 
         previous_netid = self.ntkd.neighbour.netid
 
@@ -609,27 +665,32 @@ class Etp(object):
         # mynetsz = reduce(add, self.maproute.node_nb)
         # ngnetsz = reduce(add, map(len, R))
 
-        # TODO At the moment, we dictate that the net with smaller netid is going to give up.
-        # Improvement: Find a secure way to detect if we are in one of these 3 cases:
+        # TODO At the moment, we dictate that the net with smaller netid 
+        # is going to give up.
+        # Improvement: Find a secure way to detect if we are in one of these 
+        # 3 cases:
         #  1. The other net surely will give up. So we are not going to.
         #  2. The other net surely won't give up. So we are going to.
-        #  3. The other net surely will choose to use the 'lesser netid' method. So we are going to do the same.
+        #  3. The other net surely will choose to use the 'lesser netid' 
+        # method. So we are going to do the same.
         if self.ntkd.neighbour.netid > neigh_netid:
                 # We are the bigger net.
-                # We cannot use routes from R, since this gateway is going to re-hook.
+                # We cannot use routes from R, since this gateway is going 
+                # to re-hook.
 
                 ### Remove all routes from R
                 R = [ [] for lvl in xrange(self.maproute.levels) ]
                 ###
                 
-                logging.debug("Etp: collision check: just remove all routes from R")
+                logging.debug("Etp: collision check: just remove all routes "
+                              "from R")
                 return (False, R)
         ##
 
         # We are the smaller net.
         # In any case, we have to re-hook.
-        # TODO Find a way, if possible, to not re-hook. We need however to contact
-        # the coordinator node for our new place in the new network.
+        # TODO Find a way, if possible, to not re-hook. We need however to 
+        # contact the coordinator node for our new place in the new network.
         logging.debug('Etp: we are the smaller net, we must rehook now.')
         return (True, R)
 
