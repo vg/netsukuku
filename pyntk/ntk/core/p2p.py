@@ -746,7 +746,7 @@ class P2PAll(object):
         if p2p.pid in self.service:
             logging.log(logging.ULTRADEBUG, 'Called P2PAll.p2p_register '
                         'for ' + str(p2p.pid) + '... cloning...')
-            if not self.pid_get(p2p.pid) is StrictP2P:
+            if not isinstance(self.pid_get(p2p.pid), StrictP2P):
                 map_pack = self.pid_get(p2p.pid).mapp2p.map_data_pack()
                 p2p.mapp2p.map_data_merge(map_pack)
         self.service[p2p.pid] = p2p
