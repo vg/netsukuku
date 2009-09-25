@@ -187,10 +187,10 @@ def updated_id():
     msg_id += 1
     return msg_id
 
-    
-class P2P(RPCDispatcher):
-    """This is the class that must be inherited to create a P2P module.
-    """
+class StrictP2P(RPCDispatcher):
+    """ This is the class that must be inherited to create a Strict P2P module
+        service. A strict service is a service where all the hosts connected 
+        to Netsukuku are participant, so the MapP2P is not used here. """
 
     def __init__(self, radar, maproute, pid):
         """radar, maproute: the instances of the relative modules
@@ -200,23 +200,9 @@ class P2P(RPCDispatcher):
 
         self.radar = radar
         self.neigh = radar.neigh
-        self.maproute = maproute
-        self.chan_replies = Channel()
-                
-        self.mapp2p = MapP2P(self.maproute.levels,
-                             self.maproute.gsize,
-                             self.maproute.me,
-                             pid)
+        self.maproute = self.mapp2p = maproute
 
-        self.maproute.events.listen('ME_CHANGED', self.me_changed)
-        self.maproute.events.listen('NODE_DELETED', self.mapp2p.node_del)
-
-        # are we a participant?
-        self.participant = False
-
-        self.remotable_funcs = [self.participant_add,
-                                self.participant_add_udp,
-                                self.msg_send,
+        self.remotable_funcs = [self.msg_send,
                                 self.msg_send_udp]
 
         RPCDispatcher.__init__(self, root_instance=self)
@@ -245,7 +231,7 @@ class P2P(RPCDispatcher):
             for id in xrange(mp.gsize):
                 for sign in [-1,1]:
                     hid=(hIP[l] + id * sign) % mp.gsize
-                    if mp.node_get(l, hid).participant:
+                    if not mp.node_get(l, hid).is_free():
                         H_hIP[l] = hid
                         break
                 if H_hIP[l] is not None:
@@ -277,6 +263,217 @@ class P2P(RPCDispatcher):
         if not br:
             return None
         return br.gw
+
+    def msg_send(self, sender_nip, hip, msg, msg_id):
+        """Routes a packet to `hip'. Do not use this function directly, use
+        self.peer() instead
+
+        msg: it is a (func_name, args) pair."""
+        
+        logging.log(logging.ULTRADEBUG, 'P2P: participant_add_udp '
+                    'called by ' + str(sender_nip) + ' with msg_id = ' + 
+                    str(msg_id))
+        ip = self.maproute.nip_to_ip(sender_nip)
+        if not check_ids(ip, msg_id):
+            raise Exception('The message is now expired')
+        
+        logging.log(logging.ULTRADEBUG, 'Someone is asking for P2P '
+                                        'service to ' + str(hip))
+        H_hip = self.H(hip)
+        logging.log(logging.ULTRADEBUG, ' nearest known is ' + str(H_hip))
+        if H_hip == self.mapp2p.me:
+            # the msg has arrived
+            logging.debug('I have been asked a P2P service, as the '
+                          'nearest to ' + str(hip) + ' (msg=' + str(msg) +
+                          ')')
+            return self.msg_exec(sender_nip, msg, msg_id)
+
+        # forward the message until it arrives at destination
+        n = self.neigh_get(H_hip)
+        if n:
+            logging.log(logging.ULTRADEBUG, ' through ' + str(n))
+            ret = None
+            execstr = 'ret = n.ntkd.p2p.PID_' + str(self.mapp2p.pid) + \
+            '.msg_send(sender_nip, hip, msg, msg_id)'
+            logging.log(logging.ULTRADEBUG, 'Executing "' + execstr + 
+                        '" ...')
+            exec(execstr)
+            logging.log(logging.ULTRADEBUG, 'Executed "' + execstr + 
+                        '". Returning ' + str(ret))
+            return ret
+        else:
+            # Is it possible? Don't we retry?
+            logging.warning('I don\'t know to whom I must forward. '
+                            'Giving up. Raising exception.')
+            logging.warning('This is mapp2p.')
+            logging.warning(self.mapp2p.repr_me())
+            logging.warning('This is maproute.')
+            logging.warning(Map.repr_me(self.maproute))
+            raise Exception('Unreachable P2P destination ' + str(H_hip) + 
+                            ' from ' + str(self.maproute.me) + '.')
+
+    def call_msg_send_udp(self, neigh, sender_nip, hip, msg, msg_id):
+        """Use BcastClient to call msg_send"""
+        devs = [neigh.bestdev[0]]
+        nip = self.maproute.ip_to_nip(neigh.ip)
+        netid = neigh.netid
+        return rpc.UDP_call(nip, netid, devs, 'p2p.PID_' + 
+                            str(self.mapp2p.pid) + '.msg_send_udp', 
+                            (sender_nip, hip, msg, msg_id))
+
+    def msg_send_udp(self, _rpc_caller, caller_id, callee_nip, callee_netid, 
+                     sender_nip, hip, msg, msg_id):
+        """Returns the result of msg_send to remote caller.
+           caller_id is the random value generated by the caller 
+           for this call.
+            It is replied back to the LAN for the caller to recognize a 
+            reply destinated to it.
+           callee_nip is the NIP of the callee;
+           callee_netid is the netid of the callee.
+            They are used by the callee to recognize a request destinated 
+            to it.
+           """
+        ip = self.maproute.nip_to_ip(sender_nip)
+        if not check_ids(ip, msg_id):
+            #raise Exception('The message is now expired')
+            rpc.UDP_send_reply(_rpc_caller, caller_id, ret)
+        elif self.maproute.me == callee_nip and \
+           self.neigh.netid == callee_netid:
+            ret = None
+            rpc.UDP_send_keepalive_forever_start(_rpc_caller, caller_id)
+            try:
+                logging.log(logging.ULTRADEBUG, 'calling msg_send...')
+                ret = self.msg_send(sender_nip, hip, msg, msg_id)
+                logging.log(logging.ULTRADEBUG, 'returning ' + str(ret))
+            except Exception as e:
+                ret = ('rmt_error', e.message)
+                logging.warning('msg_send_udp: returning exception ' + 
+                                str(ret))
+            finally:
+                rpc.UDP_send_keepalive_forever_stop(caller_id)
+            logging.log(logging.ULTRADEBUG, 'calling UDP_send_reply...')
+            rpc.UDP_send_reply(_rpc_caller, caller_id, ret)
+
+    def msg_exec(self, sender_nip, msg, msg_id):
+        return self.dispatch(CallerInfo(), *msg)
+
+    class RmtPeer(FakeRmt):
+        def __init__(self, p2p, hIP=None, key=None, neigh=None):
+            self.p2p = p2p
+            self.key = key
+            self.hIP = hIP
+            self.neigh = neigh
+            FakeRmt.__init__(self)
+
+        def prepare_rmt(self):
+            if self.hIP is None:
+                self.hIP = self.p2p.h(self.key)
+            if self.hIP is None:
+                raise Exception, "'key' does not map to a IP."
+            self.H_hip = self.p2p.H(self.hIP)
+            
+        def peer_is_me(self):
+            return self.H_hip == self.p2p.maproute.me
+
+        def peer_get_neigh(self):
+            if self.H_hip is None:
+                return None
+            if self.peer_is_me():
+                raise Exception, ("Peer is me. You shouldn't ask for "
+                                  "neigh, without checking.")
+            return self.p2p.neigh_get(self.H_hip)
+
+        def rmt(self, func_name, *params):
+            """Overrides FakeRmt.rmt()"""
+            self.prepare_rmt()
+            if self.neigh:
+                # We are requested to use this one as first hop via UDP.
+                logging.log(logging.ULTRADEBUG, 'P2P: Use UDP via ' + 
+                            str(self.neigh) + ' to reach peer.')
+                return self.p2p.call_msg_send_udp(self.neigh, 
+                                                  self.p2p.maproute.me, 
+                                                  self.hIP, 
+                                                  (func_name, params,),
+                                                  updated_id())
+            else:
+                # Use TCP version.
+                logging.log(logging.ULTRADEBUG, 'P2P: Use TCP to reach peer.')
+                return self.p2p.msg_send(self.p2p.maproute.me, self.hIP, 
+                                         (func_name, params,), updated_id())
+
+    def peer(self, hIP=None, key=None, neigh=None):
+        if hIP is None and key is None:
+                raise Exception, ("hIP and key are both None. "
+                                  "Specify at least one")
+        return self.RmtPeer(self, hIP=hIP, key=key, neigh=neigh)
+
+    
+class P2P(StrictP2P):
+    """This is the class that must be inherited to create a P2P module.
+    """
+
+    def __init__(self, radar, maproute, pid):
+        """radar, maproute: the instances of the relative modules
+
+           pid: P2P id of the service associated to this map
+        """
+
+        self.radar = radar
+        self.neigh = radar.neigh
+        self.maproute = maproute
+                
+        self.mapp2p = MapP2P(self.maproute.levels,
+                             self.maproute.gsize,
+                             self.maproute.me,
+                             pid)
+
+        self.maproute.events.listen('ME_CHANGED', self.me_changed)
+        self.maproute.events.listen('NODE_DELETED', self.mapp2p.node_del)
+
+        # are we a participant?
+        self.participant = False
+
+        self.remotable_funcs = [self.participant_add,
+                                self.participant_add_udp,
+                                self.msg_send,
+                                self.msg_send_udp]
+
+        RPCDispatcher.__init__(self, root_instance=self)
+
+    @microfunc()
+    def me_changed(self, old_me, new_me):
+        """My nip has changed."""
+        self.mapp2p.me_changed(old_me, new_me)
+        self.re_participate()
+
+    def H(self, hIP):
+        """This is the function that maps each IP to an existent hash node IP
+           If there are no participants, None is returned"""
+        mp = self.mapp2p
+        logging.log(logging.ULTRADEBUG, 'H: H(' + str(hIP) + ')')
+        logging.log(logging.ULTRADEBUG, 'H: mapp2p = ' + mp.repr_me())
+        H_hIP = [None] * mp.levels
+        for l in reversed(xrange(mp.levels)):
+            for id in xrange(mp.gsize):
+                for sign in [-1,1]:
+                    hid=(hIP[l] + id * sign) % mp.gsize
+                    if mp.node_get(l, hid).participant:
+                        H_hIP[l] = hid
+                        break
+                if H_hIP[l] is not None:
+                    break
+            if H_hIP[l] is None:
+                logging.log(logging.ULTRADEBUG, 'H: H(' + str(hIP) + 
+                            ') = None')
+                return None
+
+            if H_hIP[l] != mp.me[l]:
+                # we can stop here
+                break
+
+        logging.log(logging.ULTRADEBUG, 'H: H(' + str(hIP) + ') = ' + 
+                    str(H_hIP))
+        return H_hIP
 
     def re_participate(self, *args):
         """Let's become a participant node again. Used when my nip 
@@ -481,151 +678,6 @@ class P2P(RPCDispatcher):
                               'participant_del(%s) to %s.' % 
                               (pIP, self.maproute.ip_to_nip(nr.ip)))
         
-
-    def msg_send(self, sender_nip, hip, msg, msg_id):
-        """Routes a packet to `hip'. Do not use this function directly, use
-        self.peer() instead
-
-        msg: it is a (func_name, args) pair."""
-        
-        logging.log(logging.ULTRADEBUG, 'P2P: participant_add_udp '
-                    'called by ' + str(sender_nip) + ' with msg_id = ' + 
-                    str(msg_id))
-        ip = self.maproute.nip_to_ip(sender_nip)
-        if not check_ids(ip, msg_id):
-            raise Exception('The message is now expired')
-        
-        logging.log(logging.ULTRADEBUG, 'Someone is asking for P2P '
-                                        'service to ' + str(hip))
-        H_hip = self.H(hip)
-        logging.log(logging.ULTRADEBUG, ' nearest known is ' + str(H_hip))
-        if H_hip == self.mapp2p.me:
-            # the msg has arrived
-            logging.debug('I have been asked a P2P service, as the '
-                          'nearest to ' + str(hip) + ' (msg=' + str(msg) +
-                          ')')
-            return self.msg_exec(sender_nip, msg, msg_id)
-
-        # forward the message until it arrives at destination
-        n = self.neigh_get(H_hip)
-        if n:
-            logging.log(logging.ULTRADEBUG, ' through ' + str(n))
-            ret = None
-            execstr = 'ret = n.ntkd.p2p.PID_' + str(self.mapp2p.pid) + \
-            '.msg_send(sender_nip, hip, msg, msg_id)'
-            logging.log(logging.ULTRADEBUG, 'Executing "' + execstr + 
-                        '" ...')
-            exec(execstr)
-            logging.log(logging.ULTRADEBUG, 'Executed "' + execstr + 
-                        '". Returning ' + str(ret))
-            return ret
-        else:
-            # Is it possible? Don't we retry?
-            logging.warning('I don\'t know to whom I must forward. '
-                            'Giving up. Raising exception.')
-            logging.warning('This is mapp2p.')
-            logging.warning(self.mapp2p.repr_me())
-            logging.warning('This is maproute.')
-            logging.warning(Map.repr_me(self.maproute))
-            raise Exception('Unreachable P2P destination ' + str(H_hip) + 
-                            ' from ' + str(self.maproute.me) + '.')
-
-    def call_msg_send_udp(self, neigh, sender_nip, hip, msg, msg_id):
-        """Use BcastClient to call msg_send"""
-        devs = [neigh.bestdev[0]]
-        nip = self.maproute.ip_to_nip(neigh.ip)
-        netid = neigh.netid
-        return rpc.UDP_call(nip, netid, devs, 'p2p.PID_' + 
-                            str(self.mapp2p.pid) + '.msg_send_udp', 
-                            (sender_nip, hip, msg, msg_id))
-
-    def msg_send_udp(self, _rpc_caller, caller_id, callee_nip, callee_netid, 
-                     sender_nip, hip, msg, msg_id):
-        """Returns the result of msg_send to remote caller.
-           caller_id is the random value generated by the caller 
-           for this call.
-            It is replied back to the LAN for the caller to recognize a 
-            reply destinated to it.
-           callee_nip is the NIP of the callee;
-           callee_netid is the netid of the callee.
-            They are used by the callee to recognize a request destinated 
-            to it.
-           """
-        ip = self.maproute.nip_to_ip(sender_nip)
-        if not check_ids(ip, msg_id):
-            #raise Exception('The message is now expired')
-            rpc.UDP_send_reply(_rpc_caller, caller_id, ret)
-        elif self.maproute.me == callee_nip and \
-           self.neigh.netid == callee_netid:
-            ret = None
-            rpc.UDP_send_keepalive_forever_start(_rpc_caller, caller_id)
-            try:
-                logging.log(logging.ULTRADEBUG, 'calling msg_send...')
-                ret = self.msg_send(sender_nip, hip, msg, msg_id)
-                logging.log(logging.ULTRADEBUG, 'returning ' + str(ret))
-            except Exception as e:
-                ret = ('rmt_error', e.message)
-                logging.warning('msg_send_udp: returning exception ' + 
-                                str(ret))
-            finally:
-                rpc.UDP_send_keepalive_forever_stop(caller_id)
-            logging.log(logging.ULTRADEBUG, 'calling UDP_send_reply...')
-            rpc.UDP_send_reply(_rpc_caller, caller_id, ret)
-
-    def msg_exec(self, sender_nip, msg, msg_id):
-        return self.dispatch(CallerInfo(), *msg)
-
-    class RmtPeer(FakeRmt):
-        def __init__(self, p2p, hIP=None, key=None, neigh=None):
-            self.p2p = p2p
-            self.key = key
-            self.hIP = hIP
-            self.neigh = neigh
-            FakeRmt.__init__(self)
-
-        def prepare_rmt(self):
-            if self.hIP is None:
-                self.hIP = self.p2p.h(self.key)
-            if self.hIP is None:
-                raise Exception, "'key' does not map to a IP."
-            self.H_hip = self.p2p.H(self.hIP)
-            
-        def peer_is_me(self):
-            return self.H_hip == self.p2p.maproute.me
-
-        def peer_get_neigh(self):
-            if self.H_hip is None:
-                return None
-            if self.peer_is_me():
-                raise Exception, ("Peer is me. You shouldn't ask for "
-                                  "neigh, without checking.")
-            return self.p2p.neigh_get(self.H_hip)
-
-        def rmt(self, func_name, *params):
-            """Overrides FakeRmt.rmt()"""
-            self.prepare_rmt()
-            if self.neigh:
-                # We are requested to use this one as first hop via UDP.
-                logging.log(logging.ULTRADEBUG, 'P2P: Use UDP via ' + 
-                            str(self.neigh) + ' to reach peer.')
-                return self.p2p.call_msg_send_udp(self.neigh, 
-                                                  self.p2p.maproute.me, 
-                                                  self.hIP, 
-                                                  (func_name, params,),
-                                                  updated_id())
-            else:
-                # Use TCP version.
-                logging.log(logging.ULTRADEBUG, 'P2P: Use TCP to reach peer.')
-                return self.p2p.msg_send(self.p2p.maproute.me, self.hIP, 
-                                         (func_name, params,), updated_id())
-
-    def peer(self, hIP=None, key=None, neigh=None):
-        if hIP is None and key is None:
-                raise Exception, ("hIP and key are both None. "
-                                  "Specify at least one")
-        return self.RmtPeer(self, hIP=hIP, key=key, neigh=neigh)
-
-
 class P2PAll(object):
     """Class of all the registered P2P services"""
 
