@@ -338,7 +338,7 @@ class StrictP2P(RPCDispatcher):
         ip = self.maproute.nip_to_ip(sender_nip)
         if not check_ids(ip, msg_id):
             #raise Exception('The message is now expired')
-            rpc.UDP_send_reply(_rpc_caller, caller_id, ret)
+            rpc.UDP_send_reply(_rpc_caller, caller_id, None)
         elif self.maproute.me == callee_nip and \
            self.neigh.netid == callee_netid:
             ret = None
@@ -590,7 +590,7 @@ class P2P(StrictP2P):
              self.neigh.netid == callee_netid:
             self.participant_del(pIP, msg_id)
             # Since it is micro, I will reply None
-            UDP_send_reply(_rpc_caller, caller_id, None)
+            rpc.UDP_send_reply(_rpc_caller, caller_id, None)
 
     @microfunc(True)
     def participant_add(self, pIP, msg_id):
