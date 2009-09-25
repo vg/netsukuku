@@ -20,8 +20,6 @@
 # Implementation of the P2P Over Ntk RFC. See {-P2PNtk-}
 #
 
-import time
-
 import ntk.lib.rpc as rpc
 import ntk.wrap.xtime as xtime
 
@@ -29,7 +27,7 @@ from ntk.core.map import Map
 from ntk.lib.event import Event
 from ntk.lib.log import logger as logging
 from ntk.lib.log import get_stackframes
-from ntk.lib.micro import microfunc, Channel, micro_block
+from ntk.lib.micro import microfunc
 from ntk.lib.rencode import serializable
 from ntk.lib.rpc import FakeRmt, RPCDispatcher, CallerInfo
 
