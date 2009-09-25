@@ -197,7 +197,9 @@ class StrictP2P(RPCDispatcher):
 
            pid: P2P id of the service associated to this map
         """
-
+        # TODO: we store the pid here instead of MapP2P, is it right?
+        #       in this way it is inherited by P2P :\\\\\\
+        self.pid = pid 
         self.radar = radar
         self.neigh = radar.neigh
         self.maproute = self.mapp2p = maproute
@@ -293,7 +295,7 @@ class StrictP2P(RPCDispatcher):
         if n:
             logging.log(logging.ULTRADEBUG, ' through ' + str(n))
             ret = None
-            execstr = 'ret = n.ntkd.p2p.PID_' + str(self.mapp2p.pid) + \
+            execstr = 'ret = n.ntkd.p2p.PID_' + str(self.pid) + \
             '.msg_send(sender_nip, hip, msg, msg_id)'
             logging.log(logging.ULTRADEBUG, 'Executing "' + execstr + 
                         '" ...')
@@ -318,7 +320,7 @@ class StrictP2P(RPCDispatcher):
         nip = self.maproute.ip_to_nip(neigh.ip)
         netid = neigh.netid
         return rpc.UDP_call(nip, netid, devs, 'p2p.PID_' + 
-                            str(self.mapp2p.pid) + '.msg_send_udp', 
+                            str(self.pid) + '.msg_send_udp', 
                             (sender_nip, hip, msg, msg_id))
 
     def msg_send_udp(self, _rpc_caller, caller_id, callee_nip, callee_netid, 
@@ -713,17 +715,24 @@ class P2PAll(object):
         if pid in self.service:
             del self.service[pid]
 
-    def pid_get(self, pid):
+    def pid_get(self, pid, strict=False):
         if pid not in self.service:
             return self.pid_add(pid)
         else:
             return self.service[pid]
 
-    def pid_getall(self):
-        return [(s, self.service[s].mapp2p.map_data_pack())
+    def pid_getall(self, strict=False):
+        """ Set `strict' if you want strict service in the list too """
+        if not strict:
+            return [(s, self.service[s].mapp2p.map_data_pack())
+                        for s in self.service
+                            if not isinstance(self.service[s], StrictP2P)]  
+        else:
+            # TODO: you cannot use mapp2p.map_data_pack on strict services,
+            #       it isn't implemented! what should I return then?
+            return [(s, self.service[s].mapp2p.map_data_pack())
                         for s in self.service]
-
-
+        
     def p2p_register(self, p2p):
         """Used to add for the first time a P2P instance of a module in the
            P2PAll dictionary."""
@@ -737,8 +746,9 @@ class P2PAll(object):
         if p2p.pid in self.service:
             logging.log(logging.ULTRADEBUG, 'Called P2PAll.p2p_register '
                         'for ' + str(p2p.pid) + '... cloning...')
-            map_pack = self.pid_get(p2p.pid).mapp2p.map_data_pack()
-            p2p.mapp2p.map_data_merge(map_pack)
+            if not self.pid_get(p2p.pid) is StrictP2P:
+                map_pack = self.pid_get(p2p.pid).mapp2p.map_data_pack()
+                p2p.mapp2p.map_data_merge(map_pack)
         self.service[p2p.pid] = p2p
 
     #  TODO  DELETED. Ok?
@@ -754,6 +764,7 @@ class P2PAll(object):
         logging.log(logging.ULTRADEBUG, 'P2P hooking: started')
         logging.log(logging.ULTRADEBUG, 'P2P hooking: My actual list of '
                     'services is: ' + str(self.log_services()))
+
         ## Find our nearest neighbour
         neighs_in_net = self.neigh.neigh_list(in_my_network=True)
         while True:
@@ -786,8 +797,8 @@ class P2PAll(object):
             for (pid, map_pack) in nrmaps_pack:
                 self.pid_get(pid).mapp2p.map_data_merge(map_pack)
 
-            for s in self.service:
-                    if self.service[s].participant:
+            for s, obj in self.service.items():
+                if not isinstance(obj, StrictP2P) and obj.participant:
                             self.service[s].participate()
             logging.log(logging.ULTRADEBUG, 'P2P hooking: My final list of '
                         'services is: ' + str(self.log_services()))

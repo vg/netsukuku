@@ -26,13 +26,13 @@
 from random import choice
 
 from ntk.core.map import Map
-from ntk.core.p2p import P2P
+from ntk.core.p2p import StrictP2P
 from ntk.lib.log import logger as logging
 from ntk.lib.log import get_stackframes
 from ntk.lib.micro import microfunc
 from ntk.lib.rencode import serializable
 from ntk.network.inet import valid_ids
-from ntk.wrap.xtime import time
+from ntk.wrap.xtime import time, swait
 
 
 
@@ -162,13 +162,13 @@ class MapCache(Map):
         self.tmp_deleted = new_tmp_deleted
 
 
-class Coord(P2P):
+class Coord(StrictP2P):
 
     pid = 1
 
     def __init__(self, ntkd, radar, maproute, p2pall):
 
-        P2P.__init__(self, radar, maproute, Coord.pid)
+        StrictP2P.__init__(self, radar, maproute, Coord.pid)
         self.ntkd = ntkd
 
         # let's register ourself in p2pall
@@ -181,7 +181,12 @@ class Coord(P2P):
         self.maproute.events.listen('NODE_DELETED', self.mapcache.node_del)
         self.maproute.events.listen('ME_CHANGED', self.mapcache.me_changed)
 
+        # TODO: new participant_joined fails with 'connection refused' 
+        # (mapp2p = maproute (see StrictP2P)). 
+        # See the TODO in new_participant_joined, the problem is solved 
+        # but maybe it is not a good solution.
         self.mapp2p.events.listen('NODE_NEW', self.new_participant_joined)
+        
 
         self.coordnode = [None] * (self.maproute.levels + 1)
 
@@ -211,7 +216,7 @@ class Coord(P2P):
 
     def participate(self):
         """Let's become a participant node"""
-        P2P.participate(self)  # base method
+        #P2P.participate(self)  # base method
         self.coord_nodes_set()
 
 
@@ -222,6 +227,7 @@ class Coord(P2P):
         logging.log(logging.ULTRADEBUG, 'Coord: new_participant_joined '
                                         'started, a new participant in level ' 
                                         + str(lvl) + ' id ' + str(id))
+
         # the node joined in level `lvl', thus it may be a coordinator of the
         # level `lvl+1'
         level = lvl + 1
@@ -252,7 +258,12 @@ class Coord(P2P):
         self.coordnode[level] = HhIP
         logging.info('Coord: new coordinator for our level ' + str(level) + 
                      ' is ' + str(HhIP))
-
+        
+        # TODO: is it a good idea? ...
+        # Give-up, we must wait that the route is created before 
+        # to contact the remote peer.
+        swait(500)
+        
         # Then, if I was the previous one... (Tricky enough, new participant 
         # could just be me!)
         if it_was_me and HhIP != self.maproute.me:
