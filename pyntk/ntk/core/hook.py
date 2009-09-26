@@ -33,8 +33,8 @@ from ntk.network.inet import ip_to_str, valid_ids
 
 class Hook(object):
 
-    def __init__(self, ntkd, radar, maproute, etp, coordnode, nics): 
-        self.ntkd = ntkd
+    def __init__(self, radar, maproute, etp, coordnode, nics): 
+
         self.radar = radar
         self.neigh = radar.neigh
         self.maproute = maproute
@@ -57,7 +57,7 @@ class Hook(object):
     def call_communicating_vessels_udp(self, neigh):
         """Use BcastClient to call etp_exec"""
         devs = [neigh.bestdev[0]]
-        nip = self.ntkd.maproute.ip_to_nip(neigh.ip)
+        nip = self.maproute.ip_to_nip(neigh.ip)
         netid = neigh.netid
         return rpc.UDP_call(nip, netid, devs, 
                             'hook.communicating_vessels_udp')
@@ -203,7 +203,7 @@ class Hook(object):
             # This is probably redundant SINCE hook is a microfunc with 
             # dispatcher AND when hook exits the hook is complete.
             if called_for != called_for_bootstrap \
-                    and self.ntkd.neighbour.netid == -1:
+                    and self.radar.neigh.netid == -1:
                 return
 
             we_are_alone = False
@@ -219,10 +219,10 @@ class Hook(object):
                     netid_to_join = neigh_list[0].netid
 
             logging.info('Hooking procedure started.')
-            previous_netid = self.ntkd.neighbour.netid
+            previous_netid = self.radar.neigh.netid
             oldnip = self.maproute.me[:]
             oldip = self.maproute.nip_to_ip(oldnip)
-            self.ntkd.neighbour.change_netid(-1)
+            self.radar.neigh.change_netid(-1)
             if previous_netid != -1:
                 logging.info('We previously had got a network id = ' + 
                              str(previous_netid))
@@ -337,9 +337,9 @@ class Hook(object):
 
             # If we are alone, let's generate our netid
             if we_are_alone:
-                self.ntkd.neighbour.change_netid(randint(0, 2**32-1))
+                self.radar.neigh.change_netid(randint(0, 2**32-1))
                 logging.info("Generated our network id: %s", 
-                             self.ntkd.neighbour.netid)
+                             self.radar.neigh.netid)
                 # and we don't need to contact coordinator node...
 
             else:
@@ -397,7 +397,7 @@ class Hook(object):
                             logging.info('Hooking procedure canceled by our '
                                          'Coord. Our network id = ' + 
                                          str(previous_netid) + ' is back.')
-                            self.ntkd.neighbour.change_netid(previous_netid)
+                            self.radar.neigh.change_netid(previous_netid)
                             return
 
                         # <<I'm going in, can I?>>
@@ -468,10 +468,10 @@ class Hook(object):
             logging.log(logging.ULTRADEBUG, 'Hook: warn neighbours of' + \
                     ' my change from %s on -1 to %s on %s.' \
                     % (ip_to_str(oldip), ip_to_str(newnip_ip), 
-                       str(self.ntkd.neighbour.netid)))
+                       str(self.radar.neigh.netid)))
             self.neigh.call_ip_netid_change_broadcast_udp(oldip, -1, 
                                                     newnip_ip, 
-                                                    self.ntkd.neighbour.netid)
+                                                    self.radar.neigh.netid)
             logging.log(logging.ULTRADEBUG, 'Hook: called ip_netid_change '
                                             'on broadcast.')
 
@@ -481,7 +481,7 @@ class Hook(object):
                 logging.log(logging.ULTRADEBUG, 'Hook.hook: waiting 10 sec. '
                                                 'to receive some ETPs.')
                 xtime.swait(10000)
-                self.ntkd.neighbour.change_netid(netid_to_join)
+                self.radar.neigh.change_netid(netid_to_join)
                 logging.info('We now have got a network id = ' + 
                              str(netid_to_join))
                 # warn our neighbours again

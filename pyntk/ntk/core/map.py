@@ -20,13 +20,11 @@
 # Implementation of the map. See {-topodoc-}
 #
 
-from random import randint, choice
+from random import choice
 
 import ntk.wrap.xtime as xtime
 
 from ntk.lib.event import Event
-from ntk.lib.log import logger as logging
-from ntk.lib.log import get_stackframes
 from ntk.network.inet import valid_ids
 
 

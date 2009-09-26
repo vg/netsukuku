@@ -110,7 +110,8 @@ class Neigh(object):
 class Neighbour(object):
     """ This class manages all neighbours """
 
-    __slots__ = ['ntkd',
+    __slots__ = ['radar',
+                 'maproute',
                  'max_neigh',
                  'rtt_variation_threshold',
                  'ip_netid_table',
@@ -126,10 +127,11 @@ class Neighbour(object):
                  'missing_neighbour_keys',
                  'channels']
 
-    def __init__(self, ntkd, max_neigh=settings.MAX_NEIGH, xtimemod=xtime):
+    def __init__(self, radar, maproute, max_neigh=settings.MAX_NEIGH, xtimemod=xtime):
         """  max_neigh: maximum number of neighbours we can have """
-        self.ntkd = ntkd
-
+        self.maproute = maproute
+        self.radar = radar
+        
         self.max_neigh = max_neigh
         # variation on neighbours' rtt greater than this will be notified
         # TODO changed to do less variations in netkit environment
@@ -183,7 +185,7 @@ class Neighbour(object):
             xtime.swait(100)
             known_neighs = '{'
             for ip, netid in self.ip_netid_table:
-                nip = self.ntkd.maproute.ip_to_nip(ip)
+                nip = self.maproute.ip_to_nip(ip)
                 known_neighs += '(' + str(nip) + ',' + str(netid) + ')  '
             known_neighs += '}'
             logging.log(logging.ULTRADEBUG, 'monitor_neighbours: '
@@ -246,7 +248,7 @@ class Neighbour(object):
                 # this one is not wanted
                 continue
             logging.log(logging.ULTRADEBUG, 'neigh_list: preparing Neigh for '
-                        'nip ' + str(self.ntkd.maproute.ip_to_nip(ip)) + 
+                        'nip ' + str(self.maproute.ip_to_nip(ip)) + 
                         ', netid ' + str(netid))
             nlist.append(Neigh(bestdev=val.bestdev,
                                devs=val.devs,
@@ -254,7 +256,7 @@ class Neighbour(object):
                                netid=netid,
                                id=self.translation_table[key],
                                ntkd=self.get_ntk_client(ip, netid),
-                               nip=self.ntkd.maproute.ip_to_nip(ip)))
+                               nip=self.maproute.ip_to_nip(ip)))
         return nlist
 
     def memorize(self, key, bestdev, devs):
@@ -407,7 +409,7 @@ class Neighbour(object):
                         netid=netid,
                         id=self.translation_table[key],
                         ntkd=self.get_ntk_client(ip, netid),
-                        nip=self.ntkd.maproute.ip_to_nip(ip))
+                        nip=self.maproute.ip_to_nip(ip))
 
     def key_to_id(self, key):
         """ key: neighbour's key, that is the pair ip, netid
@@ -632,7 +634,7 @@ class Neighbour(object):
                             netid=netid,
                             id=id,
                             ntkd=self.get_ntk_client(ip, netid),
-                            nip=self.ntkd.maproute.ip_to_nip(ip)),))
+                            nip=self.maproute.ip_to_nip(ip)),))
 
     def delete(self, key, old_val, old_id):
         """Sends event for a dead neighbour."""
@@ -667,7 +669,7 @@ class Neighbour(object):
                             netid=netid,
                             id=old_id,
                             ntkd=None,
-                            nip=self.ntkd.maproute.ip_to_nip(ip)),))
+                            nip=self.maproute.ip_to_nip(ip)),))
 
     def rem_change(self, key, old_rtt):
         """Sends event for a changed rem neighbour."""
@@ -701,7 +703,7 @@ class Neighbour(object):
                             netid=netid,
                             id=id,
                             ntkd=self.get_ntk_client(ip, netid),
-                            nip=self.ntkd.maproute.ip_to_nip(ip)), 
+                            nip=self.maproute.ip_to_nip(ip)), 
                           Rtt(old_rtt)))
 
     @microfunc()
@@ -740,10 +742,10 @@ class Neighbour(object):
         # Attention: this removes "oldkey" from self.ip_netid_table. But 
         # current radar scan might already have put this "oldkey" in 
         # bcast_arrival_time. So...
-        if oldkey in self.ntkd.radar.bcast_arrival_time:
+        if oldkey in self.radar.bcast_arrival_time:
             logging.log(logging.ULTRADEBUG, 'ip_netid_change: removing '
                         'from scan...')
-            del self.ntkd.radar.bcast_arrival_time[oldkey]
+            del self.radar.bcast_arrival_time[oldkey]
         # memorize
         self.memorize(newkey, my_val.bestdev, my_val.devs)
 
@@ -774,7 +776,7 @@ class Neighbour(object):
     def call_ip_netid_change_broadcast_udp(self, oldip, oldnetid, 
                                            newip, newnetid):
         """Use BcastClient to call <broadcast> ip_netid_change"""
-        devs = list(self.ntkd.nic_manager)
+        devs = list(self.radar.broadcast.devs)
         rpc.UDP_broadcast_call(devs,'neighbour.ip_netid_change_broadcast_udp',
                                (oldip, oldnetid, newip, newnetid))
 
@@ -788,7 +790,7 @@ class Neighbour(object):
                                  newnetid):
         """Use BcastClient to call ip_netid_change"""
         devs = [neigh.bestdev[0]]
-        nip = self.ntkd.maproute.ip_to_nip(neigh.ip)
+        nip = self.maproute.ip_to_nip(neigh.ip)
         netid = neigh.netid
         return rpc.UDP_call(nip, netid, devs, 'neighbour.ip_netid_change_udp',
                             (oldip, oldnetid, newip, newnetid))
@@ -805,7 +807,7 @@ class Neighbour(object):
             They are used by the callee to recognize a request destinated 
             to it.
            """
-        if self.ntkd.maproute.me == callee_nip and self.netid == callee_netid:
+        if self.maproute.me == callee_nip and self.netid == callee_netid:
             self.ip_netid_change(oldip, oldnetid, newip, newnetid)
             # Since it is micro, I will reply None
             rpc.UDP_send_reply(_rpc_caller, caller_id, None)
@@ -854,18 +856,18 @@ class Neighbour(object):
 
 class Radar(object):
     
-    __slots__ = [ 'ntkd', 'bouquet_numb', 'bcast_send_time', 'xtime',
+    __slots__ = [ 'maproute', 'bouquet_numb', 'bcast_send_time', 'xtime',
                   'bcast_arrival_time', 'max_bouquet', 'wait_time',
                   'broadcast', 'neigh', 'events',
                   'remotable_funcs', 'ntkd_id', 'radar_id', 'max_neigh',
                   'increment_wait_time', 'stopping', 'running_instances']
 
-    def __init__(self, ntkd, broadcast, xtime):
+    def __init__(self, maproute, broadcast, xtime):
         """
             broadcast: an instance of the RPCBroadcast class to manage 
             broadcast sending xtime: a wrap.xtime module
         """
-        self.ntkd = ntkd
+        self.maproute = maproute
 
         self.xtime = xtime
         self.broadcast = broadcast
@@ -883,7 +885,7 @@ class Radar(object):
         # max_neigh: maximum number of neighbours we can have
         self.max_neigh = settings.MAX_NEIGH
         # our neighbours
-        self.neigh = Neighbour(self.ntkd, self.max_neigh, self.xtime)
+        self.neigh = Neighbour(self, self.maproute, self.max_neigh, self.xtime)
         # Do I have to wait longer? in millis
         self.increment_wait_time = 0
 

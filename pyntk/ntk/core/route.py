@@ -380,18 +380,21 @@ class MapRoute(Map):
     MapRoute.node[lvl][id] is a RouteNode class, i.e. a list of routes
     having as destination the node (lvl, id)"""
 
-    __slots__ = Map.__slots__ + ['ntkd', 'remotable_funcs']
+    __slots__ = Map.__slots__ + ['radar', 'remotable_funcs']
 
-    def __init__(self, ntkd, levels, gsize, me):
+    def __init__(self, levels, gsize, me):
 
+        self.radar = None
         Map.__init__(self, levels, gsize, RouteNode, me)
-        self.ntkd = ntkd
 
         self.events.add( [  'ROUTE_NEW',
                             'ROUTE_DELETED',
                             'ROUTE_REM_CHGED'   # the route's rem changed
                          ] )
         self.remotable_funcs = [self.free_nodes_nb, self.free_nodes_nb_udp]
+
+    def set_radar(self, radar):
+        self.radar = radar
 
     def call_free_nodes_nb_udp(self, neigh, lvl):
         """Use BcastClient to call highest_free_nodes"""
@@ -414,7 +417,7 @@ class MapRoute(Map):
             to it.
            """
         if self.me == callee_nip and \
-           self.ntkd.neighbour.netid == callee_netid:
+           self.radar.neigh.netid == callee_netid:
             ret = None
             rpc.UDP_send_keepalive_forever_start(_rpc_caller, caller_id)
             try:
@@ -631,7 +634,7 @@ class MapRoute(Map):
                         if node.route_getby_gw(neigh.id) is not None:
                             self.route_del(lvl, dst, neigh.id, neigh.ip)
         logging.debug('ANNOUNCE: gw ' + str(neigh.id) + ' removable.')
-        self.ntkd.neighbour.announce_gw_removable(neigh.id)
+        self.radar.neigh.announce_gw_removable(neigh.id)
 
     def routeneigh_rem(self, neigh, oldrem):
         for lvl in xrange(self.levels):

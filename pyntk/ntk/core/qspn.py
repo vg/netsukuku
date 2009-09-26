@@ -40,8 +40,8 @@ def is_listlist_empty(l):
 class Etp(object):
     """Extended Tracer Packet"""
 
-    def __init__(self, ntkd, radar, maproute):
-        self.ntkd = ntkd
+    def __init__(self, radar, maproute):
+
         self.radar = radar
         self.neigh = radar.neigh
         self.maproute = maproute
@@ -59,15 +59,15 @@ class Etp(object):
     def etp_send_to_neigh(self, etp, neigh, current_netid):
         """Sends the `etp' to neigh"""
 
-        if current_netid != self.ntkd.neighbour.netid:
+        if current_netid != self.neigh.netid:
             logging.info('An ETP dropped because we changed network from ' +
                          str(current_netid) + ' to ' + 
-                         str(self.ntkd.neighbour.netid) + '.')
+                         str(self.neigh.netid) + '.')
             return
         logging.debug('Etp: sending to %s', str(neigh))
         try:
             self.call_etp_exec_udp(neigh, self.maproute.me, 
-                                   self.ntkd.neighbour.netid, *etp)
+                                   self.neigh.netid, *etp)
             logging.info('Sent ETP to %s', ip_to_str(neigh.ip))
             # RPCErrors may arise for many reasons. We should not care.
         except RPCError:
@@ -80,7 +80,7 @@ class Etp(object):
     def etp_dead_link(self, neigh):
         """Builds and sends a new ETP for the dead link case."""
 
-        if self.ntkd.neighbour.netid == -1:
+        if self.neigh.netid == -1:
             # I'm hooking, I must not react to this event.
             # TODO probably we can safely remove this test because
             #  when self.netid == -1 in radar the NEIGH_XXX are not emitted.
@@ -90,7 +90,7 @@ class Etp(object):
 
         # Memorize current netid because it might change. In this case the 
         # ETP should not be sent.
-        current_netid = self.ntkd.neighbour.netid
+        current_netid = self.neigh.netid
 
         current_nr_list = self.neigh.neigh_list(in_my_network=True)
         logging.debug('QSPN: death of %s: update my map.', 
@@ -189,7 +189,7 @@ class Etp(object):
     def etp_new_link(self, neigh):
         """Builds and sends a new ETP for the new link case."""
 
-        if self.ntkd.neighbour.netid == -1:
+        if self.neigh.netid == -1:
             # I'm hooking, I must not react to this event.
             # NOTE: this method gets called with COLLIDING_NEIGH_NEW too. 
             # So we need to check.
@@ -214,7 +214,7 @@ class Etp(object):
 
         # Memorize current netid because it might change. In this case the 
         # ETP should not be sent.
-        current_netid = self.ntkd.neighbour.netid
+        current_netid = self.neigh.netid
 
         logging.debug('QSPN: new link for ' + str(neigh) + 
                       ': prepare the ETP')
@@ -263,7 +263,7 @@ class Etp(object):
     def etp_changed_link(self, neigh, oldrem):
         """Builds and sends a new ETP for the changed link case."""
 
-        if self.ntkd.neighbour.netid == -1:
+        if self.neigh.netid == -1:
             # I'm hooking, I must not react to this event.
             # TODO probably we can safely remove this test because
             #  when self.netid == -1 in radar the NEIGH_XXX are not emitted.
@@ -273,7 +273,7 @@ class Etp(object):
 
         # Memorize current netid because it might change. In this case the 
         # ETP should not be sent.
-        current_netid = self.ntkd.neighbour.netid
+        current_netid = self.neigh.netid
 
         current_nr_list = self.neigh.neigh_list()
         logging.debug('QSPN: changed %s: update my map', ip_to_str(neigh.ip))
@@ -319,7 +319,7 @@ class Etp(object):
                           flag_of_interest):
         """Use BcastClient to call etp_exec"""
         devs = [neigh.bestdev[0]]
-        nip = self.ntkd.maproute.ip_to_nip(neigh.ip)
+        nip = self.maproute.ip_to_nip(neigh.ip)
         netid = neigh.netid
         return rpc.UDP_call(nip, netid, devs, 'etp.etp_exec_udp', 
                             (sender_nip, sender_netid, R, TPL, 
@@ -365,14 +365,14 @@ class Etp(object):
             raise Exception('ETP received from a node with netid = -1 '
                             '(not completely kooked).')
 
-        while self.ntkd.neighbour.netid == -1:
+        while self.neigh.netid == -1:
             # I'm not ready to interact.
             time.sleep(0.001)
             micro_block()
 
         # Memorize current netid because it might change. In this case the 
         # ETP should not be sent.
-        current_netid = self.ntkd.neighbour.netid
+        current_netid = self.neigh.netid
 
         logging.info('Received ETP from (nip, netid) = ' + str((sender_nip, 
                                                              sender_netid)))
@@ -650,9 +650,9 @@ class Etp(object):
         """
         
         logging.debug("Etp: collision check: my netid %d and neighbour's "
-                      "netid %d", self.ntkd.neighbour.netid, neigh_netid)
+                      "netid %d", self.neigh.netid, neigh_netid)
 
-        previous_netid = self.ntkd.neighbour.netid
+        previous_netid = self.neigh.netid
 
         if neigh_netid == previous_netid:
             return (False, R) # all ok
@@ -673,7 +673,7 @@ class Etp(object):
         #  2. The other net surely won't give up. So we are going to.
         #  3. The other net surely will choose to use the 'lesser netid' 
         # method. So we are going to do the same.
-        if self.ntkd.neighbour.netid > neigh_netid:
+        if self.neigh.netid > neigh_netid:
                 # We are the bigger net.
                 # We cannot use routes from R, since this gateway is going 
                 # to re-hook.

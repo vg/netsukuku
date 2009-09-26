@@ -528,7 +528,7 @@ class P2P(StrictP2P):
     def call_participant_add_udp(self, neigh, pIP, msg_id):
         """Use BcastClient to call etp_exec"""
         devs = [neigh.bestdev[0]]
-        nip = self.ntkd.maproute.ip_to_nip(neigh.ip)
+        nip = self.maproute.ip_to_nip(neigh.ip)
         netid = neigh.netid
         logging.log(logging.ULTRADEBUG, 'P2P: Calling participant_add_udp ' +
                     str(nip) + ' with msg_id = ' + str(msg_id))
@@ -538,7 +538,7 @@ class P2P(StrictP2P):
     def call_participant_del_udp(self, neigh, pIP, msg_id):
         """Use BcastClient to call etp_exec"""
         devs = [neigh.bestdev[0]]
-        nip = self.ntkd.maproute.ip_to_nip(neigh.ip)
+        nip = self.maproute.ip_to_nip(neigh.ip)
         netid = neigh.netid
         return rpc.UDP_call(nip, netid, devs, 'p2p.PID_'+str(self.mapp2p.pid)+
                         '.participant_del_udp', (pIP, msg_id,))
@@ -681,8 +681,7 @@ class P2P(StrictP2P):
 class P2PAll(object):
     """Class of all the registered P2P services"""
 
-    __slots__ = ['ntkd',
-                 'radar',
+    __slots__ = ['radar',
                  'neigh',
                  'maproute',
                  'service',
@@ -690,8 +689,7 @@ class P2PAll(object):
                  'events',
                  'etp']
 
-    def __init__(self, ntkd, radar, maproute, etp):
-        self.ntkd = ntkd
+    def __init__(self, radar, maproute, etp):
 
         self.radar = radar
         self.neigh = radar.neigh
@@ -703,6 +701,7 @@ class P2PAll(object):
         self.remotable_funcs = [self.pid_getall]
         self.events=Event(['P2P_HOOKED'])
         ###self.etp.events.listen('HOOKED', self.p2p_hook)
+        # TODO: remove self.etp if not used
 
     def pid_add(self, pid):
         logging.log(logging.ULTRADEBUG, 'Called P2PAll.pid_add...')

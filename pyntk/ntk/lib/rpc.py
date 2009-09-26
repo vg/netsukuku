@@ -74,7 +74,6 @@ import rpc
 
 
 import struct
-import sys
 
 from random import randint
 
