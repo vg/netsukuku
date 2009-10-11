@@ -378,6 +378,11 @@ class RouteNode(object):
             if r.gw.id not in exclude_gw_ids: return r
         return None
 
+    def best_route_without(self, hop):
+        for r in self.routes:
+            if not r.contains(hop): return r
+        return None
+
     def __repr__(self):
         return '<RouteNode: %s>' % self.routes
 
