@@ -54,10 +54,13 @@ from ntk.network.inet import ip_to_str, str_to_ip
 class Neigh(object):
     """This class simply represent a neighbour"""
 
-    __slots__ = ['devs', 'bestdev', 'ip', 'id', 'rem', 'ntkd', 'netid']
+    __slots__ = ['devs', 'bestdev', 'ip', 'id', 'rem', 'ntkd_func', 'ntkd', 'netid']
+
+    def ntkd_func_none(*args):
+        return None
 
     def __init__(self, bestdev, devs, ip, netid,
-                 id=None, ntkd=None):
+                 id=None, ntkd_func=ntkd_func_none):
         """
         ip: neighbour's ip;
         netid: network id of the node
@@ -66,7 +69,8 @@ class Neigh(object):
         bestdev: a pair (d, avg_rtt), where devs[d] is the best element of
                 devs.
 
-        ntkd: neighbour's ntk remote instance
+        ntkd_func: a function such that:
+            ntkd_func(ip, netid) returns neighbour's ntk remote instance
         id: neighbour's id; use Neighbour.key_to_id to create it
         """
 
@@ -81,7 +85,12 @@ class Neigh(object):
             self.rem = Rtt(self.bestdev[1])
         else:
             self.rem = DeadRem() # The neighbour is dead
-        self.ntkd = ntkd
+        self.ntkd_func = ntkd_func
+
+    def _get_ntkd(self):
+        return self.ntkd_func(self.ip, self.netid)
+
+    ntkd = property(_get_ntkd)
 
     def __cmp__(self, b):
         stacktrace = get_stackframes(back=1)
@@ -253,8 +262,7 @@ class Neighbour(object):
                                ip=ip,
                                netid=netid,
                                id=self.translation_table[key],
-                               ntkd=self.get_ntk_client(ip, netid),
-                               nip=self.maproute.ip_to_nip(ip)))
+                               ntkd_func=self.get_ntk_client))
         return nlist
 
     def memorize(self, key, bestdev, devs):
@@ -406,8 +414,7 @@ class Neighbour(object):
                         ip=ip,
                         netid=netid,
                         id=self.translation_table[key],
-                        ntkd=self.get_ntk_client(ip, netid),
-                        nip=self.maproute.ip_to_nip(ip))
+                        ntkd_func=self.get_ntk_client)
 
     def key_to_id(self, key):
         """ key: neighbour's key, that is the pair ip, netid
@@ -631,8 +638,7 @@ class Neighbour(object):
                             ip=ip,
                             netid=netid,
                             id=id,
-                            ntkd=self.get_ntk_client(ip, netid),
-                            nip=self.maproute.ip_to_nip(ip)),))
+                            ntkd_func=self.get_ntk_client),))
 
     def delete(self, key, old_val, old_id):
         """Sends event for a dead neighbour."""
@@ -665,9 +671,7 @@ class Neighbour(object):
                             devs=old_devs,
                             ip=ip,
                             netid=netid,
-                            id=old_id,
-                            ntkd=None,
-                            nip=self.maproute.ip_to_nip(ip)),))
+                            id=old_id),))
 
     def rem_change(self, key, old_rtt):
         """Sends event for a changed rem neighbour."""
@@ -700,8 +704,7 @@ class Neighbour(object):
                             ip=ip,
                             netid=netid,
                             id=id,
-                            ntkd=self.get_ntk_client(ip, netid),
-                            nip=self.maproute.ip_to_nip(ip)), 
+                            ntkd_func=self.get_ntk_client), 
                           Rtt(old_rtt)))
 
     @microfunc()
