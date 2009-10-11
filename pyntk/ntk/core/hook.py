@@ -150,7 +150,7 @@ class Hook(object):
         list, otherwise neigh_list is generated from the Radar.
 
         forbidden_neighs is a list [(lvl,nip), ...]. All the neighbours nr 
-        with a NIP nr.nip matching nip up to lvl levels are excluded, 
+        with a NIP matching nip up to lvl levels are excluded, 
         that is:
                 NIP is excluded <==> nip_cmp(nip, NIP) < lvl
         
@@ -248,7 +248,7 @@ class Hook(object):
                 logging.info('Hook: highest non saturated gnodes in new '
                              'empty network: ' + str(hfn))
 
-            def is_neigh_forbidden(nrip):
+            def is_neigh_forbidden(nrnip):
                     for lvl, fnr in forbidden_neighs:
                             if self.maproute.nip_cmp(nrnip, fnr) < lvl:
                                     return True

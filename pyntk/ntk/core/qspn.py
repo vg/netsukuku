@@ -300,8 +300,9 @@ class Etp(object):
 
         flag_of_interest=1
         ## The TPL includes the neigh...
-        level = self.maproute.nip_cmp(self.maproute.me, neigh.nip)
-        TPL = [[level, [[neigh.nip[level], NullRem()]]]]
+        neigh_nip = self.maproute.ip_to_nip(neigh.ip)
+        level = self.maproute.nip_cmp(self.maproute.me, neigh_nip)
+        TPL = [[level, [[neigh_nip[level], NullRem()]]]]
         ## ... and myself.
         if TPL[-1][0] != 0: 
             # The last block isn't of level 0. Let's add a new block

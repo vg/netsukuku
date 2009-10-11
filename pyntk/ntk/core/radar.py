@@ -54,10 +54,10 @@ from ntk.network.inet import ip_to_str, str_to_ip
 class Neigh(object):
     """This class simply represent a neighbour"""
 
-    __slots__ = ['devs', 'bestdev', 'ip', 'nip', 'id', 'rem', 'ntkd', 'netid']
+    __slots__ = ['devs', 'bestdev', 'ip', 'id', 'rem', 'ntkd', 'netid']
 
     def __init__(self, bestdev, devs, ip, netid,
-                 id=None, ntkd=None, nip=None):
+                 id=None, ntkd=None):
         """
         ip: neighbour's ip;
         netid: network id of the node
@@ -66,7 +66,6 @@ class Neigh(object):
         bestdev: a pair (d, avg_rtt), where devs[d] is the best element of
                 devs.
 
-        nip: neighbour's nip;
         ntkd: neighbour's ntk remote instance
         id: neighbour's id; use Neighbour.key_to_id to create it
         """
@@ -76,7 +75,6 @@ class Neigh(object):
         self.ip = ip
         self.netid = netid
 
-        self.nip = nip
         self.id = id
         if self.bestdev:
             # TODO(low): support the other metrics
