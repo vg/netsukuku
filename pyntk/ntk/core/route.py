@@ -232,6 +232,20 @@ class Route(object):
         else:
             return False
 
+    def contains(hop):
+        # hop is a pair (lvl, id)
+        dest = self.routenode.lvl, self.routenode.id
+        if hop == dest:
+            return True
+        first_hop = self.routenode.maproute.routeneigh_get(self.gw)
+        if hop == first_hop:
+            return True
+        # If the passed neighbour is in the middle of best path...
+        if hop in self.hops:
+            return True
+        # Otherwise the path does not contain the passed neighbour
+        return False
+
     def rem_modify(self, newrem_at_gw, new_hops):
         """Sets new rem_at_gw and hops and returns the old rem_at_gw"""
         oldrem_at_gw = self.rem_at_gw
