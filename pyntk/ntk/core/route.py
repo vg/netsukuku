@@ -379,6 +379,54 @@ class RouteNode(object):
             if r.gw.id not in exclude_gw_ids: return r
         return None
 
+    def previous_routes(self, gw, oldrem):
+        # This method is used during a ChangedLink event.
+        # gw is a Neigh, oldrem its previous rem.
+
+        # I make a list of routes in which the actual Route instance
+        # which passes through the gateway whose rem has been changed
+        # is replaced by another instance of Route which represents its
+        # previous state. This Route will have a FakeNeigh.
+        # I just need to be able to use few methods from this fake class,
+        # to ensure that methods "rem" and "contains" of Route work well.
+
+        class FakeNeigh:
+            def __init__(self):
+                self.rem = oldrem
+                self.ip = gw.ip
+
+        # this is a replica of all routes, we'll change this list to be
+        # like it was before the ChangedLink event.
+        copy = self.routes[:]
+        # this is the Route through the gateway whose rem has been changed
+        r_mod = route_getby_gw(gw.id)
+        if r_mod is not None:
+            # There is a Route through this gateway.
+            # this is a replica of old Route values
+            r_old = Route(FakeNeigh(), r_mod.rem_at_gw, r_mod.hops, self)
+            copy.remove(r_mod)
+            copy.append(r_old)
+        copy.sort(reverse=1)
+
+        return copy
+
+    def previous_best_contained(self, gw, oldrem, hop):
+        # This method is used during a ChangedLink event.
+        # gw is a Neigh, oldrem its previous rem.
+
+        copy = self.previous_routes(gw, oldrem)
+        # copy[0] was previous best.
+        return copy[0].contains(hop)
+
+    def best_changed(self, gw, oldrem):
+        # This method is used during a ChangedLink event.
+        # gw is a Neigh, oldrem its previous rem.
+
+        self.sort()
+        copy = self.previous_routes(gw, oldrem)
+        # has there been a change in rem of best?
+        return self.routes[0].rem != copy[0].rem
+
     def best_route_without(self, hop):
         self.sort()
         for r in self.routes:
