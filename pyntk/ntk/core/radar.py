@@ -54,13 +54,13 @@ from ntk.network.inet import ip_to_str, str_to_ip
 class Neigh(object):
     """This class simply represent a neighbour"""
 
-    __slots__ = ['devs', 'bestdev', 'ip', 'id', 'rem', 'ntkd_func', 'ntkd', 'netid']
+    __slots__ = ['devs', 'bestdev', 'ip', 'id_func', 'id', 'rem', 'ntkd_func', 'ntkd', 'netid']
 
-    def ntkd_func_none(*args):
+    def func_none(*args):
         return None
 
     def __init__(self, bestdev, devs, ip, netid,
-                 id=None, ntkd_func=ntkd_func_none):
+                 id_func=func_none, ntkd_func=func_none):
         """
         ip: neighbour's ip;
         netid: network id of the node
@@ -70,8 +70,10 @@ class Neigh(object):
                 devs.
 
         ntkd_func: a function such that:
-            ntkd_func(ip, netid) returns neighbour's ntk remote instance
-        id: neighbour's id; use Neighbour.key_to_id to create it
+            ntkd_func(ip, netid) returns neighbour's ntk remote instance.
+        id_func: a function such that:
+            id_func(ip, netid) returns neighbour's id.
+            Neighbour uses key_to_id to create it.
         """
 
         self.devs = devs
@@ -79,7 +81,7 @@ class Neigh(object):
         self.ip = ip
         self.netid = netid
 
-        self.id = id
+        self.id_func = id_func
         if self.bestdev:
             # TODO(low): support the other metrics
             self.rem = Rtt(self.bestdev[1])
@@ -91,6 +93,11 @@ class Neigh(object):
         return self.ntkd_func(self.ip, self.netid)
 
     ntkd = property(_get_ntkd)
+
+    def _get_id(self):
+        return self.id_func(self.ip, self.netid)
+
+    id = property(_get_id)
 
     def __cmp__(self, b):
         stacktrace = get_stackframes(back=1)
@@ -257,22 +264,18 @@ class Neighbour(object):
             logging.log(logging.ULTRADEBUG, 'neigh_list: preparing Neigh for '
                         'nip ' + str(self.maproute.ip_to_nip(ip)) + 
                         ', netid ' + str(netid))
-            nlist.append(Neigh(bestdev=val.bestdev,
-                               devs=val.devs,
-                               ip=ip,
-                               netid=netid,
-                               id=self.translation_table[key],
-                               ntkd_func=self.get_ntk_client))
+            nlist.append(val)
         return nlist
 
-    def memorize(self, key, bestdev, devs):
-        """ key: pair ip, netid
+    def memorize(self, val):
+        """ key = (val.ip, val.netid)
             key should not be already in translation table.
             Inserts this neighbour in our data structures. 
             Returns the assigned id.
             If there is no more room, sends an exception.
         """
         # ATTENTION: this method MUST NOT pass schedule until the end.
+        key = (val.ip, val.netid)
         if key in self.translation_table:
             raise Exception('Key was already present.')
         # Find the first available id in reverse_translation_table
@@ -286,10 +289,7 @@ class Neighbour(object):
         self.translation_table[key] = new_id
         self.reverse_translation_table[new_id] = key
         ip, netid = key
-        self.ip_netid_table[key] = Neigh(bestdev=bestdev,
-                                         devs=devs,
-                                         ip=ip,
-                                         netid=netid)
+        self.ip_netid_table[key] = val
         if self.netid == netid:
             # It's in my network
             self.ntk_client[ip] = rpc.TCPClient(ip_to_str(ip))
@@ -400,6 +400,11 @@ class Neighbour(object):
         else:
             return None
 
+    def get_gw_id(self, ip, netid):
+        """ip: neighbour's ip;
+           netid: neighbour's netid."""
+        return self.translation_table[(ip, netid)]
+
     def key_to_neigh(self, key):
         """ key: neighbour's key, that is the pair ip, netid
             return a Neigh object from its ip and netid
@@ -407,14 +412,7 @@ class Neighbour(object):
         if key not in self.translation_table:
             return None
         else:
-            ip, netid = key
-            val = self.ip_netid_table[key]
-            return Neigh(bestdev=val.bestdev,
-                        devs=val.devs,
-                        ip=ip,
-                        netid=netid,
-                        id=self.translation_table[key],
-                        ntkd_func=self.get_ntk_client)
+            return self.ip_netid_table[key]
 
     def key_to_id(self, key):
         """ key: neighbour's key, that is the pair ip, netid
@@ -543,7 +541,7 @@ class Neighbour(object):
         for key, val in new_ip_netid_table.items():
             if not key in self.ip_netid_table:
                 # It is a new neigh.
-                self.memorize(key, val.bestdev, val.devs)
+                self.memorize(val)
                 to_be_added.append(key)
 
         # now we cycle through the new ip_netid_table
@@ -633,12 +631,7 @@ class Neighbour(object):
 
         # send a message notifying we added a node
         self.events.send(event_to_fire,
-                         (Neigh(bestdev=val.bestdev,
-                            devs=val.devs,
-                            ip=ip,
-                            netid=netid,
-                            id=id,
-                            ntkd_func=self.get_ntk_client),))
+                         (val,))
 
     def delete(self, key, old_val, old_id):
         """Sends event for a dead neighbour."""
@@ -662,16 +655,15 @@ class Neighbour(object):
                          str(netid) + ', is no more a known neighbour anyway '
                          'it was not in my network.')
 
-        old_bestdev = old_val.bestdev
-        old_devs = old_val.devs
-
         # send a message notifying we deleted the node
+        def idfunc(*args):
+            return old_id
         self.events.send(event_to_fire,
-                         (Neigh(bestdev=old_bestdev,
-                            devs=old_devs,
+                         (Neigh(bestdev=old_val.bestdev,
+                            devs=old_val.devs,
                             ip=ip,
                             netid=netid,
-                            id=old_id),))
+                            id_func=idfunc),))
 
     def rem_change(self, key, old_rtt):
         """Sends event for a changed rem neighbour."""
@@ -699,12 +691,7 @@ class Neighbour(object):
 
         # send a message notifying the node's rtt changed
         self.events.send(event_to_fire,
-                         (Neigh(bestdev=val.bestdev,
-                            devs=val.devs,
-                            ip=ip,
-                            netid=netid,
-                            id=id,
-                            ntkd_func=self.get_ntk_client), 
+                         (val, 
                           Rtt(old_rtt)))
 
     @microfunc()
@@ -748,7 +735,8 @@ class Neighbour(object):
                         'from scan...')
             del self.radar.bcast_arrival_time[oldkey]
         # memorize
-        self.memorize(newkey, my_val.bestdev, my_val.devs)
+        my_val.ip, my_val.netid = newkey
+        self.memorize(my_val)
 
         # Now we can pass schedule, if we need. The data strucures are 
         # consistent.
@@ -1048,5 +1036,7 @@ class Radar(object):
         for (ip, netid) in self.bcast_arrival_time:
             devs = self.get_avg_rtt(ip, netid)
             all_avg[(ip, netid)] = Neigh(bestdev=devs[0], devs=dict(devs), 
-                                         ip=ip, netid=netid)
+                                         ip=ip, netid=netid,
+                                         id_func=self.neigh.get_gw_id,
+                                         ntkd_func=self.neigh.get_ntk_client)
         return all_avg
