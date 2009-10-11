@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Netsukuku
 # (c) Copyright 2007 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
@@ -55,6 +56,75 @@ class Etp(object):
 
         self.remotable_funcs = [self.etp_exec,
                                 self.etp_exec_udp]
+
+    @microfunc(True)
+    def newqspn_etp_changed_link(self, neigh, oldrem):
+        """Builds and sends a new ETP for the changed link case."""
+
+        if self.neigh.netid == -1:
+            # I'm hooking, I must not react to this event.
+            # TODO probably we can safely remove this test because
+            #  when self.netid == -1 in radar the NEIGH_XXX are not emitted.
+            logging.warning('QSPN: new link %s: detected while hooking!', 
+                            ip_to_str(neigh.ip))
+            return
+
+        # Memorize current netid because it might change. In this case the 
+        # ETP should not be sent.
+        current_netid = self.neigh.netid
+
+        current_nr_list = self.neigh.neigh_list()
+        # Prepare R of new ETP:
+        # Note that R has to be created for each one of our neighbours distinct from B.
+        # That is, ∀w ∈ A* | w != B
+        set_of_R = {}
+        for nr in current_nr_list:
+            if nr.id != neigh.id:
+                set_of_R[nr] = []
+        # step 1 of CLR
+        # A computes r^t+1^A (→ B) = R^t+1^ (AB)
+        # It is already in neigh.rem
+        # Now, ∀v ∈ V
+        for lvl in xrange(self.maproute.levels):
+            xtime.sleep_during_hard_work(10)
+            for R in set_of_R.values():
+                R.append([])
+            for dst in xrange(self.maproute.gsize):
+                routes_to_v = self.node_get(lvl, dst)
+                # step 2 of CLR
+                # A computes Best^t+1^ (A → v)
+                # Since neigh.rem is updated, each RouteNode.best_route is automatically up to date.
+                best_to_v = routes_to_v.best_route()
+                if best_to_v is not None:
+                    xtime.sleep_during_hard_work(0)
+                    # step 3 of CLR
+                    # if ∆Best^t+1^ (A → v) != 0
+                    if routes_to_v.best_changed(neigh, oldrem):
+                        # ∀w ∈ A* | w != B
+                        for w in set_of_R:
+                            R = set_of_R[w]
+                            w_lvl_id = self.maproute.routeneigh_get(w)
+                            # test of PAR-CLR
+                            # if w ∈ Best^t^ (A → v) XOR w ∈ Best^t+1^ (A → v)
+                            if     best_to_v.contains(w_lvl_id) \
+                                   != routes_to_v.previous_best_contained(neigh, oldrem, w_lvl_id):
+                                # new route Best^t+1^ (A → !w → v) has to be sent to w
+                                new_best_not_w = routes_to_v.best_route()
+                                R[-1].append((dst, new_best_not_w.rem, new_best_not_w.hops+[(0, self.maproute.me[0])]))
+                            else:
+                                # new route Best^t+1^ (A → v) has to be sent to w
+                                new_best = routes_to_v.best_route_without(w_lvl_id)
+                                R[-1].append((dst, new_best.rem, new_best.hops+[(0, self.maproute.me[0])]))
+
+        flag_of_interest=1
+        ## The TPL starts with just myself.
+        TPL = [[0, [[self.maproute.me[0], NullRem()]]]]
+        # ∀w ∈ A* | w != B
+        for w in set_of_R:
+            R = set_of_R[w]
+            etp = (R, [[block_lvl, TP]], flag_of_interest)
+            logging.info('Sending ETP for a changed link rem.')
+            self.etp_send_to_neigh(etp, w, current_netid)
 
     def etp_send_to_neigh(self, etp, neigh, current_netid):
         """Sends the `etp' to neigh"""
