@@ -182,23 +182,19 @@ class Avg(Rem):
                           ' It must be computed each time')
 
 class Route(object):
-    """A route to a known destination.
+    """A path to a known destination.
 
-    An instance of this class represents a route pointing to a known 
+    An instance of this class represents a path to a known 
     destination d.
     The instance members are:
     `gw': the gateway of the route. Our next hop. It is an instance of the
           class Neigh in module radar.py
-    `rem_at_gw': a REM (Route Efficience Measure) of the route from the 
+    `rem_at_gw': a REM (Route Efficience Measure) of the path from the 
           gateway to the destination d. It is an instance of the class 
           Rem or a derivative.
-    `hops': a sequence of unique identifiers of the hops represented by this
-            route. The identifier of a node is its ip (such as neigh.ip).
-            The hops of a route are the ones that form the best route from the
-            gateway gw to the destination d. gw and d are not included.
-            It does not guarantee that a message to destination d passing 
-            through the gateway gw will pass through these nodes, though.
-            Its primary use is to avoid cyclic routes in our MapRoute.
+    `hops': a sequence of pairs (lvl, id) of the hops represented by this
+            path from the gateway gw to the destination d.
+            gw and d are not included.
     """
     __slots__ = ['gw', 'rem_at_gw', 'hops', 'rem']
 
@@ -213,8 +209,6 @@ class Route(object):
         self.gw = gw
 
     def _get_rem(self):
-        # TODO Return a DeadRem iff "my ip" in self.hops
-        #      to avoid cyclic routes.
         return self.rem_at_gw + self.gw.rem
 
     rem = property(_get_rem)
@@ -249,7 +243,7 @@ class Route(object):
                                                         len(self.hops))
 
 class RouteNode(object):
-    """List of routes to a known destination.
+    """List of paths to a known destination.
 
     This class is basically a list of Route instances, where the
     destination node and its level are fixed and known.
@@ -673,11 +667,11 @@ class MapRoute(Map):
            best routes.
            """
         return [
-                [ (dst, br.gw, br.rem, br.hops+[self.nip_to_ip(self.me)])
+                [ (dst, br.gw, br.rem, br.hops+[(0, self.me[0])])
                     for dst in xrange(self.gsize)
                         for br in [self.node_get(lvl, dst)
                                    .best_route(exclude_gw_ids=exclude_gw_ids)]
                                 if br is not None and f((dst, br.gw, br.rem, 
-                                        br.hops+[self.nip_to_ip(self.me)]))
+                                        br.hops+[(0, self.me[0])]))
                 ] for lvl in xrange(self.levels)
                ]

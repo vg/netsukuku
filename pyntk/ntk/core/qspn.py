@@ -173,7 +173,7 @@ class Etp(object):
                                 self.maproute.node_get(lvl, dst).
                                 best_route(exclude_gw_ids=exclude_gw_ids)
                                 ),
-                             hops+[self.maproute.nip_to_ip(self.maproute.me)]
+                             hops+[(0, self.maproute.me[0])]
                             ) for (dst,gw,rem,hops) in set_of_R[nr.id][lvl]
                           ] for lvl in xrange(self.maproute.levels)
                          ]
@@ -381,9 +381,18 @@ class Etp(object):
 
         level = self.maproute.nip_cmp(self.maproute.me, gwnip)
         
-        ## Purify map portion R
+        ## Purify map portion R from destinations that are not in
+        ## a common gnode
         for lvl in reversed(xrange(level)):
             R[lvl] = []
+
+        ## Purify map portion R from hops that are not in
+        ## a common gnode
+        for R_lvl in R:
+            for id in xrange(len(R_lvl)):
+                dst, rem, hops = R_lvl[id]
+                hops = self.maproute.list_lvl_id_from_nip(hops, sender_nip)
+                R_lvl[id] = (dst, rem, hops)
 
         ## Group rule
         for block in TPL:
@@ -624,8 +633,7 @@ class Etp(object):
                         return DeadRem()
                     def hops_or_none(r):
                         if r is not None:
-                            return r.hops + [self.maproute
-                                             .nip_to_ip(self.maproute.me)]
+                            return r.hops + [(0, self.maproute.me[0])]
                         return []
                     R2 = [ [ (dst, rem_or_none(r), hops_or_none(r))
                             for lvl, dst in best_routes_of_R.keys()

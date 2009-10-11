@@ -147,6 +147,13 @@ class Map(object):
             nip[l] = 0
         return nip
 
+    def nip_to_lvlid(self, nip):
+        """Finds a (lvl, id) pair, referring to this map, from
+           its equivalent netsukuku ip"""
+        lvl = self.nip_cmp(self.me, nip)
+        id = nip[lvl]
+        return (lvl, id)
+
     def ip_to_nip(self, ip):
         """Converts the given ip to a nip (Netsukuku IP)
 
@@ -172,6 +179,25 @@ class Map(object):
                 return lvl
 
         return -1
+
+    def list_lvl_id_from_nip(self, lvl_ids, from_nip):
+        """Given a list of pairs (lvl, id) received by a neighbour with a
+        given nip, returns the list of pairs (lvl, id) representing the same
+        list of nodes, as seen from the point of view of this node."""
+        ret = lvl_ids[:]
+        from_nip_lvl, from_nip_id = self.nip_to_lvlid(from_nip)
+        for i in range(len(ret)):
+            lvl, id = ret[i]
+            if lvl < from_nip_lvl:
+                ret[i] = (from_nip_lvl, from_nip_id)
+        # removes dups
+        ret_nodups = []
+        prec = ()
+        for x in ret:
+            if x != prec:
+                prec = x
+                ret_nodups.append(x)
+        return ret_nodups
 
     def nip_rand(self):
         """Returns a random netsukuku ip"""
