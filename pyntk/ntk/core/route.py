@@ -406,6 +406,19 @@ class MapRoute(Map):
     def set_radar(self, radar):
         self.radar = radar
 
+    def best_to_dest_contains_neigh(self, dest, nr):
+        # dest is a pair (lvl, id)
+        # nr is a instance of Neigh
+
+        # If dest is me, strange thing. TODO review.
+        lvl, dst = dest
+        if self.me[lvl] == dst:
+            return False
+
+        neigh_lvl_id = self.routeneigh_get(nr)
+        best_path = self.node_get(*dest).best_route()
+        return best_path.contains(neigh_lvl_id)
+
     def call_free_nodes_nb_udp(self, neigh, lvl):
         """Use BcastClient to call highest_free_nodes"""
         devs = [neigh.bestdev[0]]
