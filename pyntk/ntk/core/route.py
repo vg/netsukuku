@@ -374,11 +374,13 @@ class RouteNode(object):
         return len(self.routes)
 
     def best_route(self, exclude_gw_ids=[]):
+        self.sort()
         for r in self.routes:
             if r.gw.id not in exclude_gw_ids: return r
         return None
 
     def best_route_without(self, hop):
+        self.sort()
         for r in self.routes:
             if not r.contains(hop): return r
         return None
@@ -604,6 +606,7 @@ class MapRoute(Map):
         # I must delete all the routes in the map and in the kernel
         gwip = None
         node = self.node_get(lvl, dst)
+        node.sort()
         while not node.is_free():
             # starting from the worst
             gw = node.routes[-1].gw
