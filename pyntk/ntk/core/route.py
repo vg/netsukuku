@@ -196,13 +196,14 @@ class Route(object):
             path from the gateway gw to the destination d.
             gw and d are not included.
     """
-    __slots__ = ['gw', 'rem_at_gw', 'hops', 'rem']
+    __slots__ = ['routenode', 'gw', 'rem_at_gw', 'hops', 'rem']
 
-    def __init__(self, gw, rem_at_gw, hops):
+    def __init__(self, gw, rem_at_gw, hops, routenode):
         """New gw route"""
         self.gw = gw
         self.rem_at_gw = rem_at_gw
         self.hops = hops
+        self.routenode = routenode
 
     def update_gw(self, gw):
         """Update Neigh data of my gateway"""
@@ -252,13 +253,14 @@ class RouteNode(object):
           which has the same gateway G
     """
 
-    __slots__ = ['routes', 'lvl', 'id', 'its_me']
+    __slots__ = ['maproute', 'routes', 'lvl', 'id', 'its_me']
 
-    def __init__(self, lvl, id, its_me=False):
+    def __init__(self, maproute, lvl, id, its_me=False):
         self.lvl = lvl
         self.id = id
         self.its_me = its_me
         self.routes = []
+        self.maproute = maproute
 
     def route_getby_gw(self, gw_id):
         """Returns the route having as gateway `gw_id'"""
@@ -307,7 +309,7 @@ class RouteNode(object):
 
         if oldr is None:
             # If there isn't a route through this gateway, add it
-            self.routes.append(Route(gw, rem_at_gw, hops))
+            self.routes.append(Route(gw, rem_at_gw, hops, self))
             ret = 1
             self.sort()
         elif rem_at_gw > oldr.rem_at_gw: 

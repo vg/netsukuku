@@ -36,7 +36,7 @@ class P2PError(Exception):
     '''Generic P2P Error'''
 
 class ParticipantNode(object):
-    def __init__(self, lvl, id, participant=False, its_me=False):
+    def __init__(self, the_map, lvl, id, participant=False, its_me=False):
         self.lvl = lvl
         self.id = id
         self.its_me = its_me
@@ -50,10 +50,11 @@ class ParticipantNode(object):
 
     def _pack(self):
         # lvl and id are not used (as for now) at the time of 
-        # de-serialization. So use the value that will produce the 
+        # de-serialization. Nor it is the_map.
+        # So use the value that will produce the 
         # smaller output with rencode.dumps.
         # TODO test what this value is... perhaps None is better than 0 ?
-        return (0, 0, self.participant)
+        return (0, 0, 0, self.participant)
 
     def __repr__(self):
         return '<%s: %s>' % (self.__class__.__name__, self.participant)

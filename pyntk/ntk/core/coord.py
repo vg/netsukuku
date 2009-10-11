@@ -38,7 +38,7 @@ from ntk.wrap.xtime import time, swait
 
 class Node(object):
 
-    def __init__(self, lvl, id, alive=False, its_me=False):
+    def __init__(self, the_map, lvl, id, alive=False, its_me=False):
         self.lvl = lvl
         self.id = id
         self.its_me = its_me
@@ -51,10 +51,11 @@ class Node(object):
 
     def _pack(self):
         # lvl and id are not used (as for now) at the time of 
-        # de-serialization. So use the value that will produce the 
+        # de-serialization. Nor it is the_map.
+        # So use the value that will produce the 
         # smaller output with rencode.dumps.
         # TODO test what this value is... perhaps None is better than 0 ?
-        return (0, 0, self.alive)
+        return (0, 0, 0, self.alive)
 
 serializable.register(Node)
 

@@ -38,7 +38,7 @@ class DataClass(object):
     As another example, look MapRoute and RouteNode in route.py
     """
 
-    def __init__(self, level, id, its_me=False):
+    def __init__(self, the_map, level, id, its_me=False):
         # do something
         pass
 
@@ -88,9 +88,9 @@ class Map(object):
 
         if self.node[lvl][id] is None:
             if self.me is not None and self.me[lvl] == id:
-                self.node[lvl][id] = self.dataclass(lvl, id, its_me=True)
+                self.node[lvl][id] = self.dataclass(self, lvl, id, its_me=True)
             else:
-                self.node[lvl][id] = self.dataclass(lvl, id)
+                self.node[lvl][id] = self.dataclass(self, lvl, id)
         return self.node[lvl][id]
 
     def node_add(self, lvl, id, silent=0):
@@ -243,7 +243,7 @@ class Map(object):
         self.me = new_me[:]
         # silently add the dataclass objects representing new me
         for l in xrange(self.levels):
-                self.node[l][self.me[l]] = self.dataclass(l, self.me[l], 
+                self.node[l][self.me[l]] = self.dataclass(self, l, self.me[l], 
                                                           its_me=True)
         if not silent:
                 self.events.send('ME_CHANGED', (old_me, self.me))
@@ -261,7 +261,7 @@ class Map(object):
         for lvl in xrange(self.levels):
             # self.me MUST be replaced
             # with a normal node
-            node = self.dataclass(lvl, self.me[lvl])
+            node = self.dataclass(self, lvl, self.me[lvl])
             if func: func(node)
             ret[1][lvl][self.me[lvl]] = node
         # It's been a tough work! And now we'll probably serialize the result!
