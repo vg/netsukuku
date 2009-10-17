@@ -170,10 +170,10 @@ class Map(object):
         g=self.gsize
         return sum([nip[l] * g**l for l in xrange(self.levels)])
 
-    def nip_cmp(self, nipA, nipB):
+    def nip_cmp(self, nipA, nipB=None):
         """Returns the first level where nipA and nipB differs. The search
         start from the end of the nip """
-
+        if nipB is None: nipB = self.me
         for lvl in reversed(xrange(self.levels)):
             if nipA[lvl] != nipB[lvl]:
                 return lvl

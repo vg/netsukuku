@@ -23,6 +23,7 @@
 import ntk.lib.rpc as rpc
 import ntk.wrap.xtime as xtime
 
+from ntk.config import settings
 from ntk.core.map import Map
 from ntk.lib.event import Event
 from ntk.lib.log import logger as logging
@@ -161,22 +162,23 @@ class MapP2P(Map):
 # `msg_id' is just a counter that is incremented and attached to the
 # message that we are sending. In this way, the remote node can 
 # read all the messages sent in the correct order.
-# We need to store the last `msg_id' received from each node into 
+# We need to store the last `msg_id' received from each gnode into 
 # `msg_id_table' to check the received messages validity.
 
 msg_id = 0
-msg_id_table = {}
+gsize = 2 ** settings.BITS_PER_LEVEL
+msg_id_table = [[None] * gsize for i in xrange(settings.LEVELS)]
         
-def check_ids(ip, id):
+def check_ids((lvl, gid), id):
     """ Check the current id validity on the basis of the previous one """
     global msg_id_table
-    if not ip in msg_id_table:
-        msg_id_table[ip] = 0
-    previous = msg_id_table[ip]
+    if msg_id_table[lvl][gid] is None:
+        msg_id_table[lvl][gid] = 0
+    previous = msg_id_table[lvl][gid]
     logging.log(logging.ULTRADEBUG, 'msg_id = ' + str(id) + 
                                     ' previous = ' + str(previous))
     if id >= previous:
-        msg_id_table[ip] = id
+        msg_id_table[lvl][gid] = id
         return True
     return False
 
@@ -274,8 +276,8 @@ class StrictP2P(RPCDispatcher):
         logging.log(logging.ULTRADEBUG, 'P2P: participant_add_udp '
                     'called by ' + str(sender_nip) + ' with msg_id = ' + 
                     str(msg_id))
-        ip = self.maproute.nip_to_ip(sender_nip)
-        if not check_ids(ip, msg_id):
+        lvl = self.maproute.nip_cmp(sender_nip)
+        if not check_ids((lvl, sender_nip[lvl]), msg_id):
             raise Exception('The message is now expired')
         
         logging.log(logging.ULTRADEBUG, 'Someone is asking for P2P '
@@ -334,8 +336,8 @@ class StrictP2P(RPCDispatcher):
             They are used by the callee to recognize a request destinated 
             to it.
            """
-        ip = self.maproute.nip_to_ip(sender_nip)
-        if not check_ids(ip, msg_id):
+        lvl = self.maproute.nip_cmp(sender_nip)
+        if not check_ids((lvl, sender_nip[lvl]), msg_id):
             #raise Exception('The message is now expired')
             rpc.UDP_send_reply(_rpc_caller, caller_id, None)
         elif self.maproute.me == callee_nip and \
@@ -559,8 +561,8 @@ class P2P(StrictP2P):
         logging.log(logging.ULTRADEBUG, 'P2P: participant_add_udp '
                     'called by ' + str(pIP) + ' with msg_id = ' + 
                     str(msg_id))
-        ip = self.maproute.nip_to_ip(pIP)
-        if not check_ids(ip, msg_id):
+        lvl = self.maproute.nip_cmp(pIP)
+        if not check_ids((lvl, pIP[lvl]), msg_id):
             #raise Exception('The message is now expired')
             rpc.UDP_send_reply(_rpc_caller, caller_id, None)
         elif self.maproute.me == callee_nip and \
@@ -581,8 +583,8 @@ class P2P(StrictP2P):
             They are used by the callee to recognize a request 
             destinated to it.
            """           
-        ip = self.maproute.nip_to_ip(pIP)
-        if not check_ids(ip, msg_id):
+        lvl = self.maproute.nip_cmp(pIP)
+        if not check_ids((lvl, pIP[lvl]), msg_id):
             #raise Exception('The message is now expired')
             rpc.UDP_send_reply(_rpc_caller, caller_id, None)
         elif self.maproute.me == callee_nip and \
