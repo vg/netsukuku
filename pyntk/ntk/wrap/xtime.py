@@ -36,6 +36,7 @@ def while_condition(func, wait_millisec=10, repetitions=0):
         while True:
             if func():
                     return True
+            swait(wait_millisec)
     i=0
     while i < repetitions:
             if func():
