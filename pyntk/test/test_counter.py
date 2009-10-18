@@ -162,13 +162,12 @@ class TestCounter(unittest.TestCase):
         self.nodes[3].counter.neigh.send_event_neigh_new(self.bestdev, 
                     self.devs, 2, 
                     self.nodes[3].maproute.nip_to_ip(self.nodes[2].firstnip), 
-                    netid=123, silent=1)
+                    netid=123)
         # let's hook
         self.nodes[3].counter.p2pall.events.send('P2P_HOOKED', ())
         micro_block()
         res = self.nodes[3].counter.cache.has_key('fake pubk') and \
-              self.nodes[3].counter.cache['fake pubk'].has_key('taken by node'
-                                                               ' 2')
+         self.nodes[3].counter.cache['fake pubk'].has_key('taken by node 2')
         self.failIfEqual(res, False)
     
     def testForwarding(self):

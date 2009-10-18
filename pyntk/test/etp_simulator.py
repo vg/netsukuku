@@ -24,6 +24,10 @@ import sys
 sys.path.append('..')
 
 from ntk.lib.log import logger as logging
+import ntk.core.andna as andna
+import ntk.core.andnswrapper as andnswrapper
+import ntk.core.andnsserver as andnsserver
+import ntk.core.counter as counter
 import ntk.core.radar as radar
 import ntk.core.route as maproute
 import ntk.core.qspn as qspn
@@ -31,6 +35,7 @@ import ntk.core.hook as hook
 import ntk.core.p2p as p2p
 import ntk.core.coord as coord
 import ntk.core.krnl_route as kroute
+import ntk.lib.misc as misc
 import ntk.lib.rpc as rpc
 import ntk.wrap.xtime as xtime
 from ntk.lib.event import Event, apply_wakeup_on_event
@@ -217,8 +222,10 @@ class FakeTCPClient:
 
 class FakeNeighbour():
     def __init__(self):
-        real_ = radar.Neighbour(16)
-        self.events = Event(['NEIGH_NEW', 'NEIGH_DELETED', 'NEIGH_REM_CHGED'])
+        real_ = radar.Neighbour(radar=None, maproute=None, max_neigh=16)
+        self.events = Event(['NEIGH_NEW', 'NEIGH_DELETED', 'NEIGH_REM_CHGED',
+                             'COLLIDING_NEIGH_NEW', 'COLLIDING_NEIGH_DELETED',
+                             'COLLIDING_NEIGH_REM_CHGED'])
         self.dict_id_to_neigh = {}
         self.announce_gw = real_.announce_gw
         self.waitfor_gw_added = real_.waitfor_gw_added
@@ -236,7 +243,8 @@ class FakeNeighbour():
         return self.dict_id_to_neigh[idn].ip
     def id_to_neigh(self, idn):
         return self.dict_id_to_neigh[idn]
-    def neigh_list(self):
+    def neigh_list(self, in_my_network=False, out_of_my_network=False,
+                         in_this_netid=None, out_of_this_netid=None):
         """ return the list of neighbours """
         nlist = []
         for key, neigh in self.dict_id_to_neigh.items():
@@ -251,33 +259,47 @@ class FakeNeighbour():
         self.announce_gw(neigh.id)
         self.events.send('NEIGH_NEW', (neigh,))
     def send_event_neigh_new(self, bestdev, devs, idn, ip, netid):
+        def ntkd_func(ip, netid):
+            return FakeTCPClient(ip)
+        def id_func(ip, netid):
+            return idn
         neigh = radar.Neigh(bestdev=bestdev,
                                         devs=devs,
-                                        idn=idn,
+                                        id_func=id_func,
                                         ip=ip,
                                         netid=netid,
-                                        ntkd=FakeTCPClient(ip))
+                                        ntkd_func=ntkd_func)
         self.send_event_neigh_new_for_neigh(neigh)
         return neigh
     def send_event_neigh_rem_chged(self, bestdev, devs, idn, ip, netid, old_rtt):
+        def ntkd_func(ip, netid):
+            return FakeTCPClient(ip)
+        def id_func(ip, netid):
+            return idn        
         self.events.send('NEIGH_REM_CHGED',
                                  (radar.Neigh(bestdev=bestdev,
                                         devs=devs,
-                                        idn=idn,
+                                        id_func=id_func,
                                         ip=ip,
                                         netid=netid,
-                                        ntkd=FakeTCPClient(ip)),radar.Rtt(old_rtt)))
+                                        ntkd_func=ntkd_func),
+                                        radar.Rtt(old_rtt)))
     def send_event_neigh_deleted(self, bestdev, devs, idn, ip, netid):
         logging.debug('ANNOUNCE: gw ' + str(idn) + ' removing.')
         self.announce_gw_removing(idn)
+        def ntkd_func(ip, netid):
+            return FakeTCPClient(ip)
+        def id_func(ip, netid):
+            return idn
         self.events.send('NEIGH_DELETED',
                          (radar.Neigh(bestdev=bestdev,
                                 devs=devs,
-                                idn=idn,
+                                id_func=id_func,
                                 ip=ip,
                                 netid=netid,
-                                ntkd=FakeTCPClient(ip)),))
-        if idn in self.dict_id_to_neigh: self.dict_id_to_neigh.pop(idn)
+                                ntkd_func=ntkd_func)))
+        if idn in self.dict_id_to_neigh: 
+            self.dict_id_to_neigh.pop(idn)
 class FakeRadar():
     def __init__(self, ntkd, rpcbcastclient, xtime):
         self.neigh = FakeNeighbour()
@@ -304,18 +326,58 @@ def create_node(firstnip, nics, netid):
     node = FakeNtkNode()
     node.nic_manager = NICManager(nics=nics)
     rpcbcastclient = rpc.BcastClient(list(node.nic_manager))
-    node.radar = radar.Radar(node, rpcbcastclient, xtime)
-    node.neighbour = node.radar.neigh
     node.firstnip = firstnip
-    node.maproute = maproute.MapRoute(node, levels, gsize, node.firstnip)
-    node.etp = qspn.Etp(node, node.radar, node.maproute)
-    node.p2p = p2p.P2PAll(node, node.radar, node.maproute, node.etp)
-    node.coordnode = coord.Coord(node, node.radar, node.maproute, node.p2p)
-    node.hook = hook.Hook(node, node.radar, node.maproute, node.etp,
+    node.maproute = maproute.MapRoute(levels, gsize, node.firstnip)
+    node.radar = radar.Radar(node.maproute, rpcbcastclient, xtime)
+    node.maproute.set_radar(node.radar)
+    node.neighbour = node.radar.neigh
+    node.etp = qspn.Etp(node.radar, node.maproute)
+    node.p2p = p2p.P2PAll(node.radar, node.maproute, node.etp)
+    node.coordnode = coord.Coord(node.radar, node.maproute, node.p2p)
+    node.hook = hook.Hook(node.radar, node.maproute, node.etp,
                                  node.coordnode, node.nic_manager)
-    node.kroute = kroute.KrnlRoute(node, node.neighbour, node.maproute)
+    node.kroute = kroute.KrnlRoute(node.neighbour, node.maproute)
     node.neighbour.netid = netid
 
+    simulated_nodes.append(node)
+    return node
+def create_participant_node(firstnip, nics, netid, id, keypair_path, 
+                localcache_path, resolv_path, snsd_nodes_path=None):
+    global simulated_nodes
+    node = FakeNtkNode()
+    node.id = id
+    node.nic_manager = NICManager(nics=nics)
+    rpcbcastclient = rpc.BcastClient(list(node.nic_manager))
+    node.firstnip = firstnip
+    node.maproute = maproute.MapRoute(levels, gsize, node.firstnip)
+    node.radar = radar.Radar(node.maproute, rpcbcastclient, xtime)
+    node.neighbour = node.radar.neigh
+    node.maproute.set_radar(node.radar)
+    node.etp = qspn.Etp(node.radar, node.maproute)
+    node.p2p = p2p.P2PAll(node.radar, node.maproute, node.etp)
+    node.coordnode = coord.Coord(node.radar, node.maproute, node.p2p)
+    node.hook = hook.Hook(node.radar, node.maproute, node.etp,
+                                 node.coordnode, node.nic_manager)
+    node.kroute = kroute.KrnlRoute(node.neighbour, node.maproute)
+    from ntk.lib.crypto import KeyPair
+    node.keypair = KeyPair(keypair_path)
+    node.counter = counter.Counter(node.keypair, node.radar, node.maproute, 
+                                   node.p2p)
+    node.andna = andna.Andna(node.keypair, node.counter, node.radar, 
+                             node.maproute, node.p2p)
+    snsd_nodes = []
+    for line in misc.read_nodes(snsd_nodes_path):
+        result, data = misc.parse_snsd_node(line)
+        if not result:
+            raise ImproperlyConfigured("Wrong line in "+str(snsd_nodes_path))
+        snsd_nodes.append(data)
+    if not None in [localcache_path, resolv_path, snsd_nodes_path]:
+        node.andns = andnswrapper.AndnsWrapper(node.andna, 
+                             localcache_path, 
+                             misc.read_resolv(resolv_path),
+                             snsd_nodes)
+        node.andnsserver = andnsserver.AndnsServer(node.andns)
+    node.neighbour.netid = netid
     simulated_nodes.append(node)
     return node
 def get_simulated_node_by_ip(ip):

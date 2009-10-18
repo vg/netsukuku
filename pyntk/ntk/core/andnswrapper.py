@@ -71,7 +71,7 @@ class AndnsWrapper(object):
      
     def update_hostnames(self):
         def no_participants():
-            return self.andna.mapp2p.node_nb[self.andna.mapp2p.levels-1] > 1
+            return self.andna.mapp2p.node_nb[self.andna.mapp2p.levels-1] >= 1
         # wait at least one participant
         while_condition(no_participants)
         # register new records retrieved from file

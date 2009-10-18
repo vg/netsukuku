@@ -187,7 +187,7 @@ class TestAndna(unittest.TestCase):
         self.nodes[3].andna.neigh.send_event_neigh_new(self.bestdev, 
                     self.devs, 2, 
                     self.nodes[3].maproute.nip_to_ip(self.nodes[2].firstnip), 
-                    netid=123, silent=1)
+                    netid=123)
         # let's hook
         self.nodes[3].andna.p2pall.events.send('P2P_HOOKED', ())
         micro_block()

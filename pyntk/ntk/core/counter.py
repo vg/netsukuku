@@ -57,7 +57,7 @@ class Counter(P2P):
     def counter_hook(self):
         neigh = None
         def no_participants():
-            return self.mapp2p.node_nb[self.mapp2p.levels-1] > 1
+            return self.mapp2p.node_nb[self.mapp2p.levels-1] >= 1
         # wait at least one participant
         while_condition(no_participants)
         for neigh in self.neigh.neigh_list(in_my_network=True):

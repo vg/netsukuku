@@ -30,7 +30,7 @@ from ntk.core.radar import Neigh
 from ntk.core.route import Rtt
 from ntk.lib.log import init_logger
 
-from etp_simulator import create_node, initialize
+from etp_simulator import create_participant_node, initialize
 
 
 sys.path.append('..')
@@ -102,7 +102,7 @@ def create_nodes(keypairs_path, localcache_path, conf_path, total_nodes=6,
                     "notappend:node"+str(idn)+":"+"7.8.9."+str(idn+11)+
                     ":0:1:1")
                                                           
-        nodes[idn] = create_node(ip_list[idn], 
+        nodes[idn] = create_participant_node(ip_list[idn], 
                              nics[idn],
                              netid=123, 
                              id=idn,
@@ -119,12 +119,14 @@ def create_nodes(keypairs_path, localcache_path, conf_path, total_nodes=6,
 def _add_routes(node, nip, gw, nodes):
     """ Add routes in/from `node' to `nip' gnodes using `gw'. """
     for lvl in xrange(node.maproute.levels):
-           neigh = Neigh(bestdev, 
+        def ntkd_func(ip, netid):
+            return nodes[gw-1]
+        neigh = Neigh(bestdev, 
                          devs, 
                          gw, 
                          node.maproute.nip_to_ip(nip), 
-                         ntkd=nodes[gw-1])
-           node.maproute.route_add(lvl, 
+                         ntkd_func=ntkd_func)
+        node.maproute.route_add(lvl, 
                          nip[lvl], 
                          neigh, 
                          Rtt(100), # not used
