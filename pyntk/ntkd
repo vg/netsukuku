@@ -20,6 +20,7 @@
 ##
 
 import os.path
+import signal
 import sys
 
 from optparse import OptionParser
@@ -114,7 +115,12 @@ def main():
                                  options.exclude_interfaces else [])
 
     NtkNode().run()
+    
+    def sighup_handler(signum, frame):
+        me.reload_snsd_nodes()
 
+    signal.signal(signal.SIGHUP, sighup_handler)
+    
     allmicro_run()
 
 if __name__ == '__main__':

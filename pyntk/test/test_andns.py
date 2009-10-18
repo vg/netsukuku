@@ -94,13 +94,16 @@ class TestAndns(unittest.TestCase):
         os.rmdir(self.conf_path)
         os.rmdir(self.localcache_path)
             
-    def testRegistration(self, client=None, hostname="Testing", service=0, IDNum=0, 
-                         snsd_record='', snsd_record_pubk=None, priority=1, weight=1,
+    def testRegistration(self, client=None, hostname="Testing", service=0, 
+                         IDNum=0, snsd_record='', snsd_record_pubk=None, 
+                         priority=1, weight=1,
                          append_if_unavailable=False):    
         if client is None:
             client = self.me
-        (res, data) = client.andna.register(hostname, service, IDNum, snsd_record,
-                                            snsd_record_pubk, priority, weight,
+        (res, data) = client.andna.register(hostname, service, IDNum, 
+                                            snsd_record,
+                                            snsd_record_pubk, priority, 
+                                            weight,
                                             append_if_unavailable)
         if res == 'OK':
             timestamp, updates = data
@@ -111,15 +114,18 @@ class TestAndns(unittest.TestCase):
     def testResolution(self):
         snsd_node = None
         hostname = "hostname for self.me"
-        self.testRegistration(self.me, hostname, snsd_record='123.123.123.123')
-        record = self.remote.andns.ntk_resolve(hostname, service=0, inverse=False)
+        self.testRegistration(self.me, hostname, 
+                              snsd_record='123.123.123.123')
+        record = self.remote.andns.ntk_resolve(hostname, service=0, 
+                                               inverse=False)
         self.failUnlessEqual(record[0][4] == '123.123.123.123', True)
                 
     def testProcess(self):
-        self.testRegistration(self.remote, hostname="remote", snsd_record='123.123.123.123')
-        request = AndnsPacket(id=4, r=1, qr=0, z=0, qtype=AT_A, ancount=0, ipv=0,
-                                      nk=NTK_REALM, rcode=0, p=PROTO_UDP,
-                                      service=0, qstdata="remote")
+        self.testRegistration(self.remote, hostname="remote", 
+                              snsd_record='123.123.123.123')
+        request = AndnsPacket(id=4, r=1, qr=0, z=0, qtype=AT_A, ancount=0, 
+                              ipv=0, nk=NTK_REALM, rcode=0, p=PROTO_UDP,
+                              service=0, qstdata="remote")
         response = self.me.andns.process_packet(request)
         for answer in response:
             self.failUnlessEqual(answer.rdata != "123.123.123.123", True)

@@ -1,6 +1,8 @@
 import time as T
 import ntk.lib.micro as micro
 
+from datetime import date, timedelta
+
 def swait(t):
     """Waits `t' ms"""
 
@@ -36,6 +38,7 @@ def while_condition(func, wait_millisec=10, repetitions=0):
         while True:
             if func():
                     return True
+            swait(wait_millisec)
     i=0
     while i < repetitions:
             if func():
@@ -46,3 +49,17 @@ def while_condition(func, wait_millisec=10, repetitions=0):
 
 def time():
     return int(T.time()*1000)
+
+def now():
+    return T.time()
+
+def timestamp_to_data(timestamp):
+    return date.fromtimestamp(timestamp)
+    
+def today():
+    return date.today()
+
+def days(number=3):
+    """ Take the number of days and return an object that 
+    can be used for comparison with data objects """
+    return timedelta(days=number)

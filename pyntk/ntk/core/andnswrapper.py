@@ -26,17 +26,16 @@
 ##
 
 import os
-import sys
 import andns.andns as andns 
 
 from dns import message, rrset, query
 
 from ntk.lib.log import logger as logging
-from ntk.lib.micro import microfunc, micro_block
-from ntk.lib.misc import is_ntk_name, parse_snsd_node, is_inaddr_arpa
+from ntk.lib.micro import microfunc
 from ntk.lib.rencode import dumps, loads
-from ntk.lib.xtime import timestamp_to_data, today, days, swait
 from ntk.network.inet import ip_to_str
+from ntk.wrap.xtime import (sleep_during_hard_work, timestamp_to_data, 
+                            today, days, while_condition)
 
 # TODO: the public key of my neighbours must be saved on file! 
 #       and in /etc/netsukuku/snsd_nodes them paths
@@ -45,13 +44,13 @@ class AndnsError(Exception): pass
 
 class AndnsWrapper(object):
     
-    def __init__(self, ntkd, andna, local_cache_path, nameservers=[], snsd_nodes=[]):
-        self.ntkd = ntkd
-        self.nameservers = nameservers
+    def __init__(self, andna, local_cache_path, ns=[], snsd_nodes=[]):
+        self.nameservers = ns
         self.andna = andna
         self.local_cache_path = local_cache_path
         if os.path.exists(local_cache_path):
-            self.andna.local_cache = loads(open(local_cache_path, "rb").read())
+            self.andna.local_cache = loads(open(local_cache_path, "rb")
+                                           .read())
         self.snsd_nodes = snsd_nodes
         self.stopped = True
         # remove from local cache the Snsd Nodes that are not in our conf file
@@ -71,9 +70,10 @@ class AndnsWrapper(object):
         self.update_hostnames()
      
     def update_hostnames(self):
-        # wait at least one participant!
-        while not self.andna.mapp2p.participant_list():
-            swait(500)      
+        def no_participants():
+            return self.andna.mapp2p.node_nb[self.andna.mapp2p.levels-1] > 1
+        # wait at least one participant
+        while_condition(no_participants)
         # register new records retrieved from file
         for record in self.snsd_nodes:
             if record[2] == 'me':
@@ -84,21 +84,22 @@ class AndnsWrapper(object):
             updates = 0
             if hostname in self.andna.local_cache:
                 updates = self.andna.local_cache[hostname][1]
-            res, data = self.register(hostname, service, updates, snsd_record, \
-                            snsd_record_pubk, priority, weight, append_if_unavailable) 
+            res, data = self.register(hostname, service, updates, 
+                                      snsd_record, snsd_record_pubk, priority,
+                                      weight, append_if_unavailable) 
             if res == 'OK':
                 logging.debug("ANDNA: hostname "+str(record[1])+ \
-                                    " registration number "+str(updates)+" completed")
+                                    " registration number "+str(updates)+
+                                    " completed")
             else:
                 logging.debug("ANDNA: failed `"+str(record[1])+ \
                                   "' registration: "+str(data))
         if self.stopped:
-            # TODO: self.stopped = False
             self.updater()
         
     def process_binary(self, request):
         """ Converts ANDNS packets (see RFC) to AndnsPacket objects """ 
-        return self.process_packet(from_wired(request)).to_wire()
+        return self.process_packet(andns.from_wire(request)).to_wire()
 
     def process_packet(self, packet):
         """ Process an AndnsPacket and returns it adding answers found. """
@@ -118,12 +119,16 @@ class AndnsWrapper(object):
         logging.debug("ANDNS: Starting INET resolution of `"+str(name)+"'")
         answers = []
         for nameserver in self.nameservers:
-            response = query.udp(response, nameserver)
+            request = message.Message()
+            # TODO: check the next line!!
+            request.question.append(rrset.from_text(name, 100, 'IN', 'ANY'))
+            response = query.udp(request, nameserver)
             if request.is_answer(response):
                 for rr in response.answer:
                     answers.append((1, 1, 1, service, str(rr.name))) 
             else:
-                logging.debug("ANDNS: Failed DNS resolution using "+str(nameserver))
+                logging.debug("ANDNS: Failed DNS resolution using "+
+                              str(nameserver))
         return answers
             
     def ntk_resolve(self, name, service, inverse):
@@ -138,14 +143,17 @@ class AndnsWrapper(object):
         if res != 'OK':
             logging.debug("ANDNS: NTK has not resolved `"+str(name)+"'")
         else:  
-            answers.append((1, data.weight, data.priority, service, data.record))
+            answers.append((1, data.weight, data.priority, service, 
+                            data.record))
         return answers
 
     def register(self, hostname, service, updates, snsd_record, 
-                       snsd_record_pubk, priority, weight, append_if_unavailable):
+                       snsd_record_pubk, priority, weight, 
+                       append_if_unavailable):
         res, data = self.andna.register(hostname, service, updates, 
                                         snsd_record, snsd_record_pubk,
-                                        priority, weight, append_if_unavailable)
+                                        priority, weight, 
+                                        append_if_unavailable)
         if res == 'OK':
             self.dump_caches()
         return res, data
@@ -153,19 +161,31 @@ class AndnsWrapper(object):
     def dump_caches(self):
         open(self.local_cache_path, "wb").write(dumps(self.andna.local_cache))
 
-    # TODO: complete
     @microfunc(True)
     def updater(self):
-        """ Start a microthread that updates the last recently updated hostnames in my 
-        own local cache. """
+        """ Start a microthread that updates the last recently updated 
+        hostnames in my own local cache. """
+        
+        self.stopped = False
+        
+        def is_expiring(timestamp):
+            return today() - timestamp_to_data(timestamp) > days(10)
+        
         while not self.stopped:
-            logging.debug("ANDNA: hostname updater started")
-            for hostname, (timestamp, updates) in self.andna.local_cache.items():
-                if today() - timestamp_to_data(timestamp) > days(10):
-                    res, data = self.register(hostname, updates,      ip_to_str(self.andna.maproute.nip_to_ip(self.andna.maproute.me)))
-                    if res == 'OK':
-                        logging.debug("ANDNA: "+str(updates)+" updated hostname `"+ \
-                                       str(hostname)+"' from the updater daemon")
-            # TODO: is it possible to suspend microfunc? manage with stackless.remove
-            for i in range(900):
-                micro_block()
+            expiring_hostnames = [ hostname 
+                                    for hostname, (timestamp, updates) 
+                                      in self.andna.local_cache.items()
+                                      if is_expiring(timestamp)
+                                   ]
+            for hostname in expiring_hostnames:
+                timestamp, updates = self.local_cache[hostname]
+                res, data = self.register(hostname, updates,      
+                                    ip_to_str(self.andna.maproute.nip_to_ip
+                                    (self.andna.maproute.me)))
+                if res == 'OK':
+                    logging.debug("ANDNA: "+str(updates)+" updated hostname `"
+                                  + str(hostname)+"' from the updater daemon")
+                else:
+                    logging.debug("ANDNA: Error: "+str(data))
+            sleep_during_hard_work()        
+    

@@ -18,8 +18,14 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
+import os
 from random import choice
 
+
+import ntk.core.andna as andna
+import ntk.core.andnswrapper as andnswrapper
+import ntk.core.counter as counter
+import ntk.core.andnsserver as andnsserver
 import ntk.core.radar as radar
 import ntk.core.route as maproute
 import ntk.core.qspn as qspn
@@ -27,13 +33,14 @@ import ntk.core.hook as hook
 import ntk.core.p2p as p2p
 import ntk.core.coord as coord
 import ntk.core.krnl_route as kroute
+import ntk.lib.crypto as crypto
+import ntk.lib.misc as misc
 import ntk.lib.rpc as rpc
 import ntk.wrap.xtime as xtime
 
-from ntk.config import settings, ImproperlyConfigured
-from ntk.lib.event import Event, apply_wakeup_on_event
+from ntk.config import ImproperlyConfigured
 from ntk.lib.log import logger as logging
-from ntk.lib.micro import microfunc, micro, micro_block
+from ntk.lib.micro import microfunc, micro
 from ntk.network import NICManager, Route
 from ntk.network.inet import ip_to_str, valid_ids
 from ntk.wrap.sock import Sock
@@ -57,7 +64,12 @@ class NtkNode(object):
 
         if self.gsize == 1:
             raise ImproperlyConfigured('Gnode size cannot be equal to 1')
+        
+        self.keypair = crypto.KeyPair(keys_path=settings.KEY_PAIR_PATH)
 
+        if not os.path.exists(settings.CONFIGURATION_DIR):
+            os.mkdir(settings.CONFIGURATION_DIR)
+                    
         self.simulated = settings.SIMULATED
         self.simnet = simnet
         self.simme = simme
@@ -85,6 +97,12 @@ class NtkNode(object):
 
         self.p2p = p2p.P2PAll(self.radar, self.maproute, self.etp)
         self.coordnode = coord.Coord(self.radar, self.maproute, self.p2p)
+        self.counter = counter.Counter(self.keypair, self.radar, self.maproute, self.p2p)
+        self.andna = andna.Andna(self.keypair, self.counter, self.radar, self.maproute, self.p2p)
+        self.andnswrapper = andnswrapper.AndnsWrapper(self.andna, settings.LOCAL_CACHE_PATH, 
+                                 misc.read_resolv(settings.RESOLV_PATH), self.reload_snsd_nodes())
+        self.andnsserver = andnsserver.AndnsServer(self.andnswrapper)
+
         logging.log(logging.ULTRADEBUG, 'NtkNode: This is mapcache of coord '
                     'as soon as started.')
         logging.log(logging.ULTRADEBUG, self.coordnode.mapcache.repr_me())
@@ -101,6 +119,14 @@ class NtkNode(object):
         if not self.simulated:
             self.kroute = kroute.KrnlRoute(self.neighbour, self.maproute)
 
+    def reload_snsd_nodes(self, snsd_nodes_path=settings.SNSD_NODES_PATH, snsd_nodes=[]):
+        for line in misc.read_nodes(settings.SNSD_NODES_PATH):
+            result, data = misc.parse_snsd_node(line)
+            if not result:
+                raise ImproperlyConfigured("Wrong line in "+str(settings.SNSD_NODES_PATH))
+            snsd_nodes.append(data)
+        return snsd_nodes
+    
     def reset(self, oldip=None, newnip=None):
         logging.debug('resetting node')
         # close the server socket
@@ -144,9 +170,11 @@ class NtkNode(object):
         self.radar.run()
         # Wait a bit (otherwise problems with coord service)
         xtime.swait(100)
-        # Now I'm also participating to service Coord
+        # Now I'm also participating to service Coord, Counter and Andna
         micro(self.coordnode.participate)
-
+        micro(self.counter.participate)
+        micro(self.andna.participate)
+        
     def first_activation(self):
         logging.debug('First NIC activation started')
         nip_ip = self.maproute.nip_to_ip(self.firstnip)

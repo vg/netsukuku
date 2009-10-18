@@ -17,7 +17,6 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
-from random import choice
 import datetime
 import os
 import sys
@@ -26,14 +25,8 @@ import unittest
 
 sys.path.append('..')
 
-from etp_simulator import create_node
 from network_simulator import create_nodes, create_network, create_service
-from ntk.core.counter import Counter, CounterError
-from ntk.core.p2p import P2PAll
-from ntk.core.qspn import Etp
-from ntk.core.route import MapRoute, Rtt
-from ntk.core.radar import Neighbour, Neigh
-from ntk.lib.crypto import KeyPair
+from ntk.core.counter import CounterError
 from ntk.lib.log import init_logger
 from ntk.lib.micro import micro_block 
 # TODO: resolve this... 
@@ -94,7 +87,8 @@ class TestCounter(unittest.TestCase):
         
     def testPublicKeyHash(self, hostname="Testing hostname"):
         counter_gnode1 = self.me.counter.H(self.me.counter.h(hostname))
-        counter_gnode2 = self.remote.counter.H(self.remote.counter.h(hostname))
+        counter_gnode2 = self.remote.counter.H(
+                                        self.remote.counter.h(hostname))
         self.failUnlessEqual(counter_gnode1==counter_gnode2, True)
         self.failIfEqual(counter_gnode1 == self.me.firstnip, True)
         self.failIfEqual(counter_gnode1 == self.remote.firstnip, True)
@@ -162,16 +156,19 @@ class TestCounter(unittest.TestCase):
         # of the neighbour 2, then the node 3 try to hook it and will 
         # take its cache
         self.nodes[2].counter.cache['fake pubk'] = {}
-        self.nodes[2].counter.cache['fake pubk']['taken by node 2'] = 'Fake values'
+        self.nodes[2].counter.cache['fake pubk']['taken by node 2'] = \
+                                   'Fake values'
         # node 3 see node 2
-        self.nodes[3].counter.neigh.send_event_neigh_new(self.bestdev, self.devs, 2, 
+        self.nodes[3].counter.neigh.send_event_neigh_new(self.bestdev, 
+                    self.devs, 2, 
                     self.nodes[3].maproute.nip_to_ip(self.nodes[2].firstnip), 
                     netid=123, silent=1)
         # let's hook
         self.nodes[3].counter.p2pall.events.send('P2P_HOOKED', ())
         micro_block()
         res = self.nodes[3].counter.cache.has_key('fake pubk') and \
-              self.nodes[3].counter.cache['fake pubk'].has_key('taken by node 2')
+              self.nodes[3].counter.cache['fake pubk'].has_key('taken by node'
+                                                               ' 2')
         self.failIfEqual(res, False)
     
     def testForwarding(self):

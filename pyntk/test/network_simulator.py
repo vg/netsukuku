@@ -26,11 +26,12 @@ import sys
 
 from random import randint
 
-from ntk.core.radar import Neighbour, Neigh
-from ntk.core.route import MapRoute, Rtt
+from ntk.core.radar import Neigh
+from ntk.core.route import Rtt
+from ntk.lib.log import init_logger
 
 from etp_simulator import create_node, initialize
-from ntk.lib.log import init_logger
+
 
 sys.path.append('..')
 init_logger()
@@ -41,7 +42,8 @@ class Error(Exception): pass
 bestdev = []
 devs    = {}
 
-def create_nodes(keypairs_path, localcache_path, conf_path, total_nodes=6, ip_list=[]):
+def create_nodes(keypairs_path, localcache_path, conf_path, total_nodes=6, 
+                 ip_list=[]):
     """ Create an NtkNode pool that can be used to create networks.
         The devices and REMs are ignored here, to define a topology
         use create network. """ 
@@ -96,17 +98,22 @@ def create_nodes(keypairs_path, localcache_path, conf_path, total_nodes=6, ip_li
                 os.remove(node_localcache_path + "/" + f)
                 
         # create fake snsd configuration file
-        open(node_conf_path+"/snsd_nodes", "w").writelines("notappend:node"+str(idn)+":"+
-                                                          "7.8.9."+str(idn+11)+":0:1:1")
+        open(node_conf_path+"/snsd_nodes", "w").writelines(
+                    "notappend:node"+str(idn)+":"+"7.8.9."+str(idn+11)+
+                    ":0:1:1")
                                                           
         nodes[idn] = create_node(ip_list[idn], 
                              nics[idn],
                              netid=123, 
                              id=idn,
-                             keypair_path=keypairs_path+"/"+str(idn)+"/keypair.pem",
-                             localcache_path=localcache_path+"/"+str(idn)+"/localcache",
-                             resolv_path=conf_path+"/"+str(idn)+"/resolv.conf",
-                             snsd_nodes_path=conf_path+"/"+str(idn)+"/snsd_nodes")
+                             keypair_path=keypairs_path+"/"+str(idn)+
+                             "/keypair.pem",
+                             localcache_path=localcache_path+"/"+str(idn)+
+                             "/localcache",
+                             resolv_path=conf_path+"/"+str(idn)+
+                             "/resolv.conf",
+                             snsd_nodes_path=conf_path+"/"+str(idn)+
+                             "/snsd_nodes")
     return nodes
 
 def _add_routes(node, nip, gw, nodes):
@@ -147,7 +154,8 @@ def create_network(nodes, topology=default_topology):
     """ Create a network using nodes and topology given. """
     for (src, dst_list, gw) in default_topology:
         for dst in dst_list:
-            nodes = _add_routes(nodes[src-1], nodes[dst-1].firstnip, gw, nodes)
+            nodes = _add_routes(nodes[src-1], nodes[dst-1].firstnip, gw, 
+                                nodes)
     return nodes
 
 def _participant_add(node, service, nip):

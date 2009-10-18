@@ -17,14 +17,11 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
-import os
-
 from socket import AF_INET, SOCK_DGRAM
 
 from ntk.lib import microsock
 from ntk.lib.micro import microfunc, micro_block
 from ntk.lib.xtime import swait
-from ntk.lib.log import logger as logging
 
 ##
 # This is just a simple standalone non-RPC UDP server.
@@ -47,8 +44,7 @@ def UDPServer(addr, requestHandler):
 
 class AndnsServer(object):
     
-    def __init__(self, ntkd, andns):
-        self.ntkd = ntkd
+    def __init__(self, andns):
         self.andns = andns
         self.serv_sock = None
 

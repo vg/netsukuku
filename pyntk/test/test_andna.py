@@ -17,24 +17,19 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
-from random import choice
 import os
 import sys
 import unittest
 
 sys.path.append('..')
 
-from etp_simulator import create_node, initialize
+from etp_simulator import initialize
 from network_simulator import create_nodes, create_network, create_service
-from ntk.config import settings
-from ntk.core.andna import Andna, AndnaError
-from ntk.core.counter import Counter
-from ntk.core.p2p import P2PAll
-from ntk.core.qspn import Etp
-from ntk.core.route import MapRoute, Rtt
+
+from ntk.core.andna import AndnaError
 from ntk.lib.log import init_logger
 from ntk.lib.micro import micro_block
-from ntk.wrap.xtime import swait
+
 
 init_logger()
 initialize()
@@ -89,13 +84,14 @@ class TestAndna(unittest.TestCase):
         os.rmdir(self.conf_path)
         os.rmdir(self.localcache_path)
 
-    def testRegistration(self, client=None, hostname="Testing", service=0, IDNum=0, 
-                         snsd_record='', snsd_record_pubk=None, priority=1, weight=1,
-                         append_if_unavailable=False):    
+    def testRegistration(self, client=None, hostname="Testing", service=0, 
+                         IDNum=0, snsd_record='', snsd_record_pubk=None, 
+                         priority=1, weight=1, append_if_unavailable=False):    
         if client is None:
             client = self.me
-        (res, data) = client.andna.register(hostname, service, IDNum, snsd_record,
-                                            snsd_record_pubk, priority, weight,
+        (res, data) = client.andna.register(hostname, service, IDNum, 
+                                            snsd_record, snsd_record_pubk, 
+                                            priority, weight,
                                             append_if_unavailable)
         if res == 'OK':
             timestamp, updates = data
@@ -158,23 +154,28 @@ class TestAndna(unittest.TestCase):
         for idn, node in self.nodes.items():
             node.counter.max_hostnames_limit = limit
         for i in xrange(limit+5):
-            res, data = self.testRegistration(self.me, hostname="hostname"+str(i), 
+            res, data = self.testRegistration(self.me, hostname="hostname"+
+                                              str(i), 
                                               snsd_record="123.123.123.123")
             self.failIfEqual(i > limit and res == 'OK', True)
             if res != 'OK':
-                self.failIfEqual('Hostnames limit reached' in str(data), False)
+                self.failIfEqual('Hostnames limit reached' in str(data), 
+                                 False)
         
     def testMaxQueueHostname(self):
         hostname = "always the same"
-        register_node_tmp = self.nodes[1].andna.H(self.nodes[1].andna.h(hostname))
+        register_node_tmp = self.nodes[1].andna.H(
+                              self.nodes[1].andna.h(hostname))
         for i in xrange(self.total_nodes):
             # the register node must be the same for all the client node
-            register_node = self.nodes[i].andna.H(self.nodes[i].andna.h(hostname))
+            register_node = self.nodes[i].andna.H(
+                              self.nodes[i].andna.h(hostname))
             self.failUnlessEqual(register_node_tmp == register_node, True)
             res, data = self.testRegistration(self.nodes[i], hostname, 
                                               append_if_unavailable=True)
             if i > self.me.andna.max_andna_queue:
-                self.failIfEqual(res != 'OK' and 'enqueued' in str(data), False)
+                self.failIfEqual(res != 'OK' and 'enqueued' in str(data), 
+                                 False)
     
     def testHooking(self):
         # We don't use self.testRegistration, because the request is forwarded
@@ -183,7 +184,8 @@ class TestAndna(unittest.TestCase):
         # take its cache
         self.nodes[2].andna.cache['taken by node 2'] = 'Fake AndnaCache value'
         # node 3 see node 2
-        self.nodes[3].andna.neigh.send_event_neigh_new(self.bestdev, self.devs, 2, 
+        self.nodes[3].andna.neigh.send_event_neigh_new(self.bestdev, 
+                    self.devs, 2, 
                     self.nodes[3].maproute.nip_to_ip(self.nodes[2].firstnip), 
                     netid=123, silent=1)
         # let's hook
@@ -199,7 +201,8 @@ class TestAndna(unittest.TestCase):
         for idn in xrange(self.total_nodes-1):
             if self.nodes[idn].andna.cache.has_key(hostname) and \
                self.nodes[idn+1].andna.cache.has_key(hostname):
-                res = self.nodes[idn].andna.cache[hostname] == self.nodes[idn+1].andna.cache[hostname]
+                res = self.nodes[idn].andna.cache[hostname] == \
+                      self.nodes[idn+1].andna.cache[hostname]
                 self.failIfEqual(res, False)
     
 if __name__ == '__main__':

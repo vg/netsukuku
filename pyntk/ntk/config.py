@@ -48,6 +48,11 @@ if sys.platform == 'linux2':
         KEY_PAIR_DIR = os.path.join(CONFIGURATION_DIR, 'keys'),
         LOG_DIR = '/var/log',
         PID_DIR  = '/var/run',
+        SERVNO_PATH = '/etc/services',
+        KEY_PAIR_PATH = os.path.join(CONFIGURATION_DIR, 'keys'),
+        SNSD_NODES_PATH = os.path.join(CONFIGURATION_DIR, 'snsd_nodes'),
+        LOCAL_CACHE_PATH = os.path.join(CONFIGURATION_DIR, 'local_cache'),
+        RESOLV_PATH = '/etc/resolv.conf',            
     )
 else:
     raise Exception('Your platform is not supported yet.')

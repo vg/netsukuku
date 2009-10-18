@@ -771,7 +771,7 @@ class P2PAll(object):
             minlvl = self.maproute.levels
             minnr = None
             for nr in neighs_in_net:
-                lvl = self.maproute.nip_cmp(self.maproute.me, self.maproute.ip_to_nip(nr.ip))
+                lvl = self.maproute.nip_cmp(self.maproute.ip_to_nip(nr.ip))
                 if lvl < minlvl:
                     minlvl = lvl
                     minnr  = nr
