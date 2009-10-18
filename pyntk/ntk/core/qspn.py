@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Netsukuku
 # (c) Copyright 2007 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
@@ -17,13 +18,19 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
-from operator import add
+import time
+
+import ntk.lib.rpc as rpc
+import ntk.wrap.xtime as xtime
 
 from ntk.core.route import NullRem, DeadRem
-from ntk.lib.event import Event
-from ntk.lib.micro import microfunc
+from ntk.lib.event import Event, apply_wakeup_on_event
+from ntk.lib.log import logger as logging
+from ntk.lib.micro import microfunc, micro_block, DispatcherToken
+from ntk.lib.rpc import RPCError
+from ntk.network.inet import ip_to_str
 
-from ntk.config import settings
+etp_exec_dispatcher_token = DispatcherToken()
 
 def is_listlist_empty(l):
     """Returns true if l=[[],[], ...]
@@ -39,80 +46,274 @@ class Etp(object):
         self.radar = radar
         self.neigh = radar.neigh
         self.maproute = maproute
-
-        self.neigh.events.listen('NEIGH_NEW', self.etp_new_changed)
-        self.neigh.events.listen('NEIGH_REM_CHGED', self.etp_new_changed)
-        self.neigh.events.listen('NEIGH_DELETED', self.etp_new_dead)
+        
+        self.neigh.events.listen('NEIGH_NEW', self.etp_new_link)
+        self.neigh.events.listen('COLLIDING_NEIGH_NEW', self.etp_new_link)
+        self.neigh.events.listen('NEIGH_REM_CHGED', self.etp_changed_link)
+        self.neigh.events.listen('NEIGH_DELETED', self.etp_dead_link)
 
         self.events = Event(['ETP_EXECUTED', 'NET_COLLISION'])
 
-        self.remotable_funcs = [self.etp_exec]
+        self.remotable_funcs = [self.etp_exec,
+                                self.etp_exec_udp]
 
     @microfunc(True)
-    def etp_new_dead(self, neigh):
-        """Builds and sends a new ETP for the worsened link case."""
+    def newqspn_etp_changed_link(self, neigh, oldrem):
+        """Builds and sends a new ETP for the changed link case."""
 
+        if self.neigh.netid == -1:
+            # I'm hooking, I must not react to this event.
+            # TODO probably we can safely remove this test because
+            #  when self.netid == -1 in radar the NEIGH_XXX are not emitted.
+            logging.warning('QSPN: new link %s: detected while hooking!', 
+                            ip_to_str(neigh.ip))
+            return
+
+        # Memorize current netid because it might change. In this case the 
+        # ETP should not be sent.
+        current_netid = self.neigh.netid
+
+        current_nr_list = self.neigh.neigh_list()
+        # Prepare R of new ETP:
+        # Note that R has to be created for each one of our neighbours distinct from B.
+        # That is, ∀w ∈ A* | w != B
+        set_of_R = {}
+        for nr in current_nr_list:
+            if nr.id != neigh.id:
+                set_of_R[nr] = []
+        # step 1 of CLR
+        # A computes r^t+1^A (→ B) = R^t+1^ (AB)
+        # It is already in neigh.rem
+        # Now, ∀v ∈ V
+        for lvl in xrange(self.maproute.levels):
+            xtime.sleep_during_hard_work(10)
+            for R in set_of_R.values():
+                R.append([])
+            for dst in xrange(self.maproute.gsize):
+                routes_to_v = self.node_get(lvl, dst)
+                # step 2 of CLR
+                # A computes Best^t+1^ (A → v)
+                # Since neigh.rem is updated, each RouteNode.best_route is automatically up to date.
+                best_to_v = routes_to_v.best_route()
+                if best_to_v is not None:
+                    xtime.sleep_during_hard_work(0)
+                    # step 3 of CLR
+                    # if ∆Best^t+1^ (A → v) != 0
+                    if routes_to_v.best_changed(neigh, oldrem):
+                        # ∀w ∈ A* | w != B
+                        for w in set_of_R:
+                            R = set_of_R[w]
+                            w_lvl_id = self.maproute.routeneigh_get(w)
+                            # test of PAR-CLR
+                            # if w ∈ Best^t^ (A → v) XOR w ∈ Best^t+1^ (A → v)
+                            if     best_to_v.contains(w_lvl_id) \
+                                   != routes_to_v.previous_best_contained(neigh, oldrem, w_lvl_id):
+                                # new route Best^t+1^ (A → !w → v) has to be sent to w
+                                new_best_not_w = routes_to_v.best_route()
+                                R[-1].append((dst, new_best_not_w.rem, new_best_not_w.hops+[(0, self.maproute.me[0])]))
+                            else:
+                                # new route Best^t+1^ (A → v) has to be sent to w
+                                new_best = routes_to_v.best_route_without(w_lvl_id)
+                                R[-1].append((dst, new_best.rem, new_best.hops+[(0, self.maproute.me[0])]))
+
+        flag_of_interest=1
+        ## The TPL starts with just myself.
+        TPL = [[0, [[self.maproute.me[0], NullRem()]]]]
+        # ∀w ∈ A* | w != B
+        for w in set_of_R:
+            R = set_of_R[w]
+            etp = (R, [[block_lvl, TP]], flag_of_interest)
+            logging.info('Sending ETP for a changed link rem.')
+            self.etp_send_to_neigh(etp, w, current_netid)
+
+    def etp_send_to_neigh(self, etp, neigh, current_netid):
+        """Sends the `etp' to neigh"""
+
+        if current_netid != self.neigh.netid:
+            logging.info('An ETP dropped because we changed network from ' +
+                         str(current_netid) + ' to ' + 
+                         str(self.neigh.netid) + '.')
+            return
+        logging.debug('Etp: sending to %s', str(neigh))
+        try:
+            self.call_etp_exec_udp(neigh, self.maproute.me, 
+                                   self.neigh.netid, *etp)
+            logging.info('Sent ETP to %s', ip_to_str(neigh.ip))
+            # RPCErrors may arise for many reasons. We should not care.
+        except RPCError:
+            logging.debug('Etp: sending to %s RPCError. We ignore it.', 
+                          str(neigh))
+        else:
+            logging.debug('Etp: sending to %s done.', str(neigh))
+
+    @microfunc(True)
+    def etp_dead_link(self, neigh):
+        """Builds and sends a new ETP for the dead link case."""
+
+        if self.neigh.netid == -1:
+            # I'm hooking, I must not react to this event.
+            # TODO probably we can safely remove this test because
+            #  when self.netid == -1 in radar the NEIGH_XXX are not emitted.
+            logging.warning('QSPN: new link %s: detected while hooking!', 
+                            ip_to_str(neigh.ip))
+            return
+
+        # Memorize current netid because it might change. In this case the 
+        # ETP should not be sent.
+        current_netid = self.neigh.netid
+
+        current_nr_list = self.neigh.neigh_list(in_my_network=True)
+        logging.debug('QSPN: death of %s: update my map.', 
+                      ip_to_str(neigh.ip))
+        
         ## Create R
-        def gw_is_neigh((dst, gw, rem)):
-            return gw == neigh.id
-        R = self.maproute.bestroutes_get(gw_is_neigh)
+        # Note that R has to be created for each one of our neighbours. 
+        # It must contain all the routes through the dead gateway that each 
+        # one of our neighbours knows through us. So we must evaluate the 
+        # best routes *excluding neigh x* that pass through the dead gateway.
+        def gw_is_neigh((dst, gw, rem, hops)):
+            return gw.id == neigh.id
+        set_of_R = {}
+        for nr in current_nr_list:
+            if nr.id != neigh.id:
+                # It's a tough work! Be kind to other tasks.
+                xtime.swait(10)
+                set_of_R[nr.id] = self.maproute.bestroutes_get(f=gw_is_neigh, 
+                                                    exclude_gw_ids=[nr.id])
         ##
 
         ## Update the map
+        xtime.swait(10)
         self.maproute.routeneigh_del(neigh)
         ##
 
-        if is_listlist_empty(R):
-            # R is empty, that is we don't have routes passing by `gw'.
-            # Therefore, nothing to update, nothing to do.
-            return None
+        logging.debug('QSPN: death of %s: prepare the ETP', 
+                      ip_to_str(neigh.ip))
+        
+        ## Prepare common part of the ETPs for the neighbours
 
-        ## Create R2
-        def rem_or_none(r):
-            if r is not None:
-                return r.rem
-            return DeadRem()
-
-        R2 = [
-              [ (dst, rem_or_none(self.maproute.node_get(lvl, dst).best_route()))
-                    for (dst,gw,rem) in R[lvl]
-              ] for lvl in xrange(self.maproute.levels)
-             ]
+        flag_of_interest=1
+        TP = [[self.maproute.me[0], NullRem()]] # Tracer Packet included in
+        block_lvl = 0                           # the first block of the ETP
         ##
 
+        # Through which devs did I see the defunct?
+        devs_to_neigh = [dev for dev in neigh.devs.keys()]
         ## Forward the ETP to the neighbours
-        flag_of_interest=1
-        TP = [[self.maproute.me[0], NullRem()]]    # Tracer Packet included in
-        block_lvl = 0                           # the first block of the ETP
-        etp = (R2, [[block_lvl, TP]], flag_of_interest)
-        self.etp_forward(etp, [neigh.id])
+        for nr in current_nr_list:
+            if nr.id != neigh.id:
+                # Did this neighbour (nr) see the now defunct (neigh)
+                # straightly? If so, we must NOT forward.
+                devs_to_nr_and_neigh = [dev 
+                                        for dev in nr.devs.keys()
+                                        if dev in devs_to_neigh
+                                       ]
+                if not devs_to_nr_and_neigh:
+                    # We must forward.
+
+                    if is_listlist_empty(set_of_R[nr.id]):
+                        # R is empty, that is we don't have routes passing 
+                        # by `gw'.
+                        # Therefore, nothing to do for this neighbour.
+                        continue
+
+                    # Through which devs do I see this neighbour (nr)?
+                    devs_to_nr = [dev for dev in nr.devs.keys()]
+                    # Which neighbours do I see through those devs too?
+                    common_devs_neighbours_to_nr = []
+                    for nr2 in current_nr_list:
+                        if nr2.id != nr.id:
+                            devs_to_nr2_and_nr = [dev 
+                                                  for dev in nr2.devs.keys()
+                                                  if dev in devs_to_nr
+                                                 ]
+                            if devs_to_nr2_and_nr:
+                                common_devs_neighbours_to_nr.append(nr2.id)
+                    # We exclude them from research of bestroutes.
+                    exclude_gw_ids = [nr.id] + common_devs_neighbours_to_nr
+
+                    ## Create R2
+                    def rem_or_none(r):
+                        if r is not None:
+                            return r.rem
+                        return DeadRem()
+                    R2 = [
+                          [ (dst,
+                             rem_or_none(
+                                self.maproute.node_get(lvl, dst).
+                                best_route(exclude_gw_ids=exclude_gw_ids)
+                                ),
+                             hops+[(0, self.maproute.me[0])]
+                            ) for (dst,gw,rem,hops) in set_of_R[nr.id][lvl]
+                          ] for lvl in xrange(self.maproute.levels)
+                         ]
+                    xtime.swait(10)
+                    ##
+
+                    etp = (R2, [[block_lvl, TP]], flag_of_interest)
+                    logging.info('Sending ETP for a dead neighbour.')
+                    self.etp_send_to_neigh(etp, nr, current_netid)
         ##
 
     @microfunc(True)
-    def etp_new_changed(self, neigh, oldrem=None):
-        """Builds and sends a new ETP for the changed link case
+    def etp_new_link(self, neigh):
+        """Builds and sends a new ETP for the new link case."""
 
-        If oldrem=None, the node `neigh' is considered new."""
+        if self.neigh.netid == -1:
+            # I'm hooking, I must not react to this event.
+            # NOTE: this method gets called with COLLIDING_NEIGH_NEW too. 
+            # So we need to check.
+            logging.warning('QSPN: new link %s: detected while hooking!', 
+                            ip_to_str(neigh.ip))
+            return
 
-        ## Update the map
-        if oldrem is None:
-            self.maproute.routeneigh_add(neigh)
-        else:
-            self.maproute.routeneigh_rem(neigh)
-        ##
+        # I will send an ETP to the new neighbour, which could be in another 
+        # network. So I must be sure to give to him *all* the routes I know, 
+        # to be sure that when he detects the collision he will have all data 
+        # to calculate who is going to rehook.
+        # Therefore, I have to wait for all pending etp_exec.
+        if etp_exec_dispatcher_token.executing:
+            logging.log(logging.ULTRADEBUG, 'QSPN: new link for ' + 
+                        str(neigh) + ': delayed because etp is executing.')
+            while etp_exec_dispatcher_token.executing:
+                # I'm not ready to interact.
+                time.sleep(0.001)
+                micro_block()
+            logging.log(logging.ULTRADEBUG, 'QSPN: new link for ' + 
+                        str(neigh) + ': now we can go on.')
+
+        # Memorize current netid because it might change. In this case the 
+        # ETP should not be sent.
+        current_netid = self.neigh.netid
+
+        logging.debug('QSPN: new link for ' + str(neigh) + 
+                      ': prepare the ETP')
+        current_nr_list = self.neigh.neigh_list()
+
+        # Through which devs do I see the new neighbour?
+        devs_to_neigh = [dev for dev in neigh.devs.keys()]
+        # Which neighbours do I see through those devs too?
+        common_devs_neighbours_to_neigh = []
+        for nr in current_nr_list:
+            if nr.id != neigh.id:
+                devs_to_nr_and_neigh = [dev 
+                                        for dev in nr.devs.keys()
+                                        if dev in devs_to_neigh
+                                       ]
+                if devs_to_nr_and_neigh:
+                    common_devs_neighbours_to_neigh.append(nr.id)
 
         ## Create R
-        def gw_isnot_neigh((dst, gw, rem)):
-            return gw != neigh.id
+        exclude_gw_ids = [neigh.id] + common_devs_neighbours_to_neigh
+        R = self.maproute.bestroutes_get(exclude_gw_ids=exclude_gw_ids)
+        xtime.swait(10)
 
-        R = self.maproute.bestroutes_get(gw_isnot_neigh)
+        # We must add a route to ourself.
+        for lvl in xrange(self.maproute.levels):
+            R[lvl].append((self.maproute.me[lvl], -1, NullRem(), []))
 
-        if is_listlist_empty(R):
-            # R is empty: no need to proceed
-            return None
-
-        def takeoff_gw((dst, gw, rem)):
-            return (dst, rem)
+        def takeoff_gw((dst, gw, rem, hops)):
+                return (dst, rem, hops)
 
         def takeoff_gw_lvl(L):
             return map(takeoff_gw, L)
@@ -124,14 +325,101 @@ class Etp(object):
         flag_of_interest=1
         TP = [[self.maproute.me[0], NullRem()]]
         etp = (R, [[0, TP]], flag_of_interest)
-        neigh.ntkd.etp.etp_exec(self.maproute.me, *etp)
+        logging.info('Sending ETP for a new neighbour.')
+        self.etp_send_to_neigh(etp, neigh, current_netid)
         ##
 
-    @microfunc()
-    def etp_exec(self, sender_nip, R, TPL, flag_of_interest):
+    @microfunc(True)
+    def etp_changed_link(self, neigh, oldrem):
+        """Builds and sends a new ETP for the changed link case."""
+
+        if self.neigh.netid == -1:
+            # I'm hooking, I must not react to this event.
+            # TODO probably we can safely remove this test because
+            #  when self.netid == -1 in radar the NEIGH_XXX are not emitted.
+            logging.warning('QSPN: new link %s: detected while hooking!', 
+                            ip_to_str(neigh.ip))
+            return
+
+        # Memorize current netid because it might change. In this case the 
+        # ETP should not be sent.
+        current_netid = self.neigh.netid
+
+        current_nr_list = self.neigh.neigh_list()
+        logging.debug('QSPN: changed %s: update my map', ip_to_str(neigh.ip))
+        
+        ## Update the map
+        self.maproute.routeneigh_rem(neigh, oldrem)
+        ##
+
+        logging.debug('QSPN: changed %s: prepare the ETP', 
+                      ip_to_str(neigh.ip))
+
+        # We must evaluate *all* the routes that
+        # pass through the changed-rem gateway.
+        exclude_gw_ids = [nr.id for nr in current_nr_list 
+                                   if nr.id != neigh.id]
+        R = self.maproute.bestroutes_get(exclude_gw_ids=exclude_gw_ids)
+        xtime.swait(10)
+        def takeoff_gw((dst, gw, rem, hops)):
+                return (dst, rem, hops)
+        def takeoff_gw_lvl(L):
+                return map(takeoff_gw, L)
+        R=map(takeoff_gw_lvl, R)
+        ##
+
+        flag_of_interest=1
+        ## The TPL includes the neigh...
+        neigh_nip = self.maproute.ip_to_nip(neigh.ip)
+        level = self.maproute.nip_cmp(self.maproute.me, neigh_nip)
+        TPL = [[level, [[neigh_nip[level], NullRem()]]]]
+        ## ... and myself.
+        if TPL[-1][0] != 0: 
+            # The last block isn't of level 0. Let's add a new block
+            TP = [[self.maproute.me[0], neigh.rem]] 
+            TPL.append([0, TP])
+        else:
+            # The last block is of level 0. We can append our ID
+            TPL[-1][1].append([self.maproute.me[0], neigh.rem])
+
+        logging.info('Forwarding ETP for a changed-rem neighbour.')
+        self.etp_forward_referring_to_neigh(R, TPL, flag_of_interest, neigh, 
+                                            current_netid)
+
+    def call_etp_exec_udp(self, neigh, sender_nip, sender_netid, R, TPL, 
+                          flag_of_interest):
+        """Use BcastClient to call etp_exec"""
+        devs = [neigh.bestdev[0]]
+        nip = self.maproute.ip_to_nip(neigh.ip)
+        netid = neigh.netid
+        return rpc.UDP_call(nip, netid, devs, 'etp.etp_exec_udp', 
+                            (sender_nip, sender_netid, R, TPL, 
+                             flag_of_interest))
+
+    def etp_exec_udp(self, _rpc_caller, caller_id, callee_nip, callee_netid, 
+                     sender_nip, sender_netid, R, TPL, flag_of_interest):
+        """Returns the result of etp_exec to remote caller.
+           caller_id is the random value generated by the caller 
+           for this call.
+            It is replied back to the LAN for the caller to recognize a 
+            reply destinated to it.
+           callee_nip is the NIP of the callee;
+           callee_netid is the netid of the callee.
+            They are used by the callee to recognize a request 
+            destinated to it.
+           """
+        if self.maproute.me == callee_nip and \
+           self.neigh.netid == callee_netid:
+            self.etp_exec(sender_nip, sender_netid, R, TPL, flag_of_interest)
+            # Since it is micro, I will reply None
+            rpc.UDP_send_reply(_rpc_caller, caller_id, None)
+
+    @microfunc(dispatcher_token=etp_exec_dispatcher_token)
+    def etp_exec(self, sender_nip, sender_netid, R, TPL, flag_of_interest):
         """Executes a received ETP
 
         sender_nip: sender ntk ip (see map.py)
+        sender_netid: updated network id of the sender
         R  : the set of routes of the ETP
         TPL: the tracer packet of the path covered until now by this ETP.
              This TP may have covered different levels. In general, TPL
@@ -142,33 +430,51 @@ class Etp(object):
         flag_of_interest: a boolean
         """
 
-        gwnip = sender_nip
-        neigh = self.neigh.ip_to_neigh(self.maproute.nip_to_ip(gwnip))
-        gw = neigh.id
-        gwrem = neigh.rem
+        # Ignore ETP from -1 ... that should not happen.
+        if sender_netid == -1:
+            # I raise exception just to give more visibility.
+            raise Exception('ETP received from a node with netid = -1 '
+                            '(not completely kooked).')
 
-        ## Collision check
-        colliding, R = self.collision_check(gwnip, neigh, R)
-        if colliding:
-            # collision detected. rehook.
-            self.events.send('NET_COLLISION',
-                             ([nr for nr in self.neigh.neigh_list()
-                                      if nr.netid == neigh.netid],)
-            )
-            return None # drop the packet
-        ##
+        while self.neigh.netid == -1:
+            # I'm not ready to interact.
+            time.sleep(0.001)
+            micro_block()
+
+        # Memorize current netid because it might change. In this case the 
+        # ETP should not be sent.
+        current_netid = self.neigh.netid
+
+        logging.info('Received ETP from (nip, netid) = ' + str((sender_nip, 
+                                                             sender_netid)))
+        gwnip = sender_nip
+        gwip = self.maproute.nip_to_ip(gwnip)
+
+        level = self.maproute.nip_cmp(self.maproute.me, gwnip)
+        
+        ## Purify map portion R from destinations that are not in
+        ## a common gnode
+        for lvl in reversed(xrange(level)):
+            R[lvl] = []
+
+        ## Purify map portion R from hops that are not in
+        ## a common gnode
+        for R_lvl in R:
+            for id in xrange(len(R_lvl)):
+                dst, rem, hops = R_lvl[id]
+                hops = self.maproute.list_lvl_id_from_nip(hops, sender_nip)
+                R_lvl[id] = (dst, rem, hops)
 
         ## Group rule
-        level = self.maproute.nip_cmp(self.maproute.me, gwnip)
         for block in TPL:
-            lvl = block[0] # the level of the block
-            if lvl < level:
-                block[0] = level
-                blockrem = sum([rem for hop, rem in block[1]], NullRem())
-                block[1] = [[gwnip[level], blockrem]]
-                R[lvl] = []
-
-
+                lvl = block[0] # the level of the block
+                if lvl < level:
+                        block[0] = level                     
+                        blockrem = sum([rem for hop, rem in block[1]], 
+                                       NullRem())
+                        block[1] = [[gwnip[level], blockrem]]
+        
+        
         ### Collapse blocks of the same level
         #Note: we're assuming the two blocks with the same level are one after
         #      another.
@@ -201,8 +507,10 @@ class Etp(object):
         ##
 
         ## ATP rule
-        for block in TPL:
-            if self.maproute.me[block[0]] in block[1]:
+        for lvl, pairs in TPL:
+            if self.maproute.me[lvl] in [hop for hop, rem in pairs]:
+                logging.debug('ETP received: Executing: Ignore ETP because '
+                              'of Acyclic Rule.')
                 return    # drop the pkt
         ##
 
@@ -210,153 +518,258 @@ class Etp(object):
         TPL[0][1][0][1] = NullRem()
         ##
 
+        logging.debug('Translated ETP from %s', ip_to_str(gwip))
+        logging.debug('R: ' + str(R))
+        logging.debug('TPL: ' + str(TPL))
+        
+        ## Collision check
+        colliding, R = self.collision_check(sender_netid, R)
+        if colliding:
+                # Collision detected. Let's rehook.
+                the_others = self.neigh.neigh_list(in_this_netid=sender_netid)
+                # If we want to rehook with the_others, we have to make sure 
+                # there is someone! We have to wait. And we could fail anyway.
+                # In that case abort the processing of this ETP.
+                timeout = xtime.time() + 16000
+                while not any(the_others):
+                    if xtime.time() > timeout:
+                        logging.info('Rehooking to (nip, netid) = ' + 
+                                     str((sender_nip, sender_netid)) + 
+                                     ' aborted: timeout.')
+                        return
+                    xtime.swait(50)
+                    the_others = self.neigh.neigh_list(in_this_netid=
+                                                       sender_netid)
+                self.events.send('NET_COLLISION', 
+                                 (the_others,)
+                                )
+                return # drop the packet
+        if not any(R):
+                return # drop the packet
+        ##
+
+        neigh = self.neigh.key_to_neigh((gwip, sender_netid))
+        # check if we have found the neigh, otherwise wait it
+        timeout = xtime.time() + 16000
+        while neigh is None:
+            if xtime.time() > timeout:
+                logging.info('ETP from (nip, netid) = ' + 
+                             str((sender_nip, sender_netid)) + 
+                             ' dropped: timeout.')
+                return
+            xtime.swait(50)
+            neigh = self.neigh.key_to_neigh((gwip, sender_netid))
+
+        gw_id = neigh.id
+        gwrem = neigh.rem
+
+        xtime.swait(10)
+
         old_node_nb = self.maproute.node_nb[:]
 
-        ## Update the map from the TPL
-        tprem = gwrem
-        TPL_is_interesting = False
-        for block in reversed(TPL):
-                lvl=block[0]
-                for dst, rem in reversed(block[1]):
-                        # Ok, we can reach `dst' through `gw'. Is it really
-                        # worth doing? If it is better than the known route,
-                        # then yes! So, let's use route_change to check.
-                        if self.maproute.route_change(lvl, dst, gw, tprem):
-                                TPL_is_interesting = True
-                        tprem+=rem # TODO: sometimes rem is an integer
-        ##
+        ### Update the map from the TPL
+        #tprem=gwrem
+        #TPL_is_interesting = False
+        #for lvl, pairs in reversed(TPL):
+        #    for dst, rem in reversed(pairs):
+        #        xtime.swait(10)
+        #        logging.debug('ETP received: Executing: TPL has info about this node:')
+        #        logging.debug('    %s' % str((lvl, dst, gw, tprem)))
+        #        if self.maproute.route_change(lvl, dst, gw, tprem):
+        #            logging.debug('    Info is interesting. TPL is interesting. Map updated.')
+        #            TPL_is_interesting = True
+        #        tprem+=rem
+        ###
 
         ## Update the map from R
         for lvl in xrange(self.maproute.levels):
-                for dst, rem in R[lvl]:
-                        # Ok, the ETP is telling us that the best way to reach
-                        # `dst' through `gw' is `rem+tprem'.
-                        # So, if we have already such route, let's update its
-                        # rem, otherwise let's create it.
-                        if not self.maproute.route_rem(lvl, dst, gw, rem+tprem):
-                                self.maproute.route_change(lvl, dst, gw, rem+tprem)
+            to_remove = []
+            for dst, rem, hops in R[lvl]:
+                xtime.swait(10)
+                logging.debug('ETP received: Executing: R has info '
+                              'about this node:')
+                logging.debug('    %s' % str((lvl, dst, gw_id, rem, 
+                                              len(hops))))
+                if self.maproute.route_change(lvl, dst, neigh, rem, hops):
+                    logging.debug('    Info is interesting. Map updated.')
+                else:
+                    to_remove.append((dst, rem, hops))
+                    logging.debug('    Info is not interesting. Discarded.')
+            for dst, rem, hops in to_remove:
+                R[lvl].remove((dst, rem, hops))
         ##
 
-        ## S
-        S = [ [ (dst, r.rem)
-                for dst, rem in R[lvl]
-                    for r in [self.maproute.node_get(lvl, dst).best_route()]
-                        if r.gw != gw
-              ] for lvl in xrange(self.maproute.levels) ]
-
-        #--
-        # Step 5 omitted, see qspn.pdf, 4.1 Extended Tracer Packet:
-        # """If the property (g) holds, then the step 5 can be omitted..."""
-        #--
-        #if flag_of_interest:
-        #       if not is_listlist_empty(S):
-        #
-        #               Sflag_of_interest=0
-        #               TP = [(self.maproute.me[0], NullRem())]
-        #               etp = (S, [(0, TP)], Sflag_of_interest)
-        #               neigh.ntkd.etp.etp_exec(self.maproute.me, *etp)
+        ## If I'm going to forward, I have to append myself.
+        if TPL[-1][0] != 0: 
+            # The last block isn't of level 0. Let's add a new block
+            TP = [[self.maproute.me[0], gwrem]] 
+            TPL.append([0, TP])
+        else:
+            # The last block is of level 0. We can append our ID
+            TPL[-1][1].append([self.maproute.me[0], gwrem])
         ##
 
-        ## R2
-        R2 = [ [ (dst, rem)
-                for dst, rem in R[lvl]
-                    if dst not in [d for d, r in S[lvl]]
-              ] for lvl in xrange(self.maproute.levels) ]
-        ##
+        self.etp_forward_referring_to_neigh(R, TPL, flag_of_interest, neigh, 
+                                            current_netid)
+        logging.info('ETP executed.')
 
-        ## Continue to forward the ETP if it is interesting
+        self.events.send('ETP_EXECUTED', (old_node_nb, 
+                                          self.maproute.node_nb[:]))
 
-        if not is_listlist_empty(R2) or TPL_is_interesting:
-            if TPL[-1][0] != 0:
-                # The last block isn't of level 0. Let's add a new block
-                TP = [[self.maproute.me[0], gwrem]]
-                TPL.append([0, TP])
-            else:
-                # The last block is of level 0. We can append our ID
-                TPL[-1][1].append([self.maproute.me[0], gwrem])
+    def etp_forward_referring_to_neigh(self, R, TPL, flag_of_interest, neigh,
+                                       current_netid):
+        """Forwards, when interesting, to all other neighbour info 
+        about neigh"""
 
+        current_nr_list = self.neigh.neigh_list(in_my_network=True)
+        # Through which devs do I see the referree?
+        devs_to_neigh = [dev for dev in neigh.devs.keys()]
 
-            etp = (R2, TPL, flag_of_interest)
-            self.etp_forward(etp, [neigh.id])
-        ##
+        for nr in current_nr_list:
+            if nr.id != neigh.id:
+                # Does this neighbour (nr) see referree neighbour (neigh)
+                # straightly? If so, we must NOT forward.
+                devs_to_nr_and_neigh = [dev 
+                                        for dev in nr.devs.keys()
+                                        if dev in devs_to_neigh
+                                       ]
+                if not devs_to_nr_and_neigh:
+                    # We must forward.
+                    # Through which devs do I see this neighbour (nr)?
+                    devs_to_nr = [dev for dev in nr.devs.keys()]
+                    # Which neighbours do I see through those devs too?
+                    common_devs_neighbours_to_nr = []
+                    for nr2 in current_nr_list:
+                        if nr2.id != nr.id:
+                            devs_to_nr2_and_nr = [dev 
+                                                  for dev in nr2.devs.keys()
+                                                  if dev in devs_to_nr
+                                                 ]
+                            if devs_to_nr2_and_nr:
+                                common_devs_neighbours_to_nr.append(nr2.id)
+                    # We exclude them from research of bestroutes.
+                    exclude_gw_ids = [nr.id] + common_devs_neighbours_to_nr
+                    # Evaluate only once this set, which then we use twice:
+                    xtime.swait(10)
+                    best_routes_of_R = dict( [ ((lvl, dst), r)
+                                               for lvl in xrange(self.maproute
+                                                                 .levels)
+                                                for dst, rem, hops in R[lvl]
+                                                   for r in [self.maproute
+                                                    .node_get(lvl, dst)
+                                                    .best_route(exclude_gw_ids
+                                                            =exclude_gw_ids)]
+                                             ] )
+                    ## S
+                    def nr_doesnt_care(lvl, dst, r):
+                        # If destination is me (it happens) then nr does 
+                        # not care.
+                        if self.maproute.me[lvl] == dst: return True
+                        # If best route (except for nr) is none, then nr 
+                        # cares.
+                        if r is None: return False 
+                        # If best route (except for nr) is neigh, then nr 
+                        # cares.
+                        # Else it does not.
+                        return r.gw.id != neigh.id
+                    # If step 5 is omitted we don't need the Rem in S.
+                    S = [ [ (dst, None)
+                            for lvl, dst in best_routes_of_R.keys()
+                                if lvl == l
+                                    for r in [best_routes_of_R[(lvl, dst)]]
+                                        if nr_doesnt_care(lvl, dst, r)
+                          ] for l in xrange(self.maproute.levels) ]
 
-        self.events.send('ETP_EXECUTED', (old_node_nb, self.maproute.node_nb[:]))
+                    #--
+                    # Step 5 omitted, see qspn.pdf, 4.1 Extended Tracer 
+                    # Packet:
+                    # """If the property (g) holds, then the step 5 can be 
+                    #    omitted..."""
+                    #--
+                    #if flag_of_interest:
+                    #       if not is_listlist_empty(S):
+                    #
+                    #               Sflag_of_interest=0
+                    #               TP = [(self.maproute.me[0], NullRem())]
+                    #               etp = (S, [(0, TP)], Sflag_of_interest)
+                    #               self.etp_send_to_neigh(etp, neigh, 
+                    #                                     current_netid)
+                    ##
 
-    def etp_forward(self, etp, exclude):
-        """Forwards the `etp' to all our neighbours,
-           excluding those contained in `exclude'
+                    ## R2
+                    xtime.swait(10)
+                    def rem_or_none(r):
+                        if r is not None:
+                            return r.rem
+                        return DeadRem()
+                    def hops_or_none(r):
+                        if r is not None:
+                            return r.hops + [(0, self.maproute.me[0])]
+                        return []
+                    R2 = [ [ (dst, rem_or_none(r), hops_or_none(r))
+                            for lvl, dst in best_routes_of_R.keys()
+                                if lvl == l
+                                    for r in [best_routes_of_R[(lvl, dst)]]
+                                        if dst not in [d for d, r2 in S[lvl]]
+                          ] for l in xrange(self.maproute.levels) ]
+                    ##
 
-           `Exclude' is a list of "Neighbour.id"s"""
+                    if not is_listlist_empty(R2):
+                        etp = (R2, TPL, flag_of_interest)
+                        logging.info('Sending ETP.')
+                        self.etp_send_to_neigh(etp, nr, current_netid)
+                    ##
 
-        for nr in self.neigh.neigh_list():
-            if nr.id not in exclude:
-                nr.ntkd.etp.etp_exec(self.maproute.me, *etp)
-
-    def collision_check(self, gwnip, neigh, R):
+    def collision_check(self, neigh_netid, R):
         """ Checks if we are colliding with the network of `neigh'.
 
             It returns True if we are colliding and we are going to rehook.
             !NOTE! the set R will be modified: all the colliding routes will
             be removed.
         """
+        
+        logging.debug("Etp: collision check: my netid %d and neighbour's "
+                      "netid %d", self.neigh.netid, neigh_netid)
 
-        if neigh.netid == self.radar.netid or self.radar.netid == -1:
-            self.radar.netid = neigh.netid
+        previous_netid = self.neigh.netid
+
+        if neigh_netid == previous_netid:
             return (False, R) # all ok
 
         # uhm... we are in different networks
+        logging.info('Detected Network Collision')
 
-        ### Calculate the size of the two nets
-        lvl = self.maproute.nip_cmp(self.maproute.me, gwnip)
-        mynetsz=self.maproute.node_nb[lvl]
-        # TODO/TOCHECK: we are supposing that we are processing a new-link
-        # ETP, so that R[lvl] contains all the routes of level `lvl' of the
-        # neigh's network. Thus, to count its size we simply do as follow:
-        ngnetsz=len(R[lvl])
+        # ## Calculate the size of the two nets
+        # def add(a,b):return a+b
+        # mynetsz = reduce(add, self.maproute.node_nb)
+        # ngnetsz = reduce(add, map(len, R))
 
-        #NOTE: assuming that the communicating vessel system is working well,
-        #      to compare the size of the two network it is sufficient to
-        #      compare the number of gnodes of level `lvl'
-        ###
+        # TODO At the moment, we dictate that the net with smaller netid 
+        # is going to give up.
+        # Improvement: Find a secure way to detect if we are in one of these 
+        # 3 cases:
+        #  1. The other net surely will give up. So we are not going to.
+        #  2. The other net surely won't give up. So we are going to.
+        #  3. The other net surely will choose to use the 'lesser netid' 
+        # method. So we are going to do the same.
+        if self.neigh.netid > neigh_netid:
+                # We are the bigger net.
+                # We cannot use routes from R, since this gateway is going 
+                # to re-hook.
 
-        if mynetsz > ngnetsz or \
-           (mynetsz == ngnetsz and self.radar.netid > neigh.netid):
-                # we don't care if we are colliding or not. We can simply
-                # ignore colliding routes, the rest will be done by the other
-                # net.
-
-                ### Remove colliding routes from R
-                R = [[(dst, rem) for dst, rem in R[lvl]
-                        if self.maproute.node_get(lvl, dst).is_empty()
-                     ]
-                     for lvl in xrange(self.maproute.levels)
-                ]
+                ### Remove all routes from R
+                R = [ [] for lvl in xrange(self.maproute.levels) ]
                 ###
+                
+                logging.debug("Etp: collision check: just remove all routes "
+                              "from R")
                 return (False, R)
         ##
 
         # We are the smaller net.
+        # In any case, we have to re-hook.
+        # TODO Find a way, if possible, to not re-hook. We need however to 
+        # contact the coordinator node for our new place in the new network.
+        logging.debug('Etp: we are the smaller net, we must rehook now.')
+        return (True, R)
 
-        ## Check if we are colliding with another (g)node of the neighbour
-        ## net
-        level = self.maproute.nip_cmp(self.maproute.me, gwnip)
-        if level+1 < self.maproute.levels:
-            for dst, rem in R[level]:
-                if dst == self.maproute.me[level]:
-                    # we are colliding! LET'S REHOOK
-                    return (True, R)
-        ##
-
-        ## Remove colliding routes directly from our map
-        for lvl in xrange(self.maproute.levels):
-            for dst, rem in R[lvl]:
-                self.maproute.node_get(lvl, dst).route_reset()
-        ##
-
-        ##TODO: uncomment this!
-        ##From now on, we are in the new net
-        ##logging.info('From now on, we are in the new net, our network id: %s' % neigh.netid)
-        ##self.ntkd.neighbour.netid = neigh.netid
-        ##self.events.send('COMPLETE_HOOK', ())
-
-        return (False, R)

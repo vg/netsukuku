@@ -18,6 +18,7 @@
 ##
 
 
+from ntk.lib.log import logger as logging
 import sys
 
 if sys.platform == 'linux2':

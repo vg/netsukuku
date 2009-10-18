@@ -425,13 +425,7 @@ In order to give an exact definition of the ETP, we must examine each case of ne
 	\item For all $r' \in R'$,
 		let $m'\in M$ be a route such that
 		$\T{dst}(r')=\T{dst}(m')$. If
-		$r'$ is a better alternative\footnote{in the current
-		implementation, $r'$ is always a better alternative. In fact,
-		in the previous step we've seen that we don't know any routes
-		to $\T{dst}(r')$ through $N$. $r'$ is a route to $\T{dst}(r')$
-		through $N$, so we memorise it. 	For more info, see Chapter 5 of
-		topology.pdf\cite{ntktopology} }
-		to $m'$ and if
+		$r'$ is a better alternative to $m'$ and if
 		every hop of $r'$ is reachable by $C$,
 		then $r'$  is saved in the map of $C$ as the
 		tern $(dst(r'), N, rem(r')+rem(C\rightarrow
@@ -501,11 +495,7 @@ In order to give an exact definition of the ETP, we must examine each case of ne
 	The case where a new link $A \stackrel{l}{\leftrightarrow} B$
 	is established is handled  in the same way of the
 	\textbf{Changed link} case, because we can consider $l$ as a link with
-	a new rem. However, there's just one difference with the changed link
-	case: the algorithm does not stop if $R=\0$. This is because, $R=\0$
-	if and only if $A$
-	is a node with only one link. Even if $A$ has just one link, it 
-	has to send an ETP to advertise its existence to the other nodes of the network.
+	a new rem.
 
 	\item[Broken link] \qq\\
 		\begin{enumerate}

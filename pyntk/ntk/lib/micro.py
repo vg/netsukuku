@@ -18,11 +18,12 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
+import functools
+import stackless
+import time
+
 from ntk.lib.log import logger as logging
 from ntk.lib.log import log_exception_stacktrace
-import stackless
-import functools
-from ntk.wrap.xtime import time
 
 def micro(function, args=(), **kwargs):
     '''Factory function that returns tasklets
@@ -37,7 +38,9 @@ def micro(function, args=(), **kwargs):
             function(*args, **kwargs)
         except Exception, e:
             logging.error("Uncaught exception in a microfunc")
-            logging.error("  The microfunc has been called like this: %s(%s,%s)" % (function.__name__, args.__repr__(), kwargs.__repr__()))
+            logging.error("  The microfunc has been called like this: "
+            "%s(%s,%s)" % (function.__name__, args.__repr__(), 
+                           kwargs.__repr__()))
             log_exception_stacktrace(e)
 
     t.bind(callable)
@@ -55,7 +58,8 @@ class MicrochannelTimeout(Exception):
 
 class Channel(object):
     '''This class is used to wrap a stackless channel'''
-    __slots__ = ['ch', 'chq', 'micro_send', 'balance', '_balance_receiving', '_balance_sending']
+    __slots__ = ['ch', 'chq', 'micro_send', 'balance', '_balance_receiving', 
+                 '_balance_sending']
 
     def __init__(self, prefer_sender=False, micro_send=False):
         """If prefer_sender=True, the send() calls won't block. More
@@ -134,7 +138,8 @@ class Channel(object):
         '''Send `data' to _all_ tasklets that are waiting to receive.
            If there are no tasklets, this function will immediately return!
            
-           This is best used in a Channel with prefer_sender=True and micro_send=False
+           This is best used in a Channel with prefer_sender=True 
+           and micro_send=False
         '''
         while self.ch.balance < 0:
             self.ch.send(data)
@@ -152,7 +157,8 @@ def _dispatcher(func, chan, dispatcher_token):
             func(*msg)
         except Exception, e:
             logging.error("Uncaught exception in a microfunc with dispatcher")
-            logging.error("  The microfunc has been called like this: %s(%s)" % (func.__name__, msg.__repr__()))
+            logging.error(" The microfunc has been called like this: %s(%s)" %
+                          (func.__name__, msg.__repr__()))
             log_exception_stacktrace(e)
 
 def microfunc(is_micro=False, dispatcher_token=DispatcherToken()):

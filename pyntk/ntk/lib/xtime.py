@@ -6,8 +6,8 @@ def swait(t):
 
     final_time = T.time()+t/1000.
     while final_time >= T.time():
-	    T.sleep(0.001)
-	    micro.micro_block()
+        T.sleep(0.001)
+        micro.micro_block()
 
 def time():
     return int(T.time()*1000)

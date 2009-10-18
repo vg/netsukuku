@@ -20,12 +20,12 @@
 # Implementation of the map. See {-topodoc-}
 #
 
-from random import randint, choice
-from ntk.lib.log import get_stackframes
+from random import choice
+
+import ntk.wrap.xtime as xtime
 
 from ntk.lib.event import Event
 from ntk.network.inet import valid_ids
-import ntk.wrap.xtime as xtime
 
 
 class DataClass(object):
@@ -38,7 +38,7 @@ class DataClass(object):
     As another example, look MapRoute and RouteNode in route.py
     """
 
-    def __init__(self, level, id, its_me=False):
+    def __init__(self, the_map, level, id, its_me=False):
         # do something
         pass
 
@@ -75,7 +75,8 @@ class Map(object):
 
         for lvl in xrange(self.levels):
             node_me = self.node_get(lvl, self.me[lvl])
-            if not node_me.is_free(): self.node_add(lvl, self.me[lvl], silent=1)
+            if not node_me.is_free(): self.node_add(lvl, self.me[lvl], 
+                                                    silent=1)
 
         self.events = Event(['NODE_NEW', 'NODE_DELETED', 'ME_CHANGED'])
 
@@ -87,17 +88,17 @@ class Map(object):
 
         if self.node[lvl][id] is None:
             if self.me is not None and self.me[lvl] == id:
-                self.node[lvl][id] = self.dataclass(lvl, id, its_me=True)
+                self.node[lvl][id] = self.dataclass(self, lvl, id, its_me=True)
             else:
-                self.node[lvl][id] = self.dataclass(lvl, id)
+                self.node[lvl][id] = self.dataclass(self, lvl, id)
         return self.node[lvl][id]
 
     def node_add(self, lvl, id, silent=0):
         """Add node 'id` at level 'lvl'.
         
-        The caller of this method has the responsibility to check that the node was
-        previously free, and that now it is busy. This method just sends the event
-        and updates the counters"""
+        The caller of this method has the responsibility to check that the 
+        node was previously free, and that now it is busy. 
+        This method just sends the event and updates the counters"""
         node = self.node[lvl][id]
         if node is not None and not node.is_free():
             self.node_nb[lvl] += 1
@@ -107,8 +108,8 @@ class Map(object):
     def node_del(self, lvl, id, silent=0):
         """Delete node 'id` at level 'lvl'.
         
-        This method checks that the node was previously busy. Then it deletes the
-        node, sends the event and updates the counters"""
+        This method checks that the node was previously busy. Then it 
+        deletes the node, sends the event and updates the counters"""
         node = self.node[lvl][id]
         if node is not None and not node.is_free():
             self.node[lvl][id]=None
@@ -125,10 +126,12 @@ class Map(object):
     def free_nodes_list(self, lvl):
         """Returns the list of free nodes of level `lvl'"""
         #it depends on the lvl and on the previous ids
-        return [nid for nid in valid_ids(lvl, self.me) if (not self.node[lvl][nid]) or self.node[lvl][nid].is_free()]
+        return [nid for nid in valid_ids(lvl, self.me) 
+                if (not self.node[lvl][nid]) or self.node[lvl][nid].is_free()]
 
     def free_nodes_list_in_empty_network(self):
-        """Returns the list of free nodes of level `self.levels-1' in an empty network"""
+        """Returns the list of free nodes of level `self.levels-1' in 
+        an empty network"""
         return [nid for nid in valid_ids(self.levels - 1, self.me)]
 
     def is_in_level(self, nip, lvl):
@@ -143,6 +146,13 @@ class Map(object):
         for l in reversed(xrange(lvl)):
             nip[l] = 0
         return nip
+
+    def nip_to_lvlid(self, nip):
+        """Finds a (lvl, id) pair, referring to this map, from
+           its equivalent netsukuku ip"""
+        lvl = self.nip_cmp(self.me, nip)
+        id = nip[lvl]
+        return (lvl, id)
 
     def ip_to_nip(self, ip):
         """Converts the given ip to a nip (Netsukuku IP)
@@ -160,15 +170,34 @@ class Map(object):
         g=self.gsize
         return sum([nip[l] * g**l for l in xrange(self.levels)])
 
-    def nip_cmp(self, nipA, nipB):
+    def nip_cmp(self, nipA, nipB=None):
         """Returns the first level where nipA and nipB differs. The search
         start from the end of the nip """
-
+        if nipB is None: nipB = self.me
         for lvl in reversed(xrange(self.levels)):
             if nipA[lvl] != nipB[lvl]:
                 return lvl
 
         return -1
+
+    def list_lvl_id_from_nip(self, lvl_ids, from_nip):
+        """Given a list of pairs (lvl, id) received by a neighbour with a
+        given nip, returns the list of pairs (lvl, id) representing the same
+        list of nodes, as seen from the point of view of this node."""
+        ret = lvl_ids[:]
+        from_nip_lvl, from_nip_id = self.nip_to_lvlid(from_nip)
+        for i in range(len(ret)):
+            lvl, id = ret[i]
+            if lvl < from_nip_lvl:
+                ret[i] = (from_nip_lvl, from_nip_id)
+        # removes dups
+        ret_nodups = []
+        prec = ()
+        for x in ret:
+            if x != prec:
+                prec = x
+                ret_nodups.append(x)
+        return ret_nodups
 
     def nip_rand(self):
         """Returns a random netsukuku ip"""
@@ -178,7 +207,8 @@ class Map(object):
         return nip
 
     def _nip_rand(self, lvl, nip):
-        """Returns a random id for level lvl that is valid, given that the previous ids are in nip"""
+        """Returns a random id for level lvl that is valid, given that the 
+        previous ids are in nip"""
         return choice(valid_ids(lvl, nip))
 
     def level_reset(self, level):
@@ -188,7 +218,8 @@ class Map(object):
 
         self.node_nb[level] = 0
         node_me = self.node_get(level, self.me[level])
-        if not node_me.is_free(): self.node_add(level, self.me[level], silent=1)
+        if not node_me.is_free(): self.node_add(level, self.me[level], 
+                                                silent=1)
 
     def map_reset(self):
         """Silently resets the whole map"""
@@ -212,29 +243,30 @@ class Map(object):
         self.me = new_me[:]
         # silently add the dataclass objects representing new me
         for l in xrange(self.levels):
-                self.node[l][self.me[l]] = self.dataclass(l, self.me[l], its_me=True)
+                self.node[l][self.me[l]] = self.dataclass(self, l, self.me[l], 
+                                                          its_me=True)
         if not silent:
                 self.events.send('ME_CHANGED', (old_me, self.me))
 
     def map_data_pack(self, func=None):
-        """Prepares a packed_map to be passed to map_data_merge in another host.
+        """Prepares a packed_map to be passed to map_data_merge in 
+        another host.
         
-        `func' is a function that receives a node and makes it not free.
-        """
-        ret = (self.me,
-                [[self.node[lvl][id] for id in xrange(self.gsize)]
-                                     for lvl in xrange(self.levels)],
+        "func" is a function that receives a node and makes it not free.
+        It is needed to make a node "normally busy" that is "its_me busy"
+        in my point of view, but won't be in the other nip's point of view."""
+        ret = (self.me, [ [self.node[lvl][id] for id in xrange(self.gsize)]
+                             for lvl in xrange(self.levels) ],
                 [self.node_nb[lvl] for lvl in xrange(self.levels)])
         for lvl in xrange(self.levels):
             # self.me MUST be replaced
             # with a normal node
-            node = self.dataclass(lvl, self.me[lvl])
+            node = self.dataclass(self, lvl, self.me[lvl])
             if func: func(node)
             ret[1][lvl][self.me[lvl]] = node
-
         # It's been a tough work! And now we'll probably serialize the result!
-        xtime.sleep_during_hard_work(10)
-
+        # Be kind to other tasks.
+        xtime.swait(10)
         return ret
 
     def map_data_merge(self, (nip, plist, nblist)):
@@ -242,8 +274,8 @@ class Map(object):
         lvl=self.nip_cmp(nip, self.me)
 
         for l in xrange(lvl, self.levels):
-                xtime.sleep_during_hard_work(10)
-
+                # It's a tough work! Be kind to other tasks.
+                xtime.swait(10)
                 self.node_nb[l]=nblist[l]
                 for id in xrange(self.gsize):
                     if id != self.me[l]:  # self.me MUST NOT be replaced
@@ -254,7 +286,6 @@ class Map(object):
                 self.level_reset(l)
 
     def repr_me(self, func_repr_node=None):
-        '''debugging function'''
         ret = 'me ' + str(self.me) + ', node_nb ' + str(self.node_nb) + ', {'
         for lvl in xrange(self.levels):
             ret += self.repr_level(lvl, func_repr_node)
@@ -262,7 +293,6 @@ class Map(object):
         return ret
 
     def repr_level(self, lvl, func_repr_node=None):
-        '''debugging function'''
         def repr_node_map(node):
             if node.is_free(): return ' '
             return 'X'
@@ -272,3 +302,5 @@ class Map(object):
             ret += '\'' + func_repr_node(self.node_get(lvl, i))
         ret += '\'] '
         return ret
+
+

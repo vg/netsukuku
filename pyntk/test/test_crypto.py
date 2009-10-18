@@ -108,15 +108,22 @@ class TestCrypto(unittest.TestCase):
         signature = keys.sign("Message")
         pub_key = keys.get_pub_key()
         classname, pem_string = pub_key._pack()
-        pub_key = crypto.PublicKey(pem_string=pem_string)
+        pub_key = crypto.public_key_from_pem(pem_string=pem_string)
         self.failUnlessEqual(crypto.verify("Message", signature, pub_key),
                              True)
         self.failUnlessEqual(rencode.loads(rencode.dumps(pub_key)),
-                             str(pub_key))
-        print rencode.dumps(pub_key)
-        print rencode.loads(rencode.dumps(pub_key))
-        print pub_key.rsa.as_pem()
+                             pub_key)
 
+
+    def testHash(self):
+        keys1 = crypto.KeyPair(self.temp_dir + "/temp_key1")
+        keys2 = crypto.KeyPair(self.temp_dir + "/temp_key2")
+        pubk1 = keys1.get_pub_key()
+        pubk2 = keys2.get_pub_key()
+        self.failUnlessEqual(pubk1.__hash__() == pubk2.__hash__(), False)
+        self.failUnlessEqual(pubk1.__hash__() == pubk1.__hash__(), True)
+        self.failUnlessEqual(pubk1 == pubk2, False)
 
 if __name__ == '__main__':
     unittest.main()
+

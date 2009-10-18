@@ -18,6 +18,7 @@
 ##
 # Setting up the ntk iproute table
 
+from ntk.lib.log import logger as logging
 import re
 
 RT_TABLE = '/etc/iproute2/rt_tables'

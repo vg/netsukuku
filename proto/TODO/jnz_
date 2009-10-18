@@ -1,0 +1,5 @@
+I will:
+
+- remove the `ntkd' parameters from class constructors
+- repair ALL the broken test units
+- add more tests in test_p2p.py and test_coord.py about r1871..1875

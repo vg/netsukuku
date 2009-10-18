@@ -18,7 +18,8 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
-from ntk.lib.log import logger as logging
+from random import choice
+
 import ntk.core.radar as radar
 import ntk.core.route as maproute
 import ntk.core.qspn as qspn
@@ -28,14 +29,14 @@ import ntk.core.coord as coord
 import ntk.core.krnl_route as kroute
 import ntk.lib.rpc as rpc
 import ntk.wrap.xtime as xtime
-from ntk.lib.micro import microfunc, micro 
 
 from ntk.config import settings, ImproperlyConfigured
+from ntk.lib.event import Event, apply_wakeup_on_event
+from ntk.lib.log import logger as logging
+from ntk.lib.micro import microfunc, micro, micro_block
 from ntk.network import NICManager, Route
-from ntk.network.inet import ip_to_str
+from ntk.network.inet import ip_to_str, valid_ids
 from ntk.wrap.sock import Sock
-from random import choice
-from ntk.network.inet import valid_ids
 
 class NtkNode(object):
 
@@ -70,21 +71,27 @@ class NtkNode(object):
                                          net=self.simnet,
                                          me=self.simme,
                                          sockmodgen=self.simsock)
-        self.radar = radar.Radar(self, rpcbcastclient, xtimemod)
-        self.neighbour = self.radar.neigh
         self.firstnip = self.choose_first_nip()
-        self.maproute = maproute.MapRoute(self, settings.LEVELS, self.gsize, self.firstnip)
-        logging.log(logging.ULTRADEBUG, 'NtkNode: This is maproute as soon as started.')
-        logging.log(logging.ULTRADEBUG, self.maproute.repr_me())
-        self.etp = qspn.Etp(self, self.radar, self.maproute)
+        self.maproute = maproute.MapRoute(settings.LEVELS, self.gsize, 
+                                          self.firstnip)
+        self.radar = radar.Radar(self.maproute, rpcbcastclient, xtimemod)
+        self.maproute.set_radar(self.radar)
+        self.neighbour = self.radar.neigh
 
-        self.p2p = p2p.P2PAll(self, self.radar, self.maproute, self.etp)
-        self.coordnode = coord.Coord(self, self.radar, self.maproute, self.p2p)
-        logging.log(logging.ULTRADEBUG, 'NtkNode: This is mapcache of coord as soon as started.')
+        logging.log(logging.ULTRADEBUG, 'NtkNode: This is maproute as soon '
+                    'as started.')
+        logging.log(logging.ULTRADEBUG, self.maproute.repr_me())
+        self.etp = qspn.Etp(self.radar, self.maproute)
+
+        self.p2p = p2p.P2PAll(self.radar, self.maproute, self.etp)
+        self.coordnode = coord.Coord(self.radar, self.maproute, self.p2p)
+        logging.log(logging.ULTRADEBUG, 'NtkNode: This is mapcache of coord '
+                    'as soon as started.')
         logging.log(logging.ULTRADEBUG, self.coordnode.mapcache.repr_me())
-        logging.log(logging.ULTRADEBUG, 'NtkNode: This is mapp2p of coord as soon as started.')
+        logging.log(logging.ULTRADEBUG, 'NtkNode: This is mapp2p of coord as '
+                    'soon as started.')
         logging.log(logging.ULTRADEBUG, self.coordnode.mapp2p.repr_me())
-        self.hook = hook.Hook(self, self.radar, self.maproute, self.etp,
+        self.hook = hook.Hook(self.radar, self.maproute, self.etp,
                               self.coordnode, self.nic_manager)
 
         self.hook.events.listen('HOOKED', self.p2p.p2p_hook)
@@ -92,7 +99,7 @@ class NtkNode(object):
         self.hook.events.listen('HOOKED', self.reset)
 
         if not self.simulated:
-            self.kroute = kroute.KrnlRoute(self, self.neighbour, self.maproute)
+            self.kroute = kroute.KrnlRoute(self.neighbour, self.maproute)
 
     def reset(self, oldip=None, newnip=None):
         logging.debug('resetting node')
@@ -111,10 +118,12 @@ class NtkNode(object):
         if not self.simulated:
             for nic in self.nic_manager:
                 self.nic_manager[nic].filtering(enable=False)
-                rpc.MicroUDPServer(self, ('', 269), nic, self.simnet, self.simme, self.simsock)
+                rpc.MicroUDPServer(self, ('', 269), nic, self.simnet, 
+                                   self.simme, self.simsock)
 
     def launch_tcp_servers(self):
-        rpc.MicroTCPServer(self, ('', 269), None, self.simnet, self.simme, self.simsock)
+        rpc.MicroTCPServer(self, ('', 269), None, self.simnet, self.simme, 
+                           self.simsock)
 
     def run(self):
         self.initialize()
