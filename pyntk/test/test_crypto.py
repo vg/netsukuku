@@ -113,7 +113,9 @@ class TestCrypto(unittest.TestCase):
                              True)
         self.failUnlessEqual(rencode.loads(rencode.dumps(pub_key)),
                              pub_key)
-
+        #print rencode.dumps(pub_key)
+        #print rencode.loads(rencode.dumps(pub_key))
+        #print pub_key.rsa.as_pem()
 
     def testHash(self):
         keys1 = crypto.KeyPair(self.temp_dir + "/temp_key1")
@@ -126,4 +128,3 @@ class TestCrypto(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
