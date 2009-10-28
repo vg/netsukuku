@@ -73,6 +73,10 @@ def iproute(args):
 class NIC(BaseNIC):
     ''' Network Interface Controller handled using iproute '''
 
+    def __init__(self, name):
+        BaseNIC.__init__(self, name)
+        self._mac = None
+
     def up(self):
         ''' Brings the interface up. '''
         iproute('link set %s up' % self.name)
@@ -108,6 +112,15 @@ class NIC(BaseNIC):
             r = re.compile(r'''inet\s((?:\d{1,3}\.){3}\d{1,3})/''')
         matched_address = r.search(self.show())
         return matched_address.groups()[0] if matched_address else None
+
+    def get_mac(self):
+        ''' Gets MAC address. '''
+        if not self._mac:
+            r = re.compile('([a-fA-F0-9]{2}[:|\-]?){6}')
+            s = self.show()
+            matched_address = r.search(s)
+            self._mac = s[matched_address.start():matched_address.end()] if matched_address else None
+        return self._mac
 
     def get_is_active(self):
         ''' Returns True if NIC is active. '''

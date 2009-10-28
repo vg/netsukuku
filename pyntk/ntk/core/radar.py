@@ -55,12 +55,12 @@ from ntk.network.inet import ip_to_str, str_to_ip
 class Neigh(object):
     """This class simply represent a neighbour"""
 
-    __slots__ = ['devs', 'bestdev', 'ip', 'id_func', 'id', 'rem', 'ntkd_func', 'ntkd', 'netid']
+    __slots__ = ['devs', 'bestdev', 'ip', 'id_func', 'id', 'rem', 'ntkd_func', 'ntkd', 'netid', 'macs']
 
     def func_none(*args):
         return None
 
-    def __init__(self, bestdev, devs, ip, netid,
+    def __init__(self, bestdev, devs, ip, netid, macs,
                  id_func=func_none, ntkd_func=func_none):
         """
         ip: neighbour's ip;
@@ -69,6 +69,7 @@ class Neigh(object):
         devs: a dict which maps a device to the average rtt
         bestdev: a pair (d, avg_rtt), where devs[d] is the best element of
                 devs.
+        macs: a sequence of string: the various MACs of the neighbour
 
         ntkd_func: a function such that:
             ntkd_func(ip, netid) returns neighbour's ntk remote instance.
@@ -81,6 +82,7 @@ class Neigh(object):
         self.bestdev = bestdev
         self.ip = ip
         self.netid = netid
+        self.macs = macs
 
         self.id_func = id_func
         if self.bestdev:
@@ -650,14 +652,14 @@ class Neighbour(object):
         # For each single change, call a "time_tick" method.
         #
         # The called method will:
-        #
+        #  .evaluate (t-1)-like stuff ???
         #  .if it is a new, check that it does not exist; otherwise exit.
         #  .if it is a changed_rem, check that it does exist; otherwise exit.
         #  .if it is a dead, check that it does exist; otherwise exit.
         #  .change data in structure without passing schedule.
         #  .call events (to Etp class) that must not be microfunc.
         #  .emit TIME_TICK event ???
-        #
+        #  .evaluate delta-like stuff ???
         for key in to_be_deleted:
             self.store_delete_neigh(key)
         for key, val in to_be_added:
@@ -922,6 +924,8 @@ class Radar(object):
         self.bcast_send_time = 0
         # when the replies arrived
         self.bcast_arrival_time = {}
+        # MACs gathered
+        self.bcast_macs = {}
         # max_bouquet: how many packets does each bouquet contain?
         self.max_bouquet = settings.MAX_BOUQUET
         # wait_time: the time we wait for a reply, in seconds
@@ -1021,11 +1025,13 @@ class Radar(object):
         if ntkd_id != self.ntkd_id:
             # If I am hooking I will not reply to radar scans from my 
             # neighbours
+            # TODO is that ok?
             if self.neigh.netid != -1:
                 bcc = rpc.BcastClient(devs=[_rpc_caller.dev], 
                                       xtimemod=self.xtime)
+                receiving_mac = self.ntkd.nic_manager[_rpc_caller.dev].mac
                 try:
-                    bcc.radar.time_register(radar_id, self.neigh.netid)
+                    bcc.radar.time_register(radar_id, self.neigh.netid, receiving_mac)
                 except:
                     logging.log(logging.ULTRADEBUG, 'Radar: Reply: '
                                 'BcastClient ' + str(bcc) + ' with '
@@ -1033,7 +1039,7 @@ class Radar(object):
                                 repr(bcc.dev_sk[_rpc_caller.dev].dispatcher) +
                                 ' error in rpc execution. Ignored.')
 
-    def time_register(self, _rpc_caller, radar_id, netid):
+    def time_register(self, _rpc_caller, radar_id, netid, mac):
         """save each node's rtt"""
 
         if radar_id != self.radar_id:
@@ -1047,6 +1053,8 @@ class Radar(object):
         time_elapsed = int((self.xtime.time() - self.bcast_send_time) / 2)
         # let's store it in the bcast_arrival_time table
         if (ip, netid) in self.bcast_arrival_time:
+            if mac not in self.bcast_macs[(ip, netid)]:
+                self.bcast_macs[(ip, netid)].append(mac)
             if net_device in self.bcast_arrival_time[(ip, netid)]:
                 self.bcast_arrival_time[(ip, 
                                     netid)][net_device].append(time_elapsed)
@@ -1055,6 +1063,7 @@ class Radar(object):
                                                   [time_elapsed]
         else:
             self.bcast_arrival_time[(ip, netid)] = {}
+            self.bcast_macs[(ip, netid)] = [mac]
             self.bcast_arrival_time[(ip, netid)][net_device] = [time_elapsed]
             logging.debug("Radar: IP %s from network %s detected", 
                           ip_to_str(ip), str(netid))
@@ -1089,8 +1098,9 @@ class Radar(object):
         # for each (ip, netid)
         for (ip, netid) in self.bcast_arrival_time:
             devs = self.get_avg_rtt(ip, netid)
+            macs = self.bcast_macs[(ip, netid)]
             all_avg[(ip, netid)] = Neigh(bestdev=devs[0], devs=dict(devs), 
-                                         ip=ip, netid=netid,
+                                         ip=ip, netid=netid, macs=macs,
                                          id_func=self.neigh.get_gw_id,
                                          ntkd_func=self.neigh.get_ntk_client)
         return all_avg

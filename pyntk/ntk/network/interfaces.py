@@ -53,6 +53,15 @@ class BaseNIC(object):
 
     address = property(_get_address_getter, _set_address_getter)
 
+    def get_mac(self):
+        ''' Gets MAC address. '''
+        raise NotImplementedError
+
+    def _get_mac_getter(self):
+        return self.get_mac()
+
+    mac = property(_get_mac_getter)
+
     def get_is_active(self):
         ''' Returns True if NIC is active. '''
         raise NotImplementedError

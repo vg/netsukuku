@@ -38,6 +38,9 @@ class NIC(BaseNIC):
     def get_address(self):
         return None
 
+    def get_mac(self):
+        return None
+
     def filtering(self, *args, **kargs):
         pass
 
