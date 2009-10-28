@@ -93,7 +93,49 @@ class BaseRoute(object):
     ''' Rapresents a route controller. '''
 
     @staticmethod
-    def add(ip, cidr, dev=None, gateway=None):
+    def default_route(ip, cidr, gateway, dev):
+        ''' Maintains this default route for this destination. '''
+        # ip and cidr are strings.
+        # Eg: '192.168.0.0', '16'
+        #
+        # gateway and dev are strings.
+        # Eg: '192.12.1.1', 'eth1'
+        # If gateway is None then there are no routes (UNREACHABLE).
+        #
+        # The implementation has to know by itself if it needs to
+        # add, change or remove any route.
+        raise NotImplementedError
+
+    @staticmethod
+    def prev_hop_route(ip, cidr, prev_hop, gateway, dev):
+        ''' Maintains this route for this destination when prev_hop is the
+            gateway from which we received the packet.
+        '''
+        # ip, cidr and prev_hop are strings. prev_hop is a MAC address.
+        # Eg: '192.168.0.0', '16', '6a:b8:1e:cf:1d:4f'
+        #
+        # gateway and dev are strings.
+        # Eg: '192.12.1.1', 'eth1'
+        # If gateway is None then there are no routes (UNREACHABLE).
+        #
+        # The implementation has to know by itself if it needs to
+        # add, change or remove any route.
+        raise NotImplementedError
+
+    @staticmethod
+    def prev_hop_route_default(ip, cidr, prev_hop):
+        ''' Use default route for this destination when prev_hop is the
+            gateway from which we received the packet.
+        '''
+        # ip, cidr and prev_hop are strings. prev_hop is a MAC address.
+        # Eg: '192.168.0.0', '16', '6a:b8:1e:cf:1d:4f'
+        #
+        # The implementation has to know by itself if it needs to
+        # add, change or remove any route.
+        raise NotImplementedError
+
+    @staticmethod
+    def add(ip, cidr, dev=None, gateway=None, prev_hop=None):
         ''' Adds a new route with corresponding properties. '''
         raise NotImplementedError
 
@@ -103,7 +145,7 @@ class BaseRoute(object):
         raise NotImplementedError
 
     @staticmethod
-    def change(ip, cidr, dev=None, gateway=None):
+    def change(ip, cidr, dev=None, gateway=None, prev_hop=None):
         ''' Edits the route with the corresponding properties. '''
         raise NotImplementedError
 
@@ -113,7 +155,7 @@ class BaseRoute(object):
         raise NotImplementedError
 
     @staticmethod
-    def delete(ip, cidr, dev=None, gateway=None):
+    def delete(ip, cidr, dev=None, gateway=None, prev_hop=None):
         ''' Removes the route with the corresponding properties. '''
         raise NotImplementedError
 

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Netsukuku
 # (c) Copyright 2007 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
@@ -28,6 +29,7 @@ from ntk.lib.log import logger as logging
 from ntk.lib.micro import microfunc, micro_block
 from ntk.network import Route as KRoute
 from ntk.network.inet import ip_to_str, lvl_to_bits
+from ntk.core.route import NullRem, DeadRem
 
 class KrnlRoute(object):
     def __init__(self, neigh, maproute):
@@ -35,6 +37,8 @@ class KrnlRoute(object):
         self.maproute = maproute
         self.neigh = neigh
         self.multipath = settings.MULTIPATH
+
+        self.maproute.events.listen('ROUTES_UPDATED', self.routes_updated)
 
         self.maproute.events.listen('ROUTE_NEW', self.route_new)
         self.route_new_calls = []
@@ -52,6 +56,122 @@ class KrnlRoute(object):
                                  priority=5)
         self.neigh_rem_changed_calls = []
 
+    # The rules that this class has to keep satisfied are:
+    # given that we are x;
+    # at any time, for any v ∈ V,
+    #     if Bestᵗ (x → v) = xy...v > 0
+    #         x maintains this RULE: destination = v → gateway = y
+    #     ∀w ∈ x*
+    #         if w ∈ Bestᵗ (x → v) AND Bestᵗ (x → w̃ → v) = xz...v > 0
+    #             x maintains this RULE: source w, destination = v → gateway = z
+
+    def routes_updated(self, lvl, dst):
+        routes_to_v = self.maproute.node_get(lvl, dst)
+        best = routes_to_v.best_route()
+        if not best or isinstance(best.rem, DeadRem):
+            # RULE: destination = v → unknown
+            self.rule_dest_unknown(lvl, dst)
+        else:
+            # RULE: destination = v → gateway = y
+            self.rule_dest_gw(lvl, dst, best.gw)
+            for w in self.neigh.neigh_list(in_my_network=True):
+                w_lvl_id = self.maproute.routeneigh_get(w)
+                if best.contains(w_lvl_id):
+                    best_not_w = routes_to_v.best_route_without(w_lvl_id)
+                    if best_not_w:
+                        # RULE: source w, destination = v → gateway = z
+                        self.rule_dest_src_gw(lvl, dst, w, best_not_w.gw)
+                    else:
+                        # RULE: source w, destination = v → host/network UNREACHABLE.
+                        self.rule_dest_src_unreachable(lvl, dst, w)
+                else:
+                    # RULE: source w, destination = v → gateway = default for v
+                    self.rule_dest_src_delete(lvl, dst, w)
+
+    @microfunc()
+    def schedule(self, function, args=(), **kwargs):
+        '''Schedules an update to the routing table'''
+        # The updates are done one at a time.
+        # The received data let us obtain information for the destination v.
+        try:
+            logging.log(logging.ULTRADEBUG, 'KrnlRoute.schedule: start ' + str(function))
+            function(*args, **kwargs)
+        finally:
+            logging.log(logging.ULTRADEBUG, 'KrnlRoute.schedule: exit ' + str(function))
+
+    def rule_dest_unknown(self, *args):
+        self.schedule(self.serialized_rule_dest_unknown, args)
+
+    def serialized_rule_dest_unknown(self, lvl, dst):
+        # Obtain IP for node
+        nip = self.maproute.lvlid_to_nip(lvl, dst)
+        ip  = self.maproute.nip_to_ip(nip)
+        # Obtain a IP string for the node
+        ipstr = ip_to_str(ip)
+        # Maintain this rule
+        KRoute.default_route(ipstr, str(lvl_to_bits(lvl)), gateway=None, dev=None)
+
+    def rule_dest_gw(self, *args):
+        self.schedule(self.serialized_rule_dest_gw, args)
+
+    def serialized_rule_dest_gw(self, lvl, dst, gw):
+        # Obtain IP for node and gateway
+        nip = self.maproute.lvlid_to_nip(lvl, dst)
+        ip  = self.maproute.nip_to_ip(nip)
+        gwip = gw.ip
+        # Obtain a IP string for the node
+        ipstr = ip_to_str(ip)
+        # Obtain a IP string for this gateway
+        gwipstr = ip_to_str(gwip)
+        dev = gw.bestdev[0]
+        # Maintain this rule
+        KRoute.default_route(ipstr, str(lvl_to_bits(lvl)), gateway=gwipstr, dev=dev)
+
+    def rule_dest_src_gw(self, *args):
+        self.schedule(self.serialized_rule_dest_src_gw, args)
+
+    def serialized_rule_dest_src_gw(self, lvl, dst, src, gw):
+        # Obtain IP for node and gateway
+        nip = self.maproute.lvlid_to_nip(lvl, dst)
+        ip  = self.maproute.nip_to_ip(nip)
+        gwip = gw.ip
+        # Obtain a IP string for the node
+        ipstr = ip_to_str(ip)
+        # Obtain a IP string for this gateway
+        gwipstr = ip_to_str(gwip)
+        dev = gw.bestdev[0]
+        # Obtain each MAC string for this src
+        for macsrc in src.macs:
+            # Maintain this rule
+            KRoute.prev_hop_route(ipstr, str(lvl_to_bits(lvl)), macsrc, gateway=gwipstr, dev=dev)
+
+    def rule_dest_src_unreachable(self, *args):
+        self.schedule(self.serialized_rule_dest_src_unreachable, args)
+
+    def serialized_rule_dest_src_unreachable(self, lvl, dst, src):
+        # Obtain IP for node
+        nip = self.maproute.lvlid_to_nip(lvl, dst)
+        ip  = self.maproute.nip_to_ip(nip)
+        # Obtain a IP string for the node
+        ipstr = ip_to_str(ip)
+        # Obtain each MAC string for this src
+        for macsrc in src.macs:
+            # Maintain this rule
+            KRoute.prev_hop_route(ipstr, str(lvl_to_bits(lvl)), macsrc, gateway=None, dev=None)
+
+    def rule_dest_src_delete(self, *args):
+        self.schedule(self.serialized_rule_dest_src_delete, args)
+
+    def serialized_rule_dest_src_delete(self, lvl, dst, src):
+        # Obtain IP for node
+        nip = self.maproute.lvlid_to_nip(lvl, dst)
+        ip  = self.maproute.nip_to_ip(nip)
+        # Obtain a IP string for the node
+        ipstr = ip_to_str(ip)
+        # Obtain each MAC string for this src
+        for macsrc in src.macs:
+            # Maintain this rule
+            KRoute.prev_hop_route_default(ipstr, str(lvl_to_bits(lvl)), macsrc)
 
     def route_new(self, lvl, dst, gw, rem):
         # We'll do the real thing in a microfunc, but make sure

@@ -45,7 +45,23 @@ class Route(BaseRoute):
     ''' Dummy route  '''
 
     @staticmethod
-    def add(ip, cidr, dev=None, gateway=None):
+    def default_route(ip, cidr, gateway, dev):
+        ''' Maintains this default route for this destination. '''
+
+    @staticmethod
+    def prev_hop_route(ip, cidr, prev_hop, gateway, dev):
+        ''' Maintains this route for this destination when prev_hop is the
+            gateway from which we received the packet.
+        '''
+
+    @staticmethod
+    def prev_hop_route_default(ip, cidr, prev_hop):
+        ''' Use default route for this destination when prev_hop is the
+            gateway from which we received the packet.
+        '''
+
+    @staticmethod
+    def add(ip, cidr, dev=None, gateway=None, prev_hop=None):
         ''' Adds a new route with corresponding properties. '''
 
     @staticmethod
@@ -53,7 +69,7 @@ class Route(BaseRoute):
         ''' Adds a new neighbour with corresponding properties. '''
 
     @staticmethod
-    def change(ip, cidr, dev=None, gateway=None):
+    def change(ip, cidr, dev=None, gateway=None, prev_hop=None):
         ''' Edits the route with the corresponding properties. '''
 
     @staticmethod
@@ -61,7 +77,7 @@ class Route(BaseRoute):
         ''' Edits the neighbour with the corresponding properties. '''
 
     @staticmethod
-    def delete(ip, cidr, dev=None, gateway=None):
+    def delete(ip, cidr, dev=None, gateway=None, prev_hop=None):
         ''' Removes the route with the corresponding properties. '''
 
     @staticmethod

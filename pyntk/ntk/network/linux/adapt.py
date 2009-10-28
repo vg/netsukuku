@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Netsukuku
 # (c) Copyright 2008 Daniele Tricoli aka Eriol <eriol@mornie.org>
@@ -128,9 +129,119 @@ class NIC(BaseNIC):
 
         file_write(path, value)
 
+current_table = {}
+# current_table[(None, v)] is present (and has value y)
+#   iff a RULE destination = v → gateway = y exists in table
+# current_table[(None, v)] is NOT present
+#   iff no routes exist for destination = v → host/network is UNREACHABLE
+# current_table[(w, v)] is present (and has value y)
+#   iff a RULE source w, destination = v → gateway = y exists in table
+# current_table[(w, v)] is present and has value None
+#   iff a RULE source w, destination = v → host/network UNREACHABLE exists in table
+# v is a ip/cidr string, eg '192.168.0.0/16';
+# w is a MAC string, eg '6a:b8:1e:cf:1d:4f';
+# y is a tuple of strings (ip, dev), eg ('192.12.1.1', 'eth1').
+
 
 class Route(BaseRoute):
     ''' Managing routes using iproute '''
+
+    @staticmethod
+    def default_route(ip, cidr, gateway, dev):
+        ''' Maintains this default route for this destination. '''
+        # ip and cidr are strings.
+        # Eg: '192.168.0.0', '16'
+        #
+        # gateway and dev are strings.
+        # Eg: '192.12.1.1', 'eth1'
+        # If gateway is None then there are no routes (UNREACHABLE).
+        #
+        # The implementation has to know by itself if it needs to
+        # add, change or remove any route.
+
+        # When at level 0, that is cidr = lvl_to_bits(0), and ip = gateway,
+        # the route has to be handled only as a neighbour.
+        if cidr == 32 and ip == gateway: return
+
+        ipcidr = ip + '/' + cidr
+        if gateway:
+            if (None, ipcidr) in current_table:
+                if current_table[(None, ipcidr)] != (gateway, dev):
+                    Route.change(ip, cidr, dev, gateway)
+            else:
+                Route.add(ip, cidr, dev, gateway)
+            current_table[(None, ipcidr)] = (gateway, dev)
+        else:
+            if (None, ipcidr) in current_table:
+                # retrieve old default gateway
+                gateway, dev = current_table[(None, ipcidr)]
+                cmd = Route.delete(ip, cidr, dev, gateway)
+                del current_table[(None, ipcidr)]
+            for k in current_table.keys():
+                w, v = k
+                if v == ipcidr:
+                    # retrieve old gateway for prev_hop
+                    if current_table[k] is None:
+                        Route.delete_unreachable(ip, cidr, prev_hop=w)
+                    else:
+                        gateway, dev = current_table[k]
+                        Route.delete(ip, cidr, dev, gateway, prev_hop=w)
+                    del current_table[k]
+
+    @staticmethod
+    def prev_hop_route(ip, cidr, prev_hop, gateway, dev):
+        ''' Maintains this route for this destination when prev_hop is the
+            gateway from which we received the packet.
+        '''
+        # ip, cidr and prev_hop are strings. prev_hop is a MAC address.
+        # Eg: '192.168.0.0', '16', '6a:b8:1e:cf:1d:4f'
+        #
+        # gateway and dev are strings.
+        # Eg: '192.12.1.1', 'eth1'
+        # If gateway is None then there are no routes (UNREACHABLE).
+        #
+        # The implementation has to know by itself if it needs to
+        # add, change or remove any route.
+
+        # When at level 0, that is cidr = lvl_to_bits(0), and ip = gateway,
+        # the route has to be handled only as a neighbour.
+        if cidr == 32 and ip == gateway: return
+
+        ipcidr = ip + '/' + cidr
+        if gateway:
+            if (prev_hop, ipcidr) in current_table:
+                if current_table[(prev_hop, ipcidr)] != (gateway, dev):
+                    Route.change(ip, cidr, dev, gateway, prev_hop=prev_hop)
+            else:
+                Route.add(ip, cidr, dev, gateway, prev_hop=prev_hop)
+            current_table[(prev_hop, ipcidr)] = (gateway, dev)
+        else:
+            if (prev_hop, ipcidr) in current_table:
+                if current_table[(prev_hop, ipcidr)] is not None:
+                    Route.unreachable(ip, cidr, prev_hop=prev_hop)
+            else:
+                Route.unreachable(ip, cidr, prev_hop=prev_hop)
+            current_table[(prev_hop, ipcidr)] = None
+
+    @staticmethod
+    def prev_hop_route_default(ip, cidr, prev_hop):
+        ''' Use default route for this destination when prev_hop is the
+            gateway from which we received the packet.
+        '''
+        # ip, cidr and prev_hop are strings. prev_hop is a MAC address.
+        # Eg: '192.168.0.0', '16', '6a:b8:1e:cf:1d:4f'
+        #
+        # The implementation has to know by itself if it needs to
+        # add, change or remove any route.
+
+        ipcidr = ip + '/' + cidr
+        if (prev_hop, ipcidr) in current_table:
+            if current_table[(prev_hop, ipcidr)] is None:
+                Route.delete_unreachable(ip, cidr, prev_hop=w)
+            else:
+                gateway, dev = current_table[(prev_hop, ipcidr)]
+                Route.delete(ip, cidr, dev, gateway, prev_hop=w)
+            del current_table[(prev_hop, ipcidr)]
 
     ##TODO: add the possibility to specify a routing table, f.e. 'table ntk'
 
@@ -165,14 +276,61 @@ class Route(BaseRoute):
         return cmd
 
     @staticmethod
-    def add(ip, cidr, dev=None, gateway=None):
+    def add(ip, cidr, dev=None, gateway=None, prev_hop=None):
         ''' Adds a new route with corresponding properties. '''
         # When at level 0, that is cidr = lvl_to_bits(0), this method
         # might be called with ip = gateway. In this case the command
         # below makes no sense and would result in a error.
         if cidr == 32 and ip == gateway: return
-        cmd = Route._modify_routes_cmd('add', ip, cidr, dev, gateway)
-        iproute(cmd)
+        if prev_hop is None:
+            cmd = Route._modify_routes_cmd('add', ip, cidr, dev, gateway)
+            iproute(cmd)
+        else:
+            logging.warning('Should add route for packets arriving from ' + prev_hop + ' dest=' + ip + '/' + cidr + ' through gateway ' + str(gateway))
+
+    @staticmethod
+    def change(ip, cidr, dev=None, gateway=None, prev_hop=None):
+        ''' Edits the route with corresponding properties. '''
+        # When at level 0, that is cidr = lvl_to_bits(0), this method
+        # might be called with ip = gateway. In this case the command
+        # below makes no sense and would result in a error.
+        if cidr == 32 and ip == gateway: return
+        if prev_hop is None:
+            cmd = Route._modify_routes_cmd('change', ip, cidr, dev, gateway)
+            iproute(cmd)
+        else:
+            logging.warning('Should change route for packets arriving from ' + prev_hop + ' dest=' + ip + '/' + cidr + ' through new gateway ' + str(gateway))
+
+    @staticmethod
+    def delete(ip, cidr, dev=None, gateway=None, prev_hop=None):
+        ''' Removes the route with corresponding properties. '''
+        # When at level 0, that is cidr = lvl_to_bits(0), this method
+        # might be called with ip = gateway. In this case the command
+        # below makes no sense and would result in a error.
+        if cidr == 32 and ip == gateway: return
+        if prev_hop is None:
+            cmd = Route._modify_routes_cmd('del', ip, cidr, dev, gateway)
+            iproute(cmd)
+        else:
+            logging.warning('Should delete route for packets arriving from ' + prev_hop + ' dest=' + ip + '/' + cidr + ' old gateway was ' + str(gateway))
+
+    @staticmethod
+    def unreachable(ip, cidr, prev_hop):
+        ''' Removes the route with corresponding properties. '''
+        # When at level 0, that is cidr = lvl_to_bits(0), this method
+        # might be called with ip = gateway. In this case the command
+        # below makes no sense and would result in a error.
+        if cidr == 32 and ip == gateway: return
+        logging.warning('Should add rule UNREACHABLE for packets arriving from ' + prev_hop + ' dest=' + ip + '/' + cidr)
+
+    @staticmethod
+    def delete_unreachable(ip, cidr, prev_hop):
+        ''' Removes the route with corresponding properties. '''
+        # When at level 0, that is cidr = lvl_to_bits(0), this method
+        # might be called with ip = gateway. In this case the command
+        # below makes no sense and would result in a error.
+        if cidr == 32 and ip == gateway: return
+        logging.warning('Should remove rule UNREACHABLE for packets arriving from ' + prev_hop + ' dest=' + ip + '/' + cidr)
 
     @staticmethod
     def add_neigh(ip, dev=None):
@@ -181,31 +339,11 @@ class Route(BaseRoute):
         iproute(cmd)
 
     @staticmethod
-    def change(ip, cidr, dev=None, gateway=None):
-        ''' Edits the route with corresponding properties. '''
-        # When at level 0, that is cidr = lvl_to_bits(0), this method
-        # might be called with ip = gateway. In this case the command
-        # below makes no sense and would result in a error.
-        if cidr == 32 and ip == gateway: return
-        cmd = Route._modify_routes_cmd('change', ip, cidr, dev, gateway)
-        iproute(cmd)
-
-    @staticmethod
     def change_neigh(ip, dev=None):
         ''' Edits the neighbour with corresponding properties. '''
         # If a neighbour previously reached via eth0, now has a better link
         # in eth1, it makes sense to use this command.
         cmd = Route._modify_neighbour_cmd('change', ip, dev)
-        iproute(cmd)
-
-    @staticmethod
-    def delete(ip, cidr, dev=None, gateway=None):
-        ''' Removes the route with corresponding properties. '''
-        # When at level 0, that is cidr = lvl_to_bits(0), this method
-        # might be called with ip = gateway. In this case the command
-        # below makes no sense and would result in a error.
-        if cidr == 32 and ip == gateway: return
-        cmd = Route._modify_routes_cmd('del', ip, cidr, dev, gateway)
         iproute(cmd)
 
     @staticmethod
