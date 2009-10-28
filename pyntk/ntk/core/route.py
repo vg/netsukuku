@@ -205,10 +205,6 @@ class Route(object):
         self.hops = hops
         self.routenode = routenode
 
-    def update_gw(self, gw):
-        """Update Neigh data of my gateway"""
-        self.gw = gw
-
     def _get_rem(self):
         return self.rem_at_gw + self.gw.rem
 
@@ -228,11 +224,11 @@ class Route(object):
             #  (e.g. to remove a route from the sequence of routes)
             # In such a comparison the only member we can check is the 
             # gateway.
-            return self.gw.id == b.gw.id
+            return self.gw is b.gw
         else:
             return False
 
-    def contains(hop):
+    def contains(self, hop):
         # hop is a pair (lvl, id)
         dest = self.routenode.lvl, self.routenode.id
         if hop == dest:
@@ -276,24 +272,19 @@ class RouteNode(object):
         self.routes = []
         self.maproute = maproute
 
+    def route_getby_gw_neigh(self, gw):
+        """Returns the route having as gateway `gw'"""
+        for r in self.routes:
+            if r.gw is gw:
+                return r
+        return None
+
     def route_getby_gw(self, gw_id):
         """Returns the route having as gateway `gw_id'"""
         for r in self.routes:
             if r.gw.id == gw_id:
                 return r
         return None
-
-    def route_update_gw(self, gw):
-        """Updates the Neigh data of the route with gateway `gw'"""
-
-        r = self.route_getby_gw(gw.id)
-
-        if r is None:
-            return 0
-
-        r.update_gw(gw)
-        self.sort()
-        return 1
 
     def route_rem(self, gw_id, newrem_at_gw, new_hops):
         """Changes the rem_at_gw and hops of the route with gateway `gw_id'
@@ -319,7 +310,7 @@ class RouteNode(object):
 
         ret = 0
         val = None
-        oldr = self.route_getby_gw(gw.id)
+        oldr = self.route_getby_gw_neigh(gw)
 
         if oldr is None:
             # If there isn't a route through this gateway, add it
@@ -354,6 +345,17 @@ class RouteNode(object):
             return 1
         return 0
 
+    def route_del_by_neigh(self, gw):
+        """Delete a route.
+
+        Returns 1 if the route has been deleted, otherwise 0"""
+
+        r = self.route_getby_gw_neigh(gw)
+        if r is not None:
+            self.routes.remove(r)
+            return 1
+        return 0
+
     def sort(self):
         '''Order the routes
 
@@ -376,6 +378,7 @@ class RouteNode(object):
     def best_route(self, exclude_gw_ids=[]):
         self.sort()
         for r in self.routes:
+            if not any(exclude_gw_ids): return r
             if r.gw.id not in exclude_gw_ids: return r
         return None
 

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Netsukuku
 # (c) Copyright 2007 Alberto Santini <alberto@unix-monk.com>
@@ -124,7 +125,8 @@ class Neigh(object):
 class Neighbour(object):
     """ This class manages all neighbours """
 
-    __slots__ = ['radar',
+    __slots__ = ['ntkd',
+                 'radar',
                  'maproute',
                  'max_neigh',
                  'rtt_variation_threshold',
@@ -141,8 +143,9 @@ class Neighbour(object):
                  'missing_neighbour_keys',
                  'channels']
 
-    def __init__(self, radar, maproute, max_neigh=settings.MAX_NEIGH, xtimemod=xtime):
+    def __init__(self, ntkd, radar, maproute, max_neigh=settings.MAX_NEIGH, xtimemod=xtime):
         """  max_neigh: maximum number of neighbours we can have """
+        self.ntkd = ntkd
         self.maproute = maproute
         self.radar = radar
         
@@ -261,7 +264,7 @@ class Neighbour(object):
             if not requirement(netid):
                 # this one is not wanted
                 continue
-            logging.log(logging.ULTRADEBUG, 'neigh_list: preparing Neigh for '
+            logging.log(logging.ULTRADEBUG, 'neigh_list: returns Neigh for '
                         'nip ' + str(self.maproute.ip_to_nip(ip)) + 
                         ', netid ' + str(netid))
             nlist.append(val)
@@ -310,7 +313,8 @@ class Neighbour(object):
         del self.ip_netid_table[key]
         if self.netid == netid:
             # It was in my network
-            del self.ntk_client[ip]
+            if ip in self.ntk_client:
+                del self.ntk_client[ip]
         return id
 
     #############################################################
@@ -466,53 +470,134 @@ class Neighbour(object):
         # return the new ip_netid_table
         return ip_netid_table_trunc
 
-    def store(self, new_ip_netid_table):
-        """Substitute the old ip_netid_table with the new and notify about the
-        changes
+    def store_add_neigh(self, *args):
+        self.ntkd.time_tick('store_add_neigh', self.serialized_store_add_neigh, args)
 
-        new_ip_netid_table: the new ip_netid_table;
+    def serialized_store_add_neigh(self, key, val):
+        # Check that it did NOT exist; otherwise exit.
+        if key in self.ip_netid_table:
+            return
+        # ATTENTION: this method MUST NOT pass schedule while it updates
+        #  the data structures, until the call to method "memorize".
+        self.memorize(val)
+        # Then we send a signal (event) to notify the change. The main handler
+        # of this event is the method etp_new_link of class Etp (see New
+        # Link Rule of QSPN). This method must not be microfunc, in order for
+        # the serialization of "time_tick" methods to work.
+        self.add(key)
+
+    def store_delete_neigh(self, *args):
+        self.ntkd.time_tick('store_delete_neigh', self.serialized_store_delete_neigh, args)
+
+    def serialized_store_delete_neigh(self, key):
+        # Check that it did exist; otherwise exit.
+        if key not in self.ip_netid_table:
+            return
+        before_dead_link = {}
+        current_nr_list = self.neigh_list(in_my_network=True)
+        # Takes note of the current situation, the bits of information that
+        # we'll need after this update.
+        # ∀v ∈ V
+        for lvl in xrange(self.maproute.levels):
+            xtime.sleep_during_hard_work(10)
+            for dst in xrange(self.maproute.gsize):
+                routes_to_v = self.maproute.node_get(lvl, dst)
+                if not routes_to_v.is_empty():
+                    xtime.sleep_during_hard_work(0)
+                    # A computes rem(Bestᵗ (A → v))
+                    old_best = routes_to_v.best_route()
+                    before_dead_link[(lvl, dst)] = (old_best.rem, {})
+                    # ∀w ∈ A*
+                    for w in current_nr_list:
+                        w_lvl_id = self.maproute.routeneigh_get(w)
+                        # A checks wether "w ∈ Bestᵗ (A → v)"
+                        before_dead_link[(lvl, dst)][1][w_lvl_id] = old_best.contains(w_lvl_id)
+        # ATTENTION: this method MUST NOT pass schedule while it updates
+        #  the data structures, until the call to method "unmemorize".
+        ip, netid = key
+        old_val = self.ip_netid_table[key]
+        old_ntk_client = self.get_ntk_client(ip, netid)
+        old_id = self.unmemorize(key)
+        # Then we send a signal (event) to notify the change. The main handler
+        # of this event is the method etp_dead_link of class Etp (see Changed
+        # Link Rule of QSPN). This method must not be microfunc, in order for
+        # the serialization of "time_tick" methods to work.
+        self.delete(key, old_val, old_id, before_dead_link)
+        if old_ntk_client is not None:
+            if old_ntk_client.connected:
+                old_ntk_client.close()
+
+    def store_changed_neigh(self, *args):
+        self.ntkd.time_tick('store_changed_neigh', self.serialized_store_changed_neigh, args)
+
+    def serialized_store_changed_neigh(self, key, val):
+        # Check that it did exist; otherwise exit.
+        if key not in self.ip_netid_table:
+            return
+        before_changed_link = {}
+        current_nr_list = self.neigh_list(in_my_network=True)
+        # Takes note of the current situation, the bits of information that
+        # we'll need after this update.
+        # ∀v ∈ V
+        for lvl in xrange(self.maproute.levels):
+            xtime.sleep_during_hard_work(10)
+            for dst in xrange(self.maproute.gsize):
+                routes_to_v = self.maproute.node_get(lvl, dst)
+                if not routes_to_v.is_empty():
+                    xtime.sleep_during_hard_work(0)
+                    # A computes rem(Bestᵗ (A → v))
+                    old_best = routes_to_v.best_route()
+                    before_changed_link[(lvl, dst)] = (old_best.rem, {})
+                    # ∀w ∈ A*
+                    for w in current_nr_list:
+                        w_lvl_id = self.maproute.routeneigh_get(w)
+                        # A checks wether "w ∈ Bestᵗ (A → v)"
+                        before_changed_link[(lvl, dst)][1][w_lvl_id] = old_best.contains(w_lvl_id)
+        # ATTENTION: this method MUST NOT pass schedule while it updates
+        #  the data structures.
+        old_val = self.ip_netid_table[key]
+        old_rtt = old_val.rem
+        old_val.devs = val.devs
+        old_val.bestdev = val.bestdev
+        old_val.rem = Rtt(old_val.bestdev[1])
+        # Then we send a signal (event) to notify the change. The main handler
+        # of this event is the method etp_dead_link of class Etp (see Changed
+        # Link Rule of QSPN). This method must not be microfunc, in order for
+        # the serialization of "time_tick" methods to work.
+        self.rem_change(key, old_rtt, before_changed_link)
+
+    def store(self, new_ip_netid_table):
+        """Detects changes in our neighbourhood. Updates internal data structures
+        and notify about the changes.
+
+        new_ip_netid_table: actual version of ip_netid_table, as seen by the radar.
         """
-        # ATTENTION: this method MUST NOT pass schedule until the last call
-        #  that we have to make to method "memorize".
 
         # The class Radar, on each scan, passes to this method a 
-        # dict {key => Neigh}, where Neigh has just minimal values 
-        # (bestdev, devs, ip, netid).
-        #
+        # dict {key => Neigh}.
+        # Neigh is a new complete instance. For new neighbours, it will be
+        # added to Neighbours' internal data structures. For old neighbours
+        # it will be discarded after updating values in the instance already
+        # present in Neighbours' internal data structures.
+
         # Using _truncate, we remove the worst ones, if they exceed max_neigh.
-        #
-        # First we modify the data structures avoiding to pass schedule in the
-        # meantime. We use "unmemorize" and "memorize".
-        # Then, we will send events (passing schedule) using methods "delete"
-        # and "add".
-
-        to_be_deleted = [] # (key, old_val, old_id)
-        to_be_added = [] # key
-        to_be_changed = [] # (key, old_rtt)
-        to_be_closed = [] # old_ntk_client
-
-        logging.log(logging.ULTRADEBUG, 'Neighbour.store: starting  with '
-                    'ip_netid_table = ' + str(self.ip_netid_table))
-        logging.log(logging.ULTRADEBUG, 'Neighbour.store:         and '
-                    'translation_table = ' + str(self.translation_table))
-        logging.log(logging.ULTRADEBUG, 'Neighbour.store: '
-                    'new_ip_netid_table = ' + str(new_ip_netid_table))
         new_ip_netid_table = self._truncate(new_ip_netid_table)
-        logging.log(logging.ULTRADEBUG, 'Neighbour.store: after truncate, '
-                    'new_ip_netid_table = ' + str(new_ip_netid_table))
+        
+        # Then, compare the dict against the data structures and summarize
+        # the changes (e.g. new Neigh, new Neigh, changed Neigh, ...)
+        to_be_deleted = [] # key
+        to_be_added = [] # (key, Neigh)
+        to_be_changed = [] # (key, Neigh)
 
-        # remove from missing_neighbour_keys the detected neighbours
+        ### remove from missing_neighbour_keys the detected neighbours
         for key in new_ip_netid_table:
             if key in self.missing_neighbour_keys:
                 del self.missing_neighbour_keys[key]
 
-        # Now we add again to new_ip_netid_table the nodes that were 
-        # present and now are missing, but not for many scans.
-        # Note: if we have reached the max neigh, we must delete all missing
-        # neighbours, never minding for how many scans they were missing.
-
-        # we cycle through the old ip_netid_table
-        # looking for nodes that aren't in the new one
+        ### We'll remove nodes that were 
+        ### present and now are missing, but only after <n> radar scans.
+        ### Note: if we have reached the max neigh, we must delete all missing
+        ### neighbours, never minding for how many scans they were missing.
         for key in self.ip_netid_table.keys():
             if not key in new_ip_netid_table:
                 # It is a missing neigh. For how many scan is it missing?
@@ -524,28 +609,18 @@ class Neighbour(object):
                 if self.max_neigh == len(new_ip_netid_table) or \
                    times > self.number_of_scan_before_deleting:
                     # now, we assume it is really dead.
-                    ip, netid = key
-                    old_val = self.ip_netid_table[key]
-                    old_ntk_client = self.get_ntk_client(ip, netid)
-                    old_id = self.unmemorize(key)
                     del self.missing_neighbour_keys[key]
-                    to_be_deleted.append((key, old_val, old_id))
-                    if old_ntk_client is not None:
-                        to_be_closed.append(old_ntk_client)
-                else:
-                    # pretend it is still there, for the moment.
-                    new_ip_netid_table[key] = self.ip_netid_table[key]
+                    to_be_deleted.append(key)
 
-        # now, we cycle through the new ip_netid_table
-        # looking for nodes that aren't in the old one.
+        ### now, we cycle through the new ip_netid_table
+        ### looking for nodes that aren't in the old one.
         for key, val in new_ip_netid_table.items():
             if not key in self.ip_netid_table:
                 # It is a new neigh.
-                self.memorize(val)
-                to_be_added.append(key)
+                to_be_added.append((key, val))
 
-        # now we cycle through the new ip_netid_table
-        # looking for nodes whose rtt has sensibly changed
+        ### now we cycle through the new ip_netid_table
+        ### looking for nodes whose rtt has sensibly changed
         for key, val_new in new_ip_netid_table.items():
             ip, netid = key
             # if the node is not new
@@ -568,28 +643,28 @@ class Neighbour(object):
                 else:
                     rtt_variation = (old_rtt - new_rtt) / float(old_rtt)
                 if rtt_variation > self.rtt_variation_threshold:
-                    self.ip_netid_table[key] = val_new
-                    to_be_changed.append((key, old_rtt))
+                    to_be_changed.append((key, val_new))
                 # TODO better handling of different devs to reach the
                 # same neighbour
 
-        # Now we can pass schedule, if we need. The data strucures 
-        # are consistent.
+        # For each single change, call a "time_tick" method.
+        #
+        # The called method will:
+        #
+        #  .if it is a new, check that it does not exist; otherwise exit.
+        #  .if it is a changed_rem, check that it does exist; otherwise exit.
+        #  .if it is a dead, check that it does exist; otherwise exit.
+        #  .change data in structure without passing schedule.
+        #  .call events (to Etp class) that must not be microfunc.
+        #  .emit TIME_TICK event ???
+        #
+        for key in to_be_deleted:
+            self.store_delete_neigh(key)
+        for key, val in to_be_added:
+            self.store_add_neigh(key, val)
+        for key, val in to_be_changed:
+            self.store_changed_neigh(key, val)
 
-        for key, old_val, old_id in to_be_deleted:
-            self.delete(key, old_val, old_id)
-        for key in to_be_added:
-            self.add(key)
-        for key, old_rtt in to_be_changed:
-            self.rem_change(key, old_rtt)
-        for old_ntk_client in to_be_closed:
-            if old_ntk_client.connected:
-                old_ntk_client.close()
-
-        logging.log(logging.ULTRADEBUG, 'Neighbour.store: finishing '
-                    'with ip_netid_table = ' + str(self.ip_netid_table))
-        logging.log(logging.ULTRADEBUG, 'Neighbour.store:         '
-                    'and translation_table = ' + str(self.translation_table))
         # returns an indication for next wait time to the radar
         if not self.missing_neighbour_keys:
             return 0
@@ -610,8 +685,10 @@ class Neighbour(object):
 
         ip, netid = key
 
-        if self.netid == -1 or netid == -1:
-            # I'm hooking or it is hooking, better not to emit any signal.
+        if self.netid == -1:
+            # I'm hooking, better not to emit any signal.
+            # NOTE: If the neigh is hooking, yet it is interested to receive
+            # ETPs that are generated for new_link.
             return
 
         val = self.ip_netid_table[key]
@@ -633,7 +710,7 @@ class Neighbour(object):
         self.events.send(event_to_fire,
                          (val,))
 
-    def delete(self, key, old_val, old_id):
+    def delete(self, key, old_val, old_id, before_dead_link):
         """Sends event for a dead neighbour."""
 
         ip, netid = key
@@ -663,9 +740,12 @@ class Neighbour(object):
                             devs=old_val.devs,
                             ip=ip,
                             netid=netid,
-                            id_func=idfunc),))
+                            macs=old_val.macs,
+                            id_func=idfunc,
+                            ntkd_func=old_val.ntkd_func),
+                          before_dead_link))
 
-    def rem_change(self, key, old_rtt):
+    def rem_change(self, key, old_rtt, before_changed_link):
         """Sends event for a changed rem neighbour."""
 
         ip, netid = key
@@ -692,18 +772,14 @@ class Neighbour(object):
         # send a message notifying the node's rtt changed
         self.events.send(event_to_fire,
                          (val, 
-                          Rtt(old_rtt)))
+                          Rtt(old_rtt),
+                          before_changed_link))
 
     @microfunc()
     def ip_netid_change(self, oldip, oldnetid, newip, newnetid):
         """Adds `newip' in the Neighbours as a copy of `oldip', then it
         removes `oldip'. The relative events are raised."""
 
-        logging.log(logging.ULTRADEBUG, 'Neighbour.ip_netid_change: '
-                    'starting  with ip_netid_table = ' + 
-                    str(self.ip_netid_table))
-        logging.log(logging.ULTRADEBUG, 'Neighbour.ip_netid_change:         '
-                    'and translation_table = ' + str(self.translation_table))
         oldkey = (oldip, oldnetid)
         newkey = (newip, newnetid)
         if not oldkey in self.ip_netid_table:
@@ -712,10 +788,12 @@ class Neighbour(object):
             return
 
         # This neighbour was in our data structures and must be changed.
-        # There won't be problems with max_neigh.
 
-        # ATTENTION: this method MUST NOT pass schedule until the last call
-        #  that we have to make to method "memorize".
+        # There won't be problems with max_neigh, as long as this method
+        #  is atomic. That is, we MUST NOT pass schedule until the call
+        #  that we will make to method "store_add_neigh". (Note: calling
+        #  a time_tick function, since it is a microfunc with dispatcher,
+        #  will not pass the schedule)
 
         # info
         logging.info('Change in our LAN: new neighbour ' + ip_to_str(newip) + 
@@ -723,10 +801,10 @@ class Neighbour(object):
         logging.info('                   replacing an old one... ' + 
                      ip_to_str(oldip) + ' in ' + str(oldnetid))
         # copy values from old ip_netid_table
-        my_val = self.ip_netid_table[oldkey]
+        old_val = self.ip_netid_table[oldkey]
         old_ntk_client = self.get_ntk_client(oldip, oldnetid)
         # unmemorize
-        old_id = self.unmemorize(oldkey)
+        self.store_delete_neigh(oldkey)
         # Attention: this removes "oldkey" from self.ip_netid_table. But 
         # current radar scan might already have put this "oldkey" in 
         # bcast_arrival_time. So...
@@ -735,32 +813,23 @@ class Neighbour(object):
                         'from scan...')
             del self.radar.bcast_arrival_time[oldkey]
         # memorize
-        my_val.ip, my_val.netid = newkey
-        self.memorize(my_val)
+        new_val = Neigh(bestdev=old_val.bestdev,
+                        devs=old_val.devs,
+                        ip=newip, netid=newnetid,
+                        macs=old_val.macs,
+                        id_func=old_val.id_func,
+                        ntkd_func=old_val.ntkd_func)
+        self.store_add_neigh(newkey, new_val)
 
-        # Now we can pass schedule, if we need. The data strucures are 
-        # consistent.
+        # take care of self.ntk_client
+        if self.netid != -1:
+            if self.netid == newnetid and self.netid != oldnetid:
+                self.ntk_client[newip] = rpc.TCPClient(ip_to_str(newip))
+            if self.netid != newnetid and self.netid == oldnetid:
+                del self.ntk_client[oldip]
 
-        # delete old ip gateway
-        logging.log(logging.ULTRADEBUG, 'ip_netid_change: deleting...')
-        self.delete(oldkey, my_val, old_id)
-        # wait for the removing of routes to be completed
-        logging.log(logging.ULTRADEBUG, 'ip_netid_change: waiting '
-                    'routemap.routeneigh_del...')
-        self.waitfor_gw_removable(old_id)
-        # clean up ntk_client
-        if old_ntk_client is not None:
-            if old_ntk_client.connected:
-                old_ntk_client.close()
-        # add new ip gateway
-        logging.log(logging.ULTRADEBUG, 'ip_netid_change: adding...')
-        self.add(newkey)
-
-        logging.log(logging.ULTRADEBUG, 'Neighbour.ip_netid_change: '
-                    'finishing with ip_netid_table = ' + 
-                    str(self.ip_netid_table))
-        logging.log(logging.ULTRADEBUG, 'Neighbour.ip_netid_change:         '
-                    'and translation_table = ' + str(self.translation_table))
+        # Since the changes are only queued (in a time_tick serialized microfunc)
+        # it is useless to test the values of self.ip_netid_table now.
 
     def call_ip_netid_change_broadcast_udp(self, oldip, oldnetid, 
                                            newip, newnetid):
@@ -808,54 +877,40 @@ class Neighbour(object):
     def change_netid(self, new_netid):
         """Changes my network id.
            Handles events for neighbours that are NOW in my network.
-           Handles TCPClients in ntk_client."""
+        """
         logging.log(logging.ULTRADEBUG, 'change_netid: changing my netid '
                     'from ' + str(self.netid) + ' to ' + str(new_netid) + '.')
-        # Send delete events for old companions.
-        for neigh in self.neigh_list():
-            old_id = neigh.id
-            key = self.id_to_key(old_id)
-            old_val = self.ip_netid_table[key]
-            logging.log(logging.ULTRADEBUG, 'change_netid: event for deletion'
-                        ' of ' + str(neigh) + '.')
-            self.delete(key, old_val, old_id)
-        # Closes and removes old TCPClients
-        for key in self.ip_netid_table:
-            ip, netid = key
-            if ip in self.ntk_client:
-                if self.ntk_client[ip].connected:
-                    self.ntk_client[ip].close()
-                del self.ntk_client[ip]
+        # We should not need to send delete events for old companions.
         # Sets new netid
         self.netid = new_netid
         logging.info('change_netid: my netid is now ' + str(self.netid) + '.')
-        # Creates new TCPClients
-        for key in self.ip_netid_table:
-            ip, netid = key
-            if self.netid == netid:
-                # It's in my network
-                self.ntk_client[ip] = rpc.TCPClient(ip_to_str(ip))
-        # Send add events for new companions.
+        # We DO need to send add events for new companions.
         for neigh in self.neigh_list():
-            key = self.id_to_key(neigh.id)
-            logging.log(logging.ULTRADEBUG, 'change_netid: event for adding'
-                        ' of ' + str(neigh) + '.')
+            old_id = neigh.id
+            key = self.id_to_key(old_id)
             self.add(key)
-
+        # take care of self.ntk_client
+        for k in self.ntk_client.keys():
+            del self.ntk_client[k]
+        if self.netid != -1:
+            for neigh in self.neigh_list():
+                if self.netid == neigh.netid:
+                    self.ntk_client[neigh.ip] = rpc.TCPClient(ip_to_str(neigh.ip))
 
 class Radar(object):
     
-    __slots__ = [ 'maproute', 'bouquet_numb', 'bcast_send_time', 'xtime',
-                  'bcast_arrival_time', 'max_bouquet', 'wait_time',
+    __slots__ = [ 'ntkd', 'maproute', 'bouquet_numb', 'bcast_send_time', 'xtime',
+                  'bcast_arrival_time', 'bcast_macs', 'max_bouquet', 'wait_time',
                   'broadcast', 'neigh', 'events',
                   'remotable_funcs', 'ntkd_id', 'radar_id', 'max_neigh',
                   'increment_wait_time', 'stopping', 'running_instances']
 
-    def __init__(self, maproute, broadcast, xtime):
+    def __init__(self, ntkd, maproute, broadcast, xtime):
         """
             broadcast: an instance of the RPCBroadcast class to manage 
             broadcast sending xtime: a wrap.xtime module
         """
+        self.ntkd = ntkd
         self.maproute = maproute
 
         self.xtime = xtime
@@ -874,7 +929,7 @@ class Radar(object):
         # max_neigh: maximum number of neighbours we can have
         self.max_neigh = settings.MAX_NEIGH
         # our neighbours
-        self.neigh = Neighbour(self, self.maproute, self.max_neigh, self.xtime)
+        self.neigh = Neighbour(ntkd, self, self.maproute, self.max_neigh, self.xtime)
         # Do I have to wait longer? in millis
         self.increment_wait_time = 0
 
@@ -947,9 +1002,8 @@ class Radar(object):
                 self.bouquet_numb += 1
                 self.events.send('SCAN_DONE', (self.bouquet_numb,))
         except Exception, e:
-            logging.error("Exception while doing a radar scan. We ignore it. "
-                          "Soon another scan.")
-            log_exception_stacktrace(e)
+            logging.warning('Exception ' + str(e) + ' while doing a radar' +
+                          ' scan. We ignore it. Soon another scan.')
 
         # We're done. Reset.
         self.radar_reset()
