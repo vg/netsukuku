@@ -188,7 +188,7 @@ class KrnlRoute(object):
         logging.debug('ANNOUNCE: gw ' + str(neigh.id) + ' added.')
         self.neigh.announce_gw_added(neigh.id)
 
-    def neigh_rem_changed(self, neigh, oldrem=None):
+    def neigh_rem_changed(self, neigh, oldrem, before_changed_link):
         # We'll do the real thing in a microfunc, but make sure
         # to have a chance to get scheduled as soon as possible
         # and obtain immediately any data that is susceptible to change.
@@ -203,7 +203,7 @@ class KrnlRoute(object):
         dev = neigh.bestdev[0]
         KRoute.change_neigh(ipstr, dev)
 
-    def neigh_deleted(self, neigh):
+    def neigh_deleted(self, neigh, before_dead_link):
         # We'll do the real thing in a microfunc, but make sure
         # to have a chance to get scheduled as soon as possible
         # and obtain immediately any data that is susceptible to change.

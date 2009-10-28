@@ -286,6 +286,14 @@ class RouteNode(object):
                 return r
         return None
 
+    def update_route_by_gw(self, nr, rem_at_gw, hops):
+        r = self.route_getby_gw_neigh(nr)
+        if r is None:
+            self.routes.append(Route(nr, rem_at_gw, hops, self))
+        else:
+            oldrem_at_gw = r.rem_modify(rem_at_gw, hops)
+        self.sort()
+
     def route_rem(self, gw_id, newrem_at_gw, new_hops):
         """Changes the rem_at_gw and hops of the route with gateway `gw_id'
 
@@ -382,54 +390,6 @@ class RouteNode(object):
             if r.gw.id not in exclude_gw_ids: return r
         return None
 
-    def previous_routes(self, gw, oldrem):
-        # This method is used during a ChangedLink event.
-        # gw is a Neigh, oldrem its previous rem.
-
-        # I make a list of routes in which the actual Route instance
-        # which passes through the gateway whose rem has been changed
-        # is replaced by another instance of Route which represents its
-        # previous state. This Route will have a FakeNeigh.
-        # I just need to be able to use few methods from this fake class,
-        # to ensure that methods "rem" and "contains" of Route work well.
-
-        class FakeNeigh:
-            def __init__(self):
-                self.rem = oldrem
-                self.ip = gw.ip
-
-        # this is a replica of all routes, we'll change this list to be
-        # like it was before the ChangedLink event.
-        copy = self.routes[:]
-        # this is the Route through the gateway whose rem has been changed
-        r_mod = route_getby_gw(gw.id)
-        if r_mod is not None:
-            # There is a Route through this gateway.
-            # this is a replica of old Route values
-            r_old = Route(FakeNeigh(), r_mod.rem_at_gw, r_mod.hops, self)
-            copy.remove(r_mod)
-            copy.append(r_old)
-        copy.sort(reverse=1)
-
-        return copy
-
-    def previous_best_contained(self, gw, oldrem, hop):
-        # This method is used during a ChangedLink event.
-        # gw is a Neigh, oldrem its previous rem.
-
-        copy = self.previous_routes(gw, oldrem)
-        # copy[0] was previous best.
-        return copy[0].contains(hop)
-
-    def best_changed(self, gw, oldrem):
-        # This method is used during a ChangedLink event.
-        # gw is a Neigh, oldrem its previous rem.
-
-        self.sort()
-        copy = self.previous_routes(gw, oldrem)
-        # has there been a change in rem of best?
-        return self.routes[0].rem != copy[0].rem
-
     def best_route_without(self, hop):
         self.sort()
         for r in self.routes:
@@ -455,7 +415,8 @@ class MapRoute(Map):
         self.radar = None
         Map.__init__(self, levels, gsize, RouteNode, me)
 
-        self.events.add( [  'ROUTE_NEW',
+        self.events.add( [  'ROUTES_UPDATED',
+                            'ROUTE_NEW',
                             'ROUTE_DELETED',
                             'ROUTE_REM_CHGED'   # the route's rem changed
                          ] )
@@ -463,6 +424,19 @@ class MapRoute(Map):
 
     def set_radar(self, radar):
         self.radar = radar
+
+    def update_route_by_gw(self, dest, nr, rem_at_gw, hops):
+        # dest is a pair (lvl, id)
+        # nr is a instance of Neigh
+
+        # If dest is me, strange thing. TODO review.
+        lvl, dst = dest
+        if self.me[lvl] == dst:
+            return False
+
+        paths = self.node_get(*dest)
+        paths.update_route_by_gw(nr, rem_at_gw, hops)
+        self.events.send('ROUTES_UPDATED', (lvl, dst))
 
     def best_to_dest_contains_neigh(self, dest, nr):
         # dest is a pair (lvl, id)
@@ -562,6 +536,29 @@ class MapRoute(Map):
 
         return 1
 
+    def route_del_by_neigh(self, lvl, dst, gw, gwip, silent=0):
+
+        logging.log(logging.ULTRADEBUG, 'maproute.route_del')
+        # If destination is me I won't delete a route. Pretend it didn't happen.
+        if self.me[lvl] == dst:
+            logging.debug('I won\'t delete a route to myself (%s, %s).' % 
+                          (lvl, dst))
+            logging.debug(get_stackframes(back=1))
+            return 0
+
+        d = self.node_get(lvl, dst)
+        d.route_del_by_neigh(gw)
+
+        if d.is_empty():
+            # No more routes to reach the node (lvl, dst).
+            # Consider it dead
+            self.node_del(lvl, dst)
+
+        if not silent:
+            self.events.send('ROUTE_DELETED', (lvl, dst, gwip))
+
+        return 1
+
     def route_rem(self, lvl, dst, gw_id, newrem_at_gw, new_hops, silent=0):
         """Changes the rem_at_gw and hops of the route with gateway `gw'
 
@@ -624,7 +621,7 @@ class MapRoute(Map):
 
         # Do we have this route?
         d = self.node_get(lvl, dst)
-        r = d.route_getby_gw(gw.id)
+        r = d.route_getby_gw_neigh(gw)
         was_there = r is not None
 
         if isinstance(rem_at_gw, DeadRem):
@@ -683,13 +680,11 @@ class MapRoute(Map):
 
     def repr_me(self, func_repr_node=None):
         def repr_node_maproute(node):
-            coding_gw = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
             free_repr = '  '
             if node.is_free(): return free_repr
             str_repr_node = ''
             for r in node.routes:
                 if len(str_repr_node) > 0: str_repr_node += ','
-                str_repr_node += coding_gw[r.gw.id]
                 str_repr_node += '(' + str(r.rem.value) + '#' + \
                                str(len(r.hops)) + ')'
             if node.its_me: str_repr_node = 'ITSME'
@@ -713,21 +708,10 @@ class MapRoute(Map):
                 if self.me[lvl] != dst:
                     node = self.node_get(lvl, dst)
                     if not node.is_free():
-                        if node.route_getby_gw(neigh.id) is not None:
-                            self.route_del(lvl, dst, neigh.id, neigh.ip)
+                        if node.route_getby_gw_neigh(neigh) is not None:
+                            self.route_del_by_neigh(lvl, dst, neigh, neigh.ip)
         logging.debug('ANNOUNCE: gw ' + str(neigh.id) + ' removable.')
         self.radar.neigh.announce_gw_removable(neigh.id)
-
-    def routeneigh_rem(self, neigh, oldrem):
-        for lvl in xrange(self.levels):
-            for dst in xrange(self.gsize):
-                # Don't try changing a route towards myself.
-                if self.me[lvl] != dst:
-                    node = self.node_get(lvl, dst)
-                    if not node.is_free():
-                        r = node.route_getby_gw(neigh.id)
-                        if r is not None:
-                            r.update_gw(neigh)
 
     def routeneigh_get(self, neigh):
         """Converts a neighbour to a (g)node of the map"""
