@@ -64,7 +64,22 @@ class Rem(object):
         want to sort it in decrescent order of efficiency, than you
         have to reverse sort it: list.sort(reverse=1)
         """
-        return (self.value > b.value) - (self.value < b.value)
+
+        if isinstance(b, DeadRem):
+            if isinstance(self , DeadRem):
+                return 0
+            else:
+                return 1
+        if isinstance(b, NullRem):
+            if isinstance(self , NullRem):
+                return 0
+            else:
+                return -1
+        if isinstance(self, DeadRem): return -1
+        if isinstance(self, NullRem): return 1
+        if self.value < b.value: return 1
+        if self.value > b.value: return -1
+        return 0
 
     def __add__(self, b):
         """It sums two REMs.
@@ -109,7 +124,11 @@ class Rtt(Rem):
         self.value >  b.value  -1   ->  The rtt `self' is worse  than `b'
         self.value == b.value   0   ->  They are the same -> self == b"""
 
-        return (self.value < b.value) - (self.value > b.value)
+        if isinstance(b, DeadRem): return 1
+        if isinstance(b, NullRem): return -1
+        if self.value < b.value: return 1
+        if self.value > b.value: return -1
+        return 0
 
     def __add__(self, b):
         if isinstance(b, DeadRem):
