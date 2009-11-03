@@ -269,7 +269,7 @@ class Route(object):
         return oldrem_at_gw
 
     def __repr__(self):
-        return '<Route: gw(%s), rem(%s), #hops(%s)>' % (self.gw.id, self.rem,
+        return '<Route: gw(%s), rem(%s), #hops(%s)>' % (self.gw.ip, self.rem,
                                                         len(self.hops))
 
 class RouteNode(object):
@@ -298,13 +298,6 @@ class RouteNode(object):
                 return r
         return None
 
-    def route_getby_gw(self, gw_id):
-        """Returns the route having as gateway `gw_id'"""
-        for r in self.routes:
-            if r.gw.id == gw_id:
-                return r
-        return None
-
     def update_route_by_gw(self, nr, rem_at_gw, hops):
         r = self.route_getby_gw_neigh(nr)
         if r is None:
@@ -312,65 +305,6 @@ class RouteNode(object):
         else:
             oldrem_at_gw = r.rem_modify(rem_at_gw, hops)
         self.sort()
-
-    def route_rem(self, gw_id, newrem_at_gw, new_hops):
-        """Changes the rem_at_gw and hops of the route with gateway `gw_id'
-
-        Returns (0, None) if the route doesn't exists, 
-        (1, oldrem_at_gw) else."""
-
-        r = self.route_getby_gw(gw_id)
-
-        if r is None:
-            return (0, None)
-
-        oldrem_at_gw = r.rem_modify(newrem_at_gw, new_hops)
-        self.sort()
-        return (1, oldrem_at_gw)
-
-    def route_add(self, lvl, dst, gw, rem_at_gw, hops):
-        """Add a route.
-
-        It returns (0,None) if the route hasn't been added, and thus it isn't
-        interesting, otherwise it returns (1,None) if it is a new route,
-        (2, oldrem_at_gw) if it substituted an old route."""
-
-        ret = 0
-        val = None
-        oldr = self.route_getby_gw_neigh(gw)
-
-        if oldr is None:
-            # If there isn't a route through this gateway, add it
-            self.routes.append(Route(gw, rem_at_gw, hops, self))
-            ret = 1
-            self.sort()
-        elif rem_at_gw > oldr.rem_at_gw: 
-            # At the moment this does not make sense alot.
-            # We call route_add only to add a route through a gw that was not
-            # there.
-            logging.warning('RouteNode: route_add called, '
-                            'but it was existing.')
-            logging.warning(get_stackframes(back=1))
-            # Anyway, this is not a changed rem, but a different route through
-            # the same gateway. So we update iff the rem is better.
-            oldrem_at_gw = oldr.rem_modify(rem_at_gw, hops)
-            val = oldrem_at_gw
-            ret = 2
-            self.sort()
-
-        return (ret, val)
-
-
-    def route_del(self, gw_id):
-        """Delete a route.
-
-        Returns 1 if the route has been deleted, otherwise 0"""
-
-        r = self.route_getby_gw(gw_id)
-        if r is not None:
-            self.routes.remove(r)
-            return 1
-        return 0
 
     def route_del_by_neigh(self, gw):
         """Delete a route.
@@ -402,12 +336,12 @@ class RouteNode(object):
     def nroutes(self):
         return len(self.routes)
 
-    def best_route(self, exclude_gw_ids=[]):
+    def best_route(self):
         self.sort()
-        for r in self.routes:
-            if not any(exclude_gw_ids): return r
-            if r.gw.id not in exclude_gw_ids: return r
-        return None
+        if any(self.routes):
+            return self.routes[0]
+        else:
+            return None
 
     def best_route_without(self, hop):
         self.sort()
@@ -507,57 +441,9 @@ class MapRoute(Map):
             logging.log(logging.ULTRADEBUG, 'calling UDP_send_reply...')
             rpc.UDP_send_reply(_rpc_caller, caller_id, ret)
 
-    def route_add(self, lvl, dst, gw, rem_at_gw, hops, silent=0):
-        ''' Add a new route '''
-
-        logging.log(logging.ULTRADEBUG, 'maproute.route_add')
-        # If destination is me I won't add a route.
-        if self.me[lvl] == dst:
-            logging.debug('I won\'t add a route to myself (%s, %s).' % 
-                          (lvl, dst))
-            logging.debug(get_stackframes(back=1))
-            return 0
-
-        n = self.node_get(lvl, dst)
-        was_free = n.is_free()
-        ret, oldrem_at_gw = n.route_add(lvl, dst, gw, rem_at_gw, hops)
-        if was_free and not n.is_free():
-            # The node is new
-            self.node_add(lvl, dst)
-        if not silent:
-            if ret == 1:
-                self.events.send('ROUTE_NEW', (lvl, dst, gw.id, rem_at_gw))
-            elif ret == 2:
-                self.events.send('ROUTE_REM_CHGED', (lvl, dst, gw.id, 
-                                                     rem_at_gw, oldrem_at_gw))
-        return ret
-
-    def route_del(self, lvl, dst, gw_id, gwip, silent=0):
-
-        logging.log(logging.ULTRADEBUG, 'maproute.route_del')
-        # If destination is me I won't delete a route. Pretend it didn't happen.
-        if self.me[lvl] == dst:
-            logging.debug('I won\'t delete a route to myself (%s, %s).' % 
-                          (lvl, dst))
-            logging.debug(get_stackframes(back=1))
-            return 0
-
-        d = self.node_get(lvl, dst)
-        d.route_del(gw_id)
-
-        if d.is_empty():
-            # No more routes to reach the node (lvl, dst).
-            # Consider it dead
-            self.node_del(lvl, dst)
-
-        if not silent:
-            self.events.send('ROUTE_DELETED', (lvl, dst, gwip))
-
-        return 1
-
     def route_del_by_neigh(self, lvl, dst, gw, gwip, silent=0):
 
-        logging.log(logging.ULTRADEBUG, 'maproute.route_del')
+        logging.log(logging.ULTRADEBUG, 'maproute.route_del_by_neigh')
         # If destination is me I won't delete a route. Pretend it didn't happen.
         if self.me[lvl] == dst:
             logging.debug('I won\'t delete a route to myself (%s, %s).' % 
@@ -574,117 +460,12 @@ class MapRoute(Map):
             self.node_del(lvl, dst)
 
         if not silent:
-            self.events.send('ROUTE_DELETED', (lvl, dst, gwip))
+            self.events.send('ROUTES_UPDATED', (lvl, dst))
 
         return 1
 
-    def route_rem(self, lvl, dst, gw_id, newrem_at_gw, new_hops, silent=0):
-        """Changes the rem_at_gw and hops of the route with gateway `gw'
-
-        Returns 0 if the route doesn't exists, 1 else."""
-
-        logging.log(logging.ULTRADEBUG, 'maproute.route_rem')
-        # If destination is me I won't do a route change. Pretend it didn't happen.
-        if self.me[lvl] == dst:
-            logging.debug('I won\'t update a route to myself (%s, %s).' % 
-                          (lvl, dst))
-            logging.debug(get_stackframes(back=1))
-            return 0
-
-        d = self.node_get(lvl, dst)
-        ret, val = d.route_rem(gw_id, newrem_at_gw, new_hops)
-        if ret:
-            oldrem_at_gw = val
-            if not silent:
-                self.events.send('ROUTE_REM_CHGED',
-                                 (lvl, dst, gw_id, newrem_at_gw, 
-                                  oldrem_at_gw))
-            return 1
-        else:
-            return 0
-
-    def route_change(self, lvl, dst, gw, rem_at_gw, hops):
-        """Changes routes according to parameters obtained in a ETP.
-        
-        Returns 1 if the ETP is interesting, 0 otherwise."""
-
-        # The method has to handle several cases:
-        # 1. We may have or may not have a current route through this gw.
-        # 2. Argument rem_at_gw may be a DeadRem instance.
-        #    It means that the sender of the ETP, that is gw, has no routes
-        #    (maybe except directly through us) to reach this destination.
-        #    So we want the route through gw to be deleted in our map.
-        # 3. Argument rem_at_gw may be a valid REM, but then hops may
-        #    contain our ip. In this case if we created the instance of our
-        #    Route (or updated the existing one's Neigh) we would discover 
-        #    that its rem property is a DeadRem.
-        #    It means that the sender of the ETP, that is gw, excluding the
-        #    route passing *directly* through us, has another best-route...
-        #       WARNING: We don't know if gw has also other routes to dst!
-        #                Could this be a problem? TODO answer.
-        #    ... and that route passes indirectly through us.
-        #    So we can't use gw to reach dst. Were we previuosly able to?
-        #    If we were, then we want the route through gw to be deleted in
-        #    our map, and that information to be forwarded.
-        #    If we were not, then we want to remove dst from the routes
-        #    in the processed ETP. We inform about this by returning 0.
-        
-        logging.log(logging.ULTRADEBUG, 'maproute.route_change')
-        # If destination is me I won't do a route change. Pretend it didn't 
-        # happen.
-        if self.me[lvl] == dst:
-            logging.debug('I won\'t update a route to myself (%s, %s).' % 
-                          (lvl, dst))
-            logging.debug(get_stackframes(back=1))
-            return 0
-
-        # Do we have this route?
-        d = self.node_get(lvl, dst)
-        r = d.route_getby_gw_neigh(gw)
-        was_there = r is not None
-
-        if isinstance(rem_at_gw, DeadRem):
-            # We want the route deleted (if present)
-            ret = 0
-            if was_there:
-                ret = self.route_del(lvl, dst, gw.id, gw.ip)
-                if ret: logging.debug('    Deleted old route.')
-            return ret
-        elif self.nip_to_ip(self.me) in hops:
-            # We want the route deleted (if present)
-            if was_there:
-                ret = self.route_del(lvl, dst, gw.id, gw.ip)
-                if ret: logging.debug('    Deleted old route.')
-                return ret
-            else:
-                # else, don't forward this part of R
-                return 0
-        else:
-            # We want the route added or updated
-            if was_there:
-                ret = self.route_rem(lvl, dst, gw.id, rem_at_gw, hops)
-                if ret: logging.debug('    Updated old route.')
-            else:
-                ret = self.route_add(lvl, dst, gw, rem_at_gw, hops)
-                if ret: logging.debug('    Added new route.')
-            return ret
-
-    def route_reset(self, lvl, dst):
-        # I must delete all the routes in the map and in the kernel
-        gwip = None
-        node = self.node_get(lvl, dst)
-        node.sort()
-        while not node.is_free():
-            # starting from the worst
-            gw = node.routes[-1].gw
-            gwip = gw.ip
-            node.route_del(gw.id)
-        # No more routes to reach the node (lvl, dst).
-        # Consider it dead, if it wasn't already.
-        self.node_del(lvl, dst)
-        if gwip:
-            # Just one event should be enough.
-            self.events.send('ROUTE_DELETED', (lvl, dst, gwip))
+    def route_signal_rem_changed(self, lvl, dst):
+        self.events.send('ROUTES_UPDATED', (lvl, dst))
 
     def map_data_pack(self):
         """Prepares a packed_maproute to be passed to maproute.map_data_merge
@@ -718,7 +499,7 @@ class MapRoute(Map):
 
     def routeneigh_del(self, neigh):
         """Delete from the MapRoute all the routes passing from the
-           gateway `neigh.id' and delete the node `neigh' itself 
+           gateway `neigh' and delete the node `neigh' itself 
            (if present)"""
 
         for lvl in xrange(self.levels):
@@ -729,8 +510,8 @@ class MapRoute(Map):
                     if not node.is_free():
                         if node.route_getby_gw_neigh(neigh) is not None:
                             self.route_del_by_neigh(lvl, dst, neigh, neigh.ip)
-        logging.debug('ANNOUNCE: gw ' + str(neigh.id) + ' removable.')
-        self.radar.neigh.announce_gw_removable(neigh.id)
+        logging.debug('ANNOUNCE: gw ' + str((neigh.ip, neigh.netid)) + ' removable.')
+        self.radar.neigh.announce_gw_removable((neigh.ip, neigh.netid))
 
     def routeneigh_get(self, neigh):
         """Converts a neighbour to a (g)node of the map"""
@@ -738,31 +519,3 @@ class MapRoute(Map):
         lvl = self.nip_cmp(self.me, neigh_nip)
         return (lvl, neigh_nip[lvl])
 
-    def bestroutes_get(self, f=ftrue, exclude_gw_ids=[]):
-        """Returns the list of all the best routes of the map.
-
-           Let L be the returned list, then L[lvl] is the list of all the best
-           routes of level lvl of the map. An element of this latter list is a
-           tuple (dst, gw, rem, hops), where:
-            dst is the destination of the route;
-            gw is its gateway as an instance of Neigh;
-            rem is the REM from us to destination (it's not rem_at_gw);
-            hops is the sequence of hops from us to destination (it includes 
-            our ip).
-
-           If a function `f' has been specified, then each element L[lvl][i]
-           in L is such that f(L[lvl][i])==True.
-           
-           If a list of gateway IDs have been specified in exclude_gw then the
-           routes using those gateways are not considered when searching for
-           best routes.
-           """
-        return [
-                [ (dst, br.gw, br.rem, br.hops+[(0, self.me[0])])
-                    for dst in xrange(self.gsize)
-                        for br in [self.node_get(lvl, dst)
-                                   .best_route(exclude_gw_ids=exclude_gw_ids)]
-                                if br is not None and f((dst, br.gw, br.rem, 
-                                        br.hops+[(0, self.me[0])]))
-                ] for lvl in xrange(self.levels)
-               ]

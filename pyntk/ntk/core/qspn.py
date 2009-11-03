@@ -76,7 +76,7 @@ class Etp(object):
         except RPCError:
             logging.warning('Etp: sending to ' + str(neigh) + ' RPCError.' +
                           ' We ignore it.')
-        except e as Exception:
+        except Exception as e:
             logging.warning('Etp: sending to ' + str(neigh) + ' got' +
                           ' Exception ' + str(e) + '.' +
                           ' We ignore it.')
@@ -120,7 +120,7 @@ class Etp(object):
                 routes_to_v = self.maproute.node_get(lvl, dst)
                 # step 2 of CLR
                 # A computes Bestᵗ⁺¹ (A → v)
-                # Since old routes (paths) have been deletes, each RouteNode.best_route is automatically up to date.
+                # Since old routes (paths) have been deleted, each RouteNode.best_route is automatically up to date.
                 # step 3 of CLR
                 # if ΔBestᵗ⁺¹ (A → v) ≠ 0
                 if (lvl, dst) in before_dead_link:
@@ -265,6 +265,8 @@ class Etp(object):
                 # step 2 of CLR
                 # A computes Bestᵗ⁺¹ (A → v)
                 # Since neigh.rem is updated, each RouteNode.best_route is automatically up to date.
+                # We only need to emit signal that the routes are updated.
+                self.maproute.route_signal_rem_changed(lvl, dst)
                 if not routes_to_v.is_empty():
                     xtime.sleep_during_hard_work(0)
                     # step 3 of CLR
@@ -273,7 +275,7 @@ class Etp(object):
                     if routes_to_v.best_route().rem != oldrem:
                         # ∀w ∈ A* | w ≠ B
                         for w in set_of_R:
-                            if w.id != neigh.id:
+                            if w is not neigh:
                                 R = set_of_R[w]
                                 w_lvl_id = self.maproute.routeneigh_get(w)
                                 # new route Bestᵗ⁺¹ (A → w̃ → v) has to be sent to w
@@ -500,7 +502,6 @@ class Etp(object):
                 return # drop the packet
             ##
 
-            gw_id = neigh.id
             gwrem = neigh.rem
 
             xtime.swait(10)
@@ -553,7 +554,7 @@ class Etp(object):
                         logging.debug('  Bestᵗ⁺¹ (D → v) = ' + str(best.rem) + ' via ' + str(best.gw))
                     # ∀w ∈ D* | w ≠ C
                     for w in current_nr_list:
-                        if w.id != neigh.id:
+                        if w is not neigh:
                             w_lvl_id = self.maproute.routeneigh_get(w)
                             # if ΔBestᵗ⁺¹ (D → v) ≠ 0
                             # Retrieve Bestᵗ (D → v)
@@ -664,110 +665,6 @@ class Etp(object):
                                               self.maproute.node_nb[:]))
         finally:
             etp_exec_dispatcher_token.executing = False
-
-    def etp_forward_referring_to_neigh(self, R, TPL, flag_of_interest, neigh,
-                                       current_netid):
-        """Forwards, when interesting, to all other neighbour info 
-        about neigh"""
-
-        current_nr_list = self.neigh.neigh_list(in_my_network=True)
-        # Through which devs do I see the referree?
-        devs_to_neigh = [dev for dev in neigh.devs.keys()]
-
-        for nr in current_nr_list:
-            if nr.id != neigh.id:
-                # Does this neighbour (nr) see referree neighbour (neigh)
-                # straightly? If so, we must NOT forward.
-                devs_to_nr_and_neigh = [dev 
-                                        for dev in nr.devs.keys()
-                                        if dev in devs_to_neigh
-                                       ]
-                if not devs_to_nr_and_neigh:
-                    # We must forward.
-                    # Through which devs do I see this neighbour (nr)?
-                    devs_to_nr = [dev for dev in nr.devs.keys()]
-                    # Which neighbours do I see through those devs too?
-                    common_devs_neighbours_to_nr = []
-                    for nr2 in current_nr_list:
-                        if nr2.id != nr.id:
-                            devs_to_nr2_and_nr = [dev 
-                                                  for dev in nr2.devs.keys()
-                                                  if dev in devs_to_nr
-                                                 ]
-                            if devs_to_nr2_and_nr:
-                                common_devs_neighbours_to_nr.append(nr2.id)
-                    # We exclude them from research of bestroutes.
-                    exclude_gw_ids = [nr.id] + common_devs_neighbours_to_nr
-                    # Evaluate only once this set, which then we use twice:
-                    xtime.swait(10)
-                    best_routes_of_R = dict( [ ((lvl, dst), r)
-                                               for lvl in xrange(self.maproute
-                                                                 .levels)
-                                                for dst, rem, hops in R[lvl]
-                                                   for r in [self.maproute
-                                                    .node_get(lvl, dst)
-                                                    .best_route(exclude_gw_ids
-                                                            =exclude_gw_ids)]
-                                             ] )
-                    ## S
-                    def nr_doesnt_care(lvl, dst, r):
-                        # If destination is me (it happens) then nr does 
-                        # not care.
-                        if self.maproute.me[lvl] == dst: return True
-                        # If best route (except for nr) is none, then nr 
-                        # cares.
-                        if r is None: return False 
-                        # If best route (except for nr) is neigh, then nr 
-                        # cares.
-                        # Else it does not.
-                        return r.gw.id != neigh.id
-                    # If step 5 is omitted we don't need the Rem in S.
-                    S = [ [ (dst, None)
-                            for lvl, dst in best_routes_of_R.keys()
-                                if lvl == l
-                                    for r in [best_routes_of_R[(lvl, dst)]]
-                                        if nr_doesnt_care(lvl, dst, r)
-                          ] for l in xrange(self.maproute.levels) ]
-
-                    #--
-                    # Step 5 omitted, see qspn.pdf, 4.1 Extended Tracer 
-                    # Packet:
-                    # """If the property (g) holds, then the step 5 can be 
-                    #    omitted..."""
-                    #--
-                    #if flag_of_interest:
-                    #       if not is_listlist_empty(S):
-                    #
-                    #               Sflag_of_interest=0
-                    #               TP = [(self.maproute.me[0], NullRem())]
-                    #               etp = (S, [(0, TP)], Sflag_of_interest)
-                    #               self.etp_send_to_neigh(etp, neigh, 
-                    #                                     current_netid)
-                    ##
-
-                    ## R2
-                    xtime.swait(10)
-                    def rem_or_none(r):
-                        if r is not None:
-                            return r.rem
-                        return DeadRem()
-                    def hops_or_none(r):
-                        if r is not None:
-                            return r.hops + [(0, self.maproute.me[0])]
-                        return []
-                    R2 = [ [ (dst, rem_or_none(r), hops_or_none(r))
-                            for lvl, dst in best_routes_of_R.keys()
-                                if lvl == l
-                                    for r in [best_routes_of_R[(lvl, dst)]]
-                                        if dst not in [d for d, r2 in S[lvl]]
-                          ] for l in xrange(self.maproute.levels) ]
-                    ##
-
-                    if not is_listlist_empty(R2):
-                        etp = (R2, TPL, flag_of_interest)
-                        logging.info('Sending ETP.')
-                        self.etp_send_to_neigh(etp, nr, current_netid)
-                    ##
 
     def collision_check(self, neigh_netid, R):
         """ Checks if we are colliding with the network of `neigh'.

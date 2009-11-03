@@ -55,13 +55,13 @@ from ntk.network.inet import ip_to_str, str_to_ip
 class Neigh(object):
     """This class simply represent a neighbour"""
 
-    __slots__ = ['devs', 'bestdev', 'ip', 'id_func', 'id', 'rem', 'ntkd_func', 'ntkd', 'netid', 'macs']
+    __slots__ = ['devs', 'bestdev', 'ip', 'rem', 'ntkd_func', 'ntkd', 'netid', 'macs']
 
     def func_none(*args):
         return None
 
     def __init__(self, bestdev, devs, ip, netid, macs,
-                 id_func=func_none, ntkd_func=func_none):
+                 ntkd_func=func_none):
         """
         ip: neighbour's ip;
         netid: network id of the node
@@ -73,9 +73,6 @@ class Neigh(object):
 
         ntkd_func: a function such that:
             ntkd_func(ip, netid) returns neighbour's ntk remote instance.
-        id_func: a function such that:
-            id_func(ip, netid) returns neighbour's id.
-            Neighbour uses key_to_id to create it.
         """
 
         self.devs = devs
@@ -84,7 +81,6 @@ class Neigh(object):
         self.netid = netid
         self.macs = macs
 
-        self.id_func = id_func
         if self.bestdev:
             # TODO(low): support the other metrics
             self.rem = Rtt(self.bestdev[1])
@@ -96,11 +92,6 @@ class Neigh(object):
         return self.ntkd_func(self.ip, self.netid)
 
     ntkd = property(_get_ntkd)
-
-    def _get_id(self):
-        return self.id_func(self.ip, self.netid)
-
-    id = property(_get_id)
 
     def __cmp__(self, b):
         stacktrace = get_stackframes(back=1)
@@ -179,7 +170,7 @@ class Neighbour(object):
         # time module
         self.xtime = xtimemod
         # channels for the methods to synchronize routes in the kernel table
-        self.channels = [None] * max_neigh
+        self.channels = {}
 
         # Our netid. It's a random id used to detect network collisions.
         self.netid = -1
@@ -345,49 +336,49 @@ class Neighbour(object):
     # through it, and to remove routes through a gateway before
     # removing the gateway itself.
 
-    def announce_gw(self, gwid):
+    def announce_gw(self, key):
         # This place should be void and nobody should be receiving
         # in it, but just to be sure:
-        channel = self.channels[gwid-1]
-        if channel is not None:
+        if key in self.channels:
+            channel = self.channels[key]
             channel.bcast_send('')
             micro_block()
         # Now the real announce.
-        self.channels[gwid-1] = Channel(prefer_sender=True)
+        self.channels[key] = Channel(prefer_sender=True)
 
-    def waitfor_gw_added(self, gwid):
-        channel = self.channels[gwid-1]
-        if channel is None: return
-        channel.recv()
+    def waitfor_gw_added(self, key):
+        if key in self.channels:
+            channel = self.channels[key]
+            channel.recv()
 
-    def announce_gw_added(self, gwid):
-        channel = self.channels[gwid-1]
-        if channel is None: return
-        channel.bcast_send('')
-        micro_block()
-        self.channels[gwid-1] = None
+    def announce_gw_added(self, key):
+        if key in self.channels:
+            channel = self.channels[key]
+            channel.bcast_send('')
+            micro_block()
+            del self.channels[key]
 
-    def announce_gw_removing(self, gwid):
+    def announce_gw_removing(self, key):
         # This place should be void and nobody should be receiving
         # in it, but just to be sure:
-        channel = self.channels[gwid-1]
-        if channel is not None:
+        if key in self.channels:
+            channel = self.channels[key]
             channel.bcast_send('')
             micro_block()
         # Now the real announce.
-        self.channels[gwid-1] = Channel(prefer_sender=True)
+        self.channels[key] = Channel(prefer_sender=True)
 
-    def waitfor_gw_removable(self, gwid):
-        channel = self.channels[gwid-1]
-        if channel is None: return
-        channel.recv()
+    def waitfor_gw_removable(self, key):
+        if key in self.channels:
+            channel = self.channels[key]
+            channel.recv()
 
-    def announce_gw_removable(self, gwid):
-        channel = self.channels[gwid-1]
-        if channel is None: return
-        channel.bcast_send('')
-        micro_block()
-        self.channels[gwid-1] = None
+    def announce_gw_removable(self, key):
+        if key in self.channels:
+            channel = self.channels[key]
+            channel.bcast_send('')
+            micro_block()
+            del self.channels[key]
 
     ##
     #############################################################
@@ -406,11 +397,6 @@ class Neighbour(object):
         else:
             return None
 
-    def get_gw_id(self, ip, netid):
-        """ip: neighbour's ip;
-           netid: neighbour's netid."""
-        return self.translation_table[(ip, netid)]
-
     def key_to_neigh(self, key):
         """ key: neighbour's key, that is the pair ip, netid
             return a Neigh object from its ip and netid
@@ -419,14 +405,6 @@ class Neighbour(object):
             return None
         else:
             return self.ip_netid_table[key]
-
-    def key_to_id(self, key):
-        """ key: neighbour's key, that is the pair ip, netid
-            Returns the id of that neighbour. It should be present.
-        """
-        if key not in self.translation_table:
-            raise Exception('Key was not present.')
-        return self.translation_table[key]
 
     def id_to_key(self, id):
         """Returns the key (ip, netid) associated to `id'.
@@ -694,15 +672,14 @@ class Neighbour(object):
             return
 
         val = self.ip_netid_table[key]
-        id = self.key_to_id(key)
 
         is_in_my_net = netid == self.netid
         event_to_fire = 'NEIGH_NEW' if is_in_my_net else 'COLLIDING_NEIGH_NEW'
         if is_in_my_net:
             logging.info('Neighbour ip ' + ip_to_str(ip) + ', netid ' + 
                          str(netid) + ', is now in my network.')
-            logging.debug('ANNOUNCE: gw ' + str(id) + ' detected.')
-            self.announce_gw(id)
+            logging.debug('ANNOUNCE: gw ' + str(key) + ' detected.')
+            self.announce_gw(key)
         else:
             logging.info('Neighbour ip ' + ip_to_str(ip) + ', netid ' + 
                          str(netid) + ', is a known neighbour but it '
@@ -727,24 +704,16 @@ class Neighbour(object):
         if is_in_my_net:
             logging.info('Neighbour ip ' + ip_to_str(ip) + ', netid ' + 
                          str(netid) + ', is no more in my network.')
-            logging.debug('ANNOUNCE: gw ' + str(old_id) + ' removing.')
-            self.announce_gw_removing(old_id)
+            logging.debug('ANNOUNCE: gw ' + str(key) + ' removing.')
+            self.announce_gw_removing(key)
         else:
             logging.info('Neighbour ip ' + ip_to_str(ip) + ', netid ' + 
                          str(netid) + ', is no more a known neighbour anyway '
                          'it was not in my network.')
 
         # send a message notifying we deleted the node
-        def idfunc(*args):
-            return old_id
         self.events.send(event_to_fire,
-                         (Neigh(bestdev=old_val.bestdev,
-                            devs=old_val.devs,
-                            ip=ip,
-                            netid=netid,
-                            macs=old_val.macs,
-                            id_func=idfunc,
-                            ntkd_func=old_val.ntkd_func),
+                         (old_val,
                           before_dead_link))
 
     def rem_change(self, key, old_rtt, before_changed_link):
@@ -757,7 +726,6 @@ class Neighbour(object):
             return
 
         val = self.ip_netid_table[key]
-        id = self.key_to_id(key)
 
         is_in_my_net = netid == self.netid
         event_to_fire = 'NEIGH_REM_CHGED' if is_in_my_net else \
@@ -819,7 +787,6 @@ class Neighbour(object):
                         devs=old_val.devs,
                         ip=newip, netid=newnetid,
                         macs=old_val.macs,
-                        id_func=old_val.id_func,
                         ntkd_func=old_val.ntkd_func)
         self.store_add_neigh(newkey, new_val)
 
@@ -888,8 +855,7 @@ class Neighbour(object):
         logging.info('change_netid: my netid is now ' + str(self.netid) + '.')
         # We DO need to send add events for new companions.
         for neigh in self.neigh_list():
-            old_id = neigh.id
-            key = self.id_to_key(old_id)
+            key = (neigh.ip, neigh.netid)
             self.add(key)
         # take care of self.ntk_client
         for k in self.ntk_client.keys():
@@ -1101,6 +1067,5 @@ class Radar(object):
             macs = self.bcast_macs[(ip, netid)]
             all_avg[(ip, netid)] = Neigh(bestdev=devs[0], devs=dict(devs), 
                                          ip=ip, netid=netid, macs=macs,
-                                         id_func=self.neigh.get_gw_id,
                                          ntkd_func=self.neigh.get_ntk_client)
         return all_avg

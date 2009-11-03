@@ -250,10 +250,10 @@ class Route(BaseRoute):
         ipcidr = ip + '/' + cidr
         if (prev_hop, ipcidr) in current_table:
             if current_table[(prev_hop, ipcidr)] is None:
-                Route.delete_unreachable(ip, cidr, prev_hop=w)
+                Route.delete_unreachable(ip, cidr, prev_hop=prev_hop)
             else:
                 gateway, dev = current_table[(prev_hop, ipcidr)]
-                Route.delete(ip, cidr, dev, gateway, prev_hop=w)
+                Route.delete(ip, cidr, dev, gateway, prev_hop=prev_hop)
             del current_table[(prev_hop, ipcidr)]
 
     ##TODO: add the possibility to specify a routing table, f.e. 'table ntk'
