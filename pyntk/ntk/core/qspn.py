@@ -41,9 +41,9 @@ def is_listlist_empty(l):
 class Etp(object):
     """Extended Tracer Packet"""
 
-    def __init__(self, ntkd, radar, maproute):
+    def __init__(self, time_tick_serializer, radar, maproute):
 
-        self.ntkd = ntkd
+        self.time_tick_serializer = time_tick_serializer
         self.radar = radar
         self.neigh = radar.neigh
         self.maproute = maproute
@@ -336,7 +336,7 @@ class Etp(object):
             xtime.swait(50)
             neigh = self.neigh.key_to_neigh((gwip, sender_netid))
 
-        self.ntkd.time_tick('etp_exec', self.serialized_etp_exec, (neigh, sender_nip, sender_netid, R, TPL, flag_of_interest))
+        self.time_tick_serializer(self.serialized_etp_exec, (neigh, sender_nip, sender_netid, R, TPL, flag_of_interest))
 
     def call_etp_exec_udp(self, neigh, sender_nip, sender_netid, R, TPL, 
                           flag_of_interest):

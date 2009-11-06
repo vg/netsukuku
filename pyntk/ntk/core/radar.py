@@ -118,7 +118,7 @@ class Neigh(object):
 class Neighbour(object):
     """ This class manages all neighbours """
 
-    __slots__ = ['ntkd',
+    __slots__ = ['time_tick_serializer',
                  'radar',
                  'maproute',
                  'max_neigh',
@@ -134,9 +134,9 @@ class Neighbour(object):
                  'missing_neighbour_keys',
                  'channels']
 
-    def __init__(self, ntkd, radar, maproute, max_neigh=settings.MAX_NEIGH, xtimemod=xtime):
+    def __init__(self, time_tick_serializer, radar, maproute, max_neigh=settings.MAX_NEIGH, xtimemod=xtime):
         """  max_neigh: maximum number of neighbours we can have """
-        self.ntkd = ntkd
+        self.time_tick_serializer = time_tick_serializer
         self.maproute = maproute
         self.radar = radar
         
@@ -372,7 +372,7 @@ class Neighbour(object):
             if ip in self.ntk_client:
                 return self.ntk_client[ip]
             else:
-                logging.log(logging.ULTRADEBUG, 'Neighbour.get_ntk_client: '
+                logging.warning('Neighbour.get_ntk_client: '
                             'not present for ip ' + str(ip) + ', netid ' + 
                             str(netid))
                 return None
@@ -419,7 +419,7 @@ class Neighbour(object):
         return ip_netid_table_trunc
 
     def store_add_neigh(self, *args):
-        self.ntkd.time_tick('store_add_neigh', self.serialized_store_add_neigh, args)
+        self.time_tick_serializer(self.serialized_store_add_neigh, args)
 
     def serialized_store_add_neigh(self, key, val):
         # Check that it did NOT exist; otherwise exit.
@@ -435,7 +435,7 @@ class Neighbour(object):
         self.add(key)
 
     def store_delete_neigh(self, *args):
-        self.ntkd.time_tick('store_delete_neigh', self.serialized_store_delete_neigh, args)
+        self.time_tick_serializer(self.serialized_store_delete_neigh, args)
 
     def serialized_store_delete_neigh(self, key):
         # Check that it did exist; otherwise exit.
@@ -476,7 +476,7 @@ class Neighbour(object):
                 old_ntk_client.close()
 
     def store_changed_neigh(self, *args):
-        self.ntkd.time_tick('store_changed_neigh', self.serialized_store_changed_neigh, args)
+        self.time_tick_serializer(self.serialized_store_changed_neigh, args)
 
     def serialized_store_changed_neigh(self, key, val):
         # Check that it did exist; otherwise exit.
@@ -835,18 +835,19 @@ class Neighbour(object):
 
 class Radar(object):
     
-    __slots__ = [ 'ntkd', 'maproute', 'bouquet_numb', 'bcast_send_time', 'xtime',
+    __slots__ = [ 'time_tick_serializer', 'nic_manager', 'maproute', 'bouquet_numb', 'bcast_send_time', 'xtime',
                   'bcast_arrival_time', 'bcast_macs', 'max_bouquet', 'wait_time',
                   'broadcast', 'neigh', 'events',
                   'remotable_funcs', 'ntkd_id', 'radar_id', 'max_neigh',
                   'increment_wait_time', 'stopping', 'running_instances']
 
-    def __init__(self, ntkd, maproute, broadcast, xtime):
+    def __init__(self, time_tick_serializer, nic_manager, maproute, broadcast, xtime):
         """
             broadcast: an instance of the RPCBroadcast class to manage 
             broadcast sending xtime: a wrap.xtime module
         """
-        self.ntkd = ntkd
+        self.time_tick_serializer = time_tick_serializer
+        self.nic_manager = nic_manager
         self.maproute = maproute
 
         self.xtime = xtime
@@ -867,7 +868,7 @@ class Radar(object):
         # max_neigh: maximum number of neighbours we can have
         self.max_neigh = settings.MAX_NEIGH
         # our neighbours
-        self.neigh = Neighbour(ntkd, self, self.maproute, self.max_neigh, self.xtime)
+        self.neigh = Neighbour(time_tick_serializer, self, self.maproute, self.max_neigh, self.xtime)
         # Do I have to wait longer? in millis
         self.increment_wait_time = 0
 
@@ -963,7 +964,7 @@ class Radar(object):
             if self.neigh.netid != -1:
                 bcc = rpc.BcastClient(devs=[_rpc_caller.dev], 
                                       xtimemod=self.xtime)
-                receiving_mac = self.ntkd.nic_manager[_rpc_caller.dev].mac
+                receiving_mac = self.nic_manager[_rpc_caller.dev].mac
                 try:
                     bcc.radar.time_register(radar_id, self.neigh.netid, receiving_mac)
                 except:

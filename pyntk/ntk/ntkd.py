@@ -74,14 +74,14 @@ class NtkNode(object):
         self.firstnip = self.choose_first_nip()
         self.maproute = maproute.MapRoute(settings.LEVELS, self.gsize, 
                                           self.firstnip)
-        self.radar = radar.Radar(self, self.maproute, rpcbcastclient, xtimemod)
+        self.radar = radar.Radar(self.time_tick, self.nic_manager, self.maproute, rpcbcastclient, xtimemod)
         self.maproute.set_radar(self.radar)
         self.neighbour = self.radar.neigh
 
         logging.log(logging.ULTRADEBUG, 'NtkNode: This is maproute as soon '
                     'as started.')
         logging.log(logging.ULTRADEBUG, self.maproute.repr_me())
-        self.etp = qspn.Etp(self, self.radar, self.maproute)
+        self.etp = qspn.Etp(self.time_tick, self.radar, self.maproute)
 
         self.p2p = p2p.P2PAll(self.radar, self.maproute, self.etp)
         self.coordnode = coord.Coord(self.radar, self.maproute, self.p2p)
@@ -102,9 +102,7 @@ class NtkNode(object):
             self.kroute = kroute.KrnlRoute(self.neighbour, self.maproute)
 
     @microfunc()
-    def time_tick(self, tip, function, args=(), **kwargs):
-        # tip: may be used to guess who is the caller, so we can
-        #      make some operation before/after calling function.
+    def time_tick(self, function, args=(), **kwargs):
         try:
             logging.log(logging.ULTRADEBUG, 'time_tick: start ' + str(function))
             function(*args, **kwargs)
