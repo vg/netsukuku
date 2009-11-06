@@ -368,11 +368,7 @@ class MapRoute(Map):
         self.radar = None
         Map.__init__(self, levels, gsize, RouteNode, me)
 
-        self.events.add( [  'ROUTES_UPDATED',
-                            'ROUTE_NEW',
-                            'ROUTE_DELETED',
-                            'ROUTE_REM_CHGED'   # the route's rem changed
-                         ] )
+        self.events.add(['ROUTES_UPDATED'])
         self.remotable_funcs = [self.free_nodes_nb, self.free_nodes_nb_udp]
 
     def set_radar(self, radar):
