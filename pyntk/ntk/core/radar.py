@@ -171,7 +171,7 @@ class Neighbour(object):
         # To be certain, before deleting a neighbour, check a few times with
         # a greater delay.
         self.increment_wait_time = 1000
-        self.number_of_scan_before_deleting = 3
+        self.number_of_scan_before_deleting = 1
         # This is a dict. The key is the neigh id, the value is missing_scans.
         # e.g. {2:4} means neighbour 2 has not replied for 4 consecutive
         # scans.
