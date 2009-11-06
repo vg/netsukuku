@@ -391,6 +391,16 @@ class Etp(object):
             # ETP should not be sent.
             current_netid = self.neigh.netid
 
+            ## Calculate the size of my network.
+            def add(a,b):return a+b
+            mynetsz = reduce(add, self.maproute.node_nb)
+            logging.debug('Before execution of ETP, my network size is ' + str(mynetsz-3) + '.')
+
+            ## Calculate the size of the network as seen by my neighbour.
+            # This can be useful if there is a network collision.
+            ngnetsz = reduce(add, map(len, R))
+            logging.debug('As seen by the sender, the ETP covers ' + str(ngnetsz-3) + ' destinations.')
+
             before_etp_exec = {}
             current_nr_list = self.neigh.neigh_list(in_my_network=True)
             # Takes note of the current situation, the bits of information that
@@ -484,7 +494,7 @@ class Etp(object):
             logging.debug('TPL: ' + str(TPL))
 
             ## Collision check
-            colliding, R = self.collision_check(sender_netid, R)
+            colliding, R = self.collision_check(sender_netid, R, mynetsz, ngnetsz)
             if colliding:
                 # Collision detected. Let's rehook with the others' netid.
                 # ... in another tasklet.
@@ -654,12 +664,16 @@ class Etp(object):
 
             logging.info('ETP executed.')
 
+            ## Calculate the size of my network.
+            mynetsz = reduce(add, self.maproute.node_nb)
+            logging.debug('After execution of ETP, my network size is ' + str(mynetsz-3) + '.')
+
             self.events.send('ETP_EXECUTED', (old_node_nb, 
                                               self.maproute.node_nb[:]))
         finally:
             etp_exec_dispatcher_token.executing = False
 
-    def collision_check(self, neigh_netid, R):
+    def collision_check(self, neigh_netid, R, mynetsz, ngnetsz):
         """ Checks if we are colliding with the network of `neigh'.
 
             It returns True if we are colliding and we are going to rehook.
@@ -678,20 +692,11 @@ class Etp(object):
         # uhm... we are in different networks
         logging.info('Detected Network Collision')
 
-        # ## Calculate the size of the two nets
-        # def add(a,b):return a+b
-        # mynetsz = reduce(add, self.maproute.node_nb)
-        # ngnetsz = reduce(add, map(len, R))
+        logging.info('My network size = ' + str(mynetsz-3))
+        logging.info('Their network size = ' + str(ngnetsz-3))
 
-        # TODO At the moment, we dictate that the net with smaller netid 
-        # is going to give up.
-        # Improvement: Find a secure way to detect if we are in one of these 
-        # 3 cases:
-        #  1. The other net surely will give up. So we are not going to.
-        #  2. The other net surely won't give up. So we are going to.
-        #  3. The other net surely will choose to use the 'lesser netid' 
-        # method. So we are going to do the same.
-        if self.neigh.netid > neigh_netid:
+        if mynetsz > ngnetsz or                                         \
+                (mynetsz == ngnetsz and self.neigh.netid > neigh_netid):
                 # We are the bigger net.
                 # We cannot use routes from R, since this gateway is going 
                 # to re-hook.
@@ -709,6 +714,8 @@ class Etp(object):
         # In any case, we have to re-hook.
         # TODO Find a way, if possible, to not re-hook. We need however to 
         # contact the coordinator node for our new place in the new network.
+        # TODO Question: would it be really useful to not rehook? That is,
+        # to maintain the same IP in the new network?
         logging.debug('Etp: we are the smaller net, we must rehook now.')
         return (True, R)
 
