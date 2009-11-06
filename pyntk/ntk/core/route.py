@@ -378,6 +378,9 @@ class MapRoute(Map):
     def set_radar(self, radar):
         self.radar = radar
 
+    ## Methods that modify routes
+    ##
+
     def update_route_by_gw(self, dest, nr, rem_at_gw, hops):
         # dest is a pair (lvl, id)
         # nr is a instance of Neigh
@@ -393,6 +396,34 @@ class MapRoute(Map):
         else:
             paths.update_route_by_gw(nr, rem_at_gw, hops)
         self.events.send('ROUTES_UPDATED', (lvl, dst))
+
+    def route_del_by_neigh(self, lvl, dst, gw, gwip, silent=0):
+
+        logging.log(logging.ULTRADEBUG, 'maproute.route_del_by_neigh')
+        # If destination is me I won't delete a route. Pretend it didn't happen.
+        if self.me[lvl] == dst:
+            logging.debug('I won\'t delete a route to myself (%s, %s).' % 
+                          (lvl, dst))
+            logging.debug(get_stackframes(back=1))
+            return 0
+
+        d = self.node_get(lvl, dst)
+        d.route_del_by_neigh(gw)
+
+        if d.is_empty():
+            # No more routes to reach the node (lvl, dst).
+            # Consider it dead
+            self.node_del(lvl, dst)
+
+        if not silent:
+            self.events.send('ROUTES_UPDATED', (lvl, dst))
+
+        return 1
+
+    def route_signal_rem_changed(self, lvl, dst):
+        self.events.send('ROUTES_UPDATED', (lvl, dst))
+
+    ######
 
     def call_free_nodes_nb_udp(self, neigh, lvl):
         """Use BcastClient to call highest_free_nodes"""
@@ -430,32 +461,6 @@ class MapRoute(Map):
                 rpc.UDP_send_keepalive_forever_stop(caller_id)
             logging.log(logging.ULTRADEBUG, 'calling UDP_send_reply...')
             rpc.UDP_send_reply(_rpc_caller, caller_id, ret)
-
-    def route_del_by_neigh(self, lvl, dst, gw, gwip, silent=0):
-
-        logging.log(logging.ULTRADEBUG, 'maproute.route_del_by_neigh')
-        # If destination is me I won't delete a route. Pretend it didn't happen.
-        if self.me[lvl] == dst:
-            logging.debug('I won\'t delete a route to myself (%s, %s).' % 
-                          (lvl, dst))
-            logging.debug(get_stackframes(back=1))
-            return 0
-
-        d = self.node_get(lvl, dst)
-        d.route_del_by_neigh(gw)
-
-        if d.is_empty():
-            # No more routes to reach the node (lvl, dst).
-            # Consider it dead
-            self.node_del(lvl, dst)
-
-        if not silent:
-            self.events.send('ROUTES_UPDATED', (lvl, dst))
-
-        return 1
-
-    def route_signal_rem_changed(self, lvl, dst):
-        self.events.send('ROUTES_UPDATED', (lvl, dst))
 
     def map_data_pack(self):
         """Prepares a packed_maproute to be passed to maproute.map_data_merge
