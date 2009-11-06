@@ -388,7 +388,10 @@ class MapRoute(Map):
             return False
 
         paths = self.node_get(*dest)
-        paths.update_route_by_gw(nr, rem_at_gw, hops)
+        if isinstance(rem_at_gw, DeadRem):
+            paths.route_del_by_neigh(nr)
+        else:
+            paths.update_route_by_gw(nr, rem_at_gw, hops)
         self.events.send('ROUTES_UPDATED', (lvl, dst))
 
     def best_to_dest_contains_neigh(self, dest, nr):
