@@ -118,7 +118,8 @@ class Neigh(object):
 class Neighbour(object):
     """ This class manages all neighbours """
 
-    __slots__ = ['time_tick_serializer',
+    __slots__ = ['ntkd_status',
+                 'time_tick_serializer',
                  'radar',
                  'maproute',
                  'max_neigh',
@@ -134,8 +135,10 @@ class Neighbour(object):
                  'missing_neighbour_keys',
                  'channels']
 
-    def __init__(self, time_tick_serializer, radar, maproute, max_neigh=settings.MAX_NEIGH, xtimemod=xtime):
+    def __init__(self, ntkd_status, time_tick_serializer, radar, maproute, max_neigh=settings.MAX_NEIGH, xtimemod=xtime):
         """  max_neigh: maximum number of neighbours we can have """
+
+        self.ntkd_status = ntkd_status
         self.time_tick_serializer = time_tick_serializer
         self.maproute = maproute
         self.radar = radar
@@ -633,10 +636,8 @@ class Neighbour(object):
 
         ip, netid = key
 
-        if self.netid == -1:
+        if self.ntkd_status.gonna_hook or self.ntkd_status.hooking:
             # I'm hooking, better not to emit any signal.
-            # NOTE: If the neigh is hooking, yet it is interested to receive
-            # ETPs that are generated for new_link.
             return
 
         val = self.ip_netid_table[key]
@@ -662,8 +663,8 @@ class Neighbour(object):
 
         ip, netid = key
 
-        if self.netid == -1 or netid == -1:
-            # I'm hooking or it is hooking, better not to emit any signal.
+        if self.ntkd_status.gonna_hook or self.ntkd_status.hooking:
+            # I'm hooking, better not to emit any signal.
             return
 
         is_in_my_net = netid == self.netid
@@ -689,8 +690,8 @@ class Neighbour(object):
 
         ip, netid = key
 
-        if self.netid == -1 or netid == -1:
-            # I'm hooking or it is hooking, better not to emit any signal.
+        if self.ntkd_status.gonna_hook or self.ntkd_status.hooking:
+            # I'm hooking, better not to emit any signal.
             return
 
         val = self.ip_netid_table[key]
@@ -835,17 +836,20 @@ class Neighbour(object):
 
 class Radar(object):
     
-    __slots__ = [ 'time_tick_serializer', 'nic_manager', 'maproute', 'bouquet_numb', 'bcast_send_time', 'xtime',
+    __slots__ = [ 'ntkd_status', 'time_tick_serializer', 'nic_manager', 'maproute',
+                  'bouquet_numb', 'bcast_send_time', 'xtime',
                   'bcast_arrival_time', 'bcast_macs', 'max_bouquet', 'wait_time',
                   'broadcast', 'neigh', 'events',
                   'remotable_funcs', 'ntkd_id', 'radar_id', 'max_neigh',
                   'increment_wait_time', 'stopping', 'running_instances']
 
-    def __init__(self, time_tick_serializer, nic_manager, maproute, broadcast, xtime):
+    def __init__(self, ntkd_status, time_tick_serializer, nic_manager, maproute, broadcast, xtime):
         """
             broadcast: an instance of the RPCBroadcast class to manage 
             broadcast sending xtime: a wrap.xtime module
         """
+
+        self.ntkd_status = ntkd_status
         self.time_tick_serializer = time_tick_serializer
         self.nic_manager = nic_manager
         self.maproute = maproute
@@ -868,7 +872,7 @@ class Radar(object):
         # max_neigh: maximum number of neighbours we can have
         self.max_neigh = settings.MAX_NEIGH
         # our neighbours
-        self.neigh = Neighbour(time_tick_serializer, self, self.maproute, self.max_neigh, self.xtime)
+        self.neigh = Neighbour(ntkd_status, time_tick_serializer, self, self.maproute, self.max_neigh, self.xtime)
         # Do I have to wait longer? in millis
         self.increment_wait_time = 0
 

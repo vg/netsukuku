@@ -33,8 +33,9 @@ from ntk.network.inet import ip_to_str, valid_ids
 
 class Hook(object):
 
-    def __init__(self, radar, maproute, etp, coordnode, nics): 
+    def __init__(self, ntkd_status, radar, maproute, etp, coordnode, nics): 
 
+        self.ntkd_status = ntkd_status
         self.radar = radar
         self.neigh = radar.neigh
         self.maproute = maproute
@@ -133,11 +134,14 @@ class Hook(object):
                 # Let's rehook
                 logging.info('Hook: Communicating vessels found a smaller '
                              'GNode. We rehook.')
-                self.hook([nr for (nr, fnb) in candidates], [], True,
-                                candidates[0][1])
+                # If some other thing has caused a rehook, never mind.
+                if self.ntkd_status.hooked:
+                    self.ntkd_status.gonna_hook = True
+                    self.hook([nr for (nr, fnb) in candidates], [], True,
+                                    candidates[0][1])
 
-                ##TODO: Maybe self.hook() should be done BEFORE forwarding the
-                #       ETP that has generated the ETP_EXECUTED event.
+                    ##TODO: Maybe self.hook() should be done BEFORE forwarding the
+                    #       ETP that has generated the ETP_EXECUTED event.
 
         logging.debug('Coomunicating vessels microfunc end')
 
@@ -198,13 +202,7 @@ class Hook(object):
             else:
                 called_for = called_for_network_collision
 
-            # The very first step (except at bootstrap) is to avoid that we 
-            # start a hook when another hook is still running.
-            # This is probably redundant SINCE hook is a microfunc with 
-            # dispatcher AND when hook exits the hook is complete.
-            if called_for != called_for_bootstrap \
-                    and self.radar.neigh.netid == -1:
-                return
+            self.ntkd_status.hooking = True
 
             we_are_alone = False
             netid_to_join = None
@@ -476,11 +474,12 @@ class Hook(object):
                                             'on broadcast.')
 
             if not we_are_alone:
-                # We wait some seconds to receive ETPs before to assign us 
-                # the new netid and become part of the net.
-                logging.log(logging.ULTRADEBUG, 'Hook.hook: waiting 10 sec. '
-                                                'to receive some ETPs.')
-                xtime.swait(10000)
+                # We will wait some seconds to receive ETPs before
+                # being able to reply to some requests.
+                wait_id = randint(0, 2**32-1)
+                self.ntkd_status.hooked_waiting_id = wait_id
+                self.hooked_after_delay(10000, wait_id)
+
                 self.radar.neigh.change_netid(netid_to_join)
                 logging.info('We now have got a network id = ' + 
                              str(netid_to_join))
@@ -494,6 +493,8 @@ class Hook(object):
                 logging.log(logging.ULTRADEBUG, 'Hook.hook: called '
                                                 'ip_netid_change on '
                                                 'broadcast.')
+            else:
+                self.ntkd_status.hooking = False
 
             # we've done our part
             logging.info('Hooking procedure completed.')
@@ -504,8 +505,15 @@ class Hook(object):
             # (it is a microfunc with dispatcher) and we exit immediately.
             logging.info('Hook: something wrong. We retry hook from start.')
             log_exception_stacktrace(e)
+            self.ntkd_status.gonna_hook = True
             self.hook()
             return
+
+    @microfunc(True)
+    def hooked_after_delay(self, delay, wait_id):
+        xtime.swait(delay)
+        if self.ntkd_status.hooked_waiting_id == wait_id:
+            self.ntkd_status.hooked_waiting_id = 0
 
     def highest_free_nodes_in_empty_network(self):
         """Returns (lvl, fnl), where fnl is a list of free node IDs of

@@ -41,8 +41,9 @@ def is_listlist_empty(l):
 class Etp(object):
     """Extended Tracer Packet"""
 
-    def __init__(self, time_tick_serializer, radar, maproute):
+    def __init__(self, ntkd_status, time_tick_serializer, radar, maproute):
 
+        self.ntkd_status = ntkd_status
         self.time_tick_serializer = time_tick_serializer
         self.radar = radar
         self.neigh = radar.neigh
@@ -86,12 +87,8 @@ class Etp(object):
     def etp_dead_link(self, neigh, before_dead_link):
         """Builds and sends a new ETP for the dead link case."""
 
-        if self.neigh.netid == -1:
+        if self.ntkd_status.gonna_hook or self.ntkd_status.hooking:
             # I'm hooking, I must not react to this event.
-            # TODO probably we can safely remove this test because
-            #  when self.netid == -1 in radar the NEIGH_XXX are not emitted.
-            logging.warning('QSPN: new link %s: detected while hooking!', 
-                            ip_to_str(neigh.ip))
             return
 
         logging.debug('Etp: etp_dead_link. neigh ' + str(neigh) + ', before_dead_link ' + str(before_dead_link))
@@ -174,12 +171,8 @@ class Etp(object):
     def etp_new_link(self, neigh):
         """Builds and sends a new ETP for the new link case."""
 
-        if self.neigh.netid == -1:
+        if self.ntkd_status.gonna_hook or self.ntkd_status.hooking:
             # I'm hooking, I must not react to this event.
-            # NOTE: this method gets called with COLLIDING_NEIGH_NEW too. 
-            # So we need to check.
-            logging.warning('QSPN: new link %s: detected while hooking!', 
-                            ip_to_str(neigh.ip))
             return
 
         # Memorize current netid because it might change. In this case the 
@@ -233,12 +226,8 @@ class Etp(object):
     def etp_changed_link(self, neigh, oldrem, before_changed_link):
         """Builds and sends a new ETP for the changed link case."""
 
-        if self.neigh.netid == -1:
+        if self.ntkd_status.gonna_hook or self.ntkd_status.hooking:
             # I'm hooking, I must not react to this event.
-            # TODO probably we can safely remove this test because
-            #  when self.netid == -1 in radar the NEIGH_XXX are not emitted.
-            logging.warning('QSPN: new link %s: detected while hooking!', 
-                            ip_to_str(neigh.ip))
             return
 
         # Memorize current netid because it might change. In this case the 
@@ -317,10 +306,9 @@ class Etp(object):
     @microfunc()
     def etp_exec(self, sender_nip, sender_netid, R, TPL, flag_of_interest):
 
-        while self.neigh.netid == -1:
-            # I'm not ready to interact.
-            time.sleep(0.001)
-            micro_block()
+        if self.ntkd_status.gonna_hook or self.ntkd_status.hooking:
+            # I'm hooking, I must not react to this event.
+            return
 
         gwnip = sender_nip
         gwip = self.maproute.nip_to_ip(gwnip)
@@ -335,6 +323,11 @@ class Etp(object):
                 return
             xtime.swait(50)
             neigh = self.neigh.key_to_neigh((gwip, sender_netid))
+
+        # check again now
+        if self.ntkd_status.gonna_hook or self.ntkd_status.hooking:
+            # I'm hooking, I must not react to this event.
+            return
 
         self.time_tick_serializer(self.serialized_etp_exec, (neigh, sender_nip, sender_netid, R, TPL, flag_of_interest))
 
@@ -729,7 +722,7 @@ class Etp(object):
         the_others = self.neigh.neigh_list(in_this_netid=neigh_netid)
         # If we want to rehook with the_others, we have to make sure 
         # there is someone! We have to wait. And we could fail anyway.
-        # In that case abort the processing of this ETP.
+        # In that case abort the processing of this request.
         timeout = xtime.time() + 16000
         while not any(the_others):
             if xtime.time() > timeout:
@@ -740,7 +733,10 @@ class Etp(object):
             xtime.swait(50)
             the_others = self.neigh.neigh_list(in_this_netid=
                                                neigh_netid)
-        self.events.send('NET_COLLISION', 
-                         (the_others,)
-                        )
+        # If some other thing has caused a rehook, never mind.
+        if self.ntkd_status.hooked:
+            self.ntkd_status.gonna_hook = True
+            self.events.send('NET_COLLISION', 
+                             (the_others,)
+                            )
 

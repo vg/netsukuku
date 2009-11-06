@@ -599,11 +599,6 @@ def UDP_call(callee_nip, callee_netid, devs, func_name, args=()):
     """Use a BcastClient to call 'func_name' to 'callee_nip' on the LAN 
     via UDP broadcast."""
 
-    if callee_netid == -1:
-        raise Exception('Calling ' + func_name + ' to ' + str(callee_nip) + 
-                        ' of ' + str(callee_netid) + ': Tried to communicate '
-                        'with a hooking neighbour.')
-
     logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + ' to ' + 
                 str(callee_nip) + ' of ' + str(callee_netid) + 
                 ' on the LAN via UDP broadcast.')

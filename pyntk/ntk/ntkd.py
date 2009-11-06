@@ -38,6 +38,51 @@ from ntk.network import NICManager, Route
 from ntk.network.inet import ip_to_str, valid_ids
 from ntk.wrap.sock import Sock
 
+class StatusManager(object):
+
+    def __init__(self):
+        self._gonna_hook = False
+        self._hooking = False
+        self._hooked_waiting_id = 0
+
+    def _get_gonna_hook(self):
+        return self._gonna_hook
+
+    def _set_gonna_hook(self, value):
+        self._gonna_hook = value
+        if value:
+            self._hooking = False
+            self._hooked_waiting_id = 0
+
+    gonna_hook = property(_get_gonna_hook, _set_gonna_hook)
+
+    def _get_hooking(self):
+        return self._hooking
+
+    def _set_hooking(self, value):
+        self._hooking = value
+        if value:
+            self._gonna_hook = False
+
+    hooking = property(_get_hooking, _set_hooking)
+
+    def _get_hooked_waiting_id(self):
+        return self._hooked_waiting_id
+
+    def _set_hooked_waiting_id(self, value):
+        self._hooked_waiting_id = value
+        if value:
+            self._hooking = False
+
+    hooked_waiting_id = property(_get_hooked_waiting_id, _set_hooked_waiting_id)
+
+    def _get_hooked(self):
+        return not (self._gonna_hook or \
+                    self._hooking or \
+                    self._hooked_waiting_id)
+
+    hooked = property(_get_hooked)
+
 class NtkNode(object):
 
     def __init__(self,
@@ -63,6 +108,8 @@ class NtkNode(object):
         self.simme = simme
         self.simsock = sockmodgen
 
+        self.ntkd_status = StatusManager()
+
         self.nic_manager = NICManager(nics=settings.NICS,
                                       exclude_nics=settings.EXCLUDE_NICS)
 
@@ -74,14 +121,15 @@ class NtkNode(object):
         self.firstnip = self.choose_first_nip()
         self.maproute = maproute.MapRoute(settings.LEVELS, self.gsize, 
                                           self.firstnip)
-        self.radar = radar.Radar(self.time_tick, self.nic_manager, self.maproute, rpcbcastclient, xtimemod)
+        self.radar = radar.Radar(self.ntkd_status, self.time_tick, self.nic_manager,
+                                 self.maproute, rpcbcastclient, xtimemod)
         self.maproute.set_radar(self.radar)
         self.neighbour = self.radar.neigh
 
         logging.log(logging.ULTRADEBUG, 'NtkNode: This is maproute as soon '
                     'as started.')
         logging.log(logging.ULTRADEBUG, self.maproute.repr_me())
-        self.etp = qspn.Etp(self.time_tick, self.radar, self.maproute)
+        self.etp = qspn.Etp(self.ntkd_status, self.time_tick, self.radar, self.maproute)
 
         self.p2p = p2p.P2PAll(self.radar, self.maproute, self.etp)
         self.coordnode = coord.Coord(self.radar, self.maproute, self.p2p)
@@ -91,7 +139,7 @@ class NtkNode(object):
         logging.log(logging.ULTRADEBUG, 'NtkNode: This is mapp2p of coord as '
                     'soon as started.')
         logging.log(logging.ULTRADEBUG, self.coordnode.mapp2p.repr_me())
-        self.hook = hook.Hook(self.radar, self.maproute, self.etp,
+        self.hook = hook.Hook(self.ntkd_status, self.radar, self.maproute, self.etp,
                               self.coordnode, self.nic_manager)
 
         self.hook.events.listen('HOOKED', self.p2p.p2p_hook)
