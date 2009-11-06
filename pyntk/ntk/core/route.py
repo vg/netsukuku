@@ -255,7 +255,7 @@ class Route(object):
         first_hop = self.routenode.maproute.routeneigh_get(self.gw)
         if hop == first_hop:
             return True
-        # If the passed neighbour is in the middle of best path...
+        # If the passed neighbour is in the middle of this path...
         if hop in self.hops:
             return True
         # Otherwise the path does not contain the passed neighbour
