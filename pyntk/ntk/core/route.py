@@ -384,14 +384,24 @@ class MapRoute(Map):
         # If dest is me, strange thing. TODO review.
         lvl, dst = dest
         if self.me[lvl] == dst:
-            return False
+            return
 
-        paths = self.node_get(*dest)
+        paths = self.node_get(lvl, dst)
+        was_free = paths.is_free()
         if isinstance(rem_at_gw, DeadRem):
             paths.route_del_by_neigh(nr)
         else:
             paths.update_route_by_gw(nr, rem_at_gw, hops)
-        self.events.send('ROUTES_UPDATED', (lvl, dst))
+
+        if was_free and not paths.is_free():
+            # The node is new
+            self.node_add(lvl, dst)
+        if paths.is_empty():
+            # No more routes to reach the node (lvl, dst).
+            # Consider it dead
+            self.node_del(lvl, dst)
+
+        self.route_signal_rem_changed(lvl, dst)
 
     def route_del_by_neigh(self, lvl, dst, gw, gwip, silent=0):
 
@@ -401,7 +411,7 @@ class MapRoute(Map):
             logging.debug('I won\'t delete a route to myself (%s, %s).' % 
                           (lvl, dst))
             logging.debug(get_stackframes(back=1))
-            return 0
+            return
 
         d = self.node_get(lvl, dst)
         d.route_del_by_neigh(gw)
@@ -412,9 +422,7 @@ class MapRoute(Map):
             self.node_del(lvl, dst)
 
         if not silent:
-            self.events.send('ROUTES_UPDATED', (lvl, dst))
-
-        return 1
+            self.route_signal_rem_changed(lvl, dst)
 
     def route_signal_rem_changed(self, lvl, dst):
         self.events.send('ROUTES_UPDATED', (lvl, dst))
