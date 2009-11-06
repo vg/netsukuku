@@ -229,6 +229,25 @@ class Route(object):
 
     rem = property(_get_rem)
 
+    def _get_hops_with_gw(self):
+        if self.first_hop == self.dest:
+            return []
+        else:
+            return [self.first_hop] + self.hops
+
+    # this contains gateway, but not destination in any case.
+    hops_with_gw = property(_get_hops_with_gw)
+
+    def _get_first_hop(self):
+        return self.routenode.maproute.routeneigh_get(self.gw)
+
+    first_hop = property(_get_first_hop)
+
+    def _get_dest(self):
+        return self.routenode.lvl, self.routenode.id
+
+    dest = property(_get_dest)
+
     def __cmp__(self, b):
         """The route self is better (greater) than b if its rem is better"""
         if isinstance(b, Route):
@@ -249,11 +268,9 @@ class Route(object):
 
     def contains(self, hop):
         # hop is a pair (lvl, id)
-        dest = self.routenode.lvl, self.routenode.id
-        if hop == dest:
+        if hop == self.dest:
             return True
-        first_hop = self.routenode.maproute.routeneigh_get(self.gw)
-        if hop == first_hop:
+        if hop == self.first_hop:
             return True
         # If the passed neighbour is in the middle of this path...
         if hop in self.hops:
