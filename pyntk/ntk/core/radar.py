@@ -125,8 +125,6 @@ class Neighbour(object):
                  'rtt_variation_threshold',
                  'ip_netid_table',
                  'ntk_client',
-                 'translation_table',
-                 'reverse_translation_table',
                  'events',
                  'remotable_funcs',
                  'xtime',
@@ -151,18 +149,13 @@ class Neighbour(object):
         # This is a dict whose key is a pair (ip, netid), that is the unique
         # identifier of a neighbour node. The same ip could be assigned to two
         # or more neighbours if they are from different networks.
-        # The values of this dict are instances of Neigh. The minimum 
-        # attributes are valorized (bestdev, devs, ip, netid).
+        # The values of this dict are instances of Neigh.
         self.ip_netid_table = {}
         # ntk_client
         # This is a dict mapping an ip to a TCPClient instance. Only 
         # neighbours that are in our same network have a TCPClient, so 
         # netid is not in the key.
         self.ntk_client = {}
-        # (ip, netid) => ID translation table
-        self.translation_table = {}
-        # ID => (ip, netid) reverse translation table
-        self.reverse_translation_table = {}
         # the events we raise
         self.events = Event(['NEIGH_NEW', 'NEIGH_DELETED', 'NEIGH_REM_CHGED',
                       'COLLIDING_NEIGH_NEW', 'COLLIDING_NEIGH_DELETED',
@@ -272,18 +265,11 @@ class Neighbour(object):
         """
         # ATTENTION: this method MUST NOT pass schedule until the end.
         key = (val.ip, val.netid)
-        if key in self.translation_table:
+        if key in self.ip_netid_table:
             raise Exception('Key was already present.')
-        # Find the first available id in reverse_translation_table
-        new_id = False
-        for i in xrange(1, self.max_neigh + 1):
-            if i not in self.reverse_translation_table:
-                new_id = i
-                break
-        if not new_id:
+        # Check for Max Neigh Exceeded
+        if len(self.ip_netid_table) >= self.max_neigh:
             raise Exception('Max Neigh Exceeded')
-        self.translation_table[key] = new_id
-        self.reverse_translation_table[new_id] = key
         ip, netid = key
         self.ip_netid_table[key] = val
         if self.netid == netid:
@@ -297,18 +283,14 @@ class Neighbour(object):
             Returns old id.
         """
         # ATTENTION: this method MUST NOT pass schedule until the end.
-        if key not in self.translation_table:
+        if key not in self.ip_netid_table:
             raise Exception('Key was not present.')
-        id = self.translation_table[key]
         ip, netid = key
-        del self.translation_table[key]
-        del self.reverse_translation_table[id]
         del self.ip_netid_table[key]
         if self.netid == netid:
             # It was in my network
             if ip in self.ntk_client:
                 del self.ntk_client[ip]
-        return id
 
     #############################################################
     ######## Synchronization gateway <-> nodes
@@ -401,24 +383,10 @@ class Neighbour(object):
         """ key: neighbour's key, that is the pair ip, netid
             return a Neigh object from its ip and netid
         """
-        if key not in self.translation_table:
+        if key not in self.ip_netid_table:
             return None
         else:
             return self.ip_netid_table[key]
-
-    def id_to_key(self, id):
-        """Returns the key (ip, netid) associated to `id'.
-        id should be in reverse_translation_table.
-        """
-        if id not in self.reverse_translation_table:
-            raise Exception('ID was not present.')
-        return self.reverse_translation_table[id]
-
-    def id_to_neigh(self, id):
-        """Returns a Neigh object from an id.
-        id should be in reverse_translation_table.
-        """
-        return self.key_to_neigh(self.id_to_key(id))
 
     def _truncate(self, ip_netid_table):
         """ip_netid_table: an {(ip, netid) => Neigh};
@@ -497,12 +465,12 @@ class Neighbour(object):
         ip, netid = key
         old_val = self.ip_netid_table[key]
         old_ntk_client = self.get_ntk_client(ip, netid)
-        old_id = self.unmemorize(key)
+        self.unmemorize(key)
         # Then we send a signal (event) to notify the change. The main handler
         # of this event is the method etp_dead_link of class Etp (see Changed
         # Link Rule of QSPN). This method must not be microfunc, in order for
         # the serialization of "time_tick" methods to work.
-        self.delete(key, old_val, old_id, before_dead_link)
+        self.delete(key, old_val, before_dead_link)
         if old_ntk_client is not None:
             if old_ntk_client.connected:
                 old_ntk_client.close()
@@ -689,7 +657,7 @@ class Neighbour(object):
         self.events.send(event_to_fire,
                          (val,))
 
-    def delete(self, key, old_val, old_id, before_dead_link):
+    def delete(self, key, old_val, before_dead_link):
         """Sends event for a dead neighbour."""
 
         ip, netid = key
