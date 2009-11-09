@@ -55,7 +55,7 @@ class Etp(object):
         self.neigh.events.listen('NEIGH_REM_CHGED', self.etp_changed_link)
         self.neigh.events.listen('NEIGH_DELETED', self.etp_dead_link)
 
-        self.events = Event(['ETP_EXECUTED', 'NET_COLLISION'])
+        self.events = Event(['TIME_TICK', 'NET_COLLISION'])
 
         self.remotable_funcs = [self.etp_exec,
                                 self.etp_exec_udp]
@@ -395,6 +395,16 @@ class Etp(object):
             # ETP should not be sent.
             current_netid = self.neigh.netid
 
+            # This is a serialized method that passes from time t to time t+1.
+            # As such, it will:
+            #  .evaluate (t-1)-like stuff (node_nb, ...)
+            #  .update our memorized paths
+            #  .evaluate (t)-like stuff (node_nb, ...)
+            #  .emit TIME_TICK event
+
+            ## evaluate current node_nb.
+            old_node_nb = self.maproute.node_nb[:]
+
             ## Calculate the size of my network.
             def add(a,b):return a+b
             mynetsz = reduce(add, self.maproute.node_nb)
@@ -512,8 +522,6 @@ class Etp(object):
             gwrem = neigh.rem
 
             xtime.swait(10)
-
-            old_node_nb = self.maproute.node_nb[:]
 
             # For each one of our neighbours, we prepare a ETP
             #  with the TPL received *and* a new ETP, with just
@@ -672,8 +680,10 @@ class Etp(object):
             mynetsz = reduce(add, self.maproute.node_nb)
             logging.debug('After execution of ETP, my network size is ' + str(mynetsz-3) + '.')
 
-            self.events.send('ETP_EXECUTED', (old_node_nb, 
-                                              self.maproute.node_nb[:]))
+            ## evaluate current node_nb.
+            cur_node_nb = self.maproute.node_nb[:]
+
+            self.events.send('TIME_TICK', (old_node_nb, cur_node_nb))
         finally:
             etp_exec_dispatcher_token.executing = False
 

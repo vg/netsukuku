@@ -163,7 +163,7 @@ class Neighbour(object):
         # the events we raise
         self.events = Event(['NEIGH_NEW', 'NEIGH_DELETED', 'NEIGH_REM_CHGED',
                       'COLLIDING_NEIGH_NEW', 'COLLIDING_NEIGH_DELETED',
-                      'COLLIDING_NEIGH_REM_CHGED'])
+                      'COLLIDING_NEIGH_REM_CHGED', 'TIME_TICK'])
         # time module
         self.xtime = xtimemod
         # channels for the methods to synchronize routes in the kernel table
@@ -426,6 +426,10 @@ class Neighbour(object):
         self.time_tick_serializer(self.serialized_store_add_neigh, args)
 
     def serialized_store_add_neigh(self, key, val):
+
+        ## evaluate current node_nb.
+        old_node_nb = self.maproute.node_nb[:]
+
         # Check that it did NOT exist; otherwise exit.
         if key in self.ip_netid_table:
             return
@@ -438,10 +442,19 @@ class Neighbour(object):
         # the serialization of "time_tick" methods to work.
         self.add(key)
 
+        ## evaluate current node_nb.
+        cur_node_nb = self.maproute.node_nb[:]
+
+        self.events.send('TIME_TICK', (old_node_nb, cur_node_nb))
+
     def store_delete_neigh(self, *args):
         self.time_tick_serializer(self.serialized_store_delete_neigh, args)
 
     def serialized_store_delete_neigh(self, key):
+
+        ## evaluate current node_nb.
+        old_node_nb = self.maproute.node_nb[:]
+
         # Check that it did exist; otherwise exit.
         if key not in self.ip_netid_table:
             return
@@ -479,10 +492,19 @@ class Neighbour(object):
             if old_ntk_client.connected:
                 old_ntk_client.close()
 
+        ## evaluate current node_nb.
+        cur_node_nb = self.maproute.node_nb[:]
+
+        self.events.send('TIME_TICK', (old_node_nb, cur_node_nb))
+
     def store_changed_neigh(self, *args):
         self.time_tick_serializer(self.serialized_store_changed_neigh, args)
 
     def serialized_store_changed_neigh(self, key, val):
+
+        ## evaluate current node_nb.
+        old_node_nb = self.maproute.node_nb[:]
+
         # Check that it did exist; otherwise exit.
         if key not in self.ip_netid_table:
             return
@@ -517,6 +539,11 @@ class Neighbour(object):
         # Link Rule of QSPN). This method must not be microfunc, in order for
         # the serialization of "time_tick" methods to work.
         self.rem_change(key, old_rtt, before_changed_link)
+
+        ## evaluate current node_nb.
+        cur_node_nb = self.maproute.node_nb[:]
+
+        self.events.send('TIME_TICK', (old_node_nb, cur_node_nb))
 
     def store(self, new_ip_netid_table):
         """Detects changes in our neighbourhood. Updates internal data structures
@@ -602,14 +629,14 @@ class Neighbour(object):
         # For each single change, call a "time_tick" method.
         #
         # The called method will:
-        #  .evaluate (t-1)-like stuff ???
+        #  .evaluate (t-1)-like stuff (node_nb, ...)
         #  .if it is a new, check that it does not exist; otherwise exit.
         #  .if it is a changed_rem, check that it does exist; otherwise exit.
         #  .if it is a dead, check that it does exist; otherwise exit.
         #  .change data in structure without passing schedule.
         #  .call events (to Etp class) that must not be microfunc.
-        #  .emit TIME_TICK event ???
-        #  .evaluate delta-like stuff ???
+        #  .evaluate (t)-like stuff (node_nb, ...)
+        #  .emit TIME_TICK event
         for key in to_be_deleted:
             self.store_delete_neigh(key)
         for key, val in to_be_added:
