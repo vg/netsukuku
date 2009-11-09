@@ -216,10 +216,14 @@ class RPCDispatcher(object):
         try:
             response = self._dispatch(caller, func, params)
         except Exception, e:
-            logging.error("Uncaught exception in a remotable function")
-            logging.error("  The function has been called like this: %s(%s)" %
-                          (func, params))
-            log_exception_stacktrace(e)
+            if isinstance(e, ZombieException):
+                logging.debug('Zombie Exception raised in ' \
+                              + str(func) + '(' + str(params) + ').')
+            else:
+                logging.error("Uncaught exception in a remotable function")
+                logging.error("  The function has been called like this: %s(%s)" %
+                              (func, params))
+                log_exception_stacktrace(e)
             response = ('rmt_error', str(e))
         if not 'radar' in func:
             pass #logging.debug("dispatch response: "+str(response))

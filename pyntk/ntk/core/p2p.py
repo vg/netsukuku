@@ -275,7 +275,10 @@ class StrictP2P(RPCDispatcher):
         self.peer() instead
 
         msg: it is a (func_name, args) pair."""
-        
+
+        # Implements "zombie" status
+        if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
+
         logging.log(logging.ULTRADEBUG, 'P2P: participant_add_udp '
                     'called by ' + str(sender_nip) + ' with msg_id = ' + 
                     str(msg_id))
@@ -339,6 +342,10 @@ class StrictP2P(RPCDispatcher):
             They are used by the callee to recognize a request destinated 
             to it.
            """
+
+        # Implements "zombie" status
+        if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
+
         lvl = self.maproute.nip_cmp(sender_nip)
         if not check_ids((lvl, sender_nip[lvl]), msg_id):
             #raise Exception('The message is now expired')
@@ -604,6 +611,9 @@ class P2P(StrictP2P):
         :param pIP: participant node's Netsukuku IP (nip)
         '''
 
+        # Implements "zombie" status
+        if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
+
         continue_to_forward = False
         current_nr_list = self.neigh.neigh_list(in_my_network=True)
         mp  = self.mapp2p
@@ -650,7 +660,10 @@ class P2P(StrictP2P):
         
         :param pIP: participant node's Netsukuku IP (nip)
         '''
-        
+
+        # Implements "zombie" status
+        if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
+
         continue_to_forward = False
         current_nr_list = self.neigh.neigh_list(in_my_network=True)
         mp  = self.mapp2p
@@ -729,6 +742,10 @@ class P2PAll(object):
 
     def pid_getall(self, strict=False):
         """ Set `strict' if you want strict service in the list too """
+
+        # Implements "zombie" status
+        if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
+
         if not strict:
             return [(s, self.service[s].mapp2p.map_data_pack())
                         for s in self.service

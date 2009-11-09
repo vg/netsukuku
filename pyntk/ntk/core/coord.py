@@ -109,6 +109,10 @@ class MapCache(Map):
 
     def map_data_merge(self, (nip, plist, nblist)):
         """Copies a mapcache from another nip's point of view."""
+
+        # Implements "zombie" status
+        if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
+
         logging.log(logging.ULTRADEBUG, 'Merging a mapcache.map_data_merge: '
                                         'before: ' + self.repr_me())
         # Was I alive?
@@ -290,6 +294,9 @@ class Coord(StrictP2P):
         If so, we remove the node and return the new free_nodes of this gnode,
         else, we return None."""
 
+        # Implements "zombie" status
+        if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
+
         if gfree_new is None \
                 or self.mapcache.free_nodes_nb(lvl) < gfree_new - 1:
             if self.mapcache.node_get(lvl, id).alive:
@@ -303,6 +310,9 @@ class Coord(StrictP2P):
     def going_out_ok(self, lvl, id):
         """The node, which was going out, is now acknowledging the correct
         migration"""
+
+        # Implements "zombie" status
+        if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
 
         self.mapcache.tmp_deleted_del(lvl, id)
 
@@ -318,6 +328,9 @@ class Coord(StrictP2P):
         current free_nodes is bigger than gfree_old_coord.
         If so, we add the node and return the assigned newnip,
         else, we return None."""
+
+        # Implements "zombie" status
+        if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
 
         logging.log(logging.ULTRADEBUG, 'Coord.going_in: The requested '
                                         'level is ' + str(lvl))

@@ -307,6 +307,9 @@ class Etp(object):
     @microfunc()
     def etp_exec(self, sender_nip, sender_netid, R, TPL, flag_of_interest):
 
+        # Implements "zombie" status
+        if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
+
         if self.ntkd_status.gonna_hook or self.ntkd_status.hooking:
             # I'm hooking, I must not react to this event.
             return

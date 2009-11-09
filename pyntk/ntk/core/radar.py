@@ -720,6 +720,9 @@ class Neighbour(object):
         """Adds `newip' in the Neighbours as a copy of `oldip', then it
         removes `oldip'. The relative events are raised."""
 
+        # Implements "zombie" status
+        if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
+
         oldkey = (oldip, oldnetid)
         newkey = (newip, newnetid)
         if not oldkey in self.ip_netid_table:
@@ -962,6 +965,10 @@ class Radar(object):
 
     def reply(self, _rpc_caller, ntkd_id, radar_id):
         """ As answer we'll return our netid """
+
+        # Implements "zombie" status
+        if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
+
         if ntkd_id != self.ntkd_id:
             # If I am hooking I will not reply to radar scans from my 
             # neighbours
@@ -981,6 +988,9 @@ class Radar(object):
 
     def time_register(self, _rpc_caller, radar_id, netid, mac):
         """save each node's rtt"""
+
+        # Implements "zombie" status
+        if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
 
         if radar_id != self.radar_id:
             # drop. It isn't a reply to our current bouquet

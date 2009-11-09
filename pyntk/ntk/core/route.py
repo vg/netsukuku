@@ -468,6 +468,10 @@ class MapRoute(Map):
             They are used by the callee to recognize a request destinated 
             to it.
            """
+
+        # Implements "zombie" status
+        if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
+
         if self.me == callee_nip and \
            self.radar.neigh.netid == callee_netid:
             ret = None

@@ -87,6 +87,9 @@ class Hook(object):
         '''Note: old_node_nb and cur_node_nb are used only by the 
         ETP_EXECUTED event'''
 
+        # Implements "zombie" status
+        if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
+
         logging.debug('Coomunicating vessels microfunc started')
         # Get only the neighbours of my network.
         current_nr_list = self.neigh.neigh_list(in_my_network=True)
@@ -531,6 +534,10 @@ class Hook(object):
     def highest_free_nodes(self):
         """Returns (lvl, fnl), where fnl is a list of free node IDs of
            level `lvl'."""
+
+        # Implements "zombie" status
+        if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
+
         logging.log(logging.ULTRADEBUG, 'highest_free_nodes: start.')
         if etp_exec_dispatcher_token.executing:
             logging.log(logging.ULTRADEBUG, 
