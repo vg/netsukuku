@@ -31,6 +31,7 @@ from ntk.lib.log import get_stackframes
 from ntk.lib.micro import microfunc
 from ntk.lib.rencode import serializable
 from ntk.lib.rpc import FakeRmt, RPCDispatcher, CallerInfo
+from ntk.core.status import ZombieException 
 
 
 class P2PError(Exception):
@@ -193,7 +194,7 @@ class StrictP2P(RPCDispatcher):
         service. A strict service is a service where all the hosts connected 
         to Netsukuku are participant, so the MapP2P is not used here. """
 
-    def __init__(self, radar, maproute, pid):
+    def __init__(self, ntkd_status, radar, maproute, pid):
         """radar, maproute: the instances of the relative modules
 
            pid: P2P id of the service associated to this map
@@ -201,6 +202,8 @@ class StrictP2P(RPCDispatcher):
         # TODO: we store the pid here instead of MapP2P, is it right?
         #       in this way it is inherited by P2P :\\\\\\
         self.pid = pid 
+
+        self.ntkd_status = ntkd_status
         self.radar = radar
         self.neigh = radar.neigh
         self.maproute = self.mapp2p = maproute
@@ -415,12 +418,13 @@ class P2P(StrictP2P):
     """This is the class that must be inherited to create a P2P module.
     """
 
-    def __init__(self, radar, maproute, pid):
+    def __init__(self, ntkd_status, radar, maproute, pid):
         """radar, maproute: the instances of the relative modules
 
            pid: P2P id of the service associated to this map
         """
 
+        self.ntkd_status = ntkd_status
         self.radar = radar
         self.neigh = radar.neigh
         self.maproute = maproute
@@ -684,7 +688,8 @@ class P2P(StrictP2P):
 class P2PAll(object):
     """Class of all the registered P2P services"""
 
-    __slots__ = ['radar',
+    __slots__ = ['ntkd_status',
+                 'radar',
                  'neigh',
                  'maproute',
                  'service',
@@ -692,8 +697,9 @@ class P2PAll(object):
                  'events',
                  'etp']
 
-    def __init__(self, radar, maproute, etp):
+    def __init__(self, ntkd_status, radar, maproute, etp):
 
+        self.ntkd_status = ntkd_status
         self.radar = radar
         self.neigh = radar.neigh
         self.maproute = maproute

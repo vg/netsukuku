@@ -30,6 +30,7 @@ from ntk.lib.log import log_exception_stacktrace
 from ntk.lib.micro import microfunc, Channel, micro_block
 from ntk.lib.event import Event
 from ntk.network.inet import ip_to_str, valid_ids
+from ntk.core.status import ZombieException 
 
 class Hook(object):
 
@@ -477,7 +478,7 @@ class Hook(object):
                 # We will wait some seconds to receive ETPs before
                 # being able to reply to some requests.
                 wait_id = randint(0, 2**32-1)
-                self.ntkd_status.hooked_waiting_id = wait_id
+                self.ntkd_status.set_hooked_waiting_id(wait_id)
                 self.hooked_after_delay(10000, wait_id)
 
                 self.radar.neigh.change_netid(netid_to_join)
@@ -512,8 +513,8 @@ class Hook(object):
     @microfunc(True)
     def hooked_after_delay(self, delay, wait_id):
         xtime.swait(delay)
-        if self.ntkd_status.hooked_waiting_id == wait_id:
-            self.ntkd_status.hooked_waiting_id = 0
+        if self.ntkd_status.hooked_waiting:
+            self.ntkd_status.unset_hooked_waiting_id(wait_id)
 
     def highest_free_nodes_in_empty_network(self):
         """Returns (lvl, fnl), where fnl is a list of free node IDs of

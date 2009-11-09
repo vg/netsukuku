@@ -88,6 +88,7 @@ from ntk.lib.microsock import MicrosockTimeout
 from ntk.network.inet import sk_set_broadcast, sk_bindtodevice
 from ntk.wrap import xtime as xtime
 from ntk.wrap.sock import Sock
+from ntk.core.status import ZombieException
 
 
 class RPCError(Exception): pass

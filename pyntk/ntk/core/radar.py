@@ -50,6 +50,7 @@ from ntk.lib.log import get_stackframes, log_exception_stacktrace
 from ntk.lib.log import logger as logging
 from ntk.lib.micro import micro, micro_block, microfunc, Channel
 from ntk.network.inet import ip_to_str, str_to_ip
+from ntk.core.status import ZombieException
 
 
 class Neigh(object):

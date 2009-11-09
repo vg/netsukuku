@@ -33,7 +33,7 @@ from ntk.lib.micro import microfunc
 from ntk.lib.rencode import serializable
 from ntk.network.inet import valid_ids
 from ntk.wrap.xtime import time, swait
-
+from ntk.core.status import ZombieException
 
 
 class Node(object):
@@ -60,11 +60,12 @@ class Node(object):
 serializable.register(Node)
 
 class MapCache(Map):
-    def __init__(self, maproute):
+    def __init__(self, ntkd_status, maproute):
         logging.log(logging.ULTRADEBUG, 'Coord: copying a mapcache from our '
                                         'maproute.')
         Map.__init__(self, maproute.levels, maproute.gsize, Node, maproute.me)
 
+        self.ntkd_status = ntkd_status
         self.copy_from_maproute(maproute)
         self.remotable_funcs = [self.map_data_merge]
 
@@ -167,15 +168,15 @@ class Coord(StrictP2P):
 
     pid = 1
 
-    def __init__(self, radar, maproute, p2pall):
+    def __init__(self, ntkd_status, radar, maproute, p2pall):
 
-        StrictP2P.__init__(self, radar, maproute, Coord.pid)
+        StrictP2P.__init__(self, ntkd_status, radar, maproute, Coord.pid)
 
         # let's register ourself in p2pall
         p2pall.p2p_register(self)
 
         # The cache of the coordinator node
-        self.mapcache = MapCache(self.maproute)
+        self.mapcache = MapCache(ntkd_status, self.maproute)
 
         self.maproute.events.listen('NODE_NEW', self.mapcache.alive_node_add)
         self.maproute.events.listen('NODE_DELETED', self.mapcache.node_del)

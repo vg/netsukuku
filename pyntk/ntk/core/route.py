@@ -24,6 +24,7 @@ from ntk.lib.event import Event
 from ntk.lib.log import logger as logging
 from ntk.lib.log import get_stackframes
 from ntk.lib.rencode import serializable
+from ntk.core.status import ZombieException
 
 class RemError(Exception):
     '''General Route Efficiency Measure Exception'''
@@ -378,10 +379,11 @@ class MapRoute(Map):
     MapRoute.node[lvl][id] is a RouteNode class, i.e. a list of routes
     having as destination the node (lvl, id)"""
 
-    __slots__ = Map.__slots__ + ['radar', 'remotable_funcs']
+    __slots__ = Map.__slots__ + ['ntkd_status', 'radar', 'remotable_funcs']
 
-    def __init__(self, levels, gsize, me):
+    def __init__(self, ntkd_status, levels, gsize, me):
 
+        self.ntkd_status = ntkd_status
         self.radar = None
         Map.__init__(self, levels, gsize, RouteNode, me)
 

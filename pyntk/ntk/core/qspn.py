@@ -29,6 +29,7 @@ from ntk.lib.log import logger as logging
 from ntk.lib.micro import microfunc, micro_block, DispatcherToken
 from ntk.lib.rpc import RPCError
 from ntk.network.inet import ip_to_str
+from ntk.core.status import ZombieException 
 
 etp_exec_dispatcher_token = DispatcherToken()
 
