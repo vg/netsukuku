@@ -300,12 +300,13 @@ class RouteNode(object):
           which has the same gateway G
     """
 
-    __slots__ = ['maproute', 'routes', 'lvl', 'id', 'its_me']
+    __slots__ = ['maproute', 'routes', 'busy', 'lvl', 'id', 'its_me']
 
     def __init__(self, maproute, lvl, id, its_me=False):
         self.lvl = lvl
         self.id = id
         self.its_me = its_me
+        self.busy = False
         self.routes = []
         self.maproute = maproute
 
@@ -322,6 +323,7 @@ class RouteNode(object):
             self.routes.append(Route(nr, rem_at_gw, hops, self))
         else:
             oldrem_at_gw = r.rem_modify(rem_at_gw, hops)
+        self.busy = True # For sure now we are busy.
         self.sort()
 
     def route_del_by_neigh(self, gw):
@@ -349,7 +351,7 @@ class RouteNode(object):
     def is_free(self):
         '''Override the is_free() method of DataClass (see map.py)'''
         if self.its_me: return False
-        return self.is_empty()
+        return not self.busy
 
     def nroutes(self):
         return len(self.routes)
