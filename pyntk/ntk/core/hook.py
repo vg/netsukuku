@@ -469,7 +469,6 @@ class Hook(object):
             logging.info('MapRoute cleaned because NICs have been flushed')
             self.maproute.me_change(newnip[:])
             self.coordnode.mapcache.me_change(newnip[:], silent=True)
-            for l in reversed(xrange(lvl)): self.maproute.level_reset(l)
 
             # warn our neighbours
             logging.log(logging.ULTRADEBUG, 'Hook: warn neighbours of' + \
