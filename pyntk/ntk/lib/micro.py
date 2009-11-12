@@ -24,6 +24,7 @@ import time
 
 from ntk.lib.log import logger as logging
 from ntk.lib.log import log_exception_stacktrace
+from ntk.core.status import ZombieException
 
 def micro(function, args=(), **kwargs):
     '''Factory function that returns tasklets
@@ -37,11 +38,15 @@ def micro(function, args=(), **kwargs):
         try:
             function(*args, **kwargs)
         except Exception, e:
-            logging.error("Uncaught exception in a microfunc")
-            logging.error("  The microfunc has been called like this: "
-            "%s(%s,%s)" % (function.__name__, args.__repr__(), 
-                           kwargs.__repr__()))
-            log_exception_stacktrace(e)
+            if isinstance(e, ZombieException):
+                logging.debug('Zombie Exception raised in ' \
+                              + str(function) + str(args))
+            else:
+                logging.error("Uncaught exception in a microfunc")
+                logging.error("  The microfunc has been called like this: "
+                "%s(%s,%s)" % (function.__name__, args.__repr__(), 
+                               kwargs.__repr__()))
+                log_exception_stacktrace(e)
 
     t.bind(callable)
     return t()
@@ -156,10 +161,14 @@ def _dispatcher(func, chan, dispatcher_token):
         try:
             func(*msg)
         except Exception, e:
-            logging.error("Uncaught exception in a microfunc with dispatcher")
-            logging.error(" The microfunc has been called like this: %s(%s)" %
-                          (func.__name__, msg.__repr__()))
-            log_exception_stacktrace(e)
+            if isinstance(e, ZombieException):
+                logging.debug('Zombie Exception raised in ' \
+                              + str(func) + str(msg))
+            else:
+                logging.error("Uncaught exception in a microfunc with dispatcher")
+                logging.error(" The microfunc has been called like this: %s(%s)" %
+                              (func.__name__, msg.__repr__()))
+                log_exception_stacktrace(e)
 
 def microfunc(is_micro=False, dispatcher_token=DispatcherToken()):
     '''A microfunction is a function that never blocks the caller microthread.

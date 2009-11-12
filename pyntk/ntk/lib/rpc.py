@@ -218,7 +218,7 @@ class RPCDispatcher(object):
         except Exception, e:
             if isinstance(e, ZombieException):
                 logging.debug('Zombie Exception raised in ' \
-                              + str(func) + '(' + str(params) + ').')
+                              + str(func) + str(params))
             else:
                 logging.error("Uncaught exception in a remotable function")
                 logging.error("  The function has been called like this: %s(%s)" %
