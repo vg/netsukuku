@@ -416,7 +416,7 @@ class Etp(object):
             ## Calculate the size of the network as seen by my neighbour.
             # This can be useful if there is a network collision.
             ngnetsz = reduce(add, map(len, R))
-            logging.debug('As seen by the sender, the ETP covers ' + str(ngnetsz-3) + ' destinations.')
+            logging.debug('As seen by the sender, the ETP covers ' + str(ngnetsz) + ' destinations.')
 
             before_etp_exec = {}
             current_nr_list = self.neigh.neigh_list(in_my_network=True)
