@@ -73,20 +73,92 @@ class Etp(object):
                          str(self.neigh.netid) + '.')
             return
         logging.debug('Etp: sending to %s', str(neigh))
+
+        # If an ETP does not reach a neighbour, we should retry, as long as
+        # the neighbour is seen by the radar.
         try:
             self.call_etp_exec_udp(neigh, self.maproute.me, 
                                    self.neigh.netid, *etp)
-            logging.info('Sent ETP to %s', ip_to_str(neigh.ip))
-            # RPCErrors may arise for many reasons. We should not care.
-        except RPCError:
-            logging.warning('Etp: sending to ' + str(neigh) + ' RPCError.' +
-                          ' We ignore it.')
-        except Exception as e:
-            logging.warning('Etp: sending to ' + str(neigh) + ' got' +
-                          ' Exception ' + str(e) + '.' +
-                          ' We ignore it.')
+            logging.info('Sent ETP to %s', str(neigh))
+        except Exception, e:
+            if isinstance(e, RPCError):
+                logging.warning('Etp: sending to ' + str(neigh) + ' RPCError.')
+            else:
+                logging.warning('Etp: sending to ' + str(neigh) + ' got' +
+                              ' Exception ' + str(e) + '.')
+
+            # An ETP was to be sent to neighbour (ip, netid) covering
+            # dests destinations. It failed.
+            dests = []
+            R, TPL, flag_of_interest = etp
+            for lvl in xrange(self.maproute.levels):
+                for dst, rem, hops in R[lvl]:
+                    dests.append((lvl, dst))
+            self.fail_etp_send_to_neigh(neigh.ip, neigh.netid, dests, current_netid)
+
+    @microfunc(True)
+    def fail_etp_send_to_neigh(self, ip, netid, dests, current_netid):
+        """An ETP was to be sent to neighbour (ip, netid) covering
+           dests destinations. It failed.
+           This method tries again iff (ip, netid) is still in
+           our Neighbours' list.
+           
+           dests is a sequence of pairs (lvl, dst)
+           """
+
+        if current_netid != self.neigh.netid:
+            logging.info('An ETP dropped because we changed network from ' +
+                         str(current_netid) + ' to ' + 
+                         str(self.neigh.netid) + '.')
+            return
+
+        logging.warning('Etp: sending to ' + ip_to_str(ip) + ' in ' + str(netid) + ' failed.')
+        # Check if X (ip, netid) is still in our Neighbours' list.
+        neigh = self.neigh.key_to_neigh((ip, netid))
+        if neigh:
+            logging.warning('Etp: We try again since the neighbour should be still there.')
+            # The neighbour X could be in another 
+            # network. I must check.
+            another_network = self.neigh.netid != netid
+
+            # I prepare an ETP for X with empty TPL
+            R = []
+            for lvl in xrange(self.maproute.levels):
+                R.append([])
+            flag_of_interest=1
+            ## The TPL starts with just myself.
+            TPL = [[0, [[self.maproute.me[0], NullRem()]]]]
+
+            # ∀v ∈ dests
+            for lvl, dst in dests:
+                routes_to_v = self.maproute.node_get(lvl, dst)
+                if not routes_to_v.is_empty():
+                    xtime.sleep_during_hard_work(0)
+                    if another_network:
+                        # A computes Bestᵗ (A → v)
+                        best = routes_to_v.best_route()
+                        # if Bestᵗ (A → v) > 0
+                        if best is not None:
+                            # new route Bestᵗ (A → v) has to be sent to X
+                            R[lvl].append((dst, best.rem, best.hops_with_gw))
+                    else:
+                        # A computes Bestᵗ (A → X̃ → v)
+                        X_lvl_id = self.maproute.routeneigh_get(neigh)
+                        best = routes_to_v.best_route_without(X_lvl_id)
+                        # if Bestᵗ (A → X̃ → v) > 0
+                        if best is not None:
+                            # new route Bestᵗ (A → X̃ → v) has to be sent to X
+                            R[lvl].append((dst, best.rem, best.hops_with_gw))
+
+            # We must add a route to ourself.
+            for lvl in xrange(self.maproute.levels):
+                R[lvl].append((self.maproute.me[lvl], NullRem(), []))
+
+            etp = (R, TPL, flag_of_interest)
+            self.etp_send_to_neigh(etp, neigh, current_netid)
+
         else:
-            logging.debug('Etp: sending to %s done.', str(neigh))
+            logging.warning('Etp: We don\'t see the neighbour anymore. Ignore it.')
 
     def etp_dead_link(self, neigh, before_dead_link):
         """Builds and sends a new ETP for the dead link case."""
@@ -186,8 +258,6 @@ class Etp(object):
         # The new neighbour could be in another 
         # network. I must check.
         another_network = self.neigh.netid != neigh.netid
-
-        current_nr_list = self.neigh.neigh_list()
 
         # A prepares an ETP for B with TPL=[A]
         R = []
