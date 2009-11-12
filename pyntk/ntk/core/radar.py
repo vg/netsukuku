@@ -236,12 +236,15 @@ class Neighbour(object):
         # Get only the neighbours OUT of my network.
         for neigh in self.neigh_list(out_of_my_network=True):
             logging.debug('Neighbour.readvertise will send to ' + str(neigh))
-            try:
-                key = (neigh.ip, neigh.netid)
-                self.add(key)
-                self.call_readvertise_udp(neigh)
-            except Exception as e:
-                logging.warning("readvertise: Exception while replying: " + str(e))
+            key = (neigh.ip, neigh.netid)
+            self.add(key)
+            ## Only if we have NOT been called remotely.
+            if old_node_nb is not None:
+                try:
+                    self.call_readvertise_udp(neigh)
+                except Exception, e:
+                    logging.debug('Neighbour.readvertise: Exception while asking to ' \
+                      + str(neigh) + ' to readvertise: ' + str(e))
 
         logging.debug('Neighbour.readvertise microfunc done. exiting.')
 
