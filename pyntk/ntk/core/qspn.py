@@ -390,8 +390,12 @@ class Etp(object):
         gwnip = sender_nip
         gwip = self.maproute.nip_to_ip(gwnip)
         neigh = self.neigh.key_to_neigh((gwip, sender_netid))
-        # check if we have found the neigh, otherwise wait it
-        timeout = xtime.time() + 16000
+        # Check if we have found the neigh, otherwise wait it.
+        # We can, and really should, wait for long time, since we
+        # are not preventing other tasklets from doing their work.
+        # We just check at each interval, cause we could split or
+        # rehook.
+        timeout = xtime.time() + 300000
         while neigh is None:
             if xtime.time() > timeout:
                 logging.info('ETP from (nip, netid) = ' + 
@@ -400,6 +404,11 @@ class Etp(object):
                 return
             xtime.swait(50)
             neigh = self.neigh.key_to_neigh((gwip, sender_netid))
+            # Implements "zombie" status
+            if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
+            if self.ntkd_status.gonna_hook or self.ntkd_status.hooking:
+                # I'm hooking, I must not react to this event.
+                return
 
         # check again now
         if self.ntkd_status.gonna_hook or self.ntkd_status.hooking:
