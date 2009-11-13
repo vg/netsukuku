@@ -103,9 +103,10 @@ class NIC(BaseNIC):
         # We use only one address for NIC, so a flush is needed.
         if self.address:
             self._flush()
-            current_table = {}
         if address is not None and address != '':
             iproute('addr add %s dev %s' % (address, self.name))
+            global current_table
+            current_table = {}
 
     def get_address(self):
         ''' Gets NIC address. '''
