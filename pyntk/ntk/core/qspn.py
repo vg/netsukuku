@@ -57,7 +57,7 @@ class Etp(object):
 
         self.events = Event(['TIME_TICK', 'NET_COLLISION'])
 
-        self.events.listen('TIME_TICK', self.neigh.readvertise)
+        self.events.listen('TIME_TICK', self.neigh.readvertise_local)
         # This should be placed in module radar. TODO refactor.
 
         self.remotable_funcs = [self.etp_exec,

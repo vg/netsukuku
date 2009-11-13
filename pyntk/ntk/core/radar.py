@@ -187,8 +187,8 @@ class Neighbour(object):
                                 self.ip_netid_change_broadcast_udp]
         self.monitor_neighbours()
 
-        self.events.listen('TIME_TICK', self.readvertise)
-        #self.etp.events.listen('TIME_TICK', self.readvertise)
+        self.events.listen('TIME_TICK', self.readvertise_local)
+        #self.etp.events.listen('TIME_TICK', self.readvertise_local)
         # This is placed in module qspn. TODO refactor.
 
     @microfunc(True)
@@ -204,13 +204,51 @@ class Neighbour(object):
                         'DELETETHISLOG - Known Neighbours: ' + known_neighs)
 
     @microfunc(True)
-    def readvertise(self, old_node_nb=None, cur_node_nb=None):
+    def readvertise_local(self, old_node_nb, cur_node_nb):
         '''Detects and handle the cases of Communicating Vessels and
            Gnode Splitting.'''
 
-        # Note: old_node_nb and cur_node_nb are valorized only when we get
-        # called locally as a handler of event TIME_TICK. They are None when
-        # we get called directly by a neighbour.
+        # Note: this function handles the event TIME_TICK locally
+
+        if self.ntkd_status.gonna_hook or self.ntkd_status.hooking:
+            # I'm hooking, better not to emit any signal.
+            stacktrace = get_stackframes()
+            logging.debug('Neighbour.readvertise: I\'m hooking, better not to emit any signal, while at ' + stacktrace)
+            return
+
+        logging.debug('Neighbour.readvertise_local microfunc started.')
+        ## Chech if the size of network has changed.
+        def add(a,b):return a+b
+        if reduce(add, old_node_nb) == reduce(add, cur_node_nb):
+            # If not, exit
+            logging.debug('Neighbour.readvertise does NOT need to be executed.')
+            return
+
+        # Get only the neighbours OUT of my network.
+        for neigh in self.neigh_list(out_of_my_network=True):
+            logging.debug('Neighbour.readvertise_local will send to ' + str(neigh))
+            key = (neigh.ip, neigh.netid)
+            self.add(key)
+            # This call is a microfunc and won't schedule right now.
+            # So we should not have problems with the list obtained with neigh_list.
+            self.call_readvertise_udp_tasklet(neigh)
+
+        logging.debug('Neighbour.readvertise_local microfunc done. exiting.')
+
+    @microfunc(True)
+    def call_readvertise_udp_tasklet(self, neigh):
+        try:
+            self.call_readvertise_udp(neigh)
+        except Exception, e:
+            logging.debug('Neighbour.readvertise_local: Exception while asking to ' \
+              + str(neigh) + ' to readvertise: ' + str(e))
+
+    @microfunc(True)
+    def readvertise(self):
+        '''Detects and handle the cases of Communicating Vessels and
+           Gnode Splitting.'''
+
+        # Note: We are called directly by a neighbour.
 
         # Implements "zombie" status
         if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
@@ -221,30 +259,13 @@ class Neighbour(object):
             logging.debug('Neighbour.readvertise: I\'m hooking, better not to emit any signal, while at ' + stacktrace)
             return
 
-        ## Chech if we have been called remotely.
-        if old_node_nb is not None:
-            logging.debug('Neighbour.readvertise microfunc started. By a local event.')
-            ## If not, chech if the size of network has changed.
-            def add(a,b):return a+b
-            if reduce(add, old_node_nb) == reduce(add, cur_node_nb):
-                # If not, exit
-                logging.debug('Neighbour.readvertise does NOT need to be executed.')
-                return
-        else:
-            logging.debug('Neighbour.readvertise microfunc started. Called remotely.')
+        logging.debug('Neighbour.readvertise microfunc started. Called remotely.')
 
         # Get only the neighbours OUT of my network.
         for neigh in self.neigh_list(out_of_my_network=True):
             logging.debug('Neighbour.readvertise will send to ' + str(neigh))
             key = (neigh.ip, neigh.netid)
             self.add(key)
-            ## Only if we have NOT been called remotely.
-            if old_node_nb is not None:
-                try:
-                    self.call_readvertise_udp(neigh)
-                except Exception, e:
-                    logging.debug('Neighbour.readvertise: Exception while asking to ' \
-                      + str(neigh) + ' to readvertise: ' + str(e))
 
         logging.debug('Neighbour.readvertise microfunc done. exiting.')
 
