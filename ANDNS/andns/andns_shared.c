@@ -109,7 +109,7 @@ int andns_set_question(andns_query *q, andns_pkt *p)
             res= inet_pton(AF_INET6, qst, &i6a);
             if (res) {
                 align_andns_question(p, 16);
-                memcpy(p->qstdata, &i6a.in6_u, 16);
+                memcpy(p->qstdata, &i6a.s6_addr, 16);
                 p->ipv= AF_INET6;
             }
             else {
