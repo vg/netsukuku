@@ -6,7 +6,7 @@ ip link > ${FILE_LINK}
 ip addr show eth0 > ${FILE_ADDR}
 ip route > ${FILE_ROUTE}
 nics=$(cat ${FILE_LINK} | grep '^...eth' | cut -d ' ' -f 2 | cut -d ':' -f 1)
-my_addr=$(cat ${FILE_ADDR} | grep inet | cut -d ' ' -f 6 | cut -d '/' -f 1)
+my_addr=$(cat ${FILE_ADDR} | grep 'inet ' | cut -d ' ' -f 6 | cut -d '/' -f 1)
 neighbours=$(cat ${FILE_ROUTE} | grep -E -v " (via|src)" | cut -d ' ' -f 1)
 gnode1=$(cat ${FILE_ROUTE} | grep -E " (via|src) " | cut -d ' ' -f 1 | grep -v /)
 gnode2=$(cat ${FILE_ROUTE} | grep -E " (via|src) " | cut -d ' ' -f 1 | grep /24 | cut -d / -f 1)

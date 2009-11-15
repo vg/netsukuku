@@ -11,6 +11,20 @@ find_dir_script()
  fi
 }
 
+monitor_network()
+{
+ cat >> /root/.profile <<-EndProfile
+	
+	cat >/root/my_screenrc <<-EOF
+		split
+		screen tcpdump -i any -s 1500 -n
+		focus
+		screen bash
+		EOF
+	sleep 2 && screen -c /root/my_screenrc || sleep 2 && screen -c /root/my_screenrc
+	EndProfile
+}
+
 launch_ntkd()
 {
  # Launches ntkd in background. All nics are managed. Logs are saved.
