@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Netsukuku
 # (c) Copyright 2007 Daniele Tricoli aka Eriol <eriol@mornie.org>
@@ -22,15 +23,14 @@
 #
 
 import sys
-if sys.version_info < (2,5):
-    print 'You must use at least Python 2.5 for Netsukuku' # TODO: check more deeply
-    sys.exit(3)
+if sys.version_info < (2, 6):
+    sys.exit('You must use at least Python 2.6 for Netsukuku')
 
 from distutils.core import setup
 from ntk import VERSION
 
 setup(
-    name='pyntk', 
+    name='pyntk',
     description='Mesh network that generates and sustains itself autonomously.',
     long_description=\
 '''
@@ -46,6 +46,15 @@ ISPs or control authorities.
     url='http://www.netsukuku.org',
     version=VERSION,
     license='General Public License',
-    packages=['ntk', 'ntk.core', 'ntk.lib',
-              'ntk.network', 'ntk.sim', 'ntk.wrap'],
+    packages=['ntk',
+              'ntk.core',
+              'ntk.lib',
+              'ntk.network',
+              'ntk.network.dummy',
+              'ntk.network.linux',
+              'ntk.sim',
+              'ntk.sim.lib',
+              'ntk.sim.network',
+              'ntk.sim.wrap',
+              'ntk.wrap'],
     scripts=['ntkd'])
