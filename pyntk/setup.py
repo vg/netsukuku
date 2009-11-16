@@ -18,9 +18,9 @@
 # this source code; if not, write to:
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
-#
-# Netsukuku distutils installer
-#
+'''
+Netsukuku distutils installer
+'''
 
 import sys
 if sys.version_info < (2, 6):
@@ -30,10 +30,10 @@ from distutils.core import setup
 from ntk import VERSION
 
 setup(
-    name='pyntk',
-    description='Mesh network that generates and sustains itself autonomously.',
-    long_description=\
-'''
+    name='Netsukuku',
+    description='Mesh network that generates and sustains itself '
+                'autonomously.',
+    long_description='''\
 Netsukuku is a mesh network or a p2p net system that generates and sustains
 itself autonomously. It is designed to handle an unlimited number of nodes
 with minimal CPU and memory resources. Thanks to this feature it can be
