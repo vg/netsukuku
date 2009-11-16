@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Netsukuku
 # (c) Copyright 2008 Daniele Tricoli aka Eriol <eriol@mornie.org>
@@ -19,29 +20,33 @@
 
 
 class BaseNIC(object):
-    ''' Rapresents a Network Iterface Controller '''
+    '''Rapresents a Network Iterface Controller'''
 
     def __init__(self, name):
         self.name = name
 
     def up(self):
-        ''' Brings the interface up. '''
+        '''Brings the interface up.'''
         raise NotImplementedError
 
     def down(self):
-        ''' Brings the interface down. '''
+        '''Brings the interface down.'''
         raise NotImplementedError
 
     def show(self):
-        ''' Shows NIC information. '''
+        '''Shows NIC information.'''
+        raise NotImplementedError
+
+    def flush(self):
+        '''Flushes all NIC addresses.'''
         raise NotImplementedError
 
     def set_address(self, address):
-        ''' Set NIC address. '''
+        '''Set NIC address.'''
         raise NotImplementedError
 
     def get_address(self):
-        ''' Gets NIC address. '''
+        '''Gets NIC address.'''
         raise NotImplementedError
 
     def _get_address_getter(self):
@@ -52,8 +57,17 @@ class BaseNIC(object):
 
     address = property(_get_address_getter, _set_address_getter)
 
+    def get_mac(self):
+        '''Gets NIC MAC address'''
+        raise NotImplementedError
+
+    def _get_mac_getter(self):
+        return self.get_mac()
+
+    mac = property(_get_mac_getter)
+
     def get_is_active(self):
-        ''' Returns True if NIC is active. '''
+        '''Returns True if NIC is active.'''
         raise NotImplementedError
 
     def _get_is_active_getter(self):
@@ -63,11 +77,11 @@ class BaseNIC(object):
 
     # multicast is used with ipv6
     def set_multicast(self, m):
-        ''' Set multicast for the interface. '''
+        '''Set multicast for the interface.'''
         raise NotImplementedError
 
     def get_multicast(self, m):
-        ''' Gets multicast for the interface. '''
+        '''Gets multicast for the interface.'''
         raise NotImplementedError
 
     def _get_multicast_getter(self):
@@ -78,8 +92,8 @@ class BaseNIC(object):
 
     multicast = property(_get_multicast_getter, _set_multicast_getter)
 
-    def filtering(*args, **kargs):
-        ''' Enables or disables filtering. '''
+    def filtering(self, *args, **kargs):
+        '''Enables or disables filtering.'''
         raise NotImplementedError
 
     def __str__(self):
@@ -88,35 +102,36 @@ class BaseNIC(object):
     def __repr__(self):
         return '<NIC: %s>' % self.name
 
+
 class BaseRoute(object):
-    ''' Rapresents a route controller. '''
+    '''Rapresents a route controller.'''
 
     @staticmethod
     def add(ip, cidr, dev=None, gateway=None):
-        ''' Adds a new route with corresponding properties. '''
+        '''Adds a new route with corresponding properties.'''
         raise NotImplementedError
 
     @staticmethod
     def change(properties):
-        ''' Edits the route with the corresponding properties. '''
+        '''Edits the route with the corresponding properties.'''
         raise NotImplementedError
 
     @staticmethod
     def delete(ip, cidr, dev=None, gateway=None):
-        ''' Removes the route with the corresponding properties. '''
+        '''Removes the route with the corresponding properties.'''
         raise NotImplementedError
 
     @staticmethod
     def flush():
-        ''' Flushes all routes. '''
+        '''Flushes all routes.'''
         raise NotImplementedError
 
     @staticmethod
     def flush_cache():
-        ''' Flushes cache '''
+        '''Flushes cache'''
         raise NotImplementedError
 
     @staticmethod
     def ip_forward(enable):
-        ''' Enables/disables ip forwarding. '''
+        '''Enables/disables ip forwarding.'''
         raise NotImplementedError

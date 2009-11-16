@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Netsukuku
 # (c) Copyright 2008 Daniele Tricoli aka Eriol <eriol@mornie.org>
@@ -24,46 +25,53 @@ class NIC(BaseNIC):
     ''' Dummy Network Interface Controller '''
 
     def up(self):
-        pass
+        '''Brings the interface up.'''
 
     def down(self):
-        pass
+        '''Brings the interface down.'''
 
     def show(self):
+        '''Shows NIC information.'''
         print 'Netsukuku Dummy Interface'
 
+    def flush(self):
+        '''Flushes all NIC addresses.'''
+
     def set_address(self, address):
-        pass
+        '''Set NIC address.'''
 
     def get_address(self):
-        return None
+        '''Gets NIC address.'''
+
+    def get_mac(self):
+        '''Gets NIC MAC address'''
 
     def filtering(self, *args, **kargs):
-        pass
+        '''Enables or disables filtering.'''
 
 class Route(BaseRoute):
-    ''' Dummy route  '''
+    '''Dummy route'''
 
     @staticmethod
     def add(ip, cidr, dev=None, gateway=None):
-        ''' Adds a new route with corresponding properties. '''
+        '''Adds a new route with corresponding properties.'''
 
     @staticmethod
     def change(properties):
-        ''' Edits the route with the corresponding properties. '''
+        '''Edits the route with the corresponding properties.'''
 
     @staticmethod
     def delete(ip, cidr, dev=None, gateway=None):
-        ''' Removes the route with the corresponding properties. '''
+        '''Removes the route with the corresponding properties.'''
 
     @staticmethod
     def flush():
-        ''' Flushes all routes. '''
+        '''Flushes all routes.'''
 
     @staticmethod
     def flush_cache():
-        ''' Flushes cache '''
+        '''Flushes cache'''
 
     @staticmethod
     def ip_forward(enable):
-        ''' Enables/disables ip forwarding. '''
+        '''Enables/disables ip forwarding.'''

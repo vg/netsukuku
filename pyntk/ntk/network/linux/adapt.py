@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Netsukuku
 # (c) Copyright 2008 Daniele Tricoli aka Eriol <eriol@mornie.org>
@@ -27,18 +28,15 @@ from ntk.lib.log import logger as logging
 from ntk.network.interfaces import BaseNIC, BaseRoute
 
 def file_write(path, data):
-    ''' Writes `data' to the file pointed by `path' '''
-    fout = open(path, 'w')
-    try:
-        fout.write(data)
-    finally:
-        fout.close()
+    ''' Writes data to the file pointed by path'''
+    with open(path, 'w') as f:
+        f.write(data)
 
 class IPROUTECommandError(Exception):
-    ''' A generic iproute exception '''
+    '''A generic iproute exception'''
 
 def iproute(args):
-    ''' An iproute wrapper '''
+    '''An iproute wrapper'''
 
     try:
         IPROUTE_PATH = settings.IPROUTE_PATH
@@ -66,53 +64,58 @@ def iproute(args):
     return stdout_value
 
 class NIC(BaseNIC):
-    ''' Network Interface Controller handled using iproute '''
+    '''Network Interface Controller handled using iproute'''
 
     def up(self):
-        ''' Brings the interface up. '''
+        '''Brings the interface up.'''
         iproute('link set %s up' % self.name)
 
     def down(self):
-        ''' Brings the interface down. '''
+        '''Brings the interface down.'''
         iproute('link set %s down' % self.name)
 
     def show(self):
-        ''' Shows NIC information. '''
+        '''Shows NIC information.'''
         return iproute('addr show %s' % self.name)
 
-    def _flush(self):
-        ''' Flushes all NIC addresses. '''
+    def flush(self):
+        '''Flushes all NIC addresses.'''
         iproute('addr flush dev %s' % self.name)
 
     def set_address(self, address):
-        ''' Set NIC address.
+        '''Set NIC address.
         To remove NIC address simply put it to None or ''.
 
-        @param address: Address of the interface.
-        @type address: C{str}
+        :arg address: Address of the interface.
+        :type address: C{str}
         '''
         # We use only one address for NIC, so a flush is needed.
         if self.address:
-            self._flush()
+            self.flush()
         if address is not None and address != '':
             iproute('addr add %s dev %s' % (address, self.name))
 
     def get_address(self):
-        ''' Gets NIC address. '''
+        '''Gets NIC address.'''
         if settings.IP_VERSION == 4:
             r = re.compile(r'''inet\s((?:\d{1,3}\.){3}\d{1,3})/''')
         matched_address = r.search(self.show())
         return matched_address.groups()[0] if matched_address else None
 
+    def get_mac(self):
+        '''Gets NIC MAC address'''
+        r = re.compile(r'''\s([a-fA-F0-9]{2}[:|\-]?){6}\s''')
+        matched_address = r.search(self.show())
+        return matched_address.group().strip() if matched_address else None
+
     def get_is_active(self):
-        ''' Returns True if NIC is active. '''
+        '''Returns True if NIC is active.'''
         r = re.compile(r'''<.*,(UP),.*>''')
         matched_active = r.search(self.show())
         return True if matched_active else False
 
     def filtering(self, *args, **kargs):
-        ''' Enables or disables filtering. '''
-
+        '''Enables or disables filtering.'''
         self._rp_filter(*args, **kargs)
 
     def _rp_filter(self, enable=True):
