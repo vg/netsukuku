@@ -397,7 +397,7 @@ class Etp(object):
                 etp = (R, TPL, flag_of_interest)
                 self.etp_send_to_neigh(etp, w, current_netid, current_nip)
 
-    @microfunc()
+    @microfunc(True)
     def etp_exec(self, sender_nip, sender_netid, R, TPL, flag_of_interest, seq_num):
 
         # Implements "zombie" status
