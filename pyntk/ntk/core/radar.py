@@ -1024,7 +1024,7 @@ class Radar(object):
                   'bouquet_numb', 'bcast_send_time', 'xtime',
                   'bcast_arrival_time', 'bcast_macs', 'max_bouquet', 'wait_time',
                   'broadcast', 'neigh', 'events',
-                  'remotable_funcs', 'ntkd_id', 'radar_id', 'max_neigh',
+                  'remotable_funcs', 'radar_id', 'max_neigh',
                   'increment_wait_time', 'stopping', 'running_instances']
 
     def __init__(self, ntkd_status, time_tick_serializer, nic_manager, maproute, broadcast, xtime):
@@ -1069,9 +1069,6 @@ class Radar(object):
 
         self.remotable_funcs = [self.reply_broadcast_udp, self.time_register_broadcast_udp]
 
-        # this is needed to avoid to answer to myself
-        self.ntkd_id = randint(0, 2**32-1)
-
     def run(self):
         # Before launching the microfunc,
         # make sure to note down that radar.run has been launched.
@@ -1114,7 +1111,7 @@ class Radar(object):
                 self.radar_id.append(radar_id)
                 self.bcast_send_time[radar_id] = bcast_send_time
                 logging.debug('radar: sending a packet')
-                self.call_reply_broadcast_udp(self.ntkd_id, radar_id)
+                self.call_reply_broadcast_udp(radar_id)
                 self.xtime.swait(interval * 1000)
             self.xtime.swait(self.wait_time * 500 + self.increment_wait_time)
 
@@ -1144,35 +1141,34 @@ class Radar(object):
         # Reset the broadcast sockets
         self.broadcast.reset()
 
-    def reply(self, _rpc_caller, ntkd_id, radar_id):
+    def reply(self, _rpc_caller, radar_id):
         """ As answer we'll return our netid """
 
         # Implements "zombie" status
         if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
 
-        if ntkd_id != self.ntkd_id:
-            bcc = rpc.BcastClient(devs=[_rpc_caller.dev], 
-                                  xtimemod=self.xtime)
-            receiving_mac = self.nic_manager[_rpc_caller.dev].mac
-            try:
-                self.call_time_register_broadcast_udp([_rpc_caller.dev], radar_id, self.neigh.netid, receiving_mac)
-            except:
-                logging.log(logging.ULTRADEBUG, 'Radar: Reply: '
-                            'BcastClient ' + str(bcc) + ' with '
-                            'dispatcher ' + 
-                            repr(bcc.dev_sk[_rpc_caller.dev].dispatcher) +
-                            ' error in rpc execution. Ignored.')
+        bcc = rpc.BcastClient(devs=[_rpc_caller.dev], 
+                              xtimemod=self.xtime)
+        receiving_mac = self.nic_manager[_rpc_caller.dev].mac
+        try:
+            self.call_time_register_broadcast_udp([_rpc_caller.dev], radar_id, self.neigh.netid, receiving_mac)
+        except:
+            logging.log(logging.ULTRADEBUG, 'Radar: Reply: '
+                        'BcastClient ' + str(bcc) + ' with '
+                        'dispatcher ' + 
+                        repr(bcc.dev_sk[_rpc_caller.dev].dispatcher) +
+                        ' error in rpc execution. Ignored.')
 
-    def call_reply_broadcast_udp(self, ntkd_id, radar_id):
+    def call_reply_broadcast_udp(self, radar_id):
         """Use BcastClient to call <broadcast> reply"""
         devs = list(self.broadcast.devs)
         rpc.UDP_broadcast_call(devs,'radar.reply_broadcast_udp',
-                               (ntkd_id, radar_id))
+                               (radar_id, ))
 
-    def reply_broadcast_udp(self, _rpc_caller, caller_id, ntkd_id, radar_id):
+    def reply_broadcast_udp(self, _rpc_caller, caller_id, radar_id):
         """Receives call for radar.reply."""
         if rpc.UDP_broadcast_got_call(_rpc_caller, caller_id):
-            self.reply(_rpc_caller, ntkd_id, radar_id)
+            self.reply(_rpc_caller, radar_id)
 
     def time_register(self, _rpc_caller, radar_id, netid, mac):
         """save each node's rtt"""
