@@ -1110,21 +1110,17 @@ class Radar(object):
         if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
 
         if ntkd_id != self.ntkd_id:
-            # If I am hooking I will not reply to radar scans from my 
-            # neighbours
-            # TODO is that ok?
-            if self.neigh.netid != -1:
-                bcc = rpc.BcastClient(devs=[_rpc_caller.dev], 
-                                      xtimemod=self.xtime)
-                receiving_mac = self.nic_manager[_rpc_caller.dev].mac
-                try:
-                    bcc.radar.time_register(radar_id, self.neigh.netid, receiving_mac)
-                except:
-                    logging.log(logging.ULTRADEBUG, 'Radar: Reply: '
-                                'BcastClient ' + str(bcc) + ' with '
-                                'dispatcher ' + 
-                                repr(bcc.dev_sk[_rpc_caller.dev].dispatcher) +
-                                ' error in rpc execution. Ignored.')
+            bcc = rpc.BcastClient(devs=[_rpc_caller.dev], 
+                                  xtimemod=self.xtime)
+            receiving_mac = self.nic_manager[_rpc_caller.dev].mac
+            try:
+                bcc.radar.time_register(radar_id, self.neigh.netid, receiving_mac)
+            except:
+                logging.log(logging.ULTRADEBUG, 'Radar: Reply: '
+                            'BcastClient ' + str(bcc) + ' with '
+                            'dispatcher ' + 
+                            repr(bcc.dev_sk[_rpc_caller.dev].dispatcher) +
+                            ' error in rpc execution. Ignored.')
 
     def time_register(self, _rpc_caller, radar_id, netid, mac):
         """save each node's rtt"""
