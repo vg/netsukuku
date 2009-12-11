@@ -109,9 +109,11 @@ class NtkNode(object):
     def time_tick(self, function, args=(), **kwargs):
         try:
             logging.log(logging.ULTRADEBUG, 'time_tick: start ' + str(function))
+            tstart = xtime.time()
             function(*args, **kwargs)
         finally:
-            logging.log(logging.ULTRADEBUG, 'time_tick: exit ' + str(function))
+            tstop = xtime.time()
+            logging.log(logging.ULTRADEBUG, 'time_tick: took' + str(tstop - tstart) + ' msec: exit ' + str(function))
 
     def reset(self, oldip=None, newnip=None):
         logging.debug('resetting node')
