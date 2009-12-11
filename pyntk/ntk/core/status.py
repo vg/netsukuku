@@ -18,6 +18,8 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
+from ntk.lib.log import logger as logging
+
 class ZombieException(Exception): pass
 
 class StatusManager(object):
@@ -84,6 +86,7 @@ class StatusManager(object):
             raise Exception('StatusManager: You have to generate a random ' \
                            + 'id or use unset_zombie_id')
         # now I am a zombie:
+        logging.log_on_file('/tmp/zombie.log', 1)
         self._zombie_id = value
         self._gonna_hook = False
         self._hooking = False
@@ -96,6 +99,7 @@ class StatusManager(object):
         if value != self._zombie_id:
             raise Exception('StatusManager: You are not the owner of this ' \
                            + 'zombie_id')
+        logging.log_on_file('/tmp/zombie.log', 0)
         self._zombie_id = 0
 
     def _get_hooked(self):

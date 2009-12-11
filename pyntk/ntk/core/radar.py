@@ -958,6 +958,7 @@ class Neighbour(object):
         # Sets new netid
         self.netid = new_netid
         logging.info('change_netid: my netid is now ' + str(self.netid) + '.')
+        logging.log_on_file('/tmp/netid.log', new_netid)
         # We DO need to send add events for new companions. We already have set the
         # netid, it won't change during the sending of the ETP.
         for neigh in self.neigh_list():

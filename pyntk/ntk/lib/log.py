@@ -89,3 +89,16 @@ def log_exception_stacktrace(e, indent=2):
                                                                  fr[2]))
         logger.error(spaces + "    %s" % (fr[3], ))
 
+def log_on_file(filename, msg):
+    f = None
+    try:
+        f = open(filename, 'a')
+    except:
+        return
+    try:
+        f.write(str(msg) + '\n')
+    finally:
+        f.close()
+
+logger.log_on_file = log_on_file
+

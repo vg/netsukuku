@@ -13,16 +13,7 @@ find_dir_script()
 
 monitor_network()
 {
- cat >> /root/.profile <<-EndProfile
-	
-	cat >/root/my_screenrc <<-EOF
-		split
-		screen tcpdump -i any -s 1500 -n
-		focus
-		screen bash
-		EOF
-	sleep 2 && screen -c /root/my_screenrc || sleep 2 && screen -c /root/my_screenrc
-	EndProfile
+ /hosthome/netsukuku/scripts-netkit/monitor.py &
 }
 
 launch_ntkd()
@@ -82,7 +73,7 @@ delay_warn_then_log_do()
  shift 3
  sleep $DELAY
  echo $WARN
- $* &>${output}
+ $* >> ${output} 2>&1
 }
 
 kill_generation()
