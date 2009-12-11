@@ -31,6 +31,7 @@ from ntk.lib.micro import microfunc, Channel, micro_block
 from ntk.lib.event import Event
 from ntk.network.inet import ip_to_str, valid_ids
 from ntk.core.status import ZombieException 
+import ntk.core.monitor as monitor
 
 class Hook(object):
 

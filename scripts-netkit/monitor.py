@@ -24,6 +24,120 @@ import subprocess
 import curses
 import time
 
+def get_links():
+    try:
+        f = open("/tmp/monitor_links.log")
+    except:
+        return None
+    try:
+        try:
+            f.seek(-30, os.SEEK_END)
+        except:
+            pass # fewer bytes.
+        lines = f.readlines()
+        # last line, without \n
+        l = lines[-1][:-1]
+        return l
+    except:
+        return None
+    finally:
+        f.close()
+
+def get_etp():
+    try:
+        f = open("/tmp/monitor_etp.log")
+    except:
+        return None
+    try:
+        try:
+            f.seek(-30, os.SEEK_END)
+        except:
+            pass # fewer bytes.
+        lines = f.readlines()
+        # last line, without \n
+        l = lines[-1][:-1]
+        return l
+    except:
+        return None
+    finally:
+        f.close()
+
+def get_dropped():
+    try:
+        f = open("/tmp/monitor_dropped.log")
+    except:
+        return None
+    try:
+        try:
+            f.seek(-30, os.SEEK_END)
+        except:
+            pass # fewer bytes.
+        lines = f.readlines()
+        # last line, without \n
+        l = lines[-1][:-1]
+        return l
+    except:
+        return None
+    finally:
+        f.close()
+
+def get_paths():
+    try:
+        f = open("/tmp/monitor_paths.log")
+    except:
+        return None
+    try:
+        try:
+            f.seek(-30, os.SEEK_END)
+        except:
+            pass # fewer bytes.
+        lines = f.readlines()
+        # last line, without \n
+        l = lines[-1][:-1]
+        return l
+    except:
+        return None
+    finally:
+        f.close()
+
+def get_collisions():
+    try:
+        f = open("/tmp/monitor_collisions.log")
+    except:
+        return None
+    try:
+        try:
+            f.seek(-30, os.SEEK_END)
+        except:
+            pass # fewer bytes.
+        lines = f.readlines()
+        # last line, without \n
+        l = lines[-1][:-1]
+        return l
+    except:
+        return None
+    finally:
+        f.close()
+
+def get_splits():
+    try:
+        f = open("/tmp/monitor_splits.log")
+    except:
+        return None
+    try:
+        try:
+            f.seek(-30, os.SEEK_END)
+        except:
+            pass # fewer bytes.
+        lines = f.readlines()
+        # last line, without \n
+        l = lines[-1][:-1]
+        return l
+    except:
+        return None
+    finally:
+        f.close()
+
 def get_netid():
     try:
         f = open("/tmp/netid.log")
@@ -144,6 +258,24 @@ def main(stdscr):
         status = get_status()
         if status is None:
             status = ['-'] * 4
+        links = get_links()
+        if links is None:
+            links = '-'
+        etp = get_etp()
+        if etp is None:
+            etp = '-'
+        dropped = get_dropped()
+        if dropped is None:
+            dropped = '-'
+        paths = get_paths()
+        if paths is None:
+            paths = '-'
+        collisions = get_collisions()
+        if collisions is None:
+            collisions = '-'
+        splits = get_splits()
+        if splits is None:
+            splits = '-'
 
         stdscr.clear()
 
@@ -161,6 +293,19 @@ def main(stdscr):
         stdscr.addstr(8, 0, status[1])
         stdscr.addstr(9, 0, status[2])
         stdscr.addstr(10, 0, status[3])
+
+        stdscr.addstr(12, 0, "LINKS", attr_title)
+        stdscr.addstr(12, 11, links)
+        stdscr.addstr(13, 0, "ETP", attr_title)
+        stdscr.addstr(13, 11, etp)
+        stdscr.addstr(14, 0, "DROPPED", attr_title)
+        stdscr.addstr(14, 11, dropped)
+        stdscr.addstr(15, 0, "PATHS", attr_title)
+        stdscr.addstr(15, 11, paths)
+        stdscr.addstr(16, 0, "COLLISIONS", attr_title)
+        stdscr.addstr(16, 11, collisions)
+        stdscr.addstr(17, 0, "SPLITS", attr_title)
+        stdscr.addstr(17, 11, splits)
 
         neighbours, routes = get_neighbours_routes()
 

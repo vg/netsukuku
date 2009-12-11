@@ -30,6 +30,7 @@ from ntk.lib.micro import microfunc, micro_block, DispatcherToken
 from ntk.lib.rpc import RPCError
 from ntk.network.inet import ip_to_str
 from ntk.core.status import ZombieException 
+import ntk.core.monitor as monitor
 
 etp_exec_dispatcher_token = DispatcherToken()
 
@@ -75,12 +76,12 @@ class Etp(object):
         etp = (etp[0], etp[1], etp[2], self.etp_seq_num)
 
         if current_netid != self.neigh.netid:
-            logging.info('An ETP dropped because we changed network from ' +
+            logging.info('etp_send_to_neigh: An ETP dropped because we changed network from ' +
                          str(current_netid) + ' to ' + 
                          str(self.neigh.netid) + '.')
             return
         if current_nip != self.maproute.me:
-            logging.info('An ETP dropped because we changed NIP from ' +
+            logging.info('etp_send_to_neigh: An ETP dropped because we changed NIP from ' +
                          str(current_nip) + ' to ' + 
                          str(self.maproute.me) + '.')
             return
@@ -95,6 +96,7 @@ class Etp(object):
             self.call_etp_exec_udp(neigh, self.maproute.me, 
                                    self.neigh.netid, *etp)
             logging.info('Sent ETP to %s', str(neigh))
+            monitor.etp_out()
         except Exception, e:
             if isinstance(e, RPCError):
                 logging.warning('Etp: sending to ' + str(neigh) + ' RPCError.')
@@ -228,8 +230,10 @@ class Etp(object):
                             # new route Bestᵗ⁺¹ (A → w̃ → v) has to be sent to w
                             new_best_not_w = routes_to_v.best_route_without(w_lvl_id)
                             if new_best_not_w:
+                                monitor.path_info_sent()
                                 R[lvl].append((dst, new_best_not_w.rem, new_best_not_w.hops_with_gw))
                             else:
+                                monitor.path_info_sent()
                                 R[lvl].append((dst, DeadRem(), []))
         # Now, ∀v ∈ V
         for lvl in xrange(self.maproute.levels):
@@ -253,6 +257,7 @@ class Etp(object):
                                 if rr[0] == dst:
                                     present = True
                             if not present:
+                                monitor.path_info_sent()
                                 R[lvl].append((dst, new_best_not_w.rem, new_best_not_w.hops_with_gw))
 
         flag_of_interest=1
@@ -302,6 +307,7 @@ class Etp(object):
                         # if Bestᵗ (A → v) > 0
                         if best is not None:
                             # new route Bestᵗ (A → v) has to be sent to B
+                            monitor.path_info_sent()
                             R[lvl].append((dst, best.rem, best.hops_with_gw))
                     else:
                         # A computes Bestᵗ (A → B̃ → v)
@@ -310,6 +316,7 @@ class Etp(object):
                         # if Bestᵗ (A → B̃ → v) > 0
                         if best is not None:
                             # new route Bestᵗ (A → B̃ → v) has to be sent to B
+                            monitor.path_info_sent()
                             R[lvl].append((dst, best.rem, best.hops_with_gw))
 
         # We must add a route to ourself.
@@ -366,6 +373,7 @@ class Etp(object):
                                 w_lvl_id = self.maproute.routeneigh_get(w)
                                 # new route Bestᵗ⁺¹ (A → w̃ → v) has to be sent to w
                                 new_best_not_w = routes_to_v.best_route_without(w_lvl_id)
+                                monitor.path_info_sent()
                                 R[lvl].append((dst, new_best_not_w.rem, new_best_not_w.hops_with_gw))
         # Now, ∀v ∈ V
         for lvl in xrange(self.maproute.levels):
@@ -388,6 +396,7 @@ class Etp(object):
                                 if rr[0] == dst:
                                     present = True
                             if not present:
+                                monitor.path_info_sent()
                                 R[lvl].append((dst, new_best_not_w.rem, new_best_not_w.hops_with_gw))
 
         flag_of_interest=1
@@ -410,11 +419,13 @@ class Etp(object):
         # for some ETP we must consider only the ones from our new network.
         # After the hook, on event HOOKED2, we'll readvertise to the outside neighbours.
         if self.ntkd_status.gonna_hook or self.ntkd_status.hooking:
+            monitor.etp_drop_hooking()
             return
         if not self.ntkd_status.hooked:
             logging.debug('Still waiting ETP only from new network...')
             if sender_netid != self.neigh.netid:
                 logging.debug('...this is not.')
+                monitor.etp_drop_hooked_waiting()
                 return
             else:
                 logging.debug('...this is one of them.')
@@ -438,6 +449,7 @@ class Etp(object):
                 logging.info('ETP from (nip, netid) = ' + 
                              str((sender_nip, sender_netid)) + 
                              ' dropped: timeout.')
+                monitor.etp_drop_neigh_not_found()
                 return
             xtime.swait(50)
             neigh = self.neigh.key_to_neigh((gwip, sender_netid))
@@ -448,11 +460,13 @@ class Etp(object):
             # for some ETP we must consider only the ones from our new network.
             # After the hook, on event HOOKED2, we'll readvertise to the outside neighbours.
             if self.ntkd_status.gonna_hook or self.ntkd_status.hooking:
+                monitor.etp_drop_hooking()
                 return
             if not self.ntkd_status.hooked:
                 if sender_netid != self.neigh.netid:
                     logging.debug('Still waiting ETP only from new network...')
                     logging.debug('...this is not.')
+                    monitor.etp_drop_hooked_waiting()
                     return
 
         self.time_tick_serializer(self.serialized_etp_exec, (neigh, current_netid, current_nip, sender_nip, sender_netid, R, TPL, flag_of_interest, seq_num))
@@ -519,32 +533,34 @@ class Etp(object):
             # for some ETP we must consider only the ones from our new network.
             # After the hook, on event HOOKED2, we'll readvertise to the outside neighbours.
             if self.ntkd_status.gonna_hook or self.ntkd_status.hooking:
+                monitor.etp_drop_hooking()
                 return
             if not self.ntkd_status.hooked:
                 logging.debug('Still waiting ETP only from new network...')
                 if sender_netid != self.neigh.netid:
                     logging.debug('...this is not.')
+                    monitor.etp_drop_hooked_waiting()
                     return
                 else:
                     logging.debug('...this is one of them.')
 
-            # Ignore ETP from -1 ... that should not happen.
-            if sender_netid == -1:
-                # I raise exception just to give more visibility.
-                raise Exception('ETP received from a node with netid = -1 '
-                                '(not completely kooked).')
-
             # Before starting ETP execution,
             # check that situation is still valid.
             if current_netid != self.neigh.netid:
-                logging.info('An ETP dropped because we changed network from ' +
+                logging.info('etp_exec: An ETP dropped because we changed network from ' +
                              str(current_netid) + ' to ' + 
                              str(self.neigh.netid) + '.')
+                monitor.etp_drop_changed()
                 return
             if current_nip != self.maproute.me:
-                logging.info('An ETP dropped because we changed NIP from ' +
+                logging.info('etp_exec: An ETP dropped because we changed NIP from ' +
                              str(current_nip) + ' to ' + 
                              str(self.maproute.me) + '.')
+                monitor.etp_drop_changed()
+                return
+            if sender_netid == -1:
+                logging.info('etp_exec: An ETP dropped because the neighbour is hooking.')
+                monitor.etp_drop_sender_hooking()
                 return
 
             # This is a serialized method that passes from time t to time t+1.
@@ -553,6 +569,8 @@ class Etp(object):
             #  .update our memorized paths
             #  .evaluate (t)-like stuff (node_nb, ...)
             #  .emit TIME_TICK event
+
+            monitor.etp_in()
 
             ## evaluate current node_nb.
             old_node_nb = self.maproute.node_nb[:]
@@ -658,17 +676,20 @@ class Etp(object):
             # Before checking collision,
             # check that situation is still valid.
             if current_netid != self.neigh.netid:
-                logging.info('An ETP dropped because we changed network from ' +
+                logging.info('etp_exec: An ETP dropped because we changed network from ' +
                              str(current_netid) + ' to ' + 
                              str(self.neigh.netid) + '.')
+                monitor.etp_drop_changed()
                 return
             if current_nip != self.maproute.me:
-                logging.info('An ETP dropped because we changed NIP from ' +
+                logging.info('etp_exec: An ETP dropped because we changed NIP from ' +
                              str(current_nip) + ' to ' + 
                              str(self.maproute.me) + '.')
+                monitor.etp_drop_changed()
                 return
             if sender_netid == -1:
                 logging.info('etp_exec: An ETP dropped because the neighbour is hooking.')
+                monitor.etp_drop_sender_hooking()
                 return
 
             logging.debug('Translated ETP from %s', ip_to_str(gwip))
@@ -719,6 +740,7 @@ class Etp(object):
                   # Check if informations for this destination through this gateway is out-of-date
                   if seq_num > neigh.etp_seq_num[lvl][dst]:
                     neigh.etp_seq_num[lvl][dst] = seq_num
+                    monitor.path_info_received()
                     logging.debug('Will process "r" received in a ETP by ' + str(neigh) + ': lvl, dst, rem, hops = ' + str((lvl, dst, rem, hops)))
                     # rem is Bestᵗ(C → v) with v ∈ V
                     #   where C is our neighbour (neigh)
@@ -735,16 +757,23 @@ class Etp(object):
                     # Before processing a path,
                     # check that situation is still valid.
                     if current_netid != self.neigh.netid:
-                        logging.info('An ETP dropped because we changed network from ' +
+                        logging.info('etp_exec: An ETP dropped because we changed network from ' +
                                      str(current_netid) + ' to ' + 
                                      str(self.neigh.netid) + '.')
+                        monitor.etp_drop_changed()
                         return
                     if current_nip != self.maproute.me:
-                        logging.info('An ETP dropped because we changed NIP from ' +
+                        logging.info('etp_exec: An ETP dropped because we changed NIP from ' +
                                      str(current_nip) + ' to ' + 
                                      str(self.maproute.me) + '.')
+                        monitor.etp_drop_changed()
+                        return
+                    if sender_netid == -1:
+                        logging.info('etp_exec: An ETP dropped because the neighbour is hooking.')
+                        monitor.etp_drop_sender_hooking()
                         return
 
+                    monitor.path_info_used()
                     self.maproute.update_route_by_gw((lvl, dst), neigh, rem, hops)
                     # D computes Bestᵗ⁺¹ (D → v)
                     best = routes_to_v.best_route()
@@ -773,9 +802,11 @@ class Etp(object):
                                 best_without = routes_to_v.best_route_without(w_lvl_id)
                                 if best_without:
                                     logging.debug('Will send ' + str(best_without.hops_with_gw) + ' to ' + str(w_lvl_id) + ' appending myself to TPL.')
+                                    monitor.path_info_sent()
                                     set_of_forwarded_R[w][lvl].append((dst, best_without.rem, best_without.hops_with_gw))
                                 else:
                                     logging.debug('Will send DeadRem appending myself to TPL.')
+                                    monitor.path_info_sent()
                                     set_of_forwarded_R[w][lvl].append((dst, DeadRem(), []))
                   else:
                     logging.debug('Will NOT process "r" received in a ETP by ' + str(neigh) + ' for (' + str(lvl) + ', ' + str(dst) + ') because it is out-of-date.')
@@ -834,18 +865,22 @@ class Etp(object):
                                     best_without = routes_to_v.best_route_without(w_lvl_id)
                                     if best_without:
                                         logging.debug('Will send ' + str(best_without.hops_with_gw) + ' to ' + str(w_lvl_id) + ' appending myself to TPL.')
+                                        monitor.path_info_sent()
                                         set_of_new_R[w][lvl].append((dst, best_without.rem, best_without.hops_with_gw))
                                     else:
                                         logging.debug('Will send DeadRem appending myself to TPL.')
+                                        monitor.path_info_sent()
                                         set_of_new_R[w][lvl].append((dst, DeadRem(), []))
                                 else:
                                     # new route Bestᵗ⁺¹ (D → w̃ → v) has to be sent to w (con il TPL allungato)
                                     best_without = routes_to_v.best_route_without(w_lvl_id)
                                     if best_without:
                                         logging.debug('Will send ' + str(best_without.hops_with_gw) + ' to ' + str(w_lvl_id) + ' in a new ETP.')
+                                        monitor.path_info_sent()
                                         set_of_forwarded_R[w][lvl].append((dst, best_without.rem, best_without.hops_with_gw))
                                     else:
                                         logging.debug('Will send DeadRem in a new ETP.')
+                                        monitor.path_info_sent()
                                         set_of_forwarded_R[w][lvl].append((dst, DeadRem(), []))
 
             flag_of_interest=1

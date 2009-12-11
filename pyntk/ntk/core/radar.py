@@ -51,6 +51,7 @@ from ntk.lib.log import logger as logging
 from ntk.lib.micro import micro, micro_block, microfunc, Channel
 from ntk.network.inet import ip_to_str, str_to_ip
 from ntk.core.status import ZombieException
+import ntk.core.monitor as monitor
 
 
 class Neigh(object):
@@ -773,10 +774,13 @@ class Neighbour(object):
         #  .emit TIME_TICK event
         for key in to_be_deleted:
             self.store_delete_neigh(key)
+            monitor.link_dead()
         for key, val in to_be_added:
             self.store_add_neigh(key, val)
+            monitor.link_new()
         for key, val in to_be_changed:
             self.store_changed_neigh(key, val)
+            monitor.link_changed()
 
         # returns an indication for next wait time to the radar
         if not self.missing_neighbour_keys:
@@ -929,11 +933,12 @@ class Neighbour(object):
         old_ntk_client = self.get_ntk_client(oldip, oldnetid)
         # unmemorize
         self.store_delete_neigh(oldkey)
+        monitor.link_dead()
         # Attention: this removes "oldkey" from self.ip_netid_table. But 
         # current radar scan might already have put this "oldkey" in 
         # bcast_arrival_time. So...
         if oldkey in self.radar.bcast_arrival_time:
-            logging.log(logging.ULTRADEBUG, 'ip_netid_change: removing '
+            logging.log(logging.ULTRADEBUG, 'ip_netid_change: removing ' +
                         'from scan...')
             del self.radar.bcast_arrival_time[oldkey]
         # memorize
@@ -943,6 +948,7 @@ class Neighbour(object):
                         macs=old_val.macs,
                         ntkd_func=old_val.ntkd_func)
         self.store_add_neigh(newkey, new_val)
+        monitor.link_new()
 
         # take care of self.ntk_client
         if self.netid != -1:
