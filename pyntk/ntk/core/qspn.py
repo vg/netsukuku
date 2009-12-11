@@ -403,9 +403,18 @@ class Etp(object):
         # Implements "zombie" status
         if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
 
+        # If we are hooking we should not consider any ETP. But if we are waiting
+        # for some ETP we must consider only the ones from our new network.
+        # After the hook, on event HOOKED2, we'll readvertise to the outside neighbours.
         if self.ntkd_status.gonna_hook or self.ntkd_status.hooking:
-            # I'm hooking, I must not react to this event.
             return
+        if not self.ntkd_status.hooked:
+            logging.debug('Still waiting ETP only from new network...')
+            if sender_netid != self.neigh.netid:
+                logging.debug('...this is not.')
+                return
+            else:
+                logging.debug('...this is one of them.')
 
         # Memorize current netid and nip because they might change. In this case the 
         # ETP should not be neither executed nor forwarded.
@@ -429,16 +438,19 @@ class Etp(object):
                 return
             xtime.swait(50)
             neigh = self.neigh.key_to_neigh((gwip, sender_netid))
+
             # Implements "zombie" status
             if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
+            # If we are hooking we should not consider any ETP. But if we are waiting
+            # for some ETP we must consider only the ones from our new network.
+            # After the hook, on event HOOKED2, we'll readvertise to the outside neighbours.
             if self.ntkd_status.gonna_hook or self.ntkd_status.hooking:
-                # I'm hooking, I must not react to this event.
                 return
-
-        # check again now
-        if self.ntkd_status.gonna_hook or self.ntkd_status.hooking:
-            # I'm hooking, I must not react to this event.
-            return
+            if not self.ntkd_status.hooked:
+                if sender_netid != self.neigh.netid:
+                    logging.debug('Still waiting ETP only from new network...')
+                    logging.debug('...this is not.')
+                    return
 
         self.time_tick_serializer(self.serialized_etp_exec, (neigh, current_netid, current_nip, sender_nip, sender_netid, R, TPL, flag_of_interest, seq_num))
 
@@ -496,6 +508,22 @@ class Etp(object):
             # Initialize neigh.etp_seq_num if needed
             if neigh.etp_seq_num is None:
                 neigh.etp_seq_num = [[0] * self.maproute.gsize] * self.maproute.levels
+
+            # Implements "zombie" status
+            if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
+
+            # If we are hooking we should not consider any ETP. But if we are waiting
+            # for some ETP we must consider only the ones from our new network.
+            # After the hook, on event HOOKED2, we'll readvertise to the outside neighbours.
+            if self.ntkd_status.gonna_hook or self.ntkd_status.hooking:
+                return
+            if not self.ntkd_status.hooked:
+                logging.debug('Still waiting ETP only from new network...')
+                if sender_netid != self.neigh.netid:
+                    logging.debug('...this is not.')
+                    return
+                else:
+                    logging.debug('...this is one of them.')
 
             # Ignore ETP from -1 ... that should not happen.
             if sender_netid == -1:
@@ -851,9 +879,7 @@ class Etp(object):
         logging.debug("Etp: collision check: my netid %d and neighbour's "
                       "netid %d", self.neigh.netid, neigh_netid)
 
-        previous_netid = self.neigh.netid
-
-        if neigh_netid == previous_netid:
+        if neigh_netid == self.neigh.netid:
             return (False, R) # all ok
 
         # uhm... we are in different networks

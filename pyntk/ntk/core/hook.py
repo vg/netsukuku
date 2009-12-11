@@ -490,7 +490,7 @@ class Hook(object):
                 # being able to reply to some requests.
                 wait_id = randint(0, 2**32-1)
                 self.ntkd_status.set_hooked_waiting_id(wait_id)
-                self.hooked_after_delay(10000, wait_id)
+                self.hooked_after_delay(20000, wait_id)
 
                 self.radar.neigh.change_netid(netid_to_join)
                 logging.info('We now have got a network id = ' + 
