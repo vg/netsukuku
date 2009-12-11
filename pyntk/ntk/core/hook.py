@@ -126,6 +126,7 @@ class Hook(object):
                 if self.maproute.nip_cmp(self.maproute.me, nrnip) <= 0:
                         # we're interested in external neighbours
                         continue
+                # TODO Handle exceptions (eg zombie)
                 fnb = self.maproute.call_free_nodes_nb_udp(nr, 0)
                 logging.log(logging.ULTRADEBUG, str(nr) + ' has replied its '
                             'gnode has ' + str(fnb) + ' free nodes.')

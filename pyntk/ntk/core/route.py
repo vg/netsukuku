@@ -451,7 +451,7 @@ class MapRoute(Map):
     ######
 
     def call_free_nodes_nb_udp(self, neigh, lvl):
-        """Use BcastClient to call highest_free_nodes"""
+        """Use BcastClient to call free_nodes_nb"""
         devs = [neigh.bestdev[0]]
         nip = self.maproute.ip_to_nip(neigh.ip)
         netid = neigh.netid
