@@ -59,7 +59,7 @@ class Etp(object):
 
         self.events = Event(['TIME_TICK', 'NET_COLLISION'])
 
-        self.events.listen('TIME_TICK', self.neigh.readvertise_local)
+        self.events.listen('TIME_TICK', self.neigh.check_needs_readvertise_local)
         # This should be placed in module radar. TODO refactor.
 
         self.remotable_funcs = [self.etp_exec,
@@ -859,22 +859,32 @@ class Etp(object):
         # uhm... we are in different networks
         logging.info('Detected Network Collision')
 
+        # If we are already hooking (going to hook, doing hook or just hooked
+        # and still waiting for some ETP) we won't consider this collision.
+        # After the hook, on event HOOKED2, we'll readvertise.
+        if not self.ntkd_status.hooked:
+            # We are already hooking. Just ignore this ETP.
+            ### Remove all routes from R
+            R = [ [] for lvl in xrange(self.maproute.levels) ]
+            logging.info("We are already hooking. Just ignore this ETP.")
+            return (False, R)
+
         logging.info('My network size = ' + str(mynetsz-3))
         logging.info('Their network size = ' + str(ngnetsz-3))
 
         if mynetsz > ngnetsz or                                         \
-                (mynetsz == ngnetsz and self.neigh.netid > neigh_netid):
-                # We are the bigger net.
-                # We cannot use routes from R, since this gateway is going 
-                # to re-hook.
+            (mynetsz == ngnetsz and self.neigh.netid > neigh_netid):
+            # We are the bigger net.
+            # We cannot use routes from R, since this gateway is going 
+            # to re-hook.
 
-                ### Remove all routes from R
-                R = [ [] for lvl in xrange(self.maproute.levels) ]
-                ###
-                
-                logging.debug("Etp: collision check: just remove all routes "
-                              "from R")
-                return (False, R)
+            ### Remove all routes from R
+            R = [ [] for lvl in xrange(self.maproute.levels) ]
+            ###
+            
+            logging.debug("Etp: collision check: just remove all routes "
+                          "from R")
+            return (False, R)
         ##
 
         # We are the smaller net.

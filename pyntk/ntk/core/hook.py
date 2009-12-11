@@ -46,11 +46,14 @@ class Hook(object):
 
         self.chan_replies = Channel()
 
-        self.events = Event(['HOOKED'])
+        self.events = Event(['HOOKED', 'HOOKED2'])
 
         self.neigh.events.listen('TIME_TICK', self.communicating_vessels)
         self.etp.events.listen('TIME_TICK', self.communicating_vessels)
         self.etp.events.listen('NET_COLLISION', self.hook)
+
+        self.events.listen('HOOKED2', self.neigh.readvertise_local)
+        # This should be placed in module radar. TODO refactor.
 
         self.remotable_funcs = [self.communicating_vessels,
                                 self.communicating_vessels_udp,
@@ -521,6 +524,7 @@ class Hook(object):
         xtime.swait(delay)
         if self.ntkd_status.hooked_waiting:
             self.ntkd_status.unset_hooked_waiting_id(wait_id)
+            self.events.send('HOOKED2', ())
 
     def highest_free_nodes_in_empty_network(self):
         """Returns (lvl, fnl), where fnl is a list of free node IDs of

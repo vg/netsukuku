@@ -190,8 +190,11 @@ class Neighbour(object):
                                 self.ip_netid_change_broadcast_udp]
         self.monitor_neighbours()
 
-        self.events.listen('TIME_TICK', self.readvertise_local)
-        #self.etp.events.listen('TIME_TICK', self.readvertise_local)
+        self.events.listen('TIME_TICK', self.check_needs_readvertise_local)
+        #self.etp.events.listen('TIME_TICK', self.check_needs_readvertise_local)
+        # This is placed in module qspn. TODO refactor.
+
+        #self.hook.events.listen('HOOKED2', self.readvertise_local)
         # This is placed in module qspn. TODO refactor.
 
     @microfunc(True)
@@ -210,19 +213,18 @@ class Neighbour(object):
                         'Known Neighbours: ' + known_neighs)
 
     @microfunc(True)
-    def readvertise_local(self, old_node_nb, cur_node_nb):
-        '''Detects and handle the cases of Communicating Vessels and
-           Gnode Splitting.'''
+    def check_needs_readvertise_local(self, old_node_nb, cur_node_nb):
+        '''Detects if we need to readvertise because of a change in
+           our network topology.'''
 
-        # Note: this function handles the event TIME_TICK locally
+        # Note: this function handles the event TIME_TICK
 
         if self.ntkd_status.gonna_hook or self.ntkd_status.hooking:
             # I'm hooking, better not to emit any signal.
             stacktrace = get_stackframes()
-            logging.debug('Neighbour.readvertise: I\'m hooking, better not to emit any signal, while at ' + stacktrace)
+            logging.debug('Neighbour.check_needs_readvertise_local: I\'m hooking, better not to emit any signal, while at ' + stacktrace)
             return
 
-        logging.debug('Neighbour.readvertise_local microfunc started.')
         ## Chech if the size of network has changed.
         def add(a,b):return a+b
         if reduce(add, old_node_nb) == reduce(add, cur_node_nb):
@@ -230,14 +232,35 @@ class Neighbour(object):
             logging.debug('Neighbour.readvertise does NOT need to be executed.')
             return
 
+        self.readvertise_local()
+
+    @microfunc(True)
+    def readvertise_local(self):
+        '''Inform our neighbour (again) about our current data.'''
+
+        if self.ntkd_status.gonna_hook or self.ntkd_status.hooking:
+            # I'm hooking, better not to emit any signal.
+            stacktrace = get_stackframes()
+            logging.debug('Neighbour.readvertise_local: I\'m hooking, better not to emit any signal, while at ' + stacktrace)
+            return
+
+        logging.debug('Neighbour.readvertise_local microfunc started.')
         # Get only the neighbours OUT of my network.
-        for neigh in self.neigh_list(out_of_my_network=True):
-            logging.debug('Neighbour.readvertise_local will send to ' + str(neigh))
-            key = (neigh.ip, neigh.netid)
-            self.add(key)
+        neighlist = self.neigh_list(out_of_my_network=True)
+        # First, call the same method in neighbours.
+        for neigh in neighlist:
+            logging.debug('Neighbour.readvertise_local will ask to ' + str(neigh) + ' to readvertise')
             # This call is a microfunc and won't schedule right now.
-            # So we should not have problems with the list obtained with neigh_list.
             self.call_readvertise_udp_tasklet(neigh)
+        # Since self.add could pass the schedule, we're not sure that the next key
+        # will still be valid. So a try block is needed.
+        for neigh in neighlist:
+            try:
+                logging.debug('Neighbour.readvertise_local will send to ' + str(neigh))
+                key = (neigh.ip, neigh.netid)
+                self.add(key)
+            except:
+                pass
 
         logging.debug('Neighbour.readvertise_local microfunc done. exiting.')
 
@@ -268,10 +291,16 @@ class Neighbour(object):
         logging.debug('Neighbour.readvertise microfunc started. Called remotely.')
 
         # Get only the neighbours OUT of my network.
-        for neigh in self.neigh_list(out_of_my_network=True):
-            logging.debug('Neighbour.readvertise will send to ' + str(neigh))
-            key = (neigh.ip, neigh.netid)
-            self.add(key)
+        neighlist = self.neigh_list(out_of_my_network=True)
+        # Since self.add could pass the schedule, we're not sure that the next key
+        # will still be valid. So a try block is needed.
+        for neigh in neighlist:
+            try:
+                logging.debug('Neighbour.readvertise will send to ' + str(neigh))
+                key = (neigh.ip, neigh.netid)
+                self.add(key)
+            except:
+                pass
 
         logging.debug('Neighbour.readvertise microfunc done. exiting.')
 
