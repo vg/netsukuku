@@ -747,26 +747,26 @@ def UDP_broadcast_call(devs, func_name, args=()):
     # managed by netsukuku.
     # func_name is a remotable procedure (usually a microfunc)
 
-    logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + 
-                ' to everybody via ' + str(devs))
+    #logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + 
+    #            ' to everybody via ' + str(devs))
     bcastclient = BcastClient(devs=devs, xtimemod=xtime)
-    logging.log(logging.ULTRADEBUG, 'created BcastClient with devs = ' + 
-                str(devs))
+    #logging.log(logging.ULTRADEBUG, 'created BcastClient with devs = ' + 
+    #            str(devs))
     caller_id = randint(0, 2**32-1)
     UDP_caller_ids[caller_id] = len(devs)
     exec('bcastclient.' + func_name + '(caller_id, *args)')
-    logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + ' done.')
+    #logging.log(logging.ULTRADEBUG, 'Calling ' + func_name + ' done.')
 
 def UDP_broadcast_got_call(_rpc_caller, caller_id):
     """Receives call from a UDP_broadcast_call.
        Returns True if I must execute the remotable procedure.
        Returns False if the call was done by me."""
     
-    logging.log(logging.ULTRADEBUG, 'Seen a UDP_broadcast_call.')
+    #logging.log(logging.ULTRADEBUG, 'Seen a UDP_broadcast_call.')
     if caller_id in UDP_caller_ids:
         # This call is from me.
-        logging.log(logging.ULTRADEBUG, 
-                    ' ...it was from me! I will do nothing.')
+        #logging.log(logging.ULTRADEBUG, 
+        #            ' ...it was from me! I will do nothing.')
         # Normally, I will "receive" a call from myself <n> times, the
         # number of managed NICs.
         UDP_caller_ids[caller_id] = UDP_caller_ids[caller_id] - 1
@@ -774,6 +774,6 @@ def UDP_broadcast_got_call(_rpc_caller, caller_id):
             del UDP_caller_ids[caller_id]
         return False
     else:
-        logging.log(logging.ULTRADEBUG, ' ...it is for me, too.')
+        #logging.log(logging.ULTRADEBUG, ' ...it is for me, too.')
         return True
 

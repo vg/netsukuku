@@ -1056,7 +1056,7 @@ class Radar(object):
         self.stopping = False
         self.running_instances = []
 
-        self.remotable_funcs = [self.reply, self.time_register]
+        self.remotable_funcs = [self.reply_broadcast_udp, self.time_register_broadcast_udp]
 
         # this is needed to avoid to answer to myself
         self.ntkd_id = randint(0, 2**32-1)
@@ -1101,7 +1101,7 @@ class Radar(object):
 
             # send all packets in the bouquet
             for i in xrange(self.max_bouquet):
-                self.broadcast.radar.reply(self.ntkd_id, self.radar_id)
+                self.call_reply_broadcast_udp(self.ntkd_id, self.radar_id)
 
             # then wait
             self.xtime.swait(self.wait_time * 1000 + self.increment_wait_time)
@@ -1143,13 +1143,24 @@ class Radar(object):
                                   xtimemod=self.xtime)
             receiving_mac = self.nic_manager[_rpc_caller.dev].mac
             try:
-                bcc.radar.time_register(radar_id, self.neigh.netid, receiving_mac)
+                self.call_time_register_broadcast_udp([_rpc_caller.dev], radar_id, self.neigh.netid, receiving_mac)
             except:
                 logging.log(logging.ULTRADEBUG, 'Radar: Reply: '
                             'BcastClient ' + str(bcc) + ' with '
                             'dispatcher ' + 
                             repr(bcc.dev_sk[_rpc_caller.dev].dispatcher) +
                             ' error in rpc execution. Ignored.')
+
+    def call_reply_broadcast_udp(self, ntkd_id, radar_id):
+        """Use BcastClient to call <broadcast> reply"""
+        devs = list(self.broadcast.devs)
+        rpc.UDP_broadcast_call(devs,'radar.reply_broadcast_udp',
+                               (ntkd_id, radar_id))
+
+    def reply_broadcast_udp(self, _rpc_caller, caller_id, ntkd_id, radar_id):
+        """Receives call for radar.reply."""
+        if rpc.UDP_broadcast_got_call(_rpc_caller, caller_id):
+            self.reply(_rpc_caller, ntkd_id, radar_id)
 
     def time_register(self, _rpc_caller, radar_id, netid, mac):
         """save each node's rtt"""
@@ -1182,6 +1193,16 @@ class Radar(object):
             self.bcast_arrival_time[(ip, netid)][net_device] = [time_elapsed]
             logging.debug("Radar: IP %s from network %s detected", 
                           ip_to_str(ip), str(netid))
+
+    def call_time_register_broadcast_udp(self, devs, radar_id, netid, mac):
+        """Use BcastClient to call <broadcast> time_register"""
+        rpc.UDP_broadcast_call(devs,'radar.time_register_broadcast_udp',
+                               (radar_id, netid, mac))
+
+    def time_register_broadcast_udp(self, _rpc_caller, caller_id, radar_id, netid, mac):
+        """Receives call for radar.time_register."""
+        if rpc.UDP_broadcast_got_call(_rpc_caller, caller_id):
+            self.time_register(_rpc_caller, radar_id, netid, mac)
 
     def get_avg_rtt(self, ip, netid):
         """ ip: ip of the neighbour;
