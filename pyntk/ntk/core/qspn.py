@@ -738,7 +738,7 @@ class Etp(object):
                                 # new route Bestᵗ⁺¹ (D → w̃ → v) has to be sent to w (con il TPL allungato)
                                 best_without = routes_to_v.best_route_without(w_lvl_id)
                                 if best_without:
-                                    logging.debug('Will send ' + str(best_without.hops_with_gw) + ' appending myself to TPL.')
+                                    logging.debug('Will send ' + str(best_without.hops_with_gw) + ' to ' + str(w_lvl_id) + ' appending myself to TPL.')
                                     set_of_forwarded_R[w][lvl].append((dst, best_without.rem, best_without.hops_with_gw))
                                 else:
                                     logging.debug('Will send DeadRem appending myself to TPL.')
@@ -799,7 +799,7 @@ class Etp(object):
                                     # new route Bestᵗ⁺¹ (D → w̃ → v) has to be sent to w (con il TPL nuovo)
                                     best_without = routes_to_v.best_route_without(w_lvl_id)
                                     if best_without:
-                                        logging.debug('Will send ' + str(best_without.hops_with_gw) + ' appending myself to TPL.')
+                                        logging.debug('Will send ' + str(best_without.hops_with_gw) + ' to ' + str(w_lvl_id) + ' appending myself to TPL.')
                                         set_of_new_R[w][lvl].append((dst, best_without.rem, best_without.hops_with_gw))
                                     else:
                                         logging.debug('Will send DeadRem appending myself to TPL.')
@@ -808,7 +808,7 @@ class Etp(object):
                                     # new route Bestᵗ⁺¹ (D → w̃ → v) has to be sent to w (con il TPL allungato)
                                     best_without = routes_to_v.best_route_without(w_lvl_id)
                                     if best_without:
-                                        logging.debug('Will send ' + str(best_without.hops_with_gw) + ' in a new ETP.')
+                                        logging.debug('Will send ' + str(best_without.hops_with_gw) + ' to ' + str(w_lvl_id) + ' in a new ETP.')
                                         set_of_forwarded_R[w][lvl].append((dst, best_without.rem, best_without.hops_with_gw))
                                     else:
                                         logging.debug('Will send DeadRem in a new ETP.')
