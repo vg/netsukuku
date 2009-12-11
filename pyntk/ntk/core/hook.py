@@ -240,10 +240,10 @@ class Hook(object):
                 logging.log(logging.ULTRADEBUG, 'Hook: warn neighbours of' + \
                         ' my change netid from ' + str(previous_netid) + 
                         ' to ' + str(self.neigh.netid))
-                self.neigh.call_ip_netid_change_broadcast_udp(oldip, 
-                                                              previous_netid, 
-                                                              oldip, 
-                                                              self.neigh.netid)
+                self.neigh.call_ip_netid_change(oldip, 
+                                              previous_netid, 
+                                              oldip, 
+                                              self.neigh.netid)
                 logging.log(logging.ULTRADEBUG, 'Hook: called ip_netid_change '
                                                 'on broadcast.')
             logging.info('We haven\'t got any network id, now.')
@@ -479,9 +479,9 @@ class Hook(object):
                     ' my change from %s on -1 to %s on %s.' \
                     % (ip_to_str(oldip), ip_to_str(newnip_ip), 
                        str(self.radar.neigh.netid)))
-            self.neigh.call_ip_netid_change_broadcast_udp(oldip, -1, 
-                                                    newnip_ip, 
-                                                    self.radar.neigh.netid)
+            self.neigh.call_ip_netid_change(oldip, -1, 
+                                            newnip_ip, 
+                                            self.radar.neigh.netid)
             logging.log(logging.ULTRADEBUG, 'Hook: called ip_netid_change '
                                             'on broadcast.')
 
@@ -499,9 +499,9 @@ class Hook(object):
                 logging.log(logging.ULTRADEBUG, 'Hook.hook warn neighbours of'
                                                 ' my change from netid -1 to '
                                                 + str(netid_to_join))
-                self.neigh.call_ip_netid_change_broadcast_udp(newnip_ip, -1, 
-                                                              newnip_ip, 
-                                                              netid_to_join)
+                self.neigh.call_ip_netid_change(newnip_ip, -1, 
+                                              newnip_ip, 
+                                              netid_to_join)
                 logging.log(logging.ULTRADEBUG, 'Hook.hook: called '
                                                 'ip_netid_change on '
                                                 'broadcast.')

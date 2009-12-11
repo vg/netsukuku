@@ -882,8 +882,23 @@ class Neighbour(object):
                           Rtt(old_rtt),
                           before_changed_link))
 
+    def call_ip_netid_change(self, oldip, oldnetid, newip, newnetid):
+        '''Calls ip_netid_change in all neighbours'''
+        # This rpc is quite important. We want lower the risk that it
+        # is not heard by some neighbour. We use both the udp and the broadcast_udp
+        # versions.
+        for neigh in self.neigh_list():
+            self.micro_call_ip_netid_change_udp(neigh, oldip, oldnetid, newip, newnetid)
+        self.call_ip_netid_change_broadcast_udp(oldip, oldnetid, newip, newnetid)
+
     @microfunc()
-    def ip_netid_change(self, oldip, oldnetid, newip, newnetid):
+    def micro_call_ip_netid_change_udp(self, neigh, oldip, oldnetid, newip, newnetid):
+        self.call_ip_netid_change_udp(neigh, oldip, oldnetid, newip, newnetid)
+
+    def ip_netid_change(self, *args):
+        self.time_tick_serializer(self.serialized_ip_netid_change, args)
+
+    def serialized_ip_netid_change(self, oldip, oldnetid, newip, newnetid):
         """Adds `newip' in the Neighbours as a copy of `oldip', then it
         removes `oldip'. The relative events are raised."""
 
@@ -893,8 +908,7 @@ class Neighbour(object):
         oldkey = (oldip, oldnetid)
         newkey = (newip, newnetid)
         if not oldkey in self.ip_netid_table:
-            # probably our radar did not observed previously the ip that is 
-            # changing, then leave this work to the next radar scan
+            # If the old ip,netid is not present, just ignore this request.
             return
 
         # This neighbour was in our data structures and must be changed.
@@ -936,9 +950,6 @@ class Neighbour(object):
                 self.ntk_client[newip] = rpc.TCPClient(ip_to_str(newip))
             if self.netid != newnetid and self.netid == oldnetid:
                 del self.ntk_client[oldip]
-
-        # Since the changes are only queued (in a time_tick serialized microfunc)
-        # it is useless to test the values of self.ip_netid_table now.
 
     def call_ip_netid_change_broadcast_udp(self, oldip, oldnetid, 
                                            newip, newnetid):
