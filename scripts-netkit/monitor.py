@@ -21,6 +21,8 @@
 import os
 import re
 import subprocess
+import curses
+import time
 
 def get_netid():
     try:
@@ -67,6 +69,27 @@ def get_zombie():
     finally:
         f.close()
 
+def get_status():
+    try:
+        f = open("/tmp/status.log")
+    except:
+        return None
+    try:
+        try:
+            f.seek(-200, os.SEEK_END)
+        except:
+            pass # fewer bytes.
+        lines = f.readlines()
+        # last <n> lines, without \n
+        l = []
+        for i in xrange(4):
+            l.append(lines[i-4][:-1])
+        return l
+    except:
+        return None
+    finally:
+        f.close()
+
 def get_ipaddr():
     proc = subprocess.Popen(['/sbin/ip', 'addr', 'show', 'eth0'],
                             stdin=subprocess.PIPE,
@@ -97,21 +120,6 @@ def get_neighbours_routes():
             routes.append(l[:l.find(' ')])
     return neighbours, routes
 
-
-import curses
-class pippo(object):
-    def __init__(self):
-        self.A_REVERSE = None
-    def addstr(self,a,b,s,c=None):
-        print s
-    def wrapper(self,f):
-        f(self)
-    def refresh(self):
-        pass
-#curses = pippo()
-
-import time
-
 def main(stdscr):
     curses.init_pair(1,curses.COLOR_BLACK,curses.COLOR_WHITE)
     attr_normal = curses.color_pair(1)
@@ -133,6 +141,9 @@ def main(stdscr):
             zombie = '?' + oldzombie
         else:
             oldzombie = zombie
+        status = get_status()
+        if status is None:
+            status = ['-'] * 4
 
         stdscr.clear()
 
@@ -144,6 +155,12 @@ def main(stdscr):
 
         stdscr.addstr(4, 0, "ZOMBIE", attr_title)
         stdscr.addstr(5, 0, zombie)
+
+        stdscr.addstr(6, 0, "STATUS", attr_title)
+        stdscr.addstr(7, 0, status[0])
+        stdscr.addstr(8, 0, status[1])
+        stdscr.addstr(9, 0, status[2])
+        stdscr.addstr(10, 0, status[3])
 
         neighbours, routes = get_neighbours_routes()
 

@@ -29,7 +29,7 @@ import ntk.core.coord as coord
 import ntk.core.krnl_route as kroute
 import ntk.lib.rpc as rpc
 import ntk.wrap.xtime as xtime
-from ntk.core.status import StatusManager, ZombieException 
+from ntk.core.status import StatusManager
 
 from ntk.config import settings, ImproperlyConfigured
 from ntk.lib.event import Event, apply_wakeup_on_event

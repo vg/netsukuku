@@ -19,8 +19,10 @@
 ##
 
 from ntk.lib.log import logger as logging
+from ntk.lib.log import ExpectableException
+from ntk.lib.micro import microfunc
 
-class ZombieException(Exception): pass
+class ZombieException(ExpectableException): pass
 
 class StatusManager(object):
 
@@ -29,6 +31,26 @@ class StatusManager(object):
         self._hooking = False
         self._hooked_waiting_id = 0
         self._zombie_id = 0
+        self.monitor_status()
+
+    @microfunc(True)
+    def monitor_status(self):
+        import ntk.wrap.xtime as xtime
+        status_old = ''
+        while True:
+            xtime.swait(100)
+            status1 = 'gonna_hook=' + str(self._gonna_hook)
+            status2 = 'hooking=' + str(self._hooking)
+            status3 = 'hooked_waiting_id=' + str(self._hooked_waiting_id)
+            status4 = 'zombie_id=' + str(self._zombie_id)
+            status = status1 + ', ' + status2 + ', ' + status3 + ', ' + status4
+            if status != status_old:
+                status_old = status
+                logging.log(logging.ULTRADEBUG, 'monitor_status: ' + status)
+                logging.log_on_file('/tmp/status.log', status1)
+                logging.log_on_file('/tmp/status.log', status2)
+                logging.log_on_file('/tmp/status.log', status3)
+                logging.log_on_file('/tmp/status.log', status4)
 
     def _get_gonna_hook(self):
         return self._gonna_hook

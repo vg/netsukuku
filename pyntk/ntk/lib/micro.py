@@ -24,7 +24,7 @@ import time
 
 from ntk.lib.log import logger as logging
 from ntk.lib.log import log_exception_stacktrace
-from ntk.core.status import ZombieException
+from ntk.lib.log import ExpectableException
 
 def micro(function, args=(), **kwargs):
     '''Factory function that returns tasklets
@@ -38,8 +38,8 @@ def micro(function, args=(), **kwargs):
         try:
             function(*args, **kwargs)
         except Exception, e:
-            if isinstance(e, ZombieException):
-                logging.debug('Zombie Exception raised in ' \
+            if isinstance(e, ExpectableException):
+                logging.debug(str(e) + ' raised in ' \
                               + str(function) + str(args))
             else:
                 logging.error("Uncaught exception in a microfunc")
@@ -161,8 +161,8 @@ def _dispatcher(func, chan, dispatcher_token):
         try:
             func(*msg)
         except Exception, e:
-            if isinstance(e, ZombieException):
-                logging.debug('Zombie Exception raised in ' \
+            if isinstance(e, ExpectableException):
+                logging.debug(str(e) + ' raised in ' \
                               + str(func) + str(msg))
             else:
                 logging.error("Uncaught exception in a microfunc with dispatcher")

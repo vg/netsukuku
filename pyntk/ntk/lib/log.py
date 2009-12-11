@@ -25,6 +25,8 @@ import traceback
 
 from ntk.config import settings
 
+class ExpectableException(Exception): pass
+
 LOG_FILE = os.path.join(settings.LOG_DIR, settings.LOG_FILE)
 
 logger = logging.getLogger('')

@@ -88,7 +88,7 @@ from ntk.lib.microsock import MicrosockTimeout
 from ntk.network.inet import sk_set_broadcast, sk_bindtodevice
 from ntk.wrap import xtime as xtime
 from ntk.wrap.sock import Sock
-from ntk.core.status import ZombieException
+from ntk.lib.log import ExpectableException
 
 
 class RPCError(Exception): pass
@@ -216,8 +216,8 @@ class RPCDispatcher(object):
         try:
             response = self._dispatch(caller, func, params)
         except Exception, e:
-            if isinstance(e, ZombieException):
-                logging.debug('Zombie Exception raised in ' \
+            if isinstance(e, ExpectableException):
+                logging.debug(str(e) + ' raised in ' \
                               + str(func) + str(params))
             else:
                 logging.error("Uncaught exception in a remotable function")
