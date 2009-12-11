@@ -1103,19 +1103,20 @@ class Radar(object):
         """ Send broadcast packets and store the results in neigh """
 
         try:
-            self.radar_id = randint(0, 2**32-1)
-            logging.debug('radar scan %s' % self.radar_id)
-            logging.debug('My netid is ' + str(self.neigh.netid))
-
-            # we're sending the broadcast packets NOW
-            self.bcast_send_time = self.xtime.time()
-
-            # send all packets in the bouquet
+            # We have to send self.max_bouquet packets in self.wait_time seconds + increment_wait_time.
+            # We send a packet at each time in self.wait_time/2 seconds, and then wait.
+            self.radar_id = []
+            self.bcast_send_time = {}
+            interval = self.wait_time / (self.max_bouquet * 2)
             for i in xrange(self.max_bouquet):
-                self.call_reply_broadcast_udp(self.ntkd_id, self.radar_id)
-
-            # then wait
-            self.xtime.swait(self.wait_time * 1000 + self.increment_wait_time)
+                radar_id = randint(0, 2**32-1)
+                bcast_send_time = self.xtime.time()
+                self.radar_id.append(radar_id)
+                self.bcast_send_time[radar_id] = bcast_send_time
+                logging.debug('radar: sending a packet')
+                self.call_reply_broadcast_udp(self.ntkd_id, radar_id)
+                self.xtime.swait(interval * 1000)
+            self.xtime.swait(self.wait_time * 500 + self.increment_wait_time)
 
             # test wether we are stopping
             if not self.stopping:
@@ -1179,15 +1180,17 @@ class Radar(object):
         # Implements "zombie" status
         if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
 
-        if radar_id != self.radar_id:
+        if radar_id not in self.radar_id:
             # drop. It isn't a reply to our current bouquet
             return
+
+        bcast_send_time = self.bcast_send_time[radar_id]
 
         ip = str_to_ip(_rpc_caller.ip)
         net_device = _rpc_caller.dev
 
         # this is the rtt
-        time_elapsed = int((self.xtime.time() - self.bcast_send_time) / 2)
+        time_elapsed = int((self.xtime.time() - bcast_send_time) / 2)
         # let's store it in the bcast_arrival_time table
         if (ip, netid) in self.bcast_arrival_time:
             if mac not in self.bcast_macs[(ip, netid)]:
