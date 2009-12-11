@@ -84,6 +84,9 @@ class Etp(object):
                          str(current_nip) + ' to ' + 
                          str(self.maproute.me) + '.')
             return
+        if neigh.netid == -1:
+            logging.info('etp_send_to_neigh: An ETP dropped because the neighbour is hooking.')
+            return
         logging.debug('Etp: sending to %s', str(neigh))
 
         # If an ETP does not reach a neighbour, we should retry, as long as
@@ -663,6 +666,9 @@ class Etp(object):
                 logging.info('An ETP dropped because we changed NIP from ' +
                              str(current_nip) + ' to ' + 
                              str(self.maproute.me) + '.')
+                return
+            if sender_netid == -1:
+                logging.info('etp_exec: An ETP dropped because the neighbour is hooking.')
                 return
 
             logging.debug('Translated ETP from %s', ip_to_str(gwip))
