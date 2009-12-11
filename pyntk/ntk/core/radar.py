@@ -56,7 +56,7 @@ from ntk.core.status import ZombieException
 class Neigh(object):
     """This class simply represent a neighbour"""
 
-    __slots__ = ['devs', 'bestdev', 'ip', 'rem', 'ntkd_func', 'ntkd', 'netid', 'macs']
+    __slots__ = ['devs', 'bestdev', 'ip', 'rem', 'ntkd_func', 'ntkd', 'netid', 'macs', 'etp_seq_num']
 
     def func_none(*args):
         return None
@@ -81,6 +81,9 @@ class Neigh(object):
         self.ip = ip
         self.netid = netid
         self.macs = macs
+        # Sequence number of last ETP received from this neighbour about destination D.
+        # etp_seq_num[lvl][dst]
+        self.etp_seq_num = None
 
         if self.bestdev:
             # TODO(low): support the other metrics
