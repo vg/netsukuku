@@ -196,6 +196,7 @@ class Neighbour(object):
 
     @microfunc(True)
     def monitor_neighbours(self):
+        known_neighs_old = ''
         while True:
             xtime.swait(100)
             known_neighs = '{'
@@ -203,8 +204,10 @@ class Neighbour(object):
                 nip = self.maproute.ip_to_nip(ip)
                 known_neighs += '(' + str(nip) + ',' + str(netid) + ')  '
             known_neighs += '}'
-            logging.log(logging.ULTRADEBUG, 'monitor_neighbours: '
-                        'DELETETHISLOG - Known Neighbours: ' + known_neighs)
+            if known_neighs != known_neighs_old:
+                known_neighs_old = known_neighs
+                logging.log(logging.ULTRADEBUG, 'monitor_neighbours: '
+                        'Known Neighbours: ' + known_neighs)
 
     @microfunc(True)
     def readvertise_local(self, old_node_nb, cur_node_nb):
