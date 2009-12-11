@@ -388,7 +388,9 @@ class TCPClient(FakeRmt):
 
         while not self.connected:
             self.connect()
-            self.xtime.swait(500)
+            if not self.connected:
+                logging.debug('wait 5 before trying again to connect a TCPClient...')
+                self.xtime.swait(5)
 
         while self.calling:
             # go away waiting that the previous 
@@ -568,7 +570,9 @@ class BcastClient(FakeRmt):
 
         while not self.connected:
             self.connect()
-            self.xtime.swait(500)
+            if not self.connected:
+                logging.debug('wait 5 before trying again to connect a BcastClient...')
+                self.xtime.swait(5)
 
         self.send(_data_pack(data))
 
