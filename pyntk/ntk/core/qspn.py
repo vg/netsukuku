@@ -66,7 +66,7 @@ class Etp(object):
                                 self.etp_exec_udp]
 
     @microfunc(True)
-    def etp_send_to_neigh(self, etp, neigh, current_netid):
+    def etp_send_to_neigh(self, etp, neigh, current_netid, current_nip):
         """Sends the `etp' to neigh"""
 
         # Increment ETP sequence number
@@ -78,6 +78,11 @@ class Etp(object):
             logging.info('An ETP dropped because we changed network from ' +
                          str(current_netid) + ' to ' + 
                          str(self.neigh.netid) + '.')
+            return
+        if current_nip != self.maproute.me:
+            logging.info('An ETP dropped because we changed NIP from ' +
+                         str(current_nip) + ' to ' + 
+                         str(self.maproute.me) + '.')
             return
         logging.debug('Etp: sending to %s', str(neigh))
 
@@ -101,10 +106,10 @@ class Etp(object):
             for lvl in xrange(self.maproute.levels):
                 for dst, rem, hops in R[lvl]:
                     dests.append((lvl, dst))
-            self.fail_etp_send_to_neigh(neigh.ip, neigh.netid, dests, current_netid)
+            self.fail_etp_send_to_neigh(neigh.ip, neigh.netid, dests, current_netid, current_nip)
 
     @microfunc(True)
-    def fail_etp_send_to_neigh(self, ip, netid, dests, current_netid):
+    def fail_etp_send_to_neigh(self, ip, netid, dests, current_netid, current_nip):
         """An ETP was to be sent to neighbour (ip, netid) covering
            dests destinations. It failed.
            This method tries again iff (ip, netid) is still in
@@ -117,6 +122,11 @@ class Etp(object):
             logging.info('An ETP dropped because we changed network from ' +
                          str(current_netid) + ' to ' + 
                          str(self.neigh.netid) + '.')
+            return
+        if current_nip != self.maproute.me:
+            logging.info('An ETP dropped because we changed NIP from ' +
+                         str(current_nip) + ' to ' + 
+                         str(self.maproute.me) + '.')
             return
 
         logging.warning('Etp: sending to ' + ip_to_str(ip) + ' in ' + str(netid) + ' failed.')
@@ -162,7 +172,7 @@ class Etp(object):
                 R[lvl].append((self.maproute.me[lvl], NullRem(), []))
 
             etp = (R, TPL, flag_of_interest)
-            self.etp_send_to_neigh(etp, neigh, current_netid)
+            self.etp_send_to_neigh(etp, neigh, current_netid, current_nip)
 
         else:
             logging.warning('Etp: We don\'t see the neighbour anymore. Ignore it.')
@@ -176,9 +186,10 @@ class Etp(object):
 
         logging.debug('Etp: etp_dead_link. neigh ' + str(neigh) + ', before_dead_link ' + str(before_dead_link))
 
-        # Memorize current netid because it might change. In this case the 
-        # ETP should not be sent.
+        # Memorize current netid and nip because they might change. In this case the 
+        # ETP should not be neither executed nor forwarded.
         current_netid = self.neigh.netid
+        current_nip = self.maproute.me
 
         current_nr_list = self.neigh.neigh_list(in_my_network=True)
         logging.debug('Etp: etp_dead_link. in_my_network ' + str(current_nr_list))
@@ -249,7 +260,7 @@ class Etp(object):
             R = set_of_R[w]
             if any(R):
                 etp = (R, TPL, flag_of_interest)
-                self.etp_send_to_neigh(etp, w, current_netid)
+                self.etp_send_to_neigh(etp, w, current_netid, current_nip)
 
     def etp_new_link(self, neigh):
         """Builds and sends a new ETP for the new link case."""
@@ -258,9 +269,10 @@ class Etp(object):
             # I'm hooking, I must not react to this event.
             return
 
-        # Memorize current netid because it might change. In this case the 
-        # ETP should not be sent.
+        # Memorize current netid and nip because they might change. In this case the 
+        # ETP should not be neither executed nor forwarded.
         current_netid = self.neigh.netid
+        current_nip = self.maproute.me
 
         # The new neighbour could be in another 
         # network. I must check.
@@ -302,7 +314,7 @@ class Etp(object):
             R[lvl].append((self.maproute.me[lvl], NullRem(), []))
 
         etp = (R, TPL, flag_of_interest)
-        self.etp_send_to_neigh(etp, neigh, current_netid)
+        self.etp_send_to_neigh(etp, neigh, current_netid, current_nip)
 
     def etp_changed_link(self, neigh, oldrem, before_changed_link):
         """Builds and sends a new ETP for the changed link case."""
@@ -311,9 +323,10 @@ class Etp(object):
             # I'm hooking, I must not react to this event.
             return
 
-        # Memorize current netid because it might change. In this case the 
-        # ETP should not be sent.
+        # Memorize current netid and nip because they might change. In this case the 
+        # ETP should not be neither executed nor forwarded.
         current_netid = self.neigh.netid
+        current_nip = self.maproute.me
 
         current_nr_list = self.neigh.neigh_list()
         # Prepare R of new ETP:
@@ -382,7 +395,7 @@ class Etp(object):
             R = set_of_R[w]
             if any(R):
                 etp = (R, TPL, flag_of_interest)
-                self.etp_send_to_neigh(etp, w, current_netid)
+                self.etp_send_to_neigh(etp, w, current_netid, current_nip)
 
     @microfunc()
     def etp_exec(self, sender_nip, sender_netid, R, TPL, flag_of_interest, seq_num):
@@ -393,6 +406,11 @@ class Etp(object):
         if self.ntkd_status.gonna_hook or self.ntkd_status.hooking:
             # I'm hooking, I must not react to this event.
             return
+
+        # Memorize current netid and nip because they might change. In this case the 
+        # ETP should not be neither executed nor forwarded.
+        current_netid = self.neigh.netid
+        current_nip = self.maproute.me
 
         gwnip = sender_nip
         gwip = self.maproute.nip_to_ip(gwnip)
@@ -422,7 +440,7 @@ class Etp(object):
             # I'm hooking, I must not react to this event.
             return
 
-        self.time_tick_serializer(self.serialized_etp_exec, (neigh, sender_nip, sender_netid, R, TPL, flag_of_interest, seq_num))
+        self.time_tick_serializer(self.serialized_etp_exec, (neigh, current_netid, current_nip, sender_nip, sender_netid, R, TPL, flag_of_interest, seq_num))
 
     def call_etp_exec_udp(self, neigh, sender_nip, sender_netid, R, TPL, 
                           flag_of_interest, seq_num):
@@ -456,7 +474,7 @@ class Etp(object):
             except:
                 logging.debug("etp_exec_udp: Exception while replying. Ignore.")
 
-    def serialized_etp_exec(self, neigh, sender_nip, sender_netid, R, TPL, flag_of_interest, seq_num):
+    def serialized_etp_exec(self, neigh, current_netid, current_nip, sender_nip, sender_netid, R, TPL, flag_of_interest, seq_num):
         """Executes a received ETP
 
         sender_nip: sender ntk ip (see map.py)
@@ -485,9 +503,18 @@ class Etp(object):
                 raise Exception('ETP received from a node with netid = -1 '
                                 '(not completely kooked).')
 
-            # Memorize current netid because it might change. In this case the 
-            # ETP should not be sent.
-            current_netid = self.neigh.netid
+            # Before starting ETP execution,
+            # check that situation is still valid.
+            if current_netid != self.neigh.netid:
+                logging.info('An ETP dropped because we changed network from ' +
+                             str(current_netid) + ' to ' + 
+                             str(self.neigh.netid) + '.')
+                return
+            if current_nip != self.maproute.me:
+                logging.info('An ETP dropped because we changed NIP from ' +
+                             str(current_nip) + ' to ' + 
+                             str(self.maproute.me) + '.')
+                return
 
             # This is a serialized method that passes from time t to time t+1.
             # As such, it will:
@@ -597,6 +624,19 @@ class Etp(object):
             TPL[0][1][0][1] = NullRem()
             ##
 
+            # Before checking collision,
+            # check that situation is still valid.
+            if current_netid != self.neigh.netid:
+                logging.info('An ETP dropped because we changed network from ' +
+                             str(current_netid) + ' to ' + 
+                             str(self.neigh.netid) + '.')
+                return
+            if current_nip != self.maproute.me:
+                logging.info('An ETP dropped because we changed NIP from ' +
+                             str(current_nip) + ' to ' + 
+                             str(self.maproute.me) + '.')
+                return
+
             logging.debug('Translated ETP from %s', ip_to_str(gwip))
             logging.debug('R: ' + str(R))
             logging.debug('TPL: ' + str(TPL))
@@ -657,6 +697,20 @@ class Etp(object):
                     prev_best = routes_to_v.best_route()
                     if prev_best:
                         logging.debug('  Bestᵗ (D → v) = ' + str(prev_best.rem) + ' via ' + str(prev_best.gw))
+
+                    # Before processing a path,
+                    # check that situation is still valid.
+                    if current_netid != self.neigh.netid:
+                        logging.info('An ETP dropped because we changed network from ' +
+                                     str(current_netid) + ' to ' + 
+                                     str(self.neigh.netid) + '.')
+                        return
+                    if current_nip != self.maproute.me:
+                        logging.info('An ETP dropped because we changed NIP from ' +
+                                     str(current_nip) + ' to ' + 
+                                     str(self.maproute.me) + '.')
+                        return
+
                     self.maproute.update_route_by_gw((lvl, dst), neigh, rem, hops)
                     # D computes Bestᵗ⁺¹ (D → v)
                     best = routes_to_v.best_route()
@@ -766,12 +820,12 @@ class Etp(object):
                 R = set_of_forwarded_R[w]
                 if any(R):
                     etp = (R, forwarded_TPL, flag_of_interest)
-                    self.etp_send_to_neigh(etp, w, current_netid)
+                    self.etp_send_to_neigh(etp, w, current_netid, current_nip)
             for w in set_of_new_R:
                 R = set_of_new_R[w]
                 if any(R):
                     etp = (R, new_TPL, flag_of_interest)
-                    self.etp_send_to_neigh(etp, w, current_netid)
+                    self.etp_send_to_neigh(etp, w, current_netid, current_nip)
 
             logging.info('ETP executed.')
 
