@@ -511,6 +511,7 @@ class Hook(object):
 
             # we've done our part
             logging.info('Hooking procedure completed.')
+            logging.info('Hook: Emit signal HOOKED.')
             self.events.send('HOOKED', (oldip, newnip[:]))
             ##
         except Exception, e:
@@ -526,6 +527,7 @@ class Hook(object):
         xtime.swait(delay)
         if self.ntkd_status.hooked_waiting:
             self.ntkd_status.unset_hooked_waiting_id(wait_id)
+            logging.info('Hook: Emit signal HOOKED2.')
             self.events.send('HOOKED2', ())
 
     def highest_free_nodes_in_empty_network(self):
