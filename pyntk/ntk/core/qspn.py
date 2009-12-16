@@ -585,6 +585,8 @@ class Etp(object):
             ngnetsz = reduce(add, map(len, R))
             logging.debug('As seen by the sender, the ETP covers ' + str(ngnetsz) + ' destinations.')
 
+            def rem_or_dead(r):
+                return DeadRem() if r is None else r.rem
             before_etp_exec = {}
             current_nr_list = self.neigh.neigh_list(in_my_network=True)
             # Takes note of the current situation, the bits of information that
@@ -598,12 +600,17 @@ class Etp(object):
                         xtime.sleep_during_hard_work(0)
                         # D computes rem(Bestᵗ (D → v))
                         old_best = routes_to_v.best_route()
-                        before_etp_exec[(lvl, dst)] = (old_best.rem, {})
-                        # ∀w ∈ D*
+                        before_etp_exec[(lvl, dst)] = (rem_or_dead(old_best), {})
+                        # ∀w ∈ D* | w ≠ C
                         for w in current_nr_list:
+                          if w is not neigh:
                             w_lvl_id = self.maproute.routeneigh_get(w)
+                            # D computes rem(Bestᵗ (D → w̃ → v))
+                            old_best_not_w = routes_to_v.best_route_without(w_lvl_id)
                             # D checks wether "w ∈ Bestᵗ (D → v)"
-                            before_etp_exec[(lvl, dst)][1][w_lvl_id] = old_best.contains(w_lvl_id)
+                            bool_was_in_hops = old_best.contains(w_lvl_id)
+                            # memorize data
+                            before_etp_exec[(lvl, dst)][1][w_lvl_id] = (rem_or_dead(old_best_not_w), bool_was_in_hops)
 
             gwnip = sender_nip
             gwip = self.maproute.nip_to_ip(gwnip)
@@ -791,14 +798,12 @@ class Etp(object):
                             if (lvl, dst) in before_etp_exec:
                                 prev_best_rem = before_etp_exec[(lvl, dst)][0]
                             # Retrieve Bestᵗ⁺¹ (D → v)
-                            cur_best_rem = DeadRem()
-                            if best:
-                                cur_best_rem = best.rem
+                            cur_best_rem = rem_or_dead(best)
                             if cur_best_rem != prev_best_rem:
                                 logging.debug('Will send ETP received by ' + str(neigh) + ' to ' + str(w_lvl_id) + ' for ' + str((lvl, dst)) + ' because: cur_best_rem != prev_best_rem')
                                 logging.debug('cur_best_rem = ' + str(cur_best_rem))
                                 logging.debug('prev_best_rem = ' + str(prev_best_rem))
-                                # new route Bestᵗ⁺¹ (D → w̃ → v) has to be sent to w (con il TPL allungato)
+                                # new route Bestᵗ⁺¹ (D → w̃ → v) has to be sent to w (with previous TPL)
                                 best_without = routes_to_v.best_route_without(w_lvl_id)
                                 if best_without:
                                     logging.debug('Will send ' + str(best_without.hops_with_gw) + ' to ' + str(w_lvl_id) + ' appending myself to TPL.')
@@ -822,30 +827,39 @@ class Etp(object):
                     if (lvl, dst) in before_etp_exec:
                         prev_best_rem = before_etp_exec[(lvl, dst)][0]
                     # Retrieve Bestᵗ⁺¹ (D → v)
-                    cur_best_rem = DeadRem()
-                    if best:
-                        cur_best_rem = best.rem
+                    cur_best_rem = rem_or_dead(best)
                     # We can skip nodes that we never knew.
                     if prev_best_rem == DeadRem() and cur_best_rem == DeadRem():
                         pass
                     else:
                         logging.debug('NODO ' + str((lvl, dst)))
-                        # ∀w ∈ D*
+                        # ∀w ∈ D* | w ≠ C
                         for w in current_nr_list:
+                          if w is not neigh:
                             w_lvl_id = self.maproute.routeneigh_get(w)
-                            best_has_changed = cur_best_rem != prev_best_rem
+
+                            best_not_w = routes_to_v.best_route_without(w_lvl_id)
+                            # Retrieve Bestᵗ (D → w̃ → v)
+                            prev_best_not_w_rem = DeadRem()
+                            if (lvl, dst) in before_etp_exec:
+                                prev_best_not_w_rem = before_etp_exec[(lvl, dst)][1][w_lvl_id][0]
+                            # Retrieve Bestᵗ⁺¹ (D → w̃ → v)
+                            cur_best_not_w_rem = rem_or_dead(best_not_w)
+                            best_not_w_has_changed = cur_best_not_w_rem != prev_best_not_w_rem
+
                             w_in_previous_best = False
                             if (lvl, dst) in before_etp_exec:
-                                w_in_previous_best = before_etp_exec[(lvl, dst)][1][w_lvl_id]
+                                w_in_previous_best = before_etp_exec[(lvl, dst)][1][w_lvl_id][1]
                             w_in_current_best = False
                             if best:
                                 w_in_current_best = best.contains(w_lvl_id)
                             w_in_has_changed = w_in_previous_best != w_in_current_best
-                            # if ΔBestᵗ⁺¹ (D → v) ≠ 0 OR (w ∈ Bestᵗ⁺¹ (D → v) XOR w ∈ Bestᵗ (D → v))
-                            if best_has_changed or w_in_has_changed:
-                                logging.debug('Will send ETP received by ' + str(neigh) + ' to ' + str(w_lvl_id) + ' for ' + str((lvl, dst)) + ' because: best_has_changed or w_in_has_changed')
-                                logging.debug('cur_best_rem = ' + str(cur_best_rem))
-                                logging.debug('prev_best_rem = ' + str(prev_best_rem))
+
+                            # if ΔBestᵗ⁺¹ (D → w̃ → v) ≠ 0 OR (w ∈ Bestᵗ⁺¹ (D → v) XOR w ∈ Bestᵗ (D → v))
+                            if best_not_w_has_changed or w_in_has_changed:
+                                logging.debug('Will send ETP received by ' + str(neigh) + ' to ' + str(w_lvl_id) + ' for ' + str((lvl, dst)) + ' because: best_not_w_has_changed or w_in_has_changed')
+                                logging.debug('cur_best_not_w_rem = ' + str(cur_best_not_w_rem))
+                                logging.debug('prev_best_not_w_rem = ' + str(prev_best_not_w_rem))
                                 logging.debug('w_in_current_best = ' + str(w_in_current_best))
                                 logging.debug('w_in_previous_best = ' + str(w_in_previous_best))
                                 w_in_tpl = False
@@ -861,23 +875,21 @@ class Etp(object):
                                         break
                                 # if w ∈ TPL allungato
                                 if w_in_tpl:
-                                    # new route Bestᵗ⁺¹ (D → w̃ → v) has to be sent to w (con il TPL nuovo)
-                                    best_without = routes_to_v.best_route_without(w_lvl_id)
-                                    if best_without:
-                                        logging.debug('Will send ' + str(best_without.hops_with_gw) + ' to ' + str(w_lvl_id) + ' appending myself to TPL.')
+                                    # new route Bestᵗ⁺¹ (D → w̃ → v) has to be sent to w (with a void TPL)
+                                    if best_not_w:
+                                        logging.debug('Will send ' + str(best_not_w.hops_with_gw) + ' to ' + str(w_lvl_id) + ' appending myself to TPL.')
                                         monitor.path_info_sent()
-                                        set_of_new_R[w][lvl].append((dst, best_without.rem, best_without.hops_with_gw))
+                                        set_of_new_R[w][lvl].append((dst, best_not_w.rem, best_not_w.hops_with_gw))
                                     else:
                                         logging.debug('Will send DeadRem appending myself to TPL.')
                                         monitor.path_info_sent()
                                         set_of_new_R[w][lvl].append((dst, DeadRem(), []))
                                 else:
-                                    # new route Bestᵗ⁺¹ (D → w̃ → v) has to be sent to w (con il TPL allungato)
-                                    best_without = routes_to_v.best_route_without(w_lvl_id)
-                                    if best_without:
-                                        logging.debug('Will send ' + str(best_without.hops_with_gw) + ' to ' + str(w_lvl_id) + ' in a new ETP.')
+                                    # new route Bestᵗ⁺¹ (D → w̃ → v) has to be sent to w (with previous TPL)
+                                    if best_not_w:
+                                        logging.debug('Will send ' + str(best_not_w.hops_with_gw) + ' to ' + str(w_lvl_id) + ' in a new ETP.')
                                         monitor.path_info_sent()
-                                        set_of_forwarded_R[w][lvl].append((dst, best_without.rem, best_without.hops_with_gw))
+                                        set_of_forwarded_R[w][lvl].append((dst, best_not_w.rem, best_not_w.hops_with_gw))
                                     else:
                                         logging.debug('Will send DeadRem in a new ETP.')
                                         monitor.path_info_sent()
