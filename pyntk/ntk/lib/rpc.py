@@ -720,10 +720,13 @@ def UDP_got_keepalive(_rpc_caller, caller_id):
 def UDP_send_reply(_rpc_caller, caller_id, ret):
     """Send a reply"""
 
-    logging.log(logging.ULTRADEBUG, 'Sending reply to id ' + str(caller_id) + 
+    logging.log(logging.ULTRADEBUG, 'Sending reply to id ' + str(caller_id) +
                 ' through ' + str(_rpc_caller.dev))
-    exec('BcastClient(devs=[_rpc_caller.dev], xtimemod=xtime).UDP_got_reply'
-         '(caller_id, ret)')
+    try:
+        exec('BcastClient(devs=[_rpc_caller.dev], xtimemod=xtime).' +
+                'UDP_got_reply(caller_id, ret)')
+    except Exception, e:
+        logging.debug(str(e) + ' raised in UDP_send_reply.')
 
 def UDP_got_reply(_rpc_caller, caller_id, ret):
     """Receives reply from a UDP_call."""
