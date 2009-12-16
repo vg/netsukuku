@@ -895,7 +895,11 @@ class Neighbour(object):
 
     @microfunc()
     def micro_call_ip_netid_change_udp(self, neigh, oldip, oldnetid, newip, newnetid):
-        self.call_ip_netid_change_udp(neigh, oldip, oldnetid, newip, newnetid)
+        try:
+            self.call_ip_netid_change_udp(neigh, oldip, oldnetid, newip, newnetid)
+        except Exception, e:
+            logging.debug(str(e) + ' raised in micro_call_ip_netid_change_udp to ' \
+                          + str(neigh))
 
     def ip_netid_change(self, *args):
         self.time_tick_serializer(self.serialized_ip_netid_change, args)
