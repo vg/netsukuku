@@ -398,8 +398,7 @@ class Neighbour(object):
     def memorize(self, val):
         """ key = (val.ip, val.netid)
             key should not be already in translation table.
-            Inserts this neighbour in our data structures. 
-            Returns the assigned id.
+            Inserts this neighbour in our data structures.
             If there is no more room, sends an exception.
         """
         # ATTENTION: this method MUST NOT pass schedule until the end.
@@ -419,7 +418,6 @@ class Neighbour(object):
         """ key: pair ip, netid
             key should be in translation table.
             Removes this neighbour in our data structures.
-            Returns old id.
         """
         # ATTENTION: this method MUST NOT pass schedule until the end.
         if key not in self.ip_netid_table:
