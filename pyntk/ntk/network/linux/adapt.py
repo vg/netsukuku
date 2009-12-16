@@ -42,6 +42,9 @@ def file_write(path, data):
 class IPROUTECommandError(Exception):
     ''' A generic iproute exception '''
 
+class IPTABLESCommandError(Exception):
+    ''' A generic iproute exception '''
+
 def iproute(args):
     ''' An iproute wrapper '''
 
@@ -67,6 +70,34 @@ def iproute(args):
 
     if stderr_value:
         raise IPROUTECommandError(stderr_value)
+
+    return stdout_value
+
+def iptables(args):
+    ''' An iptables wrapper '''
+
+    try:
+        IPTABLES_PATH = settings.IPTABLES_PATH
+    except AttributeError:
+        IPTABLES_PATH = os.path.join('/', 'sbin', 'iptables')
+
+    if not os.path.isfile(IPTABLES_PATH):
+        error_msg = ('Can not find %s.\n'
+                     'Have you got iptables properly installed?')
+        raise ImproperlyConfigured(error_msg % IPTABLES_PATH)
+
+    args_list = args.split()
+    cmd = [IPTABLES_PATH] + args_list
+    logging.info(' '.join(cmd))
+    proc = subprocess.Popen(cmd,
+                            stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            close_fds=True)
+    stdout_value, stderr_value = proc.communicate()
+
+    if stderr_value:
+        raise IPTABLESCommandError(stderr_value)
 
     return stdout_value
 
@@ -144,6 +175,9 @@ class NIC(BaseNIC):
 
         file_write(path, value)
 
+mac_table = {}
+# mac_table[w.upper()] is present (and has value n)
+#   iff a routing table exists for packets coming from w
 current_table = {}
 # current_table[(None, v)] is present (and has value y)
 #   iff a RULE destination = v → gateway = y exists in table
@@ -258,21 +292,56 @@ class Route(BaseRoute):
                 Route.delete(ip, cidr, dev, gateway, prev_hop=prev_hop)
             del current_table[(prev_hop, ipcidr)]
 
-    ##TODO: add the possibility to specify a routing table, f.e. 'table ntk'
+    @staticmethod
+    def _table_for_macaddr(macaddr):
+        ''' Makes sure that a routing table exists for packets coming from macaddr.
+            Returns the number of that table.
+        '''
+        if macaddr.upper() not in mac_table:
+            # Find first integer not used, starting from 26
+            # TODO: is the number ok?
+            idn = 26
+            while idn in mac_table.values():
+                idn += 1
+            # Add a routing table for mac prev_hop with number idn
+            args = '-t mangle -A PREROUTING -m mac --mac-source ' + macaddr + ' -j MARK --set-mark ' + str(idn)
+            iptables(args)
+            args = 'rule add fwmark ' + str(idn) + ' table ' + str(idn)
+            iproute(args)
+            # Add in mac_table
+            mac_table[macaddr.upper()] = idn
+        else:
+            idn = mac_table[macaddr.upper()]
+        return idn
 
     @staticmethod
-    def _modify_routes_cmd(command, ip, cidr, dev, gateway):
+    def _table_for_macaddr_remove(macaddr):
+        ''' Makes sure that a routing table doesn't exist anymore for packets coming from macaddr
+        '''
+        if macaddr.upper() in mac_table:
+            idn = mac_table[macaddr.upper()]
+            # Remove the association to routing table with number idn for mac prev_hop
+            args = '-t mangle -D PREROUTING -m mac --mac-source ' + macaddr + ' -j MARK --set-mark ' + str(idn)
+            iptables(args)
+            args = 'rule del fwmark ' + str(idn) + ' table ' + str(idn)
+            iproute(args)
+            # Remove from mac_table
+            del mac_table[macaddr.upper()]
+
+    @staticmethod
+    def _modify_routes_cmd(command, ip, cidr, dev, gateway, table=None):
         ''' Returns proper iproute command arguments to add/change/delete routes
         '''
         cmd = 'route %s %s/%s' % (command, ip, cidr)
 
+        if table is not None:
+            cmd += ' table %s' % table
         if dev is not None:
             cmd += ' dev %s' % dev
         if gateway is not None:
             cmd += ' via %s' % gateway
 
         cmd += ' protocol ntk'
-        #cmd += ' table ntk'
 
         return cmd
 
@@ -286,7 +355,6 @@ class Route(BaseRoute):
             cmd += ' dev %s' % dev
 
         cmd += ' protocol ntk'
-        #cmd += ' table ntk'
 
         return cmd
 
@@ -301,7 +369,9 @@ class Route(BaseRoute):
             cmd = Route._modify_routes_cmd('add', ip, cidr, dev, gateway)
             iproute(cmd)
         else:
-            logging.warning('Should add route for packets arriving from ' + prev_hop + ' dest=' + ip + '/' + cidr + ' through gateway ' + str(gateway))
+            idn = Route._table_for_macaddr(prev_hop)
+            cmd = Route._modify_routes_cmd('add', ip, cidr, dev, gateway, table=idn)
+            iproute(cmd)
 
     @staticmethod
     def change(ip, cidr, dev=None, gateway=None, prev_hop=None):
@@ -314,7 +384,9 @@ class Route(BaseRoute):
             cmd = Route._modify_routes_cmd('change', ip, cidr, dev, gateway)
             iproute(cmd)
         else:
-            logging.warning('Should change route for packets arriving from ' + prev_hop + ' dest=' + ip + '/' + cidr + ' through new gateway ' + str(gateway))
+            idn = Route._table_for_macaddr(prev_hop)
+            cmd = Route._modify_routes_cmd('change', ip, cidr, dev, gateway, table=idn)
+            iproute(cmd)
 
     @staticmethod
     def delete(ip, cidr, dev=None, gateway=None, prev_hop=None):
@@ -327,25 +399,23 @@ class Route(BaseRoute):
             cmd = Route._modify_routes_cmd('del', ip, cidr, dev, gateway)
             iproute(cmd)
         else:
-            logging.warning('Should delete route for packets arriving from ' + prev_hop + ' dest=' + ip + '/' + cidr + ' old gateway was ' + str(gateway))
+            idn = Route._table_for_macaddr(prev_hop)
+            cmd = Route._modify_routes_cmd('del', ip, cidr, dev, gateway, table=idn)
+            iproute(cmd)
 
     @staticmethod
     def unreachable(ip, cidr, prev_hop):
-        ''' Removes the route with corresponding properties. '''
-        # When at level 0, that is cidr = lvl_to_bits(0), this method
-        # might be called with ip = gateway. In this case the command
-        # below makes no sense and would result in a error.
-        if cidr == 32 and ip == gateway: return
-        logging.warning('Should add rule UNREACHABLE for packets arriving from ' + prev_hop + ' dest=' + ip + '/' + cidr)
+        ''' Claim unreachable the route with corresponding properties. '''
+        idn = Route._table_for_macaddr(prev_hop)
+        cmd = 'route add table ' + str(idn) + ' unreachable ' + str(ip) + '/' + str(cidr)
+        iproute(cmd)
 
     @staticmethod
     def delete_unreachable(ip, cidr, prev_hop):
-        ''' Removes the route with corresponding properties. '''
-        # When at level 0, that is cidr = lvl_to_bits(0), this method
-        # might be called with ip = gateway. In this case the command
-        # below makes no sense and would result in a error.
-        if cidr == 32 and ip == gateway: return
-        logging.warning('Should remove rule UNREACHABLE for packets arriving from ' + prev_hop + ' dest=' + ip + '/' + cidr)
+        ''' Stop claiming unreachable the route with corresponding properties. '''
+        idn = Route._table_for_macaddr(prev_hop)
+        cmd = 'route del table ' + str(idn) + ' unreachable ' + str(ip) + '/' + str(cidr)
+        iproute(cmd)
 
     @staticmethod
     def add_neigh(ip, dev=None):
