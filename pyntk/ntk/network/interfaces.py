@@ -102,6 +102,11 @@ class BaseRoute(object):
     ''' Rapresents a route controller. '''
 
     @staticmethod
+    def reset_routes():
+        ''' We have no routes '''
+        raise NotImplementedError
+
+    @staticmethod
     def default_route(ip, cidr, gateway, dev):
         ''' Maintains this default route for this destination. '''
         # ip and cidr are strings.

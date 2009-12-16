@@ -48,6 +48,10 @@ class Route(BaseRoute):
     ''' Dummy route  '''
 
     @staticmethod
+    def reset_routes():
+        ''' We have no routes '''
+
+    @staticmethod
     def default_route(ip, cidr, gateway, dev):
         ''' Maintains this default route for this destination. '''
 

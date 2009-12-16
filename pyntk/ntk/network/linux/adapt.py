@@ -136,8 +136,6 @@ class NIC(BaseNIC):
             self._flush()
         if address is not None and address != '':
             iproute('addr add %s dev %s' % (address, self.name))
-            global current_table
-            current_table = {}
 
     def get_address(self):
         ''' Gets NIC address. '''
@@ -194,6 +192,11 @@ current_table = {}
 
 class Route(BaseRoute):
     ''' Managing routes using iproute '''
+
+    @staticmethod
+    def reset_routes():
+        ''' We have no routes '''
+        Route.flush()
 
     @staticmethod
     def default_route(ip, cidr, gateway, dev):
@@ -313,6 +316,14 @@ class Route(BaseRoute):
         else:
             idn = mac_table[macaddr.upper()]
         return idn
+
+    @staticmethod
+    def _table_for_macaddr_remove_all():
+        ''' removes all routing table created for packets coming from any macaddr
+        '''
+        all_macs = mac_table.keys()
+        for k in all_macs:
+            Route._table_for_macaddr_remove(k)
 
     @staticmethod
     def _table_for_macaddr_remove(macaddr):
@@ -440,7 +451,22 @@ class Route(BaseRoute):
     @staticmethod
     def flush():
         ''' Flushes the routing table '''
-        iproute('route flush')
+        global current_table
+        global mac_table
+        try:
+            iproute('route flush table main')
+        except:
+            # It could result in "Nothing to flush". It's ok.
+            pass
+        for idn in mac_table.values():
+            try:
+                iproute('route flush table ' + str(idn))
+            except:
+                # It could result in "Nothing to flush". It's ok.
+                pass
+        Route._table_for_macaddr_remove_all()
+        current_table = {}
+        mac_table = {}
 
     @staticmethod
     def flush_cache():

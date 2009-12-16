@@ -389,7 +389,7 @@ class MapRoute(Map):
         self.radar = None
         Map.__init__(self, levels, gsize, RouteNode, me)
 
-        self.events.add(['ROUTES_UPDATED'])
+        self.events.add(['ROUTES_UPDATED', 'ROUTES_RESET'])
         self.remotable_funcs = [self.free_nodes_nb, self.free_nodes_nb_udp]
 
     def set_radar(self, radar):
@@ -422,7 +422,7 @@ class MapRoute(Map):
             # Consider it dead
             self.node_del(lvl, dst)
 
-        self.route_signal_rem_changed(lvl, dst)
+        self._emit_routes_updated(lvl, dst)
 
     def route_del_by_neigh(self, lvl, dst, gw, gwip, silent=0):
 
@@ -443,10 +443,17 @@ class MapRoute(Map):
             self.node_del(lvl, dst)
 
         if not silent:
-            self.route_signal_rem_changed(lvl, dst)
+            self._emit_routes_updated(lvl, dst)
 
     def route_signal_rem_changed(self, lvl, dst):
+        self._emit_routes_updated(lvl, dst)
+
+    def _emit_routes_updated(self, lvl, dst):
         self.events.send('ROUTES_UPDATED', (lvl, dst))
+
+    def map_reset(self):
+        Map.map_reset(self)
+        self.events.send('ROUTES_RESET', ())
 
     ######
 

@@ -39,6 +39,7 @@ class KrnlRoute(object):
         self.multipath = settings.MULTIPATH
 
         self.maproute.events.listen('ROUTES_UPDATED', self.routes_updated)
+        self.maproute.events.listen('ROUTES_RESET', self.routes_reset)
 
         self.neigh.events.listen('NEIGH_NEW', self.neigh_new, priority=5)
         self.neigh_new_calls = []
@@ -93,6 +94,13 @@ class KrnlRoute(object):
             function(*args, **kwargs)
         finally:
             logging.log(logging.ULTRADEBUG, 'KrnlRoute.schedule: exit ' + str(function))
+
+    def routes_reset(self, *args):
+        self.schedule(self.serialized_routes_reset, args)
+
+    def serialized_routes_reset(self):
+        # We have no routes
+        KRoute.reset_routes()
 
     def rule_dest_unknown(self, *args):
         self.schedule(self.serialized_rule_dest_unknown, args)
