@@ -524,7 +524,7 @@ class Etp(object):
 
             # Initialize neigh.etp_seq_num if needed
             if neigh.etp_seq_num is None:
-                neigh.etp_seq_num = [[0] * self.maproute.gsize] * self.maproute.levels
+                neigh.etp_seq_num = [[0] * self.maproute.gsize for i in xrange(self.maproute.levels)]
 
             # Implements "zombie" status
             if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')

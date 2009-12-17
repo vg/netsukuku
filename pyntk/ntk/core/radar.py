@@ -795,6 +795,11 @@ class Neighbour(object):
                 if self.ntk_client[ip].connected:
                     self.ntk_client[ip].close()
 
+    def reset_ntk_seq_num(self):
+        """Reset memorized etp sequence number for all neighbours."""
+        for neigh in self.ip_netid_table.values():
+            neigh.etp_seq_num = None
+
     def add(self, key):
         """Sends event for a new neighbour."""
 

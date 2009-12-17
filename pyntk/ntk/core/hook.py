@@ -465,6 +465,9 @@ class Hook(object):
             # close the ntkd sessions
             self.neigh.reset_ntk_clients()
 
+            # reset the known etp_sequence numbers
+            self.neigh.reset_ntk_seq_num()
+
             # change the IPs of the NICs
             newnip_ip = self.maproute.nip_to_ip(newnip)
             self.nics.activate(ip_to_str(newnip_ip))
