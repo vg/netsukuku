@@ -170,9 +170,9 @@ class NtkNode(object):
         logging.debug('First NIC activation done')
 
     def choose_first_nip(self):
-        # TODO a valid IP for our IP version.
-        nip = [0 for i in xrange(4)]
-        for lvl in reversed(xrange(4)):
+        # Returns a valid NIP.
+        nip = [0 for i in xrange(settings.LEVELS)]
+        for lvl in reversed(xrange(settings.LEVELS)):
             nip[lvl] = choice(valid_ids(lvl, nip))
         return nip
 
