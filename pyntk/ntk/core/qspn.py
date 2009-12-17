@@ -578,7 +578,7 @@ class Etp(object):
             ## Calculate the size of my network.
             def add(a,b):return a+b
             mynetsz = reduce(add, self.maproute.node_nb)
-            logging.debug('Before execution of ETP, my network size is ' + str(mynetsz-3) + '.')
+            logging.debug('Before execution of ETP, my network size is ' + str(mynetsz-self.maproute.levels+1) + '.')
 
             ## Calculate the size of the network as seen by my neighbour.
             # This can be useful if there is a network collision.
@@ -912,7 +912,7 @@ class Etp(object):
 
             ## Calculate the size of my network.
             mynetsz = reduce(add, self.maproute.node_nb)
-            logging.debug('After execution of ETP, my network size is ' + str(mynetsz-3) + '.')
+            logging.debug('After execution of ETP, my network size is ' + str(mynetsz-self.maproute.levels+1) + '.')
 
             ## evaluate current node_nb.
             cur_node_nb = self.maproute.node_nb[:]
@@ -948,8 +948,8 @@ class Etp(object):
             logging.info("We are already hooking. Just ignore this ETP.")
             return (False, R)
 
-        logging.info('My network size = ' + str(mynetsz-3))
-        logging.info('Their network size = ' + str(ngnetsz-3))
+        logging.info('My network size = ' + str(mynetsz-self.maproute.levels+1))
+        logging.info('Their network size = ' + str(ngnetsz-self.maproute.levels+1))
 
         if mynetsz > ngnetsz or                                         \
             (mynetsz == ngnetsz and self.neigh.netid > neigh_netid):
