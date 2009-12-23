@@ -38,7 +38,7 @@ import ntk.lib.misc as misc
 import ntk.lib.rpc as rpc
 import ntk.wrap.xtime as xtime
 
-from ntk.config import ImproperlyConfigured
+from ntk.config import settings, ImproperlyConfigured
 from ntk.lib.log import logger as logging
 from ntk.lib.micro import microfunc, micro
 from ntk.network import NICManager, Route
@@ -119,11 +119,14 @@ class NtkNode(object):
         if not self.simulated:
             self.kroute = kroute.KrnlRoute(self.neighbour, self.maproute)
 
-    def reload_snsd_nodes(self, snsd_nodes_path=settings.SNSD_NODES_PATH, snsd_nodes=[]):
-        for line in misc.read_nodes(settings.SNSD_NODES_PATH):
+    def reload_snsd_nodes(self, snsd_nodes_path=None, snsd_nodes=[]):
+        global settings
+        if snsd_nodes_path is None:
+            snsd_nodes_path = settings.SNSD_NODES_PATH
+        for line in misc.read_nodes(snsd_nodes_path):
             result, data = misc.parse_snsd_node(line)
             if not result:
-                raise ImproperlyConfigured("Wrong line in "+str(settings.SNSD_NODES_PATH))
+                raise ImproperlyConfigured("Wrong line in "+str(snsd_nodes_path))
             snsd_nodes.append(data)
         return snsd_nodes
     
