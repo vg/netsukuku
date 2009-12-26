@@ -23,6 +23,8 @@ from ntk.lib import microsock
 from ntk.lib.micro import microfunc, micro_block
 from ntk.lib.xtime import swait
 
+from ntk.lib.log import logger as logging
+
 ##
 # This is just a simple standalone non-RPC UDP server.
 # It is used to implement the ANDNS server socket.
@@ -48,23 +50,25 @@ class AndnsServer(object):
         self.andns = andns
         self.serv_sock = None
 
-    # TODO: complete
     def request_handler(self, socket, address, data):
         """ Keep and process the data from server socket and 
         reply """
         ## Botta e risposta
-        #request = message.from_wire(data)
-        #response = self.andns.process(request)
-        #socket.sendto(response.to_wire(), address)
-        pass
+        logging.log(logging.ULTRADEBUG, "ANDNS Server: Received a DNS Query"
+                                        " from " + str(address))
+        request = message.from_wire(data)
+        response = self.andns.process_binary(request)
+        socket.sendto(response.to_wire(), address)
             
     @microfunc(True) 
     def daemon(self):
         """ Start the local DNS server """
         try:
+            logging.log(logging.ULTRADEBUG, "ANDNS Server: starting daemon")
             UDPServer(('', 53), self.request_handler)
-        except:
+        except e:
             # restart
+            logging.log(logging.ULTRADEBUG, str(e))
             self.daemon()
         micro_block()
             

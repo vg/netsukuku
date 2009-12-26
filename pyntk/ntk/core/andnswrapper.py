@@ -98,7 +98,7 @@ class AndnsWrapper(object):
             self.updater()
         
     def process_binary(self, request):
-        """ Converts ANDNS packets (see RFC) to AndnsPacket objects """ 
+        """ Process ANDNS packets (see RFC) converted to AndnsPacket objects """
         return self.process_packet(andns.from_wire(request)).to_wire()
 
     def process_packet(self, packet):
