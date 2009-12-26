@@ -184,7 +184,7 @@ void ip_bin_to_str(andns_pkt *ap, void *data,char *dst)
             break;
 
         case AF_INET6:
-            memcpy(&(i6a.in6_u),data,16);
+            memcpy(&(i6a.s6_addr),data,16);
             via=(void*)(&i6a);
             break;
 
