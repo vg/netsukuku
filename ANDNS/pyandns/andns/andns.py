@@ -152,7 +152,7 @@ class AndnsPacket(object):
                "rcode="+str(self.rcode)+            "\n"+\
                "ancount="+str(self.ancount)+        "\n"+\
                "service="+str(self.service)+        "\n"+\
-               "qstdata="+hexlify(self.qstdata)+    "\n"+\
+               "qstdata="+str(self.qstdata)+        "\n"+\
                "answers..."+"\n"+str(self.pkt_answ)+"\n" 
                
     def addAnswer(self, answer):
@@ -167,8 +167,8 @@ class AndnsPacket(object):
             
     def to_wire(self):
         data_tuple = (self.id, self.r, self.qr, self.z, self.qtype, self.ancount,
-               self.ipv, self.nk, self.rcode, self.p, self.service, self.qstdata, 
-                                   [ answ.to_tuple() for answ in self.pkt_answ ])
+               self.ipv, self.nk, self.rcode, self.p, self.service, self.qstdata,
+                 [ answ.to_tuple() for answ in self.pkt_answ ])
         return tuple_to_pkt(*data_tuple)
     
     def __iter__(self):

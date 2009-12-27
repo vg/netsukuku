@@ -82,6 +82,7 @@ static PyObject *
 _tuple_to_pkt(PyObject *self, PyObject *args)
 {
     char pktbuff[ANDNS_PKT_TOT_SZ];
+    char *qstdata;
     int i, res=0;
     andns_pkt *packet;
     PyObject *answers;
@@ -90,12 +91,17 @@ _tuple_to_pkt(PyObject *self, PyObject *args)
 
     if (!PyArg_ParseTuple(args, "HBBBBHBBBBHs#O", &(packet->id), 
              &(packet->r), &(packet->qr), &(packet->z), &(packet->qtype),
-             &(packet->ancount), &(packet->ipv), &(packet->nk), &(packet->rcode),
-             &(packet->p), &(packet->service), &(packet->qstdata), &(packet->qstlength), &answers))
+             &(packet->ancount), &(packet->ipv), &(packet->nk), 
+             &(packet->rcode), &(packet->p), &(packet->service), &(qstdata),
+             &(packet->qstlength), &answers))
     {
         PyErr_SetString(AndnsError, "Parsing failed.");
+        free_andns_pkt(packet);
         return NULL;       
     }
+
+    align_andns_question(packet, strlen(qstdata));
+    memcpy(packet->qstdata, qstdata, strlen(qstdata));
 
     if (packet->qtype == AT_A) {
         // parsing host to IP answers 
@@ -104,8 +110,10 @@ _tuple_to_pkt(PyObject *self, PyObject *args)
             andns_pkt_data* answ_pkt = andns_add_answ(packet);
             PyObject *answer_tuple = PyList_GetItem(answers, i);
             if (!PyArg_ParseTuple(answer_tuple, "BBBHi", &(answ_pkt->m), 
-                    &(answ_pkt->prio), &(answ_pkt->wg), &(answ_pkt->service), &ip)) {
+                                  &(answ_pkt->prio), &(answ_pkt->wg),
+                                           &(answ_pkt->service), &ip)) {
                 PyErr_SetString(AndnsError, "Answers parsing failed.");
+                free_andns_pkt(packet);
                 return NULL;                                                  
             }   
             // TODO: consider IPv6 too 
@@ -122,6 +130,7 @@ _tuple_to_pkt(PyObject *self, PyObject *args)
             if (!PyArg_ParseTuple(answer_tuple, "BBBHs#", &(answ_pkt->m), &(answ_pkt->prio), &(answ_pkt->wg), 
                                 &(answ_pkt->service), &(answ_pkt->rdata), &answ_pkt->rdlength)) {
                 PyErr_SetString(AndnsError, "Answers parsing failed.");
+                free_andns_pkt(packet);
                 return NULL;                                                  
             }
         }    
@@ -129,11 +138,11 @@ _tuple_to_pkt(PyObject *self, PyObject *args)
     
     if (((res= a_p(packet, pktbuff)) == -1)) {
         PyErr_SetString(AndnsError, "Malformed Packet (packing).");
+        free_andns_pkt(packet);
         return NULL;
     }
-    
+
     free_andns_pkt(packet);
-    // TODO: adding null bytes, can improve?
     return PyString_FromStringAndSize(pktbuff, ANDNS_PKT_TOT_SZ);
 }
 

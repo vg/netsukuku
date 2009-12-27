@@ -332,25 +332,27 @@ int a_u(char *buf, int pktlen, andns_pkt **app)
     int limitlen,u_len;
     char *u_buf;
 
+    
     if (pktlen<ANDNS_PKT_HDR_SZ)
         return 0;
     /* TODO upper control */
-    
     *app= ap= create_andns_pkt();
+    
     offset= a_hdr_u(buf, ap);
 
     if (ap->z) 
-    { 
+    {
+       
         if (pktlen< ANDNS_PKT_HDR_SZ+ ANDNS_PKT_HDRZ_SZ) 
         {
             destroy_andns_pkt(ap);
             return 0;
         }
-
+        
         if (!(u_buf= andns_uncompress(buf, pktlen, &u_len))) 
             goto andmap;
 
-        destroy_andns_pkt(ap); 
+        destroy_andns_pkt(ap);
         ANDNS_UNSET_Z(u_buf);
         res= a_u(u_buf, u_len, app);
         free(u_buf);
@@ -599,8 +601,6 @@ int a_p(andns_pkt *ap, char *buf)
 
         offset+=res;
     }
-        
-    destroy_andns_pkt(ap);
 
     /* Compression */
     if (offset> ANDNS_COMPR_THRESHOLD) 
@@ -613,7 +613,6 @@ int a_p(andns_pkt *ap, char *buf)
     return offset;
 
 server_fail:
-    destroy_andns_pkt(ap);
     return -1;
 }
 
