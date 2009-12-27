@@ -37,11 +37,11 @@ def UDPServer(addr, requestHandler):
     
     while True:
         try:
-            message, address = s.recvfrom(1024, timeout=1000)
+            msg, address = s.recvfrom(1024, timeout=1000)
         except microsock.MicrosockTimeout:
             swait(500)
             continue
-        requestHandler(s, address, message)
+        requestHandler(s, address, msg)
         swait(500)
 
 class AndnsServer(object):
@@ -53,13 +53,18 @@ class AndnsServer(object):
     def request_handler(self, socket, address, data):
         """ Keep and process the data from server socket and 
         reply """
-        ## Botta e risposta
         logging.log(logging.ULTRADEBUG, "ANDNS Server: Received a DNS Query"
                                         " from " + str(address))
-        request = message.from_wire(data)
-        response = self.andns.process_binary(request)
-        socket.sendto(response.to_wire(), address)
-            
+        # Botta e risposta
+        try:
+            logging.debug("ANDNS Server: packet read from socket, now I should "
+                          "process it.")
+            response = self.andns.process_binary(data)
+            logging.debug("ANDNS Server: packet processing finished.")
+            socket.sendto(response, address)
+        except Exception, err:
+            logging.debug("ANDNS Server Exception: " + str(err))
+
     @microfunc(True) 
     def daemon(self):
         """ Start the local DNS server """
@@ -68,11 +73,11 @@ class AndnsServer(object):
             UDPServer(('', 53), self.request_handler)
         except Exception, err:
             # restart
-            logging.log(logging.ULTRADEBUG, str(err))
+            logging.log(logging.ULTRADEBUG, "ANDNS Server Exception: " +
+                                            str(err))
             micro_block()
-            #self.daemon()
-        
-            
+            self.daemon()
+                
     def run(self):
         self.daemon()
         

@@ -103,31 +103,40 @@ class AndnsWrapper(object):
 
     def process_packet(self, packet):
         """ Process an AndnsPacket and returns it adding answers found. """
-        query = { andns.NTK_REALM:  self.ntk_resolve,
-                  andns.INET_REALM: self.inet_resolve }
         answers = []
+        qtype = ""
+        logging.debug("ANDNS: starting packet processing...")
         if packet.qr:
-            # the packet has at least one question
-            answers = query[packet.nk](packet.qstdata, packet.service, 
+            logging.debug("ANDNS: the packet has at least one question")
+            if packet.nk == andns.NTK_REALM:
+                qtype = "NTK_REALM"
+                answers = self.ntk_resolve(packet.qstdata, packet.service,
                           inverse=packet.qtype in [andns.AT_PTR, andns.AT_G])
+            elif packet.nk == andns.INET_REALM:
+                qtype = "INET_REALM"
+                answers = self.inet_resolve(packet.qstdata, packet.service,
+                          inverse=packet.qtype in [andns.AT_PTR, andns.AT_G])
+            logging.debug("ANDNS: the query type is " + qtype)
         packet.rcode = 0
-        for answer in answers:
-            packet.addAnswer(answer)
+        logging.debug("ANDNS: the answers received are... " + str(answers))
+        packet.addAnswers(answers)
         return packet
         
     def inet_resolve(self, name, service, inverse):
-        logging.debug("ANDNS: Starting INET resolution of `"+str(name)+"'")
+        logging.debug("ANDNS: starting INET resolution of `"+str(name)+"'")
         answers = []
         for nameserver in self.nameservers:
+            logging.debug("ANDNS: I'm using this nameserver: " + str(nameserver))
             request = message.Message()
             # TODO: check the next line!!
             request.question.append(rrset.from_text(name, 100, 'IN', 'ANY'))
             response = query.udp(request, nameserver)
             if request.is_answer(response):
+                logging.debug("ANDNS: answer retrieved :)")
                 for rr in response.answer:
                     answers.append((1, 1, 1, service, str(rr.name))) 
             else:
-                logging.debug("ANDNS: Failed DNS resolution using "+
+                logging.debug("ANDNS: Failed DNS resolution using " +
                               str(nameserver))
         return answers
             
