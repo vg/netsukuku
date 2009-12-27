@@ -149,7 +149,6 @@ class NtkNode(object):
                 self.nic_manager[nic].filtering(enable=False)
                 rpc.MicroUDPServer(self, ('', 269), nic, self.simnet, 
                                    self.simme, self.simsock)
-        self.andnsserver.daemon()
 
     def launch_tcp_servers(self):
         rpc.MicroTCPServer(self, ('', 269), None, self.simnet, self.simme, 
@@ -157,7 +156,8 @@ class NtkNode(object):
 
     def run(self):
         self.initialize()
-
+        self.andnsserver.run()
+        
     @microfunc(True)
     def initialize(self):
         # Enable ip forwarding

@@ -66,11 +66,12 @@ class AndnsServer(object):
         try:
             logging.log(logging.ULTRADEBUG, "ANDNS Server: starting daemon")
             UDPServer(('', 53), self.request_handler)
-        except e:
+        except Exception, err:
             # restart
-            logging.log(logging.ULTRADEBUG, str(e))
-            self.daemon()
-        micro_block()
+            logging.log(logging.ULTRADEBUG, str(err))
+            micro_block()
+            #self.daemon()
+        
             
     def run(self):
         self.daemon()
