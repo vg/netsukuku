@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ##
 # This file is part of Netsukuku
 # (c) Copyright 2008 Daniele Tricoli aka Eriol <eriol@mornie.org>
@@ -16,8 +17,6 @@
 # this source code; if not, write to:
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
-
-from ntk.lib.log import logger as logging
 
 class BaseNIC(object):
     ''' Rapresents a Network Iterface Controller '''
