@@ -182,8 +182,12 @@ class RPCDispatcher(object):
 
     def _dispatch(self, caller, func_name, params):
         if not 'radar' in func_name:
-            logging.log(logging.ULTRADEBUG, "_dispatch: "+func_name+
-                        "("+str(params)+")")
+            lines = "_dispatch: " + func_name + \
+                        "(" + str(params) + ")"
+            nline = 1000
+            for line in lines.split('\n'):
+                nline += 1
+                logging.log(logging.ULTRADEBUG, '(' + str(nline)[1:] + ') ' + line)
         func = None
         rpc_caller_present = False
         if func_name == 'UDP_got_keepalive':

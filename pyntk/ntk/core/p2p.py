@@ -291,9 +291,12 @@ class StrictP2P(RPCDispatcher):
         logging.log(logging.ULTRADEBUG, ' nearest known is ' + str(H_hip))
         if H_hip == self.maproute.me:
             # the msg has arrived
-            logging.debug('I have been asked a P2P service, as the '
-                          'nearest to ' + str(hip) + ' (msg=' + str(msg) +
-                          ')')
+            lines = 'I have been asked a P2P service, as the ' + \
+                    'nearest to ' + str(hip) + ' (msg=' + str(msg) + ')'
+            nline = 1000
+            for line in lines.split('\n'):
+                nline += 1
+                logging.debug('(' + str(nline)[1:] + ') ' + line)
             return self.msg_exec(sender_nip, msg, msg_id)
 
         # forward the message until it arrives at destination
