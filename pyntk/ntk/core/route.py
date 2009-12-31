@@ -490,7 +490,7 @@ class MapRoute(Map):
                 ret = self.free_nodes_nb(lvl)
                 logging.log(logging.ULTRADEBUG, 'returning ' + str(ret))
             except Exception as e:
-                ret = ('rmt_error', e.message)
+                ret = ('rmt_error', str(e))
                 logging.warning('free_nodes_nb_udp: returning exception ' + 
                                 str(ret))
             finally:

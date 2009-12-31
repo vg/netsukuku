@@ -354,7 +354,7 @@ class StrictP2P(RPCDispatcher):
                 ret = self.msg_send(sender_nip, hip, msg, msg_id)
                 logging.log(logging.ULTRADEBUG, 'returning ' + str(ret))
             except Exception as e:
-                ret = ('rmt_error', e.message)
+                ret = ('rmt_error', str(e))
                 logging.warning('msg_send_udp: returning exception ' + 
                                 str(ret))
             finally:

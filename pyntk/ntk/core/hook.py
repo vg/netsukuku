@@ -601,7 +601,7 @@ class Hook(object):
                 ret = self.highest_free_nodes()
                 logging.log(logging.ULTRADEBUG, 'returning ' + str(ret))
             except Exception as e:
-                ret = ('rmt_error', e.message)
+                ret = ('rmt_error', str(e))
                 logging.warning('highest_free_nodes_udp: returning exception '
                                 + str(ret))
             finally:
