@@ -419,7 +419,7 @@ class TCPClient(FakeRmt):
         # I receive a message with the following format:
         #     ('rmt_error', message_error)
         # where message_error is a string
-        if isinstance(recv_data, tuple) and recv_data[0] == 'rmt_error':
+        if isinstance(recv_data, tuple) and len(recv_data) == 2 and recv_data[0] == 'rmt_error':
             raise RPCError(recv_data[1])
 
         return recv_data
@@ -660,7 +660,7 @@ def UDP_call(callee_nip, callee_netid, devs, func_name, args=()):
     # I receive a message with the following format:
     #     ('rmt_error', message_error)
     # where message_error is a string
-    if isinstance(ret, tuple) and ret[0] == 'rmt_error':
+    if isinstance(ret, tuple) and len(ret) == 2 and ret[0] == 'rmt_error':
         raise RPCError(ret[1])
     return ret
 

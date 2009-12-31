@@ -335,9 +335,9 @@ class dispatcher(asyncore.dispatcher):
         ret = waitChannel.recv()
         # Handling errors
         # I receive a message with the following format:
-        #     ('rmt_error', message_error)
+        #     ('microsock_error', message_error)
         # where message_error is a string
-        if isinstance(ret, tuple) and ret[0] == 'microsock_error':
+        if isinstance(ret, tuple) and len(ret) == 2 and ret[0] == 'microsock_error':
             raise error(ret[1])
         return ret
 
