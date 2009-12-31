@@ -2,6 +2,7 @@
 ##
 # This file is part of Netsukuku
 # (c) Copyright 2007 Alberto Santini <alberto@unix-monk.com>
+# (c) Copyright 2009 Luca Dionisi aka lukisi <luca.dionisi@gmail.com>
 #
 # This source code is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as published
