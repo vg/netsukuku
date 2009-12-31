@@ -17,6 +17,8 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
+from random import randint
+
 from ntk.core.p2p import P2P
 from ntk.core.snsd import SnsdServices, create_record
 from ntk.lib.crypto import md5, fnv_32_buf, verify
@@ -105,11 +107,19 @@ class Andna(P2P):
     def register(self, hostname, service, IDNum, snsd_record,
         snsd_record_pubk, priority, weight, append_if_unavailable):
         """ Register or update the name for the specified service number """
+        logging.debug('ANDNA: register' + str((hostname, service, IDNum,
+                snsd_record, snsd_record_pubk, priority, weight,
+                append_if_unavailable)))
+        # calculate hash
+        hash_node = self.peer(key=hostname)
+        hash_nip = hash_node.get_hash_nip()
+        logging.debug('ANDNA: exact hash_node is ' + str(hash_nip))
+        # a random node of hash gnode of level 1.
+        random_hnode = hash_nip[:]
+        random_hnode[0] = randint(0, self.maproute.gsize)
+        logging.debug('ANDNA: random hash_node is ' + str(random_hnode))
         # contact the hash gnode firstly
-        hash_gnode = self.peer(key=hostname)
-        if hash_gnode.peer_is_me(): 
-            logging.debug("ANDNA: Failed. Hash gnode is me!")
-            return ("KO", "There are no participants")
+        hash_gnode = self.peer(hIP=random_hnode)
         # sign the request and attach the public key
         signature = self.my_keys.sign(hostname)
         res, msg = hash_gnode.reply_register(self.maproute.me[:],
@@ -234,11 +244,21 @@ class Andna(P2P):
     
     def resolve(self, hostname, service=0):
         """ Resolve the hostname, returns an SnsdRecord instance """
+        logging.debug('ANDNA: resolve' + str((hostname, service)))
         # first try to resolve locally
         if self.resolved.has_key(hostname):
             return ('OK', self.resolved[hostname].services.get(service))
         # else call the remote hash gnode
-        hash_gnode = self.peer(key=hostname)
+        # calculate hash
+        hash_node = self.peer(key=hostname)
+        hash_nip = hash_node.get_hash_nip()
+        logging.debug('ANDNA: exact hash_node is ' + str(hash_nip))
+        # a random node of hash gnode of level 1.
+        random_hnode = hash_nip[:]
+        random_hnode[0] = randint(0, self.maproute.gsize)
+        logging.debug('ANDNA: random hash_node is ' + str(random_hnode))
+        # contact the hash gnode firstly
+        hash_gnode = self.peer(hIP=random_hnode)
         if hash_gnode.peer_is_me(): 
             return ("KO", AndnaError("There are no participants?"))
         res, data = hash_gnode.reply_resolve(hostname, service)
