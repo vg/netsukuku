@@ -1,0 +1,3 @@
+There are still some errors regarding memory, free is called twice on the same pointer value, manage with destroy_packets function.
+Remember of the binary representation of ID (review your email).
+by jnz_
