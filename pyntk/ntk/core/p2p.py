@@ -373,27 +373,19 @@ class StrictP2P(RPCDispatcher):
             self.neigh = neigh
             FakeRmt.__init__(self)
 
-        def prepare_rmt(self):
+        def evaluate_hash_nip(self):
             if self.hIP is None:
                 self.hIP = self.p2p.h(self.key)
             if self.hIP is None:
                 raise Exception, "'key' does not map to a IP."
-            self.H_hip = self.p2p.H(self.hIP)
-            
-        def peer_is_me(self):
-            return self.H_hip == self.p2p.maproute.me
 
-        def peer_get_neigh(self):
-            if self.H_hip is None:
-                return None
-            if self.peer_is_me():
-                raise Exception, ("Peer is me. You shouldn't ask for "
-                                  "neigh, without checking.")
-            return self.p2p.neigh_get(self.H_hip)
+        def get_hash_nip(self):
+            self.evaluate_hash_nip()
+            return self.hIP
 
         def rmt(self, func_name, *params):
             """Overrides FakeRmt.rmt()"""
-            self.prepare_rmt()
+            self.evaluate_hash_nip()
             if self.neigh:
                 # We are requested to use this one as first hop via UDP.
                 logging.log(logging.ULTRADEBUG, 'P2P: Use UDP via ' + 
