@@ -186,11 +186,7 @@ class Coord(StrictP2P):
         self.maproute.events.listen('NODE_DELETED', self.mapcache.node_del)
         self.maproute.events.listen('ME_CHANGED', self.mapcache.me_changed)
 
-        # TODO: new participant_joined fails with 'connection refused' 
-        # (mapp2p = maproute (see StrictP2P)). 
-        # See the TODO in new_participant_joined, the problem is solved 
-        # but maybe it is not a good solution.
-        self.mapp2p.events.listen('NODE_NEW', self.new_participant_joined)
+        self.maproute.events.listen('NODE_NEW', self.new_participant_joined)
         
 
         self.coordnode = [None] * (self.maproute.levels + 1)
@@ -264,11 +260,6 @@ class Coord(StrictP2P):
         logging.info('Coord: new coordinator for our level ' + str(level) + 
                      ' is ' + str(HhIP))
         
-        # TODO: is it a good idea? ...
-        # Give-up, we must wait that the route is created before 
-        # to contact the remote peer.
-        swait(500)
-        
         # Then, if I was the previous one... (Tricky enough, new participant 
         # could just be me!)
         if it_was_me and HhIP != self.maproute.me:
@@ -276,8 +267,21 @@ class Coord(StrictP2P):
             logging.debug('Coord: I was coordinator for our level ' + 
                           str(level) + ', new coordinator is ' + str(HhIP))
             logging.debug('Coord: So I will pass him my mapcache.')
-            peer = self.peer(hIP=hIP)
-            peer.mapcache.map_data_merge(self.mapcache.map_data_pack())
+            for i in xrange(10):
+                try:
+                    logging.debug('Coord: prepare to pass to ' + str(hIP))
+                    peer = self.peer(hIP=hIP)
+                    logging.debug('Coord: prepare map')
+                    themap = self.mapcache.map_data_pack()
+                    logging.debug('Coord: try to pass to ' + str(hIP))
+                    peer.mapcache.map_data_merge(themap)
+                    logging.debug('Coord: well done.')
+                    break
+                except Exception, e:
+                    # We might need to wait that the route is created to be
+                    # able to contact the peer. Let's try hard.
+                    logging.debug('Coord: fail ' + str(e))
+                    swait(2000)
             logging.debug('Coord: Done passing my mapcache.')
 
 

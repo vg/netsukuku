@@ -199,25 +199,25 @@ class StrictP2P(RPCDispatcher):
 
            pid: P2P id of the service associated to this map
         """
-        # TODO: we store the pid here instead of MapP2P, is it right?
-        #       in this way it is inherited by P2P :\\\\\\
         self.pid = pid 
 
         self.ntkd_status = ntkd_status
         self.radar = radar
         self.neigh = radar.neigh
-        self.maproute = self.mapp2p = maproute
+        self.maproute = maproute
 
         self.remotable_funcs = [self.msg_send,
                                 self.msg_send_udp]
 
         RPCDispatcher.__init__(self, root_instance=self)
 
-    @microfunc()
-    def me_changed(self, old_me, new_me):
-        """My nip has changed."""
-        self.mapp2p.me_changed(old_me, new_me)
-        self.re_participate()
+    def is_participant(self, lvl, idn):
+        """Returns True iff the node lvl,idn is participating
+        to the service. For a StrictP2P it means iff the node
+        exists in maproute.
+        An inheriting class could override the function.
+        """
+        return not self.maproute.node_get(lvl, idn).is_free()
 
     def h(self, key):
         """This is the function h:KEY-->hIP.
@@ -229,15 +229,14 @@ class StrictP2P(RPCDispatcher):
     def H(self, hIP):
         """This is the function that maps each IP to an existent hash node IP
            If there are no participants, None is returned"""
-        mp = self.mapp2p
+        mp = self.maproute
         logging.log(logging.ULTRADEBUG, 'H: H(' + str(hIP) + ')')
-        logging.log(logging.ULTRADEBUG, 'H: mapp2p = ' + mp.repr_me())
         H_hIP = [None] * mp.levels
         for l in reversed(xrange(mp.levels)):
             for id in xrange(mp.gsize):
                 for sign in [-1,1]:
                     hid=(hIP[l] + id * sign) % mp.gsize
-                    if not mp.node_get(l, hid).is_free():
+                    if self.is_participant(l, hid):
                         H_hIP[l] = hid
                         break
                 if H_hIP[l] is not None:
@@ -279,7 +278,7 @@ class StrictP2P(RPCDispatcher):
         # Implements "zombie" status
         if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
 
-        logging.log(logging.ULTRADEBUG, 'P2P: participant_add_udp '
+        logging.log(logging.ULTRADEBUG, 'P2P: msg_send '
                     'called by ' + str(sender_nip) + ' with msg_id = ' + 
                     str(msg_id))
         lvl = self.maproute.nip_cmp(sender_nip)
@@ -290,7 +289,7 @@ class StrictP2P(RPCDispatcher):
                                         'service to ' + str(hip))
         H_hip = self.H(hip)
         logging.log(logging.ULTRADEBUG, ' nearest known is ' + str(H_hip))
-        if H_hip == self.mapp2p.me:
+        if H_hip == self.maproute.me:
             # the msg has arrived
             logging.debug('I have been asked a P2P service, as the '
                           'nearest to ' + str(hip) + ' (msg=' + str(msg) +
@@ -314,10 +313,6 @@ class StrictP2P(RPCDispatcher):
             # Is it possible? Don't we retry?
             logging.warning('I don\'t know to whom I must forward. '
                             'Giving up. Raising exception.')
-            logging.warning('This is mapp2p.')
-            logging.warning(self.mapp2p.repr_me())
-            logging.warning('This is maproute.')
-            logging.warning(Map.repr_me(self.maproute))
             raise Exception('Unreachable P2P destination ' + str(H_hip) + 
                             ' from ' + str(self.maproute.me) + '.')
 
@@ -454,40 +449,17 @@ class P2P(StrictP2P):
 
         RPCDispatcher.__init__(self, root_instance=self)
 
+    def is_participant(self, lvl, idn):
+        """Returns True iff the node lvl,idn is participating
+        to the service.
+        """
+        return self.mapp2p.node_get(lvl, idn).participant
+
     @microfunc()
     def me_changed(self, old_me, new_me):
         """My nip has changed."""
         self.mapp2p.me_changed(old_me, new_me)
         self.re_participate()
-
-    def H(self, hIP):
-        """This is the function that maps each IP to an existent hash node IP
-           If there are no participants, None is returned"""
-        mp = self.mapp2p
-        logging.log(logging.ULTRADEBUG, 'H: H(' + str(hIP) + ')')
-        logging.log(logging.ULTRADEBUG, 'H: mapp2p = ' + mp.repr_me())
-        H_hIP = [None] * mp.levels
-        for l in reversed(xrange(mp.levels)):
-            for id in xrange(mp.gsize):
-                for sign in [-1,1]:
-                    hid=(hIP[l] + id * sign) % mp.gsize
-                    if mp.node_get(l, hid).participant:
-                        H_hIP[l] = hid
-                        break
-                if H_hIP[l] is not None:
-                    break
-            if H_hIP[l] is None:
-                logging.log(logging.ULTRADEBUG, 'H: H(' + str(hIP) + 
-                            ') = None')
-                return None
-
-            if H_hIP[l] != mp.me[l]:
-                # we can stop here
-                break
-
-        logging.log(logging.ULTRADEBUG, 'H: H(' + str(hIP) + ') = ' + 
-                    str(H_hIP))
-        return H_hIP
 
     def re_participate(self, *args):
         """Let's become a participant node again. Used when my nip 
@@ -836,6 +808,11 @@ class P2PAll(object):
         raise AttributeError
 
     def log_services(self):
-        return [(s, self.service[s].mapp2p.repr_me())
+        def map_repr(p2p):
+            if isinstance(p2p, StrictP2P):
+                return p2p.maproute.repr_me()
+            else:
+                return p2p.mapp2p.repr_me()
+        return [(s, map_repr(self.service[s]))
                         for s in self.service]
 
