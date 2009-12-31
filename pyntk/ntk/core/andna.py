@@ -18,6 +18,7 @@
 ##
 
 from random import randint
+import ntk.lib.rencode as rencode
 
 from ntk.core.p2p import P2P
 from ntk.core.snsd import SnsdServices, create_record
@@ -121,8 +122,10 @@ class Andna(P2P):
         # contact the hash gnode firstly
         hash_gnode = self.peer(hIP=random_hnode)
         # sign the request and attach the public key
-        signature = self.my_keys.sign(hostname)
-        res, msg = hash_gnode.reply_register(self.maproute.me[:],
+        sender_nip = self.maproute.me[:]
+        signature = self.my_keys.sign(rencode.dumps((sender_nip, hostname, service, IDNum, priority, weight)))
+        logging.debug('ANDNA: request registration')
+        res, msg = hash_gnode.reply_register(sender_nip,
                                               hostname, 
                                               service, 
                                               self.my_keys.get_pub_key(), 
@@ -159,7 +162,7 @@ class Andna(P2P):
         logging.debug("ANDNA: cleaned expired entries from our ANDNA cache")                        
         registration_time = updates = 0
         # first the authentication check
-        if not verify(hostname, signature, pubk):
+        if not verify(rencode.dumps((sender_nip, hostname, service, IDNum, priority, weight)), signature, pubk):
             raise AndnaError("Request authentication failed")
         if self.cache.has_key(hostname) and append_if_unavailable:
             if not self.request_queue.has_key(hostname):
@@ -259,8 +262,6 @@ class Andna(P2P):
         logging.debug('ANDNA: random hash_node is ' + str(random_hnode))
         # contact the hash gnode firstly
         hash_gnode = self.peer(hIP=random_hnode)
-        if hash_gnode.peer_is_me(): 
-            return ("KO", AndnaError("There are no participants?"))
         res, data = hash_gnode.reply_resolve(hostname, service)
         if res == 'OK':
             snsd_record = data
