@@ -114,6 +114,7 @@ class NtkNode(object):
                               self.coordnode, self.nic_manager)
 
         self.hook.events.listen('HOOKED', self.p2p.p2p_hook)
+        self.hook.events.listen('HOOKED', self.andna.re_participate)
         # A complete reset is needed for each hook
         self.hook.events.listen('HOOKED', self.reset)
 

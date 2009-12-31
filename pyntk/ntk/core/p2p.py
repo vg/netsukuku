@@ -451,7 +451,6 @@ class P2P(StrictP2P):
     def me_changed(self, old_me, new_me):
         """My nip has changed."""
         self.mapp2p.me_changed(old_me, new_me)
-        self.re_participate()
 
     def re_participate(self, *args):
         """Let's become a participant node again. Used when my nip 
@@ -466,6 +465,7 @@ class P2P(StrictP2P):
         self.participant = True
         self.mapp2p.participate()
         current_nr_list = self.neigh.neigh_list(in_my_network=True)
+        logging.log(logging.ULTRADEBUG, 'P2P: I participate. I have in my network ' + str(len(current_nr_list)) + ' neighbours.')
 
         # TODO handle the case where one of neighbours does not reply
         # (raises an error)
@@ -704,22 +704,17 @@ class P2PAll(object):
         else:
             return self.service[pid]
 
-    def pid_getall(self, strict=False):
-        """ Set `strict' if you want strict service in the list too """
-
+    def pid_getall(self):
         # Implements "zombie" status
         if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
 
-        if not strict:
-            return [(s, self.service[s].mapp2p.map_data_pack())
-                        for s in self.service
-                            if not isinstance(self.service[s], StrictP2P)]  
-        else:
-            # TODO: you cannot use mapp2p.map_data_pack on strict services,
-            #       it isn't implemented! what should I return then?
-            return [(s, self.service[s].mapp2p.map_data_pack())
-                        for s in self.service]
-        
+        return [(s, self.service[s].mapp2p.map_data_pack())
+                    for s in self.service
+                        if isinstance(self.service[s], P2P)]
+        # WAS:          if not isinstance(self.service[s], StrictP2P)]  
+        # A P2P is a StrictP2P. So this "if" was bugged.
+        # BTW, what about defining a StrictP2P as a subclass of P2P?
+
     def p2p_register(self, p2p):
         """Used to add for the first time a P2P instance of a module in the
            P2PAll dictionary."""
@@ -737,10 +732,6 @@ class P2PAll(object):
                 map_pack = self.pid_get(p2p.pid).mapp2p.map_data_pack()
                 p2p.mapp2p.map_data_merge(map_pack)
         self.service[p2p.pid] = p2p
-
-    #  TODO  DELETED. Ok?
-    #def participant_add(self, pid, pIP):
-    #    self.pid_get(pid).participant_add(pIP)
 
     @microfunc()
     def p2p_hook(self, *args):
