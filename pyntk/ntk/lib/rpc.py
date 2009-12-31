@@ -217,7 +217,7 @@ class RPCDispatcher(object):
             response = self._dispatch(caller, func, params)
         except Exception, e:
             if isinstance(e, ExpectableException):
-                logging.debug(str(e) + ' raised in ' \
+                logging.debug(repr(e) + ' raised in ' \
                               + str(func) + str(params))
             else:
                 logging.error("Uncaught exception in a remotable function")
