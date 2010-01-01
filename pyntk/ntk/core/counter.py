@@ -18,7 +18,7 @@
 ##
 
 from ntk.core.andna import hash_32bit_ip
-from ntk.core.p2p import P2P
+from ntk.core.p2p import OptionalP2P
 from ntk.lib.crypto import md5, verify
 from ntk.lib.log import logger as logging
 from ntk.lib.micro import microfunc
@@ -27,12 +27,12 @@ from ntk.wrap.xtime import (now, timestamp_to_data, today, days,
 
 class CounterError(Exception): pass
 
-class Counter(P2P):
+class Counter(OptionalP2P):
     
     pid = 2
     
     def __init__(self, ntkd_status, keypair, radar, maproute, p2pall):
-        P2P.__init__(self, ntkd_status, radar, maproute, Counter.pid)
+        OptionalP2P.__init__(self, ntkd_status, radar, maproute, Counter.pid)
         # period starting from registration time within which
         # the hostname must be updated
         self.expiration_days = 30                 
@@ -64,11 +64,7 @@ class Counter(P2P):
             nip = self.maproute.ip_to_nip(neigh.ip)
             peer = self.peer(hIP=nip)
             self.caches_merge(peer.cache_getall())
-            
-    def participate(self):
-        """Let's become a participant node"""
-        P2P.participate(self)  # base method
-        
+
     def check(self, public_key, hostname, signature, IDNum):
         """ Return a tuple like (res, (timestamp, updates)) """
         # Remove the expired entries from the counter cache 

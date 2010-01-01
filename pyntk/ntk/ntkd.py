@@ -100,7 +100,7 @@ class NtkNode(object):
         logging.log(logging.ULTRADEBUG, self.maproute.repr_me())
         self.etp = qspn.Etp(self.ntkd_status, self.time_tick, self.radar, self.maproute)
 
-        self.p2p = p2p.P2PAll(self.ntkd_status, self.radar, self.maproute, self.etp)
+        self.p2p = p2p.P2PAll(self.ntkd_status, self.radar, self.maproute)
         self.coordnode = coord.Coord(self.ntkd_status, self.radar, self.maproute, self.p2p)
         self.counter = counter.Counter(self.ntkd_status, self.keypair, self.radar, self.maproute, self.p2p)
         self.andna = andna.Andna(self.ntkd_status, self.keypair, self.counter, self.radar, self.maproute, self.p2p)
@@ -186,8 +186,7 @@ class NtkNode(object):
         self.radar.run()
         # Wait a bit (otherwise problems with coord service)
         xtime.swait(100)
-        # Now I'm also participating to service Coord, Counter and Andna
-        micro(self.coordnode.participate)
+        # Now I'm also participating to service Counter and Andna
         micro(self.counter.participate)
         micro(self.andna.participate)
         

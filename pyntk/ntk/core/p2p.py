@@ -190,7 +190,7 @@ def updated_id():
     msg_id += 1
     return msg_id
 
-class StrictP2P(RPCDispatcher):
+class P2P(RPCDispatcher):
     """ This is the class that must be inherited to create a Strict P2P module
         service. A strict service is a service where all the hosts connected 
         to Netsukuku are participant, so the MapP2P is not used here. """
@@ -200,12 +200,12 @@ class StrictP2P(RPCDispatcher):
 
            pid: P2P id of the service associated to this map
         """
-        self.pid = pid 
 
         self.ntkd_status = ntkd_status
         self.radar = radar
         self.neigh = radar.neigh
         self.maproute = maproute
+        self.pid = pid
 
         self.remotable_funcs = [self.msg_send,
                                 self.msg_send_udp]
@@ -409,7 +409,7 @@ class StrictP2P(RPCDispatcher):
         return self.RmtPeer(self, hIP=hIP, key=key, neigh=neigh)
 
     
-class P2P(StrictP2P):
+class OptionalP2P(P2P):
     """This is the class that must be inherited to create a P2P module.
     """
 
@@ -423,11 +423,12 @@ class P2P(StrictP2P):
         self.radar = radar
         self.neigh = radar.neigh
         self.maproute = maproute
-                
+        self.pid = pid
+
         self.mapp2p = MapP2P(self.maproute.levels,
                              self.maproute.gsize,
                              self.maproute.me,
-                             pid)
+                             self.pid)
 
         self.maproute.events.listen('ME_CHANGED', self.me_changed)
         self.maproute.events.listen('NODE_DELETED', self.mapp2p.node_del)
@@ -675,20 +676,17 @@ class P2PAll(object):
                  'events',
                  'etp']
 
-    def __init__(self, ntkd_status, radar, maproute, etp):
+    def __init__(self, ntkd_status, radar, maproute):
 
         self.ntkd_status = ntkd_status
         self.radar = radar
         self.neigh = radar.neigh
         self.maproute = maproute
-        self.etp = etp
 
         self.service = {}
 
-        self.remotable_funcs = [self.pid_getall]
+        self.remotable_funcs = [self.get_optional_participants]
         self.events=Event(['P2P_HOOKED'])
-        ###self.etp.events.listen('HOOKED', self.p2p_hook)
-        # TODO: remove self.etp if not used
 
     def pid_add(self, pid):
         logging.log(logging.ULTRADEBUG, 'Called P2PAll.pid_add...')
@@ -705,16 +703,13 @@ class P2PAll(object):
         else:
             return self.service[pid]
 
-    def pid_getall(self):
+    def get_optional_participants(self):
         # Implements "zombie" status
         if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
 
         return [(s, self.service[s].mapp2p.map_data_pack())
                     for s in self.service
-                        if isinstance(self.service[s], P2P)]
-        # WAS:          if not isinstance(self.service[s], StrictP2P)]  
-        # A P2P is a StrictP2P. So this "if" was bugged.
-        # BTW, what about defining a StrictP2P as a subclass of P2P?
+                        if isinstance(self.service[s], OptionalP2P)]
 
     def p2p_register(self, p2p):
         """Used to add for the first time a P2P instance of a module in the
@@ -742,7 +737,7 @@ class P2PAll(object):
 
         logging.log(logging.ULTRADEBUG, 'P2P hooking: started')
         logging.log(logging.ULTRADEBUG, 'P2P hooking: My actual list of '
-                    'services is: ' + str(self.log_services()))
+                    'optional services is: ' + str(self.log_services()))
 
         ## Find our nearest neighbour
         neighs_in_net = self.neigh.neigh_list(in_my_network=True)
@@ -759,13 +754,13 @@ class P2PAll(object):
             if minnr is None:
                 # nothing to do
                 logging.log(logging.ULTRADEBUG, 'P2P hooking: No neighbours '
-                            'to ask for the list of services.')
+                            'to ask for the list of optional services.')
                 break
 
             logging.log(logging.ULTRADEBUG, 'P2P hooking: I will ask for the '
-                        'list of services to ' + str(minnr))
+                        'list of optional services to ' + str(minnr))
             try:
-                nrmaps_pack = minnr.ntkd.p2p.pid_getall()
+                nrmaps_pack = minnr.ntkd.p2p.get_optional_participants()
             except:
                 logging.warning('P2P hooking: Asking to ' + str(minnr) + 
                                 ' failed.')
@@ -780,9 +775,10 @@ class P2PAll(object):
                 if not isinstance(obj, StrictP2P) and obj.participant:
                             self.service[s].participate()
             logging.log(logging.ULTRADEBUG, 'P2P hooking: My final list of '
-                        'services is: ' + str(self.log_services()))
+                        'optional services is: ' + str(self.log_services()))
             break
 
+        logging.info('P2P: Emit signal P2P_HOOKED.')
         self.events.send('P2P_HOOKED', ())
 
     def __getattr__(self, str):
@@ -792,11 +788,7 @@ class P2PAll(object):
         raise AttributeError
 
     def log_services(self):
-        def map_repr(p2p):
-            if isinstance(p2p, StrictP2P):
-                return p2p.maproute.repr_me()
-            else:
-                return p2p.mapp2p.repr_me()
-        return [(s, map_repr(self.service[s]))
-                        for s in self.service]
+        return [(s, self.service[s].mapp2p.repr_me())
+                    for s in self.service
+                        if isinstance(self.service[s], OptionalP2P)]
 

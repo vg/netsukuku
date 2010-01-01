@@ -21,7 +21,7 @@ from socket import AF_INET, SOCK_DGRAM
 
 from ntk.lib import microsock
 from ntk.lib.micro import microfunc, micro_block
-from ntk.lib.xtime import swait
+from ntk.wrap.xtime import swait
 
 from ntk.lib.log import logger as logging
 

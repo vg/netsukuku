@@ -27,7 +27,7 @@
 from random import choice
 
 from ntk.core.map import Map
-from ntk.core.p2p import StrictP2P
+from ntk.core.p2p import P2P
 from ntk.lib.log import logger as logging
 from ntk.lib.log import get_stackframes
 from ntk.lib.micro import microfunc
@@ -169,16 +169,17 @@ class MapCache(Map):
         self.tmp_deleted = new_tmp_deleted
 
 
-class Coord(StrictP2P):
+class Coord(P2P):
 
     pid = 1
 
     def __init__(self, ntkd_status, radar, maproute, p2pall):
 
-        StrictP2P.__init__(self, ntkd_status, radar, maproute, Coord.pid)
+        P2P.__init__(self, ntkd_status, radar, maproute, Coord.pid)
 
         # let's register ourself in p2pall
         p2pall.p2p_register(self)
+        p2pall.events.listen('P2P_HOOKED', self.coord_hook)
 
         # The cache of the coordinator node
         self.mapcache = MapCache(ntkd_status, self.maproute)
@@ -216,11 +217,8 @@ class Coord(StrictP2P):
                                         'the second one) is now ' + 
                                         str(self.coordnode))
 
-    def participate(self):
-        """Let's become a participant node"""
-        #P2P.participate(self)  # base method
+    def coord_hook(self, *args):
         self.coord_nodes_set()
-
 
     @microfunc()
     def new_participant_joined(self, lvl, id):

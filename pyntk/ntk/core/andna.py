@@ -21,7 +21,7 @@
 from random import randint
 import ntk.lib.rencode as rencode
 
-from ntk.core.p2p import P2P
+from ntk.core.p2p import OptionalP2P
 from ntk.core.snsd import SnsdServices, create_record
 from ntk.lib.crypto import md5, fnv_32_buf, verify
 from ntk.lib.event import Event
@@ -52,12 +52,12 @@ class AndnaCache(object):
 
 serializable.register(AndnaCache)
     
-class Andna(P2P):
+class Andna(OptionalP2P):
     
     pid = 3
     
     def __init__(self, ntkd_status, keypair, counter, radar, maproute, p2pall):
-        P2P.__init__(self, ntkd_status, radar, maproute, Andna.pid)
+        OptionalP2P.__init__(self, ntkd_status, radar, maproute, Andna.pid)
         
         self.p2pall = p2pall
         
@@ -101,10 +101,6 @@ class Andna(P2P):
             peer = self.peer(hIP=nip)
             self.caches_merge(peer.cache_getall())
         self.events.send('ANDNA_HOOKED', ())
-        
-    def participate(self):
-        """Let's become a participant node"""
-        P2P.participate(self)  # base method
         
     def register(self, hostname, service, IDNum, snsd_record,
         snsd_record_pubk, priority, weight, append_if_unavailable):
