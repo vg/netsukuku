@@ -495,21 +495,25 @@ class Hook(object):
                 # being able to reply to some requests.
                 wait_id = randint(0, 2**32-1)
                 self.ntkd_status.set_hooked_waiting_id(wait_id)
-                self.hooked_after_delay(20000, wait_id)
+                try:
+                    self.hooked_after_delay(20000, wait_id)
 
-                self.radar.neigh.change_netid(netid_to_join)
-                logging.info('We now have got a network id = ' + 
-                             str(netid_to_join))
-                # warn our neighbours again
-                logging.log(logging.ULTRADEBUG, 'Hook.hook warn neighbours of'
-                                                ' my change from netid -1 to '
-                                                + str(netid_to_join))
-                self.neigh.call_ip_netid_change(newnip_ip, -1, 
-                                              newnip_ip, 
-                                              netid_to_join)
-                logging.log(logging.ULTRADEBUG, 'Hook.hook: called '
-                                                'ip_netid_change on '
-                                                'broadcast.')
+                    self.radar.neigh.change_netid(netid_to_join)
+                    logging.info('We now have got a network id = ' + 
+                                 str(netid_to_join))
+                    # warn our neighbours again
+                    logging.log(logging.ULTRADEBUG, 'Hook.hook warn neighbours of'
+                                                    ' my change from netid -1 to '
+                                                    + str(netid_to_join))
+                    self.neigh.call_ip_netid_change(newnip_ip, -1, 
+                                                  newnip_ip, 
+                                                  netid_to_join)
+                    logging.log(logging.ULTRADEBUG, 'Hook.hook: called '
+                                                    'ip_netid_change on '
+                                                    'broadcast.')
+                except Exception, e:
+                    self.ntkd_status.unset_hooked_waiting_id(wait_id)
+                    raise e
             else:
                 self.ntkd_status.hooking = False
 
