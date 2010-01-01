@@ -48,13 +48,13 @@ class Hook(object):
 
         self.chan_replies = Channel()
 
-        self.events = Event(['HOOKED', 'HOOKED2'])
+        self.events = Event(['HOOKED', 'HOOKED_STABLE'])
 
         self.neigh.events.listen('TIME_TICK', self.communicating_vessels)
         self.etp.events.listen('TIME_TICK', self.communicating_vessels)
         self.etp.events.listen('NET_COLLISION', self.hook)
 
-        self.events.listen('HOOKED2', self.neigh.readvertise_local)
+        self.events.listen('HOOKED_STABLE', self.neigh.readvertise_local)
         # This should be placed in module radar. TODO refactor.
 
         self.remotable_funcs = [self.communicating_vessels,
@@ -517,6 +517,9 @@ class Hook(object):
             logging.info('Hooking procedure completed.')
             logging.info('Hook: Emit signal HOOKED.')
             self.events.send('HOOKED', (oldip, newnip[:]))
+            if we_are_alone:
+                logging.info('Hook: Emit signal HOOKED_STABLE.')
+                self.events.send('HOOKED_STABLE', ())
             ##
         except Exception, e:
             # We must try with a "bootstrap"-style hook. We schedule hook 
@@ -531,8 +534,8 @@ class Hook(object):
         xtime.swait(delay)
         if self.ntkd_status.hooked_waiting:
             self.ntkd_status.unset_hooked_waiting_id(wait_id)
-            logging.info('Hook: Emit signal HOOKED2.')
-            self.events.send('HOOKED2', ())
+            logging.info('Hook: Emit signal HOOKED_STABLE.')
+            self.events.send('HOOKED_STABLE', ())
 
     def highest_free_nodes_in_empty_network(self):
         """Returns (lvl, fnl), where fnl is a list of free node IDs of

@@ -196,7 +196,7 @@ class Neighbour(object):
         #self.etp.events.listen('TIME_TICK', self.check_needs_readvertise_local)
         # This is placed in module qspn. TODO refactor.
 
-        #self.hook.events.listen('HOOKED2', self.readvertise_local)
+        #self.hook.events.listen('HOOKED_STABLE', self.readvertise_local)
         # This is placed in module qspn. TODO refactor.
 
     @microfunc(True)

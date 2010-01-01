@@ -418,7 +418,7 @@ class Etp(object):
 
         # If we are hooking we should not consider any ETP. But if we are waiting
         # for some ETP we must consider only the ones from our new network.
-        # After the hook, on event HOOKED2, we'll readvertise to the outside neighbours.
+        # After the hook, on event HOOKED_STABLE, we'll readvertise to the outside neighbours.
         if self.ntkd_status.gonna_hook or self.ntkd_status.hooking:
             monitor.etp_drop_hooking()
             return
@@ -459,7 +459,7 @@ class Etp(object):
             if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
             # If we are hooking we should not consider any ETP. But if we are waiting
             # for some ETP we must consider only the ones from our new network.
-            # After the hook, on event HOOKED2, we'll readvertise to the outside neighbours.
+            # After the hook, on event HOOKED_STABLE, we'll readvertise to the outside neighbours.
             if self.ntkd_status.gonna_hook or self.ntkd_status.hooking:
                 monitor.etp_drop_hooking()
                 return
@@ -532,7 +532,7 @@ class Etp(object):
 
             # If we are hooking we should not consider any ETP. But if we are waiting
             # for some ETP we must consider only the ones from our new network.
-            # After the hook, on event HOOKED2, we'll readvertise to the outside neighbours.
+            # After the hook, on event HOOKED_STABLE, we'll readvertise to the outside neighbours.
             if self.ntkd_status.gonna_hook or self.ntkd_status.hooking:
                 monitor.etp_drop_hooking()
                 return
@@ -941,7 +941,7 @@ class Etp(object):
 
         # If we are already hooking (going to hook, doing hook or just hooked
         # and still waiting for some ETP) we won't consider this collision.
-        # After the hook, on event HOOKED2, we'll readvertise.
+        # After the hook, on event HOOKED_STABLE, we'll readvertise.
         if not self.ntkd_status.hooked:
             # We are already hooking. Just ignore this ETP.
             ### Remove all routes from R
