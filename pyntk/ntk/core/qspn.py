@@ -382,6 +382,7 @@ class Etp(object):
             for dst in xrange(self.maproute.gsize):
                 routes_to_v = self.maproute.node_get(lvl, dst)
                 if not routes_to_v.is_empty():
+                    best_to_v = routes_to_v.best_route()
                     xtime.sleep_during_hard_work(0)
                     # ∀w ∈ A*
                     for w in set_of_R:
