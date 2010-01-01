@@ -30,6 +30,18 @@ class ExpectableException(Exception): pass
 
 LOG_FILE = os.path.join(settings.LOG_DIR, settings.LOG_FILE)
 
+def multiline_log(self, p1, msg, args, **kwargs):
+    lines = msg.split('\n')
+    if len(lines) > 1:
+        nline = 1000
+        for line in lines:
+            nline += 1
+            self.default_log(p1, '(' + str(nline)[1:] + ') ' + line, args, **kwargs)
+    else:
+        self.default_log(p1, msg, args, **kwargs)
+
+logging.RootLogger.default_log = logging.RootLogger._log
+logging.RootLogger._log = multiline_log
 logger = logging.getLogger('')
 
 def init_logger():
