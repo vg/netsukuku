@@ -1019,11 +1019,6 @@ class Neighbour(object):
         self.netid = new_netid
         logging.info('change_netid: my netid is now ' + str(self.netid) + '.')
         logging.log_on_file('/tmp/netid.log', new_netid)
-        # We DO need to send add events for new companions. We already have set the
-        # netid, it won't change during the sending of the ETP.
-        for neigh in self.neigh_list():
-            key = (neigh.ip, neigh.netid)
-            self.add(key)
         # take care of self.ntk_client
         for k in self.ntk_client.keys():
             del self.ntk_client[k]
@@ -1031,6 +1026,16 @@ class Neighbour(object):
             for neigh in self.neigh_list():
                 if self.netid == neigh.netid:
                     self.ntk_client[neigh.ip] = rpc.TCPClient(ip_to_str(neigh.ip))
+        # We DO need to send add events for new companions. We already have set the
+        # netid, it won't change during the sending of the ETP.
+        # Since self.add could pass the schedule, we're not sure that the next key
+        # will still be valid. So a try block is needed.
+        for neigh in self.neigh_list():
+            try:
+                key = (neigh.ip, neigh.netid)
+                self.add(key)
+            except:
+                pass
 
 class Radar(object):
     
