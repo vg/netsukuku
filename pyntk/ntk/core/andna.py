@@ -133,11 +133,14 @@ class Andna(OptionalP2P):
                                               priority,
                                               weight,
                                               append_if_unavailable)
-        if res == 'rmt_error':
-            return (res, msg)
-        timestamp, updates = self.local_cache[hostname] = msg
-        return (res, (timestamp, updates))
-            
+        if res != 'rmt_error':
+            self.local_cache[hostname] = msg
+            logging.debug('ANDNA: registration done.')
+        else:
+            pass # TODO: should we raise here an exception?
+            logging.debug('ANDNA: registration error.')
+        return (res, msg)
+
     def reply_register(self, sender_nip, hostname, service, pubk, signature, 
         IDNum, snsd_record, snsd_record_pubk, priority, weight, 
         append_if_unavailable):

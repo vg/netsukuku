@@ -85,7 +85,7 @@ class MapP2P(Map):
         if self.node_get(lvl, id).is_free():
                 self.node_get(lvl, id).participant = True
                 self.node_add(lvl, id)
-        logging.log(logging.ULTRADEBUG, 'P2P: MapP2P updated: ' + 
+        logging.log(logging.ULTRADEBUG, 'P2P: MapP2P (PID ' + str(self.pid) + ') updated after participant_node_add: ' + 
                     str(self.repr_me()))
 
     def participant_node_del(self, lvl, id):
@@ -96,7 +96,7 @@ class MapP2P(Map):
         if self.node_get(lvl, id).participant:
                 self.node_get(lvl, id).participant = False
                 self.node_del(lvl, id)
-        logging.log(logging.ULTRADEBUG, 'P2P: MapP2P updated: ' + 
+        logging.log(logging.ULTRADEBUG, 'P2P: MapP2P (PID ' + str(self.pid) + ') updated after participant_node_del: ' + 
                     str(self.repr_me()))
         
     def me_changed(self, old_me, new_me):
@@ -106,7 +106,7 @@ class MapP2P(Map):
         :param new_me: new nip
         '''
         Map.me_change(self, new_me)
-        logging.log(logging.ULTRADEBUG, 'P2P: MapP2P updated after '
+        logging.log(logging.ULTRADEBUG, 'P2P: MapP2P (PID ' + str(self.pid) + ') updated after '
                                'me_changed: ' + str(self.repr_me()))
 
     @microfunc(True)
@@ -458,8 +458,9 @@ class OptionalP2P(P2P):
         """Let's become a participant node again. Used when my nip 
         has changed."""
         if self.participant:
+            logging.log(logging.ULTRADEBUG, 'P2P: my nip changed and I was participating, so participate.')
             self.participate()
-        logging.log(logging.ULTRADEBUG, 'P2P: MapP2P updated after '
+        logging.log(logging.ULTRADEBUG, 'P2P: MapP2P (PID ' + str(self.pid) + ') updated after '
                     're_participate: ' + str(self.mapp2p.repr_me()))
 
     def participate(self):

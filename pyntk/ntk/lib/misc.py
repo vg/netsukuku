@@ -19,7 +19,10 @@
 
 import os
 
+from ntk.lib.log import logger as logging
+
 def read_nodes(path):
+    logging.debug('ANDNA: read_nodes(' + path + ').')
     snsd_nodes = []
     # first load the localcache using pickle
     if os.path.exists(path):
@@ -34,6 +37,7 @@ def read_nodes(path):
     return snsd_nodes
 
 def parse_snsd_node(line, replace={}):
+    logging.debug('ANDNA: parse_snsd_node' + str((line, replace)))
     def convert(line):       
         # line fields: 
         # APPEND = 0, HOSTNAME = 1, SNSD_RECORD = 2, SERVICE = 3,
@@ -61,6 +65,7 @@ def parse_snsd_node(line, replace={}):
 def read_resolv(path):
     """ Returns a list of nameservers taken by the specified file, 
     replaced by localhost """
+    logging.debug('ANDNA: read_resolv(' + path + ').')
     nameservers = []
     if not os.path.exists(path):
         open(path, 'w').close()        
@@ -76,6 +81,7 @@ def read_resolv(path):
     return nameservers
 
 def restore_resolv(path):
+    logging.debug('ANDNA: restore_resolv(' + path + ').')
     if os.path.exists(path):
         os.remove(path)
     if os.path.exists(path+".original"):
