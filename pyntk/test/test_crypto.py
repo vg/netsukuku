@@ -38,7 +38,6 @@ class TestCrypto(unittest.TestCase):
             files = os.listdir(self.temp_dir)
             for f in files:
                 os.remove(self.temp_dir + "/" + f)
-        self.keys = crypto.KeyPair(self.temp_dir + "/keypair")
 
     def tearDown(self):
         files = os.listdir(self.temp_dir)
@@ -47,84 +46,63 @@ class TestCrypto(unittest.TestCase):
         os.rmdir(self.temp_dir)
 
     def testGenerateKeys(self):
-        self.failIfEqual(self.keys.rsa, None)
+        kpair = crypto.KeyPair()
+
+    def testSaveAndLoadKeys(self):
+        kpair = crypto.KeyPair()
+        kpair.save_pair(self.temp_dir + "/keypair")
+        kpair2 = crypto.KeyPair(self.temp_dir + "/keypair")
+        self.failUnlessEqual(kpair.get_pub_key(), kpair2.get_pub_key())
+
+    def testSaveAndLoadPKs(self):
+        kpair = crypto.KeyPair()
+        kpair.save_pub_key(self.temp_dir + "/pk")
+        pk = crypto.PublicKey(from_file=(self.temp_dir + "/pk"))
+        self.failUnlessEqual(kpair.get_pub_key(), pk)
 
     def testSignVerify(self):
-        self.signature = self.keys.sign(self.msg)
-        result = self.keys.verify(self.msg, self.signature)
-        self.failUnlessEqual(result, True)
+        kpair = crypto.KeyPair()
+        kpair.save_pub_key(self.temp_dir + "/pk")
+        pk = crypto.PublicKey(from_file=(self.temp_dir + "/pk"))
+        self.failUnless(pk.verify('ciao', kpair.sign('ciao')))
+        self.failIf(pk.verify('miao', kpair.sign('ciao')))
 
-    def testSaveKeys(self):
-        self.keys.save()
+    def testEncDec(self):
+        kpair = crypto.KeyPair()
+        kpair.save_pub_key(self.temp_dir + "/pk")
+        pk = crypto.PublicKey(from_file=(self.temp_dir + "/pk"))
+        self.failUnlessEqual(kpair.decrypt(pk.encrypt('ciao')), 'ciao')
 
-    def testLoadKeys(self):
-        self.keys.load()
+    def testPack(self):
+        pk1 = crypto.KeyPair().get_pub_key()
+        args = pk1._pack()
+        args = args[1:]
+        pk2 = crypto.PublicKey(*args)
+        self.failUnlessEqual(pk1, pk2)
 
-    def testMessageValidity(self):
-        # host 1
-        self.keys_host1 = crypto.KeyPair(self.temp_dir + "/keypair1")
-        # host 2
-        self.keys_host2 = crypto.KeyPair(self.temp_dir + "/keypair2")
-
-        # host 1 sign the message and send it to host 2, with
-        # the attached signature and public key
-        signature = self.keys_host1.sign(self.msg)
-        host1_pub_key = self.keys_host1.get_pub_key()
-
-        # host 2 receive the message with signature and public
-        # key of host 1, and verify the authenticity of the sender
-        result = crypto.verify(self.msg, signature, host1_pub_key)
-        self.failUnlessEqual(result, True)
-
-    def testMessageInvalidity(self):
-        # host 1
-        self.keys_host1 = crypto.KeyPair(self.temp_dir + "/key1")
-        # host 2
-        self.keys_host2 = crypto.KeyPair(self.temp_dir + "/key2")
-        # host 3
-        self.keys_host3 = crypto.KeyPair(self.temp_dir + "/key3")
-
-        # host 1 sign the message and send it to host 2,
-        # with the attached signature and public key
-        signature = self.keys_host1.sign(self.msg)
-        host1_pub_key = self.keys_host2.get_pub_key() # pass the wrong key
-
-        # host 2 receive the message with signature and public key of host 1,
-        # and verify the authenticity of the sender
-        result = host1_pub_key.verify(self.msg, signature)
-        result = crypto.verify(self.msg, signature, host1_pub_key)
-        self.failUnlessEqual(result, False)
-        result = crypto.verify(self.msg, signature,
-                               self.keys_host1.get_pub_key())
-        self.failUnlessEqual(result, True)
-
-    def testFNV(self):
-        self.failUnlessEqual(crypto.fnv_32_buf(self.msg),
-        810584075510011066574254008878303710221824016571840399774474L)
-        self.failUnlessEqual(crypto.fnv_32_buf(""), 2166136261L)
-
-    def testPublicKeySerialization(self):
-        keys = crypto.KeyPair(self.temp_dir + "/temp_key")
-        signature = keys.sign("Message")
-        pub_key = keys.get_pub_key()
-        classname, pem_string = pub_key._pack()
-        pub_key = crypto.public_key_from_pem(pem_string=pem_string)
-        self.failUnlessEqual(crypto.verify("Message", signature, pub_key),
-                             True)
-        self.failUnlessEqual(rencode.loads(rencode.dumps(pub_key)),
-                             pub_key)
-        #print rencode.dumps(pub_key)
-        #print rencode.loads(rencode.dumps(pub_key))
-        #print pub_key.rsa.as_pem()
-
-    def testHash(self):
-        keys1 = crypto.KeyPair(self.temp_dir + "/temp_key1")
-        keys2 = crypto.KeyPair(self.temp_dir + "/temp_key2")
-        pubk1 = keys1.get_pub_key()
-        pubk2 = keys2.get_pub_key()
-        self.failUnlessEqual(pubk1.__hash__() == pubk2.__hash__(), False)
-        self.failUnlessEqual(pubk1.__hash__() == pubk1.__hash__(), True)
-        self.failUnlessEqual(pubk1 == pubk2, False)
+    def testPKHash(self):
+        pk1 = crypto.KeyPair().get_pub_key()
+        pk2 = crypto.KeyPair().get_pub_key()
+        pk3 = crypto.KeyPair().get_pub_key()
+        pk4 = crypto.KeyPair().get_pub_key()
+        pk5 = crypto.KeyPair().get_pub_key()
+        pk6 = crypto.KeyPair().get_pub_key()
+        pk7 = crypto.KeyPair().get_pub_key()
+        a = {}
+        a[pk1] = 1
+        a[pk2] = 2
+        a[pk3] = 3
+        a[pk4] = 4
+        a[pk5] = 5
+        a[pk6] = 6
+        a[pk7] = 7
+        self.failUnlessEqual(a[pk1], 1)
+        self.failUnlessEqual(a[pk2], 2)
+        self.failUnlessEqual(a[pk3], 3)
+        self.failUnlessEqual(a[pk4], 4)
+        self.failUnlessEqual(a[pk5], 5)
+        self.failUnlessEqual(a[pk6], 6)
+        self.failUnlessEqual(a[pk7], 7)
 
 if __name__ == '__main__':
     unittest.main()
