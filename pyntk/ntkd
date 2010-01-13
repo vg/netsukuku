@@ -118,6 +118,8 @@ def main():
     
     def sighup_handler(signum, frame):
         me.reload_snsd_nodes()
+        #TODO: who is me?
+        #      NtkNode.reload_snsd_nodes returns a value. Who will use it?***********************************
 
     signal.signal(signal.SIGHUP, sighup_handler)
     

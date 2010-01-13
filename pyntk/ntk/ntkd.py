@@ -66,12 +66,19 @@ class NtkNode(object):
 
         if self.gsize == 1:
             raise ImproperlyConfigured('Gnode size cannot be equal to 1')
-        
-        self.keypair = crypto.KeyPair(keys_path=settings.KEY_PAIR_PATH)
 
         if not os.path.exists(settings.CONFIGURATION_DIR):
             os.mkdir(settings.CONFIGURATION_DIR)
-                    
+
+        if not os.path.exists(settings.KEY_PAIR_DIR):
+            os.mkdir(settings.KEY_PAIR_DIR)
+
+        if not os.path.exists(settings.DATA_DIR):
+            os.mkdir(settings.DATA_DIR)
+
+        self.keypair = crypto.KeyPair(keys_path=settings.KEY_PAIR_PATH, \
+                        pub_path=settings.PUB_KEY_PATH)
+
         self.simulated = settings.SIMULATED
         self.simnet = simnet
         self.simme = simme
@@ -102,11 +109,11 @@ class NtkNode(object):
 
         self.p2p = p2p.P2PAll(self.ntkd_status, self.radar, self.maproute)
         self.coordnode = coord.Coord(self.ntkd_status, self.radar, self.maproute, self.p2p)
-        self.counter = counter.Counter(self.ntkd_status, self.keypair, self.radar, self.maproute, self.p2p)
-        self.andna = andna.Andna(self.ntkd_status, self.keypair, self.counter, self.radar, self.maproute, self.p2p)
-        self.andnswrapper = andnswrapper.AndnsWrapper(self.andna, settings.LOCAL_CACHE_PATH, 
-                                 misc.read_resolv(settings.RESOLV_PATH), self.reload_snsd_nodes())
-        self.andnsserver = andnsserver.AndnsServer(self.andnswrapper)
+        #self.counter = counter.Counter(self.ntkd_status, self.keypair, self.radar, self.maproute, self.p2p)
+        self.andna = andna.Andna(self.ntkd_status, self.keypair, None, self.radar, self.maproute, self.p2p)
+        #self.andnswrapper = andnswrapper.AndnsWrapper(self.andna, settings.LOCAL_CACHE_PATH, 
+        #                         misc.read_resolv(settings.RESOLV_PATH), self.reload_snsd_nodes())
+        #self.andnsserver = andnsserver.AndnsServer(self.andnswrapper)
 
         logging.log(logging.ULTRADEBUG, 'NtkNode: This is mapcache of coord '
                     'as soon as started.')
@@ -133,14 +140,19 @@ class NtkNode(object):
             logging.log(logging.ULTRADEBUG, 'time_tick: took ' + str(tstop - tstart) +
                 ' msec: exit ' + str(function.__name__) + str(args))
 
-    def reload_snsd_nodes(self, snsd_nodes_path=settings.SNSD_NODES_PATH, snsd_nodes=[]):
+    def reload_snsd_nodes(self, snsd_nodes_path=None, snsd_nodes=None):
+        logging.log(logging.ULTRADEBUG, 'ANDNA: reload_snsd_nodes')
+        if snsd_nodes_path is None:
+            snsd_nodes_path = settings.SNSD_NODES_PATH
+        if snsd_nodes is None:
+            snsd_nodes = []
         for line in misc.read_nodes(settings.SNSD_NODES_PATH):
             result, data = misc.parse_snsd_node(line)
             if not result:
                 raise ImproperlyConfigured("Wrong line in "+str(settings.SNSD_NODES_PATH))
             snsd_nodes.append(data)
         return snsd_nodes
-    
+
     def reset(self, oldip=None, newnip=None):
         logging.debug('resetting node')
         # close the server socket
@@ -167,8 +179,8 @@ class NtkNode(object):
 
     def run(self):
         self.initialize()
-        self.andnsserver.run()
-        
+        #self.andnsserver.run()
+
     @microfunc(True)
     def initialize(self):
         # Enable ip forwarding
@@ -184,11 +196,12 @@ class NtkNode(object):
         logging.debug('start Radar.run')
         self.radar.run()
         # Wait a bit (otherwise problems with coord service)
+        #TODO: is it still needed? Coord is strict. Was the problem the connection refused?
         xtime.swait(100)
         # Now I'm also participating to service Counter and Andna
-        micro(self.counter.participate)
+        #micro(self.counter.participate)
         micro(self.andna.participate)
-        
+
     def first_activation(self):
         logging.debug('First NIC activation started')
         nip_ip = self.maproute.nip_to_ip(self.firstnip)

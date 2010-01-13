@@ -40,7 +40,7 @@ def parse_snsd_node(line, replace={}):
     logging.debug('ANDNA: parse_snsd_node' + str((line, replace)))
     def convert(line):       
         # line fields: 
-        # APPEND = 0, HOSTNAME = 1, SNSD_RECORD = 2, SERVICE = 3,
+        # APPEND = 0, HOSTNAME = 1, SNSD_RECORD = 2, SERV_KEY = 3,
         # PRIORITY = 4, WEIGHT = 5, SNSD_RECORD_PUBK = 6
         result = list(line)
         if result[0] == 'append':
@@ -49,7 +49,7 @@ def parse_snsd_node(line, replace={}):
             result[0] = False
         if result[2] == 'me' and replace.has_key('ME'):
             result[2] = replace['ME']
-        result[3] = int(result[3])
+        result[3] = result[3]
         result[4] = int(result[4])
         result[5] = int(result[5])
         return result        
