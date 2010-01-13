@@ -76,11 +76,9 @@ class Andna(OptionalP2P):
         self.mapp2p.events.listen('NODE_NEW', self.calc_ranges)
         self.mapp2p.events.listen('NODE_DELETED', self.calc_ranges)
 
-        #self.expiration_days = counter.expiration_days
-        self.expiration_days = 10
         self.max_andna_queue = 5
         
-        #self.counter = counter
+        self.counter = counter
         self.my_keys = keypair
         # Appended requests = { hostname: 
         #                       args_tuple_passed_to_register, ... }
@@ -311,6 +309,13 @@ class Andna(OptionalP2P):
             if old_registrar == pubk:
                 # This is an update.
                 logging.debug('ANDNA: ... this is an update')
+                # Check and update the record in Counter node
+                counter_gnode = self.counter.peer(key=sender_nip)
+                logging.debug('ANDNA: contacting counter gnode')
+                res, updates = counter_gnode.check(sender_nip, pubk, hostname, serv_key, IDNum,
+                            snsd_record, signature)
+                if not res:
+                    raise AndnaError('ANDNA: Failed counter check.')
                 # update record
                 old_record.store(updates=IDNum, serv_key=serv_key, record=snsd_record)
                 ret = 'OK', (registration_time, updates)
@@ -340,16 +345,13 @@ class Andna(OptionalP2P):
                     refused = True
 
         if not (enqueued or refused or updated):
-            ## contact the counter gnode
-            #counter_gnode = self.counter.peer(key=pubk)
-            #logging.debug("ANDNA: contacting counter gnode")
-            #res, data = counter_gnode.check(pubk, hostname, signature, IDNum)
-            #if res == 'OK':
-            #    logging.debug("ANDNA: counter gnode check it's ok")
-            #    registration_time, updates = data
-            #elif res == 'rmt_error':
-            #    logging.debug("ANDNA: counter gnode check failed")
-            #    raise AndnaError("Failed counter check: "+str(data))
+            # Contact Counter node
+            counter_node = self.counter.peer(key=sender_nip)
+            logging.debug('ANDNA: contacting counter gnode')
+            res, updates = counter_node.check(sender_nip, pubk, hostname, serv_key, IDNum,
+                        snsd_record, signature)
+            if not res:
+                raise AndnaError('ANDNA: Failed counter check.')
 
             # register record
             logging.debug('ANDNA: registering ' + str(hostname))

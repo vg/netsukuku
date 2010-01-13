@@ -109,8 +109,8 @@ class NtkNode(object):
 
         self.p2p = p2p.P2PAll(self.ntkd_status, self.radar, self.maproute)
         self.coordnode = coord.Coord(self.ntkd_status, self.radar, self.maproute, self.p2p)
-        #self.counter = counter.Counter(self.ntkd_status, self.keypair, self.radar, self.maproute, self.p2p)
-        self.andna = andna.Andna(self.ntkd_status, self.keypair, None, self.radar, self.maproute, self.p2p)
+        self.counter = counter.Counter(self.ntkd_status, self.keypair, self.radar, self.maproute, self.p2p)
+        self.andna = andna.Andna(self.ntkd_status, self.keypair, self.counter, self.radar, self.maproute, self.p2p)
         #self.andnswrapper = andnswrapper.AndnsWrapper(self.andna, settings.LOCAL_CACHE_PATH, 
         #                         misc.read_resolv(settings.RESOLV_PATH), self.reload_snsd_nodes())
         #self.andnsserver = andnsserver.AndnsServer(self.andnswrapper)
@@ -199,7 +199,7 @@ class NtkNode(object):
         #TODO: is it still needed? Coord is strict. Was the problem the connection refused?
         xtime.swait(100)
         # Now I'm also participating to service Counter and Andna
-        #micro(self.counter.participate)
+        micro(self.counter.participate)
         micro(self.andna.participate)
 
     def first_activation(self):

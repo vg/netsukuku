@@ -93,7 +93,7 @@ class AndnaAuthRecord:
                 ', pubk ...' + self.pubk.short_repr() + \
                 ', ttl ' + str(self.get_ttl()) + \
                 ', updates ' + str(self.updates) + \
-                ', services ' + str(self.services)+ ')>'
+                ', services ' + str(self.services) + ')>'
         return ret
 
     def store(self, updates, serv_key, record):
