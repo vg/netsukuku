@@ -508,7 +508,12 @@ class Neighbour(object):
            netid: neighbour's netid."""
         if netid == self.netid:
             if ip in self.ntk_client:
-                return self.ntk_client[ip]
+                ret = self.ntk_client[ip]
+                if ret.calling:
+                    self.tcp_client_collect(ret)
+                    ret = self.ntk_client[ip] = rpc.TCPClient(ip_to_str(ip))
+                    logging.debug('Neighbour: TCP connection added for neighbour ' + ip_to_str(ip))
+                return ret
             else:
                 logging.warning('Neighbour.get_ntk_client: '
                             'not present for ip ' + str(ip) + ', netid ' + 
@@ -516,6 +521,14 @@ class Neighbour(object):
                 return None
         else:
             return None
+
+    @microfunc(True)
+    def tcp_client_collect(self, client):
+        while client.calling:
+            time.sleep(0.001)
+            micro_block()
+        client.close()
+        logging.debug('Neighbour: TCP connection closed for neighbour ' + client.host)
 
     def key_to_neigh(self, key):
         """ key: neighbour's key, that is the pair ip, netid

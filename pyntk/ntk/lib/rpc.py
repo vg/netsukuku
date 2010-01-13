@@ -386,43 +386,45 @@ class TCPClient(FakeRmt):
         # Evaluate them before possibly passing the schedule.
         data = rencode.dumps((func_name, params))
 
+        while self.calling:
+            # go away waiting that the previous 
+            # rpc_call is accomplished
+            logging.debug('wait that the previous rpc_call is accomplished...')
+            time.sleep(0.001)
+            micro_block()
+
         while not self.connected:
             self.connect()
             if not self.connected:
                 logging.debug('wait 5 before trying again to connect a TCPClient...')
                 self.xtime.swait(5)
 
-        while self.calling:
-            # go away waiting that the previous 
-            # rpc_call is accomplished
-            time.sleep(0.001)
-            micro_block()
+        try:
+            # now other microthread cannot call make an RPC call
+            # until the previous call has not received the reply
+            self.calling = True
 
-        # now other microthread cannot call make an RPC call
-        # until the previous call has not received the reply
-        self.calling = True
+            self.socket.sendall(_data_pack(data))
+            recv_encoded_data = _data_unpack_from_stream_socket(self.socket)
 
-        self.socket.sendall(_data_pack(data))
-        recv_encoded_data = _data_unpack_from_stream_socket(self.socket)
+            if not recv_encoded_data:
+                raise RPCNetError('Connection closed before reply')
 
-        self.calling = False
-        # let other calls work
+            recv_data = rencode.loads(recv_encoded_data)
 
-        if not recv_encoded_data:
-            raise RPCNetError('Connection closed before reply')
+            pass #logging.debug("Recvd data: "+str(recv_data))
 
-        recv_data = rencode.loads(recv_encoded_data)
+            # Handling errors
+            # I receive a message with the following format:
+            #     ('rmt_error', message_error)
+            # where message_error is a string
+            if isinstance(recv_data, tuple) and len(recv_data) == 2 and recv_data[0] == 'rmt_error':
+                raise RPCError(recv_data[1])
 
-        pass #logging.debug("Recvd data: "+str(recv_data))
+            return recv_data
 
-        # Handling errors
-        # I receive a message with the following format:
-        #     ('rmt_error', message_error)
-        # where message_error is a string
-        if isinstance(recv_data, tuple) and len(recv_data) == 2 and recv_data[0] == 'rmt_error':
-            raise RPCError(recv_data[1])
-
-        return recv_data
+        finally:
+            self.calling = False
 
     def connect(self):
         socket = self.sockfactory(net=self.net, me=self.me)
