@@ -82,6 +82,8 @@ class MapP2P(Map):
         #  * by participate, when I begin to participate to this service.
         #  * by participant_add, when another node lets me know it
         #       participates.
+
+        # We have to check (see comment to method Map.node_add)
         if self.node_get(lvl, id).is_free():
                 self.node_get(lvl, id).participant = True
                 self.node_add(lvl, id)
@@ -93,25 +95,32 @@ class MapP2P(Map):
         #  * by sit_out, when I'm going out from this service.
         #  * by participant_del, when another node lets me know it
         #       has gone from this service.
-        if self.node_get(lvl, id).participant:
-                self.node_get(lvl, id).participant = False
-                self.node_del(lvl, id)
+        #  * by node_dead, when another node dies (no routes to it).
+
+        # We don't have to check (see comment to method Map.node_del)
+        self.node_del(lvl, id)
         logging.log(logging.ULTRADEBUG, 'P2P: MapP2P (PID ' + str(self.pid) + ') updated after participant_node_del: ' + 
                     str(self.repr_me()))
         
-    def me_changed(self, old_me, new_me):
+    def change_nip(self, old_me, new_me):
         '''Changes self.me
 
         :param old_me: my old nip (not used in MapP2P)
         :param new_me: new nip
         '''
-        Map.me_change(self, new_me)
+        self.me_change(new_me)
+        # This map has to forget all it knows about the network, because
+        # we might have hooked on another network.
+        # TODO: should this logic go up at the Map class? Or we could
+        #       have particular maps where this logic is not what we want?
+        self.map_reset()
         logging.log(logging.ULTRADEBUG, 'P2P: MapP2P (PID ' + str(self.pid) + ') updated after '
                                'me_changed: ' + str(self.repr_me()))
 
     @microfunc(True)
-    def node_del(self, lvl, id):
-        Map.node_del(self, lvl, id)
+    def node_dead(self, lvl, id):
+        # A node died. So it is no more participating.
+        self.participant_node_del(lvl, id)
 
     def participate(self):
         """Set self.me to be a participant node."""
@@ -134,24 +143,33 @@ class MapP2P(Map):
 
     def map_data_merge(self, (nip, plist, nblist)):
         """Copies a mapp2p from another nip's point of view."""
-        logging.log(logging.ULTRADEBUG, 'Merging a mapp2p.map_data_merge: '
-                    'before: ' + self.repr_me())
+        logging.log(logging.ULTRADEBUG, 'Merging a MapP2P (PID ' + str(self.pid) + '): '
+                    'start: ' + self.repr_me())
         # Was I participant?
         me_was = [False] * self.levels
         for lvl in xrange(self.levels):
             me_was[lvl] = self.node_get(lvl, self.me[lvl]).participant
+        # This map has to forget all it knows about the network, because
+        # we might have hooked on another network.
+        # TODO: should this logic go up at the Map class? Or we could
+        #       have particular maps where this logic is not what we want?
+        self.map_reset()
+        logging.log(logging.ULTRADEBUG, 'Merging a MapP2P (PID ' + str(self.pid) + '): '
+                    'after Map.map_reset: ' + self.repr_me())
         # Merge as usual...
         lvl=self.nip_cmp(nip, self.me)
         logging.log(logging.ULTRADEBUG, 'Merging a mapp2p at level ' + 
                     str(lvl))
         logging.log(logging.ULTRADEBUG, get_stackframes(back=1))
         Map.map_data_merge(self, (nip, plist, nblist))
+        logging.log(logging.ULTRADEBUG, 'Merging a MapP2P (PID ' + str(self.pid) + '): '
+                    'after Map.map_data_merge: ' + self.repr_me())
         # ... ripristine myself.
         for lvl in xrange(self.levels):
             if me_was[lvl]:
                 self.participant_node_add(lvl, self.me[lvl])
-        logging.log(logging.ULTRADEBUG, 'Merging a mapp2p.map_data_merge: '
-                    'after: ' + self.repr_me())
+        logging.log(logging.ULTRADEBUG, 'Merging a MapP2P (PID ' + str(self.pid) + '): '
+                    'after ripristine myself: ' + self.repr_me())
 
     def repr_me(self, func_repr_node=None):
         def repr_node_mapp2p(node):
@@ -159,36 +177,6 @@ class MapP2P(Map):
             return ' '
         if func_repr_node is None: func_repr_node = repr_node_mapp2p
         return Map.repr_me(self, func_repr_node)
-
-
-# `msg_id' is just a counter that is incremented and attached to the
-# message that we are sending. In this way, the remote node can 
-# read all the messages sent in the correct order.
-# We need to store the last `msg_id' received from each gnode into 
-# `msg_id_table' to check the received messages validity.
-
-msg_id = 0
-gsize = 2 ** settings.BITS_PER_LEVEL
-msg_id_table = [[None] * gsize for i in xrange(settings.LEVELS)]
-        
-def check_ids((lvl, gid), id):
-    """ Check the current id validity on the basis of the previous one """
-    global msg_id_table
-    if msg_id_table[lvl][gid] is None:
-        msg_id_table[lvl][gid] = 0
-    previous = msg_id_table[lvl][gid]
-    logging.log(logging.ULTRADEBUG, 'msg_id = ' + str(id) + 
-                                    ' previous = ' + str(previous))
-    if id >= previous:
-        msg_id_table[lvl][gid] = id
-        return True
-    return False
-
-def updated_id():
-    """ Increments and return the current message id """
-    global msg_id
-    msg_id += 1
-    return msg_id
 
 class P2P(RPCDispatcher):
     """ This is the class that must be inherited to create a Strict P2P module
@@ -214,7 +202,7 @@ class P2P(RPCDispatcher):
 
     def is_participant(self, lvl, idn):
         """Returns True iff the node lvl,idn is participating
-        to the service. For a StrictP2P it means iff the node
+        to the service. For a "strict P2P" it means iff the node
         exists in maproute.
         An inheriting class could override the function.
         """
@@ -270,7 +258,7 @@ class P2P(RPCDispatcher):
             return None
         return br.gw
 
-    def msg_send(self, sender_nip, hip, msg, msg_id):
+    def msg_send(self, sender_nip, hip, msg):
         """Routes a packet to `hip'. Do not use this function directly, use
         self.peer() instead
 
@@ -280,11 +268,8 @@ class P2P(RPCDispatcher):
         if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
 
         logging.log(logging.ULTRADEBUG, 'P2P: msg_send '
-                    'called by ' + str(sender_nip) + ' with msg_id = ' + 
-                    str(msg_id))
+                    'called by ' + str(sender_nip))
         lvl = self.maproute.nip_cmp(sender_nip)
-        if not check_ids((lvl, sender_nip[lvl]), msg_id):
-            raise Exception('The message is now expired')
         
         logging.log(logging.ULTRADEBUG, 'Someone is asking for P2P '
                                         'service to ' + str(hip))
@@ -295,7 +280,7 @@ class P2P(RPCDispatcher):
             logging.debug('I have been asked a P2P service, as the '
                           'nearest to ' + str(hip) + ' (msg=' + str(msg) +
                           ')')
-            return self.msg_exec(sender_nip, msg, msg_id)
+            return self.msg_exec(sender_nip, msg)
 
         # forward the message until it arrives at destination
         n = self.neigh_get(H_hip)
@@ -303,7 +288,7 @@ class P2P(RPCDispatcher):
             logging.log(logging.ULTRADEBUG, ' through ' + str(n))
             ret = None
             execstr = 'ret = n.ntkd.p2p.PID_' + str(self.pid) + \
-            '.msg_send(sender_nip, hip, msg, msg_id)'
+            '.msg_send(sender_nip, hip, msg)'
             logging.log(logging.ULTRADEBUG, 'Executing "' + execstr + 
                         '" ...')
             exec(execstr)
@@ -317,17 +302,17 @@ class P2P(RPCDispatcher):
             raise Exception('Unreachable P2P destination ' + str(H_hip) + 
                             ' from ' + str(self.maproute.me) + '.')
 
-    def call_msg_send_udp(self, neigh, sender_nip, hip, msg, msg_id):
+    def call_msg_send_udp(self, neigh, sender_nip, hip, msg):
         """Use BcastClient to call msg_send"""
         devs = [neigh.bestdev[0]]
         nip = self.maproute.ip_to_nip(neigh.ip)
         netid = neigh.netid
         return rpc.UDP_call(nip, netid, devs, 'p2p.PID_' + 
                             str(self.pid) + '.msg_send_udp', 
-                            (sender_nip, hip, msg, msg_id))
+                            (sender_nip, hip, msg))
 
     def msg_send_udp(self, _rpc_caller, caller_id, callee_nip, callee_netid, 
-                     sender_nip, hip, msg, msg_id):
+                     sender_nip, hip, msg):
         """Returns the result of msg_send to remote caller.
            caller_id is the random value generated by the caller 
            for this call.
@@ -342,17 +327,13 @@ class P2P(RPCDispatcher):
         # Implements "zombie" status
         if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
 
-        lvl = self.maproute.nip_cmp(sender_nip)
-        if not check_ids((lvl, sender_nip[lvl]), msg_id):
-            #raise Exception('The message is now expired')
-            rpc.UDP_send_reply(_rpc_caller, caller_id, None)
-        elif self.maproute.me == callee_nip and \
+        if self.maproute.me == callee_nip and \
            self.neigh.netid == callee_netid:
             ret = None
             rpc.UDP_send_keepalive_forever_start(_rpc_caller, caller_id)
             try:
                 logging.log(logging.ULTRADEBUG, 'calling msg_send...')
-                ret = self.msg_send(sender_nip, hip, msg, msg_id)
+                ret = self.msg_send(sender_nip, hip, msg)
                 logging.log(logging.ULTRADEBUG, 'returning ' + str(ret))
             except Exception as e:
                 ret = ('rmt_error', str(e))
@@ -363,7 +344,7 @@ class P2P(RPCDispatcher):
             logging.log(logging.ULTRADEBUG, 'calling UDP_send_reply...')
             rpc.UDP_send_reply(_rpc_caller, caller_id, ret)
 
-    def msg_exec(self, sender_nip, msg, msg_id):
+    def msg_exec(self, sender_nip, msg):
         return self.dispatch(CallerInfo(), *msg)
 
     class RmtPeer(FakeRmt):
@@ -394,13 +375,12 @@ class P2P(RPCDispatcher):
                 return self.p2p.call_msg_send_udp(self.neigh, 
                                                   self.p2p.maproute.me, 
                                                   self.hIP, 
-                                                  (func_name, params,),
-                                                  updated_id())
+                                                  (func_name, params,))
             else:
                 # Use TCP version.
                 logging.log(logging.ULTRADEBUG, 'P2P: Use TCP to reach peer.')
                 return self.p2p.msg_send(self.p2p.maproute.me, self.hIP, 
-                                         (func_name, params,), updated_id())
+                                         (func_name, params,))
 
     def peer(self, hIP=None, key=None, neigh=None):
         if hIP is None and key is None:
@@ -430,8 +410,8 @@ class OptionalP2P(P2P):
                              self.maproute.me,
                              self.pid)
 
-        self.maproute.events.listen('ME_CHANGED', self.me_changed)
-        self.maproute.events.listen('NODE_DELETED', self.mapp2p.node_del)
+        self.maproute.events.listen('ME_CHANGED', self.mapp2p.change_nip)
+        self.maproute.events.listen('NODE_DELETED', self.mapp2p.node_dead)
 
         # are we a participant?
         self.participant = False
@@ -448,20 +428,6 @@ class OptionalP2P(P2P):
         to the service.
         """
         return self.mapp2p.node_get(lvl, idn).participant
-
-    @microfunc()
-    def me_changed(self, old_me, new_me):
-        """My nip has changed."""
-        self.mapp2p.me_changed(old_me, new_me)
-
-    def re_participate(self, *args):
-        """Let's become a participant node again. Used when my nip 
-        has changed."""
-        if self.participant:
-            logging.log(logging.ULTRADEBUG, 'P2P: my nip changed and I was participating, so participate.')
-            self.participate()
-        logging.log(logging.ULTRADEBUG, 'P2P: MapP2P (PID ' + str(self.pid) + ') updated after '
-                    're_participate: ' + str(self.mapp2p.repr_me()))
 
     def participate(self):
         """Let's become a participant node"""
@@ -506,26 +472,28 @@ class OptionalP2P(P2P):
                               'participant_del(myself) to %s.' % 
                               self.maproute.ip_to_nip(nr.ip))
     
-    def call_participant_add_udp(self, neigh, pIP, msg_id):
+    def call_participant_add_udp(self, neigh, pIP):
         """Use BcastClient to call etp_exec"""
         devs = [neigh.bestdev[0]]
         nip = self.maproute.ip_to_nip(neigh.ip)
         netid = neigh.netid
         logging.log(logging.ULTRADEBUG, 'P2P: Calling participant_add_udp ' +
-                    str(nip) + ' with msg_id = ' + str(msg_id))
+                    str(nip))
         return rpc.UDP_call(nip, netid, devs, 'p2p.PID_'+str(self.mapp2p.pid)+
-                            '.participant_add_udp', (pIP, msg_id,))
+                            '.participant_add_udp', (pIP,))
 
-    def call_participant_del_udp(self, neigh, pIP, msg_id):
+    def call_participant_del_udp(self, neigh, pIP):
         """Use BcastClient to call etp_exec"""
         devs = [neigh.bestdev[0]]
         nip = self.maproute.ip_to_nip(neigh.ip)
         netid = neigh.netid
+        logging.log(logging.ULTRADEBUG, 'P2P: Calling participant_del_udp ' +
+                    str(nip))
         return rpc.UDP_call(nip, netid, devs, 'p2p.PID_'+str(self.mapp2p.pid)+
-                        '.participant_del_udp', (pIP, msg_id,))
+                        '.participant_del_udp', (pIP,))
 
     def participant_add_udp(self, _rpc_caller, caller_id, callee_nip, 
-                            callee_netid, pIP, msg_id):
+                            callee_netid, pIP):
         """Returns the result of participant_add to remote caller.
            caller_id is the random value generated by the caller for 
             this call.
@@ -535,22 +503,18 @@ class OptionalP2P(P2P):
            callee_netid is the netid of the callee.
             They are used by the callee to recognize a request destinated to 
             it.
-           """        
+           """
         logging.log(logging.ULTRADEBUG, 'P2P: participant_add_udp '
-                    'called by ' + str(pIP) + ' with msg_id = ' + 
-                    str(msg_id))
+                    'called by ' + str(pIP))
         lvl = self.maproute.nip_cmp(pIP)
-        if not check_ids((lvl, pIP[lvl]), msg_id):
-            #raise Exception('The message is now expired')
-            rpc.UDP_send_reply(_rpc_caller, caller_id, None)
-        elif self.maproute.me == callee_nip and \
+        if self.maproute.me == callee_nip and \
              self.neigh.netid == callee_netid:
-            self.participant_add(pIP, msg_id)
+            self.participant_add(pIP)
             # Since it is micro, I will reply None
             rpc.UDP_send_reply(_rpc_caller, caller_id, None)
 
     def participant_del_udp(self, _rpc_caller, caller_id, callee_nip, 
-                            callee_netid, pIP, msg_id):
+                            callee_netid, pIP):
         """Returns the result of participant_del to remote caller.
            caller_id is the random value generated by the caller 
            for this call.
@@ -560,19 +524,18 @@ class OptionalP2P(P2P):
            callee_netid is the netid of the callee.
             They are used by the callee to recognize a request 
             destinated to it.
-           """           
+           """
+        logging.log(logging.ULTRADEBUG, 'P2P: participant_del_udp '
+                    'called by ' + str(pIP))
         lvl = self.maproute.nip_cmp(pIP)
-        if not check_ids((lvl, pIP[lvl]), msg_id):
-            #raise Exception('The message is now expired')
-            rpc.UDP_send_reply(_rpc_caller, caller_id, None)
-        elif self.maproute.me == callee_nip and \
+        if self.maproute.me == callee_nip and \
              self.neigh.netid == callee_netid:
-            self.participant_del(pIP, msg_id)
+            self.participant_del(pIP)
             # Since it is micro, I will reply None
             rpc.UDP_send_reply(_rpc_caller, caller_id, None)
 
     @microfunc(True)
-    def participant_add(self, pIP, msg_id):
+    def participant_add(self, pIP):
         '''Add a participant node to the P2P service
 
         :param pIP: participant node's Netsukuku IP (nip)
@@ -613,7 +576,7 @@ class OptionalP2P(P2P):
                 logging.debug('forwarding participant_add(%s) to '
                               '%s service %s.' % 
                               (pIP, self.maproute.ip_to_nip(nr.ip), mp.pid))
-                self.call_participant_add_udp(nr, pIP, msg_id)
+                self.call_participant_add_udp(nr, pIP)
                 logging.debug('done forwarding participant_add(%s) to %s.' % 
                               (pIP, self.maproute.ip_to_nip(nr.ip)))
             except:
@@ -622,7 +585,7 @@ class OptionalP2P(P2P):
                               (pIP, self.maproute.ip_to_nip(nr.ip)))
 
     @microfunc(True)
-    def participant_del(self, pIP, msg_id):
+    def participant_del(self, pIP):
         ''' Remove a participant node from the P2P service
         
         :param pIP: participant node's Netsukuku IP (nip)
@@ -657,7 +620,7 @@ class OptionalP2P(P2P):
                 logging.debug('forwarding participant_del(%s) to '
                               '%s service %s.' %
                               (pIP, self.maproute.ip_to_nip(nr.ip), mp.pid))
-                self.call_participant_del_udp(nr, pIP, msg_id)
+                self.call_participant_del_udp(nr, pIP)
                 logging.debug('done forwarding participant_del(%s) to %s.' % 
                               (pIP, self.maproute.ip_to_nip(nr.ip)))
             except:
@@ -736,13 +699,16 @@ class P2PAll(object):
 
         It gets the P2P maps from our nearest neighbour"""
 
-        logging.log(logging.ULTRADEBUG, 'P2P hooking: started')
+        logging.debug('P2P hooking: started')
         logging.log(logging.ULTRADEBUG, 'P2P hooking: My actual list of '
                     'optional services is: ' + str(self.log_services()))
 
-        ## Find our nearest neighbour
         neighs_in_net = self.neigh.neigh_list(in_my_network=True)
-        while True:
+        got_answer = False
+        try_again = True
+        nrmaps_pack = None
+        while (not got_answer) and try_again:
+            ## Find our nearest neighbour
             minlvl = self.maproute.levels
             minnr = None
             for nr in neighs_in_net:
@@ -750,34 +716,37 @@ class P2PAll(object):
                 if lvl < minlvl:
                     minlvl = lvl
                     minnr  = nr
-            ##
 
             if minnr is None:
                 # nothing to do
-                logging.log(logging.ULTRADEBUG, 'P2P hooking: No neighbours '
+                logging.debug('P2P hooking: No neighbours '
                             'to ask for the list of optional services.')
-                break
+                try_again = False
+            else:
+                logging.log(logging.ULTRADEBUG, 'P2P hooking: I will ask for the '
+                            'list of optional services to ' + str(minnr))
+                try:
+                    nrmaps_pack = minnr.ntkd.p2p.get_optional_participants()
+                    logging.log(logging.ULTRADEBUG, 'P2P hooking: ' + str(minnr) + 
+                                ' answers ' + str(nrmaps_pack))
+                    got_answer = True
+                except:
+                    logging.warning('P2P hooking: Asking to ' + str(minnr) + 
+                                    ' failed.')
+                    neighs_in_net.remove(minnr)
 
-            logging.log(logging.ULTRADEBUG, 'P2P hooking: I will ask for the '
-                        'list of optional services to ' + str(minnr))
-            try:
-                nrmaps_pack = minnr.ntkd.p2p.get_optional_participants()
-            except:
-                logging.warning('P2P hooking: Asking to ' + str(minnr) + 
-                                ' failed.')
-                neighs_in_net.remove(minnr)
-                continue
-            logging.log(logging.ULTRADEBUG, 'P2P hooking: ' + str(minnr) + 
-                        ' answers ' + str(nrmaps_pack))
+        if got_answer:
             for (pid, map_pack) in nrmaps_pack:
                 self.pid_get(pid).mapp2p.map_data_merge(map_pack)
 
-            for s, obj in self.service.items():
-                if not isinstance(obj, StrictP2P) and obj.participant:
-                            self.service[s].participate()
-            logging.log(logging.ULTRADEBUG, 'P2P hooking: My final list of '
-                        'optional services is: ' + str(self.log_services()))
-            break
+        for s, obj in self.service.items():
+            if isinstance(obj, OptionalP2P) and obj.participant:
+                logging.debug('P2P hooking: re-participate to '
+                            'PID ' + str(s))
+                self.service[s].participate()
+
+        logging.debug('P2P hooking: My final list of '
+                    'optional services is: ' + str(self.log_services()))
 
         logging.info('P2P: Emit signal P2P_HOOKED.')
         self.events.send('P2P_HOOKED', ())
