@@ -25,7 +25,7 @@ import ntk.lib.rencode as rencode
 
 from ntk.core.p2p import OptionalP2P
 from ntk.core.snsd import SnsdRecord, MAX_TTL_OF_NEGATIVE, AndnaAuthRecord, AndnaResolvedRecord
-from ntk.lib.crypto import md5, fnv_32_buf, verify, public_key_from_pem
+from ntk.lib.crypto import md5, fnv_32_buf, PublicKey
 from ntk.lib.event import Event
 from ntk.lib.log import logger as logging
 from ntk.lib.log import log_exception_stacktrace
@@ -170,9 +170,9 @@ class Andna(OptionalP2P):
                 priority = int(snsd_node[4])
                 weight = int(snsd_node[5])
                 pubk = None
-                pem = snsd_node[6]
-                if pem is not None:
-                    pubk = public_key_from_pem(pem)
+                pem_file = snsd_node[6]
+                if pem_file is not None:
+                    pubk = PublicKey(from_file=pem_file)
                 snsd_record = SnsdRecord(record, pubk, priority, weight)
                 self.register(hostname, serv_key, 0, snsd_record, append)
             except Exception, e:
@@ -291,8 +291,8 @@ class Andna(OptionalP2P):
 
         # then the authentication check
         logging.debug('ANDNA: authenticating the request...')
-        if not verify(rencode.dumps((sender_nip, hostname, serv_key, IDNum,
-                       snsd_record)), signature, pubk):
+        if not pubk.verify(rencode.dumps((sender_nip, hostname, serv_key, IDNum,
+                       snsd_record)), signature):
             raise AndnaError('Request authentication failed')
         logging.debug('ANDNA: request authenticated')
 
@@ -325,7 +325,6 @@ class Andna(OptionalP2P):
                 # check if the registrar is the same
                 old_record = self.cache[hostname]
                 old_registrar = old_record.pubk
-                # TODO verify that the == operator works with class PublicKey
                 if old_registrar == pubk:
                     # This is an update.
                     logging.debug('ANDNA: ... this is an update')

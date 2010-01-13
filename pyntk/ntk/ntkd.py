@@ -34,7 +34,7 @@ import ntk.core.hook as hook
 import ntk.core.p2p as p2p
 import ntk.core.coord as coord
 import ntk.core.krnl_route as kroute
-import ntk.lib.crypto as crypto
+from ntk.lib.crypto import KeyPair
 import ntk.lib.misc as misc
 import ntk.lib.rpc as rpc
 import ntk.wrap.xtime as xtime
@@ -76,8 +76,13 @@ class NtkNode(object):
         if not os.path.exists(settings.DATA_DIR):
             os.mkdir(settings.DATA_DIR)
 
-        self.keypair = crypto.KeyPair(keys_path=settings.KEY_PAIR_PATH, \
-                        pub_path=settings.PUB_KEY_PATH)
+        if os.path.exists(settings.KEY_PAIR_PATH):
+            self.keypair = KeyPair(settings.KEY_PAIR_PATH)
+            self.keypair.save_pub_key(settings.PUB_KEY_PATH)
+        else:
+            self.keypair = KeyPair()
+            self.keypair.save_pair(settings.KEY_PAIR_PATH)
+            self.keypair.save_pub_key(settings.PUB_KEY_PATH)
 
         self.simulated = settings.SIMULATED
         self.simnet = simnet

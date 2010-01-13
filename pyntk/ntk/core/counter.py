@@ -23,7 +23,7 @@ import ntk.lib.rencode as rencode
 from ntk.lib.rencode import serializable
 from ntk.core.andna import hash_32bit_ip
 from ntk.core.p2p import OptionalP2P
-from ntk.lib.crypto import md5, verify
+from ntk.lib.crypto import md5
 from ntk.lib.log import logger as logging
 from ntk.lib.micro import microfunc
 from ntk.wrap.xtime import (now, timestamp_to_data, today, days, 
@@ -170,23 +170,29 @@ class Counter(OptionalP2P):
         self.check_expirations()
         # Check that the message comes from this pubk
         logging.debug('COUNTER: authenticating the request...')
-        if not verify(rencode.dumps((sender_nip, hostname, serv_key, IDNum,
-                       snsd_record)), signature, pubk):
+        if not pubk.verify(rencode.dumps((sender_nip, hostname, serv_key, IDNum,
+                       snsd_record)), signature):
             raise CounterError('Request authentication failed')
         logging.debug('COUNTER: request authenticated')
         # Check that the NIP is assigned to this pubk
+        logging.debug('COUNTER: verifying origin of the request...')
         # TODO
         # Retrieve data, update data, prepare response
+        logging.debug('COUNTER: processing request...')
         strpubk = str(pubk)
         strnip = str(sender_nip)
         if (strpubk, strnip) not in self.cache:
             self.cache[(strpubk, strnip)] = CounterAuthRecord(pubk, sender_nip, {})
         ret = self.cache[(strpubk, strnip)].store(hostname)
-        # Forward registration
-        # self.forward_registration(public_key, 
-        #                                  hostname, 
-        #                                  self.cache[public_key][hostname])
+        # Is it accepted?
+        if ret:
+            # Forward registration
+            logging.debug('COUNTER: forwarding request...')
+            # self.forward_registration(public_key, 
+            #                                  hostname, 
+            #                                  self.cache[public_key][hostname])
 
+        logging.debug('COUNTER: returning (ret, IDNum) = ' + str((ret, IDNum)))
         return (ret, IDNum)
 
     def forward_registration(self, public_key, hostname, entry):
