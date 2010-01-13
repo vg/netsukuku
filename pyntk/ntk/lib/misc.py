@@ -18,8 +18,28 @@
 ##
 
 import os
+import sys
 
 from ntk.lib.log import logger as logging
+
+def get_hostname():
+    if sys.platform == 'linux2':
+        if os.path.exists('/etc/hostname'):
+            lines = []
+            f = open('/etc/hostname')
+            for l in f:
+                if l[-1:] == '\n':
+                    l = l[:-1]
+                lines.append(l)
+            f.close()
+            for l in lines:
+                if len(l) > 0 and l[0] != '#':
+                    return l
+            raise Exception('Hostname not defined.')
+        else:
+            raise Exception('Hostname not defined.')
+    else:
+        raise Exception('Your platform is not supported yet.')
 
 def read_nodes(path):
     logging.debug('ANDNA: read_nodes(' + path + ').')
@@ -29,6 +49,8 @@ def read_nodes(path):
         file = open(path, 'r')
         for line in file:
             line.replace(" ", "")
+            if line[-1:] == '\n':
+                line = line[:-1]
             if line[0] != '#':
                 snsd_nodes.append(line.split(':'))
                 

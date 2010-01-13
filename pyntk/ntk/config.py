@@ -41,17 +41,12 @@ DEFAULT_SETTINGS = dict(
 )
 
 if sys.platform == 'linux2':
-    CONFIGURATION_DIR = '/etc/netsukuku'
     GLOBAL_SETTINGS = dict(
-        CONFIGURATION_DIR = CONFIGURATION_DIR,
+        CONFIGURATION_DIR = '/etc/netsukuku',
         DATA_DIR = '/usr/share/netsukuku',
-        KEY_PAIR_DIR = os.path.join(CONFIGURATION_DIR, 'keys'),
         LOG_DIR = '/var/log',
         PID_DIR  = '/var/run',
         SERVNO_PATH = '/etc/services',
-        KEY_PAIR_PATH = os.path.join(CONFIGURATION_DIR, 'keys'),
-        SNSD_NODES_PATH = os.path.join(CONFIGURATION_DIR, 'snsd_nodes'),
-        LOCAL_CACHE_PATH = os.path.join(CONFIGURATION_DIR, 'local_cache'),
         RESOLV_PATH = '/etc/resolv.conf',            
     )
 else:
@@ -71,6 +66,17 @@ class Settings(object):
                 setattr(self, setting, GLOBAL_SETTINGS[setting])
 
         self.load_configuration_file()
+
+        if 'KEY_PAIR_DIR' not in dir(self):
+            self.KEY_PAIR_DIR = os.path.join(self.CONFIGURATION_DIR, 'keys')
+        if 'KEY_PAIR_PATH' not in dir(self):
+            self.KEY_PAIR_PATH = os.path.join(self.KEY_PAIR_DIR, 'my_key_pair')
+        if 'SNSD_NODES_PATH' not in dir(self):
+            self.SNSD_NODES_PATH = os.path.join(self.CONFIGURATION_DIR, 'snsd_nodes')
+        if 'PUB_KEY_PATH' not in dir(self):
+            self.PUB_KEY_PATH = os.path.join(self.DATA_DIR, 'andna_lcl_keyring')
+        if 'LOCAL_CACHE_PATH' not in dir(self):
+            self.LOCAL_CACHE_PATH = os.path.join(self.CONFIGURATION_DIR, 'local_cache')
 
     def load_configuration_file(self):
         configuration_file = os.path.join(self.CONFIGURATION_DIR,

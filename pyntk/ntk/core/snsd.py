@@ -39,21 +39,25 @@ services_number_file_path = settings.SERVNO_PATH
 
 class SnsdRecord:
     def __init__(self, record, pubk, priority, weight):
-        # string/NIP record = può essere un NIP o un ulteriore hostname solo se serv_key
-        #               è diverso da 0 (oppure in futuro la tupla è diversa da None)
-        #               altrimenti è un NIP
+        # string/NIP record = it can be a NIP or an further hostname
         self.record = record[:]
-        # PublicKey pubk = public key of record, se record è un ulteriore hostname,
-        #               altrimenti è None
+        # PublicKey pubk = public key of record.
+        #           if record is an further hostname, then pubk is the public
+        #              key of the host registrar of that hostname. The value
+        #              of pubk in this case is specified by the client.
+        #           if record is a NIP it must be the same of sender_nip. In
+        #              this case pubk is the public key of the registrar of
+        #              this SnsdRecord. Furthermore, the values of the fields
+        #              'record' and 'pubk' in this istance will be overrided,
+        #              if they were present, by the hash node that is keeping
+        #              the AndnaAuthRecord in its cache.
         self.pubk = pubk
-        # int priority = priorita', dal basso verso l'alto
+        # int priority = the priority of the record (lower is better)
         self.priority = priority
-        # int weight = peso relativo entro la stessa priorita'
+        # int weight = the relative weight of the record, between records with
+        # the same priority.
         self.weight = weight
-        # in futuro si potrebbe aggiungere il campo port_number
-
-        # TODO: if record is a NIP
-        #       then check that pubk is None, and vice-versa.
+        # in future we should add the field port_number
 
     def __repr__(self):
         pubk_str = 'None'

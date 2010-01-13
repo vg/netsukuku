@@ -20,6 +20,7 @@
 ##
 
 from random import randint
+import time as stdtime
 import ntk.lib.rencode as rencode
 
 from ntk.core.p2p import OptionalP2P
@@ -28,7 +29,7 @@ from ntk.lib.crypto import md5, fnv_32_buf, verify, public_key_from_pem
 from ntk.lib.event import Event
 from ntk.lib.log import logger as logging
 from ntk.lib.log import log_exception_stacktrace
-from ntk.lib.micro import microfunc
+from ntk.lib.micro import microfunc, micro_block
 from ntk.lib.misc import is_ip
 from ntk.lib.rencode import serializable
 from ntk.network.inet import ip_to_str, str_to_ip
@@ -76,6 +77,11 @@ class Andna(OptionalP2P):
         self.mapp2p.events.listen('NODE_NEW', self.calc_ranges)
         self.mapp2p.events.listen('NODE_DELETED', self.calc_ranges)
 
+        # From the moment I change my NIP up to the moment I emit
+        # ANDNA_HOOKED, we don't want to answer to resolution requests.
+        self.wait_andna_hook = True
+        self.maproute.events.listen('ME_CHANGED', self.enter_wait_andna_hook)
+
         self.max_andna_queue = 5
         
         self.counter = counter
@@ -96,6 +102,9 @@ class Andna(OptionalP2P):
                                  self.reply_resolved_cache,
                                  self.reply_forward_registration,
                                  self.cache_getall]
+
+    def enter_wait_andna_hook(self, *args):
+        self.wait_andna_hook = True
 
     def calc_min_lvl_num(self, node_numb):
         # TODO to be reviewed. Calculates how many g-nodes of which level
@@ -136,6 +145,12 @@ class Andna(OptionalP2P):
         import ntk.lib.misc as misc
         from ntk.config import settings
         snsd_nodes = []
+        try:
+            hostname = misc.get_hostname()
+            snsd_node = [True, hostname, 'me', 'NULL', '1', '1', None]
+            snsd_nodes.append(snsd_node)
+        except Exception, e:
+            logging.debug('ANDNA: get_hostname got ' + repr(e))
         for line in misc.read_nodes(settings.SNSD_NODES_PATH):
             result, data = misc.parse_snsd_node(line)
             if not result:
@@ -144,22 +159,24 @@ class Andna(OptionalP2P):
 
         logging.debug('ANDNA: try to register the following SNSD records to myself: ' + str(snsd_nodes))
         for snsd_node in snsd_nodes:
-            append = snsd_node[0]
-            hostname = snsd_node[1]
-            record = snsd_node[2]
-            if record == 'me':
-                record = self.maproute.me[:]
-            serv_key = make_serv_key(snsd_node[3])
-            priority = int(snsd_node[4])
-            weight = int(snsd_node[5])
-            pubk = None
-            pem = snsd_node[6]
-            if pem is not None:
-                pubk = public_key_from_pem(pem)
-            snsd_record = SnsdRecord(record, pubk, priority, weight)
-            self.register(hostname, serv_key, 0, snsd_record, append)
-            #def register(self, hostname, serv_key, IDNum, snsd_record,
-            #    append_if_unavailable):
+            try:
+                logging.debug('ANDNA: try to register ' + str(snsd_node))
+                append = snsd_node[0]
+                hostname = snsd_node[1]
+                record = snsd_node[2]
+                if record == 'me':
+                    record = self.maproute.me[:]
+                serv_key = make_serv_key(snsd_node[3])
+                priority = int(snsd_node[4])
+                weight = int(snsd_node[5])
+                pubk = None
+                pem = snsd_node[6]
+                if pem is not None:
+                    pubk = public_key_from_pem(pem)
+                snsd_record = SnsdRecord(record, pubk, priority, weight)
+                self.register(hostname, serv_key, 0, snsd_record, append)
+            except Exception, e:
+                logging.error('ANDNA: trying to register ' + str(snsd_node) + ' got ' + repr(e))
 
     @microfunc(True)
     def andna_hook(self):
@@ -188,6 +205,7 @@ class Andna(OptionalP2P):
         #     peer = self.peer(hIP=nip)
         #     self.caches_merge(peer.cache_getall())
         # self.events.send('ANDNA_HOOKED', ())
+        self.wait_andna_hook = False
 
     def reset(self):
         self.request_queue = {}
@@ -278,6 +296,11 @@ class Andna(OptionalP2P):
             raise AndnaError('Request authentication failed')
         logging.debug('ANDNA: request authenticated')
 
+        registered = False
+        enqueued = False
+        refused = False
+        updated = False
+
         # If the snsd record points to a hostname, verify that
         # resolving the hostname we get the right public key.
         if isinstance(snsd_record.record, str):
@@ -287,62 +310,64 @@ class Andna(OptionalP2P):
             if response == 'OK':
                 if resolved_record.pubk != snsd_record.pubk:
                     # reject this request
-                    # TODO
-                    pass
+                    ret = 'NOTVALID', 'The pointed hostname is someone else.'
+                    refused = True
             else:
                 # the record has not been registered, so we cannot use it.
                 # reject this request
-                # TODO
-                pass
+                ret = 'NOTVALID', 'The pointed hostname cannot be resolved.'
+                refused = True
 
-        registered = False
-        enqueued = False
-        refused = False
-        updated = False
-        # check if already registered
-        if self.cache.has_key(hostname):
-            logging.debug('ANDNA: record already in cache...')
-            # check if the registrar is the same
-            old_record = self.cache[hostname]
-            old_registrar = old_record.pubk
-            # TODO verify that the == operator works with class PublicKey
-            if old_registrar == pubk:
-                # This is an update.
-                logging.debug('ANDNA: ... this is an update')
-                # Check and update the record in Counter node
-                counter_gnode = self.counter.peer(key=sender_nip)
-                logging.debug('ANDNA: contacting counter gnode')
-                res, updates = counter_gnode.check(sender_nip, pubk, hostname, serv_key, IDNum,
-                            snsd_record, signature)
-                if not res:
-                    raise AndnaError('ANDNA: Failed counter check.')
-                # update record
-                old_record.store(updates=IDNum, serv_key=serv_key, record=snsd_record)
-                ret = 'OK', (registration_time, updates)
-                updated = True
-            else:
-                logging.debug('ANDNA: ... and it is not from this pubk...')
-                # check if we want and can append
-                if append_if_unavailable:
-                    if not self.request_queue.has_key(hostname):
-                        self.request_queue[hostname] = []
-                    if len(self.request_queue[hostname]) < self.max_andna_queue:
-                        # append record
-                        args_tuple_passed_to_register = (sender_nip,
-                                hostname, service, pubk, signature,
-                                snsd_record, snsd_record_pubk)
-                        self.request_queue[hostname].append(args_tuple_passed_to_register)
-                        logging.debug('ANDNA: ... request enqueued')
-                        ret = 'ALREADYREGISTERED', 'Hostname yet registered by someone, request enqueued.'
-                        enqueued = True
-                    else:
-                        logging.debug('ANDNA: ... queue is full')
-                        ret = 'ALREADYREGISTERED', 'Hostname yet registered by someone, queue is full.'
-                        refused = True
+        if not refused:
+            # check if already registered
+            if self.cache.has_key(hostname):
+                logging.debug('ANDNA: record already in cache...')
+                # check if the registrar is the same
+                old_record = self.cache[hostname]
+                old_registrar = old_record.pubk
+                # TODO verify that the == operator works with class PublicKey
+                if old_registrar == pubk:
+                    # This is an update.
+                    logging.debug('ANDNA: ... this is an update')
+                    # Check and update the record in Counter node
+                    counter_gnode = self.counter.peer(key=sender_nip)
+                    logging.debug('ANDNA: contacting counter gnode')
+                    res, updates = counter_gnode.check(sender_nip, pubk, hostname, serv_key, IDNum,
+                                snsd_record, signature)
+                    if not res:
+                        raise AndnaError('ANDNA: Failed counter check.')
+                    # update record
+                    if not isinstance(snsd_record.record, str):
+                        # If the snsd record does not point to a hostname,
+                        # then it MUST be the sender_nip
+                        snsd_record.record = sender_nip
+                        snsd_record.pubk = pubk
+                    old_record.store(updates=IDNum, serv_key=serv_key, record=snsd_record)
+                    ret = 'OK', (registration_time, updates)
+                    updated = True
                 else:
-                    logging.debug('ANDNA: ... queue not requested')
-                    ret = 'ALREADYREGISTERED', 'Hostname yet registered by someone, queue not requested.'
-                    refused = True
+                    logging.debug('ANDNA: ... and it is not from this pubk...')
+                    # check if we want and can append
+                    if append_if_unavailable:
+                        if not self.request_queue.has_key(hostname):
+                            self.request_queue[hostname] = []
+                        if len(self.request_queue[hostname]) < self.max_andna_queue:
+                            # append record
+                            args_tuple_passed_to_register = (sender_nip,
+                                    hostname, service, pubk, signature,
+                                    snsd_record, snsd_record_pubk)
+                            self.request_queue[hostname].append(args_tuple_passed_to_register)
+                            logging.debug('ANDNA: ... request enqueued')
+                            ret = 'ALREADYREGISTERED', 'Hostname yet registered by someone, request enqueued.'
+                            enqueued = True
+                        else:
+                            logging.debug('ANDNA: ... queue is full')
+                            ret = 'ALREADYREGISTERED', 'Hostname yet registered by someone, queue is full.'
+                            refused = True
+                    else:
+                        logging.debug('ANDNA: ... queue not requested')
+                        ret = 'ALREADYREGISTERED', 'Hostname yet registered by someone, queue not requested.'
+                        refused = True
 
         if not (enqueued or refused or updated):
             # Contact Counter node
@@ -357,13 +382,19 @@ class Andna(OptionalP2P):
             logging.debug('ANDNA: registering ' + str(hostname))
             # This is the first registration of an hostname or an SNSD Node
             services = {}
-            # TODO has the first registration to be necessarily a NULL_SERV_KEY?
-            if serv_key == NULL_SERV_KEY and \
-                    isinstance(snsd_record.record, str):
-                logging.debug('ANDNA: The Zero Service record must be a NIP')
+            # The first registration has to be necessarily a NULL_SERV_KEY
+            # and the snsd record MUST be the sender_nip
+            if serv_key != NULL_SERV_KEY:
+                logging.debug('ANDNA: The first registration has to be a Zero Service record')
                 # reject this request
-                ret = 'NOTREGISTERED', 'The Zero Service record must be a NIP.'
+                ret = 'NOTREGISTERED', 'The first registration has to be a Zero Service record.'
+            elif isinstance(snsd_record.record, str):
+                logging.debug('ANDNA: The first registration has to be the registrar\'s NIP')
+                # reject this request
+                ret = 'NOTREGISTERED', 'The first registration has to be the registrar\'s NIP.'
             else:
+                snsd_record.record = sender_nip
+                snsd_record.pubk = pubk
                 services[serv_key] = [snsd_record]
                 self.cache[hostname] = \
                     AndnaAuthRecord(hostname, pubk, 0, 1, services)
@@ -441,6 +472,12 @@ class Andna(OptionalP2P):
         
     def reply_resolve(self, hostname, service):
         """ Return the list of SnsdRecord associated to the hostname and service """
+        # If we recently changed our NIP (we hooked) we wait to finish
+        # an andna_hook before answering a resolution request.
+        while self.wait_andna_hook:
+            micro_block()
+            stdtime.sleep(0.001)
+        # We are correctly hooked.
         ret = ('NOTFOUND', 'Hostname not resolved.')
         andna_cache = None
         if hostname in self.cache:

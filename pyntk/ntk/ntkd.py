@@ -197,7 +197,8 @@ class NtkNode(object):
         self.radar.run()
         # Wait a bit (otherwise problems with coord service)
         #TODO: is it still needed? Coord is strict. Was the problem the connection refused?
-        xtime.swait(100)
+        # try to remove it:
+        ########   xtime.swait(100)
         # Now I'm also participating to service Counter and Andna
         micro(self.counter.participate)
         micro(self.andna.participate)
