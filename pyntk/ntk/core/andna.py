@@ -310,11 +310,16 @@ class Andna(OptionalP2P):
             if response == 'OK':
                 if resolved_record.pubk != snsd_record.pubk:
                     # reject this request
+                    logging.debug('ANDNA: The pointed hostname is someone else. Its public key is: ' + resolved_pubk.short_repr())
                     ret = 'NOTVALID', 'The pointed hostname is someone else.'
                     refused = True
+                else:
+                    # proceed
+                    logging.debug('ANDNA: The pointed hostname has that key. OK.')
             else:
                 # the record has not been registered, so we cannot use it.
                 # reject this request
+                logging.debug('ANDNA: The pointed hostname cannot be resolved.')
                 ret = 'NOTVALID', 'The pointed hostname cannot be resolved.'
                 refused = True
 

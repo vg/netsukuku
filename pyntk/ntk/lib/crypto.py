@@ -57,12 +57,14 @@ def md5(msg):
 
 class CryptoError(Exception): pass
 
+RSA_SIZE_BYTES = 128
+
 class KeyPair(object):
     def __init__(self, from_file=None):
         # if None: generate_keypair
         if from_file is None:
             def void(): pass
-            self.rsa = RSA.gen_key(1024, 65537, callback=void)
+            self.rsa = RSA.gen_key(RSA_SIZE_BYTES * 8, 65537, callback=void)
         else:
             self.rsa = RSA.load_key(from_file)
 
@@ -79,10 +81,18 @@ class KeyPair(object):
         return PublicKey(from_pem=pk.as_pem())
 
     def sign(self, msg):
-        return self.rsa.sign(msg)
+        return self.rsa.sign(md5(msg))
 
     def decrypt(self, cipher):
-        return self.rsa.private_decrypt(cipher, RSA.pkcs1_padding)
+        packetlen = RSA_SIZE_BYTES
+        msg = ''
+        while True:
+            to_dec = cipher[:packetlen]
+            cipher = cipher[packetlen:]
+            msg += self.rsa.private_decrypt(to_dec, RSA.pkcs1_padding)
+            if len(cipher) == 0:
+                break
+        return msg
 
     def __repr__(self):
         return '<KeyPair: (pubk ' + self.get_pub_key().short_repr() + ')>'
@@ -106,17 +116,28 @@ class PublicKey(object):
     def verify(self, msg, signature):
         ret = False
         try:
-            ret = self.pk.verify(msg, signature)
+            ret = self.pk.verify(md5(msg), signature)
             ret = True if ret else False
         except RSA.RSAError:
             pass
         return ret
 
     def encrypt(self, msg):
-        return self.pk.public_encrypt(msg, RSA.pkcs1_padding)
+        maxlen = RSA_SIZE_BYTES - 11
+        cipher = ''
+        while True:
+            to_cip = msg[:maxlen]
+            msg = msg[maxlen:]
+            cipher += self.pk.public_encrypt(to_cip, RSA.pkcs1_padding)
+            if len(msg) == 0:
+                break
+        return cipher
 
     def __eq__(self, other):
         return self.pk.as_pem() == other.pk.as_pem()
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     def __hash__(self):
         return hash(self.pk.as_pem())
@@ -126,6 +147,14 @@ class PublicKey(object):
 
     def short_repr(self):
         return '...' + str(self.pk.as_pem())[81:90]  + '...'
+
+    def __str__(self):
+        return self.short_repr()
+        return '<PublicKey ' + self.short_repr()  + '>'
+
+    def __repr__(self):
+        return self.short_repr()
+        return '<PublicKey ' + self.short_repr()  + '>'
 
 serializable.register(PublicKey)
 

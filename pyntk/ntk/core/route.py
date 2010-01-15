@@ -268,6 +268,9 @@ class Route(object):
         else:
             return False
 
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     def contains(self, hop):
         # hop is a pair (lvl, id)
         if hop == self.dest:

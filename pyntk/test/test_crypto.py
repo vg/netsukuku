@@ -26,12 +26,18 @@ sys.path.append('..')
 from ntk.lib import crypto as crypto
 from ntk.lib import rencode as rencode
 
+import random
+def randomstring():
+    sz = random.randint(1024, 10240)
+    mesg = ''
+    for i in xrange(sz):
+        mesg += chr(random.randint(0, 255))
+    return mesg
 
 class TestCrypto(unittest.TestCase):
 
     def setUp(self):
         self.temp_dir = os.getcwd() + "/keys"
-        self.msg  = "Message"
         if not os.path.exists(self.temp_dir):
             os.mkdir(self.temp_dir)
         else:
@@ -64,14 +70,17 @@ class TestCrypto(unittest.TestCase):
         kpair = crypto.KeyPair()
         kpair.save_pub_key(self.temp_dir + "/pk")
         pk = crypto.PublicKey(from_file=(self.temp_dir + "/pk"))
-        self.failUnless(pk.verify('ciao', kpair.sign('ciao')))
-        self.failIf(pk.verify('miao', kpair.sign('ciao')))
+        mesg = randomstring()
+        signature = kpair.sign(mesg)
+        self.failUnless(pk.verify(mesg, signature))
+        self.failIf(pk.verify('another message', signature))
 
     def testEncDec(self):
         kpair = crypto.KeyPair()
         kpair.save_pub_key(self.temp_dir + "/pk")
         pk = crypto.PublicKey(from_file=(self.temp_dir + "/pk"))
-        self.failUnlessEqual(kpair.decrypt(pk.encrypt('ciao')), 'ciao')
+        mesg = randomstring()
+        self.failUnlessEqual(kpair.decrypt(pk.encrypt(mesg)), mesg)
 
     def testPack(self):
         pk1 = crypto.KeyPair().get_pub_key()
@@ -79,6 +88,8 @@ class TestCrypto(unittest.TestCase):
         args = args[1:]
         pk2 = crypto.PublicKey(*args)
         self.failUnlessEqual(pk1, pk2)
+        self.failUnless(pk1 == pk2)
+        self.failIf(pk1 != pk2)
 
     def testPKHash(self):
         pk1 = crypto.KeyPair().get_pub_key()
