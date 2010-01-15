@@ -96,7 +96,9 @@ class Andna(OptionalP2P):
         # Resolved Cache = { (hostname, serv_key): AndnaResolvedRecord(), ... }
         self.resolved = {}
     
-        self.remotable_funcs += [self.reply_register, self.reply_resolve,
+        self.remotable_funcs += [self.reply_register,
+                                 self.reply_resolve,
+                                 self.get_registrar_pubk,
                                  self.reply_reverse_resolve, 
                                  self.reply_queued_registration,
                                  self.reply_resolved_cache,
@@ -306,9 +308,9 @@ class Andna(OptionalP2P):
         if isinstance(snsd_record.record, str):
             logging.debug('ANDNA: SNSD record points to another hostname: ' + snsd_record.record)
             logging.debug('ANDNA: Its public key should be: ' + snsd_record.pubk.short_repr())
-            response, resolved_record = self.resolve(snsd_record.record)
+            response, resolved_pubk = self.request_registrar_pubk(snsd_record.record)
             if response == 'OK':
-                if resolved_record.pubk != snsd_record.pubk:
+                if resolved_pubk != snsd_record.pubk:
                     # reject this request
                     logging.debug('ANDNA: The pointed hostname is someone else. Its public key is: ' + resolved_pubk.short_repr())
                     ret = 'NOTVALID', 'The pointed hostname is someone else.'
@@ -406,6 +408,7 @@ class Andna(OptionalP2P):
                 self.resolved[(hostname, serv_key)] = \
                     self.cache[hostname].get_resolved_record(serv_key)
                 registered = True
+                ret = 'OK', (registration_time, updates)
 
         if updated or registered:
             # forward the entry to my gnodes
@@ -417,7 +420,8 @@ class Andna(OptionalP2P):
         logging.debug('ANDNA: after reply_register: self.cache=' + str(self.cache))
         logging.debug('ANDNA: after reply_register: self.local_cache=' + str(self.local_cache))
         logging.debug('ANDNA: after reply_register: self.resolved=' + str(self.resolved))
-        return ('OK', (registration_time, updates))
+        logging.debug('ANDNA: reply_register: returning ' + str(ret))
+        return ret
 
     def forward_registration(self, hostname, andna_cache):
         """ Broadcast the request to the entire gnode of level 1 to let the
@@ -446,8 +450,47 @@ class Andna(OptionalP2P):
         when the hostname was busy has been satisfied now """
         # TODO: should I print a message to the user?
         self.local_cache[hostname] = timestamp, updates
-        return ('OK', (timestamp, updates))    
-    
+        return ('OK', (timestamp, updates))
+
+    def request_registrar_pubk(self, hostname):
+        """ Request to hash-node the public key of the registrar of this hostname """
+        logging.debug('ANDNA: request_registrar_pubk(' + str(hostname) + ')')
+        # calculate hash
+        hash_node = self.peer(key=hostname)
+        hash_nip = hash_node.get_hash_nip()
+        logging.debug('ANDNA: exact hash_node is ' + str(hash_nip))
+        random_hnode = hash_nip[:]
+        # NAAAH   random_hnode[0] = randint(0, self.maproute.gsize)
+        # TODO use ANDNA_BALANCING to get a random node from a bunch
+        logging.debug('ANDNA: random hash_node is ' + str(random_hnode))
+        # contact the hash gnode firstly
+        hash_gnode = self.peer(hIP=random_hnode)
+        sender_nip = self.maproute.me[:]
+        logging.debug('ANDNA: request registrar public key...')
+        return hash_gnode.get_registrar_pubk(hostname)
+
+    def get_registrar_pubk(self, hostname):
+        """ Return the public key of the registrar of this hostname """
+        # If we recently changed our NIP (we hooked) we wait to finish
+        # an andna_hook before answering a resolution request.
+        while self.wait_andna_hook:
+            micro_block()
+            stdtime.sleep(0.001)
+        # We are correctly hooked.
+
+        logging.debug('ANDNA: get_registrar_pubk(' + str(hostname) + ')')
+        # first the hash check
+        logging.debug('ANDNA: verifying that I am the right hash...')
+        # TODO
+
+        if hostname in self.cache:
+            andna_cache = self.cache[hostname]
+            ret = ('OK', andna_cache.pubk)
+        else:
+            ret = ('NOTFOUND', 'Hostname not registered.')
+        logging.debug('ANDNA: get_registrar_pubk: returning ' + str(ret))
+        return ret
+
     def resolve(self, hostname, service=0):
         """ Resolve the hostname, returns an SnsdRecord instance """
         logging.debug('ANDNA: resolve' + str((hostname, service)))
