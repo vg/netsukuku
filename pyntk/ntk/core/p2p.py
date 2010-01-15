@@ -442,12 +442,11 @@ class OptionalP2P(P2P):
             try:
                 logging.debug('calling participant_add(myself) to %s.' % 
                               self.maproute.ip_to_nip(nr.ip))
-                self.call_participant_add_udp(nr, self.maproute.me,
-                                              updated_id())
+                self.call_participant_add_udp(nr, self.maproute.me)
                 logging.debug('done calling participant_add(myself) to %s.' % 
                               self.maproute.ip_to_nip(nr.ip))
-            except:
-                logging.debug('timeout (no problem) calling '
+            except Exception, e:
+                logging.debug('error ' + repr(e) + ' calling '
                               'participant_add(myself) to %s.' % 
                               self.maproute.ip_to_nip(nr.ip))
 
@@ -463,12 +462,11 @@ class OptionalP2P(P2P):
             try:
                 logging.debug('calling participant_del(myself) to %s.' % 
                               self.maproute.ip_to_nip(nr.ip))
-                self.call_participant_del_udp(nr, self.maproute.me, 
-                                              updated_id())
+                self.call_participant_del_udp(nr, self.maproute.me)
                 logging.debug('done calling participant_del(myself) to %s.' % 
                               self.maproute.ip_to_nip(nr.ip))
-            except:
-                logging.debug('timeout (no problem) calling '
+            except Exception, e:
+                logging.debug('error ' + repr(e) + ' calling '
                               'participant_del(myself) to %s.' % 
                               self.maproute.ip_to_nip(nr.ip))
     
