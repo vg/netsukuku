@@ -166,11 +166,10 @@ def socket(family=AF_INET, type=SOCK_STREAM, proto=0):
     ret = stacklesssocket(currentSocket)
     # Ensure that the sockets actually work.
     _manage_sockets_func()
-    #stacktrace = get_stackframes(back=1)
-    #logging.log(logging.ULTRADEBUG, 'created dispatcher ' + 
-    #                      ret.dispatcher.__repr__() + ' in ' + stacktrace)
-    #logging.log(logging.ULTRADEBUG, 'asyncore map: ' + 
-    #                     str(asyncore.socket_map))
+    if type==SOCK_STREAM:
+        stacktrace = get_stackframes(back=1)
+        logging.log(logging.ULTRADEBUG, 'created dispatcher ' + 
+                              ret.dispatcher.__repr__() + ' in ' + stacktrace)
     return ret
 
 # This is a facade to the dispatcher object.

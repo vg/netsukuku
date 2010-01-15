@@ -382,27 +382,31 @@ class TCPClient(FakeRmt):
         @param params: a tuple of arguments to pass to the remote callable
         '''
 
-        # Let's make sure that we'll send the actual content of the params.
-        # Evaluate them before possibly passing the schedule.
-        data = rencode.dumps((func_name, params))
-
-        while self.calling:
-            # go away waiting that the previous 
-            # rpc_call is accomplished
-            logging.debug('wait that the previous rpc_call is accomplished...')
-            time.sleep(0.001)
-            micro_block()
-
-        while not self.connected:
-            self.connect()
-            if not self.connected:
-                logging.debug('wait 5 before trying again to connect a TCPClient...')
-                self.xtime.swait(5)
+        if self.calling:
+            # A TCPClient instance cannot handle more than one rpc call at a time.
+            # When a new RPC is needed and another one is 'calling' with this
+            # instance of TCPClient, then another instance should be created.
+            # Anyway, this control will tolerate it and emit a WARNING.
+            logging.warning('TCPClient: a remote call through TCP is delayed...')
+            while self.calling:
+                time.sleep(0.001)
+                micro_block()
+            logging.debug('TCPClient: a remote call through TCP was delayed. Now takes place.')
 
         try:
             # now other microthread cannot call make an RPC call
             # until the previous call has not received the reply
             self.calling = True
+
+            # Let's make sure that we'll send the actual content of the params.
+            # Evaluate them before possibly passing the schedule.
+            data = rencode.dumps((func_name, params))
+
+            while not self.connected:
+                self.connect()
+                if not self.connected:
+                    logging.debug('wait 5 before trying again to connect a TCPClient...')
+                    self.xtime.swait(5)
 
             self.socket.sendall(_data_pack(data))
             recv_encoded_data = _data_unpack_from_stream_socket(self.socket)
@@ -432,7 +436,7 @@ class TCPClient(FakeRmt):
         try:
             self.socket.connect((self.host, self.port))
         except socket.error, e:
-            pass
+            logging.debug("TCPClient: socket connect error: " + repr(e))
         else:
             self.connected = True
 
