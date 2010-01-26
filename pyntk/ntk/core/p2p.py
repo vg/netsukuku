@@ -198,7 +198,24 @@ class P2P(RPCDispatcher):
         self.remotable_funcs = [self.msg_send,
                                 self.msg_send_udp]
 
+        # From the moment I change my NIP up to the moment I have hooked,
+        # we don't want to exploit P2P mechanism. That is msg_send,
+        # find_nearest_send, and the like.
+        # There are exceptions. E.g. the module Hook will make
+        # a request to Coordinator service.
+        # Such a request will use the argument neigh of method peer.
+        #     self.coordnode.peer(key = (lvl+1, newnip), neigh=neigh)
+        # So it will use msg_send_udp. It must be permitted.
+        self.wait_p2p_hook = True
+        self.maproute.events.listen('ME_CHANGED', self.enter_wait_p2p_hook)
+
         RPCDispatcher.__init__(self, root_instance=self)
+
+    def enter_wait_p2p_hook(self, *args):
+        self.wait_p2p_hook = True
+
+    def exit_wait_p2p_hook(self):
+        self.wait_p2p_hook = False
 
     def is_participant(self, lvl, idn):
         """Returns True iff the node lvl,idn is participating
@@ -269,6 +286,9 @@ class P2P(RPCDispatcher):
         self.peer() instead
 
         msg: it is a (func_name, args) pair."""
+
+        if self.wait_p2p_hook:
+            raise P2PError, 'P2P is hooking. Request not valid.'
 
         # Implements "zombie" status
         if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
@@ -753,6 +773,7 @@ class P2PAll(object):
                 logging.debug('P2P hooking: re-participate to '
                             'PID ' + str(s))
                 self.service[s].participate()
+            self.service[s].exit_wait_p2p_hook()
 
         logging.debug('P2P hooking: My final list of '
                     'optional services is: ' + str(self.log_services()))

@@ -118,7 +118,7 @@ class Andna(OptionalP2P):
         snsd_nodes = []
         try:
             hostname = misc.get_hostname()
-            snsd_node = [True, hostname, 'me', 'NULL', '1', '1', None]
+            snsd_node = [True, hostname, 'me', 'NULL', 1, 1, None]
             snsd_nodes.append(snsd_node)
         except Exception, e:
             logging.debug('ANDNA: get_hostname got ' + repr(e))
