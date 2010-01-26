@@ -67,6 +67,15 @@ class SnsdAuthRecord:
                 ', weight ' + str(self.weight) + ')>'
         return ret
 
+    def _get_unique_id(self):
+        # Gets the unique ID of this record. At the moment it is just the
+        #  the field record. In future we should add the field port_number
+        #  in order to allow for a certain service to be 'load balanced'
+        #  between two or more servers in different ports on the same host.
+        return self.record
+
+    unique_id = property(_get_unique_id)
+
     def _pack(self):
         return (self.record, self.pubk, self.priority, self.weight)
 
@@ -101,7 +110,7 @@ class AndnaAuthRecord:
                 ', services ' + str(self.services) + ')>'
         return ret
 
-    def store(self, updates, serv_key, record):
+    def store(self, nip, updates, serv_key, record):
         """ Updates a registration """
         # TODO: check validity of serv_key
 
@@ -114,15 +123,23 @@ class AndnaAuthRecord:
         # TODO: check updates is 1+self.updates ?
         self.updates = updates
         self.expires = time() + MAX_TTL_OF_REGISTERED
+        self.nip = nip
 
         if serv_key not in self.services:
-            self.services[serv_key] = []
+            self.services[serv_key] = [record]
         else:
-            # TODO find the record if it is already there
-            pass
-
-        # append the record to the array
-        self.services[serv_key].append(record)
+            # find the record if it is already there
+            updated = False
+            for arecord in self.services[serv_key]:
+                if arecord.unique_id == record.unique_id:
+                    # update this record
+                    arecord.priority = record.priority
+                    arecord.weight = record.weight
+                    updated = True
+                    break
+            if not updated:
+                # append the record to the array
+                self.services[serv_key].append(record)
 
     # TODO def remove(self, updates, serv_key, record):
 

@@ -50,7 +50,8 @@ def make_serv_key(str_value):
     if str_value == 'NULL':
         return NULL_SERV_KEY
     return int(str_value)
-# in futuro potrebbe essere (serv_name, serv_proto)
+    # in futuro potrebbe essere (serv_name, serv_proto)
+    # ad esempio a partire da '_www._tcp'
 
 # Used to calculate the range of authoritative sources for a given hostname
 #ANDNA_DUPLICATION = 48
@@ -59,6 +60,7 @@ ANDNA_DUPLICATION = 1
 ANDNA_BALANCING = 1
 
 MAX_HOSTNAME_LEN = 256
+MAX_ANDNA_QUEUE = 5
 
 class Andna(OptionalP2P):
     
@@ -84,17 +86,19 @@ class Andna(OptionalP2P):
         self.wait_andna_hook = True
         self.maproute.events.listen('ME_CHANGED', self.enter_wait_andna_hook)
 
-        self.max_andna_queue = 5
-        
         self.counter = counter
         self.my_keys = keypair
+
         # Appended requests = { hostname: 
-        #                       args_tuple_passed_to_register, ... }
+        #                       sequence<args_tuple_passed_to_register>, ... }
         self.request_queue = {}
+
         # Andna Cache = { hostname: AndnaAuthRecord(), ... }
         self.cache = {} 
+
         # Local Cache = { hostname: (expires, updates), ... }
         self.local_cache = {}
+
         # Resolved Cache = { (hostname, serv_key): AndnaResolvedRecord(), ... }
         self.resolved = {}
 
@@ -191,6 +195,7 @@ class Andna(OptionalP2P):
 
         # register my names
         #self.register_my_names()
+        # TODO uncomment... JUST FOR DEBUG
 
         # # merge ??
         # neigh = None
@@ -265,9 +270,9 @@ class Andna(OptionalP2P):
             if auth_record.expires < time():
                 self.cache.pop(hname)
                 logging.debug('ANDNA: cleaned ' + hname + ' from pubk ' + auth_record.pubk.short_repr())
-                if self.request_queue.has_key(hname):
+                if self.request_queue.has_key(hname) and len(self.request_queue.has_key(hname)) > 0:
                     sender_nip, pubk, hostname, serv_key, IDNum, \
-                       snsd_record, signature = self.request_queue[hname]
+                       snsd_record, signature = self.request_queue[hname].pop(0)
                     logging.debug('ANDNA: trying to register it to pubk ' + pubk.short_repr())
                     # TODO to be tested
                     res, data = self.reply_register(
@@ -277,7 +282,7 @@ class Andna(OptionalP2P):
                     if res == 'OK':
                         client = self.peer(hIP=sender_nip)
                         timestamp, updates = data
-                        client.reply_queued_registration(hname, timestamp, 
+                        client.reply_queued_registration(hname, timestamp,
                                                          updates)
 
     def reply_register(self, sender_nip, pubk, hostname, serv_key, IDNum,
@@ -365,9 +370,9 @@ class Andna(OptionalP2P):
                 if old_registrar == pubk:
                     # This is an update.
                     logging.debug('ANDNA: ... this is an update')
-                    # TODO Check that sender_nip is the REAL originator. If not raise exc.
-                    # TODO Check that nip has or has not changed.
-                    #      If changed update old_record.nip
+                    # TODO If the nip has changed, then the counter node
+                    #      will have the count of the node that had previously
+                    #      this nip. How is it going to reset?
                     # Check and update the record in Counter node
                     counter_gnode = self.counter.peer(key=sender_nip)
                     logging.debug('ANDNA: contacting counter gnode')
@@ -376,7 +381,7 @@ class Andna(OptionalP2P):
                     if not res:
                         raise AndnaError('ANDNA: Failed counter check.')
                     # update record
-                    old_record.store(updates=IDNum, serv_key=serv_key, record=snsd_record)
+                    old_record.store(nip=sender_nip, updates=IDNum, serv_key=serv_key, record=snsd_record)
                     ret = 'OK', (registration_time, updates)
                     updated = True
                 else:
@@ -385,7 +390,7 @@ class Andna(OptionalP2P):
                     if append_if_unavailable:
                         if not self.request_queue.has_key(hostname):
                             self.request_queue[hostname] = []
-                        if len(self.request_queue[hostname]) < self.max_andna_queue:
+                        if len(self.request_queue[hostname]) < MAX_ANDNA_QUEUE:
                             # append record
                             args_tuple_passed_to_register = (sender_nip,
                                     hostname, service, pubk, signature,
