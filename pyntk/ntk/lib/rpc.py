@@ -2,7 +2,7 @@
 # This file is part of Netsukuku
 # (c) Copyright 2007 Daniele Tricoli aka Eriol <eriol@mornie.org>
 # (c) Copyright 2007 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
-# (c) Copyright 2009 Luca Dionisi aka lukisi <luca.dionisi@gmail.com>
+# (c) Copyright 2010 Luca Dionisi aka lukisi <luca.dionisi@gmail.com>
 #
 # This source code is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as published
@@ -372,6 +372,7 @@ class TCPClient(FakeRmt):
         self.me = me
         self.connected = False
         self.calling = False
+        self.socket = None
 
         FakeRmt.__init__(self)
 
@@ -402,11 +403,18 @@ class TCPClient(FakeRmt):
             # Evaluate them before possibly passing the schedule.
             data = rencode.dumps((func_name, params))
 
+            # 30 seconds max to try connecting
+            timeout = time.time() + 30
+            interval = 5
             while not self.connected:
                 self.connect()
                 if not self.connected:
-                    logging.debug('wait 5 before trying again to connect a TCPClient...')
-                    self.xtime.swait(5)
+                    if time.time() > timeout:
+                        raise RPCNetError('Failed connecting to ' + str((self.host, self.port)))
+                    logging.debug('wait ' + interval + ' before trying again to connect a TCPClient...')
+                    self.xtime.swait(interval)
+                    interval *= 2
+                    if interval > 10000: interval = 10000
 
             self.socket.sendall(_data_pack(data))
             recv_encoded_data = _data_unpack_from_stream_socket(self.socket)
@@ -441,13 +449,14 @@ class TCPClient(FakeRmt):
             self.connected = True
 
     def close(self):
-        self.socket.close()
+        self.socket = None # deleting a socket will also try and close it.
         self.connected = False
 
     def rmt(self, func_name, *params):
         return self.rpc_call(func_name, params)
 
     def __del__(self):
+        logging.debug('TCPClient: __del__: ' + str(self) + ' ' + str(self.host) + ' ' + str(self.connected) + ' ' + str(self.socket))
         if self.connected:
             self.close()
 
