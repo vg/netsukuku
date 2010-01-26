@@ -102,7 +102,6 @@ class Andna(OptionalP2P):
                                  self.get_registrar_pubk,
                                  self.reply_queued_registration,
                                  self.reply_resolved_cache,
-                                 self.reply_forward_registration,
                                  self.cache_getall]
 
     def enter_wait_andna_hook(self, *args):
@@ -200,7 +199,13 @@ class Andna(OptionalP2P):
         # TODO find a mechanism to find a 'bunch' of BALANCING nodes
         bunch = [hash_nip]
 
-        random_hnode = choice(bunch)
+        # TODO uncomment:
+        ### If I am in the bunch, use myself
+        ##if self.maproute.me in bunch:
+        ##    random_hnode = self.maproute.me[:]
+        ##else:
+        if True:
+            random_hnode = choice(bunch)
         logging.debug('ANDNA: random hash_node should be ' + str(random_hnode))
         # TODO finish duplication mechanism (forwarding)
         random_hnode = hash_nip[:]
@@ -257,7 +262,8 @@ class Andna(OptionalP2P):
                                                          updates)
 
     def reply_register(self, sender_nip, pubk, hostname, serv_key, IDNum,
-                       snsd_record, signature, append_if_unavailable):
+                       snsd_record, signature, append_if_unavailable,
+                       forward=True):
 
         ret = '', ''
 
@@ -412,11 +418,13 @@ class Andna(OptionalP2P):
                 registered = True
                 ret = 'OK', (registration_time, updates)
 
-        if updated or registered:
-            # forward the entry to my gnodes
-            # TODO
-            #self.forward_registration(hostname, self.cache[hostname])
-            pass
+        if forward and (updated or registered):
+            # forward the entry to the bunch
+            bunch_not_me = [n for n in bunch if n != self.maproute.me]
+            logging.debug('ANDNA: forward_registration to ' + str(bunch))
+            self.forward_registration_to_set(bunch, (sender_nip, pubk,
+                         hostname, serv_key, IDNum, snsd_record, signature,
+                         append_if_unavailable))
 
         logging.debug('ANDNA: after reply_register: self.my_keys=' + str(self.my_keys))
         logging.debug('ANDNA: after reply_register: self.request_queue=' + str(self.request_queue))
@@ -438,28 +446,30 @@ class Andna(OptionalP2P):
                hostname in self.wanted_hostnames and \
                pubk == self.my_keys.get_pub_key()
 
-    def forward_registration(self, hostname, andna_cache):
-        """ Broadcast the request to the entire gnode of level 1 to let the
-           other nodes register the hostname. """
-        me = self.mapp2p.me[:]
-        for lvl in reversed(xrange(self.maproute.levels)):
-            for id in xrange(self.maproute.gsize):
-                nip = self.maproute.lvlid_to_nip(lvl, id)
-                if self.maproute.nip_cmp(nip, me) == 0 and \
-                    self.mapp2p.node_get(lvl, id).participant:    
-                        remote = self.peer(hIP=nip)   
-                        logging.debug("ANDNA: forwarding registration to `"+ \
-                                  ip_to_str(self.maproute.nip_to_ip(nip))+"'")
-                        res, data = remote.reply_forward_registration(
-                                                        hostname, andna_cache)
-                        
-    def reply_forward_registration(self, hostname, andna_cache):
-        # just add the entry into our database
-        self.cache[hostname] = self.resolved[hostname] = andna_cache
-        logging.debug("ANDNA: received a registration forward for `"+
-                      hostname+"'")
-        return ('OK', ())
-                        
+    @microfunc(True)
+    def forward_registration_to_set(self, to_set, args_to_reply_register):
+        for to_nip in to_set:
+            self.forward_registration_to_nip(to_nip, args_to_reply_register)
+
+    @microfunc(True)
+    def forward_registration_to_nip(self, to_nip, args_to_reply_register):
+        """ Forwards registration request to another hash node in the bunch. """
+        try:
+            logging.debug('ANDNA: forwarding registration request to ' + \
+                    ip_to_str(self.maproute.nip_to_ip(to_nip)))
+            # TODO Use TCPClient or P2P ?
+            remote = self.peer(hIP=to_nip)
+            args_to_reply_register = \
+                    tuple(list(args_to_reply_register) + [False])
+            resp = remote.reply_register(*args_to_reply_register)
+            logging.debug('ANDNA: forwarded registration request to ' + \
+                    ip_to_str(self.maproute.nip_to_ip(to_nip)) + \
+                    ' got ' + str(resp))
+        except Exception, e:
+            logging.warning('ANDNA: forwarded registration request to ' + \
+                    str(to_nip) + \
+                    ' got exception ' + repr(e))
+
     def reply_queued_registration(self, hostname, timestamp, updates):
         """ The registration request we have sent and enqueued 
         when the hostname was busy has been satisfied now """
