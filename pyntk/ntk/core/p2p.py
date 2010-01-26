@@ -208,6 +208,12 @@ class P2P(RPCDispatcher):
         """
         return not self.maproute.node_get(lvl, idn).is_free()
 
+    def repr_participants(self):
+        """Returns a representation of the map of participants.
+        An inheriting class could override the function.
+        """
+        return self.maproute.repr_me()
+
     def h(self, key):
         """This is the function h:KEY-->hIP.
 
@@ -217,7 +223,7 @@ class P2P(RPCDispatcher):
 
     def H(self, hIP):
         """This is the function that maps each IP to an existent hash node IP
-           If there are no participants, None is returned"""
+           If there are no participants, an exception is raised"""
         mp = self.maproute
         logging.log(logging.ULTRADEBUG, 'H: H(' + str(hIP) + ')')
         H_hIP = [None] * mp.levels
@@ -231,9 +237,9 @@ class P2P(RPCDispatcher):
                 if H_hIP[l] is not None:
                     break
             if H_hIP[l] is None:
-                logging.log(logging.ULTRADEBUG, 'H: H(' + str(hIP) + 
-                            ') = None')
-                return None
+                logging.warning('P2P: H returns None. Map ' + 
+                                str(self.repr_participants()))
+                raise Exception, 'P2P: H returns None. Map not in sync?'
 
             if H_hIP[l] != mp.me[l]:
                 # we can stop here
@@ -428,6 +434,11 @@ class OptionalP2P(P2P):
         to the service.
         """
         return self.mapp2p.node_get(lvl, idn).participant
+
+    def repr_participants(self):
+        """Returns a representation of the map of participants.
+        """
+        return self.mapp2p.repr_me()
 
     def participate(self):
         """Let's become a participant node"""
