@@ -34,6 +34,7 @@ from ntk.lib.micro import microfunc, micro_block
 from ntk.lib.misc import is_ip
 from ntk.lib.rencode import serializable
 from ntk.network.inet import ip_to_str, str_to_ip
+from ntk.lib.rpc import TCPClient
 from ntk.wrap.xtime import timestamp_to_data, today, days, while_condition, time
 from ntk.core.snsd import AndnaError
 
@@ -280,6 +281,7 @@ class Andna(OptionalP2P):
                                 snsd_record, signature,
                                 append_if_unavailable=False)
                     if res == 'OK':
+                        # TODO make this passage in a tasklet
                         client = self.peer(hIP=sender_nip)
                         timestamp, updates = data
                         client.reply_queued_registration(hname, timestamp,
@@ -327,8 +329,8 @@ class Andna(OptionalP2P):
 
         # then the verification of the sender_nip
         logging.debug('ANDNA: verifying the request came from this nip...')
-        remote = self.peer(hIP=sender_nip)
-        if not remote.confirm_your_request(sender_nip, pubk, hostname):
+        remote = TCPClient(ip_to_str(self.maproute.nip_to_ip(sender_nip)))
+        if not remote.andna.confirm_your_request(sender_nip, pubk, hostname):
             logging.info('ANDNA: nip is NOT verified. Raising exception.')
             raise AndnaError, 'Request not originating from nip ' + sender_nip
         logging.debug('ANDNA: nip verified')

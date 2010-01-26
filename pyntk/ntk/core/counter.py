@@ -29,6 +29,8 @@ from ntk.lib.micro import microfunc
 from ntk.wrap.xtime import (now, timestamp_to_data, today, days, 
                             while_condition, time)
 from ntk.core.snsd import MAX_TTL_OF_REGISTERED, MAX_TTL_OF_NEGATIVE
+from ntk.network.inet import ip_to_str, str_to_ip
+from ntk.lib.rpc import TCPClient
 
 MAX_HOSTNAMES = 16
 
@@ -121,12 +123,15 @@ class Counter(OptionalP2P):
         self.my_keys = keypair
         self.p2pall = p2pall
 
+        # This field will be assigned to by the caller
+        self.andna = None
+
         # let's register ourself in p2pall
         self.p2pall.p2p_register(self)
         self.p2pall.events.listen('P2P_HOOKED', self.counter_hook)
 
         # The counter cache = { (str(pubk), str(nip)): CounterAuthRecord, ... }
-        self.cache = {} 
+        self.cache = {}
 
         self.remotable_funcs += [self.check, self.cache_getall,
                                 self.reply_forward_registration]
@@ -174,8 +179,12 @@ class Counter(OptionalP2P):
             raise CounterError('Request authentication failed')
         logging.debug('COUNTER: request authenticated')
         # Check that the NIP is assigned to this pubk
-        logging.debug('COUNTER: verifying origin of the request...')
-        # TODO
+        logging.debug('COUNTER: verifying the request came from this nip...')
+        remote = TCPClient(ip_to_str(self.maproute.nip_to_ip(sender_nip)))
+        if not remote.andna.confirm_your_request(sender_nip, pubk, hostname):
+            logging.info('COUNTER: nip is NOT verified. Raising exception.')
+            raise CounterError, 'Request not originating from nip ' + sender_nip
+        logging.debug('COUNTER: nip verified')
         # Retrieve data, update data, prepare response
         logging.debug('COUNTER: processing request...')
         strpubk = str(pubk)
