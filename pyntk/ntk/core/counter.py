@@ -31,6 +31,7 @@ from ntk.wrap.xtime import (now, timestamp_to_data, today, days,
 from ntk.core.snsd import MAX_TTL_OF_REGISTERED, MAX_TTL_OF_NEGATIVE
 from ntk.network.inet import ip_to_str
 from ntk.lib.rpc import TCPClient
+from ntk.lib.event import Event
 
 MAX_HOSTNAMES = 16
 
@@ -64,6 +65,8 @@ class HostnameRecord:
 
     def _pack(self):
         return (self.hostname, self.get_ttl())
+
+serializable.register(HostnameRecord)
 
 class CounterAuthRecord:
     def __init__(self, pubk, nip, reg_hostnames):
@@ -123,114 +126,173 @@ class Counter(OptionalP2P):
         self.my_keys = keypair
         self.p2pall = p2pall
 
-        # This field will be assigned to by the caller
-        self.andna = None
-
         # let's register ourself in p2pall
         self.p2pall.p2p_register(self)
         self.p2pall.events.listen('P2P_HOOKED', self.counter_hook)
 
-        # The counter cache = { (str(pubk), str(nip)): CounterAuthRecord, ... }
-        self.cache = {}
+        self.events = Event(['COUNTER_HOOKED'])
 
-        self.remotable_funcs += [self.check, self.cache_getall,
-                                self.reply_forward_registration]
+        # From the moment I change my NIP up to the moment I have hooked,
+        # we don't want to answer to check/reset requests.
+        self.wait_counter_hook = True
+        self.maproute.events.listen('ME_CHANGED', self.enter_wait_counter_hook)
+
+        # The counter cache = { (pubk, tuple(nip)): CounterAuthRecord, ... }
+        self.cache = {}
+        # Note: tuple is hashable, list is not.
+
+        self.remotable_funcs += [self.check,
+                                self.cache_getall,
+                                self.reset_hostname]
+
+    def enter_wait_counter_hook(self, *args):
+        self.wait_counter_hook = True
 
     @microfunc(True) 
     def counter_hook(self):
         # clear old cache
         self.reset()
         logging.debug('COUNTER: resetted.')
-        logging.debug('COUNTER: after reset: self.cache=' + str(self.cache))
 
-        # # merge ??
-        # neigh = None
-        # def no_participants():
-        #     return self.mapp2p.node_nb[self.mapp2p.levels-1] >= 1
-        # # wait at least one participant
-        # while_condition(no_participants)
-        # for neigh in self.neigh.neigh_list(in_my_network=True):
-        #     nip = self.maproute.ip_to_nip(neigh.ip)
-        #     peer = self.peer(hIP=nip)
-        #     self.caches_merge(peer.cache_getall())
+        # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
+        #  from whom I have to retrieve the cache
+        bunch = [self.maproute.me[:]]
+        bunch_not_me = [n for n in bunch if n != self.maproute.me]
+
+        for cache_nip in bunch_not_me:
+            # TODO Use TCPClient or P2P ?
+            remote = TCPClient(ip_to_str(self.maproute.nip_to_ip(cache_nip)))
+            logging.debug('COUNTER: getting cache from ' + str(cache_nip))
+            cache_from_nip = remote.counter.cache_getall()
+            for key in cache_from_nip.keys():
+                # Do I have already this record?
+                if key not in self.cache:
+                    # No. Do I am the right hash for this record?
+                    pubk, tuple_nip = key
+                    nip = list(tuple_nip)
+                    hnode_nip = self.peer(key=nip).get_hash_nip()
+
+                    # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
+                    hnode_bunch = [hnode_nip]
+
+                    if self.maproute.me in hnode_bunch:
+                        # Yes. Memorize it.
+                        self.cache[key] = cache_from_nip[key]
+
+        self.events.send('COUNTER_HOOKED', ())
+        self.wait_counter_hook = False
+
+    def reset_my_counter_node(self):
+        ''' Asks to my counter node to set my pubk as the
+            new holder, and reset any hostname. The counter node(s)
+            will ask for confirmation.
+        '''
+        pass #TODO
+
+    def reset_hostname(self, hostname, pubk, nip):
+        ''' This pubk is declaring it is the holder of this nip.
+            It wants to reset all the hostnames.
+        '''
+        pass #TODO
 
     def reset(self):
+        ''' Resets all data. Invoked when hooked in a new network.
+        '''
         self.cache = {}
 
     def check_expirations(self):
         # Remove the expired entries from the COUNTER cache
         logging.debug('COUNTER: cleaning expired entries - if any - from our COUNTER cache...')
-        for (str_pubk, str_nip), auth_record in self.cache.items():
+        for key, auth_record in self.cache.items():
             pubk, nip = auth_record.pubk, auth_record.nip
             if not auth_record.has_any():
-                self.cache.pop((str_pubk, str_nip))
+                self.cache.pop(key)
                 logging.debug('COUNTER: cleaned entry (pubk ' + pubk.short_repr() + \
                         ', nip ' + str(self.nip) + ')')
 
     def check(self, sender_nip, pubk, hostname, serv_key, IDNum,
-                       snsd_record, signature):
+                       snsd_record, signature,
+                       forward=True):
         """ Return a tuple like (True/False, updates) """
         # Remove the expired entries from the COUNTER cache
         self.check_expirations()
-        # Check that the message comes from this pubk
+
+        # first the hash check
+        logging.debug('COUNTER: verifying that I am the right hash...')
+        # calculate hash
+        hash_node = self.peer(key=sender_nip)
+        hash_nip = hash_node.get_hash_nip()
+        logging.debug('COUNTER: exact hash_node is ' + str(hash_nip))
+
+        # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
+        bunch = [hash_nip, self.maproute.me]
+
+        check_hash = self.maproute.me in bunch
+
+        if not check_hash:
+            logging.info('COUNTER: hash is NOT verified. Raising exception.')
+            raise CounterError, 'Hash verification failed'
+        logging.debug('COUNTER: hash is verified.')
+
+        # Check that the request is signed with privk of this pubk
         logging.debug('COUNTER: authenticating the request...')
         if not pubk.verify(rencode.dumps((sender_nip, hostname, serv_key, IDNum,
                        snsd_record)), signature):
             raise CounterError('Request authentication failed')
         logging.debug('COUNTER: request authenticated')
-        # Check that the NIP is assigned to this pubk
+        # Check that the request is coming from this NIP
         logging.debug('COUNTER: verifying the request came from this nip...')
         remote = TCPClient(ip_to_str(self.maproute.nip_to_ip(sender_nip)))
         if not remote.andna.confirm_your_request(sender_nip, pubk, hostname):
             logging.info('COUNTER: nip is NOT verified. Raising exception.')
             raise CounterError, 'Request not originating from nip ' + sender_nip
         logging.debug('COUNTER: nip verified')
+
         # Retrieve data, update data, prepare response
         logging.debug('COUNTER: processing request...')
-        strpubk = str(pubk)
-        strnip = str(sender_nip)
-        if (strpubk, strnip) not in self.cache:
-            self.cache[(strpubk, strnip)] = CounterAuthRecord(pubk, sender_nip, {})
-        ret = self.cache[(strpubk, strnip)].store(hostname)
+        tuple_nip = tuple(sender_nip)
+        if (pubk, tuple_nip) not in self.cache:
+            self.cache[(pubk, tuple_nip)] = CounterAuthRecord(pubk, sender_nip, {})
+        ret = self.cache[(pubk, tuple_nip)].store(hostname)
         # Is it accepted?
         if ret:
-            # Forward registration
-            logging.debug('COUNTER: forwarding request...')
-            # self.forward_registration(public_key, 
-            #                                  hostname, 
-            #                                  self.cache[public_key][hostname])
+            # forward the entry to the bunch
+            bunch_not_me = [n for n in bunch if n != self.maproute.me]
+            logging.debug('COUNTER: forward_registration to ' + str(bunch_not_me))
+            self.forward_registration_to_set(bunch_not_me, (sender_nip, pubk, hostname,
+                         serv_key, IDNum, snsd_record, signature))
 
         logging.debug('COUNTER: returning (ret, IDNum) = ' + str((ret, IDNum)))
         return (ret, IDNum)
 
-    def forward_registration(self, public_key, hostname, entry):
-        """ Broadcast the request to the entire gnode of level 1 to let the
-           other counter_nodes register the hostname. """
-        me = self.mapp2p.me[:]
-        for lvl in reversed(xrange(self.maproute.levels)):
-            for id in xrange(self.maproute.gsize):
-                nip = self.maproute.lvlid_to_nip(lvl, id)
-                if self.maproute.nip_cmp(nip, me) == 0 and \
-                    self.mapp2p.node_get(lvl, id).participant:    
-                        remote = self.peer(hIP=nip)
-                        res, data = remote.reply_forward_registration(
-                                            public_key, hostname, entry)
-                        
-    def reply_forward_registration(self, public_key, hostname, entry):
-        # just add the entry into our database
-        if not self.cache.has_key(public_key):
-            self.cache[public_key] = {}
-        self.cache[public_key][hostname] = entry
-        return ('OK', ())
-    
-    def caches_merge(self, caches):
-        cache = caches
-        if cache:
-            self.cache.update(cache)
-            logging.debug("Counter: taken cache from neighbour: "+str(cache))
-    
+    @microfunc(True)
+    def forward_registration_to_set(self, to_set, args_to_check):
+        for to_nip in to_set:
+            self.forward_registration_to_nip(to_nip, args_to_check)
+
+    @microfunc(True)
+    def forward_registration_to_nip(self, to_nip, args_to_check):
+        """ Forwards registration request to another hash node in the bunch. """
+        try:
+            logging.debug('COUNTER: forwarding registration request to ' + \
+                    ip_to_str(self.maproute.nip_to_ip(to_nip)))
+            # TODO Use TCPClient or P2P ?
+            remote = self.peer(hIP=to_nip)
+            args_to_check = \
+                    tuple(list(args_to_check) + [False])
+            resp = remote.check(*args_to_check)
+            logging.debug('COUNTER: forwarded registration request to ' + \
+                    ip_to_str(self.maproute.nip_to_ip(to_nip)) + \
+                    ' got ' + str(resp))
+        except Exception, e:
+            logging.warning('COUNTER: forwarded registration request to ' + \
+                    str(to_nip) + \
+                    ' got exception ' + repr(e))
+
     def cache_getall(self):
-        return (self.cache)
+        ''' Returns the cache of authoritative records.
+        '''
+        return self.cache
     
     def h(self, nip):
         """ Retrieve an IP from the NIP """

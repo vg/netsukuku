@@ -35,7 +35,7 @@ from ntk.lib.misc import is_ip
 from ntk.lib.rencode import serializable
 from ntk.network.inet import ip_to_str
 from ntk.lib.rpc import TCPClient
-from ntk.wrap.xtime import timestamp_to_data, today, days, while_condition, time
+from ntk.wrap.xtime import swait, time
 from ntk.core.snsd import AndnaError
 
 # TODO:
@@ -181,7 +181,13 @@ class Andna(OptionalP2P):
         self.events.send('ANDNA_HOOKED', ())
         self.wait_andna_hook = False
 
-        # register my names
+        # Communicate to Counter Node that I am the new holder
+        # of this IP.
+        self.counter.reset_my_counter_node()
+        # Then wait a while to permit the data to be forwarded
+        # and the bunch of Counter Nodes to ask me for confirmation
+        swait(30000)
+        # Now I can register my names
         self.register_my_names()
         logging.debug('ANDNA: registered my names.')
 
@@ -360,9 +366,6 @@ class Andna(OptionalP2P):
                 if old_registrar == pubk:
                     # This is an update.
                     logging.debug('ANDNA: ... this is an update')
-                    # TODO If the nip has changed, then the counter node
-                    #      will have the count of the node that had previously
-                    #      this nip. How is it going to reset?
                     # Check and update the record in Counter node
                     counter_gnode = self.counter.peer(key=sender_nip)
                     logging.debug('ANDNA: contacting counter gnode')
@@ -432,8 +435,8 @@ class Andna(OptionalP2P):
         if forward and (updated or registered):
             # forward the entry to the bunch
             bunch_not_me = [n for n in bunch if n != self.maproute.me]
-            logging.debug('ANDNA: forward_registration to ' + str(bunch))
-            self.forward_registration_to_set(bunch, (sender_nip, pubk,
+            logging.debug('ANDNA: forward_registration to ' + str(bunch_not_me))
+            self.forward_registration_to_set(bunch_not_me, (sender_nip, pubk,
                          hostname, serv_key, IDNum, snsd_record, signature,
                          append_if_unavailable))
 
