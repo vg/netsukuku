@@ -19,18 +19,20 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
+import time as stdtime
+
 import ntk.lib.rencode as rencode
 from ntk.lib.rencode import serializable
 from ntk.core.andna import hash_32bit_ip
 from ntk.core.p2p import OptionalP2P
 from ntk.lib.crypto import md5
 from ntk.lib.log import logger as logging
-from ntk.lib.micro import microfunc
+from ntk.lib.micro import microfunc, micro_block, micro_current, micro_kill, start_tracking, stop_tracking
 from ntk.wrap.xtime import (now, timestamp_to_data, today, days, 
                             while_condition, time)
 from ntk.core.snsd import MAX_TTL_OF_REGISTERED, MAX_TTL_OF_NEGATIVE
-from ntk.network.inet import ip_to_str
 from ntk.lib.rpc import TCPClient
+from ntk.network.inet import ip_to_str
 from ntk.lib.event import Event
 from ntk.lib.log import ExpectableException
 
@@ -138,6 +140,7 @@ class Counter(OptionalP2P):
         # From the moment I change my NIP up to the moment I have hooked,
         # we don't want to answer to check/reset requests.
         self.wait_counter_hook = True
+        self.micro_to_kill = {}
         self.maproute.events.listen('ME_CHANGED', self.enter_wait_counter_hook)
 
         # The counter cache = { (pubk, tuple(nip)): CounterAuthRecord, ... }
@@ -238,7 +241,16 @@ class Counter(OptionalP2P):
     def check(self, sender_nip, pubk, hostname, serv_key, IDNum,
                        snsd_record, signature,
                        forward=True):
-        """ Return a tuple like (True/False, updates) """
+      """ Return a tuple like (True/False, updates) """
+      start_tracking()
+      try:
+        # If we recently changed our NIP (we hooked) we wait to finish
+        # an counter_hook before answering a check request.
+        while self.wait_counter_hook:
+            micro_block()
+            stdtime.sleep(0.001)
+        # We are correctly hooked.
+
         # Remove the expired entries from the COUNTER cache
         self.check_expirations()
 
@@ -289,18 +301,21 @@ class Counter(OptionalP2P):
             # forward the entry to the bunch
             bunch_not_me = [n for n in bunch if n != self.maproute.me]
             logging.debug('COUNTER: forward_registration to ' + str(bunch_not_me))
-            self.forward_registration_to_set(bunch_not_me, (sender_nip, pubk, hostname,
-                         serv_key, IDNum, snsd_record, signature))
+            self.forward_registration_to_set(bunch_not_me, \
+                    (sender_nip, pubk, hostname, \
+                     serv_key, IDNum, snsd_record, signature))
 
         logging.debug('COUNTER: returning (ret, IDNum) = ' + str((ret, IDNum)))
         return (ret, IDNum)
+      finally:
+        stop_tracking()
 
     @microfunc(True)
     def forward_registration_to_set(self, to_set, args_to_check):
         for to_nip in to_set:
             self.forward_registration_to_nip(to_nip, args_to_check)
 
-    @microfunc(True)
+    @microfunc(True, keep_track=1)
     def forward_registration_to_nip(self, to_nip, args_to_check):
         """ Forwards registration request to another hash node in the bunch. """
         try:

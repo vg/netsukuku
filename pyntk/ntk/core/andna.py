@@ -30,13 +30,13 @@ from ntk.lib.crypto import md5, fnv_32_buf, PublicKey
 from ntk.lib.event import Event
 from ntk.lib.log import logger as logging
 from ntk.lib.log import log_exception_stacktrace
-from ntk.lib.micro import microfunc, micro_block
+from ntk.lib.micro import microfunc, micro_block, micro_current, micro_kill, start_tracking, stop_tracking
 from ntk.lib.misc import is_ip
 from ntk.lib.rencode import serializable
-from ntk.network.inet import ip_to_str
-from ntk.lib.rpc import TCPClient
+from ntk.network.inet import ip_to_str, str_to_ip
 from ntk.wrap.xtime import swait, time
 from ntk.core.snsd import AndnaError
+from ntk.lib.rpc import TCPClient
 from ntk.lib.log import ExpectableException
 
 # TODO:
@@ -78,6 +78,7 @@ class Andna(OptionalP2P):
         # From the moment I change my NIP up to the moment I have hooked,
         # we don't want to answer to registration/resolution requests.
         self.wait_andna_hook = True
+        self.micro_to_kill = {}
         self.maproute.events.listen('ME_CHANGED', self.enter_wait_andna_hook)
 
         self.counter = counter
@@ -108,6 +109,9 @@ class Andna(OptionalP2P):
 
     def enter_wait_andna_hook(self, *args):
         self.wait_andna_hook = True
+        while any(self.micro_to_kill):
+            for k in self.micro_to_kill.keys():
+                micro_kill(self.micro_to_kill[k])
 
     def register_my_names(self):
         # register my names
@@ -150,65 +154,76 @@ class Andna(OptionalP2P):
             except Exception, e:
                 logging.error('ANDNA: Registration: trying to register ' + str(snsd_node) + ' got ' + repr(e))
 
-    @microfunc(True)
+    @microfunc(True, keep_track=1)
     def andna_hook(self):
-        # clear old cache
-        self.reset()
-        logging.debug('ANDNA: resetted.')
+        # The tasklet started with this function can be killed.
+        # Furthermore, if it is called while it was already running in another
+        # tasklet, it restarts itself.
+        while 'andna_hook' in self.micro_to_kill:
+            micro_kill(self.micro_to_kill['andna_hook'])
+        try:
+            self.micro_to_kill['andna_hook'] = micro_current()
 
-        # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
-        #  from whom I have to retrieve the cache
-        bunch = [self.maproute.me[:]]
-        bunch_not_me = [n for n in bunch if n != self.maproute.me]
+            # clear old cache
+            self.reset()
+            logging.debug('ANDNA: resetted.')
 
-        for cache_nip in bunch_not_me:
-            # TODO Contact the various nip in the bunch in parallel. But
-            #      be careful. We must continue after all have finished
-            #      (completed or failed) and we must ensure the atomicity
-            #      of write.
-            # TODO Use TCPClient or P2P ?
-            remote = TCPClient(ip_to_str(self.maproute.nip_to_ip(cache_nip)))
-            logging.debug('ANDNA: getting cache from ' + str(cache_nip))
-            try:
-                cache_from_nip, req_queue_from_nip = remote.andna.get_auth_cache()
-                for hname in cache_from_nip.keys():
-                    # TODO perhaps we don't have this key, but we already
-                    #      tried and we refused because we're not in the
-                    #      bunch. In this case we should avoid to start a
-                    #      find_nearest again.
-                    # Do I have already this record?
-                    if hname not in self.cache:
-                        # No. Do I am the right hash for this record?
-                        hname_nip = self.peer(key=hname).get_hash_nip()
+            # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
+            #  from whom I have to retrieve the cache
+            bunch = [self.maproute.me[:]]
+            bunch_not_me = [n for n in bunch if n != self.maproute.me]
 
-                        # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
-                        hname_bunch = [hname_nip]
+            for cache_nip in bunch_not_me:
+                # TODO Contact the various nip in the bunch in parallel. But
+                #      be careful. We must continue after all have finished
+                #      (completed or failed) and we must ensure the atomicity
+                #      of write.
+                # TODO Use TCPClient or P2P ?
+                remote = TCPClient(ip_to_str(self.maproute.nip_to_ip(cache_nip)))
+                logging.debug('ANDNA: getting cache from ' + str(cache_nip))
+                try:
+                    cache_from_nip, req_queue_from_nip = remote.andna.get_auth_cache()
+                    for hname in cache_from_nip.keys():
+                        # TODO perhaps we don't have this key, but we already
+                        #      tried and we refused because we're not in the
+                        #      bunch. In this case we should avoid to start a
+                        #      find_nearest again.
+                        # Do I have already this record?
+                        if hname not in self.cache:
+                            # No. Do I am the right hash for this record?
+                            hname_nip = self.peer(key=hname).get_hash_nip()
 
-                        if self.maproute.me in hname_bunch:
-                            # Yes. Memorize it.
-                            self.cache[hname] = cache_from_nip[hname]
-                            if hname in req_queue_from_nip:
-                                self.request_queue[hname] = req_queue_from_nip[hname]
-                            logging.debug('ANDNA: got cache for ' + \
-                                    str(hname))
-                logging.debug('ANDNA: executed cache from ' + \
-                        str(cache_nip))
-            except Exception, e:
-                logging.debug('ANDNA: getting cache from ' + \
-                        str(cache_nip) + ' got exception ' + repr(e))
+                            # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
+                            hname_bunch = [hname_nip]
 
-        self.events.send('ANDNA_HOOKED', ())
-        self.wait_andna_hook = False
+                            if self.maproute.me in hname_bunch:
+                                # Yes. Memorize it.
+                                self.cache[hname] = cache_from_nip[hname]
+                                if hname in req_queue_from_nip:
+                                    self.request_queue[hname] = req_queue_from_nip[hname]
+                                logging.debug('ANDNA: got cache for ' + \
+                                        str(hname))
+                    logging.debug('ANDNA: executed cache from ' + \
+                            str(cache_nip))
+                except Exception, e:
+                    logging.debug('ANDNA: getting cache from ' + \
+                            str(cache_nip) + ' got exception ' + repr(e))
 
-        # Communicate to Counter Node that I am the new holder
-        # of this IP.
-        self.counter.reset_my_counter_node()
-        # Then wait a while to permit the data to be forwarded
-        # and the bunch of Counter Nodes to ask me for confirmation
-        swait(30000)
-        # Now I can register my names
-        self.register_my_names()
-        logging.debug('ANDNA: registered my names.')
+            self.events.send('ANDNA_HOOKED', ())
+            self.wait_andna_hook = False
+
+            # Communicate to Counter Node that I am the new holder
+            # of this IP.
+            self.counter.reset_my_counter_node()
+            # Then wait a while to permit the data to be forwarded
+            # and the bunch of Counter Nodes to ask me for confirmation
+            swait(30000)
+            # Now I can register my names
+            self.register_my_names()
+            logging.debug('ANDNA: registered my names.')
+
+        finally:
+            del self.micro_to_kill['andna_hook']
 
     def reset(self):
         self.request_queue = {}
@@ -291,8 +306,10 @@ class Andna(OptionalP2P):
     def reply_register(self, sender_nip, pubk, hostname, serv_key, IDNum,
                        snsd_record, signature, append_if_unavailable,
                        forward=True):
-        ''' Serves a request to register/update an hostname.
-        '''
+      ''' Serves a request to register/update an hostname.
+      '''
+      start_tracking()
+      try:
         # If we recently changed our NIP (we hooked) we wait to finish
         # an andna_hook before answering a registration request.
         while self.wait_andna_hook:
@@ -459,7 +476,8 @@ class Andna(OptionalP2P):
             # forward the entry to the bunch
             bunch_not_me = [n for n in bunch if n != self.maproute.me]
             logging.debug('ANDNA: forward_registration to ' + str(bunch_not_me))
-            self.forward_registration_to_set(bunch_not_me, (sender_nip, pubk,
+            self.forward_registration_to_set(bunch_not_me, \
+                        (sender_nip, pubk,
                          hostname, serv_key, IDNum, snsd_record, signature,
                          append_if_unavailable))
 
@@ -468,6 +486,8 @@ class Andna(OptionalP2P):
         logging.debug('ANDNA: after reply_register: self.resolved=' + str(self.resolved))
         logging.debug('ANDNA: reply_register: returning ' + str(ret))
         return ret
+      finally:
+        stop_tracking()
 
     def confirm_your_request(self, nip, pubk, hostname):
         # This P2P-remotable method is called directyly to a certain NIP in order
@@ -486,7 +506,7 @@ class Andna(OptionalP2P):
         for to_nip in to_set:
             self.forward_registration_to_nip(to_nip, args_to_reply_register)
 
-    @microfunc(True)
+    @microfunc(True, keep_track=1)
     def forward_registration_to_nip(self, to_nip, args_to_reply_register):
         """ Forwards registration request to another hash node in the bunch. """
         try:
