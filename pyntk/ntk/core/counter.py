@@ -28,10 +28,9 @@ from ntk.lib.log import logger as logging
 from ntk.lib.micro import microfunc
 from ntk.wrap.xtime import (now, timestamp_to_data, today, days, 
                             while_condition, time)
-from ntk.core.snsd import SnsdRecord, MAX_TTL_OF_NEGATIVE, \
-            MAX_TTL_OF_REGISTERED, AndnaAuthRecord, AndnaResolvedRecord
+from ntk.core.snsd import MAX_TTL_OF_REGISTERED, MAX_TTL_OF_NEGATIVE
 
-MAX_HOSTNAMES = 256
+MAX_HOSTNAMES = 16
 
 class CounterError(Exception): pass
 

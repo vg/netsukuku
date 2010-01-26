@@ -34,28 +34,26 @@ from ntk.lib.rencode import serializable
 from ntk.wrap.xtime import time
 from ntk.config import settings
 
-services_number_file_path = settings.SERVNO_PATH
+class AndnaError(Exception): pass
 
-
-class SnsdRecord:
+class SnsdAuthRecord:
     def __init__(self, record, pubk, priority, weight):
-        # string/NIP record = it can be a NIP or an further hostname
-        self.record = record[:]
+        # string record = it can be None or an further hostname
+        #   If record is None then this record refers to the NIP of
+        #   the registrar. Otherwise it is an hostname, then this
+        #   record refers to that hostname.
+        self.record = record
         # PublicKey pubk = public key of record.
-        #           if record is an further hostname, then pubk is the public
-        #              key of the host registrar of that hostname. The value
-        #              of pubk in this case is specified by the client.
-        #           if record is a NIP it must be the same of sender_nip. In
-        #              this case pubk is the public key of the registrar of
-        #              this SnsdRecord. Furthermore, the values of the fields
-        #              'record' and 'pubk' in this istance will be overrided,
-        #              if they were present, by the hash node that is keeping
-        #              the AndnaAuthRecord in its cache.
+        #   If record is an further hostname, then pubk is the public
+        #   key of the host registrar of that hostname. The value
+        #   of pubk in this case is specified by the client and verified
+        #   by the hash node.
+        #   If record is None, then pubk is None.
         self.pubk = pubk
         # int priority = the priority of the record (lower is better)
         self.priority = priority
         # int weight = the relative weight of the record, between records with
-        # the same priority.
+        #   the same priority.
         self.weight = weight
         # in future we should add the field port_number
 
@@ -63,19 +61,19 @@ class SnsdRecord:
         pubk_str = 'None'
         if self.pubk is not None:
             pubk_str = self.pubk.short_repr()
-        ret = '<SnsdRecord: (record ' + str(self.record) + \
+        ret = '<SnsdAuthRecord: (record ' + str(self.record) + \
                 ', pubk ' + pubk_str + \
                 ', priority ' + str(self.priority) + \
                 ', weight ' + str(self.weight) + ')>'
         return ret
 
     def _pack(self):
-        return (self.record[:], self.pubk, self.priority, self.weight)
+        return (self.record, self.pubk, self.priority, self.weight)
 
-serializable.register(SnsdRecord)
+serializable.register(SnsdAuthRecord)
 
 class AndnaAuthRecord:
-    def __init__(self, hostname, pubk, ttl, updates, services):
+    def __init__(self, hostname, pubk, nip, ttl, updates, services):
         # string hostname = hostname
         self.hostname = hostname
         # int ttl = millisec to expiration
@@ -87,7 +85,9 @@ class AndnaAuthRecord:
         self.updates = updates
         # PublicKey pubk = public key of registrar
         self.pubk = pubk
-        # dict<serv_key,sequence<SnsdRecord>> services = la chiave è il service_number
+        # NIP nip = current nip of registrar
+        self.nip = nip
+        # dict<serv_key,sequence<SnsdAuthRecord>> services = la chiave è il service_number
         #               in futuro potrebbe essere la tupla (service_name, protocol_name)
         self.services = {}
         self.services.update(services)
@@ -95,6 +95,7 @@ class AndnaAuthRecord:
     def __repr__(self):
         ret = '<AndnaAuthRecord: (hostname ' + str(self.hostname) + \
                 ', pubk ...' + self.pubk.short_repr() + \
+                ', nip ' + str(self.nip) + \
                 ', ttl ' + str(self.get_ttl()) + \
                 ', updates ' + str(self.updates) + \
                 ', services ' + str(self.services) + ')>'
@@ -104,11 +105,10 @@ class AndnaAuthRecord:
         """ Updates a registration """
         # TODO: check validity of serv_key
 
-        # TODO: record is an instance of SnsnRecord. If serv_key is 0
-        #       (or None, see above) then check that record.record is a NIP.
-
-        # TODO: record is an instance of SnsnRecord. If record.record is a NIP
-        #       then check that record.pubk is None, and vice-versa.
+        if record.record is None:
+            record.pubk = None
+        if record.pubk is None and record.record is not None:
+            raise AndnaError, 'Public key of pointed hostname was not specified.'
 
         # updates registration
         # TODO: check updates is 1+self.updates ?
@@ -117,9 +117,14 @@ class AndnaAuthRecord:
 
         if serv_key not in self.services:
             self.services[serv_key] = []
+        else:
+            # TODO find the record if it is already there
+            pass
 
         # append the record to the array
         self.services[serv_key].append(record)
+
+    # TODO def remove(self, updates, serv_key, record):
 
     def get_all(self):
         """ Return all the records of all the services """
@@ -128,9 +133,9 @@ class AndnaAuthRecord:
 
     def get_resolved_record(self, serv_key):
         if serv_key in self.services:
-            return AndnaResolvedRecord(self.hostname, serv_key, self.pubk, self.get_ttl(), self.services[serv_key])
+            return AndnaResolvedRecord(self.get_ttl(), self.services[serv_key])
         else:
-            return AndnaResolvedRecord(self.hostname, serv_key, self.pubk, self.get_ttl(), None)
+            return AndnaResolvedRecord(self.get_ttl(), None)
 
     def get_ttl(self):
         return self.expires - time()
@@ -138,35 +143,59 @@ class AndnaAuthRecord:
     def _pack(self):
         services = {}
         services.update(self.services)
-        return (self.hostname, self.pubk, self.get_ttl(), self.updates, services)
+        return (self.hostname, self.pubk, self.nip[:], self.get_ttl(), self.updates, services)
 
 serializable.register(AndnaAuthRecord)
 
+class SnsdResolvedRecord:
+    def __init__(self, record, pubk, priority, weight):
+        # string/NIP record = it can be a NIP or an further hostname
+        self.record = record[:]
+        # int priority = the priority of the record (lower is better)
+        self.priority = priority
+        # int weight = the relative weight of the record, between records with
+        # the same priority.
+        self.weight = weight
+        # in future we should add the field port_number
+
+    def __repr__(self):
+        pubk_str = 'None'
+        if self.pubk is not None:
+            pubk_str = self.pubk.short_repr()
+        ret = '<SnsdResolvedRecord: (record ' + str(self.record) + \
+                ', priority ' + str(self.priority) + \
+                ', weight ' + str(self.weight) + ')>'
+        return ret
+
+    def _pack(self):
+        return (self.record[:], self.priority, self.weight)
+
+serializable.register(SnsdResolvedRecord)
+
 class AndnaResolvedRecord:
-    def __init__(self, hostname, serv_key, pubk, ttl, services):
-        # string hostname = hostname
-        self.hostname = hostname
-        # serv_key = la chiave è il service_number
-        #               in futuro potrebbe essere la tupla (service_name, protocol_name)
-        self.serv_key = serv_key
+    # This class represent the resolution of an hostname and a serv_key.
+    # It is normally returned by the hash node as the result of a request
+    # for hostname+serv_key. But the same class can be used by a node to
+    # cache the resolved queries. In this case an instance for each pair
+    # (hostname, serv_key) has to be maintained.
+    # This class does not contain the hostname and the serv_key themselves.
+    def __init__(self, ttl, services):
         # int ttl = millisec to expiration
         self.expires = time() + min(ttl, MAX_TTL_OF_RESOLVED)
-        # PublicKey pubk = public key of registrar
-        self.pubk = pubk
-        # sequence<SnsdRecord> services = i record per questo (hostname, serv_key)
+        # sequence<SnsdResolvedRecord> services = i record per questo (hostname, serv_key)
         #                                 oppure None se non sono stati registrati
-        self.services = services[:]
+        #      it can be None.
+        services = services[:] if services is not None else None
+        self.services = services
     
     def __repr__(self):
-        ret = '<AndnaResolvedRecord: (hostname ' + str(self.hostname) + \
-                ', serv_key ' + str(self.serv_key) + \
-                ', pubk ...' + self.pubk.short_repr() + \
-                ', ttl ' + str(self.expires - time()) + \
+        ret = '<AndnaResolvedRecord: (ttl ' + str(self.expires - time()) + \
                 ', services ' + str(self.services)+ ')>'
         return ret
 
     def _pack(self):
-        return (self.hostname, self.serv_key, self.pubk, self.expires - time(), self.services[:])
+        services = self.services[:] if self.services is not None else None
+        return (self.expires - time(), services)
 
 serializable.register(AndnaResolvedRecord)
 

@@ -24,7 +24,8 @@ import time as stdtime
 import ntk.lib.rencode as rencode
 
 from ntk.core.p2p import OptionalP2P
-from ntk.core.snsd import SnsdRecord, MAX_TTL_OF_NEGATIVE, AndnaAuthRecord, AndnaResolvedRecord
+from ntk.core.snsd import SnsdAuthRecord, SnsdResolvedRecord, AndnaAuthRecord, AndnaResolvedRecord
+from ntk.core.snsd import MAX_TTL_OF_NEGATIVE
 from ntk.lib.crypto import md5, fnv_32_buf, PublicKey
 from ntk.lib.event import Event
 from ntk.lib.log import logger as logging
@@ -34,6 +35,7 @@ from ntk.lib.misc import is_ip
 from ntk.lib.rencode import serializable
 from ntk.network.inet import ip_to_str, str_to_ip
 from ntk.wrap.xtime import timestamp_to_data, today, days, while_condition, time
+from ntk.core.snsd import AndnaError
 
 # TODO:
 # - keep the public key of my neighbours on file, adding them path 
@@ -56,7 +58,7 @@ ANDNA_DUPLICATION = 1
 #ANDNA_BALANCING = 12
 ANDNA_BALANCING = 1
 
-class AndnaError(Exception): pass
+MAX_HOSTNAME_LEN = 256
 
 class Andna(OptionalP2P):
     
@@ -138,7 +140,7 @@ class Andna(OptionalP2P):
         if hostname in self.cache:
             return self.cache[hostname].get_resolved_record(serv_key)
         else:
-            return AndnaResolvedRecord(hostname, serv_key, None, MAX_TTL_OF_NEGATIVE, None)
+            return AndnaResolvedRecord(MAX_TTL_OF_NEGATIVE, None)
 
     def register_my_names(self):
         # register my names
@@ -167,7 +169,7 @@ class Andna(OptionalP2P):
                 hostname = snsd_node[1]
                 record = snsd_node[2]
                 if record == 'me':
-                    record = self.maproute.me[:]
+                    record = None
                 serv_key = make_serv_key(snsd_node[3])
                 priority = int(snsd_node[4])
                 weight = int(snsd_node[5])
@@ -175,7 +177,7 @@ class Andna(OptionalP2P):
                 pem_file = snsd_node[6]
                 if pem_file is not None:
                     pubk = PublicKey(from_file=pem_file)
-                snsd_record = SnsdRecord(record, pubk, priority, weight)
+                snsd_record = SnsdAuthRecord(record, pubk, priority, weight)
                 self.register(hostname, serv_key, 0, snsd_record, append)
             except Exception, e:
                 logging.error('ANDNA: trying to register ' + str(snsd_node) + ' got ' + repr(e))
@@ -267,6 +269,7 @@ class Andna(OptionalP2P):
                     sender_nip, pubk, hostname, serv_key, IDNum, \
                        snsd_record, signature = self.request_queue[hname]
                     logging.debug('ANDNA: trying to register it to pubk ' + pubk.short_repr())
+                    # TODO to be tested
                     res, data = self.reply_register(
                                 sender_nip, pubk, hostname, serv_key, IDNum,
                                 snsd_record, signature,
@@ -282,6 +285,13 @@ class Andna(OptionalP2P):
 
         ret = '', ''
 
+        if snsd_record.record is not None:
+            if not isinstance(snsd_record.record, str):
+                raise AndnaError, 'Record MUST be an hostname or None.'
+            if len(snsd_record.record) > MAX_HOSTNAME_LEN:
+                raise AndnaError, 'Record exceeded hostname maximum ' + \
+                            'length (' + str(MAX_HOSTNAME_LEN) + ')'
+
         # Remove the expired entries from the ANDNA cache
         self.check_expirations()
 
@@ -289,13 +299,25 @@ class Andna(OptionalP2P):
 
         # first the hash check
         logging.debug('ANDNA: verifying that I am the right hash...')
-        # TODO
+        # calculate hash
+        hash_node = self.peer(key=hostname)
+        hash_nip = hash_node.get_hash_nip()
+        logging.debug('ANDNA: exact hash_node is ' + str(hash_nip))
+
+        # TODO use ANDNA_DUPLICATION to check if maproute.me is in the bunch
+        check_hash = True
+
+        if not check_hash:
+            logging.info('ANDNA: hash is NOT verified. Raising exception.')
+            raise AndnaError, 'Hash verification failed'
+        logging.debug('ANDNA: hash is verified.')
 
         # then the authentication check
         logging.debug('ANDNA: authenticating the request...')
         if not pubk.verify(rencode.dumps((sender_nip, hostname, serv_key, IDNum,
                        snsd_record)), signature):
-            raise AndnaError('Request authentication failed')
+            logging.info('ANDNA: request is NOT authenticated. Raising exception.')
+            raise AndnaError, 'Request authentication failed'
         logging.debug('ANDNA: request authenticated')
 
         registered = False
@@ -335,6 +357,9 @@ class Andna(OptionalP2P):
                 if old_registrar == pubk:
                     # This is an update.
                     logging.debug('ANDNA: ... this is an update')
+                    # TODO Check that sender_nip is the REAL originator. If not raise exc.
+                    # TODO Check that nip has or has not changed.
+                    #      If changed update old_record.nip
                     # Check and update the record in Counter node
                     counter_gnode = self.counter.peer(key=sender_nip)
                     logging.debug('ANDNA: contacting counter gnode')
@@ -343,11 +368,6 @@ class Andna(OptionalP2P):
                     if not res:
                         raise AndnaError('ANDNA: Failed counter check.')
                     # update record
-                    if not isinstance(snsd_record.record, str):
-                        # If the snsd record does not point to a hostname,
-                        # then it MUST be the sender_nip
-                        snsd_record.record = sender_nip
-                        snsd_record.pubk = pubk
                     old_record.store(updates=IDNum, serv_key=serv_key, record=snsd_record)
                     ret = 'OK', (registration_time, updates)
                     updated = True
@@ -382,7 +402,7 @@ class Andna(OptionalP2P):
             res, updates = counter_node.check(sender_nip, pubk, hostname, serv_key, IDNum,
                         snsd_record, signature)
             if not res:
-                raise AndnaError('ANDNA: Failed counter check.')
+                raise AndnaError, 'ANDNA: Failed counter check.'
 
             # register record
             logging.debug('ANDNA: registering ' + str(hostname))
@@ -394,17 +414,15 @@ class Andna(OptionalP2P):
                 logging.debug('ANDNA: The first registration has to be a Zero Service record')
                 # reject this request
                 ret = 'NOTREGISTERED', 'The first registration has to be a Zero Service record.'
-            elif isinstance(snsd_record.record, str):
+            elif snsd_record.record is not None:
                 logging.debug('ANDNA: The first registration has to be the registrar\'s NIP')
                 # reject this request
                 ret = 'NOTREGISTERED', 'The first registration has to be the registrar\'s NIP.'
             else:
-                snsd_record.record = sender_nip
-                snsd_record.pubk = pubk
                 services[serv_key] = [snsd_record]
                 self.cache[hostname] = \
-                    AndnaAuthRecord(hostname, pubk, 0, 1, services)
-                # AndnaAuthRecord(hostname, pubk, ttl, updates, services)
+                    AndnaAuthRecord(hostname, pubk, sender_nip, 0, 1, services)
+                # AndnaAuthRecord(hostname, pubk, nip, ttl, updates, services)
                 self.resolved[(hostname, serv_key)] = \
                     self.cache[hostname].get_resolved_record(serv_key)
                 registered = True
