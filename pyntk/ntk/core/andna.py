@@ -19,7 +19,7 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
-from random import randint
+from random import randint, choice
 import time as stdtime
 import ntk.lib.rencode as rencode
 
@@ -54,12 +54,6 @@ def make_serv_key(str_value):
     # in futuro potrebbe essere (serv_name, serv_proto)
     # ad esempio a partire da '_www._tcp'
 
-# Used to calculate the range of authoritative sources for a given hostname
-#ANDNA_DUPLICATION = 48
-ANDNA_DUPLICATION = 1
-#ANDNA_BALANCING = 12
-ANDNA_BALANCING = 1
-
 MAX_HOSTNAME_LEN = 256
 MAX_ANDNA_QUEUE = 5
 
@@ -77,10 +71,6 @@ class Andna(OptionalP2P):
         self.p2pall.events.listen('P2P_HOOKED', self.andna_hook)
 
         self.events = Event(['ANDNA_HOOKED'])
-
-        # keep in sync the range to be contacted to register/resolve
-        self.mapp2p.events.listen('NODE_NEW', self.calc_ranges)
-        self.mapp2p.events.listen('NODE_DELETED', self.calc_ranges)
 
         # From the moment I change my NIP up to the moment I emit
         # ANDNA_HOOKED, we don't want to answer to resolution requests.
@@ -117,32 +107,6 @@ class Andna(OptionalP2P):
 
     def enter_wait_andna_hook(self, *args):
         self.wait_andna_hook = True
-
-    def calc_min_lvl_num(self, node_numb):
-        # TODO to be reviewed. Calculates how many g-nodes of which level
-        #  we have to fully consider to have a minimum of node_numb nodes
-        #  that exist and participate in the P2P service.
-        from math import ceil
-        prev = nodes = 1
-        lvl = -1
-        while nodes < node_numb and lvl+1 < self.mapp2p.levels:
-            prev = nodes
-            lvl += 1
-            nodes = self.mapp2p.nodes_nb[lvl] * prev
-        if nodes < node_numb:
-            num = self.mapp2p.nodes_nb[lvl]
-        else:
-            num = int(ceil(float(node_numb)/float(prev)))
-        return lvl, num
-
-    def calc_ranges(self, *args):
-        # TODO to be reviewed. Calculates how many g-nodes of which level
-        #  we have to fully consider to have the required range of nodes
-        #  to be contacted to register/resolve a hostname.
-        self.duplication_lvl, self.duplication_num = \
-                    self.calc_min_lvl_num(ANDNA_DUPLICATION)
-        self.balancing_lvl, self.balancing_num = \
-                    self.calc_min_lvl_num(ANDNA_BALANCING)
 
     def register_my_names(self):
         # register my names
@@ -232,10 +196,15 @@ class Andna(OptionalP2P):
         hash_node = self.peer(key=hostname)
         hash_nip = hash_node.get_hash_nip()
         logging.debug('ANDNA: exact hash_node is ' + str(hash_nip))
+
+        # TODO find a mechanism to find a 'bunch' of BALANCING nodes
+        bunch = [hash_nip]
+
+        random_hnode = choice(bunch)
+        logging.debug('ANDNA: random hash_node should be ' + str(random_hnode))
+        # TODO finish duplication mechanism (forwarding)
         random_hnode = hash_nip[:]
-        # NAAAH   random_hnode[0] = randint(0, self.maproute.gsize)
-        # TODO use ANDNA_BALANCING to get a random node from a bunch
-        logging.debug('ANDNA: random hash_node is ' + str(random_hnode))
+        logging.debug('ANDNA: but we\'ll use ' + str(random_hnode))
         # contact the hash gnode firstly
         hash_gnode = self.peer(hIP=random_hnode)
         sender_nip = self.maproute.me[:]
@@ -311,8 +280,10 @@ class Andna(OptionalP2P):
         hash_nip = hash_node.get_hash_nip()
         logging.debug('ANDNA: exact hash_node is ' + str(hash_nip))
 
-        # TODO use ANDNA_DUPLICATION to check if maproute.me is in the bunch
-        check_hash = True
+        # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
+        bunch = [hash_nip, self.maproute.me]
+
+        check_hash = self.maproute.me in bunch
 
         if not check_hash:
             logging.info('ANDNA: hash is NOT verified. Raising exception.')
