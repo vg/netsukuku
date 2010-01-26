@@ -277,8 +277,11 @@ class Coord(P2P):
                     logging.debug('Coord: well done.')
                     break
                 except Exception, e:
-                    # We might need to wait that the route is created to be
-                    # able to contact the peer. Let's try hard.
+                    # An exception "no route to host" could be raised because
+                    # the route to the new node is not ready yet.
+                    # An exception "p2p is hooking" could be raised because
+                    # the P2PAll.p2p_hook has not terminated yet.
+                    # In any case, we must retry at least for a while.
                     logging.debug('Coord: fail ' + str(e))
                     swait(2000)
             logging.debug('Coord: Done passing my mapcache.')

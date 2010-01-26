@@ -37,6 +37,7 @@ from ntk.network.inet import ip_to_str
 from ntk.lib.rpc import TCPClient
 from ntk.wrap.xtime import swait, time
 from ntk.core.snsd import AndnaError
+from ntk.lib.log import ExpectableException
 
 # TODO:
 # - keep the public key of my neighbours on file, adding them path 
@@ -56,6 +57,8 @@ def make_serv_key(str_value):
 
 MAX_HOSTNAME_LEN = 256
 MAX_ANDNA_QUEUE = 5
+
+class AndnaExpectableException(ExpectableException): pass
 
 class Andna(OptionalP2P):
     
@@ -159,24 +162,40 @@ class Andna(OptionalP2P):
         bunch_not_me = [n for n in bunch if n != self.maproute.me]
 
         for cache_nip in bunch_not_me:
+            # TODO Contact the various nip in the bunch in parallel. But
+            #      be careful. We must continue after all have finished
+            #      (completed or failed) and we must ensure the atomicity
+            #      of write.
             # TODO Use TCPClient or P2P ?
             remote = TCPClient(ip_to_str(self.maproute.nip_to_ip(cache_nip)))
             logging.debug('ANDNA: getting cache from ' + str(cache_nip))
-            cache_from_nip, req_queue_from_nip = remote.andna.get_auth_cache()
-            for hname in cache_from_nip.keys():
-                # Do I have already this record?
-                if hname not in self.cache:
-                    # No. Do I am the right hash for this record?
-                    hname_nip = self.peer(key=hname).get_hash_nip()
+            try:
+                cache_from_nip, req_queue_from_nip = remote.andna.get_auth_cache()
+                for hname in cache_from_nip.keys():
+                    # TODO perhaps we don't have this key, but we already
+                    #      tried and we refused because we're not in the
+                    #      bunch. In this case we should avoid to start a
+                    #      find_nearest again.
+                    # Do I have already this record?
+                    if hname not in self.cache:
+                        # No. Do I am the right hash for this record?
+                        hname_nip = self.peer(key=hname).get_hash_nip()
 
-                    # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
-                    hname_bunch = [hname_nip]
+                        # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
+                        hname_bunch = [hname_nip]
 
-                    if self.maproute.me in hname_bunch:
-                        # Yes. Memorize it.
-                        self.cache[hname] = cache_from_nip[hname]
-                        if hname in req_queue_from_nip:
-                            self.request_queue[hname] = req_queue_from_nip[hname]
+                        if self.maproute.me in hname_bunch:
+                            # Yes. Memorize it.
+                            self.cache[hname] = cache_from_nip[hname]
+                            if hname in req_queue_from_nip:
+                                self.request_queue[hname] = req_queue_from_nip[hname]
+                            logging.debug('ANDNA: got cache for ' + \
+                                    str(hname))
+                logging.debug('ANDNA: executed cache from ' + \
+                        str(cache_nip))
+            except Exception, e:
+                logging.debug('ANDNA: getting cache from ' + \
+                        str(cache_nip) + ' got exception ' + repr(e))
 
         self.events.send('ANDNA_HOOKED', ())
         self.wait_andna_hook = False
@@ -320,12 +339,16 @@ class Andna(OptionalP2P):
             raise AndnaError, 'Request authentication failed'
         logging.debug('ANDNA: request authenticated')
 
-        # then the verification of the sender_nip
+        # Check that the request is coming from this NIP
         logging.debug('ANDNA: verifying the request came from this nip...')
         remote = TCPClient(ip_to_str(self.maproute.nip_to_ip(sender_nip)))
-        if not remote.andna.confirm_your_request(sender_nip, pubk, hostname):
+        try:
+            remote_resp = remote.andna.confirm_your_request(sender_nip, pubk, hostname)
+        except Exception, e:
+            raise AndnaError, 'Asking confirmation to nip ' + str(sender_nip) + ' got ' + repr(e)
+        if not remote_resp:
             logging.info('ANDNA: nip is NOT verified. Raising exception.')
-            raise AndnaError, 'Request not originating from nip ' + sender_nip
+            raise AndnaError, 'Request not originating from nip ' + str(sender_nip)
         logging.debug('ANDNA: nip verified')
 
         registered = False
@@ -646,6 +669,8 @@ class Andna(OptionalP2P):
     def get_auth_cache(self):
         ''' Returns the cache of authoritative records.
         '''
+        if self.wait_andna_hook:
+            raise AndnaExpectableException, 'Andna is hooking. Request not valid.'
         return self.cache, self.request_queue
 
     def h(self, hostname):

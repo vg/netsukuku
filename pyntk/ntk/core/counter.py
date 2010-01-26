@@ -32,10 +32,13 @@ from ntk.core.snsd import MAX_TTL_OF_REGISTERED, MAX_TTL_OF_NEGATIVE
 from ntk.network.inet import ip_to_str
 from ntk.lib.rpc import TCPClient
 from ntk.lib.event import Event
+from ntk.lib.log import ExpectableException
 
 MAX_HOSTNAMES = 16
 
 class CounterError(Exception): pass
+
+class CounterExpectableException(ExpectableException): pass
 
 class HostnameRecord:
     def __init__(self, hostname, ttl):
@@ -143,7 +146,7 @@ class Counter(OptionalP2P):
 
         self.remotable_funcs += [self.check,
                                 self.cache_getall,
-                                self.reset_hostname]
+                                self.reset_nip]
 
     def enter_wait_counter_hook(self, *args):
         self.wait_counter_hook = True
@@ -160,24 +163,40 @@ class Counter(OptionalP2P):
         bunch_not_me = [n for n in bunch if n != self.maproute.me]
 
         for cache_nip in bunch_not_me:
+            # TODO Contact the various nip in the bunch in parallel. But
+            #      be careful. We must continue after all have finished
+            #      (completed or failed) and we must ensure the atomicity
+            #      of write.
             # TODO Use TCPClient or P2P ?
             remote = TCPClient(ip_to_str(self.maproute.nip_to_ip(cache_nip)))
             logging.debug('COUNTER: getting cache from ' + str(cache_nip))
-            cache_from_nip = remote.counter.cache_getall()
-            for key in cache_from_nip.keys():
-                # Do I have already this record?
-                if key not in self.cache:
-                    # No. Do I am the right hash for this record?
-                    pubk, tuple_nip = key
-                    nip = list(tuple_nip)
-                    hnode_nip = self.peer(key=nip).get_hash_nip()
+            try:
+                cache_from_nip = remote.counter.cache_getall()
+                for key in cache_from_nip.keys():
+                    # TODO perhaps we don't have this key, but we already
+                    #      tried and we refused because we're not in the
+                    #      bunch. In this case we should avoid to start a
+                    #      find_nearest again.
+                    # Do I have already this record?
+                    if key not in self.cache:
+                        # No. Do I am the right hash for this record?
+                        pubk, tuple_nip = key
+                        nip = list(tuple_nip)
+                        hnode_nip = self.peer(key=nip).get_hash_nip()
 
-                    # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
-                    hnode_bunch = [hnode_nip]
+                        # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
+                        hnode_bunch = [hnode_nip]
 
-                    if self.maproute.me in hnode_bunch:
-                        # Yes. Memorize it.
-                        self.cache[key] = cache_from_nip[key]
+                        if self.maproute.me in hnode_bunch:
+                            # Yes. Memorize it.
+                            self.cache[key] = cache_from_nip[key]
+                            logging.debug('COUNTER: got cache for ' + \
+                                    str(nip))
+                logging.debug('COUNTER: executed cache from ' + \
+                        str(cache_nip))
+            except Exception, e:
+                logging.debug('COUNTER: getting cache from ' + \
+                        str(cache_nip) + ' got exception ' + repr(e))
 
         self.events.send('COUNTER_HOOKED', ())
         self.wait_counter_hook = False
@@ -187,13 +206,19 @@ class Counter(OptionalP2P):
             new holder, and reset any hostname. The counter node(s)
             will ask for confirmation.
         '''
-        pass #TODO
+        pass #TODO contact counter node and call reset_nip
+        # NOTE here I am the client, I don't need to test wait_counter_hook
+        # But if I get an exception by the remote, I need to try again
+        # forever. This has to be completed before trying to register
+        # hostnames. This is in the same tasklet of andna_hook, which should
+        # be a sort-of-restartable microfunc.
 
-    def reset_hostname(self, hostname, pubk, nip):
+    def reset_nip(self, pubk, nip):
         ''' This pubk is declaring it is the holder of this nip.
             It wants to reset all the hostnames.
         '''
-        pass #TODO
+        pass #TODO reset self.cache[pubk, tuple(nip)]
+        # NOTE here I am the client, I DO need to test wait_counter_hook
 
     def reset(self):
         ''' Resets all data. Invoked when hooked in a new network.
@@ -240,12 +265,17 @@ class Counter(OptionalP2P):
                        snsd_record)), signature):
             raise CounterError('Request authentication failed')
         logging.debug('COUNTER: request authenticated')
+
         # Check that the request is coming from this NIP
         logging.debug('COUNTER: verifying the request came from this nip...')
         remote = TCPClient(ip_to_str(self.maproute.nip_to_ip(sender_nip)))
-        if not remote.andna.confirm_your_request(sender_nip, pubk, hostname):
+        try:
+            remote_resp = remote.andna.confirm_your_request(sender_nip, pubk, hostname)
+        except Exception, e:
+            raise CounterError, 'Asking confirmation to nip ' + str(sender_nip) + ' got ' + repr(e)
+        if not remote_resp:
             logging.info('COUNTER: nip is NOT verified. Raising exception.')
-            raise CounterError, 'Request not originating from nip ' + sender_nip
+            raise CounterError, 'Request not originating from nip ' + str(sender_nip)
         logging.debug('COUNTER: nip verified')
 
         # Retrieve data, update data, prepare response
@@ -292,6 +322,8 @@ class Counter(OptionalP2P):
     def cache_getall(self):
         ''' Returns the cache of authoritative records.
         '''
+        if self.wait_counter_hook:
+            raise CounterExpectableException, 'Counter is hooking. Request not valid.'
         return self.cache
     
     def h(self, nip):
