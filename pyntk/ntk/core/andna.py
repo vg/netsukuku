@@ -97,11 +97,14 @@ class Andna(OptionalP2P):
         self.local_cache = {}
         # Resolved Cache = { (hostname, serv_key): AndnaResolvedRecord(), ... }
         self.resolved = {}
+
+        # hostnames that I tried to register to myself
+        self.wanted_hostnames = []
     
         self.remotable_funcs += [self.reply_register,
+                                 self.confirm_your_request,
                                  self.reply_resolve,
                                  self.get_registrar_pubk,
-                                 self.reply_reverse_resolve, 
                                  self.reply_queued_registration,
                                  self.reply_resolved_cache,
                                  self.reply_forward_registration,
@@ -135,12 +138,6 @@ class Andna(OptionalP2P):
                     self.calc_min_lvl_num(ANDNA_DUPLICATION)
         self.balancing_lvl, self.balancing_num = \
                     self.calc_min_lvl_num(ANDNA_BALANCING)
-
-    def get_resolved_record(hostname, serv_key):
-        if hostname in self.cache:
-            return self.cache[hostname].get_resolved_record(serv_key)
-        else:
-            return AndnaResolvedRecord(MAX_TTL_OF_NEGATIVE, None)
 
     def register_my_names(self):
         # register my names
@@ -222,6 +219,9 @@ class Andna(OptionalP2P):
         """ Register or update the name for the specified service number """
         logging.debug('ANDNA: register' + str((hostname, serv_key, IDNum, snsd_record,
                 append_if_unavailable)))
+        if hostname not in self.wanted_hostnames:
+            self.wanted_hostnames.append(hostname)
+
         # calculate hash
         hash_node = self.peer(key=hostname)
         hash_nip = hash_node.get_hash_nip()
@@ -258,7 +258,7 @@ class Andna(OptionalP2P):
             logging.debug('ANDNA: registration error. ' + str((res, msg)))
         return (res, msg)
 
-    def check_expirations(self):
+    def check_expirations_cache(self):
         # Remove the expired entries from the ANDNA cache
         logging.debug('ANDNA: cleaning expired entries - if any - from our ANDNA cache...')
         for hname, auth_record in self.cache.items():
@@ -293,7 +293,7 @@ class Andna(OptionalP2P):
                             'length (' + str(MAX_HOSTNAME_LEN) + ')'
 
         # Remove the expired entries from the ANDNA cache
-        self.check_expirations()
+        self.check_expirations_cache()
 
         registration_time = updates = 0
 
@@ -319,6 +319,14 @@ class Andna(OptionalP2P):
             logging.info('ANDNA: request is NOT authenticated. Raising exception.')
             raise AndnaError, 'Request authentication failed'
         logging.debug('ANDNA: request authenticated')
+
+        # then the verification of the sender_nip
+        logging.debug('ANDNA: verifying the request came from this nip...')
+        remote = self.peer(hIP=sender_nip)
+        if not remote.confirm_your_request(sender_nip, pubk, hostname):
+            logging.info('ANDNA: nip is NOT verified. Raising exception.')
+            raise AndnaError, 'Request not originating from nip ' + sender_nip
+        logging.debug('ANDNA: nip verified')
 
         registered = False
         enqueued = False
@@ -396,18 +404,7 @@ class Andna(OptionalP2P):
                         refused = True
 
         if not (enqueued or refused or updated):
-            # Contact Counter node
-            counter_node = self.counter.peer(key=sender_nip)
-            logging.debug('ANDNA: contacting counter gnode')
-            res, updates = counter_node.check(sender_nip, pubk, hostname, serv_key, IDNum,
-                        snsd_record, signature)
-            if not res:
-                raise AndnaError, 'ANDNA: Failed counter check.'
-
-            # register record
-            logging.debug('ANDNA: registering ' + str(hostname))
-            # This is the first registration of an hostname or an SNSD Node
-            services = {}
+            # This is the first registration of an hostname
             # The first registration has to be necessarily a NULL_SERV_KEY
             # and the snsd record MUST be the sender_nip
             if serv_key != NULL_SERV_KEY:
@@ -419,17 +416,27 @@ class Andna(OptionalP2P):
                 # reject this request
                 ret = 'NOTREGISTERED', 'The first registration has to be the registrar\'s NIP.'
             else:
+                # Contact Counter node
+                counter_node = self.counter.peer(key=sender_nip)
+                logging.debug('ANDNA: contacting counter gnode')
+                res, updates = counter_node.check(sender_nip, pubk, hostname, serv_key, IDNum,
+                            snsd_record, signature)
+                if not res:
+                    raise AndnaError, 'ANDNA: Failed counter check.'
+
+                # register record
+                logging.debug('ANDNA: registering ' + str(hostname))
+                services = {}
                 services[serv_key] = [snsd_record]
                 self.cache[hostname] = \
                     AndnaAuthRecord(hostname, pubk, sender_nip, 0, 1, services)
                 # AndnaAuthRecord(hostname, pubk, nip, ttl, updates, services)
-                self.resolved[(hostname, serv_key)] = \
-                    self.cache[hostname].get_resolved_record(serv_key)
                 registered = True
                 ret = 'OK', (registration_time, updates)
 
         if updated or registered:
             # forward the entry to my gnodes
+            # TODO
             #self.forward_registration(hostname, self.cache[hostname])
             pass
 
@@ -440,6 +447,18 @@ class Andna(OptionalP2P):
         logging.debug('ANDNA: after reply_register: self.resolved=' + str(self.resolved))
         logging.debug('ANDNA: reply_register: returning ' + str(ret))
         return ret
+
+    def confirm_your_request(self, nip, pubk, hostname):
+        # This P2P-remotable method is called directyly to a certain NIP in order
+        # to verify that he is the sender of a certain request. The method asks to
+        # confirm that the NIP is the right one, that the public key is of this node
+        # and that the hostname is wanted by him. The rest of the data should be ok
+        # if we suppose that the private key is not compromised.
+        if not isinstance(hostname, str):
+            raise AndnaError, 'confirm_your_request: hostname MUST be a string'
+        return nip == self.maproute.me and \
+               hostname in self.wanted_hostnames and \
+               pubk == self.my_keys.get_pub_key()
 
     def forward_registration(self, hostname, andna_cache):
         """ Broadcast the request to the entire gnode of level 1 to let the
@@ -499,7 +518,18 @@ class Andna(OptionalP2P):
         logging.debug('ANDNA: get_registrar_pubk(' + str(hostname) + ')')
         # first the hash check
         logging.debug('ANDNA: verifying that I am the right hash...')
-        # TODO
+        # calculate hash
+        hash_node = self.peer(key=hostname)
+        hash_nip = hash_node.get_hash_nip()
+        logging.debug('ANDNA: exact hash_node is ' + str(hash_nip))
+
+        # TODO use ANDNA_DUPLICATION to check if maproute.me is in the bunch
+        check_hash = True
+
+        if not check_hash:
+            logging.info('ANDNA: hash is NOT verified. Raising exception.')
+            raise AndnaError, 'Hash verification failed'
+        logging.debug('ANDNA: hash is verified.')
 
         if hostname in self.cache:
             andna_cache = self.cache[hostname]
@@ -509,63 +539,91 @@ class Andna(OptionalP2P):
         logging.debug('ANDNA: get_registrar_pubk: returning ' + str(ret))
         return ret
 
-    def resolve(self, hostname, service=0):
-        """ Resolve the hostname, returns an SnsdRecord instance """
-        logging.debug('ANDNA: resolve' + str((hostname, service)))
+    def check_expirations_resolved_cache(self):
+        # Remove the expired entries from the resolved cache
+        logging.debug('ANDNA: cleaning expired entries - if any - from our resolved cache...')
+        for key, resolved_record in self.resolved.items():
+            if resolved_record.expires < time():
+                self.resolved.pop(key)
+                logging.debug('ANDNA: cleaned ' + str(key) + ' from resolved cache')
+
+    def resolve(self, hostname, serv_key=NULL_SERV_KEY):
+        """ Resolve the hostname, returns the AndnaResolvedRecord associated to the hostname and service """
+        logging.debug('ANDNA: resolve' + str((hostname, serv_key)))
         res, data = '', ''
+
+        # Remove the expired entries from the resolved cache
+        self.check_expirations_resolved_cache()
+
         # first try to resolve locally
-        if self.resolved.has_key(hostname):
-            return ('OK', self.resolved[hostname].services.get(service))
+        if self.resolved.has_key((hostname, serv_key)):
+            data = self.resolved[(hostname, serv_key)]
+            res = 'NOTFOUND' if data.records is None else 'OK'
+            return res, data
         # else call the remote hash gnode
         # calculate hash
         hash_node = self.peer(key=hostname)
         hash_nip = hash_node.get_hash_nip()
         logging.debug('ANDNA: exact hash_node is ' + str(hash_nip))
-        # a random node of hash gnode of level 1.
         random_hnode = hash_nip[:]
-        random_hnode[0] = randint(0, self.maproute.gsize)
+        # NAAAH   random_hnode[0] = randint(0, self.maproute.gsize)
+        # TODO use ANDNA_BALANCING to get a random node from a bunch
         logging.debug('ANDNA: random hash_node is ' + str(random_hnode))
         # contact the hash gnode
         try:
             hash_gnode = self.peer(hIP=random_hnode)
-            res, data = hash_gnode.reply_resolve(hostname, service)
+            control, data = hash_gnode.reply_resolve(hostname, serv_key)
+            if control == 'OK':
+                self.resolved[(hostname, serv_key)] = data
+                res = 'NOTFOUND' if data.records is None else 'OK'
+            else:
+                res = control
         except Exception, e:
             logging.debug('ANDNA: could not resolve right now:')
             log_exception_stacktrace(e)
             res, data = 'CANTRESOLVE', 'Could not resolve right now'
-        return (res, data)
-        
-    def reply_resolve(self, hostname, service):
-        """ Return the list of SnsdRecord associated to the hostname and service """
+        return res, data
+
+    def reply_resolve(self, hostname, serv_key):
+        """ Return the AndnaResolvedRecord associated to the hostname and service """
         # If we recently changed our NIP (we hooked) we wait to finish
         # an andna_hook before answering a resolution request.
         while self.wait_andna_hook:
             micro_block()
             stdtime.sleep(0.001)
         # We are correctly hooked.
-        ret = ('NOTFOUND', 'Hostname not resolved.')
-        andna_cache = None
+
+        logging.debug('ANDNA: reply_resolve' + str((hostname, serv_key)))
+        # first the hash check
+        logging.debug('ANDNA: verifying that I am the right hash...')
+        # calculate hash
+        hash_node = self.peer(key=hostname)
+        hash_nip = hash_node.get_hash_nip()
+        logging.debug('ANDNA: exact hash_node is ' + str(hash_nip))
+
+        # TODO use ANDNA_DUPLICATION to check if maproute.me is in the bunch
+        check_hash = True
+
+        if not check_hash:
+            logging.info('ANDNA: hash is NOT verified. Raising exception.')
+            raise AndnaError, 'Hash verification failed'
+        logging.debug('ANDNA: hash is verified.')
+
+        # Remove the expired entries from the ANDNA cache
+        self.check_expirations_cache()
+
+        data = self.get_resolved_record(hostname, serv_key)
+        return 'OK', data
+
+    def get_resolved_record(self, hostname, serv_key):
+        ''' Helper method to retrieve from the ANDNA cache an AndnaAuthRecord
+            and create a AndnaResolvedRecord
+        '''
         if hostname in self.cache:
-            andna_cache = self.cache[hostname]
-        # search into our resolved cache if nothing has been found
-        elif hostname in self.resolved:
-            andna_cache = self.resolved[hostname]
-        if andna_cache:
-            ret = ('OK', andna_cache.services.get(service))
-        return ret
-        
-    def reverse_resolve(self, nip):
-        """ Return the local cache of the specified host """
-        remote = self.peer(hIP=self.maproute.ip_to_nip(str_to_ip(nip)))
-        res, data = remote.reply_reverse_resolve()
-        if res == 'OK':
-            local_cache = data
-            return (res, local_cache)
-        return (res, data)
-        
-    def reply_reverse_resolve(self):
-        return ('OK', self.local_cache)
-    
+            return self.cache[hostname].get_resolved_record(serv_key)
+        else:
+            return AndnaResolvedRecord(MAX_TTL_OF_NEGATIVE, None)
+
     def get_resolved(self, nip):
         """ Return the resolved cache of the specified host """
         remote = self.peer(hIP=nip)

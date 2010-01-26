@@ -179,23 +179,22 @@ class AndnaResolvedRecord:
     # cache the resolved queries. In this case an instance for each pair
     # (hostname, serv_key) has to be maintained.
     # This class does not contain the hostname and the serv_key themselves.
-    def __init__(self, ttl, services):
+    def __init__(self, ttl, records):
         # int ttl = millisec to expiration
         self.expires = time() + min(ttl, MAX_TTL_OF_RESOLVED)
-        # sequence<SnsdResolvedRecord> services = i record per questo (hostname, serv_key)
+        # sequence<SnsdResolvedRecord> records = i record per questo (hostname, serv_key)
         #                                 oppure None se non sono stati registrati
-        #      it can be None.
-        services = services[:] if services is not None else None
-        self.services = services
+        records = records[:] if records is not None else None
+        self.records = records
     
     def __repr__(self):
         ret = '<AndnaResolvedRecord: (ttl ' + str(self.expires - time()) + \
-                ', services ' + str(self.services)+ ')>'
+                ', records ' + str(self.records)+ ')>'
         return ret
 
     def _pack(self):
-        services = self.services[:] if self.services is not None else None
-        return (self.expires - time(), services)
+        records = self.records[:] if self.records is not None else None
+        return (self.expires - time(), records)
 
 serializable.register(AndnaResolvedRecord)
 
