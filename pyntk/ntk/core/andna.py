@@ -33,7 +33,7 @@ from ntk.lib.log import log_exception_stacktrace
 from ntk.lib.micro import microfunc, micro_block
 from ntk.lib.misc import is_ip
 from ntk.lib.rencode import serializable
-from ntk.network.inet import ip_to_str, str_to_ip
+from ntk.network.inet import ip_to_str
 from ntk.lib.rpc import TCPClient
 from ntk.wrap.xtime import timestamp_to_data, today, days, while_condition, time
 from ntk.core.snsd import AndnaError
@@ -72,8 +72,8 @@ class Andna(OptionalP2P):
 
         self.events = Event(['ANDNA_HOOKED'])
 
-        # From the moment I change my NIP up to the moment I emit
-        # ANDNA_HOOKED, we don't want to answer to resolution requests.
+        # From the moment I change my NIP up to the moment I have hooked,
+        # we don't want to answer to registration/resolution requests.
         self.wait_andna_hook = True
         self.maproute.events.listen('ME_CHANGED', self.enter_wait_andna_hook)
 
@@ -101,8 +101,7 @@ class Andna(OptionalP2P):
                                  self.reply_resolve,
                                  self.get_registrar_pubk,
                                  self.reply_queued_registration,
-                                 self.reply_resolved_cache,
-                                 self.cache_getall]
+                                 self.get_auth_cache]
 
     def enter_wait_andna_hook(self, *args):
         self.wait_andna_hook = True
@@ -143,39 +142,48 @@ class Andna(OptionalP2P):
                 if pem_file is not None:
                     pubk = PublicKey(from_file=pem_file)
                 snsd_record = SnsdAuthRecord(record, pubk, priority, weight)
-                self.register(hostname, serv_key, 0, snsd_record, append)
+                ret = self.register(hostname, serv_key, 0, snsd_record, append)
+                logging.info('ANDNA: Registration: trying to register ' + str(snsd_node) + ' got ' + str(ret))
             except Exception, e:
-                logging.error('ANDNA: trying to register ' + str(snsd_node) + ' got ' + repr(e))
+                logging.error('ANDNA: Registration: trying to register ' + str(snsd_node) + ' got ' + repr(e))
 
     @microfunc(True)
     def andna_hook(self):
         # clear old cache
         self.reset()
         logging.debug('ANDNA: resetted.')
-        logging.debug('ANDNA: after reset: self.request_queue=' + str(self.request_queue))
-        logging.debug('ANDNA: after reset: self.cache=' + str(self.cache))
-        logging.debug('ANDNA: after reset: self.local_cache=' + str(self.local_cache))
-        logging.debug('ANDNA: after reset: self.resolved=' + str(self.resolved))
+
+        # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
+        #  from whom I have to retrieve the cache
+        bunch = [self.maproute.me[:]]
+        bunch_not_me = [n for n in bunch if n != self.maproute.me]
+
+        for cache_nip in bunch_not_me:
+            # TODO Use TCPClient or P2P ?
+            remote = TCPClient(ip_to_str(self.maproute.nip_to_ip(cache_nip)))
+            logging.debug('ANDNA: getting cache from ' + str(cache_nip))
+            cache_from_nip, req_queue_from_nip = remote.andna.get_auth_cache()
+            for hname in cache_from_nip.keys():
+                # Do I have already this record?
+                if hname not in self.cache:
+                    # No. Do I am the right hash for this record?
+                    hname_nip = self.peer(key=hname).get_hash_nip()
+
+                    # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
+                    hname_bunch = [hname_nip]
+
+                    if self.maproute.me in hname_bunch:
+                        # Yes. Memorize it.
+                        self.cache[hname] = cache_from_nip[hname]
+                        if hname in req_queue_from_nip:
+                            self.request_queue[hname] = req_queue_from_nip[hname]
+
+        self.events.send('ANDNA_HOOKED', ())
+        self.wait_andna_hook = False
 
         # register my names
-        #self.register_my_names()
-        # TODO uncomment... JUST FOR DEBUG
-
-        # # merge ??
-        # neigh = None
-        # def no_participants():
-        #     #TODO: name should be any_participant.
-        #     #TODO: the number of valid ids in level levels-1 could be 1.
-        #     #      We have to check in another way.
-        #     return self.mapp2p.node_nb[self.mapp2p.levels-1] >= 1
-        # # wait at least one participant
-        # while_condition(no_participants)
-        # for neigh in self.neigh.neigh_list(in_my_network=True):
-        #     nip = self.maproute.ip_to_nip(neigh.ip)
-        #     peer = self.peer(hIP=nip)
-        #     self.caches_merge(peer.cache_getall())
-        # self.events.send('ANDNA_HOOKED', ())
-        self.wait_andna_hook = False
+        self.register_my_names()
+        logging.debug('ANDNA: registered my names.')
 
     def reset(self):
         self.request_queue = {}
@@ -206,11 +214,8 @@ class Andna(OptionalP2P):
         ##else:
         if True:
             random_hnode = choice(bunch)
-        logging.debug('ANDNA: random hash_node should be ' + str(random_hnode))
-        # TODO finish duplication mechanism (forwarding)
-        random_hnode = hash_nip[:]
-        logging.debug('ANDNA: but we\'ll use ' + str(random_hnode))
-        # contact the hash gnode firstly
+        logging.debug('ANDNA: random hash_node is ' + str(random_hnode))
+        # contact the hash node
         hash_gnode = self.peer(hIP=random_hnode)
         sender_nip = self.maproute.me[:]
         # sign the request and attach the public key
@@ -229,9 +234,6 @@ class Andna(OptionalP2P):
             self.local_cache[hostname] = msg
 
             logging.debug('ANDNA: registration done.')
-            logging.debug('ANDNA: after register: self.my_keys=' + str(self.my_keys))
-            logging.debug('ANDNA: after register: self.request_queue=' + str(self.request_queue))
-            logging.debug('ANDNA: after register: self.cache=' + str(self.cache))
             logging.debug('ANDNA: after register: self.local_cache=' + str(self.local_cache))
             logging.debug('ANDNA: after register: self.resolved=' + str(self.resolved))
         else:
@@ -264,6 +266,14 @@ class Andna(OptionalP2P):
     def reply_register(self, sender_nip, pubk, hostname, serv_key, IDNum,
                        snsd_record, signature, append_if_unavailable,
                        forward=True):
+        ''' Serves a request to register/update an hostname.
+        '''
+        # If we recently changed our NIP (we hooked) we wait to finish
+        # an andna_hook before answering a registration request.
+        while self.wait_andna_hook:
+            micro_block()
+            stdtime.sleep(0.001)
+        # We are correctly hooked.
 
         ret = '', ''
 
@@ -319,6 +329,7 @@ class Andna(OptionalP2P):
 
         # If the snsd record points to a hostname, verify that
         # resolving the hostname we get the right public key.
+        # TODO this has to have a counter-part in resolve.
         if isinstance(snsd_record.record, str):
             logging.debug('ANDNA: SNSD record points to another hostname: ' + snsd_record.record)
             logging.debug('ANDNA: Its public key should be: ' + snsd_record.pubk.short_repr())
@@ -426,10 +437,8 @@ class Andna(OptionalP2P):
                          hostname, serv_key, IDNum, snsd_record, signature,
                          append_if_unavailable))
 
-        logging.debug('ANDNA: after reply_register: self.my_keys=' + str(self.my_keys))
         logging.debug('ANDNA: after reply_register: self.request_queue=' + str(self.request_queue))
         logging.debug('ANDNA: after reply_register: self.cache=' + str(self.cache))
-        logging.debug('ANDNA: after reply_register: self.local_cache=' + str(self.local_cache))
         logging.debug('ANDNA: after reply_register: self.resolved=' + str(self.resolved))
         logging.debug('ANDNA: reply_register: returning ' + str(ret))
         return ret
@@ -484,13 +493,20 @@ class Andna(OptionalP2P):
         hash_node = self.peer(key=hostname)
         hash_nip = hash_node.get_hash_nip()
         logging.debug('ANDNA: exact hash_node is ' + str(hash_nip))
-        random_hnode = hash_nip[:]
-        # NAAAH   random_hnode[0] = randint(0, self.maproute.gsize)
-        # TODO use ANDNA_BALANCING to get a random node from a bunch
+
+        # TODO find a mechanism to find a 'bunch' of BALANCING nodes
+        bunch = [hash_nip]
+
+        # TODO uncomment:
+        ### If I am in the bunch, use myself
+        ##if self.maproute.me in bunch:
+        ##    random_hnode = self.maproute.me[:]
+        ##else:
+        if True:
+            random_hnode = choice(bunch)
         logging.debug('ANDNA: random hash_node is ' + str(random_hnode))
-        # contact the hash gnode firstly
+        # contact the hash node
         hash_gnode = self.peer(hIP=random_hnode)
-        sender_nip = self.maproute.me[:]
         logging.debug('ANDNA: request registrar public key...')
         return hash_gnode.get_registrar_pubk(hostname)
 
@@ -511,8 +527,10 @@ class Andna(OptionalP2P):
         hash_nip = hash_node.get_hash_nip()
         logging.debug('ANDNA: exact hash_node is ' + str(hash_nip))
 
-        # TODO use ANDNA_DUPLICATION to check if maproute.me is in the bunch
-        check_hash = True
+        # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
+        bunch = [hash_nip, self.maproute.me]
+
+        check_hash = self.maproute.me in bunch
 
         if not check_hash:
             logging.info('ANDNA: hash is NOT verified. Raising exception.')
@@ -548,14 +566,22 @@ class Andna(OptionalP2P):
             data = self.resolved[(hostname, serv_key)]
             res = 'NOTFOUND' if data.records is None else 'OK'
             return res, data
-        # else call the remote hash gnode
+        # else call the remote hash node
         # calculate hash
         hash_node = self.peer(key=hostname)
         hash_nip = hash_node.get_hash_nip()
         logging.debug('ANDNA: exact hash_node is ' + str(hash_nip))
-        random_hnode = hash_nip[:]
-        # NAAAH   random_hnode[0] = randint(0, self.maproute.gsize)
-        # TODO use ANDNA_BALANCING to get a random node from a bunch
+
+        # TODO find a mechanism to find a 'bunch' of BALANCING nodes
+        bunch = [hash_nip]
+
+        # TODO uncomment:
+        ### If I am in the bunch, use myself
+        ##if self.maproute.me in bunch:
+        ##    random_hnode = self.maproute.me[:]
+        ##else:
+        if True:
+            random_hnode = choice(bunch)
         logging.debug('ANDNA: random hash_node is ' + str(random_hnode))
         # contact the hash gnode
         try:
@@ -589,8 +615,10 @@ class Andna(OptionalP2P):
         hash_nip = hash_node.get_hash_nip()
         logging.debug('ANDNA: exact hash_node is ' + str(hash_nip))
 
-        # TODO use ANDNA_DUPLICATION to check if maproute.me is in the bunch
-        check_hash = True
+        # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
+        bunch = [hash_nip, self.maproute.me]
+
+        check_hash = self.maproute.me in bunch
 
         if not check_hash:
             logging.info('ANDNA: hash is NOT verified. Raising exception.')
@@ -612,38 +640,11 @@ class Andna(OptionalP2P):
         else:
             return AndnaResolvedRecord(MAX_TTL_OF_NEGATIVE, None)
 
-    def get_resolved(self, nip):
-        """ Return the resolved cache of the specified host """
-        remote = self.peer(hIP=nip)
-        res, data = remote.reply_resolved_cache()
-        if res == 'OK':
-            resolved_cache = data
-            return (res, resolved_cache)
-        return (res, data)
-    
-    def reply_resolved_cache(self):
-        return ('OK', self.resolved_cache)
-        
-    def caches_merge(self, caches):
-        resolved = cache = request_queue = {}
-        if caches:
-            resolved, cache, request_queue = caches
-        if resolved:
-            self.resolved.update(resolved)
-            logging.debug("ANDNA: taken resolved cache from neighbour: "+
-                          str(resolved))
-        if cache:
-            self.cache.update(cache)
-            logging.debug("ANDNA: taken ANDNA cache from neighbour: "+
-                          str(cache))
-        if request_queue:
-            self.request_queue.update(request_queue)
-            logging.debug("ANDNA: taken request queue from neighbour: "+
-                          str(request_queue))
+    def get_auth_cache(self):
+        ''' Returns the cache of authoritative records.
+        '''
+        return self.cache, self.request_queue
 
-    def cache_getall(self):
-        return (self.resolved, self.cache, self.request_queue,)
-    
     def h(self, hostname):
         """ Retrieve an IP from the hostname """    
         return hash_32bit_ip(md5(hostname), self.maproute.levels, 

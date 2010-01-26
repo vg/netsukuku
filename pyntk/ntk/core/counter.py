@@ -29,7 +29,7 @@ from ntk.lib.micro import microfunc
 from ntk.wrap.xtime import (now, timestamp_to_data, today, days, 
                             while_condition, time)
 from ntk.core.snsd import MAX_TTL_OF_REGISTERED, MAX_TTL_OF_NEGATIVE
-from ntk.network.inet import ip_to_str, str_to_ip
+from ntk.network.inet import ip_to_str
 from ntk.lib.rpc import TCPClient
 
 MAX_HOSTNAMES = 16
