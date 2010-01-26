@@ -58,6 +58,8 @@ class Map(object):
         If me = None, then self.me is set to a random nip (ntk ip)
         """
 
+        self.events = Event(['NODE_NEW', 'NODE_DELETED', 'ME_CHANGED', 'SHOWNODENB'])
+
         self.levels = levels   # Number of levels
         self.gsize = gsize     # How many nodes are contained in a gnode
         self.dataclass = dataclass
@@ -78,8 +80,6 @@ class Map(object):
             node_me = self.node_get(lvl, self.me[lvl])
             if not node_me.is_free(): self.node_add(lvl, self.me[lvl], 
                                                     silent=1)
-
-        self.events = Event(['NODE_NEW', 'NODE_DELETED', 'ME_CHANGED'])
 
     def node_get(self, lvl, id):
         """Returns from the map a node of level `lvl' and id `id'.
@@ -103,6 +103,7 @@ class Map(object):
         node = self.node[lvl][id]
         if node is not None and not node.is_free():
             self.node_nb[lvl] += 1
+            self.events.send('SHOWNODENB', ())
             if not silent:
                 self.events.send('NODE_NEW', (lvl, id))
 
@@ -116,6 +117,7 @@ class Map(object):
             self.node[lvl][id]=None
             if self.node_nb[lvl] > 0:
                 self.node_nb[lvl] -= 1
+                self.events.send('SHOWNODENB', ())
             if not silent:
                 self.events.send('NODE_DELETED', (lvl, id))
 
@@ -218,6 +220,7 @@ class Map(object):
         self.node[level] = [None] * self.gsize
 
         self.node_nb[level] = 0
+        self.events.send('SHOWNODENB', ())
         node_me = self.node_get(level, self.me[level])
         if not node_me.is_free(): self.node_add(level, self.me[level], 
                                                 silent=1)
@@ -278,6 +281,7 @@ class Map(object):
                 # It's a tough work! Be kind to other tasks.
                 xtime.swait(10)
                 self.node_nb[l]=nblist[l]
+                self.events.send('SHOWNODENB', ())
                 for id in xrange(self.gsize):
                     if id != self.me[l]:  # self.me MUST NOT be replaced
                                           # with a normal node

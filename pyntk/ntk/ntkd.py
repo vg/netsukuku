@@ -130,8 +130,22 @@ class NtkNode(object):
         # A complete reset is needed for each hook
         self.hook.events.listen('HOOKED', self.reset)
 
+        self.maproute.events.listen('SHOWNODENB', self.show_nodes_nb)
+        self.coordnode.mapcache.events.listen('SHOWNODENB', self.show_nodes_nb)
+        self.andna.mapp2p.events.listen('SHOWNODENB', self.show_nodes_nb)
+        self.counter.mapp2p.events.listen('SHOWNODENB', self.show_nodes_nb)
+
         if not self.simulated:
             self.kroute = kroute.KrnlRoute(self.neighbour, self.maproute)
+
+    def show_nodes_nb(self):
+        from time import asctime
+        mesg = asctime()
+        mesg += '?MapRoute?' + str(self.maproute.node_nb)
+        mesg += '?MapCache?' + str(self.coordnode.mapcache.node_nb)
+        mesg += '?AndnaMapP2P?' + str(self.andna.mapp2p.node_nb)
+        mesg += '?CounterMapP2P?' + str(self.counter.mapp2p.node_nb)
+        logging.log_on_file('/tmp/nodenb.log', mesg)
 
     @microfunc()
     def time_tick(self, function, args=(), **kwargs):
