@@ -255,6 +255,7 @@ def _data_pack(data):
 def _data_unpack_from_stream_socket(socket):
     readBuffer = ""
     while True:
+        logging.log(logging.ULTRADEBUG, 'stream_socket.recv() for size ...')
         rawPacket = socket.recv(_data_hdr_sz-len(readBuffer))
         if not rawPacket:
             return ""
@@ -263,6 +264,7 @@ def _data_unpack_from_stream_socket(socket):
             dataLength = struct.unpack("I", readBuffer)[0]
             readBuffer = ""
             while len(readBuffer) != dataLength:
+                logging.log(logging.ULTRADEBUG, 'stream_socket.recv() for message ...')
                 rawPacket = socket.recv(dataLength - len(readBuffer))
                 if not rawPacket:
                     return ""
@@ -407,7 +409,9 @@ class TCPClient(FakeRmt):
             timeout = time.time() + 30
             interval = 5
             while not self.connected:
+                logging.log(logging.ULTRADEBUG, 'TCPClient: trying to connect...')
                 self.connect()
+                logging.log(logging.ULTRADEBUG, 'TCPClient: connect() returns ' + str(self.connected))
                 if not self.connected:
                     if time.time() > timeout:
                         raise RPCNetError('Failed connecting to ' + str((self.host, self.port)))
@@ -416,8 +420,11 @@ class TCPClient(FakeRmt):
                     interval *= 2
                     if interval > 10000: interval = 10000
 
+            logging.log(logging.ULTRADEBUG, 'TCPClient: sending message...')
             self.socket.sendall(_data_pack(data))
+            logging.log(logging.ULTRADEBUG, 'TCPClient: message sent. receiving response...')
             recv_encoded_data = _data_unpack_from_stream_socket(self.socket)
+            logging.log(logging.ULTRADEBUG, 'TCPClient: got response.')
 
             if not recv_encoded_data:
                 raise RPCNetError('Connection closed before reply')

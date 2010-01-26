@@ -6,10 +6,7 @@ from datetime import date, timedelta
 def swait(t):
     """Waits `t' ms"""
 
-    final_time = T.time()+t/1000.
-    while final_time >= T.time():
-        T.sleep(0.001)
-        micro.micro_block()
+    micro.time_swait(t)
 
 def sleep_during_hard_work(t=0):
     """This is just a wrapper to `swait'. It is meant to be used during time
@@ -34,18 +31,7 @@ def while_condition(func, wait_millisec=10, repetitions=0):
                           each iteration.
     """
 
-    if not repetitions:
-        while True:
-            if func():
-                    return True
-            swait(wait_millisec)
-    i=0
-    while i < repetitions:
-            if func():
-                    return True
-            swait(wait_millisec)
-            i+=1
-    return False
+    micro.time_while_condition(func, wait_millisec, repetitions)
 
 def time():
     return int(T.time()*1000)

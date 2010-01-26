@@ -40,7 +40,7 @@ import time as stdtime
 from ntk.lib.log import get_stackframes
 from ntk.lib.log import logger as logging
 from ntk.lib.micro import Channel, micro, allmicro_run, micro_block
-from ntk.wrap.xtime import swait, time
+from ntk.wrap.xtime import swait, time, while_condition
 
 
 # If we are to masquerade as the socket module, 
@@ -303,15 +303,15 @@ class dispatcher(asyncore.dispatcher):
         self.send_will_handle_exception = True
         try:
             self.sendBuffer += data
-            while True:
-                # Handling errors
-                if self.send_has_exception:
-                    # self.sendBuffer has been already cleared.
-                    raise self.send_has_exception
-                if self.sendBuffer == '':
-                    break
-                micro_block()
-                stdtime.sleep(0.001)
+            def exit_func():
+                if self.send_has_exception: return True
+                if self.sendBuffer == '': return True
+                return False
+            while_condition(exit_func, wait_millisec=1)
+            # Handling errors
+            if self.send_has_exception:
+                # self.sendBuffer has been already cleared.
+                raise self.send_has_exception
         finally:
             self.send_will_handle_exception = False
         return len(data)

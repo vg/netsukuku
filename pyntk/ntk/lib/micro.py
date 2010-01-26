@@ -2,7 +2,7 @@
 # This file is part of Netsukuku
 # (c) Copyright 2008 Daniele Tricoli aka Eriol <eriol@mornie.org>
 # (c) Copyright 2008 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
-# (c) Copyright 2009 Luca Dionisi aka lukisi <luca.dionisi@gmail.com>
+# (c) Copyright 2010 Luca Dionisi aka lukisi <luca.dionisi@gmail.com>
 #
 # This source code is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as published
@@ -24,13 +24,25 @@ import stackless
 import time
 
 from ntk.lib.log import logger as logging
-from ntk.lib.log import log_exception_stacktrace
+from ntk.lib.log import log_exception_stacktrace, get_stackframes
 from ntk.lib.log import ExpectableException
 
-def micro(function, args=(), **kwargs):
+keep_track_prog = 0
+keep_track_map = {}
+keep_track_extended_map = {}
+
+def micro(function, args=(), keep_track=0, **kwargs):
     '''Factory function that returns tasklets
 
+    keep_track is used to specify that we want to log
+     every time the tasklet leaves or enters the schedule.
+     Set to 1 to log normally. It tries to not log the
+      times the tasklet is scheduled but does nothing
+      because it is in a wait or in a Channel operation
+     Set to 2 to log alot
+
     @param function: A callable
+    @param keep_track: an int
     @return: A tasklet
     '''
     t = stackless.tasklet()
@@ -50,14 +62,178 @@ def micro(function, args=(), **kwargs):
                 log_exception_stacktrace(e)
 
     t.bind(callable)
-    return t()
+    if keep_track > 0:
+        global keep_track_prog, keep_track_map, keep_track_extended_map
+        id_tsk = keep_track_prog = keep_track_prog + 1
+        if keep_track > 1:
+            keep_track_extended_map[t] = id_tsk
+        else:
+            keep_track_map[t] = id_tsk
+        logging.log(logging.ULTRADEBUG, 'micro: tasklet ' +\
+                    str(id_tsk) + ' created, will start soon. ' +\
+                    str(function) + str(args))
+        micro(task_surveillor, (t, id_tsk))
+    t()
+    return t
+
+def start_tracking(keep_track=1):
+    global keep_track_prog, keep_track_map, keep_track_extended_map
+    t = micro_current()
+    if t in keep_track_extended_map or \
+            t in keep_track_map:
+        #akready tracking this tasklet
+        return
+    if keep_track > 0:
+        id_tsk = keep_track_prog = keep_track_prog + 1
+        if keep_track > 1:
+            keep_track_extended_map[t] = id_tsk
+        else:
+            keep_track_map[t] = id_tsk
+        logging.log(logging.ULTRADEBUG, 'micro: tasklet ' +\
+                    str(id_tsk) + ' now registered for tracking, and being in schedule. ' +\
+                    get_stackframes())
+
+def stop_tracking():
+    global keep_track_map, keep_track_extended_map
+    tsk = micro_current()
+    id_tsk = 0 # no task
+    if tsk in keep_track_extended_map:
+        id_tsk = keep_track_extended_map[tsk]
+        del keep_track_extended_map[tsk]
+    if tsk in keep_track_map:
+        id_tsk = keep_track_map[tsk]
+        del keep_track_map[tsk]
+    if id_tsk > 0:
+        logging.log(logging.ULTRADEBUG, 'micro: tasklet ' +\
+                str(id_tsk) + ' now unregistered from tracking.')
+
+def _scheduling(enter, extended):
+    global keep_track_map, keep_track_extended_map
+    tsk = micro_current()
+    id_tsk = 0 # no task
+    if extended >= 0:
+        if tsk in keep_track_extended_map:
+            id_tsk = keep_track_extended_map[tsk]
+    if extended <= 0 and id_tsk == 0:
+        if tsk in keep_track_map:
+            id_tsk = keep_track_map[tsk]
+    if id_tsk > 0:
+        action = ' entering schedule.' if enter else ' leaving schedule.'
+        logging.log(logging.ULTRADEBUG, 'micro: tasklet ' +\
+                    str(id_tsk) + action)
+
+def scheduling():
+    _scheduling(enter=True, extended=0)
+
+def scheduling_ext():
+    _scheduling(enter=True, extended=1)
+
+def scheduling_no_ext():
+    _scheduling(enter=True, extended=-1)
+
+def leaving():
+    _scheduling(enter=False, extended=0)
+
+def leaving_ext():
+    _scheduling(enter=False, extended=1)
+
+def leaving_no_ext():
+    _scheduling(enter=False, extended=-1)
+
+def task_surveillor(tsk, id_tsk):
+    logging.log(logging.ULTRADEBUG, 'micro: tasklet ' +\
+            str(id_tsk) + ' started.')
+    while True:
+        time.sleep(0.001)
+        micro_block()
+        if not tsk.alive:
+            logging.log(logging.ULTRADEBUG, 'micro: tasklet ' +\
+                    str(id_tsk) + ' terminated a short while ago.')
+            return
 
 def micro_block():
+    leaving()
     stackless.schedule()
+    scheduling()
 
 def allmicro_run():
     stackless.run()
 
+def micro_kill(tasklet):
+    leaving()
+    tasklet.kill()
+    scheduling()
+
+def micro_current():
+    return stackless.getcurrent()
+
+def micro_runnables():
+    ret = []
+    cur = stackless.getcurrent()
+    ret.append(cur)
+    next = cur.next
+    while next is not cur:
+        ret.append(next)
+        next = next.next
+    return ret
+
+# Act as a provider to services that hide the recurring scheduling
+#  of this tasklet. E.g. "swait"
+
+def time_swait(t):
+    """Waits `t' ms"""
+    _time_swait(t, True, True)
+
+def _time_swait(t, always_first, always_last):
+    """Waits `t' ms"""
+
+    final_time = time.time()+t/1000.
+    first = True
+    while True:
+        if final_time < time.time():
+            if not first:
+                if always_last: scheduling()
+                else: scheduling_ext()
+            break
+        else:
+            if not first:
+                scheduling_ext()
+        time.sleep(0.001)
+        if first:
+            if always_first: leaving()
+            else: leaving_ext()
+            first = False
+        else:
+            leaving_ext()
+        stackless.schedule()
+
+def time_while_condition(func, wait_millisec=10, repetitions=0):
+    """If repetitions=0, it enters in an infinite loop checking each time
+       if func()==True, in which case it returns True.
+    If repetitions > 0, then it iterates the loop for N times, where
+    N=repetitions. If func() failed to be True in each iteration, False is
+    returned instead.
+
+    :param wait_millisec: number of milliseconds to wait at the end of
+                          each iteration.
+    """
+
+    i = 0
+    first = True
+    while True:
+        if func():
+            if not first:
+                _time_swait(1, False, True)
+            return True
+        _time_swait(wait_millisec, first, False)
+        first = False
+        if not repetitions: continue
+        i += 1
+        if i >= repetitions:
+            _time_swait(1, False, True)
+            return False
+
+#
 
 class MicrochannelTimeout(Exception):
     pass
@@ -99,7 +275,9 @@ class Channel(object):
         if self.micro_send:
             micro(self.ch.send, (data,))
         else:
+            leaving()
             self.ch.send(data)
+            scheduling()
 
     def send_exception(self, exc, value, wait=False):
         result = None
@@ -110,20 +288,27 @@ class Channel(object):
 
     def recv(self, timeout=None):
         if timeout is not None:
+            leaving_no_ext()
             try:
                 self._balance_receiving = True
                 expires = time.time() + timeout/1000
                 while self.ch.balance <= 0 and expires > time.time():
                     time.sleep(0.001)
-                    micro_block()
+                    leaving_ext()
+                    stackless.schedule()
+                    scheduling_ext()
                 if self.ch.balance > 0:
                     return self.ch.receive()
                 else:
                     raise MicrochannelTimeout()
             finally:
                 self._balance_receiving = False
+                scheduling_no_ext()
         else:
-            return self.ch.receive()
+            leaving()
+            ret = self.ch.receive()
+            scheduling()
+            return ret
 
     def sendq(self, data):
         """It just sends `data' to the channel queue.
@@ -148,7 +333,9 @@ class Channel(object):
            and micro_send=False
         '''
         while self.ch.balance < 0:
+            leaving()
             self.ch.send(data)
+            scheduling()
 
 class DispatcherToken(object):
     def __init__(self):
@@ -171,7 +358,7 @@ def _dispatcher(func, chan, dispatcher_token):
                               (func.__name__, msg.__repr__()))
                 log_exception_stacktrace(e)
 
-def microfunc(is_micro=False, dispatcher_token=DispatcherToken()):
+def microfunc(is_micro=False, keep_track=0, dispatcher_token=DispatcherToken()):
     '''A microfunction is a function that never blocks the caller microthread.
 
     Note: This is a decorator! (see test/test_micro.py for examples)
@@ -196,12 +383,12 @@ def microfunc(is_micro=False, dispatcher_token=DispatcherToken()):
 
         @functools.wraps(func)
         def fmicro(*data, **kwargs):
-            micro(func, data, **kwargs)
+            micro(func, data, keep_track=keep_track, **kwargs)
 
         if is_micro:
             return fmicro
         else:
-            micro(_dispatcher, (func, ch, dispatcher_token))
+            micro(_dispatcher, (func, ch, dispatcher_token), keep_track=keep_track)
             return fsend
 
     return decorate
