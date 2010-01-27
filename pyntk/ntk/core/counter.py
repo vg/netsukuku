@@ -298,12 +298,13 @@ class Counter(OptionalP2P):
         ret = self.cache[(pubk, tuple_nip)].store(hostname)
         # Is it accepted?
         if ret:
-            # forward the entry to the bunch
-            bunch_not_me = [n for n in bunch if n != self.maproute.me]
-            logging.debug('COUNTER: forward_registration to ' + str(bunch_not_me))
-            self.forward_registration_to_set(bunch_not_me, \
-                    (sender_nip, pubk, hostname, \
-                     serv_key, IDNum, snsd_record, signature))
+            if forward:
+                # forward the entry to the bunch
+                bunch_not_me = [n for n in bunch if n != self.maproute.me]
+                logging.debug('COUNTER: forward_registration to ' + str(bunch_not_me))
+                self.forward_registration_to_set(bunch_not_me, \
+                        (sender_nip, pubk, hostname, \
+                         serv_key, IDNum, snsd_record, signature))
 
         logging.debug('COUNTER: returning (ret, IDNum) = ' + str((ret, IDNum)))
         return (ret, IDNum)
