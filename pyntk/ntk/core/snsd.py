@@ -149,8 +149,14 @@ class AndnaAuthRecord:
         return [ (k, v) for k, v in self.services.items() ]
 
     def get_resolved_record(self, serv_key):
+        ''' Return an equivalent AndnaResolvedRecord '''
         if serv_key in self.services:
-            return AndnaResolvedRecord(self.get_ttl(), self.services[serv_key])
+            def get_snsd_resolved_record(snsd_auth):
+                record = self.nip[:] if snsd_auth.record is None else snsd_auth.record
+                return SnsdResolvedRecord(record, snsd_auth.priority, snsd_auth.weight)
+            records = [get_snsd_resolved_record(authrec) \
+                            for authrec in self.services[serv_key]]
+            return AndnaResolvedRecord(self.get_ttl(), records)
         else:
             return AndnaResolvedRecord(self.get_ttl(), None)
 
@@ -165,7 +171,7 @@ class AndnaAuthRecord:
 serializable.register(AndnaAuthRecord)
 
 class SnsdResolvedRecord:
-    def __init__(self, record, pubk, priority, weight):
+    def __init__(self, record, priority, weight):
         # string/NIP record = it can be a NIP or an further hostname
         self.record = record[:]
         # int priority = the priority of the record (lower is better)
@@ -176,9 +182,6 @@ class SnsdResolvedRecord:
         # in future we should add the field port_number
 
     def __repr__(self):
-        pubk_str = 'None'
-        if self.pubk is not None:
-            pubk_str = self.pubk.short_repr()
         ret = '<SnsdResolvedRecord: (record ' + str(self.record) + \
                 ', priority ' + str(self.priority) + \
                 ', weight ' + str(self.weight) + ')>'
