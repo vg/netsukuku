@@ -604,33 +604,33 @@ class Andna(OptionalP2P):
         logging.debug('ANDNA: resolve' + str((hostname, serv_key)))
         res, data = '', ''
 
-        # Remove the expired entries from the resolved cache
-        self.check_expirations_resolved_cache()
-
-        # first try to resolve locally
-        if self.resolved.has_key((hostname, serv_key)):
-            data = self.resolved[(hostname, serv_key)]
-            res = 'NOTFOUND' if data.records is None else 'OK'
-            return res, data
-        # else call the remote hash node
-        # calculate hash
-        hash_node = self.peer(key=hostname)
-        hash_nip = hash_node.get_hash_nip()
-        logging.debug('ANDNA: exact hash_node is ' + str(hash_nip))
-
-        # TODO find a mechanism to find a 'bunch' of BALANCING nodes
-        bunch = [hash_nip]
-
-        # TODO uncomment:
-        ### If I am in the bunch, use myself
-        ##if self.maproute.me in bunch:
-        ##    random_hnode = self.maproute.me[:]
-        ##else:
-        if True:
-            random_hnode = choice(bunch)
-        logging.debug('ANDNA: random hash_node is ' + str(random_hnode))
-        # contact the hash gnode
         try:
+            # Remove the expired entries from the resolved cache
+            self.check_expirations_resolved_cache()
+
+            # first try to resolve locally
+            if self.resolved.has_key((hostname, serv_key)):
+                data = self.resolved[(hostname, serv_key)]
+                res = 'NOTFOUND' if data.records is None else 'OK'
+                return res, data
+            # else call the remote hash node
+            # calculate hash
+            hash_node = self.peer(key=hostname)
+            hash_nip = hash_node.get_hash_nip()
+            logging.debug('ANDNA: exact hash_node is ' + str(hash_nip))
+
+            # TODO find a mechanism to find a 'bunch' of BALANCING nodes
+            bunch = [hash_nip]
+
+            # TODO uncomment:
+            ### If I am in the bunch, use myself
+            ##if self.maproute.me in bunch:
+            ##    random_hnode = self.maproute.me[:]
+            ##else:
+            if True:
+                random_hnode = choice(bunch)
+            logging.debug('ANDNA: random hash_node is ' + str(random_hnode))
+            # contact the hash gnode
             hash_gnode = self.peer(hIP=random_hnode)
             control, data = hash_gnode.reply_resolve(hostname, serv_key)
             if control == 'OK':
