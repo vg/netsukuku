@@ -415,7 +415,7 @@ class TCPClient(FakeRmt):
                 if not self.connected:
                     if time.time() > timeout:
                         raise RPCNetError('Failed connecting to ' + str((self.host, self.port)))
-                    logging.debug('wait ' + interval + ' before trying again to connect a TCPClient...')
+                    logging.debug('wait ' + str(interval) + ' before trying again to connect a TCPClient...')
                     self.xtime.swait(interval)
                     interval *= 2
                     if interval > 10000: interval = 10000
