@@ -502,7 +502,7 @@ class Etp(object):
             # An error here is ignorable.
             try:
                 rpc.UDP_send_reply(_rpc_caller, caller_id, None)
-            except:
+            except Exception, e:
                 logging.debug("etp_exec_udp: Exception while replying. Ignore.")
 
     def serialized_etp_exec(self, neigh, current_netid, current_nip, sender_nip, sender_netid, R, TPL, flag_of_interest, seq_num):

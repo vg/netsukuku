@@ -261,7 +261,7 @@ class Neighbour(object):
                 logging.debug('Neighbour.readvertise_local will send to ' + str(neigh))
                 key = (neigh.ip, neigh.netid)
                 self.add(key)
-            except:
+            except Exception, e:
                 pass
 
         logging.debug('Neighbour.readvertise_local microfunc done. exiting.')
@@ -301,7 +301,7 @@ class Neighbour(object):
                 logging.debug('Neighbour.readvertise will send to ' + str(neigh))
                 key = (neigh.ip, neigh.netid)
                 self.add(key)
-            except:
+            except Exception, e:
                 pass
 
         logging.debug('Neighbour.readvertise microfunc done. exiting.')
@@ -331,7 +331,7 @@ class Neighbour(object):
             # An error here is ignorable.
             try:
                 rpc.UDP_send_reply(_rpc_caller, caller_id, None)
-            except:
+            except Exception, e:
                 logging.debug("readvertise_udp: Exception while replying. Ignore.")
 
     def neigh_list(self, in_my_network=False, out_of_my_network=False,
@@ -1047,7 +1047,7 @@ class Neighbour(object):
             try:
                 key = (neigh.ip, neigh.netid)
                 self.add(key)
-            except:
+            except Exception, e:
                 pass
 
 class Radar(object):
@@ -1184,7 +1184,7 @@ class Radar(object):
         receiving_mac = self.nic_manager[_rpc_caller.dev].mac
         try:
             self.call_time_register_broadcast_udp([_rpc_caller.dev], radar_id, self.neigh.netid, receiving_mac)
-        except:
+        except Exception, e:
             logging.log(logging.ULTRADEBUG, 'Radar: Reply: '
                         'BcastClient ' + str(bcc) + ' with '
                         'dispatcher ' + 

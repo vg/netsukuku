@@ -108,7 +108,7 @@ def log_on_file(filename, msg):
     f = None
     try:
         f = open(filename, 'a')
-    except:
+    except Exception, e:
         return
     try:
         f.write(str(msg) + '\n')

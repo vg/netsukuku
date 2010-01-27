@@ -121,7 +121,7 @@ def is_ip(address_string):
         i += 1
         try:
             int(id)
-        except:
+        except Exception, e:
             return False
         if i > 4:
             return False

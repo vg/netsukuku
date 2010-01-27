@@ -638,7 +638,7 @@ def UDP_call(callee_nip, callee_netid, devs, func_name, args=()):
         bcastclient = BcastClient(devs=devs, xtimemod=xtime)
         logging.log(logging.ULTRADEBUG, 'created BcastClient with devs = ' + 
                     str(devs))
-    except:
+    except Exception, e:
         raise RPCError('Couldn\'t create BcastClient.')
     caller_id = randint(0, 2**32-1)
     UDP_caller_ids[caller_id] = Channel()

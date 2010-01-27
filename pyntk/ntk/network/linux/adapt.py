@@ -32,7 +32,7 @@ def file_write(path, data):
     ''' Writes `data' to the file pointed by `path' '''
     try:
         logging.info('\'' + data + '\'  -->  \'' + path + '\'')
-    except:
+    except Exception, e:
         pass
     fout = open(path, 'w')
     try:
@@ -456,13 +456,13 @@ class Route(BaseRoute):
         global mac_table
         try:
             iproute('route flush table main')
-        except:
+        except Exception, e:
             # It could result in "Nothing to flush". It's ok.
             pass
         for idn in mac_table.values():
             try:
                 iproute('route flush table ' + str(idn))
-            except:
+            except Exception, e:
                 # It could result in "Nothing to flush". It's ok.
                 pass
         Route._table_for_macaddr_remove_all()

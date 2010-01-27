@@ -608,7 +608,7 @@ class OptionalP2P(P2P):
                 self.call_participant_add_udp(nr, pIP)
                 logging.debug('done forwarding participant_add(%s) to %s.' % 
                               (pIP, self.maproute.ip_to_nip(nr.ip)))
-            except:
+            except Exception, e:
                 logging.debug('timeout (no problem) forwarding '
                               'participant_add(%s) to %s.' % 
                               (pIP, self.maproute.ip_to_nip(nr.ip)))
@@ -652,7 +652,7 @@ class OptionalP2P(P2P):
                 self.call_participant_del_udp(nr, pIP)
                 logging.debug('done forwarding participant_del(%s) to %s.' % 
                               (pIP, self.maproute.ip_to_nip(nr.ip)))
-            except:
+            except Exception, e:
                 logging.debug('timeout (no problem) forwarding '
                               'participant_del(%s) to %s.' % 
                               (pIP, self.maproute.ip_to_nip(nr.ip)))
@@ -759,7 +759,7 @@ class P2PAll(object):
                     logging.log(logging.ULTRADEBUG, 'P2P hooking: ' + str(minnr) + 
                                 ' answers ' + str(nrmaps_pack))
                     got_answer = True
-                except:
+                except Exception, e:
                     logging.warning('P2P hooking: Asking to ' + str(minnr) + 
                                     ' failed.')
                     neighs_in_net.remove(minnr)
