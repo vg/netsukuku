@@ -153,56 +153,71 @@ class Counter(OptionalP2P):
 
     def enter_wait_counter_hook(self, *args):
         self.wait_counter_hook = True
+        while any(self.micro_to_kill):
+            for k in self.micro_to_kill.keys():
+                logging.debug('COUNTER: enter_wait_counter_hook: killing...')
+                micro_kill(self.micro_to_kill[k])
 
-    @microfunc(True) 
+    @microfunc(True, keep_track=1) 
     def counter_hook(self):
-        # clear old cache
-        self.reset()
-        logging.debug('COUNTER: resetted.')
+        # The tasklet started with this function can be killed.
+        # Furthermore, if it is called while it was already running in another
+        # tasklet, it restarts itself.
+        while 'counter_hook' in self.micro_to_kill:
+            micro_kill(self.micro_to_kill['counter_hook'])
+        try:
+            self.micro_to_kill['counter_hook'] = micro_current()
 
-        # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
-        #  from whom I have to retrieve the cache
-        bunch = [self.maproute.me[:]]
-        bunch_not_me = [n for n in bunch if n != self.maproute.me]
+            # clear old cache
+            self.reset()
+            logging.debug('COUNTER: resetted.')
 
-        for cache_nip in bunch_not_me:
-            # TODO Contact the various nip in the bunch in parallel. But
-            #      be careful. We must continue after all have finished
-            #      (completed or failed) and we must ensure the atomicity
-            #      of write.
-            # TODO Use TCPClient or P2P ?
-            remote = TCPClient(ip_to_str(self.maproute.nip_to_ip(cache_nip)))
-            logging.debug('COUNTER: getting cache from ' + str(cache_nip))
-            try:
-                cache_from_nip = remote.counter.cache_getall()
-                for key in cache_from_nip.keys():
-                    # TODO perhaps we don't have this key, but we already
-                    #      tried and we refused because we're not in the
-                    #      bunch. In this case we should avoid to start a
-                    #      find_nearest again.
-                    # Do I have already this record?
-                    if key not in self.cache:
-                        # No. Do I am the right hash for this record?
-                        pubk, tuple_nip = key
-                        nip = list(tuple_nip)
-                        hnode_nip = self.peer(key=nip).get_hash_nip()
+            # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
+            #  from whom I have to retrieve the cache
+            bunch = [self.maproute.me[:]]
+            bunch_not_me = [n for n in bunch if n != self.maproute.me]
 
-                        # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
-                        hnode_bunch = [hnode_nip]
+            for cache_nip in bunch_not_me:
+                # TODO Contact the various nip in the bunch in parallel. But
+                #      be careful. We must continue after all have finished
+                #      (completed or failed) and we must ensure the atomicity
+                #      of write.
+                # TODO Use TCPClient or P2P ?
+                remote = TCPClient(ip_to_str(self.maproute.nip_to_ip(cache_nip)))
+                logging.debug('COUNTER: getting cache from ' + str(cache_nip))
+                try:
+                    cache_from_nip = remote.counter.cache_getall()
+                    for key in cache_from_nip.keys():
+                        # TODO perhaps we don't have this key, but we already
+                        #      tried and we refused because we're not in the
+                        #      bunch. In this case we should avoid to start a
+                        #      find_nearest again.
+                        # Do I have already this record?
+                        if key not in self.cache:
+                            # No. Do I am the right hash for this record?
+                            pubk, tuple_nip = key
+                            nip = list(tuple_nip)
+                            hnode_nip = self.peer(key=nip).get_hash_nip()
 
-                        if self.maproute.me in hnode_bunch:
-                            # Yes. Memorize it.
-                            self.cache[key] = cache_from_nip[key]
-                            logging.debug('COUNTER: got cache for ' + \
-                                    str(nip))
-                logging.debug('COUNTER: executed cache from ' + \
-                        str(cache_nip))
-            except Exception, e:
-                logging.debug('COUNTER: getting cache from ' + \
-                        str(cache_nip) + ' got exception ' + repr(e))
+                            # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
+                            hnode_bunch = [hnode_nip]
 
-        self.events.send('COUNTER_HOOKED', ())
-        self.wait_counter_hook = False
+                            if self.maproute.me in hnode_bunch:
+                                # Yes. Memorize it.
+                                self.cache[key] = cache_from_nip[key]
+                                logging.debug('COUNTER: got cache for ' + \
+                                        str(nip))
+                    logging.debug('COUNTER: executed cache from ' + \
+                            str(cache_nip))
+                except Exception, e:
+                    logging.debug('COUNTER: getting cache from ' + \
+                            str(cache_nip) + ' got exception ' + repr(e))
+
+            self.events.send('COUNTER_HOOKED', ())
+            self.wait_counter_hook = False
+
+        finally:
+            del self.micro_to_kill['counter_hook']
 
     def reset_my_counter_node(self):
         ''' Asks to my counter node to set my pubk as the
@@ -246,9 +261,11 @@ class Counter(OptionalP2P):
       try:
         # If we recently changed our NIP (we hooked) we wait to finish
         # an counter_hook before answering a check request.
-        while self.wait_counter_hook:
-            micro_block()
-            stdtime.sleep(0.001)
+        def exit_func():
+            return not self.wait_counter_hook
+        logging.debug('COUNTER: waiting counter_hook...')
+        while_condition(exit_func, wait_millisec=1)
+        logging.debug('COUNTER: We are correctly hooked.')
         # We are correctly hooked.
 
         # Remove the expired entries from the COUNTER cache

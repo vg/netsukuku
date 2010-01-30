@@ -34,7 +34,7 @@ from ntk.lib.micro import microfunc, micro_block, micro_current, micro_kill, sta
 from ntk.lib.misc import is_ip
 from ntk.lib.rencode import serializable
 from ntk.network.inet import ip_to_str, str_to_ip
-from ntk.wrap.xtime import swait, time
+from ntk.wrap.xtime import swait, time, while_condition
 from ntk.core.snsd import AndnaError
 from ntk.lib.rpc import TCPClient
 from ntk.lib.log import ExpectableException
@@ -111,6 +111,7 @@ class Andna(OptionalP2P):
         self.wait_andna_hook = True
         while any(self.micro_to_kill):
             for k in self.micro_to_kill.keys():
+                logging.debug('ANDNA: enter_wait_andna_hook: killing...')
                 micro_kill(self.micro_to_kill[k])
 
     def register_my_names(self):
@@ -312,11 +313,14 @@ class Andna(OptionalP2P):
       try:
         # If we recently changed our NIP (we hooked) we wait to finish
         # an andna_hook before answering a registration request.
-        while self.wait_andna_hook:
-            micro_block()
-            stdtime.sleep(0.001)
+        def exit_func():
+            return not self.wait_andna_hook
+        logging.debug('ANDNA: waiting andna_hook...')
+        while_condition(exit_func, wait_millisec=1)
+        logging.debug('ANDNA: We are correctly hooked.')
         # We are correctly hooked.
 
+        logging.debug('ANDNA: reply_register(' + str(sender_nip) + ', ' + str(hostname) + ', ...)')
         ret = '', ''
 
         if snsd_record.record is not None:
@@ -560,9 +564,11 @@ class Andna(OptionalP2P):
         """ Return the public key of the registrar of this hostname """
         # If we recently changed our NIP (we hooked) we wait to finish
         # an andna_hook before answering a resolution request.
-        while self.wait_andna_hook:
-            micro_block()
-            stdtime.sleep(0.001)
+        def exit_func():
+            return not self.wait_andna_hook
+        logging.debug('ANDNA: waiting andna_hook...')
+        while_condition(exit_func, wait_millisec=1)
+        logging.debug('ANDNA: We are correctly hooked.')
         # We are correctly hooked.
 
         logging.debug('ANDNA: get_registrar_pubk(' + str(hostname) + ')')
@@ -648,9 +654,11 @@ class Andna(OptionalP2P):
         """ Return the AndnaResolvedRecord associated to the hostname and service """
         # If we recently changed our NIP (we hooked) we wait to finish
         # an andna_hook before answering a resolution request.
-        while self.wait_andna_hook:
-            micro_block()
-            stdtime.sleep(0.001)
+        def exit_func():
+            return not self.wait_andna_hook
+        logging.debug('ANDNA: waiting andna_hook...')
+        while_condition(exit_func, wait_millisec=1)
+        logging.debug('ANDNA: We are correctly hooked.')
         # We are correctly hooked.
 
         logging.debug('ANDNA: reply_resolve' + str((hostname, serv_key)))
