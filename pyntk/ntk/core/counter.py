@@ -19,6 +19,7 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
+from random import choice
 import time as stdtime
 
 import ntk.lib.rencode as rencode
@@ -28,8 +29,7 @@ from ntk.core.p2p import OptionalP2P
 from ntk.lib.crypto import md5
 from ntk.lib.log import logger as logging
 from ntk.lib.micro import microfunc, micro_block, micro_current, micro_kill, start_tracking, stop_tracking
-from ntk.wrap.xtime import (now, timestamp_to_data, today, days, 
-                            while_condition, time)
+from ntk.wrap.xtime import while_condition, time, swait, TimeCapsule
 from ntk.core.snsd import MAX_TTL_OF_REGISTERED, MAX_TTL_OF_NEGATIVE
 from ntk.lib.rpc import TCPClient
 from ntk.network.inet import ip_to_str
@@ -42,10 +42,14 @@ class CounterError(Exception): pass
 
 class CounterExpectableException(ExpectableException): pass
 
-class HostnameRecord:
-    def __init__(self, hostname, ttl):
-        # string hostname = hostname
-        self.hostname = hostname
+class CounterAuthRecord:
+    def __init__(self, pubk, nip, hnames, ttl):
+        # PublicKey pubk = public key of registrar
+        self.pubk = pubk
+        # NIP nip = NIP of registrar
+        self.nip = nip[:]
+        # sequence<string> hnames = hostnames registered
+        self.hnames = hnames[:]
         # int ttl = millisec to expiration
         #           if 0 => MAX_TTL_OF_REGISTERED
         if ttl == 0 or ttl > MAX_TTL_OF_REGISTERED:
@@ -53,70 +57,19 @@ class HostnameRecord:
         self.expires = time() + ttl
 
     def __repr__(self):
-        pubk_str = 'None'
-        if self.pubk is not None:
-            pubk_str = self.pubk.short_repr()
-        ret = '<HostnameRecord: (hostname ' + str(self.hostname) + \
+        ret = '<CounterAuthRecord: (pubk ' + self.pubk.short_repr() + \
+                ', nip ' + str(self.nip) + \
+                ', hnames ' + str(self.hnames) + \
                 ', ttl ' + str(self.get_ttl()) + ')>'
         return ret
 
     def get_ttl(self):
         return self.expires - time()
 
-    def set_ttl(self, ttl=0):
-        if ttl == 0 or ttl > MAX_TTL_OF_REGISTERED:
-            ttl = MAX_TTL_OF_REGISTERED
-        return self.expires - time()
-
     def _pack(self):
-        return (self.hostname, self.get_ttl())
-
-serializable.register(HostnameRecord)
-
-class CounterAuthRecord:
-    def __init__(self, pubk, nip, reg_hostnames):
-        # PublicKey pubk = public key of registrar
-        self.pubk = pubk
-        # NIP nip = NIP of registrar
-        self.nip = nip[:]
-        # dict<hostname,sequence<HostnameRecord>> reg_hostnames = the hostnames granted to the registrar
-        self.reg_hostnames = {}
-        self.reg_hostnames.update(reg_hostnames)
-
-    def __repr__(self):
-        ret = '<CounterAuthRecord: (pubk ' + self.pubk.short_repr() + \
-                ', nip ' + str(self.nip) + \
-                ', reg_hostnames ' + str(self.reg_hostnames) + ')>'
-        return ret
-
-    def check_expirations(self):
-        # Remove the expired entries from this structure
-        for hname, hname_record in self.reg_hostnames.items():
-            if hname_record.expires < time():
-                self.reg_hostnames.pop(hname)
-
-    def store(self, hname):
-        """ Creates or updates a registration. Returns wether we accept. """
-        # Remove expired entries
-        self.check_expirations()
-        # The registrar wants to register/update hname.
-        # If I had hname, I must reset its TTL.
-        # Otherwise I have to check the limit, and accept or reject.
-        if hname in self.reg_hostnames:
-            self.reg_hostnames[hname].set_ttl()
-            return True
-        elif len(self.reg_hostnames) >= MAX_HOSTNAMES:
-            return False
-        else:
-            self.reg_hostnames[hname] = HostnameRecord(hname, 0)
-            return True
-
-    def has_any(self):
-        self.check_expirations()
-        return len(self.reg_hostnames) > 0
-
-    def _pack(self):
-        return (self.pubk, self.nip, self.reg_hostnames)
+        ttl = self.get_ttl()
+        if ttl == 0: ttl = -1
+        return (self.pubk, self.nip[:], self.hnames[:], ttl)
 
 serializable.register(CounterAuthRecord)
 
@@ -129,6 +82,7 @@ class Counter(OptionalP2P):
         # period starting from registration time within which
         # the hostname must be updated
         self.my_keys = keypair
+        self.pubk = self.my_keys.get_pub_key()
         self.p2pall = p2pall
 
         # let's register ourself in p2pall
@@ -148,8 +102,9 @@ class Counter(OptionalP2P):
         # Note: tuple is hashable, list is not.
 
         self.remotable_funcs += [self.check,
-                                self.cache_getall,
-                                self.reset_nip]
+                                 self.confirm_your_request,
+                                 self.cache_getall,
+                                 self.reset_nip]
 
     def enter_wait_counter_hook(self, *args):
         self.wait_counter_hook = True
@@ -157,6 +112,11 @@ class Counter(OptionalP2P):
             for k in self.micro_to_kill.keys():
                 logging.debug('COUNTER: enter_wait_counter_hook: killing...')
                 micro_kill(self.micro_to_kill[k])
+
+    def reset(self):
+        ''' Resets all data. Invoked when hooked in a new network.
+        '''
+        self.cache = {}
 
     @microfunc(True, keep_track=1) 
     def counter_hook(self):
@@ -213,52 +173,242 @@ class Counter(OptionalP2P):
                     logging.debug('COUNTER: getting cache from ' + \
                             str(cache_nip) + ' got exception ' + repr(e))
 
+            # Now I can answer to requests.
             self.events.send('COUNTER_HOOKED', ())
             self.wait_counter_hook = False
+            logging.info('Counter: Emit signal COUNTER_HOOKED.')
+
+            # Communicate to one Counter Node that I am the new holder
+            # of this NIP.
+            logging.debug('COUNTER: starting keeping of my identity.')
+            self.reset_my_counter_node()
 
         finally:
             del self.micro_to_kill['counter_hook']
 
+    @microfunc(True, keep_track=1)
     def reset_my_counter_node(self):
         ''' Asks to my counter node to set my pubk as the
-            new holder, and reset any hostname. The counter node(s)
-            will ask for confirmation.
+            current holder, and declare any hostname, and keep updating.
         '''
-        pass #TODO contact counter node and call reset_nip
-        # NOTE here I am the client, I don't need to test wait_counter_hook
-        # But if I get an exception by the remote, I need to try again
-        # forever. This has to be completed before trying to register
-        # hostnames. This is in the same tasklet of andna_hook, which should
-        # be a sort-of-restartable microfunc.
+        # The tasklet started with this function can be killed.
+        # Furthermore, if it is called while it was already running in another
+        # tasklet, it restarts itself.
+        while 'andna_hook' in self.micro_to_kill:
+            micro_kill(self.micro_to_kill['reset_my_counter_node'])
+        try:
+            self.micro_to_kill['reset_my_counter_node'] = micro_current()
 
-    def reset_nip(self, pubk, nip):
-        ''' This pubk is declaring it is the holder of this nip.
-            It wants to reset all the hostnames.
-        '''
-        pass #TODO reset self.cache[pubk, tuple(nip)]
-        # NOTE here I am the client, I DO need to test wait_counter_hook
+            # TODO: this way of obtaining my hostnames has to be reworked.
+            import ntk.lib.misc as misc
+            from ntk.config import settings
+            hnames = []
+            try:
+                hostname = misc.get_hostname()
+                hnames.append(hostname)
+            except Exception, e:
+                logging.debug('Counter: reset_my_counter_node: get_hostname got ' + repr(e))
+            for line in misc.read_nodes(settings.SNSD_NODES_PATH):
+                result, data = misc.parse_snsd_node(line)
+                if not result:
+                    raise ImproperlyConfigured("Wrong line in "+str(settings.SNSD_NODES_PATH))
+                hnames.append(data[1])
 
-    def reset(self):
-        ''' Resets all data. Invoked when hooked in a new network.
+            ttl_holder = TimeCapsule(0)
+            while True:
+                # Wait that there is something to do
+                def something_to_do():
+                    return ttl_holder.get_ttl() <= 0
+                while_condition(something_to_do, wait_millisec=100)
+                # Do [again] the requests.
+                if ttl_holder.get_ttl() <= 0:
+                    ttl = 0
+                    try:
+                        logging.debug('Counter: declare my hostnames to tha Counter.')
+                        # the return value is the ttl of the registration
+                        ttl = self.ask_reset_nip(hnames)
+                    except Exception, e:
+                        logging.debug('Counter: reset_my_counter_node: reset_nip got ' + repr(e))
+                        # the failure may be temporary
+                        ttl = 1000 * 60 * 2 # 2 minutes in millisec
+                    logging.debug('Counter: my counter node will be ok for ' + str(ttl) + ' msec.')
+                    ttl_holder = TimeCapsule(ttl)
+
+        finally:
+            del self.micro_to_kill['reset_my_counter_node']
+
+    ########## remotable methods directly called to a NIP
+
+    def confirm_your_request(self, nip, pubk):
+        # This P2P-remotable method is called directyly to a certain NIP in order
+        # to verify that he is the sender of a certain request. The method asks to
+        # confirm that the NIP is the right one, that the public key is of this node.
+        return nip == self.maproute.me and \
+               pubk == self.pubk
+
+    ########## Helper functions used as a client of Counter, to send requests.
+
+    def ask_reset_nip(self, hnames):
+        ''' Declare I am the holder of this nip.
+            I declare all the hostnames I will try to register.
         '''
-        self.cache = {}
+        logging.debug('COUNTER: ask_reset_nip(' + str(hnames) + ')')
+        # calculate hash
+        hash_node = self.peer(key=self.maproute.me[:])
+        hash_nip = hash_node.get_hash_nip()
+        logging.debug('COUNTER: ask_reset_nip: exact hash_node is ' + str(hash_nip))
+
+        # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
+        bunch = [hash_nip]
+
+        # TODO uncomment:
+        ### If I am in the bunch, use myself
+        ##if self.maproute.me in bunch:
+        ##    random_hnode = self.maproute.me[:]
+        ##else:
+        if True:
+            random_hnode = choice(bunch)
+        logging.debug('COUNTER: ask_reset_nip: random hash_node is ' + str(random_hnode))
+        # contact the hash node
+        counter_node = self.peer(hIP=random_hnode)
+        # sign the request and attach the public key
+        nip = self.maproute.me[:]
+        signature = self.my_keys.sign(rencode.dumps((nip, hnames)))
+        pubk = self.pubk
+        return counter_node.reset_nip(pubk, nip, hnames, signature)
+
+    def ask_check(self, registrar_nip, pubk, hostname):
+        """ Register or update the name for the specified service number """
+        logging.debug('COUNTER: ask_check' + str((registrar_nip, pubk, hostname)))
+        # calculate hash
+        hash_node = self.peer(key=registrar_nip)
+        hash_nip = hash_node.get_hash_nip()
+        logging.debug('COUNTER: ask_check: exact hash_node is ' + str(hash_nip))
+
+        # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
+        bunch = [hash_nip]
+
+        # TODO uncomment:
+        ### If I am in the bunch, use myself
+        ##if self.maproute.me in bunch:
+        ##    random_hnode = self.maproute.me[:]
+        ##else:
+        if True:
+            random_hnode = choice(bunch)
+        logging.debug('COUNTER: ask_check: random hash_node is ' + str(random_hnode))
+        # contact the hash node
+        hash_gnode = self.peer(hIP=random_hnode)
+        logging.debug('COUNTER: ask_check: request check')
+        return hash_gnode.check(registrar_nip, pubk, hostname)
+
+    ########## Remotable and helper functions used as a server, to serve requests.
 
     def check_expirations(self):
         # Remove the expired entries from the COUNTER cache
         logging.debug('COUNTER: cleaning expired entries - if any - from our COUNTER cache...')
         for key, auth_record in self.cache.items():
             pubk, nip = auth_record.pubk, auth_record.nip
-            if not auth_record.has_any():
+            if auth_record.get_ttl() <= 0:
                 self.cache.pop(key)
                 logging.debug('COUNTER: cleaned entry (pubk ' + pubk.short_repr() + \
-                        ', nip ' + str(self.nip) + ')')
+                        ', nip ' + str(nip) + ')')
 
-    def check(self, sender_nip, pubk, hostname, serv_key, IDNum,
-                       snsd_record, signature,
-                       forward=True):
-      """ Return a tuple like (True/False, updates) """
+    def reset_nip(self, pubk, nip, hnames, signature, forward=True):
+      ''' This pubk is declaring it is the holder of this nip.
+          It wants to declare all the hostnames.
+      '''
       start_tracking()
       try:
+        if len(hnames) > MAX_HOSTNAMES:
+            raise CounterError, 'Too many hostnames'
+
+        # If we recently changed our NIP (we hooked) we wait to finish
+        # an counter_hook before answering a check request.
+        def exit_func():
+            return not self.wait_counter_hook
+        logging.debug('COUNTER: reset_nip: waiting counter_hook...')
+        while_condition(exit_func, wait_millisec=1)
+        logging.debug('COUNTER: reset_nip: We are correctly hooked.')
+        # We are correctly hooked.
+
+        # Remove the expired entries from the COUNTER cache
+        self.check_expirations()
+
+        # first the hash check
+        logging.debug('COUNTER: reset_nip: verifying that I am the right hash...')
+        # calculate hash
+        hash_node = self.peer(key=nip)
+        hash_nip = hash_node.get_hash_nip()
+        logging.debug('COUNTER: reset_nip: exact hash_node is ' + str(hash_nip))
+
+        # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
+        bunch = [hash_nip, self.maproute.me]
+
+        check_hash = self.maproute.me in bunch
+
+        if not check_hash:
+            logging.info('COUNTER: reset_nip: hash is NOT verified. Raising exception.')
+            raise CounterError, 'Hash verification failed'
+        logging.debug('COUNTER: reset_nip: hash is verified.')
+
+        # Check that the request is signed with privk of this pubk
+        logging.debug('COUNTER: reset_nip: authenticating the request...')
+        if not pubk.verify(rencode.dumps((nip, hnames)), signature):
+            raise CounterError('Request authentication failed')
+        logging.debug('COUNTER: reset_nip: request authenticated')
+
+        # Check that the request is coming from this NIP
+        logging.debug('COUNTER: reset_nip: verifying the request came from this nip...')
+        remote = TCPClient(ip_to_str(self.maproute.nip_to_ip(nip)))
+        try:
+            remote_resp = remote.counter.confirm_your_request(nip, pubk)
+        except Exception, e:
+            raise CounterError, 'Asking confirmation to nip ' + str(nip) + ' got ' + repr(e)
+        if not remote_resp:
+            logging.info('COUNTER: reset_nip: nip is NOT verified. Raising exception.')
+            raise CounterError, 'Request not originating from nip ' + str(nip)
+        logging.debug('COUNTER: reset_nip: nip verified')
+
+        # store
+        record = CounterAuthRecord(pubk, nip, hnames, 0)
+        ret = record.get_ttl()
+        self.cache[(pubk, tuple(nip))] = record
+        if forward:
+            # forward the entry to the bunch
+            bunch_not_me = [n for n in bunch if n != self.maproute.me]
+            logging.debug('COUNTER: reset_nip: forward_registration to ' + str(bunch_not_me))
+            self.forward_registration_to_set(bunch_not_me, \
+                    (pubk, nip, hnames, signature))
+        return ret
+      finally:
+        stop_tracking()
+
+    @microfunc(True)
+    def forward_registration_to_set(self, to_set, args_to_reset_nip):
+        for to_nip in to_set:
+            self.forward_registration_to_nip(to_nip, args_to_reset_nip)
+
+    @microfunc(True, keep_track=1)
+    def forward_registration_to_nip(self, to_nip, args_to_reset_nip):
+        """ Forwards registration request to another counter node in the bunch. """
+        try:
+            logging.debug('COUNTER: forwarding registration request to ' + \
+                    ip_to_str(self.maproute.nip_to_ip(to_nip)))
+            # TODO Use TCPClient or P2P ?
+            remote = self.peer(hIP=to_nip)
+            args_to_reset_nip = \
+                    tuple(list(args_to_reset_nip) + [False])
+            resp = remote.reset_nip(*args_to_reset_nip)
+            logging.debug('COUNTER: forwarded registration request to ' + \
+                    ip_to_str(self.maproute.nip_to_ip(to_nip)) + \
+                    ' got ' + str(resp))
+        except Exception, e:
+            logging.warning('COUNTER: forwarded registration request to ' + \
+                    str(to_nip) + \
+                    ' got exception ' + repr(e))
+
+    def check(self, registrar_nip, pubk, hostname):
+        """ Return a tuple like (True/False, TTL) """
         # If we recently changed our NIP (we hooked) we wait to finish
         # an counter_hook before answering a check request.
         def exit_func():
@@ -271,86 +421,12 @@ class Counter(OptionalP2P):
         # Remove the expired entries from the COUNTER cache
         self.check_expirations()
 
-        # first the hash check
-        logging.debug('COUNTER: verifying that I am the right hash...')
-        # calculate hash
-        hash_node = self.peer(key=sender_nip)
-        hash_nip = hash_node.get_hash_nip()
-        logging.debug('COUNTER: exact hash_node is ' + str(hash_nip))
-
-        # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
-        bunch = [hash_nip, self.maproute.me]
-
-        check_hash = self.maproute.me in bunch
-
-        if not check_hash:
-            logging.info('COUNTER: hash is NOT verified. Raising exception.')
-            raise CounterError, 'Hash verification failed'
-        logging.debug('COUNTER: hash is verified.')
-
-        # Check that the request is signed with privk of this pubk
-        logging.debug('COUNTER: authenticating the request...')
-        if not pubk.verify(rencode.dumps((sender_nip, hostname, serv_key, IDNum,
-                       snsd_record)), signature):
-            raise CounterError('Request authentication failed')
-        logging.debug('COUNTER: request authenticated')
-
-        # Check that the request is coming from this NIP
-        logging.debug('COUNTER: verifying the request came from this nip...')
-        remote = TCPClient(ip_to_str(self.maproute.nip_to_ip(sender_nip)))
-        try:
-            remote_resp = remote.andna.confirm_your_request(sender_nip, pubk, hostname)
-        except Exception, e:
-            raise CounterError, 'Asking confirmation to nip ' + str(sender_nip) + ' got ' + repr(e)
-        if not remote_resp:
-            logging.info('COUNTER: nip is NOT verified. Raising exception.')
-            raise CounterError, 'Request not originating from nip ' + str(sender_nip)
-        logging.debug('COUNTER: nip verified')
-
-        # Retrieve data, update data, prepare response
-        logging.debug('COUNTER: processing request...')
-        tuple_nip = tuple(sender_nip)
-        if (pubk, tuple_nip) not in self.cache:
-            self.cache[(pubk, tuple_nip)] = CounterAuthRecord(pubk, sender_nip, {})
-        ret = self.cache[(pubk, tuple_nip)].store(hostname)
-        # Is it accepted?
-        if ret:
-            if forward:
-                # forward the entry to the bunch
-                bunch_not_me = [n for n in bunch if n != self.maproute.me]
-                logging.debug('COUNTER: forward_registration to ' + str(bunch_not_me))
-                self.forward_registration_to_set(bunch_not_me, \
-                        (sender_nip, pubk, hostname, \
-                         serv_key, IDNum, snsd_record, signature))
-
-        logging.debug('COUNTER: returning (ret, IDNum) = ' + str((ret, IDNum)))
-        return (ret, IDNum)
-      finally:
-        stop_tracking()
-
-    @microfunc(True)
-    def forward_registration_to_set(self, to_set, args_to_check):
-        for to_nip in to_set:
-            self.forward_registration_to_nip(to_nip, args_to_check)
-
-    @microfunc(True, keep_track=1)
-    def forward_registration_to_nip(self, to_nip, args_to_check):
-        """ Forwards registration request to another hash node in the bunch. """
-        try:
-            logging.debug('COUNTER: forwarding registration request to ' + \
-                    ip_to_str(self.maproute.nip_to_ip(to_nip)))
-            # TODO Use TCPClient or P2P ?
-            remote = self.peer(hIP=to_nip)
-            args_to_check = \
-                    tuple(list(args_to_check) + [False])
-            resp = remote.check(*args_to_check)
-            logging.debug('COUNTER: forwarded registration request to ' + \
-                    ip_to_str(self.maproute.nip_to_ip(to_nip)) + \
-                    ' got ' + str(resp))
-        except Exception, e:
-            logging.warning('COUNTER: forwarded registration request to ' + \
-                    str(to_nip) + \
-                    ' got exception ' + repr(e))
+        key = pubk, tuple(registrar_nip)
+        if key in self.cache:
+            counter_auth_rec = self.cache[key]
+            if hostname in counter_auth_rec.hnames:
+                return True, counter_auth_rec.get_ttl()
+        return False, 0
 
     def cache_getall(self):
         ''' Returns the cache of authoritative records.

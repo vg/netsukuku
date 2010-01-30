@@ -39,6 +39,14 @@ def time():
 def now():
     return T.time()
 
+class TimeCapsule:
+    def __init__(self, ttl):
+        # int ttl = millisec to expiration
+        self.expires = time() + ttl
+    
+    def get_ttl(self):
+        return self.expires - time()
+
 def timestamp_to_data(timestamp):
     return date.fromtimestamp(timestamp)
     
