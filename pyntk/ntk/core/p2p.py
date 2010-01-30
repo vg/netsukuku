@@ -31,7 +31,7 @@ from ntk.lib.log import logger as logging
 from ntk.lib.log import get_stackframes
 from ntk.lib.micro import microfunc
 from ntk.lib.rencode import serializable
-from ntk.lib.rpc import FakeRmt, RPCDispatcher, CallerInfo
+from ntk.lib.rpc import FakeRmt, RPCDispatcher, CallerInfo, RPCError
 from ntk.core.status import ZombieException 
 
 
@@ -371,7 +371,10 @@ class P2P(RPCDispatcher):
             rpc.UDP_send_reply(_rpc_caller, caller_id, ret)
 
     def msg_exec(self, sender_nip, msg):
-        return self.dispatch(CallerInfo(), *msg)
+        ret = self.dispatch(CallerInfo(), *msg)
+        if isinstance(ret, tuple) and len(ret) == 2 and ret[0] == 'rmt_error':
+            raise RPCError(ret[1])
+        return ret
 
     class RmtPeer(FakeRmt):
         def __init__(self, p2p, hIP=None, key=None, neigh=None):
