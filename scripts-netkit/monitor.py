@@ -138,6 +138,26 @@ def get_splits():
     finally:
         f.close()
 
+def get_nodenb():
+    try:
+        f = open("/tmp/nodenb.log")
+    except:
+        return []
+    try:
+        try:
+            f.seek(-300, os.SEEK_END)
+        except:
+            pass # fewer bytes.
+        lines = f.readlines()
+        # last line, without \n
+        l = lines[-1][:-1]
+        parts = l.split('?')
+        return parts
+    except:
+        return None
+    finally:
+        f.close()
+
 def get_netid():
     try:
         f = open("/tmp/netid.log")
@@ -276,6 +296,7 @@ def main(stdscr):
         splits = get_splits()
         if splits is None:
             splits = '-'
+        nodenb = get_nodenb()
 
         stdscr.clear()
 
@@ -320,6 +341,13 @@ def main(stdscr):
         for r in routes:
             stdscr.addstr(i, 34, r)
             i += 1
+
+        if any(nodenb):
+            totlines = len(nodenb)
+            stdscr.addstr(17 - totlines, 34, "Maps:", attr_title)
+            for i in range(totlines):
+                nodenb_line = nodenb[i]
+                stdscr.addstr(18 - totlines + i, 34, nodenb_line)
 
         stdscr.refresh()
         time.sleep(4)
