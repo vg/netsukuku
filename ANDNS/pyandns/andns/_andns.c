@@ -181,7 +181,8 @@ _pkt_to_tuple(PyObject *self, PyObject *args)
     PyTuple_SetItem(tuple, 8,  PyInt_FromLong(packet->rcode));    
     PyTuple_SetItem(tuple, 9,  PyInt_FromLong(packet->p));
     PyTuple_SetItem(tuple, 10, PyInt_FromLong(packet->service));    
-    PyTuple_SetItem(tuple, 11, PyString_FromString(packet->qstdata));    
+    PyTuple_SetItem(tuple, 11, PyString_FromStringAndSize(packet->qstdata,
+                                                          packet->qstlength));
 
     i = 0;
     list= PyList_New(packet->ancount);
