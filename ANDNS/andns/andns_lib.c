@@ -101,10 +101,11 @@ int a_hdr_u(char *buf,andns_pkt *ap)
 
     start_buf= buf;
 
-    ap->r= *(buf+1) & 0x01;
-    memcpy(&s, buf, 2);
+    memcpy(&s, buf, sizeof(uint16_t));
     ap->id= ntohs(s);
     buf+= 2;
+
+    ap->r= *(buf+1) & 0x01;
 
     memcpy(&c, buf, 2);
     ap->qr= (c>>7) & 0x01;
@@ -120,6 +121,11 @@ int a_hdr_u(char *buf,andns_pkt *ap)
     ap->ipv= (c>>6) & 0x01;
     ap->nk= (c>>4) & 0x03;
     ap->rcode= c & 0x0f;
+
+    buf+= 1;
+    memcpy(&s, buf, 2);
+    ap->service= ntohs(s);
+
     return ANDNS_PKT_HDR_SZ;
 }
 /*
@@ -412,6 +418,10 @@ int a_hdr_p(andns_pkt *ap, char *buf)
 
     (*buf)|= ((ap->nk)<< 4);
     (*buf)|= (ap->rcode);
+
+    buf+= 1;
+    s= htons(ap->service);
+    memcpy(buf, &s, sizeof(uint16_t));
 
     return ANDNS_PKT_HDR_SZ;
 }
