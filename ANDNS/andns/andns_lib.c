@@ -104,7 +104,6 @@ int a_hdr_u(char *buf,andns_pkt *ap)
     ap->r= *(buf+1) & 0x01;
     memcpy(&s, buf, 2);
     ap->id= ntohs(s);
-    ap->id>>= 1;
     buf+= 2;
 
     memcpy(&c, buf, 2);
@@ -389,7 +388,6 @@ int a_hdr_p(andns_pkt *ap, char *buf)
     uint16_t s;
     uint8_t an;
     
-    ap->id<<= 1;
     s= htons(ap->id);
     memcpy(buf, &s, sizeof(uint16_t));
 

@@ -191,8 +191,7 @@ def query(qst, id= None, recursion= 1, hashed= True,
 
     if id is None:
         from random import randint
-        # TODO: resolve this, remember the email sent to ntkdev!
-        id= randint(1, _MAX_ID/2)
+        id= randint(1, _MAX_ID)
 
     atuples= ntk_query(id, recursion, hashed, 
             qtype, realm, proto, service, port, qst, server)
