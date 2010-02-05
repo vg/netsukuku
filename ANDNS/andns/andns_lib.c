@@ -391,12 +391,12 @@ int a_hdr_p(andns_pkt *ap, char *buf)
     s= htons(ap->id);
     memcpy(buf, &s, sizeof(uint16_t));
 
+    buf+= 2;
+
     if (ap->r)
         *(buf+1)|= 0x01;
     else    
         *(buf+1)&= 0xfe;
-
-    buf+=2;
 
     if (ap->qr)(*buf)|= 0x80;
     if (ap->p) (*buf)|= 0x40;
