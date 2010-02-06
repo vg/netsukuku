@@ -498,7 +498,11 @@ int a_answ_p(andns_pkt *ap, andns_pkt_data *apd, char *buf, int limitlen)
             limit= ap->ipv? 16: 4;
             if (limitlen< limit+ 2) return -1;
 
-            if (apd->m) *buf|= 0x80;
+            if (apd->m & ANDNS_APD_IP) {
+                *buf|= 0x40;
+                if (apd->m & ANDNS_APD_MAIN_IP)
+                    *buf|= 0x80;
+            }
 
             *buf++|= (apd->wg & 0x7f);
             *buf++|= apd->prio;
