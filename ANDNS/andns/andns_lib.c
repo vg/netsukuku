@@ -340,8 +340,8 @@ int a_u(char *buf, int pktlen, andns_pkt **app)
     
     if (pktlen<ANDNS_PKT_HDR_SZ)
         return 0;
-    /* TODO upper control */
-    *app= ap= create_andns_pkt();
+    
+    ap = *app;
     
     offset= a_hdr_u(buf, ap);
 
