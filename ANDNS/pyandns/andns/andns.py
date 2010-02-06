@@ -85,6 +85,9 @@ class AndnsAnswer(object):
         return self.wg- other.wg
 
     def to_tuple(self):
+        # if it is a NIP then convert to string
+        if (isinstance(self.rdata, list)):
+            self.rdata = ".".join([str(n) for n in reversed(self.rdata)])
         return (self.main_ip, self.wg, self.prio, self.service, self.rdata)
         
     def __repr__(self):
