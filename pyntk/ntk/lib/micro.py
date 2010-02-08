@@ -30,6 +30,15 @@ from ntk.lib.log import ExpectableException
 keep_track_prog = 0
 keep_track_map = {}
 keep_track_extended_map = {}
+task_id_tracks_count = {}
+
+# try to get my hostname.
+import ntk.lib.misc as misc
+hostname = ''
+try:
+    hostname = misc.get_hostname()
+except Exception, e:
+    pass
 
 def micro(function, args=(), keep_track=0, **kwargs):
     '''Factory function that returns tasklets
@@ -63,49 +72,69 @@ def micro(function, args=(), keep_track=0, **kwargs):
 
     t.bind(callable)
     if keep_track > 0:
-        global keep_track_prog, keep_track_map, keep_track_extended_map
+        global keep_track_prog, keep_track_map, keep_track_extended_map, task_id_tracks_count
         id_tsk = keep_track_prog = keep_track_prog + 1
+        task_id_tracks_count[id_tsk] = 1
         if keep_track > 1:
             keep_track_extended_map[t] = id_tsk
         else:
             keep_track_map[t] = id_tsk
-        logging.log(logging.ULTRADEBUG, 'micro: tasklet ' +\
-                    str(id_tsk) + ' created, will start soon. ' +\
+        logging.log(logging.ULTRADEBUG, 'micro: tasklet ' + \
+                    str(id_tsk) + ' on ' + hostname + \
+                    ' created, will start soon. ' +\
                     str(function) + str(args))
         micro(task_surveillor, (t, id_tsk))
     t()
     return t
 
 def start_tracking(keep_track=1):
-    global keep_track_prog, keep_track_map, keep_track_extended_map
+    global keep_track_prog, keep_track_map, keep_track_extended_map, task_id_tracks_count
     t = micro_current()
-    if t in keep_track_extended_map or \
-            t in keep_track_map:
-        #akready tracking this tasklet
+    if t in keep_track_extended_map:
+        #already tracking this tasklet
+        id_tsk = keep_track_extended_map[t]
+        task_id_tracks_count[id_tsk] += 1
         return
-    if keep_track > 0:
-        id_tsk = keep_track_prog = keep_track_prog + 1
-        if keep_track > 1:
-            keep_track_extended_map[t] = id_tsk
-        else:
-            keep_track_map[t] = id_tsk
-        logging.log(logging.ULTRADEBUG, 'micro: tasklet ' +\
-                    str(id_tsk) + ' now registered for tracking, and being in schedule. ' +\
-                    get_stackframes())
+    if t in keep_track_map:
+        #already tracking this tasklet
+        id_tsk = keep_track_map[t]
+        task_id_tracks_count[id_tsk] += 1
+        return
+    id_tsk = keep_track_prog = keep_track_prog + 1
+    task_id_tracks_count[id_tsk] = 1
+    if keep_track > 1:
+        keep_track_extended_map[t] = id_tsk
+    else:
+        keep_track_map[t] = id_tsk
+    logging.log(logging.ULTRADEBUG, 'micro: tasklet ' +\
+                str(id_tsk) + ' on ' + hostname + \
+                ' now registered for tracking, and being in schedule. ' +\
+                get_stackframes())
 
 def stop_tracking():
-    global keep_track_map, keep_track_extended_map
+    global keep_track_map, keep_track_extended_map, task_id_tracks_count
     tsk = micro_current()
     id_tsk = 0 # no task
     if tsk in keep_track_extended_map:
         id_tsk = keep_track_extended_map[tsk]
-        del keep_track_extended_map[tsk]
+        task_id_tracks_count[id_tsk] -= 1
+        if task_id_tracks_count[id_tsk] <= 0:
+            del keep_track_extended_map[tsk]
+            del task_id_tracks_count[id_tsk]
+        else:
+            id_tsk = 0
     if tsk in keep_track_map:
         id_tsk = keep_track_map[tsk]
-        del keep_track_map[tsk]
+        task_id_tracks_count[id_tsk] -= 1
+        if task_id_tracks_count[id_tsk] <= 0:
+            del keep_track_map[tsk]
+            del task_id_tracks_count[id_tsk]
+        else:
+            id_tsk = 0
     if id_tsk > 0:
         logging.log(logging.ULTRADEBUG, 'micro: tasklet ' +\
-                str(id_tsk) + ' now unregistered from tracking.')
+                str(id_tsk) + ' on ' + hostname + \
+                ' now unregistered from tracking.')
 
 def _scheduling(enter, extended):
     global keep_track_map, keep_track_extended_map
@@ -120,7 +149,8 @@ def _scheduling(enter, extended):
     if id_tsk > 0:
         action = ' entering schedule.' if enter else ' leaving schedule.'
         logging.log(logging.ULTRADEBUG, 'micro: tasklet ' +\
-                    str(id_tsk) + action)
+                    str(id_tsk) + ' on ' + hostname + \
+                    action)
 
 def scheduling():
     _scheduling(enter=True, extended=0)
@@ -141,14 +171,22 @@ def leaving_no_ext():
     _scheduling(enter=False, extended=-1)
 
 def task_surveillor(tsk, id_tsk):
+    global keep_track_map, keep_track_extended_map
     logging.log(logging.ULTRADEBUG, 'micro: tasklet ' +\
-            str(id_tsk) + ' started.')
+            str(id_tsk) + ' on ' + hostname + \
+            ' started.')
     while True:
         time.sleep(0.001)
         micro_block()
         if not tsk.alive:
             logging.log(logging.ULTRADEBUG, 'micro: tasklet ' +\
-                    str(id_tsk) + ' terminated a short while ago.')
+                    str(id_tsk) + ' on ' + hostname + \
+                    ' terminated a short while ago.')
+            if tsk in keep_track_map:
+                del keep_track_map[tsk]
+            if tsk in keep_track_extended_map:
+                del keep_track_extended_map[tsk]
+            del task_id_tracks_count[id_tsk]
             return
 
 def micro_block():
