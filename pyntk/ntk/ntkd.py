@@ -27,6 +27,7 @@ import ntk.core.andna as andna
 import ntk.core.andnswrapper as andnswrapper
 import ntk.core.counter as counter
 import ntk.core.andnsserver as andnsserver
+import ntk.core.dnswrapper as dnswrapper
 import ntk.core.radar as radar
 import ntk.core.route as maproute
 import ntk.core.qspn as qspn
@@ -119,6 +120,9 @@ class NtkNode(object):
         #self.andnswrapper = andnswrapper.AndnsWrapper(self.andna, settings.LOCAL_CACHE_PATH, 
         #                         misc.read_resolv(settings.RESOLV_PATH), self.reload_snsd_nodes())
         #self.andnsserver = andnsserver.AndnsServer(self.andnswrapper)
+        # HACK
+        self.andnsserver = dnswrapper.AndnsServer(self.andna)
+        self.dnswrapper = dnswrapper.DnsWrapper(self.maproute, self.andnsserver)
 
         logging.log(logging.ULTRADEBUG, 'NtkNode: This is mapcache of coord '
                     'as soon as started.')
