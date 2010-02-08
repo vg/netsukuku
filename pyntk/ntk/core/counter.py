@@ -224,7 +224,7 @@ class Counter(OptionalP2P):
                 if ttl_holder.get_ttl() <= 0:
                     ttl = 0
                     try:
-                        logging.debug('Counter: declare my hostnames to tha Counter.')
+                        logging.debug('Counter: declare my hostnames to the Counter.')
                         # the return value is the ttl of the registration
                         ttl = self.ask_reset_nip(hnames)
                     except Exception, e:
@@ -255,51 +255,23 @@ class Counter(OptionalP2P):
         logging.debug('COUNTER: ask_reset_nip(' + str(hnames) + ')')
         # calculate hash
         hash_node = self.peer(key=self.maproute.me[:])
-        hash_nip = hash_node.get_hash_nip()
-        logging.debug('COUNTER: ask_reset_nip: exact hash_node is ' + str(hash_nip))
-
-        # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
-        bunch = [hash_nip]
-
-        # TODO uncomment:
-        ### If I am in the bunch, use myself
-        ##if self.maproute.me in bunch:
-        ##    random_hnode = self.maproute.me[:]
-        ##else:
-        if True:
-            random_hnode = choice(bunch)
-        logging.debug('COUNTER: ask_reset_nip: random hash_node is ' + str(random_hnode))
+        logging.debug('COUNTER: ask_reset_nip: exact hash_node is ' + str(hash_node.get_hash_nip()))
         # contact the hash node
-        counter_node = self.peer(hIP=random_hnode)
-        # sign the request and attach the public key
         nip = self.maproute.me[:]
+        # sign the request and attach the public key
         signature = self.my_keys.sign(rencode.dumps((nip, hnames)))
         pubk = self.pubk
-        return counter_node.reset_nip(pubk, nip, hnames, signature)
+        return hash_node.reset_nip(pubk, nip, hnames, signature)
 
     def ask_check(self, registrar_nip, pubk, hostname):
         """ Register or update the name for the specified service number """
         logging.debug('COUNTER: ask_check' + str((registrar_nip, pubk, hostname)))
         # calculate hash
         hash_node = self.peer(key=registrar_nip)
-        hash_nip = hash_node.get_hash_nip()
-        logging.debug('COUNTER: ask_check: exact hash_node is ' + str(hash_nip))
-
-        # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
-        bunch = [hash_nip]
-
-        # TODO uncomment:
-        ### If I am in the bunch, use myself
-        ##if self.maproute.me in bunch:
-        ##    random_hnode = self.maproute.me[:]
-        ##else:
-        if True:
-            random_hnode = choice(bunch)
-        logging.debug('COUNTER: ask_check: random hash_node is ' + str(random_hnode))
+        logging.debug('COUNTER: ask_check: exact hash_node is ' + str(hash_node.get_hash_nip()))
         # contact the hash node
-        hash_gnode = self.peer(hIP=random_hnode)
         logging.debug('COUNTER: ask_check: request check')
-        return hash_gnode.check(registrar_nip, pubk, hostname)
+        return hash_node.check(registrar_nip, pubk, hostname)
 
     ########## Remotable and helper functions used as a server, to serve requests.
 
@@ -420,6 +392,16 @@ class Counter(OptionalP2P):
 
         # Remove the expired entries from the COUNTER cache
         self.check_expirations()
+
+        logging.debug('COUNTER: check' + str((registrar_nip, pubk, hostname)))
+        # first the hash check
+        logging.debug('COUNTER: check: verifying that I am the right hash...')
+        check_hash = self.maproute.me == self.H(self.h(registrar_nip))
+
+        if not check_hash:
+            logging.info('COUNTER: check: hash is NOT verified. Raising exception.')
+            raise CounterError, 'Hash verification failed'
+        logging.debug('COUNTER: check: hash is verified.')
 
         key = pubk, tuple(registrar_nip)
         if key in self.cache:

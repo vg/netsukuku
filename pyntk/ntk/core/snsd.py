@@ -208,9 +208,12 @@ class AndnaResolvedRecord:
         self.records = records
     
     def __repr__(self):
-        ret = '<AndnaResolvedRecord: (ttl ' + str(self.expires - time()) + \
+        ret = '<AndnaResolvedRecord: (ttl ' + str(self.get_ttl()) + \
                 ', records ' + str(self.records)+ ')>'
         return ret
+
+    def get_ttl(self):
+        return self.expires - time()
 
     def _pack(self):
         records = self.records[:] if self.records is not None else None

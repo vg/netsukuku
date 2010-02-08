@@ -181,8 +181,9 @@ class Andna(OptionalP2P):
             self.wait_andna_hook = False
             logging.info('Andna: Emit signal ANDNA_HOOKED.')
 
-            # We received COUNTER_HOOK, so the counter nodes
-            # should know our nip and pubk. So I can register my names
+            # We received COUNTER_HOOK, but the counter nodes could take longer
+            # to know our nip and pubk. So wait a little, then I can register my names
+            swait(3000)
             logging.debug('ANDNA: starting registration of my names.')
             self.register_my_names()
 
@@ -291,28 +292,14 @@ class Andna(OptionalP2P):
 
         # calculate hash
         hash_node = self.peer(key=hostname)
-        hash_nip = hash_node.get_hash_nip()
-        logging.debug('ANDNA: register: exact hash_node is ' + str(hash_nip))
-
-        # TODO find a mechanism to find a 'bunch' of BALANCING nodes
-        bunch = [hash_nip]
-
-        # TODO uncomment:
-        ### If I am in the bunch, use myself
-        ##if self.maproute.me in bunch:
-        ##    random_hnode = self.maproute.me[:]
-        ##else:
-        if True:
-            random_hnode = choice(bunch)
-        logging.debug('ANDNA: register: random hash_node is ' + str(random_hnode))
+        logging.debug('ANDNA: register: exact hash_node is ' + str(hash_node.get_hash_nip()))
         # contact the hash node
-        hash_gnode = self.peer(hIP=random_hnode)
         sender_nip = self.maproute.me[:]
         # sign the request and attach the public key
         signature = self.my_keys.sign(rencode.dumps((sender_nip, hostname,
                 serv_key, IDNum, snsd_record)))
         logging.debug('ANDNA: register: request registration')
-        res, msg = hash_gnode.reply_register(sender_nip,
+        res, msg = hash_node.reply_register(sender_nip,
                                               self.my_keys.get_pub_key(),
                                               hostname,
                                               serv_key,
@@ -335,24 +322,10 @@ class Andna(OptionalP2P):
         logging.debug('ANDNA: request_registrar_pubk(' + str(hostname) + ')')
         # calculate hash
         hash_node = self.peer(key=hostname)
-        hash_nip = hash_node.get_hash_nip()
-        logging.debug('ANDNA: request_registrar_pubk: exact hash_node is ' + str(hash_nip))
-
-        # TODO find a mechanism to find a 'bunch' of BALANCING nodes
-        bunch = [hash_nip]
-
-        # TODO uncomment:
-        ### If I am in the bunch, use myself
-        ##if self.maproute.me in bunch:
-        ##    random_hnode = self.maproute.me[:]
-        ##else:
-        if True:
-            random_hnode = choice(bunch)
-        logging.debug('ANDNA: request_registrar_pubk: random hash_node is ' + str(random_hnode))
+        logging.debug('ANDNA: request_registrar_pubk: exact hash_node is ' + str(hash_node.get_hash_nip()))
         # contact the hash node
-        hash_gnode = self.peer(hIP=random_hnode)
         logging.debug('ANDNA: request_registrar_pubk: request registrar public key...')
-        return hash_gnode.get_registrar_pubk(hostname)
+        return hash_node.get_registrar_pubk(hostname)
 
     def check_expirations_resolved_cache(self):
         # Remove the expired entries from the resolved cache
@@ -362,7 +335,7 @@ class Andna(OptionalP2P):
                 self.resolved.pop(key)
                 logging.debug('ANDNA: cleaned ' + str(key) + ' from resolved cache')
 
-    def resolve(self, hostname, serv_key=NULL_SERV_KEY):
+    def resolve(self, hostname, serv_key=NULL_SERV_KEY, no_chain=False):
         """ Resolve the hostname, returns the AndnaResolvedRecord associated to the hostname and service """
         logging.debug('ANDNA: resolve' + str((hostname, serv_key)))
         res, data = '', ''
@@ -379,23 +352,9 @@ class Andna(OptionalP2P):
             # else call the remote hash node
             # calculate hash
             hash_node = self.peer(key=hostname)
-            hash_nip = hash_node.get_hash_nip()
-            logging.debug('ANDNA: resolve: exact hash_node is ' + str(hash_nip))
-
-            # TODO find a mechanism to find a 'bunch' of BALANCING nodes
-            bunch = [hash_nip]
-
-            # TODO uncomment:
-            ### If I am in the bunch, use myself
-            ##if self.maproute.me in bunch:
-            ##    random_hnode = self.maproute.me[:]
-            ##else:
-            if True:
-                random_hnode = choice(bunch)
-            logging.debug('ANDNA: resolve: random hash_node is ' + str(random_hnode))
+            logging.debug('ANDNA: resolve: exact hash_node is ' + str(hash_node.get_hash_nip()))
             # contact the hash gnode
-            hash_gnode = self.peer(hIP=random_hnode)
-            control, data = hash_gnode.reply_resolve(hostname, serv_key)
+            control, data = hash_node.reply_resolve(hostname, serv_key, no_chain)
             if control == 'OK':
                 self.resolved[(hostname, serv_key)] = data
                 res = 'NOTFOUND' if data.records is None else 'OK'
@@ -652,15 +611,7 @@ class Andna(OptionalP2P):
         logging.debug('ANDNA: get_registrar_pubk(' + str(hostname) + ')')
         # first the hash check
         logging.debug('ANDNA: get_registrar_pubk: verifying that I am the right hash...')
-        # calculate hash
-        hash_node = self.peer(key=hostname)
-        hash_nip = hash_node.get_hash_nip()
-        logging.debug('ANDNA: get_registrar_pubk: exact hash_node is ' + str(hash_nip))
-
-        # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
-        bunch = [hash_nip, self.maproute.me]
-
-        check_hash = self.maproute.me in bunch
+        check_hash = self.maproute.me == self.H(self.h(hostname))
 
         if not check_hash:
             logging.info('ANDNA: get_registrar_pubk: hash is NOT verified. Raising exception.')
@@ -675,7 +626,7 @@ class Andna(OptionalP2P):
         logging.debug('ANDNA: get_registrar_pubk: returning ' + str(ret))
         return ret
 
-    def reply_resolve(self, hostname, serv_key):
+    def reply_resolve(self, hostname, serv_key, no_chain=False):
         """ Return the AndnaResolvedRecord associated to the hostname and service """
         # If we recently changed our NIP (we hooked) we wait to finish
         # an andna_hook before answering a resolution request.
@@ -689,15 +640,7 @@ class Andna(OptionalP2P):
         logging.debug('ANDNA: reply_resolve' + str((hostname, serv_key)))
         # first the hash check
         logging.debug('ANDNA: reply_resolve: verifying that I am the right hash...')
-        # calculate hash
-        hash_node = self.peer(key=hostname)
-        hash_nip = hash_node.get_hash_nip()
-        logging.debug('ANDNA: reply_resolve: exact hash_node is ' + str(hash_nip))
-
-        # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
-        bunch = [hash_nip, self.maproute.me]
-
-        check_hash = self.maproute.me in bunch
+        check_hash = self.maproute.me == self.H(self.h(hostname))
 
         if not check_hash:
             logging.info('ANDNA: reply_resolve: hash is NOT verified. Raising exception.')
@@ -708,6 +651,30 @@ class Andna(OptionalP2P):
         self.check_expirations_cache()
 
         data = self.get_resolved_record(hostname, serv_key)
+        logging.debug('ANDNA: reply_resolve: get_resolved_record returns ' + str(data))
+
+        if data.records is not None:
+            for i in xrange(len(data.records)):
+                datarec = data.records[i]
+                if isinstance(datarec.record, str):
+                    if no_chain:
+                        logging.debug('ANDNA: reply_resolve: no_chain: will discard ' + datarec.record + '.')
+                        data.records[i] = None
+                    else:
+                        # Resolve snsd names for the client
+                        logging.debug('ANDNA: reply_resolve: resolving ' + datarec.record + ' on behalf of our client.')
+                        ris, ris_rec = self.resolve(datarec.record, no_chain=True)
+                        logging.debug('ANDNA: reply_resolve: ' + datarec.record + ' resolved as ' + str((ris, ris_rec)))
+                        if ris == 'OK' and \
+                                len(ris_rec.records) > 0 and \
+                                isinstance(ris_rec.records[0].record, list):
+                            data.records[i].record = ris_rec.records[0].record
+                        else:
+                            data.records[i] = None
+            while None in data.records:
+                data.records.remove(None)
+
+        logging.debug('ANDNA: reply_resolve: returning ' + str(data))
         return 'OK', data
 
     def get_resolved_record(self, hostname, serv_key):
