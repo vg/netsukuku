@@ -29,7 +29,7 @@ from ntk.core.map import Map
 from ntk.lib.event import Event
 from ntk.lib.log import logger as logging
 from ntk.lib.log import get_stackframes
-from ntk.lib.micro import microfunc
+from ntk.lib.micro import microfunc, micro_current, micro_kill
 from ntk.lib.rencode import serializable
 from ntk.lib.rpc import FakeRmt, RPCDispatcher, CallerInfo, RPCError
 from ntk.core.status import ZombieException 
@@ -505,7 +505,7 @@ class OptionalP2P(P2P):
                               self.maproute.ip_to_nip(nr.ip))
     
     def call_participant_add_udp(self, neigh, pIP):
-        """Use BcastClient to call etp_exec"""
+        """Use BcastClient to call participant_add_udp"""
         devs = [neigh.bestdev[0]]
         nip = self.maproute.ip_to_nip(neigh.ip)
         netid = neigh.netid
@@ -515,7 +515,7 @@ class OptionalP2P(P2P):
                             '.participant_add_udp', (pIP,))
 
     def call_participant_del_udp(self, neigh, pIP):
-        """Use BcastClient to call etp_exec"""
+        """Use BcastClient to call participant_del_udp"""
         devs = [neigh.bestdev[0]]
         nip = self.maproute.ip_to_nip(neigh.ip)
         netid = neigh.netid
@@ -670,7 +670,7 @@ class P2PAll(object):
                  'service',
                  'remotable_funcs',
                  'events',
-                 'etp']
+                 'micro_to_kill']
 
     def __init__(self, ntkd_status, radar, maproute):
 
@@ -680,6 +680,8 @@ class P2PAll(object):
         self.maproute = maproute
 
         self.service = {}
+
+        self.micro_to_kill = {}
 
         self.remotable_funcs = [self.get_optional_participants]
         self.events=Event(['P2P_HOOKED'])
@@ -725,64 +727,74 @@ class P2PAll(object):
                 p2p.mapp2p.map_data_merge(map_pack)
         self.service[p2p.pid] = p2p
 
-    @microfunc()
+    @microfunc(True, keep_track=1)
     def p2p_hook(self, *args):
         """P2P hooking procedure
 
         It gets the P2P maps from our nearest neighbour"""
+        # The tasklet started with this function can be killed.
+        # Furthermore, if it is called while it was already running in another
+        # tasklet, it restarts itself.
+        while 'p2p_hook' in self.micro_to_kill:
+            micro_kill(self.micro_to_kill['p2p_hook'])
+        try:
+            self.micro_to_kill['p2p_hook'] = micro_current()
 
-        logging.debug('P2P hooking: started')
-        logging.log(logging.ULTRADEBUG, 'P2P hooking: My actual list of '
-                    'optional services is: ' + str(self.log_services()))
+            logging.debug('P2P hooking: started')
+            logging.log(logging.ULTRADEBUG, 'P2P hooking: My actual list of '
+                        'optional services is: ' + str(self.log_services()))
 
-        neighs_in_net = self.neigh.neigh_list(in_my_network=True)
-        got_answer = False
-        try_again = True
-        nrmaps_pack = None
-        while (not got_answer) and try_again:
-            ## Find our nearest neighbour
-            minlvl = self.maproute.levels
-            minnr = None
-            for nr in neighs_in_net:
-                lvl = self.maproute.nip_cmp(self.maproute.ip_to_nip(nr.ip))
-                if lvl < minlvl:
-                    minlvl = lvl
-                    minnr  = nr
+            neighs_in_net = self.neigh.neigh_list(in_my_network=True)
+            got_answer = False
+            try_again = True
+            nrmaps_pack = None
+            while (not got_answer) and try_again:
+                ## Find our nearest neighbour
+                minlvl = self.maproute.levels
+                minnr = None
+                for nr in neighs_in_net:
+                    lvl = self.maproute.nip_cmp(self.maproute.ip_to_nip(nr.ip))
+                    if lvl < minlvl:
+                        minlvl = lvl
+                        minnr  = nr
 
-            if minnr is None:
-                # nothing to do
-                logging.debug('P2P hooking: No neighbours '
-                            'to ask for the list of optional services.')
-                try_again = False
-            else:
-                logging.log(logging.ULTRADEBUG, 'P2P hooking: I will ask for the '
-                            'list of optional services to ' + str(minnr))
-                try:
-                    nrmaps_pack = minnr.ntkd.p2p.get_optional_participants()
-                    logging.log(logging.ULTRADEBUG, 'P2P hooking: ' + str(minnr) + 
-                                ' answers ' + str(nrmaps_pack))
-                    got_answer = True
-                except Exception, e:
-                    logging.warning('P2P hooking: Asking to ' + str(minnr) + 
-                                    ' failed.')
-                    neighs_in_net.remove(minnr)
+                if minnr is None:
+                    # nothing to do
+                    logging.debug('P2P hooking: No neighbours '
+                                'to ask for the list of optional services.')
+                    try_again = False
+                else:
+                    logging.log(logging.ULTRADEBUG, 'P2P hooking: I will ask for the '
+                                'list of optional services to ' + str(minnr))
+                    try:
+                        nrmaps_pack = minnr.ntkd.p2p.get_optional_participants()
+                        logging.log(logging.ULTRADEBUG, 'P2P hooking: ' + str(minnr) + 
+                                    ' answers ' + str(nrmaps_pack))
+                        got_answer = True
+                    except Exception, e:
+                        logging.warning('P2P hooking: Asking to ' + str(minnr) + 
+                                        ' failed.')
+                        neighs_in_net.remove(minnr)
 
-        if got_answer:
-            for (pid, map_pack) in nrmaps_pack:
-                self.pid_get(pid).mapp2p.map_data_merge(map_pack)
+            if got_answer:
+                for (pid, map_pack) in nrmaps_pack:
+                    self.pid_get(pid).mapp2p.map_data_merge(map_pack)
 
-        for s, obj in self.service.items():
-            if isinstance(obj, OptionalP2P) and obj.participant:
-                logging.debug('P2P hooking: re-participate to '
-                            'PID ' + str(s))
-                self.service[s].participate()
-            self.service[s].exit_wait_p2p_hook()
+            for s, obj in self.service.items():
+                if isinstance(obj, OptionalP2P) and obj.participant:
+                    logging.debug('P2P hooking: re-participate to '
+                                'PID ' + str(s))
+                    self.service[s].participate()
+                self.service[s].exit_wait_p2p_hook()
 
-        logging.debug('P2P hooking: My final list of '
-                    'optional services is: ' + str(self.log_services()))
+            logging.debug('P2P hooking: My final list of '
+                        'optional services is: ' + str(self.log_services()))
 
-        logging.info('P2P: Emit signal P2P_HOOKED.')
-        self.events.send('P2P_HOOKED', ())
+            logging.info('P2P: Emit signal P2P_HOOKED.')
+            self.events.send('P2P_HOOKED', ())
+
+        finally:
+            del self.micro_to_kill['p2p_hook']
 
     def __getattr__(self, str):
 
