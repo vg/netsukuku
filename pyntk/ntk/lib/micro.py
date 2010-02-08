@@ -189,13 +189,49 @@ def task_surveillor(tsk, id_tsk):
             del task_id_tracks_count[id_tsk]
             return
 
-def micro_block():
+customYieldChannel = stackless.channel()
+customYieldChannel.preference = 1
+priority_customYieldChannel = stackless.channel()
+priority_customYieldChannel.preference = 1
+reschedule_prio = False
+
+def micro_block(silent=False):
+    if not silent: leaving()
+    customYieldChannel.receive()
+    if not silent: scheduling()
+
+def micro_reschedule_me_asap():
+    global priority_customYieldChannel
+    if priority_customYieldChannel.balance < 0:
+        raise Exception, 'Only one tasklet can haz priority.'
     leaving()
-    stackless.schedule()
+    priority_customYieldChannel.receive()
     scheduling()
 
+def micro_reschedule_prio():
+    global reschedule_prio
+    reschedule_prio = True
+
 def allmicro_run():
+    global customYieldChannel, priority_customYieldChannel, reschedule_prio
+
     stackless.run()
+    while priority_customYieldChannel.balance < 0 or customYieldChannel.balance < 0:
+
+        while priority_customYieldChannel.balance < 0:
+            reschedule_prio = False
+            priority_customYieldChannel.send(None)
+            stackless.run()
+            if not reschedule_prio: break
+
+        time_expire = time.time() + 0.02
+        while customYieldChannel.balance < 0 and time.time() < time_expire and not reschedule_prio:
+            customYieldChannel.send(None)
+            stackless.run()
+
+        ttw = time_expire - time.time()
+        if ttw > 0.0:
+            time.sleep(ttw)
 
 def micro_kill(tasklet):
     leaving()
@@ -243,7 +279,7 @@ def _time_swait(t, always_first, always_last):
             first = False
         else:
             leaving_ext()
-        stackless.schedule()
+        micro_block(silent=True)
 
 def time_while_condition(func, wait_millisec=10, repetitions=0):
     """If repetitions=0, it enters in an infinite loop checking each time
@@ -333,7 +369,7 @@ class Channel(object):
                 while self.ch.balance <= 0 and expires > time.time():
                     time.sleep(0.001)
                     leaving_ext()
-                    stackless.schedule()
+                    micro_block(silent=True)
                     scheduling_ext()
                 if self.ch.balance > 0:
                     return self.ch.receive()

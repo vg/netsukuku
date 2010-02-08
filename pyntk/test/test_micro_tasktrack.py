@@ -50,22 +50,9 @@ ntk.lib.log.ExpectableException = fakeexception
 from ntk.lib.micro import allmicro_run, micro_block, microfunc, micro
 from ntk.lib.micro import micro_kill, micro_current, micro_runnables
 from ntk.lib.micro import time_swait, time_while_condition, Channel
+from ntk.lib.micro import micro_reschedule_prio, micro_reschedule_me_asap
 
 class TestMicro(unittest.TestCase):
-
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
-
-    def no_test001Bla(self):
-        self.microfunc_1()
-        allmicro_run()
-
-    @microfunc(True)
-    def microfunc_1(self):
-        print 'ciao'
 
     #TO TEST:
     #ch1 = Channel()
@@ -80,15 +67,6 @@ class TestMicro(unittest.TestCase):
         self.mf3 = micro(self.mf3_test010, (ch,))
         self.mf4 = micro(self.mf4_test010, (ch,))
         self.mf5 = micro(self.mf5_test010, (ch,))
-        runnables = micro_runnables()
-        self.failUnless(self.mf1 in runnables, 'mf1 not in runnables')
-        self.failUnless(self.mf2 in runnables, 'mf2 not in runnables')
-        self.failUnless(self.mf3 in runnables, 'mf3 not in runnables')
-        self.failUnless(self.mf4 in runnables, 'mf4 not in runnables')
-        self.failUnless(runnables.index(self.mf1) < runnables.index(self.mf2), 'mf1 not before mf2')
-        self.failUnless(runnables.index(self.mf2) < runnables.index(self.mf3), 'mf2 not before mf3')
-        self.failUnless(runnables.index(self.mf3) < runnables.index(self.mf4), 'mf3 not before mf4')
-        self.failUnless(runnables.index(self.mf4) < runnables.index(self.mf5), 'mf4 not before mf5')
         allmicro_run()
         self.failUnlessEqual(self.ret, [1, 2, 3, 4, 5, 6, 7, 8, 9])
 
@@ -97,69 +75,26 @@ class TestMicro(unittest.TestCase):
         self.ret.append(1)
         ch.send(0)
         self.failUnless(self.ret == [1, 2, 3], 'ch.recv in mf3 did not pass the schedule to sender mf1')
-        runnables = micro_runnables()
-        # current order should be mf1, mf4, mf2, mf3. That is, the tasklet that has just received goes last
-        # and the sender goes first and take the schedule.
-        self.failUnless(self.mf1 in runnables, 'mf1 not in runnables')
-        self.failUnless(self.mf2 in runnables, 'mf2 not in runnables')
-        self.failUnless(self.mf3 in runnables, 'mf3 not in runnables')
-        self.failUnless(self.mf4 in runnables, 'mf4 not in runnables')
-        self.failUnless(runnables.index(self.mf1) < runnables.index(self.mf4), 'mf1 not before mf4')
-        self.failUnless(runnables.index(self.mf4) < runnables.index(self.mf2), 'mf4 not before mf2')
-        self.failUnless(runnables.index(self.mf2) < runnables.index(self.mf3), 'mf2 not before mf3')
-        self.failUnless(runnables.index(self.mf4) < runnables.index(self.mf5), 'mf4 not before mf5')
         self.ret.append(4)
 
     def mf2_test010(self, ch):
         self.failUnless(self.ret == [1], 'ch.send in mf1 did not pass the schedule to mf2')
-        runnables = micro_runnables()
-        self.failUnless(self.mf1 not in runnables, 'ch.send in mf1, but mf1 still in runnables')
-        self.failUnless(self.mf2 in runnables, 'mf2 not in runnables')
-        self.failUnless(self.mf3 in runnables, 'mf3 not in runnables')
-        self.failUnless(self.mf4 in runnables, 'mf4 not in runnables')
-        self.failUnless(runnables.index(self.mf2) < runnables.index(self.mf3), 'mf2 not before mf3')
-        self.failUnless(runnables.index(self.mf3) < runnables.index(self.mf4), 'mf3 not before mf4')
-        self.failUnless(runnables.index(self.mf4) < runnables.index(self.mf5), 'mf4 not before mf5')
         self.failUnless(self.mf1.blocked, 'ch.send in mf1 did not block mf1')
         self.failUnless(self.mf1.alive, 'ch.send in mf1, mf1 seems dead')
         self.ret.append(2)
         micro_block()
         self.failUnless(self.ret == [1, 2, 3, 4, 5], 'ch.recv in mf4 did not pass the schedule to mf2')
-        runnables = micro_runnables()
-        self.failUnless(self.mf1 not in runnables, 'mf1 should be dead, but it is in runnables')
-        self.failUnless(self.mf2 in runnables, 'mf2 not in runnables')
-        self.failUnless(self.mf3 in runnables, 'mf3 not in runnables')
-        self.failUnless(self.mf4 not in runnables, 'mf4 should be blockes, but it is in runnables')
-        self.failUnless(runnables.index(self.mf2) < runnables.index(self.mf3), 'mf2 not before mf3')
         self.failUnless(not self.mf1.alive, 'mf1 should be dead')
         self.failUnless(self.mf4.alive, 'mf4 should be alive')
         self.failUnless(self.mf4.blocked, 'mf4 should be blocked')
         self.ret.append(6)
         ch.send(1)
         self.failUnless(self.ret == [1, 2, 3, 4, 5, 6], 'ch.send in mf2 should not pass the schedule')
-        # current order should be mf2, mf3, mf5, mf4. That is, the tasklet that has just sent retain the schedule
-        # and the receiver goes last. (previously mf4 < mf5)
-        runnables = micro_runnables()
-        self.failUnless(self.mf1 not in runnables, 'mf1 should be dead, but it is in runnables')
-        self.failUnless(self.mf2 in runnables, 'mf2 not in runnables')
-        self.failUnless(self.mf3 in runnables, 'mf3 not in runnables')
-        self.failUnless(self.mf4 in runnables, 'mf4 not in runnables')
-        self.failUnless(runnables.index(self.mf2) < runnables.index(self.mf3), 'mf2 not before mf3')
-        self.failUnless(runnables.index(self.mf3) < runnables.index(self.mf4), 'mf3 not before mf4')
-        self.failUnless(runnables.index(self.mf5) < runnables.index(self.mf4), 'mf5 not before mf4')
         self.failUnless(not self.mf1.alive, 'mf1 should be dead')
         self.ret.append(7)
 
     def mf3_test010(self, ch):
         self.failUnless(self.ret == [1, 2], 'micro_block in mf2 did not pass the schedule to mf3')
-        runnables = micro_runnables()
-        self.failUnless(self.mf1 not in runnables, 'ch.send in mf1, but mf1 still in runnables')
-        self.failUnless(self.mf2 in runnables, 'mf2 not in runnables')
-        self.failUnless(self.mf3 in runnables, 'mf3 not in runnables')
-        self.failUnless(self.mf4 in runnables, 'mf4 not in runnables')
-        self.failUnless(runnables.index(self.mf3) < runnables.index(self.mf4), 'mf3 not before mf4')
-        self.failUnless(runnables.index(self.mf4) < runnables.index(self.mf2), 'mf4 not before mf2')
-        self.failUnless(runnables.index(self.mf4) < runnables.index(self.mf5), 'mf4 not before mf5')
         self.failUnless(self.mf1.blocked, 'ch.send in mf1 did not block mf1')
         self.failUnless(self.mf1.alive, 'ch.send in mf1, mf1 seems dead')
         self.ret.append(3)
@@ -170,14 +105,6 @@ class TestMicro(unittest.TestCase):
 
     def mf4_test010(self, ch):
         self.failUnless(self.ret == [1, 2, 3, 4], 'mf4 not in the right moment')
-        runnables = micro_runnables()
-        self.failUnless(self.mf1 not in runnables, 'mf1 has finished, but mf1 still in runnables')
-        self.failUnless(self.mf2 in runnables, 'mf2 not in runnables')
-        self.failUnless(self.mf3 in runnables, 'mf3 not in runnables')
-        self.failUnless(self.mf4 in runnables, 'mf4 not in runnables')
-        self.failUnless(runnables.index(self.mf4) < runnables.index(self.mf2), 'mf4 not before mf2')
-        self.failUnless(runnables.index(self.mf2) < runnables.index(self.mf3), 'mf2 not before mf3')
-        self.failUnless(runnables.index(self.mf4) < runnables.index(self.mf5), 'mf4 not before mf5')
         self.failUnless(not self.mf1.alive, 'mf1 has finished, but mf1 still alive')
         self.ret.append(5)
         secret = ch.recv()

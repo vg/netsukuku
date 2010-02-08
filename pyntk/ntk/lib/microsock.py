@@ -39,7 +39,8 @@ import time as stdtime
 
 from ntk.lib.log import get_stackframes
 from ntk.lib.log import logger as logging
-from ntk.lib.micro import Channel, micro, allmicro_run, micro_block
+from ntk.lib.micro import Channel, micro, allmicro_run, micro_block, \
+        micro_runnables, micro_reschedule_prio, micro_reschedule_me_asap
 from ntk.wrap.xtime import swait, time, while_condition
 
 
@@ -122,8 +123,9 @@ def ManageSockets():
     global managerRunning
 
     while len(asyncore.socket_map):
+        #logging.log(logging.ULTRADEBUG, 'microsock.ManageSockets: at start # runnables = ' + str(len(micro_runnables())))
         # Check the sockets for activity.
-        asyncore.poll(0.05)
+        asyncore.poll(0.02)
         # Check if we have timed out operations.
         ret = expiring_sockets.get_next()
         if ret is not None:
@@ -139,8 +141,9 @@ def ManageSockets():
             else:
                 pass  # timeout not honored. we should signal that.
 
+        #logging.log(logging.ULTRADEBUG, 'microsock.ManageSockets: at end # runnables = ' + str(len(micro_runnables())))
         # Yield to give other tasklets a chance to be scheduled.
-        micro_block()
+        micro_reschedule_me_asap()
 
     managerRunning = False
 
@@ -148,6 +151,7 @@ def StartManager():
     global managerRunning
     if not managerRunning:
         managerRunning = True
+        #micro(ManageSockets, keep_track=1)
         micro(ManageSockets)
 
 _manage_sockets_func = StartManager
@@ -277,6 +281,7 @@ class dispatcher(asyncore.dispatcher):
 
 
     def connect(self, address):
+        micro_reschedule_prio()
         asyncore.dispatcher.connect(self, address)
         # UDP sockets do not connect.
 
@@ -294,11 +299,13 @@ class dispatcher(asyncore.dispatcher):
 
 
     def send(self, data):
+        micro_reschedule_prio()
         self.sendBuffer += data
         micro_block()
         return len(data)
 
     def sendall(self, data):
+        micro_reschedule_prio()
         self.send_has_exception = None
         self.send_will_handle_exception = True
         try:
@@ -317,6 +324,7 @@ class dispatcher(asyncore.dispatcher):
         return len(data)
 
     def sendto(self, sendData, sendAddress):
+        micro_reschedule_prio()
         waitChannel = None
         for idx, (data, address, channel, sentBytes, waiting_tasklets) in \
                    enumerate(self.sendToBuffers):
@@ -342,6 +350,7 @@ class dispatcher(asyncore.dispatcher):
 
     # Read at most byteCount bytes.
     def recv(self, byteCount):
+        micro_reschedule_prio()
         self._receiving = True
         try:
             self.maxreceivebuf=byteCount
@@ -362,6 +371,7 @@ class dispatcher(asyncore.dispatcher):
             self._receiving = False
 
     def recvfrom(self, byteCount, timeout = None):
+        micro_reschedule_prio()
         self.maxreceivebuf=byteCount
         if timeout is not None:
             expiring_sockets.add(self, 
