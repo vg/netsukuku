@@ -101,10 +101,17 @@ class Counter(OptionalP2P):
         self.cache = {}
         # Note: tuple is hashable, list is not.
 
+        # Resolved Cache for reverse_resolution = { tuple(nip): [(hostname, TimeCapsule(ttl)), ...], ... }
+        self.resolved_reverse_resolution = {}
+
         self.remotable_funcs += [self.check,
                                  self.confirm_your_request,
                                  self.cache_getall,
-                                 self.reset_nip]
+                                 self.reset_nip,
+                                 self.reverse_resolve]
+
+    def set_andna(self, andna):
+        self.andna = andna
 
     def enter_wait_counter_hook(self, *args):
         self.wait_counter_hook = True
@@ -117,6 +124,7 @@ class Counter(OptionalP2P):
         ''' Resets all data. Invoked when hooked in a new network.
         '''
         self.cache = {}
+        self.resolved_reverse_resolution = {}
 
     @microfunc(True, keep_track=1) 
     def counter_hook(self):
@@ -273,17 +281,65 @@ class Counter(OptionalP2P):
         logging.debug('COUNTER: ask_check: request check')
         return hash_node.check(registrar_nip, pubk, hostname)
 
+    def check_expirations_resolved_cache(self):
+        # Remove the expired entries from the resolved cache
+        logging.debug('COUNTER: cleaning expired entries - if any - from our resolved cache...')
+        logging.debug('COUNTER: self.resolved_reverse_resolution was ' + str(self.resolved_reverse_resolution))
+        for key, data_cached in self.resolved_reverse_resolution.items():
+            # if any of the TTL expired, we must remove all the cached list
+            expired = False
+            for hostname, timecapsule_ttl in data_cached:
+                if timecapsule_ttl.get_ttl() < 0:
+                    expired = True
+                    break
+            if expired:
+                self.resolved_reverse_resolution.pop(key)
+                logging.debug('COUNTER: cleaned ' + str(key) + ' from resolved_reverse_resolution cache')
+        logging.debug('COUNTER: self.resolved_reverse_resolution is ' + str(self.resolved_reverse_resolution))
+
+    def ask_reverse_resolution(self, nip):
+        ''' Ask for reverse resolution of nip
+        '''
+        logging.debug('COUNTER: ask_reverse_resolution(' + str(nip) + ')')
+        # Remove the expired entries from the resolved cache
+        self.check_expirations_resolved_cache()
+
+        # first try to resolve locally
+        if self.resolved_reverse_resolution.has_key(tuple(nip)):
+            data_cached = self.resolved_reverse_resolution[tuple(nip)]
+            # data_cached = [(hostname, TimeCapsule(ttl)), ...]
+            data_to_return = []
+            for hostname, timecapsule_ttl in data_cached:
+                data_to_return.append((hostname, timecapsule_ttl.get_ttl()))
+            return data_to_return
+        # else call the remote hash node
+        # calculate hash
+        hash_node = self.peer(key=nip)
+        logging.debug('COUNTER: ask_reverse_resolution: exact hash_node is ' + str(hash_node.get_hash_nip()))
+        # contact the hash node
+        logging.debug('COUNTER: ask_reverse_resolution: request reverse resolution')
+        data = hash_node.reverse_resolve(nip)
+        if any(data):
+            # data = [(hostname, ttl), ...]
+            data_to_cache = []
+            for hostname, ttl in data:
+                data_to_cache.append((hostname, TimeCapsule(ttl)))
+            self.resolved_reverse_resolution[tuple(nip)] = data_to_cache
+        return data
+
     ########## Remotable and helper functions used as a server, to serve requests.
 
     def check_expirations(self):
         # Remove the expired entries from the COUNTER cache
         logging.debug('COUNTER: cleaning expired entries - if any - from our COUNTER cache...')
+        logging.debug('COUNTER: self.cache was ' + str(self.cache))
         for key, auth_record in self.cache.items():
             pubk, nip = auth_record.pubk, auth_record.nip
             if auth_record.get_ttl() <= 0:
                 self.cache.pop(key)
                 logging.debug('COUNTER: cleaned entry (pubk ' + pubk.short_repr() + \
                         ', nip ' + str(nip) + ')')
+        logging.debug('COUNTER: self.cache is ' + str(self.cache))
 
     def reset_nip(self, pubk, nip, hnames, signature, forward=True):
       ''' This pubk is declaring it is the holder of this nip.
@@ -409,6 +465,52 @@ class Counter(OptionalP2P):
             if hostname in counter_auth_rec.hnames:
                 return True, counter_auth_rec.get_ttl()
         return False, 0
+
+    def reverse_resolve(self, nip):
+        """ Return a list of pairs like (hostname, TTL) """
+        # If we recently changed our NIP (we hooked) we wait to finish
+        # an counter_hook before answering a reverse_resolve request.
+        def exit_func():
+            return not self.wait_counter_hook
+        logging.debug('COUNTER: waiting counter_hook...')
+        while_condition(exit_func, wait_millisec=1)
+        logging.debug('COUNTER: We are correctly hooked.')
+        # We are correctly hooked.
+
+        # Remove the expired entries from the COUNTER cache
+        self.check_expirations()
+
+        logging.debug('COUNTER: reverse_resolve(' + str(nip) + ')')
+        # first the hash check
+        logging.debug('COUNTER: reverse_resolve: verifying that I am the right hash...')
+        check_hash = self.maproute.me == self.H(self.h(nip))
+
+        if not check_hash:
+            logging.info('COUNTER: reverse_resolve: hash is NOT verified. Raising exception.')
+            raise CounterError, 'Hash verification failed'
+        logging.debug('COUNTER: reverse_resolve: hash is verified.')
+
+        ret = []
+        hname_no_dup = []
+        for key in self.cache:
+            # key = pubk, tuple(registrar_nip)
+            if key[1] == tuple(nip):
+                counter_auth_rec = self.cache[key]
+                for hostname in counter_auth_rec.hnames:
+                    # do not emit duplicates
+                    if hostname in hname_no_dup: break
+                    hname_no_dup.append(hostname)
+                    logging.debug('COUNTER: reverse_resolve: nip ' + str(nip) + ' asked for ' + hostname)
+                    # hostname has been requested by this nip. Has it really got?
+                    registrar_nip, registrar_ttl = self.andna.ask_registrar_nip(hostname)
+                    if registrar_nip == nip:
+                        logging.debug('COUNTER: reverse_resolve: ... and it has got it.')
+                        ret.append((hostname, min(counter_auth_rec.get_ttl(), registrar_ttl)))
+                    else:
+                        logging.debug('COUNTER: reverse_resolve: ... but it hasn\'t got it.')
+                break
+        logging.debug('COUNTER: reverse_resolve: returns ' + str(ret))
+        return ret
 
     def cache_getall(self):
         ''' Returns the cache of authoritative records.

@@ -117,11 +117,12 @@ class NtkNode(object):
         self.coordnode = coord.Coord(self.ntkd_status, self.radar, self.maproute, self.p2p)
         self.counter = counter.Counter(self.ntkd_status, self.keypair, self.radar, self.maproute, self.p2p)
         self.andna = andna.Andna(self.ntkd_status, self.keypair, self.counter, self.radar, self.maproute, self.p2p)
+        self.counter.set_andna(self.andna)
         #self.andnswrapper = andnswrapper.AndnsWrapper(self.andna, settings.LOCAL_CACHE_PATH, 
         #                         misc.read_resolv(settings.RESOLV_PATH), self.reload_snsd_nodes())
         #self.andnsserver = andnsserver.AndnsServer(self.andnswrapper)
         # HACK
-        self.andnsserver = dnswrapper.AndnsServer(self.andna)
+        self.andnsserver = dnswrapper.AndnsServer(self.andna, self.counter)
         self.dnswrapper = dnswrapper.DnsWrapper(self.maproute, self.andnsserver)
 
         logging.log(logging.ULTRADEBUG, 'NtkNode: This is mapcache of coord '

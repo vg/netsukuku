@@ -30,6 +30,7 @@ def log_func(args):
     print args
 
 class fakelogger(object):
+    def __init__(self): pass
     def log(self, *args): log_func(args[1])
     def debug(self, *args): log_func(args)
     def error(self, *args): log_func(args)
@@ -51,12 +52,11 @@ from ntk.core.dnswrapper import AndnsServer as fakeandnsserver
 class TestDnsWrapper(unittest.TestCase):
 
     def test_dns(self):
-        DnsWrapper(None, fakeandnsserver(None))
-        # TODO
         micro(self.mf_test_dns)
         allmicro_run()
 
     def mf_test_dns(self):
+        DnsWrapper(None, fakeandnsserver(None, None))
         while True:
             time_swait(2000)
             ntk.lib.log.logger.debug('ciao')

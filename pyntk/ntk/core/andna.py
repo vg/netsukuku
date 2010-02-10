@@ -99,15 +99,18 @@ class Andna(OptionalP2P):
         # Resolved Cache = { (hostname, serv_key): AndnaResolvedRecord(), ... }
         self.resolved = {}
 
+        # Resolved Cache for registrar_nip = { hostname: (nip, TimeCapsule(ttl)), ... }
+        self.resolved_registrar_nip = {}
+
         # hostnames that I tried to register to myself
         self.wanted_hostnames = []
     
         self.remotable_funcs += [self.reply_register,
-                                 self.confirm_your_request,
                                  self.reply_resolve,
                                  self.get_registrar_pubk,
                                  self.reply_queued_registration,
-                                 self.get_auth_cache]
+                                 self.get_auth_cache,
+                                 self.reply_registrar_nip]
 
     def enter_wait_andna_hook(self, *args):
         self.wait_andna_hook = True
@@ -121,6 +124,7 @@ class Andna(OptionalP2P):
         self.cache = {}
         self.local_cache = {}
         self.resolved = {}
+        self.resolved_registrar_nip = {}
 
     @microfunc(True, keep_track=1)
     def andna_hook(self):
@@ -271,15 +275,6 @@ class Andna(OptionalP2P):
         finally:
             del self.micro_to_kill['register_my_names']
 
-    ########## remotable methods directly called to a NIP
-
-    def confirm_your_request(self, nip, pubk):
-        # This P2P-remotable method is called directyly to a certain NIP in order
-        # to verify that he is the sender of a certain request. The method asks to
-        # confirm that the NIP is the right one, that the public key is of this node.
-        return nip == self.maproute.me and \
-               pubk == self.my_keys.get_pub_key()
-
     ########## Helper functions used as a client of Andna, to send requests.
 
     def register(self, hostname, serv_key, IDNum, snsd_record,
@@ -330,10 +325,19 @@ class Andna(OptionalP2P):
     def check_expirations_resolved_cache(self):
         # Remove the expired entries from the resolved cache
         logging.debug('ANDNA: cleaning expired entries - if any - from our resolved cache...')
+        logging.debug('ANDNA: self.resolved was ' + str(self.resolved))
         for key, resolved_record in self.resolved.items():
             if resolved_record.expires < time():
                 self.resolved.pop(key)
                 logging.debug('ANDNA: cleaned ' + str(key) + ' from resolved cache')
+        logging.debug('ANDNA: self.resolved is ' + str(self.resolved))
+        logging.debug('ANDNA: self.resolved_registrar_nip was ' + str(self.resolved_registrar_nip))
+        for key, tupl in self.resolved_registrar_nip.items():
+            nip, timecapsule_ttl = tupl
+            if timecapsule_ttl.get_ttl() < 0:
+                self.resolved_registrar_nip.pop(key)
+                logging.debug('ANDNA: cleaned ' + str(key) + ' from resolved_registrar_nip cache')
+        logging.debug('ANDNA: self.resolved_registrar_nip is ' + str(self.resolved_registrar_nip))
 
     def resolve(self, hostname, serv_key=NULL_SERV_KEY, no_chain=False):
         """ Resolve the hostname, returns the AndnaResolvedRecord associated to the hostname and service """
@@ -366,11 +370,38 @@ class Andna(OptionalP2P):
             res, data = 'CANTRESOLVE', 'Could not resolve right now'
         return res, data
 
+    def ask_registrar_nip(self, hostname):
+        """ Asks the NIP of the registrar of hostname """
+        logging.debug('ANDNA: ask_registrar_nip(' + str(hostname) + ')')
+        try:
+            # Remove the expired entries from the resolved cache
+            self.check_expirations_resolved_cache()
+
+            # first try to resolve locally
+            if self.resolved_registrar_nip.has_key(hostname):
+                nip, timecapsule_ttl = self.resolved_registrar_nip[hostname]
+                return nip, timecapsule_ttl.get_ttl()
+            # else call the remote hash node
+            # calculate hash
+            hash_node = self.peer(key=hostname)
+            logging.debug('ANDNA: ask_registrar_nip: exact hash_node is ' + str(hash_node.get_hash_nip()))
+            # contact the hash node
+            data = hash_node.reply_registrar_nip(hostname)
+            if data is not None:
+                nip, ttl = data
+                self.resolved_registrar_nip[hostname] = nip, TimeCapsule(ttl)
+            return data
+        except Exception, e:
+            logging.debug('ANDNA: ask_registrar_nip: could not resolve right now:')
+            log_exception_stacktrace(e)
+            return None
+
     ########## Remotable and helper functions used as a server, to serve requests.
 
     def check_expirations_cache(self):
         # Remove the expired entries from the ANDNA cache
         logging.debug('ANDNA: cleaning expired entries - if any - from our ANDNA cache...')
+        logging.debug('ANDNA: self.cache was ' + str(self.cache))
         for hname, auth_record in self.cache.items():
             if auth_record.expires < time():
                 self.cache.pop(hname)
@@ -390,6 +421,7 @@ class Andna(OptionalP2P):
                         timestamp, updates = data
                         client.reply_queued_registration(hname, timestamp,
                                                          updates)
+        logging.debug('ANDNA: self.cache is ' + str(self.cache))
 
     def reply_register(self, sender_nip, pubk, hostname, serv_key, IDNum,
                        snsd_record, signature, append_if_unavailable,
@@ -676,6 +708,36 @@ class Andna(OptionalP2P):
 
         logging.debug('ANDNA: reply_resolve: returning ' + str(data))
         return 'OK', data
+
+    def reply_registrar_nip(self, hostname):
+        """ Return the NIP of the registrar of hostname and its TTL """
+        # If we recently changed our NIP (we hooked) we wait to finish
+        # an andna_hook before answering a resolution request.
+        def exit_func():
+            return not self.wait_andna_hook
+        logging.debug('ANDNA: waiting andna_hook...')
+        while_condition(exit_func, wait_millisec=1)
+        logging.debug('ANDNA: We are correctly hooked.')
+        # We are correctly hooked.
+
+        logging.debug('ANDNA: reply_registrar_nip(' + str(hostname) + ')')
+        # first the hash check
+        logging.debug('ANDNA: reply_registrar_nip: verifying that I am the right hash...')
+        check_hash = self.maproute.me == self.H(self.h(hostname))
+
+        if not check_hash:
+            logging.info('ANDNA: reply_registrar_nip: hash is NOT verified. Raising exception.')
+            raise AndnaError, 'Hash verification failed'
+        logging.debug('ANDNA: reply_registrar_nip: hash is verified.')
+
+        # Remove the expired entries from the ANDNA cache
+        self.check_expirations_cache()
+
+        data = None
+        if hostname in self.cache:
+            data = self.cache[hostname].nip[:], self.cache[hostname].get_ttl()
+        logging.debug('ANDNA: reply_registrar_nip: returns ' + str(data))
+        return data
 
     def get_resolved_record(self, hostname, serv_key):
         ''' Helper method to retrieve from the ANDNA cache an AndnaAuthRecord

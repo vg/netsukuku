@@ -33,9 +33,11 @@ from ntk.wrap.sock import Sock
 from ntk.network.inet import ip_to_str
 from ntk.lib.micro import microfunc
 from ntk.lib.log import logger as logging
+from ntk.lib.log import log_exception_stacktrace
 from ntk.core.andna import NULL_SERV_KEY, make_serv_key
 from ntk.core.snsd import AndnaResolvedRecord
 from ntk.wrap.xtime import swait
+from ntk.network.inet import str_to_ip
 
 # This class is a temporary hack
 class AndnsRequest(object):
@@ -45,12 +47,31 @@ class AndnsRequest(object):
         self.serv_key = NULL_SERV_KEY
 
 # This class is a temporary hack
+class AndnsReverseRequest(object):
+    def __init__(self):
+        # as a dotted string for internet
+        self.ip = None
+        # as a sequence for netsukuku
+        self.nip = None
+        self.ntk_bit = 0
+
+# This class is a temporary hack
 class AndnsServer(object):
-    def __init__(self, andna):
+    def __init__(self, andna, counter):
         self.andna = andna
+        self.counter = counter
     def resolve(self, req):
+        if not isinstance(req, AndnsRequest):
+            raise Exception, 'Wrong type'
         if req.ntk_bit:
             return self.andna.resolve(req.hostname, req.serv_key)
+        else:
+            raise Exception, 'Internet realm not implemented yet.'
+    def reverse_resolve(self, req):
+        if not isinstance(req, AndnsReverseRequest):
+            raise Exception, 'Wrong type'
+        if req.ntk_bit:
+            return self.counter.ask_reverse_resolution(req.nip)
         else:
             raise Exception, 'Internet realm not implemented yet.'
 
@@ -93,28 +114,42 @@ class DnsWrapper(object):
                 try:
                     op = msg.opcode()
                     if op == 0:
-                        # standard query
-                        resp = self.std_qry(msg)
-                    elif op == 1:
-                        # inverse query
-                        resp = self.inv_qry(msg)
+                        # standard and inverse query
+                        qs = msg.question
+                        if len(qs) > 0:
+                            q = qs[0]
+                            logging.debug('DnsWrapper: request is ' + str(q))
+                            if q.rdtype == dns.rdatatype.A:
+                                resp = self.std_qry(msg)
+                            elif q.rdtype == dns.rdatatype.PTR and \
+                                    q.name.to_text()[-14:].upper() == '.IN-ADDR.ARPA.':
+                                resp = self.inv_qry(msg)
+                            elif q.rdtype == dns.rdatatype.SRV:
+                                # TODO interpret requests of type SRV records (andns_req.serv_key)
+                                pass
+                            else:
+                                # not implemented
+                                resp = self.make_response(qry=msg, RCODE=4)   # RCODE =  4    Not Implemented
                     else:
                         # not implemented
                         resp = self.make_response(qry=msg, RCODE=4)   # RCODE =  4    Not Implemented
 
                 except Exception, e:
                     logging.info('DnsWrapper: got ' + repr(e))
-                    resp = self.make_response(qry=msg, RCODE=2)   # RCODE =  3    Server Error
+                    log_exception_stacktrace(e)
+                    resp = self.make_response(qry=msg, RCODE=2)   # RCODE =  2    Server Error
                     logging.debug('DnsWrapper: resp = ' + repr(resp.to_wire()))
 
             except Exception, e:
                 logging.info('DnsWrapper: got ' + repr(e))
-                resp = self.make_response(id=message_id, RCODE=1)   # RCODE =  3    Format Error
+                log_exception_stacktrace(e)
+                resp = self.make_response(id=message_id, RCODE=1)   # RCODE =  1    Format Error
                 logging.debug('DnsWrapper: resp = ' + repr(resp.to_wire()))
 
         except Exception, e:
             # message was crap, not even the ID
             logging.info('DnsWrapper: got ' + repr(e))
+            log_exception_stacktrace(e)
 
         if resp:
             self.s.sendto(resp.to_wire(), address)
@@ -140,64 +175,62 @@ class DnsWrapper(object):
             qname = q.name.to_text()[:-1]
             logging.debug('DnsWrapper: q name = ' + qname)
             ipstr = None
-            if qname:
-                # Netsukuku or Internet?
-                realm_internet = True
-                if qname[-4:].upper() == '.NTK':
-                    qname = qname[:-4]
-                    realm_internet = False
-                # Transform DNS request in ANDNS request
-                andns_req = AndnsRequest()
-                andns_req.hostname = qname
-                andns_req.ntk_bit = 0 if realm_internet else 1
-                # TODO interpret requests of type SRV records (andns_req.serv_key)
-                logging.debug('DnsWrapper: andns_req = ' + str(andns_req))
+            # Netsukuku or Internet?
+            realm_internet = True
+            if qname[-4:].upper() == '.NTK':
+                qname = qname[:-4]
+                realm_internet = False
+            # Transform DNS request in ANDNS request
+            andns_req = AndnsRequest()
+            andns_req.hostname = qname
+            andns_req.ntk_bit = 0 if realm_internet else 1
+            logging.debug('DnsWrapper: andns_req = ' + str(andns_req))
 
-                ret = None
-                if self.andnsserver:
-                    logging.debug('DnsWrapper: andnsserver.resolve...')
-                    ret = self.andnsserver.resolve(andns_req)
-                    logging.debug('DnsWrapper: andnsserver.resolve returns ' + str(ret))
-                    if ret[0] == 'OK':
-                        ret = ret[1]
-                    else:
-                        logging.debug('DnsWrapper: returning error because ret: ' + str(ret))
-                        ret = None
-                        nxdomain = True
-                        break
+            ret = None
+            if self.andnsserver:
+                logging.debug('DnsWrapper: andnsserver.resolve...')
+                ret = self.andnsserver.resolve(andns_req)
+                logging.debug('DnsWrapper: andnsserver.resolve returns ' + str(ret))
+                if ret[0] == 'OK':
+                    ret = ret[1]
                 else:
-                    # TODO: call libandns
-                    logging.debug('DnsWrapper: call libandns not implemented yet.')
+                    logging.debug('DnsWrapper: returning error because ret: ' + str(ret))
+                    ret = None
                     nxdomain = True
                     break
+            else:
+                # TODO: call libandns
+                logging.debug('DnsWrapper: call libandns not implemented yet.')
+                nxdomain = True
+                break
 
-                if ret is not None:
-                    if isinstance(ret, AndnaResolvedRecord):
-                        # ret is an instance of AndnaResolvedRecord
-                        if ret.records is None:
-                            logging.debug('DnsWrapper: not found.')
-                            break
-                        else:
-                            # Since in DNS, records A have no priority or weight, we do like this:
-                            # choose max priority records
-                            max_prio = -1
-                            for rec in ret.records:
-                                if max_prio == -1 or max_prio > rec.priority:
-                                    max_prio = rec.priority
-                            records = [rec for rec in ret.records if rec.priority == max_prio]
-                            # return them all
-                            for rec in records:
-                                # from a nip to a ip string
-                                ipstr = ip_to_str(self.maproute.nip_to_ip(rec.record))
-
-                                logging.debug('DnsWrapper: returns: ' + ipstr)
-                                rrset = dns.rrset.from_text(q.name, ret.get_ttl() / 1000,
-                                       dns.rdataclass.IN, dns.rdatatype.A, ipstr)
-                                answers.append(rrset)
+            if ret is not None:
+                if isinstance(ret, AndnaResolvedRecord):
+                    # ret is an instance of AndnaResolvedRecord
+                    if ret.records is None:
+                        logging.debug('DnsWrapper: not found.')
+                        break
                     else:
-                        # ret is an instance of AndnsAnswer ??
-                        # TODO
-                        pass
+                        # Since in DNS, records A have no priority or weight, we do like this:
+                        # choose max priority records
+                        max_prio = -1
+                        for rec in ret.records:
+                            if max_prio == -1 or max_prio > rec.priority:
+                                max_prio = rec.priority
+                        records = [rec for rec in ret.records if rec.priority == max_prio]
+                        # return them all
+                        for rec in records:
+                            # from a nip to a ip string
+                            ipstr = ip_to_str(self.maproute.nip_to_ip(rec.record))
+
+                            logging.debug('DnsWrapper: returns: ' + ipstr)
+                            rrset = dns.rrset.from_text(q.name, ret.get_ttl() / 1000,
+                                   dns.rdataclass.IN, dns.rdatatype.A, ipstr)
+                            answers.append(rrset)
+                else:
+                    # ret is an instance of AndnsAnswer ??
+                    # TODO
+                    pass
 
         if not nxdomain:
             resp = self.make_response(qry=msg)
@@ -220,7 +253,73 @@ class DnsWrapper(object):
         @rtype: dns.message.Message object'''
 
         # TODO
-        resp = self.make_response(qry=msg, RCODE=4)   # RCODE =  4    Not Implemented
+
+        qs = msg.question
+        logging.debug('DnsWrapper: ' + str(len(qs)) + ' questions.')
+
+        answers = []
+        nxdomain = False
+        for q in qs:
+            revip = q.name.to_text()[:-14]
+            ipstr = '.'.join(revip.split('.')[::-1])
+            logging.debug('q.name = ' + ipstr)
+
+            # Transform DNS request in ANDNS request
+            andns_req = AndnsReverseRequest()
+            # Netsukuku or Internet?
+            # TODO temporary hack
+            if ipstr[:3] == '10.':
+                andns_req.nip = self.maproute.ip_to_nip(str_to_ip(ipstr))
+                andns_req.ntk_bit = 1
+            else:
+                andns_req.ip = ipstr
+                andns_req.ntk_bit = 0
+
+            ret = None
+            if self.andnsserver:
+                logging.debug('DnsWrapper: andnsserver.reverse_resolve...')
+                ret = self.andnsserver.reverse_resolve(andns_req)
+                logging.debug('DnsWrapper: andnsserver.reverse_resolve returns ' + str(ret))
+                if ret is None or not any(ret):
+                    logging.debug('DnsWrapper: returning error because ret: ' + str(ret))
+                    ret = None
+                    nxdomain = True
+                    break
+            else:
+                # TODO: call libandns
+                logging.debug('DnsWrapper: call libandns not implemented yet.')
+                nxdomain = True
+                break
+
+            if ret is not None:
+                if isinstance(ret, list):
+                    if len(ret) > 0:
+                        # ret is a list got by counter.reverse_resolution
+                        for hostname, ttl in ret:
+                            logging.debug('DnsWrapper: returns: ' + hostname)
+                            rrset = dns.rrset.from_text(q.name, ttl / 1000,
+                                   dns.rdataclass.IN, dns.rdatatype.PTR, hostname + '.NTK.')
+                            answers.append(rrset)
+                    else:
+                        logging.debug('DnsWrapper: returning error because ret: ' + str(ret))
+                        nxdomain = True
+                        break
+                else:
+                    # ret is an instance of AndnsAnswer ??
+                    # TODO
+                    pass
+
+        if not nxdomain:
+            resp = self.make_response(qry=msg)
+            for rrset in answers:
+                resp.answer.append(rrset)
+            logging.debug('DnsWrapper: resp = ' + repr(resp.to_wire()))
+        else:
+            # TODO what has to do a dns server if some of the questions is not found?
+            logging.info('DnsWrapper: some question not answered.')
+            resp = self.make_response(qry=msg, RCODE=3)   # RCODE =  3    Name Error
+            logging.debug('DnsWrapper: resp = ' + repr(resp.to_wire()))
+
         return resp
 
     def make_response(self, qry=None, id=None, AA=True, RA=True, RCODE=0):
@@ -234,7 +333,7 @@ class DnsWrapper(object):
             resp = dns.message.Message(id)
             # QR = 1
             resp.flags |= dns.flags.QR
-            if RCODE == 1:
+            if RCODE != 1:
                 raise Exception, 'bad use of make_response'
         else:
             resp = dns.message.make_response(qry)
