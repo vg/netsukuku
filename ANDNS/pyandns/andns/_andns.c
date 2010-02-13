@@ -100,40 +100,28 @@ _tuple_to_pkt(PyObject *self, PyObject *args)
         return NULL;       
     }
 
+    // NOTE: We need to copy the buffer instead to use the one
+    // allocated by PyArg_ParseTuple, to avoid the use of
+    // free on invalid pointers.
+    
     align_andns_question(packet, strlen(qstdata));
     memcpy(packet->qstdata, qstdata, strlen(qstdata));
 
-    if (packet->qtype == AT_A) {
-        // parsing host to IP answers 
-        for (i = 0; i< packet->ancount; i++) {
-            int ip; // TODO: you should consider IPv6 too
-            andns_pkt_data* answ_pkt = andns_add_answ(packet);
-            PyObject *answer_tuple = PyList_GetItem(answers, i);
-            if (!PyArg_ParseTuple(answer_tuple, "BBBHi", &(answ_pkt->m), 
-                                  &(answ_pkt->prio), &(answ_pkt->wg),
-                                           &(answ_pkt->service), &ip)) {
-                PyErr_SetString(AndnsError, "Answers parsing failed.");
-                free_andns_pkt(packet);
-                return NULL;                                                  
-            }   
-            // TODO: consider IPv6 too 
-            answ_pkt->rdata = malloc(sizeof(int));
-            memcpy(answ_pkt->rdata, &ip, sizeof(int));
-            answ_pkt->rdlength = sizeof(int); 
+    for (i = 0; i< packet->ancount; i++) {
+        char *rdata;
+        andns_pkt_data* answ_pkt = andns_add_answ(packet);
+        PyObject *answer_tuple = PyList_GetItem(answers, i);
+        if (!PyArg_ParseTuple(answer_tuple, "BBBHs#", &(answ_pkt->m),
+                  &(answ_pkt->prio), &(answ_pkt->wg), &(answ_pkt->service),
+                  &(rdata), &(answ_pkt->rdlength))) {
+            PyErr_SetString(AndnsError, "Answers parsing failed.");
+            free_andns_pkt(packet);
+            return NULL;                                                  
         }
-    }
-    else if (packet->qtype == AT_PTR) {
-        // parsing IP to hostname answers 
-        for (i = 0; i< packet->ancount; i++) {
-            andns_pkt_data* answ_pkt = andns_add_answ(packet);
-            PyObject *answer_tuple = PyList_GetItem(answers, i);
-            if (!PyArg_ParseTuple(answer_tuple, "BBBHs#", &(answ_pkt->m), &(answ_pkt->prio), &(answ_pkt->wg), 
-                                &(answ_pkt->service), &(answ_pkt->rdata), &answ_pkt->rdlength)) {
-                PyErr_SetString(AndnsError, "Answers parsing failed.");
-                free_andns_pkt(packet);
-                return NULL;                                                  
-            }
-        }    
+            
+        // Read the note at 103 of this file.
+        answ_pkt->rdata = malloc(answ_pkt->rdlength);
+        memcpy(answ_pkt->rdata, rdata, answ_pkt->rdlength);
     }
     
     if (((res= a_p(packet, pktbuff)) == -1)) {
@@ -180,9 +168,49 @@ _pkt_to_tuple(PyObject *self, PyObject *args)
     PyTuple_SetItem(tuple, 7,  PyInt_FromLong(packet->nk));
     PyTuple_SetItem(tuple, 8,  PyInt_FromLong(packet->rcode));    
     PyTuple_SetItem(tuple, 9,  PyInt_FromLong(packet->p));
-    PyTuple_SetItem(tuple, 10, PyInt_FromLong(packet->service));    
+    PyTuple_SetItem(tuple, 10, PyInt_FromLong(packet->service));   
     PyTuple_SetItem(tuple, 11, PyString_FromStringAndSize(packet->qstdata,
                                                           packet->qstlength));
+    
+    if (packet->qtype == AT_PTR) 
+    {
+        // The query is of inverse type, thus the question data contains
+        // an IPv4 or IPv6 address in binary format (read a_qst_p in andns_lib.c
+        // for details), not a dotted string. So, we must convert it.
+
+        struct sockaddr_in *addr = malloc(sizeof(struct sockaddr_in));
+        int addr_len, qstlength = 0;
+        
+        if (packet->ipv == ANDNS_IPV4)
+        {
+            qstlength = 4;
+            addr_len  = INET_ADDRSTRLEN;
+        }
+        else if (packet->ipv == ANDNS_IPV6)
+        {
+            qstlength = 16;
+            addr_len  = INET6_ADDRSTRLEN;
+        }
+
+        void *leak = packet->qstdata;
+        memcpy(&(addr->sin_addr), packet->qstdata, packet->qstlength);
+        free(leak);
+        
+        packet->qstdata = malloc(addr_len);
+        if (idp_inet_ntop(addr, packet->qstdata, addr_len) != 0)
+        {
+            PyErr_SetString(AndnsError, "Question data parsing failed.");
+            free(addr);
+            return NULL;
+        }
+        free(addr);
+
+        // update qstlength with the length of the string
+        packet->qstlength = strlen(packet->qstdata);
+        // now convert again the string to a PyObject string
+        PyTuple_SetItem(tuple, 11, PyString_FromStringAndSize(packet->qstdata,
+                                                          packet->qstlength));
+    }
 
     i = 0;
     list= PyList_New(packet->ancount);
