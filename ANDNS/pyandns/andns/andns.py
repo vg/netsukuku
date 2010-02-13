@@ -120,8 +120,8 @@ class AndnsPacket(object):
             'qstdata',
             'pkt_answ']
 
-    def __init__(self, id, r, qr, z, qtype, ancount,
-                 ipv, nk, rcode, p, service, qstdata, answer_tuples=[]):
+    def __init__(self, id, r=1, qr=0, z=0, qtype=0, ancount=0,
+                 ipv=0, nk=1, rcode=0, p=1, service=0, qstdata='', answer_tuples=[]):
 
         self.r =        r
         self.z =        z
