@@ -24,7 +24,6 @@ from random import choice
 
 
 import ntk.core.andna as andna
-import ntk.core.andnswrapper as andnswrapper
 import ntk.core.counter as counter
 import ntk.core.andnsserver as andnsserver
 import ntk.core.dnswrapper as dnswrapper
