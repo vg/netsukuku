@@ -103,6 +103,7 @@ class Settings(object):
 
     def _get_levels(self):
         ''' Returns proper LEVELS according IP_VERSION '''
+        return 8
         if self.IP_VERSION == 4:
             return 4
         elif self.IP_VERSION == 6:
@@ -114,6 +115,7 @@ class Settings(object):
 
     def _get_bits_per_level(self):
         ''' Returns proper bits according IP_VERSION and LEVELS '''
+        return 3
         # IP_VERSION_BIT = {4: 32, 6: 128}
         return 8 # ---> IP_VERSION_BIT[self.IP_VERSION] / self.LEVELS
 

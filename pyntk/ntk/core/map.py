@@ -164,14 +164,16 @@ class Map(object):
         and such that a_{n-1}*g^{n-1}+a_{n-2}*g^(n-2)+...+a_0 = ip,
         where g = self.gsize"""
 
+        trueip = ip - 10*256**3
         g = self.gsize
-        return [(ip % g**(l+1)) / g**l for l in xrange(self.levels)]
+        return [(trueip % g**(l+1)) / g**l for l in xrange(self.levels)]
 
     def nip_to_ip(self, nip):
         """The reverse of ip_to_nip"""
 
         g=self.gsize
-        return sum([nip[l] * g**l for l in xrange(self.levels)])
+        trueip = sum([nip[l] * g**l for l in xrange(self.levels)])
+        return trueip + 10*256**3
 
     def nip_cmp(self, nipA, nipB=None):
         """Returns the first level where nipA and nipB differs. The search

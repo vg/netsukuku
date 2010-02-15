@@ -95,6 +95,8 @@ def valid_ids(lvl, nip):
     valid_ids(2, [0, 0, 0, 192])
     Elements of nip for levels <= lvl is not relevant'''
 
+    # Hack to use exactly gsize = 8 levels = 8 and IP in class 10.*
+    return xrange(8)
     #first thing is to see what is the IPVERSION
     if settings.IP_VERSION == ipv6:
         return xrange(256)
