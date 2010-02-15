@@ -389,7 +389,8 @@ class Andna(OptionalP2P):
                 choose_from.append((self.peer(key=(hostname, i)), i))
             def get_nip(pair):
                 peer, i = pair
-                return peer.get_hash_nip()
+                return self.H(peer.get_hash_nip())
+            logging.debug('ANDNA: resolve: choose: ' + str(choose_from))
             hash_node, spread_number = self.maproute.choose_fast(choose_from, get_nip)
             logging.debug('ANDNA: resolve: exact hash_node is ' + str(hash_node.get_hash_nip()))
             # contact the hash gnode

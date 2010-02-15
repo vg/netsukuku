@@ -596,7 +596,7 @@ class MapRoute(Map):
             return x
 
         def proximity(lvl, pos):
-            return 1 / (distance(self.me[lvl], pos) * self.gsize ** lvl)
+            return (self.gsize ** self.levels) / (distance(self.me[lvl], pos) * self.gsize ** lvl)
 
         ret = None
         casuality_wg = []
@@ -606,33 +606,43 @@ class MapRoute(Map):
         for i in xrange(len(choose_from)):
             obj = choose_from[i]
             nip = get_nip(obj)
-            preference = get_preference(obj)
+            logging.log(logging.ULTRADEBUG, 'choose_between: nip is ' + str(nip))
             lvl = self.nip_cmp(nip)
-            pos = nip[lvl]
-            rtnode = self.node_get(lvl, pos)
-            if rtnode.is_free():
-                # of course we cannot choose this one
-                casuality_wg.append(0)
-                preference_wg.append(0)
-                rem_wg.append(0)
-                proximity_wg.append(0)
-                continue
-            rt = get_best_route(rtnode)
-            if rt is None or isinstance(rt.rem, DeadRem):
-                # of course we cannot choose this one
-                casuality_wg.append(0)
-                preference_wg.append(0)
-                rem_wg.append(0)
-                proximity_wg.append(0)
-                continue
+            if lvl == -1:
+                # it's me
+                rem_wg.append(1000000)
+                proximity_wg.append(self.gsize ** (self.levels + 1))
+            else:
+                pos = nip[lvl]
+                rtnode = self.node_get(lvl, pos)
+                if rtnode.is_free():
+                    # of course we cannot choose this one
+                    casuality_wg.append(0)
+                    preference_wg.append(0)
+                    rem_wg.append(0)
+                    proximity_wg.append(0)
+                    continue
+                rt = get_best_route(rtnode)
+                if rt is None or isinstance(rt.rem, DeadRem):
+                    # of course we cannot choose this one
+                    casuality_wg.append(0)
+                    preference_wg.append(0)
+                    rem_wg.append(0)
+                    proximity_wg.append(0)
+                    continue
+                proximity_wg.append(proximity(lvl, pos))
+                rem = rt.rem
+                if isinstance(rem, Rtt):
+                    rem_wg.append(1000000 / rem.value)
+                else:
+                    raise Exception, 'Not implemented for ' + repr(rem)
             casuality_wg.append(1)
             preference_wg.append(get_preference(obj))
-            proximity_wg.append(proximity(lvl, pos))
-            rem = rt.rem
-            if isinstance(rem, Rtt):
-                rem_wg.append(1 / rem.value)
-            else:
-                raise Exception, 'Not implemented for ' + repr(rem)
+
+        logging.log(logging.ULTRADEBUG, 'choose_between: casuality_wg is ' + str(casuality_wg))
+        logging.log(logging.ULTRADEBUG, 'choose_between: preference_wg is ' + str(preference_wg))
+        logging.log(logging.ULTRADEBUG, 'choose_between: rem_wg is ' + str(rem_wg))
+        logging.log(logging.ULTRADEBUG, 'choose_between: proximity_wg is ' + str(proximity_wg))
 
         casuality_sum = sum(casuality_wg)
         preference_sum = sum(preference_wg)
@@ -652,6 +662,7 @@ class MapRoute(Map):
                 value += proximity_wg[i] * max_sum / proximity_sum * proximity_coeff
             values.append(value)
         # choose
+        logging.log(logging.ULTRADEBUG, 'choose_between: final sum is ' + str(value))
         if value == 0: return None
         choi = randint(1, value)
         for i in xrange(len(choose_from)):
