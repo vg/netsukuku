@@ -37,6 +37,7 @@ class AndnsRequest(object):
         self.ntk_bit = ntk_bit
         self.serv_key = serv_key
 
+# TODO: can you use just one field used both for ip and nip?
 class AndnsReverseRequest(object):
     def __init__(self, ip='', nip=[], ntk_bit=andns.NTK_REALM):
         # as a dotted string for internet
@@ -50,11 +51,13 @@ class AndnsServer(object):
         self.andna = andna
         self.counter = counter
         if nameservers:
-            dns_resolver.default_resolver.nameservers = nameservers
+            dns_resolver.get_default_resolver().nameservers = nameservers
+            logging.debug('AndnsServer: This are the DNS servers:' +
+                          str(nameservers))
         self.run()
 
     @microfunc(True, keep_track=1)
-    def run(self, port=53):
+    def run(self, port=53000):
         socket = Sock(None, None)
         self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

@@ -25,6 +25,7 @@
 # it to AndnsServer.
 ##
 
+import andns.andns as andns
 import dns.message
 import dns.rrset
 from random import randint
@@ -35,45 +36,10 @@ from ntk.lib.micro import microfunc
 from ntk.lib.log import logger as logging
 from ntk.lib.log import log_exception_stacktrace
 from ntk.core.andna import NULL_SERV_KEY, make_serv_key
+from ntk.core.andnsserver import AndnsRequest, AndnsReverseRequest
 from ntk.core.snsd import AndnaResolvedRecord
 from ntk.wrap.xtime import swait
 from ntk.network.inet import str_to_ip
-
-# This class is a temporary hack
-class AndnsRequest(object):
-    def __init__(self):
-        self.hostname = None
-        self.ntk_bit = 0
-        self.serv_key = NULL_SERV_KEY
-
-# This class is a temporary hack
-class AndnsReverseRequest(object):
-    def __init__(self):
-        # as a dotted string for internet
-        self.ip = None
-        # as a sequence for netsukuku
-        self.nip = None
-        self.ntk_bit = 0
-
-# This class is a temporary hack
-class AndnsServer(object):
-    def __init__(self, andna, counter):
-        self.andna = andna
-        self.counter = counter
-    def resolve(self, req):
-        if not isinstance(req, AndnsRequest):
-            raise Exception, 'Wrong type'
-        if req.ntk_bit:
-            return self.andna.resolve(req.hostname, req.serv_key)
-        else:
-            raise Exception, 'Internet realm not implemented yet.'
-    def reverse_resolve(self, req):
-        if not isinstance(req, AndnsReverseRequest):
-            raise Exception, 'Wrong type'
-        if req.ntk_bit:
-            return self.counter.ask_reverse_resolution(req.nip)
-        else:
-            raise Exception, 'Internet realm not implemented yet.'
 
 class DnsWrapper(object):
     def __init__(self, maproute, andnsserver=None):
@@ -174,16 +140,14 @@ class DnsWrapper(object):
         for q in qs:
             qname = q.name.to_text()[:-1]
             logging.debug('DnsWrapper: q name = ' + qname)
-            ipstr = None
-            # Netsukuku or Internet?
-            realm_internet = True
-            if qname[-4:].upper() == '.NTK':
-                qname = qname[:-4]
-                realm_internet = False
             # Transform DNS request in ANDNS request
             andns_req = AndnsRequest()
+            andns_req.ntk_bit = andns.INET_REALM
             andns_req.hostname = qname
-            andns_req.ntk_bit = 0 if realm_internet else 1
+            # Netsukuku or Internet?
+            if andns_req.hostname[-4:].upper() == '.NTK':
+                andns_req.hostname = andns_req.hostname[:-4]
+                andns_req.ntk_bit = andns.NTK_REALM
             logging.debug('DnsWrapper: andns_req = ' + str(andns_req))
 
             ret = None
@@ -270,10 +234,10 @@ class DnsWrapper(object):
             # TODO temporary hack
             if ipstr[:3] == '10.':
                 andns_req.nip = self.maproute.ip_to_nip(str_to_ip(ipstr))
-                andns_req.ntk_bit = 1
+                andns_req.ntk_bit = andns.NTK_REALM
             else:
                 andns_req.ip = ipstr
-                andns_req.ntk_bit = 0
+                andns_req.ntk_bit = andns.INET_REALM
 
             ret = None
             if self.andnsserver:
