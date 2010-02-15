@@ -554,3 +554,115 @@ class MapRoute(Map):
         lvl = self.nip_cmp(self.me, neigh_nip)
         return (lvl, neigh_nip[lvl])
 
+## Helpers
+
+    def choose_between(self, choose_from, get_nip=None, get_preference=None, \
+            exclude_hop=None, casuality_coeff=1, preference_coeff=1, \
+            rem_coeff=1, proximity_coeff=1):
+        '''Given a set of objects, each one associated to a nip, choose one based on various criteria
+           Possible criteria:
+            . casuality
+            . weight (preference)
+            . rem to reach the g-node
+            . proximity (nearest in NIP)
+        '''
+        # An object is returned that was in the set "choose_from".
+        # An object in the set, passed to the function "get_nip", returns a NIP.
+        # We use lvl=self.nip_cmp to get the first level different from us. Then we use
+        # the position (lvl, nip[lvl]) in our Map.
+        # So, the NIP returned by "get_nip" has to have valid id from "levels" to "lvl"
+        # and the remaining id could be None.
+        from random import randint
+
+        def equality(x):
+            return x
+        if get_nip is None:
+            get_nip = equality
+
+        def no_preference(x):
+            return 1
+        if get_preference is None:
+            get_preference = no_preference
+
+        def get_best_route(rtnode):
+            if exclude_hop is None:
+                return rtnode.best_route()
+            else:
+                return rtnode.best_route_without(exclude_hop)
+
+        def distance(a,b):
+            x = abs(a-b)
+            if x > self.gsize/2: x = self.gsize-x
+            return x
+
+        def proximity(lvl, pos):
+            return 1 / (distance(self.me[lvl], pos) * self.gsize ** lvl)
+
+        ret = None
+        casuality_wg = []
+        preference_wg = []
+        rem_wg = []
+        proximity_wg = []
+        for i in xrange(len(choose_from)):
+            obj = choose_from[i]
+            nip = get_nip(obj)
+            preference = get_preference(obj)
+            lvl = self.nip_cmp(nip)
+            pos = nip[lvl]
+            rtnode = self.node_get(lvl, pos)
+            if rtnode.is_free():
+                # of course we cannot choose this one
+                casuality_wg.append(0)
+                preference_wg.append(0)
+                rem_wg.append(0)
+                proximity_wg.append(0)
+                continue
+            rt = get_best_route(rtnode)
+            if rt is None or isinstance(rt.rem, DeadRem):
+                # of course we cannot choose this one
+                casuality_wg.append(0)
+                preference_wg.append(0)
+                rem_wg.append(0)
+                proximity_wg.append(0)
+                continue
+            casuality_wg.append(1)
+            preference_wg.append(get_preference(obj))
+            proximity_wg.append(proximity(lvl, pos))
+            rem = rt.rem
+            if isinstance(rem, Rtt):
+                rem_wg.append(1 / rem.value)
+            else:
+                raise Exception, 'Not implemented for ' + repr(rem)
+
+        casuality_sum = sum(casuality_wg)
+        preference_sum = sum(preference_wg)
+        rem_sum = sum(rem_wg)
+        proximity_sum = sum(proximity_wg)
+        max_sum = max(casuality_sum, preference_sum, rem_sum, proximity_sum)
+        value = 0
+        values = []
+        for i in xrange(len(choose_from)):
+            if casuality_wg[i] > 0:
+                value += casuality_wg[i] * max_sum / casuality_sum * casuality_coeff
+            if preference_wg[i] > 0:
+                value += preference_wg[i] * max_sum / preference_sum * preference_coeff
+            if rem_wg[i] > 0:
+                value += rem_wg[i] * max_sum / rem_sum * rem_coeff
+            if proximity_wg[i] > 0:
+                value += proximity_wg[i] * max_sum / proximity_sum * proximity_coeff
+            values.append(value)
+        # choose
+        if value == 0: return None
+        choi = randint(1, value)
+        for i in xrange(len(choose_from)):
+            if values[i] >= choi:
+                ret = choose_from[i]
+                break
+
+        return ret
+
+    def choose_fast(self, choose_from, get_nip=None, exclude_hop=None):
+        return self.choose_between(choose_from, get_nip=get_nip, get_preference=None, \
+            exclude_hop=exclude_hop, casuality_coeff=0, preference_coeff=0, \
+            rem_coeff=1, proximity_coeff=0)
+
