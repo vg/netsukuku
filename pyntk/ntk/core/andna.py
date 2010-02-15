@@ -762,9 +762,9 @@ class Andna(OptionalP2P):
 
 def hash_32bit_ip(hashed, levels, gsize):
     digest = fnv_32_buf(md5(hashed))
-    mask = 0xff000000
-    ip = [None] * levels
+    nip = [None] * levels
     for i in reversed(xrange(levels)): 
-        ip[i] = int((digest & mask) % (gsize-1)) + 1
-        mask >>= 8
-    return ip
+        nip[i] = int(digest % gsize)
+        digest = int(digest / gsize)
+    return nip
+
