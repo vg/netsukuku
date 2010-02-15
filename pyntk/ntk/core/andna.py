@@ -19,7 +19,7 @@
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 ##
 
-from random import choice
+from random import choice, randint
 import time as stdtime
 
 import ntk.lib.rencode as rencode
@@ -54,6 +54,10 @@ def make_serv_key(str_value):
     return int(str_value)
     # in futuro potrebbe essere (serv_name, serv_proto)
     # ad esempio a partire da '_www._tcp'
+
+# Used to spread the database entries to various parts of the network
+# and to supply load-balancing for resolutions
+ANDNA_SPREAD = 10
 
 MAX_HOSTNAME_LEN = 256
 MAX_ANDNA_QUEUE = 5
@@ -101,11 +105,9 @@ class Andna(OptionalP2P):
 
         # Resolved Cache for registrar_nip = { hostname: (nip, TimeCapsule(ttl)), ... }
         self.resolved_registrar_nip = {}
-
-        # hostnames that I tried to register to myself
-        self.wanted_hostnames = []
     
-        self.remotable_funcs += [self.reply_register,
+        self.remotable_funcs += [self.register_hostname_main,
+                                 self.register_hostname_spread,
                                  self.reply_resolve,
                                  self.get_registrar_pubk,
                                  self.reply_queued_registration,
@@ -279,22 +281,37 @@ class Andna(OptionalP2P):
 
     def register(self, hostname, serv_key, IDNum, snsd_record,
                 append_if_unavailable):
-        """ Register or update the name for the specified service number """
+        ''' Try registration or update of an hostname, record in tha ANDNA distributed database.
+        '''
         logging.debug('ANDNA: register' + str((hostname, serv_key, IDNum, snsd_record,
                 append_if_unavailable)))
-        if hostname not in self.wanted_hostnames:
-            self.wanted_hostnames.append(hostname)
+
+        res, msg = self.register_0(hostname, serv_key, IDNum, snsd_record, append_if_unavailable)
+        if res == 'OK':
+            logging.debug('ANDNA: register: main registration done.')
+            logging.debug('ANDNA: register: starting registration spread.')
+            for i in xrange(1, ANDNA_SPREAD):
+                self.register_n(hostname, i)
+        else:
+            logging.debug('ANDNA: register: main registration error. ' + str((res, msg)))
+        return res, msg
+
+    def register_0(self, hostname, serv_key, IDNum, snsd_record,
+                append_if_unavailable):
+        """ Register or update the name for the specified service number """
+        logging.debug('ANDNA: register_0' + str((hostname, serv_key, IDNum, snsd_record,
+                append_if_unavailable)))
 
         # calculate hash
         hash_node = self.peer(key=hostname)
-        logging.debug('ANDNA: register: exact hash_node is ' + str(hash_node.get_hash_nip()))
+        logging.debug('ANDNA: register_0: exact hash_node is ' + str(hash_node.get_hash_nip()))
         # contact the hash node
         sender_nip = self.maproute.me[:]
         # sign the request and attach the public key
         signature = self.my_keys.sign(rencode.dumps((sender_nip, hostname,
                 serv_key, IDNum, snsd_record)))
-        logging.debug('ANDNA: register: request registration')
-        res, msg = hash_node.reply_register(sender_nip,
+        logging.debug('ANDNA: register_0: request registration')
+        res, msg = hash_node.register_hostname_main(sender_nip,
                                               self.my_keys.get_pub_key(),
                                               hostname,
                                               serv_key,
@@ -305,12 +322,25 @@ class Andna(OptionalP2P):
         if res == 'OK':
             self.local_cache[hostname] = msg
 
-            logging.debug('ANDNA: register: registration done.')
-            logging.debug('ANDNA: register: after register: self.local_cache=' + str(self.local_cache))
-            logging.debug('ANDNA: register: after register: self.resolved=' + str(self.resolved))
+            logging.debug('ANDNA: register_0: registration done.')
+            logging.debug('ANDNA: register_0: after register: self.local_cache=' + str(self.local_cache))
+            logging.debug('ANDNA: register_0: after register: self.resolved=' + str(self.resolved))
         else:
-            logging.debug('ANDNA: register: registration error. ' + str((res, msg)))
+            logging.debug('ANDNA: register_0: registration error. ' + str((res, msg)))
         return (res, msg)
+
+    @microfunc(True, keep_track=1)
+    def register_n(self, hostname, spread_number):
+        """ Register or update the name for the specified service number """
+        logging.debug('ANDNA: register_n' + str((hostname, spread_number)))
+
+        # calculate hash
+        hash_node = self.peer(key=(hostname, spread_number))
+        logging.debug('ANDNA: register_n: exact hash_node is ' + str(hash_node.get_hash_nip()))
+        # contact the hash node
+        logging.debug('ANDNA: register_n: request registration')
+        ret = hash_node.register_hostname_spread(hostname, spread_number)
+        logging.debug('ANDNA: register_n: returns ' + str(ret))
 
     def request_registrar_pubk(self, hostname):
         """ Request to hash-node the public key of the registrar of this hostname """
@@ -354,11 +384,16 @@ class Andna(OptionalP2P):
                 res = 'NOTFOUND' if data.records is None else 'OK'
                 return res, data
             # else call the remote hash node
-            # calculate hash
-            hash_node = self.peer(key=hostname)
+            choose_from = [(self.peer(key=hostname), 0)]
+            for i in xrange(1, ANDNA_SPREAD):
+                choose_from.append((self.peer(key=(hostname, i)), i))
+            def get_nip(pair):
+                peer, i = pair
+                return peer.get_hash_nip()
+            hash_node, spread_number = self.maproute.choose_fast(choose_from, get_nip)
             logging.debug('ANDNA: resolve: exact hash_node is ' + str(hash_node.get_hash_nip()))
             # contact the hash gnode
-            control, data = hash_node.reply_resolve(hostname, serv_key, no_chain)
+            control, data = hash_node.reply_resolve(hostname, serv_key, no_chain, spread_number)
             if control == 'OK':
                 self.resolved[(hostname, serv_key)] = data
                 res = 'NOTFOUND' if data.records is None else 'OK'
@@ -411,7 +446,7 @@ class Andna(OptionalP2P):
                        snsd_record, signature = self.request_queue[hname].pop(0)
                     logging.debug('ANDNA: trying to register it to pubk ' + pubk.short_repr())
                     # TODO to be tested
-                    res, data = self.reply_register(
+                    res, data = self.register_hostname_main(
                                 sender_nip, pubk, hostname, serv_key, IDNum,
                                 snsd_record, signature,
                                 append_if_unavailable=False)
@@ -423,7 +458,7 @@ class Andna(OptionalP2P):
                                                          updates)
         logging.debug('ANDNA: self.cache is ' + str(self.cache))
 
-    def reply_register(self, sender_nip, pubk, hostname, serv_key, IDNum,
+    def register_hostname_main(self, sender_nip, pubk, hostname, serv_key, IDNum,
                        snsd_record, signature, append_if_unavailable,
                        forward=True):
       ''' Serves a request to register/update an hostname.
@@ -439,7 +474,7 @@ class Andna(OptionalP2P):
         logging.debug('ANDNA: We are correctly hooked.')
         # We are correctly hooked.
 
-        logging.debug('ANDNA: reply_register(' + str(sender_nip) + ', ' + str(hostname) + ', ...)')
+        logging.debug('ANDNA: register_hostname_main(' + str(sender_nip) + ', ' + str(hostname) + ', ...)')
         ret = '', ''
 
         if snsd_record.record is not None:
@@ -453,11 +488,11 @@ class Andna(OptionalP2P):
         self.check_expirations_cache()
 
         # first the hash check
-        logging.debug('ANDNA: reply_register: verifying that I am the right hash...')
+        logging.debug('ANDNA: register_hostname_main: verifying that I am the right hash...')
         # calculate hash
         hash_node = self.peer(key=hostname)
         hash_nip = hash_node.get_hash_nip()
-        logging.debug('ANDNA: reply_register: exact hash_node is ' + str(hash_nip))
+        logging.debug('ANDNA: register_hostname_main: exact hash_node is ' + str(hash_nip))
 
         # TODO find a mechanism to find a 'bunch' of DUPLICATION nodes
         bunch = [hash_nip, self.maproute.me]
@@ -465,17 +500,17 @@ class Andna(OptionalP2P):
         check_hash = self.maproute.me in bunch
 
         if not check_hash:
-            logging.info('ANDNA: reply_register: hash is NOT verified. Raising exception.')
+            logging.info('ANDNA: register_hostname_main: hash is NOT verified. Raising exception.')
             raise AndnaError, 'Hash verification failed'
-        logging.debug('ANDNA: reply_register: hash is verified.')
+        logging.debug('ANDNA: register_hostname_main: hash is verified.')
 
         # then the authentication check
-        logging.debug('ANDNA: reply_register: authenticating the request...')
+        logging.debug('ANDNA: register_hostname_main: authenticating the request...')
         if not pubk.verify(rencode.dumps((sender_nip, hostname, serv_key, IDNum,
                        snsd_record)), signature):
-            logging.info('ANDNA: reply_register: request is NOT authenticated. Raising exception.')
+            logging.info('ANDNA: register_hostname_main: request is NOT authenticated. Raising exception.')
             raise AndnaError, 'Request authentication failed'
-        logging.debug('ANDNA: reply_register: request authenticated')
+        logging.debug('ANDNA: register_hostname_main: request authenticated')
 
         registered = False
         enqueued = False
@@ -486,22 +521,22 @@ class Andna(OptionalP2P):
         # resolving the hostname we get the right public key.
         # TODO this has to have a counter-part in resolve.
         if isinstance(snsd_record.record, str):
-            logging.debug('ANDNA: reply_register: SNSD record points to another hostname: ' + snsd_record.record)
-            logging.debug('ANDNA: reply_register: Its public key should be: ' + snsd_record.pubk.short_repr())
+            logging.debug('ANDNA: register_hostname_main: SNSD record points to another hostname: ' + snsd_record.record)
+            logging.debug('ANDNA: register_hostname_main: Its public key should be: ' + snsd_record.pubk.short_repr())
             response, resolved_pubk = self.request_registrar_pubk(snsd_record.record)
             if response == 'OK':
                 if resolved_pubk != snsd_record.pubk:
                     # reject this request
-                    logging.debug('ANDNA: reply_register: The pointed hostname is someone else. Its public key is: ' + resolved_pubk.short_repr())
+                    logging.debug('ANDNA: register_hostname_main: The pointed hostname is someone else. Its public key is: ' + resolved_pubk.short_repr())
                     ret = 'NOTVALID', 'The pointed hostname is someone else.'
                     refused = True
                 else:
                     # proceed
-                    logging.debug('ANDNA: reply_register: The pointed hostname has that key. OK.')
+                    logging.debug('ANDNA: register_hostname_main: The pointed hostname has that key. OK.')
             else:
                 # the record has not been registered, so we cannot use it.
                 # reject this request
-                logging.debug('ANDNA: reply_register: The pointed hostname cannot be resolved.')
+                logging.debug('ANDNA: register_hostname_main: The pointed hostname cannot be resolved.')
                 ret = 'RETRY', 'The pointed hostname cannot be resolved.'
                 # This problem may be very temporary
                 refused = True
@@ -509,15 +544,15 @@ class Andna(OptionalP2P):
         if not refused:
             # check if already registered
             if self.cache.has_key(hostname):
-                logging.debug('ANDNA: reply_register: record already in cache...')
+                logging.debug('ANDNA: register_hostname_main: record already in cache...')
                 # check if the registrar is the same
                 old_record = self.cache[hostname]
                 old_registrar = old_record.pubk
                 if old_registrar == pubk:
                     # This is an update.
-                    logging.debug('ANDNA: reply_register: ... this is an update')
+                    logging.debug('ANDNA: register_hostname_main: ... this is an update')
                     # Check the record in Counter node
-                    logging.debug('ANDNA: reply_register: contacting counter gnode')
+                    logging.debug('ANDNA: register_hostname_main: contacting counter gnode')
                     res, ttl = self.counter.ask_check(sender_nip, pubk, hostname)
                     if not res:
                         raise AndnaError('ANDNA: Failed counter check.')
@@ -526,7 +561,7 @@ class Andna(OptionalP2P):
                     ret = 'OK', old_record.get_ttl()
                     updated = True
                 else:
-                    logging.debug('ANDNA: reply_register: ... and it is not from this pubk...')
+                    logging.debug('ANDNA: register_hostname_main: ... and it is not from this pubk...')
                     # check if we want and can append
                     if append_if_unavailable:
                         if not self.request_queue.has_key(hostname):
@@ -537,15 +572,15 @@ class Andna(OptionalP2P):
                                     hostname, service, pubk, signature,
                                     snsd_record, snsd_record_pubk)
                             self.request_queue[hostname].append(args_tuple_passed_to_register)
-                            logging.debug('ANDNA: reply_register: ... request enqueued')
+                            logging.debug('ANDNA: register_hostname_main: ... request enqueued')
                             ret = 'ALREADYREGISTERED', 'Hostname yet registered by someone, request enqueued.'
                             enqueued = True
                         else:
-                            logging.debug('ANDNA: reply_register: ... queue is full')
+                            logging.debug('ANDNA: register_hostname_main: ... queue is full')
                             ret = 'ALREADYREGISTERED', 'Hostname yet registered by someone, queue is full.'
                             refused = True
                     else:
-                        logging.debug('ANDNA: reply_register: ... queue not requested')
+                        logging.debug('ANDNA: register_hostname_main: ... queue not requested')
                         ret = 'ALREADYREGISTERED', 'Hostname yet registered by someone, queue not requested.'
                         refused = True
 
@@ -556,24 +591,24 @@ class Andna(OptionalP2P):
             # TODO if we receive another type of request (eg forwarding still not complete)
             #      we might implicitly add a first request: we have all the data.
             if serv_key != NULL_SERV_KEY:
-                logging.debug('ANDNA: reply_register: The first registration has to be a Zero Service record')
+                logging.debug('ANDNA: register_hostname_main: The first registration has to be a Zero Service record')
                 # reject this request
                 ret = 'RETRY', 'The first registration has to be a Zero Service record.'
                 # This problem may be very temporary, because of forwarding still not complete.
             elif snsd_record.record is not None:
-                logging.debug('ANDNA: reply_register: The first registration has to be the registrar\'s NIP')
+                logging.debug('ANDNA: register_hostname_main: The first registration has to be the registrar\'s NIP')
                 # reject this request
                 ret = 'RETRY', 'The first registration has to be the registrar\'s NIP.'
                 # This problem may be very temporary, because of forwarding still not complete.
             else:
                 # Check the record in Counter node
-                logging.debug('ANDNA: reply_register: contacting counter gnode')
+                logging.debug('ANDNA: register_hostname_main: contacting counter gnode')
                 res, ttl = self.counter.ask_check(sender_nip, pubk, hostname)
                 if not res:
                     raise AndnaError, 'ANDNA: Failed counter check.'
 
                 # register record
-                logging.debug('ANDNA: reply_register: registering ' + str(hostname))
+                logging.debug('ANDNA: register_hostname_main: registering ' + str(hostname))
                 services = {}
                 services[serv_key] = [snsd_record]
                 new_record = AndnaAuthRecord(hostname, pubk, sender_nip, 0, 1, services)
@@ -584,36 +619,36 @@ class Andna(OptionalP2P):
         if forward and (updated or registered):
             # forward the entry to the bunch
             bunch_not_me = [n for n in bunch if n != self.maproute.me]
-            logging.debug('ANDNA: reply_register: forward_registration to ' + str(bunch_not_me))
-            self.forward_registration_to_set(bunch_not_me, \
+            logging.debug('ANDNA: register_hostname_main: forward_registration to ' + str(bunch_not_me))
+            self.forward_registration_main_to_set(bunch_not_me, \
                         (sender_nip, pubk,
                          hostname, serv_key, IDNum, snsd_record, signature,
                          append_if_unavailable))
 
-        logging.debug('ANDNA: reply_register: after reply_register: self.request_queue=' + str(self.request_queue))
-        logging.debug('ANDNA: reply_register: after reply_register: self.cache=' + str(self.cache))
-        logging.debug('ANDNA: reply_register: after reply_register: self.resolved=' + str(self.resolved))
-        logging.debug('ANDNA: reply_register: reply_register: returning ' + str(ret))
+        logging.debug('ANDNA: register_hostname_main: after register_hostname_main: self.request_queue=' + str(self.request_queue))
+        logging.debug('ANDNA: register_hostname_main: after register_hostname_main: self.cache=' + str(self.cache))
+        logging.debug('ANDNA: register_hostname_main: after register_hostname_main: self.resolved=' + str(self.resolved))
+        logging.debug('ANDNA: register_hostname_main: register_hostname_main: returning ' + str(ret))
         return ret
       finally:
         stop_tracking()
 
     @microfunc(True)
-    def forward_registration_to_set(self, to_set, args_to_reply_register):
+    def forward_registration_main_to_set(self, to_set, args_to_register_hostname_main):
         for to_nip in to_set:
-            self.forward_registration_to_nip(to_nip, args_to_reply_register)
+            self.forward_registration_main_to_nip(to_nip, args_to_register_hostname_main)
 
     @microfunc(True, keep_track=1)
-    def forward_registration_to_nip(self, to_nip, args_to_reply_register):
+    def forward_registration_main_to_nip(self, to_nip, args_to_register_hostname_main):
         """ Forwards registration request to another hash node in the bunch. """
         try:
             logging.debug('ANDNA: forwarding registration request to ' + \
                     ip_to_str(self.maproute.nip_to_ip(to_nip)))
             # TODO Use TCPClient or P2P ?
             remote = self.peer(hIP=to_nip)
-            args_to_reply_register = \
-                    tuple(list(args_to_reply_register) + [False])
-            resp = remote.reply_register(*args_to_reply_register)
+            args_to_register_hostname_main = \
+                    tuple(list(args_to_register_hostname_main) + [False])
+            resp = remote.register_hostname_main(*args_to_register_hostname_main)
             logging.debug('ANDNA: forwarded registration request to ' + \
                     ip_to_str(self.maproute.nip_to_ip(to_nip)) + \
                     ' got ' + str(resp))
@@ -622,14 +657,97 @@ class Andna(OptionalP2P):
                     str(to_nip) + \
                     ' got exception ' + repr(e))
 
+    def register_hostname_spread(self, hostname, spread_number,
+                       forward=True):
+        ''' Serves a request to register/update an hostname, as
+            one of the <n> "spread" server.
+        '''
+        # If we recently changed our NIP (we hooked) we wait to finish
+        # an andna_hook before answering a registration request.
+        def exit_func():
+            return not self.wait_andna_hook
+        logging.debug('ANDNA: waiting andna_hook...')
+        while_condition(exit_func, wait_millisec=1)
+        logging.debug('ANDNA: We are correctly hooked.')
+        # We are correctly hooked.
+
+        logging.debug('ANDNA: register_hostname_spread' + str((hostname, spread_number)))
+
+        # first the hash check
+        logging.debug('ANDNA: register_hostname_spread: verifying that I am the right hash...')
+        # calculate hash
+        hash_node = self.peer(key=(hostname, spread_number))
+        hash_nip = hash_node.get_hash_nip()
+        logging.debug('ANDNA: register_hostname_spread: exact hash_node is ' + str(hash_nip))
+        # use ANDNA_DUPLICATION to check if maproute.me is in the bunch
+        logging.debug('ANDNA: register_hostname_spread: starting find_nearest ANDNA_DUPLICATION' + \
+                    ' to ' + str(hash_nip))
+        bunch = self.find_nearest_exec(hash_nip, ANDNA_DUPLICATION, \
+                    self.maproute.levels)
+        logging.debug('ANDNA: register_hostname_spread: nearest ANDNA_DUPLICATION to ' + \
+                    str(hash_nip) + ' is ' + str(bunch))
+        if not any(bunch):
+            raise AndnaError, 'Andna sees no participants.'
+        check_hash = self.maproute.me in bunch
+
+        if not check_hash:
+            logging.info('ANDNA: register_hostname_spread: hash is NOT verified. Raising exception.')
+            raise AndnaError, 'Hash verification failed'
+        logging.debug('ANDNA: register_hostname_spread: hash is verified.')
+
+        remote_main = self.peer(key=hostname)
+        andnaauth = remote_main.get_auth_cache(hostname)
+        if andnaauth is None:
+            logging.debug('ANDNA: register_hostname_spread: hostname is not registered in main hash node.')
+            # TODO better an Exception?
+            return False
+        self.cache[hostname] = andnaauth
+        logging.debug('ANDNA: register_hostname_spread: hostname registered.')
+
+        if forward:
+            # forward the entry to the bunch
+            bunch_not_me = [n for n in bunch if n != self.maproute.me]
+            logging.debug('ANDNA: register_hostname_spread: forward_registration to ' + str(bunch_not_me))
+            self.forward_registration_spread_to_set(bunch_not_me, \
+                        (hostname, spread_number))
+
+        return True
+
+    @microfunc(True)
+    def forward_registration_spread_to_set(self, to_set, args_to_register_hostname_spread):
+        for to_nip in to_set:
+            self.forward_registration_spread_to_nip(to_nip, args_to_register_hostname_spread)
+
+    @microfunc(True, keep_track=1)
+    def forward_registration_spread_to_nip(self, to_nip, args_to_register_hostname_spread):
+        """ Forwards registration (spread) request to another hash node in the bunch. """
+        try:
+            logging.debug('ANDNA: forwarding registration (spread) request to ' + \
+                    ip_to_str(self.maproute.nip_to_ip(to_nip)))
+            # TODO Use TCPClient or P2P ?
+            remote = self.peer(hIP=to_nip)
+            args_to_register_hostname_spread = \
+                    tuple(list(args_to_register_hostname_spread) + [False])
+            resp = remote.register_hostname_spread(*args_to_register_hostname_spread)
+            logging.debug('ANDNA: forwarded registration (spread) request to ' + \
+                    ip_to_str(self.maproute.nip_to_ip(to_nip)) + \
+                    ' got ' + str(resp))
+        except Exception, e:
+            logging.warning('ANDNA: forwarded registration (spread) request to ' + \
+                    str(to_nip) + \
+                    ' got exception ' + repr(e))
+
     def reply_queued_registration(self, hostname, timestamp, updates):
         """ The registration request we have sent and enqueued 
         when the hostname was busy has been satisfied now """
+        # Maybe, there is no need for this function. The method that
+        #  has the duty to keep the registration refreshed (that is,
+        #  register_my_names) will have the memo. Isn't it?
         # TODO: should I print a message to the user?
         self.local_cache[hostname] = timestamp, updates
         return ('OK', (timestamp, updates))
 
-    def get_registrar_pubk(self, hostname):
+    def get_registrar_pubk(self, hostname, spread_number=0):
         """ Return the public key of the registrar of this hostname """
         # If we recently changed our NIP (we hooked) we wait to finish
         # an andna_hook before answering a resolution request.
@@ -643,7 +761,7 @@ class Andna(OptionalP2P):
         logging.debug('ANDNA: get_registrar_pubk(' + str(hostname) + ')')
         # first the hash check
         logging.debug('ANDNA: get_registrar_pubk: verifying that I am the right hash...')
-        check_hash = self.maproute.me == self.H(self.h(hostname))
+        check_hash = self.maproute.me == self.H(self.h((hostname, spread_number)))
 
         if not check_hash:
             logging.info('ANDNA: get_registrar_pubk: hash is NOT verified. Raising exception.')
@@ -658,7 +776,7 @@ class Andna(OptionalP2P):
         logging.debug('ANDNA: get_registrar_pubk: returning ' + str(ret))
         return ret
 
-    def reply_resolve(self, hostname, serv_key, no_chain=False):
+    def reply_resolve(self, hostname, serv_key, no_chain=False, spread_number=0):
         """ Return the AndnaResolvedRecord associated to the hostname and service """
         # If we recently changed our NIP (we hooked) we wait to finish
         # an andna_hook before answering a resolution request.
@@ -669,10 +787,10 @@ class Andna(OptionalP2P):
         logging.debug('ANDNA: We are correctly hooked.')
         # We are correctly hooked.
 
-        logging.debug('ANDNA: reply_resolve' + str((hostname, serv_key)))
+        logging.debug('ANDNA: reply_resolve' + str((hostname, serv_key, no_chain, spread_number)))
         # first the hash check
         logging.debug('ANDNA: reply_resolve: verifying that I am the right hash...')
-        check_hash = self.maproute.me == self.H(self.h(hostname))
+        check_hash = self.maproute.me == self.H(self.h((hostname, spread_number)))
 
         if not check_hash:
             logging.info('ANDNA: reply_resolve: hash is NOT verified. Raising exception.')
@@ -709,7 +827,7 @@ class Andna(OptionalP2P):
         logging.debug('ANDNA: reply_resolve: returning ' + str(data))
         return 'OK', data
 
-    def reply_registrar_nip(self, hostname):
+    def reply_registrar_nip(self, hostname, spread_number=0):
         """ Return the NIP of the registrar of hostname and its TTL """
         # If we recently changed our NIP (we hooked) we wait to finish
         # an andna_hook before answering a resolution request.
@@ -723,7 +841,7 @@ class Andna(OptionalP2P):
         logging.debug('ANDNA: reply_registrar_nip(' + str(hostname) + ')')
         # first the hash check
         logging.debug('ANDNA: reply_registrar_nip: verifying that I am the right hash...')
-        check_hash = self.maproute.me == self.H(self.h(hostname))
+        check_hash = self.maproute.me == self.H(self.h((hostname, spread_number)))
 
         if not check_hash:
             logging.info('ANDNA: reply_registrar_nip: hash is NOT verified. Raising exception.')
@@ -748,16 +866,28 @@ class Andna(OptionalP2P):
         else:
             return AndnaResolvedRecord(MAX_TTL_OF_NEGATIVE, None)
 
-    def get_auth_cache(self):
+    def get_auth_cache(self, key=None):
         ''' Returns the cache of authoritative records.
         '''
         if self.wait_andna_hook:
             raise AndnaExpectableException, 'Andna is hooking. Request not valid.'
-        return self.cache, self.request_queue
+        if key is None:
+            return self.cache, self.request_queue
+        else:
+            # The client wants only this key = hostname
+            # The answer is an element of self.cache.
+            if key in self.cache:
+                return self.cache[key]
+            else:
+                return None
 
-    def h(self, hostname):
-        """ Retrieve an IP from the hostname """    
-        return hash_32bit_ip(md5(hostname), self.maproute.levels, 
+    def h(self, key):
+        """ Retrieve an IP from the hostname """
+        if isinstance(key, tuple):
+            hostname, spread_number = key
+        else:
+            hostname, spread_number = key, 0
+        return hash_32bit_ip(md5(hostname + str(spread_number)), self.maproute.levels, 
                              self.maproute.gsize)
 
 def hash_32bit_ip(hashed, levels, gsize):
