@@ -132,7 +132,7 @@ class AndnsServer(object):
         self.serving_ids.remove(message_id)
 
     def resolve(self, req, no_chain=False):
-        """ AndnsRequest or AndnsReverseRequest object as input.
+        """ Take an AndnsRequest object as input.
 
         @rtype: AndnaResolvedRecord object.
         """
@@ -152,7 +152,7 @@ class AndnsServer(object):
         elif nk == andns.INET_REALM:
             logging.debug('AndnsServer: forwarding the request in DNS')
             tcp = False # means we use UDP protocol
-            # TODO: can be usefull to use TCP?
+            # TODO: can be usefull to use TCP? (even in reverse resolve)
             answers = dns_resolver.query(hostname, rdatatypes.A, tcp=False)
             records = []
 
@@ -166,7 +166,7 @@ class AndnsServer(object):
             record = AndnaResolvedRecord(answers.ttl, records)
             logging.debug('AndnsServer: INET resolution finished.')
 
-        return record
+        return 'OK', record
 
     def reverse_resolve(self, req):
         if not isinstance(req, AndnsReverseRequest):
@@ -189,21 +189,23 @@ class AndnsServer(object):
         elif nk == andns.INET_REALM:
             logging.debug('AndnsServer: forwarding the request in DNS ' +
                           str(name))
-            
-            answers = dns_resolver.query(reverse.from_address(name),
-                                         rdatatypes.PTR)
+                          
+            if name[-14:].upper() != '.IN-ADDR.ARPA.':
+                name = reverse.from_address(name)
+            logging.debug('AndnsServer: this is the name we are using for query: ' + str(name))
+            answers = dns_resolver.query(name, rdatatypes.PTR)
             logging.debug('AndnsServer: this are the answers retrieved: ')
             logging.debug(str(answers))
             records = []
 
             for rdata in answers:
-                # TODO: see lines 140 and 142 of this file
+                # TODO: see lines 163 of this file
                 records.append(SnsdResolvedRecord(str(rdata), 1, 1))
                 
             record = AndnaResolvedRecord(answers.ttl, records)
             logging.debug('AndnsServer: INET resolution finished.')
 
-        return record
+        return 'OK', record
 
     def std_qry(self, msg):
         ''' Take an AndnsPacket object as `msg' and return another object of the
