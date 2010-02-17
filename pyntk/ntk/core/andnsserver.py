@@ -145,7 +145,10 @@ class AndnsServer(object):
                                    
         if nk == andns.NTK_REALM:
             logging.debug('AndnsServer: forwarding the request in ANDNA')
-            record = self.andna.resolve(hostname, serv_key, no_chain)
+            res, record = self.andna.resolve(hostname, serv_key, no_chain)
+            if res != 'OK':
+                logging.debug('AndnsServer: ANDNA resolution failed.')
+                return 'KO', record
             logging.debug('AndnsServer: retrieved this records...\n'+
                           str(record))
             logging.debug('AndnsServer: ANDNA resolution finished.')
@@ -210,44 +213,57 @@ class AndnsServer(object):
     def std_qry(self, msg):
         ''' Take an AndnsPacket object as `msg' and return another object of the
         same type that is the response. '''
-        if msg.qr == 0:
-           # the packet contains questions
-           hostname, nk, serv_key = msg.qstdata, msg.nk, msg.service
 
-           res = self.resolve(AndnsRequest(hostname, nk, serv_key))
-           for record in res.records:
-               # TODO: where do you save MAIN_IP?
-               # (see libandns, is missing in RFC)
-               msg.addAnswer((1, record.weight, record.priority,
-                                serv_key, record.record))
+        if msg.qr != 0: return msg # there are no questions
+
+        # the packet contains questions
+        hostname, nk, serv_key = msg.qstdata, msg.nk, msg.service
+
+        res, ret = self.resolve(AndnsRequest(hostname, nk, serv_key))
+        if res != 'OK':
+            # no answers...
+            logging.debug('AndnsServer: failed resolution!')
+            msg = self.make_response(qry=msg, RCODE=3)
         else:
-           return msg # This packet doesn't contains questions
+            logging.debug('AndnsServer: ret = ' + str(ret))
+            for record in ret.records:
+                # TODO: where do you save MAIN_IP?
+                # (see libandns, is missing in RFC)
+                msg.addAnswer(answer=(1, record.weight, record.priority,
+                                serv_key, record.record))
+                # now the packet contains answers...
+                msg.qr = 1
 
-        # now the packet contains answers...
-        msg.qr = 1
         return msg
 
     def inv_qry(self, msg):
-        if msg.qr == 0:
-           # the packet contains questions
-           name, nk, serv_key = msg.qstdata, msg.nk, msg.service
-           req = None
-           if nk == andns.NTK_REALM:
-               req = AndnsReverseRequest(None, name, nk)
-           elif nk == andns.INET_REALM:
-               req = AndnsReverseRequest(name, None, nk)
+        ''' Take an AndnsPacket object as `msg' and return another object of the
+        same type that is the response. '''
 
-           res = self.reverse_resolve(req) 
-           for record in res.records:
-               # TODO: where do you save MAIN_IP?
-               # (see libandns, is missing in RFC)
-               msg.addAnswer((1, record.weight, record.priority,
-                                serv_key, record.record))
+        if msg.qr != 0: return msg # there are no questions
+
+        # the packet contains questions
+        name, nk, serv_key = msg.qstdata, msg.nk, msg.service
+        req = None
+        if nk == andns.NTK_REALM:
+           req = AndnsReverseRequest(None, name, nk)
+        elif nk == andns.INET_REALM:
+           req = AndnsReverseRequest(name, None, nk)
+
+        res, ret = self.reverse_resolve(req)
+        if res != 'OK':
+            # no answers...
+            logging.debug('AndnsServer: failed resolution!')
+            msg = self.make_response(qry=msg, RCODE=3)
         else:
-           return msg # This packet doesn't contains questions
+            for record in ret.records:
+                # TODO: where do you save MAIN_IP?
+                # (see libandns, is missing in RFC)
+                msg.addAnswer(answer=(1, record.weight, record.priority,
+                                serv_key, record.record))
+                # now the packet contains answers...
+                msg.qr = 1
 
-        # now the packet contains answers...
-        msg.qr = 1
         return msg
 
     def make_response(self, qry=None, id=None, RA=True, RCODE=0):
