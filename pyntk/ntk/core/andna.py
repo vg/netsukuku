@@ -167,15 +167,11 @@ class Andna(OptionalP2P):
                 logging.debug('ANDNA: andna_hook: bunch_up = ' + str(bunch_up))
                 if self.maproute.me in bunch_up:
                     bunch_up.remove(self.maproute.me)
-                else:
-                    bunch_up = bunch_up[:-1]
                 bunch_down = self.find_nearest_exec(self.maproute.me[:], ANDNA_DUPLICATION*2+1, \
                             self.maproute.levels, path=-1)
                 logging.debug('ANDNA: andna_hook: bunch_down = ' + str(bunch_down))
                 if self.maproute.me in bunch_down:
                     bunch_down.remove(self.maproute.me)
-                else:
-                    bunch_down = bunch_down[:-1]
                 # Extreme cases:
                 #  0 participating nodes: do nothing and we are hooked.
                 #  less than ANDNA_DUPLICATION*2 participating nodes: accept all the records
