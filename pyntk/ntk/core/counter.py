@@ -283,6 +283,9 @@ class Counter(OptionalP2P):
             self.events.send('COUNTER_HOOKED', ())
             self.wait_counter_hook = False
             logging.info('COUNTER: counter_hook: Emit signal COUNTER_HOOKED.')
+            # Now I can participate again
+            logging.debug('COUNTER: counter_hook: re-participate to COUNTER.')
+            if self.participant: self.participate()
 
             # Communicate to one Counter Node that I am the new holder
             # of this NIP.

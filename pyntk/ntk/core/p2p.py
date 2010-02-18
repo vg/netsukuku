@@ -892,11 +892,11 @@ class P2PAll(object):
                 for (pid, map_pack) in nrmaps_pack:
                     self.pid_get(pid).mapp2p.map_data_merge(map_pack)
 
+            # The re-participation is delayed up to a
+            #  moment of choice of the specific service.
+            #  Eg the andna module will call self.participate after the
+            #  completion of andna_hook.
             for s, obj in self.service.items():
-                if isinstance(obj, OptionalP2P) and obj.participant:
-                    logging.debug('P2P hooking: re-participate to '
-                                'PID ' + str(s))
-                    self.service[s].participate()
                 self.service[s].exit_wait_p2p_hook()
 
             logging.debug('P2P hooking: My final list of '

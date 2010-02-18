@@ -323,6 +323,9 @@ class Andna(OptionalP2P):
             self.events.send('ANDNA_HOOKED', ())
             self.wait_andna_hook = False
             logging.info('ANDNA: andna_hook: Emit signal ANDNA_HOOKED.')
+            # Now I can participate again
+            logging.debug('ANDNA: andna_hook: re-participate to ANDNA.')
+            if self.participant: self.participate()
 
             # We received COUNTER_HOOK, but the counter nodes could take longer
             # to know our nip and pubk. So wait a little, then I can register my names
