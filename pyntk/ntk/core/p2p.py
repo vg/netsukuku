@@ -1,7 +1,7 @@
 ##
 # This file is part of Netsukuku
 # (c) Copyright 2007 Andrea Lo Pumo aka AlpT <alpt@freaknet.org>
-# (c) Copyright 2009 Luca Dionisi aka lukisi <luca.dionisi@gmail.com>
+# (c) Copyright 2010 Luca Dionisi aka lukisi <luca.dionisi@gmail.com>
 #
 # This source code is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as published
@@ -29,7 +29,7 @@ from ntk.core.map import Map
 from ntk.lib.event import Event
 from ntk.lib.log import logger as logging
 from ntk.lib.log import get_stackframes
-from ntk.lib.micro import microfunc, micro_current, micro_kill
+from ntk.lib.micro import microfunc, start_tracking, stop_tracking, micro_current, micro_kill
 from ntk.lib.rencode import serializable
 from ntk.lib.rpc import FakeRmt, RPCDispatcher, CallerInfo, RPCError
 from ntk.core.status import ZombieException 
@@ -189,6 +189,8 @@ class P2P(RPCDispatcher):
            pid: P2P id of the service associated to this map
         """
 
+        RPCDispatcher.__init__(self, root_instance=self)
+
         self.ntkd_status = ntkd_status
         self.radar = radar
         self.neigh = radar.neigh
@@ -196,7 +198,8 @@ class P2P(RPCDispatcher):
         self.pid = pid
 
         self.remotable_funcs = [self.msg_send,
-                                self.msg_send_udp]
+                                self.msg_send_udp,
+                                self.find_nearest_send]
 
         # From the moment I change my NIP up to the moment I have hooked,
         # we don't want to exploit P2P mechanism. That is msg_send,
@@ -208,8 +211,6 @@ class P2P(RPCDispatcher):
         # So it will use msg_send_udp. It must be permitted.
         self.wait_p2p_hook = True
         self.maproute.events.listen('ME_CHANGED', self.enter_wait_p2p_hook)
-
-        RPCDispatcher.__init__(self, root_instance=self)
 
     def enter_wait_p2p_hook(self, *args):
         self.wait_p2p_hook = True
@@ -276,10 +277,129 @@ class P2P(RPCDispatcher):
 
         lvl = self.maproute.nip_cmp(hip, self.maproute.me)
         br = self.maproute.node_get(lvl, hip[lvl]).best_route()
+        # TODO choose the best route that does not contain the
+        #      gnode from which we received the message, or better
+        #      any of the gnodes already touched by the message.
 
         if not br:
             return None
         return br.gw
+
+    def find_nearest_exec(self, nip, number_of_nodes, lvl, path=0):
+        ''' Considering myself as the gnode of level lvl, search
+            inside me the nearest number_of_nodes nodes to the
+            nip.
+            path = 0 means going up and down
+            path = 1 means going only up
+            path = -1 means going only down
+        '''
+        # The initial call would be
+        #   self.find_nearest_exec(nip, 40, self.maproute.levels)
+        # to search for them inside the whole network
+
+        if self.wait_p2p_hook:
+            raise P2PError, 'P2P is hooking. Request not valid.'
+
+        sequence = []
+        gsize = self.maproute.gsize
+        me_as_gnode = self.maproute.me[lvl:]
+        center = nip[lvl-1]
+        if path == 0: ids = self.find_nearest_up_and_down(center)
+        if path == 1: ids = self.find_nearest_up(center)
+        if path == -1: ids = self.find_nearest_down(center)
+        for i in ids:
+            # if gnode me_as_gnode + [i] is partecipant
+            if self.is_participant(lvl-1, i):
+                # if l > 0
+                if lvl-1 > 0:
+                    try:
+                        # ask to the inner gnode, let's see how many it finds.
+                        ask_to_gnode = [i] + me_as_gnode
+                        resp = self.find_nearest_send(ask_to_gnode, \
+                                    nip, number_of_nodes, lvl-1, path)
+                    except Exception, e:
+                        logging.warning('P2P: find_nearest_exec' + \
+                                str((nip, number_of_nodes, lvl)) + \
+                                ' got Exception ' + repr(e))
+                        resp = []
+                else:
+                    # The gnode of level 0 is a node.
+                    # And it is participating.
+                    resp = [[i] + me_as_gnode]
+                sequence += resp
+                number_of_nodes -= len(resp)
+                if number_of_nodes <= 0:
+                    break
+        return sequence
+
+    def find_nearest_send(self, to_gnode, nip, number_of_nodes, lvl, path):
+      ''' Reach the gnode and ask to him... 
+          to_gnode is part of a nip. It is a sequence of len = level-lvl
+      '''
+
+      start_tracking()
+      try:
+        if self.wait_p2p_hook:
+            raise P2PError, 'P2P is hooking. Request not valid.'
+
+        # Implements "zombie" status
+        if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
+        # drop the request if number is too big
+        if number_of_nodes > 100:
+            raise Exception, 'find_nearest_nodes_to_nip: asked for too many nodes.'
+
+        # Am I the destination?
+        me_as_gnode = self.maproute.me[lvl:]
+        if me_as_gnode == to_gnode:
+            ret = self.find_nearest_exec(nip, number_of_nodes, lvl, path)
+            return ret
+        else:
+            # Find the path to the destination
+            complete_to_gnode = [None] * lvl + to_gnode
+            n = self.neigh_get(complete_to_gnode)
+            if n:
+                ret = None
+                execstr = 'ret = n.ntkd.p2p.PID_' + str(self.pid) + \
+                '.find_nearest_send(to_gnode, nip, number_of_nodes, lvl, path)'
+                exec(execstr)
+                return ret
+            else:
+                logging.warning('I don\'t know to whom I must forward. ' + \
+                                'Giving up. Raising exception.')
+                raise Exception('Unreachable P2P destination ' + \
+                                str(complete_to_gnode) + \
+                                ' from ' + str(self.maproute.me) + '.')
+      finally:
+        stop_tracking()
+
+    def find_nearest_up_and_down(self, center):
+        ''' Starting from center and going up and down '''
+        gsize = self.maproute.gsize
+        ids = [center]
+        from math import trunc
+        times = trunc((gsize+1)/2)-1
+        for to_add in xrange(1, times+1):
+            for sign in [-1,1]:
+                ids.append((center + to_add * sign) % gsize)
+        if trunc(gsize / 2) * 2 == gsize:
+            ids.append((center + (times+1) * -1) % gsize)
+        return ids
+
+    def find_nearest_up(self, center):
+        ''' Starting from center and going only up '''
+        gsize = self.maproute.gsize
+        ids = [center]
+        for to_add in xrange(1, gsize):
+            ids.append((center + to_add) % gsize)
+        return ids
+
+    def find_nearest_down(self, center):
+        ''' Starting from center and going only down '''
+        gsize = self.maproute.gsize
+        ids = [center]
+        for to_add in xrange(1, gsize):
+            ids.append((center - to_add) % gsize)
+        return ids
 
     def msg_send(self, sender_nip, hip, msg):
         """Routes a packet to `hip'. Do not use this function directly, use
@@ -428,11 +548,7 @@ class OptionalP2P(P2P):
            pid: P2P id of the service associated to this map
         """
 
-        self.ntkd_status = ntkd_status
-        self.radar = radar
-        self.neigh = radar.neigh
-        self.maproute = maproute
-        self.pid = pid
+        P2P.__init__(self, ntkd_status, radar, maproute, pid)
 
         self.mapp2p = MapP2P(self.maproute.levels,
                              self.maproute.gsize,
@@ -445,12 +561,8 @@ class OptionalP2P(P2P):
         # are we a participant?
         self.participant = False
 
-        self.remotable_funcs = [self.participant_add,
-                                self.participant_add_udp,
-                                self.msg_send,
-                                self.msg_send_udp]
-
-        RPCDispatcher.__init__(self, root_instance=self)
+        self.remotable_funcs += [self.participant_add,
+                                 self.participant_add_udp]
 
     def is_participant(self, lvl, idn):
         """Returns True iff the node lvl,idn is participating

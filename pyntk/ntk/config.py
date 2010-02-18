@@ -37,6 +37,9 @@ DEFAULT_SETTINGS = dict(
     RADAR_WAIT_TIME = 8, # seconds
     MULTIPATH = False,
     SIMULATED = False,
+    # Experimental code
+    ANDNA_REPLICA_ACTIVATED = False,
+    COUNTER_REPLICA_ACTIVATED = False,
 
 )
 
