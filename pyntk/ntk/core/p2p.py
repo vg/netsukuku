@@ -24,6 +24,7 @@
 import ntk.lib.rpc as rpc
 import ntk.wrap.xtime as xtime
 
+from ntk.lib.log import ExpectableException
 from ntk.config import settings
 from ntk.core.map import Map
 from ntk.lib.event import Event
@@ -37,6 +38,9 @@ from ntk.core.status import ZombieException
 
 class P2PError(Exception):
     '''Generic P2P Error'''
+
+class P2PHookingError(ExpectableException):
+    '''To signal we are still hooking'''
 
 class ParticipantNode(object):
     def __init__(self, the_map, lvl, id, participant=False, its_me=False):
@@ -298,7 +302,7 @@ class P2P(RPCDispatcher):
         # to search for them inside the whole network
 
         if self.wait_p2p_hook:
-            raise P2PError, 'P2P is hooking. Request not valid.'
+            raise P2PHookingError, 'P2P is hooking. Request not valid.'
 
         sequence = []
         gsize = self.maproute.gsize
@@ -340,7 +344,7 @@ class P2P(RPCDispatcher):
       start_tracking()
       try:
         if self.wait_p2p_hook:
-            raise P2PError, 'P2P is hooking. Request not valid.'
+            raise P2PHookingError, 'P2P is hooking. Request not valid.'
 
         # Implements "zombie" status
         if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
@@ -361,7 +365,25 @@ class P2P(RPCDispatcher):
                 ret = None
                 execstr = 'ret = n.ntkd.p2p.PID_' + str(self.pid) + \
                 '.find_nearest_send(to_gnode, nip, number_of_nodes, lvl, path)'
-                exec(execstr)
+                # Handles P2PHookingError, 'P2P is hooking. Request not valid.'
+                #      by retrying after a while and up to a certain timeout.
+                tc_max = xtime.TimeCapsule(20000) # give max 20 seconds to finish hook
+                while True:
+                    try:
+                        exec(execstr)
+                    except Exception, e:
+                        if 'P2P is hooking' in e:
+                            logging.warning('P2P routing: The neighbour is still hooking.')
+                            if tc_max.get_ttl() < 0:
+                                logging.warning('P2P routing: Giving up.')
+                                raise e
+                            else:
+                                logging.warning('P2P routing: Wait a bit and try again.')
+                                xtime.swait(1000)
+                        else:
+                            raise e
+                    else:
+                        break
                 return ret
             else:
                 logging.warning('I don\'t know to whom I must forward. ' + \
@@ -408,7 +430,7 @@ class P2P(RPCDispatcher):
         msg: it is a (func_name, args) pair."""
 
         if self.wait_p2p_hook:
-            raise P2PError, 'P2P is hooking. Request not valid.'
+            raise P2PHookingError, 'P2P is hooking. Request not valid.'
 
         # Implements "zombie" status
         if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
@@ -437,7 +459,25 @@ class P2P(RPCDispatcher):
             '.msg_send(sender_nip, hip, msg)'
             logging.log(logging.ULTRADEBUG, 'Executing "' + execstr + 
                         '" ...')
-            exec(execstr)
+            # Handles P2PHookingError, 'P2P is hooking. Request not valid.'
+            #      by retrying after a while and up to a certain timeout.
+            tc_max = xtime.TimeCapsule(20000) # give max 20 seconds to finish hook
+            while True:
+                try:
+                    exec(execstr)
+                except Exception, e:
+                    if 'P2P is hooking' in e:
+                        logging.warning('P2P routing: The neighbour is still hooking.')
+                        if tc_max.get_ttl() < 0:
+                            logging.warning('P2P routing: Giving up.')
+                            raise e
+                        else:
+                            logging.warning('P2P routing: Wait a bit and try again.')
+                            xtime.swait(1000)
+                    else:
+                        raise e
+                else:
+                    break
             logging.log(logging.ULTRADEBUG, 'Executed "' + execstr + 
                         '". Returning ' + str(ret))
             return ret
@@ -479,7 +519,25 @@ class P2P(RPCDispatcher):
             rpc.UDP_send_keepalive_forever_start(_rpc_caller, caller_id)
             try:
                 logging.log(logging.ULTRADEBUG, 'calling msg_send...')
-                ret = self.msg_send(sender_nip, hip, msg)
+                # Handles P2PHookingError, 'P2P is hooking. Request not valid.'
+                #      by retrying after a while and up to a certain timeout.
+                tc_max = xtime.TimeCapsule(20000) # give max 20 seconds to finish hook
+                while True:
+                    try:
+                        ret = self.msg_send(sender_nip, hip, msg)
+                    except Exception, e:
+                        if 'P2P is hooking' in e:
+                            logging.warning('P2P routing: The neighbour is still hooking.')
+                            if tc_max.get_ttl() < 0:
+                                logging.warning('P2P routing: Giving up.')
+                                raise e
+                            else:
+                                logging.warning('P2P routing: Wait a bit and try again.')
+                                xtime.swait(1000)
+                        else:
+                            raise e
+                    else:
+                        break
                 logging.log(logging.ULTRADEBUG, 'returning ' + str(ret))
             except Exception as e:
                 ret = ('rmt_error', str(e))
