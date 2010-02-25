@@ -126,6 +126,9 @@ class Andna(OptionalP2P):
                 logging.debug('ANDNA: enter_wait_andna_hook: killing...')
                 micro_kill(self.micro_to_kill[k])
 
+    def exit_wait_andna_hook(self):
+        self.wait_andna_hook = False
+
     def reset(self):
         self.request_queue = {}
         self.cache = {}
@@ -143,185 +146,75 @@ class Andna(OptionalP2P):
         try:
             self.micro_to_kill['andna_hook'] = micro_current()
 
+            #TODO Handle possible errors in hooking phase. Should we try again?
+            # If we don't, we are not participating in the service.
+
             # clear old cache
             self.reset()
             logging.debug('ANDNA: andna_hook: resetted.')
 
             if settings.ANDNA_REPLICA_ACTIVATED:
-                # We find 2 bunches of ANDNA_DUPLICATION*2 elements near to us, one
-                # going up and one going down.
-                # Note: We don't want ourself in the bunches.
-                # For each one of them, ask for the cache to the element 1 and to the
-                # element ANDNA_DUPLICATION+1. In case of error try 2, 3, ...
-                # At the end we have the cache from:
-                #  cache_1) myself-ANDNA_DUPLICATION-1
-                #  cache_2) myself-1
-                #  cache_3) myself+1
-                #  cache_4) myself+ANDNA_DUPLICATION+1
-                # We accept a record that is in 2 and in 3.
-                # We accept a record that is in 2 and not in 1.
-                # We accept a record that is in 3 and not in 4.
-
-                bunch_up = self.find_nearest_exec(self.maproute.me[:], ANDNA_DUPLICATION*2+1, \
-                            self.maproute.levels, path=1)
-                logging.debug('ANDNA: andna_hook: bunch_up = ' + str(bunch_up))
-                if self.maproute.me in bunch_up:
-                    bunch_up.remove(self.maproute.me)
-                bunch_down = self.find_nearest_exec(self.maproute.me[:], ANDNA_DUPLICATION*2+1, \
-                            self.maproute.levels, path=-1)
-                logging.debug('ANDNA: andna_hook: bunch_down = ' + str(bunch_down))
-                if self.maproute.me in bunch_down:
-                    bunch_down.remove(self.maproute.me)
-                # Extreme cases:
-                #  0 participating nodes: do nothing and we are hooked.
-                #  less than ANDNA_DUPLICATION*2 participating nodes: accept all the records
-                #      from any one of them.
-                if len(bunch_up) == 0:
-                    logging.debug('ANDNA: andna_hook: I am alone')
-                else:
-                    if len(bunch_up) < ANDNA_DUPLICATION*2:
-                        logging.debug('ANDNA: andna_hook: we are few, let\'s get all')
-                        accept_cache, accept_queue = [], []
-                        for cache_nip in bunch_up:
-                            try:
-                                remote = TCPClient(ip_to_str(self.maproute.nip_to_ip(cache_nip)))
-                                accept_cache, accept_queue = remote.andna.get_auth_cache()
-                                # succeded
-                                logging.debug('ANDNA: andna_hook: found a cache')
-                                break
-                            except Exception, e:
-                                logging.debug('ANDNA: andna_hook: getting cache from ' + \
-                                    str(cache_nip) + ' got exception ' + repr(e))
-                        # We accept all records.
-                        for hname in accept_cache:
-                            # Do I have already this record?
-                            if hname not in self.cache:
-                                # No. Memorize it.
-                                self.cache[hname] = accept_cache[hname]
-                                logging.debug('ANDNA: andna_hook: got cache for ' + \
-                                        str(hname))
-                        for hname in accept_queue:
-                            # Do I have already this record?
-                            if hname not in self.request_queue:
-                                # No. Memorize it.
-                                self.request_queue[hname] = accept_queue[hname]
-                                logging.debug('ANDNA: andna_hook: got request_queue for ' + \
-                                        str(hname))
-                        logging.debug('ANDNA: andna_hook: finished')
+                for lvl in reversed(xrange(self.maproute.levels)):
+                    pass # print 'hook:', self.maproute.me, 'finding peers at level', lvl
+                    f1, b1, bn = self.find_hook_peers(lvl, ANDNA_DUPLICATION)
+                    pass # print 'hook: f1, b1, bn', (f1, b1, bn)
+                    if f1 is None:
+                        # no one in network at this level (except me)
+                        pass # print 'no one in network at this level (except me)'
+                        pass
+                    elif b1 is None:
+                        # few nodes at this level. get all.
+                        pass # print 'few nodes at this level. get all.'
+                        cache_f1, queue_f1 = self.peer(hIP=f1).get_auth_cache()
+                        for k in cache_f1:
+                            pass # print 'there is', k, 'in', f1
+                            if k not in self.cache:
+                                self.cache[k] = cache_f1[k]
+                                pass # print 'got', k
+                        for k in queue_f1:
+                            pass # print 'there is', k, 'in', f1
+                            if k not in self.queue:
+                                self.queue[k] = queue_f1[k]
+                                pass # print 'got', k
                     else:
-                        cache_1 = None
-                        cache_2 = None
-                        cache_3 = None
-                        cache_4 = None
-                        request_queue_1 = None
-                        request_queue_2 = None
-                        request_queue_3 = None
-                        request_queue_4 = None
-                        for i in xrange(ANDNA_DUPLICATION):
-                            if cache_1 is None:
-                                try:
-                                    remote = TCPClient(ip_to_str(self.maproute.nip_to_ip(bunch_down[ANDNA_DUPLICATION+i])))
-                                    cache_1, request_queue_1 = remote.andna.get_auth_cache()
-                                    # succeded
-                                    logging.debug('ANDNA: andna_hook: found a cache_1')
-                                except Exception, e:
-                                    logging.debug('ANDNA: andna_hook: getting cache from ' + \
-                                        str(bunch_down[ANDNA_DUPLICATION+i]) + ' got exception ' + repr(e))
-                            if cache_2 is None:
-                                try:
-                                    remote = TCPClient(ip_to_str(self.maproute.nip_to_ip(bunch_down[i])))
-                                    cache_2, request_queue_2 = remote.andna.get_auth_cache()
-                                    # succeded
-                                    logging.debug('ANDNA: andna_hook: found a cache_2')
-                                except Exception, e:
-                                    logging.debug('ANDNA: andna_hook: getting cache from ' + \
-                                        str(bunch_down[i]) + ' got exception ' + repr(e))
-                            if cache_3 is None:
-                                try:
-                                    remote = TCPClient(ip_to_str(self.maproute.nip_to_ip(bunch_up[i])))
-                                    cache_3, request_queue_3 = remote.andna.get_auth_cache()
-                                    # succeded
-                                    logging.debug('ANDNA: andna_hook: found a cache_3')
-                                except Exception, e:
-                                    logging.debug('ANDNA: andna_hook: getting cache from ' + \
-                                        str(bunch_up[i]) + ' got exception ' + repr(e))
-                            if cache_4 is None:
-                                try:
-                                    remote = TCPClient(ip_to_str(self.maproute.nip_to_ip(bunch_up[ANDNA_DUPLICATION+i])))
-                                    cache_4, request_queue_4 = remote.andna.get_auth_cache()
-                                    # succeded
-                                    logging.debug('ANDNA: andna_hook: found a cache_4')
-                                except Exception, e:
-                                    logging.debug('ANDNA: andna_hook: getting cache from ' + \
-                                        str(bunch_up[ANDNA_DUPLICATION+i]) + ' got exception ' + repr(e))
-                        if cache_1 is None: cache_1 = []
-                        if cache_2 is None: cache_2 = []
-                        if cache_3 is None: cache_3 = []
-                        if cache_4 is None: cache_4 = []
-                        if request_queue_1 is None: request_queue_1 = []
-                        if request_queue_2 is None: request_queue_2 = []
-                        if request_queue_3 is None: request_queue_3 = []
-                        if request_queue_4 is None: request_queue_4 = []
-                        # We accept a record that is in 2 and in 3.
-                        for hname in cache_2:
-                            # Do I have already this record?
-                            if hname not in self.cache:
-                                # No. Is it in 3?
-                                if hname in cache_3:
-                                    # Yes. Memorize it.
-                                    self.cache[hname] = cache_2[hname]
-                                    logging.debug('ANDNA: andna_hook: got cache for ' + \
-                                            str(hname))
-                        for hname in request_queue_2:
-                            # Do I have already this record?
-                            if hname not in self.request_queue:
-                                # No. Is it in 3?
-                                if hname in request_queue_3:
-                                    # Yes. Memorize it.
-                                    self.request_queue[hname] = request_queue_2[hname]
-                                    logging.debug('ANDNA: andna_hook: got request_queue for ' + \
-                                            str(hname))
-                        # We accept a record that is in 2 and not in 1.
-                        for hname in cache_2:
-                            # Do I have already this record?
-                            if hname not in self.cache:
-                                # No. Is it in 1?
-                                if hname not in cache_1:
-                                    # No. Memorize it.
-                                    self.cache[hname] = cache_2[hname]
-                                    logging.debug('ANDNA: andna_hook: got cache for ' + \
-                                            str(hname))
-                        for hname in request_queue_2:
-                            # Do I have already this record?
-                            if hname not in self.request_queue:
-                                # No. Is it in 1?
-                                if hname not in request_queue_1:
-                                    # No. Memorize it.
-                                    self.request_queue[hname] = request_queue_2[hname]
-                                    logging.debug('ANDNA: andna_hook: got request_queue for ' + \
-                                            str(hname))
-                        # We accept a record that is in 3 and not in 4.
-                        for hname in cache_3:
-                            # Do I have already this record?
-                            if hname not in self.cache:
-                                # No. Is it in 1?
-                                if hname not in cache_4:
-                                    # No. Memorize it.
-                                    self.cache[hname] = cache_3[hname]
-                                    logging.debug('ANDNA: andna_hook: got cache for ' + \
-                                            str(hname))
-                        for hname in request_queue_3:
-                            # Do I have already this record?
-                            if hname not in self.request_queue:
-                                # No. Is it in 1?
-                                if hname not in request_queue_4:
-                                    # No. Memorize it.
-                                    self.request_queue[hname] = request_queue_3[hname]
-                                    logging.debug('ANDNA: andna_hook: got request_queue for ' + \
-                                            str(hname))
+                        # choose the records
+                        pass # print 'choose the records'
+                        cache_f1, queue_f1 = self.peer(hIP=f1).get_auth_cache()
+                        cache_b1, queue_b1 = self.peer(hIP=b1).get_auth_cache()
+                        cache_bn, queue_bn = self.peer(hIP=bn).get_auth_cache()
+                        # keys that are in b1 and not in bn
+                        for k in [k for k in cache_b1 if k not in cache_bn]:
+                            pass # print 'there is', k, 'in', b1, 'and not in', bn
+                            if k not in self.cache:
+                                self.cache[k] = cache_b1[k]
+                                pass # print 'got', k
+                        for k in [k for k in queue_b1 if k not in queue_bn]:
+                            pass # print 'there is', k, 'in', b1, 'and not in', bn
+                            if k not in self.queue:
+                                self.queue[k] = queue_b1[k]
+                                pass # print 'got', k
+                        # keys that are in f1
+                        for k in cache_f1:
+                            pass # print 'there is', k, 'in', f1
+                            if k not in self.cache:
+                                # check that I am before
+                                if self.is_x_after_me_for_y(f1, self.h(k)):
+                                    self.cache[k] = cache_f1[k]
+                                    pass # print 'got', k
+                                else:
+                                    pass # print 'but i am not interested in it'
+                        for k in queue_f1:
+                            pass # print 'there is', k, 'in', f1
+                            if k not in self.queue:
+                                # check that I am before
+                                if self.is_x_after_me_for_y(f1, self.h(k)):
+                                    self.queue[k] = queue_f1[k]
+                                    pass # print 'got', k
+                                else:
+                                    pass # print 'but i am not interested in it'
 
             self.events.send('ANDNA_HOOKED', ())
-            self.wait_andna_hook = False
+            self.exit_wait_andna_hook()
             logging.info('ANDNA: andna_hook: Emit signal ANDNA_HOOKED.')
             # Now I can participate again
             logging.debug('ANDNA: andna_hook: re-participate to ANDNA.')
@@ -528,7 +421,7 @@ class Andna(OptionalP2P):
                 choose_from.append((self.peer(key=(hostname, i)), i))
             def get_nip(pair):
                 peer, i = pair
-                return self.H(peer.get_hash_nip())
+                return self.search_participant_as_nip(peer.get_hash_nip())
             logging.debug('ANDNA: resolve: choose: ' + str(choose_from))
             hash_node, spread_number = self.maproute.choose_fast(choose_from, get_nip)
             logging.debug('ANDNA: resolve: exact hash_node is ' + str(hash_node.get_hash_nip()))
@@ -638,15 +531,15 @@ class Andna(OptionalP2P):
             # use ANDNA_DUPLICATION to check if maproute.me is in the bunch
             logging.debug('ANDNA: register_hostname_main: starting find_nearest ANDNA_DUPLICATION' + \
                         ' to ' + str(hash_nip))
-            bunch = self.find_nearest_exec(hash_nip, ANDNA_DUPLICATION, \
-                        self.maproute.levels)
+            bunch = self.find_nearest_to_register(hash_nip, ANDNA_DUPLICATION)
             logging.debug('ANDNA: register_hostname_main: nearest ANDNA_DUPLICATION to ' + \
                         str(hash_nip) + ' is ' + str(bunch))
             if not any(bunch):
                 raise AndnaError, 'Andna sees no participants.'
             check_hash = self.maproute.me in bunch
         else:
-            check_hash = self.maproute.me == self.H(self.h(hostname))
+            prox_lvl, prox_id = self.search_participant(self.h(hostname))
+            check_hash = prox_lvl == -1
 
         if not check_hash:
             logging.info('ANDNA: register_hostname_main: hash is NOT verified. Raising exception.')
@@ -836,15 +729,15 @@ class Andna(OptionalP2P):
             # use ANDNA_DUPLICATION to check if maproute.me is in the bunch
             logging.debug('ANDNA: register_hostname_spread: starting find_nearest ANDNA_DUPLICATION' + \
                         ' to ' + str(hash_nip))
-            bunch = self.find_nearest_exec(hash_nip, ANDNA_DUPLICATION, \
-                        self.maproute.levels)
+            bunch = self.find_nearest_to_register(hash_nip, ANDNA_DUPLICATION)
             logging.debug('ANDNA: register_hostname_spread: nearest ANDNA_DUPLICATION to ' + \
                         str(hash_nip) + ' is ' + str(bunch))
             if not any(bunch):
                 raise AndnaError, 'Andna sees no participants.'
             check_hash = self.maproute.me in bunch
         else:
-            check_hash = self.maproute.me == self.H(self.h(hostname))
+            prox_lvl, prox_id = self.search_participant(self.h(hostname))
+            check_hash = prox_lvl == -1
 
         if not check_hash:
             logging.info('ANDNA: register_hostname_spread: hash is NOT verified. Raising exception.')
@@ -920,7 +813,8 @@ class Andna(OptionalP2P):
         logging.debug('ANDNA: get_registrar_pubk(' + str(hostname) + ')')
         # first the hash check
         logging.debug('ANDNA: get_registrar_pubk: verifying that I am the right hash...')
-        check_hash = self.maproute.me == self.H(self.h((hostname, spread_number)))
+        prox_lvl, prox_id = self.search_participant(self.h((hostname, spread_number)))
+        check_hash = prox_lvl == -1
 
         if not check_hash:
             logging.info('ANDNA: get_registrar_pubk: hash is NOT verified. Raising exception.')
@@ -949,7 +843,8 @@ class Andna(OptionalP2P):
         logging.debug('ANDNA: reply_resolve' + str((hostname, serv_key, no_chain, spread_number)))
         # first the hash check
         logging.debug('ANDNA: reply_resolve: verifying that I am the right hash...')
-        check_hash = self.maproute.me == self.H(self.h((hostname, spread_number)))
+        prox_lvl, prox_id = self.search_participant(self.h((hostname, spread_number)))
+        check_hash = prox_lvl == -1
 
         if not check_hash:
             logging.info('ANDNA: reply_resolve: hash is NOT verified. Raising exception.')
@@ -1000,7 +895,8 @@ class Andna(OptionalP2P):
         logging.debug('ANDNA: reply_registrar_nip(' + str(hostname) + ')')
         # first the hash check
         logging.debug('ANDNA: reply_registrar_nip: verifying that I am the right hash...')
-        check_hash = self.maproute.me == self.H(self.h((hostname, spread_number)))
+        prox_lvl, prox_id = self.search_participant(self.h((hostname, spread_number)))
+        check_hash = prox_lvl == -1
 
         if not check_hash:
             logging.info('ANDNA: reply_registrar_nip: hash is NOT verified. Raising exception.')

@@ -29,7 +29,6 @@ from ntk import VERSION
 from ntk.config import settings, ImproperlyConfigured
 from ntk.lib.log import init_logger
 from ntk.lib.micro import allmicro_run
-from ntk.ntkd import NtkNode
 
 
 def interfaces_optcb(option, opt, value, parser):
@@ -114,6 +113,7 @@ def main():
     settings.EXCLUDE_NICS = (options.exclude_interfaces if
                                  options.exclude_interfaces else [])
 
+    from ntk.ntkd import NtkNode
     NtkNode().run()
     
     def sighup_handler(signum, frame):

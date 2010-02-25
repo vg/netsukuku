@@ -201,9 +201,10 @@ class P2P(RPCDispatcher):
         self.maproute = maproute
         self.pid = pid
 
-        self.remotable_funcs = [self.msg_send,
-                                self.msg_send_udp,
-                                self.find_nearest_send]
+        self.remotable_funcs = [self.msg_send_udp,
+                                self.msg_deliver,
+                                self.find_nearest,
+                                self.number_of_participants]
 
         # From the moment I change my NIP up to the moment I have hooked,
         # we don't want to exploit P2P mechanism. That is msg_send,
@@ -243,35 +244,9 @@ class P2P(RPCDispatcher):
         """
         return key
 
-    def H(self, hIP):
-        """This is the function that maps each IP to an existent hash node IP
-           If there are no participants, an exception is raised"""
-        mp = self.maproute
-        logging.log(logging.ULTRADEBUG, 'H: H(' + str(hIP) + ')')
-        H_hIP = [None] * mp.levels
-        for l in reversed(xrange(mp.levels)):
-            for id in xrange(mp.gsize):
-                for sign in [-1,1]:
-                    hid=(hIP[l] + id * sign) % mp.gsize
-                    if self.is_participant(l, hid):
-                        H_hIP[l] = hid
-                        break
-                if H_hIP[l] is not None:
-                    break
-            if H_hIP[l] is None:
-                logging.warning('P2P: H returns None. Map ' + 
-                                str(self.repr_participants()))
-                raise Exception, 'P2P: H returns None. Map not in sync?'
+    ########## Helper functions for "routed" methods.
 
-            if H_hIP[l] != mp.me[l]:
-                # we can stop here
-                break
-
-        logging.log(logging.ULTRADEBUG, 'H: H(' + str(hIP) + ') = ' + 
-                    str(H_hIP))
-        return H_hIP
-
-    def neigh_get(self, hip):
+    def neigh_get_from_lvl_id(self, lvl, id):
         """Returns the Neigh instance of the neighbour we must use to reach
            the hash node.
 
@@ -279,8 +254,7 @@ class P2P(RPCDispatcher):
         If nothing is found, None is returned
         """
 
-        lvl = self.maproute.nip_cmp(hip, self.maproute.me)
-        br = self.maproute.node_get(lvl, hip[lvl]).best_route()
+        br = self.maproute.node_get(lvl, id).best_route()
         # TODO choose the best route that does not contain the
         #      gnode from which we received the message, or better
         #      any of the gnodes already touched by the message.
@@ -289,204 +263,188 @@ class P2P(RPCDispatcher):
             return None
         return br.gw
 
-    def find_nearest_exec(self, nip, number_of_nodes, lvl, path=0):
-        ''' Considering myself as the gnode of level lvl, search
-            inside me the nearest number_of_nodes nodes to the
-            nip.
-            path = 0 means going up and down
-            path = 1 means going only up
-            path = -1 means going only down
-        '''
-        # The initial call would be
-        #   self.find_nearest_exec(nip, 40, self.maproute.levels)
-        # to search for them inside the whole network
+    def neigh_get_from_hip(self, hip):
+        lvl = self.maproute.nip_cmp(hip, self.maproute.me)
+        return self.neigh_get_from_lvl_id(lvl, hip[lvl])
 
-        if self.wait_p2p_hook:
-            raise P2PHookingError, 'P2P is hooking. Request not valid.'
-
-        sequence = []
+    def list_ids(self, center, sign):
+        ''' Starting from center and going in one direction '''
         gsize = self.maproute.gsize
-        me_as_gnode = self.maproute.me[lvl:]
-        center = nip[lvl-1]
-        if path == 0: ids = self.find_nearest_up_and_down(center)
-        if path == 1: ids = self.find_nearest_up(center)
-        if path == -1: ids = self.find_nearest_down(center)
-        for i in ids:
-            # if gnode me_as_gnode + [i] is partecipant
-            if self.is_participant(lvl-1, i):
-                # if l > 0
-                if lvl-1 > 0:
-                    try:
-                        # ask to the inner gnode, let's see how many it finds.
-                        ask_to_gnode = [i] + me_as_gnode
-                        resp = self.find_nearest_send(ask_to_gnode, \
-                                    nip, number_of_nodes, lvl-1, path)
-                    except Exception, e:
-                        logging.warning('P2P: find_nearest_exec' + \
-                                str((nip, number_of_nodes, lvl)) + \
-                                ' got Exception ' + repr(e))
-                        resp = []
-                else:
-                    # The gnode of level 0 is a node.
-                    # And it is participating.
-                    resp = [[i] + me_as_gnode]
-                sequence += resp
-                number_of_nodes -= len(resp)
-                if number_of_nodes <= 0:
+        ids = []
+        for to_add in xrange(gsize):
+            ids.append((center + to_add * sign) % gsize)
+        return ids
+
+    def search_participant(self, hIP, path_sign=1):
+        # It was H
+        mp = self.maproute
+        H_hIP = [None] * mp.levels
+        for l in reversed(xrange(mp.levels)):
+            for hid in self.list_ids(hIP[l], path_sign):
+                if self.is_participant(l, hid):
+                    H_hIP[l] = hid
                     break
-        return sequence
+            if H_hIP[l] is None:
+                raise Exception, 'No participants'
+            if H_hIP[l] != mp.me[l]:
+                # we must stop here
+                break
+        if H_hIP[l] == mp.me[l]:
+            lvl, id = -1, None
+        else:
+            lvl, id = l, H_hIP[l]
+        pass # logging.log(logging.ULTRADEBUG, 'search_participant' + \
+        #        str((hIP, path_sign)) + ' = ' + str((lvl, id)))
+        return lvl, id
 
-    def find_nearest_send(self, to_gnode, nip, number_of_nodes, lvl, path):
-      ''' Reach the gnode and ask to him... 
-          to_gnode is part of a nip. It is a sequence of len = level-lvl
-      '''
+    def search_participant_as_nip(self, hIP, path_sign=1):
+        # It was H
+        mp = self.maproute
+        lvl, id = self.search_participant(hIP, path_sign)
+        ret = self.maproute.me[:]
+        if lvl >= 0:
+            ret[lvl] = id
+            ret[:lvl] = [None] * (lvl)
+        return ret
 
+    def execute_p2p_tpl(self, p2p_tpl):
+        '''Avoid loops, neverending stories, and the like'''
+        # When a message is routed through the net by the p2p module,
+        # we keep track of the path walked.
+        # p2p_tpl = [tpl, tc, obj]
+        #  obj is reserved for future uses.
+        #  tpl = sequence<sequence<id>>
+        #   tpl has always 'levels' elements.
+        #   tpl[0] is a sequence of ids of level 'levels'
+        #   tpl[1] is a sequence of ids of level 'levels-1'
+        #   ...
+        #   tpl[levels] is a sequence of ids of level '0'
+        #   The last id of each level form the nip of the last hop
+        #  tc is None or a TimeCapsule. When it expires the message is dropped.
+        # There are several functions in module p2p that try to
+        # route messages, such as msg_deliver, find_nearest,
+        # number_of_participants, and so on. Each function receives
+        # as a parameter a "p2p_tpl" instance, "passes" it through this
+        # method -- eg: p2p_tpl = self.execute_p2p_tpl(p2p_tpl)
+        # and then passes it to the next hop.
+        # The first caller can pass a None as p2p_tpl.
+
+        if p2p_tpl is None:
+            tpl, tc, obj = self.first_p2p_tpl(xtime.TimeCapsule(120000), None)
+        elif len(p2p_tpl) == 2:
+            tpl, tc, obj = self.first_p2p_tpl(p2p_tpl[0], p2p_tpl[1])
+        else:
+            tpl, tc, obj = p2p_tpl
+            # check timeout
+            if isinstance(tc, xtime.TimeCapsule):
+                if tc.get_ttl() < 0:
+                    # drop
+                    raise ExpectableException, 'P2P message timed out.'
+            # I check whether the message did take a loop. If so, wait a bit before proceeding.
+            tpl, loop = self.convert_tpl(tpl)
+            if loop:
+                logging.log(logging.ULTRADEBUG, 'P2P Routing: loop detected. wait a bit.')
+                xtime.swait(2000)
+        return [tpl, tc, obj]
+
+    def convert_tpl(self, tpl):
+        # tpl is valid for someone else.
+        from_nip = [ids[-1] for ids in reversed(tpl)]
+        last_lvl = self.maproute.nip_cmp(from_nip)
+        unchanged = tpl[:-last_lvl]
+        # detect the loop
+        last_path = unchanged[-1]
+        loop_detected = False
+        if self.maproute.me[last_lvl] in last_path:
+            loop_detected = True
+            pos = last_path.index(self.maproute.me[last_lvl])
+            last_path[pos:] = []
+        # add my part
+        last_path.append(self.maproute.me[last_lvl])
+        new_part = [[n] for n in reversed(self.maproute.me[:last_lvl])]
+        return unchanged + new_part, loop_detected
+
+    def first_p2p_tpl(self, tc, obj):
+        return [[[n] for n in reversed(self.maproute.me)], tc, obj]
+
+    ########## Sending of messages.
+
+    def msg_send(self, sender_nip, hip, msg):
+        ''' Start a tentative to send a message to a certain
+            perfect hip
+        '''
+        return self.msg_deliver(None, sender_nip, \
+               hip, msg)
+
+    def msg_deliver(self, p2p_tpl, sender_nip, hip, msg, tc_max=None):
       start_tracking()
       try:
+        # I have to deliver a msg to the nearest to hip.
+
         if self.wait_p2p_hook:
             raise P2PHookingError, 'P2P is hooking. Request not valid.'
 
         # Implements "zombie" status
         if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
-        # drop the request if number is too big
-        if number_of_nodes > 100:
-            raise Exception, 'find_nearest_nodes_to_nip: asked for too many nodes.'
 
-        # Am I the destination?
-        me_as_gnode = self.maproute.me[lvl:]
-        if me_as_gnode == to_gnode:
-            ret = self.find_nearest_exec(nip, number_of_nodes, lvl, path)
-            return ret
+        # Called by any routing function in module p2p
+        p2p_tpl = self.execute_p2p_tpl(p2p_tpl)
+
+        prox_lvl, prox_id = self.search_participant(hip)
+        
+        # If the node is exactly me, I execute the message
+        if prox_lvl == -1:
+            return self.msg_exec(sender_nip, msg)
         else:
-            # Find the path to the destination
-            complete_to_gnode = [None] * lvl + to_gnode
-            n = self.neigh_get(complete_to_gnode)
-            if n:
-                ret = None
-                execstr = 'ret = n.ntkd.p2p.PID_' + str(self.pid) + \
-                '.find_nearest_send(to_gnode, nip, number_of_nodes, lvl, path)'
-                # Handles P2PHookingError, 'P2P is hooking. Request not valid.'
-                #      by retrying after a while and up to a certain timeout.
-                tc_max = xtime.TimeCapsule(20000) # give max 20 seconds to finish hook
-                while True:
-                    try:
-                        exec(execstr)
-                    except Exception, e:
-                        if 'P2P is hooking' in e:
-                            logging.warning('P2P routing: The neighbour is still hooking.')
-                            if tc_max.get_ttl() < 0:
-                                logging.warning('P2P routing: Giving up.')
-                                raise e
-                            else:
-                                logging.warning('P2P routing: Wait a bit and try again.')
-                                xtime.swait(1000)
-                        else:
-                            raise e
-                    else:
-                        break
-                return ret
-            else:
-                logging.warning('I don\'t know to whom I must forward. ' + \
-                                'Giving up. Raising exception.')
-                raise Exception('Unreachable P2P destination ' + \
-                                str(complete_to_gnode) + \
-                                ' from ' + str(self.maproute.me) + '.')
+            # route
+            return self.route_msg_deliver(p2p_tpl, sender_nip, hip, prox_lvl, prox_id, msg)
       finally:
         stop_tracking()
 
-    def find_nearest_up_and_down(self, center):
-        ''' Starting from center and going up and down '''
-        gsize = self.maproute.gsize
-        ids = [center]
-        from math import trunc
-        times = trunc((gsize+1)/2)-1
-        for to_add in xrange(1, times+1):
-            for sign in [-1,1]:
-                ids.append((center + to_add * sign) % gsize)
-        if trunc(gsize / 2) * 2 == gsize:
-            ids.append((center + (times+1) * -1) % gsize)
-        return ids
-
-    def find_nearest_up(self, center):
-        ''' Starting from center and going only up '''
-        gsize = self.maproute.gsize
-        ids = [center]
-        for to_add in xrange(1, gsize):
-            ids.append((center + to_add) % gsize)
-        return ids
-
-    def find_nearest_down(self, center):
-        ''' Starting from center and going only down '''
-        gsize = self.maproute.gsize
-        ids = [center]
-        for to_add in xrange(1, gsize):
-            ids.append((center - to_add) % gsize)
-        return ids
-
-    def msg_send(self, sender_nip, hip, msg):
-        """Routes a packet to `hip'. Do not use this function directly, use
-        self.peer() instead
-
-        msg: it is a (func_name, args) pair."""
-
-        if self.wait_p2p_hook:
-            raise P2PHookingError, 'P2P is hooking. Request not valid.'
-
-        # Implements "zombie" status
-        if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
-
-        logging.log(logging.ULTRADEBUG, 'P2P: msg_send '
-                    'called by ' + str(sender_nip))
-        lvl = self.maproute.nip_cmp(sender_nip)
-        
-        logging.log(logging.ULTRADEBUG, 'Someone is asking for P2P '
-                                        'service to ' + str(hip))
-        H_hip = self.H(hip)
-        logging.log(logging.ULTRADEBUG, ' nearest known is ' + str(H_hip))
-        if H_hip == self.maproute.me:
-            # the msg has arrived
-            logging.debug('I have been asked a P2P service, as the '
-                          'nearest to ' + str(hip) + ' (msg=' + str(msg) +
-                          ')')
-            return self.msg_exec(sender_nip, msg)
-
-        # forward the message until it arrives at destination
-        n = self.neigh_get(H_hip)
-        if n:
-            logging.log(logging.ULTRADEBUG, ' through ' + str(n))
-            ret = None
-            execstr = 'ret = n.ntkd.p2p.PID_' + str(self.pid) + \
-            '.msg_send(sender_nip, hip, msg)'
-            logging.log(logging.ULTRADEBUG, 'Executing "' + execstr + 
-                        '" ...')
-            # Handles P2PHookingError, 'P2P is hooking. Request not valid.'
-            #      by retrying after a while and up to a certain timeout.
-            tc_max = xtime.TimeCapsule(20000) # give max 20 seconds to finish hook
-            while True:
+    def route_msg_deliver(self, p2p_tpl, sender_nip, hip, lvl, id, msg):
+        ret = None
+        execstr = 'ret = n.ntkd.p2p.PID_' + str(self.pid) + \
+                  '.msg_deliver(p2p_tpl, sender_nip, hip, msg)'
+        logging.log(logging.ULTRADEBUG, 'Executing "' + execstr + \
+                    '" ...')
+        # Handles P2PHookingError, 'P2P is hooking. Request not valid.'
+        #     and ZombieException('I am a zombie.')
+        #     and Unreachable P2P destination
+        #      by retrying after a while and up to a certain timeout.
+        tc_max = xtime.TimeCapsule(60000) # give max 60 seconds to finish hook
+        while True:
+            last_e = None
+            done = False
+            logging.debug('P2P routing: route_msg_deliver to ' + str((lvl, id)))
+            n = self.neigh_get_from_lvl_id(lvl, id)
+            if n:
                 try:
                     exec(execstr)
+                    done = True
                 except Exception, e:
-                    if 'P2P is hooking' in e:
-                        logging.warning('P2P routing: The neighbour is still hooking.')
-                        if tc_max.get_ttl() < 0:
-                            logging.warning('P2P routing: Giving up.')
-                            raise e
-                        else:
-                            logging.warning('P2P routing: Wait a bit and try again.')
-                            xtime.swait(1000)
+                    if 'P2P is hooking' in e or 'I am a zombie' in e:
+                        logging.debug('P2P routing: got ' + str(e))
+                        last_e = e
                     else:
                         raise e
+            else:
+                logging.debug('P2P routing: unknown route.')
+            if done:
+                break
+            if tc_max.get_ttl() < 0:
+                logging.warning('P2P routing: Too many errors. Giving up.')
+                if last_e:
+                    raise last_e
                 else:
-                    break
-            logging.log(logging.ULTRADEBUG, 'Executed "' + execstr + 
-                        '". Returning ' + str(ret))
-            return ret
-        else:
-            # Is it possible? Don't we retry?
-            logging.warning('I don\'t know to whom I must forward. '
-                            'Giving up. Raising exception.')
-            raise Exception('Unreachable P2P destination ' + str(H_hip) + 
-                            ' from ' + str(self.maproute.me) + '.')
+                    raise Exception, 'Unreachable P2P destination.'
+            else:
+                logging.debug('P2P routing: Temporary failure. Wait a bit and try again.')
+                xtime.swait(1000)
+        logging.log(logging.ULTRADEBUG, 'Executed "' + execstr + \
+                    '". Returning ' + str(ret))
+        return ret
+
+    ########## Helper functions for UDP.
 
     def call_msg_send_udp(self, neigh, sender_nip, hip, msg):
         """Use BcastClient to call msg_send"""
@@ -520,19 +478,19 @@ class P2P(RPCDispatcher):
             try:
                 logging.log(logging.ULTRADEBUG, 'calling msg_send...')
                 # Handles P2PHookingError, 'P2P is hooking. Request not valid.'
+                #    and ZombieException('I am a zombie.')
                 #      by retrying after a while and up to a certain timeout.
-                tc_max = xtime.TimeCapsule(20000) # give max 20 seconds to finish hook
+                tc_max = xtime.TimeCapsule(60000) # give max 60 seconds to finish hook
                 while True:
                     try:
                         ret = self.msg_send(sender_nip, hip, msg)
                     except Exception, e:
-                        if 'P2P is hooking' in e:
-                            logging.warning('P2P routing: The neighbour is still hooking.')
+                        if 'P2P is hooking' in e or 'I am a zombie' in e:
                             if tc_max.get_ttl() < 0:
-                                logging.warning('P2P routing: Giving up.')
+                                logging.warning('P2P routing: Too long. Giving up.')
                                 raise e
                             else:
-                                logging.warning('P2P routing: Wait a bit and try again.')
+                                logging.warning('P2P routing: Temporary failure. Wait a bit and try again.')
                                 xtime.swait(1000)
                         else:
                             raise e
@@ -548,11 +506,249 @@ class P2P(RPCDispatcher):
             logging.log(logging.ULTRADEBUG, 'calling UDP_send_reply...')
             rpc.UDP_send_reply(_rpc_caller, caller_id, ret)
 
+    ########## Execution of messages.
+
     def msg_exec(self, sender_nip, msg):
         ret = self.dispatch(CallerInfo(), *msg)
         if isinstance(ret, tuple) and len(ret) == 2 and ret[0] == 'rmt_error':
             raise RPCError(ret[1])
         return ret
+
+    ########## Search functions for registration with replica. Routed.
+
+    def find_nearest_to_register(self, nip, num_dupl):
+        return self.find_nearest(None, nip, num_dupl, self.maproute.levels, 0)
+
+    def find_nearest(self, p2p_tpl, nip, num_dupl, lvl, id):
+      start_tracking()
+      try:
+
+        if self.wait_p2p_hook:
+            raise P2PHookingError, 'P2P is hooking. Request not valid.'
+
+        # Implements "zombie" status
+        if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
+
+        # Called by any routing function in module p2p
+        p2p_tpl = self.execute_p2p_tpl(p2p_tpl)
+
+        return self.inside_find_nearest(p2p_tpl, nip, num_dupl, lvl, id)
+      finally:
+        stop_tracking()
+
+    def inside_find_nearest(self, p2p_tpl, nip, num_dupl, lvl, id):
+
+        if num_dupl == 0:
+            return []
+        if lvl < self.maproute.levels:
+            if lvl == 0:
+                ret = [[id] + self.maproute.me[1:]] \
+                        if self.is_participant(0, id) \
+                        else []
+                return ret
+            if not self.is_participant(lvl, id):
+                return []
+        # (lvl, id) is a participant g-node. To know the remaining 
+        # num_dupl nodes nearest to nip and participating inside it,
+        # if I am in this g-node I do a
+        # step down in the level, otherwise I have to route the
+        # question to the g-node.
+        if lvl == self.maproute.levels or self.maproute.me[lvl] == id:
+            pass # logging.log(logging.ULTRADEBUG, 'find_nearest go down')
+            # down one level
+            sequence = []
+            new_lvl = lvl - 1
+            for new_id in self.list_ids(nip[new_lvl], 1):
+                pass # logging.log(logging.ULTRADEBUG, 'find_nearest calling...')
+                sequence += self.inside_find_nearest(p2p_tpl, nip, num_dupl-len(sequence), new_lvl, new_id)
+                if len(sequence) >= num_dupl:
+                    break
+            return sequence
+        else:
+            return self.route_find_nearest(p2p_tpl, nip, num_dupl, lvl, id)
+
+    def route_find_nearest(self, p2p_tpl, nip, num_dupl, lvl, id):
+        # route the request
+        ret = None
+        execstr = 'ret = n.ntkd.p2p.PID_' + str(self.pid) + \
+                  '.find_nearest(p2p_tpl, nip, num_dupl, lvl, id)'
+        logging.log(logging.ULTRADEBUG, 'Executing "' + \
+                    execstr + '" ...')
+        # Handles P2PHookingError, 'P2P is hooking. Request not valid.'
+        #     and ZombieException('I am a zombie.')
+        #     and Unreachable P2P destination
+        #      by retrying after a while and up to a certain timeout.
+        tc_max = xtime.TimeCapsule(60000) # give max 60 seconds to finish hook
+        while True:
+            last_e = None
+            done = False
+            logging.debug('P2P routing: route_find_nearest to ' + str(nip) + ' in ' + str((lvl, id)))
+            n = self.neigh_get_from_lvl_id(lvl, id)
+            if n:
+                try:
+                    exec(execstr)
+                    done = True
+                except Exception, e:
+                    if 'P2P is hooking' in e or 'I am a zombie' in e:
+                        logging.debug('P2P routing: got ' + str(e))
+                        last_e = e
+                    else:
+                        raise e
+            else:
+                logging.debug('P2P routing: unknown route.')
+            if done:
+                break
+            if tc_max.get_ttl() < 0:
+                logging.warning('P2P routing: Too many errors. Giving up.')
+                if last_e:
+                    raise last_e
+                else:
+                    raise Exception, 'Unreachable P2P destination.'
+            else:
+                logging.warning('P2P routing: Temporary failure. Wait a bit and try again.')
+                xtime.swait(1000)
+        logging.log(logging.ULTRADEBUG, 'Executed "' + \
+                    execstr + '". Returning ' + str(ret))
+        return ret
+
+    ########## Search functions for hooking phase. Routed
+
+    def get_number_of_participants(self, lvl, id, timeout):
+        p2p_tpl = [xtime.TimeCapsule(timeout), None]
+        return self.number_of_participants(p2p_tpl, lvl, id)
+
+    def number_of_participants(self, p2p_tpl, lvl, id):
+      start_tracking()
+      try:
+
+        if self.wait_p2p_hook:
+            raise P2PHookingError, 'P2P is hooking. Request not valid.'
+
+        # Implements "zombie" status
+        if self.ntkd_status.zombie: raise ZombieException('I am a zombie.')
+
+        # Called by any routing function in module p2p
+        p2p_tpl = self.execute_p2p_tpl(p2p_tpl)
+
+        return self.inside_number_of_participants(p2p_tpl, lvl, id)
+      finally:
+        stop_tracking()
+
+    def inside_number_of_participants(self, p2p_tpl, lvl, id):
+
+        if lvl == 0:
+            return 1 if self.is_participant(0, id) else 0
+        if not self.is_participant(lvl, id):
+            return 0
+        # (lvl, id) is a participant g-node. To know the number of
+        # nodes participating inside it, if I am in this g-node I do a
+        # step down in the level, otherwise I have to route the
+        # question to the g-node.
+        if self.maproute.me[lvl] == id:
+            # down one level
+            pass # print 'down one level'
+            new_lvl = lvl - 1
+            ret = sum([self.inside_number_of_participants(p2p_tpl, new_lvl, new_id) \
+                        for new_id in xrange(self.maproute.gsize)])
+            pass # print 'returning', ret
+            return ret
+        else:
+            return self.route_number_of_participants(p2p_tpl, lvl, id)
+
+    def route_number_of_participants(self, p2p_tpl, lvl, id):
+        # route the request
+        ret = None
+        execstr = 'ret = n.ntkd.p2p.PID_' + str(self.pid) + \
+                  '.number_of_participants(p2p_tpl, lvl, id)'
+        logging.log(logging.ULTRADEBUG, 'Executing "' + \
+                    execstr + '" ...')
+        # Handles P2PHookingError, 'P2P is hooking. Request not valid.'
+        #     and ZombieException('I am a zombie.')
+        #     and Unreachable P2P destination
+        #      by retrying after a while and up to a certain timeout.
+        tc_max = xtime.TimeCapsule(60000) # give max 60 seconds to finish hook
+        while True:
+            last_e = None
+            done = False
+            logging.debug('P2P routing: route_number_of_participants in ' + str((lvl, id)))
+            n = self.neigh_get_from_lvl_id(lvl, id)
+            if n:
+                try:
+                    exec(execstr)
+                    done = True
+                except Exception, e:
+                    if 'P2P is hooking' in e or 'I am a zombie' in e:
+                        logging.debug('P2P routing: got ' + str(e))
+                        last_e = e
+                    else:
+                        raise e
+            else:
+                logging.debug('P2P routing: unknown route.')
+            if done:
+                break
+            if tc_max.get_ttl() < 0:
+                logging.warning('P2P routing: Too many errors. Giving up.')
+                if last_e:
+                    raise last_e
+                else:
+                    raise Exception, 'Unreachable P2P destination.'
+            else:
+                logging.warning('P2P routing: Temporary failure. Wait a bit and try again.')
+                xtime.swait(1000)
+        logging.log(logging.ULTRADEBUG, 'Executed "' + \
+                    execstr + '". Returning ' + str(ret))
+        return ret
+
+    ########## Helper functions for hooking phase.
+
+    def find_hook_peers(self, lvl, num_dupl, timeout=10000):
+        remaining = num_dupl
+        first_back_id = None
+        last_back_id = None
+        nip_to_reach_first_forward = self.maproute.me[:]
+        nip_to_reach_first_forward[lvl] = \
+                  (nip_to_reach_first_forward[lvl] + 1) \
+                  % self.maproute.gsize
+        ids = self.list_ids(self.maproute.me[lvl], -1)
+        # not interested in myself
+        ids = ids[1:]
+        for _id in ids:
+            pass # print 'find_hook_peers: call get_number_of_participants', (lvl, _id)
+            num = 0
+            try:
+                num = self.get_number_of_participants(lvl, _id, timeout)
+            except:
+                pass
+            pass # print 'find_hook_peers: get_number_of_participants', (lvl, _id), 'is', num
+            if num > 0 and first_back_id is None: first_back_id = _id
+            remaining -= num
+            if remaining <= 0:
+                last_back_id = _id
+                break
+        if remaining > 0:
+            # not enough nodes
+            if first_back_id is None:
+                # no nodes at all
+                return None, None, None
+            else:
+                return nip_to_reach_first_forward, None, None
+        nip_to_reach_first_back = self.maproute.me[:]
+        nip_to_reach_last_back = self.maproute.me[:]
+        nip_to_reach_first_back[lvl] = first_back_id
+        nip_to_reach_last_back[lvl] = last_back_id
+        for _lvl in xrange(lvl):
+            nip_to_reach_last_back[_lvl] = \
+                  (nip_to_reach_last_back[_lvl] + 1) \
+                  % self.maproute.gsize
+        return nip_to_reach_first_forward, nip_to_reach_first_back, nip_to_reach_last_back
+
+    def is_x_after_me_for_y(self, x, y):
+        # x is a nip, y is a nip, self.maproute.me is a nip.
+        # y is the perfect nip for a particular key.
+        # If someone asks for y, will he hit me before x?
+        i = self.maproute.nip_cmp(x)
+        ids = self.list_ids(y[i], 1)
+        return ids.index(self.maproute.me[i]) < ids.index(x[i])
 
     class RmtPeer(FakeRmt):
         def __init__(self, p2p, hIP=None, key=None, neigh=None):

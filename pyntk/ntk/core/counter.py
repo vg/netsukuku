@@ -124,6 +124,9 @@ class Counter(OptionalP2P):
                 logging.debug('COUNTER: enter_wait_counter_hook: killing...')
                 micro_kill(self.micro_to_kill[k])
 
+    def exit_wait_counter_hook(self):
+        self.wait_counter_hook = False
+
     def reset(self):
         ''' Resets all data. Invoked when hooked in a new network.
         '''
@@ -140,148 +143,57 @@ class Counter(OptionalP2P):
         try:
             self.micro_to_kill['counter_hook'] = micro_current()
 
+            #TODO Handle possible errors in hooking phase. Should we try again?
+            # If we don't, we are not participating in the service.
+
             # clear old cache
             self.reset()
             logging.debug('COUNTER: counter_hook: resetted.')
 
             if settings.COUNTER_REPLICA_ACTIVATED:
-                # We find 2 bunches of COUNTER_DUPLICATION*2 elements near to us, one
-                # going up and one going down.
-                # Note: We don't want ourself in the bunches.
-                # For each one of them, ask for the cache to the element 1 and to the
-                # element COUNTER_DUPLICATION+1. In case of error try 2, 3, ...
-                # At the end we have the cache from:
-                #  cache_1) myself-COUNTER_DUPLICATION-1
-                #  cache_2) myself-1
-                #  cache_3) myself+1
-                #  cache_4) myself+COUNTER_DUPLICATION+1
-                # We accept a record that is in 2 and in 3.
-                # We accept a record that is in 2 and not in 1.
-                # We accept a record that is in 3 and not in 4.
-
-                bunch_up = self.find_nearest_exec(self.maproute.me[:], COUNTER_DUPLICATION*2+1, \
-                            self.maproute.levels, path=1)
-                logging.debug('COUNTER: counter_hook: bunch_up = ' + str(bunch_up))
-                if self.maproute.me in bunch_up:
-                    bunch_up.remove(self.maproute.me)
-                bunch_down = self.find_nearest_exec(self.maproute.me[:], COUNTER_DUPLICATION*2+1, \
-                            self.maproute.levels, path=-1)
-                logging.debug('COUNTER: counter_hook: bunch_down = ' + str(bunch_down))
-                if self.maproute.me in bunch_down:
-                    bunch_down.remove(self.maproute.me)
-                # Extreme cases:
-                #  0 participating nodes: do nothing and we are hooked.
-                #  less than COUNTER_DUPLICATION*2 participating nodes: accept all the records
-                #      from any one of them.
-                if len(bunch_up) == 0:
-                    logging.debug('COUNTER: counter_hook: I am alone')
-                else:
-                    if len(bunch_up) < COUNTER_DUPLICATION*2:
-                        logging.debug('COUNTER: counter_hook: we are few, let\'s get all')
-                        accept_cache, accept_queue = [], []
-                        for cache_nip in bunch_up:
-                            try:
-                                remote = TCPClient(ip_to_str(self.maproute.nip_to_ip(cache_nip)))
-                                accept_cache = remote.counter.cache_getall()
-                                # succeded
-                                logging.debug('COUNTER: counter_hook: found a cache')
-                                break
-                            except Exception, e:
-                                logging.debug('COUNTER: counter_hook: getting cache from ' + \
-                                    str(cache_nip) + ' got exception ' + repr(e))
-                        # We accept all records.
-                        for hname in accept_cache:
-                            # Do I have already this record?
-                            if hname not in self.cache:
-                                # No. Memorize it.
-                                self.cache[hname] = accept_cache[hname]
-                                logging.debug('COUNTER: counter_hook: got cache for ' + \
-                                        str(hname))
-                        logging.debug('COUNTER: counter_hook: finished')
+                for lvl in reversed(xrange(self.maproute.levels)):
+                    pass # print 'hook:', self.maproute.me, 'finding peers at level', lvl
+                    f1, b1, bn = self.find_hook_peers(lvl, COUNTER_DUPLICATION)
+                    pass # print 'hook: f1, b1, bn', (f1, b1, bn)
+                    if f1 is None:
+                        # no one in network at this level (except me)
+                        pass # print 'no one in network at this level (except me)'
+                        pass
+                    elif b1 is None:
+                        # few nodes at this level. get all.
+                        pass # print 'few nodes at this level. get all.'
+                        cache_f1 = self.peer(hIP=f1).cache_getall()
+                        for k in cache_f1:
+                            pass # print 'there is', k, 'in', f1
+                            if k not in self.cache:
+                                self.cache[k] = cache_f1[k]
+                                pass # print 'got', k
                     else:
-                        cache_1 = None
-                        cache_2 = None
-                        cache_3 = None
-                        cache_4 = None
-                        request_queue_1 = None
-                        request_queue_2 = None
-                        request_queue_3 = None
-                        request_queue_4 = None
-                        for i in xrange(COUNTER_DUPLICATION):
-                            if cache_1 is None:
-                                try:
-                                    remote = TCPClient(ip_to_str(self.maproute.nip_to_ip(bunch_down[COUNTER_DUPLICATION+i])))
-                                    cache_1 = remote.counter.cache_getall()
-                                    # succeded
-                                    logging.debug('COUNTER: counter_hook: found a cache_1')
-                                except Exception, e:
-                                    logging.debug('COUNTER: counter_hook: getting cache from ' + \
-                                        str(bunch_down[COUNTER_DUPLICATION+i]) + ' got exception ' + repr(e))
-                            if cache_2 is None:
-                                try:
-                                    remote = TCPClient(ip_to_str(self.maproute.nip_to_ip(bunch_down[i])))
-                                    cache_2 = remote.counter.cache_getall()
-                                    # succeded
-                                    logging.debug('COUNTER: counter_hook: found a cache_2')
-                                except Exception, e:
-                                    logging.debug('COUNTER: counter_hook: getting cache from ' + \
-                                        str(bunch_down[i]) + ' got exception ' + repr(e))
-                            if cache_3 is None:
-                                try:
-                                    remote = TCPClient(ip_to_str(self.maproute.nip_to_ip(bunch_up[i])))
-                                    cache_3 = remote.counter.cache_getall()
-                                    # succeded
-                                    logging.debug('COUNTER: counter_hook: found a cache_3')
-                                except Exception, e:
-                                    logging.debug('COUNTER: counter_hook: getting cache from ' + \
-                                        str(bunch_up[i]) + ' got exception ' + repr(e))
-                            if cache_4 is None:
-                                try:
-                                    remote = TCPClient(ip_to_str(self.maproute.nip_to_ip(bunch_up[COUNTER_DUPLICATION+i])))
-                                    cache_4 = remote.counter.cache_getall()
-                                    # succeded
-                                    logging.debug('COUNTER: counter_hook: found a cache_4')
-                                except Exception, e:
-                                    logging.debug('COUNTER: counter_hook: getting cache from ' + \
-                                        str(bunch_up[COUNTER_DUPLICATION+i]) + ' got exception ' + repr(e))
-                        if cache_1 is None: cache_1 = []
-                        if cache_2 is None: cache_2 = []
-                        if cache_3 is None: cache_3 = []
-                        if cache_4 is None: cache_4 = []
-                        # We accept a record that is in 2 and in 3.
-                        for hname in cache_2:
-                            # Do I have already this record?
-                            if hname not in self.cache:
-                                # No. Is it in 3?
-                                if hname in cache_3:
-                                    # Yes. Memorize it.
-                                    self.cache[hname] = cache_2[hname]
-                                    logging.debug('COUNTER: counter_hook: got cache for ' + \
-                                            str(hname))
-                        # We accept a record that is in 2 and not in 1.
-                        for hname in cache_2:
-                            # Do I have already this record?
-                            if hname not in self.cache:
-                                # No. Is it in 1?
-                                if hname not in cache_1:
-                                    # No. Memorize it.
-                                    self.cache[hname] = cache_2[hname]
-                                    logging.debug('COUNTER: counter_hook: got cache for ' + \
-                                            str(hname))
-                        # We accept a record that is in 3 and not in 4.
-                        for hname in cache_3:
-                            # Do I have already this record?
-                            if hname not in self.cache:
-                                # No. Is it in 1?
-                                if hname not in cache_4:
-                                    # No. Memorize it.
-                                    self.cache[hname] = cache_3[hname]
-                                    logging.debug('COUNTER: counter_hook: got cache for ' + \
-                                            str(hname))
+                        # choose the records
+                        pass # print 'choose the records'
+                        cache_f1 = self.peer(hIP=f1).cache_getall()
+                        cache_b1 = self.peer(hIP=b1).cache_getall()
+                        cache_bn = self.peer(hIP=bn).cache_getall()
+                        # keys that are in b1 and not in bn
+                        for k in [k for k in cache_b1 if k not in cache_bn]:
+                            pass # print 'there is', k, 'in', b1, 'and not in', bn
+                            if k not in self.cache:
+                                self.cache[k] = cache_b1[k]
+                                pass # print 'got', k
+                        # keys that are in f1
+                        for k in cache_f1:
+                            pass # print 'there is', k, 'in', f1
+                            if k not in self.cache:
+                                # check that I am before
+                                if self.is_x_after_me_for_y(f1, self.h(k)):
+                                    self.cache[k] = cache_f1[k]
+                                    pass # print 'got', k
+                                else:
+                                    pass # print 'but i am not interested in it'
 
             # Now I can answer to requests.
             self.events.send('COUNTER_HOOKED', ())
-            self.wait_counter_hook = False
+            self.exit_wait_counter_hook()
             logging.info('COUNTER: counter_hook: Emit signal COUNTER_HOOKED.')
             # Now I can participate again
             logging.debug('COUNTER: counter_hook: re-participate to COUNTER.')
@@ -473,15 +385,15 @@ class Counter(OptionalP2P):
             # use COUNTER_DUPLICATION to check if maproute.me is in the bunch
             logging.debug('COUNTER: reset_nip: starting find_nearest COUNTER_DUPLICATION' + \
                         ' to ' + str(hash_nip))
-            bunch = self.find_nearest_exec(hash_nip, COUNTER_DUPLICATION, \
-                        self.maproute.levels)
+            bunch = self.find_nearest_to_register(hash_nip, COUNTER_DUPLICATION)
             logging.debug('COUNTER: reset_nip: nearest COUNTER_DUPLICATION to ' + \
                         str(hash_nip) + ' is ' + str(bunch))
             if not any(bunch):
                 raise CounterError, 'Counter sees no participants.'
             check_hash = self.maproute.me in bunch
         else:
-            check_hash = self.maproute.me == self.H(self.h(nip))
+            prox_lvl, prox_id = self.search_participant(self.h(nip))
+            check_hash = prox_lvl == -1
 
         if not check_hash:
             logging.info('COUNTER: reset_nip: hash is NOT verified. Raising exception.')
@@ -566,7 +478,8 @@ class Counter(OptionalP2P):
         logging.debug('COUNTER: check' + str((registrar_nip, pubk, hostname)))
         # first the hash check
         logging.debug('COUNTER: check: verifying that I am the right hash...')
-        check_hash = self.maproute.me == self.H(self.h(registrar_nip))
+        prox_lvl, prox_id = self.search_participant(self.h(registrar_nip))
+        check_hash = prox_lvl == -1
 
         if not check_hash:
             logging.info('COUNTER: check: hash is NOT verified. Raising exception.')
@@ -597,7 +510,8 @@ class Counter(OptionalP2P):
         logging.debug('COUNTER: reverse_resolve(' + str(nip) + ')')
         # first the hash check
         logging.debug('COUNTER: reverse_resolve: verifying that I am the right hash...')
-        check_hash = self.maproute.me == self.H(self.h(nip))
+        prox_lvl, prox_id = self.search_participant(self.h(nip))
+        check_hash = prox_lvl == -1
 
         if not check_hash:
             logging.info('COUNTER: reverse_resolve: hash is NOT verified. Raising exception.')

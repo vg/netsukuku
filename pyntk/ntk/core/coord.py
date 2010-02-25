@@ -212,7 +212,7 @@ class Coord(P2P):
         logging.log(logging.ULTRADEBUG, 'Coord: calculating coord_nodes for '
                                         'our gnodes of each level...')
         for lvl in xrange(self.maproute.levels):
-                self.coordnode[lvl+1] = self.H(self.h((lvl+1, self.maproute.me)))
+                self.coordnode[lvl+1] = self.search_participant_as_nip(self.h((lvl+1, self.maproute.me)))
         logging.log(logging.ULTRADEBUG, 'Coord: coord_nodes (Note: check from '
                                         'the second one) is now ' + 
                                         str(self.coordnode))
@@ -220,7 +220,7 @@ class Coord(P2P):
     def coord_hook(self, *args):
         self.coord_nodes_set()
 
-    @microfunc()
+    @microfunc(keep_track=1)
     def new_participant_joined(self, lvl, id):
         """Shall the new participant succeed us as a coordinator node?"""
 
@@ -247,7 +247,7 @@ class Coord(P2P):
         # perfect IP for this service is...
         hIP = self.h((level, self.maproute.me))
         # as to our knowledge, the nearest participant to 'hIP' is now...
-        HhIP = self.H(hIP)
+        HhIP = self.search_participant_as_nip(hIP)
         # Is it the new participant?
         for j in xrange(lvl, self.maproute.levels):
             if HhIP[j] != pIP[j]:

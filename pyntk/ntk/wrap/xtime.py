@@ -1,7 +1,6 @@
 import time as T
 import ntk.lib.micro as micro
-
-from datetime import date, timedelta
+from ntk.lib.rencode import serializable
 
 def swait(t):
     """Waits `t' ms"""
@@ -47,13 +46,8 @@ class TimeCapsule:
     def get_ttl(self):
         return self.expires - time()
 
-def timestamp_to_data(timestamp):
-    return date.fromtimestamp(timestamp)
-    
-def today():
-    return date.today()
+    def _pack(self):
+        return (self.get_ttl(),)
 
-def days(number=3):
-    """ Take the number of days and return an object that 
-    can be used for comparison with data objects """
-    return timedelta(days=number)
+serializable.register(TimeCapsule)
+
