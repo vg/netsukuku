@@ -144,9 +144,13 @@ class AndnaAuthRecord:
     # TODO def remove(self, updates, serv_key, record):
 
     def get_all(self):
-        """ Return all the records of all the services """
-        # TODO: remove the method if we don't use.
-        return [ (k, v) for k, v in self.services.items() ]
+        """ Return all the records of all the services, i.e. a dictionary
+            in the form { serv_key : AndnaResolvedRecord(), ... } """
+        records = {}
+        for serv_key in self.services:
+            records[serv_key] = self.get_resolved_record(serv_key)
+
+        return records
 
     def get_resolved_record(self, serv_key):
         ''' Return an equivalent AndnaResolvedRecord '''
