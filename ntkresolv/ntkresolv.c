@@ -36,7 +36,7 @@ uint8_t mode_silent= 0;
 
 void version(void)
 {
-    fprintf(stderr, "ntk-resolv version %s (Netsukuku tools)\n\n"
+    fprintf(stderr, "ntkresolv version %s (Netsukuku tools)\n\n"
         "Copyright (C) 2006.\n"
         "This is free software.  You may redistribute copies of it under the terms of\n"
         "the GNU General Public License <http://www.gnu.org/licenses/gpl.html>.\n"
@@ -47,8 +47,8 @@ void version(void)
 void usage(void)
 {
     fprintf(stderr, "Usage:\n"
-        "\tntk-resolv [OPTIONS] host\n"
-        "\tntk-resolv -H host\n\n"
+        "\tntkresolv [OPTIONS] host\n"
+        "\tntkresolv -H host\n\n"
         "Options:\n"
         " -v --version          print version, then exit.\n"
         " -n --nameserver=ns    use nameserver `ns' instead of localhost.\n"
@@ -57,7 +57,7 @@ void usage(void)
         " -r --realm=realm      realm to scan (`-r help' shows more info).\n"
         " -s --service=service  SNSD service (`-s help' shows more info).\n"
         " -p --protocol=proto  SNSD protocol (`-p help' shows more info).\n"
-        " -S --silent           ntk-resolv will be not loquacious.\n"
+        " -S --silent           ntkresolv will be not loquacious.\n"
         " -b --block-recursion  set recursion OFF.\n"
         " -m --md5-hash         hostname specified is hash-ed.\n"
         " -H --compute-hash     print the hash'ed hostname.\n"
@@ -70,7 +70,7 @@ void qt_usage(char *arg)
     if (arg)
         fprintf(stderr, "Bad Query Type %s\n\n",arg);
     else
-        fprintf(stderr, "ntk-resolv Query Type Help.\n\n"
+        fprintf(stderr, "ntkresolv Query Type Help.\n\n"
         "Valid query types are:\n"
         " * snsd\t\thost:port -> ip\n"
         "   ptr\t\tip -> host\n"
@@ -86,7 +86,7 @@ void realm_usage(char *arg)
     if (arg)
         fprintf(stderr, "Bad Realm %s\n\n",arg);
     else
-        fprintf(stderr, "ntk-resolv Realm Help.\n\n"
+        fprintf(stderr, "ntkresolv Realm Help.\n\n"
         "Valid realms are:\n"
         " * ntk\tnetsukuku realm\n"
         "   inet\tinternet realm\n\n"
@@ -98,27 +98,27 @@ void proto_usage(char *arg)
     if (arg)
         fprintf(stderr, "Bad Protocol %s\n\n",arg);
     else
-        fprintf(stderr, "ntk-resolv Protocol Help.\n\n"
+        fprintf(stderr, "ntkresolv Protocol Help.\n\n"
         "Valid protocols are:\n"
         " * tcp\n"
         "   udp\n"
         "(you can also use univoque abbreviation)\n"
         "Note: you can also specify the protocol with option `-s'.\n" 
         "To know more, type:\n"
-        "\tntk-resolv -s help\n\n");
+        "\tntkresolv -s help\n\n");
     exit(1);
 }
 void service_and_proto_usage(char *arg)
 {
     if (arg)
         fprintf(stderr, "Bad service/proto %s\n\n"
-            "Use `ntk-resolv -s help` for more info on"
+            "Use `ntkresolv -s help` for more info on"
             " service and proto.\n" ,arg);
     else fprintf(stderr,
-        "ntk-resolv Service and Proto Help.\n\n"
+        "ntkresolv Service and Proto Help.\n\n"
         "The form to specify a service and a protocol are:\n"
-        "  ntk-resolv -s service/proto\n"
-        "  ntk-resolv -s service -p proto\n\n"
+        "  ntkresolv -s service/proto\n"
+        "  ntkresolv -s service -p proto\n\n"
         "Valid protocols are:\n"
         " * tcp\n"
         "   udp\n\n"
@@ -127,10 +127,10 @@ void service_and_proto_usage(char *arg)
         "As example, the next commands are equivalent and\n"
         "will return the IP of the hostname that offers\n"
         "webpages for the hostname \"some_hostname\":\n\n"
-        "  ntk-resolv -s http -p tcp some_hostname\n"
-        "  ntk-resolv -s http/tcp    some_hostname\n"
-        "  ntk-resolv -s 80/tcp      some_hostname\n"
-        "  ntk-resolv -s 80          some_hostname\n\n");
+        "  ntkresolv -s http -p tcp some_hostname\n"
+        "  ntkresolv -s http/tcp    some_hostname\n"
+        "  ntkresolv -s 80/tcp      some_hostname\n"
+        "  ntkresolv -s 80          some_hostname\n\n");
     exit(1);
 }
         
