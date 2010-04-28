@@ -415,11 +415,11 @@ void opts_set_proto(andns_query *q, char *arg)
 void compute_hash(const char *arg)
 {
     unsigned char temp[16];
-    char hash[17];
+    char hash[32];
 
     MD5((const unsigned char*)arg, strlen(arg), temp);
     NTK_RESOLV_HASH_STR(temp, hash);
-    hash[16]=0;
+    hash[32]=0;
     fprintf(stdout, "%s\n", hash);
     exit(0);
 }
