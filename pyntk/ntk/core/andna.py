@@ -102,7 +102,7 @@ class Andna(OptionalP2P):
         # Andna Cache = { hostname: AndnaAuthRecord(), ... }
         self.cache = {} 
 
-        # Local Cache = { hostname: (expires, updates), ... }
+        # Local Cache = { hostname: ttl, ... }
         self.local_cache = {}
 
         # Resolved Cache = { (hostname, serv_key): AndnaResolvedRecord(), ... }
