@@ -243,7 +243,7 @@ class AndnsServer(object):
         if msg.qr != 0: return msg # there are no questions
 
         # the packet contains questions
-        name, nk, serv_key = msg.qstdata, msg.nk, msg.service
+        name, nk, serv_key = self.andna.maproute.ip_to_nip(str_to_ip(msg.qstdata)), msg.nk, msg.service
         req = None
         if nk == andns.NTK_REALM:
            req = AndnsReverseRequest(None, name, nk)
