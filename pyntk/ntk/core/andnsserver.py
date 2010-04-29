@@ -27,6 +27,7 @@ from ntk.core.andna import NULL_SERV_KEY
 from ntk.core.snsd import AndnaResolvedRecord, SnsdResolvedRecord
 from ntk.lib.log import logger as logging
 from ntk.lib.micro import microfunc
+from ntk.network.inet import str_to_ip
 from ntk.wrap.sock import Sock
 from ntk.wrap.xtime import swait
 
@@ -185,9 +186,8 @@ class AndnsServer(object):
         
         if nk == andns.NTK_REALM:
             logging.debug('AndnsServer: forwarding the request in ANDNA')
-            record = self.counter.ask_reverse_resolution(name)
-            logging.debug('AndnsServer: retrieved this records...\n'+
-                          str(record))
+            record = self.andna.reverse_resolve(name)
+            logging.debug('AndnsServer: retrieved this records...' + str(record))
             logging.debug('AndnsServer: ANDNA resolution finished.')
         elif nk == andns.INET_REALM:
             logging.debug('AndnsServer: forwarding the request in DNS ' +
@@ -256,11 +256,10 @@ class AndnsServer(object):
             logging.debug('AndnsServer: failed resolution!')
             msg = self.make_response(qry=msg, RCODE=3)
         else:
-            for record in ret.records:
-                # TODO: where do you save MAIN_IP?
+            for (hostname, ttl) in ret:
+                # TODO: where do you save MAIN_IP? weight? priority?
                 # (see libandns, is missing in RFC)
-                msg.addAnswer(answer=(1, record.weight, record.priority,
-                                serv_key, record.record))
+                msg.addAnswer(answer=(1, 1, 1, serv_key, hostname))
                 # now the packet contains answers...
                 msg.qr = 1
 

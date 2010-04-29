@@ -117,7 +117,8 @@ class Andna(OptionalP2P):
                                  self.get_registrar_pubk,
                                  self.reply_queued_registration,
                                  self.get_auth_cache,
-                                 self.reply_registrar_nip]
+                                 self.reply_registrar_nip,
+                                 self.reply_reverse_resolve]
 
     def enter_wait_andna_hook(self, *args):
         self.wait_andna_hook = True
@@ -441,6 +442,43 @@ class Andna(OptionalP2P):
             log_exception_stacktrace(e)
             res, data = 'CANTRESOLVE', 'Could not resolve right now'
         return res, data
+
+    def reverse_resolve(self, nip):
+        """ Reverse resolve the `nip' to get its registered hostnames """
+        logging.debug('ANDNA: reverse resolve on the nip: ' + str(nip))
+        data = []
+        try:
+            # calculate hash
+            hash_node = self.peer(hIP=nip)
+            logging.debug('ANDNA: reverse resolve: exact hash_node is ' + str(hash_node.get_hash_nip()))
+            # contact the hash node
+            logging.debug('ANDNA: call request reverse resolution')
+            data = hash_node.reply_reverse_resolve()
+            # data = [(hostname, ttl, registrar_ttl), ...]
+            logging.debug('ANDNA: data=' + str(data))
+        except Exception, e:
+            logging.debug('ANDNA: resolve: could not resolve right now:')
+            log_exception_stacktrace(e)
+            data = 'CANTRESOLVE', 'Could not resolve right now:' + str(e)
+        return data
+
+    def reply_reverse_resolve(self):
+        """ Return a list of pairs like (hostname, TTL) """
+
+        # Remove the expired entries from the resolved cache
+        self.check_expirations_local_cache()
+
+        ret = []
+        for hostname, ttl in self.local_cache.items():
+            ret.append((hostname, ttl)) 
+
+        logging.debug('ANDNA: reverse_resolve: returns ' + str(ret))
+        return ret
+
+    def check_expirations_local_cache(self):
+        # Remove the expired entries from the Local cache
+        # TODO
+        return
 
     def ask_registrar_nip(self, hostname):
         """ Asks the NIP of the registrar of hostname """
@@ -946,7 +984,7 @@ class Andna(OptionalP2P):
             hostname, spread_number = key
         else:
             hostname, spread_number = key, 0
-        return hash_32bit_ip(md5(hostname + str(spread_number)), self.maproute.levels, 
+        return hash_32bit_ip(md5(str(hostname) + str(spread_number)), self.maproute.levels, 
                              self.maproute.gsize)
 
 def hash_32bit_ip(hashed, levels, gsize):
