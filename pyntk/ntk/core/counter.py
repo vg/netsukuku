@@ -224,7 +224,7 @@ class Counter(OptionalP2P):
             import ntk.lib.misc as misc
             hnames = []
             try:
-                hostname = misc.get_hostname()
+                hostname = md5(misc.get_hostname())
                 hnames.append(hostname)
             except Exception, e:
                 logging.debug('Counter: reset_my_counter_node: get_hostname got ' + repr(e))

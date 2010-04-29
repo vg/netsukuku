@@ -32,6 +32,7 @@ from random import randint
 
 from ntk.wrap.sock import Sock
 from ntk.network.inet import ip_to_str
+from ntk.lib.crypto import md5
 from ntk.lib.micro import microfunc
 from ntk.lib.log import logger as logging
 from ntk.lib.log import log_exception_stacktrace
@@ -146,7 +147,7 @@ class DnsWrapper(object):
             andns_req.hostname = qname
             # Netsukuku or Internet?
             if andns_req.hostname[-4:].upper() == '.NTK':
-                andns_req.hostname = andns_req.hostname[:-4]
+                andns_req.hostname = md5(andns_req.hostname[:-4])
                 andns_req.ntk_bit = andns.NTK_REALM
             logging.debug('DnsWrapper: andns_req = ' + str(andns_req))
 

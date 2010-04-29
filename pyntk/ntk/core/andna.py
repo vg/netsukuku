@@ -275,7 +275,7 @@ class Andna(OptionalP2P):
                         try:
                             logging.debug('ANDNA: try to register ' + str(snsd_node))
                             append = snsd_node[0]
-                            hostname = snsd_node[1]
+                            hostname = md5(snsd_node[1])
                             record = snsd_node[2]
                             if record == 'me':
                                 record = None
