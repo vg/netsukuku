@@ -275,7 +275,7 @@ class Andna(OptionalP2P):
                         try:
                             logging.debug('ANDNA: try to register ' + str(snsd_node))
                             append = snsd_node[0]
-                            hostname = md5(snsd_node[1])
+                            hostname = snsd_node[1]
                             record = snsd_node[2]
                             if record == 'me':
                                 record = None
@@ -334,18 +334,20 @@ class Andna(OptionalP2P):
         logging.debug('ANDNA: register_0' + str((hostname, serv_key, IDNum, snsd_record,
                 append_if_unavailable)))
 
+        hname = md5(hostname)
+
         # calculate hash
-        hash_node = self.peer(key=hostname)
+        hash_node = self.peer(key=hname)
         logging.debug('ANDNA: register_0: exact hash_node is ' + str(hash_node.get_hash_nip()))
         # contact the hash node
         sender_nip = self.maproute.me[:]
         # sign the request and attach the public key
-        signature = self.my_keys.sign(rencode.dumps((sender_nip, hostname,
+        signature = self.my_keys.sign(rencode.dumps((sender_nip, hname,
                 serv_key, IDNum, snsd_record)))
         logging.debug('ANDNA: register_0: request registration')
         res, msg = hash_node.register_hostname_main(sender_nip,
                                               self.my_keys.get_pub_key(),
-                                              hostname,
+                                              hname,
                                               serv_key,
                                               IDNum,
                                               snsd_record,
@@ -366,12 +368,14 @@ class Andna(OptionalP2P):
         """ Register or update the name for the specified service number """
         logging.debug('ANDNA: register_n' + str((hostname, spread_number)))
 
+        hname = md5(hostname)
+
         # calculate hash
-        hash_node = self.peer(key=(hostname, spread_number))
+        hash_node = self.peer(key=(hname, spread_number))
         logging.debug('ANDNA: register_n: exact hash_node is ' + str(hash_node.get_hash_nip()))
         # contact the hash node
         logging.debug('ANDNA: register_n: request registration')
-        ret = hash_node.register_hostname_spread(hostname, spread_number)
+        ret = hash_node.register_hostname_spread(hname, spread_number)
         logging.debug('ANDNA: register_n: returns ' + str(ret))
 
     def request_registrar_pubk(self, hostname):
