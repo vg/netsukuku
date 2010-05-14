@@ -100,10 +100,8 @@ class AndnsServer(object):
                         # inverse query
                         resp = self.inv_qry(msg)
                     elif op == andns.AT_G:
-                        # TODO: why this value is missing into the RFC?
-                        # from ntkresolv.c:
-                        #    "global	hostname -> all services ip"
-                        raise Exception, 'AT_G: Not implemented yet'
+                        # global query
+                        resp = self.global_qry(msg)
                     else:
                         # Not Implemented
                         resp = self.make_response(qry=msg, RCODE=4)
@@ -172,6 +170,33 @@ class AndnsServer(object):
 
         return 'OK', record
 
+    def global_resolve(self, req, no_chain=False):
+        """ Take an AndnsRequest object as input.
+
+        @rtype: AndnaResolvedRecord object.
+        """
+        if not isinstance(req, AndnsRequest):
+            raise Exception, 'The req must be an AndnsRequest object'
+
+        hostname, serv_key, nk = req.hostname, req.serv_key, req.ntk_bit
+        logging.debug('AndnsServer: resolve hostname ' + str(hostname) +
+                                   ' using serv_key ' + str(serv_key))
+
+        if nk == andns.NTK_REALM:
+            logging.debug('AndnsServer: forwarding the request in ANDNA')
+            res, records = self.andna.global_resolve(hostname, no_chain)
+            if res != 'OK':
+                logging.debug('AndnsServer: ANDNA resolution failed.')
+                return 'KO', records
+            logging.debug('AndnsServer: retrieved this records...'+
+                          str(records))
+            logging.debug('AndnsServer: ANDNA resolution finished.')
+        elif nk == andns.INET_REALM:
+            # TODO: should we return SRV Records?
+            raise Exception, 'Global resolve in INET_REALM not Implemented yet'
+
+        return 'OK', records
+
     def reverse_resolve(self, req):
         if not isinstance(req, AndnsReverseRequest):
                raise Exception, 'The request must be an instance of AndnsReverseRequest'
@@ -233,6 +258,36 @@ class AndnsServer(object):
                                 serv_key, record.record))
                 # now the packet contains answers...
                 msg.qr = 1
+
+        return msg
+
+    def global_qry(self, msg):
+        ''' Take an AndnsPacket object as `msg' and return another object of the
+        same type that is the response, that contains all records for all services
+        available. '''
+
+        if msg.qr != 0: return msg # there are no questions
+
+        # the packet contains questions
+        hostname, nk = msg.qstdata, msg.nk
+        
+        res, rets = self.global_resolve(AndnsRequest(hostname, nk,
+                                                     serv_key=NULL_SERV_KEY))
+        if res != 'OK':
+            # no answers...
+            logging.debug('AndnsServer: failed resolution!')
+            msg = self.make_response(qry=msg, RCODE=3)
+        else:
+            logging.debug('AndnsServer: rets = ' + str(rets))
+            serv_key = -1 # TODO?
+            for entry in rets:
+                for record in entry.records:
+                    # TODO: where do you save MAIN_IP?
+                    # (see libandns, is missing in RFC)
+                    msg.addAnswer(answer=(1, record.weight, record.priority,
+                                    serv_key, record.record))
+                    # now the packet contains answers...
+                    msg.qr = 1
 
         return msg
 

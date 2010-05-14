@@ -443,6 +443,46 @@ class Andna(OptionalP2P):
             res, data = 'CANTRESOLVE', 'Could not resolve right now'
         return res, data
 
+    def global_resolve(self, hostname, no_chain=False):
+        """ Resolve the hostname, returns the AndnaResolvedRecord associated to the hostname and service """
+        logging.debug('ANDNA: global_resolve ' + str((hostname)))
+        res, records = '', []
+
+        try:
+            # Remove the expired entries from the resolved cache
+            self.check_expirations_resolved_cache()
+
+            # first try to resolve locally
+            for (h, serv_key) in self.resolved:
+                if h == hostname:
+                    records.append(self.resolved[(hostname, serv_key)])
+                    res = 'NOTFOUND' if len(records) == 0 else 'OK'
+                    return res, records
+            
+            # else call the remote hash node
+            choose_from = [(self.peer(key=hostname), 0)]
+            for i in xrange(1, ANDNA_SPREAD):
+                choose_from.append((self.peer(key=(hostname, i)), i))
+            def get_nip(pair):
+                peer, i = pair
+                return self.search_participant_as_nip(peer.get_hash_nip())
+
+            hash_node = self.peer(key=hostname)
+
+            # contact the hash gnode
+            control, records = hash_node.reply_global_resolve(hostname, no_chain)
+            if control == 'OK':
+                res = 'NOTFOUND' if len(records) == 0 is None else 'OK'
+                for serv_key, data in records.items():
+                    self.resolved[(hostname, serv_key)] = data
+            else:
+                res = control
+        except Exception, e:
+            logging.debug('ANDNA: global_resolve: could not resolve right now:')
+            log_exception_stacktrace(e)
+            res, data = 'CANTRESOLVE', 'Could not global_resolve right now'
+        return res, records
+
     def reverse_resolve(self, nip):
         """ Reverse resolve the `nip' to get its registered hostnames """
         logging.debug('ANDNA: reverse resolve on the nip: ' + str(nip))
@@ -474,6 +514,74 @@ class Andna(OptionalP2P):
 
         logging.debug('ANDNA: reverse_resolve: returns ' + str(ret))
         return ret
+
+    def get_all(self, hostname):
+        ''' Helper method to retrieve from the ANDNA cache regarding all the services
+            an AndnaAuthRecord and create a AndnaResolvedRecord.
+        '''
+        logging.debug("ANDNA: before get_all: hostname=" + str(hostname))
+        logging.debug("ANDNA: get_all: cache = " + str(self.cache))
+        if hostname in self.cache:
+            return self.cache[hostname].get_all()
+        else:
+            return { -1 : AndnaResolvedRecord(MAX_TTL_OF_NEGATIVE, None), }
+
+    def reply_global_resolve(self, hostname, no_chain=False, spread_number=0):
+        """ Return all the AndnaResolvedRecord associated to the hostname and service """
+        # If we recently changed our NIP (we hooked) we wait to finish
+        # an andna_hook before answering a resolution request.
+        def exit_func():
+            return not self.wait_andna_hook
+        logging.debug('ANDNA: waiting andna_hook...')
+        while_condition(exit_func, wait_millisec=1)
+        logging.debug('ANDNA: We are correctly hooked.')
+        # We are correctly hooked.
+
+        logging.debug('ANDNA: reply_global_resolve' + str((hostname, no_chain, spread_number)))
+        # first the hash check
+        logging.debug('ANDNA: reply_global_resolve: verifying that I am the right hash...')
+        prox_lvl, prox_id = self.search_participant(self.h((hostname, spread_number)))
+        check_hash = prox_lvl == -1
+
+        if not check_hash:
+            logging.info('ANDNA: reply_global_resolve: hash is NOT verified. Raising exception.')
+            raise AndnaError, 'Hash verification failed'
+        logging.debug('ANDNA: reply_global_resolve: hash is verified.')
+
+        # Remove the expired entries from the ANDNA cache
+        self.check_expirations_cache()
+
+        records = self.get_all(hostname)
+        logging.debug('ANDNA: reply_global_resolve: get_resolved_record returns ' + str(records))
+
+        ret_records = {}
+        for serv_key, data in records.items():
+            if data.records is not None:
+                for i in xrange(len(data.records)):
+                    datarec = data.records[i]
+                    if isinstance(datarec.record, str):
+                        if no_chain:
+                            logging.debug('ANDNA: reply_global_resolve: no_chain: will discard ' + datarec.record + '.')
+                            data.records[i] = None
+                        else:
+                            # Resolve snsd names for the client
+                            logging.debug('ANDNA: reply_global_resolve: resolving ' + datarec.record + ' on behalf of our client.')
+                            ris, ris_rec = self.resolve(datarec.record, no_chain=True)
+                            logging.debug('ANDNA: reply_global_resolve: ' + datarec.record + ' resolved as ' + str((ris, ris_rec)))
+                            if ris == 'OK' and \
+                                    len(ris_rec.records) > 0 and \
+                                    isinstance(ris_rec.records[0].record, list):
+                                data.records[i].record = ris_rec.records[0].record
+                            else:
+                                data.records[i] = None
+                while None in data.records:
+                    data.records.remove(None)
+
+            ret_records[serv_key] = data
+
+        logging.debug('ANDNA: reply_global_resolve: returning ' + str(ret_records))
+        return 'OK', ret_records
+
 
     def check_expirations_local_cache(self):
         # Remove the expired entries from the Local cache
