@@ -104,8 +104,8 @@ _tuple_to_pkt(PyObject *self, PyObject *args)
     // allocated by PyArg_ParseTuple, to avoid the use of
     // free on invalid pointers.
     
-    align_andns_question(packet, strlen(qstdata));
-    memcpy(packet->qstdata, qstdata, strlen(qstdata));
+    align_andns_question(packet, packet->qstlength);
+    memcpy(packet->qstdata, qstdata, packet->qstlength);
 
     for (i = 0; i< packet->ancount; i++) {
         char *rdata;
